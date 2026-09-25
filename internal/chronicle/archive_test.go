@@ -1,0 +1,200 @@
+package chronicle_test
+
+import (
+	"errors"
+	"strings"
+	"testing"
+	"time"
+
+	"gitea.mixdep.ru/mix/wynd/internal/archive"
+	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
+)
+
+func TestArchiveCutoffMovesUntilLocked(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	deadline := e.at(10)
+	if err := e.ch.StartArchiveCycle(e.ctx, circle.ID, "owner", "2026-08-05", deadline, 86400, e.at(0)); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.ch.MoveCutoff(e.ctx, circle.ID, "owner", "2026-08-10", e.at(1)); err != nil {
+		t.Fatal(err)
+	}
+	cycle, err := e.ch.GetArchiveCycle(e.ctx, circle.ID)
+	if err != nil || cycle.CutoffDate != "2026-08-10" {
+		t.Fatalf("cutoff: %+v err=%v", cycle, err)
+	}
+	if _, err := e.ch.LockCutoff(e.ctx, circle.ID, e.at(2)); err != nil {
+		t.Fatal(err)
+	}
+	err = e.ch.MoveCutoff(e.ctx, circle.ID, "owner", "2026-08-15", e.at(3))
+	if !errors.Is(err, chronicle.ErrForbidden) {
+		t.Fatalf("locked cutoff move: %v", err)
+	}
+}
+
+func TestArchiveSnapshotsDifferBySpan(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	e.post(circle.ID, "owner", "ранняя", "2026-08-01", e.at(0))
+	e.join(circle.ID, "guest", "Боря", e.at(2))
+	e.post(circle.ID, "guest", "после входа", "2026-08-02", e.at(3))
+
+	cutoff := "2026-08-10"
+	ownerSnap, err := e.ch.ArchiveSnapshot(e.ctx, circle.ID, "owner", cutoff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	guestSnap, err := e.ch.ArchiveSnapshot(e.ctx, circle.ID, "guest", cutoff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ownerSnap) != 2 || len(guestSnap) != 1 {
+		t.Fatalf("owner=%d guest=%d posts", len(ownerSnap), len(guestSnap))
+	}
+}
+
+func TestArchiveHTMLHasNoExternalLinks(t *testing.T) {
+	now := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+	posts := []chronicle.FeedPost{{
+		Post: chronicle.Post{
+			ID: "p1", AuthorName: "Аня", Body: "текст", EntryDate: "2026-08-01", CreatedAt: now,
+		},
+	}}
+	html := archive.BuildFeedHTMLForTest("Семья", "2026-08-10", posts)
+	if archive.HasExternalLinks(html) {
+		t.Fatal("archive HTML must not reference external URLs")
+	}
+	if !strings.Contains(html, "Аня") {
+		t.Fatal("expected author in HTML")
+	}
+}
+
+func TestArchivePurgeKeepsStructuralEvents(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	e.post(circle.ID, "owner", "удалится", "2026-08-01", e.at(0))
+	deadline := e.at(5)
+	if err := e.ch.StartArchiveCycle(e.ctx, circle.ID, "owner", "2026-08-10", deadline, 86400, e.at(1)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.ch.PurgeBeforeCutoff(e.ctx, circle.ID, "2026-08-10", e.at(6)); err != nil {
+		t.Fatal(err)
+	}
+	var serviceCount int
+	err := e.ch.DB().QueryRowContext(e.ctx, `
+		SELECT COUNT(*) FROM events WHERE circle_id = ? AND is_service = 1
+	`, circle.ID).Scan(&serviceCount)
+	if err != nil || serviceCount < 3 {
+		t.Fatalf("structural events remain: count=%d err=%v", serviceCount, err)
+	}
+	remains, err := eventTextRemains(e, circle.ID, "удалится")
+	if err != nil || remains {
+		t.Fatal("said content should be scrubbed")
+	}
+}
+
+func TestArchiveSnapshotOmitsContentAfterCutoff(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	p := e.post(circle.ID, "owner", "ранняя", "2026-08-01", e.at(0))
+	if _, err := e.ch.CreateComment(e.ctx, chronicle.CommentInput{
+		CircleID: circle.ID, AccountID: "owner", PostID: p.ID, Body: "после отсечки", Now: e.at(6),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.ch.SetReaction(e.ctx, chronicle.ReactionInput{
+		CircleID: circle.ID, AccountID: "owner", PostID: p.ID, Emoji: "heart", Now: e.at(6),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.ch.CreateComment(e.ctx, chronicle.CommentInput{
+		CircleID: circle.ID, AccountID: "owner", PostID: p.ID, Body: "до отсечки", Now: e.at(1),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	snap, err := e.ch.ArchiveSnapshot(e.ctx, circle.ID, "owner", "2026-08-05")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snap) != 1 {
+		t.Fatalf("posts: %d", len(snap))
+	}
+	if len(snap[0].Comments) != 1 || snap[0].Comments[0].Body != "до отсечки" {
+		t.Fatalf("comments: %+v", snap[0].Comments)
+	}
+	if len(snap[0].Reactions) != 0 {
+		t.Fatalf("reaction after cutoff leaked: %+v", snap[0].Reactions)
+	}
+}
+
+func TestArchiveNewCycleAfterLock(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	if err := e.ch.StartArchiveCycle(e.ctx, circle.ID, "owner", "2026-08-05", e.at(10), 86400, e.at(0)); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.ch.StartArchiveCycle(e.ctx, circle.ID, "owner", "2026-08-08", e.at(11), 86400, e.at(1)); err == nil {
+		t.Fatal("unlocked cycle must not restart")
+	}
+	if _, err := e.ch.LockCutoff(e.ctx, circle.ID, e.at(2)); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.ch.StartArchiveCycle(e.ctx, circle.ID, "owner", "2026-08-12", e.at(20), 86400, e.at(3)); err != nil {
+		t.Fatal(err)
+	}
+	cycle, err := e.ch.GetArchiveCycle(e.ctx, circle.ID)
+	if err != nil || cycle.CutoffDate != "2026-08-12" || cycle.CutoffLockedAt != nil {
+		t.Fatalf("new cycle: %+v err=%v", cycle, err)
+	}
+}
+
+func TestArchiveReminderWaitsForWindowAndReschedules(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	deadline := e.at(10)
+	if err := e.ch.StartArchiveCycle(e.ctx, circle.ID, "owner", "2026-08-05", deadline, 86400, e.at(0)); err != nil {
+		t.Fatal(err)
+	}
+	ids, err := e.ch.CirclesDueForArchiveReminder(e.ctx, e.at(0))
+	if err != nil || len(ids) != 0 {
+		t.Fatalf("immediate reminder: %v %v", ids, err)
+	}
+	ids, err = e.ch.CirclesDueForArchiveReminder(e.ctx, e.at(8))
+	if err != nil || len(ids) != 0 {
+		t.Fatalf("too early: %v %v", ids, err)
+	}
+	ids, err = e.ch.CirclesDueForArchiveReminder(e.ctx, e.at(9))
+	if err != nil || len(ids) != 1 {
+		t.Fatalf("due reminder: %v %v", ids, err)
+	}
+	if err := e.ch.MarkArchiveReminderSent(e.ctx, circle.ID, e.at(9)); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.ch.MoveDeadline(e.ctx, circle.ID, "owner", e.at(12), e.at(9)); err != nil {
+		t.Fatal(err)
+	}
+	ids, err = e.ch.CirclesDueForArchiveReminder(e.ctx, e.at(10))
+	if err != nil || len(ids) != 0 {
+		t.Fatalf("after move, same interval not yet: %v %v", ids, err)
+	}
+	ids, err = e.ch.CirclesDueForArchiveReminder(e.ctx, e.at(11))
+	if err != nil || len(ids) != 1 {
+		t.Fatalf("rescheduled reminder: %v %v", ids, err)
+	}
+}
+
+func TestArchivePurgeRunsRegardlessOfDownloads(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	e.post(circle.ID, "owner", "старая", "2026-08-01", e.at(0))
+	past := e.at(-1)
+	if err := e.ch.StartArchiveCycle(e.ctx, circle.ID, "owner", "2026-08-10", past, 86400, e.at(0)); err != nil {
+		t.Fatal(err)
+	}
+	ids, err := e.ch.CirclesDueForArchivePurge(e.ctx, e.at(1))
+	if err != nil || len(ids) != 1 {
+		t.Fatalf("due purge: %v %v", ids, err)
+	}
+}

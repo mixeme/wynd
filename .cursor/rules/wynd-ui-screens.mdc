@@ -1,0 +1,14 @@
+---
+description: Screens are assembled only from existing Wynd UI components
+alwaysApply: true
+---
+
+# Экраны = layout + библиотека
+
+Экран собирается **только** из существующих `$ui/...` и `$lib/layouts/...`. Новые `.svelte` в библиотеке в задаче экрана не создавать. В `routes/` только `+page` / `+layout` / `+error`.
+
+Нельзя: сырой `btn`/`lab`/`fld`, `role="button"`, Bits UI на экране, одноразовый компонент у маршрута, `$lib/components`.
+
+Сначала расширить уже лежащий компонент. Если объективно нельзя собрать экран — **отдельная задача** на библиотеку: написать `docs/plans/<slug>.plan.md` (`Тип: пробел Wynd UI`), обосновать пробел и таблицу «Добавить в библиотеку», **остановиться**. Не верстать дыру на экране и не добавлять `.svelte` в том же заходе. Файл в `$ui` можно завести только позже и только если открытый план его перечисляет.
+
+Проверка: `npm run check:ui`. Сторож: `.cursor/hooks/ui-screens.mjs`. Форма плана: [ui-components.md](docs/reference/ui-components.md).

@@ -1,0 +1,97 @@
+﻿<script lang="ts">
+	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import Hint from '$ui/forms/Hint.svelte';
+	import SectionLabel from '$ui/data/SectionLabel.svelte';
+	import SettingsRow from '$ui/data/SettingsRow.svelte';
+	import FormLayout from '$lib/layouts/FormLayout.svelte';
+	import Button from '$ui/forms/Button.svelte';
+	import { logoutSession } from '$lib/auth/auth';
+	import { displayHost } from '$lib/auth/origin';
+	import { fetchCircles } from '$lib/circles/circles';
+	import { loadSessions, removeSession } from '$lib/session/session.svelte';
+	import type { SessionRecord } from '$lib/idb/db';
+	import { stopSync } from '$lib/sync/sync';
+
+	interface ServerRowState {
+		session: SessionRecord;
+		host: string;
+		circles: number;
+	}
+
+	let rows = $state<ServerRowState[]>([]);
+	let loading = $state(true);
+
+	function pluralCircles(n: number): string {
+		const mod10 = n % 10;
+		const mod100 = n % 100;
+		if (mod10 === 1 && mod100 !== 11) return `${n} круг`;
+		if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${n} круга`;
+		return `${n} кругов`;
+	}
+
+	async function refresh() {
+		const sessions = await loadSessions();
+		const next: ServerRowState[] = [];
+		for (const session of sessions) {
+			let circles = 0;
+			try {
+				circles = (await fetchCircles(session.origin)).filter((c) => c.status === 'active')
+					.length;
+			} catch {
+				/* unreachable origin */
+			}
+			next.push({
+				session,
+				host: displayHost(session.origin),
+				circles
+			});
+		}
+		rows = next;
+		loading = false;
+	}
+
+	async function logout(origin: string) {
+		stopSync(origin);
+		await logoutSession(origin);
+		await removeSession(origin);
+		await refresh();
+	}
+
+	onMount(() => {
+		void refresh();
+	});
+</script>
+
+<FormLayout shell app title="Серверы и учётки" onback={() => goto('/settings')}>
+	{#if loading}
+		<Hint>Загрузка…</Hint>
+	{:else if rows.length === 0}
+		<Hint>Нет учёток на этом устройстве.</Hint>
+	{:else}
+		{#each rows as row (row.session.origin + row.session.email)}
+			<SectionLabel raw>
+				<span style="color:var(--ink)">{row.session.name}</span> · {row.host}
+			</SectionLabel>
+			<div class="row2" style="padding-top:2px">
+				<div class="g">
+					<div style="font-weight:600">{row.session.email}</div>
+					<div class="sub">{pluralCircles(row.circles)}</div>
+				</div>
+			</div>
+			<SettingsRow
+				icon="out"
+				title="Выйти с этого сервера"
+				chevron={false}
+				onclick={() => void logout(row.session.origin)}
+			/>
+		{/each}
+	{/if}
+
+	<Hint style="margin-top:24px">
+		Глобальной учётки не существует. Вы выходите «с сервера», а не «из Wynd»: круги живут на
+		серверах, серверы друг о друге не знают, и связать две ваши учётки нельзя.
+	</Hint>
+	<Button variant="ghost" onclick={() => goto('/join')}>Добавить сервер</Button>
+	<Hint>По ссылке или прямо по адресу — если сервер открыт для новых. Закрытый попросит приглашение.</Hint>
+</FormLayout>

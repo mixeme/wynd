@@ -1,0 +1,141 @@
+package chronicle
+
+import (
+	"context"
+	"database/sql"
+	"time"
+)
+
+// CanReadEvent reports whether account can see an event at createdAt.
+func (c *Chronicle) CanReadEvent(ctx context.Context, circleID, accountID string, createdAt time.Time) (bool, error) {
+	spans, err := c.visibilitySpans(ctx, circleID, accountID)
+	if err != nil {
+		return false, err
+	}
+	for _, sp := range spans {
+		if !sp.CanRead {
+			continue
+		}
+		if createdAt.Before(sp.StartedAt) {
+			continue
+		}
+		if sp.EndedAt != nil && !createdAt.Before(*sp.EndedAt) {
+			continue
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
+// CanWrite reports whether account can publish content now.
+func (c *Chronicle) CanWrite(ctx context.Context, circleID, accountID string, now time.Time) (bool, error) {
+	mem, err := c.membership(ctx, c.db, circleID, accountID)
+	if err != nil {
+		return false, err
+	}
+	if mem.Status != StatusActive {
+		return false, nil
+	}
+	spans, err := c.openSpans(ctx, mem.ID)
+	if err != nil {
+		return false, err
+	}
+	for _, sp := range spans {
+		if sp.CanWrite && sp.EndedAt == nil && !now.Before(sp.StartedAt) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (c *Chronicle) visibilitySpans(ctx context.Context, circleID, accountID string) ([]Span, error) {
+	mem, err := c.membership(ctx, c.db, circleID, accountID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := c.db.QueryContext(ctx, `
+		SELECT id, membership_id, started_at, ended_at, can_read, can_write
+		FROM membership_spans WHERE membership_id = ? ORDER BY started_at
+	`, mem.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []Span
+	for rows.Next() {
+		var sp Span
+		var started string
+		var ended sql.NullString
+		var canRead, canWrite int
+		if err := rows.Scan(&sp.ID, &sp.MembershipID, &started, &ended, &canRead, &canWrite); err != nil {
+			return nil, err
+		}
+		sp.StartedAt, _ = parseTime(started)
+		if ended.Valid {
+			t, _ := parseTime(ended.String)
+			sp.EndedAt = &t
+		}
+		sp.CanRead = canRead == 1
+		sp.CanWrite = canWrite == 1
+		out = append(out, sp)
+	}
+	return out, rows.Err()
+}
+
+func (c *Chronicle) openSpans(ctx context.Context, membershipID string) ([]Span, error) {
+	rows, err := c.db.QueryContext(ctx, `
+		SELECT id, membership_id, started_at, ended_at, can_read, can_write
+		FROM membership_spans WHERE membership_id = ? AND ended_at IS NULL
+	`, membershipID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Span
+	for rows.Next() {
+		var sp Span
+		var started string
+		var ended sql.NullString
+		var canRead, canWrite int
+		if err := rows.Scan(&sp.ID, &sp.MembershipID, &started, &ended, &canRead, &canWrite); err != nil {
+			return nil, err
+		}
+		sp.StartedAt, _ = parseTime(started)
+		sp.CanRead = canRead == 1
+		sp.CanWrite = canWrite == 1
+		out = append(out, sp)
+	}
+	return out, rows.Err()
+}
+
+// VisiblePostSeqs returns post event sequences visible to account ordered by created_at.
+func (c *Chronicle) VisiblePostSeqs(ctx context.Context, circleID, accountID string) ([]int64, error) {
+	rows, err := c.db.QueryContext(ctx, `
+		SELECT event_seq, created_at FROM posts
+		WHERE circle_id = ? AND deleted = 0
+		ORDER BY created_at
+	`, circleID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []int64
+	for rows.Next() {
+		var seq int64
+		var created string
+		if err := rows.Scan(&seq, &created); err != nil {
+			return nil, err
+		}
+		t, _ := parseTime(created)
+		ok, err := c.CanReadEvent(ctx, circleID, accountID, t)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			out = append(out, seq)
+		}
+	}
+	return out, rows.Err()
+}

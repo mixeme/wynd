@@ -1,0 +1,371 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
+const ROUTE_SVELTE = new Set(['+page.svelte', '+layout.svelte', '+error.svelte']);
+const IMPORT_RE = /import\s+(?:type\s+)?([\s\S]*?)\s+from\s+['"]([^'"]+)['"]/g;
+const TAG_RE = /<([A-Z][A-Za-z0-9]*)(?:\.[A-Z][A-Za-z0-9]*)*\b/g;
+
+export function posixRel(from, to) {
+	const rel = path.relative(from, to);
+	if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) return null;
+	return rel.replaceAll('\\', '/');
+}
+
+export function walkSvelte(dir, acc = []) {
+	if (!fs.existsSync(dir)) return acc;
+	for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+		const p = path.join(dir, ent.name);
+		if (ent.isDirectory()) walkSvelte(p, acc);
+		else if (ent.name.endsWith('.svelte')) acc.push(p);
+	}
+	return acc;
+}
+
+function lineAt(source, index) {
+	let line = 1;
+	for (let i = 0; i < index && i < source.length; i++) {
+		if (source.charCodeAt(i) === 10) line++;
+	}
+	return line;
+}
+
+function hit(rel, line, text) {
+	return `${rel}:${line}:${String(text).trim()}`;
+}
+
+function stripTagBlocks(source, tag) {
+	return source.replace(new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*?<\\/${tag}>`, 'gi'), (block) =>
+		block.replace(/[^\n]/g, ' ')
+	);
+}
+
+function markupOf(source) {
+	let markup = stripTagBlocks(source, 'script');
+	markup = stripTagBlocks(markup, 'style');
+	return markup.replace(/<!--[\s\S]*?-->/g, (block) => block.replace(/[^\n]/g, ' '));
+}
+
+function defaultImportName(clause) {
+	const trimmed = clause.trim();
+	if (!trimmed || trimmed.startsWith('{') || trimmed.startsWith('*')) return null;
+	const body = trimmed.startsWith('type ') ? trimmed.slice(5).trim() : trimmed;
+	if (body.startsWith('{') || body.startsWith('*')) return null;
+	const m = body.match(/^([A-Za-z_$][\w$]*)/);
+	return m ? m[1] : null;
+}
+
+function isScreenFile(rel) {
+	return (
+		rel.startsWith('src/routes/') &&
+		rel.endsWith('.svelte') &&
+		!rel.includes('/dev/spike/')
+	);
+}
+
+function allowedSvelteSpec(spec) {
+	return spec.startsWith('$ui/') || spec.startsWith('$lib/layouts/');
+}
+
+function resolveLibrarySpec(spec) {
+	if (spec.startsWith('$ui/')) return { kind: 'ui', file: spec.slice('$ui/'.length) };
+	if (spec.startsWith('$lib/layouts/')) {
+		return { kind: 'layout', file: spec.slice('$lib/layouts/'.length) };
+	}
+	return null;
+}
+
+export function libraryInventory(webRoot) {
+	const ui = new Set();
+	const layouts = new Set();
+	for (const file of walkSvelte(path.join(webRoot, 'src', 'lib', 'components'))) {
+		const rel = posixRel(path.join(webRoot, 'src', 'lib', 'components'), file);
+		if (rel) ui.add(rel);
+	}
+	for (const file of walkSvelte(path.join(webRoot, 'src', 'lib', 'layouts'))) {
+		const rel = posixRel(path.join(webRoot, 'src', 'lib', 'layouts'), file);
+		if (rel) layouts.add(rel);
+	}
+	return { ui, layouts };
+}
+
+export const UI_GAP_PLAN_HINT = [
+	'If existing $ui + $lib/layouts objectively cannot assemble the screen, do not invent markup or a one-off .svelte.',
+	'Write docs/plans/<slug>.plan.md (Тип: пробел Wynd UI) with why the current library is not enough and a «Добавить в библиотеку» table, then stop.',
+	'Extending the library is a separate task. That later task may add a file only if an open gap plan lists its path.'
+].join(' ');
+
+const GAP_TYPE_RE = /\*\*Тип:\*\*\s*пробел Wynd UI/i;
+const GAP_CLOSED_RE = /\*\*Статус:\*\*\s*закрыт/i;
+const GAP_ADD_SECTION_RE = /##\s+Добавить в библиотеку\s*\n([\s\S]*?)(?=\n##\s|$)/i;
+const GAP_PATH_RE =
+	/(?:\$ui\/|\$lib\/layouts\/|web\/src\/lib\/(?:components|layouts)\/|src\/lib\/(?:components|layouts)\/)[\w-]+(?:\/[\w-]+)*\.svelte/g;
+
+export function toLibraryWebRel(spec) {
+	let p = String(spec).replaceAll('\\', '/').replace(/^\/+/, '');
+	if (p.startsWith('web/')) p = p.slice(4);
+	if (p.startsWith('$ui/')) return `src/lib/components/${p.slice('$ui/'.length)}`;
+	if (p.startsWith('$lib/layouts/')) return `src/lib/layouts/${p.slice('$lib/layouts/'.length)}`;
+	return p;
+}
+
+export function authorizedPathsFromGapPlan(markdown) {
+	if (!GAP_TYPE_RE.test(markdown) || GAP_CLOSED_RE.test(markdown)) return [];
+	const section = markdown.match(GAP_ADD_SECTION_RE);
+	if (!section) return [];
+	GAP_PATH_RE.lastIndex = 0;
+	const paths = [];
+	for (const raw of section[1].matchAll(GAP_PATH_RE)) {
+		paths.push(toLibraryWebRel(raw[0]));
+	}
+	return paths;
+}
+
+const GAP_WHY_RE = /##\s+Почему нельзя собрать из имеющихся/i;
+
+export function checkOpenGapPlans(repoRoot) {
+	const hits = [];
+	const dir = path.join(repoRoot, 'docs', 'plans');
+	if (!fs.existsSync(dir)) return hits;
+	for (const name of fs.readdirSync(dir)) {
+		if (!name.endsWith('.plan.md') || name.includes('.template.')) continue;
+		const abs = path.join(dir, name);
+		if (!fs.statSync(abs).isFile()) continue;
+		const text = fs.readFileSync(abs, 'utf8');
+		GAP_TYPE_RE.lastIndex = 0;
+		if (!GAP_TYPE_RE.test(text)) continue;
+		GAP_CLOSED_RE.lastIndex = 0;
+		if (GAP_CLOSED_RE.test(text)) continue;
+		const rel = `docs/plans/${name}`;
+		GAP_WHY_RE.lastIndex = 0;
+		if (!GAP_WHY_RE.test(text)) {
+			hits.push(`${rel}:1:gap plan needs ## Почему нельзя собрать из имеющихся`);
+		}
+		if (authorizedPathsFromGapPlan(text).length === 0) {
+			hits.push(
+				`${rel}:1:gap plan «Добавить в библиотеку» must list $ui or $lib/layouts .svelte paths`
+			);
+		}
+	}
+	return hits;
+}
+
+export function findAuthorizingGapPlan(repoRoot, webRelPosix) {
+	const dir = path.join(repoRoot, 'docs', 'plans');
+	if (!fs.existsSync(dir)) return null;
+	const want = toLibraryWebRel(webRelPosix);
+	for (const name of fs.readdirSync(dir)) {
+		if (!name.endsWith('.plan.md') || name.includes('.template.')) continue;
+		const abs = path.join(dir, name);
+		if (!fs.statSync(abs).isFile()) continue;
+		const text = fs.readFileSync(abs, 'utf8');
+		if (authorizedPathsFromGapPlan(text).includes(want)) {
+			return `docs/plans/${name}`;
+		}
+	}
+	return null;
+}
+
+function denyNewLibrary(kind) {
+	const what =
+		kind === 'layout'
+			? 'Do not create new layout .svelte files in a screen task.'
+			: 'Do not create new Wynd UI ($ui) .svelte files in a screen task.';
+	return { deny: true, message: `${what} ${UI_GAP_PLAN_HINT}` };
+}
+
+export function classifyNewSvelte(webRelPosix, exists, repoRoot) {
+	if (!webRelPosix?.endsWith('.svelte')) return null;
+	if (webRelPosix.startsWith('src/lib/components/') && !exists) {
+		if (repoRoot && findAuthorizingGapPlan(repoRoot, webRelPosix)) return null;
+		return denyNewLibrary('ui');
+	}
+	if (webRelPosix.startsWith('src/lib/layouts/') && !exists) {
+		if (repoRoot && findAuthorizingGapPlan(repoRoot, webRelPosix)) return null;
+		return denyNewLibrary('layout');
+	}
+	if (webRelPosix.startsWith('src/routes/')) {
+		const base = path.posix.basename(webRelPosix);
+		if (!ROUTE_SVELTE.has(base)) {
+			return {
+				deny: true,
+				message: `Route UI belongs in ${[...ROUTE_SVELTE].join(' / ')}. Do not add extra .svelte files under routes. ${UI_GAP_PLAN_HINT}`
+			};
+		}
+	}
+	return null;
+}
+
+/**
+ * @returns {string[]} hits `rel:line:text`
+ */
+export function analyzeScreenSource(rel, source, inventory) {
+	if (!isScreenFile(rel)) return [];
+	const hits = [];
+	const allowedTags = new Set();
+
+	for (const match of source.matchAll(IMPORT_RE)) {
+		const clause = match[1];
+		const spec = match[2];
+		const line = lineAt(source, match.index);
+		const def = defaultImportName(clause);
+
+		if (spec === 'bits-ui' || spec.startsWith('bits-ui/')) {
+			hits.push(hit(rel, line, 'bits-ui is library-internal — screens import $ui components, not Bits UI'));
+			continue;
+		}
+
+		if (def && spec.endsWith('.svelte')) {
+			if (!allowedSvelteSpec(spec)) {
+				hits.push(
+					hit(
+						rel,
+						line,
+						`component import must be $ui/... or $lib/layouts/... (got ${spec})`
+					)
+				);
+				continue;
+			}
+			const resolved = resolveLibrarySpec(spec);
+			if (!resolved) continue;
+			const known = resolved.kind === 'ui' ? inventory.ui : inventory.layouts;
+			if (!known.has(resolved.file)) {
+				hits.push(
+					hit(
+						rel,
+						line,
+						`${spec} is not in the Wynd UI library — use an existing component`
+					)
+				);
+				continue;
+			}
+			allowedTags.add(def);
+		}
+	}
+
+	const markup = markupOf(source);
+	for (const match of markup.matchAll(TAG_RE)) {
+		const name = match[1];
+		if (allowedTags.has(name)) continue;
+		hits.push(
+			hit(
+				rel,
+				lineAt(markup, match.index),
+				`<${name}> is not a Wynd UI / layout component imported in this screen`
+			)
+		);
+	}
+
+	return hits;
+}
+
+export function analyzeScreenFile(absFile, webRoot, inventory, source) {
+	const rel = posixRel(webRoot, absFile);
+	if (!rel) return [];
+	return analyzeScreenSource(rel, source ?? fs.readFileSync(absFile, 'utf8'), inventory);
+}
+
+function searchSource(rel, source, re) {
+	const hits = [];
+	const lines = source.split('\n');
+	for (let i = 0; i < lines.length; i++) {
+		re.lastIndex = 0;
+		if (re.test(lines[i])) hits.push(hit(rel, i + 1, lines[i]));
+	}
+	return hits;
+}
+
+/**
+ * Full check used by `npm run check:ui` and the Cursor stop hook.
+ * @returns {{ ok: boolean, groups: Array<{ message: string, hits: string[] }> }}
+ */
+export function checkProject(webRoot) {
+	const routes = path.join(webRoot, 'src', 'routes');
+	const srcRoot = path.join(webRoot, 'src');
+	if (!fs.existsSync(routes)) {
+		return {
+			ok: false,
+			groups: [{ message: `check-ui: routes dir missing: ${routes}`, hits: [routes] }]
+		};
+	}
+
+	const srcFiles = walkSvelte(srcRoot);
+	const inventory = libraryInventory(webRoot);
+	const extraRoute = [];
+	const composition = [];
+	const roleButton = [];
+	const rawBtn = [];
+	const rawFldInput = [];
+	const rawTextarea = [];
+	const rawLab = [];
+	const legacyImports = [];
+
+	for (const file of srcFiles) {
+		const rel = posixRel(webRoot, file);
+		if (!rel) continue;
+		const source = fs.readFileSync(file, 'utf8');
+		if (rel.startsWith('src/routes/')) {
+			const base = path.posix.basename(rel);
+			if (!ROUTE_SVELTE.has(base)) {
+				extraRoute.push(hit(rel, 1, `route .svelte must be ${[...ROUTE_SVELTE].join(' / ')}`));
+			}
+			composition.push(...analyzeScreenSource(rel, source, inventory));
+			roleButton.push(...searchSource(rel, source, /role="button"/));
+			rawBtn.push(...searchSource(rel, source, /class="btn/));
+			rawFldInput.push(...searchSource(rel, source, /<input[^>]*class="[^"]*fld/));
+			rawTextarea.push(...searchSource(rel, source, /<textarea[^>]*class="[^"]*(fld|ta)/));
+			rawLab.push(...searchSource(rel, source, /class="lab"/));
+		}
+		legacyImports.push(...searchSource(rel, source, /\$lib\/components/));
+	}
+
+	const groups = [
+		{
+			message:
+				'check-ui: extra .svelte under routes — screens are +page/+layout/+error assembled from $ui + layouts.',
+			hits: extraRoute
+		},
+		{
+			message:
+				'check-ui: screen is not assembled from Wynd UI / layouts only — use existing $ui components.',
+			hits: composition
+		},
+		{
+			message: 'check-ui: found role="button" in routes — use Button/Chip/IconButton/etc.',
+			hits: roleButton
+		},
+		{
+			message: 'check-ui: found raw class="btn in routes — use Button component.',
+			hits: rawBtn
+		},
+		{
+			message: 'check-ui: found raw <input class="fld in routes — use Input component.',
+			hits: rawFldInput
+		},
+		{
+			message: 'check-ui: found raw <textarea class="fld|ta in routes — use TextArea component.',
+			hits: rawTextarea
+		},
+		{
+			message: 'check-ui: found raw class="lab" in routes — use Label component.',
+			hits: rawLab
+		},
+		{
+			message: 'check-ui: use $ui instead of $lib/components',
+			hits: legacyImports
+		},
+		{
+			message:
+				'check-ui: open Wynd UI gap plan must justify the hole and list files to add (separate library task).',
+			hits: checkOpenGapPlans(path.resolve(webRoot, '..'))
+		}
+	];
+
+	const failed = groups.filter((g) => g.hits.length > 0);
+	return { ok: failed.length === 0, groups: failed.length ? failed : groups };
+}
+
+export function formatReport(result) {
+	const failed = result.groups.filter((g) => g.hits.length > 0);
+	if (!failed.length) return 'check-ui: OK';
+	return failed.map((g) => `${g.message}\n${g.hits.join('\n')}`).join('\n\n');
+}

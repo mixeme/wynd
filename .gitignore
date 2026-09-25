@@ -1,0 +1,10 @@
+/dev/
+/data/
+/data-*/
+/dist/
+*.test
+*.out
+smoke*.log
+web/node_modules/
+web/.svelte-kit/
+/tmp/

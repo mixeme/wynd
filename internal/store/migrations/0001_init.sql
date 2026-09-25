@@ -1,0 +1,2 @@
+-- Empty schema. Domain tables arrive in later migrations.
+-- schema_migrations is owned by the migrator, not this file.

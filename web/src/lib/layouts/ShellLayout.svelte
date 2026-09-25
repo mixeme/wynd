@@ -1,0 +1,38 @@
+﻿<script lang="ts">
+	import AppBar from '$ui/chrome/AppBar.svelte';
+	import Fab from '$ui/overlays/Fab.svelte';
+	import PhoneFrame from '$ui/chrome/PhoneFrame.svelte';
+	import StatusBar from '$ui/chrome/StatusBar.svelte';
+	import type { Snippet } from 'svelte';
+
+	let {
+		dark = false,
+		app = false,
+		height,
+		class: className = '',
+		fab,
+		onsearch,
+		onsettings,
+		children
+	}: {
+		dark?: boolean;
+		app?: boolean;
+		height?: string;
+		class?: string;
+		fab?: Snippet;
+		onsearch?: () => void;
+		onsettings?: () => void;
+		children: Snippet;
+	} = $props();
+</script>
+
+<PhoneFrame shell {dark} {app} {height} class={className}>
+	{#if !app}
+		<StatusBar />
+	{/if}
+	<AppBar {onsearch} {onsettings} />
+	{@render children()}
+	{#if fab}
+		<Fab>{@render fab()}</Fab>
+	{/if}
+</PhoneFrame>

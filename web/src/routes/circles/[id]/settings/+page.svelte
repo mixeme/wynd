@@ -1,0 +1,365 @@
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import { getContext, onMount } from 'svelte';
+	import Chip from '$ui/forms/Chip.svelte';
+	import ChipGroup from '$ui/forms/ChipGroup.svelte';
+	import ColorSwatches from '$ui/forms/ColorSwatches.svelte';
+	import DangerZone from '$ui/forms/DangerZone.svelte';
+	import FieldDisplay from '$ui/forms/FieldDisplay.svelte';
+	import Hint from '$ui/forms/Hint.svelte';
+	import Input from '$ui/forms/Input.svelte';
+	import Label from '$ui/forms/Label.svelte';
+	import MemberRow from '$ui/data/MemberRow.svelte';
+	import Meter from '$ui/forms/Meter.svelte';
+	import SettingsRow from '$ui/data/SettingsRow.svelte';
+	import FormLayout from '$lib/layouts/FormLayout.svelte';
+	import { authErrorHint } from '$lib/auth/auth';
+	import {
+		customHoursFromSec,
+		editWindowFromSec,
+		editWindowToSec,
+		fetchCircleSettings,
+		fetchMembers,
+		leaveCircle,
+		fetchQuota,
+		patchCircle,
+		type EditWindowKey,
+		type MemberInfo
+	} from '$lib/circles/settings';
+	import { setCircleColor, circleInitial } from '$lib/circles/meta';
+	import { formatBytes } from '$lib/format/bytes';
+	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
+	import type { CircleColor } from '$lib/theme/colors';
+	import { CIRCLE_COLORS } from '$lib/theme/colors';
+
+	const circle = getContext<CircleContext>(CIRCLE_CTX);
+
+	let name = $state('');
+	let color = $state<CircleColor>('olive');
+	let editWindow = $state<EditWindowKey>('1h');
+	let customHours = $state(24);
+	let canSettings = $state(false);
+	let isOwner = $state(false);
+	let inviteWho = $state<'all' | 'owner'>('all');
+	let inviteKindDefault = $state<'single' | 'multi'>('single');
+	let members = $state<MemberInfo[]>([]);
+	let usedBytes = $state(0);
+	let quotaBytes = $state<number | undefined>();
+	let loading = $state(true);
+	let error = $state('');
+	let colorReady = $state(false);
+
+	const activeMembers = $derived(members.filter((m) => m.status === 'active'));
+	const previewMembers = $derived(activeMembers.slice(0, 3));
+
+	function memberSubtitle(m: MemberInfo): string {
+		if (m.identity_id === circle.identityId) {
+			return 'это вы';
+		}
+		const parts: string[] = [];
+		if (m.is_owner) parts.push('владелец');
+		else if (m.can_settings) parts.push('может менять настройки');
+		return parts.join(' · ');
+	}
+
+	function memberColor(m: MemberInfo, index: number): string {
+		const palette = Object.values(CIRCLE_COLORS);
+		return palette[index % palette.length].cssVar;
+	}
+
+	async function load() {
+		loading = true;
+		error = '';
+		try {
+			const [settings, list] = await Promise.all([
+				fetchCircleSettings(circle.origin, circle.circleId),
+				fetchMembers(circle.origin, circle.circleId)
+			]);
+			name = settings.name;
+			color = circle.color;
+			editWindow = editWindowFromSec(settings.edit_window_sec);
+			if (editWindow === 'custom') {
+				customHours = customHoursFromSec(settings.edit_window_sec ?? 3600);
+			}
+			canSettings = settings.can_settings ?? false;
+			isOwner = settings.is_owner ?? false;
+			inviteWho = settings.invite_who ?? 'all';
+			inviteKindDefault = settings.invite_kind_default ?? 'single';
+			members = list;
+			if (isOwner) {
+				try {
+					const quota = await fetchQuota(circle.origin, circle.circleId);
+					usedBytes = quota.used_bytes;
+					quotaBytes = quota.quota_bytes;
+				} catch {
+					/* non-owner race */
+				}
+			}
+		} catch (err) {
+			error = authErrorHint(err);
+		} finally {
+			loading = false;
+			colorReady = true;
+		}
+	}
+
+	$effect(() => {
+		if (!colorReady) return;
+		void onColorChange(color);
+	});
+
+	async function saveName() {
+		if (!canSettings) return;
+		const trimmed = name.trim();
+		if (!trimmed) return;
+		try {
+			const { patchCircle } = await import('$lib/circles/settings');
+			await patchCircle(circle.origin, circle.circleId, { name: trimmed });
+			circle.name = trimmed;
+		} catch (err) {
+			error = authErrorHint(err);
+		}
+	}
+
+	async function onColorChange(c: CircleColor) {
+		color = c;
+		circle.color = c;
+		circle.colorHex = CIRCLE_COLORS[c].cssVar;
+		await setCircleColor(circle.origin, circle.circleId, c);
+		if (canSettings) {
+			try {
+				await patchCircle(circle.origin, circle.circleId, { color: c });
+			} catch (err) {
+				error = authErrorHint(err);
+			}
+		}
+	}
+
+	async function onEditWindow(key: EditWindowKey) {
+		if (!canSettings) return;
+		editWindow = key;
+		try {
+			await patchCircle(circle.origin, circle.circleId, {
+				edit_window_sec: editWindowToSec(key, customHours)
+			});
+		} catch (err) {
+			error = authErrorHint(err);
+		}
+	}
+
+	async function onCustomHoursChange() {
+		if (!canSettings || editWindow !== 'custom') return;
+		try {
+			await patchCircle(circle.origin, circle.circleId, {
+				edit_window_sec: editWindowToSec('custom', customHours)
+			});
+		} catch (err) {
+			error = authErrorHint(err);
+		}
+	}
+
+	async function onInviteWho(who: 'all' | 'owner') {
+		if (!canSettings) return;
+		inviteWho = who;
+		try {
+			await patchCircle(circle.origin, circle.circleId, { invite_who: who });
+		} catch (err) {
+			error = authErrorHint(err);
+		}
+	}
+
+	async function onInviteKindDefault(kind: 'single' | 'multi') {
+		if (!canSettings) return;
+		inviteKindDefault = kind;
+		try {
+			await patchCircle(circle.origin, circle.circleId, { invite_kind_default: kind });
+		} catch (err) {
+			error = authErrorHint(err);
+		}
+	}
+
+	const canInvite = $derived(inviteWho === 'all' || isOwner);
+
+	function goBack() {
+		goto(`/circles/${circle.circleId}`);
+	}
+
+	async function onLeave() {
+		if (isOwner) {
+			error = 'Сначала передайте владение другому участнику';
+			return;
+		}
+		if (!confirm('Покинуть круг? Записи останутся под вашим именем.')) return;
+		try {
+			await leaveCircle(circle.origin, circle.circleId, false);
+			goto('/circles');
+		} catch (err) {
+			error = authErrorHint(err);
+		}
+	}
+
+	function onDangerItem(label: string) {
+		if (label === 'Передать владение') {
+			goto(`/circles/${circle.circleId}/settings/members?transfer=1`);
+		} else if (label === 'Покинуть круг') {
+			void onLeave();
+		} else if (label === 'Удалить круг и все записи') {
+			goto(`/circles/${circle.circleId}/settings/delete`);
+		}
+	}
+
+	onMount(() => {
+		void load();
+	});
+</script>
+
+<FormLayout app color={circle.color} title="Настройки круга" onback={goBack}>
+	{#if loading}
+		<Hint style="margin:16px">Загрузка…</Hint>
+	{:else if error}
+		<Hint style="margin:16px">{error}</Hint>
+	{:else}
+		<Label>Название</Label>
+		{#if canSettings}
+			<Input active bind:value={name} onchange={() => void saveName()} />
+		{:else}
+			<FieldDisplay value={name} />
+		{/if}
+
+		<Label>Цвет</Label>
+		<ColorSwatches bind:value={color} />
+
+		{#if canSettings}
+			<Label>Окно правок</Label>
+			<ChipGroup>
+				<Chip selected={editWindow === 'chronicle'} onclick={() => void onEditWindow('chronicle')}>
+					Летопись
+				</Chip>
+				<Chip selected={editWindow === '10m'} onclick={() => void onEditWindow('10m')}>10 мин</Chip>
+				<Chip selected={editWindow === '1h'} onclick={() => void onEditWindow('1h')}>Час</Chip>
+				<Chip selected={editWindow === '1d'} onclick={() => void onEditWindow('1d')}>Сутки</Chip>
+			</ChipGroup>
+			<ChipGroup style="margin-top:8px">
+				<Chip selected={editWindow === 'unlimited'} onclick={() => void onEditWindow('unlimited')}>
+					Без ограничения
+				</Chip>
+				<Chip selected={editWindow === 'custom'} onclick={() => void onEditWindow('custom')}>Своё…</Chip>
+			</ChipGroup>
+			{#if editWindow === 'custom'}
+				<div class="rowin" style="margin-top:10px;align-items:center">
+					<Input
+						active
+						type="number"
+						min="1"
+						max="8760"
+						bind:value={customHours}
+						onchange={() => void onCustomHoursChange()}
+						style="width:72px;margin:0"
+					/>
+					<span class="hint" style="margin:0">часов</span>
+				</div>
+			{/if}
+			<Hint
+				>После публикации запись можно изменить в течение выбранного окна. Каждая запись
+				запоминает окно, при котором вышла: смена правила — событие хроники, но действует она
+				только на новые записи. Прошлое остаётся с тем окном, при котором было сказано.</Hint
+			>
+
+			<Label>Приглашения</Label>
+			<ChipGroup>
+				<Chip selected={inviteWho === 'all'} onclick={() => void onInviteWho('all')}>Могут все</Chip>
+				<Chip selected={inviteWho === 'owner'} onclick={() => void onInviteWho('owner')}>
+					Только владелец
+				</Chip>
+			</ChipGroup>
+			<ChipGroup style="margin-top:8px">
+				<Chip
+					selected={inviteKindDefault === 'single'}
+					onclick={() => void onInviteKindDefault('single')}
+				>
+					Одноразовые
+				</Chip>
+				<Chip
+					selected={inviteKindDefault === 'multi'}
+					onclick={() => void onInviteKindDefault('multi')}
+				>
+					Многоразовые
+				</Chip>
+			</ChipGroup>
+		{/if}
+
+		{#if canInvite}
+			<SettingsRow
+				title="Пригласить"
+				style="margin-top:14px;border-top:1px solid var(--line)"
+				onclick={() => goto(`/circles/${circle.circleId}/settings/invite`)}
+			/>
+		{/if}
+		<SettingsRow
+			title="Кто ты в этом круге"
+			value={circle.identityName}
+			onclick={() => goto(`/circles/${circle.circleId}/settings/identity`)}
+		/>
+		<SettingsRow
+			title="Уведомления"
+			subtitle="записи и упоминания"
+			onclick={() => goto(`/circles/${circle.circleId}/settings/notify`)}
+		/>
+
+		{#if isOwner && quotaBytes}
+			<Label style="margin-top:20px">Место</Label>
+			<Meter value={usedBytes / (1024 * 1024 * 1024)} max={quotaBytes / (1024 * 1024 * 1024)} />
+			<Hint style="margin-top:8px"
+				>{formatBytes(usedBytes)} из {formatBytes(quotaBytes)} · квоту задал администратор</Hint
+			>
+			<SettingsRow
+				title="Архив и очистка"
+				subtitle="освободить место, скачать архив"
+				style="margin-top:8px"
+				onclick={() => goto(`/circles/${circle.circleId}/quota`)}
+			/>
+		{:else if circle.archiveCycle?.active}
+			{#if isOwner}
+				<SettingsRow
+					title="Сроки архивации"
+					subtitle="отсечка и дедлайн"
+					style="margin-top:20px"
+					onclick={() => goto(`/circles/${circle.circleId}/quota/deadlines`)}
+				/>
+			{/if}
+			<SettingsRow
+				title="Скачать архив"
+				subtitle="персональная копия до отсечки"
+				style="margin-top:20px"
+				onclick={() => goto(`/circles/${circle.circleId}/archive`)}
+			/>
+		{/if}
+
+		<Label style="margin-top:20px">Участники · {activeMembers.length}</Label>
+		{#each previewMembers as m, i (m.account_id)}
+			<MemberRow
+				initial={circleInitial(m.name)}
+				name={m.name}
+				subtitle={memberSubtitle(m)}
+				color={memberColor(m, i)}
+				style="padding-top:2px"
+			/>
+		{/each}
+		<SettingsRow
+			title={activeMembers.length > 3 ? `ещё ${activeMembers.length - 3}` : 'Все участники'}
+			link
+			onclick={() => goto(`/circles/${circle.circleId}/settings/members`)}
+		/>
+
+		<div style="margin-top:20px">
+			<DangerZone
+				items={[
+					...(isOwner ? ['Передать владение'] : []),
+					'Покинуть круг',
+					...(isOwner ? ['Удалить круг и все записи'] : [])
+				]}
+				onitem={onDangerItem}
+			/>
+		</div>
+	{/if}
+</FormLayout>

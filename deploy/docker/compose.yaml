@@ -1,0 +1,31 @@
+services:
+  wynd:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    volumes:
+      - wynd-data:/data
+    environment:
+      WYND_PUBLIC_URL: https://example.org
+      # Only the caddy service can reach wynd (no published port), so its
+      # X-Forwarded-For may be trusted for rate limiting.
+      WYND_TRUSTED_PROXIES: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - wynd
+    restart: unless-stopped
+
+volumes:
+  wynd-data:
+  caddy-data:
+  caddy-config:

@@ -1,0 +1,81 @@
+.ph .map-wrap {
+	position: relative;
+	flex: 1;
+	min-height: 320px;
+}
+
+.ph .map-wrap .leaflet-container {
+	width: 100%;
+	height: 100%;
+	min-height: 320px;
+	background: #e9e3d7;
+	font-family: inherit;
+}
+
+/* The badge sits in the same corner: push Leaflet's zoom control clear of it. */
+.ph .map-wrap .leaflet-top.leaflet-left {
+	margin-top: 44px;
+}
+
+.ph .map-wrap .leaflet-control-attribution {
+	font-size: 10px;
+	background: rgba(244, 240, 233, 0.85);
+}
+
+.ph .map-pin-thumb {
+	width: 44px;
+	height: 44px;
+	border-radius: 50%;
+	border: 2px solid var(--paper, #f4f0e9);
+	box-shadow: 0 1px 4px rgba(43, 39, 36, 0.25);
+	overflow: hidden;
+	background: var(--tint, #c3af95);
+}
+
+.ph .map-pin-thumb img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.ph .map-badge {
+	position: absolute;
+	left: 14px;
+	top: 14px;
+	z-index: 500;
+	background: var(--card, #fff);
+	border: 1px solid var(--line, #e0d8cc);
+	border-radius: 19px;
+	padding: 7px 14px;
+	font-size: 12.5px;
+	pointer-events: none;
+}
+
+.ph .map-sheet {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 500;
+	background: var(--paper, #f4f0e9);
+	border-top: 1px solid var(--line, #e0d8cc);
+	padding: 12px 14px 16px;
+	display: flex;
+	gap: 12px;
+}
+
+.ph .map-sheet .thumb {
+	width: 74px;
+	height: 74px;
+	border-radius: 9px;
+	flex: 0 0 auto;
+	overflow: hidden;
+	background: var(--tint, #c3af95);
+}
+
+.ph .map-sheet .thumb img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}

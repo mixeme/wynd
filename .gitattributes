@@ -1,0 +1,16 @@
+# core.autocrlf is on for this repo: keep binaries out of line-ending conversion,
+# which silently corrupts fonts and images on checkout.
+* text=auto
+
+*.woff2 binary
+*.woff  binary
+*.ttf   binary
+*.otf   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.pdf   binary
+*.db    binary

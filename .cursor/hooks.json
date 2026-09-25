@@ -1,0 +1,38 @@
+{
+	"version": 1,
+	"hooks": {
+		"preToolUse": [
+			{
+				"command": "node .cursor/hooks/ui-screens.mjs",
+				"matcher": "Write|StrReplace",
+				"timeout": 15
+			}
+		],
+		"postToolUse": [
+			{
+				"command": "node .cursor/hooks/ui-screens.mjs",
+				"matcher": "Write|StrReplace",
+				"timeout": 15
+			}
+		],
+		"afterFileEdit": [
+			{
+				"command": "node .cursor/hooks/ui-screens.mjs",
+				"timeout": 15
+			}
+		],
+		"afterTabFileEdit": [
+			{
+				"command": "node .cursor/hooks/ui-screens.mjs",
+				"timeout": 15
+			}
+		],
+		"stop": [
+			{
+				"command": "node .cursor/hooks/ui-screens.mjs",
+				"timeout": 30,
+				"loop_limit": 1
+			}
+		]
+	}
+}

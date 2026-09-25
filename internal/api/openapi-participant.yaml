@@ -1,0 +1,434 @@
+openapi: 3.1.0
+info:
+  title: Wynd participant API
+  version: 0.1.0
+  description: Participant routes (Bearer session). Admin routes are in a separate spec.
+
+servers:
+  - url: /api/v1
+
+security:
+  - bearerAuth: []
+
+paths:
+  /instance:
+    get:
+      summary: Public instance info
+      security: []
+      responses:
+        "200":
+          description: Instance name, version, registration mode
+
+  /sync:
+    get:
+      summary: Events after cursor in visible spans
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Sync batch (format depends on Accept)
+          content:
+            application/json:
+              schema:
+                type: object
+            text/event-stream:
+              schema:
+                type: string
+            application/x-ndjson:
+              schema:
+                type: string
+
+  /circles:
+    get:
+      summary: Account circles with unread counts
+      responses:
+        "200":
+          description: Circle list
+    post:
+      summary: Create circle
+      responses:
+        "201":
+          description: Circle created
+
+  /circles/{circle_id}/invites:
+    post:
+      summary: Create circle invite
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "201":
+          description: Invite token
+
+  /circles/{circle_id}/leave:
+    post:
+      summary: Leave circle (retain_access keeps read until leave)
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /circles/{circle_id}/read_cursor:
+    put:
+      summary: Advance read cursor for unread badge
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [seq]
+              properties:
+                seq:
+                  type: integer
+      responses:
+        "200":
+          description: OK
+
+  /circles/{circle_id}/feed:
+    get:
+      summary: Feed snapshot trimmed to visible spans
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Posts with media, comments, reactions
+
+  /circles/{circle_id}/grid:
+    get:
+      summary: Photo grid snapshot
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Photo tiles
+
+  /circles/{circle_id}/map:
+    get:
+      summary: Map pins snapshot
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Geotagged media
+
+  /circles/{circle_id}/days:
+    get:
+      summary: Days with visible posts
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Day summaries
+
+  /circles/{circle_id}/days/{date}:
+    get:
+      summary: Posts for one day by entry_date
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Day posts ordered by created_at
+
+  /circles/{circle_id}/search:
+    get:
+      summary: Full-text search in circle (with author)
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Search hits
+
+  /search:
+    get:
+      summary: Full-text search across all circles (no author)
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Search hits
+
+  /auth/register:
+    post:
+      summary: Register account (open mode)
+      security: []
+      responses:
+        "202":
+          description: Code sent
+
+  /auth/code:
+    post:
+      summary: Request login code
+      security: []
+      responses:
+        "202":
+          description: Code sent
+
+  /auth/verify:
+    post:
+      summary: Verify code and receive Bearer token
+      security: []
+      responses:
+        "200":
+          description: Session
+
+  /auth/logout:
+    post:
+      summary: Revoke the current participant session
+      responses:
+        "200":
+          description: OK
+
+  /invites/{token}:
+    get:
+      summary: Public invite preview
+      security: []
+      responses:
+        "200":
+          description: Circle invite metadata
+
+  /invites/{token}/join:
+    post:
+      summary: Complete deferred circle join after verify
+      responses:
+        "200":
+          description: Joined
+
+  /invites/{token}/accept:
+    post:
+      summary: Accept invite
+      security: []
+      responses:
+        "202":
+          description: Code sent
+
+  /uploads:
+    post:
+      summary: Create blob upload session
+      responses:
+        "201":
+          description: Upload session
+
+  /uploads/{session_id}:
+    head:
+      summary: Upload resume status
+    put:
+      summary: Upload chunk
+
+  /uploads/{session_id}/complete:
+    post:
+      summary: Complete upload
+
+  /blobs/{blob_id}:
+    get:
+      summary: Download blob (attachment)
+
+  /circles/{circle_id}/posts:
+    post:
+      summary: Create post
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "201":
+          description: Post created
+
+  /circles/{circle_id}/posts/{post_id}:
+    patch:
+      summary: Edit post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                body:
+                  type: string
+                entry_date:
+                  type: string
+                cover_blob_id:
+                  type: string
+    delete:
+      summary: Delete post branch
+
+  /circles/{circle_id}/posts/{post_id}/comments:
+    post:
+      summary: Add comment
+
+  /circles/{circle_id}/posts/{post_id}/comments/{comment_id}:
+    patch:
+      summary: Edit comment
+    delete:
+      summary: Delete comment
+
+  /circles/{circle_id}/posts/{post_id}/reactions:
+    put:
+      summary: Set reaction
+    delete:
+      summary: Remove reaction
+
+  /circles/{circle_id}/days/{date}/title:
+    put:
+      summary: Set day title
+    delete:
+      summary: Clear day title
+
+  /circles/{circle_id}/days/{date}/cover:
+    put:
+      summary: Set day cover
+    delete:
+      summary: Clear day cover
+
+  /circles/{circle_id}:
+    get:
+      summary: Circle detail with archive cycle banner
+    patch:
+      summary: Rename circle or change edit window (can_settings)
+    delete:
+      summary: Delete circle with name confirmation (owner)
+
+  /circles/{circle_id}/members:
+    get:
+      summary: List circle members
+
+  /circles/{circle_id}/members/{account_id}:
+    put:
+      summary: Set member can_settings (owner)
+
+  /circles/{circle_id}/identity:
+    get:
+      summary: Identity name history in circle
+    put:
+      summary: Update identity name and/or avatar in circle
+
+  /circles/{circle_id}/transfer:
+    post:
+      summary: Transfer circle ownership (owner)
+
+  /circles/{circle_id}/exclude:
+    post:
+      summary: Exclude member from circle (owner)
+
+  /circles/{circle_id}/quota:
+    get:
+      summary: Used bytes, quota and media volume chart (owner)
+
+  /circles/{circle_id}/archive:
+    post:
+      summary: Start archive cycle (owner)
+
+  /circles/{circle_id}/archive/cutoff:
+    put:
+      summary: Move cutoff before first download (owner)
+
+  /circles/{circle_id}/archive/deadline:
+    put:
+      summary: Move archive deadline (owner)
+
+  /circles/{circle_id}/archive/download:
+    get:
+      summary: Download personal archive ZIP
+      parameters:
+        - name: layout
+          in: query
+          schema:
+            type: string
+            enum: [feed, posts]
+
+  /notify_prefs:
+    get:
+      summary: Account notification defaults
+    put:
+      summary: Set account notification defaults (mentions stay on)
+
+  /circles/{circle_id}/notify_prefs:
+    get:
+      summary: Circle notification override
+    put:
+      summary: Set circle notification override (mentions stay on)
+
+  /push/subscribe:
+    post:
+      summary: Register Web Push subscription
+    delete:
+      summary: Remove Web Push subscription
+
+  /circles/{circle_id}/quota_requests:
+    post:
+      summary: Request circle quota expansion (owner)
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

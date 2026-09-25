@@ -1,0 +1,140 @@
+package config
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+const (
+	// DefaultListen binds to loopback: the documented deployments put a
+	// reverse proxy on the same host, and a loopback dev instance must not be
+	// reachable from the LAN over plain HTTP. Docker sets WYND_LISTEN=:7676.
+	DefaultListen    = "127.0.0.1:7676"
+	DefaultPublicURL = "http://127.0.0.1:7676"
+	DefaultDataDir   = "dev/data"
+)
+
+type fileConfig struct {
+	Listen         string   `json:"listen"`
+	PublicURL      string   `json:"public_url"`
+	TrustedProxies []string `json:"trusted_proxies,omitempty"`
+}
+
+type Config struct {
+	DataDir   string
+	Listen    string
+	PublicURL string
+	// TrustedProxies lists CIDRs (or bare addresses) whose X-Forwarded-For
+	// header is believed. Empty means loopback only.
+	TrustedProxies []string
+}
+
+func Load() (*Config, error) {
+	dataDir := os.Getenv("WYND_DATA_DIR")
+	if dataDir == "" {
+		dataDir = DefaultDataDir
+	}
+
+	absDataDir, err := filepath.Abs(dataDir)
+	if err != nil {
+		return nil, fmt.Errorf("resolve data dir: %w", err)
+	}
+
+	cfg := &Config{
+		DataDir:   absDataDir,
+		Listen:    DefaultListen,
+		PublicURL: DefaultPublicURL,
+	}
+
+	configPath := filepath.Join(absDataDir, "config.json")
+	if data, err := os.ReadFile(configPath); err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("read config: %w", err)
+		}
+		if err := writeFileConfig(configPath, cfg); err != nil {
+			return nil, err
+		}
+	} else {
+		var fc fileConfig
+		if err := json.Unmarshal(data, &fc); err != nil {
+			return nil, fmt.Errorf("parse config: %w", err)
+		}
+		if fc.Listen != "" {
+			cfg.Listen = fc.Listen
+		}
+		if fc.PublicURL != "" {
+			cfg.PublicURL = fc.PublicURL
+		}
+		cfg.TrustedProxies = fc.TrustedProxies
+	}
+
+	if v := os.Getenv("WYND_LISTEN"); v != "" {
+		cfg.Listen = v
+	}
+	if v := os.Getenv("WYND_PUBLIC_URL"); v != "" {
+		cfg.PublicURL = v
+	}
+	if v, ok := os.LookupEnv("WYND_TRUSTED_PROXIES"); ok {
+		cfg.TrustedProxies = splitList(v)
+	}
+
+	if err := ensureDataLayout(absDataDir); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
+func splitList(v string) []string {
+	var out []string
+	for _, p := range strings.Split(v, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func ensureDataLayout(dataDir string) error {
+	dirs := []string{
+		dataDir,
+		filepath.Join(dataDir, "blobs"),
+		filepath.Join(dataDir, "keys"),
+	}
+	for _, dir := range dirs {
+		if err := os.MkdirAll(dir, 0o750); err != nil {
+			return fmt.Errorf("create %s: %w", dir, err)
+		}
+	}
+
+	dbPath := filepath.Join(dataDir, "wynd.db")
+	f, err := os.OpenFile(dbPath, os.O_CREATE|os.O_WRONLY, 0o640)
+	if err != nil {
+		return fmt.Errorf("create wynd.db: %w", err)
+	}
+	return f.Close()
+}
+
+func writeFileConfig(path string, cfg *Config) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		return fmt.Errorf("create config dir: %w", err)
+	}
+
+	payload, err := json.MarshalIndent(fileConfig{
+		Listen:    cfg.Listen,
+		PublicURL: cfg.PublicURL,
+	}, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal config: %w", err)
+	}
+	payload = append(payload, '\n')
+
+	if err := os.WriteFile(path, payload, 0o640); err != nil {
+		return fmt.Errorf("write config: %w", err)
+	}
+	return nil
+}

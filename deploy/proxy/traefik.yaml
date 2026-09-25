@@ -1,0 +1,19 @@
+# Wynd reverse proxy snippet for Traefik (dynamic config).
+# Point a router at service wynd and attach middlewares as needed.
+
+http:
+  services:
+    wynd:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:7676"
+  middlewares:
+    wynd-headers:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-Proto: "https"
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+    wynd-body:
+      buffering:
+        maxRequestBodyBytes: 104857600

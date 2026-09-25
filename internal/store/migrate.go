@@ -1,0 +1,164 @@
+package store
+
+import (
+	"database/sql"
+	"embed"
+	"fmt"
+	"io/fs"
+	"path"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+)
+
+//go:embed migrations/*.sql
+var migrationFS embed.FS
+
+const migrationsDir = "migrations"
+
+type migration struct {
+	version int
+	name    string
+	sql     string
+}
+
+func migrate(db *sql.DB) error {
+	if _, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS schema_migrations (
+			version INTEGER PRIMARY KEY,
+			applied_at TEXT NOT NULL
+		)
+	`); err != nil {
+		return fmt.Errorf("create schema_migrations: %w", err)
+	}
+
+	migrations, err := loadMigrations()
+	if err != nil {
+		return err
+	}
+
+	applied, err := appliedVersions(db)
+	if err != nil {
+		return err
+	}
+
+	for _, m := range migrations {
+		if applied[m.version] {
+			continue
+		}
+		if err := applyMigration(db, m); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func loadMigrations() ([]migration, error) {
+	entries, err := fs.Glob(migrationFS, migrationsDir+"/*.sql")
+	if err != nil {
+		return nil, fmt.Errorf("list migrations: %w", err)
+	}
+
+	out := make([]migration, 0, len(entries))
+	seen := make(map[int]string, len(entries))
+	for _, name := range entries {
+		version, err := parseMigrationVersion(path.Base(name))
+		if err != nil {
+			return nil, err
+		}
+		if prev, ok := seen[version]; ok {
+			return nil, fmt.Errorf("duplicate migration version %d: %s and %s", version, prev, name)
+		}
+		seen[version] = name
+
+		body, err := fs.ReadFile(migrationFS, name)
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", name, err)
+		}
+		out = append(out, migration{
+			version: version,
+			name:    path.Base(name),
+			sql:     string(body),
+		})
+	}
+
+	sort.Slice(out, func(i, j int) bool { return out[i].version < out[j].version })
+	return out, nil
+}
+
+func parseMigrationVersion(filename string) (int, error) {
+	base, ok := strings.CutSuffix(filename, ".sql")
+	if !ok {
+		return 0, fmt.Errorf("migration %q: expected .sql suffix", filename)
+	}
+	num, _, ok := strings.Cut(base, "_")
+	if !ok || num == "" {
+		return 0, fmt.Errorf("migration %q: expected NNNN_name.sql", filename)
+	}
+	version, err := strconv.Atoi(num)
+	if err != nil || version < 1 {
+		return 0, fmt.Errorf("migration %q: invalid version", filename)
+	}
+	return version, nil
+}
+
+func appliedVersions(db *sql.DB) (map[int]bool, error) {
+	rows, err := db.Query(`SELECT version FROM schema_migrations`)
+	if err != nil {
+		return nil, fmt.Errorf("list applied migrations: %w", err)
+	}
+	defer rows.Close()
+
+	applied := make(map[int]bool)
+	for rows.Next() {
+		var v int
+		if err := rows.Scan(&v); err != nil {
+			return nil, fmt.Errorf("scan applied migration: %w", err)
+		}
+		applied[v] = true
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list applied migrations: %w", err)
+	}
+	return applied, nil
+}
+
+func applyMigration(db *sql.DB, m migration) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin %s: %w", m.name, err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if body := strings.TrimSpace(stripSQLComments(m.sql)); body != "" {
+		if _, err := tx.Exec(m.sql); err != nil {
+			return fmt.Errorf("apply %s: %w", m.name, err)
+		}
+	}
+
+	if _, err := tx.Exec(
+		`INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)`,
+		m.version,
+		time.Now().UTC().Format(time.RFC3339Nano),
+	); err != nil {
+		return fmt.Errorf("record %s: %w", m.name, err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit %s: %w", m.name, err)
+	}
+	return nil
+}
+
+func stripSQLComments(s string) string {
+	lines := strings.Split(s, "\n")
+	out := make([]string, 0, len(lines))
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "--") {
+			continue
+		}
+		out = append(out, line)
+	}
+	return strings.Join(out, "\n")
+}

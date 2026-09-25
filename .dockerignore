@@ -1,0 +1,13 @@
+.git
+.cursor
+dev/
+data/
+data-*/
+web/node_modules/
+web/.svelte-kit/
+web/src/
+tmp/
+*.exe
+*.test
+*.out
+smoke*.log

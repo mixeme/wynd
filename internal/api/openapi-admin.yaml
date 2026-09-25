@@ -1,0 +1,265 @@
+openapi: 3.1.0
+info:
+  title: Wynd admin API
+  version: 0.1.0
+  description: Admin routes (Bearer admin session). Participant routes are in openapi-participant.yaml.
+
+servers:
+  - url: /api/v1
+
+security:
+  - bearerAuth: []
+
+paths:
+  /admin/login:
+    post:
+      summary: Admin login
+      security: []
+      responses:
+        "200":
+          description: Admin session token
+
+  /admin/logout:
+    post:
+      summary: Revoke the current admin session
+      responses:
+        "200":
+          description: OK
+
+  /admin/bootstrap:
+    post:
+      summary: First-run bootstrap
+      security: []
+      responses:
+        "200":
+          description: OK
+
+  /admin/storage:
+    get:
+      summary: Instance storage usage and quota
+      responses:
+        "200":
+          description: used_bytes, quota_bytes, circles[]
+
+  /admin/storage/quota:
+    put:
+      summary: Set instance storage quota
+      responses:
+        "200":
+          description: OK
+
+  /admin/storage/default_quota:
+    put:
+      summary: Set default per-circle media quota
+      responses:
+        "200":
+          description: OK
+
+  /admin/circles/{id}/quota:
+    put:
+      summary: Set circle-specific quota override
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /admin/compression:
+    get:
+      summary: Client compression thresholds
+      responses:
+        "200":
+          description: Compression settings
+    put:
+      summary: Update compression thresholds
+      responses:
+        "200":
+          description: OK
+
+  /admin/access:
+    get:
+      summary: Instance name and registration mode
+      responses:
+        "200":
+          description: Access settings
+    put:
+      summary: Update instance name and/or registration mode
+      responses:
+        "200":
+          description: OK
+
+  /admin/accounts:
+    get:
+      summary: Account list (email and circle count only)
+      responses:
+        "200":
+          description: accounts[]
+
+  /admin/accounts/{id}:
+    get:
+      summary: Account detail for admin people card
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Account detail
+    delete:
+      summary: Soft-delete account (not circle owners)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+        "409":
+          description: Account owns a circle
+
+  /admin/accounts/{id}/block:
+    post:
+      summary: Close login for an account (no hard-delete)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /admin/accounts/{id}/unblock:
+    post:
+      summary: Reopen login for an account
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /admin/invites:
+    get:
+      summary: Server invites
+      responses:
+        "200":
+          description: invites[]
+    post:
+      summary: Create server invite
+      responses:
+        "201":
+          description: Invite created
+
+  /admin/invites/{id}:
+    delete:
+      summary: Revoke server invite
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /admin/smtp:
+    get:
+      summary: SMTP settings (password omitted)
+      responses:
+        "200":
+          description: SMTP config
+    put:
+      summary: Save SMTP settings
+      responses:
+        "200":
+          description: OK
+
+  /admin/smtp/test:
+    post:
+      summary: Send test email
+      responses:
+        "200":
+          description: OK
+
+  /admin/push/vapid:
+    get:
+      summary: VAPID public key
+      responses:
+        "200":
+          description: public_key
+
+  /admin/push/test:
+    post:
+      summary: Send test push to admin subscriptions
+      responses:
+        "200":
+          description: OK
+
+  /admin/check:
+    post:
+      summary: Run instance checks (optional external report in body)
+      responses:
+        "200":
+          description: checks[]
+
+  /admin/routine:
+    post:
+      summary: Run daily maintenance routine
+      responses:
+        "200":
+          description: Cleanup counts
+
+  /admin/proxy/{kind}:
+    get:
+      summary: Reverse proxy snippet (nginx, caddy, traefik)
+      parameters:
+        - name: kind
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [nginx, caddy, traefik]
+      responses:
+        "200":
+          description: snippet text
+
+  /admin/quota_requests:
+    get:
+      summary: Pending circle quota extension requests
+      responses:
+        "200":
+          description: requests[]
+
+  /admin/quota_requests/{id}/approve:
+    post:
+      summary: Approve quota request
+      responses:
+        "200":
+          description: OK
+
+  /admin/quota_requests/{id}/reject:
+    post:
+      summary: Reject quota request
+      responses:
+        "200":
+          description: OK
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
