@@ -144,7 +144,7 @@
 							value={inviteUrl || '…'}
 							style="flex:1;overflow:hidden;white-space:nowrap;margin:0"
 						/>
-						<TextButton variant="admin" onclick={() => void copyLink()}>
+						<TextButton variant="adminBox" style="font-weight:600" onclick={() => void copyLink()}>
 							{copied ? 'Скопировано' : 'Скопировать'}
 						</TextButton>
 					</div>

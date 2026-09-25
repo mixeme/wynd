@@ -60,10 +60,10 @@
 			<CodeBlock>{snippet}</CodeBlock>
 		{/if}
 		<div style="display:flex;align-items:center;gap:12px;margin-top:16px">
-			<TextButton variant="admin" onclick={() => void copy()}>
+			<TextButton variant="adminBox" style="font-weight:600" onclick={() => void copy()}>
 				{copied ? 'Скопировано' : 'Скопировать'}
 			</TextButton>
-			<TextButton variant="admin" onclick={() => goto('/admin/check')}>
+			<TextButton variant="adminBox" onclick={() => goto('/admin/check')}>
 				Проверить снова
 			</TextButton>
 			<span style="font-size:11.5px;color:var(--faint)"

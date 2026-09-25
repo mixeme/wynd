@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 
-	type TextButtonVariant = 'link' | 'admin' | 'bar' | 'barAction';
+	type TextButtonVariant = 'link' | 'admin' | 'adminBox' | 'bar' | 'barAction';
 
 	let {
 		children,
@@ -26,11 +26,13 @@
 	const variantClass = $derived(
 		variant === 'admin'
 			? 'act'
-			: variant === 'bar'
-				? 't'
-				: variant === 'barAction'
-					? `rt${active ? ' on' : ''}`
-					: 'under'
+			: variant === 'adminBox'
+				? 'inp'
+				: variant === 'bar'
+					? 't'
+					: variant === 'barAction'
+						? `rt${active ? ' on' : ''}`
+						: 'under'
 	);
 </script>
 

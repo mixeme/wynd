@@ -9,7 +9,6 @@
 	import TextArea from '$ui/forms/TextArea.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
-	import Icon from '$ui/Icon.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { formatEditableUntil, formatEntryDate, formatPostTime, isEditableActive } from '$lib/format/time';
@@ -409,14 +408,13 @@
 {#snippet composeFooter()}
 	<div class="compose-bar">
 		<div class="tools">
-			{#if isEdit}
-				<Icon name="photo" />
-				<Icon name="file" />
-			{:else}
-				<IconButton name="photo" label="Фото или видео" onclick={() => photoInput?.click()} />
-				<IconButton name="file" label="Файл" onclick={() => attachInput?.click()} />
-			{/if}
-			<Icon name="loc" />
+			<IconButton
+				name="photo"
+				label="Фото или видео"
+				disabled={isEdit}
+				onclick={() => photoInput?.click()}
+			/>
+			<IconButton name="file" label="Файл" disabled={isEdit} onclick={() => attachInput?.click()} />
 			<span class="who">пишете как {circle.identityName}</span>
 		</div>
 	</div>

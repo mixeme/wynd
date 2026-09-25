@@ -10,6 +10,7 @@
 	import Input from '$ui/forms/Input.svelte';
 	import QuotaRequestRow from '$ui/admin/QuotaRequestRow.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
+	import DataTable from '$ui/admin/DataTable.svelte';
 	import StackBar from '$ui/admin/StackBar.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
@@ -32,7 +33,7 @@
 		{ key: 'none', label: 'Нет', bytes: null as number | null },
 		{ key: '5', label: '5 ГБ', bytes: 5 * GB },
 		{ key: '10', label: '10 ГБ', bytes: 10 * GB },
-		{ key: 'custom', label: 'Своё', bytes: null as number | null }
+		{ key: 'custom', label: 'Своё…', bytes: null as number | null }
 	] as const;
 
 	let used = $state(0);
@@ -316,7 +317,7 @@
 				</div>
 			</div>
 			{#if circles.length}
-				<table class="tbl" style="margin-top:20px">
+				<DataTable style="margin-top:20px">
 					<thead>
 						<tr>
 							<th style="width:34%">Круг</th>
@@ -359,7 +360,7 @@
 							</tr>
 						{/each}
 					</tbody>
-				</table>
+				</DataTable>
 			{/if}
 			{#if selectedCircle}
 				<div

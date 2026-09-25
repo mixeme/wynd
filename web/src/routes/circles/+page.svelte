@@ -11,7 +11,7 @@
 	import { rememberCircleOrigin } from '$lib/circles/origin';
 	import { deletePin, getPin, putPin } from '$lib/idb/db';
 	import { registerRefetch } from '$lib/sync/sync';
-	import { loadSessions } from '$lib/session/session.svelte';
+	import { initSession, loadSessions } from '$lib/session/session.svelte';
 
 	let circles = $state<StreetCircle[]>([]);
 	let loading = $state(true);
@@ -25,7 +25,7 @@
 
 	onMount(() => {
 		let unsubs: Array<() => void> = [];
-		void loadSessions().then((sessions) => {
+		void initSession().then(() => loadSessions()).then((sessions) => {
 			if (!sessions.length) {
 				goto('/');
 				return;

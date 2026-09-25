@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"time"
 
@@ -117,11 +118,14 @@ func (s *Server) notifyCircle(circleID, actorAccountID, signalType string) {
 	if s == nil || s.Push == nil {
 		return
 	}
+	s.notifyWG.Add(1)
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer s.notifyWG.Done()
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		ids, err := s.Chronicle.CircleMemberAccountIDs(ctx, circleID)
 		if err != nil {
+			log.Printf("notifyCircle: members %s: %v", circleID, err)
 			return
 		}
 		for _, accountID := range ids {
@@ -130,16 +134,19 @@ func (s *Server) notifyCircle(circleID, actorAccountID, signalType string) {
 			}
 			prefs, err := s.Auth.CircleNotifyPrefs(ctx, accountID, circleID)
 			if err != nil {
+				log.Printf("notifyCircle: prefs %s/%s: %v", accountID, circleID, err)
 				continue
 			}
 			if !auth.NotifyPrefAllows(prefs, signalType) {
 				continue
 			}
-			_ = s.Push.SendSignal(ctx, accountID, push.Signal{
+			if err := s.Push.SendSignal(ctx, accountID, push.Signal{
 				CircleID: circleID,
 				Type:     signalType,
 				Count:    1,
-			})
+			}); err != nil {
+				log.Printf("notifyCircle: push %s/%s: %v", accountID, circleID, err)
+			}
 		}
 	}()
 }

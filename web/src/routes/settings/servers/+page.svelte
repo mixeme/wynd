@@ -73,12 +73,12 @@
 			<SectionLabel raw>
 				<span style="color:var(--ink)">{row.session.name}</span> · {row.host}
 			</SectionLabel>
-			<div class="row2" style="padding-top:2px">
-				<div class="g">
-					<div style="font-weight:600">{row.session.email}</div>
-					<div class="sub">{pluralCircles(row.circles)}</div>
-				</div>
-			</div>
+			<SettingsRow
+				title={row.session.email}
+				subtitle={pluralCircles(row.circles)}
+				chevron={false}
+				style="padding-top:2px"
+			/>
 			<SettingsRow
 				icon="out"
 				title="Выйти с этого сервера"

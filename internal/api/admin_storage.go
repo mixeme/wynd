@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/blob"
+	"gitea.mixdep.ru/mix/wynd/internal/xtime"
 )
 
 type defaultQuotaBody struct {
@@ -166,12 +167,12 @@ func (s *Server) loadInstanceTimestamps(ctx context.Context) (routineAt, backupA
 		SELECT last_routine_at, last_backup_at FROM instance_settings WHERE id = 1
 	`).Scan(&routineRaw, &backupRaw)
 	if routineRaw.Valid && routineRaw.String != "" {
-		if t, err := time.Parse(time.RFC3339Nano, routineRaw.String); err == nil {
+		if t, err := xtime.Parse(routineRaw.String); err == nil {
 			routineAt = &t
 		}
 	}
 	if backupRaw.Valid && backupRaw.String != "" {
-		if t, err := time.Parse(time.RFC3339Nano, backupRaw.String); err == nil {
+		if t, err := xtime.Parse(backupRaw.String); err == nil {
 			backupAt = &t
 		}
 	}

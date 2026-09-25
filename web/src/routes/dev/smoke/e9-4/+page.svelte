@@ -19,7 +19,7 @@
 				</div>
 			</div>
 			<div style="text-align:right">
-				<TextButton variant="admin" style="font-weight:600" onclick={() => {}}>
+				<TextButton variant="adminBox" style="font-weight:600" onclick={() => {}}>
 					Проверить снова
 				</TextButton>
 				<div style="font-size:11.5px;color:var(--faint);margin-top:7px">проверено минуту назад</div>

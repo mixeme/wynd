@@ -7,12 +7,14 @@ import {
 } from './present';
 import type { Comment, FeedPost, Reaction } from './types';
 
+const at = '2026-01-01T00:00:00Z';
+
 describe('present', () => {
 	it('groups reactions by emoji preserving first-seen order', () => {
 		const reactions: Reaction[] = [
-			{ emoji: 'heart', author_name: 'Аня', identity_id: 'a' },
-			{ emoji: 'laugh', author_name: 'Боб', identity_id: 'b' },
-			{ emoji: 'heart', author_name: 'Вера', identity_id: 'c' }
+			{ id: 'r1', post_id: 'p', emoji: 'heart', author_name: 'Аня', identity_id: 'a', created_at: at },
+			{ id: 'r2', post_id: 'p', emoji: 'laugh', author_name: 'Боб', identity_id: 'b', created_at: at },
+			{ id: 'r3', post_id: 'p', emoji: 'heart', author_name: 'Вера', identity_id: 'c', created_at: at }
 		];
 		expect(groupReactions(reactions)).toEqual([
 			{ emoji: 'heart', names: 'Аня, Вера' },
@@ -30,9 +32,9 @@ describe('present', () => {
 
 	it('builds comment preview with more count', () => {
 		const comments: Comment[] = [
-			{ author_name: 'Аня', body: 'привет', identity_id: 'a' },
-			{ author_name: 'Боб', body: 'ответ', identity_id: 'b' },
-			{ author_name: 'Вера', body: 'ещё', identity_id: 'c' }
+			{ id: 'c1', post_id: 'p', author_name: 'Аня', body: 'привет', identity_id: 'a', created_at: at },
+			{ id: 'c2', post_id: 'p', author_name: 'Боб', body: 'ответ', identity_id: 'b', created_at: at },
+			{ id: 'c3', post_id: 'p', author_name: 'Вера', body: 'ещё', identity_id: 'c', created_at: at }
 		];
 		expect(commentPreview(comments)).toEqual({
 			first: 'Аня: привет',
@@ -43,14 +45,24 @@ describe('present', () => {
 
 	it('places unread divider before first read post', () => {
 		const posts: FeedPost[] = [
-			{ id: 'p3', event_seq: 30, body: '' },
-			{ id: 'p2', event_seq: 20, body: '' },
-			{ id: 'p1', event_seq: 10, body: '' }
+			{ id: 'p3', event_seq: 30, body: '', entry_date: '2026-01-01', author_name: '', identity_id: '', created_at: at },
+			{ id: 'p2', event_seq: 20, body: '', entry_date: '2026-01-01', author_name: '', identity_id: '', created_at: at },
+			{ id: 'p1', event_seq: 10, body: '', entry_date: '2026-01-01', author_name: '', identity_id: '', created_at: at }
 		];
 		expect(unreadDividerIndex(posts, 15)).toBe(2);
 		expect(unreadDividerIndex(posts, 0)).toBeNull();
 		expect(unreadDividerIndex(posts, 30)).toBeNull();
-		expect(unreadDividerIndex([{ id: 'p', event_seq: 5, body: '' }], 0)).toBeNull();
-		expect(unreadDividerIndex([{ id: 'p', event_seq: 5, body: '' }], 1)).toBe(1);
+		expect(
+			unreadDividerIndex(
+				[{ id: 'p', event_seq: 5, body: '', entry_date: '2026-01-01', author_name: '', identity_id: '', created_at: at }],
+				0
+			)
+		).toBeNull();
+		expect(
+			unreadDividerIndex(
+				[{ id: 'p', event_seq: 5, body: '', entry_date: '2026-01-01', author_name: '', identity_id: '', created_at: at }],
+				1
+			)
+		).toBe(1);
 	});
 });

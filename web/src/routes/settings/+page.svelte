@@ -41,6 +41,6 @@
 	/>
 	<Hint centered style="margin-top:44px">
 		Wynd {appVersion} · AGPL-3.0<br />
-		<a class="link under" href="https://github.com/mixeme/wynd">исходный код</a>
+		<a class="under" href="https://github.com/mixeme/wynd">исходный код</a>
 	</Hint>
 </FormLayout>

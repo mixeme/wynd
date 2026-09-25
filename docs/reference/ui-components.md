@@ -7,7 +7,7 @@
 
 **Выбор:** ветка **Б** — Bits UI + свой CSS на токенах (`ui.css`, классы `.cbar`, `.post`, `.r`).
 
-**Правила:** shell без цвета круга; accent через `--c` / `--ct`; Danger — ink border; Mark только в AppBar и пять других мест по макету. Новые npm-пакеты для UI не ставить. [screens.html](../visual/screens.html) не менять.
+**Правила:** shell без цвета круга; accent через `--c` / `--ct`; Danger — ink border; Mark только в AppBar и пять других мест по макету. Новые npm-пакеты для UI не ставить. [screens.html](../visual/screens.html) и [wynd.html](../wynd.html) не синхронизировать с `VERSION`.
 
 **Пробел библиотеки:** экран — только существующие `$ui` и `$lib/layouts`. Не хватает куска — сначала расширить уже лежащий компонент. Если объективно нельзя, это **отдельная задача** на Wynd UI: `docs/plans/<slug>.plan.md`, затем стоп. В той же задаче `.svelte` в `$ui` не заводить и дыру на экране не верстать. Сторож пропустит новый файл позже, только если открытый план его перечисляет в таблице. `/dev/spike` в проверку состава не входит.
 
@@ -34,7 +34,7 @@
 
 **Интерактив:** корень кнопки — `<button type="button">`, не `div`/`span` + `role="button"`. `Button.onclick` обязателен; без действия в dev/smoke — `onclick={() => {}}`. Загрузка — prop `loading` (текст `…`, вид `.off`); не `class:off` на экранах. `Chip` без `onclick` — `<span>`, с действием — `<button aria-pressed>`. Навигационные строки (`SettingsRow`, `CircleRow`, `ServerRow`, `SearchResultRow`, `MemberRow` в режиме transfer) несут `onclick` на корне; обёртки-`div` не нужны. Ссылки с URL остаются `<a class="under" href>`. Identity в `CircleBar` — `<button type="button" class="idn">` (без `circleId` — `span.idn`), не `IconButton`. Compose: `TextButton` `bar` / `barAction`. Вложенные `<button>` запрещены: меню в `MemberRow` только если строка не кликабельна целиком. `AdminNav` при `links` — `<button type="button">`, не `span` + `role="button"`. Карточки ленты и дней: опциональный `onclick` на корневом `div` (`PostCard` / `DayCard`), без обёртки; карточку не делать `<button>` — вложенные реакции и альбом остаются кнопками со `stopPropagation`.
 
-**Формы:** ввод — `Input` / `TextArea` / `SearchField`; статика — `FieldDisplay` (бывший `Field`). Админка: `Input admin={true}` и `FieldDisplay admin={true}` (класс `.inp`), не отдельный `AdminInput`. `SearchField` — редактируемый поиск и поля фильтров (тот же виджет: `/search`, поиск в круге, 9.8 почта); `BackBar` свой `.sfield`. `TextArea variant`: `area` \| `field`.
+**Формы:** ввод — `Input` / `TextArea` / `SearchField`; статика — `FieldDisplay` (бывший `Field`). Админка: `Input admin={true}` и `FieldDisplay admin={true}` (класс `.inp`), не отдельный `AdminInput`. `SearchField` — редактируемый поиск и поля фильтров (тот же виджет: `/search`, поиск в круге, 9.8 почта); `BackBar` свой `.sfield`. `TextArea variant`: `area` \| `field` \| `compose` \| `comment`.
 
 ---
 
@@ -47,8 +47,8 @@
 | PlainLayout | `.ph` | e1-1, e1-3 |
 | ShellLayout | `.ph.shell` | e2-1, e2-2, e7-* |
 | CircleLayout | `.ph.{color}` | e3-*, e4-*, e5-*, e6-* |
-| FormLayout | `.ph.{color\|shell}` | e1-*, e2-3, e6-1 |
-| OverlayLayout | absolute | sheets, dialogs, push |
+| FormLayout | `.ph.{color\|shell}` | e1-*, e2-3, e2-7, e6-1 |
+| OverlayLayout | absolute | sheets, dialogs, push; `ondismiss` → Scrim |
 | AdminWideLayout | `.ph.wide.shell` | e9-* |
 
 ---
@@ -70,7 +70,7 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar
 | `Button` | `<button class="btn">` | `onclick` | `variant`, `disabled`/`loading` → класс `.off`, текст `…` |
 | `Chip` | `<button class="chip">` или `<span>` | — | с `onclick` — кнопка, `aria-pressed={selected}` |
 | `IconButton` | `<button class="ib">` | `name`, `label`, `onclick` | рендер только при `onclick` |
-| `TextButton` | `<button>` | `onclick` | `variant`: `link` (`.under`), `admin` (`.act`), `bar` (`.t`), `barAction` (`.rt`/`.rt.on`) |
+| `TextButton` | `<button>` | `onclick` | `variant`: `link` (`.under`), `admin` (`.act` в `.chk`), `adminBox` (`.inp`), `bar` (`.t`), `barAction` (`.rt`/`.rt.on`) |
 
 Формы (фаза 5):
 
@@ -79,14 +79,16 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar
 | `Label` | `<div class="lab">` | подпись поля |
 | `Input` | `<input class="fld">` или `.inp` | `admin`, `active`, `gray`, `bind:value` |
 | `FieldDisplay` | `<div class="fld">` или `.inp` | статика (бывший `Field`); `admin` → `.inp` (9.7 URL инвайта) |
-| `TextArea` | `<textarea class="ta">` или `.fld` | `variant`: `area` \| `field`, `bind:value` |
+| `TextArea` | `<textarea class="ta">`, `.fld`, `.compose-text` или `.inp` | `variant`: `area` \| `field` \| `compose` \| `comment`, `bind:value` |
 | `SearchField` | `.sfield` + `<input type="search">` | иконка, `bind:value`; поиск и фильтры |
 
-Guard: `npm run check:ui` — экран = существующие `$ui` + `$lib/layouts` (не Bits UI, не одноразовый `.svelte` у маршрута, в `routes/` только `+page`/`+layout`/`+error`); новый файл в библиотеке — только по открытому плану «пробел Wynd UI»; в `web/src` запрещён импорт `$lib/components` (использовать `$ui`); в `routes/` запрещены `role="button"`, сырой `class="btn"`, сырой `class="lab"`, `<input class="fld">` и `<textarea class="fld|ta">`.
+Guard: `npm run check:ui` — экран = существующие `$ui` + `$lib/layouts` (не Bits UI, не одноразовый `.svelte` у маршрута, в `routes/` только `+page`/`+layout`/`+error`); новый файл в библиотеке — только по открытому плану «пробел Wynd UI»; в `web/src` запрещён импорт `$lib/components` (использовать `$ui`); в `routes/` запрещены `role="button"`, сырой `class="btn"`, сырой `class="lab"`, `<input class="fld">`, `<textarea class="fld|ta">` и сырой `<button class="row2|one|cm|…">`. Сырой `div.row2` / `.compose-text` на экранах — [ui-guard-row2.plan.md](../plans/ui-guard-row2.plan.md).
+
+**Интерактив на `<button>` (Wynd UI, фазы 1–3):** в `ui.css` селектор `button.X` сильнее `.X`. У layout-классов (`row2`, `chip`, `cm`, …) вёрстку из `.X` дублируют в `button.X` или `.контекст button.X`. Текстовые (`act`, `t`, `rt`, `under`) — padding:0 намеренно. Список и проверка: `BUTTON_LAYOUT_SPECS` / `BUTTON_TEXT_CLASSES` в `web/scripts/ui-guard.mjs`; `npm run check:ui` падает при рассинхроне.
 
 ### `data/`
 
-SectionLabel, Avatar, EventDivider, CircleRow, PostCard, **SettingsRow**, MemberRow, SearchGroupHeader, **SearchResultRow**, **ServerRow**, FoldHeader, AttachmentRow, PhotoPlaceholder, PhotoGrid, MonthLabel, DayCard, DayGrid, DayHeader, EntryDateMark, ArchiveBanner
+SectionLabel, Avatar, EventDivider, CircleRow, PostCard, **ReactionBar**, **CommentPreview**, **ReactionListRow**, **SettingsRow**, MemberRow, SearchGroupHeader, **SearchResultRow**, **ServerRow**, FoldHeader, AttachmentRow, PhotoPlaceholder, PhotoGrid, MonthLabel, DayCard, DayGrid, DayHeader, EntryDateMark, ArchiveBanner
 
 Строки с опциональным `onclick`: корень `button.row2` / `button.r` или `div` (`SettingsRow`, `CircleRow`, `ServerRow`, `SearchResultRow`, `MemberRow`). `SettingsRow` с snippet `control` — всегда `div.row2`, справа контрол (например `Switch`); `chevron`/`value` не рендерятся; title без `font-weight:600`. `PostCard` / `DayCard` — `div` с опциональным `onclick`, не `<button>`.
 

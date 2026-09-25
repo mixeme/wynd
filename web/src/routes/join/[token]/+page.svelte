@@ -63,7 +63,7 @@
 	<ServerRow name={instanceName || '…'} subtitle={serverSubtitle} card />
 	<Label style="margin-top:16px">Почта</Label>
 	<Input active gray type="email" autocomplete="email" bind:value={email} />
-	<Hint>Пришлём код для входа. Пароля не будет.</Hint>
+	<Hint>Пришлём код для входа. Пароля нет.</Hint>
 	<Button {loading} onclick={onSubmit}>Получить код</Button>
 	<Hint>
 		Сервер хранит данные незашифрованными. Присоединение к этому серверу означает, что вы

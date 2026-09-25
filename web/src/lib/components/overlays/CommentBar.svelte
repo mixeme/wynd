@@ -1,6 +1,7 @@
 ﻿<script lang="ts">
 	import Icon from '$ui/Icon.svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
+	import TextArea from '$ui/forms/TextArea.svelte';
 
 	let {
 		placeholder = 'Написать в журнал…',
@@ -40,13 +41,13 @@
 
 <div class="comp {className}" {style}>
 	<div class="f" class:ink={canSend}>
-		<textarea
-			class="inp fld"
-			rows="1"
+		<TextArea
+			variant="comment"
+			rows={1}
 			{placeholder}
 			bind:value
 			onclick={handleFieldClick}
-		></textarea>
+		/>
 		{#if oncompose}
 			<IconButton
 				name="photo"
@@ -69,7 +70,6 @@
 	<button
 		type="button"
 		class="send"
-		class:off={!canSend}
 		aria-label="Отправить"
 		disabled={!canSend}
 		onclick={handleSendClick}
@@ -79,18 +79,6 @@
 </div>
 
 <style>
-	.inp {
-		flex: 1;
-		min-width: 0;
-		border: none;
-		background: transparent;
-		resize: none;
-		padding: 0;
-		min-height: 20px;
-		font: inherit;
-		color: inherit;
-		outline: none;
-	}
 	.send:disabled {
 		cursor: default;
 	}

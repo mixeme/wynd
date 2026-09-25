@@ -1,3 +1,4 @@
+import { ApiError, apiJson } from '$lib/api/client';
 import {
 	getAppSettings,
 	saveAppSettings,
@@ -7,6 +8,8 @@ import {
 	listSessions,
 	putSession,
 	deleteSession,
+	deleteCursor,
+	invalidateSnapshots,
 	getAdminSession,
 	putAdminSession,
 	clearAdminSession,
@@ -50,10 +53,58 @@ async function persistTheme(next: Theme): Promise<void> {
 	await saveAppSettings({ ...current, theme: next });
 }
 
+/** Server rejected the stored Bearer token (missing, expired, or revoked). */
+export function isSessionRejected(err: unknown): boolean {
+	return err instanceof ApiError && (err.status === 401 || err.status === 403);
+}
+
+/** Drop local participant state for an origin after the server no longer accepts the token. */
+export async function dropParticipantSession(origin: string): Promise<void> {
+	try {
+		await apiJson(origin, '/auth/logout', { method: 'POST' });
+	} catch {
+		/* token already invalid or server unreachable */
+	}
+	await deleteSession(origin);
+	await deleteCursor(origin);
+	await invalidateSnapshots(origin);
+}
+
+/** Ping the server for each stored session; purge tokens the server no longer knows. */
+export async function reconcileStoredSessions(): Promise<void> {
+	const sessions = await listSessions();
+	for (const session of sessions) {
+		try {
+			await apiJson(session.origin, '/circles');
+		} catch (err) {
+			if (isSessionRejected(err)) {
+				await dropParticipantSession(session.origin);
+			}
+		}
+	}
+}
+
+/** Validate the admin token against the server; drop it locally when rejected. */
+export async function reconcileAdminSession(): Promise<AdminSessionRecord | undefined> {
+	const session = await getAdminSession();
+	if (!session) return undefined;
+	try {
+		await apiJson('', '/admin/access');
+		return session;
+	} catch (err) {
+		if (isSessionRejected(err)) {
+			await clearAdminSession();
+			return undefined;
+		}
+		return session;
+	}
+}
+
 export async function initSession(): Promise<void> {
 	if (initialized) return;
 	const settings = await getAppSettings();
 	if (settings?.theme) theme = settings.theme;
+	await reconcileStoredSessions();
 	initialized = true;
 }
 
@@ -70,7 +121,7 @@ export async function storeSession(session: SessionRecord): Promise<void> {
 }
 
 export async function removeSession(origin: string): Promise<void> {
-	await deleteSession(origin);
+	await dropParticipantSession(origin);
 }
 
 export async function loadAdminSession(): Promise<AdminSessionRecord | undefined> {

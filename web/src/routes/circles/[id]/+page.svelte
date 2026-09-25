@@ -11,7 +11,10 @@
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import Icon from '$ui/Icon.svelte';
 	import Mark from '$ui/Mark.svelte';
+	import CommentPreview from '$ui/data/CommentPreview.svelte';
 	import PostCard from '$ui/data/PostCard.svelte';
+	import ReactionBar from '$ui/data/ReactionBar.svelte';
+	import ReactionListRow from '$ui/data/ReactionListRow.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import OverlayLayout from '$lib/layouts/OverlayLayout.svelte';
@@ -551,40 +554,28 @@
 					{/snippet}
 					{#snippet reactions()}
 						{#if !soloCircle}
-							<div class="rx">
-								{#each groupReactions(post.reactions) as group (group.emoji)}
-									<button type="button" class="one" onclick={() => openReactions(post.id)}>
-										<Icon name={reactionIconName(group.emoji)} size="xs" style="color:var(--c)" />
-										{group.names}
-									</button>
-								{/each}
-								{#if showReactionPlus(post) && pickerPostId !== post.id}
-									<button type="button" class="add" onclick={() => togglePicker(post.id)}>+</button>
-								{/if}
-							</div>
-							{#if pickerPostId === post.id}
-								<div class="rxpick">
-									{#each REACTION_KEYS as key (key)}
-										<button
-											type="button"
-											class="rcho"
-											class:on={ownReaction(post.reactions, circle.identityId)?.emoji === key}
-											onclick={() => {
-												void pickReaction(post, key);
-											}}
-										>
-											<Icon name={key} />
-										</button>
-									{/each}
-								</div>
-							{/if}
+							<ReactionBar
+								groups={groupReactions(post.reactions).map((g) => ({
+									icon: reactionIconName(g.emoji),
+									names: g.names
+								}))}
+								keys={REACTION_KEYS}
+								showAdd={showReactionPlus(post) && pickerPostId !== post.id}
+								pickerOpen={pickerPostId === post.id}
+								selectedKey={ownReaction(post.reactions, circle.identityId)?.emoji ?? ''}
+								onopenList={() => openReactions(post.id)}
+								onadd={() => togglePicker(post.id)}
+								onpick={(key) => void pickReaction(post, key)}
+							/>
 						{/if}
 					{/snippet}
 				</PostCard>
 				{#if post.comments?.length}
-					<button type="button" class="cm" onclick={() => openPost(post.id)}>
-						{@render postComments()}
-					</button>
+					<CommentPreview onclick={() => openPost(post.id)}>
+						{#snippet children()}
+							{@render postComments()}
+						{/snippet}
+					</CommentPreview>
 				{/if}
 				{#if dayPromptDate && post.entry_date === dayPromptDate && i === posts.findIndex((p) => p.entry_date === dayPromptDate)}
 					<div class="post day-prompt">
@@ -656,20 +647,17 @@
 	</div>
 
 	{#if reactionsPost}
-		<OverlayLayout>
-			<div
-				onclick={closeReactions}
-				style="position:absolute;inset:0"
-			></div>
+		<OverlayLayout ondismiss={closeReactions}>
 			<SectionLabel style="margin-top:2px">
 				Реакция · {reactionsPost.reactions?.length ?? 0}
 			</SectionLabel>
 			{#each reactionsPost.reactions ?? [] as rx (rx.id)}
-				<div class="row2">
-					<Avatar initial={authorInitial(rx.author_name)} color={circle.colorHex} />
-					<div class="g" style="font-weight:600">{rx.author_name}</div>
-					<Icon name={reactionIconName(rx.emoji)} size="sm" style="color:var(--c)" />
-				</div>
+				<ReactionListRow
+					initial={authorInitial(rx.author_name)}
+					name={rx.author_name}
+					color={circle.colorHex}
+					icon={reactionIconName(rx.emoji)}
+				/>
 			{/each}
 			<Hint style="margin-top:14px">
 				Реакция одна на человека и подчиняется окну правок. Хотите сказать больше — напишите словами.
@@ -695,15 +683,15 @@
 	}
 	.ptr-mark {
 		overflow: hidden;
-		width: 46px;
+		width: var(--mark-w);
 	}
 	.ptr-mark :global(svg) {
-		width: 46px;
-		height: 69px;
+		width: var(--mark-w);
+		height: var(--mark-h);
 	}
 	.empty {
 		text-align: center;
-		color: #d6cec2;
+		color: var(--empty-ink);
 		margin-top: 80px;
 	}
 	.empty :global(.mk) {
@@ -729,8 +717,8 @@
 		color: var(--muted);
 	}
 	.feed-end :global(.mk) {
-		width: 46px;
-		height: 69px;
+		width: var(--mark-w);
+		height: var(--mark-h);
 		margin: 0 auto;
 		opacity: 0.45;
 	}

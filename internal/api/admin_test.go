@@ -132,6 +132,20 @@ func TestAdminBlockAccountAndStorageCircles(t *testing.T) {
 	}
 }
 
+func TestAdminSMTPTestNotConfigured(t *testing.T) {
+	srv, _, _, _ := setupAPI(t)
+	token := adminToken(t, srv)
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/admin/smtp/test", token, map[string]string{
+		"to": "ana@example.com",
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status: %d body=%s", rec.Code, rec.Body.String())
+	}
+	if jsonStr(t, rec, "error") != "smtp_not_configured" {
+		t.Fatalf("body: %s", rec.Body.String())
+	}
+}
+
 func TestNotifyPrefsMentionsAlwaysOn(t *testing.T) {
 	srv, caps, _, _ := setupAPI(t)
 	token, _ := registerSession(t, srv, caps, "prefs@example.com")

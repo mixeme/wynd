@@ -149,7 +149,16 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        kind?: "single" | "multi";
+                        max_uses?: number;
+                        ttl_sec?: number;
+                    };
+                };
+            };
             responses: {
                 /** @description Invite token */
                 201: {

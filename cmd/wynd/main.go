@@ -23,6 +23,7 @@ import (
 	"gitea.mixdep.ru/mix/wynd/internal/mail"
 	"gitea.mixdep.ru/mix/wynd/internal/push"
 	"gitea.mixdep.ru/mix/wynd/internal/store"
+	"gitea.mixdep.ru/mix/wynd/internal/xtime"
 	"gitea.mixdep.ru/mix/wynd/web"
 )
 
@@ -164,6 +165,7 @@ func runServer() {
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatalf("shutdown: %v", err)
 	}
+	apiSrv.WaitNotify(ctx)
 }
 
 func maybeRunRoutine(db *sql.DB, blobsDir string, ch *chronicle.Chronicle, blobs *blob.Store, mailSvc *mail.Service, publicURL string) {
@@ -180,7 +182,7 @@ func maybeRunDailyRoutine(ctx context.Context, db *sql.DB, blobsDir string, now 
 		return
 	}
 	if last.Valid && last.String != "" {
-		if t, err := time.Parse(time.RFC3339Nano, last.String); err == nil {
+		if t, err := xtime.Parse(last.String); err == nil {
 			if now.Sub(t) < 20*time.Hour {
 				return
 			}

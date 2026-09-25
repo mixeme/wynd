@@ -98,7 +98,7 @@
 			await setCircleColor(selectedSession.origin, created.id, color);
 			rememberCircleOrigin(created.id, selectedSession.origin);
 			if (diaryMode) goto(`/circles/${created.id}`);
-			else goto(`/circles/${created.id}/settings/invite`);
+			else goto(`/circles/${created.id}/settings/invite?from=create`);
 		} catch (err) {
 			error = authErrorHint(err);
 		} finally {
@@ -128,7 +128,8 @@
 	{/each}
 	<Hint style="margin-top:0">
 		Круг будет жить здесь. Если потребуется, его можно перенести на другой сервер. Сервер
-		хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или поднимите свой.
+		хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или
+		<a class="under" href="https://github.com/mixeme/wynd">поднимите свой</a>.
 	</Hint>
 	<Label>Название</Label>
 	<Input active type="text" bind:value={name} />

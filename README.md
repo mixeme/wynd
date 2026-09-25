@@ -3,7 +3,7 @@
 Self-hosted журнал кругов: один бинарник Go, SQLite, SvelteKit SPA внутри `go:embed`.
 Для домашнего инстанса на несколько человек, не для SaaS.
 
-**Версия:** см. файл [`VERSION`](VERSION) (сейчас 0.2.3).
+**Версия:** см. файл [`VERSION`](VERSION) (сейчас 0.3.5).
 
 **Лицензия:** [GNU AGPL v3](LICENSE). Исходный код: <https://github.com/mixeme/wynd>.
 
@@ -72,10 +72,9 @@ cd web && npm run check && npm run check:ui && npm run test
 | Экраны (макеты) | [docs/visual/screens.html](docs/visual/screens.html) |
 | Стек (история решений) | [docs/stack.html](docs/stack.html) |
 | Изменения | [CHANGELOG.md](CHANGELOG.md) |
-| Очередь сопровождения | [docs/plans/code-review-followup.plan.md](docs/plans/code-review-followup.plan.md) |
 
 Шрифт интерфейса — Golos Text ([SIL OFL](web/static/fonts/OFL.txt)).
-Версия продукта — файл [`VERSION`](VERSION); поле `version` в `web/package.json` — не semver продукта (пакет `private`).
+Версия продукта — файл [`VERSION`](VERSION). То же значение — `internal/version.Number`, OpenAPI `info.version` и `version` в `web/package.json` (пакет `private`, в npm не публикуется). Сторож: `TestMatchesVERSIONFile`.
 
 ---
 

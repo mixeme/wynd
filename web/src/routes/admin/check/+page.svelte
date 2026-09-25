@@ -89,7 +89,9 @@
 					</div>
 				</div>
 				<div style="text-align:right">
-					<TextButton variant="admin" onclick={() => void load()}>Проверить снова</TextButton>
+					<TextButton variant="adminBox" style="font-weight:600" onclick={() => void load()}
+						>Проверить снова</TextButton
+					>
 					<div style="font-size:11.5px;color:var(--faint);margin-top:7px">{checkedLabel()}</div>
 				</div>
 			</div>

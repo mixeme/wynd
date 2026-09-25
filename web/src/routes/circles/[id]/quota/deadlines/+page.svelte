@@ -9,6 +9,7 @@
 	import Hint from '$ui/forms/Hint.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import Label from '$ui/forms/Label.svelte';
+	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import {
@@ -107,17 +108,13 @@
 <FormLayout app color={circle.color} title="Сроки архивации" onback={goBack}>
 	<Label>Отсечка</Label>
 	{#if activeCycle}
-		<div class="row2" style="border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
-			<div class="g">
-				<div style="font-weight:600">{formatEntryDate(cutoffDate)}</div>
-				{#if cutoffStats}
-					<div class="sub">{cutoffStats}</div>
-				{/if}
-			</div>
-			{#if !cutoffLocked}
-				<span class="val">изменить</span>
-			{/if}
-		</div>
+		<SettingsRow
+			title={formatEntryDate(cutoffDate)}
+			subtitle={cutoffStats}
+			value={cutoffLocked ? undefined : 'изменить'}
+			chevron={false}
+			style="border-top:1px solid var(--line);border-bottom:1px solid var(--line)"
+		/>
 	{/if}
 	{#if !activeCycle || !cutoffLocked}
 		<Input

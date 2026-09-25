@@ -125,7 +125,7 @@
 		<Label>Почта</Label>
 		<Input active gray type="email" autocomplete="email" bind:value={email} />
 		<Hint>
-			Пришлём код для входа. Пароля не будет: почта понадобится, только чтобы вернуться на
+			Пришлём код для входа. Пароля нет: почта понадобится, только чтобы вернуться на
 			другом устройстве.
 		</Hint>
 		<Button {loading} disabled={!peek} onclick={onSendCode}>Получить код</Button>

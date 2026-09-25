@@ -7,6 +7,7 @@
 	import Hint from '$ui/forms/Hint.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import Label from '$ui/forms/Label.svelte';
+	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
@@ -163,12 +164,12 @@
 	{#if history.length > 1}
 		<Label style="margin-top:22px">Прежние имена</Label>
 		{#each history.slice(1) as row (row.effective_at)}
-			<div class="row2" style="padding-top:2px">
-				<div class="g">
-					<div style="font-weight:600">{row.name}</div>
-					<div class="sub">до {formatEntryDate(row.effective_at.slice(0, 10))}</div>
-				</div>
-			</div>
+			<SettingsRow
+				title={row.name}
+				subtitle="до {formatEntryDate(row.effective_at.slice(0, 10))}"
+				chevron={false}
+				style="padding-top:2px"
+			/>
 		{/each}
 	{/if}
 	<Hint

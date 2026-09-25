@@ -22,8 +22,8 @@ func TestOpenMigrateClose(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Version: %v", err)
 	}
-	if version != 13 {
-		t.Fatalf("schema version: got %d, want 13", version)
+	if version != 1 {
+		t.Fatalf("schema version: got %d, want 1", version)
 	}
 
 	if err := st.Close(); err != nil {
@@ -56,8 +56,8 @@ func TestReopenAppliesMigrationsOnce(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Version: %v", err)
 	}
-	if version != 13 {
-		t.Fatalf("schema version: got %d, want 13", version)
+	if version != 1 {
+		t.Fatalf("schema version: got %d, want 1", version)
 	}
 
 	s := st.(*SQLite)
@@ -65,8 +65,8 @@ func TestReopenAppliesMigrationsOnce(t *testing.T) {
 	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM schema_migrations`).Scan(&n); err != nil {
 		t.Fatalf("count schema_migrations: %v", err)
 	}
-	if n != 13 {
-		t.Fatalf("schema_migrations rows: got %d, want 13", n)
+	if n != 1 {
+		t.Fatalf("schema_migrations rows: got %d, want 1", n)
 	}
 }
 
@@ -107,7 +107,7 @@ func TestSQLitePragmas(t *testing.T) {
 }
 
 func TestParseMigrationVersion(t *testing.T) {
-	v, err := parseMigrationVersion("0001_init.sql")
+	v, err := parseMigrationVersion("0001_schema.sql")
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -119,36 +119,44 @@ func TestParseMigrationVersion(t *testing.T) {
 	}
 }
 
-func TestMigration0013WithMembershipReferences(t *testing.T) {
+func TestRejectsStaleSchemaVersion(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "wynd.db")
 	s, err := openSQLite(fileDSN(path), true)
 	if err != nil {
 		t.Fatalf("openSQLite: %v", err)
 	}
-	defer s.Close()
-
 	if _, err := s.db.Exec(`
-		CREATE TABLE IF NOT EXISTS schema_migrations (
+		CREATE TABLE schema_migrations (
 			version INTEGER PRIMARY KEY,
 			applied_at TEXT NOT NULL
-		)
+		);
+		INSERT INTO schema_migrations (version, applied_at) VALUES (13, '2026-01-01T00:00:00Z');
 	`); err != nil {
-		t.Fatalf("schema_migrations: %v", err)
+		_ = s.Close()
+		t.Fatalf("seed stale version: %v", err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
 	}
 
-	migrations, err := loadMigrations()
+	_, err = Open(path)
+	if err == nil {
+		t.Fatal("Open: want error for schema version 13")
+	}
+	if !strings.Contains(err.Error(), "удалите wynd.db") {
+		t.Fatalf("error: %v", err)
+	}
+}
+
+func TestSchemaAllowsNullableIdentityAccountID(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "wynd.db")
+	st, err := Open(path)
 	if err != nil {
-		t.Fatalf("loadMigrations: %v", err)
+		t.Fatalf("Open: %v", err)
 	}
-	for _, m := range migrations {
-		if m.version >= 13 {
-			break
-		}
-		if err := applyMigration(s.db, m); err != nil {
-			t.Fatalf("apply %s: %v", m.name, err)
-		}
-	}
+	defer st.Close()
 
+	s := st.(*SQLite)
 	if _, err := s.db.Exec(`
 		INSERT INTO accounts (id, email, created_at)
 		VALUES ('acct-1', 'alice@example.com', '2026-01-01T00:00:00Z');
@@ -164,18 +172,23 @@ func TestMigration0013WithMembershipReferences(t *testing.T) {
 		t.Fatalf("seed data: %v", err)
 	}
 
-	var m13 migration
-	for _, m := range migrations {
-		if m.version == 13 {
-			m13 = m
-			break
-		}
-	}
-	if m13.version != 13 {
-		t.Fatal("migration 13 not found")
+	if _, err := s.db.Exec(`UPDATE identities SET account_id = NULL WHERE id = 'id-1'`); err != nil {
+		t.Fatalf("nullable account_id: %v", err)
 	}
 
-	if err := applyMigration(s.db, m13); err != nil {
-		t.Fatalf("apply 0013: %v", err)
+	var accountID *string
+	if err := s.db.QueryRow(`SELECT account_id FROM identities WHERE id = 'id-1'`).Scan(&accountID); err != nil {
+		t.Fatalf("read identity: %v", err)
+	}
+	if accountID != nil {
+		t.Fatalf("account_id: got %q, want NULL", *accountID)
+	}
+
+	var memCount int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM memberships WHERE identity_id = 'id-1'`).Scan(&memCount); err != nil {
+		t.Fatalf("membership count: %v", err)
+	}
+	if memCount != 1 {
+		t.Fatalf("membership rows: got %d, want 1", memCount)
 	}
 }

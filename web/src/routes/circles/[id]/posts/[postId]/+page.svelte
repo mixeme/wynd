@@ -8,6 +8,8 @@
 	import Hint from '$ui/forms/Hint.svelte';
 	import TextArea from '$ui/forms/TextArea.svelte';
 	import PostCard from '$ui/data/PostCard.svelte';
+	import ReactionBar from '$ui/data/ReactionBar.svelte';
+	import ReactionListRow from '$ui/data/ReactionListRow.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
 	import Icon from '$ui/Icon.svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
@@ -305,35 +307,21 @@
 			{/snippet}
 			{#snippet reactions()}
 				{#if !soloCircle}
-					<div class="rx">
-						{#each groupReactions(currentPost.reactions) as group (group.emoji)}
-							<button type="button" class="one" onclick={openReactions}>
-								<Icon name={reactionIconName(group.emoji)} size="xs" style="color:var(--c)" />
-								{group.names}
-							</button>
-						{/each}
-						{#if showReactionPlus(currentPost) && !pickerOpen}
-							<button type="button" class="add" onclick={() => {
-								pickerOpen = true;
-							}}>+</button>
-						{/if}
-					</div>
-					{#if pickerOpen}
-						<div class="rxpick">
-							{#each REACTION_KEYS as key (key)}
-								<button
-									type="button"
-									class="rcho"
-									class:on={ownReaction(currentPost.reactions, circle.identityId)?.emoji === key}
-									onclick={() => {
-										void pickReaction(currentPost, key);
-									}}
-								>
-									<Icon name={key} />
-								</button>
-							{/each}
-						</div>
-					{/if}
+					<ReactionBar
+						groups={groupReactions(currentPost.reactions).map((g) => ({
+							icon: reactionIconName(g.emoji),
+							names: g.names
+						}))}
+						keys={REACTION_KEYS}
+						showAdd={showReactionPlus(currentPost) && !pickerOpen}
+						pickerOpen={pickerOpen}
+						selectedKey={ownReaction(currentPost.reactions, circle.identityId)?.emoji ?? ''}
+						onopenList={openReactions}
+						onadd={() => {
+							pickerOpen = true;
+						}}
+						onpick={(key) => void pickReaction(currentPost, key)}
+					/>
 				{/if}
 			{/snippet}
 		</PostCard>
@@ -399,17 +387,17 @@
 	{/if}
 
 	{#if reactionsOpen && post}
-		<OverlayLayout>
-			<div onclick={closeReactions} style="position:absolute;inset:0"></div>
+		<OverlayLayout ondismiss={closeReactions}>
 			<SectionLabel style="margin-top:2px">
 				Реакция · {post.reactions?.length ?? 0}
 			</SectionLabel>
 			{#each post.reactions ?? [] as rx (rx.id)}
-				<div class="row2">
-					<Avatar initial={authorInitial(rx.author_name)} color={circle.colorHex} />
-					<div class="g" style="font-weight:600">{rx.author_name}</div>
-					<Icon name={reactionIconName(rx.emoji)} size="sm" style="color:var(--c)" />
-				</div>
+				<ReactionListRow
+					initial={authorInitial(rx.author_name)}
+					name={rx.author_name}
+					color={circle.colorHex}
+					icon={reactionIconName(rx.emoji)}
+				/>
 			{/each}
 			<Hint style="margin-top:14px">
 				Реакция одна на человека и подчиняется окну правок. Хотите сказать больше — напишите словами.

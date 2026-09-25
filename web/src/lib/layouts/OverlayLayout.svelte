@@ -8,6 +8,7 @@
 		variant = 'sheet',
 		scrim = true,
 		grip = true,
+		ondismiss,
 		class: className = '',
 		style = '',
 		children
@@ -15,6 +16,7 @@
 		variant?: 'sheet' | 'dialog';
 		scrim?: boolean;
 		grip?: boolean;
+		ondismiss?: () => void;
 		class?: string;
 		style?: string;
 		children: Snippet;
@@ -22,7 +24,7 @@
 </script>
 
 {#if scrim}
-	<Scrim />
+	<Scrim onclick={ondismiss} />
 {/if}
 {#if variant === 'dialog'}
 	<Dialog class={className} {style}>{@render children()}</Dialog>

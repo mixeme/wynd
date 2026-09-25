@@ -134,7 +134,9 @@
 			<SectionLabel style="margin:28px 0 8px">Проверочное письмо</SectionLabel>
 			<div style="display:flex;align-items:center;gap:12px;max-width:420px">
 				<Input admin style="flex:1" placeholder="куда" bind:value={testTo} />
-				<TextButton variant="admin" onclick={() => void sendTest()}>Отправить</TextButton>
+				<TextButton variant="adminBox" style="font-weight:600" onclick={() => void sendTest()}
+					>Отправить</TextButton
+				>
 			</div>
 			{#if saving}
 				<Hint style="margin-top:12px">Сохранение…</Hint>

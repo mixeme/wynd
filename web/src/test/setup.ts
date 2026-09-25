@@ -15,14 +15,22 @@ function mockMatchMedia(matches = false) {
 	};
 }
 
-beforeEach(() => {
-	vi.stubGlobal('navigator', { ...navigator, onLine: false });
+function installMatchMedia() {
 	const media = mockMatchMedia();
-	vi.stubGlobal('matchMedia', vi.fn(() => media));
+	const fn = vi.fn(() => media);
+	vi.stubGlobal('matchMedia', fn);
 	Object.defineProperty(window, 'matchMedia', {
 		writable: true,
-		value: vi.fn(() => media)
+		configurable: true,
+		value: fn
 	});
+}
+
+installMatchMedia();
+
+beforeEach(() => {
+	vi.stubGlobal('navigator', { ...navigator, onLine: false });
+	installMatchMedia();
 	if (!URL.createObjectURL) {
 		URL.createObjectURL = vi.fn(() => 'blob:mock');
 	}
@@ -34,5 +42,6 @@ beforeEach(() => {
 afterEach(async () => {
 	await closeDb();
 	vi.unstubAllGlobals();
+	installMatchMedia();
 	vi.resetModules();
 });

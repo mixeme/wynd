@@ -2,6 +2,7 @@
 <script lang="ts">
 	import Button from '$ui/forms/Button.svelte';
 	import FieldDisplay from '$ui/forms/FieldDisplay.svelte';
+	import Hint from '$ui/forms/Hint.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import Logo from '$ui/Logo.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
@@ -14,10 +15,7 @@
 	<div class="logo-wrap">
 		<Logo />
 	</div>
-	<div class="h1s ctr" style="margin-top:30px">Вернуться</div>
-	<div class="hint ctr">
-		Wynd не помнит устройств — только почту, которой вы называетесь на этом сервере.
-	</div>
+	<div class="h1s ctr" style="margin-top:30px">Войти</div>
 	<Label style="margin-top:26px">Сервер</Label>
 	<FieldDisplay>
 		<div style="font-weight:600">Дом Ани</div>
@@ -25,10 +23,11 @@
 	</FieldDisplay>
 	<Label>Почта</Label>
 	<FieldDisplay value="anya@example.com" active />
+	<Hint>Пришлём код для входа. Пароля нет.</Hint>
 	<Button onclick={() => {}}>Получить код</Button>
 	<div class="hint ctr" style="margin-top:30px">
-		Впервые? <TextButton onclick={() => {}}>Прийти без приглашения</TextButton><br />или откройте присланную
-		ссылку.
+		<TextButton onclick={() => {}}>Регистрация без приглашения</TextButton><br />Если прислали ссылку — откройте
+		её.
 	</div>
 </div>
 

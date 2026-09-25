@@ -1,3 +1,4 @@
+// @ts-nocheck — Node-скрипт сторожа; типы не тянем в svelte-check.
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -274,6 +275,171 @@ function searchSource(rel, source, re) {
 	return hits;
 }
 
+/** Семантические классы на <button>: в ui.css нужен явный button.* (см. ui-components.md). */
+export const BUTTON_LAYOUT_SPECS = [
+	{ class: 'row2', props: ['padding'] },
+	{ class: 'r', props: ['padding'] },
+	{ class: 'att', props: ['padding', 'border'] },
+	{ class: 'cm', props: ['padding'] },
+	{ class: 'rcho', props: ['border'] },
+	{ class: 'addph', props: ['width', 'height'] },
+	{ class: 'send', props: ['width'] },
+	{ class: 'chip', props: ['padding'] },
+	{ class: 'inp', props: ['padding'] },
+	{ class: 'one', props: ['padding'], selectorIncludes: '.rx' },
+	{ class: 'add', props: ['padding'], selectorIncludes: '.rx' },
+	{ class: 'di', props: ['padding'], selectorIncludes: '.danger' }
+];
+
+/** Классы TextButton / compose — padding:0 намеренно, не требуют зеркала .класс. */
+export const BUTTON_TEXT_CLASSES = new Set(['act', 't', 'rt', 'under', 'done']);
+
+const BUTTON_LAYOUT_CLASS_NAMES = new Set(BUTTON_LAYOUT_SPECS.map((s) => s.class));
+
+function stripCssComments(css) {
+	return css.replace(/\/\*[\s\S]*?\*\//g, '');
+}
+
+/** @returns {Array<{ selectors: string[], declarations: string[] }>} */
+export function parseCssRules(css) {
+	const stripped = stripCssComments(css);
+	const rules = [];
+	const re = /([^{}]+)\{([^{}]*)\}/g;
+	for (const match of stripped.matchAll(re)) {
+		const selectors = match[1]
+			.split(',')
+			.map((s) => s.trim())
+			.filter(Boolean);
+		const declarations = match[2]
+			.split(';')
+			.map((d) => d.trim())
+			.filter(Boolean);
+		if (selectors.length && declarations.length) rules.push({ selectors, declarations });
+	}
+	return rules;
+}
+
+function selectorUsesButtonClass(selector, className) {
+	if (!selector.includes('button')) return false;
+	const re = new RegExp(`\\.${className}(?:\\b|[.:{,\\s])`);
+	return re.test(selector);
+}
+
+function ruleZerosPadding(declarations) {
+	return declarations.some((d) => /^padding\s*:\s*0\b/.test(d));
+}
+
+/** padding:0 в полноценном button.X (есть width/border/display…) — норма, не сброс. */
+function isBareButtonReset(declarations) {
+	if (!ruleZerosPadding(declarations)) return false;
+	const props = declProps(declarations);
+	const layoutAnchors = ['display', 'width', 'height', 'gap', 'border-radius', 'flex'];
+	return !layoutAnchors.some((p) => props.has(p));
+}
+
+function declProps(declarations) {
+	const props = new Set();
+	for (const d of declarations) {
+		const m = d.match(/^([\w-]+)\s*:/);
+		if (m) props.add(m[1]);
+	}
+	return props;
+}
+
+/**
+ * Wynd UI фаза 1–3: интерактив на <button> + сброс UA в ui.css. Селектор button.X сильнее .X —
+ * у layout-классов вёрстку дублируют в button.X (или .контекст button.X).
+ * @returns {string[]}
+ */
+export function checkButtonCssSync(css) {
+	const rules = parseCssRules(css);
+	const hits = [];
+
+	for (const spec of BUTTON_LAYOUT_SPECS) {
+		const { class: className, props, selectorIncludes } = spec;
+
+		for (const rule of rules) {
+			if (!isBareButtonReset(rule.declarations)) continue;
+			const matchesClass = rule.selectors.some((sel) => selectorUsesButtonClass(sel, className));
+			if (!matchesClass) continue;
+			hits.push(
+				`${className}: in bare padding:0 reset (${rule.selectors.join(', ')}) — add explicit button.${className} layout`
+			);
+		}
+
+		const matching = rules.filter((rule) =>
+			rule.selectors.some((sel) => {
+				if (!selectorUsesButtonClass(sel, className)) return false;
+				if (selectorIncludes && !sel.includes(selectorIncludes)) return false;
+				return true;
+			})
+		);
+		if (!matching.length) {
+			const ctx = selectorIncludes ? ` (expected selector with ${selectorIncludes})` : '';
+			hits.push(`${className}: no button.${className} layout rule in ui.css${ctx}`);
+			continue;
+		}
+
+		const merged = new Set();
+		for (const rule of matching) {
+			for (const p of declProps(rule.declarations)) merged.add(p);
+		}
+		for (const prop of props) {
+			if (!merged.has(prop)) {
+				hits.push(`${className}: button.${className} rules missing "${prop}" (have: ${[...merged].join(', ')})`);
+			}
+		}
+	}
+
+	return hits;
+}
+
+const ROUTE_RAW_BUTTON_CLASS_RE =
+	/<button\b[^>]*\bclass="[^"]*\b(row2|rcho|one|add|cm|att|act|compose-text)\b/;
+
+/**
+ * @returns {string[]}
+ */
+export function collectUiButtonClasses(webRoot) {
+	const classes = new Set();
+	const re = /<button\b[^>]*\bclass="([^"]+)"/g;
+	for (const file of walkSvelte(path.join(webRoot, 'src', 'lib', 'components'))) {
+		const source = fs.readFileSync(file, 'utf8');
+		for (const match of source.matchAll(re)) {
+			for (const token of match[1].split(/\s+/)) {
+				if (token && !token.includes('{')) classes.add(token);
+			}
+		}
+	}
+	return [...classes].sort();
+}
+
+/**
+ * @returns {string[]}
+ */
+export function checkUnknownUiButtonClasses(webRoot) {
+	const known = new Set([
+		...BUTTON_LAYOUT_CLASS_NAMES,
+		...BUTTON_TEXT_CLASSES,
+		'btn',
+		'ib',
+		'sw',
+		'nav',
+		'prev',
+		'next',
+		'idn',
+		'done'
+	]);
+	const hits = [];
+	for (const className of collectUiButtonClasses(webRoot)) {
+		if (known.has(className)) continue;
+		hits.push(
+			`${className}: <button class="${className}"> in $ui — add BUTTON_LAYOUT_SPECS entry or BUTTON_TEXT_CLASSES in ui-guard.mjs`
+		);
+	}
+	return hits;
+}
+
 /**
  * Full check used by `npm run check:ui` and the Cursor stop hook.
  * @returns {{ ok: boolean, groups: Array<{ message: string, hits: string[] }> }}
@@ -298,6 +464,11 @@ export function checkProject(webRoot) {
 	const rawTextarea = [];
 	const rawLab = [];
 	const legacyImports = [];
+	const rawRouteButtons = [];
+	const uiCssPath = path.join(webRoot, 'src', 'lib', 'styles', 'ui.css');
+	const uiCss = fs.existsSync(uiCssPath) ? fs.readFileSync(uiCssPath, 'utf8') : '';
+	const buttonCssSync = uiCss ? checkButtonCssSync(uiCss) : ['ui.css missing'];
+	const unknownUiButtons = checkUnknownUiButtonClasses(webRoot);
 
 	for (const file of srcFiles) {
 		const rel = posixRel(webRoot, file);
@@ -314,6 +485,9 @@ export function checkProject(webRoot) {
 			rawFldInput.push(...searchSource(rel, source, /<input[^>]*class="[^"]*fld/));
 			rawTextarea.push(...searchSource(rel, source, /<textarea[^>]*class="[^"]*(fld|ta)/));
 			rawLab.push(...searchSource(rel, source, /class="lab"/));
+			if (!rel.includes('/dev/')) {
+				rawRouteButtons.push(...searchSource(rel, source, ROUTE_RAW_BUTTON_CLASS_RE));
+			}
 		}
 		legacyImports.push(...searchSource(rel, source, /\$lib\/components/));
 	}
@@ -357,6 +531,21 @@ export function checkProject(webRoot) {
 			message:
 				'check-ui: open Wynd UI gap plan must justify the hole and list files to add (separate library task).',
 			hits: checkOpenGapPlans(path.resolve(webRoot, '..'))
+		},
+		{
+			message:
+				'check-ui: button layout classes in ui.css — button.X must mirror .X (Wynd UI phase 1–3); see ui-components.md.',
+			hits: buttonCssSync
+		},
+		{
+			message:
+				'check-ui: new <button class="…"> in $ui must be listed in ui-guard.mjs (BUTTON_LAYOUT_SPECS or BUTTON_TEXT_CLASSES).',
+			hits: unknownUiButtons
+		},
+		{
+			message:
+				'check-ui: raw semantic <button class="row2|act|…"> in prod routes — use $ui row/button components.',
+			hits: rawRouteButtons
 		}
 	];
 

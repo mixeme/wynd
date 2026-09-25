@@ -21,7 +21,6 @@ type adminLoginBody struct {
 type createInviteBody struct {
 	Kind    string `json:"kind"`
 	MaxUses int    `json:"max_uses"`
-	TTLDays int    `json:"ttl_days"`
 	TTLSec  int    `json:"ttl_sec"`
 }
 
@@ -92,8 +91,6 @@ func (s *Server) handleCreateServerInvite(w http.ResponseWriter, r *http.Request
 	ttl := 7 * 24 * time.Hour
 	if body.TTLSec > 0 {
 		ttl = time.Duration(body.TTLSec) * time.Second
-	} else if body.TTLDays > 0 {
-		ttl = time.Duration(body.TTLDays) * 24 * time.Hour
 	}
 	inv, err := s.Auth.CreateServerInvite(r.Context(), auth.CreateServerInviteInput{
 		Kind:    kind,

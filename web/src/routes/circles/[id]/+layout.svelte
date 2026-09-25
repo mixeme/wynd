@@ -12,6 +12,7 @@
 	import { fetchCircleDetail } from '$lib/journal/read-cursor';
 	import { fetchInvitePeek, loadInviteJoinToken } from '$lib/auth/invites';
 	import { getMediaUrl } from '$lib/media/objectUrl';
+	import PlainLayout from '$lib/layouts/PlainLayout.svelte';
 	import type { Snippet } from 'svelte';
 
 	let { children }: { children: Snippet } = $props();
@@ -173,12 +174,12 @@
 </script>
 
 {#if denied}
-	<div class="ph app">
+	<PlainLayout app>
 		<div class="h1s ctr" style="margin-top:80px">Нет доступа</div>
 		<div class="hint ctr" style="margin-top:12px">
 			<a class="under" href="/circles">К кругам</a>
 		</div>
-	</div>
+	</PlainLayout>
 {:else if ready}
 	{@render children()}
 {/if}

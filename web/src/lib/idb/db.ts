@@ -277,6 +277,11 @@ export async function putCursor(origin: string, seq: number): Promise<void> {
 	await db.put('cursors', { origin, seq });
 }
 
+export async function deleteCursor(origin: string): Promise<void> {
+	const db = await getDb();
+	await db.delete('cursors', origin);
+}
+
 export async function getSnapshot(key: string): Promise<SnapshotRecord | undefined> {
 	const db = await getDb();
 	return db.get('snapshots', key);

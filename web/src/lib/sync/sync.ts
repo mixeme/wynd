@@ -1,4 +1,5 @@
 import { ApiError, apiFetch, normalizeOrigin } from '$lib/api/client';
+import { dropParticipantSession, isSessionRejected } from '$lib/session/session.svelte';
 import {
 	invalidateCircleSnapshots,
 	invalidateSnapshots,
@@ -133,8 +134,9 @@ async function runSyncLoop(origin: string, signal: AbortSignal): Promise<void> {
 			});
 		} catch (err) {
 			if (signal.aborted) return;
-			if (err instanceof ApiError && err.status === 401) {
+			if (isSessionRejected(err)) {
 				stopSync(origin);
+				await dropParticipantSession(origin);
 				return;
 			}
 			await sleep(RETRY_MS, signal);

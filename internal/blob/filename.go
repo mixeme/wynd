@@ -16,8 +16,9 @@ func sanitizeFilename(name string) string {
 		}
 		return r
 	}, name)
-	if len(name) > maxFilenameLen {
-		name = name[:maxFilenameLen]
+	runes := []rune(name)
+	if len(runes) > maxFilenameLen {
+		name = string(runes[:maxFilenameLen])
 	}
 	return name
 }

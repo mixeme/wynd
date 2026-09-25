@@ -1,7 +1,5 @@
 ﻿<!-- Smoke-test: forms components from docs/screens.html #e6-2 (низ) -->
 <script lang="ts">
-	import Chip from '$ui/forms/Chip.svelte';
-	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import CircleBar from '$ui/chrome/CircleBar.svelte';
 	import DangerZone from '$ui/forms/DangerZone.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -16,14 +14,10 @@
 <PhoneFrame color="terracotta">
 	<StatusBar />
 	<CircleBar title="Настройки круга" tabs={false} />
-	<div style="height:34px;overflow:hidden">
-		<ChipGroup style="margin-top:-14px">
-			<Chip selected>Одноразовые</Chip>
-			<Chip>Многоразовые</Chip>
-		</ChipGroup>
+	<div style="height:28px;overflow:hidden">
+		<SettingsRow title="Уведомления" value="записи и упоминания" style="margin-top:-22px" />
 	</div>
-	<SettingsRow title="Кто ты в этом круге" value="Мышь" />
-	<Label style="margin-top:20px">Место</Label>
+	<Label>Место</Label>
 	<Meter value={8.4} max={10} />
 	<Hint style="margin-top:8px">8,4 ГБ из 10 ГБ в «Доме Ани» · квоту задал администратор</Hint>
 	<SettingsRow

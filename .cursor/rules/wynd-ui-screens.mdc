@@ -11,4 +11,4 @@ alwaysApply: true
 
 Сначала расширить уже лежащий компонент. Если объективно нельзя собрать экран — **отдельная задача** на библиотеку: написать `docs/plans/<slug>.plan.md` (`Тип: пробел Wynd UI`), обосновать пробел и таблицу «Добавить в библиотеку», **остановиться**. Не верстать дыру на экране и не добавлять `.svelte` в том же заходе. Файл в `$ui` можно завести только позже и только если открытый план его перечисляет.
 
-Проверка: `npm run check:ui`. Сторож: `.cursor/hooks/ui-screens.mjs`. Форма плана: [ui-components.md](docs/reference/ui-components.md).
+Проверка: `npm run check:ui` (в т.ч. `button.X` ↔ `.X` в `ui.css` — см. ui-components.md). Сторож: `.cursor/hooks/ui-screens.mjs`. Форма плана: [ui-components.md](docs/reference/ui-components.md).

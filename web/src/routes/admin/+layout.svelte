@@ -3,7 +3,7 @@
 	import { page } from '$app/state';
 	import Hint from '$ui/forms/Hint.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
-	import { loadAdminSession } from '$lib/session/session.svelte';
+	import { reconcileAdminSession } from '$lib/session/session.svelte';
 
 	let { children } = $props();
 
@@ -19,7 +19,7 @@
 			ready = true;
 			return;
 		}
-		void loadAdminSession().then((session) => {
+		void reconcileAdminSession().then((session) => {
 			if (!session) {
 				ready = false;
 				goto('/admin/login');

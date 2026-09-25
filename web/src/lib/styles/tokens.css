@@ -8,6 +8,9 @@
     --app-wide-max-width:820px;
     --app-gutter:#E0DBD2;
     --app-gutter-dark:#161412;
+    --mark-w:46px;
+    --mark-h:69px;
+    --empty-ink:#d6cec2;
   }
 
 .ph.dark {

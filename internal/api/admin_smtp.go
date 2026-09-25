@@ -1,7 +1,6 @@
 package api
 
 import (
-	"errors"
 	"net/http"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
@@ -70,10 +69,6 @@ func (s *Server) handleAdminSMTPTest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.Mail.SendTest(r.Context(), body.To); err != nil {
-		if errors.Is(err, mail.ErrNotConfigured) {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "smtp_not_configured"})
-			return
-		}
 		writeError(w, err)
 		return
 	}

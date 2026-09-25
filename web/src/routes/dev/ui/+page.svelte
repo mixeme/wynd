@@ -30,6 +30,7 @@
 	import PhotoGrid from '$ui/data/PhotoGrid.svelte';
 	import PhotoPlaceholder from '$ui/data/PhotoPlaceholder.svelte';
 	import PostCard from '$ui/data/PostCard.svelte';
+	import ReactionBar from '$ui/data/ReactionBar.svelte';
 	import SearchGroupHeader from '$ui/data/SearchGroupHeader.svelte';
 	import SearchResultRow from '$ui/data/SearchResultRow.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
@@ -56,6 +57,14 @@
 	import VolumeChart from '$ui/forms/VolumeChart.svelte';
 	import Icon, { type IconName } from '$ui/Icon.svelte';
 
+	let cropFile = $state<File | undefined>();
+
+	async function openCropDemo() {
+		const res = await fetch('/icon-192.png');
+		const blob = await res.blob();
+		cropFile = new File([blob], 'demo.png', { type: blob.type });
+	}
+
 	const iconNames: IconName[] = [
 		'search',
 		'gear',
@@ -68,6 +77,7 @@
 	];
 	import Logo from '$ui/Logo.svelte';
 	import Mark from '$ui/Mark.svelte';
+	import AvatarCrop from '$ui/overlays/AvatarCrop.svelte';
 	import CommentBar from '$ui/overlays/CommentBar.svelte';
 	import Fab from '$ui/overlays/Fab.svelte';
 	import Lightbox from '$ui/overlays/Lightbox.svelte';
@@ -429,12 +439,13 @@
 						{/snippet}
 						{#snippet text()}Были на даче, все живы.{/snippet}
 						{#snippet reactions()}
-							<div class="rx">
-								<span class="one">
-									<Icon name="heart" size="xs" style="color:var(--c)" />
-									Кот
-								</span>
-							</div>
+							<ReactionBar
+								groups={[{ icon: 'heart', names: 'Кот' }]}
+								keys={['heart', 'laugh', 'surprise', 'anger']}
+								onopenList={() => {}}
+								onadd={() => {}}
+								onpick={() => {}}
+							/>
 						{/snippet}
 					</PostCard>
 				</PhoneFrame>
@@ -650,8 +661,20 @@
 					/>
 				</PhoneFrame>
 			</figure>
+			<figure>
+				<figcaption>#e6-2 — AvatarCrop</figcaption>
+				<PhoneFrame color="terracotta" height="200px">
+					<Button variant="colored" style="margin:24px 16px" onclick={() => void openCropDemo()}>
+						Открыть кадрирование
+					</Button>
+				</PhoneFrame>
+			</figure>
 		</div>
 	</section>
+
+	{#if cropFile}
+		<AvatarCrop file={cropFile} color="terracotta" ondone={() => (cropFile = undefined)} oncancel={() => (cropFile = undefined)} />
+	{/if}
 
 	<section id="admin" class="sec">
 		<h2>Admin</h2>

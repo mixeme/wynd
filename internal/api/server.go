@@ -1,8 +1,11 @@
 package api
 
 import (
+	"context"
+	"log"
 	"net"
 	"net/http"
+	"sync"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
 	"gitea.mixdep.ru/mix/wynd/internal/blob"
@@ -28,6 +31,7 @@ type Server struct {
 	// loopback only (a reverse proxy on the same host).
 	TrustedProxies []*net.IPNet
 	Mux            *http.ServeMux
+	notifyWG       sync.WaitGroup
 }
 
 func NewServer(authSvc *auth.Service, ch *chronicle.Chronicle, blobs *blob.Store, mailSvc *mail.Service, pushSvc *push.Service, bootstrapToken, dataDir, publicURL, listenAddr string, loopback bool) *Server {
@@ -152,4 +156,21 @@ func (s *Server) routes() {
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	s.Mux.ServeHTTP(w, r)
+}
+
+// WaitNotify blocks until in-flight notifyCircle goroutines finish or ctx expires.
+func (s *Server) WaitNotify(ctx context.Context) {
+	if s == nil {
+		return
+	}
+	done := make(chan struct{})
+	go func() {
+		s.notifyWG.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-ctx.Done():
+		log.Print("shutdown: pending push notifications abandoned")
+	}
 }

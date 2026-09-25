@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { getContext, onMount } from 'svelte';
 	import QRCode from 'qrcode';
 	import Button from '$ui/forms/Button.svelte';
@@ -14,6 +15,16 @@
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
+	const fromCreate = $derived($page.url.searchParams.get('from') === 'create');
+
+	function goCircle() {
+		goto(`/circles/${circle.circleId}`);
+	}
+
+	function goBack() {
+		if (fromCreate) goCircle();
+		else goto(`/circles/${circle.circleId}/settings`);
+	}
 
 	const TTL_OPTIONS = [
 		{ label: '1 час', sec: 3600 },
@@ -96,7 +107,7 @@
 	app
 	color={circle.color}
 	title="Пригласить в {circle.name}"
-	onback={() => goto(`/circles/${circle.circleId}/settings`)}
+	onback={goBack}
 >
 	{#if qrSvg}
 		<div class="qr" style="margin:16px auto 0;width:142px">{@html qrSvg}</div>
@@ -151,6 +162,9 @@
 		>Ссылка несёт адрес сервера и токен: тому, кого вы зовёте, не придётся ничего вводить. Многоразовая
 		обязательно имеет лимит — она создаёт учётки на сервере.</Hint
 	>
+	{#if fromCreate}
+		<Button variant="ghost" onclick={goCircle}>Сначала в круг, позову потом</Button>
+	{/if}
 	{#if error}
 		<Hint style="margin:16px">{error}</Hint>
 	{:else if loading}

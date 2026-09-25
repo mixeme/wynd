@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd admin API
-  version: 0.2.3
+  version: 0.3.5
   description: Admin routes (Bearer admin session). Participant routes are in openapi-participant.yaml.
 
 servers:
@@ -159,6 +159,20 @@ paths:
           description: invites[]
     post:
       summary: Create server invite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                kind:
+                  type: string
+                  enum: [single, multi]
+                max_uses:
+                  type: integer
+                ttl_sec:
+                  type: integer
       responses:
         "201":
           description: Invite created

@@ -33,7 +33,7 @@ func TestAcceptanceCircleInviteSyncLeaveDelete(t *testing.T) {
 	circleID := jsonStr(t, rec, "id")
 
 	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/invites", ownerTok, map[string]any{
-		"kind": "multi", "max_uses": 5, "ttl_days": 7,
+		"kind": "multi", "max_uses": 5, "ttl_sec": 7 * 86400,
 	})
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("invite: %d %s", rec.Code, rec.Body.String())

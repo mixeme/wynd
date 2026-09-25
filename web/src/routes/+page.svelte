@@ -15,7 +15,7 @@
 	} from '$lib/auth/auth';
 	import { displayHost } from '$lib/auth/origin';
 	import { savePendingAuth } from '$lib/auth/pending';
-	import { loadSessions } from '$lib/session/session.svelte';
+	import { initSession, loadSessions } from '$lib/session/session.svelte';
 
 	let email = $state('');
 	let instanceName = $state('');
@@ -23,6 +23,7 @@
 	let error = $state('');
 
 	onMount(async () => {
+		await initSession();
 		const sessions = await loadSessions();
 		if (sessions.length) {
 			goto('/circles');
@@ -68,9 +69,6 @@
 		<Logo />
 	</div>
 	<div class="h1s ctr" style="margin-top:30px">Войти</div>
-	<div class="hint ctr">
-		Wynd не помнит устройств — только почту, которой вы называетесь на этом сервере.
-	</div>
 	<Label style="margin-top:26px">Сервер</Label>
 	<FieldDisplay>
 		<div style="font-weight:600">{instanceName || '…'}</div>
@@ -78,11 +76,11 @@
 	</FieldDisplay>
 	<Label>Почта</Label>
 	<Input active type="email" autocomplete="email" bind:value={email} />
+	<Hint>Пришлём код для входа. Пароля нет.</Hint>
 	<Button {loading} onclick={onSubmit}>Получить код</Button>
 	<div class="hint ctr" style="margin-top:30px">
-		Впервые?
-		<a class="under" href="/join">Прийти без приглашения</a><br />
-		или откройте присланную ссылку.
+		<a class="under" href="/join">Регистрация без приглашения</a><br />
+		Если прислали ссылку — откройте её.
 	</div>
 	{#if error}
 		<Hint centered style="margin-top:12px">{error}</Hint>

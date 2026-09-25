@@ -8,14 +8,14 @@
 	import AdminSection from '$ui/admin/AdminSection.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
 	import { authErrorHint, loginAdmin } from '$lib/auth/auth';
-	import { loadAdminSession, storeAdminSession } from '$lib/session/session.svelte';
+	import { reconcileAdminSession, storeAdminSession } from '$lib/session/session.svelte';
 
 	let password = $state('');
 	let loading = $state(false);
 	let error = $state('');
 
 	onMount(async () => {
-		const session = await loadAdminSession();
+		const session = await reconcileAdminSession();
 		if (session) goto('/admin');
 	});
 

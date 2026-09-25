@@ -83,7 +83,6 @@ func (s *Server) handleCreateCircle(w http.ResponseWriter, r *http.Request) {
 type createCircleInviteBody struct {
 	Kind    string `json:"kind"`
 	MaxUses int    `json:"max_uses"`
-	TTLDays int    `json:"ttl_days"`
 	TTLSec  int    `json:"ttl_sec"`
 }
 
@@ -114,8 +113,6 @@ func (s *Server) handleCreateCircleInvite(w http.ResponseWriter, r *http.Request
 	ttl := 3 * 24 * time.Hour
 	if body.TTLSec > 0 {
 		ttl = time.Duration(body.TTLSec) * time.Second
-	} else if body.TTLDays > 0 {
-		ttl = time.Duration(body.TTLDays) * 24 * time.Hour
 	}
 	inv, err := s.Auth.CreateInvite(r.Context(), auth.CreateInviteInput{
 		CircleID: circleID, Kind: kind, MaxUses: maxUses, TTL: ttl,

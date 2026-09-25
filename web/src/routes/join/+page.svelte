@@ -124,7 +124,7 @@
 		<Label style="margin-top:16px">Почта</Label>
 		<Input active type="email" autocomplete="email" bind:value={email} />
 		<Hint>
-			Пришлём код. Пароля не будет: почта понадобится, только чтобы вернуться на другом
+			Пришлём код. Пароля нет: почта понадобится, только чтобы вернуться на другом
 			устройстве.
 		</Hint>
 		<Button
@@ -136,7 +136,7 @@
 		</Button>
 		<Hint>
 			Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или
-			<a class="link under" href="https://github.com/mixeme/wynd">поднимите свой</a>.
+			<a class="under" href="https://github.com/mixeme/wynd">поднимите свой</a>.
 		</Hint>
 	{:else}
 		<Hint>Этот сервер не принимает новых участников без приглашения.</Hint>

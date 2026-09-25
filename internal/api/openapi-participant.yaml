@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.2.3
+  version: 0.3.5
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:
@@ -63,6 +63,20 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                kind:
+                  type: string
+                  enum: [single, multi]
+                max_uses:
+                  type: integer
+                ttl_sec:
+                  type: integer
       responses:
         "201":
           description: Invite token

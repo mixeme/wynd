@@ -11,7 +11,7 @@
 		...rest
 	}: {
 		value?: string;
-		variant?: 'area' | 'field' | 'compose';
+		variant?: 'area' | 'field' | 'compose' | 'comment';
 		active?: boolean;
 		class?: string;
 		style?: string;
@@ -19,7 +19,13 @@
 	} & HTMLTextareaAttributes = $props();
 
 	const rootClass = $derived(
-		variant === 'field' ? 'fld' : variant === 'compose' ? 'compose-text' : 'ta'
+		variant === 'field'
+			? 'fld'
+			: variant === 'compose'
+				? 'compose-text'
+				: variant === 'comment'
+					? 'inp'
+					: 'ta'
 	);
 </script>
 

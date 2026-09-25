@@ -1,4 +1,5 @@
 import { apiJson } from '$lib/api/client';
+import { dropParticipantSession, isSessionRejected } from '$lib/session/session.svelte';
 import { listSessions, listPins, type SessionRecord } from '$lib/idb/db';
 import { invalidateSnapshots } from '$lib/idb/db';
 import { readCachedSnapshot, writeCachedSnapshot } from '$lib/api/snapshots';
@@ -129,7 +130,11 @@ export async function loadStreetCircles(): Promise<StreetCircle[]> {
 		let circles: CircleListItem[];
 		try {
 			circles = await fetchCircles(session.origin);
-		} catch {
+		} catch (err) {
+			if (isSessionRejected(err)) {
+				await dropParticipantSession(session.origin);
+				continue;
+			}
 			circles = await loadCirclesCached(session.origin);
 		}
 		for (const circle of circles) {

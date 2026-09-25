@@ -172,7 +172,7 @@ export async function fetchIdentityHistory(
 export async function createCircleInvite(
 	origin: string,
 	circleId: string,
-	opts: { kind: 'single' | 'multi'; ttl_sec?: number; ttl_days?: number; max_uses?: number }
+	opts: { kind: 'single' | 'multi'; ttl_sec?: number; max_uses?: number }
 ): Promise<{ token: string; expires_at: string; max_uses: number }> {
 	const body: Record<string, unknown> = {
 		kind: opts.kind,
@@ -180,8 +180,6 @@ export async function createCircleInvite(
 	};
 	if (opts.ttl_sec !== undefined) {
 		body.ttl_sec = opts.ttl_sec;
-	} else {
-		body.ttl_days = opts.ttl_days ?? 3;
 	}
 	return apiJson(origin, `/circles/${circleId}/invites`, {
 		method: 'POST',

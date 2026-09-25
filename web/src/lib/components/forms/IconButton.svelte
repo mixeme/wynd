@@ -6,6 +6,7 @@
 		label,
 		onclick,
 		size,
+		disabled = false,
 		stopPropagation = false,
 		class: className = '',
 		style = '',
@@ -15,6 +16,7 @@
 		label: string;
 		onclick: () => void;
 		size?: 'md' | 'sm' | 'xs';
+		disabled?: boolean;
 		stopPropagation?: boolean;
 		class?: string;
 		style?: string;
@@ -22,11 +24,20 @@
 	} = $props();
 
 	function onClick(e: MouseEvent) {
+		if (disabled) return;
 		if (stopPropagation) e.stopPropagation();
 		onclick();
 	}
 </script>
 
-<button type="button" class="ib {className}" {style} aria-label={label} bind:this={el} onclick={onClick}>
+<button
+	type="button"
+	class="ib {className}"
+	{style}
+	{disabled}
+	aria-label={label}
+	bind:this={el}
+	onclick={onClick}
+>
 	<Icon {name} {size} />
 </button>

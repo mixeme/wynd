@@ -2,10 +2,12 @@ package api
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"gitea.mixdep.ru/mix/wynd/internal/blob"
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
+	"gitea.mixdep.ru/mix/wynd/internal/mail"
 	"gitea.mixdep.ru/mix/wynd/internal/push"
 )
 
@@ -25,7 +27,12 @@ func writeDomainError(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "incomplete"})
 	case errors.Is(err, blob.ErrExpired):
 		writeJSON(w, http.StatusGone, map[string]string{"error": "expired"})
+	case errors.Is(err, mail.ErrNotConfigured):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "smtp_not_configured"})
+	case errors.Is(err, push.ErrNotConfigured):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "push_not_configured"})
 	default:
+		log.Printf("api: unmapped domain error: %v", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
 	}
 }
