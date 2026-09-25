@@ -80,6 +80,16 @@ export interface QueueRecord {
 	type: QueueItemType;
 	origin: string;
 	circle_id: string;
+	/**
+	 * Ключ идемпотентности: сервер по нему узнаёт повтор и возвращает уже
+	 * созданную запись вместо дубля (CLI-2). У старых записей очереди поля
+	 * нет — они уходят как раньше.
+	 */
+	client_id?: string;
+	/** Сколько раз отправка уже срывалась: задаёт паузу перед следующей (QUE-1). */
+	attempts?: number;
+	/** Когда запись помечена uploading — чтобы снять зависшую после падения вкладки. */
+	uploading_at?: number;
 	payload:
 		| PostQueuePayload
 		| CommentQueuePayload
@@ -203,11 +213,40 @@ export function getDb(): Promise<IDBPDatabase<WyndDB>> {
 				if (oldVersion < 2) {
 					db.createObjectStore('groups', { keyPath: 'id' });
 				}
+			},
+			// Открытая старая вкладка держит прежнюю версию: без blocked
+			// подъём версии вешал новую вкладку молча (LEG-2).
+			blocked() {
+				console.warn('wynd: обновление хранилища ждёт закрытия других вкладок');
+			},
+			blocking() {
+				void closeDb();
+			},
+			terminated() {
+				dbPromise = undefined;
 			}
+		}).catch((err) => {
+			// Отклонённый промис кэшировать нельзя: в приватном режиме одна
+			// неудача запирала ядро до перезагрузки (LEG-2).
+			dbPromise = undefined;
+			throw err;
 		});
 	}
 	return dbPromise;
 }
+
+// Виды снимков: тот же список, что SnapshotKind в $lib/api/snapshots.
+// Нужен здесь, чтобы отделить вид от идентификатора в ключе (CLI-1).
+const SNAPSHOT_KINDS = new Set([
+	'circles',
+	'feed',
+	'grid',
+	'map',
+	'days',
+	'day',
+	'search',
+	'instance'
+]);
 
 export function snapshotKey(origin: string, kind: string, id: string): string {
 	return `${origin}:${kind}:${id}`;
@@ -437,12 +476,17 @@ export async function putMedia(key: string, record: MediaRecord): Promise<void> 
 	await db.put('media', record, key);
 }
 
+/**
+ * Размер кэша медиа считается курсором: getAll поднимал в память все
+ * бинарные данные разом (LEG-2).
+ */
 export async function mediaStoreBytes(): Promise<number> {
 	const db = await getDb();
-	const records = await db.getAll('media');
 	let total = 0;
-	for (const record of records) {
-		total += record.buffer.byteLength;
+	let cursor = await db.transaction('media').store.openCursor();
+	while (cursor) {
+		total += cursor.value.buffer.byteLength;
+		cursor = await cursor.continue();
 	}
 	return total;
 }
@@ -452,6 +496,14 @@ export async function clearMediaStore(): Promise<void> {
 	await db.clear('media');
 }
 
+/**
+ * Ключ снимка — `${origin}:${kind}:${id}`. Без `kind` остаток после
+ * `${origin}:` начинается с вида снимка (`feed:<uuid>`), поэтому прежняя
+ * сверка «остаток === circleId» не совпадала никогда: после исключения из
+ * круга, правки и удаления записи кэш круга оставался и читался офлайн
+ * (CLI-1). Теперь вид отрезается и обязан быть известным — это же отделяет
+ * два сервера на одном хосте с разными портами.
+ */
 export async function invalidateSnapshots(
 	origin: string,
 	opts: InvalidateSnapshotsOptions = {}
@@ -465,8 +517,19 @@ export async function invalidateSnapshots(
 		const key = cursor.key as string;
 		let remove = key.startsWith(prefix);
 		if (remove && opts.circleId) {
-			const idPart = key.slice(prefix.length);
-			remove = idPart === opts.circleId || idPart.startsWith(`${opts.circleId}:`);
+			let idPart = key.slice(prefix.length);
+			if (!opts.kind) {
+				const sep = idPart.indexOf(':');
+				const kind = sep === -1 ? '' : idPart.slice(0, sep);
+				if (!SNAPSHOT_KINDS.has(kind)) {
+					remove = false;
+				} else {
+					idPart = idPart.slice(sep + 1);
+				}
+			}
+			if (remove) {
+				remove = idPart === opts.circleId || idPart.startsWith(`${opts.circleId}:`);
+			}
 		}
 		if (remove) {
 			await cursor.delete();

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,11 +22,39 @@ func NormalizePublicURL(raw string) string {
 	return strings.TrimRight(raw, "/")
 }
 
+// ValidatePublicURL нормализует адрес и отвергает то, что не является
+// http(s)-адресом с хостом. Прежняя NormalizePublicURL принимала любую строку
+// с «://», и `ftp://x` или `https://` спокойно доезжали до писем и ссылок
+// (API-5).
+func ValidatePublicURL(raw string) (string, error) {
+	normalized := NormalizePublicURL(raw)
+	if normalized == "" {
+		return "", fmt.Errorf("public_url: пустой адрес")
+	}
+	u, err := url.Parse(normalized)
+	if err != nil {
+		return "", fmt.Errorf("public_url %q: %w", raw, err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return "", fmt.Errorf("public_url %q: схема должна быть http или https", raw)
+	}
+	if u.Host == "" || u.Hostname() == "" {
+		return "", fmt.Errorf("public_url %q: не указан хост", raw)
+	}
+	if u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") {
+		return "", fmt.Errorf("public_url %q: адрес без пути, запроса и якоря", raw)
+	}
+	if u.User != nil {
+		return "", fmt.Errorf("public_url %q: без учётных данных в адресе", raw)
+	}
+	return normalized, nil
+}
+
 // WritePublicURL updates public_url in dataDir/config.json, creating the file if needed.
 func WritePublicURL(dataDir, publicURL string) error {
-	publicURL = NormalizePublicURL(publicURL)
-	if publicURL == "" {
-		return fmt.Errorf("empty public_url")
+	publicURL, err := ValidatePublicURL(publicURL)
+	if err != nil {
+		return err
 	}
 	configPath := filepath.Join(dataDir, "config.json")
 	var fc fileConfig
@@ -49,8 +78,5 @@ func WritePublicURL(dataDir, publicURL string) error {
 	if err := os.MkdirAll(filepath.Dir(configPath), 0o750); err != nil {
 		return fmt.Errorf("create config dir: %w", err)
 	}
-	if err := os.WriteFile(configPath, payload, 0o640); err != nil {
-		return fmt.Errorf("write config: %w", err)
-	}
-	return nil
+	return writeFileAtomic(configPath, payload, 0o640)
 }

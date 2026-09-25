@@ -21,8 +21,8 @@ func (s *Server) handleAdminCheck(w http.ResponseWriter, r *http.Request) {
 		_ = readJSON(r, &body)
 	}
 	external := body.External
-	if external != nil && !s.Loopback && strings.HasPrefix(s.PublicURL, "https://") {
-		code := check.ProbeHTTPRedirect(s.PublicURL)
+	if external != nil && !s.Loopback() && strings.HasPrefix(s.PublicURL(), "https://") {
+		code := check.ProbeHTTPRedirect(s.PublicURL())
 		external.RedirectStatus = code
 		external.RedirectPermanent = code == http.StatusMovedPermanently || code == http.StatusPermanentRedirect
 	}
@@ -41,12 +41,12 @@ func (s *Server) runChecks(r *http.Request, external *check.ExternalReport) ([]c
 	pub, _ := s.Push.PublicKey(ctx)
 	routineAt, backupAt := s.loadInstanceTimestamps(ctx)
 	var tlsInfo *check.TLSInfo
-	if !s.Loopback && strings.HasPrefix(s.PublicURL, "https://") {
-		tlsInfo = check.ProbeTLS(ctx, s.PublicURL)
+	if !s.Loopback() && strings.HasPrefix(s.PublicURL(), "https://") {
+		tlsInfo = check.ProbeTLS(ctx, s.PublicURL())
 	}
 	return check.RunChecks(ctx, check.Input{
-		Loopback:        s.Loopback,
-		PublicURL:       s.PublicURL,
+		Loopback:        s.Loopback(),
+		PublicURL:       s.PublicURL(),
 		DataDir:         s.DataDir,
 		SMTPTestSentAt:  mailCfg.TestSentAt,
 		SMTPLastError:   mailCfg.LastError,
@@ -72,7 +72,7 @@ func (s *Server) handleAdminProxySnippet(w http.ResponseWriter, r *http.Request)
 	case "nginx":
 		snippet = nginxSnippet(s.ListenAddr, maxBytes)
 	case "caddy":
-		snippet = caddySnippet(s.PublicURL, s.ListenAddr, maxBytes)
+		snippet = caddySnippet(s.PublicURL(), s.ListenAddr, maxBytes)
 	case "traefik":
 		snippet = traefikSnippet(s.ListenAddr, maxBytes)
 	default:

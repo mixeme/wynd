@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"sync/atomic"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
 	"gitea.mixdep.ru/mix/wynd/internal/blob"
@@ -24,9 +25,13 @@ type Server struct {
 	Push           *push.Service
 	BootstrapToken string
 	DataDir        string
-	PublicURL      string
 	ListenAddr     string
-	Loopback       bool
+	// publicURL и loopback меняются из обработчика (bootstrap, панель) и
+	// читаются другими запросами, поэтому закрыты мьютексом и atomic:
+	// экспортированные поля здесь были гонкой данных (QLT-4).
+	publicURL   string
+	publicURLMu sync.RWMutex
+	loopback    atomic.Bool
 	// TrustedProxies are peers whose X-Forwarded-For is believed. Empty means
 	// loopback only (a reverse proxy on the same host).
 	TrustedProxies []*net.IPNet
@@ -45,12 +50,12 @@ func NewServer(authSvc *auth.Service, ch *chronicle.Chronicle, blobs *blob.Store
 		Push:           pushSvc,
 		BootstrapToken: bootstrapToken,
 		DataDir:        dataDir,
-		PublicURL:      publicURL,
+		publicURL:      publicURL,
 		ListenAddr:     listenAddr,
-		Loopback:       loopback,
 		Mux:            http.NewServeMux(),
 		probes:         newProbeLimiter(),
 	}
+	s.loopback.Store(loopback)
 	s.routes()
 	return s
 }
@@ -206,4 +211,17 @@ func (s *Server) WaitNotify(ctx context.Context) {
 	case <-ctx.Done():
 		log.Print("shutdown: pending push notifications abandoned")
 	}
+}
+
+// PublicURL returns the instance public URL. Он меняется из обработчика
+// bootstrap и панели доступа, поэтому читается только через геттер (QLT-4).
+func (s *Server) PublicURL() string {
+	s.publicURLMu.RLock()
+	defer s.publicURLMu.RUnlock()
+	return s.publicURL
+}
+
+// Loopback reports whether the public URL points at this machine.
+func (s *Server) Loopback() bool {
+	return s.loopback.Load()
 }

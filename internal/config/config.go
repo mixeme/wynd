@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -55,9 +56,10 @@ func Load() (*Config, error) {
 		if !errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("read config: %w", err)
 		}
-		if err := writeFileConfig(configPath, cfg); err != nil {
-			return nil, err
-		}
+		// Чтение конфигурации ничего не пишет: файл появляется, когда его
+		// действительно сохраняют (bootstrap, панель). Иначе `wynd backup`
+		// при неверном WYND_DATA_DIR создавал пустой каталог и «успешно»
+		// бэкапил пустоту (API-5, STB-4).
 	} else {
 		var fc fileConfig
 		if err := json.Unmarshal(data, &fc); err != nil {
@@ -76,11 +78,20 @@ func Load() (*Config, error) {
 		cfg.Listen = v
 	}
 	if v := os.Getenv("WYND_PUBLIC_URL"); v != "" {
+		if cfg.PublicURL != "" && cfg.PublicURL != v && cfg.PublicURL != DefaultPublicURL {
+			log.Printf("config: WYND_PUBLIC_URL=%q перекрывает сохранённый %q", v, cfg.PublicURL)
+		}
 		cfg.PublicURL = v
 	}
 	if v, ok := os.LookupEnv("WYND_TRUSTED_PROXIES"); ok {
 		cfg.TrustedProxies = splitList(v)
 	}
+
+	normalized, err := ValidatePublicURL(cfg.PublicURL)
+	if err != nil {
+		return nil, err
+	}
+	cfg.PublicURL = normalized
 
 	if err := ensureDataLayout(absDataDir); err != nil {
 		return nil, err
@@ -133,8 +144,5 @@ func writeFileConfig(path string, cfg *Config) error {
 	}
 	payload = append(payload, '\n')
 
-	if err := os.WriteFile(path, payload, 0o640); err != nil {
-		return fmt.Errorf("write config: %w", err)
-	}
-	return nil
+	return writeFileAtomic(path, payload, 0o640)
 }

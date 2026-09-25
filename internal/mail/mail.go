@@ -13,10 +13,12 @@ import (
 	"net/smtp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
 	"gitea.mixdep.ru/mix/wynd/internal/store"
+	"gitea.mixdep.ru/mix/wynd/internal/xtime"
 )
 
 // Config is instance SMTP settings.
@@ -37,8 +39,10 @@ var sendTimeout = defaultSendTimeout
 
 // Service sends email via SMTP or falls back to logging on loopback.
 type Service struct {
-	db       *sql.DB
-	loopback bool
+	db *sql.DB
+	// loopback меняется из обработчика панели, а читается при каждой
+	// отправке: обычное поле здесь было гонкой данных (QLT-4).
+	loopback atomic.Bool
 	fallback auth.CodeDelivery
 	dial     func(ctx context.Context, addr string) (net.Conn, error)
 }
@@ -56,17 +60,18 @@ func New(st store.Store, loopback bool, fallback auth.CodeDelivery) (*Service, e
 	if fallback == nil {
 		fallback = auth.LogCodes{Logger: log.Default()}
 	}
-	return &Service{
+	svc := &Service{
 		db:       db,
-		loopback: loopback,
 		fallback: fallback,
 		dial:     defaultDial,
-	}, nil
+	}
+	svc.loopback.Store(loopback)
+	return svc, nil
 }
 
 // SetLoopback updates whether this process treats the instance as loopback.
 func (s *Service) SetLoopback(v bool) {
-	s.loopback = v
+	s.loopback.Store(v)
 }
 
 // DB exposes the underlying connection for tests.
@@ -86,7 +91,7 @@ func (s *Service) LoadConfig(ctx context.Context) (Config, error) {
 		return Config{}, fmt.Errorf("mail: load config: %w", err)
 	}
 	if testSent.Valid && testSent.String != "" {
-		t, err := time.Parse(time.RFC3339Nano, testSent.String)
+		t, err := xtime.Parse(testSent.String)
 		if err != nil {
 			return Config{}, fmt.Errorf("mail: parse test_sent_at: %w", err)
 		}
@@ -153,7 +158,7 @@ func (s *Service) SendCode(ctx context.Context, email, code string) error {
 		return err
 	}
 	if !configured(cfg) {
-		if s.loopback {
+		if s.loopback.Load() {
 			return s.fallback.SendCode(ctx, email, code)
 		}
 		return ErrNotConfigured
@@ -186,7 +191,7 @@ func (s *Service) SendTest(ctx context.Context, to string) error {
 }
 
 func (s *Service) recordSMTPTest(ctx context.Context, sendErr error) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := xtime.Format(time.Now())
 	errText := ""
 	if sendErr != nil {
 		errText = sendErr.Error()

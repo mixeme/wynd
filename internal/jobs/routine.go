@@ -43,7 +43,9 @@ func RunDailyRoutine(ctx context.Context, db *sql.DB, blobsDir string, now time.
 	cutoff := xtime.Format(now.Add(-routineGrace))
 	emptyCutoff := xtime.Format(now.Add(-emptyAccountGrace))
 	nowRaw := xtime.Format(now)
-	expireBound := expireBefore(now)
+	// Метки фиксированной ширины сравниваются как строки корректно, поэтому
+	// сдвиг границы на секунду больше не нужен (TIME-1).
+	expireBound := nowRaw
 
 	// Шаги независимы: сбой одного не отменяет остальные, иначе одна
 	// застрявшая ошибка навсегда оставляет инстанс без уборки сессий, кодов,
@@ -234,12 +236,6 @@ func revokeExpiredInvites(ctx context.Context, db *sql.DB, nowRaw string) (int, 
 	}
 	aff, _ := res.RowsAffected()
 	return int(aff), nil
-}
-
-// expireBefore returns a string bound so legacy RFC3339 timestamps (no fractional
-// seconds) compare as expired within the same UTC second as now.
-func expireBefore(now time.Time) string {
-	return now.UTC().Truncate(time.Second).Add(time.Second).Format(time.RFC3339Nano)
 }
 
 // deleteExpired removes rows whose timestamp column is before the boundary.

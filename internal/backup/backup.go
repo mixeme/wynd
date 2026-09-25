@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"gitea.mixdep.ru/mix/wynd/internal/xtime"
 	_ "modernc.org/sqlite"
 )
 
@@ -264,7 +265,7 @@ func touchLastBackupAt(dbPath string) error {
 		return fmt.Errorf("touch last_backup_at open: %w", err)
 	}
 	defer db.Close()
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := xtime.Format(time.Now())
 	_, err = db.Exec(`UPDATE instance_settings SET last_backup_at = ? WHERE id = 1`, now)
 	if err != nil && strings.Contains(err.Error(), "no such column") {
 		return nil

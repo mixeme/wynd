@@ -178,18 +178,18 @@ func (c *Chronicle) rejoinTx(ctx context.Context, tx *sql.Tx, existing Membershi
 
 // LeaveWithAccess closes the active span with read access until now.
 func (c *Chronicle) LeaveWithAccess(ctx context.Context, circleID, accountID string, now time.Time) error {
-	if err := c.forbidOwnerLeave(ctx, circleID, accountID); err != nil {
-		return err
-	}
-	return c.leave(ctx, circleID, accountID, StatusLeftWithAccess, true, now)
+	return c.leave(ctx, circleID, accountID, StatusLeftWithAccess, true, now,
+		func(ctx context.Context, tx *sql.Tx) error {
+			return c.forbidOwnerLeaveTx(ctx, tx, circleID, accountID)
+		})
 }
 
 // Leave revokes all access immediately.
 func (c *Chronicle) Leave(ctx context.Context, circleID, accountID string, now time.Time) error {
-	if err := c.forbidOwnerLeave(ctx, circleID, accountID); err != nil {
-		return err
-	}
-	return c.leave(ctx, circleID, accountID, StatusGone, false, now)
+	return c.leave(ctx, circleID, accountID, StatusGone, false, now,
+		func(ctx context.Context, tx *sql.Tx) error {
+			return c.forbidOwnerLeaveTx(ctx, tx, circleID, accountID)
+		})
 }
 
 // LeaveInTx revokes all access inside an existing transaction (admin account delete).
@@ -197,8 +197,10 @@ func (c *Chronicle) LeaveInTx(ctx context.Context, tx *sql.Tx, circleID, account
 	return c.leaveInTx(ctx, tx, circleID, accountID, StatusGone, false, now)
 }
 
-func (c *Chronicle) forbidOwnerLeave(ctx context.Context, circleID, accountID string) error {
-	owner, err := c.circleOwner(ctx, c.db, circleID)
+// forbidOwnerLeaveTx — владелец не уходит из своего круга. Проверка читает
+// владельца в той же транзакции, что и запись (QLT-1).
+func (c *Chronicle) forbidOwnerLeaveTx(ctx context.Context, tx *sql.Tx, circleID, accountID string) error {
+	owner, err := c.circleOwner(ctx, tx, circleID)
 	if err != nil {
 		return err
 	}
@@ -210,25 +212,31 @@ func (c *Chronicle) forbidOwnerLeave(ctx context.Context, circleID, accountID st
 
 // Exclude removes a member without read access.
 func (c *Chronicle) Exclude(ctx context.Context, circleID, actorAccountID, targetAccountID string, now time.Time) error {
-	owner, err := c.circleOwner(ctx, c.db, circleID)
-	if err != nil {
-		return err
-	}
-	if actorAccountID != owner {
-		return ErrForbidden
-	}
-	if targetAccountID == owner {
-		return ErrForbidden
-	}
-	return c.leave(ctx, circleID, targetAccountID, StatusGone, false, now)
+	return c.leave(ctx, circleID, targetAccountID, StatusGone, false, now, func(ctx context.Context, tx *sql.Tx) error {
+		owner, err := c.circleOwner(ctx, tx, circleID)
+		if err != nil {
+			return err
+		}
+		if actorAccountID != owner || targetAccountID == owner {
+			return ErrForbidden
+		}
+		return nil
+	})
 }
 
-func (c *Chronicle) leave(ctx context.Context, circleID, accountID string, status MembershipStatus, retainRead bool, now time.Time) error {
-	tx, err := c.db.BeginTx(ctx, nil)
+// leave закрывает членство. precheck, если задан, выполняется внутри той же
+// транзакции — до любой записи.
+func (c *Chronicle) leave(ctx context.Context, circleID, accountID string, status MembershipStatus, retainRead bool, now time.Time, precheck func(context.Context, *sql.Tx) error) error {
+	tx, err := c.beginWrite(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if precheck != nil {
+		if err := precheck(ctx, tx); err != nil {
+			return err
+		}
+	}
 	if err := c.leaveInTx(ctx, tx, circleID, accountID, status, retainRead, now); err != nil {
 		return err
 	}

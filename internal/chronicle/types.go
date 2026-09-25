@@ -198,9 +198,14 @@ type PostInput struct {
 	Now        time.Time
 	// AllowEmptyBody is set when media is attached in the same transaction (photo-only posts).
 	AllowEmptyBody bool
+	// ClientID — необязательный ключ идемпотентности офлайн-очереди: повтор
+	// с тем же значением возвращает уже созданную запись (CLI-2).
+	ClientID string
 }
 
 type CommentInput struct {
+	// ClientID — ключ идемпотентности, как у записи (CLI-2).
+	ClientID  string
 	CircleID  string
 	AccountID string
 	PostID    string

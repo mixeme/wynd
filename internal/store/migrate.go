@@ -59,6 +59,14 @@ func migrate(db *sql.DB) error {
 		if applied[m.version] {
 			continue
 		}
+		// Пропущенная версия ниже уже применённых — отказ запуска, а не
+		// применение поверх более новой схемы: середина цепочки не
+		// восстанавливается задним числом, и «доливка» портит данные (MIG-1).
+		if m.version < maxVersion {
+			return fmt.Errorf(
+				"миграция %s пропущена, а схема уже версии %d: восстановите базу из бэкапа",
+				m.name, maxVersion)
+		}
 		if err := applyMigration(db, m); err != nil {
 			return err
 		}
@@ -143,16 +151,14 @@ func applyMigration(db *sql.DB, m migration) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if body := strings.TrimSpace(stripSQLComments(m.sql)); body != "" {
-		if _, err := tx.Exec(m.sql); err != nil {
-			return fmt.Errorf("apply %s: %w", m.name, err)
-		}
+	if _, err := tx.Exec(m.sql); err != nil {
+		return fmt.Errorf("apply %s: %w", m.name, err)
 	}
 
 	if _, err := tx.Exec(
 		`INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)`,
 		m.version,
-		time.Now().UTC().Format(time.RFC3339Nano),
+		time.Now().UTC().Format("2006-01-02T15:04:05.000000000Z"),
 	); err != nil {
 		return fmt.Errorf("record %s: %w", m.name, err)
 	}
@@ -160,17 +166,4 @@ func applyMigration(db *sql.DB, m migration) error {
 		return fmt.Errorf("commit %s: %w", m.name, err)
 	}
 	return nil
-}
-
-func stripSQLComments(s string) string {
-	lines := strings.Split(s, "\n")
-	out := make([]string, 0, len(lines))
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" || strings.HasPrefix(trimmed, "--") {
-			continue
-		}
-		out = append(out, line)
-	}
-	return strings.Join(out, "\n")
 }

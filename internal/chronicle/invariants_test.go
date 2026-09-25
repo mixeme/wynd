@@ -142,7 +142,7 @@ func TestInvariantChronicleForbidsEditAndDelete(t *testing.T) {
 	if !errors.Is(err, chronicle.ErrForbidden) {
 		t.Fatalf("edit: got %v, want ErrForbidden", err)
 	}
-	err = e.ch.DeletePost(e.ctx, circle.ID, "owner", p.ID, e.at(1))
+	_, err = e.ch.DeletePost(e.ctx, circle.ID, "owner", p.ID, e.at(1))
 	if !errors.Is(err, chronicle.ErrForbidden) {
 		t.Fatalf("delete: got %v, want ErrForbidden", err)
 	}
@@ -231,7 +231,7 @@ func TestInvariantLeaveDoesNotExpandDeleteRights(t *testing.T) {
 	if err := e.ch.LeaveWithAccess(e.ctx, circle.ID, "guest", e.at(1)); err != nil {
 		t.Fatal(err)
 	}
-	err := e.ch.DeletePost(e.ctx, circle.ID, "guest", p.ID, e.at(2))
+	_, err := e.ch.DeletePost(e.ctx, circle.ID, "guest", p.ID, e.at(2))
 	if !errors.Is(err, chronicle.ErrForbidden) {
 		t.Fatalf("got %v, want ErrForbidden", err)
 	}
@@ -246,7 +246,7 @@ func TestInvariantBranchDeletionScrubsText(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := e.ch.DeletePost(e.ctx, circle.ID, "owner", p.ID, e.at(1)); err != nil {
+	if _, err := e.ch.DeletePost(e.ctx, circle.ID, "owner", p.ID, e.at(1)); err != nil {
 		t.Fatal(err)
 	}
 	body, err := e.ch.PostBody(e.ctx, p.ID)
@@ -313,7 +313,7 @@ func TestInvariantDayCollapseAndRevive(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := e.ch.DeletePost(e.ctx, circle.ID, "owner", p.ID, e.at(1)); err != nil {
+	if _, err := e.ch.DeletePost(e.ctx, circle.ID, "owner", p.ID, e.at(1)); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.ch.AssertDayCascadeRemoved(e.ctx, circle.ID, "2026-08-05"); err != nil {
@@ -411,7 +411,7 @@ func TestInvariantBranchDeletionScrubsEditedPayload(t *testing.T) {
 	if err := e.ch.EditPost(e.ctx, circle.ID, "owner", p.ID, "секрет-правка", "", e.at(0)); err != nil {
 		t.Fatal(err)
 	}
-	if err := e.ch.DeletePost(e.ctx, circle.ID, "owner", p.ID, e.at(1)); err != nil {
+	if _, err := e.ch.DeletePost(e.ctx, circle.ID, "owner", p.ID, e.at(1)); err != nil {
 		t.Fatal(err)
 	}
 	if remains, err := eventTextRemains(e, circle.ID, "секрет-правка"); err != nil {
@@ -498,7 +498,7 @@ func TestDayCollapseRemovesUserContentFromJournal(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := e.ch.DeletePost(e.ctx, circle.ID, "owner", p.ID, e.at(1)); err != nil {
+	if _, err := e.ch.DeletePost(e.ctx, circle.ID, "owner", p.ID, e.at(1)); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.ch.AssertDayCascadeRemoved(e.ctx, circle.ID, "2026-08-05"); err != nil {
@@ -558,7 +558,7 @@ func TestInvariantCommentEditAndDeleteOwnWindow(t *testing.T) {
 	if body != "секрет" {
 		t.Fatalf("body: %q", body)
 	}
-	err = e.ch.DeletePost(e.ctx, circle.ID, "owner", p.ID, e.at(2))
+	_, err = e.ch.DeletePost(e.ctx, circle.ID, "owner", p.ID, e.at(2))
 	if !errors.Is(err, chronicle.ErrForbidden) {
 		t.Fatalf("post still in chronicle window: got %v", err)
 	}
@@ -743,7 +743,7 @@ func TestInvariantCoverRollsBackWhenPostDeleted(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := e.ch.DeletePost(e.ctx, circle.ID, "owner", p2.ID, e.at(1)); err != nil {
+	if _, err := e.ch.DeletePost(e.ctx, circle.ID, "owner", p2.ID, e.at(1)); err != nil {
 		t.Fatal(err)
 	}
 	day, err := e.ch.GetDay(e.ctx, circle.ID, "2026-08-05")
@@ -762,7 +762,7 @@ func TestInvariantCoverRollsBackWhenPostDeleted(t *testing.T) {
 		t.Fatalf("live cover events: %d", n)
 	}
 
-	if err := e.ch.DeletePost(e.ctx, circle.ID, "owner", p1.ID, e.at(1)); err != nil {
+	if _, err := e.ch.DeletePost(e.ctx, circle.ID, "owner", p1.ID, e.at(1)); err != nil {
 		t.Fatal(err)
 	}
 	exists, err := e.ch.DayExists(e.ctx, circle.ID, "2026-08-05")

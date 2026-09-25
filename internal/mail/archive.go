@@ -46,7 +46,7 @@ func (s *Service) notify(ctx context.Context, email, subject, body string) error
 		return err
 	}
 	if !configured(cfg) {
-		if s.loopback {
+		if s.loopback.Load() {
 			log.Printf("wynd mail (loopback): to=%s subject=%q\n%s", email, subject, body)
 			return nil
 		}

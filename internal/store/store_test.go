@@ -22,8 +22,8 @@ func TestOpenMigrateClose(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Version: %v", err)
 	}
-	if version != 10 {
-		t.Fatalf("schema version: got %d, want 10", version)
+	if version != 13 {
+		t.Fatalf("schema version: got %d, want 13", version)
 	}
 
 	if err := st.Close(); err != nil {
@@ -56,8 +56,8 @@ func TestReopenAppliesMigrationsOnce(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Version: %v", err)
 	}
-	if version != 10 {
-		t.Fatalf("schema version: got %d, want 10", version)
+	if version != 13 {
+		t.Fatalf("schema version: got %d, want 13", version)
 	}
 
 	s := st.(*SQLite)
@@ -65,8 +65,8 @@ func TestReopenAppliesMigrationsOnce(t *testing.T) {
 	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM schema_migrations`).Scan(&n); err != nil {
 		t.Fatalf("count schema_migrations: %v", err)
 	}
-	if n != 10 {
-		t.Fatalf("schema_migrations rows: got %d, want 10", n)
+	if n != 13 {
+		t.Fatalf("schema_migrations rows: got %d, want 13", n)
 	}
 }
 
@@ -130,7 +130,7 @@ func TestRejectsStaleSchemaVersion(t *testing.T) {
 			version INTEGER PRIMARY KEY,
 			applied_at TEXT NOT NULL
 		);
-		INSERT INTO schema_migrations (version, applied_at) VALUES (13, '2026-01-01T00:00:00Z');
+		INSERT INTO schema_migrations (version, applied_at) VALUES (99, '2026-01-01T00:00:00Z');
 	`); err != nil {
 		_ = s.Close()
 		t.Fatalf("seed stale version: %v", err)
@@ -141,7 +141,7 @@ func TestRejectsStaleSchemaVersion(t *testing.T) {
 
 	_, err = Open(path)
 	if err == nil {
-		t.Fatal("Open: want error for schema version 13")
+		t.Fatal("Open: want error for unknown schema version 99")
 	}
 	if !strings.Contains(err.Error(), "удалите wynd.db") {
 		t.Fatalf("error: %v", err)

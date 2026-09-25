@@ -1,6 +1,7 @@
 package search_test
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -158,5 +159,100 @@ func TestSearchHidesDayTitleOutsideSpan(t *testing.T) {
 	}
 	if len(hits) != 1 {
 		t.Fatalf("день внутри отрезка должен находиться: %+v", hits)
+	}
+}
+
+// Инвариант (SRCH-2): запрос из нескольких слов — это AND по словам, а не
+// одна фраза. Управляющие символы не доходят до FTS.
+func TestSearchTokenizesQuery(t *testing.T) {
+	ch, svc := newSearchEnv(t)
+	ctx := t.Context()
+	now := time.Date(2026, 8, 30, 10, 0, 0, 0, time.UTC)
+	circle, _, _, err := ch.CreateCircle(ctx, chronicle.CreateCircleInput{
+		Name: "Семья", OwnerAccountID: "owner", OwnerName: "Аня", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ch.CreatePost(ctx, chronicle.PostInput{
+		CircleID: circle.ID, AccountID: "owner",
+		Body: "море и лето на даче", EntryDate: "2026-08-30", Now: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	hits, err := svc.SearchCircle(ctx, "owner", circle.ID, "море даче", 10, search.Filters{})
+	if err != nil {
+		t.Fatalf("SearchCircle: %v", err)
+	}
+	if len(hits) != 1 {
+		t.Fatalf("несоседние слова не нашлись: %+v", hits)
+	}
+
+	// Слово, которого нет, отсекает результат: это AND, а не OR.
+	hits, err = svc.SearchCircle(ctx, "owner", circle.ID, "море горы", 10, search.Filters{})
+	if err != nil {
+		t.Fatalf("SearchCircle: %v", err)
+	}
+	if len(hits) != 0 {
+		t.Fatalf("AND превратился в OR: %+v", hits)
+	}
+
+	// NUL и прочие управляющие символы: отказ или пустой результат, не 500.
+	for _, q := range []string{"мо\x00ре", "\x00", "   ", `"`, "NEAR(", "AND"} {
+		if _, err := svc.SearchCircle(ctx, "owner", circle.ID, q, 10, search.Filters{}); err != nil &&
+			!errors.Is(err, chronicle.ErrInvalid) {
+			t.Fatalf("q=%q: err = %v", q, err)
+		}
+	}
+}
+
+// Инвариант (SRCH-3): в поиске лежит актуальная версия названия дня. Правка
+// или удаление старой версии не должны уносить день из поиска.
+func TestSearchKeepsCurrentDayTitle(t *testing.T) {
+	ch, svc := newSearchEnv(t)
+	ctx := t.Context()
+	now := time.Date(2026, 8, 30, 10, 0, 0, 0, time.UTC)
+	circle, _, _, err := ch.CreateCircle(ctx, chronicle.CreateCircleInput{
+		Name: "Семья", OwnerAccountID: "owner", OwnerName: "Аня", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ch.CreatePost(ctx, chronicle.PostInput{
+		CircleID: circle.ID, AccountID: "owner", Body: "запись",
+		EntryDate: "2026-08-30", Now: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for i, title := range []string{"первоеназвание", "второеназвание"} {
+		if err := ch.SetDayTitle(ctx, chronicle.DayTitleInput{
+			CircleID: circle.ID, AccountID: "owner", EntryDate: "2026-08-30",
+			Title: title, Now: now.Add(time.Duration(i+1) * time.Hour),
+		}); err != nil {
+			t.Fatalf("SetDayTitle %s: %v", title, err)
+		}
+	}
+
+	// Удаляем старую версию названия — так делает purge старых строк.
+	if _, err := ch.DB().ExecContext(ctx, `
+		DELETE FROM day_titles WHERE circle_id = ? AND title = 'первоеназвание'
+	`, circle.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	hits, err := svc.SearchCircle(ctx, "owner", circle.ID, "второеназвание", 10, search.Filters{})
+	if err != nil {
+		t.Fatalf("SearchCircle: %v", err)
+	}
+	if len(hits) != 1 {
+		t.Fatalf("актуальное название дня пропало из поиска: %+v", hits)
+	}
+	hits, err = svc.SearchCircle(ctx, "owner", circle.ID, "первоеназвание", 10, search.Filters{})
+	if err != nil {
+		t.Fatalf("SearchCircle: %v", err)
+	}
+	if len(hits) != 0 {
+		t.Fatalf("удалённая версия названия осталась в поиске: %+v", hits)
 	}
 }

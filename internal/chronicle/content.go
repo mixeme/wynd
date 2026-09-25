@@ -57,6 +57,18 @@ func (c *Chronicle) createPostInTx(ctx context.Context, tx *sql.Tx, in PostInput
 		return Post{}, err
 	}
 
+	// Повтор с тем же ключом идемпотентности не создаёт вторую запись, а
+	// возвращает уже созданную (CLI-2).
+	if in.ClientID != "" {
+		existing, err := c.postByClientID(ctx, tx, in.CircleID, in.ClientID)
+		if err == nil {
+			return existing, nil
+		}
+		if err != ErrNotFound {
+			return Post{}, err
+		}
+	}
+
 	window, err := c.circleEditWindow(ctx, tx, in.CircleID)
 	if err != nil {
 		return Post{}, err
@@ -94,7 +106,7 @@ func (c *Chronicle) createPostInTx(ctx context.Context, tx *sql.Tx, in PostInput
 	if err := c.insertPost(ctx, tx, postRow{
 		id: postID, circleID: in.CircleID, eventSeq: ev.Seq, identityID: mem.IdentityID,
 		authorName: name, body: body, entryDate: entryDate, capturedAt: in.CapturedAt,
-		createdAt: now, window: window, editableUntil: until,
+		createdAt: now, window: window, editableUntil: until, clientID: in.ClientID,
 	}); err != nil {
 		return Post{}, err
 	}
@@ -194,42 +206,69 @@ func (c *Chronicle) EditPostInTx(ctx context.Context, tx *sql.Tx, circleID, acco
 	return nil
 }
 
-// DeletePost removes a post branch (post, comments, reactions) and scrubs text.
-func (c *Chronicle) DeletePost(ctx context.Context, circleID, accountID, postID string, now time.Time) error {
+// DeletePost removes a post branch (post, comments, reactions), scrubs text,
+// снимает вложения и ссылки на блобы — всё одной транзакцией. Возвращает
+// блобы, которые больше никто не держит: вызывающий освобождает их после
+// коммита (QLT-3, BLB-3).
+func (c *Chronicle) DeletePost(ctx context.Context, circleID, accountID, postID string, now time.Time) ([]string, error) {
 	now = utcOrNow(now)
-	post, err := c.loadPost(ctx, c.db, postID)
+	tx, err := c.beginWrite(ctx)
 	if err != nil {
-		return err
-	}
-	if post.CircleID != circleID {
-		return ErrNotFound
-	}
-	if post.Deleted {
-		return ErrInvalid
-	}
-	if _, err := c.requireAuthor(ctx, c.db, circleID, accountID, post.IdentityID, now); err != nil {
-		return err
-	}
-	if !post.EditWindow.CanEdit(post.CreatedAt, now) {
-		return ErrForbidden
-	}
-
-	tx, err := c.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	// Предусловия читаются в той же транзакции, что и запись (QLT-1).
+	post, err := c.loadPost(ctx, tx, postID)
+	if err != nil {
+		return nil, err
+	}
+	if post.CircleID != circleID {
+		return nil, ErrNotFound
+	}
+	if post.Deleted {
+		return nil, ErrInvalid
+	}
+	if _, err := c.requireAuthor(ctx, tx, circleID, accountID, post.IdentityID, now); err != nil {
+		return nil, err
+	}
+	if !post.EditWindow.CanEdit(post.CreatedAt, now) {
+		return nil, ErrForbidden
+	}
+
+	blobIDs, err := c.postMediaBlobIDsTx(ctx, tx, postID)
+	if err != nil {
+		return nil, err
+	}
 	if err := c.scrubPostBranch(ctx, tx, post); err != nil {
-		return err
+		return nil, err
+	}
+	if err := c.dropPostMediaInTx(ctx, tx, postID); err != nil {
+		return nil, err
 	}
 	if err := c.maybeCollapseDay(ctx, tx, circleID, post.EntryDate); err != nil {
-		return err
+		return nil, err
 	}
 	if err := c.reconcileDayCoverAfterPostGone(ctx, tx, circleID, post.EntryDate); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return blobIDs, nil
+}
+
+// dropPostMediaInTx снимает вложения и ссылки на блобы записи. Ссылки
+// снимаются внутри доменной транзакции удаления, а не в обработчике: иначе
+// purge и удаление круга о них забывают, и файлы остаются на диске (BLB-3).
+func (c *Chronicle) dropPostMediaInTx(ctx context.Context, tx *sql.Tx, postID string) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM post_media WHERE post_id = ?`, postID); err != nil {
 		return err
 	}
-	return tx.Commit()
+	_, err := tx.ExecContext(ctx, `
+		DELETE FROM blob_refs WHERE ref_type = 'post' AND ref_id = ?
+	`, postID)
+	return err
 }
 
 func (c *Chronicle) scrubPostBranch(ctx context.Context, tx *sql.Tx, post Post) error {
@@ -256,6 +295,7 @@ func (c *Chronicle) scrubPostBranch(ctx context.Context, tx *sql.Tx, post Post) 
 }
 
 type postRow struct {
+	clientID      string
 	id            string
 	circleID      string
 	eventSeq      int64
@@ -273,11 +313,11 @@ func (c *Chronicle) insertPost(ctx context.Context, tx *sql.Tx, row postRow) err
 	_, err := tx.ExecContext(ctx, `
 		INSERT INTO posts (
 			id, circle_id, event_seq, identity_id, author_name, body,
-			entry_date, captured_at, created_at, edit_window_sec, editable_until
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			entry_date, captured_at, created_at, edit_window_sec, editable_until, client_id
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?, ''))
 	`, row.id, row.circleID, row.eventSeq, row.identityID, row.authorName, row.body,
 		row.entryDate, formatCaptured(row.capturedAt), formatTime(row.createdAt),
-		editWindowToSQL(row.window), editableUntilToSQL(row.editableUntil))
+		editWindowToSQL(row.window), editableUntilToSQL(row.editableUntil), row.clientID)
 	return err
 }
 
@@ -407,6 +447,16 @@ func (c *Chronicle) CreateComment(ctx context.Context, in CommentInput) (Comment
 	if err != nil {
 		return Comment{}, err
 	}
+	// Повтор очереди с тем же ключом возвращает уже созданный комментарий.
+	if in.ClientID != "" {
+		existing, err := c.commentByClientID(ctx, c.db, in.CircleID, in.ClientID)
+		if err == nil {
+			return existing, nil
+		}
+		if err != ErrNotFound {
+			return Comment{}, err
+		}
+	}
 	post, err := c.loadPost(ctx, c.db, in.PostID)
 	if err != nil {
 		return Comment{}, err
@@ -450,10 +500,10 @@ func (c *Chronicle) CreateComment(ctx context.Context, in CommentInput) (Comment
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO comments (
 			id, circle_id, post_id, event_seq, identity_id, author_name, body,
-			created_at, edit_window_sec, editable_until
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			created_at, edit_window_sec, editable_until, client_id
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?, ''))
 	`, commentID, in.CircleID, in.PostID, ev.Seq, mem.IdentityID, name, body,
-		formatTime(now), editWindowToSQL(window), editableUntilToSQL(until))
+		formatTime(now), editWindowToSQL(window), editableUntilToSQL(until), in.ClientID)
 	if err != nil {
 		return Comment{}, err
 	}
@@ -784,4 +834,34 @@ func (c *Chronicle) DeleteServiceEvent(ctx context.Context, circleID, accountID 
 	_ = accountID
 	_ = now
 	return ErrForbidden
+}
+
+// postByClientID находит запись по ключу идемпотентности очереди (CLI-2).
+func (c *Chronicle) postByClientID(ctx context.Context, q querier, circleID, clientID string) (Post, error) {
+	var id string
+	err := q.QueryRowContext(ctx, `
+		SELECT id FROM posts WHERE circle_id = ? AND client_id = ?
+	`, circleID, clientID).Scan(&id)
+	if err == sql.ErrNoRows {
+		return Post{}, ErrNotFound
+	}
+	if err != nil {
+		return Post{}, err
+	}
+	return c.loadPost(ctx, q, id)
+}
+
+// commentByClientID — то же для комментария.
+func (c *Chronicle) commentByClientID(ctx context.Context, q querier, circleID, clientID string) (Comment, error) {
+	var id string
+	err := q.QueryRowContext(ctx, `
+		SELECT id FROM comments WHERE circle_id = ? AND client_id = ?
+	`, circleID, clientID).Scan(&id)
+	if err == sql.ErrNoRows {
+		return Comment{}, ErrNotFound
+	}
+	if err != nil {
+		return Comment{}, err
+	}
+	return c.loadComment(ctx, q, id)
 }

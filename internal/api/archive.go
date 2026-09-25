@@ -349,7 +349,7 @@ func (s *Server) sendArchiveCycleStartEmails(ctx context.Context, circleID strin
 	if err != nil {
 		return
 	}
-	download := strings.TrimRight(s.PublicURL, "/") + "/api/v1/circles/" + circleID + "/archive/download"
+	download := strings.TrimRight(s.PublicURL(), "/") + "/api/v1/circles/" + circleID + "/archive/download"
 	for _, email := range emails {
 		_ = s.Mail.SendArchiveCycleStart(bg, email, cycle.CutoffDate, cycle.Deadline, download)
 	}

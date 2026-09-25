@@ -161,18 +161,32 @@ func (s *Store) WriteChunk(ctx context.Context, sessionID, accountID string, off
 	remaining := sess.ExpectedSize - offset
 	limited := io.LimitReader(r, remaining+chunkOverhead)
 	written, err := io.Copy(f, limited)
-	if err != nil {
-		return sess.ReceivedBytes, err
-	}
-	if written > remaining {
+	// Любая неудача чанка (обрыв, перелёт) возвращает файл к прежней длине:
+	// иначе .part оставался испорченным безвозвратно, и догрузка с того же
+	// смещения дописывала мусор (UPL-1).
+	if err != nil || written > remaining {
+		if truncErr := f.Truncate(offset); truncErr != nil {
+			return sess.ReceivedBytes, truncErr
+		}
+		if err != nil {
+			return sess.ReceivedBytes, err
+		}
 		return sess.ReceivedBytes, ErrInvalid
 	}
 	newTotal := offset + written
-	_, err = s.db.ExecContext(ctx, `
-		UPDATE upload_sessions SET received_bytes = ? WHERE id = ?
-	`, newTotal, sessionID)
+	// Условный UPDATE: параллельный чанк той же сессии не должен откатывать
+	// счётчик назад.
+	res, err := s.db.ExecContext(ctx, `
+		UPDATE upload_sessions SET received_bytes = ? WHERE id = ? AND received_bytes = ?
+	`, newTotal, sessionID, offset)
 	if err != nil {
 		return sess.ReceivedBytes, err
+	}
+	if n, err := res.RowsAffected(); err != nil {
+		return sess.ReceivedBytes, err
+	} else if n == 0 {
+		_ = f.Truncate(offset)
+		return sess.ReceivedBytes, ErrInvalid
 	}
 	return newTotal, nil
 }
@@ -205,6 +219,13 @@ func (s *Store) CompleteSession(ctx context.Context, in CompleteSessionInput) (B
 		return Blob{}, ErrInvalid
 	}
 
+	// Потолок перепроверяется на завершении: между созданием сессии и
+	// завершением могли дойти другие загрузки. Размер этой сессии уже учтён
+	// как зарезервированный, поэтому добавка — ноль (UPL-2).
+	if err := s.CheckMediaQuota(ctx, "", 0); err != nil {
+		return Blob{}, err
+	}
+
 	blobID, err := newID()
 	if err != nil {
 		return Blob{}, err
@@ -215,27 +236,39 @@ func (s *Store) CompleteSession(ctx context.Context, in CompleteSessionInput) (B
 		return Blob{}, err
 	}
 	dest := filepath.Join(s.dir, rel)
-	if err := copyFile(path, dest); err != nil {
-		return Blob{}, err
-	}
-	_ = os.Remove(path)
 
 	now := utcOrNow(in.Now)
+	// Порядок: сначала строка blobs со статусом pending, затем перенос файла,
+	// затем complete. Прежний порядок (копия файла и удаление .part до
+	// транзакции) при сбое оставлял безымянный файл навсегда или сессию без
+	// .part (UPL-1). Rename вместо копии: файл не читается дважды.
+	if _, err := s.db.ExecContext(ctx, `
+		INSERT INTO blobs (id, account_id, sha256, size_bytes, mime_type, original_filename, storage_path, status, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+	`, blobID, in.AccountID, sum, sess.ExpectedSize, sess.MimeType, nullableString(sess.OriginalFilename), rel, formatTime(now)); err != nil {
+		return Blob{}, err
+	}
+	if err := os.Rename(path, dest); err != nil {
+		// Кросс-устройственный перенос падает — тогда копия и удаление.
+		if copyErr := copyFile(path, dest); copyErr != nil {
+			_, _ = s.db.ExecContext(ctx, `DELETE FROM blobs WHERE id = ? AND status = 'pending'`, blobID)
+			return Blob{}, copyErr
+		}
+		_ = os.Remove(path)
+	}
+
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return Blob{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	_, err = tx.ExecContext(ctx, `
-		INSERT INTO blobs (id, account_id, sha256, size_bytes, mime_type, original_filename, storage_path, status, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, 'complete', ?)
-	`, blobID, in.AccountID, sum, sess.ExpectedSize, sess.MimeType, nullableString(sess.OriginalFilename), rel, formatTime(now))
-	if err != nil {
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE blobs SET status = 'complete' WHERE id = ?
+	`, blobID); err != nil {
 		return Blob{}, err
 	}
-	_, err = tx.ExecContext(ctx, `DELETE FROM upload_sessions WHERE id = ?`, in.SessionID)
-	if err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM upload_sessions WHERE id = ?`, in.SessionID); err != nil {
 		return Blob{}, err
 	}
 	if err := tx.Commit(); err != nil {

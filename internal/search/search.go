@@ -87,8 +87,11 @@ func (s *Service) SearchCircleAuthors(ctx context.Context, accountID, circleID, 
 		return nil, err
 	}
 	filters.Author = ""
-	ftsQuery := ftsEscape(query)
-	args := []any{ftsQuery, circleID, accountID}
+	fts, err := ftsQuery(query)
+	if err != nil {
+		return nil, err
+	}
+	args := []any{fts, circleID, accountID}
 	whereExtra, filterArgs := filterSQL(filters)
 	args = append(args, filterArgs...)
 	args = append(args, defaultAuthorLimit)
@@ -131,8 +134,11 @@ func (s *Service) search(ctx context.Context, accountID, circleID, query string,
 	if limit <= 0 || limit > defaultLimit {
 		limit = defaultLimit
 	}
-	ftsQuery := ftsEscape(query)
-	args := []any{ftsQuery, accountID}
+	fts, err := ftsQuery(query)
+	if err != nil {
+		return nil, err
+	}
+	args := []any{fts, accountID}
 	whereCircle := ""
 	if circleID != "" {
 		whereCircle = " AND f.circle_id = ?"
@@ -194,10 +200,51 @@ func (s *Service) collectHits(ctx context.Context, rows *sql.Rows, limit int, wi
 	return out, rows.Err()
 }
 
-func ftsEscape(q string) string {
+const (
+	maxQueryBytes  = 256
+	maxQueryTokens = 8
+)
+
+// ftsQuery собирает запрос FTS из слов: каждое слово в кавычках, слова
+// соединяются AND. Раньше весь запрос уходил одной фразой, и «море дача» не
+// находило «море и лето на даче». Управляющие символы вырезаются — NUL в
+// запросе валил поиск пятисоткой. Префиксного поиска и распознавания
+// «точной фразы в кавычках» по-прежнему нет (SRCH-2).
+func ftsQuery(q string) (string, error) {
+	q = strings.Map(func(r rune) rune {
+		if r == '\t' || r == '\n' || r == '\r' {
+			return ' '
+		}
+		if r < 0x20 || r == 0x7f {
+			return -1
+		}
+		return r
+	}, q)
 	q = strings.TrimSpace(q)
-	q = strings.ReplaceAll(q, `"`, `""`)
-	return `"` + q + `"`
+	if len(q) > maxQueryBytes {
+		q = q[:maxQueryBytes]
+		// Обрезка могла разрубить руну — отбрасываем хвост до пробела.
+		if i := strings.LastIndexByte(q, ' '); i > 0 {
+			q = q[:i]
+		}
+		q = strings.ToValidUTF8(q, "")
+	}
+	tokens := strings.Fields(q)
+	if len(tokens) > maxQueryTokens {
+		tokens = tokens[:maxQueryTokens]
+	}
+	quoted := make([]string, 0, len(tokens))
+	for _, t := range tokens {
+		t = strings.ReplaceAll(t, `"`, `""`)
+		if strings.TrimSpace(t) == "" {
+			continue
+		}
+		quoted = append(quoted, `"`+t+`"`)
+	}
+	if len(quoted) == 0 {
+		return "", chronicle.ErrInvalid
+	}
+	return strings.Join(quoted, " AND "), nil
 }
 
 func filterSQL(f Filters) (string, []any) {

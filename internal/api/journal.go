@@ -15,6 +15,8 @@ type createPostBody struct {
 	EntryDate  string      `json:"entry_date"`
 	CapturedAt *string     `json:"captured_at"`
 	Media      []mediaBody `json:"media"`
+	// ClientID — ключ идемпотентности офлайн-очереди; поле необязательное.
+	ClientID string `json:"client_id"`
 }
 
 type mediaBody struct {
@@ -35,6 +37,8 @@ type editPostBody struct {
 
 type textBody struct {
 	Body string `json:"body"`
+	// ClientID — ключ идемпотентности офлайн-очереди; поле необязательное.
+	ClientID string `json:"client_id"`
 }
 
 type reactionBody struct {
@@ -103,7 +107,7 @@ func (s *Server) handleCreatePost(w http.ResponseWriter, r *http.Request) {
 	post, err := s.createPostWithMedia(r.Context(), circleID, sess.AccountID, chronicle.PostInput{
 		CircleID: circleID, AccountID: sess.AccountID, Body: body.Body,
 		EntryDate: body.EntryDate, CapturedAt: captured, Now: now,
-		AllowEmptyBody: len(media) > 0,
+		AllowEmptyBody: len(media) > 0, ClientID: strings.TrimSpace(body.ClientID),
 	}, media)
 	if err != nil {
 		writeDomainError(w, err)
@@ -131,6 +135,12 @@ func (s *Server) handleEditPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := time.Now().UTC()
+	// media[] задаёт обложку сам (is_cover), поэтому пара с cover_blob_id —
+	// противоречивый запрос, а не два шага подряд (QLT-3).
+	if body.Media != nil && body.CoverBlobID != nil {
+		writeError(w, chronicle.ErrInvalid)
+		return
+	}
 	if body.Media != nil {
 		media, err := parseMediaInput(*body.Media)
 		if err != nil {
@@ -170,26 +180,16 @@ func (s *Server) handleDeletePost(w http.ResponseWriter, r *http.Request) {
 		writeError(w, chronicle.ErrForbidden)
 		return
 	}
-	blobIDs, err := s.Chronicle.PostMediaBlobIDs(r.Context(), postID)
+	// Удаление — одна доменная транзакция: запись, ветка, вложения и ссылки
+	// на блобы либо уходят вместе, либо не уходят вовсе (QLT-3).
+	blobIDs, err := s.Chronicle.DeletePost(r.Context(), circleID, sess.AccountID, postID, time.Now().UTC())
 	if err != nil {
 		writeDomainError(w, err)
 		return
 	}
-	if err := s.Chronicle.DeletePost(r.Context(), circleID, sess.AccountID, postID, time.Now().UTC()); err != nil {
-		writeDomainError(w, err)
-		return
-	}
-	if err := s.Chronicle.DeletePostMedia(r.Context(), postID); err != nil {
-		writeDomainError(w, err)
-		return
-	}
-	if err := s.Blobs.RemoveRefsFor(r.Context(), "post", postID); err != nil {
-		writeDomainError(w, err)
-		return
-	}
+	// Файлы освобождаются после коммита: их судьба не должна менять ответ.
 	if err := s.Blobs.ReleaseBlobs(r.Context(), blobIDs); err != nil {
-		writeDomainError(w, err)
-		return
+		log.Printf("delete post %s: release blobs: %v", postID, err)
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
@@ -209,7 +209,7 @@ func (s *Server) handleCreateComment(w http.ResponseWriter, r *http.Request) {
 	}
 	c, err := s.Chronicle.CreateComment(r.Context(), chronicle.CommentInput{
 		CircleID: circleID, AccountID: sess.AccountID, PostID: postID,
-		Body: body.Body, Now: time.Now().UTC(),
+		Body: body.Body, Now: time.Now().UTC(), ClientID: strings.TrimSpace(body.ClientID),
 	})
 	if err != nil {
 		writeDomainError(w, err)
@@ -533,20 +533,11 @@ func (s *Server) editPostReplaceMedia(ctx context.Context, circleID, accountID, 
 }
 
 func (s *Server) rollbackNewPost(ctx context.Context, circleID, accountID, postID string) {
-	blobIDs, err := s.Chronicle.PostMediaBlobIDs(ctx, postID)
+	blobIDs, err := s.Chronicle.DeletePost(ctx, circleID, accountID, postID, time.Now().UTC())
 	if err != nil {
-		log.Printf("rollback post %s: list media: %v", postID, err)
-	}
-	if err := s.Chronicle.DeletePost(ctx, circleID, accountID, postID, time.Now().UTC()); err != nil {
 		log.Printf("rollback post %s: delete post: %v", postID, err)
 	}
-	if err := s.Chronicle.DeletePostMedia(ctx, postID); err != nil {
-		log.Printf("rollback post %s: delete media: %v", postID, err)
-	}
 	if s.Blobs != nil {
-		if err := s.Blobs.RemoveRefsFor(ctx, "post", postID); err != nil {
-			log.Printf("rollback post %s: remove refs: %v", postID, err)
-		}
 		if err := s.Blobs.ReleaseBlobs(ctx, blobIDs); err != nil {
 			log.Printf("rollback post %s: release blobs: %v", postID, err)
 		}

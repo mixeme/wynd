@@ -47,6 +47,9 @@ func sqliteQuery() string {
 	q.Add("_pragma", pragmaTimeout)
 	q.Add("_pragma", pragmaFK)
 	q.Add("_pragma", pragmaJournal)
+	// Все транзакции — BEGIN IMMEDIATE: при повышении read→write SQLite
+	// отдаёт SQLITE_BUSY сразу, и busy_timeout не помогает (QLT-2).
+	q.Set("_txlock", "immediate")
 	return q.Encode()
 }
 

@@ -209,10 +209,10 @@ func TestAdminSetPublicURL(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("set url: %d %s", rec.Code, rec.Body.String())
 	}
-	if srv.PublicURL != "https://home.example.org" {
-		t.Fatalf("public url: %s", srv.PublicURL)
+	if srv.PublicURL() != "https://home.example.org" {
+		t.Fatalf("public url: %s", srv.PublicURL())
 	}
-	if srv.Loopback {
+	if srv.Loopback() {
 		t.Fatal("expected public instance")
 	}
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/instance", nil)
@@ -318,7 +318,7 @@ func TestBootstrapLoopbackWithoutMail(t *testing.T) {
 // сохранить SMTP (перехват кодов входа), ни переписать config.json.
 func TestBootstrapRejectedLeavesSMTPAndPublicURLUntouched(t *testing.T) {
 	srv, _, _, _ := setupAPI(t)
-	publicBefore := srv.PublicURL
+	publicBefore := srv.PublicURL()
 	rec := postJSON(t, srv, "/api/v1/admin/bootstrap", "", map[string]any{
 		"token": "WRONG", "password": "whatever-pass",
 		"public_url": "https://evil.example",
@@ -352,8 +352,8 @@ func TestBootstrapRejectedLeavesSMTPAndPublicURLUntouched(t *testing.T) {
 		data, _ := os.ReadFile(filepath.Join(srv.DataDir, "config.json"))
 		t.Fatalf("config.json written by rejected bootstrap: %s (%v)", data, err)
 	}
-	if srv.PublicURL != publicBefore {
-		t.Fatalf("public_url changed: %q want %q", srv.PublicURL, publicBefore)
+	if srv.PublicURL() != publicBefore {
+		t.Fatalf("public_url changed: %q want %q", srv.PublicURL(), publicBefore)
 	}
 }
 

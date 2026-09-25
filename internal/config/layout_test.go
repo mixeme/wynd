@@ -26,10 +26,15 @@ func TestLoadCreatesSingleDataRoot(t *testing.T) {
 	if cfg.Listen != DefaultListen {
 		t.Fatalf("listen: %q", cfg.Listen)
 	}
-	for _, name := range []string{"wynd.db", "config.json", "blobs", "keys"} {
+	for _, name := range []string{"wynd.db", "blobs", "keys"} {
 		if _, err := os.Stat(filepath.Join(cfg.DataDir, name)); err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
+	}
+	// config.json при чтении не создаётся: он появляется только когда его
+	// сохраняют — bootstrap или панель (API-5).
+	if _, err := os.Stat(filepath.Join(cfg.DataDir, "config.json")); !os.IsNotExist(err) {
+		t.Fatalf("config.json создан чтением: %v", err)
 	}
 	token, err := BootstrapToken(cfg.DataDir)
 	if err != nil {

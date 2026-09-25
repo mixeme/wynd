@@ -103,6 +103,17 @@ func runServer() {
 
 	maybeRunRoutine(authSvc, blobsDir, ch, blobStore, mailSvc, pushSvc, cfg.PublicURL)
 
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", healthHandler)
+	mux.HandleFunc("GET /ready", readyHandler(st))
+	apiSrv := api.NewServer(authSvc, ch, blobStore, mailSvc, pushSvc, token, cfg.DataDir, cfg.PublicURL, cfg.Listen, loopback)
+	trusted, err := api.ParseTrustedProxies(cfg.TrustedProxies)
+	if err != nil {
+		log.Fatalf("trusted proxies: %v", err)
+	}
+	apiSrv.TrustedProxies = trusted
+	mux.Handle("/api/", apiSrv)
+
 	maintDone := make(chan struct{})
 	var maintWG sync.WaitGroup
 	maintWG.Add(1)
@@ -115,21 +126,13 @@ func runServer() {
 			case <-maintDone:
 				return
 			case <-ticker.C:
-				maybeRunRoutine(authSvc, blobsDir, ch, blobStore, mailSvc, pushSvc, cfg.PublicURL)
+				// Адрес берётся свежим: письма фоновых задач уходили со
+				// старым public_url до перезапуска (API-4).
+				maybeRunRoutine(authSvc, blobsDir, ch, blobStore, mailSvc, pushSvc, apiSrv.PublicURL())
 			}
 		}
 	}()
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /health", healthHandler)
-	mux.HandleFunc("GET /ready", readyHandler(st))
-	apiSrv := api.NewServer(authSvc, ch, blobStore, mailSvc, pushSvc, token, cfg.DataDir, cfg.PublicURL, cfg.Listen, loopback)
-	trusted, err := api.ParseTrustedProxies(cfg.TrustedProxies)
-	if err != nil {
-		log.Fatalf("trusted proxies: %v", err)
-	}
-	apiSrv.TrustedProxies = trusted
-	mux.Handle("/api/", apiSrv)
 
 	buildFS, err := fs.Sub(web.Build, "dist")
 	if err != nil {

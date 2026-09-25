@@ -79,7 +79,7 @@ func TestAuthorMutatorsRequireWriteAccess(t *testing.T) {
 				{"EditComment", e.ch.EditComment(e.ctx, circle.ID, "bob", comment.ID, "переписал", now)},
 				{"DeleteComment", e.ch.DeleteComment(e.ctx, circle.ID, "bob", comment.ID, now)},
 				{"DeleteReaction", e.ch.DeleteReaction(e.ctx, circle.ID, "bob", reaction.ID, now)},
-				{"DeletePost", e.ch.DeletePost(e.ctx, circle.ID, "bob", post.ID, now)},
+				{"DeletePost", deletePostErr(e, circle.ID, "bob", post.ID, now)},
 			}
 			for _, c := range checks {
 				if !errors.Is(c.err, chronicle.ErrForbidden) {
@@ -120,7 +120,7 @@ func TestAuthorMutatorsStillWorkForActiveMember(t *testing.T) {
 	if err := e.ch.EditPost(e.ctx, circle.ID, "bob", post.ID, "поправил", "", e.after(3*time.Hour)); err != nil {
 		t.Fatalf("EditPost: %v", err)
 	}
-	if err := e.ch.DeletePost(e.ctx, circle.ID, "bob", post.ID, e.after(4*time.Hour)); err != nil {
+	if _, err := e.ch.DeletePost(e.ctx, circle.ID, "bob", post.ID, e.after(4*time.Hour)); err != nil {
 		t.Fatalf("DeletePost: %v", err)
 	}
 }
@@ -165,4 +165,9 @@ func TestExcludeRevokesAccessOfLeftWithAccess(t *testing.T) {
 	if status != string(chronicle.StatusGone) {
 		t.Fatalf("status = %q, want gone", status)
 	}
+}
+
+func deletePostErr(e *testEnv, circleID, accountID, postID string, now time.Time) error {
+	_, err := e.ch.DeletePost(e.ctx, circleID, accountID, postID, now)
+	return err
 }

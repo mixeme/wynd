@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log"
 	"net/http"
 	"time"
 
@@ -56,37 +57,20 @@ func (s *Server) handlePatchCircle(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	now := time.Now().UTC()
-	if body.Name != nil {
-		if err := s.Chronicle.SetCircleName(r.Context(), circleID, sess.AccountID, *body.Name, now); err != nil {
-			writeDomainError(w, err)
-			return
-		}
+	// Один вызов домена: значения проверяются до первой записи, изменения
+	// применяются одной транзакцией (QLT-3).
+	in := chronicle.PatchCircleInput{
+		Name:              body.Name,
+		Color:             body.Color,
+		InviteWho:         body.InviteWho,
+		InviteKindDefault: body.InviteKindDefault,
 	}
 	if body.EditWindowSec != nil {
-		window := chronicle.EditWindow{Seconds: body.EditWindowSec}
-		if err := s.Chronicle.SetEditWindow(r.Context(), circleID, sess.AccountID, window, now); err != nil {
-			writeDomainError(w, err)
-			return
-		}
+		in.EditWindow = &chronicle.EditWindow{Seconds: body.EditWindowSec}
 	}
-	if body.Color != nil {
-		if err := s.Chronicle.SetCircleColor(r.Context(), circleID, sess.AccountID, *body.Color, now); err != nil {
-			writeDomainError(w, err)
-			return
-		}
-	}
-	if body.InviteWho != nil {
-		if err := s.Chronicle.SetInviteWho(r.Context(), circleID, sess.AccountID, *body.InviteWho, now); err != nil {
-			writeDomainError(w, err)
-			return
-		}
-	}
-	if body.InviteKindDefault != nil {
-		if err := s.Chronicle.SetInviteKindDefault(r.Context(), circleID, sess.AccountID, *body.InviteKindDefault, now); err != nil {
-			writeDomainError(w, err)
-			return
-		}
+	if err := s.Chronicle.PatchCircle(r.Context(), circleID, sess.AccountID, in, time.Now().UTC()); err != nil {
+		writeDomainError(w, err)
+		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
@@ -241,10 +225,16 @@ func (s *Server) handleDeleteCircle(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	err := s.Chronicle.DeleteCircle(r.Context(), circleID, sess.AccountID, body.Name, time.Now().UTC())
+	blobIDs, err := s.Chronicle.DeleteCircle(r.Context(), circleID, sess.AccountID, body.Name, time.Now().UTC())
 	if err != nil {
 		writeDomainError(w, err)
 		return
+	}
+	// Файлы освобождаются после коммита; их судьба не меняет ответ (BLB-4).
+	if s.Blobs != nil {
+		if err := s.Blobs.ReleaseBlobs(r.Context(), blobIDs); err != nil {
+			log.Printf("delete circle %s: release blobs: %v", circleID, err)
+		}
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }

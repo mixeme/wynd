@@ -193,20 +193,21 @@ func (c *Chronicle) SetCircleName(ctx context.Context, circleID, actorAccountID,
 	if err := checkLen(name, MaxNameChars); err != nil {
 		return err
 	}
-	mem, err := c.membership(ctx, c.db, circleID, actorAccountID)
-	if err != nil {
-		return err
-	}
-	actorName, err := c.identityName(ctx, c.db, mem.IdentityID)
-	if err != nil {
-		return err
-	}
-
-	tx, err := c.db.BeginTx(ctx, nil)
+	tx, err := c.beginWrite(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+
+	// Членство и имя читаются в той же транзакции, что и запись (QLT-1).
+	mem, err := c.membership(ctx, tx, circleID, actorAccountID)
+	if err != nil {
+		return err
+	}
+	actorName, err := c.identityName(ctx, tx, mem.IdentityID)
+	if err != nil {
+		return err
+	}
 
 	updated := formatTime(now)
 	if _, err := tx.ExecContext(ctx, `UPDATE circles SET name = ?, updated_at = ? WHERE id = ?`,
@@ -264,23 +265,85 @@ func (c *Chronicle) CircleColor(ctx context.Context, circleID string) (string, e
 }
 
 // DeleteCircle removes a circle and all its data. Owner only; name must match.
-func (c *Chronicle) DeleteCircle(ctx context.Context, circleID, ownerAccountID, confirmName string, now time.Time) error {
-	if err := c.RequireOwner(ctx, circleID, ownerAccountID); err != nil {
-		return err
+// Возвращает блобы круга: строки blob_refs снимаются внутри транзакции
+// удаления, а файлы освобождает вызывающий после коммита. Без этого файлы
+// удалённого круга оставались на диске навсегда — каскад снимает post_media,
+// но не blob_refs, и предикат «блоб занят» продолжал видеть ссылку (BLB-4).
+func (c *Chronicle) DeleteCircle(ctx context.Context, circleID, ownerAccountID, confirmName string, now time.Time) ([]string, error) {
+	tx, err := c.beginWrite(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// Предусловия — в той же транзакции, что и удаление (QLT-1).
+	owner, err := c.circleOwner(ctx, tx, circleID)
+	if err != nil {
+		return nil, err
+	}
+	if owner != ownerAccountID {
+		return nil, ErrForbidden
 	}
 	var name string
-	err := c.db.QueryRowContext(ctx, `SELECT name FROM circles WHERE id = ?`, circleID).Scan(&name)
+	err = tx.QueryRowContext(ctx, `SELECT name FROM circles WHERE id = ?`, circleID).Scan(&name)
 	if err == sql.ErrNoRows {
-		return ErrNotFound
+		return nil, ErrNotFound
 	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if strings.TrimSpace(confirmName) != name {
-		return ErrInvalid
+		return nil, ErrInvalid
 	}
-	_, err = c.db.ExecContext(ctx, `DELETE FROM circles WHERE id = ?`, circleID)
-	return err
+
+	blobIDs, err := c.circleBlobIDsTx(ctx, tx, circleID)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM blob_refs
+		WHERE ref_type = 'post'
+		  AND ref_id IN (SELECT id FROM posts WHERE circle_id = ?)
+	`, circleID); err != nil {
+		return nil, err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM circles WHERE id = ?`, circleID); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return blobIDs, nil
+}
+
+// circleBlobIDsTx собирает все блобы круга: вложения записей, обложки дней и
+// аватары лиц этого круга.
+func (c *Chronicle) circleBlobIDsTx(ctx context.Context, tx *sql.Tx, circleID string) ([]string, error) {
+	rows, err := tx.QueryContext(ctx, `
+		SELECT blob_id FROM post_media
+		 WHERE post_id IN (SELECT id FROM posts WHERE circle_id = ?)
+		UNION
+		SELECT blob_id FROM day_covers WHERE circle_id = ?
+		UNION
+		SELECT cover_blob_id FROM days WHERE circle_id = ? AND cover_blob_id IS NOT NULL
+		UNION
+		SELECT avatar_blob_id FROM identity_names
+		 WHERE avatar_blob_id IS NOT NULL
+		   AND identity_id IN (SELECT id FROM identities WHERE circle_id = ?)
+	`, circleID, circleID, circleID, circleID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
 }
 
 // PostAuthorAccountID resolves the post author's account in a circle.

@@ -336,18 +336,18 @@ Legacy мало, он назван, но план удаления нигде н
 
 ### Волна 2 — целостность данных
 
-- [ ] **TIME-1** `xtime.Format` фиксированной ширины + миграция 0010; удалить `expireBefore`, секундную ветку `xtime.Parse`, три `timefmt.go`, прямые `RFC3339Nano`. Тесты: `xtime` (порядок строк = порядок времени на 1 000 случайных меток); миграция на заполненной БД (значения с 0, 2, 7, 9 знаками дроби и NULL).
-- [ ] **TST-4** Общий тест «миграции поверх заполненной БД»: дамп схемы v9 с данными → `Open` → проверка. Нужен до 0010–0012.
-- [ ] **BLB-3, BLB-4** Снятие `blob_refs` внутри `purgePostBranch` и `DeleteCircle` (включая аватары круга); `ReleaseBlobs` после коммита. Тесты: после purge и после удаления круга `OpenBlob` → `ErrNotFound`, файла нет.
-- [ ] **QLT-3** `DELETE post` одной транзакцией по образцу `editPostReplaceMedia`; `PATCH /circles/{id}` — один `Chronicle.PatchCircle` с валидацией до первой записи; `cover_blob_id` вместе с `media` → `invalid`.
-- [ ] **QLT-1, QLT-2** Предусловия внутрь транзакций; `beginWrite` с `BEGIN IMMEDIATE`.
-- [ ] **UPL-1, UPL-2** `CompleteSession`: строка `pending` → `os.Rename` → `complete`; усечение `.part` при любой ошибке чанка; условный `UPDATE … WHERE received_bytes = ?`; открытые сессии в `usedBytes`, повторная проверка квоты при завершении; квота круга по всем блобам круга.
-- [ ] **CLI-2, QUE-1** `client_id` (миграция 0011, сервер, клиент) и слив очереди по решению раздела B. Тесты vitest: повтор после транспортной ошибки не даёт второго POST с другим `client_id`; две «вкладки» — один слив; сервер A лежит — B уходит; 401 → `pending`.
-- [ ] **CLI-1** `invalidateSnapshots` + проверка сегмента `SnapshotKind`. Тест на fake-indexeddb: уходят ровно `feed` и `day` нужного круга, чужой круг и сервер на другом порту целы.
-- [ ] **LEG-2** `getDb`: сброс кэша при отказе, `blocking`/`terminated`. `mediaStoreBytes` курсором.
-- [ ] **SRCH-2, SRCH-3** Токенизация запроса; триггеры дня вставляют актуальную версию названия (миграция 0013).
-- [ ] **MIG-1, CHR-3** Отказ на пропущенной миграции; `LIMIT 2001` + лог.
-- [ ] **API-4, API-5, QLT-4** `public_url` через геттер под мьютексом (`atomic` для loopback); `writeFileAtomic`; строгий `NormalizePublicURL` с ошибкой; лог о перекрытии `WYND_PUBLIC_URL`; `config.Load` без записи, `runBackup` падает при отсутствии `wynd.db`.
+- [x] **TIME-1** `xtime.Format` фиксированной ширины + миграция 0010; удалить `expireBefore`, секундную ветку `xtime.Parse`, три `timefmt.go`, прямые `RFC3339Nano`. Тесты: `xtime` (порядок строк = порядок времени на 1 000 случайных меток); миграция на заполненной БД (значения с 0, 2, 7, 9 знаками дроби и NULL).
+- [x] **TST-4** Общий тест «миграции поверх заполненной БД»: дамп схемы v9 с данными → `Open` → проверка. Нужен до 0010–0012.
+- [x] **BLB-3, BLB-4** Снятие `blob_refs` внутри `purgePostBranch` и `DeleteCircle` (включая аватары круга); `ReleaseBlobs` после коммита. Тесты: после purge и после удаления круга `OpenBlob` → `ErrNotFound`, файла нет.
+- [x] **QLT-3** `DELETE post` одной транзакцией по образцу `editPostReplaceMedia`; `PATCH /circles/{id}` — один `Chronicle.PatchCircle` с валидацией до первой записи; `cover_blob_id` вместе с `media` → `invalid`.
+- [x] **QLT-1, QLT-2** Предусловия внутрь транзакций; `beginWrite` с `BEGIN IMMEDIATE`.
+- [x] **UPL-1, UPL-2** `CompleteSession`: строка `pending` → `os.Rename` → `complete`; усечение `.part` при любой ошибке чанка; условный `UPDATE … WHERE received_bytes = ?`; открытые сессии в `usedBytes`, повторная проверка квоты при завершении; квота круга по всем блобам круга.
+- [x] **CLI-2, QUE-1** `client_id` (миграция 0011, сервер, клиент) и слив очереди по решению раздела B. Тесты vitest: повтор после транспортной ошибки не даёт второго POST с другим `client_id`; две «вкладки» — один слив; сервер A лежит — B уходит; 401 → `pending`.
+- [x] **CLI-1** `invalidateSnapshots` + проверка сегмента `SnapshotKind`. Тест на fake-indexeddb: уходят ровно `feed` и `day` нужного круга, чужой круг и сервер на другом порту целы.
+- [x] **LEG-2** `getDb`: сброс кэша при отказе, `blocking`/`terminated`. `mediaStoreBytes` курсором.
+- [x] **SRCH-2, SRCH-3** Токенизация запроса; триггеры дня вставляют актуальную версию названия (миграция 0013).
+- [x] **MIG-1, CHR-3** Отказ на пропущенной миграции; `LIMIT 2001` + лог.
+- [x] **API-4, API-5, QLT-4** `public_url` через геттер под мьютексом (`atomic` для loopback); `writeFileAtomic`; строгий `NormalizePublicURL` с ошибкой; лог о перекрытии `WYND_PUBLIC_URL`; `config.Load` без записи, `runBackup` падает при отсутствии `wynd.db`.
 
 ### Волна 2а — аудит безопасности (после волны 2, до волны 5)
 

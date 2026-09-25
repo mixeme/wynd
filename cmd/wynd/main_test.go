@@ -103,7 +103,8 @@ func TestBinaryEmptyDataDir(t *testing.T) {
 		t.Fatalf("log missing data dir:\n%s", logs)
 	}
 
-	for _, name := range []string{"wynd.db", "config.json", "blobs", "keys"} {
+	// config.json не создаётся чтением конфигурации (API-5).
+	for _, name := range []string{"wynd.db", "blobs", "keys"} {
 		p := filepath.Join(dataDir, name)
 		if _, err := os.Stat(p); err != nil {
 			t.Fatalf("data layout %s: %v", name, err)

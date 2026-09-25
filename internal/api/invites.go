@@ -153,8 +153,8 @@ func (s *Server) handleJoinInvite(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) inviteHost(r *http.Request) string {
-	if s.PublicURL != "" {
-		return publicHost(s.PublicURL)
+	if s.PublicURL() != "" {
+		return publicHost(s.PublicURL())
 	}
 	host := r.Host
 	if h, _, err := net.SplitHostPort(host); err == nil {

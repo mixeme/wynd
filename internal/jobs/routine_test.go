@@ -11,6 +11,7 @@ import (
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
 	"gitea.mixdep.ru/mix/wynd/internal/jobs"
 	"gitea.mixdep.ru/mix/wynd/internal/store"
+	"gitea.mixdep.ru/mix/wynd/internal/xtime"
 )
 
 func openDB(t *testing.T) *store.SQLite {
@@ -177,11 +178,14 @@ func TestRunDailyRoutineCleansTargets(t *testing.T) {
 	}
 }
 
+// Инвариант (TIME-1): метки фиксированной ширины сравниваются как строки в том
+// же порядке, что и во времени, поэтому загрузка, истёкшая в начале секунды,
+// выметается в её середине — без сдвига границы, который стоял здесь раньше.
 func TestRunDailyRoutineExpiresUploadInSameSecond(t *testing.T) {
 	st := openDB(t)
 	ctx := context.Background()
 	now := time.Date(2026, 8, 30, 12, 0, 0, 500000000, time.UTC)
-	expires := time.Date(2026, 8, 30, 12, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	expires := xtime.Format(time.Date(2026, 8, 30, 12, 0, 0, 0, time.UTC))
 
 	_, err := st.DB().ExecContext(ctx, `
 		INSERT INTO accounts (id, email, created_at) VALUES ('member', 'member@test.local', ?)

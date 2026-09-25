@@ -185,29 +185,33 @@ func (c *Chronicle) SetEditWindow(ctx context.Context, circleID, actorAccountID 
 
 // TransferOwnership moves circle ownership; caller must be current owner.
 func (c *Chronicle) TransferOwnership(ctx context.Context, circleID, ownerAccountID, newOwnerAccountID string, now time.Time) error {
-	currentOwner, err := c.circleOwner(ctx, c.db, circleID)
+	if newOwnerAccountID == ownerAccountID {
+		return ErrInvalid
+	}
+
+	tx, err := c.beginWrite(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// Владелец и статус нового владельца читаются в той же транзакции, что и
+	// запись: между проверкой на c.db и коммитом любой из них мог измениться
+	// (QLT-1).
+	currentOwner, err := c.circleOwner(ctx, tx, circleID)
 	if err != nil {
 		return err
 	}
 	if currentOwner != ownerAccountID {
 		return ErrForbidden
 	}
-	if newOwnerAccountID == ownerAccountID {
-		return ErrInvalid
-	}
-	newMem, err := c.membership(ctx, c.db, circleID, newOwnerAccountID)
+	newMem, err := c.membership(ctx, tx, circleID, newOwnerAccountID)
 	if err != nil {
 		return err
 	}
 	if newMem.Status != StatusActive {
 		return ErrForbidden
 	}
-
-	tx, err := c.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
 
 	oldMem, err := c.membership(ctx, tx, circleID, ownerAccountID)
 	if err != nil {

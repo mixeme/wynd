@@ -635,7 +635,7 @@ func TestDeletePostGCsUnreferencedBlob(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := ch.DeletePost(ctx, circle.ID, "owner", post.ID, t0.Add(time.Minute)); err != nil {
+	if _, err := ch.DeletePost(ctx, circle.ID, "owner", post.ID, t0.Add(time.Minute)); err != nil {
 		t.Fatal(err)
 	}
 	if err := ch.DeletePostMedia(ctx, post.ID); err != nil {

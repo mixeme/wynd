@@ -23,7 +23,7 @@ func (s *Server) handleAdminAccess(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"name":              info.Name,
 		"registration_mode": info.RegistrationMode,
-		"public_url":        s.PublicURL,
+		"public_url":        s.PublicURL(),
 	})
 }
 

@@ -690,7 +690,7 @@ func (c *Chronicle) purgePostBranch(ctx context.Context, tx *sql.Tx, post Post) 
 	if err := c.scrubPostBranch(ctx, tx, post); err != nil {
 		return nil, err
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM post_media WHERE post_id = ?`, post.ID); err != nil {
+	if err := c.dropPostMediaInTx(ctx, tx, post.ID); err != nil {
 		return nil, err
 	}
 	return blobIDs, nil

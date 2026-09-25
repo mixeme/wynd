@@ -60,7 +60,7 @@ func (s *Server) handleBootstrap(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	publicURL := s.PublicURL
+	publicURL := s.PublicURL()
 	if strings.TrimSpace(body.PublicURL) != "" {
 		publicURL = config.NormalizePublicURL(body.PublicURL)
 	}
@@ -160,13 +160,16 @@ func (s *Server) handleBootstrapSMTPTest(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *Server) applyPublicURL(publicURL string) {
-	s.PublicURL = publicURL
-	s.Loopback = config.IsLoopback(publicURL)
+	loopback := config.IsLoopback(publicURL)
+	s.publicURLMu.Lock()
+	s.publicURL = publicURL
+	s.publicURLMu.Unlock()
+	s.loopback.Store(loopback)
 	if s.Auth != nil {
-		s.Auth.SetLoopback(s.Loopback)
+		s.Auth.SetLoopback(loopback)
 	}
 	if s.Mail != nil {
-		s.Mail.SetLoopback(s.Loopback)
+		s.Mail.SetLoopback(loopback)
 	}
 }
 

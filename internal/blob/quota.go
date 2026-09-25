@@ -113,6 +113,21 @@ func (s *Store) circleQuotaBytes(ctx context.Context, circleID string) (sql.Null
 	return s.effectiveCircleQuotaBytes(ctx, circleID)
 }
 
+// reservedBytes — место, уже занятое незавершёнными загрузками: открытые
+// сессии и строки blobs в состоянии pending.
+func (s *Store) reservedBytes(ctx context.Context) (int64, error) {
+	var reserved sql.NullInt64
+	err := s.db.QueryRowContext(ctx, `
+		SELECT
+			(SELECT COALESCE(SUM(expected_size), 0) FROM upload_sessions) +
+			(SELECT COALESCE(SUM(size_bytes), 0) FROM blobs WHERE status = 'pending')
+	`).Scan(&reserved)
+	if err != nil {
+		return 0, err
+	}
+	return reserved.Int64, nil
+}
+
 func (s *Store) usedBytes(ctx context.Context) (int64, error) {
 	var used sql.NullInt64
 	err := s.db.QueryRowContext(ctx, `
@@ -151,8 +166,16 @@ func (s *Store) CheckMediaQuota(ctx context.Context, circleID string, additional
 	if err != nil {
 		return err
 	}
-	// Upload sessions are not in usedBytes yet. Attach-time blobs are already
-	// complete, so adding their size again would reject a legal attach.
+	// Открытые сессии загрузки занимают место, но в usedBytes не входят:
+	// без их учёта N параллельных загрузок превышали потолок в N раз (UPL-2).
+	// Учитываются и незавершённые строки blobs (status = 'pending').
+	reserved, err := s.reservedBytes(ctx)
+	if err != nil {
+		return err
+	}
+	used += reserved
+	// Attach-time blobs are already complete, so adding their size again
+	// would reject a legal attach.
 	instanceExtra := additionalBytes
 	if circleID != "" {
 		instanceExtra = 0

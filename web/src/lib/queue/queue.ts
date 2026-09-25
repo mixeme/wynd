@@ -42,6 +42,49 @@ type QueueListener = () => void;
 const listeners = new Set<QueueListener>();
 let draining: Promise<void> | undefined;
 
+/** Зависшая после падения вкладки отправка снова считается ожидающей (QUE-1). */
+const UPLOADING_STALE_MS = 2 * 60 * 1000;
+
+const RETRY_BASE_MS = 30 * 1000;
+const RETRY_MAX_MS = 15 * 60 * 1000;
+
+/** Пауза перед повтором отправки: min(30 с · 2^n, 15 мин). */
+export function queueRetryDelayMs(attempts: number): number {
+	return Math.min(RETRY_BASE_MS * 2 ** Math.max(0, attempts - 1), RETRY_MAX_MS);
+}
+
+function newClientId(): string {
+	if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+		return crypto.randomUUID();
+	}
+	return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * Что можно отправлять прямо сейчас: ожидающие и зависшие в uploading, чья
+ * пауза после неудачи уже вышла.
+ */
+export function readyQueueItems(
+	items: QueueRecordWithId[],
+	now: number = Date.now()
+): QueueRecordWithId[] {
+	return items
+		.filter((item) => {
+			if (item.state === 'failed') return false;
+			if (item.state === 'uploading') {
+				const since = item.uploading_at ?? 0;
+				if (now - since < UPLOADING_STALE_MS) return false;
+			}
+			const attempts = item.attempts ?? 0;
+			if (attempts > 0) {
+				const last = item.uploading_at ?? item.created_at;
+				if (now - last < queueRetryDelayMs(attempts)) return false;
+			}
+			return true;
+		})
+		.sort((a, b) => a.created_at - b.created_at);
+}
+
 function notify(): void {
 	for (const listener of listeners) {
 		listener();
@@ -160,6 +203,7 @@ async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 				body: postPayload.body,
 				entry_date: postPayload.entry_date,
 				captured_at: postPayload.captured_at,
+				client_id: item.client_id,
 				media
 			})
 		});
@@ -174,7 +218,7 @@ async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 			{
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ body: commentPayload.body })
+				body: JSON.stringify({ body: commentPayload.body, client_id: item.client_id })
 			}
 		);
 		return;
@@ -205,7 +249,12 @@ async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 }
 
 async function processItem(item: QueueRecordWithId): Promise<boolean> {
-	await putQueueItem(item.id, { ...item, state: 'uploading', error: undefined });
+	await putQueueItem(item.id, {
+		...item,
+		state: 'uploading',
+		error: undefined,
+		uploading_at: Date.now()
+	});
 	notify();
 
 	try {
@@ -217,38 +266,68 @@ async function processItem(item: QueueRecordWithId): Promise<boolean> {
 	} catch (err) {
 		const stored = await getQueueItem(item.id);
 		const latest = stored ? { ...stored, id: item.id } : item;
-		if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
+		const attempts = (latest.attempts ?? 0) + 1;
+		// 401 — не приговор отправке: сессия могла истечь, и после входа
+		// запись должна уйти. Остальные 4xx — отказ по существу (QUE-1).
+		if (err instanceof ApiError && err.status >= 400 && err.status < 500 && err.status !== 401) {
 			await putQueueItem(item.id, {
 				...latest,
 				state: 'failed',
+				attempts,
+				uploading_at: Date.now(),
 				error: err.code
 			});
 			notify();
 			return false;
 		}
 
-		await putQueueItem(item.id, { ...latest, state: 'pending' });
+		await putQueueItem(item.id, {
+			...latest,
+			state: 'pending',
+			attempts,
+			uploading_at: Date.now()
+		});
 		notify();
 		throw err;
+	}
+}
+
+async function drainOnce(): Promise<void> {
+	while (navigator.onLine) {
+		const ready = readyQueueItems(await listQueueItems());
+		if (!ready.length) break;
+		// Недоступный сервер задерживает только свою очередь: раньше общий
+		// FIFO с break останавливал отправку и на живые серверы (QUE-1).
+		const blocked = new Set<string>();
+		let progressed = false;
+		for (const item of ready) {
+			if (blocked.has(item.origin)) continue;
+			try {
+				await processItem(item);
+				progressed = true;
+			} catch {
+				blocked.add(item.origin);
+			}
+		}
+		if (!progressed) break;
 	}
 }
 
 export async function drainQueue(): Promise<void> {
 	if (draining) return draining;
 
+	// Между вкладками слив держит Web Locks: флаг в модуле — на вкладку, и
+	// две вкладки сливали одну очередь дважды (QUE-1).
 	const run = async () => {
-		while (navigator.onLine) {
-			const items = await listQueueItems();
-			const pending = items
-				.filter((item) => item.state === 'pending' || item.state === 'uploading')
-				.sort((a, b) => a.created_at - b.created_at);
-			if (!pending.length) break;
-			try {
-				await processItem(pending[0]);
-			} catch {
-				break;
-			}
+		const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+		if (!locks) {
+			await drainOnce();
+			return;
 		}
+		await locks.request('wynd-queue', { ifAvailable: true }, async (lock) => {
+			if (!lock) return;
+			await drainOnce();
+		});
 	};
 
 	const promise = run().finally(() => {
@@ -276,9 +355,13 @@ async function enqueue(
 		type,
 		origin,
 		circle_id: circleId,
+		// Ключ идемпотентности ставится один раз при постановке: сколько бы
+		// раз отправка ни повторилась, сервер создаст одну сущность (CLI-2).
+		client_id: newClientId(),
 		payload,
 		files,
 		state: 'pending',
+		attempts: 0,
 		created_at: Date.now()
 	});
 	notify();

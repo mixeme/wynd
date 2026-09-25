@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"strings"
 )
 
@@ -17,7 +18,9 @@ func (c *Chronicle) visiblePostIDs(ctx context.Context, circleID, accountID, ext
 		LIMIT ?
 	`, extraWhere, sqlVisibleAt("posts.created_at"), orderBy)
 	args := append([]any{circleID}, extraArgs...)
-	args = append(args, circleID, accountID, limit)
+	// Берём на одну запись больше потолка: превышение видно и попадает в лог,
+	// а не остаётся молчаливым обрезанием (CHR-3).
+	args = append(args, circleID, accountID, limit+1)
 	rows, err := c.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -31,7 +34,15 @@ func (c *Chronicle) visiblePostIDs(ctx context.Context, circleID, accountID, ext
 		}
 		ids = append(ids, id)
 	}
-	return ids, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(ids) > limit {
+		log.Printf("chronicle: circle %s превысил потолок снимка (%d записей): показаны последние %d",
+			circleID, limit, limit)
+		ids = ids[:limit]
+	}
+	return ids, nil
 }
 
 func (c *Chronicle) buildFeedPosts(ctx context.Context, postIDs []string, circleID string, scope *readScope) ([]FeedPost, error) {
