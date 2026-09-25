@@ -3,6 +3,7 @@ package backup_test
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -321,5 +322,28 @@ func TestBackupRestoresIntoWorkingDataDir(t *testing.T) {
 	}
 	if string(got) != "photo-bytes" {
 		t.Fatalf("blob = %q", got)
+	}
+}
+
+// Инвариант (BKP-7): бэкап не пишется в сам каталог данных и внутрь blobs/
+// или keys/ — там он перезаписал бы живую базу или копировал бы сам себя;
+// отдельный подкаталог рядом (как `<data>/backups/…` у install.sh) можно.
+func TestBackupRefusesDestinationInsideCopiedData(t *testing.T) {
+	dataDir := seedDataDir(t)
+	writeBlob(t, dataDir, "ab/one", "one")
+	for _, dest := range []string{
+		dataDir,
+		filepath.Join(dataDir, "blobs", "copy"),
+		filepath.Join(dataDir, "keys", "copy"),
+	} {
+		if err := backup.Backup(dataDir, dest, false); !errors.Is(err, backup.ErrBadDestination) {
+			t.Fatalf("%s: %v, want ErrBadDestination", dest, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dataDir, "blobs", "copy")); !os.IsNotExist(err) {
+		t.Fatalf("каталог назначения создан: %v", err)
+	}
+	if err := backup.Backup(dataDir, filepath.Join(dataDir, "backups", "pre-update"), false); err != nil {
+		t.Fatalf("соседний подкаталог: %v", err)
 	}
 }

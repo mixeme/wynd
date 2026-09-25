@@ -1,5 +1,6 @@
-﻿<script lang="ts">
+<script lang="ts">
 	import Avatar from '$ui/data/Avatar.svelte';
+	import Row from '$ui/data/Row.svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
 
 	let {
@@ -27,39 +28,18 @@
 	} = $props();
 </script>
 
-{#if onclick}
-	<button
-		type="button"
-		class="row2 {className}"
-		style:opacity={faded ? 0.6 : undefined}
-		{style}
-		{onclick}
-	>
-		<Avatar {initial} {color} />
-		<div class="g">
-			<div style="font-weight:600">{name}</div>
-			{#if subtitle}
-				<div class="sub">{subtitle}</div>
-			{/if}
-		</div>
-	</button>
-{:else}
-	<div class="row2 {className}" style:opacity={faded ? 0.6 : undefined} {style}>
-		<Avatar {initial} {color} />
-		<div class="g">
-			<div style="font-weight:600">{name}</div>
-			{#if subtitle}
-				<div class="sub">{subtitle}</div>
-			{/if}
-		</div>
-		{#if menu && onmenu}
-			<IconButton
-				name="dots"
-				size="sm"
-				label="Меню"
-				stopPropagation
-				onclick={() => onmenu()}
-			/>
+<Row {onclick} opacity={faded ? 0.6 : undefined} class={className} {style}>
+	{#snippet leading()}<Avatar {initial} {color} />{/snippet}
+	{#snippet main()}
+		<div style="font-weight:600">{name}</div>
+		{#if subtitle}
+			<div class="sub">{subtitle}</div>
 		{/if}
-	</div>
-{/if}
+	{/snippet}
+	{#snippet trailing()}
+		<!-- Меню — только у строки, которая сама не нажимается: вложенных кнопок нет. -->
+		{#if !onclick && menu && onmenu}
+			<IconButton name="dots" size="sm" label="Меню" stopPropagation onclick={() => onmenu()} />
+		{/if}
+	{/snippet}
+</Row>

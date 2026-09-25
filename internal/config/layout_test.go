@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -45,5 +46,40 @@ func TestLoadCreatesSingleDataRoot(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(cfg.DataDir, "keys", "bootstrap")); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// Инвариант: LoadExisting — для служебных команд — ничего не создаёт и
+// отказывает без базы; с базой читает ту же конфигурацию, что Load.
+func TestLoadExistingCreatesNothing(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "typo")
+	t.Setenv("WYND_DATA_DIR", missing)
+	t.Setenv("WYND_LISTEN", "")
+	t.Setenv("WYND_PUBLIC_URL", "")
+	if _, err := LoadExisting(); !errors.Is(err, ErrNoDatabase) {
+		t.Fatalf("missing dir: %v, want ErrNoDatabase", err)
+	}
+	if _, err := os.Stat(missing); !os.IsNotExist(err) {
+		t.Fatalf("каталог создан: %v", err)
+	}
+
+	dir := t.TempDir()
+	t.Setenv("WYND_DATA_DIR", dir)
+	if _, err := Load(); err != nil {
+		t.Fatal(err)
+	}
+	// Load создал пустой wynd.db — для команды это всё ещё «нет базы».
+	if _, err := LoadExisting(); !errors.Is(err, ErrNoDatabase) {
+		t.Fatalf("empty db: %v, want ErrNoDatabase", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "wynd.db"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := LoadExisting()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Listen != DefaultListen {
+		t.Fatalf("listen: %q", cfg.Listen)
 	}
 }

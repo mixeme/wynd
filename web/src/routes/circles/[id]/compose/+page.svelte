@@ -129,6 +129,39 @@
 		return `wynd.compose.${circle.circleId}`;
 	}
 
+	// Черновик новой записи живёт в sessionStorage, пока её не опубликовали:
+	// телефон выгружает вкладку, пока открыта камера, и набранное в compose
+	// пропадало — сохранялся только текст из полосы ленты (план 42, SCR-3).
+	// Правка опубликованной или отложенной записи черновик не трогает.
+	let draftReady = $state(false);
+
+	function readDraft(): string {
+		try {
+			return sessionStorage.getItem(composeDraftKey()) ?? '';
+		} catch {
+			return '';
+		}
+	}
+
+	function clearDraft() {
+		try {
+			sessionStorage.removeItem(composeDraftKey());
+		} catch {
+			/* хранилище недоступно — черновика и не было */
+		}
+	}
+
+	$effect(() => {
+		if (!draftReady) return;
+		const text = body;
+		try {
+			if (text.trim()) sessionStorage.setItem(composeDraftKey(), text);
+			else sessionStorage.removeItem(composeDraftKey());
+		} catch {
+			/* приватный режим без хранилища — черновик просто не сохраняется */
+		}
+	});
+
 	function editWindowSubtitle(post: FeedPost): string {
 		const when = formatPostTime(post.created_at, post.entry_date).split(',')[0];
 		const sec = post.edit_window_sec;
@@ -241,11 +274,9 @@
 				});
 			}
 		} else {
-			const draft = sessionStorage.getItem(composeDraftKey());
-			if (draft) {
-				body = draft;
-				sessionStorage.removeItem(composeDraftKey());
-			}
+			const draft = readDraft();
+			if (draft) body = draft;
+			draftReady = true;
 		}
 		try {
 			members = await fetchMembers(circle.origin, circle.circleId);
@@ -452,6 +483,7 @@
 
 			if (!navigator.onLine) {
 				await enqueuePost(circle.origin, circle.circleId, payload, files);
+				clearDraft();
 				goto(feedHref());
 				return;
 			}
@@ -479,11 +511,13 @@
 				captured_at: picked[0]?.meta.captured_at,
 				media
 			});
+			clearDraft();
 			goto(feedHref(entryDate));
 		} catch (err) {
 			if (!isEdit && !editQueueId && isTransportError(err)) {
 				const files = picked.map((p) => p.file!).filter(Boolean);
 				await enqueuePost(circle.origin, circle.circleId, postQueuePayload(trimmed), files);
+				clearDraft();
 				goto(feedHref());
 				return;
 			}

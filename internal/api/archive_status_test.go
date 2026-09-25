@@ -1,7 +1,9 @@
 package api_test
 
 import (
+	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -73,5 +75,62 @@ func TestArchiveDownloadForbiddenForExcluded(t *testing.T) {
 	}
 	if r := doGET(t, srv, "/api/v1/circles/"+circleID+"/archive/download", memberTok); r.Code != http.StatusForbidden {
 		t.Fatalf("исключённый: %d %s", r.Code, r.Body.String())
+	}
+}
+
+func cutoffLocked(t *testing.T, srv *api.Server, tok, circleID string) bool {
+	t.Helper()
+	rec := doGET(t, srv, "/api/v1/circles/"+circleID, tok)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("circle: %d %s", rec.Code, rec.Body.String())
+	}
+	var out struct {
+		ArchiveCycle struct {
+			CutoffLocked bool `json:"cutoff_locked"`
+		} `json:"archive_cycle"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	return out.ArchiveCycle.CutoffLocked
+}
+
+func rangeGET(t *testing.T, srv *api.Server, path, tok, rng string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodGet, path, nil)
+	req.Header.Set("Authorization", "Bearer "+tok)
+	req.Header.Set("Range", rng)
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	return rec
+}
+
+// Инвариант (план 42, ARC-8): отсечка замирает, когда архив отдан до
+// последнего байта, а не когда собран: оборванная (частичная) отдача её не
+// фиксирует, докачка до конца — фиксирует.
+func TestArchiveCutoffLocksOnlyAfterFullDelivery(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	tok, _ := registerSession(t, srv, caps, "lock@example.com")
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles", tok, map[string]any{
+		"name": "Семья", "owner_name": "Аня",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("circle: %d %s", rec.Code, rec.Body.String())
+	}
+	circleID := jsonStr(t, rec, "id")
+	startArchive(t, srv, tok, circleID)
+	download := "/api/v1/circles/" + circleID + "/archive/download"
+
+	if r := rangeGET(t, srv, download, tok, "bytes=0-9"); r.Code != http.StatusPartialContent {
+		t.Fatalf("partial: %d", r.Code)
+	}
+	if cutoffLocked(t, srv, tok, circleID) {
+		t.Fatal("отсечка замерла после частичной отдачи")
+	}
+	if r := rangeGET(t, srv, download, tok, "bytes=10-"); r.Code != http.StatusPartialContent {
+		t.Fatalf("rest: %d", r.Code)
+	}
+	if !cutoffLocked(t, srv, tok, circleID) {
+		t.Fatal("отсечка не замерла после отдачи до конца")
 	}
 }

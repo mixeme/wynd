@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -206,7 +208,7 @@ func (s *Server) handleStartArchiveCycle(w http.ResponseWriter, r *http.Request)
 		writeDomainError(w, err)
 		return
 	}
-	s.sendArchiveCycleStartEmails(r.Context(), circleID)
+	s.sendArchiveCycleStartEmails(circleID)
 	s.notifyCircle(circleID, sess.AccountID, "event")
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
@@ -344,7 +346,8 @@ func (s *Server) handleArchiveDownload(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	if _, err := s.Chronicle.LockCutoff(r.Context(), circleID, now); err != nil {
+	info, err := f.Stat()
+	if err != nil {
 		writeError(w, err)
 		return
 	}
@@ -354,7 +357,56 @@ func (s *Server) handleArchiveDownload(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/zip")
 	w.Header().Set("Content-Disposition", "attachment; filename=\"wynd-archive-"+circleID+".zip\"")
-	http.ServeContent(w, r, "", modtime, f)
+	rec := &deliveryRecorder{ResponseWriter: w}
+	http.ServeContent(rec, r, "", modtime, f)
+
+	// Отсечка замирает, когда участник получил архив целиком — последний байт
+	// ушёл, — а не когда архив собран: обрыв на отдаче замораживал её, хотя
+	// никто ничего не получил (ARC-8). Докачка по Range засчитывается запросом,
+	// который дошёл до конца файла.
+	if r.Method == http.MethodGet && rec.deliveredToEnd(info.Size()) {
+		if _, err := s.Chronicle.LockCutoff(context.WithoutCancel(r.Context()), circleID, cycle.CutoffDate, now); err != nil {
+			log.Printf("archive %s: lock cutoff: %v", circleID, err)
+		}
+	}
+}
+
+// deliveryRecorder считает, сколько байт тела ушло клиенту, и запоминает
+// статус: по ним видно, дошёл ли ответ до последнего байта файла.
+type deliveryRecorder struct {
+	http.ResponseWriter
+	status  int
+	written int64
+}
+
+func (d *deliveryRecorder) WriteHeader(status int) {
+	d.status = status
+	d.ResponseWriter.WriteHeader(status)
+}
+
+func (d *deliveryRecorder) Write(p []byte) (int, error) {
+	if d.status == 0 {
+		d.status = http.StatusOK
+	}
+	n, err := d.ResponseWriter.Write(p)
+	d.written += int64(n)
+	return n, err
+}
+
+// deliveredToEnd: 200 — ушёл весь файл; 206 — ушёл диапазон, кончающийся
+// последним байтом файла.
+func (d *deliveryRecorder) deliveredToEnd(size int64) bool {
+	switch d.status {
+	case http.StatusOK:
+		return d.written == size
+	case http.StatusPartialContent:
+		var first, last, total int64
+		if _, err := fmt.Sscanf(d.Header().Get("Content-Range"), "bytes %d-%d/%d", &first, &last, &total); err != nil {
+			return false
+		}
+		return total == size && last == size-1 && d.written == last-first+1
+	}
+	return false
 }
 
 // ArchiveTempDir — каталог недособранных архивов внутри каталога данных. Его
@@ -374,22 +426,37 @@ func (s *Server) createArchiveTemp() (*os.File, error) {
 	return os.CreateTemp(dir, "archive-*.zip")
 }
 
-func (s *Server) sendArchiveCycleStartEmails(ctx context.Context, circleID string) {
+// sendArchiveCycleStartEmails рассылает письма о старте цикла в фоне.
+//
+// Раньше рассылка шла в запросе владельца (до 30 с на медленном релее), а
+// ошибки отбрасывались молча — участник мог не узнать о сроке, после которого
+// его записи сотрутся, и этого не видел никто. Теперь владелец получает ответ
+// сразу, а каждый сбой — строка в журнале (план 42, ARC-9); остановка сервера
+// дожидается рассылки через notifyWG.
+func (s *Server) sendArchiveCycleStartEmails(circleID string) {
 	if s.Mail == nil {
 		return
 	}
-	bg, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	cycle, err := s.Chronicle.GetArchiveCycle(bg, circleID)
-	if err != nil || !cycle.Active {
-		return
-	}
-	emails, err := s.Chronicle.CircleMemberEmails(bg, circleID)
-	if err != nil {
-		return
-	}
 	download := strings.TrimRight(s.PublicURL(), "/") + "/api/v1/circles/" + circleID + "/archive/download"
-	for _, email := range emails {
-		_ = s.Mail.SendArchiveCycleStart(bg, email, cycle.CutoffDate, cycle.Deadline, download)
-	}
+	s.notifyWG.Add(1)
+	go func() {
+		defer s.notifyWG.Done()
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		cycle, err := s.Chronicle.GetArchiveCycle(ctx, circleID)
+		if err != nil || !cycle.Active {
+			log.Printf("archive start mail %s: cycle: %v", circleID, err)
+			return
+		}
+		emails, err := s.Chronicle.CircleMemberEmails(ctx, circleID)
+		if err != nil {
+			log.Printf("archive start mail %s: members: %v", circleID, err)
+			return
+		}
+		for _, email := range emails {
+			if err := s.Mail.SendArchiveCycleStart(ctx, email, cycle.CutoffDate, cycle.Deadline, download); err != nil {
+				log.Printf("archive start mail %s to %s: %v", circleID, email, err)
+			}
+		}
+	}()
 }

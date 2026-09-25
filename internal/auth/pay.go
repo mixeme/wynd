@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -935,10 +936,9 @@ func reminderDaysLeft(expiresAt string, now time.Time, remindDays int) *int {
 	if hours <= 0 {
 		return nil
 	}
-	days := int(hours / 24)
-	if days < 1 {
-		days = 1
-	}
+	// Вверх: «остался 1 день» — это последние сутки. Вниз при 47 часах
+	// выходило «1 день», и напоминание «за сутки» уходило за двое (PAY-7).
+	days := int(math.Ceil(hours / 24))
 	if days > remindDays {
 		return nil
 	}

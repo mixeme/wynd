@@ -42,7 +42,8 @@
 	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
 	<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 	<link rel="apple-touch-icon" href="/icon-192.png" />
-	<meta name="theme-color" content="#F4F0E9" />
+	<!-- Строка состояния установленного приложения — в цвет фона темы (SW-4). -->
+	<meta name="theme-color" content={isDark() ? '#211E1C' : '#F4F0E9'} />
 	<style>
 		/* Golos Text (SIL OFL), variable, split by unicode-range as upstream ships it. */
 		@font-face {

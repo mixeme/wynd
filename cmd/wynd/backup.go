@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -16,33 +17,34 @@ func runBackup(args []string) {
 	incremental := fs.Bool("incremental", false, "copy only new or changed blobs")
 	_ = fs.Parse(args)
 
-	cfg, err := config.Load()
-	if err != nil {
-		log.Fatalf("config: %v", err)
-	}
 	dest := fs.Arg(0)
 	if dest == "" {
 		fmt.Fprintln(os.Stderr, "usage: wynd backup [-incremental] <destination-dir>")
 		os.Exit(2)
 	}
-	dest, err = filepath.Abs(dest)
+	dest, err := filepath.Abs(dest)
 	if err != nil {
 		log.Fatalf("dest: %v", err)
 	}
-	requireDatabase("backup", cfg.DataDir)
+	cfg := loadExistingConfig("backup")
 	if err := backup.Backup(cfg.DataDir, dest, *incremental); err != nil {
 		log.Fatalf("backup: %v", err)
 	}
 	log.Printf("backup written to %s", dest)
 }
 
-// requireDatabase останавливает команду, если в каталоге данных нет базы.
-// Пустая база — почти наверняка неверный WYND_DATA_DIR: раньше такой запуск
-// создавал пустой wynd.db и «успешно» с ним работал (STB-4).
-func requireDatabase(cmd, dataDir string) string {
-	dbPath := filepath.Join(dataDir, "wynd.db")
-	if info, err := os.Stat(dbPath); err != nil || info.Size() == 0 {
-		log.Fatalf("%s: в %s нет базы (%s): проверьте WYND_DATA_DIR", cmd, dataDir, dbPath)
+// loadExistingConfig читает настройки служебной команды, ничего не создавая
+// на диске, и останавливает её, если в каталоге данных нет базы. Пустой или
+// отсутствующий wynd.db — почти наверняка опечатка в WYND_DATA_DIR: раньше
+// команда оставляла после себя каталог с blobs/, keys/ и пустым wynd.db
+// (STB-4, найдено при проверке `wynd admin-password`).
+func loadExistingConfig(cmd string) *config.Config {
+	cfg, err := config.LoadExisting()
+	if errors.Is(err, config.ErrNoDatabase) {
+		log.Fatalf("%s: %v — проверьте WYND_DATA_DIR", cmd, err)
 	}
-	return dbPath
+	if err != nil {
+		log.Fatalf("config: %v", err)
+	}
+	return cfg
 }

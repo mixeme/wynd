@@ -55,7 +55,6 @@
 			<img src={coverUrl} alt="" />
 		{/if}
 		<span class="tagr">обложка дня</span>
-		<span class="cnt">сменить</span>
 	</div>
 {/if}
 {#if title && subtitle}

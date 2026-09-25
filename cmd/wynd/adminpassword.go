@@ -9,12 +9,12 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
-	"gitea.mixdep.ru/mix/wynd/internal/config"
 	"gitea.mixdep.ru/mix/wynd/internal/store"
 )
 
@@ -30,11 +30,8 @@ func runAdminPassword(args []string) {
 	}
 	_ = fs.Parse(args)
 
-	cfg, err := config.Load()
-	if err != nil {
-		log.Fatalf("config: %v", err)
-	}
-	dbPath := requireDatabase("admin-password", cfg.DataDir)
+	cfg := loadExistingConfig("admin-password")
+	dbPath := filepath.Join(cfg.DataDir, "wynd.db")
 
 	if info, err := os.Stdin.Stat(); err == nil && info.Mode()&os.ModeCharDevice != 0 {
 		fmt.Fprint(os.Stderr, "Новый пароль панели (ввод виден на экране): ")

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -42,29 +43,54 @@ func Backup(dataDir, destDir string, incremental bool) error {
 	if err != nil {
 		return fmt.Errorf("backup: dest dir: %w", err)
 	}
+	if err := checkDestination(dataDir, destDir); err != nil {
+		return err
+	}
 	// Бэкап содержит wynd.db с секретами и keys/bootstrap: каталог и копии —
 	// только владельцу (аудит 2026-09-22, условие DEC-1).
 	if err := os.MkdirAll(destDir, 0o700); err != nil {
 		return fmt.Errorf("backup: mkdir dest: %w", err)
 	}
 
-	if err := copyFile(filepath.Join(dataDir, "config.json"), filepath.Join(destDir, "config.json")); err != nil && !os.IsNotExist(err) {
+	// Сначала файлы, потом база: запись, удалённая во время бэкапа, тогда
+	// оставляет в копии лишний файл без ссылок (его уберёт рутина), а не
+	// строку базы без файла — битую картинку после восстановления (BKP-6).
+	prev, _ := loadManifest(filepath.Join(destDir, "blobs", manifestName))
+	if err := backupBlobs(filepath.Join(dataDir, "blobs"), filepath.Join(destDir, "blobs"), incremental, prev); err != nil {
 		return err
 	}
-	if err := backupDatabase(filepath.Join(dataDir, "wynd.db"), filepath.Join(destDir, "wynd.db")); err != nil {
+	if err := copyFile(filepath.Join(dataDir, "config.json"), filepath.Join(destDir, "config.json")); err != nil && !os.IsNotExist(err) {
 		return err
 	}
 	if err := copyTree(filepath.Join(dataDir, "keys"), filepath.Join(destDir, "keys")); err != nil && !os.IsNotExist(err) {
 		return err
 	}
-
-	prev, _ := loadManifest(filepath.Join(destDir, "blobs", manifestName))
-	if err := backupBlobs(filepath.Join(dataDir, "blobs"), filepath.Join(destDir, "blobs"), incremental, prev); err != nil {
+	if err := backupDatabase(filepath.Join(dataDir, "wynd.db"), filepath.Join(destDir, "wynd.db")); err != nil {
 		return err
 	}
 
 	if err := touchLastBackupAt(filepath.Join(dataDir, "wynd.db")); err != nil {
 		return fmt.Errorf("backup: last_backup_at: %w", err)
+	}
+	return nil
+}
+
+// ErrBadDestination — каталог назначения совпадает с каталогом данных или
+// лежит внутри того, что копируется.
+var ErrBadDestination = errors.New("backup: destination inside the data being copied")
+
+// checkDestination не пускает бэкап в сам каталог данных и внутрь blobs/ или
+// keys/: в первом случае VACUUM INTO пишет поверх живой базы, во втором обход
+// копирует каталог сам в себя, пока не кончится диск (BKP-7). Отдельный
+// подкаталог рядом (`<data>/backups/…`, как у install.sh) допустим.
+func checkDestination(dataDir, destDir string) error {
+	rel, err := filepath.Rel(dataDir, destDir)
+	if err != nil || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
+		return nil
+	}
+	first := strings.Split(filepath.ToSlash(rel), "/")[0]
+	if rel == "." || first == "blobs" || first == "keys" {
+		return fmt.Errorf("%w: %s", ErrBadDestination, destDir)
 	}
 	return nil
 }

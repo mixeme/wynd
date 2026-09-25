@@ -721,16 +721,19 @@
 				<div class="empty">
 					<Mark />
 					<div class="h1s ctr" style="margin-top:28px">Пока ничего</div>
-					<Hint centered style="margin:8px 34px 0">
-						Напишите первым — или позовите тех, с кем хотите это вести.
-					</Hint>
-					<Button
-						variant="colored"
-						style="margin:24px auto 0;width:min(280px,100%)"
-						onclick={openInvite}
-					>
-						Пригласить
-					</Button>
+					<!-- Читатель не пишет и не зовёт: призыв и «Пригласить» — только пишущим. -->
+					{#if circle.canWrite}
+						<Hint centered style="margin:8px 34px 0">
+							Напишите первым — или позовите тех, с кем хотите это вести.
+						</Hint>
+						<Button
+							variant="colored"
+							style="margin:24px auto 0;width:min(280px,100%)"
+							onclick={openInvite}
+						>
+							Пригласить
+						</Button>
+					{/if}
 				</div>
 			{:else if posts.length}
 				{#if showVisibilityCutoff && visibleFrom}

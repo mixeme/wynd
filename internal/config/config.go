@@ -36,6 +36,40 @@ type Config struct {
 
 // Load builds the config from defaults, then config.json, then WYND_* variables. It never writes config.json; it only creates the data directory, blobs/, keys/ and a 0600 wynd.db.
 func Load() (*Config, error) {
+	cfg, err := read()
+	if err != nil {
+		return nil, err
+	}
+	if err := ensureDataLayout(cfg.DataDir); err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+// ErrNoDatabase — в каталоге данных нет непустого wynd.db.
+var ErrNoDatabase = errors.New("no database in data dir")
+
+// LoadExisting reads the config like Load but creates nothing and fails with
+// ErrNoDatabase when the data directory holds no non-empty wynd.db.
+//
+// Для служебных команд (`wynd backup`, `wynd admin-password`): опечатка в
+// WYND_DATA_DIR раньше оставляла после них каталог с blobs/, keys/ и пустым
+// wynd.db — Load готовит каталог к первому запуску сервера, а команде нужен
+// уже существующий.
+func LoadExisting() (*Config, error) {
+	cfg, err := read()
+	if err != nil {
+		return nil, err
+	}
+	info, err := os.Stat(filepath.Join(cfg.DataDir, "wynd.db"))
+	if err != nil || info.Size() == 0 {
+		return nil, fmt.Errorf("%w: %s", ErrNoDatabase, cfg.DataDir)
+	}
+	return cfg, nil
+}
+
+// read собирает конфигурацию, ничего не создавая на диске.
+func read() (*Config, error) {
 	dataDir := os.Getenv("WYND_DATA_DIR")
 	if dataDir == "" {
 		dataDir = DefaultDataDir
@@ -93,11 +127,6 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 	cfg.PublicURL = normalized
-
-	if err := ensureDataLayout(absDataDir); err != nil {
-		return nil, err
-	}
-
 	return cfg, nil
 }
 

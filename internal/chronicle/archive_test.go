@@ -80,7 +80,7 @@ func TestArchiveCutoffMovesUntilLocked(t *testing.T) {
 	if err != nil || cycle.CutoffDate != "2026-08-10" {
 		t.Fatalf("cutoff: %+v err=%v", cycle, err)
 	}
-	if _, err := e.ch.LockCutoff(e.ctx, circle.ID, e.at(2)); err != nil {
+	if _, err := e.ch.LockCutoff(e.ctx, circle.ID, "2026-08-10", e.at(2)); err != nil {
 		t.Fatal(err)
 	}
 	err = e.ch.MoveCutoff(e.ctx, circle.ID, "owner", "2026-08-15", e.at(3))
@@ -203,7 +203,7 @@ func TestArchiveNewCycleAfterLock(t *testing.T) {
 	if err := e.ch.StartArchiveCycle(e.ctx, circle.ID, "owner", "2026-08-08", e.at(11), 86400, e.at(1)); err == nil {
 		t.Fatal("unlocked cycle must not restart")
 	}
-	if _, err := e.ch.LockCutoff(e.ctx, circle.ID, e.at(2)); err != nil {
+	if _, err := e.ch.LockCutoff(e.ctx, circle.ID, "2026-08-05", e.at(2)); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.ch.StartArchiveCycle(e.ctx, circle.ID, "owner", "2026-08-12", e.at(20), 86400, e.at(3)); err != nil {
@@ -316,5 +316,29 @@ func TestEstimateArchivePersonalSkipsIncompleteBlobs(t *testing.T) {
 	}
 	if stats.MediaBytes != 1 {
 		t.Fatalf("bytes=%d", stats.MediaBytes)
+	}
+}
+
+// Инвариант (ARC-8): отсечка фиксируется только той, по которой собран
+// архив; если владелец сдвинул её, пока архив качался, новая не замерзает.
+func TestLockCutoffOnlyForTheCutoffUsed(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	if err := e.ch.StartArchiveCycle(e.ctx, circle.ID, "owner", "2026-08-05", e.at(10), 86400, e.at(0)); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.ch.MoveCutoff(e.ctx, circle.ID, "owner", "2026-08-10", e.at(1)); err != nil {
+		t.Fatal(err)
+	}
+	locked, err := e.ch.LockCutoff(e.ctx, circle.ID, "2026-08-05", e.at(2))
+	if err != nil || locked {
+		t.Fatalf("stale cutoff locked=%v err=%v", locked, err)
+	}
+	if err := e.ch.MoveCutoff(e.ctx, circle.ID, "owner", "2026-08-12", e.at(3)); err != nil {
+		t.Fatalf("отсечка должна оставаться подвижной: %v", err)
+	}
+	locked, err = e.ch.LockCutoff(e.ctx, circle.ID, "2026-08-12", e.at(4))
+	if err != nil || !locked {
+		t.Fatalf("current cutoff locked=%v err=%v", locked, err)
 	}
 }

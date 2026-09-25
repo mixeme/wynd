@@ -1,5 +1,6 @@
-﻿<script lang="ts">
+<script lang="ts">
 	import Icon, { type IconName } from '$ui/Icon.svelte';
+	import Row from '$ui/data/Row.svelte';
 	import type { Snippet } from 'svelte';
 
 	let {
@@ -27,65 +28,41 @@
 	} = $props();
 </script>
 
-{#if control}
-	<div class="row2 {className}" {style}>
+<!-- С control (переключатель и т. п.) строка не нажимается целиком — иначе
+     вложенная кнопка; заголовок тогда без жирного, как в кадрах. -->
+<Row onclick={control ? undefined : onclick} {link} class={className} {style}>
+	{#snippet leading()}
 		{#if icon}
 			<Icon name={icon} />
 		{/if}
-		<div class="g" class:link>
-			{#if link}
-				{title}
-			{:else if subtitle}
+	{/snippet}
+	{#snippet main()}
+		{#if link}
+			{title}
+		{:else if control}
+			{#if subtitle}
 				<div>{title}</div>
 				<div class="sub">{subtitle}</div>
 			{:else}
 				{title}
 			{/if}
-		</div>
-		{@render control()}
-	</div>
-{:else if onclick}
-	<button type="button" class="row2 {className}" {style} {onclick}>
-		{#if icon}
-			<Icon name={icon} />
-		{/if}
-		<div class="g" class:link>
-			{#if link}
-				{title}
-			{:else}
-				<div style="font-weight:600">{title}</div>
-				{#if subtitle}
-					<div class="sub">{subtitle}</div>
-				{/if}
+		{:else}
+			<div style="font-weight:600">{title}</div>
+			{#if subtitle}
+				<div class="sub">{subtitle}</div>
 			{/if}
-		</div>
-		{#if value}
-			<span class="val">{value}</span>
 		{/if}
-		{#if chevron}
-			<Icon name="chevr" size="sm" />
-		{/if}
-	</button>
-{:else}
-	<div class="row2 {className}" {style}>
-		{#if icon}
-			<Icon name={icon} />
-		{/if}
-		<div class="g" class:link>
-			{#if link}
-				{title}
-			{:else}
-				<div style="font-weight:600">{title}</div>
-				{#if subtitle}
-					<div class="sub">{subtitle}</div>
-				{/if}
+	{/snippet}
+	{#snippet trailing()}
+		{#if control}
+			{@render control()}
+		{:else}
+			{#if value}
+				<span class="val">{value}</span>
 			{/if}
-		</div>
-		{#if value}
-			<span class="val">{value}</span>
+			{#if chevron}
+				<Icon name="chevr" size="sm" />
+			{/if}
 		{/if}
-		{#if chevron}
-			<Icon name="chevr" size="sm" />
-		{/if}
-	</div>
-{/if}
+	{/snippet}
+</Row>

@@ -48,48 +48,49 @@
 	const showAction2 = $derived(card && actionLabel2 && onaction2);
 </script>
 
+<!-- Содержимое строки — один сниппет вместо четырёх копий (карточка ×
+     нажимаемая); с onclick строка — <button> с жестами длинного нажатия,
+     без — <div> (план 42, UI-5). -->
+{#snippet inner()}
+	<div class="sq">{initial}</div>
+	<div class="m">
+		<div class="n">{name}</div>
+		<div class="p">{preview}</div>
+	</div>
+	<div class="rt">
+		<span>{time}</span>
+		{#if badge !== undefined}
+			<span class="bdg">{badge}</span>
+		{/if}
+	</div>
+{/snippet}
+
+{#snippet row(rowClass: string)}
+	{#if onclick}
+		<button
+			type="button"
+			class={rowClass}
+			style={rowStyle}
+			{onclick}
+			{onmousedown}
+			{onmouseup}
+			{onmouseleave}
+			{ontouchstart}
+			{ontouchend}
+			{ontouchcancel}
+		>
+			{@render inner()}
+		</button>
+	{:else}
+		<div class={rowClass} style={rowStyle}>
+			{@render inner()}
+		</div>
+	{/if}
+{/snippet}
+
 {#if card}
 	<div class="circle-row-card {className}">
-		{#if onclick}
-			<button
-				type="button"
-				class="r"
-				style={rowStyle}
-				{onclick}
-				{onmousedown}
-				{onmouseup}
-				{onmouseleave}
-				{ontouchstart}
-				{ontouchend}
-				{ontouchcancel}
-			>
-				<div class="sq">{initial}</div>
-				<div class="m">
-					<div class="n">{name}</div>
-					<div class="p">{preview}</div>
-				</div>
-				<div class="rt">
-					<span>{time}</span>
-					{#if badge !== undefined}
-						<span class="bdg">{badge}</span>
-					{/if}
-				</div>
-			</button>
-		{:else}
-			<div class="r" style={rowStyle}>
-				<div class="sq">{initial}</div>
-				<div class="m">
-					<div class="n">{name}</div>
-					<div class="p">{preview}</div>
-				</div>
-				<div class="rt">
-					<span>{time}</span>
-					{#if badge !== undefined}
-						<span class="bdg">{badge}</span>
-					{/if}
-				</div>
-			</div>
-		{/if}
+		{@render row('r')}
 		{#if showAction}
 			<button type="button" class="circle-row-action" onclick={() => onaction?.()}>
 				{actionLabel}
@@ -101,43 +102,6 @@
 			</button>
 		{/if}
 	</div>
-{:else if onclick}
-	<button
-		type="button"
-		class="r {className}"
-		style={rowStyle}
-		{onclick}
-		{onmousedown}
-		{onmouseup}
-		{onmouseleave}
-		{ontouchstart}
-		{ontouchend}
-		{ontouchcancel}
-	>
-		<div class="sq">{initial}</div>
-		<div class="m">
-			<div class="n">{name}</div>
-			<div class="p">{preview}</div>
-		</div>
-		<div class="rt">
-			<span>{time}</span>
-			{#if badge !== undefined}
-				<span class="bdg">{badge}</span>
-			{/if}
-		</div>
-	</button>
 {:else}
-	<div class="r {className}" style={rowStyle}>
-		<div class="sq">{initial}</div>
-		<div class="m">
-			<div class="n">{name}</div>
-			<div class="p">{preview}</div>
-		</div>
-		<div class="rt">
-			<span>{time}</span>
-			{#if badge !== undefined}
-				<span class="bdg">{badge}</span>
-			{/if}
-		</div>
-	</div>
+	{@render row(`r ${className}`)}
 {/if}

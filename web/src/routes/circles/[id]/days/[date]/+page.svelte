@@ -229,10 +229,12 @@
 			{/if}
 		{/if}
 
-		<Hint style="margin:12px 16px">
-			День общий: название и обложку может сменить любой, у кого есть запись за этот день. Если
-			поменяют несколько — останется последнее.
-		</Hint>
+		{#if circle.canWrite}
+			<Hint style="margin:12px 16px">
+				День общий: название и обложку может сменить любой, у кого есть запись за этот день. Если
+				поменяют несколько — останется последнее.
+			</Hint>
+		{/if}
 		{#each posts as post (post.id)}
 			{#snippet backfilled()}
 				<span class="tm" style="display:flex;align-items:center;gap:5px">

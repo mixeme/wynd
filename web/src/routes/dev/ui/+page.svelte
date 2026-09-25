@@ -718,7 +718,12 @@
 			<div class="card">
 				<h3>DayHeader · #e5-2</h3>
 				<PhoneFrame color="terracotta" height="200px">
-					<DayHeader cover="p1" title="Дача, яблони" subtitle="12 августа · 4 записи" />
+					<DayHeader
+						cover="p1"
+						title="Дача, яблони"
+						subtitle="12 августа · 4 записи"
+						oncover={() => {}}
+					/>
 				</PhoneFrame>
 			</div>
 			<div class="card">

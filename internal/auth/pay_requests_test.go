@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
 )
@@ -120,5 +121,41 @@ func TestApproveRequestOfDeletedAccountIsNotFound(t *testing.T) {
 	}
 	if len(list) != 0 {
 		t.Fatalf("заявка удалённой учётки в списке: %+v", list)
+	}
+}
+
+// Инвариант (PAY-7): дни до конца подписки округляются вверх — «1 день» это
+// последние сутки. При 47 часах — «2 дня», и напоминание «за сутки» ещё не
+// уходит; раньше округление вниз давало «1 день» за двое суток до конца.
+func TestPayReminderDaysRoundUp(t *testing.T) {
+	f := newPayFixture(t)
+	e := f.e
+	if err := e.auth.SetPaySubscriptionSettings(e.ctx, auth.PaySubscriptionSettings{Required: true, RemindDays: 3}); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)
+	status := func(left time.Duration) auth.PayStatus {
+		t.Helper()
+		if _, err := e.auth.DB().ExecContext(e.ctx, `UPDATE accounts SET subscription_expires_at = ? WHERE id = ?`,
+			now.Add(left).Format(time.RFC3339Nano), f.accountID); err != nil {
+			t.Fatal(err)
+		}
+		st, err := e.auth.PayStatus(e.ctx, f.accountID, now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return st
+	}
+	if st := status(47 * time.Hour); st.ReminderDaysLeft == nil || *st.ReminderDaysLeft != 2 {
+		t.Fatalf("47 h: %+v", st.ReminderDaysLeft)
+	}
+	if st := status(23 * time.Hour); st.ReminderDaysLeft == nil || *st.ReminderDaysLeft != 1 {
+		t.Fatalf("23 h: %+v", st.ReminderDaysLeft)
+	}
+	if err := e.auth.SetPaySubscriptionSettings(e.ctx, auth.PaySubscriptionSettings{Required: true, RemindDays: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if st := status(47 * time.Hour); st.Reminder {
+		t.Fatalf("напоминание «за сутки» за 47 часов: %+v", st.ReminderDaysLeft)
 	}
 }

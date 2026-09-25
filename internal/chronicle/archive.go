@@ -296,12 +296,16 @@ func (c *Chronicle) MoveDeadline(ctx context.Context, circleID, ownerAccountID s
 }
 
 // LockCutoff sets cutoff_locked_at on first successful archive download.
-func (c *Chronicle) LockCutoff(ctx context.Context, circleID string, now time.Time) (bool, error) {
+//
+// Фиксирует только ту отсечку, по которой собран отданный архив: если
+// владелец сдвинул её, пока архив собирался и качался, замораживать новую
+// нельзя — у участника на руках срез по старой (план 42, ARC-8).
+func (c *Chronicle) LockCutoff(ctx context.Context, circleID, cutoffDate string, now time.Time) (bool, error) {
 	now = utcOrNow(now)
 	res, err := c.db.ExecContext(ctx, `
 		UPDATE circles SET cutoff_locked_at = ?, updated_at = ?
-		WHERE id = ? AND archive_cutoff_date IS NOT NULL AND cutoff_locked_at IS NULL
-	`, formatTime(now), formatTime(now), circleID)
+		WHERE id = ? AND archive_cutoff_date = ? AND cutoff_locked_at IS NULL
+	`, formatTime(now), formatTime(now), circleID, cutoffDate)
 	if err != nil {
 		return false, err
 	}
@@ -441,24 +445,46 @@ func IdentityIDsFromFeed(posts []FeedPost) []string {
 	return ids
 }
 
+// avatarBatch — сколько лиц спрашивается одним запросом (предел параметров
+// SQLite далеко, пачка лишь держит текст запроса коротким).
+const avatarBatch = 200
+
 // IdentityAvatarBlobIDs returns current (non-erased) avatar blob ids for identities.
+//
+// Пачкой, а не запросом на каждое лицо (план 42, ARC-10). Аватар — у текущей
+// неудалённой строки имени; если у неё аватара нет, лица в ответе нет, даже
+// когда он был у прежнего имени.
 func (c *Chronicle) IdentityAvatarBlobIDs(ctx context.Context, identityIDs []string) (map[string]string, error) {
 	out := make(map[string]string)
-	for _, id := range identityIDs {
-		var blobID sql.NullString
-		err := c.db.QueryRowContext(ctx, `
-			SELECT avatar_blob_id FROM identity_names
-			WHERE identity_id = ? AND erased_at IS NULL
-			ORDER BY effective_at DESC LIMIT 1
-		`, id).Scan(&blobID)
-		if err == sql.ErrNoRows {
-			continue
-		}
+	for start := 0; start < len(identityIDs); start += avatarBatch {
+		marks, args := inClause(identityIDs[start:min(start+avatarBatch, len(identityIDs))])
+		rows, err := c.db.QueryContext(ctx, `
+			SELECT n.identity_id, n.avatar_blob_id
+			FROM identity_names n
+			WHERE n.identity_id IN (`+marks+`)
+			  AND n.erased_at IS NULL
+			  AND n.rowid = (
+				SELECT n2.rowid FROM identity_names n2
+				WHERE n2.identity_id = n.identity_id AND n2.erased_at IS NULL
+				ORDER BY n2.effective_at DESC LIMIT 1
+			  )
+		`, args...)
 		if err != nil {
 			return nil, err
 		}
-		if blobID.Valid && blobID.String != "" {
-			out[id] = blobID.String
+		for rows.Next() {
+			var id string
+			var blobID sql.NullString
+			if err := rows.Scan(&id, &blobID); err != nil {
+				rows.Close()
+				return nil, err
+			}
+			if blobID.Valid && blobID.String != "" {
+				out[id] = blobID.String
+			}
+		}
+		if err := rows.Close(); err != nil {
+			return nil, err
 		}
 	}
 	return out, nil
