@@ -1,13 +1,17 @@
 # Изменения
 
 Формат — [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/).
-Версионирование — [SemVer](https://semver.org/lang/ru/). Текущая версия: **0.9.1**
+Версионирование — [SemVer](https://semver.org/lang/ru/). Текущая версия: **0.9.2**
 (файл `VERSION` в корне репозитория).
 
 Здесь — только текущая минорная ветка. Старшие ветки — в истории git.
 Как вести записи — [CONTRIBUTING.md](CONTRIBUTING.md#changelog-и-version).
 
 ## [Unreleased]
+
+## [0.9.2] — 2026-09-25
+
+Сверка CHANGELOG с git-историей с момента создания репозитория — без расхождений.
 
 ## [0.9.1] — 2026-09-25
 
