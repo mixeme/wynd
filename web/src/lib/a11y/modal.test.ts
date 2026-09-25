@@ -1,6 +1,7 @@
 import { createRawSnippet, flushSync, mount, unmount } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
 import OverlayLayout from '$lib/layouts/OverlayLayout.svelte';
+import { modal } from './modal';
 
 const body = createRawSnippet(() => ({
 	render: () => '<div><button id="one">Один</button><button id="two">Два</button></div>',
@@ -57,6 +58,26 @@ describe('modal overlay', () => {
 		expect(document.activeElement).toBe(opener);
 		opener.remove();
 		target.remove();
+	});
+
+	// Кадр аватара открывается с фокусом на «Готово» и туда же возвращает
+	// фокус, ушедший наружу.
+	it('focuses the last element with initialFocus last', async () => {
+		const outside = document.createElement('button');
+		document.body.append(outside);
+		const node = document.createElement('div');
+		node.innerHTML = '<button id="cancel">Отмена</button><button id="done">Готово</button>';
+		document.body.append(node);
+		const action = modal(node, { ondismiss: () => {}, initialFocus: 'last' });
+		await settle();
+		const done = node.querySelector<HTMLButtonElement>('#done');
+		expect(document.activeElement).toBe(done);
+		node.querySelector<HTMLButtonElement>('#cancel')?.focus();
+		outside.focus();
+		expect(document.activeElement).toBe(done);
+		action.destroy?.();
+		outside.remove();
+		node.remove();
 	});
 
 	it('leaves a static overlay without ondismiss alone', async () => {

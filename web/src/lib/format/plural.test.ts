@@ -13,6 +13,11 @@ describe('склонение по числу', () => {
 		expect(plural(111, WORD.comment)).toBe('111 комментариев');
 	});
 
+	it('слово с определением склоняется целиком', () => {
+		expect(plural(1, WORD.yourCircle)).toBe('1 ваш круг');
+		expect(plural(3, WORD.yourCircle)).toBe('3 ваших круга');
+	});
+
 	it('2–4 — вторая форма', () => {
 		expect(plural(2, WORD.day)).toBe('2 дня');
 		expect(plural(23, WORD.day)).toBe('23 дня');
@@ -27,6 +32,7 @@ describe('склонение по числу', () => {
 	it('ноль и пятёрки — третья', () => {
 		expect(plural(0, WORD.comment)).toBe('0 комментариев');
 		expect(plural(5, WORD.circle)).toBe('5 кругов');
+		expect(plural(5, WORD.yourCircle)).toBe('5 ваших кругов');
 		expect(plural(100, WORD.person)).toBe('100 человек');
 	});
 

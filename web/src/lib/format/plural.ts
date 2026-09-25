@@ -29,5 +29,6 @@ export const WORD = {
 	file: ['файл', 'файла', 'файлов'] as PluralForms,
 	photo: ['фотография', 'фотографии', 'фотографий'] as PluralForms,
 	person: ['человек', 'человека', 'человек'] as PluralForms,
-	circle: ['круг', 'круга', 'кругов'] as PluralForms
+	circle: ['круг', 'круга', 'кругов'] as PluralForms,
+	yourCircle: ['ваш круг', 'ваших круга', 'ваших кругов'] as PluralForms
 } as const;

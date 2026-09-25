@@ -4,6 +4,7 @@
 	import { onMount, setContext } from 'svelte';
 	import { fetchCircles } from '$lib/circles/circles';
 	import { displayHost } from '$lib/auth/origin';
+	import { WORD, plural } from '$lib/format/plural';
 	import { loadSessions } from '$lib/session/session.svelte';
 	import type { SessionRecord } from '$lib/idb/db';
 	import {
@@ -35,17 +36,20 @@
 	function serverSubtitle(session: SessionRecord): string {
 		const count = form.circleCounts[session.origin] ?? 0;
 		const host = displayHost(session.origin);
-		const tail = count ? ` · ещё ${count} ваших кругов` : '';
+		const tail = count ? ` · ещё ${plural(count, WORD.yourCircle)}` : '';
 		return `${host}${tail}`;
 	}
 
 	form.serverSubtitle = serverSubtitle;
 
+	// Свой сервер — пустая строка, поэтому выбор проверяется по наличию
+	// в списке, а не на истинность: ?origin= — это выбор своего сервера.
 	function applyOriginFromUrl(sessions: SessionRecord[]) {
+		const known = (origin: string | null) => sessions.some((s) => s.origin === origin);
 		const fromUrl = $page.url.searchParams.get('origin');
-		if (fromUrl && sessions.some((s) => s.origin === fromUrl)) {
-			form.selectedOrigin = fromUrl;
-		} else if (!form.selectedOrigin && sessions.length) {
+		if (known(fromUrl)) {
+			form.selectedOrigin = fromUrl ?? '';
+		} else if (!known(form.selectedOrigin) && sessions.length) {
 			form.selectedOrigin = sessions[0].origin;
 		}
 	}

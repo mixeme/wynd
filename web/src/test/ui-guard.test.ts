@@ -3,8 +3,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
+	analyzeScreenSource,
 	checkProject,
 	classTokens,
+	hasStyleBlock,
 	markupElements,
 	parseCssRules,
 	rawClassHits
@@ -72,6 +74,29 @@ describe('prod route raw markup guards', () => {
 	it('counts style=, style={} and style: directives', () => {
 		const els = markupElements('<div style="a:1" style:color={c}></div><p style={s}></p>');
 		expect(els.reduce((n: number, el: { styles: number }) => n + el.styles, 0)).toBe(3);
+	});
+
+	// Инвариант (GUARD-4): компонент из переменной не обходит проверку импортов.
+	it('flags dynamic .svelte imports and <svelte:component>', () => {
+		const inventory = { ui: new Set<string>(), layouts: new Set<string>() };
+		const source = [
+			'<script>',
+			"const A = import('./Local.svelte');",
+			'const B = import(`$ui/x/Y.svelte`);',
+			"const C = import.meta.glob('./*.svelte');",
+			"const D = import('leaflet');",
+			'</script>',
+			'<svelte:component this={A} />'
+		].join(String.fromCharCode(10));
+		const hits = analyzeScreenSource('src/routes/x/+page.svelte', source, inventory);
+		expect(hits.map((h: string) => h.split(':')[1])).toEqual(['2', '3', '4', '7']);
+	});
+
+	// Инвариант (GUARD-3): свой <style> ищется в разметке, не в скрипте и не в комментарии.
+	it('finds a style block only in markup', () => {
+		expect(hasStyleBlock('<div></div>\n<style>.a{}</style>')).toBe(true);
+		expect(hasStyleBlock("<script>const s = '<style>';</script><div></div>")).toBe(false);
+		expect(hasStyleBlock('<!-- <style> --><div></div>')).toBe(false);
 	});
 
 	it('passes checkProject on current tree (prod routes clean)', () => {

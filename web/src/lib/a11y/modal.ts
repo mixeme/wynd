@@ -11,10 +11,14 @@
  *
  * Без `ondismiss` action ничего не делает: такой оверлей нарисован статично
  * (каталог `/dev/ui`), и ловушка захватила бы всю страницу.
+ *
+ * `initialFocus: 'last'` — фокус при открытии и при возврате снаружи идёт на
+ * последний фокусируемый элемент: у кадра аватара это «Готово».
  */
 
 export interface ModalOptions {
 	ondismiss?: () => void;
+	initialFocus?: 'first' | 'last';
 }
 
 const FOCUSABLE = [
@@ -45,8 +49,9 @@ export function modal(node: HTMLElement, options: ModalOptions = {}) {
 	const isTop = () => stack[stack.length - 1] === node;
 
 	function focusFirst() {
-		const first = focusableIn(node)[0];
-		(first ?? node).focus();
+		const items = focusableIn(node);
+		const target = opts.initialFocus === 'last' ? items.at(-1) : items[0];
+		(target ?? node).focus();
 	}
 
 	function onKeydown(e: KeyboardEvent) {

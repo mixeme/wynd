@@ -1,7 +1,7 @@
 # Клиент — справочник
 
 Решения клиента по темам и экранам. Формат — подзаголовок на тему или экран, абзац не длиннее 600 знаков, ячейка — 300 (CONTRIBUTING). Эталоны: [wynd.html](../wynd.html), [stack.html](../stack.html), [screens.html](../visual/screens.html).  
-Компоненты и layout'ы: [ui-components.md](ui-components.md). Последняя сверка маршрутов с макетами (15.09.2026, закрыта) — [screen-function-audit.md](../archive/screen-function-audit.md).
+Компоненты и layout'ы: [ui-components.md](ui-components.md).
 
 ---
 

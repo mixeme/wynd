@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sveltekit } from '@sveltejs/kit/vite';
@@ -47,6 +47,16 @@ export default defineConfig({
 				// drop back to system fonts.
 				globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,webmanifest,woff2}'],
 				runtimeCaching: []
+			},
+			integration: {
+				// Плагин всегда дописывает шаблон prerendered/**. У SPA пререндеренных
+				// страниц нет, и workbox на каждой сборке предупреждал о пустом
+				// шаблоне. Шаблон снимается, только пока каталога нет.
+				beforeBuildServiceWorker(options) {
+					const wb = options.workbox;
+					if (!wb.globDirectory || existsSync(path.join(wb.globDirectory, 'prerendered'))) return;
+					wb.globPatterns = wb.globPatterns?.filter((g) => !g.startsWith('prerendered/'));
+				}
 			},
 			kit: {
 				adapterFallback: 'index.html',

@@ -198,7 +198,7 @@ scripts\test-integration.bat
 | Экраны (макеты) | [docs/visual/screens.html](docs/visual/screens.html) |
 | Стек (история решений) | [docs/stack.html](docs/stack.html) |
 | Аудиты безопасности | [2026-09-22](docs/security-audit-2026-09-22.md) (срез 0.7.1), [2026-09-03](docs/security-audit-2026-09-03.md) (срез 0.1.14); триггеры повторного прохода — [CONTRIBUTING.md](CONTRIBUTING.md) |
-| Изменения | [CHANGELOG.md](CHANGELOG.md) (текущая ветка), [docs/changelog/](docs/changelog/) (старшие) |
+| Изменения | [CHANGELOG.md](CHANGELOG.md) (текущая ветка; старшие — в истории git) |
 | Как вносить изменения, глоссарий | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
 Шрифт интерфейса — Golos Text ([SIL OFL](web/static/fonts/OFL.txt)).

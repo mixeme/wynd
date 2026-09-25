@@ -2,11 +2,15 @@ package api_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"gitea.mixdep.ru/mix/wynd/internal/api"
 )
 
 // Инвариант (API-1): отмена базового контекста закрывает открытый SSE-поток
@@ -93,4 +97,67 @@ func TestSSEFrameFormat(t *testing.T) {
 	if ct := rec.Header().Get("Content-Type"); ct != "text/event-stream" {
 		t.Fatalf("Content-Type = %q", ct)
 	}
+}
+
+// Инвариант (план 43, A2): /sync — только SSE. Запрос без text/event-stream
+// получает 406, а не молчаливый JSON-ответ.
+func TestSyncRejectsNonSSE(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	token, _ := registerSession(t, srv, caps, "accept@example.com")
+	for _, accept := range []string{"", "application/json", "application/x-ndjson"} {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/sync?cursor=0", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		if accept != "" {
+			req.Header.Set("Accept", accept)
+		}
+		rec := httptest.NewRecorder()
+		srv.ServeHTTP(rec, req)
+		if rec.Code != http.StatusNotAcceptable || !strings.Contains(rec.Body.String(), "not_acceptable") {
+			t.Fatalf("Accept %q: %d %s", accept, rec.Code, rec.Body.String())
+		}
+	}
+}
+
+// syncSSE читает поток /sync с курсора. Накопленное сервер отдаёт сразу, а
+// следующий опрос — через 2 с, поэтому 300 мс хватает на всю пачку.
+// Возвращает max_seq из кадра hello и события по порядку.
+func syncSSE(t *testing.T, srv *api.Server, token string, cursor int64) (int64, []map[string]any) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), 300*time.Millisecond)
+	defer cancel()
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/api/v1/sync?cursor="+strconv.FormatInt(cursor, 10), nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "text/event-stream")
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("sync: %d %s", rec.Code, rec.Body.String())
+	}
+
+	var maxSeq int64
+	var events []map[string]any
+	for _, frame := range strings.Split(rec.Body.String(), "\n\n") {
+		name, rest, ok := strings.Cut(frame, "\n")
+		if !ok {
+			continue // пульс «:» или хвост
+		}
+		data := strings.TrimPrefix(rest, "data: ")
+		switch name {
+		case "event: hello":
+			var hello struct {
+				MaxSeq int64 `json:"max_seq"`
+			}
+			if err := json.Unmarshal([]byte(data), &hello); err != nil {
+				t.Fatalf("кадр hello %q: %v", data, err)
+			}
+			maxSeq = hello.MaxSeq
+		case "event: sync":
+			var ev map[string]any
+			if err := json.Unmarshal([]byte(data), &ev); err != nil {
+				t.Fatalf("кадр sync %q: %v", data, err)
+			}
+			events = append(events, ev)
+		}
+	}
+	return maxSeq, events
 }

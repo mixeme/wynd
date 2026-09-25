@@ -393,13 +393,7 @@ func TestMediaOnlyPostAndTextWhenQuotaFull(t *testing.T) {
 		t.Fatalf("upload at quota: %d %s", rec.Code, rec.Body.String())
 	}
 
-	req = httptest.NewRequest(http.MethodGet, "/api/v1/sync?cursor=0", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-	rec = httptest.NewRecorder()
-	srv.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("sync: %d %s", rec.Code, rec.Body.String())
-	}
+	syncSSE(t, srv, token, 0)
 }
 
 func TestHTMLBlobNotExecuted(t *testing.T) {

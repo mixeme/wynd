@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.8.1
+  version: 0.8.2
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:
@@ -68,17 +68,13 @@ paths:
             default: 0
       responses:
         "200":
-          description: Sync batch (format depends on Accept)
+          description: SSE stream — hello frame with max_seq, then sync frames
           content:
-            application/json:
-              schema:
-                type: object
             text/event-stream:
               schema:
                 type: string
-            application/x-ndjson:
-              schema:
-                type: string
+        "406":
+          description: Accept without text/event-stream
 
   /circles:
     get:

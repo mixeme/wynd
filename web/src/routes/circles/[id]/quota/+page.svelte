@@ -14,6 +14,7 @@
 	import { fetchQuota, type VolumeBucket } from '$lib/circles/settings';
 	import { volumeBarCenterX } from '$lib/circles/volumeChart';
 	import { formatBytes } from '$lib/format/bytes';
+	import { WORD, plural } from '$lib/format/plural';
 	import { formatEntryDate } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 
@@ -165,7 +166,7 @@
 		{#if freedBytes || postsEstimate}
 			<Hint>
 				{#if freedBytes}Освободится {formatBytes(freedBytes)}{#if capped} из {formatBytes(quotaBytes)}{/if}.{/if}
-				{#if postsEstimate} Останется ~{postsEstimate} записей.{/if}
+				{#if postsEstimate} Останется ~{plural(postsEstimate, WORD.post)}.{/if}
 			</Hint>
 		{/if}
 		<Button variant="colored" style="margin-top:14px" onclick={next}>Дальше: сроки</Button>

@@ -1,6 +1,7 @@
 ﻿<script lang="ts">
 	import Hint from '$ui/forms/Hint.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
+	import { modal } from '$lib/a11y/modal';
 	import {
 		clampCropScale,
 		clampCropTransform,
@@ -248,36 +249,6 @@
 		return [...(cropEl?.querySelectorAll('.cbar button') ?? [])] as HTMLButtonElement[];
 	}
 
-	function onKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape') {
-			e.preventDefault();
-			requestCancel();
-			return;
-		}
-		if (e.key !== 'Tab') return;
-		const focusables = barButtons();
-		if (!focusables.length) return;
-		const active = document.activeElement;
-		const idx = focusables.indexOf(active as HTMLButtonElement);
-		if (idx === -1) {
-			e.preventDefault();
-			focusables[0].focus();
-			return;
-		}
-		e.preventDefault();
-		const next = e.shiftKey
-			? focusables[(idx - 1 + focusables.length) % focusables.length]
-			: focusables[(idx + 1) % focusables.length];
-		next.focus();
-	}
-
-	function onFocusIn(e: FocusEvent) {
-		if (!cropEl) return;
-		const target = e.target as Node | null;
-		if (target && cropEl.contains(target)) return;
-		barButtons().at(-1)?.focus();
-	}
-
 	async function finish() {
 		if (!cropViewport || saving || !ready) return;
 		saving = true;
@@ -302,8 +273,6 @@
 	}
 </script>
 
-<svelte:window onkeydown={onKeydown} onfocusin={onFocusIn} />
-
 <div
 	class="crop ph app {colorClass}"
 	bind:this={cropEl}
@@ -311,6 +280,7 @@
 	aria-modal="true"
 	aria-label="Кадр"
 	aria-busy={saving}
+	use:modal={{ ondismiss: requestCancel, initialFocus: 'last' }}
 >
 	<div class="cbar">
 		<div class="top compose-top">

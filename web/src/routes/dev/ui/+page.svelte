@@ -144,7 +144,7 @@
 		<p>
 			Импорт: <code>import Button from '$ui/forms/Button.svelte'</code>.
 			{total} компонентов и 6 layout-шаблонов. Данные-примеры из
-			<code>docs/screens.html</code>; полные экраны — в
+			<code>docs/visual/screens.html</code>; полные экраны — в
 			<a href="#smoke">smoke-тестах</a>.
 		</p>
 		<nav class="toc">
@@ -1037,7 +1037,7 @@
 
 	<section id="smoke" class="sec">
 		<h2>Smoke-тесты</h2>
-		<p class="muted">Полные экраны для визуальной сверки с <code>docs/screens.html</code>.</p>
+		<p class="muted">Полные экраны для визуальной сверки с <code>docs/visual/screens.html</code>.</p>
 		<div class="smoke-grid">
 			{#each SMOKE_ROUTES as route (route.id)}
 				<a class="smoke" href={route.href}>

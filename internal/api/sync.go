@@ -34,25 +34,13 @@ func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
 		cursor = maxSeq
 	}
 
-	accept := r.Header.Get("Accept")
-	if strings.Contains(accept, "text/event-stream") {
-		s.syncSSE(w, r, sess.AccountID, cursor, maxSeq)
+	// Поток один — SSE. Режимы NDJSON и JSON-пачкой клиентом не
+	// использовались и жили только ради тестов (план 43, A2).
+	if !strings.Contains(r.Header.Get("Accept"), "text/event-stream") {
+		writeJSON(w, http.StatusNotAcceptable, map[string]string{"error": "not_acceptable"})
 		return
 	}
-	if strings.Contains(accept, "application/x-ndjson") {
-		s.syncNDJSON(w, r, sess.AccountID, cursor)
-		return
-	}
-
-	events, err := s.Chronicle.SyncEvents(r.Context(), sess.AccountID, cursor, chronicle.SyncBatchSize())
-	if err != nil {
-		writeDomainError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"events":  eventResponses(events),
-		"max_seq": maxSeq,
-	})
+	s.syncSSE(w, r, sess.AccountID, cursor, maxSeq)
 }
 
 const (
@@ -134,33 +122,6 @@ func (s *Server) syncSSE(w http.ResponseWriter, r *http.Request, accountID strin
 	}
 }
 
-func (s *Server) syncNDJSON(w http.ResponseWriter, r *http.Request, accountID string, cursor int64) {
-	w.Header().Set("Content-Type", "application/x-ndjson")
-	w.Header().Set("Cache-Control", "no-cache")
-	flusher, _ := w.(http.Flusher)
-
-	cur := cursor
-	for {
-		events, err := s.Chronicle.SyncEvents(r.Context(), accountID, cur, chronicle.SyncBatchSize())
-		if err != nil {
-			log.Printf("sync ndjson: %v", err)
-			return
-		}
-		if len(events) == 0 {
-			break
-		}
-		for _, ev := range events {
-			data, _ := json.Marshal(eventResponse(ev))
-			_, _ = w.Write(data)
-			_, _ = w.Write([]byte("\n"))
-			if flusher != nil {
-				flusher.Flush()
-			}
-			cur = ev.Seq
-		}
-	}
-}
-
 func eventResponse(ev chronicle.Event) map[string]any {
 	out := map[string]any{
 		"seq":        ev.Seq,
@@ -178,14 +139,6 @@ func eventResponse(ev chronicle.Event) map[string]any {
 	}
 	if ev.TargetID != "" {
 		out["target_id"] = ev.TargetID
-	}
-	return out
-}
-
-func eventResponses(events []chronicle.Event) []map[string]any {
-	out := make([]map[string]any, len(events))
-	for i, ev := range events {
-		out[i] = eventResponse(ev)
 	}
 	return out
 }

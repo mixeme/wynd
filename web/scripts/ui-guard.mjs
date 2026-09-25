@@ -5,6 +5,10 @@ import path from 'node:path';
 const ROUTE_SVELTE = new Set(['+page.svelte', '+layout.svelte', '+error.svelte']);
 const IMPORT_RE = /import\s+(?:type\s+)?([\s\S]*?)\s+from\s+['"]([^'"]+)['"]/g;
 const TAG_RE = /<([A-Z][A-Za-z0-9]*)(?:\.[A-Z][A-Za-z0-9]*)*\b/g;
+// import('….svelte') и import.meta.glob('….svelte') — с любым видом кавычек.
+const DYNAMIC_SVELTE_IMPORT_RE =
+	/\bimport(?:\.meta\.glob(?:Eager)?)?\s*\(\s*\[?\s*(['"`])[^'"`]*\.svelte\1/g;
+const SVELTE_COMPONENT_RE = /<svelte:component\b/g;
 
 export function posixRel(from, to) {
 	const rel = path.relative(from, to);
@@ -239,7 +243,28 @@ export function analyzeScreenSource(rel, source, inventory) {
 		}
 	}
 
+	// Динамический импорт компонента и <svelte:component> обходят проверку
+	// импортов выше: тег берётся из переменной, а не из `import X from` (GUARD-4).
+	for (const match of source.matchAll(DYNAMIC_SVELTE_IMPORT_RE)) {
+		hits.push(
+			hit(
+				rel,
+				lineAt(source, match.index),
+				`dynamic import of a .svelte file (${match[0]}) — import $ui components statically`
+			)
+		);
+	}
+
 	const markup = markupOf(source);
+	for (const match of markup.matchAll(SVELTE_COMPONENT_RE)) {
+		hits.push(
+			hit(
+				rel,
+				lineAt(markup, match.index),
+				'<svelte:component> is not allowed in screens — render an imported $ui component'
+			)
+		);
+	}
 	for (const match of markup.matchAll(TAG_RE)) {
 		const name = match[1];
 		if (allowedTags.has(name)) continue;
@@ -585,6 +610,55 @@ export function checkInlineStyleBudget(webRoot) {
 }
 
 /**
+ * Экраны, у которых есть свой `<style>` (GUARD-3). Новые не заводятся:
+ * вёрстка экрана — это $ui и служебные классы ui.css. Список ходит только
+ * вниз: убрали `<style>` из экрана — уберите и строку отсюда.
+ * Экраны `/dev/` не проверяются.
+ */
+export const STYLE_BLOCK_SCREENS = new Set([
+	'src/routes/+layout.svelte',
+	'src/routes/+page.svelte',
+	'src/routes/admin/pay/+page.svelte',
+	'src/routes/admin/pay/donate/+page.svelte',
+	'src/routes/admin/pay/requests/[id]/+page.svelte',
+	'src/routes/admin/pay/subscription/+page.svelte'
+]);
+
+const STYLE_BLOCK_RE = /<style\b/i;
+
+/**
+ * Есть ли у экрана свой `<style>` — вне комментариев разметки и скрипта.
+ */
+export function hasStyleBlock(source) {
+	let text = stripTagBlocks(source, 'script');
+	text = text.replace(/<!--[\s\S]*?-->/g, ' ');
+	return STYLE_BLOCK_RE.test(text);
+}
+
+/**
+ * @returns {string[]}
+ */
+export function checkStyleBlocks(webRoot, allowed = STYLE_BLOCK_SCREENS) {
+	const hits = [];
+	const seen = new Set();
+	for (const file of walkSvelte(path.join(webRoot, 'src', 'routes'))) {
+		const rel = posixRel(webRoot, file);
+		if (!rel || rel.includes('/dev/')) continue;
+		if (!hasStyleBlock(fs.readFileSync(file, 'utf8'))) continue;
+		seen.add(rel);
+		if (!allowed.has(rel)) {
+			hits.push(`${rel}: свой <style> в экране — служебный класс в ui.css или компонент $ui`);
+		}
+	}
+	for (const rel of allowed) {
+		if (!seen.has(rel)) {
+			hits.push(`${rel}: <style> в экране больше нет — уберите строку из STYLE_BLOCK_SCREENS`);
+		}
+	}
+	return hits;
+}
+
+/**
  * Full check used by `npm run check:ui` and the Cursor stop hook.
  * @returns {{ ok: boolean, groups: Array<{ message: string, hits: string[] }> }}
  */
@@ -613,6 +687,7 @@ export function checkProject(webRoot) {
 	const rawRouteComposeText = [];
 	const unknownUiButtons = checkUnknownUiButtonClasses(webRoot);
 	const inlineStyles = checkInlineStyleBudget(webRoot);
+	const styleBlocks = checkStyleBlocks(webRoot);
 
 	for (const file of srcFiles) {
 		const rel = posixRel(webRoot, file);
@@ -686,6 +761,11 @@ export function checkProject(webRoot) {
 			message:
 				'check-ui: инлайн-стили в экранах — храповик: только вниз (GUI-4, см. служебные классы в конце ui.css).',
 			hits: inlineStyles
+		},
+		{
+			message:
+				'check-ui: свои <style> в экранах — только у экранов из STYLE_BLOCK_SCREENS (GUARD-3).',
+			hits: styleBlocks
 		},
 		{
 			message:

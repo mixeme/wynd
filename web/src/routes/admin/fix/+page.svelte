@@ -54,10 +54,12 @@
 	onMount(async () => {
 		server = await serverCaption();
 		await load('nginx');
-		const origin = (await getAdminSession())?.origin ?? '';
-		if (origin) {
+		// Админ входит на своём сервере, и origin его сессии — пустая строка:
+		// проверять надо наличие сессии, а не истинность origin.
+		const admin = await getAdminSession();
+		if (admin) {
 			try {
-				const probe = await fetchProbeDiagnostics(origin);
+				const probe = await fetchProbeDiagnostics(admin.origin);
 				if (probe) {
 					xff = chipValue(probe.x_forwarded_for ?? '');
 					xri = chipValue(probe.x_real_ip ?? '');

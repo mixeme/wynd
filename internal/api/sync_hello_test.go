@@ -35,12 +35,6 @@ func TestSyncHelloResetsStaleCursor(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// JSON-вариант: курсор из «прежней жизни» не прячет max_seq и не падает.
-	recJSON := doJSON(t, srv, http.MethodGet, "/api/v1/sync?cursor=999999", token, nil)
-	if recJSON.Code != http.StatusOK || !strings.Contains(recJSON.Body.String(), fmt.Sprintf(`"max_seq":%d`, maxSeq)) {
-		t.Fatalf("json sync: %d %s", recJSON.Code, recJSON.Body.String())
-	}
-
 	// SSE: hello первым кадром, затем событие, созданное уже после подключения.
 	ctx, cancel := context.WithTimeout(t.Context(), 2600*time.Millisecond)
 	defer cancel()

@@ -323,21 +323,13 @@ func acceptInvite(t *testing.T, srv *api.Server, caps *auth.CaptureCodes, token,
 	return jsonStr(t, rec, "token")
 }
 
-func syncEvents(t *testing.T, srv *api.Server, token string) []any {
+func syncEvents(t *testing.T, srv *api.Server, token string) []map[string]any {
 	t.Helper()
-	rec := doGET(t, srv, "/api/v1/sync?cursor=0", token)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("sync: %d %s", rec.Code, rec.Body.String())
-	}
-	var out map[string]any
-	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
-		t.Fatal(err)
-	}
-	events, _ := out["events"].([]any)
+	_, events := syncSSE(t, srv, token, 0)
 	return events
 }
 
-func eventsContain(events []any, needle string) bool {
+func eventsContain(events []map[string]any, needle string) bool {
 	raw, _ := json.Marshal(events)
 	return strings.Contains(string(raw), needle)
 }
