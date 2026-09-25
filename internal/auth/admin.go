@@ -23,10 +23,14 @@ func limiterKey(clientIP string) string {
 	return clientIP
 }
 
-func (s *Service) gateBootstrapToken(token, expectedToken, clientIP string, when time.Time) error {
+func (s *Service) gateBootstrapToken(ctx context.Context, token, expectedToken, clientIP string, when time.Time) error {
 	key := limiterKey(clientIP)
-	if !s.loginLimiter.allow(key, when) {
+	ok, delay := s.loginLimiter.allow(key, when)
+	if !ok {
 		return ErrRateLimited
+	}
+	if err := throttle(ctx, delay); err != nil {
+		return err
 	}
 	if subtle.ConstantTimeCompare([]byte(token), []byte(expectedToken)) != 1 {
 		s.loginLimiter.fail(key, when)
@@ -41,7 +45,7 @@ func (s *Service) ConfirmBootstrapToken(ctx context.Context, token, expectedToke
 	if when.IsZero() {
 		when = time.Now().UTC()
 	}
-	if err := s.gateBootstrapToken(token, expectedToken, clientIP, when); err != nil {
+	if err := s.gateBootstrapToken(ctx, token, expectedToken, clientIP, when); err != nil {
 		return err
 	}
 	var bootstrapped int
@@ -72,7 +76,7 @@ func (s *Service) Bootstrap(ctx context.Context, in BootstrapInput, expectedToke
 	if when.IsZero() {
 		when = time.Now().UTC()
 	}
-	if err := s.gateBootstrapToken(in.Token, expectedToken, in.ClientIP, when); err != nil {
+	if err := s.gateBootstrapToken(ctx, in.Token, expectedToken, in.ClientIP, when); err != nil {
 		return err
 	}
 	if err := ValidatePassword(in.Password); err != nil {
@@ -135,8 +139,12 @@ func (s *Service) AdminLogin(ctx context.Context, in AdminLoginInput) (Session, 
 		return Session{}, ErrInvalid
 	}
 	key := limiterKey(in.ClientIP)
-	if !s.loginLimiter.allow(key, when) {
+	ok, delay := s.loginLimiter.allow(key, when)
+	if !ok {
 		return Session{}, ErrRateLimited
+	}
+	if err := throttle(ctx, delay); err != nil {
+		return Session{}, err
 	}
 
 	var hash string

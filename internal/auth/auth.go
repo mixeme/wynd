@@ -68,6 +68,9 @@ type Service struct {
 	loopback  bool
 
 	loginLimiter *failLimiter
+	// Ввод кода: свой потолок неудач на адрес. Без него знающий чужую почту
+	// сжигал три попытки её кода сколько угодно раз (аудит 2026-09-22, SEC-8).
+	verifyLimiter *failLimiter
 }
 
 // New wraps a migrated SQLite store.
@@ -90,7 +93,8 @@ func New(st store.Store, ch *chronicle.Chronicle, mailer CodeDelivery, loopback 
 		version:   version.String(),
 		loopback:  loopback,
 
-		loginLimiter: newFailLimiter(),
+		loginLimiter:  newFailLimiter(),
+		verifyLimiter: newFailLimiterWith(verifyFailWindow, verifyMaxFails, verifyLockout),
 	}, nil
 }
 

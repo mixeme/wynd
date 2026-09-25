@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd admin API
-  version: 0.4.3
+  version: 0.7.2
   description: Admin routes (Bearer admin session). Participant routes are in openapi-participant.yaml.
 
 servers:
@@ -186,11 +186,17 @@ paths:
                   enum: [single, multi]
                 max_uses:
                   type: integer
+                  minimum: 1
+                  maximum: 100
                 ttl_sec:
                   type: integer
+                  minimum: 1
+                  maximum: 2592000
       responses:
         "201":
           description: Invite created
+        "400":
+          description: max_uses above 100 or ttl_sec above 30 days are refused
 
   /admin/invites/{id}:
     delete:

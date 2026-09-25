@@ -82,9 +82,12 @@
 
 		map = leaflet.map(mapEl, { zoomControl: true, attributionControl: true });
 		leaflet
-			.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+			// Без {s}: поддомены a/b/c сняты с осени 2023, адрес — tile.openstreetmap.org.
+			// Атрибуция обязана быть ссылкой на условия (LIC-4).
+			.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 				maxZoom: 19,
-				attribution: '© OpenStreetMap'
+				attribution:
+					'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
 			})
 			.addTo(map);
 

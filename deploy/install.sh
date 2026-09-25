@@ -25,8 +25,17 @@ BINARY=""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# Caddy, стоявший до скрипта, обслуживает чужие сайты: его Caddyfile не наш,
+# перезаписать его — снять их с публикации. Такой случай = режим --own-proxy:
+# скрипт печатает фрагмент конфигурации и ничего не трогает (DEP-2).
+CADDY_PREINSTALLED=0
+if command -v caddy >/dev/null 2>&1; then
+	CADDY_PREINSTALLED=1
+fi
+
 usage() {
-	sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+	# Строки 4–15 — шапка с Usage и списком опций (DEP-2).
+	sed -n '4,15p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 while [[ $# -gt 0 ]]; do
@@ -98,13 +107,11 @@ install_caddy_for() {
 		echo "Caddy: apt-get not found — install Caddy manually or pass --own-proxy." >&2
 		return 1
 	fi
-	if ! command -v caddy >/dev/null 2>&1; then
-		apt-get update -qq
-		apt-get install -y -qq caddy || {
-			echo "Caddy package install failed — configure reverse proxy manually or pass --own-proxy." >&2
-			return 1
-		}
-	fi
+	apt-get update -qq
+	apt-get install -y -qq caddy || {
+		echo "Caddy package install failed — configure reverse proxy manually or pass --own-proxy." >&2
+		return 1
+	}
 	local caddyfile=/etc/caddy/Caddyfile
 	sed "s/example.org/$host/g" "$SCRIPT_DIR/proxy/Caddyfile" >"$caddyfile"
 	systemctl enable caddy.service 2>/dev/null || true
@@ -165,9 +172,9 @@ elif [[ "$FROM_SOURCE" -eq 1 ]]; then
 	fi
 	(
 		cd "$REPO_ROOT/web"
-		if [[ ! -d node_modules ]]; then
-			npm ci
-		fi
+		# Всегда: node_modules от прошлой версии даёт сборку не из этого
+		# package-lock.json, и это не видно ни в логе, ни в бинаре (DEP-2).
+		npm ci
 		npm run build
 	)
 	(
@@ -179,6 +186,30 @@ elif [[ -f "$SCRIPT_DIR/wynd" ]]; then
 else
 	echo "Binary not found. Use --from-source, --bin, or place wynd next to install.sh." >&2
 	exit 1
+fi
+
+run_as_service_user() {
+	if command -v runuser >/dev/null 2>&1; then
+		runuser -u "$SERVICE_USER" -- "$@"
+	else
+		su -s /bin/sh -c "$(printf '%q ' "$@")" "$SERVICE_USER"
+	fi
+}
+
+# Обновление: миграции схемы необратимы, откатиться можно только из копии.
+# Копия снимается старым бинарём до замены; отказ копирования — отказ
+# обновления, работающая версия при этом не тронута (DEP-2).
+if [[ -x "$INSTALL_DIR/wynd" && -f "$DATA_DIR/wynd.db" ]]; then
+	stamp="$(date +%Y%m%d-%H%M%S)"
+	backup_dir="$DATA_DIR/backups/pre-update-$stamp"
+	echo "Backing up data to $backup_dir before replacing the binary..."
+	if ! run_as_service_user env WYND_DATA_DIR="$DATA_DIR" "$INSTALL_DIR/wynd" backup "$backup_dir"; then
+		echo "Backup failed — install aborted, the running version is untouched." >&2
+		echo "Fix the cause (disk space, permissions on $DATA_DIR/backups) and re-run." >&2
+		exit 1
+	fi
+	cp -p "$INSTALL_DIR/wynd" "$backup_dir/wynd"
+	echo "Previous binary saved as $backup_dir/wynd."
 fi
 
 install -m 0755 "$tmp_bin" "$INSTALL_DIR/wynd"
@@ -220,7 +251,10 @@ systemctl enable wynd.service
 systemctl restart wynd.service
 
 if [[ -n "$PUBLIC_URL" ]] && ! is_loopback_url "$PUBLIC_URL"; then
-	if [[ "$OWN_PROXY" -eq 1 ]]; then
+	if [[ "$OWN_PROXY" -eq 1 || "$CADDY_PREINSTALLED" -eq 1 ]]; then
+		if [[ "$OWN_PROXY" -eq 0 ]]; then
+			echo "Caddy was already installed — /etc/caddy/Caddyfile left untouched." >&2
+		fi
 		print_proxy_snippet "$PUBLIC_URL"
 	elif ! install_caddy_for "$PUBLIC_URL"; then
 		echo "" >&2

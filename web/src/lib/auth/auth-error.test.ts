@@ -9,16 +9,29 @@ describe('authErrorHint', () => {
 		);
 	});
 
+	// detail — метка причины от сервера, а не его сырой ответ.
 	it('explains a silent SMTP timeout', () => {
-		expect(
-			authErrorHint(new ApiError(502, 'smtp_failed', 'mail: send failed: mail: dial x: i/o timeout'))
-		).toBe('Сервер почты не ответил. Проверьте хост и порт.');
+		expect(authErrorHint(new ApiError(502, 'smtp_failed', 'dial'))).toBe(
+			'Сервер почты не ответил. Проверьте хост и порт.'
+		);
 	});
 
 	it('explains a rejected login', () => {
-		expect(
-			authErrorHint(new ApiError(502, 'smtp_failed', 'mail: send failed: mail: auth: 535'))
-		).toBe('Сервер не принял логин или пароль.');
+		expect(authErrorHint(new ApiError(502, 'smtp_failed', 'auth'))).toBe(
+			'Сервер не принял логин или пароль.'
+		);
+	});
+
+	it('explains a relay without STARTTLS', () => {
+		expect(authErrorHint(new ApiError(502, 'smtp_failed', 'starttls_required'))).toContain(
+			'STARTTLS'
+		);
+	});
+
+	it('falls back on an unknown reason', () => {
+		expect(authErrorHint(new ApiError(502, 'smtp_failed', 'protocol'))).toBe(
+			AUTH_ERROR_HINTS.smtp_failed
+		);
 	});
 
 	it('names the wait after a rate limit', () => {

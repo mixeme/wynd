@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"sync"
 	"time"
 )
@@ -23,29 +24,49 @@ type failState struct {
 }
 
 const (
-	loginFailWindow   = 15 * time.Minute
-	loginMaxFails     = 5
-	loginLockout      = 15 * time.Minute
-	globalFailKey     = "*"
-	globalMaxFails    = 50
+	loginFailWindow = 15 * time.Minute
+	loginMaxFails   = 5
+	loginLockout    = 15 * time.Minute
+	// Ввод кода: потолок выше, чем у пароля админа, — за одним адресом
+	// может сидеть семья, и три попытки на код расходуются быстро.
+	verifyFailWindow = 15 * time.Minute
+	verifyMaxFails   = 10
+	verifyLockout    = 15 * time.Minute
+	globalFailKey    = "*"
+	globalMaxFails   = 50
+	// Переполнение общего ведра замедляет, а не запирает: иначе 50 неудач с
+	// любых адресов закрывали вход самому хозяину сервера на всё окно —
+	// отказ в обслуживании чужими руками (аудит 2026-09-22, SEC-8).
+	globalThrottle    = 2 * time.Second
 	limiterGCEvery    = 256
 	limiterStaleAfter = time.Hour
 )
 
 func newFailLimiter() *failLimiter {
+	return newFailLimiterWith(loginFailWindow, loginMaxFails, loginLockout)
+}
+
+func newFailLimiterWith(window time.Duration, maxFails int, lockout time.Duration) *failLimiter {
 	return &failLimiter{
-		window:   loginFailWindow,
-		maxFails: loginMaxFails,
-		lockout:  loginLockout,
+		window:   window,
+		maxFails: maxFails,
+		lockout:  lockout,
 		byKey:    map[string]*failState{},
 	}
 }
 
-// allow reports whether key (and the global bucket) may attempt now.
-func (l *failLimiter) allow(key string, now time.Time) bool {
+// allow reports whether key may attempt now, and how long the caller must
+// wait first. Свой ключ запирается наглухо; общее ведро только замедляет.
+func (l *failLimiter) allow(key string, now time.Time) (bool, time.Duration) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	return !l.locked(key, now) && !l.locked(globalFailKey, now)
+	if l.locked(key, now) {
+		return false, 0
+	}
+	if l.locked(globalFailKey, now) {
+		return true, globalThrottle
+	}
+	return true, 0
 }
 
 func (l *failLimiter) locked(key string, now time.Time) bool {
@@ -86,6 +107,21 @@ func (l *failLimiter) reset(key string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	delete(l.byKey, key)
+}
+
+// throttle выдерживает паузу, не игнорируя отмену запроса.
+func throttle(ctx context.Context, d time.Duration) error {
+	if d <= 0 {
+		return nil
+	}
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-t.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (l *failLimiter) gc(now time.Time) {

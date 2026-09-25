@@ -246,5 +246,10 @@ func (s *Service) DeleteAccount(ctx context.Context, id string, now time.Time) e
 	`, deletedAt, id); err != nil {
 		return fmt.Errorf("revoke personal invites: %w", err)
 	}
+	// И ссылки, выданные самой учёткой: иначе её приглашения продолжали
+	// приводить людей в круги, из которых она уже вышла (SEC-9).
+	if err := revokeInvitesCreatedByTx(ctx, tx, id, "", deletedAt); err != nil {
+		return err
+	}
 	return tx.Commit()
 }

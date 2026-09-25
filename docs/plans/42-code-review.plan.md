@@ -358,16 +358,18 @@ Legacy мало, он назван, но план удаления нигде н
 
 ### Волна 3 — процесс, лицензия, деплой
 
-- [ ] **CI** `.gitea/workflows/ci.yaml` по решению раздела B.
-- [ ] **DEP-1, DEP-2, DEP-3** `.dockerignore`, `install.sh`, Dockerfile, systemd, `Makefile`.
-- [ ] **LIC-2** `source_url` в `/instance`, клиент берёт адрес оттуда, футер `/admin`. Записать в CONTRIBUTING: Gitea — рабочий remote, GitHub — публичное зеркало.
+Волна закрыта версией 0.7.2, кроме LIC-1 (ждёт публичного релиза). Схема выросла до v16 (0015 — индекс журнала кодов, 0016 — срок отложенного вступления); перечень миграций в `server-reference.md` попутно выровнен — остальное по DOC-1 остаётся в волне 6.
+
+- [x] **CI** `.gitea/workflows/ci.yaml` по решению раздела B. Порядок шагов: клиент собирается до `go vet` (иначе падает `go:embed all:dist`).
+- [x] **DEP-1, DEP-2, DEP-3** `.dockerignore`, `install.sh`, Dockerfile, systemd, `Makefile`. `install.sh` снимает копию данных старым бинарём до замены и отказывается обновлять при сбое копирования.
+- [x] **LIC-2** `source_url` в `/instance`, клиент берёт адрес оттуда, футер `/admin`. Записать в CONTRIBUTING: Gitea — рабочий remote, GitHub — публичное зеркало.
 - [ ] **LIC-1** (к публичному релизу, не раньше) Зеркало на GitHub, теги `vX.Y.Z`, ссылка на версию, `git ls-remote` в воротах публичного релиза.
-- [ ] **LIC-3, LIC-4, LIC-5** `THIRD_PARTY_LICENSES.txt`; атрибуция и URL плиток OSM; ASCII-тире в `LICENSE:1`; `"license": "AGPL-3.0-or-later"` в `package.json`; LICENSE и метки в образе.
-- [ ] **DOC-2** `TestOpenAPIVersionMatchesVERSION`; поднять версии в обоих yaml.
-- [ ] **[аудит 2026-09-22] SEC-7** Push-доставка: свой `DialContext` в `newDeliveryClient` — резолвить хост самому и отвергать непубличные адреса при каждой доставке (DNS-rebinding обходит проверку при подписке); хост endpoint без пути в ошибках лога.
-- [ ] **[аудит 2026-09-22] SEC-8** `POST /auth/verify`: лимит попыток по IP (или единый `400 invalid` на not_found/expired/too_many_attempts) — сейчас знающий e-mail сжигает 3 чужие попытки; `chargeRate` — `INSERT … SELECT … WHERE COUNT < ?` с `RowsAffected`; глобальный ключ `*` лимитера входа — замедление, не запрет; индекс `code_request_log(email, requested_at)`.
-- [ ] **[аудит 2026-09-22] SEC-9** `pending_circle_joins`: `expires_at`/`invite_id`, чистка при отзыве ссылки, исключении пригласившего и в рутине; инвайты заблокированного/удалённого создателя отзываются; peek применяет `validateInvite` целиком; потолки `max_uses` ≤ 100 и `ttl_sec` ≤ 30 сут.
-- [ ] **[аудит 2026-09-22]** `mail.ErrSend` в ответе — классифицированная причина (`dial`/`tls`/`starttls_required`/`auth`/`protocol`) без сырой строки сервера; `ValidatePublicURL` в bootstrap до `ConfirmBootstrapToken`; `/auth/code` для заблокированной учётки в режиме open — 200 без письма.
+- [x] **LIC-3, LIC-4, LIC-5** `THIRD_PARTY_LICENSES.txt`; атрибуция и URL плиток OSM; ASCII-тире в `LICENSE:1`; `"license": "AGPL-3.0-or-later"` в `package.json`; LICENSE и метки в образе. Вместо `go-licenses` — `go list -deps` (инструмент не ставится офлайн и не опознаёт лицензию `modernc.org/mathutil`, а нужен текст, а не вердикт); файл лежит в репозитории, свежесть сторожит тест.
+- [x] **DOC-2** `TestOpenAPIVersionMatchesVERSION`; поднять версии в обоих yaml.
+- [x] **[аудит 2026-09-22] SEC-7** Push-доставка: свой `DialContext` в `newDeliveryClient` — резолвить хост самому и отвергать непубличные адреса при каждой доставке (DNS-rebinding обходит проверку при подписке); хост endpoint без пути в ошибках лога.
+- [x] **[аудит 2026-09-22] SEC-8** `POST /auth/verify`: лимит попыток по IP (или единый `400 invalid` на not_found/expired/too_many_attempts) — сейчас знающий e-mail сжигает 3 чужие попытки; `chargeRate` — `INSERT … SELECT … WHERE COUNT < ?` с `RowsAffected`; глобальный ключ `*` лимитера входа — замедление, не запрет; индекс `code_request_log(email, requested_at)`.
+- [x] **[аудит 2026-09-22] SEC-9** `pending_circle_joins`: `expires_at`/`invite_id`, чистка при отзыве ссылки, исключении пригласившего и в рутине; инвайты заблокированного/удалённого создателя отзываются; peek применяет `validateInvite` целиком; потолки `max_uses` ≤ 100 и `ttl_sec` ≤ 30 сут.
+- [x] **[аудит 2026-09-22]** `mail.ErrSend` в ответе — классифицированная причина (`dial`/`tls`/`starttls_required`/`auth`/`protocol`) без сырой строки сервера; `ValidatePublicURL` в bootstrap до `ConfirmBootstrapToken`; `/auth/code` для заблокированной учётки в режиме open — 200 без письма.
 
 ### Волна 4 — тесты
 

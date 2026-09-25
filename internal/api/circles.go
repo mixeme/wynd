@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log"
 	"net/http"
 	"time"
 
@@ -207,6 +208,10 @@ func (s *Server) handleLeaveCircle(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeDomainError(w, err)
 		return
+	}
+	// Ушедший не оставляет живой ссылки в круг (SEC-9).
+	if err := s.Auth.RevokeCircleInvitesBy(r.Context(), circleID, sess.AccountID, now); err != nil {
+		log.Printf("leaveCircle: revoke invites %s/%s: %v", circleID, sess.AccountID, err)
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }

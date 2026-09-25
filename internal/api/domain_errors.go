@@ -30,7 +30,13 @@ func writeDomainError(w http.ResponseWriter, err error) {
 	case errors.Is(err, mail.ErrNotConfigured):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "smtp_not_configured"})
 	case errors.Is(err, mail.ErrSend):
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "smtp_failed", "detail": err.Error()})
+		// Наружу — только классифицированная причина: сырой ответ сервера
+		// почты уходил в панель как есть (аудит 2026-09-22).
+		log.Printf("api: smtp send failed: %v", err)
+		writeJSON(w, http.StatusBadGateway, map[string]string{
+			"error":  "smtp_failed",
+			"detail": mail.SendReason(err),
+		})
 	case errors.Is(err, push.ErrNotConfigured):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "push_not_configured"})
 	default:

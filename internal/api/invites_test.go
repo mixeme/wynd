@@ -244,3 +244,52 @@ func TestServerInvitePeek(t *testing.T) {
 		t.Fatalf("expired server peek: %d %s", rec.Code, rec.Body.String())
 	}
 }
+
+// Инвариант (SEC-9, аудит 2026-09-22): просмотр ссылки проверяет её так же,
+// как и вход по ней. Раньше смотрели только отзыв и срок, и исчерпанная
+// ссылка показывала посторонним название круга и список участников.
+func TestPeekRefusesExhaustedInvite(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	ownerTok, _ := registerSession(t, srv, caps, "anya@example.com")
+
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles", ownerTok, map[string]any{
+		"name": "Семья", "owner_name": "Аня", "color": "olive",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create circle: %d %s", rec.Code, rec.Body.String())
+	}
+	circleID := jsonStr(t, rec, "id")
+
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/invites", ownerTok, map[string]any{
+		"kind": "single", "max_uses": 1, "ttl_sec": 3600,
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("invite: %d %s", rec.Code, rec.Body.String())
+	}
+	token := jsonStr(t, rec, "token")
+
+	rec = doGET(t, srv, "/api/v1/invites/"+token, "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("peek живой ссылки: %d %s", rec.Code, rec.Body.String())
+	}
+
+	// Ссылку израсходовали: вход по ней уже невозможен, просмотр — тоже.
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/invites/"+token+"/accept", "", map[string]string{
+		"email": "bob@example.com", "name": "Боб",
+	})
+	if rec.Code != http.StatusAccepted && rec.Code != http.StatusOK {
+		t.Fatalf("accept: %d %s", rec.Code, rec.Body.String())
+	}
+	code := caps.Last("bob@example.com")
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/auth/verify", "", map[string]string{
+		"email": "bob@example.com", "code": code,
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("verify: %d %s", rec.Code, rec.Body.String())
+	}
+
+	rec = doGET(t, srv, "/api/v1/invites/"+token, "")
+	if rec.Code == http.StatusOK {
+		t.Fatalf("исчерпанная ссылка показала круг: %s", rec.Body.String())
+	}
+}

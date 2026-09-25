@@ -44,7 +44,9 @@ func (s *Service) CreateMemberInvite(ctx context.Context, in CreateMemberInviteI
 	if err != nil {
 		return Invite{}, err
 	}
-	if err := s.insertPendingCircleJoin(ctx, tx, in.TargetAccountID, in.CircleID, when); err != nil {
+	// Личное приглашение: право вступить живёт ровно столько, сколько сама
+	// ссылка, и снимается вместе с ней (SEC-9).
+	if err := s.insertPendingCircleJoin(ctx, tx, in.TargetAccountID, in.CircleID, inv.ID, when, inv.ExpiresAt); err != nil {
 		return Invite{}, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -149,16 +151,23 @@ func (s *Service) MemberInviteTargets(ctx context.Context, circleID string, now 
 	return out, rows.Err()
 }
 
-// HasPendingCircleJoin reports whether the account must complete naming for the circle.
-func (s *Service) HasPendingCircleJoin(ctx context.Context, accountID, circleID string) (bool, error) {
-	return s.hasPendingCircleJoin(ctx, accountID, circleID)
+// HasPendingCircleJoin reports whether the account must complete naming for
+// the circle. Нулевое now — текущее время.
+func (s *Service) HasPendingCircleJoin(ctx context.Context, accountID, circleID string, now time.Time) (bool, error) {
+	when := now.UTC()
+	if when.IsZero() {
+		when = time.Now().UTC()
+	}
+	return s.hasPendingCircleJoin(ctx, accountID, circleID, when)
 }
 
 // ListPendingCircleJoins returns circle ids awaiting join for the account.
 func (s *Service) ListPendingCircleJoins(ctx context.Context, accountID string) ([]string, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT circle_id FROM pending_circle_joins WHERE account_id = ? ORDER BY created_at
-	`, accountID)
+		SELECT circle_id FROM pending_circle_joins
+		WHERE account_id = ? AND expires_at IS NOT NULL AND expires_at > ?
+		ORDER BY created_at
+	`, accountID, formatTime(time.Now().UTC()))
 	if err != nil {
 		return nil, err
 	}

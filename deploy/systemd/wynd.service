@@ -12,12 +12,35 @@ Environment=WYND_DATA_DIR=/var/lib/wynd
 ExecStart=/usr/local/bin/wynd
 Restart=on-failure
 RestartSec=5s
+# Остановка ждёт закрытия SSE-потоков и идущей суточной рутины.
 TimeoutStopSec=30s
 
+# Песочница (DEP-3). Бинарь чисто на Go (CGO_ENABLED=0), слушает loopback,
+# пишет только в каталог данных и ходит наружу по HTTP и SMTP.
 NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
 PrivateTmp=true
+PrivateDevices=true
 ProtectSystem=strict
 ProtectHome=true
+ProtectProc=invisible
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+UMask=0077
 ReadWritePaths=/var/lib/wynd
 
 [Install]

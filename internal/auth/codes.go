@@ -7,6 +7,7 @@ import (
 	"crypto/subtle"
 	"database/sql"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -45,7 +46,10 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) error {
 	flow := FlowRegister
 	if acc, err := s.accountByEmail(ctx, email); err == nil {
 		if acc.Blocked {
-			return ErrForbidden
+			// Открытая регистрация отвечает одинаково на любой адрес. Отказ
+			// именно заблокированному превращал endpoint в справочник: кто
+			// здесь есть и кого закрыли (аудит 2026-09-22). Письма нет.
+			return nil
 		}
 		flow = FlowLogin
 	} else if err != ErrNotFound {
@@ -91,6 +95,16 @@ func (s *Service) RequestCode(ctx context.Context, in RequestCodeInput) error {
 	} else if err != nil {
 		return err
 	} else if acc.Blocked {
+		// В открытом режиме ответ одинаков для любого адреса, поэтому и для
+		// заблокированного — 200 без письма. В режимах invite и closed отказ
+		// незнакомому адресу и так виден, там остаётся forbidden.
+		mode, merr := s.registrationMode(ctx)
+		if merr != nil {
+			return merr
+		}
+		if mode == ModeOpen {
+			return nil
+		}
 		return ErrForbidden
 	}
 	return s.issueCode(ctx, issueCodeInput{
@@ -145,7 +159,36 @@ func (s *Service) issueCode(ctx context.Context, in issueCodeInput) error {
 	return s.mailer.SendCode(ctx, in.email, code)
 }
 
+// Verify обменивает код на сессию. Неудачные попытки считаются по адресу
+// обратившегося: код живёт у почты, и знающий чужую почту сжигал её три
+// попытки сколько угодно раз, запирая вход хозяину (аудит 2026-09-22, SEC-8).
 func (s *Service) Verify(ctx context.Context, in VerifyInput) (VerifyResult, error) {
+	when := in.Now.UTC()
+	if when.IsZero() {
+		when = time.Now().UTC()
+	}
+	in.Now = when
+	key := limiterKey(in.ClientIP)
+	allowed, delay := s.verifyLimiter.allow(key, when)
+	if !allowed {
+		return VerifyResult{}, ErrRateLimited
+	}
+	if err := throttle(ctx, delay); err != nil {
+		return VerifyResult{}, err
+	}
+	res, err := s.verify(ctx, in)
+	switch {
+	case err == nil:
+		s.verifyLimiter.reset(key)
+	case errors.Is(err, ErrInvalid), errors.Is(err, ErrNotFound),
+		errors.Is(err, ErrExpired), errors.Is(err, ErrTooManyAttempts),
+		errors.Is(err, ErrForbidden):
+		s.verifyLimiter.fail(key, when)
+	}
+	return res, err
+}
+
+func (s *Service) verify(ctx context.Context, in VerifyInput) (VerifyResult, error) {
 	email := normalizeEmail(in.Email)
 	code := digitsOnly(in.Code)
 	if email == "" || email == AdminSentinelEmail || len(code) != 6 {
@@ -245,7 +288,9 @@ func (s *Service) Verify(ctx context.Context, in VerifyInput) (VerifyResult, err
 					return VerifyResult{}, fmt.Errorf("chronicle required for circle invite")
 				}
 				if inviteName == "" {
-					if err := s.insertPendingCircleJoin(ctx, tx, acc.ID, inv.CircleID, when); err != nil {
+					// Право доназвать себя живёт сутки и не переживает
+					// отзыв ссылки, по которой заведено (SEC-9).
+					if err := s.insertPendingCircleJoin(ctx, tx, acc.ID, inv.CircleID, inv.ID, when, when.Add(pendingJoinTTL)); err != nil {
 						return VerifyResult{}, err
 					}
 				} else if _, _, err := s.chronicle.JoinInTx(ctx, tx, chronicle.JoinInput{
@@ -320,21 +365,37 @@ func (s *Service) claimAttempt(ctx context.Context, id string) (bool, error) {
 // Попытка засчитывается всегда, даже когда адрес неизвестен и ответ — 404:
 // иначе перебор чужих адресов вообще не бьёт по лимиту (AUTH-2).
 func (s *Service) chargeRate(ctx context.Context, clientIP, email string, when time.Time) error {
+	clientIP = limiterKey(clientIP)
+	since := formatTime(when.Add(-ipRateLimitWindow))
+	// Проверка и запись одним оператором: раздельные SELECT и INSERT
+	// пропускали параллельные запросы сверх потолка (аудит 2026-09-22, SEC-8).
+	res, err := s.db.ExecContext(ctx, `
+		INSERT INTO code_request_log (client_ip, email, requested_at)
+		SELECT ?, ?, ?
+		WHERE (SELECT COUNT(*) FROM code_request_log WHERE client_ip = ? AND requested_at >= ?) < ?
+		  AND (SELECT COUNT(*) FROM code_request_log WHERE email = ? AND requested_at >= ?) < ?
+	`, clientIP, email, formatTime(when),
+		clientIP, since, ipRateLimit,
+		email, since, emailRateLimit)
+	if err != nil {
+		return fmt.Errorf("log code request: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("log code request: %w", err)
+	}
+	if n > 0 {
+		return nil
+	}
+	// Строка не легла — потолок выбран. checkRate считает, сколько ждать.
 	if err := s.checkRate(ctx, clientIP, email, when); err != nil {
 		return err
 	}
-	if _, err := s.db.ExecContext(ctx, `
-		INSERT INTO code_request_log (client_ip, email, requested_at) VALUES (?, ?, ?)
-	`, clientIP, email, formatTime(when)); err != nil {
-		return fmt.Errorf("log code request: %w", err)
-	}
-	return nil
+	return &RateLimitError{RetryAfterSec: 1}
 }
 
 func (s *Service) checkRate(ctx context.Context, clientIP, email string, when time.Time) error {
-	if clientIP == "" {
-		clientIP = "unknown"
-	}
+	clientIP = limiterKey(clientIP)
 	since := formatTime(when.Add(-ipRateLimitWindow))
 	var byIP, byEmail int
 	err := s.db.QueryRowContext(ctx, `

@@ -2,6 +2,8 @@ package api
 
 import (
 	"net/http"
+
+	"gitea.mixdep.ru/mix/wynd/internal/version"
 )
 
 func (s *Server) handleInstance(w http.ResponseWriter, r *http.Request) {
@@ -28,6 +30,9 @@ func (s *Server) handleInstance(w http.ResponseWriter, r *http.Request) {
 		"loopback":          info.Loopback,
 		"bootstrapped":      info.Bootstrapped,
 		"code_delivery":     delivery,
+		// AGPL §13: клиент показывает ссылку на исходники этого сервера,
+		// а не адрес, зашитый в сборку клиента (LIC-2).
+		"source_url": version.SourceURL,
 	}
 	if s.Blobs != nil {
 		if cs, err := s.Blobs.LoadCompressionSettings(r.Context()); err == nil {

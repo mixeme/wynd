@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.4.4
+  version: 0.7.2
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:
@@ -19,7 +19,9 @@ paths:
         "200":
           description: >-
             Instance name, version, registration mode, loopback, bootstrapped,
-            and code_delivery (`log` on loopback without SMTP, else `mail`).
+            code_delivery (`log` on loopback without SMTP, else `mail`), and
+            source_url — the Corresponding Source address the client links to
+            (AGPL 13).
 
   /probe:
     get:
@@ -122,13 +124,19 @@ paths:
                   enum: [single, multi]
                 max_uses:
                   type: integer
+                  minimum: 1
+                  maximum: 100
                 ttl_sec:
                   type: integer
+                  minimum: 1
+                  maximum: 2592000
       responses:
         "201":
           description: Invite token
         "400":
-          description: kind=multi is invalid when the circle allows only single invites
+          description: >-
+            kind=multi is invalid when the circle allows only single invites;
+            max_uses above 100 or ttl_sec above 30 days are refused
 
   /circles/{circle_id}/invite-candidates:
     get:
@@ -497,6 +505,10 @@ paths:
       responses:
         "200":
           description: Circle invite metadata, or server invite (server_name, host, inviter_name) without a circle
+        "400":
+          description: Invite revoked or already used up
+        "410":
+          description: Invite expired
 
   /invites/{token}/join:
     post:

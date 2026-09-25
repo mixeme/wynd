@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -93,6 +94,8 @@ func TestDeliveryClientRefusesRedirectAndSendsMailtoSubscriber(t *testing.T) {
 	defer srv.Close()
 
 	svc := newPushService(t)
+	// Боевой клиент не набирает loopback (SEC-7), а httptest живёт на нём.
+	svc.AllowLoopbackDeliveryForTest()
 	if err := svc.EnsureKeys(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -133,5 +136,112 @@ func TestDeliveryClientRefusesRedirectAndSendsMailtoSubscriber(t *testing.T) {
 	}
 	if !strings.Contains(gotSub, "vapid") {
 		t.Fatalf("Authorization без VAPID: %q", gotSub)
+	}
+}
+
+// Инвариант (SEC-7, аудит 2026-09-22): непубличный адрес отвергается на
+// каждой доставке, а не только при подписке. Подписка принята, когда имя
+// смотрело наружу; после этого имя перевели на loopback — запрос не должен
+// уйти вовсе (DNS rebinding).
+func TestDeliveryRefusesEndpointResolvingToLoopback(t *testing.T) {
+	hops := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hops++
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer srv.Close()
+
+	svc := newPushService(t)
+	if err := svc.EnsureKeys(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	// Тот же порт, но по имени: localhost резолвится в loopback, как имя,
+	// переведённое туда после подписки.
+	_, port, err := net.SplitHostPort(strings.TrimPrefix(srv.URL, "http://"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	endpoint := "https://localhost:" + port + "/secret-endpoint-token"
+	seedSubscription(t, svc, endpoint)
+
+	err = svc.SendTest(t.Context(), "acc")
+	if err == nil {
+		t.Fatal("доставка на loopback должна падать")
+	}
+	if !errors.Is(err, push.ErrInvalid) {
+		t.Fatalf("ошибка %v, ожидался отказ по адресу", err)
+	}
+	if hops != 0 {
+		t.Fatalf("запрос всё-таки ушёл: hops = %d", hops)
+	}
+	var left int
+	if err := svc.DB().QueryRowContext(t.Context(),
+		`SELECT count(*) FROM push_subscriptions`).Scan(&left); err != nil {
+		t.Fatal(err)
+	}
+	if left != 1 {
+		t.Fatalf("подписка снята не по 404/410: осталось %d", left)
+	}
+}
+
+// Инвариант (SEC-7): путь endpoint — ключ от устройства, в ошибке остаётся
+// только хост.
+func TestDeliveryErrorKeepsHostWithoutPath(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+	srvHost := strings.TrimPrefix(srv.URL, "http://")
+
+	svc := newPushService(t)
+	svc.AllowLoopbackDeliveryForTest()
+	if err := svc.EnsureKeys(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	seedSubscription(t, svc, srv.URL+"/secret-endpoint-token")
+
+	err := svc.SendTest(t.Context(), "acc")
+	if err == nil {
+		t.Fatal("статус 500 — неуспешная доставка")
+	}
+	if strings.Contains(err.Error(), "secret-endpoint-token") {
+		t.Fatalf("в ошибке путь endpoint: %v", err)
+	}
+	if !strings.Contains(err.Error(), srvHost) {
+		t.Fatalf("в ошибке нет хоста: %v", err)
+	}
+
+	// Транспортная ошибка приходит из *url.Error с полным адресом — она
+	// тоже должна дойти до лога без пути.
+	srv.Close()
+	err = svc.SendTest(t.Context(), "acc")
+	if err == nil {
+		t.Fatal("закрытый сервер — неуспешная доставка")
+	}
+	if strings.Contains(err.Error(), "secret-endpoint-token") {
+		t.Fatalf("в ошибке путь endpoint: %v", err)
+	}
+}
+
+// seedSubscription кладёт подписку мимо Subscribe: проверяется доставка, а
+// не приём адреса. Ключи браузера — настоящая точка на кривой, иначе
+// шифрование падает раньше запроса.
+func seedSubscription(t *testing.T, svc *push.Service, endpoint string) {
+	t.Helper()
+	key, err := ecdh.P256().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secret := make([]byte, 16)
+	if _, err := rand.Read(secret); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.DB().ExecContext(t.Context(), `
+		INSERT INTO push_subscriptions (id, account_id, endpoint, p256dh, auth, user_agent, created_at)
+		VALUES ('s-seed', 'acc', ?, ?, ?, '', ?)
+	`, endpoint, base64.RawURLEncoding.EncodeToString(key.PublicKey().Bytes()),
+		base64.RawURLEncoding.EncodeToString(secret),
+		time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+		t.Fatal(err)
 	}
 }

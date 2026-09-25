@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -54,7 +55,14 @@ func New(st store.Store) (*Service, error) {
 	if db == nil {
 		return nil, fmt.Errorf("push: closed store")
 	}
-	return &Service{db: db, client: newDeliveryClient()}, nil
+	return &Service{db: db, client: newDeliveryClient(false)}, nil
+}
+
+// AllowLoopbackDeliveryForTest разрешает доставку на непубличные адреса.
+// Боевой клиент их не набирает (SEC-7), а httptest живёт на loopback —
+// вызывать только из тестов доставки.
+func (s *Service) AllowLoopbackDeliveryForTest() {
+	s.client = newDeliveryClient(true)
 }
 
 // DB exposes the underlying connection for tests.
@@ -260,7 +268,7 @@ func (s *Service) deliver(ctx context.Context, pub, priv, endpoint, p256dh, auth
 		VAPIDPrivateKey: priv,
 	})
 	if err != nil {
-		return err
+		return deliveryFailure(endpoint, err)
 	}
 	defer resp.Body.Close()
 	// Дренаж нужен только для переиспользования соединения — не больше 64 КиБ.
@@ -268,7 +276,17 @@ func (s *Service) deliver(ctx context.Context, pub, priv, endpoint, p256dh, auth
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return nil
 	}
-	return &deliveryError{StatusCode: resp.StatusCode}
+	return &deliveryError{StatusCode: resp.StatusCode, Host: endpointHost(endpoint)}
+}
+
+// deliveryFailure убирает из ошибки полный адрес: *url.Error печатает URL
+// целиком, а путь endpoint — это ключ от устройства (аудит 2026-09-22, SEC-7).
+func deliveryFailure(endpoint string, err error) error {
+	var ue *url.Error
+	if errors.As(err, &ue) {
+		err = ue.Err
+	}
+	return fmt.Errorf("push: deliver to %s: %w", endpointHost(endpoint), err)
 }
 
 func (s *Service) loadKeys(ctx context.Context) (public, private string, err error) {
@@ -288,8 +306,12 @@ func isStaleSubscription(err error) bool {
 
 type deliveryError struct {
 	StatusCode int
+	Host       string
 }
 
 func (e *deliveryError) Error() string {
-	return fmt.Sprintf("push: delivery failed: status %d", e.StatusCode)
+	if e.Host == "" {
+		return fmt.Sprintf("push: delivery failed: status %d", e.StatusCode)
+	}
+	return fmt.Sprintf("push: delivery failed: %s status %d", e.Host, e.StatusCode)
 }

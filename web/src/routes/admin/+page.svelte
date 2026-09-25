@@ -13,8 +13,10 @@
 	import DataTable from '$ui/admin/DataTable.svelte';
 	import StackBar from '$ui/admin/StackBar.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
+	import { appVersion } from '$lib/appinfo';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { formatBytes } from '$lib/format/bytes';
+	import { loadSourceUrl, sourceUrl } from '$lib/instance/source.svelte';
 	import { CIRCLE_COLOR_ORDER, CIRCLE_COLORS, type CircleColor } from '$lib/theme/colors';
 	import {
 		fetchQuotaRequests,
@@ -309,6 +311,8 @@
 	});
 
 	onMount(() => {
+		// Ссылка на исходники в футере — от этого же сервера (LIC-2).
+		loadSourceUrl();
 		void load();
 	});
 </script>
@@ -499,4 +503,9 @@
 			{/if}
 		{/if}
 	</AdminSection>
+	<Hint centered style="margin-top:26px">
+		Wynd {appVersion} · AGPL-3.0 ·
+		<a class="under" href={sourceUrl()}>исходный код</a> ·
+		<a class="under" href="/THIRD_PARTY_LICENSES.txt">лицензии компонентов</a>
+	</Hint>
 </AdminWideLayout>

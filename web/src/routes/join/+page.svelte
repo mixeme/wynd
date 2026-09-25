@@ -19,6 +19,7 @@
 	import { INVALID_EMAIL_HINT, isValidParticipantEmail } from '$lib/auth/email';
 	import { loadPendingAuth, savePendingAuth } from '$lib/auth/pending';
 	import { appVersion } from '$lib/appinfo';
+	import { sourceUrl } from '$lib/instance/source.svelte';
 
 	let address = $state('');
 	let email = $state('');
@@ -210,7 +211,7 @@
 		<Button {loading} disabled={!instance} onclick={onSubmit}>Получить код</Button>
 		<Hint>
 			Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или
-			<a class="under" href="https://github.com/mixeme/wynd">поднимите свой</a>.
+			<a class="under" href={sourceUrl(origin)}>поднимите свой</a>.
 		</Hint>
 		<Button variant="ghost" style="margin-top:18px" onclick={openLinkPicker}>
 			Открыть ссылку или QR

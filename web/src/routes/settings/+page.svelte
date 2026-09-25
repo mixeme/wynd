@@ -5,11 +5,14 @@
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { appVersion } from '$lib/appinfo';
+	import { loadSourceUrl, sourceUrl } from '$lib/instance/source.svelte';
 	import { loadSessions } from '$lib/session/session.svelte';
 
 	let subtitle = $state('нет серверов');
 
 	onMount(async () => {
+		// Ссылку на исходники даёт сервер, с которого открыт клиент (LIC-2).
+		loadSourceUrl();
 		const sessions = await loadSessions();
 		if (sessions.length === 1) {
 			subtitle = sessions[0].name;
@@ -41,6 +44,7 @@
 	/>
 	<Hint centered style="margin-top:44px">
 		Wynd {appVersion} · AGPL-3.0<br />
-		<a class="under" href="https://github.com/mixeme/wynd">исходный код</a>
+		<a class="under" href={sourceUrl()}>исходный код</a> ·
+		<a class="under" href="/THIRD_PARTY_LICENSES.txt">лицензии компонентов</a>
 	</Hint>
 </FormLayout>

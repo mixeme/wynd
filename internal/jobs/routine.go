@@ -21,13 +21,15 @@ const (
 
 // DailyRoutineCounts reports how many rows each cleanup step removed or updated.
 type DailyRoutineCounts struct {
-	OrphanedBlobs    int
-	AbandonedUploads int
-	EmptyAccounts    int
-	ExpiredInvites   int
-	ExpiredSessions  int
-	ExpiredCodes     int
-	OldCodeRequests  int
+	OrphanedBlobs     int
+	AbandonedUploads  int
+	EmptyAccounts     int
+	ExpiredInvites    int
+	ExpiredSessions   int
+	ExpiredCodes      int
+	OldCodeRequests   int
+	StalePendingJoins int
+	StaleInvites      int
 }
 
 // RunDailyRoutine performs the daily maintenance pass: orphaned blobs, abandoned
@@ -80,6 +82,14 @@ func RunDailyRoutine(ctx context.Context, db *sql.DB, blobsDir string, now time.
 	})
 	step(&counts.OldCodeRequests, "old code requests", func() (int, error) {
 		return deleteExpired(ctx, db, "code_request_log", "requested_at", cutoff)
+	})
+	// Страховка к уборке по месту (SEC-9): ссылки автора, который больше не
+	// пишет в круг, и отложенные вступления с вышедшим сроком.
+	step(&counts.StaleInvites, "stale invites", func() (int, error) {
+		return revokeInvitesOfDepartedAuthors(ctx, db, nowRaw)
+	})
+	step(&counts.StalePendingJoins, "stale pending joins", func() (int, error) {
+		return cleanStalePendingJoins(ctx, db, expireBound)
 	})
 
 	// last_routine_at пишется всегда: иначе панель показывает «рутина не
@@ -233,6 +243,58 @@ func revokeExpiredInvites(ctx context.Context, db *sql.DB, nowRaw string) (int, 
 	`, nowRaw, nowRaw)
 	if err != nil {
 		return 0, fmt.Errorf("revoke expired invites: %w", err)
+	}
+	aff, _ := res.RowsAffected()
+	return int(aff), nil
+}
+
+// revokeInvitesOfDepartedAuthors отзывает живые ссылки, чей автор больше не
+// действующий участник круга (вышел, исключён, заблокирован, удалён) и
+// ссылки на сервер от заблокированных. Уборка идёт и по месту события, но
+// один пропущенный отзыв оставлял вечно работающую ссылку (SEC-9).
+func revokeInvitesOfDepartedAuthors(ctx context.Context, db *sql.DB, nowRaw string) (int, error) {
+	res, err := db.ExecContext(ctx, `
+		UPDATE invites SET revoked_at = ?
+		WHERE revoked_at IS NULL
+		  AND created_by_account_id IS NOT NULL
+		  AND (
+			EXISTS (
+				SELECT 1 FROM accounts a
+				WHERE a.id = invites.created_by_account_id
+				  AND (a.blocked = 1 OR a.deleted_at IS NOT NULL)
+			)
+			OR (
+				circle_id IS NOT NULL
+				AND NOT EXISTS (
+					SELECT 1 FROM memberships m
+					WHERE m.circle_id = invites.circle_id
+					  AND m.account_id = invites.created_by_account_id
+					  AND m.status = 'active'
+				)
+			)
+		  )
+	`, nowRaw)
+	if err != nil {
+		return 0, fmt.Errorf("revoke invites of departed authors: %w", err)
+	}
+	aff, _ := res.RowsAffected()
+	return int(aff), nil
+}
+
+// cleanStalePendingJoins убирает отложенные вступления с вышедшим сроком и
+// те, чья ссылка отозвана: строка pending_circle_joins — это право войти.
+func cleanStalePendingJoins(ctx context.Context, db *sql.DB, nowRaw string) (int, error) {
+	res, err := db.ExecContext(ctx, `
+		DELETE FROM pending_circle_joins
+		WHERE expires_at IS NULL
+		   OR expires_at < ?
+		   OR (invite_id IS NOT NULL AND EXISTS (
+			SELECT 1 FROM invites i
+			WHERE i.id = pending_circle_joins.invite_id AND i.revoked_at IS NOT NULL
+		   ))
+	`, nowRaw)
+	if err != nil {
+		return 0, fmt.Errorf("clean stale pending joins: %w", err)
 	}
 	aff, _ := res.RowsAffected()
 	return int(aff), nil

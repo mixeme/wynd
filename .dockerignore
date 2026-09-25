@@ -5,7 +5,10 @@ data/
 data-*/
 web/node_modules/
 web/.svelte-kit/
-web/src/
+# web/src нужен стадии web (npm run build) — исключать его нельзя (DEP-1).
+# Собранный клиент приходит из стадии web, локальные сборки в контекст не берём.
+web/dist/
+dist/
 tmp/
 *.exe
 *.test

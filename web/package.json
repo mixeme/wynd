@@ -1,7 +1,8 @@
 {
 	"name": "wynd-web",
 	"private": true,
-	"version": "0.7.1",
+	"version": "0.7.2",
+	"license": "AGPL-3.0-or-later",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
@@ -9,6 +10,7 @@
 		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:ui": "node scripts/check-ui.mjs",
+		"licenses": "node scripts/third-party-licenses.mjs",
 		"test": "vitest run",
 		"api:types": "openapi-typescript ../internal/api/openapi-participant.yaml -o src/lib/api/schema-participant.d.ts && openapi-typescript ../internal/api/openapi-admin.yaml -o src/lib/api/schema-admin.d.ts",
 		"lint": "prettier --check . && eslint .",

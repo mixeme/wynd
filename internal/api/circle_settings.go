@@ -201,10 +201,16 @@ func (s *Server) handleExcludeMember(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	err := s.Chronicle.Exclude(r.Context(), circleID, sess.AccountID, body.AccountID, time.Now().UTC())
+	now := time.Now().UTC()
+	err := s.Chronicle.Exclude(r.Context(), circleID, sess.AccountID, body.AccountID, now)
 	if err != nil {
 		writeDomainError(w, err)
 		return
+	}
+	// Исключённый не оставляет живой ссылки в круг: по ней человек вошёл бы
+	// уже без пригласившего (аудит 2026-09-22, SEC-9).
+	if err := s.Auth.RevokeCircleInvitesBy(r.Context(), circleID, body.AccountID, now); err != nil {
+		log.Printf("excludeMember: revoke invites %s/%s: %v", circleID, body.AccountID, err)
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }

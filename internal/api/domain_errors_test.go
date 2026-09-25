@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"gitea.mixdep.ru/mix/wynd/internal/mail"
@@ -36,9 +37,14 @@ func TestWriteDomainErrorNotConfigured(t *testing.T) {
 	}
 }
 
+// Инвариант (аудит 2026-09-22): наружу уходит классифицированная причина,
+// а не сырая строка сервера почты — она попадала в панель как есть.
 func TestWriteDomainErrorSMTPSend(t *testing.T) {
 	rec := httptest.NewRecorder()
-	writeDomainError(rec, fmt.Errorf("%w: mail: dial x: i/o timeout", mail.ErrSend))
+	writeDomainError(rec, &mail.SendError{
+		Reason: mail.ReasonDial,
+		Err:    fmt.Errorf("dial smtp.internal.lan:587: i/o timeout"),
+	})
 	if rec.Code != http.StatusBadGateway {
 		t.Fatalf("status %d", rec.Code)
 	}
@@ -49,7 +55,10 @@ func TestWriteDomainErrorSMTPSend(t *testing.T) {
 	if body["error"] != "smtp_failed" {
 		t.Fatalf("error=%q", body["error"])
 	}
-	if body["detail"] == "" {
-		t.Fatal("want detail")
+	if body["detail"] != mail.ReasonDial {
+		t.Fatalf("detail=%q want %q", body["detail"], mail.ReasonDial)
+	}
+	if strings.Contains(rec.Body.String(), "smtp.internal.lan") {
+		t.Fatalf("сырой ответ сервера ушёл наружу: %s", rec.Body.String())
 	}
 }

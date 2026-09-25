@@ -209,3 +209,59 @@ func TestRunDailyRoutineExpiresUploadInSameSecond(t *testing.T) {
 		t.Fatalf("abandoned uploads: %+v", counts)
 	}
 }
+
+// Инвариант (SEC-9, аудит 2026-09-22): суточная рутина — страховка к уборке
+// по месту. Она снимает отложенные вступления с вышедшим сроком и отзывает
+// ссылки, чей автор заблокирован или больше не пишет в круг.
+func TestRunDailyRoutineClearsStaleJoinsAndInvites(t *testing.T) {
+	st := openDB(t)
+	ctx := context.Background()
+	now := time.Date(2026, 8, 30, 12, 0, 0, 0, time.UTC)
+	old := xtime.Format(now.Add(-48 * time.Hour))
+	expired := xtime.Format(now.Add(-time.Hour))
+	future := xtime.Format(now.Add(48 * time.Hour))
+
+	insertAccount(t, st, "owner", "owner@test.local", old)
+	insertAccount(t, st, "blocked", "blocked@test.local", old)
+	mustExec(t, st, `UPDATE accounts SET blocked = 1 WHERE id = 'blocked'`)
+	mustExec(t, st, `INSERT INTO circles (id, name, owner_account_id, created_at, updated_at)
+		VALUES ('c1', 'Семья', 'owner', ?, ?)`, old, old)
+
+	// Ссылка заблокированного и ссылка бывшего участника — обе живые по срокам.
+	mustExec(t, st, `INSERT INTO invites (id, token, circle_id, kind, max_uses, uses, expires_at, created_by_account_id, created_at)
+		VALUES ('inv-blocked', 'tok-b', 'c1', 'multi', 5, 0, ?, 'blocked', ?)`, future, old)
+	mustExec(t, st, `INSERT INTO invites (id, token, circle_id, kind, max_uses, uses, expires_at, created_by_account_id, created_at)
+		VALUES ('inv-gone', 'tok-g', 'c1', 'multi', 5, 0, ?, 'owner', ?)`, future, old)
+
+	// Отложенное вступление с вышедшим сроком.
+	insertAccount(t, st, "guest", "guest@test.local", old)
+	mustExec(t, st, `INSERT INTO pending_circle_joins (account_id, circle_id, created_at, expires_at, invite_id)
+		VALUES ('guest', 'c1', ?, ?, 'inv-gone')`, old, expired)
+
+	counts, err := jobs.RunDailyRoutine(ctx, st.DB(), t.TempDir(), now)
+	if err != nil {
+		t.Fatalf("RunDailyRoutine: %v", err)
+	}
+	if counts.StaleInvites != 2 {
+		t.Fatalf("отозвано ссылок: %d, ожидалось 2 (%+v)", counts.StaleInvites, counts)
+	}
+	if counts.StalePendingJoins != 1 {
+		t.Fatalf("снято вступлений: %d, ожидалось 1", counts.StalePendingJoins)
+	}
+	var live int
+	if err := st.DB().QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM invites WHERE revoked_at IS NULL`).Scan(&live); err != nil {
+		t.Fatal(err)
+	}
+	if live != 0 {
+		t.Fatalf("живых ссылок осталось %d", live)
+	}
+	var joins int
+	if err := st.DB().QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM pending_circle_joins`).Scan(&joins); err != nil {
+		t.Fatal(err)
+	}
+	if joins != 0 {
+		t.Fatalf("отложенных вступлений осталось %d", joins)
+	}
+}

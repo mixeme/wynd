@@ -320,10 +320,29 @@ func TestBlockClosesLogin(t *testing.T) {
 	if _, err := e.auth.IsParticipantSession(e.ctx, res.Session.Token); err != auth.ErrNotFound {
 		t.Fatalf("blocked session: %v", err)
 	}
+	// Открытый сервер отвечает одинаково на любой адрес, поэтому
+	// заблокированному — 200 без письма: иначе endpoint показывает, кто
+	// здесь есть и кого закрыли (аудит 2026-09-22).
+	before := e.caps.Last("ana@example.com")
 	if err := e.auth.RequestCode(e.ctx, auth.RequestCodeInput{
 		Email: "ana@example.com", ClientIP: "10.0.0.9", Now: e.t0.Add(time.Minute),
+	}); err != nil {
+		t.Fatalf("blocked code in open mode: %v", err)
+	}
+	if e.caps.Last("ana@example.com") != before {
+		t.Fatal("заблокированному ушёл код")
+	}
+	// В режиме invite отказ незнакомому адресу виден и так — остаётся forbidden.
+	if err := e.auth.SetRegistrationMode(e.ctx, auth.ModeInvite); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.auth.RequestCode(e.ctx, auth.RequestCodeInput{
+		Email: "ana@example.com", ClientIP: "10.0.0.9", Now: e.t0.Add(90 * time.Second),
 	}); err != auth.ErrForbidden {
-		t.Fatalf("blocked code: %v", err)
+		t.Fatalf("blocked code in invite mode: %v", err)
+	}
+	if err := e.auth.SetRegistrationMode(e.ctx, auth.ModeOpen); err != nil {
+		t.Fatal(err)
 	}
 	if err := e.auth.SetAccountBlocked(e.ctx, res.Account.ID, false); err != nil {
 		t.Fatal(err)

@@ -99,6 +99,10 @@ func TestInstanceEndpoint(t *testing.T) {
 	if body["code_delivery"] != "log" {
 		t.Fatalf("code_delivery: %v want log", body["code_delivery"])
 	}
+	// AGPL 13: адрес исходников отдаёт сервер, клиент его не зашивает (LIC-2).
+	if body["source_url"] != version.SourceURL {
+		t.Fatalf("source_url: %v want %s", body["source_url"], version.SourceURL)
+	}
 	comp, ok := body["compression"].(map[string]any)
 	if !ok {
 		t.Fatal("compression missing")

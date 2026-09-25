@@ -421,3 +421,32 @@ func TestBootstrapPublicURLRequiresMail(t *testing.T) {
 		t.Fatalf("public without smtp: %d %s", rec.Code, rec.Body.String())
 	}
 }
+
+// Инвариант (аудит 2026-09-22): адрес проверяется строго и до установки.
+// Раньше принималась любая строка с «://», она уходила в config.json — и
+// сервер после перезапуска не стартовал, потому что config.Load проверяет
+// адрес строго. Установка при этом оставалась незавершённой.
+func TestBootstrapRejectsInvalidPublicURL(t *testing.T) {
+	for _, bad := range []string{"ftp://home.example.org", "https://", "https://home.example.org/wynd"} {
+		srv, _, _, _ := setupFreshAPI(t)
+		rec := doJSON(t, srv, http.MethodPost, "/api/v1/admin/bootstrap", "", map[string]any{
+			"token": "bootstrap", "password": "admin-pass",
+			"public_url": bad,
+		})
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("%s: %d %s", bad, rec.Code, rec.Body.String())
+		}
+		// Установка не состоялась: токен по-прежнему работает.
+		rec = doGET(t, srv, "/api/v1/instance", "")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("instance: %d", rec.Code)
+		}
+		var info map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &info); err != nil {
+			t.Fatal(err)
+		}
+		if info["bootstrapped"] == true {
+			t.Fatalf("%s: инстанс считается установленным", bad)
+		}
+	}
+}

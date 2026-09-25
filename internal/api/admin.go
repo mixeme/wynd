@@ -52,6 +52,19 @@ func (s *Server) handleBootstrap(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	now := time.Now().UTC()
+	// Адрес проверяется строго и до всего остального: раньше установка
+	// принимала любую строку с «://», писала её в config.json — и сервер
+	// после перезапуска отказывался стартовать, потому что config.Load
+	// проверяет адрес строго (аудит 2026-09-22).
+	publicURL := s.PublicURL()
+	if strings.TrimSpace(body.PublicURL) != "" {
+		valid, err := config.ValidatePublicURL(body.PublicURL)
+		if err != nil {
+			writeError(w, auth.ErrInvalid)
+			return
+		}
+		publicURL = valid
+	}
 	if err := s.Auth.ConfirmBootstrapToken(ctx, body.Token, s.BootstrapToken, s.clientIP(r), now); err != nil {
 		writeError(w, err)
 		return
@@ -59,10 +72,6 @@ func (s *Server) handleBootstrap(w http.ResponseWriter, r *http.Request) {
 	if err := auth.ValidatePassword(body.Password); err != nil {
 		writeError(w, err)
 		return
-	}
-	publicURL := s.PublicURL()
-	if strings.TrimSpace(body.PublicURL) != "" {
-		publicURL = config.NormalizePublicURL(body.PublicURL)
 	}
 	loopback := config.IsLoopback(publicURL)
 	ready := smtpReady(body)

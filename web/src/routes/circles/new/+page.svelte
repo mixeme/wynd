@@ -18,6 +18,7 @@
 	import { setCircleColor } from '$lib/circles/meta';
 	import { rememberCircleOrigin } from '$lib/circles/origin';
 	import { authErrorHint } from '$lib/auth/auth';
+	import { loadSourceUrl, sourceUrl } from '$lib/instance/source.svelte';
 	import { NEW_CIRCLE_CTX, type NewCircleContext, type NewCircleEditWindow } from '$lib/circles/new-circle';
 
 	const form = getContext<NewCircleContext>(NEW_CIRCLE_CTX);
@@ -25,6 +26,11 @@
 	const selectedSession = $derived(
 		form.sessions.find((s) => s.origin === form.selectedOrigin)
 	);
+
+	// Ссылка «поднимите свой» ведёт на исходники выбранного сервера (LIC-2).
+	$effect(() => {
+		loadSourceUrl(form.selectedOrigin);
+	});
 
 	let windowBeforeDiary: NewCircleEditWindow = '1h';
 
@@ -101,7 +107,7 @@
 	<Hint style="margin-top:0">
 		Круг будет жить здесь. Если потребуется, его можно перенести на другой сервер. Сервер
 		хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или
-		<a class="under" href="https://github.com/mixeme/wynd">поднимите свой</a>.
+		<a class="under" href={sourceUrl(form.selectedOrigin)}>поднимите свой</a>.
 	</Hint>
 	<Label>Название</Label>
 	<Input active type="text" bind:value={form.name} />

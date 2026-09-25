@@ -235,7 +235,7 @@ func (s *Service) Probe(ctx context.Context, cfg Config) error {
 	}
 	defer client.Close()
 	if err := client.Quit(); err != nil {
-		return fmt.Errorf("%w: mail: quit: %w", ErrSend, err)
+		return sendErr(ReasonProtocol, err)
 	}
 	return nil
 }
@@ -258,23 +258,23 @@ func (s *Service) sendMessage(ctx context.Context, cfg Config, to, subject, body
 	defer client.Close()
 
 	if err := client.Mail(from); err != nil {
-		return fmt.Errorf("%w: mail: mail from: %w", ErrSend, err)
+		return sendErr(ReasonProtocol, err)
 	}
 	if err := client.Rcpt(rcpt); err != nil {
-		return fmt.Errorf("%w: mail: rcpt: %w", ErrSend, err)
+		return sendErr(ReasonProtocol, err)
 	}
 	w, err := client.Data()
 	if err != nil {
-		return fmt.Errorf("%w: mail: data: %w", ErrSend, err)
+		return sendErr(ReasonProtocol, err)
 	}
 	if _, err := w.Write(msg); err != nil {
-		return fmt.Errorf("%w: mail: write: %w", ErrSend, err)
+		return sendErr(ReasonProtocol, err)
 	}
 	if err := w.Close(); err != nil {
-		return fmt.Errorf("%w: mail: data close: %w", ErrSend, err)
+		return sendErr(ReasonProtocol, err)
 	}
 	if err := client.Quit(); err != nil {
-		return fmt.Errorf("%w: mail: quit: %w", ErrSend, err)
+		return sendErr(ReasonProtocol, err)
 	}
 	return nil
 }
@@ -288,7 +288,7 @@ func (s *Service) smtpClient(ctx context.Context, cfg Config) (*smtp.Client, err
 	addr := net.JoinHostPort(host, strconv.Itoa(port))
 	conn, err := s.dial(ctx, addr)
 	if err != nil {
-		return nil, fmt.Errorf("%w: mail: dial %s: %w", ErrSend, addr, err)
+		return nil, sendErrf(ReasonDial, "dial %s: %w", addr, err)
 	}
 	if deadline, ok := ctx.Deadline(); ok {
 		_ = conn.SetDeadline(deadline)
@@ -297,14 +297,14 @@ func (s *Service) smtpClient(ctx context.Context, cfg Config) (*smtp.Client, err
 		tlsConn := tls.Client(conn, &tls.Config{ServerName: host})
 		if err := tlsConn.HandshakeContext(ctx); err != nil {
 			_ = conn.Close()
-			return nil, fmt.Errorf("%w: mail: tls: %w", ErrSend, err)
+			return nil, sendErrf(ReasonTLS, "tls: %w", err)
 		}
 		conn = tlsConn
 	}
 	client, err := smtp.NewClient(conn, host)
 	if err != nil {
 		_ = conn.Close()
-		return nil, fmt.Errorf("%w: mail: smtp client: %w", ErrSend, err)
+		return nil, sendErrf(ReasonProtocol, "smtp client: %w", err)
 	}
 	if !useImplicitTLS(port) {
 		starttls, _ := client.Extension("STARTTLS")
@@ -312,7 +312,7 @@ func (s *Service) smtpClient(ctx context.Context, cfg Config) (*smtp.Client, err
 		case starttls:
 			if err := client.StartTLS(&tls.Config{ServerName: host}); err != nil {
 				_ = client.Close()
-				return nil, fmt.Errorf("%w: mail: starttls: %w", ErrSend, err)
+				return nil, sendErrf(ReasonTLS, "starttls: %w", err)
 			}
 		case isLoopbackHost(host):
 			// Локальный релей на той же машине — открытый канал допустим.
@@ -320,7 +320,7 @@ func (s *Service) smtpClient(ctx context.Context, cfg Config) (*smtp.Client, err
 			// Посредник может вырезать 250-STARTTLS из ответа, и письмо с
 			// кодом входа уйдёт открытым текстом. Молча так не делаем (SEC-5).
 			_ = client.Close()
-			return nil, fmt.Errorf("%w: mail: STARTTLS required by %s", ErrSend, addr)
+			return nil, sendErrf(ReasonSTARTTLSRequired, "STARTTLS required by %s", addr)
 		}
 	}
 	if err := authenticate(client, cfg); err != nil {
@@ -336,7 +336,7 @@ func authenticate(client *smtp.Client, cfg Config) error {
 	}
 	ok, mechs := client.Extension("AUTH")
 	if !ok {
-		return fmt.Errorf("%w: mail: auth: server has no AUTH", ErrSend)
+		return sendErrf(ReasonAuth, "server has no AUTH")
 	}
 	var a smtp.Auth
 	upper := strings.ToUpper(mechs)
@@ -349,7 +349,7 @@ func authenticate(client *smtp.Client, cfg Config) error {
 		a = smtp.PlainAuth("", cfg.Username, cfg.Password, cfg.Host)
 	}
 	if err := client.Auth(a); err != nil {
-		return fmt.Errorf("%w: mail: auth: %w", ErrSend, err)
+		return sendErr(ReasonAuth, err)
 	}
 	return nil
 }

@@ -1,0 +1,72 @@
+name: CI
+
+# Ворота релиза на стороне Gitea (план 42, волна 3). Повторяет scripts/test.bat
+# и добавляет docker build: два релиза вышли без собранного клиента, а образ был
+# сломан десятки версий именно потому, что никто не собирал их автоматически.
+#
+# Порядок шагов важен: web/dist не в репозитории, а web/embed.go вшивает его
+# через go:embed — без vite build падает уже go vet ./...
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: npm ci
+        working-directory: web
+        run: npm ci
+
+      - name: svelte-check
+        working-directory: web
+        run: npm run check
+
+      - name: ui-guard
+        working-directory: web
+        run: npm run check:ui
+
+      - name: vitest
+        working-directory: web
+        run: npm run test
+
+      - name: vite build
+        working-directory: web
+        run: npm run build
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        run: go test ./...
+
+      - name: go build
+        run: go build -trimpath -o /tmp/wynd ./cmd/wynd
+
+  # Отдельной задачей: нужен раннер с доступом к докер-сокету, и её падение
+  # не должно скрывать результат сборки и тестов.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: docker build
+        run: |
+          docker build -f deploy/docker/Dockerfile \
+            --build-arg VERSION="$(cat VERSION)" -t wynd:ci .

@@ -1,6 +1,7 @@
 import { apiJson, ApiError, normalizeOrigin } from '$lib/api/client';
 import { putAdminSession, putSession, type SessionRecord } from '$lib/idb/db';
 import { startSync } from '$lib/sync/sync';
+import { rememberSourceUrl } from '$lib/instance/source.svelte';
 import type { PendingAuth, PendingAuthFlow } from './pending';
 
 export interface InstanceInfo {
@@ -10,6 +11,7 @@ export interface InstanceInfo {
 	loopback: boolean;
 	bootstrapped: boolean;
 	code_delivery?: 'log' | 'mail';
+	source_url?: string;
 }
 
 export interface VerifyResult {
@@ -59,22 +61,27 @@ export function authErrorHint(err: unknown): string {
 	return AUTH_ERROR_HINTS.unknown;
 }
 
+// detail — классифицированная причина от сервера (dial, tls,
+// starttls_required, auth, protocol). Сырую строку сервера почты панель
+// больше не получает (аудит 2026-09-22).
+const SMTP_REASON_HINTS: Record<string, string> = {
+	dial: 'Сервер почты не ответил. Проверьте хост и порт.',
+	tls: 'Не удалось установить шифрование с сервером почты.',
+	starttls_required:
+		'Сервер почты не предлагает шифрование (STARTTLS). Коды входа открытым текстом не отправляем.',
+	auth: 'Сервер не принял логин или пароль.'
+};
+
 function smtpFailedHint(detail?: string): string {
-	const d = (detail ?? '').toLowerCase();
-	if (d.includes('timeout') || d.includes('deadline') || d.includes('i/o')) {
-		return 'Сервер почты не ответил. Проверьте хост и порт.';
-	}
-	if (d.includes('auth') || d.includes('535') || d.includes('534')) {
-		return 'Сервер не принял логин или пароль.';
-	}
-	if (d.includes('tls') || d.includes('certificate')) {
-		return 'Не удалось установить шифрование с сервером почты.';
-	}
-	return AUTH_ERROR_HINTS.smtp_failed;
+	return SMTP_REASON_HINTS[detail ?? ''] ?? AUTH_ERROR_HINTS.smtp_failed;
 }
 
 export async function fetchInstance(origin: string): Promise<InstanceInfo> {
-	return apiJson<InstanceInfo>(origin, '/instance');
+	const info = await apiJson<InstanceInfo>(origin, '/instance');
+	// Единственная воронка: любой запрос /instance пополняет адрес исходников
+	// этого сервера, и экранам не нужно знать его самим (LIC-2).
+	rememberSourceUrl(origin, info.source_url);
+	return info;
 }
 
 async function postAccepted(origin: string, path: string, body: unknown): Promise<void> {

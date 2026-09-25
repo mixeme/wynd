@@ -107,7 +107,7 @@ func (s *Server) handleJoinPreview(w http.ResponseWriter, r *http.Request) {
 		writeError(w, chronicle.ErrForbidden)
 		return
 	}
-	okPending, err := s.Auth.HasPendingCircleJoin(r.Context(), sess.AccountID, circleID)
+	okPending, err := s.Auth.HasPendingCircleJoin(r.Context(), sess.AccountID, circleID, time.Now().UTC())
 	if err != nil {
 		writeError(w, err)
 		return

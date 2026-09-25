@@ -9,8 +9,16 @@ import (
 	"time"
 )
 
+// Потолки на ссылку (аудит 2026-09-22, SEC-9): и число входов, и срок
+// задаёт участник, а непроверенные значения давали вечную ссылку с
+// неограниченным числом входов.
+const (
+	maxInviteUses = 100
+	maxInviteTTL  = 30 * 24 * time.Hour
+)
+
 func (s *Service) CreateInvite(ctx context.Context, in CreateInviteInput) (Invite, error) {
-	if in.MaxUses < 1 {
+	if in.MaxUses < 1 || in.MaxUses > maxInviteUses {
 		return Invite{}, ErrInvalid
 	}
 	if in.Kind == InviteSingle {
@@ -18,6 +26,9 @@ func (s *Service) CreateInvite(ctx context.Context, in CreateInviteInput) (Invit
 	}
 	if in.TTL <= 0 {
 		in.TTL = 7 * 24 * time.Hour
+	}
+	if in.TTL > maxInviteTTL {
+		return Invite{}, ErrInvalid
 	}
 	when := in.Now.UTC()
 	if when.IsZero() {
@@ -230,6 +241,13 @@ func (s *Service) validateInvite(ctx context.Context, inv Invite, when time.Time
 	return nil
 }
 
+// ValidateInvite — та же проверка, что и при использовании ссылки, для
+// обработчиков. Просмотр ссылки проверял только отзыв и срок и показывал
+// круг по исчерпанной ссылке и на закрытом сервере (SEC-9).
+func (s *Service) ValidateInvite(ctx context.Context, inv Invite, when time.Time) error {
+	return s.validateInvite(ctx, inv, when)
+}
+
 func (s *Service) consumeInvite(ctx context.Context, tx *sql.Tx, inv Invite, when time.Time) error {
 	if err := s.validateInvite(ctx, inv, when); err != nil {
 		return err
@@ -248,6 +266,64 @@ func (s *Service) consumeInvite(ctx context.Context, tx *sql.Tx, inv Invite, whe
 		return ErrInvalid
 	}
 	return nil
+}
+
+// revokeInvitesCreatedBy отзывает живые ссылки автора и снимает отложенные
+// вступления, заведённые по ним (аудит 2026-09-22, SEC-9).
+func (s *Service) revokeInvitesCreatedBy(ctx context.Context, accountID, nowRaw string) error {
+	if accountID == "" {
+		return nil
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := revokeInvitesCreatedByTx(ctx, tx, accountID, "", nowRaw); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// revokeInvitesCreatedByTx отзывает ссылки автора; пустой circleID — все его
+// ссылки, иначе только ссылки в этот круг.
+func revokeInvitesCreatedByTx(ctx context.Context, tx *sql.Tx, accountID, circleID, nowRaw string) error {
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM pending_circle_joins
+		WHERE invite_id IN (
+			SELECT id FROM invites
+			WHERE created_by_account_id = ?
+			  AND (? = '' OR circle_id = ?)
+		)
+	`, accountID, circleID, circleID); err != nil {
+		return fmt.Errorf("clear pending joins of author: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE invites SET revoked_at = ?
+		WHERE created_by_account_id = ? AND revoked_at IS NULL
+		  AND (? = '' OR circle_id = ?)
+	`, nowRaw, accountID, circleID, circleID); err != nil {
+		return fmt.Errorf("revoke invites of author: %w", err)
+	}
+	return nil
+}
+
+// RevokeCircleInvitesBy отзывает ссылки, выданные этим участником в этот
+// круг. Зовётся после выхода и исключения: ушедший не должен оставлять
+// живую ссылку, по которой в круг входят уже без него (SEC-9).
+func (s *Service) RevokeCircleInvitesBy(ctx context.Context, circleID, accountID string, now time.Time) error {
+	if circleID == "" || accountID == "" {
+		return ErrInvalid
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := revokeInvitesCreatedByTx(ctx, tx, accountID, circleID, formatTime(now.UTC())); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func newInviteToken() (string, error) {

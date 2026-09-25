@@ -81,7 +81,7 @@ scripts\test-integration.bat
 | Изменения | [CHANGELOG.md](CHANGELOG.md) |
 
 Шрифт интерфейса — Golos Text ([SIL OFL](web/static/fonts/OFL.txt)).
-Версия продукта — файл [`VERSION`](VERSION). То же значение — `internal/version.Number`, OpenAPI `info.version` и `version` в `web/package.json` (пакет `private`, в npm не публикуется). Сторож: `TestMatchesVERSIONFile`.
+Версия продукта — файл [`VERSION`](VERSION). То же значение — `internal/version.Number`, OpenAPI `info.version` и `version` в `web/package.json` (пакет `private`, в npm не публикуется). Сторожа: `TestMatchesVERSIONFile` и `TestOpenAPIVersionMatchesVERSION`.
 
 ---
 

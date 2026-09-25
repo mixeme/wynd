@@ -102,6 +102,11 @@ func (s *Service) SetAccountBlocked(ctx context.Context, id string, blocked bool
 	`, id); err != nil {
 		return fmt.Errorf("drop blocked push subscriptions: %w", err)
 	}
+	// Ссылки, выданные заблокированным, отзываются вместе с ним: иначе его
+	// приглашения продолжали приводить людей в круг (аудит 2026-09-22, SEC-9).
+	if err := s.revokeInvitesCreatedBy(ctx, id, formatTime(time.Now().UTC())); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -181,13 +186,20 @@ func (s *Service) RevokeCircleInvite(ctx context.Context, circleID, inviteID str
 	return s.RevokeInvite(ctx, inviteID)
 }
 
-// RevokeInvite marks an invite as revoked.
+// RevokeInvite marks an invite as revoked and drops the deferred joins it
+// produced: строка pending_circle_joins — это право войти в круг, и без
+// уборки отозванная ссылка продолжала пускать (аудит 2026-09-22, SEC-9).
 func (s *Service) RevokeInvite(ctx context.Context, id string) error {
 	if id == "" {
 		return ErrInvalid
 	}
 	now := formatTime(time.Now().UTC())
-	res, err := s.db.ExecContext(ctx, `
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.ExecContext(ctx, `
 		UPDATE invites SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL
 	`, now, id)
 	if err != nil {
@@ -200,5 +212,10 @@ func (s *Service) RevokeInvite(ctx context.Context, id string) error {
 	if n == 0 {
 		return ErrNotFound
 	}
-	return nil
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM pending_circle_joins WHERE invite_id = ?
+	`, id); err != nil {
+		return fmt.Errorf("clear pending joins of invite: %w", err)
+	}
+	return tx.Commit()
 }

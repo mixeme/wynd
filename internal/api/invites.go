@@ -49,8 +49,10 @@ func (s *Server) handlePeekInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := time.Now().UTC()
-	if inv.RevokedAt != nil || !now.Before(inv.ExpiresAt) {
-		writeError(w, auth.ErrExpired)
+	// Та же проверка, что и при использовании: раньше просмотр показывал
+	// круг и по исчерпанной ссылке, и на закрытом сервере (SEC-9).
+	if err := s.Auth.ValidateInvite(r.Context(), inv, now); err != nil {
+		writeError(w, err)
 		return
 	}
 
