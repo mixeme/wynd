@@ -110,28 +110,33 @@
 		{:else if error && !name}
 			<Hint>{error}</Hint>
 		{:else}
-			<SectionLabel style="margin:0 0 8px">Имя сервера</SectionLabel>
-			<Input admin style="margin-left:0;width:100%;max-width:520px" bind:value={name} onchange={() => void persistName()} />
-			<div style="font-size:11.5px;color:var(--faint);margin-top:8px;line-height:1.6;max-width:520px">
-				Так сервер назван в приложении. Адрес люди видят второй строкой и почти никогда не
-				набирают.
-			</div>
-			<SectionLabel style="margin:24px 0 8px">Кого пускать</SectionLabel>
-			<ChipGroup style="margin:0">
-				{#each modes as item (item.key)}
-					<Chip selected={mode === item.key} onclick={() => void persistMode(item.key)}>
-						{item.label}
-					</Chip>
-				{/each}
-			</ChipGroup>
-			<div style="font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.6;max-width:620px">
-				Учётка заводится только по ссылке: в круг её выдаёт любой участник, на сервер — вы.
-				Открытый пускает всякого, кто знает адрес; закрытый не пускает никого, и старые ссылки
-				перестают работать.
-			</div>
-			<SectionLabel style="margin:24px 0 8px">Позвать на сервер</SectionLabel>
-			<div style="display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap">
-				<div style="flex:1;min-width:280px">
+			<div class="cols">
+				<div>
+					<SectionLabel style="margin:0 0 8px">Имя сервера</SectionLabel>
+					<Input
+						admin
+						style="margin-left:0;width:100%"
+						bind:value={name}
+						onchange={() => void persistName()}
+					/>
+					<div style="font-size:11.5px;color:var(--faint);margin-top:8px;line-height:1.6">
+						Так сервер назван в приложении. Адрес люди видят второй строкой и почти никогда не
+						набирают.
+					</div>
+					<SectionLabel style="margin:24px 0 8px">Кого пускать</SectionLabel>
+					<ChipGroup style="margin:0">
+						{#each modes as item (item.key)}
+							<Chip selected={mode === item.key} onclick={() => void persistMode(item.key)}>
+								{item.label}
+							</Chip>
+						{/each}
+					</ChipGroup>
+					<div style="font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.6">
+						Учётка заводится только по ссылке: в круг её выдаёт любой участник, на сервер — вы.
+						Открытый пускает всякого, кто знает адрес; закрытый не пускает никого, и старые ссылки
+						перестают работать.
+					</div>
+					<SectionLabel style="margin:24px 0 8px">Позвать на сервер</SectionLabel>
 					<div style="display:flex;align-items:center;gap:12px">
 						<FieldDisplay
 							admin
@@ -143,11 +148,6 @@
 							{copied ? 'Скопировано' : 'Скопировать'}
 						</TextButton>
 					</div>
-					{#if qrSvg}
-						<div class="qr" style="margin:16px 0 0;width:142px" aria-hidden="true">
-							{@html qrSvg}
-						</div>
-					{/if}
 					<ChipGroup style="margin:12px 0 0">
 						<Chip
 							selected={kind === 'single'}
@@ -183,6 +183,16 @@
 					</ChipGroup>
 					<div style="font-size:11.5px;color:var(--faint);margin-top:10px;line-height:1.6">
 						Такая ссылка не ведёт ни в один круг: человек заведёт свой или дождётся, когда позовут.
+					</div>
+				</div>
+				<div style="flex:0 0 auto;width:210px">
+					{#if qrSvg}
+						<div class="qr" style="margin:26px auto 0;width:150px;height:150px;padding:11px" aria-hidden="true">
+							{@html qrSvg}
+						</div>
+					{/if}
+					<div style="font-size:11.5px;color:var(--faint);text-align:center;margin-top:10px">
+						та же ссылка кодом
 					</div>
 				</div>
 			</div>

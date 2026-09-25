@@ -27,6 +27,8 @@
 	let qrSvg = $state('');
 	let error = $state('');
 	let loading = $state(false);
+	let copied = $state(false);
+	let shared = $state(false);
 
 	async function renderQr(url: string) {
 		if (!url) {
@@ -39,6 +41,8 @@
 	async function createLink() {
 		loading = true;
 		error = '';
+		copied = false;
+		shared = false;
 		try {
 			const inv = await createCircleInvite(circle.origin, circle.circleId, {
 				kind,
@@ -58,12 +62,20 @@
 	async function copyLink() {
 		if (!inviteUrl) return;
 		await navigator.clipboard.writeText(inviteUrl);
+		copied = true;
+		shared = false;
 	}
 
 	async function shareLink() {
 		if (!inviteUrl) return;
 		if (navigator.share) {
-			await navigator.share({ url: inviteUrl, title: `Приглашение в «${circle.name}»` });
+			try {
+				await navigator.share({ url: inviteUrl, title: `Приглашение в «${circle.name}»` });
+				shared = true;
+				copied = false;
+			} catch (err) {
+				if (err instanceof Error && err.name === 'AbortError') return;
+			}
 		} else {
 			await copyLink();
 		}
@@ -93,9 +105,11 @@
 	{#if inviteUrl}
 		<FieldDisplay mono value={inviteUrl} style="margin-top:12px;font-size:12.5px;overflow:hidden" />
 		<div class="rowin" style="margin-top:12px">
-			<Button variant="colored" style="flex:1" onclick={() => void shareLink()}>Поделиться</Button>
+			<Button variant="colored" style="flex:1" onclick={() => void shareLink()}>
+				{shared ? 'Отправлено' : 'Поделиться'}
+			</Button>
 			<Button variant="ghost" style="flex:1;margin:0" onclick={() => void copyLink()}>
-				Скопировать
+				{copied ? 'Скопировано' : 'Скопировать'}
 			</Button>
 		</div>
 	{/if}

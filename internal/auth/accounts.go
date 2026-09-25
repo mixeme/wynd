@@ -74,10 +74,11 @@ func (s *Service) AccountByID(ctx context.Context, id string) (Account, error) {
 
 // AccountCircle is a circle membership row for the admin account card.
 type AccountCircle struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Color string `json:"color"`
-	Role  string `json:"role"`
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Color    string `json:"color"`
+	Role     string `json:"role"`
+	JoinedAt string `json:"joined_at,omitempty"`
 }
 
 // AccountDetail is the admin GET /accounts/{id} payload.
@@ -124,7 +125,8 @@ func (s *Service) AccountDetail(ctx context.Context, id string) (AccountDetail, 
 	}
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT c.id, c.name, c.color,
-			CASE WHEN c.owner_account_id = ? THEN 'owner' ELSE 'member' END
+			CASE WHEN c.owner_account_id = ? THEN 'owner' ELSE 'member' END,
+			m.created_at
 		FROM memberships m
 		JOIN circles c ON c.id = m.circle_id
 		WHERE m.account_id = ? AND m.status = 'active'
@@ -136,7 +138,7 @@ func (s *Service) AccountDetail(ctx context.Context, id string) (AccountDetail, 
 	defer rows.Close()
 	for rows.Next() {
 		var row AccountCircle
-		if err := rows.Scan(&row.ID, &row.Name, &row.Color, &row.Role); err != nil {
+		if err := rows.Scan(&row.ID, &row.Name, &row.Color, &row.Role, &row.JoinedAt); err != nil {
 			return AccountDetail{}, err
 		}
 		detail.Circles = append(detail.Circles, row)
@@ -182,19 +184,19 @@ func (s *Service) DeleteAccount(ctx context.Context, id string, now time.Time) e
 	if err := memRows.Err(); err != nil {
 		return err
 	}
-	for _, circleID := range circleIDs {
-		if s.chronicle == nil {
-			return fmt.Errorf("chronicle required for account delete")
-		}
-		if err := s.chronicle.Leave(ctx, circleID, id, now); err != nil {
-			return err
-		}
-	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if s.chronicle == nil {
+		return fmt.Errorf("chronicle required for account delete")
+	}
+	for _, circleID := range circleIDs {
+		if err := s.chronicle.LeaveInTx(ctx, tx, circleID, id, now); err != nil {
+			return err
+		}
+	}
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE identities SET account_id = NULL WHERE account_id = ?
 	`, id); err != nil {

@@ -32,12 +32,6 @@
 		if (isEmpty && !prefersInlineCompose()) oncompose?.();
 	}
 
-	function handleComposeClick(e: MouseEvent) {
-		if (!oncompose) return;
-		e.stopPropagation();
-		oncompose();
-	}
-
 	function handleSendClick(e: MouseEvent) {
 		e.stopPropagation();
 		if (canSend) onsend?.();

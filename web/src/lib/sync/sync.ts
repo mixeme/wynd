@@ -65,20 +65,32 @@ async function readSSE(
 			if (done) break;
 			buffer += decoder.decode(value, { stream: true });
 
-			let split = buffer.indexOf('\n\n');
-			while (split !== -1) {
-				const block = buffer.slice(0, split);
-				buffer = buffer.slice(split + 2);
-				const dataLine = block.split('\n').find((line) => line.startsWith('data: '));
-				if (dataLine) {
-					await onData(dataLine.slice(6));
-				}
-				split = buffer.indexOf('\n\n');
+			let parsed = takeSSEDataEvents(buffer);
+			buffer = parsed.rest;
+			for (const data of parsed.events) {
+				await onData(data);
 			}
 		}
 	} finally {
 		reader.releaseLock();
 	}
+}
+
+/** Splits a buffer on SSE blank-line delimiters and extracts `data:` payloads. */
+export function takeSSEDataEvents(buffer: string): { events: string[]; rest: string } {
+	const events: string[] = [];
+	let rest = buffer;
+	let split = rest.indexOf('\n\n');
+	while (split !== -1) {
+		const block = rest.slice(0, split);
+		rest = rest.slice(split + 2);
+		const dataLine = block.split('\n').find((line) => line.startsWith('data: '));
+		if (dataLine) {
+			events.push(dataLine.slice(6));
+		}
+		split = rest.indexOf('\n\n');
+	}
+	return { events, rest };
 }
 
 function triggerRefetch(origin: string, circleId: string): void {

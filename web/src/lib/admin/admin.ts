@@ -61,6 +61,7 @@ export interface AdminAccountDetail {
 		name: string;
 		color: string;
 		role: 'owner' | 'member';
+		joined_at?: string;
 	}[];
 }
 

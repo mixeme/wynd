@@ -93,6 +93,10 @@ func runServer() {
 	if err != nil {
 		log.Fatalf("auth: %v", err)
 	}
+	inst, err := authSvc.Instance(context.Background())
+	if err != nil {
+		log.Fatalf("instance: %v", err)
+	}
 
 	maybeRunRoutine(authSvc.DB(), blobsDir, ch, blobStore, mailSvc, cfg.PublicURL)
 
@@ -112,6 +116,7 @@ func runServer() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
+	mux.HandleFunc("GET /ready", readyHandler(st))
 	apiSrv := api.NewServer(authSvc, ch, blobStore, mailSvc, pushSvc, token, cfg.DataDir, cfg.PublicURL, cfg.Listen, loopback)
 	trusted, err := api.ParseTrustedProxies(cfg.TrustedProxies)
 	if err != nil {
@@ -137,7 +142,9 @@ func runServer() {
 
 	log.Printf("data dir: %s", cfg.DataDir)
 	log.Printf("listening on %s", cfg.Listen)
-	log.Printf("bootstrap URL: %s/admin/bootstrap?token=%s", strings.TrimRight(cfg.PublicURL, "/"), token)
+	if !inst.Bootstrapped {
+		log.Printf("bootstrap URL: %s/admin/bootstrap?token=%s", strings.TrimRight(cfg.PublicURL, "/"), token)
+	}
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -169,6 +176,7 @@ func maybeRunRoutine(db *sql.DB, blobsDir string, ch *chronicle.Chronicle, blobs
 func maybeRunDailyRoutine(ctx context.Context, db *sql.DB, blobsDir string, now time.Time) {
 	var last sql.NullString
 	if err := db.QueryRowContext(ctx, `SELECT last_routine_at FROM instance_settings WHERE id = 1`).Scan(&last); err != nil {
+		log.Printf("daily routine: read last_routine_at: %v", err)
 		return
 	}
 	if last.Valid && last.String != "" {
@@ -200,4 +208,21 @@ func runArchiveJobs(ctx context.Context, db *sql.DB, ch *chronicle.Chronicle, bl
 func healthHandler(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+func readyHandler(st store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+		if err := st.Ping(ctx); err != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_ = json.NewEncoder(w).Encode(map[string]string{
+				"status": "unavailable",
+				"error":  err.Error(),
+			})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ready"})
+	}
 }

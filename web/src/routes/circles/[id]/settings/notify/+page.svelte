@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
+	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import Switch from '$ui/forms/Switch.svelte';
@@ -11,14 +12,24 @@
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 
+	type NotifyPrefs = { posts: boolean; comments: boolean; reactions: boolean };
+
 	let posts = $state(true);
 	let comments = $state(true);
 	let reactions = $state(false);
 	let error = $state('');
 	let ready = $state(false);
+	let baseline = $state<NotifyPrefs | null>(null);
 
 	async function persist() {
-		if (!ready) return;
+		if (!ready || !baseline) return;
+		if (
+			posts === baseline.posts &&
+			comments === baseline.comments &&
+			reactions === baseline.reactions
+		) {
+			return;
+		}
 		try {
 			const prefs = await saveNotifyPrefs(circle.origin, circle.circleId, {
 				posts,
@@ -28,6 +39,7 @@
 			posts = prefs.posts;
 			comments = prefs.comments;
 			reactions = prefs.reactions;
+			baseline = { posts, comments, reactions };
 		} catch (err) {
 			error = authErrorHint(err);
 		}
@@ -37,7 +49,6 @@
 		void posts;
 		void comments;
 		void reactions;
-		void ready;
 		void persist();
 	});
 
@@ -47,6 +58,7 @@
 			posts = prefs.posts;
 			comments = prefs.comments;
 			reactions = prefs.reactions;
+			baseline = { posts, comments, reactions };
 		} catch (err) {
 			error = authErrorHint(err);
 		} finally {
@@ -62,25 +74,26 @@
 	onback={() => goto(`/circles/${circle.circleId}/settings`)}
 >
 	<Label>Присылать</Label>
-	<div class="row2" style="padding-top:2px">
-		<div class="g">Новые записи</div>
-		<Switch bind:checked={posts} />
-	</div>
-	<div class="row2">
-		<div class="g">Комментарии</div>
-		<Switch bind:checked={comments} />
-	</div>
-	<div class="row2">
-		<div class="g">Реакции</div>
-		<Switch bind:checked={reactions} />
-	</div>
-	<div class="row2">
-		<div class="g">
-			<div>Упоминания</div>
-			<div class="sub">всегда</div>
-		</div>
-		<Switch checked={true} disabled />
-	</div>
+	<SettingsRow title="Новые записи" style="padding-top:2px">
+		{#snippet control()}
+			<Switch bind:checked={posts} />
+		{/snippet}
+	</SettingsRow>
+	<SettingsRow title="Комментарии">
+		{#snippet control()}
+			<Switch bind:checked={comments} />
+		{/snippet}
+	</SettingsRow>
+	<SettingsRow title="Реакции">
+		{#snippet control()}
+			<Switch bind:checked={reactions} />
+		{/snippet}
+	</SettingsRow>
+	<SettingsRow title="Упоминания" subtitle="всегда">
+		{#snippet control()}
+			<Switch checked={true} disabled />
+		{/snippet}
+	</SettingsRow>
 	<Hint style="margin-top:14px"
 		>Пуш не несёт текста — только круг и тип события. Содержание подтягивается после
 		синхронизации.</Hint

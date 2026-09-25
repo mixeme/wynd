@@ -43,7 +43,7 @@ func (s *Service) SetInstanceName(ctx context.Context, name string) error {
 func (s *Service) ListAccounts(ctx context.Context) ([]AccountSummary, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT a.id, a.email, a.created_at, a.blocked,
-			(SELECT COUNT(DISTINCT m.circle_id) FROM memberships m WHERE m.account_id = a.id)
+			(SELECT COUNT(DISTINCT m.circle_id) FROM memberships m WHERE m.account_id = a.id AND m.status = 'active')
 		FROM accounts a
 		WHERE a.email != ? AND a.deleted_at IS NULL
 		ORDER BY a.created_at DESC

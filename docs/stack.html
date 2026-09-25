@@ -86,18 +86,18 @@
   <span class="pill">Go</span>
   <span class="pill">SQLite</span>
   <span class="pill">SvelteKit + TypeScript</span>
-  <span class="pill">PWA + TWA</span>
+  <span class="pill">PWA</span>
   <span class="pill">Web Push (VAPID)</span>
   <span class="pill">AGPL-3.0</span>
   <span class="pill">монорепо</span>
 </div>
 
 <div class="stack">
-  <div><b>Клиент</b>PWA + TWA (Android) · Service Worker · IndexedDB · Golos Text</div>
+  <div><b>Клиент</b>PWA · Service Worker · IndexedDB · Golos Text</div>
   <div><b>Фронтенд</b>SvelteKit + TypeScript · SPA, вшит в бинарник через <code>embed</code></div>
   <div><b>API</b>REST + JSON · SSE для синхронизации</div>
   <div><b>Сервер</b>Go — один бинарник, отдаёт API и статику сборки</div>
-  <div><b>Данные</b>SQLite (дефолт) · PostgreSQL (опция) · файловое хранилище блобов</div>
+  <div><b>Данные</b>SQLite (WAL) · файловое хранилище блобов</div>
   <div><b>Инфра</b>Caddy (дефолт TLS) · Docker · systemd</div>
 </div>
 
@@ -117,13 +117,13 @@
 <p>Весь код — в одном репозитории. Бинарник собирает Go-сервер и вшитый фронтенд; снаружи остаются только данные (БД, блобы, конфиг).</p>
 
 <pre><code>wynd/
-├── VERSION              # единый номер версии (сейчас 0.1.0)
+├── VERSION              # единый номер версии (сейчас 0.2.0)
 ├── assets/              # знак, лок, иконки (уже есть)
 ├── cmd/
 │   └── wynd/            # main(), точка входа бинарника
 ├── internal/            # пакеты сервера (не импортируются снаружи)
 │   ├── api/             # HTTP handlers, REST
-│   ├── store/           # SQLite / PostgreSQL
+│   ├── store/           # SQLite
 │   ├── blob/            # файловое хранилище вложений
 │   ├── push/            # Web Push (VAPID)
 │   ├── mail/            # SMTP-релей
@@ -133,7 +133,7 @@
 │   │   ├── lib/         # compressor, sync, offline-queue, push, api
 │   │   └── routes/      # / и /admin — разные layout’ы
 │   ├── static/          # Golos Text, иконки PWA, manifest
-│   └── build/           # артефакт сборки → go:embed (в .gitignore)
+│   └── build/           # артефакт сборки → go:embed (в .gitignore; сейчас web/dist)
 ├── deploy/
 │   ├── docker/          # Dockerfile, compose
 │   ├── caddy/           # пример Caddyfile
@@ -153,7 +153,7 @@
 
 <table>
   <tr><th>Компонент</th><th>Выбор</th><th>Обоснование</th></tr>
-  <tr><td>HTTP</td><td><code>net/http</code> или chi</td><td>Минимум зависимостей; роутер — по мере усложнения</td></tr>
+  <tr><td>HTTP</td><td><code>net/http</code> (Go 1.22 <code>ServeMux</code>)</td><td>Минимум зависимостей; роутер в stdlib</td></tr>
   <tr><td>Конфиг</td><td>Файл + env, настройка через админку</td><td>При установке — одна команда; YAML руками не редактируется</td></tr>
   <tr><td>Блобы</td><td>Файловая система</td><td>Сервер не перекодирует; только кладёт и отдаёт байты</td></tr>
   <tr><td>Почта</td><td>Внешний SMTP</td><td>Участники входят по коду из письма; паролей нет</td></tr>
@@ -162,16 +162,9 @@
 
 <h3>База данных</h3>
 
-<table>
-  <tr><th></th><th>SQLite (дефолт)</th><th>PostgreSQL (опция)</th></tr>
-  <tr><td>Установка</td><td>Файл рядом с бинарником, ноль зависимостей</td><td>Отдельный сервис; гайд в <code>deploy/postgres/</code></td></tr>
-  <tr><td>RAM</td><td>~50–100 МБ на инстанс</td><td>200–500 МБ минимум</td></tr>
-  <tr><td>Когда брать</td><td>Домашний VPS, Pi, семейный круг</td><td>Десятки активных кругов, тяжёлый поиск, уже есть PG-кластер</td></tr>
-</table>
+<p><strong>SQLite (WAL)</strong> — единственный драйвер в коде. Файл рядом с бинарником, ноль внешних зависимостей, ~50–100 МБ RAM на инстанс. Event log с материализованным снимком и отрезки видимости укладываются в SQLite (один писатель). Immich выбрал PostgreSQL из-за дедупликации миллионов фото — у Wynd другая модель: сжатые блобы и журнал, не медиатека.</p>
 
-<p>Event log с материализованным снимком и отрезки видимости укладываются в SQLite (WAL, один писатель). Immich выбрал PostgreSQL из-за дедупликации миллионов фото — у Wynd другая модель: сжатые блобы и журнал, не медиатека.</p>
-
-<p class="note">Слой <code>internal/store/</code> абстрагирует драйвер: переключение SQLite ↔ PostgreSQL — смена DSN, не переписывание логики.</p>
+<p class="note">PostgreSQL, chi, TWA, Svelte stores и «группы кругов» рассматривались на раннем этапе — <strong>отвергнуты</strong> для 0.x; см. таблицу ниже.</p>
 
 <h3>API</h3>
 
@@ -180,9 +173,9 @@
 <p>GraphQL отвергнут: один клиент, предсказуемые эндпоинты, проще кэшировать. Специализированные sync-фреймворки (Replicache, ElectricSQL) — лишняя зависимость; модель Wynd (сигнальный пуш → догрузка) проще.</p>
 
 <h2>Клиент</h2>
-<p class="lede">PWA + TWA, один стек с админкой</p>
+<p class="lede">PWA, один стек с админкой</p>
 
-<p>Мобильное приложение и панель администратора — один фронтенд, разные layout’ы (<code>/</code> и <code>/admin</code>). Нативных клиентов не будет: Android — через TWA, iOS — PWA в Safari (best effort, без гарантий).</p>
+<p>Мобильное приложение и панель администратора — один фронтенд, разные layout’ы (<code>/</code> и <code>/admin</code>). Нативных клиентов не будет: Android — PWA в браузере; iOS — PWA в Safari (best effort, без гарантий). TWA отвергнут для 0.x.</p>
 
 <h3>Почему SvelteKit</h3>
 
@@ -202,7 +195,7 @@
 <table>
   <tr><th>Слой</th><th>Инструмент</th><th>Где</th></tr>
   <tr><td>UI</td><td>Svelte-компоненты</td><td>43 экрана из <a href="visual/screens.html">макетов</a></td></tr>
-  <tr><td>Состояние</td><td>Svelte stores + IndexedDB</td><td>Офлайн-очередь, кэш, группы кругов</td></tr>
+  <tr><td>Состояние</td><td>Svelte 5 runes + IndexedDB</td><td>Офлайн-очередь, кэш; пины кругов — только IDB</td></tr>
   <tr><td>Тяжёлая логика</td><td><code>web/src/lib/</code></td><td><code>compressor</code>, <code>sync</code>, <code>offline-queue</code>, <code>push</code></td></tr>
   <tr><td>Типы API</td><td>OpenAPI → TypeScript</td><td>Генерация из Go-спеки</td></tr>
   <tr><td>Офлайн</td><td>Service Worker (<code>@vite-pwa/sveltekit</code>) + IndexedDB</td><td>Кэш, очередь, догрузка после пуша</td></tr>
@@ -294,7 +287,6 @@
   <tr><th>Способ</th><th>Для кого</th></tr>
   <tr><td><code>curl | sh</code> → бинарник + systemd</td><td>Чистый VPS, домашний сервер</td></tr>
   <tr><td>Docker / compose</td><td>Unraid, YunoHost, привычный контейнерный стек</td></tr>
-  <tr><td><code>deploy/postgres/</code></td><td>Кому нужен PostgreSQL вместо SQLite</td></tr>
 </table>
 
 <p>TLS — на реверс-прокси. Дефолт — <strong>Caddy</strong> с автонастройкой; при существующем nginx/traefik — готовый конфиг в логе установки. Без HTTPS продукт не работает: service worker, PWA, пуши, камера.</p>
@@ -318,17 +310,20 @@
   <tr><td>Отдельный фронтенд-репозиторий</td><td>Один бинарник — одно место сборки; монорепо.</td></tr>
   <tr><td>Skeleton, Flowbite-Svelte, daisyUI</td><td>Зависимость со своим мнением о том, как выглядит продукт. Марка зафиксирована — перебивать чужие стили дороже, чем взять headless.</td></tr>
   <tr><td>Carbon, SMUI, Konsta UI</td><td>Корпоративный, материальный и нативно-iOS облик. Мимо «нашего журнала и тихого переулка».</td></tr>
-  <tr><td>Пакеты иконок (lucide-svelte и прочие)</td><td>Свой спрайт на 22 иконки уже есть и меньше по размеру.</td></tr>
+  <tr><td>Пакеты иконок (lucide-svelte и прочие)</td><td>Свой спрайт уже есть и меньше по размеру.</td></tr>
+  <tr><td>PostgreSQL</td><td>Один драйвер — SQLite; домашний масштаб, один процесс.</td></tr>
+  <tr><td>chi / сторонний HTTP-роутер</td><td>Go 1.22 <code>ServeMux</code> с методами достаточно.</td></tr>
+  <tr><td>TWA (Android)</td><td>PWA в браузере; отдельная обёртка не в 0.x.</td></tr>
+  <tr><td>Svelte stores как основа состояния</td><td>Svelte 5 runes в <code>*.svelte.ts</code>.</td></tr>
+  <tr><td>Группы кругов</td><td>Не в продукте; пины — локально в IDB.</td></tr>
 </table>
 
 <h2>Что дальше</h2>
-<p class="lede">Каркас и волны A–G закрыты; очередь — в планах</p>
+<p class="lede">Каркас и волны A–G закрыты. Решения — в справочниках</p>
 
 <p>Сервер, клиент и Wynd UI — в <a href="reference/server-reference.md">server-reference.md</a>, <a href="reference/client-reference.md">client-reference.md</a>, <a href="reference/ui-components.md">ui-components.md</a>. Макеты — <a href="visual/screens.html">screens.html</a>.</p>
 
 <ol>
-  <li><strong>Макеты после F</strong> — лента и обсуждение: <a href="plans/screens-after-f.plan.md">screens-after-f.plan.md</a></li>
-  <li><strong>Хвосты панели</strong> — <a href="plans/wave-f-tails.plan.md">wave-f-tails.plan.md</a></li>
   <li><strong>Клиент</strong> — маршруты, IDB, sync: <a href="reference/client-reference.md">client-reference.md</a></li>
   <li><strong>Сервер</strong> — домен, инварианты: <a href="reference/server-reference.md">server-reference.md</a></li>
   <li><strong>Wynd UI</strong> — компоненты, layout'ы: <a href="reference/ui-components.md">ui-components.md</a></li>

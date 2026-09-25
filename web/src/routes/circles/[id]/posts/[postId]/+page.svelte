@@ -8,10 +8,13 @@
 	import Hint from '$ui/forms/Hint.svelte';
 	import TextArea from '$ui/forms/TextArea.svelte';
 	import PostCard from '$ui/data/PostCard.svelte';
+	import SectionLabel from '$ui/data/SectionLabel.svelte';
+	import Icon from '$ui/Icon.svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
-	import TextButton from '$ui/forms/TextButton.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
+	import OverlayLayout from '$lib/layouts/OverlayLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
+	import { fetchMembers } from '$lib/circles/settings';
 	import { formatBytes } from '$lib/format/bytes';
 	import { formatClock, formatPostTime, isEditableActive } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
@@ -22,12 +25,22 @@
 		attachmentSizeLabel,
 		authorInitial,
 		coverMedia,
-		findPost
+		findPost,
+		groupReactions,
+		ownReaction,
+		reactionIconName,
+		REACTION_KEYS
 	} from '$lib/journal/present';
-	import { createComment, deleteComment, editComment } from '$lib/journal/posts';
+	import {
+		createComment,
+		deleteComment,
+		editComment,
+		removeReaction,
+		setReaction
+	} from '$lib/journal/posts';
 	import type { Comment, FeedPost } from '$lib/journal/types';
 	import { downloadBlob, getMediaUrl } from '$lib/media/objectUrl';
-	import { enqueueComment } from '$lib/queue/queue';
+	import { enqueueComment, enqueueReaction, enqueueReactionRemove } from '$lib/queue/queue';
 	import { registerRefetch } from '$lib/sync/sync';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
@@ -40,8 +53,20 @@
 	let draft = $state('');
 	let editingCommentId = $state('');
 	let editingCommentBody = $state('');
+	let activeMemberCount = $state(2);
+	let pickerOpen = $state(false);
+
+	const soloCircle = $derived(activeMemberCount === 1);
+	const reactionsOpen = $derived($page.url.searchParams.has('reactions'));
 
 	onMount(() => {
+		void fetchMembers(circle.origin, circle.circleId)
+			.then((list) => {
+				activeMemberCount = list.filter((m) => m.status === 'active').length;
+			})
+			.catch(() => {
+				activeMemberCount = 2;
+			});
 		void load();
 		return registerRefetch({
 			origin: circle.origin,
@@ -142,6 +167,73 @@
 	function commentAvatarSrc(comment: Comment): string | undefined {
 		return comment.identity_id === circle.identityId ? circle.avatarUrl : undefined;
 	}
+
+	function openReactions() {
+		goto(`${$page.url.pathname}?reactions=1`);
+	}
+
+	function closeReactions() {
+		goto($page.url.pathname);
+	}
+
+	function showReactionPlus(currentPost: FeedPost): boolean {
+		if (soloCircle) return false;
+		const mine = ownReaction(currentPost.reactions, circle.identityId);
+		if (!mine) return true;
+		return isEditableActive(mine.editable_until);
+	}
+
+	function applyReaction(emoji: string | null) {
+		if (!post) return;
+		const reactions = [...(post.reactions ?? [])];
+		const idx = reactions.findIndex((r) => r.identity_id === circle.identityId);
+		if (emoji === null) {
+			if (idx >= 0) reactions.splice(idx, 1);
+		} else if (idx >= 0) {
+			reactions[idx] = { ...reactions[idx], emoji };
+		} else {
+			reactions.push({
+				id: `local-${post.id}`,
+				post_id: post.id,
+				emoji,
+				author_name: circle.identityName,
+				identity_id: circle.identityId,
+				created_at: new Date().toISOString()
+			});
+		}
+		post = { ...post, reactions };
+	}
+
+	async function pickReaction(currentPost: FeedPost, emoji: string) {
+		const mine = ownReaction(currentPost.reactions, circle.identityId);
+		const removing = mine?.emoji === emoji;
+		error = '';
+		try {
+			if (navigator.onLine) {
+				if (removing) {
+					await removeReaction(circle.origin, circle.circleId, currentPost.id);
+				} else {
+					await setReaction(circle.origin, circle.circleId, currentPost.id, emoji);
+				}
+				pickerOpen = false;
+				await load();
+			} else {
+				if (removing) {
+					await enqueueReactionRemove(circle.origin, circle.circleId, currentPost.id);
+					applyReaction(null);
+				} else {
+					await enqueueReaction(circle.origin, circle.circleId, {
+						post_id: currentPost.id,
+						emoji
+					});
+					applyReaction(emoji);
+				}
+				pickerOpen = false;
+			}
+		} catch (err) {
+			error = authErrorHint(err);
+		}
+	}
 </script>
 
 <CircleLayout
@@ -167,7 +259,7 @@
 		{#snippet postHeaderRight()}
 			<div style="display:flex;align-items:center;gap:10px;margin-left:auto">
 				{#if canEditPost(currentPost)}
-					<TextButton onclick={openEdit} style="font-size:12.5px">править</TextButton>
+					<IconButton name="edit" label="Править" size="sm" onclick={openEdit} />
 				{/if}
 				{#if coverUrl && cover}
 					<button type="button" class="pic sq mini" onclick={openAlbum}>
@@ -211,6 +303,39 @@
 					<div class="tm">{formatPostTime(currentPost.created_at, currentPost.entry_date)}</div>
 				</div>
 			{/snippet}
+			{#snippet reactions()}
+				{#if !soloCircle}
+					<div class="rx">
+						{#each groupReactions(currentPost.reactions) as group (group.emoji)}
+							<button type="button" class="one" onclick={openReactions}>
+								<Icon name={reactionIconName(group.emoji)} size="xs" style="color:var(--c)" />
+								{group.names}
+							</button>
+						{/each}
+						{#if showReactionPlus(currentPost) && !pickerOpen}
+							<button type="button" class="add" onclick={() => {
+								pickerOpen = true;
+							}}>+</button>
+						{/if}
+					</div>
+					{#if pickerOpen}
+						<div class="rxpick">
+							{#each REACTION_KEYS as key (key)}
+								<button
+									type="button"
+									class="rcho"
+									class:on={ownReaction(currentPost.reactions, circle.identityId)?.emoji === key}
+									onclick={() => {
+										void pickReaction(currentPost, key);
+									}}
+								>
+									<Icon name={key} />
+								</button>
+							{/each}
+						</div>
+					{/if}
+				{/if}
+			{/snippet}
 		</PostCard>
 
 		<div class="thread">
@@ -222,6 +347,10 @@
 						src={commentAvatarSrc(comment)}
 					/>
 					<div class="g">
+						<div class="who">
+							<b>{comment.author_name}</b>
+							<span class="tm">{formatClock(comment.created_at)}</span>
+						</div>
 						{#if editingCommentId === comment.id}
 							<TextArea
 								variant="field"
@@ -241,15 +370,11 @@
 								</Button>
 							</div>
 						{:else}
-							<div class="who">
-								<b>{comment.author_name}</b>
-								<span class="tm">{formatClock(comment.created_at)}</span>
-							</div>
 							{comment.body}
 						{/if}
 					</div>
 					<div class="acts">
-						{#if canEditComment(comment)}
+						{#if canEditComment(comment) && editingCommentId !== comment.id}
 							<IconButton
 								name="edit"
 								label="Править"
@@ -271,6 +396,25 @@
 		{#if error}
 			<Hint style="margin:0 16px 16px">{error}</Hint>
 		{/if}
+	{/if}
+
+	{#if reactionsOpen && post}
+		<OverlayLayout>
+			<div onclick={closeReactions} style="position:absolute;inset:0"></div>
+			<SectionLabel style="margin-top:2px">
+				Реакция · {post.reactions?.length ?? 0}
+			</SectionLabel>
+			{#each post.reactions ?? [] as rx (rx.id)}
+				<div class="row2">
+					<Avatar initial={authorInitial(rx.author_name)} color={circle.colorHex} />
+					<div class="g" style="font-weight:600">{rx.author_name}</div>
+					<Icon name={reactionIconName(rx.emoji)} size="sm" style="color:var(--c)" />
+				</div>
+			{/each}
+			<Hint style="margin-top:14px">
+				Реакция одна на человека и подчиняется окну правок. Хотите сказать больше — напишите словами.
+			</Hint>
+		</OverlayLayout>
 	{/if}
 </CircleLayout>
 

@@ -56,11 +56,11 @@ func BuildPersonalArchive(ctx context.Context, in BuildInput) ([]byte, error) {
 		}
 		info, err := in.Blobs.OpenBlob(ctx, blobID)
 		if err != nil {
-			return nil
+			return fmt.Errorf("archive: blob %s: %w", blobID, err)
 		}
 		f, err := openBlobFile(info.Path)
 		if err != nil {
-			return nil
+			return fmt.Errorf("archive: open blob %s: %w", blobID, err)
 		}
 		defer f.Close()
 		name := "media/" + blobID + extensionForMime(info.MimeType)

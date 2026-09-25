@@ -1,10 +1,139 @@
 # Изменения
 
 Формат — [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/).
-Версионирование — [SemVer](https://semver.org/lang/ru/). Текущая версия: **0.1.35**
+Версионирование — [SemVer](https://semver.org/lang/ru/). Текущая версия: **0.2.3**
 (файл `VERSION` в корне репозитория).
 
 ## [Unreleased]
+
+## [0.2.3] — 2026-09-09
+
+Обсуждение 4.12 (реакции, правка записи), compose 4.7, QA-сборка и исправления
+ленты, форм и миграции v12→v13.
+
+### Добавлено
+
+- **QA-сборка:** `scripts/pack-qa.bat` — ZIP `dist/wynd-qa-{VERSION}.zip` с `scripts/run.bat`,
+  `dist/wynd.exe`, `dev/data/` и `qa-manual.md`; инструкция для тестировщика —
+  `docs/testing/qa-manual.md` (запуск, данные, bootstrap, панель, коды, чек-листы).
+- **Обсуждение 4.12:** реакции в карточке записи (пикер `.rxpick`, sheet `?reactions=`);
+  карандаш в шапке своей записи ведёт на compose 4.7. Макет 4.12, карта переходов и
+  `client-reference`.
+
+### Изменено
+
+- **Правка записи:** в шапке обсуждения тот же карандаш, что у комментария
+  (`IconButton` `edit`), а не подчёркнутое «править». Макет 4.12.
+- **Compose 4.7:** экран правки по макету — `TextArea variant="compose"`, кнопка «+»
+  для фото и без подсказки об обложке; `TextArea` — вариант `compose` и `bind:el`.
+
+### Исправлено
+
+- **Реакции в ленте:** клик по «+» и чипам уходил в обсуждение — `PostCard` игнорирует
+  вложенные кнопки; сниппет реакций перенесён внутрь карточки; офлайн-реакция видна
+  сразу; ошибка API показывается внизу ленты. Сброс стилей `button.one` / `button.add`.
+- **Формы в приложении:** длинные экраны на `FormLayout` (настройки круга и др.) не
+  прокручивались — контент без `.form-body` обрезался в `.ph.app`. Обёртка в layout,
+  стили прокрутки как у `.compose-body`.
+- **Пригласить в круг:** кнопки «Поделиться» и «Скопировать» без обратной связи — текст
+  «Отправлено»/«Скопировано»; сброс при пересоздании ссылки.
+- **Лента круга:** `button.idn` в шапке — системная белая плашка; длинная строка без
+  пробелов давала горизонтальный скролл; превью комментария (`button.cm`) не на всю
+  ширину карточки. Сброс chrome identity, `overflow-wrap: anywhere`, ширина `.cm`.
+- **Шапка круга:** аватар с именем вёл в настройки только на части экранов — `circleId`
+  не передавался в `CircleLayout` вне вкладок ленты. Берётся из контекста круга;
+  кликабельно только при наличии аватара (дата дня остаётся текстом).
+- **Лайтбокс:** фото и видео вылезали за экран — у `.lb .mid` не было `min-height: 0`,
+  проценты `max-height` у медиа не срабатывали.
+- **Миграция 0013:** `PRAGMA foreign_keys=OFF` в SQL не действует внутри транзакции
+  SQLite; обновление v12→v13 падало на `DROP TABLE identities`, если в БД есть
+  `memberships`. FK отключаются на соединении до начала транзакции.
+- **Подсказка «назвать день»:** карточка в ленте после первой записи за дату
+  срабатывала только из строки ввода — не после публикации из compose. Переход с
+  `?dayPrompt=` и проверка при загрузке ленты.
+
+## [0.2.2] — 2026-09-08
+
+Сверка CHANGELOG с git-историей с момента создания репозитория.
+
+### Исправлено
+
+- Даты релизов [0.0.15], [0.1.6], [0.1.8] и [0.2.1] — по дате коммита
+  версии, а не соседних записей.
+- В [0.1.34]–[0.1.35] восстановлены записи, потерянные при закрытии
+  [Unreleased] в [0.2.0]: хвосты `cards-crop-tails`, закрытие планов
+  `wynd-ui` и `cards-crop-tails`, правки панели после волны F, макет 3.11.
+
+## [0.2.1] — 2026-09-08
+
+Закрыта рецензия кода 0.2 (волны 0–5) и batch `ListAccountCircles`.
+Решения — в справочниках; очередь — [`code-review-followup.plan.md`](docs/plans/code-review-followup.plan.md).
+
+### Добавлено
+
+- **Волна 4 (code-review):** тест ZIP при отсутствующем блобе; `present.test.ts` (реакции, preview, divider);
+  drain очереди с mock fetch; `takeSSEDataEvents` в sync; таблица инвариантов в README.
+- **`ListAccountCircles`:** `snapshot_circles_test.go` — batch unread, курсор, видимость.
+- **Wynd UI:** слот `control` в `SettingsRow` — строка с переключателем справа
+  (`div.row2` + `Switch`); smoke `/dev/smoke/e6-6`; каталог и `/dev/ui` обновлены.
+- **Волна 3 (code-review):** пакеты `internal/xtime` и `internal/uid`.
+- **Волна 1 (code-review):** backup через `VACUUM INTO` (WAL-safe); `/ready` с Ping SQLite;
+  тесты backup+WAL и истечения upload в ту же секунду.
+- **Волна 0 (code-review):** корневой `README.md` — продукт, AGPL, канон исходников
+  (GitHub), loopback-прогон, тесты, указатель на `docs/`.
+- `web/static/fonts/OFL.txt` (Golos Text) и ссылка в `fonts/README.md`.
+- `scripts/test.bat` — `go test ./...` и web `check` + `check:ui` + `test`.
+- План очереди [`code-review-followup.plan.md`](docs/plans/code-review-followup.plan.md) —
+  notify goroutine, GUI-костыли, сторож `.row2`.
+
+### Изменено
+
+- **`ListAccountCircles`:** unread, курсор и последнее видимое событие — три batch-запроса
+  вместо N+1 на каждый круг (`sqlVisibleAtMembership`, `ROW_NUMBER` по событиям).
+  Справочник: batch-запросы и пустой `0001_init.sql`.
+- Экраны notify круга и «Приложение» — строки уведомлений через `SettingsRow`+`control`,
+  сырой `.row2` убран.
+- **Волна 3 (code-review):** снимки ленты/сетки — SQL-фильтр спана, batch-загрузка,
+  лимит 2000 постов; notify SQL в `auth`, quota в `blob`; поиск без повторного
+  `CanReadEvent`, `entry_date` в JOIN; store — модель «один процесс на БД».
+- **Волна 2 (code-review):** compose на `FormLayout` (шапка bar/barAction, `SettingsRow` для даты);
+  `CircleBar` identity — `<button class="idn">`; лист реакций — `reactionIconName`;
+  notify/app и notify круга — baseline, без PUT при первом `ready`; убран скрытый PATCH ochre.
+- **Волна 1:** blob timestamps — `RFC3339Nano`; `expireBefore` в рутине для legacy `Z`-суффикса;
+  `parseTime` на спанах видимости — ошибка вместо zero time; создание поста с медиа — одна транзакция;
+  rollback с логом; SSE-ошибки в лог; архивный reminder не помечается при ошибке почты;
+  ZIP архива — ошибка при отсутствующем блобе; `POST .../approve` ставит `quota_custom=1` и абсолютную квоту.
+- OpenAPI `info.version` = `0.2.1` (`VERSION`).
+- `internal/store/store.go` — комментарий «SQLite only», без PostgreSQL later.
+- Спеки: квота не пишется в журнал (`wynd-event-log-immutability.md`);
+  пустые учётки — soft-delete рутиной (`wynd-servers-and-registration.md`);
+  донаты — «не в 0.x» (`wynd-donations-subscription-spec.md`).
+- `client-reference.md` — `/admin/compress`, `bits-ui`/`qrcode`, PhoneFrame/StatusBar,
+  поля IDB (`circle_meta`, очередь); CircleBar identity; notify/app через `SettingsRow`+`control`;
+  SSE = опрос 2 с.
+- `server-reference.md` — `/ready`, VACUUM INTO, потолок снимка 2000, один процесс,
+  `POST .../approve` = `quota_custom=1`, UNIQUE+NULL identities.
+- `ui-components.md` — identity `CircleBar` = `<button class="idn">`.
+- `stack.html` — актуальный стек (SQLite, PWA, runes); PostgreSQL/TWA/chi/stores/группы
+  в отклонённых.
+- Competitive analysis: сигнальные пуши — VAPID/Web Push, без UnifiedPush как черты Wynd.
+- Аудит безопасности: срез 0.1.14, актуальная версия — `VERSION`.
+
+### Исправлено
+
+- Bootstrap URL в лог только пока bootstrap не выполнен.
+- `ListAccountCircles`: невалидный `created_at` последнего события — ошибка, не нулевое время.
+
+### Удалено
+
+- План `code-review-tails.plan.md` (`ListAccountCircles` закрыт; очередь —
+  [`code-review-followup.plan.md`](docs/plans/code-review-followup.plan.md)).
+- Планы `code-review.plan.md`, `settings-row-control.plan.md`, `notify-app-settings-row.plan.md`
+  (волны 0–5 и экраны notify/app закрыты; решения в справочниках).
+
+## [0.2.0] — 2026-09-07
+
+Закрыты макеты после волны F и хвосты панели. Решения — в справочниках.
 
 ### Добавлено
 
@@ -12,33 +141,29 @@
   `check:ui`, хук `.cursor/hooks/ui-screens.mjs`, правило `.cursor/rules/wynd-ui-screens.mdc`.
   Экран из существующих `$ui` и layout’ов; пробел библиотеки — план `docs/plans/<slug>.plan.md`
   и отдельная задача, не новый файл в том же заходе.
-- **План** [screens-after-f.plan.md](docs/plans/screens-after-f.plan.md): три волны —
-  полоса 3.11, нить 4.2/4.8–4.9, реакции 4.10–4.11. Развилки закрыты.
-- **Макет 3.11** в `docs/visual/screens.html`: письмо уже в полосе ленты.
-  Счётчик экранов 67→68. Шеврон в поле журнала — дверь на 4.1.
+- **9.9:** `joined_at` в `GET /admin/accounts/{id}` — в строке круга «участник · с {дата}».
+- **Админ-тесты хвостов F:** default quota не трогает круги; `PUT .../quota` (custom false/true,
+  pending → approved); `ttl_sec`; sentinel DELETE → 404; повторная почта после soft-delete;
+  identities NULL и посты на месте.
 
 ### Изменено
 
-- **Поле фильтра = поиск.** `SearchField` на 9.8 «почта» вместо `Input admin`; тот же виджет, что `/search` и поиск в круге. Ввод внутри `.sfield` без второй рамки `.fld`. `BackBar` по-прежнему свой `.sfield`.
-- **Поле в ленте:** пустое — тап, шеврон и фото ведут на полный экран, кнопка
-  отправки погашена; с текстом — отправка с полосы, шеврон уносит черновик.
-  Комментарию шеврона нет.
-- **Волна F закрыта.** Решения — в [server-reference.md](docs/reference/server-reference.md)
-  и [client-reference.md](docs/reference/client-reference.md). `docs/roadmap.md` удалён.
-  Хвосты панели — [wave-f-tails.plan.md](docs/plans/wave-f-tails.plan.md).
+- **Поле фильтра = поиск.** `SearchField` на 9.8 «почта» вместо `Input admin`.
+- **9.7:** QR в правой колонке, подпись «та же ссылка кодом».
+- **Удаление учётки:** `LeaveInTx` и soft-delete в одной транзакции.
+  `cleanEmptyAccounts` — soft-delete, не `DELETE FROM accounts`.
+  `circle_count` считает только `active`.
+- Планы `screens-after-f` и `wave-f-tails` закрыты и удалены. Решения — в
+  [client-reference.md](docs/reference/client-reference.md) и
+  [server-reference.md](docs/reference/server-reference.md).
 
 ### Исправлено
 
-- **Лента и дни:** клик по записи и дню — `onclick` на корне `PostCard` / `DayCard`,
-  без лишней обёртки-`div`; реакции и альбом по-прежнему со `stopPropagation`.
-- **Кадр (6.5):** pinch — зум вокруг текущей середины двух касаний (и сдвиг жеста);
-  колесо — к курсору относительно вьюпорта. Затем clamp.
-- Планы `wynd-ui.plan.md` и `cards-crop-tails.plan.md` закрыты и удалены.
-  Решения — в [ui-components.md](docs/reference/ui-components.md) и
-  [client-reference.md](docs/reference/client-reference.md).
-- **Панель:** `GET /admin/accounts/{id}` отдаёт `circles: []`, не `null`; неизвестный
-  круг в `PUT .../quota` — 404. «Дать»/«Отказать» — `.btn`. Целые ГБ в таблице 9.1.
-  9.8: «вход закрыт» рядом с числом кругов. 9.10: шеврон над «Почта». 9.7: QR в `.qr`.
+- **Правка комментария (4.9):** имя и часы остаются, карандаш и корзина прячутся;
+  `.ced` без бокового margin от `.fld`.
+- **Пикер реакций:** клик по `.rxpick` не открывает обсуждение.
+- **Routine:** курсор SELECT закрывается до UPDATE/DELETE — иначе SQLite зависал
+  на `cleanEmptyAccounts`. Тест схемы — версия 13.
 
 ## [0.1.35] — 2026-09-07
 
@@ -46,6 +171,8 @@
 
 ### Добавлено
 
+- **Макет 3.11** в `docs/visual/screens.html`: черновик письма в полосе ленты;
+  шеврон в поле журнала — дверь на 4.1.
 - **Полоса 3.11:** шеврон и фото в `CommentBar` при `oncompose`; `.f.ink` и `.send.off`;
   smoke `/dev/ui` и `e3-1` с колбэками полосы.
 - **Обсуждение 4.2/4.8–4.9:** нить `.thread`/`.cmt`, `formatClock`, `CircleLayout` без табов;
@@ -82,6 +209,21 @@
   pending закрывается при `PUT` квоты.
 - **CheckMediaQuota:** `custom=0` → умолчание инстанса; `custom=1` → своя (`NULL` = без квоты).
 - **Доступ 9.7:** колонка учёток убрана — список на `/admin/people`.
+- **Волна F закрыта.** Решения — в [server-reference.md](docs/reference/server-reference.md)
+  и [client-reference.md](docs/reference/client-reference.md). `docs/roadmap.md` удалён.
+
+### Исправлено
+
+- **Лента и дни:** клик по записи и дню — `onclick` на корне `PostCard` / `DayCard`,
+  без лишней обёртки-`div`; реакции и альбом по-прежнему со `stopPropagation`.
+- **Кадр (6.5):** pinch — зум вокруг текущей середины двух касаний (и сдвиг жеста);
+  колесо — к курсору относительно вьюпорта. Затем clamp.
+- Планы `wynd-ui.plan.md` и `cards-crop-tails.plan.md` закрыты и удалены.
+  Решения — в [ui-components.md](docs/reference/ui-components.md) и
+  [client-reference.md](docs/reference/client-reference.md).
+- **Панель:** `GET /admin/accounts/{id}` отдаёт `circles: []`, не `null`; неизвестный
+  круг в `PUT .../quota` — 404. «Дать»/«Отказать» — `.btn`. Целые ГБ в таблице 9.1.
+  9.8: «вход закрыт» рядом с числом кругов. 9.10: шеврон над «Почта». 9.7: QR в `.qr`.
 
 ## [0.1.33] — 2026-09-07
 
@@ -769,7 +911,7 @@ SPA — часть дефектов проявлялась только при �
 - `docs/plans/client.plan.md`: этап 7 отмечен выполненным
 - `VERSION` и `internal/version` — 0.1.9
 
-## [0.1.8] — 2026-09-01
+## [0.1.8] — 2026-09-02
 
 Клиентский слой: этап 6 «Настройки и квота» — настройки круга, участники,
 квота, архивация.
@@ -823,7 +965,7 @@ pathname.
 - `docs/plans/client.plan.md`: этап 5 отмечен выполненным
 - `VERSION` и `internal/version` — 0.1.7
 
-## [0.1.6] — 2026-08-30
+## [0.1.6] — 2026-08-31
 
 ### 2026-09-01 — Bootstrap-страница и SPA-fallback в бинарнике
 
@@ -1661,12 +1803,12 @@ Smoke `#e1-1`, `#e2-1`, `#e2-3`, `#e3-1`, `#e4-5` и `#e9-1` сняты рядо
   — переведены на layout’ы.
 - `docs/plans/ui-library.plan.md`: этап 7 отмечен выполненным.
 
-## [0.0.15] — 2026-08-28
+## [0.0.15] — 2026-08-29
 
 Сверка этапов 4–6 UI-библиотеки с макетами: подписи дней, панель
 администратора и полнота smoke-экранов.
 
-### 2026-08-28 — Сверка этапов 4–6 UI-библиотеки с макетами
+### 2026-08-29 — Сверка этапов 4–6 UI-библиотеки с макетами
 
 Smoke-экраны `#e1-1`–`#e9-4` сняты рядом с `docs/screens.html`. Расхождения
 были в данных и в разметке, которая не собиралась: подписи месяцев

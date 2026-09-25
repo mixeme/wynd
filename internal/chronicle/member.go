@@ -192,6 +192,11 @@ func (c *Chronicle) Leave(ctx context.Context, circleID, accountID string, now t
 	return c.leave(ctx, circleID, accountID, StatusGone, false, now)
 }
 
+// LeaveInTx revokes all access inside an existing transaction (admin account delete).
+func (c *Chronicle) LeaveInTx(ctx context.Context, tx *sql.Tx, circleID, accountID string, now time.Time) error {
+	return c.leaveInTx(ctx, tx, circleID, accountID, StatusGone, false, now)
+}
+
 func (c *Chronicle) forbidOwnerLeave(ctx context.Context, circleID, accountID string) error {
 	owner, err := c.circleOwner(ctx, c.db, circleID)
 	if err != nil {
@@ -219,19 +224,25 @@ func (c *Chronicle) Exclude(ctx context.Context, circleID, actorAccountID, targe
 }
 
 func (c *Chronicle) leave(ctx context.Context, circleID, accountID string, status MembershipStatus, retainRead bool, now time.Time) error {
-	mem, err := c.membership(ctx, c.db, circleID, accountID)
+	tx, err := c.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := c.leaveInTx(ctx, tx, circleID, accountID, status, retainRead, now); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (c *Chronicle) leaveInTx(ctx context.Context, tx *sql.Tx, circleID, accountID string, status MembershipStatus, retainRead bool, now time.Time) error {
+	mem, err := c.membership(ctx, tx, circleID, accountID)
 	if err != nil {
 		return err
 	}
 	if mem.Status != StatusActive {
 		return ErrInvalid
 	}
-
-	tx, err := c.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
 
 	updated := formatTime(now)
 	if err := c.closeOpenSpan(ctx, tx, mem.ID, now, retainRead); err != nil {
@@ -262,7 +273,7 @@ func (c *Chronicle) leave(ctx context.Context, circleID, accountID string, statu
 	}); err != nil {
 		return err
 	}
-	return tx.Commit()
+	return nil
 }
 
 func (c *Chronicle) closeOpenSpan(ctx context.Context, tx dbtx, membershipID string, end time.Time, retainRead bool) error {

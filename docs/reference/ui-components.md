@@ -32,7 +32,7 @@
 - [ ] Экран — следующая задача, не эта
 ```
 
-**Интерактив:** корень кнопки — `<button type="button">`, не `div`/`span` + `role="button"`. `Button.onclick` обязателен; без действия в dev/smoke — `onclick={() => {}}`. Загрузка — prop `loading` (текст `…`, вид `.off`); не `class:off` на экранах. `Chip` без `onclick` — `<span>`, с действием — `<button aria-pressed>`. Навигационные строки (`SettingsRow`, `CircleRow`, `ServerRow`, `SearchResultRow`, `MemberRow` в режиме transfer) несут `onclick` на корне; обёртки-`div` не нужны. Ссылки с URL остаются `<a class="under" href>`. Identity в `CircleBar` — `span` + `goto`, не `IconButton`. Compose: `TextButton` `bar` / `barAction`. Вложенные `<button>` запрещены: меню в `MemberRow` только если строка не кликабельна целиком. `AdminNav` при `links` — `<button type="button">`, не `span` + `role="button"`. Карточки ленты и дней: опциональный `onclick` на корневом `div` (`PostCard` / `DayCard`), без обёртки; карточку не делать `<button>` — вложенные реакции и альбом остаются кнопками со `stopPropagation`.
+**Интерактив:** корень кнопки — `<button type="button">`, не `div`/`span` + `role="button"`. `Button.onclick` обязателен; без действия в dev/smoke — `onclick={() => {}}`. Загрузка — prop `loading` (текст `…`, вид `.off`); не `class:off` на экранах. `Chip` без `onclick` — `<span>`, с действием — `<button aria-pressed>`. Навигационные строки (`SettingsRow`, `CircleRow`, `ServerRow`, `SearchResultRow`, `MemberRow` в режиме transfer) несут `onclick` на корне; обёртки-`div` не нужны. Ссылки с URL остаются `<a class="under" href>`. Identity в `CircleBar` — `<button type="button" class="idn">` (без `circleId` — `span.idn`), не `IconButton`. Compose: `TextButton` `bar` / `barAction`. Вложенные `<button>` запрещены: меню в `MemberRow` только если строка не кликабельна целиком. `AdminNav` при `links` — `<button type="button">`, не `span` + `role="button"`. Карточки ленты и дней: опциональный `onclick` на корневом `div` (`PostCard` / `DayCard`), без обёртки; карточку не делать `<button>` — вложенные реакции и альбом остаются кнопками со `stopPropagation`.
 
 **Формы:** ввод — `Input` / `TextArea` / `SearchField`; статика — `FieldDisplay` (бывший `Field`). Админка: `Input admin={true}` и `FieldDisplay admin={true}` (класс `.inp`), не отдельный `AdminInput`. `SearchField` — редактируемый поиск и поля фильтров (тот же виджет: `/search`, поиск в круге, 9.8 почта); `BackBar` свой `.sfield`. `TextArea variant`: `area` \| `field`.
 
@@ -88,11 +88,11 @@ Guard: `npm run check:ui` — экран = существующие `$ui` + `$li
 
 SectionLabel, Avatar, EventDivider, CircleRow, PostCard, **SettingsRow**, MemberRow, SearchGroupHeader, **SearchResultRow**, **ServerRow**, FoldHeader, AttachmentRow, PhotoPlaceholder, PhotoGrid, MonthLabel, DayCard, DayGrid, DayHeader, EntryDateMark, ArchiveBanner
 
-Строки с опциональным `onclick`: корень `button.row2` / `button.r` или `div` (`SettingsRow`, `CircleRow`, `ServerRow`, `SearchResultRow`, `MemberRow`). `PostCard` / `DayCard` — `div` с опциональным `onclick`, не `<button>`.
+Строки с опциональным `onclick`: корень `button.row2` / `button.r` или `div` (`SettingsRow`, `CircleRow`, `ServerRow`, `SearchResultRow`, `MemberRow`). `SettingsRow` с snippet `control` — всегда `div.row2`, справа контрол (например `Switch`); `chevron`/`value` не рендерятся; title без `font-weight:600`. `PostCard` / `DayCard` — `div` с опциональным `onclick`, не `<button>`.
 
 ### `overlays/`
 
-Fab, CommentBar, Scrim, Sheet, Dialog, PushBanner, Lightbox, AvatarCrop
+Fab, CommentBar (`oncompose` — фото и шеврон; без него полоса комментария), Scrim, Sheet, Dialog, PushBanner, Lightbox, AvatarCrop
 
 ### `admin/`
 

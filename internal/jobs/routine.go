@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
+	"gitea.mixdep.ru/mix/wynd/internal/xtime"
 )
 
 const routineGrace = 24 * time.Hour
@@ -34,8 +35,9 @@ func RunDailyRoutine(ctx context.Context, db *sql.DB, blobsDir string, now time.
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
-	cutoff := formatTime(now.Add(-routineGrace))
-	nowRaw := formatTime(now)
+	cutoff := xtime.Format(now.Add(-routineGrace))
+	nowRaw := xtime.Format(now)
+	expireBound := expireBefore(now)
 
 	var counts DailyRoutineCounts
 	var err error
@@ -44,11 +46,11 @@ func RunDailyRoutine(ctx context.Context, db *sql.DB, blobsDir string, now time.
 	if err != nil {
 		return counts, err
 	}
-	counts.AbandonedUploads, err = cleanAbandonedUploads(ctx, db, blobsDir, nowRaw)
+	counts.AbandonedUploads, err = cleanAbandonedUploads(ctx, db, blobsDir, expireBound)
 	if err != nil {
 		return counts, err
 	}
-	counts.EmptyAccounts, err = cleanEmptyAccounts(ctx, db, cutoff)
+	counts.EmptyAccounts, err = cleanEmptyAccounts(ctx, db, cutoff, now)
 	if err != nil {
 		return counts, err
 	}
@@ -56,11 +58,11 @@ func RunDailyRoutine(ctx context.Context, db *sql.DB, blobsDir string, now time.
 	if err != nil {
 		return counts, err
 	}
-	counts.ExpiredSessions, err = deleteExpired(ctx, db, "sessions", "expires_at", nowRaw)
+	counts.ExpiredSessions, err = deleteExpired(ctx, db, "sessions", "expires_at", expireBound)
 	if err != nil {
 		return counts, err
 	}
-	counts.ExpiredCodes, err = deleteExpired(ctx, db, "pending_codes", "expires_at", nowRaw)
+	counts.ExpiredCodes, err = deleteExpired(ctx, db, "pending_codes", "expires_at", expireBound)
 	if err != nil {
 		return counts, err
 	}
@@ -104,6 +106,9 @@ func cleanOrphanedBlobs(ctx context.Context, db *sql.DB, blobsDir, cutoff string
 	if err := rows.Err(); err != nil {
 		return 0, err
 	}
+	if err := rows.Close(); err != nil {
+		return 0, err
+	}
 
 	n := 0
 	for _, row := range pending {
@@ -141,6 +146,9 @@ func cleanAbandonedUploads(ctx context.Context, db *sql.DB, blobsDir, nowRaw str
 	if err := rows.Err(); err != nil {
 		return 0, err
 	}
+	if err := rows.Close(); err != nil {
+		return 0, err
+	}
 	for _, id := range ids {
 		if blobsDir != "" {
 			_ = os.Remove(filepath.Join(blobsDir, ".uploads", id+".part"))
@@ -154,19 +162,51 @@ func cleanAbandonedUploads(ctx context.Context, db *sql.DB, blobsDir, nowRaw str
 	return int(aff), nil
 }
 
-func cleanEmptyAccounts(ctx context.Context, db *sql.DB, cutoff string) (int, error) {
-	res, err := db.ExecContext(ctx, `
-		DELETE FROM accounts
+func cleanEmptyAccounts(ctx context.Context, db *sql.DB, cutoff string, now time.Time) (int, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT id FROM accounts
 		WHERE email != ?
 		  AND deleted_at IS NULL
 		  AND created_at < ?
 		  AND NOT EXISTS (SELECT 1 FROM memberships m WHERE m.account_id = accounts.id)
 	`, auth.AdminSentinelEmail, cutoff)
 	if err != nil {
-		return 0, fmt.Errorf("delete empty accounts: %w", err)
+		return 0, fmt.Errorf("list empty accounts: %w", err)
 	}
-	aff, _ := res.RowsAffected()
-	return int(aff), nil
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return 0, err
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	if err := rows.Close(); err != nil {
+		return 0, err
+	}
+
+	deletedAt := xtime.Format(now)
+	n := 0
+	for _, id := range ids {
+		deletedEmail := fmt.Sprintf("deleted+%s@wynd.local", id)
+		if _, err := db.ExecContext(ctx, `
+			UPDATE accounts SET deleted_at = ?, blocked = 1, email = ? WHERE id = ?
+		`, deletedAt, deletedEmail, id); err != nil {
+			return n, fmt.Errorf("soft delete empty account %s: %w", id, err)
+		}
+		if _, err := db.ExecContext(ctx, `
+			DELETE FROM sessions WHERE account_id = ? AND kind = ?
+		`, id, auth.SessionParticipant); err != nil {
+			return n, fmt.Errorf("revoke empty account sessions %s: %w", id, err)
+		}
+		n++
+	}
+	return n, nil
 }
 
 func revokeExpiredInvites(ctx context.Context, db *sql.DB, nowRaw string) (int, error) {
@@ -182,8 +222,10 @@ func revokeExpiredInvites(ctx context.Context, db *sql.DB, nowRaw string) (int, 
 	return int(aff), nil
 }
 
-func formatTime(t time.Time) string {
-	return t.UTC().Format(time.RFC3339Nano)
+// expireBefore returns a string bound so legacy RFC3339 timestamps (no fractional
+// seconds) compare as expired within the same UTC second as now.
+func expireBefore(now time.Time) string {
+	return now.UTC().Truncate(time.Second).Add(time.Second).Format(time.RFC3339Nano)
 }
 
 // deleteExpired removes rows whose timestamp column is before the boundary.

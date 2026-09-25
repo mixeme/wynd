@@ -1,7 +1,7 @@
 # Клиент — справочник
 
 Сжатая выжимка из закрытого плана реализации. Эталоны: [wynd.html](../wynd.html), [stack.html](../stack.html), [screens.html](../visual/screens.html).  
-Компоненты и layout'ы: [ui-components.md](ui-components.md). Очередь: [screens-after-f](../plans/screens-after-f.plan.md), [хвосты панели](../plans/wave-f-tails.plan.md).
+Компоненты и layout'ы: [ui-components.md](ui-components.md).
 
 ---
 
@@ -36,7 +36,7 @@ flowchart TB
 
 **Дерево ядра:** `web/src/lib/api/`, `session/`, `idb/`, `sync/`, `queue/`, `media/`, `push/`, `format/`, `layouts/`.
 
-`PhoneFrame` и `StatusBar` — только `/dev/*`.
+`PhoneFrame` — корень layout'ов в бою (`app` и цвет круга). `StatusBar` — только в `/dev/*` и в layout'ах при `app={false}` (имитация кадра на десктопе).
 
 ---
 
@@ -44,7 +44,7 @@ flowchart TB
 
 Tailwind, shadcn-svelte, axios, tanstack-query, Dexie, redux/zustand, date-fns/dayjs, tus/uppy, Mapbox, jsQR, Playwright как обязательность, adapter-node, SSR, Google Fonts CDN.
 
-**Разрешено:** `idb`, `openapi-typescript`, `exifr`, `leaflet`, `leaflet.markercluster`, `@vite-pwa/sveltekit`, `vitest`, `fake-indexeddb`.
+**Разрешено:** `idb`, `openapi-typescript`, `exifr`, `leaflet`, `leaflet.markercluster`, `@vite-pwa/sveltekit`, `vitest`, `fake-indexeddb`, `bits-ui` (только внутри `$ui`), `qrcode` (админ 9.7).
 
 ---
 
@@ -53,7 +53,7 @@ Tailwind, shadcn-svelte, axios, tanstack-query, Dexie, redux/zustand, date-fns/d
 ### Чтение: снимки, не проектор
 
 - Клиент **не** материализует хронику из `events[]`.
-- Экран читает snapshot; SSE инвалидирует → повторный GET.
+- Экран читает snapshot; SSE инвалидирует → повторный GET. Сервер SSE — опрос SQLite раз в 2 с, не LISTEN/NOTIFY.
 - Очередь офлайна — оверлей с `.q` поверх снимка.
 - Онлайн: POST → refetch. Без optimistic UI, кроме очереди.
 
@@ -109,6 +109,8 @@ flowchart LR
 ### UI
 
 - Экран = layout + существующие компоненты Wynd UI. Новые `.svelte` в `$ui` в задаче экрана **не создавать**. Если из библиотеки не собрать — план `docs/plans/<slug>.plan.md` (пробел Wynd UI) и отдельная задача на библиотеку. Guard: `npm run check:ui`; сторож: `.cursor/hooks/ui-screens.mjs`. Форма плана: [ui-components.md](ui-components.md).
+- Identity в `CircleBar` — `<button type="button" class="idn">`.
+- Notify круга и `/settings/app`: строки через `SettingsRow` + snippet `control` + `Switch`. «Упоминания» — disabled `Switch checked={true}`, без persist.
 - Compose и правка — `/circles/[id]/compose?post=`.
 - Табы круга — **pathname**, не `?tab=`.
 - Группы кругов (2.6) — **не делать**. Пины — IDB, без API.
@@ -120,9 +122,9 @@ flowchart LR
 - Нав: Хранилище, Проверка, Сжатие, Доступ, Люди. SMTP с нав снят; `/admin/smtp` живёт (9.10, `active` «Проверка», назад → `/admin/check`). 9.5 «Настроить» → `/admin/smtp`.
 - **9.1** чипы умолчания: Нет / 5 ГБ / 10 ГБ / Своё. 5 и 10 = `n * 1024^3`. Своё: целое 1…1024 ГБ. Таблица: custom=0 — эффективное без «своя»; custom=1 и null — `без квоты · своя`; custom=1 и число — `{N ГБ}` + faint `своя`. Строка → `/admin?circle={id}`; повторный тап снимает query.
 - **9.2** на том же `/admin`, не новый маршрут. Чипы: «Как умолчание · …»; pending — `{requested} ГБ` (абсолют); «Без квоты». «Дать» только навигирует на карточку, не `POST .../approve`. «Отказать» — текущий reject. Кнопки `.btn` / `.btn.gh`, не `.act`.
-- **9.7** QR `qrcode` SVG в `.qr` под ссылкой. Чипы TTL: 3600 / 259200 / 604800. Колонки учёток нет.
+- **9.7** QR `qrcode` SVG в `.qr` в правой колонке, подпись «та же ссылка кодом». Чипы TTL: 3600 / 259200 / 604800. Колонки учёток нет.
 - **9.8** `/admin/people`: клиентский `email.includes`, без API. Фильтр почты — `SearchField` (поле фильтра = поиск). `blocked` → «вход закрыт» во второй колонке рядом с числом. `circle_count===0` → «без кругов», не фильтровать.
-- **9.9** `/admin/people/{id}` — только `GET /admin/accounts/{id}`. Redirect `accounts/{id}` → `people/{id}`. «последний код» только если `last_login_at`. Владелец круга — кнопки удаления нет. Второго диалога нет.
+- **9.9** `/admin/people/{id}` — только `GET /admin/accounts/{id}`. Redirect `accounts/{id}` → `people/{id}`. «последний код» только если `last_login_at`. В строке круга роль и `joined_at` → «участник · с {дата}». Владелец круга — кнопки удаления нет. Второго диалога нет.
 
 ---
 
@@ -134,10 +136,10 @@ flowchart LR
 | `admin_session` | `'admin'` | `{ origin, token }` |
 | `cursors` | `origin` | `{ origin, seq }` |
 | `snapshots` | `${origin}:${kind}:${id}` | JSON + `fetched_at` |
-| `queue` | autoincrement | `{ type, origin, circle_id, payload, files[], state }` |
+| `queue` | autoincrement | `{ type, origin, circle_id, payload, files[], state, uploads?, error?, created_at }` |
 | `media` | `${origin}:${blob_id}` | ArrayBuffer + mime |
 | `pins` | `${origin}:${circle_id}` | pin row |
-| `settings` | `'app'` | `{ theme, notify_defaults }` |
+| `settings` | `'app'` | `{ theme, notify_defaults, circle_meta?, day_prompt_seen?, day_prompt_count? }` |
 
 ---
 
@@ -157,12 +159,12 @@ flowchart LR
 | `/circles/[id]/days`, `.../days/[date]` | 5.1–5.2 |
 | `/circles/[id]/grid`, `.../map`, `.../search` | 5.3–5.5 |
 | `/circles/[id]/compose` | 4.1, 4.7 (`?post=`) |
-| `/circles/[id]/posts/[postId]`, `.../album` | 4.2–4.3 |
+| `/circles/[id]/posts/[postId]`, `.../album` | 4.2–4.3, 4.12 |
 | `/circles/[id]/settings` … `/archive` | 6.* |
 | `/settings`, `/settings/servers`, `/settings/app` | 7.1–7.3 |
 | `/admin` | 9.1–9.2 хранилище (`?circle=`) |
 | `/admin/check` | 9.5 |
-| `/admin/compression` | 9.6 |
+| `/admin/compress` | 9.6 |
 | `/admin/access` | 9.7 |
 | `/admin/people`, `/admin/people/[id]` | 9.8–9.9 |
 | `/admin/smtp` | 9.10 |
@@ -172,10 +174,10 @@ Sheet 4.5: `?reactions={postId}` на ленте. Оверлей 6.11 «Кадр
 
 ### Полоса, комментарии, реакции
 
-- **Лента 3.1/3.11:** `CommentBar` в `CircleLayout` — шеврон и фото при `onCommentCompose`, отправка с полосы через `onCommentSend`; пустое поле на таче и иконки ведут на compose 4.1 с черновиком в `sessionStorage`.
-- **Комментарий:** тот же `CommentBar` без `oncompose`; placeholder «Написать комментарий…»; Enter — перенос строки, не отправка.
-- **Обсуждение 4.2:** `CircleLayout` `tabs={false}`; нить `.thread` / `.cmt`; превью комментариев `.cm` — сосед `PostCard`, не внутри карточки.
-- **Реакции 4.10–4.11:** в API и очереди только ключи `heart` | `laugh` | `surprise` | `anger`; чипы по виду в `.rx`; плюс открывает `.rxpick` в карточке ленты; неизвестное в БД рисуется как сердце. Sheet 4.5 — список имён, без пикера.
+- **Лента 3.1/3.11:** `CommentBar` в `CircleLayout` — шеврон и фото при `onCommentCompose`, отправка с полосы через `onCommentSend`; пустое поле на таче и иконки ведут на compose 4.1 с черновиком в `sessionStorage`. Enter — перенос строки. `.send.off`, пока пусто; `.f.ink`, когда можно отправить.
+- **Комментарий:** тот же `CommentBar` без `oncompose` (нет фото и шеврона); placeholder «Написать комментарий…»; Enter — перенос строки, не отправка.
+- **Обсуждение 4.2/4.8–4.9/4.12:** `CircleLayout` `tabs={false}`; нить `.thread` / `.cmt`; время реплики — `formatClock`; правка комментария на месте (`.ced`, имя и часы остаются, карандаш и корзина прячутся). Своя запись, пока живо окно: карандаш (`IconButton` `edit`) в шапке карточки, справа перед обложкой, ведёт на 4.7. Превью комментариев `.cm` — сосед `PostCard`, не внутри карточки. Удалить комментарий — без диалога, строки в хронике нет.
+- **Реакции 4.10–4.11:** в API и очереди только ключи `heart` | `laugh` | `surprise` | `anger`; чипы по виду в `.rx`; плюс открывает `.rxpick` в карточке ленты и не ставит реакцию сам; неизвестное в БД рисуется как сердце. Плюс гаснет в соло и когда окно своей реакции вышло. Sheet 4.5 — список имён, без пикера.
 
 ---
 

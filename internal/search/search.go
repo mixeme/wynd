@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 )
@@ -51,35 +50,7 @@ func (s *Service) SearchAll(ctx context.Context, accountID, query string, limit 
 	if strings.TrimSpace(query) == "" {
 		return nil, chronicle.ErrInvalid
 	}
-	return s.searchAll(ctx, accountID, query, limit)
-}
-
-func (s *Service) searchAll(ctx context.Context, accountID, query string, limit int) ([]Hit, error) {
-	if limit <= 0 || limit > defaultLimit {
-		limit = defaultLimit
-	}
-	ftsQuery := ftsEscape(query)
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT f.post_id, f.comment_id, f.circle_id, f.author_name, f.kind, f.created_at,
-			snippet(content_fts, 0, '', '', '…', 32)
-		FROM content_fts f
-		WHERE content_fts MATCH ?
-		  AND EXISTS (
-		    SELECT 1 FROM memberships m
-		    JOIN membership_spans ms ON ms.membership_id = m.id
-		    WHERE m.circle_id = f.circle_id AND m.account_id = ?
-		      AND ms.can_read = 1
-		      AND f.created_at >= ms.started_at
-		      AND (ms.ended_at IS NULL OR f.created_at < ms.ended_at)
-		  )
-		ORDER BY rank
-		LIMIT ?
-	`, ftsQuery, accountID, limit*3)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	return s.collectHits(ctx, rows, accountID, limit, false)
+	return s.search(ctx, accountID, "", query, limit, false)
 }
 
 func (s *Service) search(ctx context.Context, accountID, circleID, query string, limit int, withAuthor bool) ([]Hit, error) {
@@ -97,8 +68,10 @@ func (s *Service) search(ctx context.Context, accountID, circleID, query string,
 
 	rows, err := s.db.QueryContext(ctx, fmt.Sprintf(`
 		SELECT f.post_id, f.comment_id, f.circle_id, f.author_name, f.kind, f.created_at,
+			p.entry_date,
 			snippet(content_fts, 0, '', '', '…', 32)
 		FROM content_fts f
+		JOIN posts p ON p.id = f.post_id
 		WHERE content_fts MATCH ?
 		  AND EXISTS (
 		    SELECT 1 FROM memberships m
@@ -115,10 +88,10 @@ func (s *Service) search(ctx context.Context, accountID, circleID, query string,
 		return nil, err
 	}
 	defer rows.Close()
-	return s.collectHits(ctx, rows, accountID, limit, withAuthor)
+	return s.collectHits(ctx, rows, limit, withAuthor)
 }
 
-func (s *Service) collectHits(ctx context.Context, rows *sql.Rows, accountID string, limit int, withAuthor bool) ([]Hit, error) {
+func (s *Service) collectHits(ctx context.Context, rows *sql.Rows, limit int, withAuthor bool) ([]Hit, error) {
 	var out []Hit
 	for rows.Next() {
 		if len(out) >= limit {
@@ -128,7 +101,7 @@ func (s *Service) collectHits(ctx context.Context, rows *sql.Rows, accountID str
 		var commentID string
 		var author string
 		var created string
-		if err := rows.Scan(&h.PostID, &commentID, &h.CircleID, &author, &h.Kind, &created, &h.Snippet); err != nil {
+		if err := rows.Scan(&h.PostID, &commentID, &h.CircleID, &author, &h.Kind, &created, &h.EntryDate, &h.Snippet); err != nil {
 			return nil, err
 		}
 		h.CommentID = commentID
@@ -136,42 +109,13 @@ func (s *Service) collectHits(ctx context.Context, rows *sql.Rows, accountID str
 			h.AuthorName = author
 		}
 		h.CreatedAt = created
-		t, err := parseTime(created)
-		if err != nil {
-			continue
-		}
-		ok, err := s.ch.CanReadEvent(ctx, h.CircleID, accountID, t)
-		if err != nil {
-			return nil, err
-		}
-		if !ok {
-			continue
-		}
-		entryDate, err := s.entryDateForHit(ctx, h)
-		if err != nil {
-			return nil, err
-		}
-		h.EntryDate = entryDate
 		out = append(out, h)
 	}
 	return out, rows.Err()
-}
-
-func (s *Service) entryDateForHit(ctx context.Context, h Hit) (string, error) {
-	var entryDate string
-	err := s.db.QueryRowContext(ctx, `SELECT entry_date FROM posts WHERE id = ?`, h.PostID).Scan(&entryDate)
-	if err == sql.ErrNoRows {
-		return "", chronicle.ErrNotFound
-	}
-	return entryDate, err
 }
 
 func ftsEscape(q string) string {
 	q = strings.TrimSpace(q)
 	q = strings.ReplaceAll(q, `"`, `""`)
 	return `"` + q + `"`
-}
-
-func parseTime(s string) (time.Time, error) {
-	return time.Parse(time.RFC3339Nano, s)
 }

@@ -125,6 +125,10 @@ func appliedVersions(db *sql.DB) (map[int]bool, error) {
 }
 
 func applyMigration(db *sql.DB, m migration) error {
+	if migrationNeedsFKOff(m) {
+		return applyMigrationWithFKOff(db, m)
+	}
+
 	tx, err := db.Begin()
 	if err != nil {
 		return fmt.Errorf("begin %s: %w", m.name, err)
@@ -146,6 +150,48 @@ func applyMigration(db *sql.DB, m migration) error {
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit %s: %w", m.name, err)
+	}
+	return nil
+}
+
+func migrationNeedsFKOff(m migration) bool {
+	return strings.Contains(m.sql, "PRAGMA foreign_keys=OFF")
+}
+
+func applyMigrationWithFKOff(db *sql.DB, m migration) error {
+	if _, err := db.Exec(`PRAGMA foreign_keys=OFF`); err != nil {
+		return fmt.Errorf("disable foreign keys for %s: %w", m.name, err)
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		_, _ = db.Exec(`PRAGMA foreign_keys=ON`)
+		return fmt.Errorf("begin %s: %w", m.name, err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if body := strings.TrimSpace(stripSQLComments(m.sql)); body != "" {
+		if _, err := tx.Exec(m.sql); err != nil {
+			_, _ = db.Exec(`PRAGMA foreign_keys=ON`)
+			return fmt.Errorf("apply %s: %w", m.name, err)
+		}
+	}
+
+	if _, err := tx.Exec(
+		`INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)`,
+		m.version,
+		time.Now().UTC().Format(time.RFC3339Nano),
+	); err != nil {
+		_, _ = db.Exec(`PRAGMA foreign_keys=ON`)
+		return fmt.Errorf("record %s: %w", m.name, err)
+	}
+	if err := tx.Commit(); err != nil {
+		_, _ = db.Exec(`PRAGMA foreign_keys=ON`)
+		return fmt.Errorf("commit %s: %w", m.name, err)
+	}
+
+	if _, err := db.Exec(`PRAGMA foreign_keys=ON`); err != nil {
+		return fmt.Errorf("enable foreign keys after %s: %w", m.name, err)
 	}
 	return nil
 }

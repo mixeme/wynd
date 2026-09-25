@@ -1,7 +1,8 @@
 // Package store is the persistence boundary.
 //
-// SQLite is the only driver in this plan. Store exists so a PostgreSQL
-// driver can be added later without rewriting callers.
+// SQLite is the only database driver. One Wynd process owns one database file
+// (no shared pool across instances). Store is a narrow boundary
+// (Open/Close/Ping/Version); domain code uses *SQLite via New().
 package store
 
 import (
@@ -9,7 +10,7 @@ import (
 	"fmt"
 )
 
-// Store is a migrated database. Domain methods are added in later stages.
+// Store is a migrated database.
 type Store interface {
 	Close() error
 	Ping(ctx context.Context) error

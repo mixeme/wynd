@@ -3,6 +3,7 @@ package chronicle
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 )
 
@@ -16,6 +17,11 @@ type CircleSummary struct {
 	LastReadSeq int64
 	LastSummary string
 	LastAt      *time.Time
+}
+
+type lastVisibleEvent struct {
+	summary string
+	at      time.Time
 }
 
 // ListAccountCircles returns circles the account belongs to with unread counts.
@@ -39,25 +45,116 @@ func (c *Chronicle) ListAccountCircles(ctx context.Context, accountID string) ([
 			return nil, err
 		}
 		s.Status = MembershipStatus(status)
-		cur, err := c.GetReadCursor(ctx, accountID, s.ID)
-		if err != nil {
-			return nil, err
-		}
-		s.LastReadSeq = cur.LastReadSeq
-		unread, err := c.UnreadPostCount(ctx, accountID, s.ID)
-		if err != nil {
-			return nil, err
-		}
-		s.Unread = unread
-		summary, at, ok, err := c.LastVisibleEvent(ctx, s.ID, accountID)
-		if err != nil {
-			return nil, err
-		}
-		if ok {
-			s.LastSummary = summary
-			s.LastAt = &at
-		}
 		out = append(out, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(out) == 0 {
+		return nil, nil
+	}
+
+	cursors, err := c.batchReadCursors(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+	unread, err := c.batchUnreadPostCounts(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+	lastEvents, err := c.batchLastVisibleEvents(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range out {
+		id := out[i].ID
+		out[i].LastReadSeq = cursors[id]
+		out[i].Unread = unread[id]
+		if ev, ok := lastEvents[id]; ok {
+			out[i].LastSummary = ev.summary
+			at := ev.at
+			out[i].LastAt = &at
+		}
+	}
+	return out, nil
+}
+
+func (c *Chronicle) batchReadCursors(ctx context.Context, accountID string) (map[string]int64, error) {
+	rows, err := c.db.QueryContext(ctx, `
+		SELECT circle_id, last_read_seq FROM read_cursors
+		WHERE account_id = ?
+	`, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make(map[string]int64)
+	for rows.Next() {
+		var circleID string
+		var seq int64
+		if err := rows.Scan(&circleID, &seq); err != nil {
+			return nil, err
+		}
+		out[circleID] = seq
+	}
+	return out, rows.Err()
+}
+
+func (c *Chronicle) batchUnreadPostCounts(ctx context.Context, accountID string) (map[string]int, error) {
+	rows, err := c.db.QueryContext(ctx, fmt.Sprintf(`
+		SELECT p.circle_id, COUNT(*)
+		FROM posts p
+		JOIN memberships m ON m.circle_id = p.circle_id AND m.account_id = ?
+		LEFT JOIN read_cursors rc ON rc.account_id = m.account_id AND rc.circle_id = p.circle_id
+		WHERE p.deleted = 0
+		  AND p.event_seq > COALESCE(rc.last_read_seq, 0)
+		  AND %s
+		GROUP BY p.circle_id
+	`, sqlVisibleAtMembership("p.created_at")), accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make(map[string]int)
+	for rows.Next() {
+		var circleID string
+		var n int
+		if err := rows.Scan(&circleID, &n); err != nil {
+			return nil, err
+		}
+		out[circleID] = n
+	}
+	return out, rows.Err()
+}
+
+func (c *Chronicle) batchLastVisibleEvents(ctx context.Context, accountID string) (map[string]lastVisibleEvent, error) {
+	rows, err := c.db.QueryContext(ctx, fmt.Sprintf(`
+		SELECT circle_id, summary, created_at FROM (
+			SELECT e.circle_id, e.summary, e.created_at,
+				ROW_NUMBER() OVER (PARTITION BY e.circle_id ORDER BY e.seq DESC) AS rn
+			FROM events e
+			JOIN memberships m ON m.circle_id = e.circle_id AND m.account_id = ?
+			WHERE e.summary != ''
+			  AND %s
+		) t
+		WHERE rn = 1
+	`, sqlVisibleAtMembership("e.created_at")), accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make(map[string]lastVisibleEvent)
+	for rows.Next() {
+		var circleID, summary, created string
+		if err := rows.Scan(&circleID, &summary, &created); err != nil {
+			return nil, err
+		}
+		at, err := parseTime(created)
+		if err != nil {
+			return nil, fmt.Errorf("last visible event created_at: %w", err)
+		}
+		out[circleID] = lastVisibleEvent{summary: summary, at: at}
 	}
 	return out, rows.Err()
 }
@@ -75,30 +172,15 @@ func (c *Chronicle) FeedSnapshot(ctx context.Context, circleID, accountID string
 	if err := c.requireReader(ctx, circleID, accountID); err != nil {
 		return nil, err
 	}
-	rows, err := c.db.QueryContext(ctx, `
-		SELECT id FROM posts
-		WHERE circle_id = ? AND deleted = 0
-		ORDER BY created_at DESC
-	`, circleID)
+	scope, err := c.newReadScope(ctx, circleID, accountID)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	var out []FeedPost
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		fp, err := c.loadFeedPost(ctx, id, circleID, accountID)
-		if err != nil {
-			return nil, err
-		}
-		if fp != nil {
-			out = append(out, *fp)
-		}
+	ids, err := c.visiblePostIDs(ctx, circleID, accountID, "1=1", "created_at DESC", SnapshotPostLimit)
+	if err != nil {
+		return nil, err
 	}
-	return out, rows.Err()
+	return c.buildFeedPosts(ctx, ids, circleID, scope)
 }
 
 // GridItem is a photo tile for the grid view.
@@ -115,13 +197,15 @@ func (c *Chronicle) GridSnapshot(ctx context.Context, circleID, accountID string
 	if err := c.requireReader(ctx, circleID, accountID); err != nil {
 		return nil, err
 	}
-	rows, err := c.db.QueryContext(ctx, `
+	rows, err := c.db.QueryContext(ctx, fmt.Sprintf(`
 		SELECT p.id, pm.blob_id, p.entry_date, p.created_at, pm.is_cover
 		FROM posts p
 		JOIN post_media pm ON pm.post_id = p.id AND pm.kind = 'photo'
 		WHERE p.circle_id = ? AND p.deleted = 0
+		  AND %s
 		ORDER BY p.created_at DESC, pm.sort_order
-	`, circleID)
+		LIMIT ?
+	`, sqlVisibleAt("p.created_at")), circleID, circleID, accountID, SnapshotPostLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -137,13 +221,6 @@ func (c *Chronicle) GridSnapshot(ctx context.Context, circleID, accountID string
 		}
 		item.CreatedAt, _ = parseTime(created)
 		item.IsCover = cover == 1
-		ok, err := c.CanReadEvent(ctx, circleID, accountID, item.CreatedAt)
-		if err != nil {
-			return nil, err
-		}
-		if !ok {
-			continue
-		}
 		key := item.PostID + ":" + item.BlobID
 		if seen[key] {
 			continue
@@ -169,14 +246,16 @@ func (c *Chronicle) MapSnapshot(ctx context.Context, circleID, accountID string)
 	if err := c.requireReader(ctx, circleID, accountID); err != nil {
 		return nil, err
 	}
-	rows, err := c.db.QueryContext(ctx, `
+	rows, err := c.db.QueryContext(ctx, fmt.Sprintf(`
 		SELECT p.id, pm.blob_id, p.entry_date, p.created_at, pm.geo_lat, pm.geo_lng
 		FROM posts p
 		JOIN post_media pm ON pm.post_id = p.id
 		WHERE p.circle_id = ? AND p.deleted = 0
 		  AND pm.geo_lat IS NOT NULL AND pm.geo_lng IS NOT NULL
+		  AND %s
 		ORDER BY p.created_at DESC
-	`, circleID)
+		LIMIT ?
+	`, sqlVisibleAt("p.created_at")), circleID, circleID, accountID, SnapshotPostLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -189,13 +268,7 @@ func (c *Chronicle) MapSnapshot(ctx context.Context, circleID, accountID string)
 			return nil, err
 		}
 		pin.CreatedAt, _ = parseTime(created)
-		ok, err := c.CanReadEvent(ctx, circleID, accountID, pin.CreatedAt)
-		if err != nil {
-			return nil, err
-		}
-		if ok {
-			out = append(out, pin)
-		}
+		out = append(out, pin)
 	}
 	return out, rows.Err()
 }
@@ -268,30 +341,15 @@ func (c *Chronicle) DayPostsSnapshot(ctx context.Context, circleID, accountID, e
 	if err := c.requireReader(ctx, circleID, accountID); err != nil {
 		return nil, err
 	}
-	rows, err := c.db.QueryContext(ctx, `
-		SELECT id FROM posts
-		WHERE circle_id = ? AND entry_date = ? AND deleted = 0
-		ORDER BY datetime(COALESCE(captured_at, created_at)) ASC
-	`, circleID, entryDate)
+	scope, err := c.newReadScope(ctx, circleID, accountID)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	var out []FeedPost
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		fp, err := c.loadFeedPost(ctx, id, circleID, accountID)
-		if err != nil {
-			return nil, err
-		}
-		if fp != nil {
-			out = append(out, *fp)
-		}
+	ids, err := c.visiblePostIDs(ctx, circleID, accountID, "entry_date = ?", "datetime(COALESCE(captured_at, created_at)) ASC", SnapshotPostLimit, entryDate)
+	if err != nil {
+		return nil, err
 	}
-	return out, rows.Err()
+	return c.buildFeedPosts(ctx, ids, circleID, scope)
 }
 
 // RequireReader checks that account may read content in the circle.
@@ -347,95 +405,18 @@ func (c *Chronicle) visiblePostCountForDay(ctx context.Context, circleID, accoun
 }
 
 func (c *Chronicle) loadFeedPost(ctx context.Context, postID, circleID, accountID string) (*FeedPost, error) {
-	post, err := c.loadPost(ctx, c.db, postID)
+	scope, err := c.newReadScope(ctx, circleID, accountID)
 	if err != nil {
 		return nil, err
 	}
-	if post.Deleted || post.CircleID != circleID {
+	posts, err := c.buildFeedPosts(ctx, []string{postID}, circleID, scope)
+	if err != nil {
+		return nil, err
+	}
+	if len(posts) == 0 {
 		return nil, nil
 	}
-	ok, err := c.CanReadEvent(ctx, circleID, accountID, post.CreatedAt)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, nil
-	}
-	media, err := c.ListPostMedia(ctx, postID)
-	if err != nil {
-		return nil, err
-	}
-	comments, err := c.listCommentsForPost(ctx, postID, circleID, accountID)
-	if err != nil {
-		return nil, err
-	}
-	reactions, err := c.listReactionsForPost(ctx, postID, circleID, accountID)
-	if err != nil {
-		return nil, err
-	}
-	return &FeedPost{Post: post, Media: media, Comments: comments, Reactions: reactions}, nil
-}
-
-func (c *Chronicle) listCommentsForPost(ctx context.Context, postID, circleID, accountID string) ([]Comment, error) {
-	rows, err := c.db.QueryContext(ctx, `
-		SELECT id, circle_id, post_id, event_seq, identity_id, author_name, body,
-			created_at, edit_window_sec, editable_until, deleted
-		FROM comments WHERE post_id = ? AND deleted = 0 ORDER BY created_at
-	`, postID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	return scanComments(ctx, c, rows, circleID, accountID)
-}
-
-func (c *Chronicle) listReactionsForPost(ctx context.Context, postID, circleID, accountID string) ([]Reaction, error) {
-	rows, err := c.db.QueryContext(ctx, `
-		SELECT id, circle_id, post_id, event_seq, identity_id, author_name, emoji,
-			created_at, edit_window_sec, editable_until, deleted
-		FROM reactions WHERE post_id = ? AND deleted = 0 ORDER BY created_at
-	`, postID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	return scanReactions(ctx, c, rows, circleID, accountID)
-}
-
-func scanComments(ctx context.Context, c *Chronicle, rows *sql.Rows, circleID, accountID string) ([]Comment, error) {
-	var out []Comment
-	for rows.Next() {
-		cm, err := scanCommentRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		ok, err := c.CanReadEvent(ctx, circleID, accountID, cm.CreatedAt)
-		if err != nil {
-			return nil, err
-		}
-		if ok {
-			out = append(out, cm)
-		}
-	}
-	return out, rows.Err()
-}
-
-func scanReactions(ctx context.Context, c *Chronicle, rows *sql.Rows, circleID, accountID string) ([]Reaction, error) {
-	var out []Reaction
-	for rows.Next() {
-		rx, err := scanReactionRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		ok, err := c.CanReadEvent(ctx, circleID, accountID, rx.CreatedAt)
-		if err != nil {
-			return nil, err
-		}
-		if ok {
-			out = append(out, rx)
-		}
-	}
-	return out, rows.Err()
+	return &posts[0], nil
 }
 
 func scanCommentRow(rows *sql.Rows) (Comment, error) {

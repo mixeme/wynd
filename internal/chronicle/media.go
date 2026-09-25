@@ -43,10 +43,19 @@ type PostMedia struct {
 
 // AttachMedia links uploaded blobs to a post. Caller must validate blob ownership.
 func (c *Chronicle) AttachMedia(ctx context.Context, postID string, items []MediaInput) error {
+	return c.attachMedia(ctx, c.db, postID, items)
+}
+
+// AttachMediaInTx is like AttachMedia but uses an existing transaction.
+func (c *Chronicle) AttachMediaInTx(ctx context.Context, tx *sql.Tx, postID string, items []MediaInput) error {
+	return c.attachMedia(ctx, tx, postID, items)
+}
+
+func (c *Chronicle) attachMedia(ctx context.Context, q dbtx, postID string, items []MediaInput) error {
 	if len(items) == 0 {
 		return nil
 	}
-	post, err := c.loadPost(ctx, c.db, postID)
+	post, err := c.loadPost(ctx, q, postID)
 	if err != nil {
 		return err
 	}
@@ -74,7 +83,7 @@ func (c *Chronicle) AttachMedia(ctx context.Context, postID string, items []Medi
 		if err != nil {
 			return err
 		}
-		_, err = c.db.ExecContext(ctx, `
+		_, err = q.ExecContext(ctx, `
 			INSERT INTO post_media (id, post_id, blob_id, kind, sort_order, captured_at, geo_lat, geo_lng, is_cover)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		`, id, postID, item.BlobID, string(item.Kind), i,

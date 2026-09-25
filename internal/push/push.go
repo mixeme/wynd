@@ -12,10 +12,10 @@ import (
 	"time"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
-	"github.com/google/uuid"
-
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
 	"gitea.mixdep.ru/mix/wynd/internal/store"
+	"gitea.mixdep.ru/mix/wynd/internal/uid"
+	"gitea.mixdep.ru/mix/wynd/internal/xtime"
 )
 
 const defaultTTL = 60
@@ -109,7 +109,7 @@ func (s *Service) Subscribe(ctx context.Context, in SubscribeInput) error {
 	if when.IsZero() {
 		when = time.Now().UTC()
 	}
-	created := formatTime(when)
+	created := xtime.Format(when)
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -129,7 +129,7 @@ func (s *Service) Subscribe(ctx context.Context, in SubscribeInput) error {
 		// keys is not that browser: refuse rather than hijack the endpoint.
 		return ErrForbidden
 	case err == sql.ErrNoRows:
-		id, err := newID()
+		id, err := uid.NewID()
 		if err != nil {
 			return err
 		}
@@ -285,16 +285,4 @@ type deliveryError struct {
 
 func (e *deliveryError) Error() string {
 	return fmt.Sprintf("push: delivery failed: status %d", e.StatusCode)
-}
-
-func formatTime(t time.Time) string {
-	return t.UTC().Format(time.RFC3339Nano)
-}
-
-func newID() (string, error) {
-	id, err := uuid.NewV7()
-	if err != nil {
-		return "", fmt.Errorf("push: new id: %w", err)
-	}
-	return id.String(), nil
 }

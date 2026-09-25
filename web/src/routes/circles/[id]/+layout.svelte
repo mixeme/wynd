@@ -6,7 +6,6 @@
 	import { fetchCircles, loadCirclesCached, ownerNameFromSession } from '$lib/circles/circles';
 	import type { CircleListItem } from '$lib/circles/circles';
 	import { getCircleColor, getCircleIdentity, setCircleColor, circleInitial } from '$lib/circles/meta';
-	import { patchCircle } from '$lib/circles/settings';
 	import { getSession } from '$lib/idb/db';
 	import { CIRCLE_COLORS, type CircleColor } from '$lib/theme/colors';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
@@ -122,16 +121,7 @@
 		let color: CircleColor;
 		const serverColor = listItem.color as CircleColor | undefined;
 		if (serverColor && serverColor in CIRCLE_COLORS) {
-			if (serverColor === 'ochre' && storedColor && storedColor !== 'ochre') {
-				try {
-					await patchCircle(resolved, circleId, { color: storedColor });
-					color = storedColor;
-				} catch {
-					color = serverColor;
-				}
-			} else {
-				color = serverColor;
-			}
+			color = serverColor;
 			await setCircleColor(resolved, circleId, color);
 		} else {
 			color = storedColor ?? 'olive';

@@ -145,7 +145,15 @@
 			history.replaceState(history.state, '', next);
 		}
 		fixedLastRead = circle.lastReadSeq;
-		void loadFeedData();
+		const dayPromptParam = $page.url.searchParams.get('dayPrompt');
+		void loadFeedData().then(() => {
+			if (!dayPromptParam || !/^\d{4}-\d{2}-\d{2}$/.test(dayPromptParam)) return;
+			const url = new URL($page.url);
+			url.searchParams.delete('dayPrompt');
+			const next = `${url.pathname}${url.search}${url.hash}`;
+			history.replaceState(history.state, '', next);
+			void checkDayPrompt(dayPromptParam);
+		});
 		void fetchMembers(circle.origin, circle.circleId)
 			.then((list) => {
 				activeMemberCount = list.filter((m) => m.status === 'active').length;
@@ -265,26 +273,53 @@
 		return isEditableActive(mine.editable_until);
 	}
 
+	function applyReaction(postId: string, emoji: string | null) {
+		posts = posts.map((p) => {
+			if (p.id !== postId) return p;
+			const reactions = [...(p.reactions ?? [])];
+			const idx = reactions.findIndex((r) => r.identity_id === circle.identityId);
+			if (emoji === null) {
+				if (idx >= 0) reactions.splice(idx, 1);
+			} else if (idx >= 0) {
+				reactions[idx] = { ...reactions[idx], emoji };
+			} else {
+				reactions.push({
+					id: `local-${postId}`,
+					post_id: postId,
+					emoji,
+					author_name: circle.identityName,
+					identity_id: circle.identityId,
+					created_at: new Date().toISOString()
+				});
+			}
+			return { ...p, reactions };
+		});
+	}
+
 	async function pickReaction(post: FeedPost, emoji: string) {
 		const mine = ownReaction(post.reactions, circle.identityId);
+		const removing = mine?.emoji === emoji;
 		error = '';
 		try {
 			if (navigator.onLine) {
-				if (mine?.emoji === emoji) {
+				if (removing) {
 					await removeReaction(circle.origin, circle.circleId, post.id);
 				} else {
 					await setReaction(circle.origin, circle.circleId, post.id, emoji);
 				}
 				pickerPostId = '';
 				await loadFeedData();
-			} else if (mine?.emoji === emoji) {
-				await enqueueReactionRemove(circle.origin, circle.circleId, post.id);
-				pickerPostId = '';
 			} else {
-				await enqueueReaction(circle.origin, circle.circleId, {
-					post_id: post.id,
-					emoji
-				});
+				if (removing) {
+					await enqueueReactionRemove(circle.origin, circle.circleId, post.id);
+					applyReaction(post.id, null);
+				} else {
+					await enqueueReaction(circle.origin, circle.circleId, {
+						post_id: post.id,
+						emoji
+					});
+					applyReaction(post.id, emoji);
+				}
 				pickerPostId = '';
 			}
 		} catch (err) {
@@ -486,50 +521,6 @@
 						/>
 					{/each}
 				{/snippet}
-				{#snippet postReactions()}
-					<div class="rx">
-						{#each groupReactions(post.reactions) as group (group.emoji)}
-							<button
-								type="button"
-								class="one"
-								onclick={(e) => {
-									e.stopPropagation();
-									openReactions(post.id);
-								}}
-							>
-								<Icon name={reactionIconName(group.emoji)} size="xs" style="color:var(--c)" />
-								{group.names}
-							</button>
-						{/each}
-						{#if showReactionPlus(post) && pickerPostId !== post.id}
-							<button
-								type="button"
-								class="add"
-								onclick={(e) => {
-									e.stopPropagation();
-									togglePicker(post.id);
-								}}
-							>+</button>
-						{/if}
-					</div>
-					{#if pickerPostId === post.id}
-						<div class="rxpick">
-							{#each REACTION_KEYS as key (key)}
-								<button
-									type="button"
-									class="rcho"
-									class:on={ownReaction(post.reactions, circle.identityId)?.emoji === key}
-									onclick={(e) => {
-										e.stopPropagation();
-										void pickReaction(post, key);
-									}}
-								>
-									<Icon name={key} />
-								</button>
-							{/each}
-						</div>
-					{/if}
-				{/snippet}
 				{#snippet postComments()}
 					{@const preview = commentPreview(post.comments)}
 					{#if preview.first}
@@ -542,24 +533,54 @@
 				<PostCard
 					onclick={() => openPost(post.id)}
 					headerRight={isBackdated(post) ? postDate : undefined}
-						text={post.body ? postText : undefined}
-						media={coverMedia(post.media) || attachmentMedia(post.media).length
-							? postMedia
-							: undefined}
-						reactions={soloCircle ? undefined : postReactions}
-					>
-						{#snippet author()}
-							<Avatar
-								initial={authorInitial(post.author_name)}
-								color={circle.colorHex}
-								src={post.identity_id === circle.identityId ? circle.avatarUrl : undefined}
-							/>
-							<div>
-								<div class="n">{post.author_name}</div>
-								<div class="tm">{formatPostTime(post.created_at, post.entry_date)}</div>
+					text={post.body ? postText : undefined}
+					media={coverMedia(post.media) || attachmentMedia(post.media).length
+						? postMedia
+						: undefined}
+				>
+					{#snippet author()}
+						<Avatar
+							initial={authorInitial(post.author_name)}
+							color={circle.colorHex}
+							src={post.identity_id === circle.identityId ? circle.avatarUrl : undefined}
+						/>
+						<div>
+							<div class="n">{post.author_name}</div>
+							<div class="tm">{formatPostTime(post.created_at, post.entry_date)}</div>
+						</div>
+					{/snippet}
+					{#snippet reactions()}
+						{#if !soloCircle}
+							<div class="rx">
+								{#each groupReactions(post.reactions) as group (group.emoji)}
+									<button type="button" class="one" onclick={() => openReactions(post.id)}>
+										<Icon name={reactionIconName(group.emoji)} size="xs" style="color:var(--c)" />
+										{group.names}
+									</button>
+								{/each}
+								{#if showReactionPlus(post) && pickerPostId !== post.id}
+									<button type="button" class="add" onclick={() => togglePicker(post.id)}>+</button>
+								{/if}
 							</div>
-						{/snippet}
-					</PostCard>
+							{#if pickerPostId === post.id}
+								<div class="rxpick">
+									{#each REACTION_KEYS as key (key)}
+										<button
+											type="button"
+											class="rcho"
+											class:on={ownReaction(post.reactions, circle.identityId)?.emoji === key}
+											onclick={() => {
+												void pickReaction(post, key);
+											}}
+										>
+											<Icon name={key} />
+										</button>
+									{/each}
+								</div>
+							{/if}
+						{/if}
+					{/snippet}
+				</PostCard>
 				{#if post.comments?.length}
 					<button type="button" class="cm" onclick={() => openPost(post.id)}>
 						{@render postComments()}
@@ -593,6 +614,10 @@
 
 			{#if dividerAt === posts.length}
 				<EventDivider variant="unread" text="выше — новое" />
+			{/if}
+
+			{#if error}
+				<Hint style="margin:16px">{error}</Hint>
 			{/if}
 
 			{#if !posts.length && !queuedPosts.length}
@@ -643,7 +668,7 @@
 				<div class="row2">
 					<Avatar initial={authorInitial(rx.author_name)} color={circle.colorHex} />
 					<div class="g" style="font-weight:600">{rx.author_name}</div>
-					<Icon name="heart" size="sm" style="color:var(--c)" />
+					<Icon name={reactionIconName(rx.emoji)} size="sm" style="color:var(--c)" />
 				</div>
 			{/each}
 			<Hint style="margin-top:14px">
@@ -657,7 +682,8 @@
 	.feed {
 		flex: 1;
 		min-height: 0;
-		overflow: auto;
+		overflow-x: hidden;
+		overflow-y: auto;
 		padding-bottom: 8px;
 	}
 	.ptr {

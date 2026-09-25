@@ -378,7 +378,7 @@
 				<TextArea value="Что нового?" active />
 			</div>
 			<div class="card">
-				<h3>Switch · #e7-1</h3>
+				<h3>Switch · #e6-6</h3>
 				<Switch bind:checked={swOn} />
 			</div>
 			<div class="card">
@@ -500,6 +500,29 @@
 					<MemberRow initial="К" name="Кот" subtitle="владелец" color="#62452F" />
 					<MemberRow initial="А" name="Аня" subtitle="может менять настройки" color="#58673A" />
 					<SettingsRow title="ещё 19" link />
+				</PhoneFrame>
+			</figure>
+			<figure>
+				<figcaption>#e6-6 — SettingsRow + Switch</figcaption>
+				<PhoneFrame color="terracotta" height="360px">
+					<StatusBar />
+					<CircleBar title="Уведомления круга" tabs={false} />
+					<Label>Присылать</Label>
+					<SettingsRow title="Новые записи" style="padding-top:2px">
+						{#snippet control()}
+							<Switch bind:checked={swOn} />
+						{/snippet}
+					</SettingsRow>
+					<SettingsRow title="Комментарии к моим записям">
+						{#snippet control()}
+							<Switch bind:checked={swOn} />
+						{/snippet}
+					</SettingsRow>
+					<SettingsRow title="Упоминания" subtitle="всегда">
+						{#snippet control()}
+							<Switch checked={true} disabled />
+						{/snippet}
+					</SettingsRow>
 				</PhoneFrame>
 			</figure>
 			<figure>

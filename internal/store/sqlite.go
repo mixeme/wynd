@@ -22,7 +22,7 @@ const (
 
 var memSeq atomic.Uint64
 
-// SQLite is the Store implementation used in this plan.
+// SQLite is the only Store implementation.
 type SQLite struct {
 	db *sql.DB
 }

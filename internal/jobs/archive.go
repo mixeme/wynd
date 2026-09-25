@@ -65,10 +65,17 @@ func RunArchiveJobs(ctx context.Context, db *sql.DB, ch *chronicle.Chronicle, bl
 			return counts, err
 		}
 		download := base + "/api/v1/circles/" + circleID + "/archive/download"
+		var mailErr error
 		if mailSvc != nil {
 			for _, email := range emails {
-				_ = mailSvc.SendArchiveReminder(ctx, email, cycle.CutoffDate, cycle.Deadline, download)
+				if err := mailSvc.SendArchiveReminder(ctx, email, cycle.CutoffDate, cycle.Deadline, download); err != nil {
+					mailErr = err
+					break
+				}
 			}
+		}
+		if mailErr != nil {
+			return counts, fmt.Errorf("archive reminder circle %s: %w", circleID, mailErr)
 		}
 		if err := ch.MarkArchiveReminderSent(ctx, circleID, now); err != nil {
 			return counts, err

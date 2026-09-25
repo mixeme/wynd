@@ -109,13 +109,9 @@
 	>
 		{#snippet media()}
 			{#if item.kind === 'video'}
-				<video
-					src={urls[item.blob_id]}
-					controls
-					style="max-width:100%;max-height:100%;object-fit:contain"
-				></video>
+				<video src={urls[item.blob_id]} controls></video>
 			{:else}
-				<img src={urls[item.blob_id]} alt="" style="max-width:100%;max-height:100%;object-fit:contain" />
+				<img src={urls[item.blob_id]} alt="" />
 			{/if}
 		{/snippet}
 		{#snippet dots()}

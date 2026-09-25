@@ -2,25 +2,27 @@ package chronicle
 
 import (
 	"time"
+
+	"gitea.mixdep.ru/mix/wynd/internal/uid"
+	"gitea.mixdep.ru/mix/wynd/internal/xtime"
 )
 
-const timeLayout = time.RFC3339Nano
-
 func formatTime(t time.Time) string {
-	return t.UTC().Format(timeLayout)
+	return xtime.Format(t)
 }
 
 func utcOrNow(t time.Time) time.Time {
-	if t.IsZero() {
-		return time.Now().UTC()
-	}
-	return t.UTC()
+	return xtime.UTCOrNow(t)
 }
 
 func parseTime(s string) (time.Time, error) {
-	return time.Parse(timeLayout, s)
+	return xtime.Parse(s)
 }
 
 func formatDate(t time.Time) string {
-	return t.UTC().Format("2006-01-02")
+	return xtime.FormatDate(t)
+}
+
+func newID() (string, error) {
+	return uid.NewID()
 }

@@ -55,6 +55,14 @@
 		return role === 'owner' ? 'владелец' : 'участник';
 	}
 
+	function circleDetail(circle: AdminAccountDetail['circles'][number]): string {
+		const role = roleLabel(circle.role);
+		if (circle.joined_at) {
+			return `${role} · с ${formatSince(circle.joined_at)}`;
+		}
+		return role;
+	}
+
 	$effect(() => {
 		void loginOpen;
 		if (!ready || !acc || loginOpen === knownOpen) return;
@@ -142,7 +150,7 @@
 								></span>
 								<div class="g">
 									<div class="n">{circle.name}</div>
-									<div class="d">{roleLabel(circle.role)}</div>
+									<div class="d">{circleDetail(circle)}</div>
 								</div>
 							</div>
 						{/each}

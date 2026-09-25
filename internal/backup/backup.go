@@ -48,7 +48,7 @@ func Backup(dataDir, destDir string, incremental bool) error {
 	if err := copyFile(filepath.Join(dataDir, "config.json"), filepath.Join(destDir, "config.json")); err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	if err := copyFile(filepath.Join(dataDir, "wynd.db"), filepath.Join(destDir, "wynd.db")); err != nil && !os.IsNotExist(err) {
+	if err := backupDatabase(filepath.Join(dataDir, "wynd.db"), filepath.Join(destDir, "wynd.db")); err != nil {
 		return err
 	}
 	if err := copyTree(filepath.Join(dataDir, "keys"), filepath.Join(destDir, "keys")); err != nil && !os.IsNotExist(err) {
@@ -60,7 +60,54 @@ func Backup(dataDir, destDir string, incremental bool) error {
 		return err
 	}
 
-	_ = touchLastBackupAt(filepath.Join(dataDir, "wynd.db"))
+	if err := touchLastBackupAt(filepath.Join(dataDir, "wynd.db")); err != nil {
+		return fmt.Errorf("backup: last_backup_at: %w", err)
+	}
+	return nil
+}
+
+// backupDatabase writes a consistent SQLite snapshot via VACUUM INTO so WAL
+// pages are merged and the destination is safe without -wal/-shm sidecars.
+func backupDatabase(srcPath, destPath string) error {
+	srcPath, err := filepath.Abs(srcPath)
+	if err != nil {
+		return fmt.Errorf("backup db src: %w", err)
+	}
+	destPath, err = filepath.Abs(destPath)
+	if err != nil {
+		return fmt.Errorf("backup db dest: %w", err)
+	}
+	if _, err := os.Stat(srcPath); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(destPath), 0o750); err != nil {
+		return err
+	}
+	tmpPath := destPath + ".vacuum"
+	_ = os.Remove(tmpPath)
+
+	dsn := "file:" + filepath.ToSlash(srcPath) + "?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		return fmt.Errorf("backup db open: %w", err)
+	}
+	defer db.Close()
+
+	escaped := strings.ReplaceAll(filepath.ToSlash(tmpPath), "'", "''")
+	if _, err := db.Exec(`VACUUM INTO '` + escaped + `'`); err != nil {
+		return fmt.Errorf("backup vacuum into: %w", err)
+	}
+	if err := os.Remove(destPath); err != nil && !os.IsNotExist(err) {
+		_ = os.Remove(tmpPath)
+		return err
+	}
+	if err := os.Rename(tmpPath, destPath); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("backup db rename: %w", err)
+	}
 	return nil
 }
 
@@ -214,7 +261,7 @@ func touchLastBackupAt(dbPath string) error {
 	dsn := "file:" + filepath.ToSlash(dbPath) + "?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
-		return nil
+		return fmt.Errorf("touch last_backup_at open: %w", err)
 	}
 	defer db.Close()
 	now := time.Now().UTC().Format(time.RFC3339Nano)

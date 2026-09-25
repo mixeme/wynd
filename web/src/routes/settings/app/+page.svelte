@@ -20,6 +20,8 @@
 		saveAccountNotifyPrefs
 	} from '$lib/settings/notify';
 
+	type NotifyPrefs = { posts: boolean; comments: boolean; reactions: boolean };
+
 	let posts = $state(true);
 	let comments = $state(true);
 	let reactions = $state(false);
@@ -27,6 +29,7 @@
 	let cacheBytes = $state(0);
 	let freeBytes = $state(0);
 	let ready = $state(false);
+	let baseline = $state<NotifyPrefs | null>(null);
 	let error = $state('');
 	let cleared = $state(false);
 
@@ -37,13 +40,21 @@
 	];
 
 	async function persistPrefs() {
-		if (!ready) return;
+		if (!ready || !baseline) return;
+		if (
+			posts === baseline.posts &&
+			comments === baseline.comments &&
+			reactions === baseline.reactions
+		) {
+			return;
+		}
 		try {
 			await persistNotifyDefaults({ posts, comments, reactions });
 			const sessions = await loadSessions();
 			for (const session of sessions) {
 				await saveAccountNotifyPrefs(session.origin, { posts, comments, reactions });
 			}
+			baseline = { posts, comments, reactions };
 		} catch (err) {
 			error = authErrorHint(err);
 		}
@@ -53,7 +64,6 @@
 		void posts;
 		void comments;
 		void reactions;
-		void ready;
 		void persistPrefs();
 	});
 
@@ -91,24 +101,28 @@
 			}
 		}
 		await refreshCache();
+		baseline = { posts, comments, reactions };
 		ready = true;
 	});
 </script>
 
 <FormLayout shell app title="Приложение" onback={() => goto('/settings')}>
 	<SectionLabel>Уведомления по умолчанию</SectionLabel>
-	<div class="row2" style="padding-top:2px">
-		<div class="g">Новые записи</div>
-		<Switch bind:checked={posts} />
-	</div>
-	<div class="row2">
-		<div class="g">Комментарии к моим записям</div>
-		<Switch bind:checked={comments} />
-	</div>
-	<div class="row2">
-		<div class="g">Реакции</div>
-		<Switch bind:checked={reactions} />
-	</div>
+	<SettingsRow title="Новые записи" style="padding-top:2px">
+		{#snippet control()}
+			<Switch bind:checked={posts} />
+		{/snippet}
+	</SettingsRow>
+	<SettingsRow title="Комментарии к моим записям">
+		{#snippet control()}
+			<Switch bind:checked={comments} />
+		{/snippet}
+	</SettingsRow>
+	<SettingsRow title="Реакции">
+		{#snippet control()}
+			<Switch bind:checked={reactions} />
+		{/snippet}
+	</SettingsRow>
 	<Hint style="margin-top:10px">
 		Применяется к кругам, в которые вы войдёте потом. Уже настроенные круги не трогаются.
 	</Hint>

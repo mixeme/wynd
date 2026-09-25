@@ -17,6 +17,27 @@ func validReactionKey(emoji string) bool {
 
 // CreatePost publishes a post and updates day projection.
 func (c *Chronicle) CreatePost(ctx context.Context, in PostInput) (Post, error) {
+	tx, err := c.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Post{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	post, err := c.createPostInTx(ctx, tx, in)
+	if err != nil {
+		return Post{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return Post{}, err
+	}
+	return post, nil
+}
+
+// CreatePostInTx is like CreatePost but uses an existing transaction.
+func (c *Chronicle) CreatePostInTx(ctx context.Context, tx *sql.Tx, in PostInput) (Post, error) {
+	return c.createPostInTx(ctx, tx, in)
+}
+
+func (c *Chronicle) createPostInTx(ctx context.Context, tx *sql.Tx, in PostInput) (Post, error) {
 	if in.EntryDate == "" {
 		return Post{}, ErrInvalid
 	}
@@ -30,11 +51,11 @@ func (c *Chronicle) CreatePost(ctx context.Context, in PostInput) (Post, error) 
 		return Post{}, err
 	}
 
-	window, err := c.circleEditWindow(ctx, c.db, in.CircleID)
+	window, err := c.circleEditWindow(ctx, tx, in.CircleID)
 	if err != nil {
 		return Post{}, err
 	}
-	name, err := c.identityName(ctx, c.db, mem.IdentityID)
+	name, err := c.identityName(ctx, tx, mem.IdentityID)
 	if err != nil {
 		return Post{}, err
 	}
@@ -43,12 +64,6 @@ func (c *Chronicle) CreatePost(ctx context.Context, in PostInput) (Post, error) 
 	if err != nil {
 		return Post{}, err
 	}
-
-	tx, err := c.db.BeginTx(ctx, nil)
-	if err != nil {
-		return Post{}, err
-	}
-	defer func() { _ = tx.Rollback() }()
 
 	ev, err := c.appendEvent(ctx, tx, appendEventInput{
 		circleID:        in.CircleID,
@@ -78,10 +93,6 @@ func (c *Chronicle) CreatePost(ctx context.Context, in PostInput) (Post, error) 
 		return Post{}, err
 	}
 	if err := c.ensureDay(ctx, tx, in.CircleID, in.EntryDate); err != nil {
-		return Post{}, err
-	}
-
-	if err := tx.Commit(); err != nil {
 		return Post{}, err
 	}
 

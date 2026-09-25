@@ -2,6 +2,7 @@ package jobs_test
 
 import (
 	"context"
+	"database/sql"
 	"os"
 	"path/filepath"
 	"testing"
@@ -141,5 +142,42 @@ func TestRunDailyRoutineCleansTargets(t *testing.T) {
 	}
 	if lastRoutine == "" {
 		t.Fatal("last_routine_at not updated")
+	}
+
+	var emptyDeleted sql.NullString
+	if err := st.DB().QueryRowContext(ctx, `SELECT deleted_at FROM accounts WHERE id = 'empty'`).Scan(&emptyDeleted); err != nil {
+		t.Fatal(err)
+	}
+	if !emptyDeleted.Valid || emptyDeleted.String == "" {
+		t.Fatal("empty account should be soft-deleted, not removed")
+	}
+}
+
+func TestRunDailyRoutineExpiresUploadInSameSecond(t *testing.T) {
+	st := openDB(t)
+	ctx := context.Background()
+	now := time.Date(2026, 8, 30, 12, 0, 0, 500000000, time.UTC)
+	expires := time.Date(2026, 8, 30, 12, 0, 0, 0, time.UTC).Format(time.RFC3339)
+
+	_, err := st.DB().ExecContext(ctx, `
+		INSERT INTO accounts (id, email, created_at) VALUES ('member', 'member@test.local', ?)
+	`, expires)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = st.DB().ExecContext(ctx, `
+		INSERT INTO upload_sessions (id, account_id, expected_size, mime_type, received_bytes, expires_at, created_at)
+		VALUES ('sess-exp', 'member', 1, 'text/plain', 0, ?, ?)
+	`, expires, expires)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	counts, err := jobs.RunDailyRoutine(ctx, st.DB(), t.TempDir(), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if counts.AbandonedUploads != 1 {
+		t.Fatalf("abandoned uploads: %+v", counts)
 	}
 }

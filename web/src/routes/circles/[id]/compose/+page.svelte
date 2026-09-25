@@ -6,9 +6,11 @@
 	import DangerZone from '$ui/forms/DangerZone.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
+	import TextArea from '$ui/forms/TextArea.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
-	import PhoneFrame from '$ui/chrome/PhoneFrame.svelte';
+	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import Icon from '$ui/Icon.svelte';
+	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { formatEditableUntil, formatEntryDate, formatPostTime, isEditableActive } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
@@ -144,14 +146,19 @@
 		resizeBody();
 	});
 
+	function feedHref(dayPrompt?: string) {
+		const base = `/circles/${circle.circleId}`;
+		return dayPrompt ? `${base}?dayPrompt=${dayPrompt}` : base;
+	}
+
 	function goBack() {
-		goto(`/circles/${circle.circleId}`);
+		goto(feedHref());
 	}
 
 	async function deleteDraft() {
 		if (!editQueueId) return;
 		await removeQueueItem(editQueueId);
-		goto(`/circles/${circle.circleId}`);
+		goto(feedHref());
 	}
 
 	async function deleteEditedPost() {
@@ -160,7 +167,7 @@
 		error = '';
 		try {
 			await deletePost(circle.origin, circle.circleId, editPostId);
-			goto(`/circles/${circle.circleId}`);
+			goto(feedHref());
 		} catch (err) {
 			error = authErrorHint(err);
 		} finally {
@@ -243,7 +250,7 @@
 			if (isEdit && editPostId) {
 				const cover = coverBlobId();
 				await savePost(circle.origin, circle.circleId, editPostId, trimmed, entryDate, cover);
-				goto(`/circles/${circle.circleId}`);
+				goto(feedHref());
 				return;
 			}
 
@@ -256,13 +263,13 @@
 
 			if (editQueueId) {
 				await updateQueuedPost(editQueueId, payload, files);
-				goto(`/circles/${circle.circleId}`);
+				goto(feedHref());
 				return;
 			}
 
 			if (!navigator.onLine) {
 				await enqueuePost(circle.origin, circle.circleId, payload, files);
-				goto(`/circles/${circle.circleId}`);
+				goto(feedHref());
 				return;
 			}
 
@@ -286,7 +293,7 @@
 				captured_at: picked[0]?.meta.captured_at,
 				media
 			});
-			goto(`/circles/${circle.circleId}`);
+			goto(feedHref(entryDate));
 		} catch (err) {
 			error = authErrorHint(err);
 		} finally {
@@ -295,32 +302,27 @@
 	}
 </script>
 
-<PhoneFrame app color={circle.color}>
-	<div class="cbar">
-		<div class="top compose-top">
-			<button type="button" class="act" onclick={goBack}>Отмена</button>
-			<span class="t">{barTitle}</span>
-			<button
-				type="button"
-				class="act save"
-				disabled={!canPublish || loading}
-				onclick={() => publish()}
-			>
-				{loading ? '…' : isEdit ? 'Сохранить' : 'Опубликовать'}
-			</button>
-		</div>
-		<div style="height:12px"></div>
-	</div>
-
+<FormLayout
+	app
+	compose
+	color={circle.color}
+	title={barTitle}
+	publishLabel={isEdit ? 'Сохранить' : 'Опубликовать'}
+	canPublish={canPublish}
+	publishing={loading}
+	oncancel={goBack}
+	onpublish={() => void publish()}
+	footer={composeFooter}
+>
 	<div class="compose-body">
-		<textarea
-			bind:this={bodyInput}
-			class="compose-text"
+		<TextArea
+			variant="compose"
+			bind:el={bodyInput}
 			bind:value={body}
 			placeholder="Что случилось?"
 			rows={1}
 			oninput={resizeBody}
-		></textarea>
+		/>
 
 		<div class="thumbs">
 			{#each picked as item, i (i)}
@@ -341,30 +343,22 @@
 					{/if}
 				</button>
 			{/each}
-			{#if !isEdit}
-				<AddPhotoButton onclick={() => photoInput?.click()} />
-			{/if}
+			<AddPhotoButton onclick={() => photoInput?.click()} />
 		</div>
 
-		{#if picked.some((p) => isVisual(p.meta))}
+		{#if !isEdit && picked.some((p) => isVisual(p.meta))}
 			<Hint>Обложка — первая. Нажмите на другую, чтобы лента показывала её.</Hint>
 		{/if}
 
 		{#if !isEdit}
 			<input bind:this={dateInput} type="date" bind:value={entryDate} hidden />
-			<button
-				type="button"
-				class="row2"
+			<SettingsRow
+				icon="clock"
+				title="Отнести к дате"
+				subtitle={entryDateSubtitle}
 				style="margin-top:16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"
 				onclick={openDatePicker}
-			>
-				<Icon name="clock" />
-				<div class="g">
-					<div>Отнести к дате</div>
-					<div class="sub">{entryDateSubtitle}</div>
-				</div>
-				<Icon name="chevr" size="sm" />
-			</button>
+			/>
 			<Hint>
 				В ленте запись всё равно встанет сегодняшним числом. Дата нужна дню — в «Днях» она
 				соберёт её с остальными за {entryDate ? formatEntryDate(entryDate) : 'этот день'}.
@@ -372,16 +366,13 @@
 		{/if}
 
 		{#if showEditWindowNote && editingPost?.editable_until}
-			<div
-				class="row2"
+			<SettingsRow
+				icon="clock"
+				title="Правится до {formatEditableUntil(editingPost.editable_until)}"
+				subtitle={editWindowSubtitle(editingPost)}
+				chevron={false}
 				style="margin-top:18px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"
-			>
-				<Icon name="clock" size="sm" />
-				<div class="g">
-					<div>Правится до {formatEditableUntil(editingPost.editable_until)}</div>
-					<div class="sub">{editWindowSubtitle(editingPost)}</div>
-				</div>
-			</div>
+			/>
 			<Hint>
 				Сейчас в круге стоит {circle.editWindowSec === 3600
 					? 'час'
@@ -413,7 +404,9 @@
 			</div>
 		{/if}
 	</div>
+</FormLayout>
 
+{#snippet composeFooter()}
 	<div class="compose-bar">
 		<div class="tools">
 			{#if isEdit}
@@ -427,17 +420,17 @@
 			<span class="who">пишете как {circle.identityName}</span>
 		</div>
 	</div>
+{/snippet}
 
-	<input
-		bind:this={photoInput}
-		type="file"
-		accept="image/*,video/*"
-		multiple
-		hidden
-		onchange={onFilesSelected}
-	/>
-	<input bind:this={attachInput} type="file" accept="*/*" multiple hidden onchange={onFilesSelected} />
-</PhoneFrame>
+<input
+	bind:this={photoInput}
+	type="file"
+	accept="image/*,video/*"
+	multiple
+	hidden
+	onchange={onFilesSelected}
+/>
+<input bind:this={attachInput} type="file" accept="*/*" multiple hidden onchange={onFilesSelected} />
 
 <style>
 	.thumbs {
@@ -446,13 +439,6 @@
 		gap: 8px;
 		padding: 16px 16px 0;
 		align-items: flex-start;
-	}
-	.thumbs :global(.addph) {
-		width: 88px;
-		height: 88px;
-		border-radius: 8px;
-		margin: 0 !important;
-		flex-shrink: 0;
 	}
 	.thumb {
 		width: 88px;

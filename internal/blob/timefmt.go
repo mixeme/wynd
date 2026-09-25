@@ -4,30 +4,24 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
+	"gitea.mixdep.ru/mix/wynd/internal/uid"
+	"gitea.mixdep.ru/mix/wynd/internal/xtime"
 )
 
 func newID() (string, error) {
-	id, err := uuid.NewV7()
-	if err != nil {
-		return "", err
-	}
-	return id.String(), nil
+	return uid.NewID()
 }
 
 func formatTime(t time.Time) string {
-	return t.UTC().Format(time.RFC3339)
+	return xtime.Format(t)
 }
 
 func parseTime(s string) (time.Time, error) {
-	return time.Parse(time.RFC3339, s)
+	return xtime.Parse(s)
 }
 
 func utcOrNow(t time.Time) time.Time {
-	if t.IsZero() {
-		return time.Now().UTC()
-	}
-	return t.UTC()
+	return xtime.UTCOrNow(t)
 }
 
 func storageRelPath(id string) string {

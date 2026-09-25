@@ -1,10 +1,14 @@
 ﻿<script lang="ts">
+	import { getContext } from 'svelte';
 	import CircleBar, { type CircleTab } from '$ui/chrome/CircleBar.svelte';
 	import CommentBar from '$ui/overlays/CommentBar.svelte';
 	import PhoneFrame from '$ui/chrome/PhoneFrame.svelte';
 	import StatusBar from '$ui/chrome/StatusBar.svelte';
+	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import type { CircleColor } from '$lib/theme/colors';
 	import type { Snippet } from 'svelte';
+
+	const circleCtx = getContext<CircleContext | undefined>(CIRCLE_CTX);
 
 	let {
 		color,
@@ -21,7 +25,7 @@
 		commentBar = true,
 		commentPlaceholder,
 		commentDraft = $bindable(''),
-		circleId,
+		circleId: circleIdProp,
 		onback,
 		onCommentSend,
 		onCommentCompose,
@@ -47,6 +51,8 @@
 		onCommentCompose?: () => void;
 		children: Snippet;
 	} = $props();
+
+	const circleId = $derived(circleIdProp ?? circleCtx?.circleId);
 </script>
 
 <PhoneFrame {color} {dark} {app} {height} class={className}>

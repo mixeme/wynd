@@ -22,8 +22,8 @@ func TestOpenMigrateClose(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Version: %v", err)
 	}
-	if version != 11 {
-		t.Fatalf("schema version: got %d, want 11", version)
+	if version != 13 {
+		t.Fatalf("schema version: got %d, want 13", version)
 	}
 
 	if err := st.Close(); err != nil {
@@ -56,8 +56,8 @@ func TestReopenAppliesMigrationsOnce(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Version: %v", err)
 	}
-	if version != 11 {
-		t.Fatalf("schema version: got %d, want 11", version)
+	if version != 13 {
+		t.Fatalf("schema version: got %d, want 13", version)
 	}
 
 	s := st.(*SQLite)
@@ -65,8 +65,8 @@ func TestReopenAppliesMigrationsOnce(t *testing.T) {
 	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM schema_migrations`).Scan(&n); err != nil {
 		t.Fatalf("count schema_migrations: %v", err)
 	}
-	if n != 11 {
-		t.Fatalf("schema_migrations rows: got %d, want 11", n)
+	if n != 13 {
+		t.Fatalf("schema_migrations rows: got %d, want 13", n)
 	}
 }
 
@@ -116,5 +116,66 @@ func TestParseMigrationVersion(t *testing.T) {
 	}
 	if _, err := parseMigrationVersion("init.sql"); err == nil {
 		t.Fatal("want error for missing version")
+	}
+}
+
+func TestMigration0013WithMembershipReferences(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "wynd.db")
+	s, err := openSQLite(fileDSN(path), true)
+	if err != nil {
+		t.Fatalf("openSQLite: %v", err)
+	}
+	defer s.Close()
+
+	if _, err := s.db.Exec(`
+		CREATE TABLE IF NOT EXISTS schema_migrations (
+			version INTEGER PRIMARY KEY,
+			applied_at TEXT NOT NULL
+		)
+	`); err != nil {
+		t.Fatalf("schema_migrations: %v", err)
+	}
+
+	migrations, err := loadMigrations()
+	if err != nil {
+		t.Fatalf("loadMigrations: %v", err)
+	}
+	for _, m := range migrations {
+		if m.version >= 13 {
+			break
+		}
+		if err := applyMigration(s.db, m); err != nil {
+			t.Fatalf("apply %s: %v", m.name, err)
+		}
+	}
+
+	if _, err := s.db.Exec(`
+		INSERT INTO accounts (id, email, created_at)
+		VALUES ('acct-1', 'alice@example.com', '2026-01-01T00:00:00Z');
+		INSERT INTO circles (id, name, owner_account_id, created_at, updated_at)
+		VALUES ('circle-1', 'Test', 'acct-1', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+		INSERT INTO identities (id, circle_id, account_id, created_at)
+		VALUES ('id-1', 'circle-1', 'acct-1', '2026-01-01T00:00:00Z');
+		INSERT INTO identity_names (id, identity_id, name, effective_at)
+		VALUES ('name-1', 'id-1', 'Alice', '2026-01-01T00:00:00Z');
+		INSERT INTO memberships (id, circle_id, account_id, identity_id, can_settings, status, created_at, updated_at)
+		VALUES ('mem-1', 'circle-1', 'acct-1', 'id-1', 0, 'active', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+	`); err != nil {
+		t.Fatalf("seed data: %v", err)
+	}
+
+	var m13 migration
+	for _, m := range migrations {
+		if m.version == 13 {
+			m13 = m
+			break
+		}
+	}
+	if m13.version != 13 {
+		t.Fatal("migration 13 not found")
+	}
+
+	if err := applyMigration(s.db, m13); err != nil {
+		t.Fatalf("apply 0013: %v", err)
 	}
 }

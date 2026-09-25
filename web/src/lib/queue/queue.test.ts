@@ -1,8 +1,30 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const apiJson = vi.fn();
+
+vi.mock('$lib/api/client', () => ({
+	ApiError: class ApiError extends Error {
+		status: number;
+		code: string;
+		constructor(status: number, code: string) {
+			super(code);
+			this.status = status;
+			this.code = code;
+		}
+	},
+	apiFetch: vi.fn(),
+	apiJson: (...args: unknown[]) => apiJson(...args)
+}));
+
+vi.mock('$lib/api/snapshots', () => ({
+	invalidateCircleSnapshots: vi.fn().mockResolvedValue(undefined)
+}));
+
 describe('queue', () => {
 	beforeEach(() => {
 		vi.resetModules();
+		apiJson.mockReset();
+		apiJson.mockResolvedValue({});
 		vi.stubGlobal('navigator', { ...navigator, onLine: false });
 	});
 
@@ -66,5 +88,20 @@ describe('queue', () => {
 		]);
 		expect(failed).toHaveLength(1);
 		expect(failed[0].error).toBe('edit_window_closed');
+	});
+
+	it('drains a comment when online', async () => {
+		vi.stubGlobal('navigator', { ...navigator, onLine: true });
+		const { enqueueComment, drainQueue, listQueueForCircle } = await import('./queue');
+		const origin = 'https://drain.test';
+		await enqueueComment(origin, 'circle-drain', { post_id: 'post1', body: 'привет' });
+		expect(await listQueueForCircle(origin, 'circle-drain')).toHaveLength(1);
+		await drainQueue();
+		expect(apiJson).toHaveBeenCalledWith(
+			origin,
+			'/circles/circle-drain/posts/post1/comments',
+			expect.objectContaining({ method: 'POST' })
+		);
+		expect(await listQueueForCircle(origin, 'circle-drain')).toHaveLength(0);
 	});
 });

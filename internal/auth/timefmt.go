@@ -1,14 +1,20 @@
 package auth
 
-import "time"
+import (
+	"time"
+
+	"gitea.mixdep.ru/mix/wynd/internal/uid"
+	"gitea.mixdep.ru/mix/wynd/internal/xtime"
+)
 
 func formatTime(t time.Time) string {
-	return t.UTC().Format(time.RFC3339Nano)
+	return xtime.Format(t)
 }
 
 func parseTime(raw string) (time.Time, error) {
-	if raw == "" {
-		return time.Time{}, nil
-	}
-	return time.Parse(time.RFC3339Nano, raw)
+	return xtime.Parse(raw)
+}
+
+func newID() (string, error) {
+	return uid.NewID()
 }

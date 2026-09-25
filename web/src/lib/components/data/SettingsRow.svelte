@@ -1,5 +1,6 @@
 ﻿<script lang="ts">
 	import Icon, { type IconName } from '$ui/Icon.svelte';
+	import type { Snippet } from 'svelte';
 
 	let {
 		title,
@@ -9,6 +10,7 @@
 		link = false,
 		chevron = true,
 		onclick,
+		control,
 		class: className = '',
 		style = ''
 	}: {
@@ -19,12 +21,30 @@
 		link?: boolean;
 		chevron?: boolean;
 		onclick?: () => void;
+		control?: Snippet;
 		class?: string;
 		style?: string;
 	} = $props();
 </script>
 
-{#if onclick}
+{#if control}
+	<div class="row2 {className}" {style}>
+		{#if icon}
+			<Icon name={icon} />
+		{/if}
+		<div class="g" class:link>
+			{#if link}
+				{title}
+			{:else if subtitle}
+				<div>{title}</div>
+				<div class="sub">{subtitle}</div>
+			{:else}
+				{title}
+			{/if}
+		</div>
+		{@render control()}
+	</div>
+{:else if onclick}
 	<button type="button" class="row2 {className}" {style} {onclick}>
 		{#if icon}
 			<Icon name={icon} />

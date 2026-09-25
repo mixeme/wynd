@@ -7,16 +7,27 @@
 		active = false,
 		class: className = '',
 		style = '',
+		el = $bindable<HTMLTextAreaElement>(),
 		...rest
 	}: {
 		value?: string;
-		variant?: 'area' | 'field';
+		variant?: 'area' | 'field' | 'compose';
 		active?: boolean;
 		class?: string;
 		style?: string;
+		el?: HTMLTextAreaElement;
 	} & HTMLTextareaAttributes = $props();
 
-	const rootClass = $derived(variant === 'field' ? 'fld' : 'ta');
+	const rootClass = $derived(
+		variant === 'field' ? 'fld' : variant === 'compose' ? 'compose-text' : 'ta'
+	);
 </script>
 
-<textarea class="{rootClass} {className}" class:act={active} {style} bind:value {...rest}></textarea>
+<textarea
+	class="{rootClass} {className}"
+	class:act={active}
+	{style}
+	bind:this={el}
+	bind:value
+	{...rest}
+></textarea>

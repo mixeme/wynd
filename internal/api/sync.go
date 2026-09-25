@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -62,6 +63,7 @@ func (s *Server) syncSSE(w http.ResponseWriter, r *http.Request, accountID strin
 	for {
 		events, err := s.Chronicle.SyncEvents(r.Context(), accountID, cur, chronicle.SyncBatchSize())
 		if err != nil {
+			log.Printf("sync sse: %v", err)
 			return
 		}
 		for _, ev := range events {
@@ -90,6 +92,7 @@ func (s *Server) syncNDJSON(w http.ResponseWriter, r *http.Request, accountID st
 	for {
 		events, err := s.Chronicle.SyncEvents(r.Context(), accountID, cur, chronicle.SyncBatchSize())
 		if err != nil {
+			log.Printf("sync ndjson: %v", err)
 			return
 		}
 		if len(events) == 0 {

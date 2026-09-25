@@ -53,19 +53,14 @@
 		{/if}
 		<span class="t">{title}</span>
 		{#if identity}
-			{#if circleId}
-				<span
-					class="idn"
-					role="button"
-					tabindex="0"
-					onclick={() => goto(`/circles/${circleId}/settings`)}
-					onkeydown={(e) => e.key === 'Enter' && goto(`/circles/${circleId}/settings`)}
-					>{identity}{#if avatar}<Avatar
-							initial={avatar}
-							src={avatarSrc}
-							style="width:30px;height:30px;font-size:12.5px;border:1px solid rgba(255,255,255,.55)"
-						/>{/if}</span
-				>
+			{#if circleId && avatar}
+				<button type="button" class="idn" onclick={() => goto(`/circles/${circleId}/settings`)}>
+					{identity}<Avatar
+						initial={avatar}
+						src={avatarSrc}
+						style="width:30px;height:30px;font-size:12.5px;border:1px solid rgba(255,255,255,.55)"
+					/>
+				</button>
 			{:else}
 				<span class="idn">{identity}{#if avatar}<Avatar
 							initial={avatar}

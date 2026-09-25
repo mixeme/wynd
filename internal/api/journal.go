@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"time"
 
@@ -97,27 +98,13 @@ func (s *Server) handleCreatePost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	post, err := s.Chronicle.CreatePost(r.Context(), chronicle.PostInput{
+	post, err := s.createPostWithMedia(r.Context(), circleID, sess.AccountID, chronicle.PostInput{
 		CircleID: circleID, AccountID: sess.AccountID, Body: body.Body,
 		EntryDate: body.EntryDate, CapturedAt: captured, Now: now,
-	})
+	}, media)
 	if err != nil {
 		writeDomainError(w, err)
 		return
-	}
-	if len(media) > 0 {
-		if err := s.Chronicle.AttachMedia(r.Context(), post.ID, media); err != nil {
-			s.rollbackNewPost(r.Context(), circleID, sess.AccountID, post.ID)
-			writeDomainError(w, err)
-			return
-		}
-		for _, m := range media {
-			if err := s.Blobs.AddRef(r.Context(), nil, m.BlobID, "post", post.ID); err != nil {
-				s.rollbackNewPost(r.Context(), circleID, sess.AccountID, post.ID)
-				writeDomainError(w, err)
-				return
-			}
-		}
 	}
 	items, _ := s.Chronicle.ListPostMedia(r.Context(), post.ID)
 	s.notifyCircle(circleID, sess.AccountID, "post")
@@ -428,13 +415,52 @@ func postResponse(p chronicle.Post, media []chronicle.PostMedia) postJSON {
 	return out
 }
 
+func (s *Server) createPostWithMedia(ctx context.Context, circleID, accountID string, in chronicle.PostInput, media []chronicle.MediaInput) (chronicle.Post, error) {
+	if len(media) == 0 {
+		return s.Chronicle.CreatePost(ctx, in)
+	}
+	tx, err := s.Blobs.DB().BeginTx(ctx, nil)
+	if err != nil {
+		return chronicle.Post{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	post, err := s.Chronicle.CreatePostInTx(ctx, tx, in)
+	if err != nil {
+		return chronicle.Post{}, err
+	}
+	if err := s.Chronicle.AttachMediaInTx(ctx, tx, post.ID, media); err != nil {
+		return chronicle.Post{}, err
+	}
+	for _, m := range media {
+		if err := s.Blobs.AddRef(ctx, tx, m.BlobID, "post", post.ID); err != nil {
+			return chronicle.Post{}, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return chronicle.Post{}, err
+	}
+	return post, nil
+}
+
 func (s *Server) rollbackNewPost(ctx context.Context, circleID, accountID, postID string) {
-	blobIDs, _ := s.Chronicle.PostMediaBlobIDs(ctx, postID)
-	_ = s.Chronicle.DeletePost(ctx, circleID, accountID, postID, time.Now().UTC())
-	_ = s.Chronicle.DeletePostMedia(ctx, postID)
+	blobIDs, err := s.Chronicle.PostMediaBlobIDs(ctx, postID)
+	if err != nil {
+		log.Printf("rollback post %s: list media: %v", postID, err)
+	}
+	if err := s.Chronicle.DeletePost(ctx, circleID, accountID, postID, time.Now().UTC()); err != nil {
+		log.Printf("rollback post %s: delete post: %v", postID, err)
+	}
+	if err := s.Chronicle.DeletePostMedia(ctx, postID); err != nil {
+		log.Printf("rollback post %s: delete media: %v", postID, err)
+	}
 	if s.Blobs != nil {
-		_ = s.Blobs.RemoveRefsFor(ctx, "post", postID)
-		_ = s.Blobs.ReleaseBlobs(ctx, blobIDs)
+		if err := s.Blobs.RemoveRefsFor(ctx, "post", postID); err != nil {
+			log.Printf("rollback post %s: remove refs: %v", postID, err)
+		}
+		if err := s.Blobs.ReleaseBlobs(ctx, blobIDs); err != nil {
+			log.Printf("rollback post %s: release blobs: %v", postID, err)
+		}
 	}
 }
 

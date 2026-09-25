@@ -8,20 +8,13 @@ import (
 )
 
 func TestEmbed_includesChunkFiles(t *testing.T) {
-	paths := []string{
-		"dist/index.html",
-		"dist/_app/immutable/chunks/_-82-yAF.js",
-		"dist/_app/immutable/chunks/D75jz1ur.js",
+	f, err := web.Build.Open("dist/index.html")
+	if err != nil {
+		t.Fatalf("open dist/index.html: %v", err)
 	}
-	for _, p := range paths {
-		f, err := web.Build.Open(p)
-		if err != nil {
-			t.Fatalf("open %s: %v", p, err)
-		}
-		f.Close()
-	}
+	f.Close()
 	count := 0
-	err := fs.WalkDir(web.Build, "dist/_app/immutable/chunks", func(path string, d fs.DirEntry, err error) error {
+	err = fs.WalkDir(web.Build, "dist/_app/immutable/chunks", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
