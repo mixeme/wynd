@@ -23,26 +23,27 @@ func limiterKey(clientIP string) string {
 	return clientIP
 }
 
-func (s *Service) Bootstrap(ctx context.Context, in BootstrapInput, expectedToken string) error {
-	when := in.Now.UTC()
-	if when.IsZero() {
-		when = time.Now().UTC()
-	}
-	key := limiterKey(in.ClientIP)
+func (s *Service) gateBootstrapToken(token, expectedToken, clientIP string, when time.Time) error {
+	key := limiterKey(clientIP)
 	if !s.loginLimiter.allow(key, when) {
 		return ErrRateLimited
 	}
-	if subtle.ConstantTimeCompare([]byte(in.Token), []byte(expectedToken)) != 1 {
+	if subtle.ConstantTimeCompare([]byte(token), []byte(expectedToken)) != 1 {
 		s.loginLimiter.fail(key, when)
 		return ErrInvalid
 	}
-	if in.InstanceName == "" || in.Password == "" {
-		return ErrInvalid
-	}
-	if utf8.RuneCountInString(in.Password) < MinPasswordLen {
-		return ErrWeakPassword
-	}
+	return nil
+}
 
+// ConfirmBootstrapToken checks the one-time install token without completing bootstrap.
+func (s *Service) ConfirmBootstrapToken(ctx context.Context, token, expectedToken, clientIP string, now time.Time) error {
+	when := now.UTC()
+	if when.IsZero() {
+		when = time.Now().UTC()
+	}
+	if err := s.gateBootstrapToken(token, expectedToken, clientIP, when); err != nil {
+		return err
+	}
 	var bootstrapped int
 	if err := s.db.QueryRowContext(ctx, `
 		SELECT bootstrapped FROM instance_settings WHERE id = 1
@@ -51,6 +52,31 @@ func (s *Service) Bootstrap(ctx context.Context, in BootstrapInput, expectedToke
 	}
 	if bootstrapped == 1 {
 		return ErrInvalid
+	}
+	return nil
+}
+
+// ValidatePassword checks an admin password against the minimum length.
+func ValidatePassword(password string) error {
+	if password == "" {
+		return ErrInvalid
+	}
+	if utf8.RuneCountInString(password) < MinPasswordLen {
+		return ErrWeakPassword
+	}
+	return nil
+}
+
+func (s *Service) Bootstrap(ctx context.Context, in BootstrapInput, expectedToken string) error {
+	when := in.Now.UTC()
+	if when.IsZero() {
+		when = time.Now().UTC()
+	}
+	if err := s.gateBootstrapToken(in.Token, expectedToken, in.ClientIP, when); err != nil {
+		return err
+	}
+	if err := ValidatePassword(in.Password); err != nil {
+		return err
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(in.Password), bcrypt.DefaultCost)
@@ -64,12 +90,22 @@ func (s *Service) Bootstrap(ctx context.Context, in BootstrapInput, expectedToke
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if _, err := tx.ExecContext(ctx, `
+	// Флаг bootstrapped проверяется самим UPDATE: чтение до транзакции
+	// оставляло окно, в котором два параллельных вызова оба проходили.
+	res, err := tx.ExecContext(ctx, `
 		UPDATE instance_settings
 		SET name = ?, bootstrapped = 1, updated_at = ?
-		WHERE id = 1
-	`, in.InstanceName, formatTime(when)); err != nil {
+		WHERE id = 1 AND bootstrapped = 0
+	`, in.InstanceName, formatTime(when))
+	if err != nil {
 		return fmt.Errorf("update instance: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("update instance: %w", err)
+	}
+	if n == 0 {
+		return ErrInvalid
 	}
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO admin_credentials (id, password_hash, updated_at)
@@ -78,10 +114,15 @@ func (s *Service) Bootstrap(ctx context.Context, in BootstrapInput, expectedToke
 	`, string(hash), formatTime(when)); err != nil {
 		return fmt.Errorf("store admin password: %w", err)
 	}
+	if in.InTx != nil {
+		if err := in.InTx(ctx, tx); err != nil {
+			return err
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	s.loginLimiter.reset(key)
+	s.loginLimiter.reset(limiterKey(in.ClientIP))
 	return nil
 }
 
@@ -203,12 +244,59 @@ func (s *Service) ResetAdminPassword(ctx context.Context, token, password string
 	if err != nil {
 		return err
 	}
-	_, err = s.db.ExecContext(ctx, `
+	return s.storeAdminPassword(ctx, string(hash), when)
+}
+
+// storeAdminPassword пишет новый хеш и в той же транзакции отзывает админские
+// сессии: смена пароля обязана закрывать чужие открытые панели (AUTH-3).
+func (s *Service) storeAdminPassword(ctx context.Context, hash string, when time.Time) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, `
 		UPDATE admin_credentials
 		SET password_hash = ?, reset_token = NULL, reset_expires_at = NULL, updated_at = ?
 		WHERE id = 1
-	`, string(hash), formatTime(when))
-	return err
+	`, hash, formatTime(when)); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM sessions WHERE kind = ?
+	`, string(SessionAdmin)); err != nil {
+		return fmt.Errorf("revoke admin sessions: %w", err)
+	}
+	return tx.Commit()
+}
+
+// ChangeAdminPassword verifies the current panel password and stores a new hash.
+func (s *Service) ChangeAdminPassword(ctx context.Context, current, next string, when time.Time) error {
+	if current == "" || next == "" {
+		return ErrInvalid
+	}
+	if utf8.RuneCountInString(next) < MinPasswordLen {
+		return ErrWeakPassword
+	}
+	if when.IsZero() {
+		when = time.Now().UTC()
+	}
+	var hash string
+	err := s.db.QueryRowContext(ctx, `SELECT password_hash FROM admin_credentials WHERE id = 1`).Scan(&hash)
+	if err == sql.ErrNoRows {
+		return ErrForbidden
+	}
+	if err != nil {
+		return fmt.Errorf("load admin credentials: %w", err)
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(current)); err != nil {
+		return ErrForbidden
+	}
+	newHash, err := bcrypt.GenerateFromPassword([]byte(next), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("hash password: %w", err)
+	}
+	return s.storeAdminPassword(ctx, string(newHash), when)
 }
 
 func newResetToken() (string, error) {

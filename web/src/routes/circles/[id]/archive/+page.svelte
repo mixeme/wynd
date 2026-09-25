@@ -9,7 +9,7 @@
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { formatBytes } from '$lib/format/bytes';
-	import { formatDeadline, formatEntryDate, daysUntil } from '$lib/format/time';
+	import { formatDeadline, formatEntryDate, daysUntil, pluralFiles, pluralPosts } from '$lib/format/time';
 	import { downloadArchive } from '$lib/journal/posts';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 
@@ -38,14 +38,16 @@
 		<SettingsRow
 			icon="photo"
 			title="/media"
-			subtitle="фото и видео записей"
+			subtitle="{pluralFiles(cycle.personal_archive_media_count)} · {formatBytes(
+				cycle.personal_archive_bytes
+			)}"
 			chevron={false}
 			style="border-top:1px solid var(--line)"
 		/>
 		<SettingsRow
 			icon="file"
 			title="index.html"
-			subtitle="записи и комментарии"
+			subtitle="{pluralPosts(cycle.personal_archive_post_count)} и все комментарии к ним"
 			chevron={false}
 		/>
 

@@ -94,7 +94,7 @@ export async function apiFetch(
 	return res;
 }
 
-export function isPaymentRequired(err: unknown): err is ApiError {
+export function isPaymentRequired(err: unknown): err is ApiError & { code: 'payment_required' } {
 	return err instanceof ApiError && err.status === 403 && err.code === 'payment_required';
 }
 

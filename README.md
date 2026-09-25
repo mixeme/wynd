@@ -3,7 +3,7 @@
 Self-hosted журнал кругов: один бинарник Go, SQLite, SvelteKit SPA внутри `go:embed`.
 Для домашнего инстанса на несколько человек, не для SaaS.
 
-**Версия:** см. файл [`VERSION`](VERSION) (сейчас 0.5.9).
+**Версия:** см. файл [`VERSION`](VERSION) (сейчас 0.6.7).
 
 **Лицензия:** [GNU AGPL v3](LICENSE). Исходный код: <https://github.com/mixeme/wynd>.
 
@@ -48,6 +48,12 @@ scripts\test.bat
 ```bash
 go test ./...
 cd web && npm run check && npm run check:ui && npm run test
+```
+
+SMTP на реальных релеях (`dev/credentials.txt` или JSON в `dev/credentials/`, образцы в `internal/mail/testdata/`):
+
+```bash
+scripts\test-integration.bat
 ```
 
 ### Инварианты и тесты

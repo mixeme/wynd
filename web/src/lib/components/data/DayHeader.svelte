@@ -20,25 +20,44 @@
 		class?: string;
 		style?: string;
 	} = $props();
+
+	const picClass = $derived([cover, className].filter(Boolean).join(' '));
 </script>
 
-<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-<div
-	class="pic {cover ?? ''} {className}"
-	class:cover-click={Boolean(oncover)}
-	{style}
-	style:aspect-ratio="16/9"
-	style:border-radius="0"
-	style:border="0"
-	style:border-bottom="1px solid var(--line)"
-	onclick={oncover}
->
-	{#if coverUrl}
-		<img src={coverUrl} alt="" />
-	{/if}
-	<span class="tagr">обложка дня</span>
-	<span class="cnt">сменить</span>
-</div>
+{#if oncover}
+	<button
+		type="button"
+		class="pic {picClass}"
+		{style}
+		style:aspect-ratio="16/9"
+		style:border-radius="0"
+		style:border="0"
+		style:border-bottom="1px solid var(--line)"
+		aria-label="Сменить обложку"
+		onclick={oncover}
+	>
+		{#if coverUrl}
+			<img src={coverUrl} alt="" />
+		{/if}
+		<span class="tagr">обложка дня</span>
+		<span class="cnt">сменить</span>
+	</button>
+{:else}
+	<div
+		class="pic {picClass}"
+		{style}
+		style:aspect-ratio="16/9"
+		style:border-radius="0"
+		style:border="0"
+		style:border-bottom="1px solid var(--line)"
+	>
+		{#if coverUrl}
+			<img src={coverUrl} alt="" />
+		{/if}
+		<span class="tagr">обложка дня</span>
+		<span class="cnt">сменить</span>
+	</div>
+{/if}
 {#if title && subtitle}
 	{#if ontitle}
 		<SettingsRow {title} {subtitle} chevron={false} onclick={ontitle} />
@@ -48,9 +67,6 @@
 {/if}
 
 <style>
-	.cover-click {
-		cursor: pointer;
-	}
 	img {
 		width: 100%;
 		height: 100%;

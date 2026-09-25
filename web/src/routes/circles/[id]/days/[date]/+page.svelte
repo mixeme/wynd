@@ -9,6 +9,7 @@
 	import Input from '$ui/forms/Input.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import Icon from '$ui/Icon.svelte';
+	import MediaTile from '$ui/data/MediaTile.svelte';
 	import PostCard from '$ui/data/PostCard.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
@@ -17,7 +18,7 @@
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { splitMentionBody } from '$lib/journal/mentions';
 	import { clearDayTitle, loadDay, loadDays, setDayTitle } from '$lib/journal/days';
-	import { authorInitial, coverMedia, mediaCount, photoMedia } from '$lib/journal/present';
+	import { authorInitial, coverMedia, locationLabel, mediaCount, photoMedia } from '$lib/journal/present';
 	import type { FeedPost } from '$lib/journal/types';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 	import { registerRefetch } from '$lib/sync/sync';
@@ -37,6 +38,7 @@
 	let error = $state('');
 	let coverUrl = $state('');
 	let mediaUrls = $state<Record<string, string>>({});
+	let authorAvatarUrls = $state<Record<string, string>>({});
 
 	const canClearTitle = $derived(hasCustomTitle && isEditableActive(titleEditableUntil));
 	const titleSubtitle = $derived(`${formatEntryDate(entryDate)} · нажмите, чтобы изменить`);
@@ -45,9 +47,23 @@
 		return post.entry_date === entryDate && post.created_at.slice(0, 10) > entryDate;
 	}
 
+	function authorAvatarSrc(post: FeedPost): string | undefined {
+		if (post.identity_id === circle.identityId && circle.avatarUrl) return circle.avatarUrl;
+		return authorAvatarUrls[post.identity_id];
+	}
+
 	async function resolveMedia(feedPosts: FeedPost[]) {
 		const next: Record<string, string> = { ...mediaUrls };
+		const avatars: Record<string, string> = { ...authorAvatarUrls };
 		for (const post of feedPosts) {
+			const avatarBlob = post.author_avatar_blob_id;
+			if (avatarBlob && !avatars[post.identity_id]) {
+				try {
+					avatars[post.identity_id] = await getMediaUrl(circle.origin, avatarBlob);
+				} catch {
+					/* skip */
+				}
+			}
 			for (const m of photoMedia(post.media)) {
 				if (!next[m.blob_id]) {
 					try {
@@ -58,6 +74,7 @@
 				}
 			}
 		}
+		authorAvatarUrls = avatars;
 		mediaUrls = next;
 	}
 
@@ -224,25 +241,17 @@
 			{#snippet postMedia()}
 				{@const cover = coverMedia(post.media)}
 				{@const count = mediaCount(post.media)}
-				<div
-					class="pic sq"
-					role="presentation"
-					onclick={(e) => {
-						e.stopPropagation();
-						openAlbum(post.id);
-					}}
-				>
-					{#if cover && mediaUrls[cover.blob_id]}
-						{#if cover.kind === 'video'}
-							<video src={mediaUrls[cover.blob_id]} muted playsinline></video>
-						{:else}
-							<img src={mediaUrls[cover.blob_id]} alt="" />
-						{/if}
-					{/if}
-					{#if count > 1}
-						<span class="cnt">{count}</span>
-					{/if}
-				</div>
+				{@const loc = locationLabel(cover)}
+				{#if cover}
+					<MediaTile
+						variant="feed"
+						src={mediaUrls[cover.blob_id]}
+						kind={cover.kind === 'video' ? 'video' : 'photo'}
+						{count}
+						locationLabel={loc || undefined}
+						onclick={() => openAlbum(post.id)}
+					/>
+				{/if}
 			{/snippet}
 			<PostCard
 				onclick={() => openPost(post.id)}
@@ -251,7 +260,11 @@
 				media={coverMedia(post.media) ? postMedia : undefined}
 			>
 				{#snippet author()}
-					<Avatar initial={authorInitial(post.author_name)} color={circle.colorHex} />
+					<Avatar
+						initial={authorInitial(post.author_name)}
+						color={circle.colorHex}
+						src={authorAvatarSrc(post)}
+					/>
 					<div>
 						<div class="n">{post.author_name}</div>
 						<div class="tm">{formatPostTime(post.created_at, post.entry_date)}</div>
@@ -268,11 +281,3 @@
 	{/if}
 </CircleLayout>
 
-<style>
-	.pic img,
-	.pic video {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-</style>

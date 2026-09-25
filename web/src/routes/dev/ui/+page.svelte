@@ -24,13 +24,20 @@
 	import DayHeader from '$ui/data/DayHeader.svelte';
 	import EntryDateMark from '$ui/data/EntryDateMark.svelte';
 	import EventDivider from '$ui/data/EventDivider.svelte';
+	import FeedDayPromptCard from '$ui/data/FeedDayPromptCard.svelte';
 	import FoldHeader from '$ui/data/FoldHeader.svelte';
+	import GroupFoldCard from '$ui/data/GroupFoldCard.svelte';
+	import MapBadge from '$ui/data/MapBadge.svelte';
+	import MapPostSheet from '$ui/data/MapPostSheet.svelte';
 	import MemberRow from '$ui/data/MemberRow.svelte';
+	import MediaTile from '$ui/data/MediaTile.svelte';
 	import MonthLabel from '$ui/data/MonthLabel.svelte';
 	import PhotoGrid from '$ui/data/PhotoGrid.svelte';
 	import PhotoPlaceholder from '$ui/data/PhotoPlaceholder.svelte';
+	import PayStreetBanner from '$ui/data/PayStreetBanner.svelte';
 	import PostCard from '$ui/data/PostCard.svelte';
 	import CommentPreview from '$ui/data/CommentPreview.svelte';
+	import CommentRow from '$ui/data/CommentRow.svelte';
 	import ReactionBar from '$ui/data/ReactionBar.svelte';
 	import ReactionListRow from '$ui/data/ReactionListRow.svelte';
 	import SearchGroupHeader from '$ui/data/SearchGroupHeader.svelte';
@@ -50,6 +57,8 @@
 	import Hint from '$ui/forms/Hint.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import InviteCard from '$ui/forms/InviteCard.svelte';
+	import RequisitesCard from '$ui/forms/RequisitesCard.svelte';
+	import MentionPicker from '$ui/forms/MentionPicker.svelte';
 	import Meter from '$ui/forms/Meter.svelte';
 	import PeopleStrip from '$ui/forms/PeopleStrip.svelte';
 	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
@@ -99,6 +108,7 @@
 	} from './catalog';
 	import type { VolumeBucket } from '$lib/circles/settings';
 	import { formatEntryDate } from '$lib/format/time';
+	import '$lib/styles/map.css';
 
 	let swOn = $state(false);
 	let color = $state<CircleColor>('ochre');
@@ -114,6 +124,7 @@
 			cumulative_bytes: 0
 		};
 	});
+	let demoCode = $state('');
 	let demoCutoffIndex = $state(7);
 	let demoCutoffX = $state(205);
 	const demoCutoffLabel = $derived(
@@ -228,7 +239,15 @@
 				</CircleLayout>
 			</figure>
 			<figure>
-				<figcaption>FormLayout · #e2-3</figcaption>
+				<figcaption>FormLayout · #e1-3 (вступление)</figcaption>
+				<FormLayout app circleTitle="Семья" {color} height="220px">
+					<div class="h1s" style="margin-top:22px;line-height:1.25">
+						Как вас зовут<br />в этом круге?
+					</div>
+				</FormLayout>
+			</figure>
+			<figure>
+				<figcaption>FormLayout · #e2-4</figcaption>
 				<FormLayout title="Новый круг" {color} height="400px">
 					<Label>Сервер</Label>
 					<ServerRow
@@ -245,7 +264,7 @@
 				</FormLayout>
 			</figure>
 			<figure>
-				<figcaption>OverlayLayout · #e4-5</figcaption>
+				<figcaption>OverlayLayout · #e4-12</figcaption>
 				<div class="overlay-wrap">
 					<CircleLayout title="Семья" identity="Мышь" avatar="М" commentBar={false} height="360px">
 						<PostCard>
@@ -267,7 +286,7 @@
 				</div>
 			</figure>
 			<figure>
-				<figcaption>AdminWideLayout · #e9-1</figcaption>
+				<figcaption>AdminWideLayout · #e9-5</figcaption>
 				<AdminWideLayout active="Хранилище" server="Дом Ани" height="320px">
 					<AdminSection title="Хранилище">
 						<StackBar
@@ -324,14 +343,14 @@
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>BackBar · #e2-3</figcaption>
+				<figcaption>BackBar · #e2-4</figcaption>
 				<PhoneFrame color="ochre" height="100px">
 					<StatusBar />
 					<BackBar title="Новый круг" />
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>AdminBar · #e9-1</figcaption>
+				<figcaption>AdminBar · #e9-5</figcaption>
 				<PhoneFrame shell wide height="80px">
 					<AdminBar active="Хранилище" server="Дом Ани · home.example.org" />
 				</PhoneFrame>
@@ -349,7 +368,7 @@
 					<ScreenTitle style="margin-top:24px">Вас пригласили</ScreenTitle>
 					<InviteCard initial="С" name="Семья" preview="22 участника" />
 					<Label>Почта</Label>
-					<FieldDisplay value="you@example.com" active gray />
+					<FieldDisplay value="you@example.com" active />
 					<Hint>Пришлём код для входа.</Hint>
 					<Button onclick={() => {}}>Получить код</Button>
 				</PhoneFrame>
@@ -364,7 +383,7 @@
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>#e2-3 — Chip, ColorSwatches</figcaption>
+				<figcaption>#e2-4 — Chip, ColorSwatches</figcaption>
 				<PhoneFrame color="ochre" height="300px">
 					<StatusBar />
 					<BackBar title="Новый круг" />
@@ -389,7 +408,7 @@
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>#e6-8 — VolumeChart</figcaption>
+				<figcaption>#e6-10 — VolumeChart</figcaption>
 				<PhoneFrame color="terracotta" height="360px">
 					<StatusBar />
 					<CircleBar title="Архив" tabs={false} />
@@ -403,7 +422,7 @@
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>#e6-9 — DangerNote</figcaption>
+				<figcaption>#e6-12 — DangerNote</figcaption>
 				<PhoneFrame color="terracotta" height="260px">
 					<StatusBar />
 					<CircleBar title="Сроки" tabs={false} />
@@ -413,16 +432,24 @@
 		</div>
 		<div class="row" style="margin-top:20px">
 			<div class="card">
-				<h3>TextArea · #e4-1</h3>
+				<h3>TextArea · #e4-2</h3>
 				<TextArea value="Что нового?" active />
 			</div>
 			<div class="card">
-				<h3>Switch · #e6-6</h3>
+				<h3>Switch · #e6-9</h3>
 				<Switch bind:checked={swOn} />
 			</div>
 			<div class="card">
-				<h3>SearchField · #e2-2</h3>
+				<h3>SearchField · #e2-3</h3>
 				<SearchField placeholder="Поиск по кругам" />
+			</div>
+			<div class="card">
+				<h3>RequisitesCard · #e10-2</h3>
+				<RequisitesCard text={'Сбербанк\n+7 900 000-00-00\nИван И.'} />
+			</div>
+			<div class="card">
+				<h3>CodeBox · ввод</h3>
+				<CodeBox bind:value={demoCode} />
 			</div>
 			<div class="card">
 				<h3>PeopleStrip · #e1-3</h3>
@@ -434,8 +461,19 @@
 				/>
 			</div>
 			<div class="card">
-				<h3>AddPhotoButton · #e4-1</h3>
+				<h3>MentionPicker · #e4-2</h3>
+				<MentionPicker>
+					<MemberRow initial="А" name="Аня" color="#58673A" onclick={() => {}} />
+					<MemberRow initial="П" name="Петя" color="#357077" onclick={() => {}} />
+				</MentionPicker>
+			</div>
+			<div class="card">
+				<h3>AddPhotoButton · #e4-2, #e1-3</h3>
 				<AddPhotoButton onclick={() => {}} />
+				<AddPhotoButton
+					onclick={() => {}}
+					previewUrl="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='92' height='92'%3E%3Crect fill='%2358673A' width='92' height='92'/%3E%3C/svg%3E"
+				/>
 			</div>
 			<div class="card">
 				<h3>Button variants</h3>
@@ -479,9 +517,64 @@
 						{/snippet}
 					</PostCard>
 					<CommentPreview onclick={() => {}}>
-						<div>Петя: а компот будет?</div>
+						<div>Петя: а компот будет? <span class="tm">сегодня, 14:22</span></div>
 						<div class="mo">ещё 11 комментариев</div>
 					</CommentPreview>
+				</PhoneFrame>
+			</figure>
+			<figure>
+				<figcaption>#e4-5 — CommentRow</figcaption>
+				<PhoneFrame color="terracotta" height="320px">
+					<StatusBar />
+					<CircleBar title="Семья" identity="Мышь" avatar="М" tabs={false} />
+					<div class="thread">
+						<CommentRow
+							initial="П"
+							name="Петя"
+							color="#357077"
+							onedit={() => {}}
+							ondelete={() => {}}
+						>
+							{#snippet time()}14:18{/snippet}
+							{#snippet children()}А компот будет?{/snippet}
+						</CommentRow>
+					</div>
+				</PhoneFrame>
+			</figure>
+			<figure>
+				<figcaption>#e4-7 — CommentRow · правка</figcaption>
+				<PhoneFrame color="terracotta" height="360px">
+					<StatusBar />
+					<CircleBar title="Семья" identity="Мышь" avatar="М" tabs={false} />
+					<div class="thread">
+						<CommentRow initial="М" name="Мышь" color="#3C4D83">
+							{#snippet time()}14:22{/snippet}
+							{#snippet children()}
+								<TextArea variant="field" class="ced" value="А компот будет?" />
+								<div class="rowin">
+									<Button variant="colored" style="flex:1;margin:0" onclick={() => {}}>Сохранить</Button>
+									<Button variant="ghost" style="flex:1;margin:0" onclick={() => {}}>Отмена</Button>
+								</div>
+							{/snippet}
+						</CommentRow>
+					</div>
+				</PhoneFrame>
+			</figure>
+			<figure>
+				<figcaption>#e4-7 — CommentRow · очередь `.q`</figcaption>
+				<PhoneFrame color="terracotta" height="280px">
+					<StatusBar />
+					<CircleBar title="Семья" identity="Мышь" avatar="М" tabs={false} />
+					<div class="thread">
+						<CommentRow queued initial="М" name="Мышь" color="#3C4D83">
+							{#snippet time()}
+								<span style="display:flex;align-items:center;gap:5px">
+									<Icon name="clock" size="xs" />в очереди
+								</span>
+							{/snippet}
+							{#snippet children()}Жду ответ про компот.{/snippet}
+						</CommentRow>
+					</div>
 				</PhoneFrame>
 			</figure>
 			<figure>
@@ -540,7 +633,7 @@
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>#e2-5 — SearchResultRow</figcaption>
+				<figcaption>#e2-9 — SearchResultRow</figcaption>
 				<PhoneFrame shell height="280px">
 					<StatusBar />
 					<BackBar compact search="яблони" />
@@ -575,7 +668,7 @@
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>#e6-6 — SettingsRow + Switch</figcaption>
+				<figcaption>#e6-9 — SettingsRow + Switch</figcaption>
 				<PhoneFrame color="terracotta" height="360px">
 					<StatusBar />
 					<CircleBar title="Уведомления круга" tabs={false} />
@@ -607,7 +700,7 @@
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>#e3-9 — EntryDateMark</figcaption>
+				<figcaption>#e5-4 — EntryDateMark</figcaption>
 				<PhoneFrame color="terracotta" height="160px">
 					<StatusBar />
 					<CircleBar title="Семья" tabs={false} />
@@ -629,7 +722,7 @@
 				</PhoneFrame>
 			</div>
 			<div class="card">
-				<h3>ArchiveBanner · #e3-10</h3>
+				<h3>ArchiveBanner · #e6-15</h3>
 				<PhoneFrame color="terracotta" height="200px">
 					<ArchiveBanner title="Архив готов">
 						Скачайте до 20 сентября — потом удалится с сервера.
@@ -637,20 +730,104 @@
 				</PhoneFrame>
 			</div>
 			<div class="card">
-				<h3>FoldHeader · #e4-2</h3>
+				<h3>FeedDayPromptCard · лента</h3>
+				<PhoneFrame color="terracotta" height="280px">
+					<FeedDayPromptCard
+						title="Первая запись за 12 августа"
+						primaryLabel="Назвать день"
+						secondaryLabel="Потом"
+						onprimary={() => {}}
+						onsecondary={() => {}}
+					>
+						Дать этому дню название и обложку? День общий — увидят все участники.
+					</FeedDayPromptCard>
+				</PhoneFrame>
+			</div>
+			<div class="card">
+				<h3>PayStreetBanner · #e10-5</h3>
+				<PhoneFrame height="320px">
+					<PayStreetBanner
+						variant="donate"
+						text="Поддержите сервер — реквизиты в разделе оплаты."
+						dismissible
+						onclick={() => {}}
+						ondismiss={() => {}}
+					/>
+					<PayStreetBanner
+						variant="reminder"
+						expiresAtLabel="12 ноября 2026"
+						reminderDaysLeft={5}
+						onclick={() => {}}
+					/>
+					<PayStreetBanner
+						variant="pending"
+						pendingAtLabel="10 сентября 2026"
+						expiresAtLabel="12 ноября 2026"
+					/>
+				</PhoneFrame>
+			</div>
+			<div class="card">
+				<h3>FoldHeader · #e4-5</h3>
 				<FoldHeader label="Комментарии" count={11} />
 			</div>
 			<div class="card">
-				<h3>AttachmentRow · #e4-3</h3>
+				<h3>GroupFoldCard · #e2-14</h3>
+				<GroupFoldCard
+					label="Семья"
+					count={3}
+					expanded={true}
+					foldStyle="padding-top:12px"
+					onclick={() => {}}
+					actionLabel="Переименовать"
+					onaction={() => {}}
+					actionLabel2="Удалить группу"
+					onaction2={() => {}}
+				/>
+			</div>
+			<div class="card">
+				<h3>AttachmentRow · #e4-13</h3>
 				<AttachmentRow filename="scan.pdf" size="1,2 МБ" />
 			</div>
 			<div class="card">
-				<h3>PhotoGrid · #e4-1</h3>
+				<h3>PhotoGrid · #e4-2</h3>
 				<PhotoGrid>
 					<PhotoPlaceholder variant="p1" photoCount={3} />
 					<PhotoPlaceholder variant="p2" />
 					<PhotoPlaceholder empty />
 				</PhotoGrid>
+			</div>
+			<div class="card">
+				<h3>MapBadge / MapPostSheet · карта</h3>
+				<PhoneFrame color="terracotta" height="200px">
+					<div class="map-wrap" style="min-height:200px">
+						<MapBadge badge="3 записи с местом из 12" />
+						<MapPostSheet
+							author="Аня"
+							time="12 августа, 18:40"
+							body="Яблони у забора — уже краснеют."
+							onclick={() => {}}
+						/>
+					</div>
+				</PhoneFrame>
+			</div>
+			<div class="card">
+				<h3>MediaTile · #e3-1</h3>
+				<MediaTile variant="feed" count={3} onclick={() => {}} />
+				<PhotoGrid style="margin-top:8px">
+					<MediaTile variant="grid" count={2} onclick={() => {}} />
+					<MediaTile variant="album" coverLabel="обложка" onclick={() => {}} />
+					<MediaTile variant="album" coverLabel="обложка" selected onclick={() => {}} />
+				</PhotoGrid>
+				<div class="rowin" style="margin-top:12px;align-items:flex-start;gap:8px">
+					<MediaTile
+						variant="headerMini"
+						src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='88' height='88'%3E%3Crect fill='%23c4b5a0' width='88' height='88'/%3E%3C/svg%3E"
+						aria-label="Миниатюра в шапке дня"
+						onclick={() => {}}
+					/>
+					<MediaTile variant="compose" isCover onclick={() => {}} />
+					<MediaTile variant="compose" fileName="scan.pdf" onclick={() => {}} />
+				</div>
 			</div>
 		</div>
 	</section>
@@ -672,6 +849,24 @@
 						time="14:02"
 						color="var(--terracotta)"
 					/>
+				</ShellLayout>
+			</figure>
+			<figure>
+				<figcaption>#e2-11 — Fab menu</figcaption>
+				<ShellLayout
+					height="320px"
+					onsearch={() => {}}
+					onsettings={() => {}}
+					fabMenuOpen={true}
+					fabMenuItems={[
+						{ label: 'Новый круг', onclick: () => {} },
+						{ label: 'Новая группа', onclick: () => {} }
+					]}
+				>
+					{#snippet fab()}
+						<Icon name="plus" style="width:26px;height:26px;stroke-width:1.5" />
+					{/snippet}
+					<SectionLabel>Круги</SectionLabel>
 				</ShellLayout>
 			</figure>
 			<figure>
@@ -697,9 +892,14 @@
 				</CircleLayout>
 			</figure>
 			<figure>
-				<figcaption>#e4-4 — Lightbox</figcaption>
+				<figcaption>#e4-14 — Lightbox</figcaption>
 				<PhoneFrame height="360px">
-					<Lightbox counter="3 из 12" caption="Аня · сегодня · Дача">
+					<Lightbox
+						counter="3 из 12"
+						caption="Аня · сегодня · Дача"
+						onclose={() => {}}
+						ondownload={() => {}}
+					>
 						{#snippet media()}
 							<div class="pic p2" style="width:100%;height:240px;border-radius:0;border:0"></div>
 						{/snippet}
@@ -741,11 +941,11 @@
 		<h2>Admin</h2>
 		<div class="row">
 			<div class="card">
-				<h3>AdminNav · #e9-1</h3>
+				<h3>AdminNav · #e9-5</h3>
 				<AdminNav active="Проверка" />
 			</div>
 			<div class="card">
-				<h3>StatusIcon · #e9-4</h3>
+				<h3>StatusIcon · #e9-8</h3>
 				<div class="status-icons">
 					<StatusIcon status="ok" />
 					<StatusIcon status="warn" />
@@ -753,7 +953,7 @@
 				</div>
 			</div>
 			<div class="card wide">
-				<h3>CheckRow · #e9-4</h3>
+				<h3>CheckRow · #e9-8</h3>
 				<CheckRow
 					status="ok"
 					name="HTTPS снаружи"
@@ -761,14 +961,14 @@
 				/>
 				<CheckRow
 					status="warn"
-					name="DKIM"
-					description="записи нет: письмо уедет в спам"
+					name="Бэкап"
+					description="каталог ещё ни разу не копировали"
 				/>
 			</div>
 		</div>
 		<div class="phones" style="margin-top:20px">
 			<figure>
-				<figcaption>#e9-1 — DataTable, QuotaRequestRow</figcaption>
+				<figcaption>#e9-5 — DataTable, QuotaRequestRow</figcaption>
 				<AdminWideLayout active="Хранилище" server="Дом Ани" height="400px">
 					<AdminSection title="Хранилище">
 						<DataTable>
@@ -807,7 +1007,7 @@
 				</AdminWideLayout>
 			</figure>
 			<figure>
-				<figcaption>#e9-5 — CodeBlock</figcaption>
+				<figcaption>#e9-9 — CodeBlock</figcaption>
 				<PhoneFrame shell wide height="200px">
 					<CodeBlock>
 						proxy_set_header X-Forwarded-For $remote_addr;<br />

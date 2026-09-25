@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd admin API
-  version: 0.5.0
+  version: 0.6.0
   description: Admin routes (Bearer admin session). Participant routes are in openapi-participant.yaml.
 
 servers:
@@ -34,16 +34,24 @@ paths:
         "200":
           description: OK
 
+  /admin/bootstrap/smtp-test:
+    post:
+      summary: Probe SMTP with unsaved settings during first-run bootstrap
+      security: []
+      responses:
+        "200":
+          description: OK
+
   /admin/storage:
     get:
       summary: Instance storage usage and quota
       responses:
         "200":
-          description: used_bytes, quota_bytes, circles[]
+          description: used_bytes, quota_bytes (effective), storage_quota_bytes, storage_quota_disk_percent, circles[]
 
   /admin/storage/quota:
     put:
-      summary: Set instance storage quota
+      summary: Set instance storage quota (absolute bytes or disk percent, not both)
       responses:
         "200":
           description: OK
@@ -82,12 +90,19 @@ paths:
 
   /admin/access:
     get:
-      summary: Instance name and registration mode
+      summary: Instance name, public URL and registration mode
       responses:
         "200":
           description: Access settings
     put:
-      summary: Update instance name and/or registration mode
+      summary: Update instance name, public URL and/or registration mode
+      responses:
+        "200":
+          description: OK
+
+  /admin/password:
+    put:
+      summary: Change admin panel password
       responses:
         "200":
           description: OK
@@ -230,13 +245,6 @@ paths:
         "200":
           description: checks[]
 
-  /admin/routine:
-    post:
-      summary: Run daily maintenance routine
-      responses:
-        "200":
-          description: Cleanup counts
-
   /admin/proxy/{kind}:
     get:
       summary: Reverse proxy snippet (nginx, caddy, traefik)
@@ -337,6 +345,17 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                days:
+                  type: integer
+                unlimited:
+                  type: boolean
       responses:
         "200":
           description: OK
@@ -350,6 +369,48 @@ paths:
           required: true
           schema:
             type: string
+      responses:
+        "200":
+          description: OK
+
+  /admin/pay/accounts:
+    get:
+      summary: Accounts with subscription status for admin table
+      responses:
+        "200":
+          description: accounts[]
+
+  /admin/pay/accounts/{id}:
+    get:
+      summary: Account email and subscription for grant screen
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: account
+    put:
+      summary: Grant or extend subscription without a pay request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                days:
+                  type: integer
+                unlimited:
+                  type: boolean
       responses:
         "200":
           description: OK

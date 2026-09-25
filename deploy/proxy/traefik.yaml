@@ -1,12 +1,29 @@
 # Wynd reverse proxy snippet for Traefik (dynamic config).
 # Point a router at service wynd and attach middlewares as needed.
+#
+# Client IP: Traefik sets X-Forwarded-For on the backend (same role as nginx
+# proxy_set_header X-Forwarded-For). forwardedHeaders is entrypoint static
+# config, not http.middlewares — do not paste it here.
+# Optional static (traefik.yml):
+# entryPoints:
+#   websecure:
+#     forwardedHeaders:
+#       insecure: true
 
 http:
+  serversTransports:
+    wynd-transport:
+      forwardingTimeouts:
+        responseHeaderTimeout: 300s
   services:
     wynd:
       loadBalancer:
         servers:
           - url: "http://127.0.0.1:7676"
+        passHostHeader: true
+        serversTransport: wynd-transport
+        responseForwarding:
+          flushInterval: 100ms
   middlewares:
     wynd-headers:
       headers:

@@ -291,11 +291,20 @@ export const BUTTON_LAYOUT_SPECS = [
 	{ class: 'inp', props: ['padding'] },
 	{ class: 'one', props: ['padding'], selectorIncludes: '.rx' },
 	{ class: 'add', props: ['padding'], selectorIncludes: '.rx' },
-	{ class: 'di', props: ['padding'], selectorIncludes: '.danger' }
+	{ class: 'di', props: ['padding'], selectorIncludes: '.danger' },
+	{ class: 'pic', props: ['width', 'border', 'background-color'] },
+	{ class: 'scrim', props: ['position', 'background'] },
+	{ class: 'pay-banner-main', props: ['padding', 'border', 'background', 'display', 'width'] },
+	{ class: 'pay-reminder', props: ['padding', 'border', 'background', 'display', 'width'] },
+	{ class: 'cell', props: ['padding', 'border', 'background', 'display', 'width'] },
+	{ class: 'thumb', props: ['width', 'height', 'border', 'background'], selectorIncludes: '.thumbs' },
+	{ class: 'thumb-body', props: ['width', 'height', 'border', 'padding'], selectorIncludes: '.thumbs' },
+	{ class: 'map-sheet', props: ['padding', 'border', 'background', 'display', 'width'] },
+	{ class: 'fab-menu-item', props: ['padding', 'border', 'background'] }
 ];
 
 /** Классы TextButton / compose — padding:0 намеренно, не требуют зеркала .класс. */
-export const BUTTON_TEXT_CLASSES = new Set(['act', 't', 'rt', 'under', 'done']);
+export const BUTTON_TEXT_CLASSES = new Set(['act', 't', 'rt', 'under', 'done', 'sq', 'mini', 'preview']);
 
 const BUTTON_LAYOUT_CLASS_NAMES = new Set(BUTTON_LAYOUT_SPECS.map((s) => s.class));
 

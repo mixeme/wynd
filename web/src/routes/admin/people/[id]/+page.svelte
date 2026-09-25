@@ -18,6 +18,7 @@
 		unblockAccount,
 		type AdminAccountDetail
 	} from '$lib/admin/admin';
+	import { subscriptionPeopleLine } from '$lib/admin/pay-subscription';
 
 	const accountId = $derived($page.params.id ?? '');
 
@@ -130,10 +131,21 @@
 			<Hint>{error || 'Человек не найден'}</Hint>
 		{:else}
 			<h4 style="margin-bottom:6px">{acc.email}</h4>
-			<div style="font-size:12.5px;color:var(--muted);margin-bottom:20px">
+			<div style="font-size:12.5px;color:var(--muted);margin-bottom:20px;line-height:1.5">
 				на сервере с {formatSince(acc.created_at)}
 				{#if acc.last_login_at}
 					· последний код {formatLogin(acc.last_login_at)}
+				{/if}
+				{#if acc.subscription_required}
+					<br />
+					{@const payAccountId = acc.id}
+					<TextButton
+						variant="admin"
+						style="font-size:12.5px;color:var(--muted);margin-top:2px;padding:0;text-align:left"
+						onclick={() => goto(`/admin/pay/accounts/${payAccountId}`)}
+					>
+						{subscriptionPeopleLine(acc.subscription_expires_at)}
+					</TextButton>
 				{/if}
 			</div>
 			<div class="cols">
@@ -167,7 +179,7 @@
 				<div>
 					<SectionLabel style="margin:0 0 10px">Вход</SectionLabel>
 					<div style="display:flex;align-items:flex-start;gap:12px">
-						<Switch bind:checked={loginOpen} style="margin-top:2px" />
+						<Switch bind:checked={loginOpen} style="margin-top:2px" label={loginOpen ? 'Вход открыт' : 'Вход закрыт'} />
 						<div>
 							<div style="font-size:13.5px;font-weight:600">
 								{loginOpen ? 'Вход открыт' : 'Вход закрыт'}

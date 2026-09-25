@@ -5,6 +5,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
 	"testing"
 
 	"gitea.mixdep.ru/mix/wynd/internal/api"
@@ -58,12 +63,38 @@ func TestAdminStorageAndCheck(t *testing.T) {
 func TestAdminProxySnippet(t *testing.T) {
 	srv, _, _, _ := setupAPI(t)
 	token := adminToken(t, srv)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/proxy/nginx", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-	rec := httptest.NewRecorder()
-	srv.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("proxy: %d %s", rec.Code, rec.Body.String())
+	for _, kind := range []string{"nginx", "caddy", "traefik"} {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/proxy/"+kind, nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		rec := httptest.NewRecorder()
+		srv.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("proxy %s: %d %s", kind, rec.Code, rec.Body.String())
+		}
+		var body map[string]string
+		if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		snippet := body["snippet"]
+		switch kind {
+		case "nginx", "caddy":
+			if !strings.Contains(snippet, "X-Forwarded-For") {
+				t.Fatalf("%s snippet missing X-Forwarded-For: %s", kind, snippet)
+			}
+		case "traefik":
+			if !strings.Contains(snippet, "X-Forwarded-For") {
+				t.Fatalf("%s snippet missing X-Forwarded-For: %s", kind, snippet)
+			}
+			if !strings.Contains(snippet, "X-Forwarded-Proto") {
+				t.Fatalf("%s snippet missing X-Forwarded-Proto: %s", kind, snippet)
+			}
+			if strings.Contains(snippet, "wynd-forwarded") {
+				t.Fatalf("%s snippet must not put forwardedHeaders under http.middlewares: %s", kind, snippet)
+			}
+		}
+		if !strings.Contains(snippet, "300") {
+			t.Fatalf("%s snippet missing read timeout: %s", kind, snippet)
+		}
 	}
 }
 
@@ -146,6 +177,66 @@ func TestAdminSMTPTestNotConfigured(t *testing.T) {
 	}
 }
 
+func TestAdminChangePassword(t *testing.T) {
+	srv, _, _, _ := setupAPI(t)
+	token := adminToken(t, srv)
+	rec := doJSON(t, srv, http.MethodPut, "/api/v1/admin/password", token, map[string]string{
+		"current": "wrong-pass", "new": "new-admin-pass",
+	})
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("wrong current: %d %s", rec.Code, rec.Body.String())
+	}
+	rec = doJSON(t, srv, http.MethodPut, "/api/v1/admin/password", token, map[string]string{
+		"current": "admin-pass", "new": "new-admin-pass",
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("change: %d %s", rec.Code, rec.Body.String())
+	}
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/admin/login", "", map[string]string{
+		"password": "new-admin-pass",
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("login with new: %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestAdminSetPublicURL(t *testing.T) {
+	srv, _, _, _ := setupAPI(t)
+	token := adminToken(t, srv)
+	rec := doJSON(t, srv, http.MethodPut, "/api/v1/admin/access", token, map[string]any{
+		"public_url": "home.example.org",
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("set url: %d %s", rec.Code, rec.Body.String())
+	}
+	if srv.PublicURL != "https://home.example.org" {
+		t.Fatalf("public url: %s", srv.PublicURL)
+	}
+	if srv.Loopback {
+		t.Fatal("expected public instance")
+	}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/instance", nil)
+	rec = httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("instance: %d %s", rec.Code, rec.Body.String())
+	}
+	var inst map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&inst); err != nil {
+		t.Fatal(err)
+	}
+	if inst["loopback"] != false {
+		t.Fatalf("instance loopback after public_url: %v", inst["loopback"])
+	}
+	rec = doJSON(t, srv, http.MethodGet, "/api/v1/admin/access", token, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("get: %d %s", rec.Code, rec.Body.String())
+	}
+	if jsonStr(t, rec, "public_url") != "https://home.example.org" {
+		t.Fatalf("get url: %s", rec.Body.String())
+	}
+}
+
 func TestNotifyPrefsMentionsAlwaysOn(t *testing.T) {
 	srv, caps, _, _ := setupAPI(t)
 	token, _ := registerSession(t, srv, caps, "prefs@example.com")
@@ -164,5 +255,154 @@ func TestNotifyPrefsMentionsAlwaysOn(t *testing.T) {
 	}
 	if res["mentions"] != true {
 		t.Fatalf("mentions must stay on: %v", res["mentions"])
+	}
+}
+
+func TestBootstrapSMTPTest(t *testing.T) {
+	srv, _, _, _ := setupFreshAPI(t)
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/admin/bootstrap/smtp-test", "", map[string]any{
+		"token": "wrong", "host": "127.0.0.1",
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("wrong token: %d %s", rec.Code, rec.Body.String())
+	}
+
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/admin/bootstrap/smtp-test", "", map[string]any{
+		"token": "bootstrap",
+	})
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "smtp_not_configured") {
+		t.Fatalf("empty host: %d %s", rec.Code, rec.Body.String())
+	}
+
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/admin/bootstrap/smtp-test", "", map[string]any{
+		"token": "bootstrap", "host": "127.0.0.1", "port": 1,
+	})
+	if rec.Code != http.StatusBadGateway || !strings.Contains(rec.Body.String(), "smtp_failed") {
+		t.Fatalf("dial fail: %d %s", rec.Code, rec.Body.String())
+	}
+
+	done, _, _, _ := setupAPI(t)
+	rec = doJSON(t, done, http.MethodPost, "/api/v1/admin/bootstrap/smtp-test", "", map[string]any{
+		"token": "bootstrap", "host": "127.0.0.1",
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("already bootstrapped: %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestBootstrapLoopbackWithoutMail(t *testing.T) {
+	srv, _, _, _ := setupFreshAPI(t)
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/admin/bootstrap", "", map[string]any{
+		"token": "bootstrap", "password": "admin-pass",
+		"from": "wynd@example.com", "smtp_password": "x",
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("bootstrap: %d %s", rec.Code, rec.Body.String())
+	}
+	token := adminToken(t, srv)
+	rec = doGET(t, srv, "/api/v1/admin/smtp", token)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("smtp: %d %s", rec.Code, rec.Body.String())
+	}
+	var smtp map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&smtp); err != nil {
+		t.Fatal(err)
+	}
+	if smtp["configured"] != false {
+		t.Fatalf("smtp should stay unset: %v", smtp)
+	}
+}
+
+// Инвариант: до проверки токена установка не трогает ничего. Анонимный вызов
+// с чужим релеем и чужим public_url на работающем инстансе не должен ни
+// сохранить SMTP (перехват кодов входа), ни переписать config.json.
+func TestBootstrapRejectedLeavesSMTPAndPublicURLUntouched(t *testing.T) {
+	srv, _, _, _ := setupAPI(t)
+	publicBefore := srv.PublicURL
+	rec := postJSON(t, srv, "/api/v1/admin/bootstrap", "", map[string]any{
+		"token": "WRONG", "password": "whatever-pass",
+		"public_url": "https://evil.example",
+		"host":       "127.0.0.1", "port": 1,
+		"username": "u", "smtp_password": "p", "from": "attacker@evil.example",
+	}, map[string]string{"X-Forwarded-For": "203.0.113.90"})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("wrong token: %d %s", rec.Code, rec.Body.String())
+	}
+
+	cfg, err := srv.Mail.LoadConfig(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Host != "" || cfg.From != "" {
+		t.Fatalf("smtp relay overwritten: %+v", cfg)
+	}
+	token := adminToken(t, srv)
+	smtpRec := doGET(t, srv, "/api/v1/admin/smtp", token)
+	if smtpRec.Code != http.StatusOK {
+		t.Fatalf("smtp: %d %s", smtpRec.Code, smtpRec.Body.String())
+	}
+	var smtp map[string]any
+	if err := json.NewDecoder(smtpRec.Body).Decode(&smtp); err != nil {
+		t.Fatal(err)
+	}
+	if smtp["configured"] != false {
+		t.Fatalf("smtp must stay unset: %v", smtp)
+	}
+	if _, err := os.Stat(filepath.Join(srv.DataDir, "config.json")); !os.IsNotExist(err) {
+		data, _ := os.ReadFile(filepath.Join(srv.DataDir, "config.json"))
+		t.Fatalf("config.json written by rejected bootstrap: %s (%v)", data, err)
+	}
+	if srv.PublicURL != publicBefore {
+		t.Fatalf("public_url changed: %q want %q", srv.PublicURL, publicBefore)
+	}
+}
+
+// Инвариант: флаг bootstrapped ставится одним UPDATE, поэтому из двух
+// одновременных установок завершается ровно одна.
+func TestBootstrapConcurrentOnlyOneSucceeds(t *testing.T) {
+	srv, _, _, _ := setupFreshAPI(t)
+	const n = 2
+	codes := make([]int, n)
+	var wg sync.WaitGroup
+	start := make(chan struct{})
+	for i := range n {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			body, _ := json.Marshal(map[string]any{
+				"token": "bootstrap", "instance_name": "Дом " + strconv.Itoa(i),
+				"password": "admin-pass",
+			})
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/bootstrap", bytes.NewReader(body))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("X-Forwarded-For", "203.0.113."+strconv.Itoa(100+i))
+			rec := httptest.NewRecorder()
+			<-start
+			srv.ServeHTTP(rec, req)
+			codes[i] = rec.Code
+		}()
+	}
+	close(start)
+	wg.Wait()
+
+	ok := 0
+	for _, c := range codes {
+		if c == http.StatusOK {
+			ok++
+		}
+	}
+	if ok != 1 {
+		t.Fatalf("exactly one bootstrap must win: %v", codes)
+	}
+}
+
+func TestBootstrapPublicURLRequiresMail(t *testing.T) {
+	srv, _, _, _ := setupFreshAPI(t)
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/admin/bootstrap", "", map[string]any{
+		"token": "bootstrap", "password": "admin-pass",
+		"public_url": "home.example.org",
+	})
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "smtp_not_configured") {
+		t.Fatalf("public without smtp: %d %s", rec.Code, rec.Body.String())
 	}
 }

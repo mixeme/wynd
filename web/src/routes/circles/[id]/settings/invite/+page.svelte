@@ -9,20 +9,13 @@
 	import FieldDisplay from '$ui/forms/FieldDisplay.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Label from '$ui/forms/Label.svelte';
-	import SettingsRow from '$ui/data/SettingsRow.svelte';
-	import TextButton from '$ui/forms/TextButton.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import {
-		inviteRegistrySubtitle,
-		inviteRegistryTitle
-	} from '$lib/circles/invite-registry';
-	import {
 		createCircleInvite,
-		fetchCircleInvites,
 		fetchCircleSettings,
-		revokeCircleInvite,
-		type CircleInvite
+		fetchInviteCandidates,
+		revokeCircleInvite
 	} from '$lib/circles/settings';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 
@@ -51,14 +44,19 @@
 	let ttlSec = $state(259200);
 	let inviteUrl = $state('');
 	let qrSvg = $state('');
-	let liveInvites = $state<CircleInvite[]>([]);
 	let error = $state('');
 	let loading = $state(false);
 	let copied = $state(false);
 	let shared = $state(false);
-	let copiedInviteId = $state('');
 	let currentInviteId = $state('');
 	let creating = false;
+	let showFromCircles = $state(false);
+	let multiInvitesAllowed = $state(false);
+
+	function goFromCircles() {
+		const q = fromCreate ? '?from=create' : '';
+		goto(`/circles/${circle.circleId}/settings/invite/from${q}`);
+	}
 
 	function inviteUrlFor(token: string): string {
 		const base = typeof window !== 'undefined' ? window.location.origin : '';
@@ -71,10 +69,6 @@
 			return;
 		}
 		qrSvg = await QRCode.toString(url, { type: 'svg', margin: 0, width: 142 });
-	}
-
-	async function loadLiveInvites() {
-		liveInvites = await fetchCircleInvites(circle.origin, circle.circleId);
 	}
 
 	async function createLink() {
@@ -94,15 +88,15 @@
 					/* already used or revoked */
 				}
 			}
+			const effectiveKind = multiInvitesAllowed ? kind : 'single';
 			const inv = await createCircleInvite(circle.origin, circle.circleId, {
-				kind,
+				kind: effectiveKind,
 				ttl_sec: ttlSec,
-				max_uses: kind === 'single' ? 1 : maxUses
+				max_uses: effectiveKind === 'single' ? 1 : maxUses
 			});
 			currentInviteId = inv.id;
 			inviteUrl = inviteUrlFor(inv.token);
 			await renderQr(inviteUrl);
-			await loadLiveInvites();
 		} catch (err) {
 			error = authErrorHint(err);
 		} finally {
@@ -116,20 +110,6 @@
 		await navigator.clipboard.writeText(inviteUrl);
 		copied = true;
 		shared = false;
-	}
-
-	async function copyInvite(inv: CircleInvite) {
-		await navigator.clipboard.writeText(inviteUrlFor(inv.token));
-		copiedInviteId = inv.id;
-	}
-
-	async function revokeInvite(inv: CircleInvite) {
-		try {
-			await revokeCircleInvite(circle.origin, circle.circleId, inv.id);
-			await loadLiveInvites();
-		} catch (err) {
-			error = authErrorHint(err);
-		}
 	}
 
 	async function shareLink() {
@@ -150,8 +130,9 @@
 	onMount(async () => {
 		try {
 			const settings = await fetchCircleSettings(circle.origin, circle.circleId);
-			kind = settings.invite_kind_default ?? 'single';
-			await loadLiveInvites();
+			multiInvitesAllowed = settings.invite_kind_default === 'multi';
+			const groups = await fetchInviteCandidates(circle.origin, circle.circleId);
+			showFromCircles = groups.some((g) => g.members.length > 0);
 		} catch {
 			/* defaults */
 		}
@@ -165,10 +146,15 @@
 	title="Пригласить в {circle.name}"
 	onback={goBack}
 >
+	{#if showFromCircles}
+		<Button variant="ghost" style="margin-top:12px" onclick={goFromCircles}>
+			Позвать из других кругов
+		</Button>
+	{/if}
 	{#if qrSvg}
 		<div class="qr" style="margin:16px auto 0;width:142px">{@html qrSvg}</div>
 	{/if}
-	<Hint style="margin:16px;text-align:center">Покажите код или отправьте ссылку</Hint>
+	<Hint style="margin:16px;text-align:center">Кто ещё не на сервере — код или ссылка</Hint>
 	{#if inviteUrl}
 		<FieldDisplay mono value={inviteUrl} style="margin-top:12px;font-size:12.5px;overflow:hidden" />
 		<div class="rowin" style="margin-top:12px">
@@ -181,27 +167,29 @@
 		</div>
 	{/if}
 	<Label style="margin-top:22px">Ссылка</Label>
-	<ChipGroup>
-		<Chip
-			selected={kind === 'single'}
-			onclick={() => {
-				kind = 'single';
-				void createLink();
-			}}
-		>
-			Одноразовая
-		</Chip>
-		<Chip
-			selected={kind === 'multi'}
-			onclick={() => {
-				kind = 'multi';
-				void createLink();
-			}}
-		>
-			Многоразовая
-		</Chip>
-	</ChipGroup>
-	{#if kind === 'multi'}
+	{#if multiInvitesAllowed}
+		<ChipGroup>
+			<Chip
+				selected={kind === 'single'}
+				onclick={() => {
+					kind = 'single';
+					void createLink();
+				}}
+			>
+				Одноразовая
+			</Chip>
+			<Chip
+				selected={kind === 'multi'}
+				onclick={() => {
+					kind = 'multi';
+					void createLink();
+				}}
+			>
+				Многоразовая
+			</Chip>
+		</ChipGroup>
+	{/if}
+	{#if multiInvitesAllowed && kind === 'multi'}
 		<ChipGroup style="margin-top:8px">
 			{#each MAX_USES_OPTIONS as uses (uses)}
 				<Chip
@@ -229,29 +217,16 @@
 			</Chip>
 		{/each}
 	</ChipGroup>
-	<Hint
-		>Ссылка несёт адрес сервера и токен: тому, кого вы зовёте, не придётся ничего вводить. Многоразовая
-		обязательно имеет лимит — по ней на сервер входят новые люди.</Hint
-	>
-	{#if liveInvites.length > 0}
-		<Label style="margin-top:16px">Живые</Label>
-		{#each liveInvites as inv (inv.id)}
-			<SettingsRow
-				title={inviteRegistryTitle(inv)}
-				subtitle={inviteRegistrySubtitle(inv)}
-				chevron={false}
-				style="padding-top:2px"
-			>
-				{#snippet control()}
-					<span style="display:flex;gap:12px;flex-shrink:0">
-						<TextButton onclick={() => void copyInvite(inv)}>
-							{copiedInviteId === inv.id ? 'скопировано' : 'скопировать'}
-						</TextButton>
-						<TextButton onclick={() => void revokeInvite(inv)}>отозвать</TextButton>
-					</span>
-				{/snippet}
-			</SettingsRow>
-		{/each}
+	{#if multiInvitesAllowed}
+		<Hint
+			>Ссылка несёт адрес сервера и токен: тому, кого вы зовёте, не придётся ничего вводить.
+			Многоразовая обязательно имеет лимит — по ней на сервер входят новые люди.</Hint
+		>
+	{:else}
+		<Hint
+			>В настройках круга стоят только одноразовые — чипов «Одноразовая / Многоразовая» нет, лимита 5 /
+			10 / 25 тоже: выбирать не из чего.</Hint
+		>
 	{/if}
 	{#if fromCreate}
 		<Button variant="ghost" onclick={goCircle}>Сначала в круг, позову потом</Button>

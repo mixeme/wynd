@@ -17,6 +17,7 @@
 		height,
 		class: className = '',
 		title,
+		subtitle,
 		identity,
 		avatar,
 		avatarSrc,
@@ -29,8 +30,11 @@
 		circleId: circleIdProp,
 		onback,
 		onsearch,
+		searchPlaceholder,
+		searchQuery = $bindable(''),
 		onCommentSend,
 		onCommentCompose,
+		identitySettingsLink = true,
 		children
 	}: {
 		color?: CircleColor;
@@ -39,6 +43,7 @@
 		height?: string;
 		class?: string;
 		title: string;
+		subtitle?: string;
 		identity?: string;
 		avatar?: string;
 		avatarSrc?: string;
@@ -51,8 +56,11 @@
 		circleId?: string;
 		onback?: () => void;
 		onsearch?: () => void;
+		searchPlaceholder?: string;
+		searchQuery?: string;
 		onCommentSend?: () => void;
 		onCommentCompose?: () => void;
+		identitySettingsLink?: boolean;
 		children: Snippet;
 	} = $props();
 
@@ -63,7 +71,21 @@
 	{#if !app}
 		<StatusBar />
 	{/if}
-	<CircleBar {title} {identity} {avatar} {avatarSrc} {tabs} {circleId} {onback} {onsearch} bind:active />
+	<CircleBar
+		{title}
+		{subtitle}
+		{identity}
+		{avatar}
+		{avatarSrc}
+		{tabs}
+		{circleId}
+		{onback}
+		{onsearch}
+		{searchPlaceholder}
+		bind:searchQuery
+		bind:active
+		{identitySettingsLink}
+	/>
 	<div class="circle-body">
 		{@render children()}
 	</div>

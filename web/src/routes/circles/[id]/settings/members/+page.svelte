@@ -21,6 +21,7 @@
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { getSession } from '$lib/idb/db';
 	import { CIRCLE_COLOR_ORDER, CIRCLE_COLORS } from '$lib/theme/colors';
+	import { toAccusativeTitle, toDativeName } from '$lib/format/names';
 	import { formatEntryDate } from '$lib/format/time';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
@@ -218,7 +219,7 @@
 {#if transferTarget}
 	<OverlayLayout variant="dialog" ondismiss={closeTransfer}>
 		<div style="font-size:17px;font-weight:600;margin-bottom:10px">
-			Передать «{circle.name}» участнику «{transferTarget.name}»?
+			Передать «{toAccusativeTitle(circle.name)}» {toDativeName(transferTarget.name)}?
 		</div>
 		<Hint
 			>{transferTarget.name} станет владельцем. Вы останетесь в круге и сможете писать, но

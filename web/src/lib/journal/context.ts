@@ -17,5 +17,6 @@ export interface CircleContext {
 	editWindowSec: number | null | undefined;
 	lastReadSeq: number;
 	archiveCycle?: ArchiveCycle;
+	canWrite: boolean;
 	refresh: () => Promise<void>;
 }

@@ -127,6 +127,57 @@ func (c *Chronicle) DeletePostMedia(ctx context.Context, postID string) error {
 	return err
 }
 
+func (c *Chronicle) deletePostMediaInTx(ctx context.Context, tx *sql.Tx, postID string) error {
+	_, err := tx.ExecContext(ctx, `DELETE FROM post_media WHERE post_id = ?`, postID)
+	return err
+}
+
+func (c *Chronicle) postMediaBlobIDsInTx(ctx context.Context, tx *sql.Tx, postID string) ([]string, error) {
+	rows, err := tx.QueryContext(ctx, `SELECT blob_id FROM post_media WHERE post_id = ?`, postID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+// ReplacePostMediaInTx replaces all media on a post. Returns blob ids removed from the post.
+func (c *Chronicle) ReplacePostMediaInTx(ctx context.Context, tx *sql.Tx, circleID, postID, entryDate string, items []MediaInput) (removed []string, err error) {
+	oldIDs, err := c.postMediaBlobIDsInTx(ctx, tx, postID)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.deletePostMediaInTx(ctx, tx, postID); err != nil {
+		return nil, err
+	}
+	if len(items) > 0 {
+		if err := c.attachMedia(ctx, tx, postID, items); err != nil {
+			return nil, err
+		}
+	}
+	newSet := make(map[string]struct{}, len(items))
+	for _, item := range items {
+		newSet[item.BlobID] = struct{}{}
+	}
+	for _, id := range oldIDs {
+		if _, ok := newSet[id]; !ok {
+			removed = append(removed, id)
+			if err := c.reconcileDayCoverAfterBlobRemovedFromPost(ctx, tx, circleID, entryDate, postID, id); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return removed, nil
+}
+
 // BlobOnPost checks blob belongs to post and is a visual medium (not attachment).
 func (c *Chronicle) BlobOnPost(ctx context.Context, postID, blobID string) (bool, error) {
 	var kind string
@@ -236,12 +287,8 @@ func (c *Chronicle) SetPostCover(ctx context.Context, circleID, accountID, postI
 	if post.Deleted {
 		return ErrInvalid
 	}
-	mem, err := c.membership(ctx, c.db, circleID, accountID)
-	if err != nil {
+	if _, err := c.requireAuthor(ctx, c.db, circleID, accountID, post.IdentityID, now); err != nil {
 		return err
-	}
-	if mem.IdentityID != post.IdentityID {
-		return ErrForbidden
 	}
 	if !post.EditWindow.CanEdit(post.CreatedAt, now) {
 		return ErrForbidden

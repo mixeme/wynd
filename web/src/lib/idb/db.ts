@@ -9,6 +9,8 @@ export interface SessionRecord {
 	email: string;
 	token: string;
 	account_id: string;
+	/** Когда учётка сохранена на этом origin (логин / код). Старые записи без поля. */
+	signed_in_at?: string;
 }
 
 export interface AdminSessionRecord {
@@ -49,6 +51,8 @@ export interface PostQueuePayload {
 	body: string;
 	entry_date: string;
 	captured_at?: string;
+	geo_lat?: number;
+	geo_lng?: number;
 	media_meta?: QueueMediaMeta[];
 }
 

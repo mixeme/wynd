@@ -32,9 +32,9 @@
 - [ ] Экран — следующая задача, не эта
 ```
 
-**Интерактив:** корень кнопки — `<button type="button">`, не `div`/`span` + `role="button"`. `Button.onclick` обязателен; без действия в dev/smoke — `onclick={() => {}}`. Загрузка — prop `loading` (текст `…`, вид `.off`); не `class:off` на экранах. `Chip` без `onclick` — `<span>`, с действием — `<button aria-pressed>`. Навигационные строки (`SettingsRow`, `CircleRow`, `ServerRow`, `SearchResultRow`, `MemberRow` в режиме transfer) несут `onclick` на корне. `CircleRow` в режиме `card` — `div`-карточка: действие и чипы групп под строкой, без вложенных `button`. Ссылки с URL остаются `<a class="under" href>`. Identity в `CircleBar` — `<button type="button" class="idn">` (без `circleId` — `span.idn`), не `IconButton`. Compose: `TextButton` `bar` / `barAction`. Вложенные `<button>` запрещены: меню в `MemberRow` только если строка не кликабельна целиком. `AdminNav` при `links` — `<button type="button">`, не `span` + `role="button"`. Карточки ленты и дней: опциональный `onclick` на корневом `div` (`PostCard` / `DayCard`), без обёртки; карточку не делать `<button>`. `PostCard.onRootClick` игнорирует `button, a, input, textarea, select, label, .rxpick` — чипам реакций `stopPropagation` не нужен; альбом и прочие не-кнопки по-прежнему останавливают всплытие сами.
+**Интерактив:** корень кнопки — `<button type="button">`, не `div`/`span` + `role="button"`. `Button.onclick` обязателен; без действия в dev/smoke — `onclick={() => {}}`. Загрузка — prop `loading` (текст `…`, вид `.off`); не `class:off` на экранах. `Chip` без `onclick` — `<span>`, с действием — `<button aria-pressed>`. Навигационные строки (`SettingsRow`, `CircleRow`, `ServerRow`, `SearchResultRow`, `MemberRow` в режиме transfer) несут `onclick` на корне. `CircleRow` в режиме `card` — `div`-карточка: действие и чипы групп под строкой, без вложенных `button`. Ссылки с URL остаются `<a class="under" href>`. Identity в `CircleBar` — `<button type="button" class="idn">` (без `circleId` — `span.idn`), не `IconButton`. Compose: `TextButton` `bar` / `barAction`. Вложенные `<button>` запрещены: меню в `MemberRow` только если строка не кликабельна целиком. `AdminNav` при `links` — `<button type="button">`, не `span` + `role="button"`. Карточки ленты и дней: `PostCard` — корневой `div.post` (вложенные контролы, не `<button>`); клик по телу через action, не `onclick` на разметке. `DayCard` при `onclick` — `<button type="button">`, иначе `div`. `PostCard` action игнорирует `button, a, input, textarea, select, label, .rxpick` — чипам реакций `stopPropagation` не нужен; альбом и прочие не-кнопки по-прежнему останавливают всплытие сами.
 
-**Формы:** ввод — `Input` / `TextArea` / `SearchField`; статика — `FieldDisplay` (бывший `Field`). Админка: `Input admin={true}` и `FieldDisplay admin={true}` (класс `.inp`), не отдельный `AdminInput`. `SearchField` — редактируемый поиск и поля фильтров (тот же виджет: `/search`, поиск в круге, 9.8 почта); `BackBar` свой `.sfield`. `TextArea variant`: `area` \| `field` \| `compose` \| `comment`.
+**Формы:** ввод — `Input` / `TextArea` / `SearchField`; статика — `FieldDisplay` (бывший `Field`). Админка: `Input admin={true}` и `FieldDisplay admin={true}` (класс `.inp`), не отдельный `AdminInput`. `SearchField` — редактируемый поиск и поля фильтров (тот же виджет: `/search`, поиск в круге, 9.3 почта); `BackBar` свой `.sfield`. `TextArea variant`: `area` \| `field` \| `compose` \| `comment`.
 
 ---
 
@@ -45,11 +45,15 @@
 | Layout | CSS | Примеры экранов |
 |--------|-----|-----------------|
 | PlainLayout | `.ph` | e1-1, e1-3 |
-| ShellLayout | `.ph.shell` + при `app` `.shell-body` | e2-1, e2-2, e7-* |
+| ShellLayout | `.ph.shell` + при `app` `.shell-body` | e2-1, e2-3, e7-* |
 | CircleLayout | `.ph.{color}` | e3-*, e4-*, e5-*, e6-* |
-| FormLayout | `.ph.{color\|shell}` | e1-*, e2-3, e2-7, e6-1 |
+| FormLayout | `.ph.{color\|shell}` | e1-3, e1-4, e2-4, e2-7, e6-1 |
 | OverlayLayout | absolute | sheets, dialogs, push; `ondismiss` → Scrim |
 | AdminWideLayout | `.ph.wide.shell` | e9-* |
+
+`FormLayout`: при `circleTitle` — шапка вступления **#e1-3** (`div.cbar`, имя по центру, без `BackBar`); список участников на join (`?members=1`) — `color` + `subtitle` (цветная `.cbar` с назад), не серый `BackBar`. Ветки: `compose`, `circleTitle`, snippet `bar`, `color && subtitle`, иначе `BackBar`.
+
+Сиблинги `.dlg` / `.sheet` / `.scrim` вне `.ph.app` — колонка `--app-max-width` (не `inset:auto` на scrim: сбивает `left:50%`). Лайтбокс `fixed` — весь вьюпорт. `VolumeChart` — шаг 26px или сжатый, пачка по центру; отсечка квоты из `volumeChart.ts`.
 
 ---
 
@@ -61,7 +65,7 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar
 
 ### `forms/`
 
-**Label**, **Input**, **FieldDisplay**, **TextArea**, ScreenTitle, Hint, **Button**, **Chip**, ChipGroup, Switch, ColorSwatches, CodeBox, InviteCard, **SearchField**, DangerZone (опц. `style`), Meter, PeopleStrip, AddPhotoButton, DangerNote, VolumeChart, **IconButton**, **TextButton**
+**Label**, **Input**, **FieldDisplay**, **TextArea**, ScreenTitle, Hint, **Button**, **Chip**, ChipGroup, Switch, ColorSwatches, CodeBox, InviteCard, **RequisitesCard**, **SearchField**, DangerZone (опц. `style`), Meter, PeopleStrip, **MentionPicker**, AddPhotoButton, DangerNote, VolumeChart, **IconButton**, **TextButton**
 
 Интерактивные примитивы (фаза 1–4):
 
@@ -69,16 +73,23 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar
 |-----------|--------|-------------------|-----------|
 | `Button` | `<button class="btn">` | `onclick` | `variant`, `disabled`/`loading` → класс `.off`, текст `…` |
 | `Chip` | `<button class="chip">` или `<span>` | — | с `onclick` — кнопка, `aria-pressed={selected}` |
-| `IconButton` | `<button class="ib">` | `name`, `label`, `onclick` | рендер только при `onclick` |
+| `IconButton` | `<button class="ib">` | `name`, `label`, `onclick` | рендер только при `onclick`; опц. pointer-события (длинное нажатие FAB) |
 | `TextButton` | `<button>` | `onclick` | `variant`: `link` (`.under`), `admin` (`.act` в `.chk`), `adminBox` (`.inp`), `bar` (`.t`), `barAction` (`.rt`/`.rt.on`) |
+| `AddPhotoButton` | `button.addph` | `onclick` | без `previewUrl` — плюс; с `previewUrl` — `.addph.preview`, cover-фон, `aria-label` «сменить фото» (**#e1-3**) |
+
+`CodeBox` — шесть клеток `.codebox`; без `bind:value` — display (`digits` / `active`, каталог). С `bind:value` — прозрачный `input.code-input` поверх (**.code-wrap**), `inputmode="numeric"`, `autocomplete="one-time-code"`, обрезка до `length`; опц. `bind:el`, `autofocus` (**#e1-2**).
+
+`RequisitesCard` — платёжные реквизиты в `div.req` (**#e10-1** / **#e10-2** / **#e10-6** / **#e10-8**): проп `text` или snippet `children`; стили в `ui.css`, не кликабельна.
+
+`MentionPicker` — оболочка `div.men-pick` для списка `@` (**#e4-2**, **#e4-3**): snippet `children` (`MemberRow` с экрана). Базовые стили `.men-pick` в `ui.css`; в полосе комментария — `.comp-wrap .men-pick` (отступы, `max-height`). Фильтрация — в `CommentBar` / compose, не в компоненте.
 
 Формы (фаза 5):
 
 | Компонент | Корень | Поведение |
 |-----------|--------|-----------|
 | `Label` | `<div class="lab">` | подпись поля |
-| `Input` | `<input class="fld">` или `.inp` | `admin`, `active`, `gray`, `bind:value` |
-| `FieldDisplay` | `<div class="fld">` или `.inp` | статика (бывший `Field`); `admin` → `.inp` (9.7 URL инвайта) |
+| `Input` | `<input class="fld">` или `.inp` | `admin`, `active`, `gray`, `bind:value`. `gray` — `.fld.gr` (`--faint`); не для живого ввода, который надо прочитать |
+| `FieldDisplay` | `<div class="fld">` или `.inp` | статика (бывший `Field`); `admin` → `.inp` (9.2 URL инвайта) |
 | `TextArea` | `<textarea class="ta">`, `.fld`, `.compose-text` или `.inp` | `variant`: `area` \| `field` \| `compose` \| `comment`, `bind:value`; `compose` — зеркало + `.men` для `@имя` |
 | `SearchField` | `.sfield` + `<input type="search">` | иконка, `bind:value`; поиск и фильтры |
 | `VolumeChart` | `.chart` + SVG | `volume`, `cutoffLabel`, `bind:cutoffX`, `oncutoff(index)`; жест только при `oncutoff` |
@@ -89,25 +100,35 @@ Guard: `npm run check:ui` — экран = существующие `$ui` + `$li
 
 ### `data/`
 
-SectionLabel, Avatar, EventDivider, CircleRow, PostCard, **ReactionBar**, **CommentPreview**, **ReactionListRow**, **SettingsRow**, MemberRow, SearchGroupHeader, **SearchResultRow**, **ServerRow**, FoldHeader, AttachmentRow, PhotoPlaceholder, PhotoGrid, MonthLabel, DayCard, DayGrid, DayHeader, EntryDateMark, ArchiveBanner
+SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, **ReactionBar**, **CommentPreview**, **CommentRow**, **ReactionListRow**, **SettingsRow**, MemberRow, SearchGroupHeader, **SearchResultRow**, **ServerRow**, FoldHeader, **GroupFoldCard**, AttachmentRow, PhotoPlaceholder, PhotoGrid, **MediaTile**, **MapBadge**, **MapPostSheet**, MonthLabel, DayCard, DayGrid, DayHeader, EntryDateMark, ArchiveBanner, **PayStreetBanner**
 
-Строки с опциональным `onclick`: корень `button.row2` / `button.r` или `div` (`SettingsRow`, `CircleRow`, `ServerRow`, `SearchResultRow`, `MemberRow`). `SettingsRow` с snippet `control` — всегда `div.row2`, справа контрол (например `Switch`); `chevron`/`value` не рендерятся; title без `font-weight:600`. `PostCard` / `DayCard` — `div` с опциональным `onclick`, не `<button>`. `FoldHeader` — `button.fold` при `onclick`, сворачивание через `expanded`. `DayHeader`: `ontitle` / `oncover`. `CircleRow.groupChips` только при `card`.
+`PayStreetBanner` — баннеры оплаты на улочке (`/circles`, кадр **#e10-5**): `variant` `donate` \| `reminder` \| `pending`. Donate — `text`, `onclick` (help), опционально `dismissible` / `ondismiss`. Reminder — `expiresAtLabel`, `reminderDaysLeft`, `onclick` (extend). Pending — `pendingAtLabel`, опционально `expiresAtLabel`; без корневой кнопки. Стили `.pay-banner*` в `ui.css`; кликабельные зоны — `button.pay-banner-main`, `button.pay-reminder`.
 
-Лента (3.1 / 4.5 / 4.10):
+`CommentRow` — строка треда (`div.cmt`, опц. `.q`): аватар, `name`, snippet `time`, snippet `children` (текст / правка); `onedit` / `ondelete` → `.acts` (**#e4-5**–**#e4-7**). Не путать с `CommentPreview` (`button.cm` в ленте).
+
+`FeedDayPromptCard` — служебная карточка в ленте (`div.post.day-prompt`): `title`, snippet текста, `primaryLabel` / `secondaryLabel`, `onprimary` / `onsecondary` (`Button` в `.rowin`). Стили `.day-prompt` и раскладка ленты (`.feed`, `.ptr`, `.empty`, `.feed-end`) — в `ui.css`.
+
+`MapBadge` / `MapPostSheet` — вкладка «Карта» круга: счётчик пинов (`.map-badge`) и нижняя плашка выбранной записи (`button.map-sheet`, thumb + автор + время + текст). Стили в [`map.css`](../../web/src/lib/styles/map.css); сброс кнопки — `button.map-sheet` в `ui.css`.
+
+`MediaTile` — фото/видео в ленте, сетке, альбоме, шапке поста и compose: `variant` `feed` \| `grid` \| `album` \| `headerMini` \| `compose`. `feed` — `div.pic` + `stopPropagation` при `onclick`; `grid` / `album` / `headerMini` / `compose` — `button`. Стили `.cell`, `.thumbs`, `.pic.sq.mini` в `ui.css`; счётчик сетки — `.g3 .cnt`. `Lightbox`: опционально `fixed`, `dotCount` / `dotIndex` / `onDotSelect` (snippet `dots` в приоритете).
+
+Строки с опциональным `onclick`: корень `button.row2` / `button.r` или `div` (`SettingsRow`, `CircleRow`, `ServerRow`, `SearchResultRow`, `MemberRow`). `SettingsRow` с snippet `control` — всегда `div.row2`, справа контрол (например `Switch`); `chevron`/`value` не рендерятся; title без `font-weight:600`. `PostCard` — `div.post`, клик через action; `DayCard` — `<button>` при `onclick`, иначе `div`. `FoldHeader` — `button.fold` при `onclick`, сворачивание через `expanded`. `DayHeader`: `ontitle` / `oncover` (`button.pic` при `oncover`). `CircleRow`: при `card` — оболочка `.circle-row-card`, `actionLabel` / опционально `actionLabel2` под строкой (`circle-row-action`). `GroupFoldCard` — та же оболочка для **группы** на улочке (**#e2-14**): `FoldHeader` + до двух `circle-row-action`; long-press и сворачивание — rest на `FoldHeader`, опционально `foldStyle`.
+
+Лента (3.1 / 4.12 / 4.10):
 
 | Компонент | Корень | Поведение |
 |-----------|--------|-----------|
 | `ReactionBar` | `.rx` + при открытии `.rxpick` | `groups` → `button.one`; `showAdd` → `button.add`; `pickerOpen` → `button.rcho` (`selectedKey` → `.on`); колбэки `onopenList` / `onadd` / `onpick`. Иконка — уже resolved `IconName` (`reactionIconName` живёт в `$lib`, не в `$ui`). Группировка, плюс, `?reactions=` — на маршруте. Ночь: `.ph.dark .rx button.one` подложка `#3A2E29`, иконка `--c`. |
 | `CommentPreview` | `button.cm` | Сосед `PostCard`, не внутри `.post` (слот `comments` у карточки — другое, напр. ошибка очереди). Контент — snippet. |
-| `ReactionListRow` | `div.row2` | Оверлей 4.5: Avatar + имя + Icon. Без `onclick`. Не расширять `MemberRow`: справа знак реакции, не subtitle/меню. |
+| `ReactionListRow` | `div.row2` | Оверлей 4.12: Avatar + имя + Icon. Без `onclick`. Не расширять `MemberRow`: справа знак реакции, не subtitle/меню. |
 
 ### `overlays/`
 
-Fab, CommentBar (`oncompose` — фото и шеврон; пустое поле на таче ведёт на compose, на ПК с мышью только фокус; без `oncompose` — полоса комментария), Scrim, Sheet, Dialog, PushBanner, Lightbox, AvatarCrop (светлые токены на корне `.crop`, не следует `.ph.dark`)
+`Fab` — кружок `.fab` в `.fab-wrap`; опц. `menuOpen` + `items[]` — карточка `.fab-menu` над плюсом (**#e2-11**). `ShellLayout` прокидывает `fabMenuOpen` / `fabMenuItems`; snippet `fab` — только содержимое кружка. Fab, CommentBar (`oncompose` — фото и шеврон; пустое поле на таче ведёт на compose, на ПК с мышью только фокус; без `oncompose` — полоса комментария), Scrim (`button.scrim`), Sheet, Dialog, PushBanner, Lightbox (`.mid` — `role="region"`), AvatarCrop (светлые токены на корне `.crop`, не следует `.ph.dark`)
 
 ### `admin/`
 
-AdminNav (`ADMIN_NAV`: Оплата после «Люди»; кадры 9.1–9.10 без пункта), AdminSection, DataTable, StackBar, CheckRow, StatusIcon, CodeBlock (`lines[]`, `.hi` / `span.cmt`), InlineInput, QuotaRequestRow (`Button` `.btn` / `.btn.gh` на «Дать» / «Отказать», не `.act`)
+AdminNav (`ADMIN_NAV`: Проверка, Общие, Доступ, Люди, Хранилище, Сжатие, Оплата; кадры 9.1–9.10 без «Оплата»), AdminSection, DataTable, StackBar, CheckRow, StatusIcon, CodeBlock (`lines[]`, `.hi` / `span.cmt`), InlineInput, QuotaRequestRow (`Button` `.btn` / `.btn.gh` на «Дать» / «Отказать», не `.act`)
 
 ### Бренд
 

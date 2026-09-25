@@ -233,12 +233,14 @@ func (c *Chronicle) GridSnapshot(ctx context.Context, circleID, accountID string
 
 // MapPin is a geotagged media point for the map view.
 type MapPin struct {
-	PostID    string
-	BlobID    string
-	EntryDate string
-	CreatedAt time.Time
-	GeoLat    float64
-	GeoLng    float64
+	PostID     string
+	BlobID     string
+	EntryDate  string
+	CreatedAt  time.Time
+	GeoLat     float64
+	GeoLng     float64
+	AuthorName string
+	Body       string
 }
 
 // MapSnapshot returns visible geotagged media ordered by post created_at descending.
@@ -247,7 +249,7 @@ func (c *Chronicle) MapSnapshot(ctx context.Context, circleID, accountID string)
 		return nil, err
 	}
 	rows, err := c.db.QueryContext(ctx, fmt.Sprintf(`
-		SELECT p.id, pm.blob_id, p.entry_date, p.created_at, pm.geo_lat, pm.geo_lng
+		SELECT p.id, pm.blob_id, p.entry_date, p.created_at, pm.geo_lat, pm.geo_lng, p.author_name, p.body
 		FROM posts p
 		JOIN post_media pm ON pm.post_id = p.id
 		WHERE p.circle_id = ? AND p.deleted = 0
@@ -264,7 +266,7 @@ func (c *Chronicle) MapSnapshot(ctx context.Context, circleID, accountID string)
 	for rows.Next() {
 		var pin MapPin
 		var created string
-		if err := rows.Scan(&pin.PostID, &pin.BlobID, &pin.EntryDate, &created, &pin.GeoLat, &pin.GeoLng); err != nil {
+		if err := rows.Scan(&pin.PostID, &pin.BlobID, &pin.EntryDate, &created, &pin.GeoLat, &pin.GeoLng, &pin.AuthorName, &pin.Body); err != nil {
 			return nil, err
 		}
 		pin.CreatedAt, _ = parseTime(created)

@@ -124,7 +124,8 @@ export async function persistSession(
 		name: instanceName,
 		email: verify.email,
 		token: verify.token,
-		account_id: verify.account_id
+		account_id: verify.account_id,
+		signed_in_at: new Date().toISOString()
 	};
 	await putSession(session);
 	startSync(session.origin);
@@ -160,10 +161,31 @@ export interface AdminLoginResult {
 	expires_at: string;
 }
 
+export async function probeBootstrapSmtp(input: {
+	token: string;
+	host: string;
+	port?: number;
+	username?: string;
+	smtp_password?: string;
+	from?: string;
+}): Promise<void> {
+	await apiJson('', '/admin/bootstrap/smtp-test', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(input)
+	});
+}
+
 export async function bootstrapAdmin(input: {
 	token: string;
 	instance_name: string;
 	password: string;
+	public_url?: string;
+	host?: string;
+	port?: number;
+	username?: string;
+	smtp_password?: string;
+	from?: string;
 }): Promise<void> {
 	await apiJson('', '/admin/bootstrap', {
 		method: 'POST',
@@ -184,6 +206,12 @@ export async function completeBootstrap(input: {
 	token: string;
 	instance_name: string;
 	password: string;
+	public_url?: string;
+	host?: string;
+	port?: number;
+	username?: string;
+	smtp_password?: string;
+	from?: string;
 }): Promise<void> {
 	await bootstrapAdmin(input);
 	const session = await loginAdmin(input.password);

@@ -8,7 +8,6 @@
 
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import type { CodeLine } from './CodeBlock.svelte';
 
 	let {
 		lines,
@@ -27,7 +26,7 @@
 	{#if lines}
 		{#each lines as line, i (i)}
 			{#if line.hi}<span class="hi">{line.text}</span>{:else}{line.text}{/if}{#if line.cmt}<span
-					class="cmt">{line.cmt}</span
+					class="cmt">  # {line.cmt}</span
 				>{/if}{#if i < lines.length - 1}
 {'\n'}{/if}
 		{/each}

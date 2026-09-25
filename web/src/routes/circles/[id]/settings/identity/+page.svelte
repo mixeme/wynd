@@ -74,10 +74,9 @@
 			await updateIdentity(circle.origin, circle.circleId, { name: trimmed });
 			circle.identityName = trimmed;
 			circle.identityInitial = circleInitial(trimmed);
-			await load();
+			goto(`/circles/${circle.circleId}/settings`);
 		} catch (err) {
 			error = authErrorHint(err);
-		} finally {
 			saving = false;
 		}
 	}
@@ -133,7 +132,7 @@
 <FormLayout
 	app
 	color={circle.color}
-	title="Кто ты в этом круге"
+	title="Кто вы в этом круге"
 	onback={() => goto(`/circles/${circle.circleId}/settings`)}
 >
 	<div style="width:96px;height:96px;margin:22px auto 0;display:grid;place-items:center">

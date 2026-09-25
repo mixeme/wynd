@@ -1,5 +1,5 @@
 import { normalizeOrigin } from '$lib/api/client';
-import { fetchCircles, loadCirclesCached } from '$lib/circles/circles';
+import { fetchCircles, fetchPendingCircleJoins, loadCirclesCached } from '$lib/circles/circles';
 import { listSessions } from '$lib/idb/db';
 
 const LAST_CIRCLE_KEY = 'wynd:last-circle';
@@ -44,6 +44,17 @@ export async function resolveCircleOrigin(circleId: string): Promise<string | nu
 		if (circles.some((c) => c.id === circleId)) {
 			rememberCircleOrigin(circleId, session.origin);
 			return normalizeOrigin(session.origin);
+		}
+	}
+	for (const session of sessions) {
+		try {
+			const pending = await fetchPendingCircleJoins(session.origin);
+			if (pending.includes(circleId)) {
+				rememberCircleOrigin(circleId, session.origin);
+				return normalizeOrigin(session.origin);
+			}
+		} catch {
+			/* origin unreachable */
 		}
 	}
 	return null;

@@ -1,17 +1,25 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { getContext } from 'svelte';
+	import { getContext, onMount } from 'svelte';
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Input from '$ui/forms/Input.svelte';
-	import SearchField from '$ui/forms/SearchField.svelte';
 	import SearchResultRow from '$ui/data/SearchResultRow.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { formatEntryDate, formatPostTime } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
-	import { searchChipsFromParams, searchCircle, searchCircleAuthors, searchHref } from '$lib/journal/search';
+	import { getMediaUrl } from '$lib/media/objectUrl';
+	import {
+		searchChipsFromParams,
+		searchCircle,
+		searchCircleAuthors,
+		searchHref,
+		replaceSearchUrl,
+		searchChipsFromWindow,
+		searchThumbVariant
+	} from '$lib/journal/search';
 	import type { CircleSearchHit } from '$lib/journal/types';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
@@ -19,7 +27,7 @@
 	const initialChips = searchChipsFromParams($page.url.searchParams);
 	let query = $state(initialChips.q);
 	let debounced = $state(initialChips.q);
-	let authorFilter = $state('');
+	let authorFilter = $state(initialChips.author);
 	let filterPhoto = $state(initialChips.hasPhoto);
 	let filterLocation = $state(initialChips.hasLocation);
 	let periodActive = $state(Boolean(initialChips.from || initialChips.to));
@@ -30,6 +38,22 @@
 	let authorNames = $state<string[]>([]);
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	let searchGen = 0;
+	let thumbUrls = $state<Record<string, string>>({});
+	let sourceError = $state('');
+
+	const searchPath = $derived($page.url.pathname);
+
+	function applyUrlChips() {
+		const chips = searchChipsFromWindow();
+		query = chips.q;
+		debounced = chips.q;
+		filterPhoto = chips.hasPhoto;
+		filterLocation = chips.hasLocation;
+		periodFrom = chips.from;
+		periodTo = chips.to;
+		periodActive = Boolean(chips.from || chips.to);
+		authorFilter = chips.author;
+	}
 
 	const stats = $derived.by(() => {
 		const posts = hits.filter((h) => h.kind === 'post').length;
@@ -52,6 +76,24 @@
 	});
 
 	$effect(() => {
+		replaceSearchUrl(searchPath, {
+			q: debounced,
+			periodActive,
+			periodFrom,
+			periodTo,
+			hasPhoto: filterPhoto,
+			hasLocation: filterLocation,
+			author: authorFilter
+		});
+	});
+
+	onMount(() => {
+		const onPop = () => applyUrlChips();
+		window.addEventListener('popstate', onPop);
+		return () => window.removeEventListener('popstate', onPop);
+	});
+
+	$effect(() => {
 		const next = query.trim();
 		clearTimeout(timer);
 		timer = setTimeout(() => {
@@ -65,6 +107,8 @@
 			hits = [];
 			authorFilter = '';
 			authorNames = [];
+			thumbUrls = {};
+			sourceError = '';
 			return;
 		}
 		const from = periodActive && periodFrom ? periodFrom : undefined;
@@ -75,6 +119,7 @@
 		const gen = ++searchGen;
 		void (async () => {
 			loading = true;
+			sourceError = '';
 			try {
 				const chipFilters = { from, to, hasPhoto: photo, hasLocation: location };
 				const [next, authors] = await Promise.all([
@@ -87,6 +132,29 @@
 				if (gen !== searchGen) return;
 				hits = next;
 				authorNames = authors;
+				const urls: Record<string, string> = {};
+				await Promise.all(
+					next.map(async (hit) => {
+						if (!hit.thumb_blob_id) return;
+						const key = hit.post_id;
+						try {
+							urls[key] = await getMediaUrl(circle.origin, hit.thumb_blob_id);
+						} catch {
+							/* placeholder tint */
+						}
+					})
+				);
+				if (gen !== searchGen) return;
+				thumbUrls = urls;
+				if (authorFilter && !authors.includes(authorFilter)) {
+					authorFilter = '';
+				}
+			} catch {
+				if (gen !== searchGen) return;
+				sourceError = 'Не удалось выполнить поиск.';
+				hits = [];
+				authorNames = [];
+				thumbUrls = {};
 			} finally {
 				if (gen === searchGen) loading = false;
 			}
@@ -154,14 +222,11 @@
 	title={circle.name}
 	tabs={false}
 	commentBar={false}
+	searchPlaceholder="Искать в круге"
+	bind:searchQuery={query}
 	onback={goBack}
 >
-	<SearchField
-		style="margin:12px 16px 0"
-		placeholder="Искать в круге"
-		bind:value={query}
-	/>
-	<ChipGroup style="margin-top:12px">
+	<ChipGroup style="margin-top:14px">
 		<Chip selected>Этот круг</Chip>
 		<Chip onclick={openGlobalSearch}>Все круги</Chip>
 	</ChipGroup>
@@ -171,6 +236,11 @@
 		<Chip selected={filterLocation} onclick={() => (filterLocation = !filterLocation)}
 			>С местом</Chip
 		>
+		{#if authorNames.length > 1}
+			{#each authorNames as name (name)}
+				<Chip selected={authorFilter === name} onclick={() => toggleAuthor(name)}>{name}</Chip>
+			{/each}
+		{/if}
 	</ChipGroup>
 	{#if periodActive}
 		<div style="display:flex;gap:8px;margin:8px 16px 0">
@@ -178,14 +248,9 @@
 			<Input type="date" bind:value={periodTo} active placeholder="по" style="flex:1" />
 		</div>
 	{/if}
-	{#if authorNames.length}
-		<ChipGroup style="margin-top:14px">
-			{#each authorNames as name (name)}
-				<Chip selected={authorFilter === name} onclick={() => toggleAuthor(name)}>{name}</Chip>
-			{/each}
-		</ChipGroup>
-	{/if}
-	{#if loading}
+	{#if sourceError}
+		<Hint style="margin-top:16px">{sourceError}</Hint>
+	{:else if loading}
 		<Hint style="margin-top:16px">Ищем…</Hint>
 	{:else if debounced && !hits.length}
 		<Hint style="margin-top:16px">Ничего не найдено</Hint>
@@ -193,7 +258,14 @@
 		<Hint>{stats}</Hint>
 	{/if}
 	{#each hits as hit, i (`${hit.kind}-${hit.post_id}-${hit.comment_id ?? hit.entry_date}-${i}`)}
-		<SearchResultRow author={rowAuthor(hit)} time={rowTime(hit)} onclick={() => openHit(hit)}>
+		<SearchResultRow
+			author={rowAuthor(hit)}
+			time={rowTime(hit)}
+			thumb={Boolean(hit.thumb_blob_id)}
+			thumbUrl={thumbUrls[hit.post_id]}
+			thumbVariant={searchThumbVariant(hit.post_id)}
+			onclick={() => openHit(hit)}
+		>
 			{#snippet preview()}
 				{#if hit.kind === 'day'}
 					<span style="color:var(--faint)">день</span>

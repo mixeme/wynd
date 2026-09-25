@@ -27,9 +27,10 @@ type mediaBody struct {
 }
 
 type editPostBody struct {
-	Body        string  `json:"body"`
-	EntryDate   string  `json:"entry_date"`
-	CoverBlobID *string `json:"cover_blob_id,omitempty"`
+	Body        string       `json:"body"`
+	EntryDate   string       `json:"entry_date"`
+	CoverBlobID *string      `json:"cover_blob_id,omitempty"`
+	Media       *[]mediaBody `json:"media,omitempty"`
 }
 
 type textBody struct {
@@ -130,6 +131,23 @@ func (s *Server) handleEditPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := time.Now().UTC()
+	if body.Media != nil {
+		media, err := parseMediaInput(*body.Media)
+		if err != nil {
+			writeError(w, chronicle.ErrInvalid)
+			return
+		}
+		if strings.TrimSpace(body.Body) == "" && len(media) == 0 {
+			writeError(w, chronicle.ErrInvalid)
+			return
+		}
+		if err := s.editPostReplaceMedia(r.Context(), circleID, sess.AccountID, postID, body.Body, body.EntryDate, media, now); err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		return
+	}
 	err := s.Chronicle.EditPost(r.Context(), circleID, sess.AccountID, postID, body.Body, body.EntryDate, now)
 	if err != nil {
 		writeDomainError(w, err)
@@ -201,7 +219,8 @@ func (s *Server) handleCreateComment(w http.ResponseWriter, r *http.Request) {
 	if ids, err := s.Chronicle.MentionedAccountIDs(r.Context(), circleID, body.Body); err == nil {
 		s.notifyAccounts(circleID, sess.AccountID, "mention", ids)
 	}
-	writeJSON(w, http.StatusCreated, commentResponse(c))
+	avatars, _ := s.Chronicle.IdentityAvatarBlobIDs(r.Context(), []string{c.IdentityID})
+	writeJSON(w, http.StatusCreated, commentResponse(c, avatars))
 }
 
 func (s *Server) handleEditComment(w http.ResponseWriter, r *http.Request) {
@@ -451,6 +470,68 @@ func (s *Server) createPostWithMedia(ctx context.Context, circleID, accountID st
 	return post, nil
 }
 
+func (s *Server) editPostReplaceMedia(ctx context.Context, circleID, accountID, postID, body, entryDate string, media []chronicle.MediaInput, now time.Time) error {
+	oldIDs, err := s.Chronicle.PostMediaBlobIDs(ctx, postID)
+	if err != nil {
+		return err
+	}
+	oldSet := make(map[string]struct{}, len(oldIDs))
+	for _, id := range oldIDs {
+		oldSet[id] = struct{}{}
+	}
+	var addedIDs []string
+	for _, m := range media {
+		if _, ok := oldSet[m.BlobID]; !ok {
+			addedIDs = append(addedIDs, m.BlobID)
+		}
+	}
+	if len(addedIDs) > 0 {
+		if err := s.Blobs.ValidateOwnedComplete(ctx, accountID, addedIDs); err != nil {
+			return err
+		}
+		total, err := s.Blobs.TotalBytesForBlobs(ctx, addedIDs)
+		if err != nil {
+			return err
+		}
+		if err := s.Blobs.CheckMediaQuota(ctx, circleID, total); err != nil {
+			return err
+		}
+	}
+
+	tx, err := s.Blobs.DB().BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	allowEmpty := len(media) > 0
+	if err := s.Chronicle.EditPostInTx(ctx, tx, circleID, accountID, postID, body, entryDate, now, allowEmpty); err != nil {
+		return err
+	}
+	post, err := s.Chronicle.LoadPostInTx(ctx, tx, postID)
+	if err != nil {
+		return err
+	}
+	removed, err := s.Chronicle.ReplacePostMediaInTx(ctx, tx, circleID, postID, post.EntryDate, media)
+	if err != nil {
+		return err
+	}
+	for _, id := range removed {
+		if err := s.Blobs.RemoveBlobRef(ctx, tx, id, "post", postID); err != nil {
+			return err
+		}
+	}
+	for _, id := range addedIDs {
+		if err := s.Blobs.AddRef(ctx, tx, id, "post", postID); err != nil {
+			return err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return s.Blobs.ReleaseBlobs(ctx, removed)
+}
+
 func (s *Server) rollbackNewPost(ctx context.Context, circleID, accountID, postID string) {
 	blobIDs, err := s.Chronicle.PostMediaBlobIDs(ctx, postID)
 	if err != nil {
@@ -472,11 +553,14 @@ func (s *Server) rollbackNewPost(ctx context.Context, circleID, accountID, postI
 	}
 }
 
-func commentResponse(c chronicle.Comment) map[string]any {
+func commentResponse(c chronicle.Comment, avatars map[string]string) map[string]any {
 	row := map[string]any{
 		"id": c.ID, "post_id": c.PostID, "body": c.Body,
 		"author_name": c.AuthorName, "identity_id": c.IdentityID,
 		"created_at": c.CreatedAt.UTC().Format(time.RFC3339),
+	}
+	if blobID := avatars[c.IdentityID]; blobID != "" {
+		row["author_avatar_blob_id"] = blobID
 	}
 	appendEditPolicy(row, c.EditWindow, c.EditableUntil)
 	return row

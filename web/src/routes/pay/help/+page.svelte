@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
+	import RequisitesCard from '$ui/forms/RequisitesCard.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { fetchPayStatus } from '$lib/pay/pay';
@@ -41,7 +42,7 @@
 			<Hint>{bannerText}</Hint>
 		{/if}
 		<SectionLabel style="margin-top:22px">Куда платить</SectionLabel>
-		<div class="req">{requisites}</div>
+		<RequisitesCard text={requisites} />
 		<Hint centered style="margin-top:22px">
 			Это поддержка, не подписка. Круги от перевода не зависят,<br />и заявку отправлять не нужно.
 		</Hint>
@@ -50,16 +51,3 @@
 		{/if}
 	{/if}
 </FormLayout>
-
-<style>
-	.req {
-		margin: 0 16px;
-		border: 1px solid var(--line);
-		background: var(--card);
-		border-radius: 12px;
-		padding: 12px 14px;
-		white-space: pre-wrap;
-		font-size: 13.5px;
-		line-height: 1.5;
-	}
-</style>

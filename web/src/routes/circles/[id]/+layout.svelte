@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { onMount, setContext } from 'svelte';
-	import { resolveCircleOrigin, rememberLastCircle } from '$lib/circles/origin';
+	import { resolveCircleOrigin, rememberCircleOrigin, rememberLastCircle } from '$lib/circles/origin';
 	import { fetchCircles, loadCirclesCached, ownerNameFromSession } from '$lib/circles/circles';
 	import type { CircleListItem } from '$lib/circles/circles';
 	import {
@@ -17,6 +17,7 @@
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { fetchCircleDetail } from '$lib/journal/read-cursor';
 	import { fetchInvitePeek, isCircleInvitePeek, loadInviteJoinToken } from '$lib/auth/invites';
+	import { fetchJoinPreview } from '$lib/circles/settings';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 	import PlainLayout from '$lib/layouts/PlainLayout.svelte';
 	import type { Snippet } from 'svelte';
@@ -24,9 +25,18 @@
 	let { children }: { children: Snippet } = $props();
 
 	const circleId = $derived($page.params.id ?? '');
+	const onJoinPage = $derived(
+		$page.url.pathname === `/circles/${circleId}/join` ||
+			$page.url.pathname.endsWith(`/${circleId}/join`)
+	);
 
 	let ready = $state(false);
 	let denied = $state(false);
+	let pendingJoinOnly = $state(false);
+
+	function membershipReadable(status: string | undefined): boolean {
+		return status === 'active' || status === 'left_with_access';
+	}
 
 	const ctx = $state<CircleContext>({
 		origin: '',
@@ -42,6 +52,7 @@
 		editWindowSec: undefined,
 		lastReadSeq: 0,
 		archiveCycle: undefined,
+		canWrite: true,
 		refresh: async () => {}
 	});
 
@@ -65,6 +76,7 @@
 			if (item) {
 				ctx.lastReadSeq = item.last_read_seq;
 				if (item.archive_cycle?.active) ctx.archiveCycle = item.archive_cycle;
+				ctx.canWrite = item.status === 'active';
 			}
 			const detail = await fetchCircleDetail(ctx.origin, ctx.circleId);
 			if (detail.archive_cycle?.active) ctx.archiveCycle = detail.archive_cycle;
@@ -83,6 +95,7 @@
 	}
 
 	async function loadMeta() {
+		pendingJoinOnly = false;
 		const resolved = await resolveCircleOrigin(circleId);
 		// '' is the same-origin base, not "not found": only null means unknown circle.
 		if (resolved === null) {
@@ -99,7 +112,7 @@
 			listItem = cached.find((c) => c.id === circleId);
 		}
 
-		if (!listItem || listItem.status !== 'active') {
+		if (!listItem) {
 			const inviteToken = loadInviteJoinToken(circleId);
 			if (inviteToken) {
 				try {
@@ -122,6 +135,7 @@
 					ctx.editWindowSec = undefined;
 					ctx.lastReadSeq = 0;
 					ctx.archiveCycle = undefined;
+					ctx.canWrite = true;
 					ctx.refresh = loadMeta;
 					rememberLastCircle(circleId);
 					ready = true;
@@ -130,6 +144,41 @@
 					/* fall through */
 				}
 			}
+			try {
+				const preview = await fetchJoinPreview(resolved, circleId);
+				const colorToken = preview.color;
+				const color =
+					colorToken && colorToken in CIRCLE_COLORS ? colorToken : ('olive' as CircleColor);
+				ctx.origin = resolved;
+				ctx.circleId = circleId;
+				ctx.name = preview.circle_name;
+				ctx.color = color;
+				ctx.colorHex = CIRCLE_COLORS[color].cssVar;
+				ctx.identityName = '';
+				ctx.identityId = '';
+				ctx.identityInitial = '?';
+				ctx.editWindowSec = undefined;
+				ctx.lastReadSeq = 0;
+				ctx.archiveCycle = undefined;
+				ctx.canWrite = true;
+				ctx.refresh = loadMeta;
+				rememberLastCircle(circleId);
+				rememberCircleOrigin(circleId, resolved);
+				pendingJoinOnly = true;
+				ready = true;
+				if (!onJoinPage) {
+					goto(`/circles/${circleId}/join`);
+				}
+				return;
+			} catch {
+				/* fall through */
+			}
+			denied = true;
+			ready = true;
+			return;
+		}
+
+		if (listItem.status === 'gone' || !membershipReadable(listItem.status)) {
 			denied = true;
 			ready = true;
 			return;
@@ -182,6 +231,7 @@
 		ctx.editWindowSec = editWindowSec;
 		ctx.lastReadSeq = listItem.last_read_seq;
 		ctx.archiveCycle = archiveCycle;
+		ctx.canWrite = listItem.status === 'active';
 		ctx.refresh = refreshMeta;
 
 		try {
@@ -207,6 +257,6 @@
 			<a class="under" href="/circles">К кругам</a>
 		</div>
 	</PlainLayout>
-{:else if ready}
+{:else if ready && !(pendingJoinOnly && !onJoinPage)}
 	{@render children()}
 {/if}

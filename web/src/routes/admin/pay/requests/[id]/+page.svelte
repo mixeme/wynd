@@ -13,7 +13,8 @@
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
-	import { formatPayDate, formatPayDateTime } from '$lib/pay/pay';
+	import { formatPayDateTime } from '$lib/pay/pay';
+	import { payExtendHint, parseCustomDays, subscriptionAdminSubtitle } from '$lib/admin/pay-subscription';
 	import {
 		approvePayRequest,
 		fetchPayRequest,
@@ -35,6 +36,7 @@
 	let days = $state(90);
 	let customDays = $state('');
 	let custom = $state(false);
+	let unlimited = $state(false);
 	let server = $state('');
 	let error = $state('');
 	let loading = $state(true);
@@ -43,21 +45,20 @@
 	const id = $derived($page.params.id);
 
 	const selectedDays = $derived.by(() => {
+		if (unlimited) return null;
 		if (custom) {
-			const n = Number(customDays.trim());
-			return Number.isInteger(n) && n > 0 ? n : null;
+			return parseCustomDays(customDays);
 		}
 		return days;
 	});
 
-	const extendHint = $derived.by(() => {
-		if (!request?.subscription_expires_at) return 'Подписка кончилась — считают от сегодня.';
-		const end = new Date(request.subscription_expires_at);
-		if (Number.isNaN(end.getTime()) || end < new Date()) {
-			return 'Подписка кончилась — считают от сегодня.';
-		}
-		return 'Считают от конца текущей подписки, если она ещё идёт.';
-	});
+	const extendHint = $derived(
+		payExtendHint(request?.subscription_expires_at ?? null, 'request')
+	);
+
+	const statusSubtitle = $derived(
+		request ? subscriptionAdminSubtitle(request.subscription_expires_at) : ''
+	);
 
 	async function loadThumb(req: PayRequest) {
 		if (!req.blob_id || req.blob_deleted) return;
@@ -69,14 +70,19 @@
 	}
 
 	async function approve() {
-		if (!request || selectedDays == null) {
+		if (!request) return;
+		if (!unlimited && selectedDays == null) {
 			error = 'Укажите срок продления';
 			return;
 		}
 		acting = true;
 		error = '';
 		try {
-			await approvePayRequest(request.id, selectedDays);
+			if (unlimited) {
+				await approvePayRequest(request.id, { unlimited: true });
+			} else {
+				await approvePayRequest(request.id, { days: selectedDays! });
+			}
 			goto('/admin/pay/subscription');
 		} catch (err) {
 			error = authErrorHint(err);
@@ -135,11 +141,8 @@
 			<h4 style="margin-bottom:6px">{request.account_email}</h4>
 			<div style="font-size:12.5px;color:var(--muted);margin-bottom:18px">
 				заявка {formatPayDateTime(request.created_at)}
-				{#if request.subscription_expires_at}
-					· {new Date(request.subscription_expires_at) < new Date()
-						? 'подписка истекла'
-						: 'подписка до'}
-					{formatPayDate(request.subscription_expires_at)}
+				{#if statusSubtitle}
+					· {statusSubtitle}
 				{/if}
 			</div>
 			<div class="cols">
@@ -169,8 +172,9 @@
 					<ChipGroup style="margin:0">
 						{#each DAY_CHIPS as chip (chip.days)}
 							<Chip
-								selected={!custom && days === chip.days}
+								selected={!unlimited && !custom && days === chip.days}
 								onclick={() => {
+									unlimited = false;
 									custom = false;
 									days = chip.days;
 								}}
@@ -178,9 +182,28 @@
 								{chip.label}
 							</Chip>
 						{/each}
-						<Chip selected={custom} onclick={() => (custom = true)}>Своё…</Chip>
+						<Chip
+							selected={!unlimited && custom}
+							onclick={() => {
+								unlimited = false;
+								custom = true;
+							}}
+						>
+							Своё…
+						</Chip>
 					</ChipGroup>
-					{#if custom}
+					<ChipGroup style="margin:8px 0 0">
+						<Chip
+							selected={unlimited}
+							onclick={() => {
+								unlimited = true;
+								custom = false;
+							}}
+						>
+							Бессрочно
+						</Chip>
+					</ChipGroup>
+					{#if custom && !unlimited}
 						<Input
 							admin
 							type="number"

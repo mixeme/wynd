@@ -9,7 +9,7 @@
 	import Switch from '$ui/forms/Switch.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
-	import { fetchNotifyPrefs, saveNotifyPrefs } from '$lib/circles/settings';
+	import { fetchMembers, fetchNotifyPrefs, saveNotifyPrefs } from '$lib/circles/settings';
 	import {
 		baselineFromPrefs,
 		muteKeyFromUntil,
@@ -29,6 +29,7 @@
 	let mute = $state<MuteKey>('none');
 	let error = $state('');
 	let ready = $state(false);
+	let soloCircle = $state(false);
 	let baseline = $state<ReturnType<typeof baselineFromPrefs> | null>(null);
 
 	async function persist() {
@@ -68,7 +69,10 @@
 
 	onMount(async () => {
 		try {
-			const prefs = await fetchNotifyPrefs(circle.origin, circle.circleId);
+			const [prefs, list] = await Promise.all([
+				fetchNotifyPrefs(circle.origin, circle.circleId),
+				fetchMembers(circle.origin, circle.circleId)
+			]);
 			posts = prefs.posts;
 			commentsMine = prefs.comments_mine;
 			commentsAll = prefs.comments_all;
@@ -76,6 +80,7 @@
 			events = prefs.events;
 			mute = muteKeyFromUntil(prefs.mute_until);
 			baseline = baselineFromPrefs(prefs);
+			soloCircle = list.filter((m) => m.status === 'active').length === 1;
 		} catch (err) {
 			error = authErrorHint(err);
 		} finally {
@@ -91,34 +96,38 @@
 	onback={() => goto(`/circles/${circle.circleId}/settings`)}
 >
 	<Label>Присылать</Label>
+	{#if !soloCircle}
 	<SettingsRow title="Новые записи" style="padding-top:2px">
 		{#snippet control()}
-			<Switch bind:checked={posts} />
+			<Switch bind:checked={posts} label="Новые записи" />
 		{/snippet}
 	</SettingsRow>
-	<SettingsRow title="Комментарии к моим записям">
+	{/if}
+	<SettingsRow title="Комментарии к моим записям" style={soloCircle ? 'padding-top:2px' : undefined}>
 		{#snippet control()}
-			<Switch bind:checked={commentsMine} />
+			<Switch bind:checked={commentsMine} label="Комментарии к моим записям" />
 		{/snippet}
 	</SettingsRow>
+	{#if !soloCircle}
 	<SettingsRow title="Все комментарии">
 		{#snippet control()}
-			<Switch bind:checked={commentsAll} />
+			<Switch bind:checked={commentsAll} label="Все комментарии" />
 		{/snippet}
 	</SettingsRow>
 	<SettingsRow title="Реакции">
 		{#snippet control()}
-			<Switch bind:checked={reactions} />
+			<Switch bind:checked={reactions} label="Реакции" />
 		{/snippet}
 	</SettingsRow>
 	<SettingsRow title="Упоминания" subtitle="всегда">
 		{#snippet control()}
-			<Switch checked={true} disabled />
+			<Switch checked={true} disabled label="Упоминания" />
 		{/snippet}
 	</SettingsRow>
+	{/if}
 	<SettingsRow title="События круга">
 		{#snippet control()}
-			<Switch bind:checked={events} />
+			<Switch bind:checked={events} label="События круга" />
 		{/snippet}
 	</SettingsRow>
 
@@ -128,7 +137,9 @@
 		<Chip selected={mute === 'tomorrow'} onclick={() => (mute = 'tomorrow')}>До завтра</Chip>
 		<Chip selected={mute === 'week'} onclick={() => (mute = 'week')}>На неделю</Chip>
 	</ChipGroup>
+	{#if !soloCircle}
 	<Hint>Упоминание пробивается через приглушение: это адресация, а не шум.</Hint>
+	{/if}
 
 	<Hint style="margin-top:14px"
 		>Пуш не несёт текста — только круг и тип события. Содержание подтягивается после

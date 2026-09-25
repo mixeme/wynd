@@ -32,7 +32,21 @@ export interface RefetchRegistration {
 const streams = new Map<string, AbortController>();
 const refetchRegistrations: RefetchRegistration[] = [];
 
-const RETRY_MS = 5000;
+const RETRY_BASE_MS = 5000;
+const RETRY_MAX_MS = 60000;
+/**
+ * Сторож тишины: сервер шлёт комментарный кадр раз в 15 с, поэтому пауза
+ * длиннее 45 с означает мёртвое соединение. Без него тихо умерший TCP оставлял
+ * клиента «подключённым», и приложение не обновлялось до перезагрузки (API-3).
+ */
+const WATCHDOG_MS = 45000;
+
+/** Пауза перед повтором: min(5 с · 2^n, 60 с) с джиттером ±20 %. */
+export function retryDelayMs(attempt: number, random: () => number = Math.random): number {
+	const capped = Math.min(RETRY_BASE_MS * 2 ** Math.max(0, attempt), RETRY_MAX_MS);
+	const jitter = 1 + (random() * 0.4 - 0.2);
+	return Math.round(capped * jitter);
+}
 
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
 	return new Promise((resolve, reject) => {
@@ -63,11 +77,26 @@ async function readSSE(
 
 	try {
 		while (!signal.aborted) {
-			const { done, value } = await reader.read();
+			// read() без таймаута ждёт вечно, если TCP умер молча, поэтому
+			// чтение и сторож тишины идут наперегонки.
+			let watchdog: ReturnType<typeof setTimeout> | undefined;
+			const silence = new Promise<'silence'>((resolve) => {
+				watchdog = setTimeout(() => resolve('silence'), WATCHDOG_MS);
+			});
+			let chunk: ReadableStreamReadResult<Uint8Array> | 'silence';
+			try {
+				chunk = await Promise.race([reader.read(), silence]);
+			} finally {
+				clearTimeout(watchdog);
+			}
+			if (chunk === 'silence') {
+				throw new Error('sync: поток молчит дольше сторожа');
+			}
+			const { done, value } = chunk;
 			if (done) break;
 			buffer += decoder.decode(value, { stream: true });
 
-			let parsed = takeSSEDataEvents(buffer);
+			const parsed = takeSSEDataEvents(buffer);
 			buffer = parsed.rest;
 			for (const data of parsed.events) {
 				await onData(data);
@@ -78,19 +107,28 @@ async function readSSE(
 	}
 }
 
-/** Splits a buffer on SSE blank-line delimiters and extracts `data:` payloads. */
+/**
+ * Разбор потока по спецификации SSE: разделитель кадров — пустая строка в любом
+ * из видов (LF, CRLF, CR), пробел после «data:» необязателен, несколько строк
+ * `data` склеиваются переводом строки. Комментарные кадры (`:`) и блоки без
+ * `data` событиями не считаются (API-3).
+ */
 export function takeSSEDataEvents(buffer: string): { events: string[]; rest: string } {
 	const events: string[] = [];
+	const separator = /\r\n\r\n|\n\n|\r\r/;
 	let rest = buffer;
-	let split = rest.indexOf('\n\n');
-	while (split !== -1) {
-		const block = rest.slice(0, split);
-		rest = rest.slice(split + 2);
-		const dataLine = block.split('\n').find((line) => line.startsWith('data: '));
-		if (dataLine) {
-			events.push(dataLine.slice(6));
+	for (;;) {
+		const match = separator.exec(rest);
+		if (!match) break;
+		const block = rest.slice(0, match.index);
+		rest = rest.slice(match.index + match[0].length);
+		const parts: string[] = [];
+		for (const line of block.split(/\r\n|\n|\r/)) {
+			if (!line.startsWith('data:')) continue;
+			const value = line.slice(5);
+			parts.push(value.startsWith(' ') ? value.slice(1) : value);
 		}
-		split = rest.indexOf('\n\n');
+		if (parts.length > 0) events.push(parts.join('\n'));
 	}
 	return { events, rest };
 }
@@ -118,6 +156,7 @@ async function handleSyncEvent(origin: string, raw: string): Promise<void> {
 }
 
 async function runSyncLoop(origin: string, signal: AbortSignal): Promise<void> {
+	let attempt = 0;
 	while (!signal.aborted) {
 		const session = await getSession(origin);
 		if (!session?.token) {
@@ -140,24 +179,27 @@ async function runSyncLoop(origin: string, signal: AbortSignal): Promise<void> {
 				await dropParticipantSession(origin);
 				return;
 			}
-			await sleep(RETRY_MS, signal);
+			await sleep(retryDelayMs(attempt++), signal);
 			continue;
 		}
 
 		if (!res.body) {
-			await sleep(RETRY_MS, signal);
+			await sleep(retryDelayMs(attempt++), signal);
 			continue;
 		}
 
+		// Поток открыт — счётчик неудач сброшен.
+		attempt = 0;
 		void drainQueue();
 
 		try {
 			await readSSE(res.body, signal, (data) => handleSyncEvent(origin, data));
-		} catch (err) {
+		} catch {
 			if (signal.aborted) return;
+			attempt++;
 		}
 
-		await sleep(RETRY_MS, signal);
+		await sleep(retryDelayMs(attempt), signal);
 	}
 }
 

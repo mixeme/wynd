@@ -102,13 +102,48 @@ func (s *Server) handleAdminPayRequestByID(w http.ResponseWriter, r *http.Reques
 
 func (s *Server) handleAdminApprovePayRequest(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Days int `json:"days"`
+		Days      int  `json:"days"`
+		Unlimited bool `json:"unlimited"`
 	}
 	if err := readJSON(r, &body); err != nil {
 		writeError(w, err)
 		return
 	}
-	if err := s.Auth.ApprovePayRequest(r.Context(), r.PathValue("id"), body.Days); err != nil {
+	if err := s.Auth.ApprovePayRequest(r.Context(), r.PathValue("id"), body.Days, body.Unlimited); err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (s *Server) handleAdminPayAccounts(w http.ResponseWriter, r *http.Request) {
+	items, err := s.Auth.ListPayAccounts(r.Context())
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"accounts": items})
+}
+
+func (s *Server) handleAdminPayAccountByID(w http.ResponseWriter, r *http.Request) {
+	item, err := s.Auth.PayAccountByID(r.Context(), r.PathValue("id"))
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
+}
+
+func (s *Server) handleAdminGrantPayAccount(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Days      int  `json:"days"`
+		Unlimited bool `json:"unlimited"`
+	}
+	if err := readJSON(r, &body); err != nil {
+		writeError(w, err)
+		return
+	}
+	if err := s.Auth.GrantPayAccount(r.Context(), r.PathValue("id"), body.Days, body.Unlimited); err != nil {
 		writeError(w, err)
 		return
 	}

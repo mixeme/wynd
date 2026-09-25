@@ -166,6 +166,50 @@ func TestSendDisplayNameUsesEnvelope(t *testing.T) {
 	}
 }
 
+func TestProbeViaFakeSMTP(t *testing.T) {
+	addr, received := startFakeSMTP(t)
+	host, port, _ := net.SplitHostPort(addr)
+
+	st, err := store.OpenMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+
+	svc, err := mail.New(st, false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := svc.Probe(context.Background(), mail.Config{
+		Host: host,
+		Port: atoi(port),
+		From: "wynd@example.com",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case msg := <-received:
+		t.Fatalf("probe must not send a message: %q", msg)
+	case <-time.After(50 * time.Millisecond):
+	}
+}
+
+func TestProbeRequiresHost(t *testing.T) {
+	st, err := store.OpenMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	svc, err := mail.New(st, false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Probe(context.Background(), mail.Config{From: "wynd@example.com"}); err != mail.ErrNotConfigured {
+		t.Fatalf("got %v, want ErrNotConfigured", err)
+	}
+}
+
 func TestSendTestRecordsTimestamp(t *testing.T) {
 	addr, received := startFakeSMTP(t)
 	host, port, _ := net.SplitHostPort(addr)
@@ -201,6 +245,9 @@ func TestSendTestRecordsTimestamp(t *testing.T) {
 	}
 	if cfg.TestSentAt == nil {
 		t.Fatal("want test_sent_at set")
+	}
+	if cfg.LastError != "" {
+		t.Fatalf("last error: %q", cfg.LastError)
 	}
 }
 

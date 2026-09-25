@@ -15,6 +15,7 @@ export interface Comment {
 	body: string;
 	author_name: string;
 	identity_id: string;
+	author_avatar_blob_id?: string;
 	created_at: string;
 	edit_window_sec?: number | null;
 	editable_until?: string;
@@ -49,6 +50,7 @@ export interface FeedPost {
 	identity_id: string;
 	created_at: string;
 	event_seq: number;
+	author_avatar_blob_id?: string;
 	captured_at?: string;
 	edit_window_sec?: number | null;
 	editable_until?: string;
@@ -72,6 +74,8 @@ export interface ArchiveCycle {
 	reminder_before_sec: number;
 	cutoff_locked: boolean;
 	personal_archive_bytes: number;
+	personal_archive_media_count: number;
+	personal_archive_post_count: number;
 	download_url: string;
 }
 
@@ -140,6 +144,8 @@ export interface MapPin {
 	blob_id: string;
 	entry_date: string;
 	created_at: string;
+	author_name: string;
+	body: string;
 	geo_lat: number;
 	geo_lng: number;
 }
@@ -157,6 +163,7 @@ export interface CircleSearchHit {
 	kind: string;
 	title?: string;
 	snippet: string;
+	thumb_blob_id?: string;
 	entry_date: string;
 	created_at: string;
 }

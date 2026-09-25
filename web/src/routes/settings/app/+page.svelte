@@ -15,29 +15,22 @@
 	import { clearMediaStore, getAppSettings, mediaStoreBytes, type Theme } from '$lib/idb/db';
 	import { loadSessions, setTheme } from '$lib/session/session.svelte';
 	import {
+		accountNotifyPrefsFromAppDefaults,
+		appNotifyDefaultsEqual,
 		fetchAccountNotifyPrefs,
 		persistNotifyDefaults,
-		saveAccountNotifyPrefs
+		saveAccountNotifyPrefs,
+		type AppNotifyDefaults
 	} from '$lib/settings/notify';
-	import {
-		baselineFromPrefs,
-		muteKeyFromUntil,
-		muteUntilFromKey,
-		notifyBaselineEqual,
-		type MuteKey
-	} from '$lib/settings/notify-mute';
 
 	let posts = $state(true);
 	let commentsMine = $state(true);
-	let commentsAll = $state(false);
 	let reactions = $state(false);
-	let events = $state(false);
-	let mute = $state<MuteKey>('none');
 	let theme = $state<Theme>('system');
 	let cacheBytes = $state(0);
 	let freeBytes = $state(0);
 	let ready = $state(false);
-	let baseline = $state<ReturnType<typeof baselineFromPrefs> | null>(null);
+	let baseline = $state<AppNotifyDefaults | null>(null);
 	let error = $state('');
 	let cleared = $state(false);
 
@@ -47,22 +40,20 @@
 		{ key: 'dark', label: 'Тёмная' }
 	];
 
+	function currentDefaults(): AppNotifyDefaults {
+		return { posts, comments_mine: commentsMine, reactions };
+	}
+
 	async function persistPrefs() {
 		if (!ready || !baseline) return;
-		const next = {
-			posts,
-			comments_mine: commentsMine,
-			comments_all: commentsAll,
-			reactions,
-			events,
-			mute_until: muteUntilFromKey(mute)
-		};
-		if (notifyBaselineEqual(next, baseline)) return;
+		const next = currentDefaults();
+		if (appNotifyDefaultsEqual(next, baseline)) return;
+		const accountPrefs = accountNotifyPrefsFromAppDefaults(next);
 		try {
 			await persistNotifyDefaults(next);
 			const sessions = await loadSessions();
 			for (const session of sessions) {
-				await saveAccountNotifyPrefs(session.origin, next);
+				await saveAccountNotifyPrefs(session.origin, accountPrefs);
 			}
 			baseline = next;
 		} catch (err) {
@@ -73,10 +64,7 @@
 	$effect(() => {
 		void posts;
 		void commentsMine;
-		void commentsAll;
 		void reactions;
-		void events;
-		void mute;
 		void persistPrefs();
 	});
 
@@ -101,10 +89,7 @@
 		if (defaults) {
 			posts = defaults.posts ?? true;
 			commentsMine = defaults.comments_mine ?? defaults.comments ?? true;
-			commentsAll = defaults.comments_all ?? false;
 			reactions = defaults.reactions ?? false;
-			events = defaults.events ?? false;
-			mute = muteKeyFromUntil(defaults.mute_until ?? null);
 		}
 		const sessions = await loadSessions();
 		if (sessions[0]) {
@@ -112,23 +97,13 @@
 				const prefs = await fetchAccountNotifyPrefs(sessions[0].origin);
 				posts = prefs.posts;
 				commentsMine = prefs.comments_mine;
-				commentsAll = prefs.comments_all;
 				reactions = prefs.reactions;
-				events = prefs.events;
-				mute = muteKeyFromUntil(prefs.mute_until);
 			} catch {
 				/* local defaults */
 			}
 		}
 		await refreshCache();
-		baseline = {
-			posts,
-			comments_mine: commentsMine,
-			comments_all: commentsAll,
-			reactions,
-			events,
-			mute_until: muteUntilFromKey(mute)
-		};
+		baseline = currentDefaults();
 		ready = true;
 	});
 </script>
@@ -137,42 +112,22 @@
 	<SectionLabel>Уведомления по умолчанию</SectionLabel>
 	<SettingsRow title="Новые записи" style="padding-top:2px">
 		{#snippet control()}
-			<Switch bind:checked={posts} />
+			<Switch bind:checked={posts} label="Новые записи" />
 		{/snippet}
 	</SettingsRow>
 	<SettingsRow title="Комментарии к моим записям">
 		{#snippet control()}
-			<Switch bind:checked={commentsMine} />
-		{/snippet}
-	</SettingsRow>
-	<SettingsRow title="Все комментарии">
-		{#snippet control()}
-			<Switch bind:checked={commentsAll} />
+			<Switch bind:checked={commentsMine} label="Комментарии к моим записям" />
 		{/snippet}
 	</SettingsRow>
 	<SettingsRow title="Реакции">
 		{#snippet control()}
-			<Switch bind:checked={reactions} />
+			<Switch bind:checked={reactions} label="Реакции" />
 		{/snippet}
 	</SettingsRow>
-	<SettingsRow title="Упоминания" subtitle="всегда">
-		{#snippet control()}
-			<Switch checked={true} disabled />
-		{/snippet}
-	</SettingsRow>
-	<SettingsRow title="События круга">
-		{#snippet control()}
-			<Switch bind:checked={events} />
-		{/snippet}
-	</SettingsRow>
-	<SectionLabel style="margin-top:14px">Приглушить</SectionLabel>
-	<ChipGroup>
-		<Chip selected={mute === 'none'} onclick={() => (mute = 'none')}>Нет</Chip>
-		<Chip selected={mute === 'tomorrow'} onclick={() => (mute = 'tomorrow')}>До завтра</Chip>
-		<Chip selected={mute === 'week'} onclick={() => (mute = 'week')}>На неделю</Chip>
-	</ChipGroup>
 	<Hint style="margin-top:10px">
-		Применяется к кругам, в которые вы войдёте потом. Уже настроенные круги не трогаются.
+		Эти переключатели действуют в кругах, для которых вы не задавали отдельные уведомления, и в
+		тех, в которые вы вступите позже. Круги, где уведомления уже сохранены отдельно, не меняются.
 	</Hint>
 
 	<SectionLabel style="margin-top:22px">Место на устройстве</SectionLabel>

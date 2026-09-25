@@ -6,17 +6,18 @@ import (
 	"time"
 )
 
-// ProbeHTTPRedirect checks whether plain HTTP redirects to HTTPS with 301 or 308.
-func ProbeHTTPRedirect(publicURL string) bool {
+// ProbeHTTPRedirect returns the HTTP status of a permanent HTTP→HTTPS redirect (301 or 308).
+// Other outcomes return 0.
+func ProbeHTTPRedirect(publicURL string) int {
 	if !strings.HasPrefix(publicURL, "https://") {
-		return false
+		return 0
 	}
 	host := strings.TrimPrefix(publicURL, "https://")
 	if i := strings.Index(host, "/"); i >= 0 {
 		host = host[:i]
 	}
 	if host == "" {
-		return false
+		return 0
 	}
 	target := "http://" + host + "/api/v1/instance"
 	client := &http.Client{
@@ -27,8 +28,11 @@ func ProbeHTTPRedirect(publicURL string) bool {
 	}
 	resp, err := client.Get(target)
 	if err != nil {
-		return false
+		return 0
 	}
 	defer resp.Body.Close()
-	return resp.StatusCode == http.StatusMovedPermanently || resp.StatusCode == http.StatusPermanentRedirect
+	if resp.StatusCode == http.StatusMovedPermanently || resp.StatusCode == http.StatusPermanentRedirect {
+		return resp.StatusCode
+	}
+	return 0
 }

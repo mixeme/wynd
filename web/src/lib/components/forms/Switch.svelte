@@ -2,11 +2,13 @@
 	let {
 		checked = $bindable(false),
 		disabled = false,
+		label = 'Переключить',
 		class: className = '',
 		style = ''
 	}: {
 		checked?: boolean;
 		disabled?: boolean;
+		label?: string;
 		class?: string;
 		style?: string;
 	} = $props();
@@ -16,6 +18,7 @@
 	type="button"
 	role="switch"
 	aria-checked={checked}
+	aria-label={label}
 	class="sw {className}"
 	class:on={checked}
 	{style}

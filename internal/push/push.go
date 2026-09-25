@@ -12,7 +12,6 @@ import (
 	"time"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
-	"gitea.mixdep.ru/mix/wynd/internal/auth"
 	"gitea.mixdep.ru/mix/wynd/internal/store"
 	"gitea.mixdep.ru/mix/wynd/internal/uid"
 	"gitea.mixdep.ru/mix/wynd/internal/xtime"
@@ -55,7 +54,7 @@ func New(st store.Store) (*Service, error) {
 	if db == nil {
 		return nil, fmt.Errorf("push: closed store")
 	}
-	return &Service{db: db, client: http.DefaultClient}, nil
+	return &Service{db: db, client: newDeliveryClient()}, nil
 }
 
 // DB exposes the underlying connection for tests.
@@ -104,6 +103,9 @@ func (s *Service) Subscribe(ctx context.Context, in SubscribeInput) error {
 	in.Auth = strings.TrimSpace(in.Auth)
 	if in.AccountID == "" || in.Endpoint == "" || in.P256dh == "" || in.Auth == "" {
 		return ErrInvalid
+	}
+	if err := validateEndpoint(ctx, in.Endpoint); err != nil {
+		return err
 	}
 	when := in.Now.UTC()
 	if when.IsZero() {
@@ -248,7 +250,7 @@ func (s *Service) deliver(ctx context.Context, pub, priv, endpoint, p256dh, auth
 	}
 	resp, err := webpush.SendNotificationWithContext(ctx, payload, sub, &webpush.Options{
 		HTTPClient:      s.client,
-		Subscriber:      auth.AdminSentinelEmail,
+		Subscriber:      SubscriberMailto,
 		TTL:             defaultTTL,
 		VAPIDPublicKey:  pub,
 		VAPIDPrivateKey: priv,

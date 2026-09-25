@@ -10,6 +10,8 @@ example.org {
 	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
 	reverse_proxy wynd:7676 {
 		flush_interval -1
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
 		transport http {
 			read_timeout 300s
 		}

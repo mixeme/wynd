@@ -16,6 +16,7 @@
 
 	let settings = $state<CompressionSettings | undefined>();
 	let attachmentMb = $state(100);
+	let videoBitrateMbps = $state(6);
 	let server = $state('');
 	let error = $state('');
 	let loading = $state(true);
@@ -23,6 +24,19 @@
 	function syncAttachmentMb() {
 		if (!settings) return;
 		attachmentMb = Math.round(settings.attachment_max_bytes / (1024 * 1024));
+	}
+
+	function syncVideoBitrateMbps() {
+		if (!settings) return;
+		videoBitrateMbps = settings.video_bitrate_kbps / 1000;
+	}
+
+	async function persistVideoBitrateMbps() {
+		if (!settings) return;
+		const mbps = Math.max(1, Math.round(videoBitrateMbps));
+		videoBitrateMbps = mbps;
+		settings.video_bitrate_kbps = mbps * 1000;
+		await persist();
 	}
 
 	async function persistAttachmentMb() {
@@ -47,6 +61,7 @@
 			const [cs, caption] = await Promise.all([fetchCompression(), serverCaption()]);
 			settings = cs;
 			syncAttachmentMb();
+			syncVideoBitrateMbps();
 			server = caption;
 		} catch (err) {
 			error = authErrorHint(err);
@@ -78,10 +93,11 @@
 						<span style="font-size:12.5px;color:var(--muted)">px</span>
 					</div>
 					<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-						<span style="font-size:12.5px;width:110px">Качество JPEG</span>
+						<span style="font-size:12.5px;width:110px">Формат и качество</span>
+						<span style="font-size:12.5px;color:var(--muted)">WebP q</span>
 						<Input
 							admin
-							style="width:88px"
+							style="width:64px"
 							type="number"
 							bind:value={settings.photo_quality}
 							onchange={() => void persist()}
@@ -97,7 +113,7 @@
 							bind:value={settings.video_max_height}
 							onchange={() => void persist()}
 						/>
-						<span style="font-size:12.5px;color:var(--muted)">px</span>
+						<span style="font-size:12.5px;color:var(--muted)">p</span>
 					</div>
 					<div style="display:flex;align-items:center;gap:10px">
 						<span style="font-size:12.5px;width:110px">Битрейт</span>
@@ -105,10 +121,10 @@
 							admin
 							style="width:88px"
 							type="number"
-							bind:value={settings.video_bitrate_kbps}
-							onchange={() => void persist()}
+							bind:value={videoBitrateMbps}
+							onchange={() => void persistVideoBitrateMbps()}
 						/>
-						<span style="font-size:12.5px;color:var(--muted)">кбит/с</span>
+						<span style="font-size:12.5px;color:var(--muted)">Мбит/с</span>
 					</div>
 					<SectionLabel style="margin:22px 0 10px">Файлы</SectionLabel>
 					<div style="display:flex;align-items:center;gap:10px">
@@ -139,7 +155,7 @@
 						качества, и это нормально.
 					</div>
 					<div style="display:flex;align-items:center;gap:12px;margin-top:20px">
-						<Switch checked={true} disabled />
+						<Switch checked={true} disabled label="Отдавать вложения только как загрузку" />
 						<span style="font-size:12.5px"
 							>Отдавать вложения только как загрузку<br /><span style="color:var(--faint)"
 								>Content-Disposition: attachment · выключать нельзя</span

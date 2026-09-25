@@ -8,6 +8,10 @@
 		size,
 		disabled = false,
 		stopPropagation = false,
+		onpointerdown,
+		onpointerup,
+		onpointerleave,
+		onpointercancel,
 		class: className = '',
 		style = '',
 		el = $bindable<HTMLButtonElement>()
@@ -18,6 +22,10 @@
 		size?: 'md' | 'sm' | 'xs';
 		disabled?: boolean;
 		stopPropagation?: boolean;
+		onpointerdown?: (e: PointerEvent) => void;
+		onpointerup?: (e: PointerEvent) => void;
+		onpointerleave?: (e: PointerEvent) => void;
+		onpointercancel?: (e: PointerEvent) => void;
 		class?: string;
 		style?: string;
 		el?: HTMLButtonElement;
@@ -38,6 +46,10 @@
 	aria-label={label}
 	bind:this={el}
 	onclick={onClick}
+	{onpointerdown}
+	{onpointerup}
+	{onpointerleave}
+	{onpointercancel}
 >
 	<Icon {name} {size} />
 </button>

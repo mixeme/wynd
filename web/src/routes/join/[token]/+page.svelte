@@ -20,7 +20,7 @@
 	import { loadPendingAuth, savePendingAuth } from '$lib/auth/pending';
 
 	let { data } = $props();
-	const token = data.token;
+	const token = $derived(data.token);
 
 	let email = $state('');
 	let peek = $state<InvitePeek | undefined>();
@@ -88,7 +88,7 @@
 	<ScreenTitle style="margin-top:24px">Вас позвали на сервер</ScreenTitle>
 	<ServerRow name={serverName} subtitle={serverSubtitle} card />
 	<Label style="margin-top:16px">Почта</Label>
-	<Input active gray type="email" autocomplete="email" bind:value={email} />
+	<Input active type="email" autocomplete="email" bind:value={email} />
 	<Hint>Пришлём код для входа. Пароля нет.</Hint>
 	<Button {loading} disabled={!peek} onclick={onSubmit}>Получить код</Button>
 	<Hint>

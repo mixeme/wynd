@@ -6,6 +6,7 @@
 		time,
 		preview,
 		thumb,
+		thumbUrl,
 		thumbVariant,
 		onclick,
 		class: className = '',
@@ -15,6 +16,7 @@
 		time: string;
 		preview: Snippet;
 		thumb?: boolean;
+		thumbUrl?: string;
 		thumbVariant?: string;
 		onclick?: () => void;
 		class?: string;
@@ -33,7 +35,11 @@
 			</div>
 		</div>
 		{#if thumb}
-			<div class="thumb pic {thumbVariant ?? 'p1'}"></div>
+			{#if thumbUrl}
+				<div class="thumb" style="background-image:url({thumbUrl});background-size:cover;background-position:center"></div>
+			{:else}
+				<div class="thumb pic {thumbVariant ?? 'p1'}"></div>
+			{/if}
 		{/if}
 	</button>
 {:else}
@@ -47,7 +53,11 @@
 			</div>
 		</div>
 		{#if thumb}
-			<div class="thumb pic {thumbVariant ?? 'p1'}"></div>
+			{#if thumbUrl}
+				<div class="thumb" style="background-image:url({thumbUrl});background-size:cover;background-position:center"></div>
+			{:else}
+				<div class="thumb pic {thumbVariant ?? 'p1'}"></div>
+			{/if}
 		{/if}
 	</div>
 {/if}

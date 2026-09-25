@@ -1,5 +1,11 @@
 <script lang="ts">
 	import type { VolumeBucket } from '$lib/circles/settings';
+	import {
+		VOLUME_BAR_WIDTH,
+		VOLUME_CHART_WIDTH,
+		volumeBarCenterX,
+		volumeBarX
+	} from '$lib/circles/volumeChart';
 
 	let {
 		volume = [] as VolumeBucket[],
@@ -15,30 +21,30 @@
 		class?: string;
 	} = $props();
 
-	const chartWidth = 358;
+	const chartWidth = VOLUME_CHART_WIDTH;
 	const chartHeight = 132;
 	const barAreaTop = 16;
 	const barAreaHeight = 88;
 	const baselineY = 104;
-	const barWidth = 18;
-	const barGap = 8;
-	const barStep = barWidth + barGap;
+	const barWidth = VOLUME_BAR_WIDTH;
 
 	let svgEl = $state<SVGSVGElement | null>(null);
 	let dragging = $state(false);
 	let lastIndex = $state<number | null>(null);
 
 	const maxBytes = $derived(Math.max(...volume.map((b) => b.bytes), 1));
+	const barCount = $derived(volume.length);
 
 	const bars = $derived(
 		volume.map((b, i) => {
 			const h = Math.max(4, Math.round((b.bytes / maxBytes) * barAreaHeight));
+			const x = volumeBarX(i, barCount);
 			return {
-				x: 1 + i * barStep,
+				x,
 				y: baselineY - h,
 				w: barWidth,
 				h,
-				beforeCutoff: barCenterX(i) <= cutoffX
+				beforeCutoff: volumeBarCenterX(i, barCount) <= cutoffX
 			};
 		})
 	);
@@ -51,7 +57,7 @@
 	const showCutoff = $derived(!!cutoffLabel || volume.length > 0);
 
 	function barCenterX(index: number): number {
-		return 1 + index * barStep + barWidth / 2;
+		return volumeBarCenterX(index, barCount);
 	}
 
 	function indexAtX(x: number): number {

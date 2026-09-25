@@ -21,7 +21,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Instance name, version, registration mode */
+                /** @description Instance name, version, registration mode, loopback, bootstrapped, and code_delivery (`log` on loopback without SMTP, else `mail`). */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -90,6 +90,40 @@ export interface paths {
             requestBody?: never;
             responses: {
                 /** @description text/event-stream with one event */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/probe/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Slow response stream probe for proxy read timeout checks */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description chunked octet stream (~2s) */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -296,8 +330,206 @@ export interface paths {
                     };
                     content?: never;
                 };
+                /** @description kind=multi is invalid when the circle allows only single invites */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/circles/{circle_id}/invite-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** People from inviter's other circles */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    circle_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description groups[] */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/circles/{circle_id}/member-invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Personal invite for an existing account */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    circle_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        account_id: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description invited */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/circles/{circle_id}/join-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Join screen preview for pending personal invite */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    circle_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description peek fields */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/circles/{circle_id}/join": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete pending circle join (name in circle) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    circle_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        body?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pending-circle-joins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Circles awaiting join naming for session */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description circle_ids[] */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -880,7 +1112,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Circle invite metadata */
+                /** @description Circle invite metadata, or server invite (server_name, host, inviter_name) without a circle */
                 200: {
                     headers: {
                         [name: string]: unknown;

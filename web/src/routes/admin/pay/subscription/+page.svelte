@@ -14,13 +14,16 @@
 	import { authErrorHint } from '$lib/auth/auth';
 	import { formatPayDateTime } from '$lib/pay/pay';
 	import {
+		fetchPayAccounts,
 		fetchPayRequests,
 		fetchPaySubscription,
 		savePaySubscription,
 		serverCaption,
+		type PayAccountSummary,
 		type PayRequest,
 		type PaySubscriptionSettings
 	} from '$lib/admin/admin';
+	import { subscriptionTableStatus } from '$lib/admin/pay-subscription';
 	import { apiFetch } from '$lib/api/client';
 	import { getAdminSession } from '$lib/idb/db';
 
@@ -32,6 +35,7 @@
 
 	let settings = $state<PaySubscriptionSettings | undefined>();
 	let requests = $state<PayRequest[]>([]);
+	let accounts = $state<PayAccountSummary[]>([]);
 	let thumbs = $state<Record<string, string>>({});
 	let server = $state('');
 	let error = $state('');
@@ -43,7 +47,13 @@
 		if (!settings) return;
 		try {
 			await savePaySubscription(settings);
-			requests = settings.required ? await fetchPayRequests() : [];
+			if (settings.required) {
+				requests = await fetchPayRequests();
+				accounts = await fetchPayAccounts();
+			} else {
+				requests = [];
+				accounts = [];
+			}
 		} catch (err) {
 			error = authErrorHint(err);
 		}
@@ -73,7 +83,9 @@
 				settings = sub;
 				server = caption;
 				if (sub.required) {
-					requests = await fetchPayRequests();
+					const [reqs, accs] = await Promise.all([fetchPayRequests(), fetchPayAccounts()]);
+					requests = reqs;
+					accounts = accs;
 					await loadThumbs(requests);
 				}
 			} catch (err) {
@@ -99,7 +111,8 @@
 </script>
 
 <style>
-	.req-row {
+	.req-row,
+	.acc-row {
 		cursor: pointer;
 	}
 </style>
@@ -121,7 +134,7 @@
 			<Hint>{error}</Hint>
 		{:else if settings}
 			<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:18px">
-				<Switch bind:checked={settings.required} />
+				<Switch bind:checked={settings.required} label="Требовать подписку" />
 				<div>
 					<div style="font-size:13.5px;font-weight:600">Требовать подписку</div>
 					<div style="font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.5">
@@ -179,6 +192,34 @@
 									{/if}
 								</td>
 								<td style="color:var(--muted)">{req.comment || 'нет'}</td>
+								<td style="text-align:right">
+									<Icon name="chevr" size="sm" />
+								</td>
+							</tr>
+						{/each}
+					</DataTable>
+				{/if}
+				<SectionLabel style="margin:22px 0 8px">На сервере · {accounts.length}</SectionLabel>
+				{#if accounts.length === 0}
+					<Hint>Учёток нет.</Hint>
+				{:else}
+					<DataTable>
+						<tr>
+							<th>Почта</th>
+							<th>Подписка</th>
+							<th></th>
+						</tr>
+						{#each accounts as acc (acc.id)}
+							<tr
+								class="acc-row"
+								onclick={() => goto(`/admin/pay/accounts/${acc.id}`)}
+							>
+								<td class="n" style={acc.blocked ? 'color:var(--faint)' : undefined}
+									>{acc.email}</td
+								>
+								<td style="color:var(--muted)">
+									{subscriptionTableStatus(acc.subscription_expires_at)}
+								</td>
 								<td style="text-align:right">
 									<Icon name="chevr" size="sm" />
 								</td>

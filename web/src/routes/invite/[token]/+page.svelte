@@ -31,7 +31,7 @@
 	import { loadPendingAuth, savePendingAuth } from '$lib/auth/pending';
 
 	let { data } = $props();
-	const token = data.token;
+	const token = $derived(data.token);
 
 	const showMembers = $derived($page.url.searchParams.get('members') === '1');
 
@@ -135,7 +135,7 @@
 		{/if}
 
 		<Label>Почта</Label>
-		<Input active gray type="email" autocomplete="email" bind:value={email} />
+		<Input active type="email" autocomplete="email" bind:value={email} />
 		<Hint>
 			Пришлём код для входа. Пароля нет: почта понадобится, только чтобы вернуться на
 			другом устройстве.

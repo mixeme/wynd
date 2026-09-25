@@ -135,6 +135,16 @@ export async function storeAdminSession(session: AdminSessionRecord): Promise<vo
 	await putAdminSession(session);
 }
 
+/**
+ * Выход из панели: сначала отзыв токена на сервере, потом чистка локально.
+ * Без первого шага «выход» оставлял серверный токен живым на 30 дней (AUTH-3).
+ * Сбой сети не должен запирать в панели — локальную запись убираем всё равно.
+ */
 export async function removeAdminSession(): Promise<void> {
+	try {
+		await apiJson('', '/admin/logout', { method: 'POST' });
+	} catch {
+		// токен мог уже истечь или сервер недоступен
+	}
 	await clearAdminSession();
 }

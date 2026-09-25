@@ -11,6 +11,8 @@
 		height,
 		class: className = '',
 		fab,
+		fabMenuOpen = false,
+		fabMenuItems = [],
 		onsearch,
 		searchDisabled = false,
 		onsettings,
@@ -21,6 +23,8 @@
 		height?: string;
 		class?: string;
 		fab?: Snippet;
+		fabMenuOpen?: boolean;
+		fabMenuItems?: { label: string; onclick: () => void }[];
 		onsearch?: () => void;
 		searchDisabled?: boolean;
 		onsettings?: () => void;
@@ -41,6 +45,6 @@
 		{@render children()}
 	{/if}
 	{#if fab}
-		<Fab>{@render fab()}</Fab>
+		<Fab menuOpen={fabMenuOpen} items={fabMenuItems}>{@render fab()}</Fab>
 	{/if}
 </PhoneFrame>

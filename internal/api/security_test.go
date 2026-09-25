@@ -311,16 +311,24 @@ func TestPushEndpointNotHijackable(t *testing.T) {
 	}
 }
 
-// Bootstrap refuses short passwords.
+// Bootstrap refuses short passwords — но только после верного токена: на
+// установленном инстансе тот же запрос обязан быть отбит как invalid, не
+// сообщая ничего о пароле.
 func TestBootstrapWeakPassword(t *testing.T) {
-	srv, _, _, _ := setupAPI(t)
-	// setupAPI already bootstrapped; use a fresh service state via a wrong
-	// token first to confirm the limiter does not mask the password check.
-	rec := postJSON(t, srv, "/api/v1/admin/bootstrap", "", map[string]string{
+	fresh, _, _, _ := setupFreshAPI(t)
+	rec := postJSON(t, fresh, "/api/v1/admin/bootstrap", "", map[string]string{
 		"token": "bootstrap", "instance_name": "x", "password": "short",
 	}, map[string]string{"X-Forwarded-For": "203.0.113.80"})
 	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "weak_password") {
 		t.Fatalf("weak password: %d %s", rec.Code, rec.Body.String())
+	}
+
+	done, _, _, _ := setupAPI(t)
+	rec = postJSON(t, done, "/api/v1/admin/bootstrap", "", map[string]string{
+		"token": "bootstrap", "instance_name": "x", "password": "short",
+	}, map[string]string{"X-Forwarded-For": "203.0.113.81"})
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), `"invalid"`) {
+		t.Fatalf("bootstrapped instance: %d %s", rec.Code, rec.Body.String())
 	}
 }
 

@@ -2,13 +2,21 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getContext, onMount } from 'svelte';
+	import MediaTile from '$ui/data/MediaTile.svelte';
+	import PhotoGrid from '$ui/data/PhotoGrid.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Lightbox from '$ui/overlays/Lightbox.svelte';
-	import FormLayout from '$lib/layouts/FormLayout.svelte';
-	import { formatPostTime } from '$lib/format/time';
+	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
+	import { formatPostTime, pluralPhotos } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadFeed } from '$lib/journal/feed';
-	import { albumCompressionHint, findPost, lightboxCaption, photoMedia } from '$lib/journal/present';
+	import {
+		albumCompressionHint,
+		albumDownloadFilename,
+		findPost,
+		lightboxCaption,
+		photoMedia
+	} from '$lib/journal/present';
 	import { fetchCompression } from '$lib/journal/posts';
 	import type { FeedPost, MediaSummary } from '$lib/journal/types';
 	import { downloadBlob, getMediaUrl } from '$lib/media/objectUrl';
@@ -25,6 +33,10 @@
 	let loading = $state(true);
 
 	const currentItem = $derived(photos[lightboxIndex]);
+	const albumTitle = $derived(post ? pluralPhotos(photos.length) : '');
+	const albumSubtitle = $derived(
+		post ? `${post.author_name} · ${formatPostTime(post.created_at, post.entry_date)}` : ''
+	);
 
 	onMount(() => {
 		void load();
@@ -64,16 +76,23 @@
 	}
 
 	function downloadCurrent() {
-		const photo = photos[lightboxIndex];
-		if (!photo) return;
-		void downloadBlob(circle.origin, photo.blob_id, `photo-${lightboxIndex + 1}.jpg`);
+		const item = photos[lightboxIndex];
+		if (!item) return;
+		void downloadBlob(
+			circle.origin,
+			item.blob_id,
+			albumDownloadFilename(item, lightboxIndex)
+		);
 	}
 </script>
 
-<FormLayout
+<CircleLayout
 	app
 	color={circle.color}
-	title="Альбом"
+	title={loading ? '…' : albumTitle || 'Альбом'}
+	subtitle={post ? albumSubtitle : undefined}
+	tabs={false}
+	commentBar={false}
 	onback={() => goto(`/circles/${circle.circleId}/posts/${postId}`)}
 >
 	{#if loading}
@@ -81,97 +100,47 @@
 	{:else if !post}
 		<Hint style="margin:24px 16px">Запись не найдена</Hint>
 	{:else}
-		<div class="sub" style="padding:0 16px 8px;font-size:12.5px;color:var(--muted)">
-			{post.author_name} · {formatPostTime(post.created_at, post.entry_date)}
-		</div>
-		<div class="g3" style="padding:0 12px 16px">
+		<PhotoGrid style="padding:0 12px 16px;margin-top:3px;gap:4px">
 			{#each photos as photo, i (photo.blob_id)}
-				<button type="button" class="cell" onclick={() => openLightbox(i)}>
-					{#if urls[photo.blob_id]}
-						{#if photo.kind === 'video'}
-							<video src={urls[photo.blob_id]} muted playsinline></video>
-						{:else}
-							<img src={urls[photo.blob_id]} alt="" />
-						{/if}
-					{/if}
-					{#if photo.is_cover}
-						<span class="cov">обложка</span>
-					{/if}
-				</button>
+				<MediaTile
+					variant="album"
+					src={urls[photo.blob_id]}
+					kind={photo.kind === 'video' ? 'video' : 'photo'}
+					coverLabel={photo.is_cover ? 'обложка' : undefined}
+					onclick={() => openLightbox(i)}
+				/>
 			{/each}
-		</div>
+		</PhotoGrid>
 		{#if post}
 			<Hint style="margin:16px 16px 0;text-align:center">
 				{albumCompressionHint(post, photoMaxPx)}
 			</Hint>
 		{/if}
 	{/if}
-</FormLayout>
+</CircleLayout>
 
 {#if lightboxIndex >= 0 && currentItem && post}
 	{@const item = currentItem}
 	<Lightbox
+		fixed
 		counter="{lightboxIndex + 1} из {photos.length}"
 		caption={lightboxCaption(post, item, formatPostTime)}
+		dotCount={photos.length}
+		dotIndex={lightboxIndex}
+		onDotSelect={openLightbox}
 		onclose={closeLightbox}
-		ondownload={item.kind === 'photo' ? downloadCurrent : undefined}
+		ondownload={item.kind === 'photo' || item.kind === 'video' ? downloadCurrent : undefined}
 		onprev={lightboxIndex > 0 ? () => openLightbox(lightboxIndex - 1) : undefined}
 		onnext={lightboxIndex < photos.length - 1 ? () => openLightbox(lightboxIndex + 1) : undefined}
 	>
 		{#snippet media()}
 			{#if item.kind === 'video'}
-				<video src={urls[item.blob_id]} controls></video>
+				<video src={urls[item.blob_id]} controls>
+					<track kind="captions" label="Субтитры отсутствуют" />
+				</video>
 			{:else}
 				<img src={urls[item.blob_id]} alt="" />
 			{/if}
 		{/snippet}
-		{#snippet dots()}
-			{#each photos as _, i (i)}
-				<u class:on={i === lightboxIndex} onclick={() => openLightbox(i)}></u>
-			{/each}
-		{/snippet}
 	</Lightbox>
 {/if}
-
-<style>
-	.g3 {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 4px;
-	}
-	.cell {
-		position: relative;
-		aspect-ratio: 1;
-		overflow: hidden;
-		border-radius: 4px;
-		background: var(--tint);
-		border: none;
-		padding: 0;
-		cursor: pointer;
-	}
-	.cell img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-	.cell video {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-	.cov {
-		position: absolute;
-		left: 4px;
-		bottom: 4px;
-		font-size: 10px;
-		background: rgba(0, 0, 0, 0.45);
-		color: #fff;
-		padding: 2px 4px;
-		border-radius: 3px;
-	}
-	:global(.lb) {
-		z-index: 50;
-		position: fixed;
-		inset: 0;
-	}
-</style>

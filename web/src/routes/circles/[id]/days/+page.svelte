@@ -117,6 +117,7 @@
 	avatar={circle.identityInitial}
 	avatarSrc={circle.avatarUrl}
 	circleId={circle.circleId}
+	identitySettingsLink={circle.canWrite}
 	active="Дни"
 	commentBar={false}
 	onback={goBack}

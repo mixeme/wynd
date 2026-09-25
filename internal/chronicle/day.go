@@ -82,6 +82,38 @@ func (c *Chronicle) reconcileDayCoverAfterPostGone(ctx context.Context, tx *sql.
 	return c.reprojectDayCover(ctx, tx, circleID, entryDate)
 }
 
+// reconcileDayCoverAfterBlobRemovedFromPost drops day cover history when that blob is no longer on the post.
+func (c *Chronicle) reconcileDayCoverAfterBlobRemovedFromPost(ctx context.Context, tx *sql.Tx, circleID, entryDate, postID, blobID string) error {
+	rows, err := tx.QueryContext(ctx, `
+		SELECT dc.event_seq
+		FROM day_covers dc
+		JOIN posts p ON p.id = dc.post_id AND p.deleted = 0
+		WHERE dc.circle_id = ? AND dc.entry_date = ? AND dc.post_id = ? AND dc.blob_id = ?
+	`, circleID, entryDate, postID, blobID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	var seqs []int64
+	for rows.Next() {
+		var seq int64
+		if err := rows.Scan(&seq); err != nil {
+			return err
+		}
+		seqs = append(seqs, seq)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if len(seqs) == 0 {
+		return nil
+	}
+	if err := c.removeSaidHistory(ctx, tx, seqs); err != nil {
+		return err
+	}
+	return c.reprojectDayCover(ctx, tx, circleID, entryDate)
+}
+
 func (c *Chronicle) dayExistsTx(ctx context.Context, tx *sql.Tx, circleID, entryDate string) (bool, error) {
 	var n int
 	err := tx.QueryRowContext(ctx, `
@@ -509,6 +541,15 @@ func (c *Chronicle) CountPostsForDay(ctx context.Context, circleID, entryDate st
 	err := c.db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM posts WHERE circle_id = ? AND entry_date = ? AND deleted = 0
 	`, circleID, entryDate).Scan(&n)
+	return n, err
+}
+
+// CountCirclePosts counts non-deleted posts in a circle.
+func (c *Chronicle) CountCirclePosts(ctx context.Context, circleID string) (int, error) {
+	var n int
+	err := c.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM posts WHERE circle_id = ? AND deleted = 0
+	`, circleID).Scan(&n)
 	return n, err
 }
 

@@ -23,6 +23,7 @@
 		memberSubtitle,
 		type InvitePeek
 	} from '$lib/auth/invites';
+	import { fetchJoinPreview, joinPendingCircle } from '$lib/circles/settings';
 	import { circleInitial, setCircleIdentity } from '$lib/circles/meta';
 	import { rememberCircleOrigin } from '$lib/circles/origin';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
@@ -42,6 +43,7 @@
 	let loading = $state(false);
 	let error = $state('');
 	let inviteToken = $state<string | undefined>();
+	let pendingJoin = $state(false);
 	let cropFile = $state<File | undefined>();
 	let pendingAvatar = $state<CroppedImage | undefined>();
 	let avatarPreview = $state('');
@@ -74,7 +76,20 @@
 			if (inviteToken) {
 				peek = await fetchInvitePeek(circle.origin, inviteToken);
 			} else {
-				members = await fetchMembers(circle.origin, circle.circleId);
+				try {
+					const preview = await fetchJoinPreview(circle.origin, circle.circleId);
+					pendingJoin = true;
+					peek = {
+						server_name: '',
+						host: '',
+						circle_name: preview.circle_name,
+						color: preview.color,
+						member_count: preview.member_count,
+						members: preview.members
+					};
+				} catch {
+					members = await fetchMembers(circle.origin, circle.circleId);
+				}
 			}
 		} catch (err) {
 			error = authErrorHint(err);
@@ -145,6 +160,11 @@
 					body: firstPost.trim() || undefined
 				});
 				clearInviteJoinToken(circle.circleId);
+			} else if (pendingJoin) {
+				await joinPendingCircle(circle.origin, circle.circleId, {
+					name: trimmed,
+					body: firstPost.trim() || undefined
+				});
 			}
 			await setCircleIdentity(circle.origin, circle.circleId, trimmed);
 			const avatarOk = await uploadPendingAvatar();
@@ -175,6 +195,7 @@
 		app
 		color={circle.color}
 		title="Кто уже здесь"
+		subtitle={circle.name}
 		right={String(peek.member_count)}
 		onback={closeMembers}
 	>
@@ -188,20 +209,11 @@
 		{/each}
 	</FormLayout>
 {:else}
-<FormLayout app color={circle.color} onback={() => goto('/circles')}>
-	{#snippet bar()}
-		<div class="cbar">
-			<div class="top" style="justify-content:center">
-				<span class="t">{circle.name}</span>
-			</div>
-			<div style="height:10px"></div>
-		</div>
-	{/snippet}
-
+<FormLayout app color={circle.color} circleTitle={circle.name}>
 	{#if memberTotal > 0}
 		<Label style="margin-top:16px">Кто уже здесь · {memberTotal}</Label>
 		<PeopleStrip people={displayMembers} />
-		{#if moreCount > 0 && inviteToken}
+		{#if moreCount > 0 && (inviteToken || pendingJoin)}
 			<div class="hint ctr" style="margin-top:12px">
 				<TextButton onclick={openMembers}>ещё {moreCount}</TextButton>
 			</div>
@@ -210,21 +222,11 @@
 		{/if}
 	{/if}
 
-	{#if inviteToken}
+	{#if inviteToken || pendingJoin}
 		<div class="h1s" style="margin-top:22px;line-height:1.25">
-			Как тебя зовут<br />в этом круге?
+			Как вас зовут<br />в этом круге?
 		</div>
-		{#if avatarPreview}
-			<button
-				type="button"
-				class="addph preview"
-				style="background-image:url({avatarPreview})"
-				aria-label="сменить фото"
-				onclick={openPhotoPicker}
-			></button>
-		{:else}
-			<AddPhotoButton onclick={openPhotoPicker} />
-		{/if}
+		<AddPhotoButton previewUrl={avatarPreview || undefined} onclick={openPhotoPicker} />
 		<div class="hint ctr" style="margin-top:8px">
 			<TextButton onclick={openPhotoPicker}>добавить фото</TextButton>
 		</div>
@@ -269,11 +271,3 @@
 		oncancel={onCropCancel}
 	/>
 {/if}
-
-<style>
-	.addph.preview {
-		background-size: cover;
-		background-position: center;
-		border: 0;
-	}
-</style>

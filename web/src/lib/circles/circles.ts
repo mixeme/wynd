@@ -14,6 +14,8 @@ export interface ArchiveCycleBanner {
 	reminder_before_sec: number;
 	cutoff_locked: boolean;
 	personal_archive_bytes: number;
+	personal_archive_media_count: number;
+	personal_archive_post_count: number;
 	download_url: string;
 }
 
@@ -45,6 +47,7 @@ export interface StreetCircle {
 	initial: string;
 	preview: string;
 	time: string;
+	pendingJoin?: boolean;
 }
 
 export interface SearchHit {
@@ -55,6 +58,7 @@ export interface SearchHit {
 	kind: string;
 	title?: string;
 	snippet: string;
+	thumb_blob_id?: string;
 	entry_date: string;
 	created_at: string;
 }
@@ -74,6 +78,11 @@ export async function fetchCircles(origin: string): Promise<CircleListItem[]> {
 	const data = await apiJson<CirclesResponse>(origin, '/circles');
 	await writeCachedSnapshot(origin, 'circles', '_list', data);
 	return data.circles;
+}
+
+export async function fetchPendingCircleJoins(origin: string): Promise<string[]> {
+	const data = await apiJson<{ circle_ids?: string[] | null }>(origin, '/pending-circle-joins');
+	return data.circle_ids ?? [];
 }
 
 export async function loadCirclesCached(origin: string): Promise<CircleListItem[]> {
@@ -107,7 +116,7 @@ export async function searchOrigin(
 	if (filters?.hasLocation) params.set('has_location', '1');
 	if (filters?.author) params.set('author', filters.author);
 	const data = await apiJson<SearchResponse>(origin, `/search?${params}`);
-	return data.hits;
+	return data.hits ?? [];
 }
 
 async function colorForCircle(
@@ -145,19 +154,21 @@ export async function loadStreetCircles(): Promise<StreetCircle[]> {
 			circles = await loadCirclesCached(session.origin);
 		}
 		for (const circle of circles) {
-			if (circle.status !== 'active') continue;
+			if (circle.status !== 'active' && circle.status !== 'left_with_access') continue;
 			const pinKey = `${session.origin}:${circle.id}`;
 			const pinnedAt = pinMap.get(pinKey) ?? 0;
 			const preview =
-				circle.last_summary ??
-				(sessions.length > 1 ? session.name : 'Откройте, чтобы посмотреть');
+				circle.status === 'left_with_access'
+					? 'читает, не пишет'
+					: (circle.last_summary ??
+						(sessions.length > 1 ? session.name : 'Откройте, чтобы посмотреть'));
 			const time = circle.last_at ? formatPostTime(circle.last_at, '') : '';
 			rows.push({
 				origin: session.origin,
 				instanceName: session.name,
 				id: circle.id,
 				name: circle.name,
-				unread: circle.unread,
+				unread: circle.status === 'left_with_access' ? 0 : circle.unread,
 				pinned: pinnedAt > 0,
 				pinnedAt,
 				color: await colorForCircle(session.origin, circle.id, circle.color),
@@ -165,6 +176,37 @@ export async function loadStreetCircles(): Promise<StreetCircle[]> {
 				preview,
 				time
 			});
+		}
+		let pendingIds: string[] = [];
+		try {
+			pendingIds = await fetchPendingCircleJoins(session.origin);
+		} catch {
+			pendingIds = [];
+		}
+		for (const id of pendingIds) {
+			if (rows.some((row) => row.origin === session.origin && row.id === id)) continue;
+			try {
+				const preview = await apiJson<{ circle_name: string; color?: string }>(
+					session.origin,
+					`/circles/${id}/join-preview`
+				);
+				rows.push({
+					origin: session.origin,
+					instanceName: session.name,
+					id,
+					name: preview.circle_name,
+					unread: 1,
+					pinned: false,
+					pinnedAt: 0,
+					color: await colorForCircle(session.origin, id, preview.color),
+					initial: circleInitial(preview.circle_name),
+					preview: 'Вас позвали — выберите имя',
+					time: '',
+					pendingJoin: true
+				});
+			} catch {
+				/* preview gone */
+			}
 		}
 	}
 
@@ -194,25 +236,24 @@ export async function circleNameMap(): Promise<Map<string, { name: string; color
 export async function searchAllOrigins(
 	query: string,
 	filters?: import('$lib/journal/search').SearchFilters
-): Promise<
-	Array<{
-		origin: string;
-		hits: SearchHit[];
-	}>
-> {
+): Promise<{
+	results: Array<{ origin: string; hits: SearchHit[] }>;
+	failedInstanceNames: string[];
+}> {
 	const sessions = await listSessions();
 	const results: Array<{ origin: string; hits: SearchHit[] }> = [];
+	const failedInstanceNames: string[] = [];
 	await Promise.all(
 		sessions.map(async (session) => {
 			try {
 				const hits = await searchOrigin(session.origin, query, 50, filters);
 				if (hits.length) results.push({ origin: session.origin, hits });
 			} catch {
-				/* skip unreachable or unpaid origin; layout `/search` is the pay wall */
+				failedInstanceNames.push(session.name);
 			}
 		})
 	);
-	return results;
+	return { results, failedInstanceNames };
 }
 
 export type { CircleColor };

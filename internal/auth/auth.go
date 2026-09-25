@@ -94,6 +94,11 @@ func New(st store.Store, ch *chronicle.Chronicle, mailer CodeDelivery, loopback 
 	}, nil
 }
 
+// SetLoopback updates whether this process treats the instance as loopback.
+func (s *Service) SetLoopback(v bool) {
+	s.loopback = v
+}
+
 // DB exposes the underlying connection for tests.
 func (s *Service) DB() *sql.DB {
 	return s.db

@@ -11,6 +11,7 @@
 	import { fetchCircles } from '$lib/circles/circles';
 	import { loadSessions, removeSession } from '$lib/session/session.svelte';
 	import type { SessionRecord } from '$lib/idb/db';
+	import { formatSessionDay } from '$lib/format/time';
 	import { stopSync } from '$lib/sync/sync';
 
 	interface ServerRowState {
@@ -28,6 +29,13 @@
 		if (mod10 === 1 && mod100 !== 11) return `${n} круг`;
 		if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${n} круга`;
 		return `${n} кругов`;
+	}
+
+	function accountSubtitle(session: SessionRecord, circles: number): string {
+		const base = pluralCircles(circles);
+		if (!session.signed_in_at) return base;
+		const day = formatSessionDay(session.signed_in_at);
+		return day ? `${base} · вошли ${day}` : base;
 	}
 
 	async function refresh() {
@@ -75,7 +83,7 @@
 			</SectionLabel>
 			<SettingsRow
 				title={row.session.email}
-				subtitle={pluralCircles(row.circles)}
+				subtitle={accountSubtitle(row.session, row.circles)}
 				chevron={false}
 				style="padding-top:2px"
 			/>

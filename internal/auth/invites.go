@@ -38,9 +38,9 @@ func (s *Service) CreateInvite(ctx context.Context, in CreateInviteInput) (Invit
 		circleID = in.CircleID
 	}
 	_, err = s.db.ExecContext(ctx, `
-		INSERT INTO invites (id, token, circle_id, kind, max_uses, uses, expires_at, created_by_account_id, created_at)
-		VALUES (?, ?, ?, ?, ?, 0, ?, NULLIF(?, ''), ?)
-	`, id, token, circleID, string(in.Kind), in.MaxUses, formatTime(expires), in.CreatedByAccountID, formatTime(when))
+		INSERT INTO invites (id, token, circle_id, kind, max_uses, uses, expires_at, created_by_account_id, target_account_id, created_at)
+		VALUES (?, ?, ?, ?, ?, 0, ?, NULLIF(?, ''), NULLIF(?, ''), ?)
+	`, id, token, circleID, string(in.Kind), in.MaxUses, formatTime(expires), in.CreatedByAccountID, in.TargetAccountID, formatTime(when))
 	if err != nil {
 		return Invite{}, fmt.Errorf("insert invite: %w", err)
 	}
@@ -52,6 +52,7 @@ func (s *Service) CreateInvite(ctx context.Context, in CreateInviteInput) (Invit
 		MaxUses:            in.MaxUses,
 		ExpiresAt:          expires,
 		CreatedByAccountID: in.CreatedByAccountID,
+		TargetAccountID:    in.TargetAccountID,
 		CreatedAt:          when,
 	}, nil
 }
@@ -89,13 +90,23 @@ func (s *Service) AcceptInvite(ctx context.Context, in AcceptInviteInput) error 
 	if err := s.validateInvite(ctx, inv, when); err != nil {
 		return err
 	}
-	if err := s.checkRate(ctx, in.ClientIP, email, when); err != nil {
+	if err := s.chargeRate(ctx, in.ClientIP, email, when); err != nil {
 		return err
 	}
-	if acc, err := s.accountByEmail(ctx, email); err == nil && acc.Blocked {
+	acc, accErr := s.accountByEmail(ctx, email)
+	switch {
+	case accErr == nil && acc.Blocked:
 		return ErrForbidden
-	} else if err != nil && err != ErrNotFound {
-		return err
+	case accErr != nil && accErr != ErrNotFound:
+		return accErr
+	}
+	// Личная ссылка — только своему адресу. Проверка стоит до выдачи кода:
+	// иначе чужой адрес получал письмо и упирался в отказ только на Verify
+	// (AUTH-4).
+	if inv.TargetAccountID != "" {
+		if accErr != nil || inv.TargetAccountID != acc.ID {
+			return ErrForbidden
+		}
 	}
 	return s.issueCode(ctx, issueCodeInput{
 		email:      email,
@@ -114,13 +125,13 @@ func (s *Service) InviteByToken(ctx context.Context, token string) (Invite, erro
 
 func (s *Service) inviteByToken(ctx context.Context, token string) (Invite, error) {
 	var inv Invite
-	var circleID, revoked, createdBy sql.NullString
+	var circleID, revoked, createdBy, targetAccount sql.NullString
 	var kind string
 	var expiresRaw, createdRaw string
 	err := s.db.QueryRowContext(ctx, `
-		SELECT id, token, circle_id, kind, max_uses, uses, expires_at, revoked_at, created_by_account_id, created_at
+		SELECT id, token, circle_id, kind, max_uses, uses, expires_at, revoked_at, created_by_account_id, target_account_id, created_at
 		FROM invites WHERE token = ?
-	`, token).Scan(&inv.ID, &inv.Token, &circleID, &kind, &inv.MaxUses, &inv.Uses, &expiresRaw, &revoked, &createdBy, &createdRaw)
+	`, token).Scan(&inv.ID, &inv.Token, &circleID, &kind, &inv.MaxUses, &inv.Uses, &expiresRaw, &revoked, &createdBy, &targetAccount, &createdRaw)
 	if err == sql.ErrNoRows {
 		return Invite{}, ErrNotFound
 	}
@@ -145,6 +156,9 @@ func (s *Service) inviteByToken(ctx context.Context, token string) (Invite, erro
 	if createdBy.Valid {
 		inv.CreatedByAccountID = createdBy.String
 	}
+	if targetAccount.Valid {
+		inv.TargetAccountID = targetAccount.String
+	}
 	inv.CreatedAt, err = parseTime(createdRaw)
 	if err != nil {
 		return Invite{}, err
@@ -154,13 +168,13 @@ func (s *Service) inviteByToken(ctx context.Context, token string) (Invite, erro
 
 func (s *Service) inviteByID(ctx context.Context, id string) (Invite, error) {
 	var inv Invite
-	var circleID, revoked, createdBy sql.NullString
+	var circleID, revoked, createdBy, targetAccount sql.NullString
 	var token, kind string
 	var expiresRaw, createdRaw string
 	err := s.db.QueryRowContext(ctx, `
-		SELECT id, token, circle_id, kind, max_uses, uses, expires_at, revoked_at, created_by_account_id, created_at
+		SELECT id, token, circle_id, kind, max_uses, uses, expires_at, revoked_at, created_by_account_id, target_account_id, created_at
 		FROM invites WHERE id = ?
-	`, id).Scan(&inv.ID, &token, &circleID, &kind, &inv.MaxUses, &inv.Uses, &expiresRaw, &revoked, &createdBy, &createdRaw)
+	`, id).Scan(&inv.ID, &token, &circleID, &kind, &inv.MaxUses, &inv.Uses, &expiresRaw, &revoked, &createdBy, &targetAccount, &createdRaw)
 	if err == sql.ErrNoRows {
 		return Invite{}, ErrNotFound
 	}
@@ -185,6 +199,9 @@ func (s *Service) inviteByID(ctx context.Context, id string) (Invite, error) {
 	}
 	if createdBy.Valid {
 		inv.CreatedByAccountID = createdBy.String
+	}
+	if targetAccount.Valid {
+		inv.TargetAccountID = targetAccount.String
 	}
 	inv.CreatedAt, err = parseTime(createdRaw)
 	if err != nil {

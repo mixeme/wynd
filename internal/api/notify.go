@@ -163,6 +163,34 @@ func (s *Server) notifyAccounts(circleID, actorAccountID, signalType string, acc
 	}()
 }
 
+func (s *Server) notifyMemberInvited(circleID, targetAccountID string) {
+	if s == nil || s.Push == nil || targetAccountID == "" {
+		return
+	}
+	s.notifyWG.Add(1)
+	go func() {
+		defer s.notifyWG.Done()
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		now := time.Now().UTC()
+		prefs, err := s.Auth.AccountNotifyPrefs(ctx, targetAccountID)
+		if err != nil {
+			log.Printf("notifyMemberInvited: prefs %s: %v", targetAccountID, err)
+			return
+		}
+		if !auth.NotifyPrefAllows(prefs, "event", now) {
+			return
+		}
+		if err := s.Push.SendSignal(ctx, targetAccountID, push.Signal{
+			CircleID: circleID,
+			Type:     "event",
+			Count:    1,
+		}); err != nil {
+			log.Printf("notifyMemberInvited: push %s: %v", targetAccountID, err)
+		}
+	}()
+}
+
 func (s *Server) notifyCircle(circleID, actorAccountID, signalType string) {
 	if s == nil || s.Push == nil {
 		return

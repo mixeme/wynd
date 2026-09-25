@@ -97,6 +97,20 @@ func (s *Store) CanAccessBlob(ctx context.Context, accountID, blobID string) (bo
 	if err != nil {
 		return false, err
 	}
+	if n > 0 {
+		return true, nil
+	}
+	err = s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM identity_names inm
+		JOIN identities ident ON ident.id = inm.identity_id
+		JOIN memberships m ON m.circle_id = ident.circle_id AND m.account_id = ?
+		JOIN membership_spans ms ON ms.membership_id = m.id AND ms.can_read = 1
+		WHERE inm.avatar_blob_id = ? AND inm.erased_at IS NULL
+		  AND (ms.ended_at IS NULL OR ident.created_at < ms.ended_at)
+	`, accountID, blobID).Scan(&n)
+	if err != nil {
+		return false, err
+	}
 	return n > 0, nil
 }
 
@@ -145,31 +159,33 @@ func (s *Store) RemoveRefsFor(ctx context.Context, refType, refID string) error 
 	return nil
 }
 
-func (s *Store) gcBlobIfUnreferenced(ctx context.Context, blobID string) error {
-	var n int
-	if err := s.db.QueryRowContext(ctx, `
-		SELECT COUNT(*) FROM blob_refs WHERE blob_id = ?
-	`, blobID).Scan(&n); err != nil {
+// RemoveBlobRef drops one blob reference and GCs if nothing else holds the blob.
+func (s *Store) RemoveBlobRef(ctx context.Context, tx *sql.Tx, blobID, refType, refID string) error {
+	exec := s.db.ExecContext
+	if tx != nil {
+		exec = tx.ExecContext
+	}
+	if _, err := exec(ctx, `
+		DELETE FROM blob_refs WHERE blob_id = ? AND ref_type = ? AND ref_id = ?
+	`, blobID, refType, refID); err != nil {
 		return err
 	}
-	if n > 0 {
+	if tx != nil {
 		return nil
 	}
-	// Also check post_media and day_covers / identity_names
-	if err := s.db.QueryRowContext(ctx, `
-		SELECT (
-			(SELECT COUNT(*) FROM post_media WHERE blob_id = ?) +
-			(SELECT COUNT(*) FROM day_covers WHERE blob_id = ? AND deleted = 0) +
-			(SELECT COUNT(*) FROM identity_names WHERE avatar_blob_id = ? AND erased_at IS NULL)
-		)
-	`, blobID, blobID, blobID).Scan(&n); err != nil {
+	return s.gcBlobIfUnreferenced(ctx, blobID)
+}
+
+func (s *Store) gcBlobIfUnreferenced(ctx context.Context, blobID string) error {
+	referenced, err := IsReferenced(ctx, s.db, blobID)
+	if err != nil {
 		return err
 	}
-	if n > 0 {
+	if referenced {
 		return nil
 	}
 	var rel string
-	err := s.db.QueryRowContext(ctx, `
+	err = s.db.QueryRowContext(ctx, `
 		SELECT storage_path FROM blobs WHERE id = ?
 	`, blobID).Scan(&rel)
 	if err == sql.ErrNoRows {
@@ -178,10 +194,12 @@ func (s *Store) gcBlobIfUnreferenced(ctx context.Context, blobID string) error {
 	if err != nil {
 		return err
 	}
-	path := filepath.Join(s.dir, filepath.FromSlash(rel))
-	_ = os.Remove(path)
-	_, err = s.db.ExecContext(ctx, `DELETE FROM blobs WHERE id = ?`, blobID)
-	return err
+	// Сначала строка, потом файл (план 42, раздел B «Ссылки на блобы»).
+	if _, err := s.db.ExecContext(ctx, `DELETE FROM blobs WHERE id = ?`, blobID); err != nil {
+		return err
+	}
+	_ = os.Remove(filepath.Join(s.dir, filepath.FromSlash(rel)))
+	return nil
 }
 
 // ReleaseBlobs GCs blobs after post_media rows were removed.

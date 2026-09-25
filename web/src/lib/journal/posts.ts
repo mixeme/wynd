@@ -71,13 +71,20 @@ export async function editPost(
 	postId: string,
 	body: string,
 	entry_date: string,
-	cover_blob_id?: string
+	media?: MediaSummary[]
 ): Promise<void> {
-	const payload: { body: string; entry_date: string; cover_blob_id?: string } = {
+	const payload: {
+		body: string;
+		entry_date: string;
+		cover_blob_id?: string;
+		media?: MediaSummary[];
+	} = {
 		body,
 		entry_date
 	};
-	if (cover_blob_id) payload.cover_blob_id = cover_blob_id;
+	if (media !== undefined) {
+		payload.media = media;
+	}
 	await apiJson(origin, `/circles/${circleId}/posts/${postId}`, {
 		method: 'PATCH',
 		headers: { 'Content-Type': 'application/json' },

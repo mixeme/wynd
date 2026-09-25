@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getContext, onMount } from 'svelte';
+	import MediaTile from '$ui/data/MediaTile.svelte';
 	import PhotoGrid from '$ui/data/PhotoGrid.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
@@ -127,9 +128,7 @@
 		</TextButton>
 	{/snippet}
 
-	<div class="sub" style="padding:0 16px 8px;font-size:12.5px;color:var(--muted)">
-		{formatEntryDate(entryDate)}
-	</div>
+	<Hint style="margin:0 16px 8px">{formatEntryDate(entryDate)}</Hint>
 
 	{#if loading}
 		<Hint style="margin:24px 16px">Загрузка…</Hint>
@@ -138,28 +137,20 @@
 	{:else}
 		<PhotoGrid style="padding:0 12px 16px">
 			{#each items as item (item.blobId)}
-				<button
-					type="button"
-					class="cell"
-					class:on={selected?.blobId === item.blobId}
+				<MediaTile
+					variant="album"
+					src={item.preview}
+					kind={item.kind === 'video' ? 'video' : 'photo'}
+					selected={selected?.blobId === item.blobId}
 					onclick={() => selectItem(item)}
-				>
-					{#if item.kind === 'video'}
-						<video src={item.preview} muted playsinline></video>
-					{:else}
-						<img src={item.preview} alt="" />
-					{/if}
-					{#if selected?.blobId === item.blobId}
-						<span class="mark">✓</span>
-					{/if}
-				</button>
+				/>
 			{/each}
 		</PhotoGrid>
 	{/if}
 	{#if canClearCover}
-		<div class="hint ctr" style="margin-top:12px">
+		<Hint centered style="margin-top:12px">
 			<TextButton disabled={clearing} onclick={() => void clearCover()}>убрать обложку</TextButton>
-		</div>
+		</Hint>
 	{/if}
 
 	{#if error}
@@ -167,38 +158,3 @@
 	{/if}
 </FormLayout>
 
-<style>
-	.cell {
-		position: relative;
-		aspect-ratio: 1;
-		overflow: hidden;
-		border-radius: 4px;
-		background: var(--tint);
-		border: none;
-		padding: 0;
-		cursor: pointer;
-	}
-	.cell.on {
-		outline: 2px solid var(--c);
-		outline-offset: 1px;
-	}
-	.cell img,
-	.cell video {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		display: block;
-	}
-	.mark {
-		position: absolute;
-		right: 4px;
-		top: 4px;
-		background: var(--c);
-		color: #fff;
-		border-radius: 50%;
-		width: 20px;
-		height: 20px;
-		font-size: 12px;
-		line-height: 20px;
-	}
-</style>

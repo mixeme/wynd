@@ -1,6 +1,10 @@
 package auth
 
-import "time"
+import (
+	"context"
+	"database/sql"
+	"time"
+)
 
 const (
 	// AdminSentinelEmail is the local account bound to admin sessions.
@@ -64,6 +68,7 @@ type Invite struct {
 	ExpiresAt          time.Time
 	RevokedAt          *time.Time
 	CreatedByAccountID string
+	TargetAccountID    string
 	CreatedAt          time.Time
 }
 
@@ -85,6 +90,10 @@ type BootstrapInput struct {
 	Password     string
 	ClientIP     string
 	Now          time.Time
+	// InTx, если задан, выполняется внутри транзакции установки: первичная
+	// настройка инстанса (например SMTP-релей) применяется вместе с флагом
+	// bootstrapped или не применяется вовсе.
+	InTx func(context.Context, *sql.Tx) error
 }
 
 type CreateInviteInput struct {
@@ -92,6 +101,14 @@ type CreateInviteInput struct {
 	Kind               InviteKind
 	MaxUses            int
 	TTL                time.Duration
+	CreatedByAccountID string
+	TargetAccountID    string
+	Now                time.Time
+}
+
+type CreateMemberInviteInput struct {
+	CircleID           string
+	TargetAccountID    string
 	CreatedByAccountID string
 	Now                time.Time
 }

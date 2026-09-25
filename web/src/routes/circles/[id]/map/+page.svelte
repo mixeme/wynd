@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { getContext, onDestroy, onMount } from 'svelte';
+	import MapBadge from '$ui/data/MapBadge.svelte';
+	import MapPostSheet from '$ui/data/MapPostSheet.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { isAccessError } from '$lib/api/client';
@@ -180,6 +182,7 @@
 	avatar={circle.identityInitial}
 	avatarSrc={circle.avatarUrl}
 	circleId={circle.circleId}
+	identitySettingsLink={circle.canWrite}
 	active="Карта"
 	commentBar={false}
 	onback={goBack}
@@ -191,39 +194,18 @@
 	{:else}
 		<div class="map-wrap">
 			{#if badge}
-				<div class="map-badge">{badge}</div>
+				<MapBadge {badge} />
 			{/if}
 			<div bind:this={mapEl} style="flex:1;min-height:420px"></div>
 			{#if selected}
-				<button type="button" class="map-sheet" onclick={openSelected}>
-					<div class="thumb">
-						{#if selectedUrl}
-							<img src={selectedUrl} alt="" />
-						{/if}
-					</div>
-					<div>
-						<div style="font-weight:600">{formatPostTime(selected.created_at, selected.entry_date)}</div>
-						<div style="font-size:12.5px;margin-top:4px">Открыть запись</div>
-					</div>
-				</button>
+				<MapPostSheet
+					thumbUrl={selectedUrl || undefined}
+					author={selected.author_name}
+					time={formatPostTime(selected.created_at, selected.entry_date)}
+					body={selected.body}
+					onclick={openSelected}
+				/>
 			{/if}
 		</div>
 	{/if}
 </CircleLayout>
-
-<style>
-	.map-wrap {
-		display: flex;
-		flex-direction: column;
-		flex: 1;
-		min-height: 0;
-		position: relative;
-	}
-	button.map-sheet {
-		border: none;
-		cursor: pointer;
-		font: inherit;
-		color: inherit;
-		text-align: left;
-	}
-</style>

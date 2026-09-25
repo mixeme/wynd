@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+	albumDownloadFilename,
 	commentPreview,
 	groupReactions,
 	reactionIconName,
+	serviceEventsAboveNewest,
+	serviceEventsBetween,
 	unreadDividerIndex
 } from './present';
 import type { Comment, FeedPost, Reaction } from './types';
@@ -38,6 +41,7 @@ describe('present', () => {
 		];
 		expect(commentPreview(comments)).toEqual({
 			first: 'Аня: привет',
+			createdAt: at,
 			more: 2
 		});
 		expect(commentPreview([])).toEqual({ more: 0 });
@@ -64,5 +68,31 @@ describe('present', () => {
 				1
 			)
 		).toBe(1);
+	});
+
+	it('names lightbox downloads from filename or kind and 1-based index', () => {
+		expect(
+			albumDownloadFilename(
+				{ blob_id: 'a', kind: 'photo', is_cover: false, filename: ' IMG.JPG ' },
+				0
+			)
+		).toBe('IMG.JPG');
+		expect(albumDownloadFilename({ blob_id: 'a', kind: 'photo', is_cover: false }, 0)).toBe(
+			'photo-1.jpg'
+		);
+		expect(albumDownloadFilename({ blob_id: 'b', kind: 'video', is_cover: false }, 2)).toBe(
+			'video-3.mp4'
+		);
+	});
+
+	it('shows service events above the newest post and when feed is empty', () => {
+		const events = [
+			{ seq: 5, summary: 'Мышка теперь Мышь', created_at: at },
+			{ seq: 3, summary: 'Боб вступил', created_at: at }
+		];
+		expect(serviceEventsAboveNewest(events, 4).map((e) => e.seq)).toEqual([5]);
+		expect(serviceEventsAboveNewest(events, 5).map((e) => e.seq)).toEqual([]);
+		expect(serviceEventsAboveNewest(events, undefined).map((e) => e.seq)).toEqual([5, 3]);
+		expect(serviceEventsBetween(events, 10, 0).map((e) => e.seq)).toEqual([5, 3]);
 	});
 });

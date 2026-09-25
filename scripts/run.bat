@@ -103,35 +103,18 @@ set "INSTANCE_JSON=%TEMP%\wynd-instance-%RANDOM%.json"
 set "TOKEN_FILE=%DATA_DIR%\keys\bootstrap"
 curl.exe -s "%PUBLIC_URL%/api/v1/instance" > "%INSTANCE_JSON%" 2>nul
 
-set "SHOW_BOOTSTRAP=0"
+set "SHOW_BOOTSTRAP=1"
 if exist "%INSTANCE_JSON%" (
-  findstr /C:"\"bootstrapped\":false" "%INSTANCE_JSON%" >nul 2>&1
-  if not errorlevel 1 set "SHOW_BOOTSTRAP=1"
-) else (
-  if not exist "%DATA_DIR%\wynd.db" set "SHOW_BOOTSTRAP=1"
+  findstr /C:"bootstrapped.:true" "%INSTANCE_JSON%" >nul 2>&1
+  if not errorlevel 1 set "SHOW_BOOTSTRAP=0"
 )
 
 if "!SHOW_BOOTSTRAP!"=="1" (
   call :show_bootstrap_banner
-  set "BOOTSTRAP_OFFERED=%DATA_DIR%\keys\bootstrap-offered"
-  set "AUTO_OPEN_BOOTSTRAP=0"
-  if not exist "!BOOTSTRAP_OFFERED!" (
-    if "!FIRST_RUN!"=="1" (
-      set "AUTO_OPEN_BOOTSTRAP=1"
-    )
-    echo.>"!BOOTSTRAP_OFFERED!"
-  )
-  if "!AUTO_OPEN_BOOTSTRAP!"=="1" (
-    if defined TOKEN (
-      start "" "%PUBLIC_URL%/admin/bootstrap?token=!TOKEN!"
-    ) else (
-      start "" "%PUBLIC_URL%/"
-    )
+  if defined TOKEN (
+    powershell -NoProfile -Command "Start-Process '%PUBLIC_URL%/admin/bootstrap?token=!TOKEN!'"
   ) else (
-    echo Bootstrap is not complete yet. Use the URL above if needed.
-    echo Opening home page instead of bootstrap wizard.
-    echo.
-    start "" "%PUBLIC_URL%/"
+    echo ERROR: Bootstrap token not found. See the server log ^(bootstrap URL:^).
   )
 ) else (
   start "" "%PUBLIC_URL%/"
@@ -143,7 +126,7 @@ set "TOKEN="
 set /a TOKEN_WAIT=15
 :wait_token
 if exist "%TOKEN_FILE%" (
-  for /f "usebackq delims=" %%T in ("%TOKEN_FILE%") do set "TOKEN=%%T"
+  set /p TOKEN=<"%TOKEN_FILE%"
 )
 if defined TOKEN goto :print_bootstrap
 set /a TOKEN_WAIT-=1

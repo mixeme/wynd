@@ -106,6 +106,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/bootstrap/smtp-test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Probe SMTP with unsaved settings during first-run bootstrap */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/storage": {
         parameters: {
             query?: never;
@@ -123,7 +157,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description used_bytes, quota_bytes, circles[] */
+                /** @description used_bytes, quota_bytes (effective), storage_quota_bytes, storage_quota_disk_percent, circles[] */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -148,7 +182,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Set instance storage quota */
+        /** Set instance storage quota (absolute bytes or disk percent, not both) */
         put: {
             parameters: {
                 query?: never;
@@ -303,7 +337,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Instance name and registration mode */
+        /** Instance name, public URL and registration mode */
         get: {
             parameters: {
                 query?: never;
@@ -322,7 +356,41 @@ export interface paths {
                 };
             };
         };
-        /** Update instance name and/or registration mode */
+        /** Update instance name, public URL and/or registration mode */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Change admin panel password */
         put: {
             parameters: {
                 query?: never;
@@ -1219,7 +1287,14 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": {
+                        days?: number;
+                        unlimited?: boolean;
+                    };
+                };
+            };
             responses: {
                 /** @description OK */
                 200: {
@@ -1266,6 +1341,103 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/pay/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Accounts with subscription status for admin table */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description accounts[] */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/pay/accounts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Account email and subscription for grant screen */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description account */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        /** Grant or extend subscription without a pay request */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        days?: number;
+                        unlimited?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;

@@ -22,7 +22,7 @@ import (
 	"gitea.mixdep.ru/mix/wynd/internal/version"
 )
 
-func setupAPI(t *testing.T) (*api.Server, *auth.CaptureCodes, *chronicle.Chronicle, *blob.Store) {
+func setupFreshAPI(t *testing.T) (*api.Server, *auth.CaptureCodes, *chronicle.Chronicle, *blob.Store) {
 	t.Helper()
 	st, err := store.OpenMemory()
 	if err != nil {
@@ -44,12 +44,6 @@ func setupAPI(t *testing.T) (*api.Server, *auth.CaptureCodes, *chronicle.Chronic
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := svc.Bootstrap(t.Context(), auth.BootstrapInput{
-		Token: "bootstrap", InstanceName: "Дом Ани", Password: "admin-pass",
-		Now: time.Date(2026, 8, 30, 10, 0, 0, 0, time.UTC),
-	}, "bootstrap"); err != nil {
-		t.Fatal(err)
-	}
 	mailSvc, err := mail.New(st, true, caps)
 	if err != nil {
 		t.Fatal(err)
@@ -63,6 +57,18 @@ func setupAPI(t *testing.T) (*api.Server, *auth.CaptureCodes, *chronicle.Chronic
 	// httptest.NewRequest peers from 192.0.2.1; trust it so the tests can pick
 	// rate-limit buckets through X-Forwarded-For.
 	srv.TrustedProxies, _ = api.ParseTrustedProxies([]string{"192.0.2.0/24"})
+	return srv, caps, ch, blobs
+}
+
+func setupAPI(t *testing.T) (*api.Server, *auth.CaptureCodes, *chronicle.Chronicle, *blob.Store) {
+	t.Helper()
+	srv, caps, ch, blobs := setupFreshAPI(t)
+	if err := srv.Auth.Bootstrap(t.Context(), auth.BootstrapInput{
+		Token: "bootstrap", InstanceName: "Дом Ани", Password: "admin-pass",
+		Now: time.Date(2026, 8, 30, 10, 0, 0, 0, time.UTC),
+	}, "bootstrap"); err != nil {
+		t.Fatal(err)
+	}
 	return srv, caps, ch, blobs
 }
 
@@ -191,6 +197,16 @@ func registerSession(t *testing.T, srv *api.Server, caps *auth.CaptureCodes, ema
 		t.Fatal(err)
 	}
 	return out["token"].(string), out["account_id"].(string)
+}
+
+func allowCircleMultiInvites(t *testing.T, srv *api.Server, circleID, ownerTok string) {
+	t.Helper()
+	rec := doJSON(t, srv, http.MethodPatch, "/api/v1/circles/"+circleID, ownerTok, map[string]any{
+		"invite_kind_default": "multi",
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("allow multi invites: %d %s", rec.Code, rec.Body.String())
+	}
 }
 
 func TestInvalidPostJSONIsBadRequest(t *testing.T) {
@@ -352,7 +368,7 @@ func TestMediaOnlyPostAndTextWhenQuotaFull(t *testing.T) {
 	}
 
 	if _, err := blobs.DB().ExecContext(t.Context(), `
-		UPDATE instance_settings SET storage_quota_bytes = 1 WHERE id = 1
+		UPDATE instance_settings SET storage_quota_bytes = 1, storage_quota_disk_percent = NULL WHERE id = 1
 	`); err != nil {
 		t.Fatal(err)
 	}

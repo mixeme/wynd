@@ -1,7 +1,9 @@
 .ph .map-wrap {
 	position: relative;
 	flex: 1;
-	min-height: 320px;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
 }
 
 .ph .map-wrap .leaflet-container {
@@ -52,7 +54,8 @@
 	pointer-events: none;
 }
 
-.ph .map-sheet {
+.ph .map-sheet,
+.ph button.map-sheet {
 	position: absolute;
 	left: 0;
 	right: 0;
@@ -63,6 +66,16 @@
 	padding: 12px 14px 16px;
 	display: flex;
 	gap: 12px;
+	box-sizing: border-box;
+	width: 100%;
+	border-left: none;
+	border-right: none;
+	border-bottom: none;
+	font: inherit;
+	color: inherit;
+	cursor: pointer;
+	text-align: left;
+	-webkit-tap-highlight-color: transparent;
 }
 
 .ph .map-sheet .thumb {
@@ -78,4 +91,23 @@
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
+}
+
+.ph .map-sheet-body {
+	flex: 1;
+	min-width: 0;
+}
+
+.ph .map-sheet-author {
+	font-weight: 600;
+}
+
+.ph .map-sheet-time {
+	font-size: 11.5px;
+	color: var(--faint, #a8a096);
+	margin-bottom: 5px;
+}
+
+.ph .map-sheet-text {
+	font-size: 12.5px;
 }

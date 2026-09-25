@@ -83,7 +83,7 @@
 				</div>
 				<div>
 					<div style="display:flex;align-items:flex-start;gap:12px">
-						<Switch bind:checked={settings.show} />
+						<Switch bind:checked={settings.show} label="Показывать" />
 						<div>
 							<div style="font-size:13.5px;font-weight:600">Показывать</div>
 							<div style="font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.5">
@@ -92,7 +92,7 @@
 						</div>
 					</div>
 					<div style="display:flex;align-items:flex-start;gap:12px;margin-top:18px">
-						<Switch bind:checked={settings.dismissible} />
+						<Switch bind:checked={settings.dismissible} label="Можно скрыть" />
 						<div>
 							<div style="font-size:13.5px;font-weight:600">Можно скрыть</div>
 							<div style="font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.5">

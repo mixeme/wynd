@@ -46,7 +46,7 @@
 		{/snippet}
 	</PostCard>
 	<CommentPreview onclick={() => {}}>
-		<div>Петя: а компот будет?</div>
+		<div>Петя: а компот будет? <span class="tm">сегодня, 14:22</span></div>
 		<div class="mo">ещё 11 комментариев</div>
 	</CommentPreview>
 	<PostCard>

@@ -8,6 +8,10 @@
 		caption,
 		media,
 		dots,
+		dotCount,
+		dotIndex,
+		onDotSelect,
+		fixed = false,
 		class: className = '',
 		style = '',
 		onclose,
@@ -19,6 +23,10 @@
 		caption?: string;
 		media: Snippet;
 		dots?: Snippet;
+		dotCount?: number;
+		dotIndex?: number;
+		onDotSelect?: (index: number) => void;
+		fixed?: boolean;
 		class?: string;
 		style?: string;
 		onclose?: () => void;
@@ -49,7 +57,7 @@
 
 <svelte:window onkeydown={onKeydown} />
 
-<div class="lb {className}" {style}>
+<div class="lb {className}" class:fixed {style}>
 	<div class="top">
 		{#if onclose}
 			<IconButton name="x" label="Закрыть" onclick={() => onclose()} />
@@ -60,13 +68,19 @@
 		{#if ondownload}
 			<IconButton
 				name="download"
-				label="Скачать фото"
-				style="margin-left:auto"
+				label="Скачать"
 				onclick={() => ondownload()}
+				style="margin-left:auto;color:#EFE9E0"
 			/>
 		{/if}
 	</div>
-	<div class="mid" ontouchstart={onTouchStart} ontouchend={onTouchEnd}>
+	<div
+		class="mid"
+		role="region"
+		aria-label="Просмотр"
+		ontouchstart={onTouchStart}
+		ontouchend={onTouchEnd}
+	>
 		{#if onprev}
 			<button
 				type="button"
@@ -87,6 +101,17 @@
 	{#if dots}
 		<div class="dots">
 			{@render dots()}
+		</div>
+	{:else if dotCount != null && onDotSelect}
+		<div class="dots">
+			{#each Array.from({ length: dotCount }, (_, i) => i) as i (i)}
+				<button
+					type="button"
+					class:on={i === dotIndex}
+					aria-label="Фото {i + 1}"
+					onclick={() => onDotSelect(i)}
+				></button>
+			{/each}
 		</div>
 	{/if}
 	{#if caption}

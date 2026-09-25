@@ -396,55 +396,70 @@ func (c *Chronicle) IdentityAvatarBlobIDs(ctx context.Context, identityIDs []str
 	return out, nil
 }
 
-// EstimateArchiveMediaBytes sums blob sizes visible in archive snapshot.
-func (c *Chronicle) EstimateArchiveMediaBytes(ctx context.Context, circleID, accountID, cutoffDate string) (int64, error) {
+// ArchivePersonalStats describes a member's personal archive slice (same as ZIP /media).
+type ArchivePersonalStats struct {
+	MediaBytes int64
+	MediaFiles int
+	PostCount  int
+}
+
+// EstimateArchivePersonal counts posts and unique media blobs in the visible archive slice.
+func (c *Chronicle) EstimateArchivePersonal(ctx context.Context, circleID, accountID, cutoffDate string) (ArchivePersonalStats, error) {
 	posts, err := c.ArchiveSnapshot(ctx, circleID, accountID, cutoffDate)
 	if err != nil {
-		return 0, err
+		return ArchivePersonalStats{}, err
 	}
 	seen := make(map[string]bool)
 	var total int64
 	for _, fp := range posts {
 		for _, m := range fp.Media {
-			if seen[m.BlobID] {
-				continue
+			if err := c.addCompleteArchiveBlob(ctx, seen, m.BlobID, &total); err != nil {
+				return ArchivePersonalStats{}, err
 			}
-			seen[m.BlobID] = true
-			var size int64
-			err := c.db.QueryRowContext(ctx, `
-				SELECT size_bytes FROM blobs WHERE id = ? AND status = 'complete'
-			`, m.BlobID).Scan(&size)
-			if err == sql.ErrNoRows {
-				continue
-			}
-			if err != nil {
-				return 0, err
-			}
-			total += size
 		}
 	}
 	avatars, err := c.IdentityAvatarBlobIDs(ctx, IdentityIDsFromFeed(posts))
 	if err != nil {
-		return 0, err
+		return ArchivePersonalStats{}, err
 	}
 	for _, blobID := range avatars {
-		if seen[blobID] {
-			continue
+		if err := c.addCompleteArchiveBlob(ctx, seen, blobID, &total); err != nil {
+			return ArchivePersonalStats{}, err
 		}
-		seen[blobID] = true
-		var size int64
-		err := c.db.QueryRowContext(ctx, `
-			SELECT size_bytes FROM blobs WHERE id = ? AND status = 'complete'
-		`, blobID).Scan(&size)
-		if err == sql.ErrNoRows {
-			continue
-		}
-		if err != nil {
-			return 0, err
-		}
-		total += size
 	}
-	return total, nil
+	return ArchivePersonalStats{
+		MediaBytes: total,
+		MediaFiles: len(seen),
+		PostCount:  len(posts),
+	}, nil
+}
+
+func (c *Chronicle) addCompleteArchiveBlob(ctx context.Context, seen map[string]bool, blobID string, total *int64) error {
+	if seen[blobID] {
+		return nil
+	}
+	var size int64
+	err := c.db.QueryRowContext(ctx, `
+		SELECT size_bytes FROM blobs WHERE id = ? AND status = 'complete'
+	`, blobID).Scan(&size)
+	if err == sql.ErrNoRows {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	seen[blobID] = true
+	*total += size
+	return nil
+}
+
+// EstimateArchiveMediaBytes sums blob sizes visible in archive snapshot.
+func (c *Chronicle) EstimateArchiveMediaBytes(ctx context.Context, circleID, accountID, cutoffDate string) (int64, error) {
+	stats, err := c.EstimateArchivePersonal(ctx, circleID, accountID, cutoffDate)
+	if err != nil {
+		return 0, err
+	}
+	return stats.MediaBytes, nil
 }
 
 // CirclesDueForArchivePurge returns circle ids whose deadline has passed.

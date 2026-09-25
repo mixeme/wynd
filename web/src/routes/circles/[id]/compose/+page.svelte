@@ -8,7 +8,9 @@
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import TextArea from '$ui/forms/TextArea.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
+	import MediaTile from '$ui/data/MediaTile.svelte';
 	import MemberRow from '$ui/data/MemberRow.svelte';
+	import MentionPicker from '$ui/forms/MentionPicker.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { memberAvatarColor } from '$lib/auth/invites';
@@ -28,7 +30,14 @@
 	import { findPost } from '$lib/journal/present';
 	import { createPost, deletePost, editPost as savePost, fetchCompression, uploadBlob } from '$lib/journal/posts';
 	import type { FeedPost, MediaSummary } from '$lib/journal/types';
-	import { compressImage, fileToQueueBuffer, isImageFile, isVideoFile } from '$lib/media/compress';
+	import {
+		compressImage,
+		compressVideo,
+		fileToQueueBuffer,
+		isImageFile,
+		isLargeVideo,
+		isVideoFile
+	} from '$lib/media/compress';
 	import { readExif } from '$lib/media/exif';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 	import { enqueuePost, loadQueuedPost, removeQueueItem, updateQueuedPost } from '$lib/queue/queue';
@@ -53,6 +62,7 @@
 			preview?: string;
 			file?: QueueFile;
 			blobId?: string;
+			fileName?: string;
 			meta: QueueMediaMeta;
 		}>
 	>([]);
@@ -64,6 +74,12 @@
 	let members = $state<MemberInfo[]>([]);
 	let mentionStart = $state<number | null>(null);
 	let mentionQuery = $state('');
+	let compressing = $state(false);
+	let compressProgress = $state(0);
+	let compressIndex = $state(0);
+	let compressTotal = $state(0);
+	let keepOpenHint = $state(false);
+	let filePickLock = false;
 
 	const activeMembers = $derived(members.filter((m) => m.status === 'active'));
 	const mentionCandidates = $derived(
@@ -71,7 +87,16 @@
 	);
 	const showMentionPicker = $derived(mentionStart != null && mentionCandidates.length > 0);
 
-	const canPublish = $derived(Boolean(body.trim()) || picked.length > 0);
+	const canPublish = $derived(
+		!compressing && (Boolean(body.trim()) || picked.length > 0)
+	);
+	const compressHint = $derived.by(() => {
+		if (!compressing) return '';
+		const pct = Math.round(compressProgress * 100);
+		const of =
+			compressTotal > 1 ? ` (${compressIndex} из ${compressTotal})` : '';
+		return pct > 0 ? `Сжимаем видео${of}… ${pct}%` : `Сжимаем видео${of}…`;
+	});
 	const windowsDiverged = $derived(
 		isEdit &&
 			editingPost &&
@@ -168,6 +193,10 @@
 	}
 
 	onMount(async () => {
+		if (!circle.canWrite) {
+			goto(`/circles/${circle.circleId}`, { replaceState: true });
+			return;
+		}
 		entryDate = today();
 		if (editPostId) {
 			const cached = await loadFeedCached(circle.origin, circle.circleId);
@@ -178,11 +207,19 @@
 				entryDate = post.entry_date;
 				const items = [];
 				for (const m of post.media ?? []) {
-					const url = await getMediaUrl(circle.origin, m.blob_id);
+					const preview =
+						m.kind === 'attachment' ? undefined : await getMediaUrl(circle.origin, m.blob_id);
 					items.push({
-						preview: url,
+						preview,
 						blobId: m.blob_id,
-						meta: { kind: m.kind, is_cover: m.is_cover }
+						fileName: m.filename,
+						meta: {
+							kind: m.kind,
+							is_cover: m.is_cover,
+							captured_at: m.captured_at,
+							geo_lat: m.geo_lat,
+							geo_lng: m.geo_lng
+						}
 					});
 				}
 				picked = items;
@@ -251,6 +288,14 @@
 		return meta.kind === 'photo' || meta.kind === 'video';
 	}
 
+	function postQueuePayload(trimmed: string): PostQueuePayload {
+		return {
+			body: trimmed,
+			entry_date: entryDate,
+			media_meta: picked.map((p) => ({ ...p.meta }))
+		};
+	}
+
 	function setCover(index: number) {
 		picked = picked.map((item, i) => ({
 			...item,
@@ -261,53 +306,107 @@
 		}));
 	}
 
-	function coverBlobId(): string | undefined {
-		return picked.find((p) => p.meta.is_cover && p.blobId)?.blobId;
+	function removePicked(index: number) {
+		const next = picked.filter((_, i) => i !== index);
+		if (next.length && !next.some((p) => p.meta.is_cover && isVisual(p.meta))) {
+			const firstVisual = next.findIndex((p) => isVisual(p.meta));
+			if (firstVisual >= 0) {
+				next[firstVisual] = {
+					...next[firstVisual],
+					meta: { ...next[firstVisual].meta, is_cover: true }
+				};
+			}
+		}
+		picked = next;
+	}
+
+	async function buildEditMedia(): Promise<MediaSummary[]> {
+		const out: MediaSummary[] = [];
+		for (const item of picked) {
+			let blobId = item.blobId;
+			if (!blobId && item.file) {
+				blobId = await uploadBlob(circle.origin, item.file);
+			}
+			if (!blobId) continue;
+			out.push({
+				blob_id: blobId,
+				kind: item.meta.kind as MediaSummary['kind'],
+				captured_at: item.meta.captured_at,
+				geo_lat: item.meta.geo_lat,
+				geo_lng: item.meta.geo_lng,
+				is_cover: item.meta.is_cover ?? false
+			});
+		}
+		return out;
 	}
 
 	async function onFilesSelected(e: Event) {
 		const input = e.target as HTMLInputElement;
 		const files = input.files;
 		if (!files?.length) return;
-
-		const compression = await fetchCompression(circle.origin).catch(() => undefined);
-		const next = [...picked];
-
-		for (const file of files) {
-			const exif = await readExif(file);
-			let queueFile: QueueFile;
-			if (isImageFile(file)) {
-				queueFile = await compressImage(file, compression);
-			} else {
-				queueFile = await fileToQueueBuffer(file);
-			}
-
-			const kind = isVideoFile(file) ? 'video' : isImageFile(file) ? 'photo' : 'attachment';
-
-			const meta: QueueMediaMeta = {
-				kind,
-				captured_at: exif.captured_at,
-				geo_lat: exif.geo_lat,
-				geo_lng: exif.geo_lng,
-				is_cover:
-					(kind === 'photo' || kind === 'video') &&
-					!next.some((n) => n.meta.is_cover && (n.meta.kind === 'photo' || n.meta.kind === 'video'))
-			};
-
-			if (exif.entry_date && entryDate === today()) {
-				entryDate = exif.entry_date;
-				entryDateFromExif = true;
-			}
-
-			const preview =
-				kind === 'photo' || kind === 'video'
-					? URL.createObjectURL(new Blob([queueFile.data], { type: queueFile.type }))
-					: undefined;
-
-			next.push({ preview, file: queueFile, meta });
+		if (filePickLock) {
+			input.value = '';
+			return;
 		}
-		picked = next;
-		input.value = '';
+		filePickLock = true;
+		try {
+			const compression = await fetchCompression(circle.origin).catch(() => undefined);
+			const next = [...picked];
+			const list = [...files];
+			const videoCount = list.filter(isVideoFile).length;
+			compressTotal = videoCount;
+			compressIndex = 0;
+			keepOpenHint = list.some((file) => isVideoFile(file) && isLargeVideo(file.size));
+			compressing = videoCount > 0;
+			compressProgress = 0;
+
+			for (const file of list) {
+				const exif = await readExif(file);
+				let queueFile: QueueFile;
+				if (isImageFile(file)) {
+					queueFile = await compressImage(file, compression);
+				} else if (isVideoFile(file)) {
+					compressIndex += 1;
+					compressProgress = 0;
+					queueFile = await compressVideo(file, compression, (progress) => {
+						compressProgress = progress;
+					});
+				} else {
+					queueFile = await fileToQueueBuffer(file);
+				}
+
+				const kind = isVideoFile(file) ? 'video' : isImageFile(file) ? 'photo' : 'attachment';
+
+				const meta: QueueMediaMeta = {
+					kind,
+					captured_at: exif.captured_at,
+					geo_lat: exif.geo_lat,
+					geo_lng: exif.geo_lng,
+					is_cover:
+						(kind === 'photo' || kind === 'video') &&
+						!next.some((n) => n.meta.is_cover && (n.meta.kind === 'photo' || n.meta.kind === 'video'))
+				};
+
+				if (exif.entry_date && entryDate === today()) {
+					entryDate = exif.entry_date;
+					entryDateFromExif = true;
+				}
+
+				const preview =
+					kind === 'photo' || kind === 'video'
+						? URL.createObjectURL(new Blob([queueFile.data], { type: queueFile.type }))
+						: undefined;
+
+				next.push({ preview, file: queueFile, meta });
+				picked = [...next];
+			}
+		} finally {
+			compressing = false;
+			compressProgress = 0;
+			keepOpenHint = false;
+			filePickLock = false;
+			input.value = '';
+		}
 	}
 
 	async function publish() {
@@ -324,18 +423,14 @@
 		loading = true;
 		try {
 			if (isEdit && editPostId) {
-				const cover = coverBlobId();
-				await savePost(circle.origin, circle.circleId, editPostId, trimmed, entryDate, cover);
+				const media = await buildEditMedia();
+				await savePost(circle.origin, circle.circleId, editPostId, trimmed, entryDate, media);
 				goto(feedHref());
 				return;
 			}
 
 			const files = picked.map((p) => p.file!).filter(Boolean);
-			const payload = {
-				body: trimmed,
-				entry_date: entryDate,
-				media_meta: picked.map((p) => p.meta)
-			};
+			const payload = postQueuePayload(trimmed);
 
 			if (editQueueId) {
 				await updateQueuedPost(editQueueId, payload, files);
@@ -349,17 +444,20 @@
 				return;
 			}
 
+			const mediaMeta = picked.map((p) => ({ ...p.meta }));
 			const media: MediaSummary[] = [];
-			for (const item of picked) {
+			for (let i = 0; i < picked.length; i++) {
+				const item = picked[i];
 				if (!item.file) continue;
+				const meta = mediaMeta[i] ?? item.meta;
 				const blobId = await uploadBlob(circle.origin, item.file);
 				media.push({
 					blob_id: blobId,
-					kind: item.meta.kind as MediaSummary['kind'],
-					captured_at: item.meta.captured_at,
-					geo_lat: item.meta.geo_lat,
-					geo_lng: item.meta.geo_lng,
-					is_cover: item.meta.is_cover ?? false
+					kind: meta.kind as MediaSummary['kind'],
+					captured_at: meta.captured_at,
+					geo_lat: meta.geo_lat,
+					geo_lng: meta.geo_lng,
+					is_cover: meta.is_cover ?? false
 				});
 			}
 
@@ -373,11 +471,7 @@
 		} catch (err) {
 			if (!isEdit && !editQueueId && isTransportError(err)) {
 				const files = picked.map((p) => p.file!).filter(Boolean);
-				await enqueuePost(circle.origin, circle.circleId, {
-					body: trimmed,
-					entry_date: entryDate,
-					media_meta: picked.map((p) => p.meta)
-				}, files);
+				await enqueuePost(circle.origin, circle.circleId, postQueuePayload(trimmed), files);
 				goto(feedHref());
 				return;
 			}
@@ -413,7 +507,7 @@
 		/>
 
 		{#if showMentionPicker}
-			<div class="men-pick">
+			<MentionPicker>
 				{#each mentionCandidates as member, i (member.account_id)}
 					<MemberRow
 						initial={circleInitial(member.name)}
@@ -423,7 +517,7 @@
 						style={i === 0 ? 'padding:10px 14px' : undefined}
 					/>
 				{/each}
-			</div>
+			</MentionPicker>
 			<Hint>
 				Список — участники этого круга. Выбрали — в текст встаёт @имя, этому человеку уходит
 				пуш. Имя не нажимается: страницы участника нет.
@@ -432,27 +526,29 @@
 
 		<div class="thumbs">
 			{#each picked as item, i (i)}
-				<button
-					type="button"
-					class="thumb"
-					class:cover={item.meta.is_cover && isVisual(item.meta)}
-					onclick={() => isVisual(item.meta) && setCover(i)}
-				>
-					{#if item.preview}
-						{#if item.meta.kind === 'video'}
-							<video src={item.preview} muted playsinline></video>
-						{:else}
-							<img src={item.preview} alt="" />
-						{/if}
-					{:else}
-						<span class="file">{item.file?.name}</span>
-					{/if}
-				</button>
+				<MediaTile
+					variant="compose"
+					src={item.preview}
+					kind={item.meta.kind === 'video' ? 'video' : item.meta.kind === 'photo' ? 'photo' : undefined}
+					isCover={item.meta.is_cover && isVisual(item.meta)}
+					fileName={item.preview ? undefined : (item.file?.name ?? item.fileName)}
+					onclick={() => {
+						if (isVisual(item.meta)) setCover(i);
+					}}
+					onremove={() => removePicked(i)}
+				/>
 			{/each}
 			<AddPhotoButton onclick={() => photoInput?.click()} />
 		</div>
 
-		{#if !isEdit && picked.some((p) => isVisual(p.meta))}
+		{#if compressing}
+			<Hint>{compressHint}</Hint>
+			{#if keepOpenHint}
+				<Hint>Не сворачивайте приложение, пока видео сжимается.</Hint>
+			{/if}
+		{/if}
+
+		{#if picked.some((p) => isVisual(p.meta))}
 			<Hint>Обложка — первая. Нажмите на другую, чтобы лента показывала её.</Hint>
 		{/if}
 
@@ -529,10 +625,9 @@
 			<IconButton
 				name="photo"
 				label="Фото или видео"
-				disabled={isEdit}
 				onclick={() => photoInput?.click()}
 			/>
-			<IconButton name="file" label="Файл" disabled={isEdit} onclick={() => attachInput?.click()} />
+			<IconButton name="file" label="Файл" onclick={() => attachInput?.click()} />
 			<span class="who">до 32 КБ · как {circle.identityName}</span>
 		</div>
 	</div>
@@ -547,59 +642,3 @@
 	onchange={onFilesSelected}
 />
 <input bind:this={attachInput} type="file" accept="*/*" multiple hidden onchange={onFilesSelected} />
-
-<style>
-	.men-pick {
-		margin: 12px 16px 0;
-		border: 1px solid var(--line);
-		background: var(--card);
-		border-radius: 12px;
-		overflow: hidden;
-	}
-	.thumbs {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
-		padding: 16px 16px 0;
-		align-items: flex-start;
-	}
-	.thumb {
-		width: 88px;
-		height: 88px;
-		border-radius: 8px;
-		overflow: hidden;
-		background: var(--tint);
-		border: none;
-		padding: 0;
-		cursor: pointer;
-	}
-	.thumb.cover {
-		outline: 2px solid var(--c);
-		outline-offset: 2px;
-	}
-	.thumb img,
-	.thumb video {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		display: block;
-	}
-	.file {
-		font-size: 10px;
-		padding: 4px;
-		word-break: break-all;
-	}
-	.date-row {
-		position: relative;
-	}
-	.date-pick {
-		position: absolute;
-		left: 16px;
-		top: 16px;
-		width: 1px;
-		height: 1px;
-		opacity: 0;
-		border: 0;
-		pointer-events: none;
-	}
-</style>

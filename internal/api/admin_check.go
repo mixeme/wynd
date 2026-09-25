@@ -8,7 +8,7 @@ import (
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
 	"gitea.mixdep.ru/mix/wynd/internal/check"
-	"gitea.mixdep.ru/mix/wynd/internal/jobs"
+	"gitea.mixdep.ru/mix/wynd/internal/proxy"
 )
 
 type checkBody struct {
@@ -22,7 +22,9 @@ func (s *Server) handleAdminCheck(w http.ResponseWriter, r *http.Request) {
 	}
 	external := body.External
 	if external != nil && !s.Loopback && strings.HasPrefix(s.PublicURL, "https://") {
-		external.RedirectPermanent = check.ProbeHTTPRedirect(s.PublicURL)
+		code := check.ProbeHTTPRedirect(s.PublicURL)
+		external.RedirectStatus = code
+		external.RedirectPermanent = code == http.StatusMovedPermanently || code == http.StatusPermanentRedirect
 	}
 	results, err := s.runChecks(r, external)
 	if err != nil {
@@ -34,47 +36,27 @@ func (s *Server) handleAdminCheck(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) runChecks(r *http.Request, external *check.ExternalReport) ([]check.Result, error) {
 	ctx := r.Context()
-	mailOK, _ := s.Mail.Configured(ctx)
 	mailCfg, _ := s.Mail.LoadConfig(ctx)
 	_ = s.Push.EnsureKeys(ctx)
 	pub, _ := s.Push.PublicKey(ctx)
 	routineAt, backupAt := s.loadInstanceTimestamps(ctx)
+	var tlsInfo *check.TLSInfo
+	if !s.Loopback && strings.HasPrefix(s.PublicURL, "https://") {
+		tlsInfo = check.ProbeTLS(ctx, s.PublicURL)
+	}
 	return check.RunChecks(ctx, check.Input{
 		Loopback:        s.Loopback,
 		PublicURL:       s.PublicURL,
 		DataDir:         s.DataDir,
-		MailConfigured:  mailOK,
 		SMTPTestSentAt:  mailCfg.TestSentAt,
+		SMTPLastError:   mailCfg.LastError,
 		VAPIDConfigured: pub != "",
 		LastRoutineAt:   routineAt,
 		LastBackupAt:    backupAt,
 		External:        external,
+		TLS:             tlsInfo,
 		Now:             time.Now().UTC(),
 	}), nil
-}
-
-func (s *Server) handleAdminRunRoutine(w http.ResponseWriter, r *http.Request) {
-	now := time.Now().UTC()
-	counts, err := jobs.RunDailyRoutine(r.Context(), s.Auth.DB(), s.Blobs.Dir(), now)
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	archiveCounts, err := jobs.RunArchiveJobs(r.Context(), s.Auth.DB(), s.Chronicle, s.Blobs, s.Mail, s.PublicURL, now)
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	payCounts, err := jobs.RunPayJobs(r.Context(), s.Auth, s.Mail, s.Push, s.Blobs.Dir(), now)
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"routine": counts,
-		"archive": archiveCounts,
-		"pay":     payCounts,
-	})
 }
 
 func (s *Server) handleAdminProxySnippet(w http.ResponseWriter, r *http.Request) {
@@ -112,7 +94,7 @@ location / {
     proxy_set_header X-Forwarded-Proto $scheme;
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     proxy_buffering off;
-    proxy_read_timeout 300s;
+    proxy_read_timeout ` + fmt.Sprintf("%ds", proxy.ReadTimeoutSeconds) + `;
     client_max_body_size ` + bodySizeNginx(maxBytes) + `;
 }
 `
@@ -121,12 +103,15 @@ location / {
 func caddySnippet(publicURL, listen string, maxBytes int64) string {
 	host := publicHost(publicURL)
 	port := listenPort(listen)
+	timeout := fmt.Sprintf("%ds", proxy.ReadTimeoutSeconds)
 	return host + ` {
     header Strict-Transport-Security "max-age=31536000; includeSubDomains"
     reverse_proxy 127.0.0.1:` + port + ` {
         flush_interval -1
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
         transport http {
-            read_timeout 300s
+            read_timeout ` + timeout + `
         }
     }
     request_body {
@@ -138,13 +123,30 @@ func caddySnippet(publicURL, listen string, maxBytes int64) string {
 
 func traefikSnippet(listen string, maxBytes int64) string {
 	port := listenPort(listen)
+	timeout := fmt.Sprintf("%ds", proxy.ReadTimeoutSeconds)
 	return `# Wynd (Traefik dynamic config)
+# Client IP: Traefik sets X-Forwarded-For on the backend (same role as nginx
+# proxy_set_header X-Forwarded-For). forwardedHeaders is entrypoint static
+# config, not http.middlewares — do not paste it here.
+# Optional static (traefik.yml):
+# entryPoints:
+#   websecure:
+#     forwardedHeaders:
+#       insecure: true
 http:
+  serversTransports:
+    wynd-transport:
+      forwardingTimeouts:
+        responseHeaderTimeout: ` + timeout + `
   services:
     wynd:
       loadBalancer:
         servers:
           - url: "http://127.0.0.1:` + port + `"
+        passHostHeader: true
+        serversTransport: wynd-transport
+        responseForwarding:
+          flushInterval: 100ms
   middlewares:
     wynd-headers:
       headers:

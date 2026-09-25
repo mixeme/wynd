@@ -3,11 +3,19 @@ package auth
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
 	"fmt"
 	"time"
 )
+
+// hashSessionToken — то, что лежит в БД вместо самого токена: бэкап и дамп
+// больше не содержат живых Bearer на 30 дней вперёд (AUTH-4).
+func hashSessionToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
 
 func newSessionToken() (string, error) {
 	buf := make([]byte, 32)
@@ -32,9 +40,9 @@ func (s *Service) createSession(ctx context.Context, tx *sql.Tx, accountID strin
 	expires := when.Add(ttl)
 	created := formatTime(when)
 	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO sessions (token, account_id, kind, expires_at, created_at)
+		INSERT INTO sessions (token_hash, account_id, kind, expires_at, created_at)
 		VALUES (?, ?, ?, ?, ?)
-	`, token, accountID, string(kind), formatTime(expires), created); err != nil {
+	`, hashSessionToken(token), accountID, string(kind), formatTime(expires), created); err != nil {
 		return Session{}, fmt.Errorf("insert session: %w", err)
 	}
 	return Session{
@@ -50,9 +58,10 @@ func (s *Service) SessionByToken(ctx context.Context, token string, kind Session
 	var sess Session
 	var kindRaw, expiresRaw, createdRaw string
 	err := s.db.QueryRowContext(ctx, `
-		SELECT token, account_id, kind, expires_at, created_at
-		FROM sessions WHERE token = ? AND kind = ?
-	`, token, string(kind)).Scan(&sess.Token, &sess.AccountID, &kindRaw, &expiresRaw, &createdRaw)
+		SELECT account_id, kind, expires_at, created_at
+		FROM sessions WHERE token_hash = ? AND kind = ?
+	`, hashSessionToken(token), string(kind)).Scan(&sess.AccountID, &kindRaw, &expiresRaw, &createdRaw)
+	sess.Token = token
 	if err == sql.ErrNoRows {
 		return Session{}, ErrNotFound
 	}
@@ -75,7 +84,7 @@ func (s *Service) SessionByToken(ctx context.Context, token string, kind Session
 }
 
 func (s *Service) RevokeSession(ctx context.Context, token string) error {
-	_, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE token = ?`, token)
+	_, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE token_hash = ?`, hashSessionToken(token))
 	return err
 }
 

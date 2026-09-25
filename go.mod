@@ -2,6 +2,10 @@ module gitea.mixdep.ru/mix/wynd
 
 go 1.26.0
 
+// В web/node_modules попадаются каталоги с .go-файлами (flatted), и ./... их
+// подхватывает. Директива убирает их из любых шаблонов пакетов (TST-6).
+ignore ./web/node_modules
+
 require (
 	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/google/uuid v1.6.0

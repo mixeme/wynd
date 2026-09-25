@@ -48,7 +48,7 @@ func (c *Chronicle) SetInviteWho(ctx context.Context, circleID, actorAccountID, 
 	return nil
 }
 
-// SetInviteKindDefault changes default invite kind for new links.
+// SetInviteKindDefault sets which invite kinds may be created (single only vs multi allowed).
 func (c *Chronicle) SetInviteKindDefault(ctx context.Context, circleID, actorAccountID, kind string, now time.Time) error {
 	if err := c.RequireSettings(ctx, circleID, actorAccountID); err != nil {
 		return err

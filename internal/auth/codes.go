@@ -27,6 +27,11 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) error {
 		when = time.Now().UTC()
 	}
 
+	// Лимит проверяется до поиска учётки: иначе перебор адресов не бьёт по
+	// лимиту вовсе, потому что счётчик рос только на дошедших до выдачи (AUTH-2).
+	if err := s.chargeRate(ctx, in.ClientIP, email, when); err != nil {
+		return err
+	}
 	mode, err := s.registrationMode(ctx)
 	if err != nil {
 		return err
@@ -44,9 +49,6 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) error {
 		}
 		flow = FlowLogin
 	} else if err != ErrNotFound {
-		return err
-	}
-	if err := s.checkRate(ctx, in.ClientIP, email, when); err != nil {
 		return err
 	}
 	return s.issueCode(ctx, issueCodeInput{
@@ -69,6 +71,10 @@ func (s *Service) RequestCode(ctx context.Context, in RequestCodeInput) error {
 	if when.IsZero() {
 		when = time.Now().UTC()
 	}
+	// Тот же порядок, что в Register: лимит до поиска учётки (AUTH-2).
+	if err := s.chargeRate(ctx, in.ClientIP, email, when); err != nil {
+		return err
+	}
 	flow := FlowLogin
 	acc, err := s.accountByEmail(ctx, email)
 	if err == ErrNotFound {
@@ -86,9 +92,6 @@ func (s *Service) RequestCode(ctx context.Context, in RequestCodeInput) error {
 		return err
 	} else if acc.Blocked {
 		return ErrForbidden
-	}
-	if err := s.checkRate(ctx, in.ClientIP, email, when); err != nil {
-		return err
 	}
 	return s.issueCode(ctx, issueCodeInput{
 		email:    email,
@@ -131,14 +134,11 @@ func (s *Service) issueCode(ctx context.Context, in issueCodeInput) error {
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO pending_codes (id, email, code_hash, attempts, client_ip, flow, invite_id, invite_name, expires_at, created_at)
 		VALUES (?, ?, ?, 0, ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?)
-	`, pendingID, in.email, hashCode(code), in.clientIP, string(in.flow), in.inviteID, in.inviteName, formatTime(expires), formatTime(in.when)); err != nil {
+	`, pendingID, in.email, hashCode(pendingID, code), in.clientIP, string(in.flow), in.inviteID, in.inviteName, formatTime(expires), formatTime(in.when)); err != nil {
 		return fmt.Errorf("insert pending code: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO code_request_log (client_ip, email, requested_at) VALUES (?, ?, ?)
-	`, in.clientIP, in.email, formatTime(in.when)); err != nil {
-		return fmt.Errorf("log code request: %w", err)
-	}
+	// Запрос уже посчитан в chargeRate до выдачи: там попытка засчитывается
+	// и неизвестному адресу тоже (AUTH-2).
 	if err := tx.Commit(); err != nil {
 		return err
 	}
@@ -187,7 +187,7 @@ func (s *Service) Verify(ctx context.Context, in VerifyInput) (VerifyResult, err
 	if !claimed {
 		return VerifyResult{}, ErrTooManyAttempts
 	}
-	if subtle.ConstantTimeCompare([]byte(hashCode(code)), []byte(codeHash)) != 1 {
+	if subtle.ConstantTimeCompare([]byte(hashCode(pendingID, code)), []byte(codeHash)) != 1 {
 		return VerifyResult{}, ErrInvalid
 	}
 
@@ -234,6 +234,9 @@ func (s *Service) Verify(ctx context.Context, in VerifyInput) (VerifyResult, err
 			if err != nil {
 				return VerifyResult{}, err
 			}
+			if inv.TargetAccountID != "" && inv.TargetAccountID != acc.ID {
+				return VerifyResult{}, ErrForbidden
+			}
 			if err := s.consumeInvite(ctx, tx, inv, when); err != nil {
 				return VerifyResult{}, err
 			}
@@ -263,8 +266,18 @@ func (s *Service) Verify(ctx context.Context, in VerifyInput) (VerifyResult, err
 	if err != nil {
 		return VerifyResult{}, err
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM pending_codes WHERE id = ?`, pendingID); err != nil {
+	// Код одноразовый: расход проверяется по RowsAffected, иначе два
+	// параллельных Verify получали по сессии на один код (AUTH-1).
+	spentRes, err := tx.ExecContext(ctx, `DELETE FROM pending_codes WHERE id = ?`, pendingID)
+	if err != nil {
 		return VerifyResult{}, err
+	}
+	spent, err := spentRes.RowsAffected()
+	if err != nil {
+		return VerifyResult{}, err
+	}
+	if spent == 0 {
+		return VerifyResult{}, ErrInvalid
 	}
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE accounts SET last_login_at = ? WHERE id = ?
@@ -301,9 +314,23 @@ func (s *Service) claimAttempt(ctx context.Context, id string) (bool, error) {
 	return n > 0, nil
 }
 
-// checkRate caps code requests per client address and per mailbox within
+// chargeRate caps code requests per client address and per mailbox within
 // ipRateLimitWindow. The mailbox cap protects a victim from being flooded
 // with codes even when the caller rotates addresses.
+// Попытка засчитывается всегда, даже когда адрес неизвестен и ответ — 404:
+// иначе перебор чужих адресов вообще не бьёт по лимиту (AUTH-2).
+func (s *Service) chargeRate(ctx context.Context, clientIP, email string, when time.Time) error {
+	if err := s.checkRate(ctx, clientIP, email, when); err != nil {
+		return err
+	}
+	if _, err := s.db.ExecContext(ctx, `
+		INSERT INTO code_request_log (client_ip, email, requested_at) VALUES (?, ?, ?)
+	`, clientIP, email, formatTime(when)); err != nil {
+		return fmt.Errorf("log code request: %w", err)
+	}
+	return nil
+}
+
 func (s *Service) checkRate(ctx context.Context, clientIP, email string, when time.Time) error {
 	if clientIP == "" {
 		clientIP = "unknown"
@@ -380,8 +407,10 @@ func randomCode() (string, error) {
 	return fmt.Sprintf("%06d", n.Int64()), nil
 }
 
-func hashCode(code string) string {
-	sum := sha256.Sum256([]byte(code))
+// hashCode солит код идентификатором заявки: одинаковые шестизначные коды
+// у разных заявок дают разные хеши, и таблица не подсказывает совпадения.
+func hashCode(pendingID, code string) string {
+	sum := sha256.Sum256([]byte(pendingID + ":" + code))
 	return hex.EncodeToString(sum[:])
 }
 

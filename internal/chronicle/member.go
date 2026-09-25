@@ -240,13 +240,24 @@ func (c *Chronicle) leaveInTx(ctx context.Context, tx *sql.Tx, circleID, account
 	if err != nil {
 		return err
 	}
-	if mem.Status != StatusActive {
-		return ErrInvalid
-	}
 
 	updated := formatTime(now)
-	if err := c.closeOpenSpan(ctx, tx, mem.ID, now, retainRead); err != nil {
-		return err
+	switch {
+	case mem.Status == StatusActive:
+		if err := c.closeOpenSpan(ctx, tx, mem.ID, now, retainRead); err != nil {
+			return err
+		}
+	case mem.Status == StatusLeftWithAccess && status == StatusGone:
+		// Вышедший с доступом свой отрезок уже закрыл, поэтому закрывать
+		// нечего — исключение отзывает чтение у всех его отрезков. Без этой
+		// ветки владелец не мог отозвать доступ иначе как удалив круг (CHR-1).
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE membership_spans SET can_read = 0 WHERE membership_id = ?
+		`, mem.ID); err != nil {
+			return err
+		}
+	default:
+		return ErrInvalid
 	}
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE memberships SET status = ?, updated_at = ? WHERE id = ?

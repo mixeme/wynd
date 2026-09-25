@@ -1,9 +1,10 @@
 <script module lang="ts">
-	export const ADMIN_NAV = ['Хранилище', 'Проверка', 'Сжатие', 'Доступ', 'Люди', 'Оплата'] as const;
+	export const ADMIN_NAV = ['Проверка', 'Общие', 'Доступ', 'Люди', 'Хранилище', 'Сжатие', 'Оплата'] as const;
 	export type AdminNavItem = (typeof ADMIN_NAV)[number];
 	export const ADMIN_HREF: Record<AdminNavItem, string> = {
 		Хранилище: '/admin',
 		Проверка: '/admin/check',
+		Общие: '/admin/general',
 		Сжатие: '/admin/compress',
 		Доступ: '/admin/access',
 		Люди: '/admin/people',

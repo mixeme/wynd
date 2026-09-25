@@ -42,6 +42,14 @@ export function formatEntryDate(entryDate: string): string {
 	return dateFmt.format(new Date(y, m - 1, d));
 }
 
+/** День входа на устройстве: локальный календарный день ISO-метки. */
+export function formatSessionDay(iso: string): string {
+	if (!iso) return '';
+	const d = new Date(iso);
+	if (Number.isNaN(d.getTime())) return '';
+	return dateFmt.format(d);
+}
+
 /** Дедлайн архивации: «до 15 сентября». */
 export function formatDeadline(iso: string): string {
 	if (!iso) return '';
@@ -82,6 +90,24 @@ export function formatMonthYear(entryDate: string): string {
 	return monthYearFmt.format(new Date(y, m - 1, 1));
 }
 
+/** Склонение «файл / файла / файлов». */
+export function pluralFiles(count: number): string {
+	const mod10 = count % 10;
+	const mod100 = count % 100;
+	if (mod10 === 1 && mod100 !== 11) return `${count} файл`;
+	if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${count} файла`;
+	return `${count} файлов`;
+}
+
+/** Склонение «фотография / фотографии / фотографий». */
+export function pluralPhotos(count: number): string {
+	const mod10 = count % 10;
+	const mod100 = count % 100;
+	if (mod10 === 1 && mod100 !== 11) return `${count} фотография`;
+	if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${count} фотографии`;
+	return `${count} фотографий`;
+}
+
 /** Склонение «запись / записи / записей». */
 export function pluralPosts(count: number): string {
 	const mod10 = count % 10;
@@ -89,6 +115,15 @@ export function pluralPosts(count: number): string {
 	if (mod10 === 1 && mod100 !== 11) return `${count} запись`;
 	if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${count} записи`;
 	return `${count} записей`;
+}
+
+/** Склонение «N человек / человека». */
+export function pluralPeople(count: number): string {
+	const mod10 = count % 10;
+	const mod100 = count % 100;
+	if (mod10 === 1 && mod100 !== 11) return `${count} человек`;
+	if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${count} человека`;
+	return `${count} человек`;
 }
 
 /** Подпись карточки дня: «12 августа · 4 записи». */

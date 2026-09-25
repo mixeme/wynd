@@ -44,12 +44,13 @@ export function ownReaction(reactions: Reaction[] | undefined, identityId: strin
 
 export function commentPreview(comments: Comment[] | undefined): {
 	first?: string;
+	createdAt?: string;
 	more: number;
 } {
 	if (!comments?.length) return { more: 0 };
 	const first = comments[0];
 	const line = `${first.author_name}: ${first.body}`;
-	return { first: line, more: Math.max(0, comments.length - 1) };
+	return { first: line, createdAt: first.created_at, more: Math.max(0, comments.length - 1) };
 }
 
 export function coverMedia(media: MediaSummary[] | undefined): MediaSummary | undefined {
@@ -68,6 +69,14 @@ export function attachmentMedia(media: MediaSummary[] | undefined): MediaSummary
 
 export function attachmentLabel(att: MediaSummary): string {
 	return att.filename?.trim() || 'Вложение';
+}
+
+/** Имя файла при скачивании из лайтбокса альбома (4.14). */
+export function albumDownloadFilename(media: MediaSummary, index: number): string {
+	const name = media.filename?.trim();
+	if (name) return name;
+	const n = index + 1;
+	return media.kind === 'video' ? `video-${n}.mp4` : `photo-${n}.jpg`;
 }
 
 export function attachmentSizeLabel(att: MediaSummary, formatBytes: (n: number) => string): string {
@@ -147,4 +156,13 @@ export function serviceEventsBetween(
 	return events
 		.filter((e) => e.seq > lowerSeq && e.seq < upperSeq)
 		.sort((a, b) => b.seq - a.seq);
+}
+
+/** Service events newer than the top post (shown above the first card). */
+export function serviceEventsAboveNewest(events: FeedEvent[], newestPostSeq: number | undefined): FeedEvent[] {
+	if (!events.length) return [];
+	if (newestPostSeq == null || newestPostSeq <= 0) {
+		return [...events].sort((a, b) => b.seq - a.seq);
+	}
+	return events.filter((e) => e.seq > newestPostSeq).sort((a, b) => b.seq - a.seq);
 }

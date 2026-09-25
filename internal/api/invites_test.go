@@ -22,6 +22,7 @@ func TestInvitePeekAndDeferredJoin(t *testing.T) {
 	}
 	circleID := jsonStr(t, rec, "id")
 
+	allowCircleMultiInvites(t, srv, circleID, ownerTok)
 	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/invites", ownerTok, map[string]any{
 		"kind": "multi", "max_uses": 5, "ttl_sec": 604800,
 	})
@@ -86,6 +87,33 @@ func TestInvitePeekAndDeferredJoin(t *testing.T) {
 	}
 }
 
+func TestCircleInviteRejectsMultiWhenSingleOnly(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	ownerTok, _ := registerSession(t, srv, caps, "solo@example.com")
+
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles", ownerTok, map[string]any{
+		"name": "Только одно", "owner_name": "Владелец", "color": "olive",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create circle: %d %s", rec.Code, rec.Body.String())
+	}
+	circleID := jsonStr(t, rec, "id")
+
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/invites", ownerTok, map[string]any{
+		"kind": "multi", "max_uses": 5, "ttl_sec": 3600,
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("invite multi when single-only: %d %s", rec.Code, rec.Body.String())
+	}
+
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/invites", ownerTok, map[string]any{
+		"kind": "single", "ttl_sec": 3600,
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("invite single: %d %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestCircleInviteListAndRevoke(t *testing.T) {
 	srv, caps, _, _ := setupAPI(t)
 	ownerTok, _ := registerSession(t, srv, caps, "owner@example.com")
@@ -106,6 +134,7 @@ func TestCircleInviteListAndRevoke(t *testing.T) {
 	}
 	singleID := jsonStr(t, rec, "id")
 
+	allowCircleMultiInvites(t, srv, circleID, ownerTok)
 	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/invites", ownerTok, map[string]any{
 		"kind": "multi", "max_uses": 10, "ttl_sec": 604800,
 	})

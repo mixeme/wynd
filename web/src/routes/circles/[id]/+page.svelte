@@ -6,7 +6,9 @@
 	import AttachmentRow from '$ui/data/AttachmentRow.svelte';
 	import Avatar from '$ui/data/Avatar.svelte';
 	import EntryDateMark from '$ui/data/EntryDateMark.svelte';
+	import MediaTile from '$ui/data/MediaTile.svelte';
 	import EventDivider from '$ui/data/EventDivider.svelte';
+	import FeedDayPromptCard from '$ui/data/FeedDayPromptCard.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
@@ -26,7 +28,7 @@
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadFeed } from '$lib/journal/feed';
 	import { splitMentionBody } from '$lib/journal/mentions';
-	import { fetchMembers } from '$lib/circles/settings';
+	import { fetchMembers, type MemberInfo } from '$lib/circles/settings';
 	import {
 		attachmentLabel,
 		attachmentMedia,
@@ -42,6 +44,7 @@
 		reactionIconName,
 		REACTION_KEYS,
 		serviceEventsBetween,
+		serviceEventsAboveNewest,
 		unreadDividerIndex
 	} from '$lib/journal/present';
 	import { advanceReadCursor } from '$lib/journal/read-cursor';
@@ -73,7 +76,9 @@
 	let feedEvents = $state<FeedEvent[]>([]);
 	let visibleFrom = $state<string | null>(null);
 	let circleStartedAt = $state('');
+	let members = $state<MemberInfo[]>([]);
 	let activeMemberCount = $state(2);
+	const commentMembers = $derived(members.filter((m) => m.status === 'active'));
 	let queuedPosts = $state<QueuedPostView[]>([]);
 	let loading = $state(true);
 	let error = $state('');
@@ -94,10 +99,25 @@
 	);
 
 	let mediaUrls = $state<Record<string, string>>({});
+	let authorAvatarUrls = $state<Record<string, string>>({});
+
+	function authorAvatarSrc(post: FeedPost): string | undefined {
+		if (post.identity_id === circle.identityId && circle.avatarUrl) return circle.avatarUrl;
+		return authorAvatarUrls[post.identity_id];
+	}
 
 	async function resolveMediaUrls(feedPosts: FeedPost[]) {
 		const next: Record<string, string> = { ...mediaUrls };
+		const avatars: Record<string, string> = { ...authorAvatarUrls };
 		for (const post of feedPosts) {
+			const avatarBlob = post.author_avatar_blob_id;
+			if (avatarBlob && !avatars[post.identity_id]) {
+				try {
+					avatars[post.identity_id] = await getMediaUrl(circle.origin, avatarBlob);
+				} catch {
+					/* skip */
+				}
+			}
 			const cover = coverMedia(post.media);
 			if (cover && !next[cover.blob_id]) {
 				try {
@@ -107,6 +127,7 @@
 				}
 			}
 		}
+		authorAvatarUrls = avatars;
 		mediaUrls = next;
 	}
 
@@ -160,6 +181,7 @@
 		});
 		void fetchMembers(circle.origin, circle.circleId)
 			.then((list) => {
+				members = list;
 				activeMemberCount = list.filter((m) => m.status === 'active').length;
 			})
 			.catch(() => {
@@ -297,7 +319,7 @@
 	}
 
 	function showReactionPlus(post: FeedPost): boolean {
-		if (soloCircle || postArchiveLocked(post)) return false;
+		if (!circle.canWrite || soloCircle || postArchiveLocked(post)) return false;
 		const mine = ownReaction(post.reactions, circle.identityId);
 		if (!mine) return true;
 		return isEditableActive(mine.editable_until);
@@ -384,10 +406,10 @@
 		pullY = 0;
 	}
 
-	function formatIsoDay(iso: string): string {
-		return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' }).format(
-			new Date(iso)
-		);
+	function formatIsoDay(iso: string, withYear = false): string {
+		const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' };
+		if (withYear) opts.year = 'numeric';
+		return new Intl.DateTimeFormat('ru-RU', opts).format(new Date(iso));
 	}
 
 	function openInvite() {
@@ -422,11 +444,14 @@
 	avatar={circle.identityInitial}
 	avatarSrc={circle.avatarUrl}
 	circleId={circle.circleId}
+	identitySettingsLink={circle.canWrite}
+	commentBar={circle.canWrite}
 	onback={goBack}
 	onsearch={openSearch}
 	bind:commentDraft
-	onCommentSend={sendFromBar}
-	onCommentCompose={openComposeFromBar}
+	commentMembers={commentMembers}
+	onCommentSend={circle.canWrite ? sendFromBar : undefined}
+	onCommentCompose={circle.canWrite ? openComposeFromBar : undefined}
 >
 	{#if pullY > 0 || refreshing || ptrAnimating}
 		<div class="ptr" style:height="{ptrHeight}px" aria-hidden="true">
@@ -441,6 +466,8 @@
 
 	<div
 		class="feed"
+		role="feed"
+		aria-label="Лента"
 		bind:this={feedEl}
 		ontouchstart={onTouchStart}
 		ontouchmove={onTouchMove}
@@ -459,17 +486,18 @@
 		{#if joinAvatarHint}
 			<Hint style="margin:16px">{joinAvatarHint}</Hint>
 		{/if}
+		{#if !circle.canWrite}
+			<Hint style="margin:16px">Вы читаете этот круг и не пишете.</Hint>
+		{/if}
 		{#if loading}
 			<Hint style="margin:24px 16px">Загрузка…</Hint>
 		{:else if error && !posts.length}
 			<Hint style="margin:24px 16px">{error}</Hint>
 		{:else}
-			{#each queuedPosts as item (item.id)}
+			{#each circle.canWrite ? queuedPosts : [] as item (item.id)}
 				<!-- Snippets live outside <PostCard>: a {#snippet} nested in {#if} is not passed as a prop. -->
 				{#snippet queuedMedia()}
-					<div class="pic sq" style="background:var(--tint)">
-						<span class="cnt">{item.file_count}</span>
-					</div>
+					<MediaTile variant="feed" count={item.file_count} />
 				{/snippet}
 				{#snippet queuedError()}
 					<Hint>{item.error}</Hint>
@@ -508,6 +536,10 @@
 					</PostCard>
 			{/each}
 
+			{#each serviceEventsAboveNewest(feedEvents, posts[0]?.event_seq) as ev (ev.seq)}
+				<EventDivider text={ev.summary} />
+			{/each}
+
 			{#each posts as post, i (post.id)}
 				{#if dividerAt === i}
 					<EventDivider variant="unread" text="выше — новое" />
@@ -526,24 +558,14 @@
 					{@const count = mediaCount(post.media)}
 					{@const loc = locationLabel(cover)}
 					{#if cover}
-						<div
-							class="pic sq"
-							role="presentation"
-							onclick={(e) => {
-								e.stopPropagation();
-								openAlbum(post.id);
-							}}
-						>
-							{#if mediaUrls[cover.blob_id]}
-								<img src={mediaUrls[cover.blob_id]} alt="" />
-							{/if}
-							{#if loc}
-								<span class="tagr"><Icon name="loc" size="xs" />{loc}</span>
-							{/if}
-							{#if count > 1}
-								<span class="cnt">{count}</span>
-							{/if}
-						</div>
+						<MediaTile
+							variant="feed"
+							src={mediaUrls[cover.blob_id]}
+							kind={cover.kind === 'video' ? 'video' : 'photo'}
+							{count}
+							locationLabel={loc || undefined}
+							onclick={() => openAlbum(post.id)}
+						/>
 					{/if}
 					{#each attachmentMedia(post.media) as att (att.blob_id)}
 						<AttachmentRow
@@ -558,7 +580,11 @@
 				{#snippet postComments()}
 					{@const preview = commentPreview(post.comments)}
 					{#if preview.first}
-						<div>{preview.first}</div>
+						<div>
+							{preview.first}{#if preview.createdAt}<span class="tm"
+								> · {formatPostTime(preview.createdAt)}</span
+							>{/if}
+						</div>
 					{/if}
 					{#if preview.more}
 						<div class="mo">ещё {preview.more} комментариев</div>
@@ -576,7 +602,7 @@
 						<Avatar
 							initial={authorInitial(post.author_name)}
 							color={circle.colorHex}
-							src={post.identity_id === circle.identityId ? circle.avatarUrl : undefined}
+							src={authorAvatarSrc(post)}
 						/>
 						<div>
 							<div class="n">{post.author_name}</div>
@@ -611,22 +637,17 @@
 						{/snippet}
 					</CommentPreview>
 				{/if}
-				{#if dayPromptDate && post.entry_date === dayPromptDate && i === posts.findIndex((p) => p.entry_date === dayPromptDate)}
-					<div class="post day-prompt">
-						<div style="font-weight:600">Первая запись за {formatEntryDate(dayPromptDate)}</div>
-						<div style="margin-top:4px;color:var(--muted)">
-							Дать этому дню название и обложку? День общий: увидят все, и поправить сможет любой, у
-							кого есть за него запись.
-						</div>
-						<div class="rowin" style="margin:14px 0 0">
-							<Button variant="colored" style="flex:1;margin:0" onclick={openDayFromPrompt}>
-								Назвать день
-							</Button>
-							<Button variant="ghost" style="flex:1;margin:0" onclick={dismissDayPrompt}>
-								Потом
-							</Button>
-						</div>
-					</div>
+				{#if dayPromptDate && circle.canWrite && post.entry_date === dayPromptDate && i === posts.findIndex((p) => p.entry_date === dayPromptDate)}
+					<FeedDayPromptCard
+						title="Первая запись за {formatEntryDate(dayPromptDate)}"
+						primaryLabel="Назвать день"
+						secondaryLabel="Потом"
+						onprimary={openDayFromPrompt}
+						onsecondary={dismissDayPrompt}
+					>
+						Дать этому дню название и обложку? День общий: увидят все, и поправить сможет любой, у
+						кого есть за него запись.
+					</FeedDayPromptCard>
 				{/if}
 				{#each serviceEventsBetween(
 					feedEvents,
@@ -650,7 +671,7 @@
 					<Mark />
 					<div class="h1s ctr" style="margin-top:28px">Пока ничего</div>
 					<Hint centered style="margin:8px 34px 0">
-						Напиши первым — или позови тех, с кем хочешь это вести.
+						Напишите первым — или позовите тех, с кем хотите это вести.
 					</Hint>
 					<Button
 						variant="colored"
@@ -664,8 +685,12 @@
 				{#if showVisibilityCutoff && visibleFrom}
 					<div class="feed-end cutoff">
 						<Mark />
-						<div style="font-size:12.5px;margin-top:6px">Ты здесь с {formatIsoDay(visibleFrom)}</div>
-						<Hint centered style="margin:8px 16px 0">что было раньше — не твоё</Hint>
+						<div style="font-size:12.5px;margin-top:6px">Вы здесь с {formatIsoDay(visibleFrom)}</div>
+						<Hint centered style="margin:8px 16px 0">что было раньше — не ваше</Hint>
+						{#if circleStartedAt}
+							<div class="sep" style="margin:20px 40px"></div>
+							<Hint centered>круг живёт с {formatIsoDay(circleStartedAt, true)}</Hint>
+						{/if}
 					</div>
 				{:else if circleStartedAt}
 					<div class="feed-end start">
@@ -699,64 +724,3 @@
 		</OverlayLayout>
 	{/if}
 </CircleLayout>
-
-<style>
-	.feed {
-		flex: 1;
-		min-height: 0;
-		overflow-x: hidden;
-		overflow-y: auto;
-		padding-bottom: 8px;
-	}
-	.ptr {
-		display: flex;
-		align-items: flex-start;
-		justify-content: center;
-		color: var(--muted);
-		overflow: hidden;
-	}
-	.ptr-mark {
-		overflow: hidden;
-		width: var(--mark-w);
-	}
-	.ptr-mark :global(svg) {
-		width: var(--mark-w);
-		height: var(--mark-h);
-	}
-	.empty {
-		text-align: center;
-		color: var(--empty-ink);
-		margin-top: 80px;
-	}
-	.empty :global(.mk) {
-		width: 104px;
-		height: 156px;
-		margin: 0 auto;
-	}
-	.pic img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		border-radius: inherit;
-	}
-	.day-prompt {
-		border-style: dashed;
-	}
-	.feed-end {
-		text-align: center;
-		margin: 32px 16px 24px;
-		color: var(--c);
-	}
-	.feed-end.start {
-		color: var(--muted);
-	}
-	.feed-end :global(.mk) {
-		width: var(--mark-w);
-		height: var(--mark-h);
-		margin: 0 auto;
-		opacity: 0.45;
-	}
-	.feed-end.cutoff :global(.mk) {
-		opacity: 1;
-	}
-</style>

@@ -83,13 +83,15 @@ type AccountCircle struct {
 
 // AccountDetail is the admin GET /accounts/{id} payload.
 type AccountDetail struct {
-	ID          string          `json:"id"`
-	Email       string          `json:"email"`
-	CreatedAt   string          `json:"created_at"`
-	LastLoginAt *string         `json:"last_login_at"`
-	Blocked     bool            `json:"blocked"`
-	OwnsCircle  bool            `json:"owns_circle"`
-	Circles     []AccountCircle `json:"circles"`
+	ID                    string          `json:"id"`
+	Email                 string          `json:"email"`
+	CreatedAt             string          `json:"created_at"`
+	LastLoginAt           *string         `json:"last_login_at"`
+	Blocked               bool            `json:"blocked"`
+	OwnsCircle            bool            `json:"owns_circle"`
+	SubscriptionRequired  bool            `json:"subscription_required"`
+	SubscriptionExpiresAt *string         `json:"subscription_expires_at,omitempty"`
+	Circles               []AccountCircle `json:"circles"`
 }
 
 func (s *Service) AccountDetail(ctx context.Context, id string) (AccountDetail, error) {
@@ -99,11 +101,12 @@ func (s *Service) AccountDetail(ctx context.Context, id string) (AccountDetail, 
 	var detail AccountDetail
 	var blocked int
 	var lastLogin sql.NullString
+	var subscriptionExpires sql.NullString
 	err := s.db.QueryRowContext(ctx, `
-		SELECT id, email, created_at, last_login_at, blocked
+		SELECT id, email, created_at, last_login_at, blocked, subscription_expires_at
 		FROM accounts
 		WHERE id = ? AND deleted_at IS NULL
-	`, id).Scan(&detail.ID, &detail.Email, &detail.CreatedAt, &lastLogin, &blocked)
+	`, id).Scan(&detail.ID, &detail.Email, &detail.CreatedAt, &lastLogin, &blocked, &subscriptionExpires)
 	if err == sql.ErrNoRows {
 		return AccountDetail{}, ErrNotFound
 	}
@@ -115,6 +118,15 @@ func (s *Service) AccountDetail(ctx context.Context, id string) (AccountDetail, 
 	if lastLogin.Valid && lastLogin.String != "" {
 		detail.LastLoginAt = &lastLogin.String
 	}
+	if subscriptionExpires.Valid && subscriptionExpires.String != "" {
+		v := subscriptionExpires.String
+		detail.SubscriptionExpiresAt = &v
+	}
+	paySettings, err := s.loadPaySettingsRow(ctx)
+	if err != nil {
+		return AccountDetail{}, err
+	}
+	detail.SubscriptionRequired = paySettings.SubscriptionRequired
 	var owns int
 	if err := s.db.QueryRowContext(ctx, `
 		SELECT 1 FROM circles WHERE owner_account_id = ? LIMIT 1
@@ -213,6 +225,19 @@ func (s *Service) DeleteAccount(ctx context.Context, id string, now time.Time) e
 		DELETE FROM sessions WHERE account_id = ? AND kind = ?
 	`, id, SessionParticipant); err != nil {
 		return fmt.Errorf("revoke deleted sessions: %w", err)
+	}
+	// Хвосты учётки: незавершённые вступления и личные приглашения на неё.
+	// Без этого удалённая учётка возвращалась в круг по старой ссылке (AUTH-4).
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM pending_circle_joins WHERE account_id = ?
+	`, id); err != nil {
+		return fmt.Errorf("clear pending joins: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE invites SET revoked_at = ?
+		WHERE target_account_id = ? AND revoked_at IS NULL
+	`, deletedAt, id); err != nil {
+		return fmt.Errorf("revoke personal invites: %w", err)
 	}
 	return tx.Commit()
 }

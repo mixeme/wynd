@@ -19,18 +19,20 @@ func (s *Server) archiveCycleJSON(ctx context.Context, circleID, accountID strin
 	if !cycle.Active {
 		return nil, nil
 	}
-	mediaBytes, err := s.Chronicle.EstimateArchiveMediaBytes(ctx, circleID, accountID, cycle.CutoffDate)
+	stats, err := s.Chronicle.EstimateArchivePersonal(ctx, circleID, accountID, cycle.CutoffDate)
 	if err != nil {
 		return nil, err
 	}
 	out := map[string]any{
-		"active":                 true,
-		"cutoff_date":            cycle.CutoffDate,
-		"deadline":               cycle.Deadline.UTC().Format(time.RFC3339),
-		"reminder_before_sec":    cycle.ReminderBeforeSec,
-		"cutoff_locked":          cycle.CutoffLockedAt != nil,
-		"personal_archive_bytes": mediaBytes,
-		"download_url":           "/api/v1/circles/" + circleID + "/archive/download",
+		"active":                       true,
+		"cutoff_date":                  cycle.CutoffDate,
+		"deadline":                     cycle.Deadline.UTC().Format(time.RFC3339),
+		"reminder_before_sec":          cycle.ReminderBeforeSec,
+		"cutoff_locked":                cycle.CutoffLockedAt != nil,
+		"personal_archive_bytes":       stats.MediaBytes,
+		"personal_archive_media_count": stats.MediaFiles,
+		"personal_archive_post_count":  stats.PostCount,
+		"download_url":                 "/api/v1/circles/" + circleID + "/archive/download",
 	}
 	return out, nil
 }
@@ -151,9 +153,15 @@ func (s *Server) handleCircleQuota(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
+	postCount, err := s.Chronicle.CountCirclePosts(r.Context(), circleID)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
 	out := map[string]any{
-		"used_bytes": used,
-		"volume":     volume,
+		"used_bytes":  used,
+		"post_count":  postCount,
+		"volume":      volume,
 	}
 	if quota.Valid {
 		out["quota_bytes"] = quota.Int64

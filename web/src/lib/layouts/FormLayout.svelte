@@ -2,6 +2,7 @@
 	import BackBar from '$ui/chrome/BackBar.svelte';
 	import PhoneFrame from '$ui/chrome/PhoneFrame.svelte';
 	import StatusBar from '$ui/chrome/StatusBar.svelte';
+	import IconButton from '$ui/forms/IconButton.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import type { CircleColor } from '$lib/theme/colors';
 	import type { Snippet } from 'svelte';
@@ -14,6 +15,8 @@
 		height,
 		class: className = '',
 		title,
+		circleTitle,
+		subtitle,
 		right,
 		search,
 		compact = false,
@@ -35,6 +38,8 @@
 		height?: string;
 		class?: string;
 		title?: string;
+		circleTitle?: string;
+		subtitle?: string;
 		right?: string;
 		search?: string;
 		compact?: boolean;
@@ -72,8 +77,30 @@
 			</div>
 			<div style="height:12px"></div>
 		</div>
+	{:else if circleTitle}
+		<div class="cbar">
+			<div class="top" style="justify-content:center">
+				<span class="t">{circleTitle}</span>
+			</div>
+			<div style="height:10px"></div>
+		</div>
 	{:else if bar}
 		<BackBar {compact} {onback}>{@render bar()}</BackBar>
+	{:else if color && subtitle}
+		<div class="cbar">
+			<div class="top">
+				{#if onback}
+					<IconButton name="back" label="Назад" onclick={() => onback()} />
+				{/if}
+				<span class="t">{title}</span>
+				{#if right}
+					<span class="rt" style="margin-left:auto;font-size:12.5px;color:rgba(255,255,255,.85)"
+						>{right}</span
+					>
+				{/if}
+			</div>
+			<div style="padding-bottom:12px;font-size:12.5px;color:rgba(255,255,255,.85)">{subtitle}</div>
+		</div>
 	{:else}
 		<BackBar {title} {right} {search} {compact} {onback} />
 	{/if}

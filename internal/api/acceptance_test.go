@@ -32,6 +32,7 @@ func TestAcceptanceCircleInviteSyncLeaveDelete(t *testing.T) {
 	}
 	circleID := jsonStr(t, rec, "id")
 
+	allowCircleMultiInvites(t, srv, circleID, ownerTok)
 	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/invites", ownerTok, map[string]any{
 		"kind": "multi", "max_uses": 5, "ttl_sec": 7 * 86400,
 	})

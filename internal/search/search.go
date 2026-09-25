@@ -12,6 +12,27 @@ import (
 const defaultLimit = 50
 const defaultAuthorLimit = 100
 
+// visibleCarrierSQL — попадание видно, только если видна запись-носитель.
+// Раньше видимость проверялась по created_at самой строки FTS, и комментарий
+// к невидимой записи находился вместе с миниатюрой этой записи (SRCH-1).
+// Для комментария носитель — его запись, для дня — сам день по entry_date.
+// Параметр — account_id; запрос обязан делать LEFT JOIN posts p ON p.id = f.post_id.
+const visibleCarrierSQL = `
+	AND (f.kind = 'day' OR (p.id IS NOT NULL AND p.deleted = 0))
+	AND EXISTS (
+	  SELECT 1 FROM memberships m
+	  JOIN membership_spans ms ON ms.membership_id = m.id
+	  WHERE m.circle_id = f.circle_id AND m.account_id = ?
+	    AND ms.can_read = 1
+	    AND CASE WHEN f.kind = 'day' THEN
+	          date(COALESCE(f.entry_date, p.entry_date)) >= date(ms.started_at)
+	          AND (ms.ended_at IS NULL OR date(COALESCE(f.entry_date, p.entry_date)) <= date(ms.ended_at))
+	        ELSE
+	          p.created_at >= ms.started_at
+	          AND (ms.ended_at IS NULL OR p.created_at < ms.ended_at)
+	        END
+	)`
+
 // Filters narrows FTS results beyond the text query.
 type Filters struct {
 	From        string
@@ -29,9 +50,10 @@ type Hit struct {
 	AuthorName string `json:"author_name,omitempty"`
 	Kind       string `json:"kind"`
 	Title      string `json:"title,omitempty"`
-	Snippet    string `json:"snippet"`
-	EntryDate  string `json:"entry_date"`
-	CreatedAt  string `json:"created_at"`
+	Snippet      string `json:"snippet"`
+	ThumbBlobID  string `json:"thumb_blob_id,omitempty"`
+	EntryDate    string `json:"entry_date"`
+	CreatedAt    string `json:"created_at"`
 }
 
 // Service runs FTS5 queries with membership span filtering.
@@ -78,18 +100,10 @@ func (s *Service) SearchCircleAuthors(ctx context.Context, accountID, circleID, 
 		WHERE content_fts MATCH ?
 		  AND f.circle_id = ?
 		  AND f.kind != 'day'
-		  AND f.author_name != ''
-		  AND EXISTS (
-		    SELECT 1 FROM memberships m
-		    JOIN membership_spans ms ON ms.membership_id = m.id
-		    WHERE m.circle_id = f.circle_id AND m.account_id = ?
-		      AND ms.can_read = 1
-		      AND f.created_at >= ms.started_at
-		      AND (ms.ended_at IS NULL OR f.created_at < ms.ended_at)
-		  )%s
+		  AND f.author_name != ''%s%s
 		ORDER BY f.author_name COLLATE NOCASE
 		LIMIT ?
-	`, whereExtra), args...)
+	`, visibleCarrierSQL, whereExtra), args...)
 	if err != nil {
 		return nil, err
 	}
@@ -126,27 +140,23 @@ func (s *Service) search(ctx context.Context, accountID, circleID, query string,
 	}
 	whereExtra, filterArgs := filterSQL(filters)
 	args = append(args, filterArgs...)
-	args = append(args, limit*3)
+	// Вся фильтрация видимости — в SQL, поэтому запас limit*3 больше не нужен.
+	args = append(args, limit)
 
 	rows, err := s.db.QueryContext(ctx, fmt.Sprintf(`
 		SELECT f.post_id, f.comment_id, f.circle_id, f.author_name, f.kind, f.created_at,
 			COALESCE(f.entry_date, p.entry_date),
 			CASE WHEN f.kind = 'day' THEN f.body ELSE '' END,
-			snippet(content_fts, 0, '', '', '…', 32)
+			snippet(content_fts, 0, '', '', '…', 32),
+			(SELECT pm.blob_id FROM post_media pm
+			 WHERE pm.post_id = f.post_id AND pm.kind IN ('photo', 'video')
+			 ORDER BY pm.sort_order LIMIT 1)
 		FROM content_fts f
 		LEFT JOIN posts p ON p.id = f.post_id AND f.post_id != ''
-		WHERE content_fts MATCH ?
-		  AND EXISTS (
-		    SELECT 1 FROM memberships m
-		    JOIN membership_spans ms ON ms.membership_id = m.id
-		    WHERE m.circle_id = f.circle_id AND m.account_id = ?
-		      AND ms.can_read = 1
-		      AND f.created_at >= ms.started_at
-		      AND (ms.ended_at IS NULL OR f.created_at < ms.ended_at)
-		  )%s%s
+		WHERE content_fts MATCH ?%s%s%s
 		ORDER BY rank
 		LIMIT ?
-	`, whereCircle, whereExtra), args...)
+	`, visibleCarrierSQL, whereCircle, whereExtra), args...)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +174,8 @@ func (s *Service) collectHits(ctx context.Context, rows *sql.Rows, limit int, wi
 		var commentID string
 		var author string
 		var created string
-		if err := rows.Scan(&h.PostID, &commentID, &h.CircleID, &author, &h.Kind, &created, &h.EntryDate, &h.Title, &h.Snippet); err != nil {
+		var thumb sql.NullString
+		if err := rows.Scan(&h.PostID, &commentID, &h.CircleID, &author, &h.Kind, &created, &h.EntryDate, &h.Title, &h.Snippet, &thumb); err != nil {
 			return nil, err
 		}
 		h.CommentID = commentID
@@ -175,6 +186,9 @@ func (s *Service) collectHits(ctx context.Context, rows *sql.Rows, limit int, wi
 			h.Title = strings.TrimSpace(h.Title)
 		}
 		h.CreatedAt = created
+		if thumb.Valid {
+			h.ThumbBlobID = thumb.String
+		}
 		out = append(out, h)
 	}
 	return out, rows.Err()

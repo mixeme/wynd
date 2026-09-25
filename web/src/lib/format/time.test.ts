@@ -6,6 +6,8 @@ import {
 	formatEntryDate,
 	formatMonthYear,
 	formatPostTime,
+	pluralFiles,
+	pluralPhotos,
 	pluralPosts
 } from './time';
 
@@ -36,6 +38,23 @@ describe('formatPostTime', () => {
 describe('formatClock', () => {
 	it('shows hours and minutes only', () => {
 		expect(formatClock('2026-09-02T14:20:00')).toMatch(/14:20/);
+	});
+});
+
+describe('pluralFiles', () => {
+	it('declines Russian file count', () => {
+		expect(pluralFiles(1)).toBe('1 файл');
+		expect(pluralFiles(2)).toBe('2 файла');
+		expect(pluralFiles(5)).toBe('5 файлов');
+		expect(pluralFiles(21)).toBe('21 файл');
+	});
+});
+
+describe('pluralPhotos', () => {
+	it('declines Russian photo count', () => {
+		expect(pluralPhotos(1)).toBe('1 фотография');
+		expect(pluralPhotos(2)).toBe('2 фотографии');
+		expect(pluralPhotos(12)).toBe('12 фотографий');
 	});
 });
 

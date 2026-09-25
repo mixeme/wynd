@@ -32,6 +32,7 @@ type Server struct {
 	TrustedProxies []*net.IPNet
 	Mux            *http.ServeMux
 	notifyWG       sync.WaitGroup
+	probes         *probeLimiter
 }
 
 func NewServer(authSvc *auth.Service, ch *chronicle.Chronicle, blobs *blob.Store, mailSvc *mail.Service, pushSvc *push.Service, bootstrapToken, dataDir, publicURL, listenAddr string, loopback bool) *Server {
@@ -48,6 +49,7 @@ func NewServer(authSvc *auth.Service, ch *chronicle.Chronicle, blobs *blob.Store
 		ListenAddr:     listenAddr,
 		Loopback:       loopback,
 		Mux:            http.NewServeMux(),
+		probes:         newProbeLimiter(),
 	}
 	s.routes()
 	return s
@@ -58,13 +60,15 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("GET /api/v1/instance", s.handleInstance)
 	s.Mux.HandleFunc("GET /api/v1/probe", s.handleProbe)
 	s.Mux.HandleFunc("GET /api/v1/probe/sse", s.handleProbeSSE)
-	s.Mux.HandleFunc("PUT /api/v1/probe/body", s.handleProbeBody)
+	s.Mux.HandleFunc("GET /api/v1/probe/stream", s.limitProbe(s.handleProbeStream))
+	s.Mux.HandleFunc("PUT /api/v1/probe/body", s.limitProbe(s.handleProbeBody))
 	s.Mux.HandleFunc("POST /api/v1/auth/register", public(s.handleRegister))
 	s.Mux.HandleFunc("POST /api/v1/auth/code", public(s.handleRequestCode))
 	s.Mux.HandleFunc("POST /api/v1/auth/verify", public(s.handleVerify))
 	s.Mux.HandleFunc("GET /api/v1/invites/{token}", public(s.handlePeekInvite))
 	s.Mux.HandleFunc("POST /api/v1/invites/{token}/accept", public(s.handleAcceptInvite))
 	s.Mux.HandleFunc("POST /api/v1/admin/bootstrap", public(s.handleBootstrap))
+	s.Mux.HandleFunc("POST /api/v1/admin/bootstrap/smtp-test", public(s.handleBootstrapSMTPTest))
 	s.Mux.HandleFunc("POST /api/v1/admin/login", public(s.handleAdminLogin))
 	admin := s.requireAdmin
 	s.Mux.HandleFunc("POST /api/v1/admin/logout", admin(s.handleAdminLogout))
@@ -79,6 +83,7 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("PUT /api/v1/admin/compression", admin(s.handleAdminSetCompression))
 	s.Mux.HandleFunc("GET /api/v1/admin/access", admin(s.handleAdminAccess))
 	s.Mux.HandleFunc("PUT /api/v1/admin/access", admin(s.handleAdminSetAccess))
+	s.Mux.HandleFunc("PUT /api/v1/admin/password", admin(s.handleAdminSetPassword))
 	s.Mux.HandleFunc("GET /api/v1/admin/accounts", admin(s.handleAdminAccounts))
 	s.Mux.HandleFunc("GET /api/v1/admin/accounts/{id}", admin(s.handleAdminGetAccount))
 	s.Mux.HandleFunc("DELETE /api/v1/admin/accounts/{id}", admin(s.handleAdminDeleteAccount))
@@ -90,7 +95,6 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("GET /api/v1/admin/push/vapid", admin(s.handleAdminVAPID))
 	s.Mux.HandleFunc("POST /api/v1/admin/push/test", admin(s.handleAdminPushTest))
 	s.Mux.HandleFunc("POST /api/v1/admin/check", admin(s.handleAdminCheck))
-	s.Mux.HandleFunc("POST /api/v1/admin/routine", admin(s.handleAdminRunRoutine))
 	s.Mux.HandleFunc("GET /api/v1/admin/proxy/{kind}", admin(s.handleAdminProxySnippet))
 	s.Mux.HandleFunc("GET /api/v1/admin/quota_requests", admin(s.handleAdminQuotaRequests))
 	s.Mux.HandleFunc("POST /api/v1/admin/quota_requests/{id}/approve", admin(s.handleAdminApproveQuotaRequest))
@@ -106,6 +110,9 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("POST /api/v1/admin/pay/requests/{id}/approve", admin(s.handleAdminApprovePayRequest))
 	s.Mux.HandleFunc("POST /api/v1/admin/pay/requests/{id}/reject", admin(s.handleAdminRejectPayRequest))
 	s.Mux.HandleFunc("GET /api/v1/admin/pay/blob/{blob_id}", admin(s.handleAdminPayBlob))
+	s.Mux.HandleFunc("GET /api/v1/admin/pay/accounts", admin(s.handleAdminPayAccounts))
+	s.Mux.HandleFunc("GET /api/v1/admin/pay/accounts/{id}", admin(s.handleAdminPayAccountByID))
+	s.Mux.HandleFunc("PUT /api/v1/admin/pay/accounts/{id}", admin(s.handleAdminGrantPayAccount))
 
 	participant := s.RequireParticipant
 	paid := s.RequirePaidParticipant
@@ -117,6 +124,11 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/invites", paid(s.handleCreateCircleInvite))
 	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}/invites", paid(s.handleListCircleInvites))
 	s.Mux.HandleFunc("DELETE /api/v1/circles/{circle_id}/invites/{id}", paid(s.handleRevokeCircleInvite))
+	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}/invite-candidates", paid(s.handleListInviteCandidates))
+	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/member-invites", paid(s.handleCreateMemberInvite))
+	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}/join-preview", paid(s.handleJoinPreview))
+	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/join", paid(s.handleJoinPendingCircle))
+	s.Mux.HandleFunc("GET /api/v1/pending-circle-joins", paid(s.handleListPendingCircleJoins))
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/leave", paid(s.handleLeaveCircle))
 	s.Mux.HandleFunc("PUT /api/v1/circles/{circle_id}/read_cursor", paid(s.handleSetReadCursor))
 	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}/feed", paid(s.handleFeed))

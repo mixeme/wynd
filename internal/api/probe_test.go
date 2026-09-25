@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -35,6 +36,16 @@ func TestProbeEndpoints(t *testing.T) {
 	}
 	if !bytes.Contains(rec.Body.Bytes(), []byte("event: probe")) {
 		t.Fatalf("probe sse body: %s", rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/probe/stream", nil)
+	rec = httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("probe stream: %d %s", rec.Code, rec.Body.String())
+	}
+	if len(rec.Body.Bytes()) < 20 {
+		t.Fatalf("probe stream short: %d bytes", len(rec.Body.Bytes()))
 	}
 
 	body := bytes.Repeat([]byte("x"), 2<<20)
@@ -79,3 +90,37 @@ func TestProbeBodyTooLarge(t *testing.T) {
 		t.Fatalf("body_probe_bytes after compression: %v", capped["body_probe_bytes"])
 	}
 }
+
+// Инвариант (DEP-5): тяжёлые публичные пробы ограничены по адресу.
+// /probe/body анонимно принимает мегабайты, /probe/stream держит соединение.
+func TestProbeBodyAndStreamRateLimited(t *testing.T) {
+	srv, _, _, _ := setupAPI(t)
+	limited := false
+	for i := 0; i < probeLimitProbes; i++ {
+		req := httptest.NewRequest(http.MethodPut, "/api/v1/probe/body", strings.NewReader("x"))
+		req.Header.Set("X-Forwarded-For", "203.0.113.70")
+		rec := httptest.NewRecorder()
+		srv.ServeHTTP(rec, req)
+		if rec.Code == http.StatusTooManyRequests {
+			limited = true
+			break
+		}
+		if rec.Code != http.StatusOK {
+			t.Fatalf("проба %d: %d %s", i+1, rec.Code, rec.Body.String())
+		}
+	}
+	if !limited {
+		t.Fatalf("/probe/body не упёрся в лимит за %d запросов", probeLimitProbes)
+	}
+
+	// Другой адрес лимитом не задет.
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/probe/body", strings.NewReader("x"))
+	req.Header.Set("X-Forwarded-For", "203.0.113.71")
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("чужой адрес задет лимитом: %d", rec.Code)
+	}
+}
+
+const probeLimitProbes = 30

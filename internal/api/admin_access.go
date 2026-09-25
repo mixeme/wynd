@@ -5,11 +5,13 @@ import (
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
+	"gitea.mixdep.ru/mix/wynd/internal/config"
 )
 
 type accessBody struct {
-	Name             string `json:"name"`
-	RegistrationMode string `json:"registration_mode"`
+	Name             string  `json:"name"`
+	RegistrationMode string  `json:"registration_mode"`
+	PublicURL        *string `json:"public_url"`
 }
 
 func (s *Server) handleAdminAccess(w http.ResponseWriter, r *http.Request) {
@@ -21,6 +23,7 @@ func (s *Server) handleAdminAccess(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"name":              info.Name,
 		"registration_mode": info.RegistrationMode,
+		"public_url":        s.PublicURL,
 	})
 }
 
@@ -42,6 +45,17 @@ func (s *Server) handleAdminSetAccess(w http.ResponseWriter, r *http.Request) {
 			writeError(w, err)
 			return
 		}
+	}
+	if body.PublicURL != nil {
+		url := config.NormalizePublicURL(*body.PublicURL)
+		if url == "" {
+			url = config.DefaultPublicURL
+		}
+		if err := config.WritePublicURL(s.DataDir, url); err != nil {
+			writeError(w, err)
+			return
+		}
+		s.applyPublicURL(url)
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }

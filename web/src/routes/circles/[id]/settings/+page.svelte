@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { getContext, onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Chip from '$ui/forms/Chip.svelte';
@@ -17,8 +18,10 @@
 	import { authErrorHint } from '$lib/auth/auth';
 	import {
 		customHoursFromSec,
+		deleteCircle,
 		editWindowFromSec,
 		editWindowToSec,
+		fetchCircleInvites,
 		fetchCircleSettings,
 		fetchMembers,
 		fetchQuota,
@@ -29,6 +32,7 @@
 	} from '$lib/circles/settings';
 	import OverlayLayout from '$lib/layouts/OverlayLayout.svelte';
 	import { formatBytes } from '$lib/format/bytes';
+	import { pluralPeople, pluralPosts } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { setCircleColor, circleInitial } from '$lib/circles/meta';
 	import type { CircleColor } from '$lib/theme/colors';
@@ -37,6 +41,7 @@
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 
 	let name = $state('');
+	let savedName = $state('');
 	let color = $state<CircleColor>('olive');
 	let editWindow = $state<EditWindowKey>('1h');
 	let customHours = $state(24);
@@ -51,12 +56,20 @@
 	let error = $state('');
 	let colorReady = $state(false);
 	let ownerLeaveOpen = $state(false);
+	let deleteOpen = $state(false);
+	let deleteConfirm = $state('');
+	let deleteError = $state('');
+	let deleteLoading = $state(false);
+	let deletePostCount = $state<number | null>(null);
+	let deleteUsedBytes = $state<number | null>(null);
+	let liveCount = $state(0);
 	let nameHint = $state('');
 	const customHoursHintText = 'Укажите целое число часов от 1 до 8760';
 	let customHoursHint = $state('');
 
 	const activeMembers = $derived(members.filter((m) => m.status === 'active'));
 	const previewMembers = $derived(activeMembers.slice(0, 3));
+	const soloCircle = $derived(activeMembers.length === 1);
 
 	function memberSubtitle(m: MemberInfo): string {
 		if (m.identity_id === circle.identityId) {
@@ -82,6 +95,7 @@
 				fetchMembers(circle.origin, circle.circleId)
 			]);
 			name = settings.name;
+			savedName = settings.name;
 			color = circle.color;
 			editWindow = editWindowFromSec(settings.edit_window_sec);
 			customHoursHint = '';
@@ -99,6 +113,14 @@
 			inviteWho = settings.invite_who ?? 'all';
 			inviteKindDefault = settings.invite_kind_default ?? 'single';
 			members = list;
+			liveCount = 0;
+			if (inviteWho === 'all' || isOwner) {
+				try {
+					liveCount = (await fetchCircleInvites(circle.origin, circle.circleId)).length;
+				} catch {
+					/* list is optional on this screen */
+				}
+			}
 			if (isOwner) {
 				try {
 					const quota = await fetchQuota(circle.origin, circle.circleId);
@@ -132,6 +154,7 @@
 		try {
 			await patchCircle(circle.origin, circle.circleId, { name: trimmed });
 			name = trimmed;
+			savedName = trimmed;
 			circle.name = trimmed;
 		} catch (err) {
 			error = authErrorHint(err);
@@ -207,6 +230,57 @@
 
 	const canInvite = $derived(inviteWho === 'all' || isOwner);
 
+	const deleteImpactHint = $derived.by(() => {
+		if (deletePostCount === null || deleteUsedBytes === null) return '';
+		return `${pluralPosts(deletePostCount)}, ${formatBytes(deleteUsedBytes)} фотографий и весь журнал ${pluralPeople(activeMembers.length)} исчезнут с сервера. Восстановить будет нечем.`;
+	});
+
+	function clearDeleteUrlParam() {
+		const url = new URL($page.url);
+		if (!url.searchParams.has('delete')) return;
+		url.searchParams.delete('delete');
+		const next = url.search ? `${url.pathname}${url.search}` : url.pathname;
+		goto(next, { replaceState: true });
+	}
+
+	function closeDeleteDialog() {
+		deleteOpen = false;
+		deleteConfirm = '';
+		deleteError = '';
+		clearDeleteUrlParam();
+	}
+
+	async function openDeleteDialog() {
+		if (!isOwner) return;
+		deleteConfirm = '';
+		deleteError = '';
+		deleteOpen = true;
+		if (deletePostCount !== null && deleteUsedBytes !== null) return;
+		try {
+			const quota = await fetchQuota(circle.origin, circle.circleId);
+			deletePostCount = quota.post_count;
+			deleteUsedBytes = quota.used_bytes;
+		} catch (err) {
+			deleteError = authErrorHint(err);
+		}
+	}
+
+	async function onDeleteCircle() {
+		if (deleteConfirm !== savedName.trim()) {
+			deleteError = 'Введите название круга точно';
+			return;
+		}
+		deleteLoading = true;
+		deleteError = '';
+		try {
+			await deleteCircle(circle.origin, circle.circleId, deleteConfirm);
+			goto('/circles');
+		} catch (err) {
+			deleteError = authErrorHint(err);
+			deleteLoading = false;
+		}
+	}
+
 	function goBack() {
 		goto(`/circles/${circle.circleId}`);
 	}
@@ -225,9 +299,15 @@
 		} else if (label === 'Покинуть круг') {
 			void onLeave();
 		} else if (label === 'Удалить круг и все записи') {
-			goto(`/circles/${circle.circleId}/settings/delete`);
+			void openDeleteDialog();
 		}
 	}
+
+	$effect(() => {
+		if (loading || !isOwner || deleteOpen) return;
+		if ($page.url.searchParams.get('delete') !== '1') return;
+		void openDeleteDialog();
+	});
 
 	onMount(() => {
 		void load();
@@ -293,13 +373,15 @@
 			>
 
 			<Label>Приглашения</Label>
+			{#if !soloCircle}
 			<ChipGroup>
 				<Chip selected={inviteWho === 'all'} onclick={() => void onInviteWho('all')}>Могут все</Chip>
 				<Chip selected={inviteWho === 'owner'} onclick={() => void onInviteWho('owner')}>
 					Только владелец
 				</Chip>
 			</ChipGroup>
-			<ChipGroup style="margin-top:8px">
+			{/if}
+			<ChipGroup style={soloCircle ? undefined : 'margin-top:8px'}>
 				<Chip
 					selected={inviteKindDefault === 'single'}
 					onclick={() => void onInviteKindDefault('single')}
@@ -313,6 +395,10 @@
 					Многоразовые
 				</Chip>
 			</ChipGroup>
+			<Hint
+				>Какие ссылки можно создать, не какой чип предвыбран. «Одноразовые» — чипа многоразовой на
+				экране пригласить нет, 6.6.</Hint
+			>
 		{/if}
 
 		{#if canInvite}
@@ -321,15 +407,20 @@
 				style="margin-top:14px;border-top:1px solid var(--line)"
 				onclick={() => goto(`/circles/${circle.circleId}/settings/invite`)}
 			/>
+			<SettingsRow
+				title="Живые ссылки"
+				value={liveCount > 0 ? String(liveCount) : undefined}
+				onclick={() => goto(`/circles/${circle.circleId}/settings/invites`)}
+			/>
 		{/if}
 		<SettingsRow
-			title="Кто ты в этом круге"
+			title="Кто вы в этом круге"
 			value={circle.identityName}
 			onclick={() => goto(`/circles/${circle.circleId}/settings/identity`)}
 		/>
 		<SettingsRow
 			title="Уведомления"
-			subtitle="записи и упоминания"
+			subtitle={soloCircle ? undefined : 'записи и упоминания'}
 			onclick={() => goto(`/circles/${circle.circleId}/settings/notify`)}
 		/>
 
@@ -379,16 +470,18 @@
 			onclick={() => goto(`/circles/${circle.circleId}/settings/members`)}
 		/>
 
+		{#if !soloCircle || isOwner}
 		<div style="margin-top:20px">
 			<DangerZone
 				items={[
-					...(isOwner ? ['Передать владение'] : []),
-					'Покинуть круг',
+					...(!soloCircle && isOwner ? ['Передать владение'] : []),
+					...(!soloCircle ? ['Покинуть круг'] : []),
 					...(isOwner ? ['Удалить круг и все записи'] : [])
 				]}
 				onitem={onDangerItem}
 			/>
 		</div>
+		{/if}
 	{/if}
 </FormLayout>
 
@@ -410,6 +503,26 @@
 				}}
 			>
 				Передать
+			</Button>
+		</div>
+	</OverlayLayout>
+{/if}
+
+{#if deleteOpen}
+	<OverlayLayout variant="dialog" ondismiss={closeDeleteDialog}>
+		<div style="font-size:17px;font-weight:600;margin-bottom:10px">Удалить «{savedName}»?</div>
+		{#if deleteImpactHint}
+			<Hint style="margin-bottom:14px">{deleteImpactHint}</Hint>
+		{/if}
+		<Label style="margin:0 0 7px">Напишите имя круга</Label>
+		<Input active bind:value={deleteConfirm} />
+		{#if deleteError}
+			<Hint style="margin-top:8px">{deleteError}</Hint>
+		{/if}
+		<div class="rowin" style="margin:18px 0 0">
+			<Button variant="ghost" style="flex:1;margin:0" onclick={closeDeleteDialog}>Отмена</Button>
+			<Button style="flex:1;margin:0" loading={deleteLoading} onclick={() => void onDeleteCircle()}>
+				Удалить
 			</Button>
 		</div>
 	</OverlayLayout>

@@ -15,7 +15,8 @@ type defaultQuotaBody struct {
 }
 
 type storageQuotaBody struct {
-	QuotaBytes int64 `json:"quota_bytes"`
+	QuotaBytes       *int64 `json:"quota_bytes"`
+	QuotaDiskPercent *int   `json:"quota_disk_percent"`
 }
 
 type compressionBody struct {
@@ -42,6 +43,11 @@ func (s *Server) handleAdminStorage(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
+	absQuota, diskPercent, err := s.Blobs.InstanceQuotaSettings(r.Context())
+	if err != nil {
+		writeError(w, err)
+		return
+	}
 	defaultQuota, err := s.Blobs.DefaultCircleQuotaBytes(r.Context())
 	if err != nil {
 		writeError(w, err)
@@ -58,8 +64,10 @@ func (s *Server) handleAdminStorage(w http.ResponseWriter, r *http.Request) {
 		defaultPtr = &q
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"used_bytes":                 used,
-		"quota_bytes":                quota,
+		"used_bytes":                   used,
+		"quota_bytes":                  quota,
+		"storage_quota_bytes":          absQuota,
+		"storage_quota_disk_percent":   diskPercent,
 		"default_circle_quota_bytes": defaultPtr,
 		"circles":                    storageCirclesJSON(circles),
 	})
@@ -94,13 +102,26 @@ func (s *Server) handleAdminSetStorageQuota(w http.ResponseWriter, r *http.Reque
 		writeError(w, err)
 		return
 	}
-	if body.QuotaBytes < 1 {
+	hasBytes := body.QuotaBytes != nil
+	hasPercent := body.QuotaDiskPercent != nil
+	if hasBytes == hasPercent {
 		writeError(w, blob.ErrInvalid)
 		return
 	}
-	if err := s.Blobs.SetInstanceQuotaBytes(r.Context(), body.QuotaBytes); err != nil {
-		writeError(w, err)
-		return
+	if hasPercent {
+		if err := s.Blobs.SetInstanceQuotaDiskPercent(r.Context(), *body.QuotaDiskPercent); err != nil {
+			writeError(w, err)
+			return
+		}
+	} else {
+		if *body.QuotaBytes < 1 {
+			writeError(w, blob.ErrInvalid)
+			return
+		}
+		if err := s.Blobs.SetInstanceQuotaBytes(r.Context(), *body.QuotaBytes); err != nil {
+			writeError(w, err)
+			return
+		}
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }

@@ -12,6 +12,7 @@
 	import { authErrorHint } from '$lib/auth/auth';
 	import { isAccessError } from '$lib/api/client';
 	import { fetchQuota, type VolumeBucket } from '$lib/circles/settings';
+	import { volumeBarCenterX } from '$lib/circles/volumeChart';
 	import { formatBytes } from '$lib/format/bytes';
 	import { formatEntryDate } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
@@ -57,8 +58,7 @@
 		if (!volume.length || !cutoffDate) return;
 		const period = cutoffDate.slice(0, 7);
 		const idx = volume.findIndex((b) => b.period === period);
-		// Same geometry as VolumeChart barCenterX: 1 + index * (18+8) + 18/2.
-		if (idx >= 0) chartCutoffX = 1 + idx * 26 + 9;
+		if (idx >= 0) chartCutoffX = volumeBarCenterX(idx, volume.length);
 	}
 
 	function onChartCutoff(index: number) {
@@ -140,7 +140,7 @@
 			{/if}
 			{#if full}· фотографии больше не загружаются, текст пишется{/if}
 		</Hint>
-		{#if full}
+		{#if capped}
 			<SettingsRow
 				title="Попросить у администратора"
 				subtitle="шаг необязательный — можно сразу к отсечке"

@@ -21,9 +21,11 @@
 		style?: string;
 	} = $props();
 
-	const cardStyle = card
-		? 'margin:14px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px'
-		: '';
+	const cardStyle = $derived(
+		card
+			? 'margin:14px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px'
+			: ''
+	);
 	const rowStyle = $derived(cardStyle ? `${cardStyle};${style}` : style);
 </script>
 

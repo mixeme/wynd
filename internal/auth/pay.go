@@ -10,10 +10,65 @@ import (
 	"strings"
 	"time"
 
+	"gitea.mixdep.ru/mix/wynd/internal/blob"
 	"gitea.mixdep.ru/mix/wynd/internal/uid"
 )
 
 const payRequestRefType = "pay_request"
+
+// SubscriptionUnlimitedAt is the stored end date for admin-granted lifetime access.
+var SubscriptionUnlimitedAt = time.Date(9999, 12, 31, 0, 0, 0, 0, time.UTC)
+
+func subscriptionUnlimitedExpiry() string {
+	return formatTime(SubscriptionUnlimitedAt)
+}
+
+func isSubscriptionUnlimitedRaw(raw string) bool {
+	if raw == "" {
+		return false
+	}
+	t, err := parseTime(raw)
+	if err != nil {
+		return false
+	}
+	return !t.Before(SubscriptionUnlimitedAt)
+}
+
+func subscriptionExtendBase(current sql.NullString, now time.Time) time.Time {
+	base := now.UTC()
+	if !current.Valid || current.String == "" {
+		return base
+	}
+	if isSubscriptionUnlimitedRaw(current.String) {
+		return base
+	}
+	t, err := parseTime(current.String)
+	if err != nil {
+		return base
+	}
+	if t.After(base) {
+		return t
+	}
+	return base
+}
+
+func (s *Service) setAccountSubscriptionExpires(ctx context.Context, accountID, expires string) error {
+	res, err := s.db.ExecContext(ctx, `
+		UPDATE accounts SET subscription_expires_at = ?, pay_reminder_sent_for = NULL
+		WHERE id = ? AND deleted_at IS NULL
+	`, expires, accountID)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
 
 // PaySettings is instance-level payment configuration.
 type PaySettings struct {
@@ -332,8 +387,124 @@ func (s *Service) CreatePayRequest(ctx context.Context, accountID, blobID, comme
 	return id, nil
 }
 
-func (s *Service) ApprovePayRequest(ctx context.Context, id string, days int) error {
-	if id == "" || days < 1 {
+// PayAccountSummary is a participant row for the admin subscription table.
+type PayAccountSummary struct {
+	ID                    string  `json:"id"`
+	Email                 string  `json:"email"`
+	Blocked               bool    `json:"blocked"`
+	SubscriptionExpiresAt *string `json:"subscription_expires_at,omitempty"`
+}
+
+// PayAccount is one account for grant-without-request.
+type PayAccount struct {
+	ID                    string  `json:"id"`
+	Email                 string  `json:"email"`
+	SubscriptionExpiresAt *string `json:"subscription_expires_at,omitempty"`
+}
+
+func (s *Service) requirePaySubscription(ctx context.Context) error {
+	settings, err := s.loadPaySettingsRow(ctx)
+	if err != nil {
+		return err
+	}
+	if !settings.SubscriptionRequired {
+		return ErrInvalid
+	}
+	return nil
+}
+
+func (s *Service) ListPayAccounts(ctx context.Context) ([]PayAccountSummary, error) {
+	if err := s.requirePaySubscription(ctx); err != nil {
+		return nil, err
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, email, blocked, subscription_expires_at
+		FROM accounts
+		WHERE email != ? AND deleted_at IS NULL
+		ORDER BY email COLLATE NOCASE
+	`, AdminSentinelEmail)
+	if err != nil {
+		return nil, fmt.Errorf("list pay accounts: %w", err)
+	}
+	defer rows.Close()
+	out := []PayAccountSummary{}
+	for rows.Next() {
+		var row PayAccountSummary
+		var blocked int
+		var expires sql.NullString
+		if err := rows.Scan(&row.ID, &row.Email, &blocked, &expires); err != nil {
+			return nil, err
+		}
+		row.Blocked = blocked != 0
+		if expires.Valid && expires.String != "" {
+			v := expires.String
+			row.SubscriptionExpiresAt = &v
+		}
+		out = append(out, row)
+	}
+	return out, rows.Err()
+}
+
+func (s *Service) PayAccountByID(ctx context.Context, id string) (PayAccount, error) {
+	if err := s.requirePaySubscription(ctx); err != nil {
+		return PayAccount{}, err
+	}
+	if id == "" {
+		return PayAccount{}, ErrInvalid
+	}
+	var row PayAccount
+	var expires sql.NullString
+	err := s.db.QueryRowContext(ctx, `
+		SELECT id, email, subscription_expires_at
+		FROM accounts
+		WHERE id = ? AND email != ? AND deleted_at IS NULL
+	`, id, AdminSentinelEmail).Scan(&row.ID, &row.Email, &expires)
+	if errors.Is(err, sql.ErrNoRows) {
+		return PayAccount{}, ErrNotFound
+	}
+	if err != nil {
+		return PayAccount{}, err
+	}
+	if expires.Valid && expires.String != "" {
+		v := expires.String
+		row.SubscriptionExpiresAt = &v
+	}
+	return row, nil
+}
+
+func (s *Service) GrantPayAccount(ctx context.Context, accountID string, days int, unlimited bool) error {
+	if err := s.requirePaySubscription(ctx); err != nil {
+		return err
+	}
+	if accountID == "" {
+		return ErrInvalid
+	}
+	acc, err := s.PayAccountByID(ctx, accountID)
+	if err != nil {
+		return err
+	}
+	var next string
+	if unlimited {
+		next = subscriptionUnlimitedExpiry()
+	} else {
+		if days < 1 {
+			return ErrInvalid
+		}
+		var current sql.NullString
+		if acc.SubscriptionExpiresAt != nil {
+			current = sql.NullString{String: *acc.SubscriptionExpiresAt, Valid: true}
+		}
+		base := subscriptionExtendBase(current, time.Now().UTC())
+		next = formatTime(base.AddDate(0, 0, days))
+	}
+	return s.setAccountSubscriptionExpires(ctx, accountID, next)
+}
+
+func (s *Service) ApprovePayRequest(ctx context.Context, id string, days int, unlimited bool) error {
+	if id == "" {
+		return ErrInvalid
+	}
+	if !unlimited && days < 1 {
 		return ErrInvalid
 	}
 	var accountID string
@@ -347,19 +518,19 @@ func (s *Service) ApprovePayRequest(ctx context.Context, id string, days int) er
 		return err
 	}
 	now := time.Now().UTC()
-	base := now
-	var current sql.NullString
-	if err := s.db.QueryRowContext(ctx, `
-		SELECT subscription_expires_at FROM accounts WHERE id = ?
-	`, accountID).Scan(&current); err != nil {
-		return err
-	}
-	if current.Valid && current.String != "" {
-		if t, err := parseTime(current.String); err == nil && t.After(base) {
-			base = t
+	var next string
+	if unlimited {
+		next = subscriptionUnlimitedExpiry()
+	} else {
+		var current sql.NullString
+		if err := s.db.QueryRowContext(ctx, `
+			SELECT subscription_expires_at FROM accounts WHERE id = ?
+		`, accountID).Scan(&current); err != nil {
+			return err
 		}
+		base := subscriptionExtendBase(current, now)
+		next = formatTime(base.AddDate(0, 0, days))
 	}
-	next := formatTime(base.AddDate(0, 0, days))
 	resolved := formatTime(now)
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -547,24 +718,13 @@ func removePayRequestBlob(ctx context.Context, db *sql.DB, blobsDir, reqID, blob
 	`, payRequestRefType, reqID); err != nil {
 		return err
 	}
-	var n int
-	if err := tx.QueryRowContext(ctx, `
-		SELECT COUNT(*) FROM blob_refs WHERE blob_id = ?
-	`, blobID).Scan(&n); err != nil {
+	// Строка pay_requests остаётся (внешний ключ на blobs), поэтому спрашиваем
+	// про файл: свой скриншот уже помечен blob_deleted = 1 выше.
+	needed, err := blob.IsFileNeeded(ctx, tx, blobID)
+	if err != nil {
 		return err
 	}
-	if n == 0 {
-		if err := tx.QueryRowContext(ctx, `
-			SELECT (
-				(SELECT COUNT(*) FROM post_media WHERE blob_id = ?) +
-				(SELECT COUNT(*) FROM day_covers WHERE blob_id = ? AND deleted = 0) +
-				(SELECT COUNT(*) FROM identity_names WHERE avatar_blob_id = ? AND erased_at IS NULL)
-			)
-		`, blobID, blobID, blobID).Scan(&n); err != nil {
-			return err
-		}
-	}
-	if n == 0 {
+	if !needed {
 		var rel string
 		err = tx.QueryRowContext(ctx, `
 			SELECT storage_path FROM blobs WHERE id = ?
@@ -589,6 +749,9 @@ func boolToInt(v bool) int {
 func isSubscriptionExpired(expiresAt *string, now time.Time) bool {
 	if expiresAt == nil || *expiresAt == "" {
 		return true
+	}
+	if isSubscriptionUnlimitedRaw(*expiresAt) {
+		return false
 	}
 	t, err := parseTime(*expiresAt)
 	if err != nil {
@@ -627,6 +790,9 @@ func parseDonateUntil(raw string) (time.Time, bool) {
 }
 
 func reminderDaysLeft(expiresAt string, now time.Time, remindDays int) *int {
+	if isSubscriptionUnlimitedRaw(expiresAt) {
+		return nil
+	}
 	t, err := parseTime(expiresAt)
 	if err != nil {
 		return nil

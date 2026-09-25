@@ -9,26 +9,28 @@
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import {
-		fetchVapidPublicKey,
+		CHECK_GROUPS,
+		checkHeadline,
+		checkSubtitle,
+		proxyFixId
+	} from '$lib/admin/check-ui';
+	import {
+		downloadVapidPublicKey,
 		runChecks,
 		sendAdminPushTest,
 		serverCaption,
 		type CheckResult
 	} from '$lib/admin/admin';
 
-	const GROUPS: { label: string; ids: string[] }[] = [
-		{ label: 'Снаружи', ids: ['https_outside'] },
-		{ label: 'Прокси', ids: ['proxy_headers', 'proxy_body_limit', 'proxy_sse'] },
-		{ label: 'Почта', ids: ['smtp', 'dkim'] },
-		{ label: 'Пуши', ids: ['vapid_keys'] },
-		{ label: 'Сервер', ids: ['clocks', 'disk_space', 'daily_routine', 'backup'] }
-	];
+	const LEFT_GROUPS = CHECK_GROUPS.slice(0, 3);
+	const RIGHT_GROUPS = CHECK_GROUPS.slice(3);
 
 	let checks = $state<CheckResult[]>([]);
 	let server = $state('');
 	let error = $state('');
 	let loading = $state(true);
 	let checkedAt = $state<Date | undefined>();
+	let pushDetail = $state('сигнал без текста журнала; на loopback может не дойти');
 
 	function rowStatus(status: CheckResult['status']): 'ok' | 'warn' | 'bad' {
 		if (status === 'fail') return 'bad';
@@ -36,16 +38,18 @@
 		return 'ok';
 	}
 
-	const failed = $derived(checks.filter((c) => c.status === 'fail' || c.status === 'warn'));
-	const headline = $derived(
-		failed.length === 0
-			? 'Проверки прошли'
-			: failed.length === 1
-				? 'Одна проверка не прошла'
-				: `${failed.length} проверки не прошли`
-	);
+	const headline = $derived(checkHeadline(checks));
+	const subtitle = $derived(checkSubtitle(checks));
 
 	function byId(id: string): CheckResult | undefined {
+		if (id === 'push_test') {
+			return {
+				id: 'push_test',
+				status: 'ok',
+				title: 'Тестовый пуш',
+				detail: pushDetail
+			};
+		}
 		return checks.find((c) => c.id === id);
 	}
 
@@ -84,9 +88,7 @@
 			<div style="display:flex;align-items:flex-start;gap:20px">
 				<div style="flex:1">
 					<h4 style="margin-bottom:5px">{headline}</h4>
-					<div style="font-size:12.5px;color:var(--muted)">
-						Статус — формой, а не цветом. Снаружи проверяет этот браузер.
-					</div>
+					<div style="font-size:12.5px;color:var(--muted)">{subtitle}</div>
 				</div>
 				<div style="text-align:right">
 					<TextButton variant="adminBox" style="font-weight:600" onclick={() => void load()}
@@ -97,10 +99,8 @@
 			</div>
 			<div class="cols" style="margin-top:20px">
 				<div>
-					{#each GROUPS.slice(0, 2) as group (group.label)}
-						<SectionLabel style="margin:{group.label === GROUPS[0].label ? '0' : '16px'} 0 6px"
-							>{group.label}</SectionLabel
-						>
+					{#each LEFT_GROUPS as group, gi (group.label)}
+						<SectionLabel style="margin:{gi === 0 ? '0' : '16px'} 0 6px">{group.label}</SectionLabel>
 						{#each group.ids as id (id)}
 							{@const row = byId(id)}
 							{#if row}
@@ -111,13 +111,9 @@
 									description={row.detail}
 								>
 									{#snippet actions()}
-										{#if id.startsWith('proxy') && (row.status === 'fail' || row.status === 'warn')}
+										{#if proxyFixId(id) && (row.status === 'fail' || row.status === 'warn')}
 											<TextButton variant="admin" onclick={() => goto(`/admin/fix?fail=${id}`)}>
 												Показать конфиг
-											</TextButton>
-										{:else if id === 'smtp'}
-											<TextButton variant="admin" onclick={() => goto('/admin/smtp')}>
-												Настроить
 											</TextButton>
 										{/if}
 									{/snippet}
@@ -127,10 +123,8 @@
 					{/each}
 				</div>
 				<div>
-					{#each GROUPS.slice(2) as group (group.label)}
-						<SectionLabel style="margin:{group.label === 'Почта' ? '0' : '16px'} 0 6px"
-							>{group.label}</SectionLabel
-						>
+					{#each RIGHT_GROUPS as group, gi (group.label)}
+						<SectionLabel style="margin:{gi === 0 ? '0' : '16px'} 0 6px">{group.label}</SectionLabel>
 						{#each group.ids as id (id)}
 							{@const row = byId(id)}
 							{#if row}
@@ -141,15 +135,7 @@
 									description={row.detail}
 								>
 									{#snippet actions()}
-										{#if id === 'smtp'}
-											<TextButton variant="admin" onclick={() => goto('/admin/smtp')}>
-												Настроить
-											</TextButton>
-										{:else if id === 'dkim' && row.status !== 'na'}
-											<TextButton variant="admin" onclick={() => goto('/admin/smtp')}>
-												Как добавить
-											</TextButton>
-										{:else if id === 'backup' && row.status === 'warn'}
+										{#if id === 'backup' && row.status === 'warn'}
 											<TextButton
 												variant="admin"
 												onclick={async () => {
@@ -161,12 +147,23 @@
 										{:else if id === 'vapid_keys'}
 											<TextButton
 												variant="admin"
-												onclick={async () => {
-													const key = await fetchVapidPublicKey();
-													await navigator.clipboard.writeText(key);
-												}}
+												onclick={() =>
+													void downloadVapidPublicKey().catch((err) => (error = authErrorHint(err)))}
 											>
-												Скопировать ключ
+												Скачать копию
+											</TextButton>
+										{:else if id === 'push_test'}
+											<TextButton
+												variant="admin"
+												onclick={() =>
+													void sendAdminPushTest()
+														.then(() => {
+															pushDetail = 'отправили только что';
+															return load();
+														})
+														.catch((err) => (error = authErrorHint(err)))}
+											>
+												Отправить
 											</TextButton>
 										{/if}
 									{/snippet}
@@ -174,22 +171,6 @@
 							{/if}
 						{/each}
 					{/each}
-					<SectionLabel style="margin:16px 0 6px">Тестовый пуш</SectionLabel>
-					<CheckRow
-						status="ok"
-						name="Тестовый пуш"
-						description="сигнал без текста журнала; на loopback может не дойти"
-					>
-						{#snippet actions()}
-							<TextButton
-								variant="admin"
-								onclick={() =>
-									void sendAdminPushTest().catch((err) => (error = authErrorHint(err)))}
-							>
-								Отправить
-							</TextButton>
-						{/snippet}
-					</CheckRow>
 				</div>
 			</div>
 			<div style="font-size:11.5px;color:var(--faint);margin-top:18px;line-height:1.6">

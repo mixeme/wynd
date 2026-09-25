@@ -3,9 +3,12 @@ package blob
 import (
 	"context"
 	"database/sql"
+	"path/filepath"
+
+	"gitea.mixdep.ru/mix/wynd/internal/check"
 )
 
-// CompressionSettings are client-side compression thresholds (no server-side ffmpeg).
+// CompressionSettings are client-side compression thresholds (photos and video; no server ffmpeg).
 type CompressionSettings struct {
 	PhotoMaxPx         int   `json:"photo_max_px"`
 	PhotoQuality       int   `json:"photo_quality"`
@@ -30,12 +33,34 @@ func (s *Store) LoadCompressionSettings(ctx context.Context) (CompressionSetting
 	return cs, nil
 }
 
-func (s *Store) instanceQuotaBytes(ctx context.Context) (int64, error) {
-	var q int64
-	err := s.db.QueryRowContext(ctx, `
-		SELECT storage_quota_bytes FROM instance_settings WHERE id = 1
-	`).Scan(&q)
-	return q, err
+func (s *Store) instanceQuotaSettings(ctx context.Context) (absolute int64, diskPercent sql.NullInt64, err error) {
+	err = s.db.QueryRowContext(ctx, `
+		SELECT storage_quota_bytes, storage_quota_disk_percent FROM instance_settings WHERE id = 1
+	`).Scan(&absolute, &diskPercent)
+	return absolute, diskPercent, err
+}
+
+func (s *Store) effectiveInstanceQuotaBytes(ctx context.Context) (int64, error) {
+	absolute, diskPercent, err := s.instanceQuotaSettings(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if !diskPercent.Valid {
+		return absolute, nil
+	}
+	pct := diskPercent.Int64
+	if pct < 1 || pct > 100 {
+		return 0, ErrInvalid
+	}
+	dataDir := filepath.Dir(s.dir)
+	_, total, err := check.DiskUsage(dataDir)
+	if err != nil {
+		return 0, err
+	}
+	if total == 0 {
+		return 0, ErrInvalid
+	}
+	return int64(total) * pct / 100, nil
 }
 
 func (s *Store) DefaultCircleQuotaBytes(ctx context.Context) (sql.NullInt64, error) {
@@ -118,7 +143,7 @@ func (s *Store) CheckMediaQuota(ctx context.Context, circleID string, additional
 	if additionalBytes < 0 {
 		return ErrInvalid
 	}
-	instQuota, err := s.instanceQuotaBytes(ctx)
+	instQuota, err := s.effectiveInstanceQuotaBytes(ctx)
 	if err != nil {
 		return err
 	}
@@ -160,9 +185,22 @@ func (s *Store) UsedBytes(ctx context.Context) (int64, error) {
 	return s.usedBytes(ctx)
 }
 
-// InstanceQuotaBytes returns the instance storage quota.
+// InstanceQuotaBytes returns the effective instance storage quota.
 func (s *Store) InstanceQuotaBytes(ctx context.Context) (int64, error) {
-	return s.instanceQuotaBytes(ctx)
+	return s.effectiveInstanceQuotaBytes(ctx)
+}
+
+// InstanceQuotaSettings returns stored absolute bytes and optional disk percent mode.
+func (s *Store) InstanceQuotaSettings(ctx context.Context) (absolute int64, diskPercent *int, err error) {
+	abs, pct, err := s.instanceQuotaSettings(ctx)
+	if err != nil {
+		return 0, nil, err
+	}
+	if !pct.Valid {
+		return abs, nil, nil
+	}
+	p := int(pct.Int64)
+	return abs, &p, nil
 }
 
 // CircleUsedBytes returns media bytes used by a circle.
@@ -175,14 +213,25 @@ func (s *Store) CircleQuotaBytes(ctx context.Context, circleID string) (sql.Null
 	return s.circleQuotaBytes(ctx, circleID)
 }
 
-// SetInstanceQuotaBytes updates the instance storage quota.
+// SetInstanceQuotaBytes sets absolute instance quota and clears disk percent mode.
 func (s *Store) SetInstanceQuotaBytes(ctx context.Context, quota int64) error {
 	if quota < 1 {
 		return ErrInvalid
 	}
 	_, err := s.db.ExecContext(ctx, `
-		UPDATE instance_settings SET storage_quota_bytes = ? WHERE id = 1
+		UPDATE instance_settings SET storage_quota_bytes = ?, storage_quota_disk_percent = NULL WHERE id = 1
 	`, quota)
+	return err
+}
+
+// SetInstanceQuotaDiskPercent sets percent-of-data-volume quota and clears absolute mode.
+func (s *Store) SetInstanceQuotaDiskPercent(ctx context.Context, percent int) error {
+	if percent < 1 || percent > 100 {
+		return ErrInvalid
+	}
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE instance_settings SET storage_quota_disk_percent = ? WHERE id = 1
+	`, percent)
 	return err
 }
 

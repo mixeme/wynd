@@ -22,8 +22,7 @@
 	} = $props();
 </script>
 
-<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-<div class={className} {style} {onclick}>
+{#snippet body()}
 	{#if coverUrl}
 		<PhotoPlaceholder {photoCount} compactCount style="aspect-ratio:1/1">
 			<img src={coverUrl} alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit" />
@@ -35,4 +34,29 @@
 	{/if}
 	<div style="font-weight:600;margin-top:6px">{title}</div>
 	<div style="font-size:11.5px;color:var(--faint)">{subtitle}</div>
-</div>
+{/snippet}
+
+{#if onclick}
+	<button type="button" class={className} {style} {onclick}>
+		{@render body()}
+	</button>
+{:else}
+	<div class={className} {style}>
+		{@render body()}
+	</div>
+{/if}
+
+<style>
+	button {
+		display: block;
+		width: 100%;
+		margin: 0;
+		padding: 0;
+		border: 0;
+		background: none;
+		font: inherit;
+		color: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+</style>

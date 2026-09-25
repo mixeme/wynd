@@ -1,5 +1,6 @@
 ﻿<script lang="ts">
 	import MemberRow from '$ui/data/MemberRow.svelte';
+	import MentionPicker from '$ui/forms/MentionPicker.svelte';
 	import Icon from '$ui/Icon.svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import TextArea from '$ui/forms/TextArea.svelte';
@@ -91,7 +92,7 @@
 
 <div class="comp-wrap {className}" {style}>
 	{#if showMentionPicker}
-		<div class="men-pick">
+		<MentionPicker>
 			{#each mentionCandidates as member, i (member.account_id)}
 				<MemberRow
 					initial={circleInitial(member.name)}
@@ -101,7 +102,7 @@
 					style={i === 0 ? 'padding:10px 14px' : undefined}
 				/>
 			{/each}
-		</div>
+		</MentionPicker>
 	{/if}
 	<div class="comp">
 	<div class="f" class:ink={canSend}>

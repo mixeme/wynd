@@ -1,5 +1,19 @@
 import { normalizeOrigin } from '$lib/api/client';
 
+/** Same rule as config.IsLoopback: localhost and loopback IPs, with or without a scheme. */
+export function isLoopbackPublicURL(raw: string): boolean {
+	let s = raw.trim();
+	if (!s) return false;
+	if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(s)) s = `https://${s}`;
+	try {
+		const host = new URL(s).hostname.replace(/^\[|\]$/g, '').toLowerCase();
+		if (host === 'localhost' || host === '::1') return true;
+		return /^127(?:\.\d{1,3}){3}$/.test(host);
+	} catch {
+		return false;
+	}
+}
+
 export function parseServerInput(raw: string): string {
 	let s = raw.trim();
 	if (!s) return '';

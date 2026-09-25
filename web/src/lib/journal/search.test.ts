@@ -49,7 +49,20 @@ describe('searchChipsFromParams', () => {
 			from: '2026-03-01',
 			to: '',
 			hasPhoto: true,
-			hasLocation: false
+			hasLocation: false,
+			author: ''
 		});
+	});
+
+	it('reads author chip from the query', () => {
+		const chips = searchChipsFromParams(new URLSearchParams('q=x&author=Аня'));
+		expect(chips.author).toBe('Аня');
+		const href = searchHref('/circles/c1/search', { q: 'x', author: 'Аня' });
+		expect(new URL(href, 'https://wynd.local').searchParams.get('author')).toBe('Аня');
+	});
+
+	it('omits empty author from the query', () => {
+		const href = searchHref('/circles/c1/search', { q: 'x', author: '  ' });
+		expect(new URL(href, 'https://wynd.local').searchParams.get('author')).toBeNull();
 	});
 });

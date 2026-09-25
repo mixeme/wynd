@@ -1,13 +1,4 @@
 <script lang="ts">
-	import Chip from '$ui/forms/Chip.svelte';
-	import ChipGroup from '$ui/forms/ChipGroup.svelte';
-
-	export interface CircleRowGroupChip {
-		label: string;
-		selected?: boolean;
-		onclick: () => void;
-	}
-
 	let {
 		initial,
 		name,
@@ -18,7 +9,8 @@
 		card = false,
 		actionLabel,
 		onaction,
-		groupChips,
+		actionLabel2,
+		onaction2,
 		onclick,
 		onmousedown,
 		onmouseup,
@@ -38,7 +30,8 @@
 		card?: boolean;
 		actionLabel?: string;
 		onaction?: () => void;
-		groupChips?: CircleRowGroupChip[];
+		actionLabel2?: string;
+		onaction2?: () => void;
 		onclick?: () => void;
 		onmousedown?: (e: MouseEvent) => void;
 		onmouseup?: (e: MouseEvent) => void;
@@ -51,14 +44,12 @@
 	} = $props();
 
 	const rowStyle = $derived(color ? `--rc:${color};${style}` : style);
-	const cardWrapStyle =
-		'margin:8px 10px;background:var(--card);border:1px solid var(--line);border-radius:14px';
 	const showAction = $derived(card && actionLabel && onaction);
-	const showGroupChips = $derived(card && groupChips && groupChips.length > 0);
+	const showAction2 = $derived(card && actionLabel2 && onaction2);
 </script>
 
 {#if card}
-	<div class="circle-row-card {className}" style={cardWrapStyle}>
+	<div class="circle-row-card {className}">
 		{#if onclick}
 			<button
 				type="button"
@@ -104,12 +95,10 @@
 				{actionLabel}
 			</button>
 		{/if}
-		{#if showGroupChips}
-			<ChipGroup style="margin:0 0 14px;padding:0 16px">
-				{#each groupChips as chip (chip.label)}
-					<Chip selected={chip.selected} onclick={chip.onclick}>{chip.label}</Chip>
-				{/each}
-			</ChipGroup>
+		{#if showAction2}
+			<button type="button" class="circle-row-action" onclick={() => onaction2?.()}>
+				{actionLabel2}
+			</button>
 		{/if}
 	</div>
 {:else if onclick}

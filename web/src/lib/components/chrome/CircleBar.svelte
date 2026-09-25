@@ -6,6 +6,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import IconButton from '$ui/forms/IconButton.svelte';
+	import SearchField from '$ui/forms/SearchField.svelte';
 	import Avatar from '$ui/data/Avatar.svelte';
 	import { Tabs } from 'bits-ui';
 
@@ -18,7 +19,11 @@
 		active = $bindable<CircleTab>('Хронология'),
 		circleId,
 		onback,
-		onsearch
+		onsearch,
+		searchPlaceholder,
+		searchQuery = $bindable(''),
+		subtitle,
+		identitySettingsLink = true
 	}: {
 		title: string;
 		identity?: string;
@@ -29,7 +34,13 @@
 		circleId?: string;
 		onback?: () => void;
 		onsearch?: () => void;
+		searchPlaceholder?: string;
+		searchQuery?: string;
+		subtitle?: string;
+		identitySettingsLink?: boolean;
 	} = $props();
+
+	const searchInBar = $derived(searchPlaceholder !== undefined);
 
 	const tabPaths: Record<CircleTab, string> = {
 		Хронология: '',
@@ -53,13 +64,17 @@
 		{#if onback}
 			<IconButton name="back" label="Назад" onclick={() => onback()} />
 		{/if}
-		<span class="t">{title}</span>
-		{#if onsearch}
-			<span class="sp"></span>
-			<IconButton name="search" label="Поиск" onclick={() => onsearch()} />
+		{#if searchInBar}
+			<SearchField class="inv" bind:value={searchQuery} placeholder={searchPlaceholder!} />
+		{:else}
+			<span class="t">{title}</span>
+			{#if onsearch}
+				<span class="sp"></span>
+				<IconButton name="search" label="Поиск" onclick={() => onsearch()} />
+			{/if}
 		{/if}
-		{#if identity}
-			{#if circleId && avatar}
+		{#if !searchInBar && identity}
+			{#if circleId && avatar && identitySettingsLink}
 				<button type="button" class="idn" onclick={() => goto(`/circles/${circleId}/settings`)}>
 					{identity}<Avatar
 						initial={avatar}
@@ -88,6 +103,8 @@
 				{/each}
 			</Tabs.List>
 		</Tabs.Root>
+	{:else if subtitle}
+		<div style="padding-bottom:12px;font-size:12.5px;color:rgba(255,255,255,.85)">{subtitle}</div>
 	{:else}
 		<div style="height:12px"></div>
 	{/if}

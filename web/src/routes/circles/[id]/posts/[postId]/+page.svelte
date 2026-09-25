@@ -4,9 +4,11 @@
 	import { getContext, onMount } from 'svelte';
 	import Avatar from '$ui/data/Avatar.svelte';
 	import AttachmentRow from '$ui/data/AttachmentRow.svelte';
+	import CommentRow from '$ui/data/CommentRow.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import TextArea from '$ui/forms/TextArea.svelte';
+	import MediaTile from '$ui/data/MediaTile.svelte';
 	import PostCard from '$ui/data/PostCard.svelte';
 	import ReactionBar from '$ui/data/ReactionBar.svelte';
 	import ReactionListRow from '$ui/data/ReactionListRow.svelte';
@@ -60,6 +62,8 @@
 
 	let post = $state<FeedPost | undefined>();
 	let coverUrl = $state('');
+	let postAvatarUrl = $state('');
+	let commentAvatarUrls = $state<Record<string, string>>({});
 	let loading = $state(true);
 	let error = $state('');
 	let draft = $state('');
@@ -129,6 +133,27 @@
 			} else {
 				coverUrl = '';
 			}
+			if (post?.author_avatar_blob_id) {
+				try {
+					postAvatarUrl = await getMediaUrl(circle.origin, post.author_avatar_blob_id);
+				} catch {
+					postAvatarUrl = '';
+				}
+			} else {
+				postAvatarUrl = '';
+			}
+			const avatars: Record<string, string> = {};
+			for (const comment of post?.comments ?? []) {
+				const blob = comment.author_avatar_blob_id;
+				if (blob && !avatars[comment.identity_id]) {
+					try {
+						avatars[comment.identity_id] = await getMediaUrl(circle.origin, blob);
+					} catch {
+						/* skip */
+					}
+				}
+			}
+			commentAvatarUrls = avatars;
 		} catch {
 			error = 'Не удалось загрузить запись';
 		} finally {
@@ -149,11 +174,19 @@
 	}
 
 	function canEditComment(comment: Comment): boolean {
-		return comment.identity_id === circle.identityId && isEditableActive(comment.editable_until);
+		return (
+			circle.canWrite &&
+			comment.identity_id === circle.identityId &&
+			isEditableActive(comment.editable_until)
+		);
 	}
 
 	function canEditPost(currentPost: FeedPost): boolean {
-		return currentPost.identity_id === circle.identityId && isEditableActive(currentPost.editable_until);
+		return (
+			circle.canWrite &&
+			currentPost.identity_id === circle.identityId &&
+			isEditableActive(currentPost.editable_until)
+		);
 	}
 
 	function startEditComment(comment: Comment) {
@@ -216,7 +249,8 @@
 	}
 
 	function commentAvatarSrc(comment: Comment): string | undefined {
-		return comment.identity_id === circle.identityId ? circle.avatarUrl : undefined;
+		if (comment.identity_id === circle.identityId && circle.avatarUrl) return circle.avatarUrl;
+		return commentAvatarUrls[comment.identity_id];
 	}
 
 	function openReactions() {
@@ -228,7 +262,7 @@
 	}
 
 	function showReactionPlus(currentPost: FeedPost): boolean {
-		if (soloCircle || postLocked) return false;
+		if (!circle.canWrite || soloCircle || postLocked) return false;
 		const mine = ownReaction(currentPost.reactions, circle.identityId);
 		if (!mine) return true;
 		return isEditableActive(mine.editable_until);
@@ -296,12 +330,13 @@
 	avatar={circle.identityInitial}
 	avatarSrc={circle.avatarUrl}
 	tabs={false}
+	identitySettingsLink={circle.canWrite}
 	commentPlaceholder="Написать комментарий…"
 	commentMembers={commentMembers}
 	bind:commentDraft={draft}
-	commentBar={!postLocked}
+	commentBar={circle.canWrite && !postLocked}
 	onback={goBack}
-	onCommentSend={postLocked ? undefined : sendComment}
+	onCommentSend={circle.canWrite && !postLocked ? sendComment : undefined}
 >
 	{#if loading}
 		<Hint style="margin:24px 16px">Загрузка…</Hint>
@@ -316,13 +351,13 @@
 					<IconButton name="edit" label="Править" size="sm" onclick={openEdit} />
 				{/if}
 				{#if coverUrl && cover}
-					<button type="button" class="pic sq mini" onclick={openAlbum}>
-						{#if cover.kind === 'video'}
-							<video src={coverUrl} muted playsinline></video>
-						{:else}
-							<img src={coverUrl} alt="" />
-						{/if}
-					</button>
+					<MediaTile
+						variant="headerMini"
+						src={coverUrl}
+						kind={cover.kind === 'video' ? 'video' : 'photo'}
+						aria-label="Открыть альбом"
+						onclick={openAlbum}
+					/>
 				{/if}
 			</div>
 		{/snippet}
@@ -352,7 +387,9 @@
 				<Avatar
 					initial={authorInitial(currentPost.author_name)}
 					color={circle.colorHex}
-					src={currentPost.identity_id === circle.identityId ? circle.avatarUrl : undefined}
+					src={currentPost.identity_id === circle.identityId && circle.avatarUrl
+						? circle.avatarUrl
+						: postAvatarUrl || undefined}
 				/>
 				<div>
 					<div class="n">{currentPost.author_name}</div>
@@ -385,23 +422,22 @@
 
 		<div class="thread">
 			{#each currentPost.comments ?? [] as comment (comment.id)}
-				<div class="cmt">
-					<Avatar
-						initial={authorInitial(comment.author_name)}
-						color={circle.colorHex}
-						src={commentAvatarSrc(comment)}
-					/>
-					<div class="g">
-						<div class="who">
-							<b>{comment.author_name}</b>
-							<span class="tm">{formatClock(comment.created_at)}</span>
-						</div>
+				<CommentRow
+					initial={authorInitial(comment.author_name)}
+					name={comment.author_name}
+					color={circle.colorHex}
+					src={commentAvatarSrc(comment)}
+					onedit={canEditComment(comment) && editingCommentId !== comment.id
+						? () => startEditComment(comment)
+						: undefined}
+					ondelete={canEditComment(comment) && editingCommentId !== comment.id
+						? () => removeComment(comment.id)
+						: undefined}
+				>
+					{#snippet time()}{formatClock(comment.created_at)}{/snippet}
+					{#snippet children()}
 						{#if editingCommentId === comment.id}
-							<TextArea
-								variant="field"
-								class="ced"
-								bind:value={editingCommentBody}
-							/>
+							<TextArea variant="field" class="ced" bind:value={editingCommentBody} />
 							<div class="rowin">
 								<Button
 									variant="colored"
@@ -419,47 +455,31 @@
 								{#if part.kind === 'mention'}<span class="men">{part.value}</span>{:else}{part.value}{/if}
 							{/each}
 						{/if}
-					</div>
-					<div class="acts">
-						{#if canEditComment(comment) && editingCommentId !== comment.id}
-							<IconButton
-								name="edit"
-								label="Править"
-								size="sm"
-								onclick={() => startEditComment(comment)}
-							/>
-							<IconButton
-								name="trash"
-								label="Удалить"
-								size="sm"
-								onclick={() => removeComment(comment.id)}
-							/>
-						{/if}
-					</div>
-				</div>
+					{/snippet}
+				</CommentRow>
 			{/each}
 			{#each queuedComments as item (item.id)}
-				<div class="cmt q">
-					<Avatar
-						initial={circle.identityInitial}
-						color={circle.colorHex}
-						src={circle.avatarUrl}
-					/>
-					<div class="g">
-						<div class="who">
-							<b>{circle.identityName}</b>
-							<span class="tm" style="display:flex;align-items:center;gap:5px">
-								<Icon name="clock" size="xs" />в очереди
-							</span>
-						</div>
+				<CommentRow
+					queued
+					initial={circle.identityInitial}
+					name={circle.identityName}
+					color={circle.colorHex}
+					src={circle.avatarUrl}
+				>
+					{#snippet time()}
+						<span style="display:flex;align-items:center;gap:5px">
+							<Icon name="clock" size="xs" />в очереди
+						</span>
+					{/snippet}
+					{#snippet children()}
 						{#each splitMentionBody(item.body) as part (part.kind + part.value)}
 							{#if part.kind === 'mention'}<span class="men">{part.value}</span>{:else}{part.value}{/if}
 						{/each}
 						{#if item.state === 'failed' && item.error}
 							<Hint style="margin-top:8px">{item.error}</Hint>
 						{/if}
-					</div>
-				</div>
+					{/snippet}
+				</CommentRow>
 			{/each}
 		</div>
 
@@ -488,20 +508,3 @@
 	{/if}
 </CircleLayout>
 
-<style>
-	.pic.mini {
-		width: 44px;
-		height: 44px;
-		border: none;
-		padding: 0;
-		cursor: pointer;
-		border-radius: 8px;
-	}
-	.pic img,
-	.pic video {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		border-radius: inherit;
-	}
-</style>

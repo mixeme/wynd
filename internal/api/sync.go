@@ -49,6 +49,15 @@ func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+const (
+	// Тихий поток рвут прокси с таймаутом чтения, поэтому раз в 15 с уходит
+	// комментарный кадр SSE. Дедлайн записи не даёт зависнуть на клиенте,
+	// который перестал читать (API-3).
+	sseHeartbeat     = 15 * time.Second
+	sseWriteDeadline = 30 * time.Second
+	ssePollInterval  = 2 * time.Second
+)
+
 func (s *Server) syncSSE(w http.ResponseWriter, r *http.Request, accountID string, cursor int64) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -59,26 +68,56 @@ func (s *Server) syncSSE(w http.ResponseWriter, r *http.Request, accountID strin
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
+	rc := http.NewResponseController(w)
+	write := func(format string, args ...any) bool {
+		_ = rc.SetWriteDeadline(time.Now().Add(sseWriteDeadline))
+		if _, err := fmt.Fprintf(w, format, args...); err != nil {
+			return false
+		}
+		flusher.Flush()
+		return true
+	}
+
+	ctx := r.Context()
+	token := bearerToken(r)
+	lastBeat := time.Now()
 	cur := cursor
 	for {
-		events, err := s.Chronicle.SyncEvents(r.Context(), accountID, cur, chronicle.SyncBatchSize())
+		// Сессия и подписка перечитываются перед каждым опросом: иначе
+		// заблокированная учётка и истёкшая подписка получают события до
+		// разрыва соединения (API-2).
+		if _, err := s.Auth.IsParticipantSession(ctx, token); err != nil {
+			return
+		}
+		if err := s.requirePaidSession(r); err != nil {
+			return
+		}
+		events, err := s.Chronicle.SyncEvents(ctx, accountID, cur, chronicle.SyncBatchSize())
 		if err != nil {
 			log.Printf("sync sse: %v", err)
 			return
 		}
 		for _, ev := range events {
 			data, _ := json.Marshal(eventResponse(ev))
-			fmt.Fprintf(w, "event: sync\ndata: %s\n\n", data)
-			flusher.Flush()
+			if !write("event: sync\ndata: %s\n\n", data) {
+				return
+			}
+			lastBeat = time.Now()
 			cur = ev.Seq
 		}
 		if len(events) > 0 {
 			continue
 		}
+		if time.Since(lastBeat) >= sseHeartbeat {
+			if !write(":\n\n") {
+				return
+			}
+			lastBeat = time.Now()
+		}
 		select {
-		case <-r.Context().Done():
+		case <-ctx.Done():
 			return
-		case <-time.After(2 * time.Second):
+		case <-time.After(ssePollInterval):
 		}
 	}
 }

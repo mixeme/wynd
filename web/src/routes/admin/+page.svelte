@@ -23,7 +23,8 @@
 		serverCaption,
 		setCircleQuota,
 		setDefaultCircleQuota,
-		setStorageQuota,
+		setStorageQuotaBytes,
+		setStorageQuotaDiskPercent,
 		type AdminStorageCircle,
 		type QuotaRequest
 	} from '$lib/admin/admin';
@@ -39,6 +40,7 @@
 	let used = $state(0);
 	let quota = $state(0);
 	let quotaInput = $state('');
+	let quotaPercentInput = $state('');
 	let defaultQuota = $state<number | null>(null);
 	let defaultChip = $state<'none' | '5' | '10' | 'custom'>('none');
 	let defaultCustomGb = $state('5');
@@ -50,7 +52,11 @@
 	let circleQuotaGb = $state('');
 	let circleQuotaHint = $state('');
 	let defaultCustomHint = $state('');
+	let instanceQuotaHint = $state('');
 	const quotaGbHintText = 'Квота — целые гигабайты';
+	const quotaPercentHintText = 'Процент диска — целое число от 1 до 100';
+	const instanceQuotaExplainHint =
+		'Действует одно: гигабайты или доля диска. Сохранение одного очищает другое. При упоре текст пишется, медиа — нет.';
 
 	const selectedCircleId = $derived($page.url.searchParams.get('circle') ?? '');
 	const selectedCircle = $derived(circles.find((c) => c.id === selectedCircleId));
@@ -95,6 +101,25 @@
 		const gb = bytes / GB;
 		if (Math.abs(gb - Math.round(gb)) < 1e-9) return `${Math.round(gb)} ГБ`;
 		return formatBytes(bytes);
+	}
+
+	function parsePercentInt(raw: string): number | null {
+		const n = Number(raw.trim().replace(',', '.'));
+		if (!Number.isInteger(n) || n < 1 || n > 100) return null;
+		return n;
+	}
+
+	function syncInstanceQuotaFields(storage: {
+		storage_quota_bytes: number;
+		storage_quota_disk_percent: number | null;
+	}) {
+		if (storage.storage_quota_disk_percent != null) {
+			quotaInput = '';
+			quotaPercentInput = String(storage.storage_quota_disk_percent);
+			return;
+		}
+		quotaPercentInput = '';
+		quotaInput = String(Math.round(storage.storage_quota_bytes / GB));
 	}
 
 	function parseGbInt(raw: string, max?: number): number | null {
@@ -160,7 +185,7 @@
 			]);
 			used = storage.used_bytes;
 			quota = storage.quota_bytes;
-			quotaInput = String(Math.round(storage.quota_bytes / GB));
+			syncInstanceQuotaFields(storage);
 			defaultQuota = storage.default_circle_quota_bytes;
 			syncDefaultChip(storage.default_circle_quota_bytes);
 			circles = storage.circles ?? [];
@@ -174,11 +199,30 @@
 		}
 	}
 
-	async function saveQuota() {
-		const gb = Number(quotaInput.replace(',', '.'));
-		if (!Number.isFinite(gb) || gb <= 0) return;
+	async function saveQuotaGb() {
+		const gb = parseGbInt(quotaInput);
+		if (gb == null) {
+			instanceQuotaHint = quotaGbHintText;
+			return;
+		}
+		instanceQuotaHint = '';
 		try {
-			await setStorageQuota(Math.round(gb * GB));
+			await setStorageQuotaBytes(gb * GB);
+			await load();
+		} catch (err) {
+			error = authErrorHint(err);
+		}
+	}
+
+	async function saveQuotaPercent() {
+		const pct = parsePercentInt(quotaPercentInput);
+		if (pct == null) {
+			instanceQuotaHint = quotaPercentHintText;
+			return;
+		}
+		instanceQuotaHint = '';
+		try {
+			await setStorageQuotaDiskPercent(pct);
 			await load();
 		} catch (err) {
 			error = authErrorHint(err);
@@ -283,19 +327,30 @@
 			<div style="font-size:12.5px;color:var(--muted);margin:10px 0 22px">
 				{formatBytes(used)} из {formatBytes(quota)} · свободно {formatBytes(free)}
 			</div>
-			<div style="display:flex;align-items:center;gap:14px;margin-top:26px">
+			<div style="display:flex;align-items:center;gap:14px;margin-top:26px;flex-wrap:wrap">
 				<span style="font-size:13.5px;font-weight:600;width:168px;flex:0 0 auto">Потолок инстанса</span>
 				<Input
 					admin
 					style="width:88px"
+					placeholder="40"
 					bind:value={quotaInput}
-					onchange={() => void saveQuota()}
+					onchange={() => void saveQuotaGb()}
 				/>
 				<span style="font-size:12.5px;color:var(--muted)">ГБ</span>
-				<span style="font-size:12.5px;color:var(--faint)"
-					>при достижении текст пишется, медиа — нет</span
-				>
+				<span style="font-size:12.5px;color:var(--muted)">или</span>
+				<Input
+					admin
+					style="width:88px"
+					placeholder="80"
+					bind:value={quotaPercentInput}
+					onchange={() => void saveQuotaPercent()}
+				/>
+				<span style="font-size:12.5px;color:var(--muted)">% диска</span>
 			</div>
+			<Hint style="margin-top:8px;line-height:1.5">{instanceQuotaExplainHint}</Hint>
+			{#if instanceQuotaHint}
+				<Hint style="margin-top:8px">{instanceQuotaHint}</Hint>
+			{/if}
 			<div style="display:flex;align-items:flex-start;gap:14px;margin-top:14px">
 				<span style="font-size:13.5px;font-weight:600;width:168px;flex:0 0 auto;padding-top:8px"
 					>Квота круга по умолчанию</span
@@ -416,30 +471,32 @@
 					</div>
 				</div>
 			{/if}
-			<SectionLabel style="margin:26px 0 8px">Просят больше</SectionLabel>
-			{#if requests.length === 0}
-				<Hint>Запросов нет.</Hint>
-			{:else}
-				{#each requests as req (req.id)}
-					{@const circle = circles.find((c) => c.id === req.circle_id)}
-					{@const prev = circle ? effectiveQuotaBytes(circle) : null}
-					<QuotaRequestRow
-						circleColor={colorFor(req.circle_id)}
-						circleName={circleName(req.circle_id)}
-						requested={formatQuota(req.requested_bytes)}
-						previous={prev != null ? String(Math.round(prev / GB)) : undefined}
-						requester={req.requester_email}
-						date={requestDate(req.created_at)}
-						freeSpace={formatBytes(free)}
-						onapprove={() => giveQuota(req)}
-						onreject={() => void onReject(req.id)}
-					/>
-				{/each}
+			{#if !selectedCircleId}
+				<SectionLabel style="margin:26px 0 8px">Просят больше</SectionLabel>
+				{#if requests.length === 0}
+					<Hint>Запросов нет.</Hint>
+				{:else}
+					{#each requests as req (req.id)}
+						{@const circle = circles.find((c) => c.id === req.circle_id)}
+						{@const prev = circle ? effectiveQuotaBytes(circle) : null}
+						<QuotaRequestRow
+							circleColor={colorFor(req.circle_id)}
+							circleName={circleName(req.circle_id)}
+							requested={formatQuota(req.requested_bytes)}
+							previous={prev != null ? String(Math.round(prev / GB)) : undefined}
+							requester={req.requester_email}
+							date={requestDate(req.created_at)}
+							freeSpace={formatBytes(free)}
+							onapprove={() => giveQuota(req)}
+							onreject={() => void onReject(req.id)}
+						/>
+					{/each}
+				{/if}
+				<div style="font-size:11.5px;color:var(--faint);margin-top:14px;line-height:1.6">
+					Отказ ничего не ломает: владелец круга сам выберет отсечку и срок, скажет об этом людям
+					и освободит место. Ни отсечку, ни срок панель не двигает — этих кнопок здесь нет.
+				</div>
 			{/if}
-			<div style="font-size:11.5px;color:var(--faint);margin-top:14px;line-height:1.6">
-				Отказ ничего не ломает: владелец круга сам выберет отсечку и срок, скажет об этом людям
-				и освободит место. Ни отсечку, ни срок панель не двигает — этих кнопок здесь нет.
-			</div>
 		{/if}
 	</AdminSection>
 </AdminWideLayout>

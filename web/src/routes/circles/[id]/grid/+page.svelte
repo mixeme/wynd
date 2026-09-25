@@ -3,6 +3,7 @@
 	import { getContext, onMount } from 'svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import MonthLabel from '$ui/data/MonthLabel.svelte';
+	import MediaTile from '$ui/data/MediaTile.svelte';
 	import PhotoGrid from '$ui/data/PhotoGrid.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { isAccessError } from '$lib/api/client';
@@ -86,6 +87,7 @@
 	avatar={circle.identityInitial}
 	avatarSrc={circle.avatarUrl}
 	circleId={circle.circleId}
+	identitySettingsLink={circle.canWrite}
 	active="Сетка"
 	commentBar={false}
 	onback={goBack}
@@ -104,14 +106,12 @@
 			<MonthLabel>{group.label}</MonthLabel>
 			<PhotoGrid>
 				{#each group.items as tile (tile.postId)}
-					<button type="button" class="pic" onclick={() => openPost(tile.postId)}>
-						{#if mediaUrls[tile.blobId]}
-							<img src={mediaUrls[tile.blobId]} alt="" />
-						{/if}
-						{#if tile.photoCount > 1}
-							<span class="cnt" style="bottom:6px;right:6px;padding:3px 8px">{tile.photoCount}</span>
-						{/if}
-					</button>
+					<MediaTile
+						variant="grid"
+						src={mediaUrls[tile.blobId]}
+						count={tile.photoCount}
+						onclick={() => openPost(tile.postId)}
+					/>
 				{/each}
 			</PhotoGrid>
 		{/each}
@@ -121,21 +121,3 @@
 	{/if}
 </CircleLayout>
 
-<style>
-	.pic {
-		aspect-ratio: 1 / 1;
-		border-radius: 2px;
-		overflow: hidden;
-		background: var(--tint);
-		position: relative;
-		border: none;
-		padding: 0;
-		cursor: pointer;
-	}
-	.pic img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		display: block;
-	}
-</style>

@@ -10,10 +10,10 @@ import (
 )
 
 func TestProbeHTTPRedirectSkipsNonHTTPS(t *testing.T) {
-	if check.ProbeHTTPRedirect("http://example.org") {
+	if check.ProbeHTTPRedirect("http://example.org") != 0 {
 		t.Fatal("http public URL should not probe")
 	}
-	if check.ProbeHTTPRedirect("") {
+	if check.ProbeHTTPRedirect("") != 0 {
 		t.Fatal("empty public URL should not probe")
 	}
 }
@@ -28,8 +28,20 @@ func TestProbeHTTPRedirectPermanent(t *testing.T) {
 	}))
 	defer srv.Close()
 	public := "https://" + hostOf(t, srv.URL)
-	if !check.ProbeHTTPRedirect(public) {
-		t.Fatal("308 from HTTP should count as permanent redirect")
+	if got := check.ProbeHTTPRedirect(public); got != http.StatusPermanentRedirect {
+		t.Fatalf("308 from HTTP: got %d", got)
+	}
+}
+
+func TestProbeHTTPRedirectMovedPermanently(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Location", "https://example.org/api/v1/instance")
+		w.WriteHeader(http.StatusMovedPermanently)
+	}))
+	defer srv.Close()
+	public := "https://" + hostOf(t, srv.URL)
+	if got := check.ProbeHTTPRedirect(public); got != http.StatusMovedPermanently {
+		t.Fatalf("301 from HTTP: got %d", got)
 	}
 }
 
@@ -40,7 +52,7 @@ func TestProbeHTTPRedirectTemporaryIgnored(t *testing.T) {
 	}))
 	defer srv.Close()
 	public := "https://" + hostOf(t, srv.URL)
-	if check.ProbeHTTPRedirect(public) {
+	if check.ProbeHTTPRedirect(public) != 0 {
 		t.Fatal("302 must not count as permanent")
 	}
 }

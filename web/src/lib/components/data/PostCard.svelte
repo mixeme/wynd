@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import type { Action } from 'svelte/action';
 
 	let {
 		author,
@@ -27,16 +28,27 @@
 		children?: Snippet;
 	} = $props();
 
-	function onRootClick(e: MouseEvent) {
-		if (!onclick) return;
-		const target = e.target as HTMLElement;
-		if (target.closest('button, a, input, textarea, select, label, .rxpick')) return;
-		onclick();
-	}
+	const bindOpen: Action<HTMLElement, (() => void) | undefined> = (node, fn) => {
+		let current = fn;
+		function onClick(e: MouseEvent) {
+			if (!current) return;
+			const target = e.target as HTMLElement;
+			if (target.closest('button, a, input, textarea, select, label, .rxpick')) return;
+			current();
+		}
+		node.addEventListener('click', onClick);
+		return {
+			update(next) {
+				current = next;
+			},
+			destroy() {
+				node.removeEventListener('click', onClick);
+			}
+		};
+	};
 </script>
 
-<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-<div class="post {queued ? 'q' : ''} {className}" {style} onclick={onRootClick}>
+<div class="post {queued ? 'q' : ''} {className}" {style} use:bindOpen={onclick}>
 	{#if author || headerRight}
 		<div class="pa">
 			{@render author?.()}

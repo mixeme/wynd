@@ -26,6 +26,8 @@ export interface AdminStorageCircle {
 export interface AdminStorage {
 	used_bytes: number;
 	quota_bytes: number;
+	storage_quota_bytes: number;
+	storage_quota_disk_percent: number | null;
 	default_circle_quota_bytes: number | null;
 	circles: AdminStorageCircle[];
 }
@@ -41,6 +43,7 @@ export interface CompressionSettings {
 export interface AccessSettings {
 	name: string;
 	registration_mode: 'open' | 'invite' | 'closed';
+	public_url?: string;
 }
 
 export interface AdminAccount {
@@ -58,6 +61,8 @@ export interface AdminAccountDetail {
 	last_login_at: string | null;
 	blocked: boolean;
 	owns_circle: boolean;
+	subscription_required?: boolean;
+	subscription_expires_at?: string | null;
 	circles: {
 		id: string;
 		name: string;
@@ -104,11 +109,19 @@ export async function fetchStorage(): Promise<AdminStorage> {
 	return adminJson('/admin/storage');
 }
 
-export async function setStorageQuota(quotaBytes: number): Promise<void> {
+export async function setStorageQuotaBytes(quotaBytes: number): Promise<void> {
 	await adminJson('/admin/storage/quota', {
 		method: 'PUT',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ quota_bytes: quotaBytes })
+	});
+}
+
+export async function setStorageQuotaDiskPercent(percent: number): Promise<void> {
+	await adminJson('/admin/storage/quota', {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ quota_disk_percent: percent })
 	});
 }
 
@@ -154,6 +167,14 @@ export async function saveAccess(body: Partial<AccessSettings>): Promise<void> {
 		method: 'PUT',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify(body)
+	});
+}
+
+export async function changeAdminPassword(current: string, next: string): Promise<void> {
+	await adminJson('/admin/password', {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ current, new: next })
 	});
 }
 
@@ -239,6 +260,17 @@ export async function fetchProxySnippet(kind: string): Promise<ProxySnippet> {
 export async function fetchVapidPublicKey(): Promise<string> {
 	const data = await adminJson<{ public_key: string }>('/admin/push/vapid');
 	return data.public_key;
+}
+
+export async function downloadVapidPublicKey(): Promise<void> {
+	const key = await fetchVapidPublicKey();
+	const blob = new Blob([key + '\n'], { type: 'text/plain;charset=utf-8' });
+	const url = URL.createObjectURL(blob);
+	const anchor = document.createElement('a');
+	anchor.href = url;
+	anchor.download = 'wynd-vapid-public.txt';
+	anchor.click();
+	URL.revokeObjectURL(url);
 }
 
 export async function sendAdminPushTest(): Promise<void> {
@@ -358,16 +390,52 @@ export async function fetchPayRequest(id: string): Promise<PayRequest> {
 	return adminJson(`/admin/pay/requests/${id}`);
 }
 
-export async function approvePayRequest(id: string, days: number): Promise<void> {
-	await adminJson(`/admin/pay/requests/${id}/approve`, {
-		method: 'POST',
+export async function rejectPayRequest(id: string): Promise<void> {
+	await adminJson(`/admin/pay/requests/${id}/reject`, { method: 'POST' });
+}
+
+export interface PayAccountSummary {
+	id: string;
+	email: string;
+	blocked: boolean;
+	subscription_expires_at?: string | null;
+}
+
+export interface PayAccount {
+	id: string;
+	email: string;
+	subscription_expires_at?: string | null;
+}
+
+export async function fetchPayAccounts(): Promise<PayAccountSummary[]> {
+	const data = await adminJson<{ accounts: PayAccountSummary[] }>('/admin/pay/accounts');
+	return data.accounts ?? [];
+}
+
+export async function fetchPayAccount(id: string): Promise<PayAccount> {
+	return adminJson(`/admin/pay/accounts/${id}`);
+}
+
+export async function grantPayAccount(
+	id: string,
+	body: { days?: number; unlimited?: boolean }
+): Promise<void> {
+	await adminJson(`/admin/pay/accounts/${id}`, {
+		method: 'PUT',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ days })
+		body: JSON.stringify(body)
 	});
 }
 
-export async function rejectPayRequest(id: string): Promise<void> {
-	await adminJson(`/admin/pay/requests/${id}/reject`, { method: 'POST' });
+export async function approvePayRequest(
+	id: string,
+	body: { days?: number; unlimited?: boolean }
+): Promise<void> {
+	await adminJson(`/admin/pay/requests/${id}/approve`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(body)
+	});
 }
 
 export async function serverCaption(): Promise<string> {

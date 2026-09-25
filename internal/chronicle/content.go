@@ -111,6 +111,19 @@ func (c *Chronicle) createPostInTx(ctx context.Context, tx *sql.Tx, in PostInput
 
 // EditPost updates post body and optionally entry_date within edit window.
 func (c *Chronicle) EditPost(ctx context.Context, circleID, accountID, postID, body, entryDate string, now time.Time) error {
+	tx, err := c.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := c.EditPostInTx(ctx, tx, circleID, accountID, postID, body, entryDate, now, false); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// EditPostInTx updates post body and optionally entry_date within edit window.
+func (c *Chronicle) EditPostInTx(ctx context.Context, tx *sql.Tx, circleID, accountID, postID, body, entryDate string, now time.Time, allowEmptyWithPendingMedia bool) error {
 	body = strings.TrimSpace(body)
 	if err := checkByteLen(body, MaxTextBytes); err != nil {
 		return err
@@ -126,31 +139,26 @@ func (c *Chronicle) EditPost(ctx context.Context, circleID, accountID, postID, b
 	if post.Deleted {
 		return ErrInvalid
 	}
-	mem, err := c.membership(ctx, c.db, circleID, accountID)
+	mem, err := c.requireAuthor(ctx, c.db, circleID, accountID, post.IdentityID, now)
 	if err != nil {
 		return err
-	}
-	if mem.IdentityID != post.IdentityID {
-		return ErrForbidden
 	}
 	if !post.EditWindow.CanEdit(post.CreatedAt, now) {
 		return ErrForbidden
 	}
 	if body == "" {
-		ids, err := c.PostMediaBlobIDs(ctx, postID)
-		if err != nil {
-			return err
-		}
-		if len(ids) == 0 {
-			return ErrInvalid
+		if allowEmptyWithPendingMedia {
+			// media replace in the same transaction will attach items
+		} else {
+			ids, err := c.PostMediaBlobIDs(ctx, postID)
+			if err != nil {
+				return err
+			}
+			if len(ids) == 0 {
+				return ErrInvalid
+			}
 		}
 	}
-
-	tx, err := c.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
 
 	oldDate := post.EntryDate
 	if entryDate == "" {
@@ -183,7 +191,7 @@ func (c *Chronicle) EditPost(ctx context.Context, circleID, accountID, postID, b
 	}); err != nil {
 		return err
 	}
-	return tx.Commit()
+	return nil
 }
 
 // DeletePost removes a post branch (post, comments, reactions) and scrubs text.
@@ -199,12 +207,8 @@ func (c *Chronicle) DeletePost(ctx context.Context, circleID, accountID, postID 
 	if post.Deleted {
 		return ErrInvalid
 	}
-	mem, err := c.membership(ctx, c.db, circleID, accountID)
-	if err != nil {
+	if _, err := c.requireAuthor(ctx, c.db, circleID, accountID, post.IdentityID, now); err != nil {
 		return err
-	}
-	if mem.IdentityID != post.IdentityID {
-		return ErrForbidden
 	}
 	if !post.EditWindow.CanEdit(post.CreatedAt, now) {
 		return ErrForbidden
@@ -277,6 +281,10 @@ func (c *Chronicle) insertPost(ctx context.Context, tx *sql.Tx, row postRow) err
 	return err
 }
 
+func (c *Chronicle) LoadPostInTx(ctx context.Context, tx *sql.Tx, postID string) (Post, error) {
+	return c.loadPost(ctx, tx, postID)
+}
+
 func (c *Chronicle) loadPost(ctx context.Context, q querier, postID string) (Post, error) {
 	var p Post
 	var body, captured sql.NullString
@@ -328,6 +336,27 @@ func (c *Chronicle) requireWriter(ctx context.Context, circleID, accountID strin
 	mem, err := c.membership(ctx, c.db, circleID, accountID)
 	if err != nil {
 		return Membership{}, err
+	}
+	canWrite, err := c.CanWrite(ctx, circleID, accountID, now)
+	if err != nil {
+		return Membership{}, err
+	}
+	if !canWrite {
+		return Membership{}, ErrForbidden
+	}
+	return mem, nil
+}
+
+// requireAuthor gates editing and deleting one's own content: the actor must be
+// the author *and* be able to write right now. Исключённый и вышедший с
+// доступом получают forbidden (план 42, раздел B «Право писать»).
+func (c *Chronicle) requireAuthor(ctx context.Context, q querier, circleID, accountID, identityID string, now time.Time) (Membership, error) {
+	mem, err := c.membership(ctx, q, circleID, accountID)
+	if err != nil {
+		return Membership{}, err
+	}
+	if mem.IdentityID != identityID {
+		return Membership{}, ErrForbidden
 	}
 	canWrite, err := c.CanWrite(ctx, circleID, accountID, now)
 	if err != nil {
@@ -550,12 +579,9 @@ func (c *Chronicle) EditComment(ctx context.Context, circleID, accountID, commen
 	if comment.Deleted {
 		return ErrInvalid
 	}
-	mem, err := c.membership(ctx, c.db, circleID, accountID)
+	mem, err := c.requireAuthor(ctx, c.db, circleID, accountID, comment.IdentityID, now)
 	if err != nil {
 		return err
-	}
-	if mem.IdentityID != comment.IdentityID {
-		return ErrForbidden
 	}
 	if !comment.EditWindow.CanEdit(comment.CreatedAt, now) {
 		return ErrForbidden
@@ -598,12 +624,8 @@ func (c *Chronicle) DeleteComment(ctx context.Context, circleID, accountID, comm
 	if comment.Deleted {
 		return ErrInvalid
 	}
-	mem, err := c.membership(ctx, c.db, circleID, accountID)
-	if err != nil {
+	if _, err := c.requireAuthor(ctx, c.db, circleID, accountID, comment.IdentityID, now); err != nil {
 		return err
-	}
-	if mem.IdentityID != comment.IdentityID {
-		return ErrForbidden
 	}
 	if !comment.EditWindow.CanEdit(comment.CreatedAt, now) {
 		return ErrForbidden
@@ -637,12 +659,8 @@ func (c *Chronicle) DeleteReaction(ctx context.Context, circleID, accountID, rea
 	if reaction.Deleted {
 		return ErrInvalid
 	}
-	mem, err := c.membership(ctx, c.db, circleID, accountID)
-	if err != nil {
+	if _, err := c.requireAuthor(ctx, c.db, circleID, accountID, reaction.IdentityID, now); err != nil {
 		return err
-	}
-	if mem.IdentityID != reaction.IdentityID {
-		return ErrForbidden
 	}
 	if !reaction.EditWindow.CanEdit(reaction.CreatedAt, now) {
 		return ErrForbidden

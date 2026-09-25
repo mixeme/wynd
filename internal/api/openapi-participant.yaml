@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.5.0
+  version: 0.6.0
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:
@@ -36,6 +36,14 @@ paths:
       responses:
         "200":
           description: text/event-stream with one event
+
+  /probe/stream:
+    get:
+      summary: Slow response stream probe for proxy read timeout checks
+      security: []
+      responses:
+        "200":
+          description: chunked octet stream (~2s)
 
   /probe/body:
     put:
@@ -119,6 +127,89 @@ paths:
       responses:
         "201":
           description: Invite token
+        "400":
+          description: kind=multi is invalid when the circle allows only single invites
+
+  /circles/{circle_id}/invite-candidates:
+    get:
+      summary: People from inviter's other circles
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: groups[]
+
+  /circles/{circle_id}/member-invites:
+    post:
+      summary: Personal invite for an existing account
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [account_id]
+              properties:
+                account_id:
+                  type: string
+      responses:
+        "201":
+          description: invited
+
+  /circles/{circle_id}/join-preview:
+    get:
+      summary: Join screen preview for pending personal invite
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: peek fields
+
+  /circles/{circle_id}/join:
+    post:
+      summary: Complete pending circle join (name in circle)
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                body:
+                  type: string
+      responses:
+        "200":
+          description: OK
+
+  /pending-circle-joins:
+    get:
+      summary: Circles awaiting join naming for session
+      responses:
+        "200":
+          description: circle_ids[]
 
   /circles/{circle_id}/invites/{id}:
     delete:

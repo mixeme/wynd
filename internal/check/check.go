@@ -3,8 +3,11 @@ package check
 import (
 	"context"
 	"fmt"
+	"net"
 	"strings"
 	"time"
+
+	"gitea.mixdep.ru/mix/wynd/internal/proxy"
 )
 
 // Status is the outcome of a single instance check.
@@ -19,13 +22,20 @@ const (
 
 // ExternalReport is supplied by the admin browser running outside the server network.
 type ExternalReport struct {
-	HTTPSOK           bool `json:"https_ok"`
-	HTTPSMS           int  `json:"https_ms"`
-	RedirectPermanent bool `json:"redirect_permanent"`
-	FromOutside       bool `json:"from_outside"`
-	ProxyHTTPS        bool `json:"proxy_https"`
-	ProxyBodyLimitOK  bool `json:"proxy_body_limit_ok"`
-	ProxySSEOK        bool `json:"proxy_sse_ok"`
+	HTTPSOK           bool   `json:"https_ok"`
+	HTTPSMS           int    `json:"https_ms"`
+	RedirectPermanent bool   `json:"redirect_permanent"`
+	RedirectStatus    int    `json:"redirect_status,omitempty"`
+	FromOutside       bool   `json:"from_outside"`
+	ProxyHTTPS        bool   `json:"proxy_https"`
+	ProxyBodyLimitOK  bool   `json:"proxy_body_limit_ok"`
+	ProxySSEOK        bool   `json:"proxy_sse_ok"`
+	ProxyStreamOK     bool   `json:"proxy_stream_ok"`
+	ProxyReadTimeout  int    `json:"proxy_read_timeout_sec,omitempty"`
+	PWAOK             bool   `json:"pwa_ok"`
+	ClientIP          string `json:"client_ip"`
+	XForwardedFor     string `json:"x_forwarded_for"`
+	XRealIP           string `json:"x_real_ip"`
 }
 
 // Input drives RunChecks.
@@ -33,12 +43,14 @@ type Input struct {
 	Loopback        bool
 	PublicURL       string
 	DataDir         string
-	MailConfigured  bool
+	ServerEgressIP  string
 	SMTPTestSentAt  *time.Time
+	SMTPLastError   string
 	VAPIDConfigured bool
 	LastRoutineAt   *time.Time
 	LastBackupAt    *time.Time
 	External        *ExternalReport
+	TLS             *TLSInfo
 	Now             time.Time
 }
 
@@ -56,18 +68,25 @@ func RunChecks(ctx context.Context, in Input) []Result {
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
+	in.Now = now
 	return []Result{
+		checkDomain(ctx, in),
+		checkHTTPSOutside(in),
+		checkHTTPRedirect(in),
+		checkCertLE(in),
+		checkCertChain(in),
+		checkProxyClient(in),
+		checkProxyBodyLimit(in),
+		checkProxyHeaders(in),
+		checkProxySSE(in),
+		checkProxyTimeout(in),
+		checkMail(in),
+		checkVAPIDKeys(in),
+		checkPWA(in),
 		checkClocks(ctx, now),
 		checkDiskSpace(in.DataDir),
-		checkSMTP(in),
-		checkDKIM(in),
-		checkVAPIDKeys(in),
 		checkDailyRoutine(in, now),
 		checkBackup(in, now),
-		checkHTTPSOutside(in),
-		checkProxyHeaders(in),
-		checkProxyBodyLimit(in),
-		checkProxySSE(in),
 	}
 }
 
@@ -96,14 +115,19 @@ func checkClocks(ctx context.Context, _ time.Time) Result {
 	return r
 }
 
+// DiskUsage returns free and total bytes for the filesystem containing path.
+func DiskUsage(path string) (free, total uint64, err error) {
+	return diskUsage(path)
+}
+
 func checkDiskSpace(dataDir string) Result {
-	r := Result{ID: "disk_space", Title: "Место на диске"}
+	r := Result{ID: "disk_space", Title: "Место"}
 	if dataDir == "" {
 		r.Status = StatusWarn
 		r.Detail = "каталог данных не задан"
 		return r
 	}
-	free, total, err := diskUsage(dataDir)
+	free, total, err := DiskUsage(dataDir)
 	if err != nil {
 		r.Status = StatusWarn
 		r.Detail = fmt.Sprintf("не удалось проверить: %v", err)
@@ -121,38 +145,40 @@ func checkDiskSpace(dataDir string) Result {
 	return r
 }
 
-func checkSMTP(in Input) Result {
-	r := Result{ID: "smtp", Title: "SMTP"}
-	if !in.MailConfigured {
-		r.Status = StatusWarn
-		r.Detail = "SMTP не настроен"
-		return r
-	}
+func checkMail(in Input) Result {
+	r := Result{ID: "mail", Title: "Письмо"}
 	if in.SMTPTestSentAt == nil || in.SMTPTestSentAt.IsZero() {
 		r.Status = StatusWarn
-		r.Detail = "тестовое письмо ещё не отправлялось"
+		r.Detail = "ещё не отправлялось"
+		return r
+	}
+	if strings.TrimSpace(in.SMTPLastError) != "" {
+		r.Status = StatusFail
+		r.Detail = "не ушло: " + strings.TrimSpace(in.SMTPLastError)
 		return r
 	}
 	r.Status = StatusOK
-	r.Detail = fmt.Sprintf("тестовое письмо отправлено %s", in.SMTPTestSentAt.UTC().Format(time.RFC3339))
+	r.Detail = "ушло " + formatMailAgo(in.Now, *in.SMTPTestSentAt)
 	return r
 }
 
-func checkDKIM(in Input) Result {
-	r := Result{ID: "dkim", Title: "DKIM"}
-	if in.Loopback {
-		r.Status = StatusNA
-		r.Detail = "на loopback не применимо"
-		return r
+func formatMailAgo(now, then time.Time) string {
+	d := now.UTC().Sub(then.UTC())
+	if d < 0 {
+		d = 0
 	}
-	if !in.MailConfigured {
-		r.Status = StatusWarn
-		r.Detail = "настройте SMTP, затем DKIM у провайдера почты"
-		return r
+	mins := int(d.Minutes())
+	if mins < 1 {
+		return "только что"
 	}
-	r.Status = StatusWarn
-	r.Detail = "проверьте DKIM у почтового провайдера"
-	return r
+	if mins < 60 {
+		return fmt.Sprintf("%d мин. назад", mins)
+	}
+	hours := int(d.Hours())
+	if hours < 24 {
+		return fmt.Sprintf("%d ч. назад", hours)
+	}
+	return then.UTC().Format("2.01.2006")
 }
 
 func checkVAPIDKeys(in Input) Result {
@@ -164,6 +190,28 @@ func checkVAPIDKeys(in Input) Result {
 	}
 	r.Status = StatusWarn
 	r.Detail = "ключи не заданы"
+	return r
+}
+
+func checkPWA(in Input) Result {
+	r := Result{ID: "pwa", Title: "Манифест и service worker"}
+	if in.Loopback {
+		r.Status = StatusNA
+		r.Detail = "на loopback не применимо"
+		return r
+	}
+	if in.External == nil {
+		r.Status = StatusWarn
+		r.Detail = "ожидается проверка из браузера"
+		return r
+	}
+	if in.External.PWAOK {
+		r.Status = StatusOK
+		r.Detail = "PWA ставится, камера открывается"
+		return r
+	}
+	r.Status = StatusWarn
+	r.Detail = "манифест или service worker недоступны"
 	return r
 }
 
@@ -186,7 +234,7 @@ func checkDailyRoutine(in Input, now time.Time) Result {
 }
 
 func checkBackup(in Input, now time.Time) Result {
-	r := Result{ID: "backup", Title: "Резервная копия"}
+	r := Result{ID: "backup", Title: "Бэкап"}
 	if in.LastBackupAt == nil || in.LastBackupAt.IsZero() {
 		r.Status = StatusWarn
 		r.Detail = "ещё не создавалась"
@@ -226,37 +274,93 @@ func checkHTTPSOutside(in Input) Result {
 		return r
 	}
 	r.Status = StatusOK
-	r.Detail = fmt.Sprintf("200 за %d мс", in.External.HTTPSMS)
-	if in.External.RedirectPermanent {
-		r.Detail += "; HTTP→HTTPS 308"
-	}
+	r.Detail = fmt.Sprintf("200 за %d мс; ваш браузер вышел из другой сети", in.External.HTTPSMS)
 	return r
 }
 
+func checkHTTPRedirect(in Input) Result {
+	r := Result{ID: "http_redirect", Title: "HTTP → HTTPS"}
+	if in.Loopback {
+		r.Status = StatusNA
+		r.Detail = "на loopback не применимо"
+		return r
+	}
+	if !strings.HasPrefix(strings.ToLower(in.PublicURL), "https://") {
+		r.Status = StatusWarn
+		r.Detail = "public_url без HTTPS"
+		return r
+	}
+	if in.External == nil {
+		r.Status = StatusWarn
+		r.Detail = "ожидается проверка сервера"
+		return r
+	}
+	if in.External.RedirectPermanent {
+		code := in.External.RedirectStatus
+		if code == 0 {
+			code = 308
+		}
+		r.Status = StatusOK
+		r.Detail = fmt.Sprintf("%d, постоянный", code)
+		return r
+	}
+	r.Status = StatusFail
+	r.Detail = "HTTP не перенаправляет на HTTPS"
+	return r
+}
+
+func checkProxyClient(in Input) Result {
+	return proxyCheck(in, "proxy_client", "Настоящий адрес клиента", func(ext *ExternalReport) (Status, string) {
+		xff := strings.TrimSpace(ext.XForwardedFor)
+		xri := strings.TrimSpace(ext.XRealIP)
+		if xff == "" && xri == "" {
+			return StatusFail, "X-Forwarded-For не приходит: «три попытки» на код считаются всем сразу"
+		}
+		ip := net.ParseIP(strings.TrimSpace(ext.ClientIP))
+		if ip != nil && ip.IsLoopback() {
+			return StatusFail, "сервер видит клиента как 127.0.0.1 — лимит кодов общий"
+		}
+		return StatusOK, "X-Forwarded-For доходит до Wynd"
+	})
+}
+
 func checkProxyHeaders(in Input) Result {
-	return proxyCheck(in, "proxy_headers", "Прокси: протокол", func(ext *ExternalReport) (Status, string) {
+	return proxyCheck(in, "proxy_headers", "Протокол", func(ext *ExternalReport) (Status, string) {
 		if ext.ProxyHTTPS {
-			return StatusOK, "X-Forwarded-Proto: https"
+			return StatusOK, "X-Forwarded-Proto: https — ссылки в письмах верные"
 		}
 		return StatusFail, "ожидается X-Forwarded-Proto: https"
 	})
 }
 
 func checkProxyBodyLimit(in Input) Result {
-	return proxyCheck(in, "proxy_body_limit", "Прокси: лимит тела", func(ext *ExternalReport) (Status, string) {
+	return proxyCheck(in, "proxy_body_limit", "Потолок тела запроса", func(ext *ExternalReport) (Status, string) {
 		if ext.ProxyBodyLimitOK {
 			return StatusOK, "лимит достаточен для загрузок"
 		}
-		return StatusFail, "лимит тела запроса слишком мал"
+		return StatusFail, "лимит тела запроса слишком мал — фото вернётся с 413"
 	})
 }
 
 func checkProxySSE(in Input) Result {
-	return proxyCheck(in, "proxy_sse", "Прокси: SSE", func(ext *ExternalReport) (Status, string) {
+	return proxyCheck(in, "proxy_sse", "Буферизация", func(ext *ExternalReport) (Status, string) {
 		if ext.ProxySSEOK {
-			return StatusOK, "буферизация выключена, SSE доходит"
+			return StatusOK, "выключена, SSE доходит сразу"
 		}
 		return StatusFail, "SSE буферизуется или обрывается"
+	})
+}
+
+func checkProxyTimeout(in Input) Result {
+	return proxyCheck(in, "proxy_timeout", "Таймаут", func(ext *ExternalReport) (Status, string) {
+		sec := ext.ProxyReadTimeout
+		if sec <= 0 {
+			sec = proxy.ReadTimeoutSeconds
+		}
+		if !ext.ProxyStreamOK {
+			return StatusFail, "прокси обрывает длинную отдачу — загрузка может не дойти"
+		}
+		return StatusOK, fmt.Sprintf("%d с, длинная загрузка не рвётся", sec)
 	})
 }
 

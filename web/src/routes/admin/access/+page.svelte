@@ -5,7 +5,6 @@
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
-	import Input from '$ui/forms/Input.svelte';
 	import FieldDisplay from '$ui/forms/FieldDisplay.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
@@ -40,7 +39,6 @@
 		{ label: 'Неделя', sec: 604800 }
 	] as const;
 
-	let name = $state('');
 	let mode = $state<AccessSettings['registration_mode']>('invite');
 	let server = $state('');
 	let inviteUrl = $state('');
@@ -67,17 +65,6 @@
 	async function loadLiveInvites() {
 		const invites = await fetchInvites();
 		liveInvites = invites.filter(isLiveInvite);
-	}
-
-	async function persistName() {
-		const trimmed = name.trim();
-		if (!trimmed) return;
-		try {
-			await saveAccess({ name: trimmed });
-			server = await serverCaption();
-		} catch (err) {
-			error = authErrorHint(err);
-		}
 	}
 
 	async function persistMode(next: AccessSettings['registration_mode']) {
@@ -142,7 +129,6 @@
 	onMount(async () => {
 		try {
 			const [access, caption] = await Promise.all([fetchAccess(), serverCaption()]);
-			name = access.name;
 			mode = access.registration_mode;
 			server = caption;
 			await loadLiveInvites();
@@ -159,23 +145,10 @@
 	<AdminSection title="Доступ">
 		{#if loading}
 			<Hint>Загрузка…</Hint>
-		{:else if error && !name}
-			<Hint>{error}</Hint>
 		{:else}
 			<div class="cols">
 				<div>
-					<SectionLabel style="margin:0 0 8px">Имя сервера</SectionLabel>
-					<Input
-						admin
-						style="margin-left:0;width:100%"
-						bind:value={name}
-						onchange={() => void persistName()}
-					/>
-					<div style="font-size:11.5px;color:var(--faint);margin-top:8px;line-height:1.6">
-						Так сервер назван в приложении. Адрес люди видят второй строкой и почти никогда не
-						набирают.
-					</div>
-					<SectionLabel style="margin:24px 0 8px">Кого пускать</SectionLabel>
+					<SectionLabel style="margin:0 0 8px">Кого пускать</SectionLabel>
 					<ChipGroup style="margin:0">
 						{#each modes as item (item.key)}
 							<Chip selected={mode === item.key} onclick={() => void persistMode(item.key)}>

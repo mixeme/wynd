@@ -137,6 +137,7 @@ func (s *Service) ListCircleInvites(ctx context.Context, circleID string, now ti
 		SELECT id, token, kind, max_uses, uses, expires_at, created_at
 		FROM invites
 		WHERE circle_id = ?
+			AND target_account_id IS NULL
 			AND revoked_at IS NULL
 			AND uses < max_uses
 			AND expires_at > ?

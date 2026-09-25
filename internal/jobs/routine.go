@@ -3,12 +3,14 @@ package jobs
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
+	"gitea.mixdep.ru/mix/wynd/internal/blob"
 	"gitea.mixdep.ru/mix/wynd/internal/xtime"
 )
 
@@ -43,43 +45,49 @@ func RunDailyRoutine(ctx context.Context, db *sql.DB, blobsDir string, now time.
 	nowRaw := xtime.Format(now)
 	expireBound := expireBefore(now)
 
+	// Шаги независимы: сбой одного не отменяет остальные, иначе одна
+	// застрявшая ошибка навсегда оставляет инстанс без уборки сессий, кодов,
+	// инвайтов и загрузок (план 42, REF-3).
 	var counts DailyRoutineCounts
-	var err error
+	var errs []error
+	step := func(n *int, name string, run func() (int, error)) {
+		got, err := run()
+		*n = got
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", name, err))
+		}
+	}
 
-	counts.OrphanedBlobs, err = cleanOrphanedBlobs(ctx, db, blobsDir, cutoff)
-	if err != nil {
-		return counts, err
-	}
-	counts.AbandonedUploads, err = cleanAbandonedUploads(ctx, db, blobsDir, expireBound)
-	if err != nil {
-		return counts, err
-	}
-	counts.EmptyAccounts, err = cleanEmptyAccounts(ctx, db, emptyCutoff, now)
-	if err != nil {
-		return counts, err
-	}
-	counts.ExpiredInvites, err = revokeExpiredInvites(ctx, db, nowRaw)
-	if err != nil {
-		return counts, err
-	}
-	counts.ExpiredSessions, err = deleteExpired(ctx, db, "sessions", "expires_at", expireBound)
-	if err != nil {
-		return counts, err
-	}
-	counts.ExpiredCodes, err = deleteExpired(ctx, db, "pending_codes", "expires_at", expireBound)
-	if err != nil {
-		return counts, err
-	}
-	counts.OldCodeRequests, err = deleteExpired(ctx, db, "code_request_log", "requested_at", cutoff)
-	if err != nil {
-		return counts, err
-	}
+	step(&counts.OrphanedBlobs, "orphaned blobs", func() (int, error) {
+		return cleanOrphanedBlobs(ctx, db, blobsDir, cutoff)
+	})
+	step(&counts.AbandonedUploads, "abandoned uploads", func() (int, error) {
+		return cleanAbandonedUploads(ctx, db, blobsDir, expireBound)
+	})
+	step(&counts.EmptyAccounts, "empty accounts", func() (int, error) {
+		return cleanEmptyAccounts(ctx, db, emptyCutoff, now)
+	})
+	step(&counts.ExpiredInvites, "expired invites", func() (int, error) {
+		return revokeExpiredInvites(ctx, db, nowRaw)
+	})
+	step(&counts.ExpiredSessions, "expired sessions", func() (int, error) {
+		return deleteExpired(ctx, db, "sessions", "expires_at", expireBound)
+	})
+	step(&counts.ExpiredCodes, "expired codes", func() (int, error) {
+		return deleteExpired(ctx, db, "pending_codes", "expires_at", expireBound)
+	})
+	step(&counts.OldCodeRequests, "old code requests", func() (int, error) {
+		return deleteExpired(ctx, db, "code_request_log", "requested_at", cutoff)
+	})
+
+	// last_routine_at пишется всегда: иначе панель показывает «рутина не
+	// выполнялась» при том, что шесть шагов из семи прошли.
 	if _, err := db.ExecContext(ctx, `
 		UPDATE instance_settings SET last_routine_at = ? WHERE id = 1
 	`, nowRaw); err != nil {
-		return counts, fmt.Errorf("update last_routine_at: %w", err)
+		errs = append(errs, fmt.Errorf("update last_routine_at: %w", err))
 	}
-	return counts, nil
+	return counts, errors.Join(errs...)
 }
 
 func cleanOrphanedBlobs(ctx context.Context, db *sql.DB, blobsDir, cutoff string) (int, error) {
@@ -88,9 +96,7 @@ func cleanOrphanedBlobs(ctx context.Context, db *sql.DB, blobsDir, cutoff string
 		FROM blobs b
 		WHERE b.status = 'complete'
 		  AND b.created_at < ?
-		  AND NOT EXISTS (SELECT 1 FROM blob_refs r WHERE r.blob_id = b.id)
-		  AND NOT EXISTS (SELECT 1 FROM post_media pm WHERE pm.blob_id = b.id)
-	`, cutoff)
+		  AND NOT `+blob.ReferencedPredicate("b.id"), cutoff)
 	if err != nil {
 		return 0, fmt.Errorf("list orphaned blobs: %w", err)
 	}
@@ -114,20 +120,24 @@ func cleanOrphanedBlobs(ctx context.Context, db *sql.DB, blobsDir, cutoff string
 		return 0, err
 	}
 
+	// Сначала строка, потом файл: обратный порядок при отказе DELETE
+	// (внешний ключ) терял файл безвозвратно (BLB-2).
 	n := 0
+	var errs []error
 	for _, row := range pending {
-		if blobsDir != "" {
-			path := filepath.Join(blobsDir, filepath.FromSlash(row.rel))
-			_ = os.Remove(path)
-		}
 		res, err := db.ExecContext(ctx, `DELETE FROM blobs WHERE id = ?`, row.id)
 		if err != nil {
-			return n, fmt.Errorf("delete orphaned blob %s: %w", row.id, err)
+			errs = append(errs, fmt.Errorf("delete orphaned blob %s: %w", row.id, err))
+			continue
 		}
 		aff, _ := res.RowsAffected()
 		n += int(aff)
+		if blobsDir != "" && aff > 0 {
+			path := filepath.Join(blobsDir, filepath.FromSlash(row.rel))
+			_ = os.Remove(path)
+		}
 	}
-	return n, nil
+	return n, errors.Join(errs...)
 }
 
 func cleanAbandonedUploads(ctx context.Context, db *sql.DB, blobsDir, nowRaw string) (int, error) {

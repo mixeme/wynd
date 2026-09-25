@@ -106,6 +106,17 @@ func (s *Server) handleCreateCircleInvite(w http.ResponseWriter, r *http.Request
 	if body.Kind == "multi" {
 		kind = auth.InviteMulti
 	}
+	if kind == auth.InviteMulti {
+		settings, err := s.Chronicle.GetInviteSettings(r.Context(), circleID)
+		if err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		if settings.InviteKindDefault == "single" {
+			writeDomainError(w, chronicle.ErrInvalid)
+			return
+		}
+	}
 	maxUses := body.MaxUses
 	if maxUses < 1 {
 		maxUses = 1

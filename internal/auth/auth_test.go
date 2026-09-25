@@ -53,6 +53,49 @@ func (e *env) bootstrap(t *testing.T) {
 	}
 }
 
+func TestBootstrapPasswordOnly(t *testing.T) {
+	e := newEnv(t)
+	if err := e.auth.Bootstrap(e.ctx, auth.BootstrapInput{
+		Token: "tok", Password: "secret-admin", Now: e.t0,
+	}, "tok"); err != nil {
+		t.Fatalf("Bootstrap: %v", err)
+	}
+	info, err := e.auth.Instance(e.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !info.Bootstrapped {
+		t.Fatal("expected bootstrapped")
+	}
+	if info.Name != "" {
+		t.Fatalf("name: %q", info.Name)
+	}
+}
+
+func TestChangeAdminPassword(t *testing.T) {
+	e := newEnv(t)
+	e.bootstrap(t)
+	if err := e.auth.ChangeAdminPassword(e.ctx, "secret-admin", "new-secret", e.t0); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.auth.AdminLogin(e.ctx, auth.AdminLoginInput{
+		Password: "secret-admin", ClientIP: "127.0.0.1", Now: e.t0.Add(time.Second),
+	}); !errors.Is(err, auth.ErrForbidden) {
+		t.Fatalf("old password: %v", err)
+	}
+	if _, err := e.auth.AdminLogin(e.ctx, auth.AdminLoginInput{
+		Password: "new-secret", ClientIP: "127.0.0.1", Now: e.t0.Add(2 * time.Second),
+	}); err != nil {
+		t.Fatalf("new password: %v", err)
+	}
+	if err := e.auth.ChangeAdminPassword(e.ctx, "wrong", "another-secret", e.t0); !errors.Is(err, auth.ErrForbidden) {
+		t.Fatalf("wrong current: %v", err)
+	}
+	if err := e.auth.ChangeAdminPassword(e.ctx, "new-secret", "short", e.t0); !errors.Is(err, auth.ErrWeakPassword) {
+		t.Fatalf("weak: %v", err)
+	}
+}
+
 func TestOpenRegistrationCreatesAccount(t *testing.T) {
 	e := newEnv(t)
 	e.bootstrap(t)
@@ -289,5 +332,19 @@ func TestBlockClosesLogin(t *testing.T) {
 		Email: "ana@example.com", ClientIP: "10.0.0.9", Now: e.t0.Add(2 * time.Minute),
 	}); err != nil {
 		t.Fatalf("unblocked code: %v", err)
+	}
+}
+
+func TestConfirmBootstrapToken(t *testing.T) {
+	e := newEnv(t)
+	if err := e.auth.ConfirmBootstrapToken(e.ctx, "tok", "tok", "127.0.0.1", e.t0); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.auth.ConfirmBootstrapToken(e.ctx, "nope", "tok", "127.0.0.1", e.t0); err != auth.ErrInvalid {
+		t.Fatalf("wrong token: %v", err)
+	}
+	e.bootstrap(t)
+	if err := e.auth.ConfirmBootstrapToken(e.ctx, "tok", "tok", "10.0.0.2", e.t0); err != auth.ErrInvalid {
+		t.Fatalf("after bootstrap: %v", err)
 	}
 }

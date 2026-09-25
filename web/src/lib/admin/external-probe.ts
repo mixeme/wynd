@@ -8,12 +8,22 @@ export interface ExternalReport {
 	proxy_https: boolean;
 	proxy_body_limit_ok: boolean;
 	proxy_sse_ok: boolean;
+	proxy_stream_ok: boolean;
+	proxy_read_timeout_sec: number;
+	pwa_ok: boolean;
+	client_ip: string;
+	x_forwarded_for: string;
+	x_real_ip: string;
 }
 
 interface ProbeInfo {
 	proto: string;
 	peer_loopback: boolean;
 	body_probe_bytes?: number;
+	proxy_read_timeout_sec?: number;
+	client_ip?: string;
+	x_forwarded_for?: string;
+	x_real_ip?: string;
 }
 
 const MIN_BODY_PROBE_BYTES = 2 * 1024 * 1024;
@@ -58,6 +68,29 @@ async function probeBodyLimit(origin: string, maxBytes: number): Promise<boolean
 	}
 }
 
+const STREAM_TIMEOUT_MS = 8000;
+
+async function probeStream(origin: string): Promise<boolean> {
+	const controller = new AbortController();
+	const timer = setTimeout(() => controller.abort(), STREAM_TIMEOUT_MS);
+	try {
+		const res = await publicFetch(origin, '/probe/stream', { signal: controller.signal });
+		if (!res.ok || !res.body) return false;
+		const reader = res.body.getReader();
+		let total = 0;
+		for (;;) {
+			const { value, done } = await reader.read();
+			if (done) break;
+			total += value?.length ?? 0;
+		}
+		return total >= 20;
+	} catch {
+		return false;
+	} finally {
+		clearTimeout(timer);
+	}
+}
+
 async function probeSSE(origin: string): Promise<boolean> {
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), SSE_TIMEOUT_MS);
@@ -78,6 +111,18 @@ async function probeSSE(origin: string): Promise<boolean> {
 	}
 }
 
+async function probePWA(origin: string): Promise<boolean> {
+	if (!('serviceWorker' in navigator)) return false;
+	try {
+		const manifest = await publicFetch(origin, '/manifest.webmanifest');
+		if (!manifest.ok) return false;
+		const regs = await navigator.serviceWorker.getRegistrations();
+		return regs.length > 0;
+	} catch {
+		return false;
+	}
+}
+
 function bodyProbeSize(probe: ProbeInfo | undefined, attachmentMaxBytes: number): number {
 	const fromProbe = probe?.body_probe_bytes;
 	if (fromProbe && fromProbe > 0) return fromProbe;
@@ -93,9 +138,11 @@ export async function collectExternalReport(
 	const https = await probeHTTPS(origin);
 	const probe = await probeHeaders(origin);
 	const bodyBytes = bodyProbeSize(probe, attachmentMaxBytes);
-	const [bodyOK, sseOK] = await Promise.all([
+	const [bodyOK, sseOK, streamOK, pwaOK] = await Promise.all([
 		probeBodyLimit(origin, bodyBytes),
-		probeSSE(origin)
+		probeSSE(origin),
+		probeStream(origin),
+		probePWA(origin)
 	]);
 
 	return {
@@ -105,6 +152,17 @@ export async function collectExternalReport(
 		from_outside: probe ? !probe.peer_loopback : false,
 		proxy_https: probe?.proto === 'https',
 		proxy_body_limit_ok: bodyOK,
-		proxy_sse_ok: sseOK
+		proxy_sse_ok: sseOK,
+		proxy_stream_ok: streamOK,
+		proxy_read_timeout_sec: probe?.proxy_read_timeout_sec ?? 0,
+		pwa_ok: pwaOK,
+		client_ip: probe?.client_ip ?? '',
+		x_forwarded_for: probe?.x_forwarded_for ?? '',
+		x_real_ip: probe?.x_real_ip ?? ''
 	};
+}
+
+/** Public probe row for the fix screen (same origin as admin session). */
+export async function fetchProbeDiagnostics(origin: string): Promise<ProbeInfo | undefined> {
+	return probeHeaders(origin);
 }

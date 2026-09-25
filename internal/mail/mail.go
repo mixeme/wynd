@@ -27,6 +27,7 @@ type Config struct {
 	Password   string     `json:"password"`
 	From       string     `json:"from"`
 	TestSentAt *time.Time `json:"test_sent_at,omitempty"`
+	LastError  string     `json:"last_error,omitempty"`
 }
 
 const defaultSendTimeout = 15 * time.Second
@@ -63,6 +64,11 @@ func New(st store.Store, loopback bool, fallback auth.CodeDelivery) (*Service, e
 	}, nil
 }
 
+// SetLoopback updates whether this process treats the instance as loopback.
+func (s *Service) SetLoopback(v bool) {
+	s.loopback = v
+}
+
 // DB exposes the underlying connection for tests.
 func (s *Service) DB() *sql.DB {
 	return s.db
@@ -73,9 +79,9 @@ func (s *Service) LoadConfig(ctx context.Context) (Config, error) {
 	var cfg Config
 	var testSent sql.NullString
 	err := s.db.QueryRowContext(ctx, `
-		SELECT smtp_host, smtp_port, smtp_username, smtp_password, smtp_from, smtp_test_sent_at
+		SELECT smtp_host, smtp_port, smtp_username, smtp_password, smtp_from, smtp_test_sent_at, smtp_last_error
 		FROM instance_settings WHERE id = 1
-	`).Scan(&cfg.Host, &cfg.Port, &cfg.Username, &cfg.Password, &cfg.From, &testSent)
+	`).Scan(&cfg.Host, &cfg.Port, &cfg.Username, &cfg.Password, &cfg.From, &testSent, &cfg.LastError)
 	if err != nil {
 		return Config{}, fmt.Errorf("mail: load config: %w", err)
 	}
@@ -89,15 +95,30 @@ func (s *Service) LoadConfig(ctx context.Context) (Config, error) {
 	return cfg, nil
 }
 
+// execer is *sql.DB or *sql.Tx: SaveConfig и SaveConfigTx пишут одинаково.
+type execer interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}
+
 // SaveConfig persists SMTP settings (test_sent_at is unchanged).
 func (s *Service) SaveConfig(ctx context.Context, cfg Config) error {
+	return saveConfig(ctx, s.db, cfg)
+}
+
+// SaveConfigTx persists SMTP settings inside a caller's transaction, so the
+// relay is stored together with the rest of a multi-step change (bootstrap).
+func (s *Service) SaveConfigTx(ctx context.Context, tx *sql.Tx, cfg Config) error {
+	return saveConfig(ctx, tx, cfg)
+}
+
+func saveConfig(ctx context.Context, db execer, cfg Config) error {
 	if strings.TrimSpace(cfg.Host) == "" || strings.TrimSpace(cfg.From) == "" {
 		return ErrInvalid
 	}
 	if cfg.Port <= 0 {
 		cfg.Port = 587
 	}
-	_, err := s.db.ExecContext(ctx, `
+	_, err := db.ExecContext(ctx, `
 		UPDATE instance_settings
 		SET smtp_host = ?, smtp_port = ?, smtp_username = ?, smtp_password = ?, smtp_from = ?
 		WHERE id = 1
@@ -157,15 +178,24 @@ func (s *Service) SendTest(ctx context.Context, to string) error {
 	}
 	subject := "Проверка почты Wynd"
 	body := "Это проверочное письмо от сервера Wynd."
-	if err := s.sendMessage(ctx, cfg, to, subject, body); err != nil {
-		return err
+	err = s.sendMessage(ctx, cfg, to, subject, body)
+	if recErr := s.recordSMTPTest(ctx, err); recErr != nil && err == nil {
+		return recErr
 	}
+	return err
+}
+
+func (s *Service) recordSMTPTest(ctx context.Context, sendErr error) error {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	_, err = s.db.ExecContext(ctx, `
-		UPDATE instance_settings SET smtp_test_sent_at = ? WHERE id = 1
-	`, now)
+	errText := ""
+	if sendErr != nil {
+		errText = sendErr.Error()
+	}
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE instance_settings SET smtp_test_sent_at = ?, smtp_last_error = ? WHERE id = 1
+	`, now, errText)
 	if err != nil {
-		return fmt.Errorf("mail: record test sent: %w", err)
+		return fmt.Errorf("mail: record test: %w", err)
 	}
 	return nil
 }
@@ -186,58 +216,46 @@ func (s *Service) SendPlain(ctx context.Context, to, subject, body string) error
 	return s.sendMessage(ctx, cfg, to, subject, body)
 }
 
+// Probe dials the relay, upgrades TLS, authenticates, and quits.
+// It does not send a message and does not persist settings.
+func (s *Service) Probe(ctx context.Context, cfg Config) error {
+	if strings.TrimSpace(cfg.Host) == "" {
+		return ErrNotConfigured
+	}
+	ctx, cancel := context.WithTimeout(ctx, sendTimeout)
+	defer cancel()
+	client, err := s.smtpClient(ctx, cfg)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	if err := client.Quit(); err != nil {
+		return fmt.Errorf("%w: mail: quit: %w", ErrSend, err)
+	}
+	return nil
+}
+
 func (s *Service) sendMessage(ctx context.Context, cfg Config, to, subject, body string) error {
 	ctx, cancel := context.WithTimeout(ctx, sendTimeout)
 	defer cancel()
 
 	from := envelopeAddress(cfg.From)
-	if from == "" {
+	rcpt := envelopeAddress(to)
+	if from == "" || rcpt == "" {
 		return ErrInvalid
 	}
 
 	msg := buildMessage(cfg.From, to, subject, body)
-	addr := net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port))
-	conn, err := s.dial(ctx, addr)
+	client, err := s.smtpClient(ctx, cfg)
 	if err != nil {
-		return fmt.Errorf("%w: mail: dial %s: %w", ErrSend, addr, err)
-	}
-
-	if deadline, ok := ctx.Deadline(); ok {
-		_ = conn.SetDeadline(deadline)
-	}
-
-	if useImplicitTLS(cfg.Port) {
-		tlsConn := tls.Client(conn, &tls.Config{ServerName: cfg.Host})
-		if err := tlsConn.HandshakeContext(ctx); err != nil {
-			_ = conn.Close()
-			return fmt.Errorf("%w: mail: tls: %w", ErrSend, err)
-		}
-		conn = tlsConn
-	}
-	defer conn.Close()
-
-	client, err := smtp.NewClient(conn, cfg.Host)
-	if err != nil {
-		return fmt.Errorf("%w: mail: smtp client: %w", ErrSend, err)
-	}
-	defer client.Close()
-
-	if !useImplicitTLS(cfg.Port) {
-		if ok, _ := client.Extension("STARTTLS"); ok {
-			if err := client.StartTLS(&tls.Config{ServerName: cfg.Host}); err != nil {
-				return fmt.Errorf("%w: mail: starttls: %w", ErrSend, err)
-			}
-		}
-	}
-
-	if err := authenticate(client, cfg); err != nil {
 		return err
 	}
+	defer client.Close()
 
 	if err := client.Mail(from); err != nil {
 		return fmt.Errorf("%w: mail: mail from: %w", ErrSend, err)
 	}
-	if err := client.Rcpt(to); err != nil {
+	if err := client.Rcpt(rcpt); err != nil {
 		return fmt.Errorf("%w: mail: rcpt: %w", ErrSend, err)
 	}
 	w, err := client.Data()
@@ -254,6 +272,57 @@ func (s *Service) sendMessage(ctx context.Context, cfg Config, to, subject, body
 		return fmt.Errorf("%w: mail: quit: %w", ErrSend, err)
 	}
 	return nil
+}
+
+func (s *Service) smtpClient(ctx context.Context, cfg Config) (*smtp.Client, error) {
+	host := strings.TrimSpace(cfg.Host)
+	port := cfg.Port
+	if port <= 0 {
+		port = 587
+	}
+	addr := net.JoinHostPort(host, strconv.Itoa(port))
+	conn, err := s.dial(ctx, addr)
+	if err != nil {
+		return nil, fmt.Errorf("%w: mail: dial %s: %w", ErrSend, addr, err)
+	}
+	if deadline, ok := ctx.Deadline(); ok {
+		_ = conn.SetDeadline(deadline)
+	}
+	if useImplicitTLS(port) {
+		tlsConn := tls.Client(conn, &tls.Config{ServerName: host})
+		if err := tlsConn.HandshakeContext(ctx); err != nil {
+			_ = conn.Close()
+			return nil, fmt.Errorf("%w: mail: tls: %w", ErrSend, err)
+		}
+		conn = tlsConn
+	}
+	client, err := smtp.NewClient(conn, host)
+	if err != nil {
+		_ = conn.Close()
+		return nil, fmt.Errorf("%w: mail: smtp client: %w", ErrSend, err)
+	}
+	if !useImplicitTLS(port) {
+		starttls, _ := client.Extension("STARTTLS")
+		switch {
+		case starttls:
+			if err := client.StartTLS(&tls.Config{ServerName: host}); err != nil {
+				_ = client.Close()
+				return nil, fmt.Errorf("%w: mail: starttls: %w", ErrSend, err)
+			}
+		case isLoopbackHost(host):
+			// Локальный релей на той же машине — открытый канал допустим.
+		default:
+			// Посредник может вырезать 250-STARTTLS из ответа, и письмо с
+			// кодом входа уйдёт открытым текстом. Молча так не делаем (SEC-5).
+			_ = client.Close()
+			return nil, fmt.Errorf("%w: mail: STARTTLS required by %s", ErrSend, addr)
+		}
+	}
+	if err := authenticate(client, cfg); err != nil {
+		_ = client.Close()
+		return nil, err
+	}
+	return client, nil
 }
 
 func authenticate(client *smtp.Client, cfg Config) error {
@@ -282,6 +351,25 @@ func authenticate(client *smtp.Client, cfg Config) error {
 
 func useImplicitTLS(port int) bool {
 	return port == 465
+}
+
+func isLoopbackHost(host string) bool {
+	host = strings.TrimSpace(host)
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(strings.Trim(host, "[]"))
+	return ip != nil && ip.IsLoopback()
+}
+
+// headerSafe убирает CR и LF из значения заголовка: без этого адрес или тема
+// с переводом строки дописывают в письмо свои заголовки (инъекция).
+func headerSafe(v string) string {
+	if !strings.ContainsAny(v, "\r\n") {
+		return v
+	}
+	r := strings.NewReplacer("\r\n", " ", "\r", " ", "\n", " ")
+	return strings.TrimSpace(r.Replace(v))
 }
 
 func envelopeAddress(from string) string {
@@ -329,6 +417,9 @@ func messageID(from string) string {
 }
 
 func buildMessage(from, to, subject, body string) []byte {
+	from = headerSafe(from)
+	to = headerSafe(to)
+	subject = headerSafe(subject)
 	var b strings.Builder
 	b.WriteString("From: ")
 	b.WriteString(formatAddressHeader(from))

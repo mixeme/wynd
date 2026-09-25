@@ -6,11 +6,13 @@ import (
 	"encoding/json"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -102,7 +104,10 @@ func runServer() {
 	maybeRunRoutine(authSvc, blobsDir, ch, blobStore, mailSvc, pushSvc, cfg.PublicURL)
 
 	maintDone := make(chan struct{})
+	var maintWG sync.WaitGroup
+	maintWG.Add(1)
 	go func() {
+		defer maintWG.Done()
 		ticker := time.NewTicker(time.Hour)
 		defer ticker.Stop()
 		for {
@@ -132,9 +137,15 @@ func runServer() {
 	}
 	mux.Handle("/", web.SPA(buildFS))
 
+	// Базовый контекст всех запросов: его отмена по сигналу закрывает открытые
+	// SSE-потоки, иначе Shutdown ждал их полные 10 с и убивал процесс (API-1).
+	baseCtx, cancelRequests := context.WithCancel(context.Background())
+	defer cancelRequests()
+
 	srv := &http.Server{
-		Addr:    cfg.Listen,
-		Handler: mux,
+		Addr:        cfg.Listen,
+		Handler:     mux,
+		BaseContext: func(net.Listener) context.Context { return baseCtx },
 		// Header and idle timeouts stop slow-loris clients from pinning
 		// connections. No ReadTimeout: it would cut long uploads and SSE.
 		ReadHeaderTimeout: 10 * time.Second,
@@ -162,10 +173,18 @@ func runServer() {
 	defer cancel()
 
 	log.Print("shutting down")
+	// Сначала перестаём принимать новые запросы, затем отпускаем открытые
+	// потоки. Ошибка Shutdown больше не Fatalf: иначе процесс уходил, не
+	// дождавшись пушей и не закрыв БД, и systemd видел код 1 (API-1).
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("shutdown: %v", err)
+		log.Printf("shutdown: %v", err)
 	}
+	cancelRequests()
 	apiSrv.WaitNotify(ctx)
+	maintWG.Wait()
+	// st.Close() — в defer на входе runServer: раньше до него не доходило,
+	// потому что Fatalf завершал процесс прямо здесь.
+	log.Print("stopped")
 }
 
 func maybeRunRoutine(authSvc *auth.Service, blobsDir string, ch *chronicle.Chronicle, blobs *blob.Store, mailSvc *mail.Service, pushSvc *push.Service, publicURL string) {

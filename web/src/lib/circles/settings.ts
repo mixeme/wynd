@@ -62,6 +62,7 @@ export interface VolumeBucket {
 
 export interface QuotaInfo {
 	used_bytes: number;
+	post_count: number;
 	quota_bytes?: number;
 	volume: VolumeBucket[];
 	freed_at_cutoff_bytes?: number;
@@ -105,6 +106,68 @@ export function editWindowToSec(key: EditWindowKey, customHours = 1): number | n
 		default:
 			return null;
 	}
+}
+
+export interface InviteCandidate {
+	account_id: string;
+	name: string;
+	membership_status: 'active' | 'left_with_access' | 'gone';
+	invited: boolean;
+}
+
+export interface InviteCandidateGroup {
+	id: string;
+	name: string;
+	color: CircleColor;
+	count: number;
+	members: InviteCandidate[];
+}
+
+export async function fetchInviteCandidates(
+	origin: string,
+	circleId: string
+): Promise<InviteCandidateGroup[]> {
+	const res = await apiJson<{ groups: InviteCandidateGroup[] }>(
+		origin,
+		`/circles/${circleId}/invite-candidates`
+	);
+	return res.groups ?? [];
+}
+
+export async function createMemberInvite(
+	origin: string,
+	circleId: string,
+	accountId: string
+): Promise<void> {
+	await apiJson(origin, `/circles/${circleId}/member-invites`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ account_id: accountId })
+	});
+}
+
+export interface JoinPreview {
+	circle_name: string;
+	color: CircleColor;
+	member_count: number;
+	members: { name: string; is_owner: boolean; is_inviter: boolean }[];
+}
+
+export async function fetchJoinPreview(origin: string, circleId: string): Promise<JoinPreview> {
+	return apiJson<JoinPreview>(origin, `/circles/${circleId}/join-preview`);
+}
+
+export async function joinPendingCircle(
+	origin: string,
+	circleId: string,
+	input: { name: string; body?: string }
+): Promise<void> {
+	await apiJson(origin, `/circles/${circleId}/join`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(input)
+	});
+	await invalidateSnapshots(origin, { kind: 'circles' });
 }
 
 export async function fetchCircleSettings(

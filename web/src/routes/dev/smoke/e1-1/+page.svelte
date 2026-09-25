@@ -18,7 +18,7 @@
 		<div style="font-size:12.5px;color:var(--muted)">home.example.org</div>
 	</FieldDisplay>
 	<Label>Почта</Label>
-	<FieldDisplay value="you@example.com" active gray />
+	<FieldDisplay value="you@example.com" active />
 	<Hint>
 		Пришлём код для входа. Пароля нет: почта понадобится, только чтобы вернуться на
 		другом устройстве.

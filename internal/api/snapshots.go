@@ -19,6 +19,11 @@ func (s *Server) handleFeed(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
+	avatars, err := s.Chronicle.IdentityAvatarBlobIDs(r.Context(), chronicle.IdentityIDsFromFeed(posts))
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
 	meta, err := s.Chronicle.FeedMetaForAccount(r.Context(), circleID, sess.AccountID)
 	if err != nil {
 		writeDomainError(w, err)
@@ -34,7 +39,7 @@ func (s *Server) handleFeed(w http.ResponseWriter, r *http.Request) {
 	}
 	out := map[string]any{
 		"circle_id":         circleID,
-		"posts":             feedPostResponses(posts),
+		"posts":             feedPostResponses(posts, avatars),
 		"events":            events,
 		"circle_started_at": meta.CircleStartedAt.UTC().Format(time.RFC3339),
 	}
@@ -86,12 +91,14 @@ func (s *Server) handleMap(w http.ResponseWriter, r *http.Request) {
 	out := make([]map[string]any, len(pins))
 	for i, pin := range pins {
 		out[i] = map[string]any{
-			"post_id":    pin.PostID,
-			"blob_id":    pin.BlobID,
-			"entry_date": pin.EntryDate,
-			"created_at": pin.CreatedAt.UTC().Format(time.RFC3339),
-			"geo_lat":    pin.GeoLat,
-			"geo_lng":    pin.GeoLng,
+			"post_id":     pin.PostID,
+			"blob_id":     pin.BlobID,
+			"entry_date":  pin.EntryDate,
+			"created_at":  pin.CreatedAt.UTC().Format(time.RFC3339),
+			"geo_lat":     pin.GeoLat,
+			"geo_lng":     pin.GeoLng,
+			"author_name": pin.AuthorName,
+			"body":        pin.Body,
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"circle_id": circleID, "pins": out})
@@ -144,22 +151,27 @@ func (s *Server) handleDayDetail(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
+	avatars, err := s.Chronicle.IdentityAvatarBlobIDs(r.Context(), chronicle.IdentityIDsFromFeed(posts))
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"circle_id":  circleID,
 		"entry_date": entryDate,
-		"posts":      feedPostResponses(posts),
+		"posts":      feedPostResponses(posts, avatars),
 	})
 }
 
-func feedPostResponses(posts []chronicle.FeedPost) []map[string]any {
+func feedPostResponses(posts []chronicle.FeedPost, avatars map[string]string) []map[string]any {
 	out := make([]map[string]any, len(posts))
 	for i, fp := range posts {
-		out[i] = feedPostResponse(fp)
+		out[i] = feedPostResponse(fp, avatars)
 	}
 	return out
 }
 
-func feedPostResponse(fp chronicle.FeedPost) map[string]any {
+func feedPostResponse(fp chronicle.FeedPost, avatars map[string]string) map[string]any {
 	p := fp.Post
 	row := map[string]any{
 		"id":          p.ID,
@@ -169,6 +181,9 @@ func feedPostResponse(fp chronicle.FeedPost) map[string]any {
 		"identity_id": p.IdentityID,
 		"created_at":  p.CreatedAt.UTC().Format(time.RFC3339),
 		"event_seq":   p.EventSeq,
+	}
+	if blobID := avatars[p.IdentityID]; blobID != "" {
+		row["author_avatar_blob_id"] = blobID
 	}
 	if p.CapturedAt != nil {
 		row["captured_at"] = p.CapturedAt.UTC().Format(time.RFC3339)
@@ -180,7 +195,7 @@ func feedPostResponse(fp chronicle.FeedPost) map[string]any {
 	if len(fp.Comments) > 0 {
 		comments := make([]map[string]any, len(fp.Comments))
 		for j, c := range fp.Comments {
-			comments[j] = commentResponse(c)
+			comments[j] = commentResponse(c, avatars)
 		}
 		row["comments"] = comments
 	}

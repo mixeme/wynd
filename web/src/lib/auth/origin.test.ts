@@ -1,5 +1,18 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { resolveServerOrigin } from './origin';
+import { isLoopbackPublicURL, resolveServerOrigin } from './origin';
+
+describe('isLoopbackPublicURL', () => {
+	it('treats localhost and loopback IPs as loopback', () => {
+		expect(isLoopbackPublicURL('localhost')).toBe(true);
+		expect(isLoopbackPublicURL('http://127.0.0.1:7676')).toBe(true);
+		expect(isLoopbackPublicURL('https://[::1]')).toBe(true);
+	});
+
+	it('treats a public host as not loopback even without a scheme', () => {
+		expect(isLoopbackPublicURL('home.example.org')).toBe(false);
+		expect(isLoopbackPublicURL('')).toBe(false);
+	});
+});
 
 describe('resolveServerOrigin', () => {
 	const origin = 'http://127.0.0.1:5173';

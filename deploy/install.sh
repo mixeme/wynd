@@ -9,6 +9,7 @@ set -euo pipefail
 #
 # Options:
 #   --public-url URL   Public HTTPS address (written to config.json)
+#   --own-proxy        Skip Caddy; print a reverse-proxy snippet in the log
 #   --from-source      Build ./cmd/wynd from the repository root
 #   --data-dir PATH    Data directory (default: /var/lib/wynd)
 #   --bin PATH         Pre-built binary to install
@@ -17,6 +18,7 @@ INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 DATA_DIR="${DATA_DIR:-/var/lib/wynd}"
 SERVICE_USER="${SERVICE_USER:-wynd}"
 PUBLIC_URL=""
+OWN_PROXY=0
 FROM_SOURCE=0
 BINARY=""
 
@@ -32,6 +34,10 @@ while [[ $# -gt 0 ]]; do
 	--public-url)
 		PUBLIC_URL="${2:-}"
 		shift 2
+		;;
+	--own-proxy)
+		OWN_PROXY=1
+		shift
 		;;
 	--from-source)
 		FROM_SOURCE=1
@@ -61,6 +67,71 @@ if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
 	echo "Run as root." >&2
 	exit 1
 fi
+
+public_url_host() {
+	local u="${1:-}"
+	u="${u#https://}"
+	u="${u#http://}"
+	u="${u%%/*}"
+	echo "$u"
+}
+
+is_loopback_url() {
+	case "$1" in
+	http://127.0.0.1 | http://127.0.0.1:* | https://127.0.0.1 | https://127.0.0.1:* | \
+	http://localhost | http://localhost:* | https://localhost | https://localhost:* | \
+	http://[::1] | http://[::1]:* | https://[::1] | https://[::1]:*)
+		return 0
+		;;
+	esac
+	return 1
+}
+
+install_caddy_for() {
+	local url="$1"
+	local host
+	host="$(public_url_host "$url")"
+	if [[ -z "$host" ]]; then
+		return 0
+	fi
+	if ! command -v apt-get >/dev/null 2>&1; then
+		echo "Caddy: apt-get not found — install Caddy manually or pass --own-proxy." >&2
+		return 1
+	fi
+	if ! command -v caddy >/dev/null 2>&1; then
+		apt-get update -qq
+		apt-get install -y -qq caddy || {
+			echo "Caddy package install failed — configure reverse proxy manually or pass --own-proxy." >&2
+			return 1
+		}
+	fi
+	local caddyfile=/etc/caddy/Caddyfile
+	sed "s/example.org/$host/g" "$SCRIPT_DIR/proxy/Caddyfile" >"$caddyfile"
+	systemctl enable caddy.service 2>/dev/null || true
+	if ! systemctl reload caddy.service 2>/dev/null && ! systemctl restart caddy.service; then
+		echo "Caddy failed to start — public instance would be unreachable. Fix Caddy or pass --own-proxy." >&2
+		return 1
+	fi
+	if ! systemctl is-active --quiet caddy.service; then
+		echo "Caddy is not active — public instance would be unreachable. Fix Caddy or pass --own-proxy." >&2
+		return 1
+	fi
+	echo "Caddy configured for $host ($caddyfile)."
+}
+
+print_proxy_snippet() {
+	local url="$1"
+	local host
+	host="$(public_url_host "$url")"
+	if [[ -z "$host" ]]; then
+		return 0
+	fi
+	echo ""
+	echo "Reverse proxy (Caddy) — paste into your proxy config:"
+	echo "---"
+	sed "s/example.org/$host/g" "$SCRIPT_DIR/proxy/Caddyfile"
+	echo "---"
+}
 
 if ! command -v systemctl >/dev/null 2>&1; then
 	echo "systemd is required." >&2
@@ -147,6 +218,17 @@ sed \
 systemctl daemon-reload
 systemctl enable wynd.service
 systemctl restart wynd.service
+
+if [[ -n "$PUBLIC_URL" ]] && ! is_loopback_url "$PUBLIC_URL"; then
+	if [[ "$OWN_PROXY" -eq 1 ]]; then
+		print_proxy_snippet "$PUBLIC_URL"
+	elif ! install_caddy_for "$PUBLIC_URL"; then
+		echo "" >&2
+		echo "Public URL is set but reverse proxy is missing." >&2
+		echo "Wynd listens on loopback only — fix Caddy or pass --own-proxy and configure a proxy." >&2
+		exit 1
+	fi
+fi
 
 public_url="$PUBLIC_URL"
 if [[ -z "$public_url" && -f "$config_path" ]]; then

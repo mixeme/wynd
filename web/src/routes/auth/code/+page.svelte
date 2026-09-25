@@ -53,16 +53,12 @@
 		cooldown = resendCooldownSec(p);
 	}
 
-	const digits = $derived(code.replace(/\D/g, '').slice(0, 6).split(''));
-	const active = $derived(Math.min(digits.length, 5));
 	const logDelivery = $derived(pending?.codeDelivery === 'log');
 	const pageTitle = $derived(logDelivery ? 'Код с сервера' : 'Код из письма');
 
 	$effect(() => {
-		const clean = code.replace(/\D/g, '').slice(0, 6);
-		if (clean !== code) code = clean;
-		if (clean.length === 6 && pending && !loading) {
-			void submitCode(clean);
+		if (code.length === 6 && pending && !loading) {
+			void submitCode(code);
 		}
 	});
 
@@ -161,19 +157,7 @@
 		<div style="margin:7px 16px 0">
 			<TextButton class="link" onclick={changeEmail}>изменить адрес</TextButton>
 		</div>
-		<div class="code-wrap">
-			<input
-				bind:this={codeInput}
-				class="code-input"
-				type="text"
-				inputmode="numeric"
-				autocomplete="one-time-code"
-				maxlength="6"
-				bind:value={code}
-				aria-label="Код из шести цифр"
-			/>
-			<CodeBox {digits} {active} />
-		</div>
+		<CodeBox bind:value={code} bind:el={codeInput} autofocus />
 		<Hint>Код действует 15 минут. Три попытки.</Hint>
 		<div class="rowin">
 			<Button
@@ -193,20 +177,3 @@
 		<Hint style="margin-top:12px">{error}</Hint>
 	{/if}
 </FormLayout>
-
-<style>
-	.code-wrap {
-		position: relative;
-	}
-	.code-input {
-		position: absolute;
-		inset: 0;
-		opacity: 0;
-		width: 100%;
-		height: 100%;
-		font-size: 16px;
-		border: none;
-		background: transparent;
-		caret-color: transparent;
-	}
-</style>

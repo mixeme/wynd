@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/blob"
+	"gitea.mixdep.ru/mix/wynd/internal/check"
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 	"gitea.mixdep.ru/mix/wynd/internal/store"
 )
@@ -225,9 +226,58 @@ func uploadComplete(t *testing.T, s *blob.Store, accountID, mime string, payload
 func setInstanceQuota(t *testing.T, s *blob.Store, n int64) {
 	t.Helper()
 	if _, err := s.DB().ExecContext(t.Context(), `
-		UPDATE instance_settings SET storage_quota_bytes = ? WHERE id = 1
+		UPDATE instance_settings SET storage_quota_bytes = ?, storage_quota_disk_percent = NULL WHERE id = 1
 	`, n); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestDefaultInstanceQuotaIsEightyPercentDisk(t *testing.T) {
+	s, cleanup := openBlobStore(t)
+	defer cleanup()
+	abs, pct, err := s.InstanceQuotaSettings(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if abs != 107374182400 {
+		t.Fatalf("storage_quota_bytes: got %d want factory 100 GiB column", abs)
+	}
+	if pct == nil || *pct != 80 {
+		t.Fatalf("storage_quota_disk_percent: got %v want 80", pct)
+	}
+}
+
+func TestInstanceQuotaDiskPercent(t *testing.T) {
+	s, cleanup := openBlobStore(t)
+	defer cleanup()
+	ctx := t.Context()
+	if err := s.SetInstanceQuotaDiskPercent(ctx, 50); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.InstanceQuotaBytes(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, total, err := check.DiskUsage(filepath.Dir(s.Dir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := int64(total) * 50 / 100
+	if got != want {
+		t.Fatalf("quota: got %d want %d (50%% of %d)", got, want, total)
+	}
+	if err := s.SetInstanceQuotaBytes(ctx, 99); err != nil {
+		t.Fatal(err)
+	}
+	_, pct, err := s.InstanceQuotaSettings(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pct != nil {
+		t.Fatalf("expected absolute mode, percent=%v", pct)
+	}
+	if got, err := s.InstanceQuotaBytes(ctx); err != nil || got != 99 {
+		t.Fatalf("absolute quota: got %d err=%v", got, err)
 	}
 }
 
@@ -459,6 +509,78 @@ func TestBlobAccessAfterLeaveWithAccess(t *testing.T) {
 	}
 	if ok {
 		t.Fatal("left-with-access must not download blobs after leave")
+	}
+}
+
+func TestIdentityAvatarAccessAfterLeaveWithAccess(t *testing.T) {
+	st, err := store.OpenMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	ch, err := chronicle.New(st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	s, err := blob.New(st, filepath.Join(dir, "blobs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = os.MkdirAll(s.Dir(), 0o750)
+	ctx := t.Context()
+	seedAccount(t, st, "owner")
+	seedAccount(t, st, "bob")
+	seedAccount(t, st, "carol")
+
+	t0 := time.Date(2026, 8, 30, 10, 0, 0, 0, time.UTC)
+	circle, _, _, err := ch.CreateCircle(ctx, chronicle.CreateCircleInput{
+		Name: "Семья", OwnerAccountID: "owner", OwnerName: "Аня", Now: t0,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	face := uploadComplete(t, s, "owner", "image/jpeg", []byte("owner-face"))
+	if err := ch.UpdateIdentity(ctx, circle.ID, "owner", chronicle.UpdateIdentityInput{
+		AvatarBlobID: &face.ID,
+	}, t0); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := ch.Join(ctx, chronicle.JoinInput{
+		CircleID: circle.ID, AccountID: "bob", Name: "Боб", Now: t0,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	ok, err := s.CanAccessBlob(ctx, "bob", face.ID)
+	if err != nil || !ok {
+		t.Fatal("active member should download identity avatar")
+	}
+	if err := ch.LeaveWithAccess(ctx, circle.ID, "bob", t0.Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	ok, err = s.CanAccessBlob(ctx, "bob", face.ID)
+	if err != nil || !ok {
+		t.Fatal("left-with-access should still download avatars from the span")
+	}
+
+	if _, _, err := ch.Join(ctx, chronicle.JoinInput{
+		CircleID: circle.ID, AccountID: "carol", Name: "Катя", Now: t0.Add(2 * time.Hour),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	later := uploadComplete(t, s, "carol", "image/jpeg", []byte("carol-face"))
+	if err := ch.UpdateIdentity(ctx, circle.ID, "carol", chronicle.UpdateIdentityInput{
+		AvatarBlobID: &later.ID,
+	}, t0.Add(2*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	ok, err = s.CanAccessBlob(ctx, "bob", later.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok {
+		t.Fatal("left-with-access must not download avatars of people who joined after leave")
 	}
 }
 

@@ -249,3 +249,32 @@ func TestArchivePurgeRunsRegardlessOfDownloads(t *testing.T) {
 		t.Fatalf("due purge: %v %v", ids, err)
 	}
 }
+
+func TestEstimateArchivePersonalSkipsIncompleteBlobs(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	p := e.post(circle.ID, "owner", "фото", "2026-08-01", e.at(0))
+	e.seedBlob("ok", "owner")
+	e.attachPhoto(p.ID, "ok")
+	_, err := e.ch.DB().ExecContext(e.ctx, `
+		INSERT INTO blobs (id, account_id, sha256, size_bytes, mime_type, storage_path, status, created_at)
+		VALUES ('pending', 'owner', 'deadbeef', 99, 'image/jpeg', 'de/ad', 'pending', ?)
+	`, e.t0.UTC().Format(time.RFC3339))
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.attachPhoto(p.ID, "pending")
+	stats, err := e.ch.EstimateArchivePersonal(e.ctx, circle.ID, "owner", "2026-08-20")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.PostCount != 1 {
+		t.Fatalf("posts=%d", stats.PostCount)
+	}
+	if stats.MediaFiles != 1 {
+		t.Fatalf("files=%d want 1 (incomplete blob must not count)", stats.MediaFiles)
+	}
+	if stats.MediaBytes != 1 {
+		t.Fatalf("bytes=%d", stats.MediaBytes)
+	}
+}
