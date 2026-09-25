@@ -40,6 +40,13 @@ describe('checkButtonCssSync', () => {
 		`;
 		expect(checkButtonCssSync(bad).some((h) => h.includes('one') && h.includes('bare'))).toBe(true);
 	});
+
+	it('requires width on button.btn (native button shrink-wraps)', () => {
+		const bad = `
+			button.btn { display:block; border:none; font:inherit; cursor:pointer; }
+		`;
+		expect(checkButtonCssSync(bad).some((h) => h.includes('btn') && h.includes('width'))).toBe(true);
+	});
 });
 
 describe('prod route raw markup guards', () => {

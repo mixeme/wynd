@@ -439,6 +439,16 @@ func TestInvariantCommentWrongCircleRejected(t *testing.T) {
 	}
 }
 
+func TestSetEditWindowRejectsNegativeSeconds(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	neg := int64(-3600)
+	err := e.ch.SetEditWindow(e.ctx, circle.ID, "owner", chronicle.EditWindow{Seconds: &neg}, e.at(0))
+	if !errors.Is(err, chronicle.ErrInvalid) {
+		t.Fatalf("got %v, want ErrInvalid", err)
+	}
+}
+
 func TestInvariantLeftMemberCannotChangeSettings(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -795,18 +805,30 @@ func TestInvariantClearDayCoverFallsBack(t *testing.T) {
 	}
 }
 
-func TestCreatePostAllowsEmptyBody(t *testing.T) {
+func TestCreatePostAllowsEmptyBodyWithMedia(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
 	e.seedBlob("blob-1", "owner")
-	p, err := e.ch.CreatePost(e.ctx, chronicle.PostInput{
+	tx, err := e.ch.DB().BeginTx(e.ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	p, err := e.ch.CreatePostInTx(e.ctx, tx, chronicle.PostInput{
 		CircleID: circle.ID, AccountID: "owner", Body: "",
-		EntryDate: "2026-08-05", Now: e.at(0),
+		EntryDate: "2026-08-05", Now: e.at(0), AllowEmptyBody: true,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	e.attachPhoto(p.ID, "blob-1")
+	if err := e.ch.AttachMediaInTx(e.ctx, tx, p.ID, []chronicle.MediaInput{{
+		BlobID: "blob-1", Kind: chronicle.MediaPhoto,
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
 	if p.Body != "" {
 		t.Fatalf("body: %q", p.Body)
 	}

@@ -220,7 +220,7 @@
 	.actions {
 		display: flex;
 		gap: 10px;
-		margin-top: auto;
-		padding-top: 22px;
+		margin-top: 18px;
+		padding-top: 0;
 	}
 </style>

@@ -50,16 +50,29 @@
 		return formatEntryDate(cutoffDate);
 	}
 
-	function cutoffX(): number {
-		if (!volume.length || !cutoffDate) return 205;
+	let chartCutoffX = $state(205);
+	let cutoffFetchTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function syncChartCutoffX() {
+		if (!volume.length || !cutoffDate) return;
 		const period = cutoffDate.slice(0, 7);
 		const idx = volume.findIndex((b) => b.period === period);
-		if (idx < 0) return 205;
-		return 20 + (idx / Math.max(volume.length - 1, 1)) * 300;
+		// Same geometry as VolumeChart barCenterX: 1 + index * (18+8) + 18/2.
+		if (idx >= 0) chartCutoffX = 1 + idx * 26 + 9;
 	}
 
-	async function loadQuota(cutoff?: string) {
-		loading = true;
+	function onChartCutoff(index: number) {
+		const bucket = volume[index];
+		if (!bucket) return;
+		cutoffDate = `${bucket.period}-01`;
+		clearTimeout(cutoffFetchTimer);
+		cutoffFetchTimer = setTimeout(() => {
+			void loadQuota(cutoffDate, true);
+		}, 180);
+	}
+
+	async function loadQuota(cutoff?: string, quiet = false) {
+		if (!quiet) loading = true;
 		error = '';
 		try {
 			const data = await fetchQuota(circle.origin, circle.circleId, cutoff);
@@ -71,6 +84,7 @@
 				freedBytes = data.freed_at_cutoff_bytes;
 			}
 			if (!cutoffDate && volume.length) cutoffDate = defaultCutoff();
+			syncChartCutoffX();
 		} catch (err) {
 			if (isAccessError(err)) {
 				forbidden = true;
@@ -79,13 +93,14 @@
 				error = authErrorHint(err);
 			}
 		} finally {
-			loading = false;
+			if (!quiet) loading = false;
 		}
 	}
 
 	async function onCutoffChange(date: string) {
 		cutoffDate = date;
-		await loadQuota(date);
+		syncChartCutoffX();
+		await loadQuota(date, volume.length > 0);
 	}
 
 	function next() {
@@ -95,6 +110,7 @@
 
 	onMount(() => {
 		void loadQuota();
+		return () => clearTimeout(cutoffFetchTimer);
 	});
 </script>
 
@@ -133,7 +149,12 @@
 			/>
 		{/if}
 		<Label style="margin-top:18px">Сколько освободит отсечка</Label>
-		<VolumeChart {volume} cutoffLabel={cutoffLabel()} cutoffX={cutoffX()} />
+		<VolumeChart
+			{volume}
+			cutoffLabel={cutoffLabel()}
+			bind:cutoffX={chartCutoffX}
+			oncutoff={onChartCutoff}
+		/>
 		<Label style="margin-top:14px">Архивировать всё до</Label>
 		<Input
 			active

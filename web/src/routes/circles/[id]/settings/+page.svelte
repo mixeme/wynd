@@ -22,6 +22,7 @@
 		fetchCircleSettings,
 		fetchMembers,
 		fetchQuota,
+		isValidCustomHours,
 		patchCircle,
 		type EditWindowKey,
 		type MemberInfo
@@ -50,6 +51,9 @@
 	let error = $state('');
 	let colorReady = $state(false);
 	let ownerLeaveOpen = $state(false);
+	let nameHint = $state('');
+	const customHoursHintText = 'Укажите целое число часов от 1 до 8760';
+	let customHoursHint = $state('');
 
 	const activeMembers = $derived(members.filter((m) => m.status === 'active'));
 	const previewMembers = $derived(activeMembers.slice(0, 3));
@@ -80,8 +84,15 @@
 			name = settings.name;
 			color = circle.color;
 			editWindow = editWindowFromSec(settings.edit_window_sec);
-			if (editWindow === 'custom') {
-				customHours = customHoursFromSec(settings.edit_window_sec ?? 3600);
+			customHoursHint = '';
+			if (editWindow === 'custom' && settings.edit_window_sec != null) {
+				const parsed = customHoursFromSec(settings.edit_window_sec);
+				if (parsed === null) {
+					customHours = Math.round(settings.edit_window_sec / 3600);
+					customHoursHint = customHoursHintText;
+				} else {
+					customHours = parsed;
+				}
 			}
 			canSettings = settings.can_settings ?? false;
 			isOwner = settings.is_owner ?? false;
@@ -113,10 +124,14 @@
 	async function saveName() {
 		if (!canSettings) return;
 		const trimmed = name.trim();
-		if (!trimmed) return;
+		if (!trimmed) {
+			nameHint = 'Укажите название';
+			return;
+		}
+		nameHint = '';
 		try {
-			const { patchCircle } = await import('$lib/circles/settings');
 			await patchCircle(circle.origin, circle.circleId, { name: trimmed });
+			name = trimmed;
 			circle.name = trimmed;
 		} catch (err) {
 			error = authErrorHint(err);
@@ -140,6 +155,11 @@
 	async function onEditWindow(key: EditWindowKey) {
 		if (!canSettings) return;
 		editWindow = key;
+		if (key === 'custom' && !isValidCustomHours(customHours)) {
+			customHoursHint = customHoursHintText;
+			return;
+		}
+		customHoursHint = '';
 		try {
 			await patchCircle(circle.origin, circle.circleId, {
 				edit_window_sec: editWindowToSec(key, customHours)
@@ -151,6 +171,11 @@
 
 	async function onCustomHoursChange() {
 		if (!canSettings || editWindow !== 'custom') return;
+		if (!isValidCustomHours(customHours)) {
+			customHoursHint = customHoursHintText;
+			return;
+		}
+		customHoursHint = '';
 		try {
 			await patchCircle(circle.origin, circle.circleId, {
 				edit_window_sec: editWindowToSec('custom', customHours)
@@ -218,6 +243,9 @@
 		<Label>Название</Label>
 		{#if canSettings}
 			<Input active bind:value={name} onchange={() => void saveName()} />
+			{#if nameHint}
+				<Hint style="margin-top:8px">{nameHint}</Hint>
+			{/if}
 		{:else}
 			<FieldDisplay value={name} />
 		{/if}
@@ -254,6 +282,9 @@
 					/>
 					<span class="hint" style="margin:0">часов</span>
 				</div>
+				{#if customHoursHint}
+					<Hint style="margin-top:8px">{customHoursHint}</Hint>
+				{/if}
 			{/if}
 			<Hint
 				>После публикации запись можно изменить в течение выбранного окна. Каждая запись

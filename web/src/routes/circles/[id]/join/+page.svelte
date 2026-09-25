@@ -48,7 +48,7 @@
 	let fileInput: HTMLInputElement | undefined = $state();
 
 	const displayMembers = $derived.by(() => {
-		if (peek) {
+		if (peek?.members) {
 			return peek.members.slice(0, 5).map((m, i) => ({
 				name: m.name,
 				initial: circleInitial(m.name),
@@ -149,6 +149,9 @@
 			await setCircleIdentity(circle.origin, circle.circleId, trimmed);
 			const avatarOk = await uploadPendingAvatar();
 			rememberCircleOrigin(circle.circleId, circle.origin);
+			circle.identityName = trimmed;
+			circle.identityInitial = circleInitial(trimmed);
+			await circle.refresh();
 			const avatarQuery = hadAvatar && !avatarOk ? '?joinAvatar=fail' : '';
 			goto(`/circles/${circle.circleId}${avatarQuery}`);
 		} catch (err) {
@@ -167,7 +170,7 @@
 	});
 </script>
 
-{#if showMembers && peek}
+{#if showMembers && peek?.members}
 	<FormLayout
 		app
 		color={circle.color}

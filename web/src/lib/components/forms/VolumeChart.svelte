@@ -85,7 +85,7 @@
 	}
 
 	function onPointerDown(e: PointerEvent) {
-		if (!volume.length || e.button !== 0) return;
+		if (!oncutoff || !volume.length || e.button !== 0) return;
 		svgEl?.setPointerCapture(e.pointerId);
 		dragging = true;
 		applyIndex(indexAtX(clientToSvgX(e.clientX)));
@@ -98,7 +98,7 @@
 
 	function onPointerUp(e: PointerEvent) {
 		if (!dragging) return;
-		svgEl?.releasePointerCapture(e.pointerId);
+		if (svgEl?.hasPointerCapture(e.pointerId)) svgEl.releasePointerCapture(e.pointerId);
 		dragging = false;
 	}
 </script>

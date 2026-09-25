@@ -10,10 +10,28 @@ export interface InvitePeekMember {
 export interface InvitePeek {
 	server_name: string;
 	host: string;
+	inviter_name?: string;
+	circle_name?: string;
+	color?: CircleColor;
+	member_count?: number;
+	members?: InvitePeekMember[];
+}
+
+export function isCircleInvitePeek(
+	peek: InvitePeek
+): peek is InvitePeek & {
 	circle_name: string;
 	color: CircleColor;
 	member_count: number;
 	members: InvitePeekMember[];
+} {
+	return Boolean(peek.circle_name) && Array.isArray(peek.members);
+}
+
+export function serverInviteSubtitle(peek: InvitePeek, fallbackHost: string): string {
+	const host = peek.host || fallbackHost;
+	if (peek.inviter_name) return `${host} · позвал ${peek.inviter_name}`;
+	return host;
 }
 
 export async function fetchInvitePeek(origin: string, token: string): Promise<InvitePeek> {
@@ -50,14 +68,14 @@ export function clearInviteJoinToken(circleId: string): void {
 }
 
 export function inviteCardPreview(peek: InvitePeek): string {
-	const n = peek.member_count;
+	const n = peek.member_count ?? 0;
 	const count =
 		n % 10 === 1 && n % 100 !== 11
 			? `${n} участник`
 			: n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)
 				? `${n} участника`
 				: `${n} участников`;
-	const inviter = peek.members.find((m) => m.is_inviter);
+	const inviter = peek.members?.find((m) => m.is_inviter);
 	if (inviter) {
 		return `${count} · пригласила ${inviter.name}`;
 	}

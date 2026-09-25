@@ -150,7 +150,7 @@ func checkDKIM(in Input) Result {
 		r.Detail = "настройте SMTP, затем DKIM у провайдера почты"
 		return r
 	}
-	r.Status = StatusOK
+	r.Status = StatusWarn
 	r.Detail = "проверьте DKIM у почтового провайдера"
 	return r
 }

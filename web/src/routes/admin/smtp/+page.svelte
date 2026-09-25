@@ -23,14 +23,15 @@
 	let notice = $state('');
 	let loading = $state(true);
 	let saving = $state(false);
+	let sending = $state(false);
 
-	async function persist() {
+	async function persist(opts?: { quiet?: boolean }): Promise<boolean> {
 		const trimmedHost = host.trim();
 		const trimmedFrom = from.trim();
-		if (!trimmedHost || !trimmedFrom) return;
-		saving = true;
+		if (!trimmedHost || !trimmedFrom) return false;
+		if (!opts?.quiet) saving = true;
 		error = '';
-		notice = '';
+		if (!opts?.quiet) notice = '';
 		try {
 			await saveSmtp({
 				host: trimmedHost,
@@ -41,24 +42,38 @@
 			});
 			configured = true;
 			password = '';
-			notice = 'Сохранено';
+			if (!opts?.quiet) notice = 'Сохранено';
+			return true;
 		} catch (err) {
 			error = authErrorHint(err);
+			return false;
 		} finally {
-			saving = false;
+			if (!opts?.quiet) saving = false;
 		}
 	}
 
 	async function sendTest() {
 		const to = testTo.trim();
-		if (!to) return;
+		if (!to) {
+			error = 'Укажите адрес, куда отправить письмо';
+			notice = '';
+			return;
+		}
 		error = '';
 		notice = '';
+		sending = true;
 		try {
+			const saved = await persist({ quiet: true });
+			if (!saved) {
+				if (!error) error = 'Сначала укажите хост и адрес отправителя';
+				return;
+			}
 			await sendSmtpTest(to);
 			notice = 'Письмо отправлено';
 		} catch (err) {
 			error = authErrorHint(err);
+		} finally {
+			sending = false;
 		}
 	}
 
@@ -134,12 +149,17 @@
 			<SectionLabel style="margin:28px 0 8px">Проверочное письмо</SectionLabel>
 			<div style="display:flex;align-items:center;gap:12px;max-width:420px">
 				<Input admin style="flex:1" placeholder="куда" bind:value={testTo} />
-				<TextButton variant="adminBox" style="font-weight:600" onclick={() => void sendTest()}
-					>Отправить</TextButton
+				<TextButton
+					variant="adminBox"
+					style="font-weight:600"
+					loading={sending}
+					onclick={() => void sendTest()}>Отправить</TextButton
 				>
 			</div>
 			{#if saving}
 				<Hint style="margin-top:12px">Сохранение…</Hint>
+			{:else if sending}
+				<Hint style="margin-top:12px">Отправляем…</Hint>
 			{:else if notice}
 				<Hint style="margin-top:12px">{notice}</Hint>
 			{/if}

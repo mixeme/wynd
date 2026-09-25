@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +17,13 @@ func TestProbeEndpoints(t *testing.T) {
 	srv.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("probe: %d %s", rec.Code, rec.Body.String())
+	}
+	var probe map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &probe); err != nil {
+		t.Fatal(err)
+	}
+	if probe["body_probe_bytes"] != float64(2<<20) {
+		t.Fatalf("body_probe_bytes: %v", probe["body_probe_bytes"])
 	}
 
 	req = httptest.NewRequest(http.MethodGet, "/api/v1/probe/sse", nil)
@@ -58,5 +66,16 @@ func TestProbeBodyTooLarge(t *testing.T) {
 	srv.ServeHTTP(rec, req)
 	if rec.Code != http.StatusRequestEntityTooLarge {
 		t.Fatalf("probe body limit: %d %s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/probe", nil)
+	rec = httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	var capped map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &capped); err != nil {
+		t.Fatal(err)
+	}
+	if capped["body_probe_bytes"] != float64(1<<20) {
+		t.Fatalf("body_probe_bytes after compression: %v", capped["body_probe_bytes"])
 	}
 }

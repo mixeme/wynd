@@ -136,8 +136,9 @@ type AdminLoginInput struct {
 }
 
 type CreateServerInviteInput struct {
-	Kind    InviteKind
-	MaxUses int
-	TTL     time.Duration
-	Now     time.Time
+	Kind               InviteKind
+	MaxUses            int
+	TTL                time.Duration
+	CreatedByAccountID string
+	Now                time.Time
 }

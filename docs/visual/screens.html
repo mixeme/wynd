@@ -288,6 +288,7 @@
   .mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
   .qr { width:168px; height:168px; margin:16px auto 0; border:1px solid var(--line);
         background:var(--card); border-radius:12px; padding:13px; }
+  .qr.sm { width:118px; height:118px; padding:10px; margin-top:10px; }
   .under { border-bottom:1px solid; padding-bottom:1px; }
   .men { font-weight:600; color:var(--c); }
 
@@ -418,7 +419,7 @@
 <h1>Экраны</h1>
 <p class="lede">Всё, что человек видит: от приглашения до панели администратора.</p>
 
-<p>Экранов здесь <strong>93</strong>. Каждый нарисован разметкой, а не картинкой. Рамка — <code>390 × 800</code>, обычный телефон в CSS-пикселях, масштаб 1:1. Размер на макете и есть размер в продукте: кегль 13.5 — это 13.5, кнопка 48 — это 48, поле 16 — это 16. Ничего не отмасштабировано «для красоты».</p>
+<p>Экранов здесь <strong>102</strong>. Каждый нарисован разметкой, а не картинкой. Рамка — <code>390 × 800</code>, обычный телефон в CSS-пикселях, масштаб 1:1. Размер на макете и есть размер в продукте: кегль 13.5 — это 13.5, кнопка 48 — это 48, поле 16 — это 16. Ничего не отмасштабировано «для красоты».</p>
 
 <p>Фотографии заменены заливками намеренно. Макет отвечает за композицию, ритм и то, сколько на экране помещается, — а не за то, насколько удачный снимок под ним. Всё, что в продукте придёт с сервера, здесь показано как форма и объём.</p>
 
@@ -613,7 +614,7 @@
 </div></div>
 <h2>Улочка</h2>
 <p class="lede">Список кругов — единственный экран, где видно всё сразу.</p>
-<p>Сквозной ленты нет: здесь не содержимое кругов, а сами двери. Порядок — по свежести, закреплённые сверху. Как закрепить — 2.8: удержал строку, и под ней слово, не булавка и не панель. В шапке только знак, поиск и шестерёнка: гамбургер обещал бы навигацию, которой нет. Цвет и первая буква работают как позиция на полке — через неделю рука сама тянется к нужной плитке, не читая названия.</p>
+<p>Сквозной ленты нет: здесь не содержимое кругов, а сами двери. Порядок — по свежести, закреплённые сверху. Как закрепить — 2.8: удержал строку, и под ней слово, не булавка и не панель. Как сложить двери в группы — 2.10–2.13: удержал плюс, имя на месте, чипы внутри новой папки, удержание заголовка. В шапке только знак, поиск и шестерёнка: гамбургер обещал бы навигацию, которой нет. Цвет и первая буква работают как позиция на полке — через неделю рука сама тянется к нужной плитке, не читая названия.</p>
 
 <div class="bleed"><div class="gal">
 <figure class="s" id="e2-1"><div class="ph shell">
@@ -647,7 +648,7 @@
     <div class="rt"><span>24 июл</span></div></div>
   <div class="fab"><svg class="ic" style="width:26px;height:26px;stroke-width:1.5"><use href="#i-plus"/></svg></div>
 </div>
-<span class="num">2.1</span><b>Список кругов</b><i>Счётчик непрочитанного — цветом круга, кнопка «новый круг» — чернилами: акцент принадлежит кругу, оболочка молчит даже в главной кнопке. Вторая строка — последнее, что произошло, и событие в ней стоит наравне с записью. Две метки секций — «Закреплённые» и «Остальные», между ними линия. Секция сверху — результат 2.8, не отдельный экран.</i></figure>
+<span class="num">2.1</span><b>Список кругов</b><i>Счётчик непрочитанного — цветом круга, кнопка «новый круг» — чернилами: акцент принадлежит кругу, оболочка молчит даже в главной кнопке. Вторая строка — последнее, что произошло, и событие в ней стоит наравне с записью. Две метки секций — «Закреплённые» и «Остальные», между ними линия. Секция сверху — результат 2.8, не отдельный экран. Плюс добавляет: короткий тап — новый круг, удержание — меню 2.10.</i></figure>
 
 <figure class="s" id="e2-8"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -682,7 +683,7 @@
     <div class="m"><div class="n">Ремонт</div><div class="p">Славик: плитку привезут в среду</div></div>
     <div class="rt"><span>24 июл</span></div></div>
 </div>
-<span class="num">2.8</span><b>Закрепить</b><i>Удержал строку — под ней слово, на месте, как плюс раскрывает реакции. Булавки на каждой двери нет: закрепление редкое, и значок обещал бы кнопку. Всплывающую панель под закрепление не заводим — панель в продукте у отреагировавших и у прав участника. Открепить — тем же удержанием, слово меняется. Живёт только на этом устройстве и группам не подчиняется: закреплённое остаётся над папками.</i></figure>
+<span class="num">2.8</span><b>Закрепить</b><i>Удержал строку — под ней слово, на месте, как плюс раскрывает реакции. Булавки на каждой двери нет: закрепление редкое, и значок обещал бы кнопку. Всплывающую панель под закрепление не заводим — панель в продукте у отреагировавших и у прав участника. Открепить — тем же удержанием, слово меняется. Если круг лежит в группе, под «Закрепить» второе слово — «Убрать из группы». Чипов папок на карточке двери нет: кладут изнутри группы, 2.11. Живёт только на этом устройстве и группам не подчиняется: закреплённое остаётся над папками.</i></figure>
 
 <figure class="s" id="e2-2"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -717,7 +718,16 @@
   <div class="btn c">Создать и позвать</div>
   <div class="hint ctr" style="margin-top:26px"><span class="under">Или круг только для себя, как дневник</span></div>
 </div>
-<span class="num">2.3</span><b>Новый круг</b><i>Четыре решения, и первое из них — сервер: где круг заведётся, там он и живёт, пока его не перенесут. Строка стоит выше названия, а под ней прямым текстом сказано, что данные лежат незашифрованными. Из выбора сервера никуда не уводят: добавить новый — отдельная дорога, и возвращаться с неё к недособранной форме человек не должен. Цвет выбирается здесь же, а не «потом в настройках», — он и есть способ не перепутать дверь; экран уже перекрашен, и кнопка показывает, чем круг станет. «Создать и позвать» открывает 2.7, не пустую ленту: звать — следующий шаг, а не обещание в настройках.</i></figure>
+<span class="num">2.3</span><b>Новый круг</b><i>Четыре решения, и первое из них — сервер: где круг заведётся, там он и живёт, пока его не перенесут. Строка стоит выше названия, а под ней прямым текстом сказано, что данные лежат незашифрованными. Шеврон открывает 2.14. Добавить новый — отдельная дорога: с недособранной формы туда не уводят. Цвет выбирается здесь же, а не «потом в настройках», — он и есть способ не перепутать дверь; экран уже перекрашен, и кнопка показывает, чем круг станет. «Создать и позвать» открывает 2.7, не пустую ленту: звать — следующий шаг, а не обещание в настройках.</i></figure>
+
+<figure class="s" id="e2-14"><div class="ph ochre">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Сервер</span></div>
+  <div class="row2" style="margin-top:8px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">Дом Ани</div><div class="sub">home.example.org · 5 кругов</div></div><svg class="ic sm"><use href="#i-check"/></svg></div>
+  <div class="row2"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">У Славы</div><div class="sub">wynd.u-slavy.ru · 1 круг</div></div></div>
+  <div class="hint" style="margin-top:18px">Здесь серверы, на которых вы уже есть. Добавить другой можно в настройках, до этой формы.</div>
+</div>
+<span class="num">2.14</span><b>Выбор сервера</b><i>Шеврон с 2.3 и с 2.4. Это не настройки 7.2: оттуда выходят и добавляют, отсюда только выбирают, куда ляжет круг. Строки те же, что на форме — имя впереди адреса, сколько кругов уже есть. Галочка на выбранном; тап ставит её и возвращает на форму. Назад — без смены. Кнопки «добавить сервер» нет: с недособранной формы не уводят в регистрацию. Одна учётка — тот же экран, одна строка с галочкой; шеврон на форме не прячется, иначе строка выглядит мёртвой.</i></figure>
 
 <figure class="s" id="e2-4"><div class="ph indigo">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -741,19 +751,35 @@
 <figure class="s" id="e2-7"><div class="ph ochre">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Пригласить в Дачу</span></div>
+  <div class="btn gh" style="margin-top:12px">Позвать из других кругов</div>
   <div class="qr"><svg viewBox="0 0 25 25" width="142" height="142" style="display:block" aria-label="QR" role="img"><g fill="#2B2724" shape-rendering="crispEdges"><rect x="0" y="0" width="7" height="1"/><rect x="8" y="0" width="2" height="1"/><rect x="11" y="0" width="1" height="1"/><rect x="13" y="0" width="2" height="1"/><rect x="16" y="0" width="1" height="1"/><rect x="18" y="0" width="7" height="1"/><rect x="0" y="1" width="1" height="1"/><rect x="6" y="1" width="1" height="1"/><rect x="8" y="1" width="4" height="1"/><rect x="13" y="1" width="2" height="1"/><rect x="18" y="1" width="1" height="1"/><rect x="24" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="2" y="2" width="3" height="1"/><rect x="6" y="2" width="1" height="1"/><rect x="9" y="2" width="1" height="1"/><rect x="11" y="2" width="1" height="1"/><rect x="13" y="2" width="4" height="1"/><rect x="18" y="2" width="1" height="1"/><rect x="20" y="2" width="3" height="1"/><rect x="24" y="2" width="1" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="2" y="3" width="3" height="1"/><rect x="6" y="3" width="1" height="1"/><rect x="9" y="3" width="1" height="1"/><rect x="12" y="3" width="1" height="1"/><rect x="14" y="3" width="3" height="1"/><rect x="18" y="3" width="1" height="1"/><rect x="20" y="3" width="3" height="1"/><rect x="24" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="2" y="4" width="3" height="1"/><rect x="6" y="4" width="1" height="1"/><rect x="9" y="4" width="2" height="1"/><rect x="12" y="4" width="2" height="1"/><rect x="16" y="4" width="1" height="1"/><rect x="18" y="4" width="1" height="1"/><rect x="20" y="4" width="3" height="1"/><rect x="24" y="4" width="1" height="1"/><rect x="0" y="5" width="1" height="1"/><rect x="6" y="5" width="1" height="1"/><rect x="12" y="5" width="1" height="1"/><rect x="14" y="5" width="2" height="1"/><rect x="18" y="5" width="1" height="1"/><rect x="24" y="5" width="1" height="1"/><rect x="0" y="6" width="7" height="1"/><rect x="8" y="6" width="1" height="1"/><rect x="10" y="6" width="1" height="1"/><rect x="12" y="6" width="1" height="1"/><rect x="14" y="6" width="1" height="1"/><rect x="16" y="6" width="1" height="1"/><rect x="18" y="6" width="7" height="1"/><rect x="8" y="7" width="1" height="1"/><rect x="10" y="7" width="1" height="1"/><rect x="15" y="7" width="1" height="1"/><rect x="2" y="8" width="1" height="1"/><rect x="6" y="8" width="1" height="1"/><rect x="8" y="8" width="1" height="1"/><rect x="13" y="8" width="2" height="1"/><rect x="16" y="8" width="5" height="1"/><rect x="22" y="8" width="3" height="1"/><rect x="1" y="9" width="2" height="1"/><rect x="8" y="9" width="3" height="1"/><rect x="13" y="9" width="4" height="1"/><rect x="19" y="9" width="4" height="1"/><rect x="4" y="10" width="1" height="1"/><rect x="6" y="10" width="1" height="1"/><rect x="10" y="10" width="3" height="1"/><rect x="14" y="10" width="11" height="1"/><rect x="2" y="11" width="4" height="1"/><rect x="7" y="11" width="1" height="1"/><rect x="10" y="11" width="1" height="1"/><rect x="12" y="11" width="4" height="1"/><rect x="17" y="11" width="2" height="1"/><rect x="21" y="11" width="1" height="1"/><rect x="23" y="11" width="1" height="1"/><rect x="3" y="12" width="4" height="1"/><rect x="10" y="12" width="2" height="1"/><rect x="18" y="12" width="1" height="1"/><rect x="20" y="12" width="5" height="1"/><rect x="2" y="13" width="1" height="1"/><rect x="7" y="13" width="5" height="1"/><rect x="18" y="13" width="1" height="1"/><rect x="24" y="13" width="1" height="1"/><rect x="1" y="14" width="1" height="1"/><rect x="4" y="14" width="3" height="1"/><rect x="9" y="14" width="3" height="1"/><rect x="14" y="14" width="1" height="1"/><rect x="18" y="14" width="1" height="1"/><rect x="20" y="14" width="2" height="1"/><rect x="1" y="15" width="1" height="1"/><rect x="4" y="15" width="2" height="1"/><rect x="7" y="15" width="2" height="1"/><rect x="10" y="15" width="3" height="1"/><rect x="14" y="15" width="2" height="1"/><rect x="18" y="15" width="1" height="1"/><rect x="23" y="15" width="2" height="1"/><rect x="0" y="16" width="2" height="1"/><rect x="3" y="16" width="1" height="1"/><rect x="6" y="16" width="1" height="1"/><rect x="8" y="16" width="1" height="1"/><rect x="12" y="16" width="1" height="1"/><rect x="14" y="16" width="7" height="1"/><rect x="9" y="17" width="1" height="1"/><rect x="14" y="17" width="1" height="1"/><rect x="16" y="17" width="1" height="1"/><rect x="20" y="17" width="1" height="1"/><rect x="0" y="18" width="7" height="1"/><rect x="9" y="18" width="1" height="1"/><rect x="13" y="18" width="4" height="1"/><rect x="18" y="18" width="1" height="1"/><rect x="20" y="18" width="4" height="1"/><rect x="0" y="19" width="1" height="1"/><rect x="6" y="19" width="1" height="1"/><rect x="10" y="19" width="1" height="1"/><rect x="13" y="19" width="1" height="1"/><rect x="16" y="19" width="1" height="1"/><rect x="20" y="19" width="2" height="1"/><rect x="23" y="19" width="1" height="1"/><rect x="0" y="20" width="1" height="1"/><rect x="2" y="20" width="3" height="1"/><rect x="6" y="20" width="1" height="1"/><rect x="10" y="20" width="2" height="1"/><rect x="13" y="20" width="8" height="1"/><rect x="22" y="20" width="1" height="1"/><rect x="24" y="20" width="1" height="1"/><rect x="0" y="21" width="1" height="1"/><rect x="2" y="21" width="3" height="1"/><rect x="6" y="21" width="1" height="1"/><rect x="8" y="21" width="2" height="1"/><rect x="12" y="21" width="1" height="1"/><rect x="16" y="21" width="3" height="1"/><rect x="20" y="21" width="3" height="1"/><rect x="0" y="22" width="1" height="1"/><rect x="2" y="22" width="3" height="1"/><rect x="6" y="22" width="1" height="1"/><rect x="8" y="22" width="2" height="1"/><rect x="13" y="22" width="2" height="1"/><rect x="16" y="22" width="2" height="1"/><rect x="21" y="22" width="1" height="1"/><rect x="23" y="22" width="1" height="1"/><rect x="0" y="23" width="1" height="1"/><rect x="6" y="23" width="1" height="1"/><rect x="8" y="23" width="2" height="1"/><rect x="12" y="23" width="2" height="1"/><rect x="15" y="23" width="7" height="1"/><rect x="23" y="23" width="1" height="1"/><rect x="0" y="24" width="7" height="1"/><rect x="8" y="24" width="5" height="1"/><rect x="15" y="24" width="1" height="1"/><rect x="18" y="24" width="1" height="1"/><rect x="20" y="24" width="1" height="1"/><rect x="23" y="24" width="1" height="1"/></g></svg></div>
-  <div class="hint ctr" style="margin-top:12px">Покажите код или отправьте ссылку</div>
-  <div class="fld mono" style="margin-top:18px;font-size:12.5px;overflow:hidden;white-space:nowrap">home.example.org/i/7Kq2-mR4v</div>
+  <div class="hint ctr" style="margin-top:8px">Кто ещё не на сервере — код или ссылка</div>
+  <div class="fld mono" style="margin-top:12px;font-size:12.5px;overflow:hidden;white-space:nowrap">home.example.org/i/7Kq2-mR4v</div>
   <div class="rowin"><div class="btn c" style="flex:1">Поделиться</div><div class="btn gh" style="flex:1;margin:0">Скопировать</div></div>
-  <div class="lab" style="margin-top:22px">Ссылка</div>
+  <div class="lab" style="margin-top:14px">Ссылка</div>
   <div class="chips"><span class="chip on">Одноразовая</span><span class="chip">Многоразовая</span></div>
   <div class="chips" style="margin-top:8px"><span class="chip">1 час</span><span class="chip on">72 часа</span><span class="chip">Неделя</span></div>
-  <div class="hint">Ссылка несёт адрес сервера и токен. Многоразовая показывает лимит 5 / 10 / 25 — чипы появляются, когда её выбирают.</div>
-  <div class="lab" style="margin-top:16px">Живые</div>
+  <div class="lab" style="margin-top:12px">Живые</div>
   <div class="row2" style="padding-top:2px"><div class="g"><div style="font-weight:600">Одноразовая · не использована</div><div class="sub">до 13 сентября · 7Kq2-mR4v</div></div><span class="val">скопировать</span></div>
-  <div class="btn gh">Сначала в круг, позову потом</div>
+  <div class="btn gh" style="margin-top:12px">Сначала в круг, позову потом</div>
 </div>
-<span class="num">2.7</span><b>Позвать</b><i>«Создать и позвать» — не метафора: круг уже есть, и этот кадр — как в него входят. Звать можно двумя вещами и никакими другими: код тому, кто рядом, ссылка тому, кто далеко. Книжки контактов и «пригласить по почте» нет: приглашение и есть регистрация, и тащить сюда чужой список значило бы спрашивать не про круг, а про телефон. «Поделиться» открывает системный шаринг — его, как сканер QR, своим макетом не рисуем. Ниже создания — живые ссылки: скопировать снова или отозвать. Кнопка «Сначала в круг, позову потом» и шеврон ведут в пустой круг 3.6. Обводка того же веса, что у «Скопировать»: звать можно позже, но выход в свой круг должен быть на виду.</i></figure>
+<span class="num">2.7</span><b>Позвать</b><i>«Создать и позвать» — не метафора: круг уже есть, и этот кадр — как в него входят. Кто уже в другом вашем круге — кнопка «Позвать из других кругов», не выбранные за вас двое. Она открывает полный список 2.9. Если это первый круг, кнопки нет: звать некого. Ниже — код тому, кто рядом, ссылка тому, кого на сервере ещё нет. «Поделиться» открывает системный шаринг — его, как сканер QR, своим макетом не рисуем. Живые ссылки: скопировать снова или отозвать. Кнопка «Сначала в круг, позову потом» и шеврон ведут в пустой круг 3.6.</i></figure>
+
+<figure class="s" id="e2-9"><div class="ph ochre">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Из других кругов</span></div>
+  <div class="hint">Люди из ваших кругов на этом сервере. Группы — круги; имя — как вы их знаете там. В «Даче» каждый выберет своё.</div>
+  <div class="gh2" style="margin-top:12px"><u style="background:var(--terracotta)"></u><span>Семья</span><span class="cnt2">5</span></div>
+  <div class="row2" style="padding-top:2px"><div class="av" style="background:#58673A">А</div><div class="g"><div style="font-weight:600">Аня</div><div class="sub">Семья</div></div><span class="val">позвать</span></div>
+  <div class="row2"><div class="av" style="background:#62452F">К</div><div class="g"><div style="font-weight:600">Кот</div><div class="sub">Семья</div></div><span class="val">позвать</span></div>
+  <div class="row2"><div class="av" style="background:#3C4D83">М</div><div class="g"><div style="font-weight:600">Мама</div><div class="sub">Семья</div></div><span class="val" style="color:var(--faint)">позвали</span></div>
+  <div class="row2"><div class="av" style="background:#357077">П</div><div class="g"><div style="font-weight:600">Петя</div><div class="sub">Семья</div></div><span class="val">позвать</span></div>
+  <div class="row2" style="opacity:.6"><div class="av" style="background:#7A4265">Л</div><div class="g"><div style="font-weight:600">Люся</div><div class="sub">Семья · вышла</div></div><span class="val">позвать</span></div>
+  <div class="gh2"><u style="background:var(--ochre)"></u><span>Поход на Алтай</span><span class="cnt2">1</span></div>
+  <div class="row2" style="padding-top:2px"><div class="av" style="background:#70571B">И</div><div class="g"><div style="font-weight:600">Игорь</div><div class="sub">Поход на Алтай</div></div><span class="val">позвать</span></div>
+  <div class="hint" style="margin-top:18px">Кто уже в «Даче», сюда не попадает. Человек из двух кругов — в обеих группах, имена могут не совпасть. Тап — пуш и вступление 1.3: почту не спрашиваем. Ссылку им отправлять не нужно.</div>
+</div>
+<span class="num">2.9</span><b>Позвать из других кругов</b><i>Кнопка с 2.7 и с 6.4. Это не книжка контактов и не «первые двое»: список полный, режет только тех, кто уже в этом круге. Группы — ваши другие круги, цвет как у двери; в строке имя и круг, откуда человек. Связать «Аню» из «Семьи» с лицом в «Даче» по-прежнему нельзя. Кто вышел, но учётка жива, остаётся: позвать можно. Участника без страницы это не ломает: тап зовёт, а не открывает карточку.</i></figure>
 
 <figure class="s" id="e2-5"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -807,7 +833,137 @@
   <div class="hint ctr" style="margin-top:26px">группы видны только на этом устройстве</div>
   <div class="fab"><svg class="ic" style="width:26px;height:26px;stroke-width:1.5"><use href="#i-plus"/></svg></div>
 </div>
-<span class="num">2.6</span><b>Группы кругов</b><i>Папки, живущие только на устройстве: на сервер не уходят, другим не видны, круг может лежать в одной. Ждут живых данных — пока неясно, сколько кругов бывает у человека. Закреплённые остаются над группами: закрепление сильнее раскладки.</i></figure>
+<span class="num">2.6</span><b>Группы кругов</b><i>Папки, живущие только на устройстве: на сервер не уходят, другим не видны, круг может лежать в одной. Ждут живых данных — пока неясно, сколько кругов бывает у человека. Закреплённые остаются над группами: закрепление сильнее раскладки. Этот кадр — полка уже сложена. Завести группу — удержание плюса 2.10 и имя 2.13; положить двери — 2.11; переименовать и удалить — 2.12.</i></figure>
+
+<figure class="s" id="e2-10"><div class="ph shell">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="appbar">
+    <svg class="mk" viewBox="-21.67 -31.8 42.9 64.47" aria-label="Wynd" role="img"><use href="#mark" fill="currentColor" x="-21.67" y="-31.8" width="42.9" height="64.47"/></svg>
+    <span class="sp"></span>
+    <svg class="ic"><use href="#i-search"/></svg>
+    <svg class="ic"><use href="#i-gear"/></svg>
+  </div>
+  <div class="lab">Закреплённые</div>
+  <div class="r" style="--rc:var(--terracotta)"><div class="sq">С</div>
+    <div class="m"><div class="n">Семья</div><div class="p">Аня: были на даче, все живы</div></div>
+    <div class="rt"><span>14:02</span><span class="bdg">3</span></div></div>
+  <div class="sep"></div>
+  <div class="lab">Остальные</div>
+  <div class="r" style="--rc:var(--olive)"><div class="sq">П</div>
+    <div class="m"><div class="n">Поход на Алтай</div><div class="p">Мышка теперь Мышь</div></div>
+    <div class="rt"><span>вчера</span><span class="bdg">1</span></div></div>
+  <div class="r" style="--rc:var(--indigo)"><div class="sq">У</div>
+    <div class="m"><div class="n">Универ</div><div class="p">Петя: нашёл фотки с 3 курса</div></div>
+    <div class="rt"><span>пн</span></div></div>
+  <div class="r" style="--rc:var(--ochre)"><div class="sq">Д</div>
+    <div class="m"><div class="n">Дача</div><div class="p">Мама: яблони зацвели</div></div>
+    <div class="rt"><span>5 авг</span></div></div>
+  <div class="r" style="--rc:var(--slate)"><div class="sq">С</div>
+    <div class="m"><div class="n">Соседи</div><div class="p">Игорь присоединился</div></div>
+    <div class="rt"><span>28 июл</span></div></div>
+  <div class="r" style="--rc:var(--coffee)"><div class="sq">Р</div>
+    <div class="m"><div class="n">Ремонт</div><div class="p">Славик: плитку привезут в среду</div></div>
+    <div class="rt"><span>24 июл</span></div></div>
+  <div style="position:absolute;right:18px;bottom:86px;background:var(--card);border:1px solid var(--line);border-radius:14px;min-width:168px">
+    <div style="padding:12px 16px 8px;font-weight:600">Новый круг</div>
+    <div style="padding:8px 16px 14px;font-weight:600">Новая группа</div>
+  </div>
+  <div class="fab"><svg class="ic" style="width:26px;height:26px;stroke-width:1.5"><use href="#i-plus"/></svg></div>
+</div>
+<span class="num">2.10</span><b>Что добавить</b><i>Удержал плюс — над ним карточка из двух слов, не спид-диал значков и не нижняя панель. Плюс добавляет: короткий тап по-прежнему заводит круг, удержание спрашивает что. «Новый круг» в меню — тот же путь, что тап, чтобы выбор был назван. «Новая группа» ведёт на 2.13. На пустой улочке плюса нет: складывать нечего.</i></figure>
+
+<figure class="s" id="e2-13"><div class="ph shell">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="appbar">
+    <svg class="mk" viewBox="-21.67 -31.8 42.9 64.47" aria-label="Wynd" role="img"><use href="#mark" fill="currentColor" x="-21.67" y="-31.8" width="42.9" height="64.47"/></svg>
+    <span class="sp"></span>
+    <svg class="ic"><use href="#i-search"/></svg>
+    <svg class="ic"><use href="#i-gear"/></svg>
+  </div>
+  <div class="lab">Закреплённые</div>
+  <div class="r" style="--rc:var(--terracotta)"><div class="sq">С</div>
+    <div class="m"><div class="n">Семья</div><div class="p">Аня: были на даче, все живы</div></div>
+    <div class="rt"><span>14:02</span><span class="bdg">3</span></div></div>
+  <div class="sep"></div>
+  <div class="fld act" style="margin-top:10px">Свои</div>
+  <div class="lab">Остальные</div>
+  <div class="r" style="--rc:var(--olive)"><div class="sq">П</div>
+    <div class="m"><div class="n">Поход на Алтай</div><div class="p">Мышка теперь Мышь</div></div>
+    <div class="rt"><span>вчера</span><span class="bdg">1</span></div></div>
+  <div class="r" style="--rc:var(--indigo)"><div class="sq">У</div>
+    <div class="m"><div class="n">Универ</div><div class="p">Петя: нашёл фотки с 3 курса</div></div>
+    <div class="rt"><span>пн</span></div></div>
+  <div class="r" style="--rc:var(--ochre)"><div class="sq">Д</div>
+    <div class="m"><div class="n">Дача</div><div class="p">Мама: яблони зацвели</div></div>
+    <div class="rt"><span>5 авг</span></div></div>
+  <div class="r" style="--rc:var(--slate)"><div class="sq">С</div>
+    <div class="m"><div class="n">Соседи</div><div class="p">Игорь присоединился</div></div>
+    <div class="rt"><span>28 июл</span></div></div>
+  <div class="r" style="--rc:var(--coffee)"><div class="sq">Р</div>
+    <div class="m"><div class="n">Ремонт</div><div class="p">Славик: плитку привезут в среду</div></div>
+    <div class="rt"><span>24 июл</span></div></div>
+  <div class="fab"><svg class="ic" style="width:26px;height:26px;stroke-width:1.5"><use href="#i-plus"/></svg></div>
+</div>
+<span class="num">2.13</span><b>Имя группы</b><i>Тап «Новая группа» на 2.10 закрыл меню и открыл поле там, где будет папка — не внизу списка и не в карточке плюса. Отдельного экрана нет, двух кнопок как у названия дня нет: день общий на весь круг, имя группы живёт только здесь. Готово — пустая папка и чипы, 2.11. Пустое поле и уход — отмена, улочка как была.</i></figure>
+
+<figure class="s" id="e2-11"><div class="ph shell">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="appbar">
+    <svg class="mk" viewBox="-21.67 -31.8 42.9 64.47" aria-label="Wynd" role="img"><use href="#mark" fill="currentColor" x="-21.67" y="-31.8" width="42.9" height="64.47"/></svg>
+    <span class="sp"></span>
+    <svg class="ic"><use href="#i-search"/></svg>
+    <svg class="ic"><use href="#i-gear"/></svg>
+  </div>
+  <div class="lab">Закреплённые</div>
+  <div class="r" style="--rc:var(--terracotta)"><div class="sq">С</div>
+    <div class="m"><div class="n">Семья</div><div class="p">Аня: были на даче, все живы</div></div>
+    <div class="rt"><span>14:02</span><span class="bdg">3</span></div></div>
+  <div class="sep"></div>
+  <div class="fold"><svg class="ic sm"><use href="#i-chev"/></svg><span>Свои</span><span class="cnt2">0</span></div>
+  <div class="chips" style="margin-top:10px"><span class="chip">Семья</span><span class="chip">Поход на Алтай</span><span class="chip">Универ</span></div>
+  <div class="chips"><span class="chip">Дача</span><span class="chip">Соседи</span><span class="chip">Ремонт</span></div>
+  <div class="lab">Остальные</div>
+  <div class="r" style="--rc:var(--olive)"><div class="sq">П</div>
+    <div class="m"><div class="n">Поход на Алтай</div><div class="p">Мышка теперь Мышь</div></div>
+    <div class="rt"><span>вчера</span><span class="bdg">1</span></div></div>
+  <div class="r" style="--rc:var(--indigo)"><div class="sq">У</div>
+    <div class="m"><div class="n">Универ</div><div class="p">Петя: нашёл фотки с 3 курса</div></div>
+    <div class="rt"><span>пн</span></div></div>
+  <div class="hint ctr" style="margin-top:22px">группы видны только на этом устройстве</div>
+</div>
+<span class="num">2.11</span><b>Положить круги</b><i>Новая группа пустая — и сразу видно, чем её наполнить. Чипы — имена дверей, не отдельный список и не удержание строки. Тап кладёт круг сюда и убирает из «Остальных»; в другой группе он не останется: круг в одной. Закреплённые тоже в чипах: группа запоминает, на полке они остаются сверху. Убрать — удержание двери, второе слово на 2.8. Когда в группе уже кто-то лежит, чипы прячутся за «положить ещё»: иначе имена дублировали бы строки.</i></figure>
+
+<figure class="s" id="e2-12"><div class="ph shell">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="appbar">
+    <svg class="mk" viewBox="-21.67 -31.8 42.9 64.47" aria-label="Wynd" role="img"><use href="#mark" fill="currentColor" x="-21.67" y="-31.8" width="42.9" height="64.47"/></svg>
+    <span class="sp"></span>
+    <svg class="ic"><use href="#i-search"/></svg>
+    <svg class="ic"><use href="#i-gear"/></svg>
+  </div>
+  <div class="lab">Закреплённые</div>
+  <div class="r" style="--rc:var(--terracotta)"><div class="sq">С</div>
+    <div class="m"><div class="n">Семья</div><div class="p">Аня: были на даче, все живы</div></div>
+    <div class="rt"><span>14:02</span><span class="bdg">3</span></div></div>
+  <div class="sep"></div>
+  <div class="lab">Остальные</div>
+  <div style="margin:8px 10px;background:var(--card);border:1px solid var(--line);border-radius:14px">
+    <div class="fold" style="padding-top:12px"><svg class="ic sm"><use href="#i-chev"/></svg><span>Свои</span><span class="cnt2">3</span></div>
+    <div style="padding:2px 16px 4px;font-weight:600">Переименовать</div>
+    <div style="padding:2px 16px 14px;font-weight:600">Удалить группу</div>
+  </div>
+  <div class="r" style="--rc:var(--olive)"><div class="sq">П</div>
+    <div class="m"><div class="n">Поход на Алтай</div><div class="p">Мышка теперь Мышь</div></div>
+    <div class="rt"><span>вчера</span><span class="bdg">1</span></div></div>
+  <div class="r" style="--rc:var(--indigo)"><div class="sq">У</div>
+    <div class="m"><div class="n">Универ</div><div class="p">Петя: нашёл фотки с 3 курса</div></div>
+    <div class="rt"><span>пн</span></div></div>
+  <div class="r" style="--rc:var(--ochre)"><div class="sq">Д</div>
+    <div class="m"><div class="n">Дача</div><div class="p">Мама: яблони зацвели</div></div>
+    <div class="rt"><span>5 авг</span></div></div>
+  <div class="fold"><svg class="ic sm"><use href="#i-chev"/></svg><span>По делу</span><span class="cnt2">2</span></div>
+</div>
+<span class="num">2.12</span><b>Заголовок группы</b><i>Удержал заголовок — под ним два слова, той же карточкой, что закрепление. Короткий тап по-прежнему сворачивает. «Переименовать» открывает то же поле, что 2.13. «Удалить группу» — без диалога и без рамки: папка локальная, круги возвращаются в «Остальные». Пустую группу сами не подметаем.</i></figure>
 </div></div>
 <h2>Круг</h2>
 <p class="lede">Медленное чтение вместо пустого скролла.</p>
@@ -1234,6 +1390,11 @@
     <div class="pic p5" style="width:88px;height:88px;border-radius:8px"></div>
     <div style="width:88px;height:88px;border-radius:8px;border:1px dashed var(--line);display:grid;place-items:center;color:var(--ink)"><svg class="ic" style="color:inherit"><use href="#i-plus"/></svg></div>
   </div>
+  <div class="row2" style="margin-top:16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+    <svg class="ic"><use href="#i-clock"/></svg>
+    <div class="g"><div>Отнести к дате</div><div class="sub">12 июля 2026</div></div>
+    <svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="hint">В ленте запись останется на своём месте. Дата нужна дню — в «Днях» она соберётся с остальными за 12 июля.</div>
   <div class="row2" style="margin-top:18px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
     <svg class="ic"><use href="#i-clock"/></svg>
     <div class="g"><div>Правится до завтра, 22:10</div><div class="sub">вышла сегодня, когда в круге стояли сутки</div></div></div>
@@ -1242,7 +1403,7 @@
     <div class="dl">Необратимо</div>
     <div class="di">Удалить запись</div>
   </div>
-  <div class="hint">Удаление живёт по тому же окну: выйдет срок — исчезнет и эта строка.</div>
+  <div class="hint" style="margin-bottom:64px">Удаление живёт по тому же окну: выйдет срок — исчезнет и эта строка.</div>
   <div style="position:absolute;left:0;right:0;bottom:0;border-top:1px solid var(--line);background:var(--paper)">
     <div style="display:flex;align-items:center;gap:22px;padding:13px 18px">
       <svg class="ic"><use href="#i-photo"/></svg><svg class="ic"><use href="#i-file"/></svg><svg class="ic"><use href="#i-loc"/></svg>
@@ -1250,7 +1411,7 @@
     </div>
   </div>
 </div>
-<span class="num">4.7</span><b>Правка записи</b><i>Сюда пришли с карандаша на 4.12. Тот же экран, что и новая запись, — отдельного редактора нет. Строка с часами появляется только тогда, когда окно записи разошлось с нынешним окном круга: в обычной жизни она не нужна и не мозолит глаза. Сказать это один раз важно, повторять под каждой записью — шум. Удаление стоит в той же рамке, что и всё необратимое, и подчиняется тому же сроку: правка и удаление — одно право. Карточка исчезает; строки «удалил запись» в хронике нет.</i></figure>
+<span class="num">4.7</span><b>Правка записи</b><i>Сюда пришли с карандаша на 4.12. Тот же экран, что и новая запись, — отдельного редактора нет. День меняется той же строкой, что на 4.1: шеврон открывает дату. В ленте запись останется где была, в «Днях» переедет. Строка с часами стоит всегда: до какого часа ещё правится эта запись. Если окно круга с тех пор поменяли — под часами видно, с каким правилом запись вышла, и намёк, что у новых будет иначе. Сказать про расхождение один раз важно; повторять под каждой записью в ленте — шум. Удаление стоит в той же рамке, что и всё необратимое, и подчиняется тому же сроку: правка и удаление — одно право. Карточка исчезает; строки «удалил запись» в хронике нет.</i></figure>
 
 <figure class="s" id="e4-10"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -1582,7 +1743,8 @@
   <div class="hint">После публикации запись можно изменить в течение часа. Каждая запись запоминает окно, при котором вышла: смена правила — событие хроники, но действует она только на новые записи. Прошлое остаётся с тем окном, при котором было сказано.</div>
   <div class="lab">Приглашения</div>
   <div class="chips"><span class="chip on">Могут все</span><span class="chip">Только владелец</span></div>
-  <div class="chips" style="margin-top:8px"><span class="chip on">Одноразовые</span><span class="chip">Многоразовые</span></div>
+  <div class="chips" style="margin-top:8px"><span class="chip">Одноразовые</span><span class="chip on">Многоразовые</span></div>
+  <div class="hint">Какие ссылки можно создать, не какой чип предвыбран. «Одноразовые» — чипа многоразовой на экране пригласить нет, 6.19.</div>
   <div class="row2" style="margin-top:14px;border-top:1px solid var(--line)"><div class="g" style="font-weight:600">Пригласить</div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
   <div class="row2"><div class="g" style="font-weight:600">Кто ты в этом круге</div><span class="val">Мышь</span><svg class="ic sm"><use href="#i-chevr"/></svg></div>
   <div class="row2"><div class="g" style="font-weight:600">Уведомления</div><span class="val">записи и упоминания</span><svg class="ic sm"><use href="#i-chevr"/></svg></div>
@@ -1590,7 +1752,7 @@
   <div class="meter"><u style="width:84%"></u></div>
   <div class="hint" style="margin-top:8px">8,4 ГБ из 10 ГБ в «Доме Ани» · квоту задал администратор</div>
 </div>
-<span class="num">6.1</span><b>Настройки круга: верх</b><i>Порядок сверху вниз — от того, что видят все, к тому, что решает круг: имя, цвет, правила правок, правила приглашений. Окно считается от публикации и прирастает к записи в момент выхода: круг может стать строже или мягче, но задним числом ни запереть сказанное, ни отпереть его нельзя. «Летопись» — это ноль, набело и навсегда.</i></figure>
+<span class="num">6.1</span><b>Настройки круга: верх</b><i>Порядок сверху вниз — от того, что видят все, к тому, что решает круг: имя, цвет, правила правок, правила приглашений. Окно считается от публикации и прирастает к записи в момент выхода: круг может стать строже или мягче, но задним числом ни запереть сказанное, ни отпереть его нельзя. «Летопись» — это ноль, набело и навсегда. Вторая строка приглашений — какие ссылки можно создать, не какой чип предвыбран. С завода стоят одноразовые, и тогда экран пригласить — 6.19. Здесь круг уже разрешил многоразовые, поэтому на 6.4 есть оба чипа.</i></figure>
 
 <figure class="s" id="e6-2"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -1654,20 +1816,38 @@
 <figure class="s" id="e6-4"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="cbar"><div class="top"><svg class="ic"><use href="#i-back"/></svg><span class="t">Пригласить в Семью</span></div><div style="height:12px"></div></div>
-  <div class="qr"><svg viewBox="0 0 25 25" width="142" height="142" style="display:block" aria-label="QR" role="img"><g fill="#2B2724" shape-rendering="crispEdges"><rect x="0" y="0" width="7" height="1"/><rect x="8" y="0" width="2" height="1"/><rect x="11" y="0" width="1" height="1"/><rect x="13" y="0" width="2" height="1"/><rect x="16" y="0" width="1" height="1"/><rect x="18" y="0" width="7" height="1"/><rect x="0" y="1" width="1" height="1"/><rect x="6" y="1" width="1" height="1"/><rect x="8" y="1" width="4" height="1"/><rect x="13" y="1" width="2" height="1"/><rect x="18" y="1" width="1" height="1"/><rect x="24" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="2" y="2" width="3" height="1"/><rect x="6" y="2" width="1" height="1"/><rect x="9" y="2" width="1" height="1"/><rect x="11" y="2" width="1" height="1"/><rect x="13" y="2" width="4" height="1"/><rect x="18" y="2" width="1" height="1"/><rect x="20" y="2" width="3" height="1"/><rect x="24" y="2" width="1" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="2" y="3" width="3" height="1"/><rect x="6" y="3" width="1" height="1"/><rect x="9" y="3" width="1" height="1"/><rect x="12" y="3" width="1" height="1"/><rect x="14" y="3" width="3" height="1"/><rect x="18" y="3" width="1" height="1"/><rect x="20" y="3" width="3" height="1"/><rect x="24" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="2" y="4" width="3" height="1"/><rect x="6" y="4" width="1" height="1"/><rect x="9" y="4" width="2" height="1"/><rect x="12" y="4" width="2" height="1"/><rect x="16" y="4" width="1" height="1"/><rect x="18" y="4" width="1" height="1"/><rect x="20" y="4" width="3" height="1"/><rect x="24" y="4" width="1" height="1"/><rect x="0" y="5" width="1" height="1"/><rect x="6" y="5" width="1" height="1"/><rect x="12" y="5" width="1" height="1"/><rect x="14" y="5" width="2" height="1"/><rect x="18" y="5" width="1" height="1"/><rect x="24" y="5" width="1" height="1"/><rect x="0" y="6" width="7" height="1"/><rect x="8" y="6" width="1" height="1"/><rect x="10" y="6" width="1" height="1"/><rect x="12" y="6" width="1" height="1"/><rect x="14" y="6" width="1" height="1"/><rect x="16" y="6" width="1" height="1"/><rect x="18" y="6" width="7" height="1"/><rect x="8" y="7" width="1" height="1"/><rect x="10" y="7" width="1" height="1"/><rect x="15" y="7" width="1" height="1"/><rect x="2" y="8" width="1" height="1"/><rect x="6" y="8" width="1" height="1"/><rect x="8" y="8" width="1" height="1"/><rect x="13" y="8" width="2" height="1"/><rect x="16" y="8" width="5" height="1"/><rect x="22" y="8" width="3" height="1"/><rect x="1" y="9" width="2" height="1"/><rect x="8" y="9" width="3" height="1"/><rect x="13" y="9" width="4" height="1"/><rect x="19" y="9" width="4" height="1"/><rect x="4" y="10" width="1" height="1"/><rect x="6" y="10" width="1" height="1"/><rect x="10" y="10" width="3" height="1"/><rect x="14" y="10" width="11" height="1"/><rect x="2" y="11" width="4" height="1"/><rect x="7" y="11" width="1" height="1"/><rect x="10" y="11" width="1" height="1"/><rect x="12" y="11" width="4" height="1"/><rect x="17" y="11" width="2" height="1"/><rect x="21" y="11" width="1" height="1"/><rect x="23" y="11" width="1" height="1"/><rect x="3" y="12" width="4" height="1"/><rect x="10" y="12" width="2" height="1"/><rect x="18" y="12" width="1" height="1"/><rect x="20" y="12" width="5" height="1"/><rect x="2" y="13" width="1" height="1"/><rect x="7" y="13" width="5" height="1"/><rect x="18" y="13" width="1" height="1"/><rect x="24" y="13" width="1" height="1"/><rect x="1" y="14" width="1" height="1"/><rect x="4" y="14" width="3" height="1"/><rect x="9" y="14" width="3" height="1"/><rect x="14" y="14" width="1" height="1"/><rect x="18" y="14" width="1" height="1"/><rect x="20" y="14" width="2" height="1"/><rect x="1" y="15" width="1" height="1"/><rect x="4" y="15" width="2" height="1"/><rect x="7" y="15" width="2" height="1"/><rect x="10" y="15" width="3" height="1"/><rect x="14" y="15" width="2" height="1"/><rect x="18" y="15" width="1" height="1"/><rect x="23" y="15" width="2" height="1"/><rect x="0" y="16" width="2" height="1"/><rect x="3" y="16" width="1" height="1"/><rect x="6" y="16" width="1" height="1"/><rect x="8" y="16" width="1" height="1"/><rect x="12" y="16" width="1" height="1"/><rect x="14" y="16" width="7" height="1"/><rect x="9" y="17" width="1" height="1"/><rect x="14" y="17" width="1" height="1"/><rect x="16" y="17" width="1" height="1"/><rect x="20" y="17" width="1" height="1"/><rect x="0" y="18" width="7" height="1"/><rect x="9" y="18" width="1" height="1"/><rect x="13" y="18" width="4" height="1"/><rect x="18" y="18" width="1" height="1"/><rect x="20" y="18" width="4" height="1"/><rect x="0" y="19" width="1" height="1"/><rect x="6" y="19" width="1" height="1"/><rect x="10" y="19" width="1" height="1"/><rect x="13" y="19" width="1" height="1"/><rect x="16" y="19" width="1" height="1"/><rect x="20" y="19" width="2" height="1"/><rect x="23" y="19" width="1" height="1"/><rect x="0" y="20" width="1" height="1"/><rect x="2" y="20" width="3" height="1"/><rect x="6" y="20" width="1" height="1"/><rect x="10" y="20" width="2" height="1"/><rect x="13" y="20" width="8" height="1"/><rect x="22" y="20" width="1" height="1"/><rect x="24" y="20" width="1" height="1"/><rect x="0" y="21" width="1" height="1"/><rect x="2" y="21" width="3" height="1"/><rect x="6" y="21" width="1" height="1"/><rect x="8" y="21" width="2" height="1"/><rect x="12" y="21" width="1" height="1"/><rect x="16" y="21" width="3" height="1"/><rect x="20" y="21" width="3" height="1"/><rect x="0" y="22" width="1" height="1"/><rect x="2" y="22" width="3" height="1"/><rect x="6" y="22" width="1" height="1"/><rect x="8" y="22" width="2" height="1"/><rect x="13" y="22" width="2" height="1"/><rect x="16" y="22" width="2" height="1"/><rect x="21" y="22" width="1" height="1"/><rect x="23" y="22" width="1" height="1"/><rect x="0" y="23" width="1" height="1"/><rect x="6" y="23" width="1" height="1"/><rect x="8" y="23" width="2" height="1"/><rect x="12" y="23" width="2" height="1"/><rect x="15" y="23" width="7" height="1"/><rect x="23" y="23" width="1" height="1"/><rect x="0" y="24" width="7" height="1"/><rect x="8" y="24" width="5" height="1"/><rect x="15" y="24" width="1" height="1"/><rect x="18" y="24" width="1" height="1"/><rect x="20" y="24" width="1" height="1"/><rect x="23" y="24" width="1" height="1"/></g></svg></div>
-  <div class="hint ctr" style="margin-top:12px">Покажите код или отправьте ссылку</div>
-  <div class="fld mono" style="margin-top:18px;font-size:12.5px;overflow:hidden;white-space:nowrap">home.example.org/i/7Kq2-mR4v</div>
+  <div class="btn gh" style="margin-top:12px">Позвать из других кругов</div>
+  <div class="qr sm"><svg viewBox="0 0 25 25" width="96" height="96" style="display:block" aria-label="QR" role="img"><g fill="#2B2724" shape-rendering="crispEdges"><rect x="0" y="0" width="7" height="1"/><rect x="8" y="0" width="2" height="1"/><rect x="11" y="0" width="1" height="1"/><rect x="13" y="0" width="2" height="1"/><rect x="16" y="0" width="1" height="1"/><rect x="18" y="0" width="7" height="1"/><rect x="0" y="1" width="1" height="1"/><rect x="6" y="1" width="1" height="1"/><rect x="8" y="1" width="4" height="1"/><rect x="13" y="1" width="2" height="1"/><rect x="18" y="1" width="1" height="1"/><rect x="24" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="2" y="2" width="3" height="1"/><rect x="6" y="2" width="1" height="1"/><rect x="9" y="2" width="1" height="1"/><rect x="11" y="2" width="1" height="1"/><rect x="13" y="2" width="4" height="1"/><rect x="18" y="2" width="1" height="1"/><rect x="20" y="2" width="3" height="1"/><rect x="24" y="2" width="1" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="2" y="3" width="3" height="1"/><rect x="6" y="3" width="1" height="1"/><rect x="9" y="3" width="1" height="1"/><rect x="12" y="3" width="1" height="1"/><rect x="14" y="3" width="3" height="1"/><rect x="18" y="3" width="1" height="1"/><rect x="20" y="3" width="3" height="1"/><rect x="24" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="2" y="4" width="3" height="1"/><rect x="6" y="4" width="1" height="1"/><rect x="9" y="4" width="2" height="1"/><rect x="12" y="4" width="2" height="1"/><rect x="16" y="4" width="1" height="1"/><rect x="18" y="4" width="1" height="1"/><rect x="20" y="4" width="3" height="1"/><rect x="24" y="4" width="1" height="1"/><rect x="0" y="5" width="1" height="1"/><rect x="6" y="5" width="1" height="1"/><rect x="12" y="5" width="1" height="1"/><rect x="14" y="5" width="2" height="1"/><rect x="18" y="5" width="1" height="1"/><rect x="24" y="5" width="1" height="1"/><rect x="0" y="6" width="7" height="1"/><rect x="8" y="6" width="1" height="1"/><rect x="10" y="6" width="1" height="1"/><rect x="12" y="6" width="1" height="1"/><rect x="14" y="6" width="1" height="1"/><rect x="16" y="6" width="1" height="1"/><rect x="18" y="6" width="7" height="1"/><rect x="8" y="7" width="1" height="1"/><rect x="10" y="7" width="1" height="1"/><rect x="15" y="7" width="1" height="1"/><rect x="2" y="8" width="1" height="1"/><rect x="6" y="8" width="1" height="1"/><rect x="8" y="8" width="1" height="1"/><rect x="13" y="8" width="2" height="1"/><rect x="16" y="8" width="5" height="1"/><rect x="22" y="8" width="3" height="1"/><rect x="1" y="9" width="2" height="1"/><rect x="8" y="9" width="3" height="1"/><rect x="13" y="9" width="4" height="1"/><rect x="19" y="9" width="4" height="1"/><rect x="4" y="10" width="1" height="1"/><rect x="6" y="10" width="1" height="1"/><rect x="10" y="10" width="3" height="1"/><rect x="14" y="10" width="11" height="1"/><rect x="2" y="11" width="4" height="1"/><rect x="7" y="11" width="1" height="1"/><rect x="10" y="11" width="1" height="1"/><rect x="12" y="11" width="4" height="1"/><rect x="17" y="11" width="2" height="1"/><rect x="21" y="11" width="1" height="1"/><rect x="23" y="11" width="1" height="1"/><rect x="3" y="12" width="4" height="1"/><rect x="10" y="12" width="2" height="1"/><rect x="18" y="12" width="1" height="1"/><rect x="20" y="12" width="5" height="1"/><rect x="2" y="13" width="1" height="1"/><rect x="7" y="13" width="5" height="1"/><rect x="18" y="13" width="1" height="1"/><rect x="24" y="13" width="1" height="1"/><rect x="1" y="14" width="1" height="1"/><rect x="4" y="14" width="3" height="1"/><rect x="9" y="14" width="3" height="1"/><rect x="14" y="14" width="1" height="1"/><rect x="18" y="14" width="1" height="1"/><rect x="20" y="14" width="2" height="1"/><rect x="1" y="15" width="1" height="1"/><rect x="4" y="15" width="2" height="1"/><rect x="7" y="15" width="2" height="1"/><rect x="10" y="15" width="3" height="1"/><rect x="14" y="15" width="2" height="1"/><rect x="18" y="15" width="1" height="1"/><rect x="23" y="15" width="2" height="1"/><rect x="0" y="16" width="2" height="1"/><rect x="3" y="16" width="1" height="1"/><rect x="6" y="16" width="1" height="1"/><rect x="8" y="16" width="1" height="1"/><rect x="12" y="16" width="1" height="1"/><rect x="14" y="16" width="7" height="1"/><rect x="9" y="17" width="1" height="1"/><rect x="14" y="17" width="1" height="1"/><rect x="16" y="17" width="1" height="1"/><rect x="20" y="17" width="1" height="1"/><rect x="0" y="18" width="7" height="1"/><rect x="9" y="18" width="1" height="1"/><rect x="13" y="18" width="4" height="1"/><rect x="18" y="18" width="1" height="1"/><rect x="20" y="18" width="4" height="1"/><rect x="0" y="19" width="1" height="1"/><rect x="6" y="19" width="1" height="1"/><rect x="10" y="19" width="1" height="1"/><rect x="13" y="19" width="1" height="1"/><rect x="16" y="19" width="1" height="1"/><rect x="20" y="19" width="2" height="1"/><rect x="23" y="19" width="1" height="1"/><rect x="0" y="20" width="1" height="1"/><rect x="2" y="20" width="3" height="1"/><rect x="6" y="20" width="1" height="1"/><rect x="10" y="20" width="2" height="1"/><rect x="13" y="20" width="8" height="1"/><rect x="22" y="20" width="1" height="1"/><rect x="24" y="20" width="1" height="1"/><rect x="0" y="21" width="1" height="1"/><rect x="2" y="21" width="3" height="1"/><rect x="6" y="21" width="1" height="1"/><rect x="8" y="21" width="2" height="1"/><rect x="12" y="21" width="1" height="1"/><rect x="16" y="21" width="3" height="1"/><rect x="20" y="21" width="3" height="1"/><rect x="0" y="22" width="1" height="1"/><rect x="2" y="22" width="3" height="1"/><rect x="6" y="22" width="1" height="1"/><rect x="8" y="22" width="2" height="1"/><rect x="13" y="22" width="2" height="1"/><rect x="16" y="22" width="2" height="1"/><rect x="21" y="22" width="1" height="1"/><rect x="23" y="22" width="1" height="1"/><rect x="0" y="23" width="1" height="1"/><rect x="6" y="23" width="1" height="1"/><rect x="8" y="23" width="2" height="1"/><rect x="12" y="23" width="2" height="1"/><rect x="15" y="23" width="7" height="1"/><rect x="23" y="23" width="1" height="1"/><rect x="0" y="24" width="7" height="1"/><rect x="8" y="24" width="5" height="1"/><rect x="15" y="24" width="1" height="1"/><rect x="18" y="24" width="1" height="1"/><rect x="20" y="24" width="1" height="1"/><rect x="23" y="24" width="1" height="1"/></g></svg></div>
+  <div class="hint ctr" style="margin-top:8px">Кто ещё не на сервере — код или ссылка</div>
+  <div class="fld mono" style="margin-top:12px;font-size:12.5px;overflow:hidden;white-space:nowrap">home.example.org/i/7Kq2-mR4v</div>
   <div class="rowin"><div class="btn c" style="flex:1">Поделиться</div><div class="btn gh" style="flex:1;margin:0">Скопировать</div></div>
-  <div class="lab" style="margin-top:14px">Ссылка</div>
+  <div class="lab" style="margin-top:12px">Ссылка</div>
   <div class="chips"><span class="chip">Одноразовая</span><span class="chip on">Многоразовая</span></div>
   <div class="chips" style="margin-top:8px"><span class="chip">5</span><span class="chip on">10</span><span class="chip">25</span></div>
   <div class="chips" style="margin-top:8px"><span class="chip">1 час</span><span class="chip on">72 часа</span><span class="chip">Неделя</span></div>
-  <div class="hint">Лимит — сколько учёток создаст ссылка. Дефолт 10, чипы только у многоразовой.</div>
-  <div class="lab" style="margin-top:14px">Живые</div>
+  <div class="lab" style="margin-top:12px">Живые</div>
   <div class="row2" style="padding-top:2px"><div class="g"><div style="font-weight:600">Многоразовая · 4 из 10</div><div class="sub">до 13 сентября · 7Kq2-mR4v</div></div><span class="val">отозвать</span></div>
   <div class="row2"><div class="g"><div style="font-weight:600">Одноразовая · не использована</div><div class="sub">до 11 сентября · pL8n-xQ1w</div></div><span class="val">скопировать</span></div>
 </div>
-<span class="num">6.4</span><b>Приглашение</b><i>Код тому, кто рядом, ссылка тому, кто далеко. Многоразовая сразу показывает лимит 5 / 10 / 25 — иначе создающий не видит, сколько учёток отдаёт. Ниже — реестр живых: скопировать снова или отозвать. Дефолты создания — одноразовая на 72 часа; этот кадр открыт на многоразовой, чтобы были видны чипы лимита. Сюда приходят из настроек, из участников и с 3.6.</i></figure>
+<span class="num">6.4</span><b>Приглашение</b><i>Кнопка «Позвать из других кругов» открывает 2.9 — даже если в списке один человек. Кого показать первым, продукт не выбирает. Код тому, кто рядом, ссылка тому, кого ещё нет на сервере. Многоразовая сразу показывает лимит 5 / 10 / 25 — иначе создающий не видит, сколько учёток отдаёт. Ниже — реестр живых: скопировать снова или отозвать. Дефолты создания — одноразовая на 72 часа; этот кадр открыт на многоразовой, потому что в настройках круга многоразовые разрешены. Если в 6.1 стоят только одноразовые — чипа «Многоразовая» нет, 6.19. Сюда приходят из настроек, из участников и с 3.6.</i></figure>
+
+<figure class="s" id="e6-19"><div class="ph">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="cbar"><div class="top"><svg class="ic"><use href="#i-back"/></svg><span class="t">Пригласить в Семью</span></div><div style="height:12px"></div></div>
+  <div class="btn gh" style="margin-top:12px">Позвать из других кругов</div>
+  <div class="qr sm"><svg viewBox="0 0 25 25" width="96" height="96" style="display:block" aria-label="QR" role="img"><g fill="#2B2724" shape-rendering="crispEdges"><rect x="0" y="0" width="7" height="7"/><rect x="1" y="1" width="5" height="5" fill="#FCFAF6"/><rect x="2" y="2" width="3" height="3"/><rect x="18" y="0" width="7" height="7"/><rect x="19" y="1" width="5" height="5" fill="#FCFAF6"/><rect x="20" y="2" width="3" height="3"/><rect x="0" y="18" width="7" height="7"/><rect x="1" y="19" width="5" height="5" fill="#FCFAF6"/><rect x="2" y="20" width="3" height="3"/><rect x="16" y="4" width="1" height="1"/><rect x="10" y="2" width="2" height="1"/><rect x="8" y="6" width="1" height="1"/><rect x="12" y="5" width="3" height="1"/><rect x="9" y="8" width="4" height="1"/><rect x="16" y="8" width="2" height="1"/><rect x="20" y="9" width="3" height="1"/><rect x="8" y="10" width="5" height="1"/><rect x="15" y="11" width="4" height="1"/><rect x="22" y="12" width="2" height="1"/><rect x="10" y="13" width="3" height="1"/><rect x="16" y="14" width="5" height="1"/><rect x="8" y="16" width="2" height="1"/><rect x="12" y="17" width="4" height="1"/><rect x="18" y="16" width="1" height="1"/><rect x="10" y="20" width="2" height="1"/><rect x="14" y="19" width="3" height="1"/><rect x="20" y="21" width="2" height="1"/><rect x="8" y="22" width="3" height="1"/><rect x="13" y="23" width="2" height="1"/><rect x="18" y="24" width="4" height="1"/><rect x="9" y="24" width="1" height="1"/></g></svg></div>
+  <div class="hint ctr" style="margin-top:8px">Кто ещё не на сервере — код или ссылка</div>
+  <div class="fld mono" style="margin-top:12px;font-size:12.5px;overflow:hidden;white-space:nowrap">home.example.org/i/pL8n-xQ1w</div>
+  <div class="rowin"><div class="btn c" style="flex:1">Поделиться</div><div class="btn gh" style="flex:1;margin:0">Скопировать</div></div>
+  <div class="lab" style="margin-top:14px">Ссылка</div>
+  <div class="chips"><span class="chip">1 час</span><span class="chip on">72 часа</span><span class="chip">Неделя</span></div>
+  <div class="hint">В настройках круга стоят только одноразовые — чипов «Одноразовая / Многоразовая» нет, лимита 5 / 10 / 25 тоже: выбирать не из чего.</div>
+  <div class="lab" style="margin-top:14px">Живые</div>
+  <div class="row2" style="padding-top:2px"><div class="g"><div style="font-weight:600">Одноразовая · не использована</div><div class="sub">до 11 сентября · pL8n-xQ1w</div></div><span class="val">скопировать</span></div>
+  <div class="row2"><div class="g"><div style="font-weight:600">Многоразовая · 4 из 10</div><div class="sub">до 13 сентября · 7Kq2-mR4v</div></div><span class="val">отозвать</span></div>
+  <div class="hint">Эту многоразовую успели создать раньше. Новую уже нельзя — только отозвать.</div>
+</div>
+<span class="num">6.19</span><b>Приглашение: только одноразовые</b><i>Тот же 6.4, когда в 6.1 выбраны «Одноразовые». Кнопка «Позвать из других кругов» на месте, список — 2.9. Чипа вида ссылки нет: правило уже сказано в настройках, повторять его радиокнопкой из одного пункта незачем. Срок остаётся. Живая многоразовая не пропадает сама — иначе отозвать было бы нечем; создать вторую нельзя.</i></figure>
 
 <figure class="s" id="e6-5"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -1979,7 +2159,7 @@
   <div class="row2" style="padding-top:2px"><div class="g"><div style="font-weight:600">m.petrov@example.com</div><div class="sub">1 круг · вошли 24 июля</div></div></div>
   <div class="row2"><div class="g">Выйти с этого сервера</div><svg class="ic sm"><use href="#i-out"/></svg></div>
   <div class="hint" style="margin-top:24px">Вы выходите с сервера, не из Wynd. Общего профиля на все серверы нет: даже одна почта на двух серверах — это два разных места, связать их нельзя.</div>
-  <div class="btn gh">Добавить сервер</div>
+  <div class="btn">Добавить сервер</div>
   <div class="hint">По ссылке, по QR или прямо по адресу — если сервер открыт для новых. Закрытый попросит приглашение.</div>
 </div>
 <span class="num">7.2</span><b>Серверы</b><i>Единственное место, где инфраструктура показана честно, — притворяться было бы хуже. Имя сервера стоит впереди адреса: «Дом Ани» человек запомнит, доменное имя — нет. Круги с разных серверов лежат в одном списке и ничем не отличаются: агрегация происходит на устройстве, и человеку не приходится помнить, что где.</i></figure>
@@ -2215,7 +2395,7 @@
   <div class="adm">
     <div style="font-size:11.5px;color:var(--faint);margin-bottom:8px">Люди</div>
     <h4 style="margin-bottom:6px">anya@example.com</h4>
-    <div style="font-size:12.5px;color:var(--muted);margin-bottom:20px">на сервере с 12 марта 2024 · последний код 3 сентября</div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:20px">на сервере с 12 марта 2024 · последний код 3 сентября<br>подписка до 17 сентября</div>
     <div class="cols">
       <div>
         <div class="lab" style="margin:0 0 8px">Круги · 5</div>
@@ -2245,7 +2425,7 @@
     </div>
   </div>
 </div>
-<span class="num">9.9</span><b>Почта на сервере</b><i>Редактирование — два действия, и они названы по-разному. Закрыть вход можно вернуть; удалить — нельзя, поэтому рамка. Хроника не редактируется: это то же правило, что у ушедшего из круга, только на весь сервер. Владельца с этой страницы не удалить — иначе «Семья» осталась бы без хозяина, а такого состояния в продукте нет.</i></figure>
+<span class="num">9.9</span><b>Почта на сервере</b><i>Редактирование — два действия, и они названы по-разному. Закрыть вход можно вернуть; удалить — нельзя, поэтому рамка. Хроника не редактируется: это то же правило, что у ушедшего из круга, только на весь сервер. Владельца с этой страницы не удалить — иначе «Семья» осталась бы без хозяина, а такого состояния в продукте нет. Строка «подписка до…» — только если на 10.13 требуют оплату; «не было» — ещё не платили; «бессрочно» — дали без конца. Срок меняют с 10.13, 10.15: заявка не обязательна.</i></figure>
 
 <figure class="s" id="e9-1" style="width:820px"><div class="ph wide shell" style="height:800px">
   <div class="admbar">
@@ -2540,9 +2720,9 @@
 <h2>Оплата и сбор</h2>
 <p class="lede">Подписка закрывает круги; сбор — баннер на улочке.</p>
 <p>Два независимых механизма покрыть расходы сервера. Подписка закрывает круги без активной оплаты. Донат — баннер в списке кругов, ни на что не влияет. Можно оба сразу.</p>
-<p>Панель открывается в браузере по адресу сервера, не из приложения: тот же вход, что после установки, отдельный пароль. Шестой пункт навбара — «Оплата». На кадрах 9.1–9.10 его нет: это другие разделы панели. На «Оплате» сначала реквизиты, затем две строки: сбор и подписка — каждый на своём экране, как почта с проверки. Очередь заявок живёт на подписке, не на хабе. Выключена подписка — круги открыты; включена — без оплаты человек видит «Доступ закрыт». Пока срок ещё идёт, с улочки можно продлить. Реквизиты задаёт админ один раз: человек читает их, когда круги закрыты, когда продлевает и когда открывает баннер.</p>
+<p>Панель открывается в браузере по адресу сервера, не из приложения: тот же вход, что после установки, отдельный пароль. Шестой пункт навбара — «Оплата». На кадрах 9.1–9.10 его нет: это другие разделы панели. На «Оплате» сначала реквизиты, затем две строки: сбор и подписка — каждый на своём экране, как почта с проверки. На подписке две таблицы: очередь заявок — чтобы решить по скрину, и все на сервере со сроком — строка открывает срок без заявки. Выключена подписка — круги открыты; включена — без оплаты человек видит «Доступ закрыт». Если срока никогда не было, это не «закончилась», а 10.14. Бессрочная — не пустой срок: доступ открыт, напоминаний нет. Пока срок ещё идёт, с улочки можно продлить. Реквизиты задаёт админ один раз: человек читает их, когда круги закрыты, когда продлевает и когда открывает баннер.</p>
 
-<figure class="bleed"><svg viewBox="0 0 1060 390" style="display:block;width:100%;height:auto" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif">
+<figure class="bleed"><svg viewBox="0 0 1060 434" style="display:block;width:100%;height:auto" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif">
   <defs><marker id="ar10" viewBox="0 0 8 8" refX="7.2" refY="4" markerWidth="7" markerHeight="7" orient="auto">
     <path d="M0.6 0.8 L7 4 L0.6 7.2" fill="none" stroke="#B3AB9F" stroke-width="1.3"/></marker></defs>
   <g font-size="11" fill="#A8A096" letter-spacing="1.4">
@@ -2551,7 +2731,7 @@
     <path d="M190 69 H204 V255"/>
     <path d="M256 69 V157"/>
     <path d="M256 255 V299"/>
-    <path d="M760 113 V211"/>
+    <path d="M760 113 V299"/>
   </g>
   <g fill="none" stroke="#DFD8CD" stroke-width="1.2" marker-end="url(#ar10)">
     <path d="M190 69 H210"/>
@@ -2564,6 +2744,7 @@
     <path d="M760 157 H800"/>
     <path d="M760 211 H800"/>
     <path d="M760 255 H800"/>
+    <path d="M760 299 H800"/>
   </g>
   <g stroke="#DFD8CD" stroke-width="1.2">
     <rect x="20" y="54" width="170" height="30" rx="7" fill="#EFE9E0"/>
@@ -2578,6 +2759,7 @@
     <rect x="800" y="142" width="200" height="30" rx="7" fill="#FCFAF6"/>
     <rect x="800" y="196" width="200" height="30" rx="7" fill="#FCFAF6"/>
     <rect x="800" y="240" width="200" height="30" rx="7" fill="#FCFAF6"/>
+    <rect x="800" y="284" width="200" height="30" rx="7" fill="#FCFAF6"/>
   </g>
   <g font-size="12.5" fill="#2B2724">
     <text x="34" y="73.5" font-weight="600">Улочка</text>
@@ -2592,9 +2774,10 @@
     <text x="814" y="161.5">Заявка</text>
     <text x="814" y="215.5">Сбор</text>
     <text x="814" y="259.5">Подписка</text>
+    <text x="814" y="303.5">Срок без заявки</text>
   </g>
-  <text x="20" y="356" font-size="11" fill="#A8A096">Шлюз стоит перед улочкой, не вместо неё. Панель не открывается из приложения: адрес сервера и пароль с первого запуска. С напоминания — «Продлить», дальше тот же «Я оплатил». Отказал — снова «Доступ закрыт», если срок уже вышел; если нет — снова улочка.</text>
-</svg><figcaption style="color:#7A7269;font-size:12.5px;margin-top:10px">Маршруты подписки и сбора. «Оплата» — пункт навбара: реквизиты, затем сбор и подписка строками. Заявка открывается с подписки.</figcaption></figure>
+  <text x="20" y="400" font-size="11" fill="#A8A096">Шлюз стоит перед улочкой, не вместо неё. Панель не открывается из приложения: адрес сервера и пароль с первого запуска. С напоминания — «Продлить», дальше тот же «Я оплатил». Отказал — снова «Доступ закрыт», если срок уже вышел; если нет — снова улочка. Срок без заявки открывается строкой человека на «Подписке».</text>
+</svg><figcaption style="color:#7A7269;font-size:12.5px;margin-top:10px">Маршруты подписки и сбора. «Оплата» — пункт навбара: реквизиты, затем сбор и подписка строками. Заявка — из очереди. Срок без заявки — из таблицы «На сервере». «Доступ закрыт» без прошлого срока — 10.14.</figcaption></figure>
 
 <div class="bleed"><div class="gal">
 <figure class="s" id="e10-1"><div class="ph shell">
@@ -2610,7 +2793,22 @@
   <div class="btn">Я оплатил</div>
   <div class="hint ctr" style="margin-top:22px">Вы вошли как anya@example.com<br>в «Доме Ани» · home.example.org</div>
 </div>
-<span class="num">10.1</span><b>Доступ закрыт</b><i>Шлюз перед улочкой, не вместо неё: кругов не видно даже серыми. Цвета круга нет — оболочки. «Куда платить» — то же поле «Реквизиты» с 10.6; без него нечего прикладывать к заявке. Если прошлую заявку отклонили — тот же экран, кнопка снова живая.</i></figure>
+<span class="num">10.1</span><b>Доступ закрыт</b><i>Шлюз перед улочкой, не вместо неё: кругов не видно даже серыми. Цвета круга нет — оболочки. «Закончилась» — только если срок уже был: иначе 10.14, слово другое. «Куда платить» — то же поле «Реквизиты» с 10.6; без него нечего прикладывать к заявке. Если прошлую заявку отклонили — тот же экран, кнопка снова живая.</i></figure>
+
+<figure class="s" id="e10-14"><div class="ph shell">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="h1s" style="margin-top:48px">Доступ закрыт</div>
+  <div class="hint">Подписки на «Доме Ани» ещё не было. Круги на этом сервере не открываются, пока администратор не подтвердит оплату.</div>
+  <div class="lab" style="margin-top:22px">Куда платить</div>
+  <div class="row2" style="margin:0 16px;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px;display:block">
+    <div style="font-weight:600">Сбер · Анна К.</div>
+    <div class="sub" style="margin-top:4px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace">2200 20•• •••• 4412</div>
+    <div class="sub" style="margin-top:6px">В назначении: wynd, m.petrov@example.com</div>
+  </div>
+  <div class="btn">Я оплатил</div>
+  <div class="hint ctr" style="margin-top:22px">Вы вошли как m.petrov@example.com<br>в «Доме Ани» · home.example.org</div>
+</div>
+<span class="num">10.14</span><b>Подписки ещё не было</b><i>Тот же шлюз, что 10.1, для новенького: учётка есть, срока не было никогда. «Закончилась 10 сентября» здесь ложь — заканчиваться было нечему. Дальше тот же 10.2. На 10.7 админ видит «подписки не было» и считает от сегодня, как после истечения.</i></figure>
 
 <figure class="s" id="e10-2"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -2826,9 +3024,9 @@
     <div style="font-size:12.5px;color:var(--muted);line-height:1.5">Напоминания и очереди нет: спрашивать оплату некого. Реквизиты остаются на «Оплате» — ими пользуется баннер. Включить — снова 10.13.</div>
   </div>
 </div>
-<span class="num">10.10</span><b>Подписка выключена</b><i>Тот же экран 10.13, переключатель выключен. Очереди нет. Назад — на хаб 10.6, где реквизиты и строка сбора на месте.</i></figure>
+<span class="num">10.10</span><b>Подписка выключена</b><i>Тот же экран 10.13, переключатель выключен. Очереди нет и списка со статусом нет: спрашивать оплату некого. Назад — на хаб 10.6, где реквизиты и строка сбора на месте.</i></figure>
 
-<figure class="s" id="e10-7" style="width:820px"><div class="ph wide shell" style="height:600px">
+<figure class="s" id="e10-7" style="width:820px"><div class="ph wide shell" style="height:540px">
   <div class="admbar">
     <svg class="mk" viewBox="-21.67 -31.8 42.9 64.47" aria-label="Wynd" role="img"><use href="#mark" fill="currentColor" x="-21.67" y="-31.8" width="42.9" height="64.47"/></svg>
     <span class="admnav" style="margin-left:20px"><span class="">Хранилище</span><span class="">Проверка</span><span class="">Сжатие</span><span class="">Доступ</span><span class="">Люди</span><span class="on">Оплата</span></span>
@@ -2851,8 +3049,9 @@
         <div style="font-size:13.5px;line-height:1.5">Перевод 10 сентября, в назначении почта.</div>
         <div class="lab" style="margin:22px 0 8px">Продлить на</div>
         <div class="chips" style="margin:0"><span class="chip">30 дней</span><span class="chip on">3 месяца</span><span class="chip">Год</span><span class="chip">Своё…</span></div>
+        <div class="chips" style="margin:8px 0 0"><span class="chip">Бессрочно</span></div>
         <div style="font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.5">Подписка кончилась — считают от сегодня.</div>
-        <div style="display:flex;gap:10px;margin-top:auto;padding-top:22px">
+        <div style="display:flex;gap:10px;margin-top:18px">
           <span class="inp" style="font-weight:600">Дать</span>
           <span class="inp">Отказать</span>
         </div>
@@ -2860,7 +3059,7 @@
     </div>
   </div>
 </div>
-<span class="num">10.7</span><b>Заявка</b><i>Строка с 10.13. Скрин крупно, почта вместо имени, срок вводит админ. Назад — шеврон на «Подписку», не крошка: пункта заявки в навбаре нет. «Дать» считает от сейчас, потому что подписка уже кончилась; если бы ещё шла — от её конца. Отказал — человек снова на 10.1.</i></figure>
+<span class="num">10.7</span><b>Заявка</b><i>Строка с 10.13. Скрин крупно, почта вместо имени, срок вводит админ. Назад — шеврон на «Подписку», не крошка: пункта заявки в навбаре нет. «Дать» считает от сейчас, потому что подписка уже кончилась; если бы ещё шла — от её конца. Подписки не было — та же арифметика и подпись «подписки не было», не «кончилась». «Бессрочно» — доступ без конца, напоминаний нет; это не пустой срок. Отказал — человек снова на 10.1 или 10.14. Кнопки стоят под подсказкой, не у нижнего края скрина.</i></figure>
 
 <figure class="s" id="e10-8" style="width:820px"><div class="ph wide shell" style="height:560px">
   <div class="admbar">
@@ -2895,7 +3094,7 @@
   </div>
 </div>
 <span class="num">10.8</span><b>Сбор</b><i>Строка с 10.6, как почта с проверки. Пункта «Сбор» в навбаре нет, активна «Оплата». Реквизитов здесь нет — они общие, на экране выше. Баннер не связан с подпиской.</i></figure>
-<figure class="s" id="e10-13" style="width:820px"><div class="ph wide shell" style="height:720px">
+<figure class="s" id="e10-13" style="width:820px"><div class="ph wide shell" style="height:920px">
   <div class="admbar">
     <svg class="mk" viewBox="-21.67 -31.8 42.9 64.47" aria-label="Wynd" role="img"><use href="#mark" fill="currentColor" x="-21.67" y="-31.8" width="42.9" height="64.47"/></svg>
     <span class="admnav" style="margin-left:20px"><span class="">Хранилище</span><span class="">Проверка</span><span class="">Сжатие</span><span class="">Доступ</span><span class="">Люди</span><span class="on">Оплата</span></span>
@@ -2939,13 +3138,59 @@
         <td style="color:var(--muted)">за двоих, на год</td>
         <td style="text-align:right"><svg class="ic sm"><use href="#i-chevr"/></svg></td></tr>
     </table>
+    <div class="lab" style="margin:22px 0 8px">На сервере · 5</div>
+    <table class="tbl">
+      <tr><th>Почта</th><th>Подписка</th><th></th></tr>
+      <tr>
+        <td class="n">anya@example.com</td>
+        <td style="color:var(--muted)">до 17 сентября</td>
+        <td style="text-align:right"><svg class="ic sm"><use href="#i-chevr"/></svg></td></tr>
+      <tr>
+        <td class="n">kot@example.com</td>
+        <td style="color:var(--muted)">истекла 10 сентября</td>
+        <td style="text-align:right"><svg class="ic sm"><use href="#i-chevr"/></svg></td></tr>
+      <tr>
+        <td class="n">m.petrov@example.com</td>
+        <td style="color:var(--muted)">не было</td>
+        <td style="text-align:right"><svg class="ic sm"><use href="#i-chevr"/></svg></td></tr>
+      <tr>
+        <td class="n" style="color:var(--faint)">old@example.com</td>
+        <td style="color:var(--faint)">истекла 11 июня</td>
+        <td style="text-align:right"><svg class="ic sm"><use href="#i-chevr"/></svg></td></tr>
+      <tr>
+        <td class="n">ghost@example.com</td>
+        <td style="color:var(--muted)">бессрочно</td>
+        <td style="text-align:right"><svg class="ic sm"><use href="#i-chevr"/></svg></td></tr>
+    </table>
   </div>
 </div>
-<span class="num">10.13</span><b>Подписка</b><i>Строка с 10.6, как «Сбор». Пункта в навбаре нет, активна «Оплата». Переключатель, срок письма и очередь — здесь, не на хабе. Строка заявки ведёт на 10.7. Выключенный — 10.10.</i></figure>
+<span class="num">10.13</span><b>Подписка</b><i>Строка с 10.6, как «Сбор». Пункта в навбаре нет, активна «Оплата». Переключатель и срок письма — здесь. Очередь — чтобы решить по скрину, 10.7. Таблица «На сервере» — статус и дверь на срок, 10.15: продлить без заявки или сделать бессрочной. «До», «истекла», «не было», «бессрочно». Почта та же, что на «Людях», лиц нет. Выключенный — 10.10, и этой таблицы нет.</i></figure>
+
+<figure class="s" id="e10-15" style="width:820px"><div class="ph wide shell" style="height:400px">
+  <div class="admbar">
+    <svg class="mk" viewBox="-21.67 -31.8 42.9 64.47" aria-label="Wynd" role="img"><use href="#mark" fill="currentColor" x="-21.67" y="-31.8" width="42.9" height="64.47"/></svg>
+    <span class="admnav" style="margin-left:20px"><span class="">Хранилище</span><span class="">Проверка</span><span class="">Сжатие</span><span class="">Доступ</span><span class="">Люди</span><span class="on">Оплата</span></span>
+    <span style="margin-left:auto;font-size:12.5px;color:var(--faint)">Дом Ани · home.example.org</span>
+  </div>
+  <div class="adm">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:11.5px;color:var(--faint)">
+      <svg class="ic"><use href="#i-back"/></svg>
+      Оплата
+    </div>
+    <h4 style="margin-bottom:6px">kot@example.com</h4>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:22px">подписка истекла 10 сентября</div>
+    <div class="lab" style="margin:0 0 8px">Продлить на</div>
+    <div class="chips" style="margin:0"><span class="chip">30 дней</span><span class="chip on">3 месяца</span><span class="chip">Год</span><span class="chip">Своё…</span></div>
+    <div class="chips" style="margin:8px 0 0"><span class="chip">Бессрочно</span></div>
+    <div style="font-size:12.5px;color:var(--muted);margin-top:10px;max-width:420px;line-height:1.5">Заявки нет: скрин не спрашиваем. Срок кончился — считают от сегодня. «Бессрочно» — круги открыты, пока не выберете срок; напоминаний не будет.</div>
+    <div style="margin-top:18px"><span class="inp" style="font-weight:600">Дать</span></div>
+  </div>
+</div>
+<span class="num">10.15</span><b>Срок без заявки</b><i>Строка с таблицы «На сервере». Тот же срок, что на 10.7, без скрина и без отказа: отказывать нечему. Нужно, когда человек перевёл вне очереди, когда это свой, когда дарят доступ. Пустой срок по-прежнему «не было»: бессрочная — отдельный статус, доступ открыт. Назад — на 10.13.</i></figure>
 
 </div></div>
 <h2>Что решилось при прорисовке</h2>
-<p class="lede">Сорок мест, где источник пришлось уточнить, а не проиллюстрировать.</p>
+<p class="lede">Места, где источник пришлось уточнить, а не проиллюстрировать.</p>
 
 
 <div class="cardx">
@@ -2965,7 +3210,7 @@
 
 <div class="cardx">
 <h3>Живые ссылки — на том же экране, что создание</h3>
-<p>Создали и забыли: отозвать и скопировать снова было нечем. Под формой — реестр: тип, остаток лимита, срок. Многоразовая сразу показывает чипы 5 / 10 / 25.</p>
+<p>Создали и забыли: отозвать и скопировать снова было нечем. Под формой — реестр: тип, остаток лимита, срок. Многоразовая сразу показывает чипы 5 / 10 / 25. Если в настройках круга многоразовые выключены, этих чипов на экране пригласить нет — 6.19; уже созданную всё ещё можно отозвать.</p>
 </div>
 
 
@@ -3042,7 +3287,7 @@
 
 <div class="cardx">
 <h3>Окно правок не переписывает прошлое</h3>
-<p>Раньше на этих же макетах было написано, что смена окна применяется ко всему сразу, включая прошлое. Так получалось, что круг задним числом отпирает сказанное год назад или, наоборот, запирает то, что человек ещё правил утром. Теперь окно прирастает к единице сказанного в момент публикации: правило меняется на будущее, а каждая запись, комментарий, реакция, название и обложка дня доживают со своим. Показывается это ровно один раз и только при расхождении — строкой в правке; под каждой записью такая подпись превратилась бы в шум.</p>
+<p>Раньше на этих же макетах было написано, что смена окна применяется ко всему сразу, включая прошлое. Так получалось, что круг задним числом отпирает сказанное год назад или, наоборот, запирает то, что человек ещё правил утром. Теперь окно прирастает к единице сказанного в момент публикации: правило меняется на будущее, а каждая запись, комментарий, реакция, название и обложка дня доживают со своим. Срок правки стоит строкой с часами на 4.7 всегда. Что правило круга с тех пор поменяли — только при расхождении, под той же строкой; под каждой записью в ленте такая пометка превратилась бы в шум.</p>
 </div>
 
 <div class="cardx">
@@ -3096,8 +3341,13 @@
 </div>
 
 <div class="cardx">
+<h3>Плюс добавляет, удержание спрашивает что</h3>
+<p>Кадр 2.6 показал сложенную полку и не сказал, откуда берётся папка. Ссылка в списке дверей выглядела командой среди дверей. Значок папки в шапке обещал бы кнопку. Плюс уже значит «добавить»: короткий тап заводит круг, удержание открывает меню из двух слов над кнопкой — той же карточкой, что закрепление, не спид-диалом. «Новый круг» назван, хотя тап делает то же: иначе в меню было бы одно секретное действие. «Новая группа» открывает поле на месте, 2.13: там, где будет папка. Кладут изнутри пустой папки чипами имён. Удержание заголовка — переименовать и удалить. Убрать круг — второе слово на карточке двери. Чипов папок под строкой круга нет.</p>
+</div>
+
+<div class="cardx">
 <h3>«Создать и позвать» — это 2.7, не настройки</h3>
-<p>Кнопка на форме нового круга обещала шаг, которого в галерее улочки не было: код и ссылка жили только у уже собранной «Семьи». После создания это тот же экран, что 6.4, только круг ещё пустой, шапка — шаг формы, не настройки, и кнопка «Сначала в круг, позову потом» уносит в 3.6. Контактов, почты и «кого позвать» нет: звать — показать код или отдать ссылку. Системный шаринг, как сканер QR, своим макетом не рисуется.</p>
+<p>Кнопка на форме нового круга обещала шаг, которого в галерее улочки не было: код и ссылка жили только у уже собранной «Семьи». После создания это тот же экран, что 6.4, только круг ещё пустой, шапка — шаг формы, не настройки, и кнопка «Сначала в круг, позову потом» уносит в 3.6. Почты и книжки контактов нет. Кто уже в другом вашем круге — кнопка на этом экране, список — 2.9. Системный шаринг, как сканер QR, своим макетом не рисуется.</p>
 </div>
 
 <div class="cardx">
@@ -3107,7 +3357,7 @@
 
 <div class="cardx">
 <h3>«Оплата» — реквизиты, потом сбор, потом подписка</h3>
-<p>Всё на одном экране путало порядок: сначала куда платить, потом жест поддержки, потом шлюз. Хаб — реквизиты и превью. Сбор и подписка — строки с шевроном, как почта с проверки. Очередь заявок — на экране подписки. Выключена — круги открыты, очереди нет, реквизиты остаются для баннера.</p>
+<p>Всё на одном экране путало порядок: сначала куда платить, потом жест поддержки, потом шлюз. Хаб — реквизиты и превью. Сбор и подписка — строки с шевроном, как почта с проверки. На подписке две таблицы: очередь заявок и все на сервере со статусом. Строка человека — срок без заявки, 10.15. Выключена — круги открыты, очереди и статуса нет, реквизиты остаются для баннера.</p>
 </div>
 
 <div class="cardx">
@@ -3127,7 +3377,32 @@
 
 <div class="cardx">
 <h3>Очередь оплаты знает почту, не лицо</h3>
-<p>Как «Люди»: anya@example.com, не «Аня». Скрин и комментарий — чтобы решить, на сколько продлить. Дать и отказать живут в карточке, не в таблице: необратимое в списке не держат.</p>
+<p>Как «Люди»: anya@example.com, не «Аня». Скрин и комментарий — чтобы решить, на сколько продлить. Дать и отказать живут в карточке, не в таблице: необратимое в списке не держат. Очередь не заменяет список на сервере: без заявки тоже нужно видеть «до», «истекла», «не было», «бессрочно». Строка открывает срок: заявка не единственный путь.</p>
+</div>
+
+<div class="cardx">
+<h3>Срок без заявки — не дыра в очереди</h3>
+<p>Очередь знает только тех, кто прислал скрин. Свой, перевод вне формы, подарок — заявки нет, а доступ выдать надо. 10.15 — тот же срок, что на 10.7, без скрина и без отказа. «Бессрочно» не путают с «не было»: пустой срок закрывает круги, бессрочная их открывает и молчит о напоминании.</p>
+</div>
+
+<div class="cardx">
+<h3>Подписки ещё не было — не «закончилась»</h3>
+<p>10.1 говорил языком истечения. У новенького срока не было никогда, и «закончилась 10 сентября» — ложь. Тот же шлюз, другие слова: 10.14. На заявке админ видит «подписки не было» и считает от сегодня, как после истечения.</p>
+</div>
+
+<div class="cardx">
+<h3>Позвать из других кругов — не книжка</h3>
+<p>Ссылка регистрирует того, кого ещё нет на сервере. Того, с кем вы уже в круге, ссылкой звать незачем — и прятать это за шевроном нельзя: тогда функция есть только у того, кто знает, куда смотреть. На 2.7 и 6.4 — кнопка «Позвать из других кругов». Список — 2.9: люди по кругам, в строке имя и откуда. «Первых двух» продукт не выбирает. Почты нет, лиц с сервера целиком нет. В новом круге имя всё равно с нуля, 1.3.</p>
+</div>
+
+<div class="cardx">
+<h3>Выбор сервера — не 7.2</h3>
+<p>Сначала казалось, что шеврон на форме ведёт в тот же перечень, что настройки, только с галочкой, и своего кадра не нужно. 7.2 про выход и добавление; и то и другое уводит с недособранной формы. 2.14 — те же имена и адреса, что на 2.3, галочка на выбранном, кнопки «добавить» нет. Одна учётка — всё равно этот экран, а не мёртвая строка.</p>
+</div>
+
+<div class="cardx">
+<h3>Одноразовые в настройках прячут чип, а не дефолтят молча</h3>
+<p>Пара «Одноразовые / Многоразовые» рядом с «Могут все / Только владелец» читается как правило, не как предвыбор. Если правило — только одноразовые, на 6.4 нет второго чипа и нет лимита. Живую многоразовую, если успели создать, всё ещё можно отозвать.</p>
 </div>
 
 <div class="cardx">
@@ -3136,13 +3411,12 @@
 </div>
 
 <h2>Что не нарисовано</h2>
-<p class="lede">Двенадцать мест, где рисовать пока нечего.</p>
+<p class="lede">Одиннадцать мест, где рисовать пока нечего.</p>
 <ul>
 <li><strong>Зум карты.</strong> Точки разбросаны от дачи до Турции, и разумного начального масштаба не существует. Решается кодом и живыми данными, а не макетом.</li>
 <li><strong>Миграция круга на другой сервер.</strong> Будет, но позже: отложена сознательно; глобальные идентификаторы под неё заложены, экрана нет. Персональный архив — уже другая история и нарисован (6.10): он про унести своё, а не про переехать кругом.</li>
 <li><strong>Сам HTML-архив.</strong> Он не экран приложения, а файл на чужом устройстве. Правила заданы словами — вёрстка как в клиенте, цвет круга, инлайн CSS, относительные пути, <code>index.html</code> в обоих раскладках, — а как это выглядит, покажет первый собранный архив.</li>
 <li><strong>Письма.</strong> Два письма цикла архивации, код входа и письмо об истечении подписки уходят через SMTP и живут вне интерфейса. Что в них сказано и когда — задано на экране сроков и на 10.6; вёрстка письма — отдельная работа.</li>
-<li><strong>Выбор сервера из списка.</strong> Строка с шевроном на создании круга ведёт в перечень ваших учёток — тот же, что в настройках приложения (7.2), только с галочкой. Своего макета не требует; добавления сервера в нём нет намеренно, иначе человек уходил бы с недособранной формы в регистрацию и возвращался неизвестно куда.</li>
 <li><strong>Выбор обложки дня.</strong> Это альбом дня с галочкой — тот же экран 4.3, только сетка собрана из медиа всех записей за день. Своего макета не требует.</li>
 <li><strong>Удаление профиля самим человеком.</strong> Со стороны панели это уже карточка на «Людях»: хроника не редактируется, владение нельзя бросить. Кто нажимает ту же кнопку из приложения — сам участник по GDPR или никто — по-прежнему не решено, поэтому экрана в клиенте нет.</li>
 <li><strong>Видео.</strong> Тот же экран, что и фотография, плюс штатные элементы плеера платформы — своих рисовать не нужно.</li>

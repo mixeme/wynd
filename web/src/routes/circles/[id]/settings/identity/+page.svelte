@@ -32,6 +32,7 @@
 	let saving = $state(false);
 	let cropFile = $state<File | undefined>();
 	let fileInput: HTMLInputElement | undefined = $state();
+	let nameHint = $state('');
 
 	async function loadAvatar(blobId?: string) {
 		if (blobId) {
@@ -62,7 +63,11 @@
 
 	async function save() {
 		const trimmed = name.trim();
-		if (!trimmed) return;
+		if (!trimmed) {
+			nameHint = 'Укажите имя';
+			return;
+		}
+		nameHint = '';
 		saving = true;
 		error = '';
 		try {
@@ -109,7 +114,6 @@
 	}
 
 	async function clearPhoto() {
-		if (!confirm('Убрать фото?')) return;
 		try {
 			if (circle.avatarBlobId) revokeMediaUrl(circle.origin, circle.avatarBlobId);
 			await updateIdentity(circle.origin, circle.circleId, { avatar_blob_id: '' });
@@ -157,6 +161,9 @@
 	/>
 	<Label style="margin-top:20px">Имя</Label>
 	<Input active bind:value={name} />
+	{#if nameHint}
+		<Hint style="margin-top:8px">{nameHint}</Hint>
+	{/if}
 	<Hint
 		>Это имя видно только в «{circle.name}». В других кругах вас зовут иначе, и связать одно с
 		другим нельзя — даже администратору сервера.</Hint

@@ -15,8 +15,11 @@ import (
 )
 
 func (s *Service) Register(ctx context.Context, in RegisterInput) error {
-	email := normalizeEmail(in.Email)
-	if email == "" || email == AdminSentinelEmail {
+	email, err := ParseParticipantEmail(in.Email)
+	if err != nil {
+		return err
+	}
+	if email == AdminSentinelEmail {
 		return ErrInvalid
 	}
 	when := in.Now.UTC()
@@ -55,8 +58,11 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) error {
 }
 
 func (s *Service) RequestCode(ctx context.Context, in RequestCodeInput) error {
-	email := normalizeEmail(in.Email)
-	if email == "" || email == AdminSentinelEmail {
+	email, err := ParseParticipantEmail(in.Email)
+	if err != nil {
+		return err
+	}
+	if email == AdminSentinelEmail {
 		return ErrInvalid
 	}
 	when := in.Now.UTC()
@@ -312,10 +318,58 @@ func (s *Service) checkRate(ctx context.Context, clientIP, email string, when ti
 	if err != nil {
 		return fmt.Errorf("rate limit: %w", err)
 	}
-	if byIP >= ipRateLimit || byEmail >= emailRateLimit {
-		return ErrRateLimited
+	if byIP < ipRateLimit && byEmail < emailRateLimit {
+		return nil
 	}
-	return nil
+	retry := 0
+	if byIP >= ipRateLimit {
+		sec, err := s.secondsUntilRateSlot(ctx, `
+			SELECT MIN(requested_at) FROM code_request_log
+			WHERE client_ip = ? AND requested_at >= ?
+		`, clientIP, since, when)
+		if err != nil {
+			return err
+		}
+		retry = sec
+	}
+	if byEmail >= emailRateLimit {
+		sec, err := s.secondsUntilRateSlot(ctx, `
+			SELECT MIN(requested_at) FROM code_request_log
+			WHERE email = ? AND requested_at >= ?
+		`, email, since, when)
+		if err != nil {
+			return err
+		}
+		if sec > retry {
+			retry = sec
+		}
+	}
+	if retry < 1 {
+		retry = 1
+	}
+	return &RateLimitError{RetryAfterSec: retry}
+}
+
+func (s *Service) secondsUntilRateSlot(ctx context.Context, query, arg, since string, when time.Time) (int, error) {
+	var oldestRaw sql.NullString
+	err := s.db.QueryRowContext(ctx, query, arg, since).Scan(&oldestRaw)
+	if err != nil {
+		return 0, fmt.Errorf("rate limit oldest: %w", err)
+	}
+	if !oldestRaw.Valid || oldestRaw.String == "" {
+		return 1, nil
+	}
+	oldest, err := parseTime(oldestRaw.String)
+	if err != nil {
+		return 0, err
+	}
+	unlock := oldest.Add(ipRateLimitWindow)
+	remaining := unlock.Sub(when)
+	sec := int((remaining + time.Second - 1) / time.Second)
+	if sec < 1 {
+		sec = 1
+	}
+	return sec, nil
 }
 
 func randomCode() (string, error) {

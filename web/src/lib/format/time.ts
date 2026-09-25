@@ -37,13 +37,16 @@ export function formatPostTime(createdAt: string, entryDate?: string): string {
 
 /** Короткая дата для бейджа «задним числом». */
 export function formatEntryDate(entryDate: string): string {
+	if (!entryDate) return '';
 	const [y, m, d] = entryDate.split('-').map(Number);
 	return dateFmt.format(new Date(y, m - 1, d));
 }
 
 /** Дедлайн архивации: «до 15 сентября». */
 export function formatDeadline(iso: string): string {
+	if (!iso) return '';
 	const d = new Date(iso);
+	if (Number.isNaN(d.getTime())) return '';
 	return `до ${dateFmt.format(d)}`;
 }
 

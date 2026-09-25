@@ -12,6 +12,7 @@
 	let requisites = $state('');
 	let expiresAt = $state<string | null>(null);
 	let loading = $state(true);
+	let redirecting = $state(false);
 	let error = $state('');
 
 	onMount(async () => {
@@ -24,6 +25,7 @@
 			}
 			const status = await fetchPayStatus(sessions[0].origin);
 			if (!status.has_requisites || status.pending) {
+				redirecting = true;
 				goto('/circles');
 				return;
 			}
@@ -32,7 +34,7 @@
 		} catch (err) {
 			error = authErrorHint(err);
 		} finally {
-			loading = false;
+			if (!redirecting) loading = false;
 		}
 	});
 </script>

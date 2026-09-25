@@ -2,6 +2,7 @@ package chronicle
 
 import (
 	"errors"
+	"time"
 	"unicode/utf8"
 )
 
@@ -29,4 +30,22 @@ func checkLen(s string, max int) error {
 		return ErrTooLong
 	}
 	return nil
+}
+
+const entryDateLayout = "2006-01-02"
+
+// normalizeEntryDate accepts strict YYYY-MM-DD calendar dates (invalid days like 2026-02-30 are rejected).
+func normalizeEntryDate(s string) (string, error) {
+	if s == "" {
+		return "", ErrInvalid
+	}
+	t, err := time.Parse(entryDateLayout, s)
+	if err != nil {
+		return "", ErrInvalid
+	}
+	out := t.Format(entryDateLayout)
+	if out != s {
+		return "", ErrInvalid
+	}
+	return out, nil
 }

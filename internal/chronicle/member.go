@@ -327,10 +327,23 @@ func (c *Chronicle) addIdentityName(ctx context.Context, tx dbtx, identityID, na
 	if err != nil {
 		return err
 	}
+	var avatarBlobID sql.NullString
+	err = tx.QueryRowContext(ctx, `
+		SELECT avatar_blob_id FROM identity_names
+		WHERE identity_id = ? AND erased_at IS NULL
+		ORDER BY effective_at DESC LIMIT 1
+	`, identityID).Scan(&avatarBlobID)
+	if err != nil && err != sql.ErrNoRows {
+		return err
+	}
+	var avatarArg any
+	if avatarBlobID.Valid && avatarBlobID.String != "" {
+		avatarArg = avatarBlobID.String
+	}
 	_, err = tx.ExecContext(ctx, `
-		INSERT INTO identity_names (id, identity_id, name, effective_at)
-		VALUES (?, ?, ?, ?)
-	`, nameID, identityID, name, formatTime(now))
+		INSERT INTO identity_names (id, identity_id, name, avatar_blob_id, effective_at)
+		VALUES (?, ?, ?, ?, ?)
+	`, nameID, identityID, name, avatarArg, formatTime(now))
 	return err
 }
 

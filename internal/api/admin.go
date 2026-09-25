@@ -92,11 +92,17 @@ func (s *Server) handleCreateServerInvite(w http.ResponseWriter, r *http.Request
 	if body.TTLSec > 0 {
 		ttl = time.Duration(body.TTLSec) * time.Second
 	}
+	sess, err := s.Auth.IsAdminSession(r.Context(), bearerToken(r))
+	if err != nil {
+		writeError(w, err)
+		return
+	}
 	inv, err := s.Auth.CreateServerInvite(r.Context(), auth.CreateServerInviteInput{
-		Kind:    kind,
-		MaxUses: maxUses,
-		TTL:     ttl,
-		Now:     time.Now().UTC(),
+		Kind:               kind,
+		MaxUses:            maxUses,
+		TTL:                ttl,
+		CreatedByAccountID: sess.AccountID,
+		Now:                time.Now().UTC(),
 	})
 	if err != nil {
 		writeError(w, err)
@@ -151,6 +157,60 @@ func (s *Server) RequireParticipantStream(next http.HandlerFunc) http.HandlerFun
 		ctx := contextWithSession(r.Context(), sess)
 		next(w, r.WithContext(ctx))
 	}
+}
+
+// RequirePaidParticipant blocks circle API when subscription is required but expired.
+// Pay routes stay on RequireParticipant so users can submit payment.
+func (s *Server) RequirePaidParticipant(next http.HandlerFunc) http.HandlerFunc {
+	return s.RequireParticipant(func(w http.ResponseWriter, r *http.Request) {
+		if err := s.requirePaidSession(r); err != nil {
+			writeError(w, err)
+			return
+		}
+		next(w, r)
+	})
+}
+
+// RequirePaidParticipantStream is RequirePaidParticipant without a JSON body cap.
+func (s *Server) RequirePaidParticipantStream(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token := bearerToken(r)
+		if token == "" {
+			writeError(w, auth.ErrForbidden)
+			return
+		}
+		sess, err := s.Auth.IsParticipantSession(r.Context(), token)
+		if err != nil {
+			writeError(w, auth.ErrForbidden)
+			return
+		}
+		if err := auth.RejectAdminJournal(sess.Kind); err != nil {
+			writeError(w, err)
+			return
+		}
+		ctx := contextWithSession(r.Context(), sess)
+		r = r.WithContext(ctx)
+		if err := s.requirePaidSession(r); err != nil {
+			writeError(w, err)
+			return
+		}
+		next(w, r)
+	}
+}
+
+func (s *Server) requirePaidSession(r *http.Request) error {
+	sess, ok := SessionFromContext(r.Context())
+	if !ok {
+		return auth.ErrForbidden
+	}
+	status, err := s.Auth.PayStatus(r.Context(), sess.AccountID, time.Now().UTC())
+	if err != nil {
+		return err
+	}
+	if status.Required && status.Expired && status.HasRequisites {
+		return auth.ErrPaymentRequired
+	}
+	return nil
 }
 
 type sessionKey struct{}

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -9,6 +10,20 @@ import (
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
 )
+
+const maxBrowserBodyProbeBytes = 2 * 1024 * 1024
+
+func (s *Server) bodyProbeBytes(ctx context.Context) int64 {
+	limit := int64(maxBrowserBodyProbeBytes)
+	if s.Blobs != nil {
+		if cs, err := s.Blobs.LoadCompressionSettings(ctx); err == nil && cs.AttachmentMaxBytes > 0 {
+			if cs.AttachmentMaxBytes < limit {
+				limit = cs.AttachmentMaxBytes
+			}
+		}
+	}
+	return limit
+}
 
 func requestScheme(r *http.Request) string {
 	if proto := strings.ToLower(strings.TrimSpace(r.Header.Get("X-Forwarded-Proto"))); proto != "" {
@@ -25,8 +40,9 @@ func (s *Server) handleProbe(w http.ResponseWriter, r *http.Request) {
 	ip := net.ParseIP(client)
 	peerLoopback := ip != nil && ip.IsLoopback()
 	writeJSON(w, http.StatusOK, map[string]any{
-		"proto":          requestScheme(r),
-		"peer_loopback":  peerLoopback,
+		"proto":            requestScheme(r),
+		"peer_loopback":    peerLoopback,
+		"body_probe_bytes": s.bodyProbeBytes(r.Context()),
 	})
 }
 

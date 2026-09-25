@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
+
+	"gitea.mixdep.ru/mix/wynd/internal/auth"
 )
 
 func TestInvitePeekAndDeferredJoin(t *testing.T) {
@@ -148,5 +151,67 @@ func TestCircleInviteListAndRevoke(t *testing.T) {
 	rec = doJSON(t, srv, http.MethodDelete, "/api/v1/circles/"+circleID+"/invites/wrong-id", ownerTok, nil)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("revoke foreign invite: %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestServerInvitePeek(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	admin := adminToken(t, srv)
+
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/admin/invites", admin, map[string]any{
+		"kind": "multi", "max_uses": 5, "ttl_sec": 3600,
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("server invite: %d %s", rec.Code, rec.Body.String())
+	}
+	token := jsonStr(t, rec, "token")
+
+	rec = doGET(t, srv, "/api/v1/invites/"+token, "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("peek empty server: %d %s", rec.Code, rec.Body.String())
+	}
+	if jsonStr(t, rec, "server_name") != "Дом Ани" {
+		t.Fatalf("peek server_name: %s", rec.Body.String())
+	}
+	if jsonStr(t, rec, "host") == "" {
+		t.Fatalf("peek host empty: %s", rec.Body.String())
+	}
+	var emptyPeek map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &emptyPeek); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := emptyPeek["circle_name"]; ok {
+		t.Fatalf("server peek must not include circle_name: %s", rec.Body.String())
+	}
+	if _, ok := emptyPeek["inviter_name"]; ok {
+		t.Fatalf("no circles yet: inviter_name should be omitted: %s", rec.Body.String())
+	}
+
+	ownerTok, _ := registerSession(t, srv, caps, "slava@example.com")
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles", ownerTok, map[string]any{
+		"name": "Семья", "owner_name": "Слава", "color": "olive",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create circle: %d %s", rec.Code, rec.Body.String())
+	}
+
+	rec = doGET(t, srv, "/api/v1/invites/"+token, "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("peek after circle: %d %s", rec.Code, rec.Body.String())
+	}
+	if jsonStr(t, rec, "inviter_name") != "Слава" {
+		t.Fatalf("peek inviter_name: %s", rec.Body.String())
+	}
+
+	expired, err := srv.Auth.CreateServerInvite(t.Context(), auth.CreateServerInviteInput{
+		Kind: auth.InviteSingle, MaxUses: 1, TTL: time.Hour,
+		Now: time.Now().UTC().Add(-2 * time.Hour),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec = doGET(t, srv, "/api/v1/invites/"+expired.Token, "")
+	if rec.Code != http.StatusGone {
+		t.Fatalf("expired server peek: %d %s", rec.Code, rec.Body.String())
 	}
 }

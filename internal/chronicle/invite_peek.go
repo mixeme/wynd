@@ -116,3 +116,57 @@ func (c *Chronicle) InvitePeekForCircle(ctx context.Context, circleID, inviterAc
 		Members:     members,
 	}, nil
 }
+
+// ServerInviteInviterName is the public name on a server invite (1.7).
+// Prefer a live identity of who created the link; if that account has no face
+// (admin sentinel), the owner of the oldest circle on the instance.
+func (c *Chronicle) ServerInviteInviterName(ctx context.Context, createdByAccountID string) (string, error) {
+	if createdByAccountID != "" {
+		name, err := c.accountFaceName(ctx, createdByAccountID)
+		if err != nil && err != ErrNotFound {
+			return "", err
+		}
+		if name != "" {
+			return name, nil
+		}
+	}
+	return c.oldestCircleOwnerName(ctx)
+}
+
+func (c *Chronicle) accountFaceName(ctx context.Context, accountID string) (string, error) {
+	var name string
+	err := c.db.QueryRowContext(ctx, `
+		SELECT n.name
+		FROM memberships m
+		JOIN identity_names n ON n.identity_id = m.identity_id AND n.erased_at IS NULL
+		WHERE m.account_id = ? AND m.status = ?
+		ORDER BY m.created_at ASC, n.effective_at DESC
+		LIMIT 1
+	`, accountID, StatusActive).Scan(&name)
+	if err == sql.ErrNoRows {
+		return "", ErrNotFound
+	}
+	if err != nil {
+		return "", fmt.Errorf("account face for invite peek: %w", err)
+	}
+	return name, nil
+}
+
+func (c *Chronicle) oldestCircleOwnerName(ctx context.Context) (string, error) {
+	var name string
+	err := c.db.QueryRowContext(ctx, `
+		SELECT n.name
+		FROM circles c
+		JOIN memberships m ON m.circle_id = c.id AND m.account_id = c.owner_account_id AND m.status = ?
+		JOIN identity_names n ON n.identity_id = m.identity_id AND n.erased_at IS NULL
+		ORDER BY c.created_at ASC, n.effective_at DESC
+		LIMIT 1
+	`, StatusActive).Scan(&name)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("oldest circle owner for invite peek: %w", err)
+	}
+	return name, nil
+}

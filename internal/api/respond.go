@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
@@ -41,13 +42,20 @@ func writeError(w http.ResponseWriter, err error) {
 	case errors.Is(err, auth.ErrConflict):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "conflict"})
 	case errors.Is(err, auth.ErrRateLimited):
-		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "rate_limited"})
+		sec := auth.RetryAfterSeconds(err)
+		w.Header().Set("Retry-After", strconv.Itoa(sec))
+		writeJSON(w, http.StatusTooManyRequests, map[string]any{
+			"error":           "rate_limited",
+			"retry_after_sec": sec,
+		})
 	case errors.Is(err, auth.ErrTooManyAttempts):
 		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "too_many_attempts"})
 	case errors.Is(err, auth.ErrExpired):
 		writeJSON(w, http.StatusGone, map[string]string{"error": "expired"})
 	case errors.Is(err, auth.ErrClosed):
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "registration_closed"})
+	case errors.Is(err, auth.ErrPaymentRequired):
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "payment_required"})
 	default:
 		writeDomainError(w, err)
 	}

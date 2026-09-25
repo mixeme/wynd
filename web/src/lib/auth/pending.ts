@@ -1,5 +1,7 @@
 export type PendingAuthFlow = 'register' | 'login' | 'invite';
 
+export type CodeDelivery = 'log' | 'mail';
+
 export interface PendingAuth {
 	origin: string;
 	email: string;
@@ -8,7 +10,10 @@ export interface PendingAuth {
 	inviteName?: string;
 	circleInvite?: boolean;
 	instanceName?: string;
+	codeDelivery?: CodeDelivery;
 	codeSentAt?: number;
+	/** Earliest time (ms) when resend is allowed after rate_limited. */
+	retryUntil?: number;
 }
 
 const KEY = 'wynd:pending-auth';
@@ -33,12 +38,24 @@ export function clearPendingAuth(): void {
 }
 
 export function canResendCode(pending: PendingAuth, cooldownMs = 60_000): boolean {
+	if (pending.retryUntil && Date.now() < pending.retryUntil) return false;
 	if (!pending.codeSentAt) return true;
 	return Date.now() - pending.codeSentAt >= cooldownMs;
 }
 
 export function resendCooldownSec(pending: PendingAuth, cooldownMs = 60_000): number {
+	if (pending.retryUntil) {
+		const left = pending.retryUntil - Date.now();
+		if (left > 0) return Math.ceil(left / 1000);
+	}
 	if (!pending.codeSentAt) return 0;
 	const left = cooldownMs - (Date.now() - pending.codeSentAt);
 	return left > 0 ? Math.ceil(left / 1000) : 0;
+}
+
+export function applyRateLimitToPending(
+	pending: PendingAuth,
+	retryAfterSec: number
+): PendingAuth {
+	return { ...pending, retryUntil: Date.now() + retryAfterSec * 1000 };
 }

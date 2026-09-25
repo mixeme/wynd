@@ -1,5 +1,6 @@
 ﻿<script lang="ts">
 	import Icon from '$ui/Icon.svelte';
+	import type { HTMLButtonAttributes } from 'svelte/elements';
 
 	let {
 		label,
@@ -7,7 +8,8 @@
 		expanded = true,
 		onclick,
 		class: className = '',
-		style = ''
+		style = '',
+		...rest
 	}: {
 		label: string;
 		count?: number | string;
@@ -15,11 +17,11 @@
 		onclick?: () => void;
 		class?: string;
 		style?: string;
-	} = $props();
+	} & HTMLButtonAttributes = $props();
 </script>
 
 {#if onclick}
-	<button type="button" class="fold {className}" {style} {onclick}>
+	<button type="button" class="fold {className}" {style} {onclick} {...rest}>
 		<Icon name={expanded ? 'chev' : 'chevr'} size="sm" />
 		<span>{label}</span>
 		{#if count !== undefined}

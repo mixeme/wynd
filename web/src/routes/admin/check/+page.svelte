@@ -145,7 +145,7 @@
 											<TextButton variant="admin" onclick={() => goto('/admin/smtp')}>
 												Настроить
 											</TextButton>
-										{:else if id === 'dkim' && row.status !== 'ok' && row.status !== 'na'}
+										{:else if id === 'dkim' && row.status !== 'na'}
 											<TextButton variant="admin" onclick={() => goto('/admin/smtp')}>
 												Как добавить
 											</TextButton>

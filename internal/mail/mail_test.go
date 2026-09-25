@@ -114,7 +114,7 @@ func TestSaveConfigAndSendViaFakeSMTP(t *testing.T) {
 		if !strings.Contains(msg, "To: bob@example.com") {
 			t.Fatalf("missing recipient: %q", msg)
 		}
-		if !strings.Contains(msg, "Subject: Тема") {
+		if !strings.Contains(msg, "Subject:") {
 			t.Fatalf("missing subject: %q", msg)
 		}
 		if !strings.Contains(msg, "Текст") {
@@ -122,6 +122,47 @@ func TestSaveConfigAndSendViaFakeSMTP(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("timeout waiting for smtp message")
+	}
+}
+
+func TestSendDisplayNameUsesEnvelope(t *testing.T) {
+	addr, mailFrom, received := startFakeSMTPCapture(t)
+	host, port, _ := net.SplitHostPort(addr)
+
+	st, err := store.OpenMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+
+	svc, err := mail.New(st, false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+
+	if err := svc.SaveConfig(ctx, mail.Config{
+		Host: host,
+		Port: atoi(port),
+		From: "Wynd <wynd@example.com>",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := svc.SendPlain(ctx, "bob@example.com", "Тема", "Текст"); err != nil {
+		t.Fatal(err)
+	}
+
+	from := <-mailFrom
+	if !strings.Contains(from, "<wynd@example.com>") {
+		t.Fatalf("MAIL FROM: %q", from)
+	}
+	if strings.Contains(strings.ToLower(from), "wynd <") {
+		t.Fatalf("display name leaked into envelope: %q", from)
+	}
+	msg := <-received
+	if !strings.Contains(msg, "From:") || !strings.Contains(msg, "wynd@example.com") {
+		t.Fatalf("From header: %q", msg)
 	}
 }
 
@@ -165,12 +206,19 @@ func TestSendTestRecordsTimestamp(t *testing.T) {
 
 func startFakeSMTP(t *testing.T) (addr string, received chan string) {
 	t.Helper()
+	addr, _, received = startFakeSMTPCapture(t)
+	return addr, received
+}
+
+func startFakeSMTPCapture(t *testing.T) (addr string, mailFrom, received chan string) {
+	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = ln.Close() })
 
+	mailFrom = make(chan string, 1)
 	received = make(chan string, 1)
 	go func() {
 		for {
@@ -178,13 +226,13 @@ func startFakeSMTP(t *testing.T) (addr string, received chan string) {
 			if err != nil {
 				return
 			}
-			go handleSMTPConn(conn, received)
+			go handleSMTPConn(conn, mailFrom, received)
 		}
 	}()
-	return ln.Addr().String(), received
+	return ln.Addr().String(), mailFrom, received
 }
 
-func handleSMTPConn(conn net.Conn, received chan<- string) {
+func handleSMTPConn(conn net.Conn, mailFrom, received chan<- string) {
 	defer conn.Close()
 	_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
 	writeLine := func(s string) { _, _ = conn.Write([]byte(s)) }
@@ -203,6 +251,10 @@ func handleSMTPConn(conn net.Conn, received chan<- string) {
 		case strings.HasPrefix(upper, "STARTTLS"):
 			writeLine("220 Ready to start TLS\r\n")
 		case strings.HasPrefix(upper, "MAIL FROM"):
+			select {
+			case mailFrom <- line:
+			default:
+			}
 			writeLine("250 OK\r\n")
 		case strings.HasPrefix(upper, "RCPT TO"):
 			writeLine("250 OK\r\n")

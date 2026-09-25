@@ -97,9 +97,15 @@ export async function createCircle(
 export async function searchOrigin(
 	origin: string,
 	query: string,
-	limit = 50
+	limit = 50,
+	filters?: import('$lib/journal/search').SearchFilters
 ): Promise<SearchHit[]> {
 	const params = new URLSearchParams({ q: query, limit: String(limit) });
+	if (filters?.from) params.set('from', filters.from);
+	if (filters?.to) params.set('to', filters.to);
+	if (filters?.hasPhoto) params.set('has_photo', '1');
+	if (filters?.hasLocation) params.set('has_location', '1');
+	if (filters?.author) params.set('author', filters.author);
 	const data = await apiJson<SearchResponse>(origin, `/search?${params}`);
 	return data.hits;
 }
@@ -185,7 +191,10 @@ export async function circleNameMap(): Promise<Map<string, { name: string; color
 	return map;
 }
 
-export async function searchAllOrigins(query: string): Promise<
+export async function searchAllOrigins(
+	query: string,
+	filters?: import('$lib/journal/search').SearchFilters
+): Promise<
 	Array<{
 		origin: string;
 		hits: SearchHit[];
@@ -196,10 +205,10 @@ export async function searchAllOrigins(query: string): Promise<
 	await Promise.all(
 		sessions.map(async (session) => {
 			try {
-				const hits = await searchOrigin(session.origin, query);
+				const hits = await searchOrigin(session.origin, query, 50, filters);
 				if (hits.length) results.push({ origin: session.origin, hits });
 			} catch {
-				/* skip unreachable origin */
+				/* skip unreachable or unpaid origin; layout `/search` is the pay wall */
 			}
 		})
 	);

@@ -1,4 +1,4 @@
-import { ApiError, apiJson } from '$lib/api/client';
+import { ApiError, apiJson, isPaymentRequired } from '$lib/api/client';
 import {
 	getAppSettings,
 	saveAppSettings,
@@ -55,7 +55,10 @@ async function persistTheme(next: Theme): Promise<void> {
 
 /** Server rejected the stored Bearer token (missing, expired, or revoked). */
 export function isSessionRejected(err: unknown): boolean {
-	return err instanceof ApiError && (err.status === 401 || err.status === 403);
+	return (
+		err instanceof ApiError &&
+		(err.status === 401 || (err.status === 403 && !isPaymentRequired(err)))
+	);
 }
 
 /** Drop local participant state for an origin after the server no longer accepts the token. */

@@ -16,15 +16,6 @@ export function resolveServerOrigin(input: string): string {
 	const parsed = parseServerInput(input);
 	if (!parsed) return '';
 	if (typeof window !== 'undefined' && parsed === window.location.origin) return '';
-	if (typeof window !== 'undefined') {
-		const host = window.location.hostname;
-		if (
-			(host === '127.0.0.1' || host === 'localhost') &&
-			(parsed.includes('127.0.0.1') || parsed.includes('localhost'))
-		) {
-			return '';
-		}
-	}
 	return normalizeOrigin(parsed);
 }
 

@@ -9,6 +9,7 @@ export interface InstanceInfo {
 	registration_mode: 'open' | 'invite' | 'closed';
 	loopback: boolean;
 	bootstrapped: boolean;
+	code_delivery?: 'log' | 'mail';
 }
 
 export interface VerifyResult {
@@ -31,14 +32,45 @@ export const AUTH_ERROR_HINTS: Record<string, string> = {
 	weak_password: 'Пароль должен быть не короче 8 символов',
 	too_long: 'Слишком длинный текст',
 	payload_too_large: 'Слишком большой запрос',
+	smtp_not_configured: 'Сначала сохраните хост и адрес отправителя',
+	smtp_failed: 'Письмо не ушло. Проверьте хост, порт, логин и пароль.',
+	internal: 'Не удалось выполнить запрос',
 	unknown: 'Не удалось выполнить запрос'
 };
 
+export function rateLimitedHint(retryAfterSec: number): string {
+	if (retryAfterSec < 60) {
+		return `Слишком много запросов. Следующий код можно запросить через ${retryAfterSec} сек.`;
+	}
+	const min = Math.ceil(retryAfterSec / 60);
+	return `Слишком много запросов. Следующий код можно запросить через ${min} мин.`;
+}
+
 export function authErrorHint(err: unknown): string {
 	if (err instanceof ApiError) {
+		if (err.code === 'rate_limited' && err.retryAfterSec != null) {
+			return rateLimitedHint(err.retryAfterSec);
+		}
+		if (err.code === 'smtp_failed') {
+			return smtpFailedHint(err.detail);
+		}
 		return AUTH_ERROR_HINTS[err.code] ?? err.code;
 	}
 	return AUTH_ERROR_HINTS.unknown;
+}
+
+function smtpFailedHint(detail?: string): string {
+	const d = (detail ?? '').toLowerCase();
+	if (d.includes('timeout') || d.includes('deadline') || d.includes('i/o')) {
+		return 'Сервер почты не ответил. Проверьте хост и порт.';
+	}
+	if (d.includes('auth') || d.includes('535') || d.includes('534')) {
+		return 'Сервер не принял логин или пароль.';
+	}
+	if (d.includes('tls') || d.includes('certificate')) {
+		return 'Не удалось установить шифрование с сервером почты.';
+	}
+	return AUTH_ERROR_HINTS.smtp_failed;
 }
 
 export async function fetchInstance(origin: string): Promise<InstanceInfo> {
@@ -110,7 +142,7 @@ export async function sendAuthCode(pending: PendingAuth): Promise<PendingAuth> {
 	} else {
 		throw new Error('invalid pending auth flow');
 	}
-	return { ...pending, codeSentAt: Date.now() };
+	return { ...pending, codeSentAt: Date.now(), retryUntil: undefined };
 }
 
 export function flowForJoin(

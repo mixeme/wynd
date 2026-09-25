@@ -196,6 +196,8 @@ type PostInput struct {
 	EntryDate  string
 	CapturedAt *time.Time
 	Now        time.Time
+	// AllowEmptyBody is set when media is attached in the same transaction (photo-only posts).
+	AllowEmptyBody bool
 }
 
 type CommentInput struct {

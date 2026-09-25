@@ -48,10 +48,6 @@ func (s *Server) handlePeekInvite(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	if inv.IsServer() {
-		writeError(w, chronicle.ErrNotFound)
-		return
-	}
 	now := time.Now().UTC()
 	if inv.RevokedAt != nil || !now.Before(inv.ExpiresAt) {
 		writeError(w, auth.ErrExpired)
@@ -63,6 +59,24 @@ func (s *Server) handlePeekInvite(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
+	host := s.inviteHost(r)
+	if inv.IsServer() {
+		name, err := s.Chronicle.ServerInviteInviterName(r.Context(), inv.CreatedByAccountID)
+		if err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		out := map[string]any{
+			"server_name": info.Name,
+			"host":        host,
+		}
+		if name != "" {
+			out["inviter_name"] = name
+		}
+		writeJSON(w, http.StatusOK, out)
+		return
+	}
+
 	peek, err := s.Chronicle.InvitePeekForCircle(r.Context(), inv.CircleID, inv.CreatedByAccountID)
 	if err != nil {
 		writeDomainError(w, err)
@@ -71,7 +85,7 @@ func (s *Server) handlePeekInvite(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"server_name":  info.Name,
-		"host":         s.inviteHost(r),
+		"host":         host,
 		"circle_name":  peek.CircleName,
 		"color":        peek.Color,
 		"member_count": peek.MemberCount,

@@ -5,17 +5,25 @@
 	import Hint from '$ui/forms/Hint.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import Label from '$ui/forms/Label.svelte';
+	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
 	import ServerRow from '$ui/data/ServerRow.svelte';
-	import FormLayout from '$lib/layouts/FormLayout.svelte';
+	import PlainLayout from '$lib/layouts/PlainLayout.svelte';
 	import { authErrorHint, fetchInstance, sendAuthCode } from '$lib/auth/auth';
+	import {
+		fetchInvitePeek,
+		isCircleInvitePeek,
+		serverInviteSubtitle,
+		type InvitePeek
+	} from '$lib/auth/invites';
 	import { displayHost } from '$lib/auth/origin';
+	import { INVALID_EMAIL_HINT, isValidParticipantEmail } from '$lib/auth/email';
 	import { loadPendingAuth, savePendingAuth } from '$lib/auth/pending';
 
 	let { data } = $props();
 	const token = data.token;
 
 	let email = $state('');
-	let instanceName = $state('');
+	let peek = $state<InvitePeek | undefined>();
 	let loading = $state(false);
 	let error = $state('');
 
@@ -25,10 +33,14 @@
 			email = pending.email;
 		}
 		try {
-			const info = await fetchInstance('');
-			instanceName = info.name;
+			const next = await fetchInvitePeek('', token);
+			if (isCircleInvitePeek(next)) {
+				goto(`/invite/${token}`);
+				return;
+			}
+			peek = next;
 		} catch {
-			error = 'Сервер недоступен';
+			error = 'Приглашение недействительно или истекло';
 		}
 	});
 
@@ -37,6 +49,10 @@
 		const trimmed = email.trim();
 		if (!trimmed) {
 			error = 'Введите почту';
+			return;
+		}
+		if (!isValidParticipantEmail(trimmed)) {
+			error = INVALID_EMAIL_HINT;
 			return;
 		}
 		loading = true;
@@ -49,7 +65,8 @@
 				inviteToken: token,
 				inviteName: '',
 				circleInvite: false,
-				instanceName: info.name
+				instanceName: info.name,
+				codeDelivery: info.code_delivery ?? 'mail'
 			};
 			await sendAuthCode(pending);
 			savePendingAuth({ ...pending, codeSentAt: Date.now() });
@@ -60,15 +77,20 @@
 			loading = false;
 		}
 	}
-	const serverSubtitle = $derived(`${displayHost('')} · приглашение на сервер`);
+
+	const serverName = $derived(peek?.server_name || '…');
+	const serverSubtitle = $derived(
+		peek ? serverInviteSubtitle(peek, displayHost('')) : '…'
+	);
 </script>
 
-<FormLayout shell app title="Вас позвали на сервер" onback={() => goto('/')}>
-	<ServerRow name={instanceName || '…'} subtitle={serverSubtitle} card />
+<PlainLayout shell app>
+	<ScreenTitle style="margin-top:24px">Вас позвали на сервер</ScreenTitle>
+	<ServerRow name={serverName} subtitle={serverSubtitle} card />
 	<Label style="margin-top:16px">Почта</Label>
 	<Input active gray type="email" autocomplete="email" bind:value={email} />
 	<Hint>Пришлём код для входа. Пароля нет.</Hint>
-	<Button {loading} onclick={onSubmit}>Получить код</Button>
+	<Button {loading} disabled={!peek} onclick={onSubmit}>Получить код</Button>
 	<Hint>
 		Сервер хранит данные незашифрованными. Присоединение к этому серверу означает, что вы
 		доверяете его администратору.
@@ -79,4 +101,4 @@
 	{#if error}
 		<Hint style="margin-top:12px">{error}</Hint>
 	{/if}
-</FormLayout>
+</PlainLayout>

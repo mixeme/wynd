@@ -90,6 +90,9 @@ func TestInstanceEndpoint(t *testing.T) {
 	if body["loopback"] != true {
 		t.Fatalf("loopback: %v", body["loopback"])
 	}
+	if body["code_delivery"] != "log" {
+		t.Fatalf("code_delivery: %v want log", body["code_delivery"])
+	}
 	comp, ok := body["compression"].(map[string]any)
 	if !ok {
 		t.Fatal("compression missing")
@@ -206,6 +209,60 @@ func TestInvalidPostJSONIsBadRequest(t *testing.T) {
 	srv.ServeHTTP(rec, req)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status: %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestJournalContentValidation(t *testing.T) {
+	srv, caps, ch, _ := setupAPI(t)
+	token, accountID := registerSession(t, srv, caps, "validate@example.com")
+	circle, _, _, err := ch.CreateCircle(t.Context(), chronicle.CreateCircleInput{
+		Name: "Семья", OwnerAccountID: accountID, OwnerName: "Аня",
+		Now: time.Date(2026, 8, 30, 10, 0, 0, 0, time.UTC),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	postURL := "/api/v1/circles/" + circle.ID + "/posts"
+
+	whitespacePost, _ := json.Marshal(map[string]any{"body": "   ", "media": []any{}, "entry_date": "2026-08-30"})
+	req := httptest.NewRequest(http.MethodPost, postURL, bytes.NewReader(whitespacePost))
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("whitespace post: %d %s", rec.Code, rec.Body.String())
+	}
+
+	badDate, _ := json.Marshal(map[string]any{"body": "текст", "entry_date": "2026-02-30"})
+	req = httptest.NewRequest(http.MethodPost, postURL, bytes.NewReader(badDate))
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec = httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid entry_date: %d %s", rec.Code, rec.Body.String())
+	}
+
+	okBody, _ := json.Marshal(map[string]any{"body": "запись", "entry_date": "2026-08-30"})
+	req = httptest.NewRequest(http.MethodPost, postURL, bytes.NewReader(okBody))
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec = httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create post: %d %s", rec.Code, rec.Body.String())
+	}
+	var post map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&post); err != nil {
+		t.Fatal(err)
+	}
+	postID := post["id"].(string)
+
+	whitespaceComment, _ := json.Marshal(map[string]string{"body": "   "})
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/circles/"+circle.ID+"/posts/"+postID+"/comments", bytes.NewReader(whitespaceComment))
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec = httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("whitespace comment: %d %s", rec.Code, rec.Body.String())
 	}
 }
 

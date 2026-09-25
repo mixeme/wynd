@@ -16,6 +16,7 @@
 	} from '$lib/auth/auth';
 	import { decodeQrFromFile, parseWyndLink } from '$lib/auth/links';
 	import { displayHost, resolveServerOrigin } from '$lib/auth/origin';
+	import { INVALID_EMAIL_HINT, isValidParticipantEmail } from '$lib/auth/email';
 	import { loadPendingAuth, savePendingAuth } from '$lib/auth/pending';
 	import { appVersion } from '$lib/appinfo';
 
@@ -58,9 +59,11 @@
 			if (pending.origin) {
 				address = displayHost(pending.origin);
 				void checkServer();
+				return;
 			}
-		} else if (typeof window !== 'undefined' && window.location.hostname === '127.0.0.1') {
-			address = '127.0.0.1:5173';
+		}
+		if (typeof window !== 'undefined') {
+			address = window.location.host;
 			void checkServer();
 		}
 	});
@@ -115,6 +118,10 @@
 			error = 'Введите почту';
 			return;
 		}
+		if (!isValidParticipantEmail(trimmed)) {
+			error = INVALID_EMAIL_HINT;
+			return;
+		}
 		const flow = flowForJoin(instance.registration_mode, false);
 		if (flow === 'closed') return;
 		loading = true;
@@ -123,7 +130,8 @@
 				origin,
 				email: trimmed,
 				flow,
-				instanceName: instance.name
+				instanceName: instance.name,
+				codeDelivery: instance.code_delivery ?? 'mail'
 			};
 			await sendAuthCode(pending);
 			savePendingAuth({ ...pending, codeSentAt: Date.now() });

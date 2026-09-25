@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
@@ -115,7 +116,8 @@ func (s *Server) handleAdminApprovePayRequest(w http.ResponseWriter, r *http.Req
 }
 
 func (s *Server) handleAdminRejectPayRequest(w http.ResponseWriter, r *http.Request) {
-	if err := s.Auth.RejectPayRequest(r.Context(), r.PathValue("id")); err != nil {
+	blobsDir := filepath.Join(s.DataDir, "blobs")
+	if err := s.Auth.RejectPayRequest(r.Context(), r.PathValue("id"), blobsDir); err != nil {
 		writeError(w, err)
 		return
 	}

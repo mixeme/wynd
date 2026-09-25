@@ -379,8 +379,18 @@ func (s *Service) ApprovePayRequest(ctx context.Context, id string, days int) er
 	return tx.Commit()
 }
 
-func (s *Service) RejectPayRequest(ctx context.Context, id string) error {
+func (s *Service) RejectPayRequest(ctx context.Context, id string, blobsDir string) error {
 	now := formatTime(time.Now().UTC())
+	var blobID string
+	err := s.db.QueryRowContext(ctx, `
+		SELECT blob_id FROM pay_requests WHERE id = ? AND status = 'pending'
+	`, id).Scan(&blobID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
 	res, err := s.db.ExecContext(ctx, `
 		UPDATE pay_requests SET status = 'rejected', resolved_at = ?
 		WHERE id = ? AND status = 'pending'
@@ -394,6 +404,9 @@ func (s *Service) RejectPayRequest(ctx context.Context, id string) error {
 	}
 	if n == 0 {
 		return ErrNotFound
+	}
+	if blobsDir != "" && blobID != "" {
+		return removePayRequestBlob(ctx, s.db, blobsDir, id, blobID)
 	}
 	return nil
 }
@@ -464,7 +477,7 @@ func (s *Service) PayStatus(ctx context.Context, accountID string, now time.Time
 			Text: settings.DonateText, Dismissible: settings.DonateDismissible,
 		}
 	}
-	if settings.SubscriptionRequired && !out.Expired && out.ExpiresAt != nil {
+	if settings.SubscriptionRequired && !out.Expired && !out.Pending && out.ExpiresAt != nil {
 		if days := reminderDaysLeft(*out.ExpiresAt, now, settings.SubscriptionRemindDays); days != nil {
 			out.Reminder = true
 			out.ReminderDaysLeft = days

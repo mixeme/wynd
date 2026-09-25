@@ -58,16 +58,23 @@ func (s *Service) CreateInvite(ctx context.Context, in CreateInviteInput) (Invit
 
 func (s *Service) CreateServerInvite(ctx context.Context, in CreateServerInviteInput) (Invite, error) {
 	return s.CreateInvite(ctx, CreateInviteInput{
-		Kind:    in.Kind,
-		MaxUses: in.MaxUses,
-		TTL:     in.TTL,
-		Now:     in.Now,
+		Kind:               in.Kind,
+		MaxUses:            in.MaxUses,
+		TTL:                in.TTL,
+		CreatedByAccountID: in.CreatedByAccountID,
+		Now:                in.Now,
 	})
 }
 
 func (s *Service) AcceptInvite(ctx context.Context, in AcceptInviteInput) error {
-	email := normalizeEmail(in.Email)
-	if email == "" || email == AdminSentinelEmail || in.Token == "" {
+	if in.Token == "" {
+		return ErrInvalid
+	}
+	email, err := ParseParticipantEmail(in.Email)
+	if err != nil {
+		return err
+	}
+	if email == AdminSentinelEmail {
 		return ErrInvalid
 	}
 	when := in.Now.UTC()

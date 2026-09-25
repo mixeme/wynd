@@ -43,7 +43,7 @@ func TestSearchRespectsVisibilitySpan(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	hits, err := svc.SearchCircle(ctx, "bob", circle.ID, "уникальный", 10)
+	hits, err := svc.SearchCircle(ctx, "bob", circle.ID, "уникальный", 10, search.Filters{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestSearchRespectsVisibilitySpan(t *testing.T) {
 		t.Fatalf("newcomer search: got %d hits, want 0", len(hits))
 	}
 
-	ownerHits, err := svc.SearchCircle(ctx, "owner", circle.ID, "уникальный", 10)
+	ownerHits, err := svc.SearchCircle(ctx, "owner", circle.ID, "уникальный", 10, search.Filters{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestSearchRespectsVisibilitySpan(t *testing.T) {
 		t.Fatal("circle search should include author")
 	}
 
-	all, err := svc.SearchAll(ctx, "bob", "уникальный", 10)
+	all, err := svc.SearchAll(ctx, "bob", "уникальный", 10, search.Filters{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func TestSearchRespectsVisibilitySpan(t *testing.T) {
 		t.Fatalf("newcomer global search: got %d hits, want 0", len(all))
 	}
 
-	ownerAll, err := svc.SearchAll(ctx, "owner", "уникальный", 10)
+	ownerAll, err := svc.SearchAll(ctx, "owner", "уникальный", 10, search.Filters{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestSearchDayTitle(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	hits, err := svc.SearchCircle(ctx, "owner", circle.ID, "компот", 10)
+	hits, err := svc.SearchCircle(ctx, "owner", circle.ID, "компот", 10, search.Filters{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +143,7 @@ func TestSearchDayTitle(t *testing.T) {
 		t.Fatalf("day must not have author, got %q", day.AuthorName)
 	}
 
-	all, err := svc.SearchAll(ctx, "owner", "компот", 10)
+	all, err := svc.SearchAll(ctx, "owner", "компот", 10, search.Filters{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +167,7 @@ func TestSearchDayTitle(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	renamed, err := svc.SearchCircle(ctx, "owner", circle.ID, "варенье", 10)
+	renamed, err := svc.SearchCircle(ctx, "owner", circle.ID, "варенье", 10, search.Filters{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +183,7 @@ func TestSearchDayTitle(t *testing.T) {
 	if dayHits != 1 {
 		t.Fatalf("renamed day hits: got %d, want 1", dayHits)
 	}
-	stale, err := svc.SearchCircle(ctx, "owner", circle.ID, "компот", 10)
+	stale, err := svc.SearchCircle(ctx, "owner", circle.ID, "компот", 10, search.Filters{})
 	if err != nil {
 		t.Fatal(err)
 	}

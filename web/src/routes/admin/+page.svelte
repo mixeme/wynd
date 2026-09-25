@@ -48,6 +48,9 @@
 	let error = $state('');
 	let loading = $state(true);
 	let circleQuotaGb = $state('');
+	let circleQuotaHint = $state('');
+	let defaultCustomHint = $state('');
+	const quotaGbHintText = 'Квота — целые гигабайты';
 
 	const selectedCircleId = $derived($page.url.searchParams.get('circle') ?? '');
 	const selectedCircle = $derived(circles.find((c) => c.id === selectedCircleId));
@@ -200,7 +203,11 @@
 
 	async function saveDefaultCustom() {
 		const gb = parseGbInt(defaultCustomGb, 1024);
-		if (gb == null) return;
+		if (gb == null) {
+			defaultCustomHint = quotaGbHintText;
+			return;
+		}
+		defaultCustomHint = '';
 		await saveDefaultQuota(gb * GB);
 	}
 
@@ -224,7 +231,11 @@
 				await setCircleQuota(selectedCircle.id, { custom: true, quota_bytes: null });
 			} else {
 				const gb = parseGbInt(circleQuotaGb);
-				if (gb == null) return;
+				if (gb == null) {
+					circleQuotaHint = quotaGbHintText;
+					return;
+				}
+				circleQuotaHint = '';
 				await setCircleQuota(selectedCircle.id, { custom: true, quota_bytes: gb * GB });
 			}
 			await load();
@@ -250,6 +261,7 @@
 
 	$effect(() => {
 		syncCircleField(selectedCircle, pendingForCircle);
+		circleQuotaHint = '';
 	});
 
 	onMount(() => {
@@ -309,6 +321,9 @@
 							/>
 							<span style="font-size:12.5px;color:var(--muted)">ГБ</span>
 						</div>
+						{#if defaultCustomHint}
+							<Hint style="margin-top:8px">{defaultCustomHint}</Hint>
+						{/if}
 					{/if}
 					<div style="font-size:11.5px;color:var(--faint);margin-top:8px;line-height:1.5">
 						Новые круги и те, у кого в таблице не «своя». Потолок инстанса при этом никто не
@@ -392,6 +407,9 @@
 							<Chip onclick={() => void saveCircleQuota('none')}>Без квоты</Chip>
 						</ChipGroup>
 					</div>
+					{#if circleQuotaHint}
+						<Hint style="margin-top:8px">{circleQuotaHint}</Hint>
+					{/if}
 					<div style="font-size:11.5px;color:var(--faint);margin-top:10px;line-height:1.5">
 						{formatBytes(selectedCircle.media_bytes)} уже лежит. Ниже этого числа поставить можно —
 						владелец увидит «место кончилось» и сам выберет отсечку. Панель её не ставит.

@@ -2,12 +2,16 @@ package mail
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/tls"
 	"database/sql"
 	"fmt"
 	"log"
+	"mime"
 	"net"
+	netmail "net/mail"
 	"net/smtp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,6 +28,11 @@ type Config struct {
 	From       string     `json:"from"`
 	TestSentAt *time.Time `json:"test_sent_at,omitempty"`
 }
+
+const defaultSendTimeout = 15 * time.Second
+
+// sendTimeout bounds one SMTP conversation. Tests may shorten it.
+var sendTimeout = defaultSendTimeout
 
 // Service sends email via SMTP or falls back to logging on loopback.
 type Service struct {
@@ -178,64 +187,161 @@ func (s *Service) SendPlain(ctx context.Context, to, subject, body string) error
 }
 
 func (s *Service) sendMessage(ctx context.Context, cfg Config, to, subject, body string) error {
+	ctx, cancel := context.WithTimeout(ctx, sendTimeout)
+	defer cancel()
+
+	from := envelopeAddress(cfg.From)
+	if from == "" {
+		return ErrInvalid
+	}
+
 	msg := buildMessage(cfg.From, to, subject, body)
-	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
+	addr := net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port))
 	conn, err := s.dial(ctx, addr)
 	if err != nil {
-		return fmt.Errorf("mail: dial %s: %w", addr, err)
+		return fmt.Errorf("%w: mail: dial %s: %w", ErrSend, addr, err)
 	}
-	defer conn.Close()
 
 	if deadline, ok := ctx.Deadline(); ok {
 		_ = conn.SetDeadline(deadline)
 	}
 
+	if useImplicitTLS(cfg.Port) {
+		tlsConn := tls.Client(conn, &tls.Config{ServerName: cfg.Host})
+		if err := tlsConn.HandshakeContext(ctx); err != nil {
+			_ = conn.Close()
+			return fmt.Errorf("%w: mail: tls: %w", ErrSend, err)
+		}
+		conn = tlsConn
+	}
+	defer conn.Close()
+
 	client, err := smtp.NewClient(conn, cfg.Host)
 	if err != nil {
-		return fmt.Errorf("mail: smtp client: %w", err)
+		return fmt.Errorf("%w: mail: smtp client: %w", ErrSend, err)
 	}
 	defer client.Close()
 
-	if ok, _ := client.Extension("STARTTLS"); ok {
-		if err := client.StartTLS(&tls.Config{ServerName: cfg.Host}); err != nil {
-			return fmt.Errorf("mail: starttls: %w", err)
+	if !useImplicitTLS(cfg.Port) {
+		if ok, _ := client.Extension("STARTTLS"); ok {
+			if err := client.StartTLS(&tls.Config{ServerName: cfg.Host}); err != nil {
+				return fmt.Errorf("%w: mail: starttls: %w", ErrSend, err)
+			}
 		}
 	}
 
-	if cfg.Username != "" {
-		auth := smtp.PlainAuth("", cfg.Username, cfg.Password, cfg.Host)
-		if err := client.Auth(auth); err != nil {
-			return fmt.Errorf("mail: auth: %w", err)
-		}
+	if err := authenticate(client, cfg); err != nil {
+		return err
 	}
 
-	if err := client.Mail(cfg.From); err != nil {
-		return fmt.Errorf("mail: mail from: %w", err)
+	if err := client.Mail(from); err != nil {
+		return fmt.Errorf("%w: mail: mail from: %w", ErrSend, err)
 	}
 	if err := client.Rcpt(to); err != nil {
-		return fmt.Errorf("mail: rcpt: %w", err)
+		return fmt.Errorf("%w: mail: rcpt: %w", ErrSend, err)
 	}
 	w, err := client.Data()
 	if err != nil {
-		return fmt.Errorf("mail: data: %w", err)
+		return fmt.Errorf("%w: mail: data: %w", ErrSend, err)
 	}
 	if _, err := w.Write(msg); err != nil {
-		return fmt.Errorf("mail: write: %w", err)
+		return fmt.Errorf("%w: mail: write: %w", ErrSend, err)
 	}
 	if err := w.Close(); err != nil {
-		return fmt.Errorf("mail: data close: %w", err)
+		return fmt.Errorf("%w: mail: data close: %w", ErrSend, err)
 	}
-	return client.Quit()
+	if err := client.Quit(); err != nil {
+		return fmt.Errorf("%w: mail: quit: %w", ErrSend, err)
+	}
+	return nil
+}
+
+func authenticate(client *smtp.Client, cfg Config) error {
+	if strings.TrimSpace(cfg.Username) == "" {
+		return nil
+	}
+	ok, mechs := client.Extension("AUTH")
+	if !ok {
+		return fmt.Errorf("%w: mail: auth: server has no AUTH", ErrSend)
+	}
+	var a smtp.Auth
+	upper := strings.ToUpper(mechs)
+	switch {
+	case strings.Contains(upper, "PLAIN"):
+		a = smtp.PlainAuth("", cfg.Username, cfg.Password, cfg.Host)
+	case strings.Contains(upper, "LOGIN"):
+		a = loginAuth{username: cfg.Username, password: cfg.Password}
+	default:
+		a = smtp.PlainAuth("", cfg.Username, cfg.Password, cfg.Host)
+	}
+	if err := client.Auth(a); err != nil {
+		return fmt.Errorf("%w: mail: auth: %w", ErrSend, err)
+	}
+	return nil
+}
+
+func useImplicitTLS(port int) bool {
+	return port == 465
+}
+
+func envelopeAddress(from string) string {
+	from = strings.TrimSpace(from)
+	i := strings.LastIndex(from, "<")
+	if i >= 0 {
+		j := strings.LastIndex(from, ">")
+		if j > i {
+			return strings.TrimSpace(from[i+1 : j])
+		}
+	}
+	return from
+}
+
+func formatAddressHeader(from string) string {
+	from = strings.TrimSpace(from)
+	addr := envelopeAddress(from)
+	name := ""
+	if i := strings.LastIndex(from, "<"); i > 0 {
+		name = strings.Trim(strings.TrimSpace(from[:i]), `"`)
+	}
+	return (&netmail.Address{Name: name, Address: addr}).String()
+}
+
+func encodeHeader(s string) string {
+	for _, r := range s {
+		if r > 127 {
+			return mime.QEncoding.Encode("UTF-8", s)
+		}
+	}
+	return s
+}
+
+func messageID(from string) string {
+	addr := envelopeAddress(from)
+	domain := "localhost"
+	if i := strings.LastIndex(addr, "@"); i >= 0 && i+1 < len(addr) {
+		domain = addr[i+1:]
+	}
+	var rnd [8]byte
+	if _, err := rand.Read(rnd[:]); err != nil {
+		return ""
+	}
+	return fmt.Sprintf("<%d.%x@%s>", time.Now().UnixNano(), rnd, domain)
 }
 
 func buildMessage(from, to, subject, body string) []byte {
 	var b strings.Builder
 	b.WriteString("From: ")
-	b.WriteString(from)
+	b.WriteString(formatAddressHeader(from))
 	b.WriteString("\r\nTo: ")
 	b.WriteString(to)
 	b.WriteString("\r\nSubject: ")
-	b.WriteString(subject)
+	b.WriteString(encodeHeader(subject))
+	b.WriteString("\r\nDate: ")
+	b.WriteString(time.Now().UTC().Format("Mon, 02 Jan 2006 15:04:05 -0700"))
+	if id := messageID(from); id != "" {
+		b.WriteString("\r\nMessage-ID: ")
+		b.WriteString(id)
+	}
 	b.WriteString("\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n")
 	b.WriteString(body)
 	if !strings.HasSuffix(body, "\n") {
@@ -244,6 +350,7 @@ func buildMessage(from, to, subject, body string) []byte {
 	return []byte(b.String())
 }
 
-func defaultDial(_ context.Context, addr string) (net.Conn, error) {
-	return net.Dial("tcp", addr)
+func defaultDial(ctx context.Context, addr string) (net.Conn, error) {
+	var d net.Dialer
+	return d.DialContext(ctx, "tcp", addr)
 }

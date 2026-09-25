@@ -147,6 +147,9 @@ func (c *Chronicle) SetEditWindow(ctx context.Context, circleID, actorAccountID 
 			return ErrForbidden
 		}
 	}
+	if window.Seconds != nil && *window.Seconds < 0 {
+		return ErrInvalid
+	}
 
 	tx, err := c.db.BeginTx(ctx, nil)
 	if err != nil {

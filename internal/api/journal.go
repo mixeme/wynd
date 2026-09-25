@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
@@ -60,7 +61,7 @@ func (s *Server) handleCreatePost(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	if body.Body == "" && len(body.Media) == 0 {
+	if strings.TrimSpace(body.Body) == "" && len(body.Media) == 0 {
 		writeError(w, chronicle.ErrInvalid)
 		return
 	}
@@ -101,6 +102,7 @@ func (s *Server) handleCreatePost(w http.ResponseWriter, r *http.Request) {
 	post, err := s.createPostWithMedia(r.Context(), circleID, sess.AccountID, chronicle.PostInput{
 		CircleID: circleID, AccountID: sess.AccountID, Body: body.Body,
 		EntryDate: body.EntryDate, CapturedAt: captured, Now: now,
+		AllowEmptyBody: len(media) > 0,
 	}, media)
 	if err != nil {
 		writeDomainError(w, err)
@@ -196,6 +198,9 @@ func (s *Server) handleCreateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.notifyComment(circleID, sess.AccountID, postID)
+	if ids, err := s.Chronicle.MentionedAccountIDs(r.Context(), circleID, body.Body); err == nil {
+		s.notifyAccounts(circleID, sess.AccountID, "mention", ids)
+	}
 	writeJSON(w, http.StatusCreated, commentResponse(c))
 }
 

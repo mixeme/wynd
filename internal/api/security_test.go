@@ -109,6 +109,39 @@ func TestPerEmailCodeLimit(t *testing.T) {
 	}
 }
 
+func TestSixthRegisterReturnsRetryAfter(t *testing.T) {
+	srv, _, _, _ := setupAPI(t)
+	if err := srv.Auth.SetRegistrationMode(t.Context(), auth.ModeOpen); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 5; i++ {
+		rec := postJSON(t, srv, "/api/v1/auth/register", "", map[string]string{"email": "sixth@example.com"},
+			map[string]string{"X-Forwarded-For": "203.0.113.99"})
+		if rec.Code != http.StatusAccepted {
+			t.Fatalf("register %d: %d %s", i+1, rec.Code, rec.Body.String())
+		}
+	}
+	rec := postJSON(t, srv, "/api/v1/auth/register", "", map[string]string{"email": "sixth@example.com"},
+		map[string]string{"X-Forwarded-For": "203.0.113.99"})
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("6th status: %d %s", rec.Code, rec.Body.String())
+	}
+	if rec.Header().Get("Retry-After") == "" {
+		t.Fatal("Retry-After header missing")
+	}
+	var body map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body["error"] != "rate_limited" {
+		t.Fatalf("error: %v", body["error"])
+	}
+	sec, ok := body["retry_after_sec"].(float64)
+	if !ok || sec < 1 {
+		t.Fatalf("retry_after_sec: %v", body["retry_after_sec"])
+	}
+}
+
 // Open registration answers "code sent" for known and unknown addresses on
 // both endpoints; invite mode keeps the explicit 404 on /auth/code.
 func TestOpenModeDoesNotEnumerate(t *testing.T) {

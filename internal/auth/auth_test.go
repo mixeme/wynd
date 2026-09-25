@@ -2,6 +2,7 @@ package auth_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -224,6 +225,32 @@ func TestAdminEmailCannotRegister(t *testing.T) {
 	})
 	if err != auth.ErrInvalid {
 		t.Fatalf("want ErrInvalid, got %v", err)
+	}
+}
+
+func TestSixthCodeRequestRateLimited(t *testing.T) {
+	e := newEnv(t)
+	e.bootstrap(t)
+	if err := e.auth.SetRegistrationMode(e.ctx, auth.ModeOpen); err != nil {
+		t.Fatal(err)
+	}
+	when := e.t0
+	for i := 0; i < 5; i++ {
+		if err := e.auth.Register(e.ctx, auth.RegisterInput{
+			Email: "rate@example.com", ClientIP: "10.0.0.1", Now: when.Add(time.Duration(i) * time.Minute),
+		}); err != nil {
+			t.Fatalf("request %d: %v", i+1, err)
+		}
+	}
+	err := e.auth.Register(e.ctx, auth.RegisterInput{
+		Email: "rate@example.com", ClientIP: "10.0.0.1", Now: when.Add(5 * time.Minute),
+	})
+	var rl *auth.RateLimitError
+	if err == nil {
+		t.Fatal("expected rate limit on 6th request")
+	}
+	if !errors.As(err, &rl) || rl.RetryAfterSec < 1 {
+		t.Fatalf("want RateLimitError with retry, got %v", err)
 	}
 }
 

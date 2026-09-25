@@ -72,8 +72,15 @@
 		});
 	}
 
+	function prefersInlineCompose() {
+		return (
+			typeof window !== 'undefined' &&
+			window.matchMedia('(hover: hover) and (pointer: fine)').matches
+		);
+	}
+
 	function handleFieldClick() {
-		if (isEmpty) oncompose?.();
+		if (isEmpty && !prefersInlineCompose()) oncompose?.();
 	}
 
 	function handleSendClick(e: MouseEvent) {

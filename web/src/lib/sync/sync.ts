@@ -6,6 +6,7 @@ import {
 	type SnapshotKind
 } from '$lib/api/snapshots';
 import { getCursor, getSession, listSessions, putCursor } from '$lib/idb/db';
+import { drainQueue } from '$lib/queue/queue';
 
 export interface SyncEvent {
 	seq: number;
@@ -147,6 +148,8 @@ async function runSyncLoop(origin: string, signal: AbortSignal): Promise<void> {
 			await sleep(RETRY_MS, signal);
 			continue;
 		}
+
+		void drainQueue();
 
 		try {
 			await readSSE(res.body, signal, (data) => handleSyncEvent(origin, data));

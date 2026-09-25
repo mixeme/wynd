@@ -19,6 +19,7 @@
 	import { fetchMembers, type MemberInfo } from '$lib/circles/settings';
 	import { formatBytes } from '$lib/format/bytes';
 	import { formatClock, formatPostTime, isEditableActive } from '$lib/format/time';
+	import { isPostArchiveLocked } from '$lib/journal/archive';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadFeed } from '$lib/journal/feed';
 	import { splitMentionBody } from '$lib/journal/mentions';
@@ -51,6 +52,7 @@
 		subscribeQueue,
 		type QueuedCommentView
 	} from '$lib/queue/queue';
+	import { isTransportError } from '$lib/queue/transport';
 	import { registerRefetch } from '$lib/sync/sync';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
@@ -72,6 +74,19 @@
 
 	const soloCircle = $derived(activeMemberCount === 1);
 	const reactionsOpen = $derived($page.url.searchParams.has('reactions'));
+
+	const archiveHint =
+		'Эта запись уйдёт с сервера в срок архивации. Новые комментарии и оценки к ней не принимаются.';
+
+	const postLocked = $derived(
+		post
+			? isPostArchiveLocked(
+					Boolean(circle.archiveCycle?.active),
+					circle.archiveCycle?.cutoff_date,
+					post.created_at
+				)
+			: false
+	);
 
 	function refreshQueued() {
 		void listQueuedComments(circle.origin, circle.circleId, postId).then((items) => {
@@ -175,6 +190,7 @@
 	}
 
 	async function sendComment() {
+		if (postLocked) return;
 		const text = draft.trim();
 		if (!text) return;
 		error = '';
@@ -189,6 +205,12 @@
 				refreshQueued();
 			}
 		} catch (err) {
+			if (isTransportError(err)) {
+				await enqueueComment(circle.origin, circle.circleId, { post_id: postId, body: text });
+				draft = '';
+				refreshQueued();
+				return;
+			}
 			error = authErrorHint(err);
 		}
 	}
@@ -206,7 +228,7 @@
 	}
 
 	function showReactionPlus(currentPost: FeedPost): boolean {
-		if (soloCircle) return false;
+		if (soloCircle || postLocked) return false;
 		const mine = ownReaction(currentPost.reactions, circle.identityId);
 		if (!mine) return true;
 		return isEditableActive(mine.editable_until);
@@ -234,6 +256,7 @@
 	}
 
 	async function pickReaction(currentPost: FeedPost, emoji: string) {
+		if (postLocked) return;
 		const mine = ownReaction(currentPost.reactions, circle.identityId);
 		const removing = mine?.emoji === emoji;
 		error = '';
@@ -276,8 +299,9 @@
 	commentPlaceholder="Написать комментарий…"
 	commentMembers={commentMembers}
 	bind:commentDraft={draft}
+	commentBar={!postLocked}
 	onback={goBack}
-	onCommentSend={sendComment}
+	onCommentSend={postLocked ? undefined : sendComment}
 >
 	{#if loading}
 		<Hint style="margin:24px 16px">Загрузка…</Hint>
@@ -355,6 +379,9 @@
 				{/if}
 			{/snippet}
 		</PostCard>
+		{#if postLocked}
+			<Hint style="margin:0 16px 12px">{archiveHint}</Hint>
+		{/if}
 
 		<div class="thread">
 			{#each currentPost.comments ?? [] as comment (comment.id)}

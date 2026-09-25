@@ -10,12 +10,24 @@ func (s *Server) handleInstance(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
+	delivery := "mail"
+	if info.Loopback {
+		if s.Mail == nil {
+			delivery = "log"
+		} else {
+			ok, err := s.Mail.Configured(r.Context())
+			if err != nil || !ok {
+				delivery = "log"
+			}
+		}
+	}
 	out := map[string]any{
 		"name":              info.Name,
 		"version":           info.Version,
 		"registration_mode": info.RegistrationMode,
 		"loopback":          info.Loopback,
 		"bootstrapped":      info.Bootstrapped,
+		"code_delivery":     delivery,
 	}
 	if s.Blobs != nil {
 		if cs, err := s.Blobs.LoadCompressionSettings(r.Context()); err == nil {

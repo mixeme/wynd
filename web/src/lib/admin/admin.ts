@@ -212,9 +212,18 @@ export async function resolveQuotaRequest(id: string, approve: boolean): Promise
 export async function runChecks(): Promise<CheckResult[]> {
 	const origin = (await getAdminSession())?.origin ?? '';
 	const instance = await fetchInstance(origin);
+	let attachmentMaxBytes = 2 * 1024 * 1024;
+	try {
+		const compression = await fetchCompression();
+		if (compression.attachment_max_bytes > 0) {
+			attachmentMaxBytes = compression.attachment_max_bytes;
+		}
+	} catch {
+		/* use default probe size */
+	}
 	const external: ExternalReport | undefined = instance.loopback
 		? undefined
-		: await collectExternalReport(origin);
+		: await collectExternalReport(origin, attachmentMaxBytes);
 	const data = await adminJson<{ checks: CheckResult[] }>('/admin/check', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },

@@ -58,4 +58,9 @@ describe('format helpers', () => {
 		expect(formatDeadline('2026-09-15T00:00:00Z')).toMatch(/^до /);
 		expect(formatDayCardSubtitle('2026-08-12', 4)).toContain('4 записи');
 	});
+
+	it('returns empty for blank dates', () => {
+		expect(formatEntryDate('')).toBe('');
+		expect(formatDeadline('')).toBe('');
+	});
 });

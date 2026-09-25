@@ -20,12 +20,14 @@
 	import {
 		fetchInvitePeek,
 		inviteCardPreview,
+		isCircleInvitePeek,
 		memberAvatarColor,
 		memberSubtitle,
 		type InvitePeek
 	} from '$lib/auth/invites';
 	import { displayHost } from '$lib/auth/origin';
 	import { circleInitial } from '$lib/circles/meta';
+	import { INVALID_EMAIL_HINT, isValidParticipantEmail } from '$lib/auth/email';
 	import { loadPendingAuth, savePendingAuth } from '$lib/auth/pending';
 
 	let { data } = $props();
@@ -44,7 +46,12 @@
 			email = pending.email;
 		}
 		try {
-			peek = await fetchInvitePeek('', token);
+			const next = await fetchInvitePeek('', token);
+			if (!isCircleInvitePeek(next)) {
+				goto(`/join/${token}`);
+				return;
+			}
+			peek = next;
 		} catch {
 			error = 'Приглашение недействительно или истекло';
 		}
@@ -57,6 +64,10 @@
 			error = 'Введите почту';
 			return;
 		}
+		if (!isValidParticipantEmail(trimmed)) {
+			error = INVALID_EMAIL_HINT;
+			return;
+		}
 		loading = true;
 		try {
 			const info = await fetchInstance('');
@@ -66,7 +77,8 @@
 				flow: 'invite' as const,
 				inviteToken: token,
 				circleInvite: true,
-				instanceName: info.name
+				instanceName: info.name,
+				codeDelivery: info.code_delivery ?? 'mail'
 			};
 			await sendAuthCode(pending);
 			savePendingAuth({ ...pending, codeSentAt: Date.now() });
@@ -87,7 +99,7 @@
 	}
 </script>
 
-{#if showMembers && peek}
+{#if showMembers && peek && isCircleInvitePeek(peek)}
 	<FormLayout
 		app
 		shell
@@ -107,7 +119,7 @@
 {:else}
 	<PlainLayout app>
 		<ScreenTitle style="margin-top:24px">Вас пригласили</ScreenTitle>
-		{#if peek}
+		{#if peek && isCircleInvitePeek(peek)}
 			<InviteCard
 				initial={circleInitial(peek.circle_name)}
 				name={peek.circle_name}

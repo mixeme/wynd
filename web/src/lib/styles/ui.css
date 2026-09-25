@@ -23,11 +23,16 @@
   .ph.app .circle-body:has(> .feed), .ph.app .circle-body:has(> .map-wrap) {
     display:flex; flex-direction:column; overflow:hidden; }
   .ph.app .comp, .ph.app .comp-wrap { position:static; flex-shrink:0; }
-  .compose-body, .form-body { flex:1; min-height:0; overflow:auto; }
-  .ph.app .bar, .ph.app .cbar { flex-shrink:0; }
+  .compose-body, .form-body, .shell-body { flex:1; min-height:0; overflow:auto; }
+  .ph.app .bar, .ph.app .cbar, .ph.app .appbar { flex-shrink:0; }
   .compose-text { display:block; width:100%; border:none; background:transparent; padding:16px 16px 0;
                   font:inherit; color:inherit; line-height:1.45; resize:none; min-height:1.45em;
                   outline:none; overflow:hidden; }
+  .compose-field { display:grid; width:100%; }
+  .compose-field > * { grid-area:1 / 1; }
+  .compose-mirror { white-space:pre-wrap; word-break:break-word; pointer-events:none; overflow:hidden; }
+  .compose-overlay { color:transparent; -webkit-text-fill-color:transparent; caret-color:var(--ink); }
+  .compose-overlay::placeholder { color:var(--faint); -webkit-text-fill-color:var(--faint); }
   .compose-bar { flex-shrink:0; border-top:1px solid var(--line); background:var(--paper); }
   .compose-bar .tools { display:flex; align-items:center; gap:22px; padding:13px 18px; }
   .compose-bar .who { margin-left:auto; font-size:11.5px; color:var(--faint); }
@@ -234,6 +239,9 @@
     font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .btn { margin:20px 16px 0; background:var(--ink); color:var(--paper); border-radius:12px;
          padding:14px; text-align:center; font-weight:600; }
+  /* <button> не тянется от display:block — ширина как у input.fld */
+  button.btn { display:block; box-sizing:border-box; width:calc(100% - 32px); border:none; font:inherit;
+               cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .btn.c { background:var(--c); color:#fff; }
   .btn.gh { background:none; border:1px solid var(--line); color:var(--ink); font-weight:400; }
   .btn.off, button.btn:disabled { background:none; border:1px solid var(--line); color:var(--faint);
@@ -248,7 +256,7 @@
   a.under { color:inherit; text-decoration:none; }
   a.link { color:var(--c); text-decoration:none; }
   .fab { position:absolute; right:18px; bottom:22px; width:56px; height:56px; border-radius:50%;
-         background:var(--ink); color:var(--paper); display:grid; place-items:center; }
+         background:var(--ink); color:var(--paper); display:grid; place-items:center; z-index:1; }
   .fab .ic { color:currentColor; }
   .comp-wrap { position:absolute; left:0; right:0; bottom:0; }
   .comp-wrap > .comp { position:static; }
@@ -319,7 +327,7 @@
   .codebox u.act { border-color:var(--c); }
   .codebox u.act:after { content:""; width:1.5px; height:22px; background:var(--c); }
   .rowin { display:flex; gap:14px; align-items:center; margin:22px 16px 0; }
-  .rowin .btn { margin:0; }
+  .rowin .btn { margin:0; width:auto; }
   .people { display:flex; gap:8px; margin:12px 14px 0; }
   .people .pp { flex:1; text-align:center; font-size:11.5px; color:var(--muted); }
   .people .av2 { width:52px; height:52px; border-radius:50%; display:grid; place-items:center;
@@ -391,7 +399,7 @@
   .chk .d { font-size:11.5px; color:var(--muted); line-height:1.45; }
   .chk .act { font-size:11.5px; color:var(--ink); border-bottom:1px solid var(--line);
               white-space:nowrap; flex:0 0 auto; margin-top:1px; }
-  .chk .btn { margin:0; padding:8px 16px; font-size:12.5px; flex:0 0 auto; align-self:center; }
+  .chk .btn { margin:0; padding:8px 16px; font-size:12.5px; flex:0 0 auto; align-self:center; width:auto; }
   .chk.bad .n { font-weight:600; }
   .st { width:18px; height:18px; border-radius:50%; flex:0 0 auto; display:grid;
         place-items:center; margin-top:1px; }
@@ -403,7 +411,8 @@
              padding:14px 16px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
              font-size:12px; line-height:1.8; white-space:pre; overflow-x:auto; }
   .codeblk .hi { font-weight:600; }
-  .codeblk .cmt { color:var(--faint); }
+  .codeblk span.cmt { display:inline; padding:0; margin:0; align-items:unset; gap:0;
+                      color:var(--faint); border:none; }
 
   /* фотография во весь экран */
   .lb { position:absolute; inset:0; background:#171513; display:flex; flex-direction:column; color:#EFE9E0; }

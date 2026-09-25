@@ -12,7 +12,9 @@
 		sendAuthCode,
 		verifyCode
 	} from '$lib/auth/auth';
+	import { ApiError } from '$lib/api/client';
 	import {
+		applyRateLimitToPending,
 		canResendCode,
 		clearPendingAuth,
 		loadPendingAuth,
@@ -53,6 +55,8 @@
 
 	const digits = $derived(code.replace(/\D/g, '').slice(0, 6).split(''));
 	const active = $derived(Math.min(digits.length, 5));
+	const logDelivery = $derived(pending?.codeDelivery === 'log');
+	const pageTitle = $derived(logDelivery ? 'Код с сервера' : 'Код из письма');
 
 	$effect(() => {
 		const clean = code.replace(/\D/g, '').slice(0, 6);
@@ -112,6 +116,17 @@
 			pending = next;
 			tickCooldown();
 		} catch (err) {
+			if (
+				pending &&
+				err instanceof ApiError &&
+				err.code === 'rate_limited' &&
+				err.retryAfterSec != null
+			) {
+				const next = applyRateLimitToPending(pending, err.retryAfterSec);
+				savePendingAuth(next);
+				pending = next;
+				tickCooldown();
+			}
 			error = authErrorHint(err);
 		} finally {
 			loading = false;
@@ -132,11 +147,17 @@
 	}
 </script>
 
-<FormLayout shell app title="Код из письма" onback={changeEmail}>
+<FormLayout shell app title={pageTitle} onback={changeEmail}>
 	{#if pending}
-		<div style="margin:0 16px">
-			Отправлен на <strong>{pending.email}</strong>
-		</div>
+		{#if logDelivery}
+			<Hint style="margin:0 16px">
+				На этом компьютере письмо не уходит. Код напечатан в окне сервера.
+			</Hint>
+		{:else}
+			<div style="margin:0 16px">
+				Отправлен на <strong>{pending.email}</strong>
+			</div>
+		{/if}
 		<div style="margin:7px 16px 0">
 			<TextButton class="link" onclick={changeEmail}>изменить адрес</TextButton>
 		</div>

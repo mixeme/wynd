@@ -32,6 +32,7 @@
 	import { readExif } from '$lib/media/exif';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 	import { enqueuePost, loadQueuedPost, removeQueueItem, updateQueuedPost } from '$lib/queue/queue';
+	import { isTransportError } from '$lib/queue/transport';
 	import type { PostQueuePayload, QueueFile, QueueMediaMeta } from '$lib/idb/db';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
@@ -71,11 +72,18 @@
 	const showMentionPicker = $derived(mentionStart != null && mentionCandidates.length > 0);
 
 	const canPublish = $derived(Boolean(body.trim()) || picked.length > 0);
-	const showEditWindowNote = $derived(
+	const windowsDiverged = $derived(
 		isEdit &&
 			editingPost &&
 			editingPost.edit_window_sec !== circle.editWindowSec &&
 			!(editingPost.edit_window_sec == null && circle.editWindowSec == null)
+	);
+	const editWindowTitle = $derived(
+		editingPost?.editable_until?.startsWith('9999-')
+			? 'Правится без ограничения'
+			: editingPost?.editable_until
+				? `Правится до ${formatEditableUntil(editingPost.editable_until)}`
+				: ''
 	);
 	const entryDateSubtitle = $derived(
 		entryDate
@@ -110,7 +118,12 @@
 	}
 
 	function openDatePicker() {
-		dateInput?.showPicker?.() ?? dateInput?.click();
+		if (!dateInput) return;
+		try {
+			dateInput.showPicker();
+		} catch {
+			dateInput.click();
+		}
 	}
 
 	function resizeBody() {
@@ -358,6 +371,16 @@
 			});
 			goto(feedHref(entryDate));
 		} catch (err) {
+			if (!isEdit && !editQueueId && isTransportError(err)) {
+				const files = picked.map((p) => p.file!).filter(Boolean);
+				await enqueuePost(circle.origin, circle.circleId, {
+					body: trimmed,
+					entry_date: entryDate,
+					media_meta: picked.map((p) => p.meta)
+				}, files);
+				goto(feedHref());
+				return;
+			}
 			error = authErrorHint(err);
 		} finally {
 			loading = false;
@@ -433,39 +456,50 @@
 			<Hint>Обложка — первая. Нажмите на другую, чтобы лента показывала её.</Hint>
 		{/if}
 
-		<input bind:this={dateInput} type="date" bind:value={entryDate} hidden />
-		<SettingsRow
-			icon="clock"
-			title="Отнести к дате"
-			subtitle={entryDateSubtitle}
-			style="margin-top:16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"
-			onclick={openDatePicker}
-		/>
-		{#if !isEdit}
+		<div class="date-row">
+			<input bind:this={dateInput} type="date" bind:value={entryDate} class="date-pick" tabindex="-1" />
+			<SettingsRow
+				icon="clock"
+				title="Отнести к дате"
+				subtitle={entryDateSubtitle}
+				style="margin-top:16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"
+				onclick={openDatePicker}
+			/>
+		</div>
+		{#if isEdit}
+			<Hint>
+				В ленте запись останется на своём месте. Дата нужна дню — в «Днях» она соберётся с
+				остальными за {entryDate ? formatEntryDate(entryDate) : 'этот день'}.
+			</Hint>
+		{:else}
 			<Hint>
 				В ленте запись всё равно встанет сегодняшним числом. Дата нужна дню — в «Днях» она
 				соберёт её с остальными за {entryDate ? formatEntryDate(entryDate) : 'этот день'}.
 			</Hint>
 		{/if}
 
-		{#if showEditWindowNote && editingPost?.editable_until}
+		{#if isEdit && editingPost?.editable_until}
 			<SettingsRow
 				icon="clock"
-				title="Правится до {formatEditableUntil(editingPost.editable_until)}"
-				subtitle={editWindowSubtitle(editingPost)}
+				title={editWindowTitle}
+				subtitle={windowsDiverged && editingPost
+					? editWindowSubtitle(editingPost)
+					: undefined}
 				chevron={false}
 				style="margin-top:18px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"
 			/>
-			<Hint>
-				Сейчас в круге стоит {circle.editWindowSec === 3600
-					? 'час'
-					: circle.editWindowSec === 86_400
-						? 'сутки'
-						: circle.editWindowSec == null
-							? 'без ограничения'
-							: `${Math.round((circle.editWindowSec ?? 0) / 3600)} ч`}, но запись сохранила своё
-				окно: правило поменяли после неё. У новых записей будет иначе.
-			</Hint>
+			{#if windowsDiverged}
+				<Hint>
+					Сейчас в круге стоит {circle.editWindowSec === 3600
+						? 'час'
+						: circle.editWindowSec === 86_400
+							? 'сутки'
+							: circle.editWindowSec == null
+								? 'без ограничения'
+								: `${Math.round((circle.editWindowSec ?? 0) / 3600)} ч`}, но запись сохранила своё
+					окно: правило поменяли после неё. У новых записей будет иначе.
+				</Hint>
+			{/if}
 		{/if}
 
 		{#if error}
@@ -554,5 +588,18 @@
 		font-size: 10px;
 		padding: 4px;
 		word-break: break-all;
+	}
+	.date-row {
+		position: relative;
+	}
+	.date-pick {
+		position: absolute;
+		left: 16px;
+		top: 16px;
+		width: 1px;
+		height: 1px;
+		opacity: 0;
+		border: 0;
+		pointer-events: none;
 	}
 </style>

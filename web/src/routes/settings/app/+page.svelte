@@ -13,7 +13,7 @@
 	import { authErrorHint } from '$lib/auth/auth';
 	import { formatBytes } from '$lib/format/bytes';
 	import { clearMediaStore, getAppSettings, mediaStoreBytes, type Theme } from '$lib/idb/db';
-	import { getTheme, loadSessions, setTheme } from '$lib/session/session.svelte';
+	import { loadSessions, setTheme } from '$lib/session/session.svelte';
 	import {
 		fetchAccountNotifyPrefs,
 		persistNotifyDefaults,
@@ -95,8 +95,8 @@
 	}
 
 	onMount(async () => {
-		theme = getTheme();
 		const settings = await getAppSettings();
+		theme = settings?.theme ?? 'system';
 		const defaults = settings?.notify_defaults;
 		if (defaults) {
 			posts = defaults.posts ?? true;

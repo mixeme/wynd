@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { getContext, onMount } from 'svelte';
+	import { getContext } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
@@ -30,17 +30,31 @@
 	const cycle = $derived(circle.archiveCycle);
 	const activeCycle = $derived(Boolean(cycle?.active));
 
-	let cutoffDate = $state('');
-	let deadline = $state('');
-	let reminderSec = $state(REMINDER_OPTIONS[1].sec);
+	let cutoffDate = $state(
+		circle.archiveCycle?.active && circle.archiveCycle.cutoff_date
+			? circle.archiveCycle.cutoff_date
+			: ($page.url.searchParams.get('cutoff') ?? '')
+	);
+	let deadline = $state(
+		circle.archiveCycle?.active && circle.archiveCycle.deadline
+			? circle.archiveCycle.deadline.slice(0, 10)
+			: ''
+	);
+	let reminderSec = $state(
+		circle.archiveCycle?.active
+			? (circle.archiveCycle.reminder_before_sec ?? REMINDER_OPTIONS[1].sec)
+			: REMINDER_OPTIONS[1].sec
+	);
 	let cutoffStats = $state('');
-	let cutoffLocked = $state(false);
+	let cutoffLocked = $state(Boolean(circle.archiveCycle?.cutoff_locked));
 	const cutoffInputId = 'quota-cutoff-date';
 	let error = $state('');
 	let loading = $state(false);
 
 	const showReminderChips = $derived(!activeCycle || cutoffLocked);
 	const reminderReadOnly = $derived(activeCycle && cutoffLocked);
+
+	const cutoffTitle = $derived(cutoffDate ? formatEntryDate(cutoffDate) : '…');
 
 	function defaultDeadline(): string {
 		const d = new Date();
@@ -94,18 +108,19 @@
 		}
 	}
 
-	onMount(() => {
+	$effect(() => {
 		if (activeCycle && cycle) {
 			cutoffDate = cycle.cutoff_date;
 			deadline = cycle.deadline.slice(0, 10);
 			cutoffLocked = cycle.cutoff_locked;
 			reminderSec = cycle.reminder_before_sec ?? REMINDER_OPTIONS[1].sec;
-			void loadCutoffStats(cutoffDate);
-		} else {
+			void loadCutoffStats(cycle.cutoff_date);
+		} else if (cutoffParam) {
 			cutoffDate = cutoffParam;
-			deadline = defaultDeadline();
-			if (!cutoffParam) goto(`/circles/${circle.circleId}/quota`);
-			void loadCutoffStats(cutoffDate);
+			if (!deadline) deadline = defaultDeadline();
+			void loadCutoffStats(cutoffParam);
+		} else if (!cutoffDate) {
+			goto(`/circles/${circle.circleId}/quota`);
 		}
 	});
 </script>
@@ -114,7 +129,7 @@
 	<Label>Отсечка</Label>
 	{#if activeCycle && cutoffLocked}
 		<SettingsRow
-			title={formatEntryDate(cutoffDate)}
+			title={cutoffTitle}
 			subtitle={cutoffStats}
 			value="дата замерла"
 			chevron={false}
@@ -126,7 +141,7 @@
 		>
 	{:else if activeCycle}
 		<SettingsRow
-			title={formatEntryDate(cutoffDate)}
+			title={cutoffTitle}
 			subtitle={cutoffStats}
 			value="изменить"
 			chevron={false}

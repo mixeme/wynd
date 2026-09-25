@@ -7,9 +7,9 @@
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
-	import { formatEntryDate } from '$lib/format/time';
+	import { formatEntryDate, isEditableActive } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
-	import { loadDay, loadDays, setDayCover } from '$lib/journal/days';
+	import { loadDay, loadDays, setDayCover, clearDayCover } from '$lib/journal/days';
 	import { photoMedia } from '$lib/journal/present';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 
@@ -21,9 +21,17 @@
 	>([]);
 	let selected = $state<{ postId: string; blobId: string } | undefined>();
 	let coverBlobId = $state<string | undefined>();
+	let coverPostId = $state<string | undefined>();
+	let coverEditableUntil = $state<string | null | undefined>();
+	let ownPostThatDay = $state(false);
 	let loading = $state(true);
 	let saving = $state(false);
+	let clearing = $state(false);
 	let error = $state('');
+
+	const canClearCover = $derived(
+		Boolean(coverPostId) && ownPostThatDay && isEditableActive(coverEditableUntil)
+	);
 
 	onMount(() => {
 		void load();
@@ -39,6 +47,9 @@
 			]);
 			const meta = daysSnap.days.find((d) => d.entry_date === entryDate);
 			coverBlobId = meta?.cover_blob_id;
+			coverPostId = meta?.cover_post_id;
+			coverEditableUntil = meta?.cover_editable_until;
+			ownPostThatDay = day.posts.some((p) => p.identity_id === circle.identityId);
 			const next = [];
 			for (const post of day.posts) {
 				for (const m of photoMedia(post.media)) {
@@ -87,6 +98,19 @@
 			saving = false;
 		}
 	}
+
+	async function clearCover() {
+		clearing = true;
+		error = '';
+		try {
+			await clearDayCover(circle.origin, circle.circleId, entryDate);
+			goBack();
+		} catch (err) {
+			error = authErrorHint(err);
+		} finally {
+			clearing = false;
+		}
+	}
 </script>
 
 <FormLayout app color={circle.color} title="Альбом" onback={goBack}>
@@ -131,6 +155,11 @@
 				</button>
 			{/each}
 		</PhotoGrid>
+	{/if}
+	{#if canClearCover}
+		<div class="hint ctr" style="margin-top:12px">
+			<TextButton disabled={clearing} onclick={() => void clearCover()}>убрать обложку</TextButton>
+		</div>
 	{/if}
 
 	{#if error}

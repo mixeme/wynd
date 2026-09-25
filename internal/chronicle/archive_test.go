@@ -10,6 +10,57 @@ import (
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 )
 
+func TestArchiveCycleBlocksInteractionBeforeCutoff(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	old := e.post(circle.ID, "owner", "до отсечки", "2026-08-01", e.at(0))
+	newer := e.post(circle.ID, "owner", "после отсечки", "2026-08-06", e.at(6))
+	if err := e.ch.StartArchiveCycle(e.ctx, circle.ID, "owner", "2026-08-05", e.at(10), 86400, e.at(1)); err != nil {
+		t.Fatal(err)
+	}
+	_, err := e.ch.CreateComment(e.ctx, chronicle.CommentInput{
+		CircleID: circle.ID, AccountID: "owner", PostID: old.ID, Body: "нельзя", Now: e.at(2),
+	})
+	if !errors.Is(err, chronicle.ErrForbidden) {
+		t.Fatalf("comment before cutoff: %v", err)
+	}
+	_, err = e.ch.SetReaction(e.ctx, chronicle.ReactionInput{
+		CircleID: circle.ID, AccountID: "owner", PostID: old.ID, Emoji: "heart", Now: e.at(2),
+	})
+	if !errors.Is(err, chronicle.ErrForbidden) {
+		t.Fatalf("reaction before cutoff: %v", err)
+	}
+	if _, err := e.ch.CreateComment(e.ctx, chronicle.CommentInput{
+		CircleID: circle.ID, AccountID: "owner", PostID: newer.ID, Body: "можно", Now: e.at(7),
+	}); err != nil {
+		t.Fatalf("comment after cutoff: %v", err)
+	}
+	if _, err := e.ch.SetReaction(e.ctx, chronicle.ReactionInput{
+		CircleID: circle.ID, AccountID: "owner", PostID: newer.ID, Emoji: "heart", Now: e.at(7),
+	}); err != nil {
+		t.Fatalf("reaction after cutoff: %v", err)
+	}
+}
+
+func TestPrejoinCommentAndReactionForbidden(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	p := e.post(circle.ID, "owner", "раньше входа", "2026-08-01", e.at(0))
+	e.join(circle.ID, "guest", "Боря", e.at(3))
+	_, err := e.ch.CreateComment(e.ctx, chronicle.CommentInput{
+		CircleID: circle.ID, AccountID: "guest", PostID: p.ID, Body: "нельзя", Now: e.at(4),
+	})
+	if !errors.Is(err, chronicle.ErrForbidden) {
+		t.Fatalf("prejoin comment: %v", err)
+	}
+	_, err = e.ch.SetReaction(e.ctx, chronicle.ReactionInput{
+		CircleID: circle.ID, AccountID: "guest", PostID: p.ID, Emoji: "heart", Now: e.at(4),
+	})
+	if !errors.Is(err, chronicle.ErrForbidden) {
+		t.Fatalf("prejoin reaction: %v", err)
+	}
+}
+
 func TestArchiveCutoffMovesUntilLocked(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())

@@ -33,7 +33,13 @@
 		<StatusBar />
 	{/if}
 	<AppBar {onsearch} {searchDisabled} {onsettings} />
-	{@render children()}
+	{#if app}
+		<div class="shell-body">
+			{@render children()}
+		</div>
+	{:else}
+		{@render children()}
+	{/if}
 	{#if fab}
 		<Fab>{@render fab()}</Fab>
 	{/if}

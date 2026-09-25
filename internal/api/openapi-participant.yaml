@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.4.4
+  version: 0.5.0
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:
@@ -17,7 +17,9 @@ paths:
       security: []
       responses:
         "200":
-          description: Instance name, version, registration mode
+          description: >-
+            Instance name, version, registration mode, loopback, bootstrapped,
+            and code_delivery (`log` on loopback without SMTP, else `mail`).
 
   /probe:
     get:
@@ -25,7 +27,7 @@ paths:
       security: []
       responses:
         "200":
-          description: proto and peer_loopback
+          description: proto, peer_loopback, and body_probe_bytes for PUT /probe/body
 
   /probe/sse:
     get:
@@ -243,6 +245,44 @@ paths:
         "200":
           description: Day posts ordered by created_at
 
+  /circles/{circle_id}/search/authors:
+    get:
+      summary: Distinct author names in circle search hits
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: has_photo
+          in: query
+          schema:
+            type: string
+            enum: ["1"]
+        - name: has_location
+          in: query
+          schema:
+            type: string
+            enum: ["1"]
+      responses:
+        "200":
+          description: Author names from FTS matches
+
   /circles/{circle_id}/search:
     get:
       summary: Full-text search in circle (with author)
@@ -262,6 +302,30 @@ paths:
           schema:
             type: integer
             default: 50
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: has_photo
+          in: query
+          schema:
+            type: string
+            enum: ["1"]
+        - name: has_location
+          in: query
+          schema:
+            type: string
+            enum: ["1"]
+        - name: author
+          in: query
+          schema:
+            type: string
       responses:
         "200":
           description: Search hits
@@ -280,6 +344,26 @@ paths:
           schema:
             type: integer
             default: 50
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: has_photo
+          in: query
+          schema:
+            type: string
+            enum: ["1"]
+        - name: has_location
+          in: query
+          schema:
+            type: string
+            enum: ["1"]
       responses:
         "200":
           description: Search hits
@@ -321,7 +405,7 @@ paths:
       security: []
       responses:
         "200":
-          description: Circle invite metadata
+          description: Circle invite metadata, or server invite (server_name, host, inviter_name) without a circle
 
   /invites/{token}/join:
     post:

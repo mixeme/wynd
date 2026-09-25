@@ -16,6 +16,7 @@
 	import { rememberCircleOrigin } from '$lib/circles/origin';
 	import { displayHost } from '$lib/auth/origin';
 	import {
+		deleteGroup,
 		deletePin,
 		getPin,
 		listGroups,
@@ -43,6 +44,10 @@
 	let pinMenuKey = $state<string | null>(null);
 	let creatingGroup = $state(false);
 	let newGroupName = $state('');
+	let groupMenuId = $state<string | null>(null);
+	let editingGroupId = $state<string | null>(null);
+	let editGroupName = $state('');
+	let groupLongPressTimer: ReturnType<typeof setTimeout> | undefined;
 	let longPressTimer: ReturnType<typeof setTimeout> | undefined;
 
 	async function refresh() {
@@ -87,7 +92,12 @@
 		payStatus?.banner && !payStatus.dismissed && payStatus.has_requisites
 	);
 	const showReminder = $derived(
-		payStatus?.reminder && payStatus.expires_at && payStatus.has_requisites
+		Boolean(
+			payStatus?.reminder &&
+				payStatus.expires_at &&
+				payStatus.has_requisites &&
+				!payStatus.pending
+		)
 	);
 	const showPendingNotice = $derived(
 		payStatus?.pending && !payStatus.expired && payStatus.pending_at
@@ -119,6 +129,7 @@
 
 	function openCircle(circle: StreetCircle) {
 		pinMenuKey = null;
+		groupMenuId = null;
 		if (suppressClick) {
 			suppressClick = false;
 			return;
@@ -148,6 +159,10 @@
 	}
 
 	async function toggleGroupCollapsed(group: GroupRecord) {
+		if (suppressClick) {
+			suppressClick = false;
+			return;
+		}
 		await putGroup({ ...group, collapsed: !group.collapsed });
 		groups = await listGroups();
 	}
@@ -184,6 +199,44 @@
 		groups = await listGroups();
 	}
 
+	function startGroupLongPress(groupId: string) {
+		clearTimeout(groupLongPressTimer);
+		groupLongPressTimer = setTimeout(() => {
+			suppressClick = true;
+			groupMenuId = groupId;
+			editingGroupId = null;
+		}, 500);
+	}
+
+	function cancelGroupLongPress() {
+		clearTimeout(groupLongPressTimer);
+	}
+
+	function startRenameGroup(group: GroupRecord) {
+		editingGroupId = group.id;
+		editGroupName = group.name;
+		groupMenuId = null;
+	}
+
+	async function saveRenameGroup() {
+		const id = editingGroupId;
+		const name = editGroupName.trim();
+		editingGroupId = null;
+		editGroupName = '';
+		if (!id || !name) return;
+		const group = groups.find((g) => g.id === id);
+		if (!group) return;
+		await putGroup({ ...group, name });
+		groups = await listGroups();
+	}
+
+	async function deleteGroupById(id: string) {
+		groupMenuId = null;
+		editingGroupId = null;
+		await deleteGroup(id);
+		groups = await listGroups();
+	}
+
 	function startCreateGroup() {
 		creatingGroup = true;
 		newGroupName = '';
@@ -212,39 +265,25 @@
 	}
 </script>
 
+{#snippet plusFab()}
+	<IconButton
+		name="plus"
+		label="Новый круг"
+		style="width:26px;height:26px;stroke-width:1.5"
+		onclick={openNew}
+	/>
+{/snippet}
+
 <ShellLayout
 	app
 	searchDisabled={empty}
 	onsearch={empty ? undefined : openSearch}
 	onsettings={openSettings}
+	fab={empty ? undefined : plusFab}
 >
-	{#if !empty}
-		{#snippet fab()}
-			<IconButton
-				name="plus"
-				label="Новый круг"
-				style="width:26px;height:26px;stroke-width:1.5"
-				onclick={openNew}
-			/>
-		{/snippet}
-	{/if}
 
 	{#if loading}
 		<Hint style="margin-top:24px">Загрузка…</Hint>
-	{:else if empty}
-		<ScreenTitle centered style="margin-top:190px">Ни одного круга</ScreenTitle>
-		<Hint centered style="margin:10px 30px 0">
-			Круг — это место, куда сворачивают. Заведите свой или откройте присланную ссылку.
-		</Hint>
-		<Button style="margin-top:30px" onclick={openNew}>Новый круг</Button>
-		<Button variant="ghost" onclick={openInvite}>У меня есть приглашение</Button>
-		{#if streetSession}
-			<Hint centered style="margin-top:34px">
-				Вы вошли как {streetSession.email}<br />в «{streetSession.name}» · {displayHost(
-					streetSession.origin
-				)}
-			</Hint>
-		{/if}
 	{:else}
 		{#if showDonateBanner && payStatus?.banner}
 			<div class="pay-banner">
@@ -292,6 +331,27 @@
 				</div>
 			</div>
 		{/if}
+		{#if empty}
+		<ScreenTitle
+			centered
+			style="margin-top:{showDonateBanner || showReminder || showPendingNotice
+				? '24px'
+				: '190px'}"
+			>Ни одного круга</ScreenTitle
+		>
+		<Hint centered style="margin:10px 30px 0">
+			Круг — это место, куда сворачивают. Заведите свой или откройте присланную ссылку.
+		</Hint>
+		<Button style="margin-top:30px" onclick={openNew}>Новый круг</Button>
+		<Button variant="ghost" onclick={openInvite}>У меня есть приглашение</Button>
+		{#if streetSession}
+			<Hint centered style="margin-top:34px">
+				Вы вошли как {streetSession.email}<br />в «{streetSession.name}» · {displayHost(
+					streetSession.origin
+				)}
+			</Hint>
+		{/if}
+		{:else}
 		{#if pinned.length}
 			<SectionLabel>Закреплённые</SectionLabel>
 			{#each pinned as circle (circleKey(circle))}
@@ -322,12 +382,47 @@
 			{/if}
 		{/if}
 		{#each groups as group (group.id)}
-			<FoldHeader
-				label={group.name}
-				count={circlesInGroup(group).length}
-				expanded={!group.collapsed}
-				onclick={() => void toggleGroupCollapsed(group)}
-			/>
+			{#if editingGroupId === group.id}
+				<Input
+					bind:value={editGroupName}
+					active
+					placeholder="Название"
+					style="margin:8px 16px 0"
+					onkeydown={(e) => {
+						if (e.key === 'Enter') void saveRenameGroup();
+						if (e.key === 'Escape') {
+							editingGroupId = null;
+							editGroupName = '';
+						}
+					}}
+					onblur={() => void saveRenameGroup()}
+				/>
+			{:else}
+				<FoldHeader
+					label={group.name}
+					count={circlesInGroup(group).length}
+					expanded={!group.collapsed}
+					onclick={() => void toggleGroupCollapsed(group)}
+					onmousedown={() => startGroupLongPress(group.id)}
+					onmouseup={cancelGroupLongPress}
+					onmouseleave={cancelGroupLongPress}
+					ontouchstart={() => startGroupLongPress(group.id)}
+					ontouchend={cancelGroupLongPress}
+					ontouchcancel={cancelGroupLongPress}
+				/>
+			{/if}
+			{#if groupMenuId === group.id}
+				<TextButton variant="link" style="margin:4px 16px 0" onclick={() => startRenameGroup(group)}>
+					переименовать
+				</TextButton>
+				<TextButton
+					variant="link"
+					style="margin:4px 16px 0"
+					onclick={() => void deleteGroupById(group.id)}
+				>
+					удалить группу
+				</TextButton>
+			{/if}
 			{#if !group.collapsed}
 				{#each circlesInGroup(group) as circle (circleKey(circle))}
 					<CircleRow
@@ -404,6 +499,7 @@
 		{/if}
 		{#if showGroupHint}
 			<Hint centered style="margin-top:26px">группы видны только на этом устройстве</Hint>
+		{/if}
 		{/if}
 	{/if}
 </ShellLayout>

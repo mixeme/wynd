@@ -22,6 +22,7 @@
 	import { isAccessError } from '$lib/api/client';
 	import { formatBytes } from '$lib/format/bytes';
 	import { formatDeadline, formatEntryDate, formatPostTime, isEditableActive } from '$lib/format/time';
+	import { isPostArchiveLocked } from '$lib/journal/archive';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadFeed } from '$lib/journal/feed';
 	import { splitMentionBody } from '$lib/journal/mentions';
@@ -62,6 +63,7 @@
 		subscribeQueue,
 		type QueuedPostView
 	} from '$lib/queue/queue';
+	import { isTransportError } from '$lib/queue/transport';
 	import { registerRefetch } from '$lib/sync/sync';
 	import { authErrorHint } from '$lib/auth/auth';
 
@@ -228,6 +230,17 @@
 			await loadFeedData();
 			if (navigator.onLine) await checkDayPrompt(entryDate);
 		} catch (err) {
+			if (isTransportError(err)) {
+				await enqueuePost(
+					circle.origin,
+					circle.circleId,
+					{ body: text, entry_date: entryDate },
+					[]
+				);
+				commentDraft = '';
+				await loadFeedData();
+				return;
+			}
 			error = authErrorHint(err);
 		}
 	}
@@ -272,8 +285,19 @@
 		pickerPostId = pickerPostId === postId ? '' : postId;
 	}
 
+	const archiveHint =
+		'Эта запись уйдёт с сервера в срок архивации. Новые комментарии и оценки к ней не принимаются.';
+
+	function postArchiveLocked(post: FeedPost): boolean {
+		return isPostArchiveLocked(
+			Boolean(circle.archiveCycle?.active),
+			circle.archiveCycle?.cutoff_date,
+			post.created_at
+		);
+	}
+
 	function showReactionPlus(post: FeedPost): boolean {
-		if (soloCircle) return false;
+		if (soloCircle || postArchiveLocked(post)) return false;
 		const mine = ownReaction(post.reactions, circle.identityId);
 		if (!mine) return true;
 		return isEditableActive(mine.editable_until);
@@ -303,6 +327,7 @@
 	}
 
 	async function pickReaction(post: FeedPost, emoji: string) {
+		if (postArchiveLocked(post)) return;
 		const mine = ownReaction(post.reactions, circle.identityId);
 		const removing = mine?.emoji === emoji;
 		error = '';
@@ -576,6 +601,9 @@
 						{/if}
 					{/snippet}
 				</PostCard>
+				{#if postArchiveLocked(post)}
+					<Hint style="margin:0 16px 12px">{archiveHint}</Hint>
+				{/if}
 				{#if post.comments?.length}
 					<CommentPreview onclick={() => openPost(post.id)}>
 						{#snippet children()}

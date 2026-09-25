@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -38,10 +39,15 @@ func (c *Chronicle) CreatePostInTx(ctx context.Context, tx *sql.Tx, in PostInput
 }
 
 func (c *Chronicle) createPostInTx(ctx context.Context, tx *sql.Tx, in PostInput) (Post, error) {
-	if in.EntryDate == "" {
+	entryDate, err := normalizeEntryDate(in.EntryDate)
+	if err != nil {
+		return Post{}, err
+	}
+	body := strings.TrimSpace(in.Body)
+	if body == "" && !in.AllowEmptyBody {
 		return Post{}, ErrInvalid
 	}
-	if err := checkByteLen(in.Body, MaxTextBytes); err != nil {
+	if err := checkByteLen(body, MaxTextBytes); err != nil {
 		return Post{}, err
 	}
 	now := utcOrNow(in.Now)
@@ -73,8 +79,8 @@ func (c *Chronicle) createPostInTx(ctx context.Context, tx *sql.Tx, in PostInput
 		actorName:       name,
 		targetID:        postID,
 		payload: map[string]any{
-			"body":        in.Body,
-			"entry_date":  in.EntryDate,
+			"body":        body,
+			"entry_date":  entryDate,
 			"captured_at": capturedAtPayload(in.CapturedAt),
 		},
 		summary: summaryPostCreated(name),
@@ -87,24 +93,25 @@ func (c *Chronicle) createPostInTx(ctx context.Context, tx *sql.Tx, in PostInput
 	until := window.EditableUntil(now)
 	if err := c.insertPost(ctx, tx, postRow{
 		id: postID, circleID: in.CircleID, eventSeq: ev.Seq, identityID: mem.IdentityID,
-		authorName: name, body: in.Body, entryDate: in.EntryDate, capturedAt: in.CapturedAt,
+		authorName: name, body: body, entryDate: entryDate, capturedAt: in.CapturedAt,
 		createdAt: now, window: window, editableUntil: until,
 	}); err != nil {
 		return Post{}, err
 	}
-	if err := c.ensureDay(ctx, tx, in.CircleID, in.EntryDate); err != nil {
+	if err := c.ensureDay(ctx, tx, in.CircleID, entryDate); err != nil {
 		return Post{}, err
 	}
 
 	return Post{
 		ID: postID, CircleID: in.CircleID, EventSeq: ev.Seq, IdentityID: mem.IdentityID,
-		AuthorName: name, Body: in.Body, EntryDate: in.EntryDate, CapturedAt: in.CapturedAt,
+		AuthorName: name, Body: body, EntryDate: entryDate, CapturedAt: in.CapturedAt,
 		CreatedAt: now, EditWindow: window, EditableUntil: until,
 	}, nil
 }
 
 // EditPost updates post body and optionally entry_date within edit window.
 func (c *Chronicle) EditPost(ctx context.Context, circleID, accountID, postID, body, entryDate string, now time.Time) error {
+	body = strings.TrimSpace(body)
 	if err := checkByteLen(body, MaxTextBytes); err != nil {
 		return err
 	}
@@ -129,6 +136,15 @@ func (c *Chronicle) EditPost(ctx context.Context, circleID, accountID, postID, b
 	if !post.EditWindow.CanEdit(post.CreatedAt, now) {
 		return ErrForbidden
 	}
+	if body == "" {
+		ids, err := c.PostMediaBlobIDs(ctx, postID)
+		if err != nil {
+			return err
+		}
+		if len(ids) == 0 {
+			return ErrInvalid
+		}
+	}
 
 	tx, err := c.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -139,6 +155,11 @@ func (c *Chronicle) EditPost(ctx context.Context, circleID, accountID, postID, b
 	oldDate := post.EntryDate
 	if entryDate == "" {
 		entryDate = post.EntryDate
+	} else {
+		entryDate, err = normalizeEntryDate(entryDate)
+		if err != nil {
+			return err
+		}
 	}
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE posts SET body = ?, entry_date = ? WHERE id = ?
@@ -318,12 +339,38 @@ func (c *Chronicle) requireWriter(ctx context.Context, circleID, accountID strin
 	return mem, nil
 }
 
+func (c *Chronicle) assertPostInteractive(ctx context.Context, circleID, accountID string, post Post) error {
+	ok, err := c.CanReadEvent(ctx, circleID, accountID, post.CreatedAt)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return ErrForbidden
+	}
+	cycle, err := c.GetArchiveCycle(ctx, circleID)
+	if err != nil {
+		return err
+	}
+	if !cycle.Active {
+		return nil
+	}
+	cutoff, err := CutoffInstant(cycle.CutoffDate)
+	if err != nil {
+		return err
+	}
+	if post.CreatedAt.Before(cutoff) {
+		return ErrForbidden
+	}
+	return nil
+}
+
 // CreateComment adds a flat comment with its own edit window snapshot.
 func (c *Chronicle) CreateComment(ctx context.Context, in CommentInput) (Comment, error) {
-	if in.Body == "" {
+	body := strings.TrimSpace(in.Body)
+	if body == "" {
 		return Comment{}, ErrInvalid
 	}
-	if err := checkByteLen(in.Body, MaxTextBytes); err != nil {
+	if err := checkByteLen(body, MaxTextBytes); err != nil {
 		return Comment{}, err
 	}
 	now := utcOrNow(in.Now)
@@ -337,6 +384,9 @@ func (c *Chronicle) CreateComment(ctx context.Context, in CommentInput) (Comment
 	}
 	if post.CircleID != in.CircleID || post.Deleted {
 		return Comment{}, ErrInvalid
+	}
+	if err := c.assertPostInteractive(ctx, in.CircleID, in.AccountID, post); err != nil {
+		return Comment{}, err
 	}
 
 	window, err := c.circleEditWindow(ctx, c.db, in.CircleID)
@@ -361,7 +411,7 @@ func (c *Chronicle) CreateComment(ctx context.Context, in CommentInput) (Comment
 	ev, err := c.appendEvent(ctx, tx, appendEventInput{
 		circleID: in.CircleID, eventType: "comment.created", isService: false,
 		actorIdentityID: mem.IdentityID, actorName: name, targetID: commentID,
-		payload: map[string]any{"post_id": in.PostID, "body": in.Body},
+		payload: map[string]any{"post_id": in.PostID, "body": body},
 		summary: summaryCommentCreated(name), now: now,
 	})
 	if err != nil {
@@ -373,7 +423,7 @@ func (c *Chronicle) CreateComment(ctx context.Context, in CommentInput) (Comment
 			id, circle_id, post_id, event_seq, identity_id, author_name, body,
 			created_at, edit_window_sec, editable_until
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, commentID, in.CircleID, in.PostID, ev.Seq, mem.IdentityID, name, in.Body,
+	`, commentID, in.CircleID, in.PostID, ev.Seq, mem.IdentityID, name, body,
 		formatTime(now), editWindowToSQL(window), editableUntilToSQL(until))
 	if err != nil {
 		return Comment{}, err
@@ -383,7 +433,7 @@ func (c *Chronicle) CreateComment(ctx context.Context, in CommentInput) (Comment
 	}
 	return Comment{
 		ID: commentID, CircleID: in.CircleID, PostID: in.PostID, EventSeq: ev.Seq,
-		IdentityID: mem.IdentityID, AuthorName: name, Body: in.Body, CreatedAt: now,
+		IdentityID: mem.IdentityID, AuthorName: name, Body: body, CreatedAt: now,
 		EditWindow: window, EditableUntil: until,
 	}, nil
 }
@@ -407,6 +457,9 @@ func (c *Chronicle) SetReaction(ctx context.Context, in ReactionInput) (Reaction
 	}
 	if post.CircleID != in.CircleID || post.Deleted {
 		return Reaction{}, ErrInvalid
+	}
+	if err := c.assertPostInteractive(ctx, in.CircleID, in.AccountID, post); err != nil {
+		return Reaction{}, err
 	}
 	window, err := c.circleEditWindow(ctx, c.db, in.CircleID)
 	if err != nil {
@@ -479,6 +532,7 @@ func (c *Chronicle) SetReaction(ctx context.Context, in ReactionInput) (Reaction
 
 // EditComment updates comment body within its own edit window.
 func (c *Chronicle) EditComment(ctx context.Context, circleID, accountID, commentID, body string, now time.Time) error {
+	body = strings.TrimSpace(body)
 	if err := checkByteLen(body, MaxTextBytes); err != nil {
 		return err
 	}
@@ -592,6 +646,13 @@ func (c *Chronicle) DeleteReaction(ctx context.Context, circleID, accountID, rea
 	}
 	if !reaction.EditWindow.CanEdit(reaction.CreatedAt, now) {
 		return ErrForbidden
+	}
+	post, err := c.loadPost(ctx, c.db, reaction.PostID)
+	if err != nil {
+		return err
+	}
+	if err := c.assertPostInteractive(ctx, circleID, accountID, post); err != nil {
+		return err
 	}
 
 	tx, err := c.db.BeginTx(ctx, nil)

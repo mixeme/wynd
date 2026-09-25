@@ -3,12 +3,16 @@ import { getAdminSession, getSession, invalidateSnapshots } from '$lib/idb/db';
 export class ApiError extends Error {
 	readonly status: number;
 	readonly code: string;
+	readonly detail?: string;
+	readonly retryAfterSec?: number;
 
-	constructor(status: number, code: string) {
+	constructor(status: number, code: string, detail?: string, retryAfterSec?: number) {
 		super(code);
 		this.name = 'ApiError';
 		this.status = status;
 		this.code = code;
+		this.detail = detail;
+		this.retryAfterSec = retryAfterSec;
 	}
 }
 
@@ -35,15 +39,29 @@ async function resolveToken(origin: string, path: string): Promise<string | unde
 }
 
 async function parseApiError(res: Response): Promise<ApiError> {
+	let retryAfterSec: number | undefined;
+	const retryHeader = res.headers.get('Retry-After');
+	if (retryHeader) {
+		const parsed = Number.parseInt(retryHeader, 10);
+		if (!Number.isNaN(parsed)) retryAfterSec = parsed;
+	}
 	try {
 		const body: unknown = await res.json();
 		if (body && typeof body === 'object' && 'error' in body && typeof body.error === 'string') {
-			return new ApiError(res.status, body.error);
+			const detail =
+				'detail' in body && typeof body.detail === 'string' ? body.detail : undefined;
+			if (
+				'retry_after_sec' in body &&
+				typeof (body as { retry_after_sec?: number }).retry_after_sec === 'number'
+			) {
+				retryAfterSec = (body as { retry_after_sec: number }).retry_after_sec;
+			}
+			return new ApiError(res.status, body.error, detail, retryAfterSec);
 		}
 	} catch {
 		/* not JSON */
 	}
-	return new ApiError(res.status, 'unknown');
+	return new ApiError(res.status, 'unknown', undefined, retryAfterSec);
 }
 
 export async function apiFetch(
@@ -61,7 +79,11 @@ export async function apiFetch(
 	const res = await fetch(apiPath(origin, path), { ...init, headers });
 	if (!res.ok) {
 		const err = await parseApiError(res);
-		if (err.status === 403) {
+		if (isPaymentRequired(err)) {
+			if (typeof window !== 'undefined' && !path.startsWith('/admin')) {
+				window.location.assign('/circles');
+			}
+		} else if (err.status === 403) {
 			const match = path.match(circlePathRe);
 			if (match) {
 				await invalidateSnapshots(origin, { circleId: match[1] });
@@ -72,8 +94,16 @@ export async function apiFetch(
 	return res;
 }
 
+export function isPaymentRequired(err: unknown): err is ApiError {
+	return err instanceof ApiError && err.status === 403 && err.code === 'payment_required';
+}
+
 export function isAccessError(err: unknown): err is ApiError {
-	return err instanceof ApiError && (err.status === 403 || err.status === 404);
+	return (
+		err instanceof ApiError &&
+		(err.status === 403 || err.status === 404) &&
+		!isPaymentRequired(err)
+	);
 }
 
 export async function apiJson<T>(

@@ -45,7 +45,7 @@
 | Layout | CSS | Примеры экранов |
 |--------|-----|-----------------|
 | PlainLayout | `.ph` | e1-1, e1-3 |
-| ShellLayout | `.ph.shell` | e2-1, e2-2, e7-* |
+| ShellLayout | `.ph.shell` + при `app` `.shell-body` | e2-1, e2-2, e7-* |
 | CircleLayout | `.ph.{color}` | e3-*, e4-*, e5-*, e6-* |
 | FormLayout | `.ph.{color\|shell}` | e1-*, e2-3, e2-7, e6-1 |
 | OverlayLayout | absolute | sheets, dialogs, push; `ondismiss` → Scrim |
@@ -79,13 +79,13 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar
 | `Label` | `<div class="lab">` | подпись поля |
 | `Input` | `<input class="fld">` или `.inp` | `admin`, `active`, `gray`, `bind:value` |
 | `FieldDisplay` | `<div class="fld">` или `.inp` | статика (бывший `Field`); `admin` → `.inp` (9.7 URL инвайта) |
-| `TextArea` | `<textarea class="ta">`, `.fld`, `.compose-text` или `.inp` | `variant`: `area` \| `field` \| `compose` \| `comment`, `bind:value` |
+| `TextArea` | `<textarea class="ta">`, `.fld`, `.compose-text` или `.inp` | `variant`: `area` \| `field` \| `compose` \| `comment`, `bind:value`; `compose` — зеркало + `.men` для `@имя` |
 | `SearchField` | `.sfield` + `<input type="search">` | иконка, `bind:value`; поиск и фильтры |
-| `VolumeChart` | `.chart` + SVG | `volume`, `cutoffLabel`, `bind:cutoffX`, `oncutoff(index)`; перетаскивание линии отсечки по столбцам |
+| `VolumeChart` | `.chart` + SVG | `volume`, `cutoffLabel`, `bind:cutoffX`, `oncutoff(index)`; жест только при `oncutoff` |
 
 Guard: `npm run check:ui` — экран = существующие `$ui` + `$lib/layouts` (не Bits UI, не одноразовый `.svelte` у маршрута, в `routes/` только `+page`/`+layout`/`+error`); новый файл в библиотеке — только по открытому плану «пробел Wynd UI»; в `web/src` запрещён импорт `$lib/components` (использовать `$ui`); в `routes/` запрещены `role="button"`, сырой `class="btn"`, сырой `class="lab"`, `<input class="fld">`, `<textarea class="fld|ta">`, сырой `<button class="row2|one|cm|…">`, сырой `<div class="row2">` и сырой `class="compose-text"` (prod-маршруты, не `/dev`).
 
-**Интерактив на `<button>` (Wynd UI, фазы 1–3):** в `ui.css` селектор `button.X` сильнее `.X`. У layout-классов (`row2`, `chip`, `cm`, …) вёрстку из `.X` дублируют в `button.X` или `.контекст button.X`. Текстовые (`act`, `t`, `rt`, `under`) — padding:0 намеренно. Список и проверка: `BUTTON_LAYOUT_SPECS` / `BUTTON_TEXT_CLASSES` в `web/scripts/ui-guard.mjs`; `npm run check:ui` падает при рассинхроне.
+**Интерактив на `<button>` (Wynd UI, фазы 1–3):** в `ui.css` селектор `button.X` сильнее `.X`. У layout-классов (`btn`, `row2`, `chip`, `cm`, …) вёрстку из `.X` дублируют в `button.X` или `.контекст button.X`. Нативный `<button>` не растягивается как `div`: `button.btn` — `width: calc(100% - 32px)` (поля `.btn` 16+16, как `input.fld`); в `.rowin` / `.chk` — `width:auto`. Текстовые (`act`, `t`, `rt`, `under`) — padding:0 намеренно. Список и проверка: `BUTTON_LAYOUT_SPECS` / `BUTTON_TEXT_CLASSES` в `web/scripts/ui-guard.mjs`; `npm run check:ui` падает при рассинхроне.
 
 ### `data/`
 
@@ -103,11 +103,11 @@ SectionLabel, Avatar, EventDivider, CircleRow, PostCard, **ReactionBar**, **Comm
 
 ### `overlays/`
 
-Fab, CommentBar (`oncompose` — фото и шеврон; без него полоса комментария), Scrim, Sheet, Dialog, PushBanner, Lightbox, AvatarCrop (светлые токены на корне `.crop`, не следует `.ph.dark`)
+Fab, CommentBar (`oncompose` — фото и шеврон; пустое поле на таче ведёт на compose, на ПК с мышью только фокус; без `oncompose` — полоса комментария), Scrim, Sheet, Dialog, PushBanner, Lightbox, AvatarCrop (светлые токены на корне `.crop`, не следует `.ph.dark`)
 
 ### `admin/`
 
-AdminNav (`ADMIN_NAV`: Оплата после «Люди»; кадры 9.1–9.10 без пункта), AdminSection, DataTable, StackBar, CheckRow, StatusIcon, CodeBlock, InlineInput, QuotaRequestRow (`Button` `.btn` / `.btn.gh` на «Дать» / «Отказать», не `.act`)
+AdminNav (`ADMIN_NAV`: Оплата после «Люди»; кадры 9.1–9.10 без пункта), AdminSection, DataTable, StackBar, CheckRow, StatusIcon, CodeBlock (`lines[]`, `.hi` / `span.cmt`), InlineInput, QuotaRequestRow (`Button` `.btn` / `.btn.gh` на «Дать» / «Отказать», не `.act`)
 
 ### Бренд
 

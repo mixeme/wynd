@@ -2,6 +2,18 @@ import { normalizeOrigin } from '$lib/api/client';
 import { fetchCircles, loadCirclesCached } from '$lib/circles/circles';
 import { listSessions } from '$lib/idb/db';
 
+const LAST_CIRCLE_KEY = 'wynd:last-circle';
+
+export function rememberLastCircle(circleId: string): void {
+	if (typeof sessionStorage === 'undefined') return;
+	sessionStorage.setItem(LAST_CIRCLE_KEY, circleId);
+}
+
+export function peekLastCircle(): string | null {
+	if (typeof sessionStorage === 'undefined') return null;
+	return sessionStorage.getItem(LAST_CIRCLE_KEY);
+}
+
 function storageKey(circleId: string): string {
 	return `wynd:circle:${circleId}:origin`;
 }

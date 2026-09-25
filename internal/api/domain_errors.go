@@ -19,7 +19,7 @@ func writeDomainError(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 	case errors.Is(err, chronicle.ErrTooLong):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "too_long"})
-	case errors.Is(err, chronicle.ErrInvalid), errors.Is(err, blob.ErrInvalid), errors.Is(err, push.ErrInvalid):
+	case errors.Is(err, chronicle.ErrInvalid), errors.Is(err, blob.ErrInvalid), errors.Is(err, push.ErrInvalid), errors.Is(err, mail.ErrInvalid):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid"})
 	case errors.Is(err, blob.ErrQuotaExceeded):
 		writeJSON(w, http.StatusInsufficientStorage, map[string]any{"error": "quota_exceeded"})
@@ -29,6 +29,8 @@ func writeDomainError(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusGone, map[string]string{"error": "expired"})
 	case errors.Is(err, mail.ErrNotConfigured):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "smtp_not_configured"})
+	case errors.Is(err, mail.ErrSend):
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "smtp_failed", "detail": err.Error()})
 	case errors.Is(err, push.ErrNotConfigured):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "push_not_configured"})
 	default:

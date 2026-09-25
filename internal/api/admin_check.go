@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
@@ -19,7 +20,11 @@ func (s *Server) handleAdminCheck(w http.ResponseWriter, r *http.Request) {
 	if r.ContentLength > 0 {
 		_ = readJSON(r, &body)
 	}
-	results, err := s.runChecks(r, body.External)
+	external := body.External
+	if external != nil && !s.Loopback && strings.HasPrefix(s.PublicURL, "https://") {
+		external.RedirectPermanent = check.ProbeHTTPRedirect(s.PublicURL)
+	}
+	results, err := s.runChecks(r, external)
 	if err != nil {
 		writeError(w, err)
 		return

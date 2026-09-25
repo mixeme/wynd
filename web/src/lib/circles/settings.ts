@@ -79,8 +79,15 @@ export function editWindowFromSec(sec: number | null | undefined): EditWindowKey
 	return 'custom';
 }
 
-export function customHoursFromSec(sec: number): number {
-	return Math.max(1, Math.min(8760, Math.round(sec / 3600)));
+export function customHoursFromSec(sec: number): number | null {
+	const hours = Math.round(sec / 3600);
+	if (hours < 1 || hours > 8760) return null;
+	return hours;
+}
+
+export function isValidCustomHours(hours: number): boolean {
+	const n = Number(hours);
+	return Number.isFinite(n) && Number.isInteger(n) && n >= 1 && n <= 8760;
 }
 
 export function editWindowToSec(key: EditWindowKey, customHours = 1): number | null {

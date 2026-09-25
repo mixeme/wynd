@@ -277,6 +277,7 @@ function searchSource(rel, source, re) {
 
 /** Семантические классы на <button>: в ui.css нужен явный button.* (см. ui-components.md). */
 export const BUTTON_LAYOUT_SPECS = [
+	{ class: 'btn', props: ['width'] },
 	{ class: 'row2', props: ['padding'] },
 	{ class: 'r', props: ['padding'] },
 	{ class: 'circle-row-action', props: ['padding', 'border', 'background'] },
@@ -427,7 +428,6 @@ export function checkUnknownUiButtonClasses(webRoot) {
 	const known = new Set([
 		...BUTTON_LAYOUT_CLASS_NAMES,
 		...BUTTON_TEXT_CLASSES,
-		'btn',
 		'ib',
 		'sw',
 		'nav',

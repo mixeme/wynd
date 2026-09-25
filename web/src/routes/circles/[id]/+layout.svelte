@@ -2,15 +2,21 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { onMount, setContext } from 'svelte';
-	import { resolveCircleOrigin } from '$lib/circles/origin';
+	import { resolveCircleOrigin, rememberLastCircle } from '$lib/circles/origin';
 	import { fetchCircles, loadCirclesCached, ownerNameFromSession } from '$lib/circles/circles';
 	import type { CircleListItem } from '$lib/circles/circles';
-	import { getCircleColor, getCircleIdentity, setCircleColor, circleInitial } from '$lib/circles/meta';
+	import {
+		getCircleColor,
+		getCircleIdentity,
+		setCircleColor,
+		setCircleIdentity,
+		circleInitial
+	} from '$lib/circles/meta';
 	import { getSession } from '$lib/idb/db';
 	import { CIRCLE_COLORS, type CircleColor } from '$lib/theme/colors';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { fetchCircleDetail } from '$lib/journal/read-cursor';
-	import { fetchInvitePeek, loadInviteJoinToken } from '$lib/auth/invites';
+	import { fetchInvitePeek, isCircleInvitePeek, loadInviteJoinToken } from '$lib/auth/invites';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 	import PlainLayout from '$lib/layouts/PlainLayout.svelte';
 	import type { Snippet } from 'svelte';
@@ -64,6 +70,12 @@
 			if (detail.archive_cycle?.active) ctx.archiveCycle = detail.archive_cycle;
 			if (detail.identity_id) ctx.identityId = detail.identity_id;
 			ctx.editWindowSec = detail.edit_window_sec;
+			const serverName = detail.identity_name?.trim() ?? '';
+			if (serverName) {
+				ctx.identityName = serverName;
+				ctx.identityInitial = circleInitial(serverName);
+				await setCircleIdentity(ctx.origin, ctx.circleId, serverName);
+			}
 			await loadAvatarUrl(ctx.origin, detail.avatar_blob_id);
 		} catch {
 			/* offline */
@@ -92,7 +104,11 @@
 			if (inviteToken) {
 				try {
 					const peek = await fetchInvitePeek(resolved, inviteToken);
-					const colorToken = peek.color as CircleColor;
+					if (!isCircleInvitePeek(peek)) {
+						denied = true;
+						return;
+					}
+					const colorToken = peek.color;
 					const color =
 						colorToken && colorToken in CIRCLE_COLORS ? colorToken : ('olive' as CircleColor);
 					ctx.origin = resolved;
@@ -106,7 +122,8 @@
 					ctx.editWindowSec = undefined;
 					ctx.lastReadSeq = 0;
 					ctx.archiveCycle = undefined;
-					ctx.refresh = async () => {};
+					ctx.refresh = loadMeta;
+					rememberLastCircle(circleId);
 					ready = true;
 					return;
 				} catch {
@@ -129,20 +146,29 @@
 		}
 		const session = await getSession(resolved);
 		const storedIdentity = await getCircleIdentity(resolved, circleId);
-		const identityName = storedIdentity ?? (session ? ownerNameFromSession(session) : '');
 
 		let archiveCycle = listItem.archive_cycle?.active ? listItem.archive_cycle : undefined;
 		let identityId = '';
 		let editWindowSec: number | null | undefined;
 		let avatarBlobId: string | undefined;
+		let serverIdentityName = '';
 		try {
 			const detail = await fetchCircleDetail(resolved, circleId);
 			if (detail.archive_cycle?.active) archiveCycle = detail.archive_cycle;
 			identityId = detail.identity_id ?? '';
 			editWindowSec = detail.edit_window_sec;
 			avatarBlobId = detail.avatar_blob_id;
+			serverIdentityName = detail.identity_name?.trim() ?? '';
 		} catch {
 			/* list banner enough */
+		}
+
+		const identityName =
+			serverIdentityName ||
+			storedIdentity ||
+			(session ? ownerNameFromSession(session) : '');
+		if (serverIdentityName) {
+			await setCircleIdentity(resolved, circleId, serverIdentityName);
 		}
 
 		ctx.origin = resolved;
@@ -165,6 +191,7 @@
 			ctx.avatarUrl = '';
 		}
 
+		rememberLastCircle(circleId);
 		ready = true;
 	}
 

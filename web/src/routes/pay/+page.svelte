@@ -20,6 +20,7 @@
 	let fileLabel = $state('');
 	let loading = $state(false);
 	let pageLoading = $state(true);
+	let redirecting = $state(false);
 	let error = $state('');
 	let maxBytes = $state(0);
 	let photoInput: HTMLInputElement | undefined = $state();
@@ -72,6 +73,7 @@
 			origin = sessions[0].origin;
 			const status = await fetchPayStatus(origin);
 			if (!status.has_requisites || status.pending) {
+				redirecting = true;
 				goto('/circles');
 				return;
 			}
@@ -80,7 +82,7 @@
 		} catch (err) {
 			error = authErrorHint(err);
 		} finally {
-			pageLoading = false;
+			if (!redirecting) pageLoading = false;
 		}
 	});
 </script>
