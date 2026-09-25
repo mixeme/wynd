@@ -9,6 +9,13 @@ set "DATA_DIR=%WYND_ROOT%\dev\data"
 set "PUBLIC_URL=http://127.0.0.1:7676"
 set "WYND_DATA_DIR=%DATA_DIR%"
 
+rem Listen on all interfaces by default so phones on the LAN can connect
+rem (double-click start). run.bat local - loopback only.
+rem PUBLIC_URL stays loopback: login codes still go to the server log.
+set "LAN=1"
+if /i "%~1"=="local" set "LAN=0"
+if "!LAN!"=="1" set "WYND_LISTEN=0.0.0.0:7676"
+
 call :stop_wynd
 if errorlevel 1 exit /b 1
 
@@ -35,6 +42,7 @@ if not exist "%BIN%" (
 
 echo Starting Wynd from %BIN%
 echo Data dir: %DATA_DIR%
+if "!LAN!"=="1" call :print_lan_urls
 echo Close this window to stop the server.
 echo.
 
@@ -57,6 +65,12 @@ call :wait_health 60
 if errorlevel 1 exit /b 1
 
 call :post_start_actions
+exit /b 0
+
+:print_lan_urls
+echo LAN mode - open from another device on this network:
+powershell -NoProfile -Command "Get-NetIPAddress -AddressFamily IPv4 -PrefixOrigin Dhcp,Manual -ErrorAction SilentlyContinue | Where-Object { $_.IPAddress -notlike '169.254.*' } | ForEach-Object { '  http://' + $_.IPAddress + ':7676/' }"
+echo Login codes are printed in this window ^(no SMTP on a loopback public URL^).
 exit /b 0
 
 :stop_wynd

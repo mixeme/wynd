@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import { uuid } from '$lib/uuid';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import CircleRow from '$ui/data/CircleRow.svelte';
@@ -222,7 +223,7 @@
 		fabMenuOpen = false;
 		if (!name) return;
 		await putGroup({
-			id: crypto.randomUUID(),
+			id: uuid(),
 			name,
 			circleIds: [],
 			collapsed: false

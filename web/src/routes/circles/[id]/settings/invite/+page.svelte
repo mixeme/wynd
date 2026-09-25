@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { copyText } from '$lib/clipboard';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getContext, onMount } from 'svelte';
@@ -109,7 +110,7 @@
 
 	async function copyLink() {
 		if (!inviteUrl) return;
-		await navigator.clipboard.writeText(inviteUrl);
+		await copyText(inviteUrl);
 		copied = true;
 		shared = false;
 	}

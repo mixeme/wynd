@@ -30,9 +30,11 @@ test: web
 	$(GO) test ./...
 	$(GO) build -trimpath -o /dev/null ./cmd/wynd
 
-## run — локальный запуск на данных из dev/data
+## run — локальный запуск на данных из dev/data; `make run LAN=1` слушает все
+## интерфейсы, чтобы открыть с телефона в той же сети (public_url остаётся
+## loopback, коды входа — в логе сервера)
 run: build
-	WYND_DATA_DIR=$(DATA_DIR) ./$(BIN)
+	$(if $(LAN),WYND_LISTEN=0.0.0.0:7676) WYND_DATA_DIR=$(DATA_DIR) ./$(BIN)
 
 ## licenses — пересобрать web/static/THIRD_PARTY_LICENSES.txt после смены
 ## зависимостей; свежесть файла проверяет тест src/test/licenses.test.ts

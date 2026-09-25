@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import { copyText } from '$lib/clipboard';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -47,7 +48,7 @@
 
 	async function copySnippet() {
 		if (!lines.length) return;
-		await navigator.clipboard.writeText(lines.map((line) => line.text).join('\n'));
+		await copyText(lines.map((line) => line.text).join('\n'));
 		copied = true;
 	}
 

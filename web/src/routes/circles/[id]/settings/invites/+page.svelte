@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { copyText } from '$lib/clipboard';
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
@@ -49,7 +50,7 @@
 	}
 
 	async function copyInvite(inv: CircleInvite) {
-		await navigator.clipboard.writeText(inviteUrlFor(inv.token));
+		await copyText(inviteUrlFor(inv.token));
 		copiedInviteId = inv.id;
 	}
 

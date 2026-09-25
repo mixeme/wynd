@@ -17,6 +17,8 @@ import {
 	type QueueUploadProgress,
 	type ReactionQueuePayload
 } from '$lib/idb/db';
+import { sha256Hex } from '$lib/sha256';
+import { uuid } from '$lib/uuid';
 
 export const CHUNK_SIZE = 1024 * 1024;
 
@@ -53,13 +55,6 @@ export function queueRetryDelayMs(attempts: number): number {
 	return Math.min(RETRY_BASE_MS * 2 ** Math.max(0, attempts - 1), RETRY_MAX_MS);
 }
 
-function newClientId(): string {
-	if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-		return crypto.randomUUID();
-	}
-	return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
 /**
  * Что можно отправлять прямо сейчас: ожидающие и зависшие в uploading, чья
  * пауза после неудачи уже вышла.
@@ -94,11 +89,6 @@ function notify(): void {
 export function subscribeQueue(listener: QueueListener): () => void {
 	listeners.add(listener);
 	return () => listeners.delete(listener);
-}
-
-async function sha256Hex(data: ArrayBuffer): Promise<string> {
-	const hash = await crypto.subtle.digest('SHA-256', data);
-	return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 async function getUploadOffset(origin: string, sessionId: string): Promise<number> {
@@ -357,7 +347,7 @@ async function enqueue(
 		circle_id: circleId,
 		// Ключ идемпотентности ставится один раз при постановке: сколько бы
 		// раз отправка ни повторилась, сервер создаст одну сущность (CLI-2).
-		client_id: newClientId(),
+		client_id: uuid(),
 		payload,
 		files,
 		state: 'pending',

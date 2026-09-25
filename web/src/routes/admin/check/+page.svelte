@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import { copyText } from '$lib/clipboard';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import AdminSection from '$ui/admin/AdminSection.svelte';
@@ -139,7 +140,7 @@
 											<TextButton
 												variant="admin"
 												onclick={async () => {
-													await navigator.clipboard.writeText('wynd backup <каталог>');
+													await copyText('wynd backup <каталог>');
 												}}
 											>
 												Как настроить

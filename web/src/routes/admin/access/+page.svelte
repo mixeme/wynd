@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import { copyText } from '$lib/clipboard';
 	import { onMount } from 'svelte';
 	import QRCode from 'qrcode';
 	import AdminSection from '$ui/admin/AdminSection.svelte';
@@ -108,12 +109,12 @@
 
 	async function copyLink() {
 		if (!inviteUrl) return;
-		await navigator.clipboard.writeText(inviteUrl);
+		await copyText(inviteUrl);
 		copied = true;
 	}
 
 	async function copyInvite(inv: AdminInvite) {
-		await navigator.clipboard.writeText(inviteUrlFor(inv.token));
+		await copyText(inviteUrlFor(inv.token));
 		copiedInviteId = inv.id;
 	}
 

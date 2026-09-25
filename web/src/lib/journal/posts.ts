@@ -2,12 +2,8 @@ import { apiFetch, apiJson } from '$lib/api/client';
 import { invalidateCircleSnapshots } from '$lib/api/snapshots';
 import type { QueueFile } from '$lib/idb/db';
 import { CHUNK_SIZE } from '$lib/queue/queue';
+import { sha256Hex } from '$lib/sha256';
 import type { InstanceWithCompression, MediaSummary } from './types';
-
-async function sha256Hex(data: ArrayBuffer): Promise<string> {
-	const hash = await crypto.subtle.digest('SHA-256', data);
-	return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('');
-}
 
 export async function fetchCompression(origin: string) {
 	const info = await apiJson<InstanceWithCompression>(origin, '/instance');
