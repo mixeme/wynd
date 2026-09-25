@@ -1,4 +1,5 @@
 import { ApiError, apiJson, isPaymentRequired } from '$lib/api/client';
+import { unsubscribePush } from '$lib/push/push';
 import {
 	getAppSettings,
 	saveAppSettings,
@@ -10,6 +11,7 @@ import {
 	deleteSession,
 	deleteCursor,
 	invalidateSnapshots,
+	clearOriginState,
 	getAdminSession,
 	putAdminSession,
 	clearAdminSession,
@@ -61,8 +63,18 @@ export function isSessionRejected(err: unknown): boolean {
 	);
 }
 
-/** Drop local participant state for an origin after the server no longer accepts the token. */
+/**
+ * Drop local participant state for an origin after the server no longer
+ * accepts the token — or the user signed out. Push-подписка снимается до
+ * отзыва токена (нужна сессия), очередь и кэш медиа стираются вместе со
+ * снимками: устройство могло сменить хозяина (аудит 2026-09-22).
+ */
 export async function dropParticipantSession(origin: string): Promise<void> {
+	try {
+		await unsubscribePush(origin);
+	} catch {
+		/* no push on this device or token already invalid */
+	}
 	try {
 		await apiJson(origin, '/auth/logout', { method: 'POST' });
 	} catch {
@@ -71,6 +83,7 @@ export async function dropParticipantSession(origin: string): Promise<void> {
 	await deleteSession(origin);
 	await deleteCursor(origin);
 	await invalidateSnapshots(origin);
+	await clearOriginState(origin);
 }
 
 /** Ping the server for each stored session; purge tokens the server no longer knows. */

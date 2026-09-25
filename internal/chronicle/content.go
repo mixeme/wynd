@@ -58,10 +58,18 @@ func (c *Chronicle) createPostInTx(ctx context.Context, tx *sql.Tx, in PostInput
 	}
 
 	// Повтор с тем же ключом идемпотентности не создаёт вторую запись, а
-	// возвращает уже созданную (CLI-2).
+	// возвращает уже созданную (CLI-2). Ключ чужого автора — не повтор, а
+	// попытка получить чужую запись в ответ (аудит 2026-09-22).
 	if in.ClientID != "" {
+		if err := checkLen(in.ClientID, MaxClientIDChars); err != nil {
+			return Post{}, err
+		}
 		existing, err := c.postByClientID(ctx, tx, in.CircleID, in.ClientID)
 		if err == nil {
+			if existing.IdentityID != mem.IdentityID {
+				return Post{}, ErrInvalid
+			}
+			existing.Replayed = true
 			return existing, nil
 		}
 		if err != ErrNotFound {
@@ -447,10 +455,17 @@ func (c *Chronicle) CreateComment(ctx context.Context, in CommentInput) (Comment
 	if err != nil {
 		return Comment{}, err
 	}
-	// Повтор очереди с тем же ключом возвращает уже созданный комментарий.
+	// Повтор очереди с тем же ключом возвращает уже созданный комментарий —
+	// только свой и к той же записи (аудит 2026-09-22).
 	if in.ClientID != "" {
+		if err := checkLen(in.ClientID, MaxClientIDChars); err != nil {
+			return Comment{}, err
+		}
 		existing, err := c.commentByClientID(ctx, c.db, in.CircleID, in.ClientID)
 		if err == nil {
+			if existing.IdentityID != mem.IdentityID || existing.PostID != in.PostID {
+				return Comment{}, ErrInvalid
+			}
 			return existing, nil
 		}
 		if err != ErrNotFound {

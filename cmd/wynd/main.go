@@ -133,7 +133,6 @@ func runServer() {
 		}
 	}()
 
-
 	buildFS, err := fs.Sub(web.Build, "dist")
 	if err != nil {
 		log.Fatalf("embed web dist: %v", err)
@@ -252,11 +251,10 @@ func readyHandler(st store.Store) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()
 		if err := st.Ping(ctx); err != nil {
+			// Текст ошибки драйвера (с путём к БД) — в лог, не анониму.
+			log.Printf("ready: %v", err)
 			w.WriteHeader(http.StatusServiceUnavailable)
-			_ = json.NewEncoder(w).Encode(map[string]string{
-				"status": "unavailable",
-				"error":  err.Error(),
-			})
+			_ = json.NewEncoder(w).Encode(map[string]string{"status": "unavailable"})
 			return
 		}
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ready"})

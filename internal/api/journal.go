@@ -114,9 +114,11 @@ func (s *Server) handleCreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	items, _ := s.Chronicle.ListPostMedia(r.Context(), post.ID)
-	s.notifyCircle(circleID, sess.AccountID, "post")
-	if ids, err := s.Chronicle.MentionedAccountIDs(r.Context(), circleID, body.Body); err == nil {
-		s.notifyAccounts(circleID, sess.AccountID, "mention", ids)
+	if !post.Replayed {
+		s.notifyCircle(circleID, sess.AccountID, "post")
+		if ids, err := s.Chronicle.MentionedAccountIDs(r.Context(), circleID, body.Body); err == nil {
+			s.notifyAccounts(circleID, sess.AccountID, "mention", ids)
+		}
 	}
 	writeJSON(w, http.StatusCreated, postResponse(post, items))
 }
@@ -455,6 +457,11 @@ func (s *Server) createPostWithMedia(ctx context.Context, circleID, accountID st
 	post, err := s.Chronicle.CreatePostInTx(ctx, tx, in)
 	if err != nil {
 		return chronicle.Post{}, err
+	}
+	// Повтор по client_id: медиа уже привязаны первым запросом, второй
+	// раз не дописываем (аудит 2026-09-22).
+	if post.Replayed {
+		return post, nil
 	}
 	if err := s.Chronicle.AttachMediaInTx(ctx, tx, post.ID, media); err != nil {
 		return chronicle.Post{}, err

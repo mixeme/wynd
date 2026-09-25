@@ -61,11 +61,11 @@ func TestProbeBodyTooLarge(t *testing.T) {
 	srv, _, _, _ := setupAPI(t)
 	token := adminToken(t, srv)
 	rec := doJSON(t, srv, http.MethodPut, "/api/v1/admin/compression", token, map[string]any{
-		"photo_max_px":           2048,
-		"photo_quality":          80,
-		"video_max_height":       1080,
-		"video_bitrate_kbps":     6000,
-		"attachment_max_bytes":   1 << 20,
+		"photo_max_px":         2048,
+		"photo_quality":        80,
+		"video_max_height":     1080,
+		"video_bitrate_kbps":   6000,
+		"attachment_max_bytes": 1 << 20,
 	})
 	if rec.Code != http.StatusOK {
 		t.Fatalf("compression: %d %s", rec.Code, rec.Body.String())
@@ -88,6 +88,22 @@ func TestProbeBodyTooLarge(t *testing.T) {
 	}
 	if capped["body_probe_bytes"] != float64(1<<20) {
 		t.Fatalf("body_probe_bytes after compression: %v", capped["body_probe_bytes"])
+	}
+
+	// Потолок пробы — объявленный body_probe_bytes, а не attachment_max
+	// (аудит 2026-09-22): при потолке вложений 100 МиБ проба принимает 2 МиБ.
+	rec = doJSON(t, srv, http.MethodPut, "/api/v1/admin/compression", token, map[string]any{
+		"photo_max_px": 2048, "photo_quality": 80, "video_max_height": 1080,
+		"video_bitrate_kbps": 6000, "attachment_max_bytes": 100 << 20,
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("compression: %d %s", rec.Code, rec.Body.String())
+	}
+	req = httptest.NewRequest(http.MethodPut, "/api/v1/probe/body", io.NopCloser(bytes.NewReader(bytes.Repeat([]byte("x"), 3<<20))))
+	rec = httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("probe body above 2 MiB accepted: %d", rec.Code)
 	}
 }
 

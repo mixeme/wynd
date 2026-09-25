@@ -38,6 +38,10 @@ type Server struct {
 	Mux            *http.ServeMux
 	notifyWG       sync.WaitGroup
 	probes         *probeLimiter
+	// archiveBuilds — учётки, у которых сейчас собирается архив: ZIP целиком
+	// в памяти, и N параллельных запросов одного участника держали N копий
+	// среза (аудит 2026-09-22). Одна сборка на учётку, повтор — 429.
+	archiveBuilds sync.Map
 }
 
 func NewServer(authSvc *auth.Service, ch *chronicle.Chronicle, blobs *blob.Store, mailSvc *mail.Service, pushSvc *push.Service, bootstrapToken, dataDir, publicURL, listenAddr string, loopback bool) *Server {
@@ -145,10 +149,14 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}/search", paid(s.handleCircleSearch))
 	s.Mux.HandleFunc("GET /api/v1/search", paid(s.handleGlobalSearch))
 
-	s.Mux.HandleFunc("POST /api/v1/uploads", paid(s.handleCreateUpload))
-	s.Mux.HandleFunc("HEAD /api/v1/uploads/{session_id}", paid(s.handleUploadStatus))
-	s.Mux.HandleFunc("PUT /api/v1/uploads/{session_id}", s.RequirePaidParticipantStream(s.handleUploadChunk))
-	s.Mux.HandleFunc("POST /api/v1/uploads/{session_id}/complete", paid(s.handleCompleteUpload))
+	// Загрузка — под participant, не paid: истёкшему участнику нужен блоб
+	// для скриншота оплаты, иначе включение подписки запирало всех до ручного
+	// продления (аудит 2026-09-22). Владение и квоту проверяет blob.Store,
+	// привязать блоб к кругу без оплаты всё равно нельзя.
+	s.Mux.HandleFunc("POST /api/v1/uploads", participant(s.handleCreateUpload))
+	s.Mux.HandleFunc("HEAD /api/v1/uploads/{session_id}", participant(s.handleUploadStatus))
+	s.Mux.HandleFunc("PUT /api/v1/uploads/{session_id}", s.RequireParticipantStream(s.handleUploadChunk))
+	s.Mux.HandleFunc("POST /api/v1/uploads/{session_id}/complete", participant(s.handleCompleteUpload))
 	s.Mux.HandleFunc("GET /api/v1/blobs/{blob_id}", paid(s.handleServeBlob))
 
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/posts", paid(s.handleCreatePost))

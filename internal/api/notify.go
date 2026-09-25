@@ -107,6 +107,12 @@ func (s *Server) handleSetCircleNotifyPrefs(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	circleID := r.PathValue("circle_id")
+	// Строка настроек заводится только для своего круга: иначе участник
+	// насыпал строк по произвольным circle_id (аудит 2026-09-22).
+	if err := s.Chronicle.RequireReader(r.Context(), circleID, sess.AccountID); err != nil {
+		writeDomainError(w, err)
+		return
+	}
 	var body notifyPrefsBody
 	if err := readJSON(r, &body); err != nil {
 		writeError(w, err)
@@ -130,6 +136,12 @@ func (s *Server) handleSetCircleNotifyPrefs(w http.ResponseWriter, r *http.Reque
 	writeJSON(w, http.StatusOK, prefs)
 }
 
+// notifyBudget — потолок на весь цикл рассылки одного сигнала. Раньше это были
+// 10 с на всех адресатов при последовательной доставке: один молчащий
+// endpoint глушил уведомления остальным (аудит 2026-09-22). Срок на одну
+// доставку — deliverTimeout в push.deliver.
+const notifyBudget = 2 * time.Minute
+
 func (s *Server) notifyAccounts(circleID, actorAccountID, signalType string, accountIDs []string) {
 	if s == nil || s.Push == nil || len(accountIDs) == 0 {
 		return
@@ -137,7 +149,7 @@ func (s *Server) notifyAccounts(circleID, actorAccountID, signalType string, acc
 	s.notifyWG.Add(1)
 	go func() {
 		defer s.notifyWG.Done()
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), notifyBudget)
 		defer cancel()
 		now := time.Now().UTC()
 		for _, accountID := range accountIDs {
@@ -170,7 +182,7 @@ func (s *Server) notifyMemberInvited(circleID, targetAccountID string) {
 	s.notifyWG.Add(1)
 	go func() {
 		defer s.notifyWG.Done()
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), notifyBudget)
 		defer cancel()
 		now := time.Now().UTC()
 		prefs, err := s.Auth.AccountNotifyPrefs(ctx, targetAccountID)
@@ -198,7 +210,7 @@ func (s *Server) notifyCircle(circleID, actorAccountID, signalType string) {
 	s.notifyWG.Add(1)
 	go func() {
 		defer s.notifyWG.Done()
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), notifyBudget)
 		defer cancel()
 		now := time.Now().UTC()
 		ids, err := s.Chronicle.CircleMemberAccountIDs(ctx, circleID)
@@ -236,7 +248,7 @@ func (s *Server) notifyComment(circleID, actorAccountID, postID string) {
 	s.notifyWG.Add(1)
 	go func() {
 		defer s.notifyWG.Done()
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), notifyBudget)
 		defer cancel()
 		now := time.Now().UTC()
 		postAuthorID, err := s.Chronicle.PostAuthorAccountID(ctx, circleID, postID)

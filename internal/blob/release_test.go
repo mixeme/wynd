@@ -149,23 +149,37 @@ func TestDeletePostReleasesBlobsWithoutHandlerHelp(t *testing.T) {
 	e.assertBlobGone(b.ID, path)
 }
 
-// Инвариант (UPL-2): открытые сессии загрузки занимают место. Без их учёта
-// N параллельных загрузок превышали потолок инстанса в N раз.
+// Инвариант (UPL-2, уточнён аудитом 2026-09-22): открытые сессии загрузки
+// занимают место принятыми байтами. Без их учёта N параллельных загрузок
+// превышали потолок инстанса в N раз; учёт по заявленному размеру позволял
+// пустыми сессиями без единого байта зарезервировать всю квоту на сутки.
 func TestOpenSessionsCountTowardInstanceQuota(t *testing.T) {
 	s, cleanup := openBlobStore(t)
 	defer cleanup()
 	setInstanceQuota(t, s, 100)
 
-	if _, err := s.CreateSession(t.Context(), blob.CreateSessionInput{
-		AccountID: "acc1", ExpectedSize: 80, MimeType: "image/jpeg", Now: uploadNow(),
-	}); err != nil {
-		t.Fatalf("первая сессия: %v", err)
+	// Десять пустых сессий по 80 байт — квота не тронута.
+	var first blob.Session
+	for i := 0; i < 10; i++ {
+		sess, err := s.CreateSession(t.Context(), blob.CreateSessionInput{
+			AccountID: "acc1", ExpectedSize: 80, MimeType: "image/jpeg", Now: uploadNow(),
+		})
+		if err != nil {
+			t.Fatalf("пустая сессия %d: %v", i, err)
+		}
+		if i == 0 {
+			first = sess
+		}
 	}
-	// Вторая такая же уже не влезает: 80 занято открытой сессией.
+	// Первая приняла 80 байт — вторая такая же уже не влезает.
+	if _, err := s.WriteChunk(t.Context(), first.ID, "acc1", 0,
+		bytes.NewReader(bytes.Repeat([]byte("x"), 80))); err != nil {
+		t.Fatalf("чанк: %v", err)
+	}
 	if _, err := s.CreateSession(t.Context(), blob.CreateSessionInput{
 		AccountID: "acc1", ExpectedSize: 80, MimeType: "image/jpeg", Now: uploadNow(),
 	}); !errors.Is(err, blob.ErrQuotaExceeded) {
-		t.Fatalf("вторая сессия: err = %v, want quota_exceeded", err)
+		t.Fatalf("сессия поверх принятых байтов: err = %v, want quota_exceeded", err)
 	}
 }
 

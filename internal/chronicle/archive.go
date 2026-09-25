@@ -531,11 +531,13 @@ func (c *Chronicle) MarkArchiveReminderSent(ctx context.Context, circleID string
 	return err
 }
 
-// CircleMemberAccountIDs returns accounts that still have access (active or left with access).
+// CircleMemberAccountIDs returns accounts to signal about new activity: only
+// active members. Вышедший с доступом нового не видит, и сигнал «в круге
+// что-то появилось» ему не положен (аудит 2026-09-22).
 func (c *Chronicle) CircleMemberAccountIDs(ctx context.Context, circleID string) ([]string, error) {
 	rows, err := c.db.QueryContext(ctx, `
 		SELECT account_id FROM memberships
-		WHERE circle_id = ? AND status != 'gone'
+		WHERE circle_id = ? AND status = 'active'
 		ORDER BY account_id
 	`, circleID)
 	if err != nil {

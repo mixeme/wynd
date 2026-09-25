@@ -96,6 +96,12 @@ func (s *Service) SetAccountBlocked(ctx context.Context, id string, blocked bool
 	`, id, SessionParticipant); err != nil {
 		return fmt.Errorf("revoke blocked sessions: %w", err)
 	}
+	// Заблокированный не должен получать и push-сигналы (аудит 2026-09-22).
+	if _, err := s.db.ExecContext(ctx, `
+		DELETE FROM push_subscriptions WHERE account_id = ?
+	`, id); err != nil {
+		return fmt.Errorf("drop blocked push subscriptions: %w", err)
+	}
 	return nil
 }
 

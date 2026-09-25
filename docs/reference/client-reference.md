@@ -73,6 +73,10 @@ Tailwind, shadcn-svelte, axios, tanstack-query, Dexie, redux/zustand, date-fns/d
 - Сессии в IDB `sessions`; админ — `admin_session` только для `/api/v1/admin/*`.
 - Медиа **не** через `<img src="/api/v1/blobs/...">` — только `objectUrl.ts` + кэш IDB.
 - Адрес сервера на `/` и `/join`: дефолт `window.location.host`. `resolveServerOrigin` сводит к same-origin (`''`) только если `parsed === window.location.origin`; loopback с другим портом — другой сервер.
+- Ссылки-приглашения: `parseWyndLink` принимает только ссылки на текущий origin — чужая ушла бы токеном на текущий сервер и осела в его логах; `/join` объясняет, что ссылку надо открыть на её сервере. Ссылка, которую создаёт участник, строится от `circle.origin`, не от хоста клиента (аудит 2026-09-22).
+- Выход (`dropParticipantSession`) снимает push-подписку и стирает всё состояние сервера: сессию, курсор, снимки, очередь, кэш медиа, закрепления. Устройство могло сменить хозяина — неотправленная запись не должна уйти под чужой учёткой (аудит 2026-09-22).
+- **Плитки карты — принятый риск (аудит 2026-09-22).** Карта грузит плитки с `tile.openstreetmap.org`: третья сторона видит IP участника и район просматриваемых фото; `Referer` урезан до origin (`Referrer-Policy: strict-origin-when-cross-origin`). Свой прокси плиток — вне плана.
+- Ключи `{#each}` не строятся из пользовательских данных (имена, текст): дубликат ключа бросает `each_key_duplicate` и роняет экран у всех читателей. Там, где список статичен, ключа нет; иначе — индекс.
 
 ### Загрузка
 
@@ -147,7 +151,7 @@ flowchart LR
 | `admin_session` | `'admin'` | `{ origin, token }` |
 | `cursors` | `origin` | `{ origin, seq }` |
 | `snapshots` | `${origin}:${kind}:${id}` | JSON + `fetched_at` |
-| `queue` | autoincrement | `{ type, origin, circle_id, payload, files[], state, uploads?, error?, created_at }` |
+| `queue` | autoincrement | `{ type, origin, circle_id, client_id?, attempts?, uploading_at?, payload, files[], state, uploads?, error?, created_at }`; стирается при выходе с origin (`clearOriginState`) |
 | `media` | `${origin}:${blob_id}` | ArrayBuffer + mime |
 | `pins` | `${origin}:${circle_id}` | pin row |
 | `groups` | `id` | `{ id, name, circleIds[], collapsed }` |

@@ -77,6 +77,7 @@ scripts\test-integration.bat
 | Клиент и UI | [docs/reference/client-reference.md](docs/reference/client-reference.md), [ui-components.md](docs/reference/ui-components.md) |
 | Экраны (макеты) | [docs/visual/screens.html](docs/visual/screens.html) |
 | Стек (история решений) | [docs/stack.html](docs/stack.html) |
+| Аудиты безопасности | [2026-09-22](docs/security-audit-2026-09-22.md) (срез 0.7.1), [2026-09-03](docs/security-audit-2026-09-03.md) (срез 0.1.14); триггеры повторного прохода — [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Изменения | [CHANGELOG.md](CHANGELOG.md) |
 
 Шрифт интерфейса — Golos Text ([SIL OFL](web/static/fonts/OFL.txt)).

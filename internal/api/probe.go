@@ -44,13 +44,13 @@ func (s *Server) handleProbe(w http.ResponseWriter, r *http.Request) {
 	xff := strings.TrimSpace(r.Header.Get("X-Forwarded-For"))
 	xri := strings.TrimSpace(r.Header.Get("X-Real-IP"))
 	writeJSON(w, http.StatusOK, map[string]any{
-		"proto":                 requestScheme(r),
-		"peer_loopback":         peerLoopback,
-		"body_probe_bytes":      s.bodyProbeBytes(r.Context()),
+		"proto":                  requestScheme(r),
+		"peer_loopback":          peerLoopback,
+		"body_probe_bytes":       s.bodyProbeBytes(r.Context()),
 		"proxy_read_timeout_sec": proxy.ReadTimeoutSeconds,
-		"client_ip":             client,
-		"x_forwarded_for":       xff,
-		"x_real_ip":             xri,
+		"client_ip":              client,
+		"x_forwarded_for":        xff,
+		"x_real_ip":              xri,
 	})
 }
 
@@ -86,13 +86,9 @@ func (s *Server) handleProbeSSE(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleProbeBody(w http.ResponseWriter, r *http.Request) {
-	limit := int64(104857600)
-	if s.Blobs != nil {
-		if cs, err := s.Blobs.LoadCompressionSettings(r.Context()); err == nil && cs.AttachmentMaxBytes > 0 {
-			limit = cs.AttachmentMaxBytes
-		}
-	}
-	r.Body = http.MaxBytesReader(w, r.Body, limit)
+	// Тот же потолок, что объявлен в GET /probe: аноним лил до
+	// attachment_max (100 МиБ) вместо заявленных 2 МиБ (аудит 2026-09-22).
+	r.Body = http.MaxBytesReader(w, r.Body, s.bodyProbeBytes(r.Context()))
 	if _, err := io.Copy(io.Discard, r.Body); err != nil {
 		writeError(w, errBodyTooLarge)
 		return

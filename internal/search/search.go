@@ -16,6 +16,9 @@ const defaultAuthorLimit = 100
 // Раньше видимость проверялась по created_at самой строки FTS, и комментарий
 // к невидимой записи находился вместе с миниатюрой этой записи (SRCH-1).
 // Для комментария носитель — его запись, для дня — сам день по entry_date.
+// Комментарий дополнительно должен сам попадать в отрезок: иначе вышедший с
+// доступом находил поиском комментарии, написанные после его ухода, которые
+// лента скрывает (аудит 2026-09-22).
 // Параметр — account_id; запрос обязан делать LEFT JOIN posts p ON p.id = f.post_id.
 const visibleCarrierSQL = `
 	AND (f.kind = 'day' OR (p.id IS NOT NULL AND p.deleted = 0))
@@ -30,6 +33,9 @@ const visibleCarrierSQL = `
 	        ELSE
 	          p.created_at >= ms.started_at
 	          AND (ms.ended_at IS NULL OR p.created_at < ms.ended_at)
+	          AND (f.kind <> 'comment' OR (
+	            f.created_at >= ms.started_at
+	            AND (ms.ended_at IS NULL OR f.created_at < ms.ended_at)))
 	        END
 	)`
 
@@ -44,16 +50,16 @@ type Filters struct {
 
 // Hit is a single FTS match after visibility filtering.
 type Hit struct {
-	PostID     string `json:"post_id"`
-	CommentID  string `json:"comment_id,omitempty"`
-	CircleID   string `json:"circle_id"`
-	AuthorName string `json:"author_name,omitempty"`
-	Kind       string `json:"kind"`
-	Title      string `json:"title,omitempty"`
-	Snippet      string `json:"snippet"`
-	ThumbBlobID  string `json:"thumb_blob_id,omitempty"`
-	EntryDate    string `json:"entry_date"`
-	CreatedAt    string `json:"created_at"`
+	PostID      string `json:"post_id"`
+	CommentID   string `json:"comment_id,omitempty"`
+	CircleID    string `json:"circle_id"`
+	AuthorName  string `json:"author_name,omitempty"`
+	Kind        string `json:"kind"`
+	Title       string `json:"title,omitempty"`
+	Snippet     string `json:"snippet"`
+	ThumbBlobID string `json:"thumb_blob_id,omitempty"`
+	EntryDate   string `json:"entry_date"`
+	CreatedAt   string `json:"created_at"`
 }
 
 // Service runs FTS5 queries with membership span filtering.

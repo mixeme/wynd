@@ -3,6 +3,7 @@ package api_test
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -124,5 +125,89 @@ func TestPatchCircleIsAllOrNothing(t *testing.T) {
 	row, _ = circles[0].(map[string]any)
 	if row["name"] != "Новое имя" || row["color"] != "plum" {
 		t.Fatalf("патч применился не целиком: %v", row)
+	}
+}
+
+// Инвариант (аудит 2026-09-22): повтор по client_id возвращает только свою
+// сущность. Раньше участник, прислав чужой client_id, получал чужую запись
+// в ответ, а его медиа дописывались к ней; честный повтор с медиа дублировал
+// вложения на своей же записи.
+func TestClientIDReplayIsScopedToAuthor(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	ownerTok, _ := registerSession(t, srv, caps, "owner@example.com")
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles", ownerTok, map[string]any{
+		"name": "Семья", "owner_name": "Аня",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create circle: %d %s", rec.Code, rec.Body.String())
+	}
+	circleID := jsonStr(t, rec, "id")
+	bobTok := joinAsMember(t, srv, caps, ownerTok, circleID, "bob@example.com", "Боб")
+
+	first := doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/posts", ownerTok, map[string]any{
+		"body": "секрет", "entry_date": "2026-08-30", "client_id": "k1",
+	})
+	if first.Code != http.StatusCreated {
+		t.Fatalf("owner post: %d %s", first.Code, first.Body.String())
+	}
+	postID := jsonStr(t, first, "id")
+
+	// Чужой ключ с медиа: ни чужой записи в ответе, ни вложения на ней.
+	blobID := uploadBlob(t, srv, bobTok, []byte("bob-photo"), "image/jpeg")
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/posts", bobTok, map[string]any{
+		"body": "x", "entry_date": "2026-08-30", "client_id": "k1",
+		"media": []map[string]any{{"blob_id": blobID, "kind": "photo"}},
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("foreign client_id: %d %s", rec.Code, rec.Body.String())
+	}
+	var mediaCount int
+	if err := srv.Chronicle.DB().QueryRowContext(t.Context(),
+		`SELECT count(*) FROM post_media WHERE post_id = ?`, postID).Scan(&mediaCount); err != nil {
+		t.Fatal(err)
+	}
+	if mediaCount != 0 {
+		t.Fatalf("чужое медиа привязано к записи владельца: %d", mediaCount)
+	}
+
+	// Чужой ключ комментария к другой записи — тоже отказ.
+	c1 := doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/posts/"+postID+"/comments", ownerTok, map[string]any{
+		"body": "мой", "client_id": "c1",
+	})
+	if c1.Code != http.StatusCreated {
+		t.Fatalf("owner comment: %d %s", c1.Code, c1.Body.String())
+	}
+	c2 := doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/posts/"+postID+"/comments", bobTok, map[string]any{
+		"body": "чужой", "client_id": "c1",
+	})
+	if c2.Code != http.StatusBadRequest {
+		t.Fatalf("foreign comment client_id: %d %s", c2.Code, c2.Body.String())
+	}
+
+	// Честный повтор с медиа не дублирует вложение.
+	ownBlob := uploadBlob(t, srv, ownerTok, []byte("owner-photo"), "image/jpeg")
+	own := map[string]any{
+		"body": "с фото", "entry_date": "2026-08-30", "client_id": "k2",
+		"media": []map[string]any{{"blob_id": ownBlob, "kind": "photo"}},
+	}
+	r1 := doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/posts", ownerTok, own)
+	r2 := doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/posts", ownerTok, own)
+	if r1.Code != http.StatusCreated || r2.Code != http.StatusCreated || jsonStr(t, r1, "id") != jsonStr(t, r2, "id") {
+		t.Fatalf("replay: %d/%d %s", r1.Code, r2.Code, r2.Body.String())
+	}
+	if err := srv.Chronicle.DB().QueryRowContext(t.Context(),
+		`SELECT count(*) FROM post_media WHERE post_id = ?`, jsonStr(t, r1, "id")).Scan(&mediaCount); err != nil {
+		t.Fatal(err)
+	}
+	if mediaCount != 1 {
+		t.Fatalf("повтор продублировал вложение: %d", mediaCount)
+	}
+
+	// Ключ длиннее потолка отвергается.
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/posts", ownerTok, map[string]any{
+		"body": "x", "entry_date": "2026-08-30", "client_id": strings.Repeat("a", 65),
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("long client_id: %d %s", rec.Code, rec.Body.String())
 	}
 }

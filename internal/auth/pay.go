@@ -9,12 +9,23 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"gitea.mixdep.ru/mix/wynd/internal/blob"
 	"gitea.mixdep.ru/mix/wynd/internal/uid"
 )
 
 const payRequestRefType = "pay_request"
+
+// Потолки свободного текста оплаты и срока продления (аудит 2026-09-22): без
+// них комментарий заявки ограничивал только 1 МиБ тела, а days без верхней
+// границы уводил дату за 9999 год, где она перестаёт разбираться.
+const (
+	MaxPayCommentChars    = 2000
+	MaxPayRequisitesChars = 4000
+	MaxPayDonateTextChars = 4000
+	MaxPayGrantDays       = 3660
+)
 
 // SubscriptionUnlimitedAt is the stored end date for admin-granted lifetime access.
 var SubscriptionUnlimitedAt = time.Date(9999, 12, 31, 0, 0, 0, 0, time.UTC)
@@ -174,9 +185,13 @@ func (s *Service) PayHubSettings(ctx context.Context) (PaySettings, error) {
 }
 
 func (s *Service) SetPayRequisites(ctx context.Context, requisites string) error {
+	requisites = strings.TrimSpace(requisites)
+	if utf8.RuneCountInString(requisites) > MaxPayRequisitesChars {
+		return ErrTooLong
+	}
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE instance_settings SET pay_requisites = ?, updated_at = ? WHERE id = 1
-	`, strings.TrimSpace(requisites), formatTime(time.Now().UTC()))
+	`, requisites, formatTime(time.Now().UTC()))
 	return err
 }
 
@@ -197,7 +212,15 @@ func (s *Service) SetPayDonateSettings(ctx context.Context, in PayDonateSettings
 		return err
 	}
 	text := strings.TrimSpace(in.Text)
+	if utf8.RuneCountInString(text) > MaxPayDonateTextChars {
+		return ErrTooLong
+	}
 	until := strings.TrimSpace(in.Until)
+	if until != "" {
+		if _, ok := parseDonateUntil(until); !ok {
+			return ErrInvalid
+		}
+	}
 	show := 0
 	if in.Show {
 		show = 1
@@ -328,6 +351,10 @@ func (s *Service) CreatePayRequest(ctx context.Context, accountID, blobID, comme
 	if accountID == "" || blobID == "" {
 		return "", ErrInvalid
 	}
+	comment = strings.TrimSpace(comment)
+	if utf8.RuneCountInString(comment) > MaxPayCommentChars {
+		return "", ErrTooLong
+	}
 	settings, err := s.loadPaySettingsRow(ctx)
 	if err != nil {
 		return "", err
@@ -338,8 +365,21 @@ func (s *Service) CreatePayRequest(ctx context.Context, accountID, blobID, comme
 	if !settings.SubscriptionRequired {
 		return "", ErrInvalid
 	}
+	id, err := uid.NewID()
+	if err != nil {
+		return "", err
+	}
+	now := formatTime(time.Now().UTC())
+	// Предусловия — внутри той же транзакции (BEGIN IMMEDIATE через DSN):
+	// два параллельных POST давали две pending-заявки, и админ мог утвердить
+	// обе (аудит 2026-09-22). Индекс idx_pay_requests_one_pending — страховка.
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return "", err
+	}
+	defer tx.Rollback()
 	var pending int
-	if err := s.db.QueryRowContext(ctx, `
+	if err := tx.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM pay_requests WHERE account_id = ? AND status = 'pending'
 	`, accountID).Scan(&pending); err != nil {
 		return "", err
@@ -348,7 +388,7 @@ func (s *Service) CreatePayRequest(ctx context.Context, accountID, blobID, comme
 		return "", ErrConflict
 	}
 	var owner string
-	err = s.db.QueryRowContext(ctx, `
+	err = tx.QueryRowContext(ctx, `
 		SELECT account_id FROM blobs WHERE id = ? AND status = 'complete'
 	`, blobID).Scan(&owner)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -360,20 +400,13 @@ func (s *Service) CreatePayRequest(ctx context.Context, accountID, blobID, comme
 	if owner != accountID {
 		return "", ErrForbidden
 	}
-	id, err := uid.NewID()
-	if err != nil {
-		return "", err
-	}
-	now := formatTime(time.Now().UTC())
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return "", err
-	}
-	defer tx.Rollback()
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO pay_requests (id, account_id, blob_id, comment, status, created_at)
 		VALUES (?, ?, ?, NULLIF(?, ''), 'pending', ?)
-	`, id, accountID, blobID, strings.TrimSpace(comment), now); err != nil {
+	`, id, accountID, blobID, comment, now); err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			return "", ErrConflict
+		}
 		return "", err
 	}
 	if _, err := tx.ExecContext(ctx, `
@@ -487,7 +520,7 @@ func (s *Service) GrantPayAccount(ctx context.Context, accountID string, days in
 	if unlimited {
 		next = subscriptionUnlimitedExpiry()
 	} else {
-		if days < 1 {
+		if days < 1 || days > MaxPayGrantDays {
 			return ErrInvalid
 		}
 		var current sql.NullString
@@ -504,11 +537,20 @@ func (s *Service) ApprovePayRequest(ctx context.Context, id string, days int, un
 	if id == "" {
 		return ErrInvalid
 	}
-	if !unlimited && days < 1 {
+	if !unlimited && (days < 1 || days > MaxPayGrantDays) {
 		return ErrInvalid
 	}
+	now := time.Now().UTC()
+	resolved := formatTime(now)
+	// Одна транзакция и guard по статусу: два параллельных approve продлевали
+	// срок дважды, а approve поверх reject переписывал отказ (аудит 2026-09-22).
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 	var accountID string
-	err := s.db.QueryRowContext(ctx, `
+	err = tx.QueryRowContext(ctx, `
 		SELECT account_id FROM pay_requests WHERE id = ? AND status = 'pending'
 	`, id).Scan(&accountID)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -517,13 +559,12 @@ func (s *Service) ApprovePayRequest(ctx context.Context, id string, days int, un
 	if err != nil {
 		return err
 	}
-	now := time.Now().UTC()
 	var next string
 	if unlimited {
 		next = subscriptionUnlimitedExpiry()
 	} else {
 		var current sql.NullString
-		if err := s.db.QueryRowContext(ctx, `
+		if err := tx.QueryRowContext(ctx, `
 			SELECT subscription_expires_at FROM accounts WHERE id = ?
 		`, accountID).Scan(&current); err != nil {
 			return err
@@ -531,19 +572,19 @@ func (s *Service) ApprovePayRequest(ctx context.Context, id string, days int, un
 		base := subscriptionExtendBase(current, now)
 		next = formatTime(base.AddDate(0, 0, days))
 	}
-	resolved := formatTime(now)
-	tx, err := s.db.BeginTx(ctx, nil)
+	res, err := tx.ExecContext(ctx, `
+		UPDATE pay_requests SET status = 'approved', resolved_at = ?
+		WHERE id = ? AND status = 'pending'
+	`, resolved, id)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
-	if _, err := tx.ExecContext(ctx, `
-		UPDATE pay_requests SET status = 'approved', resolved_at = ? WHERE id = ?
-	`, resolved, id); err != nil {
-		return err
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
 	}
 	if _, err := tx.ExecContext(ctx, `
-		UPDATE accounts SET subscription_expires_at = ?, pay_reminder_sent_for = NULL WHERE id = ?
+		UPDATE accounts SET subscription_expires_at = ?, pay_reminder_sent_for = NULL
+		WHERE id = ? AND deleted_at IS NULL
 	`, next, accountID); err != nil {
 		return err
 	}

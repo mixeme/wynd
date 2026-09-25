@@ -1,6 +1,7 @@
 package chronicle_test
 
 import (
+	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -170,4 +171,47 @@ func TestExcludeRevokesAccessOfLeftWithAccess(t *testing.T) {
 func deletePostErr(e *testEnv, circleID, accountID, postID string, now time.Time) error {
 	_, err := e.ch.DeletePost(e.ctx, circleID, accountID, postID, now)
 	return err
+}
+
+// Инвариант (аудит 2026-09-22): стереть заголовок и обложку дня может только
+// тот, кто сейчас пишет в круг. canClearDaySaid проверял лишь наличие записи
+// автора за этот день, и исключённый стирал общие заголовки.
+func TestClearDaySaidRequiresWriteAccess(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.DurationWindow(30*24*time.Hour))
+	e.join(circle.ID, "bob", "Боб", e.after(time.Hour))
+	post := e.post(circle.ID, "bob", "моё", "2026-08-01", e.after(2*time.Hour))
+	e.post(circle.ID, "owner", "и моё", "2026-08-01", e.after(2*time.Hour))
+	e.seedBlob("blob-a", "bob")
+	e.attachPhoto(post.ID, "blob-a")
+	if err := e.ch.SetDayTitle(e.ctx, chronicle.DayTitleInput{
+		CircleID: circle.ID, AccountID: "owner", EntryDate: "2026-08-01", Title: "Заголовок", Now: e.after(3 * time.Hour),
+	}); err != nil {
+		t.Fatalf("SetDayTitle: %v", err)
+	}
+	if err := e.ch.SetDayCover(e.ctx, chronicle.DayCoverInput{
+		CircleID: circle.ID, AccountID: "bob", EntryDate: "2026-08-01", PostID: post.ID, BlobID: "blob-a", Now: e.after(3 * time.Hour),
+	}); err != nil {
+		t.Fatalf("SetDayCover: %v", err)
+	}
+	if err := e.ch.Exclude(e.ctx, circle.ID, "owner", "bob", e.after(4*time.Hour)); err != nil {
+		t.Fatalf("Exclude: %v", err)
+	}
+	now := e.after(5 * time.Hour)
+	if err := e.ch.ClearDayTitle(e.ctx, circle.ID, "bob", "2026-08-01", now); !errors.Is(err, chronicle.ErrForbidden) {
+		t.Fatalf("ClearDayTitle by excluded: err = %v, want forbidden", err)
+	}
+	if err := e.ch.ClearDayCover(e.ctx, circle.ID, "bob", "2026-08-01", now); !errors.Is(err, chronicle.ErrForbidden) {
+		t.Fatalf("ClearDayCover by excluded: err = %v, want forbidden", err)
+	}
+	var title string
+	var cover sql.NullString
+	if err := e.ch.DB().QueryRowContext(e.ctx,
+		`SELECT COALESCE(title, ''), cover_blob_id FROM days WHERE circle_id = ? AND entry_date = ?`,
+		circle.ID, "2026-08-01").Scan(&title, &cover); err != nil {
+		t.Fatal(err)
+	}
+	if title != "Заголовок" || cover.String != "blob-a" {
+		t.Fatalf("day changed: title=%q cover=%q", title, cover.String)
+	}
 }

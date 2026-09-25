@@ -86,6 +86,37 @@ func TestForwardedForRightmostUntrusted(t *testing.T) {
 	}
 }
 
+// Аудит 2026-09-22: X-Forwarded-For читается из всех строк заголовка, а
+// элемент с портом или не-адрес не даёт клиенту отдельной корзины.
+func TestForwardedForAllHeaderLinesAndPorts(t *testing.T) {
+	srv, _, _, _ := setupAPI(t)
+	if err := srv.Auth.SetRegistrationMode(t.Context(), auth.ModeOpen); err != nil {
+		t.Fatal(err)
+	}
+	var limited bool
+	for i := 0; i < 12; i++ {
+		email := "lines" + string(rune('a'+i)) + "@example.com"
+		raw, _ := json.Marshal(map[string]string{"email": email})
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(raw))
+		// Клиент шлёт свою строку XFF с разным адресом и мусором; прокси
+		// добавляет вторую строку с настоящим адресом и портом.
+		req.Header.Add("X-Forwarded-For", "203.0.113."+string(rune('1'+i%9))+", not-an-ip")
+		req.Header.Add("X-Forwarded-For", "198.51.100.7:"+string(rune('1'+i%9))+"000")
+		rec := httptest.NewRecorder()
+		srv.ServeHTTP(rec, req)
+		if rec.Code == http.StatusTooManyRequests {
+			limited = true
+			break
+		}
+		if rec.Code != http.StatusAccepted {
+			t.Fatalf("register %d: %d %s", i, rec.Code, rec.Body.String())
+		}
+	}
+	if !limited {
+		t.Fatal("second X-Forwarded-For line let the client pick its bucket")
+	}
+}
+
 // One mailbox cannot be flooded by rotating client addresses.
 func TestPerEmailCodeLimit(t *testing.T) {
 	srv, _, _, _ := setupAPI(t)

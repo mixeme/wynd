@@ -13,7 +13,7 @@
 </script>
 
 <div class="people">
-	{#each people as person (person.name)}
+	{#each people as person, i (i)}
 		<div class="pp">
 			<div class="av2" style:background={person.color}>{person.initial}</div>
 			{person.name}

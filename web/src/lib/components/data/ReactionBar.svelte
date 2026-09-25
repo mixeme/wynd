@@ -28,7 +28,7 @@
 </script>
 
 <div class="rx">
-	{#each groups as group (group.names + group.icon)}
+	{#each groups as group, i (i)}
 		<button type="button" class="one" onclick={() => onopenList()}>
 			<Icon name={group.icon} size="xs" style="color:var(--c)" />
 			{group.names}

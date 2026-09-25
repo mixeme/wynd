@@ -32,6 +32,18 @@ func TestSPA_fallbackAndAssets(t *testing.T) {
 		}
 	})
 
+	// Каталог не листается (API-6, аудит 2026-09-22).
+	t.Run("directory is not listed", func(t *testing.T) {
+		for _, p := range []string{"/_app/", "/_app"} {
+			req := httptest.NewRequest(http.MethodGet, p, nil)
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, req)
+			if rec.Code != http.StatusNotFound {
+				t.Fatalf("%s: status %d body %q", p, rec.Code, rec.Body.String())
+			}
+		}
+	})
+
 	t.Run("client route fallback", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/admin/bootstrap", nil)
 		rec := httptest.NewRecorder()

@@ -2,6 +2,7 @@ package api
 
 import (
 	"io"
+	"mime"
 	"net/http"
 	"os"
 	"strconv"
@@ -134,14 +135,27 @@ func (s *Server) handleServeBlob(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
+	serveBlobFile(w, info)
+}
+
+// serveBlobFile отдаёт файл блоба с заголовками, общими для участнического
+// и админского маршрутов. Content-Disposition собирается через
+// mime.FormatMediaType: кавычка в имени файла ломала заголовок, а не-ASCII
+// уходил сырыми байтами (аудит 2026-09-22). Файл приватный — не кэшировать.
+func serveBlobFile(w http.ResponseWriter, info blob.ServeInfo) {
 	f, err := os.Open(info.Path)
 	if err != nil {
 		writeDomainError(w, err)
 		return
 	}
 	defer f.Close()
+	disposition := mime.FormatMediaType(info.Disposition, map[string]string{"filename": info.Filename})
+	if disposition == "" {
+		disposition = info.Disposition
+	}
 	w.Header().Set("Content-Type", info.MimeType)
-	w.Header().Set("Content-Disposition", info.Disposition+"; filename=\""+info.Filename+"\"")
+	w.Header().Set("Content-Disposition", disposition)
+	w.Header().Set("Cache-Control", "private, no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Content-Length", strconv.FormatInt(info.SizeBytes, 10))
 	w.WriteHeader(http.StatusOK)

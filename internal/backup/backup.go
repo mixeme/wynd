@@ -42,7 +42,9 @@ func Backup(dataDir, destDir string, incremental bool) error {
 	if err != nil {
 		return fmt.Errorf("backup: dest dir: %w", err)
 	}
-	if err := os.MkdirAll(destDir, 0o750); err != nil {
+	// Бэкап содержит wynd.db с секретами и keys/bootstrap: каталог и копии —
+	// только владельцу (аудит 2026-09-22, условие DEC-1).
+	if err := os.MkdirAll(destDir, 0o700); err != nil {
 		return fmt.Errorf("backup: mkdir dest: %w", err)
 	}
 
@@ -109,7 +111,8 @@ func backupDatabase(srcPath, destPath string) error {
 		_ = os.Remove(tmpPath)
 		return fmt.Errorf("backup db rename: %w", err)
 	}
-	return nil
+	// VACUUM INTO создаёт файл с правами SQLite по умолчанию (0644 & ~umask).
+	return os.Chmod(destPath, 0o600)
 }
 
 func backupBlobs(srcRoot, destRoot string, incremental bool, prev blobManifest) error {
@@ -194,6 +197,8 @@ func writeManifest(path string, m blobManifest) error {
 	return os.WriteFile(path, data, 0o640)
 }
 
+// copyFile копирует файл, не расширяя права источника: keys/bootstrap 0600
+// раньше становился 0640 в копии.
 func copyFile(src, dst string) error {
 	in, err := os.Open(src)
 	if err != nil {
@@ -203,7 +208,11 @@ func copyFile(src, dst string) error {
 	if err := os.MkdirAll(filepath.Dir(dst), 0o750); err != nil {
 		return err
 	}
-	out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o640)
+	perm := os.FileMode(0o640)
+	if info, err := in.Stat(); err == nil && info.Mode().Perm()&0o077 == 0 {
+		perm = 0o600
+	}
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, perm)
 	if err != nil {
 		return err
 	}
@@ -211,7 +220,10 @@ func copyFile(src, dst string) error {
 	if _, err := io.Copy(out, in); err != nil {
 		return err
 	}
-	return out.Close()
+	if err := out.Close(); err != nil {
+		return err
+	}
+	return os.Chmod(dst, perm)
 }
 
 func copyTree(src, dst string) error {

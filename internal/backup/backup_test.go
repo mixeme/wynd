@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -181,5 +182,39 @@ func TestBackupCapturesWALData(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(destDir, "wynd.db-wal")); !os.IsNotExist(err) {
 		t.Fatal("backup should not copy WAL sidecar")
+	}
+}
+
+// Инвариант (аудит 2026-09-22, условие DEC-1): копия wynd.db и keys/* в
+// бэкапе доступны только владельцу. VACUUM INTO создавал файл с правами
+// SQLite по умолчанию, а keys/bootstrap копировался 0600 → 0640.
+// На Windows права POSIX не выражаются — проверка только на Unix.
+func TestBackupKeepsSecretsPrivate(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX-права недоступны на Windows")
+	}
+	dataDir := seedDataDir(t)
+	if err := os.WriteFile(filepath.Join(dataDir, "keys", "bootstrap"), []byte("token"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	destDir := filepath.Join(t.TempDir(), "out")
+	if err := backup.Backup(dataDir, destDir, false); err != nil {
+		t.Fatal(err)
+	}
+	for _, rel := range []string{"wynd.db", "keys/bootstrap"} {
+		info, err := os.Stat(filepath.Join(destDir, rel))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if perm := info.Mode().Perm(); perm&0o077 != 0 {
+			t.Fatalf("%s: права %o, ожидались только владельцу", rel, perm)
+		}
+	}
+	info, err := os.Stat(destDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if perm := info.Mode().Perm(); perm&0o077 != 0 {
+		t.Fatalf("каталог бэкапа: права %o", perm)
 	}
 }

@@ -441,6 +441,12 @@ func (c *Chronicle) canClearDaySaid(ctx context.Context, circleID, accountID, en
 		}
 		return errCurrent
 	}
+	// Стереть заголовок/обложку дня может только тот, кто сейчас пишет в
+	// круг (раздел B плана 42 «Право писать»); hasPostForDay проверяет лишь
+	// наличие записи, и исключённый проходил (аудит 2026-09-22).
+	if _, err := c.requireWriter(ctx, circleID, accountID, now); err != nil {
+		return err
+	}
 	ok, err := c.hasPostForDay(ctx, c.db, circleID, accountID, entryDate)
 	if err != nil {
 		return err

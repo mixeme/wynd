@@ -22,7 +22,11 @@ func SPA(root fs.FS) http.Handler {
 			name = ""
 		}
 		if name != "" {
-			if _, err := fs.Stat(root, name); err == nil {
+			// Каталог (/_app/, /fonts/) — 404, иначе FileServer отдаёт листинг (API-6).
+			if info, err := fs.Stat(root, name); err == nil && info.IsDir() {
+				http.NotFound(w, r)
+				return
+			} else if err == nil {
 				// Go's MIME table has no .webmanifest, and the sniffed text/plain
 				// makes browsers ignore the manifest.
 				if strings.HasSuffix(name, ".webmanifest") {

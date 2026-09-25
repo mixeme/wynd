@@ -107,7 +107,7 @@
 		right={String(peek.member_count)}
 		onback={closeMembers}
 	>
-		{#each peek.members as member, i (member.name)}
+		{#each peek.members as member, i (i)}
 			<MemberRow
 				initial={circleInitial(member.name)}
 				name={member.name}

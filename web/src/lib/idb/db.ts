@@ -497,6 +497,33 @@ export async function clearMediaStore(): Promise<void> {
 }
 
 /**
+ * Стирает всё локальное состояние одного сервера, кроме сессии, курсора и
+ * снимков (их снимает dropParticipantSession отдельно): очередь, кэш медиа,
+ * закреплённые круги. Без этого после выхода на общем устройстве очередь
+ * уходила под следующей учёткой, а фото оставались в IDB (аудит 2026-09-22).
+ */
+export async function clearOriginState(origin: string): Promise<void> {
+	const db = await getDb();
+	const prefix = `${origin}:`;
+	const queue = db.transaction('queue', 'readwrite');
+	let q = await queue.store.openCursor();
+	while (q) {
+		if (q.value.origin === origin) await q.delete();
+		q = await q.continue();
+	}
+	await queue.done;
+	for (const store of ['media', 'pins'] as const) {
+		const tx = db.transaction(store, 'readwrite');
+		let cursor = await tx.store.openCursor();
+		while (cursor) {
+			if ((cursor.key as string).startsWith(prefix)) await cursor.delete();
+			cursor = await cursor.continue();
+		}
+		await tx.done;
+	}
+}
+
+/**
  * Ключ снимка — `${origin}:${kind}:${id}`. Без `kind` остаток после
  * `${origin}:` начинается с вида снимка (`feed:<uuid>`), поэтому прежняя
  * сверка «остаток === circleId» не совпадала никогда: после исключения из

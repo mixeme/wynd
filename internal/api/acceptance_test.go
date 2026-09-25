@@ -440,3 +440,46 @@ func eventTextRemainsDB(t *testing.T, ch *chronicle.Chronicle, circleID, needle 
 	}
 	return false, rows.Err()
 }
+
+// uploadBlob проводит полный цикл загрузки (сессия → чанк → complete) и
+// возвращает id готового блоба.
+func uploadBlob(t *testing.T, srv *api.Server, token string, payload []byte, mime string) string {
+	t.Helper()
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/uploads", token, map[string]any{
+		"expected_size": len(payload), "mime_type": mime, "filename": "f.bin",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("upload session: %d %s", rec.Code, rec.Body.String())
+	}
+	sessionID := jsonStr(t, rec, "id")
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/uploads/"+sessionID, bytes.NewReader(payload))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Upload-Offset", "0")
+	rec = httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("chunk: %d %s", rec.Code, rec.Body.String())
+	}
+	sum := sha256.Sum256(payload)
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/uploads/"+sessionID+"/complete", token, map[string]string{
+		"sha256": hex.EncodeToString(sum[:]),
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("complete: %d %s", rec.Code, rec.Body.String())
+	}
+	return jsonStr(t, rec, "id")
+}
+
+// joinAsMember выписывает многоразовую ссылку от владельца и вводит по ней
+// нового участника; возвращает его токен.
+func joinAsMember(t *testing.T, srv *api.Server, caps *auth.CaptureCodes, ownerTok, circleID, email, name string) string {
+	t.Helper()
+	allowCircleMultiInvites(t, srv, circleID, ownerTok)
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/invites", ownerTok, map[string]any{
+		"kind": "multi", "max_uses": 5, "ttl_sec": 7 * 86400,
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("invite: %d %s", rec.Code, rec.Body.String())
+	}
+	return acceptInvite(t, srv, caps, jsonStr(t, rec, "token"), email, name)
+}

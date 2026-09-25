@@ -37,8 +37,10 @@
 		goto(`/circles/${circle.circleId}/settings/invite`);
 	}
 
+	// Ссылка ведёт на сервер круга, а не на хост, с которого открыт клиент:
+	// иначе токен круга с сервера B уходил в логи сервера A (аудит 2026-09-22).
 	function inviteUrlFor(token: string): string {
-		const base = typeof window !== 'undefined' ? window.location.origin : '';
+		const base = circle.origin || (typeof window !== 'undefined' ? window.location.origin : '');
 		return `${base}/invite/${token}`;
 	}
 

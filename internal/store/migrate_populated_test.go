@@ -107,6 +107,26 @@ func TestMigrationsOnPopulatedPreviousVersion(t *testing.T) {
 			t.Fatalf("порядок: got %v want %v", order, want)
 		}
 	}
+	// 0014: из двух pending-заявок одной учётки остаётся старшая, младшая
+	// отклонена; индекс не даёт завести вторую.
+	var pendingLeft, rejected string
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT id FROM pay_requests WHERE status = 'pending' AND account_id = 'acc'`).Scan(&pendingLeft); err != nil {
+		t.Fatalf("pending after 0014: %v", err)
+	}
+	if pendingLeft != "pr-old" {
+		t.Fatalf("осталась не старшая заявка: %s", pendingLeft)
+	}
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT status FROM pay_requests WHERE id = 'pr-new'`).Scan(&rejected); err != nil || rejected != "rejected" {
+		t.Fatalf("младшая заявка: status=%q err=%v", rejected, err)
+	}
+	if _, err := s.db.ExecContext(ctx, `
+		INSERT INTO pay_requests (id, account_id, blob_id, status, created_at)
+		VALUES ('pr-dup', 'acc', 'b1', 'pending', '2026-08-30T12:00:00.000000000Z')
+	`); err == nil {
+		t.Fatal("вторая pending-заявка прошла мимо уникального индекса")
+	}
 	if err := s.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
 	}
@@ -169,6 +189,12 @@ func seedPopulatedV9(t *testing.T, db *sql.DB) {
 		 VALUES ('p-seven', 'c1', 3, 'i1', 'Аня', 'семь', '2026-08-30', '2026-08-30T10:00:00.2501Z')`,
 		`INSERT INTO posts (id, circle_id, event_seq, identity_id, author_name, body, entry_date, created_at)
 		 VALUES ('p-nine', 'c1', 4, 'i1', 'Аня', 'девять', '2026-08-30', '2026-08-30T10:00:00.123456789Z')`,
+		`INSERT INTO blobs (id, account_id, sha256, size_bytes, mime_type, storage_path, status, created_at)
+		 VALUES ('b1', 'acc', 'deadbeef', 1, 'image/jpeg', 'b/1', 'complete', '2026-08-30T09:00:00Z')`,
+		`INSERT INTO pay_requests (id, account_id, blob_id, status, created_at)
+		 VALUES ('pr-old', 'acc', 'b1', 'pending', '2026-08-30T10:00:00Z')`,
+		`INSERT INTO pay_requests (id, account_id, blob_id, status, created_at)
+		 VALUES ('pr-new', 'acc', 'b1', 'pending', '2026-08-30T11:00:00Z')`,
 	}
 	for _, q := range stmts {
 		if _, err := db.Exec(q); err != nil {

@@ -33,6 +33,8 @@ func writeError(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusRequestEntityTooLarge, map[string]string{"error": "payload_too_large"})
 	case errors.Is(err, auth.ErrWeakPassword):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "weak_password"})
+	case errors.Is(err, auth.ErrTooLong):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "too_long"})
 	case errors.Is(err, auth.ErrInvalid):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid"})
 	case errors.Is(err, auth.ErrNotFound):
@@ -153,24 +155,46 @@ func (s *Server) clientIP(r *http.Request) string {
 	if !s.trustedProxy(remote) {
 		return remote
 	}
-	xff := r.Header.Get("X-Forwarded-For")
+	// Все строки заголовка, не только первая: прокси, добавляющий XFF
+	// отдельной строкой, иначе оставлял клиенту право выбрать себе корзину
+	// лимитера (аудит 2026-09-22). Не-адреса пропускаются.
+	xff := strings.Join(r.Header.Values("X-Forwarded-For"), ",")
 	if xff == "" {
 		return remote
 	}
 	parts := strings.Split(xff, ",")
+	var first string
 	for i := len(parts) - 1; i >= 0; i-- {
-		ip := strings.TrimSpace(parts[i])
+		ip := forwardedIP(parts[i])
 		if ip == "" {
 			continue
 		}
+		first = ip
 		if !s.trustedProxy(ip) {
 			return ip
 		}
 	}
-	if first := strings.TrimSpace(parts[0]); first != "" {
+	if first != "" {
 		return first
 	}
 	return remote
+}
+
+// forwardedIP приводит элемент X-Forwarded-For к адресу: срезает порт и
+// скобки IPv6, отбрасывает то, что адресом не является.
+func forwardedIP(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	if host, _, err := net.SplitHostPort(raw); err == nil {
+		raw = host
+	}
+	raw = strings.Trim(raw, "[]")
+	if ip := net.ParseIP(raw); ip != nil {
+		return ip.String()
+	}
+	return ""
 }
 
 func remoteHost(addr string) string {

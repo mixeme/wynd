@@ -1,11 +1,8 @@
 package api
 
 import (
-	"io"
 	"net/http"
-	"os"
 	"path/filepath"
-	"strconv"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
 )
@@ -17,9 +14,9 @@ func (s *Server) handleAdminPayHub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"requisites":    settings.Requisites,
-		"donate":        map[string]any{"show": settings.DonateShow, "until": settings.DonateUntil},
-		"subscription":  map[string]any{"required": settings.SubscriptionRequired, "pending_count": settings.PendingRequestCount},
+		"requisites":   settings.Requisites,
+		"donate":       map[string]any{"show": settings.DonateShow, "until": settings.DonateUntil},
+		"subscription": map[string]any{"required": settings.SubscriptionRequired, "pending_count": settings.PendingRequestCount},
 	})
 }
 
@@ -175,16 +172,8 @@ func (s *Server) handleAdminPayBlob(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	f, err := os.Open(info.Path)
-	if err != nil {
-		writeDomainError(w, err)
-		return
-	}
-	defer f.Close()
-	w.Header().Set("Content-Type", info.MimeType)
-	w.Header().Set("Content-Disposition", "inline; filename=\""+info.Filename+"\"")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("Content-Length", strconv.FormatInt(info.SizeBytes, 10))
-	w.WriteHeader(http.StatusOK)
-	_, _ = io.Copy(w, f)
+	// Скриншот отдаётся так же, как любой блоб (attachment): inline с MIME,
+	// заявленным участником, — единственный путь исполняемого содержимого
+	// к админу (аудит 2026-09-22). Клиент показывает файл через blob: URL.
+	serveBlobFile(w, info)
 }

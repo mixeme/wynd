@@ -234,7 +234,7 @@
 				</span>
 			{/snippet}
 			{#snippet postText()}
-				{#each splitMentionBody(post.body) as part (part.kind + part.value)}
+				{#each splitMentionBody(post.body) as part}
 					{#if part.kind === 'mention'}<span class="men">{part.value}</span>{:else}{part.value}{/if}
 				{/each}
 			{/snippet}

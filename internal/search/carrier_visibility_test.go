@@ -256,3 +256,58 @@ func TestSearchKeepsCurrentDayTitle(t *testing.T) {
 		t.Fatalf("удалённая версия названия осталась в поиске: %+v", hits)
 	}
 }
+
+// Инвариант (аудит 2026-09-22): комментарий виден в поиске, только если сам
+// попадает в отрезок читателя. SRCH-1 привязал попадание к записи-носителю,
+// но вышедший с доступом находил комментарии, написанные после его ухода,
+// которые лента скрывает.
+func TestSearchHidesCommentWrittenAfterLeaving(t *testing.T) {
+	ch, svc := newSearchEnv(t)
+	ctx := t.Context()
+	now := time.Date(2026, 8, 30, 10, 0, 0, 0, time.UTC)
+	circle, _, _, err := ch.CreateCircle(ctx, chronicle.CreateCircleInput{
+		Name: "Семья", OwnerAccountID: "owner", OwnerName: "Аня", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := ch.Join(ctx, chronicle.JoinInput{
+		CircleID: circle.ID, AccountID: "bob", Name: "Боб", Now: now.Add(time.Minute),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	post, err := ch.CreatePost(ctx, chronicle.PostInput{
+		CircleID: circle.ID, AccountID: "owner", Body: "запись", EntryDate: "2026-08-30", Now: now.Add(time.Hour),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ch.CreateComment(ctx, chronicle.CommentInput{
+		CircleID: circle.ID, AccountID: "owner", PostID: post.ID, Body: "общее слово", Now: now.Add(90 * time.Minute),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := ch.LeaveWithAccess(ctx, circle.ID, "bob", now.Add(2*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ch.CreateComment(ctx, chronicle.CommentInput{
+		CircleID: circle.ID, AccountID: "owner", PostID: post.ID, Body: "секретное слово", Now: now.Add(3 * time.Hour),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	hits, err := svc.SearchCircle(ctx, "bob", circle.ID, "слово", 10, search.Filters{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) != 1 || hits[0].Snippet != "общее слово" {
+		t.Fatalf("вышедший должен видеть только комментарий до ухода: %+v", hits)
+	}
+	all, err := svc.SearchAll(ctx, "bob", "секретное", 10, search.Filters{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != 0 {
+		t.Fatalf("глобальный поиск отдал комментарий после ухода: %+v", all)
+	}
+}

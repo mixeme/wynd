@@ -135,6 +135,9 @@ type Post struct {
 	EditWindow    EditWindow
 	EditableUntil *time.Time
 	Deleted       bool
+	// Replayed — запись не создана сейчас, а найдена по client_id (CLI-2).
+	// Вызывающий не должен второй раз привязывать медиа и слать уведомления.
+	Replayed bool
 }
 
 type Comment struct {

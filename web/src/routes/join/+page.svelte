@@ -14,7 +14,7 @@
 		sendAuthCode,
 		type InstanceInfo
 	} from '$lib/auth/auth';
-	import { decodeQrFromFile, parseWyndLink } from '$lib/auth/links';
+	import { decodeQrFromFile, foreignWyndLinkOrigin, parseWyndLink } from '$lib/auth/links';
 	import { displayHost, resolveServerOrigin } from '$lib/auth/origin';
 	import { INVALID_EMAIL_HINT, isValidParticipantEmail } from '$lib/auth/email';
 	import { loadPendingAuth, savePendingAuth } from '$lib/auth/pending';
@@ -68,8 +68,17 @@
 		}
 	});
 
+	const foreignLinkError = (origin: string) =>
+		`Ссылка ведёт на другой сервер (${origin}) — откройте её там`;
+
 	function onAddressPaste(event: ClipboardEvent) {
 		const text = event.clipboardData?.getData('text') ?? '';
+		const foreign = foreignWyndLinkOrigin(text);
+		if (foreign) {
+			event.preventDefault();
+			error = foreignLinkError(foreign);
+			return;
+		}
 		const path = parseWyndLink(text);
 		if (!path) return;
 		event.preventDefault();
@@ -98,7 +107,9 @@
 		try {
 			const text = await decodeQrFromFile(file);
 			const path = parseWyndLink(text);
+			const foreign = foreignWyndLinkOrigin(text);
 			if (path) goto(path);
+			else if (foreign) error = foreignLinkError(foreign);
 			else error = 'В коде нет ссылки Wynd';
 		} catch (err) {
 			error =

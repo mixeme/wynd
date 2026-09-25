@@ -113,13 +113,17 @@ func (s *Store) circleQuotaBytes(ctx context.Context, circleID string) (sql.Null
 	return s.effectiveCircleQuotaBytes(ctx, circleID)
 }
 
-// reservedBytes — место, уже занятое незавершёнными загрузками: открытые
-// сессии и строки blobs в состоянии pending.
+// reservedBytes — место, уже занятое незавершёнными загрузками: принятые
+// байты открытых сессий (.part на диске) и строки blobs в состоянии pending.
+// Считаются received_bytes, а не expected_size: иначе участник пустыми
+// сессиями без единого байта резервировал всю квоту инстанса на сутки
+// (аудит 2026-09-22). Полностью принятая сессия равна своему размеру, поэтому
+// перепроверка на завершении (UPL-2) остаётся точной.
 func (s *Store) reservedBytes(ctx context.Context) (int64, error) {
 	var reserved sql.NullInt64
 	err := s.db.QueryRowContext(ctx, `
 		SELECT
-			(SELECT COALESCE(SUM(expected_size), 0) FROM upload_sessions) +
+			(SELECT COALESCE(SUM(received_bytes), 0) FROM upload_sessions) +
 			(SELECT COALESCE(SUM(size_bytes), 0) FROM blobs WHERE status = 'pending')
 	`).Scan(&reserved)
 	if err != nil {

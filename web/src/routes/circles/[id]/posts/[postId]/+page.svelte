@@ -362,7 +362,7 @@
 			</div>
 		{/snippet}
 		{#snippet postText()}
-			{#each splitMentionBody(currentPost.body) as part (part.kind + part.value)}
+			{#each splitMentionBody(currentPost.body) as part}
 				{#if part.kind === 'mention'}<span class="men">{part.value}</span>{:else}{part.value}{/if}
 			{/each}
 		{/snippet}
@@ -451,7 +451,7 @@
 								</Button>
 							</div>
 						{:else}
-							{#each splitMentionBody(comment.body) as part (part.kind + part.value)}
+							{#each splitMentionBody(comment.body) as part}
 								{#if part.kind === 'mention'}<span class="men">{part.value}</span>{:else}{part.value}{/if}
 							{/each}
 						{/if}
@@ -472,7 +472,7 @@
 						</span>
 					{/snippet}
 					{#snippet children()}
-						{#each splitMentionBody(item.body) as part (part.kind + part.value)}
+						{#each splitMentionBody(item.body) as part}
 							{#if part.kind === 'mention'}<span class="men">{part.value}</span>{:else}{part.value}{/if}
 						{/each}
 						{#if item.state === 'failed' && item.error}

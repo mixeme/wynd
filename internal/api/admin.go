@@ -318,33 +318,6 @@ func (s *Server) RequirePaidParticipant(next http.HandlerFunc) http.HandlerFunc 
 	})
 }
 
-// RequirePaidParticipantStream is RequirePaidParticipant without a JSON body cap.
-func (s *Server) RequirePaidParticipantStream(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		token := bearerToken(r)
-		if token == "" {
-			writeError(w, auth.ErrForbidden)
-			return
-		}
-		sess, err := s.Auth.IsParticipantSession(r.Context(), token)
-		if err != nil {
-			writeError(w, auth.ErrForbidden)
-			return
-		}
-		if err := auth.RejectAdminJournal(sess.Kind); err != nil {
-			writeError(w, err)
-			return
-		}
-		ctx := contextWithSession(r.Context(), sess)
-		r = r.WithContext(ctx)
-		if err := s.requirePaidSession(r); err != nil {
-			writeError(w, err)
-			return
-		}
-		next(w, r)
-	}
-}
-
 func (s *Server) requirePaidSession(r *http.Request) error {
 	sess, ok := SessionFromContext(r.Context())
 	if !ok {

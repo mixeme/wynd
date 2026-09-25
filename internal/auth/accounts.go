@@ -233,6 +233,13 @@ func (s *Service) DeleteAccount(ctx context.Context, id string, now time.Time) e
 	`, id); err != nil {
 		return fmt.Errorf("clear pending joins: %w", err)
 	}
+	// Push-подписки привязаны к учётке, не к сессии: без снятия устройство
+	// продолжало получать сигналы активности кругов (аудит 2026-09-22).
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM push_subscriptions WHERE account_id = ?
+	`, id); err != nil {
+		return fmt.Errorf("drop push subscriptions: %w", err)
+	}
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE invites SET revoked_at = ?
 		WHERE target_account_id = ? AND revoked_at IS NULL

@@ -12,6 +12,9 @@ var (
 	ErrExpired         = errors.New("auth: expired")
 	ErrClosed          = errors.New("auth: registration closed")
 	ErrPaymentRequired = errors.New("auth: payment required")
+	// ErrTooLong — свободный текст длиннее предметного потолка (комментарий
+	// заявки, реквизиты, текст баннера).
+	ErrTooLong = errors.New("auth: text too long")
 )
 
 // ErrWeakPassword is returned when an admin password is shorter than MinPasswordLen.

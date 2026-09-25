@@ -351,9 +351,9 @@ Legacy мало, он назван, но план удаления нигде н
 
 ### Волна 2а — аудит безопасности (после волны 2, до волны 5)
 
-- [ ] Раннее дорецензирование из волны 7, без которого аудит неполон: `internal/archive` (экранирование HTML, имена в ZIP) и `internal/auth/pay.go` (включение шлюза при пустых сроках, продление от `9999-12-31`, параллельные заявки). Перенести сюда, в волне 7 отметить.
-- [ ] **SEC-6** Полный аудит по охвату из раздела B → `docs/security-audit-<дата>.md`. Найденное высокой серьёзности чинится до волны 5, остальное — в очередь этого плана с пометкой.
-- [ ] Триггеры повторного прохода — в `CONTRIBUTING.md`; ссылка на оба отчёта аудита — в README.
+- [x] Раннее дорецензирование из волны 7, без которого аудит неполон: `internal/archive` (экранирование HTML, имена в ZIP) и `internal/auth/pay.go` (включение шлюза при пустых сроках, продление от `9999-12-31`, параллельные заявки). Архив: HTML экранирован, имена в ZIP — UUID; оплата: `/uploads*` под `participant`, одна pending-заявка (0014), approve одной транзакцией.
+- [x] **SEC-6** Полный аудит по охвату из раздела B → `docs/security-audit-2026-09-22.md`. Критических и высоких нет; средние исправлены (10), низкие — частично, остальное в очереди ниже с пометкой «аудит».
+- [x] Триггеры повторного прохода — в `CONTRIBUTING.md`; ссылка на оба отчёта аудита — в README.
 - [ ] (к публичному релизу, не раньше) Повторный проход по изменённому с даты аудита; пункт ворот публичного релиза рядом с проверкой зеркала (LIC-1).
 
 ### Волна 3 — процесс, лицензия, деплой
@@ -364,6 +364,10 @@ Legacy мало, он назван, но план удаления нигде н
 - [ ] **LIC-1** (к публичному релизу, не раньше) Зеркало на GitHub, теги `vX.Y.Z`, ссылка на версию, `git ls-remote` в воротах публичного релиза.
 - [ ] **LIC-3, LIC-4, LIC-5** `THIRD_PARTY_LICENSES.txt`; атрибуция и URL плиток OSM; ASCII-тире в `LICENSE:1`; `"license": "AGPL-3.0-or-later"` в `package.json`; LICENSE и метки в образе.
 - [ ] **DOC-2** `TestOpenAPIVersionMatchesVERSION`; поднять версии в обоих yaml.
+- [ ] **[аудит 2026-09-22] SEC-7** Push-доставка: свой `DialContext` в `newDeliveryClient` — резолвить хост самому и отвергать непубличные адреса при каждой доставке (DNS-rebinding обходит проверку при подписке); хост endpoint без пути в ошибках лога.
+- [ ] **[аудит 2026-09-22] SEC-8** `POST /auth/verify`: лимит попыток по IP (или единый `400 invalid` на not_found/expired/too_many_attempts) — сейчас знающий e-mail сжигает 3 чужие попытки; `chargeRate` — `INSERT … SELECT … WHERE COUNT < ?` с `RowsAffected`; глобальный ключ `*` лимитера входа — замедление, не запрет; индекс `code_request_log(email, requested_at)`.
+- [ ] **[аудит 2026-09-22] SEC-9** `pending_circle_joins`: `expires_at`/`invite_id`, чистка при отзыве ссылки, исключении пригласившего и в рутине; инвайты заблокированного/удалённого создателя отзываются; peek применяет `validateInvite` целиком; потолки `max_uses` ≤ 100 и `ttl_sec` ≤ 30 сут.
+- [ ] **[аудит 2026-09-22]** `mail.ErrSend` в ответе — классифицированная причина (`dial`/`tls`/`starttls_required`/`auth`/`protocol`) без сырой строки сервера; `ValidatePublicURL` в bootstrap до `ConfirmBootstrapToken`; `/auth/code` для заблокированной учётки в режиме open — 200 без письма.
 
 ### Волна 4 — тесты
 
@@ -374,7 +378,7 @@ Legacy мало, он назван, но план удаления нигде н
 - [ ] `TestNonMemberCannotReadCircleSurfaces` — feed, grid, map, days, day, search, authors, members, identity, detail.
 - [ ] `TestCommentEditDeleteOnlyByAuthor`, `TestReactionSetReplaceDelete`.
 - [ ] `TestSearchRespectsMembershipAndFilters`.
-- [ ] `TestPaidGateBlocksJournalButNotPayRoutes`, `TestAdminPayApproveGrantsAccessRejectDoesNot`, `TestAdminPayRoutesRequireAdminAndBlobScoped`.
+- [ ] `TestAdminPayApproveGrantsAccessRejectDoesNot`, `TestAdminPayRoutesRequireAdminAndBlobScoped` (`TestPaidGateBlocksJournalButNotPayRoutes` — написан в волне 2а).
 - [ ] `TestAdminSetSMTPNeverEchoesPassword`, `TestAdminQuotaRequestApproveRejectAndInviteRevoke`.
 - [ ] `TestSyncSSEAndNDJSONMatchJSON`; `HEAD /uploads/{id}` после частичного PUT; `read_cursor` не уменьшается.
 - [ ] `internal/push`: `deliver` на `httptest` (успех, 410 → подписка удалена, 400 → остаётся и логируется).
@@ -387,6 +391,8 @@ Legacy мало, он назван, но план удаления нигде н
 - [ ] **REF-4** Хелпер обработчика в `internal/api/respond.go`; переезд обработчиков заявок на квоту из `notify.go` в `admin_storage.go`.
 - [ ] **CPX-1** Удалить `schema-*.d.ts`, `api:types`, `openapi-typescript`; точечные правки yaml.
 - [ ] **REF-6, CHR-2** `DaysSnapshot` групповыми запросами; лента без ожидания URL медиа.
+- [ ] **[аудит 2026-09-22]** `EstimateArchivePersonal` агрегирующими запросами вместо `ArchiveSnapshot` (N+1 по всем записям до отсечки на каждом `GET /circles` при активном цикле); `ArchiveSnapshot` — пакетный `buildFeedPosts`.
+- [ ] **[аудит 2026-09-22]** Мелочи ввода: потолок числа медиа на запись (50), `edit_window_sec` в `POST /circles` как в `PatchCircle`, `TrimSpace` заголовка дня, `mute_until` — RFC3339 при сохранении; `writeFileConfig` — мёртвый код; `account_id` в `members` — только владельцу/`can_settings`.
 - [ ] **REF-8, GUI-2, GUI-9** `:where(button)`, удаление зеркал и их сторожа, `--tint` в `tokens.css`; затем отдельным коммитом переформат `ui.css`. Сверка всех кадров `/dev/ui`.
 - [ ] **GUI-1, GUI-3, GUI-7, GUI-8, STB-6** Ключи `{#each}`; история листа реакций; флаг `busy` на отправке и реакции; подтверждение удаления из очереди с иконкой `trash`.
 - [ ] **RDB-1, GUI-5, GUI-6** Вынос логики экранов в `$lib` с тестами: сначала `gestures/longpress.ts` и `gestures/pullToRefresh.ts`, затем `journal/reactions.ts`, `journal/searchState.ts`, `journal/album.ts`, `nav/url.ts`. По экрану на коммит.
@@ -407,8 +413,8 @@ Legacy мало, он назван, но план удаления нигде н
 
 Области, до которых рецензия не дошла. Формат результата — дополнение к этому файлу, те же пометки.
 
-- [ ] `internal/auth/pay.go` — **делается в волне 2а**: продление от `9999-12-31`, включение шлюза при пустых сроках у всех, уникальность pending-заявки, версия баннера. После — вынос в `internal/pay`.
-- [ ] `internal/archive` — **безопасность делается в волне 2а** (экранирование каждой пользовательской строки в HTML, имена в ZIP: `../`, дубли, зарезервированные имена Windows); здесь остаётся память на многогигабайтном круге и очистка временных файлов при обрыве.
+- [ ] `internal/auth/pay.go` — безопасность **сделана в волне 2а** (`docs/security-audit-2026-09-22.md`, отчёт `02-pay`): шлюз при пустых сроках, продление от `9999-12-31` (база сбрасывается на `now`, задокументировано), одна pending-заявка, approve одной транзакцией. Остаётся: вынос в `internal/pay`; `PayStatus` делает 4 запроса на каждый `paid`-запрос — узкий `PaidStatus`; единый стиль транзакций; `scanPayRequestRow`; после reject блоб с удалённым файлом можно приложить повторно.
+- [ ] `internal/archive` — безопасность **сделана в волне 2а**: HTML экранирован, имена в ZIP — UUID, доступ по отрезкам. Остаётся: память на многогигабайтном круге (стрим во временный файл или в ответ, `http.ServeContent`/Range; семафор «одна сборка на учётку» уже стоит), очистка временных файлов при обрыве, `snippet[:60]` по рунам, пропуск недоступного блоба вместо 404 на весь архив, `deadline` не раньше `now + 24 ч`, тесты на экранирование и состав ZIP.
 - [ ] `internal/backup`: существующая цель, атомарность, `-incremental` и удалённые блобы.
 - [ ] Планировщик в `cmd/wynd/main.go`: время суток, пропущенный запуск, наложение.
 - [ ] `internal/check`: редиректы, таймауты, размер ответа, хрупкость распознавания Let's Encrypt по CN.
@@ -444,4 +450,4 @@ Legacy мало, он назван, но план удаления нигде н
 
 **В отчётах есть утверждения, опровергнутые проверкой, — им не следовать:** `review2-blob-archive-jobs-search.md` п. 3.3 («FTS-триггеры не срабатывают на каскадных удалениях», предлагает `recursive_triggers`) и `review2-chronicle-store.md`, дефекты 2–3 в разборе `DeleteCircle` (сбой FK-каскада, остатки в FTS). Пробник показал: `DeleteCircle` проходит без ошибки, `content_fts` пуст. Верной в том разборе остаётся только утечка блобов (BLB-4).
 
-Каталог удаляется вместе с этим планом после волны 7.
+Каталог удаляется вместе с этим планом после волны 7. Материалы аудита волны 2а — `docs/archive/audit-2026-09-22/` (семь отчётов и пробники), удаляются тогда же.

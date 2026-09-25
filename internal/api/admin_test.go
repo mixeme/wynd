@@ -126,6 +126,13 @@ func TestAdminBlockAccountAndStorageCircles(t *testing.T) {
 		t.Fatalf("circle row: %v", row)
 	}
 
+	// Push-подписка учётки: блокировка должна её снять (аудит 2026-09-22).
+	if _, err := srv.Chronicle.DB().ExecContext(t.Context(), `
+		INSERT INTO push_subscriptions (id, account_id, endpoint, p256dh, auth, created_at)
+		VALUES ('sub1', ?, 'https://push.example/x', 'k', 'a', '2026-08-30T10:00:00.000000000Z')
+	`, accountID); err != nil {
+		t.Fatal(err)
+	}
 	rec = doJSON(t, srv, http.MethodPost, "/api/v1/admin/accounts/"+accountID+"/block", admin, map[string]any{})
 	if rec.Code != http.StatusOK {
 		t.Fatalf("block: %d %s", rec.Code, rec.Body.String())
@@ -133,6 +140,14 @@ func TestAdminBlockAccountAndStorageCircles(t *testing.T) {
 	rec = doGET(t, srv, "/api/v1/circles", userTok)
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("blocked session: %d %s", rec.Code, rec.Body.String())
+	}
+	var subs int
+	if err := srv.Chronicle.DB().QueryRowContext(t.Context(),
+		`SELECT count(*) FROM push_subscriptions WHERE account_id = ?`, accountID).Scan(&subs); err != nil {
+		t.Fatal(err)
+	}
+	if subs != 0 {
+		t.Fatalf("push-подписки заблокированного остались: %d", subs)
 	}
 	rec = doGET(t, srv, "/api/v1/admin/accounts", admin)
 	if rec.Code != http.StatusOK {

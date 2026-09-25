@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/archive"
+	"gitea.mixdep.ru/mix/wynd/internal/auth"
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 )
 
@@ -101,17 +102,17 @@ func (s *Server) handleCircleDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := map[string]any{
-		"id":                    found.ID,
-		"name":                  found.Name,
-		"color":                 color,
-		"status":                string(found.Status),
-		"edit_window_sec":       editWindow.Seconds,
-		"is_owner":              owner == sess.AccountID,
-		"can_settings":          mem.CanSettings,
-		"identity_id":           mem.IdentityID,
-		"identity_name":         identityName,
-		"invite_who":            inviteSettings.InviteWho,
-		"invite_kind_default":   inviteSettings.InviteKindDefault,
+		"id":                  found.ID,
+		"name":                found.Name,
+		"color":               color,
+		"status":              string(found.Status),
+		"edit_window_sec":     editWindow.Seconds,
+		"is_owner":            owner == sess.AccountID,
+		"can_settings":        mem.CanSettings,
+		"identity_id":         mem.IdentityID,
+		"identity_name":       identityName,
+		"invite_who":          inviteSettings.InviteWho,
+		"invite_kind_default": inviteSettings.InviteKindDefault,
 	}
 	if avatarBlobID != "" {
 		out["avatar_blob_id"] = avatarBlobID
@@ -159,9 +160,9 @@ func (s *Server) handleCircleQuota(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := map[string]any{
-		"used_bytes":  used,
-		"post_count":  postCount,
-		"volume":      volume,
+		"used_bytes": used,
+		"post_count": postCount,
+		"volume":     volume,
 	}
 	if quota.Valid {
 		out["quota_bytes"] = quota.Int64
@@ -266,6 +267,10 @@ func (s *Server) handleMoveDeadline(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
+// archiveRetryAfterSec — подсказка клиенту, когда повторить скачивание архива,
+// если предыдущая сборка той же учётки ещё идёт.
+const archiveRetryAfterSec = 30
+
 func (s *Server) handleArchiveDownload(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	sess, ok := SessionFromContext(r.Context())
@@ -291,6 +296,11 @@ func (s *Server) handleArchiveDownload(w http.ResponseWriter, r *http.Request) {
 	if v := strings.TrimSpace(r.URL.Query().Get("layout")); v == "posts" {
 		layout = archive.LayoutPosts
 	}
+	if _, busy := s.archiveBuilds.LoadOrStore(sess.AccountID, struct{}{}); busy {
+		writeError(w, &auth.RateLimitError{RetryAfterSec: archiveRetryAfterSec})
+		return
+	}
+	defer s.archiveBuilds.Delete(sess.AccountID)
 	posts, err := s.Chronicle.ArchiveSnapshot(r.Context(), circleID, sess.AccountID, cycle.CutoffDate)
 	if err != nil {
 		writeDomainError(w, err)

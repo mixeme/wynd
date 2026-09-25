@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	webpush "github.com/SherClockHolmes/webpush-go"
 	"gitea.mixdep.ru/mix/wynd/internal/store"
 	"gitea.mixdep.ru/mix/wynd/internal/uid"
 	"gitea.mixdep.ru/mix/wynd/internal/xtime"
+	webpush "github.com/SherClockHolmes/webpush-go"
 )
 
 const defaultTTL = 60
@@ -248,6 +248,10 @@ func (s *Service) deliver(ctx context.Context, pub, priv, endpoint, p256dh, auth
 			P256dh: p256dh,
 		},
 	}
+	// Свой срок на каждую доставку: один молчащий endpoint съедал общий
+	// бюджет notify* и глушил уведомления остальным (аудит 2026-09-22).
+	ctx, cancel := context.WithTimeout(ctx, deliverTimeout)
+	defer cancel()
 	resp, err := webpush.SendNotificationWithContext(ctx, payload, sub, &webpush.Options{
 		HTTPClient:      s.client,
 		Subscriber:      SubscriberMailto,
@@ -259,7 +263,8 @@ func (s *Service) deliver(ctx context.Context, pub, priv, endpoint, p256dh, auth
 		return err
 	}
 	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, resp.Body)
+	// Дренаж нужен только для переиспользования соединения — не больше 64 КиБ.
+	_, _ = io.CopyN(io.Discard, resp.Body, 64<<10)
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return nil
 	}

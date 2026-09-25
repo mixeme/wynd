@@ -10,9 +10,13 @@ import (
 // one row; they are product constants, not admin settings (the admin
 // setting governs attachment bytes, which never pass through these paths).
 const (
-	MaxTextBytes        = 32768 // post body, comment body, day title (UTF-8 bytes)
-	MaxNameChars        = 100   // circle name, identity name
-	MaxEmojiChars       = 16
+	MaxTextBytes  = 32768 // post body, comment body, day title (UTF-8 bytes)
+	MaxNameChars  = 100   // circle name, identity name
+	MaxEmojiChars = 16
+	// MaxClientIDChars — ключ идемпотентности очереди; клиент шлёт UUID
+	// (36 знаков), запас на другие форматы. Без потолка ключ до 1 МиБ ложился
+	// в колонку с уникальным индексом (аудит 2026-09-22).
+	MaxClientIDChars = 64
 )
 
 // ErrTooLong is returned when a text field exceeds its cap.

@@ -122,12 +122,18 @@ func ensureDataLayout(dataDir string) error {
 		}
 	}
 
+	// БД хранит SMTP-пароль и ключ VAPID открытым текстом — принятый риск
+	// при условии прав 0600 (план 42, DEC-1). Существующий файл выравнивается
+	// при старте; -wal/-shm SQLite создаёт с режимом основного файла.
 	dbPath := filepath.Join(dataDir, "wynd.db")
-	f, err := os.OpenFile(dbPath, os.O_CREATE|os.O_WRONLY, 0o640)
+	f, err := os.OpenFile(dbPath, os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return fmt.Errorf("create wynd.db: %w", err)
 	}
-	return f.Close()
+	if err := f.Close(); err != nil {
+		return err
+	}
+	return os.Chmod(dbPath, 0o600)
 }
 
 func writeFileConfig(path string, cfg *Config) error {

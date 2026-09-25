@@ -65,6 +65,10 @@ func executableExtension(mime string) (string, bool) {
 		return ".html", true
 	case "text/javascript", "application/javascript", "application/x-javascript":
 		return ".js", true
+	case "text/xml", "application/xml", "text/xsl", "application/xslt+xml":
+		// XML с xhtml-namespace браузер отрисовывает как документ со
+		// скриптами (аудит 2026-09-22).
+		return ".xml", true
 	}
 	return "", false
 }
