@@ -142,17 +142,43 @@ function triggerRefetch(origin: string, circleId: string): void {
 	}
 }
 
-async function handleSyncEvent(origin: string, raw: string): Promise<void> {
-	let event: SyncEvent;
+function triggerRefetchAll(origin: string): void {
+	const normalized = normalizeOrigin(origin);
+	for (const reg of refetchRegistrations) {
+		if (normalizeOrigin(reg.origin) === normalized) void reg.refetch();
+	}
+}
+
+/**
+ * Первый кадр потока — `{"max_seq": N}`. Курсор больше N значит, что сервер
+ * восстановлен из бэкапа и наши номера событий из прежней жизни: сервер уже
+ * считает всё до N увиденным, а здесь сбрасываются курсор и снимки, чтобы
+ * экраны перечитали состояние (план 42, BKP-3).
+ */
+async function handleHello(origin: string, maxSeq: number): Promise<void> {
+	const cursor = (await getCursor(origin))?.seq ?? 0;
+	if (cursor <= maxSeq) return;
+	await putCursor(origin, maxSeq);
+	await invalidateSnapshots(origin);
+	triggerRefetchAll(origin);
+}
+
+/** Разбирает кадр `data:` потока sync: событие хроники или приветствие `max_seq`. */
+export async function handleSyncFrame(origin: string, raw: string): Promise<void> {
+	let event: Partial<SyncEvent> & { max_seq?: number };
 	try {
-		event = JSON.parse(raw) as SyncEvent;
+		event = JSON.parse(raw) as typeof event;
 	} catch {
+		return;
+	}
+	if (typeof event.seq !== 'number') {
+		if (typeof event.max_seq === 'number') await handleHello(origin, event.max_seq);
 		return;
 	}
 	await putCursor(origin, event.seq);
 	await invalidateSnapshots(origin, { kind: 'circles' });
-	await invalidateCircleSnapshots(origin, event.circle_id);
-	triggerRefetch(origin, event.circle_id);
+	await invalidateCircleSnapshots(origin, event.circle_id ?? '');
+	triggerRefetch(origin, event.circle_id ?? '');
 }
 
 async function runSyncLoop(origin: string, signal: AbortSignal): Promise<void> {
@@ -193,7 +219,7 @@ async function runSyncLoop(origin: string, signal: AbortSignal): Promise<void> {
 		void drainQueue();
 
 		try {
-			await readSSE(res.body, signal, (data) => handleSyncEvent(origin, data));
+			await readSSE(res.body, signal, (data) => handleSyncFrame(origin, data));
 		} catch {
 			if (signal.aborted) return;
 			attempt++;

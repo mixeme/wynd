@@ -56,11 +56,7 @@ function defaultImportName(clause) {
 }
 
 function isScreenFile(rel) {
-	return (
-		rel.startsWith('src/routes/') &&
-		rel.endsWith('.svelte') &&
-		!rel.includes('/dev/spike/')
-	);
+	return rel.startsWith('src/routes/') && rel.endsWith('.svelte');
 }
 
 function allowedSvelteSpec(spec) {
@@ -275,38 +271,18 @@ function searchSource(rel, source, re) {
 	return hits;
 }
 
-/** Семантические классы на <button>: в ui.css нужен явный button.* (см. ui-components.md). */
-export const BUTTON_LAYOUT_SPECS = [
-	{ class: 'btn', props: ['width'] },
-	{ class: 'row2', props: ['padding'] },
-	{ class: 'r', props: ['padding'] },
-	{ class: 'circle-row-action', props: ['padding', 'border', 'background'] },
-	{ class: 'fold', props: ['padding', 'border', 'background'] },
-	{ class: 'att', props: ['padding', 'border'] },
-	{ class: 'cm', props: ['padding'] },
-	{ class: 'rcho', props: ['border'] },
-	{ class: 'addph', props: ['width', 'height'] },
-	{ class: 'send', props: ['width'] },
-	{ class: 'chip', props: ['padding'] },
-	{ class: 'inp', props: ['padding'] },
-	{ class: 'one', props: ['padding'], selectorIncludes: '.rx' },
-	{ class: 'add', props: ['padding'], selectorIncludes: '.rx' },
-	{ class: 'di', props: ['padding'], selectorIncludes: '.danger' },
-	{ class: 'pic', props: ['width', 'border', 'background-color'] },
-	{ class: 'scrim', props: ['position', 'background'] },
-	{ class: 'pay-banner-main', props: ['padding', 'border', 'background', 'display', 'width'] },
-	{ class: 'pay-reminder', props: ['padding', 'border', 'background', 'display', 'width'] },
-	{ class: 'cell', props: ['padding', 'border', 'background', 'display', 'width'] },
-	{ class: 'thumb', props: ['width', 'height', 'border', 'background'], selectorIncludes: '.thumbs' },
-	{ class: 'thumb-body', props: ['width', 'height', 'border', 'padding'], selectorIncludes: '.thumbs' },
-	{ class: 'map-sheet', props: ['padding', 'border', 'background', 'display', 'width'] },
-	{ class: 'fab-menu-item', props: ['padding', 'border', 'background'] }
-];
+/**
+ * Классы, которые разрешено вешать на <button> внутри $ui. Список нужен,
+ * чтобы новый класс кнопки не появлялся молча; вёрстку класса дублировать
+ * больше не нужно — её накрывает сброс :where(button) в ui.css (REF-8).
+ */
+export const BUTTON_LAYOUT_CLASSES = new Set([
+	'btn', 'row2', 'r', 'circle-row-action', 'fold', 'att', 'cm', 'rcho', 'addph',
+	'send', 'chip', 'inp', 'one', 'add', 'di', 'pic', 'scrim', 'pay-banner-main',
+	'pay-reminder', 'cell', 'thumb', 'thumb-body', 'map-sheet', 'fab-menu-item'
+]);
 
-/** Классы TextButton / compose — padding:0 намеренно, не требуют зеркала .класс. */
 export const BUTTON_TEXT_CLASSES = new Set(['act', 't', 'rt', 'under', 'done', 'sq', 'mini', 'preview']);
-
-const BUTTON_LAYOUT_CLASS_NAMES = new Set(BUTTON_LAYOUT_SPECS.map((s) => s.class));
 
 function stripCssComments(css) {
 	return css.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -331,87 +307,197 @@ export function parseCssRules(css) {
 	return rules;
 }
 
-function selectorUsesButtonClass(selector, className) {
-	if (!selector.includes('button')) return false;
-	const re = new RegExp(`\\.${className}(?:\\b|[.:{,\\s])`);
-	return re.test(selector);
-}
-
-function ruleZerosPadding(declarations) {
-	return declarations.some((d) => /^padding\s*:\s*0\b/.test(d));
-}
-
-/** padding:0 в полноценном button.X (есть width/border/display…) — норма, не сброс. */
-function isBareButtonReset(declarations) {
-	if (!ruleZerosPadding(declarations)) return false;
-	const props = declProps(declarations);
-	const layoutAnchors = ['display', 'width', 'height', 'gap', 'border-radius', 'flex'];
-	return !layoutAnchors.some((p) => props.has(p));
-}
-
-function declProps(declarations) {
-	const props = new Set();
-	for (const d of declarations) {
-		const m = d.match(/^([\w-]+)\s*:/);
-		if (m) props.add(m[1]);
-	}
-	return props;
-}
 
 /**
- * Wynd UI фаза 1–3: интерактив на <button> + сброс UA в ui.css. Селектор button.X сильнее .X —
- * у layout-классов вёрстку дублируют в button.X (или .контекст button.X).
- * @returns {string[]}
+ * Открывающие теги разметки: имя, позиция и токены классов (GUARD-1).
+ *
+ * Регулярки по `class="…"` пропускали `class={'btn'}`, шаблонные строки,
+ * интерполяции внутри значения и директиву `class:btn`, а `class="btn`
+ * ловил только класс в начале атрибута. Здесь тег читается целиком — с
+ * учётом кавычек и вложенных `{…}` — и классы собираются из всех написаний:
+ * слова значения, строковые литералы выражений, имена директив `class:`.
+ * Работает по разметке после `markupOf` — скрипт и стили уже вырезаны.
+ * @returns {Array<{ tag: string, index: number, classes: Set<string>, styles: number }>}
  */
-export function checkButtonCssSync(css) {
-	const rules = parseCssRules(css);
-	const hits = [];
-
-	for (const spec of BUTTON_LAYOUT_SPECS) {
-		const { class: className, props, selectorIncludes } = spec;
-
-		for (const rule of rules) {
-			if (!isBareButtonReset(rule.declarations)) continue;
-			const matchesClass = rule.selectors.some((sel) => selectorUsesButtonClass(sel, className));
-			if (!matchesClass) continue;
-			hits.push(
-				`${className}: in bare padding:0 reset (${rule.selectors.join(', ')}) — add explicit button.${className} layout`
-			);
-		}
-
-		const matching = rules.filter((rule) =>
-			rule.selectors.some((sel) => {
-				if (!selectorUsesButtonClass(sel, className)) return false;
-				if (selectorIncludes && !sel.includes(selectorIncludes)) return false;
-				return true;
-			})
-		);
-		if (!matching.length) {
-			const ctx = selectorIncludes ? ` (expected selector with ${selectorIncludes})` : '';
-			hits.push(`${className}: no button.${className} layout rule in ui.css${ctx}`);
-			continue;
-		}
-
-		const merged = new Set();
-		for (const rule of matching) {
-			for (const p of declProps(rule.declarations)) merged.add(p);
-		}
-		for (const prop of props) {
-			if (!merged.has(prop)) {
-				hits.push(`${className}: button.${className} rules missing "${prop}" (have: ${[...merged].join(', ')})`);
+export function markupElements(markup) {
+	const out = [];
+	const tagStart = /<([A-Za-z][\w.:-]*)/g;
+	let m;
+	while ((m = tagStart.exec(markup))) {
+		const end = scanTagEnd(markup, tagStart.lastIndex);
+		const attrs = parseAttributes(markup.slice(tagStart.lastIndex, end));
+		const classes = new Set();
+		let styles = 0;
+		for (const { name, value } of attrs) {
+			if (name === 'class') {
+				for (const token of classTokens(value)) classes.add(token);
+			} else if (name.startsWith('class:')) {
+				classes.add(name.slice('class:'.length));
+			} else if (name === 'style' || name.startsWith('style:')) {
+				styles++;
 			}
 		}
+		out.push({ tag: m[1], index: m.index, classes, styles });
+		tagStart.lastIndex = end;
 	}
-
-	return hits;
+	return out;
 }
 
-const ROUTE_RAW_BUTTON_CLASS_RE =
-	/<button\b[^>]*\bclass="[^"]*\b(row2|rcho|one|add|cm|att|act|compose-text)\b/;
+/** Индекс `>`, закрывающего тег, — вне кавычек и фигурных скобок. */
+function scanTagEnd(s, i) {
+	let depth = 0;
+	let quote = '';
+	for (; i < s.length; i++) {
+		const c = s[i];
+		if (quote) {
+			if (c === '\\') i++;
+			else if (c === quote) quote = '';
+			continue;
+		}
+		if (depth > 0 && (c === '"' || c === "'" || c === '`')) quote = c;
+		else if (depth === 0 && (c === '"' || c === "'")) quote = c;
+		else if (c === '{') depth++;
+		else if (c === '}') depth = Math.max(0, depth - 1);
+		else if (c === '>' && depth === 0) return i;
+	}
+	return s.length;
+}
 
-export const ROUTE_RAW_DIV_ROW2_RE = /<div\b[^>]*\bclass="[^"]*\brow2\b/;
+/** Атрибуты тега: имя и сырое значение (без внешних кавычек, `{…}` — как есть). */
+function parseAttributes(s) {
+	const attrs = [];
+	let i = 0;
+	while (i < s.length) {
+		while (i < s.length && /\s|\//.test(s[i])) i++;
+		if (i >= s.length) break;
+		if (s[i] === '{') {
+			// {...spread} или {name} — классов в них не ищем.
+			i = skipBraces(s, i);
+			continue;
+		}
+		const nameStart = i;
+		while (i < s.length && !/[\s=>/]/.test(s[i])) i++;
+		const name = s.slice(nameStart, i);
+		let value = '';
+		if (s[i] === '=') {
+			i++;
+			const c = s[i];
+			if (c === '"' || c === "'") {
+				const close = s.indexOf(c, i + 1);
+				const stop = close === -1 ? s.length : close;
+				value = s.slice(i + 1, stop);
+				i = stop + 1;
+			} else if (c === '{') {
+				const stop = skipBraces(s, i);
+				value = s.slice(i, stop);
+				i = stop;
+			} else {
+				const start = i;
+				while (i < s.length && !/[\s>]/.test(s[i])) i++;
+				value = s.slice(start, i);
+			}
+		}
+		if (name) attrs.push({ name, value });
+		else i++;
+	}
+	return attrs;
+}
 
-export const ROUTE_RAW_COMPOSE_TEXT_RE = /class="[^"]*\bcompose-text\b/;
+/** Позиция сразу за `{…}`, начинающимся в i, с учётом строк внутри. */
+function skipBraces(s, i) {
+	let depth = 0;
+	let quote = '';
+	for (; i < s.length; i++) {
+		const c = s[i];
+		if (quote) {
+			if (c === '\\') i++;
+			else if (c === quote) quote = '';
+			continue;
+		}
+		if (c === '"' || c === "'" || c === '`') quote = c;
+		else if (c === '{') depth++;
+		else if (c === '}' && --depth === 0) return i + 1;
+	}
+	return s.length;
+}
+
+const STRING_LITERAL_RE = /'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`/g;
+
+/**
+ * Тексты строковых литералов выражения, включая литералы внутри `${…}`
+ * шаблонных строк: `pad ${big ? "btn" : ""}` даёт и «pad», и «btn».
+ */
+function literalTexts(expr) {
+	const out = [];
+	for (const lit of expr.matchAll(STRING_LITERAL_RE)) {
+		if (lit[3] === undefined) {
+			out.push(lit[1] ?? lit[2] ?? '');
+			continue;
+		}
+		out.push(lit[3].replace(/\$\{[^}]*\}/g, ' '));
+		for (const inner of lit[3].matchAll(/\$\{([^}]*)\}/g)) out.push(...literalTexts(inner[1]));
+	}
+	return out;
+}
+
+/** Слова класса: вне `{…}` — как есть, внутри — из строковых литералов. */
+export function classTokens(value) {
+	const tokens = [];
+	let plain = '';
+	let i = 0;
+	while (i < value.length) {
+		if (value[i] === '{') {
+			const stop = skipBraces(value, i);
+			const expr = value.slice(i + 1, stop - 1);
+			for (const text of literalTexts(expr)) tokens.push(...text.split(/\s+/));
+			plain += ' ';
+			i = stop;
+			continue;
+		}
+		plain += value[i++];
+	}
+	tokens.push(...plain.split(/\s+/));
+	return tokens.filter((t) => /^[\w-]+$/.test(t));
+}
+
+/** Сырые классы в экранах: тег (или `*` — любой), классы, только боевые экраны. */
+export const RAW_CLASS_RULES = [
+	{ key: 'rawBtn', tag: '*', classes: ['btn'], prodOnly: false },
+	{ key: 'rawFldInput', tag: 'input', classes: ['fld'], prodOnly: false },
+	{ key: 'rawTextarea', tag: 'textarea', classes: ['fld', 'ta'], prodOnly: false },
+	{ key: 'rawLab', tag: '*', classes: ['lab'], prodOnly: false },
+	{
+		key: 'rawRouteButtons',
+		tag: 'button',
+		classes: ['row2', 'rcho', 'one', 'add', 'cm', 'att', 'act', 'compose-text'],
+		prodOnly: true
+	},
+	{ key: 'rawRouteDivRow2', tag: 'div', classes: ['row2'], prodOnly: true },
+	{ key: 'rawRouteComposeText', tag: '*', classes: ['compose-text'], prodOnly: true }
+];
+
+/**
+ * Нарушения RAW_CLASS_RULES в одном экране, по ключу правила.
+ * @returns {Record<string, string[]>}
+ */
+export function rawClassHits(rel, source) {
+	const markup = markupOf(source);
+	const lines = source.split('\n');
+	const prod = !rel.includes('/dev/');
+	/** @type {Record<string, string[]>} */
+	const out = {};
+	for (const rule of RAW_CLASS_RULES) out[rule.key] = [];
+	for (const el of markupElements(markup)) {
+		for (const rule of RAW_CLASS_RULES) {
+			if (rule.prodOnly && !prod) continue;
+			if (rule.tag !== '*' && rule.tag !== el.tag) continue;
+			if (!rule.classes.some((c) => el.classes.has(c))) continue;
+			const line = lineAt(markup, el.index);
+			out[rule.key].push(hit(rel, line, lines[line - 1] ?? ''));
+		}
+	}
+	return out;
+}
 
 /**
  * @returns {string[]}
@@ -435,7 +521,7 @@ export function collectUiButtonClasses(webRoot) {
  */
 export function checkUnknownUiButtonClasses(webRoot) {
 	const known = new Set([
-		...BUTTON_LAYOUT_CLASS_NAMES,
+		...BUTTON_LAYOUT_CLASSES,
 		...BUTTON_TEXT_CLASSES,
 		'ib',
 		'sw',
@@ -449,8 +535,51 @@ export function checkUnknownUiButtonClasses(webRoot) {
 	for (const className of collectUiButtonClasses(webRoot)) {
 		if (known.has(className)) continue;
 		hits.push(
-			`${className}: <button class="${className}"> in $ui — add BUTTON_LAYOUT_SPECS entry or BUTTON_TEXT_CLASSES in ui-guard.mjs`
+			`${className}: <button class="${className}"> in $ui — add it to BUTTON_LAYOUT_CLASSES or BUTTON_TEXT_CLASSES in ui-guard.mjs`
 		);
+	}
+	return hits;
+}
+
+/**
+ * Храповик на инлайн-стили (GUI-4). Правило «экран — только $ui, без своих
+ * <style>» выдавило вёрстку в сотни `style="…"`. Разом их не убрать, но и
+ * расти им больше нельзя: в `inline-style-budget.json` записано, сколько их
+ * сейчас в каждом экране. Больше — ошибка; меньше — тоже ошибка, но с
+ * просьбой записать новое число: так счётчик и ходит только вниз.
+ *
+ * Служебные классы для замены лежат в конце `ui.css` (.mt-*, .gutter, .grow).
+ * @returns {string[]}
+ */
+export function checkInlineStyleBudget(webRoot) {
+	const budgetPath = path.join(webRoot, 'scripts', 'inline-style-budget.json');
+	if (!fs.existsSync(budgetPath)) return ['inline-style-budget.json missing'];
+	/** @type {Record<string, number>} */
+	const budget = JSON.parse(fs.readFileSync(budgetPath, 'utf8'));
+	const hits = [];
+	const seen = new Set();
+
+	for (const file of walkSvelte(path.join(webRoot, 'src', 'routes'))) {
+		const rel = posixRel(webRoot, file);
+		if (!rel || !rel.endsWith('.svelte') || rel.includes('/dev/')) continue;
+		const source = fs.readFileSync(file, 'utf8');
+		// style="…", style={…} и style:prop — все три написания (GUARD-2): раньше
+		// считался только первый, и храповик обходился переписыванием в {…}.
+		const count = markupElements(markupOf(source)).reduce((n, el) => n + el.styles, 0);
+		const allowed = budget[rel] ?? 0;
+		seen.add(rel);
+		if (count > allowed) {
+			hits.push(
+				`${rel}: инлайн-стилей ${count}, в бюджете ${allowed} — служебный класс в ui.css вместо style=`
+			);
+			continue;
+		}
+		if (count < allowed) {
+			hits.push(`${rel}: инлайн-стилей ${count} — запишите это число в inline-style-budget.json`);
+		}
+	}
+	for (const rel of Object.keys(budget)) {
+		if (!seen.has(rel)) hits.push(`${rel}: экрана нет — уберите строку из inline-style-budget.json`);
 	}
 	return hits;
 }
@@ -482,10 +611,8 @@ export function checkProject(webRoot) {
 	const rawRouteButtons = [];
 	const rawRouteDivRow2 = [];
 	const rawRouteComposeText = [];
-	const uiCssPath = path.join(webRoot, 'src', 'lib', 'styles', 'ui.css');
-	const uiCss = fs.existsSync(uiCssPath) ? fs.readFileSync(uiCssPath, 'utf8') : '';
-	const buttonCssSync = uiCss ? checkButtonCssSync(uiCss) : ['ui.css missing'];
 	const unknownUiButtons = checkUnknownUiButtonClasses(webRoot);
+	const inlineStyles = checkInlineStyleBudget(webRoot);
 
 	for (const file of srcFiles) {
 		const rel = posixRel(webRoot, file);
@@ -498,15 +625,14 @@ export function checkProject(webRoot) {
 			}
 			composition.push(...analyzeScreenSource(rel, source, inventory));
 			roleButton.push(...searchSource(rel, source, /role="button"/));
-			rawBtn.push(...searchSource(rel, source, /class="btn/));
-			rawFldInput.push(...searchSource(rel, source, /<input[^>]*class="[^"]*fld/));
-			rawTextarea.push(...searchSource(rel, source, /<textarea[^>]*class="[^"]*(fld|ta)/));
-			rawLab.push(...searchSource(rel, source, /class="lab"/));
-			if (!rel.includes('/dev/')) {
-				rawRouteButtons.push(...searchSource(rel, source, ROUTE_RAW_BUTTON_CLASS_RE));
-				rawRouteDivRow2.push(...searchSource(rel, source, ROUTE_RAW_DIV_ROW2_RE));
-				rawRouteComposeText.push(...searchSource(rel, source, ROUTE_RAW_COMPOSE_TEXT_RE));
-			}
+			const raw = rawClassHits(rel, source);
+			rawBtn.push(...raw.rawBtn);
+			rawFldInput.push(...raw.rawFldInput);
+			rawTextarea.push(...raw.rawTextarea);
+			rawLab.push(...raw.rawLab);
+			rawRouteButtons.push(...raw.rawRouteButtons);
+			rawRouteDivRow2.push(...raw.rawRouteDivRow2);
+			rawRouteComposeText.push(...raw.rawRouteComposeText);
 		}
 		legacyImports.push(...searchSource(rel, source, /\$lib\/components/));
 	}
@@ -553,13 +679,13 @@ export function checkProject(webRoot) {
 		},
 		{
 			message:
-				'check-ui: button layout classes in ui.css — button.X must mirror .X (Wynd UI phase 1–3); see ui-components.md.',
-			hits: buttonCssSync
+				'check-ui: new <button class="…"> in $ui must be listed in ui-guard.mjs (BUTTON_LAYOUT_CLASSES or BUTTON_TEXT_CLASSES).',
+			hits: unknownUiButtons
 		},
 		{
 			message:
-				'check-ui: new <button class="…"> in $ui must be listed in ui-guard.mjs (BUTTON_LAYOUT_SPECS or BUTTON_TEXT_CLASSES).',
-			hits: unknownUiButtons
+				'check-ui: инлайн-стили в экранах — храповик: только вниз (GUI-4, см. служебные классы в конце ui.css).',
+			hits: inlineStyles
 		},
 		{
 			message:

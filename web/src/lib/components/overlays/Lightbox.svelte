@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import { modal } from '$lib/a11y/modal';
 	import Icon from '$ui/Icon.svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import type { Snippet } from 'svelte';
@@ -37,8 +38,10 @@
 
 	let touchStartX = 0;
 
+	// Поверх страницы (fixed) Escape, фокус и роль диалога — у action modal
+	// (UI-2); здесь листание и Escape для встроенного просмотра.
 	function onKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape') onclose?.();
+		if (e.key === 'Escape' && !fixed) onclose?.();
 		else if (e.key === 'ArrowLeft') onprev?.();
 		else if (e.key === 'ArrowRight') onnext?.();
 	}
@@ -57,7 +60,15 @@
 
 <svelte:window onkeydown={onKeydown} />
 
-<div class="lb {className}" class:fixed {style}>
+<div
+	class="lb {className}"
+	class:fixed
+	{style}
+	role={fixed && onclose ? 'dialog' : undefined}
+	aria-modal={fixed && onclose ? 'true' : undefined}
+	aria-label="Просмотр фото"
+	use:modal={{ ondismiss: fixed ? onclose : undefined }}
+>
 	<div class="top">
 		{#if onclose}
 			<IconButton name="x" label="Закрыть" onclick={() => onclose()} />

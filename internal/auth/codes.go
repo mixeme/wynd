@@ -15,6 +15,7 @@ import (
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 )
 
+// Register starts sign-up without a circle — open mode only — and sends a login code; the rate limit is charged first.
 func (s *Service) Register(ctx context.Context, in RegisterInput) error {
 	email, err := ParseParticipantEmail(in.Email)
 	if err != nil {
@@ -63,6 +64,7 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) error {
 	})
 }
 
+// RequestCode sends a login code to an existing account, charging the rate limit before the account lookup.
 func (s *Service) RequestCode(ctx context.Context, in RequestCodeInput) error {
 	email, err := ParseParticipantEmail(in.Email)
 	if err != nil {

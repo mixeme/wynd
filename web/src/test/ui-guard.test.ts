@@ -3,68 +3,81 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
-	ROUTE_RAW_COMPOSE_TEXT_RE,
-	ROUTE_RAW_DIV_ROW2_RE,
-	checkButtonCssSync,
 	checkProject,
-	parseCssRules
+	classTokens,
+	markupElements,
+	parseCssRules,
+	rawClassHits
 } from '../../scripts/ui-guard.mjs';
 
 const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const uiCss = fs.readFileSync(path.join(webRoot, 'src/lib/styles/ui.css'), 'utf8');
 
-describe('checkButtonCssSync', () => {
-	it('passes on current ui.css', () => {
-		expect(checkButtonCssSync(uiCss)).toEqual([]);
+// Сброс :where(button) в ui.css накрывает браузерные стили кнопки, поэтому
+// зеркал button.X больше нет — и сторожа их синхронности тоже (REF-8).
+describe('ui.css', () => {
+	it('не содержит зеркал button.X', () => {
+		const mirrors = parseCssRules(uiCss).filter((rule) =>
+			rule.selectors.some((sel) => /button\./.test(sel))
+		);
+		expect(mirrors.map((m) => m.selectors.join(', '))).toEqual([]);
 	});
 
-	it('flags layout class in bare padding:0 reset', () => {
-		const bad = `
-			button.row2, button.done { padding: 0; border: none; background: none; }
-			button.row2 { display:flex; padding:13px 16px; }
-		`;
-		expect(checkButtonCssSync(bad).some((h) => h.includes('row2') && h.includes('bare'))).toBe(true);
-	});
-
-	it('allows padding:0 inside full layout rule', () => {
-		const ok = `
-			button.rcho { width:26px; height:26px; display:grid; padding:0; border:1px solid var(--line); }
-		`;
-		expect(checkButtonCssSync(ok).some((h) => h.includes('rcho') && h.includes('bare'))).toBe(false);
-	});
-
-	it('requires .rx context for button.one', () => {
-		const bad = `
-			.rx button.one { padding:4px 11px; display:flex; border:none; }
-			button.one { padding:0; border:none; background:none; }
-		`;
-		expect(checkButtonCssSync(bad).some((h) => h.includes('one') && h.includes('bare'))).toBe(true);
-	});
-
-	it('requires width on button.btn (native button shrink-wraps)', () => {
-		const bad = `
-			button.btn { display:block; border:none; font:inherit; cursor:pointer; }
-		`;
-		expect(checkButtonCssSync(bad).some((h) => h.includes('btn') && h.includes('width'))).toBe(true);
+	it('сбрасывает кнопку с нулевой весомостью', () => {
+		const reset = parseCssRules(uiCss).find((rule) =>
+			rule.selectors.some((sel) => sel.replace(/\s/g, '') === ':where(button)')
+		);
+		expect(reset).toBeTruthy();
+		const props = (reset?.declarations ?? []).map((d) => d.split(':')[0].trim());
+		for (const p of ['font', 'color', 'background', 'border', 'padding', 'cursor']) {
+			expect(props).toContain(p);
+		}
 	});
 });
 
 describe('prod route raw markup guards', () => {
-	it('flags div.row2 and compose-text patterns', () => {
-		expect(ROUTE_RAW_DIV_ROW2_RE.test('<div class="row2">')).toBe(true);
-		expect(ROUTE_RAW_DIV_ROW2_RE.test('<div class="row2 extra">')).toBe(true);
-		expect(ROUTE_RAW_DIV_ROW2_RE.test('<button class="row2">')).toBe(false);
-		expect(ROUTE_RAW_COMPOSE_TEXT_RE.test('class="compose-text"')).toBe(true);
-		expect(ROUTE_RAW_COMPOSE_TEXT_RE.test('class="ta compose-text"')).toBe(true);
+	// Инвариант (план 42, GUARD-1): сырой класс ловится в любом написании —
+	// не первым в строке, в выражении, в шаблонной строке, в интерполяции
+	// значения и директивой class:; тег читается целиком, стрелка внутри
+	// {…} его не обрывает; скрипт экрана не проверяется.
+	it('catches every spelling of a raw class', () => {
+		const rel = 'src/routes/x/+page.svelte';
+		const source = [
+			`<script>const s = '<div class="btn">';</script>`,
+			'<div class="x btn">a</div>',
+			"<div class={'btn'}>b</div>",
+			'<div class={`pad ${big ? "btn" : ""}`}>c</div>',
+			`<div class="x {on ? 'btn' : ''}">d</div>`,
+			'<div class:btn={on}>e</div>',
+			'<button onclick={() => a > b} class="row2">f</button>',
+			'<div class="row2">g</div>',
+			'<div class="btnx">h</div>'
+		].join(String.fromCharCode(10));
+		const hits = rawClassHits(rel, source);
+		expect(hits.rawBtn.map((h: string) => h.split(':')[1])).toEqual(['2', '3', '4', '5', '6']);
+		expect(hits.rawRouteButtons.map((h: string) => h.split(':')[1])).toEqual(['7']);
+		expect(hits.rawRouteDivRow2.map((h: string) => h.split(':')[1])).toEqual(['8']);
+	});
+
+	it('skips prod-only rules on /dev/ screens', () => {
+		const hits = rawClassHits('src/routes/dev/x/+page.svelte', '<div class="row2">a</div>');
+		expect(hits.rawRouteDivRow2).toEqual([]);
+	});
+
+	it('splits class values into tokens', () => {
+		expect(classTokens("a {x ? 'b c' : `d ${e}`} f")).toEqual(['b', 'c', 'd', 'a', 'f']);
+	});
+
+	// Инвариант (GUARD-2): храповик считает все написания инлайн-стиля.
+	it('counts style=, style={} and style: directives', () => {
+		const els = markupElements('<div style="a:1" style:color={c}></div><p style={s}></p>');
+		expect(els.reduce((n: number, el: { styles: number }) => n + el.styles, 0)).toBe(3);
 	});
 
 	it('passes checkProject on current tree (prod routes clean)', () => {
 		const { ok, groups } = checkProject(webRoot);
-		const row2Hits = groups.find((g) => g.message.includes('<div class="row2">'))?.hits ?? [];
-		const composeHits =
-			groups.find((g) => g.message.includes('compose-text'))?.hits ?? [];
-		expect(row2Hits).toEqual([]);
-		expect(composeHits).toEqual([]);
+		const failed = groups.filter((g) => g.hits.length > 0).map((g) => g.message);
+		expect(failed).toEqual([]);
 		expect(ok).toBe(true);
 	});
 });

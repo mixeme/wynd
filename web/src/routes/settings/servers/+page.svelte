@@ -1,6 +1,7 @@
 ﻿<script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { WORD, plural } from '$lib/format/plural';
 	import Hint from '$ui/forms/Hint.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
@@ -24,11 +25,7 @@
 	let loading = $state(true);
 
 	function pluralCircles(n: number): string {
-		const mod10 = n % 10;
-		const mod100 = n % 100;
-		if (mod10 === 1 && mod100 !== 11) return `${n} круг`;
-		if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${n} круга`;
-		return `${n} кругов`;
+		return plural(n, WORD.circle);
 	}
 
 	function accountSubtitle(session: SessionRecord, circles: number): string {

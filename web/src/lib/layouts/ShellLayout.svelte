@@ -13,6 +13,7 @@
 		fab,
 		fabMenuOpen = false,
 		fabMenuItems = [],
+		onfabmenuclose,
 		onsearch,
 		searchDisabled = false,
 		onsettings,
@@ -25,6 +26,7 @@
 		fab?: Snippet;
 		fabMenuOpen?: boolean;
 		fabMenuItems?: { label: string; onclick: () => void }[];
+		onfabmenuclose?: () => void;
 		onsearch?: () => void;
 		searchDisabled?: boolean;
 		onsettings?: () => void;
@@ -45,6 +47,6 @@
 		{@render children()}
 	{/if}
 	{#if fab}
-		<Fab menuOpen={fabMenuOpen} items={fabMenuItems}>{@render fab()}</Fab>
+		<Fab menuOpen={fabMenuOpen} items={fabMenuItems} onclose={onfabmenuclose}>{@render fab()}</Fab>
 	{/if}
 </PhoneFrame>

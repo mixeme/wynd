@@ -4,22 +4,43 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/url"
 	"strings"
 	"time"
 )
 
+// publicEndpoint разбирает public_url один раз для всех проб: хост без
+// скобок IPv6, порт (по умолчанию 443 для https и 80 для http), признак
+// https и явного нестандартного порта. Раньше три пробы разбирали адрес
+// по-своему: IPv6 ломался, TLS всегда шёл на 443, а HTTP-проба стучалась в
+// HTTPS-порт (план 42, CHK-4).
+type publicEndpoint struct {
+	Host        string
+	Port        string
+	HTTPS       bool
+	DefaultPort bool
+}
+
+func parsePublicURL(publicURL string) (publicEndpoint, bool) {
+	u, err := url.Parse(strings.TrimSpace(publicURL))
+	if err != nil || u.Hostname() == "" {
+		return publicEndpoint{}, false
+	}
+	ep := publicEndpoint{Host: u.Hostname(), Port: u.Port(), HTTPS: strings.EqualFold(u.Scheme, "https")}
+	def := "80"
+	if ep.HTTPS {
+		def = "443"
+	}
+	if ep.Port == "" || ep.Port == def {
+		ep.Port = def
+		ep.DefaultPort = true
+	}
+	return ep, true
+}
+
 func publicHost(publicURL string) string {
-	u := strings.TrimSpace(publicURL)
-	if i := strings.Index(u, "://"); i >= 0 {
-		u = u[i+3:]
-	}
-	if i := strings.Index(u, "/"); i >= 0 {
-		u = u[:i]
-	}
-	if j := strings.LastIndex(u, ":"); j >= 0 && strings.Count(u, ":") == 1 {
-		u = u[:j]
-	}
-	return u
+	ep, _ := parsePublicURL(publicURL)
+	return ep.Host
 }
 
 func serverEgressIP(ctx context.Context) string {
@@ -60,6 +81,10 @@ func checkDomain(ctx context.Context, in Input) Result {
 			return r
 		}
 		r.Status = StatusWarn
+		if behindNAT(egress) {
+			r.Detail = fmt.Sprintf("%s; сервер за NAT (%s) — сверьте с внешним адресом вручную", host, egress)
+			return r
+		}
 		r.Detail = fmt.Sprintf("%s не совпадает с адресом сервера %s", host, egress)
 		return r
 	}
@@ -81,7 +106,31 @@ func checkDomain(ctx context.Context, in Input) Result {
 			return r
 		}
 	}
+	// Адрес исходящего сокета за NAT — приватный: с публичной A-записью он не
+	// совпадёт никогда, и проверка краснела у каждого домашнего инстанса
+	// (план 42, CHK-1). Доказать по нему ничего нельзя — только предупредить.
+	if behindNAT(egress) {
+		r.Status = StatusWarn
+		r.Detail = fmt.Sprintf("%s ведёт на %s; сервер за NAT (%s) — сверьте с внешним адресом вручную", host, ips[0].IP, egress)
+		return r
+	}
 	r.Status = StatusFail
 	r.Detail = fmt.Sprintf("%s ведёт на %s, а не на %s", host, ips[0].IP, egress)
 	return r
+}
+
+// behindNAT — адрес не маршрутизируется из интернета: сервер выходит наружу
+// через NAT, и свой публичный адрес по сокету не узнать.
+func behindNAT(egress string) bool {
+	ip := net.ParseIP(egress)
+	if ip == nil {
+		return false
+	}
+	return ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || isCGNAT(ip)
+}
+
+// isCGNAT — 100.64.0.0/10, адреса провайдерского NAT; IsPrivate их не знает.
+func isCGNAT(ip net.IP) bool {
+	v4 := ip.To4()
+	return v4 != nil && v4[0] == 100 && v4[1]&0xC0 == 64
 }

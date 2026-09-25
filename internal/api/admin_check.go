@@ -1,9 +1,11 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
@@ -15,18 +17,19 @@ type checkBody struct {
 	External *check.ExternalReport `json:"external,omitempty"`
 }
 
+// adminCheckTimeout — потолок всей проверки: пробы наружу (редирект, TLS,
+// DNS, NTP) без него шли друг за другом до ~25 с плюс резолвер, и панель
+// сдавалась раньше сервера (план 42, CHK-6).
+const adminCheckTimeout = 15 * time.Second
+
 func (s *Server) handleAdminCheck(w http.ResponseWriter, r *http.Request) {
 	var body checkBody
 	if r.ContentLength > 0 {
 		_ = readJSON(r, &body)
 	}
-	external := body.External
-	if external != nil && !s.Loopback() && strings.HasPrefix(s.PublicURL(), "https://") {
-		code := check.ProbeHTTPRedirect(s.PublicURL())
-		external.RedirectStatus = code
-		external.RedirectPermanent = code == http.StatusMovedPermanently || code == http.StatusPermanentRedirect
-	}
-	results, err := s.runChecks(r, external)
+	ctx, cancel := context.WithTimeout(r.Context(), adminCheckTimeout)
+	defer cancel()
+	results, err := s.runChecks(ctx, body.External)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -34,16 +37,34 @@ func (s *Server) handleAdminCheck(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"checks": results})
 }
 
-func (s *Server) runChecks(r *http.Request, external *check.ExternalReport) ([]check.Result, error) {
-	ctx := r.Context()
+func (s *Server) runChecks(ctx context.Context, external *check.ExternalReport) ([]check.Result, error) {
 	mailCfg, _ := s.Mail.LoadConfig(ctx)
 	_ = s.Push.EnsureKeys(ctx)
 	pub, _ := s.Push.PublicKey(ctx)
 	routineAt, backupAt := s.loadInstanceTimestamps(ctx)
+	publicURL := s.PublicURL()
+	probe := !s.Loopback() && strings.HasPrefix(publicURL, "https://")
+
+	// Две сетевые пробы независимы — параллельно.
 	var tlsInfo *check.TLSInfo
-	if !s.Loopback() && strings.HasPrefix(s.PublicURL(), "https://") {
-		tlsInfo = check.ProbeTLS(ctx, s.PublicURL())
+	var wg sync.WaitGroup
+	if probe {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			tlsInfo = check.ProbeTLS(ctx, publicURL)
+		}()
 	}
+	if probe && external != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			code := check.ProbeHTTPRedirect(ctx, publicURL)
+			external.RedirectStatus = code
+			external.RedirectPermanent = code == http.StatusMovedPermanently || code == http.StatusPermanentRedirect
+		}()
+	}
+	wg.Wait()
 	return check.RunChecks(ctx, check.Input{
 		Loopback:        s.Loopback(),
 		PublicURL:       s.PublicURL(),

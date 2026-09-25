@@ -78,86 +78,84 @@
 		{:else if error && !settings}
 			<Hint>{error}</Hint>
 		{:else if settings}
-			<div style="display:flex;gap:44px">
-				<div style="flex:1">
-					<SectionLabel style="margin:0 0 10px">Фотографии</SectionLabel>
-					<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-						<span style="font-size:12.5px;width:110px">Длинная сторона</span>
+			<div class="flex gap-44">
+				<div class="grow">
+					<SectionLabel class="mt-0 mx-0 mb-10">Фотографии</SectionLabel>
+					<div class="flex-mid gap-10 mb-10">
+						<span class="sz-12 w110">Длинная сторона</span>
 						<Input
 							admin
-							style="width:88px"
+							class="w88"
 							type="number"
 							bind:value={settings.photo_max_px}
 							onchange={() => void persist()}
 						/>
-						<span style="font-size:12.5px;color:var(--muted)">px</span>
+						<span class="note">px</span>
 					</div>
-					<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-						<span style="font-size:12.5px;width:110px">Формат и качество</span>
-						<span style="font-size:12.5px;color:var(--muted)">WebP q</span>
+					<div class="flex-mid gap-10 mb-10">
+						<span class="sz-12 w110">Формат и качество</span>
+						<span class="note">WebP q</span>
 						<Input
 							admin
-							style="width:64px"
+							class="w64"
 							type="number"
 							bind:value={settings.photo_quality}
 							onchange={() => void persist()}
 						/>
 					</div>
-					<SectionLabel style="margin:22px 0 10px">Видео</SectionLabel>
-					<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-						<span style="font-size:12.5px;width:110px">Разрешение</span>
+					<SectionLabel class="mt-22 mx-0 mb-10">Видео</SectionLabel>
+					<div class="flex-mid gap-10 mb-10">
+						<span class="sz-12 w110">Разрешение</span>
 						<Input
 							admin
-							style="width:88px"
+							class="w88"
 							type="number"
 							bind:value={settings.video_max_height}
 							onchange={() => void persist()}
 						/>
-						<span style="font-size:12.5px;color:var(--muted)">p</span>
+						<span class="note">p</span>
 					</div>
-					<div style="display:flex;align-items:center;gap:10px">
-						<span style="font-size:12.5px;width:110px">Битрейт</span>
+					<div class="flex-mid gap-10">
+						<span class="sz-12 w110">Битрейт</span>
 						<Input
 							admin
-							style="width:88px"
+							class="w88"
 							type="number"
 							bind:value={videoBitrateMbps}
 							onchange={() => void persistVideoBitrateMbps()}
 						/>
-						<span style="font-size:12.5px;color:var(--muted)">Мбит/с</span>
+						<span class="note">Мбит/с</span>
 					</div>
-					<SectionLabel style="margin:22px 0 10px">Файлы</SectionLabel>
-					<div style="display:flex;align-items:center;gap:10px">
-						<span style="font-size:12.5px;width:110px">Потолок размера</span>
+					<SectionLabel class="mt-22 mx-0 mb-10">Файлы</SectionLabel>
+					<div class="flex-mid gap-10">
+						<span class="sz-12 w110">Потолок размера</span>
 						<Input
 							admin
-							style="width:88px"
+							class="w88"
 							type="number"
 							bind:value={attachmentMb}
 							onchange={() => void persistAttachmentMb()}
 						/>
-						<span style="font-size:12.5px;color:var(--muted)">МБ</span>
+						<span class="note">МБ</span>
 					</div>
 				</div>
-				<div style="flex:1">
-					<div
-						style="border:1px solid var(--line);background:var(--card);border-radius:12px;padding:16px 18px;font-size:13.5px"
-					>
+				<div class="grow">
+					<div class="panel sz-13" style="padding:16px 18px">
 						Wynd хранит то, что сказано, а не вашу медиатеку. Оригиналы остаются на телефоне.
 					</div>
-					<div style="font-size:12.5px;color:var(--muted);margin-top:16px;line-height:1.6">
+					<div class="note mt-16 lh-16">
 						Дефолты щедрые, а не экономные: сжатие необратимо, оригинал сюда не приезжает. Если
 						через год качества окажется мало, переделать будет нечего — экономия должна быть
 						осознанным выбором.
 					</div>
-					<div style="font-size:12.5px;color:var(--muted);margin-top:14px;line-height:1.6">
+					<div class="note mt-14 lh-16">
 						Изменение настроек не трогает загруженное. В круге будут соседствовать записи разного
 						качества, и это нормально.
 					</div>
-					<div style="display:flex;align-items:center;gap:12px;margin-top:20px">
+					<div class="flex-mid gap-12 mt-20">
 						<Switch checked={true} disabled label="Отдавать вложения только как загрузку" />
-						<span style="font-size:12.5px"
-							>Отдавать вложения только как загрузку<br /><span style="color:var(--faint)"
+						<span class="sz-12"
+							>Отдавать вложения только как загрузку<br /><span class="faint"
 								>Content-Disposition: attachment · выключать нельзя</span
 							></span
 						>
@@ -165,7 +163,7 @@
 				</div>
 			</div>
 			{#if error}
-				<Hint style="margin-top:16px">{error}</Hint>
+				<Hint class="mt-16">{error}</Hint>
 			{/if}
 		{/if}
 	</AdminSection>

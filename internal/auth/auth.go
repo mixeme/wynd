@@ -35,6 +35,7 @@ type LogCodes struct {
 	File   string
 }
 
+// SendCode writes the login code to the log (and to File, when set) instead of mailing it: the loopback fallback.
 func (l LogCodes) SendCode(_ context.Context, email, code string) error {
 	logger := l.Logger
 	if logger == nil {
@@ -108,6 +109,7 @@ func (s *Service) DB() *sql.DB {
 	return s.db
 }
 
+// Instance returns the public instance info: name, registration mode, bootstrapped flag.
 func (s *Service) Instance(ctx context.Context) (InstanceInfo, error) {
 	mode, name, bootstrapped, err := s.loadInstance(ctx)
 	if err != nil {

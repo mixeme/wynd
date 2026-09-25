@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evenPx, isLargeVideo, targetVideoSize, videoFitsSettings } from './compress';
+import { encodePhoto, evenPx, isLargeVideo, targetVideoSize, videoFitsSettings } from './compress';
 
 describe('targetVideoSize', () => {
 	it('keeps 1080p landscape', () => {
@@ -53,5 +53,35 @@ describe('isLargeVideo', () => {
 		expect(isLargeVideo(21 * 1024 * 1024)).toBe(true);
 		expect(isLargeVideo(1_000_000, 45)).toBe(true);
 		expect(isLargeVideo(1_000_000, 10)).toBe(false);
+	});
+});
+
+// Инвариант (план 42, MED-2): без кодировщика WebP фото уходит JPEG, а не PNG
+// с типом WebP.
+describe('encodePhoto', () => {
+	function fakeCanvas(supportsWebp: boolean) {
+		const asked: string[] = [];
+		return {
+			asked,
+			toBlob(cb: BlobCallback, type?: string) {
+				asked.push(type ?? '');
+				const out = type === 'image/webp' && !supportsWebp ? 'image/png' : (type ?? 'image/png');
+				cb(new Blob([new Uint8Array(4)], { type: out }));
+			}
+		};
+	}
+
+	it('keeps WebP when the browser encodes it', async () => {
+		const canvas = fakeCanvas(true);
+		const blob = await encodePhoto(canvas, 0.8);
+		expect(blob.type).toBe('image/webp');
+		expect(canvas.asked).toEqual(['image/webp']);
+	});
+
+	it('falls back to JPEG when WebP comes back as PNG', async () => {
+		const canvas = fakeCanvas(false);
+		const blob = await encodePhoto(canvas, 0.8);
+		expect(blob.type).toBe('image/jpeg');
+		expect(canvas.asked).toEqual(['image/webp', 'image/jpeg']);
 	});
 });

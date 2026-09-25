@@ -218,3 +218,108 @@ func TestBackupKeepsSecretsPrivate(t *testing.T) {
 		t.Fatalf("каталог бэкапа: права %o", perm)
 	}
 }
+
+// Инвариант: инкрементальный прогон чинит копию, усечённую обрывом прошлого
+// прогона. Раньше он сверял источник только с манифестом и пропускал файл,
+// который манифест помнил целым (план 42, BKP-2).
+func TestBackupIncrementalRepairsTruncatedCopy(t *testing.T) {
+	dataDir := seedDataDir(t)
+	destDir := t.TempDir()
+	const payload = "hello world payload"
+	writeBlob(t, dataDir, "ab/one", payload)
+	if err := backup.Backup(dataDir, destDir, false); err != nil {
+		t.Fatal(err)
+	}
+	copyPath := filepath.Join(destDir, "blobs", "ab", "one")
+	if err := os.WriteFile(copyPath, []byte("hel"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := backup.Backup(dataDir, destDir, true); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(copyPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != payload {
+		t.Fatalf("copy still truncated after incremental run: %q", got)
+	}
+}
+
+// Инвариант: блоб неизменяем, поэтому инкрементальный прогон верит манифесту
+// по имени и размеру и не перечитывает хранилище (BKP-1): подменённое
+// содержимое той же длины копию не трогает.
+func TestBackupIncrementalTrustsManifestBySize(t *testing.T) {
+	dataDir := seedDataDir(t)
+	destDir := t.TempDir()
+	writeBlob(t, dataDir, "ab/one", "one")
+	if err := backup.Backup(dataDir, destDir, false); err != nil {
+		t.Fatal(err)
+	}
+	writeBlob(t, dataDir, "ab/one", "uno")
+	if err := backup.Backup(dataDir, destDir, true); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(filepath.Join(destDir, "blobs", "ab", "one"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "one" {
+		t.Fatalf("same-size blob was re-read and re-copied: %q", got)
+	}
+	if _, err := os.Stat(filepath.Join(destDir, "blobs", "ab", "one.part")); err == nil {
+		t.Fatal("temporary .part file left behind")
+	}
+}
+
+// Инвариант (план 42, BKP-8): копия, снятая wynd backup, — рабочий каталог
+// данных: база открывается мигратором как есть и содержит записанное, блобы
+// совпадают побайтно. README обещает это восстановлением «скопировать и
+// запустить».
+func TestBackupRestoresIntoWorkingDataDir(t *testing.T) {
+	dataDir := seedDataDir(t)
+	st, err := store.Open(filepath.Join(dataDir, "wynd.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	db := st.(*store.SQLite).DB()
+	if _, err := db.ExecContext(t.Context(), `
+		INSERT INTO accounts (id, email, created_at) VALUES ('acc-restore', 'restore@example.com', '2026-09-24T00:00:00.000000000Z')
+	`); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Close(); err != nil {
+		t.Fatal(err)
+	}
+	writeBlob(t, dataDir, "ab/photo", "photo-bytes")
+
+	dest := t.TempDir()
+	if err := backup.Backup(dataDir, dest, false); err != nil {
+		t.Fatal(err)
+	}
+	// README: manifest.json в каталоге данных не нужен.
+	if err := os.Remove(filepath.Join(dest, "blobs", "manifest.json")); err != nil {
+		t.Fatal(err)
+	}
+
+	restored, err := store.Open(filepath.Join(dest, "wynd.db"))
+	if err != nil {
+		t.Fatalf("restored db does not open: %v", err)
+	}
+	defer restored.Close()
+	var email string
+	if err := restored.(*store.SQLite).DB().QueryRowContext(t.Context(),
+		`SELECT email FROM accounts WHERE id = 'acc-restore'`).Scan(&email); err != nil {
+		t.Fatalf("restored row: %v", err)
+	}
+	if email != "restore@example.com" {
+		t.Fatalf("email = %q", email)
+	}
+	got, err := os.ReadFile(filepath.Join(dest, "blobs", "ab", "photo"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "photo-bytes" {
+		t.Fatalf("blob = %q", got)
+	}
+}

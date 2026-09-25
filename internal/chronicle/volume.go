@@ -28,7 +28,9 @@ func (c *Chronicle) MediaVolumeChart(ctx context.Context, circleID string) ([]Vo
 		return nil, err
 	}
 	defer rows.Close()
-	var out []VolumeBucket
+	// Пустой, а не nil: nil уходил в JSON как null, и экран квоты круга без
+	// медиа падал на volume.length (план 42, найдено при проверке SCR-1).
+	out := []VolumeBucket{}
 	var cumulative int64
 	for rows.Next() {
 		var b VolumeBucket

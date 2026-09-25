@@ -329,6 +329,7 @@ func (c *Chronicle) insertPost(ctx context.Context, tx *sql.Tx, row postRow) err
 	return err
 }
 
+// LoadPostInTx reads a post inside the caller's transaction.
 func (c *Chronicle) LoadPostInTx(ctx context.Context, tx *sql.Tx, postID string) (Post, error) {
 	return c.loadPost(ctx, tx, postID)
 }
@@ -378,42 +379,6 @@ func capturedAtPayload(t *time.Time) any {
 		return nil
 	}
 	return formatTime(*t)
-}
-
-func (c *Chronicle) requireWriter(ctx context.Context, circleID, accountID string, now time.Time) (Membership, error) {
-	mem, err := c.membership(ctx, c.db, circleID, accountID)
-	if err != nil {
-		return Membership{}, err
-	}
-	canWrite, err := c.CanWrite(ctx, circleID, accountID, now)
-	if err != nil {
-		return Membership{}, err
-	}
-	if !canWrite {
-		return Membership{}, ErrForbidden
-	}
-	return mem, nil
-}
-
-// requireAuthor gates editing and deleting one's own content: the actor must be
-// the author *and* be able to write right now. Исключённый и вышедший с
-// доступом получают forbidden (план 42, раздел B «Право писать»).
-func (c *Chronicle) requireAuthor(ctx context.Context, q querier, circleID, accountID, identityID string, now time.Time) (Membership, error) {
-	mem, err := c.membership(ctx, q, circleID, accountID)
-	if err != nil {
-		return Membership{}, err
-	}
-	if mem.IdentityID != identityID {
-		return Membership{}, ErrForbidden
-	}
-	canWrite, err := c.CanWrite(ctx, circleID, accountID, now)
-	if err != nil {
-		return Membership{}, err
-	}
-	if !canWrite {
-		return Membership{}, ErrForbidden
-	}
-	return mem, nil
 }
 
 func (c *Chronicle) assertPostInteractive(ctx context.Context, circleID, accountID string, post Post) error {

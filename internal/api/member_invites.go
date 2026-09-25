@@ -11,9 +11,8 @@ import (
 
 func (s *Server) handleListInviteCandidates(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	now := time.Now().UTC()
@@ -36,18 +35,16 @@ type createMemberInviteBody struct {
 
 func (s *Server) handleCreateMemberInvite(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	if err := s.Chronicle.RequireCanInvite(r.Context(), circleID, sess.AccountID); err != nil {
 		writeDomainError(w, err)
 		return
 	}
-	var body createMemberInviteBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[createMemberInviteBody](w, r)
+	if !ok {
 		return
 	}
 	target := strings.TrimSpace(body.AccountID)
@@ -87,9 +84,8 @@ func (s *Server) handleCreateMemberInvite(w http.ResponseWriter, r *http.Request
 }
 
 func (s *Server) handleListPendingCircleJoins(w http.ResponseWriter, r *http.Request) {
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, auth.ErrForbidden)
 		return
 	}
 	ids, err := s.Auth.ListPendingCircleJoins(r.Context(), sess.AccountID)
@@ -102,9 +98,8 @@ func (s *Server) handleListPendingCircleJoins(w http.ResponseWriter, r *http.Req
 
 func (s *Server) handleJoinPreview(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	okPending, err := s.Auth.HasPendingCircleJoin(r.Context(), sess.AccountID, circleID, time.Now().UTC())
@@ -136,14 +131,12 @@ type joinPendingBody struct {
 
 func (s *Server) handleJoinPendingCircle(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
-	var body joinPendingBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[joinPendingBody](w, r)
+	if !ok {
 		return
 	}
 	name := strings.TrimSpace(body.Name)

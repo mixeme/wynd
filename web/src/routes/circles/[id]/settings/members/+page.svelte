@@ -86,7 +86,9 @@
 	}
 
 	async function confirmTransfer() {
-		if (!transferTarget) return;
+		// account_id приходит только владельцу и can_settings — без него
+		// распоряжаться и нечем.
+		if (!transferTarget?.account_id) return;
 		transferLoading = true;
 		error = '';
 		try {
@@ -100,6 +102,7 @@
 
 	async function toggleSettings(m: MemberInfo) {
 		closeMenu();
+		if (!m.account_id) return;
 		try {
 			await setMemberCanSettings(
 				circle.origin,
@@ -115,6 +118,7 @@
 
 	async function exclude(m: MemberInfo) {
 		closeMenu();
+		if (!m.account_id) return;
 		try {
 			await excludeMember(circle.origin, circle.circleId, m.account_id);
 			await reload();
@@ -149,7 +153,7 @@
 			<Hint style="margin:16px">Выберите участника, которому передадите круг.</Hint>
 		{/if}
 		<Label>В круге · {active.length}</Label>
-		{#each active as m, i (m.account_id)}
+		{#each active as m, i (m.identity_id)}
 			<MemberRow
 				initial={circleInitial(m.name)}
 				name={m.name}
@@ -167,7 +171,7 @@
 		{/each}
 		{#if left.length && !transferMode}
 			<Label style="margin-top:18px">Вышли · {left.length}</Label>
-			{#each left as m, i (m.account_id)}
+			{#each left as m, i (m.identity_id)}
 				<MemberRow
 					initial={circleInitial(m.name)}
 					name={m.name}
@@ -194,7 +198,7 @@
 </FormLayout>
 
 {#if menuMember}
-	<OverlayLayout ondismiss={closeMenu}>
+	<OverlayLayout label={menuMember.name} ondismiss={closeMenu}>
 		<Label style="margin-top:2px">{menuMember.name}</Label>
 		<SettingsRow
 			title={menuMember.can_settings
@@ -217,7 +221,7 @@
 {/if}
 
 {#if transferTarget}
-	<OverlayLayout variant="dialog" ondismiss={closeTransfer}>
+	<OverlayLayout variant="dialog" label="Передать владение" ondismiss={closeTransfer}>
 		<div style="font-size:17px;font-weight:600;margin-bottom:10px">
 			Передать «{toAccusativeTitle(circle.name)}» {toDativeName(transferTarget.name)}?
 		</div>

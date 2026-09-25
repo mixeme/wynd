@@ -54,6 +54,7 @@ func (s *Service) createSession(ctx context.Context, tx *sql.Tx, accountID strin
 	}, nil
 }
 
+// SessionByToken finds an unexpired session of the given kind by the hash of its token.
 func (s *Service) SessionByToken(ctx context.Context, token string, kind SessionKind) (Session, error) {
 	var sess Session
 	var kindRaw, expiresRaw, createdRaw string
@@ -83,11 +84,13 @@ func (s *Service) SessionByToken(ctx context.Context, token string, kind Session
 	return sess, nil
 }
 
+// RevokeSession deletes the session with this token.
 func (s *Service) RevokeSession(ctx context.Context, token string) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE token_hash = ?`, hashSessionToken(token))
 	return err
 }
 
+// IsParticipantSession resolves a participant session and refuses a blocked account.
 func (s *Service) IsParticipantSession(ctx context.Context, token string) (Session, error) {
 	sess, err := s.SessionByToken(ctx, token, SessionParticipant)
 	if err != nil {
@@ -103,10 +106,12 @@ func (s *Service) IsParticipantSession(ctx context.Context, token string) (Sessi
 	return sess, nil
 }
 
+// IsAdminSession resolves an admin session.
 func (s *Service) IsAdminSession(ctx context.Context, token string) (Session, error) {
 	return s.SessionByToken(ctx, token, SessionAdmin)
 }
 
+// RejectAdminJournal forbids the journal to an admin session: the panel never reads circles.
 func RejectAdminJournal(kind SessionKind) error {
 	if kind == SessionAdmin {
 		return ErrForbidden

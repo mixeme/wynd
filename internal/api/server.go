@@ -44,6 +44,7 @@ type Server struct {
 	archiveBuilds sync.Map
 }
 
+// NewServer wires the services into one HTTP handler and registers every route on Mux.
 func NewServer(authSvc *auth.Service, ch *chronicle.Chronicle, blobs *blob.Store, mailSvc *mail.Service, pushSvc *push.Service, bootstrapToken, dataDir, publicURL, listenAddr string, loopback bool) *Server {
 	s := &Server{
 		Auth:           authSvc,
@@ -199,6 +200,7 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}/archive/download", paid(s.handleArchiveDownload))
 }
 
+// ServeHTTP sets nosniff on every response and dispatches to Mux.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	s.Mux.ServeHTTP(w, r)

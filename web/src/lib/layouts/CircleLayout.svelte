@@ -27,6 +27,7 @@
 		commentPlaceholder,
 		commentDraft = $bindable(''),
 		commentMembers = [],
+		commentBusy = false,
 		circleId: circleIdProp,
 		onback,
 		onsearch,
@@ -52,7 +53,8 @@
 		commentBar?: boolean;
 		commentPlaceholder?: string;
 		commentDraft?: string;
-		commentMembers?: { account_id: string; name: string }[];
+		commentMembers?: { identity_id: string; name: string }[];
+		commentBusy?: boolean;
 		circleId?: string;
 		onback?: () => void;
 		onsearch?: () => void;
@@ -94,6 +96,7 @@
 			placeholder={commentPlaceholder}
 			bind:value={commentDraft}
 			members={commentMembers}
+			busy={commentBusy}
 			onsend={onCommentSend}
 			oncompose={onCommentCompose}
 		/>

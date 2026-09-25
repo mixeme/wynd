@@ -14,6 +14,7 @@
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { memberAvatarColor } from '$lib/auth/invites';
+	import { formatBytes } from '$lib/format/bytes';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { circleInitial } from '$lib/circles/meta';
 	import { fetchMembers, type MemberInfo } from '$lib/circles/settings';
@@ -360,6 +361,10 @@
 			compressing = videoCount > 0;
 			compressProgress = 0;
 
+			// Потолок вложения сервера: больший файл вернулся бы 413 уже после
+			// полной отправки — отсекаем здесь, после сжатия (план 42, MED-5).
+			const maxBytes = compression?.attachment_max_bytes ?? 0;
+			const tooLarge: string[] = [];
 			for (const file of list) {
 				const exif = await readExif(file);
 				let queueFile: QueueFile;
@@ -373,6 +378,10 @@
 					});
 				} else {
 					queueFile = await fileToQueueBuffer(file);
+				}
+				if (maxBytes > 0 && queueFile.size > maxBytes) {
+					tooLarge.push(file.name);
+					continue;
 				}
 
 				const kind = isVideoFile(file) ? 'video' : isImageFile(file) ? 'photo' : 'attachment';
@@ -399,6 +408,9 @@
 
 				next.push({ preview, file: queueFile, meta });
 				picked = [...next];
+			}
+			if (tooLarge.length) {
+				error = `Больше ${formatBytes(maxBytes)} — сервер не примет: ${tooLarge.join(', ')}`;
 			}
 		} finally {
 			compressing = false;
@@ -508,7 +520,7 @@
 
 		{#if showMentionPicker}
 			<MentionPicker>
-				{#each mentionCandidates as member, i (member.account_id)}
+				{#each mentionCandidates as member, i (member.identity_id)}
 					<MemberRow
 						initial={circleInitial(member.name)}
 						name={member.name}

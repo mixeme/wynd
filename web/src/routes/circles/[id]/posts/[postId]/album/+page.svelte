@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolveMediaUrls } from '$lib/media/batch';
+	import { numberParam, withParam, withoutParam } from '$lib/nav/url';
 	import { page } from '$app/stores';
 	import { getContext, onMount } from 'svelte';
 	import MediaTile from '$ui/data/MediaTile.svelte';
@@ -19,12 +21,12 @@
 	} from '$lib/journal/present';
 	import { fetchCompression } from '$lib/journal/posts';
 	import type { FeedPost, MediaSummary } from '$lib/journal/types';
-	import { downloadBlob, getMediaUrl } from '$lib/media/objectUrl';
+	import { downloadBlob } from '$lib/media/objectUrl';
 	import { registerRefetch } from '$lib/sync/sync';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 	const postId = $derived($page.params.postId ?? '');
-	const lightboxIndex = $derived(Number($page.url.searchParams.get('lb') ?? -1));
+	const lightboxIndex = $derived(numberParam($page.url, 'lb'));
 
 	let post = $state<FeedPost | undefined>();
 	let photos = $state<MediaSummary[]>([]);
@@ -57,22 +59,27 @@
 			post = findPost(snap.posts, postId);
 			photos = post ? photoMedia(post.media) : [];
 			photoMaxPx = compression?.photo_max_px;
-			const next: Record<string, string> = {};
-			for (const p of photos) {
-				next[p.blob_id] = await getMediaUrl(circle.origin, p.blob_id);
-			}
-			urls = next;
+			urls = {};
+			// Пачками: прежний цикл ждал ответа на каждый снимок по очереди.
+			await resolveMediaUrls(
+				circle.origin,
+				photos.map((p) => p.blob_id),
+				(blobId, url) => {
+					urls = { ...urls, [blobId]: url };
+				}
+			);
 		} finally {
 			loading = false;
 		}
 	}
 
 	function openLightbox(index: number) {
-		goto(`/circles/${circle.circleId}/posts/${postId}/album?lb=${index}`);
+		goto(withParam($page.url.pathname, 'lb', index));
 	}
 
 	function closeLightbox() {
-		goto(`/circles/${circle.circleId}/posts/${postId}/album`);
+		const back = withoutParam($page.url, 'lb');
+		if (back) goto(back);
 	}
 
 	function downloadCurrent() {

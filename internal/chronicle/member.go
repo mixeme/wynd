@@ -319,28 +319,6 @@ func (c *Chronicle) closeOpenSpan(ctx context.Context, tx dbtx, membershipID str
 	return nil
 }
 
-func (c *Chronicle) membership(ctx context.Context, q querier, circleID, accountID string) (Membership, error) {
-	var m Membership
-	var canSettings int
-	var status string
-	var created, updated string
-	err := q.QueryRowContext(ctx, `
-		SELECT id, circle_id, account_id, identity_id, can_settings, status, created_at, updated_at
-		FROM memberships WHERE circle_id = ? AND account_id = ?
-	`, circleID, accountID).Scan(&m.ID, &m.CircleID, &m.AccountID, &m.IdentityID, &canSettings, &status, &created, &updated)
-	if err == sql.ErrNoRows {
-		return Membership{}, ErrNotFound
-	}
-	if err != nil {
-		return Membership{}, err
-	}
-	m.CanSettings = canSettings == 1
-	m.Status = MembershipStatus(status)
-	m.CreatedAt, _ = parseTime(created)
-	m.UpdatedAt, _ = parseTime(updated)
-	return m, nil
-}
-
 func (c *Chronicle) addIdentityName(ctx context.Context, tx dbtx, identityID, name string, now time.Time) error {
 	nameID, err := newID()
 	if err != nil {

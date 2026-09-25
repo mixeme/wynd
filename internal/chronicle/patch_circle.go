@@ -150,26 +150,3 @@ func (c *Chronicle) updateCircleField(ctx context.Context, tx *sql.Tx, circleID,
 	}
 	return nil
 }
-
-// requireSettingsTx — право менять настройки круга: владелец или участник с
-// can_settings. Читает в переданной транзакции.
-func (c *Chronicle) requireSettingsTx(ctx context.Context, tx *sql.Tx, circleID, accountID string) (Membership, error) {
-	mem, err := c.membership(ctx, tx, circleID, accountID)
-	if err != nil {
-		return Membership{}, err
-	}
-	if mem.Status != StatusActive {
-		return Membership{}, ErrForbidden
-	}
-	if mem.CanSettings {
-		return mem, nil
-	}
-	owner, err := c.circleOwner(ctx, tx, circleID)
-	if err != nil {
-		return Membership{}, err
-	}
-	if owner != accountID {
-		return Membership{}, ErrForbidden
-	}
-	return mem, nil
-}

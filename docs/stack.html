@@ -153,7 +153,7 @@
 
 <table>
   <tr><th>Компонент</th><th>Выбор</th><th>Обоснование</th></tr>
-  <tr><td>HTTP</td><td><code>net/http</code> (Go 1.22 <code>ServeMux</code>)</td><td>Минимум зависимостей; роутер в stdlib</td></tr>
+  <tr><td>HTTP</td><td><code>net/http</code> (<code>ServeMux</code> с методами в шаблонах — появились в Go 1.22; сборка на Go 1.26, см. <code>go.mod</code>)</td><td>Минимум зависимостей; роутер в stdlib</td></tr>
   <tr><td>Конфиг</td><td>Файл + env, настройка через админку</td><td>При установке — одна команда; YAML руками не редактируется</td></tr>
   <tr><td>Блобы</td><td>Файловая система</td><td>Сервер не перекодирует; только кладёт и отдаёт байты</td></tr>
   <tr><td>Почта</td><td>Внешний SMTP</td><td>Участники входят по коду из письма; паролей нет</td></tr>
@@ -312,7 +312,7 @@
   <tr><td>Carbon, SMUI, Konsta UI</td><td>Корпоративный, материальный и нативно-iOS облик. Мимо «нашего журнала и тихого переулка».</td></tr>
   <tr><td>Пакеты иконок (lucide-svelte и прочие)</td><td>Свой спрайт уже есть и меньше по размеру.</td></tr>
   <tr><td>PostgreSQL</td><td>Один драйвер — SQLite; домашний масштаб, один процесс.</td></tr>
-  <tr><td>chi / сторонний HTTP-роутер</td><td>Go 1.22 <code>ServeMux</code> с методами достаточно.</td></tr>
+  <tr><td>chi / сторонний HTTP-роутер</td><td><code>ServeMux</code> с методами в шаблонах (есть с Go 1.22) достаточно.</td></tr>
   <tr><td>TWA (Android)</td><td>PWA в браузере; отдельная обёртка не в 0.x.</td></tr>
   <tr><td>Svelte stores как основа состояния</td><td>Svelte 5 runes в <code>*.svelte.ts</code>.</td></tr>
   <tr><td>Группы кругов</td><td>Только IDB на устройстве, без API (как пины).</td></tr>

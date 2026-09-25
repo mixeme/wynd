@@ -8,7 +8,8 @@ import (
 )
 
 // SPA serves static files from root and falls back to index.html for client routes.
-func SPA(root fs.FS) http.Handler {
+// loopback — локальная разработка: хешированные чанки тогда тоже ревалидируются.
+func SPA(root fs.FS, loopback bool) http.Handler {
 	files := http.FileServer(http.FS(root))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
@@ -32,7 +33,7 @@ func SPA(root fs.FS) http.Handler {
 				if strings.HasSuffix(name, ".webmanifest") {
 					w.Header().Set("Content-Type", "application/manifest+json")
 				}
-				setSPAAssetCachePolicy(w.Header(), name)
+				setSPAAssetCachePolicy(w.Header(), name, loopback)
 				files.ServeHTTP(w, r)
 				return
 			}
@@ -49,19 +50,28 @@ func SPA(root fs.FS) http.Handler {
 	})
 }
 
-// setSPAAssetCachePolicy keeps hashed bundles cacheable but forces revalidation
-// of the shell and service worker so local rebuilds show up without clearing
-// site data.
-func setSPAAssetCachePolicy(h http.Header, name string) {
+// immutableCacheControl — год: имя файла в `_app/immutable/` меняется вместе
+// с содержимым, так что перепроверять его незачем.
+const immutableCacheControl = "public, max-age=31536000, immutable"
+
+// setSPAAssetCachePolicy forces revalidation of the shell, service worker and
+// unhashed files; hashed bundles under `_app/immutable/` are cached for a year
+// except on loopback.
+//
+// Раньше `no-cache` стоял на всём `_app/` и в продакшене: каждый старт
+// приложения без service worker'а перепроверял все чанки (план 42, SW-2).
+// На loopback при локальной пересборке хеш бывает прежним при новом
+// содержимом — там ревалидация остаётся.
+func setSPAAssetCachePolicy(h http.Header, name string, loopback bool) {
 	base := path.Base(name)
 	switch {
 	case base == "sw.js", strings.HasPrefix(base, "workbox-"), base == "index.html":
 		h.Set("Cache-Control", "no-cache")
 	case strings.HasSuffix(name, ".webmanifest"):
 		h.Set("Cache-Control", "no-cache")
+	case strings.HasPrefix(name, "_app/immutable/") && !loopback:
+		h.Set("Cache-Control", immutableCacheControl)
 	case strings.HasPrefix(name, "_app/"):
-		// Hashed filenames usually bust caches, but during local rebuilds the
-		// hash can stay stable while content changes — force revalidation.
 		h.Set("Cache-Control", "no-cache")
 	}
 }

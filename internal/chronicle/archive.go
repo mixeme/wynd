@@ -18,6 +18,12 @@ type ArchiveCycle struct {
 	CycleStartedAt    *time.Time
 }
 
+// MinArchiveWindow — самый короткий срок цикла архивации от момента старта
+// или переноса. Срок «вчера» принимался: скачивание сразу отвечало 403,
+// письма уходили с мёртвой ссылкой, а ближайший прогон рутины стирал записи
+// до отсечки — участники не успевали ничего (план 42, ARC-7).
+const MinArchiveWindow = 24 * time.Hour
+
 // CutoffInstant returns UTC midnight on the cutoff date (exclusive upper bound for purge).
 func CutoffInstant(cutoffDate string) (time.Time, error) {
 	t, err := time.Parse("2006-01-02", cutoffDate)
@@ -83,6 +89,9 @@ func (c *Chronicle) StartArchiveCycle(ctx context.Context, circleID, ownerAccoun
 	}
 	now = utcOrNow(now)
 	deadline = deadline.UTC()
+	if deadline.Before(now.Add(MinArchiveWindow)) {
+		return ErrInvalid
+	}
 
 	mem, err := c.membership(ctx, c.db, circleID, ownerAccountID)
 	if err != nil {
@@ -231,6 +240,9 @@ func (c *Chronicle) MoveDeadline(ctx context.Context, circleID, ownerAccountID s
 	}
 	now = utcOrNow(now)
 	deadline = deadline.UTC()
+	if deadline.Before(now.Add(MinArchiveWindow)) {
+		return ErrInvalid
+	}
 
 	cycle, err := c.GetArchiveCycle(ctx, circleID)
 	if err != nil {
@@ -315,18 +327,74 @@ func (c *Chronicle) ArchiveSnapshot(ctx context.Context, circleID, accountID, cu
 		return nil, err
 	}
 	defer rows.Close()
-	var out []FeedPost
+	var ids []string
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
 			return nil, err
 		}
-		fp, err := c.loadFeedPost(ctx, id, circleID, accountID)
-		if err != nil {
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	// Один пакет на весь срез: прежний обход звал loadFeedPost на каждую
+	// запись, а тот на каждый вызов заново строил отрезки видимости и делал
+	// четыре запроса — на круге в две тысячи записей это восемь тысяч
+	// запросов на одну сборку архива (аудит 2026-09-22).
+	scope, err := c.newReadScope(ctx, circleID, accountID)
+	if err != nil {
+		return nil, err
+	}
+	posts, err := c.buildFeedPosts(ctx, ids, circleID, scope)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]FeedPost, 0, len(posts))
+	for _, fp := range posts {
+		out = append(out, filterFeedPostBefore(fp, cutoff))
+	}
+	return out, nil
+}
+
+// ArchiveDayTitles returns the current titles of the snapshot's days that
+// were said before the cutoff, keyed by entry date.
+//
+// Название дня — сказанное: purge стирает его вместе с записями до отсечки,
+// поэтому оно обязано попасть в архив, иначе пропадает без копии (план 42,
+// ARC-6). Видимость — как у списка дней: название видно, если в дне есть
+// видимая читателю запись, поэтому берутся только дни из среза posts.
+func (c *Chronicle) ArchiveDayTitles(ctx context.Context, circleID, cutoffDate string, posts []FeedPost) (map[string]string, error) {
+	cutoff, err := CutoffInstant(cutoffDate)
+	if err != nil {
+		return nil, err
+	}
+	dates := make(map[string]bool, len(posts))
+	for _, fp := range posts {
+		dates[fp.Post.EntryDate] = true
+	}
+	out := make(map[string]string)
+	if len(dates) == 0 {
+		return out, nil
+	}
+	rows, err := c.db.QueryContext(ctx, `
+		SELECT d.entry_date, d.title
+		FROM days d
+		JOIN day_titles t ON t.event_seq = d.title_event_seq
+		WHERE d.circle_id = ? AND d.title IS NOT NULL AND d.title != ''
+		  AND t.created_at < ?
+	`, circleID, formatTime(cutoff))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var date, title string
+		if err := rows.Scan(&date, &title); err != nil {
 			return nil, err
 		}
-		if fp != nil {
-			out = append(out, filterFeedPostBefore(*fp, cutoff))
+		if dates[date] {
+			out[date] = title
 		}
 	}
 	return out, rows.Err()
@@ -404,62 +472,87 @@ type ArchivePersonalStats struct {
 }
 
 // EstimateArchivePersonal counts posts and unique media blobs in the visible archive slice.
+//
+// Считает запросами, а не по собранному срезу: оценка показывается в баннере
+// цикла на каждом GET /circles, а срез — это все записи круга до отсечки со
+// всеми комментариями и реакциями (аудит 2026-09-22).
 func (c *Chronicle) EstimateArchivePersonal(ctx context.Context, circleID, accountID, cutoffDate string) (ArchivePersonalStats, error) {
-	posts, err := c.ArchiveSnapshot(ctx, circleID, accountID, cutoffDate)
+	cutoff, err := CutoffInstant(cutoffDate)
 	if err != nil {
 		return ArchivePersonalStats{}, err
 	}
-	seen := make(map[string]bool)
-	var total int64
-	for _, fp := range posts {
-		for _, m := range fp.Media {
-			if err := c.addCompleteArchiveBlob(ctx, seen, m.BlobID, &total); err != nil {
-				return ArchivePersonalStats{}, err
-			}
-		}
+	if err := c.requireReader(ctx, circleID, accountID); err != nil {
+		return ArchivePersonalStats{}, err
 	}
-	avatars, err := c.IdentityAvatarBlobIDs(ctx, IdentityIDsFromFeed(posts))
+	at := formatTime(cutoff)
+
+	var stats ArchivePersonalStats
+	err = c.db.QueryRowContext(ctx, fmt.Sprintf(`
+		SELECT COUNT(*)
+		FROM posts p
+		JOIN memberships m ON m.circle_id = p.circle_id AND m.account_id = ?
+		WHERE p.circle_id = ? AND p.deleted = 0 AND p.created_at < ?
+		  AND %s
+	`, sqlVisibleAtMembership("p.created_at")), accountID, circleID, at).Scan(&stats.PostCount)
 	if err != nil {
 		return ArchivePersonalStats{}, err
 	}
-	for _, blobID := range avatars {
-		if err := c.addCompleteArchiveBlob(ctx, seen, blobID, &total); err != nil {
-			return ArchivePersonalStats{}, err
-		}
+	if stats.PostCount == 0 {
+		return stats, nil
 	}
-	return ArchivePersonalStats{
-		MediaBytes: total,
-		MediaFiles: len(seen),
-		PostCount:  len(posts),
-	}, nil
-}
 
-func (c *Chronicle) addCompleteArchiveBlob(ctx context.Context, seen map[string]bool, blobID string, total *int64) error {
-	if seen[blobID] {
-		return nil
+	// Файлы среза: вложения видимых записей и аватары лиц, попавших в срез
+	// (авторы записей, комментариев и реакций — как в ZIP).
+	visiblePost := fmt.Sprintf(`
+		SELECT p.id, p.identity_id, p.created_at
+		FROM posts p
+		JOIN memberships m ON m.circle_id = p.circle_id AND m.account_id = ?
+		WHERE p.circle_id = ? AND p.deleted = 0 AND p.created_at < ?
+		  AND %s
+	`, sqlVisibleAtMembership("p.created_at"))
+	query := fmt.Sprintf(`
+		WITH vp AS (%s),
+		slice_identities AS (
+			SELECT identity_id FROM vp
+			UNION
+			SELECT cm.identity_id FROM comments cm
+			JOIN vp ON vp.id = cm.post_id
+			JOIN memberships m ON m.circle_id = ? AND m.account_id = ?
+			WHERE cm.deleted = 0 AND cm.created_at < ? AND %s
+			UNION
+			SELECT rx.identity_id FROM reactions rx
+			JOIN vp ON vp.id = rx.post_id
+			JOIN memberships m ON m.circle_id = ? AND m.account_id = ?
+			WHERE rx.deleted = 0 AND rx.created_at < ? AND %s
+		),
+		slice_blobs AS (
+			SELECT pm.blob_id AS id FROM post_media pm JOIN vp ON vp.id = pm.post_id
+			UNION
+			SELECT n.avatar_blob_id FROM identity_names n
+			JOIN slice_identities si ON si.identity_id = n.identity_id
+			WHERE n.erased_at IS NULL AND n.avatar_blob_id IS NOT NULL
+			  AND n.effective_at = (
+				SELECT n2.effective_at FROM identity_names n2
+				WHERE n2.identity_id = n.identity_id AND n2.erased_at IS NULL
+				ORDER BY n2.effective_at DESC LIMIT 1
+			  )
+		)
+		SELECT COUNT(*), COALESCE(SUM(b.size_bytes), 0)
+		FROM blobs b
+		JOIN slice_blobs sb ON sb.id = b.id
+		WHERE b.status = 'complete'
+	`, visiblePost,
+		sqlVisibleAtMembership("cm.created_at"),
+		sqlVisibleAtMembership("rx.created_at"))
+	args := []any{
+		accountID, circleID, at, // vp
+		circleID, accountID, at, // комментарии
+		circleID, accountID, at, // реакции
 	}
-	var size int64
-	err := c.db.QueryRowContext(ctx, `
-		SELECT size_bytes FROM blobs WHERE id = ? AND status = 'complete'
-	`, blobID).Scan(&size)
-	if err == sql.ErrNoRows {
-		return nil
+	if err := c.db.QueryRowContext(ctx, query, args...).Scan(&stats.MediaFiles, &stats.MediaBytes); err != nil {
+		return ArchivePersonalStats{}, err
 	}
-	if err != nil {
-		return err
-	}
-	seen[blobID] = true
-	*total += size
-	return nil
-}
-
-// EstimateArchiveMediaBytes sums blob sizes visible in archive snapshot.
-func (c *Chronicle) EstimateArchiveMediaBytes(ctx context.Context, circleID, accountID, cutoffDate string) (int64, error) {
-	stats, err := c.EstimateArchivePersonal(ctx, circleID, accountID, cutoffDate)
-	if err != nil {
-		return 0, err
-	}
-	return stats.MediaBytes, nil
+	return stats, nil
 }
 
 // CirclesDueForArchivePurge returns circle ids whose deadline has passed.

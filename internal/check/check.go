@@ -207,7 +207,7 @@ func checkPWA(in Input) Result {
 	}
 	if in.External.PWAOK {
 		r.Status = StatusOK
-		r.Detail = "PWA ставится, камера открывается"
+		r.Detail = "манифест отдаётся, service worker зарегистрирован"
 		return r
 	}
 	r.Status = StatusWarn
@@ -290,6 +290,11 @@ func checkHTTPRedirect(in Input) Result {
 		r.Detail = "public_url без HTTPS"
 		return r
 	}
+	if !RedirectApplies(in.PublicURL) {
+		r.Status = StatusNA
+		r.Detail = "HTTPS на нестандартном порту — перенаправление с 80 не проверяется"
+		return r
+	}
 	if in.External == nil {
 		r.Status = StatusWarn
 		r.Detail = "ожидается проверка сервера"
@@ -314,7 +319,7 @@ func checkProxyClient(in Input) Result {
 		xff := strings.TrimSpace(ext.XForwardedFor)
 		xri := strings.TrimSpace(ext.XRealIP)
 		if xff == "" && xri == "" {
-			return StatusFail, "X-Forwarded-For не приходит: «три попытки» на код считаются всем сразу"
+			return StatusFail, "X-Forwarded-For не приходит: лимит запросов кода по адресу общий на всех"
 		}
 		ip := net.ParseIP(strings.TrimSpace(ext.ClientIP))
 		if ip != nil && ip.IsLoopback() {

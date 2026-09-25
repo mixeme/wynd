@@ -107,24 +107,58 @@
 		if (svgEl?.hasPointerCapture(e.pointerId)) svgEl.releasePointerCapture(e.pointerId);
 		dragging = false;
 	}
+
+	// Клавиатура для role="slider": без неё читалка объявляла ползунок,
+	// который нельзя ни достать Tab, ни сдвинуть (план 42, UI-4). Столбик —
+	// месяц, поэтому PageUp/PageDown — год.
+	function onKeydown(e: KeyboardEvent) {
+		if (!oncutoff || !volume.length) return;
+		const current = lastIndex ?? indexAtX(cutoffX);
+		const last = volume.length - 1;
+		const next: Record<string, number> = {
+			ArrowLeft: current - 1,
+			ArrowDown: current - 1,
+			ArrowRight: current + 1,
+			ArrowUp: current + 1,
+			PageDown: current - 12,
+			PageUp: current + 12,
+			Home: 0,
+			End: last
+		};
+		if (!(e.key in next)) return;
+		e.preventDefault();
+		applyIndex(next[e.key]);
+	}
 </script>
 
 <div class="chart {className}" class:dragging>
-	<svg
-		bind:this={svgEl}
-		viewBox="0 0 {chartWidth} {chartHeight}"
-		aria-hidden={!oncutoff}
-		role={oncutoff ? 'slider' : undefined}
-		aria-valuemin={oncutoff ? 0 : undefined}
-		aria-valuemax={oncutoff ? Math.max(volume.length - 1, 0) : undefined}
-		aria-valuenow={oncutoff && volume.length ? lastIndex ?? indexAtX(cutoffX) : undefined}
-		aria-valuetext={oncutoff && cutoffLabel ? cutoffLabel : undefined}
-		aria-label={oncutoff ? 'Отсечка архива' : undefined}
-		onpointerdown={onPointerDown}
-		onpointermove={onPointerMove}
-		onpointerup={onPointerUp}
-		onpointercancel={onPointerUp}
-	>
+	{#if oncutoff && volume.length}
+		<svg
+			bind:this={svgEl}
+			viewBox="0 0 {chartWidth} {chartHeight}"
+			role="slider"
+			tabindex="0"
+			aria-valuemin={0}
+			aria-valuemax={volume.length - 1}
+			aria-valuenow={lastIndex ?? indexAtX(cutoffX)}
+			aria-valuetext={cutoffLabel || undefined}
+			aria-label="Отсечка архива"
+			onkeydown={onKeydown}
+			onpointerdown={onPointerDown}
+			onpointermove={onPointerMove}
+			onpointerup={onPointerUp}
+			onpointercancel={onPointerUp}
+		>
+			{@render plot()}
+		</svg>
+	{:else}
+		<svg viewBox="0 0 {chartWidth} {chartHeight}" aria-hidden="true">
+			{@render plot()}
+		</svg>
+	{/if}
+</div>
+
+{#snippet plot()}
 		{#if volume.length}
 			<rect x="0" y={barAreaTop} width={shadedWidth} height={barAreaHeight} fill="var(--ct)" />
 			{#each bars as bar (bar.x)}
@@ -163,8 +197,7 @@
 		{#if yearEnd && yearEnd !== yearStart}
 			<text x="330" y="126" font-size="10" fill="#A8A096">{yearEnd}</text>
 		{/if}
-	</svg>
-</div>
+{/snippet}
 
 <style>
 	.chart {
@@ -181,5 +214,10 @@
 	}
 	.handle {
 		cursor: ew-resize;
+	}
+	.chart svg:focus-visible {
+		outline: 2px solid var(--c);
+		outline-offset: 2px;
+		border-radius: 4px;
 	}
 </style>

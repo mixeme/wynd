@@ -2,10 +2,8 @@ package auth
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/subtle"
 	"database/sql"
-	"encoding/hex"
 	"fmt"
 	"time"
 	"unicode/utf8"
@@ -13,7 +11,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// MinPasswordLen is the shortest admin password Bootstrap and reset accept.
+// MinPasswordLen is the shortest admin password Bootstrap, change and SetAdminPassword accept.
 const MinPasswordLen = 8
 
 func limiterKey(clientIP string) string {
@@ -71,6 +69,7 @@ func ValidatePassword(password string) error {
 	return nil
 }
 
+// Bootstrap performs the first-run setup once: admin password and initial instance settings in one transaction, after the token gate (server-reference, «Первый запуск»).
 func (s *Service) Bootstrap(ctx context.Context, in BootstrapInput, expectedToken string) error {
 	when := in.Now.UTC()
 	if when.IsZero() {
@@ -130,6 +129,7 @@ func (s *Service) Bootstrap(ctx context.Context, in BootstrapInput, expectedToke
 	return nil
 }
 
+// AdminLogin checks the admin password under the failure limiter and issues an admin session.
 func (s *Service) AdminLogin(ctx context.Context, in AdminLoginInput) (Session, error) {
 	when := in.Now.UTC()
 	if when.IsZero() {
@@ -198,59 +198,30 @@ func (s *Service) ensureAdminAccount(ctx context.Context, tx *sql.Tx, when time.
 	return acc.ID, nil
 }
 
-func (s *Service) IssueAdminReset(ctx context.Context, when time.Time) (string, error) {
-	if when.IsZero() {
-		when = time.Now().UTC()
-	}
-	token, err := newResetToken()
-	if err != nil {
-		return "", err
-	}
-	expires := when.Add(time.Hour)
-	_, err = s.db.ExecContext(ctx, `
-		UPDATE admin_credentials
-		SET reset_token = ?, reset_expires_at = ?, updated_at = ?
-		WHERE id = 1
-	`, token, formatTime(expires), formatTime(when))
-	if err != nil {
-		return "", fmt.Errorf("store reset token: %w", err)
-	}
-	return token, nil
-}
-
-func (s *Service) ResetAdminPassword(ctx context.Context, token, password string, when time.Time) error {
-	if token == "" || password == "" {
-		return ErrInvalid
-	}
+// SetAdminPassword sets a new panel password without the current one and drops all admin sessions.
+//
+// Только для команды `wynd admin-password` на хосте: кто забыл пароль
+// панели, тот держит сервер — ему и менять. Сброс по токену
+// (IssueAdminReset) удалён: токен некуда было доставить, у панели нет почты
+// (план 42, BKP-4). Колонки reset_token/reset_expires_at остаются — схема
+// только растёт.
+func (s *Service) SetAdminPassword(ctx context.Context, password string, when time.Time) error {
 	if utf8.RuneCountInString(password) < MinPasswordLen {
 		return ErrWeakPassword
 	}
 	if when.IsZero() {
 		when = time.Now().UTC()
 	}
-	var stored, expiresRaw string
-	err := s.db.QueryRowContext(ctx, `
-		SELECT reset_token, reset_expires_at FROM admin_credentials WHERE id = 1
-	`).Scan(&stored, &expiresRaw)
-	if err == sql.ErrNoRows || stored == "" {
+	var n int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM admin_credentials WHERE id = 1`).Scan(&n); err != nil {
+		return fmt.Errorf("load admin credentials: %w", err)
+	}
+	if n == 0 {
 		return ErrNotFound
-	}
-	if err != nil {
-		return err
-	}
-	if subtle.ConstantTimeCompare([]byte(stored), []byte(token)) != 1 {
-		return ErrInvalid
-	}
-	expires, err := parseTime(expiresRaw)
-	if err != nil {
-		return err
-	}
-	if !when.Before(expires) {
-		return ErrExpired
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return err
+		return fmt.Errorf("hash password: %w", err)
 	}
 	return s.storeAdminPassword(ctx, string(hash), when)
 }
@@ -305,12 +276,4 @@ func (s *Service) ChangeAdminPassword(ctx context.Context, current, next string,
 		return fmt.Errorf("hash password: %w", err)
 	}
 	return s.storeAdminPassword(ctx, string(newHash), when)
-}
-
-func newResetToken() (string, error) {
-	buf := make([]byte, 32)
-	if _, err := rand.Read(buf); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(buf), nil
 }

@@ -13,19 +13,30 @@ import (
 )
 
 func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	cursor, _ := strconv.ParseInt(r.URL.Query().Get("cursor"), 10, 64)
 	if cursor < 0 {
 		cursor = 0
 	}
+	maxSeq, err := s.Chronicle.MaxEventSeq(r.Context())
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	// Курсор больше последнего события — база восстановлена из бэкапа, а
+	// клиент помнит номера из прежней жизни. Считаем, что всё до max_seq он
+	// видел (снимки он сбрасывает сам по кадру hello); иначе новые события не
+	// доходили бы, пока счётчик не догонит курсор (план 42, BKP-3).
+	if cursor > maxSeq {
+		cursor = maxSeq
+	}
 
 	accept := r.Header.Get("Accept")
 	if strings.Contains(accept, "text/event-stream") {
-		s.syncSSE(w, r, sess.AccountID, cursor)
+		s.syncSSE(w, r, sess.AccountID, cursor, maxSeq)
 		return
 	}
 	if strings.Contains(accept, "application/x-ndjson") {
@@ -34,11 +45,6 @@ func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	events, err := s.Chronicle.SyncEvents(r.Context(), sess.AccountID, cursor, chronicle.SyncBatchSize())
-	if err != nil {
-		writeDomainError(w, err)
-		return
-	}
-	maxSeq, err := s.Chronicle.MaxEventSeq(r.Context())
 	if err != nil {
 		writeDomainError(w, err)
 		return
@@ -58,7 +64,7 @@ const (
 	ssePollInterval  = 2 * time.Second
 )
 
-func (s *Server) syncSSE(w http.ResponseWriter, r *http.Request, accountID string, cursor int64) {
+func (s *Server) syncSSE(w http.ResponseWriter, r *http.Request, accountID string, cursor, maxSeq int64) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		writeError(w, chronicle.ErrInvalid)
@@ -76,6 +82,12 @@ func (s *Server) syncSSE(w http.ResponseWriter, r *http.Request, accountID strin
 		}
 		flusher.Flush()
 		return true
+	}
+
+	// Первый кадр — max_seq: клиент с курсором больше него понимает, что
+	// сервер откатился, и сбрасывает курсор и снимки.
+	if !write("event: hello\ndata: {\"max_seq\":%d}\n\n", maxSeq) {
+		return
 	}
 
 	ctx := r.Context()
@@ -151,15 +163,15 @@ func (s *Server) syncNDJSON(w http.ResponseWriter, r *http.Request, accountID st
 
 func eventResponse(ev chronicle.Event) map[string]any {
 	out := map[string]any{
-		"seq":         ev.Seq,
-		"id":          ev.ID,
-		"circle_id":   ev.CircleID,
-		"type":        ev.Type,
-		"is_service":  ev.IsService,
-		"actor_name":  ev.ActorName,
-		"summary":     ev.Summary,
-		"created_at":  ev.CreatedAt.UTC().Format(time.RFC3339),
-		"payload":     json.RawMessage(ev.Payload),
+		"seq":        ev.Seq,
+		"id":         ev.ID,
+		"circle_id":  ev.CircleID,
+		"type":       ev.Type,
+		"is_service": ev.IsService,
+		"actor_name": ev.ActorName,
+		"summary":    ev.Summary,
+		"created_at": ev.CreatedAt.UTC().Format(time.RFC3339),
+		"payload":    json.RawMessage(ev.Payload),
 	}
 	if ev.ActorIdentityID != "" {
 		out["actor_identity_id"] = ev.ActorIdentityID

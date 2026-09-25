@@ -36,9 +36,8 @@ func (s *Server) handleAdminSMTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAdminSetSMTP(w http.ResponseWriter, r *http.Request) {
-	var body smtpBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[smtpBody](w, r)
+	if !ok {
 		return
 	}
 	if body.Password == "" {
@@ -63,9 +62,8 @@ func (s *Server) handleAdminSetSMTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAdminSMTPTest(w http.ResponseWriter, r *http.Request) {
-	var body smtpTestBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[smtpTestBody](w, r)
+	if !ok {
 		return
 	}
 	if err := s.Mail.SendTest(r.Context(), body.To); err != nil {

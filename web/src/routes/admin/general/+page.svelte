@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { onMount } from 'svelte';
 	import AdminSection from '$ui/admin/AdminSection.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -18,8 +18,8 @@
 		serverCaption
 	} from '$lib/admin/admin';
 
-	const label = 'margin:0;width:88px;flex:0 0 auto';
-	const row = 'display:flex;align-items:center;gap:10px';
+	const label = 'm-0 w88 flex-fix';
+	const row = 'flex-mid gap-10';
 
 	let currentPassword = $state('');
 	let newPassword = $state('');
@@ -159,111 +159,111 @@
 		{#if loading}
 			<Hint>Загрузка…</Hint>
 		{:else}
-			<div style="display:flex;gap:44px">
-				<div style="flex:1;min-width:0">
-					<SectionLabel style="margin:0 0 10px">Пароль администратора</SectionLabel>
-					<div style="font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.5">
+			<div class="flex gap-44">
+				<div class="grow min0">
+					<SectionLabel class="mt-0 mx-0 mb-10">Пароль администратора</SectionLabel>
+					<div class="note mb-12 lh-15">
 						Отдельный пароль панели, не тот, которым входят в круги. Сбросить можно через консоль.
 					</div>
-					<div style="{row};margin-bottom:10px">
-						<SectionLabel style={label}>Текущий</SectionLabel>
-						<Input admin style="flex:1" type="password" bind:value={currentPassword} />
+					<div class="{row} mb-10">
+						<SectionLabel class={label}>Текущий</SectionLabel>
+						<Input admin class="grow" type="password" bind:value={currentPassword} />
 					</div>
-					<div style="{row};margin-bottom:12px">
-						<SectionLabel style={label}>Новый</SectionLabel>
-						<Input admin style="flex:1" type="password" bind:value={newPassword} />
+					<div class="{row} mb-12">
+						<SectionLabel class={label}>Новый</SectionLabel>
+						<Input admin class="grow" type="password" bind:value={newPassword} />
 					</div>
 					<TextButton
 						variant="adminBox"
-						style="font-weight:600"
+						class="bold"
 						loading={savingPassword}
 						onclick={() => void savePassword()}>Сохранить</TextButton
 					>
-					<SectionLabel style="margin:28px 0 10px">Имя и адрес</SectionLabel>
-					<div style="{row};margin-bottom:10px">
-						<SectionLabel style={label}>Имя</SectionLabel>
-						<Input admin style="flex:1" bind:value={name} onchange={() => void persistName()} />
+					<SectionLabel class="mt-28 mx-0 mb-10">Имя и адрес</SectionLabel>
+					<div class="{row} mb-10">
+						<SectionLabel class={label}>Имя</SectionLabel>
+						<Input admin class="grow" bind:value={name} onchange={() => void persistName()} />
 					</div>
-					<div style={row}>
-						<SectionLabel style={label}>Адрес</SectionLabel>
+					<div class={row}>
+						<SectionLabel class={label}>Адрес</SectionLabel>
 						<Input
 							admin
 							mono
-							style="flex:1"
+							class="grow"
 							bind:value={publicUrl}
 							onchange={() => void persistUrl()}
 						/>
 					</div>
-					<div style="font-size:11.5px;color:var(--faint);margin-top:10px;line-height:1.6">
+					<div class="fine mt-10 lh-16">
 						Так сервер назван в приложении. Адрес люди видят второй строкой и почти никогда не
 						набирают.
 					</div>
 				</div>
-				<div style="flex:1;min-width:0">
-					<SectionLabel style="margin:0 0 10px">Почта</SectionLabel>
-					<div style="font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.5">
+				<div class="grow min0">
+					<SectionLabel class="mt-0 mx-0 mb-10">Почта</SectionLabel>
+					<div class="note mb-12 lh-15">
 						Люди входят по коду из письма. Без настройки SMTP письмо с кодом не отправится.
 					</div>
-					<div style="display:flex;flex-direction:column;gap:10px">
-						<div style={row}>
-							<SectionLabel style={label}>Хост</SectionLabel>
+					<div class="col gap-10">
+						<div class={row}>
+							<SectionLabel class={label}>Хост</SectionLabel>
 							<Input
 								admin
 								mono
-								style="flex:1"
+								class="grow"
 								bind:value={host}
 								onchange={() => void persistSmtp()}
 							/>
 						</div>
-						<div style={row}>
-							<SectionLabel style={label}>Порт</SectionLabel>
+						<div class={row}>
+							<SectionLabel class={label}>Порт</SectionLabel>
 							<Input
 								admin
-								style="width:72px"
+								class="w72"
 								type="number"
 								bind:value={port}
 								onchange={() => void persistSmtp()}
 							/>
-							<Hint style="margin:0;white-space:nowrap">587 или 465</Hint>
+							<Hint class="m-0 nowrap">587 или 465</Hint>
 						</div>
-						<div style={row}>
-							<SectionLabel style={label}>Логин</SectionLabel>
+						<div class={row}>
+							<SectionLabel class={label}>Логин</SectionLabel>
 							<Input
 								admin
 								mono
-								style="flex:1"
+								class="grow"
 								bind:value={username}
 								onchange={() => void persistSmtp()}
 							/>
 						</div>
-						<div style={row}>
-							<SectionLabel style={label}>Пароль</SectionLabel>
+						<div class={row}>
+							<SectionLabel class={label}>Пароль</SectionLabel>
 							<Input
 								admin
-								style="flex:1"
+								class="grow"
 								type="password"
 								placeholder={configured ? 'не менять' : ''}
 								bind:value={smtpPassword}
 								onchange={() => void persistSmtp()}
 							/>
 						</div>
-						<div style={row}>
-							<SectionLabel style={label}>От кого</SectionLabel>
+						<div class={row}>
+							<SectionLabel class={label}>От кого</SectionLabel>
 							<Input
 								admin
 								mono
-								style="flex:1"
+								class="grow"
 								bind:value={from}
 								onchange={() => void persistSmtp()}
 							/>
 						</div>
 					</div>
-					<SectionLabel style="margin:28px 0 8px">Проверочное письмо</SectionLabel>
-					<div style="display:flex;align-items:center;gap:12px">
-						<Input admin style="flex:1" placeholder="куда" bind:value={testTo} />
+					<SectionLabel class="mt-28 mx-0 mb-8">Проверочное письмо</SectionLabel>
+					<div class="flex-mid gap-12">
+						<Input admin class="grow" placeholder="куда" bind:value={testTo} />
 						<TextButton
 							variant="adminBox"
-							style="font-weight:600"
+							class="bold"
 							loading={sending}
 							onclick={() => void sendTest()}>Отправить</TextButton
 						>
@@ -271,12 +271,12 @@
 				</div>
 			</div>
 			{#if sending}
-				<Hint style="margin-top:12px">Отправляем…</Hint>
+				<Hint class="mt-12">Отправляем…</Hint>
 			{:else if notice}
-				<Hint style="margin-top:12px">{notice}</Hint>
+				<Hint class="mt-12">{notice}</Hint>
 			{/if}
 			{#if error}
-				<Hint style="margin-top:12px">{error}</Hint>
+				<Hint class="mt-12">{error}</Hint>
 			{/if}
 		{/if}
 	</AdminSection>

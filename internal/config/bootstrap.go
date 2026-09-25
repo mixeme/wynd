@@ -9,6 +9,7 @@ import (
 	"strings"
 )
 
+// BootstrapToken reads keys/bootstrap, creating it with a new random token (0600) on first start.
 func BootstrapToken(dataDir string) (string, error) {
 	path := filepath.Join(dataDir, "keys", "bootstrap")
 	if data, err := os.ReadFile(path); err == nil {

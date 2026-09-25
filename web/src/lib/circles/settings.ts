@@ -17,7 +17,9 @@ export interface CircleSettings extends CircleDetail {
 }
 
 export interface MemberInfo {
-	account_id: string;
+	// Приходит только владельцу и тем, кто правит настройки: остальным
+	// учётка соседа не нужна (аудит 2026-09-22).
+	account_id?: string;
 	identity_id: string;
 	name: string;
 	status: 'active' | 'left_with_access' | 'gone';

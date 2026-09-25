@@ -10,8 +10,8 @@ import (
 
 // InviteSettings holds circle invite policy.
 type InviteSettings struct {
-	InviteWho          string
-	InviteKindDefault  string
+	InviteWho         string
+	InviteKindDefault string
 }
 
 // GetInviteSettings returns invite policy for a circle.
@@ -66,25 +66,6 @@ func (c *Chronicle) SetInviteKindDefault(ctx context.Context, circleID, actorAcc
 	n, _ := res.RowsAffected()
 	if n == 0 {
 		return ErrNotFound
-	}
-	return nil
-}
-
-// RequireCanInvite returns ErrForbidden unless the account may create invites.
-func (c *Chronicle) RequireCanInvite(ctx context.Context, circleID, accountID string) error {
-	settings, err := c.GetInviteSettings(ctx, circleID)
-	if err != nil {
-		return err
-	}
-	if settings.InviteWho == "owner" {
-		return c.RequireOwner(ctx, circleID, accountID)
-	}
-	mem, err := c.membership(ctx, c.db, circleID, accountID)
-	if err != nil {
-		return err
-	}
-	if mem.Status != StatusActive {
-		return ErrForbidden
 	}
 	return nil
 }

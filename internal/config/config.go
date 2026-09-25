@@ -34,6 +34,7 @@ type Config struct {
 	TrustedProxies []string
 }
 
+// Load builds the config from defaults, then config.json, then WYND_* variables. It never writes config.json; it only creates the data directory, blobs/, keys/ and a 0600 wynd.db.
 func Load() (*Config, error) {
 	dataDir := os.Getenv("WYND_DATA_DIR")
 	if dataDir == "" {
@@ -134,21 +135,4 @@ func ensureDataLayout(dataDir string) error {
 		return err
 	}
 	return os.Chmod(dbPath, 0o600)
-}
-
-func writeFileConfig(path string, cfg *Config) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
-		return fmt.Errorf("create config dir: %w", err)
-	}
-
-	payload, err := json.MarshalIndent(fileConfig{
-		Listen:    cfg.Listen,
-		PublicURL: cfg.PublicURL,
-	}, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal config: %w", err)
-	}
-	payload = append(payload, '\n')
-
-	return writeFileAtomic(path, payload, 0o640)
 }

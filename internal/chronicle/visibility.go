@@ -175,34 +175,3 @@ func (c *Chronicle) openSpans(ctx context.Context, membershipID string) ([]Span,
 	}
 	return out, rows.Err()
 }
-
-// VisiblePostSeqs returns post event sequences visible to account ordered by created_at.
-func (c *Chronicle) VisiblePostSeqs(ctx context.Context, circleID, accountID string) ([]int64, error) {
-	rows, err := c.db.QueryContext(ctx, `
-		SELECT event_seq, created_at FROM posts
-		WHERE circle_id = ? AND deleted = 0
-		ORDER BY created_at
-	`, circleID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []int64
-	for rows.Next() {
-		var seq int64
-		var created string
-		if err := rows.Scan(&seq, &created); err != nil {
-			return nil, err
-		}
-		t, _ := parseTime(created)
-		ok, err := c.CanReadEvent(ctx, circleID, accountID, t)
-		if err != nil {
-			return nil, err
-		}
-		if ok {
-			out = append(out, seq)
-		}
-	}
-	return out, rows.Err()
-}

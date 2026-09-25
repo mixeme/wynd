@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { onMount, setContext } from 'svelte';
+	import { setContext, untrack } from 'svelte';
 	import { resolveCircleOrigin, rememberCircleOrigin, rememberLastCircle } from '$lib/circles/origin';
 	import { fetchCircles, loadCirclesCached, ownerNameFromSession } from '$lib/circles/circles';
 	import type { CircleListItem } from '$lib/circles/circles';
@@ -245,8 +245,17 @@
 		ready = true;
 	}
 
-	onMount(() => {
-		void loadMeta();
+	// Мета круга перечитывается при смене круга, а не только при монтировании:
+	// SvelteKit не пересоздаёт макет при смене одного параметра, и переход
+	// /circles/A → /circles/B показывал бы шапку и права круга A (план 42, SCR-1).
+	let loadedCircle = '';
+	$effect(() => {
+		const id = circleId;
+		if (!id || id === loadedCircle) return;
+		loadedCircle = id;
+		ready = false;
+		denied = false;
+		untrack(() => void loadMeta());
 	});
 </script>
 
@@ -258,5 +267,9 @@
 		</div>
 	</PlainLayout>
 {:else if ready && !(pendingJoinOnly && !onJoinPage)}
-	{@render children()}
+	<!-- Экраны круга грузят данные при монтировании; смена одного параметра
+	     (другая запись, другой день) их не пересоздаёт — пересоздаём по пути. -->
+	{#key $page.url.pathname}
+		{@render children()}
+	{/key}
 {/if}

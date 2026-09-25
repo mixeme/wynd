@@ -64,10 +64,10 @@ func (s *Server) handleAdminStorage(w http.ResponseWriter, r *http.Request) {
 		defaultPtr = &q
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"used_bytes":                   used,
-		"quota_bytes":                  quota,
-		"storage_quota_bytes":          absQuota,
-		"storage_quota_disk_percent":   diskPercent,
+		"used_bytes":                 used,
+		"quota_bytes":                quota,
+		"storage_quota_bytes":        absQuota,
+		"storage_quota_disk_percent": diskPercent,
 		"default_circle_quota_bytes": defaultPtr,
 		"circles":                    storageCirclesJSON(circles),
 	})
@@ -97,9 +97,8 @@ func storageCirclesJSON(circles []blob.StorageCircle) []storageCircle {
 }
 
 func (s *Server) handleAdminSetStorageQuota(w http.ResponseWriter, r *http.Request) {
-	var body storageQuotaBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[storageQuotaBody](w, r)
+	if !ok {
 		return
 	}
 	hasBytes := body.QuotaBytes != nil
@@ -127,9 +126,8 @@ func (s *Server) handleAdminSetStorageQuota(w http.ResponseWriter, r *http.Reque
 }
 
 func (s *Server) handleAdminSetDefaultQuota(w http.ResponseWriter, r *http.Request) {
-	var body defaultQuotaBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[defaultQuotaBody](w, r)
+	if !ok {
 		return
 	}
 	if err := s.Blobs.SetDefaultCircleQuotaBytes(r.Context(), body.DefaultCircleQuotaBytes); err != nil {
@@ -141,9 +139,8 @@ func (s *Server) handleAdminSetDefaultQuota(w http.ResponseWriter, r *http.Reque
 
 func (s *Server) handleAdminSetCircleQuota(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("id")
-	var body circleQuotaBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[circleQuotaBody](w, r)
+	if !ok {
 		return
 	}
 	if err := s.Blobs.SetCircleQuotaAdmin(r.Context(), circleID, body.Custom, body.QuotaBytes); err != nil {
@@ -163,9 +160,8 @@ func (s *Server) handleAdminCompression(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Server) handleAdminSetCompression(w http.ResponseWriter, r *http.Request) {
-	var body compressionBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[compressionBody](w, r)
+	if !ok {
 		return
 	}
 	cs := blob.CompressionSettings{
@@ -198,4 +194,86 @@ func (s *Server) loadInstanceTimestamps(ctx context.Context) (routineAt, backupA
 		}
 	}
 	return routineAt, backupAt
+}
+
+// Заявки на квоту — рядом с остальным хранилищем. Лежали в notify.go,
+// потому что когда-то писались в одну волну с уведомлениями (ARC-4).
+
+type quotaResolveBody struct {
+	AdminNote string `json:"admin_note"`
+}
+
+type quotaRequestBody struct {
+	RequestedBytes int64 `json:"requested_bytes"`
+}
+
+func (s *Server) handleCreateQuotaRequest(w http.ResponseWriter, r *http.Request) {
+	sess, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+	circleID := r.PathValue("circle_id")
+	if err := s.Chronicle.RequireOwner(r.Context(), circleID, sess.AccountID); err != nil {
+		writeError(w, err)
+		return
+	}
+	body, ok := bindJSON[quotaRequestBody](w, r)
+	if !ok {
+		return
+	}
+	id, err := s.Blobs.CreateQuotaRequest(r.Context(), circleID, sess.AccountID, body.RequestedBytes)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]string{"id": id})
+}
+
+func (s *Server) handleAdminQuotaRequests(w http.ResponseWriter, r *http.Request) {
+	items, err := s.Blobs.ListPendingQuotaRequests(r.Context())
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	type row struct {
+		ID             string  `json:"id"`
+		CircleID       string  `json:"circle_id"`
+		RequesterID    string  `json:"requester_id"`
+		RequesterMail  string  `json:"requester_email"`
+		RequestedBytes int64   `json:"requested_bytes"`
+		Status         string  `json:"status"`
+		AdminNote      *string `json:"admin_note,omitempty"`
+		CreatedAt      string  `json:"created_at"`
+		ResolvedAt     *string `json:"resolved_at,omitempty"`
+	}
+	out := make([]row, len(items))
+	for i, item := range items {
+		out[i] = row{
+			ID: item.ID, CircleID: item.CircleID, RequesterID: item.RequesterID,
+			RequesterMail: item.RequesterEmail, RequestedBytes: item.RequestedBytes,
+			Status: item.Status, AdminNote: item.AdminNote, CreatedAt: item.CreatedAt,
+			ResolvedAt: item.ResolvedAt,
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"requests": out})
+}
+
+func (s *Server) handleAdminApproveQuotaRequest(w http.ResponseWriter, r *http.Request) {
+	s.resolveQuotaRequest(w, r, true)
+}
+
+func (s *Server) handleAdminRejectQuotaRequest(w http.ResponseWriter, r *http.Request) {
+	s.resolveQuotaRequest(w, r, false)
+}
+
+func (s *Server) resolveQuotaRequest(w http.ResponseWriter, r *http.Request, approve bool) {
+	id := r.PathValue("id")
+	var body quotaResolveBody
+	_ = readJSON(r, &body)
+	status, err := s.Blobs.ResolveQuotaRequest(r.Context(), id, approve, body.AdminNote)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": status})
 }

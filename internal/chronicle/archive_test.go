@@ -10,6 +10,8 @@ import (
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 )
 
+// Инвариант: пока идёт цикл архивации, комментарий и реакция на запись до
+// отсечки запрещены, после отсечки — нет.
 func TestArchiveCycleBlocksInteractionBeforeCutoff(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -42,6 +44,8 @@ func TestArchiveCycleBlocksInteractionBeforeCutoff(t *testing.T) {
 	}
 }
 
+// Инвариант: комментарий и реакция на запись вне своего отрезка видимости —
+// forbidden.
 func TestPrejoinCommentAndReactionForbidden(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -61,6 +65,7 @@ func TestPrejoinCommentAndReactionForbidden(t *testing.T) {
 	}
 }
 
+// Инвариант: отсечку двигают до первого скачивания архива и не двигают после.
 func TestArchiveCutoffMovesUntilLocked(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -84,6 +89,8 @@ func TestArchiveCutoffMovesUntilLocked(t *testing.T) {
 	}
 }
 
+// Инвариант: архивы двух участников с разными отрезками не совпадают — каждый
+// получает своё.
 func TestArchiveSnapshotsDifferBySpan(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -105,6 +112,8 @@ func TestArchiveSnapshotsDifferBySpan(t *testing.T) {
 	}
 }
 
+// Инвариант: архив открывается офлайн — в HTML нет внешних ссылок, но авторы
+// на месте.
 func TestArchiveHTMLHasNoExternalLinks(t *testing.T) {
 	now := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
 	posts := []chronicle.FeedPost{{
@@ -121,6 +130,8 @@ func TestArchiveHTMLHasNoExternalLinks(t *testing.T) {
 	}
 }
 
+// Инвариант: чистка по отсечке стирает сказанное, но оставляет служебные
+// события — структура круга остаётся.
 func TestArchivePurgeKeepsStructuralEvents(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -145,6 +156,8 @@ func TestArchivePurgeKeepsStructuralEvents(t *testing.T) {
 	}
 }
 
+// Инвариант: в архив не попадает ничего после отсечки — ни записи, ни
+// комментарии, ни реакции.
 func TestArchiveSnapshotOmitsContentAfterCutoff(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -180,6 +193,7 @@ func TestArchiveSnapshotOmitsContentAfterCutoff(t *testing.T) {
 	}
 }
 
+// Инвариант: новый цикл архивации начинается только после закрытия прежнего.
 func TestArchiveNewCycleAfterLock(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -201,6 +215,8 @@ func TestArchiveNewCycleAfterLock(t *testing.T) {
 	}
 }
 
+// Инвариант: напоминание о сроке уходит не раньше своего окна и переносится
+// вместе со сроком.
 func TestArchiveReminderWaitsForWindowAndReschedules(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -236,20 +252,44 @@ func TestArchiveReminderWaitsForWindowAndReschedules(t *testing.T) {
 	}
 }
 
+// Инвариант: чистка по сроку срабатывает, даже если архив скачали не все.
 func TestArchivePurgeRunsRegardlessOfDownloads(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
 	e.post(circle.ID, "owner", "старая", "2026-08-01", e.at(0))
-	past := e.at(-1)
-	if err := e.ch.StartArchiveCycle(e.ctx, circle.ID, "owner", "2026-08-10", past, 86400, e.at(0)); err != nil {
+	if err := e.ch.StartArchiveCycle(e.ctx, circle.ID, "owner", "2026-08-10", e.at(2), 86400, e.at(0)); err != nil {
 		t.Fatal(err)
 	}
-	ids, err := e.ch.CirclesDueForArchivePurge(e.ctx, e.at(1))
+	ids, err := e.ch.CirclesDueForArchivePurge(e.ctx, e.at(3))
 	if err != nil || len(ids) != 1 {
 		t.Fatalf("due purge: %v %v", ids, err)
 	}
 }
 
+// Инвариант (план 42, ARC-7): срок цикла — не раньше чем через сутки от
+// старта или переноса; иначе участники не успевают скачать архив.
+func TestArchiveDeadlineAtLeastADayAhead(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	now := e.at(0)
+	for _, d := range []time.Time{now.Add(-time.Hour), now.Add(23 * time.Hour)} {
+		if err := e.ch.StartArchiveCycle(e.ctx, circle.ID, "owner", "2026-08-10", d, 86400, now); !errors.Is(err, chronicle.ErrInvalid) {
+			t.Fatalf("start with deadline %v: %v, want ErrInvalid", d, err)
+		}
+	}
+	if err := e.ch.StartArchiveCycle(e.ctx, circle.ID, "owner", "2026-08-10", now.Add(24*time.Hour), 86400, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.ch.MoveDeadline(e.ctx, circle.ID, "owner", e.at(1), e.at(1)); !errors.Is(err, chronicle.ErrInvalid) {
+		t.Fatalf("move to now: %v, want ErrInvalid", err)
+	}
+	if err := e.ch.MoveDeadline(e.ctx, circle.ID, "owner", e.at(3), e.at(1)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Инвариант: оценка архива не считает недогруженные файлы — обещанный объём
+// не завышается.
 func TestEstimateArchivePersonalSkipsIncompleteBlobs(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())

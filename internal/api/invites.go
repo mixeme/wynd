@@ -22,9 +22,8 @@ type joinInviteBody struct {
 
 func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
-	var body acceptInviteBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[acceptInviteBody](w, r)
+	if !ok {
 		return
 	}
 	err := s.Auth.AcceptInvite(r.Context(), auth.AcceptInviteInput{
@@ -97,9 +96,8 @@ func (s *Server) handlePeekInvite(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleJoinInvite(w http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	inv, err := s.Auth.InviteByToken(r.Context(), token)
@@ -112,9 +110,8 @@ func (s *Server) handleJoinInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var body joinInviteBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[joinInviteBody](w, r)
+	if !ok {
 		return
 	}
 	name := strings.TrimSpace(body.Name)

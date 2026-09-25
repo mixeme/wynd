@@ -10,9 +10,8 @@ import (
 
 func (s *Server) handleCircleMembers(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	members, err := s.Chronicle.ListMembers(r.Context(), circleID, sess.AccountID)
@@ -20,10 +19,20 @@ func (s *Server) handleCircleMembers(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
+	// account_id — учётка на сервере, а не лицо в круге: обычному участнику
+	// она не нужна, а связывать лица в разных кругах по ней он не должен
+	// (аудит 2026-09-22). Владельцу и тем, кто правит настройки, она нужна
+	// для передачи владения, исключения и прав.
+	showAccounts := false
+	for _, m := range members {
+		if m.AccountID == sess.AccountID && (m.IsOwner || m.CanSettings) {
+			showAccounts = true
+			break
+		}
+	}
 	out := make([]map[string]any, len(members))
 	for i, m := range members {
 		out[i] = map[string]any{
-			"account_id":   m.AccountID,
 			"identity_id":  m.IdentityID,
 			"name":         m.Name,
 			"status":       string(m.Status),
@@ -33,28 +42,29 @@ func (s *Server) handleCircleMembers(w http.ResponseWriter, r *http.Request) {
 			"can_read":     m.CanRead,
 			"can_write":    m.CanWrite,
 		}
+		if showAccounts {
+			out[i]["account_id"] = m.AccountID
+		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"members": out})
 }
 
 type patchCircleBody struct {
-	Name               *string `json:"name"`
-	EditWindowSec      *int64  `json:"edit_window_sec"`
-	Color              *string `json:"color"`
-	InviteWho          *string `json:"invite_who"`
-	InviteKindDefault  *string `json:"invite_kind_default"`
+	Name              *string `json:"name"`
+	EditWindowSec     *int64  `json:"edit_window_sec"`
+	Color             *string `json:"color"`
+	InviteWho         *string `json:"invite_who"`
+	InviteKindDefault *string `json:"invite_kind_default"`
 }
 
 func (s *Server) handlePatchCircle(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
-	var body patchCircleBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[patchCircleBody](w, r)
+	if !ok {
 		return
 	}
 	// Один вызов домена: значения проверяются до первой записи, изменения
@@ -76,20 +86,18 @@ func (s *Server) handlePatchCircle(w http.ResponseWriter, r *http.Request) {
 }
 
 type updateIdentityBody struct {
-	Name           *string `json:"name"`
-	AvatarBlobID   *string `json:"avatar_blob_id"`
+	Name         *string `json:"name"`
+	AvatarBlobID *string `json:"avatar_blob_id"`
 }
 
 func (s *Server) handleUpdateIdentity(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
-	var body updateIdentityBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[updateIdentityBody](w, r)
+	if !ok {
 		return
 	}
 	if body.AvatarBlobID != nil && *body.AvatarBlobID != "" {
@@ -116,14 +124,12 @@ type setMemberBody struct {
 func (s *Server) handleSetMember(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	targetID := r.PathValue("account_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
-	var body setMemberBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[setMemberBody](w, r)
+	if !ok {
 		return
 	}
 	err := s.Chronicle.SetMemberCanSettings(r.Context(), circleID, sess.AccountID, targetID, body.CanSettings, time.Now().UTC())
@@ -136,9 +142,8 @@ func (s *Server) handleSetMember(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleIdentityHistory(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	mem, err := s.Chronicle.MembershipForAccount(r.Context(), circleID, sess.AccountID)
@@ -167,14 +172,12 @@ type transferOwnerBody struct {
 
 func (s *Server) handleTransferOwnership(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
-	var body transferOwnerBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[transferOwnerBody](w, r)
+	if !ok {
 		return
 	}
 	err := s.Chronicle.TransferOwnership(r.Context(), circleID, sess.AccountID, body.NewOwnerAccountID, time.Now().UTC())
@@ -191,14 +194,12 @@ type excludeMemberBody struct {
 
 func (s *Server) handleExcludeMember(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
-	var body excludeMemberBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[excludeMemberBody](w, r)
+	if !ok {
 		return
 	}
 	now := time.Now().UTC()
@@ -221,14 +222,12 @@ type deleteCircleBody struct {
 
 func (s *Server) handleDeleteCircle(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
-	var body deleteCircleBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[deleteCircleBody](w, r)
+	if !ok {
 		return
 	}
 	blobIDs, err := s.Chronicle.DeleteCircle(r.Context(), circleID, sess.AccountID, body.Name, time.Now().UTC())

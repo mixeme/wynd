@@ -17,6 +17,12 @@
 	import ShellLayout from '$lib/layouts/ShellLayout.svelte';
 	import { loadStreetCircles, type StreetCircle } from '$lib/circles/circles';
 	import { rememberCircleOrigin } from '$lib/circles/origin';
+	import {
+		LONG_PRESS_MS,
+		markLongPress,
+		swallowsClick,
+		type PressMark
+	} from '$lib/gestures/longpress';
 	import { displayHost } from '$lib/auth/origin';
 	import {
 		deleteGroup,
@@ -42,7 +48,10 @@
 	let sessions = $state<SessionRecord[]>([]);
 	let payStatus = $state<PayStatus | undefined>();
 	let loading = $state(true);
-	let suppressClick = $state(false);
+	// Отметка последнего длинного нажатия: клик в её хвосте — часть того же
+	// жеста (GUI-6). Прежний общий флаг гасили в каждом обработчике, и
+	// порядок pointerup/click решал исход.
+	let pressMark = $state<PressMark>(null);
 	let pinMenuKey = $state<string | null>(null);
 	let creatingGroup = $state(false);
 	let newGroupName = $state('');
@@ -137,13 +146,13 @@
 	}
 
 	function openCircle(circle: StreetCircle) {
+		// Нажатие при открытом меню закрывает его и на этом останавливается —
+		// иначе тем же тапом человек проваливался бы в круг.
+		const menuOpen = pinMenuKey !== null || groupMenuId !== null || fabMenuOpen;
 		pinMenuKey = null;
 		groupMenuId = null;
 		fabMenuOpen = false;
-		if (suppressClick) {
-			suppressClick = false;
-			return;
-		}
+		if (menuOpen || swallowsClick(pressMark)) return;
 		rememberCircleOrigin(circle.id, circle.origin);
 		goto(circle.pendingJoin ? `/circles/${circle.id}/join` : `/circles/${circle.id}`);
 	}
@@ -152,9 +161,9 @@
 		if (circle.pendingJoin) return;
 		clearTimeout(longPressTimer);
 		longPressTimer = setTimeout(() => {
-			suppressClick = true;
+			pressMark = markLongPress();
 			pinMenuKey = circleKey(circle);
-		}, 500);
+		}, LONG_PRESS_MS);
 	}
 
 	function cancelLongPress() {
@@ -170,11 +179,9 @@
 	}
 
 	async function toggleGroupCollapsed(group: GroupRecord) {
-		if (suppressClick) {
-			suppressClick = false;
-			return;
-		}
+		const menuOpen = groupMenuId !== null;
 		groupMenuId = null;
+		if (menuOpen || swallowsClick(pressMark)) return;
 		await putGroup({ ...group, collapsed: !group.collapsed });
 		groups = await listGroups();
 	}
@@ -226,10 +233,10 @@
 	function startGroupLongPress(groupId: string) {
 		clearTimeout(groupLongPressTimer);
 		groupLongPressTimer = setTimeout(() => {
-			suppressClick = true;
+			pressMark = markLongPress();
 			groupMenuId = groupId;
 			editingGroupId = null;
-		}, 500);
+		}, LONG_PRESS_MS);
 	}
 
 	function cancelGroupLongPress() {
@@ -270,28 +277,21 @@
 	function startFabLongPress() {
 		clearTimeout(fabLongPressTimer);
 		fabLongPressTimer = setTimeout(() => {
-			suppressClick = true;
+			pressMark = markLongPress();
 			fabMenuOpen = true;
 			pinMenuKey = null;
 			groupMenuId = null;
-		}, 500);
+		}, LONG_PRESS_MS);
 	}
 
 	function endFabLongPress() {
 		clearTimeout(fabLongPressTimer);
-		if (suppressClick) {
-			queueMicrotask(() => {
-				suppressClick = false;
-			});
-		}
 	}
 
 	function openNew() {
-		if (suppressClick) {
-			suppressClick = false;
-			return;
-		}
+		const menuOpen = fabMenuOpen;
 		fabMenuOpen = false;
+		if (menuOpen || swallowsClick(pressMark)) return;
 		goto('/circles/new');
 	}
 
@@ -343,6 +343,7 @@
 	onsettings={openSettings}
 	fab={empty ? undefined : plusFab}
 	fabMenuOpen={fabMenuOpen}
+	onfabmenuclose={() => (fabMenuOpen = false)}
 	fabMenuItems={[
 		{ label: 'Новый круг', onclick: openNew },
 		{ label: 'Новая группа', onclick: startCreateGroup }

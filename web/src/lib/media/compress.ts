@@ -13,9 +13,6 @@ export interface CompressedMedia {
 	size: number;
 }
 
-/** @deprecated Use CompressedMedia */
-export type CompressedImage = CompressedMedia;
-
 export function evenPx(n: number): number {
 	const v = Math.round(n);
 	return Math.max(2, v - (v % 2));
@@ -78,22 +75,38 @@ export async function compressImage(
 	ctx.drawImage(bitmap, 0, 0, w, h);
 	bitmap.close();
 
-	const blob = await new Promise<Blob>((resolve, reject) => {
-		canvas.toBlob(
-			(b) => (b ? resolve(b) : reject(new Error('compress_failed'))),
-			'image/webp',
-			quality
-		);
-	});
-
+	const blob = await encodePhoto(canvas, quality);
 	const buffer = await blob.arrayBuffer();
 	const base = file.name.replace(/\.[^.]+$/, '') || 'photo';
+	const ext = blob.type === 'image/webp' ? 'webp' : 'jpg';
 	return {
 		data: buffer,
-		type: 'image/webp',
-		name: `${base}.webp`,
+		type: blob.type,
+		name: `${base}.${ext}`,
 		size: buffer.byteLength
 	};
+}
+
+/** Холст, который умеет отдать картинку; у тестов — подделка. */
+export interface BlobEncoder {
+	toBlob(callback: BlobCallback, type?: string, quality?: number): void;
+}
+
+function toBlobAs(canvas: BlobEncoder, type: string, quality: number): Promise<Blob> {
+	return new Promise<Blob>((resolve, reject) => {
+		canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('compress_failed'))), type, quality);
+	});
+}
+
+/**
+ * WebP, а без кодировщика WebP — JPEG. Браузер без WebP-кодировщика (Safari
+ * до 16) молча отдаёт PNG: раньше он уходил на сервер с типом и расширением
+ * WebP и размером несжатой картинки (план 42, MED-2).
+ */
+export async function encodePhoto(canvas: BlobEncoder, quality: number): Promise<Blob> {
+	const webp = await toBlobAs(canvas, 'image/webp', quality);
+	if (webp.type === 'image/webp') return webp;
+	return toBlobAs(canvas, 'image/jpeg', quality);
 }
 
 export async function compressVideo(

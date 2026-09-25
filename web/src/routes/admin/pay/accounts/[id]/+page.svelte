@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
@@ -95,7 +95,7 @@
 	<AdminSection>
 		<TextButton
 			variant="admin"
-			style="font-size:11.5px;color:var(--faint);margin-bottom:8px;display:flex;align-items:center;gap:8px"
+			class="sz-11 faint mb-8 flex-mid gap-8"
 			onclick={() => goto('/admin/pay/subscription')}
 		>
 			<Icon name="back" size="sm" />
@@ -107,11 +107,11 @@
 			<Hint>{error}</Hint>
 		{:else if account}
 			<h4 style="margin-bottom:6px">{account.email}</h4>
-			<div style="font-size:12.5px;color:var(--muted);margin-bottom:22px">
+			<div class="note mb-22">
 				{subscriptionAdminSubtitle(account.subscription_expires_at)}
 			</div>
-			<SectionLabel style="margin:0 0 8px">Продлить на</SectionLabel>
-			<ChipGroup style="margin:0">
+			<SectionLabel class="mt-0 mx-0 mb-8">Продлить на</SectionLabel>
+			<ChipGroup class="m-0">
 				{#each DAY_CHIPS as chip (chip.days)}
 					<Chip
 						selected={!unlimited && !custom && days === chip.days}
@@ -134,7 +134,7 @@
 					Своё…
 				</Chip>
 			</ChipGroup>
-			<ChipGroup style="margin:8px 0 0">
+			<ChipGroup class="mt-8 mx-0">
 				<Chip
 					selected={unlimited}
 					onclick={() => {
@@ -150,18 +150,18 @@
 					admin
 					type="number"
 					placeholder="дней"
-					style="margin-top:10px;width:120px"
+					class="mt-10 w120"
 					bind:value={customDays}
 				/>
 			{/if}
-			<div style="font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.5;max-width:420px">
+			<div class="note mt-10 lh-15 mw-420">
 				{extendHint}
 			</div>
-			<div style="margin-top:18px">
+			<div class="mt-18">
 				<Button disabled={acting} onclick={() => void grant()}>Дать</Button>
 			</div>
 			{#if error}
-				<Hint style="margin-top:12px">{error}</Hint>
+				<Hint class="mt-12">{error}</Hint>
 			{/if}
 		{/if}
 	</AdminSection>

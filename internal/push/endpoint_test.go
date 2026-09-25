@@ -228,6 +228,11 @@ func TestDeliveryErrorKeepsHostWithoutPath(t *testing.T) {
 // шифрование падает раньше запроса.
 func seedSubscription(t *testing.T, svc *push.Service, endpoint string) {
 	t.Helper()
+	seedSubscriptionID(t, svc, "s-seed", endpoint)
+}
+
+func seedSubscriptionID(t *testing.T, svc *push.Service, id, endpoint string) {
+	t.Helper()
 	key, err := ecdh.P256().GenerateKey(rand.Reader)
 	if err != nil {
 		t.Fatal(err)
@@ -238,8 +243,8 @@ func seedSubscription(t *testing.T, svc *push.Service, endpoint string) {
 	}
 	if _, err := svc.DB().ExecContext(t.Context(), `
 		INSERT INTO push_subscriptions (id, account_id, endpoint, p256dh, auth, user_agent, created_at)
-		VALUES ('s-seed', 'acc', ?, ?, ?, '', ?)
-	`, endpoint, base64.RawURLEncoding.EncodeToString(key.PublicKey().Bytes()),
+		VALUES (?, 'acc', ?, ?, ?, '', ?)
+	`, id, endpoint, base64.RawURLEncoding.EncodeToString(key.PublicKey().Bytes()),
 		base64.RawURLEncoding.EncodeToString(secret),
 		time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
 		t.Fatal(err)

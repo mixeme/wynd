@@ -125,6 +125,12 @@
 	}
 
 	onMount(() => {
+		// Вышедший с доступом имя в круге не меняет: ссылка на экран у него
+		// скрыта, а по прямому адресу сохранение ответило бы forbidden (SCR-2).
+		if (!circle.canWrite) {
+			goto(`/circles/${circle.circleId}`, { replaceState: true });
+			return;
+		}
 		void load();
 	});
 </script>

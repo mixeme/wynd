@@ -1,7 +1,7 @@
 {
 	"name": "wynd-web",
 	"private": true,
-	"version": "0.7.2",
+	"version": "0.8.0",
 	"license": "AGPL-3.0-or-later",
 	"type": "module",
 	"scripts": {
@@ -12,7 +12,6 @@
 		"check:ui": "node scripts/check-ui.mjs",
 		"licenses": "node scripts/third-party-licenses.mjs",
 		"test": "vitest run",
-		"api:types": "openapi-typescript ../internal/api/openapi-participant.yaml -o src/lib/api/schema-participant.d.ts && openapi-typescript ../internal/api/openapi-admin.yaml -o src/lib/api/schema-admin.d.ts",
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write ."
 	},
@@ -33,7 +32,6 @@
 		"fake-indexeddb": "^6.0.0",
 		"globals": "^15.14.0",
 		"jsdom": "^30.0.1",
-		"openapi-typescript": "^7.8.0",
 		"prettier": "^3.4.2",
 		"prettier-plugin-svelte": "^3.3.3",
 		"svelte": "^5.0.0",

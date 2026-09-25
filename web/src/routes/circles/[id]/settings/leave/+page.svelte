@@ -83,7 +83,7 @@
 </FormLayout>
 
 {#if !pageLoading && isOwner}
-	<OverlayLayout variant="dialog" ondismiss={() => goto(`/circles/${circle.circleId}/settings`)}>
+	<OverlayLayout variant="dialog" label="Сначала передайте владение" ondismiss={() => goto(`/circles/${circle.circleId}/settings`)}>
 		<div style="font-size:17px;font-weight:600;margin-bottom:10px">Сначала передайте владение</div>
 		<Hint
 			>Подвешенных кругов не бывает. Пока вы владелец «{circle.name}», уйти нельзя.</Hint

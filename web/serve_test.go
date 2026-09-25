@@ -15,7 +15,7 @@ func TestSPA_fallbackAndAssets(t *testing.T) {
 		"manifest.webmanifest": &fstest.MapFile{Data: []byte(`{"name":"Wynd"}`)},
 	}
 
-	h := SPA(root)
+	h := SPA(root, true)
 
 	t.Run("existing asset", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/_app/chunk.js", nil)
@@ -86,11 +86,40 @@ func TestSPA_fallbackAndAssets(t *testing.T) {
 
 var _ fs.FS = fstest.MapFS{}
 
+// Инвариант (план 42, SW-2): вне loopback хешированные чанки кэшируются на
+// год, а оболочка, service worker и нехешированные файлы `_app/` —
+// перепроверяются; на loopback перепроверяется всё.
+func TestSPA_cachePolicyOutsideLoopback(t *testing.T) {
+	root := fstest.MapFS{
+		"index.html":                  &fstest.MapFile{Data: []byte("<html>app</html>")},
+		"sw.js":                       &fstest.MapFile{Data: []byte("//sw")},
+		"_app/version.json":           &fstest.MapFile{Data: []byte(`{"version":"1"}`)},
+		"_app/immutable/chunk.abc.js": &fstest.MapFile{Data: []byte("x")},
+	}
+	for _, tc := range []struct {
+		loopback bool
+		path     string
+		want     string
+	}{
+		{false, "/_app/immutable/chunk.abc.js", "public, max-age=31536000, immutable"},
+		{false, "/_app/version.json", "no-cache"},
+		{false, "/sw.js", "no-cache"},
+		{false, "/index.html", "no-cache"},
+		{true, "/_app/immutable/chunk.abc.js", "no-cache"},
+	} {
+		rec := httptest.NewRecorder()
+		SPA(root, tc.loopback).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tc.path, nil))
+		if got := rec.Header().Get("Cache-Control"); got != tc.want {
+			t.Fatalf("loopback=%v %s: %q, want %q", tc.loopback, tc.path, got, tc.want)
+		}
+	}
+}
+
 func TestSPA_securityHeaders(t *testing.T) {
 	root := fstest.MapFS{"index.html": &fstest.MapFile{Data: []byte("<html>app</html>")}}
 	req := httptest.NewRequest(http.MethodGet, "/circles/abc", nil)
 	rec := httptest.NewRecorder()
-	SPA(root).ServeHTTP(rec, req)
+	SPA(root, false).ServeHTTP(rec, req)
 	for k, want := range map[string]string{
 		"X-Content-Type-Options":  "nosniff",
 		"X-Frame-Options":         "DENY",

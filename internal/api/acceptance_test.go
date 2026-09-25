@@ -225,7 +225,7 @@ func TestAcceptanceQuotaArchiveLockPurge(t *testing.T) {
 	}
 
 	now := time.Now().UTC()
-	deadline := now.Add(time.Hour)
+	deadline := now.Add(25 * time.Hour)
 	cutoff := now.Add(24 * time.Hour).Format("2006-01-02")
 	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/archive", ownerTok, map[string]any{
 		"cutoff_date":         cutoff,

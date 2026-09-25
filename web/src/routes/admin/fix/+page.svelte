@@ -72,17 +72,15 @@
 
 <AdminWideLayout app active="Проверка" {server}>
 	<AdminSection>
-		<div style="font-size:11.5px;color:var(--faint);margin-bottom:8px">Проверка · Прокси</div>
+		<div class="sz-11 faint mb-8">Проверка · Прокси</div>
 		<h4 style="margin-bottom:8px">{fixText.title}</h4>
-		<div style="font-size:12.5px;color:var(--muted);max-width:620px;line-height:1.6">{fixText.body}</div>
-		<div
-			style="display:flex;flex-wrap:wrap;gap:10px;margin:16px 0 18px;font-size:11.5px;color:var(--muted)"
-		>
+		<div class="note lh-16" style="max-width:620px">{fixText.body}</div>
+		<div class="flex wrap gap-10 mt-16 mb-18 sz-11 muted">
 			<span class="inp mono">X-Forwarded-For: {xff}</span>
 			<span class="inp mono">X-Real-IP: {xri}</span>
 			<span class="inp mono">клиент: {clientIp}</span>
 		</div>
-		<ChipGroup style="margin:0 0 12px">
+		<ChipGroup class="mx-0 mb-12">
 			{#each kinds as item (item)}
 				<Chip selected={kind === item} onclick={() => void load(item)}>{item}</Chip>
 			{/each}
@@ -92,14 +90,14 @@
 		{:else}
 			<CodeBlock {lines} />
 		{/if}
-		<div style="display:flex;align-items:center;gap:12px;margin-top:16px">
-			<TextButton variant="adminBox" style="font-weight:600" onclick={() => void copySnippet()}>
+		<div class="flex-mid gap-12 mt-16">
+			<TextButton variant="adminBox" class="bold" onclick={() => void copySnippet()}>
 				{copied ? 'Скопировано' : 'Скопировать'}
 			</TextButton>
 			<TextButton variant="adminBox" onclick={() => goto('/admin/check')}>
 				Проверить снова
 			</TextButton>
-			<span style="font-size:11.5px;color:var(--faint)"
+			<span class="sz-11 faint"
 				>Wynd не трогает ваш прокси и не перезапускает его: вставляете вы сами.</span
 			>
 		</div>

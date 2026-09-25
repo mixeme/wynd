@@ -1,7 +1,10 @@
 package api_test
 
 import (
+	"bytes"
+	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -37,5 +40,28 @@ func TestCircleNotifyPrefsRequireMembership(t *testing.T) {
 	rec = doJSON(t, srv, http.MethodPut, "/api/v1/circles/"+circleID+"/notify_prefs", ownerTok, body)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("own prefs: %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+// Инвариант: упоминания всегда включены — выключив всё остальное,
+// участник всё равно узнает, что его позвали.
+func TestNotifyPrefsMentionsAlwaysOn(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	token, _ := registerSession(t, srv, caps, "prefs@example.com")
+
+	body, _ := json.Marshal(map[string]bool{"posts": false})
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/notify_prefs", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("prefs: %d %s", rec.Code, rec.Body.String())
+	}
+	var res map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&res); err != nil {
+		t.Fatal(err)
+	}
+	if res["mentions"] != true {
+		t.Fatalf("mentions must stay on: %v", res["mentions"])
 	}
 }

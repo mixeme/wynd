@@ -8,6 +8,8 @@ import (
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 )
 
+// Инвариант: новичок не видит прошлое — события до вступления в его отрезок
+// не входят.
 func TestInvariantNewbieDoesNotSeePast(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -32,6 +34,8 @@ func TestInvariantNewbieDoesNotSeePast(t *testing.T) {
 	}
 }
 
+// Инвариант: вышедший с доступом читает до своего выхода и не пишет после
+// него.
 func TestInvariantLeftWithAccessReadsUntilLeave(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -58,6 +62,8 @@ func TestInvariantLeftWithAccessReadsUntilLeave(t *testing.T) {
 	}
 }
 
+// Инвариант: ушедший совсем и исключённый не читают ничего; в хронике —
+// «покинул круг», одной строкой.
 func TestInvariantGoneAndExcludedCannotRead(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -107,6 +113,8 @@ func TestInvariantGoneAndExcludedCannotRead(t *testing.T) {
 	}
 }
 
+// Инвариант: повторный вход не открывает дыру между отрезками — видны оба
+// отрезка, но не промежуток.
 func TestInvariantRejoinDoesNotBridgeGap(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -133,6 +141,7 @@ func TestInvariantRejoinDoesNotBridgeGap(t *testing.T) {
 	}
 }
 
+// Инвариант: летопись (окно 0) запрещает правку и удаление сказанного.
 func TestInvariantChronicleForbidsEditAndDelete(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.ChronicleWindow())
@@ -148,6 +157,8 @@ func TestInvariantChronicleForbidsEditAndDelete(t *testing.T) {
 	}
 }
 
+// Инвариант: окно правок — снимок на момент публикации; смена настройки круга
+// не оживляет и не отнимает уже выданное.
 func TestInvariantEditWindowSnapshotNotRetroactive(t *testing.T) {
 	e := newTestEnv(t)
 	day := chronicle.DurationWindow(24 * time.Hour)
@@ -187,6 +198,8 @@ func TestInvariantEditWindowSnapshotNotRetroactive(t *testing.T) {
 	}
 }
 
+// Инвариант: у комментария своё окно правок, отсчитанное от его публикации, а
+// не от записи.
 func TestInvariantCommentUsesOwnEditWindow(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.ChronicleWindow())
@@ -206,6 +219,8 @@ func TestInvariantCommentUsesOwnEditWindow(t *testing.T) {
 	}
 }
 
+// Инвариант: служебные события хроники не удаляются — структура круга не
+// переписывается.
 func TestInvariantServiceEventsNotDeletable(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -223,6 +238,7 @@ func TestInvariantServiceEventsNotDeletable(t *testing.T) {
 	}
 }
 
+// Инвариант: выход из круга не расширяет прав на удаление чужого.
 func TestInvariantLeaveDoesNotExpandDeleteRights(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.ChronicleWindow())
@@ -237,6 +253,8 @@ func TestInvariantLeaveDoesNotExpandDeleteRights(t *testing.T) {
 	}
 }
 
+// Инвариант: удаление ветки стирает текст записи и комментариев отовсюду,
+// включая payload событий, и само событием не становится.
 func TestInvariantBranchDeletionScrubsText(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -281,6 +299,8 @@ func TestInvariantBranchDeletionScrubsText(t *testing.T) {
 	}
 }
 
+// Инвариант: запись задним числом не меняет порядок ленты — он по created_at,
+// не по entry_date.
 func TestInvariantBackdatedDoesNotChangeFeedOrder(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -296,6 +316,8 @@ func TestInvariantBackdatedDoesNotChangeFeedOrder(t *testing.T) {
 	}
 }
 
+// Инвариант: день сворачивается с последней записью и возрождается пустым,
+// без старого содержимого.
 func TestInvariantDayCollapseAndRevive(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -330,6 +352,7 @@ func TestInvariantDayCollapseAndRevive(t *testing.T) {
 	}
 }
 
+// Инвариант: обложку дня нельзя поставить, если за этот день нет записи.
 func TestInvariantDayCoverRequiresEntry(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -345,6 +368,8 @@ func TestInvariantDayCoverRequiresEntry(t *testing.T) {
 	}
 }
 
+// Инвариант: чистка старых имён не трогает события; стёртое имя больше не
+// разрешается.
 func TestInvariantEraseIdentityNames(t *testing.T) {
 	e := newTestEnv(t)
 	circle, _, mem, err := e.ch.CreateCircle(e.ctx, chronicle.CreateCircleInput{
@@ -374,6 +399,8 @@ func TestInvariantEraseIdentityNames(t *testing.T) {
 	}
 }
 
+// Инвариант: владелец не выходит из круга, пока не передаст владение, — ни
+// совсем, ни с сохранением доступа.
 func TestOwnerCannotLeaveWithoutTransfer(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -387,6 +414,7 @@ func TestOwnerCannotLeaveWithoutTransfer(t *testing.T) {
 	}
 }
 
+// Инвариант: краткую строку события пишет сервер, клиент её не собирает.
 func TestEventSummariesAreServerSide(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -404,6 +432,8 @@ func TestEventSummariesAreServerSide(t *testing.T) {
 	}
 }
 
+// Инвариант: удаление ветки стирает и первоначальный текст, и все правленные
+// версии в payload событий.
 func TestInvariantBranchDeletionScrubsEditedPayload(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -426,6 +456,8 @@ func TestInvariantBranchDeletionScrubsEditedPayload(t *testing.T) {
 	}
 }
 
+// Инвариант: комментарий к записи чужого круга — invalid, даже если id записи
+// известен.
 func TestInvariantCommentWrongCircleRejected(t *testing.T) {
 	e := newTestEnv(t)
 	a := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -439,6 +471,7 @@ func TestInvariantCommentWrongCircleRejected(t *testing.T) {
 	}
 }
 
+// Инвариант: отрицательное окно правок — invalid.
 func TestSetEditWindowRejectsNegativeSeconds(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -449,6 +482,7 @@ func TestSetEditWindowRejectsNegativeSeconds(t *testing.T) {
 	}
 }
 
+// Инвариант: вышедший не меняет настройки круга.
 func TestInvariantLeftMemberCannotChangeSettings(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -467,6 +501,8 @@ func TestInvariantLeftMemberCannotChangeSettings(t *testing.T) {
 	}
 }
 
+// Инвариант: captured_at в payload — обычная метка времени, а не тип драйвера
+// БД.
 func TestPostCapturedAtPayloadIsPlainTime(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -489,6 +525,8 @@ func TestPostCapturedAtPayloadIsPlainTime(t *testing.T) {
 	}
 }
 
+// Инвариант: свёрнутый день уносит из журнала своё название; возрождённый
+// день не наследует его, и удаление сказанного событием не становится.
 func TestDayCollapseRemovesUserContentFromJournal(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -535,6 +573,8 @@ func TestDayCollapseRemovesUserContentFromJournal(t *testing.T) {
 	}
 }
 
+// Инвариант: комментарий правится и удаляется по своему окну; удалённый не
+// оставляет текста в журнале и событием не становится.
 func TestInvariantCommentEditAndDeleteOwnWindow(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.ChronicleWindow())
@@ -582,6 +622,8 @@ func TestInvariantCommentEditAndDeleteOwnWindow(t *testing.T) {
 	}
 }
 
+// Инвариант: снятая реакция уходит из журнала, а поставленная заново — новая
+// запись, не воскрешение прежней.
 func TestInvariantReactionDeleteAndRevive(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -628,6 +670,8 @@ func TestInvariantReactionDeleteAndRevive(t *testing.T) {
 	}
 }
 
+// Инвариант: ключ реакции — только из списка; произвольный эмодзи не
+// принимается.
 func TestInvariantReactionRejectsUnknownKey(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -640,6 +684,8 @@ func TestInvariantReactionRejectsUnknownKey(t *testing.T) {
 	}
 }
 
+// Инвариант: снятие названия дня отслаивает верхний слой к предыдущему
+// названию, и только последнее снятие оставляет день безымянным.
 func TestInvariantClearDayTitlePeelsToPrevious(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -694,6 +740,8 @@ func TestInvariantClearDayTitlePeelsToPrevious(t *testing.T) {
 	}
 }
 
+// Инвариант: название дня не снять в летописи и не снять за день, в котором
+// нет записи.
 func TestInvariantClearDayTitleRequiresPostAndWindow(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.ChronicleWindow())
@@ -722,6 +770,8 @@ func TestInvariantClearDayTitleRequiresPostAndWindow(t *testing.T) {
 	}
 }
 
+// Инвариант: удаление записи откатывает обложку дня на прежнюю, а с последней
+// записью день сворачивается.
 func TestInvariantCoverRollsBackWhenPostDeleted(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -774,6 +824,8 @@ func TestInvariantCoverRollsBackWhenPostDeleted(t *testing.T) {
 	}
 }
 
+// Инвариант: снятие обложки дня возвращает предыдущую и день при этом не
+// сворачивает.
 func TestInvariantClearDayCoverFallsBack(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -805,6 +857,8 @@ func TestInvariantClearDayCoverFallsBack(t *testing.T) {
 	}
 }
 
+// Инвариант: запись без текста, но с вложением — допустима; пустым считается
+// только текст без media.
 func TestCreatePostAllowsEmptyBodyWithMedia(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())

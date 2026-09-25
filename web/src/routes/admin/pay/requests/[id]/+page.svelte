@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
@@ -127,7 +127,7 @@
 	<AdminSection>
 		<TextButton
 			variant="admin"
-			style="font-size:11.5px;color:var(--faint);margin-bottom:8px;display:flex;align-items:center;gap:8px"
+			class="sz-11 faint mb-8 flex-mid gap-8"
 			onclick={() => goto('/admin/pay/subscription')}
 		>
 			<Icon name="back" size="sm" />
@@ -139,7 +139,7 @@
 			<Hint>{error}</Hint>
 		{:else if request}
 			<h4 style="margin-bottom:6px">{request.account_email}</h4>
-			<div style="font-size:12.5px;color:var(--muted);margin-bottom:18px">
+			<div class="note mb-18">
 				заявка {formatPayDateTime(request.created_at)}
 				{#if statusSubtitle}
 					· {statusSubtitle}
@@ -151,11 +151,11 @@
 						<img
 							src={thumb}
 							alt=""
-							style="width:100%;border-radius:12px;display:block;aspect-ratio:4/3;object-fit:cover"
+							class="shot"
 						/>
 					{/if}
 					{#if request.blob_filename}
-						<div style="font-size:11.5px;color:var(--faint);margin-top:8px">
+						<div class="sz-11 faint mt-8">
 							{request.blob_filename}
 							{#if request.blob_size_bytes}
 								· {Math.round(request.blob_size_bytes / 1024)} КБ
@@ -164,12 +164,12 @@
 					{/if}
 				</div>
 				<div class="side">
-					<SectionLabel style="margin:0 0 8px">Комментарий</SectionLabel>
-					<div style="font-size:13.5px;line-height:1.5">
+					<SectionLabel class="mt-0 mx-0 mb-8">Комментарий</SectionLabel>
+					<div class="sz-13 lh-15">
 						{request.comment || 'Без комментария'}
 					</div>
-					<SectionLabel style="margin:22px 0 8px">Продлить на</SectionLabel>
-					<ChipGroup style="margin:0">
+					<SectionLabel class="mt-22 mx-0 mb-8">Продлить на</SectionLabel>
+					<ChipGroup class="m-0">
 						{#each DAY_CHIPS as chip (chip.days)}
 							<Chip
 								selected={!unlimited && !custom && days === chip.days}
@@ -192,7 +192,7 @@
 							Своё…
 						</Chip>
 					</ChipGroup>
-					<ChipGroup style="margin:8px 0 0">
+					<ChipGroup class="mt-8 mx-0">
 						<Chip
 							selected={unlimited}
 							onclick={() => {
@@ -208,11 +208,11 @@
 							admin
 							type="number"
 							placeholder="дней"
-							style="margin-top:10px;width:120px"
+							class="mt-10 w120"
 							bind:value={customDays}
 						/>
 					{/if}
-					<div style="font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.5">
+					<div class="note mt-10 lh-15">
 						{extendHint}
 					</div>
 					<div class="actions">
@@ -222,7 +222,7 @@
 				</div>
 			</div>
 			{#if error}
-				<Hint style="margin-top:12px">{error}</Hint>
+				<Hint class="mt-12">{error}</Hint>
 			{/if}
 		{/if}
 	</AdminSection>

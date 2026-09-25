@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import AdminSection from '$ui/admin/AdminSection.svelte';
@@ -61,7 +61,7 @@
 	<AdminSection>
 		<TextButton
 			variant="admin"
-			style="font-size:11.5px;color:var(--faint);margin-bottom:8px;display:flex;align-items:center;gap:8px"
+			class="sz-11 faint mb-8 flex-mid gap-8"
 			onclick={() => goto('/admin/pay')}
 		>
 			<Icon name="back" size="sm" />
@@ -75,44 +75,44 @@
 		{:else if settings}
 			<div class="cols">
 				<div>
-					<SectionLabel style="margin:0 0 8px">Баннер в списке кругов</SectionLabel>
-					<TextArea style="margin:0;height:88px;color:var(--ink)" bind:value={settings.text} />
-					<div style="font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.5">
+					<SectionLabel class="mt-0 mx-0 mb-8">Баннер в списке кругов</SectionLabel>
+					<TextArea class="m-0 h-88 ink" bind:value={settings.text} />
+					<div class="note mt-8 lh-15">
 						Без сумм и без прогресса. Один баннер.
 					</div>
 				</div>
 				<div>
-					<div style="display:flex;align-items:flex-start;gap:12px">
+					<div class="flex-top gap-12">
 						<Switch bind:checked={settings.show} label="Показывать" />
 						<div>
-							<div style="font-size:13.5px;font-weight:600">Показывать</div>
-							<div style="font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.5">
+							<div class="ttl">Показывать</div>
+							<div class="note mt-4 lh-15">
 								Выключить можно раньше срока. Баннер не связан с подпиской.
 							</div>
 						</div>
 					</div>
-					<div style="display:flex;align-items:flex-start;gap:12px;margin-top:18px">
+					<div class="flex-top gap-12 mt-18">
 						<Switch bind:checked={settings.dismissible} label="Можно скрыть" />
 						<div>
-							<div style="font-size:13.5px;font-weight:600">Можно скрыть</div>
-							<div style="font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.5">
+							<div class="ttl">Можно скрыть</div>
+							<div class="note mt-4 lh-15">
 								Скрытие постоянное, пока не выйдет новый баннер.
 							</div>
 						</div>
 					</div>
-					<div style="display:flex;align-items:center;gap:10px;margin-top:18px">
-						<span style="font-size:12.5px">До</span>
+					<div class="flex-mid gap-10 mt-18">
+						<span class="sz-12">До</span>
 						<Input
 							admin
 							type="date"
-							style="width:180px"
+							class="w180"
 							bind:value={settings.until}
 						/>
 					</div>
 				</div>
 			</div>
 			{#if error}
-				<Hint style="margin-top:12px">{error}</Hint>
+				<Hint class="mt-12">{error}</Hint>
 			{/if}
 		{/if}
 	</AdminSection>

@@ -23,6 +23,7 @@ func (s *Service) registrationMode(ctx context.Context) (RegistrationMode, error
 	return mode, err
 }
 
+// SetRegistrationMode switches the instance between open, invite and closed registration.
 func (s *Service) SetRegistrationMode(ctx context.Context, mode RegistrationMode) error {
 	if mode != ModeOpen && mode != ModeInvite && mode != ModeClosed {
 		return ErrInvalid

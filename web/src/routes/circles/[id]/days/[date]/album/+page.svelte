@@ -35,6 +35,11 @@
 	);
 
 	onMount(() => {
+		// Альбом дня — выбор обложки; читателю он не нужен (SCR-2).
+		if (!circle.canWrite) {
+			goto(`/circles/${circle.circleId}/days/${entryDate}`, { replaceState: true });
+			return;
+		}
 		void load();
 	});
 

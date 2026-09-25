@@ -7,10 +7,12 @@ type RateLimitError struct {
 	RetryAfterSec int
 }
 
+// Error reports the rate limit; the wait hint is in RetryAfterSec.
 func (e *RateLimitError) Error() string {
 	return ErrRateLimited.Error()
 }
 
+// Unwrap lets errors.Is match ErrRateLimited.
 func (e *RateLimitError) Unwrap() error {
 	return ErrRateLimited
 }

@@ -50,6 +50,7 @@ func (s *Service) createAccount(ctx context.Context, tx *sql.Tx, email string, w
 	return Account{ID: id, Email: email, CreatedAt: when}, nil
 }
 
+// AccountByID returns a live (not soft-deleted) account; ErrNotFound otherwise.
 func (s *Service) AccountByID(ctx context.Context, id string) (Account, error) {
 	var acc Account
 	var created string
@@ -94,6 +95,7 @@ type AccountDetail struct {
 	Circles               []AccountCircle `json:"circles"`
 }
 
+// AccountDetail is the admin card of one account: login time, subscription and circles, without identities.
 func (s *Service) AccountDetail(ctx context.Context, id string) (AccountDetail, error) {
 	if id == "" {
 		return AccountDetail{}, ErrInvalid

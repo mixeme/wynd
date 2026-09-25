@@ -252,27 +252,6 @@ func TestAdminSetPublicURL(t *testing.T) {
 	}
 }
 
-func TestNotifyPrefsMentionsAlwaysOn(t *testing.T) {
-	srv, caps, _, _ := setupAPI(t)
-	token, _ := registerSession(t, srv, caps, "prefs@example.com")
-
-	body, _ := json.Marshal(map[string]bool{"posts": false})
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/notify_prefs", bytes.NewReader(body))
-	req.Header.Set("Authorization", "Bearer "+token)
-	rec := httptest.NewRecorder()
-	srv.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("prefs: %d %s", rec.Code, rec.Body.String())
-	}
-	var res map[string]any
-	if err := json.NewDecoder(rec.Body).Decode(&res); err != nil {
-		t.Fatal(err)
-	}
-	if res["mentions"] != true {
-		t.Fatalf("mentions must stay on: %v", res["mentions"])
-	}
-}
-
 func TestBootstrapSMTPTest(t *testing.T) {
 	srv, _, _, _ := setupFreshAPI(t)
 	rec := doJSON(t, srv, http.MethodPost, "/api/v1/admin/bootstrap/smtp-test", "", map[string]any{

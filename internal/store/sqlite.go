@@ -99,6 +99,7 @@ func checkPragmas(db *sql.DB, requireWAL bool) error {
 	return nil
 }
 
+// Close closes the database; closing twice is harmless.
 func (s *SQLite) Close() error {
 	if s == nil || s.db == nil {
 		return nil
@@ -108,6 +109,7 @@ func (s *SQLite) Close() error {
 	return err
 }
 
+// Ping checks the database connection, for /ready.
 func (s *SQLite) Ping(ctx context.Context) error {
 	if s == nil || s.db == nil {
 		return sql.ErrConnDone
@@ -123,6 +125,7 @@ func (s *SQLite) DB() *sql.DB {
 	return s.db
 }
 
+// Version returns the applied schema version.
 func (s *SQLite) Version(ctx context.Context) (int, error) {
 	if s == nil || s.db == nil {
 		return 0, sql.ErrConnDone

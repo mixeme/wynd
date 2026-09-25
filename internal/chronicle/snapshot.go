@@ -277,17 +277,34 @@ func (c *Chronicle) MapSnapshot(ctx context.Context, circleID, accountID string)
 
 // DaySummary is a day projection row visible to the account.
 type DaySummary struct {
-	Day                 Day
-	PostCount           int
-	TitleEditableUntil  *time.Time
-	CoverEditableUntil  *time.Time
+	Day                Day
+	PostCount          int
+	TitleEditableUntil *time.Time
+	CoverEditableUntil *time.Time
 }
 
 // DaysSnapshot returns days with at least one visible post, ordered by entry_date descending.
+//
+// Три запроса на весь экран, а не 3N+1 (REF-6, CHR-2): дни, счёт видимых
+// записей по дням и сроки правки названия и обложки. Прежний обход считал
+// записи дня по одной и на каждую спрашивал CanReadEvent отдельным запросом,
+// то есть стоил тем дороже, чем длиннее круг.
 func (c *Chronicle) DaysSnapshot(ctx context.Context, circleID, accountID string) ([]DaySummary, error) {
 	if err := c.requireReader(ctx, circleID, accountID); err != nil {
 		return nil, err
 	}
+	counts, err := c.visiblePostCountsByDay(ctx, circleID, accountID)
+	if err != nil {
+		return nil, err
+	}
+	if len(counts) == 0 {
+		return nil, nil
+	}
+	titleUntil, coverUntil, err := c.dayEditableUntils(ctx, circleID)
+	if err != nil {
+		return nil, err
+	}
+
 	rows, err := c.db.QueryContext(ctx, `
 		SELECT d.circle_id, d.entry_date, d.title, d.cover_post_id, d.cover_blob_id
 		FROM days d
@@ -305,6 +322,10 @@ func (c *Chronicle) DaysSnapshot(ctx context.Context, circleID, accountID string
 		if err := rows.Scan(&d.CircleID, &d.EntryDate, &title, &coverPost, &coverBlob); err != nil {
 			return nil, err
 		}
+		count := counts[d.EntryDate]
+		if count == 0 {
+			continue
+		}
 		if title.Valid {
 			d.Title = title.String
 		}
@@ -314,28 +335,86 @@ func (c *Chronicle) DaysSnapshot(ctx context.Context, circleID, accountID string
 		if coverBlob.Valid {
 			d.CoverBlobID = coverBlob.String
 		}
-		count, err := c.visiblePostCountForDay(ctx, circleID, accountID, d.EntryDate)
-		if err != nil {
-			return nil, err
-		}
-		if count == 0 {
-			continue
-		}
-		titleUntil, err := c.dayTitleEditableUntil(ctx, circleID, d.EntryDate)
-		if err != nil {
-			return nil, err
-		}
-		coverUntil, err := c.dayCoverEditableUntil(ctx, circleID, d.EntryDate)
-		if err != nil {
-			return nil, err
-		}
 		out = append(out, DaySummary{
 			Day: d, PostCount: count,
-			TitleEditableUntil: titleUntil,
-			CoverEditableUntil: coverUntil,
+			TitleEditableUntil: titleUntil[d.EntryDate],
+			CoverEditableUntil: coverUntil[d.EntryDate],
 		})
 	}
 	return out, rows.Err()
+}
+
+// visiblePostCountsByDay считает видимые записи сразу по всем дням круга.
+func (c *Chronicle) visiblePostCountsByDay(ctx context.Context, circleID, accountID string) (map[string]int, error) {
+	rows, err := c.db.QueryContext(ctx, fmt.Sprintf(`
+		SELECT p.entry_date, COUNT(*)
+		FROM posts p
+		JOIN memberships m ON m.circle_id = p.circle_id AND m.account_id = ?
+		WHERE p.circle_id = ? AND p.deleted = 0
+		  AND %s
+		GROUP BY p.entry_date
+	`, sqlVisibleAtMembership("p.created_at")), accountID, circleID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make(map[string]int)
+	for rows.Next() {
+		var date string
+		var n int
+		if err := rows.Scan(&date, &n); err != nil {
+			return nil, err
+		}
+		out[date] = n
+	}
+	return out, rows.Err()
+}
+
+// dayEditableUntils отдаёт сроки правки названия и обложки по дням круга —
+// по последней строке сказанного на каждый день.
+func (c *Chronicle) dayEditableUntils(ctx context.Context, circleID string) (titles, covers map[string]*time.Time, err error) {
+	titles = make(map[string]*time.Time)
+	covers = make(map[string]*time.Time)
+	rows, err := c.db.QueryContext(ctx, `
+		SELECT 'title', t.entry_date, t.editable_until
+		FROM day_titles t
+		WHERE t.circle_id = ?
+		  AND t.event_seq = (
+			SELECT t2.event_seq FROM day_titles t2
+			WHERE t2.circle_id = t.circle_id AND t2.entry_date = t.entry_date
+			ORDER BY t2.created_at DESC, t2.event_seq DESC LIMIT 1
+		  )
+		UNION ALL
+		SELECT 'cover', dc.entry_date, dc.editable_until
+		FROM day_covers dc
+		WHERE dc.circle_id = ?
+		  AND dc.event_seq = (
+			SELECT dc2.event_seq FROM day_covers dc2
+			WHERE dc2.circle_id = dc.circle_id AND dc2.entry_date = dc.entry_date
+			ORDER BY dc2.created_at DESC, dc2.event_seq DESC LIMIT 1
+		  )
+	`, circleID, circleID)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var kind, date string
+		var until sql.NullString
+		if err := rows.Scan(&kind, &date, &until); err != nil {
+			return nil, nil, err
+		}
+		parsed, err := parseEditableUntil(until)
+		if err != nil {
+			return nil, nil, err
+		}
+		if kind == "title" {
+			titles[date] = parsed
+			continue
+		}
+		covers[date] = parsed
+	}
+	return titles, covers, rows.Err()
 }
 
 // DayPostsSnapshot returns visible posts for a day ordered by captured_at then created_at.
@@ -357,68 +436,6 @@ func (c *Chronicle) DayPostsSnapshot(ctx context.Context, circleID, accountID, e
 // RequireReader checks that account may read content in the circle.
 func (c *Chronicle) RequireReader(ctx context.Context, circleID, accountID string) error {
 	return c.requireReader(ctx, circleID, accountID)
-}
-
-func (c *Chronicle) requireReader(ctx context.Context, circleID, accountID string) error {
-	mem, err := c.membership(ctx, c.db, circleID, accountID)
-	if err != nil {
-		return err
-	}
-	if mem.Status == StatusGone {
-		return ErrForbidden
-	}
-	spans, err := c.visibilitySpans(ctx, circleID, accountID)
-	if err != nil {
-		return err
-	}
-	for _, sp := range spans {
-		if sp.CanRead {
-			return nil
-		}
-	}
-	return ErrForbidden
-}
-
-func (c *Chronicle) visiblePostCountForDay(ctx context.Context, circleID, accountID, entryDate string) (int, error) {
-	rows, err := c.db.QueryContext(ctx, `
-		SELECT created_at FROM posts
-		WHERE circle_id = ? AND entry_date = ? AND deleted = 0
-	`, circleID, entryDate)
-	if err != nil {
-		return 0, err
-	}
-	defer rows.Close()
-	var n int
-	for rows.Next() {
-		var created string
-		if err := rows.Scan(&created); err != nil {
-			return 0, err
-		}
-		t, _ := parseTime(created)
-		ok, err := c.CanReadEvent(ctx, circleID, accountID, t)
-		if err != nil {
-			return 0, err
-		}
-		if ok {
-			n++
-		}
-	}
-	return n, rows.Err()
-}
-
-func (c *Chronicle) loadFeedPost(ctx context.Context, postID, circleID, accountID string) (*FeedPost, error) {
-	scope, err := c.newReadScope(ctx, circleID, accountID)
-	if err != nil {
-		return nil, err
-	}
-	posts, err := c.buildFeedPosts(ctx, []string{postID}, circleID, scope)
-	if err != nil {
-		return nil, err
-	}
-	if len(posts) == 0 {
-		return nil, nil
-	}
-	return &posts[0], nil
 }
 
 func scanCommentRow(rows *sql.Rows) (Comment, error) {
@@ -473,6 +490,7 @@ type FeedMeta struct {
 	CircleStartedAt time.Time
 }
 
+// FeedMetaForAccount returns the feed frame for a reader: visible service events and the visibility bounds.
 func (c *Chronicle) FeedMetaForAccount(ctx context.Context, circleID, accountID string) (FeedMeta, error) {
 	if err := c.requireReader(ctx, circleID, accountID); err != nil {
 		return FeedMeta{}, err
@@ -552,6 +570,8 @@ func (c *Chronicle) feedVisibilityBounds(ctx context.Context, circleID, accountI
 	return earliest, circleStartedAt, nil
 }
 
+// LastVisibleEvent returns the newest summarized event the account may read.
+// Only a test oracle for the batch ListAccountCircles now (server-reference, «Legacy и сроки снятия»).
 func (c *Chronicle) LastVisibleEvent(ctx context.Context, circleID, accountID string) (summary string, at time.Time, ok bool, err error) {
 	rows, err := c.db.QueryContext(ctx, `
 		SELECT summary, created_at FROM events

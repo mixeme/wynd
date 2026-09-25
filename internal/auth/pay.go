@@ -63,24 +63,6 @@ func subscriptionExtendBase(current sql.NullString, now time.Time) time.Time {
 	return base
 }
 
-func (s *Service) setAccountSubscriptionExpires(ctx context.Context, accountID, expires string) error {
-	res, err := s.db.ExecContext(ctx, `
-		UPDATE accounts SET subscription_expires_at = ?, pay_reminder_sent_for = NULL
-		WHERE id = ? AND deleted_at IS NULL
-	`, expires, accountID)
-	if err != nil {
-		return err
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if n == 0 {
-		return ErrNotFound
-	}
-	return nil
-}
-
 // PaySettings is instance-level payment configuration.
 type PaySettings struct {
 	Requisites             string `json:"requisites"`
@@ -171,19 +153,23 @@ func (s *Service) loadPaySettingsRow(ctx context.Context) (PaySettings, error) {
 	return row, nil
 }
 
+// PayHubSettings returns the payment settings with the number of pending requests, for the admin hub.
 func (s *Service) PayHubSettings(ctx context.Context) (PaySettings, error) {
 	row, err := s.loadPaySettingsRow(ctx)
 	if err != nil {
 		return PaySettings{}, err
 	}
 	if err := s.db.QueryRowContext(ctx, `
-		SELECT COUNT(*) FROM pay_requests WHERE status = 'pending'
+		SELECT COUNT(*) FROM pay_requests pr
+		JOIN accounts a ON a.id = pr.account_id AND a.deleted_at IS NULL
+		WHERE pr.status = 'pending'
 	`).Scan(&row.PendingRequestCount); err != nil {
 		return PaySettings{}, err
 	}
 	return row, nil
 }
 
+// SetPayRequisites stores the payment details shown to participants.
 func (s *Service) SetPayRequisites(ctx context.Context, requisites string) error {
 	requisites = strings.TrimSpace(requisites)
 	if utf8.RuneCountInString(requisites) > MaxPayRequisitesChars {
@@ -195,6 +181,7 @@ func (s *Service) SetPayRequisites(ctx context.Context, requisites string) error
 	return err
 }
 
+// PayDonateSettings returns the donation banner settings.
 func (s *Service) PayDonateSettings(ctx context.Context) (PayDonateSettings, error) {
 	row, err := s.loadPaySettingsRow(ctx)
 	if err != nil {
@@ -206,6 +193,7 @@ func (s *Service) PayDonateSettings(ctx context.Context) (PayDonateSettings, err
 	}, nil
 }
 
+// SetPayDonateSettings stores the donation banner; its version grows only when a shown banner changes or is turned on, so dismissals survive other saves.
 func (s *Service) SetPayDonateSettings(ctx context.Context, in PayDonateSettings) error {
 	current, err := s.loadPaySettingsRow(ctx)
 	if err != nil {
@@ -246,6 +234,7 @@ func (s *Service) SetPayDonateSettings(ctx context.Context, in PayDonateSettings
 	return err
 }
 
+// PaySubscriptionSettings returns whether a subscription is required and how early to remind.
 func (s *Service) PaySubscriptionSettings(ctx context.Context) (PaySubscriptionSettings, error) {
 	row, err := s.loadPaySettingsRow(ctx)
 	if err != nil {
@@ -256,6 +245,7 @@ func (s *Service) PaySubscriptionSettings(ctx context.Context) (PaySubscriptionS
 	}, nil
 }
 
+// SetPaySubscriptionSettings turns the subscription gate on or off; reminders go 1, 3 or 7 days ahead.
 func (s *Service) SetPaySubscriptionSettings(ctx context.Context, in PaySubscriptionSettings) error {
 	if in.RemindDays != 1 && in.RemindDays != 3 && in.RemindDays != 7 {
 		return ErrInvalid
@@ -272,6 +262,7 @@ func (s *Service) SetPaySubscriptionSettings(ctx context.Context, in PaySubscrip
 	return err
 }
 
+// ListPendingPayRequests returns the payment requests waiting for the admin.
 func (s *Service) ListPendingPayRequests(ctx context.Context) ([]PayRequest, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT pr.id, pr.account_id, a.email, pr.blob_id, b.original_filename, b.size_bytes,
@@ -279,7 +270,7 @@ func (s *Service) ListPendingPayRequests(ctx context.Context) ([]PayRequest, err
 		FROM pay_requests pr
 		JOIN accounts a ON a.id = pr.account_id
 		LEFT JOIN blobs b ON b.id = pr.blob_id
-		WHERE pr.status = 'pending'
+		WHERE pr.status = 'pending' AND a.deleted_at IS NULL
 		ORDER BY pr.created_at ASC
 	`)
 	if err != nil {
@@ -297,6 +288,7 @@ func (s *Service) ListPendingPayRequests(ctx context.Context) ([]PayRequest, err
 	return out, rows.Err()
 }
 
+// PayRequestByID returns one payment request with its account and screenshot.
 func (s *Service) PayRequestByID(ctx context.Context, id string) (PayRequest, error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT pr.id, pr.account_id, a.email, pr.blob_id, b.original_filename, b.size_bytes,
@@ -347,6 +339,7 @@ func scanPayRequestRow(scanner interface {
 	return item, nil
 }
 
+// CreatePayRequest files a participant's payment request with a screenshot; one pending request per account.
 func (s *Service) CreatePayRequest(ctx context.Context, accountID, blobID, comment string) (string, error) {
 	if accountID == "" || blobID == "" {
 		return "", ErrInvalid
@@ -400,6 +393,18 @@ func (s *Service) CreatePayRequest(ctx context.Context, accountID, blobID, comme
 	if owner != accountID {
 		return "", ErrForbidden
 	}
+	// Файл скриншота отклонённой или истёкшей заявки удалён, а строка blobs
+	// осталась complete: повторная заявка с тем же блобом приходила админу
+	// без картинки (план 42, PAY-2).
+	var fileGone int
+	if err := tx.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM pay_requests WHERE blob_id = ? AND blob_deleted = 1
+	`, blobID).Scan(&fileGone); err != nil {
+		return "", err
+	}
+	if fileGone > 0 {
+		return "", ErrInvalid
+	}
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO pay_requests (id, account_id, blob_id, comment, status, created_at)
 		VALUES (?, ?, ?, NULLIF(?, ''), 'pending', ?)
@@ -446,6 +451,7 @@ func (s *Service) requirePaySubscription(ctx context.Context) error {
 	return nil
 }
 
+// ListPayAccounts lists accounts with their subscription term; only while the gate is on.
 func (s *Service) ListPayAccounts(ctx context.Context) ([]PayAccountSummary, error) {
 	if err := s.requirePaySubscription(ctx); err != nil {
 		return nil, err
@@ -478,6 +484,7 @@ func (s *Service) ListPayAccounts(ctx context.Context) ([]PayAccountSummary, err
 	return out, rows.Err()
 }
 
+// PayAccountByID returns one account's subscription term; only while the gate is on.
 func (s *Service) PayAccountByID(ctx context.Context, id string) (PayAccount, error) {
 	if err := s.requirePaySubscription(ctx); err != nil {
 		return PayAccount{}, err
@@ -505,6 +512,10 @@ func (s *Service) PayAccountByID(ctx context.Context, id string) (PayAccount, er
 	return row, nil
 }
 
+// GrantPayAccount extends a subscription by days, or makes it unlimited, without a request.
+//
+// Чтение текущего срока и запись нового — в одной транзакции: двойное
+// нажатие «продлить на 30» давало +60, как approve до аудита (план 42, PAY-4).
 func (s *Service) GrantPayAccount(ctx context.Context, accountID string, days int, unlimited bool) error {
 	if err := s.requirePaySubscription(ctx); err != nil {
 		return err
@@ -512,27 +523,39 @@ func (s *Service) GrantPayAccount(ctx context.Context, accountID string, days in
 	if accountID == "" {
 		return ErrInvalid
 	}
-	acc, err := s.PayAccountByID(ctx, accountID)
+	if !unlimited && (days < 1 || days > MaxPayGrantDays) {
+		return ErrInvalid
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
-	var next string
-	if unlimited {
-		next = subscriptionUnlimitedExpiry()
-	} else {
-		if days < 1 || days > MaxPayGrantDays {
-			return ErrInvalid
-		}
-		var current sql.NullString
-		if acc.SubscriptionExpiresAt != nil {
-			current = sql.NullString{String: *acc.SubscriptionExpiresAt, Valid: true}
-		}
+	defer tx.Rollback()
+	var current sql.NullString
+	err = tx.QueryRowContext(ctx, `
+		SELECT subscription_expires_at FROM accounts
+		WHERE id = ? AND email != ? AND deleted_at IS NULL
+	`, accountID, AdminSentinelEmail).Scan(&current)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	next := subscriptionUnlimitedExpiry()
+	if !unlimited {
 		base := subscriptionExtendBase(current, time.Now().UTC())
 		next = formatTime(base.AddDate(0, 0, days))
 	}
-	return s.setAccountSubscriptionExpires(ctx, accountID, next)
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE accounts SET subscription_expires_at = ?, pay_reminder_sent_for = NULL WHERE id = ?
+	`, next, accountID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
+// ApprovePayRequest approves a pending request and extends the subscription in one transaction.
 func (s *Service) ApprovePayRequest(ctx context.Context, id string, days int, unlimited bool) error {
 	if id == "" {
 		return ErrInvalid
@@ -582,47 +605,68 @@ func (s *Service) ApprovePayRequest(ctx context.Context, id string, days int, un
 	if n, _ := res.RowsAffected(); n == 0 {
 		return ErrNotFound
 	}
-	if _, err := tx.ExecContext(ctx, `
+	res, err = tx.ExecContext(ctx, `
 		UPDATE accounts SET subscription_expires_at = ?, pay_reminder_sent_for = NULL
 		WHERE id = ? AND deleted_at IS NULL
-	`, next, accountID); err != nil {
+	`, next, accountID)
+	if err != nil {
 		return err
+	}
+	// Учётка удалена — утверждать нечего: заявка остаётся pending, а не
+	// «утверждённой» без продления (план 42, PAY-5).
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
 	}
 	return tx.Commit()
 }
 
+// RejectPayRequest rejects a pending request and deletes its screenshot file at once.
+//
+// Статус, пометка blob_deleted и снятие ссылки — одна транзакция, файл
+// удаляется после коммита: раньше это были три шага, и сбой между ними
+// оставлял отклонённую заявку с живым файлом, который потом не удалял никто
+// (план 42, PAY-3).
 func (s *Service) RejectPayRequest(ctx context.Context, id string, blobsDir string) error {
 	now := formatTime(time.Now().UTC())
-	var blobID string
-	err := s.db.QueryRowContext(ctx, `
-		SELECT blob_id FROM pay_requests WHERE id = ? AND status = 'pending'
-	`, id).Scan(&blobID)
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrNotFound
-		}
 		return err
 	}
-	res, err := s.db.ExecContext(ctx, `
+	defer tx.Rollback()
+	var blobID string
+	err = tx.QueryRowContext(ctx, `
+		SELECT blob_id FROM pay_requests WHERE id = ? AND status = 'pending'
+	`, id).Scan(&blobID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	res, err := tx.ExecContext(ctx, `
 		UPDATE pay_requests SET status = 'rejected', resolved_at = ?
 		WHERE id = ? AND status = 'pending'
 	`, now, id)
 	if err != nil {
 		return err
 	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if n == 0 {
+	if n, _ := res.RowsAffected(); n == 0 {
 		return ErrNotFound
 	}
-	if blobsDir != "" && blobID != "" {
-		return removePayRequestBlob(ctx, s.db, blobsDir, id, blobID)
+	var rel string
+	if blobID != "" {
+		if rel, err = detachPayRequestBlob(ctx, tx, id, blobID); err != nil {
+			return err
+		}
 	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	removeBlobFile(blobsDir, rel)
 	return nil
 }
 
+// DismissPayBanner hides the current donation banner version for the account.
 func (s *Service) DismissPayBanner(ctx context.Context, accountID string) error {
 	settings, err := s.loadPaySettingsRow(ctx)
 	if err != nil {
@@ -634,6 +678,7 @@ func (s *Service) DismissPayBanner(ctx context.Context, accountID string) error 
 	return err
 }
 
+// PayStatus is what the participant's client shows: gate, banner, reminder and pending request.
 func (s *Service) PayStatus(ctx context.Context, accountID string, now time.Time) (PayStatus, error) {
 	settings, err := s.loadPaySettingsRow(ctx)
 	if err != nil {
@@ -698,6 +743,35 @@ func (s *Service) PayStatus(ctx context.Context, accountID string, now time.Time
 	return out, nil
 }
 
+// PaymentRequired reports whether the payment gate locks the account out:
+// the subscription is required, requisites are set and the term has run out.
+//
+// Шлюз зовётся на каждом paid-запросе и каждые 2 с в каждом открытом SSE;
+// PayStatus для этого делал четыре запроса ради трёх полей (план 42, PAY-1).
+// Правило то же, что `required && expired && has_requisites` в PayStatus.
+func (s *Service) PaymentRequired(ctx context.Context, accountID string, now time.Time) (bool, error) {
+	var required int
+	var requisites string
+	var expires sql.NullString
+	err := s.db.QueryRowContext(ctx, `
+		SELECT i.pay_subscription_required, i.pay_requisites, a.subscription_expires_at
+		FROM instance_settings i, accounts a
+		WHERE i.id = 1 AND a.id = ?
+	`, accountID).Scan(&required, &requisites, &expires)
+	if err != nil {
+		return false, err
+	}
+	if required == 0 || strings.TrimSpace(requisites) == "" {
+		return false, nil
+	}
+	var expiresAt *string
+	if expires.Valid && expires.String != "" {
+		expiresAt = &expires.String
+	}
+	return isSubscriptionExpired(expiresAt, now), nil
+}
+
+// PayBlobAllowedForAdmin reports whether the blob is a live payment screenshot, the only blob the panel may open.
 func (s *Service) PayBlobAllowedForAdmin(ctx context.Context, blobID string) (bool, error) {
 	var n int
 	err := s.db.QueryRowContext(ctx, `
@@ -706,6 +780,7 @@ func (s *Service) PayBlobAllowedForAdmin(ctx context.Context, blobID string) (bo
 	return n > 0, err
 }
 
+// CleanupExpiredPayScreenshots deletes files of approved screenshots whose subscription has expired; the blobs row stays for the foreign key.
 func (s *Service) CleanupExpiredPayScreenshots(ctx context.Context, blobsDir string, now time.Time) (int, error) {
 	nowRaw := formatTime(now.UTC())
 	rows, err := s.db.QueryContext(ctx, `
@@ -735,7 +810,7 @@ func (s *Service) CleanupExpiredPayScreenshots(ctx context.Context, blobsDir str
 	}
 	count := 0
 	for _, it := range items {
-		if err := removePayRequestBlob(ctx, s.db, blobsDir, it.reqID, it.blobID); err != nil {
+		if err := s.removePayRequestBlob(ctx, blobsDir, it.reqID, it.blobID); err != nil {
 			return count, err
 		}
 		count++
@@ -743,41 +818,59 @@ func (s *Service) CleanupExpiredPayScreenshots(ctx context.Context, blobsDir str
 	return count, nil
 }
 
-func removePayRequestBlob(ctx context.Context, db *sql.DB, blobsDir, reqID, blobID string) error {
-	tx, err := db.BeginTx(ctx, nil)
+func (s *Service) removePayRequestBlob(ctx context.Context, blobsDir, reqID, blobID string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
+	rel, err := detachPayRequestBlob(ctx, tx, reqID, blobID)
+	if err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	removeBlobFile(blobsDir, rel)
+	return nil
+}
+
+// detachPayRequestBlob помечает скриншот заявки удалённым и снимает её ссылку
+// на блоб. Возвращает путь файла, если он больше никому не нужен; удалять
+// файл — после коммита, чтобы откат не оставил строку без файла.
+func detachPayRequestBlob(ctx context.Context, tx *sql.Tx, reqID, blobID string) (string, error) {
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE pay_requests SET blob_deleted = 1 WHERE id = ?
 	`, reqID); err != nil {
-		return err
+		return "", err
 	}
 	if _, err := tx.ExecContext(ctx, `
 		DELETE FROM blob_refs WHERE ref_type = ? AND ref_id = ?
 	`, payRequestRefType, reqID); err != nil {
-		return err
+		return "", err
 	}
 	// Строка pay_requests остаётся (внешний ключ на blobs), поэтому спрашиваем
 	// про файл: свой скриншот уже помечен blob_deleted = 1 выше.
 	needed, err := blob.IsFileNeeded(ctx, tx, blobID)
-	if err != nil {
-		return err
+	if err != nil || needed {
+		return "", err
 	}
-	if !needed {
-		var rel string
-		err = tx.QueryRowContext(ctx, `
-			SELECT storage_path FROM blobs WHERE id = ?
-		`, blobID).Scan(&rel)
-		if err == nil && blobsDir != "" {
-			_ = os.Remove(filepath.Join(blobsDir, filepath.FromSlash(rel)))
-		} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return err
-		}
-		// Keep the blobs row: pay_requests.blob_id still references it.
+	var rel string
+	err = tx.QueryRowContext(ctx, `
+		SELECT storage_path FROM blobs WHERE id = ?
+	`, blobID).Scan(&rel)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
 	}
-	return tx.Commit()
+	// Keep the blobs row: pay_requests.blob_id still references it.
+	return rel, err
+}
+
+func removeBlobFile(blobsDir, rel string) {
+	if blobsDir == "" || rel == "" {
+		return
+	}
+	_ = os.Remove(filepath.Join(blobsDir, filepath.FromSlash(rel)))
 }
 
 func boolToInt(v bool) int {
@@ -860,6 +953,7 @@ type PayReminderCandidate struct {
 	DaysLeft  int
 }
 
+// ListPayReminderCandidates returns accounts whose subscription ends within the reminder window and who were not reminded for this term.
 func (s *Service) ListPayReminderCandidates(ctx context.Context, now time.Time) ([]PayReminderCandidate, error) {
 	settings, err := s.loadPaySettingsRow(ctx)
 	if err != nil {
@@ -897,6 +991,7 @@ func (s *Service) ListPayReminderCandidates(ctx context.Context, now time.Time) 
 	return out, rows.Err()
 }
 
+// MarkPayReminderSent records that the reminder for this expiry went out.
 func (s *Service) MarkPayReminderSent(ctx context.Context, accountID, expiresAt string) error {
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE accounts SET pay_reminder_sent_for = ? WHERE id = ?

@@ -23,14 +23,12 @@ type completeUploadBody struct {
 }
 
 func (s *Server) handleCreateUpload(w http.ResponseWriter, r *http.Request) {
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, blob.ErrForbidden)
 		return
 	}
-	var body createUploadBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[createUploadBody](w, r)
+	if !ok {
 		return
 	}
 	session, err := s.Blobs.CreateSession(r.Context(), blob.CreateSessionInput{
@@ -51,9 +49,8 @@ func (s *Server) handleCreateUpload(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUploadStatus(w http.ResponseWriter, r *http.Request) {
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, blob.ErrForbidden)
 		return
 	}
 	sessionID := r.PathValue("session_id")
@@ -68,9 +65,8 @@ func (s *Server) handleUploadStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUploadChunk(w http.ResponseWriter, r *http.Request) {
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, blob.ErrForbidden)
 		return
 	}
 	sessionID := r.PathValue("session_id")
@@ -89,15 +85,13 @@ func (s *Server) handleUploadChunk(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleCompleteUpload(w http.ResponseWriter, r *http.Request) {
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, blob.ErrForbidden)
 		return
 	}
 	sessionID := r.PathValue("session_id")
-	var body completeUploadBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[completeUploadBody](w, r)
+	if !ok {
 		return
 	}
 	b, err := s.Blobs.CompleteSession(r.Context(), blob.CompleteSessionInput{
@@ -115,9 +109,8 @@ func (s *Server) handleCompleteUpload(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleServeBlob(w http.ResponseWriter, r *http.Request) {
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, blob.ErrForbidden)
 		return
 	}
 	blobID := r.PathValue("blob_id")

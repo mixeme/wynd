@@ -12,6 +12,7 @@
 		placeholder = 'Написать в журнал…',
 		value = $bindable(''),
 		members = [],
+		busy = false,
 		onsend,
 		oncompose,
 		class: className = '',
@@ -19,14 +20,17 @@
 	}: {
 		placeholder?: string;
 		value?: string;
-		members?: { account_id: string; name: string }[];
+		// Ключ — лицо в круге: учётка соседа сюда не приходит.
+		members?: { identity_id: string; name: string }[];
+		// Идёт отправка: кнопка гаснет, второе нажатие не создаёт вторую запись (GUI-8).
+		busy?: boolean;
 		onsend?: () => void;
 		oncompose?: () => void;
 		class?: string;
 		style?: string;
 	} = $props();
 
-	const canSend = $derived(Boolean(value.trim()));
+	const canSend = $derived(Boolean(value.trim()) && !busy);
 	const isEmpty = $derived(!value.trim());
 
 	let bodyInput: HTMLTextAreaElement | undefined = $state();
@@ -60,7 +64,7 @@
 		syncMentionPicker();
 	}
 
-	function pickMember(member: { account_id: string; name: string }) {
+	function pickMember(member: { identity_id: string; name: string }) {
 		if (mentionStart == null || !bodyInput) return;
 		const cursor = bodyInput.selectionStart ?? value.length;
 		value = insertMention(value, mentionStart, cursor, member.name);
@@ -93,7 +97,7 @@
 <div class="comp-wrap {className}" {style}>
 	{#if showMentionPicker}
 		<MentionPicker>
-			{#each mentionCandidates as member, i (member.account_id)}
+			{#each mentionCandidates as member, i (member.identity_id)}
 				<MemberRow
 					initial={circleInitial(member.name)}
 					name={member.name}

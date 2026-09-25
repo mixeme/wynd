@@ -76,7 +76,7 @@
 
 ## В очередь плана 42 (не высокой серьёзности)
 
-Перечислено в `docs/plans/42-code-review.plan.md`, волны 3–7, с пометкой «аудит 2026-09-22»:
+Разобрано в плане 42, волны 3–7 (план закрыт 2026-09-24 и удалён; последняя версия — в истории git, коммит `4049290`, `docs/plans/42-code-review.plan.md`). Решения — в справочниках и CHANGELOG:
 
 - **DNS-rebinding push-endpoint** (низкая): фильтр приватных адресов — только при подписке; при доставке имя может резолвиться в 127.0.0.1. Свой `DialContext` с проверкой IP — волна 3.
 - **`POST /auth/verify` без лимита по IP** (низкая): знающий e-mail жертвы сжигает 3 её попытки. Лимит по IP или единый `400` на not_found/expired/too_many — волна 3.
@@ -110,7 +110,7 @@
 
 ## Материалы
 
-`docs/archive/audit-2026-09-22/`: семь отчётов рецензентов (`01-archive` … `07-client`) с полными перечнями заметок и разделами «Проверено, в порядке»; `probes/*.go.txt` — пробные тесты, подтвердившие находки 1–3 (перенесены в репозиторий как `TestClearDaySaidRequiresWriteAccess`, `TestClientIDReplayIsScopedToAuthor`, `TestSearchHidesCommentWrittenAfterLeaving`). Каталог удаляется вместе с планом 42 после волны 7.
+Семь отчётов рецензентов (`01-archive` … `07-client`) с полными перечнями заметок и разделами «Проверено, в порядке» и пробные тесты, подтвердившие находки 1–3 (перенесены в репозиторий как `TestClearDaySaidRequiresWriteAccess`, `TestClientIDReplayIsScopedToAuthor`, `TestSearchHidesCommentWrittenAfterLeaving`), лежали в `docs/archive/audit-2026-09-22/` и удалены вместе с планом 42; последняя версия — в истории git, коммит `4049290`.
 
 ## Повторный проход
 

@@ -1,7 +1,8 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { formatAdminDay, formatAdminDayYear } from '$lib/format/time';
 	import AdminSection from '$ui/admin/AdminSection.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
@@ -31,22 +32,6 @@
 	let ready = $state(false);
 	let deleting = $state(false);
 
-	function formatSince(iso: string): string {
-		const d = new Date(iso);
-		if (Number.isNaN(d.getTime())) return iso;
-		return new Intl.DateTimeFormat('ru-RU', {
-			day: 'numeric',
-			month: 'long',
-			year: 'numeric'
-		}).format(d);
-	}
-
-	function formatLogin(iso: string): string {
-		const d = new Date(iso);
-		if (Number.isNaN(d.getTime())) return iso;
-		return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' }).format(d);
-	}
-
 	function dotColor(color: string): string {
 		if (color in CIRCLE_COLORS) return CIRCLE_COLORS[color as CircleColor].cssVar;
 		return 'var(--slate)';
@@ -59,7 +44,7 @@
 	function circleDetail(circle: AdminAccountDetail['circles'][number]): string {
 		const role = roleLabel(circle.role);
 		if (circle.joined_at) {
-			return `${role} · с ${formatSince(circle.joined_at)}`;
+			return `${role} · с ${formatAdminDayYear(circle.joined_at)}`;
 		}
 		return role;
 	}
@@ -120,7 +105,7 @@
 	<AdminSection>
 		<TextButton
 			variant="admin"
-			style="font-size:11.5px;color:var(--faint);margin-bottom:8px"
+			class="sz-11 faint mb-8"
 			onclick={() => goto('/admin/people')}
 		>
 			Люди
@@ -131,17 +116,17 @@
 			<Hint>{error || 'Человек не найден'}</Hint>
 		{:else}
 			<h4 style="margin-bottom:6px">{acc.email}</h4>
-			<div style="font-size:12.5px;color:var(--muted);margin-bottom:20px;line-height:1.5">
-				на сервере с {formatSince(acc.created_at)}
+			<div class="note mb-20 lh-15">
+				на сервере с {formatAdminDayYear(acc.created_at)}
 				{#if acc.last_login_at}
-					· последний код {formatLogin(acc.last_login_at)}
+					· последний код {formatAdminDay(acc.last_login_at)}
 				{/if}
 				{#if acc.subscription_required}
 					<br />
 					{@const payAccountId = acc.id}
 					<TextButton
 						variant="admin"
-						style="font-size:12.5px;color:var(--muted);margin-top:2px;padding:0;text-align:left"
+						class="note mt-2 p-0 left"
 						onclick={() => goto(`/admin/pay/accounts/${payAccountId}`)}
 					>
 						{subscriptionPeopleLine(acc.subscription_expires_at)}
@@ -150,7 +135,7 @@
 			</div>
 			<div class="cols">
 				<div>
-					<SectionLabel style="margin:0 0 8px">Круги · {acc.circles.length}</SectionLabel>
+					<SectionLabel class="mt-0 mx-0 mb-8">Круги · {acc.circles.length}</SectionLabel>
 					{#if acc.circles.length === 0}
 						<Hint>без кругов</Hint>
 					{:else}
@@ -167,7 +152,7 @@
 							</div>
 						{/each}
 					{/if}
-					<div style="font-size:11.5px;color:var(--faint);margin-top:10px;line-height:1.5">
+					<div class="fine mt-10">
 						Имён в кругах нет: это лица, не вход на сервер.
 						{#if acc.owns_circle}
 							Владельца с этой страницы не удалить.
@@ -177,47 +162,43 @@
 					</div>
 				</div>
 				<div>
-					<SectionLabel style="margin:0 0 10px">Вход</SectionLabel>
-					<div style="display:flex;align-items:flex-start;gap:12px">
-						<Switch bind:checked={loginOpen} style="margin-top:2px" label={loginOpen ? 'Вход открыт' : 'Вход закрыт'} />
+					<SectionLabel class="mt-0 mx-0 mb-10">Вход</SectionLabel>
+					<div class="flex-top gap-12">
+						<Switch bind:checked={loginOpen} class="mt-2" label={loginOpen ? 'Вход открыт' : 'Вход закрыт'} />
 						<div>
-							<div style="font-size:13.5px;font-weight:600">
+							<div class="ttl">
 								{loginOpen ? 'Вход открыт' : 'Вход закрыт'}
 							</div>
-							<div style="font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.5">
+							<div class="note mt-4 lh-15">
 								Закрыть — код перестанет приходить, круги не трогаются. Открыть можно снова.
 							</div>
 						</div>
 					</div>
 					{#if !acc.owns_circle}
-						<div style="border:1.5px solid var(--ink);border-radius:12px;margin-top:28px">
-							<div
-								style="font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;font-weight:600;padding:12px 16px 2px"
-							>
+						<div class="danger adm-del mt-28 mx-0 mb-0">
+							<div class="dl">
 								Необратимо
 							</div>
-							<div style="padding:11px 16px 4px;font-weight:600">Удалить с сервера</div>
-							<div
-								style="padding:0 16px 14px;font-size:12.5px;color:var(--muted);line-height:1.5"
-							>
+							<div class="dt">Удалить с сервера</div>
+							<div class="dd note lh-15">
 								Записи останутся, события входа и ухода останутся. Имя в круге больше не к чему
 								привязать — в хронике будет факт без лица. С этого сервера человек уйдёт.
 							</div>
-							<div style="padding:0 16px 14px">
+							<div class="dd">
 								<TextButton variant="admin" onclick={() => void removeAccount()} disabled={deleting}>
 									{deleting ? 'Удаляем…' : 'Удалить'}
 								</TextButton>
 							</div>
 						</div>
 					{/if}
-					<div style="font-size:11.5px;color:var(--faint);margin-top:14px;line-height:1.5">
+					<div class="fine mt-14">
 						У кого есть круг во владении, этой кнопки нет: сначала передать владение в круге.
 						Панель его не передаёт, подвешенных кругов не бывает.
 					</div>
 				</div>
 			</div>
 			{#if error}
-				<Hint style="margin-top:12px">{error}</Hint>
+				<Hint class="mt-12">{error}</Hint>
 			{/if}
 		{/if}
 	</AdminSection>

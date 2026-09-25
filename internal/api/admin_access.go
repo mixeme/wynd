@@ -28,9 +28,8 @@ func (s *Server) handleAdminAccess(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAdminSetAccess(w http.ResponseWriter, r *http.Request) {
-	var body accessBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[accessBody](w, r)
+	if !ok {
 		return
 	}
 	if body.Name != "" {

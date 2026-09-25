@@ -56,14 +56,12 @@ type dayCoverBody struct {
 
 func (s *Server) handleCreatePost(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
-	var body createPostBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[createPostBody](w, r)
+	if !ok {
 		return
 	}
 	if strings.TrimSpace(body.Body) == "" && len(body.Media) == 0 {
@@ -104,7 +102,7 @@ func (s *Server) handleCreatePost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	post, err := s.createPostWithMedia(r.Context(), circleID, sess.AccountID, chronicle.PostInput{
+	post, err := s.createPostWithMedia(r.Context(), chronicle.PostInput{
 		CircleID: circleID, AccountID: sess.AccountID, Body: body.Body,
 		EntryDate: body.EntryDate, CapturedAt: captured, Now: now,
 		AllowEmptyBody: len(media) > 0, ClientID: strings.TrimSpace(body.ClientID),
@@ -126,14 +124,12 @@ func (s *Server) handleCreatePost(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleEditPost(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	postID := r.PathValue("post_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
-	var body editPostBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[editPostBody](w, r)
+	if !ok {
 		return
 	}
 	now := time.Now().UTC()
@@ -177,9 +173,8 @@ func (s *Server) handleEditPost(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleDeletePost(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	postID := r.PathValue("post_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	// Удаление — одна доменная транзакция: запись, ветка, вложения и ссылки
@@ -199,14 +194,12 @@ func (s *Server) handleDeletePost(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleCreateComment(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	postID := r.PathValue("post_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
-	var body textBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[textBody](w, r)
+	if !ok {
 		return
 	}
 	c, err := s.Chronicle.CreateComment(r.Context(), chronicle.CommentInput{
@@ -228,14 +221,12 @@ func (s *Server) handleCreateComment(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleEditComment(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	commentID := r.PathValue("comment_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
-	var body textBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[textBody](w, r)
+	if !ok {
 		return
 	}
 	err := s.Chronicle.EditComment(r.Context(), circleID, sess.AccountID, commentID, body.Body, time.Now().UTC())
@@ -249,9 +240,8 @@ func (s *Server) handleEditComment(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleDeleteComment(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	commentID := r.PathValue("comment_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	err := s.Chronicle.DeleteComment(r.Context(), circleID, sess.AccountID, commentID, time.Now().UTC())
@@ -265,14 +255,12 @@ func (s *Server) handleDeleteComment(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleSetReaction(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	postID := r.PathValue("post_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
-	var body reactionBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[reactionBody](w, r)
+	if !ok {
 		return
 	}
 	rx, err := s.Chronicle.SetReaction(r.Context(), chronicle.ReactionInput{
@@ -290,9 +278,8 @@ func (s *Server) handleSetReaction(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleDeleteReaction(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	postID := r.PathValue("post_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	mem, err := s.Chronicle.MembershipForAccount(r.Context(), circleID, sess.AccountID)
@@ -316,14 +303,12 @@ func (s *Server) handleDeleteReaction(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleSetDayTitle(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	entryDate := r.PathValue("date")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
-	var body dayTitleBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[dayTitleBody](w, r)
+	if !ok {
 		return
 	}
 	err := s.Chronicle.SetDayTitle(r.Context(), chronicle.DayTitleInput{
@@ -340,9 +325,8 @@ func (s *Server) handleSetDayTitle(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleClearDayTitle(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	entryDate := r.PathValue("date")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	err := s.Chronicle.ClearDayTitle(r.Context(), circleID, sess.AccountID, entryDate, time.Now().UTC())
@@ -356,14 +340,12 @@ func (s *Server) handleClearDayTitle(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleSetDayCover(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	entryDate := r.PathValue("date")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
-	var body dayCoverBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[dayCoverBody](w, r)
+	if !ok {
 		return
 	}
 	err := s.Chronicle.SetDayCover(r.Context(), chronicle.DayCoverInput{
@@ -380,9 +362,8 @@ func (s *Server) handleSetDayCover(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleClearDayCover(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	entryDate := r.PathValue("date")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	err := s.Chronicle.ClearDayCover(r.Context(), circleID, sess.AccountID, entryDate, time.Now().UTC())
@@ -394,6 +375,9 @@ func (s *Server) handleClearDayCover(w http.ResponseWriter, r *http.Request) {
 }
 
 func parseMediaInput(items []mediaBody) ([]chronicle.MediaInput, error) {
+	if len(items) > chronicle.MaxPostMedia {
+		return nil, chronicle.ErrInvalid
+	}
 	out := make([]chronicle.MediaInput, len(items))
 	for i, m := range items {
 		kind := chronicle.MediaKind(m.Kind)
@@ -444,7 +428,7 @@ func postResponse(p chronicle.Post, media []chronicle.PostMedia) postJSON {
 	return out
 }
 
-func (s *Server) createPostWithMedia(ctx context.Context, circleID, accountID string, in chronicle.PostInput, media []chronicle.MediaInput) (chronicle.Post, error) {
+func (s *Server) createPostWithMedia(ctx context.Context, in chronicle.PostInput, media []chronicle.MediaInput) (chronicle.Post, error) {
 	if len(media) == 0 {
 		return s.Chronicle.CreatePost(ctx, in)
 	}
@@ -537,18 +521,6 @@ func (s *Server) editPostReplaceMedia(ctx context.Context, circleID, accountID, 
 		return err
 	}
 	return s.Blobs.ReleaseBlobs(ctx, removed)
-}
-
-func (s *Server) rollbackNewPost(ctx context.Context, circleID, accountID, postID string) {
-	blobIDs, err := s.Chronicle.DeletePost(ctx, circleID, accountID, postID, time.Now().UTC())
-	if err != nil {
-		log.Printf("rollback post %s: delete post: %v", postID, err)
-	}
-	if s.Blobs != nil {
-		if err := s.Blobs.ReleaseBlobs(ctx, blobIDs); err != nil {
-			log.Printf("rollback post %s: release blobs: %v", postID, err)
-		}
-	}
 }
 
 func commentResponse(c chronicle.Comment, avatars map[string]string) map[string]any {

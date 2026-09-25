@@ -3,7 +3,8 @@ package api
 import (
 	"context"
 	"net/http"
-	"strconv"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -40,9 +41,8 @@ func (s *Server) archiveCycleJSON(ctx context.Context, circleID, accountID strin
 
 func (s *Server) handleCircleDetail(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	circles, err := s.Chronicle.ListAccountCircles(r.Context(), sess.AccountID)
@@ -125,9 +125,8 @@ func (s *Server) handleCircleDetail(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleCircleQuota(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	if err := s.Chronicle.RequireOwner(r.Context(), circleID, sess.AccountID); err != nil {
@@ -189,14 +188,12 @@ type startArchiveBody struct {
 
 func (s *Server) handleStartArchiveCycle(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
-	var body startArchiveBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[startArchiveBody](w, r)
+	if !ok {
 		return
 	}
 	deadline, err := time.Parse(time.RFC3339, body.Deadline)
@@ -220,14 +217,12 @@ type moveCutoffBody struct {
 
 func (s *Server) handleMoveCutoff(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
-	var body moveCutoffBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[moveCutoffBody](w, r)
+	if !ok {
 		return
 	}
 	err := s.Chronicle.MoveCutoff(r.Context(), circleID, sess.AccountID, body.CutoffDate, time.Now().UTC())
@@ -244,14 +239,12 @@ type moveDeadlineBody struct {
 
 func (s *Server) handleMoveDeadline(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
-	var body moveDeadlineBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[moveDeadlineBody](w, r)
+	if !ok {
 		return
 	}
 	deadline, err := time.Parse(time.RFC3339, body.Deadline)
@@ -273,9 +266,8 @@ const archiveRetryAfterSec = 30
 
 func (s *Server) handleArchiveDownload(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	cycle, err := s.Chronicle.GetArchiveCycle(r.Context(), circleID)
@@ -323,15 +315,32 @@ func (s *Server) handleArchiveDownload(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	data, err := archive.BuildPersonalArchive(r.Context(), archive.BuildInput{
+	dayTitles, err := s.Chronicle.ArchiveDayTitles(r.Context(), circleID, cycle.CutoffDate, posts)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	// Сборка — во временный файл каталога данных, отдача — ServeContent:
+	// память не растёт с размером круга, а обрыв докачивается Range-запросом
+	// (ARC-1). Сборка детерминирована, поэтому повторная даёт те же байты.
+	f, err := s.createArchiveTemp()
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	defer func() {
+		_ = f.Close()
+		_ = os.Remove(f.Name())
+	}()
+	if err := archive.BuildPersonalArchive(r.Context(), f, archive.BuildInput{
 		CircleName: circleName,
 		CutoffDate: cycle.CutoffDate,
 		Layout:     layout,
 		Posts:      posts,
 		Blobs:      s.Blobs,
 		Avatars:    avatars,
-	})
-	if err != nil {
+		DayTitles:  dayTitles,
+	}); err != nil {
 		writeError(w, err)
 		return
 	}
@@ -339,10 +348,30 @@ func (s *Server) handleArchiveDownload(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
+	var modtime time.Time
+	if cycle.CycleStartedAt != nil {
+		modtime = *cycle.CycleStartedAt
+	}
 	w.Header().Set("Content-Type", "application/zip")
 	w.Header().Set("Content-Disposition", "attachment; filename=\"wynd-archive-"+circleID+".zip\"")
-	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
-	_, _ = w.Write(data)
+	http.ServeContent(w, r, "", modtime, f)
+}
+
+// ArchiveTempDir — каталог недособранных архивов внутри каталога данных. Его
+// содержимое живёт только на время запроса; сервер чистит его при старте.
+func ArchiveTempDir(dataDir string) string {
+	if dataDir == "" {
+		return filepath.Join(os.TempDir(), "wynd-archive")
+	}
+	return filepath.Join(dataDir, "tmp")
+}
+
+func (s *Server) createArchiveTemp() (*os.File, error) {
+	dir := ArchiveTempDir(s.DataDir)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return nil, err
+	}
+	return os.CreateTemp(dir, "archive-*.zip")
 }
 
 func (s *Server) sendArchiveCycleStartEmails(ctx context.Context, circleID string) {

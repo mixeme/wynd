@@ -17,6 +17,7 @@ const (
 	maxInviteTTL  = 30 * 24 * time.Hour
 )
 
+// CreateInvite creates a circle or server invite link within the use and TTL ceilings.
 func (s *Service) CreateInvite(ctx context.Context, in CreateInviteInput) (Invite, error) {
 	if in.MaxUses < 1 || in.MaxUses > maxInviteUses {
 		return Invite{}, ErrInvalid
@@ -68,6 +69,7 @@ func (s *Service) CreateInvite(ctx context.Context, in CreateInviteInput) (Invit
 	}, nil
 }
 
+// CreateServerInvite creates an invite to the server without a circle.
 func (s *Service) CreateServerInvite(ctx context.Context, in CreateServerInviteInput) (Invite, error) {
 	return s.CreateInvite(ctx, CreateInviteInput{
 		Kind:               in.Kind,
@@ -78,6 +80,7 @@ func (s *Service) CreateServerInvite(ctx context.Context, in CreateServerInviteI
 	})
 }
 
+// AcceptInvite validates an invite link for the email and sends a login code; a personal invite only to its target account.
 func (s *Service) AcceptInvite(ctx context.Context, in AcceptInviteInput) error {
 	if in.Token == "" {
 		return ErrInvalid

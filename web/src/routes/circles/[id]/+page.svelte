@@ -22,12 +22,27 @@
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import OverlayLayout from '$lib/layouts/OverlayLayout.svelte';
 	import { isAccessError } from '$lib/api/client';
+	import {
+		PTR,
+		pullEnd,
+		pullFinished,
+		pullHeight,
+		pullIdle,
+		pullMarkHeight,
+		pullMove,
+		pullSettled,
+		pullStart,
+		pullVisible
+	} from '$lib/gestures/pullToRefresh';
 	import { formatBytes } from '$lib/format/bytes';
+	import { resolveMediaUrls } from '$lib/media/batch';
+	import { WORD, plural } from '$lib/format/plural';
 	import { formatDeadline, formatEntryDate, formatPostTime, isEditableActive } from '$lib/format/time';
 	import { isPostArchiveLocked } from '$lib/journal/archive';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadFeed } from '$lib/journal/feed';
 	import { splitMentionBody } from '$lib/journal/mentions';
+	import { applyOwnReaction, canReact } from '$lib/journal/reactions';
 	import { fetchMembers, type MemberInfo } from '$lib/circles/settings';
 	import {
 		attachmentLabel,
@@ -56,7 +71,7 @@
 		getDayPromptShowCount,
 		isDayPromptDismissed
 	} from '$lib/idb/db';
-	import { downloadBlob, getMediaUrl } from '$lib/media/objectUrl';
+	import { downloadBlob } from '$lib/media/objectUrl';
 	import {
 		enqueuePost,
 		enqueueReaction,
@@ -72,6 +87,12 @@
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 
+	// Флаги «идёт отправка»: защита от второго нажатия (GUI-8).
+	let sending = $state(false);
+	let reacting = $state(false);
+	// Подтверждение удаления неотправленной записи (STB-6).
+	let queueToRemove = $state<number | null>(null);
+
 	let posts = $state<FeedPost[]>([]);
 	let feedEvents = $state<FeedEvent[]>([]);
 	let visibleFrom = $state<string | null>(null);
@@ -86,9 +107,9 @@
 	let dividerAt = $state<number | null>(null);
 	let fixedLastRead = $state(0);
 	let feedEl: HTMLDivElement | undefined = $state();
-	let pullY = $state(0);
-	let refreshing = $state(false);
-	let ptrAnimating = $state(false);
+	// Автомат жеста живёт в $lib и покрыт тестами (GUI-5).
+	let pull = $state(pullIdle());
+	let ptrTimer: ReturnType<typeof setTimeout> | null = null;
 	let commentDraft = $state('');
 	let dayPromptDate = $state('');
 	let pickerPostId = $state('');
@@ -106,34 +127,48 @@
 		return authorAvatarUrls[post.identity_id];
 	}
 
-	async function resolveMediaUrls(feedPosts: FeedPost[]) {
-		const next: Record<string, string> = { ...mediaUrls };
-		const avatars: Record<string, string> = { ...authorAvatarUrls };
+	// Лента не ждёт картинок: до двух тысяч записей давали столько же
+	// последовательных await, и экран стоял в «загрузке», пока не доедет
+	// последняя обложка. Пачки — общий хелпер $lib/media/batch (REF-6).
+	async function resolveFeedMedia(feedPosts: FeedPost[]) {
+		const avatarJobs = new Map<string, string>();
+		const coverJobs = new Map<string, string>();
 		for (const post of feedPosts) {
 			const avatarBlob = post.author_avatar_blob_id;
-			if (avatarBlob && !avatars[post.identity_id]) {
-				try {
-					avatars[post.identity_id] = await getMediaUrl(circle.origin, avatarBlob);
-				} catch {
-					/* skip */
-				}
+			if (avatarBlob && !authorAvatarUrls[post.identity_id]) {
+				avatarJobs.set(post.identity_id, avatarBlob);
 			}
 			const cover = coverMedia(post.media);
-			if (cover && !next[cover.blob_id]) {
-				try {
-					next[cover.blob_id] = await getMediaUrl(circle.origin, cover.blob_id);
-				} catch {
-					/* skip */
-				}
+			if (cover && !mediaUrls[cover.blob_id]) {
+				coverJobs.set(cover.blob_id, cover.blob_id);
 			}
 		}
-		authorAvatarUrls = avatars;
-		mediaUrls = next;
+
+		// Аватар лица и обложка записи — разные ключи при одном блобе, поэтому
+		// два прохода: сперва лица, потом обложки.
+		const identitiesByBlob = new Map<string, string[]>();
+		for (const [identityId, blobId] of avatarJobs) {
+			// Один блоб может быть аватаром нескольких лиц — тогда адрес
+			// достаётся всем им, а не последнему в списке.
+			identitiesByBlob.set(blobId, [...(identitiesByBlob.get(blobId) ?? []), identityId]);
+		}
+		await resolveMediaUrls(circle.origin, [...identitiesByBlob.keys()], (blobId, url) => {
+			for (const identityId of identitiesByBlob.get(blobId) ?? []) {
+				authorAvatarUrls = { ...authorAvatarUrls, [identityId]: url };
+			}
+		});
+		await resolveMediaUrls(circle.origin, [...coverJobs.keys()], (blobId, url) => {
+			mediaUrls = { ...mediaUrls, [blobId]: url };
+		});
 	}
 
 	const soloCircle = $derived(activeMemberCount === 1);
+	const reactionActor = $derived({
+		identityId: circle.identityId,
+		identityName: circle.identityName
+	});
 	const showVisibilityCutoff = $derived(Boolean(visibleFrom));
-	const ptrHeight = $derived(refreshing || ptrAnimating ? 72 : pullY);
+	const ptrHeight = $derived(pullHeight(pull));
 
 	async function loadFeedData() {
 		error = '';
@@ -144,14 +179,13 @@
 			visibleFrom = snap.visible_from ?? null;
 			circleStartedAt = snap.circle_started_at ?? '';
 			dividerAt = unreadDividerIndex(posts, fixedLastRead);
-			await resolveMediaUrls(posts);
+			// Не ждём: записи уже есть, картинки доедут пачками поверх.
+			void resolveFeedMedia(posts);
 		} catch (err) {
 			error = isAccessError(err) ? 'Нет доступа' : 'Не удалось загрузить ленту';
 		} finally {
 			loading = false;
-			refreshing = false;
-			ptrAnimating = false;
-			pullY = 0;
+			pull = pullFinished();
 		}
 	}
 
@@ -164,19 +198,13 @@
 	onMount(() => {
 		if ($page.url.searchParams.get('joinAvatar') === 'fail') {
 			joinAvatarHint = 'Фото не загрузилось — поставьте в профиле';
-			const url = new URL($page.url);
-			url.searchParams.delete('joinAvatar');
-			const next = `${url.pathname}${url.search}${url.hash}`;
-			history.replaceState(history.state, '', next);
+			void dropSearchParam('joinAvatar');
 		}
 		fixedLastRead = circle.lastReadSeq;
 		const dayPromptParam = $page.url.searchParams.get('dayPrompt');
 		void loadFeedData().then(() => {
 			if (!dayPromptParam || !/^\d{4}-\d{2}-\d{2}$/.test(dayPromptParam)) return;
-			const url = new URL($page.url);
-			url.searchParams.delete('dayPrompt');
-			const next = `${url.pathname}${url.search}${url.hash}`;
-			history.replaceState(history.state, '', next);
+			void dropSearchParam('dayPrompt');
 			void checkDayPrompt(dayPromptParam);
 		});
 		void fetchMembers(circle.origin, circle.circleId)
@@ -202,6 +230,7 @@
 	});
 
 	onDestroy(() => {
+		if (ptrTimer !== null) clearTimeout(ptrTimer);
 		const seq = maxReadSeq(posts);
 		if (seq > 0) {
 			void advanceReadCursor(circle.origin, circle.circleId, seq);
@@ -230,7 +259,9 @@
 
 	async function sendFromBar() {
 		const text = commentDraft.trim();
-		if (!text) return;
+		// Два быстрых нажатия — две записи: кнопка не блокируется сама (GUI-8).
+		if (!text || sending) return;
+		sending = true;
 		error = '';
 		const entryDate = todayEntryDate();
 		try {
@@ -264,7 +295,18 @@
 				return;
 			}
 			error = authErrorHint(err);
+		} finally {
+			sending = false;
 		}
+	}
+
+	// Удаление неотправленной записи спрашивают: она нигде больше не
+	// сохранена, а иконка «три точки» обещала меню (STB-6).
+	async function confirmQueueRemove() {
+		const id = queueToRemove;
+		queueToRemove = null;
+		if (!id) return;
+		await removeQueueItem(id);
 	}
 
 	function openComposeFromBar() {
@@ -291,16 +333,41 @@
 		goto(`/circles/${circle.circleId}/posts/${postId}`);
 	}
 
+	// Разовый параметр стирается из адреса через $app/navigation: прямой
+	// history.replaceState проходил мимо роутера, и его состояние расходилось
+	// с адресом (GUI-7).
+	function dropSearchParam(name: string) {
+		const url = new URL($page.url);
+		if (!url.searchParams.has(name)) return Promise.resolve();
+		url.searchParams.delete(name);
+		return goto(`${url.pathname}${url.search}${url.hash}`, {
+			replaceState: true,
+			noScroll: true,
+			keepFocus: true
+		});
+	}
+
 	function openAlbum(postId: string) {
 		goto(`/circles/${circle.circleId}/posts/${postId}/album`);
 	}
 
+	// Лист реакций — состояние экрана, а не шаг назад: открытие и закрытие
+	// заменяют запись в истории. Без этого «назад» снова открывал лист, и до
+	// улочки приходилось нажимать трижды (GUI-7).
 	function openReactions(postId: string) {
-		goto(`/circles/${circle.circleId}?reactions=${postId}`);
+		goto(`/circles/${circle.circleId}?reactions=${postId}`, {
+			replaceState: true,
+			noScroll: true,
+			keepFocus: true
+		});
 	}
 
 	function closeReactions() {
-		goto(`/circles/${circle.circleId}`);
+		goto(`/circles/${circle.circleId}`, {
+			replaceState: true,
+			noScroll: true,
+			keepFocus: true
+		});
 	}
 
 	function togglePicker(postId: string) {
@@ -319,37 +386,25 @@
 	}
 
 	function showReactionPlus(post: FeedPost): boolean {
-		if (!circle.canWrite || soloCircle || postArchiveLocked(post)) return false;
-		const mine = ownReaction(post.reactions, circle.identityId);
-		if (!mine) return true;
-		return isEditableActive(mine.editable_until);
-	}
-
-	function applyReaction(postId: string, emoji: string | null) {
-		posts = posts.map((p) => {
-			if (p.id !== postId) return p;
-			const reactions = [...(p.reactions ?? [])];
-			const idx = reactions.findIndex((r) => r.identity_id === circle.identityId);
-			if (emoji === null) {
-				if (idx >= 0) reactions.splice(idx, 1);
-			} else if (idx >= 0) {
-				reactions[idx] = { ...reactions[idx], emoji };
-			} else {
-				reactions.push({
-					id: `local-${postId}`,
-					post_id: postId,
-					emoji,
-					author_name: circle.identityName,
-					identity_id: circle.identityId,
-					created_at: new Date().toISOString()
-				});
-			}
-			return { ...p, reactions };
+		return canReact(post.reactions, reactionActor, {
+			canWrite: circle.canWrite,
+			solo: soloCircle,
+			locked: postArchiveLocked(post)
 		});
 	}
 
+	function applyReaction(postId: string, emoji: string | null) {
+		posts = posts.map((p) =>
+			p.id === postId
+				? { ...p, reactions: applyOwnReaction(p.reactions, postId, emoji, reactionActor) }
+				: p
+		);
+	}
+
 	async function pickReaction(post: FeedPost, emoji: string) {
-		if (postArchiveLocked(post)) return;
+		// Два тапа по одной реакции = поставить и снять (GUI-8).
+		if (postArchiveLocked(post) || reacting) return;
+		reacting = true;
 		const mine = ownReaction(post.reactions, circle.identityId);
 		const removing = mine?.emoji === emoji;
 		error = '';
@@ -377,33 +432,31 @@
 			}
 		} catch (err) {
 			error = authErrorHint(err);
+		} finally {
+			reacting = false;
 		}
 	}
 
 	function onTouchStart(e: TouchEvent) {
-		if (!feedEl || feedEl.scrollTop > 0) return;
-		const y = e.touches[0]?.clientY ?? 0;
-		feedEl.dataset.pullStart = String(y);
+		if (!feedEl) return;
+		pull = pullStart(pull, e.touches[0]?.clientY ?? 0, feedEl.scrollTop);
 	}
 
 	function onTouchMove(e: TouchEvent) {
-		if (!feedEl || feedEl.scrollTop > 0) return;
-		const start = Number(feedEl.dataset.pullStart ?? 0);
-		const y = e.touches[0]?.clientY ?? 0;
-		pullY = Math.max(0, Math.min(80, y - start));
+		if (!feedEl) return;
+		pull = pullMove(pull, e.touches[0]?.clientY ?? 0, feedEl.scrollTop);
 	}
 
 	function onTouchEnd() {
-		if (pullY > 48 && !refreshing && !ptrAnimating) {
-			ptrAnimating = true;
-			pullY = 69;
-			window.setTimeout(() => {
-				refreshing = true;
-				void loadFeedData();
-			}, 280);
-			return;
-		}
-		pullY = 0;
+		pull = pullEnd(pull);
+		if (pull.phase !== 'settling') return;
+		// Таймер снимается при уходе с экрана: раньше он доживал до
+		// размонтированного компонента (GUI-5).
+		ptrTimer = setTimeout(() => {
+			ptrTimer = null;
+			pull = pullSettled(pull);
+			void loadFeedData();
+		}, PTR.settleMs);
 	}
 
 	function formatIsoDay(iso: string, withYear = false): string {
@@ -450,15 +503,13 @@
 	onsearch={openSearch}
 	bind:commentDraft
 	commentMembers={commentMembers}
+	commentBusy={sending}
 	onCommentSend={circle.canWrite ? sendFromBar : undefined}
 	onCommentCompose={circle.canWrite ? openComposeFromBar : undefined}
 >
-	{#if pullY > 0 || refreshing || ptrAnimating}
+	{#if pullVisible(pull)}
 		<div class="ptr" style:height="{ptrHeight}px" aria-hidden="true">
-			<div
-				class="ptr-mark"
-				style:height="{refreshing || ptrAnimating ? 69 : Math.max(8, pullY * 0.85)}px"
-			>
+			<div class="ptr-mark" style:height="{pullMarkHeight(pull)}px">
 				<Mark />
 			</div>
 		</div>
@@ -523,11 +574,11 @@
 						{/snippet}
 						{#snippet headerRight()}
 							<IconButton
-								name="dots"
+								name="trash"
 								size="sm"
 								label="Удалить из очереди"
 								stopPropagation
-								onclick={() => void removeQueueItem(item.id)}
+								onclick={() => (queueToRemove = item.id)}
 							/>
 						{/snippet}
 						{#snippet text()}
@@ -587,7 +638,7 @@
 						</div>
 					{/if}
 					{#if preview.more}
-						<div class="mo">ещё {preview.more} комментариев</div>
+						<div class="mo">ещё {plural(preview.more, WORD.comment)}</div>
 					{/if}
 				{/snippet}
 				<PostCard
@@ -706,7 +757,7 @@
 	</div>
 
 	{#if reactionsPost}
-		<OverlayLayout ondismiss={closeReactions}>
+		<OverlayLayout label="Реакции" ondismiss={closeReactions}>
 			<SectionLabel style="margin-top:2px">
 				Реакция · {reactionsPost.reactions?.length ?? 0}
 			</SectionLabel>
@@ -721,6 +772,23 @@
 			<Hint style="margin-top:14px">
 				Реакция одна на человека и подчиняется окну правок. Хотите сказать больше — напишите словами.
 			</Hint>
+		</OverlayLayout>
+	{/if}
+
+	{#if queueToRemove !== null}
+		<OverlayLayout variant="dialog" label="Удалить неотправленную запись?" ondismiss={() => (queueToRemove = null)}>
+			<div style="font-size:17px;font-weight:600;margin-bottom:10px">
+				Удалить неотправленную запись?
+			</div>
+			<Hint style="margin-bottom:4px">
+				Она ещё не ушла на сервер. Удалить — значит потерять текст и снимки.
+			</Hint>
+			<div class="rowin" style="margin:18px 0 0">
+				<Button variant="ghost" style="flex:1;margin:0" onclick={() => (queueToRemove = null)}>
+					Оставить
+				</Button>
+				<Button style="flex:1;margin:0" onclick={() => void confirmQueueRemove()}>Удалить</Button>
+			</div>
 		</OverlayLayout>
 	{/if}
 </CircleLayout>

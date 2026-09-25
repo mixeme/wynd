@@ -3,14 +3,11 @@ package api
 import (
 	"net/http"
 	"time"
-
-	"gitea.mixdep.ru/mix/wynd/internal/auth"
 )
 
 func (s *Server) handlePayStatus(w http.ResponseWriter, r *http.Request) {
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, auth.ErrForbidden)
 		return
 	}
 	status, err := s.Auth.PayStatus(r.Context(), sess.AccountID, time.Now().UTC())
@@ -22,9 +19,8 @@ func (s *Server) handlePayStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleCreatePayRequest(w http.ResponseWriter, r *http.Request) {
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, auth.ErrForbidden)
 		return
 	}
 	var body struct {
@@ -44,9 +40,8 @@ func (s *Server) handleCreatePayRequest(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Server) handleDismissPayBanner(w http.ResponseWriter, r *http.Request) {
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, auth.ErrForbidden)
 		return
 	}
 	if err := s.Auth.DismissPayBanner(r.Context(), sess.AccountID); err != nil {

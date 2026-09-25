@@ -2,6 +2,8 @@ package jobs
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
@@ -17,25 +19,29 @@ type PayJobCounts struct {
 }
 
 // RunPayJobs cleans expired pay screenshots and sends subscription reminders.
+//
+// Шаги независимы: сбой уборки скриншотов (файл занят, диск) не отменяет
+// напоминания о подписке, как и в суточной рутине (план 42, SCH-6).
 func RunPayJobs(ctx context.Context, authSvc *auth.Service, mailSvc *mail.Service, pushSvc *push.Service, blobsDir string, now time.Time) (PayJobCounts, error) {
 	if authSvc == nil {
 		return PayJobCounts{}, nil
 	}
 	now = now.UTC()
 	var counts PayJobCounts
+	var errs []error
 	deleted, err := authSvc.CleanupExpiredPayScreenshots(ctx, blobsDir, now)
-	if err != nil {
-		return counts, err
-	}
 	counts.ScreenshotsDeleted = deleted
+	if err != nil {
+		errs = append(errs, fmt.Errorf("pay screenshots: %w", err))
+	}
 
 	info, err := authSvc.Instance(ctx)
 	if err != nil {
-		return counts, err
+		return counts, errors.Join(append(errs, err)...)
 	}
 	candidates, err := authSvc.ListPayReminderCandidates(ctx, now)
 	if err != nil {
-		return counts, err
+		return counts, errors.Join(append(errs, err)...)
 	}
 	for _, c := range candidates {
 		expires, err := xtime.Parse(c.ExpiresAt)
@@ -61,9 +67,9 @@ func RunPayJobs(ctx context.Context, authSvc *auth.Service, mailSvc *mail.Servic
 			continue
 		}
 		if err := authSvc.MarkPayReminderSent(ctx, c.AccountID, c.ExpiresAt); err != nil {
-			return counts, err
+			return counts, errors.Join(append(errs, err)...)
 		}
 		counts.RemindersSent++
 	}
-	return counts, nil
+	return counts, errors.Join(errs...)
 }

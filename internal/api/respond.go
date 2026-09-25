@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
+	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 )
 
 // maxJSONBody caps request bodies on JSON endpoints. Attachments never travel
@@ -63,6 +64,30 @@ func writeError(w http.ResponseWriter, err error) {
 	}
 }
 
+// requireSession достаёт сессию из контекста. Сессии нет — отвечает forbidden
+// сам, обработчику остаётся вернуться. До этого та же пятёрка строк стояла
+// в шестидесяти трёх обработчиках в трёх написаниях (auth, blob, chronicle
+// ErrForbidden) — ответ у всех один и тот же: 403 forbidden (REF-4).
+func requireSession(w http.ResponseWriter, r *http.Request) (auth.Session, bool) {
+	sess, ok := SessionFromContext(r.Context())
+	if !ok {
+		writeError(w, chronicle.ErrForbidden)
+		return auth.Session{}, false
+	}
+	return sess, true
+}
+
+// bindJSON разбирает тело запроса в T. Не разобралось — отвечает сам.
+func bindJSON[T any](w http.ResponseWriter, r *http.Request) (T, bool) {
+	var body T
+	if err := readJSON(r, &body); err != nil {
+		writeError(w, err)
+		var zero T
+		return zero, false
+	}
+	return body, true
+}
+
 // readJSON decodes a JSON body. Bodies over maxJSONBody (enforced by
 // limitBody) surface as errBodyTooLarge → 413; anything else is invalid.
 func readJSON(r *http.Request, v any) error {
@@ -105,7 +130,7 @@ func ParseTrustedProxies(entries []string) ([]*net.IPNet, error) {
 			if ip.To4() == nil {
 				bits = 128
 			}
-			e = ip.String() + "/" + itoa(bits)
+			e = ip.String() + "/" + strconv.Itoa(bits)
 		}
 		_, n, err := net.ParseCIDR(e)
 		if err != nil {
@@ -114,20 +139,6 @@ func ParseTrustedProxies(entries []string) ([]*net.IPNet, error) {
 		out = append(out, n)
 	}
 	return out, nil
-}
-
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	var b [4]byte
-	i := len(b)
-	for n > 0 {
-		i--
-		b[i] = byte('0' + n%10)
-		n /= 10
-	}
-	return string(b[i:])
 }
 
 func (s *Server) trustedProxy(ip string) bool {

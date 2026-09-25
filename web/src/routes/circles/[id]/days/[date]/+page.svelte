@@ -41,7 +41,13 @@
 	let authorAvatarUrls = $state<Record<string, string>>({});
 
 	const canClearTitle = $derived(hasCustomTitle && isEditableActive(titleEditableUntil));
-	const titleSubtitle = $derived(`${formatEntryDate(entryDate)} · нажмите, чтобы изменить`);
+	// Вышедший с доступом читает, но не пишет: подсказка и правка названия ему
+	// не показываются — сервер ответил бы forbidden (план 42, SCR-2).
+	const titleSubtitle = $derived(
+		circle.canWrite
+			? `${formatEntryDate(entryDate)} · нажмите, чтобы изменить`
+			: formatEntryDate(entryDate)
+	);
 
 	function isBackfilled(post: FeedPost): boolean {
 		return post.entry_date === entryDate && post.created_at.slice(0, 10) > entryDate;
@@ -198,8 +204,8 @@
 			coverUrl={coverUrl || undefined}
 			title={editingTitle ? undefined : dayTitle}
 			subtitle={editingTitle ? undefined : titleSubtitle}
-			oncover={openDayAlbum}
-			ontitle={editingTitle ? undefined : startEditTitle}
+			oncover={circle.canWrite ? openDayAlbum : undefined}
+			ontitle={editingTitle || !circle.canWrite ? undefined : startEditTitle}
 		/>
 
 		{#if editingTitle}

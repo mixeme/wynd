@@ -19,12 +19,11 @@
 	import { isLoopbackPublicURL } from '$lib/auth/origin';
 
 	const token = $derived(page.url.searchParams.get('token') ?? '');
-	const cardStyle =
-		'border:1px solid var(--line);background:var(--card);border-radius:12px;padding:16px';
-	const descStyle = 'font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.5';
-	const sideLabel = 'margin:0;font-size:12.5px;white-space:nowrap';
-	const sideLabelRight = 'margin:0 0 0 12px;font-size:12.5px;white-space:nowrap';
-	const fillInput = 'width:100%;min-width:0;box-sizing:border-box';
+	const cardStyle = 'panel pad-16';
+	const descStyle = 'note mb-12 lh-15';
+	const sideLabel = 'm-0 sz-12 nowrap';
+	const sideLabelRight = 'm-0 ml-12 sz-12 nowrap';
+	const fillInput = 'fill';
 
 	let instanceName = $state('');
 	let publicUrl = $state('');
@@ -141,11 +140,11 @@
 			<Hint>Администратор уже создан.</Hint>
 			<Button onclick={() => goto('/admin')}>Открыть панель</Button>
 		{:else}
-			<div style="display:flex;flex-direction:column;gap:16px">
-				<div style="display:flex;gap:16px;align-items:stretch">
-					<div style="flex:1;min-width:0;{cardStyle}">
-						<div style="font-weight:600;margin-bottom:6px">1 · Пароль администратора</div>
-						<div style={descStyle}>
+			<div class="col gap-16">
+				<div class="flex gap-16 stretch">
+					<div class="grow min0 {cardStyle}">
+						<div class="bold mb-6">1 · Пароль администратора</div>
+						<div class={descStyle}>
 							Пароль для доступа в панель администратора. Можно сбросить через консоль.
 						</div>
 						<Input
@@ -153,22 +152,22 @@
 							type="password"
 							autocomplete="new-password"
 							bind:value={password}
-							style="width:100%;box-sizing:border-box"
+							class="fill"
 						/>
 					</div>
-					<div style="flex:1;min-width:0;{cardStyle}">
-						<div style="font-weight:600;margin-bottom:12px">2 · Имя и адрес сервера</div>
-						<div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center">
-							<SectionLabel raw style={sideLabel}>Имя</SectionLabel>
+					<div class="grow min0 {cardStyle}">
+						<div class="bold mb-12">2 · Имя и адрес сервера</div>
+						<div class="form-grid">
+							<SectionLabel raw class={sideLabel}>Имя</SectionLabel>
 							<Input
 								admin
 								type="text"
 								autocomplete="organization"
 								bind:value={instanceName}
 								placeholder="Дом Ани"
-								style={fillInput}
+								class={fillInput}
 							/>
-							<SectionLabel raw style={sideLabel}>Адрес</SectionLabel>
+							<SectionLabel raw class={sideLabel}>Адрес</SectionLabel>
 							<Input
 								admin
 								mono
@@ -176,56 +175,47 @@
 								autocomplete="url"
 								bind:value={publicUrl}
 								placeholder="home.example.org"
-								style={fillInput}
+								class={fillInput}
 							/>
 						</div>
 					</div>
 				</div>
-				<div style={cardStyle}>
-					<div style="font-weight:600;margin-bottom:6px">3 · Почта</div>
-					<div style={descStyle}>
+				<div class={cardStyle}>
+					<div class="bold mb-6">3 · Почта</div>
+					<div class={descStyle}>
 						{#if loopbackNow}
 							На этом компьютере код входа пишется в окно сервера. Почту можно не указывать и настроить позже.
 						{:else}
 							Люди входят по коду из письма. Без настройки SMTP письмо с кодом не отправится.
 						{/if}
 					</div>
-					<div
-						style="display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center"
-					>
-						<SectionLabel raw style={sideLabel}>Хост</SectionLabel>
-						<Input admin mono style={fillInput} bind:value={smtpHost} />
-						<SectionLabel raw style={sideLabelRight}>Порт</SectionLabel>
-						<div style="display:flex;align-items:center;gap:8px;min-width:0">
-							<Input
-								admin
-								style="width:72px;flex:none;box-sizing:border-box"
-								type="number"
-								bind:value={smtpPort}
-							/>
-							<Hint style="margin:0;white-space:nowrap">587 или 465</Hint>
+					<div class="form-grid-2">
+						<SectionLabel raw class={sideLabel}>Хост</SectionLabel>
+						<Input admin mono class={fillInput} bind:value={smtpHost} />
+						<SectionLabel raw class={sideLabelRight}>Порт</SectionLabel>
+						<div class="flex-mid gap-8 min0">
+							<Input admin class="w72 flex-none" type="number" bind:value={smtpPort} />
+							<Hint class="m-0 nowrap">587 или 465</Hint>
 						</div>
-						<SectionLabel raw style={sideLabel}>Логин</SectionLabel>
-						<Input admin mono style={fillInput} bind:value={smtpUsername} />
-						<SectionLabel raw style={sideLabelRight}>Пароль</SectionLabel>
-						<Input admin style={fillInput} type="password" bind:value={smtpPassword} />
-						<SectionLabel raw style={sideLabel}>От кого</SectionLabel>
-						<Input admin mono style={fillInput} bind:value={smtpFrom} />
-						<div
-							style="grid-column:3/-1;justify-self:end;display:flex;align-items:center;gap:8px"
-						>
+						<SectionLabel raw class={sideLabel}>Логин</SectionLabel>
+						<Input admin mono class={fillInput} bind:value={smtpUsername} />
+						<SectionLabel raw class={sideLabelRight}>Пароль</SectionLabel>
+						<Input admin class={fillInput} type="password" bind:value={smtpPassword} />
+						<SectionLabel raw class={sideLabel}>От кого</SectionLabel>
+						<Input admin mono class={fillInput} bind:value={smtpFrom} />
+						<div class="grid-end flex-mid gap-8">
 							{#if smtpTesting}
-								<span role="status" style="font-size:12.5px;color:var(--muted);white-space:nowrap">
+								<span role="status" class="note nowrap">
 									Проверяем
 								</span>
 							{:else if smtpOk}
 								<span role="status" aria-label="Вход принят">
-									<StatusIcon status="ok" style="margin-top:0" />
+									<StatusIcon status="ok" class="mt-0" />
 								</span>
 							{/if}
 							<TextButton
 								variant="adminBox"
-								style="font-weight:600;white-space:nowrap"
+								class="bold nowrap"
 								disabled={smtpTesting || loading}
 								onclick={() => void testSmtp()}
 							>
@@ -235,26 +225,19 @@
 					</div>
 				</div>
 			</div>
-			<div style="margin:20px 0 0">
+			<div class="mt-20">
 				{#if loading}
-					<span
-						role="status"
-						style="display:block;font-size:12.5px;color:var(--muted);margin-bottom:8px"
-					>
+					<span role="status" class="block note mb-8">
 						Сохраняем
 					</span>
 				{/if}
-				<Button
-					style="width:100%;margin:0"
-					disabled={loading}
-					onclick={loading ? () => {} : onSubmit}
-				>
+				<Button class="fill m-0" disabled={loading} onclick={loading ? () => {} : onSubmit}>
 					Сохранить и открыть панель
 				</Button>
 			</div>
 		{/if}
 		{#if error}
-			<Hint style="margin-top:12px">{error}</Hint>
+			<Hint class="mt-12">{error}</Hint>
 		{/if}
 	</AdminSection>
 </AdminWideLayout>

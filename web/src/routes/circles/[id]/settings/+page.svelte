@@ -455,7 +455,7 @@
 		{/if}
 
 		<Label style="margin-top:20px">Участники · {activeMembers.length}</Label>
-		{#each previewMembers as m, i (m.account_id)}
+		{#each previewMembers as m, i (m.identity_id)}
 			<MemberRow
 				initial={circleInitial(m.name)}
 				name={m.name}
@@ -486,7 +486,7 @@
 </FormLayout>
 
 {#if ownerLeaveOpen}
-	<OverlayLayout variant="dialog" ondismiss={() => (ownerLeaveOpen = false)}>
+	<OverlayLayout variant="dialog" label="Сначала передайте владение" ondismiss={() => (ownerLeaveOpen = false)}>
 		<div style="font-size:17px;font-weight:600;margin-bottom:10px">Сначала передайте владение</div>
 		<Hint
 			>Подвешенных кругов не бывает. Пока вы владелец «{circle.name}», уйти нельзя.</Hint
@@ -509,7 +509,7 @@
 {/if}
 
 {#if deleteOpen}
-	<OverlayLayout variant="dialog" ondismiss={closeDeleteDialog}>
+	<OverlayLayout variant="dialog" label="Удалить «{savedName}»?" ondismiss={closeDeleteDialog}>
 		<div style="font-size:17px;font-weight:600;margin-bottom:10px">Удалить «{savedName}»?</div>
 		{#if deleteImpactHint}
 			<Hint style="margin-bottom:14px">{deleteImpactHint}</Hint>

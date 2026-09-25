@@ -85,22 +85,22 @@
 		{:else if error}
 			<Hint>{error}</Hint>
 		{:else}
-			<div style="display:flex;align-items:flex-start;gap:20px">
-				<div style="flex:1">
+			<div class="flex-top gap-20">
+				<div class="grow">
 					<h4 style="margin-bottom:5px">{headline}</h4>
-					<div style="font-size:12.5px;color:var(--muted)">{subtitle}</div>
+					<div class="note">{subtitle}</div>
 				</div>
-				<div style="text-align:right">
-					<TextButton variant="adminBox" style="font-weight:600" onclick={() => void load()}
+				<div class="right">
+					<TextButton variant="adminBox" class="bold" onclick={() => void load()}
 						>Проверить снова</TextButton
 					>
-					<div style="font-size:11.5px;color:var(--faint);margin-top:7px">{checkedLabel()}</div>
+					<div class="sz-11 faint mt-7">{checkedLabel()}</div>
 				</div>
 			</div>
-			<div class="cols" style="margin-top:20px">
+			<div class="cols mt-20">
 				<div>
 					{#each LEFT_GROUPS as group, gi (group.label)}
-						<SectionLabel style="margin:{gi === 0 ? '0' : '16px'} 0 6px">{group.label}</SectionLabel>
+						<SectionLabel class="mx-0 mb-6 {gi === 0 ? 'mt-0' : 'mt-16'}">{group.label}</SectionLabel>
 						{#each group.ids as id (id)}
 							{@const row = byId(id)}
 							{#if row}
@@ -124,7 +124,7 @@
 				</div>
 				<div>
 					{#each RIGHT_GROUPS as group, gi (group.label)}
-						<SectionLabel style="margin:{gi === 0 ? '0' : '16px'} 0 6px">{group.label}</SectionLabel>
+						<SectionLabel class="mx-0 mb-6 {gi === 0 ? 'mt-0' : 'mt-16'}">{group.label}</SectionLabel>
 						{#each group.ids as id (id)}
 							{@const row = byId(id)}
 							{#if row}
@@ -173,7 +173,7 @@
 					{/each}
 				</div>
 			</div>
-			<div style="font-size:11.5px;color:var(--faint);margin-top:18px;line-height:1.6">
+			<div class="fine mt-18 lh-16">
 				Снаружи проверяет ваш браузер: панель просит его сходить на публичный адрес и сравнивает
 				с тем, что видит сервер. Wynd никуда не звонит — если браузер окажется в одной сети с
 				сервером, здесь будет сказано, что проверка вышла изнутри.

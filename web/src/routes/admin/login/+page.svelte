@@ -40,7 +40,7 @@
 
 <AdminWideLayout app nav={false}>
 	<AdminSection title="Панель администратора">
-		<Hint style="margin-bottom:18px">
+		<Hint class="mb-18">
 			Отдельный пароль, не тот, которым входят в круги. Журналов кругов здесь нет.
 		</Hint>
 		<Label>Пароль</Label>
@@ -52,7 +52,7 @@
 			onkeydown={(e) => e.key === 'Enter' && onSubmit()}
 		/>
 		<Button
-			style="margin-top:20px"
+			class="mt-20"
 			loading={loading}
 			disabled={loading}
 			onclick={loading ? () => {} : () => void onSubmit()}
@@ -60,7 +60,7 @@
 			Войти
 		</Button>
 		{#if error}
-			<Hint style="margin-top:12px">{error}</Hint>
+			<Hint class="mt-12">{error}</Hint>
 		{/if}
 	</AdminSection>
 </AdminWideLayout>

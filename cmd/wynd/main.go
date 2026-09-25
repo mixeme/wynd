@@ -30,9 +30,15 @@ import (
 )
 
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == "backup" {
-		runBackup(os.Args[2:])
-		return
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "backup":
+			runBackup(os.Args[2:])
+			return
+		case "admin-password":
+			runAdminPassword(os.Args[2:])
+			return
+		}
 	}
 	runServer()
 }
@@ -69,6 +75,12 @@ func runServer() {
 		log.Fatalf("chronicle: %v", err)
 	}
 
+	// Архивы, которые собирались в момент прошлой остановки, никому не нужны:
+	// каталог живёт только на время запроса скачивания (ARC-1).
+	if err := os.RemoveAll(api.ArchiveTempDir(cfg.DataDir)); err != nil {
+		log.Printf("archive temp: %v", err)
+	}
+
 	blobsDir := filepath.Join(cfg.DataDir, "blobs")
 	blobStore, err := blob.New(st, blobsDir)
 	if err != nil {
@@ -101,7 +113,12 @@ func runServer() {
 		log.Fatalf("instance: %v", err)
 	}
 
-	maybeRunRoutine(authSvc, blobsDir, ch, blobStore, mailSvc, pushSvc, cfg.PublicURL)
+	// Базовый контекст всех запросов и фоновых задач: его отмена по сигналу
+	// закрывает открытые SSE-потоки (иначе Shutdown ждал их полные 10 с и
+	// убивал процесс, API-1) и прерывает идущий прогон рутины — рассылка по
+	// мёртвому релею держала остановку до убийства по таймауту (SCH-2).
+	baseCtx, cancelRequests := context.WithCancel(context.Background())
+	defer cancelRequests()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
@@ -119,6 +136,10 @@ func runServer() {
 	maintWG.Add(1)
 	go func() {
 		defer maintWG.Done()
+		// Первый прогон — здесь, а не до ListenAndServe: после ночного
+		// простоя рутина с письмами по медленному релею держала старт, и
+		// /ready не отвечал минутами (SCH-1).
+		maybeRunRoutine(baseCtx, authSvc, blobsDir, ch, blobStore, mailSvc, pushSvc, apiSrv.PublicURL())
 		ticker := time.NewTicker(time.Hour)
 		defer ticker.Stop()
 		for {
@@ -128,7 +149,7 @@ func runServer() {
 			case <-ticker.C:
 				// Адрес берётся свежим: письма фоновых задач уходили со
 				// старым public_url до перезапуска (API-4).
-				maybeRunRoutine(authSvc, blobsDir, ch, blobStore, mailSvc, pushSvc, apiSrv.PublicURL())
+				maybeRunRoutine(baseCtx, authSvc, blobsDir, ch, blobStore, mailSvc, pushSvc, apiSrv.PublicURL())
 			}
 		}
 	}()
@@ -137,12 +158,7 @@ func runServer() {
 	if err != nil {
 		log.Fatalf("embed web dist: %v", err)
 	}
-	mux.Handle("/", web.SPA(buildFS))
-
-	// Базовый контекст всех запросов: его отмена по сигналу закрывает открытые
-	// SSE-потоки, иначе Shutdown ждал их полные 10 с и убивал процесс (API-1).
-	baseCtx, cancelRequests := context.WithCancel(context.Background())
-	defer cancelRequests()
+	mux.Handle("/", web.SPA(buildFS, loopback))
 
 	srv := &http.Server{
 		Addr:        cfg.Listen,
@@ -189,8 +205,7 @@ func runServer() {
 	log.Print("stopped")
 }
 
-func maybeRunRoutine(authSvc *auth.Service, blobsDir string, ch *chronicle.Chronicle, blobs *blob.Store, mailSvc *mail.Service, pushSvc *push.Service, publicURL string) {
-	ctx := context.Background()
+func maybeRunRoutine(ctx context.Context, authSvc *auth.Service, blobsDir string, ch *chronicle.Chronicle, blobs *blob.Store, mailSvc *mail.Service, pushSvc *push.Service, publicURL string) {
 	now := time.Now().UTC()
 	maybeRunDailyRoutine(ctx, authSvc.DB(), blobsDir, now)
 	runArchiveJobs(ctx, authSvc.DB(), ch, blobs, mailSvc, publicURL, now)

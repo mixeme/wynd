@@ -1,5 +1,12 @@
+import { WORD, plural } from './plural';
+
 const timeFmt = new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' });
 const dateFmt = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' });
+const dayYearFmt = new Intl.DateTimeFormat('ru-RU', {
+	day: 'numeric',
+	month: 'long',
+	year: 'numeric'
+});
 
 function startOfDay(d: Date): Date {
 	return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -50,6 +57,24 @@ export function formatSessionDay(iso: string): string {
 	return dateFmt.format(d);
 }
 
+/**
+ * Дата в панели: «15 сентября» и «15 сентября 2026». Три копии с одним и
+ * тем же `Intl.DateTimeFormat` жили в экранах хранилища, людей и учётки
+ * (план 42, волна 5). Нечитаемую метку отдаём как есть — в панели лучше
+ * показать сырое значение, чем пустоту.
+ */
+export function formatAdminDay(iso: string): string {
+	const d = new Date(iso);
+	if (Number.isNaN(d.getTime())) return iso;
+	return dateFmt.format(d);
+}
+
+export function formatAdminDayYear(iso: string): string {
+	const d = new Date(iso);
+	if (Number.isNaN(d.getTime())) return iso;
+	return dayYearFmt.format(d);
+}
+
 /** Дедлайн архивации: «до 15 сентября». */
 export function formatDeadline(iso: string): string {
 	if (!iso) return '';
@@ -92,38 +117,22 @@ export function formatMonthYear(entryDate: string): string {
 
 /** Склонение «файл / файла / файлов». */
 export function pluralFiles(count: number): string {
-	const mod10 = count % 10;
-	const mod100 = count % 100;
-	if (mod10 === 1 && mod100 !== 11) return `${count} файл`;
-	if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${count} файла`;
-	return `${count} файлов`;
+	return plural(count, WORD.file);
 }
 
 /** Склонение «фотография / фотографии / фотографий». */
 export function pluralPhotos(count: number): string {
-	const mod10 = count % 10;
-	const mod100 = count % 100;
-	if (mod10 === 1 && mod100 !== 11) return `${count} фотография`;
-	if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${count} фотографии`;
-	return `${count} фотографий`;
+	return plural(count, WORD.photo);
 }
 
 /** Склонение «запись / записи / записей». */
 export function pluralPosts(count: number): string {
-	const mod10 = count % 10;
-	const mod100 = count % 100;
-	if (mod10 === 1 && mod100 !== 11) return `${count} запись`;
-	if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${count} записи`;
-	return `${count} записей`;
+	return plural(count, WORD.post);
 }
 
 /** Склонение «N человек / человека». */
 export function pluralPeople(count: number): string {
-	const mod10 = count % 10;
-	const mod100 = count % 100;
-	if (mod10 === 1 && mod100 !== 11) return `${count} человек`;
-	if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${count} человека`;
-	return `${count} человек`;
+	return plural(count, WORD.person);
 }
 
 /** Подпись карточки дня: «12 августа · 4 записи». */

@@ -78,7 +78,7 @@
 			const data = await fetchQuota(circle.origin, circle.circleId, cutoff);
 			usedBytes = data.used_bytes;
 			quotaBytes = data.quota_bytes ?? 0;
-			volume = data.volume;
+			volume = data.volume ?? [];
 			medianPostBytes = data.median_post_bytes ?? 0;
 			if (data.freed_at_cutoff_bytes !== undefined) {
 				freedBytes = data.freed_at_cutoff_bytes;

@@ -28,6 +28,7 @@ type SendError struct {
 	Err    error
 }
 
+// Error keeps the full relay text for the log; the API shows only Reason.
 func (e *SendError) Error() string {
 	if e.Err == nil {
 		return "mail: send failed: " + e.Reason

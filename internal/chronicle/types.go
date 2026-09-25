@@ -20,28 +20,34 @@ type EditWindow struct {
 	Seconds *int64
 }
 
+// ChronicleWindow is a zero edit window: the circle is a chronicle, nothing is edited.
 func ChronicleWindow() EditWindow {
 	zero := int64(0)
 	return EditWindow{Seconds: &zero}
 }
 
+// UnlimitedWindow allows edits without a time limit.
 func UnlimitedWindow() EditWindow {
 	return EditWindow{Seconds: nil}
 }
 
+// DurationWindow allows edits for d after publication.
 func DurationWindow(d time.Duration) EditWindow {
 	sec := int64(d / time.Second)
 	return EditWindow{Seconds: &sec}
 }
 
+// IsChronicle reports a zero window.
 func (w EditWindow) IsChronicle() bool {
 	return w.Seconds != nil && *w.Seconds == 0
 }
 
+// IsUnlimited reports a window without a limit.
 func (w EditWindow) IsUnlimited() bool {
 	return w.Seconds == nil
 }
 
+// EditableUntil returns the edit deadline; nil for a chronicle, 9999-12-31 for an unlimited window.
 func (w EditWindow) EditableUntil(publishedAt time.Time) *time.Time {
 	if w.IsChronicle() {
 		return nil
@@ -54,6 +60,7 @@ func (w EditWindow) EditableUntil(publishedAt time.Time) *time.Time {
 	return &t
 }
 
+// CanEdit reports whether something published at publishedAt may still be edited at now.
 func (w EditWindow) CanEdit(publishedAt, now time.Time) bool {
 	until := w.EditableUntil(publishedAt)
 	if until == nil {

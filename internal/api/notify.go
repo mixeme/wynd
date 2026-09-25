@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
+	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 	"gitea.mixdep.ru/mix/wynd/internal/push"
 )
 
@@ -19,7 +20,10 @@ type notifyPrefsBody struct {
 	MuteUntil    *string `json:"mute_until"`
 }
 
-func applyNotifyPrefsBody(prefs auth.NotifyPrefs, body notifyPrefsBody) auth.NotifyPrefs {
+// applyNotifyPrefsBody накладывает присланные поля на текущие настройки.
+// Ошибка — только на mute_until: он хранится строкой, и неразобранное
+// значение молча означало бы «не заглушено» (аудит 2026-09-22).
+func applyNotifyPrefsBody(prefs auth.NotifyPrefs, body notifyPrefsBody) (auth.NotifyPrefs, error) {
 	if body.Posts != nil {
 		prefs.Posts = *body.Posts
 	}
@@ -39,18 +43,21 @@ func applyNotifyPrefsBody(prefs auth.NotifyPrefs, body notifyPrefsBody) auth.Not
 		if *body.MuteUntil == "" {
 			prefs.MuteUntil = nil
 		} else {
-			v := *body.MuteUntil
+			t, err := time.Parse(time.RFC3339, *body.MuteUntil)
+			if err != nil {
+				return prefs, chronicle.ErrInvalid
+			}
+			v := t.UTC().Format(time.RFC3339)
 			prefs.MuteUntil = &v
 		}
 	}
 	prefs.Mentions = true
-	return prefs
+	return prefs, nil
 }
 
 func (s *Server) handleGetAccountNotifyPrefs(w http.ResponseWriter, r *http.Request) {
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, auth.ErrForbidden)
 		return
 	}
 	prefs, err := s.Auth.AccountNotifyPrefs(r.Context(), sess.AccountID)
@@ -62,14 +69,12 @@ func (s *Server) handleGetAccountNotifyPrefs(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *Server) handleSetAccountNotifyPrefs(w http.ResponseWriter, r *http.Request) {
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, auth.ErrForbidden)
 		return
 	}
-	var body notifyPrefsBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[notifyPrefsBody](w, r)
+	if !ok {
 		return
 	}
 	prefs, err := s.Auth.AccountNotifyPrefs(r.Context(), sess.AccountID)
@@ -77,7 +82,11 @@ func (s *Server) handleSetAccountNotifyPrefs(w http.ResponseWriter, r *http.Requ
 		writeError(w, err)
 		return
 	}
-	prefs = applyNotifyPrefsBody(prefs, body)
+	prefs, err = applyNotifyPrefsBody(prefs, body)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
 	if err := s.Auth.SaveAccountNotifyPrefs(r.Context(), sess.AccountID, prefs); err != nil {
 		writeError(w, err)
 		return
@@ -86,9 +95,8 @@ func (s *Server) handleSetAccountNotifyPrefs(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *Server) handleGetCircleNotifyPrefs(w http.ResponseWriter, r *http.Request) {
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, auth.ErrForbidden)
 		return
 	}
 	circleID := r.PathValue("circle_id")
@@ -101,9 +109,8 @@ func (s *Server) handleGetCircleNotifyPrefs(w http.ResponseWriter, r *http.Reque
 }
 
 func (s *Server) handleSetCircleNotifyPrefs(w http.ResponseWriter, r *http.Request) {
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, auth.ErrForbidden)
 		return
 	}
 	circleID := r.PathValue("circle_id")
@@ -113,9 +120,8 @@ func (s *Server) handleSetCircleNotifyPrefs(w http.ResponseWriter, r *http.Reque
 		writeDomainError(w, err)
 		return
 	}
-	var body notifyPrefsBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[notifyPrefsBody](w, r)
+	if !ok {
 		return
 	}
 	base, err := s.Auth.AccountNotifyPrefs(r.Context(), sess.AccountID)
@@ -128,7 +134,11 @@ func (s *Server) handleSetCircleNotifyPrefs(w http.ResponseWriter, r *http.Reque
 		writeError(w, err)
 		return
 	}
-	prefs = applyNotifyPrefsBody(prefs, body)
+	prefs, err = applyNotifyPrefsBody(prefs, body)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
 	if err := s.Auth.SaveCircleNotifyPrefs(r.Context(), sess.AccountID, circleID, prefs, base); err != nil {
 		writeError(w, err)
 		return
@@ -291,14 +301,12 @@ type pushSubscribeBody struct {
 }
 
 func (s *Server) handlePushSubscribe(w http.ResponseWriter, r *http.Request) {
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, auth.ErrForbidden)
 		return
 	}
-	var body pushSubscribeBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[pushSubscribeBody](w, r)
+	if !ok {
 		return
 	}
 	if err := s.Push.EnsureKeys(r.Context()); err != nil {
@@ -320,14 +328,12 @@ func (s *Server) handlePushSubscribe(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handlePushUnsubscribe(w http.ResponseWriter, r *http.Request) {
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, auth.ErrForbidden)
 		return
 	}
-	var body pushSubscribeBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[pushSubscribeBody](w, r)
+	if !ok {
 		return
 	}
 	if err := s.Push.Unsubscribe(r.Context(), sess.AccountID, body.Endpoint); err != nil {
@@ -335,85 +341,4 @@ func (s *Server) handlePushUnsubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-}
-
-type quotaRequestBody struct {
-	RequestedBytes int64 `json:"requested_bytes"`
-}
-
-func (s *Server) handleCreateQuotaRequest(w http.ResponseWriter, r *http.Request) {
-	sess, ok := SessionFromContext(r.Context())
-	if !ok {
-		writeError(w, auth.ErrForbidden)
-		return
-	}
-	circleID := r.PathValue("circle_id")
-	if err := s.Chronicle.RequireOwner(r.Context(), circleID, sess.AccountID); err != nil {
-		writeError(w, err)
-		return
-	}
-	var body quotaRequestBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
-		return
-	}
-	id, err := s.Blobs.CreateQuotaRequest(r.Context(), circleID, sess.AccountID, body.RequestedBytes)
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusCreated, map[string]string{"id": id})
-}
-
-func (s *Server) handleAdminQuotaRequests(w http.ResponseWriter, r *http.Request) {
-	items, err := s.Blobs.ListPendingQuotaRequests(r.Context())
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	type row struct {
-		ID             string  `json:"id"`
-		CircleID       string  `json:"circle_id"`
-		RequesterID    string  `json:"requester_id"`
-		RequesterMail  string  `json:"requester_email"`
-		RequestedBytes int64   `json:"requested_bytes"`
-		Status         string  `json:"status"`
-		AdminNote      *string `json:"admin_note,omitempty"`
-		CreatedAt      string  `json:"created_at"`
-		ResolvedAt     *string `json:"resolved_at,omitempty"`
-	}
-	out := make([]row, len(items))
-	for i, item := range items {
-		out[i] = row{
-			ID: item.ID, CircleID: item.CircleID, RequesterID: item.RequesterID,
-			RequesterMail: item.RequesterEmail, RequestedBytes: item.RequestedBytes,
-			Status: item.Status, AdminNote: item.AdminNote, CreatedAt: item.CreatedAt,
-			ResolvedAt: item.ResolvedAt,
-		}
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"requests": out})
-}
-
-type quotaResolveBody struct {
-	AdminNote string `json:"admin_note"`
-}
-
-func (s *Server) handleAdminApproveQuotaRequest(w http.ResponseWriter, r *http.Request) {
-	s.resolveQuotaRequest(w, r, true)
-}
-
-func (s *Server) handleAdminRejectQuotaRequest(w http.ResponseWriter, r *http.Request) {
-	s.resolveQuotaRequest(w, r, false)
-}
-
-func (s *Server) resolveQuotaRequest(w http.ResponseWriter, r *http.Request, approve bool) {
-	id := r.PathValue("id")
-	var body quotaResolveBody
-	_ = readJSON(r, &body)
-	status, err := s.Blobs.ResolveQuotaRequest(r.Context(), id, approve, body.AdminNote)
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": status})
 }

@@ -149,19 +149,26 @@ func backupBlobs(srcRoot, destRoot string, incremental bool, prev blobManifest) 
 		if err != nil {
 			return err
 		}
-		sum, err := fileSHA256(path)
+		destPath := filepath.Join(destRoot, rel)
+		// Блоб неизменяем: имя — UUID, файл кладётся один раз. Поэтому файл,
+		// который есть в манифесте с тем же размером и чья копия на месте и
+		// той же длины, не перечитывается — раньше каждый прогон хешировал
+		// всё хранилище (BKP-1). Копия проверяется по Stat, а не по манифесту:
+		// усечённый при обрыве файл иначе оставался битым навсегда, потому что
+		// манифест помнил его целым (BKP-2, пробник review3-backup).
+		if incremental {
+			if prevEntry, seen := prev.Files[rel]; seen && prevEntry.Size == info.Size() && prevEntry.SHA256 != "" {
+				if st, err := os.Stat(destPath); err == nil && st.Size() == info.Size() {
+					next.Files[rel] = prevEntry
+					return nil
+				}
+			}
+		}
+		sum, err := copyFileHashed(path, destPath)
 		if err != nil {
 			return err
 		}
-		entry := blobEntry{Size: info.Size(), SHA256: sum}
-		prevEntry, seen := prev.Files[rel]
-		destPath := filepath.Join(destRoot, rel)
-		if !incremental || !seen || prevEntry.Size != entry.Size || prevEntry.SHA256 != entry.SHA256 {
-			if err := copyFile(path, destPath); err != nil {
-				return err
-			}
-		}
-		next.Files[rel] = entry
+		next.Files[rel] = blobEntry{Size: info.Size(), SHA256: sum}
 		return nil
 	})
 	if err != nil {
@@ -200,30 +207,50 @@ func writeManifest(path string, m blobManifest) error {
 // copyFile копирует файл, не расширяя права источника: keys/bootstrap 0600
 // раньше становился 0640 в копии.
 func copyFile(src, dst string) error {
+	_, err := copyFileHashed(src, dst)
+	return err
+}
+
+// copyFileHashed пишет копию во временный файл рядом и переименовывает его
+// в конце, попутно считая SHA-256: обрыв на середине не оставляет усечённого
+// файла под настоящим именем, а хеш достаётся без второго чтения.
+func copyFileHashed(src, dst string) (string, error) {
 	in, err := os.Open(src)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer in.Close()
 	if err := os.MkdirAll(filepath.Dir(dst), 0o750); err != nil {
-		return err
+		return "", err
 	}
 	perm := os.FileMode(0o640)
 	if info, err := in.Stat(); err == nil && info.Mode().Perm()&0o077 == 0 {
 		perm = 0o600
 	}
-	out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, perm)
+	tmp := dst + ".part"
+	out, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, perm)
 	if err != nil {
-		return err
+		return "", err
 	}
-	defer out.Close()
-	if _, err := io.Copy(out, in); err != nil {
-		return err
+	h := sha256.New()
+	if _, err := io.Copy(io.MultiWriter(out, h), in); err != nil {
+		_ = out.Close()
+		_ = os.Remove(tmp)
+		return "", err
 	}
 	if err := out.Close(); err != nil {
-		return err
+		_ = os.Remove(tmp)
+		return "", err
 	}
-	return os.Chmod(dst, perm)
+	if err := os.Chmod(tmp, perm); err != nil {
+		_ = os.Remove(tmp)
+		return "", err
+	}
+	if err := os.Rename(tmp, dst); err != nil {
+		_ = os.Remove(tmp)
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 func copyTree(src, dst string) error {
@@ -248,19 +275,6 @@ func copyTree(src, dst string) error {
 		}
 		return copyFile(path, target)
 	})
-}
-
-func fileSHA256(path string) (string, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 func touchLastBackupAt(dbPath string) error {

@@ -148,32 +148,32 @@
 		{:else}
 			<div class="cols">
 				<div>
-					<SectionLabel style="margin:0 0 8px">Кого пускать</SectionLabel>
-					<ChipGroup style="margin:0">
+					<SectionLabel class="mt-0 mx-0 mb-8">Кого пускать</SectionLabel>
+					<ChipGroup class="m-0">
 						{#each modes as item (item.key)}
 							<Chip selected={mode === item.key} onclick={() => void persistMode(item.key)}>
 								{item.label}
 							</Chip>
 						{/each}
 					</ChipGroup>
-					<div style="font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.6">
+					<div class="note mt-10 lh-16">
 						Завестись можно только по ссылке: в круг её выдаёт любой участник, на сервер — вы.
 						Открытый пускает всякого, кто знает адрес; закрытый не пускает никого, и старые ссылки
 						перестают работать.
 					</div>
-					<SectionLabel style="margin:24px 0 8px">Позвать на сервер</SectionLabel>
-					<div style="display:flex;align-items:center;gap:12px">
+					<SectionLabel class="mt-24 mx-0 mb-8">Позвать на сервер</SectionLabel>
+					<div class="flex-mid gap-12">
 						<FieldDisplay
 							admin
 							mono
 							value={inviteUrl || '…'}
-							style="flex:1;overflow:hidden;white-space:nowrap;margin:0"
+							class="grow clip nowrap m-0"
 						/>
-						<TextButton variant="adminBox" style="font-weight:600" onclick={() => void copyLink()}>
+						<TextButton variant="adminBox" class="bold" onclick={() => void copyLink()}>
 							{copied ? 'Скопировано' : 'Скопировать'}
 						</TextButton>
 					</div>
-					<ChipGroup style="margin:12px 0 0">
+					<ChipGroup class="mt-12 mx-0">
 						<Chip
 							selected={kind === 'single'}
 							onclick={() => {
@@ -193,7 +193,7 @@
 							На 5 человек
 						</Chip>
 					</ChipGroup>
-					<ChipGroup style="margin:8px 0 0">
+					<ChipGroup class="mt-8 mx-0">
 						{#each TTL_OPTIONS as opt (opt.sec)}
 							<Chip
 								selected={ttlSec === opt.sec}
@@ -206,20 +206,20 @@
 							</Chip>
 						{/each}
 					</ChipGroup>
-					<div style="font-size:11.5px;color:var(--faint);margin-top:10px;line-height:1.6">
+					<div class="fine mt-10 lh-16">
 						Такая ссылка не ведёт ни в один круг: человек заведёт свой или дождётся, когда позовут.
 					</div>
 					{#if liveInvites.length > 0}
-						<SectionLabel style="margin:24px 0 8px">Живые</SectionLabel>
+						<SectionLabel class="mt-24 mx-0 mb-8">Живые</SectionLabel>
 						{#each liveInvites as inv (inv.id)}
 							<SettingsRow
 								title={inviteRegistryTitle(inv)}
 								subtitle={inviteRegistrySubtitle(inv)}
 								chevron={false}
-								style="padding-top:2px"
+								class="pt-2"
 							>
 								{#snippet control()}
-									<span style="display:flex;gap:12px;flex-shrink:0">
+									<span class="flex gap-12 no-shrink">
 										<TextButton variant="admin" onclick={() => void copyInvite(inv)}>
 											{copiedInviteId === inv.id ? 'скопировано' : 'скопировать'}
 										</TextButton>
@@ -234,24 +234,25 @@
 				</div>
 				<div style="flex:0 0 auto;width:210px">
 					{#if qrSvg}
-						<div class="qr" style="margin:26px auto 0;width:150px;height:150px;padding:11px" aria-hidden="true">
+						<div class="qr sm mt-26" aria-hidden="true">
 							{@html qrSvg}
 						</div>
 					{/if}
-					<div style="font-size:11.5px;color:var(--faint);text-align:center;margin-top:10px">
+					<div class="sz-11 faint ctr mt-10">
 						та же ссылка кодом
 					</div>
 				</div>
 			</div>
 			<div
-				style="font-size:11.5px;color:var(--faint);margin-top:22px;line-height:1.6;border-top:1px solid var(--line);padding-top:14px;max-width:620px"
+				class="fine mt-22 lh-16"
+				style="border-top:1px solid var(--line);padding-top:14px;max-width:620px"
 			>
 				Записи и медиа лежат на этом диске незашифрованными: у вас есть база и файлы, а значит, вы
 				можете прочитать что угодно. Панель этого не показывает и не будет, но и гарантией это не
 				притворяется — то же самое написано людям на экране, где они заводят здесь круг.
 			</div>
 			{#if error}
-				<Hint style="margin-top:12px">{error}</Hint>
+				<Hint class="mt-12">{error}</Hint>
 			{/if}
 		{/if}
 	</AdminSection>

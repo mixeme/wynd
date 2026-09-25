@@ -16,6 +16,7 @@
 	import { appVersion } from '$lib/appinfo';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { formatBytes } from '$lib/format/bytes';
+	import { formatAdminDay } from '$lib/format/time';
 	import { loadSourceUrl, sourceUrl } from '$lib/instance/source.svelte';
 	import { CIRCLE_COLOR_ORDER, CIRCLE_COLORS, type CircleColor } from '$lib/theme/colors';
 	import {
@@ -151,12 +152,6 @@
 		}
 		defaultChip = 'custom';
 		defaultCustomGb = String(Math.round(bytes / GB));
-	}
-
-	function requestDate(iso: string): string {
-		const d = new Date(iso);
-		if (Number.isNaN(d.getTime())) return iso;
-		return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' }).format(d);
 	}
 
 	function syncCircleField(c: AdminStorageCircle | undefined, pending?: QuotaRequest) {
@@ -328,39 +323,37 @@
 				threshold="90%"
 				segments={barSegments.length ? barSegments : [{ width: `${usedPct}%`, color: 'var(--ink)' }]}
 			/>
-			<div style="font-size:12.5px;color:var(--muted);margin:10px 0 22px">
+			<div class="note" style="margin:10px 0 22px">
 				{formatBytes(used)} из {formatBytes(quota)} · свободно {formatBytes(free)}
 			</div>
-			<div style="display:flex;align-items:center;gap:14px;margin-top:26px;flex-wrap:wrap">
-				<span style="font-size:13.5px;font-weight:600;width:168px;flex:0 0 auto">Потолок инстанса</span>
+			<div class="flex-mid gap-14 wrap mt-26">
+				<span class="ttl flab">Потолок инстанса</span>
 				<Input
 					admin
-					style="width:88px"
+					class="w88"
 					placeholder="40"
 					bind:value={quotaInput}
 					onchange={() => void saveQuotaGb()}
 				/>
-				<span style="font-size:12.5px;color:var(--muted)">ГБ</span>
-				<span style="font-size:12.5px;color:var(--muted)">или</span>
+				<span class="note">ГБ</span>
+				<span class="note">или</span>
 				<Input
 					admin
-					style="width:88px"
+					class="w88"
 					placeholder="80"
 					bind:value={quotaPercentInput}
 					onchange={() => void saveQuotaPercent()}
 				/>
-				<span style="font-size:12.5px;color:var(--muted)">% диска</span>
+				<span class="note">% диска</span>
 			</div>
-			<Hint style="margin-top:8px;line-height:1.5">{instanceQuotaExplainHint}</Hint>
+			<Hint class="mt-8">{instanceQuotaExplainHint}</Hint>
 			{#if instanceQuotaHint}
-				<Hint style="margin-top:8px">{instanceQuotaHint}</Hint>
+				<Hint class="mt-8">{instanceQuotaHint}</Hint>
 			{/if}
-			<div style="display:flex;align-items:flex-start;gap:14px;margin-top:14px">
-				<span style="font-size:13.5px;font-weight:600;width:168px;flex:0 0 auto;padding-top:8px"
-					>Квота круга по умолчанию</span
-				>
+			<div class="flex-top gap-14 mt-14">
+				<span class="ttl flab pt-8">Квота круга по умолчанию</span>
 				<div>
-					<ChipGroup style="margin:0">
+					<ChipGroup class="m-0">
 						{#each DEFAULT_CHIPS as chip (chip.key)}
 							<Chip
 								selected={defaultChip === chip.key}
@@ -371,27 +364,27 @@
 						{/each}
 					</ChipGroup>
 					{#if defaultChip === 'custom'}
-						<div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+						<div class="flex-mid gap-10 mt-8">
 							<Input
 								admin
-								style="width:88px"
+								class="w88"
 								bind:value={defaultCustomGb}
 								onchange={() => void saveDefaultCustom()}
 							/>
-							<span style="font-size:12.5px;color:var(--muted)">ГБ</span>
+							<span class="note">ГБ</span>
 						</div>
 						{#if defaultCustomHint}
-							<Hint style="margin-top:8px">{defaultCustomHint}</Hint>
+							<Hint class="mt-8">{defaultCustomHint}</Hint>
 						{/if}
 					{/if}
-					<div style="font-size:11.5px;color:var(--faint);margin-top:8px;line-height:1.5">
+					<div class="fine mt-8">
 						Новые круги и те, у кого в таблице не «своя». Потолок инстанса при этом никто не
 						обходит.
 					</div>
 				</div>
 			</div>
 			{#if circles.length}
-				<DataTable style="margin-top:20px">
+				<DataTable class="mt-20">
 					<thead>
 						<tr>
 							<th style="width:34%">Круг</th>
@@ -408,7 +401,7 @@
 							{@const fill = eff && eff > 0 ? Math.min(100, (c.media_bytes / eff) * 100) : 0}
 							<tr
 								style:background={selectedCircleId === c.id ? 'var(--ct)' : undefined}
-								style="cursor:pointer"
+								class="pointer"
 								onclick={() => toggleCircle(c.id)}
 							>
 								<td class="n"><span class="dot" style="background:{tint}"></span>{c.name}</td>
@@ -416,19 +409,19 @@
 								<td>{formatBytes(c.media_bytes)}</td>
 								<td>
 									{#if c.quota_custom && c.quota_bytes == null}
-										<span style="color:var(--faint)">без квоты · своя</span>
+										<span class="faint">без квоты · своя</span>
 									{:else if c.quota_custom && c.quota_bytes != null}
 										<span class="qbar"><u style="width:{fill}%;background:{tint}"></u></span>
 										{formatQuota(c.quota_bytes)}
-										<span style="color:var(--faint);font-weight:400"> своя</span>
+										<span class="faint normal"> своя</span>
 									{:else if eff != null}
 										<span class="qbar"><u style="width:{fill}%;background:{tint}"></u></span>
 										{formatQuota(eff)}
 									{:else}
-										<span style="color:var(--faint)">без квоты</span>
+										<span class="faint">без квоты</span>
 									{/if}
 								</td>
-								<td style="text-align:right;width:22px;padding-right:0"
+								<td class="chev"
 									><Icon name="chevr" size="sm" /></td
 								>
 							</tr>
@@ -437,24 +430,22 @@
 				</DataTable>
 			{/if}
 			{#if selectedCircle}
-				<div
-					style="margin-top:16px;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:14px 16px"
-				>
-					<div style="font-size:13.5px;font-weight:600">
+				<div class="panel mt-16">
+					<div class="ttl">
 						{selectedCircle.name}{selectedCircle.quota_custom ? ' · своя квота' : ''}
 					</div>
-					<div style="font-size:12.5px;color:var(--muted);margin:4px 0 10px">
+					<div class="note" style="margin:4px 0 10px">
 						владелец · {selectedCircle.owner_email}
 					</div>
-					<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+					<div class="flex-mid gap-10 wrap">
 						<Input
 							admin
-							style="width:88px;font-weight:600"
+							class="w88" style="font-weight:600"
 							bind:value={circleQuotaGb}
 							onchange={() => void saveCircleQuota('gb')}
 						/>
-						<span style="font-size:12.5px;color:var(--muted)">ГБ</span>
-						<ChipGroup style="margin:0">
+						<span class="note">ГБ</span>
+						<ChipGroup class="m-0">
 							<Chip onclick={() => void saveCircleQuota('default')}>
 								Как умолчание · {defaultLabel()}
 							</Chip>
@@ -467,16 +458,16 @@
 						</ChipGroup>
 					</div>
 					{#if circleQuotaHint}
-						<Hint style="margin-top:8px">{circleQuotaHint}</Hint>
+						<Hint class="mt-8">{circleQuotaHint}</Hint>
 					{/if}
-					<div style="font-size:11.5px;color:var(--faint);margin-top:10px;line-height:1.5">
+					<div class="fine mt-10">
 						{formatBytes(selectedCircle.media_bytes)} уже лежит. Ниже этого числа поставить можно —
 						владелец увидит «место кончилось» и сам выберет отсечку. Панель её не ставит.
 					</div>
 				</div>
 			{/if}
 			{#if !selectedCircleId}
-				<SectionLabel style="margin:26px 0 8px">Просят больше</SectionLabel>
+				<SectionLabel class="mt-26 mx-0">Просят больше</SectionLabel>
 				{#if requests.length === 0}
 					<Hint>Запросов нет.</Hint>
 				{:else}
@@ -489,7 +480,7 @@
 							requested={formatQuota(req.requested_bytes)}
 							previous={prev != null ? String(Math.round(prev / GB)) : undefined}
 							requester={req.requester_email}
-							date={requestDate(req.created_at)}
+							date={formatAdminDay(req.created_at)}
 							freeSpace={formatBytes(free)}
 							onapprove={() => giveQuota(req)}
 							onreject={() => void onReject(req.id)}
@@ -503,7 +494,7 @@
 			{/if}
 		{/if}
 	</AdminSection>
-	<Hint centered style="margin-top:26px">
+	<Hint centered class="mt-26">
 		Wynd {appVersion} · AGPL-3.0 ·
 		<a class="under" href={sourceUrl()}>исходный код</a> ·
 		<a class="under" href="/THIRD_PARTY_LICENSES.txt">лицензии компонентов</a>

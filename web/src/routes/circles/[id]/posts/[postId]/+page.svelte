@@ -37,6 +37,7 @@
 		reactionIconName,
 		REACTION_KEYS
 	} from '$lib/journal/present';
+	import { applyOwnReaction, canReact } from '$lib/journal/reactions';
 	import {
 		createComment,
 		deleteComment,
@@ -67,6 +68,9 @@
 	let loading = $state(true);
 	let error = $state('');
 	let draft = $state('');
+	// Флаги «идёт отправка»: защита от второго нажатия (GUI-8).
+	let sending = $state(false);
+	let reacting = $state(false);
 	let editingCommentId = $state('');
 	let editingCommentBody = $state('');
 	let activeMemberCount = $state(2);
@@ -77,6 +81,10 @@
 	const commentMembers = $derived(members.filter((m) => m.status === 'active'));
 
 	const soloCircle = $derived(activeMemberCount === 1);
+	const reactionActor = $derived({
+		identityId: circle.identityId,
+		identityName: circle.identityName
+	});
 	const reactionsOpen = $derived($page.url.searchParams.has('reactions'));
 
 	const archiveHint =
@@ -223,9 +231,11 @@
 	}
 
 	async function sendComment() {
-		if (postLocked) return;
+		// Два быстрых нажатия — два комментария (GUI-8).
+		if (postLocked || sending) return;
 		const text = draft.trim();
 		if (!text) return;
+		sending = true;
 		error = '';
 		try {
 			if (navigator.onLine) {
@@ -245,6 +255,8 @@
 				return;
 			}
 			error = authErrorHint(err);
+		} finally {
+			sending = false;
 		}
 	}
 
@@ -262,35 +274,24 @@
 	}
 
 	function showReactionPlus(currentPost: FeedPost): boolean {
-		if (!circle.canWrite || soloCircle || postLocked) return false;
-		const mine = ownReaction(currentPost.reactions, circle.identityId);
-		if (!mine) return true;
-		return isEditableActive(mine.editable_until);
+		return canReact(currentPost.reactions, reactionActor, {
+			canWrite: circle.canWrite,
+			solo: soloCircle,
+			locked: postLocked
+		});
 	}
 
 	function applyReaction(emoji: string | null) {
 		if (!post) return;
-		const reactions = [...(post.reactions ?? [])];
-		const idx = reactions.findIndex((r) => r.identity_id === circle.identityId);
-		if (emoji === null) {
-			if (idx >= 0) reactions.splice(idx, 1);
-		} else if (idx >= 0) {
-			reactions[idx] = { ...reactions[idx], emoji };
-		} else {
-			reactions.push({
-				id: `local-${post.id}`,
-				post_id: post.id,
-				emoji,
-				author_name: circle.identityName,
-				identity_id: circle.identityId,
-				created_at: new Date().toISOString()
-			});
-		}
-		post = { ...post, reactions };
+		post = {
+			...post,
+			reactions: applyOwnReaction(post.reactions, post.id, emoji, reactionActor)
+		};
 	}
 
 	async function pickReaction(currentPost: FeedPost, emoji: string) {
-		if (postLocked) return;
+		if (postLocked || reacting) return;
+		reacting = true;
 		const mine = ownReaction(currentPost.reactions, circle.identityId);
 		const removing = mine?.emoji === emoji;
 		error = '';
@@ -318,6 +319,8 @@
 			}
 		} catch (err) {
 			error = authErrorHint(err);
+		} finally {
+			reacting = false;
 		}
 	}
 </script>
@@ -333,6 +336,7 @@
 	identitySettingsLink={circle.canWrite}
 	commentPlaceholder="Написать комментарий…"
 	commentMembers={commentMembers}
+	commentBusy={sending}
 	bind:commentDraft={draft}
 	commentBar={circle.canWrite && !postLocked}
 	onback={goBack}
@@ -489,7 +493,7 @@
 	{/if}
 
 	{#if reactionsOpen && post}
-		<OverlayLayout ondismiss={closeReactions}>
+		<OverlayLayout label="Реакции" ondismiss={closeReactions}>
 			<SectionLabel style="margin-top:2px">
 				Реакция · {post.reactions?.length ?? 0}
 			</SectionLabel>

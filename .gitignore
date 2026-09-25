@@ -8,3 +8,6 @@ smoke*.log
 web/node_modules/
 web/.svelte-kit/
 /tmp/
+
+# Конфигурация локального запуска для инструментов разработчика.
+.claude/

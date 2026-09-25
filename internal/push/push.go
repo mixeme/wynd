@@ -209,31 +209,45 @@ func (s *Service) SendSignal(ctx context.Context, accountID string, signal Signa
 		return fmt.Errorf("push: marshal signal: %w", err)
 	}
 
+	// Список снимается целиком до первой доставки: держать курсор по таблице
+	// открытым на время сетевых запросов нельзя, а удаление снятой подписки
+	// внутри того же обхода вставало замком (план 42, волна 4).
+	type subscription struct {
+		id, endpoint, p256dh, authKey string
+	}
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE account_id = ?
 	`, accountID)
 	if err != nil {
 		return fmt.Errorf("push: list subscriptions: %w", err)
 	}
-	defer rows.Close()
-
-	var firstErr error
+	var subs []subscription
 	for rows.Next() {
-		var id, endpoint, p256dh, authKey string
-		if err := rows.Scan(&id, &endpoint, &p256dh, &authKey); err != nil {
+		var sub subscription
+		if err := rows.Scan(&sub.id, &sub.endpoint, &sub.p256dh, &sub.authKey); err != nil {
+			_ = rows.Close()
 			return fmt.Errorf("push: scan subscription: %w", err)
 		}
-		if err := s.deliver(ctx, pub, priv, endpoint, p256dh, authKey, payload); err != nil {
+		subs = append(subs, sub)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return fmt.Errorf("push: subscriptions: %w", err)
+	}
+	if err := rows.Close(); err != nil {
+		return fmt.Errorf("push: subscriptions: %w", err)
+	}
+
+	var firstErr error
+	for _, sub := range subs {
+		if err := s.deliver(ctx, pub, priv, sub.endpoint, sub.p256dh, sub.authKey, payload); err != nil {
 			if firstErr == nil {
 				firstErr = err
 			}
 			if isStaleSubscription(err) {
-				_, _ = s.db.ExecContext(ctx, `DELETE FROM push_subscriptions WHERE id = ?`, id)
+				_, _ = s.db.ExecContext(ctx, `DELETE FROM push_subscriptions WHERE id = ?`, sub.id)
 			}
 		}
-	}
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("push: subscriptions: %w", err)
 	}
 	return firstErr
 }
@@ -309,6 +323,7 @@ type deliveryError struct {
 	Host       string
 }
 
+// Error names the host and status, never the endpoint path: the path is as good as the device key.
 func (e *deliveryError) Error() string {
 	if e.Host == "" {
 		return fmt.Sprintf("push: delivery failed: status %d", e.StatusCode)

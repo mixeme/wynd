@@ -73,8 +73,19 @@
 		}
 	}
 
+	/** Самый ранний срок — завтра: сервер требует не меньше суток (ARC-7). */
+	function minDeadline(): string {
+		const d = new Date();
+		d.setDate(d.getDate() + 1);
+		return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+	}
+
 	async function launch() {
 		if (!cutoffDate || !deadline) return;
+		if (deadline < minDeadline()) {
+			error = 'Срок — не раньше завтрашнего дня: участникам нужно время скачать архив';
+			return;
+		}
 		loading = true;
 		error = '';
 		try {
@@ -169,7 +180,7 @@
 		>
 	{/if}
 	<Label style="margin-top:18px">Скачать до</Label>
-	<Input active type="date" bind:value={deadline} />
+	<Input active type="date" min={minDeadline()} bind:value={deadline} />
 	<Hint
 		>Срок двигается в любую сторону и в любой момент: архив снят на отсечку, а не на срок, и от
 		сдвига не портится.</Hint

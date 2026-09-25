@@ -10,6 +10,7 @@ type loginAuth struct {
 	username, password string
 }
 
+// Start begins AUTH LOGIN and refuses it over plain text outside localhost.
 func (a loginAuth) Start(server *smtp.ServerInfo) (string, []byte, error) {
 	if server != nil && !server.TLS && !localhost(server.Name) {
 		return "", nil, errors.New("unencrypted connection")
@@ -17,6 +18,7 @@ func (a loginAuth) Start(server *smtp.ServerInfo) (string, []byte, error) {
 	return "LOGIN", nil, nil
 }
 
+// Next answers the relay's username and password prompts.
 func (a loginAuth) Next(fromServer []byte, more bool) ([]byte, error) {
 	if !more {
 		return nil, nil

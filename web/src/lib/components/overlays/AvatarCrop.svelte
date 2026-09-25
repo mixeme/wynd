@@ -379,6 +379,8 @@
 </div>
 
 <style>
+	/* Светлые токены задаёт сам: иначе оверлей наследует .ph.dark от PhoneFrame
+	   (client-reference, «Кадр аватара (6.8)»). */
 	.crop {
 		--paper: #f4f0e9;
 		--card: #fcfaf6;

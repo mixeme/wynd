@@ -274,31 +274,6 @@ func (c *Chronicle) circleOwner(ctx context.Context, q querier, circleID string)
 	return owner, err
 }
 
-// RequireOwner returns ErrForbidden unless accountID owns the circle.
-func (c *Chronicle) RequireOwner(ctx context.Context, circleID, accountID string) error {
-	owner, err := c.circleOwner(ctx, c.db, circleID)
-	if err != nil {
-		return err
-	}
-	if owner != accountID {
-		return ErrForbidden
-	}
-	return nil
-}
-
-// RequireSettings returns ErrForbidden unless the account is an active member
-// with can_settings (the owner always has it).
-func (c *Chronicle) RequireSettings(ctx context.Context, circleID, accountID string) error {
-	mem, err := c.membership(ctx, c.db, circleID, accountID)
-	if err != nil {
-		return err
-	}
-	if mem.Status != StatusActive || !mem.CanSettings {
-		return ErrForbidden
-	}
-	return nil
-}
-
 func (c *Chronicle) circleEditWindow(ctx context.Context, q querier, circleID string) (EditWindow, error) {
 	var ew sql.NullInt64
 	err := q.QueryRowContext(ctx, `SELECT edit_window_sec FROM circles WHERE id = ?`, circleID).Scan(&ew)

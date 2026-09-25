@@ -45,9 +45,8 @@ type createInviteBody struct {
 // проверочное письмо. Сбой письма установку не отменяет: он записан в
 // smtp_last_error, ответ 200 с mail_sent:false.
 func (s *Server) handleBootstrap(w http.ResponseWriter, r *http.Request) {
-	var body bootstrapBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[bootstrapBody](w, r)
+	if !ok {
 		return
 	}
 	ctx := r.Context()
@@ -138,9 +137,8 @@ func (s *Server) handleBootstrap(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleBootstrapSMTPTest(w http.ResponseWriter, r *http.Request) {
-	var body bootstrapBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[bootstrapBody](w, r)
+	if !ok {
 		return
 	}
 	if err := s.Auth.ConfirmBootstrapToken(r.Context(), body.Token, s.BootstrapToken, s.clientIP(r), time.Now().UTC()); err != nil {
@@ -188,9 +186,8 @@ type passwordBody struct {
 }
 
 func (s *Server) handleAdminSetPassword(w http.ResponseWriter, r *http.Request) {
-	var body passwordBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[passwordBody](w, r)
+	if !ok {
 		return
 	}
 	if err := s.Auth.ChangeAdminPassword(r.Context(), body.Current, body.New, time.Now().UTC()); err != nil {
@@ -201,9 +198,8 @@ func (s *Server) handleAdminSetPassword(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Server) handleAdminLogin(w http.ResponseWriter, r *http.Request) {
-	var body adminLoginBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[adminLoginBody](w, r)
+	if !ok {
 		return
 	}
 	sess, err := s.Auth.AdminLogin(r.Context(), auth.AdminLoginInput{
@@ -231,9 +227,8 @@ func (s *Server) handleAdminLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleCreateServerInvite(w http.ResponseWriter, r *http.Request) {
-	var body createInviteBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[createInviteBody](w, r)
+	if !ok {
 		return
 	}
 	kind := auth.InviteMulti
@@ -332,11 +327,11 @@ func (s *Server) requirePaidSession(r *http.Request) error {
 	if !ok {
 		return auth.ErrForbidden
 	}
-	status, err := s.Auth.PayStatus(r.Context(), sess.AccountID, time.Now().UTC())
+	locked, err := s.Auth.PaymentRequired(r.Context(), sess.AccountID, time.Now().UTC())
 	if err != nil {
 		return err
 	}
-	if status.Required && status.Expired && status.HasRequisites {
+	if locked {
 		return auth.ErrPaymentRequired
 	}
 	return nil

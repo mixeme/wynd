@@ -10,9 +10,8 @@ import (
 )
 
 func (s *Server) handleListCircles(w http.ResponseWriter, r *http.Request) {
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	circles, err := s.Chronicle.ListAccountCircles(r.Context(), sess.AccountID)
@@ -50,18 +49,22 @@ type createCircleBody struct {
 }
 
 func (s *Server) handleCreateCircle(w http.ResponseWriter, r *http.Request) {
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
-	var body createCircleBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[createCircleBody](w, r)
+	if !ok {
 		return
 	}
 	window := chronicle.UnlimitedWindow()
 	if body.EditWindowSec != nil {
+		// Та же проверка, что и в PatchCircle: отрицательное окно правок
+		// круга — invalid. При создании её не было (аудит 2026-09-22).
+		if *body.EditWindowSec < 0 {
+			writeError(w, chronicle.ErrInvalid)
+			return
+		}
 		window = chronicle.EditWindow{Seconds: body.EditWindowSec}
 	}
 	color := "ochre"
@@ -89,18 +92,16 @@ type createCircleInviteBody struct {
 
 func (s *Server) handleCreateCircleInvite(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	if err := s.Chronicle.RequireCanInvite(r.Context(), circleID, sess.AccountID); err != nil {
 		writeDomainError(w, err)
 		return
 	}
-	var body createCircleInviteBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[createCircleInviteBody](w, r)
+	if !ok {
 		return
 	}
 	kind := auth.InviteSingle
@@ -144,9 +145,8 @@ func (s *Server) handleCreateCircleInvite(w http.ResponseWriter, r *http.Request
 
 func (s *Server) handleListCircleInvites(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	if err := s.Chronicle.RequireCanInvite(r.Context(), circleID, sess.AccountID); err != nil {
@@ -164,9 +164,8 @@ func (s *Server) handleListCircleInvites(w http.ResponseWriter, r *http.Request)
 func (s *Server) handleRevokeCircleInvite(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	inviteID := r.PathValue("id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	if err := s.Chronicle.RequireCanInvite(r.Context(), circleID, sess.AccountID); err != nil {
@@ -186,9 +185,8 @@ type leaveCircleBody struct {
 
 func (s *Server) handleLeaveCircle(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	var body leaveCircleBody
@@ -222,14 +220,12 @@ type readCursorBody struct {
 
 func (s *Server) handleSetReadCursor(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
-	var body readCursorBody
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, err)
+	body, ok := bindJSON[readCursorBody](w, r)
+	if !ok {
 		return
 	}
 	err := s.Chronicle.SetReadCursor(r.Context(), sess.AccountID, circleID, body.Seq, time.Now().UTC())

@@ -2,14 +2,17 @@ package archive
 
 import (
 	"archive/zip"
-	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"html"
 	"io"
+	"io/fs"
+	"log"
 	"path"
 	"strings"
 	"time"
+	"unicode"
 
 	"gitea.mixdep.ru/mix/wynd/internal/blob"
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
@@ -32,19 +35,25 @@ type BuildInput struct {
 	Blobs      *blob.Store
 	// Avatars maps identity id to avatar blob id (faces are not anonymized).
 	Avatars map[string]string
+	// DayTitles maps entry date to the day title said before the cutoff.
+	DayTitles map[string]string
 }
 
-// BuildPersonalArchive writes a self-contained ZIP with media/ and HTML.
-func BuildPersonalArchive(ctx context.Context, in BuildInput) ([]byte, error) {
+// BuildPersonalArchive writes a self-contained ZIP with media/ and HTML to w.
+//
+// Пишет в поток, а не в память: на круге в несколько гигабайт архив целиком в
+// bytes.Buffer занимал столько же ОЗУ на каждого качающего (ARC-1). Медиа
+// кладутся без сжатия — JPEG, WebP и MP4 Deflate не уменьшает, а время
+// сборки на нём уходило (ARC-2). Сборка прерывается отменой ctx.
+func BuildPersonalArchive(ctx context.Context, w io.Writer, in BuildInput) error {
 	if in.Blobs == nil {
-		return nil, fmt.Errorf("archive: nil blob store")
+		return fmt.Errorf("archive: nil blob store")
 	}
 	layout := in.Layout
 	if layout == "" {
 		layout = LayoutFeed
 	}
-	buf := new(bytes.Buffer)
-	zw := zip.NewWriter(buf)
+	zw := zip.NewWriter(w)
 
 	mediaNames := make(map[string]string)
 	addBlob := func(blobID string) error {
@@ -54,21 +63,35 @@ func BuildPersonalArchive(ctx context.Context, in BuildInput) ([]byte, error) {
 		if _, ok := mediaNames[blobID]; ok {
 			return nil
 		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		// Недоступный файл пропускается, а не роняет архив: оценка его и так не
+		// считает, а один потерянный на диске файл закрывал экспорт всему кругу
+		// — перед самой чисткой (план 42, ARC-4). В HTML на его месте пометка.
 		info, err := in.Blobs.OpenBlob(ctx, blobID)
+		if errors.Is(err, blob.ErrNotFound) {
+			log.Printf("archive: blob %s unavailable, skipped", blobID)
+			return nil
+		}
 		if err != nil {
 			return fmt.Errorf("archive: blob %s: %w", blobID, err)
 		}
 		f, err := openBlobFile(info.Path)
+		if errors.Is(err, fs.ErrNotExist) {
+			log.Printf("archive: blob %s file missing, skipped", blobID)
+			return nil
+		}
 		if err != nil {
 			return fmt.Errorf("archive: open blob %s: %w", blobID, err)
 		}
 		defer f.Close()
 		name := "media/" + blobID + extensionForMime(info.MimeType)
-		w, err := zw.Create(name)
+		fw, err := zw.CreateHeader(&zip.FileHeader{Name: name, Method: zip.Store})
 		if err != nil {
 			return err
 		}
-		if _, err := io.Copy(w, f); err != nil {
+		if _, err := io.Copy(fw, f); err != nil {
 			return err
 		}
 		mediaNames[blobID] = name
@@ -77,40 +100,37 @@ func BuildPersonalArchive(ctx context.Context, in BuildInput) ([]byte, error) {
 	for _, fp := range in.Posts {
 		for _, m := range fp.Media {
 			if err := addBlob(m.BlobID); err != nil {
-				return nil, err
+				return err
 			}
 		}
 	}
 	for _, blobID := range in.Avatars {
 		if err := addBlob(blobID); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
 	switch layout {
 	case LayoutPosts:
-		index := renderPostsIndex(in.CircleName, in.CutoffDate, in.Posts)
+		index := renderPostsIndex(in.CircleName, in.CutoffDate, in.Posts, in.DayTitles)
 		if err := writeZipFile(zw, "index.html", []byte(index)); err != nil {
-			return nil, err
+			return err
 		}
 		for _, fp := range in.Posts {
-			body := renderPostPage(in.CircleName, fp, mediaNames, in.Avatars)
+			body := renderPostPage(in.CircleName, fp, mediaNames, in.Avatars, in.DayTitles)
 			fname := path.Join("posts", fp.Post.ID+".html")
 			if err := writeZipFile(zw, fname, []byte(body)); err != nil {
-				return nil, err
+				return err
 			}
 		}
 	default:
-		feed := renderFeedIndex(in.CircleName, in.CutoffDate, in.Posts, mediaNames, in.Avatars)
+		feed := renderFeedIndex(in.CircleName, in.CutoffDate, in.Posts, mediaNames, in.Avatars, in.DayTitles)
 		if err := writeZipFile(zw, "index.html", []byte(feed)); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	if err := zw.Close(); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+	return zw.Close()
 }
 
 func writeZipFile(zw *zip.Writer, name string, data []byte) error {
@@ -160,7 +180,37 @@ ul{list-style:none;padding:0}
 li{margin:8px 0}
 `
 
-func renderFeedIndex(circleName, cutoff string, posts []chronicle.FeedPost, media map[string]string, avatars map[string]string) string {
+// snippetRunes — длина начала записи в оглавлении раскладки posts.
+const snippetRunes = 60
+
+// snippet режет текст по рунам, а не по байтам — срез байтов рвал
+// кириллическую букву пополам, и оглавление показывало «�» (ARC-3); обрыв —
+// на последнем пробеле, если он не слишком близко к началу.
+func snippet(body string, limit int) string {
+	runes := []rune(body)
+	if len(runes) <= limit {
+		return body
+	}
+	cut := runes[:limit]
+	for i := len(cut) - 1; i > limit/2; i-- {
+		if unicode.IsSpace(cut[i]) {
+			cut = cut[:i]
+			break
+		}
+	}
+	return string(cut) + "…"
+}
+
+// entryDateHTML — дата отнесения и, если есть, название дня (ARC-6).
+func entryDateHTML(entryDate string, dayTitles map[string]string) string {
+	out := html.EscapeString(entryDate)
+	if title := dayTitles[entryDate]; title != "" {
+		out += " · «" + html.EscapeString(title) + "»"
+	}
+	return out
+}
+
+func renderFeedIndex(circleName, cutoff string, posts []chronicle.FeedPost, media, avatars, dayTitles map[string]string) string {
 	var b strings.Builder
 	b.WriteString("<!DOCTYPE html><html lang=\"ru\"><head><meta charset=\"utf-8\"><title>")
 	b.WriteString(html.EscapeString(circleName))
@@ -173,13 +223,13 @@ func renderFeedIndex(circleName, cutoff string, posts []chronicle.FeedPost, medi
 	b.WriteString(html.EscapeString(cutoff))
 	b.WriteString("</p>")
 	for _, fp := range posts {
-		appendPostHTML(&b, fp, media, avatars, false)
+		appendPostHTML(&b, fp, media, avatars, dayTitles, false)
 	}
 	b.WriteString("</body></html>")
 	return b.String()
 }
 
-func renderPostsIndex(circleName, cutoff string, posts []chronicle.FeedPost) string {
+func renderPostsIndex(circleName, cutoff string, posts []chronicle.FeedPost, dayTitles map[string]string) string {
 	var b strings.Builder
 	b.WriteString("<!DOCTYPE html><html lang=\"ru\"><head><meta charset=\"utf-8\"><title>")
 	b.WriteString(html.EscapeString(circleName))
@@ -194,32 +244,28 @@ func renderPostsIndex(circleName, cutoff string, posts []chronicle.FeedPost) str
 	for _, fp := range posts {
 		label := fp.Post.AuthorName
 		if fp.Post.Body != "" {
-			snippet := fp.Post.Body
-			if len(snippet) > 60 {
-				snippet = snippet[:60] + "…"
-			}
-			label += ": " + snippet
+			label += ": " + snippet(fp.Post.Body, snippetRunes)
 		}
 		b.WriteString("<li><a href=\"posts/")
 		b.WriteString(html.EscapeString(fp.Post.ID))
 		b.WriteString(".html\">")
 		b.WriteString(html.EscapeString(label))
 		b.WriteString("</a> <span class=\"meta\">")
-		b.WriteString(html.EscapeString(fp.Post.EntryDate))
+		b.WriteString(entryDateHTML(fp.Post.EntryDate, dayTitles))
 		b.WriteString("</span></li>")
 	}
 	b.WriteString("</ul></body></html>")
 	return b.String()
 }
 
-func renderPostPage(circleName string, fp chronicle.FeedPost, media, avatars map[string]string) string {
+func renderPostPage(circleName string, fp chronicle.FeedPost, media, avatars, dayTitles map[string]string) string {
 	var b strings.Builder
 	b.WriteString("<!DOCTYPE html><html lang=\"ru\"><head><meta charset=\"utf-8\"><title>")
 	b.WriteString(html.EscapeString(circleName))
 	b.WriteString("</title><style>")
 	b.WriteString(baseCSS)
 	b.WriteString("</style></head><body><p class=\"meta\"><a href=\"../index.html\">← К оглавлению</a></p>")
-	appendPostHTML(&b, fp, media, avatars, true)
+	appendPostHTML(&b, fp, media, avatars, dayTitles, true)
 	b.WriteString("</body></html>")
 	return b.String()
 }
@@ -237,7 +283,7 @@ func appendAuthorHTML(b *strings.Builder, name, identityID string, media, avatar
 	b.WriteString(html.EscapeString(name))
 }
 
-func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars map[string]string, relativeMedia bool) {
+func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, dayTitles map[string]string, relativeMedia bool) {
 	prefix := ""
 	if relativeMedia {
 		prefix = "../"
@@ -245,7 +291,7 @@ func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars ma
 	b.WriteString("<article class=\"post\"><div class=\"author\">")
 	appendAuthorHTML(b, fp.Post.AuthorName, fp.Post.IdentityID, media, avatars, prefix)
 	b.WriteString("</div><div class=\"meta\">")
-	b.WriteString(html.EscapeString(fp.Post.EntryDate))
+	b.WriteString(entryDateHTML(fp.Post.EntryDate, dayTitles))
 	if !fp.Post.CreatedAt.IsZero() {
 		b.WriteString(" · ")
 		b.WriteString(html.EscapeString(fp.Post.CreatedAt.UTC().Format(time.RFC3339)))
@@ -259,6 +305,7 @@ func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars ma
 	for _, m := range fp.Media {
 		src, ok := media[m.BlobID]
 		if !ok {
+			b.WriteString("<p class=\"meta\">Файл недоступен на сервере</p>")
 			continue
 		}
 		b.WriteString("<div class=\"media\">")

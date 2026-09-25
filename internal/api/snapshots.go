@@ -9,9 +9,8 @@ import (
 
 func (s *Server) handleFeed(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	posts, err := s.Chronicle.FeedSnapshot(r.Context(), circleID, sess.AccountID)
@@ -53,9 +52,8 @@ func (s *Server) handleFeed(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleGrid(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	items, err := s.Chronicle.GridSnapshot(r.Context(), circleID, sess.AccountID)
@@ -78,9 +76,8 @@ func (s *Server) handleGrid(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleMap(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	pins, err := s.Chronicle.MapSnapshot(r.Context(), circleID, sess.AccountID)
@@ -106,9 +103,8 @@ func (s *Server) handleMap(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleDays(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	days, err := s.Chronicle.DaysSnapshot(r.Context(), circleID, sess.AccountID)
@@ -119,8 +115,8 @@ func (s *Server) handleDays(w http.ResponseWriter, r *http.Request) {
 	out := make([]map[string]any, len(days))
 	for i, d := range days {
 		row := map[string]any{
-			"entry_date":  d.Day.EntryDate,
-			"post_count":  d.PostCount,
+			"entry_date": d.Day.EntryDate,
+			"post_count": d.PostCount,
 		}
 		if d.Day.Title != "" {
 			row["title"] = d.Day.Title
@@ -141,9 +137,8 @@ func (s *Server) handleDays(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleDayDetail(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	entryDate := r.PathValue("date")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	posts, err := s.Chronicle.DayPostsSnapshot(r.Context(), circleID, sess.AccountID, entryDate)

@@ -7,6 +7,12 @@ import { defineConfig } from 'vitest/config';
 
 const root = path.resolve(fileURLToPath(import.meta.url), '..');
 const version = readFileSync(path.join(root, '..', 'VERSION'), 'utf8').trim();
+// Ревизия index.html в прекэше service worker'а. Workbox перекачивает запись
+// только при смене ревизии, а index.html ссылается на хешированные чанки
+// своей сборки. Ревизия = VERSION оставляла у установленного PWA старую
+// оболочку после обновления из исходников без смены версии: её чанков уже
+// нет ни в новом прекэше, ни на сервере, и клиент не загружался (план 42, SW-1).
+const shellRevision = `${version}+${Date.now()}`;
 const isTest = process.env.VITEST === 'true';
 
 export default defineConfig({
@@ -45,7 +51,7 @@ export default defineConfig({
 			kit: {
 				adapterFallback: 'index.html',
 				spa: {
-					fallbackRevision: async () => version
+					fallbackRevision: async () => shellRevision
 				}
 			}
 		})

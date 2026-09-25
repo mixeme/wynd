@@ -63,6 +63,7 @@ func (s *Store) effectiveInstanceQuotaBytes(ctx context.Context) (int64, error) 
 	return int64(total) * pct / 100, nil
 }
 
+// DefaultCircleQuotaBytes returns the instance default circle quota; NULL means no ceiling.
 func (s *Store) DefaultCircleQuotaBytes(ctx context.Context) (sql.NullInt64, error) {
 	var q sql.NullInt64
 	err := s.db.QueryRowContext(ctx, `
@@ -71,6 +72,7 @@ func (s *Store) DefaultCircleQuotaBytes(ctx context.Context) (sql.NullInt64, err
 	return q, err
 }
 
+// SetDefaultCircleQuotaBytes sets the default circle quota; nil removes it. Circles with their own quota are not touched.
 func (s *Store) SetDefaultCircleQuotaBytes(ctx context.Context, quota *int64) error {
 	if quota == nil {
 		_, err := s.db.ExecContext(ctx, `

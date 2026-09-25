@@ -20,6 +20,7 @@
 		searchChipsFromWindow,
 		searchThumbVariant
 	} from '$lib/journal/search';
+	import { searchStats, toggleAuthor, togglePeriod } from '$lib/journal/searchState';
 	import type { CircleSearchHit } from '$lib/journal/types';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
@@ -55,25 +56,7 @@
 		authorFilter = chips.author;
 	}
 
-	const stats = $derived.by(() => {
-		const posts = hits.filter((h) => h.kind === 'post').length;
-		const comments = hits.filter((h) => h.kind === 'comment').length;
-		const days = hits.filter((h) => h.kind === 'day').length;
-		const parts: string[] = [];
-		if (posts) parts.push(`${posts} ${posts === 1 ? 'запись' : posts < 5 ? 'записи' : 'записей'}`);
-		if (comments)
-			parts.push(
-				`${comments} ${comments === 1 ? 'комментарий' : comments < 5 ? 'комментария' : 'комментариев'}`
-			);
-		if (days) {
-			const mod10 = days % 10;
-			const mod100 = days % 100;
-			if (days === 1) parts.push('день');
-			else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) parts.push(`${days} дня`);
-			else parts.push(`${days} дней`);
-		}
-		return parts.join(', ').replace(/, ([^,]+)$/, ' и $1');
-	});
+	const stats = $derived(searchStats(hits));
 
 	$effect(() => {
 		replaceSearchUrl(searchPath, {
@@ -203,16 +186,23 @@
 		return formatPostTime(hit.created_at, hit.entry_date);
 	}
 
-	function toggleAuthor(name: string) {
-		authorFilter = authorFilter === name ? '' : name;
+	function chipState() {
+		return { author: authorFilter, periodActive, periodFrom, periodTo };
 	}
 
-	function togglePeriod() {
-		periodActive = !periodActive;
-		if (!periodActive) {
-			periodFrom = '';
-			periodTo = '';
-		}
+	function applyChips(next: ReturnType<typeof chipState>) {
+		authorFilter = next.author;
+		periodActive = next.periodActive;
+		periodFrom = next.periodFrom;
+		periodTo = next.periodTo;
+	}
+
+	function onToggleAuthor(name: string) {
+		applyChips(toggleAuthor(chipState(), name));
+	}
+
+	function onTogglePeriod() {
+		applyChips(togglePeriod(chipState()));
 	}
 </script>
 
@@ -231,14 +221,14 @@
 		<Chip onclick={openGlobalSearch}>Все круги</Chip>
 	</ChipGroup>
 	<ChipGroup style="margin-top:8px">
-		<Chip selected={periodActive} onclick={togglePeriod}>Период</Chip>
+		<Chip selected={periodActive} onclick={onTogglePeriod}>Период</Chip>
 		<Chip selected={filterPhoto} onclick={() => (filterPhoto = !filterPhoto)}>С фото</Chip>
 		<Chip selected={filterLocation} onclick={() => (filterLocation = !filterLocation)}
 			>С местом</Chip
 		>
 		{#if authorNames.length > 1}
 			{#each authorNames as name (name)}
-				<Chip selected={authorFilter === name} onclick={() => toggleAuthor(name)}>{name}</Chip>
+				<Chip selected={authorFilter === name} onclick={() => onToggleAuthor(name)}>{name}</Chip>
 			{/each}
 		{/if}
 	</ChipGroup>

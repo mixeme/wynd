@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import AdminSection from '$ui/admin/AdminSection.svelte';
@@ -121,7 +121,7 @@
 	<AdminSection>
 		<TextButton
 			variant="admin"
-			style="font-size:11.5px;color:var(--faint);margin-bottom:8px;display:flex;align-items:center;gap:8px"
+			class="sz-11 faint mb-8 flex-mid gap-8"
 			onclick={() => goto('/admin/pay')}
 		>
 			<Icon name="back" size="sm" />
@@ -133,11 +133,11 @@
 		{:else if error && !settings}
 			<Hint>{error}</Hint>
 		{:else if settings}
-			<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:18px">
+			<div class="flex-top gap-12 mb-18">
 				<Switch bind:checked={settings.required} label="Требовать подписку" />
 				<div>
-					<div style="font-size:13.5px;font-weight:600">Требовать подписку</div>
-					<div style="font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.5">
+					<div class="ttl">Требовать подписку</div>
+					<div class="note mt-4 lh-15">
 						{#if settings.required}
 							Без оплаты круги не открываются.
 						{:else}
@@ -147,8 +147,8 @@
 				</div>
 			</div>
 			{#if settings.required}
-				<SectionLabel style="margin:0 0 8px">Напомнить об истечении</SectionLabel>
-				<ChipGroup style="margin:0">
+				<SectionLabel class="mt-0 mx-0 mb-8">Напомнить об истечении</SectionLabel>
+				<ChipGroup class="m-0">
 					{#each REMIND_OPTIONS as opt (opt.days)}
 						<Chip
 							selected={settings.remind_days === opt.days}
@@ -160,10 +160,10 @@
 						</Chip>
 					{/each}
 				</ChipGroup>
-				<div style="font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.5">
+				<div class="note mt-8 lh-15">
 					За столько дней до конца — письмо и строка на улочке. По умолчанию семь.
 				</div>
-				<SectionLabel style="margin:22px 0 8px">Заявки</SectionLabel>
+				<SectionLabel class="mt-22 mx-0 mb-8">Заявки</SectionLabel>
 				{#if requests.length === 0}
 					<Hint>Очередь пуста.</Hint>
 				{:else}
@@ -181,25 +181,25 @@
 								onclick={() => goto(`/admin/pay/requests/${req.id}`)}
 							>
 								<td class="n">{req.account_email}</td>
-								<td style="color:var(--muted)">{formatPayDateTime(req.created_at)}</td>
+								<td class="muted">{formatPayDateTime(req.created_at)}</td>
 								<td>
 									{#if thumbs[req.id]}
 										<img
 											src={thumbs[req.id]}
 											alt=""
-											style="width:42px;height:28px;object-fit:cover;border-radius:4px;display:block"
+											class="pay-thumb"
 										/>
 									{/if}
 								</td>
-								<td style="color:var(--muted)">{req.comment || 'нет'}</td>
-								<td style="text-align:right">
+								<td class="muted">{req.comment || 'нет'}</td>
+								<td class="right">
 									<Icon name="chevr" size="sm" />
 								</td>
 							</tr>
 						{/each}
 					</DataTable>
 				{/if}
-				<SectionLabel style="margin:22px 0 8px">На сервере · {accounts.length}</SectionLabel>
+				<SectionLabel class="mt-22 mx-0 mb-8">На сервере · {accounts.length}</SectionLabel>
 				{#if accounts.length === 0}
 					<Hint>Учёток нет.</Hint>
 				{:else}
@@ -214,13 +214,13 @@
 								class="acc-row"
 								onclick={() => goto(`/admin/pay/accounts/${acc.id}`)}
 							>
-								<td class="n" style={acc.blocked ? 'color:var(--faint)' : undefined}
+								<td class="n {acc.blocked ? 'faint' : ''}"
 									>{acc.email}</td
 								>
-								<td style="color:var(--muted)">
+								<td class="muted">
 									{subscriptionTableStatus(acc.subscription_expires_at)}
 								</td>
-								<td style="text-align:right">
+								<td class="right">
 									<Icon name="chevr" size="sm" />
 								</td>
 							</tr>
@@ -228,13 +228,13 @@
 					</DataTable>
 				{/if}
 			{:else}
-				<div style="font-size:12.5px;color:var(--muted);line-height:1.5">
+				<div class="note lh-15">
 					Напоминания и очереди нет: спрашивать оплату некого. Реквизиты остаются на «Оплате» — ими
 					пользуется баннер.
 				</div>
 			{/if}
 			{#if error}
-				<Hint style="margin-top:12px">{error}</Hint>
+				<Hint class="mt-12">{error}</Hint>
 			{/if}
 		{/if}
 	</AdminSection>

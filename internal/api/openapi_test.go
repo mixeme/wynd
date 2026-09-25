@@ -5,10 +5,14 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
 )
 
+// Инвариант: каждый маршрут описан в своей спеке и наоборот.
+// Спеки две и делятся по префиксу /admin/: общая сверка пропускала
+// админский маршрут, описанный в участниковой спеке, и наоборот.
 func TestOpenAPICoversMuxRoutes(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
@@ -17,28 +21,71 @@ func TestOpenAPICoversMuxRoutes(t *testing.T) {
 	dir := filepath.Dir(thisFile)
 
 	mux := muxAPIOps(t, filepath.Join(dir, "server.go"))
-	spec := map[string]struct{}{}
-	mergeOps(spec, openAPIOps(t, filepath.Join(dir, "openapi-participant.yaml")))
-	mergeOps(spec, openAPIOps(t, filepath.Join(dir, "openapi-admin.yaml")))
+	muxAdmin, muxParticipant := splitAdminOps(mux)
 
-	var missing []string
-	for op := range mux {
-		if _, ok := spec[op]; !ok {
-			missing = append(missing, op)
+	for _, pair := range []struct {
+		name string
+		mux  map[string]struct{}
+		spec map[string]struct{}
+	}{
+		{"admin", muxAdmin, openAPIOps(t, filepath.Join(dir, "openapi-admin.yaml"))},
+		{"participant", muxParticipant, openAPIOps(t, filepath.Join(dir, "openapi-participant.yaml"))},
+	} {
+		var missing []string
+		for op := range pair.mux {
+			if _, ok := pair.spec[op]; !ok {
+				missing = append(missing, op)
+			}
+		}
+		sort.Strings(missing)
+		if len(missing) > 0 {
+			t.Fatalf("openapi-%s.yaml без маршрутов mux: %s", pair.name, strings.Join(missing, ", "))
+		}
+		var extra []string
+		for op := range pair.spec {
+			if _, ok := pair.mux[op]; !ok {
+				extra = append(extra, op)
+			}
+		}
+		sort.Strings(extra)
+		if len(extra) > 0 {
+			t.Fatalf("openapi-%s.yaml описывает чужое: %s", pair.name, strings.Join(extra, ", "))
 		}
 	}
-	if len(missing) > 0 {
-		t.Fatalf("OpenAPI missing mux routes: %s", strings.Join(missing, ", "))
+}
+
+// Инвариант: сверка видит все регистрации. Разбор идёт регулярным
+// выражением по исходнику, и маршрут, записанный иначе, тихо выпадал бы из проверки.
+func TestMuxRouteCountMatchesParsedOps(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller")
 	}
-	var extra []string
-	for op := range spec {
-		if _, ok := mux[op]; !ok {
-			extra = append(extra, op)
+	path := filepath.Join(filepath.Dir(thisFile), "server.go")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	registrations := strings.Count(string(raw), "s.Mux.Handle")
+	parsed := len(muxAPIOps(t, path))
+	if registrations != parsed {
+		t.Fatalf("регистраций s.Mux.Handle* — %d, распознано маршрутов — %d", registrations, parsed)
+	}
+}
+
+// splitAdminOps делит маршруты по префиксу /admin/.
+func splitAdminOps(ops map[string]struct{}) (admin, participant map[string]struct{}) {
+	admin = map[string]struct{}{}
+	participant = map[string]struct{}{}
+	for op := range ops {
+		_, path, _ := strings.Cut(op, " ")
+		if strings.HasPrefix(path, "/admin/") || path == "/admin" {
+			admin[op] = struct{}{}
+			continue
 		}
+		participant[op] = struct{}{}
 	}
-	if len(extra) > 0 {
-		t.Fatalf("OpenAPI extra (not on mux): %s", strings.Join(extra, ", "))
-	}
+	return admin, participant
 }
 
 var handleFuncRe = regexp.MustCompile(`HandleFunc\("(GET|POST|PUT|PATCH|DELETE|HEAD) (/api/v1/[^"]+)"`)
@@ -101,10 +148,4 @@ func openAPIOps(t *testing.T, path string) map[string]struct{} {
 		t.Fatalf("no OpenAPI ops in %s", path)
 	}
 	return out
-}
-
-func mergeOps(dst, src map[string]struct{}) {
-	for k, v := range src {
-		dst[k] = v
-	}
 }

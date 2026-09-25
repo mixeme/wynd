@@ -2,14 +2,16 @@
 
 **Wynd UI** — design system Wynd: компоненты (`$ui/...` → `web/src/lib/components/`, без barrel `$ui/index.ts`), layouts (`$lib/layouts/`, без алиаса), CSS-токены (`tokens.css`, `ui.css`). Dev-каталог: `/dev/ui`. Guard: `npm run check:ui` (`web/scripts/check-ui.mjs` + `ui-guard.mjs`), не ESLint. Сторож агента: `.cursor/hooks/ui-screens.mjs`, правило `.cursor/rules/wynd-ui-screens.mdc`.
 
-Сжатая выжимка из закрытого плана. Макеты: [screens.html](../visual/screens.html). Стек и спайк Bits UI vs shadcn: [stack.html](../stack.html).  
+Библиотека интерфейса: правила и компоненты по папкам. Макеты: [screens.html](../visual/screens.html). Стек и спайк Bits UI vs shadcn: [stack.html](../stack.html).  
 Таблица «компонент → экран» в `web/src/routes/dev/ui/catalog.ts`.
 
 **Выбор:** ветка **Б** — Bits UI + свой CSS на токенах (`ui.css`, классы `.cbar`, `.post`, `.r`).
 
 **Правила:** shell без цвета круга; accent через `--c` / `--ct`; Danger — ink border; Mark только в AppBar и пять других мест по макету. Новые npm-пакеты для UI не ставить. [screens.html](../visual/screens.html) и [wynd.html](../wynd.html) не синхронизировать с `VERSION`.
 
-**Пробел библиотеки:** экран — только существующие `$ui` и `$lib/layouts`. Не хватает куска — сначала расширить уже лежащий компонент. Если объективно нельзя, это **отдельная задача** на Wynd UI: `docs/plans/<slug>.plan.md`, затем стоп. В той же задаче `.svelte` в `$ui` не заводить и дыру на экране не верстать. Сторож пропустит новый файл позже, только если открытый план его перечисляет в таблице. `/dev/spike` в проверку состава не входит.
+**Пробел библиотеки:** экран — только существующие `$ui` и `$lib/layouts`. Не хватает куска — сначала расширить уже лежащий компонент. Если объективно нельзя, это **отдельная задача** на Wynd UI: `docs/plans/<slug>.plan.md`, затем стоп. В той же задаче `.svelte` в `$ui` не заводить и дыру на экране не верстать. Сторож пропустит новый файл позже, только если открытый план его перечисляет в таблице.
+
+**`/dev/*` в сборке.** `/dev/ui` (каталог компонентов) и `/dev/smoke/*` (кадры для сверки) остаются и закрыты проверкой `dev` в `routes/dev/+layout.ts`: вне `vite dev` маршрут отвечает 404 — SvelteKit не умеет исключать маршруты из сборки. `/dev/spike/*` (отчёт о сравнении библиотек) удалён в волне 5 плана 42.
 
 ```markdown
 # … — пробел Wynd UI
@@ -32,7 +34,13 @@
 - [ ] Экран — следующая задача, не эта
 ```
 
-**Интерактив:** корень кнопки — `<button type="button">`, не `div`/`span` + `role="button"`. `Button.onclick` обязателен; без действия в dev/smoke — `onclick={() => {}}`. Загрузка — prop `loading` (текст `…`, вид `.off`); не `class:off` на экранах. `Chip` без `onclick` — `<span>`, с действием — `<button aria-pressed>`. Навигационные строки (`SettingsRow`, `CircleRow`, `ServerRow`, `SearchResultRow`, `MemberRow` в режиме transfer) несут `onclick` на корне. `CircleRow` в режиме `card` — `div`-карточка: действие и чипы групп под строкой, без вложенных `button`. Ссылки с URL остаются `<a class="under" href>`. Identity в `CircleBar` — `<button type="button" class="idn">` (без `circleId` — `span.idn`), не `IconButton`. Compose: `TextButton` `bar` / `barAction`. Вложенные `<button>` запрещены: меню в `MemberRow` только если строка не кликабельна целиком. `AdminNav` при `links` — `<button type="button">`, не `span` + `role="button"`. Карточки ленты и дней: `PostCard` — корневой `div.post` (вложенные контролы, не `<button>`); клик по телу через action, не `onclick` на разметке. `DayCard` при `onclick` — `<button type="button">`, иначе `div`. `PostCard` action игнорирует `button, a, input, textarea, select, label, .rxpick` — чипам реакций `stopPropagation` не нужен; альбом и прочие не-кнопки по-прежнему останавливают всплытие сами.
+**Интерактив:**
+
+- Корень кнопки — `<button type="button">`, не `div`/`span` + `role="button"`. `Button.onclick` обязателен; без действия в dev/smoke — `onclick={() => {}}`. Загрузка — prop `loading` (текст `…`, вид `.off`); не `class:off` на экранах. `Chip` без `onclick` — `<span>`, с действием — `<button aria-pressed>`.
+- Навигационные строки (`SettingsRow`, `CircleRow`, `ServerRow`, `SearchResultRow`, `MemberRow` в режиме transfer) несут `onclick` на корне. `CircleRow` в режиме `card` — `div`-карточка: действие и чипы групп под строкой, без вложенных `button`. Ссылки с URL остаются `<a class="under" href>`.
+- Identity в `CircleBar` — `<button type="button" class="idn">` (без `circleId` — `span.idn`), не `IconButton`. Compose: `TextButton` `bar` / `barAction`. Вложенные `<button>` запрещены: меню в `MemberRow` только если строка не кликабельна целиком. `AdminNav` при `links` — `<button type="button">`, не `span` + `role="button"`.
+- Карточки ленты и дней: `PostCard` — корневой `div.post` (вложенные контролы, не `<button>`); клик по телу через action, не `onclick` на разметке. `DayCard` при `onclick` — `<button type="button">`, иначе `div`.
+- `PostCard` action игнорирует `button, a, input, textarea, select, label, .rxpick` — чипам реакций `stopPropagation` не нужен; альбом и прочие не-кнопки по-прежнему останавливают всплытие сами.
 
 **Формы:** ввод — `Input` / `TextArea` / `SearchField`; статика — `FieldDisplay` (бывший `Field`). Админка: `Input admin={true}` и `FieldDisplay admin={true}` (класс `.inp`), не отдельный `AdminInput`. `SearchField` — редактируемый поиск и поля фильтров (тот же виджет: `/search`, поиск в круге, 9.3 почта); `BackBar` свой `.sfield`. `TextArea variant`: `area` \| `field` \| `compose` \| `comment`.
 
@@ -48,7 +56,7 @@
 | ShellLayout | `.ph.shell` + при `app` `.shell-body` | e2-1, e2-3, e7-* |
 | CircleLayout | `.ph.{color}` | e3-*, e4-*, e5-*, e6-* |
 | FormLayout | `.ph.{color\|shell}` | e1-3, e1-4, e2-4, e2-7, e6-1 |
-| OverlayLayout | absolute | sheets, dialogs, push; `ondismiss` → Scrim |
+| OverlayLayout | absolute | sheets, dialogs, push; `ondismiss` → Scrim и модальность; `label` → `aria-label` |
 | AdminWideLayout | `.ph.wide.shell` | e9-* |
 
 `FormLayout`: при `circleTitle` — шапка вступления **#e1-3** (`div.cbar`, имя по центру, без `BackBar`); список участников на join (`?members=1`) — `color` + `subtitle` (цветная `.cbar` с назад), не серый `BackBar`. Ветки: `compose`, `circleTitle`, snippet `bar`, `color && subtitle`, иначе `BackBar`.
@@ -92,11 +100,15 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar
 | `FieldDisplay` | `<div class="fld">` или `.inp` | статика (бывший `Field`); `admin` → `.inp` (9.2 URL инвайта) |
 | `TextArea` | `<textarea class="ta">`, `.fld`, `.compose-text` или `.inp` | `variant`: `area` \| `field` \| `compose` \| `comment`, `bind:value`; `compose` — зеркало + `.men` для `@имя` |
 | `SearchField` | `.sfield` + `<input type="search">` | иконка, `bind:value`; поиск и фильтры |
-| `VolumeChart` | `.chart` + SVG | `volume`, `cutoffLabel`, `bind:cutoffX`, `oncutoff(index)`; жест только при `oncutoff` |
+| `VolumeChart` | `.chart` + SVG | `volume`, `cutoffLabel`, `bind:cutoffX`, `oncutoff(index)`; при `oncutoff` — `role="slider"`, Tab, стрелки ±месяц, PageUp/PageDown ±год, Home/End (UI-4); без него — `aria-hidden` |
 
-Guard: `npm run check:ui` — экран = существующие `$ui` + `$lib/layouts` (не Bits UI, не одноразовый `.svelte` у маршрута, в `routes/` только `+page`/`+layout`/`+error`); новый файл в библиотеке — только по открытому плану «пробел Wynd UI»; в `web/src` запрещён импорт `$lib/components` (использовать `$ui`); в `routes/` запрещены `role="button"`, сырой `class="btn"`, сырой `class="lab"`, `<input class="fld">`, `<textarea class="fld|ta">`, сырой `<button class="row2|one|cm|…">`, сырой `<div class="row2">` и сырой `class="compose-text"` (prod-маршруты, не `/dev`).
+Guard: `npm run check:ui` — экран = существующие `$ui` + `$lib/layouts` (не Bits UI, не одноразовый `.svelte` у маршрута, в `routes/` только `+page`/`+layout`/`+error`); новый файл в библиотеке — только по открытому плану «пробел Wynd UI»; в `web/src` запрещён импорт `$lib/components` (использовать `$ui`); в `routes/` запрещены `role="button"`, сырой `class="btn"`, сырой `class="lab"`, `<input class="fld">`, `<textarea class="fld|ta">`, сырой `<button class="row2|one|cm|…">`, сырой `<div class="row2">` и сырой `class="compose-text"` (prod-маршруты, не `/dev`). Классы сторож читает по разметке (скрипт и стили вырезаны), из открывающего тега целиком: слова `class="…"` в любом месте, строковые литералы в `class={…}`, в интерполяциях значения и внутри `${…}` шаблонных строк, директивы `class:x` (`markupElements`, `RAW_CLASS_RULES`; GUARD-1). Динамический импорт `.svelte` в экранах и `<svelte:component>` сторож не видит — их в экранах не пишут (GUARD-4).
 
-**Интерактив на `<button>` (Wynd UI, фазы 1–3):** в `ui.css` селектор `button.X` сильнее `.X`. У layout-классов (`btn`, `row2`, `chip`, `cm`, …) вёрстку из `.X` дублируют в `button.X` или `.контекст button.X`. Нативный `<button>` не растягивается как `div`: `button.btn` — `width: calc(100% - 32px)` (поля `.btn` 16+16, как `input.fld`); в `.rowin` / `.chk` — `width:auto`. Текстовые (`act`, `t`, `rt`, `under`) — padding:0 намеренно. Список и проверка: `BUTTON_LAYOUT_SPECS` / `BUTTON_TEXT_CLASSES` в `web/scripts/ui-guard.mjs`; `npm run check:ui` падает при рассинхроне.
+Свои `<style>` есть у шести экранов: корневые `+layout`/`+page` и четыре `admin/pay/**`. Сторож их не запрещает — формулировка «экран без своих `<style>`» у храповика относится к инлайн-стилям; новые `<style>` в экранах не заводить (GUARD-3).
+
+**Классы на `<button>`.** Браузерные умолчания снимает один сброс `:where(button)` в начале `ui.css` (нулевая весомость), поэтому любой `.X` ложится на кнопку как на `div` — зеркал `button.X` нет (волна 5 плана 42).
+
+Нативный `<button>` не растягивается как `div`: `.btn` сам задаёт `display:block` и `width: calc(100% - 32px)` (поля 16+16, как `input.fld`); в `.rowin` / `.chk` — `width:auto`. Текстовые (`act`, `t`, `rt`, `under`) — padding:0 намеренно. Какие классы можно вешать на `<button>` в `$ui` — `BUTTON_LAYOUT_CLASSES` / `BUTTON_TEXT_CLASSES` в `web/scripts/ui-guard.mjs`; новый класс вне списков роняет `npm run check:ui`.
 
 ### `data/`
 
@@ -112,19 +124,29 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 
 `MediaTile` — фото/видео в ленте, сетке, альбоме, шапке поста и compose: `variant` `feed` \| `grid` \| `album` \| `headerMini` \| `compose`. `feed` — `div.pic` + `stopPropagation` при `onclick`; `grid` / `album` / `headerMini` / `compose` — `button`. Стили `.cell`, `.thumbs`, `.pic.sq.mini` в `ui.css`; счётчик сетки — `.g3 .cnt`. `Lightbox`: опционально `fixed`, `dotCount` / `dotIndex` / `onDotSelect` (snippet `dots` в приоритете).
 
-Строки с опциональным `onclick`: корень `button.row2` / `button.r` или `div` (`SettingsRow`, `CircleRow`, `ServerRow`, `SearchResultRow`, `MemberRow`). `SettingsRow` с snippet `control` — всегда `div.row2`, справа контрол (например `Switch`); `chevron`/`value` не рендерятся; title без `font-weight:600`. `PostCard` — `div.post`, клик через action; `DayCard` — `<button>` при `onclick`, иначе `div`. `FoldHeader` — `button.fold` при `onclick`, сворачивание через `expanded`. `DayHeader`: `ontitle` / `oncover` (`button.pic` при `oncover`). `CircleRow`: при `card` — оболочка `.circle-row-card`, `actionLabel` / опционально `actionLabel2` под строкой (`circle-row-action`). `GroupFoldCard` — та же оболочка для **группы** на улочке (**#e2-14**): `FoldHeader` + до двух `circle-row-action`; long-press и сворачивание — rest на `FoldHeader`, опционально `foldStyle`.
+Строки с опциональным `onclick`: корень `button.row2` / `button.r` или `div` (`SettingsRow`, `CircleRow`, `ServerRow`, `SearchResultRow`, `MemberRow`).
+
+- `SettingsRow` с snippet `control` — всегда `div.row2`, справа контрол (например `Switch`); `chevron`/`value` не рендерятся; title без `font-weight:600`.
+- `PostCard` — `div.post`, клик через action; `DayCard` — `<button>` при `onclick`, иначе `div`. `FoldHeader` — `button.fold` при `onclick`, сворачивание через `expanded`. `DayHeader`: `ontitle` / `oncover` (`button.pic` при `oncover`).
+- `CircleRow`: при `card` — оболочка `.circle-row-card`, `actionLabel` / опционально `actionLabel2` под строкой (`circle-row-action`). `GroupFoldCard` — та же оболочка для **группы** на улочке (**#e2-14**): `FoldHeader` + до двух `circle-row-action`; long-press и сворачивание — rest на `FoldHeader`, опционально `foldStyle`.
 
 Лента (3.1 / 4.12 / 4.10):
 
 | Компонент | Корень | Поведение |
 |-----------|--------|-----------|
-| `ReactionBar` | `.rx` + при открытии `.rxpick` | `groups` → `button.one`; `showAdd` → `button.add`; `pickerOpen` → `button.rcho` (`selectedKey` → `.on`); колбэки `onopenList` / `onadd` / `onpick`. Иконка — уже resolved `IconName` (`reactionIconName` живёт в `$lib`, не в `$ui`). Группировка, плюс, `?reactions=` — на маршруте. Ночь: `.ph.dark .rx button.one` подложка `#3A2E29`, иконка `--c`. |
+| `ReactionBar` | `.rx` + при открытии `.rxpick` | `groups` → `button.one`; `showAdd` → `button.add`; `pickerOpen` → `button.rcho` (`selectedKey` → `.on`); колбэки `onopenList` / `onadd` / `onpick`. Иконка — уже resolved `IconName`; группировка, плюс, `?reactions=` — на маршруте (ниже). |
 | `CommentPreview` | `button.cm` | Сосед `PostCard`, не внутри `.post` (слот `comments` у карточки — другое, напр. ошибка очереди). Контент — snippet. |
 | `ReactionListRow` | `div.row2` | Оверлей 4.12: Avatar + имя + Icon. Без `onclick`. Не расширять `MemberRow`: справа знак реакции, не subtitle/меню. |
 
+`ReactionBar` получает иконку готовой: `reactionIconName` живёт в `$lib`, не в `$ui`. Ночная тема: `.ph.dark .rx .one` — подложка `#3A2E29`.
+
 ### `overlays/`
 
-`Fab` — кружок `.fab` в `.fab-wrap`; опц. `menuOpen` + `items[]` — карточка `.fab-menu` над плюсом (**#e2-11**). `ShellLayout` прокидывает `fabMenuOpen` / `fabMenuItems`; snippet `fab` — только содержимое кружка. Fab, CommentBar (`oncompose` — фото и шеврон; пустое поле на таче ведёт на compose, на ПК с мышью только фокус; без `oncompose` — полоса комментария), Scrim (`button.scrim`), Sheet, Dialog, PushBanner, Lightbox (`.mid` — `role="region"`), AvatarCrop (светлые токены на корне `.crop`, не следует `.ph.dark`)
+`Fab` — кружок `.fab` в `.fab-wrap`; опц. `menuOpen` + `items[]` — карточка `.fab-menu` над плюсом (**#e2-11**), `role="menu"`: при открытии фокус на первом пункте, стрелки по кругу, Escape → `onclose` (UI-3; `ShellLayout` — `onfabmenuclose`). `ShellLayout` прокидывает `fabMenuOpen` / `fabMenuItems`; snippet `fab` — только содержимое кружка. Fab, CommentBar (`oncompose` — фото и шеврон; пустое поле на таче ведёт на compose, на ПК с мышью только фокус; без `oncompose` — полоса комментария), Scrim (`button.scrim`), Sheet, Dialog, PushBanner, Lightbox (`.mid` — `role="region"`), AvatarCrop
+
+**Модальность оверлеев (UI-1, UI-2).** `Dialog` и `Sheet` с `ondismiss`, `Lightbox` с `fixed` и `onclose` — `role="dialog"`, `aria-modal`, action `modal` из `$lib/a11y/modal`: фокус при открытии — на первый фокусируемый элемент, Tab по кругу внутри, фокус снаружи возвращается внутрь, Escape → `ondismiss`, при закрытии фокус — туда, где был. Оверлеи в стеке: клавиши слушает только верхний. Без `ondismiss` (каталог `/dev/ui`) оверлей статичен и ничего не перехватывает. Экран даёт оверлею имя через `label` — обычно его заголовок. `AvatarCrop` держит свою ловушку (фокус только на кнопках панели) и на общий action не переведён. (светлые токены на корне `.crop`, не следует `.ph.dark`)
+
+**Строки не сливаются в один `Row`** (UI-5): `CircleRow`, `ServerRow`, `SettingsRow`, `MemberRow`, `SearchResultRow` — одна форма (`row2`, `.g`, `.sub`, хвост), но библиотека держит словарь строк из кадров `screens.html`; выигрыш слияния — ~150 строк, цена — расхождение с кадрами. Шестая строка — повод завести общий `Row` со сниппетами.
 
 ### `admin/`
 

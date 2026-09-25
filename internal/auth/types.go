@@ -72,6 +72,7 @@ type Invite struct {
 	CreatedAt          time.Time
 }
 
+// IsServer reports an invite to the server without a circle.
 func (i Invite) IsServer() bool {
 	return i.CircleID == ""
 }

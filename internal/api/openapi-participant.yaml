@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.7.2
+  version: 0.8.0
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:
@@ -574,6 +574,14 @@ paths:
                   type: string
                 cover_blob_id:
                   type: string
+                media:
+                  description: >-
+                    Omitted — media untouched; present — replaces the whole set.
+                    Together with cover_blob_id it is invalid: media carries the
+                    cover itself.
+                  type: array
+                  items:
+                    type: object
     delete:
       summary: Delete post branch
 
@@ -638,6 +646,13 @@ paths:
   /circles/{circle_id}/quota:
     get:
       summary: Used bytes, quota and media volume chart (owner)
+      parameters:
+        - name: cutoff_date
+          in: query
+          description: With it the answer also carries freed_at_cutoff_bytes.
+          schema:
+            type: string
+            format: date
 
   /circles/{circle_id}/archive:
     post:

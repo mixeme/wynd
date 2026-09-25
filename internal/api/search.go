@@ -5,15 +5,13 @@ import (
 	"net/url"
 	"strconv"
 
-	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 	"gitea.mixdep.ru/mix/wynd/internal/search"
 )
 
 func (s *Server) handleCircleSearchAuthors(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	q := r.URL.Query()
@@ -27,9 +25,8 @@ func (s *Server) handleCircleSearchAuthors(w http.ResponseWriter, r *http.Reques
 
 func (s *Server) handleCircleSearch(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	q := r.URL.Query()
@@ -43,14 +40,18 @@ func (s *Server) handleCircleSearch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleGlobalSearch(w http.ResponseWriter, r *http.Request) {
-	sess, ok := SessionFromContext(r.Context())
+	sess, ok := requireSession(w, r)
 	if !ok {
-		writeError(w, chronicle.ErrForbidden)
 		return
 	}
 	q := r.URL.Query()
 	limit, _ := strconv.Atoi(q.Get("limit"))
-	hits, err := s.Search.SearchAll(r.Context(), sess.AccountID, q.Get("q"), limit, parseSearchFilters(q))
+	filters := parseSearchFilters(q)
+	// Автор — это лицо в круге, а не учётка: одно и то же имя в двух
+	// кругах — разные люди. В общем поиске фильтр по автору не имеет смысла и
+	// спекой не обещан («no author») — обнуляем его здесь.
+	filters.Author = ""
+	hits, err := s.Search.SearchAll(r.Context(), sess.AccountID, q.Get("q"), limit, filters)
 	if err != nil {
 		writeDomainError(w, err)
 		return
