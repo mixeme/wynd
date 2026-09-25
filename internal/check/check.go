@@ -227,6 +227,9 @@ func checkHTTPSOutside(in Input) Result {
 	}
 	r.Status = StatusOK
 	r.Detail = fmt.Sprintf("200 за %d мс", in.External.HTTPSMS)
+	if in.External.RedirectPermanent {
+		r.Detail += "; HTTP→HTTPS 308"
+	}
 	return r
 }
 

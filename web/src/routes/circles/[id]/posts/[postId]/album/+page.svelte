@@ -8,7 +8,8 @@
 	import { formatPostTime } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadFeed } from '$lib/journal/feed';
-	import { findPost, photoMedia } from '$lib/journal/present';
+	import { albumCompressionHint, findPost, lightboxCaption, photoMedia } from '$lib/journal/present';
+	import { fetchCompression } from '$lib/journal/posts';
 	import type { FeedPost, MediaSummary } from '$lib/journal/types';
 	import { downloadBlob, getMediaUrl } from '$lib/media/objectUrl';
 	import { registerRefetch } from '$lib/sync/sync';
@@ -20,6 +21,7 @@
 	let post = $state<FeedPost | undefined>();
 	let photos = $state<MediaSummary[]>([]);
 	let urls = $state<Record<string, string>>({});
+	let photoMaxPx = $state<number | undefined>();
 	let loading = $state(true);
 
 	const currentItem = $derived(photos[lightboxIndex]);
@@ -36,9 +38,13 @@
 
 	async function load() {
 		try {
-			const snap = await loadFeed(circle.origin, circle.circleId);
+			const [snap, compression] = await Promise.all([
+				loadFeed(circle.origin, circle.circleId),
+				fetchCompression(circle.origin).catch(() => undefined)
+			]);
 			post = findPost(snap.posts, postId);
 			photos = post ? photoMedia(post.media) : [];
+			photoMaxPx = compression?.photo_max_px;
 			const next: Record<string, string> = {};
 			for (const p of photos) {
 				next[p.blob_id] = await getMediaUrl(circle.origin, p.blob_id);
@@ -94,6 +100,11 @@
 				</button>
 			{/each}
 		</div>
+		{#if post}
+			<Hint style="margin:16px 16px 0;text-align:center">
+				{albumCompressionHint(post, photoMaxPx)}
+			</Hint>
+		{/if}
 	{/if}
 </FormLayout>
 
@@ -101,7 +112,7 @@
 	{@const item = currentItem}
 	<Lightbox
 		counter="{lightboxIndex + 1} из {photos.length}"
-		caption="{post.author_name} · {formatPostTime(post.created_at, post.entry_date)}"
+		caption={lightboxCaption(post, item, formatPostTime)}
 		onclose={closeLightbox}
 		ondownload={item.kind === 'photo' ? downloadCurrent : undefined}
 		onprev={lightboxIndex > 0 ? () => openLightbox(lightboxIndex - 1) : undefined}

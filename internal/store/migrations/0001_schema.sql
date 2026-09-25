@@ -2,7 +2,7 @@ CREATE TABLE account_notify_prefs (
     account_id TEXT PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
     posts INTEGER NOT NULL DEFAULT 1 CHECK (posts IN (0, 1)),
     comments INTEGER NOT NULL DEFAULT 1 CHECK (comments IN (0, 1)),
-    reactions INTEGER NOT NULL DEFAULT 1 CHECK (reactions IN (0, 1))
+    reactions INTEGER NOT NULL DEFAULT 0 CHECK (reactions IN (0, 1))
 );
 
 CREATE TABLE accounts (
@@ -85,6 +85,7 @@ CREATE VIRTUAL TABLE content_fts USING fts5(
     author_name UNINDEXED,
     kind UNINDEXED,
     created_at UNINDEXED,
+    entry_date UNINDEXED,
     tokenize = 'unicode61'
 );
 
@@ -360,16 +361,18 @@ END;
 
 CREATE TRIGGER fts_comment_insert AFTER INSERT ON comments WHEN NEW.deleted = 0 AND NEW.body IS NOT NULL AND NEW.body != ''
 BEGIN
-    INSERT INTO content_fts (body, post_id, circle_id, comment_id, author_name, kind, created_at)
-    VALUES (NEW.body, NEW.post_id, NEW.circle_id, NEW.id, NEW.author_name, 'comment', NEW.created_at);
+    INSERT INTO content_fts (body, post_id, circle_id, comment_id, author_name, kind, created_at, entry_date)
+    SELECT NEW.body, NEW.post_id, NEW.circle_id, NEW.id, NEW.author_name, 'comment', NEW.created_at, p.entry_date
+    FROM posts p WHERE p.id = NEW.post_id;
 END;
 
 CREATE TRIGGER fts_comment_update AFTER UPDATE ON comments
 BEGIN
     DELETE FROM content_fts WHERE comment_id = OLD.id AND kind = 'comment';
-    INSERT INTO content_fts (body, post_id, circle_id, comment_id, author_name, kind, created_at)
-    SELECT NEW.body, NEW.post_id, NEW.circle_id, NEW.id, NEW.author_name, 'comment', NEW.created_at
-    WHERE NEW.deleted = 0 AND NEW.body IS NOT NULL AND NEW.body != '';
+    INSERT INTO content_fts (body, post_id, circle_id, comment_id, author_name, kind, created_at, entry_date)
+    SELECT NEW.body, NEW.post_id, NEW.circle_id, NEW.id, NEW.author_name, 'comment', NEW.created_at, p.entry_date
+    FROM posts p WHERE p.id = NEW.post_id
+      AND NEW.deleted = 0 AND NEW.body IS NOT NULL AND NEW.body != '';
 END;
 
 CREATE TRIGGER fts_post_delete AFTER DELETE ON posts
@@ -379,14 +382,34 @@ END;
 
 CREATE TRIGGER fts_post_insert AFTER INSERT ON posts WHEN NEW.deleted = 0 AND NEW.body IS NOT NULL AND NEW.body != ''
 BEGIN
-    INSERT INTO content_fts (body, post_id, circle_id, comment_id, author_name, kind, created_at)
-    VALUES (NEW.body, NEW.id, NEW.circle_id, '', NEW.author_name, 'post', NEW.created_at);
+    INSERT INTO content_fts (body, post_id, circle_id, comment_id, author_name, kind, created_at, entry_date)
+    VALUES (NEW.body, NEW.id, NEW.circle_id, '', NEW.author_name, 'post', NEW.created_at, NEW.entry_date);
 END;
 
 CREATE TRIGGER fts_post_update AFTER UPDATE ON posts
 BEGIN
     DELETE FROM content_fts WHERE post_id = OLD.id AND kind = 'post';
-    INSERT INTO content_fts (body, post_id, circle_id, comment_id, author_name, kind, created_at)
-    SELECT NEW.body, NEW.id, NEW.circle_id, '', NEW.author_name, 'post', NEW.created_at
+    INSERT INTO content_fts (body, post_id, circle_id, comment_id, author_name, kind, created_at, entry_date)
+    SELECT NEW.body, NEW.id, NEW.circle_id, '', NEW.author_name, 'post', NEW.created_at, NEW.entry_date
     WHERE NEW.deleted = 0 AND NEW.body IS NOT NULL AND NEW.body != '';
+END;
+
+CREATE TRIGGER fts_day_delete AFTER DELETE ON day_titles
+BEGIN
+    DELETE FROM content_fts WHERE kind = 'day' AND circle_id = OLD.circle_id AND entry_date = OLD.entry_date;
+END;
+
+CREATE TRIGGER fts_day_insert AFTER INSERT ON day_titles WHEN NEW.deleted = 0 AND NEW.title IS NOT NULL AND NEW.title != ''
+BEGIN
+    DELETE FROM content_fts WHERE kind = 'day' AND circle_id = NEW.circle_id AND entry_date = NEW.entry_date;
+    INSERT INTO content_fts (body, post_id, circle_id, comment_id, author_name, kind, created_at, entry_date)
+    VALUES (NEW.title, '', NEW.circle_id, '', '', 'day', NEW.created_at, NEW.entry_date);
+END;
+
+CREATE TRIGGER fts_day_update AFTER UPDATE ON day_titles
+BEGIN
+    DELETE FROM content_fts WHERE kind = 'day' AND circle_id = OLD.circle_id AND entry_date = OLD.entry_date;
+    INSERT INTO content_fts (body, post_id, circle_id, comment_id, author_name, kind, created_at, entry_date)
+    SELECT NEW.title, '', NEW.circle_id, '', '', 'day', NEW.created_at, NEW.entry_date
+    WHERE NEW.deleted = 0 AND NEW.title IS NOT NULL AND NEW.title != '';
 END;

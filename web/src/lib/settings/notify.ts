@@ -8,7 +8,12 @@ export async function fetchAccountNotifyPrefs(origin: string): Promise<NotifyPre
 
 export async function saveAccountNotifyPrefs(
 	origin: string,
-	prefs: Partial<Pick<NotifyPrefs, 'posts' | 'comments' | 'reactions'>>
+	prefs: Partial<
+		Pick<
+			NotifyPrefs,
+			'posts' | 'comments_mine' | 'comments_all' | 'reactions' | 'events' | 'mute_until'
+		>
+	>
 ): Promise<NotifyPrefs> {
 	return apiJson<NotifyPrefs>(origin, '/notify_prefs', {
 		method: 'PUT',
@@ -19,16 +24,22 @@ export async function saveAccountNotifyPrefs(
 
 export async function persistNotifyDefaults(prefs: {
 	posts: boolean;
-	comments: boolean;
+	comments_mine: boolean;
+	comments_all: boolean;
 	reactions: boolean;
+	events: boolean;
+	mute_until?: string | null;
 }): Promise<void> {
 	const current = (await getAppSettings()) ?? { theme: 'system' as const };
 	await saveAppSettings({
 		...current,
 		notify_defaults: {
 			posts: prefs.posts,
-			comments: prefs.comments,
-			reactions: prefs.reactions
+			comments_mine: prefs.comments_mine,
+			comments_all: prefs.comments_all,
+			reactions: prefs.reactions,
+			events: prefs.events,
+			mute_until: prefs.mute_until ?? null
 		}
 	});
 }

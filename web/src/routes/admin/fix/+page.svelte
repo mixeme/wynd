@@ -1,6 +1,7 @@
 ﻿<script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import AdminSection from '$ui/admin/AdminSection.svelte';
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
@@ -9,6 +10,7 @@
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
+	import { annotateProxySnippet } from '$lib/admin/proxy-snippet';
 	import { fetchProxySnippet, serverCaption } from '$lib/admin/admin';
 
 	const kinds = ['nginx', 'caddy', 'traefik'] as const;
@@ -17,6 +19,9 @@
 	let server = $state('');
 	let error = $state('');
 	let copied = $state(false);
+
+	const fail = $derived($page.url.searchParams.get('fail') ?? '');
+	const lines = $derived(annotateProxySnippet(snippet, fail));
 
 	async function load(next: (typeof kinds)[number]) {
 		kind = next;
@@ -30,8 +35,8 @@
 	}
 
 	async function copy() {
-		if (!snippet) return;
-		await navigator.clipboard.writeText(snippet);
+		if (!lines.length) return;
+		await navigator.clipboard.writeText(lines.map((line) => line.text).join('\n'));
 		copied = true;
 	}
 
@@ -57,7 +62,7 @@
 		{#if error}
 			<Hint>{error}</Hint>
 		{:else}
-			<CodeBlock>{snippet}</CodeBlock>
+			<CodeBlock {lines} />
 		{/if}
 		<div style="display:flex;align-items:center;gap:12px;margin-top:16px">
 			<TextButton variant="adminBox" style="font-weight:600" onclick={() => void copy()}>

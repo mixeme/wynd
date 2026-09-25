@@ -12,6 +12,7 @@
 		class: className = '',
 		fab,
 		onsearch,
+		searchDisabled = false,
 		onsettings,
 		children
 	}: {
@@ -21,6 +22,7 @@
 		class?: string;
 		fab?: Snippet;
 		onsearch?: () => void;
+		searchDisabled?: boolean;
 		onsettings?: () => void;
 		children: Snippet;
 	} = $props();
@@ -30,7 +32,7 @@
 	{#if !app}
 		<StatusBar />
 	{/if}
-	<AppBar {onsearch} {onsettings} />
+	<AppBar {onsearch} {searchDisabled} {onsettings} />
 	{@render children()}
 	{#if fab}
 		<Fab>{@render fab()}</Fab>

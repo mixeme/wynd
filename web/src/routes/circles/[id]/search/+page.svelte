@@ -7,7 +7,7 @@
 	import SearchField from '$ui/forms/SearchField.svelte';
 	import SearchResultRow from '$ui/data/SearchResultRow.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
-	import { formatPostTime } from '$lib/format/time';
+	import { formatEntryDate, formatPostTime } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { searchCircle } from '$lib/journal/search';
 	import type { CircleSearchHit } from '$lib/journal/types';
@@ -34,13 +34,21 @@
 	const stats = $derived.by(() => {
 		const posts = filtered.filter((h) => h.kind === 'post').length;
 		const comments = filtered.filter((h) => h.kind === 'comment').length;
+		const days = filtered.filter((h) => h.kind === 'day').length;
 		const parts: string[] = [];
 		if (posts) parts.push(`${posts} ${posts === 1 ? 'запись' : posts < 5 ? 'записи' : 'записей'}`);
 		if (comments)
 			parts.push(
 				`${comments} ${comments === 1 ? 'комментарий' : comments < 5 ? 'комментария' : 'комментариев'}`
 			);
-		return parts.join(' и ');
+		if (days) {
+			const mod10 = days % 10;
+			const mod100 = days % 100;
+			if (days === 1) parts.push('день');
+			else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) parts.push(`${days} дня`);
+			else parts.push(`${days} дней`);
+		}
+		return parts.join(', ').replace(/, ([^,]+)$/, ' и $1');
 	});
 
 	$effect(() => {
@@ -85,7 +93,21 @@
 	}
 
 	function openHit(hit: CircleSearchHit) {
+		if (hit.kind === 'day') {
+			goto(`/circles/${circle.circleId}/days/${hit.entry_date}`);
+			return;
+		}
 		goto(`/circles/${circle.circleId}/posts/${hit.post_id}`);
+	}
+
+	function rowAuthor(hit: CircleSearchHit) {
+		if (hit.kind === 'day') return highlight(hit.title ?? hit.snippet, debounced);
+		return hit.author_name ?? '—';
+	}
+
+	function rowTime(hit: CircleSearchHit) {
+		if (hit.kind === 'day') return formatEntryDate(hit.entry_date);
+		return formatPostTime(hit.created_at, hit.entry_date);
 	}
 
 	function toggleAuthor(name: string) {
@@ -120,16 +142,16 @@
 	{:else if stats}
 		<Hint>{stats}</Hint>
 	{/if}
-	{#each filtered as hit, i (`${hit.post_id}-${hit.comment_id ?? i}`)}
-		<SearchResultRow
-			author={hit.author_name ?? '—'}
-			time={formatPostTime(hit.created_at, hit.entry_date)}
-			onclick={() => openHit(hit)}
-		>
+	{#each filtered as hit, i (`${hit.kind}-${hit.post_id}-${hit.comment_id ?? hit.entry_date}-${i}`)}
+		<SearchResultRow author={rowAuthor(hit)} time={rowTime(hit)} onclick={() => openHit(hit)}>
 			{#snippet preview()}
-				{highlight(hit.snippet, debounced)}
-				{#if hit.kind === 'comment'}
-					<span style="color:var(--faint)"> · комментарий</span>
+				{#if hit.kind === 'day'}
+					<span style="color:var(--faint)">день</span>
+				{:else}
+					{highlight(hit.snippet, debounced)}
+					{#if hit.kind === 'comment'}
+						<span style="color:var(--faint)"> · комментарий</span>
+					{/if}
 				{/if}
 			{/snippet}
 		</SearchResultRow>

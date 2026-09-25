@@ -127,7 +127,7 @@
 		{#if loading}
 			<Hint>Загрузка…</Hint>
 		{:else if !acc}
-			<Hint>{error || 'Учётка не найдена'}</Hint>
+			<Hint>{error || 'Человек не найден'}</Hint>
 		{:else}
 			<h4 style="margin-bottom:6px">{acc.email}</h4>
 			<div style="font-size:12.5px;color:var(--muted);margin-bottom:20px">

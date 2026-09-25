@@ -82,3 +82,71 @@ func TestInvitePeekAndDeferredJoin(t *testing.T) {
 		t.Fatalf("expected first post in feed: %s", rec.Body.String())
 	}
 }
+
+func TestCircleInviteListAndRevoke(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	ownerTok, _ := registerSession(t, srv, caps, "owner@example.com")
+
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles", ownerTok, map[string]any{
+		"name": "Дача", "owner_name": "Владелец", "color": "ochre",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create circle: %d %s", rec.Code, rec.Body.String())
+	}
+	circleID := jsonStr(t, rec, "id")
+
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/invites", ownerTok, map[string]any{
+		"kind": "single", "ttl_sec": 3600,
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("invite single: %d %s", rec.Code, rec.Body.String())
+	}
+	singleID := jsonStr(t, rec, "id")
+
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/invites", ownerTok, map[string]any{
+		"kind": "multi", "max_uses": 10, "ttl_sec": 604800,
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("invite multi: %d %s", rec.Code, rec.Body.String())
+	}
+	multiID := jsonStr(t, rec, "id")
+
+	rec = doGET(t, srv, "/api/v1/circles/"+circleID+"/invites", ownerTok)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("list invites: %d %s", rec.Code, rec.Body.String())
+	}
+	var listed map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &listed); err != nil {
+		t.Fatal(err)
+	}
+	invites, ok := listed["invites"].([]any)
+	if !ok || len(invites) != 2 {
+		t.Fatalf("expected 2 live invites, got: %s", rec.Body.String())
+	}
+
+	rec = doJSON(t, srv, http.MethodDelete, "/api/v1/circles/"+circleID+"/invites/"+multiID, ownerTok, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("revoke multi: %d %s", rec.Code, rec.Body.String())
+	}
+
+	rec = doGET(t, srv, "/api/v1/circles/"+circleID+"/invites", ownerTok)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("list after revoke: %d %s", rec.Code, rec.Body.String())
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &listed); err != nil {
+		t.Fatal(err)
+	}
+	invites, ok = listed["invites"].([]any)
+	if !ok || len(invites) != 1 {
+		t.Fatalf("expected 1 live invite after revoke, got: %s", rec.Body.String())
+	}
+	first, _ := invites[0].(map[string]any)
+	if first["id"] != singleID {
+		t.Fatalf("remaining invite id: %v", first["id"])
+	}
+
+	rec = doJSON(t, srv, http.MethodDelete, "/api/v1/circles/"+circleID+"/invites/wrong-id", ownerTok, nil)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("revoke foreign invite: %d %s", rec.Code, rec.Body.String())
+	}
+}

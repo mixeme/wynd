@@ -6,6 +6,7 @@
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import DangerNote from '$ui/forms/DangerNote.svelte';
+	import DangerZone from '$ui/forms/DangerZone.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import Label from '$ui/forms/Label.svelte';
@@ -34,8 +35,12 @@
 	let reminderSec = $state(REMINDER_OPTIONS[1].sec);
 	let cutoffStats = $state('');
 	let cutoffLocked = $state(false);
+	const cutoffInputId = 'quota-cutoff-date';
 	let error = $state('');
 	let loading = $state(false);
+
+	const showReminderChips = $derived(!activeCycle || cutoffLocked);
+	const reminderReadOnly = $derived(activeCycle && cutoffLocked);
 
 	function defaultDeadline(): string {
 		const d = new Date();
@@ -107,17 +112,34 @@
 
 <FormLayout app color={circle.color} title="Сроки архивации" onback={goBack}>
 	<Label>Отсечка</Label>
-	{#if activeCycle}
+	{#if activeCycle && cutoffLocked}
 		<SettingsRow
 			title={formatEntryDate(cutoffDate)}
 			subtitle={cutoffStats}
-			value={cutoffLocked ? undefined : 'изменить'}
+			value="дата замерла"
 			chevron={false}
 			style="border-top:1px solid var(--line);border-bottom:1px solid var(--line)"
+		/>
+		<Hint
+			>Кто-то уже скачал архив. Эту отсечку больше не сдвинуть: другой диапазон — новый цикл,
+			и все качают заново.</Hint
+		>
+	{:else if activeCycle}
+		<SettingsRow
+			title={formatEntryDate(cutoffDate)}
+			subtitle={cutoffStats}
+			value="изменить"
+			chevron={false}
+			style="border-top:1px solid var(--line);border-bottom:1px solid var(--line)"
+			onclick={() => {
+				const el = document.getElementById(cutoffInputId) as HTMLInputElement | null;
+				el?.showPicker?.() ?? el?.focus();
+			}}
 		/>
 	{/if}
 	{#if !activeCycle || !cutoffLocked}
 		<Input
+			id={cutoffInputId}
 			active
 			type="date"
 			bind:value={cutoffDate}
@@ -125,21 +147,26 @@
 			onchange={() => void loadCutoffStats(cutoffDate)}
 		/>
 	{/if}
-	<Hint
-		>Отсечка двигается, пока никто не скачал архив. После первого скачивания она замирает: другой
-		диапазон — это новый цикл, а не правка этого.</Hint
-	>
+	{#if !activeCycle || !cutoffLocked}
+		<Hint
+			>Отсечка двигается, пока никто не скачал архив. После первого скачивания она замирает:
+			другой диапазон — это новый цикл, а не правка этого.</Hint
+		>
+	{/if}
 	<Label style="margin-top:18px">Скачать до</Label>
 	<Input active type="date" bind:value={deadline} />
 	<Hint
 		>Срок двигается в любую сторону и в любой момент: архив снят на отсечку, а не на срок, и от
 		сдвига не портится.</Hint
 	>
-	{#if !activeCycle}
+	{#if showReminderChips}
 		<Label style="margin-top:18px">Напомнить письмом</Label>
 		<ChipGroup>
 			{#each REMINDER_OPTIONS as opt (opt.sec)}
-				<Chip selected={reminderSec === opt.sec} onclick={() => (reminderSec = opt.sec)}>
+				<Chip
+					selected={reminderSec === opt.sec}
+					onclick={reminderReadOnly ? undefined : () => (reminderSec = opt.sec)}
+				>
 					{opt.label}
 				</Chip>
 			{/each}
@@ -149,12 +176,24 @@
 			интервал останется прежним.</Hint
 		>
 	{/if}
-	<DangerNote style="margin-top:20px">
-		{deadline ? formatEntryDate(deadline) : '…'} всё до {cutoffDate
-			? formatEntryDate(cutoffDate)
-			: '…'} удалится с сервера — независимо от того, все ли успели скачать. Предупредить людей —
-		на вас.
-	</DangerNote>
+	{#if !activeCycle}
+		<DangerNote style="margin-top:20px">
+			{deadline ? formatEntryDate(deadline) : '…'} всё до {cutoffDate
+				? formatEntryDate(cutoffDate)
+				: '…'} удалится с сервера — независимо от того, все ли успели скачать. Предупредить людей —
+			на вас.
+		</DangerNote>
+	{:else if cutoffLocked}
+		<DangerZone
+			style="margin-top:20px"
+			items={['Новый цикл архивации']}
+			onitem={() => goto(`/circles/${circle.circleId}/quota`)}
+		/>
+		<Hint style="margin-top:8px"
+			>Начнёте заново — уже скачанные архивы останутся у людей, но отсечка и срок будут другими, и
+			качать нужно снова.</Hint
+		>
+	{/if}
 	<Button variant="colored" style="margin-top:14px" {loading} onclick={() => void launch()}>
 		{activeCycle ? 'Сохранить сроки' : 'Запустить архивацию'}
 	</Button>

@@ -2,15 +2,17 @@
 	let {
 		items,
 		label = 'Необратимо',
-		onitem
+		onitem,
+		style
 	}: {
 		items: string[];
 		label?: string;
 		onitem?: (item: string) => void;
+		style?: string;
 	} = $props();
 </script>
 
-<div class="danger">
+<div class="danger" {style}>
 	<div class="dl">{label}</div>
 	{#each items as item (item)}
 		{#if onitem}

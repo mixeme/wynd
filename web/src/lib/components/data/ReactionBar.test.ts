@@ -5,6 +5,7 @@ import ReactionBar from './ReactionBar.svelte';
 describe('ReactionBar', () => {
 	it('renders groups and calls onopenList', () => {
 		const onopenList = vi.fn();
+		const onadd = vi.fn();
 		const target = document.createElement('div');
 		const instance = mount(ReactionBar, {
 			target,
@@ -13,12 +14,14 @@ describe('ReactionBar', () => {
 				keys: ['heart', 'laugh', 'surprise', 'anger'],
 				showAdd: true,
 				onopenList,
-				onadd: () => {},
+				onadd,
 				onpick: () => {}
 			}
 		});
 		(target.querySelector('button.one') as HTMLButtonElement | null)?.click();
 		expect(onopenList).toHaveBeenCalledOnce();
+		(target.querySelector('button.add') as HTMLButtonElement | null)?.click();
+		expect(onadd).toHaveBeenCalledOnce();
 		unmount(instance);
 	});
 

@@ -201,6 +201,7 @@ func (s *Server) handleStartArchiveCycle(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	s.sendArchiveCycleStartEmails(r.Context(), circleID)
+	s.notifyCircle(circleID, sess.AccountID, "event")
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 

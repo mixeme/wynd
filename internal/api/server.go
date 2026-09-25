@@ -56,6 +56,9 @@ func NewServer(authSvc *auth.Service, ch *chronicle.Chronicle, blobs *blob.Store
 func (s *Server) routes() {
 	public := limitBody
 	s.Mux.HandleFunc("GET /api/v1/instance", s.handleInstance)
+	s.Mux.HandleFunc("GET /api/v1/probe", s.handleProbe)
+	s.Mux.HandleFunc("GET /api/v1/probe/sse", s.handleProbeSSE)
+	s.Mux.HandleFunc("PUT /api/v1/probe/body", s.handleProbeBody)
 	s.Mux.HandleFunc("POST /api/v1/auth/register", public(s.handleRegister))
 	s.Mux.HandleFunc("POST /api/v1/auth/code", public(s.handleRequestCode))
 	s.Mux.HandleFunc("POST /api/v1/auth/verify", public(s.handleVerify))
@@ -92,6 +95,17 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("GET /api/v1/admin/quota_requests", admin(s.handleAdminQuotaRequests))
 	s.Mux.HandleFunc("POST /api/v1/admin/quota_requests/{id}/approve", admin(s.handleAdminApproveQuotaRequest))
 	s.Mux.HandleFunc("POST /api/v1/admin/quota_requests/{id}/reject", admin(s.handleAdminRejectQuotaRequest))
+	s.Mux.HandleFunc("GET /api/v1/admin/pay", admin(s.handleAdminPayHub))
+	s.Mux.HandleFunc("PUT /api/v1/admin/pay", admin(s.handleAdminSetPayRequisites))
+	s.Mux.HandleFunc("GET /api/v1/admin/pay/donate", admin(s.handleAdminPayDonate))
+	s.Mux.HandleFunc("PUT /api/v1/admin/pay/donate", admin(s.handleAdminSetPayDonate))
+	s.Mux.HandleFunc("GET /api/v1/admin/pay/subscription", admin(s.handleAdminPaySubscription))
+	s.Mux.HandleFunc("PUT /api/v1/admin/pay/subscription", admin(s.handleAdminSetPaySubscription))
+	s.Mux.HandleFunc("GET /api/v1/admin/pay/requests", admin(s.handleAdminPayRequests))
+	s.Mux.HandleFunc("GET /api/v1/admin/pay/requests/{id}", admin(s.handleAdminPayRequestByID))
+	s.Mux.HandleFunc("POST /api/v1/admin/pay/requests/{id}/approve", admin(s.handleAdminApprovePayRequest))
+	s.Mux.HandleFunc("POST /api/v1/admin/pay/requests/{id}/reject", admin(s.handleAdminRejectPayRequest))
+	s.Mux.HandleFunc("GET /api/v1/admin/pay/blob/{blob_id}", admin(s.handleAdminPayBlob))
 
 	participant := s.RequireParticipant
 	s.Mux.HandleFunc("POST /api/v1/invites/{token}/join", participant(s.handleJoinInvite))
@@ -100,6 +114,8 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("GET /api/v1/circles", participant(s.handleListCircles))
 	s.Mux.HandleFunc("POST /api/v1/circles", participant(s.handleCreateCircle))
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/invites", participant(s.handleCreateCircleInvite))
+	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}/invites", participant(s.handleListCircleInvites))
+	s.Mux.HandleFunc("DELETE /api/v1/circles/{circle_id}/invites/{id}", participant(s.handleRevokeCircleInvite))
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/leave", participant(s.handleLeaveCircle))
 	s.Mux.HandleFunc("PUT /api/v1/circles/{circle_id}/read_cursor", participant(s.handleSetReadCursor))
 	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}/feed", participant(s.handleFeed))
@@ -136,6 +152,9 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("POST /api/v1/push/subscribe", participant(s.handlePushSubscribe))
 	s.Mux.HandleFunc("DELETE /api/v1/push/subscribe", participant(s.handlePushUnsubscribe))
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/quota_requests", participant(s.handleCreateQuotaRequest))
+	s.Mux.HandleFunc("GET /api/v1/pay/status", participant(s.handlePayStatus))
+	s.Mux.HandleFunc("POST /api/v1/pay/requests", participant(s.handleCreatePayRequest))
+	s.Mux.HandleFunc("POST /api/v1/pay/banner/dismiss", participant(s.handleDismissPayBanner))
 
 	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}", participant(s.handleCircleDetail))
 	s.Mux.HandleFunc("PATCH /api/v1/circles/{circle_id}", participant(s.handlePatchCircle))

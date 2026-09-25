@@ -257,7 +257,7 @@ func (c *Chronicle) SetDayTitle(ctx context.Context, in DayTitleInput) error {
 	if in.Title == "" {
 		return ErrInvalid
 	}
-	if err := checkLen(in.Title, MaxDayTitleChars); err != nil {
+	if err := checkByteLen(in.Title, MaxTextBytes); err != nil {
 		return err
 	}
 	now := utcOrNow(in.Now)

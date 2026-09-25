@@ -35,10 +35,24 @@ export interface IdentityNameRow {
 
 export interface NotifyPrefs {
 	posts: boolean;
-	comments: boolean;
+	comments_mine: boolean;
+	comments_all: boolean;
 	reactions: boolean;
 	mentions: boolean;
+	events: boolean;
+	mute_until?: string | null;
 }
+
+export const QUOTA_GB = 1024 * 1024 * 1024;
+
+export const QUOTA_CHIPS = [
+	{ key: 'none', label: 'Нет', bytes: null as number | null },
+	{ key: '5', label: '5 ГБ', bytes: 5 * QUOTA_GB },
+	{ key: '10', label: '10 ГБ', bytes: 10 * QUOTA_GB },
+	{ key: 'custom', label: 'Своё…', bytes: null as number | null }
+] as const;
+
+export type QuotaChipKey = (typeof QUOTA_CHIPS)[number]['key'];
 
 export interface VolumeBucket {
 	period: string;
@@ -169,11 +183,40 @@ export async function fetchIdentityHistory(
 	return data.names;
 }
 
+export interface CircleInvite {
+	id: string;
+	token: string;
+	kind: 'single' | 'multi';
+	max_uses: number;
+	uses: number;
+	expires_at: string;
+	created_at: string;
+}
+
+export async function fetchCircleInvites(
+	origin: string,
+	circleId: string
+): Promise<CircleInvite[]> {
+	const data = await apiJson<{ invites: CircleInvite[] }>(
+		origin,
+		`/circles/${circleId}/invites`
+	);
+	return data.invites ?? [];
+}
+
+export async function revokeCircleInvite(
+	origin: string,
+	circleId: string,
+	inviteId: string
+): Promise<void> {
+	await apiJson(origin, `/circles/${circleId}/invites/${inviteId}`, { method: 'DELETE' });
+}
+
 export async function createCircleInvite(
 	origin: string,
 	circleId: string,
 	opts: { kind: 'single' | 'multi'; ttl_sec?: number; max_uses?: number }
-): Promise<{ token: string; expires_at: string; max_uses: number }> {
+): Promise<{ id: string; token: string; expires_at: string; max_uses: number }> {
 	const body: Record<string, unknown> = {
 		kind: opts.kind,
 		max_uses: opts.max_uses ?? 1
@@ -198,7 +241,12 @@ export async function fetchNotifyPrefs(
 export async function saveNotifyPrefs(
 	origin: string,
 	circleId: string,
-	prefs: Partial<Pick<NotifyPrefs, 'posts' | 'comments' | 'reactions'>>
+	prefs: Partial<
+		Pick<
+			NotifyPrefs,
+			'posts' | 'comments_mine' | 'comments_all' | 'reactions' | 'events' | 'mute_until'
+		>
+	>
 ): Promise<NotifyPrefs> {
 	return apiJson<NotifyPrefs>(origin, `/circles/${circleId}/notify_prefs`, {
 		method: 'PUT',

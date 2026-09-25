@@ -41,7 +41,7 @@ func (c *Chronicle) createPostInTx(ctx context.Context, tx *sql.Tx, in PostInput
 	if in.EntryDate == "" {
 		return Post{}, ErrInvalid
 	}
-	if err := checkLen(in.Body, MaxPostBodyChars); err != nil {
+	if err := checkByteLen(in.Body, MaxTextBytes); err != nil {
 		return Post{}, err
 	}
 	now := utcOrNow(in.Now)
@@ -105,7 +105,7 @@ func (c *Chronicle) createPostInTx(ctx context.Context, tx *sql.Tx, in PostInput
 
 // EditPost updates post body and optionally entry_date within edit window.
 func (c *Chronicle) EditPost(ctx context.Context, circleID, accountID, postID, body, entryDate string, now time.Time) error {
-	if err := checkLen(body, MaxPostBodyChars); err != nil {
+	if err := checkByteLen(body, MaxTextBytes); err != nil {
 		return err
 	}
 	now = utcOrNow(now)
@@ -323,7 +323,7 @@ func (c *Chronicle) CreateComment(ctx context.Context, in CommentInput) (Comment
 	if in.Body == "" {
 		return Comment{}, ErrInvalid
 	}
-	if err := checkLen(in.Body, MaxCommentBodyChars); err != nil {
+	if err := checkByteLen(in.Body, MaxTextBytes); err != nil {
 		return Comment{}, err
 	}
 	now := utcOrNow(in.Now)
@@ -479,7 +479,7 @@ func (c *Chronicle) SetReaction(ctx context.Context, in ReactionInput) (Reaction
 
 // EditComment updates comment body within its own edit window.
 func (c *Chronicle) EditComment(ctx context.Context, circleID, accountID, commentID, body string, now time.Time) error {
-	if err := checkLen(body, MaxCommentBodyChars); err != nil {
+	if err := checkByteLen(body, MaxTextBytes); err != nil {
 		return err
 	}
 	if body == "" {

@@ -39,10 +39,12 @@ func TestRunDailyRoutineCleansTargets(t *testing.T) {
 	blobsDir := t.TempDir()
 	now := time.Date(2026, 8, 30, 12, 0, 0, 0, time.UTC)
 	old := now.Add(-48 * time.Hour).Format(time.RFC3339Nano)
+	emptyOld := now.Add(-31 * 24 * time.Hour).Format(time.RFC3339Nano)
 	soon := now.Add(-time.Hour).Format(time.RFC3339Nano)
 
 	insertAccount(t, st, "admin", auth.AdminSentinelEmail, old)
-	insertAccount(t, st, "empty", "empty@test.local", old)
+	insertAccount(t, st, "empty", "empty@test.local", emptyOld)
+	insertAccount(t, st, "ex-member", "ex@test.local", emptyOld)
 	insertAccount(t, st, "member", "member@test.local", old)
 
 	_, err := st.DB().ExecContext(ctx, `
@@ -63,6 +65,20 @@ func TestRunDailyRoutineCleansTargets(t *testing.T) {
 		INSERT INTO memberships (id, circle_id, account_id, identity_id, status, created_at, updated_at)
 		VALUES ('m1', 'c1', 'member', 'id1', 'active', ?, ?)
 	`, old, old)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = st.DB().ExecContext(ctx, `
+		INSERT INTO identities (id, circle_id, account_id, created_at)
+		VALUES ('id2', 'c1', NULL, ?)
+	`, old)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = st.DB().ExecContext(ctx, `
+		INSERT INTO memberships (id, circle_id, account_id, identity_id, status, created_at, updated_at)
+		VALUES ('m2', 'c1', 'ex-member', 'id2', 'gone', ?, ?)
+	`, emptyOld, emptyOld)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,6 +166,14 @@ func TestRunDailyRoutineCleansTargets(t *testing.T) {
 	}
 	if !emptyDeleted.Valid || emptyDeleted.String == "" {
 		t.Fatal("empty account should be soft-deleted, not removed")
+	}
+
+	var exDeleted sql.NullString
+	if err := st.DB().QueryRowContext(ctx, `SELECT deleted_at FROM accounts WHERE id = 'ex-member'`).Scan(&exDeleted); err != nil {
+		t.Fatal(err)
+	}
+	if exDeleted.Valid {
+		t.Fatal("account with membership history should not be auto-deleted")
 	}
 }
 

@@ -37,13 +37,17 @@ func migrate(db *sql.DB) error {
 	if err := db.QueryRow(`SELECT COALESCE(MAX(version), 0) FROM schema_migrations`).Scan(&maxVersion); err != nil {
 		return fmt.Errorf("schema version: %w", err)
 	}
-	if maxVersion != 0 && maxVersion != 1 {
-		return fmt.Errorf("устаревшая схема БД (версия %d): удалите wynd.db и запустите снова", maxVersion)
-	}
 
 	migrations, err := loadMigrations()
 	if err != nil {
 		return err
+	}
+	known := map[int]bool{0: true}
+	for _, m := range migrations {
+		known[m.version] = true
+	}
+	if !known[maxVersion] {
+		return fmt.Errorf("устаревшая схема БД (версия %d): удалите wynd.db и запустите снова", maxVersion)
 	}
 
 	applied, err := appliedVersions(db)

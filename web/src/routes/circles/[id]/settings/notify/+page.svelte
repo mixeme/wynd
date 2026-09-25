@@ -1,45 +1,56 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
-	import SettingsRow from '$ui/data/SettingsRow.svelte';
+	import Chip from '$ui/forms/Chip.svelte';
+	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Label from '$ui/forms/Label.svelte';
+	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import Switch from '$ui/forms/Switch.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { fetchNotifyPrefs, saveNotifyPrefs } from '$lib/circles/settings';
+	import {
+		baselineFromPrefs,
+		muteKeyFromUntil,
+		muteUntilFromKey,
+		notifyBaselineEqual,
+		type MuteKey
+	} from '$lib/settings/notify-mute';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 
-	type NotifyPrefs = { posts: boolean; comments: boolean; reactions: boolean };
-
 	let posts = $state(true);
-	let comments = $state(true);
+	let commentsMine = $state(true);
+	let commentsAll = $state(false);
 	let reactions = $state(false);
+	let events = $state(false);
+	let mute = $state<MuteKey>('none');
 	let error = $state('');
 	let ready = $state(false);
-	let baseline = $state<NotifyPrefs | null>(null);
+	let baseline = $state<ReturnType<typeof baselineFromPrefs> | null>(null);
 
 	async function persist() {
 		if (!ready || !baseline) return;
-		if (
-			posts === baseline.posts &&
-			comments === baseline.comments &&
-			reactions === baseline.reactions
-		) {
-			return;
-		}
+		const next = {
+			posts,
+			comments_mine: commentsMine,
+			comments_all: commentsAll,
+			reactions,
+			events,
+			mute_until: muteUntilFromKey(mute)
+		};
+		if (notifyBaselineEqual(next, baseline)) return;
 		try {
-			const prefs = await saveNotifyPrefs(circle.origin, circle.circleId, {
-				posts,
-				comments,
-				reactions
-			});
+			const prefs = await saveNotifyPrefs(circle.origin, circle.circleId, next);
 			posts = prefs.posts;
-			comments = prefs.comments;
+			commentsMine = prefs.comments_mine;
+			commentsAll = prefs.comments_all;
 			reactions = prefs.reactions;
-			baseline = { posts, comments, reactions };
+			events = prefs.events;
+			mute = muteKeyFromUntil(prefs.mute_until);
+			baseline = baselineFromPrefs(prefs);
 		} catch (err) {
 			error = authErrorHint(err);
 		}
@@ -47,8 +58,11 @@
 
 	$effect(() => {
 		void posts;
-		void comments;
+		void commentsMine;
+		void commentsAll;
 		void reactions;
+		void events;
+		void mute;
 		void persist();
 	});
 
@@ -56,9 +70,12 @@
 		try {
 			const prefs = await fetchNotifyPrefs(circle.origin, circle.circleId);
 			posts = prefs.posts;
-			comments = prefs.comments;
+			commentsMine = prefs.comments_mine;
+			commentsAll = prefs.comments_all;
 			reactions = prefs.reactions;
-			baseline = { posts, comments, reactions };
+			events = prefs.events;
+			mute = muteKeyFromUntil(prefs.mute_until);
+			baseline = baselineFromPrefs(prefs);
 		} catch (err) {
 			error = authErrorHint(err);
 		} finally {
@@ -79,9 +96,14 @@
 			<Switch bind:checked={posts} />
 		{/snippet}
 	</SettingsRow>
-	<SettingsRow title="Комментарии">
+	<SettingsRow title="Комментарии к моим записям">
 		{#snippet control()}
-			<Switch bind:checked={comments} />
+			<Switch bind:checked={commentsMine} />
+		{/snippet}
+	</SettingsRow>
+	<SettingsRow title="Все комментарии">
+		{#snippet control()}
+			<Switch bind:checked={commentsAll} />
 		{/snippet}
 	</SettingsRow>
 	<SettingsRow title="Реакции">
@@ -94,6 +116,20 @@
 			<Switch checked={true} disabled />
 		{/snippet}
 	</SettingsRow>
+	<SettingsRow title="События круга">
+		{#snippet control()}
+			<Switch bind:checked={events} />
+		{/snippet}
+	</SettingsRow>
+
+	<Label style="margin-top:20px">Приглушить</Label>
+	<ChipGroup>
+		<Chip selected={mute === 'none'} onclick={() => (mute = 'none')}>Нет</Chip>
+		<Chip selected={mute === 'tomorrow'} onclick={() => (mute = 'tomorrow')}>До завтра</Chip>
+		<Chip selected={mute === 'week'} onclick={() => (mute = 'week')}>На неделю</Chip>
+	</ChipGroup>
+	<Hint>Упоминание пробивается через приглушение: это адресация, а не шум.</Hint>
+
 	<Hint style="margin-top:14px"
 		>Пуш не несёт текста — только круг и тип события. Содержание подтягивается после
 		синхронизации.</Hint

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.3.5
+  version: 0.4.4
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:
@@ -18,6 +18,32 @@ paths:
       responses:
         "200":
           description: Instance name, version, registration mode
+
+  /probe:
+    get:
+      summary: Reverse-proxy diagnostics for admin browser checks
+      security: []
+      responses:
+        "200":
+          description: proto and peer_loopback
+
+  /probe/sse:
+    get:
+      summary: SSE buffering probe for admin browser checks
+      security: []
+      responses:
+        "200":
+          description: text/event-stream with one event
+
+  /probe/body:
+    put:
+      summary: Request body limit probe for admin browser checks
+      security: []
+      responses:
+        "200":
+          description: body accepted
+        "413":
+          description: body too large
 
   /sync:
     get:
@@ -55,6 +81,17 @@ paths:
           description: Circle created
 
   /circles/{circle_id}/invites:
+    get:
+      summary: Live circle invites
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: invites[]
     post:
       summary: Create circle invite
       parameters:
@@ -80,6 +117,24 @@ paths:
       responses:
         "201":
           description: Invite token
+
+  /circles/{circle_id}/invites/{id}:
+    delete:
+      summary: Revoke circle invite
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
 
   /circles/{circle_id}/leave:
     post:
@@ -440,6 +495,27 @@ paths:
   /circles/{circle_id}/quota_requests:
     post:
       summary: Request circle quota expansion (owner)
+
+  /pay/status:
+    get:
+      summary: Subscription gate and donate banner state
+      responses:
+        "200":
+          description: required, expires_at, pending, banner, dismissed
+
+  /pay/requests:
+    post:
+      summary: Submit subscription payment proof
+      responses:
+        "201":
+          description: request id
+
+  /pay/banner/dismiss:
+    post:
+      summary: Dismiss donate banner until admin releases a new one
+      responses:
+        "200":
+          description: OK
 
 components:
   securitySchemes:

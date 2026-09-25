@@ -99,14 +99,31 @@ export interface PinRecord {
 	pinned_at: number;
 }
 
+export interface GroupRecord {
+	id: string;
+	name: string;
+	circleIds: string[];
+	collapsed: boolean;
+}
+
 export interface CircleMeta {
 	color?: CircleColor;
 	identity_name?: string;
 }
 
+export interface NotifyDefaults {
+	posts?: boolean;
+	comments?: boolean;
+	comments_mine?: boolean;
+	comments_all?: boolean;
+	reactions?: boolean;
+	events?: boolean;
+	mute_until?: string | null;
+}
+
 export interface AppSettings {
 	theme: Theme;
-	notify_defaults?: Record<string, boolean>;
+	notify_defaults?: NotifyDefaults;
 	circle_meta?: Record<string, CircleMeta>;
 	day_prompt_seen?: Record<string, true>;
 	day_prompt_count?: Record<string, number>;
@@ -142,6 +159,10 @@ interface WyndDB extends DBSchema {
 		key: string;
 		value: PinRecord;
 	};
+	groups: {
+		key: string;
+		value: GroupRecord;
+	};
 	settings: {
 		key: 'app';
 		value: AppSettings;
@@ -149,7 +170,7 @@ interface WyndDB extends DBSchema {
 }
 
 const DB_NAME = 'wynd';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbPromise: Promise<IDBPDatabase<WyndDB>> | undefined;
 
@@ -164,15 +185,20 @@ export async function closeDb(): Promise<void> {
 export function getDb(): Promise<IDBPDatabase<WyndDB>> {
 	if (!dbPromise) {
 		dbPromise = openDB<WyndDB>(DB_NAME, DB_VERSION, {
-			upgrade(db) {
-				db.createObjectStore('sessions', { keyPath: 'origin' });
-				db.createObjectStore('admin_session');
-				db.createObjectStore('cursors', { keyPath: 'origin' });
-				db.createObjectStore('snapshots');
-				db.createObjectStore('queue', { autoIncrement: true });
-				db.createObjectStore('media');
-				db.createObjectStore('pins');
-				db.createObjectStore('settings');
+			upgrade(db, oldVersion) {
+				if (oldVersion < 1) {
+					db.createObjectStore('sessions', { keyPath: 'origin' });
+					db.createObjectStore('admin_session');
+					db.createObjectStore('cursors', { keyPath: 'origin' });
+					db.createObjectStore('snapshots');
+					db.createObjectStore('queue', { autoIncrement: true });
+					db.createObjectStore('media');
+					db.createObjectStore('pins');
+					db.createObjectStore('settings');
+				}
+				if (oldVersion < 2) {
+					db.createObjectStore('groups', { keyPath: 'id' });
+				}
 			}
 		});
 	}
@@ -364,6 +390,21 @@ export async function putPin(origin: string, circleId: string): Promise<void> {
 export async function deletePin(origin: string, circleId: string): Promise<void> {
 	const db = await getDb();
 	await db.delete('pins', pinKey(origin, circleId));
+}
+
+export async function listGroups(): Promise<GroupRecord[]> {
+	const db = await getDb();
+	return db.getAll('groups');
+}
+
+export async function putGroup(group: GroupRecord): Promise<void> {
+	const db = await getDb();
+	await db.put('groups', group);
+}
+
+export async function deleteGroup(id: string): Promise<void> {
+	const db = await getDb();
+	await db.delete('groups', id);
 }
 
 export async function listPins(): Promise<PinRow[]> {

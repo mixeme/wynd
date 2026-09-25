@@ -4,6 +4,7 @@
 	import Hint from '$ui/forms/Hint.svelte';
 	import Icon from '$ui/Icon.svelte';
 	import PostCard from '$ui/data/PostCard.svelte';
+	import ReactionListRow from '$ui/data/ReactionListRow.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import OverlayLayout from '$lib/layouts/OverlayLayout.svelte';
@@ -30,16 +31,8 @@
 	</PostCard>
 	<OverlayLayout>
 		<SectionLabel style="margin-top:2px">Реакция · 2</SectionLabel>
-		<div class="row2">
-			<Avatar initial="К" color="#62452F" />
-			<div class="g" style="font-weight:600">Кот</div>
-			<Icon name="heart" size="sm" style="color:var(--c)" />
-		</div>
-		<div class="row2">
-			<Avatar initial="П" color="#357077" />
-			<div class="g" style="font-weight:600">Петя</div>
-			<Icon name="heart" size="sm" style="color:var(--c)" />
-		</div>
+		<ReactionListRow initial="К" name="Кот" color="#62452F" icon="heart" />
+		<ReactionListRow initial="П" name="Петя" color="#357077" icon="heart" />
 		<Hint style="margin-top:14px">
 			Реакция одна на человека и подчиняется окну правок. Хотите сказать больше — напишите словами.
 		</Hint>

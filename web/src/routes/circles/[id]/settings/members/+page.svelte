@@ -6,7 +6,9 @@
 	import Hint from '$ui/forms/Hint.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import MemberRow from '$ui/data/MemberRow.svelte';
+	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
+	import OverlayLayout from '$lib/layouts/OverlayLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import {
 		excludeMember,
@@ -27,6 +29,9 @@
 	let error = $state('');
 	let selfId = $state('');
 	let isOwner = $state(false);
+	let menuMember = $state<MemberInfo | null>(null);
+	let transferTarget = $state<MemberInfo | null>(null);
+	let transferLoading = $state(false);
 
 	const transferMode = $derived($page.url.searchParams.get('transfer') === '1');
 	const active = $derived(members.filter((m) => m.status === 'active'));
@@ -53,47 +58,67 @@
 		return isOwner && !transferMode && !m.is_owner && m.identity_id !== circle.identityId;
 	}
 
+	function memberColor(index: number): string {
+		return CIRCLE_COLORS[CIRCLE_COLOR_ORDER[index % CIRCLE_COLOR_ORDER.length]].cssVar;
+	}
+
 	async function reload() {
 		members = await fetchMembers(circle.origin, circle.circleId);
 	}
 
-	async function onTransfer(m: MemberInfo) {
+	function openMenu(m: MemberInfo) {
+		if (!canManage(m)) return;
+		menuMember = m;
+	}
+
+	function closeMenu() {
+		menuMember = null;
+	}
+
+	function pickTransfer(m: MemberInfo) {
 		if (!transferMode || m.is_owner || m.account_id === selfId) return;
-		if (!confirm(`Передать владение участнику «${m.name}»?`)) return;
+		transferTarget = m;
+	}
+
+	function closeTransfer() {
+		transferTarget = null;
+	}
+
+	async function confirmTransfer() {
+		if (!transferTarget) return;
+		transferLoading = true;
+		error = '';
 		try {
-			await transferOwnership(circle.origin, circle.circleId, m.account_id);
+			await transferOwnership(circle.origin, circle.circleId, transferTarget.account_id);
 			goto(`/circles/${circle.circleId}/settings`);
+		} catch (err) {
+			error = authErrorHint(err);
+			transferLoading = false;
+		}
+	}
+
+	async function toggleSettings(m: MemberInfo) {
+		closeMenu();
+		try {
+			await setMemberCanSettings(
+				circle.origin,
+				circle.circleId,
+				m.account_id,
+				!m.can_settings
+			);
+			await reload();
 		} catch (err) {
 			error = authErrorHint(err);
 		}
 	}
 
-	async function onMenu(m: MemberInfo) {
-		if (!canManage(m)) return;
-		const action = prompt(
-			`«${m.name}»\n1 — Исключить\n2 — ${m.can_settings ? 'Забрать' : 'Дать'} право менять настройки`,
-			''
-		);
-		if (action === '1') {
-			if (!confirm(`Исключить «${m.name}» из круга?`)) return;
-			try {
-				await excludeMember(circle.origin, circle.circleId, m.account_id);
-				await reload();
-			} catch (err) {
-				error = authErrorHint(err);
-			}
-		} else if (action === '2') {
-			try {
-				await setMemberCanSettings(
-					circle.origin,
-					circle.circleId,
-					m.account_id,
-					!m.can_settings
-				);
-				await reload();
-			} catch (err) {
-				error = authErrorHint(err);
-			}
+	async function exclude(m: MemberInfo) {
+		closeMenu();
+		try {
+			await excludeMember(circle.origin, circle.circleId, m.account_id);
+			await reload();
+		} catch (err) {
+			error = authErrorHint(err);
 		}
 	}
 
@@ -128,25 +153,25 @@
 				initial={circleInitial(m.name)}
 				name={m.name}
 				subtitle={subtitle(m)}
-				color={CIRCLE_COLORS[CIRCLE_COLOR_ORDER[i % CIRCLE_COLOR_ORDER.length]].cssVar}
+				color={memberColor(i)}
 				menu={canManage(m)}
-				onmenu={() => void onMenu(m)}
+				onmenu={() => openMenu(m)}
 				onclick={
 					transferMode && !m.is_owner && m.account_id !== selfId
-						? () => void onTransfer(m)
+						? () => pickTransfer(m)
 						: undefined
 				}
 				style="padding-top:2px"
 			/>
 		{/each}
-		{#if left.length}
+		{#if left.length && !transferMode}
 			<Label style="margin-top:18px">Вышли · {left.length}</Label>
 			{#each left as m, i (m.account_id)}
 				<MemberRow
 					initial={circleInitial(m.name)}
 					name={m.name}
 					subtitle={subtitle(m)}
-					color={CIRCLE_COLORS[CIRCLE_COLOR_ORDER[i % CIRCLE_COLOR_ORDER.length]].cssVar}
+					color={memberColor(i)}
 					faded
 					style="padding-top:2px"
 				/>
@@ -166,3 +191,45 @@
 		{/if}
 	{/if}
 </FormLayout>
+
+{#if menuMember}
+	<OverlayLayout ondismiss={closeMenu}>
+		<Label style="margin-top:2px">{menuMember.name}</Label>
+		<SettingsRow
+			title={menuMember.can_settings
+				? 'Забрать право менять настройки'
+				: 'Дать право менять настройки'}
+			chevron={false}
+			onclick={() => void toggleSettings(menuMember!)}
+		/>
+		<SettingsRow
+			title="Исключить"
+			chevron={false}
+			style="color:var(--muted)"
+			onclick={() => void exclude(menuMember!)}
+		/>
+		<Hint style="margin-top:14px"
+			>Право выдаёт только владелец. Страницы участника нет — лист с точек, как список
+			отреагировавших.</Hint
+		>
+	</OverlayLayout>
+{/if}
+
+{#if transferTarget}
+	<OverlayLayout variant="dialog" ondismiss={closeTransfer}>
+		<div style="font-size:17px;font-weight:600;margin-bottom:10px">
+			Передать «{circle.name}» участнику «{transferTarget.name}»?
+		</div>
+		<Hint
+			>{transferTarget.name} станет владельцем. Вы останетесь в круге и сможете писать, но
+			исключать, передавать владение и удалять круг уже не сможете. Забрать назад можно только
+			если {transferTarget.name} передаст вам.</Hint
+		>
+		<div class="rowin" style="margin:18px 0 0">
+			<Button variant="ghost" style="flex:1;margin:0" onclick={closeTransfer}>Отмена</Button>
+			<Button style="flex:1;margin:0" loading={transferLoading} onclick={() => void confirmTransfer()}>
+				Передать
+			</Button>
+		</div>
+	</OverlayLayout>
+{/if}

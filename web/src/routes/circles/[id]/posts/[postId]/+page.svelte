@@ -16,11 +16,12 @@
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import OverlayLayout from '$lib/layouts/OverlayLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
-	import { fetchMembers } from '$lib/circles/settings';
+	import { fetchMembers, type MemberInfo } from '$lib/circles/settings';
 	import { formatBytes } from '$lib/format/bytes';
 	import { formatClock, formatPostTime, isEditableActive } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadFeed } from '$lib/journal/feed';
+	import { splitMentionBody } from '$lib/journal/mentions';
 	import {
 		attachmentLabel,
 		attachmentMedia,
@@ -42,7 +43,14 @@
 	} from '$lib/journal/posts';
 	import type { Comment, FeedPost } from '$lib/journal/types';
 	import { downloadBlob, getMediaUrl } from '$lib/media/objectUrl';
-	import { enqueueComment, enqueueReaction, enqueueReactionRemove } from '$lib/queue/queue';
+	import {
+		enqueueComment,
+		enqueueReaction,
+		enqueueReactionRemove,
+		listQueuedComments,
+		subscribeQueue,
+		type QueuedCommentView
+	} from '$lib/queue/queue';
 	import { registerRefetch } from '$lib/sync/sync';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
@@ -56,26 +64,44 @@
 	let editingCommentId = $state('');
 	let editingCommentBody = $state('');
 	let activeMemberCount = $state(2);
+	let members = $state<MemberInfo[]>([]);
+	let queuedComments = $state<QueuedCommentView[]>([]);
 	let pickerOpen = $state(false);
+
+	const commentMembers = $derived(members.filter((m) => m.status === 'active'));
 
 	const soloCircle = $derived(activeMemberCount === 1);
 	const reactionsOpen = $derived($page.url.searchParams.has('reactions'));
 
+	function refreshQueued() {
+		void listQueuedComments(circle.origin, circle.circleId, postId).then((items) => {
+			queuedComments = items;
+		});
+	}
+
 	onMount(() => {
 		void fetchMembers(circle.origin, circle.circleId)
 			.then((list) => {
+				members = list;
 				activeMemberCount = list.filter((m) => m.status === 'active').length;
 			})
 			.catch(() => {
+				members = [];
 				activeMemberCount = 2;
 			});
 		void load();
-		return registerRefetch({
+		refreshQueued();
+		const unsubQueue = subscribeQueue(refreshQueued);
+		const unsubSync = registerRefetch({
 			origin: circle.origin,
 			circleId: circle.circleId,
 			kinds: ['feed'],
 			refetch: load
 		});
+		return () => {
+			unsubQueue();
+			unsubSync();
+		};
 	});
 
 	async function load() {
@@ -160,6 +186,7 @@
 			} else {
 				await enqueueComment(circle.origin, circle.circleId, { post_id: postId, body: text });
 				draft = '';
+				refreshQueued();
 			}
 		} catch (err) {
 			error = authErrorHint(err);
@@ -247,6 +274,7 @@
 	avatarSrc={circle.avatarUrl}
 	tabs={false}
 	commentPlaceholder="Написать комментарий…"
+	commentMembers={commentMembers}
 	bind:commentDraft={draft}
 	onback={goBack}
 	onCommentSend={sendComment}
@@ -275,7 +303,9 @@
 			</div>
 		{/snippet}
 		{#snippet postText()}
-			{currentPost.body}
+			{#each splitMentionBody(currentPost.body) as part (part.kind + part.value)}
+				{#if part.kind === 'mention'}<span class="men">{part.value}</span>{:else}{part.value}{/if}
+			{/each}
 		{/snippet}
 		{#snippet postMedia()}
 			{#each attachmentMedia(currentPost.media) as att (att.blob_id)}
@@ -358,7 +388,9 @@
 								</Button>
 							</div>
 						{:else}
-							{comment.body}
+							{#each splitMentionBody(comment.body) as part (part.kind + part.value)}
+								{#if part.kind === 'mention'}<span class="men">{part.value}</span>{:else}{part.value}{/if}
+							{/each}
 						{/if}
 					</div>
 					<div class="acts">
@@ -375,6 +407,29 @@
 								size="sm"
 								onclick={() => removeComment(comment.id)}
 							/>
+						{/if}
+					</div>
+				</div>
+			{/each}
+			{#each queuedComments as item (item.id)}
+				<div class="cmt q">
+					<Avatar
+						initial={circle.identityInitial}
+						color={circle.colorHex}
+						src={circle.avatarUrl}
+					/>
+					<div class="g">
+						<div class="who">
+							<b>{circle.identityName}</b>
+							<span class="tm" style="display:flex;align-items:center;gap:5px">
+								<Icon name="clock" size="xs" />в очереди
+							</span>
+						</div>
+						{#each splitMentionBody(item.body) as part (part.kind + part.value)}
+							{#if part.kind === 'mention'}<span class="men">{part.value}</span>{:else}{part.value}{/if}
+						{/each}
+						{#if item.state === 'failed' && item.error}
+							<Hint style="margin-top:8px">{item.error}</Hint>
 						{/if}
 					</div>
 				</div>

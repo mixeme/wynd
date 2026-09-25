@@ -84,6 +84,35 @@ export function locationLabel(media: MediaSummary | undefined): string | undefin
 	return 'На карте';
 }
 
+const shotDateFmt = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' });
+
+/** Подпись сжатия внизу альбома (макет 4.3). */
+export function albumCompressionHint(post: FeedPost, photoMaxPx?: number): string {
+	const parts: string[] = [];
+	const captured =
+		post.captured_at ?? post.media?.find((m) => m.captured_at)?.captured_at;
+	if (captured) {
+		parts.push(`снято ${shotDateFmt.format(new Date(captured))}`);
+	}
+	parts.push(
+		photoMaxPx
+			? `сжато до ${photoMaxPx} px`
+			: 'файлы сжаты, оригиналы на телефоне'
+	);
+	return parts.join(' · ');
+}
+
+/** Подпись лайтбокса: автор · время · место (макет 4.4). */
+export function lightboxCaption(
+	post: FeedPost,
+	media: MediaSummary | undefined,
+	formatPostTime: (createdAt: string, entryDate?: string) => string
+): string {
+	const base = `${post.author_name} · ${formatPostTime(post.created_at, post.entry_date)}`;
+	const loc = locationLabel(media);
+	return loc ? `${base} · ${loc}` : base;
+}
+
 export function findPost(posts: FeedPost[], postId: string): FeedPost | undefined {
 	return posts.find((p) => p.id === postId);
 }

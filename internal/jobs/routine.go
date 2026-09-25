@@ -12,7 +12,10 @@ import (
 	"gitea.mixdep.ru/mix/wynd/internal/xtime"
 )
 
-const routineGrace = 24 * time.Hour
+const (
+	routineGrace      = 24 * time.Hour
+	emptyAccountGrace = 30 * 24 * time.Hour
+)
 
 // DailyRoutineCounts reports how many rows each cleanup step removed or updated.
 type DailyRoutineCounts struct {
@@ -36,6 +39,7 @@ func RunDailyRoutine(ctx context.Context, db *sql.DB, blobsDir string, now time.
 		now = time.Now().UTC()
 	}
 	cutoff := xtime.Format(now.Add(-routineGrace))
+	emptyCutoff := xtime.Format(now.Add(-emptyAccountGrace))
 	nowRaw := xtime.Format(now)
 	expireBound := expireBefore(now)
 
@@ -50,7 +54,7 @@ func RunDailyRoutine(ctx context.Context, db *sql.DB, blobsDir string, now time.
 	if err != nil {
 		return counts, err
 	}
-	counts.EmptyAccounts, err = cleanEmptyAccounts(ctx, db, cutoff, now)
+	counts.EmptyAccounts, err = cleanEmptyAccounts(ctx, db, emptyCutoff, now)
 	if err != nil {
 		return counts, err
 	}

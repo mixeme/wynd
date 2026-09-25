@@ -29,6 +29,14 @@ export interface QueuedPostView {
 	error?: string;
 }
 
+export interface QueuedCommentView {
+	id: number;
+	post_id: string;
+	body: string;
+	state: QueueRecord['state'];
+	error?: string;
+}
+
 type QueueListener = () => void;
 
 const listeners = new Set<QueueListener>();
@@ -368,6 +376,27 @@ export async function listQueuedPosts(
 				body: payload.body,
 				entry_date: payload.entry_date,
 				file_count: item.files.length,
+				state: item.state,
+				error: item.error
+			};
+		});
+}
+
+export async function listQueuedComments(
+	origin: string,
+	circleId: string,
+	postId?: string
+): Promise<QueuedCommentView[]> {
+	const items = await listQueueForCircle(origin, circleId);
+	return items
+		.filter((item) => item.type === 'comment')
+		.filter((item) => !postId || (item.payload as CommentQueuePayload).post_id === postId)
+		.map((item) => {
+			const payload = item.payload as CommentQueuePayload;
+			return {
+				id: item.id,
+				post_id: payload.post_id,
+				body: payload.body,
 				state: item.state,
 				error: item.error
 			};

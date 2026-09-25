@@ -123,10 +123,49 @@ func (s *Server) handleCreateCircleInvite(w http.ResponseWriter, r *http.Request
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{
+		"id":         inv.ID,
 		"token":      inv.Token,
 		"expires_at": inv.ExpiresAt.UTC().Format(time.RFC3339),
 		"max_uses":   inv.MaxUses,
 	})
+}
+
+func (s *Server) handleListCircleInvites(w http.ResponseWriter, r *http.Request) {
+	circleID := r.PathValue("circle_id")
+	sess, ok := SessionFromContext(r.Context())
+	if !ok {
+		writeError(w, chronicle.ErrForbidden)
+		return
+	}
+	if err := s.Chronicle.RequireCanInvite(r.Context(), circleID, sess.AccountID); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	invites, err := s.Auth.ListCircleInvites(r.Context(), circleID, time.Now().UTC())
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"invites": invites})
+}
+
+func (s *Server) handleRevokeCircleInvite(w http.ResponseWriter, r *http.Request) {
+	circleID := r.PathValue("circle_id")
+	inviteID := r.PathValue("id")
+	sess, ok := SessionFromContext(r.Context())
+	if !ok {
+		writeError(w, chronicle.ErrForbidden)
+		return
+	}
+	if err := s.Chronicle.RequireCanInvite(r.Context(), circleID, sess.AccountID); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	if err := s.Auth.RevokeCircleInvite(r.Context(), circleID, inviteID); err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 type leaveCircleBody struct {

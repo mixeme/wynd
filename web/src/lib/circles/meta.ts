@@ -21,7 +21,8 @@ export async function setCircleColor(
 ): Promise<void> {
 	const settings = (await getAppSettings()) ?? { theme: 'system' as const };
 	const key = circleMetaKey(origin, circleId);
-	const circle_meta = { ...settings.circle_meta, [key]: { color } };
+	const prev = settings.circle_meta?.[key] ?? {};
+	const circle_meta = { ...settings.circle_meta, [key]: { ...prev, color } };
 	await saveAppSettings({ ...settings, circle_meta });
 }
 

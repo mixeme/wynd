@@ -63,11 +63,11 @@
 	});
 </script>
 
-<FormLayout shell app title="Серверы и учётки" onback={() => goto('/settings')}>
+<FormLayout shell app title="Серверы" onback={() => goto('/settings')}>
 	{#if loading}
 		<Hint>Загрузка…</Hint>
 	{:else if rows.length === 0}
-		<Hint>Нет учёток на этом устройстве.</Hint>
+		<Hint>На этом устройстве вы ни на одном сервере.</Hint>
 	{:else}
 		{#each rows as row (row.session.origin + row.session.email)}
 			<SectionLabel raw>
@@ -89,8 +89,8 @@
 	{/if}
 
 	<Hint style="margin-top:24px">
-		Глобальной учётки не существует. Вы выходите «с сервера», а не «из Wynd»: круги живут на
-		серверах, серверы друг о друге не знают, и связать две ваши учётки нельзя.
+		Вы выходите с сервера, не из Wynd. Общего профиля на все серверы нет: даже одна почта
+		на двух серверах — это два разных места, связать их нельзя.
 	</Hint>
 	<Button variant="ghost" onclick={() => goto('/join')}>Добавить сервер</Button>
 	<Hint>По ссылке или прямо по адресу — если сервер открыт для новых. Закрытый попросит приглашение.</Hint>

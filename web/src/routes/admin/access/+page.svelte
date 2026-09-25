@@ -8,15 +8,24 @@
 	import Input from '$ui/forms/Input.svelte';
 	import FieldDisplay from '$ui/forms/FieldDisplay.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
+	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import {
+		inviteRegistrySubtitle,
+		inviteRegistryTitle,
+		isLiveInvite
+	} from '$lib/circles/invite-registry';
+	import {
 		createServerInvite,
 		fetchAccess,
+		fetchInvites,
+		revokeInvite,
 		saveAccess,
 		serverCaption,
-		type AccessSettings
+		type AccessSettings,
+		type AdminInvite
 	} from '$lib/admin/admin';
 
 	const modes: { key: AccessSettings['registration_mode']; label: string }[] = [
@@ -36,14 +45,28 @@
 	let server = $state('');
 	let inviteUrl = $state('');
 	let qrSvg = $state('');
+	let liveInvites = $state<AdminInvite[]>([]);
 	let kind = $state<'single' | 'multi'>('multi');
 	let ttlSec = $state(259200);
 	let error = $state('');
 	let loading = $state(true);
 	let copied = $state(false);
+	let copiedInviteId = $state('');
+	let currentInviteId = $state('');
+	let creating = false;
+
+	function inviteUrlFor(token: string): string {
+		const base = typeof window !== 'undefined' ? window.location.origin : '';
+		return `${base}/join/${token}`;
+	}
 
 	async function renderQr(url: string) {
 		qrSvg = url ? await QRCode.toString(url, { type: 'svg', margin: 0, width: 142 }) : '';
+	}
+
+	async function loadLiveInvites() {
+		const invites = await fetchInvites();
+		liveInvites = invites.filter(isLiveInvite);
 	}
 
 	async function persistName() {
@@ -67,18 +90,32 @@
 	}
 
 	async function makeInvite() {
+		if (creating) return;
+		creating = true;
 		copied = false;
+		const previousId = currentInviteId;
+		currentInviteId = '';
 		try {
+			if (previousId) {
+				try {
+					await revokeInvite(previousId);
+				} catch {
+					/* already used or revoked */
+				}
+			}
 			const inv = await createServerInvite({
 				kind,
 				max_uses: kind === 'single' ? 1 : 5,
 				ttl_sec: ttlSec
 			});
-			const base = typeof window !== 'undefined' ? window.location.origin : '';
-			inviteUrl = `${base}/join/${inv.token}`;
+			inviteUrl = inviteUrlFor(inv.token);
 			await renderQr(inviteUrl);
+			await loadLiveInvites();
+			currentInviteId = liveInvites.find((row) => row.token === inv.token)?.id ?? '';
 		} catch (err) {
 			error = authErrorHint(err);
+		} finally {
+			creating = false;
 		}
 	}
 
@@ -88,12 +125,27 @@
 		copied = true;
 	}
 
+	async function copyInvite(inv: AdminInvite) {
+		await navigator.clipboard.writeText(inviteUrlFor(inv.token));
+		copiedInviteId = inv.id;
+	}
+
+	async function revokeLiveInvite(inv: AdminInvite) {
+		try {
+			await revokeInvite(inv.id);
+			await loadLiveInvites();
+		} catch (err) {
+			error = authErrorHint(err);
+		}
+	}
+
 	onMount(async () => {
 		try {
 			const [access, caption] = await Promise.all([fetchAccess(), serverCaption()]);
 			name = access.name;
 			mode = access.registration_mode;
 			server = caption;
+			await loadLiveInvites();
 			await makeInvite();
 		} catch (err) {
 			error = authErrorHint(err);
@@ -132,7 +184,7 @@
 						{/each}
 					</ChipGroup>
 					<div style="font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.6">
-						Учётка заводится только по ссылке: в круг её выдаёт любой участник, на сервер — вы.
+						Завестись можно только по ссылке: в круг её выдаёт любой участник, на сервер — вы.
 						Открытый пускает всякого, кто знает адрес; закрытый не пускает никого, и старые ссылки
 						перестают работать.
 					</div>
@@ -184,6 +236,28 @@
 					<div style="font-size:11.5px;color:var(--faint);margin-top:10px;line-height:1.6">
 						Такая ссылка не ведёт ни в один круг: человек заведёт свой или дождётся, когда позовут.
 					</div>
+					{#if liveInvites.length > 0}
+						<SectionLabel style="margin:24px 0 8px">Живые</SectionLabel>
+						{#each liveInvites as inv (inv.id)}
+							<SettingsRow
+								title={inviteRegistryTitle(inv)}
+								subtitle={inviteRegistrySubtitle(inv)}
+								chevron={false}
+								style="padding-top:2px"
+							>
+								{#snippet control()}
+									<span style="display:flex;gap:12px;flex-shrink:0">
+										<TextButton variant="admin" onclick={() => void copyInvite(inv)}>
+											{copiedInviteId === inv.id ? 'скопировано' : 'скопировать'}
+										</TextButton>
+										<TextButton variant="admin" onclick={() => void revokeLiveInvite(inv)}>
+											отозвать
+										</TextButton>
+									</span>
+								{/snippet}
+							</SettingsRow>
+						{/each}
+					{/if}
 				</div>
 				<div style="flex:0 0 auto;width:210px">
 					{#if qrSvg}

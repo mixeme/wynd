@@ -289,6 +289,7 @@
   .qr { width:168px; height:168px; margin:16px auto 0; border:1px solid var(--line);
         background:var(--card); border-radius:12px; padding:13px; }
   .under { border-bottom:1px solid; padding-bottom:1px; }
+  .men { font-weight:600; color:var(--c); }
 
   /* выбор цвета, поиск, группы */
   .sws { display:flex; gap:10px; margin:0 16px; }
@@ -358,15 +359,13 @@
   .lb .dots { display:flex; gap:5px; justify-content:center; padding-bottom:14px; }
   .lb .dots u { width:5px; height:5px; border-radius:50%; background:#5A534C; }
   .lb .dots u.on { background:#EFE9E0; }
-  /* кадр аватара */
-  .crop { position:absolute; inset:0; display:flex; flex-direction:column; background:var(--paper); }
-  .crop .top { display:flex; align-items:center; gap:12px; min-height:40px; padding:8px 14px 8px; color:#fff; background:var(--c); }
-  .crop .top .t { font-size:17px; font-weight:600; }
-  .crop .top .done { margin-left:auto; font-size:15px; font-weight:600; }
-  .crop .viewport { position:relative; flex:1; overflow:hidden; }
-  .crop .pic.fill { position:absolute; left:-18px; top:36px; width:426px; height:320px; border-radius:0; border:0; }
-  .crop .ring { position:absolute; left:55px; top:56px; width:280px; height:280px; border-radius:50%;
-               border:1px solid var(--ink); box-shadow:0 0 0 9999px rgba(244,240,233,.88); }
+  /* кадр аватара: только окно, шапка — как у 4.1 */
+  .crop { position:relative; flex:1; min-height:0; overflow:hidden; }
+  .crop .pic.fill { position:absolute; left:50%; top:50%; width:426px; height:320px; border-radius:0; border:0;
+                    transform:translate(-50%,-50%); }
+  .crop .ring { position:absolute; left:50%; top:50%; width:280px; height:280px; border-radius:50%;
+               transform:translate(-50%,-50%);
+               border:1px solid var(--ink); box-shadow:0 0 0 9999px color-mix(in srgb, var(--paper) 88%, transparent); }
 
   @media (max-width:900px) {
     .bleed { width:auto; margin-left:0; transform:none; }
@@ -419,11 +418,11 @@
 <h1>Экраны</h1>
 <p class="lede">Всё, что человек видит: от приглашения до панели администратора.</p>
 
-<p>Экранов здесь <strong>89</strong>, из них двенадцать — не в 0.x. Каждый нарисован разметкой, а не картинкой. Рамка — <code>390 × 800</code>, обычный телефон в CSS-пикселях, масштаб 1:1. Размер на макете и есть размер в продукте: кегль 13.5 — это 13.5, кнопка 48 — это 48, поле 16 — это 16. Ничего не отмасштабировано «для красоты».</p>
+<p>Экранов здесь <strong>93</strong>. Каждый нарисован разметкой, а не картинкой. Рамка — <code>390 × 800</code>, обычный телефон в CSS-пикселях, масштаб 1:1. Размер на макете и есть размер в продукте: кегль 13.5 — это 13.5, кнопка 48 — это 48, поле 16 — это 16. Ничего не отмасштабировано «для красоты».</p>
 
 <p>Фотографии заменены заливками намеренно. Макет отвечает за композицию, ритм и то, сколько на экране помещается, — а не за то, насколько удачный снимок под ним. Всё, что в продукте придёт с сервера, здесь показано как форма и объём.</p>
 
-<div class="note">Двенадцать экранов пришли позже остальных — механика, которая теперь в <a href="../wynd.html">образе продукта</a>: <a href="../wynd.html#days">дни</a> (вкладка, название и обложка дня, дата записи), <a href="../wynd.html#quota">квота круга</a> (отсечка, срок, персональный архив), <a href="../wynd.html#journal">сказанное и структура журнала</a> (окно правок, реальное удаление, что нельзя стереть) и <a href="../wynd.html#servers">серверы и регистрация</a> (имя сервера, учётка без круга, режим доступа, выбор сервера при создании круга).</div>
+<div class="note">Тринадцать экранов пришли позже остальных — механика, которая теперь в <a href="../wynd.html">образе продукта</a>: <a href="../wynd.html#days">дни</a> (вкладка, название и обложка дня, дата записи), <a href="../wynd.html#quota">квота круга</a> (отсечка, срок, персональный архив), <a href="../wynd.html#journal">сказанное и структура журнала</a> (окно правок, реальное удаление, что нельзя стереть) и <a href="../wynd.html#servers">серверы и регистрация</a> (имя сервера, учётка без круга, режим доступа, выбор сервера при создании круга).</div>
 
 <h3>Шкала</h3>
 <p>Четыре кегля на весь интерфейс. В образе продукта их названо пять — <code>17 / 13.5 / 13.5 / 12.5 / 11.5</code>, — но две ступени совпадают: имя автора и текст записи отличаются весом, а не размером. При прорисовке это подтвердилось, и пятой ступени не понадобилось нигде.</p>
@@ -441,6 +440,7 @@
 <h3>Что проверяет каждый макет</h3>
 <ul>
 <li><strong>Оболочка молчит.</strong> Вне круга акцентного цвета нет: кнопка «плюс», активные состояния, счётчики в списке и настройках приложения — чернила на бумаге.</li>
+<li><strong>Оболочка — дворецкий.</strong> «Вы», нейтрально, без жаргона и панибратства. Эталон — <a href="../wynd.html#voice">голос</a>. «Ты» в подписи макета ещё встречается; в новом и при правке — «вы».</li>
 <li><strong>Цвет принадлежит кругу.</strong> Шапка, аватары, реакция, кнопка отправки, заполненный чип — цвет круга. Ошибиться дверью нельзя: экран целиком другого цвета.</li>
 <li><strong>Марка появляется шесть раз</strong> на всё приложение: лок на экране «Войти» — единственном, где помещается 48 px по высоте знака, — знак в шапке списка и четыре места, где речь о времени. Больше нигде: под каждым событием или фоном карточек знак стал бы текстурой.</li>
 <li><strong>У участника нет страницы.</strong> Имя и аватар никуда не ведут ни на одном экране.</li>
@@ -464,12 +464,12 @@
   <g fill="none" stroke="#DFD8CD" stroke-width="1.2"><path d="M170 221 H196 V157"/><path d="M170 265 H196 V221"/><path d="M256 172 V343.0"/><path d="M286 358 V431.0"/><path d="M536 172 V519.0"/><path d="M730 519 H766 V827"/><path d="M766 607 V651"/></g>
   <g fill="none" stroke="#DFD8CD" stroke-width="1.2" marker-end="url(#ar)"><path d="M95 84 V98"/><path d="M95 128 V142"/><path d="M170 157 H240"/><path d="M196 157 H240"/><path d="M256 211.0 H270"/><path d="M256 255.0 H270"/><path d="M256 299.0 H270"/><path d="M256 343.0 H270"/><path d="M286 387.0 H300"/><path d="M286 431.0 H300"/><path d="M450 157 H520"/><path d="M536 211.0 H550"/><path d="M536 255.0 H550"/><path d="M536 299.0 H550"/><path d="M536 343.0 H550"/><path d="M536 387.0 H550"/><path d="M536 431.0 H550"/><path d="M536 475.0 H550"/><path d="M536 519.0 H550"/><path d="M730 157 H800"/><path d="M730 211 H800"/><path d="M730 431 V255 H800"/><path d="M730 475 H800"/><path d="M766 519 H800"/><path d="M766 563 H800"/><path d="M766 607 H800"/><path d="M766 651 H800"/><path d="M766 695 H800"/><path d="M766 739 H800"/><path d="M766 783 H800"/><path d="M766 827 H800"/><path d="M170 157 H196 V651"/><path d="M196 651 H240"/></g>
   <g stroke="#DFD8CD" stroke-width="1.2"><rect x="20" y="54" width="150" height="30" rx="7" fill="#FCFAF6"/><rect x="20" y="98" width="150" height="30" rx="7" fill="#FCFAF6"/><rect x="20" y="142" width="150" height="30" rx="7" fill="#FCFAF6"/><rect x="20" y="206" width="150" height="30" rx="7" fill="#FCFAF6" stroke-dasharray="4 3"/><rect x="20" y="250" width="150" height="30" rx="7" fill="#FCFAF6" stroke-dasharray="4 3"/><rect x="240" y="142" width="210" height="30" rx="7" fill="#EFE9E0"/><rect x="270" y="196" width="180" height="30" rx="7" fill="#FCFAF6"/><rect x="270" y="240" width="180" height="30" rx="7" fill="#FCFAF6"/><rect x="270" y="284" width="180" height="30" rx="7" fill="#FCFAF6"/><rect x="270" y="328" width="180" height="30" rx="7" fill="#FCFAF6"/><rect x="300" y="372" width="150" height="30" rx="7" fill="#FCFAF6"/><rect x="300" y="416" width="150" height="30" rx="7" fill="#FCFAF6"/><rect x="520" y="142" width="210" height="30" rx="7" fill="#EFE9E0"/><rect x="550" y="196" width="180" height="30" rx="7" fill="#FCFAF6"/><rect x="550" y="240" width="180" height="30" rx="7" fill="#FCFAF6"/><rect x="550" y="284" width="180" height="30" rx="7" fill="#FCFAF6"/><rect x="550" y="328" width="180" height="30" rx="7" fill="#FCFAF6"/><rect x="550" y="372" width="180" height="30" rx="7" fill="#FCFAF6"/><rect x="550" y="416" width="180" height="30" rx="7" fill="#FCFAF6"/><rect x="550" y="460" width="180" height="30" rx="7" fill="#FCFAF6"/><rect x="550" y="504" width="180" height="30" rx="7" fill="#FCFAF6"/><rect x="800" y="142" width="230" height="30" rx="7" fill="#FCFAF6"/><rect x="800" y="196" width="230" height="30" rx="7" fill="#FCFAF6"/><rect x="800" y="240" width="230" height="30" rx="7" fill="#FCFAF6"/><rect x="800" y="460" width="230" height="30" rx="7" fill="#FCFAF6"/><rect x="800" y="504" width="230" height="30" rx="7" fill="#FCFAF6"/><rect x="800" y="548" width="230" height="30" rx="7" fill="#FCFAF6"/><rect x="800" y="592" width="230" height="30" rx="7" fill="#FCFAF6"/><rect x="800" y="636" width="230" height="30" rx="7" fill="#FCFAF6"/><rect x="800" y="680" width="230" height="30" rx="7" fill="#FCFAF6"/><rect x="800" y="724" width="230" height="30" rx="7" fill="#FCFAF6"/><rect x="800" y="768" width="230" height="30" rx="7" fill="#FCFAF6"/><rect x="800" y="812" width="230" height="30" rx="7" fill="#FCFAF6"/></g>
-  <g font-size="12.5" fill="#2B2724"><text x="34" y="73.5">Вас пригласили</text><text x="34" y="117.5">Код из письма</text><text x="34" y="161.5">Вступление</text><text x="34" y="225.5" fill="#7A7269">Войти</text><text x="34" y="269.5" fill="#7A7269">Без приглашения</text><text x="254" y="161.5" font-weight="600">Список кругов</text><text x="284" y="215.5">Новый круг</text><text x="284" y="259.5">Поиск по всем кругам</text><text x="284" y="303.5">Группы кругов</text><text x="284" y="347.5">Настройки приложения</text><text x="314" y="391.5">Серверы и учётки</text><text x="314" y="435.5">Приложение</text><text x="534" y="161.5" font-weight="600">Хронология круга</text><text x="564" y="215.5">Дни</text><text x="564" y="259.5">Сетка</text><text x="564" y="303.5">Карта</text><text x="564" y="347.5">Поиск в круге</text><text x="564" y="391.5">Новая запись</text><text x="564" y="435.5">Обсуждение</text><text x="564" y="479.5">Альбом записи</text><text x="564" y="523.5">Настройки круга</text><text x="814" y="161.5">Кто отреагировал</text><text x="814" y="215.5">День</text><text x="814" y="259.5">Правка записи</text><text x="814" y="479.5">Фотография во весь экран</text><text x="814" y="523.5">Участники</text><text x="814" y="567.5">Приглашение</text><text x="814" y="611.5">Кто ты в этом круге</text><text x="814" y="655.5">Кадр</text><text x="814" y="699.5">Уведомления круга</text><text x="814" y="743.5">Архив и очистка</text><text x="814" y="787.5">Передать владение</text><text x="814" y="831.5">Покинуть круг</text></g>
-  <text x="20" y="880" font-size="11" fill="#A8A096">Пунктиром — входы, которые случаются один раз: вход на новом устройстве и учётка без приглашения. Оба ведут только в список кругов. Диалоги удаления и отказа уйти на карте не показаны: они поверх экрана, с которого открылись.</text>
-</svg><figcaption style="color:#7A7269;font-size:12.5px;margin-top:10px">Карта переходов. Уровней четыре, и ни один экран не спрятан глубже. Панель администратора и шлюз подписки — отдельная карта в «Не в 0.x»: это не пятый уровень приложения.</figcaption></figure>
+  <g font-size="12.5" fill="#2B2724"><text x="34" y="73.5">Вас пригласили</text><text x="34" y="117.5">Код из письма</text><text x="34" y="161.5">Вступление</text><text x="34" y="225.5" fill="#7A7269">Войти</text><text x="34" y="269.5" fill="#7A7269">Без приглашения</text><text x="254" y="161.5" font-weight="600">Список кругов</text><text x="284" y="215.5">Новый круг</text><text x="284" y="259.5">Поиск по всем кругам</text><text x="284" y="303.5">Группы кругов</text><text x="284" y="347.5">Настройки приложения</text><text x="314" y="391.5">Серверы</text><text x="314" y="435.5">Приложение</text><text x="534" y="161.5" font-weight="600">Хронология круга</text><text x="564" y="215.5">Дни</text><text x="564" y="259.5">Сетка</text><text x="564" y="303.5">Карта</text><text x="564" y="347.5">Поиск в круге</text><text x="564" y="391.5">Новая запись</text><text x="564" y="435.5">Обсуждение</text><text x="564" y="479.5">Альбом записи</text><text x="564" y="523.5">Настройки круга</text><text x="814" y="161.5">Кто отреагировал</text><text x="814" y="215.5">День</text><text x="814" y="259.5">Правка записи</text><text x="814" y="479.5">Фотография во весь экран</text><text x="814" y="523.5">Участники</text><text x="814" y="567.5">Приглашение</text><text x="814" y="611.5">Кто ты в этом круге</text><text x="814" y="655.5">Кадр</text><text x="814" y="699.5">Уведомления круга</text><text x="814" y="743.5">Архив и очистка</text><text x="814" y="787.5">Передать владение</text><text x="814" y="831.5">Покинуть круг</text></g>
+  <text x="20" y="880" font-size="11" fill="#A8A096">Пунктиром — входы, которые случаются один раз: вход по адресу сервера и учётка без приглашения. Оба ведут только в список кругов. Диалоги удаления и отказа уйти на карте не показаны: они поверх экрана, с которого открылись.</text>
+</svg><figcaption style="color:#7A7269;font-size:12.5px;margin-top:10px">Карта переходов. Уровней четыре, и ни один экран не спрятан глубже. Панель администратора и шлюз подписки — отдельная карта: это не пятый уровень приложения.</figcaption></figure>
 <h2>Вход</h2>
 <p class="lede">Восемь экранов, и ни на одном нет пароля.</p>
-<p>Обычный путь — приглашение: ссылка приносит адрес сервера и токен, учётка заводится по дороге. Спрашивается ровно одно — почта, и то не для входа, а чтобы вернуться на новом устройстве. Порядок вступления содержательный: <strong>где я → кто здесь → кто здесь я → что скажу</strong>, и каждый шаг опирается на предыдущий.</p>
+<p>Обычный путь — приглашение: ссылка приносит адрес сервера и токен, учётка заводится по дороге. Спрашивается почта — на неё уходит код, пароля нет. Порядок вступления содержательный: <strong>где я → кто здесь → кто здесь я → что скажу</strong>, и каждый шаг опирается на предыдущий.</p>
 <p>Второй путь короче и никуда не приводит: человек приходит на сервер сам, без приглашения, и учётка заводится без круга. Он нужен тому, кто поднял сервер себе, и тому, кого позвали на сервер, а не в чью-то компанию. Пускать ли по этому пути, решает администратор: сервер бывает открытым, по приглашению и закрытым. Отсюда три экрана — учётка по адресу, учётка по присланной ссылке и тупик, когда сервер новых не принимает.</p>
 <p>У сервера есть имя, и в интерфейсе он назван им: <strong>«Дом Ани»</strong>, а адресом — второй строкой. Адрес нужен ровно там, где его вводят руками; помнить, что <code>home.example.org</code> — это Анин компьютер в коридоре, человек не обязан.</p>
 
@@ -482,9 +482,9 @@
   <div class="fld"><div style="font-weight:600">Дом Ани</div><div style="font-size:12.5px;color:var(--muted)">home.example.org</div></div>
   <div class="lab">Почта</div>
   <div class="fld act gr">you@example.com</div>
-  <div class="hint">Пришлём код для входа. Пароля нет: почта понадобится, только чтобы вернуться на другом устройстве.</div>
+  <div class="hint">Пришлём код для входа. Пароля нет.</div>
   <div class="btn">Получить код</div>
-  <div class="hint ctr" style="margin-top:26px">Учётная запись создаётся на этом сервере.<br>Круги с других серверов добавляются позже.</div>
+  <div class="hint ctr" style="margin-top:26px">Вход создаётся на этом сервере.<br>Круги с других серверов добавляются позже.</div>
 </div>
 <span class="num">1.1</span><b>Вас пригласили</b><i>Сервер назван именем и адресом и не редактируется — он пришёл в ссылке. Круг показан карточкой: человек должен видеть, куда его позвали, до того как что-то введёт.</i></figure>
 
@@ -546,21 +546,25 @@
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div style="margin:38px 0 0;display:flex;justify-content:center;color:var(--ink)"><svg width="139.6" height="48" role="img" aria-label="Wynd" style="display:block"><use href="#logo" fill="currentColor"/></svg></div>
   <div class="h1s ctr" style="margin-top:30px">Войти</div>
-  <div class="lab" style="margin-top:26px">Сервер</div>
-  <div class="fld"><div style="font-weight:600">Дом Ани</div><div style="font-size:12.5px;color:var(--muted)">home.example.org</div></div>
-  <div class="lab">Почта</div>
+  <div class="lab" style="margin-top:26px">Адрес сервера</div>
+  <div class="fld act mono" style="font-size:12.5px">home.example.org</div>
+  <div class="row2" style="margin:14px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px">
+    <svg class="ic"><use href="#i-cloud"/></svg>
+    <div class="g"><div style="font-weight:600">Дом Ани</div><div class="sub">принимает вход · Wynd 0.1.0</div></div>
+    <span class="st ok"><svg class="ic"><use href="#i-check"/></svg></span></div>
+  <div class="lab" style="margin-top:16px">Почта</div>
   <div class="fld act">anya@example.com</div>
   <div class="hint">Пришлём код для входа. Пароля нет.</div>
   <div class="btn">Получить код</div>
   <div class="hint ctr" style="margin-top:30px"><span class="under">Регистрация без приглашения</span><br>Если прислали ссылку — откройте её.</div>
 </div>
-<span class="num">1.5</span><b>Войти</b><i>Второе устройство и переустановка. Сервер назван именем, а не адресом: человек помнит, что он «у Ани», а не что он на <code>home.example.org</code>. Внизу — вторая дверь для тех, кого никто не звал. Знак стоит потому, что это единственный экран, где ещё не видно ни одного круга.</i></figure>
+<span class="num">1.5</span><b>Войти</b><i>Первый запуск приложения: сервер неизвестен, пока человек его не назовёт. Адрес вводится руками, имя приходит ответом — как на 1.6, только здесь уже есть учётка. Внизу — вторая дверь для тех, кого никто не звал. Знак стоит потому, что это единственный экран, где ещё не видно ни одного круга.</i></figure>
 
 <figure class="s" id="e1-6"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div style="padding:6px 16px 0"><svg class="ic"><use href="#i-back"/></svg></div>
   <div class="h1s">Без приглашения</div>
-  <div class="hint">Учётка живёт на одном сервере. Общей на весь Wynd не бывает: серверы друг о друге не знают.</div>
+  <div class="hint">Почта живёт на одном сервере. Общей на весь Wynd не бывает: серверы друг о друге не знают.</div>
   <div class="lab" style="margin-top:18px">Адрес сервера</div>
   <div class="fld act mono" style="font-size:12.5px">home.example.org</div>
   <div class="row2" style="margin:14px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px">
@@ -569,12 +573,12 @@
     <span class="st ok"><svg class="ic"><use href="#i-check"/></svg></span></div>
   <div class="lab" style="margin-top:16px">Почта</div>
   <div class="fld act">anya@example.com</div>
-  <div class="hint">Пришлём код. Пароля нет: почта понадобится, только чтобы вернуться на другом устройстве.</div>
+  <div class="hint">Пришлём код. Пароля нет.</div>
   <div class="btn">Получить код</div>
   <div class="hint">Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или <a class="under" href="https://github.com/mixeme/wynd">поднимите свой</a>.</div>
   <div class="btn gh" style="margin-top:18px">Открыть ссылку или QR</div>
 </div>
-<span class="num">1.6</span><b>Без приглашения</b><i>Второй вход в продукт: сюда приходят те, кого никто не звал, — чаще всего тот, кто поднял сервер себе. Адрес вводится руками, и это единственное место, где такое поле есть; сервер сразу отвечает именем и тем, принимает ли он новых. Плитку с буквой сервер не получает: она принадлежит кругу.</i></figure>
+<span class="num">1.6</span><b>Без приглашения</b><i>Второй вход в продукт: сюда приходят те, кого никто не звал, — чаще всего тот, кто поднял сервер себе. Адрес вводится руками, как на «Войти»: сервер сразу отвечает именем и тем, принимает ли он новых. Плитку с буквой сервер не получает: она принадлежит кругу.</i></figure>
 
 <figure class="s" id="e1-7"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -601,7 +605,7 @@
     <svg class="ic"><use href="#i-cloud"/></svg>
     <div class="g"><div style="font-weight:600">У Славы</div><div class="sub">только по приглашению</div></div>
     <span class="st warn">!</span></div>
-  <div class="hint">Сервер жив и отвечает, но сам учёток не заводит. Нужна ссылка — в круг или на сервер: первую даёт любой участник круга, вторую — тот, кто держит сервер.</div>
+  <div class="hint">Сервер жив и отвечает, но сам новых не принимает. Нужна ссылка — в круг или на сервер: первую даёт любой участник круга, вторую — тот, кто держит сервер.</div>
   <div class="btn off">Получить код</div>
   <div class="hint ctr" style="margin-top:26px">Закрытый сервер выглядит так же,<br>но у него ссылок не выдают вовсе.</div>
 </div>
@@ -625,6 +629,7 @@
     <div class="m"><div class="n">Семья</div><div class="p">Аня: были на даче, все живы</div></div>
     <div class="rt"><span>14:02</span><span class="bdg">3</span></div></div>
   <div class="sep"></div>
+  <div class="lab">Остальные</div>
   <div class="r" style="--rc:var(--olive)"><div class="sq">П</div>
     <div class="m"><div class="n">Поход на Алтай</div><div class="p">Мышка теперь Мышь</div></div>
     <div class="rt"><span>вчера</span><span class="bdg">1</span></div></div>
@@ -642,7 +647,7 @@
     <div class="rt"><span>24 июл</span></div></div>
   <div class="fab"><svg class="ic" style="width:26px;height:26px;stroke-width:1.5"><use href="#i-plus"/></svg></div>
 </div>
-<span class="num">2.1</span><b>Список кругов</b><i>Счётчик непрочитанного — цветом круга, кнопка «новый круг» — чернилами: акцент принадлежит кругу, оболочка молчит даже в главной кнопке. Вторая строка — последнее, что произошло, и событие в ней стоит наравне с записью. Секция «Закреплённые» — результат 2.8, не отдельный экран.</i></figure>
+<span class="num">2.1</span><b>Список кругов</b><i>Счётчик непрочитанного — цветом круга, кнопка «новый круг» — чернилами: акцент принадлежит кругу, оболочка молчит даже в главной кнопке. Вторая строка — последнее, что произошло, и событие в ней стоит наравне с записью. Две метки секций — «Закреплённые» и «Остальные», между ними линия. Секция сверху — результат 2.8, не отдельный экран.</i></figure>
 
 <figure class="s" id="e2-8"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -657,6 +662,7 @@
     <div class="m"><div class="n">Семья</div><div class="p">Аня: были на даче, все живы</div></div>
     <div class="rt"><span>14:02</span><span class="bdg">3</span></div></div>
   <div class="sep"></div>
+  <div class="lab">Остальные</div>
   <div class="r" style="--rc:var(--olive)"><div class="sq">П</div>
     <div class="m"><div class="n">Поход на Алтай</div><div class="p">Мышка теперь Мышь</div></div>
     <div class="rt"><span>вчера</span><span class="bdg">1</span></div></div>
@@ -676,7 +682,7 @@
     <div class="m"><div class="n">Ремонт</div><div class="p">Славик: плитку привезут в среду</div></div>
     <div class="rt"><span>24 июл</span></div></div>
 </div>
-<span class="num">2.8</span><b>Закрепить</b><i>Удержал строку — под ней слово, на месте, как плюс раскрывает реакции. Булавки на каждой двери нет: закрепление редкое, и значок обещал бы кнопку. Всплывающую панель не заводим — она в продукте одна, у отреагировавших. Открепить — тем же удержанием, слово меняется. Живёт только на этом устройстве и группам не подчиняется: закреплённое остаётся над папками.</i></figure>
+<span class="num">2.8</span><b>Закрепить</b><i>Удержал строку — под ней слово, на месте, как плюс раскрывает реакции. Булавки на каждой двери нет: закрепление редкое, и значок обещал бы кнопку. Всплывающую панель под закрепление не заводим — панель в продукте у отреагировавших и у прав участника. Открепить — тем же удержанием, слово меняется. Живёт только на этом устройстве и группам не подчиняется: закреплённое остаётся над папками.</i></figure>
 
 <figure class="s" id="e2-2"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -728,9 +734,9 @@
   <div class="chips" style="margin-top:8px"><span class="chip">Без ограничения</span><span class="chip">Своё…</span></div>
   <div class="hint">Дневник, который нельзя переписать задним числом, — сильная штука. Поэтому здесь предложена «Летопись», но она не обязательна.</div>
   <div class="btn c">Завести дневник</div>
-  <div class="hint ctr" style="margin-top:26px"><span class="under">Вернуться к обычному кругу</span></div>
+  <div class="hint ctr" style="margin-top:26px"><span class="under">Обычный круг</span></div>
 </div>
-<span class="num">2.4</span><b>Новый круг: дневник</b><i>Тап по тихой строке меняет ровно две вещи: пропадает шаг 2.7 и предлагается «Летопись». Отдельного типа круга не существует — это ярлык на форме. Позвал кого-нибудь через год — круг ожил, мигрировать нечего.</i></figure>
+<span class="num">2.4</span><b>Новый круг: дневник</b><i>Тап по «Обычный круг» не возвращает в уже созданный круг — его ещё нет. Это ярлык на форме: пропадает шаг 2.7 и предлагается «Летопись». Отдельного типа круга не существует. Позвал кого-нибудь через год — круг ожил, мигрировать нечего.</i></figure>
 
 <figure class="s" id="e2-7"><div class="ph ochre">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -742,10 +748,12 @@
   <div class="lab" style="margin-top:22px">Ссылка</div>
   <div class="chips"><span class="chip on">Одноразовая</span><span class="chip">Многоразовая</span></div>
   <div class="chips" style="margin-top:8px"><span class="chip">1 час</span><span class="chip on">72 часа</span><span class="chip">Неделя</span></div>
-  <div class="hint">Ссылка несёт адрес сервера и токен: тому, кого вы зовёте, не придётся ничего вводить. Многоразовая обязательно имеет лимит — она создаёт учётки на сервере.</div>
+  <div class="hint">Ссылка несёт адрес сервера и токен. Многоразовая показывает лимит 5 / 10 / 25 — чипы появляются, когда её выбирают.</div>
+  <div class="lab" style="margin-top:16px">Живые</div>
+  <div class="row2" style="padding-top:2px"><div class="g"><div style="font-weight:600">Одноразовая · не использована</div><div class="sub">до 13 сентября · 7Kq2-mR4v</div></div><span class="val">скопировать</span></div>
   <div class="btn gh">Сначала в круг, позову потом</div>
 </div>
-<span class="num">2.7</span><b>Позвать</b><i>«Создать и позвать» — не метафора: круг уже есть, и этот кадр — как в него входят. Звать можно двумя вещами и никакими другими: код тому, кто рядом, ссылка тому, кто далеко. Книжки контактов и «пригласить по почте» нет: приглашение и есть регистрация, и тащить сюда чужой список значило бы спрашивать не про круг, а про телефон. «Поделиться» открывает системный шаринг — его, как сканер QR, своим макетом не рисуем. Кнопка «Сначала в круг, позову потом» и шеврон ведут в пустой круг 3.6, не на форму и не в настройки: круг уже заведён, позовут потом той же кнопкой. Обводка того же веса, что у «Скопировать»: звать можно позже, но выход в свой круг должен быть на виду.</i></figure>
+<span class="num">2.7</span><b>Позвать</b><i>«Создать и позвать» — не метафора: круг уже есть, и этот кадр — как в него входят. Звать можно двумя вещами и никакими другими: код тому, кто рядом, ссылка тому, кто далеко. Книжки контактов и «пригласить по почте» нет: приглашение и есть регистрация, и тащить сюда чужой список значило бы спрашивать не про круг, а про телефон. «Поделиться» открывает системный шаринг — его, как сканер QR, своим макетом не рисуем. Ниже создания — живые ссылки: скопировать снова или отозвать. Кнопка «Сначала в круг, позову потом» и шеврон ведут в пустой круг 3.6. Обводка того же веса, что у «Скопировать»: звать можно позже, но выход в свой круг должен быть на виду.</i></figure>
 
 <figure class="s" id="e2-5"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -753,15 +761,16 @@
     <span class="sfield"><svg class="ic"><use href="#i-search"/></svg><span>яблони</span></span></div>
   <div class="chips" style="margin-top:12px"><span class="chip">Этот круг</span><span class="chip on">Все круги</span></div>
   <div class="chips" style="margin-top:8px"><span class="chip">Период</span><span class="chip">С фото</span><span class="chip">С местом</span></div>
-  <div class="gh2"><u style="background:var(--terracotta)"></u><span>Семья</span><span class="cnt2">4</span></div>
+  <div class="gh2"><u style="background:var(--terracotta)"></u><span>Семья</span><span class="cnt2">5</span></div>
   <div class="row2"><div class="g"><div style="font-weight:600">Аня<span style="font-weight:400;color:var(--faint);font-size:11.5px"> · сегодня, 14:02</span></div><div class="sub">Были на даче, все живы. <span class="hl">Яблони</span> в этом году…</div></div><div class="thumb pic p1"></div></div>
+  <div class="row2"><div class="g"><div style="font-weight:600"><span class="hl">Яблони</span><span style="font-weight:400;color:var(--faint);font-size:11.5px"> · 12 мая</span></div><div class="sub"><span style="color:var(--faint)">день</span></div></div></div>
   <div class="row2"><div class="g"><div style="font-weight:600">Мама<span style="font-weight:400;color:var(--faint);font-size:11.5px"> · 12 мая</span></div><div class="sub">Обрезали <span class="hl">яблони</span>, было страшно</div></div></div>
   <div class="gh2"><u style="background:var(--ochre)"></u><span>Дача</span><span class="cnt2">2</span></div>
   <div class="row2"><div class="g"><div style="font-weight:600">Мама<span style="font-weight:400;color:var(--faint);font-size:11.5px"> · 5 авг</span></div><div class="sub"><span class="hl">Яблони</span> зацвели</div></div><div class="thumb pic p2"></div></div>
   <div class="row2"><div class="g"><div style="font-weight:600">я<span style="font-weight:400;color:var(--faint);font-size:11.5px"> · 3 апр</span></div><div class="sub">Купил две <span class="hl">яблони</span>, посадил у забора</div></div></div>
   <div class="hint ctr" style="margin-top:22px">Ищется только то, что вы застали:<br>отрезки видимости работают и в поиске.</div>
 </div>
-<span class="num">2.5</span><b>Поиск по всем кругам</b><i>Веер по серверам происходит незаметно — деления по адресам нет, результаты группируются по кругам. Фильтр «автор» здесь отсутствует: глобально это разные люди, и выбирать было бы не из кого. Заголовок группы несёт цвет — единственный цветной элемент на экране оболочки.</i></figure>
+<span class="num">2.5</span><b>Поиск по всем кругам</b><i>Веер по серверам происходит незаметно — деления по адресам нет, результаты группируются по кругам. Дни ищутся наравне с записями и помечаются словом «день», как комментарий. Фильтр «автор» здесь отсутствует: глобально это разные люди, и выбирать было бы не из кого. Заголовок группы несёт цвет — единственный цветной элемент на экране оболочки.</i></figure>
 
 <figure class="s" id="e2-6"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -776,6 +785,7 @@
     <div class="m"><div class="n">Семья</div><div class="p">Аня: были на даче, все живы</div></div>
     <div class="rt"><span>14:02</span><span class="bdg">3</span></div></div>
   <div class="sep"></div>
+  <div class="lab">Остальные</div>
   <div class="fold"><svg class="ic sm"><use href="#i-chev"/></svg><span>Свои</span><span class="cnt2">3</span></div>
   <div class="r" style="--rc:var(--olive)"><div class="sq">П</div>
     <div class="m"><div class="n">Поход на Алтай</div><div class="p">Мышка теперь Мышь</div></div>
@@ -884,7 +894,7 @@
   <div class="comp"><div class="f">Написать в журнал…<svg class="ic sm" style="margin-left:auto"><use href="#i-photo"/></svg><svg class="ic sm" style="margin-left:8px"><use href="#i-chevr"/></svg></div>
     <div class="send off"><svg class="ic" style="color:#fff;width:19px;height:19px"><use href="#i-send"/></svg></div></div>
 </div>
-<span class="num">3.3</span><b>Твой отрезок</b><i>Низ ленты для того, кто пришёл не с начала. Линия обрывается точкой: выше — твоя часть, ниже нет ничего, и чужая хроника не показана даже заглушкой. Тут же сказано, что круг старше тебя, — иначе обрыв читался бы как поломка. В образе продукта эта фраза записана наоборот («выше — хроника круга, ниже — твоя часть»): она сказана раньше, чем закрепился порядок ленты от свежего к старому. Рисунок тот же, слова поменялись местами.</i></figure>
+<span class="num">3.3</span><b>Твой отрезок</b><i>Низ ленты для того, кто пришёл не с начала. Линия обрывается точкой: выше — твоя часть, ниже нет ничего, и чужая хроника не показана даже заглушкой. Тут же сказано, что круг старше тебя, — иначе обрыв читался бы как поломка. В образе — те же слова.</i></figure>
 
 <figure class="s" id="e3-4"><div class="ph olive">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -1033,7 +1043,7 @@
 <figure class="s" id="e4-1"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="cbar"><div class="top"><span style="font-size:13.5px">Отмена</span><span class="t" style="margin:0 auto">Семья</span><span style="font-size:13.5px;font-weight:600">Опубликовать</span></div><div style="height:12px"></div></div>
-  <div style="padding:16px 16px 0">Дед нашёл на чердаке коробку с плёнками. Судя по подписям — семьдесят девятый год, дача, все молодые и в панамах.<span style="border-left:1.5px solid var(--c);margin-left:1px">&nbsp;</span></div>
+  <div style="padding:16px 16px 0"><span class="men">@Аня</span>, дед нашёл на чердаке коробку с плёнками. Судя по подписям — семьдесят девятый год, дача, все молодые и в панамах.<span style="border-left:1.5px solid var(--c);margin-left:1px">&nbsp;</span></div>
   <div style="display:flex;gap:8px;padding:16px 16px 0">
     <div class="pic p5" style="width:88px;height:88px;border-radius:8px;outline:2px solid var(--c);outline-offset:2px"></div>
     <div class="pic p1" style="width:88px;height:88px;border-radius:8px"></div>
@@ -1049,12 +1059,31 @@
   <div style="position:absolute;left:0;right:0;bottom:0;border-top:1px solid var(--line);background:var(--paper)">
     <div style="display:flex;align-items:center;gap:22px;padding:13px 18px">
       <svg class="ic"><use href="#i-photo"/></svg><svg class="ic"><use href="#i-file"/></svg><svg class="ic"><use href="#i-loc"/></svg>
-      <span style="margin-left:auto;font-size:11.5px;color:var(--faint)">пишете как Мышь</span>
+      <span style="margin-left:auto;font-size:11.5px;color:var(--faint)">до 32 КБ · как Мышь</span>
     </div>
     <div style="height:210px;background:#E7E1D6;border-top:1px solid var(--line);display:grid;place-items:center;font-size:11.5px;color:#A29A90">клавиатура системы</div>
   </div>
 </div>
-<span class="num">4.1</span><b>Новая запись</b><i>Сюда пришли с полосы: пустое поле, шеврон или фото; набранное приехало с собой — это то же письмо, что на 3.11, только развернулось. Enter переносит строку, отправка — «Опубликовать», и промахнуться в длинном тексте нельзя. Место и файлы лежат рядом с фотографиями, а не за отдельным меню. Дата отнесения стоит строкой, а не полем: она уже заполнена из снимка, и в девяти случаях из десяти её не трогают. Серым внизу — клавиатура; под ней ничего не прячется.</i></figure>
+<span class="num">4.1</span><b>Новая запись</b><i>Сюда пришли с полосы: пустое поле, шеврон или фото; набранное приехало с собой — это то же письмо, что на 3.11, только развернулось. Enter переносит строку, отправка — «Опубликовать», и промахнуться в длинном тексте нельзя. Место и файлы лежат рядом с фотографиями, а не за отдельным меню. Дата отнесения стоит строкой, а не полем: она уже заполнена из снимка, и в девяти случаях из десяти её не трогают. «@» открывает список участников, 4.13. Внизу — потолок текста 32 КБ: квота круга считает медиа, слова этим потолком. Серым — клавиатура; под ней ничего не прячется.</i></figure>
+<figure class="s" id="e4-13"><div class="ph">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="cbar"><div class="top"><span style="font-size:13.5px">Отмена</span><span class="t" style="margin:0 auto">Семья</span><span style="font-size:13.5px;font-weight:600">Опубликовать</span></div><div style="height:12px"></div></div>
+  <div style="padding:16px 16px 0">Дед нашёл коробку. <span class="men">@Ан</span><span style="border-left:1.5px solid var(--c);margin-left:1px">&nbsp;</span></div>
+  <div style="margin:12px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;overflow:hidden">
+    <div class="row2" style="padding:10px 14px"><div class="av" style="background:#58673A">А</div><div class="g" style="font-weight:600">Аня</div></div>
+    <div class="row2"><div class="av" style="background:#AF5839">А</div><div class="g"><div style="font-weight:600">Антон</div><div class="sub">дядя Тоня</div></div></div>
+  </div>
+  <div class="hint">Список — участники этого круга. Выбрали — в текст встаёт @имя, этому человеку уходит пуш. Имя не нажимается: страницы участника нет.</div>
+  <div style="position:absolute;left:0;right:0;bottom:0;border-top:1px solid var(--line);background:var(--paper)">
+    <div style="display:flex;align-items:center;gap:22px;padding:13px 18px">
+      <svg class="ic"><use href="#i-photo"/></svg><svg class="ic"><use href="#i-file"/></svg><svg class="ic"><use href="#i-loc"/></svg>
+      <span style="margin-left:auto;font-size:11.5px;color:var(--faint)">до 32 КБ · как Мышь</span>
+    </div>
+    <div style="height:210px;background:#E7E1D6;border-top:1px solid var(--line);display:grid;place-items:center;font-size:11.5px;color:#A29A90">клавиатура системы</div>
+  </div>
+</div>
+<span class="num">4.13</span><b>Упоминание</b><i>Набрали «@» — над клавиатурой список участников круга, фильтр по уже введённым буквам. Выбрали — в запись встаёт @имя цветом круга. Это адресация, не ссылка: тап по имени в ленте никуда не ведёт. Пуш упоминания не выключается.</i></figure>
+
 
 <figure class="s" id="e4-6"><div class="ph coffee">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -1217,7 +1246,7 @@
   <div style="position:absolute;left:0;right:0;bottom:0;border-top:1px solid var(--line);background:var(--paper)">
     <div style="display:flex;align-items:center;gap:22px;padding:13px 18px">
       <svg class="ic"><use href="#i-photo"/></svg><svg class="ic"><use href="#i-file"/></svg><svg class="ic"><use href="#i-loc"/></svg>
-      <span style="margin-left:auto;font-size:11.5px;color:var(--faint)">пишете как Мышь</span>
+      <span style="margin-left:auto;font-size:11.5px;color:var(--faint)">до 32 КБ · как Мышь</span>
     </div>
   </div>
 </div>
@@ -1248,7 +1277,7 @@
   <div class="comp"><div class="f">Написать в журнал…<svg class="ic sm" style="margin-left:auto"><use href="#i-photo"/></svg><svg class="ic sm" style="margin-left:8px"><use href="#i-chevr"/></svg></div>
     <div class="send off"><svg class="ic" style="color:#fff;width:19px;height:19px"><use href="#i-send"/></svg></div></div>
 </div>
-<span class="num">4.10</span><b>Выбор реакции</b><i>Плюс не ставит реакцию втихаря и не открывает вторую панель: закрытый список раскрывается в карточке, на месте плюса. Четыре значка без подписей — сердце, смех, удивление, злость; что есть на пиктограмме, то и есть. Эмодзи с клавиатуры не принимаются. Одна реакция на человека. Имена в чипе по-прежнему ведут на 4.5 — единственную всплывающую панель в продукте.</i></figure>
+<span class="num">4.10</span><b>Выбор реакции</b><i>Плюс не ставит реакцию втихаря и не открывает вторую панель: закрытый список раскрывается в карточке, на месте плюса. Четыре значка без подписей — сердце, смех, удивление, злость; что есть на пиктограмме, то и есть. Эмодзи с клавиатуры не принимаются. Одна реакция на человека. Имена в чипе по-прежнему ведут на 4.5 — ту же панель, что у прав участника.</i></figure>
 
 <figure class="s" id="e4-11"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -1298,7 +1327,7 @@
     <div class="hint" style="margin-top:14px">Реакция одна на человека и подчиняется окну правок. Хотите сказать больше — напишите словами.</div>
   </div>
 </div>
-<span class="num">4.5</span><b>Кто отреагировал</b><i>Единственная всплывающая панель в продукте. Списку из двух имён не нужен целый экран, а вот превращать имена в число нельзя: «Кот, Петя» — это разговор, «2» — это статистика.</i></figure>
+<span class="num">4.5</span><b>Кто отреагировал</b><i>Та же панель, что у прав на 6.18: списку из двух имён не нужен целый экран, а вот превращать имена в число нельзя. «Кот, Петя» — это разговор, «2» — это статистика.</i></figure>
 
 <figure class="s" id="e4-3"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -1384,7 +1413,7 @@
     <span class="idn">12 июля</span></div><div style="height:12px"></div></div>
   <div class="pic p2" style="aspect-ratio:16/9;border-radius:0;border:0;border-bottom:1px solid var(--line)">
     <span class="tagr">обложка дня</span><span class="cnt">сменить</span></div>
-  <div class="row2"><div class="g"><div style="font-weight:600">Река</div><div class="sub">назвала Аня · 13 июля</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="row2"><div class="g"><div style="font-weight:600">Река</div><div class="sub">назвала Аня · 13 июля · нажмите, чтобы изменить</div></div></div>
   <div class="hint">День общий: название и обложку может сменить любой, у кого есть запись за этот день. Если поменяют несколько — останется последнее.</div>
   <div class="post">
     <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">12 июля, 11:20</div></div></div>
@@ -1397,7 +1426,24 @@
     <div class="pt">Разобрала лето. Вот тот день на реке, про который все спрашивали.</div>
   </div>
 </div>
-<span class="num">5.2</span><b>День</b><i>День — общий на весь круг, поэтому у экрана нет автора и нет владельца: есть обложка, имя и записи всех, кто в этот день писал. Записи внутри идут по отнесённому времени, а не по времени попадания в лог, — иначе сегодняшняя вставка встала бы поверх утра на реке. Пока обложку никто не выбрал, показывается первое фото дня; ручной выбор всегда сильнее автоматического и живёт в логе как событие.</i></figure>
+<span class="num">5.2</span><b>День</b><i>День — общий на весь круг, поэтому у экрана нет автора и нет владельца: есть обложка, имя и записи всех, кто в этот день писал. Название не ведёт на другой экран: тап по строке открывает поле на месте, 5.6. Записи внутри идут по отнесённому времени, а не по времени попадания в лог. Пока обложку никто не выбрал, показывается первое фото дня; ручной выбор всегда сильнее автоматического и живёт в логе как событие.</i></figure>
+<figure class="s" id="e5-6"><div class="ph">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="cbar"><div class="top"><svg class="ic"><use href="#i-back"/></svg><span class="t">Река</span>
+    <span class="idn">12 июля</span></div><div style="height:12px"></div></div>
+  <div class="pic p2" style="aspect-ratio:16/9;border-radius:0;border:0;border-bottom:1px solid var(--line)">
+    <span class="tagr">обложка дня</span><span class="cnt">сменить</span></div>
+  <div class="fld act" style="margin-top:14px">Река</div>
+  <div class="rowin" style="margin-top:12px"><div class="btn c" style="flex:1">Сохранить</div><div class="btn gh" style="flex:1;margin:0">Отмена</div></div>
+  <div class="hint ctr" style="margin-top:8px"><span class="under">убрать название</span></div>
+  <div class="hint">Тап по имени на 5.2 открыл поле на месте. Отдельного экрана нет: пятого уровня нет, и панель под это не заводится.</div>
+  <div class="post">
+    <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">12 июля, 11:20</div></div></div>
+    <div class="pt">Доехали к обеду, вода тёплая.</div>
+  </div>
+</div>
+<span class="num">5.6</span><b>Название дня</b><i>То же 5.2 после тапа по строке «Река». Поле и две кнопки на месте имени; записи остаются внизу. Убрать название — отдельная тихая строка, пока живо окно той правки.</i></figure>
+
 
 <figure class="s" id="e3-9"><div class="ph">
   <div class="sb"><span>22:14</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -1507,14 +1553,15 @@
     <div style="height:12px"></div></div>
   <div class="chips" style="margin-top:14px"><span class="chip on">Этот круг</span><span class="chip">Все круги</span></div>
   <div class="chips" style="margin-top:8px"><span class="chip">Период</span><span class="chip">С фото</span><span class="chip">С местом</span><span class="chip on">Аня</span></div>
-  <div class="hint">4 записи и 11 комментариев</div>
+  <div class="hint">4 записи, 11 комментариев и день</div>
   <div class="row2" style="margin-top:6px"><div class="g"><div style="font-weight:600">Аня<span style="font-weight:400;color:var(--faint);font-size:11.5px"> · сегодня, 14:22</span></div><div class="sub">будет, но не тебе — ты в прошлый раз всю банку унёс <span style="color:var(--faint)">· комментарий</span></div></div></div>
+  <div class="row2"><div class="g"><div style="font-weight:600">Компот с дачи<span style="font-weight:400;color:var(--faint);font-size:11.5px"> · 3 сентября 2025</span></div><div class="sub"><span style="color:var(--faint)">день</span></div></div></div>
   <div class="row2"><div class="g"><div style="font-weight:600">Аня<span style="font-weight:400;color:var(--faint);font-size:11.5px"> · 3 сентября 2025</span></div><div class="sub">Сварила <span class="hl">компот</span>, вышло восемь банок</div></div><div class="thumb pic p5"></div></div>
   <div class="row2"><div class="g"><div style="font-weight:600">Аня<span style="font-weight:400;color:var(--faint);font-size:11.5px"> · 28 августа 2025</span></div><div class="sub">Кто-нибудь помнит бабушкин рецепт <span class="hl">компота</span>?</div></div></div>
   <div class="row2"><div class="g"><div style="font-weight:600">Аня<span style="font-weight:400;color:var(--faint);font-size:11.5px"> · 14 июля 2025</span></div><div class="sub">Банки перемыты, ждём <span class="hl">компот</span></div></div><div class="thumb pic p2"></div></div>
   <div class="hint ctr" style="margin-top:22px">Фильтр по автору работает только здесь:<br>в других кругах это другие люди.</div>
 </div>
-<span class="num">5.5</span><b>Поиск в круге</b><i>Тот же поиск, что и с улочки, но с двумя отличиями: он окрашен в круг и умеет фильтровать по автору. Комментарии ищутся наравне с записями и помечаются словом, а не отдельной вкладкой. Отрезки видимости действуют и здесь — чужого прошлого поиск не достанет.</i></figure>
+<span class="num">5.5</span><b>Поиск в круге</b><i>Тот же поиск, что и с улочки, но с двумя отличиями: он окрашен в круг и умеет фильтровать по автору. Комментарии и дни ищутся наравне с записями и помечаются словом, а не отдельной вкладкой. Отрезки видимости действуют и здесь — чужого прошлого поиск не достанет.</i></figure>
 </div></div>
 <h2>Настройки круга</h2>
 <p class="lede">Всё, что круг решает о себе, — на одном экране.</p>
@@ -1583,7 +1630,26 @@
   <div class="hint" style="margin-top:16px">Записи вышедших остаются в круге и подписаны тем именем, что было на момент написания.</div>
   <div class="btn gh">Пригласить</div>
 </div>
-<span class="num">6.3</span><b>Участники</b><i>Четыре состояния из образа продукта показаны двумя строками: «читает, не пишет» — это вышедший с доступом, «без доступа» — вышедший совсем и исключённый. Разницы между уходом и исключением интерфейс не делает нигде, и в хронике тоже: «покинул круг». Модератора нет — круг знакомых людей решает социально.</i></figure>
+<span class="num">6.3</span><b>Участники</b><i>Четыре состояния из образа продукта показаны двумя строками: «читает, не пишет» — это вышедший с доступом, «без доступа» — вышедший совсем и исключённый. Разницы между уходом и исключением интерфейс не делает нигде, и в хронике тоже: «покинул круг». Модератора нет — круг знакомых людей решает социально. Право «может менять настройки» выдаёт владелец с точек: лист 6.18.</i></figure>
+<figure class="s" id="e6-18"><div class="ph">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="cbar"><div class="top"><svg class="ic"><use href="#i-back"/></svg><span class="t">Участники</span><span class="idn">22</span></div><div style="height:12px"></div></div>
+  <div class="lab">В круге · 20</div>
+  <div class="row2" style="padding-top:2px"><div class="av" style="background:#62452F">К</div><div class="g"><div style="font-weight:600">Кот</div><div class="sub">владелец · с 12 марта 2024</div></div></div>
+  <div class="row2"><div class="av" style="background:#58673A">А</div><div class="g"><div style="font-weight:600">Аня</div><div class="sub">может менять настройки</div></div><svg class="ic sm"><use href="#i-dots"/></svg></div>
+  <div class="row2"><div class="av">М</div><div class="g"><div style="font-weight:600">Мышь</div><div class="sub">это вы · с 5 августа</div></div></div>
+  <div class="row2"><div class="av" style="background:#3C4D83">М</div><div class="g"><div style="font-weight:600">Мама</div></div><svg class="ic sm"><use href="#i-dots"/></svg></div>
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="grip"></div>
+    <div class="lab" style="margin-top:2px">Аня</div>
+    <div class="row2"><div class="g" style="font-weight:600">Забрать право менять настройки</div></div>
+    <div class="row2"><div class="g" style="font-weight:600;color:var(--muted)">Исключить</div></div>
+    <div class="hint" style="margin-top:14px">Право выдаёт только владелец. Страницы участника нет — лист с точек, как список отреагировавших.</div>
+  </div>
+</div>
+<span class="num">6.18</span><b>Права участника</b><i>Точки на 6.3 открывают ту же панель, что у реакций. Два действия: дать или забрать «может менять настройки», и исключить. Если права ещё нет, первая строка — «Дать право менять настройки». Нового экрана нет: у участника нет страницы.</i></figure>
+
 
 <figure class="s" id="e6-4"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -1592,12 +1658,16 @@
   <div class="hint ctr" style="margin-top:12px">Покажите код или отправьте ссылку</div>
   <div class="fld mono" style="margin-top:18px;font-size:12.5px;overflow:hidden;white-space:nowrap">home.example.org/i/7Kq2-mR4v</div>
   <div class="rowin"><div class="btn c" style="flex:1">Поделиться</div><div class="btn gh" style="flex:1;margin:0">Скопировать</div></div>
-  <div class="lab" style="margin-top:22px">Ссылка</div>
-  <div class="chips"><span class="chip on">Одноразовая</span><span class="chip">Многоразовая</span></div>
+  <div class="lab" style="margin-top:14px">Ссылка</div>
+  <div class="chips"><span class="chip">Одноразовая</span><span class="chip on">Многоразовая</span></div>
+  <div class="chips" style="margin-top:8px"><span class="chip">5</span><span class="chip on">10</span><span class="chip">25</span></div>
   <div class="chips" style="margin-top:8px"><span class="chip">1 час</span><span class="chip on">72 часа</span><span class="chip">Неделя</span></div>
-  <div class="hint">Ссылка несёт адрес сервера и токен: тому, кого вы зовёте, не придётся ничего вводить. Многоразовая обязательно имеет лимит — она создаёт учётки на сервере.</div>
+  <div class="hint">Лимит — сколько учёток создаст ссылка. Дефолт 10, чипы только у многоразовой.</div>
+  <div class="lab" style="margin-top:14px">Живые</div>
+  <div class="row2" style="padding-top:2px"><div class="g"><div style="font-weight:600">Многоразовая · 4 из 10</div><div class="sub">до 13 сентября · 7Kq2-mR4v</div></div><span class="val">отозвать</span></div>
+  <div class="row2"><div class="g"><div style="font-weight:600">Одноразовая · не использована</div><div class="sub">до 11 сентября · pL8n-xQ1w</div></div><span class="val">скопировать</span></div>
 </div>
-<span class="num">6.4</span><b>Приглашение</b><i>Приглашение в круг заводит и учётку, поэтому экран отдаёт две вещи и молчит обо всём остальном: код для того, кто рядом, ссылка для того, кто далеко. Дефолты — одноразовая на 72 часа — стоят выбранными, а не спрятаны за «дополнительно». После создания тот же кадр показан как 2.7: другая шапка шага и кнопка в пустой круг. Сюда приходят из настроек, из участников и с 3.6.</i></figure>
+<span class="num">6.4</span><b>Приглашение</b><i>Код тому, кто рядом, ссылка тому, кто далеко. Многоразовая сразу показывает лимит 5 / 10 / 25 — иначе создающий не видит, сколько учёток отдаёт. Ниже — реестр живых: скопировать снова или отозвать. Дефолты создания — одноразовая на 72 часа; этот кадр открыт на многоразовой, чтобы были видны чипы лимита. Сюда приходят из настроек, из участников и с 3.6.</i></figure>
 
 <figure class="s" id="e6-5"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -1616,18 +1686,16 @@
 </div>
 <span class="num">6.5</span><b>Кто ты в этом круге</b><i>Идентичность — первоклассная сущность, а не псевдоним: у неё есть история, и она версионна внутри журнала. Меняется как настроение и ничего не ломает, потому что прошлое остаётся подписано прошлым именем. «сменить фото» открывает пикер, затем кадр 6.11; на сервер уходит JPEG 512 px, а не оригинал.</i></figure>
 
-<figure class="s" id="e6-11"><div class="ph ochre">
+<figure class="s" id="e6-11"><div class="ph" style="display:flex;flex-direction:column">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="cbar"><div class="top"><span style="font-size:13.5px">Отмена</span><span class="t" style="margin:0 auto">Кадр</span><span style="font-size:13.5px;font-weight:600">Готово</span></div><div style="height:12px"></div></div>
   <div class="crop">
-    <div class="top"><svg class="ic" style="color:#fff"><use href="#i-x"/></svg><span class="t">Кадр</span><span class="done">Готово</span></div>
-    <div class="viewport">
-      <div class="pic p3 fill"></div>
-      <div class="ring"></div>
-    </div>
-    <div class="hint ctr" style="margin:14px 16px 22px">Так вас увидят в круге. Сдвиньте снимок или разведите пальцы.</div>
+    <div class="pic p3 fill"></div>
+    <div class="ring"></div>
   </div>
+  <div class="hint ctr" style="margin:14px 16px 22px">Так вас увидят в круге. Сдвиньте снимок или разведите пальцы.</div>
 </div>
-<span class="num">6.11</span><b>Кадр</b><i>Полный экран на бумаге, не тёмный лайтбокс. Круглое окно совпадает с тем, как аватар выглядит в ленте; на диск — квадратный JPEG. Шапка — цвет круга. «Готово» текстом справа, без второй кнопки внизу. Поворота и фильтров нет; сменить кадр — выбрать фото заново.</i></figure>
+<span class="num">6.11</span><b>Кадр</b><i>Полный экран на бумаге, не тёмный лайтбокс. Шапка как у новой записи: «Отмена», название, «Готово» текстом — цвет круга, не крестик лайтбокса. Круглое окно совпадает с тем, как аватар выглядит в ленте; на диск — квадратный JPEG. Поворота и фильтров нет; сменить кадр — выбрать фото заново.</i></figure>
 
 <figure class="s" id="e6-6"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -1651,7 +1719,7 @@
   <div class="cbar"><div class="top"><svg class="ic"><use href="#i-back"/></svg><span class="t">Архив и очистка</span></div><div style="height:12px"></div></div>
   <div class="lab">Место</div>
   <div class="meter"><u style="width:100%"></u></div>
-  <div class="hint" style="margin-top:8px">10 ГБ из 10 ГБ · фотографии больше не загружаются, текст пишется</div>
+  <div class="hint" style="margin-top:8px">10 ГБ из 10 ГБ · фотографии больше не загружаются, короткий текст пишется</div>
   <div class="row2" style="margin-top:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
     <div class="g"><div style="font-weight:600">Попросить у администратора</div><div class="sub">шаг необязательный — можно сразу к отсечке</div></div>
     <svg class="ic sm"><use href="#i-chevr"/></svg></div>
@@ -1682,7 +1750,7 @@
   <div class="hint">Освободится 6,2 ГБ из 10. В круге останется 214 записей из 340.</div>
   <div class="btn c">Дальше: сроки</div>
 </div>
-<span class="num">6.8</span><b>Место кончилось</b><i>Выбирать отсечку вслепую нельзя, поэтому даты стоят на графике занятого места: двигая линию, владелец сразу видит, сколько освободит именно эта дата. Полоса заполнена целиком — и сказано, что именно перестало работать: медиа не грузится, переписка идёт. Запрос администратору стоит первым и назван необязательным: он может отказать, и цикл всё равно придётся пройти.</i></figure>
+<span class="num">6.8</span><b>Место кончилось</b><i>Выбирать отсечку вслепую нельзя, поэтому даты стоят на графике занятого места: двигая линию, владелец сразу видит, сколько освободит именно эта дата. Полоса заполнена целиком — и сказано, что именно перестало работать: медиа не грузится, короткий текст (до 32 КБ) ещё пишется. Сами слова в квоту круга не входят — у текста свой потолок размера, чтобы нельзя было залить диск «текстом». Запрос администратору стоит первым и назван необязательным: он может отказать, и цикл всё равно придётся пройти.</i></figure>
 
 <figure class="s" id="e6-16"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -1885,7 +1953,7 @@
     <div class="rowin" style="margin:18px 0 0"><div class="btn gh" style="flex:1;margin:0">Отмена</div><div class="btn" style="flex:1;margin:0">Удалить</div></div>
   </div>
 </div>
-<span class="num">6.7</span><b>Удаление круга</b><i>Сюда ведёт «Удалить круг и все записи» с 6.2. Второй барьер — не красная кнопка, а рука: имя круга набирается вручную. Кнопка подтверждения чернильная, как и все главные кнопки продукта; страшной её делает не цвет, а то, что до неё нужно дописать «Семья». Так решается вопрос, оставленный открытым в образе продукта. После подтверждения — улочка без этого круга (2.1).</i></figure>
+<span class="num">6.7</span><b>Удаление круга</b><i>Сюда ведёт «Удалить круг и все записи» с 6.2. Второй барьер — не красная кнопка, а рука: имя круга набирается вручную. Кнопка подтверждения чернильная, как и все главные кнопки продукта; страшной её делает не цвет, а то, что до неё нужно дописать «Семья». Рамка и набор имени закрывают вопрос про визуальную границу удаления. После подтверждения — улочка без этого круга (2.1).</i></figure>
 </div></div>
 <h2>Приложение</h2>
 <p class="lede">За шестерёнкой ровно два раздела — и ни одного акцентного цвета.</p>
@@ -1895,7 +1963,7 @@
 <figure class="s" id="e7-1"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Настройки</span></div>
-  <div class="row2" style="margin-top:8px"><svg class="ic"><use href="#i-key"/></svg><div class="g"><div style="font-weight:600">Серверы и учётки</div><div class="sub">Дом Ани и ещё один</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="row2" style="margin-top:8px"><svg class="ic"><use href="#i-key"/></svg><div class="g"><div style="font-weight:600">Серверы</div><div class="sub">Дом Ани и ещё один</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
   <div class="row2"><svg class="ic"><use href="#i-bell"/></svg><div class="g"><div style="font-weight:600">Приложение</div><div class="sub">уведомления, место, тема</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
   <div class="hint ctr" style="margin-top:44px">Wynd 0.1.0 · AGPL-3.0<br><a class="under" href="https://github.com/mixeme/wynd">исходный код</a></div>
 </div>
@@ -1903,18 +1971,18 @@
 
 <figure class="s" id="e7-2"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
-  <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Серверы и учётки</span></div>
+  <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Серверы</span></div>
   <div class="lab raw"><span style="color:var(--ink)">Дом Ани</span> · home.example.org</div>
   <div class="row2" style="padding-top:2px"><div class="g"><div style="font-weight:600">anya@example.com</div><div class="sub">5 кругов · вошли 5 августа</div></div></div>
   <div class="row2"><div class="g">Выйти с этого сервера</div><svg class="ic sm"><use href="#i-out"/></svg></div>
   <div class="lab raw" style="margin-top:22px"><span style="color:var(--ink)">У Славы</span> · wynd.u-slavy.ru</div>
   <div class="row2" style="padding-top:2px"><div class="g"><div style="font-weight:600">m.petrov@example.com</div><div class="sub">1 круг · вошли 24 июля</div></div></div>
   <div class="row2"><div class="g">Выйти с этого сервера</div><svg class="ic sm"><use href="#i-out"/></svg></div>
-  <div class="hint" style="margin-top:24px">Глобальной учётки не существует. Вы выходите «с home.example.org», а не «из Wynd»: круги живут на серверах, серверы друг о друге не знают, и связать две ваши учётки нельзя.</div>
+  <div class="hint" style="margin-top:24px">Вы выходите с сервера, не из Wynd. Общего профиля на все серверы нет: даже одна почта на двух серверах — это два разных места, связать их нельзя.</div>
   <div class="btn gh">Добавить сервер</div>
   <div class="hint">По ссылке, по QR или прямо по адресу — если сервер открыт для новых. Закрытый попросит приглашение.</div>
 </div>
-<span class="num">7.2</span><b>Серверы и учётки</b><i>Единственное место, где инфраструктура показана честно, — притворяться было бы хуже. Имя сервера стоит впереди адреса: «Дом Ани» человек запомнит, доменное имя — нет. Круги с разных серверов лежат в одном списке и ничем не отличаются: агрегация происходит на устройстве, и человеку не приходится помнить, что где.</i></figure>
+<span class="num">7.2</span><b>Серверы</b><i>Единственное место, где инфраструктура показана честно, — притворяться было бы хуже. Имя сервера стоит впереди адреса: «Дом Ани» человек запомнит, доменное имя — нет. Круги с разных серверов лежат в одном списке и ничем не отличаются: агрегация происходит на устройстве, и человеку не приходится помнить, что где.</i></figure>
 
 <figure class="s" id="e7-3"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -1972,6 +2040,7 @@
     <div class="m"><div class="n">Семья</div><div class="p">Аня: были на даче, все живы</div></div>
     <div class="rt"><span>14:02</span><span class="bdg">3</span></div></div>
   <div class="sep"></div>
+  <div class="lab">Остальные</div>
   <div class="r" style="--rc:var(--olive)"><div class="sq">П</div>
     <div class="m"><div class="n">Поход на Алтай</div><div class="p">Мышка теперь Мышь</div></div>
     <div class="rt"><span>вчера</span><span class="bdg">1</span></div></div>
@@ -2054,7 +2123,7 @@
     <div style="margin-top:20px;font-size:12.5px;color:var(--faint)">Эта страница открыта по одноразовой ссылке из лога установки и больше не откроется. Сразу после сохранения панель прогонит проверку инстанса.</div>
   </div>
 </div>
-<span class="num">9.4</span><b>Первый запуск</b><i>Одна команда ставит бинарник и печатает ссылку с токеном; дальше человек не видит ни конфига, ни YAML. Три карточки — три вещи, без которых сервер бесполезен, и у каждой сказано, что сломается, если её пропустить.</i></figure>
+<span class="num">9.4</span><b>Первый запуск</b><i>Одна команда ставит бинарник и печатает ссылку с токеном; дальше человек не видит ни конфига, ни YAML. Три карточки — три вещи, без которых сервер бесполезен. В программе этот шаг пока короче: имя и пароль, без адреса, Caddy и почты. Макет — цель, не снимок живого экрана.</i></figure>
 
 <figure class="s" id="e9-7" style="width:820px"><div class="ph wide shell" style="height:678px">
   <div class="admbar">
@@ -2135,7 +2204,7 @@
     </table>
   </div>
 </div>
-<span class="num">9.8</span><b>Люди</b><i>Пятый пункт, потому что «кого пускать» и «кто уже здесь» — разные решения. Панель знает почту и круги, не лица: «Мышь» и «Аня» сюда не входят. Строка ведёт в карточку: список не умеет ни закрыть вход, ни удалить, иначе необратимое жило бы в таблице. Кто владеет кругом — на хранилище, в деталях этого круга, не здесь. Человека без кругов не убираем по сроку: он на виду, решение за тем, кто держит сервер.</i></figure>
+<span class="num">9.8</span><b>Люди</b><i>Пятый пункт, потому что «кого пускать» и «кто уже здесь» — разные решения. Панель знает почту и круги, не лица: «Мышь» и «Аня» сюда не входят. Строка ведёт в карточку: список не умеет ни закрыть вход, ни удалить, иначе необратимое жило бы в таблице. Кто владеет кругом — на хранилище, в деталях этого круга, не здесь. Учётку, в которой ни разу не было кругов, суточная рутина убирает через 30 дней — мягко, как кнопка в карточке. Был в круге и вышел — не пустая учётка: на виду, решение за тем, кто держит сервер.</i></figure>
 
 <figure class="s" id="e9-9" style="width:820px"><div class="ph wide shell" style="height:720px">
   <div class="admbar">
@@ -2468,10 +2537,10 @@
 </div>
 <span class="num">9.10</span><b>Почта</b><i>Пункта SMTP в навбаре нет: почта — инфраструктура, как прокси, а не ежедневная задача. «Настроить» на 9.5 ведёт сюда. Назад — шеврон на проверку, не крошка: иначе с формы некуда нажать, кроме пункта «Проверка» в шапке. Активен он же. Форма — та же мысль, что на первом запуске, только поля открыты. Проверочное письмо — здесь, рядом с релеем, не отдельным пунктом.</i></figure>
 </div></div>
-<h2>Не в 0.x</h2>
-<p class="lede">Подписка и сбор — не обещание текущей версии.</p>
+<h2>Оплата и сбор</h2>
+<p class="lede">Подписка закрывает круги; сбор — баннер на улочке.</p>
 <p>Два независимых механизма покрыть расходы сервера. Подписка закрывает круги без активной оплаты. Донат — баннер в списке кругов, ни на что не влияет. Можно оба сразу.</p>
-<p>Панель открывается в браузере по адресу сервера, не из приложения: тот же вход, что после установки, отдельный пароль. Шестой пункт навбара — «Оплата»; на 9.1–9.10 его нет, потому что механика не в 0.x. Переключатель «требовать подписку» стоит на этом экране: выключен — круги открыты; включён — без оплаты человек видит «Доступ закрыт». Пока срок ещё идёт, с улочки можно продлить. Реквизиты задаёт админ один раз: человек читает их, когда круги закрыты, когда продлевает и когда открывает баннер.</p>
+<p>Панель открывается в браузере по адресу сервера, не из приложения: тот же вход, что после установки, отдельный пароль. Шестой пункт навбара — «Оплата». На кадрах 9.1–9.10 его нет: это другие разделы панели. На «Оплате» сначала реквизиты, затем две строки: сбор и подписка — каждый на своём экране, как почта с проверки. Очередь заявок живёт на подписке, не на хабе. Выключена подписка — круги открыты; включена — без оплаты человек видит «Доступ закрыт». Пока срок ещё идёт, с улочки можно продлить. Реквизиты задаёт админ один раз: человек читает их, когда круги закрыты, когда продлевает и когда открывает баннер.</p>
 
 <figure class="bleed"><svg viewBox="0 0 1060 390" style="display:block;width:100%;height:auto" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif">
   <defs><marker id="ar10" viewBox="0 0 8 8" refX="7.2" refY="4" markerWidth="7" markerHeight="7" orient="auto">
@@ -2494,6 +2563,7 @@
     <path d="M760 84 V98"/>
     <path d="M760 157 H800"/>
     <path d="M760 211 H800"/>
+    <path d="M760 255 H800"/>
   </g>
   <g stroke="#DFD8CD" stroke-width="1.2">
     <rect x="20" y="54" width="170" height="30" rx="7" fill="#EFE9E0"/>
@@ -2507,6 +2577,7 @@
     <rect x="560" y="98" width="200" height="30" rx="7" fill="#EFE9E0"/>
     <rect x="800" y="142" width="200" height="30" rx="7" fill="#FCFAF6"/>
     <rect x="800" y="196" width="200" height="30" rx="7" fill="#FCFAF6"/>
+    <rect x="800" y="240" width="200" height="30" rx="7" fill="#FCFAF6"/>
   </g>
   <g font-size="12.5" fill="#2B2724">
     <text x="34" y="73.5" font-weight="600">Улочка</text>
@@ -2520,9 +2591,10 @@
     <text x="574" y="117.5" font-weight="600">Оплата</text>
     <text x="814" y="161.5">Заявка</text>
     <text x="814" y="215.5">Сбор</text>
+    <text x="814" y="259.5">Подписка</text>
   </g>
   <text x="20" y="356" font-size="11" fill="#A8A096">Шлюз стоит перед улочкой, не вместо неё. Панель не открывается из приложения: адрес сервера и пароль с первого запуска. С напоминания — «Продлить», дальше тот же «Я оплатил». Отказал — снова «Доступ закрыт», если срок уже вышел; если нет — снова улочка.</text>
-</svg><figcaption style="color:#7A7269;font-size:12.5px;margin-top:10px">Маршруты подписки и сбора. «Оплата» — пункт навбара; заявка и сбор открываются с него, как карточка человека с «Людей».</figcaption></figure>
+</svg><figcaption style="color:#7A7269;font-size:12.5px;margin-top:10px">Маршруты подписки и сбора. «Оплата» — пункт навбара: реквизиты, затем сбор и подписка строками. Заявка открывается с подписки.</figcaption></figure>
 
 <div class="bleed"><div class="gal">
 <figure class="s" id="e10-1"><div class="ph shell">
@@ -2586,6 +2658,7 @@
     <div class="m"><div class="n">Семья</div><div class="p">Аня: были на даче, все живы</div></div>
     <div class="rt"><span>14:02</span><span class="bdg">3</span></div></div>
   <div class="sep"></div>
+  <div class="lab">Остальные</div>
   <div class="r" style="--rc:var(--olive)"><div class="sq">П</div>
     <div class="m"><div class="n">Поход на Алтай</div><div class="p">Мышка теперь Мышь</div></div>
     <div class="rt"><span>вчера</span><span class="bdg">1</span></div></div>
@@ -2633,6 +2706,7 @@
     <div class="m"><div class="n">Семья</div><div class="p">Аня: были на даче, все живы</div></div>
     <div class="rt"><span>14:02</span><span class="bdg">3</span></div></div>
   <div class="sep"></div>
+  <div class="lab">Остальные</div>
   <div class="r" style="--rc:var(--olive)"><div class="sq">П</div>
     <div class="m"><div class="n">Поход на Алтай</div><div class="p">Мышка теперь Мышь</div></div>
     <div class="rt"><span>вчера</span><span class="bdg">1</span></div></div>
@@ -2676,6 +2750,7 @@
     <div class="m"><div class="n">Семья</div><div class="p">Аня: были на даче, все живы</div></div>
     <div class="rt"><span>14:02</span><span class="bdg">3</span></div></div>
   <div class="sep"></div>
+  <div class="lab">Остальные</div>
   <div class="r" style="--rc:var(--olive)"><div class="sq">П</div>
     <div class="m"><div class="n">Поход на Алтай</div><div class="p">Мышка теперь Мышь</div></div>
     <div class="rt"><span>вчера</span><span class="bdg">1</span></div></div>
@@ -2685,33 +2760,20 @@
 </div>
 <span class="num">10.12</span><b>Заявка отправлена, доступ ещё есть</b><i>После 10.2, если срок не вышел: человек на улочке, не на заглушке. Шеврона нет — второй заявки, пока висит pending, быть не должно. Отклонили — снова 10.5. Вышел срок, пока ждали — 10.3.</i></figure>
 
-<figure class="s" id="e10-6" style="width:820px"><div class="ph wide shell" style="height:720px">
+<figure class="s" id="e10-6" style="width:820px"><div class="ph wide shell" style="height:560px">
   <div class="admbar">
     <svg class="mk" viewBox="-21.67 -31.8 42.9 64.47" aria-label="Wynd" role="img"><use href="#mark" fill="currentColor" x="-21.67" y="-31.8" width="42.9" height="64.47"/></svg>
     <span class="admnav" style="margin-left:20px"><span class="">Хранилище</span><span class="">Проверка</span><span class="">Сжатие</span><span class="">Доступ</span><span class="">Люди</span><span class="on">Оплата</span></span>
     <span style="margin-left:auto;font-size:12.5px;color:var(--faint)">Дом Ани · home.example.org</span>
   </div>
   <div class="adm">
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
-      <h4 style="margin:0">Оплата</h4>
-      <span style="margin-left:auto;font-size:12.5px;color:var(--muted)">3 заявки ждут</span>
-    </div>
-    <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:18px">
-      <span class="sw on" style="--c:var(--ink);margin-top:2px"></span>
-      <div>
-        <div style="font-size:13.5px;font-weight:600">Требовать подписку</div>
-        <div style="font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.5">Без оплаты круги не открываются.</div>
-      </div>
-    </div>
+    <h4>Оплата</h4>
     <div class="cols">
       <div>
         <div class="lab" style="margin:0 0 8px">Реквизиты</div>
         <div class="ta" style="margin:0;height:88px;color:var(--ink);white-space:pre-wrap">Сбер · Анна К.
 2200 20•• •••• 4412
 В назначении: wynd и почта</div>
-        <div class="lab" style="margin:18px 0 8px">Напомнить об истечении подписки</div>
-        <div class="chips" style="margin:0"><span class="chip">За сутки</span><span class="chip">За 3 дня</span><span class="chip on">За 7 дней</span></div>
-        <div style="font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.5">За столько дней до конца подписки — письмо и строка на улочке. По умолчанию семь.</div>
       </div>
       <div>
         <div class="lab" style="margin:0 0 8px">Как это видит человек</div>
@@ -2724,47 +2786,36 @@
         <div style="font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.5">Когда круги закрыты, когда человек продлевает и когда открывает баннер.</div>
       </div>
     </div>
-    <div class="lab" style="margin:22px 0 8px">Заявки</div>
-    <table class="tbl">
-      <tr><th>Почта</th><th>Когда</th><th>Скрин</th><th>Комментарий</th><th></th></tr>
-      <tr>
-        <td class="n">anya@example.com</td>
-        <td style="color:var(--muted)">сегодня, 11:20</td>
-        <td><div class="pic p5" style="width:42px;height:28px;border-radius:4px"></div></td>
-        <td style="color:var(--muted)">перевод 10 сентября</td>
-        <td style="text-align:right"><svg class="ic sm"><use href="#i-chevr"/></svg></td></tr>
-      <tr>
-        <td class="n">m.petrov@example.com</td>
-        <td style="color:var(--muted)">вчера, 19:04</td>
-        <td><div class="pic p3" style="width:42px;height:28px;border-radius:4px"></div></td>
-        <td style="color:var(--faint)">нет</td>
-        <td style="text-align:right"><svg class="ic sm"><use href="#i-chevr"/></svg></td></tr>
-      <tr>
-        <td class="n">kot@example.com</td>
-        <td style="color:var(--muted)">9 сентября</td>
-        <td><div class="pic p7" style="width:42px;height:28px;border-radius:4px"></div></td>
-        <td style="color:var(--muted)">за двоих, на год</td>
-        <td style="text-align:right"><svg class="ic sm"><use href="#i-chevr"/></svg></td></tr>
-    </table>
-    <div style="display:flex;align-items:center;gap:12px;margin-top:16px;padding:13px 0;border-top:1px solid var(--line)">
+    <div style="display:flex;align-items:center;gap:12px;margin-top:22px;padding:13px 0;border-top:1px solid var(--line)">
       <div style="flex:1">
         <div style="font-weight:600">Сбор</div>
         <div style="font-size:12.5px;color:var(--muted);margin-top:3px">баннер в списке кругов · до 1 ноября</div>
       </div>
       <svg class="ic sm"><use href="#i-chevr"/></svg>
     </div>
+    <div style="display:flex;align-items:center;gap:12px;padding:13px 0;border-top:1px solid var(--line)">
+      <div style="flex:1">
+        <div style="font-weight:600">Подписка</div>
+        <div style="font-size:12.5px;color:var(--muted);margin-top:3px">требуется · 3 заявки ждут</div>
+      </div>
+      <svg class="ic sm"><use href="#i-chevr"/></svg>
+    </div>
   </div>
 </div>
-<span class="num">10.6</span><b>Оплата</b><i>Шестой пункт навбара, не очередь без двери. Сюда заходят из браузера: адрес сервера и пароль, как на первом запуске. Переключатель включает шлюз. Реквизиты справа — не подпись, а та же карточка, что на 10.1, 10.9 и 10.11. Строка ведёт в карточку заявки; «Сбор» — на 10.8, как «Настроить» у почты. Выключенный — 10.10.</i></figure>
+<span class="num">10.6</span><b>Оплата</b><i>Сначала реквизиты — без них нечего прикладывать к заявке и некуда слать донат. Дальше две строки с шевроном, в этом порядке: сбор, подписка. Очереди и переключателя шлюза здесь нет — они на 10.13. Превью справа — та же карточка, что на 10.1, 10.9 и 10.11.</i></figure>
 
-<figure class="s" id="e10-10" style="width:820px"><div class="ph wide shell" style="height:520px">
+<figure class="s" id="e10-10" style="width:820px"><div class="ph wide shell" style="height:420px">
   <div class="admbar">
     <svg class="mk" viewBox="-21.67 -31.8 42.9 64.47" aria-label="Wynd" role="img"><use href="#mark" fill="currentColor" x="-21.67" y="-31.8" width="42.9" height="64.47"/></svg>
     <span class="admnav" style="margin-left:20px"><span class="">Хранилище</span><span class="">Проверка</span><span class="">Сжатие</span><span class="">Доступ</span><span class="">Люди</span><span class="on">Оплата</span></span>
     <span style="margin-left:auto;font-size:12.5px;color:var(--faint)">Дом Ани · home.example.org</span>
   </div>
   <div class="adm">
-    <h4>Оплата</h4>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:11.5px;color:var(--faint)">
+      <svg class="ic"><use href="#i-back"/></svg>
+      Оплата
+    </div>
+    <h4>Подписка</h4>
     <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:18px">
       <span class="sw" style="--c:var(--ink);margin-top:2px"></span>
       <div>
@@ -2772,34 +2823,10 @@
         <div style="font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.5">Круги открыты. Платить не нужно.</div>
       </div>
     </div>
-    <div class="cols">
-      <div>
-        <div class="lab" style="margin:0 0 8px">Реквизиты</div>
-        <div class="ta" style="margin:0;height:88px;color:var(--ink);white-space:pre-wrap">Сбер · Анна К.
-2200 20•• •••• 4412
-В назначении: wynd и почта</div>
-      </div>
-      <div>
-        <div class="lab" style="margin:0 0 8px">Как это видит человек</div>
-        <div style="border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px">
-          <div style="font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;font-weight:600;color:var(--muted);margin-bottom:8px">Куда платить</div>
-          <div style="font-weight:600">Сбер · Анна К.</div>
-          <div style="margin-top:4px;font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted)">2200 20•• •••• 4412</div>
-          <div style="margin-top:6px;font-size:12.5px;color:var(--muted)">В назначении: wynd, anya@example.com</div>
-        </div>
-        <div style="font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.5">Только если открыл баннер. Круги не закрываются.</div>
-      </div>
-    </div>
-    <div style="display:flex;align-items:center;gap:12px;margin-top:16px;padding:13px 0;border-top:1px solid var(--line)">
-      <div style="flex:1">
-        <div style="font-weight:600">Сбор</div>
-        <div style="font-size:12.5px;color:var(--muted);margin-top:3px">баннер в списке кругов · до 1 ноября</div>
-      </div>
-      <svg class="ic sm"><use href="#i-chevr"/></svg>
-    </div>
+    <div style="font-size:12.5px;color:var(--muted);line-height:1.5">Напоминания и очереди нет: спрашивать оплату некого. Реквизиты остаются на «Оплате» — ими пользуется баннер. Включить — снова 10.13.</div>
   </div>
 </div>
-<span class="num">10.10</span><b>Оплата без подписки</b><i>Тот же пункт навбара, переключатель выключен. Напоминания и очереди нет: спрашивать оплату некого. Реквизиты остаются — ими пользуется баннер. Включить — снова 10.6.</i></figure>
+<span class="num">10.10</span><b>Подписка выключена</b><i>Тот же экран 10.13, переключатель выключен. Очереди нет. Назад — на хаб 10.6, где реквизиты и строка сбора на месте.</i></figure>
 
 <figure class="s" id="e10-7" style="width:820px"><div class="ph wide shell" style="height:600px">
   <div class="admbar">
@@ -2833,7 +2860,7 @@
     </div>
   </div>
 </div>
-<span class="num">10.7</span><b>Заявка</b><i>Строка с 10.6. Скрин крупно, почта вместо имени, срок вводит админ. Назад — шеврон на «Оплату», не крошка: пункта заявки в навбаре нет. «Дать» считает от сейчас, потому что подписка уже кончилась; если бы ещё шла — от её конца. Отказал — человек снова на 10.1.</i></figure>
+<span class="num">10.7</span><b>Заявка</b><i>Строка с 10.13. Скрин крупно, почта вместо имени, срок вводит админ. Назад — шеврон на «Подписку», не крошка: пункта заявки в навбаре нет. «Дать» считает от сейчас, потому что подписка уже кончилась; если бы ещё шла — от её конца. Отказал — человек снова на 10.1.</i></figure>
 
 <figure class="s" id="e10-8" style="width:820px"><div class="ph wide shell" style="height:560px">
   <div class="admbar">
@@ -2868,9 +2895,79 @@
   </div>
 </div>
 <span class="num">10.8</span><b>Сбор</b><i>Строка с 10.6, как почта с проверки. Пункта «Сбор» в навбаре нет, активна «Оплата». Реквизитов здесь нет — они общие, на экране выше. Баннер не связан с подпиской.</i></figure>
+<figure class="s" id="e10-13" style="width:820px"><div class="ph wide shell" style="height:720px">
+  <div class="admbar">
+    <svg class="mk" viewBox="-21.67 -31.8 42.9 64.47" aria-label="Wynd" role="img"><use href="#mark" fill="currentColor" x="-21.67" y="-31.8" width="42.9" height="64.47"/></svg>
+    <span class="admnav" style="margin-left:20px"><span class="">Хранилище</span><span class="">Проверка</span><span class="">Сжатие</span><span class="">Доступ</span><span class="">Люди</span><span class="on">Оплата</span></span>
+    <span style="margin-left:auto;font-size:12.5px;color:var(--faint)">Дом Ани · home.example.org</span>
+  </div>
+  <div class="adm">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:11.5px;color:var(--faint)">
+      <svg class="ic"><use href="#i-back"/></svg>
+      Оплата
+    </div>
+    <h4>Подписка</h4>
+    <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:18px">
+      <span class="sw on" style="--c:var(--ink);margin-top:2px"></span>
+      <div>
+        <div style="font-size:13.5px;font-weight:600">Требовать подписку</div>
+        <div style="font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.5">Без оплаты круги не открываются.</div>
+      </div>
+    </div>
+    <div class="lab" style="margin:0 0 8px">Напомнить об истечении</div>
+    <div class="chips" style="margin:0"><span class="chip">За сутки</span><span class="chip">За 3 дня</span><span class="chip on">За 7 дней</span></div>
+    <div style="font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.5">За столько дней до конца — письмо и строка на улочке. По умолчанию семь.</div>
+    <div class="lab" style="margin:22px 0 8px">Заявки</div>
+    <table class="tbl">
+      <tr><th>Почта</th><th>Когда</th><th>Скрин</th><th>Комментарий</th><th></th></tr>
+      <tr>
+        <td class="n">anya@example.com</td>
+        <td style="color:var(--muted)">сегодня, 11:20</td>
+        <td><div class="pic p5" style="width:42px;height:28px;border-radius:4px"></div></td>
+        <td style="color:var(--muted)">перевод 10 сентября</td>
+        <td style="text-align:right"><svg class="ic sm"><use href="#i-chevr"/></svg></td></tr>
+      <tr>
+        <td class="n">m.petrov@example.com</td>
+        <td style="color:var(--muted)">вчера, 19:04</td>
+        <td><div class="pic p3" style="width:42px;height:28px;border-radius:4px"></div></td>
+        <td style="color:var(--faint)">нет</td>
+        <td style="text-align:right"><svg class="ic sm"><use href="#i-chevr"/></svg></td></tr>
+      <tr>
+        <td class="n">kot@example.com</td>
+        <td style="color:var(--muted)">9 сентября</td>
+        <td><div class="pic p7" style="width:42px;height:28px;border-radius:4px"></div></td>
+        <td style="color:var(--muted)">за двоих, на год</td>
+        <td style="text-align:right"><svg class="ic sm"><use href="#i-chevr"/></svg></td></tr>
+    </table>
+  </div>
+</div>
+<span class="num">10.13</span><b>Подписка</b><i>Строка с 10.6, как «Сбор». Пункта в навбаре нет, активна «Оплата». Переключатель, срок письма и очередь — здесь, не на хабе. Строка заявки ведёт на 10.7. Выключенный — 10.10.</i></figure>
+
 </div></div>
 <h2>Что решилось при прорисовке</h2>
-<p class="lede">Тридцать три места, где источник пришлось уточнить, а не проиллюстрировать.</p>
+<p class="lede">Сорок мест, где источник пришлось уточнить, а не проиллюстрировать.</p>
+
+
+<div class="cardx">
+<h3>«Войти» спрашивает адрес</h3>
+<p>Пока экран показывал готовое «Дом Ани», первый запуск приложения был необъясним: сервер ещё не назван. Поле адреса стоит на 1.5 так же, как на 1.6: имя приходит ответом сервера. Почта — чтобы прислать код, не чтобы «вернуться на другом устройстве».</p>
+</div>
+
+<div class="cardx">
+<h3>Упоминание — @ и список, не страница</h3>
+<p>Уведомления обещали упоминания, а набрать их было нечем. Набрали «@» — список участников этого круга. В тексте — @имя цветом круга. Тап по имени никуда не ведёт: страницы участника нет. Пуш не выключается.</p>
+</div>
+
+<div class="cardx">
+<h3>Текст не прячется в квоте медиа</h3>
+<p>Квота круга считает фото и файлы. У записи, комментария и названия дня — потолок 32 КБ, иначе «текст» залил бы диск. При упоре квоты короткий текст ещё пишется, медиа — нет.</p>
+</div>
+
+<div class="cardx">
+<h3>Живые ссылки — на том же экране, что создание</h3>
+<p>Создали и забыли: отозвать и скопировать снова было нечем. Под формой — реестр: тип, остаток лимита, срок. Многоразовая сразу показывает чипы 5 / 10 / 25.</p>
+</div>
+
 
 <div class="cardx">
 <h3>Знак в шапке — без слова</h3>
@@ -2879,7 +2976,7 @@
 
 <div class="cardx">
 <h3>Лента идёт от свежего к старому</h3>
-<p>Отсюда «твой отрезок» перевернулся: выше точки обрыва — твоя часть, ниже — ничего. В образе продукта сказано наоборот; та фраза написана до того, как порядок ленты закрепился. Рисунок остался прежним.</p>
+<p>Отсюда «твой отрезок» перевернулся: выше точки обрыва — твоя часть, ниже — ничего. В образе те же слова. Рисунок не менялся.</p>
 </div>
 
 <div class="cardx">
@@ -2914,7 +3011,7 @@
 
 <div class="cardx">
 <h3>Дни — четвёртая вкладка, а не пятый уровень</h3>
-<p>«Дни» встали в один ряд с сеткой и картой: это такой же взгляд на тот же лог, а не раздел. Отсюда следствие — название и обложка правятся <em>на экране дня</em>, а не за отдельной дверью: пятого уровня навигации в продукте нет и ради дней он не появится. Всплывающую панель под это тоже не завели — она в продукте одна, у списка отреагировавших.</p>
+<p>«Дни» встали в один ряд с сеткой и картой: это такой же взгляд на тот же лог, а не раздел. Отсюда следствие — название и обложка правятся <em>на экране дня</em>, а не за отдельной дверью: пятого уровня нет. Тап по имени открывает поле на месте, 5.6. Панель под это не заводится.</p>
 </div>
 
 <div class="cardx">
@@ -2934,7 +3031,7 @@
 
 <div class="cardx">
 <h3>Учётка заводится и без приглашения</h3>
-<p>«Приглашение и есть регистрация» — так сказано в образе продукта, и для того, кого позвали, ничего не изменилось: ссылка по-прежнему приносит адрес, токен и круг. Но этот путь перестал быть единственным. Сервер поднимают и себе, и своим — тому, кто его поднял, звать себя некому. Отсюда три экрана вместо одной фразы: учётка по адресу, учётка по ссылке на сервер и тупик, когда сервер новых не принимает. Кого пускать, решает не продукт, а тот, чей сервер: в панели появился четвёртый пункт, и по умолчанию в нём стоит «по приглашению».</p>
+<p>Для того, кого позвали, ничего не изменилось: ссылка по-прежнему приносит адрес, токен и круг. Но этот путь не единственный: в образе два пути к учётке. Сервер поднимают и себе, и своим — тому, кто его поднял, звать себя некому. Отсюда три экрана: учётка по адресу, учётка по ссылке на сервер и тупик, когда сервер новых не принимает. Кого пускать, решает не продукт, а тот, чей сервер: в панели появился четвёртый пункт, и по умолчанию в нём стоит «по приглашению».</p>
 </div>
 
 <div class="cardx">
@@ -2960,7 +3057,7 @@
 
 <div class="cardx">
 <h3>Люди — пятый пункт, не колонка на «Доступе»</h3>
-<p>Три почты и голое число притворялись, что править нечего. Список с поиском и карточка завели отдельный пункт: «кого пускать» и «кто уже здесь» не живут на одном экране. Счётчик совпадает со строками. Кто владеет кругом — в деталях круга на хранилище, не в этом списке. Панель знает почту и круги, лиц в кругах — нет. Человека без кругов не убираем по сроку: он в списке, решение за админом.</p>
+<p>Три почты и голое число притворялись, что править нечего. Список с поиском и карточка завели отдельный пункт: «кого пускать» и «кто уже здесь» не живут на одном экране. Счётчик совпадает со строками. Кто владеет кругом — в деталях круга на хранилище, не в этом списке. Панель знает почту и круги, лиц в кругах — нет. Учётку, в которой ни разу не было кругов, суточная рутина убирает через 30 дней. Был в круге — следы остаются, решение за админом.</p>
 </div>
 
 <div class="cardx">
@@ -2990,7 +3087,7 @@
 
 <div class="cardx">
 <h3>Плюс раскрывает список реакций в карточке</h3>
-<p>Вторая всплывающая панель под выбор не заводится: панель в продукте одна, у имён. Плюс не ставит реакцию втихаря — иначе не видно, чем ответить разрешено. Список закрытый, четыре значка без подписей: сердце, смех, удивление, злость. Эмодзи с клавиатуры не принимаются. Пока окно своей реакции живо, повторный тап снимает её, другой значок — меняет; вышло — плюса нет, имена остаются.</p>
+<p>Вторая всплывающая панель под выбор реакции не заводится: панель та же, что у имён и у прав участника. Плюс не ставит реакцию втихаря — иначе не видно, чем ответить разрешено. Список закрытый, четыре значка без подписей: сердце, смех, удивление, злость. Эмодзи с клавиатуры не принимаются. Пока окно своей реакции живо, повторный тап снимает её, другой значок — меняет; вышло — плюса нет, имена остаются.</p>
 </div>
 
 <div class="cardx">
@@ -3009,8 +3106,8 @@
 </div>
 
 <div class="cardx">
-<h3>«Оплата» — пункт навбара, не очередь</h3>
-<p>Очередь без переключателя не объясняла, где включают режим. Панель открывается в браузере: адрес сервера и пароль с первого запуска, не шестерёнка в приложении. На экране — требовать подписку, реквизиты, срок письма и заявки. Выключен — круги открыты, очереди нет, реквизиты остаются для баннера. «Сбор» — строка с шевроном, как почта под проверкой: отдельного пункта нет.</p>
+<h3>«Оплата» — реквизиты, потом сбор, потом подписка</h3>
+<p>Всё на одном экране путало порядок: сначала куда платить, потом жест поддержки, потом шлюз. Хаб — реквизиты и превью. Сбор и подписка — строки с шевроном, как почта с проверки. Очередь заявок — на экране подписки. Выключена — круги открыты, очереди нет, реквизиты остаются для баннера.</p>
 </div>
 
 <div class="cardx">

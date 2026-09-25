@@ -99,7 +99,7 @@ func runServer() {
 		log.Fatalf("instance: %v", err)
 	}
 
-	maybeRunRoutine(authSvc.DB(), blobsDir, ch, blobStore, mailSvc, cfg.PublicURL)
+	maybeRunRoutine(authSvc, blobsDir, ch, blobStore, mailSvc, pushSvc, cfg.PublicURL)
 
 	maintDone := make(chan struct{})
 	go func() {
@@ -110,7 +110,7 @@ func runServer() {
 			case <-maintDone:
 				return
 			case <-ticker.C:
-				maybeRunRoutine(authSvc.DB(), blobsDir, ch, blobStore, mailSvc, cfg.PublicURL)
+				maybeRunRoutine(authSvc, blobsDir, ch, blobStore, mailSvc, pushSvc, cfg.PublicURL)
 			}
 		}
 	}()
@@ -168,11 +168,23 @@ func runServer() {
 	apiSrv.WaitNotify(ctx)
 }
 
-func maybeRunRoutine(db *sql.DB, blobsDir string, ch *chronicle.Chronicle, blobs *blob.Store, mailSvc *mail.Service, publicURL string) {
+func maybeRunRoutine(authSvc *auth.Service, blobsDir string, ch *chronicle.Chronicle, blobs *blob.Store, mailSvc *mail.Service, pushSvc *push.Service, publicURL string) {
 	ctx := context.Background()
 	now := time.Now().UTC()
-	maybeRunDailyRoutine(ctx, db, blobsDir, now)
-	runArchiveJobs(ctx, db, ch, blobs, mailSvc, publicURL, now)
+	maybeRunDailyRoutine(ctx, authSvc.DB(), blobsDir, now)
+	runArchiveJobs(ctx, authSvc.DB(), ch, blobs, mailSvc, publicURL, now)
+	runPayJobs(ctx, authSvc, mailSvc, pushSvc, blobsDir, now)
+}
+
+func runPayJobs(ctx context.Context, authSvc *auth.Service, mailSvc *mail.Service, pushSvc *push.Service, blobsDir string, now time.Time) {
+	counts, err := jobs.RunPayJobs(ctx, authSvc, mailSvc, pushSvc, blobsDir, now)
+	if err != nil {
+		log.Printf("pay jobs: %v", err)
+		return
+	}
+	if counts.ScreenshotsDeleted > 0 || counts.RemindersSent > 0 {
+		log.Printf("pay jobs: %+v", counts)
+	}
 }
 
 func maybeRunDailyRoutine(ctx context.Context, db *sql.DB, blobsDir string, now time.Time) {

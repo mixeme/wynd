@@ -17,7 +17,8 @@
 		tabs = true,
 		active = $bindable<CircleTab>('Хронология'),
 		circleId,
-		onback
+		onback,
+		onsearch
 	}: {
 		title: string;
 		identity?: string;
@@ -27,6 +28,7 @@
 		active?: CircleTab;
 		circleId?: string;
 		onback?: () => void;
+		onsearch?: () => void;
 	} = $props();
 
 	const tabPaths: Record<CircleTab, string> = {
@@ -52,6 +54,10 @@
 			<IconButton name="back" label="Назад" onclick={() => onback()} />
 		{/if}
 		<span class="t">{title}</span>
+		{#if onsearch}
+			<span class="sp"></span>
+			<IconButton name="search" label="Поиск" onclick={() => onsearch()} />
+		{/if}
 		{#if identity}
 			{#if circleId && avatar}
 				<button type="button" class="idn" onclick={() => goto(`/circles/${circleId}/settings`)}>

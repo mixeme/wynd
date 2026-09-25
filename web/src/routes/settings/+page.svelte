@@ -7,7 +7,7 @@
 	import { appVersion } from '$lib/appinfo';
 	import { loadSessions } from '$lib/session/session.svelte';
 
-	let subtitle = $state('нет учёток');
+	let subtitle = $state('нет серверов');
 
 	onMount(async () => {
 		const sessions = await loadSessions();
@@ -28,7 +28,7 @@
 <FormLayout shell app title="Настройки" onback={goBack}>
 	<SettingsRow
 		icon="key"
-		title="Серверы и учётки"
+		title="Серверы"
 		{subtitle}
 		style="margin-top:8px"
 		onclick={() => goto('/settings/servers')}

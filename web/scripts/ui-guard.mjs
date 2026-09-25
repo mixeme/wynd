@@ -279,6 +279,8 @@ function searchSource(rel, source, re) {
 export const BUTTON_LAYOUT_SPECS = [
 	{ class: 'row2', props: ['padding'] },
 	{ class: 'r', props: ['padding'] },
+	{ class: 'circle-row-action', props: ['padding', 'border', 'background'] },
+	{ class: 'fold', props: ['padding', 'border', 'background'] },
 	{ class: 'att', props: ['padding', 'border'] },
 	{ class: 'cm', props: ['padding'] },
 	{ class: 'rcho', props: ['border'] },
@@ -397,6 +399,10 @@ export function checkButtonCssSync(css) {
 const ROUTE_RAW_BUTTON_CLASS_RE =
 	/<button\b[^>]*\bclass="[^"]*\b(row2|rcho|one|add|cm|att|act|compose-text)\b/;
 
+export const ROUTE_RAW_DIV_ROW2_RE = /<div\b[^>]*\bclass="[^"]*\brow2\b/;
+
+export const ROUTE_RAW_COMPOSE_TEXT_RE = /class="[^"]*\bcompose-text\b/;
+
 /**
  * @returns {string[]}
  */
@@ -465,6 +471,8 @@ export function checkProject(webRoot) {
 	const rawLab = [];
 	const legacyImports = [];
 	const rawRouteButtons = [];
+	const rawRouteDivRow2 = [];
+	const rawRouteComposeText = [];
 	const uiCssPath = path.join(webRoot, 'src', 'lib', 'styles', 'ui.css');
 	const uiCss = fs.existsSync(uiCssPath) ? fs.readFileSync(uiCssPath, 'utf8') : '';
 	const buttonCssSync = uiCss ? checkButtonCssSync(uiCss) : ['ui.css missing'];
@@ -487,6 +495,8 @@ export function checkProject(webRoot) {
 			rawLab.push(...searchSource(rel, source, /class="lab"/));
 			if (!rel.includes('/dev/')) {
 				rawRouteButtons.push(...searchSource(rel, source, ROUTE_RAW_BUTTON_CLASS_RE));
+				rawRouteDivRow2.push(...searchSource(rel, source, ROUTE_RAW_DIV_ROW2_RE));
+				rawRouteComposeText.push(...searchSource(rel, source, ROUTE_RAW_COMPOSE_TEXT_RE));
 			}
 		}
 		legacyImports.push(...searchSource(rel, source, /\$lib\/components/));
@@ -546,6 +556,16 @@ export function checkProject(webRoot) {
 			message:
 				'check-ui: raw semantic <button class="row2|act|…"> in prod routes — use $ui row/button components.',
 			hits: rawRouteButtons
+		},
+		{
+			message:
+				'check-ui: raw <div class="row2"> in prod routes — use SettingsRow or other $ui row components.',
+			hits: rawRouteDivRow2
+		},
+		{
+			message:
+				'check-ui: raw class="compose-text" in prod routes — use TextArea variant="compose".',
+			hits: rawRouteComposeText
 		}
 	];
 

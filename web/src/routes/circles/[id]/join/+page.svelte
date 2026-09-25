@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getContext, onDestroy, onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import AvatarCrop from '$ui/overlays/AvatarCrop.svelte';
 	import AddPhotoButton from '$ui/forms/AddPhotoButton.svelte';
 	import Button from '$ui/forms/Button.svelte';
@@ -10,6 +11,7 @@
 	import TextArea from '$ui/forms/TextArea.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import PeopleStrip from '$ui/forms/PeopleStrip.svelte';
+	import MemberRow from '$ui/data/MemberRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import {
@@ -18,6 +20,7 @@
 		joinViaInvite,
 		loadInviteJoinToken,
 		memberAvatarColor,
+		memberSubtitle,
 		type InvitePeek
 	} from '$lib/auth/invites';
 	import { circleInitial, setCircleIdentity } from '$lib/circles/meta';
@@ -29,6 +32,8 @@
 	import type { MemberInfo } from '$lib/circles/settings';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
+
+	const showMembers = $derived($page.url.searchParams.get('members') === '1');
 
 	let peek = $state<InvitePeek | undefined>();
 	let members = $state<MemberInfo[]>([]);
@@ -77,9 +82,11 @@
 	});
 
 	function openMembers() {
-		if (inviteToken) {
-			goto(`/invite/${inviteToken}?members=1`);
-		}
+		goto(`/circles/${circle.circleId}/join?members=1`);
+	}
+
+	function closeMembers() {
+		goto(`/circles/${circle.circleId}/join`);
 	}
 
 	function openPhotoPicker() {
@@ -160,6 +167,24 @@
 	});
 </script>
 
+{#if showMembers && peek}
+	<FormLayout
+		app
+		color={circle.color}
+		title="Кто уже здесь"
+		right={String(peek.member_count)}
+		onback={closeMembers}
+	>
+		{#each peek.members as member, i (member.name)}
+			<MemberRow
+				initial={circleInitial(member.name)}
+				name={member.name}
+				subtitle={memberSubtitle(member)}
+				color={memberAvatarColor(i)}
+			/>
+		{/each}
+	</FormLayout>
+{:else}
 <FormLayout app color={circle.color} onback={() => goto('/circles')}>
 	{#snippet bar()}
 		<div class="cbar">
@@ -231,6 +256,7 @@
 		<Hint style="margin-top:12px">{error}</Hint>
 	{/if}
 </FormLayout>
+{/if}
 
 {#if cropFile}
 	<AvatarCrop

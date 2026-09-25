@@ -11,9 +11,40 @@ import (
 )
 
 type notifyPrefsBody struct {
-	Posts     *bool `json:"posts"`
-	Comments  *bool `json:"comments"`
-	Reactions *bool `json:"reactions"`
+	Posts        *bool   `json:"posts"`
+	CommentsMine *bool   `json:"comments_mine"`
+	CommentsAll  *bool   `json:"comments_all"`
+	Reactions    *bool   `json:"reactions"`
+	Events       *bool   `json:"events"`
+	MuteUntil    *string `json:"mute_until"`
+}
+
+func applyNotifyPrefsBody(prefs auth.NotifyPrefs, body notifyPrefsBody) auth.NotifyPrefs {
+	if body.Posts != nil {
+		prefs.Posts = *body.Posts
+	}
+	if body.CommentsMine != nil {
+		prefs.CommentsMine = *body.CommentsMine
+	}
+	if body.CommentsAll != nil {
+		prefs.CommentsAll = *body.CommentsAll
+	}
+	if body.Reactions != nil {
+		prefs.Reactions = *body.Reactions
+	}
+	if body.Events != nil {
+		prefs.Events = *body.Events
+	}
+	if body.MuteUntil != nil {
+		if *body.MuteUntil == "" {
+			prefs.MuteUntil = nil
+		} else {
+			v := *body.MuteUntil
+			prefs.MuteUntil = &v
+		}
+	}
+	prefs.Mentions = true
+	return prefs
 }
 
 func (s *Server) handleGetAccountNotifyPrefs(w http.ResponseWriter, r *http.Request) {
@@ -41,19 +72,12 @@ func (s *Server) handleSetAccountNotifyPrefs(w http.ResponseWriter, r *http.Requ
 		writeError(w, err)
 		return
 	}
-	prefs := auth.DefaultNotifyPrefs()
-	existing, _ := s.Auth.AccountNotifyPrefs(r.Context(), sess.AccountID)
-	prefs = existing
-	if body.Posts != nil {
-		prefs.Posts = *body.Posts
+	prefs, err := s.Auth.AccountNotifyPrefs(r.Context(), sess.AccountID)
+	if err != nil {
+		writeError(w, err)
+		return
 	}
-	if body.Comments != nil {
-		prefs.Comments = *body.Comments
-	}
-	if body.Reactions != nil {
-		prefs.Reactions = *body.Reactions
-	}
-	prefs.Mentions = true
+	prefs = applyNotifyPrefsBody(prefs, body)
 	if err := s.Auth.SaveAccountNotifyPrefs(r.Context(), sess.AccountID, prefs); err != nil {
 		writeError(w, err)
 		return
@@ -93,25 +117,50 @@ func (s *Server) handleSetCircleNotifyPrefs(w http.ResponseWriter, r *http.Reque
 		writeError(w, err)
 		return
 	}
-	prefs := base
-	if ov, err := s.Auth.CircleNotifyPrefs(r.Context(), sess.AccountID, circleID); err == nil {
-		prefs = ov
+	prefs, err := s.Auth.CircleNotifyPrefs(r.Context(), sess.AccountID, circleID)
+	if err != nil {
+		writeError(w, err)
+		return
 	}
-	if body.Posts != nil {
-		prefs.Posts = *body.Posts
-	}
-	if body.Comments != nil {
-		prefs.Comments = *body.Comments
-	}
-	if body.Reactions != nil {
-		prefs.Reactions = *body.Reactions
-	}
-	prefs.Mentions = true
+	prefs = applyNotifyPrefsBody(prefs, body)
 	if err := s.Auth.SaveCircleNotifyPrefs(r.Context(), sess.AccountID, circleID, prefs, base); err != nil {
 		writeError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, prefs)
+}
+
+func (s *Server) notifyAccounts(circleID, actorAccountID, signalType string, accountIDs []string) {
+	if s == nil || s.Push == nil || len(accountIDs) == 0 {
+		return
+	}
+	s.notifyWG.Add(1)
+	go func() {
+		defer s.notifyWG.Done()
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		now := time.Now().UTC()
+		for _, accountID := range accountIDs {
+			if accountID == "" || accountID == actorAccountID {
+				continue
+			}
+			prefs, err := s.Auth.CircleNotifyPrefs(ctx, accountID, circleID)
+			if err != nil {
+				log.Printf("notifyAccounts: prefs %s/%s: %v", accountID, circleID, err)
+				continue
+			}
+			if !auth.NotifyPrefAllows(prefs, signalType, now) {
+				continue
+			}
+			if err := s.Push.SendSignal(ctx, accountID, push.Signal{
+				CircleID: circleID,
+				Type:     signalType,
+				Count:    1,
+			}); err != nil {
+				log.Printf("notifyAccounts: push %s/%s: %v", accountID, circleID, err)
+			}
+		}
+	}()
 }
 
 func (s *Server) notifyCircle(circleID, actorAccountID, signalType string) {
@@ -123,6 +172,7 @@ func (s *Server) notifyCircle(circleID, actorAccountID, signalType string) {
 		defer s.notifyWG.Done()
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
+		now := time.Now().UTC()
 		ids, err := s.Chronicle.CircleMemberAccountIDs(ctx, circleID)
 		if err != nil {
 			log.Printf("notifyCircle: members %s: %v", circleID, err)
@@ -137,7 +187,7 @@ func (s *Server) notifyCircle(circleID, actorAccountID, signalType string) {
 				log.Printf("notifyCircle: prefs %s/%s: %v", accountID, circleID, err)
 				continue
 			}
-			if !auth.NotifyPrefAllows(prefs, signalType) {
+			if !auth.NotifyPrefAllows(prefs, signalType, now) {
 				continue
 			}
 			if err := s.Push.SendSignal(ctx, accountID, push.Signal{
@@ -146,6 +196,49 @@ func (s *Server) notifyCircle(circleID, actorAccountID, signalType string) {
 				Count:    1,
 			}); err != nil {
 				log.Printf("notifyCircle: push %s/%s: %v", accountID, circleID, err)
+			}
+		}
+	}()
+}
+
+func (s *Server) notifyComment(circleID, actorAccountID, postID string) {
+	if s == nil || s.Push == nil {
+		return
+	}
+	s.notifyWG.Add(1)
+	go func() {
+		defer s.notifyWG.Done()
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		now := time.Now().UTC()
+		postAuthorID, err := s.Chronicle.PostAuthorAccountID(ctx, circleID, postID)
+		if err != nil {
+			log.Printf("notifyComment: author %s/%s: %v", circleID, postID, err)
+			return
+		}
+		ids, err := s.Chronicle.CircleMemberAccountIDs(ctx, circleID)
+		if err != nil {
+			log.Printf("notifyComment: members %s: %v", circleID, err)
+			return
+		}
+		for _, accountID := range ids {
+			if accountID == actorAccountID {
+				continue
+			}
+			prefs, err := s.Auth.CircleNotifyPrefs(ctx, accountID, circleID)
+			if err != nil {
+				log.Printf("notifyComment: prefs %s/%s: %v", accountID, circleID, err)
+				continue
+			}
+			if !auth.NotifyCommentAllows(prefs, accountID == postAuthorID, now) {
+				continue
+			}
+			if err := s.Push.SendSignal(ctx, accountID, push.Signal{
+				CircleID: circleID,
+				Type:     "comment",
+				Count:    1,
+			}); err != nil {
+				log.Printf("notifyComment: push %s/%s: %v", accountID, circleID, err)
 			}
 		}
 	}()

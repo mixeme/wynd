@@ -25,8 +25,10 @@
 		commentBar = true,
 		commentPlaceholder,
 		commentDraft = $bindable(''),
+		commentMembers = [],
 		circleId: circleIdProp,
 		onback,
+		onsearch,
 		onCommentSend,
 		onCommentCompose,
 		children
@@ -45,8 +47,10 @@
 		commentBar?: boolean;
 		commentPlaceholder?: string;
 		commentDraft?: string;
+		commentMembers?: { account_id: string; name: string }[];
 		circleId?: string;
 		onback?: () => void;
+		onsearch?: () => void;
 		onCommentSend?: () => void;
 		onCommentCompose?: () => void;
 		children: Snippet;
@@ -59,7 +63,7 @@
 	{#if !app}
 		<StatusBar />
 	{/if}
-	<CircleBar {title} {identity} {avatar} {avatarSrc} {tabs} {circleId} {onback} bind:active />
+	<CircleBar {title} {identity} {avatar} {avatarSrc} {tabs} {circleId} {onback} {onsearch} bind:active />
 	<div class="circle-body">
 		{@render children()}
 	</div>
@@ -67,6 +71,7 @@
 		<CommentBar
 			placeholder={commentPlaceholder}
 			bind:value={commentDraft}
+			members={commentMembers}
 			onsend={onCommentSend}
 			oncompose={onCommentCompose}
 		/>

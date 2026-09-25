@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -59,22 +60,34 @@ func (s *Server) handleAdminRunRoutine(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
+	payCounts, err := jobs.RunPayJobs(r.Context(), s.Auth, s.Mail, s.Push, s.Blobs.Dir(), now)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"routine": counts,
 		"archive": archiveCounts,
+		"pay":     payCounts,
 	})
 }
 
 func (s *Server) handleAdminProxySnippet(w http.ResponseWriter, r *http.Request) {
 	kind := r.PathValue("kind")
+	maxBytes := int64(104857600)
+	if s.Blobs != nil {
+		if cs, err := s.Blobs.LoadCompressionSettings(r.Context()); err == nil && cs.AttachmentMaxBytes > 0 {
+			maxBytes = cs.AttachmentMaxBytes
+		}
+	}
 	var snippet string
 	switch kind {
 	case "nginx":
-		snippet = nginxSnippet(s.ListenAddr)
+		snippet = nginxSnippet(s.ListenAddr, maxBytes)
 	case "caddy":
-		snippet = caddySnippet(s.PublicURL, s.ListenAddr)
+		snippet = caddySnippet(s.PublicURL, s.ListenAddr, maxBytes)
 	case "traefik":
-		snippet = traefikSnippet(s.ListenAddr)
+		snippet = traefikSnippet(s.ListenAddr, maxBytes)
 	default:
 		writeError(w, auth.ErrNotFound)
 		return
@@ -82,7 +95,7 @@ func (s *Server) handleAdminProxySnippet(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, map[string]string{"kind": kind, "snippet": snippet})
 }
 
-func nginxSnippet(listen string) string {
+func nginxSnippet(listen string, maxBytes int64) string {
 	port := listenPort(listen)
 	return `# Wynd reverse proxy (nginx)
 location / {
@@ -95,12 +108,12 @@ location / {
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     proxy_buffering off;
     proxy_read_timeout 300s;
-    client_max_body_size 100m;
+    client_max_body_size ` + bodySizeNginx(maxBytes) + `;
 }
 `
 }
 
-func caddySnippet(publicURL, listen string) string {
+func caddySnippet(publicURL, listen string, maxBytes int64) string {
 	host := publicHost(publicURL)
 	port := listenPort(listen)
 	return host + ` {
@@ -112,13 +125,13 @@ func caddySnippet(publicURL, listen string) string {
         }
     }
     request_body {
-        max_size 100MB
+        max_size ` + bodySizeCaddy(maxBytes) + `
     }
 }
 `
 }
 
-func traefikSnippet(listen string) string {
+func traefikSnippet(listen string, maxBytes int64) string {
 	port := listenPort(listen)
 	return `# Wynd (Traefik dynamic config)
 http:
@@ -136,8 +149,24 @@ http:
         stsIncludeSubdomains: true
     wynd-body:
       buffering:
-        maxRequestBodyBytes: 104857600
+        maxRequestBodyBytes: ` + fmt.Sprintf("%d", maxBytes) + `
 `
+}
+
+func bodySizeNginx(maxBytes int64) string {
+	mb := maxBytes / (1024 * 1024)
+	if mb < 1 {
+		mb = 1
+	}
+	return fmt.Sprintf("%dm", mb)
+}
+
+func bodySizeCaddy(maxBytes int64) string {
+	mb := maxBytes / (1024 * 1024)
+	if mb < 1 {
+		mb = 1
+	}
+	return fmt.Sprintf("%dMB", mb)
 }
 
 func listenPort(listen string) string {

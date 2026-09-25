@@ -8,12 +8,23 @@
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import TextArea from '$ui/forms/TextArea.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
+	import MemberRow from '$ui/data/MemberRow.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
+	import { memberAvatarColor } from '$lib/auth/invites';
 	import { authErrorHint } from '$lib/auth/auth';
+	import { circleInitial } from '$lib/circles/meta';
+	import { fetchMembers, type MemberInfo } from '$lib/circles/settings';
 	import { formatEditableUntil, formatEntryDate, formatPostTime, isEditableActive } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadFeedCached } from '$lib/journal/feed';
+	import {
+		filterMembersByMention,
+		insertMention,
+		MAX_TEXT_BYTES,
+		mentionQueryAt,
+		textByteLength
+	} from '$lib/journal/mentions';
 	import { findPost } from '$lib/journal/present';
 	import { createPost, deletePost, editPost as savePost, fetchCompression, uploadBlob } from '$lib/journal/posts';
 	import type { FeedPost, MediaSummary } from '$lib/journal/types';
@@ -49,6 +60,15 @@
 	let photoInput: HTMLInputElement | undefined = $state();
 	let attachInput: HTMLInputElement | undefined = $state();
 	let dateInput: HTMLInputElement | undefined = $state();
+	let members = $state<MemberInfo[]>([]);
+	let mentionStart = $state<number | null>(null);
+	let mentionQuery = $state('');
+
+	const activeMembers = $derived(members.filter((m) => m.status === 'active'));
+	const mentionCandidates = $derived(
+		mentionStart == null ? [] : filterMembersByMention(activeMembers, mentionQuery)
+	);
+	const showMentionPicker = $derived(mentionStart != null && mentionCandidates.length > 0);
 
 	const canPublish = $derived(Boolean(body.trim()) || picked.length > 0);
 	const showEditWindowNote = $derived(
@@ -99,6 +119,41 @@
 		bodyInput.style.height = `${bodyInput.scrollHeight}px`;
 	}
 
+	function syncMentionPicker() {
+		if (!bodyInput) {
+			mentionStart = null;
+			mentionQuery = '';
+			return;
+		}
+		const state = mentionQueryAt(body, bodyInput.selectionStart ?? body.length);
+		if (!state) {
+			mentionStart = null;
+			mentionQuery = '';
+			return;
+		}
+		mentionStart = state.start;
+		mentionQuery = state.query;
+	}
+
+	function onBodyInput() {
+		resizeBody();
+		syncMentionPicker();
+	}
+
+	function pickMember(member: MemberInfo) {
+		if (mentionStart == null || !bodyInput) return;
+		const cursor = bodyInput.selectionStart ?? body.length;
+		body = insertMention(body, mentionStart, cursor, member.name);
+		const nextPos = mentionStart + member.name.length + 1;
+		mentionStart = null;
+		mentionQuery = '';
+		queueMicrotask(() => {
+			bodyInput?.focus();
+			bodyInput?.setSelectionRange(nextPos, nextPos);
+			resizeBody();
+		});
+	}
+
 	onMount(async () => {
 		entryDate = today();
 		if (editPostId) {
@@ -140,6 +195,11 @@
 				body = draft;
 				sessionStorage.removeItem(composeDraftKey());
 			}
+		}
+		try {
+			members = await fetchMembers(circle.origin, circle.circleId);
+		} catch {
+			members = [];
 		}
 		bodyInput?.focus();
 		resizeBody();
@@ -244,6 +304,10 @@
 			error = 'Добавьте текст или вложение';
 			return;
 		}
+		if (textByteLength(trimmed) > MAX_TEXT_BYTES) {
+			error = 'Текст длиннее 32 КБ';
+			return;
+		}
 		loading = true;
 		try {
 			if (isEdit && editPostId) {
@@ -320,8 +384,28 @@
 			bind:value={body}
 			placeholder="Что случилось?"
 			rows={1}
-			oninput={resizeBody}
+			oninput={onBodyInput}
+			onclick={syncMentionPicker}
+			onkeyup={syncMentionPicker}
 		/>
+
+		{#if showMentionPicker}
+			<div class="men-pick">
+				{#each mentionCandidates as member, i (member.account_id)}
+					<MemberRow
+						initial={circleInitial(member.name)}
+						name={member.name}
+						color={memberAvatarColor(i)}
+						onclick={() => pickMember(member)}
+						style={i === 0 ? 'padding:10px 14px' : undefined}
+					/>
+				{/each}
+			</div>
+			<Hint>
+				Список — участники этого круга. Выбрали — в текст встаёт @имя, этому человеку уходит
+				пуш. Имя не нажимается: страницы участника нет.
+			</Hint>
+		{/if}
 
 		<div class="thumbs">
 			{#each picked as item, i (i)}
@@ -349,15 +433,15 @@
 			<Hint>Обложка — первая. Нажмите на другую, чтобы лента показывала её.</Hint>
 		{/if}
 
+		<input bind:this={dateInput} type="date" bind:value={entryDate} hidden />
+		<SettingsRow
+			icon="clock"
+			title="Отнести к дате"
+			subtitle={entryDateSubtitle}
+			style="margin-top:16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"
+			onclick={openDatePicker}
+		/>
 		{#if !isEdit}
-			<input bind:this={dateInput} type="date" bind:value={entryDate} hidden />
-			<SettingsRow
-				icon="clock"
-				title="Отнести к дате"
-				subtitle={entryDateSubtitle}
-				style="margin-top:16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"
-				onclick={openDatePicker}
-			/>
 			<Hint>
 				В ленте запись всё равно встанет сегодняшним числом. Дата нужна дню — в «Днях» она
 				соберёт её с остальными за {entryDate ? formatEntryDate(entryDate) : 'этот день'}.
@@ -415,7 +499,7 @@
 				onclick={() => photoInput?.click()}
 			/>
 			<IconButton name="file" label="Файл" disabled={isEdit} onclick={() => attachInput?.click()} />
-			<span class="who">пишете как {circle.identityName}</span>
+			<span class="who">до 32 КБ · как {circle.identityName}</span>
 		</div>
 	</div>
 {/snippet}
@@ -431,6 +515,13 @@
 <input bind:this={attachInput} type="file" accept="*/*" multiple hidden onchange={onFilesSelected} />
 
 <style>
+	.men-pick {
+		margin: 12px 16px 0;
+		border: 1px solid var(--line);
+		background: var(--card);
+		border-radius: 12px;
+		overflow: hidden;
+	}
 	.thumbs {
 		display: flex;
 		flex-wrap: wrap;

@@ -3,9 +3,11 @@
 	import { page } from '$app/stores';
 	import { getContext, onMount } from 'svelte';
 	import Avatar from '$ui/data/Avatar.svelte';
+	import DayHeader from '$ui/data/DayHeader.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Input from '$ui/forms/Input.svelte';
+	import TextButton from '$ui/forms/TextButton.svelte';
 	import Icon from '$ui/Icon.svelte';
 	import PostCard from '$ui/data/PostCard.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
@@ -13,13 +15,8 @@
 	import { isAccessError } from '$lib/api/client';
 	import { formatEntryDate, formatPostTime, isEditableActive } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
-	import {
-		clearDayCover,
-		clearDayTitle,
-		loadDay,
-		loadDays,
-		setDayTitle
-	} from '$lib/journal/days';
+	import { splitMentionBody } from '$lib/journal/mentions';
+	import { clearDayTitle, loadDay, loadDays, setDayTitle } from '$lib/journal/days';
 	import { authorInitial, coverMedia, mediaCount, photoMedia } from '$lib/journal/present';
 	import type { FeedPost } from '$lib/journal/types';
 	import { getMediaUrl } from '$lib/media/objectUrl';
@@ -32,22 +29,17 @@
 	let dayTitle = $state('');
 	let titleDraft = $state('');
 	let titleEditableUntil = $state<string | null | undefined>();
-	let coverEditableUntil = $state<string | null | undefined>();
 	let hasCustomTitle = $state(false);
 	let coverBlobId = $state<string | undefined>();
 	let loading = $state(true);
 	let savingTitle = $state(false);
+	let editingTitle = $state(false);
 	let error = $state('');
 	let coverUrl = $state('');
 	let mediaUrls = $state<Record<string, string>>({});
 
 	const canClearTitle = $derived(hasCustomTitle && isEditableActive(titleEditableUntil));
-	const canClearCover = $derived(Boolean(coverEditableUntil) && isEditableActive(coverEditableUntil));
-
-	function todayEntryDate(): string {
-		const d = new Date();
-		return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-	}
+	const titleSubtitle = $derived(`${formatEntryDate(entryDate)} · нажмите, чтобы изменить`);
 
 	function isBackfilled(post: FeedPost): boolean {
 		return post.entry_date === entryDate && post.created_at.slice(0, 10) > entryDate;
@@ -82,7 +74,6 @@
 			dayTitle = meta?.title || formatEntryDate(entryDate);
 			titleDraft = meta?.title ?? '';
 			titleEditableUntil = meta?.title_editable_until;
-			coverEditableUntil = meta?.cover_editable_until;
 			const blobId = meta?.cover_blob_id;
 			if (blobId) {
 				coverBlobId = blobId;
@@ -130,8 +121,18 @@
 		goto(`/circles/${circle.circleId}/posts/${postId}/album`);
 	}
 
-	function openCoverPicker() {
-		goto(`/circles/${circle.circleId}/days/${entryDate}/cover`);
+	function openDayAlbum() {
+		goto(`/circles/${circle.circleId}/days/${entryDate}/album`);
+	}
+
+	function startEditTitle() {
+		titleDraft = hasCustomTitle ? dayTitle : '';
+		editingTitle = true;
+	}
+
+	function cancelEditTitle() {
+		titleDraft = hasCustomTitle ? dayTitle : '';
+		editingTitle = false;
 	}
 
 	async function saveTitle() {
@@ -141,6 +142,7 @@
 		error = '';
 		try {
 			await setDayTitle(circle.origin, circle.circleId, entryDate, title);
+			editingTitle = false;
 			await loadData();
 		} catch (err) {
 			error = authErrorHint(err);
@@ -153,16 +155,7 @@
 		error = '';
 		try {
 			await clearDayTitle(circle.origin, circle.circleId, entryDate);
-			await loadData();
-		} catch (err) {
-			error = authErrorHint(err);
-		}
-	}
-
-	async function removeCover() {
-		error = '';
-		try {
-			await clearDayCover(circle.origin, circle.circleId, entryDate);
+			editingTitle = false;
 			await loadData();
 		} catch (err) {
 			error = authErrorHint(err);
@@ -184,36 +177,33 @@
 	{:else if error && !posts.length}
 		<Hint style="margin:24px 16px">{error}</Hint>
 	{:else}
-		{#if coverUrl}
-			<button type="button" class="pic cover-wrap" onclick={openCoverPicker}>
-				<img src={coverUrl} alt="" />
-				<span class="tagr">обложка дня</span>
-				<span class="cnt">сменить</span>
-			</button>
-		{:else}
-			<button type="button" class="cover-empty" onclick={openCoverPicker}>Выбрать обложку</button>
-		{/if}
+		<DayHeader
+			coverUrl={coverUrl || undefined}
+			title={editingTitle ? undefined : dayTitle}
+			subtitle={editingTitle ? undefined : titleSubtitle}
+			oncover={openDayAlbum}
+			ontitle={editingTitle ? undefined : startEditTitle}
+		/>
 
-		<div class="title-row">
-			<Input bind:value={titleDraft} placeholder={formatEntryDate(entryDate)} />
-			<Button
-				variant="colored"
-				disabled={savingTitle || !titleDraft.trim()}
-				loading={savingTitle}
-				onclick={saveTitle}
-			>
-				Сохранить
-			</Button>
-		</div>
-		{#if canClearTitle || canClearCover}
-			<div class="remove-actions">
-				{#if canClearTitle}
-					<Button variant="ghost" onclick={removeTitle}>убрать название</Button>
-				{/if}
-				{#if canClearCover}
-					<Button variant="ghost" onclick={removeCover}>убрать обложку</Button>
-				{/if}
+		{#if editingTitle}
+			<Input bind:value={titleDraft} active placeholder={formatEntryDate(entryDate)} style="margin-top:14px" />
+			<div class="rowin" style="margin-top:12px">
+				<Button
+					variant="colored"
+					style="flex:1"
+					disabled={savingTitle || !titleDraft.trim()}
+					loading={savingTitle}
+					onclick={saveTitle}
+				>
+					Сохранить
+				</Button>
+				<Button variant="ghost" style="flex:1;margin:0" onclick={cancelEditTitle}>Отмена</Button>
 			</div>
+			{#if canClearTitle}
+				<div class="hint ctr" style="margin-top:8px">
+					<TextButton onclick={removeTitle}>убрать название</TextButton>
+				</div>
+			{/if}
 		{/if}
 
 		<Hint style="margin:12px 16px">
@@ -227,7 +217,9 @@
 				</span>
 			{/snippet}
 			{#snippet postText()}
-				{post.body}
+				{#each splitMentionBody(post.body) as part (part.kind + part.value)}
+					{#if part.kind === 'mention'}<span class="men">{part.value}</span>{:else}{part.value}{/if}
+				{/each}
 			{/snippet}
 			{#snippet postMedia()}
 				{@const cover = coverMedia(post.media)}
@@ -258,14 +250,14 @@
 				text={post.body ? postText : undefined}
 				media={coverMedia(post.media) ? postMedia : undefined}
 			>
-					{#snippet author()}
-						<Avatar initial={authorInitial(post.author_name)} color={circle.colorHex} />
-						<div>
-							<div class="n">{post.author_name}</div>
-							<div class="tm">{formatPostTime(post.created_at, post.entry_date)}</div>
-						</div>
-					{/snippet}
-				</PostCard>
+				{#snippet author()}
+					<Avatar initial={authorInitial(post.author_name)} color={circle.colorHex} />
+					<div>
+						<div class="n">{post.author_name}</div>
+						<div class="tm">{formatPostTime(post.created_at, post.entry_date)}</div>
+					</div>
+				{/snippet}
+			</PostCard>
 		{/each}
 		{#if !posts.length}
 			<Hint style="margin:24px 16px">В этот день записей нет</Hint>
@@ -277,58 +269,6 @@
 </CircleLayout>
 
 <style>
-	.cover-wrap {
-		position: relative;
-		aspect-ratio: 16 / 9;
-		border-radius: 0;
-		border: 0;
-		border-bottom: 1px solid var(--line);
-		cursor: pointer;
-		padding: 0;
-		display: block;
-		width: 100%;
-		background: transparent;
-	}
-	.cover-wrap img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-	.cover-empty {
-		display: block;
-		width: calc(100% - 32px);
-		margin: 12px 16px;
-		padding: 12px;
-		border: 1px dashed var(--line);
-		border-radius: 8px;
-		background: transparent;
-		color: var(--muted);
-		cursor: pointer;
-	}
-	.title-row {
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-		margin: 12px 16px 0;
-	}
-	.title-row :global(.fld) {
-		margin: 0;
-		width: 100%;
-	}
-	.title-row :global(.btn) {
-		margin: 0;
-		width: 100%;
-	}
-	.remove-actions {
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-		margin: 8px 16px;
-	}
-	.remove-actions :global(.btn) {
-		margin: 0;
-		width: 100%;
-	}
 	.pic img,
 	.pic video {
 		width: 100%;

@@ -155,6 +155,7 @@ export interface CircleSearchHit {
 	circle_id: string;
 	author_name?: string;
 	kind: string;
+	title?: string;
 	snippet: string;
 	entry_date: string;
 	created_at: string;

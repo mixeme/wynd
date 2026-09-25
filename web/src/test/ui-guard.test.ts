@@ -2,7 +2,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { checkButtonCssSync, parseCssRules } from '../../scripts/ui-guard.mjs';
+import {
+	ROUTE_RAW_COMPOSE_TEXT_RE,
+	ROUTE_RAW_DIV_ROW2_RE,
+	checkButtonCssSync,
+	checkProject,
+	parseCssRules
+} from '../../scripts/ui-guard.mjs';
 
 const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const uiCss = fs.readFileSync(path.join(webRoot, 'src/lib/styles/ui.css'), 'utf8');
@@ -33,6 +39,26 @@ describe('checkButtonCssSync', () => {
 			button.one { padding:0; border:none; background:none; }
 		`;
 		expect(checkButtonCssSync(bad).some((h) => h.includes('one') && h.includes('bare'))).toBe(true);
+	});
+});
+
+describe('prod route raw markup guards', () => {
+	it('flags div.row2 and compose-text patterns', () => {
+		expect(ROUTE_RAW_DIV_ROW2_RE.test('<div class="row2">')).toBe(true);
+		expect(ROUTE_RAW_DIV_ROW2_RE.test('<div class="row2 extra">')).toBe(true);
+		expect(ROUTE_RAW_DIV_ROW2_RE.test('<button class="row2">')).toBe(false);
+		expect(ROUTE_RAW_COMPOSE_TEXT_RE.test('class="compose-text"')).toBe(true);
+		expect(ROUTE_RAW_COMPOSE_TEXT_RE.test('class="ta compose-text"')).toBe(true);
+	});
+
+	it('passes checkProject on current tree (prod routes clean)', () => {
+		const { ok, groups } = checkProject(webRoot);
+		const row2Hits = groups.find((g) => g.message.includes('<div class="row2">'))?.hits ?? [];
+		const composeHits =
+			groups.find((g) => g.message.includes('compose-text'))?.hits ?? [];
+		expect(row2Hits).toEqual([]);
+		expect(composeHits).toEqual([]);
+		expect(ok).toBe(true);
 	});
 });
 

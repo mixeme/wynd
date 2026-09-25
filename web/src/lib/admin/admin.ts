@@ -1,6 +1,8 @@
 import { apiJson } from '$lib/api/client';
-import { getAdminSession } from '$lib/idb/db';
+import { fetchInstance } from '$lib/auth/auth';
 import { displayHost } from '$lib/auth/origin';
+import { collectExternalReport, type ExternalReport } from '$lib/admin/external-probe';
+import { getAdminSession } from '$lib/idb/db';
 
 async function origin(): Promise<string> {
 	return (await getAdminSession())?.origin ?? '';
@@ -193,6 +195,10 @@ export async function createServerInvite(opts: {
 	});
 }
 
+export async function revokeInvite(id: string): Promise<void> {
+	await adminJson(`/admin/invites/${id}`, { method: 'DELETE' });
+}
+
 export async function fetchQuotaRequests(): Promise<QuotaRequest[]> {
 	const data = await adminJson<{ requests: QuotaRequest[] }>('/admin/quota_requests');
 	return data.requests ?? [];
@@ -204,10 +210,15 @@ export async function resolveQuotaRequest(id: string, approve: boolean): Promise
 }
 
 export async function runChecks(): Promise<CheckResult[]> {
+	const origin = (await getAdminSession())?.origin ?? '';
+	const instance = await fetchInstance(origin);
+	const external: ExternalReport | undefined = instance.loopback
+		? undefined
+		: await collectExternalReport(origin);
 	const data = await adminJson<{ checks: CheckResult[] }>('/admin/check', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({})
+		body: JSON.stringify({ external })
 	});
 	return data.checks ?? [];
 }
@@ -258,6 +269,96 @@ export async function saveSmtp(body: {
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify(body)
 	});
+}
+
+export interface PayHub {
+	requisites: string;
+	donate: { show: boolean; until: string };
+	subscription: { required: boolean; pending_count: number };
+}
+
+export interface PayDonateSettings {
+	text: string;
+	show: boolean;
+	dismissible: boolean;
+	until: string;
+}
+
+export interface PaySubscriptionSettings {
+	required: boolean;
+	remind_days: number;
+}
+
+export interface PayRequest {
+	id: string;
+	account_id: string;
+	account_email: string;
+	blob_id?: string;
+	blob_filename?: string;
+	blob_size_bytes?: number;
+	blob_deleted?: boolean;
+	comment?: string | null;
+	status: string;
+	created_at: string;
+	resolved_at?: string | null;
+	subscription_expires_at?: string | null;
+}
+
+export async function fetchPayHub(): Promise<PayHub> {
+	return adminJson('/admin/pay');
+}
+
+export async function savePayRequisites(requisites: string): Promise<void> {
+	await adminJson('/admin/pay', {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ requisites })
+	});
+}
+
+export async function fetchPayDonate(): Promise<PayDonateSettings> {
+	return adminJson('/admin/pay/donate');
+}
+
+export async function savePayDonate(body: PayDonateSettings): Promise<void> {
+	await adminJson('/admin/pay/donate', {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(body)
+	});
+}
+
+export async function fetchPaySubscription(): Promise<PaySubscriptionSettings> {
+	return adminJson('/admin/pay/subscription');
+}
+
+export async function savePaySubscription(body: PaySubscriptionSettings): Promise<void> {
+	await adminJson('/admin/pay/subscription', {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(body)
+	});
+}
+
+export async function fetchPayRequests(): Promise<PayRequest[]> {
+	const data = await adminJson<{ requests: PayRequest[] }>('/admin/pay/requests');
+	return data.requests ?? [];
+}
+
+export async function fetchPayRequest(id: string): Promise<PayRequest> {
+	return adminJson(`/admin/pay/requests/${id}`);
+}
+
+export async function approvePayRequest(id: string, days: number): Promise<void> {
+	await adminJson(`/admin/pay/requests/${id}/approve`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ days })
+	});
+}
+
+export async function rejectPayRequest(id: string): Promise<void> {
+	await adminJson(`/admin/pay/requests/${id}/reject`, { method: 'POST' });
 }
 
 export async function serverCaption(): Promise<string> {

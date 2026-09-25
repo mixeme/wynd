@@ -128,6 +128,52 @@ func (s *Service) ListServerInvites(ctx context.Context) ([]InviteSummary, error
 	return out, rows.Err()
 }
 
+// ListCircleInvites returns live invites for a circle.
+func (s *Service) ListCircleInvites(ctx context.Context, circleID string, now time.Time) ([]InviteSummary, error) {
+	if circleID == "" {
+		return nil, ErrInvalid
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, token, kind, max_uses, uses, expires_at, created_at
+		FROM invites
+		WHERE circle_id = ?
+			AND revoked_at IS NULL
+			AND uses < max_uses
+			AND expires_at > ?
+		ORDER BY created_at DESC
+	`, circleID, formatTime(now.UTC()))
+	if err != nil {
+		return nil, fmt.Errorf("list circle invites: %w", err)
+	}
+	defer rows.Close()
+
+	var out []InviteSummary
+	for rows.Next() {
+		var row InviteSummary
+		if err := rows.Scan(&row.ID, &row.Token, &row.Kind, &row.MaxUses, &row.Uses,
+			&row.ExpiresAt, &row.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, row)
+	}
+	return out, rows.Err()
+}
+
+// RevokeCircleInvite revokes an invite that belongs to the given circle.
+func (s *Service) RevokeCircleInvite(ctx context.Context, circleID, inviteID string) error {
+	if circleID == "" || inviteID == "" {
+		return ErrInvalid
+	}
+	inv, err := s.inviteByID(ctx, inviteID)
+	if err != nil {
+		return err
+	}
+	if inv.CircleID != circleID {
+		return ErrNotFound
+	}
+	return s.RevokeInvite(ctx, inviteID)
+}
+
 // RevokeInvite marks an invite as revoked.
 func (s *Service) RevokeInvite(ctx context.Context, id string) error {
 	if id == "" {

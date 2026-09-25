@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
+	import Button from '$ui/forms/Button.svelte';
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import ColorSwatches from '$ui/forms/ColorSwatches.svelte';
@@ -20,15 +21,15 @@
 		editWindowToSec,
 		fetchCircleSettings,
 		fetchMembers,
-		leaveCircle,
 		fetchQuota,
 		patchCircle,
 		type EditWindowKey,
 		type MemberInfo
 	} from '$lib/circles/settings';
-	import { setCircleColor, circleInitial } from '$lib/circles/meta';
+	import OverlayLayout from '$lib/layouts/OverlayLayout.svelte';
 	import { formatBytes } from '$lib/format/bytes';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
+	import { setCircleColor, circleInitial } from '$lib/circles/meta';
 	import type { CircleColor } from '$lib/theme/colors';
 	import { CIRCLE_COLORS } from '$lib/theme/colors';
 
@@ -48,6 +49,7 @@
 	let loading = $state(true);
 	let error = $state('');
 	let colorReady = $state(false);
+	let ownerLeaveOpen = $state(false);
 
 	const activeMembers = $derived(members.filter((m) => m.status === 'active'));
 	const previewMembers = $derived(activeMembers.slice(0, 3));
@@ -186,16 +188,10 @@
 
 	async function onLeave() {
 		if (isOwner) {
-			error = 'Сначала передайте владение другому участнику';
+			ownerLeaveOpen = true;
 			return;
 		}
-		if (!confirm('Покинуть круг? Записи останутся под вашим именем.')) return;
-		try {
-			await leaveCircle(circle.origin, circle.circleId, false);
-			goto('/circles');
-		} catch (err) {
-			error = authErrorHint(err);
-		}
+		goto(`/circles/${circle.circleId}/settings/leave`);
 	}
 
 	function onDangerItem(label: string) {
@@ -318,7 +314,8 @@
 				style="margin-top:8px"
 				onclick={() => goto(`/circles/${circle.circleId}/quota`)}
 			/>
-		{:else if circle.archiveCycle?.active}
+		{/if}
+		{#if circle.archiveCycle?.active}
 			{#if isOwner}
 				<SettingsRow
 					title="Сроки архивации"
@@ -330,7 +327,7 @@
 			<SettingsRow
 				title="Скачать архив"
 				subtitle="персональная копия до отсечки"
-				style="margin-top:20px"
+				style={isOwner ? 'margin-top:8px' : 'margin-top:20px'}
 				onclick={() => goto(`/circles/${circle.circleId}/archive`)}
 			/>
 		{/if}
@@ -363,3 +360,26 @@
 		</div>
 	{/if}
 </FormLayout>
+
+{#if ownerLeaveOpen}
+	<OverlayLayout variant="dialog" ondismiss={() => (ownerLeaveOpen = false)}>
+		<div style="font-size:17px;font-weight:600;margin-bottom:10px">Сначала передайте владение</div>
+		<Hint
+			>Подвешенных кругов не бывает. Пока вы владелец «{circle.name}», уйти нельзя.</Hint
+		>
+		<div class="rowin" style="margin:18px 0 0">
+			<Button variant="ghost" style="flex:1;margin:0" onclick={() => (ownerLeaveOpen = false)}>
+				Отмена
+			</Button>
+			<Button
+				style="flex:1;margin:0"
+				onclick={() => {
+					ownerLeaveOpen = false;
+					goto(`/circles/${circle.circleId}/settings/members?transfer=1`);
+				}}
+			>
+				Передать
+			</Button>
+		</div>
+	</OverlayLayout>
+{/if}

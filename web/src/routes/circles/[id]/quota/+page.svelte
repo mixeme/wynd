@@ -10,7 +10,8 @@
 	import VolumeChart from '$ui/forms/VolumeChart.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
-	import { fetchQuota, requestQuotaExpansion, type VolumeBucket } from '$lib/circles/settings';
+	import { isAccessError } from '$lib/api/client';
+	import { fetchQuota, type VolumeBucket } from '$lib/circles/settings';
 	import { formatBytes } from '$lib/format/bytes';
 	import { formatEntryDate } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
@@ -24,6 +25,7 @@
 	let freedBytes = $state(0);
 	let medianPostBytes = $state(0);
 	let error = $state('');
+	let forbidden = $state(false);
 	let loading = $state(true);
 
 	const usedGb = $derived(usedBytes / (1024 * 1024 * 1024));
@@ -70,7 +72,12 @@
 			}
 			if (!cutoffDate && volume.length) cutoffDate = defaultCutoff();
 		} catch (err) {
-			error = authErrorHint(err);
+			if (isAccessError(err)) {
+				forbidden = true;
+				error = 'Управлять местом может только владелец круга';
+			} else {
+				error = authErrorHint(err);
+			}
 		} finally {
 			loading = false;
 		}
@@ -79,15 +86,6 @@
 	async function onCutoffChange(date: string) {
 		cutoffDate = date;
 		await loadQuota(date);
-	}
-
-	async function requestExpansion() {
-		try {
-			await requestQuotaExpansion(circle.origin, circle.circleId, quotaBytes);
-			error = '';
-		} catch (err) {
-			error = authErrorHint(err);
-		}
 	}
 
 	function next() {
@@ -110,6 +108,11 @@
 		<Hint style="margin:16px">Загрузка…</Hint>
 	{:else if error}
 		<Hint style="margin:16px">{error}</Hint>
+		{#if forbidden}
+			<Button variant="ghost" style="margin-top:8px" onclick={() => goto(`/circles/${circle.circleId}/settings`)}>
+				К настройкам
+			</Button>
+		{/if}
 	{:else}
 		<Label>Место</Label>
 		<Meter value={capped ? usedGb : 0} max={quotaGb} />
@@ -126,7 +129,7 @@
 				title="Попросить у администратора"
 				subtitle="шаг необязательный — можно сразу к отсечке"
 				style="margin-top:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"
-				onclick={() => void requestExpansion()}
+				onclick={() => goto(`/circles/${circle.circleId}/quota/request`)}
 			/>
 		{/if}
 		<Label style="margin-top:18px">Сколько освободит отсечка</Label>

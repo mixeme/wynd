@@ -5,6 +5,7 @@
 	import ArchiveBanner from '$ui/data/ArchiveBanner.svelte';
 	import AttachmentRow from '$ui/data/AttachmentRow.svelte';
 	import Avatar from '$ui/data/Avatar.svelte';
+	import EntryDateMark from '$ui/data/EntryDateMark.svelte';
 	import EventDivider from '$ui/data/EventDivider.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -23,6 +24,7 @@
 	import { formatDeadline, formatEntryDate, formatPostTime, isEditableActive } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadFeed } from '$lib/journal/feed';
+	import { splitMentionBody } from '$lib/journal/mentions';
 	import { fetchMembers } from '$lib/circles/settings';
 	import {
 		attachmentLabel,
@@ -118,10 +120,7 @@
 			feedEvents = snap.events ?? [];
 			visibleFrom = snap.visible_from ?? null;
 			circleStartedAt = snap.circle_started_at ?? '';
-			if (!fixedLastRead) {
-				fixedLastRead = circle.lastReadSeq;
-				dividerAt = unreadDividerIndex(posts, fixedLastRead);
-			}
+			dividerAt = unreadDividerIndex(posts, fixedLastRead);
 			await resolveMediaUrls(posts);
 		} catch (err) {
 			error = isAccessError(err) ? 'Нет доступа' : 'Не удалось загрузить ленту';
@@ -187,6 +186,10 @@
 
 	function goBack() {
 		goto('/circles');
+	}
+
+	function openSearch() {
+		goto(`/circles/${circle.circleId}/search`);
 	}
 
 	async function checkDayPrompt(entryDate: string) {
@@ -395,6 +398,7 @@
 	avatarSrc={circle.avatarUrl}
 	circleId={circle.circleId}
 	onback={goBack}
+	onsearch={openSearch}
 	bind:commentDraft
 	onCommentSend={sendFromBar}
 	onCommentCompose={openComposeFromBar}
@@ -485,10 +489,12 @@
 				{/if}
 				<!-- Snippets live outside <PostCard>: a {#snippet} nested in {#if} is not passed as a prop. -->
 				{#snippet postDate()}
-					<span class="tag">{formatEntryDate(post.entry_date)}</span>
+					<EntryDateMark label={formatEntryDate(post.entry_date)} />
 				{/snippet}
 				{#snippet postText()}
-					{post.body}
+					{#each splitMentionBody(post.body) as part (part.kind + part.value)}
+						{#if part.kind === 'mention'}<span class="men">{part.value}</span>{:else}{part.value}{/if}
+					{/each}
 				{/snippet}
 				{#snippet postMedia()}
 					{@const cover = coverMedia(post.media)}
@@ -549,7 +555,7 @@
 						/>
 						<div>
 							<div class="n">{post.author_name}</div>
-							<div class="tm">{formatPostTime(post.created_at, post.entry_date)}</div>
+							<div class="tm">{formatPostTime(post.created_at)}</div>
 						</div>
 					{/snippet}
 					{#snippet reactions()}

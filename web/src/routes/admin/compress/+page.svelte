@@ -7,7 +7,6 @@
 	import Switch from '$ui/forms/Switch.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
-	import { formatBytes } from '$lib/format/bytes';
 	import {
 		fetchCompression,
 		saveCompression,
@@ -16,9 +15,23 @@
 	} from '$lib/admin/admin';
 
 	let settings = $state<CompressionSettings | undefined>();
+	let attachmentMb = $state(100);
 	let server = $state('');
 	let error = $state('');
 	let loading = $state(true);
+
+	function syncAttachmentMb() {
+		if (!settings) return;
+		attachmentMb = Math.round(settings.attachment_max_bytes / (1024 * 1024));
+	}
+
+	async function persistAttachmentMb() {
+		if (!settings) return;
+		const mb = Math.max(1, Math.round(attachmentMb));
+		attachmentMb = mb;
+		settings.attachment_max_bytes = mb * 1024 * 1024;
+		await persist();
+	}
 
 	async function persist() {
 		if (!settings) return;
@@ -33,6 +46,7 @@
 		try {
 			const [cs, caption] = await Promise.all([fetchCompression(), serverCaption()]);
 			settings = cs;
+			syncAttachmentMb();
 			server = caption;
 		} catch (err) {
 			error = authErrorHint(err);
@@ -102,9 +116,11 @@
 						<Input
 							admin
 							style="width:88px"
-							value={formatBytes(settings.attachment_max_bytes)}
-							readonly
+							type="number"
+							bind:value={attachmentMb}
+							onchange={() => void persistAttachmentMb()}
 						/>
+						<span style="font-size:12.5px;color:var(--muted)">МБ</span>
 					</div>
 				</div>
 				<div style="flex:1">

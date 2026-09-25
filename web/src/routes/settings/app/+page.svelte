@@ -19,17 +19,25 @@
 		persistNotifyDefaults,
 		saveAccountNotifyPrefs
 	} from '$lib/settings/notify';
-
-	type NotifyPrefs = { posts: boolean; comments: boolean; reactions: boolean };
+	import {
+		baselineFromPrefs,
+		muteKeyFromUntil,
+		muteUntilFromKey,
+		notifyBaselineEqual,
+		type MuteKey
+	} from '$lib/settings/notify-mute';
 
 	let posts = $state(true);
-	let comments = $state(true);
+	let commentsMine = $state(true);
+	let commentsAll = $state(false);
 	let reactions = $state(false);
+	let events = $state(false);
+	let mute = $state<MuteKey>('none');
 	let theme = $state<Theme>('system');
 	let cacheBytes = $state(0);
 	let freeBytes = $state(0);
 	let ready = $state(false);
-	let baseline = $state<NotifyPrefs | null>(null);
+	let baseline = $state<ReturnType<typeof baselineFromPrefs> | null>(null);
 	let error = $state('');
 	let cleared = $state(false);
 
@@ -41,20 +49,22 @@
 
 	async function persistPrefs() {
 		if (!ready || !baseline) return;
-		if (
-			posts === baseline.posts &&
-			comments === baseline.comments &&
-			reactions === baseline.reactions
-		) {
-			return;
-		}
+		const next = {
+			posts,
+			comments_mine: commentsMine,
+			comments_all: commentsAll,
+			reactions,
+			events,
+			mute_until: muteUntilFromKey(mute)
+		};
+		if (notifyBaselineEqual(next, baseline)) return;
 		try {
-			await persistNotifyDefaults({ posts, comments, reactions });
+			await persistNotifyDefaults(next);
 			const sessions = await loadSessions();
 			for (const session of sessions) {
-				await saveAccountNotifyPrefs(session.origin, { posts, comments, reactions });
+				await saveAccountNotifyPrefs(session.origin, next);
 			}
-			baseline = { posts, comments, reactions };
+			baseline = next;
 		} catch (err) {
 			error = authErrorHint(err);
 		}
@@ -62,8 +72,11 @@
 
 	$effect(() => {
 		void posts;
-		void comments;
+		void commentsMine;
+		void commentsAll;
 		void reactions;
+		void events;
+		void mute;
 		void persistPrefs();
 	});
 
@@ -84,24 +97,38 @@
 	onMount(async () => {
 		theme = getTheme();
 		const settings = await getAppSettings();
-		if (settings?.notify_defaults) {
-			posts = settings.notify_defaults.posts ?? true;
-			comments = settings.notify_defaults.comments ?? true;
-			reactions = settings.notify_defaults.reactions ?? false;
+		const defaults = settings?.notify_defaults;
+		if (defaults) {
+			posts = defaults.posts ?? true;
+			commentsMine = defaults.comments_mine ?? defaults.comments ?? true;
+			commentsAll = defaults.comments_all ?? false;
+			reactions = defaults.reactions ?? false;
+			events = defaults.events ?? false;
+			mute = muteKeyFromUntil(defaults.mute_until ?? null);
 		}
 		const sessions = await loadSessions();
 		if (sessions[0]) {
 			try {
 				const prefs = await fetchAccountNotifyPrefs(sessions[0].origin);
 				posts = prefs.posts;
-				comments = prefs.comments;
+				commentsMine = prefs.comments_mine;
+				commentsAll = prefs.comments_all;
 				reactions = prefs.reactions;
+				events = prefs.events;
+				mute = muteKeyFromUntil(prefs.mute_until);
 			} catch {
 				/* local defaults */
 			}
 		}
 		await refreshCache();
-		baseline = { posts, comments, reactions };
+		baseline = {
+			posts,
+			comments_mine: commentsMine,
+			comments_all: commentsAll,
+			reactions,
+			events,
+			mute_until: muteUntilFromKey(mute)
+		};
 		ready = true;
 	});
 </script>
@@ -115,7 +142,12 @@
 	</SettingsRow>
 	<SettingsRow title="Комментарии к моим записям">
 		{#snippet control()}
-			<Switch bind:checked={comments} />
+			<Switch bind:checked={commentsMine} />
+		{/snippet}
+	</SettingsRow>
+	<SettingsRow title="Все комментарии">
+		{#snippet control()}
+			<Switch bind:checked={commentsAll} />
 		{/snippet}
 	</SettingsRow>
 	<SettingsRow title="Реакции">
@@ -123,6 +155,22 @@
 			<Switch bind:checked={reactions} />
 		{/snippet}
 	</SettingsRow>
+	<SettingsRow title="Упоминания" subtitle="всегда">
+		{#snippet control()}
+			<Switch checked={true} disabled />
+		{/snippet}
+	</SettingsRow>
+	<SettingsRow title="События круга">
+		{#snippet control()}
+			<Switch bind:checked={events} />
+		{/snippet}
+	</SettingsRow>
+	<SectionLabel style="margin-top:14px">Приглушить</SectionLabel>
+	<ChipGroup>
+		<Chip selected={mute === 'none'} onclick={() => (mute = 'none')}>Нет</Chip>
+		<Chip selected={mute === 'tomorrow'} onclick={() => (mute = 'tomorrow')}>До завтра</Chip>
+		<Chip selected={mute === 'week'} onclick={() => (mute = 'week')}>На неделю</Chip>
+	</ChipGroup>
 	<Hint style="margin-top:10px">
 		Применяется к кругам, в которые вы войдёте потом. Уже настроенные круги не трогаются.
 	</Hint>

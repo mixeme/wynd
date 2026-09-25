@@ -30,7 +30,9 @@
 	import PhotoGrid from '$ui/data/PhotoGrid.svelte';
 	import PhotoPlaceholder from '$ui/data/PhotoPlaceholder.svelte';
 	import PostCard from '$ui/data/PostCard.svelte';
+	import CommentPreview from '$ui/data/CommentPreview.svelte';
 	import ReactionBar from '$ui/data/ReactionBar.svelte';
+	import ReactionListRow from '$ui/data/ReactionListRow.svelte';
 	import SearchGroupHeader from '$ui/data/SearchGroupHeader.svelte';
 	import SearchResultRow from '$ui/data/SearchResultRow.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
@@ -95,10 +97,34 @@
 		SMOKE_ROUTES,
 		countComponents
 	} from './catalog';
+	import type { VolumeBucket } from '$lib/circles/settings';
+	import { formatEntryDate } from '$lib/format/time';
 
 	let swOn = $state(false);
 	let color = $state<CircleColor>('ochre');
 	const total = countComponents();
+
+	const demoVolume: VolumeBucket[] = Array.from({ length: 14 }, (_, i) => {
+		const month = 11 + i;
+		const y = 2024 + Math.floor((month - 1) / 12);
+		const m = ((month - 1) % 12) + 1;
+		return {
+			period: `${y}-${String(m).padStart(2, '0')}`,
+			bytes: [34, 52, 68, 80, 58, 44, 62, 76, 28, 22, 34, 18, 26, 30][i] ?? 30,
+			cumulative_bytes: 0
+		};
+	});
+	let demoCutoffIndex = $state(7);
+	let demoCutoffX = $state(205);
+	const demoCutoffLabel = $derived(
+		demoVolume[demoCutoffIndex]
+			? formatEntryDate(`${demoVolume[demoCutoffIndex].period}-01`)
+			: ''
+	);
+
+	function onDemoCutoff(index: number) {
+		demoCutoffIndex = index;
+	}
 </script>
 
 <main class="catalog">
@@ -234,11 +260,8 @@
 						</PostCard>
 						<OverlayLayout>
 							<SectionLabel>Реакция · 2</SectionLabel>
-							<div class="row2">
-								<Avatar initial="К" color="#62452F" />
-								<div class="g" style="font-weight:600">Кот</div>
-								<Icon name="heart" size="sm" style="color:var(--c)" />
-							</div>
+							<ReactionListRow initial="К" name="Кот" color="#62452F" icon="heart" />
+							<ReactionListRow initial="П" name="Петя" color="#357077" icon="heart" />
 						</OverlayLayout>
 					</CircleLayout>
 				</div>
@@ -367,10 +390,16 @@
 			</figure>
 			<figure>
 				<figcaption>#e6-8 — VolumeChart</figcaption>
-				<PhoneFrame color="terracotta" height="280px">
+				<PhoneFrame color="terracotta" height="360px">
 					<StatusBar />
 					<CircleBar title="Архив" tabs={false} />
-					<VolumeChart />
+					<Label style="margin-top:8px">Сколько освободит отсечка</Label>
+					<VolumeChart
+						volume={demoVolume}
+						cutoffLabel={demoCutoffLabel}
+						bind:cutoffX={demoCutoffX}
+						oncutoff={onDemoCutoff}
+					/>
 				</PhoneFrame>
 			</figure>
 			<figure>
@@ -424,8 +453,8 @@
 		<h2>Data</h2>
 		<div class="phones">
 			<figure>
-				<figcaption>#e3-1 — PostCard, EventDivider</figcaption>
-				<PhoneFrame color="terracotta" height="340px">
+				<figcaption>#e3-1 — PostCard, ReactionBar, CommentPreview</figcaption>
+				<PhoneFrame color="terracotta" height="400px">
 					<StatusBar />
 					<CircleBar title="Семья" identity="Мышь" avatar="М" tabs={false} />
 					<EventDivider text="Мышка теперь Мышь" />
@@ -440,8 +469,40 @@
 						{#snippet text()}Были на даче, все живы.{/snippet}
 						{#snippet reactions()}
 							<ReactionBar
-								groups={[{ icon: 'heart', names: 'Кот' }]}
+								groups={[{ icon: 'heart', names: 'Кот, Петя' }]}
 								keys={['heart', 'laugh', 'surprise', 'anger']}
+								showAdd
+								onopenList={() => {}}
+								onadd={() => {}}
+								onpick={() => {}}
+							/>
+						{/snippet}
+					</PostCard>
+					<CommentPreview onclick={() => {}}>
+						<div>Петя: а компот будет?</div>
+						<div class="mo">ещё 11 комментариев</div>
+					</CommentPreview>
+				</PhoneFrame>
+			</figure>
+			<figure>
+				<figcaption>#e4-10 — ReactionBar picker</figcaption>
+				<PhoneFrame color="terracotta" height="280px">
+					<StatusBar />
+					<CircleBar title="Семья" identity="Мышь" avatar="М" tabs={false} />
+					<PostCard>
+						{#snippet author()}
+							<Avatar initial="А" color="#58673A" />
+							<div>
+								<div class="n">Аня</div>
+								<div class="tm">сегодня, 14:02</div>
+							</div>
+						{/snippet}
+						{#snippet text()}Были на даче, все живы.{/snippet}
+						{#snippet reactions()}
+							<ReactionBar
+								groups={[{ icon: 'heart', names: 'Кот, Петя' }]}
+								keys={['heart', 'laugh', 'surprise', 'anger']}
+								pickerOpen
 								onopenList={() => {}}
 								onadd={() => {}}
 								onpick={() => {}}

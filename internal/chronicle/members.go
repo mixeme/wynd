@@ -3,6 +3,7 @@ package chronicle
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -280,4 +281,27 @@ func (c *Chronicle) DeleteCircle(ctx context.Context, circleID, ownerAccountID, 
 	}
 	_, err = c.db.ExecContext(ctx, `DELETE FROM circles WHERE id = ?`, circleID)
 	return err
+}
+
+// PostAuthorAccountID resolves the post author's account in a circle.
+func (c *Chronicle) PostAuthorAccountID(ctx context.Context, circleID, postID string) (string, error) {
+	post, err := c.loadPost(ctx, c.db, postID)
+	if err != nil {
+		return "", err
+	}
+	if post.CircleID != circleID || post.Deleted {
+		return "", ErrInvalid
+	}
+	var accountID string
+	err = c.db.QueryRowContext(ctx, `
+		SELECT account_id FROM memberships
+		WHERE circle_id = ? AND identity_id = ? AND status = 'active'
+	`, circleID, post.IdentityID).Scan(&accountID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	if err != nil {
+		return "", err
+	}
+	return accountID, nil
 }

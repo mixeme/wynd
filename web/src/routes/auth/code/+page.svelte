@@ -118,9 +118,17 @@
 		}
 	}
 
+	function authFormPath(p: PendingAuth): string {
+		if (p.flow === 'invite' && p.inviteToken) {
+			return p.circleInvite ? `/invite/${p.inviteToken}` : `/join/${p.inviteToken}`;
+		}
+		if (p.flow === 'register') return '/join';
+		return '/';
+	}
+
 	function changeEmail() {
-		clearPendingAuth();
-		goto('/');
+		const p = loadPendingAuth();
+		goto(p ? authFormPath(p) : '/');
 	}
 </script>
 

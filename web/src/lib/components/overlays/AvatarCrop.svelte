@@ -1,6 +1,6 @@
 ﻿<script lang="ts">
-	import IconButton from '$ui/forms/IconButton.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import TextButton from '$ui/forms/TextButton.svelte';
 	import {
 		clampCropScale,
 		clampCropTransform,
@@ -14,7 +14,6 @@
 		type CropViewport,
 		type CroppedImage
 	} from '$lib/media/crop';
-	import { isDark } from '$lib/session/session.svelte';
 	import type { CircleColor } from '$lib/theme/colors';
 
 	let {
@@ -31,8 +30,6 @@
 
 	let cropEl: HTMLDivElement | undefined = $state();
 	let viewportEl: HTMLDivElement | undefined = $state();
-	let cancelBtn: HTMLButtonElement | undefined = $state();
-	let doneBtn: HTMLButtonElement | undefined = $state();
 	let previewEl: HTMLImageElement | undefined = $state();
 	let viewportW = $state(0);
 	let viewportH = $state(0);
@@ -59,7 +56,6 @@
 		| undefined;
 
 	const colorClass = $derived(color !== 'terracotta' ? color : undefined);
-	const darkClass = $derived(isDark());
 	const seedKey = $derived(`${file.name}:${file.size}:${file.lastModified}`);
 
 	const cropViewport = $derived.by((): CropViewport | undefined => {
@@ -126,7 +122,8 @@
 	});
 
 	$effect(() => {
-		if (ready && doneBtn && !saving) doneBtn.focus();
+		if (!ready || saving) return;
+		barButtons().at(-1)?.focus();
 	});
 
 	function applyTransform(next: CropTransform) {
@@ -247,6 +244,10 @@
 		oncancel();
 	}
 
+	function barButtons(): HTMLButtonElement[] {
+		return [...(cropEl?.querySelectorAll('.cbar button') ?? [])] as HTMLButtonElement[];
+	}
+
 	function onKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') {
 			e.preventDefault();
@@ -254,7 +255,7 @@
 			return;
 		}
 		if (e.key !== 'Tab') return;
-		const focusables = [cancelBtn, doneBtn].filter(Boolean) as HTMLButtonElement[];
+		const focusables = barButtons();
 		if (!focusables.length) return;
 		const active = document.activeElement;
 		const idx = focusables.indexOf(active as HTMLButtonElement);
@@ -274,7 +275,7 @@
 		if (!cropEl) return;
 		const target = e.target as Node | null;
 		if (target && cropEl.contains(target)) return;
-		doneBtn?.focus();
+		barButtons().at(-1)?.focus();
 	}
 
 	async function finish() {
@@ -305,33 +306,27 @@
 
 <div
 	class="crop ph app {colorClass}"
-	class:dark={darkClass}
 	bind:this={cropEl}
 	role="dialog"
 	aria-modal="true"
 	aria-label="Кадр"
 	aria-busy={saving}
 >
-	<div class="cbar" style="padding-bottom:8px">
-		<div class="top">
-			<IconButton
-				bind:el={cancelBtn}
-				name="x"
-				label="Отмена"
-				onclick={requestCancel}
-			/>
+	<div class="cbar">
+		<div class="top compose-top">
+			<TextButton variant="admin" onclick={requestCancel}>Отмена</TextButton>
 			<span class="t">Кадр</span>
-			<button
-				type="button"
-				class="done"
-				class:off={saving || !ready}
+			<TextButton
+				variant="barAction"
+				active
 				disabled={!ready}
-				bind:this={doneBtn}
+				loading={saving}
 				onclick={() => void finish()}
 			>
-				{saving ? '…' : 'Готово'}
-			</button>
+				Готово
+			</TextButton>
 		</div>
+		<div style="height:12px"></div>
 	</div>
 
 	<div
@@ -385,6 +380,12 @@
 
 <style>
 	.crop {
+		--paper: #f4f0e9;
+		--card: #fcfaf6;
+		--ink: #2b2724;
+		--muted: #7a7269;
+		--faint: #a8a096;
+		--line: #dfd8cd;
 		position: fixed;
 		inset: 0;
 		z-index: 50;
@@ -398,19 +399,6 @@
 		color: var(--ink);
 		border: none;
 		border-radius: 0;
-	}
-
-	.done {
-		margin-left: auto;
-		font-size: 15px;
-		font-weight: 600;
-		color: #fff;
-	}
-
-	.done.off,
-	.done:disabled {
-		opacity: 0.55;
-		pointer-events: none;
 	}
 
 	.viewport {

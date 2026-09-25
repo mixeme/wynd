@@ -108,6 +108,9 @@ func (s *Server) handleCreatePost(w http.ResponseWriter, r *http.Request) {
 	}
 	items, _ := s.Chronicle.ListPostMedia(r.Context(), post.ID)
 	s.notifyCircle(circleID, sess.AccountID, "post")
+	if ids, err := s.Chronicle.MentionedAccountIDs(r.Context(), circleID, body.Body); err == nil {
+		s.notifyAccounts(circleID, sess.AccountID, "mention", ids)
+	}
 	writeJSON(w, http.StatusCreated, postResponse(post, items))
 }
 
@@ -192,7 +195,7 @@ func (s *Server) handleCreateComment(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	s.notifyCircle(circleID, sess.AccountID, "comment")
+	s.notifyComment(circleID, sess.AccountID, postID)
 	writeJSON(w, http.StatusCreated, commentResponse(c))
 }
 

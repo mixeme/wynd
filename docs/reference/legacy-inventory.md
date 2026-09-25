@@ -1,7 +1,7 @@
 # Legacy-код и миграции
 
 Инвентаризация обратной совместимости и оставшегося долга.
-Срез: 2026-09-09. Текущая схема БД: **версия 1** (`internal/store/migrations/0001_schema.sql`).
+Срез: 2026-09-11. Текущая схема БД: **версия 5** (`0001_schema.sql` + `0002`–`0005`).
 
 Связанные документы: [server-reference.md](server-reference.md).
 
@@ -9,17 +9,21 @@
 
 ## SQL-миграции (`internal/store/migrations/`)
 
-Мигратор: `internal/store/migrate.go`. Только вверх, без down. Следующая миграция — `0002_*.sql`.
+Мигратор: `internal/store/migrate.go`. Только вверх, без down. Известные версии — `{0}` ∪ номера файлов `NNNN_*.sql`. Следующая миграция — `0006_*.sql`.
 
 | Версия | Файл | Назначение |
 |--------|------|------------|
 | 1 | `0001_schema.sql` | Полная схема (baseline после снятия цепочки 0001–0013) |
+| 2 | `0002_search_days.sql` | FTS `kind=day`, `entry_date` |
+| 3 | `0003_notify_prefs.sql` | `comments_mine` / `comments_all` / `events` / `mute_until` |
+| 4 | `0004_payment.sql` | Реквизиты, сбор, подписка, `pay_requests` |
+| 5 | `0005_search_day_replace.sql` | Смена названия дня не дублирует FTS |
 
 ### Особенности migrator
 
 - **`schema_migrations`** создаёт код, не SQL-файл. `applied_at` — `RFC3339Nano`.
-- **Старый `wynd.db`** с `MAX(version)` ∉ {0, 1} — ошибка «удалите wynd.db», без автопочинки.
-- Тесты: `TestOpenMigrateClose`, `TestReopenAppliesMigrationsOnce` (ожидает 1 строку),
+- **Старый `wynd.db`** с `MAX(version)` не из цепочки файлов — ошибка «удалите wynd.db», без автопочинки.
+- Тесты: `TestOpenMigrateClose`, `TestReopenAppliesMigrationsOnce` (ожидает 5 строк),
   `TestSchemaAllowsNullableIdentityAccountID`.
 
 ---
@@ -54,7 +58,7 @@ Event payload `captured_at` в хронике — `RFC3339` (`chronicle/media.go
 - `identities.account_id` → NULL (несколько отвязанных лиц на круг — следствие модели)
 - Повторная регистрация той же почты — **новый** account
 - Sentinel admin DELETE → 404
-- `jobs.cleanEmptyAccounts` — тот же soft-delete, не `DELETE FROM accounts`
+- `jobs.cleanEmptyAccounts` — тот же soft-delete, не `DELETE FROM accounts`; 30 дней, нет строк `memberships`
 
 ### SMTP fallback (loopback)
 
@@ -105,4 +109,4 @@ Event payload `captured_at` в хронике — `RFC3339` (`chronicle/media.go
 ## Политики «не трогать» (вне scope)
 
 - `identities` с NULL account_id — не чинить частичным индексом
-- PostgreSQL, E2E, пагинация ленты, GDPR HTTP, донаты, SPDX — вне очереди
+- PostgreSQL, E2E, пагинация ленты, GDPR HTTP, SPDX — вне очереди

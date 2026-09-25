@@ -3,7 +3,7 @@
 Self-hosted журнал кругов: один бинарник Go, SQLite, SvelteKit SPA внутри `go:embed`.
 Для домашнего инстанса на несколько человек, не для SaaS.
 
-**Версия:** см. файл [`VERSION`](VERSION) (сейчас 0.3.5).
+**Версия:** см. файл [`VERSION`](VERSION) (сейчас 0.4.5).
 
 **Лицензия:** [GNU AGPL v3](LICENSE). Исходный код: <https://github.com/mixeme/wynd>.
 

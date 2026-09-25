@@ -18,6 +18,7 @@ type Hit struct {
 	CircleID   string `json:"circle_id"`
 	AuthorName string `json:"author_name,omitempty"`
 	Kind       string `json:"kind"`
+	Title      string `json:"title,omitempty"`
 	Snippet    string `json:"snippet"`
 	EntryDate  string `json:"entry_date"`
 	CreatedAt  string `json:"created_at"`
@@ -45,12 +46,12 @@ func (s *Service) SearchCircle(ctx context.Context, accountID, circleID, query s
 	return s.search(ctx, accountID, circleID, query, limit, true)
 }
 
-// SearchAll finds matches across all circles for the account; omits author name.
+// SearchAll finds matches across all circles for the account; includes author name.
 func (s *Service) SearchAll(ctx context.Context, accountID, query string, limit int) ([]Hit, error) {
 	if strings.TrimSpace(query) == "" {
 		return nil, chronicle.ErrInvalid
 	}
-	return s.search(ctx, accountID, "", query, limit, false)
+	return s.search(ctx, accountID, "", query, limit, true)
 }
 
 func (s *Service) search(ctx context.Context, accountID, circleID, query string, limit int, withAuthor bool) ([]Hit, error) {
@@ -68,10 +69,11 @@ func (s *Service) search(ctx context.Context, accountID, circleID, query string,
 
 	rows, err := s.db.QueryContext(ctx, fmt.Sprintf(`
 		SELECT f.post_id, f.comment_id, f.circle_id, f.author_name, f.kind, f.created_at,
-			p.entry_date,
+			COALESCE(f.entry_date, p.entry_date),
+			CASE WHEN f.kind = 'day' THEN f.body ELSE '' END,
 			snippet(content_fts, 0, '', '', '…', 32)
 		FROM content_fts f
-		JOIN posts p ON p.id = f.post_id
+		LEFT JOIN posts p ON p.id = f.post_id AND f.post_id != ''
 		WHERE content_fts MATCH ?
 		  AND EXISTS (
 		    SELECT 1 FROM memberships m
@@ -101,12 +103,15 @@ func (s *Service) collectHits(ctx context.Context, rows *sql.Rows, limit int, wi
 		var commentID string
 		var author string
 		var created string
-		if err := rows.Scan(&h.PostID, &commentID, &h.CircleID, &author, &h.Kind, &created, &h.EntryDate, &h.Snippet); err != nil {
+		if err := rows.Scan(&h.PostID, &commentID, &h.CircleID, &author, &h.Kind, &created, &h.EntryDate, &h.Title, &h.Snippet); err != nil {
 			return nil, err
 		}
 		h.CommentID = commentID
-		if withAuthor {
+		if withAuthor && h.Kind != "day" {
 			h.AuthorName = author
+		}
+		if h.Kind == "day" {
+			h.Title = strings.TrimSpace(h.Title)
 		}
 		h.CreatedAt = created
 		out = append(out, h)

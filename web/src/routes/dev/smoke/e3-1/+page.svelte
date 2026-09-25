@@ -1,9 +1,11 @@
 ﻿<!-- Smoke-test: CircleLayout from docs/screens.html #e3-1 -->
 <script lang="ts">
 	import Avatar from '$ui/data/Avatar.svelte';
+	import CommentPreview from '$ui/data/CommentPreview.svelte';
 	import EventDivider from '$ui/data/EventDivider.svelte';
 	import Icon from '$ui/Icon.svelte';
 	import PostCard from '$ui/data/PostCard.svelte';
+	import ReactionBar from '$ui/data/ReactionBar.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 </script>
 
@@ -33,19 +35,20 @@
 			</div>
 		{/snippet}
 		{#snippet reactions()}
-			<div class="rx">
-				<span class="one">
-					<Icon name="heart" size="xs" style="color:var(--c)" />
-					Кот, Петя
-				</span>
-				<span class="add">+</span>
-			</div>
+			<ReactionBar
+				groups={[{ icon: 'heart', names: 'Кот, Петя' }]}
+				keys={['heart', 'laugh', 'surprise', 'anger']}
+				showAdd
+				onopenList={() => {}}
+				onadd={() => {}}
+				onpick={() => {}}
+			/>
 		{/snippet}
 	</PostCard>
-	<div class="cm">
+	<CommentPreview onclick={() => {}}>
 		<div>Петя: а компот будет?</div>
 		<div class="mo">ещё 11 комментариев</div>
-	</div>
+	</CommentPreview>
 	<PostCard>
 		{#snippet author()}
 			<Avatar initial="М" color="#3C4D83" />

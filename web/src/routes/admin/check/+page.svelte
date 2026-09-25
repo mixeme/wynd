@@ -111,8 +111,8 @@
 									description={row.detail}
 								>
 									{#snippet actions()}
-										{#if id.startsWith('proxy') && row.status === 'fail'}
-											<TextButton variant="admin" onclick={() => goto('/admin/fix')}>
+										{#if id.startsWith('proxy') && (row.status === 'fail' || row.status === 'warn')}
+											<TextButton variant="admin" onclick={() => goto(`/admin/fix?fail=${id}`)}>
 												Показать конфиг
 											</TextButton>
 										{:else if id === 'smtp'}
@@ -144,6 +144,19 @@
 										{#if id === 'smtp'}
 											<TextButton variant="admin" onclick={() => goto('/admin/smtp')}>
 												Настроить
+											</TextButton>
+										{:else if id === 'dkim' && row.status !== 'ok' && row.status !== 'na'}
+											<TextButton variant="admin" onclick={() => goto('/admin/smtp')}>
+												Как добавить
+											</TextButton>
+										{:else if id === 'backup' && row.status === 'warn'}
+											<TextButton
+												variant="admin"
+												onclick={async () => {
+													await navigator.clipboard.writeText('wynd backup <каталог>');
+												}}
+											>
+												Как настроить
 											</TextButton>
 										{:else if id === 'vapid_keys'}
 											<TextButton

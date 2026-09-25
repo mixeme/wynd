@@ -9,7 +9,7 @@
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint, fetchInstance, sendAuthCode } from '$lib/auth/auth';
 	import { displayHost } from '$lib/auth/origin';
-	import { savePendingAuth } from '$lib/auth/pending';
+	import { loadPendingAuth, savePendingAuth } from '$lib/auth/pending';
 
 	let { data } = $props();
 	const token = data.token;
@@ -20,6 +20,10 @@
 	let error = $state('');
 
 	onMount(async () => {
+		const pending = loadPendingAuth();
+		if (pending?.inviteToken === token) {
+			email = pending.email;
+		}
 		try {
 			const info = await fetchInstance('');
 			instanceName = info.name;

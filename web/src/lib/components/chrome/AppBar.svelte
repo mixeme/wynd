@@ -4,9 +4,11 @@
 
 	let {
 		onsearch,
+		searchDisabled = false,
 		onsettings
 	}: {
 		onsearch?: () => void;
+		searchDisabled?: boolean;
 		onsettings?: () => void;
 	} = $props();
 </script>
@@ -16,6 +18,14 @@
 	<span class="sp"></span>
 	{#if onsearch}
 		<IconButton name="search" label="Поиск" onclick={() => onsearch()} />
+	{:else if searchDisabled}
+		<IconButton
+			name="search"
+			label="Поиск недоступен"
+			disabled
+			style="opacity:.35"
+			onclick={() => {}}
+		/>
 	{/if}
 	{#if onsettings}
 		<IconButton name="gear" label="Настройки" onclick={() => onsettings()} />
