@@ -31,7 +31,6 @@
 	} = $props();
 
 	const canSend = $derived(Boolean(value.trim()) && !busy);
-	const isEmpty = $derived(!value.trim());
 
 	let bodyInput: HTMLTextAreaElement | undefined = $state();
 	let mentionStart = $state<number | null>(null);
@@ -77,17 +76,6 @@
 		});
 	}
 
-	function prefersInlineCompose() {
-		return (
-			typeof window !== 'undefined' &&
-			window.matchMedia('(hover: hover) and (pointer: fine)').matches
-		);
-	}
-
-	function handleFieldClick() {
-		if (isEmpty && !prefersInlineCompose()) oncompose?.();
-	}
-
 	function handleSendClick(e: MouseEvent) {
 		e.stopPropagation();
 		if (canSend) onsend?.();
@@ -116,7 +104,6 @@
 			{placeholder}
 			bind:el={bodyInput}
 			bind:value
-			onclick={handleFieldClick}
 			oninput={onInput}
 			onkeyup={syncMentionPicker}
 		/>

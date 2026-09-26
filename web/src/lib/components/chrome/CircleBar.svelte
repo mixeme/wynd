@@ -65,7 +65,7 @@
 			<IconButton name="back" label="Назад" onclick={() => onback()} />
 		{/if}
 		{#if searchInBar}
-			<SearchField class="inv" bind:value={searchQuery} placeholder={searchPlaceholder!} />
+			<SearchField class="inv" autofocus bind:value={searchQuery} placeholder={searchPlaceholder!} />
 		{:else}
 			<span class="t">{title}</span>
 			{#if onsearch}
