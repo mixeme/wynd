@@ -1,5 +1,5 @@
 ﻿<script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -40,12 +40,21 @@
 	let error = $state('');
 	let ready = $state(false);
 	let alreadyDone = $state(false);
+	let errorBox = $state<HTMLDivElement | undefined>();
 
 	const smtpKey = $derived(
 		`${smtpHost}\0${smtpPort}\0${smtpUsername}\0${smtpPassword}\0${smtpFrom}`
 	);
 	const smtpOk = $derived(smtpCheckedKey !== '' && smtpCheckedKey === smtpKey);
 	const loopbackNow = $derived(publicUrl.trim() ? isLoopbackPublicURL(publicUrl) : isLoopback);
+
+	// Ошибка стоит над кнопкой, но на телефоне кнопку и её окрестность
+	// закрывают клавиатура и панель браузера: без прокрутки нажатие выглядит
+	// как «ничего не произошло».
+	$effect(() => {
+		if (!error) return;
+		void tick().then(() => errorBox?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
+	});
 
 	onMount(async () => {
 		try {
@@ -141,7 +150,7 @@
 			<Button onclick={() => goto('/admin')}>Открыть панель</Button>
 		{:else}
 			<div class="col gap-16">
-				<div class="flex gap-16 stretch">
+				<div class="flex gap-16 stretch cards">
 					<div class="grow min0 {cardStyle}">
 						<div class="bold mb-6">1 · Пароль администратора</div>
 						<div class={descStyle}>
@@ -189,7 +198,7 @@
 							Люди входят по коду из письма. Без настройки SMTP письмо с кодом не отправится.
 						{/if}
 					</div>
-					<div class="form-grid-2">
+					<div class="form-grid-2 smtp-grid">
 						<SectionLabel raw class={sideLabel}>Хост</SectionLabel>
 						<Input admin mono class={fillInput} bind:value={smtpHost} />
 						<SectionLabel raw class={sideLabelRight}>Порт</SectionLabel>
@@ -225,6 +234,11 @@
 					</div>
 				</div>
 			</div>
+			{#if error}
+				<div bind:this={errorBox} role="alert">
+					<Hint class="mt-12">{error}</Hint>
+				</div>
+			{/if}
 			<div class="mt-20">
 				{#if loading}
 					<span role="status" class="block note mb-8">
@@ -236,8 +250,24 @@
 				</Button>
 			</div>
 		{/if}
-		{#if error}
-			<Hint class="mt-12">{error}</Hint>
-		{/if}
 	</AdminSection>
 </AdminWideLayout>
+
+<style>
+	/* Первый запуск открывают и с телефона: карточки — столбиком,
+	   SMTP — «подпись · поле» в две колонки вместо четырёх. */
+	@media (max-width: 600px) {
+		.cards {
+			flex-direction: column;
+		}
+		.smtp-grid {
+			grid-template-columns: auto minmax(0, 1fr);
+		}
+		.smtp-grid :global(.ml-12) {
+			margin-left: 0;
+		}
+		.smtp-grid .grid-end {
+			grid-column: 1 / -1;
+		}
+	}
+</style>

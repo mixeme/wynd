@@ -19,6 +19,11 @@ export default defineConfig({
 	plugins: [
 		sveltekit(),
 		SvelteKitPWA({
+			// Регистрация от корня, не от текущей страницы: SvelteKit с относительными
+			// путями давал ./sw.js, и первый заход по /admin/… или /join/… просил
+			// /admin/sw.js — 404, PWA не ставился.
+			base: '/',
+			scope: '/',
 			strategies: 'generateSW',
 			registerType: 'autoUpdate',
 			manifest: {
