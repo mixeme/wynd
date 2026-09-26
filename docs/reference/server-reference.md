@@ -129,7 +129,7 @@ flowchart TB
   - Сбой проверочного письма установку не откатывает: текст в `smtp_last_error`, ответ 200 с `mail_sent:false`.
   - Флаг ставится `UPDATE … WHERE id = 1 AND bootstrapped = 0` с проверкой `RowsAffected` — из двух параллельных установок проходит ровно одна. Первичная настройка инстанса передаётся в `BootstrapInput.InTx` и применяется вместе с флагом или не применяется вовсе.
 - **Поля.** `POST /admin/bootstrap`: `token`, `password`, опц. `instance_name`, `public_url` и SMTP (`host`, `port`, `username`, `smtp_password`, `from`).
-  - Не loopback (после `NormalizePublicURL`) — SMTP обязателен (`smtp_not_configured`). Неполный релей на loopback игнорируется, не ошибка. Проверочное письмо на envelope-адрес `from`, если SMTP задан целиком — в том числе на loopback.
+  - SMTP необязателен при любом адресе: админ входит по паролю, релей задаётся позже в `/admin/general`, до этого «Проверка» → «Письмо» — fail и коды входа не уходят. Неполный релей игнорируется, не ошибка (клиент его не шлёт). Проверочное письмо на envelope-адрес `from`, если SMTP задан целиком — в том числе на loopback.
   - `public_url` пишется в `config.json` и сразу обновляет loopback у `Auth`/`Mail` (`applyPublicURL`). Caddy API не вызывает; публичный `--public-url` в `install.sh` обязан поднять прокси или выйти с ошибкой (`--own-proxy` — сниппет в лог).
   - `POST /admin/bootstrap/smtp-test`: тот же токен, пока bootstrap не выполнен; поля релея без записи в БД; `mail.Probe` — dial, TLS, AUTH, без письма.
 
@@ -279,7 +279,7 @@ flowchart TB
 
 **Поднять:** `go run ./cmd/wynd`. Smoke: `curl http://127.0.0.1:7676/health`.
 
-**На loopback:** bootstrap без SMTP; код входа в лог без релея; экран `/auth/code` при `code_delivery=log` говорит «Код с сервера», не про письмо; `GET /api/v1/instance` отличает закрытый сервер от сломанного; HTTPS/прокси/«снаружи» — «не применимо», не FAIL.
+**На loopback:** код входа в лог без релея; экран `/auth/code` при `code_delivery=log` говорит «Код с сервера», не про письмо; `GET /api/v1/instance` отличает закрытый сервер от сломанного; HTTPS/прокси/«снаружи» — «не применимо», не FAIL.
 
 **Здесь закрывается:** хроника, auth, журнал, sync/SSE, поиск, admin API, квота и архив, `go test ./...`.
 

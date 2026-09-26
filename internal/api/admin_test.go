@@ -397,14 +397,27 @@ func TestBootstrapConcurrentOnlyOneSucceeds(t *testing.T) {
 	}
 }
 
-func TestBootstrapPublicURLRequiresMail(t *testing.T) {
+// Обязателен только пароль: публичный инстанс ставится без почты, релей
+// настраивается позже в панели.
+func TestBootstrapPublicURLWithoutMail(t *testing.T) {
 	srv, _, _, _ := setupFreshAPI(t)
 	rec := doJSON(t, srv, http.MethodPost, "/api/v1/admin/bootstrap", "", map[string]any{
 		"token": "bootstrap", "password": "admin-pass",
 		"public_url": "home.example.org",
 	})
-	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "smtp_not_configured") {
+	if rec.Code != http.StatusOK {
 		t.Fatalf("public without smtp: %d %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"mail_sent":false`) {
+		t.Fatalf("mail_sent: %s", rec.Body.String())
+	}
+	if srv.PublicURL() != "https://home.example.org" || srv.Loopback() {
+		t.Fatalf("public url: %s loopback=%v", srv.PublicURL(), srv.Loopback())
+	}
+	token := adminToken(t, srv)
+	rec = doJSON(t, srv, http.MethodGet, "/api/v1/admin/smtp", token, nil)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"configured":false`) {
+		t.Fatalf("smtp must stay empty: %d %s", rec.Code, rec.Body.String())
 	}
 }
 

@@ -57,6 +57,12 @@
 	});
 
 	onMount(async () => {
+		// Ссылку первого запуска открывают по адресу, под которым сервер и
+		// будет жить. Только https: локальный запуск открывают с телефона по
+		// http://<LAN-IP>, и такой адрес вывел бы инстанс из профиля loopback.
+		if (location.protocol === 'https:' && !publicUrl.trim()) {
+			publicUrl = location.origin;
+		}
 		try {
 			const instance = await fetchInstance('');
 			isLoopback = instance.loopback;
@@ -115,8 +121,10 @@
 		const trimmedHost = smtpHost.trim();
 		const trimmedFrom = smtpFrom.trim();
 		const smtpComplete = Boolean(trimmedHost && trimmedFrom && smtpPassword);
-		if (!loopbackNow && !smtpComplete) {
-			error = 'Укажите SMTP: хост, адрес отправителя и пароль';
+		// Почта необязательна, но начатый релей молча не выбрасывается.
+		const smtpStarted = Boolean(trimmedHost || trimmedFrom || smtpPassword || smtpUsername.trim());
+		if (smtpStarted && !smtpComplete) {
+			error = 'Почта: заполните хост, адрес отправителя и пароль — или оставьте поля пустыми';
 			return;
 		}
 		loading = true;
@@ -195,7 +203,7 @@
 						{#if loopbackNow}
 							На этом компьютере код входа пишется в окно сервера. Почту можно не указывать и настроить позже.
 						{:else}
-							Люди входят по коду из письма. Без настройки SMTP письмо с кодом не отправится.
+							Люди входят по коду из письма. Почту можно настроить и позже в панели — до этого коды входа не уходят.
 						{/if}
 					</div>
 					<div class="form-grid-2">

@@ -72,12 +72,10 @@ func (s *Server) handleBootstrap(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	loopback := config.IsLoopback(publicURL)
+	// Почта при установке необязательна и на публичном адресе: админ входит
+	// по паролю и настраивает релей позже в панели, «Проверка» покажет, что
+	// письма не уходят. Неполный релей не сохраняется — клиент не шлёт его.
 	ready := smtpReady(body)
-	if !loopback && !ready {
-		writeError(w, mail.ErrNotConfigured)
-		return
-	}
 
 	var smtpCfg *mail.Config
 	if ready {
