@@ -207,6 +207,44 @@ func TestSearchTokenizesQuery(t *testing.T) {
 	}
 }
 
+// Инвариант (SRCH-2): каждое слово ищется по началу — поиск находит, пока
+// слово набирается («дач» → «даче»), и ловит падежи. Середину слова не ищем:
+// для неё нужен другой токенизатор.
+func TestSearchMatchesWordPrefix(t *testing.T) {
+	ch, svc := newSearchEnv(t)
+	ctx := t.Context()
+	now := time.Date(2026, 8, 30, 10, 0, 0, 0, time.UTC)
+	circle, _, _, err := ch.CreateCircle(ctx, chronicle.CreateCircleInput{
+		Name: "Семья", OwnerAccountID: "owner", OwnerName: "Аня", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ch.CreatePost(ctx, chronicle.PostInput{
+		CircleID: circle.ID, AccountID: "owner",
+		Body: "Яблони на даче зацвели", EntryDate: "2026-08-30", Now: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// Регистр не важен: unicode61 сворачивает его и для кириллицы.
+	for _, q := range []string{"дач", "ябл дач", "Ябло", "зацвели", "ЯБЛОНИ", "ДАЧ", "яблони"} {
+		hits, err := svc.SearchCircle(ctx, "owner", circle.ID, q, 10, search.Filters{})
+		if err != nil {
+			t.Fatalf("q=%q: %v", q, err)
+		}
+		if len(hits) != 1 {
+			t.Fatalf("q=%q: начало слова не нашлось: %+v", q, hits)
+		}
+	}
+	hits, err := svc.SearchCircle(ctx, "owner", circle.ID, "бло", 10, search.Filters{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) != 0 {
+		t.Fatalf("середина слова не должна находиться: %+v", hits)
+	}
+}
+
 // Инвариант (SRCH-3): в поиске лежит актуальная версия названия дня. Правка
 // или удаление старой версии не должны уносить день из поиска.
 func TestSearchKeepsCurrentDayTitle(t *testing.T) {
