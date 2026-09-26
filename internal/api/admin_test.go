@@ -63,7 +63,7 @@ func TestAdminStorageAndCheck(t *testing.T) {
 func TestAdminProxySnippet(t *testing.T) {
 	srv, _, _, _ := setupAPI(t)
 	token := adminToken(t, srv)
-	for _, kind := range []string{"nginx", "caddy", "traefik"} {
+	for _, kind := range []string{"nginx", "caddy", "traefik", "apache"} {
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/proxy/"+kind, nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		rec := httptest.NewRecorder()
@@ -90,6 +90,13 @@ func TestAdminProxySnippet(t *testing.T) {
 			}
 			if strings.Contains(snippet, "wynd-forwarded") {
 				t.Fatalf("%s snippet must not put forwardedHeaders under http.middlewares: %s", kind, snippet)
+			}
+		case "apache":
+			// mod_proxy дописывает адрес сам; клиентский заголовок снимается.
+			for _, want := range []string{"RequestHeader unset X-Forwarded-For", "X-Forwarded-Proto \"https\"", "flushpackets=on", "LimitRequestBody"} {
+				if !strings.Contains(snippet, want) {
+					t.Fatalf("%s snippet missing %q: %s", kind, want, snippet)
+				}
 			}
 		}
 		if !strings.Contains(snippet, "300") {

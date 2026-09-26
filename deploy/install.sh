@@ -138,6 +138,7 @@ print_proxy_snippet() {
 	echo "---"
 	sed "s/example.org/$host/g" "$SCRIPT_DIR/proxy/Caddyfile"
 	echo "---"
+	echo "Apache, nginx, Traefik: $SCRIPT_DIR/proxy/ (upstream 127.0.0.1:7676)."
 }
 
 if ! command -v systemctl >/dev/null 2>&1; then

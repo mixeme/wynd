@@ -17,7 +17,7 @@
 	import { annotateProxySnippet } from '$lib/admin/proxy-snippet';
 	import { fetchProxySnippet, serverCaption } from '$lib/admin/admin';
 
-	const kinds = ['nginx', 'caddy', 'traefik'] as const;
+	const kinds = ['nginx', 'caddy', 'traefik', 'apache'] as const;
 	let kind = $state<(typeof kinds)[number]>('nginx');
 	let snippet = $state('');
 	let server = $state('');

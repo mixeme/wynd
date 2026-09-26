@@ -253,14 +253,14 @@ paths:
 
   /admin/proxy/{kind}:
     get:
-      summary: Reverse proxy snippet (nginx, caddy, traefik)
+      summary: Reverse proxy snippet (nginx, caddy, traefik, apache)
       parameters:
         - name: kind
           in: path
           required: true
           schema:
             type: string
-            enum: [nginx, caddy, traefik]
+            enum: [nginx, caddy, traefik, apache]
       responses:
         "200":
           description: snippet text

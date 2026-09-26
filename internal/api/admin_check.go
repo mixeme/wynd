@@ -96,6 +96,8 @@ func (s *Server) handleAdminProxySnippet(w http.ResponseWriter, r *http.Request)
 		snippet = caddySnippet(s.PublicURL(), s.ListenAddr, maxBytes)
 	case "traefik":
 		snippet = traefikSnippet(s.ListenAddr, maxBytes)
+	case "apache":
+		snippet = apacheSnippet(s.PublicURL(), s.ListenAddr, maxBytes)
 	default:
 		writeError(w, auth.ErrNotFound)
 		return
@@ -178,6 +180,44 @@ http:
     wynd-body:
       buffering:
         maxRequestBodyBytes: ` + fmt.Sprintf("%d", maxBytes) + `
+`
+}
+
+// apacheSnippet — vhost для mod_proxy_http. Клиентский X-Forwarded-For
+// снимается до прокси: mod_proxy сам дописывает адрес клиента, и без unset
+// клиент выбирал бы себе корзину лимитера.
+func apacheSnippet(publicURL, listen string, maxBytes int64) string {
+	host := publicHost(publicURL)
+	port := listenPort(listen)
+	return `# Wynd reverse proxy (Apache 2.4)
+# a2enmod proxy proxy_http ssl headers rewrite setenvif
+<VirtualHost *:80>
+    ServerName ` + host + `
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} !^/\.well-known/acme-challenge/
+    RewriteRule ^ https://%{SERVER_NAME}%{REQUEST_URI} [R=301,L]
+</VirtualHost>
+
+<VirtualHost *:443>
+    ServerName ` + host + `
+    SSLEngine on
+    SSLCertificateFile /etc/letsencrypt/live/` + host + `/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/` + host + `/privkey.pem
+
+    RequestHeader unset X-Forwarded-For
+    RequestHeader set X-Real-IP "%{REMOTE_ADDR}s"
+    RequestHeader set X-Forwarded-Proto "https"
+
+    ProxyPreserveHost On
+    ProxyPass        "/" "http://127.0.0.1:` + port + `/" timeout=` + fmt.Sprintf("%d", proxy.ReadTimeoutSeconds) + ` flushpackets=on
+    ProxyPassReverse "/" "http://127.0.0.1:` + port + `/"
+
+    LimitRequestBody ` + fmt.Sprintf("%d", maxBytes) + `
+    SetEnvIfNoCase Accept "text/event-stream" no-gzip
+    SetEnvIf Request_URI "^/api/v1/probe/" no-gzip
+
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</VirtualHost>
 `
 }
 

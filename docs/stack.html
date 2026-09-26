@@ -123,7 +123,7 @@
 ├── web/           # SvelteKit-приложение: клиент и панель; сборка web/dist → go:embed
 │   ├── src/lib/   # ядро (api, sync, idb, queue, media, push) и Wynd UI
 │   └── src/routes/
-├── deploy/        # install.sh, systemd, Docker, шаблоны прокси (Caddy, nginx, Traefik)
+├── deploy/        # install.sh, systemd, Docker, шаблоны прокси (Caddy, Apache, nginx, Traefik)
 ├── scripts/       # сборка, тесты, локальный запуск (Windows)
 ├── assets/        # знак, лок, иконки
 └── docs/          # образ продукта, стек, макеты, справочники</code></pre>
@@ -261,7 +261,7 @@
   <tr><td>Docker / compose</td><td>Unraid, YunoHost, привычный контейнерный стек</td></tr>
 </table>
 
-<p>TLS — на реверс-прокси. Дефолт — <strong>Caddy</strong> с автонастройкой; при существующем nginx/traefik — готовый конфиг в логе установки. Без HTTPS продукт не работает: service worker, PWA, пуши, камера.</p>
+<p>TLS — на реверс-прокси. Дефолт — <strong>Caddy</strong> с автонастройкой; при существующем Apache/nginx/Traefik — шаблон в <code>deploy/proxy/</code> и готовый конфиг в панели («Проверка» → прокси). Без HTTPS продукт не работает: service worker, PWA, пуши, камера.</p>
 
 <h2>Отвергнутые альтернативы</h2>
 <p class="lede">Рассмотрено и сознательно не взято</p>

@@ -1,0 +1,33 @@
+# Wynd in Docker behind a reverse proxy already running on the host
+# (Apache, nginx, Traefik — templates in deploy/proxy/, upstream 127.0.0.1:7676).
+# No Caddy; the port is published on loopback only.
+#   docker compose -f compose.own-proxy.yaml up -d --build
+
+services:
+  wynd:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    ports:
+      - "127.0.0.1:7676:7676"
+    volumes:
+      - wynd-data:/data
+    environment:
+      WYND_PUBLIC_URL: https://example.org
+      # The host proxy reaches the container through docker-proxy, so the
+      # source is always the gateway of this network. Trust only it: a wider
+      # range would let any container on the host pick its rate-limit bucket.
+      WYND_TRUSTED_PROXIES: 172.30.76.1
+    networks:
+      - wynd
+    restart: unless-stopped
+
+networks:
+  wynd:
+    ipam:
+      config:
+        - subnet: 172.30.76.0/24
+          gateway: 172.30.76.1
+
+volumes:
+  wynd-data:

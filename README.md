@@ -15,7 +15,7 @@ Self-hosted журнал кругов: один бинарник Go, SQLite, Sve
 
 **Чтобы инстанс видели снаружи:**
 
-- домен и обратный прокси с TLS перед `127.0.0.1:7676` — Caddy ставит `install.sh`, шаблоны nginx и Traefik лежат в `deploy/proxy/`; таймаут чтения прокси не меньше 300 с (SSE и длинные загрузки);
+- домен и обратный прокси с TLS перед `127.0.0.1:7676` — Caddy ставит `install.sh`, шаблоны Apache, nginx и Traefik лежат в `deploy/proxy/`; таймаут чтения прокси не меньше 300 с (SSE и длинные загрузки);
 - SMTP-релей: участники входят по коду из письма. Без релея вход работает только на loopback — код пишется в журнал сервера и в `<каталог данных>/dev-auth-codes.log`.
 
 **Чтобы собрать из исходников:** Go 1.26 (`go.mod`), Node 22 и npm (та же версия, что в `deploy/docker/Dockerfile`). Для `scripts\test-integration.bat` — учётки SMTP-релеев в `dev/`.
@@ -32,7 +32,7 @@ sudo ./deploy/install.sh --from-source --public-url https://home.example.org
 
 Скрипт заводит пользователя `wynd`, каталог данных `/var/lib/wynd`, юнит `wynd.service`, при публичном адресе — Caddy (`--own-proxy` — не трогать прокси, напечатать фрагмент конфигурации). В конце печатает адрес первого запуска с токеном: там задаются пароль панели, имя инстанса и SMTP.
 
-Docker — `deploy/docker/compose.yaml` (Wynd и Caddy, данные в томе `wynd-data`); адрес — в `WYND_PUBLIC_URL`, домен — в `deploy/caddy/Caddyfile`.
+Docker — `deploy/docker/compose.yaml` (Wynd и Caddy, данные в томе `wynd-data`); адрес — в `WYND_PUBLIC_URL`, домен — в `deploy/caddy/Caddyfile`. Если на хосте уже есть прокси — `deploy/docker/compose.own-proxy.yaml`: только Wynd на `127.0.0.1:7676`, доверенный прокси — шлюз сети контейнера; конфиг прокси — из `deploy/proxy/`.
 
 ---
 
@@ -215,4 +215,4 @@ cd web && npm run build
 go build -o dist/wynd ./cmd/wynd
 ```
 
-Шаблоны деплоя — `deploy/` (Docker, systemd, Caddy/nginx/Traefik).
+Шаблоны деплоя — `deploy/` (Docker, systemd, Caddy/Apache/nginx/Traefik).

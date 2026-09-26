@@ -241,7 +241,7 @@ flowchart TB
   - Сертификат (строка «Let’s Encrypt», название из кадра): проба — обычное TLS-рукопожатие на порт из `public_url`; при отказе цепочка берётся из `tls.CertificateVerificationError`, без `InsecureSkipVerify`, и отказ раскладывается: истёк, не для этого домена, самоподписанный, неизвестный центр или неполная цепочка (CHK-2). Любой доверенный центр — `ok`; Let’s Encrypt узнаётся только по Organization, CN не смотрим (CHK-3). `warn` — когда осталось меньше четверти срока жизни сертификата: ACME-клиенты продлевают за треть, значит продление не прошло; фиксированные 30 дней горели бы у 45-дневных сертификатов постоянно.
   - Разбор `public_url` один на все пробы (`parsePublicURL`): IPv6 без скобок, порт по схеме. При HTTPS на нестандартном порту строка «HTTP → HTTPS» — `na`; иначе проба идёт на порт 80 и засчитывает только 301/308 с `Location: https://…` (CHK-4, CHK-5). Вся проверка — не дольше 15 с, TLS и редирект параллельно (CHK-6).
   - NTP — один запрос к `pool.ntp.org` без учёта задержки и проверки ответа сервера (stratum, длина): при пороге 5 с этого хватает; мусорный ответ даст ложное расхождение, не сбой (CHK-7).
-  - Почта — `mail`: `smtp_test_sent_at` и `smtp_last_error` (успех или текст сбоя). DKIM нет. Сниппеты nginx/Caddy/Traefik — заголовки клиента и read timeout 300 с (`internal/proxy.ReadTimeoutSeconds`, `deploy/proxy/*`).
+  - Почта — `mail`: `smtp_test_sent_at` и `smtp_last_error` (успех или текст сбоя). DKIM нет. Сниппеты nginx/Caddy/Traefik/Apache — заголовки клиента и read timeout 300 с; Apache снимает клиентский `X-Forwarded-For` (`RequestHeader unset`), адрес дописывает mod_proxy (`internal/proxy.ReadTimeoutSeconds`, `deploy/proxy/*`).
 
 ### Оплата
 
