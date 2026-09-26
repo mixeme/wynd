@@ -245,6 +245,50 @@ func TestSearchMatchesWordPrefix(t *testing.T) {
 	}
 }
 
+// Название дня ищется по моменту, когда его дали, а не по дате дня: новичок,
+// вступивший в тот же день, не находит название, данное до него.
+func TestSearchHidesDayTitleGivenBeforeJoinSameDate(t *testing.T) {
+	ch, svc := newSearchEnv(t)
+	ctx := t.Context()
+	now := time.Date(2026, 9, 26, 10, 0, 0, 0, time.UTC)
+	circle, _, _, err := ch.CreateCircle(ctx, chronicle.CreateCircleInput{
+		Name: "Семья", OwnerAccountID: "owner", OwnerName: "Аня", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ch.CreatePost(ctx, chronicle.PostInput{
+		CircleID: circle.ID, AccountID: "owner", Body: "утро", EntryDate: "2026-09-26", Now: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := ch.SetDayTitle(ctx, chronicle.DayTitleInput{
+		CircleID: circle.ID, AccountID: "owner", EntryDate: "2026-09-26",
+		Title: "дотвоегоприхода", Now: now.Add(time.Minute),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := ch.Join(ctx, chronicle.JoinInput{
+		CircleID: circle.ID, AccountID: "bob", Name: "Боб", Now: now.Add(time.Hour),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	hits, err := svc.SearchCircle(ctx, "bob", circle.ID, "дотвоегоприхода", 10, search.Filters{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) != 0 {
+		t.Fatalf("название дня, данное до вступления, найдено: %+v", hits)
+	}
+	hits, err = svc.SearchCircle(ctx, "owner", circle.ID, "дотвоегоприхода", 10, search.Filters{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) != 1 {
+		t.Fatalf("владелец не нашёл своё название дня: %+v", hits)
+	}
+}
+
 // Инвариант (SRCH-3): в поиске лежит актуальная версия названия дня. Правка
 // или удаление старой версии не должны уносить день из поиска.
 func TestSearchKeepsCurrentDayTitle(t *testing.T) {

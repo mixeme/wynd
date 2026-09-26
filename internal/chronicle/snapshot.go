@@ -305,12 +305,25 @@ func (c *Chronicle) DaysSnapshot(ctx context.Context, circleID, accountID string
 		return nil, err
 	}
 
-	rows, err := c.db.QueryContext(ctx, `
-		SELECT d.circle_id, d.entry_date, d.title, d.cover_post_id, d.cover_blob_id
+	// Название и обложка дня — сказанное в свой момент: их видит тот, кто
+	// тогда был в круге. День виден по своей записи, но название, данное до
+	// вступления, новичку не показывается (как запись до вступления).
+	rows, err := c.db.QueryContext(ctx, fmt.Sprintf(`
+		SELECT d.circle_id, d.entry_date,
+		  CASE WHEN t.event_seq IS NOT NULL AND %s THEN d.title END,
+		  CASE WHEN dc.event_seq IS NOT NULL AND cp.deleted = 0 AND %s AND %s THEN d.cover_post_id END,
+		  CASE WHEN dc.event_seq IS NOT NULL AND cp.deleted = 0 AND %s AND %s THEN d.cover_blob_id END
 		FROM days d
+		JOIN memberships m ON m.circle_id = d.circle_id AND m.account_id = ?
+		LEFT JOIN day_titles t ON t.event_seq = d.title_event_seq
+		LEFT JOIN day_covers dc ON dc.event_seq = d.cover_event_seq
+		LEFT JOIN posts cp ON cp.id = d.cover_post_id
 		WHERE d.circle_id = ?
 		ORDER BY d.entry_date DESC
-	`, circleID)
+	`, sqlVisibleAtMembership("t.created_at"),
+		sqlVisibleAtMembership("dc.created_at"), sqlVisibleAtMembership("cp.created_at"),
+		sqlVisibleAtMembership("dc.created_at"), sqlVisibleAtMembership("cp.created_at"),
+	), accountID, circleID)
 	if err != nil {
 		return nil, err
 	}
@@ -326,19 +339,24 @@ func (c *Chronicle) DaysSnapshot(ctx context.Context, circleID, accountID string
 		if count == 0 {
 			continue
 		}
+		titleEditable, coverEditable := titleUntil[d.EntryDate], coverUntil[d.EntryDate]
 		if title.Valid {
 			d.Title = title.String
+		} else {
+			titleEditable = nil
 		}
 		if coverPost.Valid {
 			d.CoverPostID = coverPost.String
 		}
 		if coverBlob.Valid {
 			d.CoverBlobID = coverBlob.String
+		} else {
+			coverEditable = nil
 		}
 		out = append(out, DaySummary{
 			Day: d, PostCount: count,
-			TitleEditableUntil: titleUntil[d.EntryDate],
-			CoverEditableUntil: coverUntil[d.EntryDate],
+			TitleEditableUntil: titleEditable,
+			CoverEditableUntil: coverEditable,
 		})
 	}
 	return out, rows.Err()

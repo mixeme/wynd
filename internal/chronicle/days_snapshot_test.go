@@ -100,3 +100,52 @@ func TestDaysSnapshotCarriesEditableUntil(t *testing.T) {
 		}
 	}
 }
+
+// Инвариант: название и обложка дня — сказанное в свой момент. Новичок видит
+// день по своей записи, но название и обложку, данные до его вступления, —
+// нет; владелец видит всё. Раньше день приходил с чужим прошлым названием.
+func TestDaysSnapshotHidesTitleAndCoverBeforeJoin(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+
+	early := e.post(circle.ID, "owner", "до новичка", "2026-08-01", e.after(0))
+	e.seedBlob("blob-1", "owner")
+	e.attachPhoto(early.ID, "blob-1")
+	if err := e.ch.SetDayTitle(e.ctx, chronicle.DayTitleInput{
+		CircleID: circle.ID, AccountID: "owner", EntryDate: "2026-08-01",
+		Title: "Прошлое", Now: e.after(time.Minute),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.ch.SetDayCover(e.ctx, chronicle.DayCoverInput{
+		CircleID: circle.ID, AccountID: "owner", EntryDate: "2026-08-01",
+		PostID: early.ID, BlobID: "blob-1", Now: e.after(2 * time.Minute),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	e.join(circle.ID, "newbie", "Боб", e.after(time.Hour))
+	e.post(circle.ID, "newbie", "я пришёл", "2026-08-01", e.after(time.Hour+time.Minute))
+
+	newbie, err := e.ch.DaysSnapshot(e.ctx, circle.ID, "newbie")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(newbie) != 1 || newbie[0].PostCount != 1 {
+		t.Fatalf("новичок видит день по своей записи: %+v", newbie)
+	}
+	d := newbie[0].Day
+	if d.Title != "" || d.CoverPostID != "" || d.CoverBlobID != "" {
+		t.Fatalf("новичку ушло сказанное до него: title=%q cover=%q/%q", d.Title, d.CoverPostID, d.CoverBlobID)
+	}
+	if newbie[0].TitleEditableUntil != nil || newbie[0].CoverEditableUntil != nil {
+		t.Fatal("сроки правки скрытых названия и обложки не отдаются")
+	}
+
+	owner, err := e.ch.DaysSnapshot(e.ctx, circle.ID, "owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(owner) != 1 || owner[0].Day.Title != "Прошлое" || owner[0].Day.CoverBlobID != "blob-1" {
+		t.Fatalf("владелец видит название и обложку: %+v", owner)
+	}
+}

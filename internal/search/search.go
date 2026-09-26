@@ -15,7 +15,8 @@ const defaultAuthorLimit = 100
 // visibleCarrierSQL — попадание видно, только если видна запись-носитель.
 // Раньше видимость проверялась по created_at самой строки FTS, и комментарий
 // к невидимой записи находился вместе с миниатюрой этой записи (SRCH-1).
-// Для комментария носитель — его запись, для дня — сам день по entry_date.
+// Для комментария носитель — его запись; день (строка названия) — по
+// моменту, когда название дали: новичок того же дня не видит данное до него.
 // Комментарий дополнительно должен сам попадать в отрезок: иначе вышедший с
 // доступом находил поиском комментарии, написанные после его ухода, которые
 // лента скрывает (аудит 2026-09-22).
@@ -28,8 +29,8 @@ const visibleCarrierSQL = `
 	  WHERE m.circle_id = f.circle_id AND m.account_id = ?
 	    AND ms.can_read = 1
 	    AND CASE WHEN f.kind = 'day' THEN
-	          date(COALESCE(f.entry_date, p.entry_date)) >= date(ms.started_at)
-	          AND (ms.ended_at IS NULL OR date(COALESCE(f.entry_date, p.entry_date)) <= date(ms.ended_at))
+	          f.created_at >= ms.started_at
+	          AND (ms.ended_at IS NULL OR f.created_at < ms.ended_at)
 	        ELSE
 	          p.created_at >= ms.started_at
 	          AND (ms.ended_at IS NULL OR p.created_at < ms.ended_at)
