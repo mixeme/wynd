@@ -125,7 +125,10 @@
 	function circlesInGroup(group: GroupRecord): StreetCircle[] {
 		return group.circleIds
 			.map((id) => circleMap.get(id))
-			.filter((c): c is StreetCircle => c !== undefined && !c.pinned);
+			// Закреплённый круг остаётся в своей группе: закрепление — ярлык
+			// сверху, а не переезд. Раньше он пропадал из папки, и группа
+			// показывала счётчик при пустом содержимом.
+			.filter((c): c is StreetCircle => c !== undefined);
 	}
 
 	function groupMemberCount(group: GroupRecord): number {
@@ -158,12 +161,18 @@
 		goto(circle.pendingJoin ? `/circles/${circle.id}/join` : `/circles/${circle.id}`);
 	}
 
-	function startLongPress(circle: StreetCircle) {
+	// Один круг может стоять и в «Закреплённых», и в группе: меню открывается
+	// у той строки, которую держали, — ключ несёт раздел.
+	function menuKey(section: string, circle: StreetCircle): string {
+		return `${section}|${circleKey(circle)}`;
+	}
+
+	function startLongPress(circle: StreetCircle, section: string) {
 		if (circle.pendingJoin) return;
 		clearTimeout(longPressTimer);
 		longPressTimer = setTimeout(() => {
 			pressMark = markLongPress();
-			pinMenuKey = circleKey(circle);
+			pinMenuKey = menuKey(section, circle);
 		}, LONG_PRESS_MS);
 	}
 
@@ -410,16 +419,16 @@
 					time={circle.time}
 					badge={circle.unread || undefined}
 					color={circle.color}
-					card={pinMenuKey === circleKey(circle)}
+					card={pinMenuKey === menuKey('pin', circle)}
 					actionLabel={door.actionLabel}
 					actionLabel2={door.actionLabel2}
 					onaction={() => void confirmPin(circle)}
 					onaction2={door.onaction2}
 					onclick={() => openCircle(circle)}
-					onmousedown={() => startLongPress(circle)}
+					onmousedown={() => startLongPress(circle, 'pin')}
 					onmouseup={cancelLongPress}
 					onmouseleave={cancelLongPress}
-					ontouchstart={() => startLongPress(circle)}
+					ontouchstart={() => startLongPress(circle, 'pin')}
 					ontouchend={cancelLongPress}
 					ontouchcancel={cancelLongPress}
 				/>
@@ -486,16 +495,16 @@
 						time={circle.time}
 						badge={circle.unread || undefined}
 						color={circle.color}
-						card={pinMenuKey === circleKey(circle)}
+						card={pinMenuKey === menuKey(`g:${group.id}`, circle)}
 						actionLabel={door.actionLabel}
 						actionLabel2={door.actionLabel2}
 						onaction={() => void confirmPin(circle)}
 						onaction2={door.onaction2}
 						onclick={() => openCircle(circle)}
-						onmousedown={() => startLongPress(circle)}
+						onmousedown={() => startLongPress(circle, `g:${group.id}`)}
 						onmouseup={cancelLongPress}
 						onmouseleave={cancelLongPress}
-						ontouchstart={() => startLongPress(circle)}
+						ontouchstart={() => startLongPress(circle, `g:${group.id}`)}
 						ontouchend={cancelLongPress}
 						ontouchcancel={cancelLongPress}
 					/>
@@ -548,16 +557,16 @@
 					time={circle.time}
 					badge={circle.unread || undefined}
 					color={circle.color}
-					card={pinMenuKey === circleKey(circle)}
+					card={pinMenuKey === menuKey('rest', circle)}
 					actionLabel={door.actionLabel}
 					actionLabel2={door.actionLabel2}
 					onaction={() => void confirmPin(circle)}
 					onaction2={door.onaction2}
 					onclick={() => openCircle(circle)}
-					onmousedown={() => startLongPress(circle)}
+					onmousedown={() => startLongPress(circle, 'rest')}
 					onmouseup={cancelLongPress}
 					onmouseleave={cancelLongPress}
-					ontouchstart={() => startLongPress(circle)}
+					ontouchstart={() => startLongPress(circle, 'rest')}
 					ontouchend={cancelLongPress}
 					ontouchcancel={cancelLongPress}
 				/>

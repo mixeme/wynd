@@ -396,6 +396,7 @@
 			// полной отправки — отсекаем здесь, после сжатия (план 42, MED-5).
 			const maxBytes = compression?.attachment_max_bytes ?? 0;
 			const tooLarge: string[] = [];
+			const notCompressed: string[] = [];
 			for (const file of list) {
 				const exif = await readExif(file);
 				let queueFile: QueueFile;
@@ -404,9 +405,14 @@
 				} else if (isVideoFile(file)) {
 					compressIndex += 1;
 					compressProgress = 0;
-					queueFile = await compressVideo(file, compression, (progress) => {
+					const { fallbackReason, ...video } = await compressVideo(file, compression, (progress) => {
 						compressProgress = progress;
 					});
+					queueFile = video;
+					if (fallbackReason && maxBytes > 0 && video.size > maxBytes) {
+						notCompressed.push(`${file.name} (${fallbackReason})`);
+						continue;
+					}
 				} else {
 					queueFile = await fileToQueueBuffer(file);
 				}
@@ -440,9 +446,16 @@
 				next.push({ preview, file: queueFile, meta });
 				picked = [...next];
 			}
-			if (tooLarge.length) {
-				error = `Больше ${formatBytes(maxBytes)} — сервер не примет: ${tooLarge.join(', ')}`;
+			const problems: string[] = [];
+			if (notCompressed.length) {
+				problems.push(
+					`Видео не сжалось, а без сжатия больше ${formatBytes(maxBytes)}: ${notCompressed.join(', ')}`
+				);
 			}
+			if (tooLarge.length) {
+				problems.push(`Больше ${formatBytes(maxBytes)} — сервер не примет: ${tooLarge.join(', ')}`);
+			}
+			if (problems.length) error = problems.join('. ');
 		} finally {
 			compressing = false;
 			compressProgress = 0;

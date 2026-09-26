@@ -109,17 +109,44 @@ export async function encodePhoto(canvas: BlobEncoder, quality: number): Promise
 	return toBlobAs(canvas, 'image/jpeg', quality);
 }
 
+/**
+ * Сжатие видео; не вышло — оригинал и причина. Раньше причина терялась:
+ * 4K на 103 МБ уходил «как есть» и упирался в потолок, а на экране было
+ * только «больше 100 МБ», без слова о том, что сжатия не было.
+ */
 export async function compressVideo(
 	file: File,
 	settings?: CompressionSettings,
 	onProgress?: (progress: number) => void
-): Promise<CompressedMedia> {
+): Promise<CompressedMedia & { fallbackReason?: string }> {
 	try {
 		const { encodeVideo } = await import('./video-encode');
 		return await encodeVideo(file, settings, onProgress);
-	} catch {
-		return fileToQueueBuffer(file);
+	} catch (err) {
+		console.warn('wynd: video compression failed', err);
+		return { ...(await fileToQueueBuffer(file)), fallbackReason: videoFallbackReason(err) };
 	}
+}
+
+/** Причина, по которой видео ушло без сжатия, — словами для экрана. */
+export function videoFallbackReason(err: unknown): string {
+	const code = err instanceof Error ? err.message : '';
+	switch (code) {
+		case 'no_encoder':
+			return 'браузер не умеет кодировать видео';
+		case 'no_video_track':
+		case 'video_discarded':
+		case 'conversion_invalid':
+			return 'браузер не читает этот формат видео';
+		case 'audio_discarded':
+			return 'браузер не перекодирует звук этого видео';
+		case 'empty_output':
+			return 'сжатие вернуло пустой файл';
+	}
+	if (typeof globalThis.VideoEncoder === 'undefined') {
+		return 'в браузере нет кодировщика видео (WebCodecs)';
+	}
+	return 'сжатие прервалось с ошибкой';
 }
 
 export function isImageFile(file: File): boolean {
