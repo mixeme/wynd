@@ -1,4 +1,4 @@
-import { apiPath } from '$lib/api/client';
+import { apiPath, normalizeOrigin } from '$lib/api/client';
 
 export interface ExternalReport {
 	https_ok: boolean;
@@ -14,6 +14,8 @@ export interface ExternalReport {
 	client_ip: string;
 	x_forwarded_for: string;
 	x_real_ip: string;
+	probe_instance: string;
+	page_host: string;
 }
 
 interface ProbeInfo {
@@ -24,6 +26,7 @@ interface ProbeInfo {
 	client_ip?: string;
 	x_forwarded_for?: string;
 	x_real_ip?: string;
+	instance?: string;
 }
 
 const MIN_BODY_PROBE_BYTES = 2 * 1024 * 1024;
@@ -114,7 +117,11 @@ async function probeSSE(origin: string): Promise<boolean> {
 async function probePWA(origin: string): Promise<boolean> {
 	if (!('serviceWorker' in navigator)) return false;
 	try {
-		const manifest = await publicFetch(origin, '/manifest.webmanifest');
+		// Манифест лежит в корне сайта, не под /api/v1: через publicFetch проверка
+		// просила /api/v1/manifest.webmanifest и краснела на любом инстансе.
+		const manifest = await fetch(`${normalizeOrigin(origin)}/manifest.webmanifest`, {
+			cache: 'no-store'
+		});
 		if (!manifest.ok) return false;
 		const regs = await navigator.serviceWorker.getRegistrations();
 		return regs.length > 0;
@@ -158,7 +165,11 @@ export async function collectExternalReport(
 		pwa_ok: pwaOK,
 		client_ip: probe?.client_ip ?? '',
 		x_forwarded_for: probe?.x_forwarded_for ?? '',
-		x_real_ip: probe?.x_real_ip ?? ''
+		x_real_ip: probe?.x_real_ip ?? '',
+		// Метка процесса и имя страницы: сервер сверит их с собой и с
+		// public_url и засчитает домен без сверки адресов (Docker, NAT).
+		probe_instance: probe?.instance ?? '',
+		page_host: typeof location !== 'undefined' ? location.hostname : ''
 	};
 }
 

@@ -449,3 +449,23 @@ func TestBootstrapRejectsInvalidPublicURL(t *testing.T) {
 		}
 	}
 }
+
+// Тестовый пуш без подписки не «отправлен»: раньше ответ был 200 на ноль
+// устройств. Подписку браузера панель присылает в теле, и адрес проверяется
+// как у обычной подписки — во внутреннюю сеть сервер не пойдёт.
+func TestAdminPushTestTargets(t *testing.T) {
+	srv, _, _, _ := setupAPI(t)
+	token := adminToken(t, srv)
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/admin/push/test", token, nil)
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "push_no_subscriptions") {
+		t.Fatalf("no subscriptions: %d %s", rec.Code, rec.Body.String())
+	}
+	for _, endpoint := range []string{"http://push.example/ep", "https://127.0.0.1/ep", "https://10.0.0.5/ep"} {
+		rec = doJSON(t, srv, http.MethodPost, "/api/v1/admin/push/test", token, map[string]string{
+			"endpoint": endpoint, "p256dh": "k", "auth": "a",
+		})
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("%s: %d %s", endpoint, rec.Code, rec.Body.String())
+		}
+	}
+}

@@ -253,13 +253,52 @@ func (s *Service) SendSignal(ctx context.Context, accountID string, signal Signa
 }
 
 // SendTest sends a test notification to all subscriptions of an account.
+// Without a single subscription it returns ErrNoSubscriptions: «отправили»
+// on zero devices told the admin a push went out when nothing did.
 func (s *Service) SendTest(ctx context.Context, accountID string) error {
-	return s.SendSignal(ctx, accountID, Signal{
-		Type:  "test",
-		Count: 0,
-		Title: "Проверка уведомлений Wynd",
-		Body:  "Если вы видите это сообщение, push-уведомления работают.",
-	})
+	var n int
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM push_subscriptions WHERE account_id = ?`, accountID,
+	).Scan(&n); err != nil {
+		return fmt.Errorf("push: count subscriptions: %w", err)
+	}
+	if n == 0 {
+		return ErrNoSubscriptions
+	}
+	return s.SendSignal(ctx, accountID, testSignal)
+}
+
+var testSignal = Signal{
+	Type:  "test",
+	Count: 0,
+	Title: "Проверка уведомлений Wynd",
+	Body:  "Если вы видите это сообщение, push-уведомления работают.",
+}
+
+// SendTestTo delivers the test signal to one browser subscription without
+// storing it. The endpoint is checked like a subscription's.
+func (s *Service) SendTestTo(ctx context.Context, endpoint, p256dh, authKey string) error {
+	endpoint = strings.TrimSpace(endpoint)
+	p256dh = strings.TrimSpace(p256dh)
+	authKey = strings.TrimSpace(authKey)
+	if endpoint == "" || p256dh == "" || authKey == "" {
+		return ErrInvalid
+	}
+	if err := validateEndpoint(ctx, endpoint); err != nil {
+		return err
+	}
+	pub, priv, err := s.loadKeys(ctx)
+	if err != nil {
+		return err
+	}
+	if pub == "" || priv == "" {
+		return ErrNotConfigured
+	}
+	payload, err := json.Marshal(testSignal)
+	if err != nil {
+		return fmt.Errorf("push: marshal signal: %w", err)
+	}
+	return s.deliver(ctx, pub, priv, endpoint, p256dh, authKey, payload)
 }
 
 func (s *Service) deliver(ctx context.Context, pub, priv, endpoint, p256dh, authKey string, payload []byte) error {
@@ -290,7 +329,7 @@ func (s *Service) deliver(ctx context.Context, pub, priv, endpoint, p256dh, auth
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return nil
 	}
-	return &deliveryError{StatusCode: resp.StatusCode, Host: endpointHost(endpoint)}
+	return fmt.Errorf("%w: %w", ErrDelivery, &deliveryError{StatusCode: resp.StatusCode, Host: endpointHost(endpoint)})
 }
 
 // deliveryFailure убирает из ошибки полный адрес: *url.Error печатает URL
@@ -300,7 +339,7 @@ func deliveryFailure(endpoint string, err error) error {
 	if errors.As(err, &ue) {
 		err = ue.Err
 	}
-	return fmt.Errorf("push: deliver to %s: %w", endpointHost(endpoint), err)
+	return fmt.Errorf("push: deliver to %s: %w: %w", endpointHost(endpoint), ErrDelivery, err)
 }
 
 func (s *Service) loadKeys(ctx context.Context) (public, private string, err error) {

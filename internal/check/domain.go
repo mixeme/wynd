@@ -94,6 +94,14 @@ func checkDomain(ctx context.Context, in Input) Result {
 		r.Detail = fmt.Sprintf("%s не резолвится", host)
 		return r
 	}
+	// Сверка адресов — косвенная; прямое доказательство сильнее: браузер
+	// пришёл по этому имени и получил метку этого процесса. Так домен
+	// подтверждается и в Docker, где исходящий адрес — адрес контейнера.
+	if in.ReachedThisServer {
+		r.Status = StatusOK
+		r.Detail = fmt.Sprintf("%s ведёт на %s — браузер дошёл до этого сервера", host, ips[0].IP)
+		return r
+	}
 	if egress == "" {
 		r.Status = StatusWarn
 		r.Detail = fmt.Sprintf("%s → %s; не удалось определить адрес сервера", host, ips[0].IP)

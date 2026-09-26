@@ -93,6 +93,7 @@ func TestSPA_cachePolicyOutsideLoopback(t *testing.T) {
 	root := fstest.MapFS{
 		"index.html":                  &fstest.MapFile{Data: []byte("<html>app</html>")},
 		"sw.js":                       &fstest.MapFile{Data: []byte("//sw")},
+		"push-sw.js":                  &fstest.MapFile{Data: []byte("//push")},
 		"_app/version.json":           &fstest.MapFile{Data: []byte(`{"version":"1"}`)},
 		"_app/immutable/chunk.abc.js": &fstest.MapFile{Data: []byte("x")},
 	}
@@ -104,6 +105,7 @@ func TestSPA_cachePolicyOutsideLoopback(t *testing.T) {
 		{false, "/_app/immutable/chunk.abc.js", "public, max-age=31536000, immutable"},
 		{false, "/_app/version.json", "no-cache"},
 		{false, "/sw.js", "no-cache"},
+		{false, "/push-sw.js", "no-cache"},
 		{false, "/index.html", "no-cache"},
 		{true, "/_app/immutable/chunk.abc.js", "no-cache"},
 	} {

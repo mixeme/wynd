@@ -107,6 +107,17 @@
 		}
 	}
 
+	async function showInvite(inv: AdminInvite) {
+		kind = inv.kind === 'single' ? 'single' : 'multi';
+		const lifeSec = (Date.parse(inv.expires_at) - Date.parse(inv.created_at)) / 1000;
+		ttlSec = TTL_OPTIONS.reduce((best, opt) =>
+			Math.abs(opt.sec - lifeSec) < Math.abs(best.sec - lifeSec) ? opt : best
+		).sec;
+		currentInviteId = inv.id;
+		inviteUrl = inviteUrlFor(inv.token);
+		await renderQr(inviteUrl);
+	}
+
 	async function copyLink() {
 		if (!inviteUrl) return;
 		await copyText(inviteUrl);
@@ -133,7 +144,15 @@
 			mode = access.registration_mode;
 			server = caption;
 			await loadLiveInvites();
-			await makeInvite();
+			// Заход на экран не выпускает ссылку: раньше каждое открытие
+			// «Доступа» создавало новую многоразовую и копило живые. Есть
+			// живая — показываем свежую; нет — выпускаем одну.
+			const latest = liveInvites[0];
+			if (latest) {
+				await showInvite(latest);
+			} else {
+				await makeInvite();
+			}
 		} catch (err) {
 			error = authErrorHint(err);
 		} finally {

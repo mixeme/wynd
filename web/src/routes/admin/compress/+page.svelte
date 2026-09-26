@@ -82,7 +82,7 @@
 				<div class="grow">
 					<SectionLabel class="mt-0 mx-0 mb-10">Фотографии</SectionLabel>
 					<div class="flex-mid gap-10 mb-10">
-						<span class="sz-12 w110">Длинная сторона</span>
+						<span class="sz-12 w120 nowrap">Длинная сторона</span>
 						<Input
 							admin
 							class="w88"
@@ -93,19 +93,19 @@
 						<span class="note">px</span>
 					</div>
 					<div class="flex-mid gap-10 mb-10">
-						<span class="sz-12 w110">Формат и качество</span>
-						<span class="note">WebP q</span>
+						<span class="sz-12 w120 nowrap">Формат и качество</span>
 						<Input
 							admin
-							class="w64"
+							class="w88"
 							type="number"
 							bind:value={settings.photo_quality}
 							onchange={() => void persist()}
 						/>
+						<span class="note">WebP</span>
 					</div>
 					<SectionLabel class="mt-22 mx-0 mb-10">Видео</SectionLabel>
 					<div class="flex-mid gap-10 mb-10">
-						<span class="sz-12 w110">Разрешение</span>
+						<span class="sz-12 w120 nowrap">Разрешение</span>
 						<Input
 							admin
 							class="w88"
@@ -116,7 +116,7 @@
 						<span class="note">p</span>
 					</div>
 					<div class="flex-mid gap-10">
-						<span class="sz-12 w110">Битрейт</span>
+						<span class="sz-12 w120 nowrap">Битрейт</span>
 						<Input
 							admin
 							class="w88"
@@ -128,7 +128,7 @@
 					</div>
 					<SectionLabel class="mt-22 mx-0 mb-10">Файлы</SectionLabel>
 					<div class="flex-mid gap-10">
-						<span class="sz-12 w110">Потолок размера</span>
+						<span class="sz-12 w120 nowrap">Потолок размера</span>
 						<Input
 							admin
 							class="w88"

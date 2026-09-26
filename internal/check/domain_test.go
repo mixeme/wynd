@@ -47,3 +47,21 @@ func TestCheckDomainBehindNATIsWarnNotFail(t *testing.T) {
 		}
 	}
 }
+
+// Браузер пришёл по имени из public_url и получил метку этого процесса —
+// домен ведёт сюда, какой бы ни был исходящий адрес: в Docker это адрес
+// контейнера, и сверка по нему давала вечное «сервер за NAT».
+func TestCheckDomainConfirmedByBrowser(t *testing.T) {
+	now := time.Date(2026, 9, 26, 12, 0, 0, 0, time.UTC)
+	for _, egress := range []string{"172.30.76.2", "203.0.113.7"} {
+		r := domainResult(t, check.Input{
+			PublicURL:         "https://localhost",
+			ServerEgressIP:    egress,
+			ReachedThisServer: true,
+			Now:               now,
+		})
+		if r.Status != check.StatusOK || !strings.Contains(r.Detail, "браузер дошёл") {
+			t.Fatalf("egress %s: %s %q", egress, r.Status, r.Detail)
+		}
+	}
+}

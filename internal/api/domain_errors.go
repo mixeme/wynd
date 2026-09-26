@@ -39,6 +39,11 @@ func writeDomainError(w http.ResponseWriter, err error) {
 		})
 	case errors.Is(err, push.ErrNotConfigured):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "push_not_configured"})
+	case errors.Is(err, push.ErrNoSubscriptions):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "push_no_subscriptions"})
+	case errors.Is(err, push.ErrDelivery):
+		log.Printf("api: push delivery failed: %v", err)
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "push_failed"})
 	default:
 		log.Printf("api: unmapped domain error: %v", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})

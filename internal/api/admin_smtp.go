@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
 	"gitea.mixdep.ru/mix/wynd/internal/mail"
@@ -93,7 +94,23 @@ func (s *Server) handleAdminPushTest(w http.ResponseWriter, r *http.Request) {
 		writeError(w, auth.ErrForbidden)
 		return
 	}
-	if err := s.Push.SendTest(r.Context(), sess.AccountID); err != nil {
+	// Панель присылает подписку своего браузера: хранить её под аккаунтом
+	// админа нельзя — endpoint уникален, и в общем с участником браузере
+	// подписка панели отняла бы у участника его уведомления.
+	var body pushSubscribeBody
+	if r.ContentLength > 0 {
+		if b, ok := bindJSON[pushSubscribeBody](w, r); ok {
+			body = b
+		} else {
+			return
+		}
+	}
+	if strings.TrimSpace(body.Endpoint) != "" {
+		err = s.Push.SendTestTo(r.Context(), body.Endpoint, body.P256dh, body.Auth)
+	} else {
+		err = s.Push.SendTest(r.Context(), sess.AccountID)
+	}
+	if err != nil {
 		writeError(w, err)
 		return
 	}

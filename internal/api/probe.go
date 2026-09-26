@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net"
@@ -51,7 +53,16 @@ func (s *Server) handleProbe(w http.ResponseWriter, r *http.Request) {
 		"client_ip":              client,
 		"x_forwarded_for":        xff,
 		"x_real_ip":              xri,
+		"instance":               s.probeInstance,
 	})
+}
+
+func newProbeInstance() string {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return ""
+	}
+	return hex.EncodeToString(b)
 }
 
 func (s *Server) handleProbeStream(w http.ResponseWriter, r *http.Request) {

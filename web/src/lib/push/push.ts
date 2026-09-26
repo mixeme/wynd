@@ -1,4 +1,4 @@
-import { apiJson } from '$lib/api/client';
+import { ApiError, apiJson } from '$lib/api/client';
 import { listSessions } from '$lib/idb/db';
 
 function pushAvailable(): boolean {
@@ -53,6 +53,38 @@ export async function subscribePush(
 		}));
 	await postSubscription(origin, 'POST', sub);
 	return true;
+}
+
+export interface BrowserPushSubscription {
+	endpoint: string;
+	p256dh: string;
+	auth: string;
+}
+
+/**
+ * Подписка этого браузера для адресной проверки из панели. Разрешение
+ * спрашивается первым шагом: Firefox показывает запрос только внутри жеста
+ * пользователя, а после сетевых ожиданий жест уже истёк.
+ */
+export async function browserPushSubscription(
+	fetchKey: () => Promise<string>
+): Promise<BrowserPushSubscription> {
+	if (!pushAvailable()) throw new ApiError(0, 'push_unavailable');
+	const permission = await Notification.requestPermission();
+	if (permission !== 'granted') throw new ApiError(0, 'push_permission_denied');
+	const reg = await navigator.serviceWorker.ready;
+	const sub =
+		(await reg.pushManager.getSubscription()) ??
+		(await reg.pushManager.subscribe({
+			userVisibleOnly: true,
+			applicationServerKey: urlBase64ToUint8Array(await fetchKey()) as BufferSource
+		}));
+	const json = sub.toJSON();
+	return {
+		endpoint: json.endpoint ?? '',
+		p256dh: json.keys?.p256dh ?? '',
+		auth: json.keys?.auth ?? ''
+	};
 }
 
 export async function unsubscribePush(origin: string): Promise<void> {

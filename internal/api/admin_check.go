@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -75,8 +76,11 @@ func (s *Server) runChecks(ctx context.Context, external *check.ExternalReport) 
 		LastRoutineAt:   routineAt,
 		LastBackupAt:    backupAt,
 		External:        external,
-		TLS:             tlsInfo,
-		Now:             time.Now().UTC(),
+		ReachedThisServer: external != nil && s.probeInstance != "" &&
+			external.ProbeInstance == s.probeInstance &&
+			strings.EqualFold(strings.TrimSpace(external.PageHost), publicHostname(publicURL)),
+		TLS: tlsInfo,
+		Now: time.Now().UTC(),
 	}), nil
 }
 
@@ -260,6 +264,15 @@ func publicHost(publicURL string) string {
 		return "example.org"
 	}
 	return u
+}
+
+// publicHostname — имя хоста из public_url без порта, как location.hostname.
+func publicHostname(publicURL string) string {
+	u, err := url.Parse(publicURL)
+	if err != nil {
+		return ""
+	}
+	return u.Hostname()
 }
 
 func indexAny(s, sep string) int {

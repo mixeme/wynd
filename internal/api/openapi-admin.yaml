@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd admin API
-  version: 0.9.3
+  version: 0.9.4
   description: Admin routes (Bearer admin session). Participant routes are in openapi-participant.yaml.
 
 servers:
@@ -239,10 +239,14 @@ paths:
 
   /admin/push/test:
     post:
-      summary: Send test push to admin subscriptions
+      summary: Send test push to this browser's subscription (endpoint, p256dh, auth in body; not stored)
       responses:
         "200":
           description: OK
+        "409":
+          description: push_no_subscriptions — no subscription in body and none stored
+        "502":
+          description: push_failed — the push service refused the delivery
 
   /admin/check:
     post:

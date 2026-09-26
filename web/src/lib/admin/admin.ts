@@ -3,6 +3,7 @@ import { fetchInstance } from '$lib/auth/auth';
 import { displayHost } from '$lib/auth/origin';
 import { collectExternalReport, type ExternalReport } from '$lib/admin/external-probe';
 import { getAdminSession } from '$lib/idb/db';
+import { browserPushSubscription } from '$lib/push/push';
 
 async function origin(): Promise<string> {
 	return (await getAdminSession())?.origin ?? '';
@@ -273,8 +274,14 @@ export async function downloadVapidPublicKey(): Promise<void> {
 	URL.revokeObjectURL(url);
 }
 
+/** Тестовый пуш на этот браузер: подписка уходит в запросе, сервер её не хранит. */
 export async function sendAdminPushTest(): Promise<void> {
-	await adminJson('/admin/push/test', { method: 'POST' });
+	const sub = await browserPushSubscription(fetchVapidPublicKey);
+	await adminJson('/admin/push/test', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(sub)
+	});
 }
 
 export async function sendSmtpTest(to: string): Promise<void> {

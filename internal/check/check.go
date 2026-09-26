@@ -36,6 +36,10 @@ type ExternalReport struct {
 	ClientIP          string `json:"client_ip"`
 	XForwardedFor     string `json:"x_forwarded_for"`
 	XRealIP           string `json:"x_real_ip"`
+	// ProbeInstance — метка процесса из GET /probe, PageHost — имя, под
+	// которым браузер открыл панель.
+	ProbeInstance string `json:"probe_instance,omitempty"`
+	PageHost      string `json:"page_host,omitempty"`
 }
 
 // Input drives RunChecks.
@@ -50,8 +54,11 @@ type Input struct {
 	LastRoutineAt   *time.Time
 	LastBackupAt    *time.Time
 	External        *ExternalReport
-	TLS             *TLSInfo
-	Now             time.Time
+	// ReachedThisServer: браузер открыл панель по имени из public_url и
+	// получил из /probe метку этого процесса.
+	ReachedThisServer bool
+	TLS               *TLSInfo
+	Now               time.Time
 }
 
 // Result is one row in the admin check list.

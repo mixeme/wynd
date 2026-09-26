@@ -38,6 +38,10 @@ type Server struct {
 	Mux            *http.ServeMux
 	notifyWG       sync.WaitGroup
 	probes         *probeLimiter
+	// probeInstance — случайная метка процесса в GET /probe: браузер
+	// возвращает её в проверке, и «Домен» узнаёт, что имя ведёт сюда,
+	// даже когда исходящий адрес — адрес контейнера или NAT.
+	probeInstance string
 	// archiveBuilds — учётки, у которых сейчас собирается архив: ZIP целиком
 	// в памяти, и N параллельных запросов одного участника держали N копий
 	// среза (аудит 2026-09-22). Одна сборка на учётку, повтор — 429.
@@ -59,6 +63,7 @@ func NewServer(authSvc *auth.Service, ch *chronicle.Chronicle, blobs *blob.Store
 		ListenAddr:     listenAddr,
 		Mux:            http.NewServeMux(),
 		probes:         newProbeLimiter(),
+		probeInstance:  newProbeInstance(),
 	}
 	s.loopback.Store(loopback)
 	s.routes()

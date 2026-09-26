@@ -51,7 +51,10 @@ export default defineConfig({
 				// The plugin's default patterns leave out woff2, so offline would
 				// drop back to system fonts.
 				globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,webmanifest,woff2}'],
-				runtimeCaching: []
+				runtimeCaching: [],
+				// Показ пушей: generateSW сам событие push не обрабатывает, и
+				// сигнал приходил в пустоту — уведомление не показывалось никому.
+				importScripts: ['/push-sw.js']
 			},
 			integration: {
 				// Плагин всегда дописывает шаблон prerendered/**. У SPA пререндеренных

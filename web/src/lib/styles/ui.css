@@ -1766,6 +1766,12 @@ body.wide .dlg {
 .adm {
 	padding: 22px 26px 0;
 }
+/* Hint задан под экраны телефона — с полями 16 px по бокам. В колонке панели
+   они сдвигали подсказку относительно подписей и текста рядом. */
+.adm .hint {
+	margin-left: 0;
+	margin-right: 0;
+}
 .adm h4 {
 	font-size: 17px;
 	font-weight: 600;

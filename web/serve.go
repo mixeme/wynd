@@ -65,7 +65,7 @@ const immutableCacheControl = "public, max-age=31536000, immutable"
 func setSPAAssetCachePolicy(h http.Header, name string, loopback bool) {
 	base := path.Base(name)
 	switch {
-	case base == "sw.js", strings.HasPrefix(base, "workbox-"), base == "index.html":
+	case base == "sw.js", base == "push-sw.js", strings.HasPrefix(base, "workbox-"), base == "index.html":
 		h.Set("Cache-Control", "no-cache")
 	case strings.HasSuffix(name, ".webmanifest"):
 		h.Set("Cache-Control", "no-cache")
