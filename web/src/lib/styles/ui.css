@@ -2285,7 +2285,7 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
  * поверх низа экрана свои полосы (панель адреса, подсказка пароля над
  * клавиатурой), и кнопка вплотную к концу страницы из-под них не выходит. */
 .scroll-room {
-	padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
+	padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
 }
 /* Узкий экран (первый запуск с телефона): ряд карточек — столбиком,
  * .form-grid-2 — «подпись · поле» в две колонки вместо четырёх. */
