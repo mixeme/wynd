@@ -247,7 +247,7 @@
 					<Hint class="mt-12">{error}</Hint>
 				</div>
 			{/if}
-			<div class="mt-20">
+			<div class="mt-20 scroll-room">
 				{#if loading}
 					<span role="status" class="block note mb-8">
 						Сохраняем

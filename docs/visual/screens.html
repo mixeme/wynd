@@ -2576,13 +2576,13 @@
           <div style="font-weight:600;margin-bottom:12px">2 · Имя и адрес сервера</div>
           <div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center;font-size:12.5px">
             <span style="color:var(--muted)">Имя</span><span class="inp" style="width:100%">Дом Ани</span>
-            <span style="color:var(--muted)">Адрес</span><span class="inp mono" style="width:100%">home.example.org</span>
+            <span style="color:var(--muted)">Адрес</span><span class="inp mono" style="width:100%">https://home.example.org</span>
           </div>
         </div>
       </div>
       <div style="border:1px solid var(--line);background:var(--card);border-radius:12px;padding:16px">
         <div style="font-weight:600;margin-bottom:6px">3 · Почта</div>
-        <div style="font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.5">Люди входят по коду из письма. Без настройки SMTP письмо с кодом не отправится.</div>
+        <div style="font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.5">Люди входят по коду из письма. Почту можно настроить и позже в панели — до этого коды входа не уходят.</div>
         <div style="display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center;font-size:12.5px">
           <span style="color:var(--muted)">Хост</span>
           <span class="inp mono" style="width:100%">smtp.selfpost.io</span>
@@ -2607,7 +2607,7 @@
     <div class="btn" style="margin:20px 0 0">Сохранить и открыть панель</div>
   </div>
 </div>
-<span class="num">9.1</span><b>Первый запуск</b><i>Одна команда ставит бинарник и печатает ссылку с токеном; дальше человек не видит ни конфига, ни YAML. Первая карточка — пароль панели. Имя, адрес и почта — вторым рядом. Проверка почты до сохранения: подпись кнопки на месте, слева галочка если вход принят. Сохранение тоже не прячет кнопку. TLS и Caddy — на установке, не в форме.</i></figure>
+<span class="num">9.1</span><b>Первый запуск</b><i>Одна команда ставит бинарник и печатает ссылку с токеном; дальше человек не видит ни конфига, ни YAML. Первая карточка — пароль панели, единственное обязательное поле. Имя, адрес и почта — вторым рядом, всё можно задать позже в панели; адрес подставлен из открытой ссылки, если она по HTTPS. Ошибка формы — над кнопкой сохранения. Проверка почты до сохранения: подпись кнопки на месте, слева галочка если вход принят. Сохранение тоже не прячет кнопку. TLS и Caddy — на установке, не в форме.</i></figure>
 
 <figure class="s" id="e9-2" style="width:820px"><div class="ph wide shell" style="height:600px">
   <div class="admbar">

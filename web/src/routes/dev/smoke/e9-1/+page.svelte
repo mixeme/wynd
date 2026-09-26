@@ -34,13 +34,13 @@
 						<SectionLabel raw style={sideLabel}>Имя</SectionLabel>
 						<Input admin value="Дом Ани" style={fillInput} />
 						<SectionLabel raw style={sideLabel}>Адрес</SectionLabel>
-						<Input admin mono value="home.example.org" style={fillInput} />
+						<Input admin mono value="https://home.example.org" style={fillInput} />
 					</div>
 				</div>
 			</div>
 			<div style={cardStyle}>
 				<div style="font-weight:600;margin-bottom:6px">3 · Почта</div>
-				<div style={descStyle}>Люди входят по коду из письма. Без настройки SMTP письмо с кодом не отправится.</div>
+				<div style={descStyle}>Люди входят по коду из письма. Почту можно настроить и позже в панели — до этого коды входа не уходят.</div>
 				<div
 					style="display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center"
 				>
