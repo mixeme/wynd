@@ -150,7 +150,7 @@
 			<Button onclick={() => goto('/admin')}>Открыть панель</Button>
 		{:else}
 			<div class="col gap-16">
-				<div class="flex gap-16 stretch cards">
+				<div class="flex gap-16 stretch col-narrow">
 					<div class="grow min0 {cardStyle}">
 						<div class="bold mb-6">1 · Пароль администратора</div>
 						<div class={descStyle}>
@@ -198,7 +198,7 @@
 							Люди входят по коду из письма. Без настройки SMTP письмо с кодом не отправится.
 						{/if}
 					</div>
-					<div class="form-grid-2 smtp-grid">
+					<div class="form-grid-2">
 						<SectionLabel raw class={sideLabel}>Хост</SectionLabel>
 						<Input admin mono class={fillInput} bind:value={smtpHost} />
 						<SectionLabel raw class={sideLabelRight}>Порт</SectionLabel>
@@ -252,22 +252,3 @@
 		{/if}
 	</AdminSection>
 </AdminWideLayout>
-
-<style>
-	/* Первый запуск открывают и с телефона: карточки — столбиком,
-	   SMTP — «подпись · поле» в две колонки вместо четырёх. */
-	@media (max-width: 600px) {
-		.cards {
-			flex-direction: column;
-		}
-		.smtp-grid {
-			grid-template-columns: auto minmax(0, 1fr);
-		}
-		.smtp-grid :global(.ml-12) {
-			margin-left: 0;
-		}
-		.smtp-grid .grid-end {
-			grid-column: 1 / -1;
-		}
-	}
-</style>

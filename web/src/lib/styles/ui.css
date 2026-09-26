@@ -2281,6 +2281,22 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 	grid-column: 3 / -1;
 	justify-self: end;
 }
+/* Узкий экран (первый запуск с телефона): ряд карточек — столбиком,
+ * .form-grid-2 — «подпись · поле» в две колонки вместо четырёх. */
+@media (max-width: 600px) {
+	.col-narrow {
+		flex-direction: column;
+	}
+	.form-grid-2 {
+		grid-template-columns: auto minmax(0, 1fr);
+	}
+	.form-grid-2 > .ml-12 {
+		margin-left: 0;
+	}
+	.form-grid-2 > .grid-end {
+		grid-column: 1 / -1;
+	}
+}
 .mb-18 {
 	margin-bottom: 18px;
 }
