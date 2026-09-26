@@ -219,6 +219,10 @@
 	border-radius: 8px;
 	width: 88px;
 	height: 88px;
+	/* У .addph поле auto — для круглой кнопки аватара по центру. В ряду
+	   плиток оно уводило «+» в центр, а рядом с фото — к правому краю. */
+	margin: 0;
+	flex: 0 0 auto;
 }
 
 /* строка состояния */
@@ -1102,6 +1106,17 @@ a.link {
 }
 .fab .ic {
 	color: currentColor;
+}
+/* Кнопка-плюс растянута на весь круг: без сетки иконка вставала к левому
+   краю. Размер — как в кадре 2.1. */
+.fab .ib {
+	display: grid;
+	place-items: center;
+}
+.fab .ib .ic {
+	width: 26px;
+	height: 26px;
+	stroke-width: 1.5;
 }
 .fab-menu {
 	position: absolute;
