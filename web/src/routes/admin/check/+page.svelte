@@ -31,7 +31,11 @@
 	let error = $state('');
 	let loading = $state(true);
 	let checkedAt = $state<Date | undefined>();
+	// Ошибка действия (пуш, ключ) — у строки или над списком: через error она
+	// подменяла весь экран проверки одной строкой.
+	let actionError = $state('');
 	let pushDetail = $state('сигнал без текста журнала; на loopback может не дойти');
+	let pushFailed = $state(false);
 
 	function rowStatus(status: CheckResult['status']): 'ok' | 'warn' | 'bad' {
 		if (status === 'fail') return 'bad';
@@ -46,7 +50,7 @@
 		if (id === 'push_test') {
 			return {
 				id: 'push_test',
-				status: 'ok',
+				status: pushFailed ? 'warn' : 'ok',
 				title: 'Тестовый пуш',
 				detail: pushDetail
 			};
@@ -98,6 +102,9 @@
 					<div class="sz-11 faint mt-7">{checkedLabel()}</div>
 				</div>
 			</div>
+			{#if actionError}
+				<Hint class="mt-12">{actionError}</Hint>
+			{/if}
 			<div class="cols mt-20">
 				<div>
 					{#each LEFT_GROUPS as group, gi (group.label)}
@@ -149,7 +156,7 @@
 											<TextButton
 												variant="admin"
 												onclick={() =>
-													void downloadVapidPublicKey().catch((err) => (error = authErrorHint(err)))}
+													void downloadVapidPublicKey().catch((err) => (actionError = authErrorHint(err)))}
 											>
 												Скачать копию
 											</TextButton>
@@ -159,10 +166,14 @@
 												onclick={() =>
 													void sendAdminPushTest()
 														.then(() => {
+															pushFailed = false;
 															pushDetail = 'отправили только что';
 															return load();
 														})
-														.catch((err) => (error = authErrorHint(err)))}
+														.catch((err) => {
+															pushFailed = true;
+															pushDetail = authErrorHint(err);
+														})}
 											>
 												Отправить
 											</TextButton>

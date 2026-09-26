@@ -277,6 +277,12 @@ var testSignal = Signal{
 
 // SendTestTo delivers the test signal to one browser subscription without
 // storing it. The endpoint is checked like a subscription's.
+// recordSize — размер записи, до которого webpush-go добивает тело. Его
+// умолчание, 4096 байт, превышает лимит сервиса Mozilla: там 4096 считается
+// после base64, и каждый пуш в Firefox получал 413. 3070 байт в base64 —
+// ровно 4096; Chrome и Safari принимают столько же.
+const recordSize = 3070
+
 func (s *Service) SendTestTo(ctx context.Context, endpoint, p256dh, authKey string) error {
 	endpoint = strings.TrimSpace(endpoint)
 	p256dh = strings.TrimSpace(p256dh)
@@ -317,6 +323,7 @@ func (s *Service) deliver(ctx context.Context, pub, priv, endpoint, p256dh, auth
 		HTTPClient:      s.client,
 		Subscriber:      SubscriberMailto,
 		TTL:             defaultTTL,
+		RecordSize:      recordSize,
 		VAPIDPublicKey:  pub,
 		VAPIDPrivateKey: priv,
 	})
@@ -329,7 +336,7 @@ func (s *Service) deliver(ctx context.Context, pub, priv, endpoint, p256dh, auth
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return nil
 	}
-	return fmt.Errorf("%w: %w", ErrDelivery, &deliveryError{StatusCode: resp.StatusCode, Host: endpointHost(endpoint)})
+	return &deliveryError{StatusCode: resp.StatusCode, Host: endpointHost(endpoint)}
 }
 
 // deliveryFailure убирает из ошибки полный адрес: *url.Error печатает URL
@@ -361,6 +368,9 @@ type deliveryError struct {
 	StatusCode int
 	Host       string
 }
+
+// Unwrap lets the API tell a refused delivery (push_failed) from a bug.
+func (e *deliveryError) Unwrap() error { return ErrDelivery }
 
 // Error names the host and status, never the endpoint path: the path is as good as the device key.
 func (e *deliveryError) Error() string {

@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"net"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -248,5 +249,54 @@ func seedSubscriptionID(t *testing.T, svc *push.Service, id, endpoint string) {
 		base64.RawURLEncoding.EncodeToString(secret),
 		time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// Сервис пушей Mozilla ограничивает тело 4096 байтами после base64 и на
+// большее отвечает 413. webpush-go по умолчанию добивает запись до 4096 байт
+// двоичных — каждый пуш в Firefox отбивался, каким бы коротким ни был сигнал.
+func TestDeliveryFitsMozillaPayloadLimit(t *testing.T) {
+	var gotLen int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		gotLen = len(body)
+		if base64.RawURLEncoding.EncodedLen(len(body)) > 4096 {
+			w.WriteHeader(http.StatusRequestEntityTooLarge)
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer srv.Close()
+
+	svc := newPushService(t)
+	svc.AllowLoopbackDeliveryForTest()
+	if err := svc.EnsureKeys(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	key, err := ecdh.P256().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secret := make([]byte, 16)
+	if _, err := rand.Read(secret); err != nil {
+		t.Fatal(err)
+	}
+	err = svc.SendTestTo(t.Context(), srv.URL+"/ep",
+		base64.RawURLEncoding.EncodeToString(key.PublicKey().Bytes()),
+		base64.RawURLEncoding.EncodeToString(secret))
+	// SendTestTo проверяет адрес как подписку, а httptest — loopback: доставку
+	// ведём через сохранённую подписку, как в боевом notify.
+	if err == nil {
+		t.Fatal("loopback endpoint must be refused by SendTestTo")
+	}
+	if _, err := svc.DB().ExecContext(t.Context(), `
+		INSERT INTO push_subscriptions (id, account_id, endpoint, p256dh, auth, user_agent, created_at)
+		VALUES ('s1', 'acc', ?, ?, ?, '', ?)
+	`, srv.URL+"/ep", base64.RawURLEncoding.EncodeToString(key.PublicKey().Bytes()),
+		base64.RawURLEncoding.EncodeToString(secret), time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.SendTest(t.Context(), "acc"); err != nil {
+		t.Fatalf("delivery of %d bytes: %v", gotLen, err)
 	}
 }
