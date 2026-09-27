@@ -172,6 +172,13 @@ func runServer() {
 
 	log.Printf("data dir: %s", cfg.DataDir)
 	log.Printf("listening on %s", cfg.Listen)
+	if loopback && !listensOnLoopback(cfg.Listen) {
+		// Режим lan (scripts\run.bat, make run LAN=1): сервер отвечает всей
+		// сети, а по public_url он «локальный» — без TLS, коды входа в
+		// журнале, bootstrap без SMTP. Годится только для доверенной сети
+		// (аудит 2026-09-27).
+		log.Printf("WARNING: public_url %s is loopback, but the server listens on %s: no TLS, login codes in the log — trusted LAN only", cfg.PublicURL, cfg.Listen)
+	}
 	if !inst.Bootstrapped {
 		log.Printf("bootstrap URL: %s/admin/bootstrap?token=%s", strings.TrimRight(cfg.PublicURL, "/"), token)
 	}

@@ -52,6 +52,16 @@ describe('source url', () => {
 		expect(vi.mocked(apiJson)).toHaveBeenCalledTimes(1);
 	});
 
+	it('keeps only web addresses: a foreign server cannot plant javascript: into href', async () => {
+		const source = await import('./source.svelte');
+		for (const bad of ['javascript:alert(1)', 'data:text/html,x', 'vbscript:x', 'not a url', '//evil']) {
+			source.rememberSourceUrl('https://evil.example', bad);
+			expect(source.sourceUrl('https://evil.example')).toBe(FALLBACK);
+		}
+		source.rememberSourceUrl('https://evil.example', 'http://forge.example/wynd');
+		expect(source.sourceUrl('https://evil.example')).toBe('http://forge.example/wynd');
+	});
+
 	it('survives a server that does not answer', async () => {
 		vi.mocked(apiJson).mockRejectedValue(new Error('offline'));
 		const source = await import('./source.svelte');

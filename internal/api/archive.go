@@ -63,6 +63,13 @@ func (s *Server) handleCircleDetail(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, chronicle.ErrNotFound)
 		return
 	}
+	// Карточка — тем, кто круг читает: исключённому список кругов и так
+	// сообщает «gone», а настройки приглашений и лицо ему больше не отдаются
+	// (аудит 2026-09-27).
+	if err := s.Chronicle.RequireReader(r.Context(), circleID, sess.AccountID); err != nil {
+		writeDomainError(w, err)
+		return
+	}
 	banner, err := s.archiveCycleJSON(r.Context(), circleID, sess.AccountID)
 	if err != nil {
 		writeDomainError(w, err)
