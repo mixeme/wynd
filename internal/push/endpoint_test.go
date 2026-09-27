@@ -252,15 +252,16 @@ func seedSubscriptionID(t *testing.T, svc *push.Service, id, endpoint string) {
 	}
 }
 
-// Сервис пушей Mozilla ограничивает тело 4096 байтами после base64 и на
-// большее отвечает 413. webpush-go по умолчанию добивает запись до 4096 байт
-// двоичных — каждый пуш в Firefox отбивался, каким бы коротким ни был сигнал.
+// Сервис пушей Mozilla для телефонов принимает тело не длиннее 3070 байт
+// после base64 («limited to 3070 bytes») и на большее отвечает 413.
+// webpush-go добивает запись до RecordSize — при 4096 и при 3070 каждый пуш в
+// Firefox на Android отбивался, каким бы коротким ни был сигнал.
 func TestDeliveryFitsMozillaPayloadLimit(t *testing.T) {
 	var gotLen int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		gotLen = len(body)
-		if base64.RawURLEncoding.EncodedLen(len(body)) > 4096 {
+		if base64.RawURLEncoding.EncodedLen(len(body)) > 3070 {
 			w.WriteHeader(http.StatusRequestEntityTooLarge)
 			return
 		}

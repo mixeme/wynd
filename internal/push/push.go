@@ -277,11 +277,12 @@ var testSignal = Signal{
 
 // SendTestTo delivers the test signal to one browser subscription without
 // storing it. The endpoint is checked like a subscription's.
-// recordSize — размер записи, до которого webpush-go добивает тело. Его
-// умолчание, 4096 байт, превышает лимит сервиса Mozilla: там 4096 считается
-// после base64, и каждый пуш в Firefox получал 413. 3070 байт в base64 —
-// ровно 4096; Chrome и Safari принимают столько же.
-const recordSize = 3070
+// recordSize — размер записи, до которого webpush-go добивает тело. Сервис
+// Mozilla для телефонов («constrained device») принимает не больше 3070
+// байт тела после base64, то есть 2302 байта двоичных; умолчание 4096, а за
+// ним и 3070 получали 413 на каждый пуш в Firefox на Android. 2048 — с
+// запасом; сигнал Wynd — несколько сотен байт.
+const recordSize = 2048
 
 func (s *Service) SendTestTo(ctx context.Context, endpoint, p256dh, authKey string) error {
 	endpoint = strings.TrimSpace(endpoint)
