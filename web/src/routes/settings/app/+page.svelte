@@ -30,7 +30,11 @@
 	let reactions = $state(false);
 	let theme = $state<Theme>('system');
 	let cacheBytes = $state(0);
-	let freeBytes = $state(0);
+	// Сколько браузер отводит сайту (storage.estimate().quota). Это не свободное
+	// место на диске — его браузер странице не сообщает; Firefox, например,
+	// даёт около 10 ГБ при любом телефоне. Раньше здесь было «свободно на
+	// устройстве», и цифра вводила в заблуждение.
+	let quotaBytes = $state(0);
 	// Потолок кэша: 1 / 2 / 5 ГБ или своё число гигабайт (1–100).
 	const GB = 1024 * 1024 * 1024;
 	const CACHE_PRESETS = [1, 2, 5] as const;
@@ -84,7 +88,7 @@
 		cacheBytes = await mediaStoreBytes();
 		if (navigator.storage?.estimate) {
 			const est = await navigator.storage.estimate();
-			freeBytes = Math.max(0, (est.quota ?? 0) - (est.usage ?? 0));
+			quotaBytes = est.quota ?? 0;
 		}
 	}
 
@@ -153,8 +157,7 @@
 	<SectionLabel style="margin-top:22px">Место на устройстве</SectionLabel>
 	<Meter value={cacheBytes} max={Math.max(cacheLimit, 1)} />
 	<Hint style="margin-top:8px">
-		{formatBytes(cacheBytes)} кэша из {formatBytes(cacheLimit)}{#if freeBytes}
-			{' '}· {formatBytes(freeBytes)} свободно на устройстве{/if}
+		{formatBytes(cacheBytes)} кэша из {formatBytes(cacheLimit)}
 	</Hint>
 	<ChipGroup class="mt-8">
 		{#each CACHE_PRESETS as gb (gb)}
@@ -164,6 +167,9 @@
 		{/each}
 		<Chip selected={customCache} onclick={() => (customCache = true)}>Своё…</Chip>
 	</ChipGroup>
+	{#if quotaBytes && cacheLimit > quotaBytes}
+		<Hint>Браузер отводит Wynd до {formatBytes(quotaBytes)} — больше кэш не вырастет.</Hint>
+	{/if}
 	{#if customCache}
 		<div class="rowin mt-10">
 			<Input
