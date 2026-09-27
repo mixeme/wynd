@@ -157,6 +157,10 @@ type CreateServerInviteInput struct {
 	Kind               InviteKind
 	MaxUses            int
 	TTL                time.Duration
+	// Только у ссылки админа на сервер: «без ограничений» (для multi) и
+	// «без срока». Ссылка участника в круг их не получает.
+	UnlimitedUses bool
+	NoExpiry      bool
 	CreatedByAccountID string
 	Now                time.Time
 }

@@ -6,29 +6,48 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"math"
 	"time"
 )
 
 // Потолки на ссылку (аудит 2026-09-22, SEC-9): и число входов, и срок
 // задаёт участник, а непроверенные значения давали вечную ссылку с
 // неограниченным числом входов.
+//
+// Потолки общие для админа и участника: ссылка участника не шире ссылки
+// админа. «Без ограничений» и «без срока» — только у ссылки админа на сервер
+// (CreateServerInvite): вечная открытая дверь — решение владельца сервера.
 const (
-	maxInviteUses = 100
-	maxInviteTTL  = 30 * 24 * time.Hour
+	maxInviteUses = 1000
+	maxInviteTTL  = 365 * 24 * time.Hour
 )
+
+// UnlimitedUses и NoExpiry — «без ограничений» и «без срока». Хранятся
+// отметками, а не NULL: проверки `uses < max_uses` и `expires_at > ?` в
+// запросах работают без изменений. 9999-12-31 — та же отметка, что у
+// бессрочной подписки.
+const UnlimitedUses = math.MaxInt32
+
+var NoExpiry = time.Date(9999, 12, 31, 0, 0, 0, 0, time.UTC)
 
 // CreateInvite creates a circle or server invite link within the use and TTL ceilings.
 func (s *Service) CreateInvite(ctx context.Context, in CreateInviteInput) (Invite, error) {
-	if in.MaxUses < 1 || in.MaxUses > maxInviteUses {
-		return Invite{}, ErrInvalid
-	}
-	if in.Kind == InviteSingle {
+	return s.createInvite(ctx, in, false, false)
+}
+
+func (s *Service) createInvite(ctx context.Context, in CreateInviteInput, unlimitedUses, noExpiry bool) (Invite, error) {
+	switch {
+	case in.Kind == InviteSingle:
 		in.MaxUses = 1
+	case unlimitedUses:
+		in.MaxUses = UnlimitedUses
+	case in.MaxUses < 1 || in.MaxUses > maxInviteUses:
+		return Invite{}, ErrInvalid
 	}
 	if in.TTL <= 0 {
 		in.TTL = 7 * 24 * time.Hour
 	}
-	if in.TTL > maxInviteTTL {
+	if !noExpiry && in.TTL > maxInviteTTL {
 		return Invite{}, ErrInvalid
 	}
 	when := in.Now.UTC()
@@ -45,6 +64,9 @@ func (s *Service) CreateInvite(ctx context.Context, in CreateInviteInput) (Invit
 		return Invite{}, err
 	}
 	expires := when.Add(in.TTL)
+	if noExpiry {
+		expires = NoExpiry
+	}
 	var circleID any
 	if in.CircleID != "" {
 		circleID = in.CircleID
@@ -71,13 +93,13 @@ func (s *Service) CreateInvite(ctx context.Context, in CreateInviteInput) (Invit
 
 // CreateServerInvite creates an invite to the server without a circle.
 func (s *Service) CreateServerInvite(ctx context.Context, in CreateServerInviteInput) (Invite, error) {
-	return s.CreateInvite(ctx, CreateInviteInput{
+	return s.createInvite(ctx, CreateInviteInput{
 		Kind:               in.Kind,
 		MaxUses:            in.MaxUses,
 		TTL:                in.TTL,
 		CreatedByAccountID: in.CreatedByAccountID,
 		Now:                in.Now,
-	})
+	}, in.UnlimitedUses, in.NoExpiry)
 }
 
 // AcceptInvite validates an invite link for the email and sends a login code; a personal invite only to its target account.

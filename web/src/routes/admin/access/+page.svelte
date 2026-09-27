@@ -5,6 +5,17 @@
 	import AdminSection from '$ui/admin/AdminSection.svelte';
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
+	import Input from '$ui/forms/Input.svelte';
+	import {
+		choicesFromInvite,
+		CUSTOM_DAYS_MAX,
+		CUSTOM_USES_MAX,
+		inviteRequest,
+		TTL_PRESETS,
+		USES_PRESETS,
+		type TtlChoice,
+		type UsesChoice
+	} from '$lib/circles/invite-options';
 	import Hint from '$ui/forms/Hint.svelte';
 	import FieldDisplay from '$ui/forms/FieldDisplay.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
@@ -34,19 +45,16 @@
 		{ key: 'closed', label: 'Закрытый' }
 	];
 
-	const TTL_OPTIONS = [
-		{ label: '1 час', sec: 3600 },
-		{ label: '72 часа', sec: 259200 },
-		{ label: 'Неделя', sec: 604800 }
-	] as const;
 
 	let mode = $state<AccessSettings['registration_mode']>('invite');
 	let server = $state('');
 	let inviteUrl = $state('');
 	let qrSvg = $state('');
 	let liveInvites = $state<AdminInvite[]>([]);
-	let kind = $state<'single' | 'multi'>('multi');
-	let ttlSec = $state(259200);
+	let uses = $state<UsesChoice>(5);
+	let customUses = $state(20);
+	let ttl = $state<TtlChoice>(259200);
+	let customDays = $state(14);
 	let error = $state('');
 	let loading = $state(true);
 	let copied = $state(false);
@@ -91,11 +99,7 @@
 					/* already used or revoked */
 				}
 			}
-			const inv = await createServerInvite({
-				kind,
-				max_uses: kind === 'single' ? 1 : 5,
-				ttl_sec: ttlSec
-			});
+			const inv = await createServerInvite(inviteRequest(uses, customUses, ttl, customDays));
 			inviteUrl = inviteUrlFor(inv.token);
 			await renderQr(inviteUrl);
 			await loadLiveInvites();
@@ -107,12 +111,18 @@
 		}
 	}
 
+	function pickUses(next: UsesChoice) {
+		uses = next;
+		void makeInvite();
+	}
+
+	function pickTtl(next: TtlChoice) {
+		ttl = next;
+		void makeInvite();
+	}
+
 	async function showInvite(inv: AdminInvite) {
-		kind = inv.kind === 'single' ? 'single' : 'multi';
-		const lifeSec = (Date.parse(inv.expires_at) - Date.parse(inv.created_at)) / 1000;
-		ttlSec = TTL_OPTIONS.reduce((best, opt) =>
-			Math.abs(opt.sec - lifeSec) < Math.abs(best.sec - lifeSec) ? opt : best
-		).sec;
+		({ uses, customUses, ttl, customDays } = choicesFromInvite(inv));
 		currentInviteId = inv.id;
 		inviteUrl = inviteUrlFor(inv.token);
 		await renderQr(inviteUrl);
@@ -193,39 +203,53 @@
 							{copied ? 'Скопировано' : 'Скопировать'}
 						</TextButton>
 					</div>
+					<!-- Опции те же, что у участника на 2.7; «Без ограничений» и «Без срока»
+					     — только здесь: вечная дверь на сервер — решение админа. -->
 					<ChipGroup class="mt-12 mx-0">
-						<Chip
-							selected={kind === 'single'}
-							onclick={() => {
-								kind = 'single';
-								void makeInvite();
-							}}
-						>
-							Одноразовая
-						</Chip>
-						<Chip
-							selected={kind === 'multi'}
-							onclick={() => {
-								kind = 'multi';
-								void makeInvite();
-							}}
-						>
-							На 5 человек
-						</Chip>
-					</ChipGroup>
-					<ChipGroup class="mt-8 mx-0">
-						{#each TTL_OPTIONS as opt (opt.sec)}
-							<Chip
-								selected={ttlSec === opt.sec}
-								onclick={() => {
-									ttlSec = opt.sec;
-									void makeInvite();
-								}}
-							>
-								{opt.label}
-							</Chip>
+						<Chip selected={uses === 'single'} onclick={() => pickUses('single')}>Одноразовая</Chip>
+						{#each USES_PRESETS as n (n)}
+							<Chip selected={uses === n} onclick={() => pickUses(n)}>На {n} человек</Chip>
 						{/each}
+						<Chip selected={uses === 'unlimited'} onclick={() => pickUses('unlimited')}
+							>Без ограничений</Chip
+						>
+						<Chip selected={uses === 'custom'} onclick={() => pickUses('custom')}>Своё…</Chip>
 					</ChipGroup>
+					{#if uses === 'custom'}
+						<div class="flex-mid gap-8 mt-8">
+							<Input
+								admin
+								class="w72"
+								type="number"
+								min="1"
+								max={String(CUSTOM_USES_MAX)}
+								bind:value={customUses}
+								onchange={() => void makeInvite()}
+							/>
+							<span class="note">человек, до {CUSTOM_USES_MAX}</span>
+						</div>
+					{/if}
+					<ChipGroup class="mt-8 mx-0">
+						{#each TTL_PRESETS as opt (opt.sec)}
+							<Chip selected={ttl === opt.sec} onclick={() => pickTtl(opt.sec)}>{opt.label}</Chip>
+						{/each}
+						<Chip selected={ttl === 'forever'} onclick={() => pickTtl('forever')}>Без срока</Chip>
+						<Chip selected={ttl === 'custom'} onclick={() => pickTtl('custom')}>Своё…</Chip>
+					</ChipGroup>
+					{#if ttl === 'custom'}
+						<div class="flex-mid gap-8 mt-8">
+							<Input
+								admin
+								class="w72"
+								type="number"
+								min="1"
+								max={String(CUSTOM_DAYS_MAX)}
+								bind:value={customDays}
+								onchange={() => void makeInvite()}
+							/>
+							<span class="note">дней, до {CUSTOM_DAYS_MAX}</span>
+						</div>
+					{/if}
 					<div class="fine mt-10 lh-16">
 						Такая ссылка не ведёт ни в один круг: человек заведёт свой или дождётся, когда позовут.
 					</div>

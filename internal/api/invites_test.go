@@ -293,3 +293,50 @@ func TestPeekRefusesExhaustedInvite(t *testing.T) {
 		t.Fatalf("исчерпанная ссылка показала круг: %s", rec.Body.String())
 	}
 }
+
+// Ссылка участника не шире ссылки админа: общий потолок 1000 входов и год,
+// а «без ограничений» и «без срока» участник не получает, даже если пришлёт
+// эти поля. Админу они доступны на ссылке на сервер.
+func TestInviteCeilingsAdminVsParticipant(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	admin := adminToken(t, srv)
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/admin/invites", admin, map[string]any{
+		"kind": "multi", "unlimited_uses": true, "no_expiry": true,
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("admin forever invite: %d %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"max_uses":2147483647`) || !strings.Contains(rec.Body.String(), `"expires_at":"9999-12-31`) {
+		t.Fatalf("admin forever invite marks: %s", rec.Body.String())
+	}
+
+	ownerTok, _ := registerSession(t, srv, caps, "owner@example.com")
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles", ownerTok, map[string]any{
+		"name": "Семья", "owner_name": "Аня", "color": "olive",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create circle: %d %s", rec.Code, rec.Body.String())
+	}
+	circleID := jsonStr(t, rec, "id")
+	rec = doJSON(t, srv, http.MethodPatch, "/api/v1/circles/"+circleID, ownerTok, map[string]any{
+		"invite_kind_default": "multi",
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("allow multi: %d %s", rec.Code, rec.Body.String())
+	}
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/invites", ownerTok, map[string]any{
+		"kind": "multi", "max_uses": 1001, "ttl_sec": 3600,
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("participant over ceiling: %d %s", rec.Code, rec.Body.String())
+	}
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/invites", ownerTok, map[string]any{
+		"kind": "multi", "max_uses": 10, "ttl_sec": 3600, "unlimited_uses": true, "no_expiry": true,
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("participant invite: %d %s", rec.Code, rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), "2147483647") || strings.Contains(rec.Body.String(), "9999-12-31") {
+		t.Fatalf("participant got forever flags: %s", rec.Body.String())
+	}
+}

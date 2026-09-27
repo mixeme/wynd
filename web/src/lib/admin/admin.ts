@@ -209,6 +209,9 @@ export async function createServerInvite(opts: {
 	kind: 'single' | 'multi';
 	max_uses: number;
 	ttl_sec: number;
+	// Только ссылка админа на сервер: «Без ограничений» и «Без срока».
+	unlimited_uses?: boolean;
+	no_expiry?: boolean;
 }): Promise<{ token: string; expires_at: string; max_uses: number }> {
 	return adminJson('/admin/invites', {
 		method: 'POST',

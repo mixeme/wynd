@@ -156,23 +156,52 @@ func TestDepartedMemberInvitesRevoked(t *testing.T) {
 	}
 }
 
-// Инвариант (SEC-9): у ссылки есть потолки — сто входов и тридцать суток.
+// Инвариант (SEC-9): у ссылки есть потолки — тысяча входов и год, одни и те
+// же для админа и участника: ссылка участника не шире ссылки админа.
 func TestInviteLimitsCapped(t *testing.T) {
 	e := newEnv(t)
 	e.bootstrap(t)
 	if _, err := e.auth.CreateInvite(e.ctx, auth.CreateInviteInput{
-		Kind: auth.InviteMulti, MaxUses: 101, TTL: time.Hour, Now: e.t0,
+		Kind: auth.InviteMulti, MaxUses: 1001, TTL: time.Hour, Now: e.t0,
 	}); err != auth.ErrInvalid {
-		t.Fatalf("сто один вход: %v", err)
+		t.Fatalf("тысяча один вход: %v", err)
 	}
 	if _, err := e.auth.CreateInvite(e.ctx, auth.CreateInviteInput{
-		Kind: auth.InviteMulti, MaxUses: 5, TTL: 31 * 24 * time.Hour, Now: e.t0,
+		Kind: auth.InviteMulti, MaxUses: 5, TTL: 366 * 24 * time.Hour, Now: e.t0,
 	}); err != auth.ErrInvalid {
-		t.Fatalf("срок больше месяца: %v", err)
+		t.Fatalf("срок больше года: %v", err)
 	}
 	if _, err := e.auth.CreateInvite(e.ctx, auth.CreateInviteInput{
-		Kind: auth.InviteMulti, MaxUses: 100, TTL: 30 * 24 * time.Hour, Now: e.t0,
+		Kind: auth.InviteMulti, MaxUses: 1000, TTL: 365 * 24 * time.Hour, Now: e.t0,
 	}); err != nil {
 		t.Fatalf("предельные значения отвергнуты: %v", err)
+	}
+	if _, err := e.auth.CreateServerInvite(e.ctx, auth.CreateServerInviteInput{
+		Kind: auth.InviteMulti, MaxUses: 1001, TTL: time.Hour, Now: e.t0,
+	}); err != auth.ErrInvalid {
+		t.Fatalf("потолок входов обходится ссылкой на сервер: %v", err)
+	}
+}
+
+// «Без ограничений» и «без срока» — только у ссылки админа на сервер.
+// Хранятся отметками: проверки входов и срока работают как у обычной ссылки.
+func TestServerInviteUnlimitedAndNoExpiry(t *testing.T) {
+	e := newEnv(t)
+	e.bootstrap(t)
+	inv, err := e.auth.CreateServerInvite(e.ctx, auth.CreateServerInviteInput{
+		Kind: auth.InviteMulti, UnlimitedUses: true, NoExpiry: true, Now: e.t0,
+	})
+	if err != nil {
+		t.Fatalf("вечная ссылка админа: %v", err)
+	}
+	if inv.MaxUses != auth.UnlimitedUses || !inv.ExpiresAt.Equal(auth.NoExpiry) {
+		t.Fatalf("отметки: max_uses=%d expires=%s", inv.MaxUses, inv.ExpiresAt)
+	}
+	// Одноразовая остаётся одноразовой, даже если попросить «без ограничений».
+	single, err := e.auth.CreateServerInvite(e.ctx, auth.CreateServerInviteInput{
+		Kind: auth.InviteSingle, UnlimitedUses: true, TTL: time.Hour, Now: e.t0,
+	})
+	if err != nil || single.MaxUses != 1 {
+		t.Fatalf("одноразовая: %+v %v", single, err)
 	}
 }

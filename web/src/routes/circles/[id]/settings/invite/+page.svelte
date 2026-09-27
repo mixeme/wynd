@@ -6,6 +6,7 @@
 	import QRCode from 'qrcode';
 	import Button from '$ui/forms/Button.svelte';
 	import Chip from '$ui/forms/Chip.svelte';
+	import Input from '$ui/forms/Input.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import FieldDisplay from '$ui/forms/FieldDisplay.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -19,6 +20,15 @@
 		revokeCircleInvite
 	} from '$lib/circles/settings';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
+	import {
+		CUSTOM_DAYS_MAX,
+		CUSTOM_USES_MAX,
+		inviteRequest,
+		TTL_PRESETS,
+		USES_PRESETS,
+		type TtlChoice,
+		type UsesChoice
+	} from '$lib/circles/invite-options';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 	const fromCreate = $derived($page.url.searchParams.get('from') === 'create');
@@ -35,17 +45,14 @@
 		else goto(`/circles/${circle.circleId}/settings`);
 	}
 
-	const TTL_OPTIONS = [
-		{ label: '1 час', sec: 3600 },
-		{ label: '72 часа', sec: 259200 },
-		{ label: 'Неделя', sec: 604800 }
-	] as const;
 
-	const MAX_USES_OPTIONS = [5, 10, 25] as const;
-
+	// Опции те же, что у админа на 9.2, без «Без ограничений» и «Без срока»:
+	// ссылка участника не шире ссылки админа.
 	let kind = $state<'single' | 'multi'>('single');
-	let maxUses = $state(10);
-	let ttlSec = $state(259200);
+	let multiUses = $state<UsesChoice>(10);
+	let customUses = $state(20);
+	let ttl = $state<TtlChoice>(259200);
+	let customDays = $state(14);
 	let inviteUrl = $state('');
 	let qrSvg = $state('');
 	let error = $state('');
@@ -56,6 +63,16 @@
 	let creating = false;
 	let showFromCircles = $state(false);
 	let multiInvitesAllowed = $state(false);
+
+	function pickUses(next: UsesChoice) {
+		multiUses = next;
+		void createLink();
+	}
+
+	function pickTtl(next: TtlChoice) {
+		ttl = next;
+		void createLink();
+	}
 
 	function goFromCircles() {
 		const q = fromCreate ? '?from=create' : '';
@@ -95,11 +112,11 @@
 				}
 			}
 			const effectiveKind = multiInvitesAllowed ? kind : 'single';
-			const inv = await createCircleInvite(circle.origin, circle.circleId, {
-				kind: effectiveKind,
-				ttl_sec: ttlSec,
-				max_uses: effectiveKind === 'single' ? 1 : maxUses
-			});
+			const inv = await createCircleInvite(
+				circle.origin,
+				circle.circleId,
+				inviteRequest(effectiveKind === 'single' ? 'single' : multiUses, customUses, ttl, customDays)
+			);
 			currentInviteId = inv.id;
 			inviteUrl = inviteUrlFor(inv.token);
 			await renderQr(inviteUrl);
@@ -197,32 +214,46 @@
 	{/if}
 	{#if multiInvitesAllowed && kind === 'multi'}
 		<ChipGroup style="margin-top:8px">
-			{#each MAX_USES_OPTIONS as uses (uses)}
-				<Chip
-					selected={maxUses === uses}
-					onclick={() => {
-						maxUses = uses;
-						void createLink();
-					}}
-				>
-					{uses}
-				</Chip>
+			{#each USES_PRESETS as n (n)}
+				<Chip selected={multiUses === n} onclick={() => pickUses(n)}>{n}</Chip>
 			{/each}
+			<Chip selected={multiUses === 'custom'} onclick={() => pickUses('custom')}>Своё…</Chip>
 		</ChipGroup>
+		{#if multiUses === 'custom'}
+			<div class="rowin mt-10">
+				<Input
+					active
+					type="number"
+					min="1"
+					max={String(CUSTOM_USES_MAX)}
+					bind:value={customUses}
+					onchange={() => void createLink()}
+					class="w72 m-0"
+				/>
+				<span class="hint m-0">человек, до {CUSTOM_USES_MAX}</span>
+			</div>
+		{/if}
 	{/if}
 	<ChipGroup style="margin-top:8px">
-		{#each TTL_OPTIONS as opt (opt.sec)}
-			<Chip
-				selected={ttlSec === opt.sec}
-				onclick={() => {
-					ttlSec = opt.sec;
-					void createLink();
-				}}
-			>
-				{opt.label}
-			</Chip>
+		{#each TTL_PRESETS as opt (opt.sec)}
+			<Chip selected={ttl === opt.sec} onclick={() => pickTtl(opt.sec)}>{opt.label}</Chip>
 		{/each}
+		<Chip selected={ttl === 'custom'} onclick={() => pickTtl('custom')}>Своё…</Chip>
 	</ChipGroup>
+	{#if ttl === 'custom'}
+		<div class="rowin mt-10">
+			<Input
+				active
+				type="number"
+				min="1"
+				max={String(CUSTOM_DAYS_MAX)}
+				bind:value={customDays}
+				onchange={() => void createLink()}
+				class="w72 m-0"
+			/>
+			<span class="hint m-0">дней, до {CUSTOM_DAYS_MAX}</span>
+		</div>
+	{/if}
 	{#if multiInvitesAllowed}
 		<Hint
 			>Ссылка несёт адрес сервера и токен: тому, кого вы зовёте, не придётся ничего вводить.
@@ -231,7 +262,7 @@
 	{:else}
 		<Hint
 			>В настройках круга стоят только одноразовые — чипов «Одноразовая / Многоразовая» нет, лимита 5 /
-			10 / 25 тоже: выбирать не из чего.</Hint
+			10 / своё тоже: выбирать не из чего.</Hint
 		>
 	{/if}
 	{#if fromCreate}

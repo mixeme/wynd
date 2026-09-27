@@ -34,9 +34,11 @@ type adminLoginBody struct {
 }
 
 type createInviteBody struct {
-	Kind    string `json:"kind"`
-	MaxUses int    `json:"max_uses"`
-	TTLSec  int    `json:"ttl_sec"`
+	Kind          string `json:"kind"`
+	MaxUses       int    `json:"max_uses"`
+	TTLSec        int    `json:"ttl_sec"`
+	UnlimitedUses bool   `json:"unlimited_uses"`
+	NoExpiry      bool   `json:"no_expiry"`
 }
 
 // handleBootstrap выполняет первичную установку в порядке, при котором до
@@ -250,6 +252,8 @@ func (s *Server) handleCreateServerInvite(w http.ResponseWriter, r *http.Request
 		Kind:               kind,
 		MaxUses:            maxUses,
 		TTL:                ttl,
+		UnlimitedUses:      body.UnlimitedUses,
+		NoExpiry:           body.NoExpiry,
 		CreatedByAccountID: sess.AccountID,
 		Now:                time.Now().UTC(),
 	})
