@@ -17,7 +17,7 @@
 		<Logo />
 	</div>
 	<div class="h1s ctr" style="margin-top:30px">Войти</div>
-	<ServerRow name="Дом Ани" subtitle="home.example.org · принимает вход" variant="ok" card />
+	<ServerRow name="Дом Ани" subtitle="home.example.org" variant="ok" card />
 	<Label style="margin-top:16px">Почта</Label>
 	<FieldDisplay value="anya@example.com" active />
 	<Hint>Пришлём код для входа. Пароля нет.</Hint>

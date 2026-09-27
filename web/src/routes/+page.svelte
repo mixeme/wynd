@@ -101,7 +101,9 @@
 		}
 	}
 
-	const serverSubtitle = $derived(instance ? `${address} · принимает вход` : '');
+	// Только адрес: галочка уже говорит, что сервер на связи. «принимает вход»
+	// читалось непонятно.
+	const serverSubtitle = $derived(instance ? address : '');
 </script>
 
 <PlainLayout shell app>
