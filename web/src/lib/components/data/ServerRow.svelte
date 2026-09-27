@@ -22,9 +22,11 @@
 		style?: string;
 	} = $props();
 
+	// width:auto — у .row2 стоит width:100%, и с полями карточки по 16 px она
+	// вылезала за правый край на 32 px (экран приглашения 1.7).
 	const cardStyle = $derived(
 		card
-			? 'margin:14px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px'
+			? 'margin:14px 16px 0;width:auto;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px'
 			: ''
 	);
 	const rowStyle = $derived(cardStyle ? `${cardStyle};${style}` : style);
