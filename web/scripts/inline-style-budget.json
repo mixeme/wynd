@@ -17,7 +17,7 @@
 	"src/routes/admin/people/[id]/+page.svelte": 2,
 	"src/routes/auth/code/+page.svelte": 6,
 	"src/routes/circles/+layout.svelte": 10,
-	"src/routes/circles/+page.svelte": 11,
+	"src/routes/circles/+page.svelte": 10,
 	"src/routes/circles/[id]/+layout.svelte": 2,
 	"src/routes/circles/[id]/+page.svelte": 24,
 	"src/routes/circles/[id]/archive/+page.svelte": 7,

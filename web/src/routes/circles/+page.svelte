@@ -14,6 +14,7 @@
 	import Input from '$ui/forms/Input.svelte';
 	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
+	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import ShellLayout from '$lib/layouts/ShellLayout.svelte';
 	import { loadStreetCircles, type StreetCircle } from '$lib/circles/circles';
@@ -102,6 +103,30 @@
 	const rest = $derived(circles.filter((c) => !c.pinned && !groupedKeys.has(circleKey(c))));
 	const empty = $derived(!loading && circles.length === 0);
 	const streetSession = $derived(sessions[0]);
+
+	// Рассказ пустой улочки (2.3): что такое Wynd и чем он не соцсеть.
+	const streetFacts = $derived([
+		{
+			title: 'Круги вместо ленты',
+			text: 'У каждого круга свой журнал и свои люди: семья, друзья, коллеги. Общей ленты нет — записи читают только внутри круга.'
+		},
+		{
+			title: 'В каждом круге — своё имя',
+			text: 'Как вас зовут в семье и как среди друзей, решаете вы. Имя из одного круга в другой не переходит.'
+		},
+		{
+			title: 'Видно то, что вы застали',
+			text: 'Кто пришёл позже, не видит того, что было до него. Кто ушёл — того, что стало после.'
+		},
+		{
+			title: 'Посторонних нет',
+			text: 'Ни подписчиков, ни рекомендаций, ни рекламы. В круг попадают только по ссылке от того, кто уже в нём.'
+		},
+		{
+			title: `Всё хранится на ${streetSession ? displayHost(streetSession.origin) : 'этом сервере'}`,
+			text: 'Сервер держит его администратор, данные на нём не зашифрованы. Пользуясь им, вы доверяете этому человеку.'
+		}
+	]);
 	const showGroupHint = $derived(groups.length > 0);
 	const showDonateBanner = $derived(
 		payStatus?.banner && !payStatus.dismissed && payStatus.has_requisites
@@ -396,18 +421,19 @@
 			/>
 		{/if}
 		{#if empty}
-		<ScreenTitle
-			centered
-			style="margin-top:{showDonateBanner || showReminder || showPendingNotice
-				? '24px'
-				: '190px'}"
-			>Ни одного круга</ScreenTitle
-		>
+		<ScreenTitle centered class="mt-24">Ни одного круга</ScreenTitle>
 		<Hint centered style="margin:10px 30px 0">
 			Круг — это место, куда сворачивают. Заведите свой или откройте присланную ссылку.
 		</Hint>
 		<Button style="margin-top:30px" onclick={openNew}>Новый круг</Button>
 		<Button variant="ghost" onclick={openInvite}>У меня есть приглашение</Button>
+		<!-- Пока кругов нет, объяснить некому: людей, чьим примером всё понятно,
+		     ещё нет. Тогда оболочка коротко рассказывает обстановку. С первым
+		     кругом этот рассказ уходит — дальше объясняют люди. -->
+		<SectionLabel class="mt-24">Как устроен Wynd</SectionLabel>
+		{#each streetFacts as fact (fact.title)}
+			<SettingsRow title={fact.title} subtitle={fact.text} chevron={false} />
+		{/each}
 		{#if streetSession}
 			<Hint centered style="margin-top:34px">
 				Вы вошли как {streetSession.email}<br />в «{streetSession.name}» · {displayHost(
