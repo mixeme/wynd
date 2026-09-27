@@ -16,7 +16,6 @@
 		document.body.classList.toggle('dark', isDark());
 	});
 
-	const webManifestLink = $derived(pwaInfo ? pwaInfo.webManifest.linkTag : '');
 
 	onMount(() => {
 		const stopTheme = initTheme();
@@ -38,7 +37,6 @@
 </script>
 
 <svelte:head>
-	{@html webManifestLink}
 	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
 	<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 	<link rel="apple-touch-icon" href="/icon-192.png" />

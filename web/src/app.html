@@ -4,6 +4,10 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>Wynd</title>
+		<!-- Манифест — в исходном HTML, не из JS: Firefox на Android решает,
+		     устанавливается ли сайт как приложение, по странице до гидрации, и
+		     без ссылки делал ярлык, открывающийся во вкладке браузера. -->
+		<link rel="manifest" href="/manifest.webmanifest" />
 		<script>
 			// Loopback dev via scripts\run.bat: drop stale service workers so rebuilds show up.
 			if (location.hostname === '127.0.0.1' || location.hostname === 'localhost') {
