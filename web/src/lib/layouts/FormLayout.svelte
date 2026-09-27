@@ -29,6 +29,7 @@
 		onpublish,
 		footer,
 		onback,
+		onright,
 		children
 	}: {
 		color?: CircleColor;
@@ -52,6 +53,7 @@
 		onpublish?: () => void;
 		footer?: Snippet;
 		onback?: () => void;
+		onright?: () => void;
 		children: Snippet;
 	} = $props();
 </script>
@@ -102,7 +104,7 @@
 			<div style="padding-bottom:12px;font-size:12.5px;color:rgba(255,255,255,.85)">{subtitle}</div>
 		</div>
 	{:else}
-		<BackBar {title} {right} {search} {compact} {onback} />
+		<BackBar {title} {right} {search} {compact} {onback} {onright} />
 	{/if}
 	{#if app && !compose}
 		<div class="form-body">

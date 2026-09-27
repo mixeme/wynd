@@ -70,7 +70,16 @@
 	});
 </script>
 
-<FormLayout app color={circle.color} title="Из других кругов" onback={goBack}>
+<!-- «Готово» — сразу в круг: «назад» возвращает на 2.7 или в настройки,
+     и позвавшему приходилось идти в круг через два экрана. -->
+<FormLayout
+	app
+	color={circle.color}
+	title="Из других кругов"
+	right="Готово"
+	onright={() => goto(`/circles/${circle.circleId}`)}
+	onback={goBack}
+>
 	<Hint style="margin:16px 16px 0">
 		Люди из ваших кругов на этом сервере. Группы — круги; имя — как вы их знаете там. В «{circle.name}»
 		каждый выберет своё.

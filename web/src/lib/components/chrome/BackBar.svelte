@@ -9,6 +9,7 @@
 		search,
 		compact = false,
 		onback,
+		onright,
 		children
 	}: {
 		title?: string;
@@ -16,6 +17,8 @@
 		search?: string;
 		compact?: boolean;
 		onback?: () => void;
+		// С обработчиком надпись справа — кнопка действия («Готово»), цветом круга.
+		onright?: () => void;
 		children?: Snippet;
 	} = $props();
 </script>
@@ -33,7 +36,9 @@
 		{@render children()}
 	{:else}
 		<span class="t">{title}</span>
-		{#if right}
+		{#if right && onright}
+			<button type="button" class="rt done" onclick={() => onright()}>{right}</button>
+		{:else if right}
 			<span class="rt">{right}</span>
 		{/if}
 	{/if}
