@@ -186,6 +186,24 @@
 		goto(circle.pendingJoin ? `/circles/${circle.id}/join` : `/circles/${circle.id}`);
 	}
 
+	// Тап мимо открытого меню закрывает его. Отметка «жест поглощён» — как
+	// после удержания: иначе тот же тап по строке ещё и открывал бы круг.
+	function onWindowPointerDown(e: PointerEvent) {
+		const target = e.target instanceof Element ? e.target : null;
+		if (!target) return;
+		let closed = false;
+		if (fabMenuOpen && !target.closest('.fab-wrap')) {
+			fabMenuOpen = false;
+			closed = true;
+		}
+		if ((pinMenuKey !== null || groupMenuId !== null) && !target.closest('.circle-row-card')) {
+			pinMenuKey = null;
+			groupMenuId = null;
+			closed = true;
+		}
+		if (closed) pressMark = markLongPress();
+	}
+
 	// Один круг может стоять и в «Закреплённых», и в группе: меню открывается
 	// у той строки, которую держали, — ключ несёт раздел.
 	function menuKey(section: string, circle: StreetCircle): string {
@@ -381,6 +399,8 @@
 	/>
 {/snippet}
 
+<svelte:window onpointerdown={onWindowPointerDown} />
+
 <ShellLayout
 	app
 	searchDisabled={empty}
@@ -391,7 +411,10 @@
 	onfabmenuclose={() => (fabMenuOpen = false)}
 	fabMenuItems={[
 		{ label: 'Новый круг', onclick: openNewFromMenu },
-		{ label: 'Новая группа', onclick: startCreateGroup }
+		{ label: 'Новая группа', onclick: startCreateGroup },
+		// Круги уже есть, а ссылка пришла в мессенджер и открылась в браузере —
+		// вставить её можно здесь, как с пустой улочки (2.16).
+		{ label: 'Вставить приглашение', onclick: () => ((fabMenuOpen = false), goto('/invite')) }
 	]}
 >
 

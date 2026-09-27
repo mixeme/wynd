@@ -1155,6 +1155,10 @@ a.link {
 .fab-menu .fab-menu-item:first-child {
 	padding-bottom: 8px;
 }
+.fab-menu .fab-menu-item:not(:first-child):not(:last-child) {
+	padding-top: 8px;
+	padding-bottom: 8px;
+}
 .fab-menu .fab-menu-item:last-child {
 	padding-bottom: 14px;
 	padding-top: 8px;
