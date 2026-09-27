@@ -13,6 +13,8 @@
 	import { authErrorHint } from '$lib/auth/auth';
 	import { formatBytes } from '$lib/format/bytes';
 	import { clearMediaStore, getAppSettings, mediaStoreBytes, type Theme } from '$lib/idb/db';
+	import Input from '$ui/forms/Input.svelte';
+	import { getMediaCacheLimit, setMediaCacheLimit } from '$lib/media/objectUrl';
 	import { loadSessions, setTheme } from '$lib/session/session.svelte';
 	import {
 		accountNotifyPrefsFromAppDefaults,
@@ -29,6 +31,12 @@
 	let theme = $state<Theme>('system');
 	let cacheBytes = $state(0);
 	let freeBytes = $state(0);
+	// Потолок кэша: 1 / 2 / 5 ГБ или своё число гигабайт (1–100).
+	const GB = 1024 * 1024 * 1024;
+	const CACHE_PRESETS = [1, 2, 5] as const;
+	let cacheLimit = $state(2 * GB);
+	let customCacheGb = $state(10);
+	let customCache = $state(false);
 	let ready = $state(false);
 	let baseline = $state<AppNotifyDefaults | null>(null);
 	let error = $state('');
@@ -69,11 +77,23 @@
 	});
 
 	async function refreshCache() {
+		cacheLimit = await getMediaCacheLimit();
+		const gb = Math.round(cacheLimit / GB);
+		customCache = !(CACHE_PRESETS as readonly number[]).includes(gb);
+		if (customCache) customCacheGb = gb;
 		cacheBytes = await mediaStoreBytes();
 		if (navigator.storage?.estimate) {
 			const est = await navigator.storage.estimate();
 			freeBytes = Math.max(0, (est.quota ?? 0) - (est.usage ?? 0));
 		}
+	}
+
+	async function pickCacheLimit(gb: number, custom = false) {
+		customCache = custom;
+		const clamped = Math.max(1, Math.min(100, Math.round(Number(gb) || 1)));
+		if (custom) customCacheGb = clamped;
+		await setMediaCacheLimit(clamped * GB);
+		await refreshCache();
 	}
 
 	async function clearCache() {
@@ -131,11 +151,34 @@
 	</Hint>
 
 	<SectionLabel style="margin-top:22px">Место на устройстве</SectionLabel>
-	<Meter value={cacheBytes} max={Math.max(cacheBytes + freeBytes, 1)} />
+	<Meter value={cacheBytes} max={Math.max(cacheLimit, 1)} />
 	<Hint style="margin-top:8px">
-		{formatBytes(cacheBytes)} кэша{#if freeBytes}
-			{' '}· {formatBytes(freeBytes)} свободно{/if}
+		{formatBytes(cacheBytes)} кэша из {formatBytes(cacheLimit)}{#if freeBytes}
+			{' '}· {formatBytes(freeBytes)} свободно на устройстве{/if}
 	</Hint>
+	<ChipGroup class="mt-8">
+		{#each CACHE_PRESETS as gb (gb)}
+			<Chip selected={!customCache && cacheLimit === gb * GB} onclick={() => void pickCacheLimit(gb)}
+				>{gb} ГБ</Chip
+			>
+		{/each}
+		<Chip selected={customCache} onclick={() => (customCache = true)}>Своё…</Chip>
+	</ChipGroup>
+	{#if customCache}
+		<div class="rowin mt-10">
+			<Input
+				active
+				type="number"
+				min="1"
+				max="100"
+				class="w72 m-0"
+				bind:value={customCacheGb}
+				onchange={() => void pickCacheLimit(customCacheGb, true)}
+			/>
+			<span class="hint m-0">ГБ, до 100</span>
+		</div>
+	{/if}
+	<Hint>Сверх потолка удаляются давно не открытые фото и видео — при просмотре они скачаются заново.</Hint>
 	<SettingsRow
 		title="Очистить кэш"
 		subtitle="фотографии скачаются заново при просмотре"

@@ -1,10 +1,12 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+	clearMediaStore,
 	closeDb,
 	getDb,
 	invalidateSnapshots,
 	mediaStoreBytes,
+	putMedia,
 	putSnapshot,
 	snapshotKey
 } from './db';
@@ -78,11 +80,11 @@ describe('invalidateSnapshots', () => {
 });
 
 describe('mediaStoreBytes', () => {
-	it('sums buffers with a cursor', async () => {
-		const db = await getDb();
-		await db.clear('media');
-		await db.put('media', { buffer: new ArrayBuffer(10), mime: 'image/jpeg' }, 'a');
-		await db.put('media', { buffer: new ArrayBuffer(32), mime: 'image/jpeg' }, 'b');
+	// Размер — по метаданным, которые пишет putMedia: сами файлы не читаются.
+	it('sums sizes from media metadata', async () => {
+		await clearMediaStore();
+		await putMedia('a', { buffer: new ArrayBuffer(10), mime: 'image/jpeg' });
+		await putMedia('b', { buffer: new ArrayBuffer(32), mime: 'image/jpeg' });
 		expect(await mediaStoreBytes()).toBe(42);
 		await closeDb();
 	});

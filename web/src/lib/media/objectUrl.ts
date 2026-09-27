@@ -1,5 +1,12 @@
 import { apiFetch } from '$lib/api/client';
-import { getMedia, mediaKey, putMedia } from '$lib/idb/db';
+import {
+	getAppSettings,
+	getMedia,
+	mediaKey,
+	putMedia,
+	saveAppSettings,
+	trimMediaStore
+} from '$lib/idb/db';
 
 /**
  * Сколько байт медиа держат живые object URL. Адрес держит свой Blob в памяти
@@ -17,6 +24,43 @@ export const URL_CACHE_MAX_BYTES = 256 * 1024 * 1024;
  * сети при каждом новом показе.
  */
 export const IDB_MEDIA_MAX_BYTES = 20 * 1024 * 1024;
+
+/**
+ * Потолок всего кэша медиа в IndexedDB. Раньше общего потолка не было —
+ * только на один файл, и кэш рос без конца. Сверх потолка вытесняются давно
+ * не открытые файлы; меняется в «Настройки → Приложение».
+ */
+export const MEDIA_CACHE_DEFAULT_BYTES = 2 * 1024 * 1024 * 1024;
+
+let cacheLimit: number | undefined;
+let trimTimer: ReturnType<typeof setTimeout> | undefined;
+
+export async function getMediaCacheLimit(): Promise<number> {
+	if (cacheLimit === undefined) {
+		const settings = await getAppSettings().catch(() => undefined);
+		cacheLimit = settings?.media_cache_bytes ?? MEDIA_CACHE_DEFAULT_BYTES;
+	}
+	return cacheLimit;
+}
+
+/** Новый потолок: сохраняется и сразу подрезает кэш. */
+export async function setMediaCacheLimit(bytes: number): Promise<void> {
+	cacheLimit = bytes;
+	const settings = (await getAppSettings()) ?? { theme: 'system' as const };
+	await saveAppSettings({ ...settings, media_cache_bytes: bytes });
+	await trimMediaStore(bytes);
+}
+
+/** Подрезка после записи — раз в пару секунд, не на каждый файл ленты. */
+function scheduleTrim(): void {
+	if (trimTimer) return;
+	trimTimer = setTimeout(() => {
+		trimTimer = undefined;
+		void getMediaCacheLimit()
+			.then((limit) => trimMediaStore(limit))
+			.catch(() => {});
+	}, 2000);
+}
 
 interface CachedUrl {
 	url: string;
@@ -80,6 +124,7 @@ export async function getMediaUrl(origin: string, blobId: string): Promise<strin
 	const typed = blob.type ? blob : new Blob([blob], { type: mime });
 	if (typed.size <= idbLimit) {
 		await putMedia(key, { buffer: await typed.arrayBuffer(), mime });
+		scheduleTrim();
 	}
 	return remember(key, typed);
 }
@@ -109,7 +154,7 @@ export function seedMediaUrl(
 ): string {
 	const key = mediaKey(origin, blobId);
 	const url = remember(key, new Blob([data], { type: mime }));
-	if (data.byteLength <= idbLimit) void putMedia(key, { buffer: data, mime });
+	if (data.byteLength <= idbLimit) void putMedia(key, { buffer: data, mime }).then(scheduleTrim);
 	return url;
 }
 

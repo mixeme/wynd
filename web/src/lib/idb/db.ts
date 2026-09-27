@@ -109,6 +109,16 @@ export interface MediaRecord {
 	mime: string;
 }
 
+/**
+ * Размер и давность файла кэша — отдельно от самих байт: посчитать кэш или
+ * выбрать, что вытеснить, раньше значило прочитать все файлы целиком.
+ */
+export interface MediaMeta {
+	size: number;
+	/** Когда файл брали в последний раз (мс); 0 — до версии 3, давнее всех. */
+	used: number;
+}
+
 export interface PinRecord {
 	pinned_at: number;
 }
@@ -141,6 +151,8 @@ export interface AppSettings {
 	circle_meta?: Record<string, CircleMeta>;
 	day_prompt_seen?: Record<string, true>;
 	day_prompt_count?: Record<string, number>;
+	/** Потолок кэша медиа, байты; нет — умолчание (2 ГБ). */
+	media_cache_bytes?: number;
 }
 
 interface WyndDB extends DBSchema {
@@ -169,6 +181,10 @@ interface WyndDB extends DBSchema {
 		key: string;
 		value: MediaRecord;
 	};
+	media_meta: {
+		key: string;
+		value: MediaMeta;
+	};
 	pins: {
 		key: string;
 		value: PinRecord;
@@ -184,7 +200,7 @@ interface WyndDB extends DBSchema {
 }
 
 const DB_NAME = 'wynd';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let dbPromise: Promise<IDBPDatabase<WyndDB>> | undefined;
 
@@ -199,7 +215,7 @@ export async function closeDb(): Promise<void> {
 export function getDb(): Promise<IDBPDatabase<WyndDB>> {
 	if (!dbPromise) {
 		dbPromise = openDB<WyndDB>(DB_NAME, DB_VERSION, {
-			upgrade(db, oldVersion) {
+			upgrade(db, oldVersion, _newVersion, transaction) {
 				if (oldVersion < 1) {
 					db.createObjectStore('sessions', { keyPath: 'origin' });
 					db.createObjectStore('admin_session');
@@ -212,6 +228,18 @@ export function getDb(): Promise<IDBPDatabase<WyndDB>> {
 				}
 				if (oldVersion < 2) {
 					db.createObjectStore('groups', { keyPath: 'id' });
+				}
+				if (oldVersion < 3) {
+					// Метаданные уже лежащего кэша — один раз при обновлении; used 0:
+					// старые файлы вытесняются первыми.
+					const meta = db.createObjectStore('media_meta');
+					void (async () => {
+						let cursor = await transaction.objectStore('media').openCursor();
+						while (cursor) {
+							await meta.put({ size: cursor.value.buffer.byteLength, used: 0 }, cursor.key);
+							cursor = await cursor.continue();
+						}
+					})();
 				}
 			},
 			// Открытая старая вкладка держит прежнюю версию: без blocked
@@ -468,32 +496,70 @@ export async function listPins(): Promise<PinRow[]> {
 
 export async function getMedia(key: string): Promise<MediaRecord | undefined> {
 	const db = await getDb();
-	return db.get('media', key);
+	const record = await db.get('media', key);
+	if (record) {
+		// Давность для вытеснения; сбой отметки не мешает показу.
+		void db.put('media_meta', { size: record.buffer.byteLength, used: Date.now() }, key).catch(() => {});
+	}
+	return record;
 }
 
 export async function putMedia(key: string, record: MediaRecord): Promise<void> {
 	const db = await getDb();
-	await db.put('media', record, key);
+	const tx = db.transaction(['media', 'media_meta'], 'readwrite');
+	await tx.objectStore('media').put(record, key);
+	await tx.objectStore('media_meta').put({ size: record.buffer.byteLength, used: Date.now() }, key);
+	await tx.done;
 }
 
-/**
- * Размер кэша медиа считается курсором: getAll поднимал в память все
- * бинарные данные разом (LEG-2).
- */
+/** Размер кэша медиа — по метаданным, не читая сами файлы. */
 export async function mediaStoreBytes(): Promise<number> {
 	const db = await getDb();
 	let total = 0;
-	let cursor = await db.transaction('media').store.openCursor();
+	let cursor = await db.transaction('media_meta').store.openCursor();
 	while (cursor) {
-		total += cursor.value.buffer.byteLength;
+		total += cursor.value.size;
 		cursor = await cursor.continue();
 	}
 	return total;
 }
 
+/**
+ * Держит кэш медиа в потолке: сверх него удаляет давно не открытые файлы,
+ * пока не останется 90% потолка (запас, чтобы не чистить на каждой записи).
+ * Возвращает, сколько файлов удалено.
+ */
+export async function trimMediaStore(limitBytes: number): Promise<number> {
+	const db = await getDb();
+	const tx = db.transaction(['media', 'media_meta'], 'readwrite');
+	const meta = tx.objectStore('media_meta');
+	const entries: { key: string; size: number; used: number }[] = [];
+	let total = 0;
+	let cursor = await meta.openCursor();
+	while (cursor) {
+		entries.push({ key: cursor.key, ...cursor.value });
+		total += cursor.value.size;
+		cursor = await cursor.continue();
+	}
+	let removed = 0;
+	if (total > limitBytes) {
+		entries.sort((a, b) => a.used - b.used);
+		for (const entry of entries) {
+			if (total <= limitBytes * 0.9) break;
+			await tx.objectStore('media').delete(entry.key);
+			await meta.delete(entry.key);
+			total -= entry.size;
+			removed += 1;
+		}
+	}
+	await tx.done;
+	return removed;
+}
+
 export async function clearMediaStore(): Promise<void> {
 	const db = await getDb();
 	await db.clear('media');
+	await db.clear('media_meta');
 }
 
 /**
@@ -512,7 +578,7 @@ export async function clearOriginState(origin: string): Promise<void> {
 		q = await q.continue();
 	}
 	await queue.done;
-	for (const store of ['media', 'pins'] as const) {
+	for (const store of ['media', 'media_meta', 'pins'] as const) {
 		const tx = db.transaction(store, 'readwrite');
 		let cursor = await tx.store.openCursor();
 		while (cursor) {
