@@ -175,11 +175,11 @@
 		</Button>
 	{/if}
 	{#if qrSvg}
-		<div class="qr" style="margin:16px auto 0;width:142px">{@html qrSvg}</div>
+		<div class="qr">{@html qrSvg}</div>
 	{/if}
 	<Hint style="margin:16px;text-align:center">Кто ещё не на сервере — код или ссылка</Hint>
 	{#if inviteUrl}
-		<FieldDisplay mono value={inviteUrl} style="margin-top:12px;font-size:12.5px;overflow:hidden" />
+		<FieldDisplay mono value={inviteUrl} style="margin-top:12px;font-size:12.5px;overflow-wrap:anywhere" />
 		<div class="rowin" style="margin-top:12px">
 			<Button variant="colored" style="flex:1" onclick={() => void shareLink()}>
 				{shared ? 'Отправлено' : 'Поделиться'}
@@ -254,17 +254,12 @@
 			<span class="hint m-0">дней, до {CUSTOM_DAYS_MAX}</span>
 		</div>
 	{/if}
-	{#if multiInvitesAllowed}
-		<Hint
-			>Ссылка несёт адрес сервера и токен: тому, кого вы зовёте, не придётся ничего вводить.
-			Многоразовая обязательно имеет лимит — по ней на сервер входят новые люди.</Hint
-		>
-	{:else}
-		<Hint
-			>В настройках круга стоят только одноразовые — чипов «Одноразовая / Многоразовая» нет, лимита 5 /
-			10 / своё тоже: выбирать не из чего.</Hint
-		>
-	{/if}
+	<!-- Про многоразовые — только когда их можно выбрать: иначе подсказка
+	     объясняет чипы, которых на экране нет. -->
+	<Hint
+		>Ссылка несёт адрес сервера и токен: тому, кого вы зовёте, не придётся ничего вводить.{#if multiInvitesAllowed}
+			Многоразовая обязательно имеет лимит — по ней на сервер входят новые люди.{/if}</Hint
+	>
 	{#if fromCreate}
 		<Button variant="ghost" onclick={goCircle}>Сначала в круг, позову потом</Button>
 	{/if}
