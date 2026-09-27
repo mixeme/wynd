@@ -1,5 +1,6 @@
 ﻿<script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { getContext } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Chip from '$ui/forms/Chip.svelte';
@@ -16,9 +17,11 @@
 		ownerNameFromSession
 	} from '$lib/circles/circles';
 	import { setCircleColor } from '$lib/circles/meta';
+	import { fetchCircleSettings, patchCircle } from '$lib/circles/settings';
 	import { rememberCircleOrigin } from '$lib/circles/origin';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { loadSourceUrl, sourceUrl } from '$lib/instance/source.svelte';
+	import type { CircleColor } from '$lib/circles/circles';
 	import { NEW_CIRCLE_CTX, type NewCircleContext, type NewCircleEditWindow } from '$lib/circles/new-circle';
 
 	const form = getContext<NewCircleContext>(NEW_CIRCLE_CTX);
@@ -33,6 +36,42 @@
 	});
 
 	let windowBeforeDiary: NewCircleEditWindow = '1h';
+
+	// «Назад» с 2.7: круг уже создан. Форма показывает его и правит его же —
+	// повторное «Создать» завело бы второй круг.
+	const createdId = $derived($page.url.searchParams.get('created') ?? '');
+	let loadedCreated = '';
+
+	$effect(() => {
+		if (!createdId || !form.ready || loadedCreated === createdId) return;
+		loadedCreated = createdId;
+		void fetchCircleSettings(form.selectedOrigin, createdId)
+			.then((c) => {
+				form.name = c.name;
+				if (c.color) form.color = c.color as CircleColor;
+				form.editWindow = windowFromSec(c.edit_window_sec);
+			})
+			.catch((err) => (form.error = authErrorHint(err)));
+	});
+
+	function windowFromSec(sec: number | null | undefined): NewCircleEditWindow {
+		switch (sec) {
+			case null:
+			case undefined:
+				return 'unlimited';
+			case 0:
+				return 'chronicle';
+			case 600:
+				return '10m';
+			case 3600:
+				return '1h';
+			case 86400:
+				return '1d';
+			default:
+				form.customHours = Math.max(1, Math.round(sec / 3600));
+				return 'custom';
+		}
+	}
 
 	function editWindowSec(): number | null {
 		switch (form.editWindow) {
@@ -74,6 +113,23 @@
 			return;
 		}
 		form.loading = true;
+		if (createdId) {
+			try {
+				await patchCircle(selectedSession.origin, createdId, {
+					name: trimmed,
+					edit_window_sec: editWindowSec(),
+					color: form.color
+				});
+				await setCircleColor(selectedSession.origin, createdId, form.color);
+				if (form.diaryMode) goto(`/circles/${createdId}`);
+				else goto(`/circles/${createdId}/settings/invite?from=create`);
+			} catch (err) {
+				form.error = authErrorHint(err);
+			} finally {
+				form.loading = false;
+			}
+			return;
+		}
 		try {
 			const created = await createCircle(selectedSession.origin, {
 				name: trimmed,
@@ -94,14 +150,17 @@
 </script>
 
 <FormLayout color={form.color} app title="Новый круг" onback={() => goto('/circles')}>
+	{#if createdId}
+		<Hint>Круг уже создан — изменения сохранятся в нём.</Hint>
+	{/if}
 	<Label>Сервер</Label>
 	{#if selectedSession}
 		<ServerRow
 			name={selectedSession.name}
 			subtitle={form.serverSubtitle(selectedSession)}
-			variant="select"
+			variant={createdId ? 'info' : 'select'}
 			style="padding:2px 16px 10px"
-			onclick={openServerPick}
+			onclick={createdId ? undefined : openServerPick}
 		/>
 	{/if}
 	<Hint style="margin-top:0">
@@ -161,7 +220,11 @@
 		{/if}
 	</Hint>
 	<Button variant="colored" loading={form.loading} onclick={onSubmit}>
-		{form.diaryMode ? 'Завести дневник' : 'Создать и позвать'}
+		{#if createdId}
+			{form.diaryMode ? 'Сохранить' : 'Сохранить и позвать'}
+		{:else}
+			{form.diaryMode ? 'Завести дневник' : 'Создать и позвать'}
+		{/if}
 	</Button>
 	{#if !form.diaryMode}
 		<Hint centered style="margin-top:26px">
