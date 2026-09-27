@@ -1,5 +1,5 @@
 {
-	"src/routes/+page.svelte": 7,
+	"src/routes/+page.svelte": 5,
 	"src/routes/admin/+page.svelte": 9,
 	"src/routes/admin/access/+page.svelte": 2,
 	"src/routes/admin/bootstrap/+page.svelte": 0,

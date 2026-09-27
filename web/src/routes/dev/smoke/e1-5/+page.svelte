@@ -4,6 +4,7 @@
 	import FieldDisplay from '$ui/forms/FieldDisplay.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Label from '$ui/forms/Label.svelte';
+	import ServerRow from '$ui/data/ServerRow.svelte';
 	import Logo from '$ui/Logo.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 </script>
@@ -16,12 +17,8 @@
 		<Logo />
 	</div>
 	<div class="h1s ctr" style="margin-top:30px">Войти</div>
-	<Label style="margin-top:26px">Сервер</Label>
-	<FieldDisplay>
-		<div style="font-weight:600">Дом Ани</div>
-		<div style="font-size:12.5px;color:var(--muted)">home.example.org</div>
-	</FieldDisplay>
-	<Label>Почта</Label>
+	<ServerRow name="Дом Ани" subtitle="home.example.org · принимает вход" variant="ok" card />
+	<Label style="margin-top:16px">Почта</Label>
 	<FieldDisplay value="anya@example.com" active />
 	<Hint>Пришлём код для входа. Пароля нет.</Hint>
 	<Button onclick={() => {}}>Получить код</Button>

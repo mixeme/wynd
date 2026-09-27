@@ -18,7 +18,6 @@
 	import { INVALID_EMAIL_HINT, isValidParticipantEmail } from '$lib/auth/email';
 	import { loadPendingAuth, savePendingAuth } from '$lib/auth/pending';
 	import { initSession, loadSessions } from '$lib/session/session.svelte';
-	import { appVersion } from '$lib/appinfo';
 
 	let address = $state('');
 	let email = $state('');
@@ -42,7 +41,7 @@
 			origin = resolved;
 			instance = info;
 		} catch {
-			error = 'Сервер не отвечает — проверьте адрес';
+			error = 'Сервер не отвечает — попробуйте позже';
 			origin = '';
 		} finally {
 			checking = false;
@@ -102,9 +101,7 @@
 		}
 	}
 
-	const serverSubtitle = $derived(
-		instance ? `принимает вход · Wynd ${instance.version || appVersion}` : ''
-	);
+	const serverSubtitle = $derived(instance ? `${address} · принимает вход` : '');
 </script>
 
 <PlainLayout shell app>
@@ -112,17 +109,8 @@
 		<Logo />
 	</div>
 	<div class="h1s ctr" style="margin-top:30px">Войти</div>
-	<Label style="margin-top:26px">Адрес сервера</Label>
-	<Input
-		active
-		mono
-		style="font-size:12.5px"
-		type="text"
-		spellcheck="false"
-		bind:value={address}
-		onchange={checkServer}
-		onblur={checkServer}
-	/>
+	<!-- Адрес не вводится: приложение открыто с этого сервера, он и есть сервер
+	     входа. Войти на другой — «Настройки → Серверы → Добавить сервер». -->
 	{#if checking}
 		<Hint style="margin-top:8px">Проверяем сервер…</Hint>
 	{:else if instance}

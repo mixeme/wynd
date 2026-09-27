@@ -167,7 +167,7 @@
 													void sendAdminPushTest()
 														.then(() => {
 															pushFailed = false;
-															pushDetail = 'отправили только что';
+															pushDetail = 'отправили на этот браузер';
 															return load();
 														})
 														.catch((err) => {

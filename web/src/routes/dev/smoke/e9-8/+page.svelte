@@ -84,7 +84,7 @@
 						<TextButton variant="admin" onclick={() => {}}>Скачать копию</TextButton>
 					{/snippet}
 				</CheckRow>
-				<CheckRow status="ok" name="Тестовый пуш" description="дошёл до этого браузера">
+				<CheckRow status="ok" name="Тестовый пуш" description="отправили на этот браузер">
 					{#snippet actions()}
 						<TextButton variant="admin" onclick={() => {}}>Отправить</TextButton>
 					{/snippet}
