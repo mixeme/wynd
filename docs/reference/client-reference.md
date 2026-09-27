@@ -44,7 +44,7 @@ flowchart TB
 
 Tailwind, shadcn-svelte, axios, tanstack-query, Dexie, redux/zustand, date-fns/dayjs, tus/uppy, Mapbox, jsQR, Playwright как обязательность, adapter-node, SSR, Google Fonts CDN, `openapi-typescript` (типы API пишутся руками в `$lib`; почему — «OpenAPI» в справочнике сервера).
 
-**Разрешено:** `idb`, `exifr`, `leaflet`, `leaflet.markercluster`, `@vite-pwa/sveltekit`, `vitest`, `fake-indexeddb`, `bits-ui` (только внутри `$ui`), `qrcode` (админ 9.2), `mediabunny` (клиентский encode видео, WebCodecs).
+**Разрешено:** `idb`, `exifr`, `leaflet`, `leaflet.markercluster`, `@vite-pwa/sveltekit`, `vitest`, `fake-indexeddb`, `bits-ui` (только внутри `$ui`), `qrcode` (админ 9.2), `mediabunny` (клиентский encode видео, WebCodecs), `jsqr` (распознавание QR, где нет `BarcodeDetector`; подгружается лениво — 2.16, 2.17).
 
 ---
 
@@ -72,6 +72,18 @@ Tailwind, shadcn-svelte, axios, tanstack-query, Dexie, redux/zustand, date-fns/d
 
 - Svelte 5 runes в `*.svelte.ts`.
 - Сессии — `session/session.svelte.ts`; тема `'system' | 'light' | 'dark'`.
+
+### Хранилище IndexedDB — версии
+
+База `wynd` в браузере; версия — `DB_VERSION` в `$lib/idb/db.ts`, подъём — в `upgrade`, по одной ступени на версию. Понизить версию браузер не даст: клиент старее базы её не откроет, и откат образа на такой клиент требует очистить данные сайта (писать в «Оператору» CHANGELOG).
+
+| Версия | Выпуск | Что добавлено |
+|---|---|---|
+| 1 | 0.1.0 | `sessions`, `admin_session`, `cursors`, `snapshots`, `queue`, `media`, `pins`, `settings` |
+| 2 | 0.4.0 | `groups` — группы кругов (2.10), только на устройстве |
+| 3 | 0.10.0 | `media_meta` — размер и давность файла кэша для потолка (7.3); при подъёме заполняется по уже лежащему `media` (used 0 — вытесняется первым) |
+
+Проверка подъёма — `media_migration.test.ts` (база v2 с кэшем → v3).
 
 ### Сеть
 
