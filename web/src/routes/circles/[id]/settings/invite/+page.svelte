@@ -27,8 +27,11 @@
 		goto(`/circles/${circle.circleId}`);
 	}
 
+	// Назад — туда, откуда пришли. Круг создают со списка кругов, и после
+	// создания «назад» вёл в сам круг — не туда, откуда пришли. На форму
+	// создания вернуть нельзя: круг уже есть. В круг ведёт «Сначала в круг».
 	function goBack() {
-		if (fromCreate) goCircle();
+		if (fromCreate) goto('/circles');
 		else goto(`/circles/${circle.circleId}/settings`);
 	}
 
