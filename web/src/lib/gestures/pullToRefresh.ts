@@ -14,8 +14,11 @@ export const PTR = {
 	maxPull: 80,
 	/** За этой чертой отпускание запускает обновление. */
 	threshold: 48,
-	/** Высота полосы, пока идёт обновление. */
+	/** Высота знака, пока идёт обновление. */
 	restHeight: 69,
+	/** Отступ над знаком (3.5): без него знак прилипал к шапке круга. Растёт
+	 *  вместе с жестом, чтобы не появляться рывком. */
+	gap: 22,
 	/** Пауза между «отпустил» и запросом — на ней доигрывает знак. */
 	settleMs: 280
 } as const;
@@ -74,8 +77,14 @@ export function pullFinished(): PullState {
 
 /** Высота полосы для отрисовки. */
 export function pullHeight(state: PullState): number {
-	if (state.phase === 'settling' || state.phase === 'refreshing') return PTR.restHeight;
-	return state.pull;
+	if (state.phase === 'settling' || state.phase === 'refreshing') return PTR.restHeight + PTR.gap;
+	return pullMarkHeight(state) + pullGap(state);
+}
+
+/** Отступ над знаком: подрастает с жестом до PTR.gap. */
+export function pullGap(state: PullState): number {
+	if (state.phase === 'settling' || state.phase === 'refreshing') return PTR.gap;
+	return Math.min(PTR.gap, Math.round(state.pull * 0.3));
 }
 
 /** Высота знака внутри полосы: он подрастает вместе с жестом. */

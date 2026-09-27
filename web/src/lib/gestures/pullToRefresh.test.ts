@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	PTR,
 	pullEnd,
+	pullGap,
 	pullHeight,
 	pullIdle,
 	pullMarkHeight,
@@ -45,7 +46,7 @@ describe('потянуть, чтобы обновить', () => {
 		s = pullMove(s, PTR.threshold + 10, 0);
 		s = pullEnd(s);
 		expect(s.phase).toBe('settling');
-		expect(pullHeight(s)).toBe(PTR.restHeight);
+		expect(pullHeight(s)).toBe(PTR.restHeight + PTR.gap);
 		s = pullSettled(s);
 		expect(s.phase).toBe('refreshing');
 	});
@@ -64,5 +65,14 @@ describe('потянуть, чтобы обновить', () => {
 		expect(pullMarkHeight(s)).toBe(8);
 		s = pullMove(s, 40, 0);
 		expect(pullMarkHeight(s)).toBe(34);
+	});
+
+	it('над знаком отступ от шапки — растёт с жестом, без рывка', () => {
+		let s = pullStart(pullIdle(), 0, 0);
+		s = pullMove(s, 10, 0);
+		expect(pullGap(s)).toBe(3);
+		expect(pullHeight(s)).toBe(pullMarkHeight(s) + 3);
+		s = pullMove(s, 200, 0);
+		expect(pullGap(s)).toBe(PTR.gap);
 	});
 });

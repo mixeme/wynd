@@ -597,7 +597,8 @@
 }
 .ptr {
 	display: flex;
-	align-items: flex-start;
+	/* Знак у низа полосы: сверху остаётся отступ от шапки (pullGap). */
+	align-items: flex-end;
 	justify-content: center;
 	color: var(--muted);
 	overflow: hidden;
