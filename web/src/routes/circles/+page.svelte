@@ -305,6 +305,14 @@
 		goto('/circles/new');
 	}
 
+	// Пункт меню плюса. Он нажимается как раз при открытом меню, а openNew
+	// при открытом меню только закрывает его (тап по плюсу поверх меню) —
+	// поэтому «Новый круг» из меню никуда не вёл.
+	function openNewFromMenu() {
+		fabMenuOpen = false;
+		goto('/circles/new');
+	}
+
 	function doorRowActions(circle: StreetCircle) {
 		const inGroup = Boolean(circleGroupId(circle));
 		return {
@@ -355,7 +363,7 @@
 	fabMenuOpen={fabMenuOpen}
 	onfabmenuclose={() => (fabMenuOpen = false)}
 	fabMenuItems={[
-		{ label: 'Новый круг', onclick: openNew },
+		{ label: 'Новый круг', onclick: openNewFromMenu },
 		{ label: 'Новая группа', onclick: startCreateGroup }
 	]}
 >
