@@ -117,6 +117,14 @@
 	min-height: 0;
 	overflow: auto;
 }
+/* Список кругов обновляется жестом (3.5), как лента: жест — наш, не браузера;
+   обёртка во всю высоту, чтобы тянуть можно было и короткий список. */
+.shell-body {
+	overscroll-behavior-y: contain;
+}
+.street-list {
+	min-height: 100%;
+}
 .ph.app .bar, .ph.app .cbar, .ph.app .appbar {
 	flex-shrink: 0;
 }
