@@ -414,7 +414,7 @@
 		{ label: 'Новая группа', onclick: startCreateGroup },
 		// Круги уже есть, а ссылка пришла в мессенджер и открылась в браузере —
 		// вставить её можно здесь, как с пустой улочки (2.16).
-		{ label: 'Вставить приглашение', onclick: () => ((fabMenuOpen = false), goto('/invite')) }
+		{ label: 'Присоединиться', onclick: () => ((fabMenuOpen = false), goto('/invite')) }
 	]}
 >
 
