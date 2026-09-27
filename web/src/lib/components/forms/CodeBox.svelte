@@ -31,8 +31,10 @@
 	});
 
 	const digits = $derived(editable ? cleanValue.split('') : digitsProp);
+	// Код набран целиком — курсора нет: в последней клетке он вставал второй
+	// строкой под цифрой.
 	const active = $derived(
-		editable ? Math.min(cleanValue.length, length - 1) : activeProp
+		editable ? (cleanValue.length < length ? cleanValue.length : -1) : activeProp
 	);
 
 	const cells = $derived(
@@ -51,13 +53,14 @@
 
 <div class="code-wrap">
 	{#if editable}
+		<!-- Без maxlength: браузер резал вставку «123 456» до шести символов
+		     раньше, чем cleanValue выбрасывал пробел, и терялась цифра. -->
 		<input
 			bind:this={el}
 			class="code-input"
 			type="text"
 			inputmode="numeric"
 			autocomplete="one-time-code"
-			maxlength={length}
 			aria-label={inputLabel}
 			bind:value
 		/>
