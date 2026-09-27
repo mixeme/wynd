@@ -36,25 +36,75 @@ export function foreignWyndLinkOrigin(input: string, currentOrigin?: string): st
 	return null;
 }
 
+/**
+ * Куда ведёт присланный текст (вставка, QR): путь приглашения или отказ
+ * словами. Ссылка на другой сервер не открывается здесь — её токен ушёл бы
+ * на этот сервер.
+ */
+export function inviteTarget(
+	text: string,
+	currentOrigin?: string
+): { path: string } | { error: string } {
+	const foreign = foreignWyndLinkOrigin(text, currentOrigin);
+	if (foreign) return { error: `Ссылка ведёт на другой сервер (${foreign}) — откройте её там` };
+	const path = parseWyndLink(text, currentOrigin);
+	if (!path) return { error: 'Это не ссылка-приглашение Wynd' };
+	return { path };
+}
+
 type BarcodeDetectorLike = {
-	detect(image: ImageBitmap): Promise<Array<{ rawValue: string }>>;
+	detect(image: ImageBitmapSource): Promise<Array<{ rawValue: string }>>;
 };
 
-export async function decodeQrFromFile(file: File): Promise<string> {
+function nativeDetector(): BarcodeDetectorLike | null {
 	const Detector = (
 		globalThis as typeof globalThis & {
 			BarcodeDetector?: new (options?: { formats?: string[] }) => BarcodeDetectorLike;
 		}
 	).BarcodeDetector;
-	if (!Detector) {
-		throw new Error('no_detector');
+	return Detector ? new Detector({ formats: ['qr_code'] }) : null;
+}
+
+const scratch = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+
+/**
+ * Код с кадра или картинки. Встроенный BarcodeDetector есть в Chrome на
+ * Android, в Firefox его нет — там распознаёт jsQR (подгружается, только
+ * когда нужен). Без кода — null.
+ */
+export async function decodeQrFrom(
+	source: HTMLVideoElement | ImageBitmap,
+	width: number,
+	height: number
+): Promise<string | null> {
+	const detector = nativeDetector();
+	if (detector) {
+		try {
+			const codes = await detector.detect(source);
+			return codes[0]?.rawValue ?? null;
+		} catch {
+			/* нет формата qr_code в этой сборке — ниже jsQR */
+		}
 	}
+	if (!scratch || !width || !height) return null;
+	// Кадр уменьшается до 640 по большей стороне: jsQR на 4K-кадре медленный.
+	const scale = Math.min(1, 640 / Math.max(width, height));
+	scratch.width = Math.round(width * scale);
+	scratch.height = Math.round(height * scale);
+	const ctx = scratch.getContext('2d', { willReadFrequently: true });
+	if (!ctx) return null;
+	ctx.drawImage(source, 0, 0, scratch.width, scratch.height);
+	const { default: jsQR } = await import('jsqr');
+	const image = ctx.getImageData(0, 0, scratch.width, scratch.height);
+	return jsQR(image.data, image.width, image.height)?.data ?? null;
+}
+
+export async function decodeQrFromFile(file: File): Promise<string> {
 	const bitmap = await createImageBitmap(file);
 	try {
-		const detector = new Detector({ formats: ['qr_code'] });
-		const codes = await detector.detect(bitmap);
-		if (!codes.length) throw new Error('no_code');
-		return codes[0].rawValue;
+		const text = await decodeQrFrom(bitmap, bitmap.width, bitmap.height);
+		if (!text) throw new Error('no_code');
+		return text;
 	} finally {
 		bitmap.close();
 	}

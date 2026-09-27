@@ -5,7 +5,12 @@
 	import Input from '$ui/forms/Input.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
-	import { decodeQrFromFile, foreignWyndLinkOrigin, parseWyndLink } from '$lib/auth/links';
+	import {
+		decodeQrFromFile,
+		foreignWyndLinkOrigin,
+		inviteTarget,
+		parseWyndLink
+	} from '$lib/auth/links';
 
 	// 2.16: куда вставить присланную ссылку. В установленном приложении ссылка
 	// из мессенджера открывается в браузере, а не здесь, — человеку с пустой
@@ -14,22 +19,14 @@
 	let error = $state('');
 	let photoInput: HTMLInputElement | undefined = $state();
 
-	const foreignLinkError = (origin: string) =>
-		`Ссылка ведёт на другой сервер (${origin}) — откройте её там`;
-
 	function open(text: string): boolean {
+		const target = inviteTarget(text);
+		if ('error' in target) {
+			error = target.error;
+			return false;
+		}
 		error = '';
-		const foreign = foreignWyndLinkOrigin(text);
-		if (foreign) {
-			error = foreignLinkError(foreign);
-			return false;
-		}
-		const path = parseWyndLink(text);
-		if (!path) {
-			error = 'Это не ссылка-приглашение Wynd';
-			return false;
-		}
-		goto(path);
+		goto(target.path);
 		return true;
 	}
 
@@ -48,11 +45,8 @@
 		error = '';
 		try {
 			open(await decodeQrFromFile(file));
-		} catch (err) {
-			error =
-				err instanceof Error && err.message === 'no_detector'
-					? 'Сканер QR недоступен в этом браузере — вставьте ссылку в поле'
-					: 'Не удалось прочитать код — попробуйте другое фото';
+		} catch {
+			error = 'Не удалось прочитать код — попробуйте другое фото';
 		} finally {
 			if (photoInput) photoInput.value = '';
 		}
@@ -60,7 +54,7 @@
 </script>
 
 <FormLayout shell app title="Приглашение" onback={() => goto('/circles')}>
-	<Hint>Вставьте ссылку, которую вам прислали, или выберите фото с QR-кодом.</Hint>
+	<Hint>Вставьте ссылку, которую вам прислали, или отсканируйте QR-код.</Hint>
 	<Label>Ссылка</Label>
 	<Input
 		active
@@ -72,6 +66,7 @@
 		placeholder="https://…/invite/…"
 	/>
 	<Button disabled={!link.trim()} onclick={() => open(link)}>Открыть</Button>
+	<Button variant="ghost" onclick={() => goto('/invite/scan')}>Сканировать QR-код</Button>
 	<Button variant="ghost" onclick={() => photoInput?.click()}>Фото с QR-кодом</Button>
 	{#if error}
 		<Hint>{error}</Hint>

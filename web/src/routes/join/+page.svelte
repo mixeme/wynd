@@ -112,11 +112,8 @@
 			if (path) goto(path);
 			else if (foreign) error = foreignLinkError(foreign);
 			else error = 'В коде нет ссылки Wynd';
-		} catch (err) {
-			error =
-				err instanceof Error && err.message === 'no_detector'
-					? 'Сканер QR недоступен в этом браузере — вставьте ссылку в поле'
-					: 'Не удалось прочитать код — попробуйте другое фото';
+		} catch {
+			error = 'Не удалось прочитать код — попробуйте другое фото';
 		} finally {
 			if (linkInput) linkInput.value = '';
 		}

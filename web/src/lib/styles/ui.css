@@ -595,6 +595,16 @@
 	overscroll-behavior-y: contain;
 	padding-bottom: 8px;
 }
+/* Видоискатель сканера QR (2.17): квадрат во всю ширину, как рамка кода. */
+.qr-video {
+	display: block;
+	width: calc(100% - 32px);
+	margin: 16px 16px 0;
+	aspect-ratio: 1;
+	object-fit: cover;
+	border-radius: 12px;
+	background: var(--ink);
+}
 .ptr {
 	display: flex;
 	/* Знак у низа полосы: сверху остаётся отступ от шапки (pullGap). */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { foreignWyndLinkOrigin, parseWyndLink } from './links';
+import { foreignWyndLinkOrigin, inviteTarget, parseWyndLink } from './links';
 
 describe('parseWyndLink', () => {
 	const here = 'https://home.example.org';
@@ -28,5 +28,20 @@ describe('parseWyndLink', () => {
 	it('returns null for unrelated text', () => {
 		expect(parseWyndLink('home.example.org', here)).toBeNull();
 		expect(parseWyndLink('', here)).toBeNull();
+	});
+});
+
+// Один разбор для вставки и для сканера: путь приглашения или отказ словами.
+describe('inviteTarget', () => {
+	const here = 'https://wynd.example';
+	it('opens an invite of this server', () => {
+		expect(inviteTarget(`${here}/invite/abc`, here)).toEqual({ path: '/invite/abc' });
+	});
+	it('refuses a link to another server without sending its token here', () => {
+		const t = inviteTarget('https://other.example/invite/abc', here);
+		expect('error' in t && t.error).toContain('другой сервер');
+	});
+	it('refuses plain text', () => {
+		expect(inviteTarget('привет', here)).toEqual({ error: 'Это не ссылка-приглашение Wynd' });
 	});
 });
