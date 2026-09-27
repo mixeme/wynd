@@ -228,8 +228,14 @@ func TestServerInvitePeek(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("peek after circle: %d %s", rec.Code, rec.Body.String())
 	}
-	if jsonStr(t, rec, "inviter_name") != "Слава" {
-		t.Fatalf("peek inviter_name: %s", rec.Body.String())
+	// Ссылку выдал админ — у него нет лица. Имя владельца чужого круга
+	// анониму со ссылкой не показываем: этот человек никого не звал.
+	var afterCircle map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &afterCircle); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := afterCircle["inviter_name"]; ok {
+		t.Fatalf("admin link must not name a member: %s", rec.Body.String())
 	}
 
 	expired, err := srv.Auth.CreateServerInvite(t.Context(), auth.CreateServerInviteInput{
