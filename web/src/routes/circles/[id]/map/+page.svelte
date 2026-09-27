@@ -4,6 +4,7 @@
 	import MapBadge from '$ui/data/MapBadge.svelte';
 	import MapPostSheet from '$ui/data/MapPostSheet.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { isAccessError } from '$lib/api/client';
 	import { formatPostTime, pluralPosts } from '$lib/format/time';
@@ -191,7 +192,7 @@
 	onback={goBack}
 >
 	{#if loading}
-		<Hint style="margin:24px 16px">Загрузка…</Hint>
+		<Loading />
 	{:else if error && !pins.length}
 		<Hint style="margin:24px 16px">{error}</Hint>
 	{:else}

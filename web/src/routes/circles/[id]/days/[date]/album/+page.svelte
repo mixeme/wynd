@@ -5,6 +5,7 @@
 	import MediaTile from '$ui/data/MediaTile.svelte';
 	import PhotoGrid from '$ui/data/PhotoGrid.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
@@ -136,7 +137,7 @@
 	<Hint style="margin:0 16px 8px">{formatEntryDate(entryDate)}</Hint>
 
 	{#if loading}
-		<Hint style="margin:24px 16px">Загрузка…</Hint>
+		<Loading />
 	{:else if !items.length}
 		<Hint style="margin:24px 16px">В этот день нет фото или видео</Hint>
 	{:else}

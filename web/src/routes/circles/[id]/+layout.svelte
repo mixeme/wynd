@@ -21,6 +21,7 @@
 	import { fetchJoinPreview } from '$lib/circles/settings';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 	import PlainLayout from '$lib/layouts/PlainLayout.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import type { Snippet } from 'svelte';
 
 	let { children }: { children: Snippet } = $props();
@@ -276,4 +277,10 @@
 	{#key pageState.url.pathname}
 		{@render children()}
 	{/key}
+{:else}
+	<!-- Круг ещё не прочитан (или идёт переход на вступление): раньше здесь
+	     был пустой экран. -->
+	<PlainLayout app>
+		<Loading />
+	</PlainLayout>
 {/if}

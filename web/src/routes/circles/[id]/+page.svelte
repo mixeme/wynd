@@ -11,6 +11,7 @@
 	import FeedDayPromptCard from '$ui/data/FeedDayPromptCard.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import Icon from '$ui/Icon.svelte';
 	import Mark from '$ui/Mark.svelte';
@@ -548,7 +549,7 @@
 			<Hint style="margin:16px">Вы читаете этот круг и не пишете.</Hint>
 		{/if}
 		{#if loading}
-			<Hint style="margin:24px 16px">Загрузка…</Hint>
+			<Loading />
 		{:else if error && !posts.length}
 			<Hint style="margin:24px 16px">{error}</Hint>
 		{:else}

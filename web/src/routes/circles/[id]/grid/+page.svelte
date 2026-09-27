@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import MonthLabel from '$ui/data/MonthLabel.svelte';
 	import MediaTile from '$ui/data/MediaTile.svelte';
 	import PhotoGrid from '$ui/data/PhotoGrid.svelte';
@@ -93,7 +94,7 @@
 	onback={goBack}
 >
 	{#if loading}
-		<Hint style="margin:24px 16px">Загрузка…</Hint>
+		<Loading />
 	{:else if error && !tiles.length}
 		<Hint style="margin:24px 16px">{error}</Hint>
 	{:else}

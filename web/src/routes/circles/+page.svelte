@@ -22,6 +22,7 @@
 	import GroupFoldCard from '$ui/data/GroupFoldCard.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import PayStreetBanner from '$ui/data/PayStreetBanner.svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import Input from '$ui/forms/Input.svelte';
@@ -479,7 +480,7 @@
 	{/if}
 
 	{#if loading}
-		<Hint class="mt-24">Загрузка…</Hint>
+		<Loading />
 	{:else}
 		{#if showDonateBanner && payStatus?.banner}
 			<PayStreetBanner

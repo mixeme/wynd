@@ -6,6 +6,7 @@
 	import DayHeader from '$ui/data/DayHeader.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import Icon from '$ui/Icon.svelte';
@@ -196,7 +197,7 @@
 	onback={goBack}
 >
 	{#if loading}
-		<Hint style="margin:24px 16px">Загрузка…</Hint>
+		<Loading />
 	{:else if error && !posts.length}
 		<Hint style="margin:24px 16px">{error}</Hint>
 	{:else}

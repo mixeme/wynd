@@ -88,6 +88,7 @@
 	];
 	import Logo from '$ui/Logo.svelte';
 	import Mark from '$ui/Mark.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import AvatarCrop from '$ui/overlays/AvatarCrop.svelte';
 	import CommentBar from '$ui/overlays/CommentBar.svelte';
 	import Fab from '$ui/overlays/Fab.svelte';
@@ -306,6 +307,12 @@
 				<h3>Mark · #e2-1</h3>
 				<div class="demo-inline" style="padding:20px">
 					<Mark />
+				</div>
+			</div>
+			<div class="card" id="loading-demo">
+				<h3>Loading · экран, пока грузится</h3>
+				<div class="demo-inline">
+					<Loading style="min-height:160px" />
 				</div>
 			</div>
 			<div class="card">

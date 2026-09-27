@@ -4,6 +4,7 @@
 	import DayCard from '$ui/data/DayCard.svelte';
 	import DayGrid from '$ui/data/DayGrid.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import MonthLabel from '$ui/data/MonthLabel.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { isAccessError } from '$lib/api/client';
@@ -123,7 +124,7 @@
 	onback={goBack}
 >
 	{#if loading}
-		<Hint style="margin:24px 16px">Загрузка…</Hint>
+		<Loading />
 	{:else if error && !days.length}
 		<Hint style="margin:24px 16px">{error}</Hint>
 	{:else}

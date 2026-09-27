@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import Logo from '$ui/Logo.svelte';
@@ -24,6 +25,9 @@
 	let origin = $state('');
 	let instance = $state<InstanceInfo | undefined>();
 	let loading = $state(false);
+	// Пока не ясно, есть ли вход: у вошедшего форма входа мелькала перед
+	// переходом в круги.
+	let booting = $state(true);
 	let checking = $state(false);
 	let error = $state('');
 
@@ -55,6 +59,7 @@
 			goto('/circles');
 			return;
 		}
+		booting = false;
 		const pending = loadPendingAuth();
 		if (pending?.flow === 'login') {
 			email = pending.email;
@@ -106,6 +111,11 @@
 	const serverSubtitle = $derived(instance ? address : '');
 </script>
 
+{#if booting}
+	<PlainLayout shell app>
+		<Loading />
+	</PlainLayout>
+{:else}
 <PlainLayout shell app>
 	<div class="logo-wrap">
 		<Logo />
@@ -130,6 +140,7 @@
 		<Hint centered style="margin-top:12px">{error}</Hint>
 	{/if}
 </PlainLayout>
+{/if}
 
 <style>
 	.logo-wrap {
