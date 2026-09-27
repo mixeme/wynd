@@ -44,6 +44,7 @@
 	import { enqueuePost, loadQueuedPost, removeQueueItem, updateQueuedPost } from '$lib/queue/queue';
 	import { isTransportError } from '$lib/queue/transport';
 	import type { PostQueuePayload, QueueFile, QueueMediaMeta } from '$lib/idb/db';
+	import { takeComposePhotos } from '$lib/journal/compose-handoff';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 
@@ -277,6 +278,10 @@
 			const draft = readDraft();
 			if (draft) body = draft;
 			draftReady = true;
+			// Фото, выбранные кнопкой в строке ввода на 3.1: пикер открылся там,
+			// по нажатию, — здесь они только прикрепляются.
+			const handed = takeComposePhotos(circle.circleId);
+			if (handed.length) void addFiles(handed);
 		}
 		try {
 			members = await fetchMembers(circle.origin, circle.circleId);
@@ -376,15 +381,19 @@
 		const input = e.target as HTMLInputElement;
 		const files = input.files;
 		if (!files?.length) return;
-		if (filePickLock) {
+		try {
+			await addFiles([...files]);
+		} finally {
 			input.value = '';
-			return;
 		}
+	}
+
+	async function addFiles(list: File[]) {
+		if (filePickLock || !list.length) return;
 		filePickLock = true;
 		try {
 			const compression = await fetchCompression(circle.origin).catch(() => undefined);
 			const next = [...picked];
-			const list = [...files];
 			const videoCount = list.filter(isVideoFile).length;
 			compressTotal = videoCount;
 			compressIndex = 0;
@@ -461,7 +470,6 @@
 			compressProgress = 0;
 			keepOpenHint = false;
 			filePickLock = false;
-			input.value = '';
 		}
 	}
 

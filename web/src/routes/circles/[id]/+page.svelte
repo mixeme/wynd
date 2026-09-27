@@ -84,6 +84,7 @@
 	import { isTransportError } from '$lib/queue/transport';
 	import { registerRefetch } from '$lib/sync/sync';
 	import { authErrorHint } from '$lib/auth/auth';
+	import { handComposePhotos } from '$lib/journal/compose-handoff';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 
@@ -314,6 +315,11 @@
 		goto(`/circles/${circle.circleId}/compose`);
 	}
 
+	function openComposeWithPhotos(files: File[]) {
+		handComposePhotos(circle.circleId, files);
+		openComposeFromBar();
+	}
+
 	function dismissDayPrompt() {
 		dayPromptDate = '';
 		void bumpDayPromptCount(circle.origin, circle.circleId);
@@ -506,6 +512,7 @@
 	commentBusy={sending}
 	onCommentSend={circle.canWrite ? sendFromBar : undefined}
 	onCommentCompose={circle.canWrite ? openComposeFromBar : undefined}
+	onCommentPhotos={circle.canWrite ? openComposeWithPhotos : undefined}
 >
 	{#if pullVisible(pull)}
 		<div class="ptr" style:height="{ptrHeight}px" aria-hidden="true">

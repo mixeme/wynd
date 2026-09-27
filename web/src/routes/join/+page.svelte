@@ -1,6 +1,7 @@
 ﻿<script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Input from '$ui/forms/Input.svelte';
@@ -29,6 +30,12 @@
 	let checking = $state(false);
 	let error = $state('');
 	let linkInput: HTMLInputElement | undefined;
+
+	// Из «Серверов» («Добавить сервер») назад — туда же: «/» у вошедшего
+	// перекидывает в список кругов, и путь обратно терялся.
+	const backHref = $derived(
+		page.url.searchParams.get('from') === 'servers' ? '/settings/servers' : '/'
+	);
 
 	const blocked = $derived(instance ? instance.registration_mode !== 'open' : false);
 
@@ -160,7 +167,7 @@
 	const blockedSubtitle = $derived('только по приглашению');
 </script>
 
-<FormLayout shell app title="Без приглашения" onback={() => goto('/')}>
+<FormLayout shell app title="Без приглашения" onback={() => goto(backHref)}>
 	{#if !blocked}
 		<Hint>
 			Почта живёт на одном сервере. Общей на весь Wynd не бывает: серверы друг о друге не

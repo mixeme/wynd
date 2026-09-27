@@ -35,6 +35,7 @@
 		searchQuery = $bindable(''),
 		onCommentSend,
 		onCommentCompose,
+		onCommentPhotos,
 		identitySettingsLink = true,
 		children
 	}: {
@@ -62,6 +63,7 @@
 		searchQuery?: string;
 		onCommentSend?: () => void;
 		onCommentCompose?: () => void;
+		onCommentPhotos?: (files: File[]) => void;
 		identitySettingsLink?: boolean;
 		children: Snippet;
 	} = $props();
@@ -99,6 +101,7 @@
 			busy={commentBusy}
 			onsend={onCommentSend}
 			oncompose={onCommentCompose}
+			onphotos={onCommentPhotos}
 		/>
 	{/if}
 </PhoneFrame>

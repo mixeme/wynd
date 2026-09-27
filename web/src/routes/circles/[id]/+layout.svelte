@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { page as pageState } from '$app/state';
 	import { setContext, untrack } from 'svelte';
 	import { resolveCircleOrigin, rememberCircleOrigin, rememberLastCircle } from '$lib/circles/origin';
 	import { fetchCircles, loadCirclesCached, ownerNameFromSession } from '$lib/circles/circles';
@@ -268,8 +269,11 @@
 	</PlainLayout>
 {:else if ready && !(pendingJoinOnly && !onJoinPage)}
 	<!-- Экраны круга грузят данные при монтировании; смена одного параметра
-	     (другая запись, другой день) их не пересоздаёт — пересоздаём по пути. -->
-	{#key $page.url.pathname}
+	     (другая запись, другой день) их не пересоздаёт — пересоздаём по пути.
+	     Путь — из $app/state: он меняется в том же такте, что и сам экран.
+	     Стор $app/stores отставал, и новый экран монтировался дважды — второй
+	     экземпляр терял то, что первый уже забрал (фото из строки ввода). -->
+	{#key pageState.url.pathname}
 		{@render children()}
 	{/key}
 {/if}

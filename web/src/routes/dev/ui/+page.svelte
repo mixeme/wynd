@@ -883,6 +883,7 @@
 					height="280px"
 					onCommentSend={() => {}}
 					onCommentCompose={() => {}}
+					onCommentPhotos={() => {}}
 				>
 					<PostCard>
 						{#snippet author()}

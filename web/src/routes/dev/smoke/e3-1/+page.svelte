@@ -15,6 +15,7 @@
 	avatar="М"
 	onCommentSend={() => {}}
 	onCommentCompose={() => {}}
+	onCommentPhotos={() => {}}
 >
 	<EventDivider text="Мышка теперь Мышь" />
 	<PostCard>

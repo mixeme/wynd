@@ -15,6 +15,7 @@
 		busy = false,
 		onsend,
 		oncompose,
+		onphotos,
 		class: className = '',
 		style = ''
 	}: {
@@ -26,6 +27,9 @@
 		busy?: boolean;
 		onsend?: () => void;
 		oncompose?: () => void;
+		// Кнопка «Фото» открывает выбор снимков здесь же; без обработчика
+		// её нет — иначе она повторяла бы шеврон.
+		onphotos?: (files: File[]) => void;
 		class?: string;
 		style?: string;
 	} = $props();
@@ -33,6 +37,14 @@
 	const canSend = $derived(Boolean(value.trim()) && !busy);
 
 	let bodyInput: HTMLTextAreaElement | undefined = $state();
+	let photoInput: HTMLInputElement | undefined = $state();
+
+	function onPhotosPicked(e: Event) {
+		const input = e.target as HTMLInputElement;
+		const files = input.files ? [...input.files] : [];
+		input.value = '';
+		if (files.length) onphotos?.(files);
+	}
 	let mentionStart = $state<number | null>(null);
 	let mentionQuery = $state('');
 
@@ -107,21 +119,31 @@
 			oninput={onInput}
 			onkeyup={syncMentionPicker}
 		/>
-		{#if oncompose}
+		{#if onphotos}
 			<IconButton
 				name="photo"
 				label="Фото"
 				size="sm"
 				stopPropagation
 				style="margin-left:auto"
-				onclick={() => oncompose?.()}
+				onclick={() => photoInput?.click()}
 			/>
+			<input
+				bind:this={photoInput}
+				type="file"
+				accept="image/*,video/*"
+				multiple
+				hidden
+				onchange={onPhotosPicked}
+			/>
+		{/if}
+		{#if oncompose}
 			<IconButton
 				name="chevr"
 				label="Развернуть"
 				size="sm"
 				stopPropagation
-				style="margin-left:8px"
+				style="margin-left:{onphotos ? '8px' : 'auto'}"
 				onclick={() => oncompose?.()}
 			/>
 		{/if}
