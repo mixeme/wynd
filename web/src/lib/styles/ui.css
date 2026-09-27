@@ -589,6 +589,10 @@
 	min-height: 0;
 	overflow-x: hidden;
 	overflow-y: auto;
+	/* Жест вниз у верха ленты — наш (3.5: знак дорисовывается). Без contain он
+	   перетекал на страницу, и Firefox на Android показывал своё обновление —
+	   кружок со стрелкой вместо знака. */
+	overscroll-behavior-y: contain;
 	padding-bottom: 8px;
 }
 .ptr {
