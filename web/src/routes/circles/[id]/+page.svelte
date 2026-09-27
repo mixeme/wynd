@@ -548,7 +548,8 @@
 		{#if !circle.canWrite}
 			<Hint style="margin:16px">Вы читаете этот круг и не пишете.</Hint>
 		{/if}
-		{#if loading}
+		<!-- «?loading» — посмотреть экран загрузки в круге, как «/?loading». -->
+		{#if loading || $page.url.searchParams.has('loading')}
 			<Loading />
 		{:else if error && !posts.length}
 			<Hint style="margin:24px 16px">{error}</Hint>

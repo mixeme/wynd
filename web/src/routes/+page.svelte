@@ -53,6 +53,9 @@
 	}
 
 	onMount(async () => {
+		// «/?loading» держит экран загрузки: на быстром сервере его иначе не
+		// разглядеть. Ничего не грузит и не ломает — просто не идёт дальше.
+		if (new URL(window.location.href).searchParams.has('loading')) return;
 		await initSession();
 		const sessions = await loadSessions();
 		if (sessions.length) {
