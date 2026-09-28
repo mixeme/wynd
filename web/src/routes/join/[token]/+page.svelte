@@ -11,6 +11,7 @@
 	import { authErrorHint, fetchInstance, sendAuthCode } from '$lib/auth/auth';
 	import {
 		fetchInvitePeek,
+		isDeadInviteError,
 		isCircleInvitePeek,
 		serverInviteSubtitle,
 		type InvitePeek
@@ -26,6 +27,8 @@
 	let peek = $state<InvitePeek | undefined>();
 	let loading = $state(false);
 	let error = $state('');
+	// Ссылка мертва — вместо формы экран с причиной (см. isDeadInviteError).
+	let dead = $state(false);
 
 	onMount(async () => {
 		const pending = loadPendingAuth();
@@ -39,8 +42,9 @@
 				return;
 			}
 			peek = next;
-		} catch {
-			error = 'Приглашение недействительно или истекло';
+		} catch (err) {
+			if (isDeadInviteError(err)) dead = true;
+			else error = 'Не удалось проверить приглашение — сервер не отвечает. Попробуйте позже.';
 		}
 	});
 
@@ -84,6 +88,13 @@
 	);
 </script>
 
+{#if dead}
+	<PlainLayout shell app>
+		<ScreenTitle centered class="mt-48">Приглашение не действует</ScreenTitle>
+		<Hint centered class="hint-inset">Ссылку отозвали, она истекла или по ней уже вошли. Попросите новую у того, кто держит сервер.</Hint>
+		<Button onclick={() => goto('/')}>На главную</Button>
+	</PlainLayout>
+{:else}
 <PlainLayout shell app>
 	<ScreenTitle style="margin-top:24px">Вас позвали на сервер</ScreenTitle>
 	<ServerRow name={serverName} subtitle={serverSubtitle} card />
@@ -102,3 +113,4 @@
 		<Hint style="margin-top:12px">{error}</Hint>
 	{/if}
 </PlainLayout>
+{/if}

@@ -19,6 +19,7 @@
 	} from '$lib/auth/auth';
 	import {
 		fetchInvitePeek,
+		isDeadInviteError,
 		inviteCardPreview,
 		isCircleInvitePeek,
 		memberAvatarColor,
@@ -39,6 +40,8 @@
 	let peek = $state<InvitePeek | undefined>();
 	let loading = $state(false);
 	let error = $state('');
+	// Ссылка мертва — вместо формы экран с причиной (см. isDeadInviteError).
+	let dead = $state(false);
 
 	onMount(async () => {
 		const pending = loadPendingAuth();
@@ -52,8 +55,9 @@
 				return;
 			}
 			peek = next;
-		} catch {
-			error = 'Приглашение недействительно или истекло';
+		} catch (err) {
+			if (isDeadInviteError(err)) dead = true;
+			else error = 'Не удалось проверить приглашение — сервер не отвечает. Попробуйте позже.';
 		}
 	});
 
@@ -99,7 +103,13 @@
 	}
 </script>
 
-{#if showMembers && peek && isCircleInvitePeek(peek)}
+{#if dead}
+	<PlainLayout shell app>
+		<ScreenTitle centered class="mt-48">Приглашение не действует</ScreenTitle>
+		<Hint centered class="hint-inset">Ссылку отозвали, она истекла, по ней уже вошли или круг удалён. Попросите новую у того, кто вас звал.</Hint>
+		<Button onclick={() => goto('/')}>На главную</Button>
+	</PlainLayout>
+{:else if showMembers && peek && isCircleInvitePeek(peek)}
 	<FormLayout
 		app
 		shell

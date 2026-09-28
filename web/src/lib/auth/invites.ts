@@ -1,4 +1,4 @@
-import { apiJson } from '$lib/api/client';
+import { ApiError, apiJson } from '$lib/api/client';
 import type { CircleColor } from '$lib/theme/colors';
 
 export interface InvitePeekMember {
@@ -32,6 +32,12 @@ export function serverInviteSubtitle(peek: InvitePeek, fallbackHost: string): st
 	const host = peek.host || fallbackHost;
 	if (peek.inviter_name) return `${host} · позвал ${peek.inviter_name}`;
 	return host;
+}
+
+/** Сервер ответил отказом (4xx): ссылку отозвали, она истекла, израсходована
+ *  или круг удалён. Сеть и 5xx — не то: ссылка может быть жива. */
+export function isDeadInviteError(err: unknown): boolean {
+	return err instanceof ApiError && err.status >= 400 && err.status < 500;
 }
 
 export async function fetchInvitePeek(origin: string, token: string): Promise<InvitePeek> {
