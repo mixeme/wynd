@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import AdminSection from '$ui/admin/AdminSection.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
@@ -63,7 +64,7 @@
 <AdminWideLayout app active="Оплата" {server}>
 	<AdminSection title="Оплата">
 		{#if loading}
-			<Hint>Загрузка…</Hint>
+			<Loading compact />
 		{:else if error && !hub}
 			<Hint>{error}</Hint>
 		{:else if hub}

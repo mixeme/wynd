@@ -4,6 +4,7 @@
 	import AdminSection from '$ui/admin/AdminSection.svelte';
 	import DataTable from '$ui/admin/DataTable.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import Icon from '$ui/Icon.svelte';
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
@@ -129,7 +130,7 @@
 		</TextButton>
 		<h4 style="margin-bottom:8px">Подписка</h4>
 		{#if loading}
-			<Hint>Загрузка…</Hint>
+			<Loading compact />
 		{:else if error && !settings}
 			<Hint>{error}</Hint>
 		{:else if settings}

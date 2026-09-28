@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import AdminSection from '$ui/admin/AdminSection.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
@@ -157,7 +158,7 @@
 <AdminWideLayout app active="Общие" {server}>
 	<AdminSection title="Общие">
 		{#if loading}
-			<Hint>Загрузка…</Hint>
+			<Loading compact />
 		{:else}
 			<div class="flex gap-44">
 				<div class="grow min0">

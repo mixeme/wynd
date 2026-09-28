@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import AdminSection from '$ui/admin/AdminSection.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
 	import Switch from '$ui/forms/Switch.svelte';
@@ -74,7 +75,7 @@
 <AdminWideLayout app active="Сжатие" {server}>
 	<AdminSection title="Сжатие и вложения">
 		{#if loading}
-			<Hint>Загрузка…</Hint>
+			<Loading compact />
 		{:else if error && !settings}
 			<Hint>{error}</Hint>
 		{:else if settings}

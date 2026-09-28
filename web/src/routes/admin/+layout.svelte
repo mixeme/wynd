@@ -1,7 +1,7 @@
 ﻿<script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
 	import { reconcileAdminSession } from '$lib/session/session.svelte';
 
@@ -34,6 +34,6 @@
 	{@render children()}
 {:else}
 	<AdminWideLayout app nav={false}>
-		<Hint>Загрузка…</Hint>
+		<Loading />
 	</AdminWideLayout>
 {/if}

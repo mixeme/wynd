@@ -4,10 +4,15 @@
 	// Экран ещё грузится. Вместо строки «Загрузка…» в углу — знак Wynd по
 	// центру: покачивается, как на ветру. Появляется не сразу: быстрая загрузка
 	// не мигает знаком, долгая — показывает, что приложение живо.
-	let { class: className = '', style = '' }: { class?: string; style?: string } = $props();
+	// compact — внутри раздела (панель): не на весь экран, а на строку-другую.
+	let {
+		compact = false,
+		class: className = '',
+		style = ''
+	}: { compact?: boolean; class?: string; style?: string } = $props();
 </script>
 
-<div class="loading {className}" {style} role="status" aria-live="polite">
+<div class="loading {className}" class:compact {style} role="status" aria-live="polite">
 	<div class="loading-mark"><Mark class="loading-svg" /></div>
 	<span class="vh">Загрузка…</span>
 </div>
@@ -19,6 +24,9 @@
 		min-height: 70vh;
 		opacity: 0;
 		animation: loading-in 0.4s ease-out 0.3s forwards;
+	}
+	.loading.compact {
+		min-height: 160px;
 	}
 	.loading-mark {
 		width: 30px;

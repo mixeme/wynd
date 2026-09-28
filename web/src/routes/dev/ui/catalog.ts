@@ -18,6 +18,7 @@ export const COMPONENT_MAP: CatalogGroup[] = [
 		entries: [
 			{ component: 'Mark', screen: 'e2-1', smoke: '/dev/smoke/e2-1' },
 			{ component: 'Logo', screen: 'e1-5', smoke: '/dev/smoke/e1-5' },
+			{ component: 'Loading', screen: '—' },
 			{ component: 'Icon', screen: 'e2-1, e3-1', smoke: '/dev/smoke/e2-1' }
 		]
 	},
@@ -177,7 +178,7 @@ export const ACCEPTANCE = [
 		ok: true
 	},
 	{
-		rule: 'Mark только в AppBar и 5 других мест (по правилам screens.html)',
+		rule: 'Mark только в AppBar, в Loading и 5 других мест (по правилам screens.html)',
 		ok: true
 	}
 ] as const;

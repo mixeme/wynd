@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import AdminSection from '$ui/admin/AdminSection.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import Icon from '$ui/Icon.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
@@ -69,7 +70,7 @@
 		</TextButton>
 		<h4 style="margin-bottom:8px">Сбор</h4>
 		{#if loading}
-			<Hint>Загрузка…</Hint>
+			<Loading compact />
 		{:else if error && !settings}
 			<Hint>{error}</Hint>
 		{:else if settings}

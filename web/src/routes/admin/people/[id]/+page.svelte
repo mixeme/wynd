@@ -5,6 +5,7 @@
 	import { formatAdminDay, formatAdminDayYear } from '$lib/format/time';
 	import AdminSection from '$ui/admin/AdminSection.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
 	import Switch from '$ui/forms/Switch.svelte';
@@ -111,7 +112,7 @@
 			Люди
 		</TextButton>
 		{#if loading}
-			<Hint>Загрузка…</Hint>
+			<Loading compact />
 		{:else if !acc}
 			<Hint>{error || 'Человек не найден'}</Hint>
 		{:else}

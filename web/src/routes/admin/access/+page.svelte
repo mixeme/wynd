@@ -17,6 +17,7 @@
 		type UsesChoice
 	} from '$lib/circles/invite-options';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import FieldDisplay from '$ui/forms/FieldDisplay.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
@@ -174,7 +175,7 @@
 <AdminWideLayout app active="Доступ" {server}>
 	<AdminSection title="Доступ">
 		{#if loading}
-			<Hint>Загрузка…</Hint>
+			<Loading compact />
 		{:else}
 			<div class="cols">
 				<div>

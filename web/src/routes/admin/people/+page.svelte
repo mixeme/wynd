@@ -6,6 +6,7 @@
 	import AdminSection from '$ui/admin/AdminSection.svelte';
 	import DataTable from '$ui/admin/DataTable.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import Icon from '$ui/Icon.svelte';
 	import SearchField from '$ui/forms/SearchField.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
@@ -54,7 +55,7 @@
 <AdminWideLayout app active="Люди" {server}>
 	<AdminSection>
 		{#if loading}
-			<Hint>Загрузка…</Hint>
+			<Loading compact />
 		{:else if error}
 			<Hint>{error}</Hint>
 		{:else}
