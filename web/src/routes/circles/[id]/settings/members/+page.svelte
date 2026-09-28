@@ -214,8 +214,7 @@
 			onclick={() => void exclude(menuMember!)}
 		/>
 		<Hint style="margin-top:14px"
-			>Право выдаёт только владелец. Страницы участника нет — лист с точек, как список
-			отреагировавших.</Hint
+			>Право выдаёт только владелец.</Hint
 		>
 	</OverlayLayout>
 {/if}

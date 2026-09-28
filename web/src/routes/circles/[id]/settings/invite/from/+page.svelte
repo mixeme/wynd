@@ -109,10 +109,7 @@
 				/>
 			{/each}
 		{/each}
-		<Hint style="margin:18px 16px 0">
-			Кто уже в «{circle.name}», сюда не попадает. Тап — уведомление и экран имени: ссылку отправлять не
-			нужно.
-		</Hint>
+		<Hint style="margin:18px 16px 0">Кто уже в «{circle.name}», сюда не попадает. Нажмите на человека — ему придёт приглашение, ссылку отправлять не нужно.</Hint>
 	{/if}
 	{#if error}
 		<Hint style="margin:16px">{error}</Hint>

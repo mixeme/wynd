@@ -1021,7 +1021,7 @@
   <div class="gh2"><u style="background:var(--ochre)"></u><span>Дача</span><span class="cnt2">2</span></div>
   <div class="row2"><div class="g"><div style="font-weight:600">Мама<span style="font-weight:400;color:var(--faint);font-size:11.5px"> · 5 авг</span></div><div class="sub"><span class="hl">Яблони</span> зацвели</div></div><div class="thumb pic p2"></div></div>
   <div class="row2"><div class="g"><div style="font-weight:600">я<span style="font-weight:400;color:var(--faint);font-size:11.5px"> · 3 апр</span></div><div class="sub">Купил две <span class="hl">яблони</span>, посадил у забора</div></div></div>
-  <div class="hint ctr" style="margin-top:22px">Ищется только то, что вы застали:<br>отрезки видимости работают и в поиске.</div>
+  <div class="hint ctr" style="margin-top:22px">Ищется только то, что вы застали:<br>записи до вашего прихода не найдутся.</div>
 </div>
 <span class="num">2.9</span><b>Поиск по всем кругам</b><i>Веер по серверам происходит незаметно — деления по адресам нет, результаты группируются по кругам. Дни ищутся наравне с записями и помечаются словом «день», как комментарий. Фильтр «автор» здесь отсутствует: глобально это разные люди, и выбирать было бы не из кого. Чипов «Этот круг / Все круги» нет: с улочки круга нет, искать не в чём одном. В поиск круга ведёт иконка в шапке круга. Заголовок группы несёт цвет — единственный цветной элемент на экране оболочки.</i></figure>
 
@@ -1513,7 +1513,7 @@
     <div class="row2" style="padding:10px 14px"><div class="av" style="background:#58673A">А</div><div class="g" style="font-weight:600">Аня</div></div>
     <div class="row2"><div class="av" style="background:#AF5839">А</div><div class="g"><div style="font-weight:600">Антон</div><div class="sub">дядя Тоня</div></div></div>
   </div>
-  <div class="hint">Список — участники этого круга. Выбрали — в текст встаёт @имя, этому человеку уходит пуш. Имя не нажимается: страницы участника нет.</div>
+  <div class="hint">Выберите участника — в текст встанет @имя, а ему придёт уведомление.</div>
   <div style="position:absolute;left:0;right:0;bottom:0;border-top:1px solid var(--line);background:var(--paper)">
     <div style="display:flex;align-items:center;gap:22px;padding:13px 18px">
       <svg class="ic"><use href="#i-photo"/></svg><svg class="ic"><use href="#i-file"/></svg>
@@ -2035,11 +2035,11 @@
   <div class="lab">Окно правок</div>
   <div class="chips"><span class="chip">Летопись</span><span class="chip">10 мин</span><span class="chip on">Час</span><span class="chip">Сутки</span></div>
   <div class="chips" style="margin-top:8px"><span class="chip">Без ограничения</span><span class="chip">Своё…</span></div>
-  <div class="hint">После публикации запись можно изменить в течение часа. Каждая запись запоминает окно, при котором вышла: смена правила — событие хроники, но действует она только на новые записи. Прошлое остаётся с тем окном, при котором было сказано.</div>
+  <div class="hint">Сколько времени после публикации запись можно править. Новое правило подействует только на новые записи.</div>
   <div class="lab">Приглашения</div>
   <div class="chips"><span class="chip on">Могут все</span><span class="chip">Только владелец</span></div>
   <div class="chips" style="margin-top:8px"><span class="chip">Одноразовые</span><span class="chip on">Многоразовые</span></div>
-  <div class="hint">Какие ссылки можно создать, не какой чип предвыбран. «Одноразовые» — чипа многоразовой на экране пригласить нет, 6.6.</div>
+  <div class="hint">Какие ссылки смогут создавать участники. По многоразовой войдут несколько человек.</div>
   <div class="row2" style="margin-top:14px;border-top:1px solid var(--line)"><div class="g" style="font-weight:600">Пригласить</div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
   <div class="row2"><div class="g" style="font-weight:600">Живые ссылки</div><span class="val">2</span><svg class="ic sm"><use href="#i-chevr"/></svg></div>
   <div class="row2"><div class="g" style="font-weight:600">Кто вы в этом круге</div><span class="val">Мышь</span><svg class="ic sm"><use href="#i-chevr"/></svg></div>
@@ -2103,7 +2103,7 @@
     <div class="lab" style="margin-top:2px">Аня</div>
     <div class="row2"><div class="g" style="font-weight:600">Забрать право менять настройки</div></div>
     <div class="row2"><div class="g" style="font-weight:600;color:var(--muted)">Исключить</div></div>
-    <div class="hint" style="margin-top:14px">Право выдаёт только владелец. Страницы участника нет — лист с точек, как список отреагировавших.</div>
+    <div class="hint" style="margin-top:14px">Право выдаёт только владелец.</div>
   </div>
 </div>
 <span class="num">6.4</span><b>Права участника</b><i>Точки на 6.3 открывают ту же панель, что у реакций. Два действия: дать или забрать «может менять настройки», и исключить. Если права ещё нет, первая строка — «Дать право менять настройки». Нового экрана нет: у участника нет страницы.</i></figure>
@@ -2179,7 +2179,7 @@
   <div class="lab" style="margin-top:20px">Приглушить</div>
   <div class="chips"><span class="chip on">Нет</span><span class="chip">До завтра</span><span class="chip">На неделю</span></div>
   <div class="hint">Упоминание пробивается через приглушение: это адресация, а не шум.</div>
-  <div class="hint" style="margin-top:14px">Пуш не несёт текста — только круг, тип события и число. Что именно написано, устройство узнаёт после синхронизации и дорисовывает само.</div>
+  <div class="hint" style="margin-top:14px">В уведомлении нет текста записи — только круг и что произошло.</div>
 </div>
 <span class="num">6.9</span><b>Уведомления круга</b><i>Настройка по типам, и на каждый круг своя: «Семья» будит ночью, «Ремонт» — нет. Упоминания выключить нельзя, и переключатель показан приглушённым, а не спрятанным: правило видно, спорить с ним не предлагается.</i></figure>
 
