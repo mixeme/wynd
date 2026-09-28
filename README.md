@@ -149,7 +149,7 @@ read -rs P && printf '%s\n' "$P" | sudo -u wynd env WYND_DATA_DIR=/var/lib/wynd 
 | Как устроена система | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Разработка: локальный запуск, сборка, тесты, правила | [DEVELOPMENT.md](DEVELOPMENT.md) |
 | Безопасность: как сообщить об уязвимости, модель доверия, аудиты | [SECURITY.md](SECURITY.md) |
-| Что дальше | [ROADMAP.md](ROADMAP.md) |
+| Индекс планов | [ROADMAP.md](ROADMAP.md) |
 | Изменения | [CHANGELOG.md](CHANGELOG.md) (текущая ветка; старшие — в истории git) |
 | Образ продукта | [docs/wynd.html](docs/wynd.html) |
 | Экраны (макеты) | [docs/visual/screens.html](docs/visual/screens.html) |
