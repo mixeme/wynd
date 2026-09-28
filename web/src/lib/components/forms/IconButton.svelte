@@ -12,6 +12,7 @@
 		onpointerup,
 		onpointerleave,
 		onpointercancel,
+		pressed = undefined,
 		class: className = '',
 		style = '',
 		el = $bindable<HTMLButtonElement>()
@@ -21,6 +22,9 @@
 		onclick: () => void;
 		size?: 'md' | 'sm' | 'xs';
 		disabled?: boolean;
+		// Переключатель: true — включено (цвет круга), false — выключено
+		// (приглушён). Не задан — обычная кнопка без aria-pressed.
+		pressed?: boolean;
 		stopPropagation?: boolean;
 		onpointerdown?: (e: PointerEvent) => void;
 		onpointerup?: (e: PointerEvent) => void;
@@ -41,6 +45,8 @@
 <button
 	type="button"
 	class="ib {className}"
+	class:off={pressed === false}
+	aria-pressed={pressed}
 	{style}
 	{disabled}
 	aria-label={label}

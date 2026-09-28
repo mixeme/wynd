@@ -81,7 +81,7 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar
 |-----------|--------|-------------------|-----------|
 | `Button` | `<button class="btn">` | `onclick` | `variant`, `disabled`/`loading` → класс `.off`, текст `…` |
 | `Chip` | `<button class="chip">` или `<span>` | — | с `onclick` — кнопка, `aria-pressed={selected}` |
-| `IconButton` | `<button class="ib">` | `name`, `label`, `onclick` | рендер только при `onclick`; опц. pointer-события (длинное нажатие FAB) |
+| `IconButton` | `<button class="ib">` | `name`, `label`, `onclick` | рендер только при `onclick`; опц. pointer-события (длинное нажатие FAB); `pressed` — переключатель: `true` в цвете круга, `false` приглушён (`.ib.off`), с `aria-pressed` |
 | `TextButton` | `<button>` | `onclick` | `variant`: `link` (`.under`), `admin` (`.act` в `.chk`), `adminBox` (`.inp`), `bar` (`.t`), `barAction` (`.rt`/`.rt.on`) |
 | `AddPhotoButton` | `button.addph` | `onclick` | без `previewUrl` — плюс; с `previewUrl` — `.addph.preview`, cover-фон, `aria-label` «сменить фото» (**#e1-3**) |
 

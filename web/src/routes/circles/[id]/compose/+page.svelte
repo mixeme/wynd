@@ -46,6 +46,7 @@
 	import type { PostQueuePayload, QueueFile, QueueMediaMeta } from '$lib/idb/db';
 	import { takeComposePhotos } from '$lib/journal/compose-handoff';
 	import { holdWakeLock } from '$lib/media/wake-lock';
+	import { getPlacePref, hasPlace, withPlace } from '$lib/journal/place-pref';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 
@@ -82,6 +83,9 @@
 	let compressIndex = $state(0);
 	let compressTotal = $state(0);
 	let keepOpenHint = $state(false);
+	// Место со снимков для этой записи; начальное — из настройки круга (B3).
+	let usePlace = $state(true);
+	const pickedHasPlace = $derived(picked.some((p) => hasPlace(p.meta)));
 	let filePickLock = false;
 
 	const activeMembers = $derived(members.filter((m) => m.status === 'active'));
@@ -234,6 +238,7 @@
 			return;
 		}
 		entryDate = today();
+		usePlace = getPlacePref(circle.origin, circle.circleId);
 		if (editPostId) {
 			const cached = await loadFeedCached(circle.origin, circle.circleId);
 			const post = cached ? findPost(cached.posts, editPostId) : undefined;
@@ -259,6 +264,8 @@
 					});
 				}
 				picked = items;
+				// Место уже ушло с этой записью — правка его не снимает молча.
+				if (items.some((it) => hasPlace(it.meta))) usePlace = true;
 			}
 		} else if (editQueueId) {
 			const item = await loadQueuedPost(editQueueId);
@@ -330,7 +337,7 @@
 		return {
 			body: trimmed,
 			entry_date: entryDate,
-			media_meta: picked.map((p) => ({ ...p.meta }))
+			media_meta: picked.map((p) => withPlace({ ...p.meta }, usePlace))
 		};
 	}
 
@@ -370,8 +377,8 @@
 				blob_id: blobId,
 				kind: item.meta.kind as MediaSummary['kind'],
 				captured_at: item.meta.captured_at,
-				geo_lat: item.meta.geo_lat,
-				geo_lng: item.meta.geo_lng,
+				geo_lat: usePlace ? item.meta.geo_lat : undefined,
+				geo_lng: usePlace ? item.meta.geo_lng : undefined,
 				is_cover: item.meta.is_cover ?? false
 			});
 		}
@@ -513,7 +520,7 @@
 				return;
 			}
 
-			const mediaMeta = picked.map((p) => ({ ...p.meta }));
+			const mediaMeta = picked.map((p) => withPlace({ ...p.meta }, usePlace));
 			const media: MediaSummary[] = [];
 			for (let i = 0; i < picked.length; i++) {
 				const item = picked[i];
@@ -696,7 +703,17 @@
 				onclick={() => photoInput?.click()}
 			/>
 			<IconButton name="file" label="Файл" onclick={() => attachInput?.click()} />
-			<span class="who">до 32 КБ · как {circle.identityName}</span>
+			{#if pickedHasPlace}
+				<IconButton
+					name="loc"
+					label={usePlace ? 'Место со снимков уйдёт с записью' : 'Место со снимков не уйдёт'}
+					pressed={usePlace}
+					onclick={() => (usePlace = !usePlace)}
+				/>
+			{/if}
+			<span class="who"
+				>до 32 КБ · как {circle.identityName}{#if pickedHasPlace && !usePlace}&nbsp;· без места{/if}</span
+			>
 		</div>
 	</div>
 {/snippet}

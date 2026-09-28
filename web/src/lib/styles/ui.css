@@ -1049,6 +1049,12 @@ input.fld, textarea.fld, textarea.ta {
 .ib {
 	line-height: 0;
 }
+.ib[aria-pressed='true'] {
+	color: var(--c);
+}
+.ib.off {
+	opacity: 0.4;
+}
 .under {
 	border-bottom: 1px solid;
 	padding-bottom: 1px;

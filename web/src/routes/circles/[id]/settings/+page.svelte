@@ -14,6 +14,8 @@
 	import MemberRow from '$ui/data/MemberRow.svelte';
 	import Meter from '$ui/forms/Meter.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
+	import Switch from '$ui/forms/Switch.svelte';
+	import { getPlacePref, setPlacePref } from '$lib/journal/place-pref';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import {
@@ -309,6 +311,13 @@
 		void openDeleteDialog();
 	});
 
+	// Место со снимков — настройка на устройстве (B3), умолчание для новых
+	// записей в этом круге.
+	let placeOn = $state(getPlacePref(circle.origin, circle.circleId));
+	$effect(() => {
+		setPlacePref(circle.origin, circle.circleId, placeOn);
+	});
+
 	onMount(() => {
 		void load();
 	});
@@ -420,6 +429,11 @@
 			subtitle={soloCircle ? undefined : 'записи и упоминания'}
 			onclick={() => goto(`/circles/${circle.circleId}/settings/notify`)}
 		/>
+		<SettingsRow title="Место со снимков" subtitle="точка на карте круга">
+			{#snippet control()}
+				<Switch bind:checked={placeOn} label="Место со снимков" />
+			{/snippet}
+		</SettingsRow>
 
 		{#if isOwner && quotaBytes}
 			<Label style="margin-top:20px">Место</Label>
