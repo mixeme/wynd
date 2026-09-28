@@ -3,6 +3,8 @@
 Self-hosted журнал кругов: один бинарник Go, SQLite, SvelteKit SPA внутри `go:embed`.
 Для домашнего инстанса на несколько человек, не для SaaS.
 
+Круг — закрытая группа со своим журналом: семья, друзья, коллеги. Общей ленты, подписчиков и рекомендаций нет; в круг попадают только по ссылке от того, кто уже в нём. Сервер поднимает один человек для своих, остальные открывают приложение в браузере телефона и ставят его на экран. Как это устроено — [ARCHITECTURE.md](ARCHITECTURE.md).
+
 **Версия:** файл [`VERSION`](VERSION); что менялось — [CHANGELOG.md](CHANGELOG.md).
 
 **Лицензия:** [GNU AGPL v3](LICENSE). Исходный код: <https://github.com/mixeme/wynd>.
@@ -18,7 +20,7 @@ Self-hosted журнал кругов: один бинарник Go, SQLite, Sve
 - домен и обратный прокси с TLS перед `127.0.0.1:7676` — Caddy ставит `install.sh`, шаблоны Apache, nginx и Traefik лежат в `deploy/proxy/`; таймаут чтения прокси не меньше 300 с (SSE и длинные загрузки);
 - SMTP-релей: участники входят по коду из письма. Без релея вход работает только на loopback — код пишется в журнал сервера и в `<каталог данных>/dev-auth-codes.log`.
 
-**Чтобы собрать из исходников:** Go 1.26 (`go.mod`), Node 22 и npm (та же версия, что в `deploy/docker/Dockerfile`). Для `scripts\test-integration.bat` — учётки SMTP-релеев в `dev/`.
+**Чтобы собрать из исходников или править код:** Go 1.26 и Node 22 — подробно в [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ---
 
@@ -140,79 +142,19 @@ read -rs P && printf '%s\n' "$P" | sudo -u wynd env WYND_DATA_DIR=/var/lib/wynd 
 
 ---
 
-## Быстрый старт (loopback)
-
-Каталог данных по умолчанию — `dev/data` (создаётся при первом запуске).
-
-```bash
-go run ./cmd/wynd
-```
-
-Клиент в dev-режиме (Vite :5173, proxy `/api` → :7676):
-
-```bash
-cd web && npm install && npm run dev
-```
-
-На Windows можно `scripts\run.bat` — собирает бинарник при необходимости и открывает браузер.
-
-С телефона в той же сети: `scripts\run.bat` по умолчанию слушает `0.0.0.0:7676` и печатает адреса при старте (`scripts\run.bat local` — только этот компьютер); на Unix — `make run LAN=1`, для Vite — `npm run dev:lan`. `public_url` остаётся loopback, поэтому коды входа по-прежнему пишутся в лог сервера, а сервер при старте предупреждает `WARNING … trusted LAN only`: инстанс без TLS виден всей сети, запускайте так только в своей. Страница открывается по обычному HTTP без secure context: service worker и push там не работают, остальное работает.
-
-Проверка, что сервер жив:
-
-```bash
-curl http://127.0.0.1:7676/health
-```
-
-На loopback bootstrap и код входа работают без SMTP (код в логе сервера). Подробнее — [server-reference.md](docs/reference/server-reference.md), раздел «Локальный прогон».
-
----
-
-## Тесты
-
-Ворота релиза — из корня репозитория, на Windows `scripts\test.bat`, на Unix:
-
-```bash
-make test
-```
-
-Это `go vet`, `go test ./...`, `go build ./cmd/wynd` и в `web/` — `npm run check`, `check:ui`, `test`, `build`; то же гоняет CI в Gitea (`.gitea/workflows/ci.yaml`, плюс `docker build`). Правила — [CONTRIBUTING.md](CONTRIBUTING.md).
-
-SMTP на реальных релеях (`dev/credentials.txt` или JSON в `dev/credentials/`, образцы в `internal/mail/testdata/`):
-
-```bash
-scripts\test-integration.bat
-```
-
-### Инварианты
-
-Всё запускается одной командой — `go test ./...` и `npm run test` в `web/`; отдельной таблицы областей здесь нет: она устаревала быстрее, чем обновлялась. Перечень инвариантов — в [server-reference.md](docs/reference/server-reference.md) (хроника, панель, архив); у каждого теста в `internal/chronicle/invariants_test.go` и `archive_test.go` над ним строка с тем, что он держит.
-
----
-
 ## Документация
 
 | Что | Где |
 |-----|-----|
+| Как устроена система | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Разработка: локальный запуск, сборка, тесты, правила | [DEVELOPMENT.md](DEVELOPMENT.md) |
+| Безопасность: как сообщить об уязвимости, модель доверия, аудиты | [SECURITY.md](SECURITY.md) |
+| Что дальше | [ROADMAP.md](ROADMAP.md) |
+| Изменения | [CHANGELOG.md](CHANGELOG.md) (текущая ветка; старшие — в истории git) |
 | Образ продукта | [docs/wynd.html](docs/wynd.html) |
-| Сервер | [docs/reference/server-reference.md](docs/reference/server-reference.md) |
-| Клиент и UI | [docs/reference/client-reference.md](docs/reference/client-reference.md), [ui-components.md](docs/reference/ui-components.md) |
 | Экраны (макеты) | [docs/visual/screens.html](docs/visual/screens.html) |
 | Стек (история решений) | [docs/stack.html](docs/stack.html) |
-| Аудиты безопасности | [2026-09-22](docs/security-audit-2026-09-22.md) (срез 0.7.1), [2026-09-03](docs/security-audit-2026-09-03.md) (срез 0.1.14); триггеры повторного прохода — [CONTRIBUTING.md](CONTRIBUTING.md) |
-| Изменения | [CHANGELOG.md](CHANGELOG.md) (текущая ветка; старшие — в истории git) |
-| Как вносить изменения, глоссарий | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Справочники | [сервер](docs/reference/server-reference.md), [клиент](docs/reference/client-reference.md), [Wynd UI](docs/reference/ui-components.md) |
 
 Шрифт интерфейса — Golos Text ([SIL OFL](web/static/fonts/OFL.txt)).
-Версия продукта — файл [`VERSION`](VERSION); где ещё живёт номер и как его менять — [CONTRIBUTING.md](CONTRIBUTING.md#changelog-и-version).
-
----
-
-## Сборка
-
-```bash
-cd web && npm run build
-go build -o dist/wynd ./cmd/wynd
-```
-
-Шаблоны деплоя — `deploy/` (Docker, systemd, Caddy/Apache/nginx/Traefik).
+Версия продукта — файл [`VERSION`](VERSION); где ещё живёт номер и как его менять — [DEVELOPMENT.md](DEVELOPMENT.md#changelog-и-version).

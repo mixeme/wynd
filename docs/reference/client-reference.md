@@ -1,36 +1,13 @@
 # Клиент — справочник
 
-Решения клиента по темам и экранам. Формат — подзаголовок на тему или экран, абзац не длиннее 600 знаков, ячейка — 300 (CONTRIBUTING). Эталоны: [wynd.html](../wynd.html), [stack.html](../stack.html), [screens.html](../visual/screens.html).  
+Решения клиента по темам и экранам. Формат — подзаголовок на тему или экран, абзац не длиннее 600 знаков, ячейка — 300 (DEVELOPMENT.md). Эталоны: [wynd.html](../wynd.html), [stack.html](../stack.html), [screens.html](../visual/screens.html).  
 Компоненты и layout'ы: [ui-components.md](ui-components.md).
 
 ---
 
 ## Архитектура
 
-```mermaid
-flowchart TB
-  subgraph spa [web SvelteKit SPA]
-    Routes["routes / и /admin"]
-    Layouts["lib/layouts"]
-    UI["Wynd UI ($ui)"]
-    Kernel["api sync idb queue media"]
-  end
-  subgraph device [Устройство]
-    IDB[(IndexedDB wynd)]
-    SW[Service Worker]
-  end
-  subgraph instances [Инстансы]
-    S1["Сервер A :7676"]
-    S2[Сервер B]
-  end
-  Routes --> Layouts --> UI
-  Routes --> Kernel
-  Kernel --> IDB
-  Kernel --> SW
-  Kernel -->|"GET snapshot POST Bearer"| S1
-  Kernel -->|"SSE cursor invalidate"| S1
-  Kernel -->|"веер, серверы не знают друг о друге"| S2
-```
+Схема клиента — в [ARCHITECTURE.md](../../ARCHITECTURE.md#клиент).
 
 Страницы не содержат `fetch` — только kernel + layout + компоненты.
 
@@ -102,7 +79,7 @@ Tailwind, shadcn-svelte, axios, tanstack-query, Dexie, redux/zustand, date-fns/d
 - **Плитки карты — принятый риск (аудит 2026-09-22).** Карта грузит плитки с `tile.openstreetmap.org` (поддомены `{s}` сняты с осени 2023; атрибуция — ссылкой на `openstreetmap.org/copyright`, как требуют условия): третья сторона видит IP участника и район просматриваемых фото; `Referer` урезан до origin (`Referrer-Policy: strict-origin-when-cross-origin`). Свой прокси плиток — вне плана.
 - Ключи `{#each}` не строятся из пользовательских данных (имена, текст): дубликат ключа бросает `each_key_duplicate` и роняет экран у всех читателей. Там, где список статичен, ключа нет; иначе — индекс.
 - **Адрес исходников — от сервера.** `$lib/instance/source.svelte.ts` хранит `source_url` из `GET /instance` по origin (пустой ключ — сервер, отдавший клиент) и пополняется на каждом `fetchInstance`. Экраны берут адрес оттуда: «поднимите свой» на `/join` и `/circles/new`, «исходный код» в настройках и в футере `/admin`. Зашитый в клиент адрес — запас на случай сервера старой версии; по экранам его не разносить. Принимается только `http:`/`https:`: поле приходит и от чужого сервера (экран «Присоединиться» спрашивает `/instance` у любого адреса) и попадает в `href`, а `javascript:` оттуда исполнился бы на origin клиента (аудит 2026-09-27). То же правило — для любого нового поля с сервера, которое идёт в `href`, `src` или `{@html}`.
-- **Лицензии компонентов** — ссылка на `/THIRD_PARTY_LICENSES.txt` рядом с «исходный код»; файл собирается скриптом, см. CONTRIBUTING.
+- **Лицензии компонентов** — ссылка на `/THIRD_PARTY_LICENSES.txt` рядом с «исходный код»; файл собирается скриптом, см. DEVELOPMENT.md, «Лицензии компонентов».
 - **Подсказка о почте.** `detail` у `smtp_failed` — метка причины (`dial`, `tls`, `starttls_required`, `auth`, `protocol`), а не текст релея; `smtpFailedHint` — таблица по меткам, без разбора строк.
 
 ### Загрузка

@@ -1,73 +1,13 @@
 # Серверный слой — справочник
 
-Решения серверного слоя по темам: что решено и почему. Правило формата — подзаголовок на тему, абзац не длиннее 600 знаков, ячейка таблицы — 300 (CONTRIBUTING). Эталоны: [wynd.html](../wynd.html), [stack.html](../stack.html), [screens.html](../visual/screens.html).  
+Решения серверного слоя по темам: что решено и почему. Правило формата — подзаголовок на тему, абзац не длиннее 600 знаков, ячейка таблицы — 300 (DEVELOPMENT.md). Эталоны: [wynd.html](../wynd.html), [stack.html](../stack.html), [screens.html](../visual/screens.html).  
 Продуктовые правила: [журнал](../wynd.html#journal), [дни](../wynd.html#days), [квота](../wynd.html#quota), [серверы](../wynd.html#servers).
 
 ---
 
 ## Архитектура
 
-```mermaid
-flowchart TB
-  subgraph bin [cmd/wynd]
-    HTTP["net/http :7676"]
-    Sched[планировщик]
-    CLI["wynd backup, admin-password"]
-  end
-  subgraph domain [internal]
-    API[api]
-    Auth[auth]
-    Chron[chronicle]
-    Search[search]
-    Store[store]
-    Blob[blob]
-    Mail[mail]
-    Push[push]
-    Jobs[jobs]
-    Check[check]
-    Archive[archive]
-    Config[config]
-    Backup[backup]
-  end
-  HTTP --> API
-  Sched --> Jobs
-  CLI --> Backup
-  CLI --> Auth
-  API --> Auth
-  API --> Chron
-  API --> Search
-  API --> Blob
-  API --> Mail
-  API --> Push
-  API --> Check
-  API --> Archive
-  API --> Config
-  Auth --> Chron
-  Auth --> Blob
-  Mail --> Auth
-  Search --> Chron
-  Archive --> Chron
-  Archive --> Blob
-  Blob --> Check
-  Jobs --> Auth
-  Jobs --> Chron
-  Jobs --> Blob
-  Jobs --> Mail
-  Jobs --> Push
-  Chron --> Store
-  Auth --> Store
-  Blob --> Store
-  Mail --> Store
-  Push --> Store
-  Store --> SQLite[(wynd.db)]
-  Blob --> FS[blobs/]
-  Config --> Cfg[config.json]
-  Backup --> SQLite
-  Backup --> FS
-  Backup --> Cfg
-```
-
-Стрелка — импорт Go (`go list -f '{{.Imports}}'`). Не показаны листовые пакеты, которые импортируют многие: `xtime` (метки времени), `uid` (UUID v7), `version`, `proxy` (таймаут прокси для сниппетов и проверки). `backup` не ходит через `store`: он открывает `wynd.db` сам и снимает копию `VACUUM INTO`, рядом кладёт `config.json`, `keys/` и блобы.
+Карта пакетов `internal/` и связи между ними — в [ARCHITECTURE.md](../../ARCHITECTURE.md#сервер).
 
 ---
 
@@ -113,7 +53,7 @@ flowchart TB
 - **OpenAPI — оглавление, не контракт (DEC-2).** `internal/api/openapi-participant.yaml` и `openapi-admin.yaml` перечисляют маршруты с кратким описанием ответов; схем тел нет и писать их не нужно. Сервер спеку не отдаёт, клиент типы из неё не генерирует (контур `openapi-typescript` снят в 0.7.3) — типы пишутся руками в `$lib`.
   - Генерация из yaml не вернётся: спека с Go не сверяется, и типы из неё не надёжнее ручных. Пересмотр — типы TS из Go-структур (например, `tygo`) при первом баге расхождения полей клиента и сервера или при втором разработчике. Предусловие — именованные структуры ответов: сейчас 118 из 139 `writeJSON` отдают map-литерал, генератор их не видит.
   - Спеку держат сторожа: `TestOpenAPICoversMuxRoutes` (маршрут в `server.go` ↔ операция в своей спеке, деление по префиксу `/admin/`), `TestMuxRouteCountMatchesParsedOps`, `TestOpenAPIVersionMatchesVERSION`. Новый маршрут попадает в спеку тем же коммитом.
-- **Адрес исходников (AGPL §13).** `version.SourceURL` — единственное место, где он записан; отдаётся полем `source_url` в `GET /api/v1/instance`, клиент берёт оттуда. Публичный адрес — зеркало на GitHub, рабочий remote — Gitea; подробнее в CONTRIBUTING.
+- **Адрес исходников (AGPL §13).** `version.SourceURL` — единственное место, где он записан; отдаётся полем `source_url` в `GET /api/v1/instance`, клиент берёт оттуда. Публичный адрес — зеркало на GitHub, рабочий remote — Gitea; подробнее в DEVELOPMENT.md.
 - **Публичные пробы.** `/probe/body` и `/probe/stream` — под счётчиком по адресу: 12 запросов в минуту, дальше 429 с `Retry-After`. `/probe` и `/probe/sse` дёшевы и открыты.
 
 ### Конфигурация и адрес инстанса
