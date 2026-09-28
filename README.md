@@ -151,6 +151,7 @@ read -rs P && printf '%s\n' "$P" | sudo -u wynd env WYND_DATA_DIR=/var/lib/wynd 
 | Безопасность: как сообщить об уязвимости, модель доверия, аудиты | [SECURITY.md](SECURITY.md) |
 | Индекс планов | [ROADMAP.md](ROADMAP.md) |
 | Изменения | [CHANGELOG.md](CHANGELOG.md) (текущая ветка; старшие — в истории git) |
+| Знакомство с Wynd — для будущих участников и тех, кто поднимет сервер | [docs/about.html](docs/about.html) |
 | Образ продукта | [docs/wynd.html](docs/wynd.html) |
 | Экраны (макеты) | [docs/visual/screens.html](docs/visual/screens.html) |
 | Стек (история решений) | [docs/stack.html](docs/stack.html) |
