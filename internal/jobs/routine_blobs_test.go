@@ -31,8 +31,8 @@ func seedBlobFile(t *testing.T, st *store.SQLite, blobsDir, id, rel, createdAt s
 }
 
 // Инвариант (BLB-1): сборщик сирот знает обо всех, кто ссылается на блоб.
-// Аватар участника и обложка дня живут в своих таблицах, а не в blob_refs, и
-// раньше исчезали с диска через сутки после загрузки.
+// Аватар участника и обложка дня живут в своих таблицах, и раньше, когда
+// сборщик смотрел только в таблицу ссылок, исчезали с диска через сутки.
 func TestRunDailyRoutineKeepsAvatarsAndDayCovers(t *testing.T) {
 	st := openDB(t)
 	ctx := context.Background()
@@ -141,7 +141,7 @@ func TestRunDailyRoutineReportsFailureButFinishesRest(t *testing.T) {
 	mustExec(t, st, `INSERT INTO invites (id, token, kind, max_uses, uses, expires_at, created_at)
 		VALUES ('inv-old', 'tok-old', 'single', 1, 0, ?, ?)`, expired, old)
 	// Ломаем первый шаг: сборщик сирот не сможет прочитать свою таблицу.
-	mustExec(t, st, `DROP TABLE blob_refs`)
+	mustExec(t, st, `DROP TABLE day_covers`)
 
 	counts, err := jobs.RunDailyRoutine(ctx, st.DB(), t.TempDir(), now)
 	if err == nil {

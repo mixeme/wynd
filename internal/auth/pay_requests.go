@@ -17,8 +17,6 @@ import (
 	"gitea.mixdep.ru/mix/wynd/internal/uid"
 )
 
-const payRequestRefType = "pay_request"
-
 // PayRequest is a subscription payment proof awaiting review.
 type PayRequest struct {
 	ID              string  `json:"id"`
@@ -186,11 +184,6 @@ func (s *Service) CreatePayRequest(ctx context.Context, accountID, blobID, comme
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return "", ErrConflict
 		}
-		return "", err
-	}
-	if _, err := tx.ExecContext(ctx, `
-		INSERT OR IGNORE INTO blob_refs (blob_id, ref_type, ref_id) VALUES (?, ?, ?)
-	`, blobID, payRequestRefType, id); err != nil {
 		return "", err
 	}
 	if err := tx.Commit(); err != nil {
@@ -381,11 +374,6 @@ func detachPayRequestBlob(ctx context.Context, tx *sql.Tx, reqID, blobID string)
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE pay_requests SET blob_deleted = 1 WHERE id = ?
 	`, reqID); err != nil {
-		return "", err
-	}
-	if _, err := tx.ExecContext(ctx, `
-		DELETE FROM blob_refs WHERE ref_type = ? AND ref_id = ?
-	`, payRequestRefType, reqID); err != nil {
 		return "", err
 	}
 	// Строка pay_requests остаётся (внешний ключ на blobs), поэтому спрашиваем

@@ -627,10 +627,6 @@ func TestDeletePostGCsUnreferencedBlob(t *testing.T) {
 	}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.AddRef(ctx, nil, b.ID, "post", post.ID); err != nil {
-		t.Fatal(err)
-	}
-
 	blobIDs, err := ch.PostMediaBlobIDs(ctx, post.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -639,9 +635,6 @@ func TestDeletePostGCsUnreferencedBlob(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := ch.DeletePostMedia(ctx, post.ID); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.RemoveRefsFor(ctx, "post", post.ID); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.ReleaseBlobs(ctx, blobIDs); err != nil {

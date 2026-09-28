@@ -118,68 +118,6 @@ func (s *Store) CanAccessBlob(ctx context.Context, accountID, blobID string) (bo
 	return n > 0, nil
 }
 
-// AddRef records a reference to keep blob alive.
-func (s *Store) AddRef(ctx context.Context, tx *sql.Tx, blobID, refType, refID string) error {
-	exec := s.db.ExecContext
-	if tx != nil {
-		exec = tx.ExecContext
-	}
-	_, err := exec(ctx, `
-		INSERT OR IGNORE INTO blob_refs (blob_id, ref_type, ref_id) VALUES (?, ?, ?)
-	`, blobID, refType, refID)
-	return err
-}
-
-// RemoveRefsFor removes all refs of a type for an id and GCs unreferenced blobs.
-func (s *Store) RemoveRefsFor(ctx context.Context, refType, refID string) error {
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT blob_id FROM blob_refs WHERE ref_type = ? AND ref_id = ?
-	`, refType, refID)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	var ids []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return err
-		}
-		ids = append(ids, id)
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	if _, err := s.db.ExecContext(ctx, `
-		DELETE FROM blob_refs WHERE ref_type = ? AND ref_id = ?
-	`, refType, refID); err != nil {
-		return err
-	}
-	for _, id := range ids {
-		if err := s.gcBlobIfUnreferenced(ctx, id); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// RemoveBlobRef drops one blob reference and GCs if nothing else holds the blob.
-func (s *Store) RemoveBlobRef(ctx context.Context, tx *sql.Tx, blobID, refType, refID string) error {
-	exec := s.db.ExecContext
-	if tx != nil {
-		exec = tx.ExecContext
-	}
-	if _, err := exec(ctx, `
-		DELETE FROM blob_refs WHERE blob_id = ? AND ref_type = ? AND ref_id = ?
-	`, blobID, refType, refID); err != nil {
-		return err
-	}
-	if tx != nil {
-		return nil
-	}
-	return s.gcBlobIfUnreferenced(ctx, blobID)
-}
-
 func (s *Store) gcBlobIfUnreferenced(ctx context.Context, blobID string) error {
 	referenced, err := IsReferenced(ctx, s.db, blobID)
 	if err != nil {

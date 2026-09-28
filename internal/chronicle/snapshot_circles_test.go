@@ -69,18 +69,30 @@ func TestListAccountCirclesRespectsVisibility(t *testing.T) {
 	if list[0].Unread != 1 {
 		t.Fatalf("unread: got %d, want 1", list[0].Unread)
 	}
-	unreadLegacy, err := e.ch.UnreadPostCount(e.ctx, "newbie", circle.ID)
+	if list[0].LastSummary != "Боря опубликовал запись" || list[0].LastAt == nil || !list[0].LastAt.Equal(e.at(1)) {
+		t.Fatalf("last event: got %q at %v, want запись Бори at %v", list[0].LastSummary, list[0].LastAt, e.at(1))
+	}
+}
+
+// Последнее видимое событие — не последнее в круге: запись до прихода
+// новичка ему не видна, и строка улочки показывает его вступление, а не её.
+func TestListAccountCirclesLastEventSkipsInvisible(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	e.post(circle.ID, "owner", "до прихода Бори", "2026-08-01", e.at(0))
+	e.join(circle.ID, "newbie", "Боря", e.at(1))
+
+	list, err := e.ch.ListAccountCircles(e.ctx, "newbie")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if list[0].Unread != unreadLegacy {
-		t.Fatalf("batch unread %d != legacy %d", list[0].Unread, unreadLegacy)
+	if len(list) != 1 {
+		t.Fatalf("circles: got %d, want 1", len(list))
 	}
-	summary, at, ok, err := e.ch.LastVisibleEvent(e.ctx, circle.ID, "newbie")
-	if err != nil || !ok {
-		t.Fatal("legacy last event")
+	if list[0].Unread != 0 {
+		t.Fatalf("unread: got %d, want 0 — запись до входа не считается", list[0].Unread)
 	}
-	if list[0].LastSummary != summary || list[0].LastAt == nil || !list[0].LastAt.Equal(at) {
-		t.Fatalf("last event mismatch: %+v vs %q %v", list[0], summary, at)
+	if list[0].LastSummary != "Боря вступил в круг" || list[0].LastAt == nil || !list[0].LastAt.Equal(e.at(1)) {
+		t.Fatalf("last event: got %q at %v, want вступление Бори at %v", list[0].LastSummary, list[0].LastAt, e.at(1))
 	}
 }

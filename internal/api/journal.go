@@ -450,11 +450,6 @@ func (s *Server) createPostWithMedia(ctx context.Context, in chronicle.PostInput
 	if err := s.Chronicle.AttachMediaInTx(ctx, tx, post.ID, media); err != nil {
 		return chronicle.Post{}, err
 	}
-	for _, m := range media {
-		if err := s.Blobs.AddRef(ctx, tx, m.BlobID, "post", post.ID); err != nil {
-			return chronicle.Post{}, err
-		}
-	}
 	if err := tx.Commit(); err != nil {
 		return chronicle.Post{}, err
 	}
@@ -506,16 +501,6 @@ func (s *Server) editPostReplaceMedia(ctx context.Context, circleID, accountID, 
 	removed, err := s.Chronicle.ReplacePostMediaInTx(ctx, tx, circleID, postID, post.EntryDate, media)
 	if err != nil {
 		return err
-	}
-	for _, id := range removed {
-		if err := s.Blobs.RemoveBlobRef(ctx, tx, id, "post", postID); err != nil {
-			return err
-		}
-	}
-	for _, id := range addedIDs {
-		if err := s.Blobs.AddRef(ctx, tx, id, "post", postID); err != nil {
-			return err
-		}
 	}
 	if err := tx.Commit(); err != nil {
 		return err

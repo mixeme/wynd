@@ -11,8 +11,9 @@ type Querier interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
-// Кто ссылается на блоб. Истина — сами ссылающиеся таблицы, а не blob_refs:
-// та лишь дублирует их и отстаёт (план 42, раздел B «Ссылки на блобы»).
+// Кто ссылается на блоб — сами ссылающиеся таблицы. Отдельной таблицы
+// ссылок нет: blob_refs дублировала их, отставала и снята миграцией 0017
+// (server-reference, «Ссылки на блобы»).
 // Раньше предикат был написан трижды — в рутине, в GC и в оплате — и ни одна
 // копия не была полной: рутина не знала про аватары и стирала их через сутки
 // после загрузки (BLB-1), GC и оплата не знали про скриншоты оплаты и дни.
@@ -24,7 +25,6 @@ var referencingTables = []struct {
 	// а для файла на диске — только пока blob_deleted = 0.
 	payScreenshot bool
 }{
-	{table: "blob_refs", where: "blob_id = %s"},
 	{table: "post_media", where: "blob_id = %s"},
 	{table: "day_covers", where: "blob_id = %s AND deleted = 0"},
 	{table: "days", where: "cover_blob_id = %s"},

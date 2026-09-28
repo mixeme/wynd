@@ -588,32 +588,3 @@ func (c *Chronicle) feedVisibilityBounds(ctx context.Context, circleID, accountI
 	return earliest, circleStartedAt, nil
 }
 
-// LastVisibleEvent returns the newest summarized event the account may read.
-// Only a test oracle for the batch ListAccountCircles now (server-reference, «Legacy и сроки снятия»).
-func (c *Chronicle) LastVisibleEvent(ctx context.Context, circleID, accountID string) (summary string, at time.Time, ok bool, err error) {
-	rows, err := c.db.QueryContext(ctx, `
-		SELECT summary, created_at FROM events
-		WHERE circle_id = ? AND summary != ''
-		ORDER BY seq DESC
-	`, circleID)
-	if err != nil {
-		return "", time.Time{}, false, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var sum string
-		var created string
-		if err := rows.Scan(&sum, &created); err != nil {
-			return "", time.Time{}, false, err
-		}
-		t, _ := parseTime(created)
-		visible, err := c.CanReadEvent(ctx, circleID, accountID, t)
-		if err != nil {
-			return "", time.Time{}, false, err
-		}
-		if visible {
-			return sum, t, true, nil
-		}
-	}
-	return "", time.Time{}, false, rows.Err()
-}

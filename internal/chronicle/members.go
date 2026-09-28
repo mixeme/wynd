@@ -265,10 +265,8 @@ func (c *Chronicle) CircleColor(ctx context.Context, circleID string) (string, e
 }
 
 // DeleteCircle removes a circle and all its data. Owner only; name must match.
-// Возвращает блобы круга: строки blob_refs снимаются внутри транзакции
-// удаления, а файлы освобождает вызывающий после коммита. Без этого файлы
-// удалённого круга оставались на диске навсегда — каскад снимает post_media,
-// но не blob_refs, и предикат «блоб занят» продолжал видеть ссылку (BLB-4).
+// Возвращает блобы круга: каскад снимает post_media, обложки и лица, а файлы
+// освобождает вызывающий после коммита (BLB-4).
 func (c *Chronicle) DeleteCircle(ctx context.Context, circleID, ownerAccountID, confirmName string, now time.Time) ([]string, error) {
 	tx, err := c.beginWrite(ctx)
 	if err != nil {
@@ -298,13 +296,6 @@ func (c *Chronicle) DeleteCircle(ctx context.Context, circleID, ownerAccountID, 
 
 	blobIDs, err := c.circleBlobIDsTx(ctx, tx, circleID)
 	if err != nil {
-		return nil, err
-	}
-	if _, err := tx.ExecContext(ctx, `
-		DELETE FROM blob_refs
-		WHERE ref_type = 'post'
-		  AND ref_id IN (SELECT id FROM posts WHERE circle_id = ?)
-	`, circleID); err != nil {
 		return nil, err
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM circles WHERE id = ?`, circleID); err != nil {

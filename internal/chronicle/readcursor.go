@@ -51,35 +51,3 @@ func (c *Chronicle) SetReadCursor(ctx context.Context, accountID, circleID strin
 	return err
 }
 
-// UnreadPostCount counts visible posts with event_seq above the read cursor.
-func (c *Chronicle) UnreadPostCount(ctx context.Context, accountID, circleID string) (int, error) {
-	cur, err := c.GetReadCursor(ctx, accountID, circleID)
-	if err != nil {
-		return 0, err
-	}
-	rows, err := c.db.QueryContext(ctx, `
-		SELECT created_at, event_seq FROM posts
-		WHERE circle_id = ? AND deleted = 0 AND event_seq > ?
-	`, circleID, cur.LastReadSeq)
-	if err != nil {
-		return 0, err
-	}
-	defer rows.Close()
-	var n int
-	for rows.Next() {
-		var created string
-		var seq int64
-		if err := rows.Scan(&created, &seq); err != nil {
-			return 0, err
-		}
-		t, _ := parseTime(created)
-		ok, err := c.CanReadEvent(ctx, circleID, accountID, t)
-		if err != nil {
-			return 0, err
-		}
-		if ok {
-			n++
-		}
-	}
-	return n, rows.Err()
-}

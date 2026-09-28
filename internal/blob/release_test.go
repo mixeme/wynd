@@ -50,7 +50,7 @@ func newReleaseEnv(t *testing.T) *releaseEnv {
 	return &releaseEnv{t: t, ch: ch, blobs: s, circle: circle, t0: t0}
 }
 
-// postWithPhoto повторяет обычный путь: запись, вложение и ссылка в blob_refs.
+// postWithPhoto повторяет обычный путь: запись и вложение.
 func (e *releaseEnv) postWithPhoto(entryDate string, when time.Time) (chronicle.Post, blob.Blob, string) {
 	e.t.Helper()
 	b := uploadComplete(e.t, e.blobs, "owner", "image/jpeg", []byte("photo-bytes"))
@@ -70,9 +70,6 @@ func (e *releaseEnv) postWithPhoto(entryDate string, when time.Time) (chronicle.
 	}}); err != nil {
 		e.t.Fatal(err)
 	}
-	if err := e.blobs.AddRef(e.t.Context(), nil, b.ID, "post", post.ID); err != nil {
-		e.t.Fatal(err)
-	}
 	return post, b, info.Path
 }
 
@@ -86,18 +83,17 @@ func (e *releaseEnv) assertBlobGone(blobID, path string) {
 	}
 	var refs int
 	if err := e.ch.DB().QueryRowContext(e.t.Context(),
-		`SELECT count(*) FROM blob_refs WHERE blob_id = ?`, blobID).Scan(&refs); err != nil {
+		`SELECT count(*) FROM post_media WHERE blob_id = ?`, blobID).Scan(&refs); err != nil {
 		e.t.Fatal(err)
 	}
 	if refs != 0 {
-		e.t.Fatalf("blob_refs на %s остались: %d", blobID, refs)
+		e.t.Fatalf("post_media на %s остались: %d", blobID, refs)
 	}
 }
 
-// Инвариант (BLB-3): архивный purge снимает не только post_media, но и
-// blob_refs, поэтому файл действительно освобождается. Раньше ReleaseBlobs
-// видел оставшуюся ссылку и выходил: медиа удалённой записи лежало на диске
-// и отдавалось по прямому id.
+// Инвариант (BLB-3): архивный purge снимает вложения записей, поэтому файл
+// действительно освобождается. Раньше ReleaseBlobs видел оставшуюся ссылку
+// и выходил: медиа удалённой записи лежало на диске и отдавалось по прямому id.
 func TestPurgeReleasesBlobs(t *testing.T) {
 	e := newReleaseEnv(t)
 	// Запись старше отсечки: purge уносит именно такие.
@@ -116,9 +112,9 @@ func TestPurgeReleasesBlobs(t *testing.T) {
 	e.assertBlobGone(b.ID, path)
 }
 
-// Инвариант (BLB-4): удаление круга освобождает его файлы. Раньше это был
-// один DELETE FROM circles: каскад снимал post_media, но не blob_refs, и
-// файлы удалённого круга оставались на диске навсегда.
+// Инвариант (BLB-4): удаление круга освобождает его файлы. Раньше каскад
+// снимал post_media, но не таблицу ссылок blob_refs (снята в 0017), и файлы
+// удалённого круга оставались на диске навсегда.
 func TestDeleteCircleReleasesBlobs(t *testing.T) {
 	e := newReleaseEnv(t)
 	_, b, path := e.postWithPhoto("2026-08-30", e.t0)

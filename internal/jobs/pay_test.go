@@ -57,13 +57,6 @@ func TestPayScreenshotCleanupKeepsBlobRow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = st.DB().ExecContext(ctx, `
-		INSERT INTO blob_refs (blob_id, ref_type, ref_id)
-		VALUES ('blob-pay', 'pay_request', 'req-1')
-	`)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	n, err := svc.CleanupExpiredPayScreenshots(ctx, blobsDir, now)
 	if err != nil {

@@ -266,16 +266,11 @@ func (c *Chronicle) DeletePost(ctx context.Context, circleID, accountID, postID 
 	return blobIDs, nil
 }
 
-// dropPostMediaInTx снимает вложения и ссылки на блобы записи. Ссылки
-// снимаются внутри доменной транзакции удаления, а не в обработчике: иначе
-// purge и удаление круга о них забывают, и файлы остаются на диске (BLB-3).
+// dropPostMediaInTx снимает вложения записи внутри доменной транзакции
+// удаления, а не в обработчике: иначе purge и удаление круга о них забывают,
+// и файлы остаются на диске (BLB-3).
 func (c *Chronicle) dropPostMediaInTx(ctx context.Context, tx *sql.Tx, postID string) error {
-	if _, err := tx.ExecContext(ctx, `DELETE FROM post_media WHERE post_id = ?`, postID); err != nil {
-		return err
-	}
-	_, err := tx.ExecContext(ctx, `
-		DELETE FROM blob_refs WHERE ref_type = 'post' AND ref_id = ?
-	`, postID)
+	_, err := tx.ExecContext(ctx, `DELETE FROM post_media WHERE post_id = ?`, postID)
 	return err
 }
 

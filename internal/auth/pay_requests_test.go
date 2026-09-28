@@ -76,15 +76,12 @@ func TestRejectedScreenshotCannotBeReused(t *testing.T) {
 	if _, err := os.Stat(f.blobPath); !os.IsNotExist(err) {
 		t.Fatalf("файл скриншота остался: %v", err)
 	}
-	var deleted, refs int
+	var deleted int
 	if err := e.auth.DB().QueryRowContext(e.ctx, `SELECT blob_deleted FROM pay_requests WHERE id = ?`, id).Scan(&deleted); err != nil {
 		t.Fatal(err)
 	}
-	if err := e.auth.DB().QueryRowContext(e.ctx, `SELECT COUNT(*) FROM blob_refs WHERE ref_id = ?`, id).Scan(&refs); err != nil {
-		t.Fatal(err)
-	}
-	if deleted != 1 || refs != 0 {
-		t.Fatalf("blob_deleted=%d refs=%d", deleted, refs)
+	if deleted != 1 {
+		t.Fatalf("blob_deleted=%d", deleted)
 	}
 	if _, err := e.auth.CreatePayRequest(e.ctx, f.accountID, "shot", "ещё раз"); !errors.Is(err, auth.ErrInvalid) {
 		t.Fatalf("повторная заявка с удалённым файлом: %v, want ErrInvalid", err)
