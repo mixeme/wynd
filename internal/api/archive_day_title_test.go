@@ -45,7 +45,7 @@ func TestArchiveIncludesDayTitles(t *testing.T) {
 		t.Fatalf("start archive: %d %s", rec.Code, rec.Body.String())
 	}
 
-	const want = "2026-08-01 · «Дача &lt;script&gt;»"
+	const want = "1 августа 2026 · «Дача &lt;script&gt;»"
 	for _, layout := range []string{"", "?layout=posts"} {
 		r := doGET(t, srv, "/api/v1/circles/"+circleID+"/archive/download"+layout, tok)
 		if r.Code != http.StatusOK {

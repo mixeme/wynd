@@ -28,10 +28,18 @@ type inviteMemberRow struct {
 	name      string
 	isOwner   bool
 	joinedAt  time.Time
+	activity  int
 }
 
+// inviteActivityWindow — за какой срок считать активность для ряда 1.3.
+const inviteActivityWindow = 90 * 24 * time.Hour
+
 // InvitePeekForCircle returns member names for an invite link (no account ids).
-func (c *Chronicle) InvitePeekForCircle(ctx context.Context, circleID, inviterAccountID string) (InvitePeek, error) {
+// Порядок ряда вступления (wynd.html, «Вступление»): владелец, пригласивший,
+// дальше самые активные — записи и комментарии в круге за 90 дней, при
+// равенстве раньше вступивший. Новичок, который пишет, впереди молчаливого
+// старожила: его пример лучше объясняет, как здесь зовутся.
+func (c *Chronicle) InvitePeekForCircle(ctx context.Context, circleID, inviterAccountID string, now time.Time) (InvitePeek, error) {
 	var name, color string
 	err := c.db.QueryRowContext(ctx, `
 		SELECT name, color FROM circles WHERE id = ?
@@ -44,6 +52,11 @@ func (c *Chronicle) InvitePeekForCircle(ctx context.Context, circleID, inviterAc
 	}
 
 	owner, err := c.circleOwner(ctx, c.db, circleID)
+	if err != nil {
+		return InvitePeek{}, err
+	}
+
+	activity, err := c.inviteActivity(ctx, circleID, now.Add(-inviteActivityWindow))
 	if err != nil {
 		return InvitePeek{}, err
 	}
@@ -78,6 +91,7 @@ func (c *Chronicle) InvitePeekForCircle(ctx context.Context, circleID, inviterAc
 			name:      displayName,
 			isOwner:   accountID == owner,
 			joinedAt:  joinedAt,
+			activity:  activity[identityID],
 		})
 	}
 	if err := rows.Err(); err != nil {
@@ -97,6 +111,9 @@ func (c *Chronicle) InvitePeekForCircle(ctx context.Context, circleID, inviterAc
 				return false
 			}
 		}
+		if a.activity != b.activity {
+			return a.activity > b.activity
+		}
 		return a.joinedAt.Before(b.joinedAt)
 	})
 
@@ -115,6 +132,35 @@ func (c *Chronicle) InvitePeekForCircle(ctx context.Context, circleID, inviterAc
 		MemberCount: len(members),
 		Members:     members,
 	}, nil
+}
+
+// inviteActivity считает сказанное лицом в круге с since: неудалённые записи
+// и комментарии. Реакции не в счёт — это не голос в журнале.
+func (c *Chronicle) inviteActivity(ctx context.Context, circleID string, since time.Time) (map[string]int, error) {
+	rows, err := c.db.QueryContext(ctx, `
+		SELECT identity_id, COUNT(*) FROM (
+			SELECT identity_id FROM posts
+			WHERE circle_id = ? AND deleted = 0 AND created_at >= ?
+			UNION ALL
+			SELECT identity_id FROM comments
+			WHERE circle_id = ? AND deleted = 0 AND created_at >= ?
+		)
+		GROUP BY identity_id
+	`, circleID, formatTime(since), circleID, formatTime(since))
+	if err != nil {
+		return nil, fmt.Errorf("activity for invite peek: %w", err)
+	}
+	defer rows.Close()
+	out := map[string]int{}
+	for rows.Next() {
+		var id string
+		var n int
+		if err := rows.Scan(&id, &n); err != nil {
+			return nil, err
+		}
+		out[id] = n
+	}
+	return out, rows.Err()
 }
 
 // ServerInviteInviterName is the public name on a server invite (1.7): the

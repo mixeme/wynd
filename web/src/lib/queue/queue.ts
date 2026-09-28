@@ -18,6 +18,7 @@ import {
 	type ReactionQueuePayload
 } from '$lib/idb/db';
 import { sha256Hex } from '$lib/sha256';
+import { holdWakeLock } from '$lib/media/wake-lock';
 import { uuid } from '$lib/uuid';
 
 export const CHUNK_SIZE = 1024 * 1024;
@@ -283,9 +284,22 @@ async function processItem(item: QueueRecordWithId): Promise<boolean> {
 }
 
 async function drainOnce(): Promise<void> {
+	// Экран не гаснет, пока очередь уходит: загрузка видео — минуты (A5).
+	let releaseWake: (() => void) | undefined;
+	try {
+		await drainLoop(() => {
+			releaseWake ??= holdWakeLock();
+		});
+	} finally {
+		releaseWake?.();
+	}
+}
+
+async function drainLoop(onWork: () => void): Promise<void> {
 	while (navigator.onLine) {
 		const ready = readyQueueItems(await listQueueItems());
 		if (!ready.length) break;
+		onWork();
 		// Недоступный сервер задерживает только свою очередь: раньше общий
 		// FIFO с break останавливал отправку и на живые серверы (QUE-1).
 		const blocked = new Set<string>();

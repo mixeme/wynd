@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -46,6 +47,9 @@ type Server struct {
 	// в памяти, и N параллельных запросов одного участника держали N копий
 	// среза (аудит 2026-09-22). Одна сборка на учётку, повтор — 429.
 	archiveBuilds sync.Map
+	// ArchiveFonts — вшитая сборка клиента (web/dist): из неё архив берёт
+	// Golos Text и кладёт внутрь ZIP. nil — архив на системном шрифте.
+	ArchiveFonts fs.FS
 }
 
 // NewServer wires the services into one HTTP handler and registers every route on Mux.

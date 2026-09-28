@@ -312,10 +312,10 @@ func (s *Server) handleArchiveDownload(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	circleName := circleID
+	circleName, circleColor := circleID, ""
 	for _, c := range circles {
 		if c.ID == circleID {
-			circleName = c.Name
+			circleName, circleColor = c.Name, c.Color
 			break
 		}
 	}
@@ -349,6 +349,8 @@ func (s *Server) handleArchiveDownload(w http.ResponseWriter, r *http.Request) {
 		Blobs:      s.Blobs,
 		Avatars:    avatars,
 		DayTitles:  dayTitles,
+		Color:      circleColor,
+		Fonts:      s.ArchiveFonts,
 	}); err != nil {
 		writeError(w, err)
 		return

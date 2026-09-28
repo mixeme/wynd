@@ -45,6 +45,7 @@
 	import { isTransportError } from '$lib/queue/transport';
 	import type { PostQueuePayload, QueueFile, QueueMediaMeta } from '$lib/idb/db';
 	import { takeComposePhotos } from '$lib/journal/compose-handoff';
+	import { holdWakeLock } from '$lib/media/wake-lock';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 
@@ -391,6 +392,8 @@
 	async function addFiles(list: File[]) {
 		if (filePickLock || !list.length) return;
 		filePickLock = true;
+		// Сжатие видео — минуты; погасший экран сворачивает вкладку (A5).
+		const releaseWake = holdWakeLock();
 		try {
 			const compression = await fetchCompression(circle.origin).catch(() => undefined);
 			const next = [...picked];
@@ -470,6 +473,7 @@
 			compressProgress = 0;
 			keepOpenHint = false;
 			filePickLock = false;
+			releaseWake();
 		}
 	}
 

@@ -159,6 +159,7 @@ func runServer() {
 		log.Fatalf("embed web dist: %v", err)
 	}
 	mux.Handle("/", web.SPA(buildFS, loopback))
+	apiSrv.ArchiveFonts = buildFS
 
 	srv := &http.Server{
 		Addr:        cfg.Listen,

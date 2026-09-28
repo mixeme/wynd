@@ -37,6 +37,11 @@ type BuildInput struct {
 	Avatars map[string]string
 	// DayTitles maps entry date to the day title said before the cutoff.
 	DayTitles map[string]string
+	// Color — ключ цвета круга (circles.color): шапка и акценты архива.
+	Color string
+	// Fonts — сборка клиента (web/dist); из неё в ZIP кладётся Golos Text.
+	// nil или файла нет — архив на системном шрифте.
+	Fonts fs.FS
 }
 
 // BuildPersonalArchive writes a self-contained ZIP with media/ and HTML to w.
@@ -110,21 +115,33 @@ func BuildPersonalArchive(ctx context.Context, w io.Writer, in BuildInput) error
 		}
 	}
 
+	st := style{hex: circleHex(in.Color)}
+	for _, f := range archiveFonts {
+		data, err := readFont(in.Fonts, f)
+		if err != nil || data == nil {
+			continue
+		}
+		if err := writeStoredFile(zw, "fonts/"+f, data); err != nil {
+			return err
+		}
+		st.fonts = append(st.fonts, f)
+	}
+
 	switch layout {
 	case LayoutPosts:
-		index := renderPostsIndex(in.CircleName, in.CutoffDate, in.Posts, in.DayTitles)
+		index := renderPostsIndex(st, in.CircleName, in.CutoffDate, in.Posts, in.DayTitles)
 		if err := writeZipFile(zw, "index.html", []byte(index)); err != nil {
 			return err
 		}
 		for _, fp := range in.Posts {
-			body := renderPostPage(in.CircleName, fp, mediaNames, in.Avatars, in.DayTitles)
+			body := renderPostPage(st, in.CircleName, fp, mediaNames, in.Avatars, in.DayTitles)
 			fname := path.Join("posts", fp.Post.ID+".html")
 			if err := writeZipFile(zw, fname, []byte(body)); err != nil {
 				return err
 			}
 		}
 	default:
-		feed := renderFeedIndex(in.CircleName, in.CutoffDate, in.Posts, mediaNames, in.Avatars, in.DayTitles)
+		feed := renderFeedIndex(st, in.CircleName, in.CutoffDate, in.Posts, mediaNames, in.Avatars, in.DayTitles)
 		if err := writeZipFile(zw, "index.html", []byte(feed)); err != nil {
 			return err
 		}
@@ -163,22 +180,125 @@ func extensionForMime(mime string) string {
 	}
 }
 
+// archiveFonts — файлы Golos Text из сборки клиента: кириллица и латиница.
+// Расширенные наборы не нужны — архив читает русский текст.
+var archiveFonts = []string{
+	"GolosText-Variable-cyrillic.woff2",
+	"GolosText-Variable-latin.woff2",
+}
+
+func readFont(fonts fs.FS, name string) ([]byte, error) {
+	if fonts == nil {
+		return nil, nil
+	}
+	data, err := fs.ReadFile(fonts, "fonts/"+name)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	return data, err
+}
+
+func writeStoredFile(zw *zip.Writer, name string, data []byte) error {
+	fw, err := zw.CreateHeader(&zip.FileHeader{Name: name, Method: zip.Store})
+	if err != nil {
+		return err
+	}
+	_, err = fw.Write(data)
+	return err
+}
+
+// circleHexes — палитра кругов, та же, что в клиенте
+// (web/src/lib/theme/colors.ts). Неизвестный ключ — терракота.
+var circleHexes = map[string]string{
+	"terracotta": "#AF5839", "teal": "#357077", "olive": "#58673A", "ochre": "#70571B",
+	"plum": "#7A4265", "indigo": "#3C4D83", "coffee": "#62452F", "slate": "#3D494F",
+}
+
+func circleHex(color string) string {
+	if hex, ok := circleHexes[color]; ok {
+		return hex
+	}
+	return circleHexes["terracotta"]
+}
+
+// style — оформление страниц одного архива: цвет круга и вшитые шрифты.
+type style struct {
+	hex   string
+	fonts []string
+}
+
+// Вёрстка — как в клиенте (wynd.html, «Квота и архив»): бумага и чернила из
+// tokens.css, цвет круга в шапке и акцентах, карточка записи и комментарии
+// как в ленте. Всё внутри файла: архив открывается офлайн и без Wynd.
 const baseCSS = `
-body{font-family:system-ui,sans-serif;background:#f5f0eb;color:#1a1a1a;margin:0;padding:16px;line-height:1.5}
-h1{font-size:1.25rem;margin:0 0 8px}
-.meta{color:#666;font-size:0.85rem;margin-bottom:16px}
-.post{border-top:1px solid #ddd;padding:12px 0}
-.author{font-weight:600;color:#c4725a}
-.av{width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;object-fit:cover}
-.body{margin:8px 0;white-space:pre-wrap}
-.media img,video{max-width:100%;height:auto;display:block;margin:8px 0}
-.comments{margin-top:8px;padding-left:12px;border-left:3px solid #e8ddd4}
-.comment{font-size:0.9rem;margin:4px 0}
-.reactions{font-size:0.85rem;color:#666}
-a{color:#c4725a}
-ul{list-style:none;padding:0}
-li{margin:8px 0}
+:root{--paper:#F4F0E9;--card:#FCFAF6;--ink:#2B2724;--muted:#7A7269;--faint:#A8A096;--line:#DFD8CD}
+*{box-sizing:border-box}
+body{font-family:"Golos Text",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--paper);color:var(--ink);margin:0;line-height:1.5;font-size:15px}
+.wrap{max-width:640px;margin:0 auto}
+.head{background:var(--c);color:#fff;padding:22px 20px 18px}
+.head h1{font-size:22px;margin:0;font-weight:700}
+.head p{margin:4px 0 0;opacity:.85;font-size:13.5px}
+.head a{color:#fff}
+.post{background:var(--card);border:1px solid var(--line);border-radius:16px;margin:14px 12px;padding:14px 16px}
+.who{display:flex;align-items:center;gap:10px}
+.author{font-weight:600}
+.av{width:32px;height:32px;border-radius:50%;object-fit:cover;flex:none}
+.avl{width:32px;height:32px;border-radius:50%;background:var(--c);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex:none}
+.meta{color:var(--muted);font-size:12.5px}
+.body{margin:10px 0 0;white-space:pre-wrap}
+.media img,.media video{width:100%;height:auto;display:block;border-radius:12px;margin:10px 0 0}
+.gone{color:var(--faint);font-size:12.5px;margin:10px 0 0}
+.reactions{margin-top:10px;font-size:13px;color:var(--muted)}
+.comments{margin-top:12px;border-top:1px solid var(--line);padding-top:8px}
+.comment{font-size:14px;margin:6px 0}
+.comment .author{color:var(--c)}
+.toc{list-style:none;margin:8px 0;padding:0}
+.toc li{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:10px 12px;padding:12px 16px}
+.toc a{color:var(--ink);text-decoration:none;font-weight:600}
+.toc a:hover{color:var(--c)}
+.back{display:inline-block;margin:14px 12px 0;color:var(--c)}
+.end{text-align:center;color:var(--faint);font-size:12.5px;padding:24px 16px 40px}
 `
+
+// head пишет <head> страницы: prefix — путь до корня архива ("" или "../").
+func (st style) head(b *strings.Builder, title, prefix string) {
+	b.WriteString("<!DOCTYPE html><html lang=\"ru\"><head><meta charset=\"utf-8\">")
+	b.WriteString("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>")
+	b.WriteString(html.EscapeString(title))
+	b.WriteString("</title><style>")
+	for _, f := range st.fonts {
+		b.WriteString("@font-face{font-family:\"Golos Text\";font-weight:400 900;src:url(\"")
+		b.WriteString(prefix + "fonts/" + f)
+		b.WriteString("\") format(\"woff2\")}")
+	}
+	b.WriteString(":root{--c:")
+	b.WriteString(st.hex)
+	b.WriteString("}")
+	b.WriteString(baseCSS)
+	b.WriteString("</style></head><body><div class=\"wrap\">")
+}
+
+func (st style) header(b *strings.Builder, circleName, cutoff string) {
+	b.WriteString("<header class=\"head\"><h1>")
+	b.WriteString(html.EscapeString(circleName))
+	b.WriteString("</h1><p>Архив круга до ")
+	b.WriteString(html.EscapeString(humanDate(cutoff)))
+	b.WriteString("</p></header>")
+}
+
+const pageEnd = "<p class=\"end\">Wynd · персональный архив</p></div></body></html>"
+
+var monthsGen = [...]string{"января", "февраля", "марта", "апреля", "мая", "июня",
+	"июля", "августа", "сентября", "октября", "ноября", "декабря"}
+
+// humanDate: "2026-08-30" → "30 августа 2026"; нераспознанное — как есть.
+func humanDate(isoDay string) string {
+	t, err := time.Parse("2006-01-02", isoDay)
+	if err != nil {
+		return isoDay
+	}
+	return fmt.Sprintf("%d %s %d", t.Day(), monthsGen[t.Month()-1], t.Year())
+}
 
 // snippetRunes — длина начала записи в оглавлении раскладки posts.
 const snippetRunes = 60
@@ -203,44 +323,29 @@ func snippet(body string, limit int) string {
 
 // entryDateHTML — дата отнесения и, если есть, название дня (ARC-6).
 func entryDateHTML(entryDate string, dayTitles map[string]string) string {
-	out := html.EscapeString(entryDate)
+	out := html.EscapeString(humanDate(entryDate))
 	if title := dayTitles[entryDate]; title != "" {
 		out += " · «" + html.EscapeString(title) + "»"
 	}
 	return out
 }
 
-func renderFeedIndex(circleName, cutoff string, posts []chronicle.FeedPost, media, avatars, dayTitles map[string]string) string {
+func renderFeedIndex(st style, circleName, cutoff string, posts []chronicle.FeedPost, media, avatars, dayTitles map[string]string) string {
 	var b strings.Builder
-	b.WriteString("<!DOCTYPE html><html lang=\"ru\"><head><meta charset=\"utf-8\"><title>")
-	b.WriteString(html.EscapeString(circleName))
-	b.WriteString("</title><style>")
-	b.WriteString(baseCSS)
-	b.WriteString("</style></head><body>")
-	b.WriteString("<h1>")
-	b.WriteString(html.EscapeString(circleName))
-	b.WriteString("</h1><p class=\"meta\">Архив до ")
-	b.WriteString(html.EscapeString(cutoff))
-	b.WriteString("</p>")
+	st.head(&b, circleName, "")
+	st.header(&b, circleName, cutoff)
 	for _, fp := range posts {
 		appendPostHTML(&b, fp, media, avatars, dayTitles, false)
 	}
-	b.WriteString("</body></html>")
+	b.WriteString(pageEnd)
 	return b.String()
 }
 
-func renderPostsIndex(circleName, cutoff string, posts []chronicle.FeedPost, dayTitles map[string]string) string {
+func renderPostsIndex(st style, circleName, cutoff string, posts []chronicle.FeedPost, dayTitles map[string]string) string {
 	var b strings.Builder
-	b.WriteString("<!DOCTYPE html><html lang=\"ru\"><head><meta charset=\"utf-8\"><title>")
-	b.WriteString(html.EscapeString(circleName))
-	b.WriteString(" — оглавление</title><style>")
-	b.WriteString(baseCSS)
-	b.WriteString("</style></head><body>")
-	b.WriteString("<h1>")
-	b.WriteString(html.EscapeString(circleName))
-	b.WriteString("</h1><p class=\"meta\">Архив до ")
-	b.WriteString(html.EscapeString(cutoff))
-	b.WriteString("</p><ul>")
+	st.head(&b, circleName+" — оглавление", "")
+	st.header(&b, circleName, cutoff)
+	b.WriteString("<ul class=\"toc\">")
 	for _, fp := range posts {
 		label := fp.Post.AuthorName
 		if fp.Post.Body != "" {
@@ -250,37 +355,44 @@ func renderPostsIndex(circleName, cutoff string, posts []chronicle.FeedPost, day
 		b.WriteString(html.EscapeString(fp.Post.ID))
 		b.WriteString(".html\">")
 		b.WriteString(html.EscapeString(label))
-		b.WriteString("</a> <span class=\"meta\">")
+		b.WriteString("</a><div class=\"meta\">")
 		b.WriteString(entryDateHTML(fp.Post.EntryDate, dayTitles))
-		b.WriteString("</span></li>")
+		b.WriteString("</div></li>")
 	}
-	b.WriteString("</ul></body></html>")
+	b.WriteString("</ul>")
+	b.WriteString(pageEnd)
 	return b.String()
 }
 
-func renderPostPage(circleName string, fp chronicle.FeedPost, media, avatars, dayTitles map[string]string) string {
+func renderPostPage(st style, circleName string, fp chronicle.FeedPost, media, avatars, dayTitles map[string]string) string {
 	var b strings.Builder
-	b.WriteString("<!DOCTYPE html><html lang=\"ru\"><head><meta charset=\"utf-8\"><title>")
+	st.head(&b, circleName, "../")
+	b.WriteString("<a class=\"back\" href=\"../index.html\">← ")
 	b.WriteString(html.EscapeString(circleName))
-	b.WriteString("</title><style>")
-	b.WriteString(baseCSS)
-	b.WriteString("</style></head><body><p class=\"meta\"><a href=\"../index.html\">← К оглавлению</a></p>")
+	b.WriteString("</a>")
 	appendPostHTML(&b, fp, media, avatars, dayTitles, true)
-	b.WriteString("</body></html>")
+	b.WriteString(pageEnd)
 	return b.String()
 }
 
-func appendAuthorHTML(b *strings.Builder, name, identityID string, media, avatars map[string]string, prefix string) {
-	if avatars != nil {
-		if blobID, ok := avatars[identityID]; ok {
-			if src, ok := media[blobID]; ok {
-				b.WriteString("<img class=\"av\" alt=\"\" src=\"")
-				b.WriteString(html.EscapeString(prefix + src))
-				b.WriteString("\">")
-			}
+// appendAvatarHTML — аватар лица, а без него буква имени на цвете круга.
+func appendAvatarHTML(b *strings.Builder, name, identityID string, media, avatars map[string]string, prefix string) {
+	if blobID, ok := avatars[identityID]; ok {
+		if src, ok := media[blobID]; ok {
+			b.WriteString("<img class=\"av\" alt=\"\" src=\"")
+			b.WriteString(html.EscapeString(prefix + src))
+			b.WriteString("\">")
+			return
 		}
 	}
-	b.WriteString(html.EscapeString(name))
+	initial := "·"
+	for _, r := range strings.TrimSpace(name) {
+		initial = strings.ToUpper(string(r))
+		break
+	}
+	b.WriteString("<span class=\"avl\">")
+	b.WriteString(html.EscapeString(initial))
+	b.WriteString("</span>")
 }
 
 func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, dayTitles map[string]string, relativeMedia bool) {
@@ -288,15 +400,18 @@ func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, d
 	if relativeMedia {
 		prefix = "../"
 	}
-	b.WriteString("<article class=\"post\"><div class=\"author\">")
-	appendAuthorHTML(b, fp.Post.AuthorName, fp.Post.IdentityID, media, avatars, prefix)
+	b.WriteString("<article class=\"post\"><div class=\"who\">")
+	appendAvatarHTML(b, fp.Post.AuthorName, fp.Post.IdentityID, media, avatars, prefix)
+	b.WriteString("<div><div class=\"author\">")
+	b.WriteString(html.EscapeString(fp.Post.AuthorName))
 	b.WriteString("</div><div class=\"meta\">")
 	b.WriteString(entryDateHTML(fp.Post.EntryDate, dayTitles))
 	if !fp.Post.CreatedAt.IsZero() {
-		b.WriteString(" · ")
-		b.WriteString(html.EscapeString(fp.Post.CreatedAt.UTC().Format(time.RFC3339)))
+		b.WriteString(" · опубликовано ")
+		b.WriteString(html.EscapeString(fp.Post.CreatedAt.UTC().Format("02.01.2006 15:04")))
+		b.WriteString(" UTC")
 	}
-	b.WriteString("</div>")
+	b.WriteString("</div></div></div>")
 	if fp.Post.Body != "" {
 		b.WriteString("<div class=\"body\">")
 		b.WriteString(html.EscapeString(fp.Post.Body))
@@ -305,7 +420,7 @@ func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, d
 	for _, m := range fp.Media {
 		src, ok := media[m.BlobID]
 		if !ok {
-			b.WriteString("<p class=\"meta\">Файл недоступен на сервере</p>")
+			b.WriteString("<p class=\"gone\">Файл недоступен на сервере</p>")
 			continue
 		}
 		b.WriteString("<div class=\"media\">")
@@ -322,28 +437,47 @@ func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, d
 		}
 		b.WriteString("</div>")
 	}
+	if len(fp.Reactions) > 0 {
+		b.WriteString("<div class=\"reactions\">")
+		for i, r := range fp.Reactions {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString(html.EscapeString(reactionMark(r.Emoji)))
+			b.WriteString(" ")
+			b.WriteString(html.EscapeString(r.AuthorName))
+		}
+		b.WriteString("</div>")
+	}
 	if len(fp.Comments) > 0 {
 		b.WriteString("<div class=\"comments\">")
 		for _, c := range fp.Comments {
 			b.WriteString("<div class=\"comment\"><span class=\"author\">")
-			appendAuthorHTML(b, c.AuthorName, c.IdentityID, media, avatars, prefix)
+			b.WriteString(html.EscapeString(c.AuthorName))
 			b.WriteString(":</span> ")
 			b.WriteString(html.EscapeString(c.Body))
 			b.WriteString("</div>")
 		}
 		b.WriteString("</div>")
 	}
-	if len(fp.Reactions) > 0 {
-		b.WriteString("<div class=\"reactions\">")
-		for _, r := range fp.Reactions {
-			appendAuthorHTML(b, r.AuthorName, r.IdentityID, media, avatars, prefix)
-			b.WriteString(" ")
-			b.WriteString(html.EscapeString(r.Emoji))
-			b.WriteString(" ")
-		}
-		b.WriteString("</div>")
-	}
 	b.WriteString("</article>")
+}
+
+// reactionMark — знак реакции как в ленте; ключи API: heart, laugh,
+// surprise, anger. Незнакомое значение ранних версий — как есть.
+func reactionMark(key string) string {
+	switch key {
+	case "heart":
+		return "♥"
+	case "laugh":
+		return "😄"
+	case "surprise":
+		return "😮"
+	case "anger":
+		return "😠"
+	default:
+		return key
+	}
 }
 
 // HasExternalLinks reports whether HTML contains http(s) references.

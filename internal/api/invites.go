@@ -78,7 +78,7 @@ func (s *Server) handlePeekInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	peek, err := s.Chronicle.InvitePeekForCircle(r.Context(), inv.CircleID, inv.CreatedByAccountID)
+	peek, err := s.Chronicle.InvitePeekForCircle(r.Context(), inv.CircleID, inv.CreatedByAccountID, time.Now().UTC())
 	if err != nil {
 		writeDomainError(w, err)
 		return

@@ -111,7 +111,7 @@ func (s *Server) handleJoinPreview(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, chronicle.ErrForbidden)
 		return
 	}
-	peek, err := s.Chronicle.InvitePeekForCircle(r.Context(), circleID, "")
+	peek, err := s.Chronicle.InvitePeekForCircle(r.Context(), circleID, "", time.Now().UTC())
 	if err != nil {
 		writeDomainError(w, err)
 		return
