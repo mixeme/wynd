@@ -46,7 +46,7 @@
 	import type { PostQueuePayload, QueueFile, QueueMediaMeta } from '$lib/idb/db';
 	import { takeComposePhotos } from '$lib/journal/compose-handoff';
 	import { holdWakeLock } from '$lib/media/wake-lock';
-	import { getPlacePref, hasPlace, withPlace } from '$lib/journal/place-pref';
+	import { hasPlace, withPlace } from '$lib/journal/place-pref';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 
@@ -238,7 +238,7 @@
 			return;
 		}
 		entryDate = today();
-		usePlace = getPlacePref(circle.origin, circle.circleId);
+		usePlace = circle.sharePlace;
 		if (editPostId) {
 			const cached = await loadFeedCached(circle.origin, circle.circleId);
 			const post = cached ? findPost(cached.posts, editPostId) : undefined;

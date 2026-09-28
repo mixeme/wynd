@@ -118,6 +118,7 @@ func (s *Server) handleCircleDetail(w http.ResponseWriter, r *http.Request) {
 		"edit_window_sec":     editWindow.Seconds,
 		"is_owner":            owner == sess.AccountID,
 		"can_settings":        mem.CanSettings,
+		"share_place":         mem.SharePlace,
 		"identity_id":         mem.IdentityID,
 		"identity_name":       identityName,
 		"invite_who":          inviteSettings.InviteWho,

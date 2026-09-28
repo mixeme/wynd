@@ -55,6 +55,7 @@
 		lastReadSeq: 0,
 		archiveCycle: undefined,
 		canWrite: true,
+		sharePlace: true,
 		refresh: async () => {}
 	});
 
@@ -84,6 +85,7 @@
 			if (detail.archive_cycle?.active) ctx.archiveCycle = detail.archive_cycle;
 			if (detail.identity_id) ctx.identityId = detail.identity_id;
 			ctx.editWindowSec = detail.edit_window_sec;
+			ctx.sharePlace = detail.share_place ?? true;
 			const serverName = detail.identity_name?.trim() ?? '';
 			if (serverName) {
 				ctx.identityName = serverName;
@@ -201,6 +203,7 @@
 		let archiveCycle = listItem.archive_cycle?.active ? listItem.archive_cycle : undefined;
 		let identityId = '';
 		let editWindowSec: number | null | undefined;
+		let sharePlace = true;
 		let avatarBlobId: string | undefined;
 		let serverIdentityName = '';
 		try {
@@ -208,6 +211,7 @@
 			if (detail.archive_cycle?.active) archiveCycle = detail.archive_cycle;
 			identityId = detail.identity_id ?? '';
 			editWindowSec = detail.edit_window_sec;
+			sharePlace = detail.share_place ?? true;
 			avatarBlobId = detail.avatar_blob_id;
 			serverIdentityName = detail.identity_name?.trim() ?? '';
 		} catch {
@@ -231,6 +235,7 @@
 		ctx.identityId = identityId;
 		ctx.identityInitial = circleInitial(identityName);
 		ctx.editWindowSec = editWindowSec;
+		ctx.sharePlace = sharePlace;
 		ctx.lastReadSeq = listItem.last_read_seq;
 		ctx.archiveCycle = archiveCycle;
 		ctx.canWrite = listItem.status === 'active';

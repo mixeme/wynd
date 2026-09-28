@@ -15,7 +15,7 @@
 	import Meter from '$ui/forms/Meter.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import Switch from '$ui/forms/Switch.svelte';
-	import { getPlacePref, setPlacePref } from '$lib/journal/place-pref';
+	import { saveSharePlace } from '$lib/journal/place-pref';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import {
@@ -311,12 +311,17 @@
 		void openDeleteDialog();
 	});
 
-	// Место со снимков — настройка на устройстве (B3), умолчание для новых
-	// записей в этом круге.
-	let placeOn = $state(getPlacePref(circle.origin, circle.circleId));
-	$effect(() => {
-		setPlacePref(circle.origin, circle.circleId, placeOn);
-	});
+	// Место со снимков (B3) — личная настройка в круге, хранится на сервере
+	// и приходит на все устройства. Пишется по нажатию; отказ — положение
+	// возвращается, причина в строке ошибки.
+	async function savePlace(on: boolean) {
+		try {
+			circle.sharePlace = await saveSharePlace(circle.origin, circle.circleId, on);
+		} catch (err) {
+			circle.sharePlace = !on;
+			error = authErrorHint(err);
+		}
+	}
 
 	onMount(() => {
 		void load();
@@ -431,7 +436,11 @@
 		/>
 		<SettingsRow title="Место со снимков" subtitle="точка на карте круга">
 			{#snippet control()}
-				<Switch bind:checked={placeOn} label="Место со снимков" />
+				<Switch
+					checked={circle.sharePlace}
+					label="Место со снимков"
+					onchange={(on) => void savePlace(on)}
+				/>
 			{/snippet}
 		</SettingsRow>
 

@@ -18,5 +18,7 @@ export interface CircleContext {
 	lastReadSeq: number;
 	archiveCycle?: ArchiveCycle;
 	canWrite: boolean;
+	/** «Место со снимков» (6.1): начальное положение значка места на 4.2. */
+	sharePlace: boolean;
 	refresh: () => Promise<void>;
 }

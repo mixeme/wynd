@@ -90,6 +90,34 @@ type updateIdentityBody struct {
 	AvatarBlobID *string `json:"avatar_blob_id"`
 }
 
+type sharePlaceBody struct {
+	SharePlace *bool `json:"share_place"`
+}
+
+// handleSetSharePlace — «Место со снимков» участника в круге (6.1). Одна
+// настройка на все устройства: в 0.12.0 она жила в браузере и терялась на
+// втором телефоне.
+func (s *Server) handleSetSharePlace(w http.ResponseWriter, r *http.Request) {
+	circleID := r.PathValue("circle_id")
+	sess, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+	body, ok := bindJSON[sharePlaceBody](w, r)
+	if !ok {
+		return
+	}
+	if body.SharePlace == nil {
+		writeDomainError(w, chronicle.ErrInvalid)
+		return
+	}
+	if err := s.Chronicle.SetSharePlace(r.Context(), circleID, sess.AccountID, *body.SharePlace, time.Now().UTC()); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"share_place": *body.SharePlace})
+}
+
 func (s *Server) handleUpdateIdentity(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	sess, ok := requireSession(w, r)

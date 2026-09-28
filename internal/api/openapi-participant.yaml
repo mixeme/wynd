@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.12.0
+  version: 0.13.0
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:
@@ -631,6 +631,10 @@ paths:
       summary: Identity name history in circle
     put:
       summary: Update identity name and/or avatar in circle
+
+  /circles/{circle_id}/place:
+    put:
+      summary: Set own «share place from photos» default in circle (share_place)
 
   /circles/{circle_id}/transfer:
     post:

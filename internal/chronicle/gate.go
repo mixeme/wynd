@@ -17,13 +17,13 @@ import (
 
 func (c *Chronicle) membership(ctx context.Context, q querier, circleID, accountID string) (Membership, error) {
 	var m Membership
-	var canSettings int
+	var canSettings, sharePlace int
 	var status string
 	var created, updated string
 	err := q.QueryRowContext(ctx, `
-		SELECT id, circle_id, account_id, identity_id, can_settings, status, created_at, updated_at
+		SELECT id, circle_id, account_id, identity_id, can_settings, share_place, status, created_at, updated_at
 		FROM memberships WHERE circle_id = ? AND account_id = ?
-	`, circleID, accountID).Scan(&m.ID, &m.CircleID, &m.AccountID, &m.IdentityID, &canSettings, &status, &created, &updated)
+	`, circleID, accountID).Scan(&m.ID, &m.CircleID, &m.AccountID, &m.IdentityID, &canSettings, &sharePlace, &status, &created, &updated)
 	if err == sql.ErrNoRows {
 		return Membership{}, ErrNotFound
 	}
@@ -31,6 +31,7 @@ func (c *Chronicle) membership(ctx context.Context, q querier, circleID, account
 		return Membership{}, err
 	}
 	m.CanSettings = canSettings == 1
+	m.SharePlace = sharePlace == 1
 	m.Status = MembershipStatus(status)
 	m.CreatedAt, _ = parseTime(created)
 	m.UpdatedAt, _ = parseTime(updated)

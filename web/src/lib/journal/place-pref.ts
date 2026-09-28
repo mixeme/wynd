@@ -1,32 +1,22 @@
-// «Место со снимков» — личная настройка круга (wynd.html, «Геолокация»):
-// уходят ли координаты из EXIF вместе с фото в этот круг. Живёт на
-// устройстве, а не на сервере: координаты берутся из снимков этого же
-// устройства, и серверу не нужно знать даже сам выбор. По умолчанию
-// включено — так приложение вело себя до настройки.
+// «Место со снимков» — личная настройка участника в круге (wynd.html,
+// «Геолокация»): уходят ли координаты из EXIF вместе с фото в этот круг.
+// Хранится на сервере (memberships.share_place) и приходит в карточке круга —
+// одна на все устройства. В 0.12.0 она жила в браузере и терялась на втором
+// телефоне; настройка круга так себя вести не может.
 //
 // Запись может отступить от настройки значком места на экране записи (4.2).
 
+import { apiJson } from '$lib/api/client';
+
 type Meta = { geo_lat?: number | null; geo_lng?: number | null };
 
-function key(origin: string, circleId: string): string {
-	return `wynd.place.${origin || 'self'}.${circleId}`;
-}
-
-export function getPlacePref(origin: string, circleId: string): boolean {
-	try {
-		return localStorage.getItem(key(origin, circleId)) !== 'off';
-	} catch {
-		return true;
-	}
-}
-
-export function setPlacePref(origin: string, circleId: string, on: boolean): void {
-	try {
-		if (on) localStorage.removeItem(key(origin, circleId));
-		else localStorage.setItem(key(origin, circleId), 'off');
-	} catch {
-		/* приватный режим — настройка живёт до конца вкладки */
-	}
+export async function saveSharePlace(origin: string, circleId: string, on: boolean): Promise<boolean> {
+	const out = await apiJson<{ share_place: boolean }>(origin, `/circles/${circleId}/place`, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ share_place: on })
+	});
+	return out.share_place;
 }
 
 /** Метаданные вложения без координат, если место для записи выключено. */

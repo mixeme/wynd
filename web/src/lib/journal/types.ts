@@ -91,6 +91,8 @@ export interface CircleDetail {
 	identity_id?: string;
 	identity_name?: string;
 	avatar_blob_id?: string;
+	/** «Место со снимков» — личная настройка в круге, одна на все устройства. */
+	share_place?: boolean;
 }
 
 export interface CompressionSettings {

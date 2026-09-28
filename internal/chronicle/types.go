@@ -101,9 +101,12 @@ type Membership struct {
 	AccountID   string
 	IdentityID  string
 	CanSettings bool
-	Status      MembershipStatus
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	// SharePlace — «Место со снимков»: уходят ли координаты из EXIF с фото в
+	// этот круг по умолчанию. Личное, одно на все устройства участника.
+	SharePlace bool
+	Status     MembershipStatus
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 type Span struct {

@@ -127,6 +127,7 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 Строки с опциональным `onclick`: корень `button.row2` / `button.r` или `div` (`SettingsRow`, `CircleRow`, `ServerRow`, `SearchResultRow`, `MemberRow`).
 
 - `SettingsRow` с snippet `control` — всегда `div.row2`, справа контрол (например `Switch`); `chevron`/`value` не рендерятся; title без `font-weight:600`.
+- `Switch`: `bind:checked` — для формы с кнопкой «Сохранить»; `onchange(checked)` — когда нажатие сразу пишет на сервер: вызывается только от нажатия, не от смены `checked` извне (иначе обновление карточки перезаписало бы сервер старым значением).
 - `PostCard` — `div.post`, клик через action; `DayCard` — `<button>` при `onclick`, иначе `div`. `FoldHeader` — `button.fold` при `onclick`, сворачивание через `expanded`. `DayHeader`: `ontitle` / `oncover` (`button.pic` при `oncover`).
 - `CircleRow`: при `card` — оболочка `.circle-row-card`, `actionLabel` / опционально `actionLabel2` под строкой (`circle-row-action`). `GroupFoldCard` — та же оболочка для **группы** на улочке (**#e2-14**): `FoldHeader` + до двух `circle-row-action`; long-press и сворачивание — rest на `FoldHeader`, опционально `foldStyle`.
 
