@@ -5,6 +5,7 @@
 	import { initPush } from '$lib/push/push';
 	import { initSession, initTheme, isDark } from '$lib/session/session.svelte';
 	import { startSyncForAllSessions } from '$lib/sync/sync';
+	import { initViewportHeight } from '$lib/session/viewport';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { pwaInfo } from 'virtual:pwa-info';
@@ -20,6 +21,7 @@
 	onMount(() => {
 		const stopTheme = initTheme();
 		const stopQueue = initQueueDrain();
+		const stopViewport = initViewportHeight();
 		const isLocal =
 			location.hostname === '127.0.0.1' || location.hostname === 'localhost';
 		if (pwaInfo && !isLocal) {
@@ -32,6 +34,7 @@
 		return () => {
 			stopTheme();
 			stopQueue();
+			stopViewport();
 		};
 	});
 </script>

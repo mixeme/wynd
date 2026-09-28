@@ -78,12 +78,14 @@
 	height: 560px;
 	border-radius: 14px;
 }
+/* Высота — видимая область (--app-h из session/viewport.ts): клавиатура
+   сжимает окно, а не сдвигает страницу вверх. Без JS — 100dvh. */
 .ph.app {
 	width: 100%;
 	max-width: var(--app-max-width);
 	margin-inline: auto;
-	height: 100dvh;
-	min-height: 100dvh;
+	height: var(--app-h, 100dvh);
+	min-height: var(--app-h, 100dvh);
 	border: none;
 	border-radius: 0;
 	display: flex;
@@ -94,8 +96,8 @@
 	width: 100%;
 	max-width: var(--app-wide-max-width);
 	margin-inline: auto;
-	height: 100dvh;
-	min-height: 100dvh;
+	height: var(--app-h, 100dvh);
+	min-height: var(--app-h, 100dvh);
 }
 .ph.app .circle-body {
 	flex: 1;
