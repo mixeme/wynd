@@ -445,7 +445,7 @@
 <h1>Экраны</h1>
 <p class="lede">Всё, что человек видит: от приглашения до панели администратора.</p>
 
-<p>Экранов здесь <strong>108</strong>. Каждый нарисован разметкой, а не картинкой. Рамка — <code>390 × 800</code>, обычный телефон в CSS-пикселях, масштаб 1:1. Размер на макете и есть размер в продукте: кегль 13.5 — это 13.5, кнопка 48 — это 48, поле 16 — это 16. Ничего не отмасштабировано «для красоты».</p>
+<p>Экранов здесь <strong>109</strong>. Каждый нарисован разметкой, а не картинкой. Рамка — <code>390 × 800</code>, обычный телефон в CSS-пикселях, масштаб 1:1. Размер на макете и есть размер в продукте: кегль 13.5 — это 13.5, кнопка 48 — это 48, поле 16 — это 16. Ничего не отмасштабировано «для красоты».</p>
 
 <p>Фотографии заменены заливками намеренно. Макет отвечает за композицию, ритм и то, сколько на экране помещается, — а не за то, насколько удачный снимок под ним. Всё, что в продукте придёт с сервера, здесь показано как форма и объём.</p>
 
@@ -541,6 +541,7 @@
 <ul>
 <li><a href="#e4-1"><span class="tn">4.1</span>Письмо в полосе</a></li>
 <li><a href="#e4-2"><span class="tn">4.2</span>Новая запись</a></li>
+<li><a href="#e4-16"><span class="tn">4.16</span>Кадр обложки</a></li>
 <li><a href="#e4-3"><span class="tn">4.3</span>Упоминание</a></li>
 <li><a href="#e4-4"><span class="tn">4.4</span>Запись с вложением</a></li>
 <li><a href="#e4-15"><span class="tn">4.15</span>Аудио в записи</a></li>
@@ -1556,12 +1557,12 @@
   <div class="cbar"><div class="top"><span style="font-size:13.5px">Отмена</span><span class="t" style="margin:0 auto">Семья</span><span style="font-size:13.5px;font-weight:600">Опубликовать</span></div><div style="height:12px"></div></div>
   <div style="padding:16px 16px 0"><span class="men">@Аня</span>, дед нашёл на чердаке коробку с плёнками. Судя по подписям — семьдесят девятый год, дача, все молодые и в панамах.<span style="border-left:1.5px solid var(--c);margin-left:1px">&nbsp;</span></div>
   <div style="display:flex;gap:8px;padding:16px 16px 0">
-    <div class="pic p5" style="width:88px;height:88px;border-radius:8px;outline:2px solid var(--c);outline-offset:2px"></div>
+    <div class="pic p5" style="position:relative;width:88px;height:88px;border-radius:8px;outline:2px solid var(--c);outline-offset:2px"><span class="cnt" style="left:5px;right:auto;bottom:5px;padding:2px 7px">кадр</span></div>
     <div class="pic p1" style="width:88px;height:88px;border-radius:8px"></div>
     <div class="pic p6" style="width:88px;height:88px;border-radius:8px"></div>
     <div style="width:88px;height:88px;border-radius:8px;border:1px dashed var(--line);display:grid;place-items:center;color:var(--ink)"><svg class="ic" style="color:inherit"><use href="#i-plus"/></svg></div>
   </div>
-  <div class="hint">Обложка — первая. Нажмите на другую, чтобы лента показывала её.</div>
+  <div class="hint">Обложка — первая. Нажмите на неё, чтобы выбрать кадр для ленты, или на другую, чтобы обложкой стала она.</div>
   <div class="row2" style="margin-top:16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
     <svg class="ic"><use href="#i-clock"/></svg>
     <div class="g"><div>Отнести к дате</div><div class="sub">12 июля 2026 · взято из снимка</div></div>
@@ -1576,6 +1577,16 @@
   </div>
 </div>
 <span class="num">4.2</span><b>Новая запись</b><i>Сюда пришли с полосы: шеврон или фото; в самой полосе печатают сразу, и на телефоне тоже. Набранное приехало с собой — это то же письмо, что на 4.1, только развернулось. Enter переносит строку, отправка — «Опубликовать», и промахнуться в длинном тексте нельзя. Файлы лежат рядом с фотографиями, а не за отдельным меню; точка на карте — только из GPS в файле снимка, не кнопка. Дата отнесения стоит строкой, а не полем: она уже заполнена из снимка, и в девяти случаях из десяти её не трогают. «@» открывает список участников, 4.3. Внизу — потолок текста 32 КБ: квота круга считает медиа, слова этим потолком. Серым — клавиатура; под ней ничего не прячется. Значок места рядом с фото и файлом — только когда у снимков есть координаты: в цвете круга место уйдёт с записью, приглушённый — нет, и в строке справа «без места». Начальное положение — из «Места со снимков» в настройках круга (6.1).</i></figure>
+<figure class="s" id="e4-16"><div class="ph" style="display:flex;flex-direction:column">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="cbar"><div class="top"><span style="font-size:13.5px">Отмена</span><span class="t" style="margin:0 auto">Кадр</span><span style="font-size:13.5px;font-weight:600">Готово</span></div><div style="height:12px"></div></div>
+  <div class="crop">
+    <div class="pic p5 fill"></div>
+    <div class="ring" style="border-radius:12px"></div>
+  </div>
+  <div class="hint ctr" style="margin:14px 16px 22px">Так запись увидят в ленте. Сдвиньте снимок или разведите пальцы. В альбоме он останется целиком.</div>
+</div>
+<span class="num">4.16</span><b>Кадр обложки</b><i>Обложка в ленте квадратная, а снимок — почти никогда: без выбора лента режет его по центру, и в кадр попадают потолок и ноги вместо лиц. Экран — тот же, что кадр аватара 6.8: бумага, «Отмена» и «Готово» текстом, окно по форме того, что увидят, — здесь квадрат со скруглением плитки ленты, а не круг. Сдвиг и щипок, без поворота и фильтров. Новый файл на диск не пишется: кадр — это рамка поверх того же снимка. Лента показывает кадр, альбом и лайтбокс — снимок целиком. Не открывали — как раньше, по центру. Сменили обложку — кадр начинается с центра снова. Кадр правится там же, где обложка: на новой записи и в правке, пока живо окно (4.9).</i></figure>
 <figure class="s" id="e4-3"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="cbar"><div class="top"><span style="font-size:13.5px">Отмена</span><span class="t" style="margin:0 auto">Семья</span><span style="font-size:13.5px;font-weight:600">Опубликовать</span></div><div style="height:12px"></div></div>
