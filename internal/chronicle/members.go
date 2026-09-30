@@ -28,7 +28,12 @@ func (c *Chronicle) MembershipForAccount(ctx context.Context, circleID, accountI
 	return c.membership(ctx, c.db, circleID, accountID)
 }
 
-// ListMembers returns all memberships for a circle (active and left).
+// ListMembers returns memberships for a circle (active and left).
+//
+// Удалённых учёток здесь нет: позвать их нельзя (почта стёрта), права дать
+// нечему, а строка в «Вышли» путала с тем же человеком, если он завёл новую
+// учётку на ту же почту. Записи удалённой учётки остаются подписаны её именем,
+// в журнале — «покинул круг».
 func (c *Chronicle) ListMembers(ctx context.Context, circleID, actorAccountID string) ([]MemberRow, error) {
 	if err := c.requireReader(ctx, circleID, actorAccountID); err != nil {
 		return nil, err
@@ -41,6 +46,9 @@ func (c *Chronicle) ListMembers(ctx context.Context, circleID, actorAccountID st
 		SELECT m.account_id, m.identity_id, m.can_settings, m.status, m.created_at
 		FROM memberships m
 		WHERE m.circle_id = ?
+		  AND NOT EXISTS (
+			SELECT 1 FROM accounts a WHERE a.id = m.account_id AND a.deleted_at IS NOT NULL
+		  )
 		ORDER BY m.created_at
 	`, circleID)
 	if err != nil {
@@ -57,6 +65,9 @@ func (c *Chronicle) ListMembers(ctx context.Context, circleID, actorAccountID st
 			return nil, err
 		}
 		row.Status = MembershipStatus(status)
+		// Право менять настройки — у того, кто в круге. У вышедшего флаг в
+		// строке остаётся, но права за ним нет, и писать его под именем — неправда.
+		row.CanSettings = row.CanSettings && row.Status == StatusActive
 		row.IsOwner = row.AccountID == owner
 		row.JoinedAt, err = parseTime(created)
 		if err != nil {

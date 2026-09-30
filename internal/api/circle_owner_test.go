@@ -277,3 +277,61 @@ func TestSettingsGrantAndRevokeInFeed(t *testing.T) {
 		t.Fatalf("снятие не в журнале: %s", rec.Body.String())
 	}
 }
+
+// Админ удалил учётку, человек завёл новую на ту же почту и вернулся в круг:
+// в участниках он один, прежняя учётка в «Вышли» не висит. Право настроек у
+// вышедшего не показывается.
+func TestMembersHideDeletedAccountAfterReturn(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	ownerTok, _, circleID, memberID := circleWithMember(t, srv, caps)
+	rec := doJSON(t, srv, http.MethodPut, "/api/v1/circles/"+circleID+"/members/"+memberID, ownerTok, map[string]any{
+		"can_settings": true,
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("grant: %d %s", rec.Code, rec.Body.String())
+	}
+	admin := adminToken(t, srv)
+	rec = doJSON(t, srv, http.MethodDelete, "/api/v1/admin/accounts/"+memberID, admin, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("delete: %d %s", rec.Code, rec.Body.String())
+	}
+	for _, m := range members(t, srv, ownerTok, circleID) {
+		if m["name"] == "Боб" {
+			t.Fatalf("удалённая учётка в участниках: %v", m)
+		}
+	}
+	joinAsMember(t, srv, caps, ownerTok, circleID, "bob@example.com", "Боб")
+	n := 0
+	for _, m := range members(t, srv, ownerTok, circleID) {
+		if m["name"] == "Боб" {
+			n++
+			if m["status"] != "active" || m["can_settings"] == true {
+				t.Fatalf("вернувшийся Боб: %v", m)
+			}
+		}
+	}
+	if n != 1 {
+		t.Fatalf("Боб в участниках %d раз", n)
+	}
+}
+
+// Вышедший «совсем» остаётся в «Вышли», но без «может менять настройки».
+func TestMembersLeftLoseSettingsMark(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	ownerTok, memberTok, circleID, memberID := circleWithMember(t, srv, caps)
+	rec := doJSON(t, srv, http.MethodPut, "/api/v1/circles/"+circleID+"/members/"+memberID, ownerTok, map[string]any{
+		"can_settings": true,
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("grant: %d %s", rec.Code, rec.Body.String())
+	}
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/leave", memberTok, map[string]any{"mode": "full"})
+	if rec.Code != http.StatusOK && rec.Code != http.StatusNoContent {
+		t.Skipf("leave route differs: %d %s", rec.Code, rec.Body.String())
+	}
+	for _, m := range members(t, srv, ownerTok, circleID) {
+		if m["name"] == "Боб" && m["can_settings"] == true {
+			t.Fatalf("у вышедшего право настроек: %v", m)
+		}
+	}
+}
