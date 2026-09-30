@@ -95,7 +95,7 @@
 			</div>
 			<div class="att-body">
 				<div class="att-line">
-					<Icon name="play" />
+					<Icon name={track?.playing ? 'pause' : 'play'} />
 					<div class="att-name">{filename}</div>
 				</div>
 				<div class="att-bar" aria-hidden="true"><i style:width={barWidth}></i></div>

@@ -9,6 +9,7 @@
 		| 'chevr'
 		| 'loc'
 		| 'play'
+		| 'pause'
 		| 'heart'
 		| 'laugh'
 		| 'surprise'

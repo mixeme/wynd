@@ -87,8 +87,12 @@
 		const el = bodyInput;
 		if (!el || el.offsetWidth === 0) return;
 		el.style.height = 'auto';
-		const line = parseFloat(getComputedStyle(el).lineHeight) || 20;
-		const cap = line * barLines;
+		const cs = getComputedStyle(el);
+		const line = parseFloat(cs.lineHeight) || 20;
+		// Отступ сверху и снизу — место под курсор (ui.css .comp .f .inp);
+		// scrollHeight и height (border-box) его включают.
+		const pad = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+		const cap = line * barLines + pad;
 		const full = el.scrollHeight;
 		if (full > cap + 1) {
 			if (oncompose) {
@@ -102,14 +106,14 @@
 				return;
 			}
 			// У комментария нет экрана записи: после трёх строк поле растёт дальше.
-			const room = Math.min(full, line * 8);
+			const room = Math.min(full, line * 8 + pad);
 			el.style.height = `${room}px`;
 			el.style.overflowY = full > room ? 'auto' : 'hidden';
 			return;
 		}
 		openedCompose = false;
 		el.style.overflowY = 'hidden';
-		el.style.height = `${Math.max(full, line)}px`;
+		el.style.height = `${Math.max(full, line + pad)}px`;
 	}
 
 	$effect(() => {

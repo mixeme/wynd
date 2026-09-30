@@ -1325,7 +1325,7 @@ a.link {
 	border: 1px solid var(--line);
 	background: var(--card);
 	border-radius: 20px;
-	padding: 10px 15px;
+	padding: 8px 15px;
 	color: var(--faint);
 	display: flex;
 	align-items: flex-end;
@@ -1353,9 +1353,13 @@ a.link {
 	border: none;
 	background: transparent;
 	resize: none;
-	padding: 0;
-	min-height: 20px;
+	/* Курсор выше и ниже строки: без отступа overflow:hidden срезал его
+	   краем поля, в пустом поле он был почти не виден. Рамка .f отдала
+	   эти 2 px, высота полосы та же — 40. */
+	padding: 2px 0;
+	min-height: 24px;
 	font: inherit;
+	line-height: 20px;
 	color: inherit;
 	outline: none;
 	overflow: hidden;

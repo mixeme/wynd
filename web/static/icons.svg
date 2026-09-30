@@ -7,7 +7,7 @@
 <symbol id="i-chev" viewBox="0 0 24 24"><path d="M5.5 8.5 12 15l6.5-6.5"/></symbol>
 <symbol id="i-chevr" viewBox="0 0 24 24"><path d="M8.5 5.5 15 12l-6.5 6.5"/></symbol>
 <symbol id="i-loc" viewBox="0 0 24 24"><path d="M12 21.5s7-6.6 7-11.4A7 7 0 0 0 5 10.1c0 4.8 7 11.4 7 11.4z"/><circle cx="12" cy="10" r="2.5"/></symbol>
-<symbol id="i-play" viewBox="0 0 24 24"><path d="M7.5 4.5 19.5 12l-12 7.5z"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="M7.5 4.5 19.5 12l-12 7.5z"/></symbol><symbol id="i-pause" viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></symbol>
 <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.2S4.3 15.3 4.3 10.1a4.35 4.35 0 0 1 7.7-2.8 4.35 4.35 0 0 1 7.7 2.8c0 5.2-7.7 10.1-7.7 10.1z"/></symbol>
 <symbol id="i-laugh" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2"/><path d="M9 9.5v1.3M15 9.5v1.3"/><path d="M8.2 13.4c1 2.6 2.4 3.6 3.8 3.6s2.8-1 3.8-3.6"/></symbol>
 <symbol id="i-surprise" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2"/><path d="M9 9.4v1.3M15 9.4v1.3"/><circle cx="12" cy="14.6" r="1.7"/></symbol>
