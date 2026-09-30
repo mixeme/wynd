@@ -80,9 +80,12 @@
 		bodyInput?.focus();
 	}
 
-	function resizeField() {
+	// fromInput — набор человека. Полный экран открывает только он: замер
+	// при монтировании шёл до раскладки (ширина 0), подсказка ломалась по
+	// буквам, и лента сама уходила на экран записи.
+	function resizeField(fromInput = false) {
 		const el = bodyInput;
-		if (!el) return;
+		if (!el || el.offsetWidth === 0) return;
 		el.style.height = 'auto';
 		const line = parseFloat(getComputedStyle(el).lineHeight) || 20;
 		const cap = line * barLines;
@@ -91,7 +94,7 @@
 			if (oncompose) {
 				el.style.height = `${cap}px`;
 				el.style.overflowY = 'hidden';
-				if (!openedCompose) {
+				if (fromInput && value.trim() && !openedCompose) {
 					openedCompose = true;
 					// После кадра, чтобы в полный экран ушёл уже дописанный текст.
 					queueMicrotask(() => oncompose?.());
@@ -117,7 +120,7 @@
 
 	function onInput() {
 		syncMentionPicker();
-		resizeField();
+		resizeField(true);
 	}
 
 	function pickMember(member: { identity_id: string; name: string }) {

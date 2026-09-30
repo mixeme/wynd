@@ -72,12 +72,13 @@
 
 	function onPlay(e: MouseEvent) {
 		e.stopPropagation();
-		if (!origin || !blobId) return;
+		// Свой сервер — origin ''. Проверка на истинность глушила звук целиком.
+		if (!blobId) return;
 		void toggleAudio(origin, blobId);
 	}
 
 	onDestroy(() => {
-		if (audio && origin && blobId) stopAudioIf(audioPlayKey(origin, blobId));
+		if (audio && blobId) stopAudioIf(audioPlayKey(origin, blobId));
 	});
 </script>
 

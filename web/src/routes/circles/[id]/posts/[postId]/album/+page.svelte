@@ -20,8 +20,8 @@
 		lightboxCaption,
 		photoMedia
 	} from '$lib/journal/present';
-	import { fetchCompression } from '$lib/journal/posts';
 	import type { FeedPost, MediaSummary } from '$lib/journal/types';
+	import type { MediaSize } from '$lib/journal/present';
 	import { downloadBlob } from '$lib/media/objectUrl';
 	import { registerRefetch } from '$lib/sync/sync';
 
@@ -32,7 +32,8 @@
 	let post = $state<FeedPost | undefined>();
 	let photos = $state<MediaSummary[]>([]);
 	let urls = $state<Record<string, string>>({});
-	let photoMaxPx = $state<number | undefined>();
+	// Размер снимка знает только сам файл: берём его, когда он открылся.
+	let sizes = $state<Record<string, MediaSize>>({});
 	let loading = $state(true);
 
 	const currentItem = $derived(photos[lightboxIndex]);
@@ -53,13 +54,9 @@
 
 	async function load() {
 		try {
-			const [snap, compression] = await Promise.all([
-				loadFeed(circle.origin, circle.circleId),
-				fetchCompression(circle.origin).catch(() => undefined)
-			]);
+			const snap = await loadFeed(circle.origin, circle.circleId);
 			post = findPost(snap.posts, postId);
 			photos = post ? photoMedia(post.media) : [];
-			photoMaxPx = compression?.photo_max_px;
 			urls = {};
 			// Пачками: прежний цикл ждал ответа на каждый снимок по очереди.
 			await resolveMediaUrls(
@@ -72,6 +69,10 @@
 		} finally {
 			loading = false;
 		}
+	}
+
+	function noteSize(blobId: string, width: number, height: number) {
+		if (width > 0 && height > 0) sizes = { ...sizes, [blobId]: { width, height } };
 	}
 
 	function openLightbox(index: number) {
@@ -121,7 +122,7 @@
 		</PhotoGrid>
 		{#if post}
 			<Hint style="margin:16px 16px 0;text-align:center">
-				{albumCompressionHint(post, photoMaxPx)}
+				{albumCompressionHint(post)}
 			</Hint>
 		{/if}
 	{/if}
@@ -132,7 +133,7 @@
 	<Lightbox
 		fixed
 		counter="{lightboxIndex + 1} из {photos.length}"
-		caption={lightboxCaption(post, item, formatPostTime)}
+		caption={lightboxCaption(post, item, formatPostTime, sizes[item.blob_id])}
 		dotCount={photos.length}
 		dotIndex={lightboxIndex}
 		onDotSelect={openLightbox}
@@ -143,11 +144,22 @@
 	>
 		{#snippet media()}
 			{#if item.kind === 'video'}
-				<video src={urls[item.blob_id]} controls>
+				<video
+					src={urls[item.blob_id]}
+					controls
+					onloadedmetadata={(e) => noteSize(item.blob_id, e.currentTarget.videoWidth, e.currentTarget.videoHeight)}
+				>
 					<track kind="captions" label="Субтитры отсутствуют" />
 				</video>
 			{:else}
-				<img src={urls[item.blob_id]} alt="" />
+				<img
+					src={urls[item.blob_id]}
+					alt=""
+					onload={(e) => {
+						const img = e.currentTarget as HTMLImageElement;
+						noteSize(item.blob_id, img.naturalWidth, img.naturalHeight);
+					}}
+				/>
 			{/if}
 		{/snippet}
 	</Lightbox>

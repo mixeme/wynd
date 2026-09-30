@@ -906,13 +906,14 @@
 }
 .rxpick {
 	display: flex;
-	gap: 6px;
-	margin-top: 8px;
+	gap: 10px;
+	margin-top: 10px;
 }
+/* 40 px — палец попадает с первого раза; 26 px было впритык к соседу. */
 .rcho {
-	width: 26px;
-	height: 26px;
-	border-radius: 13px;
+	width: 40px;
+	height: 40px;
+	border-radius: 20px;
 	border: 1px solid var(--line);
 	background: var(--card);
 	display: grid;
@@ -924,8 +925,8 @@
 	border-color: transparent;
 }
 .rcho .ic {
-	width: 14px;
-	height: 14px;
+	width: 20px;
+	height: 20px;
 	color: var(--c);
 }
 .ev {

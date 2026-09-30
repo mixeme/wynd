@@ -7,7 +7,7 @@
 <PhoneFrame>
 	<Lightbox
 		counter="3 из 12"
-		caption="Аня · сегодня, 14:02 · Дача"
+		caption="Аня · сегодня, 14:02 · Дача · 2048 × 1536"
 		onclose={() => {}}
 		ondownload={() => {}}
 	>

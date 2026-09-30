@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	albumCompressionHint,
 	albumDownloadFilename,
 	audioRowLabel,
 	audioTimeLabel,
@@ -7,6 +8,7 @@ import {
 	formatAudioClock,
 	groupReactions,
 	isAudioMedia,
+	lightboxCaption,
 	reactionIconName,
 	serviceEventsAboveNewest,
 	serviceEventsBetween,
@@ -126,5 +128,22 @@ describe('present', () => {
 		expect(audioTimeLabel(false, 10, 111)).toBe('0:00');
 		expect(audioTimeLabel(true, 42, 111)).toBe('0:42 · 1:51');
 		expect(audioTimeLabel(true, 5, 0)).toBe('0:05');
+	});
+
+	it('puts the photo size in the lightbox caption, not under the album', () => {
+		const post = {
+			id: 'p',
+			author_name: 'Аня',
+			created_at: '2026-08-12T11:02:00Z',
+			captured_at: '2026-08-12T10:00:00Z',
+			media: []
+		} as unknown as FeedPost;
+		const fmt = () => 'сегодня, 14:02';
+		expect(lightboxCaption(post, undefined, fmt, { width: 2048, height: 1536 })).toBe(
+			'Аня · сегодня, 14:02 · 2048 × 1536'
+		);
+		expect(lightboxCaption(post, undefined, fmt)).toBe('Аня · сегодня, 14:02');
+		expect(albumCompressionHint(post)).toBe('снято 12 августа · файлы сжаты');
+		expect(albumCompressionHint(post)).not.toMatch(/px/);
 	});
 });

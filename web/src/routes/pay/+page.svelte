@@ -15,7 +15,8 @@
 	import { initSession, loadSessions } from '$lib/session/session.svelte';
 	import type { QueueFile } from '$lib/idb/db';
 
-	let origin = $state('');
+	// undefined — сессия ещё не загружена. Свой сервер — '' (не «нет адреса»).
+	let origin = $state<string | undefined>();
 	let comment = $state('');
 	let file = $state<QueueFile | undefined>();
 	let fileLabel = $state('');
@@ -29,7 +30,7 @@
 	const canSubmit = $derived(Boolean(file));
 
 	async function onFilesSelected(list: FileList | null) {
-		if (!list?.length || !origin) return;
+		if (!list?.length || origin === undefined) return;
 		const picked = list[0];
 		if (!isImageFile(picked)) {
 			error = 'Нужно изображение';
@@ -50,7 +51,7 @@
 	}
 
 	async function submit() {
-		if (!file || !origin) return;
+		if (!file || origin === undefined) return;
 		loading = true;
 		error = '';
 		try {

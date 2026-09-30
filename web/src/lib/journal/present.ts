@@ -140,31 +140,34 @@ export function locationLabel(media: MediaSummary | undefined): string | undefin
 
 const shotDateFmt = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' });
 
-/** Подпись сжатия внизу альбома (макет 4.3). */
-export function albumCompressionHint(post: FeedPost, photoMaxPx?: number): string {
-	const parts: string[] = [];
+/** Строка под сеткой альбома (4.13): когда снято и что файлы сжаты. Размер
+ *  каждого снимка — в его подписи на 4.14, а не одной цифрой настройки. */
+export function albumCompressionHint(post: FeedPost): string {
 	const captured =
 		post.captured_at ?? post.media?.find((m) => m.captured_at)?.captured_at;
-	if (captured) {
-		parts.push(`снято ${shotDateFmt.format(new Date(captured))}`);
-	}
-	parts.push(
-		photoMaxPx
-			? `сжато до ${photoMaxPx} px`
-			: 'файлы сжаты, оригиналы на телефоне'
-	);
+	const parts: string[] = [];
+	if (captured) parts.push(`снято ${shotDateFmt.format(new Date(captured))}`);
+	parts.push(captured ? 'файлы сжаты' : 'файлы сжаты, оригиналы на телефоне');
 	return parts.join(' · ');
 }
 
-/** Подпись лайтбокса: автор · время · место (макет 4.4). */
+export interface MediaSize {
+	width: number;
+	height: number;
+}
+
+/** Подпись лайтбокса: автор · время · место · размер снимка (макет 4.14). */
 export function lightboxCaption(
 	post: FeedPost,
 	media: MediaSummary | undefined,
-	formatPostTime: (createdAt: string, entryDate?: string) => string
+	formatPostTime: (createdAt: string, entryDate?: string) => string,
+	size?: MediaSize
 ): string {
-	const base = `${post.author_name} · ${formatPostTime(post.created_at, post.entry_date)}`;
+	const parts = [post.author_name, formatPostTime(post.created_at, post.entry_date)];
 	const loc = locationLabel(media);
-	return loc ? `${base} · ${loc}` : base;
+	if (loc) parts.push(loc);
+	if (size && size.width > 0 && size.height > 0) parts.push(`${size.width} × ${size.height}`);
+	return parts.join(' · ');
 }
 
 export function findPost(posts: FeedPost[], postId: string): FeedPost | undefined {
