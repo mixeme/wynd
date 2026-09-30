@@ -554,6 +554,9 @@ func (c *Chronicle) EstimateArchivePersonal(ctx context.Context, circleID, accou
 		slice_blobs AS (
 			SELECT pm.blob_id AS id FROM post_media pm JOIN vp ON vp.id = pm.post_id
 			UNION
+			SELECT pm.audio_cover_blob_id FROM post_media pm JOIN vp ON vp.id = pm.post_id
+			 WHERE pm.audio_cover_blob_id IS NOT NULL AND pm.audio_cover_blob_id != ''
+			UNION
 			SELECT n.avatar_blob_id FROM identity_names n
 			JOIN slice_identities si ON si.identity_id = n.identity_id
 			WHERE n.erased_at IS NULL AND n.avatar_blob_id IS NOT NULL
@@ -818,7 +821,7 @@ func (c *Chronicle) purgePostBranch(ctx context.Context, tx *sql.Tx, post Post) 
 }
 
 func (c *Chronicle) postMediaBlobIDsTx(ctx context.Context, tx *sql.Tx, postID string) ([]string, error) {
-	rows, err := tx.QueryContext(ctx, `SELECT blob_id FROM post_media WHERE post_id = ?`, postID)
+	rows, err := tx.QueryContext(ctx, postMediaBlobIDsSQL, postID, postID)
 	if err != nil {
 		return nil, err
 	}

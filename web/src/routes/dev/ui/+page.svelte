@@ -797,8 +797,13 @@
 				/>
 			</div>
 			<div class="card">
-				<h3>AttachmentRow · #e4-13</h3>
+				<h3>AttachmentRow · #e4-13, #e4-15</h3>
 				<AttachmentRow filename="scan.pdf" size="1,2 МБ" />
+				<AttachmentRow
+					audio
+					filename="Бригада — Утро"
+					preview={{ progress: 0.38, time: '0:42 · 1:51' }}
+				/>
 			</div>
 			<div class="card">
 				<h3>PhotoGrid · #e4-2</h3>

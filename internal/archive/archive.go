@@ -107,6 +107,9 @@ func BuildPersonalArchive(ctx context.Context, w io.Writer, in BuildInput) error
 			if err := addBlob(m.BlobID); err != nil {
 				return err
 			}
+			if err := addBlob(m.AudioCoverBlobID); err != nil {
+				return err
+			}
 		}
 	}
 	for _, blobID := range in.Avatars {
@@ -418,6 +421,10 @@ func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, d
 		b.WriteString("</div>")
 	}
 	for _, m := range fp.Media {
+		if playableAudio(m) {
+			appendAudioHTML(b, m, media, prefix)
+			continue
+		}
 		src, ok := media[m.BlobID]
 		if !ok {
 			b.WriteString("<p class=\"gone\">Файл недоступен на сервере</p>")
@@ -461,6 +468,54 @@ func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, d
 		b.WriteString("</div>")
 	}
 	b.WriteString("</article>")
+}
+
+func playableAudio(m chronicle.PostMedia) bool {
+	mime := strings.ToLower(strings.TrimSpace(m.MimeType))
+	if i := strings.Index(mime, ";"); i >= 0 {
+		mime = strings.TrimSpace(mime[:i])
+	}
+	if strings.HasPrefix(mime, "audio/") {
+		return true
+	}
+	if mime != "" && mime != "application/octet-stream" {
+		return false
+	}
+	switch strings.ToLower(path.Ext(m.OriginalFilename)) {
+	case ".m4a", ".mp3", ".aac", ".ogg", ".opus", ".wav", ".flac":
+		return true
+	default:
+		return false
+	}
+}
+
+func appendAudioHTML(b *strings.Builder, m chronicle.PostMedia, media map[string]string, prefix string) {
+	src, ok := media[m.BlobID]
+	if !ok {
+		b.WriteString("<p class=\"gone\">Файл недоступен на сервере</p>")
+		return
+	}
+	b.WriteString("<div class=\"media\">")
+	if cover, ok := media[m.AudioCoverBlobID]; ok {
+		b.WriteString("<img alt=\"\" src=\"")
+		b.WriteString(html.EscapeString(prefix + cover))
+		b.WriteString("\">")
+	}
+	b.WriteString("<audio controls src=\"")
+	b.WriteString(html.EscapeString(prefix + src))
+	b.WriteString("\"></audio>")
+	label := strings.TrimSpace(m.OriginalFilename)
+	artist := strings.TrimSpace(m.AudioArtist)
+	title := strings.TrimSpace(m.AudioTitle)
+	if artist != "" && title != "" {
+		label = artist + " — " + title
+	}
+	if label != "" {
+		b.WriteString("<div>")
+		b.WriteString(html.EscapeString(label))
+		b.WriteString("</div>")
+	}
+	b.WriteString("</div>")
 }
 
 // reactionMark — знак реакции как в ленте; ключи API: heart, laugh,

@@ -7,6 +7,10 @@ export interface MediaSummary {
 	is_cover: boolean;
 	filename?: string;
 	size_bytes?: number;
+	mime_type?: string;
+	audio_artist?: string;
+	audio_title?: string;
+	audio_cover_blob_id?: string;
 }
 
 export interface Comment {

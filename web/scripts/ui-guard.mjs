@@ -302,7 +302,7 @@ function searchSource(rel, source, re) {
  * больше не нужно — её накрывает сброс :where(button) в ui.css (REF-8).
  */
 export const BUTTON_LAYOUT_CLASSES = new Set([
-	'btn', 'row2', 'r', 'circle-row-action', 'fold', 'att', 'cm', 'rcho', 'addph',
+	'btn', 'row2', 'r', 'circle-row-action', 'fold', 'att', 'att-play', 'cm', 'rcho', 'addph',
 	'send', 'chip', 'inp', 'one', 'add', 'di', 'pic', 'scrim', 'pay-banner-main',
 	'pay-reminder', 'cell', 'thumb', 'thumb-body', 'map-sheet', 'fab-menu-item'
 ]);

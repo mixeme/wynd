@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -11,9 +12,9 @@ import (
 type MediaKind string
 
 const (
-	MediaPhoto       MediaKind = "photo"
-	MediaVideo       MediaKind = "video"
-	MediaAttachment  MediaKind = "attachment"
+	MediaPhoto      MediaKind = "photo"
+	MediaVideo      MediaKind = "video"
+	MediaAttachment MediaKind = "attachment"
 )
 
 // MediaInput is client-provided media metadata linked to a post.
@@ -24,6 +25,11 @@ type MediaInput struct {
 	GeoLat     *float64
 	GeoLng     *float64
 	IsCover    bool
+	// AudioArtist, AudioTitle и AudioCoverBlobID — только у вложения-звука.
+	// Обложка — отдельный JPEG, не снимок записи.
+	AudioArtist      string
+	AudioTitle       string
+	AudioCoverBlobID string
 }
 
 // PostMedia is a row linking a blob to a post.
@@ -39,6 +45,10 @@ type PostMedia struct {
 	IsCover          bool
 	OriginalFilename string
 	SizeBytes        int64
+	MimeType         string
+	AudioArtist      string
+	AudioTitle       string
+	AudioCoverBlobID string
 }
 
 // AttachMedia links uploaded blobs to a post. Caller must validate blob ownership.
@@ -70,6 +80,10 @@ func (c *Chronicle) attachMedia(ctx context.Context, q dbtx, postID string, item
 		if item.Kind != MediaPhoto && item.Kind != MediaVideo && item.Kind != MediaAttachment {
 			return ErrInvalid
 		}
+		if err := normalizeAudioTags(&item); err != nil {
+			return err
+		}
+		items[i] = item
 		if item.IsCover {
 			if item.Kind == MediaAttachment {
 				return ErrInvalid
@@ -84,11 +98,12 @@ func (c *Chronicle) attachMedia(ctx context.Context, q dbtx, postID string, item
 			return err
 		}
 		_, err = q.ExecContext(ctx, `
-			INSERT INTO post_media (id, post_id, blob_id, kind, sort_order, captured_at, geo_lat, geo_lng, is_cover)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+			INSERT INTO post_media (id, post_id, blob_id, kind, sort_order, captured_at, geo_lat, geo_lng, is_cover,
+				audio_artist, audio_title, audio_cover_blob_id)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''))
 		`, id, postID, item.BlobID, string(item.Kind), i,
 			formatCaptured(item.CapturedAt), nullableFloat(item.GeoLat), nullableFloat(item.GeoLng),
-			boolToInt(item.IsCover))
+			boolToInt(item.IsCover), item.AudioArtist, item.AudioTitle, item.AudioCoverBlobID)
 		if err != nil {
 			return err
 		}
@@ -103,9 +118,58 @@ func nullableFloat(v *float64) any {
 	return *v
 }
 
-// PostMediaBlobIDs returns blob ids attached to a post.
+// MediaBlobIDs lists the file and, when present, its cover art. The cover
+// is not a second media row, but quota and ownership checks must see it.
+func MediaBlobIDs(items []MediaInput) []string {
+	seen := make(map[string]struct{}, len(items)*2)
+	var out []string
+	add := func(id string) {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			return
+		}
+		if _, ok := seen[id]; ok {
+			return
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	for _, item := range items {
+		add(item.BlobID)
+		add(item.AudioCoverBlobID)
+	}
+	return out
+}
+
+func normalizeAudioTags(item *MediaInput) error {
+	item.AudioArtist = strings.TrimSpace(item.AudioArtist)
+	item.AudioTitle = strings.TrimSpace(item.AudioTitle)
+	item.AudioCoverBlobID = strings.TrimSpace(item.AudioCoverBlobID)
+	if item.AudioArtist == "" && item.AudioTitle == "" && item.AudioCoverBlobID == "" {
+		return nil
+	}
+	if item.Kind != MediaAttachment {
+		return ErrInvalid
+	}
+	if item.AudioCoverBlobID != "" && item.AudioCoverBlobID == item.BlobID {
+		return ErrInvalid
+	}
+	if err := checkLen(item.AudioArtist, MaxAudioTagChars); err != nil {
+		return err
+	}
+	return checkLen(item.AudioTitle, MaxAudioTagChars)
+}
+
+const postMediaBlobIDsSQL = `
+	SELECT blob_id FROM post_media WHERE post_id = ? AND blob_id != ''
+	UNION
+	SELECT audio_cover_blob_id FROM post_media
+	 WHERE post_id = ? AND audio_cover_blob_id IS NOT NULL AND audio_cover_blob_id != ''
+`
+
+// PostMediaBlobIDs returns blob ids attached to a post, including audio covers.
 func (c *Chronicle) PostMediaBlobIDs(ctx context.Context, postID string) ([]string, error) {
-	rows, err := c.db.QueryContext(ctx, `SELECT blob_id FROM post_media WHERE post_id = ?`, postID)
+	rows, err := c.db.QueryContext(ctx, postMediaBlobIDsSQL, postID, postID)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +197,7 @@ func (c *Chronicle) deletePostMediaInTx(ctx context.Context, tx *sql.Tx, postID 
 }
 
 func (c *Chronicle) postMediaBlobIDsInTx(ctx context.Context, tx *sql.Tx, postID string) ([]string, error) {
-	rows, err := tx.QueryContext(ctx, `SELECT blob_id FROM post_media WHERE post_id = ?`, postID)
+	rows, err := tx.QueryContext(ctx, postMediaBlobIDsSQL, postID, postID)
 	if err != nil {
 		return nil, err
 	}
@@ -164,8 +228,8 @@ func (c *Chronicle) ReplacePostMediaInTx(ctx context.Context, tx *sql.Tx, circle
 		}
 	}
 	newSet := make(map[string]struct{}, len(items))
-	for _, item := range items {
-		newSet[item.BlobID] = struct{}{}
+	for _, id := range MediaBlobIDs(items) {
+		newSet[id] = struct{}{}
 	}
 	for _, id := range oldIDs {
 		if _, ok := newSet[id]; !ok {
@@ -193,11 +257,41 @@ func (c *Chronicle) BlobOnPost(ctx context.Context, postID, blobID string) (bool
 	return kind == string(MediaPhoto) || kind == string(MediaVideo), nil
 }
 
+const postMediaSelect = `
+	SELECT pm.id, pm.post_id, pm.blob_id, pm.kind, pm.sort_order, pm.captured_at, pm.geo_lat, pm.geo_lng, pm.is_cover,
+		COALESCE(b.original_filename, ''), b.size_bytes, COALESCE(b.mime_type, ''),
+		COALESCE(pm.audio_artist, ''), COALESCE(pm.audio_title, ''), COALESCE(pm.audio_cover_blob_id, '')
+`
+
+func scanPostMedia(rows *sql.Rows) (PostMedia, error) {
+	var m PostMedia
+	var captured sql.NullString
+	var lat, lng sql.NullFloat64
+	var cover int
+	if err := rows.Scan(&m.ID, &m.PostID, &m.BlobID, &m.Kind, &m.SortOrder,
+		&captured, &lat, &lng, &cover, &m.OriginalFilename, &m.SizeBytes, &m.MimeType,
+		&m.AudioArtist, &m.AudioTitle, &m.AudioCoverBlobID); err != nil {
+		return PostMedia{}, err
+	}
+	if captured.Valid {
+		t, _ := parseTime(captured.String)
+		m.CapturedAt = &t
+	}
+	if lat.Valid {
+		v := lat.Float64
+		m.GeoLat = &v
+	}
+	if lng.Valid {
+		v := lng.Float64
+		m.GeoLng = &v
+	}
+	m.IsCover = cover == 1
+	return m, nil
+}
+
 // ListPostMedia returns media metadata for API responses.
 func (c *Chronicle) ListPostMedia(ctx context.Context, postID string) ([]PostMedia, error) {
-	rows, err := c.db.QueryContext(ctx, `
-		SELECT pm.id, pm.post_id, pm.blob_id, pm.kind, pm.sort_order, pm.captured_at, pm.geo_lat, pm.geo_lng, pm.is_cover,
-			COALESCE(b.original_filename, ''), b.size_bytes
+	rows, err := c.db.QueryContext(ctx, postMediaSelect+`
 		FROM post_media pm
 		JOIN blobs b ON b.id = pm.blob_id
 		WHERE pm.post_id = ? ORDER BY sort_order
@@ -208,27 +302,10 @@ func (c *Chronicle) ListPostMedia(ctx context.Context, postID string) ([]PostMed
 	defer rows.Close()
 	var out []PostMedia
 	for rows.Next() {
-		var m PostMedia
-		var captured sql.NullString
-		var lat, lng sql.NullFloat64
-		var cover int
-		if err := rows.Scan(&m.ID, &m.PostID, &m.BlobID, &m.Kind, &m.SortOrder,
-			&captured, &lat, &lng, &cover, &m.OriginalFilename, &m.SizeBytes); err != nil {
+		m, err := scanPostMedia(rows)
+		if err != nil {
 			return nil, err
 		}
-		if captured.Valid {
-			t, _ := parseTime(captured.String)
-			m.CapturedAt = &t
-		}
-		if lat.Valid {
-			v := lat.Float64
-			m.GeoLat = &v
-		}
-		if lng.Valid {
-			v := lng.Float64
-			m.GeoLng = &v
-		}
-		m.IsCover = cover == 1
 		out = append(out, m)
 	}
 	return out, rows.Err()
@@ -236,14 +313,18 @@ func (c *Chronicle) ListPostMedia(ctx context.Context, postID string) ([]PostMed
 
 // MediaSummary is a compact media descriptor for JSON.
 type MediaSummary struct {
-	BlobID     string   `json:"blob_id"`
-	Kind       string   `json:"kind"`
-	CapturedAt *string  `json:"captured_at,omitempty"`
-	GeoLat     *float64 `json:"geo_lat,omitempty"`
-	GeoLng     *float64 `json:"geo_lng,omitempty"`
-	IsCover    bool     `json:"is_cover"`
-	Filename   *string  `json:"filename,omitempty"`
-	SizeBytes  *int64   `json:"size_bytes,omitempty"`
+	BlobID           string   `json:"blob_id"`
+	Kind             string   `json:"kind"`
+	CapturedAt       *string  `json:"captured_at,omitempty"`
+	GeoLat           *float64 `json:"geo_lat,omitempty"`
+	GeoLng           *float64 `json:"geo_lng,omitempty"`
+	IsCover          bool     `json:"is_cover"`
+	Filename         *string  `json:"filename,omitempty"`
+	SizeBytes        *int64   `json:"size_bytes,omitempty"`
+	MimeType         string   `json:"mime_type,omitempty"`
+	AudioArtist      string   `json:"audio_artist,omitempty"`
+	AudioTitle       string   `json:"audio_title,omitempty"`
+	AudioCoverBlobID string   `json:"audio_cover_blob_id,omitempty"`
 }
 
 // SummarizeMedia converts PostMedia rows for API output.
@@ -266,6 +347,10 @@ func SummarizeMedia(items []PostMedia) []MediaSummary {
 			size := m.SizeBytes
 			s.SizeBytes = &size
 		}
+		s.MimeType = m.MimeType
+		s.AudioArtist = m.AudioArtist
+		s.AudioTitle = m.AudioTitle
+		s.AudioCoverBlobID = m.AudioCoverBlobID
 		out[i] = s
 	}
 	return out

@@ -20,12 +20,15 @@ type createPostBody struct {
 }
 
 type mediaBody struct {
-	BlobID     string   `json:"blob_id"`
-	Kind       string   `json:"kind"`
-	CapturedAt *string  `json:"captured_at"`
-	GeoLat     *float64 `json:"geo_lat"`
-	GeoLng     *float64 `json:"geo_lng"`
-	IsCover    bool     `json:"is_cover"`
+	BlobID           string   `json:"blob_id"`
+	Kind             string   `json:"kind"`
+	CapturedAt       *string  `json:"captured_at"`
+	GeoLat           *float64 `json:"geo_lat"`
+	GeoLng           *float64 `json:"geo_lng"`
+	IsCover          bool     `json:"is_cover"`
+	AudioArtist      string   `json:"audio_artist"`
+	AudioTitle       string   `json:"audio_title"`
+	AudioCoverBlobID string   `json:"audio_cover_blob_id"`
 }
 
 type editPostBody struct {
@@ -84,11 +87,12 @@ func (s *Server) handleCreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(media) > 0 {
-		blobIDs := make([]string, len(media))
-		for i, m := range media {
-			blobIDs[i] = m.BlobID
-		}
+		blobIDs := chronicle.MediaBlobIDs(media)
 		if err := s.Blobs.ValidateOwnedComplete(r.Context(), sess.AccountID, blobIDs); err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		if err := s.validateAudioCovers(r.Context(), media); err != nil {
 			writeDomainError(w, err)
 			return
 		}
@@ -374,6 +378,26 @@ func (s *Server) handleClearDayCover(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
+func (s *Server) validateAudioCovers(ctx context.Context, items []chronicle.MediaInput) error {
+	for _, item := range items {
+		if item.AudioCoverBlobID == "" {
+			continue
+		}
+		b, err := s.Blobs.LoadBlob(ctx, item.AudioCoverBlobID)
+		if err != nil {
+			return err
+		}
+		mime := strings.ToLower(strings.TrimSpace(b.MimeType))
+		if i := strings.Index(mime, ";"); i >= 0 {
+			mime = strings.TrimSpace(mime[:i])
+		}
+		if mime != "image/jpeg" && mime != "image/jpg" {
+			return chronicle.ErrInvalid
+		}
+	}
+	return nil
+}
+
 func parseMediaInput(items []mediaBody) ([]chronicle.MediaInput, error) {
 	if len(items) > chronicle.MaxPostMedia {
 		return nil, chronicle.ErrInvalid
@@ -395,6 +419,8 @@ func parseMediaInput(items []mediaBody) ([]chronicle.MediaInput, error) {
 		out[i] = chronicle.MediaInput{
 			BlobID: m.BlobID, Kind: kind, CapturedAt: captured,
 			GeoLat: m.GeoLat, GeoLng: m.GeoLng, IsCover: m.IsCover,
+			AudioArtist: m.AudioArtist, AudioTitle: m.AudioTitle,
+			AudioCoverBlobID: m.AudioCoverBlobID,
 		}
 	}
 	if err := chronicle.ValidateMediaKinds(out); err != nil {
@@ -466,10 +492,13 @@ func (s *Server) editPostReplaceMedia(ctx context.Context, circleID, accountID, 
 		oldSet[id] = struct{}{}
 	}
 	var addedIDs []string
-	for _, m := range media {
-		if _, ok := oldSet[m.BlobID]; !ok {
-			addedIDs = append(addedIDs, m.BlobID)
+	for _, id := range chronicle.MediaBlobIDs(media) {
+		if _, ok := oldSet[id]; !ok {
+			addedIDs = append(addedIDs, id)
 		}
+	}
+	if err := s.validateAudioCovers(ctx, media); err != nil {
+		return err
 	}
 	if len(addedIDs) > 0 {
 		if err := s.Blobs.ValidateOwnedComplete(ctx, accountID, addedIDs); err != nil {

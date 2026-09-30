@@ -29,6 +29,8 @@
 		attachmentLabel,
 		attachmentMedia,
 		attachmentSizeLabel,
+		audioRowLabel,
+		isAudioMedia,
 		authorInitial,
 		coverMedia,
 		findPost,
@@ -63,6 +65,7 @@
 
 	let post = $state<FeedPost | undefined>();
 	let coverUrl = $state('');
+	let audioCoverUrls = $state<Record<string, string>>({});
 	let postAvatarUrl = $state('');
 	let commentAvatarUrls = $state<Record<string, string>>({});
 	let loading = $state(true);
@@ -141,6 +144,17 @@
 			} else {
 				coverUrl = '';
 			}
+			const covers: Record<string, string> = {};
+			for (const att of post?.media ?? []) {
+				const id = att.audio_cover_blob_id;
+				if (!id || covers[id]) continue;
+				try {
+					covers[id] = await getMediaUrl(circle.origin, id);
+				} catch {
+					/* плитка останется пустой */
+				}
+			}
+			audioCoverUrls = covers;
 			if (post?.author_avatar_blob_id) {
 				try {
 					postAvatarUrl = await getMediaUrl(circle.origin, post.author_avatar_blob_id);
@@ -372,13 +386,28 @@
 		{/snippet}
 		{#snippet postMedia()}
 			{#each attachmentMedia(currentPost.media) as att (att.blob_id)}
-				<AttachmentRow
-					filename={attachmentLabel(att)}
-					size={attachmentSizeLabel(att, formatBytes)}
-					onclick={() => {
-						void downloadBlob(circle.origin, att.blob_id, attachmentLabel(att));
-					}}
-				/>
+				{#if isAudioMedia(att.mime_type, att.filename)}
+					<AttachmentRow
+						audio
+						filename={audioRowLabel(att)}
+						origin={circle.origin}
+						blobId={att.blob_id}
+						coverUrl={att.audio_cover_blob_id
+							? audioCoverUrls[att.audio_cover_blob_id]
+							: ''}
+						onDownload={() => {
+							void downloadBlob(circle.origin, att.blob_id, attachmentLabel(att));
+						}}
+					/>
+				{:else}
+					<AttachmentRow
+						filename={attachmentLabel(att)}
+						size={attachmentSizeLabel(att, formatBytes)}
+						onclick={() => {
+							void downloadBlob(circle.origin, att.blob_id, attachmentLabel(att));
+						}}
+					/>
+				{/if}
 			{/each}
 		{/snippet}
 		<PostCard

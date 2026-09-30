@@ -84,7 +84,7 @@ export const COMPONENT_MAP: CatalogGroup[] = [
 			{ component: 'ServerRow', screen: 'e1-6, e2-4, e2-5', smoke: '/dev/smoke/e2-4' },
 			{ component: 'FoldHeader', screen: 'e4-5' },
 			{ component: 'GroupFoldCard', screen: 'e2-14' },
-			{ component: 'AttachmentRow', screen: 'e4-13' },
+			{ component: 'AttachmentRow', screen: 'e4-13, e4-15' },
 			{ component: 'PhotoPlaceholder / PhotoGrid', screen: 'e4-2', smoke: '/dev/smoke/e4-2' },
 			{ component: 'MediaTile', screen: 'e3-1, grid, album, headerMini, compose, selected' },
 			{ component: 'MapBadge / MapPostSheet', screen: 'карта круга' },

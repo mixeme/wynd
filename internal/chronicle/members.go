@@ -352,6 +352,10 @@ func (c *Chronicle) circleBlobIDsTx(ctx context.Context, tx *sql.Tx, circleID st
 		SELECT blob_id FROM post_media
 		 WHERE post_id IN (SELECT id FROM posts WHERE circle_id = ?)
 		UNION
+		SELECT audio_cover_blob_id FROM post_media
+		 WHERE audio_cover_blob_id IS NOT NULL AND audio_cover_blob_id != ''
+		   AND post_id IN (SELECT id FROM posts WHERE circle_id = ?)
+		UNION
 		SELECT blob_id FROM day_covers WHERE circle_id = ?
 		UNION
 		SELECT cover_blob_id FROM days WHERE circle_id = ? AND cover_blob_id IS NOT NULL
@@ -359,7 +363,7 @@ func (c *Chronicle) circleBlobIDsTx(ctx context.Context, tx *sql.Tx, circleID st
 		SELECT avatar_blob_id FROM identity_names
 		 WHERE avatar_blob_id IS NOT NULL
 		   AND identity_id IN (SELECT id FROM identities WHERE circle_id = ?)
-	`, circleID, circleID, circleID, circleID)
+	`, circleID, circleID, circleID, circleID, circleID)
 	if err != nil {
 		return nil, err
 	}

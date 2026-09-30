@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
 	albumDownloadFilename,
+	audioRowLabel,
+	audioTimeLabel,
 	commentPreview,
+	formatAudioClock,
 	groupReactions,
+	isAudioMedia,
 	reactionIconName,
 	serviceEventsAboveNewest,
 	serviceEventsBetween,
@@ -94,5 +98,33 @@ describe('present', () => {
 		expect(serviceEventsAboveNewest(events, 5).map((e) => e.seq)).toEqual([]);
 		expect(serviceEventsAboveNewest(events, undefined).map((e) => e.seq)).toEqual([5, 3]);
 		expect(serviceEventsBetween(events, 10, 0).map((e) => e.seq)).toEqual([5, 3]);
+	});
+
+	it('treats audio mime and sound extensions as playable, and a pdf as a file', () => {
+		expect(isAudioMedia('audio/mpeg', 'song.bin')).toBe(true);
+		expect(isAudioMedia('', 'track.m4a')).toBe(true);
+		expect(isAudioMedia('application/octet-stream', 'voice.ogg')).toBe(true);
+		expect(isAudioMedia('application/pdf', 'notes.mp3')).toBe(false);
+		expect(isAudioMedia('image/jpeg', 'cover.jpg')).toBe(false);
+	});
+
+	it('uses artist and title together, otherwise the filename', () => {
+		const base = { blob_id: 'a', kind: 'attachment' as const, is_cover: false, filename: 'a.mp3' };
+		expect(audioRowLabel({ ...base, audio_artist: 'Бригада', audio_title: 'Утро' })).toBe(
+			'Бригада — Утро'
+		);
+		expect(audioRowLabel({ ...base, audio_artist: 'Бригада' })).toBe('a.mp3');
+		expect(audioRowLabel({ ...base, audio_title: 'Утро' })).toBe('a.mp3');
+		expect(audioRowLabel(base)).toBe('a.mp3');
+	});
+
+	it('formats the play clock and stays empty until playback starts', () => {
+		expect(formatAudioClock(0)).toBe('0:00');
+		expect(formatAudioClock(42)).toBe('0:42');
+		expect(formatAudioClock(111)).toBe('1:51');
+		expect(formatAudioClock(3661)).toBe('1:01:01');
+		expect(audioTimeLabel(false, 10, 111)).toBe('0:00');
+		expect(audioTimeLabel(true, 42, 111)).toBe('0:42 · 1:51');
+		expect(audioTimeLabel(true, 5, 0)).toBe('0:05');
 	});
 });

@@ -530,6 +530,14 @@
 	flex-shrink: 0;
 	color: var(--muted);
 }
+.pay-banner .pay-banner-chev,
+.pay-banner > .ib {
+	margin-top: 2px;
+}
+.pay-banner > .ib {
+	display: flex;
+	flex-shrink: 0;
+}
 .pay-banner-main {
 	box-sizing: border-box;
 	display: flex;
@@ -963,6 +971,61 @@
 .att .sz {
 	font-size: 11.5px;
 	color: var(--faint);
+}
+.att.audio .att-play {
+	display: flex;
+	align-items: center;
+	gap: 11px;
+	flex: 1;
+	min-width: 0;
+	text-align: left;
+}
+.att .att-cover {
+	width: 72px;
+	height: 72px;
+	border-radius: 8px;
+	flex: 0 0 auto;
+}
+.att .att-body {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 11px;
+}
+.att .att-line {
+	display: flex;
+	align-items: center;
+	gap: 11px;
+	min-width: 0;
+}
+.att .att-line .ic {
+	color: var(--c);
+}
+.att .att-name {
+	font-size: 12.5px;
+	line-height: 1;
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.att .att-bar {
+	height: 3px;
+	border-radius: 2px;
+	background: var(--line);
+	overflow: hidden;
+}
+.att .att-bar i {
+	display: block;
+	height: 100%;
+	background: var(--c);
+	width: 0;
+}
+.att.audio .sz {
+	line-height: 1;
 }
 
 /* формы */

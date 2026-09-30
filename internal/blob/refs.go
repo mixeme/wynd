@@ -26,6 +26,7 @@ var referencingTables = []struct {
 	payScreenshot bool
 }{
 	{table: "post_media", where: "blob_id = %s"},
+	{table: "post_media", where: "audio_cover_blob_id = %s"},
 	{table: "day_covers", where: "blob_id = %s AND deleted = 0"},
 	{table: "days", where: "cover_blob_id = %s"},
 	{table: "identity_names", where: "avatar_blob_id = %s AND erased_at IS NULL"},

@@ -45,6 +45,11 @@ export interface QueueMediaMeta {
 	geo_lat?: number;
 	geo_lng?: number;
 	is_cover?: boolean;
+	audio_artist?: string;
+	audio_title?: string;
+	audio_cover_blob_id?: string;
+	/** JPEG обложки, пока он ещё не загружен на сервер. */
+	audio_cover?: { type: string; data: ArrayBuffer };
 }
 
 export interface PostQueuePayload {

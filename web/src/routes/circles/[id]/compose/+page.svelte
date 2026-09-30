@@ -29,7 +29,7 @@
 		mentionQueryAt,
 		textByteLength
 	} from '$lib/journal/mentions';
-	import { findPost } from '$lib/journal/present';
+	import { audioRowLabel, findPost } from '$lib/journal/present';
 	import { createPost, deletePost, editPost as savePost, fetchCompression, uploadBlob } from '$lib/journal/posts';
 	import type { FeedPost, MediaSummary } from '$lib/journal/types';
 	import {
@@ -40,6 +40,7 @@
 		isLargeVideo,
 		isVideoFile
 	} from '$lib/media/compress';
+	import { audioMime, isAudioFile, readAudioTags } from '$lib/media/audioTags';
 	import { readExif } from '$lib/media/exif';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 	import { enqueuePost, loadQueuedPost, removeQueueItem, updateQueuedPost } from '$lib/queue/queue';
@@ -257,8 +258,16 @@
 				entryDate = post.entry_date;
 				const items = [];
 				for (const m of post.media ?? []) {
-					const preview =
-						m.kind === 'attachment' ? undefined : await getMediaUrl(circle.origin, m.blob_id);
+					let preview: string | undefined;
+					if (m.kind === 'attachment' && m.audio_cover_blob_id) {
+						try {
+							preview = await getMediaUrl(circle.origin, m.audio_cover_blob_id);
+						} catch {
+							preview = undefined;
+						}
+					} else if (m.kind !== 'attachment') {
+						preview = await getMediaUrl(circle.origin, m.blob_id);
+					}
 					items.push({
 						preview,
 						blobId: m.blob_id,
@@ -268,7 +277,10 @@
 							is_cover: m.is_cover,
 							captured_at: m.captured_at,
 							geo_lat: m.geo_lat,
-							geo_lng: m.geo_lng
+							geo_lng: m.geo_lng,
+							audio_artist: m.audio_artist,
+							audio_title: m.audio_title,
+							audio_cover_blob_id: m.audio_cover_blob_id
 						}
 					});
 				}
@@ -287,7 +299,11 @@
 					const preview =
 						meta.kind === 'photo' || meta.kind === 'video'
 							? URL.createObjectURL(new Blob([file.data], { type: file.type }))
-							: undefined;
+							: meta.audio_cover
+								? URL.createObjectURL(
+										new Blob([meta.audio_cover.data], { type: 'image/jpeg' })
+									)
+								: undefined;
 					return { preview, file, meta };
 				});
 			}
@@ -384,7 +400,12 @@
 	}
 
 	async function buildEditMedia(): Promise<MediaSummary[]> {
-		const pending = picked.filter((item) => !item.blobId && item.file).length;
+		const pending = picked.reduce((n, item) => {
+			let extra = 0;
+			if (!item.blobId && item.file) extra += 1;
+			if (!item.meta.audio_cover_blob_id && item.meta.audio_cover) extra += 1;
+			return n + extra;
+		}, 0);
 		const out: MediaSummary[] = [];
 		let uploaded = 0;
 		for (const item of picked) {
@@ -394,13 +415,30 @@
 				blobId = await uploadTracked(item.file, uploaded, pending);
 			}
 			if (!blobId) continue;
+			let coverId = item.meta.audio_cover_blob_id;
+			if (!coverId && item.meta.audio_cover) {
+				uploaded += 1;
+				coverId = await uploadTracked(
+					{
+						name: 'cover.jpg',
+						type: 'image/jpeg',
+						size: item.meta.audio_cover.data.byteLength,
+						data: item.meta.audio_cover.data
+					},
+					uploaded,
+					pending
+				);
+			}
 			out.push({
 				blob_id: blobId,
 				kind: item.meta.kind as MediaSummary['kind'],
 				captured_at: item.meta.captured_at,
 				geo_lat: usePlace ? item.meta.geo_lat : undefined,
 				geo_lng: usePlace ? item.meta.geo_lng : undefined,
-				is_cover: item.meta.is_cover ?? false
+				is_cover: item.meta.is_cover ?? false,
+				audio_artist: item.meta.audio_artist,
+				audio_title: item.meta.audio_title,
+				audio_cover_blob_id: coverId
 			});
 		}
 		return out;
@@ -455,6 +493,9 @@
 					}
 				} else {
 					queueFile = await fileToQueueBuffer(file);
+					if (isAudioFile(file)) {
+						queueFile = { ...queueFile, type: audioMime(file.name, queueFile.type) };
+					}
 				}
 				if (maxBytes > 0 && queueFile.size > maxBytes) {
 					tooLarge.push(file.name);
@@ -463,6 +504,7 @@
 
 				const kind = isVideoFile(file) ? 'video' : isImageFile(file) ? 'photo' : 'attachment';
 
+				const tags = isAudioFile(file) ? await readAudioTags(file) : undefined;
 				const meta: QueueMediaMeta = {
 					kind,
 					captured_at: exif.captured_at,
@@ -470,7 +512,10 @@
 					geo_lng: exif.geo_lng,
 					is_cover:
 						(kind === 'photo' || kind === 'video') &&
-						!next.some((n) => n.meta.is_cover && (n.meta.kind === 'photo' || n.meta.kind === 'video'))
+						!next.some((n) => n.meta.is_cover && (n.meta.kind === 'photo' || n.meta.kind === 'video')),
+					audio_artist: tags?.artist || undefined,
+					audio_title: tags?.title || undefined,
+					audio_cover: tags?.cover ? { type: 'image/jpeg', data: tags.cover } : undefined
 				};
 
 				if (exif.entry_date && entryDate === today()) {
@@ -481,7 +526,9 @@
 				const preview =
 					kind === 'photo' || kind === 'video'
 						? URL.createObjectURL(new Blob([queueFile.data], { type: queueFile.type }))
-						: undefined;
+						: tags?.cover
+							? URL.createObjectURL(new Blob([tags.cover], { type: 'image/jpeg' }))
+							: undefined;
 
 				next.push({ preview, file: queueFile, meta });
 				picked = [...next];
@@ -542,7 +589,11 @@
 			}
 
 			const mediaMeta = picked.map((p) => withPlace({ ...p.meta }, usePlace));
-			const toUpload = picked.filter((item) => item.file).length;
+			const toUpload = picked.reduce((n, item) => {
+				let extra = item.file ? 1 : 0;
+				if (item.meta.audio_cover && !item.meta.audio_cover_blob_id) extra += 1;
+				return n + extra;
+			}, 0);
 			const media: MediaSummary[] = [];
 			let uploaded = 0;
 			for (let i = 0; i < picked.length; i++) {
@@ -551,13 +602,30 @@
 				uploaded += 1;
 				const meta = mediaMeta[i] ?? item.meta;
 				const blobId = await uploadTracked(item.file, uploaded, toUpload);
+				let coverId = meta.audio_cover_blob_id;
+				if (!coverId && meta.audio_cover) {
+					uploaded += 1;
+					coverId = await uploadTracked(
+						{
+							name: 'cover.jpg',
+							type: 'image/jpeg',
+							size: meta.audio_cover.data.byteLength,
+							data: meta.audio_cover.data
+						},
+						uploaded,
+						toUpload
+					);
+				}
 				media.push({
 					blob_id: blobId,
 					kind: meta.kind as MediaSummary['kind'],
 					captured_at: meta.captured_at,
 					geo_lat: meta.geo_lat,
 					geo_lng: meta.geo_lng,
-					is_cover: meta.is_cover ?? false
+					is_cover: meta.is_cover ?? false,
+					audio_artist: meta.audio_artist,
+					audio_title: meta.audio_title,
+					audio_cover_blob_id: coverId
 				});
 			}
 
@@ -635,7 +703,16 @@
 					src={item.preview}
 					kind={item.meta.kind === 'video' ? 'video' : item.meta.kind === 'photo' ? 'photo' : undefined}
 					isCover={item.meta.is_cover && isVisual(item.meta)}
-					fileName={item.preview ? undefined : (item.file?.name ?? item.fileName)}
+					fileName={item.preview
+						? undefined
+						: audioRowLabel({
+								blob_id: item.blobId ?? '',
+								kind: 'attachment',
+								is_cover: false,
+								filename: item.file?.name ?? item.fileName,
+								audio_artist: item.meta.audio_artist,
+								audio_title: item.meta.audio_title
+							})}
 					onclick={() => {
 						if (isVisual(item.meta)) setCover(i);
 					}}

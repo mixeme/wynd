@@ -18,7 +18,12 @@ func (c *Chronicle) MediaVolumeChart(ctx context.Context, circleID string) ([]Vo
 		SELECT strftime('%Y-%m', p.created_at) AS period,
 			COALESCE(SUM(b.size_bytes), 0) AS bytes
 		FROM posts p
-		JOIN post_media pm ON pm.post_id = p.id
+		JOIN (
+			SELECT post_id, blob_id FROM post_media
+			UNION
+			SELECT post_id, audio_cover_blob_id FROM post_media
+			 WHERE audio_cover_blob_id IS NOT NULL AND audio_cover_blob_id != ''
+		) pm ON pm.post_id = p.id
 		JOIN blobs b ON b.id = pm.blob_id AND b.status = 'complete'
 		WHERE p.circle_id = ? AND p.deleted = 0
 		GROUP BY period
@@ -49,7 +54,12 @@ func (c *Chronicle) MedianPostBytes(ctx context.Context, circleID string) (int64
 	rows, err := c.db.QueryContext(ctx, `
 		SELECT COALESCE(SUM(b.size_bytes), 0)
 		FROM posts p
-		LEFT JOIN post_media pm ON pm.post_id = p.id
+		LEFT JOIN (
+			SELECT post_id, blob_id FROM post_media
+			UNION
+			SELECT post_id, audio_cover_blob_id FROM post_media
+			 WHERE audio_cover_blob_id IS NOT NULL AND audio_cover_blob_id != ''
+		) pm ON pm.post_id = p.id
 		LEFT JOIN blobs b ON b.id = pm.blob_id AND b.status = 'complete'
 		WHERE p.circle_id = ? AND p.deleted = 0
 		GROUP BY p.id
@@ -108,7 +118,12 @@ func (c *Chronicle) FreedBytesBeforeCutoff(ctx context.Context, circleID, cutoff
 	err = c.db.QueryRowContext(ctx, `
 		SELECT COALESCE(SUM(b.size_bytes), 0)
 		FROM posts p
-		JOIN post_media pm ON pm.post_id = p.id
+		JOIN (
+			SELECT post_id, blob_id FROM post_media
+			UNION
+			SELECT post_id, audio_cover_blob_id FROM post_media
+			 WHERE audio_cover_blob_id IS NOT NULL AND audio_cover_blob_id != ''
+		) pm ON pm.post_id = p.id
 		JOIN blobs b ON b.id = pm.blob_id AND b.status = 'complete'
 		WHERE p.circle_id = ? AND p.deleted = 0 AND p.created_at < ?
 	`, circleID, formatTime(cutoff)).Scan(&total)

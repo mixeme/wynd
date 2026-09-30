@@ -175,17 +175,36 @@ async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 			blobIds.push(blobId);
 		}
 
-		const media = blobIds.map((blob_id, i) => {
-			const meta: QueueMediaMeta = postPayload.media_meta?.[i] ?? { kind: 'photo' };
-			return {
-				blob_id,
+		const mediaMeta = [...(postPayload.media_meta ?? [])];
+		const media = [];
+		for (let i = 0; i < blobIds.length; i++) {
+			const meta: QueueMediaMeta = mediaMeta[i] ?? { kind: 'photo' };
+			let coverId = meta.audio_cover_blob_id;
+			if (!coverId && meta.audio_cover) {
+				coverId = await uploadFile(origin, {
+					name: 'cover.jpg',
+					type: 'image/jpeg',
+					size: meta.audio_cover.data.byteLength,
+					data: meta.audio_cover.data
+				});
+				const saved: QueueMediaMeta = { ...meta, audio_cover_blob_id: coverId };
+				delete saved.audio_cover;
+				mediaMeta[i] = saved;
+				const nextPayload: PostQueuePayload = { ...postPayload, media_meta: mediaMeta };
+				await putQueueItem(item.id, { ...item, payload: nextPayload, state: 'uploading', uploads });
+			}
+			media.push({
+				blob_id: blobIds[i],
 				kind: meta.kind,
 				captured_at: meta.captured_at,
 				geo_lat: meta.geo_lat,
 				geo_lng: meta.geo_lng,
-				is_cover: meta.is_cover ?? false
-			};
-		});
+				is_cover: meta.is_cover ?? false,
+				audio_artist: meta.audio_artist,
+				audio_title: meta.audio_title,
+				audio_cover_blob_id: coverId
+			});
+		}
 
 		await apiJson(origin, `/circles/${circleId}/posts`, {
 			method: 'POST',

@@ -125,9 +125,7 @@ func (c *Chronicle) loadPostsByIDs(ctx context.Context, ids []string) (map[strin
 
 func (c *Chronicle) listMediaForPosts(ctx context.Context, postIDs []string) (map[string][]PostMedia, error) {
 	placeholders, args := inClause(postIDs)
-	rows, err := c.db.QueryContext(ctx, fmt.Sprintf(`
-		SELECT pm.id, pm.post_id, pm.blob_id, pm.kind, pm.sort_order, pm.captured_at, pm.geo_lat, pm.geo_lng, pm.is_cover,
-			COALESCE(b.original_filename, ''), b.size_bytes
+	rows, err := c.db.QueryContext(ctx, fmt.Sprintf(postMediaSelect+`
 		FROM post_media pm
 		JOIN blobs b ON b.id = pm.blob_id
 		WHERE pm.post_id IN (%s) ORDER BY pm.post_id, pm.sort_order
@@ -138,27 +136,10 @@ func (c *Chronicle) listMediaForPosts(ctx context.Context, postIDs []string) (ma
 	defer rows.Close()
 	out := make(map[string][]PostMedia)
 	for rows.Next() {
-		var m PostMedia
-		var captured sql.NullString
-		var lat, lng sql.NullFloat64
-		var cover int
-		if err := rows.Scan(&m.ID, &m.PostID, &m.BlobID, &m.Kind, &m.SortOrder,
-			&captured, &lat, &lng, &cover, &m.OriginalFilename, &m.SizeBytes); err != nil {
+		m, err := scanPostMedia(rows)
+		if err != nil {
 			return nil, err
 		}
-		if captured.Valid {
-			t, _ := parseTime(captured.String)
-			m.CapturedAt = &t
-		}
-		if lat.Valid {
-			v := lat.Float64
-			m.GeoLat = &v
-		}
-		if lng.Valid {
-			v := lng.Float64
-			m.GeoLng = &v
-		}
-		m.IsCover = cover == 1
 		out[m.PostID] = append(out[m.PostID], m)
 	}
 	return out, rows.Err()

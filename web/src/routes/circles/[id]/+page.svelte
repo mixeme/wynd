@@ -49,6 +49,8 @@
 		attachmentLabel,
 		attachmentMedia,
 		attachmentSizeLabel,
+		audioRowLabel,
+		isAudioMedia,
 		authorInitial,
 		commentPreview,
 		coverMedia,
@@ -143,6 +145,11 @@
 			const cover = coverMedia(post.media);
 			if (cover && !mediaUrls[cover.blob_id]) {
 				coverJobs.set(cover.blob_id, cover.blob_id);
+			}
+			for (const att of attachmentMedia(post.media)) {
+				if (att.audio_cover_blob_id && !mediaUrls[att.audio_cover_blob_id]) {
+					coverJobs.set(att.audio_cover_blob_id, att.audio_cover_blob_id);
+				}
 			}
 		}
 
@@ -628,13 +635,28 @@
 						/>
 					{/if}
 					{#each attachmentMedia(post.media) as att (att.blob_id)}
-						<AttachmentRow
-							filename={attachmentLabel(att)}
-							size={attachmentSizeLabel(att, formatBytes)}
-							onclick={() => {
-								void downloadBlob(circle.origin, att.blob_id, attachmentLabel(att));
-							}}
-						/>
+						{#if isAudioMedia(att.mime_type, att.filename)}
+							<AttachmentRow
+								audio
+								filename={audioRowLabel(att)}
+								origin={circle.origin}
+								blobId={att.blob_id}
+								coverUrl={att.audio_cover_blob_id
+									? mediaUrls[att.audio_cover_blob_id]
+									: ''}
+								onDownload={() => {
+									void downloadBlob(circle.origin, att.blob_id, attachmentLabel(att));
+								}}
+							/>
+						{:else}
+							<AttachmentRow
+								filename={attachmentLabel(att)}
+								size={attachmentSizeLabel(att, formatBytes)}
+								onclick={() => {
+									void downloadBlob(circle.origin, att.blob_id, attachmentLabel(att));
+								}}
+							/>
+						{/if}
 					{/each}
 				{/snippet}
 				{#snippet postComments()}

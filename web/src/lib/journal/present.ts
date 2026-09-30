@@ -75,6 +75,47 @@ export function attachmentLabel(att: MediaSummary): string {
 	return att.filename?.trim() || 'Вложение';
 }
 
+const AUDIO_EXT = new Set(['m4a', 'mp3', 'aac', 'ogg', 'opus', 'wav', 'flac']);
+
+/** Звук — audio/*, а при пустом типе или octet-stream ещё и по расширению. */
+export function isAudioMedia(mime?: string, filename?: string): boolean {
+	const raw = (mime ?? '').toLowerCase();
+	const semi = raw.indexOf(';');
+	const m = (semi >= 0 ? raw.slice(0, semi) : raw).trim();
+	if (m.startsWith('audio/')) return true;
+	if (m && m !== 'application/octet-stream') return false;
+	const ext = filename?.split('.').pop()?.toLowerCase() ?? '';
+	return AUDIO_EXT.has(ext);
+}
+
+/** Оба тега — «исполнитель — название». Одного или пустых нет: остаётся имя файла. */
+export function audioRowLabel(att: MediaSummary): string {
+	const artist = att.audio_artist?.trim() ?? '';
+	const title = att.audio_title?.trim() ?? '';
+	if (artist && title) return `${artist} — ${title}`;
+	return attachmentLabel(att);
+}
+
+export function formatAudioClock(seconds: number): string {
+	if (!Number.isFinite(seconds) || seconds < 0) seconds = 0;
+	const whole = Math.floor(seconds);
+	const ss = String(whole % 60).padStart(2, '0');
+	const mins = Math.floor(whole / 60);
+	if (mins >= 60) {
+		const h = Math.floor(mins / 60);
+		return `${h}:${String(mins % 60).padStart(2, '0')}:${ss}`;
+	}
+	return `${mins}:${ss}`;
+}
+
+/** До первого запуска — «0:00». После — «0:42 · 1:51», а без длительности только прошедшее. */
+export function audioTimeLabel(started: boolean, current: number, duration: number): string {
+	if (!started) return '0:00';
+	const now = formatAudioClock(current);
+	if (!Number.isFinite(duration) || duration <= 0) return now;
+	return `${now} · ${formatAudioClock(duration)}`;
+}
+
 /** Имя файла при скачивании из лайтбокса альбома (4.14). */
 export function albumDownloadFilename(media: MediaSummary, index: number): string {
 	const name = media.filename?.trim();
