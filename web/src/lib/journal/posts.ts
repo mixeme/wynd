@@ -10,7 +10,11 @@ export async function fetchCompression(origin: string) {
 	return info.compression;
 }
 
-export async function uploadBlob(origin: string, file: QueueFile): Promise<string> {
+export async function uploadBlob(
+	origin: string,
+	file: QueueFile,
+	onProgress?: (received: number, total: number) => void
+): Promise<string> {
 	const session = await apiJson<{ id: string }>(origin, '/uploads', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
@@ -18,6 +22,7 @@ export async function uploadBlob(origin: string, file: QueueFile): Promise<strin
 	});
 
 	let offset = 0;
+	onProgress?.(0, file.size);
 	while (offset < file.data.byteLength) {
 		const end = Math.min(offset + CHUNK_SIZE, file.data.byteLength);
 		const chunk = file.data.slice(offset, end);
@@ -31,6 +36,7 @@ export async function uploadBlob(origin: string, file: QueueFile): Promise<strin
 		});
 		const body = (await res.json()) as { received_bytes: number };
 		offset = body.received_bytes;
+		onProgress?.(offset, file.size);
 	}
 
 	const complete = await apiJson<{ id: string }>(origin, `/uploads/${session.id}/complete`, {

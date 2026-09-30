@@ -184,7 +184,17 @@ export async function loadStreetCircles(): Promise<StreetCircle[]> {
 			pendingIds = [];
 		}
 		for (const id of pendingIds) {
-			if (rows.some((row) => row.origin === session.origin && row.id === id)) continue;
+			const existing = rows.find((row) => row.origin === session.origin && row.id === id);
+			// Вышедший с доступом уже на полке: без этой отметки повторное
+			// «позвать» не открывает вступление, круг просто читается дальше.
+			if (existing) {
+				if (existing.preview === 'читает, не пишет') {
+					existing.pendingJoin = true;
+					existing.preview = 'Вас снова позвали — выберите имя';
+					existing.unread = 1;
+				}
+				continue;
+			}
 			try {
 				const preview = await apiJson<{ circle_name: string; color?: string }>(
 					session.origin,

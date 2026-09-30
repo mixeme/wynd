@@ -71,8 +71,53 @@
 		mentionQuery = state.query;
 	}
 
+	const barLines = 3;
+	let openedCompose = false;
+
+	function focusField(e: MouseEvent) {
+		const target = e.target as HTMLElement | null;
+		if (target?.closest('button')) return;
+		bodyInput?.focus();
+	}
+
+	function resizeField() {
+		const el = bodyInput;
+		if (!el) return;
+		el.style.height = 'auto';
+		const line = parseFloat(getComputedStyle(el).lineHeight) || 20;
+		const cap = line * barLines;
+		const full = el.scrollHeight;
+		if (full > cap + 1) {
+			if (oncompose) {
+				el.style.height = `${cap}px`;
+				el.style.overflowY = 'hidden';
+				if (!openedCompose) {
+					openedCompose = true;
+					// После кадра, чтобы в полный экран ушёл уже дописанный текст.
+					queueMicrotask(() => oncompose?.());
+				}
+				return;
+			}
+			// У комментария нет экрана записи: после трёх строк поле растёт дальше.
+			const room = Math.min(full, line * 8);
+			el.style.height = `${room}px`;
+			el.style.overflowY = full > room ? 'auto' : 'hidden';
+			return;
+		}
+		openedCompose = false;
+		el.style.overflowY = 'hidden';
+		el.style.height = `${Math.max(full, line)}px`;
+	}
+
+	$effect(() => {
+		void value;
+		void bodyInput;
+		queueMicrotask(() => resizeField());
+	});
+
 	function onInput() {
 		syncMentionPicker();
+		resizeField();
 	}
 
 	function pickMember(member: { identity_id: string; name: string }) {
@@ -109,7 +154,7 @@
 		</MentionPicker>
 	{/if}
 	<div class="comp">
-	<div class="f" class:ink={canSend}>
+	<div class="f" class:ink={canSend} onclick={focusField}>
 		<TextArea
 			variant="comment"
 			rows={1}

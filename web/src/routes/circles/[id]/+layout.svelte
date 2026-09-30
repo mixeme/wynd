@@ -4,7 +4,12 @@
 	import { page as pageState } from '$app/state';
 	import { setContext, untrack } from 'svelte';
 	import { resolveCircleOrigin, rememberCircleOrigin, rememberLastCircle } from '$lib/circles/origin';
-	import { fetchCircles, loadCirclesCached, ownerNameFromSession } from '$lib/circles/circles';
+	import {
+		fetchCircles,
+		fetchPendingCircleJoins,
+		loadCirclesCached,
+		ownerNameFromSession
+	} from '$lib/circles/circles';
 	import type { CircleListItem } from '$lib/circles/circles';
 	import {
 		getCircleColor,
@@ -166,7 +171,12 @@
 
 		// Нет читаемого членства — в том числе «gone» после ухода и повторного
 		// приглашения. Раньше такой ряд сразу давал «Нет доступа» и не доходил
-		// до экрана имени и фото.
+		// до экрана имени и фото. «Читает, не пишет» тоже проверяем: повторное
+		// приглашение иначе открывало хронику и звать было некуда.
+		if (listItem?.status === 'left_with_access') {
+			const pending = await fetchPendingCircleJoins(resolved).catch(() => [] as string[]);
+			if (pending.includes(circleId) && (await enterAsInvitee(resolved))) return;
+		}
 		if (!listItem || !membershipReadable(listItem.status)) {
 			if (await enterAsInvitee(resolved)) return;
 			denied = true;

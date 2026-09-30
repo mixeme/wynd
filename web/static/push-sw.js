@@ -12,6 +12,7 @@ const WYND_SIGNAL_TEXT = {
 	comment: 'Новый комментарий',
 	reaction: 'Новая реакция',
 	mention: 'Вас упомянули',
+	invite: 'Вас позвали в круг',
 	event: 'В круге изменения'
 };
 

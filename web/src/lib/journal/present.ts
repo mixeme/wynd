@@ -48,9 +48,13 @@ export function commentPreview(comments: Comment[] | undefined): {
 	more: number;
 } {
 	if (!comments?.length) return { more: 0 };
-	const first = comments[0];
-	const line = `${first.author_name}: ${first.body}`;
-	return { first: line, createdAt: first.created_at, more: Math.max(0, comments.length - 1) };
+	// Список с сервера идёт от старого к новому. В ленте — последняя реплика.
+	let latest = comments[0];
+	for (const comment of comments) {
+		if (comment.created_at >= latest.created_at) latest = comment;
+	}
+	const line = `${latest.author_name}: ${latest.body}`;
+	return { first: line, createdAt: latest.created_at, more: Math.max(0, comments.length - 1) };
 }
 
 export function coverMedia(media: MediaSummary[] | undefined): MediaSummary | undefined {

@@ -23,6 +23,7 @@
 	import { CIRCLE_COLOR_ORDER, CIRCLE_COLORS } from '$lib/theme/colors';
 	import { toAccusativeTitle, toDativeName } from '$lib/format/names';
 	import { formatEntryDate } from '$lib/format/time';
+	import { resolveMediaUrls } from '$lib/media/batch';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 
@@ -33,6 +34,7 @@
 	let menuMember = $state<MemberInfo | null>(null);
 	let transferTarget = $state<MemberInfo | null>(null);
 	let transferLoading = $state(false);
+	let avatarUrls = $state<Record<string, string>>({});
 	let excludeTarget = $state<MemberInfo | null>(null);
 	let excludeLoading = $state(false);
 
@@ -65,8 +67,28 @@
 		return CIRCLE_COLORS[CIRCLE_COLOR_ORDER[index % CIRCLE_COLOR_ORDER.length]].cssVar;
 	}
 
+	function memberSrc(m: MemberInfo): string | undefined {
+		if (m.identity_id === circle.identityId && circle.avatarUrl) return circle.avatarUrl;
+		return avatarUrls[m.identity_id];
+	}
+
+	async function loadAvatars(list: MemberInfo[]) {
+		const byBlob = new Map<string, string[]>();
+		for (const m of list) {
+			if (!m.avatar_blob_id || avatarUrls[m.identity_id]) continue;
+			if (m.identity_id === circle.identityId && circle.avatarUrl) continue;
+			byBlob.set(m.avatar_blob_id, [...(byBlob.get(m.avatar_blob_id) ?? []), m.identity_id]);
+		}
+		const next = { ...avatarUrls };
+		await resolveMediaUrls(circle.origin, [...byBlob.keys()], (blobId, url) => {
+			for (const identityId of byBlob.get(blobId) ?? []) next[identityId] = url;
+			avatarUrls = { ...next };
+		});
+	}
+
 	async function reload() {
 		members = await fetchMembers(circle.origin, circle.circleId);
+		await loadAvatars(members);
 	}
 
 	function openMenu(m: MemberInfo) {
@@ -149,6 +171,7 @@
 			selfId = session?.account_id ?? '';
 			members = await fetchMembers(circle.origin, circle.circleId);
 			isOwner = members.some((m) => m.is_owner && m.account_id === selfId);
+			await loadAvatars(members);
 		} catch (err) {
 			error = authErrorHint(err);
 		}
@@ -175,6 +198,7 @@
 				name={m.name}
 				subtitle={subtitle(m)}
 				color={memberColor(i)}
+				src={memberSrc(m)}
 				menu={canManage(m)}
 				onmenu={() => openMenu(m)}
 				onclick={
@@ -182,7 +206,7 @@
 						? () => pickTransfer(m)
 						: undefined
 				}
-				style="padding-top:2px"
+				style={i === 0 ? 'padding-top:2px' : undefined}
 			/>
 		{/each}
 		{#if left.length && !transferMode}
@@ -193,8 +217,9 @@
 					name={m.name}
 					subtitle={subtitle(m)}
 					color={memberColor(i)}
+					src={memberSrc(m)}
 					faded
-					style="padding-top:2px"
+					style={i === 0 ? 'padding-top:2px' : undefined}
 				/>
 			{/each}
 		{/if}

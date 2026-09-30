@@ -204,11 +204,17 @@ func (s *Service) SaveCircleNotifyPrefs(ctx context.Context, accountID, circleID
 
 // NotifyPrefAllows reports whether a signal type should be delivered.
 func NotifyPrefAllows(prefs NotifyPrefs, signalType string, now time.Time) bool {
+	// Упоминание пробивает тишину. Личное «позвать» не смотрит на «события»:
+	// они по умолчанию выключены, и приглашение вышедшего пропадало молча.
+	// Тишина на срок приглашение всё же держит.
 	if signalType == "mention" {
 		return true
 	}
 	if NotifyMuted(prefs, now) {
 		return false
+	}
+	if signalType == "invite" {
+		return true
 	}
 	switch signalType {
 	case "post":

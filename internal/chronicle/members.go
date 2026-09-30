@@ -11,15 +11,16 @@ import (
 
 // MemberRow is a circle participant for settings UI.
 type MemberRow struct {
-	AccountID   string           `json:"account_id"`
-	IdentityID  string           `json:"identity_id"`
-	Name        string           `json:"name"`
-	Status      MembershipStatus `json:"status"`
-	CanSettings bool             `json:"can_settings"`
-	IsOwner     bool             `json:"is_owner"`
-	JoinedAt    time.Time        `json:"joined_at"`
-	CanRead     bool             `json:"can_read"`
-	CanWrite    bool             `json:"can_write"`
+	AccountID    string           `json:"account_id"`
+	IdentityID   string           `json:"identity_id"`
+	Name         string           `json:"name"`
+	Status       MembershipStatus `json:"status"`
+	CanSettings  bool             `json:"can_settings"`
+	IsOwner      bool             `json:"is_owner"`
+	JoinedAt     time.Time        `json:"joined_at"`
+	CanRead      bool             `json:"can_read"`
+	CanWrite     bool             `json:"can_write"`
+	AvatarBlobID string           `json:"avatar_blob_id,omitempty"`
 }
 
 // MembershipForAccount returns the caller's membership row.
@@ -71,7 +72,31 @@ func (c *Chronicle) ListMembers(ctx context.Context, circleID, actorAccountID st
 		}
 		out = append(out, row)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := c.attachMemberAvatars(ctx, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *Chronicle) attachMemberAvatars(ctx context.Context, members []MemberRow) error {
+	if len(members) == 0 {
+		return nil
+	}
+	ids := make([]string, len(members))
+	for i := range members {
+		ids[i] = members[i].IdentityID
+	}
+	avatars, err := c.IdentityAvatarBlobIDs(ctx, ids)
+	if err != nil {
+		return err
+	}
+	for i := range members {
+		members[i].AvatarBlobID = avatars[members[i].IdentityID]
+	}
+	return nil
 }
 
 func (c *Chronicle) memberAccessNow(ctx context.Context, circleID, accountID string) (canRead, canWrite bool, err error) {
@@ -249,6 +274,19 @@ func (c *Chronicle) SetCircleColor(ctx context.Context, circleID, actorAccountID
 		return ErrNotFound
 	}
 	return nil
+}
+
+// CircleName returns the circle title.
+func (c *Chronicle) CircleName(ctx context.Context, circleID string) (string, error) {
+	var name string
+	err := c.db.QueryRowContext(ctx, `SELECT name FROM circles WHERE id = ?`, circleID).Scan(&name)
+	if err == sql.ErrNoRows {
+		return "", ErrNotFound
+	}
+	if err != nil {
+		return "", err
+	}
+	return name, nil
 }
 
 // CircleColor returns the circle accent color token.

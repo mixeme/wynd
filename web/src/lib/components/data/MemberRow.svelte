@@ -8,6 +8,7 @@
 		name,
 		subtitle,
 		color,
+		src,
 		menu = false,
 		faded = false,
 		onmenu,
@@ -19,6 +20,7 @@
 		name: string;
 		subtitle?: string;
 		color?: string;
+		src?: string;
 		menu?: boolean;
 		faded?: boolean;
 		onmenu?: () => void;
@@ -29,7 +31,7 @@
 </script>
 
 <Row {onclick} opacity={faded ? 0.6 : undefined} class={className} {style}>
-	{#snippet leading()}<Avatar {initial} {color} />{/snippet}
+	{#snippet leading()}<Avatar {initial} {color} {src} />{/snippet}
 	{#snippet main()}
 		<div style="font-weight:600">{name}</div>
 		{#if subtitle}

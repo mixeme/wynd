@@ -193,14 +193,14 @@
 						перестают работать.
 					</div>
 					<SectionLabel class="mt-24 mx-0 mb-8">Позвать на сервер</SectionLabel>
-					<div class="flex-mid gap-12">
+					<div class="flex-top gap-12">
 						<FieldDisplay
 							admin
 							mono
 							value={inviteUrl || '…'}
-							class="grow clip nowrap m-0"
+							class="grow min0 m-0 anywhere"
 						/>
-						<TextButton variant="adminBox" class="bold" onclick={() => void copyLink()}>
+						<TextButton variant="adminBox" class="bold no-shrink" onclick={() => void copyLink()}>
 							{copied ? 'Скопировано' : 'Скопировать'}
 						</TextButton>
 					</div>

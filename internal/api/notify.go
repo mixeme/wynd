@@ -152,6 +152,22 @@ func (s *Server) handleSetCircleNotifyPrefs(w http.ResponseWriter, r *http.Reque
 // доставку — deliverTimeout в push.deliver.
 const notifyBudget = 2 * time.Minute
 
+// pushSignal — тот же сигнал, но заголовок уведомления это имя круга.
+// Текст журнала по-прежнему не уходит в push-сервис.
+func (s *Server) pushSignal(ctx context.Context, circleID, signalType string) push.Signal {
+	sig := push.Signal{CircleID: circleID, Type: signalType, Count: 1}
+	if s == nil || s.Chronicle == nil || circleID == "" {
+		return sig
+	}
+	name, err := s.Chronicle.CircleName(ctx, circleID)
+	if err != nil {
+		log.Printf("push title %s: %v", circleID, err)
+		return sig
+	}
+	sig.Title = name
+	return sig
+}
+
 func (s *Server) notifyAccounts(circleID, actorAccountID, signalType string, accountIDs []string) {
 	if s == nil || s.Push == nil || len(accountIDs) == 0 {
 		return
@@ -174,11 +190,7 @@ func (s *Server) notifyAccounts(circleID, actorAccountID, signalType string, acc
 			if !auth.NotifyPrefAllows(prefs, signalType, now) {
 				continue
 			}
-			if err := s.Push.SendSignal(ctx, accountID, push.Signal{
-				CircleID: circleID,
-				Type:     signalType,
-				Count:    1,
-			}); err != nil {
+			if err := s.Push.SendSignal(ctx, accountID, s.pushSignal(ctx, circleID, signalType)); err != nil {
 				log.Printf("notifyAccounts: push %s/%s: %v", accountID, circleID, err)
 			}
 		}
@@ -200,14 +212,10 @@ func (s *Server) notifyMemberInvited(circleID, targetAccountID string) {
 			log.Printf("notifyMemberInvited: prefs %s: %v", targetAccountID, err)
 			return
 		}
-		if !auth.NotifyPrefAllows(prefs, "event", now) {
+		if !auth.NotifyPrefAllows(prefs, "invite", now) {
 			return
 		}
-		if err := s.Push.SendSignal(ctx, targetAccountID, push.Signal{
-			CircleID: circleID,
-			Type:     "event",
-			Count:    1,
-		}); err != nil {
+		if err := s.Push.SendSignal(ctx, targetAccountID, s.pushSignal(ctx, circleID, "invite")); err != nil {
 			log.Printf("notifyMemberInvited: push %s: %v", targetAccountID, err)
 		}
 	}()
@@ -240,11 +248,7 @@ func (s *Server) notifyCircle(circleID, actorAccountID, signalType string) {
 			if !auth.NotifyPrefAllows(prefs, signalType, now) {
 				continue
 			}
-			if err := s.Push.SendSignal(ctx, accountID, push.Signal{
-				CircleID: circleID,
-				Type:     signalType,
-				Count:    1,
-			}); err != nil {
+			if err := s.Push.SendSignal(ctx, accountID, s.pushSignal(ctx, circleID, signalType)); err != nil {
 				log.Printf("notifyCircle: push %s/%s: %v", accountID, circleID, err)
 			}
 		}
@@ -283,11 +287,7 @@ func (s *Server) notifyComment(circleID, actorAccountID, postID string) {
 			if !auth.NotifyCommentAllows(prefs, accountID == postAuthorID, now) {
 				continue
 			}
-			if err := s.Push.SendSignal(ctx, accountID, push.Signal{
-				CircleID: circleID,
-				Type:     "comment",
-				Count:    1,
-			}); err != nil {
+			if err := s.Push.SendSignal(ctx, accountID, s.pushSignal(ctx, circleID, "comment")); err != nil {
 				log.Printf("notifyComment: push %s/%s: %v", accountID, circleID, err)
 			}
 		}

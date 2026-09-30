@@ -36,12 +36,12 @@ describe('present', () => {
 	it('builds comment preview with more count', () => {
 		const comments: Comment[] = [
 			{ id: 'c1', post_id: 'p', author_name: 'Аня', body: 'привет', identity_id: 'a', created_at: at },
-			{ id: 'c2', post_id: 'p', author_name: 'Боб', body: 'ответ', identity_id: 'b', created_at: at },
-			{ id: 'c3', post_id: 'p', author_name: 'Вера', body: 'ещё', identity_id: 'c', created_at: at }
+			{ id: 'c2', post_id: 'p', author_name: 'Боб', body: 'ответ', identity_id: 'b', created_at: '2026-01-01T00:01:00Z' },
+			{ id: 'c3', post_id: 'p', author_name: 'Вера', body: 'ещё', identity_id: 'c', created_at: '2026-01-01T00:02:00Z' }
 		];
 		expect(commentPreview(comments)).toEqual({
-			first: 'Аня: привет',
-			createdAt: at,
+			first: 'Вера: ещё',
+			createdAt: '2026-01-01T00:02:00Z',
 			more: 2
 		});
 		expect(commentPreview([])).toEqual({ more: 0 });

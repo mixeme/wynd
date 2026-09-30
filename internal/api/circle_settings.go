@@ -42,6 +42,9 @@ func (s *Server) handleCircleMembers(w http.ResponseWriter, r *http.Request) {
 			"can_read":     m.CanRead,
 			"can_write":    m.CanWrite,
 		}
+		if m.AvatarBlobID != "" {
+			out[i]["avatar_blob_id"] = m.AvatarBlobID
+		}
 		if showAccounts {
 			out[i]["account_id"] = m.AccountID
 		}

@@ -1250,7 +1250,7 @@ a.link {
 	bottom: 0;
 	display: flex;
 	gap: 10px;
-	align-items: center;
+	align-items: flex-end;
 	padding: 11px 14px 14px;
 	background: var(--paper);
 	border-top: 1px solid var(--line);
@@ -1264,7 +1264,8 @@ a.link {
 	padding: 10px 15px;
 	color: var(--faint);
 	display: flex;
-	align-items: center;
+	align-items: flex-end;
+	cursor: text;
 }
 .comp .f.ink {
 	color: var(--ink);
@@ -1293,6 +1294,9 @@ a.link {
 	font: inherit;
 	color: inherit;
 	outline: none;
+	overflow: hidden;
+	caret-color: var(--ink);
+	cursor: text;
 }
 .row2 {
 	display: flex;
@@ -2464,6 +2468,9 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 }
 .pre {
 	white-space: pre-wrap;
+}
+.anywhere {
+	overflow-wrap: anywhere;
 }
 .ink {
 	color: var(--ink);

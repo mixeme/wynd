@@ -5,6 +5,7 @@
 	import AddPhotoButton from '$ui/forms/AddPhotoButton.svelte';
 	import DangerZone from '$ui/forms/DangerZone.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Meter from '$ui/forms/Meter.svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import TextArea from '$ui/forms/TextArea.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
@@ -83,6 +84,9 @@
 	let compressIndex = $state(0);
 	let compressTotal = $state(0);
 	let keepOpenHint = $state(false);
+	let uploadIndex = $state(0);
+	let uploadTotal = $state(0);
+	let uploadPct = $state(0);
 	// Место со снимков для этой записи; начальное — из настройки круга (B3).
 	let usePlace = $state(true);
 	const pickedHasPlace = $derived(picked.some((p) => hasPlace(p.meta)));
@@ -96,6 +100,11 @@
 
 	const canPublish = $derived(
 		!compressing && (Boolean(body.trim()) || picked.length > 0)
+	);
+	const uploadHint = $derived(
+		uploadTotal > 1
+			? `Загрузка ${uploadIndex} из ${uploadTotal}… ${uploadPct}%`
+			: `Загрузка… ${uploadPct}%`
 	);
 	const compressHint = $derived.by(() => {
 		if (!compressing) return '';
@@ -365,12 +374,24 @@
 		picked = next;
 	}
 
+	async function uploadTracked(file: Parameters<typeof uploadBlob>[1], index: number, total: number) {
+		uploadIndex = index;
+		uploadTotal = total;
+		return uploadBlob(circle.origin, file, (received, size) => {
+			const frac = size > 0 ? received / size : 1;
+			uploadPct = Math.round(((index - 1 + frac) / total) * 100);
+		});
+	}
+
 	async function buildEditMedia(): Promise<MediaSummary[]> {
+		const pending = picked.filter((item) => !item.blobId && item.file).length;
 		const out: MediaSummary[] = [];
+		let uploaded = 0;
 		for (const item of picked) {
 			let blobId = item.blobId;
 			if (!blobId && item.file) {
-				blobId = await uploadBlob(circle.origin, item.file);
+				uploaded += 1;
+				blobId = await uploadTracked(item.file, uploaded, pending);
 			}
 			if (!blobId) continue;
 			out.push({
@@ -521,12 +542,15 @@
 			}
 
 			const mediaMeta = picked.map((p) => withPlace({ ...p.meta }, usePlace));
+			const toUpload = picked.filter((item) => item.file).length;
 			const media: MediaSummary[] = [];
+			let uploaded = 0;
 			for (let i = 0; i < picked.length; i++) {
 				const item = picked[i];
 				if (!item.file) continue;
+				uploaded += 1;
 				const meta = mediaMeta[i] ?? item.meta;
-				const blobId = await uploadBlob(circle.origin, item.file);
+				const blobId = await uploadTracked(item.file, uploaded, toUpload);
 				media.push({
 					blob_id: blobId,
 					kind: meta.kind as MediaSummary['kind'],
@@ -556,6 +580,7 @@
 			error = authErrorHint(err);
 		} finally {
 			loading = false;
+			uploadTotal = 0;
 		}
 	}
 </script>
@@ -565,14 +590,18 @@
 	compose
 	color={circle.color}
 	title={barTitle}
-	publishLabel={isEdit ? 'Сохранить' : 'Опубликовать'}
-	canPublish={canPublish}
-	publishing={loading}
+	publishLabel={uploadTotal > 0 ? uploadHint : isEdit ? 'Сохранить' : 'Опубликовать'}
+	canPublish={canPublish && !loading}
+	publishing={loading && uploadTotal === 0}
 	oncancel={goBack}
 	onpublish={() => void publish()}
 	footer={composeFooter}
 >
 	<div class="compose-body">
+		{#if uploadTotal > 0}
+			<Hint>{uploadHint}</Hint>
+			<Meter value={uploadPct} />
+		{/if}
 		<TextArea
 			variant="compose"
 			bind:el={bodyInput}

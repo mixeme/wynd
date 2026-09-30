@@ -28,6 +28,7 @@ export interface MemberInfo {
 	joined_at: string;
 	can_read: boolean;
 	can_write: boolean;
+	avatar_blob_id?: string;
 }
 
 export interface IdentityNameRow {
