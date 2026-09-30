@@ -141,6 +141,8 @@ export async function loadStreetCircles(): Promise<StreetCircle[]> {
 	const pinMap = new Map(pins.map((p) => [`${p.origin}:${p.circleId}`, p.pinned_at]));
 
 	const rows: StreetCircle[] = [];
+	// Ряды «читает, не пишет» — по статусу, а не по тексту превью.
+	const readOnly = new Set<StreetCircle>();
 
 	for (const session of sessions) {
 		let circles: CircleListItem[];
@@ -163,7 +165,7 @@ export async function loadStreetCircles(): Promise<StreetCircle[]> {
 					: (circle.last_summary ??
 						(sessions.length > 1 ? session.name : 'Откройте, чтобы посмотреть'));
 			const time = circle.last_at ? formatPostTime(circle.last_at, '') : '';
-			rows.push({
+			const row: StreetCircle = {
 				origin: session.origin,
 				instanceName: session.name,
 				id: circle.id,
@@ -175,7 +177,9 @@ export async function loadStreetCircles(): Promise<StreetCircle[]> {
 				initial: circleInitial(circle.name),
 				preview,
 				time
-			});
+			};
+			rows.push(row);
+			if (circle.status === 'left_with_access') readOnly.add(row);
 		}
 		let pendingIds: string[] = [];
 		try {
@@ -188,7 +192,7 @@ export async function loadStreetCircles(): Promise<StreetCircle[]> {
 			// Вышедший с доступом уже на полке: без этой отметки повторное
 			// «позвать» не открывает вступление, круг просто читается дальше.
 			if (existing) {
-				if (existing.preview === 'читает, не пишет') {
+				if (readOnly.has(existing)) {
 					existing.pendingJoin = true;
 					existing.preview = 'Вас снова позвали — выберите имя';
 					existing.unread = 1;

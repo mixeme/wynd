@@ -658,9 +658,9 @@
 	compose
 	color={circle.color}
 	title={barTitle}
-	publishLabel={uploadTotal > 0 ? uploadHint : isEdit ? 'Сохранить' : 'Опубликовать'}
+	publishLabel={isEdit ? 'Сохранить' : 'Опубликовать'}
 	canPublish={canPublish && !loading}
-	publishing={loading && uploadTotal === 0}
+	publishing={loading}
 	oncancel={goBack}
 	onpublish={() => void publish()}
 	footer={composeFooter}

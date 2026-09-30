@@ -263,7 +263,7 @@
 {#if excludeTarget}
 	<OverlayLayout variant="dialog" label="Исключить" ondismiss={closeExclude}>
 		<div class="dlgq">
-			Исключить {excludeTarget.name} из «{toAccusativeTitle(circle.name)}»?
+			Исключить из круга: {excludeTarget.name}?
 		</div>
 		<Hint
 			>Записи останутся в круге под этим именем. В журнале будет «покинул круг». Доступа больше не

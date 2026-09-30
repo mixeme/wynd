@@ -497,9 +497,6 @@ func (s *Server) editPostReplaceMedia(ctx context.Context, circleID, accountID, 
 			addedIDs = append(addedIDs, id)
 		}
 	}
-	if err := s.validateAudioCovers(ctx, media); err != nil {
-		return err
-	}
 	if len(addedIDs) > 0 {
 		if err := s.Blobs.ValidateOwnedComplete(ctx, accountID, addedIDs); err != nil {
 			return err
@@ -511,6 +508,11 @@ func (s *Server) editPostReplaceMedia(ctx context.Context, circleID, accountID, 
 		if err := s.Blobs.CheckMediaQuota(ctx, circleID, total); err != nil {
 			return err
 		}
+	}
+	// Тип обложки смотрим после проверки владения: чужой блоб не должен
+	// отличаться ответом от несуществующего.
+	if err := s.validateAudioCovers(ctx, media); err != nil {
+		return err
 	}
 
 	tx, err := s.Blobs.DB().BeginTx(ctx, nil)

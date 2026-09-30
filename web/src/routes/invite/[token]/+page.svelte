@@ -29,6 +29,8 @@
 	} from '$lib/auth/invites';
 	import { rememberCircleOrigin } from '$lib/circles/origin';
 	import { getSession } from '$lib/idb/db';
+	import { ApiError, isPaymentRequired } from '$lib/api/client';
+	import { dropParticipantSession } from '$lib/session/session.svelte';
 	import { displayHost } from '$lib/auth/origin';
 	import { circleInitial } from '$lib/circles/meta';
 	import { INVALID_EMAIL_HINT, isValidParticipantEmail } from '$lib/auth/email';
@@ -72,6 +74,16 @@
 				claim.already_member ? `/circles/${claim.circle_id}` : `/circles/${claim.circle_id}/join`
 			);
 		} catch (err) {
+			// Сессия на устройстве устарела — обычный вход по почте, без ошибки.
+			if (err instanceof ApiError && err.status === 401) {
+				await dropParticipantSession('');
+				return;
+			}
+			// Личное приглашение на другую почту: вошли не той учёткой.
+			if (err instanceof ApiError && err.status === 403 && !isPaymentRequired(err)) {
+				error = 'Это приглашение для другой почты. Введите её ниже.';
+				return;
+			}
 			error = authErrorHint(err);
 		}
 	});
