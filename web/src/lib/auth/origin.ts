@@ -29,7 +29,14 @@ export function parseServerInput(raw: string): string {
 export function resolveServerOrigin(input: string): string {
 	const parsed = parseServerInput(input);
 	if (!parsed) return '';
-	if (typeof window !== 'undefined' && parsed === window.location.origin) return '';
+	if (typeof window !== 'undefined') {
+		if (parsed === window.location.origin) return '';
+		// Поле входа показывает свой сервер без схемы (displayHost). Дописанный
+		// https не совпадал со страницей по http (LAN, loopback) — вход уходил
+		// на https и падал «Сервер не отвечает».
+		const typedScheme = /^https?:\/\//i.test(input.trim());
+		if (!typedScheme && new URL(parsed).host === window.location.host) return '';
+	}
 	return normalizeOrigin(parsed);
 }
 

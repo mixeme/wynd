@@ -47,6 +47,8 @@ export interface StreetCircle {
 	initial: string;
 	preview: string;
 	time: string;
+	/** Время последнего события — порядок на улице (RFC 3339, пусто — событий нет). */
+	lastAt?: string;
 	pendingJoin?: boolean;
 }
 
@@ -135,6 +137,23 @@ async function colorForCircle(
 	return palette[hash % palette.length].cssVar;
 }
 
+/**
+ * Порядок улицы (2.1): закреплённые сверху — по времени закрепления, дальше
+ * по свежести. Приглашение, где ещё не выбрано имя, — самое свежее. Круги без
+ * событий в конце, по имени.
+ */
+export function sortStreetCircles(rows: StreetCircle[]): StreetCircle[] {
+	const fresh = (row: StreetCircle) => (row.pendingJoin ? Infinity : Date.parse(row.lastAt ?? '') || 0);
+	return rows.sort((a, b) => {
+		if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+		if (a.pinned && b.pinned) return b.pinnedAt - a.pinnedAt;
+		const fa = fresh(a);
+		const fb = fresh(b);
+		if (fa !== fb) return fb - fa;
+		return a.name.localeCompare(b.name, 'ru');
+	});
+}
+
 export async function loadStreetCircles(): Promise<StreetCircle[]> {
 	const sessions = await listSessions();
 	const pins = await listPins();
@@ -176,7 +195,8 @@ export async function loadStreetCircles(): Promise<StreetCircle[]> {
 				color: await colorForCircle(session.origin, circle.id, circle.color),
 				initial: circleInitial(circle.name),
 				preview,
-				time
+				time,
+				lastAt: circle.last_at
 			};
 			rows.push(row);
 			if (circle.status === 'left_with_access') readOnly.add(row);
@@ -224,13 +244,7 @@ export async function loadStreetCircles(): Promise<StreetCircle[]> {
 		}
 	}
 
-	rows.sort((a, b) => {
-		if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-		if (a.pinned && b.pinned) return b.pinnedAt - a.pinnedAt;
-		return a.name.localeCompare(b.name, 'ru');
-	});
-
-	return rows;
+	return sortStreetCircles(rows);
 }
 
 export function ownerNameFromSession(session: SessionRecord): string {

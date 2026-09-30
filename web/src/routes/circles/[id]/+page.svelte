@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { getContext, onDestroy, onMount } from 'svelte';
+	import { getContext, onDestroy, onMount, tick } from 'svelte';
 	import ArchiveBanner from '$ui/data/ArchiveBanner.svelte';
 	import AttachmentRow from '$ui/data/AttachmentRow.svelte';
 	import Avatar from '$ui/data/Avatar.svelte';
@@ -88,6 +88,7 @@
 	import { registerRefetch } from '$lib/sync/sync';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { handComposePhotos } from '$lib/journal/compose-handoff';
+	import { applyFeedSpot, feedSpotKey, saveFeedSpot, takeFeedSpot } from '$lib/journal/feed-scroll';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 
@@ -179,6 +180,32 @@
 	const showVisibilityCutoff = $derived(Boolean(visibleFrom));
 	const ptrHeight = $derived(pullHeight(pull));
 
+	// Вернулись с записи или альбома — лента встаёт туда, откуда ушли.
+	// Ждём и переход (откуда пришли), и первую загрузку: порядок у них любой.
+	let cameFromPost: boolean | undefined;
+	let feedLoaded = false;
+	let spotDone = false;
+
+	afterNavigate(({ from }) => {
+		if (cameFromPost !== undefined) return;
+		cameFromPost = Boolean(from?.url.pathname.startsWith(`/circles/${circle.circleId}/posts/`));
+		void restoreSpot();
+	});
+
+	async function restoreSpot() {
+		if (spotDone || cameFromPost === undefined || !feedLoaded) return;
+		spotDone = true;
+		const spot = takeFeedSpot(feedSpotKey(circle.origin, circle.circleId));
+		if (!spot || !cameFromPost) return;
+		await tick();
+		if (feedEl) applyFeedSpot(feedEl, posts.map((p) => p.id), spot);
+	}
+
+	function leaveToPost(path: string) {
+		saveFeedSpot(feedSpotKey(circle.origin, circle.circleId), feedEl, posts.map((p) => p.id));
+		goto(path);
+	}
+
 	async function loadFeedData() {
 		error = '';
 		try {
@@ -196,6 +223,8 @@
 			loading = false;
 			pull = pullFinished();
 		}
+		feedLoaded = true;
+		await restoreSpot();
 	}
 
 	function refreshQueued() {
@@ -344,7 +373,7 @@
 	}
 
 	function openPost(postId: string) {
-		goto(`/circles/${circle.circleId}/posts/${postId}`);
+		leaveToPost(`/circles/${circle.circleId}/posts/${postId}`);
 	}
 
 	// Разовый параметр стирается из адреса через $app/navigation: прямой
@@ -362,7 +391,7 @@
 	}
 
 	function openAlbum(postId: string) {
-		goto(`/circles/${circle.circleId}/posts/${postId}/album`);
+		leaveToPost(`/circles/${circle.circleId}/posts/${postId}/album`);
 	}
 
 	// Лист реакций — состояние экрана, а не шаг назад: открытие и закрытие
