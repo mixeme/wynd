@@ -36,8 +36,8 @@
 		{#if props.dismissible}
 			<IconButton
 				name="x"
+				size="sm"
 				label="Скрыть"
-				style="flex-shrink:0"
 				onclick={() => props.ondismiss?.()}
 			/>
 		{/if}
