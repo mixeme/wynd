@@ -13,6 +13,15 @@ import {
 } from './pullToRefresh';
 
 describe('потянуть, чтобы обновить', () => {
+	it('касание у верха — не жест: знака нет, пока палец не потянул', () => {
+		let s = pullStart(pullIdle(), 100, 0);
+		expect(pullVisible(s)).toBe(false);
+		s = pullMove(s, 100 + PTR.slop, 0);
+		expect(pullVisible(s)).toBe(false);
+		s = pullMove(s, 100 + PTR.slop + 12, 0);
+		expect(pullVisible(s)).toBe(true);
+	});
+
 	it('тянется только от самого верха списка', () => {
 		const started = pullStart(pullIdle(), 100, 40);
 		expect(started.phase).toBe('idle');

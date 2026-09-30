@@ -20,7 +20,10 @@ export const PTR = {
 	 *  вместе с жестом, чтобы не появляться рывком. */
 	gap: 22,
 	/** Пауза между «отпустил» и запросом — на ней доигрывает знак. */
-	settleMs: 280
+	settleMs: 280,
+	/** До этого хода палец просто касается: тап по кругу или записи у
+	 *  верха списка не должен показывать знак обновления. */
+	slop: 8
 } as const;
 
 export type PullPhase = 'idle' | 'pulling' | 'settling' | 'refreshing';
@@ -93,7 +96,8 @@ export function pullMarkHeight(state: PullState): number {
 	return Math.max(8, state.pull * 0.85);
 }
 
-/** Показывать ли полосу вообще. */
+/** Показывать ли полосу вообще. Касание без хода вниз — ещё не жест. */
 export function pullVisible(state: PullState): boolean {
-	return state.phase !== 'idle' || state.pull > 0;
+	if (state.phase === 'settling' || state.phase === 'refreshing') return true;
+	return state.pull > PTR.slop;
 }
