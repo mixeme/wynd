@@ -36,6 +36,10 @@ func (s *Server) handleListCircles(w http.ResponseWriter, r *http.Request) {
 		if banner, err := s.archiveCycleJSON(r.Context(), c.ID, sess.AccountID); err == nil && banner != nil {
 			item["archive_cycle"] = banner
 		}
+		// Новые отклики (3.12): число на вкладке, точка на улочке.
+		if n, err := s.Chronicle.UnreadResponses(r.Context(), c.ID, sess.AccountID); err == nil {
+			item["responses_unread"] = n
+		}
 		out[i] = item
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"circles": out})

@@ -566,6 +566,7 @@
 					preview={circle.preview}
 					time={circle.time}
 					badge={circle.unread || undefined}
+					dot={circle.responses}
 					color={circle.color}
 					card={pinMenuKey === menuKey('pin', circle)}
 					actionLabel={door.actionLabel}
@@ -634,6 +635,7 @@
 						preview={circle.preview}
 						time={circle.time}
 						badge={circle.unread || undefined}
+					dot={circle.responses}
 						color={circle.color}
 						card={pinMenuKey === menuKey(`g:${group.id}`, circle)}
 						actionLabel={door.actionLabel}
@@ -696,6 +698,7 @@
 					preview={circle.preview}
 					time={circle.time}
 					badge={circle.unread || undefined}
+					dot={circle.responses}
 					color={circle.color}
 					card={pinMenuKey === menuKey('rest', circle)}
 					actionLabel={door.actionLabel}

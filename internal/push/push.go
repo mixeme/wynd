@@ -20,9 +20,11 @@ import (
 
 const defaultTTL = 60
 
-// Signal is a lightweight push payload (client fetches details).
+// Signal is a lightweight push payload (client fetches details). PostID —
+// запись комментария или реакции: нажатие открывает её, а не ленту.
 type Signal struct {
 	CircleID string `json:"circle_id"`
+	PostID   string `json:"post_id,omitempty"`
 	Type     string `json:"type"`
 	Count    int    `json:"count"`
 	Title    string `json:"title,omitempty"`

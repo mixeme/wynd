@@ -298,7 +298,7 @@
 
 ### Схема БД
 
-- **Мигратор** — `internal/store/migrate.go`, только вверх, без down. Известные версии — `{0}` и номера файлов `NNNN_*.sql`; следующая миграция — `0020_*.sql`. Таблицу `schema_migrations` создаёт код, не файл; `applied_at` — той же фиксированной ширины, что `xtime.Layout` (строкой прямо в `migrate.go`: `store` — листовой пакет).
+- **Мигратор** — `internal/store/migrate.go`, только вверх, без down. Известные версии — `{0}` и номера файлов `NNNN_*.sql`; следующая миграция — `0021_*.sql`. Таблицу `schema_migrations` создаёт код, не файл; `applied_at` — той же фиксированной ширины, что `xtime.Layout` (строкой прямо в `migrate.go`: `store` — листовой пакет).
 - **Baseline.** В `0001_schema.sql` свёрнута ранняя цепочка 0001–0013. База с версией не из нынешней цепочки не чинится: «удалите wynd.db». Перенумерации и нового сворачивания не будет.
 - **Тесты мигратора.** `TestReopenAppliesMigrationsOnce` ждёт номер последней миграции — правится вместе с каждой новой. `TestMigrationsOnPopulatedPreviousVersion` гонит миграции по заполненной базе v9, `TestMigrateRefusesSkippedVersion` и `TestRejectsStaleSchemaVersion` — отказы.
 - **`identities.account_id` может быть `NULL`** — следствие soft-delete учётки (см. «Учётка в панели»). Частичным индексом не чинить: несколько отвязанных лиц на круг допустимы.

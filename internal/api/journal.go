@@ -275,7 +275,7 @@ func (s *Server) handleSetReaction(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	s.notifyCircle(circleID, sess.AccountID, "reaction")
+	s.notifyCirclePost(circleID, sess.AccountID, "reaction", postID)
 	writeJSON(w, http.StatusOK, reactionResponse(rx))
 }
 

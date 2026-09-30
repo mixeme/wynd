@@ -5,6 +5,7 @@
 		preview,
 		time,
 		badge,
+		dot = false,
 		color,
 		card = false,
 		actionLabel,
@@ -26,6 +27,8 @@
 		preview: string;
 		time: string;
 		badge?: number | string;
+		/** Новые отклики без новых записей (2.1): точка, а не число. */
+		dot?: boolean;
 		color?: string;
 		card?: boolean;
 		actionLabel?: string;
@@ -61,6 +64,8 @@
 		<span>{time}</span>
 		{#if badge !== undefined}
 			<span class="bdg">{badge}</span>
+		{:else if dot}
+			<span class="rdot" role="img" aria-label="новые отклики"></span>
 		{/if}
 	</div>
 {/snippet}

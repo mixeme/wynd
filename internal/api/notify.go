@@ -154,8 +154,12 @@ const notifyBudget = 2 * time.Minute
 
 // pushSignal — тот же сигнал, но заголовок уведомления это имя круга.
 // Текст журнала по-прежнему не уходит в push-сервис.
-func (s *Server) pushSignal(ctx context.Context, circleID, signalType string) push.Signal {
+// postID — у комментария и реакции: пуш открывает саму запись.
+func (s *Server) pushSignal(ctx context.Context, circleID, signalType string, postID ...string) push.Signal {
 	sig := push.Signal{CircleID: circleID, Type: signalType, Count: 1}
+	if len(postID) > 0 {
+		sig.PostID = postID[0]
+	}
 	if s == nil || s.Chronicle == nil || circleID == "" {
 		return sig
 	}
@@ -222,6 +226,11 @@ func (s *Server) notifyMemberInvited(circleID, targetAccountID string) {
 }
 
 func (s *Server) notifyCircle(circleID, actorAccountID, signalType string) {
+	s.notifyCirclePost(circleID, actorAccountID, signalType, "")
+}
+
+// notifyCirclePost — то же, что notifyCircle, но пуш ведёт в запись postID.
+func (s *Server) notifyCirclePost(circleID, actorAccountID, signalType, postID string) {
 	if s == nil || s.Push == nil {
 		return
 	}
@@ -248,7 +257,7 @@ func (s *Server) notifyCircle(circleID, actorAccountID, signalType string) {
 			if !auth.NotifyPrefAllows(prefs, signalType, now) {
 				continue
 			}
-			if err := s.Push.SendSignal(ctx, accountID, s.pushSignal(ctx, circleID, signalType)); err != nil {
+			if err := s.Push.SendSignal(ctx, accountID, s.pushSignal(ctx, circleID, signalType, postID)); err != nil {
 				log.Printf("notifyCircle: push %s/%s: %v", accountID, circleID, err)
 			}
 		}
@@ -287,7 +296,7 @@ func (s *Server) notifyComment(circleID, actorAccountID, postID string) {
 			if !auth.NotifyCommentAllows(prefs, accountID == postAuthorID, now) {
 				continue
 			}
-			if err := s.Push.SendSignal(ctx, accountID, s.pushSignal(ctx, circleID, "comment")); err != nil {
+			if err := s.Push.SendSignal(ctx, accountID, s.pushSignal(ctx, circleID, "comment", postID)); err != nil {
 				log.Printf("notifyComment: push %s/%s: %v", accountID, circleID, err)
 			}
 		}

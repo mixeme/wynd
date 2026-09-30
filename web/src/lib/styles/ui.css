@@ -388,6 +388,21 @@
 	font-weight: 600;
 	border-bottom-color: #fff;
 }
+/* Число новых на вкладке «Отклики» (3.12): белое на цвете круга. */
+.tabs .tab-cnt {
+	display: inline-block;
+	margin-left: 5px;
+	min-width: 17px;
+	padding: 0 5px;
+	border-radius: 9px;
+	background: #fff;
+	color: var(--c);
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 17px;
+	text-align: center;
+	vertical-align: 1px;
+}
 .bar {
 	padding: 8px 16px 12px;
 	display: flex;
@@ -843,6 +858,14 @@
 	gap: 10px;
 	padding: 10px 16px;
 }
+/* Комментарий, открытый из «Откликов»: подсветка на миг, чтобы глаз нашёл. */
+.cmt.hl {
+	background: var(--ct);
+	transition: background .6s ease;
+}
+.cmt {
+	transition: background .6s ease;
+}
 .cmt + .cmt {
 	border-top: 1px solid var(--line);
 }
@@ -877,6 +900,73 @@
 	justify-content: flex-end;
 	color: var(--muted);
 	margin-top: 2px;
+}
+/* Точка у круга на улочке (2.1): новые отклики к старым записям. Число
+   значит записи, поэтому здесь не число. */
+.r .rdot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--rc, var(--ink));
+	margin: 5px 5px 0 auto;
+}
+/* «Отклики» (3.13): строка — ссылка туда, где отклик живёт; ниже слов —
+   рамка «к чему это»: автор записи, дата, первая строка или день. */
+a.resp {
+	display: block;
+	color: inherit;
+	text-decoration: none;
+}
+a.resp + a.resp .cmt {
+	border-top: 1px solid var(--line);
+}
+.resp .cmt .acts {
+	display: none;
+}
+.resp .who .tm .ic {
+	width: 12px;
+	height: 12px;
+	margin-right: 4px;
+	vertical-align: -2px;
+	color: var(--c);
+}
+.resp-ref {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-top: 8px;
+	padding: 8px 10px;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	color: var(--muted);
+	font-size: 12px;
+}
+.resp-ref .resp-pic {
+	width: 32px;
+	height: 32px;
+	border-radius: 6px;
+	flex: 0 0 auto;
+	overflow: hidden;
+}
+.resp-ref .resp-pic img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+.resp-ref .resp-line {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.resp-ref .resp-line b {
+	color: var(--ink);
+	font-weight: 600;
+}
+.resp-more {
+	margin: 16px;
+	width: calc(100% - 32px);
 }
 .cmt .acts .ic {
 	width: 15px;

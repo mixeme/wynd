@@ -151,6 +151,8 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("GET /api/v1/pending-circle-joins", paid(s.handleListPendingCircleJoins))
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/leave", paid(s.handleLeaveCircle))
 	s.Mux.HandleFunc("PUT /api/v1/circles/{circle_id}/read_cursor", paid(s.handleSetReadCursor))
+	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}/responses", paid(s.handleResponses))
+	s.Mux.HandleFunc("PUT /api/v1/circles/{circle_id}/responses/read", paid(s.handleSetResponsesRead))
 	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}/feed", paid(s.handleFeed))
 	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}/grid", paid(s.handleGrid))
 	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}/map", paid(s.handleMap))

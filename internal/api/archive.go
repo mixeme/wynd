@@ -130,6 +130,13 @@ func (s *Server) handleCircleDetail(w http.ResponseWriter, r *http.Request) {
 	if banner != nil {
 		out["archive_cycle"] = banner
 	}
+	// «Отклики» (3.12): есть ли вкладка и сколько на ней нового.
+	if others, err := s.Chronicle.CircleHasOthers(r.Context(), circleID, sess.AccountID); err == nil {
+		out["has_others"] = others
+	}
+	if n, err := s.Chronicle.UnreadResponses(r.Context(), circleID, sess.AccountID); err == nil {
+		out["responses_unread"] = n
+	}
 	writeJSON(w, http.StatusOK, out)
 }
 

@@ -20,5 +20,9 @@ export interface CircleContext {
 	canWrite: boolean;
 	/** «Место со снимков» (6.1): начальное положение значка места на 4.2. */
 	sharePlace: boolean;
+	/** «Отклики» (3.12): сколько нового с прошлого просмотра — число на вкладке. */
+	responsesUnread: number;
+	/** Был ли в круге кто-то ещё. В круге из одного вкладки «Отклики» нет (3.7). */
+	hasOthers: boolean;
 	refresh: () => Promise<void>;
 }

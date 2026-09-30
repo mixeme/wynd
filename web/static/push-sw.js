@@ -25,7 +25,12 @@ self.addEventListener('push', (event) => {
 	}
 	const title = signal.title || 'Wynd';
 	const body = signal.body || WYND_SIGNAL_TEXT[signal.type] || 'Новое в Wynd';
-	const url = signal.circle_id ? `/circles/${encodeURIComponent(signal.circle_id)}` : '/';
+	// Комментарий и реакция ведут в саму запись: к старой из ленты не долистать.
+	const circleUrl = signal.circle_id ? `/circles/${encodeURIComponent(signal.circle_id)}` : '/';
+	const url =
+		signal.circle_id && signal.post_id
+			? `${circleUrl}/posts/${encodeURIComponent(signal.post_id)}`
+			: circleUrl;
 	// Один тег на круг и тип: пять записей подряд — одно уведомление, не пять.
 	const tag = signal.circle_id ? `${signal.circle_id}:${signal.type}` : `wynd:${signal.type || 'signal'}`;
 	event.waitUntil(

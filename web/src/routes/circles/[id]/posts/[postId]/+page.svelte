@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { getContext, onMount } from 'svelte';
+	import { getContext, onMount, tick } from 'svelte';
 	import Avatar from '$ui/data/Avatar.svelte';
 	import AttachmentRow from '$ui/data/AttachmentRow.svelte';
 	import CommentRow from '$ui/data/CommentRow.svelte';
@@ -182,10 +182,34 @@
 		} finally {
 			loading = false;
 		}
+		void showLinkedComment();
 	}
 
+	// Из «Откликов» (3.13) комментарий открывается у себя в обсуждении:
+	// экран встаёт на него и на миг подсвечивает. Один раз за вход.
+	let linkedShown = false;
+	async function showLinkedComment() {
+		const id = $page.url.searchParams.get('comment');
+		if (!id || linkedShown) return;
+		linkedShown = true;
+		await tick();
+		const el = document.querySelector<HTMLElement>(`.cmt.c-${CSS.escape(id)}`);
+		if (!el) return;
+		el.scrollIntoView({ block: 'center' });
+		el.classList.add('hl');
+		setTimeout(() => el.classList.remove('hl'), 1600);
+	}
+
+	// «Назад» возвращает туда, откуда пришли внутри круга: из «Откликов» —
+	// в «Отклики», а не в начало ленты.
+	let backTo = '';
+	afterNavigate(({ from }) => {
+		const path = from?.url.pathname ?? '';
+		if (!backTo) backTo = path === `/circles/${circle.circleId}/responses` ? path : '';
+	});
+
 	function goBack() {
-		goto(`/circles/${circle.circleId}`);
+		goto(backTo || `/circles/${circle.circleId}`);
 	}
 
 	function openEdit() {
@@ -457,6 +481,7 @@
 		<div class="thread">
 			{#each currentPost.comments ?? [] as comment (comment.id)}
 				<CommentRow
+					class="c-{comment.id}"
 					initial={authorInitial(comment.author_name)}
 					name={comment.author_name}
 					color={circle.colorHex}

@@ -29,6 +29,8 @@ export interface CircleListItem {
 	last_summary?: string;
 	last_at?: string;
 	archive_cycle?: ArchiveCycleBanner;
+	/** Новые отклики к записям (3.12): на улочке — точка, если записей новых нет. */
+	responses_unread?: number;
 }
 
 export interface CirclesResponse {
@@ -49,6 +51,8 @@ export interface StreetCircle {
 	time: string;
 	/** Время последнего события — порядок на улице (RFC 3339, пусто — событий нет). */
 	lastAt?: string;
+	/** Есть новые отклики — точка у круга (2.1). */
+	responses?: boolean;
 	pendingJoin?: boolean;
 }
 
@@ -196,7 +200,8 @@ export async function loadStreetCircles(): Promise<StreetCircle[]> {
 				initial: circleInitial(circle.name),
 				preview,
 				time,
-				lastAt: circle.last_at
+				lastAt: circle.last_at,
+				responses: circle.status === 'active' && (circle.responses_unread ?? 0) > 0
 			};
 			rows.push(row);
 			if (circle.status === 'left_with_access') readOnly.add(row);

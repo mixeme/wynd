@@ -89,6 +89,8 @@
 		bind:searchQuery
 		bind:active
 		{identitySettingsLink}
+		responsesTab={circleCtx?.hasOthers ?? false}
+		responsesUnread={circleCtx?.responsesUnread ?? 0}
 	/>
 	<div class="circle-body">
 		{@render children()}

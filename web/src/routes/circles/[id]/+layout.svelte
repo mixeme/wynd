@@ -61,6 +61,8 @@
 		archiveCycle: undefined,
 		canWrite: true,
 		sharePlace: true,
+		responsesUnread: 0,
+		hasOthers: false,
 		refresh: async () => {}
 	});
 
@@ -91,6 +93,8 @@
 			if (detail.identity_id) ctx.identityId = detail.identity_id;
 			ctx.editWindowSec = detail.edit_window_sec;
 			ctx.sharePlace = detail.share_place ?? true;
+			ctx.hasOthers = detail.has_others ?? true;
+			ctx.responsesUnread = detail.responses_unread ?? 0;
 			const serverName = detail.identity_name?.trim() ?? '';
 			if (serverName) {
 				ctx.identityName = serverName;
@@ -200,6 +204,8 @@
 		let identityId = '';
 		let editWindowSec: number | null | undefined;
 		let sharePlace = true;
+		let hasOthers = true;
+		let responsesUnread = 0;
 		let avatarBlobId: string | undefined;
 		let serverIdentityName = '';
 		try {
@@ -208,6 +214,8 @@
 			identityId = detail.identity_id ?? '';
 			editWindowSec = detail.edit_window_sec;
 			sharePlace = detail.share_place ?? true;
+			hasOthers = detail.has_others ?? true;
+			responsesUnread = detail.responses_unread ?? 0;
 			avatarBlobId = detail.avatar_blob_id;
 			serverIdentityName = detail.identity_name?.trim() ?? '';
 		} catch {
@@ -232,6 +240,8 @@
 		ctx.identityInitial = circleInitial(identityName);
 		ctx.editWindowSec = editWindowSec;
 		ctx.sharePlace = sharePlace;
+		ctx.hasOthers = hasOthers;
+		ctx.responsesUnread = responsesUnread;
 		ctx.lastReadSeq = listItem.last_read_seq;
 		ctx.archiveCycle = archiveCycle;
 		ctx.canWrite = listItem.status === 'active';

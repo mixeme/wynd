@@ -97,6 +97,10 @@ export interface CircleDetail {
 	avatar_blob_id?: string;
 	/** «Место со снимков» — личная настройка в круге, одна на все устройства. */
 	share_place?: boolean;
+	/** Был ли в круге кто-то ещё: в круге из одного нет вкладки «Отклики». */
+	has_others?: boolean;
+	/** Новые отклики с прошлого просмотра (3.12). */
+	responses_unread?: number;
 }
 
 export interface CompressionSettings {

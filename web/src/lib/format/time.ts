@@ -17,6 +17,21 @@ function daysBetween(a: Date, b: Date): number {
 	return Math.round(ms / 86_400_000);
 }
 
+/** Строка-разделитель дня в «Откликах» (3.13): «сегодня», «вчера», «6 августа». */
+export function formatDayLabel(iso: string, now: Date = new Date()): string {
+	const at = new Date(iso);
+	const diff = daysBetween(now, at);
+	if (diff === 0) return 'сегодня';
+	if (diff === 1) return 'вчера';
+	return dateFmt.format(at);
+}
+
+/** Локальный календарный день метки — ключ для разделителей. */
+export function localDayKey(iso: string): string {
+	const d = new Date(iso);
+	return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
 /** Только часы для реплики в обсуждении: «14:20». */
 export function formatClock(createdAt: string): string {
 	return timeFmt.format(new Date(createdAt));
