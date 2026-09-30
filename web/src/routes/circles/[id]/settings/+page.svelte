@@ -36,6 +36,7 @@
 	import { formatBytes } from '$lib/format/bytes';
 	import { pluralPeople, pluralPosts } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
+	import { resolveMediaUrls } from '$lib/media/batch';
 	import { setCircleColor, circleInitial } from '$lib/circles/meta';
 	import type { CircleColor } from '$lib/theme/colors';
 	import { CIRCLE_COLORS } from '$lib/theme/colors';
@@ -52,6 +53,7 @@
 	let inviteWho = $state<'all' | 'owner'>('all');
 	let inviteKindDefault = $state<'single' | 'multi'>('single');
 	let members = $state<MemberInfo[]>([]);
+	let avatarUrls = $state<Record<string, string>>({});
 	let usedBytes = $state(0);
 	let quotaBytes = $state<number | undefined>();
 	let loading = $state(true);
@@ -88,6 +90,26 @@
 		return palette[index % palette.length].cssVar;
 	}
 
+	function memberSrc(m: MemberInfo): string | undefined {
+		if (m.identity_id === circle.identityId && circle.avatarUrl) return circle.avatarUrl;
+		return avatarUrls[m.identity_id];
+	}
+
+	async function loadAvatars(list: MemberInfo[]) {
+		const byBlob = new Map<string, string[]>();
+		for (const m of list) {
+			if (!m.avatar_blob_id || avatarUrls[m.identity_id]) continue;
+			if (m.identity_id === circle.identityId && circle.avatarUrl) continue;
+			byBlob.set(m.avatar_blob_id, [...(byBlob.get(m.avatar_blob_id) ?? []), m.identity_id]);
+		}
+		if (byBlob.size === 0) return;
+		const next = { ...avatarUrls };
+		await resolveMediaUrls(circle.origin, [...byBlob.keys()], (blobId, url) => {
+			for (const identityId of byBlob.get(blobId) ?? []) next[identityId] = url;
+			avatarUrls = { ...next };
+		});
+	}
+
 	async function load() {
 		loading = true;
 		error = '';
@@ -115,6 +137,11 @@
 			inviteWho = settings.invite_who ?? 'all';
 			inviteKindDefault = settings.invite_kind_default ?? 'single';
 			members = list;
+			try {
+				await loadAvatars(list.filter((m) => m.status === 'active').slice(0, 3));
+			} catch {
+				/* фото не обязательны: остаётся буква */
+			}
 			liveCount = 0;
 			if (inviteWho === 'all' || isOwner) {
 				try {
@@ -481,7 +508,8 @@
 				name={m.name}
 				subtitle={memberSubtitle(m)}
 				color={memberColor(m, i)}
-				style="padding-top:2px"
+				src={memberSrc(m)}
+				style={i === 0 ? 'padding-top:2px' : undefined}
 			/>
 		{/each}
 		<SettingsRow
