@@ -5,6 +5,7 @@
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import OverlayLayout from '$lib/layouts/OverlayLayout.svelte';
@@ -57,7 +58,7 @@
 	onback={() => goto(`/circles/${circle.circleId}/settings`)}
 >
 	{#if pageLoading}
-		<Hint style="margin:16px">Загрузка…</Hint>
+		<Loading />
 	{:else if isOwner}
 		<Hint style="margin:16px">Сначала передайте владение — пока вы владелец, уйти нельзя.</Hint>
 	{:else}

@@ -9,6 +9,7 @@
 	import DangerZone from '$ui/forms/DangerZone.svelte';
 	import FieldDisplay from '$ui/forms/FieldDisplay.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import MemberRow from '$ui/data/MemberRow.svelte';
@@ -357,7 +358,7 @@
 
 <FormLayout app color={circle.color} title="Настройки круга" onback={goBack}>
 	{#if loading}
-		<Hint style="margin:16px">Загрузка…</Hint>
+		<Loading />
 	{:else if error}
 		<Hint style="margin:16px">{error}</Hint>
 	{:else}

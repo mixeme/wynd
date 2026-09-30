@@ -4,6 +4,7 @@
 	import AddPhotoButton from '$ui/forms/AddPhotoButton.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import TextArea from '$ui/forms/TextArea.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
@@ -89,7 +90,7 @@
 
 <FormLayout app title="Я оплатил" onback={() => goto('/circles')}>
 	{#if pageLoading}
-		<Hint>Загрузка…</Hint>
+		<Loading />
 	{:else}
 		<Hint>
 			Администратор увидит скриншот и решит, на сколько продлить доступ. Комментарий не обязателен.

@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import Icon from '$ui/Icon.svelte';
 	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
@@ -59,7 +60,7 @@
 
 {#if loading}
 	<ShellLayout app>
-		<Hint style="margin-top:24px">Загрузка…</Hint>
+		<Loading />
 	</ShellLayout>
 {:else if gatewayError}
 	<ShellLayout app>

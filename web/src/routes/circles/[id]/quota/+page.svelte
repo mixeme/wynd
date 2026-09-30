@@ -3,6 +3,7 @@
 	import { getContext, onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import Meter from '$ui/forms/Meter.svelte';
@@ -122,7 +123,7 @@
 	onback={() => goto(`/circles/${circle.circleId}/settings`)}
 >
 	{#if loading}
-		<Hint style="margin:16px">Загрузка…</Hint>
+		<Loading />
 	{:else if error}
 		<Hint style="margin:16px">{error}</Hint>
 		{#if forbidden}

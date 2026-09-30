@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
 	import RequisitesCard from '$ui/forms/RequisitesCard.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
@@ -36,7 +37,7 @@
 
 <FormLayout app title="Куда помочь" onback={() => goto('/circles')}>
 	{#if loading}
-		<Hint>Загрузка…</Hint>
+		<Loading />
 	{:else}
 		{#if bannerText}
 			<Hint>{bannerText}</Hint>

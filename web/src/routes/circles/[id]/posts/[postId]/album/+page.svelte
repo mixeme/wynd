@@ -7,6 +7,7 @@
 	import MediaTile from '$ui/data/MediaTile.svelte';
 	import PhotoGrid from '$ui/data/PhotoGrid.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import Lightbox from '$ui/overlays/Lightbox.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { formatPostTime, pluralPhotos } from '$lib/format/time';
@@ -103,7 +104,7 @@
 	onback={() => goto(`/circles/${circle.circleId}/posts/${postId}`)}
 >
 	{#if loading}
-		<Hint style="margin:24px 16px">Загрузка…</Hint>
+		<Loading />
 	{:else if !post}
 		<Hint style="margin:24px 16px">Запись не найдена</Hint>
 	{:else}

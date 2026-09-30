@@ -5,6 +5,7 @@
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
@@ -109,7 +110,7 @@
 	onback={() => goto(`/circles/${circle.circleId}/quota`)}
 >
 	{#if pageLoading}
-		<Hint style="margin:16px">Загрузка…</Hint>
+		<Loading />
 	{:else}
 		<Hint style="margin:16px">
 			{#if quotaBytes}

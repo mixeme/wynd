@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { WORD, plural } from '$lib/format/plural';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
@@ -70,7 +71,7 @@
 
 <FormLayout shell app title="Серверы" onback={() => goto('/settings')}>
 	{#if loading}
-		<Hint>Загрузка…</Hint>
+		<Loading />
 	{:else if rows.length === 0}
 		<Hint>На этом устройстве вы ни на одном сервере.</Hint>
 	{:else}

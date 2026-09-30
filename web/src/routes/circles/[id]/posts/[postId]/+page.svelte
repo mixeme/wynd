@@ -7,6 +7,7 @@
 	import CommentRow from '$ui/data/CommentRow.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import TextArea from '$ui/forms/TextArea.svelte';
 	import MediaTile from '$ui/data/MediaTile.svelte';
 	import PostCard from '$ui/data/PostCard.svelte';
@@ -357,7 +358,7 @@
 	onCommentSend={circle.canWrite && !postLocked ? sendComment : undefined}
 >
 	{#if loading}
-		<Hint style="margin:24px 16px">Загрузка…</Hint>
+		<Loading />
 	{:else if !post}
 		<Hint style="margin:24px 16px">{error || 'Запись не найдена'}</Hint>
 	{:else}

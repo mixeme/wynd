@@ -4,6 +4,7 @@
 	import { getContext, onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
@@ -78,7 +79,7 @@
 
 <FormLayout app color={circle.color} title="Живые ссылки" onback={goBack}>
 	{#if loading}
-		<Hint style="margin:16px">Загрузка…</Hint>
+		<Loading />
 	{:else if error}
 		<Hint style="margin:16px">{error}</Hint>
 	{:else if liveInvites.length === 0}

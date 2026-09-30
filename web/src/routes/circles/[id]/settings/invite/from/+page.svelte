@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import { getContext, onMount } from 'svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import SearchGroupHeader from '$ui/data/SearchGroupHeader.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
@@ -85,7 +86,7 @@
 		каждый выберет своё.
 	</Hint>
 	{#if loading}
-		<Hint style="margin:16px">Загрузка…</Hint>
+		<Loading compact />
 	{:else if groups.length === 0}
 		<Hint style="margin:16px">Пока никого позвать — нет людей в других ваших кругах.</Hint>
 	{:else}
