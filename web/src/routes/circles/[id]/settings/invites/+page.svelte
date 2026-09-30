@@ -2,7 +2,11 @@
 	import { copyText } from '$lib/clipboard';
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
+	import QRCode from 'qrcode';
 	import Button from '$ui/forms/Button.svelte';
+	import FieldDisplay from '$ui/forms/FieldDisplay.svelte';
+	import Label from '$ui/forms/Label.svelte';
+	import OverlayLayout from '$lib/layouts/OverlayLayout.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Loading from '$ui/Loading.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
@@ -28,6 +32,36 @@
 	let error = $state('');
 	let loading = $state(true);
 	let copiedInviteId = $state('');
+	// Ссылка, открытая нажатием на строку: QR тому, кто рядом, ссылка —
+	// кому отправить (6.21). Действия ссылки живут здесь же.
+	let opened = $state<CircleInvite | null>(null);
+	let openedQr = $state('');
+	let shared = $state(false);
+
+	async function openInvite(inv: CircleInvite) {
+		opened = inv;
+		shared = false;
+		openedQr = await QRCode.toString(inviteUrlFor(inv.token), { type: 'svg', margin: 0, width: 168 });
+	}
+
+	function closeInvite() {
+		opened = null;
+		openedQr = '';
+	}
+
+	async function shareInvite(inv: CircleInvite) {
+		const url = inviteUrlFor(inv.token);
+		if (navigator.share) {
+			try {
+				await navigator.share({ url, title: `Приглашение в «${circle.name}»` });
+				shared = true;
+				return;
+			} catch (err) {
+				if (err instanceof Error && err.name === 'AbortError') return;
+			}
+		}
+		await copyInvite(inv);
+	}
 
 	const hasLiveMulti = $derived(liveInvites.some((inv) => inv.kind === 'multi'));
 
@@ -58,6 +92,7 @@
 	async function revokeInvite(inv: CircleInvite) {
 		try {
 			await revokeCircleInvite(circle.origin, circle.circleId, inv.id);
+			closeInvite();
 			await loadLiveInvites();
 		} catch (err) {
 			error = authErrorHint(err);
@@ -90,18 +125,8 @@
 			<SettingsRow
 				title={inviteRegistryTitle(inv)}
 				subtitle={inviteRegistrySubtitle(inv)}
-				chevron={false}
-				style="padding-top:2px"
-			>
-				{#snippet control()}
-					<span style="display:flex;gap:12px;flex-shrink:0">
-						<TextButton onclick={() => void copyInvite(inv)}>
-							{copiedInviteId === inv.id ? 'скопировано' : 'скопировать'}
-						</TextButton>
-						<TextButton onclick={() => void revokeInvite(inv)}>отозвать</TextButton>
-					</span>
-				{/snippet}
-			</SettingsRow>
+				onclick={() => void openInvite(inv)}
+			/>
 		{/each}
 		{#if !multiInvitesAllowed && hasLiveMulti}
 			<Hint style="margin-top:8px"
@@ -110,3 +135,25 @@
 		{/if}
 	{/if}
 </FormLayout>
+
+{#if opened}
+	{@const inv = opened}
+	<OverlayLayout label={inviteRegistryTitle(inv)} ondismiss={closeInvite}>
+		<Label class="mt-2">{inviteRegistryTitle(inv)}</Label>
+		{#if openedQr}
+			<div class="qr">{@html openedQr}</div>
+		{/if}
+		<FieldDisplay mono value={inviteUrlFor(inv.token)} class="invite-url" />
+		<div class="rowin ask">
+			<Button variant="colored" onclick={() => void shareInvite(inv)}>
+				{shared ? 'Отправлено' : 'Поделиться'}
+			</Button>
+			<Button variant="ghost" onclick={() => void copyInvite(inv)}>
+				{copiedInviteId === inv.id ? 'Скопировано' : 'Скопировать'}
+			</Button>
+		</div>
+		<div class="hint ctr mt-16">
+			<TextButton onclick={() => void revokeInvite(inv)}>Отозвать ссылку</TextButton>
+		</div>
+	</OverlayLayout>
+{/if}

@@ -19,3 +19,21 @@ export interface NewCircleContext {
 	ready: boolean;
 	serverSubtitle: (session: SessionRecord) => string;
 }
+
+/** Окно правок формы в секундах; null — без ограничения. */
+export function newCircleEditWindowSec(form: Pick<NewCircleContext, 'editWindow' | 'customHours'>): number | null {
+	switch (form.editWindow) {
+		case 'chronicle':
+			return 0;
+		case '10m':
+			return 600;
+		case '1h':
+			return 3600;
+		case '1d':
+			return 86400;
+		case 'custom':
+			return Math.max(1, Math.min(8760, form.customHours)) * 3600;
+		default:
+			return null;
+	}
+}

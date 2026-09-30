@@ -1889,6 +1889,12 @@ body.wide .dlg {
 .mono {
 	font-family: ui-monospace,SFMono-Regular,Menlo,monospace;
 }
+/* Ссылка приглашения под QR (2.7, 6.21): целиком, переносится где угодно. */
+.invite-url {
+	margin-top: 12px;
+	font-size: 12.5px;
+	overflow-wrap: anywhere;
+}
 .qr {
 	width: 168px;
 	height: 168px;
@@ -2352,6 +2358,25 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 }
 .mt-20 {
 	margin-top: 20px;
+}
+.lh-125 {
+	line-height: 1.25;
+}
+.label-row {
+	display: flex;
+}
+.label-row .label-aside {
+	margin-left: auto;
+	text-transform: none;
+	letter-spacing: 0;
+	font-weight: 400;
+}
+.cbar .top {
+	position: relative;
+}
+.cbar .top .top-back {
+	position: absolute;
+	left: 0;
 }
 .mt-22 {
 	margin-top: 22px;

@@ -17,6 +17,7 @@
 		createCircleInvite,
 		fetchCircleSettings,
 		fetchInviteCandidates,
+		patchCircle,
 		revokeCircleInvite
 	} from '$lib/circles/settings';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
@@ -63,6 +64,27 @@
 	let creating = false;
 	let showFromCircles = $state(false);
 	let multiInvitesAllowed = $state(false);
+	// Кто может менять настройки, видит оба чипа всегда: «Многоразовая»
+	// разрешает их в круге, и подпись об этом говорит (2.7, 6.5). Иначе
+	// у нового круга выбора не было вовсе — одноразовые стоят с завода.
+	let canChangeKinds = $state(false);
+	let multiTurnedOn = $state(false);
+	const showKindChips = $derived(multiInvitesAllowed || canChangeKinds);
+
+	async function pickKind(next: 'single' | 'multi') {
+		if (next === 'multi' && !multiInvitesAllowed) {
+			try {
+				await patchCircle(circle.origin, circle.circleId, { invite_kind_default: 'multi' });
+				multiInvitesAllowed = true;
+				multiTurnedOn = true;
+			} catch (err) {
+				error = authErrorHint(err);
+				return;
+			}
+		}
+		kind = next;
+		void createLink();
+	}
 
 	function pickUses(next: UsesChoice) {
 		multiUses = next;
@@ -154,6 +176,7 @@
 		try {
 			const settings = await fetchCircleSettings(circle.origin, circle.circleId);
 			multiInvitesAllowed = settings.invite_kind_default === 'multi';
+			canChangeKinds = settings.is_owner || settings.can_settings;
 			const groups = await fetchInviteCandidates(circle.origin, circle.circleId);
 			showFromCircles = groups.some((g) => g.members.length > 0);
 		} catch {
@@ -190,24 +213,12 @@
 		</div>
 	{/if}
 	<Label style="margin-top:22px">Ссылка</Label>
-	{#if multiInvitesAllowed}
+	{#if showKindChips}
 		<ChipGroup>
-			<Chip
-				selected={kind === 'single'}
-				onclick={() => {
-					kind = 'single';
-					void createLink();
-				}}
-			>
+			<Chip selected={kind === 'single'} onclick={() => void pickKind('single')}>
 				Одноразовая
 			</Chip>
-			<Chip
-				selected={kind === 'multi'}
-				onclick={() => {
-					kind = 'multi';
-					void createLink();
-				}}
-			>
+			<Chip selected={kind === 'multi'} onclick={() => void pickKind('multi')}>
 				Многоразовая
 			</Chip>
 		</ChipGroup>
@@ -254,11 +265,14 @@
 			<span class="hint m-0">дней, до {CUSTOM_DAYS_MAX}</span>
 		</div>
 	{/if}
-	<!-- Про многоразовые — только когда их можно выбрать: иначе подсказка
-	     объясняет чипы, которых на экране нет. -->
+	<!-- Подпись говорит о той ссылке, что на экране: одноразовая — один
+	     человек, многоразовая — лимит. Про многоразовые, которых выбрать
+	     нельзя, не говорит. -->
 	<Hint
-		>Ссылка несёт адрес сервера и токен: тому, кого вы зовёте, не придётся ничего вводить.{#if multiInvitesAllowed}
-			Многоразовая обязательно имеет лимит — по ней на сервер входят новые люди.{/if}</Hint
+		>Ссылка несёт адрес сервера и токен: тому, кого вы зовёте, не придётся ничего вводить.
+		{#if multiInvitesAllowed && kind === 'multi'}Многоразовая обязательно имеет лимит — по ней на
+			сервер входят новые люди.{:else}По одноразовой войдёт один человек.{/if}{#if multiTurnedOn}{' '}Многоразовые
+			ссылки теперь разрешены в круге — выключить можно в настройках.{/if}</Hint
 	>
 	{#if fromCreate}
 		<Button variant="ghost" onclick={goCircle}>Сначала в круг, позову потом</Button>

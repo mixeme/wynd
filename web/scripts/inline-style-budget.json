@@ -38,7 +38,7 @@
 	"src/routes/circles/[id]/settings/identity/+page.svelte": 10,
 	"src/routes/circles/[id]/settings/invite/+page.svelte": 11,
 	"src/routes/circles/[id]/settings/invite/from/+page.svelte": 6,
-	"src/routes/circles/[id]/settings/invites/+page.svelte": 5,
+	"src/routes/circles/[id]/settings/invites/+page.svelte": 3,
 	"src/routes/circles/[id]/settings/leave/+page.svelte": 9,
 	"src/routes/circles/[id]/settings/members/+page.svelte": 10,
 	"src/routes/circles/[id]/settings/notify/+page.svelte": 5,

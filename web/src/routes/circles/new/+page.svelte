@@ -11,13 +11,6 @@
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import ServerRow from '$ui/data/ServerRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
-	import {
-		createCircle,
-		ownerNameFromSession
-	} from '$lib/circles/circles';
-	import { setCircleColor } from '$lib/circles/meta';
-	import { rememberCircleOrigin } from '$lib/circles/origin';
-	import { authErrorHint } from '$lib/auth/auth';
 	import { loadSourceUrl, sourceUrl } from '$lib/instance/source.svelte';
 	import { NEW_CIRCLE_CTX, type NewCircleContext, type NewCircleEditWindow } from '$lib/circles/new-circle';
 
@@ -34,23 +27,6 @@
 
 	let windowBeforeDiary: NewCircleEditWindow = '1h';
 
-	function editWindowSec(): number | null {
-		switch (form.editWindow) {
-			case 'chronicle':
-				return 0;
-			case '10m':
-				return 600;
-			case '1h':
-				return 3600;
-			case '1d':
-				return 86400;
-			case 'custom':
-				return Math.max(1, Math.min(8760, form.customHours)) * 3600;
-			default:
-				return null;
-		}
-	}
-
 	function toggleDiaryMode() {
 		if (!form.diaryMode) {
 			windowBeforeDiary = form.editWindow;
@@ -66,30 +42,15 @@
 		goto('/circles/new/server');
 	}
 
-	async function onSubmit() {
+	// Круг заводится на следующем шаге, когда известно имя создателя: так в
+	// журнале нового круга нет строки «почта теперь Имя» (1.3 для создателя).
+	function onSubmit() {
 		form.error = '';
-		const trimmed = form.name.trim();
-		if (!trimmed || !selectedSession) {
+		if (!form.name.trim() || !selectedSession) {
 			form.error = 'Введите название круга';
 			return;
 		}
-		form.loading = true;
-		try {
-			const created = await createCircle(selectedSession.origin, {
-				name: trimmed,
-				owner_name: ownerNameFromSession(selectedSession),
-				edit_window_sec: editWindowSec(),
-				color: form.color
-			});
-			await setCircleColor(selectedSession.origin, created.id, form.color);
-			rememberCircleOrigin(created.id, selectedSession.origin);
-			if (form.diaryMode) goto(`/circles/${created.id}`);
-			else goto(`/circles/${created.id}/settings/invite?from=create`);
-		} catch (err) {
-			form.error = authErrorHint(err);
-		} finally {
-			form.loading = false;
-		}
+		goto('/circles/new/you');
 	}
 </script>
 
@@ -160,7 +121,7 @@
 			Правило меняется потом, но подействует только на новые записи.
 		{/if}
 	</Hint>
-	<Button variant="colored" loading={form.loading} onclick={onSubmit}>
+	<Button variant="colored" onclick={onSubmit}>
 		{form.diaryMode ? 'Завести дневник' : 'Создать и позвать'}
 	</Button>
 	{#if !form.diaryMode}
