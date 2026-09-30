@@ -10,6 +10,55 @@ import (
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
 )
 
+func TestClaimInviteUsesExistingSession(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	ownerTok, _ := registerSession(t, srv, caps, "anya@example.com")
+	bobTok, _ := registerSession(t, srv, caps, "bob@example.com")
+
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles", ownerTok, map[string]any{
+		"name": "Семья", "owner_name": "Аня", "color": "olive",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create circle: %d %s", rec.Code, rec.Body.String())
+	}
+	circleID := jsonStr(t, rec, "id")
+	allowCircleMultiInvites(t, srv, circleID, ownerTok)
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/invites", ownerTok, map[string]any{
+		"kind": "multi", "max_uses": 5, "ttl_sec": 604800,
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("invite: %d %s", rec.Code, rec.Body.String())
+	}
+	token := jsonStr(t, rec, "token")
+
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/invites/"+token+"/claim", bobTok, map[string]any{})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("claim: %d %s", rec.Code, rec.Body.String())
+	}
+	if jsonStr(t, rec, "circle_id") != circleID {
+		t.Fatalf("claim circle: %s", rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), `"already_member":true`) {
+		t.Fatalf("newcomer marked member: %s", rec.Body.String())
+	}
+
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/join", bobTok, map[string]string{
+		"name": "Боб",
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("join after claim: %d %s", rec.Code, rec.Body.String())
+	}
+	found := false
+	for _, m := range members(t, srv, ownerTok, circleID) {
+		if m["name"] == "Боб" && m["status"] == "active" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("Боб не в круге после claim")
+	}
+}
+
 func TestInvitePeekAndDeferredJoin(t *testing.T) {
 	srv, caps, _, _ := setupAPI(t)
 	ownerTok, _ := registerSession(t, srv, caps, "anya@example.com")

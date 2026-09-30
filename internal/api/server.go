@@ -136,6 +136,7 @@ func (s *Server) routes() {
 	participant := s.RequireParticipant
 	paid := s.RequirePaidParticipant
 	s.Mux.HandleFunc("POST /api/v1/invites/{token}/join", paid(s.handleJoinInvite))
+	s.Mux.HandleFunc("POST /api/v1/invites/{token}/claim", paid(s.handleClaimInvite))
 	s.Mux.HandleFunc("POST /api/v1/auth/logout", participant(s.handleLogout))
 	s.Mux.HandleFunc("GET /api/v1/sync", paid(s.handleSync))
 	s.Mux.HandleFunc("GET /api/v1/circles", paid(s.handleListCircles))

@@ -1,19 +1,26 @@
 <script lang="ts">
+	import Logo from './Logo.svelte';
 	import Mark from './Mark.svelte';
 
-	// Экран ещё грузится. Вместо строки «Загрузка…» в углу — знак Wynd по
-	// центру: покачивается, как на ветру. Появляется не сразу: быстрая загрузка
-	// не мигает знаком, долгая — показывает, что приложение живо.
+	// Экран ещё грузится. Начальная загрузка — логотип по центру, тот же лок,
+	// что на «Войти». Внутри раздела остаётся знак: покачивается, как на ветру.
+	// Появляется не сразу: быстрая загрузка не мигает, долгая — показывает,
+	// что приложение живо.
 	// compact — внутри раздела (панель): не на весь экран, а на строку-другую.
 	let {
 		compact = false,
+		logo = false,
 		class: className = '',
 		style = ''
-	}: { compact?: boolean; class?: string; style?: string } = $props();
+	}: { compact?: boolean; logo?: boolean; class?: string; style?: string } = $props();
 </script>
 
 <div class="loading {className}" class:compact {style} role="status" aria-live="polite">
-	<div class="loading-mark"><Mark class="loading-svg" /></div>
+	{#if logo}
+		<div class="loading-logo"><Logo height={48} /></div>
+	{:else}
+		<div class="loading-mark"><Mark class="loading-svg" /></div>
+	{/if}
 	<span class="vh">Загрузка…</span>
 </div>
 
@@ -39,6 +46,10 @@
 		width: 100%;
 		height: 100%;
 	}
+	.loading-logo {
+		color: var(--ink);
+		animation: loading-breathe 2.4s ease-in-out infinite;
+	}
 	.vh {
 		position: absolute;
 		width: 1px;
@@ -49,6 +60,15 @@
 	}
 	@keyframes loading-in {
 		to {
+			opacity: 1;
+		}
+	}
+	@keyframes loading-breathe {
+		0%,
+		100% {
+			opacity: 0.55;
+		}
+		50% {
 			opacity: 1;
 		}
 	}
@@ -68,7 +88,8 @@
 			animation: none;
 			opacity: 1;
 		}
-		.loading-mark {
+		.loading-mark,
+		.loading-logo {
 			animation: none;
 			opacity: 0.8;
 		}

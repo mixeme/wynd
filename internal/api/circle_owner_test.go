@@ -247,3 +247,33 @@ func TestExcludeMemberCutsAccess(t *testing.T) {
 		}
 	}
 }
+
+func TestSettingsGrantAndRevokeInFeed(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	ownerTok, _, circleID, memberID := circleWithMember(t, srv, caps)
+
+	rec := doJSON(t, srv, http.MethodPut, "/api/v1/circles/"+circleID+"/members/"+memberID, ownerTok, map[string]any{
+		"can_settings": true,
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("grant: %d %s", rec.Code, rec.Body.String())
+	}
+	rec = doGET(t, srv, "/api/v1/circles/"+circleID+"/feed", ownerTok)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("feed: %d %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "дал право менять настройки") {
+		t.Fatalf("выдача не в журнале: %s", rec.Body.String())
+	}
+
+	rec = doJSON(t, srv, http.MethodPut, "/api/v1/circles/"+circleID+"/members/"+memberID, ownerTok, map[string]any{
+		"can_settings": false,
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("revoke: %d %s", rec.Code, rec.Body.String())
+	}
+	rec = doGET(t, srv, "/api/v1/circles/"+circleID+"/feed", ownerTok)
+	if !strings.Contains(rec.Body.String(), "забрал право менять настройки") {
+		t.Fatalf("снятие не в журнале: %s", rec.Body.String())
+	}
+}

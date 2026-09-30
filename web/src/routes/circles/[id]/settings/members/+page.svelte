@@ -33,6 +33,8 @@
 	let menuMember = $state<MemberInfo | null>(null);
 	let transferTarget = $state<MemberInfo | null>(null);
 	let transferLoading = $state(false);
+	let excludeTarget = $state<MemberInfo | null>(null);
+	let excludeLoading = $state(false);
 
 	const transferMode = $derived($page.url.searchParams.get('transfer') === '1');
 	const active = $derived(members.filter((m) => m.status === 'active'));
@@ -116,14 +118,28 @@
 		}
 	}
 
-	async function exclude(m: MemberInfo) {
+	function askExclude(m: MemberInfo) {
 		closeMenu();
-		if (!m.account_id) return;
+		excludeTarget = m;
+	}
+
+	function closeExclude() {
+		if (excludeLoading) return;
+		excludeTarget = null;
+	}
+
+	async function confirmExclude() {
+		if (!excludeTarget?.account_id) return;
+		excludeLoading = true;
+		error = '';
 		try {
-			await excludeMember(circle.origin, circle.circleId, m.account_id);
+			await excludeMember(circle.origin, circle.circleId, excludeTarget.account_id);
+			excludeTarget = null;
 			await reload();
 		} catch (err) {
 			error = authErrorHint(err);
+		} finally {
+			excludeLoading = false;
 		}
 	}
 
@@ -211,7 +227,7 @@
 			title="Исключить"
 			chevron={false}
 			style="color:var(--muted)"
-			onclick={() => void exclude(menuMember!)}
+			onclick={() => menuMember && askExclude(menuMember)}
 		/>
 		<Hint style="margin-top:14px"
 			>Право выдаёт только владелец.</Hint
@@ -219,9 +235,25 @@
 	</OverlayLayout>
 {/if}
 
+{#if excludeTarget}
+	<OverlayLayout variant="dialog" label="Исключить" ondismiss={closeExclude}>
+		<div class="dlgq">
+			Исключить {excludeTarget.name} из «{toAccusativeTitle(circle.name)}»?
+		</div>
+		<Hint
+			>Записи останутся в круге под этим именем. В журнале будет «покинул круг». Доступа больше не
+			будет.</Hint
+		>
+		<div class="rowin ask">
+			<Button variant="ghost" onclick={closeExclude}>Отмена</Button>
+			<Button loading={excludeLoading} onclick={() => void confirmExclude()}>Исключить</Button>
+		</div>
+	</OverlayLayout>
+{/if}
+
 {#if transferTarget}
 	<OverlayLayout variant="dialog" label="Передать владение" ondismiss={closeTransfer}>
-		<div style="font-size:17px;font-weight:600;margin-bottom:10px">
+		<div class="dlgq">
 			Передать «{toAccusativeTitle(circle.name)}» {toDativeName(transferTarget.name)}?
 		</div>
 		<Hint
@@ -229,11 +261,9 @@
 			исключать, передавать владение и удалять круг уже не сможете. Забрать назад можно только
 			если {transferTarget.name} передаст вам.</Hint
 		>
-		<div class="rowin" style="margin:18px 0 0">
-			<Button variant="ghost" style="flex:1;margin:0" onclick={closeTransfer}>Отмена</Button>
-			<Button style="flex:1;margin:0" loading={transferLoading} onclick={() => void confirmTransfer()}>
-				Передать
-			</Button>
+		<div class="rowin ask">
+			<Button variant="ghost" onclick={closeTransfer}>Отмена</Button>
+			<Button loading={transferLoading} onclick={() => void confirmTransfer()}>Передать</Button>
 		</div>
 	</OverlayLayout>
 {/if}

@@ -82,7 +82,8 @@
    сжимает окно, а не сдвигает страницу вверх. Без JS — 100dvh. */
 .ph.app {
 	width: 100%;
-	max-width: var(--app-max-width);
+	max-width: min(100%, var(--app-max-width));
+	min-width: 0;
 	margin-inline: auto;
 	height: var(--app-h, 100dvh);
 	min-height: var(--app-h, 100dvh);
@@ -318,19 +319,27 @@
 	background: var(--c);
 	color: #fff;
 	padding: 8px 14px 0;
+	min-width: 0;
+	max-width: 100%;
 }
 .cbar .top {
 	display: flex;
 	align-items: center;
 	gap: 12px;
 	min-height: 40px;
+	min-width: 0;
 }
 .cbar .top .sp {
 	flex: 1;
+	min-width: 0;
 }
 .cbar .t {
 	font-size: 17px;
 	font-weight: 600;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 .cbar .ic {
 	color: rgba(255,255,255,.9);
@@ -340,6 +349,9 @@
 	display: flex;
 	align-items: center;
 	gap: 9px;
+	min-width: 0;
+	flex-shrink: 1;
+	overflow: hidden;
 	font-size: 12.5px;
 	color: rgba(255,255,255,.85);
 	border: none;
@@ -362,6 +374,8 @@
 	display: flex;
 	gap: 22px;
 	padding: 12px 2px 0;
+	min-width: 0;
+	overflow-x: auto;
 	font-size: 13.5px;
 	color: rgba(255,255,255,.72);
 }
@@ -555,7 +569,11 @@
 	font-size: 12.5px;
 	color: var(--muted);
 	width: 100%;
+	min-width: 0;
 	text-align: left;
+	/* Короткий тап сворачивает группу. Без manipulation iOS после touchstart
+	   глотает click, и заголовок не складывается. */
+	touch-action: manipulation;
 }
 .fold .cnt2 {
 	margin-left: auto;
@@ -963,6 +981,7 @@
 input.fld, textarea.fld, textarea.ta {
 	display: block;
 	width: calc(100% - 32px);
+	max-width: 100%;
 	font: inherit;
 	color: inherit;
 }
@@ -1504,11 +1523,12 @@ a.link {
    держим на реальном вьюпорте, а не на нижнем крае всей страницы */
 .ph.app .sheet, .ph.app .scrim {
 	position: fixed;
-	left: 50%;
-	right: auto;
-	transform: translateX(-50%);
-	width: 100%;
+	left: 0;
+	right: 0;
+	transform: none;
+	width: min(100%, var(--app-max-width));
 	max-width: var(--app-max-width);
+	margin-inline: auto;
 }
 .ph.app .scrim {
 	top: 0;
@@ -1520,21 +1540,22 @@ a.link {
 }
 body .scrim, body .sheet, body .dlg {
 	position: fixed;
-	left: 50%;
-	right: auto;
-	transform: translateX(-50%);
-	width: 100%;
+	left: 0;
+	right: 0;
+	transform: none;
+	width: min(100%, var(--app-max-width));
 	max-width: var(--app-max-width);
+	margin-inline: auto;
 }
 body .scrim {
 	top: 0;
-	right: auto;
+	right: 0;
 	bottom: 0;
-	left: 50%;
+	left: 0;
 	height: auto;
 }
 body .dlg {
-	width: calc(100% - 44px);
+	width: min(calc(100% - 44px), var(--dlg-max-width));
 	max-width: var(--dlg-max-width);
 	top: 250px;
 }
@@ -1545,11 +1566,12 @@ body.wide .dlg {
 	max-width: calc(var(--app-wide-max-width) - 44px);
 }
 .crop.ph.app {
-	left: 50%;
-	right: auto;
-	transform: translateX(-50%);
-	width: 100%;
+	left: 0;
+	right: 0;
+	transform: none;
+	width: min(100%, var(--app-max-width));
 	max-width: var(--app-max-width);
+	margin-inline: auto;
 	top: 0;
 	bottom: 0;
 }
@@ -2266,6 +2288,18 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 }
 .mb-10 {
 	margin-bottom: 10px;
+}
+.dlgq {
+	font-size: 17px;
+	font-weight: 600;
+	margin-bottom: 10px;
+}
+.rowin.ask {
+	margin: 18px 0 0;
+}
+.rowin.ask .btn {
+	flex: 1;
+	margin: 0;
 }
 .gap-12 {
 	gap: 12px;

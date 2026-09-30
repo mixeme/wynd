@@ -18,10 +18,12 @@
 		class?: string;
 		style?: string;
 	} & HTMLButtonAttributes = $props();
+
+	const pressable = $derived(Boolean(onclick || rest.onpointerup || rest.onpointerdown));
 </script>
 
-{#if onclick}
-	<button type="button" class="fold {className}" {style} {onclick} {...rest}>
+{#if pressable}
+	<button type="button" class="fold {className}" {style} {...rest} {onclick}>
 		<Icon name={expanded ? 'chev' : 'chevr'} size="sm" />
 		<span>{label}</span>
 		{#if count !== undefined}

@@ -277,12 +277,37 @@
 		await refresh();
 	}
 
-	async function toggleGroupCollapsed(group: GroupRecord) {
-		const menuOpen = groupMenuId !== null;
+	let groupDownAt = 0;
+	let groupMenuOpenedAt = 0;
+
+	function plainGroup(group: GroupRecord, patch: Partial<GroupRecord> = {}): GroupRecord {
+		return {
+			id: group.id,
+			name: patch.name ?? group.name,
+			circleIds: [...(patch.circleIds ?? group.circleIds)],
+			collapsed: patch.collapsed ?? group.collapsed
+		};
+	}
+
+	function onGroupPointerDown(groupId: string, e: PointerEvent) {
+		if (e.pointerType === 'mouse' && e.button !== 0) return;
+		groupDownAt = Date.now();
+		startGroupLongPress(groupId);
+	}
+
+	function onGroupPointerUp(group: GroupRecord) {
+		const short = Date.now() - groupDownAt < LONG_PRESS_MS;
+		const openedByThisHold = groupMenuOpenedAt >= groupDownAt && groupMenuId === group.id;
+		cancelGroupLongPress();
+		if (!short || openedByThisHold || swallowsClick(pressMark)) return;
 		groupMenuId = null;
-		if (menuOpen || swallowsClick(pressMark)) return;
-		await putGroup({ ...group, collapsed: !group.collapsed });
-		groups = await listGroups();
+		void setGroupCollapsed(group, !group.collapsed);
+	}
+
+	async function setGroupCollapsed(group: GroupRecord, collapsed: boolean) {
+		const next = plainGroup(group, { collapsed });
+		groups = groups.map((item) => (item.id === group.id ? next : item));
+		await putGroup(next);
 	}
 
 	async function addCircleToGroup(circle: StreetCircle, groupId: string) {
@@ -290,10 +315,12 @@
 		for (const group of groups) {
 			if (group.id === groupId) {
 				if (!group.circleIds.includes(key)) {
-					await putGroup({ ...group, circleIds: [...group.circleIds, key] });
+					await putGroup(plainGroup(group, { circleIds: [...group.circleIds, key] }));
 				}
 			} else if (group.circleIds.includes(key)) {
-				await putGroup({ ...group, circleIds: group.circleIds.filter((id) => id !== key) });
+				await putGroup(
+					plainGroup(group, { circleIds: group.circleIds.filter((id) => id !== key) })
+				);
 			}
 		}
 		await refresh();
@@ -309,7 +336,7 @@
 		if (!groupId) return;
 		const group = groups.find((g) => g.id === groupId);
 		if (!group) return;
-		await putGroup({ ...group, circleIds: group.circleIds.filter((id) => id !== key) });
+		await putGroup(plainGroup(group, { circleIds: group.circleIds.filter((id) => id !== key) }));
 		pinMenuKey = null;
 		await refresh();
 	}
@@ -334,6 +361,7 @@
 		groupLongPressTimer = setTimeout(() => {
 			pressMark = markLongPress();
 			groupMenuId = groupId;
+			groupMenuOpenedAt = Date.now();
 			editingGroupId = null;
 		}, LONG_PRESS_MS);
 	}
@@ -356,7 +384,7 @@
 		if (!id || !name) return;
 		const group = groups.find((g) => g.id === id);
 		if (!group) return;
-		await putGroup({ ...group, name });
+		await putGroup(plainGroup(group, { name }));
 		groups = await listGroups();
 	}
 
@@ -579,13 +607,9 @@
 					count={groupMemberCount(group)}
 					expanded={!group.collapsed}
 					foldStyle="padding-top:12px"
-					onclick={() => void toggleGroupCollapsed(group)}
-					onmousedown={() => startGroupLongPress(group.id)}
-					onmouseup={cancelGroupLongPress}
-					onmouseleave={cancelGroupLongPress}
-					ontouchstart={() => startGroupLongPress(group.id)}
-					ontouchend={cancelGroupLongPress}
-					ontouchcancel={cancelGroupLongPress}
+					onpointerdown={(e) => onGroupPointerDown(group.id, e)}
+					onpointerup={() => onGroupPointerUp(group)}
+					onpointercancel={cancelGroupLongPress}
 					actionLabel="Переименовать"
 					onaction={() => startRenameGroup(group)}
 					actionLabel2="Удалить группу"
@@ -596,13 +620,9 @@
 					label={group.name}
 					count={groupMemberCount(group)}
 					expanded={!group.collapsed}
-					onclick={() => void toggleGroupCollapsed(group)}
-					onmousedown={() => startGroupLongPress(group.id)}
-					onmouseup={cancelGroupLongPress}
-					onmouseleave={cancelGroupLongPress}
-					ontouchstart={() => startGroupLongPress(group.id)}
-					ontouchend={cancelGroupLongPress}
-					ontouchcancel={cancelGroupLongPress}
+					onpointerdown={(e) => onGroupPointerDown(group.id, e)}
+					onpointerup={() => onGroupPointerUp(group)}
+					onpointercancel={cancelGroupLongPress}
 				/>
 			{/if}
 			{#if !group.collapsed && groupMenuId !== group.id}

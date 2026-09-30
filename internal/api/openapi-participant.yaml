@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.13.1
+  version: 0.14.0
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:
@@ -506,6 +506,17 @@ paths:
           description: Invite revoked or already used up
         "410":
           description: Invite expired
+
+  /invites/{token}/claim:
+    post:
+      summary: Take a circle invite with the current session
+      responses:
+        "200":
+          description: Circle id and whether the account is already a member
+        "400":
+          description: Server invite, or invite invalid
+        "403":
+          description: Personal invite for another account
 
   /invites/{token}/join:
     post:

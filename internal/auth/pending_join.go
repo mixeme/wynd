@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -100,4 +101,68 @@ func (s *Service) CompleteCircleJoin(ctx context.Context, in CompleteCircleJoinI
 		return err
 	}
 	return tx.Commit()
+}
+
+// ClaimInviteResult is an existing session taking a circle invite without a new code.
+type ClaimInviteResult struct {
+	CircleID      string
+	AlreadyMember bool
+}
+
+// ClaimInvite attaches a circle invite to the account that is already signed in.
+// Повторная регистрация и код не нужны. Активный участник получает круг как есть.
+// Остальным заводится право выбрать имя — тот же экран, что после кода.
+func (s *Service) ClaimInvite(ctx context.Context, accountID, token string, now time.Time) (ClaimInviteResult, error) {
+	if accountID == "" || token == "" {
+		return ClaimInviteResult{}, ErrInvalid
+	}
+	when := now.UTC()
+	if when.IsZero() {
+		when = time.Now().UTC()
+	}
+	inv, err := s.inviteByToken(ctx, token)
+	if err != nil {
+		return ClaimInviteResult{}, err
+	}
+	if inv.IsServer() || inv.CircleID == "" {
+		return ClaimInviteResult{}, ErrInvalid
+	}
+	if inv.TargetAccountID != "" && inv.TargetAccountID != accountID {
+		return ClaimInviteResult{}, ErrForbidden
+	}
+	if s.chronicle == nil {
+		return ClaimInviteResult{}, fmt.Errorf("chronicle required for claim")
+	}
+	mem, err := s.chronicle.MembershipForAccount(ctx, inv.CircleID, accountID)
+	if err != nil && !errors.Is(err, chronicle.ErrNotFound) {
+		return ClaimInviteResult{}, err
+	}
+	if err == nil && mem.Status == chronicle.StatusActive {
+		return ClaimInviteResult{CircleID: inv.CircleID, AlreadyMember: true}, nil
+	}
+	pending, err := s.HasPendingCircleJoin(ctx, accountID, inv.CircleID, when)
+	if err != nil {
+		return ClaimInviteResult{}, err
+	}
+	if pending {
+		return ClaimInviteResult{CircleID: inv.CircleID, AlreadyMember: false}, nil
+	}
+	if err := s.validateInvite(ctx, inv, when); err != nil {
+		return ClaimInviteResult{}, err
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return ClaimInviteResult{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := s.consumeInvite(ctx, tx, inv, when); err != nil {
+		return ClaimInviteResult{}, err
+	}
+	if err := s.insertPendingCircleJoin(ctx, tx, accountID, inv.CircleID, inv.ID, when, when.Add(pendingJoinTTL)); err != nil {
+		return ClaimInviteResult{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return ClaimInviteResult{}, err
+	}
+	return ClaimInviteResult{CircleID: inv.CircleID, AlreadyMember: false}, nil
 }

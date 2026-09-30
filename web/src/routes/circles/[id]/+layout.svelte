@@ -98,6 +98,54 @@
 		}
 	}
 
+	function applyInviteContext(resolved: string, name: string, colorToken: string | undefined) {
+		const color =
+			colorToken && colorToken in CIRCLE_COLORS ? (colorToken as CircleColor) : ('olive' as CircleColor);
+		ctx.origin = resolved;
+		ctx.circleId = circleId;
+		ctx.name = name;
+		ctx.color = color;
+		ctx.colorHex = CIRCLE_COLORS[color].cssVar;
+		ctx.identityName = '';
+		ctx.identityId = '';
+		ctx.identityInitial = '?';
+		ctx.editWindowSec = undefined;
+		ctx.lastReadSeq = 0;
+		ctx.archiveCycle = undefined;
+		ctx.canWrite = true;
+		ctx.refresh = loadMeta;
+		rememberLastCircle(circleId);
+	}
+
+	async function enterAsInvitee(resolved: string): Promise<boolean> {
+		const inviteToken = loadInviteJoinToken(circleId);
+		if (inviteToken) {
+			try {
+				const peek = await fetchInvitePeek(resolved, inviteToken);
+				if (!isCircleInvitePeek(peek)) return false;
+				applyInviteContext(resolved, peek.circle_name, peek.color);
+				rememberCircleOrigin(circleId, resolved);
+				pendingJoinOnly = true;
+				ready = true;
+				if (!onJoinPage) goto(`/circles/${circleId}/join`);
+				return true;
+			} catch {
+				/* нет живой ссылки — смотрим отложенное вступление */
+			}
+		}
+		try {
+			const preview = await fetchJoinPreview(resolved, circleId);
+			applyInviteContext(resolved, preview.circle_name, preview.color);
+			rememberCircleOrigin(circleId, resolved);
+			pendingJoinOnly = true;
+			ready = true;
+			if (!onJoinPage) goto(`/circles/${circleId}/join`);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
 	async function loadMeta() {
 		pendingJoinOnly = false;
 		const resolved = await resolveCircleOrigin(circleId);
@@ -116,73 +164,11 @@
 			listItem = cached.find((c) => c.id === circleId);
 		}
 
-		if (!listItem) {
-			const inviteToken = loadInviteJoinToken(circleId);
-			if (inviteToken) {
-				try {
-					const peek = await fetchInvitePeek(resolved, inviteToken);
-					if (!isCircleInvitePeek(peek)) {
-						denied = true;
-						return;
-					}
-					const colorToken = peek.color;
-					const color =
-						colorToken && colorToken in CIRCLE_COLORS ? colorToken : ('olive' as CircleColor);
-					ctx.origin = resolved;
-					ctx.circleId = circleId;
-					ctx.name = peek.circle_name;
-					ctx.color = color;
-					ctx.colorHex = CIRCLE_COLORS[color].cssVar;
-					ctx.identityName = '';
-					ctx.identityId = '';
-					ctx.identityInitial = '?';
-					ctx.editWindowSec = undefined;
-					ctx.lastReadSeq = 0;
-					ctx.archiveCycle = undefined;
-					ctx.canWrite = true;
-					ctx.refresh = loadMeta;
-					rememberLastCircle(circleId);
-					ready = true;
-					return;
-				} catch {
-					/* fall through */
-				}
-			}
-			try {
-				const preview = await fetchJoinPreview(resolved, circleId);
-				const colorToken = preview.color;
-				const color =
-					colorToken && colorToken in CIRCLE_COLORS ? colorToken : ('olive' as CircleColor);
-				ctx.origin = resolved;
-				ctx.circleId = circleId;
-				ctx.name = preview.circle_name;
-				ctx.color = color;
-				ctx.colorHex = CIRCLE_COLORS[color].cssVar;
-				ctx.identityName = '';
-				ctx.identityId = '';
-				ctx.identityInitial = '?';
-				ctx.editWindowSec = undefined;
-				ctx.lastReadSeq = 0;
-				ctx.archiveCycle = undefined;
-				ctx.canWrite = true;
-				ctx.refresh = loadMeta;
-				rememberLastCircle(circleId);
-				rememberCircleOrigin(circleId, resolved);
-				pendingJoinOnly = true;
-				ready = true;
-				if (!onJoinPage) {
-					goto(`/circles/${circleId}/join`);
-				}
-				return;
-			} catch {
-				/* fall through */
-			}
-			denied = true;
-			ready = true;
-			return;
-		}
-
-		if (listItem.status === 'gone' || !membershipReadable(listItem.status)) {
+		// Нет читаемого членства — в том числе «gone» после ухода и повторного
+		// приглашения. Раньше такой ряд сразу давал «Нет доступа» и не доходил
+		// до экрана имени и фото.
+		if (!listItem || !membershipReadable(listItem.status)) {
+			if (await enterAsInvitee(resolved)) return;
 			denied = true;
 			ready = true;
 			return;

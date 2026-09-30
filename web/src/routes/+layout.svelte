@@ -95,11 +95,30 @@
 		box-sizing: border-box;
 	}
 
+	:global(html) {
+		overflow-x: clip;
+		max-width: 100%;
+		-webkit-text-size-adjust: 100%;
+		text-size-adjust: 100%;
+	}
+
 	:global(body) {
 		margin: 0;
+		overflow-x: clip;
+		max-width: 100%;
 		background: var(--paper);
 		color: var(--ink);
 		font-family: var(--ui);
+	}
+
+	/* Safari на iPhone увеличивает страницу, если в поле кегль меньше 16.
+	   После этого экран шире окна: его листают вбок или щипают обратно. */
+	@media (pointer: coarse) {
+		:global(input:not([type='file']):not([type='checkbox']):not([type='radio'])),
+		:global(textarea),
+		:global(select) {
+			font-size: 16px;
+		}
 	}
 
 	@media (min-width: 481px) {

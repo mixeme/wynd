@@ -71,38 +71,80 @@ func (c *Chronicle) SetInviteKindDefault(ctx context.Context, circleID, actorAcc
 }
 
 // SetMemberCanSettings toggles settings access for a member (owner only).
+// Выдача и снятие пишут служебную строку журнала. Повтор того же значения
+// строку не добавляет.
 func (c *Chronicle) SetMemberCanSettings(ctx context.Context, circleID, ownerAccountID, targetAccountID string, canSettings bool, now time.Time) error {
 	if err := c.RequireOwner(ctx, circleID, ownerAccountID); err != nil {
 		return err
 	}
-	owner, err := c.circleOwner(ctx, c.db, circleID)
+	tx, err := c.beginWrite(ctx)
 	if err != nil {
 		return err
 	}
-	if targetAccountID == owner {
+	defer tx.Rollback()
+
+	owner, err := c.circleOwner(ctx, tx, circleID)
+	if err != nil {
+		return err
+	}
+	if owner != ownerAccountID || targetAccountID == owner {
 		return ErrForbidden
 	}
-	mem, err := c.membership(ctx, c.db, circleID, targetAccountID)
+	mem, err := c.membership(ctx, tx, circleID, targetAccountID)
 	if err != nil {
 		return err
 	}
 	if mem.Status != StatusActive {
 		return ErrInvalid
 	}
+	if mem.CanSettings == canSettings {
+		return nil
+	}
+	ownerMem, err := c.membership(ctx, tx, circleID, ownerAccountID)
+	if err != nil {
+		return err
+	}
+	ownerName, err := c.identityName(ctx, tx, ownerMem.IdentityID)
+	if err != nil {
+		return err
+	}
+	targetName, err := c.identityName(ctx, tx, mem.IdentityID)
+	if err != nil {
+		return err
+	}
 	val := 0
+	eventType := "member.settings_revoked"
+	summary := summarySettingsRevoked(ownerName, targetName)
 	if canSettings {
 		val = 1
+		eventType = "member.settings_granted"
+		summary = summarySettingsGranted(ownerName, targetName)
 	}
 	updated := formatTime(now)
-	res, err := c.db.ExecContext(ctx, `
+	res, err := tx.ExecContext(ctx, `
 		UPDATE memberships SET can_settings = ?, updated_at = ? WHERE circle_id = ? AND account_id = ?
 	`, val, updated, circleID, targetAccountID)
 	if err != nil {
 		return err
 	}
-	n, _ := res.RowsAffected()
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if n == 0 {
 		return ErrNotFound
 	}
-	return nil
+	if _, err := c.appendEvent(ctx, tx, appendEventInput{
+		circleID:        circleID,
+		eventType:       eventType,
+		isService:       true,
+		actorIdentityID: ownerMem.IdentityID,
+		actorName:       ownerName,
+		targetID:        mem.IdentityID,
+		summary:         summary,
+		now:             now,
+	}); err != nil {
+		return err
+	}
+	return tx.Commit()
 }

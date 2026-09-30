@@ -44,6 +44,15 @@ export async function fetchInvitePeek(origin: string, token: string): Promise<In
 	return apiJson<InvitePeek>(origin, `/invites/${token}`);
 }
 
+export async function claimInvite(
+	origin: string,
+	token: string
+): Promise<{ circle_id: string; already_member: boolean }> {
+	return apiJson<{ circle_id: string; already_member: boolean }>(origin, `/invites/${token}/claim`, {
+		method: 'POST'
+	});
+}
+
 export async function joinViaInvite(
 	origin: string,
 	token: string,

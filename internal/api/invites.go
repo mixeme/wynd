@@ -94,6 +94,23 @@ func (s *Server) handlePeekInvite(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) handleClaimInvite(w http.ResponseWriter, r *http.Request) {
+	token := r.PathValue("token")
+	sess, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+	res, err := s.Auth.ClaimInvite(r.Context(), sess.AccountID, token, time.Now().UTC())
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"circle_id":      res.CircleID,
+		"already_member": res.AlreadyMember,
+	})
+}
+
 func (s *Server) handleJoinInvite(w http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
 	sess, ok := requireSession(w, r)

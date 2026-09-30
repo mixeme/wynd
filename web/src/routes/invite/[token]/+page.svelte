@@ -18,6 +18,7 @@
 		sendAuthCode
 	} from '$lib/auth/auth';
 	import {
+		claimInvite,
 		fetchInvitePeek,
 		isDeadInviteError,
 		inviteCardPreview,
@@ -26,6 +27,8 @@
 		memberSubtitle,
 		type InvitePeek
 	} from '$lib/auth/invites';
+	import { rememberCircleOrigin } from '$lib/circles/origin';
+	import { getSession } from '$lib/idb/db';
 	import { displayHost } from '$lib/auth/origin';
 	import { circleInitial } from '$lib/circles/meta';
 	import { INVALID_EMAIL_HINT, isValidParticipantEmail } from '$lib/auth/email';
@@ -58,6 +61,18 @@
 		} catch (err) {
 			if (isDeadInviteError(err)) dead = true;
 			else error = 'Не удалось проверить приглашение — сервер не отвечает. Попробуйте позже.';
+			return;
+		}
+		const session = await getSession('');
+		if (!session) return;
+		try {
+			const claim = await claimInvite('', token);
+			rememberCircleOrigin(claim.circle_id, '');
+			goto(
+				claim.already_member ? `/circles/${claim.circle_id}` : `/circles/${claim.circle_id}/join`
+			);
+		} catch (err) {
+			error = authErrorHint(err);
 		}
 	});
 

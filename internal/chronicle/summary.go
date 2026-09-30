@@ -33,6 +33,14 @@ func summaryOwnerTransferred(from, to string) string {
 	return fmt.Sprintf("Владелец передан: %s → %s", from, to)
 }
 
+func summarySettingsGranted(actor, target string) string {
+	return fmt.Sprintf("%s дал право менять настройки: %s", actor, target)
+}
+
+func summarySettingsRevoked(actor, target string) string {
+	return fmt.Sprintf("%s забрал право менять настройки: %s", actor, target)
+}
+
 func summaryPostCreated(name string) string {
 	return fmt.Sprintf("%s опубликовал запись", name)
 }

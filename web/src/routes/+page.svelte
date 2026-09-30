@@ -116,7 +116,7 @@
 
 {#if booting}
 	<PlainLayout shell app>
-		<Loading />
+		<Loading logo />
 	</PlainLayout>
 {:else}
 <PlainLayout shell app>
