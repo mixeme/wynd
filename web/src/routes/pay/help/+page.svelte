@@ -42,7 +42,7 @@
 		{#if bannerText}
 			<Hint>{bannerText}</Hint>
 		{/if}
-		<SectionLabel style="margin-top:22px">Куда платить</SectionLabel>
+		<SectionLabel class="mt-22">Куда платить</SectionLabel>
 		<RequisitesCard text={requisites} />
 		<Hint class="mt-22" centered>
 			Это поддержка, не подписка. Круги от перевода не зависят,<br />и заявку отправлять не нужно.

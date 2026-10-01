@@ -220,7 +220,7 @@
 		<Chip selected>Этот круг</Chip>
 		<Chip onclick={openGlobalSearch}>Все круги</Chip>
 	</ChipGroup>
-	<ChipGroup style="margin-top:8px">
+	<ChipGroup>
 		<Chip selected={periodActive} onclick={onTogglePeriod}>Период</Chip>
 		<Chip selected={filterPhoto} onclick={() => (filterPhoto = !filterPhoto)}>С фото</Chip>
 		<Chip selected={filterLocation} onclick={() => (filterLocation = !filterLocation)}

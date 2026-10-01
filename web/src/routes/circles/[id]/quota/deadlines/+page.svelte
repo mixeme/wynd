@@ -203,7 +203,7 @@
 		>
 	{/if}
 	{#if !activeCycle}
-		<DangerNote style="margin-top:20px">
+		<DangerNote class="mt-20">
 			{deadline ? formatEntryDate(deadline) : '…'} всё до {cutoffDate
 				? formatEntryDate(cutoffDate)
 				: '…'} удалится с сервера — независимо от того, все ли успели скачать. Предупредить людей —

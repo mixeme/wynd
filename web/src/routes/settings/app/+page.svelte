@@ -154,7 +154,7 @@
 		тех, в которые вы вступите позже. Круги, где уведомления уже сохранены отдельно, не меняются.
 	</Hint>
 
-	<SectionLabel style="margin-top:22px">Место на устройстве</SectionLabel>
+	<SectionLabel class="mt-22">Место на устройстве</SectionLabel>
 	<Meter value={cacheBytes} max={Math.max(cacheLimit, 1)} />
 	<Hint class="mt-8">
 		{formatBytes(cacheBytes)} кэша из {formatBytes(cacheLimit)}
@@ -196,7 +196,7 @@
 		<Hint>Кэш очищен. Оригиналы на сервере на месте.</Hint>
 	{/if}
 
-	<SectionLabel style="margin-top:20px">Тема</SectionLabel>
+	<SectionLabel class="mt-20">Тема</SectionLabel>
 	<ChipGroup>
 		{#each themes as item (item.key)}
 			<Chip

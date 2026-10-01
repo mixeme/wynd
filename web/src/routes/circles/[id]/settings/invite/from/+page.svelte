@@ -92,10 +92,10 @@
 	{:else}
 		{#each groups as group (group.id)}
 			<SearchGroupHeader
+				class="mt-12"
 				color={CIRCLE_COLORS[group.color]?.cssVar ?? 'var(--ochre)'}
 				name={group.name}
 				count={group.count}
-				style="margin-top:12px"
 			/>
 			{#each group.members as member (group.id + member.account_id)}
 				{@const faded =

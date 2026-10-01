@@ -80,6 +80,14 @@
 		return isCoverRect(crop) ? coverRectStyle(crop) : undefined;
 	});
 
+	// Firefox (Android) не рисует кадр у видео, которое не играли: плитка
+	// остаётся пустой, хотя файл загружен. Шаг на миллисекунду заставляет
+	// декодировать и показать первый кадр.
+	function showFirstFrame(e: Event) {
+		const video = e.currentTarget as HTMLVideoElement;
+		if (video.currentTime === 0) video.currentTime = 0.001;
+	}
+
 	function onFeedClick(e: MouseEvent) {
 		if (props.variant !== 'feed' || !props.onclick) return;
 		e.stopPropagation();
@@ -96,7 +104,7 @@
 	>
 		{#if props.src}
 			{#if props.kind === 'video'}
-				<video src={props.src} muted playsinline></video>
+				<video src={props.src} muted playsinline preload="metadata" onloadedmetadata={showFirstFrame}></video>
 			{:else if cropStyle}
 				<img
 					class="cropped"
@@ -141,7 +149,7 @@
 	>
 		{#if props.src}
 			{#if props.kind === 'video'}
-				<video src={props.src} muted playsinline></video>
+				<video src={props.src} muted playsinline preload="metadata" onloadedmetadata={showFirstFrame}></video>
 			{:else}
 				<img src={props.src} alt="" />
 			{/if}
@@ -161,7 +169,7 @@
 		onclick={() => props.onclick()}
 	>
 		{#if props.kind === 'video'}
-			<video src={props.src} muted playsinline></video>
+			<video src={props.src} muted playsinline preload="metadata" onloadedmetadata={showFirstFrame}></video>
 		{:else}
 			<img src={props.src} alt="" />
 		{/if}
@@ -171,7 +179,7 @@
 		<button type="button" class="thumb-body" onclick={() => props.onclick()}>
 			{#if props.src}
 				{#if props.kind === 'video'}
-					<video src={props.src} muted playsinline></video>
+					<video src={props.src} muted playsinline preload="metadata" onloadedmetadata={showFirstFrame}></video>
 				{:else if cropStyle}
 					<img
 						class="cropped"

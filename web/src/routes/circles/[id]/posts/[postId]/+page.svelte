@@ -412,7 +412,7 @@
 			/>
 		{/snippet}
 		<PostCard
-			style="margin-top:8px"
+			class="mt-8"
 			headerRight={postHeaderRight}
 			text={currentPost.body ? postText : undefined}
 			media={attachmentMedia(currentPost.media).length ? postMedia : undefined}

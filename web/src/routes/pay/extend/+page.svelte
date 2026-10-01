@@ -52,7 +52,7 @@
 				Круги ещё открыты.
 			{/if}
 		</Hint>
-		<SectionLabel style="margin-top:22px">Куда платить</SectionLabel>
+		<SectionLabel class="mt-22">Куда платить</SectionLabel>
 		<RequisitesCard text={requisites} />
 		<Button onclick={() => goto('/pay')}>Я оплатил</Button>
 		{#if error}

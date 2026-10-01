@@ -36,7 +36,7 @@
 		<Chip selected={value === key} onclick={() => onpick(key)}>{label}</Chip>
 	{/each}
 </ChipGroup>
-<ChipGroup style="margin-top:8px">
+<ChipGroup>
 	{#each secondRow as [key, label] (key)}
 		<Chip selected={value === key} onclick={() => onpick(key)}>{label}</Chip>
 	{/each}

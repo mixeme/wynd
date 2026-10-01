@@ -169,7 +169,7 @@
 				Отправить ещё раз
 			</Button>
 			{#if cooldown > 0}
-				<span style="color:var(--faint);font-size:12.5px">через {cooldown} с</span>
+				<span class="faint sz-12">через {cooldown} с</span>
 			{/if}
 		</div>
 	{/if}

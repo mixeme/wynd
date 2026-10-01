@@ -165,7 +165,7 @@
 			<Label>Сервер</Label>
 			<FieldDisplay>
 				<div class="bold">{peek.server_name}</div>
-				<div style="font-size:12.5px;color:var(--muted)">{peek.host || displayHost('')}</div>
+				<div class="note">{peek.host || displayHost('')}</div>
 			</FieldDisplay>
 		{:else}
 			<InviteCard initial="…" name="…" preview="Загрузка…" />

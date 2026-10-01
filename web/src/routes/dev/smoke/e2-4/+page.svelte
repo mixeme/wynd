@@ -39,7 +39,7 @@
 		<Chip selected>Час</Chip>
 		<Chip>Сутки</Chip>
 	</ChipGroup>
-	<ChipGroup style="margin-top:8px">
+	<ChipGroup>
 		<Chip>Без ограничения</Chip>
 		<Chip>Своё…</Chip>
 	</ChipGroup>
