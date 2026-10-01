@@ -244,7 +244,7 @@
 - `admin/access:220–251`
 - `admin/pay/donate:104–107`
 
-→ `AdminField` (`label`, `unit`, children).
+→ `AdminField` (`label`, `unit`, children). **Сделано в 0.18.14 частично:** `$ui/admin/AdminField.svelte` (`label`, `width` 88 | 120, `unit`, children) — `admin/general` (9 строк; подписи стали как на кадре — 12,5 px, без капители) и `admin/compress` (5). Осталось: `admin/+page` (подпись-заголовок `.ttl.flab` 13,5 px жирная — другой вид на кадре, решить: проп или свой компонент), `admin/access` и `admin/pay/donate` (поле с единицей без подписи — ближе к `NumberField`, 2.9).
 
 **2.19 Админ: «переключатель + заголовок + пояснение» — средняя.** `admin/pay/donate:86–102` (2 раза), `admin/pay/subscription:137–149`, `admin/people/[id]:167–177`. Разметка везде `div.flex-top.gap-12 > Switch + div > .ttl + .note.mt-4.lh-15`. → `SwitchRow` (в духе `SettingsRow` с `control`, но для админки).
 
@@ -254,7 +254,7 @@
 - `admin/pay:83`
 - `admin/bootstrap:162,175,200` — через `const cardStyle = 'panel pad-16'`
 
-→ `Panel` (`padding`).
+→ `Panel` (`padding`). **Сделано в 0.18.14:** `$ui/admin/Panel.svelte` (`class`, `style`; отступ — служебным классом) во всех шести местах; в мастере строки классов `cardStyle`/`descStyle`/`sideLabel`/`fillInput` ушли в разметку.
 
 **2.21 Подвал «Wynd x.y · AGPL · исходный код · лицензии» — низкая.** `settings/+page.svelte:45–49` и `admin/+page.svelte:498–502`. → `AboutFooter`.
 
@@ -474,11 +474,11 @@
 - разделить на презентационную полосу и логику (5.3, 5.4).
 
 ### Сторож (`ui-guard.mjs`) — чтобы находки не возвращались
-1. Расширить `RAW_CLASS_RULES` на `div`/`span`/`a` с классами `hint`, `h1s`, `tm`, `att`, `chk`, `danger`, `qr`, `under`, `men`, `panel` в боевых экранах; запретить `{@html}` в экранах.
-2. В `checkProject` проверять, что каждый файл `src/lib/{components,layouts}/*.svelte` есть в базовом списке библиотеки или в открытом плане пробела. Сейчас этот запрет есть только в хуке Cursor.
-3. Предупреждать о `style="…"`, если такой же набор свойств уже есть у служебного класса в `ui.css` (на парсере `parseCssRules` это просто).
-4. Ловить строки служебных классов в `<script>` экранов (`const x = 'flex-mid gap-10'`).
-5. Классы `ui.css`, которые встречаются только в одном экране, держать списком «только вниз», как `STYLE_BLOCK_SCREENS`.
+1. Расширить `RAW_CLASS_RULES` на `div`/`span`/`a` с классами `hint`, `h1s`, `tm`, `att`, `chk`, `danger`, `qr`, `under`, `men`, `panel` в боевых экранах; запретить `{@html}` в экранах. **Сделано в 0.18.14:** `checkLibraryClasses` — классы компонентов на голых HTML-тегах боевых экранов. `LIBRARY_CLASS_BANNED` (h1s, att, men, codebox, addph, sfield, panel) запрещены совсем; оставшиеся (tm, hint, qr, chk, danger, pic) — `LIBRARY_CLASS_RATCHET`, по экранам, только вниз; `{@html}` — `HTML_TAG_SCREENS` (три QR). `a.under` с `href` — по правилу справочника, не нарушение.
+2. В `checkProject` проверять, что каждый файл `src/lib/{components,layouts}/*.svelte` есть в базовом списке библиотеки или в открытом плане пробела. Сейчас этот запрет есть только в хуке Cursor. **Сделано в 0.18.14:** `checkLibraryRegistry` — файл без упоминания в `ui-components.md` и без открытого плана пробела не проходит. `AudioBar` вписан в справочник.
+3. Предупреждать о `style="…"`, если такой же набор свойств уже есть у служебного класса в `ui.css` (на парсере `parseCssRules` это просто). **Оставлено (0.18.14), причина:** из 31 такого стиля 20 перебивают более сильное правило (`.rowin .btn`, `.chk .btn`, `.comp .f .inp`, `.chips + .chips`) — служебный класс той же силы проиграл бы, экран поменялся бы. Отличить такие статически без разбора каскада нельзя, а ложная тревога на каждом таком месте приучит её глушить. Безопасные 12 заменены (0.18.12), повторы `.chips + .chips` убраны.
+4. Ловить строки служебных классов в `<script>` экранов (`const x = 'flex-mid gap-10'`). **Сделано в 0.18.14:** `checkScriptClassStrings` — строка из двух и больше слов, где каждое — простой класс `ui.css`. Шесть таких было в `admin/bootstrap` и `admin/general`, ушли вместе с `Panel` и `AdminField`.
+5. Классы `ui.css`, которые встречаются только в одном экране, держать списком «только вниз», как `STYLE_BLOCK_SCREENS`. **Сделано в 0.18.14:** `checkSingleScreenClasses` — класс выше служебных, нужный одному экрану и ни одному компоненту; `SINGLE_SCREEN_CLASSES` — 26 нынешних, только вниз.
 
 ### Оставить и почему
 - `.tile-load*`: это CSS компонента `MediaTile`, а не экрана.

@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import Panel from '$ui/admin/Panel.svelte';
 	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -19,11 +20,6 @@
 	import { isLoopbackPublicURL } from '$lib/auth/origin';
 
 	const token = $derived(page.url.searchParams.get('token') ?? '');
-	const cardStyle = 'panel pad-16';
-	const descStyle = 'note mb-12 lh-15';
-	const sideLabel = 'm-0 sz-12 nowrap';
-	const sideLabelRight = 'm-0 ml-12 sz-12 nowrap';
-	const fillInput = 'fill';
 
 	let instanceName = $state('');
 	let publicUrl = $state('');
@@ -159,9 +155,9 @@
 		{:else}
 			<div class="col gap-16">
 				<div class="flex gap-16 stretch col-narrow">
-					<div class="grow min0 {cardStyle}">
+					<Panel class="grow min0 pad-16">
 						<div class="bold mb-6">1 · Пароль администратора</div>
-						<div class={descStyle}>
+						<div class="note mb-12 lh-15">
 							Пароль для доступа в панель администратора. Можно сбросить через консоль.
 						</div>
 						<Input
@@ -171,20 +167,20 @@
 							bind:value={password}
 							class="fill"
 						/>
-					</div>
-					<div class="grow min0 {cardStyle}">
+					</Panel>
+					<Panel class="grow min0 pad-16">
 						<div class="bold mb-12">2 · Имя и адрес сервера</div>
 						<div class="form-grid">
-							<SectionLabel raw class={sideLabel}>Имя</SectionLabel>
+							<SectionLabel raw class="m-0 sz-12 nowrap">Имя</SectionLabel>
 							<Input
 								admin
 								type="text"
 								autocomplete="organization"
 								bind:value={instanceName}
 								placeholder="Дом Ани"
-								class={fillInput}
+								class="fill"
 							/>
-							<SectionLabel raw class={sideLabel}>Адрес</SectionLabel>
+							<SectionLabel raw class="m-0 sz-12 nowrap">Адрес</SectionLabel>
 							<Input
 								admin
 								mono
@@ -192,14 +188,14 @@
 								autocomplete="url"
 								bind:value={publicUrl}
 								placeholder="home.example.org"
-								class={fillInput}
+								class="fill"
 							/>
 						</div>
-					</div>
+					</Panel>
 				</div>
-				<div class={cardStyle}>
+				<Panel class="pad-16">
 					<div class="bold mb-6">3 · Почта</div>
-					<div class={descStyle}>
+					<div class="note mb-12 lh-15">
 						{#if loopbackNow}
 							На этом компьютере код входа пишется в окно сервера. Почту можно не указывать и настроить позже.
 						{:else}
@@ -207,19 +203,19 @@
 						{/if}
 					</div>
 					<div class="form-grid-2">
-						<SectionLabel raw class={sideLabel}>Хост</SectionLabel>
-						<Input admin mono class={fillInput} bind:value={smtpHost} />
-						<SectionLabel raw class={sideLabelRight}>Порт</SectionLabel>
+						<SectionLabel raw class="m-0 sz-12 nowrap">Хост</SectionLabel>
+						<Input admin mono class="fill" bind:value={smtpHost} />
+						<SectionLabel raw class="m-0 ml-12 sz-12 nowrap">Порт</SectionLabel>
 						<div class="flex-mid gap-8 min0">
 							<Input admin class="w72 flex-none" type="number" bind:value={smtpPort} />
 							<Hint class="m-0 nowrap">587 или 465</Hint>
 						</div>
-						<SectionLabel raw class={sideLabel}>Логин</SectionLabel>
-						<Input admin mono class={fillInput} bind:value={smtpUsername} />
-						<SectionLabel raw class={sideLabelRight}>Пароль</SectionLabel>
-						<Input admin class={fillInput} type="password" bind:value={smtpPassword} />
-						<SectionLabel raw class={sideLabel}>От кого</SectionLabel>
-						<Input admin mono class={fillInput} bind:value={smtpFrom} />
+						<SectionLabel raw class="m-0 sz-12 nowrap">Логин</SectionLabel>
+						<Input admin mono class="fill" bind:value={smtpUsername} />
+						<SectionLabel raw class="m-0 ml-12 sz-12 nowrap">Пароль</SectionLabel>
+						<Input admin class="fill" type="password" bind:value={smtpPassword} />
+						<SectionLabel raw class="m-0 sz-12 nowrap">От кого</SectionLabel>
+						<Input admin mono class="fill" bind:value={smtpFrom} />
 						<div class="grid-end flex-mid gap-8">
 							{#if smtpTesting}
 								<span role="status" class="note nowrap">
@@ -240,7 +236,7 @@
 							</TextButton>
 						</div>
 					</div>
-				</div>
+				</Panel>
 			</div>
 			{#if error}
 				<div bind:this={errorBox} role="alert">

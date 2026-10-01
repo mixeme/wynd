@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import AdminField from '$ui/admin/AdminField.svelte';
 	import { onMount } from 'svelte';
 	import AdminSection from '$ui/admin/AdminSection.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -18,9 +19,6 @@
 		sendSmtpTest,
 		serverCaption
 	} from '$lib/admin/admin';
-
-	const label = 'm-0 w88 flex-fix';
-	const row = 'flex-mid gap-10';
 
 	let currentPassword = $state('');
 	let newPassword = $state('');
@@ -166,14 +164,12 @@
 					<div class="note mb-12 lh-15">
 						Отдельный пароль панели, не тот, которым входят в круги. Сбросить можно через консоль.
 					</div>
-					<div class="{row} mb-10">
-						<SectionLabel class={label}>Текущий</SectionLabel>
+					<AdminField label="Текущий" width={88} class="mb-10">
 						<Input admin class="grow" type="password" bind:value={currentPassword} />
-					</div>
-					<div class="{row} mb-12">
-						<SectionLabel class={label}>Новый</SectionLabel>
+					</AdminField>
+					<AdminField label="Новый" width={88} class="mb-12">
 						<Input admin class="grow" type="password" bind:value={newPassword} />
-					</div>
+					</AdminField>
 					<TextButton
 						variant="adminBox"
 						class="bold"
@@ -181,12 +177,10 @@
 						onclick={() => void savePassword()}>Сохранить</TextButton
 					>
 					<SectionLabel class="mt-28 mx-0 mb-10">Имя и адрес</SectionLabel>
-					<div class="{row} mb-10">
-						<SectionLabel class={label}>Имя</SectionLabel>
+					<AdminField label="Имя" width={88} class="mb-10">
 						<Input admin class="grow" bind:value={name} onchange={() => void persistName()} />
-					</div>
-					<div class={row}>
-						<SectionLabel class={label}>Адрес</SectionLabel>
+					</AdminField>
+					<AdminField label="Адрес" width={88}>
 						<Input
 							admin
 							mono
@@ -194,7 +188,7 @@
 							bind:value={publicUrl}
 							onchange={() => void persistUrl()}
 						/>
-					</div>
+					</AdminField>
 					<div class="fine mt-10 lh-16">
 						Так сервер назван в приложении. Адрес люди видят второй строкой и почти никогда не
 						набирают.
@@ -206,8 +200,7 @@
 						Люди входят по коду из письма. Без настройки SMTP письмо с кодом не отправится.
 					</div>
 					<div class="col gap-10">
-						<div class={row}>
-							<SectionLabel class={label}>Хост</SectionLabel>
+						<AdminField label="Хост" width={88}>
 							<Input
 								admin
 								mono
@@ -215,9 +208,8 @@
 								bind:value={host}
 								onchange={() => void persistSmtp()}
 							/>
-						</div>
-						<div class={row}>
-							<SectionLabel class={label}>Порт</SectionLabel>
+						</AdminField>
+						<AdminField label="Порт" width={88} unit="587 или 465">
 							<Input
 								admin
 								class="w72"
@@ -225,10 +217,8 @@
 								bind:value={port}
 								onchange={() => void persistSmtp()}
 							/>
-							<Hint class="m-0 nowrap">587 или 465</Hint>
-						</div>
-						<div class={row}>
-							<SectionLabel class={label}>Логин</SectionLabel>
+						</AdminField>
+						<AdminField label="Логин" width={88}>
 							<Input
 								admin
 								mono
@@ -236,9 +226,8 @@
 								bind:value={username}
 								onchange={() => void persistSmtp()}
 							/>
-						</div>
-						<div class={row}>
-							<SectionLabel class={label}>Пароль</SectionLabel>
+						</AdminField>
+						<AdminField label="Пароль" width={88}>
 							<Input
 								admin
 								class="grow"
@@ -247,9 +236,8 @@
 								bind:value={smtpPassword}
 								onchange={() => void persistSmtp()}
 							/>
-						</div>
-						<div class={row}>
-							<SectionLabel class={label}>От кого</SectionLabel>
+						</AdminField>
+						<AdminField label="От кого" width={88}>
 							<Input
 								admin
 								mono
@@ -257,7 +245,7 @@
 								bind:value={from}
 								onchange={() => void persistSmtp()}
 							/>
-						</div>
+						</AdminField>
 					</div>
 					<SectionLabel class="mt-28 mx-0 mb-8">Проверочное письмо</SectionLabel>
 					<div class="flex-mid gap-12">

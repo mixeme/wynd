@@ -1,10 +1,15 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
 	analyzeScreenSource,
+	checkLibraryClasses,
+	checkLibraryRegistry,
 	checkProject,
+	checkScriptClassStrings,
+	checkSingleScreenClasses,
 	classTokens,
 	hasStyleBlock,
 	markupElements,
@@ -112,5 +117,75 @@ describe('parseCssRules', () => {
 		const rules = parseCssRules('/* .x { padding: 0; } */ .a { color: red; }');
 		expect(rules).toHaveLength(1);
 		expect(rules[0].selectors).toEqual(['.a']);
+	});
+});
+
+// План 47, сторож: правила проверяются на временном дереве проекта.
+describe('plan 47 guards', () => {
+	function tree(files: Record<string, string>): string {
+		const root = fs.mkdtempSync(path.join(os.tmpdir(), 'wynd-guard-'));
+		const web = path.join(root, 'web');
+		for (const [rel, text] of Object.entries(files)) {
+			const abs = path.join(rel.startsWith('docs/') ? root : web, rel);
+			fs.mkdirSync(path.dirname(abs), { recursive: true });
+			fs.writeFileSync(abs, text);
+		}
+		return web;
+	}
+
+	it('catches library classes on raw tags and stale ratchet entries', () => {
+		const web = tree({
+			'src/routes/a/+page.svelte': '<div class="panel">x</div>\n<span class="tm">1</span>\n{@html q}',
+			'src/routes/b/+page.svelte': '<Panel class="panel" />',
+			'src/routes/dev/c/+page.svelte': '<div class="panel"></div>'
+		});
+		const hits = checkLibraryClasses(
+			web,
+			['panel'],
+			{ 'src/routes/a/+page.svelte': ['tm'], 'src/routes/b/+page.svelte': ['qr'] },
+			new Set()
+		);
+		expect(hits).toHaveLength(3);
+		expect(hits[0]).toMatch(/^src\/routes\/a\/\+page\.svelte:1:.*\.panel на <div>/);
+		expect(hits[1]).toContain('{@html}');
+		expect(hits[2]).toContain('.qr больше нет');
+	});
+
+	it('requires every library file in the reference', () => {
+		const web = tree({
+			'src/lib/components/forms/Known.svelte': '<div></div>',
+			'src/lib/components/forms/Stray.svelte': '<div></div>',
+			'docs/reference/ui-components.md': 'Компоненты: **Known**.'
+		});
+		const hits = checkLibraryRegistry(web);
+		expect(hits).toHaveLength(1);
+		expect(hits[0]).toContain('Stray');
+	});
+
+	it('catches class strings in screen scripts', () => {
+		const web = tree({
+			'src/lib/styles/ui.css': '.flex-mid { display: flex; } .gap-10 { gap: 10px; }',
+			'src/routes/a/+page.svelte':
+				"<script>\n\tconst row = 'flex-mid gap-10';\n\tconst word = 'flex-mid';\n\tconst text = 'flex-mid и всё';\n</script>\n<div class={row}></div>"
+		});
+		const hits = checkScriptClassStrings(web);
+		expect(hits).toHaveLength(1);
+		expect(hits[0]).toContain('src/routes/a/+page.svelte:2:');
+	});
+
+	it('catches new single-screen classes and stale entries', () => {
+		const web = tree({
+			'src/lib/styles/ui.css':
+				'.own { color: red; } .shared { color: red; } .lib { color: red; }\n/* Служебные классы: */\n.mt-8 { margin-top: 8px; }',
+			'src/lib/components/forms/X.svelte': '<div class="lib"></div>',
+			'src/routes/a/+page.svelte': '<div class="own shared lib mt-8"></div>',
+			'src/routes/b/+page.svelte': '<div class="shared"></div>'
+		});
+		expect(checkSingleScreenClasses(web, new Set())).toEqual([
+			'src/routes/a/+page.svelte: .own в ui.css нужен одному экрану — компонент $ui или служебный класс'
+		]);
+		expect(checkSingleScreenClasses(web, new Set(['own', 'gone']))).toEqual([
+			'.gone уже не одноэкранный — уберите из SINGLE_SCREEN_CLASSES'
+		]);
 	});
 });

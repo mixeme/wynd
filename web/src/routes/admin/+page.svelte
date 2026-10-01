@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import Panel from '$ui/admin/Panel.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -431,7 +432,7 @@
 				</DataTable>
 			{/if}
 			{#if selectedCircle}
-				<div class="panel mt-16">
+				<Panel class="mt-16">
 					<div class="ttl">
 						{selectedCircle.name}{selectedCircle.quota_custom ? ' · своя квота' : ''}
 					</div>
@@ -465,7 +466,7 @@
 						{formatBytes(selectedCircle.media_bytes)} уже лежит. Ниже этого числа поставить можно —
 						владелец увидит «место кончилось» и сам выберет отсечку. Панель её не ставит.
 					</div>
-				</div>
+				</Panel>
 			{/if}
 			{#if !selectedCircleId}
 				<SectionLabel class="mt-26 mx-0">Просят больше</SectionLabel>

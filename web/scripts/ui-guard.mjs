@@ -659,6 +659,249 @@ export function checkStyleBlocks(webRoot, allowed = STYLE_BLOCK_SCREENS) {
 }
 
 /**
+ * Классы компонентов Wynd UI на голом HTML-теге боевого экрана (план 47,
+ * сторож п. 1). Компонент есть — экран зовёт его, а не верстает класс сам.
+ * BANNED не встречаются нигде; RATCHET ещё остались в перечисленных местах
+ * и ждут своих компонентов (QrCode, NumberField, PostRef…) — список только вниз.
+ */
+export const LIBRARY_CLASS_BANNED = ['h1s', 'att', 'men', 'codebox', 'addph', 'sfield', 'panel'];
+export const LIBRARY_CLASS_RATCHET = {
+	'src/routes/admin/access/+page.svelte': ['qr'],
+	'src/routes/admin/people/[id]/+page.svelte': ['chk', 'danger'],
+	'src/routes/circles/[id]/+page.svelte': ['tm'],
+	'src/routes/circles/[id]/days/[date]/+page.svelte': ['tm'],
+	'src/routes/circles/[id]/posts/[postId]/+page.svelte': ['tm'],
+	'src/routes/circles/[id]/quota/request/+page.svelte': ['hint'],
+	'src/routes/circles/[id]/responses/+page.svelte': ['pic'],
+	'src/routes/circles/[id]/settings/invite/+page.svelte': ['hint', 'qr'],
+	'src/routes/circles/[id]/settings/invites/+page.svelte': ['qr'],
+	'src/routes/settings/app/+page.svelte': ['hint']
+};
+/** `{@html}` в экранах — только QR, пока нет компонента QrCode. Только вниз. */
+export const HTML_TAG_SCREENS = new Set([
+	'src/routes/admin/access/+page.svelte',
+	'src/routes/circles/[id]/settings/invite/+page.svelte',
+	'src/routes/circles/[id]/settings/invites/+page.svelte'
+]);
+
+function prodScreens(webRoot) {
+	return walkSvelte(path.join(webRoot, 'src', 'routes'))
+		.map((file) => ({ file, rel: posixRel(webRoot, file) }))
+		.filter(({ rel }) => rel && !rel.includes('/dev/'));
+}
+
+/**
+ * @param {string} webRoot
+ * @param {string[]} [banned]
+ * @param {Record<string, string[]>} [ratchet]
+ * @param {Set<string>} [htmlScreens]
+ * @returns {string[]}
+ */
+export function checkLibraryClasses(
+	webRoot,
+	banned = LIBRARY_CLASS_BANNED,
+	ratchet = LIBRARY_CLASS_RATCHET,
+	htmlScreens = HTML_TAG_SCREENS
+) {
+	const watched = new Set([...banned, ...Object.values(ratchet).flat()]);
+	const hits = [];
+	const seen = new Set();
+	const seenHtml = new Set();
+	for (const { file, rel } of prodScreens(webRoot)) {
+		const source = fs.readFileSync(file, 'utf8');
+		const markup = markupOf(source);
+		const lines = source.split('\n');
+		const allowed = new Set(ratchet[rel] ?? []);
+		for (const el of markupElements(markup)) {
+			if (!/^[a-z]/.test(el.tag)) continue;
+			for (const cls of el.classes) {
+				if (!watched.has(cls)) continue;
+				const line = lineAt(markup, el.index);
+				if (allowed.has(cls)) {
+					seen.add(`${rel}|${cls}`);
+					continue;
+				}
+				hits.push(
+					`${hit(rel, line, lines[line - 1] ?? '')} — .${cls} на <${el.tag}>: есть компонент $ui`
+				);
+			}
+		}
+		if (/\{@html\b/.test(markup)) {
+			seenHtml.add(rel);
+			if (!htmlScreens.has(rel)) hits.push(`${rel}: {@html} в экране — компонент $ui вместо разметки строкой`);
+		}
+	}
+	for (const [rel, classes] of Object.entries(ratchet)) {
+		for (const cls of classes) {
+			if (!seen.has(`${rel}|${cls}`)) {
+				hits.push(`${rel}: .${cls} больше нет — уберите из LIBRARY_CLASS_RATCHET`);
+			}
+		}
+	}
+	for (const rel of htmlScreens) {
+		if (!seenHtml.has(rel)) hits.push(`${rel}: {@html} больше нет — уберите из HTML_TAG_SCREENS`);
+	}
+	return hits;
+}
+
+/**
+ * Каждый файл библиотеки (`$ui`, `$lib/layouts`) назван в справочнике
+ * `docs/reference/ui-components.md` или в открытом плане пробела (план 47,
+ * сторож п. 2): иначе компонент заводится мимо правила «сначала план».
+ * @returns {string[]}
+ */
+export function checkLibraryRegistry(webRoot) {
+	const repoRoot = path.resolve(webRoot, '..');
+	const refPath = path.join(repoRoot, 'docs', 'reference', 'ui-components.md');
+	if (!fs.existsSync(refPath)) return ['docs/reference/ui-components.md missing'];
+	const reference = fs.readFileSync(refPath, 'utf8');
+	const hits = [];
+	const files = [
+		...walkSvelte(path.join(webRoot, 'src', 'lib', 'components')),
+		...walkSvelte(path.join(webRoot, 'src', 'lib', 'layouts'))
+	];
+	for (const file of files) {
+		const rel = posixRel(webRoot, file);
+		const name = path.basename(file, '.svelte');
+		if (new RegExp(`(^|[^A-Za-z0-9])${name}([^A-Za-z0-9]|$)`).test(reference)) continue;
+		if (findAuthorizingGapPlan(repoRoot, rel)) continue;
+		hits.push(`${rel}: ${name} нет в docs/reference/ui-components.md и ни в одном открытом плане пробела`);
+	}
+	return hits;
+}
+
+/** Простые классы ui.css: селектор ровно `.name`. */
+function simpleCssClasses(css) {
+	const out = new Set();
+	for (const rule of parseCssRules(css)) {
+		for (const sel of rule.selectors) {
+			const m = sel.match(/^\.([\w-]+)$/);
+			if (m) out.add(m[1]);
+		}
+	}
+	return out;
+}
+
+/**
+ * Строки классов в `<script>` экрана (план 47, сторож п. 4): `const row =
+ * 'flex-mid gap-10'`, потом `class={row}` — сторож классов таких токенов не
+ * видит. Строка из двух и больше слов, где каждое — класс ui.css, — нарушение.
+ * @returns {string[]}
+ */
+export function checkScriptClassStrings(webRoot) {
+	const css = fs.readFileSync(path.join(webRoot, 'src', 'lib', 'styles', 'ui.css'), 'utf8');
+	const classes = simpleCssClasses(css);
+	const hits = [];
+	for (const { file, rel } of prodScreens(webRoot)) {
+		const source = fs.readFileSync(file, 'utf8');
+		const scripts = source.match(/<script\b[^>]*>[\s\S]*?<\/script>/gi) ?? [];
+		for (const block of scripts) {
+			const offset = source.indexOf(block);
+			for (const m of block.matchAll(STRING_LITERAL_RE)) {
+				const text = m[1] ?? m[2] ?? m[3] ?? '';
+				const tokens = text.trim().split(/\s+/);
+				if (tokens.length < 2 || !tokens.every((t) => classes.has(t))) continue;
+				const line = lineAt(source, offset + (m.index ?? 0));
+				hits.push(`${rel}:${line}: '${text.trim()}' — классы пишите в разметке, не в переменной`);
+			}
+		}
+	}
+	return hits;
+}
+
+/**
+ * Классы ui.css (выше служебных), которые встречаются в одном экране и ни в
+ * одном компоненте (план 47, сторож п. 5): вёрстка экрана, живущая в
+ * глобальном файле. Новые не заводятся — список только вниз.
+ */
+export const SINGLE_SCREEN_CLASSES = new Set([
+	'adm-del',
+	'dt',
+	'dd',
+	'mo',
+	'cutoff',
+	'start',
+	'tools',
+	'map-wrap',
+	'ced',
+	'resp',
+	'resp-pic',
+	'resp-line',
+	'resp-ref',
+	'qbar',
+	'fill',
+	'street-list',
+	'empty',
+	'feed-end',
+	'compose-body',
+	'compose-bar',
+	'thumbs',
+	'date-row',
+	'date-pick',
+	'thread',
+	'invite-url',
+	'qr-video'
+]);
+
+const UTILITY_MARKER = '/* Служебные классы:';
+
+function markupClassTokens(source) {
+	const out = new Set();
+	for (const el of markupElements(markupOf(source))) for (const c of el.classes) out.add(c);
+	return out;
+}
+
+/**
+ * @returns {string[]}
+ */
+export function checkSingleScreenClasses(webRoot, allowed = SINGLE_SCREEN_CLASSES) {
+	const css = fs.readFileSync(path.join(webRoot, 'src', 'lib', 'styles', 'ui.css'), 'utf8');
+	const cut = css.indexOf(UTILITY_MARKER);
+	const defined = new Set();
+	for (const rule of parseCssRules(cut >= 0 ? css.slice(0, cut) : css)) {
+		for (const sel of rule.selectors) {
+			for (const m of sel.matchAll(/\.([A-Za-z_][\w-]*)/g)) defined.add(m[1]);
+		}
+	}
+	const libTokens = new Set();
+	const libFiles = [
+		...walkSvelte(path.join(webRoot, 'src', 'lib', 'components')),
+		...walkSvelte(path.join(webRoot, 'src', 'lib', 'layouts'))
+	];
+	for (const file of libFiles) {
+		const source = fs.readFileSync(file, 'utf8');
+		for (const c of markupClassTokens(source)) libTokens.add(c);
+		for (const m of source.matchAll(STRING_LITERAL_RE)) {
+			for (const t of (m[1] ?? m[2] ?? m[3] ?? '').split(/\s+/)) if (t) libTokens.add(t);
+		}
+	}
+	/** @type {Map<string, Set<string>>} */
+	const usage = new Map();
+	for (const { file, rel } of prodScreens(webRoot)) {
+		for (const c of markupClassTokens(fs.readFileSync(file, 'utf8'))) {
+			if (!defined.has(c) || libTokens.has(c)) continue;
+			if (!usage.has(c)) usage.set(c, new Set());
+			usage.get(c).add(rel);
+		}
+	}
+	const hits = [];
+	const single = new Set();
+	for (const [cls, screens] of usage) {
+		if (screens.size !== 1) continue;
+		single.add(cls);
+		if (!allowed.has(cls)) {
+			hits.push(
+				`${[...screens][0]}: .${cls} в ui.css нужен одному экрану — компонент $ui или служебный класс`
+			);
+		}
+	}
+	for (const cls of allowed) {
+		if (!single.has(cls)) hits.push(`.${cls} уже не одноэкранный — уберите из SINGLE_SCREEN_CLASSES`);
+	}
+	return hits;
+}
+
+/**
  * Full check used by `npm run check:ui` and the Cursor stop hook.
  * @returns {{ ok: boolean, groups: Array<{ message: string, hits: string[] }> }}
  */
@@ -776,6 +1019,24 @@ export function checkProject(webRoot) {
 			message:
 				'check-ui: raw <div class="row2"> in prod routes — use SettingsRow or other $ui row components.',
 			hits: rawRouteDivRow2
+		},
+		{
+			message:
+				'check-ui: класс компонента Wynd UI на голом теге или {@html} в экране (план 47, сторож 1).',
+			hits: checkLibraryClasses(webRoot)
+		},
+		{
+			message:
+				'check-ui: файл библиотеки не назван в справочнике ui-components.md (план 47, сторож 2).',
+			hits: checkLibraryRegistry(webRoot)
+		},
+		{
+			message: 'check-ui: строка классов в <script> экрана (план 47, сторож 4).',
+			hits: checkScriptClassStrings(webRoot)
+		},
+		{
+			message: 'check-ui: одноэкранный класс в ui.css (план 47, сторож 5).',
+			hits: checkSingleScreenClasses(webRoot)
 		},
 		{
 			message:

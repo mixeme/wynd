@@ -1,4 +1,6 @@
 ﻿<script lang="ts">
+	import AdminField from '$ui/admin/AdminField.svelte';
+	import Panel from '$ui/admin/Panel.svelte';
 	import { onMount } from 'svelte';
 	import AdminSection from '$ui/admin/AdminSection.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -82,8 +84,7 @@
 			<div class="flex gap-44">
 				<div class="grow">
 					<SectionLabel class="mt-0 mx-0 mb-10">Фотографии</SectionLabel>
-					<div class="flex-mid gap-10 mb-10">
-						<span class="sz-12 w120 nowrap">Длинная сторона</span>
+					<AdminField label="Длинная сторона" unit="px" class="mb-10">
 						<Input
 							admin
 							class="w88"
@@ -91,10 +92,8 @@
 							bind:value={settings.photo_max_px}
 							onchange={() => void persist()}
 						/>
-						<span class="note">px</span>
-					</div>
-					<div class="flex-mid gap-10 mb-10">
-						<span class="sz-12 w120 nowrap">Формат и качество</span>
+					</AdminField>
+					<AdminField label="Формат и качество" unit="WebP" class="mb-10">
 						<Input
 							admin
 							class="w88"
@@ -102,11 +101,9 @@
 							bind:value={settings.photo_quality}
 							onchange={() => void persist()}
 						/>
-						<span class="note">WebP</span>
-					</div>
+					</AdminField>
 					<SectionLabel class="mt-22 mx-0 mb-10">Видео</SectionLabel>
-					<div class="flex-mid gap-10 mb-10">
-						<span class="sz-12 w120 nowrap">Разрешение</span>
+					<AdminField label="Разрешение" unit="p" class="mb-10">
 						<Input
 							admin
 							class="w88"
@@ -114,10 +111,8 @@
 							bind:value={settings.video_max_height}
 							onchange={() => void persist()}
 						/>
-						<span class="note">p</span>
-					</div>
-					<div class="flex-mid gap-10">
-						<span class="sz-12 w120 nowrap">Битрейт</span>
+					</AdminField>
+					<AdminField label="Битрейт" unit="Мбит/с">
 						<Input
 							admin
 							class="w88"
@@ -125,11 +120,9 @@
 							bind:value={videoBitrateMbps}
 							onchange={() => void persistVideoBitrateMbps()}
 						/>
-						<span class="note">Мбит/с</span>
-					</div>
+					</AdminField>
 					<SectionLabel class="mt-22 mx-0 mb-10">Файлы</SectionLabel>
-					<div class="flex-mid gap-10">
-						<span class="sz-12 w120 nowrap">Потолок размера</span>
+					<AdminField label="Потолок размера" unit="МБ">
 						<Input
 							admin
 							class="w88"
@@ -137,13 +130,12 @@
 							bind:value={attachmentMb}
 							onchange={() => void persistAttachmentMb()}
 						/>
-						<span class="note">МБ</span>
-					</div>
+					</AdminField>
 				</div>
 				<div class="grow">
-					<div class="panel sz-13" style="padding:16px 18px">
+					<Panel class="sz-13" style="padding:16px 18px">
 						Wynd хранит то, что сказано, а не вашу медиатеку. Оригиналы остаются на телефоне.
-					</div>
+					</Panel>
 					<div class="note mt-16 lh-16">
 						Дефолты щедрые, а не экономные: сжатие необратимо, оригинал сюда не приезжает. Если
 						через год качества окажется мало, переделать будет нечего — экономия должна быть

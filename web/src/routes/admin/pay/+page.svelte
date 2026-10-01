@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import Panel from '$ui/admin/Panel.svelte';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import AdminSection from '$ui/admin/AdminSection.svelte';
@@ -80,10 +81,10 @@
 				<div>
 					<SectionLabel class="mt-0 mx-0 mb-8">Как это видит человек</SectionLabel>
 					{#if requisites.trim()}
-						<div class="panel pad-12">
+						<Panel class="pad-12">
 							<Label class="muted mt-0 mx-0 mb-8">Куда платить</Label>
 							<div class="pre sz-13 lh-15">{requisites}</div>
-						</div>
+						</Panel>
 					{:else}
 						<Hint>Реквизиты пока пустые — заявку и баннер не показываем.</Hint>
 					{/if}

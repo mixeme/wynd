@@ -6,6 +6,8 @@
 	import CodeBlock from '$ui/admin/CodeBlock.svelte';
 	import DataTable from '$ui/admin/DataTable.svelte';
 	import InlineInput from '$ui/admin/InlineInput.svelte';
+	import AdminField from '$ui/admin/AdminField.svelte';
+	import Panel from '$ui/admin/Panel.svelte';
 	import QuotaRequestRow from '$ui/admin/QuotaRequestRow.svelte';
 	import StackBar from '$ui/admin/StackBar.svelte';
 	import StatusIcon from '$ui/admin/StatusIcon.svelte';
@@ -1043,6 +1045,10 @@
 						<div style="margin-top:14px">
 							<InlineInput>40 ГБ</InlineInput>
 						</div>
+						<AdminField label="Длинная сторона" unit="px" class="mt-14">
+							<InlineInput>2048</InlineInput>
+						</AdminField>
+						<Panel class="mt-14 sz-13">Оригиналы остаются на телефоне.</Panel>
 					</AdminSection>
 				</AdminWideLayout>
 			</figure>
