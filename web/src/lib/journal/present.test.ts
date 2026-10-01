@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	attachmentBlocks,
 	albumCompressionHint,
 	albumDownloadFilename,
 	audioRowLabel,
@@ -145,5 +146,21 @@ describe('present', () => {
 		expect(lightboxCaption(post, undefined, fmt)).toBe('Аня · сегодня, 14:02');
 		expect(albumCompressionHint(post)).toBe('снято 12 августа · файлы сжаты');
 		expect(albumCompressionHint(post)).not.toMatch(/px/);
+	});
+
+	it('звуки подряд — одна группа, файл между ними её разрывает', () => {
+		const a = (id: string, mime: string, filename: string) =>
+			({ blob_id: id, kind: 'attachment', is_cover: false, mime_type: mime, filename }) as const;
+		const blocks = attachmentBlocks([
+			a('1', 'audio/mpeg', 'a.mp3'),
+			a('2', '', 'b.m4a'),
+			a('3', 'application/pdf', 'c.pdf'),
+			a('4', 'audio/ogg', 'd.ogg')
+		]);
+		expect(blocks.map((b) => (b.kind === 'audio' ? b.items.map((i) => i.blob_id).join('+') : b.item.blob_id))).toEqual([
+			'1+2',
+			'3',
+			'4'
+		]);
 	});
 });

@@ -8,6 +8,7 @@
 	import { initViewportHeight } from '$lib/session/viewport';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
+	import AudioBar from '$ui/chrome/AudioBar.svelte';
 	import { pwaInfo } from 'virtual:pwa-info';
 
 	let { children } = $props();
@@ -25,7 +26,23 @@
 		const isLocal =
 			location.hostname === '127.0.0.1' || location.hostname === 'localhost';
 		if (pwaInfo && !isLocal) {
-			void import('virtual:pwa-register').then(({ registerSW }) => registerSW({ immediate: true }));
+			void import('virtual:pwa-register').then(({ registerSW }) => {
+				// Новая версия не перезагружает открытый экран: она встаёт, когда
+				// приложение ушло в фон, или сама при следующем запуске (vite.config).
+				let pending = false;
+				const update = registerSW({
+					immediate: true,
+					onNeedRefresh() {
+						pending = true;
+					}
+				});
+				document.addEventListener('visibilitychange', () => {
+					if (pending && document.visibilityState === 'hidden') {
+						pending = false;
+						void update(true);
+					}
+				});
+			});
 		}
 		void initSession().then(() => {
 			startSyncForAllSessions();
@@ -88,6 +105,7 @@
 
 <div class="app" class:dev={$page.url.pathname.startsWith('/dev')}>
 	{@render children()}
+	<AudioBar />
 </div>
 
 <style>

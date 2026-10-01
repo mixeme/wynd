@@ -1,14 +1,14 @@
 ﻿<script lang="ts">
-	import { onDestroy } from 'svelte';
 	import Icon from '$ui/Icon.svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import { audioTimeLabel } from '$lib/journal/present';
+	import { formatBytes } from '$lib/format/bytes';
 	import {
 		audioPlayKey,
 		audioTrack,
-		stopAudioIf,
 		subscribeAudio,
-		toggleAudio
+		toggleAudio,
+		type AudioMeta
 	} from '$lib/media/audioPlay';
 
 	let {
@@ -22,7 +22,9 @@
 		blobId = '',
 		coverUrl = '',
 		onDownload,
-		preview
+		preview,
+		meta,
+		grouped = false
 	}: {
 		filename: string;
 		size?: string;
@@ -36,6 +38,10 @@
 		onDownload?: () => void;
 		/** Каталог библиотеки: рисунок без файла. */
 		preview?: { progress: number; time: string };
+		/** Для полосы плеера на других экранах (4.20): что играет и откуда. */
+		meta?: AudioMeta;
+		/** Несколько звуков записи — одна рамка, строки через черту (4.18). */
+		grouped?: boolean;
 	} = $props();
 
 	let revision = $state(0);
@@ -53,16 +59,29 @@
 		return audioTrack(audioPlayKey(origin, blobId));
 	});
 
+	// Пока файл скачивается (4.19), полоска — сколько скачано, серым.
+	const loading = $derived(preview ? undefined : track?.loading);
 	const progress = $derived(
 		preview
 			? preview.progress
-			: track?.duration
-				? Math.min(1, track.current / track.duration)
-				: 0
+			: loading
+				? loading.total
+					? Math.min(1, loading.received / loading.total)
+					: 0
+				: track?.duration
+					? Math.min(1, track.current / track.duration)
+					: 0
 	);
 	const timeLabel = $derived(
-		preview ? preview.time : audioTimeLabel(Boolean(track?.started), track?.current ?? 0, track?.duration ?? 0)
+		preview
+			? preview.time
+			: loading
+				? loading.total
+					? `загрузка · ${formatBytes(loading.received)} из ${formatBytes(loading.total)}`
+					: 'загрузка…'
+				: audioTimeLabel(Boolean(track?.started), track?.current ?? 0, track?.duration ?? 0)
 	);
+	const showPause = $derived(Boolean(track?.playing || loading));
 	const barWidth = $derived(`${progress * 100}%`);
 
 	function onClick(e: MouseEvent) {
@@ -74,20 +93,16 @@
 		e.stopPropagation();
 		// Свой сервер — origin ''. Проверка на истинность глушила звук целиком.
 		if (!blobId) return;
-		void toggleAudio(origin, blobId);
+		void toggleAudio(origin, blobId, meta);
 	}
-
-	onDestroy(() => {
-		if (audio && blobId) stopAudioIf(audioPlayKey(origin, blobId));
-	});
 </script>
 
 {#if audio}
-	<div class="att audio {className}" {style}>
+	<div class="att audio {className}" class:grouped {style}>
 		<button
 			type="button"
 			class="att-play"
-			aria-pressed={track?.playing ? 'true' : 'false'}
+			aria-pressed={showPause ? 'true' : 'false'}
 			onclick={onPlay}
 		>
 			<div class="pic att-cover">
@@ -95,10 +110,10 @@
 			</div>
 			<div class="att-body">
 				<div class="att-line">
-					<Icon name={track?.playing ? 'pause' : 'play'} />
+					<Icon name={showPause ? 'pause' : 'play'} />
 					<div class="att-name">{filename}</div>
 				</div>
-				<div class="att-bar" aria-hidden="true"><i style:width={barWidth}></i></div>
+				<div class="att-bar" class:loading aria-hidden="true"><i style:width={barWidth}></i></div>
 				<div class="sz">{timeLabel}</div>
 			</div>
 		</button>

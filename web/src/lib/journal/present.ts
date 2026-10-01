@@ -88,6 +88,28 @@ export function isAudioMedia(mime?: string, filename?: string): boolean {
 	return AUDIO_EXT.has(ext);
 }
 
+/**
+ * Вложения записи по порядку, но звуки подряд — одной группой: несколько
+ * звуков рисуются одной рамкой (4.18), одиночный — как на 4.15.
+ */
+export type AttachmentBlock =
+	| { kind: 'audio'; items: MediaSummary[] }
+	| { kind: 'file'; item: MediaSummary };
+
+export function attachmentBlocks(list: MediaSummary[]): AttachmentBlock[] {
+	const out: AttachmentBlock[] = [];
+	for (const att of list) {
+		if (isAudioMedia(att.mime_type, att.filename)) {
+			const last = out[out.length - 1];
+			if (last?.kind === 'audio') last.items.push(att);
+			else out.push({ kind: 'audio', items: [att] });
+		} else {
+			out.push({ kind: 'file', item: att });
+		}
+	}
+	return out;
+}
+
 /** Оба тега — «исполнитель — название». Одного или пустых нет: остаётся имя файла. */
 export function audioRowLabel(att: MediaSummary): string {
 	const artist = att.audio_artist?.trim() ?? '';

@@ -28,6 +28,7 @@
 	import { splitMentionBody } from '$lib/journal/mentions';
 	import {
 		attachmentLabel,
+		attachmentBlocks,
 		attachmentMedia,
 		attachmentSizeLabel,
 		audioRowLabel,
@@ -48,7 +49,7 @@
 		removeReaction,
 		setReaction
 	} from '$lib/journal/posts';
-	import type { Comment, FeedPost } from '$lib/journal/types';
+	import type { Comment, FeedPost, MediaSummary } from '$lib/journal/types';
 	import { downloadBlob, getMediaUrl } from '$lib/media/objectUrl';
 	import {
 		enqueueComment,
@@ -410,26 +411,45 @@
 			{/each}
 		{/snippet}
 		{#snippet postMedia()}
-			{#each attachmentMedia(currentPost.media) as att (att.blob_id)}
-				{#if isAudioMedia(att.mime_type, att.filename)}
-					<AttachmentRow
-						audio
-						filename={audioRowLabel(att)}
-						origin={circle.origin}
-						blobId={att.blob_id}
-						coverUrl={att.audio_cover_blob_id
-							? audioCoverUrls[att.audio_cover_blob_id]
-							: ''}
-						onDownload={() => {
-							void downloadBlob(circle.origin, att.blob_id, attachmentLabel(att));
-						}}
-					/>
+			{#each attachmentBlocks(attachmentMedia(currentPost.media)) as block, bi (bi)}
+				{#if block.kind === 'audio'}
+					<!-- Несколько звуков записи — одна рамка (4.18), один — как на 4.15. -->
+					{#snippet audioRow(att: MediaSummary, grouped: boolean)}
+						<AttachmentRow
+							audio
+							{grouped}
+							filename={audioRowLabel(att)}
+							origin={circle.origin}
+							blobId={att.blob_id}
+							coverUrl={att.audio_cover_blob_id ? audioCoverUrls[att.audio_cover_blob_id] : ''}
+							meta={{
+								title: audioRowLabel(att),
+								coverUrl: att.audio_cover_blob_id ? audioCoverUrls[att.audio_cover_blob_id] : undefined,
+								circleId: circle.circleId,
+								circleName: circle.name,
+								color: circle.colorHex,
+								postId: currentPost.id
+							}}
+							onDownload={() => {
+								void downloadBlob(circle.origin, att.blob_id, attachmentLabel(att));
+							}}
+						/>
+					{/snippet}
+					{#if block.items.length > 1}
+						<div class="att-group">
+							{#each block.items as att (att.blob_id)}
+								{@render audioRow(att, true)}
+							{/each}
+						</div>
+					{:else}
+						{@render audioRow(block.items[0], false)}
+					{/if}
 				{:else}
 					<AttachmentRow
-						filename={attachmentLabel(att)}
-						size={attachmentSizeLabel(att, formatBytes)}
+						filename={attachmentLabel(block.item)}
+						size={attachmentSizeLabel(block.item, formatBytes)}
 						onclick={() => {
-							void downloadBlob(circle.origin, att.blob_id, attachmentLabel(att));
+							void downloadBlob(circle.origin, block.item.blob_id, attachmentLabel(block.item));
 						}}
 					/>
 				{/if}

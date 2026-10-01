@@ -44,10 +44,14 @@
 	const canClearTitle = $derived(hasCustomTitle && isEditableActive(titleEditableUntil));
 	// Вышедший с доступом читает, но не пишет: подсказка и правка названия ему
 	// не показываются — сервер ответил бы forbidden (план 42, SCR-2).
+	// Название и обложку меняет тот, у кого есть запись за этот день
+	// (wynd.html, «Дни»). Без своей записи сервер ответил бы forbidden —
+	// поэтому ни подсказки «нажмите», ни входа в правку.
+	const canEditDay = $derived(
+		circle.canWrite && posts.some((p) => p.identity_id === circle.identityId)
+	);
 	const titleSubtitle = $derived(
-		circle.canWrite
-			? `${formatEntryDate(entryDate)} · нажмите, чтобы изменить`
-			: formatEntryDate(entryDate)
+		canEditDay ? `${formatEntryDate(entryDate)} · нажмите, чтобы изменить` : formatEntryDate(entryDate)
 	);
 
 	function isBackfilled(post: FeedPost): boolean {
@@ -205,8 +209,8 @@
 			coverUrl={coverUrl || undefined}
 			title={editingTitle ? undefined : dayTitle}
 			subtitle={editingTitle ? undefined : titleSubtitle}
-			oncover={circle.canWrite ? openDayAlbum : undefined}
-			ontitle={editingTitle || !circle.canWrite ? undefined : startEditTitle}
+			oncover={canEditDay ? openDayAlbum : undefined}
+			ontitle={editingTitle || !canEditDay ? undefined : startEditTitle}
 		/>
 
 		{#if editingTitle}
@@ -230,10 +234,14 @@
 			{/if}
 		{/if}
 
-		{#if circle.canWrite}
-			<Hint style="margin:12px 16px">
+		{#if canEditDay}
+			<Hint class="gutter-12">
 				День общий: название и обложку может сменить любой, у кого есть запись за этот день. Если
 				поменяют несколько — останется последнее.
+			</Hint>
+		{:else if circle.canWrite}
+			<Hint class="gutter-12">
+				Название и обложку дня меняют те, у кого есть запись за этот день.
 			</Hint>
 		{/if}
 		{#each posts as post (post.id)}
@@ -286,7 +294,7 @@
 			<Hint style="margin:24px 16px">В этот день записей нет</Hint>
 		{/if}
 		{#if error}
-			<Hint style="margin:12px 16px">{error}</Hint>
+			<Hint class="gutter-12">{error}</Hint>
 		{/if}
 	{/if}
 </CircleLayout>

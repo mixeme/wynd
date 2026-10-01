@@ -25,7 +25,12 @@ export default defineConfig({
 			base: '/',
 			scope: '/',
 			strategies: 'generateSW',
-			registerType: 'autoUpdate',
+			// Не autoUpdate: тот перезагружал страницу, как только новая версия
+			// приходила на запуске, и веб-приложение Firefox на Android от такой
+			// перезагрузки закрывало окно — «мигнуло и закрылось». Новая версия
+			// ждёт и встаёт, когда приложение уходит в фон или при следующем
+			// запуске (+layout.svelte).
+			registerType: 'prompt',
 			manifest: {
 				name: 'Wynd',
 				short_name: 'Wynd',

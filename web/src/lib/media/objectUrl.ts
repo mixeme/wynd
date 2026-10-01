@@ -107,7 +107,38 @@ function touch(key: string): string | undefined {
 	return entry.url;
 }
 
-export async function getMediaUrl(origin: string, blobId: string): Promise<string> {
+export interface MediaLoadOptions {
+	/** Ход скачивания: звук показывает «загрузка · N из M МБ» (4.19). */
+	onProgress?: (received: number, total: number) => void;
+	signal?: AbortSignal;
+}
+
+// Тело ответа кусками, чтобы видеть ход. total = 0 — сервер размер не сказал.
+async function readWithProgress(
+	res: Response,
+	onProgress: (received: number, total: number) => void
+): Promise<Blob> {
+	const total = Number(res.headers.get('Content-Length')) || 0;
+	if (!res.body) return res.blob();
+	const reader = res.body.getReader();
+	const parts: BlobPart[] = [];
+	let received = 0;
+	onProgress(0, total);
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		parts.push(value);
+		received += value.byteLength;
+		onProgress(received, total);
+	}
+	return new Blob(parts);
+}
+
+export async function getMediaUrl(
+	origin: string,
+	blobId: string,
+	options: MediaLoadOptions = {}
+): Promise<string> {
 	const key = mediaKey(origin, blobId);
 	const cached = touch(key);
 	if (cached) return cached;
@@ -117,10 +148,10 @@ export async function getMediaUrl(origin: string, blobId: string): Promise<strin
 		return remember(key, new Blob([stored.buffer], { type: stored.mime }));
 	}
 
-	const res = await apiFetch(origin, `/blobs/${blobId}`);
+	const res = await apiFetch(origin, `/blobs/${blobId}`, { signal: options.signal });
 	const mime = res.headers.get('Content-Type') || 'application/octet-stream';
 	// Blob, а не arrayBuffer(): браузер держит его вне кучи JS.
-	const blob = await res.blob();
+	const blob = options.onProgress ? await readWithProgress(res, options.onProgress) : await res.blob();
 	const typed = blob.type ? blob : new Blob([blob], { type: mime });
 	if (typed.size <= idbLimit) {
 		await putMedia(key, { buffer: await typed.arrayBuffer(), mime });

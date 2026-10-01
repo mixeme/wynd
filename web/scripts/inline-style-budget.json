@@ -23,7 +23,7 @@
 	"src/routes/circles/[id]/archive/+page.svelte": 7,
 	"src/routes/circles/[id]/compose/+page.svelte": 7,
 	"src/routes/circles/[id]/days/+page.svelte": 3,
-	"src/routes/circles/[id]/days/[date]/+page.svelte": 10,
+	"src/routes/circles/[id]/days/[date]/+page.svelte": 8,
 	"src/routes/circles/[id]/days/[date]/album/+page.svelte": 6,
 	"src/routes/circles/[id]/grid/+page.svelte": 3,
 	"src/routes/circles/[id]/join/+page.svelte": 11,
