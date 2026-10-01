@@ -166,9 +166,9 @@
 
 Отступы везде разные: `mt-48` / `margin-top:80px` / `28px` / `mt-24`, у пояснения — `hint-inset` / `margin:10px 30px 0` / `8px 34px 0`. → `EmptyState` (`title`, `mark?`, `children`, `actions` snippet).
 
-**2.4 Лист «Реакции» — высокая.** `circles/[id]/+page.svelte:863–879` ≡ `circles/[id]/posts/[postId]/+page.svelte:570–586`: заголовок, строки и пояснение совпадают дословно. → `ReactionsSheet` (`reactions`, `color`, `ondismiss`).
+**2.4 Лист «Реакции» — высокая.** `circles/[id]/+page.svelte:863–879` ≡ `circles/[id]/posts/[postId]/+page.svelte:570–586`: заголовок, строки и пояснение совпадают дословно. → `ReactionsSheet` (`reactions`, `color`, `ondismiss`). **Сделано в 0.18.10:** `$ui/overlays/ReactionsSheet.svelte` в ленте и на экране записи.
 
-**2.5 Блок вложений записи (звуки рамкой `.att-group` и файлы) — высокая.** `circles/[id]/+page.svelte:688–730` ≡ `circles/[id]/posts/[postId]/+page.svelte:414–455`: тот же цикл `attachmentBlocks`, тот же snippet `audioRow`, та же рамка `<div class="att-group">`. Разница — только источник обложек: `mediaUrls` или `audioCoverUrls`. → `AttachmentList` (или `AttachmentGroup` + `AttachmentRow`), который сам рисует рамку; подробнее в 3.2 и 5.6.
+**2.5 Блок вложений записи (звуки рамкой `.att-group` и файлы) — высокая.** `circles/[id]/+page.svelte:688–730` ≡ `circles/[id]/posts/[postId]/+page.svelte:414–455`: тот же цикл `attachmentBlocks`, тот же snippet `audioRow`, та же рамка `<div class="att-group">`. Разница — только источник обложек: `mediaUrls` или `audioCoverUrls`. → `AttachmentList` (или `AttachmentGroup` + `AttachmentRow`), который сам рисует рамку; подробнее в 3.2 и 5.6. **Сделано в 0.18.10:** `$ui/data/AttachmentList.svelte` (`items`, `origin`, `circleId`, `circleName`, `color`, `postId`, `coverUrls`) — рамку `.att-group` и `grouped` ставит сам; в ленте и на экране записи.
 
 **2.6 Автор записи: `Avatar` + `div.n` + `div.tm` — средняя.**
 - `circles/[id]/+page.svelte:626–637`, `:753–763`
@@ -195,7 +195,7 @@
 
 Половина копий на служебных классах (`w72 m-0`), половина на инлайн-стилях. В админке тот же паттерн на `note`: `admin/access:220–251`, `admin/+page:330–375`, `admin/compress:85–140`. → `NumberField` (`unit`, `min`, `max`, `value`) или проп `unit` у `Input`.
 
-**2.10 Выбор «Окно правок» — высокая.** `circles/new/+page.svelte:77–113` ≡ `circles/[id]/settings/+page.svelte:379–407`: шесть чипов в двух `ChipGroup` и поле «часов». → `EditWindowPicker` (`value`, `customHours`, `onchange`).
+**2.10 Выбор «Окно правок» — высокая.** `circles/new/+page.svelte:77–113` ≡ `circles/[id]/settings/+page.svelte:379–407`: шесть чипов в двух `ChipGroup` и поле «часов». → `EditWindowPicker` (`value`, `customHours`, `onchange`). **Сделано в 0.18.10:** `$ui/forms/EditWindowPicker.svelte` (`value`, `bind:customHours`, `onpick`, `oncustomchange`) в «Новом круге» и настройках; подсказка о сдвиге часов остаётся в настройках.
 
 **2.11 Фильтры поиска — средняя.** `circles/[id]/search/+page.svelte:223–240` и `search/+page.svelte:229–241`: чипы «Период / С фото / С местом» и ряд из двух дат `div style="display:flex;gap:8px;margin:8px 16px 0"` + `Input style="flex:1"`. Snippet превью совпадает дословно: `circles/[id]/search:259–268` и `search:261–270`. → `DateRange` (`from`, `to`) и проп `kind` у `SearchResultRow` вместо snippet ради «день» / «· комментарий».
 
@@ -455,10 +455,10 @@
 ### Завести новый компонент в библиотеке (пробел Wynd UI — по плану `docs/plans/<slug>.plan.md`)
 Высокий приоритет — дубли целых виджетов:
 1. `IdentityForm` + помощник фото (5.8)
-2. `ConfirmDialog` (2.2)
-3. `ReactionsSheet` (2.4)
-4. `AttachmentList` / `AttachmentGroup` (2.5, 3.2)
-5. `EditWindowPicker` (2.10)
+2. `ConfirmDialog` (2.2) — **сделано (0.18.9)**
+3. `ReactionsSheet` (2.4) — **сделано (0.18.10)**
+4. `AttachmentList` / `AttachmentGroup` (2.5, 3.2) — **сделано (0.18.10):** `AttachmentList`
+5. `EditWindowPicker` (2.10) — **сделано (0.18.10)**
 
 Средний приоритет — паттерны в 2+ экранах:
 - `EmptyState` (2.3), `PostRef` / `ResponseRow` (3.1), `MentionText` (2.7), `PullRefresh` (2.8), `NumberField` (2.9), `DateRange` (2.11), `QrCode` + `InviteLinkCard` (2.12), `Thumb` (2.14), `TextLink` (2.16), `FilePicker` (2.17);

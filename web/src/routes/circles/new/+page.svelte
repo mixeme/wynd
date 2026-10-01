@@ -1,9 +1,8 @@
 ﻿<script lang="ts">
+	import EditWindowPicker from '$ui/forms/EditWindowPicker.svelte';
 	import { goto } from '$app/navigation';
 	import { getContext } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
-	import Chip from '$ui/forms/Chip.svelte';
-	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import ColorSwatches from '$ui/forms/ColorSwatches.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Input from '$ui/forms/Input.svelte';
@@ -75,43 +74,11 @@
 	<Label>Цвет</Label>
 	<ColorSwatches bind:value={form.color} />
 	<Label>Окно правок</Label>
-	<ChipGroup>
-		<Chip
-			selected={form.editWindow === 'chronicle'}
-			onclick={() => (form.editWindow = 'chronicle')}
-		>
-			Летопись
-		</Chip>
-		<Chip selected={form.editWindow === '10m'} onclick={() => (form.editWindow = '10m')}>
-			10 мин
-		</Chip>
-		<Chip selected={form.editWindow === '1h'} onclick={() => (form.editWindow = '1h')}>Час</Chip>
-		<Chip selected={form.editWindow === '1d'} onclick={() => (form.editWindow = '1d')}>Сутки</Chip>
-	</ChipGroup>
-	<ChipGroup style="margin-top:8px">
-		<Chip
-			selected={form.editWindow === 'unlimited'}
-			onclick={() => (form.editWindow = 'unlimited')}
-		>
-			Без ограничения
-		</Chip>
-		<Chip selected={form.editWindow === 'custom'} onclick={() => (form.editWindow = 'custom')}>
-			Своё…
-		</Chip>
-	</ChipGroup>
-	{#if form.editWindow === 'custom'}
-		<div class="rowin" style="margin-top:10px;align-items:center">
-			<Input
-				active
-				type="number"
-				min="1"
-				max="8760"
-				bind:value={form.customHours}
-				style="width:72px;margin:0"
-			/>
-			<span class="hint m-0">часов</span>
-		</div>
-	{/if}
+	<EditWindowPicker
+		value={form.editWindow}
+		bind:customHours={form.customHours}
+		onpick={(key) => (form.editWindow = key)}
+	/>
 	<Hint>
 		{#if form.diaryMode}
 			Дневник, который нельзя переписать задним числом, — сильная штука. Поэтому здесь предложена

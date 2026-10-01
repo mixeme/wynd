@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ReactionsSheet from '$ui/overlays/ReactionsSheet.svelte';
+	import AttachmentList from '$ui/data/AttachmentList.svelte';
 	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
 	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
 	import MentionText from '$ui/data/MentionText.svelte';
@@ -6,7 +8,6 @@
 	import { page } from '$app/stores';
 	import { getContext, onDestroy, onMount, tick } from 'svelte';
 	import ArchiveBanner from '$ui/data/ArchiveBanner.svelte';
-	import AttachmentRow from '$ui/data/AttachmentRow.svelte';
 	import Avatar from '$ui/data/Avatar.svelte';
 	import EntryDateMark from '$ui/data/EntryDateMark.svelte';
 	import MediaTile from '$ui/data/MediaTile.svelte';
@@ -21,10 +22,7 @@
 	import CommentPreview from '$ui/data/CommentPreview.svelte';
 	import PostCard from '$ui/data/PostCard.svelte';
 	import ReactionBar from '$ui/data/ReactionBar.svelte';
-	import ReactionListRow from '$ui/data/ReactionListRow.svelte';
-	import SectionLabel from '$ui/data/SectionLabel.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
-	import OverlayLayout from '$lib/layouts/OverlayLayout.svelte';
 	import { isAccessError } from '$lib/api/client';
 	import {
 		PTR,
@@ -41,20 +39,15 @@
 	import { formatBytes } from '$lib/format/bytes';
 	import { resolveMediaUrls } from '$lib/media/batch';
 	import { WORD, plural } from '$lib/format/plural';
-	import { formatDeadline, formatEntryDate, formatPostTime, isEditableActive } from '$lib/format/time';
+	import { formatDeadline, formatEntryDate, formatPostTime } from '$lib/format/time';
 	import { isPostArchiveLocked } from '$lib/journal/archive';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadFeed } from '$lib/journal/feed';
 	import { applyOwnReaction, canReact } from '$lib/journal/reactions';
 	import { fetchMembers, type MemberInfo } from '$lib/circles/settings';
 	import {
-		attachmentLabel,
-		attachmentBlocks,
 		isAttachedToOtherDay,
 		attachmentMedia,
-		attachmentSizeLabel,
-		audioRowLabel,
-		isAudioMedia,
 		authorInitial,
 		commentPreview,
 		coverMedia,
@@ -78,7 +71,6 @@
 		getDayPromptShowCount,
 		isDayPromptDismissed
 	} from '$lib/idb/db';
-	import { downloadBlob } from '$lib/media/objectUrl';
 	import {
 		enqueuePost,
 		enqueueReaction,
@@ -685,49 +677,15 @@
 							onclick={() => openAlbum(post.id)}
 						/>
 					{/if}
-					{#each attachmentBlocks(attachmentMedia(post.media)) as block, bi (bi)}
-						{#if block.kind === 'audio'}
-							<!-- Несколько звуков записи — одна рамка (4.18), один — как на 4.15. -->
-							{#snippet audioRow(att: MediaSummary, grouped: boolean)}
-								<AttachmentRow
-									audio
-									{grouped}
-									filename={audioRowLabel(att)}
-									origin={circle.origin}
-									blobId={att.blob_id}
-									coverUrl={att.audio_cover_blob_id ? mediaUrls[att.audio_cover_blob_id] : ''}
-									meta={{
-										title: audioRowLabel(att),
-										coverUrl: att.audio_cover_blob_id ? mediaUrls[att.audio_cover_blob_id] : undefined,
-										circleId: circle.circleId,
-										circleName: circle.name,
-										color: circle.colorHex,
-										postId: post.id
-									}}
-									onDownload={() => {
-										void downloadBlob(circle.origin, att.blob_id, attachmentLabel(att));
-									}}
-								/>
-							{/snippet}
-							{#if block.items.length > 1}
-								<div class="att-group">
-									{#each block.items as att (att.blob_id)}
-										{@render audioRow(att, true)}
-									{/each}
-								</div>
-							{:else}
-								{@render audioRow(block.items[0], false)}
-							{/if}
-						{:else}
-							<AttachmentRow
-								filename={attachmentLabel(block.item)}
-								size={attachmentSizeLabel(block.item, formatBytes)}
-								onclick={() => {
-									void downloadBlob(circle.origin, block.item.blob_id, attachmentLabel(block.item));
-								}}
-							/>
-						{/if}
-					{/each}
+					<AttachmentList
+						items={attachmentMedia(post.media)}
+						origin={circle.origin}
+						circleId={circle.circleId}
+						circleName={circle.name}
+						color={circle.colorHex}
+						postId={post.id}
+						coverUrls={mediaUrls}
+					/>
 				{/snippet}
 				{#snippet postComments()}
 					{@const preview = commentPreview(post.comments)}
@@ -861,22 +819,7 @@
 	</div>
 
 	{#if reactionsPost}
-		<OverlayLayout label="Реакции" ondismiss={closeReactions}>
-			<SectionLabel style="margin-top:2px">
-				Реакция · {reactionsPost.reactions?.length ?? 0}
-			</SectionLabel>
-			{#each reactionsPost.reactions ?? [] as rx (rx.id)}
-				<ReactionListRow
-					initial={authorInitial(rx.author_name)}
-					name={rx.author_name}
-					color={circle.colorHex}
-					icon={reactionIconName(rx.emoji)}
-				/>
-			{/each}
-			<Hint class="mt-14">
-				Реакция одна на человека и подчиняется окну правок. Хотите сказать больше — напишите словами.
-			</Hint>
-		</OverlayLayout>
+		<ReactionsSheet reactions={reactionsPost.reactions ?? []} color={circle.colorHex} ondismiss={closeReactions} />
 	{/if}
 
 	{#if queueToRemove !== null}

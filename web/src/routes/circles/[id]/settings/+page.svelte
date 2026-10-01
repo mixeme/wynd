@@ -1,4 +1,5 @@
 <script lang="ts">
+	import EditWindowPicker from '$ui/forms/EditWindowPicker.svelte';
 	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -376,36 +377,14 @@
 
 		{#if canSettings}
 			<Label>Окно правок</Label>
-			<ChipGroup>
-				<Chip selected={editWindow === 'chronicle'} onclick={() => void onEditWindow('chronicle')}>
-					Летопись
-				</Chip>
-				<Chip selected={editWindow === '10m'} onclick={() => void onEditWindow('10m')}>10 мин</Chip>
-				<Chip selected={editWindow === '1h'} onclick={() => void onEditWindow('1h')}>Час</Chip>
-				<Chip selected={editWindow === '1d'} onclick={() => void onEditWindow('1d')}>Сутки</Chip>
-			</ChipGroup>
-			<ChipGroup style="margin-top:8px">
-				<Chip selected={editWindow === 'unlimited'} onclick={() => void onEditWindow('unlimited')}>
-					Без ограничения
-				</Chip>
-				<Chip selected={editWindow === 'custom'} onclick={() => void onEditWindow('custom')}>Своё…</Chip>
-			</ChipGroup>
-			{#if editWindow === 'custom'}
-				<div class="rowin" style="margin-top:10px;align-items:center">
-					<Input
-						active
-						type="number"
-						min="1"
-						max="8760"
-						bind:value={customHours}
-						onchange={() => void onCustomHoursChange()}
-						style="width:72px;margin:0"
-					/>
-					<span class="hint m-0">часов</span>
-				</div>
-				{#if customHoursHint}
-					<Hint class="mt-8">{customHoursHint}</Hint>
-				{/if}
+			<EditWindowPicker
+				value={editWindow}
+				bind:customHours
+				onpick={(key) => void onEditWindow(key)}
+				oncustomchange={() => void onCustomHoursChange()}
+			/>
+			{#if editWindow === 'custom' && customHoursHint}
+				<Hint class="mt-8">{customHoursHint}</Hint>
 			{/if}
 			<Hint
 				>Сколько времени после публикации запись можно править. Новое правило подействует только на новые записи.</Hint
