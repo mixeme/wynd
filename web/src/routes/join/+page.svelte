@@ -31,6 +31,7 @@
 	let checking = $state(false);
 	let error = $state('');
 	let linkPicker: FilePicker | undefined = $state();
+	let linkText = $state('');
 
 	// Из «Серверов» («Добавить сервер») назад — туда же: «/» у вошедшего
 	// перекидывает в список кругов, и путь обратно терялся.
@@ -94,6 +95,30 @@
 		goto(path);
 	}
 
+	// Своё поле для ссылки (план 46, C5): в PWA ссылку из мессенджера
+	// приложение не перехватывает — её копируют и вставляют сюда.
+	function openLinkText(text: string) {
+		const trimmed = text.trim();
+		if (!trimmed) return;
+		error = '';
+		const foreign = foreignWyndLinkOrigin(trimmed);
+		if (foreign) {
+			error = foreignLinkError(foreign);
+			return;
+		}
+		const path = parseWyndLink(trimmed);
+		if (path) goto(path);
+		else error = 'Это не ссылка-приглашение Wynd';
+	}
+
+	function onLinkPaste(event: ClipboardEvent) {
+		const text = event.clipboardData?.getData('text') ?? '';
+		if (!text.trim()) return;
+		event.preventDefault();
+		linkText = text.trim();
+		openLinkText(linkText);
+	}
+
 	async function openLinkPicker() {
 		error = '';
 		try {
@@ -125,7 +150,7 @@
 
 	async function onSubmit() {
 		error = '';
-		if (!instance || blocked) return;
+		if (!instance) return;
 		const trimmed = email.trim();
 		if (!trimmed) {
 			error = 'Введите почту';
@@ -135,8 +160,10 @@
 			error = INVALID_EMAIL_HINT;
 			return;
 		}
-		const flow = flowForJoin(instance.registration_mode, false);
-		if (flow === 'closed') return;
+		// Сервер новых не принимает — но своя учётка на нём входит почтой
+		// (план 46, C4): закрыт приём новых, а не вход своих.
+		const joinFlow = flowForJoin(instance.registration_mode, false);
+		const flow = joinFlow === 'closed' ? 'login' : joinFlow;
 		loading = true;
 		try {
 			const pending = {
@@ -195,13 +222,11 @@
 	{/if}
 	{#if blocked}
 		<Hint class="mt-14">
-			Сервер жив и отвечает, но сам новых не принимает. Нужна ссылка — в круг или на сервер:
-			первую даёт любой участник круга, вторую — тот, кто держит сервер.
+			Сервер новых не принимает. Если у вас здесь уже есть учётка — войдите своей почтой.
 		</Hint>
-		<Button disabled onclick={() => {}}>Получить код</Button>
-		<Hint class="mt-26" centered>
-			Закрытый сервер выглядит так же,<br />но у него ссылок не выдают вовсе.
-		</Hint>
+		<Label class="mt-16">Почта</Label>
+		<Input active type="email" autocomplete="email" bind:value={email} />
+		<Button {loading} onclick={onSubmit}>Войти</Button>
 	{:else}
 		<Label class="mt-16">Почта</Label>
 		<Input active type="email" autocomplete="email" bind:value={email} />
@@ -214,11 +239,25 @@
 			Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или
 			<a class="under" href={sourceUrl(origin)}>поднимите свой</a>.
 		</Hint>
-		<Button class="mt-18" variant="ghost" onclick={openLinkPicker}>
-			Открыть ссылку или QR
-		</Button>
-		<Hint class="mt-8" centered>Ссылку можно вставить в поле адреса выше</Hint>
 	{/if}
+	<Label class="mt-22">Есть приглашение</Label>
+	<Input
+		active
+		mono
+		small
+		type="text"
+		spellcheck="false"
+		placeholder="вставьте ссылку"
+		bind:value={linkText}
+		onpaste={onLinkPaste}
+		onchange={() => openLinkText(linkText)}
+	/>
+	{#if blocked}
+		<Hint>
+			Ссылку в круг даёт любой его участник, на сервер — тот, кто его держит.
+		</Hint>
+	{/if}
+	<Button class="mt-14" variant="ghost" onclick={openLinkPicker}>Открыть ссылку или QR</Button>
 	{#if error}
 		<Hint class="mt-12">{error}</Hint>
 	{/if}
