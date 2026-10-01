@@ -83,6 +83,83 @@ export function cropSquareInImage(
 	};
 }
 
+/**
+ * Кадр обложки (4.16): квадрат снимка в долях его ширины и высоты. Новый
+ * файл не пишется — лента рисует этот кусок того же снимка, альбом показывает
+ * снимок целиком. Квадрат в пикселях, поэтому w·ширина = h·высота.
+ */
+export interface CoverRect {
+	x: number;
+	y: number;
+	w: number;
+	h: number;
+}
+
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+
+export function coverRectFromTransform(
+	imageWidth: number,
+	imageHeight: number,
+	viewport: CropViewport,
+	transform: CropTransform
+): CoverRect {
+	const sq = cropSquareInImage(imageWidth, imageHeight, viewport, transform);
+	const w = Math.min(1, sq.size / imageWidth);
+	const h = Math.min(1, sq.size / imageHeight);
+	return {
+		x: clamp01(Math.min(sq.x / imageWidth, 1 - w)),
+		y: clamp01(Math.min(sq.y / imageHeight, 1 - h)),
+		w,
+		h
+	};
+}
+
+/** Обратное: каким был снимок в окне, когда кадр выбирали. */
+export function transformFromCoverRect(
+	imageWidth: number,
+	imageHeight: number,
+	viewport: CropViewport,
+	rect: CoverRect
+): CropTransform {
+	const { centerX, centerY, size } = cropWindow(viewport);
+	const scale = clampCropScale(imageWidth, imageHeight, viewport, size / (rect.w * imageWidth));
+	const px = (rect.x + rect.w / 2) * imageWidth;
+	const py = (rect.y + rect.h / 2) * imageHeight;
+	return clampCropTransform(imageWidth, imageHeight, viewport, {
+		scale,
+		centerX: centerX - (px - imageWidth / 2) * scale,
+		centerY: centerY - (py - imageHeight / 2) * scale
+	});
+}
+
+/** Кадр в пределах снимка и не пустой — иначе лента режет по центру, как без него. */
+export function isCoverRect(rect: Partial<CoverRect> | null | undefined): rect is CoverRect {
+	if (!rect) return false;
+	const { x, y, w, h } = rect;
+	if (![x, y, w, h].every((v) => typeof v === 'number' && Number.isFinite(v))) return false;
+	const eps = 1e-6;
+	return x! >= -eps && y! >= -eps && w! > 0 && h! > 0 && x! + w! <= 1 + eps && y! + h! <= 1 + eps;
+}
+
+/**
+ * Как нарисовать кадр в квадратной плитке: снимок растянут так, что кадр
+ * занимает плитку целиком. Проценты от плитки — пропорции снимка не нужны.
+ */
+export function coverRectStyle(rect: CoverRect): {
+	width: string;
+	height: string;
+	left: string;
+	top: string;
+} {
+	const pct = (v: number) => `${Math.round(v * 10000) / 100}%`;
+	return {
+		width: pct(1 / rect.w),
+		height: pct(1 / rect.h),
+		left: pct(-rect.x / rect.w),
+		top: pct(-rect.y / rect.h)
+	};
+}
+
 export function clampCropTransform(
 	imageWidth: number,
 	imageHeight: number,

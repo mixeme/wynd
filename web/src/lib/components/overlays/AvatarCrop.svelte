@@ -5,27 +5,44 @@
 	import {
 		clampCropScale,
 		clampCropTransform,
+		coverRectFromTransform,
 		cropAvatarBitmap,
 		cropWindow,
 		decodeAvatarBitmap,
 		initialCropTransform,
 		pinchCropTransform,
+		transformFromCoverRect,
 		zoomCropAroundPoint,
+		type CoverRect,
 		type CropTransform,
 		type CropViewport,
 		type CroppedImage
 	} from '$lib/media/crop';
 	import type { CircleColor } from '$lib/theme/colors';
 
+	// Два кадра одним экраном (6.8, 4.16). Аватар — круг, на диск квадратный
+	// JPEG (ondone). Обложка записи — квадрат, новый файл не пишется: наружу
+	// уходит кадр в долях снимка (onrect), снимок может прийти и по ссылке.
 	let {
 		file,
+		src,
 		color,
+		shape = 'circle',
+		rect,
+		hint = 'Так вас увидят в круге. Сдвиньте снимок или разведите пальцы.',
 		ondone,
+		onrect,
 		oncancel
 	}: {
-		file: File;
+		file?: File;
+		src?: string;
 		color: CircleColor;
-		ondone: (crop: CroppedImage) => void | Promise<void>;
+		shape?: 'circle' | 'square';
+		/** Начальный кадр обложки — каким его выбрали в прошлый раз. */
+		rect?: CoverRect;
+		hint?: string;
+		ondone?: (crop: CroppedImage) => void | Promise<void>;
+		onrect?: (rect: CoverRect) => void | Promise<void>;
 		oncancel: () => void;
 	} = $props();
 
@@ -57,7 +74,7 @@
 		| undefined;
 
 	const colorClass = $derived(color !== 'terracotta' ? color : undefined);
-	const seedKey = $derived(`${file.name}:${file.size}:${file.lastModified}`);
+	const seedKey = $derived(file ? `${file.name}:${file.size}:${file.lastModified}` : (src ?? ''));
 
 	const cropViewport = $derived.by((): CropViewport | undefined => {
 		if (!viewportW || !viewportH) return undefined;
@@ -81,7 +98,9 @@
 	});
 
 	$effect(() => {
-		const url = URL.createObjectURL(file);
+		const own = file ? URL.createObjectURL(file) : '';
+		const url = own || src || '';
+		if (!url) return;
 		objectUrl = url;
 		ready = false;
 		seededFor = '';
@@ -102,14 +121,16 @@
 		img.src = url;
 		return () => {
 			cancelled = true;
-			URL.revokeObjectURL(url);
+			if (own) URL.revokeObjectURL(own);
 		};
 	});
 
 	$effect(() => {
 		if (!ready || !cropViewport || !imageW || !imageH) return;
 		if (seededFor === seedKey) return;
-		transform = initialCropTransform(imageW, imageH, cropViewport);
+		transform = rect
+			? transformFromCoverRect(imageW, imageH, cropViewport, rect)
+			: initialCropTransform(imageW, imageH, cropViewport);
 		seededFor = seedKey;
 		viewportKey = `${viewportW}x${viewportH}`;
 	});
@@ -253,11 +274,20 @@
 		if (!cropViewport || saving || !ready) return;
 		saving = true;
 		error = '';
+		if (onrect) {
+			try {
+				await onrect(coverRectFromTransform(imageW, imageH, cropViewport, transform));
+			} finally {
+				saving = false;
+			}
+			return;
+		}
 		try {
 			const source = previewEl ?? file;
+			if (!source || !ondone) return;
 			const bitmap = await decodeAvatarBitmap(source);
 			try {
-				const crop = await cropAvatarBitmap(bitmap, cropViewport, transform, file.name);
+				const crop = await cropAvatarBitmap(bitmap, cropViewport, transform, file?.name ?? 'avatar.jpg');
 				await ondone(crop);
 			} finally {
 				bitmap.close();
@@ -331,6 +361,7 @@
 		{#if cropRing}
 			<div
 				class="ring"
+				class:square={shape === 'square'}
 				style:left="{cropRing.left}px"
 				style:top="{cropRing.top}px"
 				style:width="{cropRing.size}px"
@@ -343,7 +374,7 @@
 		{#if error}
 			{error}
 		{:else}
-			Так вас увидят в круге. Сдвиньте снимок или разведите пальцы.
+			{hint}
 		{/if}
 	</Hint>
 </div>
@@ -397,5 +428,10 @@
 		border: 1px solid var(--ink);
 		box-shadow: 0 0 0 9999px color-mix(in srgb, var(--paper) 88%, transparent);
 		pointer-events: none;
+	}
+
+	/* Обложка в ленте — квадрат со скруглением плитки, не круг (4.16). */
+	.ring.square {
+		border-radius: 12px;
 	}
 </style>

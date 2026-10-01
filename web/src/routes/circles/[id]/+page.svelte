@@ -658,6 +658,7 @@
 							variant="feed"
 							src={mediaUrls[cover.blob_id]}
 							kind={cover.kind === 'video' ? 'video' : 'photo'}
+							crop={cover.crop}
 							{count}
 							locationLabel={loc || undefined}
 							onclick={() => openAlbum(post.id)}

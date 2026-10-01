@@ -3,6 +3,8 @@
 	import { page } from '$app/stores';
 	import { getContext, onMount } from 'svelte';
 	import AddPhotoButton from '$ui/forms/AddPhotoButton.svelte';
+	import AvatarCrop from '$ui/overlays/AvatarCrop.svelte';
+	import type { CoverRect } from '$lib/media/crop';
 	import DangerZone from '$ui/forms/DangerZone.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Meter from '$ui/forms/Meter.svelte';
@@ -275,6 +277,7 @@
 						meta: {
 							kind: m.kind,
 							is_cover: m.is_cover,
+							crop: m.crop,
 							captured_at: m.captured_at,
 							geo_lat: m.geo_lat,
 							geo_lng: m.geo_lng,
@@ -366,14 +369,39 @@
 		};
 	}
 
+	// Сменили обложку — кадр начинается с центра снова (4.16).
 	function setCover(index: number) {
 		picked = picked.map((item, i) => ({
 			...item,
 			meta: {
 				...item.meta,
-				is_cover: i === index && isVisual(item.meta)
+				is_cover: i === index && isVisual(item.meta),
+				crop: undefined
 			}
 		}));
+	}
+
+	// Нажатие на обложку-снимок открывает кадр для ленты (4.2 → 4.16), на
+	// другую плитку — делает обложкой её. Кадр ролика не выбирают: в ленте
+	// он живой, и квадрат по центру его не портит.
+	let cropIndex = $state<number | null>(null);
+	const cropItem = $derived(cropIndex === null ? undefined : picked[cropIndex]);
+
+	function tapTile(index: number) {
+		const item = picked[index];
+		if (!isVisual(item.meta)) return;
+		if (item.meta.is_cover && item.meta.kind === 'photo' && item.preview) {
+			cropIndex = index;
+			return;
+		}
+		setCover(index);
+	}
+
+	function applyCrop(rect: CoverRect) {
+		const index = cropIndex;
+		cropIndex = null;
+		if (index === null) return;
+		picked = picked.map((item, i) => (i === index ? { ...item, meta: { ...item.meta, crop: rect } } : item));
 	}
 
 	function removePicked(index: number) {
@@ -436,6 +464,7 @@
 				geo_lat: usePlace ? item.meta.geo_lat : undefined,
 				geo_lng: usePlace ? item.meta.geo_lng : undefined,
 				is_cover: item.meta.is_cover ?? false,
+				crop: item.meta.is_cover ? item.meta.crop : undefined,
 				audio_artist: item.meta.audio_artist,
 				audio_title: item.meta.audio_title,
 				audio_cover_blob_id: coverId
@@ -623,6 +652,7 @@
 					geo_lat: meta.geo_lat,
 					geo_lng: meta.geo_lng,
 					is_cover: meta.is_cover ?? false,
+					crop: meta.is_cover ? meta.crop : undefined,
 					audio_artist: meta.audio_artist,
 					audio_title: meta.audio_title,
 					audio_cover_blob_id: coverId
@@ -703,6 +733,10 @@
 					src={item.preview}
 					kind={item.meta.kind === 'video' ? 'video' : item.meta.kind === 'photo' ? 'photo' : undefined}
 					isCover={item.meta.is_cover && isVisual(item.meta)}
+					crop={item.meta.is_cover ? item.meta.crop : undefined}
+					coverMark={item.meta.is_cover && item.meta.kind === 'photo' && item.preview
+						? 'кадр'
+						: undefined}
 					fileName={item.preview
 						? undefined
 						: audioRowLabel({
@@ -713,9 +747,7 @@
 								audio_artist: item.meta.audio_artist,
 								audio_title: item.meta.audio_title
 							})}
-					onclick={() => {
-						if (isVisual(item.meta)) setCover(i);
-					}}
+					onclick={() => tapTile(i)}
 					onremove={() => removePicked(i)}
 				/>
 			{/each}
@@ -730,7 +762,10 @@
 		{/if}
 
 		{#if picked.some((p) => isVisual(p.meta))}
-			<Hint>Обложка — первая. Нажмите на другую, чтобы лента показывала её.</Hint>
+			<Hint
+				>Обложка — первая. Нажмите на неё, чтобы выбрать кадр для ленты, или на другую, чтобы
+				обложкой стала она.</Hint
+			>
 		{/if}
 
 		<div class="date-row">
@@ -799,6 +834,18 @@
 		{/if}
 	</div>
 </FormLayout>
+
+{#if cropItem?.preview}
+	<AvatarCrop
+		src={cropItem.preview}
+		color={circle.color}
+		shape="square"
+		rect={cropItem.meta.crop}
+		hint="Так запись увидят в ленте. Сдвиньте снимок или разведите пальцы. В альбоме он останется целиком."
+		onrect={applyCrop}
+		oncancel={() => (cropIndex = null)}
+	/>
+{/if}
 
 {#snippet composeFooter()}
 	<div class="compose-bar">

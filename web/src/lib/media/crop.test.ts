@@ -11,6 +11,12 @@ import {
 	pinchCropTransform,
 	zoomCropAroundPoint
 } from './crop';
+import {
+	coverRectFromTransform,
+	coverRectStyle,
+	isCoverRect,
+	transformFromCoverRect
+} from './crop';
 
 const viewport = { width: 360, height: 520, cropDiameter: 280 };
 
@@ -135,5 +141,43 @@ describe('renderAvatarCrop', () => {
 		expect(data.byteLength).toBeGreaterThan(0);
 		getContext.mockRestore();
 		toBlob.mockRestore();
+	});
+});
+
+describe('кадр обложки', () => {
+	const vp = { width: 390, height: 600, cropDiameter: 300 };
+
+	it('без сдвига — квадрат по центру широкого снимка', () => {
+		const t = initialCropTransform(4000, 3000, vp);
+		const r = coverRectFromTransform(4000, 3000, vp, t);
+		expect(r.w).toBeCloseTo(0.75);
+		expect(r.h).toBeCloseTo(1);
+		expect(r.x).toBeCloseTo(0.125);
+		expect(r.y).toBeCloseTo(0);
+		expect(isCoverRect(r)).toBe(true);
+	});
+
+	it('кадр возвращается в окно тем же, каким его выбрали', () => {
+		const rect = { x: 0.5, y: 0.1, w: 0.375, h: 0.5 };
+		const t = transformFromCoverRect(4000, 3000, vp, rect);
+		const back = coverRectFromTransform(4000, 3000, vp, t);
+		expect(back.x).toBeCloseTo(rect.x);
+		expect(back.y).toBeCloseTo(rect.y);
+		expect(back.w).toBeCloseTo(rect.w);
+	});
+
+	it('плитка рисует кадр процентами, без пропорций снимка', () => {
+		expect(coverRectStyle({ x: 0.25, y: 0, w: 0.5, h: 1 })).toEqual({
+			width: '200%',
+			height: '100%',
+			left: '-50%',
+			top: '0%'
+		});
+	});
+
+	it('кадр за краем снимка или пустой — не кадр', () => {
+		expect(isCoverRect({ x: 0.8, y: 0, w: 0.5, h: 1 })).toBe(false);
+		expect(isCoverRect({ x: 0, y: 0, w: 0, h: 0 })).toBe(false);
+		expect(isCoverRect(undefined)).toBe(false);
 	});
 });

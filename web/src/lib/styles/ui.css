@@ -756,6 +756,23 @@
 	display: block;
 	border-radius: inherit;
 }
+/* Кадр обложки (4.16): снимок растянут так, что выбранный квадрат занимает
+   плитку целиком; лишнее срезает плитка. */
+.pic.sq, .thumbs .thumb-body {
+	position: relative;
+	overflow: hidden;
+}
+.pic img.cropped, .thumbs .thumb-body img.cropped {
+	position: absolute;
+	max-width: none;
+	object-fit: fill;
+}
+.thumbs .thumb-body .thumb-mark {
+	left: 5px;
+	right: auto;
+	bottom: 5px;
+	padding: 2px 7px;
+}
 .g3 .pic img, .g3 .pic video {
 	border-radius: 0;
 }

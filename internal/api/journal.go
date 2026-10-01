@@ -29,6 +29,8 @@ type mediaBody struct {
 	AudioArtist      string   `json:"audio_artist"`
 	AudioTitle       string   `json:"audio_title"`
 	AudioCoverBlobID string   `json:"audio_cover_blob_id"`
+	// Crop — кадр обложки для ленты (4.16).
+	Crop *chronicle.CoverCrop `json:"crop"`
 }
 
 type editPostBody struct {
@@ -421,6 +423,7 @@ func parseMediaInput(items []mediaBody) ([]chronicle.MediaInput, error) {
 			GeoLat: m.GeoLat, GeoLng: m.GeoLng, IsCover: m.IsCover,
 			AudioArtist: m.AudioArtist, AudioTitle: m.AudioTitle,
 			AudioCoverBlobID: m.AudioCoverBlobID,
+			Crop:             m.Crop,
 		}
 	}
 	if err := chronicle.ValidateMediaKinds(out); err != nil {

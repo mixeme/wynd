@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Icon from '$ui/Icon.svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
+	import { coverRectStyle, isCoverRect, type CoverRect } from '$lib/media/crop';
 
 	type MediaKind = 'photo' | 'video';
 
@@ -10,6 +11,8 @@
 		kind?: MediaKind;
 		count?: number;
 		locationLabel?: string;
+		/** Кадр обложки (4.16): лента рисует этот квадрат снимка. */
+		crop?: CoverRect;
 		onclick?: () => void;
 	};
 
@@ -42,12 +45,21 @@
 		src?: string;
 		kind?: MediaKind;
 		isCover?: boolean;
+		/** Кадр обложки: плитка показывает то, что увидит лента. */
+		crop?: CoverRect;
+		/** Метка на плитке-обложке — дверь в кадр (4.2 → 4.16). */
+		coverMark?: string;
 		fileName?: string;
 		onclick: () => void;
 		onremove?: () => void;
 	};
 
 	let props: Feed | Grid | Album | HeaderMini | Compose = $props();
+
+	const cropStyle = $derived.by(() => {
+		const crop = props.variant === 'feed' || props.variant === 'compose' ? props.crop : undefined;
+		return isCoverRect(crop) ? coverRectStyle(crop) : undefined;
+	});
 
 	function onFeedClick(e: MouseEvent) {
 		if (props.variant !== 'feed' || !props.onclick) return;
@@ -66,6 +78,16 @@
 		{#if props.src}
 			{#if props.kind === 'video'}
 				<video src={props.src} muted playsinline></video>
+			{:else if cropStyle}
+				<img
+					class="cropped"
+					src={props.src}
+					alt=""
+					style:width={cropStyle.width}
+					style:height={cropStyle.height}
+					style:left={cropStyle.left}
+					style:top={cropStyle.top}
+				/>
 			{:else}
 				<img src={props.src} alt="" />
 			{/if}
@@ -126,11 +148,24 @@
 			{#if props.src}
 				{#if props.kind === 'video'}
 					<video src={props.src} muted playsinline></video>
+				{:else if cropStyle}
+					<img
+						class="cropped"
+						src={props.src}
+						alt=""
+						style:width={cropStyle.width}
+						style:height={cropStyle.height}
+						style:left={cropStyle.left}
+						style:top={cropStyle.top}
+					/>
 				{:else}
 					<img src={props.src} alt="" />
 				{/if}
 			{:else if props.fileName}
 				<span class="file">{props.fileName}</span>
+			{/if}
+			{#if props.variant === 'compose' && props.coverMark}
+				<span class="cnt thumb-mark">{props.coverMark}</span>
 			{/if}
 		</button>
 		{#if props.onremove}

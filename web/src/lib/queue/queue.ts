@@ -202,7 +202,8 @@ async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 				is_cover: meta.is_cover ?? false,
 				audio_artist: meta.audio_artist,
 				audio_title: meta.audio_title,
-				audio_cover_blob_id: coverId
+				audio_cover_blob_id: coverId,
+				crop: meta.is_cover ? meta.crop : undefined
 			});
 		}
 

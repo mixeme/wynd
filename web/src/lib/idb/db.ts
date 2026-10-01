@@ -50,6 +50,8 @@ export interface QueueMediaMeta {
 	audio_cover_blob_id?: string;
 	/** JPEG обложки, пока он ещё не загружен на сервер. */
 	audio_cover?: { type: string; data: ArrayBuffer };
+	/** Кадр обложки для ленты (4.16). */
+	crop?: { x: number; y: number; w: number; h: number };
 }
 
 export interface PostQueuePayload {
