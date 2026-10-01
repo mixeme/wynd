@@ -26,6 +26,7 @@
 		| 'edit'
 		| 'trash'
 		| 'clock'
+		| 'day'
 		| 'cloud'
 		| 'out';
 

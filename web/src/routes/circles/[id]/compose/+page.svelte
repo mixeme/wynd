@@ -771,7 +771,7 @@
 		<div class="date-row">
 			<input bind:this={dateInput} type="date" bind:value={entryDate} class="date-pick" tabindex="-1" />
 			<SettingsRow
-				icon="clock"
+				icon="day"
 				title="Отнести к дате"
 				subtitle={entryDateSubtitle}
 				style="margin-top:16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"

@@ -20,6 +20,6 @@
 	style:align-items="center"
 	style:gap="5px"
 >
-	<Icon name="clock" size="xs" />
+	<Icon name="day" size="xs" />
 	{label}
 </span>
