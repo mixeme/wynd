@@ -1179,11 +1179,12 @@ a.resp + a.resp .cmt {
 .audio-bar-line.loading i {
 	background: var(--faint);
 }
+/* Пауза и крестик — разные действия: между ними палец, а не 6 px. */
 .audio-bar-row {
 	display: flex;
 	align-items: center;
-	gap: 6px;
-	padding: 8px 8px 8px 14px;
+	gap: 16px;
+	padding: 8px 14px;
 }
 .audio-bar-main {
 	flex: 1;
