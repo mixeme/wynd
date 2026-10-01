@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// Инвариант (план 46, A6): битрейт звука по умолчанию — 128 кбит/с; панель,
+// Инвариант (план 46, A6): битрейт звука по умолчанию — 192 кбит/с; панель,
 // которая поле звука не шлёт (до 0.18.37), его не сбрасывает, а явное
 // значение сохраняется.
 func TestAdminCompressionAudioBitrate(t *testing.T) {
@@ -16,8 +16,8 @@ func TestAdminCompressionAudioBitrate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cs.AudioBitrateKbps != 128 {
-		t.Fatalf("default audio bitrate: %d want 128", cs.AudioBitrateKbps)
+	if cs.AudioBitrateKbps != 192 {
+		t.Fatalf("default audio bitrate: %d want 192", cs.AudioBitrateKbps)
 	}
 
 	old := map[string]any{
@@ -27,8 +27,8 @@ func TestAdminCompressionAudioBitrate(t *testing.T) {
 	if rec := doJSON(t, srv, http.MethodPut, "/api/v1/admin/compression", admin, old); rec.Code != http.StatusOK {
 		t.Fatalf("save without audio: %d %s", rec.Code, rec.Body.String())
 	}
-	if cs, _ = blobs.LoadCompressionSettings(t.Context()); cs.AudioBitrateKbps != 128 {
-		t.Fatalf("audio bitrate after old panel: %d want 128", cs.AudioBitrateKbps)
+	if cs, _ = blobs.LoadCompressionSettings(t.Context()); cs.AudioBitrateKbps != 192 {
+		t.Fatalf("audio bitrate after old panel: %d want 192", cs.AudioBitrateKbps)
 	}
 
 	old["audio_bitrate_kbps"] = 96

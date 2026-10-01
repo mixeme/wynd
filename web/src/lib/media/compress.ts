@@ -4,7 +4,7 @@ const DEFAULT_MAX_PX = 2048;
 const DEFAULT_QUALITY = 80;
 export const DEFAULT_VIDEO_MAX_P = 1080;
 export const DEFAULT_VIDEO_BITRATE_KBPS = 6000;
-export const DEFAULT_AUDIO_BITRATE_KBPS = 128;
+export const DEFAULT_AUDIO_BITRATE_KBPS = 192;
 const BITRATE_SLACK = 1.05;
 
 export interface CompressedMedia {
