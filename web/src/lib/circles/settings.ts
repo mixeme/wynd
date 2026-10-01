@@ -3,6 +3,8 @@ import { invalidateSnapshots } from '$lib/idb/db';
 import { fetchCircleDetail } from '$lib/journal/read-cursor';
 import type { CircleDetail } from '$lib/journal/types';
 import { setCircleIdentity } from '$lib/circles/meta';
+import { uploadBlob } from '$lib/journal/posts';
+import type { CroppedImage } from '$lib/media/crop';
 import type { CircleColor } from '$lib/theme/colors';
 
 export interface CircleSettings extends CircleDetail {
@@ -229,6 +231,25 @@ export async function updateIdentity(
 		await setCircleIdentity(origin, circleId, patch.name);
 	}
 	await invalidateSnapshots(origin, { circleId });
+}
+
+/**
+ * Фото, выбранное в форме имени (создание круга, вступление): загрузить и
+ * поставить. Не вышло — false: круг уже есть, фото ставится в профиле, а
+ * экран круга скажет об этом по `?joinAvatar=fail`.
+ */
+export async function setIdentityAvatar(
+	origin: string,
+	circleId: string,
+	crop: CroppedImage
+): Promise<boolean> {
+	try {
+		const blobId = await uploadBlob(origin, crop);
+		await updateIdentity(origin, circleId, { avatar_blob_id: blobId });
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 export async function setMemberCanSettings(

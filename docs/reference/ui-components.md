@@ -58,6 +58,7 @@
 | FormLayout | `.ph.{color\|shell}` | e1-3, e1-4, e2-4, e2-7, e6-1 |
 | OverlayLayout | absolute | sheets, dialogs, push; `ondismiss` → Scrim и модальность; `label` → `aria-label` |
 | AdminWideLayout | `.ph.wide.shell` | e9-* |
+| PayGateLayout | — (шлюз, не каркас) | `+layout` групп `/circles/*` и `/search/*`: пока доступ не оплачен — вместо экрана «Доступ закрыт» с реквизитами или заявкой в ожидании (**#e10-***), иначе children |
 
 `FormLayout`: при `circleTitle` — шапка вступления **#e1-3** (`div.cbar`, имя по центру, без `BackBar`); список участников на join (`?members=1`) — `color` + `subtitle` (цветная `.cbar` с назад), не серый `BackBar`. Ветки: `compose`, `circleTitle`, snippet `bar`, `color && subtitle`, иначе `BackBar`.
 
@@ -73,7 +74,7 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar
 
 ### `forms/`
 
-**Label**, **Input**, **FieldDisplay**, **TextArea**, ScreenTitle, Hint, **Button**, **Chip**, ChipGroup, Switch, ColorSwatches, CodeBox, InviteCard, **RequisitesCard**, **SearchField**, DangerZone (опц. `style`), Meter, PeopleStrip, **MentionPicker**, AddPhotoButton, DangerNote, VolumeChart, **IconButton**, **TextButton**
+**Label**, **Input**, **FieldDisplay**, **TextArea**, ScreenTitle, Hint, **Button**, **Chip**, ChipGroup, Switch, ColorSwatches, CodeBox, InviteCard, **RequisitesCard**, **SearchField**, DangerZone (опц. `style`), Meter, PeopleStrip, **MentionPicker**, AddPhotoButton, DangerNote, VolumeChart, **IconButton**, **TextButton**, **EditWindowPicker**, **IdentityForm**
 
 Интерактивные примитивы (фаза 1–4):
 
@@ -86,6 +87,10 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar
 | `AddPhotoButton` | `button.addph` | `onclick` | без `previewUrl` — плюс; с `previewUrl` — `.addph.preview`, cover-фон, `aria-label` «сменить фото» (**#e1-3**) |
 
 `CodeBox` — шесть клеток `.codebox`; без `bind:value` — display (`digits` / `active`, каталог). С `bind:value` — прозрачный `input.code-input` поверх (**.code-wrap**), `inputmode="numeric"`, `autocomplete="one-time-code"`, обрезка до `length`; опц. `bind:el`, `autofocus` (**#e1-2**).
+
+`EditWindowPicker` — «Окно правок» (**#e2-4**, **#e6-2**): шесть чипов в два ряда и при «Своё…» поле часов; `value`, `bind:customHours`, `onpick(key)`, опц. `oncustomchange` — настройки круга сохраняют сразу. Подсказку о сдвиге часов экран ставит сам.
+
+`IdentityForm` — «Как вас зовут в этом круге?» (**#e1-3**) у вступающего и у создателя круга: заголовок, `AddPhotoButton` + кадрирование `AvatarCrop`, «Имя», первая запись с «необязательно». `color`, `bind:name`, `bind:firstPost`, `bind:avatar` (откадрированное фото; загружает экран — `setIdentityAvatar` из `$lib/circles/settings`), опц. `postLabel` / `postPlaceholder` (дневник), `onerror`. Кнопку и ошибку ставит экран.
 
 `RequisitesCard` — платёжные реквизиты в `div.req` (**#e10-1** / **#e10-2** / **#e10-6** / **#e10-8**): проп `text` или snippet `children`; стили в `ui.css`, не кликабельна.
 
@@ -112,9 +117,13 @@ Guard: `npm run check:ui` — экран = существующие `$ui` + `$li
 
 ### `data/`
 
-SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, **ReactionBar**, **CommentPreview**, **CommentRow**, **ReactionListRow**, **SettingsRow**, MemberRow, SearchGroupHeader, **SearchResultRow**, **ServerRow**, FoldHeader, **GroupFoldCard**, AttachmentRow, PhotoPlaceholder, PhotoGrid, **MediaTile**, **MapBadge**, **MapPostSheet**, MonthLabel, DayCard, DayGrid, DayHeader, EntryDateMark, ArchiveBanner, **PayStreetBanner**
+SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, **ReactionBar**, **CommentPreview**, **CommentRow**, **ReactionListRow**, **SettingsRow**, MemberRow, SearchGroupHeader, **SearchResultRow**, **ServerRow**, FoldHeader, **GroupFoldCard**, AttachmentRow, PhotoPlaceholder, PhotoGrid, **MediaTile**, **MapBadge**, **MapPostSheet**, MonthLabel, DayCard, DayGrid, DayHeader, EntryDateMark, ArchiveBanner, **PayStreetBanner**, **MentionText**, **AttachmentList**
 
 `PayStreetBanner` — баннеры оплаты на улочке (`/circles`, кадр **#e10-5**): `variant` `donate` \| `reminder` \| `pending`. Donate — `text`, `onclick` (help), опционально `dismissible` / `ondismiss`. Reminder — `expiresAtLabel`, `reminderDaysLeft`, `onclick` (extend). Pending — `pendingAtLabel`, опционально `expiresAtLabel`; без корневой кнопки. Стили `.pay-banner*` в `ui.css`; кликабельные зоны — `button.pay-banner-main`, `button.pay-reminder`.
+
+`MentionText` — текст записи или комментария (`body`): `@имя` цветом круга, переносы и пустые строки как написаны (`white-space: pre-wrap` на `.mention-text`).
+
+`AttachmentList` — вложения записи, не фото и не видео (**#e4-13**, **#e4-15**, **#e4-18**): звуки подряд — одна рамка `.att-group` со строками `grouped`, одиночный звук — `AttachmentRow audio`, файл — строка «скачать». `items`, `origin`, `circleId`, `circleName`, `color`, `postId`, `coverUrls` (обложки звуков по blob id).
 
 `CommentRow` — строка треда (`div.cmt`, опц. `.q`): аватар, `name`, snippet `time`, snippet `children` (текст / правка); `onedit` / `ondelete` → `.acts` (**#e4-5**–**#e4-7**). Не путать с `CommentPreview` (`button.cm` в ленте).
 
@@ -143,7 +152,11 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 
 ### `overlays/`
 
-`Fab` — кружок `.fab` в `.fab-wrap`; опц. `menuOpen` + `items[]` — карточка `.fab-menu` над плюсом (**#e2-11**), `role="menu"`: при открытии фокус на первом пункте, стрелки по кругу, Escape → `onclose` (UI-3; `ShellLayout` — `onfabmenuclose`). `ShellLayout` прокидывает `fabMenuOpen` / `fabMenuItems`; snippet `fab` — только содержимое кружка. Fab, CommentBar (`oncompose` — фото и шеврон; пустое поле на таче ведёт на compose, на ПК с мышью только фокус; без `oncompose` — полоса комментария), Scrim (`button.scrim`), Sheet, Dialog, PushBanner, Lightbox (`.mid` — `role="region"`), AvatarCrop
+`Fab` — кружок `.fab` в `.fab-wrap`; опц. `menuOpen` + `items[]` — карточка `.fab-menu` над плюсом (**#e2-11**), `role="menu"`: при открытии фокус на первом пункте, стрелки по кругу, Escape → `onclose` (UI-3; `ShellLayout` — `onfabmenuclose`). `ShellLayout` прокидывает `fabMenuOpen` / `fabMenuItems`; snippet `fab` — только содержимое кружка. Fab, CommentBar (`oncompose` — фото и шеврон; пустое поле на таче ведёт на compose, на ПК с мышью только фокус; без `oncompose` — полоса комментария), Scrim (`button.scrim`), Sheet, Dialog, PushBanner, Lightbox (`.mid` — `role="region"`), AvatarCrop, **ConfirmDialog**, **ReactionsSheet**
+
+`ConfirmDialog` — вопрос с двумя кнопками на `Scrim` + `Dialog` (`.dlgq`, `.rowin.ask`): `title`, `confirmLabel`, опц. `cancelLabel` («Отмена»), `loading`, `onconfirm`, `oncancel`, пояснение — children. Все подтверждения «удалить / исключить / передать / выйти» — на нём.
+
+`ReactionsSheet` — лист «Кто отреагировал» (**#e4-12**) на `Scrim` + `Sheet`: `reactions`, `color`, `ondismiss`; строки — `ReactionListRow`.
 
 **Модальность оверлеев (UI-1, UI-2).** `Dialog` и `Sheet` с `ondismiss`, `Lightbox` с `fixed` и `onclose` — `role="dialog"`, `aria-modal`, action `modal` из `$lib/a11y/modal`: фокус при открытии — на первый фокусируемый элемент, Tab по кругу внутри, фокус снаружи возвращается внутрь, Escape → `ondismiss`, при закрытии фокус — туда, где был. Оверлеи в стеке: клавиши слушает только верхний. Без `ondismiss` (каталог `/dev/ui`) оверлей статичен и ничего не перехватывает. Экран даёт оверлею имя через `label` — обычно его заголовок. `AvatarCrop` на том же action с `initialFocus: 'last'`: фокусируемы только кнопки панели, фокус при открытии и при возврате снаружи — на «Готово», Escape → «Отмена» (во время сохранения — ничего). (светлые токены на корне `.crop`, не следует `.ph.dark`)
 

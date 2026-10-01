@@ -392,7 +392,7 @@
 
 → `InviteLinkCard` + `QrCode` (2.12), `Hint centered` (1.1), подтверждение отзыва — через `ConfirmDialog` (2.2).
 
-**5.8 `circles/new/you/+page.svelte` — копия формы вступления `circles/[id]/join/+page.svelte` — высокая.** Совпадает около 70 строк.
+**5.8 `circles/new/you/+page.svelte` — копия формы вступления `circles/[id]/join/+page.svelte` — высокая.** Совпадает около 70 строк. **Сделано в 0.18.11:** `$ui/forms/IdentityForm.svelte` (заголовок, фото с кадрированием, имя, первая запись; `bind:name`/`firstPost`/`avatar`) и `setIdentityAvatar` в `$lib/circles/settings`; оба экрана на них, `today()` → `localDayOf`, инлайн-стиль «необязательно» у join ушёл в `.label-row`.
 
 Разметка (you ↔ join):
 
@@ -454,7 +454,7 @@
 
 ### Завести новый компонент в библиотеке (пробел Wynd UI — по плану `docs/plans/<slug>.plan.md`)
 Высокий приоритет — дубли целых виджетов:
-1. `IdentityForm` + помощник фото (5.8)
+1. `IdentityForm` + помощник фото (5.8) — **сделано (0.18.11)**
 2. `ConfirmDialog` (2.2) — **сделано (0.18.9)**
 3. `ReactionsSheet` (2.4) — **сделано (0.18.10)**
 4. `AttachmentList` / `AttachmentGroup` (2.5, 3.2) — **сделано (0.18.10):** `AttachmentList`
@@ -466,6 +466,8 @@
 - `ComposeToolbar` / `DateRow` (3.7), `FeedEnd` (3.6).
 
 Низкий приоритет: `AboutFooter` (2.21), `ColorDot` (2.23), `QrScanner` (3.8).
+
+Новые компоненты блока (`ConfirmDialog`, `MentionText`, `ReactionsSheet`, `AttachmentList`, `EditWindowPicker`, `IdentityForm`, макет `PayGateLayout`) записаны в справочник `docs/reference/ui-components.md` и в `catalog.ts`; формы и `MentionText` показаны в `/dev/ui` (0.18.11).
 
 Отдельно — `AudioBar`:
 - оформить план пробела задним числом;

@@ -60,7 +60,9 @@ export const COMPONENT_MAP: CatalogGroup[] = [
 			{ component: 'TextButton', screen: 'e4-2, e6-2', smoke: '/dev/smoke/e4-2' },
 			{ component: 'DangerZone', screen: 'e6-2', smoke: '/dev/smoke/e6-2' },
 			{ component: 'DangerNote', screen: 'e6-12', smoke: '/dev/smoke/e6-12' },
-			{ component: 'VolumeChart', screen: 'e6-10', smoke: '/dev/smoke/e6-10' }
+			{ component: 'VolumeChart', screen: 'e6-10', smoke: '/dev/smoke/e6-10' },
+			{ component: 'EditWindowPicker', screen: 'e2-4, e6-2', smoke: '/dev/smoke/e2-4' },
+			{ component: 'IdentityForm', screen: 'e1-3' }
 		]
 	},
 	{
@@ -93,7 +95,9 @@ export const COMPONENT_MAP: CatalogGroup[] = [
 			{ component: 'DayHeader', screen: 'e5-2' },
 			{ component: 'EntryDateMark', screen: 'e5-4, e5-2' },
 			{ component: 'ArchiveBanner', screen: 'e6-15' },
-			{ component: 'PayStreetBanner', screen: 'e10-5' }
+			{ component: 'PayStreetBanner', screen: 'e10-5' },
+			{ component: 'MentionText', screen: 'e3-1, e4-5', smoke: '/dev/smoke/e3-1' },
+			{ component: 'AttachmentList', screen: 'e4-13, e4-15, e4-18' }
 		]
 	},
 	{
@@ -105,7 +109,9 @@ export const COMPONENT_MAP: CatalogGroup[] = [
 			{ component: 'Scrim / Sheet / Dialog', screen: 'e4-12', smoke: '/dev/smoke/e4-12' },
 			{ component: 'Lightbox', screen: 'e4-14', smoke: '/dev/smoke/e4-14' },
 			{ component: 'AvatarCrop', screen: 'e6-2' },
-			{ component: 'PushBanner', screen: 'e7-4', smoke: '/dev/smoke/e7-4' }
+			{ component: 'PushBanner', screen: 'e7-4', smoke: '/dev/smoke/e7-4' },
+			{ component: 'ConfirmDialog', screen: 'e6-2, e6-3' },
+			{ component: 'ReactionsSheet', screen: 'e4-12', smoke: '/dev/smoke/e4-12' }
 		]
 	},
 	{

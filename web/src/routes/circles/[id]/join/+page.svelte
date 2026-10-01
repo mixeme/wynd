@@ -1,15 +1,11 @@
 <script lang="ts">
 	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
-	import { getContext, onDestroy, onMount } from 'svelte';
+	import { getContext, onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import AvatarCrop from '$ui/overlays/AvatarCrop.svelte';
-	import AddPhotoButton from '$ui/forms/AddPhotoButton.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
-	import Input from '$ui/forms/Input.svelte';
 	import Label from '$ui/forms/Label.svelte';
-	import TextArea from '$ui/forms/TextArea.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import PeopleStrip from '$ui/forms/PeopleStrip.svelte';
 	import MemberRow from '$ui/data/MemberRow.svelte';
@@ -28,8 +24,8 @@
 	import { circleInitial, setCircleIdentity } from '$lib/circles/meta';
 	import { rememberCircleOrigin } from '$lib/circles/origin';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
-	import { fetchMembers, updateIdentity } from '$lib/circles/settings';
-	import { uploadBlob } from '$lib/journal/posts';
+	import { fetchMembers, setIdentityAvatar } from '$lib/circles/settings';
+	import IdentityForm from '$ui/forms/IdentityForm.svelte';
 	import type { CroppedImage } from '$lib/media/crop';
 	import type { MemberInfo } from '$lib/circles/settings';
 
@@ -45,10 +41,7 @@
 	let error = $state('');
 	let inviteToken = $state<string | undefined>();
 	let pendingJoin = $state(false);
-	let cropFile = $state<File | undefined>();
 	let pendingAvatar = $state<CroppedImage | undefined>();
-	let avatarPreview = $state('');
-	let fileInput: HTMLInputElement | undefined = $state();
 
 	const displayMembers = $derived.by(() => {
 		if (peek?.members) {
@@ -105,46 +98,6 @@
 		goto(`/circles/${circle.circleId}/join`);
 	}
 
-	function openPhotoPicker() {
-		fileInput?.click();
-	}
-
-	function onPhotoSelected(e: Event) {
-		const input = e.target as HTMLInputElement;
-		const file = input.files?.[0];
-		input.value = '';
-		if (!file) return;
-		if (file.type && !file.type.startsWith('image/')) {
-			error = 'Нужно фото';
-			return;
-		}
-		cropFile = file;
-	}
-
-	function onCropDone(crop: CroppedImage) {
-		cropFile = undefined;
-		if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-		pendingAvatar = crop;
-		avatarPreview = URL.createObjectURL(new Blob([crop.data], { type: crop.type }));
-	}
-
-	function onCropCancel() {
-		cropFile = undefined;
-	}
-
-	async function uploadPendingAvatar(): Promise<boolean> {
-		if (!pendingAvatar) return true;
-		const crop = pendingAvatar;
-		pendingAvatar = undefined;
-		try {
-			const blobId = await uploadBlob(circle.origin, crop);
-			await updateIdentity(circle.origin, circle.circleId, { avatar_blob_id: blobId });
-			return true;
-		} catch {
-			return false;
-		}
-	}
-
 	async function enterCircle() {
 		error = '';
 		const trimmed = name.trim();
@@ -152,7 +105,6 @@
 			error = 'Введите имя';
 			return;
 		}
-		const hadAvatar = Boolean(pendingAvatar);
 		loading = true;
 		try {
 			if (inviteToken) {
@@ -168,12 +120,14 @@
 				});
 			}
 			await setCircleIdentity(circle.origin, circle.circleId, trimmed);
-			const avatarOk = await uploadPendingAvatar();
+			const avatarOk = pendingAvatar
+				? await setIdentityAvatar(circle.origin, circle.circleId, pendingAvatar)
+				: true;
 			rememberCircleOrigin(circle.circleId, circle.origin);
 			circle.identityName = trimmed;
 			circle.identityInitial = circleInitial(trimmed);
 			await circle.refresh();
-			const avatarQuery = hadAvatar && !avatarOk ? '?joinAvatar=fail' : '';
+			const avatarQuery = !avatarOk ? '?joinAvatar=fail' : '';
 			goto(`/circles/${circle.circleId}${avatarQuery}`);
 		} catch (err) {
 			error = authErrorHint(err);
@@ -186,9 +140,6 @@
 		goto(`/circles/${circle.circleId}`);
 	}
 
-	onDestroy(() => {
-		if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-	});
 </script>
 
 {#if showMembers && peek?.members}
@@ -224,28 +175,12 @@
 	{/if}
 
 	{#if inviteToken || pendingJoin}
-		<ScreenTitle class="mt-22 lh-125">
-			Как вас зовут<br />в этом круге?
-		</ScreenTitle>
-		<AddPhotoButton previewUrl={avatarPreview || undefined} onclick={openPhotoPicker} />
-		<Hint centered class="mt-8">
-			<TextButton onclick={openPhotoPicker}>добавить фото</TextButton>
-		</Hint>
-		<input bind:this={fileInput} type="file" accept="image/*" hidden onchange={onPhotoSelected} />
-		<Label>Имя</Label>
-		<Input active type="text" autocomplete="name" bind:value={name} />
-		<Label class="flex">
-			<span>Скажи что-нибудь кругу</span>
-			<span style="margin-left:auto;text-transform:none;letter-spacing:0;font-weight:400"
-				>необязательно</span
-			>
-		</Label>
-		<TextArea
-			variant="area"
-			active
-			rows={3}
-			bind:value={firstPost}
-			placeholder="Первая запись в журнале круга"
+		<IdentityForm
+			color={circle.color}
+			bind:name
+			bind:firstPost
+			bind:avatar={pendingAvatar}
+			onerror={(message) => (error = message)}
 		/>
 		<Button variant="colored" {loading} onclick={enterCircle}>Войти в круг</Button>
 	{:else}
@@ -264,11 +199,3 @@
 </FormLayout>
 {/if}
 
-{#if cropFile}
-	<AvatarCrop
-		file={cropFile}
-		color={circle.color}
-		ondone={onCropDone}
-		oncancel={onCropCancel}
-	/>
-{/if}

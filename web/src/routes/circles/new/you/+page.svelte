@@ -1,27 +1,22 @@
 <script lang="ts">
-	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
 	import { goto } from '$app/navigation';
-	import { getContext, onDestroy, onMount } from 'svelte';
-	import AvatarCrop from '$ui/overlays/AvatarCrop.svelte';
-	import AddPhotoButton from '$ui/forms/AddPhotoButton.svelte';
+	import { getContext, onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
-	import Input from '$ui/forms/Input.svelte';
-	import Label from '$ui/forms/Label.svelte';
-	import TextArea from '$ui/forms/TextArea.svelte';
-	import TextButton from '$ui/forms/TextButton.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { createCircle } from '$lib/circles/circles';
 	import { setCircleColor, setCircleIdentity } from '$lib/circles/meta';
 	import { rememberCircleOrigin } from '$lib/circles/origin';
-	import { updateIdentity } from '$lib/circles/settings';
+	import { setIdentityAvatar } from '$lib/circles/settings';
+	import { localDayOf } from '$lib/journal/present';
+	import IdentityForm from '$ui/forms/IdentityForm.svelte';
 	import {
 		NEW_CIRCLE_CTX,
 		newCircleEditWindowSec,
 		type NewCircleContext
 	} from '$lib/circles/new-circle';
-	import { createPost, uploadBlob } from '$lib/journal/posts';
+	import { createPost } from '$lib/journal/posts';
 	import type { CroppedImage } from '$lib/media/crop';
 
 	// Создатель круга выбирает имя и фото тем же экраном, что и вступающий
@@ -35,10 +30,7 @@
 	let firstPost = $state('');
 	let loading = $state(false);
 	let error = $state('');
-	let cropFile = $state<File | undefined>();
 	let pendingAvatar = $state<CroppedImage | undefined>();
-	let avatarPreview = $state('');
-	let fileInput: HTMLInputElement | undefined = $state();
 
 	const session = $derived(form.sessions.find((s) => s.origin === form.selectedOrigin));
 
@@ -46,36 +38,6 @@
 		// Прямой заход или перезагрузка: формы нет — назад к её началу.
 		if (!form.name.trim()) goto('/circles/new', { replaceState: true });
 	});
-
-	function openPhotoPicker() {
-		fileInput?.click();
-	}
-
-	function onPhotoSelected(e: Event) {
-		const input = e.target as HTMLInputElement;
-		const file = input.files?.[0];
-		input.value = '';
-		if (!file) return;
-		if (file.type && !file.type.startsWith('image/')) {
-			error = 'Нужно фото';
-			return;
-		}
-		cropFile = file;
-	}
-
-	function onCropDone(crop: CroppedImage) {
-		cropFile = undefined;
-		if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-		pendingAvatar = crop;
-		avatarPreview = URL.createObjectURL(new Blob([crop.data], { type: crop.type }));
-	}
-
-	function today(): string {
-		const d = new Date();
-		const mm = String(d.getMonth() + 1).padStart(2, '0');
-		const dd = String(d.getDate()).padStart(2, '0');
-		return `${d.getFullYear()}-${mm}-${dd}`;
-	}
 
 	async function create() {
 		error = '';
@@ -103,18 +65,11 @@
 			// Фото и первая запись — не повод терять уже созданный круг: не
 			// вышло — круг открывается всё равно, фото ставится в профиле.
 			let avatarFailed = false;
-			if (pendingAvatar) {
-				try {
-					const blobId = await uploadBlob(origin, pendingAvatar);
-					await updateIdentity(origin, created.id, { avatar_blob_id: blobId });
-				} catch {
-					avatarFailed = true;
-				}
-			}
+			if (pendingAvatar) avatarFailed = !(await setIdentityAvatar(origin, created.id, pendingAvatar));
 			const body = firstPost.trim();
 			if (body) {
 				try {
-					await createPost(origin, created.id, { body, entry_date: today(), media: [] });
+					await createPost(origin, created.id, { body, entry_date: localDayOf(new Date().toISOString()), media: [] });
 				} catch {
 					/* запись можно написать в ленте */
 				}
@@ -130,32 +85,17 @@
 		}
 	}
 
-	onDestroy(() => {
-		if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-	});
 </script>
 
 <FormLayout app color={form.color} circleTitle={form.name} onback={() => goto('/circles/new')}>
-	<ScreenTitle class="mt-22 lh-125">
-		Как вас зовут<br />в этом круге?
-	</ScreenTitle>
-	<AddPhotoButton previewUrl={avatarPreview || undefined} onclick={openPhotoPicker} />
-	<Hint centered class="mt-8">
-		<TextButton onclick={openPhotoPicker}>добавить фото</TextButton>
-	</Hint>
-	<input bind:this={fileInput} type="file" accept="image/*" hidden onchange={onPhotoSelected} />
-	<Label class="mt-18">Имя</Label>
-	<Input active type="text" autocomplete="name" bind:value={name} />
-	<Label class="label-row">
-		<span>{form.diaryMode ? 'Первая запись' : 'Скажи что-нибудь кругу'}</span>
-		<span class="label-aside">необязательно</span>
-	</Label>
-	<TextArea
-		variant="area"
-		active
-		rows={3}
-		bind:value={firstPost}
-		placeholder={form.diaryMode ? 'С чего начнётся дневник' : 'Первая запись в журнале круга'}
+	<IdentityForm
+		color={form.color}
+		bind:name
+		bind:firstPost
+		bind:avatar={pendingAvatar}
+		postLabel={form.diaryMode ? 'Первая запись' : undefined}
+		postPlaceholder={form.diaryMode ? 'С чего начнётся дневник' : undefined}
+		onerror={(message) => (error = message)}
 	/>
 	<Button variant="colored" {loading} onclick={() => void create()}>
 		{form.diaryMode ? 'Завести дневник' : 'Создать и позвать'}
@@ -165,11 +105,3 @@
 	{/if}
 </FormLayout>
 
-{#if cropFile}
-	<AvatarCrop
-		file={cropFile}
-		color={form.color}
-		ondone={onCropDone}
-		oncancel={() => (cropFile = undefined)}
-	/>
-{/if}

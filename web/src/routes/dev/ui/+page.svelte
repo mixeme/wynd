@@ -30,6 +30,10 @@
 	import MapBadge from '$ui/data/MapBadge.svelte';
 	import MapPostSheet from '$ui/data/MapPostSheet.svelte';
 	import MemberRow from '$ui/data/MemberRow.svelte';
+	import MentionText from '$ui/data/MentionText.svelte';
+	import EditWindowPicker from '$ui/forms/EditWindowPicker.svelte';
+	import IdentityForm from '$ui/forms/IdentityForm.svelte';
+	import type { EditWindowKey } from '$lib/circles/settings';
 	import MediaTile from '$ui/data/MediaTile.svelte';
 	import MonthLabel from '$ui/data/MonthLabel.svelte';
 	import PhotoGrid from '$ui/data/PhotoGrid.svelte';
@@ -112,6 +116,8 @@
 	import '$lib/styles/map.css';
 
 	let swOn = $state(false);
+	let demoEditWindow = $state<EditWindowKey>('custom');
+	let demoCustomHours = $state(36);
 	let color = $state<CircleColor>('ochre');
 	const total = countComponents();
 
@@ -481,6 +487,22 @@
 					onclick={() => {}}
 					previewUrl="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='92' height='92'%3E%3Crect fill='%2358673A' width='92' height='92'/%3E%3C/svg%3E"
 				/>
+			</div>
+			<div class="card">
+				<h3>EditWindowPicker · #e2-4, #e6-2</h3>
+				<EditWindowPicker
+					value={demoEditWindow}
+					bind:customHours={demoCustomHours}
+					onpick={(key) => (demoEditWindow = key)}
+				/>
+			</div>
+			<div class="card">
+				<h3>IdentityForm · #e1-3</h3>
+				<IdentityForm color="ochre" onerror={() => {}} />
+			</div>
+			<div class="card">
+				<h3>MentionText · #e3-1, #e4-5</h3>
+				<MentionText body={'Были на даче с @Аня.\n\nЗавтра — снова.'} />
 			</div>
 			<div class="card">
 				<h3>Button variants</h3>
