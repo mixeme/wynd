@@ -1337,6 +1337,15 @@ input.fld, textarea.fld, textarea.ta {
 	font: inherit;
 	color: inherit;
 }
+/* Период «с — по» (DateRange): два поля даты поровну. */
+.date-range {
+	display: flex;
+	gap: 8px;
+	margin: 8px 16px 0;
+}
+.date-range > input.fld {
+	flex: 1;
+}
 /* Число с единицей (NumberField): узкое поле в строке. Служебные .w72 и .m-0
    слабее input.fld — с ними поле растягивалось на всю строку. */
 input.fld.num {

@@ -32,7 +32,7 @@
 	"src/routes/circles/[id]/quota/+page.svelte": 1,
 	"src/routes/circles/[id]/quota/deadlines/+page.svelte": 3,
 	"src/routes/circles/[id]/quota/request/+page.svelte": 0,
-	"src/routes/circles/[id]/search/+page.svelte": 4,
+	"src/routes/circles/[id]/search/+page.svelte": 1,
 	"src/routes/circles/[id]/settings/+page.svelte": 6,
 	"src/routes/circles/[id]/settings/identity/+page.svelte": 3,
 	"src/routes/circles/[id]/settings/invite/+page.svelte": 2,
@@ -50,7 +50,7 @@
 	"src/routes/pay/extend/+page.svelte": 0,
 	"src/routes/pay/help/+page.svelte": 0,
 	"src/routes/search/+layout.svelte": 0,
-	"src/routes/search/+page.svelte": 5,
+	"src/routes/search/+page.svelte": 2,
 	"src/routes/settings/+page.svelte": 1,
 	"src/routes/settings/app/+page.svelte": 1,
 	"src/routes/settings/servers/+page.svelte": 0

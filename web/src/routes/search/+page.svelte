@@ -1,11 +1,11 @@
 ﻿<script lang="ts">
+	import DateRange from '$ui/forms/DateRange.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
-	import Input from '$ui/forms/Input.svelte';
 	import SearchField from '$ui/forms/SearchField.svelte';
 	import SearchGroupHeader from '$ui/data/SearchGroupHeader.svelte';
 	import SearchResultRow from '$ui/data/SearchResultRow.svelte';
@@ -15,7 +15,7 @@
 	import { formatEntryDate, formatPostTime } from '$lib/format/time';
 	import { loadSessions } from '$lib/session/session.svelte';
 	import { getMediaUrl } from '$lib/media/objectUrl';
-	import { searchChipsFromParams, replaceSearchUrl, searchChipsFromWindow, searchThumbVariant } from '$lib/journal/search';
+	import { searchChipsFromParams, replaceSearchUrl, searchChipsFromWindow, searchThumbVariant, quoteMatch } from '$lib/journal/search';
 
 	type Hit = {
 		postId: string;
@@ -199,15 +199,8 @@
 	}
 
 	function rowAuthor(hit: Hit) {
-		if (hit.kind === 'day') return highlight(hit.title ?? hit.snippet, debounced);
+		if (hit.kind === 'day') return quoteMatch(hit.title ?? hit.snippet, debounced);
 		return hit.author;
-	}
-
-	function highlight(text: string, term: string) {
-		if (!term) return text;
-		const idx = text.toLowerCase().indexOf(term.toLowerCase());
-		if (idx < 0) return text;
-		return `${text.slice(0, idx)}«${text.slice(idx, idx + term.length)}»${text.slice(idx + term.length)}`;
 	}
 
 	function togglePeriod() {
@@ -234,10 +227,7 @@
 		>
 	</ChipGroup>
 	{#if periodActive}
-		<div style="display:flex;gap:8px;margin:8px 16px 0">
-			<Input type="date" bind:value={periodFrom} active style="flex:1" />
-			<Input type="date" bind:value={periodTo} active style="flex:1" />
-		</div>
+		<DateRange bind:from={periodFrom} bind:to={periodTo} />
 	{/if}
 	{#if sourceError}
 		<Hint class="mt-16">{sourceError}</Hint>
@@ -256,19 +246,11 @@
 				thumb={Boolean(hit.thumbBlobId)}
 				thumbUrl={thumbUrls[`${group.circleId}-${hit.postId}`]}
 				thumbVariant={searchThumbVariant(hit.postId)}
+				kind={hit.kind}
+				snippet={hit.snippet}
+				query={debounced}
 				onclick={() => openHit(group, hit)}
-			>
-				{#snippet preview()}
-					{#if hit.kind === 'day'}
-						<span class="faint">день</span>
-					{:else}
-						{highlight(hit.snippet, debounced)}
-						{#if hit.kind === 'comment'}
-							<span class="faint"> · комментарий</span>
-						{/if}
-					{/if}
-				{/snippet}
-			</SearchResultRow>
+			/>
 		{/each}
 	{/each}
 	<Hint class="mt-22" centered>

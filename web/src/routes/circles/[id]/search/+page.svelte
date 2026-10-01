@@ -1,11 +1,11 @@
 <script lang="ts">
+	import DateRange from '$ui/forms/DateRange.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getContext, onMount } from 'svelte';
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
-	import Input from '$ui/forms/Input.svelte';
 	import SearchResultRow from '$ui/data/SearchResultRow.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { formatEntryDate, formatPostTime } from '$lib/format/time';
@@ -18,7 +18,8 @@
 		searchHref,
 		replaceSearchUrl,
 		searchChipsFromWindow,
-		searchThumbVariant
+		searchThumbVariant,
+		quoteMatch
 	} from '$lib/journal/search';
 	import { searchStats, toggleAuthor, togglePeriod } from '$lib/journal/searchState';
 	import type { CircleSearchHit } from '$lib/journal/types';
@@ -144,13 +145,6 @@
 		})();
 	});
 
-	function highlight(text: string, term: string) {
-		if (!term) return text;
-		const idx = text.toLowerCase().indexOf(term.toLowerCase());
-		if (idx < 0) return text;
-		return `${text.slice(0, idx)}«${text.slice(idx, idx + term.length)}»${text.slice(idx + term.length)}`;
-	}
-
 	function goBack() {
 		goto(`/circles/${circle.circleId}`);
 	}
@@ -177,7 +171,7 @@
 	}
 
 	function rowAuthor(hit: CircleSearchHit) {
-		if (hit.kind === 'day') return highlight(hit.title ?? hit.snippet, debounced);
+		if (hit.kind === 'day') return quoteMatch(hit.title ?? hit.snippet, debounced);
 		return hit.author_name ?? '—';
 	}
 
@@ -233,10 +227,7 @@
 		{/if}
 	</ChipGroup>
 	{#if periodActive}
-		<div style="display:flex;gap:8px;margin:8px 16px 0">
-			<Input type="date" bind:value={periodFrom} active placeholder="с" style="flex:1" />
-			<Input type="date" bind:value={periodTo} active placeholder="по" style="flex:1" />
-		</div>
+		<DateRange bind:from={periodFrom} bind:to={periodTo} />
 	{/if}
 	{#if sourceError}
 		<Hint class="mt-16">{sourceError}</Hint>
@@ -254,19 +245,11 @@
 			thumb={Boolean(hit.thumb_blob_id)}
 			thumbUrl={thumbUrls[hit.post_id]}
 			thumbVariant={searchThumbVariant(hit.post_id)}
+			kind={hit.kind}
+			snippet={hit.snippet}
+			query={debounced}
 			onclick={() => openHit(hit)}
-		>
-			{#snippet preview()}
-				{#if hit.kind === 'day'}
-					<span class="faint">день</span>
-				{:else}
-					{highlight(hit.snippet, debounced)}
-					{#if hit.kind === 'comment'}
-						<span class="faint"> · комментарий</span>
-					{/if}
-				{/if}
-			{/snippet}
-		</SearchResultRow>
+		/>
 	{/each}
 	<Hint class="mt-22" centered>
 		Фильтр по автору работает только здесь:<br />в других кругах это другие люди.

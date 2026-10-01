@@ -65,7 +65,8 @@ export const COMPONENT_MAP: CatalogGroup[] = [
 			{ component: 'EditWindowPicker', screen: 'e2-4, e6-2', smoke: '/dev/smoke/e2-4' },
 			{ component: 'IdentityForm', screen: 'e1-3' },
 			{ component: 'NumberField', screen: 'e2-4, e6-2, e6-7' },
-			{ component: 'DateRow', screen: 'e4-2' }
+			{ component: 'DateRow', screen: 'e4-2' },
+			{ component: 'DateRange', screen: 'e2-9' }
 		]
 	},
 	{

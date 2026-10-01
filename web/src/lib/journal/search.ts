@@ -74,6 +74,14 @@ export function searchHref(path: string, state: SearchChipState): string {
 	return qs ? `${path}?${qs}` : path;
 }
 
+/** Найденное слово в кавычках-ёлочках: «как найдено» — без разметки, текстом. */
+export function quoteMatch(text: string, term: string): string {
+	if (!term) return text;
+	const idx = text.toLowerCase().indexOf(term.toLowerCase());
+	if (idx < 0) return text;
+	return `${text.slice(0, idx)}«${text.slice(idx, idx + term.length)}»${text.slice(idx + term.length)}`;
+}
+
 /** Stable placeholder tint when a hit has media but no cached blob URL yet. */
 export function searchThumbVariant(seed: string): string {
 	let hash = 0;

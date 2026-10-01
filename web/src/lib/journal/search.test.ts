@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { searchChipsFromParams, searchHref } from './search';
+import { quoteMatch, searchChipsFromParams, searchHref } from './search';
 
 describe('searchHref', () => {
 	it('keeps the path when chips are empty', () => {
@@ -64,5 +64,16 @@ describe('searchChipsFromParams', () => {
 	it('omits empty author from the query', () => {
 		const href = searchHref('/circles/c1/search', { q: 'x', author: '  ' });
 		expect(new URL(href, 'https://wynd.local').searchParams.get('author')).toBeNull();
+	});
+});
+
+describe('quoteMatch', () => {
+	it('берёт найденное в ёлочки как написано, без учёта регистра', () => {
+		expect(quoteMatch('Были на Даче в субботу', 'дач')).toBe('Были на «Дач»е в субботу');
+	});
+
+	it('без запроса или без совпадения — текст как есть', () => {
+		expect(quoteMatch('дача', '')).toBe('дача');
+		expect(quoteMatch('дача', 'лес')).toBe('дача');
 	});
 });

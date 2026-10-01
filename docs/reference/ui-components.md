@@ -78,7 +78,7 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar, **Comp
 
 ### `forms/`
 
-**Label**, **Input**, **FieldDisplay**, **TextArea**, ScreenTitle, Hint, **Button**, **Chip**, ChipGroup, Switch, ColorSwatches, CodeBox, InviteCard, **RequisitesCard**, **SearchField**, DangerZone (опц. `style`), Meter, PeopleStrip, **MentionPicker**, AddPhotoButton, DangerNote, VolumeChart, **IconButton**, **TextButton**, **EditWindowPicker**, **IdentityForm**, **NumberField**, **DateRow**
+**Label**, **Input**, **FieldDisplay**, **TextArea**, ScreenTitle, Hint, **Button**, **Chip**, ChipGroup, Switch, ColorSwatches, CodeBox, InviteCard, **RequisitesCard**, **SearchField**, DangerZone (опц. `style`), Meter, PeopleStrip, **MentionPicker**, AddPhotoButton, DangerNote, VolumeChart, **IconButton**, **TextButton**, **EditWindowPicker**, **IdentityForm**, **NumberField**, **DateRow**, **DateRange**
 
 Интерактивные примитивы (фаза 1–4):
 
@@ -93,6 +93,8 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar, **Comp
 `CodeBox` — шесть клеток `.codebox`; без `bind:value` — display (`digits` / `active`, каталог). С `bind:value` — прозрачный `input.code-input` поверх (**.code-wrap**), `inputmode="numeric"`, `autocomplete="one-time-code"`, обрезка до `length`; опц. `bind:el`, `autofocus` (**#e1-2**).
 
 `EditWindowPicker` — «Окно правок» (**#e2-4**, **#e6-2**): шесть чипов в два ряда и при «Своё…» поле часов; `value`, `bind:customHours`, `onpick(key)`, опц. `oncustomchange` — настройки круга сохраняют сразу. Подсказку о сдвиге часов экран ставит сам.
+
+`DateRange` — период «с — по» двумя полями даты поровну (**#e2-9**, поиск в круге): `bind:from`, `bind:to`.
 
 `DateRow` — строка, которая открывает системный выбор дня (**#e4-2** «Отнести к дате»): `bind:value` (`2026-10-01`), `title`, `subtitle`, `icon`, `style`. Поле даты скрыто под строкой (`.date-pick`), выбор открывается у неё; без `showPicker` — по клику.
 
@@ -150,6 +152,8 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 `CommentRow` — строка треда (`div.cmt`, опц. `.q`): аватар, `name`, snippet `time`, snippet `children` (текст / правка); `onedit` / `ondelete` → `.acts` (**#e4-5**–**#e4-7**). Колонка `.acts` в треде стоит всегда — текст одной ширины у своих и чужих; `bare` — без неё (строка-ссылка, `ResponseEntry`). Не путать с `CommentPreview` (`button.cm` в ленте).
 
 `FeedDayPromptCard` — служебная карточка в ленте (`div.post.day-prompt`): `title`, snippet текста, `primaryLabel` / `secondaryLabel`, `onprimary` / `onsecondary` (`Button` в `.rowin`). Стили `.day-prompt` и раскладка ленты (`.feed`, `.ptr`, `.empty`, `.feed-end`) — в `ui.css`.
+
+`SearchResultRow` — строка найденного (**#e2-9**): `author`, `time`, превью — либо snippet `preview`, либо по `kind` (`post` / `comment` — «· комментарий» / `day` — «день») из `snippet` с найденным словом `query` в ёлочках (`quoteMatch` из `$lib/journal/search`); миниатюра `thumb` / `thumbUrl` / `thumbVariant`.
 
 `MapBadge` / `MapPostSheet` — вкладка «Карта» круга: счётчик пинов (`.map-badge`) и нижняя плашка выбранной записи (`button.map-sheet`, thumb + автор + время + текст). Стили в [`map.css`](../../web/src/lib/styles/map.css); сброс кнопки — `button.map-sheet` в `ui.css`.
 
