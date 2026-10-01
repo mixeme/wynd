@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
 	attachmentBlocks,
+	isAttachedToOtherDay,
+	localDayOf,
 	albumCompressionHint,
 	albumDownloadFilename,
 	audioRowLabel,
@@ -162,5 +164,12 @@ describe('present', () => {
 			'3',
 			'4'
 		]);
+	});
+
+	it('день привязки показывается, только когда отличается от дня публикации', () => {
+		const at = new Date(2026, 8, 30, 23, 14).toISOString();
+		expect(localDayOf(at)).toBe('2026-09-30');
+		expect(isAttachedToOtherDay({ entry_date: '2026-09-30', created_at: at })).toBe(false);
+		expect(isAttachedToOtherDay({ entry_date: '2026-09-27', created_at: at })).toBe(true);
 	});
 });

@@ -110,6 +110,23 @@ export function attachmentBlocks(list: MediaSummary[]): AttachmentBlock[] {
 	return out;
 }
 
+/** Местный календарный день метки: «2026-09-30». */
+export function localDayOf(iso: string): string {
+	const d = new Date(iso);
+	const mm = String(d.getMonth() + 1).padStart(2, '0');
+	const dd = String(d.getDate()).padStart(2, '0');
+	return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+/**
+ * Запись привязана к другому дню, чем опубликована (3.4): в ленте справа
+ * в шапке — день привязки. Сравнивается с днём публикации, а не с сегодня:
+ * иначе пометку получала любая вчерашняя запись.
+ */
+export function isAttachedToOtherDay(post: Pick<FeedPost, 'entry_date' | 'created_at'>): boolean {
+	return Boolean(post.entry_date) && post.entry_date !== localDayOf(post.created_at);
+}
+
 /** Оба тега — «исполнитель — название». Одного или пустых нет: остаётся имя файла. */
 export function audioRowLabel(att: MediaSummary): string {
 	const artist = att.audio_artist?.trim() ?? '';

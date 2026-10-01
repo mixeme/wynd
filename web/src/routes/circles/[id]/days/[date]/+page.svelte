@@ -19,7 +19,9 @@
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { splitMentionBody } from '$lib/journal/mentions';
 	import { clearDayTitle, loadDay, loadDays, setDayTitle } from '$lib/journal/days';
-	import { authorInitial, coverMedia, locationLabel, mediaCount, photoMedia } from '$lib/journal/present';
+	import { authorInitial, coverMedia, locationLabel, mediaCount, photoMedia,
+		localDayOf
+	} from '$lib/journal/present';
 	import type { FeedPost } from '$lib/journal/types';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 	import { registerRefetch } from '$lib/sync/sync';
@@ -55,7 +57,7 @@
 	);
 
 	function isBackfilled(post: FeedPost): boolean {
-		return post.entry_date === entryDate && post.created_at.slice(0, 10) > entryDate;
+		return post.entry_date === entryDate && localDayOf(post.created_at) > entryDate;
 	}
 
 	function authorAvatarSrc(post: FeedPost): string | undefined {

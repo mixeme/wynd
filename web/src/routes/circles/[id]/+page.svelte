@@ -48,6 +48,7 @@
 	import {
 		attachmentLabel,
 		attachmentBlocks,
+		isAttachedToOtherDay,
 		attachmentMedia,
 		attachmentSizeLabel,
 		audioRowLabel,
@@ -529,7 +530,7 @@
 	}
 
 	function isBackdated(post: FeedPost): boolean {
-		return post.entry_date !== todayEntryDate().slice(0, 10) && post.entry_date < todayEntryDate();
+		return isAttachedToOtherDay(post);
 	}
 </script>
 
