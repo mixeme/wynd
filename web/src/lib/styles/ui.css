@@ -1749,14 +1749,14 @@ a.link {
 .danger .di + .di {
 	border-top: 1px solid var(--line);
 }
-.danger.adm-del .dl {
+.danger.titled .dl {
 	padding: 12px 16px 2px;
 }
-.danger.adm-del .dt {
+.danger.titled .dt {
 	padding: 11px 16px 4px;
 	font-weight: 600;
 }
-.danger.adm-del .dd {
+.danger.titled .dd {
 	padding: 0 16px 14px;
 }
 .meter {
@@ -2388,6 +2388,15 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 .chk .g {
 	flex: 1;
 	min-width: 0;
+}
+/* Цвет круга в карточке человека (9.4): квадратик, как на кадре. Общего
+   .dot в ui.css не было — точка выходила нулевой и не была видна. */
+.chk .chk-dot {
+	width: 14px;
+	height: 14px;
+	border-radius: 4px;
+	flex: 0 0 auto;
+	margin-top: 3px;
 }
 .chk .n {
 	font-size: 12.5px;

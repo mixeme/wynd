@@ -6,6 +6,7 @@
 
 	let {
 		status,
+		dotColor,
 		name,
 		title,
 		description,
@@ -14,7 +15,9 @@
 		class: className = '',
 		style = ''
 	}: {
-		status: Status;
+		status?: Status;
+		/** Цветная точка вместо значка статуса — круг в карточке человека (план 47, 1.5). */
+		dotColor?: string;
 		name?: string;
 		title?: Snippet;
 		description?: string;
@@ -26,7 +29,11 @@
 </script>
 
 <div class="chk {className}" class:bad={bad || status === 'bad'} {style}>
-	<StatusIcon {status} />
+	{#if dotColor}
+		<span class="dot chk-dot" style:background={dotColor}></span>
+	{:else if status}
+		<StatusIcon {status} />
+	{/if}
 	<div class="g">
 		<div class="n">
 			{#if title}

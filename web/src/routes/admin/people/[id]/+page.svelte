@@ -1,4 +1,6 @@
 ﻿<script lang="ts">
+	import CheckRow from '$ui/admin/CheckRow.svelte';
+	import DangerNote from '$ui/forms/DangerNote.svelte';
 	import SwitchRow from '$ui/admin/SwitchRow.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -141,16 +143,11 @@
 						<Hint>без кругов</Hint>
 					{:else}
 						{#each acc.circles as circle (circle.id)}
-							<div class="chk">
-								<span
-									class="dot"
-									style="background:{dotColor(circle.color)};margin-top:3px"
-								></span>
-								<div class="g">
-									<div class="n">{circle.name}</div>
-									<div class="d">{circleDetail(circle)}</div>
-								</div>
-							</div>
+							<CheckRow
+								dotColor={dotColor(circle.color)}
+								name={circle.name}
+								description={circleDetail(circle)}
+							/>
 						{/each}
 					{/if}
 					<div class="fine mt-10">
@@ -168,21 +165,15 @@
 						Закрыть — код перестанет приходить, круги не трогаются. Открыть можно снова.
 					</SwitchRow>
 					{#if !acc.owns_circle}
-						<div class="danger adm-del mt-28 mx-0 mb-0">
-							<div class="dl">
-								Необратимо
-							</div>
-							<div class="dt">Удалить с сервера</div>
-							<div class="dd note lh-15">
-								Записи останутся, события входа и ухода останутся. Имя в круге больше не к чему
-								привязать — в хронике будет факт без лица. С этого сервера человек уйдёт.
-							</div>
-							<div class="dd">
+						<DangerNote title="Удалить с сервера" class="mt-28 mx-0 mb-0">
+							Записи останутся, события входа и ухода останутся. Имя в круге больше не к чему
+							привязать — в хронике будет факт без лица. С этого сервера человек уйдёт.
+							{#snippet action()}
 								<TextButton variant="admin" onclick={() => void removeAccount()} disabled={deleting}>
 									{deleting ? 'Удаляем…' : 'Удалить'}
 								</TextButton>
-							</div>
-						</div>
+							{/snippet}
+						</DangerNote>
 					{/if}
 					<div class="fine mt-14">
 						У кого есть круг во владении, этой кнопки нет: сначала передать владение в круге.

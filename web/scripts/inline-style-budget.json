@@ -14,7 +14,7 @@
 	"src/routes/admin/pay/requests/[id]/+page.svelte": 0,
 	"src/routes/admin/pay/subscription/+page.svelte": 0,
 	"src/routes/admin/people/+page.svelte": 2,
-	"src/routes/admin/people/[id]/+page.svelte": 1,
+	"src/routes/admin/people/[id]/+page.svelte": 0,
 	"src/routes/auth/code/+page.svelte": 4,
 	"src/routes/circles/+layout.svelte": 0,
 	"src/routes/circles/+page.svelte": 6,

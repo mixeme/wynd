@@ -118,9 +118,9 @@
 
 **1.4 `invite/[token]/+page.svelte:166–169` — сервер в `FieldDisplay` двумя `div` с инлайн-стилями — высокая.** На соседних экранах тот же «сервер: имя и адрес» — это `ServerRow card`: `+page.svelte:132`, `join/+page.svelte:192`, `join/[token]/+page.svelte:100`. → `<ServerRow name={peek.server_name} subtitle={peek.host || displayHost('')} card />`.
 
-**1.5 `admin/people/[id]/+page.svelte:144–153` — строка `.chk > .dot + .g > .n/.d` от руки — высокая.** Это разметка `CheckRow`, только вместо `StatusIcon` цветная точка. → добавить в `CheckRow` проп `leading` (snippet) или `dotColor` и использовать его.
+**1.5 `admin/people/[id]/+page.svelte:144–153` — строка `.chk > .dot + .g > .n/.d` от руки — высокая.** Это разметка `CheckRow`, только вместо `StatusIcon` цветная точка. → добавить в `CheckRow` проп `leading` (snippet) или `dotColor` и использовать его. **Сделано в 0.18.28:** `CheckRow dotColor`. Попутно: общего `.dot` (14×14) из макета в `ui.css` не было — квадратик цвета круга в карточке человека был нулевым и не виден.
 
-**1.6 `admin/people/[id]/+page.svelte:179–193` — красная зона `.danger.adm-del` с `dl/dt/dd` от руки — высокая.** Есть `DangerNote` (подпись и текст) и `DangerZone` (подпись и действия). → `DangerNote` с пропами `title` и `action` (snippet). Тогда CSS `.danger.adm-del` (ui.css:1683) больше не нужен.
+**1.6 `admin/people/[id]/+page.svelte:179–193` — красная зона `.danger.adm-del` с `dl/dt/dd` от руки — высокая.** Есть `DangerNote` (подпись и текст) и `DangerZone` (подпись и действия). → `DangerNote` с пропами `title` и `action` (snippet). Тогда CSS `.danger.adm-del` (ui.css:1683) больше не нужен. **Сделано в 0.18.28:** `DangerNote title` + snippet `action`, правила переименованы в `.danger.titled`; все классы компонентов теперь запрещены сторожем на голых тегах, список «только вниз» пуст.
 
 **1.7 Время со значком: `span.tm` + flex + `Icon` от руки — высокая.** `EntryDateMark` рендерит то же самое (`.tm`, flex, gap 5 px, значок), но значок `day` в нём зашит.
 - `circles/[id]/+page.svelte:634` — «в очереди», clock;

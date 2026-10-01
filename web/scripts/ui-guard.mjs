@@ -661,13 +661,26 @@ export function checkStyleBlocks(webRoot, allowed = STYLE_BLOCK_SCREENS) {
 /**
  * Классы компонентов Wynd UI на голом HTML-теге боевого экрана (план 47,
  * сторож п. 1). Компонент есть — экран зовёт его, а не верстает класс сам.
- * BANNED не встречаются нигде; RATCHET ещё остались в перечисленных местах
- * и ждут своих компонентов (админские .chk / .danger — CheckRow и DangerNote) — список только вниз.
+ * BANNED не встречаются нигде (с 0.18.28 — все). RATCHET — на случай, если
+ * класс придётся оставить до своего компонента: экран → классы, только вниз.
  */
-export const LIBRARY_CLASS_BANNED = ['h1s', 'att', 'men', 'codebox', 'addph', 'sfield', 'panel'];
-export const LIBRARY_CLASS_RATCHET = {
-	'src/routes/admin/people/[id]/+page.svelte': ['chk', 'danger']
-};
+export const LIBRARY_CLASS_BANNED = [
+	'h1s',
+	'att',
+	'men',
+	'codebox',
+	'addph',
+	'sfield',
+	'panel',
+	'tm',
+	'hint',
+	'qr',
+	'chk',
+	'danger',
+	'pic'
+];
+/** @type {Record<string, string[]>} */
+export const LIBRARY_CLASS_RATCHET = {};
 /** `{@html}` в экранах: не бывает — QR рисует `QrCode` (0.18.15). */
 /** @type {Set<string>} */
 export const HTML_TAG_SCREENS = new Set();
@@ -808,9 +821,6 @@ export function checkScriptClassStrings(webRoot) {
  * глобальном файле. Новые не заводятся — список только вниз.
  */
 export const SINGLE_SCREEN_CLASSES = new Set([
-	'adm-del',
-	'dt',
-	'dd',
 	'map-wrap',
 	'ced',
 	'qbar',

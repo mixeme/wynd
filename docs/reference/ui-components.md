@@ -92,6 +92,8 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar, **Comp
 
 `CodeBox` — шесть клеток `.codebox`; без `bind:value` — display (`digits` / `active`, каталог). С `bind:value` — прозрачный `input.code-input` поверх (**.code-wrap**), `inputmode="numeric"`, `autocomplete="one-time-code"`, обрезка до `length`; опц. `bind:el`, `autofocus` (**#e1-2**).
 
+`DangerNote` — красная зона «Необратимо»: пояснение — children; с `title` — заголовок действия («Удалить с сервера») и snippet `action` с кнопкой под текстом (`.danger.titled`).
+
 `EditWindowPicker` — «Окно правок» (**#e2-4**, **#e6-2**): шесть чипов в два ряда и при «Своё…» поле часов; `value`, `bind:customHours`, `onpick(key)`, опц. `oncustomchange` — настройки круга сохраняют сразу. Подсказку о сдвиге часов экран ставит сам.
 
 `FilePicker` — скрытый выбор файлов, который открывает своя кнопка: `accept`, `multiple`, `capture`, `onfiles(files)`; экран держит его через `bind:this` и зовёт `open()`. Поле сбрасывается само — тот же файл можно выбрать снова. Сырые `<input type="file" hidden>` на экранах не ставить.
@@ -196,7 +198,7 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 
 ### `admin/`
 
-AdminNav (`ADMIN_NAV`: Проверка, Общие, Доступ, Люди, Хранилище, Сжатие, Оплата; кадры 9.1–9.10 без «Оплата»), AdminSection, DataTable, StackBar, CheckRow, StatusIcon, CodeBlock (`lines[]`, `.hi` / `span.cmt`), InlineInput, QuotaRequestRow (`Button` `.btn` / `.btn.gh` на «Дать» / «Отказать», не `.act`), **Panel**, **AdminField**, **SwitchRow**
+AdminNav (`ADMIN_NAV`: Проверка, Общие, Доступ, Люди, Хранилище, Сжатие, Оплата; кадры 9.1–9.10 без «Оплата»), AdminSection, DataTable, StackBar, CheckRow, StatusIcon, CodeBlock (`lines[]`, `.hi` / `span.cmt`), InlineInput, **CheckRow** (`dotColor` — цветной квадратик вместо значка статуса), QuotaRequestRow (`Button` `.btn` / `.btn.gh` на «Дать» / «Отказать», не `.act`), **Panel**, **AdminField**, **SwitchRow**
 
 `SwitchRow` — переключатель админки с заголовком и пояснением (кадры 9.x, 10.x): `bind:checked`, `title` (он же подпись `Switch` для чтения с экрана), пояснение — children. Переключатель на 2 px ниже верха строки, как на кадрах.
 
