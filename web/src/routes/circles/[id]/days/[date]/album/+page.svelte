@@ -141,7 +141,7 @@
 	{:else if !items.length}
 		<Hint class="gutter-24">В этот день нет фото или видео</Hint>
 	{:else}
-		<PhotoGrid style="padding:0 12px 16px">
+		<PhotoGrid album>
 			{#each items as item (item.blobId)}
 				<MediaTile
 					variant="album"

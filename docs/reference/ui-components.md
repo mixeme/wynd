@@ -78,7 +78,7 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar, **Comp
 
 ### `forms/`
 
-**Label**, **Input**, **FieldDisplay**, **TextArea**, ScreenTitle, Hint, **Button**, **Chip**, ChipGroup, Switch, ColorSwatches, CodeBox, InviteCard, **RequisitesCard**, **SearchField**, DangerZone (опц. `style`), Meter, PeopleStrip, **MentionPicker**, AddPhotoButton, DangerNote, VolumeChart, **IconButton**, **TextButton**, **EditWindowPicker**, **IdentityForm**, **NumberField**, **DateRow**, **DateRange**, **FilePicker**
+**Label**, **Input**, **FieldDisplay**, **TextArea**, ScreenTitle, Hint, **Button**, **Chip**, ChipGroup, Switch, ColorSwatches, CodeBox, InviteCard, **RequisitesCard**, **SearchField**, DangerZone (опц. `style`), Meter, PeopleStrip, **MentionPicker**, AddPhotoButton, DangerNote, VolumeChart, **IconButton**, **TextButton**, **EditWindowPicker**, **IdentityForm**, **NumberField**, **DateRow**, **DateRange**, **FilePicker**, **QrScanner**
 
 Интерактивные примитивы (фаза 1–4):
 
@@ -95,6 +95,8 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar, **Comp
 `DangerNote` — красная зона «Необратимо»: пояснение — children; с `title` — заголовок действия («Удалить с сервера») и snippet `action` с кнопкой под текстом (`.danger.titled`).
 
 `EditWindowPicker` — «Окно правок» (**#e2-4**, **#e6-2**): шесть чипов в два ряда и при «Своё…» поле часов; `value`, `bind:customHours`, `onpick(key)`, опц. `oncustomchange` — настройки круга сохраняют сразу. Подсказку о сдвиге часов экран ставит сам.
+
+`QrScanner` — видоискатель QR (**#e2-17**): задняя камера, кадр раз в 250 мс; `onread(text)` → `true` — хватит (камера гаснет), `false` — ждать следующий; `onerror(message)` — камеры нет или её не дали. Камера гаснет и при уходе с экрана.
 
 `FilePicker` — скрытый выбор файлов, который открывает своя кнопка: `accept`, `multiple`, `capture`, `onfiles(files)`; экран держит его через `bind:this` и зовёт `open()`. Поле сбрасывается само — тот же файл можно выбрать снова. Сырые `<input type="file" hidden>` на экранах не ставить.
 
@@ -175,6 +177,7 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 
 - `SettingsRow divided` (`top` \| `bottom` \| `both`) — черта над и/или под строкой, когда она стоит среди текста (не в списке строк). `DateRow` пробрасывает `divided` и `class`.
 - `Meter` — полоса заполнения; `inline` — короткая полоска в строке таблицы (`.qbar`, квота круга в админке), `color` — свой цвет заполнения.
+- `PhotoGrid album` — сетка альбома с полями 12 px по бокам и 16 снизу.
 - `Avatar size="lg"` — 96 px по центру, буква 38 px («Кто вы в этом круге»).
 - `SettingsRow` с snippet `control` — всегда `div.row2`, справа контрол (например `Switch`); `chevron`/`value` не рендерятся; title без `font-weight:600`.
 - `Switch`: `bind:checked` — для формы с кнопкой «Сохранить»; `onchange(checked)` — когда нажатие сразу пишет на сервер: вызывается только от нажатия, не от смены `checked` извне (иначе обновление карточки перезаписало бы сервер старым значением).

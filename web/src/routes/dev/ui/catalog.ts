@@ -68,7 +68,8 @@ export const COMPONENT_MAP: CatalogGroup[] = [
 			{ component: 'NumberField', screen: 'e2-4, e6-2, e6-7' },
 			{ component: 'DateRow', screen: 'e4-2' },
 			{ component: 'DateRange', screen: 'e2-9' },
-			{ component: 'FilePicker', screen: 'e4-2, e1-3, e10-2' }
+			{ component: 'FilePicker', screen: 'e4-2, e1-3, e10-2' },
+			{ component: 'QrScanner', screen: 'e2-17' }
 		]
 	},
 	{

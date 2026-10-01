@@ -1790,6 +1790,9 @@ a.link {
 	gap: 3px;
 	padding: 0 3px;
 }
+.g3.album {
+	padding: 0 12px 16px;
+}
 .g3 .pic {
 	border-radius: 2px;
 	border: 0;

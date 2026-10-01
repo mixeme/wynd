@@ -24,7 +24,7 @@
 	"src/routes/circles/[id]/compose/+page.svelte": 2,
 	"src/routes/circles/[id]/days/+page.svelte": 0,
 	"src/routes/circles/[id]/days/[date]/+page.svelte": 2,
-	"src/routes/circles/[id]/days/[date]/album/+page.svelte": 3,
+	"src/routes/circles/[id]/days/[date]/album/+page.svelte": 2,
 	"src/routes/circles/[id]/grid/+page.svelte": 0,
 	"src/routes/circles/[id]/map/+page.svelte": 1,
 	"src/routes/circles/[id]/posts/[postId]/+page.svelte": 5,

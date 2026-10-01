@@ -302,7 +302,7 @@
 - Что сделать: `ComposeToolbar` (`tools` snippet, `note`) и `DateRow` (скрытый `input type=date` + `SettingsRow`). Поле даты ещё и в `quota/deadlines:153–160` через `getElementById(...).showPicker()`. **Сделано в 0.18.22:** `$ui/chrome/ComposeToolbar.svelte` и `$ui/forms/DateRow.svelte` в «Новой записи». В «Сроках» поле даты видимое (`Input type=date`), строка лишь открывает его — другой паттерн, оставлен.
 
 **3.8 `.qr`, `.qr.sm`, `.qr > svg`, `.qr-video` (2065–2080, 662) — средняя.**
-- Что сделать: `QrCode` (2.12) и `QrScanner` для `invite/scan:75`.
+- Что сделать: `QrCode` (2.12) и `QrScanner` для `invite/scan:75`. **Сделано:** `QrCode` — 0.18.15, `$ui/forms/QrScanner.svelte` — 0.18.32 (камера, цикл и сообщения об ошибке; что делать с прочитанным — экран).
 
 **3.9 Классы только для админки в блоке служебных — низкая.**
 - `.qbar` (2246), `.pay-thumb` (2828), `.shot` (2859), `.danger.adm-del` (1683), `.flab`, `.w110/.w120/.w180` и т. п.
@@ -450,7 +450,7 @@
    - `CommentRow href` (5.1)
    - `SearchResultRow kind` (2.11)
    - `Meter color/thin/inline` (2.15)
-   - `PhotoGrid` с отступом по умолчанию (4)
+   - `PhotoGrid` с отступом по умолчанию (4) — **сделано (0.18.32):** проп `album`
 
 ### Завести новый компонент в библиотеке (пробел Wynd UI — по плану `docs/plans/<slug>.plan.md`)
 Высокий приоритет — дубли целых виджетов:

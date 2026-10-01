@@ -109,7 +109,7 @@
 	{:else if !post}
 		<Hint class="gutter-24">Запись не найдена</Hint>
 	{:else}
-		<PhotoGrid style="padding:0 12px 16px;margin-top:3px;gap:4px">
+		<PhotoGrid album style="margin-top:3px;gap:4px">
 			{#each photos as photo, i (photo.blob_id)}
 				<MediaTile
 					variant="album"

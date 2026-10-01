@@ -828,7 +828,6 @@ export const SINGLE_SCREEN_CLASSES = new Set([
 	'compose-body',
 	'thumbs',
 	'thread',
-	'qr-video'
 ]);
 
 const UTILITY_MARKER = '/* Служебные классы:';
