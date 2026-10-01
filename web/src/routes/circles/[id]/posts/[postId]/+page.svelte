@@ -1,4 +1,5 @@
 <script lang="ts">
+	import MentionText from '$ui/data/MentionText.svelte';
 	import { afterNavigate, goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getContext, onMount, tick } from 'svelte';
@@ -25,7 +26,6 @@
 	import { isPostArchiveLocked } from '$lib/journal/archive';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadFeed } from '$lib/journal/feed';
-	import { splitMentionBody } from '$lib/journal/mentions';
 	import {
 		attachmentLabel,
 		attachmentBlocks,
@@ -406,9 +406,7 @@
 			</div>
 		{/snippet}
 		{#snippet postText()}
-			{#each splitMentionBody(currentPost.body) as part}
-				{#if part.kind === 'mention'}<span class="men">{part.value}</span>{:else}{part.value}{/if}
-			{/each}
+			<MentionText body={currentPost.body} />
 		{/snippet}
 		{#snippet postMedia()}
 			{#each attachmentBlocks(attachmentMedia(currentPost.media)) as block, bi (bi)}
@@ -530,9 +528,7 @@
 								</Button>
 							</div>
 						{:else}
-							{#each splitMentionBody(comment.body) as part}
-								{#if part.kind === 'mention'}<span class="men">{part.value}</span>{:else}{part.value}{/if}
-							{/each}
+							<MentionText body={comment.body} />
 						{/if}
 					{/snippet}
 				</CommentRow>
@@ -551,9 +547,7 @@
 						</span>
 					{/snippet}
 					{#snippet children()}
-						{#each splitMentionBody(item.body) as part}
-							{#if part.kind === 'mention'}<span class="men">{part.value}</span>{:else}{part.value}{/if}
-						{/each}
+						<MentionText body={item.body} />
 						{#if item.state === 'failed' && item.error}
 							<Hint style="margin-top:8px">{item.error}</Hint>
 						{/if}

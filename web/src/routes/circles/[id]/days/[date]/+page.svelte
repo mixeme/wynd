@@ -1,4 +1,5 @@
 <script lang="ts">
+	import MentionText from '$ui/data/MentionText.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getContext, onMount } from 'svelte';
@@ -17,7 +18,6 @@
 	import { isAccessError } from '$lib/api/client';
 	import { formatEntryDate, formatPostTime, isEditableActive } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
-	import { splitMentionBody } from '$lib/journal/mentions';
 	import { clearDayTitle, loadDay, loadDays, setDayTitle } from '$lib/journal/days';
 	import { authorInitial, coverMedia, locationLabel, mediaCount, photoMedia,
 		localDayOf
@@ -253,9 +253,7 @@
 				</span>
 			{/snippet}
 			{#snippet postText()}
-				{#each splitMentionBody(post.body) as part}
-					{#if part.kind === 'mention'}<span class="men">{part.value}</span>{:else}{part.value}{/if}
-				{/each}
+				<MentionText body={post.body} />
 			{/snippet}
 			{#snippet postMedia()}
 				{@const cover = coverMedia(post.media)}

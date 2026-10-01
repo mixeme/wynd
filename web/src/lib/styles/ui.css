@@ -739,6 +739,11 @@
 	margin: 0 0 11px;
 	overflow-wrap: anywhere;
 }
+/* MentionText: переносы и пустые строки — как их написали. Запись
+   показывается целиком (wynd.html, «Правила ленты»), абзацы — её часть. */
+.mention-text {
+	white-space: pre-wrap;
+}
 .pic {
 	position: relative;
 	border-radius: 10px;

@@ -182,7 +182,7 @@
 - `circles/[id]/days/[date]/+page.svelte:255–258`
 - `circles/[id]/posts/[postId]/+page.svelte:409–411`, `533–535`, `554–556`
 
-→ `MentionText` (`body`).
+→ `MentionText` (`body`). **Сделано в 0.18.8:** `$ui/data/MentionText.svelte` во всех пяти местах; заодно чинит переносы строк (pre-wrap).
 
 **2.8 Жест «потянуть, чтобы обновить» (`.ptr` / `.ptr-mark` + `Mark`) — средняя.** `circles/+page.svelte:502–508`, `circles/[id]/+page.svelte:573–579`. → `PullRefresh` (`height`, `markHeight`); стили `.ptr*` уйдут из экранного раздела `ui.css`.
 

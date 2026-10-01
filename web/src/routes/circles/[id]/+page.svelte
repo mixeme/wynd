@@ -1,4 +1,5 @@
 <script lang="ts">
+	import MentionText from '$ui/data/MentionText.svelte';
 	import { afterNavigate, goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getContext, onDestroy, onMount, tick } from 'svelte';
@@ -42,7 +43,6 @@
 	import { isPostArchiveLocked } from '$lib/journal/archive';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadFeed } from '$lib/journal/feed';
-	import { splitMentionBody } from '$lib/journal/mentions';
 	import { applyOwnReaction, canReact } from '$lib/journal/reactions';
 	import { fetchMembers, type MemberInfo } from '$lib/circles/settings';
 	import {
@@ -664,9 +664,7 @@
 					<EntryDateMark label={formatEntryDate(post.entry_date)} />
 				{/snippet}
 				{#snippet postText()}
-					{#each splitMentionBody(post.body) as part}
-						{#if part.kind === 'mention'}<span class="men">{part.value}</span>{:else}{part.value}{/if}
-					{/each}
+					<MentionText body={post.body} />
 				{/snippet}
 				{#snippet postMedia()}
 					{@const cover = coverMedia(post.media)}

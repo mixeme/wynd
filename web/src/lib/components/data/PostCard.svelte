@@ -56,9 +56,8 @@
 		</div>
 	{/if}
 	{#if text}
-		<div class="pt">
-			{@render text()}
-		</div>
+		<!-- В одну строку: с pre-wrap перенос разметки стал бы пустой строкой. -->
+		<div class="pt">{@render text()}</div>
 	{/if}
 	{@render media?.()}
 	{@render reactions?.()}
