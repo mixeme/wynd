@@ -445,7 +445,7 @@
 <h1>Экраны</h1>
 <p class="lede">Всё, что человек видит: от приглашения до панели администратора.</p>
 
-<p>Экранов здесь <strong>109</strong>. Каждый нарисован разметкой, а не картинкой. Рамка — <code>390 × 800</code>, обычный телефон в CSS-пикселях, масштаб 1:1. Размер на макете и есть размер в продукте: кегль 13.5 — это 13.5, кнопка 48 — это 48, поле 16 — это 16. Ничего не отмасштабировано «для красоты».</p>
+<p>Экранов здесь <strong>113</strong>. Каждый нарисован разметкой, а не картинкой. Рамка — <code>390 × 800</code>, обычный телефон в CSS-пикселях, масштаб 1:1. Размер на макете и есть размер в продукте: кегль 13.5 — это 13.5, кнопка 48 — это 48, поле 16 — это 16. Ничего не отмасштабировано «для красоты».</p>
 
 <p>Фотографии заменены заливками намеренно. Макет отвечает за композицию, ритм и то, сколько на экране помещается, — а не за то, насколько удачный снимок под ним. Всё, что в продукте придёт с сервера, здесь показано как форма и объём.</p>
 
@@ -545,6 +545,10 @@
 <li><a href="#e4-3"><span class="tn">4.3</span>Упоминание</a></li>
 <li><a href="#e4-4"><span class="tn">4.4</span>Запись с вложением</a></li>
 <li><a href="#e4-15"><span class="tn">4.15</span>Аудио в записи</a></li>
+<li><a href="#e4-17"><span class="tn">4.17</span>Несколько звуков: зазор</a></li>
+<li><a href="#e4-18"><span class="tn">4.18</span>Несколько звуков: одной рамкой</a></li>
+<li><a href="#e4-19"><span class="tn">4.19</span>Звук загружается</a></li>
+<li><a href="#e4-20"><span class="tn">4.20</span>Звук на других экранах</a></li>
 <li><a href="#e4-5"><span class="tn">4.5</span>Обсуждение</a></li>
 <li><a href="#e4-6"><span class="tn">4.6</span>Написание комментария</a></li>
 <li><a href="#e4-7"><span class="tn">4.7</span>Правка комментария</a></li>
@@ -1655,6 +1659,155 @@
   </div>
 </div>
 <span class="num">4.15</span><b>Аудио в записи</b><i>Обложка берётся из файла и стоит квадратом слева. Если обложки нет — пустая плитка, как фото без снимка. Если в файле есть исполнитель и название, на строке они: «исполнитель — название», а не имя файла. Нет этих тегов — остаётся имя, как у остальных вложений. Нажатие на строку включает воспроизведение: треугольник сменяется паузой, полоска показывает, сколько прошло. Второе нажатие — пауза, значок снова треугольник. Скачать — отдельная кнопка справа: она сохраняет файл и не запускает звук. Остальные вложения по-прежнему только скачиваются и внутри не открываются.</i></figure>
+<figure class="s" id="e4-17"><div class="ph coffee">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="cbar"><div class="top"><svg class="ic"><use href="#i-back"/></svg><span class="t">Ремонт</span>
+    <span class="idn">Михаил<span class="av">М</span></span></div>
+    <div class="tabs"><span class="on">Хронология</span><span>Дни</span><span>Сетка</span><span>Карта</span><span>Отклики</span></div></div>
+  <div class="post">
+    <div class="pa"><div class="av" style="background:#3D494F">С</div><div><div class="n">Славик</div><div class="tm">сегодня, 11:40</div></div></div>
+    <div class="pt">Записали три куска с площадки — утро, день и как стучат вечером.</div>
+    <div class="att">
+      <div class="pic p6" style="width:72px;height:72px;border-radius:8px;flex:0 0 auto" role="img" aria-label="Обложка"></div>
+      <div class="g" style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:11px">
+        <div style="display:flex;align-items:center;gap:11px">
+          <svg class="ic" style="color:var(--c)"><use href="#i-pause"/></svg>
+          <div style="font-size:12.5px;line-height:1;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Бригада — Утро</div>
+        </div>
+        <div style="height:3px;border-radius:2px;background:var(--line);overflow:hidden"><div style="width:38%;height:100%;background:var(--c)"></div></div>
+        <div class="sz" style="line-height:1">0:42 · 1:51</div>
+      </div>
+      <svg class="ic" role="img" aria-label="Скачать"><use href="#i-download"/></svg>
+    </div>
+    <div class="att" style="margin-top:8px">
+      <div class="pic p2" style="width:72px;height:72px;border-radius:8px;flex:0 0 auto" role="img" aria-label="Обложка"></div>
+      <div class="g" style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:11px">
+        <div style="display:flex;align-items:center;gap:11px">
+          <svg class="ic" style="color:var(--c)"><use href="#i-play"/></svg>
+          <div style="font-size:12.5px;line-height:1;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Бригада — День</div>
+        </div>
+        <div style="height:3px;border-radius:2px;background:var(--line);overflow:hidden"><div style="width:0%;height:100%;background:var(--c)"></div></div>
+        <div class="sz" style="line-height:1">0:00</div>
+      </div>
+      <svg class="ic" role="img" aria-label="Скачать"><use href="#i-download"/></svg>
+    </div>
+    <div class="att" style="margin-top:8px">
+      <div class="pic p4" style="width:72px;height:72px;border-radius:8px;flex:0 0 auto" role="img" aria-label="Обложка"></div>
+      <div class="g" style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:11px">
+        <div style="display:flex;align-items:center;gap:11px">
+          <svg class="ic" style="color:var(--c)"><use href="#i-play"/></svg>
+          <div style="font-size:12.5px;line-height:1;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">площадка-3.m4a</div>
+        </div>
+        <div style="height:3px;border-radius:2px;background:var(--line);overflow:hidden"><div style="width:0%;height:100%;background:var(--c)"></div></div>
+        <div class="sz" style="line-height:1">0:00</div>
+      </div>
+      <svg class="ic" role="img" aria-label="Скачать"><use href="#i-download"/></svg>
+    </div>
+  </div>
+</div>
+<span class="num">4.17</span><b>Несколько звуков: зазор</b><i>Первый вариант. Каждый звук — своя рамка, как одиночный (4.15), между рамками 8 px. Ничего нового не заводится: строка та же, только перестаёт сливаться с соседкой. Цена — рамки подряд выглядят тяжело, и чем звуков больше, тем больше в записи коробок.</i></figure>
+<figure class="s" id="e4-18"><div class="ph coffee">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="cbar"><div class="top"><svg class="ic"><use href="#i-back"/></svg><span class="t">Ремонт</span>
+    <span class="idn">Михаил<span class="av">М</span></span></div>
+    <div class="tabs"><span class="on">Хронология</span><span>Дни</span><span>Сетка</span><span>Карта</span><span>Отклики</span></div></div>
+  <div class="post">
+    <div class="pa"><div class="av" style="background:#3D494F">С</div><div><div class="n">Славик</div><div class="tm">сегодня, 11:40</div></div></div>
+    <div class="pt">Записали три куска с площадки — утро, день и как стучат вечером.</div>
+    <div class="att" style="display:block;padding:2px 14px">
+      <div style="display:flex;align-items:center;gap:11px;padding:10px 0;">
+        <div class="pic p6" style="width:56px;height:56px;border-radius:8px;flex:0 0 auto" role="img" aria-label="Обложка"></div>
+      <div class="g" style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:8px">
+        <div style="display:flex;align-items:center;gap:11px">
+          <svg class="ic" style="color:var(--c)"><use href="#i-pause"/></svg>
+          <div style="font-size:12.5px;line-height:1;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Бригада — Утро</div>
+        </div>
+        <div style="height:3px;border-radius:2px;background:var(--line);overflow:hidden"><div style="width:38%;height:100%;background:var(--c)"></div></div>
+        <div class="sz" style="line-height:1">0:42 · 1:51</div>
+      </div>
+      <svg class="ic" role="img" aria-label="Скачать"><use href="#i-download"/></svg>
+      </div>
+      <div style="display:flex;align-items:center;gap:11px;padding:10px 0;border-top:1px solid var(--line);">
+        <div class="pic p2" style="width:56px;height:56px;border-radius:8px;flex:0 0 auto" role="img" aria-label="Обложка"></div>
+      <div class="g" style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:8px">
+        <div style="display:flex;align-items:center;gap:11px">
+          <svg class="ic" style="color:var(--c)"><use href="#i-play"/></svg>
+          <div style="font-size:12.5px;line-height:1;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Бригада — День</div>
+        </div>
+        <div style="height:3px;border-radius:2px;background:var(--line);overflow:hidden"><div style="width:0%;height:100%;background:var(--c)"></div></div>
+        <div class="sz" style="line-height:1">0:00</div>
+      </div>
+      <svg class="ic" role="img" aria-label="Скачать"><use href="#i-download"/></svg>
+      </div>
+      <div style="display:flex;align-items:center;gap:11px;padding:10px 0;border-top:1px solid var(--line);">
+        <div class="pic p4" style="width:56px;height:56px;border-radius:8px;flex:0 0 auto" role="img" aria-label="Обложка"></div>
+      <div class="g" style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:8px">
+        <div style="display:flex;align-items:center;gap:11px">
+          <svg class="ic" style="color:var(--c)"><use href="#i-play"/></svg>
+          <div style="font-size:12.5px;line-height:1;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">площадка-3.m4a</div>
+        </div>
+        <div style="height:3px;border-radius:2px;background:var(--line);overflow:hidden"><div style="width:0%;height:100%;background:var(--c)"></div></div>
+        <div class="sz" style="line-height:1">0:00</div>
+      </div>
+      <svg class="ic" role="img" aria-label="Скачать"><use href="#i-download"/></svg>
+      </div>
+    </div>
+  </div>
+</div>
+<span class="num">4.18</span><b>Несколько звуков: одной рамкой</b><i>Второй вариант. Звуки записи — одна рамка, строки внутри разделены волосяной чертой, как комментарии в обсуждении (4.5). Обложка мельче — 56 px, чтобы три звука не заняли полэкрана. Читается как один предмет: «вот запись, в ней три звука», а не три вложения подряд. Одиночный звук остаётся как на 4.15.</i></figure>
+<figure class="s" id="e4-19"><div class="ph coffee">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="cbar"><div class="top"><svg class="ic"><use href="#i-back"/></svg><span class="t">Ремонт</span>
+    <span class="idn">Михаил<span class="av">М</span></span></div>
+    <div class="tabs"><span class="on">Хронология</span><span>Дни</span><span>Сетка</span><span>Карта</span><span>Отклики</span></div></div>
+  <div class="post">
+    <div class="pa"><div class="av" style="background:#3D494F">С</div><div><div class="n">Славик</div><div class="tm">сегодня, 11:40</div></div></div>
+    <div class="pt">Шум с площадки, чтобы было слышно, как там на самом деле.</div>
+    <div class="att">
+      <div class="pic p6" style="width:72px;height:72px;border-radius:8px;flex:0 0 auto" role="img" aria-label="Обложка"></div>
+      <div class="g" style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:11px">
+        <div style="display:flex;align-items:center;gap:11px">
+          <svg class="ic" style="color:var(--c)"><use href="#i-pause"/></svg>
+          <div style="font-size:12.5px;line-height:1;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Бригада — Утро</div>
+        </div>
+        <div style="height:3px;border-radius:2px;background:var(--line);overflow:hidden"><div style="width:62%;height:100%;background:var(--faint)"></div></div>
+        <div class="sz" style="line-height:1">загрузка · 3,1 из 5 МБ</div>
+      </div>
+      <svg class="ic" role="img" aria-label="Скачать"><use href="#i-download"/></svg>
+    </div>
+  </div>
+</div>
+<span class="num">4.19</span><b>Звук загружается</b><i>Нажали — файл сначала скачивается, и на медленной связи это видно. Значок уже пауза: нажатие принято, второе отменит загрузку. Полоска показывает, сколько скачано, — серым, а не цветом круга: это ещё не прослушанное. Под ней словами: «загрузка · 3,1 из 5 МБ». Как только звук можно играть, полоска сбрасывается и идёт цветом круга, как на 4.15.</i></figure>
+<figure class="s" id="e4-20"><div class="ph shell">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="appbar"><span class="sp"></span></div>
+  <div class="lab">Закреплённые</div>
+  <div class="r" style="--rc:var(--terracotta)"><div class="sq">С</div>
+    <div class="m"><div class="n">Семья</div><div class="p">Аня: были на даче, все живы</div></div>
+    <div class="rt"><span>14:02</span><span class="bdg">3</span></div></div>
+  <div class="sep"></div>
+  <div class="lab">Остальные</div>
+  <div class="r" style="--rc:var(--coffee)"><div class="sq">Р</div>
+    <div class="m"><div class="n">Ремонт</div><div class="p">Славик: шум с площадки</div></div>
+    <div class="rt"><span>11:40</span></div></div>
+  <div class="r" style="--rc:var(--olive)"><div class="sq">П</div>
+    <div class="m"><div class="n">Поход на Алтай</div><div class="p">Мышка теперь Мышь</div></div>
+    <div class="rt"><span>вчера</span></div></div>
+  <div style="position:absolute;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line)">
+    <div style="height:2px;background:var(--line)"><div style="width:38%;height:100%;background:#62452F"></div></div>
+    <div style="display:flex;align-items:center;gap:11px;padding:10px 14px 14px">
+      <div class="pic p6" style="width:40px;height:40px;border-radius:6px;flex:0 0 auto"></div>
+      <div style="flex:1;min-width:0;line-height:1.3">
+        <div style="font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Бригада — Утро</div>
+        <div style="font-size:11.5px;color:var(--faint)">Ремонт · 0:42 · 1:51</div>
+      </div>
+      <svg class="ic" style="color:#62452F"><use href="#i-pause"/></svg>
+      <svg class="ic"><use href="#i-x"/></svg>
+    </div>
+  </div>
+  <div class="fab" style="bottom:86px"></div>
+</div>
+<span class="num">4.20</span><b>Звук на других экранах</b><i>Звук не обрывается, когда уходите из круга: внизу любого экрана появляется полоса. В ней обложка, «исполнитель — название», круг и время, пауза и крестик. Крестик останавливает звук и убирает полосу. Нажатие на саму полосу открывает запись, где звук лежит. Тонкая линия сверху — сколько прошло, цветом того круга, откуда звук: улочка цвета не носит, а полоса говорит, чей это звук. На экране самой записи и в ленте её круга полосы нет — там звук уже виден строкой. Плюс поднимается над полосой.</i></figure>
 
 </div></div>
 <h3>Обсуждение</h3>
