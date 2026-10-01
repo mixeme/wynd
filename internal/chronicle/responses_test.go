@@ -1,6 +1,7 @@
 package chronicle_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -150,5 +151,45 @@ func TestDayTitleGoesToFeedNotResponses(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("названия дня нет в ленте: %+v", meta.Events)
+	}
+}
+
+// Смена фото — строка в ленте (3.1). Первое фото при вступлении — часть
+// вступления, строки не даёт; то же фото повторно — тоже.
+func TestAvatarChangeGoesToFeed(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	e.join(circle.ID, "kot", "Кот", e.at(0))
+	e.seedBlob("ava1", "kot")
+	e.seedBlob("ava2", "kot")
+	set := func(blob string, when time.Time) {
+		t.Helper()
+		if err := e.ch.UpdateIdentity(e.ctx, circle.ID, "kot", chronicle.UpdateIdentityInput{AvatarBlobID: &blob}, when); err != nil {
+			t.Fatal(err)
+		}
+	}
+	lines := func() []string {
+		meta, err := e.ch.FeedMetaForAccount(e.ctx, circle.ID, "owner")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out []string
+		for _, ev := range meta.Events {
+			if strings.Contains(strings.ToLower(ev.Summary), "фото") {
+				out = append(out, ev.Summary)
+			}
+		}
+		return out
+	}
+	set("ava1", e.at(0).Add(time.Minute))
+	if got := lines(); len(got) != 0 {
+		t.Fatalf("фото при вступлении дало строку: %v", got)
+	}
+	set("ava1", e.at(1))
+	set("ava2", e.at(2))
+	set("", e.at(3))
+	got := lines()
+	if len(got) != 2 || got[0] != "Фото убрано: Кот" || got[1] != "Новое фото: Кот" {
+		t.Fatalf("строки фото: %v", got)
 	}
 }

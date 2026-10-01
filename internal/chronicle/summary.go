@@ -21,6 +21,14 @@ func summaryEditWindowChanged(label string) string {
 	return fmt.Sprintf("Окно правок изменено: %s", label)
 }
 
+func summaryAvatarSet(name string) string {
+	return fmt.Sprintf("Новое фото: %s", name)
+}
+
+func summaryAvatarCleared(name string) string {
+	return fmt.Sprintf("Фото убрано: %s", name)
+}
+
 func summaryMemberJoined(name string) string {
 	return fmt.Sprintf("%s вступил в круг", name)
 }

@@ -52,10 +52,17 @@ func (c *Chronicle) UpdateIdentity(ctx context.Context, circleID, accountID stri
 	if in.AvatarBlobID == nil {
 		return nil
 	}
-	return c.setIdentityAvatar(ctx, mem.IdentityID, *in.AvatarBlobID, now)
+	return c.setIdentityAvatar(ctx, circleID, mem.IdentityID, *in.AvatarBlobID, now)
 }
 
-func (c *Chronicle) setIdentityAvatar(ctx context.Context, identityID, blobID string, now time.Time) error {
+// avatarJoinGrace — первое фото в эти минуты после входа — часть вступления
+// (1.3 ставит фото сразу за входом), строки в ленте оно не даёт.
+const avatarJoinGrace = 10 * time.Minute
+
+// setIdentityAvatar меняет фото и пишет строку в ленту (3.1): «Новое фото:
+// Аня», «Фото убрано: Аня». Без глагола — род человека система не знает.
+// То же фото и первое фото при вступлении строки не дают.
+func (c *Chronicle) setIdentityAvatar(ctx context.Context, circleID, identityID, blobID string, now time.Time) error {
 	blobID = strings.TrimSpace(blobID)
 	var arg any
 	if blobID == "" {
@@ -63,18 +70,57 @@ func (c *Chronicle) setIdentityAvatar(ctx context.Context, identityID, blobID st
 	} else {
 		arg = blobID
 	}
-	var nameRowID string
-	err := c.db.QueryRowContext(ctx, `
-		SELECT id FROM identity_names
+	tx, err := c.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var nameRowID, name string
+	var prev sql.NullString
+	err = tx.QueryRowContext(ctx, `
+		SELECT id, name, avatar_blob_id FROM identity_names
 		WHERE identity_id = ? AND erased_at IS NULL
 		ORDER BY effective_at DESC LIMIT 1
-	`, identityID).Scan(&nameRowID)
+	`, identityID).Scan(&nameRowID, &name, &prev)
 	if err == sql.ErrNoRows {
 		return ErrNotFound
 	}
 	if err != nil {
 		return err
 	}
-	_, err = c.db.ExecContext(ctx, `UPDATE identity_names SET avatar_blob_id = ? WHERE id = ?`, arg, nameRowID)
-	return err
+	if prev.String == blobID {
+		return nil
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE identity_names SET avatar_blob_id = ? WHERE id = ?`, arg, nameRowID); err != nil {
+		return err
+	}
+	quiet := false
+	if prev.String == "" && blobID != "" {
+		var created string
+		if err := tx.QueryRowContext(ctx, `SELECT created_at FROM identities WHERE id = ?`, identityID).Scan(&created); err != nil {
+			return err
+		}
+		if joined, err := parseTime(created); err == nil && now.Sub(joined) < avatarJoinGrace {
+			quiet = true
+		}
+	}
+	if !quiet {
+		eventType, summary := "identity.avatar_set", summaryAvatarSet(name)
+		if blobID == "" {
+			eventType, summary = "identity.avatar_cleared", summaryAvatarCleared(name)
+		}
+		if _, err := c.appendEvent(ctx, tx, appendEventInput{
+			circleID:        circleID,
+			eventType:       eventType,
+			isService:       true,
+			actorIdentityID: identityID,
+			actorName:       name,
+			summary:         summary,
+			now:             now,
+		}); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
