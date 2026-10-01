@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.18.35
+  version: 0.18.36
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:
@@ -466,7 +466,7 @@ paths:
             type: string
       responses:
         "200":
-          description: Search hits
+          description: Search hits — kind post, comment, day, file (attachment by file name) or audio (by title, artist or file name); file and audio carry media_id
 
   /search:
     get:
@@ -504,7 +504,7 @@ paths:
             enum: ["1"]
       responses:
         "200":
-          description: Search hits
+          description: Search hits — kind post, comment, day, file (attachment by file name) or audio (by title, artist or file name); file and audio carry media_id
 
   /auth/register:
     post:

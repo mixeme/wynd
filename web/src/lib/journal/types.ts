@@ -170,8 +170,11 @@ export interface MapSnapshot {
 export interface CircleSearchHit {
 	post_id: string;
 	comment_id?: string;
+	/** Вложение, найденное по имени (kind file или audio). */
+	media_id?: string;
 	circle_id: string;
 	author_name?: string;
+	/** post, comment, day, file или audio. */
 	kind: string;
 	title?: string;
 	snippet: string;

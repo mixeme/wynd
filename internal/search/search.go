@@ -53,6 +53,9 @@ type Filters struct {
 type Hit struct {
 	PostID      string `json:"post_id"`
 	CommentID   string `json:"comment_id,omitempty"`
+	// MediaID — вложение, найденное по имени файла или названию звука
+	// (Kind file или audio; план 46, C11).
+	MediaID     string `json:"media_id,omitempty"`
 	CircleID    string `json:"circle_id"`
 	AuthorName  string `json:"author_name,omitempty"`
 	Kind        string `json:"kind"`
@@ -191,7 +194,12 @@ func (s *Service) collectHits(ctx context.Context, rows *sql.Rows, limit int, wi
 		if err := rows.Scan(&h.PostID, &commentID, &h.CircleID, &author, &h.Kind, &created, &h.EntryDate, &h.Title, &h.Snippet, &thumb); err != nil {
 			return nil, err
 		}
-		h.CommentID = commentID
+		if h.Kind == "file" || h.Kind == "audio" {
+			// В индексе вложения id строки post_media лежит в comment_id.
+			h.MediaID = commentID
+		} else {
+			h.CommentID = commentID
+		}
 		if withAuthor && h.Kind != "day" {
 			h.AuthorName = author
 		}
