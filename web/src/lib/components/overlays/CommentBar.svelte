@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import MemberRow from '$ui/data/MemberRow.svelte';
 	import MentionPicker from '$ui/forms/MentionPicker.svelte';
 	import Icon from '$ui/Icon.svelte';
@@ -37,14 +38,8 @@
 	const canSend = $derived(Boolean(value.trim()) && !busy);
 
 	let bodyInput: HTMLTextAreaElement | undefined = $state();
-	let photoInput: HTMLInputElement | undefined = $state();
+	let photoPicker: FilePicker | undefined = $state();
 
-	function onPhotosPicked(e: Event) {
-		const input = e.target as HTMLInputElement;
-		const files = input.files ? [...input.files] : [];
-		input.value = '';
-		if (files.length) onphotos?.(files);
-	}
 	let mentionStart = $state<number | null>(null);
 	let mentionQuery = $state('');
 
@@ -181,15 +176,13 @@
 				size="sm"
 				stopPropagation
 				style="margin-left:auto"
-				onclick={() => photoInput?.click()}
+				onclick={() => photoPicker?.open()}
 			/>
-			<input
-				bind:this={photoInput}
-				type="file"
+			<FilePicker
+				bind:this={photoPicker}
 				accept="image/*,video/*"
 				multiple
-				hidden
-				onchange={onPhotosPicked}
+				onfiles={(files) => onphotos?.(files)}
 			/>
 		{/if}
 		{#if oncompose}

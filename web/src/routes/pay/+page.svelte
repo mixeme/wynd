@@ -1,4 +1,5 @@
 <script lang="ts">
+	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import AttachmentRow from '$ui/data/AttachmentRow.svelte';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
@@ -26,13 +27,12 @@
 	let redirecting = $state(false);
 	let error = $state('');
 	let maxBytes = $state(0);
-	let photoInput: HTMLInputElement | undefined = $state();
+	let photoPicker: FilePicker | undefined = $state();
 
 	const canSubmit = $derived(Boolean(file));
 
-	async function onFilesSelected(list: FileList | null) {
-		if (!list?.length || origin === undefined) return;
-		const picked = list[0];
+	async function onFilesSelected(picked: File) {
+		if (origin === undefined) return;
 		if (!isImageFile(picked)) {
 			error = 'Нужно изображение';
 			return;
@@ -48,7 +48,6 @@
 		file = data;
 		fileLabel = `${picked.name} · ${Math.round(data.size / 1024)} КБ`;
 		error = '';
-		if (photoInput) photoInput.value = '';
 	}
 
 	async function submit() {
@@ -107,14 +106,12 @@
 				size="{fileLabel.split(' · ')[1] || ''} · как вложение записи"
 			/>
 		{/if}
-		<AddPhotoButton onclick={() => photoInput?.click()} />
-		<input
-			bind:this={photoInput}
-			type="file"
+		<AddPhotoButton onclick={() => photoPicker?.open()} />
+		<FilePicker
+			bind:this={photoPicker}
 			accept="image/*"
 			capture="environment"
-			hidden
-			onchange={(e) => void onFilesSelected(e.currentTarget.files)}
+			onfiles={([picked]) => void onFilesSelected(picked)}
 		/>
 		<Hint>Фото из галереи или с камеры.</Hint>
 		<Label>Комментарий</Label>

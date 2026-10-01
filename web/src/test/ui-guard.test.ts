@@ -135,7 +135,8 @@ describe('plan 47 guards', () => {
 
 	it('catches library classes on raw tags and stale ratchet entries', () => {
 		const web = tree({
-			'src/routes/a/+page.svelte': '<div class="panel">x</div>\n<span class="tm">1</span>\n{@html q}',
+			'src/routes/a/+page.svelte':
+				'<div class="panel">x</div>\n<span class="tm">1</span>\n{@html q}\n<input type="file" hidden />',
 			'src/routes/b/+page.svelte': '<Panel class="panel" />',
 			'src/routes/dev/c/+page.svelte': '<div class="panel"></div>'
 		});
@@ -145,10 +146,11 @@ describe('plan 47 guards', () => {
 			{ 'src/routes/a/+page.svelte': ['tm'], 'src/routes/b/+page.svelte': ['qr'] },
 			new Set()
 		);
-		expect(hits).toHaveLength(3);
+		expect(hits).toHaveLength(4);
 		expect(hits[0]).toMatch(/^src\/routes\/a\/\+page\.svelte:1:.*\.panel на <div>/);
-		expect(hits[1]).toContain('{@html}');
-		expect(hits[2]).toContain('.qr больше нет');
+		expect(hits[1]).toMatch(/^src\/routes\/a\/\+page\.svelte:4:.*есть FilePicker/);
+		expect(hits[2]).toContain('{@html}');
+		expect(hits[3]).toContain('.qr больше нет');
 	});
 
 	it('requires every library file in the reference', () => {

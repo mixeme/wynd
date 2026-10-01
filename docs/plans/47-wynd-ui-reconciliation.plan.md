@@ -235,7 +235,7 @@
 - `compose:874,882`
 - `pay:109`, `join:230`, `invite:76`
 
-Везде своя ручная логика `bind:this` → `.click()` → `input.value=''`. → `FilePicker` (`accept`, `multiple`, `capture`, `onfiles`, `el` bindable).
+Везде своя ручная логика `bind:this` → `.click()` → `input.value=''`. → `FilePicker` (`accept`, `multiple`, `capture`, `onfiles`, `el` bindable). **Сделано в 0.18.25:** `$ui/forms/FilePicker.svelte` (`open()` через `bind:this` вместо `el`) во всех семи местах, включая `IdentityForm` и `CommentBar`. Попутно: на «Я оплатил» поле не сбрасывалось при ошибке — повторный выбор того же файла молчал.
 
 **2.18 Админ: строка «подпись · поле · единица» — средняя.**
 - `admin/general:169–260` — через `const row = 'flex-mid gap-10'`, сторож этого не видит

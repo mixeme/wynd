@@ -1,4 +1,5 @@
 <script lang="ts">
+	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import { onDestroy } from 'svelte';
 	import AddPhotoButton from '$ui/forms/AddPhotoButton.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -38,17 +39,13 @@
 
 	let cropFile = $state<File | undefined>();
 	let preview = $state('');
-	let fileInput: HTMLInputElement | undefined = $state();
+	let photoPicker: FilePicker | undefined = $state();
 
 	function openPicker() {
-		fileInput?.click();
+		photoPicker?.open();
 	}
 
-	function onSelected(e: Event) {
-		const input = e.target as HTMLInputElement;
-		const file = input.files?.[0];
-		input.value = '';
-		if (!file) return;
+	function onSelected(file: File) {
 		if (file.type && !file.type.startsWith('image/')) {
 			onerror('Нужно фото');
 			return;
@@ -75,7 +72,7 @@
 <Hint centered class="mt-8">
 	<TextButton onclick={openPicker}>добавить фото</TextButton>
 </Hint>
-<input bind:this={fileInput} type="file" accept="image/*" hidden onchange={onSelected} />
+<FilePicker bind:this={photoPicker} accept="image/*" onfiles={([file]) => onSelected(file)} />
 <Label>Имя</Label>
 <Input active type="text" autocomplete="name" bind:value={name} />
 <Label class="label-row">

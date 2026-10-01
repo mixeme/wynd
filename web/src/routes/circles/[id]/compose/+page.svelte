@@ -1,4 +1,5 @@
 <script lang="ts">
+	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import DateRow from '$ui/forms/DateRow.svelte';
 	import ComposeToolbar from '$ui/chrome/ComposeToolbar.svelte';
 	import { goto } from '$app/navigation';
@@ -78,8 +79,8 @@
 	>([]);
 
 	let bodyInput: HTMLTextAreaElement | undefined = $state();
-	let photoInput: HTMLInputElement | undefined = $state();
-	let attachInput: HTMLInputElement | undefined = $state();
+	let photoPicker: FilePicker | undefined = $state();
+	let attachPicker: FilePicker | undefined = $state();
 	let members = $state<MemberInfo[]>([]);
 	let mentionStart = $state<number | null>(null);
 	let mentionQuery = $state('');
@@ -465,17 +466,6 @@
 		return out;
 	}
 
-	async function onFilesSelected(e: Event) {
-		const input = e.target as HTMLInputElement;
-		const files = input.files;
-		if (!files?.length) return;
-		try {
-			await addFiles([...files]);
-		} finally {
-			input.value = '';
-		}
-	}
-
 	async function addFiles(list: File[]) {
 		if (filePickLock || !list.length) return;
 		filePickLock = true;
@@ -743,7 +733,7 @@
 					onremove={() => removePicked(i)}
 				/>
 			{/each}
-			<AddPhotoButton onclick={() => photoInput?.click()} />
+			<AddPhotoButton onclick={() => photoPicker?.open()} />
 		</div>
 
 		{#if compressing}
@@ -842,9 +832,9 @@
 			<IconButton
 				name="photo"
 				label="Фото или видео"
-				onclick={() => photoInput?.click()}
+				onclick={() => photoPicker?.open()}
 			/>
-			<IconButton name="file" label="Файл" onclick={() => attachInput?.click()} />
+			<IconButton name="file" label="Файл" onclick={() => attachPicker?.open()} />
 			{#if pickedHasPlace}
 				<IconButton
 					name="loc"
@@ -860,12 +850,10 @@
 	</ComposeToolbar>
 {/snippet}
 
-<input
-	bind:this={photoInput}
-	type="file"
+<FilePicker
+	bind:this={photoPicker}
 	accept="image/*,video/*"
 	multiple
-	hidden
-	onchange={onFilesSelected}
+	onfiles={(files) => void addFiles(files)}
 />
-<input bind:this={attachInput} type="file" accept="*/*" multiple hidden onchange={onFilesSelected} />
+<FilePicker bind:this={attachPicker} accept="*/*" multiple onfiles={(files) => void addFiles(files)} />

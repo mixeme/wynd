@@ -1,4 +1,5 @@
 <script lang="ts">
+	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
 	import Avatar from '$ui/data/Avatar.svelte';
@@ -31,7 +32,7 @@
 	let error = $state('');
 	let saving = $state(false);
 	let cropFile = $state<File | undefined>();
-	let fileInput: HTMLInputElement | undefined = $state();
+	let photoPicker: FilePicker | undefined = $state();
 	let nameHint = $state('');
 
 	async function loadAvatar(blobId?: string) {
@@ -81,11 +82,7 @@
 		}
 	}
 
-	function onPhotoSelected(e: Event) {
-		const input = e.target as HTMLInputElement;
-		const file = input.files?.[0];
-		input.value = '';
-		if (!file) return;
+	function onPhotoSelected(file: File) {
 		if (file.type && !file.type.startsWith('image/')) {
 			error = 'Нужно фото';
 			return;
@@ -150,20 +147,14 @@
 		/>
 	</div>
 	<Hint centered class="mt-10">
-		<TextButton onclick={() => fileInput?.click()}>сменить фото</TextButton>
+		<TextButton onclick={() => photoPicker?.open()}>сменить фото</TextButton>
 	</Hint>
 	{#if avatarUrl}
 		<Hint centered style="margin-top:6px">
 			<TextButton onclick={() => void clearPhoto()}>убрать фото</TextButton>
 		</Hint>
 	{/if}
-	<input
-		bind:this={fileInput}
-		type="file"
-		accept="image/*"
-		hidden
-		onchange={(e) => void onPhotoSelected(e)}
-	/>
+	<FilePicker bind:this={photoPicker} accept="image/*" onfiles={([file]) => onPhotoSelected(file)} />
 	<Label class="mt-20">Имя</Label>
 	<Input active bind:value={name} />
 	{#if nameHint}

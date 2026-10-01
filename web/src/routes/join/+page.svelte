@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -29,7 +30,7 @@
 	let loading = $state(false);
 	let checking = $state(false);
 	let error = $state('');
-	let linkInput: HTMLInputElement | undefined;
+	let linkPicker: FilePicker | undefined = $state();
 
 	// Из «Серверов» («Добавить сервер») назад — туда же: «/» у вошедшего
 	// перекидывает в список кругов, и путь обратно терялся.
@@ -105,12 +106,10 @@
 		} catch {
 			/* clipboard denied or empty */
 		}
-		linkInput?.click();
+		linkPicker?.open();
 	}
 
-	async function onLinkImageSelected() {
-		const file = linkInput?.files?.[0];
-		if (!file) return;
+	async function onLinkImageSelected(file: File) {
 		error = '';
 		try {
 			const text = await decodeQrFromFile(file);
@@ -121,8 +120,6 @@
 			else error = 'В коде нет ссылки Wynd';
 		} catch {
 			error = 'Не удалось прочитать код — попробуйте другое фото';
-		} finally {
-			if (linkInput) linkInput.value = '';
 		}
 	}
 
@@ -227,10 +224,4 @@
 	{/if}
 </FormLayout>
 
-<input
-	bind:this={linkInput}
-	type="file"
-	accept="image/*"
-	hidden
-	onchange={onLinkImageSelected}
-/>
+<FilePicker bind:this={linkPicker} accept="image/*" onfiles={([file]) => void onLinkImageSelected(file)} />

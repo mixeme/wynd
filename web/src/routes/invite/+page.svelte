@@ -1,4 +1,5 @@
 <script lang="ts">
+	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import { goto } from '$app/navigation';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -17,7 +18,7 @@
 	// улочкой нужно место, куда её положить.
 	let link = $state('');
 	let error = $state('');
-	let photoInput: HTMLInputElement | undefined = $state();
+	let photoPicker: FilePicker | undefined = $state();
 
 	function open(text: string): boolean {
 		const target = inviteTarget(text);
@@ -39,16 +40,12 @@
 		}
 	}
 
-	async function onPhotoSelected() {
-		const file = photoInput?.files?.[0];
-		if (!file) return;
+	async function onPhotoSelected(file: File) {
 		error = '';
 		try {
 			open(await decodeQrFromFile(file));
 		} catch {
 			error = 'Не удалось прочитать код — попробуйте другое фото';
-		} finally {
-			if (photoInput) photoInput.value = '';
 		}
 	}
 </script>
@@ -67,16 +64,10 @@
 	/>
 	<Button disabled={!link.trim()} onclick={() => open(link)}>Открыть</Button>
 	<Button variant="ghost" onclick={() => goto('/invite/scan')}>Сканировать QR-код</Button>
-	<Button variant="ghost" onclick={() => photoInput?.click()}>Фото с QR-кодом</Button>
+	<Button variant="ghost" onclick={() => photoPicker?.open()}>Фото с QR-кодом</Button>
 	{#if error}
 		<Hint>{error}</Hint>
 	{/if}
 </FormLayout>
 
-<input
-	bind:this={photoInput}
-	type="file"
-	accept="image/*"
-	hidden
-	onchange={() => void onPhotoSelected()}
-/>
+<FilePicker bind:this={photoPicker} accept="image/*" onfiles={([file]) => void onPhotoSelected(file)} />

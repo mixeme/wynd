@@ -717,6 +717,11 @@ export function checkLibraryClasses(
 				);
 			}
 		}
+		// Выбор файлов — FilePicker: у сырого поля каждый экран забывал сброс.
+		for (const m of markup.matchAll(/<input\b[^>]*\btype="file"/g)) {
+			const line = lineAt(markup, m.index ?? 0);
+			hits.push(`${hit(rel, line, lines[line - 1] ?? '')} — <input type="file">: есть FilePicker`);
+		}
 		if (/\{@html\b/.test(markup)) {
 			seenHtml.add(rel);
 			if (!htmlScreens.has(rel)) hits.push(`${rel}: {@html} в экране — компонент $ui вместо разметки строкой`);
