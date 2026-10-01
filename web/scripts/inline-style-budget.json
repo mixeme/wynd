@@ -35,7 +35,7 @@
 	"src/routes/circles/[id]/search/+page.svelte": 4,
 	"src/routes/circles/[id]/settings/+page.svelte": 6,
 	"src/routes/circles/[id]/settings/identity/+page.svelte": 3,
-	"src/routes/circles/[id]/settings/invite/+page.svelte": 5,
+	"src/routes/circles/[id]/settings/invite/+page.svelte": 2,
 	"src/routes/circles/[id]/settings/invite/from/+page.svelte": 3,
 	"src/routes/circles/[id]/settings/invites/+page.svelte": 0,
 	"src/routes/circles/[id]/settings/leave/+page.svelte": 0,

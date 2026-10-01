@@ -199,7 +199,7 @@
 
 **2.11 Фильтры поиска — средняя.** `circles/[id]/search/+page.svelte:223–240` и `search/+page.svelte:229–241`: чипы «Период / С фото / С местом» и ряд из двух дат `div style="display:flex;gap:8px;margin:8px 16px 0"` + `Input style="flex:1"`. Snippet превью совпадает дословно: `circles/[id]/search:259–268` и `search:261–270`. → `DateRange` (`from`, `to`) и проп `kind` у `SearchResultRow` вместо snippet ради «день» / «· комментарий».
 
-**2.12 QR, ссылка, «Поделиться / Скопировать» — средняя.** `circles/[id]/settings/invite/+page.svelte:200–213` и `circles/[id]/settings/invites/+page.svelte:143–154`; QR ещё в `admin/access/+page.svelte:281–285`. QR вставляется через `{@html}` в 3 местах, `QRCode.toString` вызывается в каждом экране. → `QrCode` (`value`, `size`) и `InviteLinkCard` (`url`, `onshare`, `oncopy`, `shared`, `copied`).
+**2.12 QR, ссылка, «Поделиться / Скопировать» — средняя.** `circles/[id]/settings/invite/+page.svelte:200–213` и `circles/[id]/settings/invites/+page.svelte:143–154`; QR ещё в `admin/access/+page.svelte:281–285`. QR вставляется через `{@html}` в 3 местах, `QRCode.toString` вызывается в каждом экране. → `QrCode` (`value`, `size`) и `InviteLinkCard` (`url`, `onshare`, `oncopy`, `shared`, `copied`). **Сделано в 0.18.15:** `$ui/data/QrCode.svelte` и `$ui/data/InviteLinkCard.svelte` (плюс `inSheet` для листа живой ссылки); `{@html}` в экранах больше нет, сторож запрещает его совсем.
 
 **2.13 Экран «Кто уже здесь» — средняя.** `circles/[id]/join/+page.svelte:193–210` и `invite/[token]/+page.svelte:139–155`: `FormLayout` + `MemberRow` по `peek.members`. Можно оставить экранами, но список стоит сделать одним компонентом (`MemberList`) или общим маршрутом.
 

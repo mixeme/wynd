@@ -2,9 +2,9 @@
 	import { copyText } from '$lib/clipboard';
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
-	import QRCode from 'qrcode';
+	import QrCode from '$ui/data/QrCode.svelte';
+	import InviteLinkCard from '$ui/data/InviteLinkCard.svelte';
 	import Button from '$ui/forms/Button.svelte';
-	import FieldDisplay from '$ui/forms/FieldDisplay.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import OverlayLayout from '$lib/layouts/OverlayLayout.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -35,18 +35,15 @@
 	// Ссылка, открытая нажатием на строку: QR тому, кто рядом, ссылка —
 	// кому отправить (6.21). Действия ссылки живут здесь же.
 	let opened = $state<CircleInvite | null>(null);
-	let openedQr = $state('');
 	let shared = $state(false);
 
-	async function openInvite(inv: CircleInvite) {
+	function openInvite(inv: CircleInvite) {
 		opened = inv;
 		shared = false;
-		openedQr = await QRCode.toString(inviteUrlFor(inv.token), { type: 'svg', margin: 0, width: 168 });
 	}
 
 	function closeInvite() {
 		opened = null;
-		openedQr = '';
 	}
 
 	async function shareInvite(inv: CircleInvite) {
@@ -140,18 +137,15 @@
 	{@const inv = opened}
 	<OverlayLayout label={inviteRegistryTitle(inv)} ondismiss={closeInvite}>
 		<Label class="mt-2">{inviteRegistryTitle(inv)}</Label>
-		{#if openedQr}
-			<div class="qr">{@html openedQr}</div>
-		{/if}
-		<FieldDisplay mono value={inviteUrlFor(inv.token)} class="invite-url" />
-		<div class="rowin ask">
-			<Button variant="colored" onclick={() => void shareInvite(inv)}>
-				{shared ? 'Отправлено' : 'Поделиться'}
-			</Button>
-			<Button variant="ghost" onclick={() => void copyInvite(inv)}>
-				{copiedInviteId === inv.id ? 'Скопировано' : 'Скопировать'}
-			</Button>
-		</div>
+		<QrCode value={inviteUrlFor(inv.token)} />
+		<InviteLinkCard
+			url={inviteUrlFor(inv.token)}
+			{shared}
+			copied={copiedInviteId === inv.id}
+			onshare={() => void shareInvite(inv)}
+			oncopy={() => void copyInvite(inv)}
+			inSheet
+		/>
 		<Hint centered class="mt-16">
 			<TextButton onclick={() => void revokeInvite(inv)}>Отозвать ссылку</TextButton>
 		</Hint>

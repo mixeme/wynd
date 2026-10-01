@@ -662,27 +662,22 @@ export function checkStyleBlocks(webRoot, allowed = STYLE_BLOCK_SCREENS) {
  * Классы компонентов Wynd UI на голом HTML-теге боевого экрана (план 47,
  * сторож п. 1). Компонент есть — экран зовёт его, а не верстает класс сам.
  * BANNED не встречаются нигде; RATCHET ещё остались в перечисленных местах
- * и ждут своих компонентов (QrCode, NumberField, PostRef…) — список только вниз.
+ * и ждут своих компонентов (NumberField, PostRef…) — список только вниз.
  */
 export const LIBRARY_CLASS_BANNED = ['h1s', 'att', 'men', 'codebox', 'addph', 'sfield', 'panel'];
 export const LIBRARY_CLASS_RATCHET = {
-	'src/routes/admin/access/+page.svelte': ['qr'],
 	'src/routes/admin/people/[id]/+page.svelte': ['chk', 'danger'],
 	'src/routes/circles/[id]/+page.svelte': ['tm'],
 	'src/routes/circles/[id]/days/[date]/+page.svelte': ['tm'],
 	'src/routes/circles/[id]/posts/[postId]/+page.svelte': ['tm'],
 	'src/routes/circles/[id]/quota/request/+page.svelte': ['hint'],
 	'src/routes/circles/[id]/responses/+page.svelte': ['pic'],
-	'src/routes/circles/[id]/settings/invite/+page.svelte': ['hint', 'qr'],
-	'src/routes/circles/[id]/settings/invites/+page.svelte': ['qr'],
+	'src/routes/circles/[id]/settings/invite/+page.svelte': ['hint'],
 	'src/routes/settings/app/+page.svelte': ['hint']
 };
-/** `{@html}` в экранах — только QR, пока нет компонента QrCode. Только вниз. */
-export const HTML_TAG_SCREENS = new Set([
-	'src/routes/admin/access/+page.svelte',
-	'src/routes/circles/[id]/settings/invite/+page.svelte',
-	'src/routes/circles/[id]/settings/invites/+page.svelte'
-]);
+/** `{@html}` в экранах: не бывает — QR рисует `QrCode` (0.18.15). */
+/** @type {Set<string>} */
+export const HTML_TAG_SCREENS = new Set();
 
 function prodScreens(webRoot) {
 	return walkSvelte(path.join(webRoot, 'src', 'routes'))
@@ -839,7 +834,6 @@ export const SINGLE_SCREEN_CLASSES = new Set([
 	'date-row',
 	'date-pick',
 	'thread',
-	'invite-url',
 	'qr-video'
 ]);
 

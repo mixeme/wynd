@@ -3,12 +3,12 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getContext, onMount } from 'svelte';
-	import QRCode from 'qrcode';
+	import QrCode from '$ui/data/QrCode.svelte';
+	import InviteLinkCard from '$ui/data/InviteLinkCard.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Chip from '$ui/forms/Chip.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
-	import FieldDisplay from '$ui/forms/FieldDisplay.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
@@ -55,7 +55,6 @@
 	let ttl = $state<TtlChoice>(259200);
 	let customDays = $state(14);
 	let inviteUrl = $state('');
-	let qrSvg = $state('');
 	let error = $state('');
 	let loading = $state(false);
 	let copied = $state(false);
@@ -108,14 +107,6 @@
 		return `${base}/invite/${token}`;
 	}
 
-	async function renderQr(url: string) {
-		if (!url) {
-			qrSvg = '';
-			return;
-		}
-		qrSvg = await QRCode.toString(url, { type: 'svg', margin: 0, width: 142 });
-	}
-
 	async function createLink() {
 		if (creating) return;
 		creating = true;
@@ -141,7 +132,6 @@
 			);
 			currentInviteId = inv.id;
 			inviteUrl = inviteUrlFor(inv.token);
-			await renderQr(inviteUrl);
 		} catch (err) {
 			error = authErrorHint(err);
 		} finally {
@@ -197,20 +187,16 @@
 			Позвать из других кругов
 		</Button>
 	{/if}
-	{#if qrSvg}
-		<div class="qr">{@html qrSvg}</div>
-	{/if}
+	<QrCode value={inviteUrl} />
 	<Hint class="gutter ctr">Кто ещё не на сервере — код или ссылка</Hint>
 	{#if inviteUrl}
-		<FieldDisplay mono value={inviteUrl} style="margin-top:12px;font-size:12.5px;overflow-wrap:anywhere" />
-		<div class="rowin mt-12">
-			<Button variant="colored" style="flex:1" onclick={() => void shareLink()}>
-				{shared ? 'Отправлено' : 'Поделиться'}
-			</Button>
-			<Button variant="ghost" style="flex:1;margin:0" onclick={() => void copyLink()}>
-				{copied ? 'Скопировано' : 'Скопировать'}
-			</Button>
-		</div>
+		<InviteLinkCard
+			url={inviteUrl}
+			{shared}
+			{copied}
+			onshare={() => void shareLink()}
+			oncopy={() => void copyLink()}
+		/>
 	{/if}
 	<Label class="mt-22">Ссылка</Label>
 	{#if showKindChips}

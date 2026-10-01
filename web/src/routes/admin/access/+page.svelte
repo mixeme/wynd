@@ -1,7 +1,7 @@
 ﻿<script lang="ts">
 	import { copyText } from '$lib/clipboard';
 	import { onMount } from 'svelte';
-	import QRCode from 'qrcode';
+	import QrCode from '$ui/data/QrCode.svelte';
 	import AdminSection from '$ui/admin/AdminSection.svelte';
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
@@ -50,7 +50,6 @@
 	let mode = $state<AccessSettings['registration_mode']>('invite');
 	let server = $state('');
 	let inviteUrl = $state('');
-	let qrSvg = $state('');
 	let liveInvites = $state<AdminInvite[]>([]);
 	let uses = $state<UsesChoice>(5);
 	let customUses = $state(20);
@@ -66,10 +65,6 @@
 	function inviteUrlFor(token: string): string {
 		const base = typeof window !== 'undefined' ? window.location.origin : '';
 		return `${base}/join/${token}`;
-	}
-
-	async function renderQr(url: string) {
-		qrSvg = url ? await QRCode.toString(url, { type: 'svg', margin: 0, width: 142 }) : '';
 	}
 
 	async function loadLiveInvites() {
@@ -102,7 +97,6 @@
 			}
 			const inv = await createServerInvite(inviteRequest(uses, customUses, ttl, customDays));
 			inviteUrl = inviteUrlFor(inv.token);
-			await renderQr(inviteUrl);
 			await loadLiveInvites();
 			currentInviteId = liveInvites.find((row) => row.token === inv.token)?.id ?? '';
 		} catch (err) {
@@ -126,7 +120,6 @@
 		({ uses, customUses, ttl, customDays } = choicesFromInvite(inv));
 		currentInviteId = inv.id;
 		inviteUrl = inviteUrlFor(inv.token);
-		await renderQr(inviteUrl);
 	}
 
 	async function copyLink() {
@@ -278,11 +271,7 @@
 					{/if}
 				</div>
 				<div style="flex:0 0 auto;width:210px">
-					{#if qrSvg}
-						<div class="qr sm mt-26" aria-hidden="true">
-							{@html qrSvg}
-						</div>
-					{/if}
+					<QrCode value={inviteUrl} size="sm" class="mt-26" />
 					<div class="sz-11 faint ctr mt-10">
 						та же ссылка кодом
 					</div>
