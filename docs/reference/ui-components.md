@@ -76,7 +76,7 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar
 
 ### `forms/`
 
-**Label**, **Input**, **FieldDisplay**, **TextArea**, ScreenTitle, Hint, **Button**, **Chip**, ChipGroup, Switch, ColorSwatches, CodeBox, InviteCard, **RequisitesCard**, **SearchField**, DangerZone (опц. `style`), Meter, PeopleStrip, **MentionPicker**, AddPhotoButton, DangerNote, VolumeChart, **IconButton**, **TextButton**, **EditWindowPicker**, **IdentityForm**
+**Label**, **Input**, **FieldDisplay**, **TextArea**, ScreenTitle, Hint, **Button**, **Chip**, ChipGroup, Switch, ColorSwatches, CodeBox, InviteCard, **RequisitesCard**, **SearchField**, DangerZone (опц. `style`), Meter, PeopleStrip, **MentionPicker**, AddPhotoButton, DangerNote, VolumeChart, **IconButton**, **TextButton**, **EditWindowPicker**, **IdentityForm**, **NumberField**
 
 Интерактивные примитивы (фаза 1–4):
 
@@ -91,6 +91,8 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar
 `CodeBox` — шесть клеток `.codebox`; без `bind:value` — display (`digits` / `active`, каталог). С `bind:value` — прозрачный `input.code-input` поверх (**.code-wrap**), `inputmode="numeric"`, `autocomplete="one-time-code"`, обрезка до `length`; опц. `bind:el`, `autofocus` (**#e1-2**).
 
 `EditWindowPicker` — «Окно правок» (**#e2-4**, **#e6-2**): шесть чипов в два ряда и при «Своё…» поле часов; `value`, `bind:customHours`, `onpick(key)`, опц. `oncustomchange` — настройки круга сохраняют сразу. Подсказку о сдвиге часов экран ставит сам.
+
+`NumberField` — число «Своё…» с единицей справа: `Input` 72 px и подпись `.hint` в `.rowin` (окно правок, кэш, квота, люди и дни приглашения). `bind:value` (число), `min`, `max`, `unit` («часов», «ГБ, до 100»), опц. `onchange` — подтверждение поля. Строки админки с подписью слева — `AdminField`.
 
 `IdentityForm` — «Как вас зовут в этом круге?» (**#e1-3**) у вступающего и у создателя круга: заголовок, `AddPhotoButton` + кадрирование `AvatarCrop`, «Имя», первая запись с «необязательно». `color`, `bind:name`, `bind:firstPost`, `bind:avatar` (откадрированное фото; загружает экран — `setIdentityAvatar` из `$lib/circles/settings`), опц. `postLabel` / `postPlaceholder` (дневник), `onerror`. Кнопку и ошибку ставит экран.
 

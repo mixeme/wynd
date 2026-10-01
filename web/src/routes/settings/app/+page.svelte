@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import NumberField from '$ui/forms/NumberField.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import Chip from '$ui/forms/Chip.svelte';
@@ -13,7 +14,6 @@
 	import { authErrorHint } from '$lib/auth/auth';
 	import { formatBytes } from '$lib/format/bytes';
 	import { clearMediaStore, getAppSettings, mediaStoreBytes, type Theme } from '$lib/idb/db';
-	import Input from '$ui/forms/Input.svelte';
 	import { getMediaCacheLimit, setMediaCacheLimit } from '$lib/media/objectUrl';
 	import { loadSessions, setTheme } from '$lib/session/session.svelte';
 	import {
@@ -171,18 +171,13 @@
 		<Hint>Браузер отводит Wynd до {formatBytes(quotaBytes)} — больше кэш не вырастет.</Hint>
 	{/if}
 	{#if customCache}
-		<div class="rowin mt-10">
-			<Input
-				active
-				type="number"
-				min="1"
-				max="100"
-				class="w72 m-0"
-				bind:value={customCacheGb}
-				onchange={() => void pickCacheLimit(customCacheGb, true)}
-			/>
-			<span class="hint m-0">ГБ, до 100</span>
-		</div>
+		<NumberField
+			bind:value={customCacheGb}
+			min={1}
+			max={100}
+			onchange={() => void pickCacheLimit(customCacheGb, true)}
+			unit="ГБ, до 100"
+		/>
 	{/if}
 	<Hint>Сверх потолка удаляются давно не открытые фото и видео — при просмотре они скачаются заново.</Hint>
 	<SettingsRow

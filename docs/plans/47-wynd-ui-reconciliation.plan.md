@@ -193,7 +193,7 @@
 - `circles/[id]/settings/invite/+page.svelte:233–245`, `254–266`
 - `settings/app/+page.svelte:173–185`
 
-Половина копий на служебных классах (`w72 m-0`), половина на инлайн-стилях. В админке тот же паттерн на `note`: `admin/access:220–251`, `admin/+page:330–375`, `admin/compress:85–140`. → `NumberField` (`unit`, `min`, `max`, `value`) или проп `unit` у `Input`.
+Половина копий на служебных классах (`w72 m-0`), половина на инлайн-стилях. В админке тот же паттерн на `note`: `admin/access:220–251`, `admin/+page:330–375`, `admin/compress:85–140`. → `NumberField` (`unit`, `min`, `max`, `value`) или проп `unit` у `Input`. **Сделано в 0.18.16:** `$ui/forms/NumberField.svelte` во всех пяти местах и в `EditWindowPicker`; сырые `span.hint` ушли из экранов. Админские строки с подписью — `AdminField` (0.18.14); поле с единицей без подписи в `admin/access` и `admin/pay/donate` — на `.note`, оставлено до сверки кадров админки.
 
 **2.10 Выбор «Окно правок» — высокая.** `circles/new/+page.svelte:77–113` ≡ `circles/[id]/settings/+page.svelte:379–407`: шесть чипов в двух `ChipGroup` и поле «часов». → `EditWindowPicker` (`value`, `customHours`, `onchange`). **Сделано в 0.18.10:** `$ui/forms/EditWindowPicker.svelte` (`value`, `bind:customHours`, `onpick`, `oncustomchange`) в «Новом круге» и настройках; подсказка о сдвиге часов остаётся в настройках.
 

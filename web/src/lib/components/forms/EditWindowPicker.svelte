@@ -1,7 +1,7 @@
 <script lang="ts">
+	import NumberField from '$ui/forms/NumberField.svelte';
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
-	import Input from '$ui/forms/Input.svelte';
 	import type { EditWindowKey } from '$lib/circles/settings';
 
 	// Выбор окна правок (2.4, 6.1; план 47, 2.10): шесть чипов в два ряда и
@@ -42,16 +42,11 @@
 	{/each}
 </ChipGroup>
 {#if value === 'custom'}
-	<div class="rowin" style="margin-top:10px;align-items:center">
-		<Input
-			active
-			type="number"
-			min="1"
-			max="8760"
-			bind:value={customHours}
-			onchange={() => oncustomchange?.()}
-			style="width:72px;margin:0"
-		/>
-		<span class="hint m-0">часов</span>
-	</div>
+	<NumberField
+		bind:value={customHours}
+		min={1}
+		max={8760}
+		onchange={() => oncustomchange?.()}
+		unit="часов"
+	/>
 {/if}

@@ -1300,6 +1300,12 @@ input.fld, textarea.fld, textarea.ta {
 	font: inherit;
 	color: inherit;
 }
+/* Число с единицей (NumberField): узкое поле в строке. Служебные .w72 и .m-0
+   слабее input.fld — с ними поле растягивалось на всю строку. */
+input.fld.num {
+	width: 72px;
+	margin: 0;
+}
 .fld.act {
 	border-color: var(--c);
 }

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import NumberField from '$ui/forms/NumberField.svelte';
 	import { copyText } from '$lib/clipboard';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -7,7 +8,6 @@
 	import InviteLinkCard from '$ui/data/InviteLinkCard.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Chip from '$ui/forms/Chip.svelte';
-	import Input from '$ui/forms/Input.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Label from '$ui/forms/Label.svelte';
@@ -217,18 +217,13 @@
 			<Chip selected={multiUses === 'custom'} onclick={() => pickUses('custom')}>Своё…</Chip>
 		</ChipGroup>
 		{#if multiUses === 'custom'}
-			<div class="rowin mt-10">
-				<Input
-					active
-					type="number"
-					min="1"
-					max={String(CUSTOM_USES_MAX)}
-					bind:value={customUses}
-					onchange={() => void createLink()}
-					class="w72 m-0"
-				/>
-				<span class="hint m-0">человек, до {CUSTOM_USES_MAX}</span>
-			</div>
+			<NumberField
+				bind:value={customUses}
+				min={1}
+				max={CUSTOM_USES_MAX}
+				onchange={() => void createLink()}
+				unit="человек, до {CUSTOM_USES_MAX}"
+			/>
 		{/if}
 	{/if}
 	<ChipGroup style="margin-top:8px">
@@ -238,18 +233,13 @@
 		<Chip selected={ttl === 'custom'} onclick={() => pickTtl('custom')}>Своё…</Chip>
 	</ChipGroup>
 	{#if ttl === 'custom'}
-		<div class="rowin mt-10">
-			<Input
-				active
-				type="number"
-				min="1"
-				max={String(CUSTOM_DAYS_MAX)}
-				bind:value={customDays}
-				onchange={() => void createLink()}
-				class="w72 m-0"
-			/>
-			<span class="hint m-0">дней, до {CUSTOM_DAYS_MAX}</span>
-		</div>
+		<NumberField
+			bind:value={customDays}
+			min={1}
+			max={CUSTOM_DAYS_MAX}
+			onchange={() => void createLink()}
+			unit="дней, до {CUSTOM_DAYS_MAX}"
+		/>
 	{/if}
 	<!-- Подпись говорит о той ссылке, что на экране: одноразовая — один
 	     человек, многоразовая — лимит. Про многоразовые, которых выбрать

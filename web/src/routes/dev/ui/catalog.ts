@@ -62,7 +62,8 @@ export const COMPONENT_MAP: CatalogGroup[] = [
 			{ component: 'DangerNote', screen: 'e6-12', smoke: '/dev/smoke/e6-12' },
 			{ component: 'VolumeChart', screen: 'e6-10', smoke: '/dev/smoke/e6-10' },
 			{ component: 'EditWindowPicker', screen: 'e2-4, e6-2', smoke: '/dev/smoke/e2-4' },
-			{ component: 'IdentityForm', screen: 'e1-3' }
+			{ component: 'IdentityForm', screen: 'e1-3' },
+			{ component: 'NumberField', screen: 'e2-4, e6-2, e6-7' }
 		]
 	},
 	{

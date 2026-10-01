@@ -1,4 +1,5 @@
 <script lang="ts">
+	import NumberField from '$ui/forms/NumberField.svelte';
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
@@ -6,7 +7,6 @@
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Loading from '$ui/Loading.svelte';
-	import Input from '$ui/forms/Input.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
@@ -25,7 +25,7 @@
 	let usedBytes = $state(0);
 	let quotaBytes = $state(0);
 	let chip = $state<QuotaChipKey>('10');
-	let customGb = $state('20');
+	let customGb = $state(20);
 	let loading = $state(false);
 	let pageLoading = $state(true);
 	let error = $state('');
@@ -34,7 +34,7 @@
 	const requestFloor = $derived(quotaBytes > 0 ? Math.max(usedBytes, quotaBytes) : usedBytes);
 	const selectedBytes = $derived.by(() => {
 		if (chip === 'custom') {
-			const n = Number(customGb.trim().replace(',', '.'));
+			const n = Number(customGb);
 			if (!Number.isInteger(n) || n < minGb || n > 1024) return null;
 			const bytes = n * QUOTA_GB;
 			if (bytes <= requestFloor) return null;
@@ -56,7 +56,7 @@
 			return;
 		}
 		chip = 'custom';
-		customGb = String(Math.max(minGb, Math.round(bytes / QUOTA_GB)));
+		customGb = Math.max(minGb, Math.round(bytes / QUOTA_GB));
 	}
 
 	function chipDisabled(key: QuotaChipKey): boolean {
@@ -130,7 +130,7 @@
 					onclick={() => {
 						chip = opt.key;
 						if (opt.key !== 'custom' && opt.bytes != null) {
-							customGb = String(Math.round(opt.bytes / QUOTA_GB));
+							customGb = Math.round(opt.bytes / QUOTA_GB);
 						}
 					}}
 				>
@@ -139,17 +139,12 @@
 			{/each}
 		</ChipGroup>
 		{#if chip === 'custom'}
-			<div class="rowin" style="margin-top:10px;align-items:center">
-				<Input
-					active
-					type="number"
-					min={String(minGb)}
-					max="1024"
-					bind:value={customGb}
-					style="width:72px;margin:0"
-				/>
-				<span class="hint m-0">ГБ</span>
-			</div>
+			<NumberField
+				bind:value={customGb}
+				min={minGb}
+				max={1024}
+				unit="ГБ"
+			/>
 		{/if}
 		<Hint class="mt-10">
 			{formatBytes(usedBytes)} уже лежит. Ниже этого числа просить незачем — место всё равно
