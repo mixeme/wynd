@@ -299,7 +299,7 @@
 
 **3.7 `.compose-bar*` (171–190), `.date-row` / `.date-pick` (1545–1550) — средняя.**
 - Где используются: только `compose`. `footer`-snippet экрана повторяет панель инструментов, которая по сути принадлежит `FormLayout compose`.
-- Что сделать: `ComposeToolbar` (`tools` snippet, `note`) и `DateRow` (скрытый `input type=date` + `SettingsRow`). Поле даты ещё и в `quota/deadlines:153–160` через `getElementById(...).showPicker()`.
+- Что сделать: `ComposeToolbar` (`tools` snippet, `note`) и `DateRow` (скрытый `input type=date` + `SettingsRow`). Поле даты ещё и в `quota/deadlines:153–160` через `getElementById(...).showPicker()`. **Сделано в 0.18.22:** `$ui/chrome/ComposeToolbar.svelte` и `$ui/forms/DateRow.svelte` в «Новой записи». В «Сроках» поле даты видимое (`Input type=date`), строка лишь открывает его — другой паттерн, оставлен.
 
 **3.8 `.qr`, `.qr.sm`, `.qr > svg`, `.qr-video` (2065–2080, 662) — средняя.**
 - Что сделать: `QrCode` (2.12) и `QrScanner` для `invite/scan:75`.

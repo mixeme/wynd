@@ -70,13 +70,15 @@
 
 ### `chrome/`
 
-PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar
+PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar, **ComposeToolbar**
+
+`ComposeToolbar` — нижняя полоса новой записи (**#e4-2**): snippet `tools` (кнопки вложений), опц. snippet `note` — мелкая подпись справа («до 32 КБ · как Мышь»). Ставится в `footer` у `FormLayout compose`.
 
 `AudioBar` — полоса плеера (**#e4-20**): что играет, откуда, ход в цвете круга, пауза и крестик; ставится один раз в корневом `+layout`. Видна на любом экране, кроме ленты круга звука и экрана его записи. Пока видна, задаёт `--player-h` — полоса ввода, плюс и нижние панели встают над ней. Сейчас сама подписана на `$lib/media/audio` и читает маршрут; разделить на презентационную полосу и логику — план 47, 5.3–5.4.
 
 ### `forms/`
 
-**Label**, **Input**, **FieldDisplay**, **TextArea**, ScreenTitle, Hint, **Button**, **Chip**, ChipGroup, Switch, ColorSwatches, CodeBox, InviteCard, **RequisitesCard**, **SearchField**, DangerZone (опц. `style`), Meter, PeopleStrip, **MentionPicker**, AddPhotoButton, DangerNote, VolumeChart, **IconButton**, **TextButton**, **EditWindowPicker**, **IdentityForm**, **NumberField**
+**Label**, **Input**, **FieldDisplay**, **TextArea**, ScreenTitle, Hint, **Button**, **Chip**, ChipGroup, Switch, ColorSwatches, CodeBox, InviteCard, **RequisitesCard**, **SearchField**, DangerZone (опц. `style`), Meter, PeopleStrip, **MentionPicker**, AddPhotoButton, DangerNote, VolumeChart, **IconButton**, **TextButton**, **EditWindowPicker**, **IdentityForm**, **NumberField**, **DateRow**
 
 Интерактивные примитивы (фаза 1–4):
 
@@ -91,6 +93,8 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar
 `CodeBox` — шесть клеток `.codebox`; без `bind:value` — display (`digits` / `active`, каталог). С `bind:value` — прозрачный `input.code-input` поверх (**.code-wrap**), `inputmode="numeric"`, `autocomplete="one-time-code"`, обрезка до `length`; опц. `bind:el`, `autofocus` (**#e1-2**).
 
 `EditWindowPicker` — «Окно правок» (**#e2-4**, **#e6-2**): шесть чипов в два ряда и при «Своё…» поле часов; `value`, `bind:customHours`, `onpick(key)`, опц. `oncustomchange` — настройки круга сохраняют сразу. Подсказку о сдвиге часов экран ставит сам.
+
+`DateRow` — строка, которая открывает системный выбор дня (**#e4-2** «Отнести к дате»): `bind:value` (`2026-10-01`), `title`, `subtitle`, `icon`, `style`. Поле даты скрыто под строкой (`.date-pick`), выбор открывается у неё; без `showPicker` — по клику.
 
 `NumberField` — число «Своё…» с единицей справа: `Input` 72 px и подпись `.hint` в `.rowin` (окно правок, кэш, квота, люди и дни приглашения). `bind:value` (число), `min`, `max`, `unit` («часов», «ГБ, до 100»), опц. `onchange` — подтверждение поля. Строки админки с подписью слева — `AdminField`.
 

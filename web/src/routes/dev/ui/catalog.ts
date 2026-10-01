@@ -31,7 +31,8 @@ export const COMPONENT_MAP: CatalogGroup[] = [
 			{ component: 'AppBar', screen: 'e2-1', smoke: '/dev/smoke/e2-1' },
 			{ component: 'CircleBar', screen: 'e3-1', smoke: '/dev/smoke/e3-1' },
 			{ component: 'BackBar', screen: 'e2-4, e2-9', smoke: '/dev/smoke/e2-4' },
-			{ component: 'AdminBar', screen: 'e9-5', smoke: '/dev/smoke/e9-5' }
+			{ component: 'AdminBar', screen: 'e9-5', smoke: '/dev/smoke/e9-5' },
+			{ component: 'ComposeToolbar', screen: 'e4-2' }
 		]
 	},
 	{
@@ -63,7 +64,8 @@ export const COMPONENT_MAP: CatalogGroup[] = [
 			{ component: 'VolumeChart', screen: 'e6-10', smoke: '/dev/smoke/e6-10' },
 			{ component: 'EditWindowPicker', screen: 'e2-4, e6-2', smoke: '/dev/smoke/e2-4' },
 			{ component: 'IdentityForm', screen: 'e1-3' },
-			{ component: 'NumberField', screen: 'e2-4, e6-2, e6-7' }
+			{ component: 'NumberField', screen: 'e2-4, e6-2, e6-7' },
+			{ component: 'DateRow', screen: 'e4-2' }
 		]
 	},
 	{

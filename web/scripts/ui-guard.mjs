@@ -810,17 +810,13 @@ export const SINGLE_SCREEN_CLASSES = new Set([
 	'dt',
 	'dd',
 	'mo',
-	'tools',
 	'map-wrap',
 	'ced',
 	'qbar',
 	'fill',
 	'street-list',
 	'compose-body',
-	'compose-bar',
 	'thumbs',
-	'date-row',
-	'date-pick',
 	'thread',
 	'qr-video'
 ]);

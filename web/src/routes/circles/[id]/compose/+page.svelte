@@ -1,4 +1,6 @@
 <script lang="ts">
+	import DateRow from '$ui/forms/DateRow.svelte';
+	import ComposeToolbar from '$ui/chrome/ComposeToolbar.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getContext, onMount } from 'svelte';
@@ -78,7 +80,6 @@
 	let bodyInput: HTMLTextAreaElement | undefined = $state();
 	let photoInput: HTMLInputElement | undefined = $state();
 	let attachInput: HTMLInputElement | undefined = $state();
-	let dateInput: HTMLInputElement | undefined = $state();
 	let members = $state<MemberInfo[]>([]);
 	let mentionStart = $state<number | null>(null);
 	let mentionQuery = $state('');
@@ -192,15 +193,6 @@
 		}
 		const days = Math.round(hours / 24);
 		return `вышла ${when}, когда в круге стояли ${days === 1 ? 'сутки' : `${days} суток`}`;
-	}
-
-	function openDatePicker() {
-		if (!dateInput) return;
-		try {
-			dateInput.showPicker();
-		} catch {
-			dateInput.click();
-		}
 	}
 
 	function resizeBody() {
@@ -768,16 +760,13 @@
 			>
 		{/if}
 
-		<div class="date-row">
-			<input bind:this={dateInput} type="date" bind:value={entryDate} class="date-pick" tabindex="-1" />
-			<SettingsRow
-				icon="day"
-				title="Отнести к дате"
-				subtitle={entryDateSubtitle}
-				style="margin-top:16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"
-				onclick={openDatePicker}
-			/>
-		</div>
+		<DateRow
+			bind:value={entryDate}
+			icon="day"
+			title="Отнести к дате"
+			subtitle={entryDateSubtitle}
+			style="margin-top:16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"
+		/>
 		{#if isEdit}
 			<Hint>
 				В ленте запись останется на своём месте. Дата нужна дню — в «Днях» она соберётся с
@@ -848,8 +837,8 @@
 {/if}
 
 {#snippet composeFooter()}
-	<div class="compose-bar">
-		<div class="tools">
+	<ComposeToolbar>
+		{#snippet tools()}
 			<IconButton
 				name="photo"
 				label="Фото или видео"
@@ -864,11 +853,11 @@
 					onclick={() => (usePlace = !usePlace)}
 				/>
 			{/if}
-			<span class="who"
-				>до 32 КБ · как {circle.identityName}{#if pickedHasPlace && !usePlace}&nbsp;· без места{/if}</span
-			>
-		</div>
-	</div>
+		{/snippet}
+		{#snippet note()}
+			до 32 КБ · как {circle.identityName}{#if pickedHasPlace && !usePlace}&nbsp;· без места{/if}
+		{/snippet}
+	</ComposeToolbar>
 {/snippet}
 
 <input
