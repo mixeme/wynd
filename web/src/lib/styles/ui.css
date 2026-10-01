@@ -699,25 +699,25 @@
 .empty-state > .h1s {
 	margin-top: 48px;
 }
-.empty-state.list > .h1s {
+.empty-state.is-list > .h1s {
 	margin-top: 24px;
 }
-.empty-state.tab > .h1s {
+.empty-state.is-tab > .h1s {
 	margin-top: 220px;
 }
-.empty-state.feed > .h1s {
+.empty-state.is-feed > .h1s {
 	margin-top: 28px;
 }
 .empty-state > .hint {
 	margin: 10px 30px 0;
 }
-.empty-state.tab > .hint, .empty-state.feed > .hint {
+.empty-state.is-tab > .hint, .empty-state.is-feed > .hint {
 	margin: 8px 34px 0;
 }
 .empty-act > .btn:first-child {
 	margin-top: 30px;
 }
-.empty-state.feed .empty-act > .btn {
+.empty-state.is-feed .empty-act > .btn {
 	margin: 26px 60px 0;
 }
 .feed-end {

@@ -184,7 +184,7 @@
 
 → `MentionText` (`body`). **Сделано в 0.18.8:** `$ui/data/MentionText.svelte` во всех пяти местах; заодно чинит переносы строк (pre-wrap).
 
-**2.8 Жест «потянуть, чтобы обновить» (`.ptr` / `.ptr-mark` + `Mark`) — средняя.** `circles/+page.svelte:502–508`, `circles/[id]/+page.svelte:573–579`. → `PullRefresh` (`height`, `markHeight`); стили `.ptr*` уйдут из экранного раздела `ui.css`.
+**2.8 Жест «потянуть, чтобы обновить» (`.ptr` / `.ptr-mark` + `Mark`) — средняя.** `circles/+page.svelte:502–508`, `circles/[id]/+page.svelte:573–579`. → `PullRefresh` (`height`, `markHeight`); стили `.ptr*` уйдут из экранного раздела `ui.css`. **Сделано в 0.18.19:** вид — `$ui/data/PullRefresh.svelte`, жест — `PullRefresh` в `$lib/gestures/pullRefresh.svelte.ts` (таймер снимается в `destroy`). Улочка, лента и — новое — «Отклики» (план 46, C8).
 
 **2.9 Числовое поле с единицей («Своё…») — средняя.** Везде `div.rowin` + `Input` шириной 72 px + `span.hint`:
 - `circles/new/+page.svelte:102–113`

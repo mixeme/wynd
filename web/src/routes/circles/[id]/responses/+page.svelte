@@ -1,7 +1,9 @@
 <script lang="ts">
+	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
+	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
 	import EmptyState from '$ui/data/EmptyState.svelte';
 	import { goto } from '$app/navigation';
-	import { getContext, onMount } from 'svelte';
+	import { getContext, onDestroy, onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import CommentRow from '$ui/data/CommentRow.svelte';
 	import MentionText from '$ui/data/MentionText.svelte';
@@ -106,6 +108,11 @@
 		}
 	}
 
+	// Обновление жестом (3.5), как в ленте: тянешь список от верха.
+	let listEl: HTMLDivElement | undefined = $state();
+	const ptr = new PullRefresh(() => listEl?.scrollTop ?? 0, () => load());
+	onDestroy(() => ptr.destroy());
+
 	onMount(() => {
 		void load();
 		return registerRefetch({
@@ -149,6 +156,16 @@
 	commentBar={false}
 	onback={() => goto('/circles')}
 >
+	<PullRefreshBand pull={ptr.state} />
+	<div
+		class="feed"
+		role="feed"
+		aria-label="Отклики"
+		bind:this={listEl}
+		ontouchstart={ptr.start}
+		ontouchmove={ptr.move}
+		ontouchend={ptr.end}
+	>
 	{#if loading}
 		<Loading />
 	{:else if error && !items.length}
@@ -206,4 +223,5 @@
 			{/if}
 		</div>
 	{/if}
+	</div>
 </CircleLayout>

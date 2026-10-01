@@ -1,20 +1,9 @@
 ﻿<script lang="ts">
+	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
+	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
 	import EmptyState from '$ui/data/EmptyState.svelte';
 	import { uuid } from '$lib/uuid';
 	import { onDestroy, onMount } from 'svelte';
-	import Mark from '$ui/Mark.svelte';
-	import {
-		pullEnd,
-		pullFinished,
-		pullHeight,
-		pullIdle,
-		pullMarkHeight,
-		pullMove,
-		pullSettled,
-		pullStart,
-		pullVisible,
-		PTR
-	} from '$lib/gestures/pullToRefresh';
 	import { goto } from '$app/navigation';
 	import CircleRow from '$ui/data/CircleRow.svelte';
 	import Chip from '$ui/forms/Chip.svelte';
@@ -82,35 +71,14 @@
 
 	// Обновление жестом (3.5) — и здесь, не только в ленте круга: тянешь список
 	// от верха, знак дорисовывается, отпустил — круги перечитываются.
-	let pull = $state(pullIdle());
-	let ptrTimer: ReturnType<typeof setTimeout> | null = null;
 	let listEl: HTMLDivElement | undefined = $state();
 
 	function listScrollTop(): number {
 		return (listEl?.closest('.shell-body') as HTMLElement | null)?.scrollTop ?? 0;
 	}
 
-	function onPullStart(e: TouchEvent) {
-		pull = pullStart(pull, e.touches[0]?.clientY ?? 0, listScrollTop());
-	}
-
-	function onPullMove(e: TouchEvent) {
-		pull = pullMove(pull, e.touches[0]?.clientY ?? 0, listScrollTop());
-	}
-
-	function onPullEnd() {
-		pull = pullEnd(pull);
-		if (pull.phase !== 'settling') return;
-		ptrTimer = setTimeout(() => {
-			ptrTimer = null;
-			pull = pullSettled(pull);
-			void refresh().finally(() => (pull = pullFinished()));
-		}, PTR.settleMs);
-	}
-
-	onDestroy(() => {
-		if (ptrTimer) clearTimeout(ptrTimer);
-	});
+	const ptr = new PullRefresh(listScrollTop, () => refresh());
+	onDestroy(() => ptr.destroy());
 
 	async function refresh() {
 		circles = await loadStreetCircles();
@@ -495,17 +463,11 @@
 		class="street-list"
 		role="presentation"
 		bind:this={listEl}
-		ontouchstart={onPullStart}
-		ontouchmove={onPullMove}
-		ontouchend={onPullEnd}
+		ontouchstart={ptr.start}
+		ontouchmove={ptr.move}
+		ontouchend={ptr.end}
 	>
-	{#if pullVisible(pull)}
-		<div class="ptr" style:height="{pullHeight(pull)}px" aria-hidden="true">
-			<div class="ptr-mark" style:height="{pullMarkHeight(pull)}px">
-				<Mark />
-			</div>
-		</div>
-	{/if}
+	<PullRefreshBand pull={ptr.state} />
 
 	{#if loading}
 		<Loading />

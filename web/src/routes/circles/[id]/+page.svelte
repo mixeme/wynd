@@ -1,4 +1,6 @@
 <script lang="ts">
+	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
+	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
 	import EmptyState from '$ui/data/EmptyState.svelte';
 	import ReactionsSheet from '$ui/overlays/ReactionsSheet.svelte';
 	import AttachmentList from '$ui/data/AttachmentList.svelte';
@@ -24,18 +26,6 @@
 	import ReactionBar from '$ui/data/ReactionBar.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { isAccessError } from '$lib/api/client';
-	import {
-		PTR,
-		pullEnd,
-		pullFinished,
-		pullHeight,
-		pullIdle,
-		pullMarkHeight,
-		pullMove,
-		pullSettled,
-		pullStart,
-		pullVisible
-	} from '$lib/gestures/pullToRefresh';
 	import { formatBytes } from '$lib/format/bytes';
 	import { resolveMediaUrls } from '$lib/media/batch';
 	import { WORD, plural } from '$lib/format/plural';
@@ -109,8 +99,8 @@
 	let fixedLastRead = $state(0);
 	let feedEl: HTMLDivElement | undefined = $state();
 	// Автомат жеста живёт в $lib и покрыт тестами (GUI-5).
-	let pull = $state(pullIdle());
-	let ptrTimer: ReturnType<typeof setTimeout> | null = null;
+	// Обновление жестом (3.5): тянешь ленту от верха — она перечитывается.
+	const ptr = new PullRefresh(() => feedEl?.scrollTop ?? 0, () => loadFeedData());
 	let commentDraft = $state('');
 	let dayPromptDate = $state('');
 	let pickerPostId = $state('');
@@ -191,7 +181,6 @@
 		identityName: circle.identityName
 	});
 	const showVisibilityCutoff = $derived(Boolean(visibleFrom));
-	const ptrHeight = $derived(pullHeight(pull));
 
 	// Вернулись с записи или альбома — лента встаёт туда, откуда ушли.
 	// Ждём и переход (откуда пришли), и первую загрузку: порядок у них любой.
@@ -234,7 +223,6 @@
 			error = isAccessError(err) ? 'Нет доступа' : 'Не удалось загрузить ленту';
 		} finally {
 			loading = false;
-			pull = pullFinished();
 		}
 		feedLoaded = true;
 		await restoreSpot();
@@ -281,7 +269,7 @@
 	});
 
 	onDestroy(() => {
-		if (ptrTimer !== null) clearTimeout(ptrTimer);
+		ptr.destroy();
 		const seq = maxReadSeq(posts);
 		if (seq > 0) {
 			void advanceReadCursor(circle.origin, circle.circleId, seq);
@@ -493,27 +481,6 @@
 		}
 	}
 
-	function onTouchStart(e: TouchEvent) {
-		if (!feedEl) return;
-		pull = pullStart(pull, e.touches[0]?.clientY ?? 0, feedEl.scrollTop);
-	}
-
-	function onTouchMove(e: TouchEvent) {
-		if (!feedEl) return;
-		pull = pullMove(pull, e.touches[0]?.clientY ?? 0, feedEl.scrollTop);
-	}
-
-	function onTouchEnd() {
-		pull = pullEnd(pull);
-		if (pull.phase !== 'settling') return;
-		// Таймер снимается при уходе с экрана: раньше он доживал до
-		// размонтированного компонента (GUI-5).
-		ptrTimer = setTimeout(() => {
-			ptrTimer = null;
-			pull = pullSettled(pull);
-			void loadFeedData();
-		}, PTR.settleMs);
-	}
 
 	function formatIsoDay(iso: string, withYear = false): string {
 		const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' };
@@ -564,22 +531,16 @@
 	onCommentCompose={circle.canWrite ? openComposeFromBar : undefined}
 	onCommentPhotos={circle.canWrite ? openComposeWithPhotos : undefined}
 >
-	{#if pullVisible(pull)}
-		<div class="ptr" style:height="{ptrHeight}px" aria-hidden="true">
-			<div class="ptr-mark" style:height="{pullMarkHeight(pull)}px">
-				<Mark />
-			</div>
-		</div>
-	{/if}
+	<PullRefreshBand pull={ptr.state} />
 
 	<div
 		class="feed"
 		role="feed"
 		aria-label="Лента"
 		bind:this={feedEl}
-		ontouchstart={onTouchStart}
-		ontouchmove={onTouchMove}
-		ontouchend={onTouchEnd}
+		ontouchstart={ptr.start}
+		ontouchmove={ptr.move}
+		ontouchend={ptr.end}
 	>
 		{#if circle.archiveCycle?.active}
 			<ArchiveBanner

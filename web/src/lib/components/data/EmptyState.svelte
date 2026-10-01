@@ -24,7 +24,7 @@
 	} = $props();
 </script>
 
-<div class="empty-state {place}" class:empty={place === 'feed'}>
+<div class="empty-state is-{place}" class:empty={place === 'feed'}>
 	{#if place === 'feed'}
 		<Mark />
 	{/if}
