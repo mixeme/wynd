@@ -152,8 +152,8 @@
 				{copiedInviteId === inv.id ? 'Скопировано' : 'Скопировать'}
 			</Button>
 		</div>
-		<div class="hint ctr mt-16">
+		<Hint centered class="mt-16">
 			<TextButton onclick={() => void revokeInvite(inv)}>Отозвать ссылку</TextButton>
-		</div>
+		</Hint>
 	</OverlayLayout>
 {/if}

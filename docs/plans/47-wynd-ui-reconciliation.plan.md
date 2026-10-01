@@ -432,11 +432,11 @@
 ## Что делать — по порядку
 
 ### Заменить на существующий компонент или проп (без новых файлов)
-1. Сырые `.hint` → `Hint centered` (1.1); `.h1s` → `ScreenTitle centered` (1.2).
-2. `pay`: `.att` → `AttachmentRow` (1.3); `invite/[token]`: `FieldDisplay`-сервер → `ServerRow card` (1.4).
-3. Диалоги на `.dlgq` + `.rowin.ask` сразу, до появления `ConfirmDialog`: это снимет около 20 инлайн-стилей (2.2, 4).
+1. Сырые `.hint` → `Hint centered` (1.1); `.h1s` → `ScreenTitle centered` (1.2). **Сделано (0.18.9):** 12 `Hint`, 7 `ScreenTitle` в 10 экранах; `span.hint` в рядах с полем оставлены — строчный элемент.
+2. `pay`: `.att` → `AttachmentRow` (1.3); `invite/[token]`: `FieldDisplay`-сервер → `ServerRow card` (1.4). **Сделано (0.18.9):** `pay` — `AttachmentRow icon="photo" strong` (у `AttachmentRow` пропы `icon` и `strong`, как в макете 9.x). **1.4 оставлено:** макет 1.1 рисует сервер полем (имя и адрес, без значка), экран ему следует — `ServerRow card` разошёлся бы с макетом.
+3. Диалоги на `.dlgq` + `.rowin.ask` сразу, до появления `ConfirmDialog`: это снимет около 20 инлайн-стилей (2.2, 4). **Сделано (0.18.9) сразу компонентом:** `$ui/overlays/ConfirmDialog.svelte` (`title`, `confirmLabel`, `cancelLabel`, `loading`, `onconfirm`, `oncancel`, тело — children), все шесть диалогов на нём.
 4. Сделать один проход «инлайн → служебный класс» по 239 стилям, которые уже покрыты. **Сделано (0.18.9):** 174 замены скриптом с проверкой специфичности и сверкой вычисленных стилей на живых экранах, 11 пустых `Label style` убраны; бюджет 329 → 144. Оставшиеся 124: 81 без готового класса, 26 проиграли бы правилам вроде `.rowin .btn`, `.chips + .chips`, `.comp .f .inp` (их снимут компоненты из второго блока). Первыми — удалить 11 пустых `Label style="margin-top:18px"`; затем `Hint style="margin:16px"` → `gutter` и `margin:24px 16px` → `gutter-24`. Записать новые числа в бюджет.
-5. `circles/+layout` ≡ `search/+layout` → один макет группы маршрутов `(app)` (2.1).
+5. `circles/+layout` ≡ `search/+layout` → один макет группы маршрутов `(app)` (2.1). **Сделано (0.18.9):** тело шлюза — `$lib/layouts/PayGateLayout.svelte`, оба `+layout` — обёртка в одну строку (без переноса маршрутов в группу).
 6. Удалить мёртвые классы `resp-list` и `resp-rx`; `.resp-more` → `gutter` (5.2). **Сделано (0.18.9).**
 7. Мелкие пропы у существующих компонентов (каждый — отдельная задача по библиотеке):
    - `EntryDateMark icon` (1.7)

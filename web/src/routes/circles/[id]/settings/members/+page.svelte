@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getContext, onMount } from 'svelte';
@@ -260,34 +261,32 @@
 {/if}
 
 {#if excludeTarget}
-	<OverlayLayout variant="dialog" label="Исключить" ondismiss={closeExclude}>
-		<div class="dlgq">
-			Исключить из круга: {excludeTarget.name}?
-		</div>
+	<ConfirmDialog
+		title="Исключить из круга: {excludeTarget.name}?"
+		confirmLabel="Исключить"
+		loading={excludeLoading}
+		onconfirm={() => void confirmExclude()}
+		oncancel={closeExclude}
+	>
 		<Hint
 			>Записи останутся в круге под этим именем. В журнале будет «покинул круг». Доступа больше не
 			будет.</Hint
 		>
-		<div class="rowin ask">
-			<Button variant="ghost" onclick={closeExclude}>Отмена</Button>
-			<Button loading={excludeLoading} onclick={() => void confirmExclude()}>Исключить</Button>
-		</div>
-	</OverlayLayout>
+	</ConfirmDialog>
 {/if}
 
 {#if transferTarget}
-	<OverlayLayout variant="dialog" label="Передать владение" ondismiss={closeTransfer}>
-		<div class="dlgq">
-			Передать «{toAccusativeTitle(circle.name)}» {toDativeName(transferTarget.name)}?
-		</div>
+	<ConfirmDialog
+		title="Передать «{toAccusativeTitle(circle.name)}» {toDativeName(transferTarget.name)}?"
+		confirmLabel="Передать"
+		loading={transferLoading}
+		onconfirm={() => void confirmTransfer()}
+		oncancel={closeTransfer}
+	>
 		<Hint
 			>{transferTarget.name} станет владельцем. Вы останетесь в круге и сможете писать, но
 			исключать, передавать владение и удалять круг уже не сможете. Забрать назад можно только
 			если {transferTarget.name} передаст вам.</Hint
 		>
-		<div class="rowin ask">
-			<Button variant="ghost" onclick={closeTransfer}>Отмена</Button>
-			<Button loading={transferLoading} onclick={() => void confirmTransfer()}>Передать</Button>
-		</div>
-	</OverlayLayout>
+	</ConfirmDialog>
 {/if}

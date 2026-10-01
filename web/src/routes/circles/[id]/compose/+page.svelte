@@ -828,9 +828,9 @@
 		{/if}
 
 		{#if isQueue}
-			<div class="hint gutter">
+			<Hint class="gutter">
 				<TextButton onclick={deleteDraft}>Удалить черновик</TextButton>
-			</div>
+			</Hint>
 		{/if}
 	</div>
 </FormLayout>

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
+	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
 	import MentionText from '$ui/data/MentionText.svelte';
 	import { afterNavigate, goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -819,7 +821,7 @@
 			{#if !posts.length && !queuedPosts.length}
 				<div class="empty">
 					<Mark />
-					<div class="h1s ctr mt-28">Пока ничего</div>
+					<ScreenTitle centered class="mt-28">Пока ничего</ScreenTitle>
 					<!-- Читатель не пишет и не зовёт: призыв и «Пригласить» — только пишущим. -->
 					{#if circle.canWrite}
 						<Hint centered style="margin:8px 34px 0">
@@ -849,9 +851,9 @@
 					<div class="feed-end start">
 						<Mark />
 						<Hint centered style="margin:10px 16px 0;color:var(--muted)">Здесь начинается круг</Hint>
-						<div class="hint ctr mt-4 muted">
+						<Hint centered class="mt-4 muted">
 							{formatIsoDay(circleStartedAt)}
-						</div>
+						</Hint>
 					</div>
 				{/if}
 			{/if}
@@ -878,19 +880,14 @@
 	{/if}
 
 	{#if queueToRemove !== null}
-		<OverlayLayout variant="dialog" label="Удалить неотправленную запись?" ondismiss={() => (queueToRemove = null)}>
-			<div style="font-size:17px;font-weight:600;margin-bottom:10px">
-				Удалить неотправленную запись?
-			</div>
-			<Hint style="margin-bottom:4px">
-				Она ещё не ушла на сервер. Удалить — значит потерять текст и снимки.
-			</Hint>
-			<div class="rowin" style="margin:18px 0 0">
-				<Button variant="ghost" style="flex:1;margin:0" onclick={() => (queueToRemove = null)}>
-					Оставить
-				</Button>
-				<Button style="flex:1;margin:0" onclick={() => void confirmQueueRemove()}>Удалить</Button>
-			</div>
-		</OverlayLayout>
+		<ConfirmDialog
+			title="Удалить неотправленную запись?"
+			confirmLabel="Удалить"
+			cancelLabel="Оставить"
+			onconfirm={() => void confirmQueueRemove()}
+			oncancel={() => (queueToRemove = null)}
+		>
+			<Hint>Она ещё не ушла на сервер. Удалить — значит потерять текст и снимки.</Hint>
+		</ConfirmDialog>
 	{/if}
 </CircleLayout>

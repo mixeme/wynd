@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import Button from '$ui/forms/Button.svelte';
@@ -123,7 +124,7 @@
 	<div class="logo-wrap">
 		<Logo />
 	</div>
-	<div class="h1s ctr" style="margin-top:30px">Войти</div>
+	<ScreenTitle centered style="margin-top:30px">Войти</ScreenTitle>
 	<!-- Адрес не вводится: приложение открыто с этого сервера, он и есть сервер
 	     входа. Войти на другой — «Настройки → Серверы → Добавить сервер». -->
 	{#if checking}
@@ -135,10 +136,10 @@
 	<Input active type="email" autocomplete="email" bind:value={email} />
 	<Hint>Пришлём код для входа. Пароля нет.</Hint>
 	<Button {loading} disabled={!instance} onclick={onSubmit}>Получить код</Button>
-	<div class="hint ctr" style="margin-top:30px">
+	<Hint centered style="margin-top:30px">
 		<a class="under" href="/join">Регистрация без приглашения</a><br />
 		Если прислали ссылку — откройте её.
-	</div>
+	</Hint>
 	{#if error}
 		<Hint class="mt-12" centered>{error}</Hint>
 	{/if}

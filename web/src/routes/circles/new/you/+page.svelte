@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
 	import { goto } from '$app/navigation';
 	import { getContext, onDestroy, onMount } from 'svelte';
 	import AvatarCrop from '$ui/overlays/AvatarCrop.svelte';
@@ -135,13 +136,13 @@
 </script>
 
 <FormLayout app color={form.color} circleTitle={form.name} onback={() => goto('/circles/new')}>
-	<div class="h1s mt-22 lh-125">
+	<ScreenTitle class="mt-22 lh-125">
 		Как вас зовут<br />в этом круге?
-	</div>
+	</ScreenTitle>
 	<AddPhotoButton previewUrl={avatarPreview || undefined} onclick={openPhotoPicker} />
-	<div class="hint ctr mt-8">
+	<Hint centered class="mt-8">
 		<TextButton onclick={openPhotoPicker}>добавить фото</TextButton>
-	</div>
+	</Hint>
 	<input bind:this={fileInput} type="file" accept="image/*" hidden onchange={onPhotoSelected} />
 	<Label class="mt-18">Имя</Label>
 	<Input active type="text" autocomplete="name" bind:value={name} />

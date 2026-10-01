@@ -230,9 +230,9 @@
 				<Button variant="ghost" style="flex:1;margin:0" onclick={cancelEditTitle}>Отмена</Button>
 			</div>
 			{#if canClearTitle}
-				<div class="hint ctr mt-8">
+				<Hint centered class="mt-8">
 					<TextButton onclick={removeTitle}>убрать название</TextButton>
-				</div>
+				</Hint>
 			{/if}
 		{/if}
 

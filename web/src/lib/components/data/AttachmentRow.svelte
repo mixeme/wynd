@@ -1,5 +1,5 @@
 ﻿<script lang="ts">
-	import Icon from '$ui/Icon.svelte';
+	import Icon, { type IconName } from '$ui/Icon.svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import { audioTimeLabel } from '$lib/journal/present';
 	import { formatBytes } from '$lib/format/bytes';
@@ -24,7 +24,9 @@
 		onDownload,
 		preview,
 		meta,
-		grouped = false
+		grouped = false,
+		icon = 'file',
+		strong = false
 	}: {
 		filename: string;
 		size?: string;
@@ -42,6 +44,10 @@
 		meta?: AudioMeta;
 		/** Несколько звуков записи — одна рамка, строки через черту (4.18). */
 		grouped?: boolean;
+		/** Значок файла: скриншот оплаты — фото (9.x), остальное — файл. */
+		icon?: IconName;
+		/** Имя жирным — когда строка не в записи, а сама предмет экрана. */
+		strong?: boolean;
 	} = $props();
 
 	let revision = $state(0);
@@ -121,17 +127,17 @@
 	</div>
 {:else if onclick}
 	<button type="button" class="att {className}" {style} onclick={onClick}>
-		<Icon name="file" />
+		<Icon name={icon} />
 		<div class="g" style:flex="1">
-			<div style="font-size:12.5px">{filename}</div>
+			<div style="font-size:12.5px" class:bold={strong}>{filename}</div>
 			<div class="sz">{size}</div>
 		</div>
 	</button>
 {:else}
 	<div class="att {className}" {style}>
-		<Icon name="file" />
+		<Icon name={icon} />
 		<div class="g" style:flex="1">
-			<div style="font-size:12.5px">{filename}</div>
+			<div style="font-size:12.5px" class:bold={strong}>{filename}</div>
 			<div class="sz">{size}</div>
 		</div>
 	</div>

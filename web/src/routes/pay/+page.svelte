@@ -1,4 +1,5 @@
 <script lang="ts">
+	import AttachmentRow from '$ui/data/AttachmentRow.svelte';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import AddPhotoButton from '$ui/forms/AddPhotoButton.svelte';
@@ -98,12 +99,13 @@
 		</Hint>
 		<Label>Скриншот</Label>
 		{#if file}
-			<div class="att" style="margin:0 16px">
-				<div class="g">
-					<div class="bold">{fileLabel.split(' · ')[0]}</div>
-					<div class="sz">{fileLabel.split(' · ')[1] || ''} · как вложение записи</div>
-				</div>
-			</div>
+			<AttachmentRow
+				icon="photo"
+				strong
+				class="mx-16"
+				filename={fileLabel.split(' · ')[0]}
+				size="{fileLabel.split(' · ')[1] || ''} · как вложение записи"
+			/>
 		{/if}
 		<AddPhotoButton onclick={() => photoInput?.click()} />
 		<input

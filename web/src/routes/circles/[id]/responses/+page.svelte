@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
@@ -153,7 +154,7 @@
 	{:else if error && !items.length}
 		<Hint class="gutter-24">{error}</Hint>
 	{:else if !items.length}
-		<div class="h1s ctr mt-48">Откликов пока нет</div>
+		<ScreenTitle centered class="mt-48">Откликов пока нет</ScreenTitle>
 		<Hint class="ctr hint-inset">
 			Здесь соберутся комментарии и реакции — и к тем записям, что в ленте уже далеко внизу.
 		</Hint>

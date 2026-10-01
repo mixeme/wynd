@@ -149,13 +149,13 @@
 			style="width:96px;height:96px;font-size:38px"
 		/>
 	</div>
-	<div class="hint ctr mt-10">
+	<Hint centered class="mt-10">
 		<TextButton onclick={() => fileInput?.click()}>сменить фото</TextButton>
-	</div>
+	</Hint>
 	{#if avatarUrl}
-		<div class="hint ctr" style="margin-top:6px">
+		<Hint centered style="margin-top:6px">
 			<TextButton onclick={() => void clearPhoto()}>убрать фото</TextButton>
-		</div>
+		</Hint>
 	{/if}
 	<input
 		bind:this={fileInput}

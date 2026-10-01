@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
 	import { getContext, onDestroy, onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -214,22 +215,22 @@
 		<Label class="mt-16">Кто уже здесь · {memberTotal}</Label>
 		<PeopleStrip people={displayMembers} />
 		{#if moreCount > 0 && (inviteToken || pendingJoin)}
-			<div class="hint ctr mt-12">
+			<Hint centered class="mt-12">
 				<TextButton onclick={openMembers}>ещё {moreCount}</TextButton>
-			</div>
+			</Hint>
 		{:else if moreCount > 0}
-			<div class="hint ctr mt-12">ещё {moreCount}</div>
+			<Hint centered class="mt-12">ещё {moreCount}</Hint>
 		{/if}
 	{/if}
 
 	{#if inviteToken || pendingJoin}
-		<div class="h1s mt-22 lh-125">
+		<ScreenTitle class="mt-22 lh-125">
 			Как вас зовут<br />в этом круге?
-		</div>
+		</ScreenTitle>
 		<AddPhotoButton previewUrl={avatarPreview || undefined} onclick={openPhotoPicker} />
-		<div class="hint ctr mt-8">
+		<Hint centered class="mt-8">
 			<TextButton onclick={openPhotoPicker}>добавить фото</TextButton>
-		</div>
+		</Hint>
 		<input bind:this={fileInput} type="file" accept="image/*" hidden onchange={onPhotoSelected} />
 		<Label>Имя</Label>
 		<Input active type="text" autocomplete="name" bind:value={name} />
@@ -248,9 +249,9 @@
 		/>
 		<Button variant="colored" {loading} onclick={enterCircle}>Войти в круг</Button>
 	{:else}
-		<div class="h1s mt-22 lh-125">
+		<ScreenTitle class="mt-22 lh-125">
 			Добро пожаловать<br />в {circle.name}
-		</div>
+		</ScreenTitle>
 		<Hint class="mt-12">
 			Здесь вас зовут «{circle.identityName}». Первую запись можно сделать в ленте.
 		</Hint>

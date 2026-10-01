@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
@@ -8,7 +9,6 @@
 	import Loading from '$ui/Loading.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
-	import OverlayLayout from '$lib/layouts/OverlayLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { fetchCircleSettings, leaveCircle } from '$lib/circles/settings';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
@@ -84,25 +84,12 @@
 </FormLayout>
 
 {#if !pageLoading && isOwner}
-	<OverlayLayout variant="dialog" label="Сначала передайте владение" ondismiss={() => goto(`/circles/${circle.circleId}/settings`)}>
-		<div style="font-size:17px;font-weight:600;margin-bottom:10px">Сначала передайте владение</div>
-		<Hint
-			>Подвешенных кругов не бывает. Пока вы владелец «{circle.name}», уйти нельзя.</Hint
-		>
-		<div class="rowin" style="margin:18px 0 0">
-			<Button
-				variant="ghost"
-				style="flex:1;margin:0"
-				onclick={() => goto(`/circles/${circle.circleId}/settings`)}
-			>
-				Отмена
-			</Button>
-			<Button
-				style="flex:1;margin:0"
-				onclick={() => goto(`/circles/${circle.circleId}/settings/members?transfer=1`)}
-			>
-				Передать
-			</Button>
-		</div>
-	</OverlayLayout>
+	<ConfirmDialog
+		title="Сначала передайте владение"
+		confirmLabel="Передать"
+		onconfirm={() => goto(`/circles/${circle.circleId}/settings/members?transfer=1`)}
+		oncancel={() => goto(`/circles/${circle.circleId}/settings`)}
+	>
+		<Hint>Подвешенных кругов не бывает. Пока вы владелец «{circle.name}», уйти нельзя.</Hint>
+	</ConfirmDialog>
 {/if}

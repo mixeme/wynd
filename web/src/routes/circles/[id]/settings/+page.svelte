@@ -1,8 +1,8 @@
 <script lang="ts">
+	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getContext, onMount } from 'svelte';
-	import Button from '$ui/forms/Button.svelte';
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import ColorSwatches from '$ui/forms/ColorSwatches.svelte';
@@ -33,7 +33,6 @@
 		type EditWindowKey,
 		type MemberInfo
 	} from '$lib/circles/settings';
-	import OverlayLayout from '$lib/layouts/OverlayLayout.svelte';
 	import { formatBytes } from '$lib/format/bytes';
 	import { pluralPeople, pluralPosts } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
@@ -533,31 +532,27 @@
 </FormLayout>
 
 {#if ownerLeaveOpen}
-	<OverlayLayout variant="dialog" label="Сначала передайте владение" ondismiss={() => (ownerLeaveOpen = false)}>
-		<div style="font-size:17px;font-weight:600;margin-bottom:10px">Сначала передайте владение</div>
-		<Hint
-			>Подвешенных кругов не бывает. Пока вы владелец «{circle.name}», уйти нельзя.</Hint
-		>
-		<div class="rowin" style="margin:18px 0 0">
-			<Button variant="ghost" style="flex:1;margin:0" onclick={() => (ownerLeaveOpen = false)}>
-				Отмена
-			</Button>
-			<Button
-				style="flex:1;margin:0"
-				onclick={() => {
-					ownerLeaveOpen = false;
-					goto(`/circles/${circle.circleId}/settings/members?transfer=1`);
-				}}
-			>
-				Передать
-			</Button>
-		</div>
-	</OverlayLayout>
+	<ConfirmDialog
+		title="Сначала передайте владение"
+		confirmLabel="Передать"
+		onconfirm={() => {
+			ownerLeaveOpen = false;
+			goto(`/circles/${circle.circleId}/settings/members?transfer=1`);
+		}}
+		oncancel={() => (ownerLeaveOpen = false)}
+	>
+		<Hint>Подвешенных кругов не бывает. Пока вы владелец «{circle.name}», уйти нельзя.</Hint>
+	</ConfirmDialog>
 {/if}
 
 {#if deleteOpen}
-	<OverlayLayout variant="dialog" label="Удалить «{savedName}»?" ondismiss={closeDeleteDialog}>
-		<div style="font-size:17px;font-weight:600;margin-bottom:10px">Удалить «{savedName}»?</div>
+	<ConfirmDialog
+		title="Удалить «{savedName}»?"
+		confirmLabel="Удалить"
+		loading={deleteLoading}
+		onconfirm={() => void onDeleteCircle()}
+		oncancel={closeDeleteDialog}
+	>
 		{#if deleteImpactHint}
 			<Hint style="margin-bottom:14px">{deleteImpactHint}</Hint>
 		{/if}
@@ -566,11 +561,5 @@
 		{#if deleteError}
 			<Hint class="mt-8">{deleteError}</Hint>
 		{/if}
-		<div class="rowin" style="margin:18px 0 0">
-			<Button variant="ghost" style="flex:1;margin:0" onclick={closeDeleteDialog}>Отмена</Button>
-			<Button style="flex:1;margin:0" loading={deleteLoading} onclick={() => void onDeleteCircle()}>
-				Удалить
-			</Button>
-		</div>
-	</OverlayLayout>
+	</ConfirmDialog>
 {/if}

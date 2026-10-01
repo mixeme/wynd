@@ -1,0 +1,101 @@
+<script lang="ts">
+	// Шлюз оплаты (9.x) вокруг экранов участника: улочка и поиск. Был
+	// побайтно скопирован в два +layout (план 47, 2.1) — теперь один.
+	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import Button from '$ui/forms/Button.svelte';
+	import Hint from '$ui/forms/Hint.svelte';
+	import Loading from '$ui/Loading.svelte';
+	import Icon from '$ui/Icon.svelte';
+	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
+	import SectionLabel from '$ui/data/SectionLabel.svelte';
+	import RequisitesCard from '$ui/forms/RequisitesCard.svelte';
+	import SettingsRow from '$ui/data/SettingsRow.svelte';
+	import ShellLayout from '$lib/layouts/ShellLayout.svelte';
+	import { displayHost } from '$lib/auth/origin';
+	import {
+		fetchPayStatus,
+		isPayGatewayBlocked,
+		isPayGatewayPending,
+		PAY_GATEWAY_I_PAID,
+		PAY_GATEWAY_LOAD_ERROR,
+		PAY_GATEWAY_WAIT,
+		payGatewayExpiredHint,
+		payGatewayPendingHint,
+		payGatewayPendingSubtitle,
+		type PayStatus
+	} from '$lib/pay/pay';
+	import { initSession, loadSessions } from '$lib/session/session.svelte';
+	import type { SessionRecord } from '$lib/idb/db';
+	import type { Snippet } from 'svelte';
+
+	let { children }: { children: Snippet } = $props();
+
+	let session = $state<SessionRecord | undefined>();
+	let status = $state<PayStatus | undefined>();
+	let loading = $state(true);
+	let gatewayError = $state('');
+
+	const blocked = $derived(isPayGatewayBlocked(status));
+	const pending = $derived(isPayGatewayPending(status, blocked));
+
+	onMount(() => {
+		void initSession()
+			.then(() => loadSessions())
+			.then(async (sessions) => {
+				if (!sessions.length) {
+					goto('/');
+					return;
+				}
+				session = sessions[0];
+				try {
+					status = await fetchPayStatus(session.origin);
+				} catch {
+					gatewayError = PAY_GATEWAY_LOAD_ERROR;
+				}
+			})
+			.finally(() => {
+				loading = false;
+			});
+	});
+</script>
+
+{#if loading}
+	<ShellLayout app>
+		<Loading />
+	</ShellLayout>
+{:else if gatewayError}
+	<ShellLayout app>
+		<Hint class="mt-24">{gatewayError}</Hint>
+	</ShellLayout>
+{:else if blocked && status}
+	<ShellLayout app>
+		<ScreenTitle class="mt-48" centered>Доступ закрыт</ScreenTitle>
+		{#if pending}
+			<Hint class="hint-inset" centered>{payGatewayPendingHint(status)}</Hint>
+			<SectionLabel style="margin-top:22px">Заявка</SectionLabel>
+			<SettingsRow class="pt-2"
+				title="На проверке"
+				subtitle={payGatewayPendingSubtitle(status)}
+				chevron={false}
+			>
+				{#snippet control()}
+					<Icon name="photo" size="sm" />
+				{/snippet}
+			</SettingsRow>
+			<Button class="mt-0" disabled onclick={() => {}}>{PAY_GATEWAY_WAIT}</Button>
+		{:else}
+			<Hint class="hint-inset" centered>{payGatewayExpiredHint(status)}</Hint>
+			<SectionLabel style="margin-top:22px">Куда платить</SectionLabel>
+			<RequisitesCard text={status.requisites} />
+			<Button onclick={() => goto('/pay')}>{PAY_GATEWAY_I_PAID}</Button>
+		{/if}
+		{#if session}
+			<Hint class="mt-22" centered>
+				Вы вошли как {session.email}<br />в «{session.name}» · {displayHost(session.origin)}
+			</Hint>
+		{/if}
+	</ShellLayout>
+{:else}
+	{@render children()}
+{/if}
