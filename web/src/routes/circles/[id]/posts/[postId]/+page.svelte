@@ -197,8 +197,8 @@
 		const el = document.querySelector<HTMLElement>(`.cmt.c-${CSS.escape(id)}`);
 		if (!el) return;
 		el.scrollIntoView({ block: 'center' });
-		el.classList.add('hl');
-		setTimeout(() => el.classList.remove('hl'), 1600);
+		el.classList.add('linked');
+		setTimeout(() => el.classList.remove('linked'), 1600);
 	}
 
 	// «Назад» возвращает туда, откуда пришли внутри круга: из «Откликов» —
