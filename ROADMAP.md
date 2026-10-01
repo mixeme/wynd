@@ -9,3 +9,4 @@
 | [43](docs/plans/43-docs-drift.plan.md) | Сверка `stack.html` и `wynd.html` с кодом: где разошлись и что правда | Открыт |
 | [45](docs/plans/45-desktop-installer.plan.md) | Настольное приложение для Windows и Linux ставит Wynd на VPS новичка по SSH | Задумка |
 | [46](docs/plans/46-open-questions-and-debt.plan.md) | Открытые вопросы продукта, отложенное до реального запроса, технический долг после 1.0 | Открыт |
+| [47](docs/plans/47-wynd-ui-reconciliation.plan.md) | Сверка экранов с Wynd UI: где экраны рисуют своё вместо библиотеки, порядок замен и новых компонентов | Открыт |
