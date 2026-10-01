@@ -109,7 +109,9 @@ export const COMPONENT_MAP: CatalogGroup[] = [
 			{ component: 'PullRefresh', screen: 'e3-5' },
 			{ component: 'FeedEnd', screen: 'e3-1' },
 			{ component: 'ResponseEntry / PostRef', screen: 'e3-13' },
-			{ component: 'PostByline', screen: 'e3-1, e4-4, e5-2' }
+			{ component: 'PostByline', screen: 'e3-1, e4-4, e5-2' },
+			{ component: 'PeekMemberList', screen: 'e1-3' },
+			{ component: 'AboutFooter', screen: 'e7-1, e9-5' }
 		]
 	},
 	{

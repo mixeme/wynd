@@ -201,7 +201,7 @@
 
 **2.12 QR, ссылка, «Поделиться / Скопировать» — средняя.** `circles/[id]/settings/invite/+page.svelte:200–213` и `circles/[id]/settings/invites/+page.svelte:143–154`; QR ещё в `admin/access/+page.svelte:281–285`. QR вставляется через `{@html}` в 3 местах, `QRCode.toString` вызывается в каждом экране. → `QrCode` (`value`, `size`) и `InviteLinkCard` (`url`, `onshare`, `oncopy`, `shared`, `copied`). **Сделано в 0.18.15:** `$ui/data/QrCode.svelte` и `$ui/data/InviteLinkCard.svelte` (плюс `inSheet` для листа живой ссылки); `{@html}` в экранах больше нет, сторож запрещает его совсем.
 
-**2.13 Экран «Кто уже здесь» — средняя.** `circles/[id]/join/+page.svelte:193–210` и `invite/[token]/+page.svelte:139–155`: `FormLayout` + `MemberRow` по `peek.members`. Можно оставить экранами, но список стоит сделать одним компонентом (`MemberList`) или общим маршрутом.
+**2.13 Экран «Кто уже здесь» — средняя.** `circles/[id]/join/+page.svelte:193–210` и `invite/[token]/+page.svelte:139–155`: `FormLayout` + `MemberRow` по `peek.members`. Можно оставить экранами, но список стоит сделать одним компонентом (`MemberList`) или общим маршрутом. **Сделано в 0.18.31:** `$ui/data/PeekMemberList.svelte` (экраны остались свои: шапки разные — с именем круга и без).
 
 **2.14 Маленькая обложка (`.pic` + размер + `img`) — средняя.** Встречается в 5 местах:
 - `AttachmentRow` → `.att-cover`
@@ -256,7 +256,7 @@
 
 → `Panel` (`padding`). **Сделано в 0.18.14:** `$ui/admin/Panel.svelte` (`class`, `style`; отступ — служебным классом) во всех шести местах; в мастере строки классов `cardStyle`/`descStyle`/`sideLabel`/`fillInput` ушли в разметку.
 
-**2.21 Подвал «Wynd x.y · AGPL · исходный код · лицензии» — низкая.** `settings/+page.svelte:45–49` и `admin/+page.svelte:498–502`. → `AboutFooter`.
+**2.21 Подвал «Wynd x.y · AGPL · исходный код · лицензии» — низкая.** `settings/+page.svelte:45–49` и `admin/+page.svelte:498–502`. → `AboutFooter`. **Сделано в 0.18.31:** `$ui/data/AboutFooter.svelte` (`wrap` — две строки в настройках).
 
 **2.22 `SettingsRow` с рамкой сверху и снизу инлайн-стилем — средняя.**
 - `compose:777,801`
@@ -267,7 +267,7 @@
 
 → проп `divided` (`top|bottom|both`) у `SettingsRow` или обёртка `SettingsGroup`. **Сделано в 0.18.29:** `SettingsRow divided` во всех восьми местах (и через `DateRow`); отступ сверху — служебным классом.
 
-**2.23 Цветная точка `span.dot style="background:…"` — низкая.** `admin/+page:408`, `admin/people/[id]:145`; у `SearchGroupHeader` своя точка. → `ColorDot` (`color`) — или пропы, как в 1.5.
+**2.23 Цветная точка `span.dot style="background:…"` — низкая.** `admin/+page:408`, `admin/people/[id]:145`; у `SearchGroupHeader` своя точка. → `ColorDot` (`color`) — или пропы, как в 1.5. **Оставлено (0.18.31):** в карточке человека точка ушла в `CheckRow dotColor` (0.18.28); в таблице кругов админки она одна и стилизована `.tbl .dot` — компонент ради одного места не заводится.
 
 ## 3. Экранный CSS в `ui.css`: компоненты под видом классов
 

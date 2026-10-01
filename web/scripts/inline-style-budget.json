@@ -51,7 +51,7 @@
 	"src/routes/pay/help/+page.svelte": 0,
 	"src/routes/search/+layout.svelte": 0,
 	"src/routes/search/+page.svelte": 2,
-	"src/routes/settings/+page.svelte": 1,
+	"src/routes/settings/+page.svelte": 0,
 	"src/routes/settings/app/+page.svelte": 1,
 	"src/routes/settings/servers/+page.svelte": 0
 }

@@ -1,11 +1,10 @@
 ﻿<script lang="ts">
+	import AboutFooter from '$ui/data/AboutFooter.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import Hint from '$ui/forms/Hint.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
-	import { appVersion } from '$lib/appinfo';
-	import { loadSourceUrl, sourceUrl } from '$lib/instance/source.svelte';
+	import { loadSourceUrl } from '$lib/instance/source.svelte';
 	import { loadSessions } from '$lib/session/session.svelte';
 
 	let subtitle = $state('нет серверов');
@@ -41,9 +40,5 @@
 		subtitle="уведомления, место, тема"
 		onclick={() => goto('/settings/app')}
 	/>
-	<Hint centered style="margin-top:44px">
-		Wynd {appVersion} · AGPL-3.0<br />
-		<a class="under" href={sourceUrl()}>исходный код</a> ·
-		<a class="under" href="/THIRD_PARTY_LICENSES.txt">лицензии компонентов</a>
-	</Hint>
+	<AboutFooter wrap class="mt-44" />
 </FormLayout>

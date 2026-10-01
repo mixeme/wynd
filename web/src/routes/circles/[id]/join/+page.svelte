@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PeekMemberList from '$ui/data/PeekMemberList.svelte';
 	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
 	import { getContext, onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -8,7 +9,6 @@
 	import Label from '$ui/forms/Label.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import PeopleStrip from '$ui/forms/PeopleStrip.svelte';
-	import MemberRow from '$ui/data/MemberRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import {
@@ -17,7 +17,6 @@
 		joinViaInvite,
 		loadInviteJoinToken,
 		memberAvatarColor,
-		memberSubtitle,
 		type InvitePeek
 	} from '$lib/auth/invites';
 	import { fetchJoinPreview, joinPendingCircle } from '$lib/circles/settings';
@@ -151,14 +150,7 @@
 		right={String(peek.member_count)}
 		onback={closeMembers}
 	>
-		{#each peek.members as member, i (i)}
-			<MemberRow
-				initial={circleInitial(member.name)}
-				name={member.name}
-				subtitle={memberSubtitle(member)}
-				color={memberAvatarColor(i)}
-			/>
-		{/each}
+		<PeekMemberList members={peek.members} />
 	</FormLayout>
 {:else}
 <FormLayout app color={circle.color} circleTitle={circle.name}>

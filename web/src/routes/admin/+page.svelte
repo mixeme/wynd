@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import AboutFooter from '$ui/data/AboutFooter.svelte';
 	import Meter from '$ui/forms/Meter.svelte';
 	import Panel from '$ui/admin/Panel.svelte';
 	import { onMount } from 'svelte';
@@ -16,11 +17,10 @@
 	import DataTable from '$ui/admin/DataTable.svelte';
 	import StackBar from '$ui/admin/StackBar.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
-	import { appVersion } from '$lib/appinfo';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { formatBytes } from '$lib/format/bytes';
 	import { formatAdminDay } from '$lib/format/time';
-	import { loadSourceUrl, sourceUrl } from '$lib/instance/source.svelte';
+	import { loadSourceUrl } from '$lib/instance/source.svelte';
 	import { CIRCLE_COLOR_ORDER, CIRCLE_COLORS, type CircleColor } from '$lib/theme/colors';
 	import {
 		fetchQuotaRequests,
@@ -497,9 +497,5 @@
 			{/if}
 		{/if}
 	</AdminSection>
-	<Hint centered class="mt-26">
-		Wynd {appVersion} · AGPL-3.0 ·
-		<a class="under" href={sourceUrl()}>исходный код</a> ·
-		<a class="under" href="/THIRD_PARTY_LICENSES.txt">лицензии компонентов</a>
-	</Hint>
+	<AboutFooter class="mt-26" />
 </AdminWideLayout>
