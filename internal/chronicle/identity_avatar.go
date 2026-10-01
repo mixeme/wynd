@@ -30,11 +30,13 @@ func (c *Chronicle) ResolveIdentityAvatar(ctx context.Context, identityID string
 type UpdateIdentityInput struct {
 	Name           *string
 	AvatarBlobID   *string // nil = omit; pointer to "" = clear
+	// Gender — род для строк журнала (A5); nil = не трогать, "" = не выбран.
+	Gender *Gender
 }
 
 // UpdateIdentity changes display name and/or avatar for the actor in a circle.
 func (c *Chronicle) UpdateIdentity(ctx context.Context, circleID, accountID string, in UpdateIdentityInput, now time.Time) error {
-	if in.Name == nil && in.AvatarBlobID == nil {
+	if in.Name == nil && in.AvatarBlobID == nil && in.Gender == nil {
 		return ErrInvalid
 	}
 	mem, err := c.membership(ctx, c.db, circleID, accountID)
@@ -46,6 +48,11 @@ func (c *Chronicle) UpdateIdentity(ctx context.Context, circleID, accountID stri
 	}
 	if in.Name != nil {
 		if err := c.RenameIdentity(ctx, circleID, accountID, *in.Name, now); err != nil {
+			return err
+		}
+	}
+	if in.Gender != nil {
+		if err := c.setIdentityGender(ctx, c.db, mem.IdentityID, *in.Gender); err != nil {
 			return err
 		}
 	}

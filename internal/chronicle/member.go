@@ -44,7 +44,7 @@ func (c *Chronicle) JoinInTx(ctx context.Context, tx *sql.Tx, in JoinInput) (Mem
 		if existing.Status == StatusActive {
 			return Membership{}, Identity{}, ErrInvalid
 		}
-		return c.rejoinTx(ctx, tx, existing, in.Name, now)
+		return c.rejoinTx(ctx, tx, existing, in.Name, in.Gender, now)
 	}
 	if err != ErrNotFound {
 		return Membership{}, Identity{}, err
@@ -69,9 +69,9 @@ func (c *Chronicle) JoinInTx(ctx context.Context, tx *sql.Tx, in JoinInput) (Mem
 
 	created := formatTime(now)
 	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO identities (id, circle_id, account_id, created_at)
-		VALUES (?, ?, ?, ?)
-	`, identityID, in.CircleID, in.AccountID, created); err != nil {
+		INSERT INTO identities (id, circle_id, account_id, created_at, gender)
+		VALUES (?, ?, ?, ?, ?)
+	`, identityID, in.CircleID, in.AccountID, created, genderArg(in.Gender)); err != nil {
 		return Membership{}, Identity{}, fmt.Errorf("insert identity: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, `
@@ -99,7 +99,7 @@ func (c *Chronicle) JoinInTx(ctx context.Context, tx *sql.Tx, in JoinInput) (Mem
 		isService:       true,
 		actorIdentityID: identityID,
 		actorName:       in.Name,
-		summary:         summaryMemberJoined(in.Name),
+		summary:         summaryMemberJoined(in.Gender, in.Name),
 		now:             now,
 	}); err != nil {
 		return Membership{}, Identity{}, err
@@ -124,7 +124,7 @@ func (c *Chronicle) JoinInTx(ctx context.Context, tx *sql.Tx, in JoinInput) (Mem
 	return membership, identity, nil
 }
 
-func (c *Chronicle) rejoinTx(ctx context.Context, tx *sql.Tx, existing Membership, name string, now time.Time) (Membership, Identity, error) {
+func (c *Chronicle) rejoinTx(ctx context.Context, tx *sql.Tx, existing Membership, name string, gender Gender, now time.Time) (Membership, Identity, error) {
 	spanID, err := newID()
 	if err != nil {
 		return Membership{}, Identity{}, err
@@ -152,6 +152,13 @@ func (c *Chronicle) rejoinTx(ctx context.Context, tx *sql.Tx, existing Membershi
 	if err != nil {
 		return Membership{}, Identity{}, err
 	}
+	// Вернулся и выбрал род заново — строка входа уже по нему (A5).
+	if gender != GenderNone {
+		if err := c.setIdentityGender(ctx, tx, existing.IdentityID, gender); err != nil {
+			return Membership{}, Identity{}, err
+		}
+	}
+	g := c.identityGender(ctx, tx, existing.IdentityID)
 
 	if _, err := c.appendEvent(ctx, tx, appendEventInput{
 		circleID:        existing.CircleID,
@@ -159,7 +166,7 @@ func (c *Chronicle) rejoinTx(ctx context.Context, tx *sql.Tx, existing Membershi
 		isService:       true,
 		actorIdentityID: existing.IdentityID,
 		actorName:       displayName,
-		summary:         summaryMemberJoined(displayName),
+		summary:         summaryMemberJoined(g, displayName),
 		now:             now,
 	}); err != nil {
 		return Membership{}, Identity{}, err
@@ -277,6 +284,7 @@ func (c *Chronicle) leaveInTx(ctx context.Context, tx *sql.Tx, circleID, account
 	if err != nil {
 		return err
 	}
+	g := c.identityGender(ctx, tx, mem.IdentityID)
 	eventType := "member.left"
 	if status == StatusLeftWithAccess {
 		eventType = "member.left_with_access"
@@ -287,7 +295,7 @@ func (c *Chronicle) leaveInTx(ctx context.Context, tx *sql.Tx, circleID, account
 		isService:       true,
 		actorIdentityID: mem.IdentityID,
 		actorName:       name,
-		summary:         summaryMemberLeft(name),
+		summary:         summaryMemberLeft(g, name),
 		now:             now,
 	}); err != nil {
 		return err

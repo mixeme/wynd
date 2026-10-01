@@ -103,7 +103,7 @@ func TestInvariantGoneAndExcludedCannotRead(t *testing.T) {
 		if typ != "member.left" {
 			t.Fatalf("leave event type: %q", typ)
 		}
-		if summary != "Боря покинул круг" && summary != "Вера покинул круг" {
+		if summary != "Больше не в круге: Боря" && summary != "Больше не в круге: Вера" {
 			t.Fatalf("leave summary: %q", summary)
 		}
 		n++
@@ -427,7 +427,7 @@ func TestEventSummariesAreServerSide(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if summary != "Аня опубликовал запись" {
+	if summary != "Новая запись: Аня" {
 		t.Fatalf("summary: %q", summary)
 	}
 }

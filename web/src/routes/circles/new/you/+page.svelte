@@ -31,6 +31,7 @@
 	let loading = $state(false);
 	let error = $state('');
 	let pendingAvatar = $state<CroppedImage | undefined>();
+	let gender = $state<'' | 'm' | 'f'>('');
 
 	const session = $derived(form.sessions.find((s) => s.origin === form.selectedOrigin));
 
@@ -56,6 +57,7 @@
 			const created = await createCircle(origin, {
 				name: form.name.trim(),
 				owner_name: trimmed,
+				owner_gender: gender,
 				edit_window_sec: newCircleEditWindowSec(form),
 				color: form.color
 			});
@@ -93,6 +95,7 @@
 		bind:name
 		bind:firstPost
 		bind:avatar={pendingAvatar}
+		bind:gender
 		postLabel={form.diaryMode ? 'Первая запись' : undefined}
 		postPlaceholder={form.diaryMode ? 'С чего начнётся дневник' : undefined}
 		onerror={(message) => (error = message)}

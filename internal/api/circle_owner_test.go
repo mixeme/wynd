@@ -262,7 +262,7 @@ func TestSettingsGrantAndRevokeInFeed(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("feed: %d %s", rec.Code, rec.Body.String())
 	}
-	if !strings.Contains(rec.Body.String(), "дал право менять настройки") {
+	if !strings.Contains(rec.Body.String(), "право менять настройки — Боб") {
 		t.Fatalf("выдача не в журнале: %s", rec.Body.String())
 	}
 
@@ -273,7 +273,7 @@ func TestSettingsGrantAndRevokeInFeed(t *testing.T) {
 		t.Fatalf("revoke: %d %s", rec.Code, rec.Body.String())
 	}
 	rec = doGET(t, srv, "/api/v1/circles/"+circleID+"/feed", ownerTok)
-	if !strings.Contains(rec.Body.String(), "забрал право менять настройки") {
+	if !strings.Contains(rec.Body.String(), "без права менять настройки — Боб") {
 		t.Fatalf("снятие не в журнале: %s", rec.Body.String())
 	}
 }

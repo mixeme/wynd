@@ -125,8 +125,9 @@ func (s *Server) handleJoinPreview(w http.ResponseWriter, r *http.Request) {
 }
 
 type joinPendingBody struct {
-	Name string `json:"name"`
-	Body string `json:"body"`
+	Name   string `json:"name"`
+	Gender string `json:"gender"`
+	Body   string `json:"body"`
 }
 
 func (s *Server) handleJoinPendingCircle(w http.ResponseWriter, r *http.Request) {
@@ -144,11 +145,17 @@ func (s *Server) handleJoinPendingCircle(w http.ResponseWriter, r *http.Request)
 		writeError(w, chronicle.ErrInvalid)
 		return
 	}
+	gender, err := chronicle.ParseGender(body.Gender)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
 	now := time.Now().UTC()
 	if err := s.Auth.CompleteCircleJoin(r.Context(), auth.CompleteCircleJoinInput{
 		AccountID: sess.AccountID,
 		CircleID:  circleID,
 		Name:      name,
+		Gender:    gender,
 		Now:       now,
 	}); err != nil {
 		writeError(w, err)

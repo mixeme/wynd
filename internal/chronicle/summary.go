@@ -29,55 +29,92 @@ func summaryAvatarCleared(name string) string {
 	return fmt.Sprintf("Фото убрано: %s", name)
 }
 
-func summaryMemberJoined(name string) string {
-	return fmt.Sprintf("%s вступил в круг", name)
+// Строки с глаголом — по роду участника (план 46, A5): «Аня вступила в
+// круг». Род не выбран — строка без глагола: «В круге: Аня».
+
+func summaryMemberJoined(g Gender, name string) string {
+	if g == GenderNone {
+		return fmt.Sprintf("В круге: %s", name)
+	}
+	return fmt.Sprintf("%s %s в круг", name, past(g, "вступил", "вступила"))
 }
 
-func summaryMemberLeft(name string) string {
-	return fmt.Sprintf("%s покинул круг", name)
+func summaryMemberLeft(g Gender, name string) string {
+	if g == GenderNone {
+		return fmt.Sprintf("Больше не в круге: %s", name)
+	}
+	return fmt.Sprintf("%s %s круг", name, past(g, "покинул", "покинула"))
 }
 
 func summaryOwnerTransferred(from, to string) string {
 	return fmt.Sprintf("Владелец передан: %s → %s", from, to)
 }
 
-func summarySettingsGranted(actor, target string) string {
-	return fmt.Sprintf("%s дал право менять настройки: %s", actor, target)
+// g — род того, кто дал или забрал право (владельца).
+func summarySettingsGranted(g Gender, actor, target string) string {
+	if g == GenderNone {
+		return fmt.Sprintf("%s: право менять настройки — %s", actor, target)
+	}
+	return fmt.Sprintf("%s %s право менять настройки: %s", actor, past(g, "дал", "дала"), target)
 }
 
-func summarySettingsRevoked(actor, target string) string {
-	return fmt.Sprintf("%s забрал право менять настройки: %s", actor, target)
+func summarySettingsRevoked(g Gender, actor, target string) string {
+	if g == GenderNone {
+		return fmt.Sprintf("%s: без права менять настройки — %s", actor, target)
+	}
+	return fmt.Sprintf("%s %s право менять настройки: %s", actor, past(g, "забрал", "забрала"), target)
 }
 
-func summaryPostCreated(name string) string {
-	return fmt.Sprintf("%s опубликовал запись", name)
+func summaryPostCreated(g Gender, name string) string {
+	if g == GenderNone {
+		return fmt.Sprintf("Новая запись: %s", name)
+	}
+	return fmt.Sprintf("%s %s запись", name, past(g, "опубликовал", "опубликовала"))
 }
 
-func summaryPostEdited(name string) string {
-	return fmt.Sprintf("%s отредактировал запись", name)
+func summaryPostEdited(g Gender, name string) string {
+	if g == GenderNone {
+		return fmt.Sprintf("Запись изменена: %s", name)
+	}
+	return fmt.Sprintf("%s %s запись", name, past(g, "отредактировал", "отредактировала"))
 }
 
-func summaryCommentCreated(name string) string {
-	return fmt.Sprintf("%s оставил комментарий", name)
+func summaryCommentCreated(g Gender, name string) string {
+	if g == GenderNone {
+		return fmt.Sprintf("Комментарий: %s", name)
+	}
+	return fmt.Sprintf("%s %s комментарий", name, past(g, "оставил", "оставила"))
 }
 
-func summaryCommentEdited(name string) string {
-	return fmt.Sprintf("%s отредактировал комментарий", name)
+func summaryCommentEdited(g Gender, name string) string {
+	if g == GenderNone {
+		return fmt.Sprintf("Комментарий изменён: %s", name)
+	}
+	return fmt.Sprintf("%s %s комментарий", name, past(g, "отредактировал", "отредактировала"))
 }
 
-func summaryReactionSet(name, emoji string) string {
-	return fmt.Sprintf("%s поставил реакцию %s", name, emoji)
+func summaryReactionSet(g Gender, name, emoji string) string {
+	if g == GenderNone {
+		return fmt.Sprintf("Реакция %s: %s", emoji, name)
+	}
+	return fmt.Sprintf("%s %s реакцию %s", name, past(g, "поставил", "поставила"), emoji)
 }
 
 // Название и обложка дня идут в ленту строкой, как служебные события
 // (3.1), поэтому в строке — какой это день: «выбрал обложку дня» без даты
 // в ленте не понять.
-func summaryDayTitled(name, title, entryDate string) string {
-	return fmt.Sprintf("%s назвал %s «%s»", name, dayLabel(entryDate), title)
+func summaryDayTitled(g Gender, name, title, entryDate string) string {
+	if g == GenderNone {
+		return fmt.Sprintf("Название для %s — «%s»: %s", dayLabel(entryDate), title, name)
+	}
+	return fmt.Sprintf("%s %s %s «%s»", name, past(g, "назвал", "назвала"), dayLabel(entryDate), title)
 }
 
-func summaryDayCoverSet(name, entryDate string) string {
-	return fmt.Sprintf("%s выбрал обложку для %s", name, dayLabel(entryDate))
+func summaryDayCoverSet(g Gender, name, entryDate string) string {
+	if g == GenderNone {
+		return fmt.Sprintf("Обложка для %s: %s", dayLabel(entryDate), name)
+	}
+	return fmt.Sprintf("%s %s обложку для %s", name, past(g, "выбрал", "выбрала"), dayLabel(entryDate))
 }
 
 var monthsGenitive = [...]string{"января", "февраля", "марта", "апреля", "мая", "июня",

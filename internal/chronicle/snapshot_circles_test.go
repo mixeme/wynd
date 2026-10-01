@@ -69,7 +69,7 @@ func TestListAccountCirclesRespectsVisibility(t *testing.T) {
 	if list[0].Unread != 1 {
 		t.Fatalf("unread: got %d, want 1", list[0].Unread)
 	}
-	if list[0].LastSummary != "Боря опубликовал запись" || list[0].LastAt == nil || !list[0].LastAt.Equal(e.at(1)) {
+	if list[0].LastSummary != "Новая запись: Боря" || list[0].LastAt == nil || !list[0].LastAt.Equal(e.at(1)) {
 		t.Fatalf("last event: got %q at %v, want запись Бори at %v", list[0].LastSummary, list[0].LastAt, e.at(1))
 	}
 }
@@ -92,7 +92,7 @@ func TestListAccountCirclesLastEventSkipsInvisible(t *testing.T) {
 	if list[0].Unread != 0 {
 		t.Fatalf("unread: got %d, want 0 — запись до входа не считается", list[0].Unread)
 	}
-	if list[0].LastSummary != "Боря вступил в круг" || list[0].LastAt == nil || !list[0].LastAt.Equal(e.at(1)) {
+	if list[0].LastSummary != "В круге: Боря" || list[0].LastAt == nil || !list[0].LastAt.Equal(e.at(1)) {
 		t.Fatalf("last event: got %q at %v, want вступление Бори at %v", list[0].LastSummary, list[0].LastAt, e.at(1))
 	}
 }

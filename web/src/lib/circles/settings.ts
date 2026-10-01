@@ -165,7 +165,7 @@ export async function fetchJoinPreview(origin: string, circleId: string): Promis
 export async function joinPendingCircle(
 	origin: string,
 	circleId: string,
-	input: { name: string; body?: string }
+	input: { name: string; gender?: '' | 'm' | 'f'; body?: string }
 ): Promise<void> {
 	await apiJson(origin, `/circles/${circleId}/join`, {
 		method: 'POST',
@@ -217,10 +217,11 @@ export async function renameIdentity(
 export async function updateIdentity(
 	origin: string,
 	circleId: string,
-	patch: { name?: string; avatar_blob_id?: string | null }
+	patch: { name?: string; avatar_blob_id?: string | null; gender?: '' | 'm' | 'f' }
 ): Promise<void> {
 	const body: Record<string, string> = {};
 	if (patch.name !== undefined) body.name = patch.name;
+	if (patch.gender !== undefined) body.gender = patch.gender;
 	if (patch.avatar_blob_id !== undefined) body.avatar_blob_id = patch.avatar_blob_id ?? '';
 	await apiJson(origin, `/circles/${circleId}/identity`, {
 		method: 'PUT',
@@ -270,11 +271,20 @@ export async function fetchIdentityHistory(
 	origin: string,
 	circleId: string
 ): Promise<IdentityNameRow[]> {
-	const data = await apiJson<{ names: IdentityNameRow[] }>(
+	return (await fetchIdentity(origin, circleId)).names;
+}
+
+/** Имена участия и пол для строк журнала (A5; старый сервер пола не шлёт). */
+export async function fetchIdentity(
+	origin: string,
+	circleId: string
+): Promise<{ names: IdentityNameRow[]; gender: '' | 'm' | 'f' }> {
+	const data = await apiJson<{ names: IdentityNameRow[]; gender?: string }>(
 		origin,
 		`/circles/${circleId}/identity`
 	);
-	return data.names;
+	const gender = data.gender === 'm' || data.gender === 'f' ? data.gender : '';
+	return { names: data.names, gender };
 }
 
 export interface CircleInvite {

@@ -145,7 +145,7 @@ func TestDayTitleGoesToFeedNotResponses(t *testing.T) {
 	}
 	found := false
 	for _, ev := range meta.Events {
-		if ev.Summary == "Кот назвал 6 августа «Плёнки»" {
+		if ev.Summary == "Название для 6 августа — «Плёнки»: Кот" {
 			found = true
 		}
 	}

@@ -15,7 +15,9 @@ type CompleteCircleJoinInput struct {
 	AccountID string
 	CircleID  string
 	Name      string
-	Now       time.Time
+	// Gender — род для строк журнала (A5); пустой — не выбран.
+	Gender chronicle.Gender
+	Now    time.Time
 }
 
 // pendingJoinTTL — сколько живёт право доназвать себя и войти. Строка
@@ -93,6 +95,7 @@ func (s *Service) CompleteCircleJoin(ctx context.Context, in CompleteCircleJoinI
 		CircleID:  in.CircleID,
 		AccountID: in.AccountID,
 		Name:      in.Name,
+		Gender:    in.Gender,
 		Now:       when,
 	}); err != nil {
 		return err

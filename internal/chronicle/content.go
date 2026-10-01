@@ -85,6 +85,7 @@ func (c *Chronicle) createPostInTx(ctx context.Context, tx *sql.Tx, in PostInput
 	if err != nil {
 		return Post{}, err
 	}
+	g := c.identityGender(ctx, tx, mem.IdentityID)
 
 	postID, err := newID()
 	if err != nil {
@@ -103,7 +104,7 @@ func (c *Chronicle) createPostInTx(ctx context.Context, tx *sql.Tx, in PostInput
 			"entry_date":  entryDate,
 			"captured_at": capturedAtPayload(in.CapturedAt),
 		},
-		summary: summaryPostCreated(name),
+		summary: summaryPostCreated(g, name),
 		now:     now,
 	})
 	if err != nil {
@@ -198,6 +199,7 @@ func (c *Chronicle) EditPostInTx(ctx context.Context, tx *sql.Tx, circleID, acco
 	if err != nil {
 		return err
 	}
+	g := c.identityGender(ctx, tx, mem.IdentityID)
 	if entryDate != oldDate {
 		if err := c.reconcileDayAfterEntryDateChange(ctx, tx, circleID, oldDate, entryDate); err != nil {
 			return err
@@ -207,7 +209,7 @@ func (c *Chronicle) EditPostInTx(ctx context.Context, tx *sql.Tx, circleID, acco
 		circleID: circleID, eventType: "post.edited", isService: false,
 		actorIdentityID: mem.IdentityID, actorName: name, targetID: postID,
 		payload: map[string]any{"body": body, "entry_date": entryDate},
-		summary: summaryPostEdited(name), now: now,
+		summary: summaryPostEdited(g, name), now: now,
 	}); err != nil {
 		return err
 	}
@@ -451,6 +453,7 @@ func (c *Chronicle) CreateComment(ctx context.Context, in CommentInput) (Comment
 	if err != nil {
 		return Comment{}, err
 	}
+	g := c.identityGender(ctx, c.db, mem.IdentityID)
 	commentID, err := newID()
 	if err != nil {
 		return Comment{}, err
@@ -466,7 +469,7 @@ func (c *Chronicle) CreateComment(ctx context.Context, in CommentInput) (Comment
 		circleID: in.CircleID, eventType: "comment.created", isService: false,
 		actorIdentityID: mem.IdentityID, actorName: name, targetID: commentID,
 		payload: map[string]any{"post_id": in.PostID, "body": body},
-		summary: summaryCommentCreated(name), now: now,
+		summary: summaryCommentCreated(g, name), now: now,
 	})
 	if err != nil {
 		return Comment{}, err
@@ -523,6 +526,7 @@ func (c *Chronicle) SetReaction(ctx context.Context, in ReactionInput) (Reaction
 	if err != nil {
 		return Reaction{}, err
 	}
+	g := c.identityGender(ctx, c.db, mem.IdentityID)
 
 	tx, err := c.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -550,7 +554,7 @@ func (c *Chronicle) SetReaction(ctx context.Context, in ReactionInput) (Reaction
 		circleID: in.CircleID, eventType: "reaction.set", isService: false,
 		actorIdentityID: mem.IdentityID, actorName: name, targetID: reactionID,
 		payload: map[string]any{"post_id": in.PostID, "emoji": in.Emoji},
-		summary: summaryReactionSet(name, in.Emoji), now: now,
+		summary: summaryReactionSet(g, name, in.Emoji), now: now,
 	})
 	if err != nil {
 		return Reaction{}, err
@@ -625,11 +629,12 @@ func (c *Chronicle) EditComment(ctx context.Context, circleID, accountID, commen
 	if err != nil {
 		return err
 	}
+	g := c.identityGender(ctx, tx, mem.IdentityID)
 	if _, err := c.appendEvent(ctx, tx, appendEventInput{
 		circleID: circleID, eventType: "comment.edited", isService: false,
 		actorIdentityID: mem.IdentityID, actorName: name, targetID: commentID,
 		payload: map[string]any{"post_id": comment.PostID, "body": body},
-		summary: summaryCommentEdited(name), now: now,
+		summary: summaryCommentEdited(g, name), now: now,
 	}); err != nil {
 		return err
 	}

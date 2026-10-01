@@ -1,4 +1,5 @@
 <script lang="ts">
+	import GenderPicker from '$ui/forms/GenderPicker.svelte';
 	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import { onDestroy } from 'svelte';
 	import AddPhotoButton from '$ui/forms/AddPhotoButton.svelte';
@@ -21,6 +22,7 @@
 		name = $bindable(''),
 		firstPost = $bindable(''),
 		avatar = $bindable(),
+		gender = $bindable(''),
 		postLabel = 'Скажи что-нибудь кругу',
 		postPlaceholder = 'Первая запись в журнале круга',
 		onerror
@@ -31,6 +33,8 @@
 		firstPost?: string;
 		/** Выбранное и откадрированное фото — экран загрузит его после входа. */
 		avatar?: CroppedImage;
+		/** Пол для строк журнала (A5): «Аня вступила в круг». */
+		gender?: '' | 'm' | 'f';
 		postLabel?: string;
 		postPlaceholder?: string;
 		/** Выбрали не картинку. */
@@ -75,6 +79,7 @@
 <FilePicker bind:this={photoPicker} accept="image/*" onfiles={([file]) => onSelected(file)} />
 <Label>Имя</Label>
 <Input active type="text" autocomplete="name" bind:value={name} />
+<GenderPicker bind:value={gender} />
 <Label aside="необязательно">{postLabel}</Label>
 <TextArea variant="area" active rows={3} bind:value={firstPost} placeholder={postPlaceholder} />
 

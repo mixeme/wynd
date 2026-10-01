@@ -48,6 +48,7 @@ func (s *Server) handleListCircles(w http.ResponseWriter, r *http.Request) {
 type createCircleBody struct {
 	Name          string  `json:"name"`
 	OwnerName     string  `json:"owner_name"`
+	OwnerGender   string  `json:"owner_gender"`
 	EditWindowSec *int64  `json:"edit_window_sec"`
 	Color         *string `json:"color"`
 }
@@ -75,9 +76,14 @@ func (s *Server) handleCreateCircle(w http.ResponseWriter, r *http.Request) {
 	if body.Color != nil {
 		color = *body.Color
 	}
+	ownerGender, err := chronicle.ParseGender(body.OwnerGender)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
 	circle, _, _, err := s.Chronicle.CreateCircle(r.Context(), chronicle.CreateCircleInput{
 		Name: body.Name, OwnerAccountID: sess.AccountID, OwnerName: body.OwnerName,
-		Color: color, EditWindow: window, Now: time.Now().UTC(),
+		OwnerGender: ownerGender, Color: color, EditWindow: window, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		writeDomainError(w, err)

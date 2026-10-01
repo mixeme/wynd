@@ -16,8 +16,9 @@ type acceptInviteBody struct {
 }
 
 type joinInviteBody struct {
-	Name string `json:"name"`
-	Body string `json:"body"`
+	Name   string `json:"name"`
+	Gender string `json:"gender"`
+	Body   string `json:"body"`
 }
 
 func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) {
@@ -137,11 +138,17 @@ func (s *Server) handleJoinInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	gender, err := chronicle.ParseGender(body.Gender)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
 	now := time.Now().UTC()
 	if err := s.Auth.CompleteCircleJoin(r.Context(), auth.CompleteCircleJoinInput{
 		AccountID: sess.AccountID,
 		CircleID:  inv.CircleID,
 		Name:      name,
+		Gender:    gender,
 		Now:       now,
 	}); err != nil {
 		writeError(w, err)

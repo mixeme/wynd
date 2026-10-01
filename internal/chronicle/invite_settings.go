@@ -112,13 +112,14 @@ func (c *Chronicle) SetMemberCanSettings(ctx context.Context, circleID, ownerAcc
 	if err != nil {
 		return err
 	}
+	ownerGender := c.identityGender(ctx, tx, ownerMem.IdentityID)
 	val := 0
 	eventType := "member.settings_revoked"
-	summary := summarySettingsRevoked(ownerName, targetName)
+	summary := summarySettingsRevoked(ownerGender, ownerName, targetName)
 	if canSettings {
 		val = 1
 		eventType = "member.settings_granted"
-		summary = summarySettingsGranted(ownerName, targetName)
+		summary = summarySettingsGranted(ownerGender, ownerName, targetName)
 	}
 	updated := formatTime(now)
 	res, err := tx.ExecContext(ctx, `

@@ -190,6 +190,8 @@ type CreateCircleInput struct {
 	Name           string
 	OwnerAccountID string
 	OwnerName      string
+	// OwnerGender — род создателя для строк журнала (A5).
+	OwnerGender Gender
 	Color          string
 	EditWindow     EditWindow
 	Now            time.Time
@@ -199,7 +201,9 @@ type JoinInput struct {
 	CircleID  string
 	AccountID string
 	Name      string
-	Now       time.Time
+	// Gender — род для строк журнала (A5); пустой — не выбран.
+	Gender Gender
+	Now    time.Time
 }
 
 type PostInput struct {

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import GenderPicker from '$ui/forms/GenderPicker.svelte';
 	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
@@ -14,7 +15,7 @@
 	import { authErrorHint } from '$lib/auth/auth';
 	import {
 		fetchCircleSettings,
-		fetchIdentityHistory,
+		fetchIdentity,
 		updateIdentity
 	} from '$lib/circles/settings';
 	import { circleInitial } from '$lib/circles/meta';
@@ -34,6 +35,8 @@
 	let cropFile = $state<File | undefined>();
 	let photoPicker: FilePicker | undefined = $state();
 	let nameHint = $state('');
+	let gender = $state<'' | 'm' | 'f'>('');
+	let savedGender: '' | 'm' | 'f' = '';
 
 	async function loadAvatar(blobId?: string) {
 		if (blobId) {
@@ -50,11 +53,13 @@
 
 	async function load() {
 		try {
-			const [settings, names] = await Promise.all([
+			const [settings, identity] = await Promise.all([
 				fetchCircleSettings(circle.origin, circle.circleId),
-				fetchIdentityHistory(circle.origin, circle.circleId)
+				fetchIdentity(circle.origin, circle.circleId)
 			]);
+			const names = identity.names;
 			history = names;
+			gender = savedGender = identity.gender;
 			name = names[0]?.name ?? settings.identity_name ?? circle.identityName;
 			await loadAvatar(settings.avatar_blob_id);
 		} catch (err) {
@@ -72,7 +77,10 @@
 		saving = true;
 		error = '';
 		try {
-			await updateIdentity(circle.origin, circle.circleId, { name: trimmed });
+			await updateIdentity(circle.origin, circle.circleId, {
+				name: trimmed,
+				...(gender !== savedGender ? { gender } : {})
+			});
 			circle.identityName = trimmed;
 			circle.identityInitial = circleInitial(trimmed);
 			goto(`/circles/${circle.circleId}/settings`);
@@ -153,6 +161,7 @@
 	{#if nameHint}
 		<Hint class="mt-8">{nameHint}</Hint>
 	{/if}
+	<GenderPicker bind:value={gender} />
 	<Hint
 		>Это имя видно только в «{circle.name}». В других кругах вас зовут иначе, и связать одно с
 		другим нельзя — даже администратору сервера.</Hint

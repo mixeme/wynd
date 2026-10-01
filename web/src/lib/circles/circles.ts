@@ -76,6 +76,8 @@ export interface SearchResponse {
 export interface CreateCircleInput {
 	name: string;
 	owner_name: string;
+	/** Пол создателя для строк журнала (A5). */
+	owner_gender?: '' | 'm' | 'f';
 	edit_window_sec: number | null;
 	color?: CircleColor;
 }

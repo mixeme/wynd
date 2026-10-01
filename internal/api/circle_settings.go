@@ -91,6 +91,7 @@ func (s *Server) handlePatchCircle(w http.ResponseWriter, r *http.Request) {
 type updateIdentityBody struct {
 	Name         *string `json:"name"`
 	AvatarBlobID *string `json:"avatar_blob_id"`
+	Gender       *string `json:"gender"`
 }
 
 type sharePlaceBody struct {
@@ -137,10 +138,16 @@ func (s *Server) handleUpdateIdentity(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	err := s.Chronicle.UpdateIdentity(r.Context(), circleID, sess.AccountID, chronicle.UpdateIdentityInput{
-		Name:         body.Name,
-		AvatarBlobID: body.AvatarBlobID,
-	}, time.Now().UTC())
+	in := chronicle.UpdateIdentityInput{Name: body.Name, AvatarBlobID: body.AvatarBlobID}
+	if body.Gender != nil {
+		g, err := chronicle.ParseGender(*body.Gender)
+		if err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		in.Gender = &g
+	}
+	err := s.Chronicle.UpdateIdentity(r.Context(), circleID, sess.AccountID, in, time.Now().UTC())
 	if err != nil {
 		writeDomainError(w, err)
 		return
@@ -194,7 +201,10 @@ func (s *Server) handleIdentityHistory(w http.ResponseWriter, r *http.Request) {
 			"effective_at": n.EffectiveAt.UTC().Format(time.RFC3339),
 		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"names": out})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"names":  out,
+		"gender": string(s.Chronicle.IdentityGender(r.Context(), mem.IdentityID)),
+	})
 }
 
 type transferOwnerBody struct {

@@ -41,6 +41,7 @@
 	let inviteToken = $state<string | undefined>();
 	let pendingJoin = $state(false);
 	let pendingAvatar = $state<CroppedImage | undefined>();
+	let gender = $state<'' | 'm' | 'f'>('');
 
 	const displayMembers = $derived.by(() => {
 		if (peek?.members) {
@@ -109,12 +110,14 @@
 			if (inviteToken) {
 				await joinViaInvite(circle.origin, inviteToken, {
 					name: trimmed,
+					gender,
 					body: firstPost.trim() || undefined
 				});
 				clearInviteJoinToken(circle.circleId);
 			} else if (pendingJoin) {
 				await joinPendingCircle(circle.origin, circle.circleId, {
 					name: trimmed,
+					gender,
 					body: firstPost.trim() || undefined
 				});
 			}
@@ -172,6 +175,7 @@
 			bind:name
 			bind:firstPost
 			bind:avatar={pendingAvatar}
+			bind:gender
 			onerror={(message) => (error = message)}
 		/>
 		<Button variant="colored" {loading} onclick={enterCircle}>Войти в круг</Button>

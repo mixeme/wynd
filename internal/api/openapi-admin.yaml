@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd admin API
-  version: 0.18.38
+  version: 0.18.39
   description: Admin routes (Bearer admin session). Participant routes are in openapi-participant.yaml.
 
 servers:

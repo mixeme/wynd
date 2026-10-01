@@ -78,7 +78,7 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar, **Comp
 
 ### `forms/`
 
-**Label**, **Input**, **FieldDisplay**, **TextArea**, ScreenTitle, Hint, **Button**, **Chip**, ChipGroup, Switch, ColorSwatches, CodeBox, InviteCard, **RequisitesCard**, **SearchField**, DangerZone (опц. `style`), Meter, PeopleStrip, **MentionPicker**, AddPhotoButton, DangerNote, VolumeChart, **IconButton**, **TextButton**, **EditWindowPicker**, **IdentityForm**, **NumberField**, **DateRow**, **DateRange**, **FilePicker**, **QrScanner**
+**Label**, **Input**, **FieldDisplay**, **TextArea**, ScreenTitle, Hint, **Button**, **Chip**, ChipGroup, Switch, ColorSwatches, CodeBox, InviteCard, **RequisitesCard**, **SearchField**, DangerZone (опц. `style`), Meter, PeopleStrip, **MentionPicker**, AddPhotoButton, DangerNote, VolumeChart, **IconButton**, **TextButton**, **EditWindowPicker**, **IdentityForm**, **NumberField**, **DateRow**, **DateRange**, **FilePicker**, **QrScanner**, **GenderPicker**
 
 Интерактивные примитивы (фаза 1–4):
 
@@ -95,6 +95,8 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar, **Comp
 `DangerNote` — красная зона «Необратимо»: пояснение — children; с `title` — заголовок действия («Удалить с сервера») и snippet `action` с кнопкой под текстом (`.danger.titled`).
 
 `EditWindowPicker` — «Окно правок» (**#e2-4**, **#e6-2**): шесть чипов в два ряда и при «Своё…» поле часов; `value`, `bind:customHours`, `onpick(key)`, опц. `oncustomchange` — настройки круга сохраняют сразу. Подсказку о сдвиге часов экран ставит сам.
+
+`GenderPicker` — «Пол» для строк журнала (**#e1-3**, **#e6-7**; план 46, A5): чипы «Мужской» / «Женский», `bind:value` (`''` \| `'m'` \| `'f'`), повторное касание снимает выбор. Стоит в `IdentityForm` и в «Кто вы в этом круге».
 
 `QrScanner` — видоискатель QR (**#e2-17**): задняя камера, кадр раз в 250 мс; `onread(text)` → `true` — хватит (камера гаснет), `false` — ждать следующий; `onerror(message)` — камеры нет или её не дали. Камера гаснет и при уходе с экрана.
 

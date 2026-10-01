@@ -60,9 +60,9 @@ func (c *Chronicle) CreateCircle(ctx context.Context, in CreateCircleInput) (Cir
 		return Circle{}, Identity{}, Membership{}, fmt.Errorf("insert circle: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO identities (id, circle_id, account_id, created_at)
-		VALUES (?, ?, ?, ?)
-	`, identityID, circleID, in.OwnerAccountID, created); err != nil {
+		INSERT INTO identities (id, circle_id, account_id, created_at, gender)
+		VALUES (?, ?, ?, ?, ?)
+	`, identityID, circleID, in.OwnerAccountID, created, genderArg(in.OwnerGender)); err != nil {
 		return Circle{}, Identity{}, Membership{}, fmt.Errorf("insert identity: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, `

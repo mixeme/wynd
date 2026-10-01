@@ -56,7 +56,7 @@ export async function claimInvite(
 export async function joinViaInvite(
 	origin: string,
 	token: string,
-	input: { name: string; body?: string }
+	input: { name: string; gender?: '' | 'm' | 'f'; body?: string }
 ): Promise<{ circle_id: string }> {
 	return apiJson<{ circle_id: string }>(origin, `/invites/${token}/join`, {
 		method: 'POST',

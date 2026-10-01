@@ -315,6 +315,7 @@ func (c *Chronicle) SetDayTitle(ctx context.Context, in DayTitleInput) error {
 	if err != nil {
 		return err
 	}
+	g := c.identityGender(ctx, c.db, mem.IdentityID)
 
 	tx, err := c.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -330,7 +331,7 @@ func (c *Chronicle) SetDayTitle(ctx context.Context, in DayTitleInput) error {
 		circleID: in.CircleID, eventType: "day.titled", isService: false,
 		actorIdentityID: mem.IdentityID, actorName: name,
 		payload: map[string]any{"entry_date": in.EntryDate, "title": in.Title},
-		summary: summaryDayTitled(name, in.Title, in.EntryDate), now: now,
+		summary: summaryDayTitled(g, name, in.Title, in.EntryDate), now: now,
 	})
 	if err != nil {
 		return err
@@ -394,6 +395,7 @@ func (c *Chronicle) SetDayCover(ctx context.Context, in DayCoverInput) error {
 	if err != nil {
 		return err
 	}
+	g := c.identityGender(ctx, c.db, mem.IdentityID)
 
 	tx, err := c.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -411,7 +413,7 @@ func (c *Chronicle) SetDayCover(ctx context.Context, in DayCoverInput) error {
 		payload: map[string]any{
 			"entry_date": in.EntryDate, "post_id": in.PostID, "blob_id": in.BlobID,
 		},
-		summary: summaryDayCoverSet(name, in.EntryDate), now: now,
+		summary: summaryDayCoverSet(g, name, in.EntryDate), now: now,
 	})
 	if err != nil {
 		return err
