@@ -7,6 +7,7 @@
 		active = false,
 		gray = false,
 		mono = false,
+		small = false,
 		class: className = '',
 		style = '',
 		type = 'text',
@@ -17,6 +18,8 @@
 		active?: boolean;
 		gray?: boolean;
 		mono?: boolean;
+		/** Мелкий шрифт 12,5 px — длинное значение в узком поле (адрес сервера). */
+		small?: boolean;
 		class?: string;
 		style?: string;
 		type?: HTMLInputElement['type'];
@@ -28,6 +31,7 @@
 	class:act={active}
 	class:gr={gray}
 	class:mono={mono}
+	class:sm={small}
 	{type}
 	{style}
 	bind:value

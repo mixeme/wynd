@@ -1306,6 +1306,15 @@ input.fld.num {
 	width: 72px;
 	margin: 0;
 }
+/* Моноширинное поле (адрес, почта) и мелкое (адрес сервера при входе):
+   .mono и размер одним классом проигрывали font: inherit у input.fld и
+   input.inp — поля набирались обычным шрифтом. */
+input.fld.mono, textarea.fld.mono, input.inp.mono, textarea.inp.mono {
+	font-family: ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+input.fld.sm {
+	font-size: 12.5px;
+}
 .fld.act {
 	border-color: var(--c);
 }
@@ -2274,10 +2283,14 @@ body.wide .dlg {
 	font-size: 12.5px;
 	display: inline-block;
 }
+/* Шрифт — семейство и начертание страницы, размер — 12,5 px от .inp, как на
+   кадрах 9.x (font: inherit сбрасывал его к размеру колонки). */
 input.inp, textarea.inp {
 	box-sizing: border-box;
 	min-width: 0;
-	font: inherit;
+	font-family: inherit;
+	font-weight: inherit;
+	line-height: inherit;
 	color: inherit;
 }
 input.inp[type="number"] {

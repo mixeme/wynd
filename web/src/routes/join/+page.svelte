@@ -176,9 +176,9 @@
 	{/if}
 	<Label>Адрес сервера</Label>
 	<Input
-		class="sz-12"
 		active
 		mono
+		small
 		type="text"
 		spellcheck="false"
 		bind:value={address}
