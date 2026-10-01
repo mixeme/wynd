@@ -57,6 +57,9 @@
 	let avatarUrls = $state<Record<string, string>>({});
 	let usedBytes = $state(0);
 	let quotaBytes = $state<number | undefined>();
+	// Место владельцу видно и без квоты (сервер без лимита): занято и вход в
+	// архив с очисткой нужны всегда, шкала и «из N» — только при квоте.
+	let quotaLoaded = $state(false);
 	let loading = $state(true);
 	let error = $state('');
 	let colorReady = $state(false);
@@ -156,6 +159,7 @@
 					const quota = await fetchQuota(circle.origin, circle.circleId);
 					usedBytes = quota.used_bytes;
 					quotaBytes = quota.quota_bytes;
+					quotaLoaded = true;
 				} catch {
 					/* non-owner race */
 				}
@@ -450,12 +454,16 @@
 			{/snippet}
 		</SettingsRow>
 
-		{#if isOwner && quotaBytes}
+		{#if isOwner && quotaLoaded}
 			<Label class="mt-20">Место</Label>
-			<Meter value={usedBytes / (1024 * 1024 * 1024)} max={quotaBytes / (1024 * 1024 * 1024)} />
-			<Hint class="mt-8"
-				>{formatBytes(usedBytes)} из {formatBytes(quotaBytes)} · квоту задал администратор</Hint
-			>
+			{#if quotaBytes}
+				<Meter value={usedBytes / (1024 * 1024 * 1024)} max={quotaBytes / (1024 * 1024 * 1024)} />
+				<Hint class="mt-8"
+					>{formatBytes(usedBytes)} из {formatBytes(quotaBytes)} · квоту задал администратор</Hint
+				>
+			{:else}
+				<Hint class="mt-8">{formatBytes(usedBytes)} · ограничение не задано</Hint>
+			{/if}
 			<SettingsRow class="mt-8"
 				title="Архив и очистка"
 				subtitle="освободить место, скачать архив"
