@@ -1,4 +1,5 @@
 <script lang="ts">
+	import EmptyState from '$ui/data/EmptyState.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import Button from '$ui/forms/Button.svelte';
@@ -90,9 +91,12 @@
 
 {#if dead}
 	<PlainLayout shell app>
-		<ScreenTitle centered class="mt-48">Приглашение не действует</ScreenTitle>
-		<Hint centered class="hint-inset">Ссылку отозвали, она истекла или по ней уже вошли. Попросите новую у того, кто держит сервер.</Hint>
-		<Button onclick={() => goto('/')}>На главную</Button>
+		<EmptyState title="Приглашение не действует">
+			Ссылку отозвали, она истекла или по ней уже вошли. Попросите новую у того, кто держит сервер.
+			{#snippet actions()}
+				<Button onclick={() => goto('/')}>На главную</Button>
+			{/snippet}
+		</EmptyState>
 	</PlainLayout>
 {:else}
 <PlainLayout shell app>

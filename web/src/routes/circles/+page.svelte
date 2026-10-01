@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import EmptyState from '$ui/data/EmptyState.svelte';
 	import { uuid } from '$lib/uuid';
 	import { onDestroy, onMount } from 'svelte';
 	import Mark from '$ui/Mark.svelte';
@@ -26,7 +27,6 @@
 	import PayStreetBanner from '$ui/data/PayStreetBanner.svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import Input from '$ui/forms/Input.svelte';
-	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
@@ -535,12 +535,13 @@
 			/>
 		{/if}
 		{#if empty}
-		<ScreenTitle centered class="mt-24">Ни одного круга</ScreenTitle>
-		<Hint class="hint-inset" centered>
+		<EmptyState title="Ни одного круга" place="list">
 			Круг — это место, куда сворачивают. Заведите свой или откройте присланную ссылку.
-		</Hint>
-		<Button style="margin-top:30px" onclick={openNew}>Новый круг</Button>
-		<Button variant="ghost" onclick={openInvite}>У меня есть приглашение</Button>
+			{#snippet actions()}
+				<Button onclick={openNew}>Новый круг</Button>
+				<Button variant="ghost" onclick={openInvite}>У меня есть приглашение</Button>
+			{/snippet}
+		</EmptyState>
 		<!-- Пока кругов нет, объяснить некому: людей, чьим примером всё понятно,
 		     ещё нет. Тогда оболочка коротко рассказывает обстановку. С первым
 		     кругом этот рассказ уходит — дальше объясняют люди. -->

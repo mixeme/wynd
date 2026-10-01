@@ -99,7 +99,8 @@ export const COMPONENT_MAP: CatalogGroup[] = [
 			{ component: 'PayStreetBanner', screen: 'e10-5' },
 			{ component: 'MentionText', screen: 'e3-1, e4-5', smoke: '/dev/smoke/e3-1' },
 			{ component: 'AttachmentList', screen: 'e4-13, e4-15, e4-18' },
-			{ component: 'QrCode / InviteLinkCard', screen: 'e6-7, e6-21' }
+			{ component: 'QrCode / InviteLinkCard', screen: 'e6-7, e6-21' },
+			{ component: 'EmptyState', screen: 'e2-3, e3-1, e3-14' }
 		]
 	},
 	{

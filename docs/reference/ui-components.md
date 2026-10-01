@@ -121,13 +121,15 @@ Guard: `npm run check:ui` — экран = существующие `$ui` + `$li
 
 ### `data/`
 
-SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, **ReactionBar**, **CommentPreview**, **CommentRow**, **ReactionListRow**, **SettingsRow**, MemberRow, SearchGroupHeader, **SearchResultRow**, **ServerRow**, FoldHeader, **GroupFoldCard**, AttachmentRow, PhotoPlaceholder, PhotoGrid, **MediaTile**, **MapBadge**, **MapPostSheet**, MonthLabel, DayCard, DayGrid, DayHeader, EntryDateMark, ArchiveBanner, **PayStreetBanner**, **MentionText**, **AttachmentList**, **QrCode**, **InviteLinkCard**
+SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, **ReactionBar**, **CommentPreview**, **CommentRow**, **ReactionListRow**, **SettingsRow**, MemberRow, SearchGroupHeader, **SearchResultRow**, **ServerRow**, FoldHeader, **GroupFoldCard**, AttachmentRow, PhotoPlaceholder, PhotoGrid, **MediaTile**, **MapBadge**, **MapPostSheet**, MonthLabel, DayCard, DayGrid, DayHeader, EntryDateMark, ArchiveBanner, **PayStreetBanner**, **MentionText**, **AttachmentList**, **QrCode**, **InviteLinkCard**, **EmptyState**
 
 `PayStreetBanner` — баннеры оплаты на улочке (`/circles`, кадр **#e10-5**): `variant` `donate` \| `reminder` \| `pending`. Donate — `text`, `onclick` (help), опционально `dismissible` / `ondismiss`. Reminder — `expiresAtLabel`, `reminderDaysLeft`, `onclick` (extend). Pending — `pendingAtLabel`, опционально `expiresAtLabel`; без корневой кнопки. Стили `.pay-banner*` в `ui.css`; кликабельные зоны — `button.pay-banner-main`, `button.pay-reminder`.
 
 `MentionText` — текст записи или комментария (`body`): `@имя` цветом круга, переносы и пустые строки как написаны (`white-space: pre-wrap` на `.mention-text`).
 
 `AttachmentList` — вложения записи, не фото и не видео (**#e4-13**, **#e4-15**, **#e4-18**): звуки подряд — одна рамка `.att-group` со строками `grouped`, одиночный звук — `AttachmentRow audio`, файл — строка «скачать». `items`, `origin`, `circleId`, `circleName`, `color`, `postId`, `coverUrls` (обложки звуков по blob id).
+
+`EmptyState` — экран или вкладка без содержимого: заголовок по центру, пояснение (children), кнопки (snippet `actions`). `place` — отступы по кадрам: `screen` (экран-состояние, 48 px, поля пояснения 10/30), `list` (пустая улочка **#e2-3**, 24 px), `tab` (пустая вкладка **#e3-14**, заголовок посередине, 8/34), `feed` (пустая лента **#e3-1** со знаком, 8/34, кнопка с полями 60 px).
 
 `QrCode` — QR-код ссылки в рамке `.qr` (**#e6-7**, **#e6-21**, админка «Доступ»): `value` (пусто — ничего), `size` `md` (168 px) \| `sm` (150 px), `class`. SVG строит сам из `qrcode`; `{@html}` в экранах запрещён сторожем.
 

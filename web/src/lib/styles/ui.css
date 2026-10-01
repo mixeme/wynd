@@ -694,6 +694,32 @@
 	height: 156px;
 	margin: 0 auto;
 }
+/* EmptyState: отступы по кадрам — экран-состояние, улочка (2.3), вкладка
+   (3.14), лента со знаком (3.1). */
+.empty-state > .h1s {
+	margin-top: 48px;
+}
+.empty-state.list > .h1s {
+	margin-top: 24px;
+}
+.empty-state.tab > .h1s {
+	margin-top: 220px;
+}
+.empty-state.feed > .h1s {
+	margin-top: 28px;
+}
+.empty-state > .hint {
+	margin: 10px 30px 0;
+}
+.empty-state.tab > .hint, .empty-state.feed > .hint {
+	margin: 8px 34px 0;
+}
+.empty-act > .btn:first-child {
+	margin-top: 30px;
+}
+.empty-state.feed .empty-act > .btn {
+	margin: 26px 60px 0;
+}
 .feed-end {
 	text-align: center;
 	margin: 32px 16px 24px;

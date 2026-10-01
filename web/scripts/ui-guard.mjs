@@ -823,7 +823,6 @@ export const SINGLE_SCREEN_CLASSES = new Set([
 	'qbar',
 	'fill',
 	'street-list',
-	'empty',
 	'feed-end',
 	'compose-body',
 	'compose-bar',

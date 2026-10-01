@@ -1,6 +1,5 @@
 <script lang="ts">
-	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
-	import Hint from '$ui/forms/Hint.svelte';
+	import EmptyState from '$ui/data/EmptyState.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { page as pageState } from '$app/state';
@@ -276,10 +275,9 @@
 
 {#if denied}
 	<PlainLayout app>
-		<ScreenTitle centered style="margin-top:80px">Нет доступа</ScreenTitle>
-		<Hint centered class="mt-12">
+		<EmptyState title="Нет доступа">
 			<a class="under" href="/circles">К кругам</a>
-		</Hint>
+		</EmptyState>
 	</PlainLayout>
 {:else if ready && !(pendingJoinOnly && !onJoinPage)}
 	<!-- Экраны круга грузят данные при монтировании; смена одного параметра

@@ -1,8 +1,8 @@
 <script lang="ts">
+	import EmptyState from '$ui/data/EmptyState.svelte';
 	import ReactionsSheet from '$ui/overlays/ReactionsSheet.svelte';
 	import AttachmentList from '$ui/data/AttachmentList.svelte';
 	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
-	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
 	import MentionText from '$ui/data/MentionText.svelte';
 	import { afterNavigate, goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -777,23 +777,19 @@
 			{/if}
 
 			{#if !posts.length && !queuedPosts.length}
-				<div class="empty">
-					<Mark />
-					<ScreenTitle centered class="mt-28">Пока ничего</ScreenTitle>
-					<!-- Читатель не пишет и не зовёт: призыв и «Пригласить» — только пишущим. -->
-					{#if circle.canWrite}
-						<Hint centered style="margin:8px 34px 0">
-							Напишите первым — или позовите тех, с кем хотите это вести.
-						</Hint>
-						<Button
-							variant="colored"
-							style="margin:24px auto 0;width:min(280px,100%)"
-							onclick={openInvite}
-						>
-							Пригласить
-						</Button>
-					{/if}
-				</div>
+				<!-- Читатель не пишет и не зовёт: призыв и «Пригласить» — только пишущим. -->
+				{#snippet callToWrite()}
+					Напишите первым — или позовите тех, с кем хотите это вести.
+				{/snippet}
+				{#snippet inviteAction()}
+					<Button variant="colored" onclick={openInvite}>Пригласить</Button>
+				{/snippet}
+				<EmptyState
+					title="Пока ничего"
+					place="feed"
+					children={circle.canWrite ? callToWrite : undefined}
+					actions={circle.canWrite ? inviteAction : undefined}
+				/>
 			{:else if posts.length}
 				{#if showVisibilityCutoff && visibleFrom}
 					<div class="feed-end cutoff">

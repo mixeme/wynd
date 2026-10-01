@@ -164,7 +164,7 @@
 - `circles/[id]/+page.svelte:822–836` (`.empty` + `Mark`)
 - `circles/[id]/responses/+page.svelte:155–158`
 
-Отступы везде разные: `mt-48` / `margin-top:80px` / `28px` / `mt-24`, у пояснения — `hint-inset` / `margin:10px 30px 0` / `8px 34px 0`. → `EmptyState` (`title`, `mark?`, `children`, `actions` snippet).
+Отступы везде разные: `mt-48` / `margin-top:80px` / `28px` / `mt-24`, у пояснения — `hint-inset` / `margin:10px 30px 0` / `8px 34px 0`. → `EmptyState` (`title`, `mark?`, `children`, `actions` snippet). **Сделано в 0.18.18:** `$ui/data/EmptyState.svelte` с `place` вместо `mark`: отступы взяты из кадров, а они разные — экран-состояние (48 px, 10/30), улочка 2.3 (24 px), вкладка 3.14 (заголовок посередине, 8/34), лента 3.1 (знак, 8/34). Шесть мест; «Доступ закрыт» (10.1) на кадре выровнен влево — другой вид, остался в `PayGateLayout`. Видно: «Откликов пока нет» — посередине, как на 3.14; «Нет доступа» — 48 px вместо 80; кнопка пустой ленты — поля 60 px, как на кадре.
 
 **2.4 Лист «Реакции» — высокая.** `circles/[id]/+page.svelte:863–879` ≡ `circles/[id]/posts/[postId]/+page.svelte:570–586`: заголовок, строки и пояснение совпадают дословно. → `ReactionsSheet` (`reactions`, `color`, `ondismiss`). **Сделано в 0.18.10:** `$ui/overlays/ReactionsSheet.svelte` в ленте и на экране записи.
 
