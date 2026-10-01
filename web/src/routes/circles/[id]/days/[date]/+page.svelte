@@ -1,8 +1,10 @@
 <script lang="ts">
+	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
+	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
 	import MentionText from '$ui/data/MentionText.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { getContext, onMount } from 'svelte';
+	import { getContext, onDestroy, onMount } from 'svelte';
 	import Avatar from '$ui/data/Avatar.svelte';
 	import DayHeader from '$ui/data/DayHeader.svelte';
 	import Button from '$ui/forms/Button.svelte';
@@ -128,6 +130,11 @@
 		}
 	}
 
+	// Обновление жестом (3.5), как в ленте: тянешь экран от верха.
+	let listEl: HTMLDivElement | undefined = $state();
+	const ptr = new PullRefresh(() => listEl?.scrollTop ?? 0, () => loadData());
+	onDestroy(() => ptr.destroy());
+
 	onMount(() => {
 		void loadData();
 		const unsub = registerRefetch({
@@ -202,6 +209,16 @@
 	commentBar={false}
 	onback={goBack}
 >
+	<PullRefreshBand pull={ptr.state} />
+	<div
+		class="feed"
+		role="feed"
+		aria-label="День"
+		bind:this={listEl}
+		ontouchstart={ptr.start}
+		ontouchmove={ptr.move}
+		ontouchend={ptr.end}
+	>
 	{#if loading}
 		<Loading />
 	{:else if error && !posts.length}
@@ -297,5 +314,6 @@
 			<Hint class="gutter-12">{error}</Hint>
 		{/if}
 	{/if}
+	</div>
 </CircleLayout>
 

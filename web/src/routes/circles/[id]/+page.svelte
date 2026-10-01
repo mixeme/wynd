@@ -1,4 +1,5 @@
 <script lang="ts">
+	import FeedEnd from '$ui/data/FeedEnd.svelte';
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
 	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
 	import EmptyState from '$ui/data/EmptyState.svelte';
@@ -20,7 +21,6 @@
 	import Loading from '$ui/Loading.svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import Icon from '$ui/Icon.svelte';
-	import Mark from '$ui/Mark.svelte';
 	import CommentPreview from '$ui/data/CommentPreview.svelte';
 	import PostCard from '$ui/data/PostCard.svelte';
 	import ReactionBar from '$ui/data/ReactionBar.svelte';
@@ -752,25 +752,12 @@
 					actions={circle.canWrite ? inviteAction : undefined}
 				/>
 			{:else if posts.length}
-				{#if showVisibilityCutoff && visibleFrom}
-					<div class="feed-end cutoff">
-						<Mark />
-						<div style="font-size:12.5px;margin-top:6px">Вы здесь с {formatIsoDay(visibleFrom)}</div>
-						<Hint centered style="margin:8px 16px 0">что было раньше — не ваше</Hint>
-						{#if circleStartedAt}
-							<div class="sep" style="margin:20px 40px"></div>
-							<Hint centered>круг живёт с {formatIsoDay(circleStartedAt, true)}</Hint>
-						{/if}
-					</div>
-				{:else if circleStartedAt}
-					<div class="feed-end start">
-						<Mark />
-						<Hint centered style="margin:10px 16px 0;color:var(--muted)">Здесь начинается круг</Hint>
-						<Hint centered class="mt-4 muted">
-							{formatIsoDay(circleStartedAt)}
-						</Hint>
-					</div>
-				{/if}
+				<FeedEnd
+					since={showVisibilityCutoff && visibleFrom ? formatIsoDay(visibleFrom) : undefined}
+					started={circleStartedAt
+						? formatIsoDay(circleStartedAt, Boolean(showVisibilityCutoff && visibleFrom))
+						: undefined}
+				/>
 			{/if}
 		{/if}
 	</div>

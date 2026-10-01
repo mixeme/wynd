@@ -1,10 +1,12 @@
 <script lang="ts">
+	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
+	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
 	import ReactionsSheet from '$ui/overlays/ReactionsSheet.svelte';
 	import AttachmentList from '$ui/data/AttachmentList.svelte';
 	import MentionText from '$ui/data/MentionText.svelte';
 	import { afterNavigate, goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { getContext, onMount, tick } from 'svelte';
+	import { getContext, onDestroy, onMount, tick } from 'svelte';
 	import Avatar from '$ui/data/Avatar.svelte';
 	import CommentRow from '$ui/data/CommentRow.svelte';
 	import Button from '$ui/forms/Button.svelte';
@@ -102,6 +104,11 @@
 			queuedComments = items;
 		});
 	}
+
+	// Обновление жестом (3.5), как в ленте: тянешь экран от верха.
+	let listEl: HTMLDivElement | undefined = $state();
+	const ptr = new PullRefresh(() => listEl?.scrollTop ?? 0, () => load());
+	onDestroy(() => ptr.destroy());
 
 	onMount(() => {
 		void fetchMembers(circle.origin, circle.circleId)
@@ -374,6 +381,16 @@
 	onback={goBack}
 	onCommentSend={circle.canWrite && !postLocked ? sendComment : undefined}
 >
+	<PullRefreshBand pull={ptr.state} />
+	<div
+		class="feed"
+		role="feed"
+		aria-label="Запись"
+		bind:this={listEl}
+		ontouchstart={ptr.start}
+		ontouchmove={ptr.move}
+		ontouchend={ptr.end}
+	>
 	{#if loading}
 		<Loading />
 	{:else if !post}
@@ -518,6 +535,7 @@
 			<Hint style="margin:0 16px 16px">{error}</Hint>
 		{/if}
 	{/if}
+	</div>
 
 	{#if reactionsOpen && post}
 		<ReactionsSheet reactions={post.reactions ?? []} color={circle.colorHex} ondismiss={closeReactions} />

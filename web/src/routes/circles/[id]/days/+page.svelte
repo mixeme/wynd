@@ -1,6 +1,8 @@
 <script lang="ts">
+	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
+	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
 	import { goto } from '$app/navigation';
-	import { getContext, onMount } from 'svelte';
+	import { getContext, onDestroy, onMount } from 'svelte';
 	import DayCard from '$ui/data/DayCard.svelte';
 	import DayGrid from '$ui/data/DayGrid.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -89,6 +91,11 @@
 
 	const monthGroups = $derived(groupByMonth(days));
 
+	// Обновление жестом (3.5), как в ленте: тянешь экран от верха.
+	let listEl: HTMLDivElement | undefined = $state();
+	const ptr = new PullRefresh(() => listEl?.scrollTop ?? 0, () => loadData());
+	onDestroy(() => ptr.destroy());
+
 	onMount(() => {
 		void markDayPromptSeen(circle.origin, circle.circleId);
 		void loadData();
@@ -123,6 +130,16 @@
 	commentBar={false}
 	onback={goBack}
 >
+	<PullRefreshBand pull={ptr.state} />
+	<div
+		class="feed"
+		role="feed"
+		aria-label="Дни"
+		bind:this={listEl}
+		ontouchstart={ptr.start}
+		ontouchmove={ptr.move}
+		ontouchend={ptr.end}
+	>
 	{#if loading}
 		<Loading />
 	{:else if error && !days.length}
@@ -151,4 +168,5 @@
 			<Hint class="gutter-24">Пока нет дней с записями</Hint>
 		{/if}
 	{/if}
+	</div>
 </CircleLayout>

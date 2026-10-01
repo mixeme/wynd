@@ -19,7 +19,7 @@
 	"src/routes/circles/+layout.svelte": 0,
 	"src/routes/circles/+page.svelte": 6,
 	"src/routes/circles/[id]/+layout.svelte": 0,
-	"src/routes/circles/[id]/+page.svelte": 6,
+	"src/routes/circles/[id]/+page.svelte": 2,
 	"src/routes/circles/[id]/archive/+page.svelte": 2,
 	"src/routes/circles/[id]/compose/+page.svelte": 4,
 	"src/routes/circles/[id]/days/+page.svelte": 0,

@@ -737,6 +737,20 @@
 .feed-end.cutoff .mk {
 	opacity: 1;
 }
+.feed-end-since {
+	font-size: 12.5px;
+	margin-top: 6px;
+}
+.feed-end > .hint.feed-end-note {
+	margin: 8px 16px 0;
+}
+.feed-end > .sep {
+	margin: 20px 40px;
+}
+.feed-end > .hint.feed-end-title {
+	margin: 10px 16px 0;
+	color: var(--muted);
+}
 .pa {
 	display: flex;
 	align-items: center;
