@@ -170,6 +170,7 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 Строки с опциональным `onclick`: корень `button.row2` / `button.r` или `div` (`SettingsRow`, `CircleRow`, `ServerRow`, `SearchResultRow`, `MemberRow`).
 
 - `SettingsRow divided` (`top` \| `bottom` \| `both`) — черта над и/или под строкой, когда она стоит среди текста (не в списке строк). `DateRow` пробрасывает `divided` и `class`.
+- `Meter` — полоса заполнения; `inline` — короткая полоска в строке таблицы (`.qbar`, квота круга в админке), `color` — свой цвет заполнения.
 - `Avatar size="lg"` — 96 px по центру, буква 38 px («Кто вы в этом круге»).
 - `SettingsRow` с snippet `control` — всегда `div.row2`, справа контрол (например `Switch`); `chevron`/`value` не рендерятся; title без `font-weight:600`.
 - `Switch`: `bind:checked` — для формы с кнопкой «Сохранить»; `onchange(checked)` — когда нажатие сразу пишет на сервер: вызывается только от нажатия, не от смены `checked` извне (иначе обновление карточки перезаписало бы сервер старым значением).

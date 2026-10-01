@@ -823,7 +823,6 @@ export function checkScriptClassStrings(webRoot) {
 export const SINGLE_SCREEN_CLASSES = new Set([
 	'map-wrap',
 	'ced',
-	'qbar',
 	'fill',
 	'street-list',
 	'compose-body',

@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import Meter from '$ui/forms/Meter.svelte';
 	import Panel from '$ui/admin/Panel.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -413,11 +414,11 @@
 									{#if c.quota_custom && c.quota_bytes == null}
 										<span class="faint">без квоты · своя</span>
 									{:else if c.quota_custom && c.quota_bytes != null}
-										<span class="qbar"><u style="width:{fill}%;background:{tint}"></u></span>
+										<Meter inline value={fill} color={tint} />
 										{formatQuota(c.quota_bytes)}
 										<span class="faint normal"> своя</span>
 									{:else if eff != null}
-										<span class="qbar"><u style="width:{fill}%;background:{tint}"></u></span>
+										<Meter inline value={fill} color={tint} />
 										{formatQuota(eff)}
 									{:else}
 										<span class="faint">без квоты</span>

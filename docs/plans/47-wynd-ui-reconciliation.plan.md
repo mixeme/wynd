@@ -139,7 +139,7 @@
 - `admin/pay/requests/[id]:142–143`, `admin/pay/subscription:131`
 - `admin/people:63`, `admin/people/[id]:119–120`
 
-→ пропы `title` и `subtitle` (snippet) у `AdminSection`.
+→ пропы `title` и `subtitle` (snippet) у `AdminSection`. **Оставлено (0.18.29), причина:** в пяти экранах из восьми заголовок — почта человека или заявки, он есть только после загрузки, а `AdminSection title` рисуется до неё; у «Сбора» и «Подписки» над заголовком ссылка «← Оплата» — `title` перевернул бы порядок; у «Людей» рядом поле поиска, у «Проверки» справа колонка статуса. Общий компонент свёлся бы к обёртке над `<h4>`; inline-стиль остался один (`check`: `margin-bottom:5px`).
 
 ## 2. Повторяющиеся паттерны: кандидаты в библиотеку
 
@@ -218,7 +218,7 @@
 - `.meter u` (Meter)
 - `.qbar u` (admin/+page:415,419, ui.css:2246)
 
-→ расширить `Meter`: `color`, `thin`, `inline`, `loading`.
+→ расширить `Meter`: `color`, `thin`, `inline`, `loading`. **Сделано в 0.18.30:** `Meter inline` и `color` — полоска квоты в таблице админки. Остальные три полосы (`.att-bar`, `.audio-bar-line`, `.tile-load-bar`) живут внутри компонентов (`AttachmentRow`, `AudioBar`, `MediaTile`) и экранам не видны — `thin`/`loading` не заводились.
 
 **2.16 Ссылка-текст `<a class="under">` — средняя.**
 - `+page:139`
