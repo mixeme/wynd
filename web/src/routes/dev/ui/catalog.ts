@@ -135,7 +135,8 @@ export const COMPONENT_MAP: CatalogGroup[] = [
 			{ component: 'StatusIcon', screen: 'e9-8', smoke: '/dev/smoke/e9-8' },
 			{ component: 'CodeBlock', screen: 'e9-9' },
 			{ component: 'InlineInput', screen: 'e9-5', smoke: '/dev/smoke/e9-5' },
-			{ component: 'AdminField / Panel', screen: 'e9-*' }
+			{ component: 'AdminField / Panel', screen: 'e9-*' },
+			{ component: 'SwitchRow', screen: 'e9-6, e10-*' }
 		]
 	},
 	{

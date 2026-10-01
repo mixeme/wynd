@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import SwitchRow from '$ui/admin/SwitchRow.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -8,7 +9,6 @@
 	import Loading from '$ui/Loading.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
-	import Switch from '$ui/forms/Switch.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { CIRCLE_COLORS, type CircleColor } from '$lib/theme/colors';
@@ -164,17 +164,9 @@
 				</div>
 				<div>
 					<SectionLabel class="mt-0 mx-0 mb-10">Вход</SectionLabel>
-					<div class="flex-top gap-12">
-						<Switch bind:checked={loginOpen} class="mt-2" label={loginOpen ? 'Вход открыт' : 'Вход закрыт'} />
-						<div>
-							<div class="ttl">
-								{loginOpen ? 'Вход открыт' : 'Вход закрыт'}
-							</div>
-							<div class="note mt-4 lh-15">
-								Закрыть — код перестанет приходить, круги не трогаются. Открыть можно снова.
-							</div>
-						</div>
-					</div>
+					<SwitchRow bind:checked={loginOpen} title={loginOpen ? 'Вход открыт' : 'Вход закрыт'}>
+						Закрыть — код перестанет приходить, круги не трогаются. Открыть можно снова.
+					</SwitchRow>
 					{#if !acc.owns_circle}
 						<div class="danger adm-del mt-28 mx-0 mb-0">
 							<div class="dl">

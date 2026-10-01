@@ -246,7 +246,7 @@
 
 → `AdminField` (`label`, `unit`, children). **Сделано в 0.18.14 частично:** `$ui/admin/AdminField.svelte` (`label`, `width` 88 | 120, `unit`, children) — `admin/general` (9 строк; подписи стали как на кадре — 12,5 px, без капители) и `admin/compress` (5). Осталось: `admin/+page` (подпись-заголовок `.ttl.flab` 13,5 px жирная — другой вид на кадре, решить: проп или свой компонент), `admin/access` и `admin/pay/donate` (поле с единицей без подписи — ближе к `NumberField`, 2.9).
 
-**2.19 Админ: «переключатель + заголовок + пояснение» — средняя.** `admin/pay/donate:86–102` (2 раза), `admin/pay/subscription:137–149`, `admin/people/[id]:167–177`. Разметка везде `div.flex-top.gap-12 > Switch + div > .ttl + .note.mt-4.lh-15`. → `SwitchRow` (в духе `SettingsRow` с `control`, но для админки).
+**2.19 Админ: «переключатель + заголовок + пояснение» — средняя.** `admin/pay/donate:86–102` (2 раза), `admin/pay/subscription:137–149`, `admin/people/[id]:167–177`. Разметка везде `div.flex-top.gap-12 > Switch + div > .ttl + .note.mt-4.lh-15`. → `SwitchRow` (в духе `SettingsRow` с `control`, но для админки). **Сделано в 0.18.23:** `$ui/admin/SwitchRow.svelte` во всех четырёх местах. Переключатель на 2 px ниже, как на всех трёх кадрах: раньше так было только у «Вход открыт».
 
 **2.20 Админ: карточка `.panel` — средняя.**
 - `admin/+page:434`

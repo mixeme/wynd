@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import SwitchRow from '$ui/admin/SwitchRow.svelte';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import AdminSection from '$ui/admin/AdminSection.svelte';
@@ -9,7 +10,6 @@
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
-	import Switch from '$ui/forms/Switch.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
@@ -134,19 +134,13 @@
 		{:else if error && !settings}
 			<Hint>{error}</Hint>
 		{:else if settings}
-			<div class="flex-top gap-12 mb-18">
-				<Switch bind:checked={settings.required} label="Требовать подписку" />
-				<div>
-					<div class="ttl">Требовать подписку</div>
-					<div class="note mt-4 lh-15">
-						{#if settings.required}
-							Без оплаты круги не открываются.
-						{:else}
-							Круги открыты. Платить не нужно.
-						{/if}
-					</div>
-				</div>
-			</div>
+			<SwitchRow bind:checked={settings.required} title="Требовать подписку" class="mb-18">
+				{#if settings.required}
+					Без оплаты круги не открываются.
+				{:else}
+					Круги открыты. Платить не нужно.
+				{/if}
+			</SwitchRow>
 			{#if settings.required}
 				<SectionLabel class="mt-0 mx-0 mb-8">Напомнить об истечении</SectionLabel>
 				<ChipGroup class="m-0">

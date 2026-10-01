@@ -186,7 +186,9 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 
 ### `admin/`
 
-AdminNav (`ADMIN_NAV`: Проверка, Общие, Доступ, Люди, Хранилище, Сжатие, Оплата; кадры 9.1–9.10 без «Оплата»), AdminSection, DataTable, StackBar, CheckRow, StatusIcon, CodeBlock (`lines[]`, `.hi` / `span.cmt`), InlineInput, QuotaRequestRow (`Button` `.btn` / `.btn.gh` на «Дать» / «Отказать», не `.act`), **Panel**, **AdminField**
+AdminNav (`ADMIN_NAV`: Проверка, Общие, Доступ, Люди, Хранилище, Сжатие, Оплата; кадры 9.1–9.10 без «Оплата»), AdminSection, DataTable, StackBar, CheckRow, StatusIcon, CodeBlock (`lines[]`, `.hi` / `span.cmt`), InlineInput, QuotaRequestRow (`Button` `.btn` / `.btn.gh` на «Дать» / «Отказать», не `.act`), **Panel**, **AdminField**, **SwitchRow**
+
+`SwitchRow` — переключатель админки с заголовком и пояснением (кадры 9.x, 10.x): `bind:checked`, `title` (он же подпись `Switch` для чтения с экрана), пояснение — children. Переключатель на 2 px ниже верха строки, как на кадрах.
 
 `Panel` — карточка админки `.panel` (рамка, фон карточки, скругление; отступ — служебным классом: `pad-12`, `pad-16`). `AdminField` — строка формы «подпись · поле · единица» (**#e9-***): `label`, `width` 88 \| 120 (короткие и длинные подписи, чтобы поля стояли столбцом), опц. `unit`, поле — children. Сетку мастера (`form-grid`) не заменяет.
 

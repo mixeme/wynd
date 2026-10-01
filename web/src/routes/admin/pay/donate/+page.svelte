@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import SwitchRow from '$ui/admin/SwitchRow.svelte';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import AdminSection from '$ui/admin/AdminSection.svelte';
@@ -7,7 +8,6 @@
 	import Icon from '$ui/Icon.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
-	import Switch from '$ui/forms/Switch.svelte';
 	import TextArea from '$ui/forms/TextArea.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
@@ -83,24 +83,12 @@
 					</div>
 				</div>
 				<div>
-					<div class="flex-top gap-12">
-						<Switch bind:checked={settings.show} label="Показывать" />
-						<div>
-							<div class="ttl">Показывать</div>
-							<div class="note mt-4 lh-15">
-								Выключить можно раньше срока. Баннер не связан с подпиской.
-							</div>
-						</div>
-					</div>
-					<div class="flex-top gap-12 mt-18">
-						<Switch bind:checked={settings.dismissible} label="Можно скрыть" />
-						<div>
-							<div class="ttl">Можно скрыть</div>
-							<div class="note mt-4 lh-15">
-								Скрытие постоянное, пока не выйдет новый баннер.
-							</div>
-						</div>
-					</div>
+					<SwitchRow bind:checked={settings.show} title="Показывать">
+						Выключить можно раньше срока. Баннер не связан с подпиской.
+					</SwitchRow>
+					<SwitchRow bind:checked={settings.dismissible} title="Можно скрыть" class="mt-18">
+						Скрытие постоянное, пока не выйдет новый баннер.
+					</SwitchRow>
 					<div class="flex-mid gap-10 mt-18">
 						<span class="sz-12">До</span>
 						<Input
