@@ -8,12 +8,13 @@ import (
 	"gitea.mixdep.ru/mix/wynd/internal/check"
 )
 
-// CompressionSettings are client-side compression thresholds (photos and video; no server ffmpeg).
+// CompressionSettings are client-side compression thresholds (photos, video and audio; no server ffmpeg).
 type CompressionSettings struct {
 	PhotoMaxPx         int   `json:"photo_max_px"`
 	PhotoQuality       int   `json:"photo_quality"`
 	VideoMaxHeight     int   `json:"video_max_height"`
 	VideoBitrateKbps   int   `json:"video_bitrate_kbps"`
+	AudioBitrateKbps   int   `json:"audio_bitrate_kbps"`
 	AttachmentMaxBytes int64 `json:"attachment_max_bytes"`
 }
 
@@ -23,10 +24,10 @@ func (s *Store) LoadCompressionSettings(ctx context.Context) (CompressionSetting
 	err := s.db.QueryRowContext(ctx, `
 		SELECT compress_photo_max_px, compress_photo_quality,
 			compress_video_max_height, compress_video_bitrate_kbps,
-			compress_attachment_max_bytes
+			compress_audio_bitrate_kbps, compress_attachment_max_bytes
 		FROM instance_settings WHERE id = 1
 	`).Scan(&cs.PhotoMaxPx, &cs.PhotoQuality, &cs.VideoMaxHeight,
-		&cs.VideoBitrateKbps, &cs.AttachmentMaxBytes)
+		&cs.VideoBitrateKbps, &cs.AudioBitrateKbps, &cs.AttachmentMaxBytes)
 	if err != nil {
 		return CompressionSettings{}, err
 	}
@@ -267,7 +268,7 @@ func (s *Store) SetInstanceQuotaDiskPercent(ctx context.Context, percent int) er
 // SaveCompressionSettings updates client compression thresholds.
 func (s *Store) SaveCompressionSettings(ctx context.Context, cs CompressionSettings) error {
 	if cs.PhotoMaxPx < 1 || cs.PhotoQuality < 1 || cs.VideoMaxHeight < 1 ||
-		cs.VideoBitrateKbps < 1 || cs.AttachmentMaxBytes < 1 {
+		cs.VideoBitrateKbps < 1 || cs.AudioBitrateKbps < 1 || cs.AttachmentMaxBytes < 1 {
 		return ErrInvalid
 	}
 	_, err := s.db.ExecContext(ctx, `
@@ -276,9 +277,10 @@ func (s *Store) SaveCompressionSettings(ctx context.Context, cs CompressionSetti
 			compress_photo_quality = ?,
 			compress_video_max_height = ?,
 			compress_video_bitrate_kbps = ?,
+			compress_audio_bitrate_kbps = ?,
 			compress_attachment_max_bytes = ?
 		WHERE id = 1
-	`, cs.PhotoMaxPx, cs.PhotoQuality, cs.VideoMaxHeight, cs.VideoBitrateKbps, cs.AttachmentMaxBytes)
+	`, cs.PhotoMaxPx, cs.PhotoQuality, cs.VideoMaxHeight, cs.VideoBitrateKbps, cs.AudioBitrateKbps, cs.AttachmentMaxBytes)
 	return err
 }
 

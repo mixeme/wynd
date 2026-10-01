@@ -24,6 +24,7 @@ type compressionBody struct {
 	PhotoQuality       int   `json:"photo_quality"`
 	VideoMaxHeight     int   `json:"video_max_height"`
 	VideoBitrateKbps   int   `json:"video_bitrate_kbps"`
+	AudioBitrateKbps   int   `json:"audio_bitrate_kbps"`
 	AttachmentMaxBytes int64 `json:"attachment_max_bytes"`
 }
 
@@ -169,7 +170,17 @@ func (s *Server) handleAdminSetCompression(w http.ResponseWriter, r *http.Reques
 		PhotoQuality:       body.PhotoQuality,
 		VideoMaxHeight:     body.VideoMaxHeight,
 		VideoBitrateKbps:   body.VideoBitrateKbps,
+		AudioBitrateKbps:   body.AudioBitrateKbps,
 		AttachmentMaxBytes: body.AttachmentMaxBytes,
+	}
+	// Панель до 0.18.37 звука не знает и поле не шлёт — оставить, что есть.
+	if cs.AudioBitrateKbps == 0 {
+		current, err := s.Blobs.LoadCompressionSettings(r.Context())
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+		cs.AudioBitrateKbps = current.AudioBitrateKbps
 	}
 	if err := s.Blobs.SaveCompressionSettings(r.Context(), cs); err != nil {
 		writeError(w, err)

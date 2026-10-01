@@ -121,6 +121,16 @@
 							onchange={() => void persistVideoBitrateMbps()}
 						/>
 					</AdminField>
+					<SectionLabel class="mt-22 mx-0 mb-10">Звук</SectionLabel>
+					<AdminField label="Битрейт" unit="кбит/с">
+						<Input
+							admin
+							class="w88"
+							type="number"
+							bind:value={settings.audio_bitrate_kbps}
+							onchange={() => void persist()}
+						/>
+					</AdminField>
 					<SectionLabel class="mt-22 mx-0 mb-10">Файлы</SectionLabel>
 					<AdminField label="Потолок размера" unit="МБ">
 						<Input

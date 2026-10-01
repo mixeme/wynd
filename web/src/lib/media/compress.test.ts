@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { encodePhoto, evenPx, isLargeVideo, targetVideoSize, videoFitsSettings } from './compress';
+import {
+	audioFallbackReason,
+	audioFitsSettings,
+	encodePhoto,
+	evenPx,
+	isLargeVideo,
+	targetVideoSize,
+	videoFitsSettings
+} from './compress';
 
 describe('targetVideoSize', () => {
 	it('keeps 1080p landscape', () => {
@@ -83,5 +91,33 @@ describe('encodePhoto', () => {
 		const blob = await encodePhoto(canvas, 0.8);
 		expect(blob.type).toBe('image/jpeg');
 		expect(canvas.asked).toEqual(['image/webp', 'image/jpeg']);
+	});
+});
+
+// План 46, A6: уже сжатый звук не жирнее порога не пережимаем; WAV, FLAC и
+// звук без известной длительности — пережимаем.
+describe('audioFitsSettings', () => {
+	const minute = 60;
+	const at = (kbps: number) => (kbps * 1000 * minute) / 8;
+
+	it('пропускает MP3, AAC и Opus не выше порога', () => {
+		expect(audioFitsSettings('mp3', minute, at(128), 128)).toBe(true);
+		expect(audioFitsSettings('aac', minute, at(96), 128)).toBe(true);
+		expect(audioFitsSettings('opus', minute, at(64), 128)).toBe(true);
+	});
+
+	it('пережимает сжатый звук выше порога', () => {
+		expect(audioFitsSettings('mp3', minute, at(320), 128)).toBe(false);
+	});
+
+	it('пережимает несжатый и звук без длительности', () => {
+		expect(audioFitsSettings('pcm-s16', minute, at(64), 128)).toBe(false);
+		expect(audioFitsSettings('flac', minute, at(64), 128)).toBe(false);
+		expect(audioFitsSettings(null, minute, at(64), 128)).toBe(false);
+		expect(audioFitsSettings('mp3', 0, at(64), 128)).toBe(false);
+	});
+
+	it('называет причину отказа словами', () => {
+		expect(audioFallbackReason(new Error('no_encoder'))).toBe('браузер не умеет кодировать звук');
 	});
 });

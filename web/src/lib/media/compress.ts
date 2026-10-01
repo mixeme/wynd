@@ -4,6 +4,7 @@ const DEFAULT_MAX_PX = 2048;
 const DEFAULT_QUALITY = 80;
 export const DEFAULT_VIDEO_MAX_P = 1080;
 export const DEFAULT_VIDEO_BITRATE_KBPS = 6000;
+export const DEFAULT_AUDIO_BITRATE_KBPS = 128;
 const BITRATE_SLACK = 1.05;
 
 export interface CompressedMedia {
@@ -45,6 +46,25 @@ export function videoFitsSettings(
 ): boolean {
 	const target = targetVideoSize(width, height, maxP);
 	if (width > target.width || height > target.height) return false;
+	if (!(durationSec > 0) || bitrateKbps <= 0) return false;
+	const kbps = (sizeBytes * 8) / durationSec / 1000;
+	return kbps <= bitrateKbps * BITRATE_SLACK;
+}
+
+/** Сжатые кодеки, которые не пережимаем, если битрейт не выше порога. */
+const COMPRESSED_AUDIO = new Set(['aac', 'opus', 'mp3', 'vorbis']);
+
+/**
+ * Звук уже сжат и не жирнее порога — уходит как есть (A6). Длительность
+ * неизвестна — считаем, что не влезает: лучше пережать, чем отправить WAV.
+ */
+export function audioFitsSettings(
+	codec: string | null,
+	durationSec: number,
+	sizeBytes: number,
+	bitrateKbps: number
+): boolean {
+	if (!codec || !COMPRESSED_AUDIO.has(codec)) return false;
 	if (!(durationSec > 0) || bitrateKbps <= 0) return false;
 	const kbps = (sizeBytes * 8) / durationSec / 1000;
 	return kbps <= bitrateKbps * BITRATE_SLACK;
@@ -126,6 +146,40 @@ export async function compressVideo(
 		console.warn('wynd: video compression failed', err);
 		return { ...(await fileToQueueBuffer(file)), fallbackReason: videoFallbackReason(err) };
 	}
+}
+
+/** Сжатие звука; не вышло — оригинал и причина, как у видео (A6). */
+export async function compressAudio(
+	file: File,
+	settings?: CompressionSettings,
+	onProgress?: (progress: number) => void
+): Promise<CompressedMedia & { fallbackReason?: string }> {
+	try {
+		const { encodeAudio } = await import('./audio-encode');
+		return await encodeAudio(file, settings, onProgress);
+	} catch (err) {
+		console.warn('wynd: audio compression failed', err);
+		return { ...(await fileToQueueBuffer(file)), fallbackReason: audioFallbackReason(err) };
+	}
+}
+
+/** Причина, по которой звук ушёл без сжатия, — словами для экрана. */
+export function audioFallbackReason(err: unknown): string {
+	const code = err instanceof Error ? err.message : '';
+	switch (code) {
+		case 'no_encoder':
+			return 'браузер не умеет кодировать звук';
+		case 'no_audio_track':
+		case 'audio_discarded':
+		case 'conversion_invalid':
+			return 'браузер не читает этот формат звука';
+		case 'empty_output':
+			return 'сжатие вернуло пустой файл';
+	}
+	if (typeof globalThis.AudioEncoder === 'undefined') {
+		return 'в браузере нет кодировщика звука (WebCodecs)';
+	}
+	return 'сжатие прервалось с ошибкой';
 }
 
 /** Причина, по которой видео ушло без сжатия, — словами для экрана. */

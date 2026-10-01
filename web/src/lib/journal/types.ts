@@ -110,6 +110,8 @@ export interface CompressionSettings {
 	photo_quality: number;
 	video_max_height: number;
 	video_bitrate_kbps: number;
+	/** Битрейт сжатия звука (A6); старый сервер поля не шлёт. */
+	audio_bitrate_kbps?: number;
 	attachment_max_bytes: number;
 }
 

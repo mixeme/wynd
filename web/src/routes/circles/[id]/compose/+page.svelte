@@ -39,6 +39,7 @@
 	import type { FeedPost, MediaSummary } from '$lib/journal/types';
 	import {
 		compressImage,
+		compressAudio,
 		compressVideo,
 		fileToQueueBuffer,
 		isImageFile,
@@ -85,6 +86,8 @@
 	let mentionStart = $state<number | null>(null);
 	let mentionQuery = $state('');
 	let compressing = $state(false);
+	// Что сейчас жмётся — для подписи хода: видео или звук (A6).
+	let compressKind = $state<'video' | 'audio'>('video');
 	let compressProgress = $state(0);
 	let compressIndex = $state(0);
 	let compressTotal = $state(0);
@@ -116,7 +119,8 @@
 		const pct = Math.round(compressProgress * 100);
 		const of =
 			compressTotal > 1 ? ` (${compressIndex} из ${compressTotal})` : '';
-		return pct > 0 ? `Сжимаем видео${of}… ${pct}%` : `Сжимаем видео${of}…`;
+		const what = compressKind === 'audio' ? 'звук' : 'видео';
+		return pct > 0 ? `Сжимаем ${what}${of}… ${pct}%` : `Сжимаем ${what}${of}…`;
 	});
 	const windowsDiverged = $derived(
 		isEdit &&
@@ -474,11 +478,11 @@
 		try {
 			const compression = await fetchCompression(circle.origin).catch(() => undefined);
 			const next = [...picked];
-			const videoCount = list.filter(isVideoFile).length;
-			compressTotal = videoCount;
+			const heavyCount = list.filter((file) => isVideoFile(file) || isAudioFile(file)).length;
+			compressTotal = heavyCount;
 			compressIndex = 0;
 			keepOpenHint = list.some((file) => isVideoFile(file) && isLargeVideo(file.size));
-			compressing = videoCount > 0;
+			compressing = heavyCount > 0;
 			compressProgress = 0;
 
 			// Потолок вложения сервера: больший файл вернулся бы 413 уже после
@@ -494,6 +498,7 @@
 				} else if (isVideoFile(file)) {
 					compressIndex += 1;
 					compressProgress = 0;
+					compressKind = 'video';
 					const { fallbackReason, ...video } = await compressVideo(file, compression, (progress) => {
 						compressProgress = progress;
 					});
@@ -502,11 +507,21 @@
 						notCompressed.push(`${file.name} (${fallbackReason})`);
 						continue;
 					}
+				} else if (isAudioFile(file)) {
+					// WAV и FLAC с телефона — десятки мегабайт: жмём, как видео (A6).
+					compressIndex += 1;
+					compressProgress = 0;
+					compressKind = 'audio';
+					const { fallbackReason, ...audio } = await compressAudio(file, compression, (progress) => {
+						compressProgress = progress;
+					});
+					queueFile = { ...audio, type: audioMime(audio.name, audio.type) };
+					if (fallbackReason && maxBytes > 0 && audio.size > maxBytes) {
+						notCompressed.push(`${file.name} (${fallbackReason})`);
+						continue;
+					}
 				} else {
 					queueFile = await fileToQueueBuffer(file);
-					if (isAudioFile(file)) {
-						queueFile = { ...queueFile, type: audioMime(file.name, queueFile.type) };
-					}
 				}
 				if (maxBytes > 0 && queueFile.size > maxBytes) {
 					tooLarge.push(file.name);
@@ -547,7 +562,7 @@
 			const problems: string[] = [];
 			if (notCompressed.length) {
 				problems.push(
-					`Видео не сжалось, а без сжатия больше ${formatBytes(maxBytes)}: ${notCompressed.join(', ')}`
+					`Не сжалось, а без сжатия больше ${formatBytes(maxBytes)}: ${notCompressed.join(', ')}`
 				);
 			}
 			if (tooLarge.length) {
