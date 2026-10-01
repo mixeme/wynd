@@ -210,7 +210,7 @@
 - `admin/pay/subscription:188` → `.pay-thumb` (ui.css:2828)
 - `map:109` → `.map-pin-thumb`, строкой HTML
 
-У трёх правило `… img {width:100%;height:100%;object-fit:cover}` повторяет то, что уже даёт `.pic img`. → `Thumb` (`src`, `size`, `radius`).
+У трёх правило `… img {width:100%;height:100%;object-fit:cover}` повторяет то, что уже даёт `.pic img`. → `Thumb` (`src`, `size`, `radius`). **0.18.33:** повторы `img` у `.post-ref-pic` и `.audio-bar-cover` удалены — их даёт `.pic img`. `Thumb` не заведён: три обложки с `.pic` уже внутри компонентов (`AttachmentRow`, `AudioBar`, `PostRef`), превью оплаты — голая картинка 42×28 в таблице админки, метка карты — HTML-строка для Leaflet; общий компонент экранам ничего не дал бы.
 
 **2.15 Тонкая полоса хода или заполнения — средняя.** Пять вариантов одного и того же:
 - `.att-bar i` и `.audio-bar-line i` (ui.css:1160, 1194)
@@ -220,7 +220,7 @@
 
 → расширить `Meter`: `color`, `thin`, `inline`, `loading`. **Сделано в 0.18.30:** `Meter inline` и `color` — полоска квоты в таблице админки. Остальные три полосы (`.att-bar`, `.audio-bar-line`, `.tile-load-bar`) живут внутри компонентов (`AttachmentRow`, `AudioBar`, `MediaTile`) и экранам не видны — `thin`/`loading` не заводились.
 
-**2.16 Ссылка-текст `<a class="under">` — средняя.**
+**2.16 Ссылка-текст `<a class="under">` — средняя.** **Оставлено (0.18.33):** все шесть — настоящие ссылки с `href` (исходники, лицензии, «К кругам», регистрация), справочник прямо разрешает `<a class="under" href>`; кнопки-ссылки без адреса — `TextButton`. Компонент свёлся бы к переименованию тега.
 - `+page:139`
 - `circles/new:71`
 - `circles/[id]/+layout:279`
