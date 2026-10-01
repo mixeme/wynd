@@ -364,7 +364,7 @@
 - В `docs/plans` о нём только строка в 46-м плане (C3); плана с «Тип: пробел Wynd UI» и таблицей «Добавить в библиотеку» нет.
 - Класс `audio-bar-main` при этом вписан в `BUTTON_LAYOUT_CLASSES` сторожа. Значит, сторож правили, но запрет на новый файл не сработал: он есть только в хуке Cursor (см. «Не ловит», п. 6).
 
-→ задним числом оформить план пробела (и закрыть его). В `checkProject` добавить проверку: каждый файл `src/lib/{components,layouts}` есть в зафиксированном списке библиотеки или в открытом плане.
+→ задним числом оформить план пробела (и закрыть его). В `checkProject` добавить проверку: каждый файл `src/lib/{components,layouts}` есть в зафиксированном списке библиотеки или в открытом плане. **Сделано:** проверка — `checkLibraryRegistry` (0.18.14), план — `48-audio-bar-gap.plan.md`, закрыт (0.18.26).
 
 **5.4 `AudioBar` — не презентационный компонент — средняя.** Остальные `$ui` управляются пропсами, а этот:
 - сам импортирует `goto`, `page` из `$app/state` и стор `audioPlay`;
@@ -372,7 +372,7 @@
 - пишет `--player-h` в `document.documentElement` (`37–42`);
 - форматирует подписи (`formatBytes`, `audioTimeLabel`).
 
-→ разделить: в `$ui` — `AudioBar` с пропсами (`title`, `subtitle`, `coverUrl`, `color`, `progress`, `loading`, `playing`, `onopen`, `ontoggle`, `onstop`); подписка, видимость и `--player-h` — в `routes/+layout.svelte` или в `$lib/media/audioBar.svelte.ts`.
+→ разделить: в `$ui` — `AudioBar` с пропсами (`title`, `subtitle`, `coverUrl`, `color`, `progress`, `loading`, `playing`, `onopen`, `ontoggle`, `onstop`); подписка, видимость и `--player-h` — в `routes/+layout.svelte` или в `$lib/media/audioBar.svelte.ts`. **Сделано в 0.18.26:** `$ui/chrome/AudioBar` — только пропы; `useAudioBar()` в `$lib/media/audioBar.svelte.ts` (подписка, правило «где прятать», подписи, `--player-h`), зовётся в корневом `+layout`.
 
 **5.5 CSS `AudioBar` дублирует соседей — низкая.**
 - `.audio-bar-cover img` повторяет `.pic img`, а класс `.pic` тянет в полосу фон-«плейсхолдер» плитки ленты.
@@ -472,6 +472,7 @@
 Отдельно — `AudioBar`:
 - оформить план пробела задним числом;
 - разделить на презентационную полосу и логику (5.3, 5.4).
+— **сделано (0.18.26)**, план 48.
 
 ### Сторож (`ui-guard.mjs`) — чтобы находки не возвращались
 1. Расширить `RAW_CLASS_RULES` на `div`/`span`/`a` с классами `hint`, `h1s`, `tm`, `att`, `chk`, `danger`, `qr`, `under`, `men`, `panel` в боевых экранах; запретить `{@html}` в экранах. **Сделано в 0.18.14:** `checkLibraryClasses` — классы компонентов на голых HTML-тегах боевых экранов. `LIBRARY_CLASS_BANNED` (h1s, att, men, codebox, addph, sfield, panel) запрещены совсем; оставшиеся (tm, hint, qr, chk, danger, pic) — `LIBRARY_CLASS_RATCHET`, по экранам, только вниз; `{@html}` — `HTML_TAG_SCREENS` (три QR). `a.under` с `href` — по правилу справочника, не нарушение.

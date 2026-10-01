@@ -9,7 +9,11 @@
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import AudioBar from '$ui/chrome/AudioBar.svelte';
+	import { useAudioBar } from '$lib/media/audioBar.svelte';
 	import { pwaInfo } from 'virtual:pwa-info';
+
+	// Полоса плеера (4.20): звук играет и вне своего экрана (план 47, 5.4).
+	const audioBar = useAudioBar();
 
 	let { children } = $props();
 
@@ -105,7 +109,14 @@
 
 <div class="app" class:dev={$page.url.pathname.startsWith('/dev')}>
 	{@render children()}
-	<AudioBar />
+	{#if audioBar.view}
+		<AudioBar
+			{...audioBar.view}
+			onopen={audioBar.open}
+			ontoggle={audioBar.toggle}
+			onstop={audioBar.stop}
+		/>
+	{/if}
 </div>
 
 <style>

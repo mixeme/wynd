@@ -32,7 +32,8 @@ export const COMPONENT_MAP: CatalogGroup[] = [
 			{ component: 'CircleBar', screen: 'e3-1', smoke: '/dev/smoke/e3-1' },
 			{ component: 'BackBar', screen: 'e2-4, e2-9', smoke: '/dev/smoke/e2-4' },
 			{ component: 'AdminBar', screen: 'e9-5', smoke: '/dev/smoke/e9-5' },
-			{ component: 'ComposeToolbar', screen: 'e4-2' }
+			{ component: 'ComposeToolbar', screen: 'e4-2' },
+			{ component: 'AudioBar', screen: 'e4-20' }
 		]
 	},
 	{
