@@ -775,6 +775,11 @@
 	font-size: 11.5px;
 	color: var(--faint);
 }
+.pa .tm.tm-icon {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+}
 .pt {
 	margin: 0 0 11px;
 	overflow-wrap: anywhere;

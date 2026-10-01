@@ -1,18 +1,18 @@
 <script lang="ts">
+	import PostByline from '$ui/data/PostByline.svelte';
+	import EntryDateMark from '$ui/data/EntryDateMark.svelte';
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
 	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
 	import MentionText from '$ui/data/MentionText.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getContext, onDestroy, onMount } from 'svelte';
-	import Avatar from '$ui/data/Avatar.svelte';
 	import DayHeader from '$ui/data/DayHeader.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Loading from '$ui/Loading.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
-	import Icon from '$ui/Icon.svelte';
 	import MediaTile from '$ui/data/MediaTile.svelte';
 	import PostCard from '$ui/data/PostCard.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
@@ -265,9 +265,7 @@
 		{/if}
 		{#each posts as post (post.id)}
 			{#snippet backfilled()}
-				<span class="tm" style="display:flex;align-items:center;gap:5px">
-					<Icon name="clock" size="xs" />внесено сегодня
-				</span>
+				<EntryDateMark icon="clock" label="внесено сегодня" />
 			{/snippet}
 			{#snippet postText()}
 				<MentionText body={post.body} />
@@ -295,15 +293,13 @@
 				media={coverMedia(post.media) ? postMedia : undefined}
 			>
 				{#snippet author()}
-					<Avatar
+					<PostByline
 						initial={authorInitial(post.author_name)}
 						color={circle.colorHex}
 						src={authorAvatarSrc(post)}
+						name={post.author_name}
+						time={formatPostTime(post.created_at, post.entry_date)}
 					/>
-					<div>
-						<div class="n">{post.author_name}</div>
-						<div class="tm">{formatPostTime(post.created_at, post.entry_date)}</div>
-					</div>
 				{/snippet}
 			</PostCard>
 		{/each}

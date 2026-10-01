@@ -129,13 +129,17 @@ Guard: `npm run check:ui` — экран = существующие `$ui` + `$li
 
 ### `data/`
 
-SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, **ReactionBar**, **CommentPreview**, **CommentRow**, **ReactionListRow**, **SettingsRow**, MemberRow, SearchGroupHeader, **SearchResultRow**, **ServerRow**, FoldHeader, **GroupFoldCard**, AttachmentRow, PhotoPlaceholder, PhotoGrid, **MediaTile**, **MapBadge**, **MapPostSheet**, MonthLabel, DayCard, DayGrid, DayHeader, EntryDateMark, ArchiveBanner, **PayStreetBanner**, **MentionText**, **AttachmentList**, **QrCode**, **InviteLinkCard**, **EmptyState**, **PullRefresh**, **FeedEnd**, **ResponseEntry**, **PostRef**
+SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, **ReactionBar**, **CommentPreview**, **CommentRow**, **ReactionListRow**, **SettingsRow**, MemberRow, SearchGroupHeader, **SearchResultRow**, **ServerRow**, FoldHeader, **GroupFoldCard**, AttachmentRow, PhotoPlaceholder, PhotoGrid, **MediaTile**, **MapBadge**, **MapPostSheet**, MonthLabel, DayCard, DayGrid, DayHeader, EntryDateMark, ArchiveBanner, **PayStreetBanner**, **MentionText**, **AttachmentList**, **QrCode**, **InviteLinkCard**, **EmptyState**, **PullRefresh**, **FeedEnd**, **ResponseEntry**, **PostRef**, **PostByline**
 
 `PayStreetBanner` — баннеры оплаты на улочке (`/circles`, кадр **#e10-5**): `variant` `donate` \| `reminder` \| `pending`. Donate — `text`, `onclick` (help), опционально `dismissible` / `ondismiss`. Reminder — `expiresAtLabel`, `reminderDaysLeft`, `onclick` (extend). Pending — `pendingAtLabel`, опционально `expiresAtLabel`; без корневой кнопки. Стили `.pay-banner*` в `ui.css`; кликабельные зоны — `button.pay-banner-main`, `button.pay-reminder`.
 
 `MentionText` — текст записи или комментария (`body`): `@имя` цветом круга, переносы и пустые строки как написаны (`white-space: pre-wrap` на `.mention-text`).
 
 `AttachmentList` — вложения записи, не фото и не видео (**#e4-13**, **#e4-15**, **#e4-18**): звуки подряд — одна рамка `.att-group` со строками `grouped`, одиночный звук — `AttachmentRow audio`, файл — строка «скачать». `items`, `origin`, `circleId`, `circleName`, `color`, `postId`, `coverUrls` (обложки звуков по blob id).
+
+`PostByline` — левая часть шапки карточки записи, для snippet `author` у `PostCard`: аватар (`initial`, `color`, `src`), `name`, `time`, опц. `icon` перед временем (часы у записи в очереди). Справа в шапке — `EntryDateMark` (`label`, `icon`: `day` — к какому дню, `clock` — «внесено сегодня»).
+
+`CommentPreview` — комментарии под карточкой в ленте (`button.cm`): `first` (с временем `time`), `more` («ещё N»), `onclick`; `children` — своё содержимое (кадры /dev).
 
 `ResponseEntry` — строка «Откликов» (**#e3-13**): ссылка туда, где отклик живёт (`href`, `onopen`), внутри `CommentRow bare`; `initial`, `name`, `color`, `src`, `icon` (знак реакции), `label` («комментарий · 14:02»), под словами — children (текст, `PostRef`). Между строками — черта.
 

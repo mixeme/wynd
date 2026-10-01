@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PostByline from '$ui/data/PostByline.svelte';
 	import FeedEnd from '$ui/data/FeedEnd.svelte';
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
 	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
@@ -11,7 +12,6 @@
 	import { page } from '$app/stores';
 	import { getContext, onDestroy, onMount, tick } from 'svelte';
 	import ArchiveBanner from '$ui/data/ArchiveBanner.svelte';
-	import Avatar from '$ui/data/Avatar.svelte';
 	import EntryDateMark from '$ui/data/EntryDateMark.svelte';
 	import MediaTile from '$ui/data/MediaTile.svelte';
 	import EventDivider from '$ui/data/EventDivider.svelte';
@@ -20,7 +20,6 @@
 	import Hint from '$ui/forms/Hint.svelte';
 	import Loading from '$ui/Loading.svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
-	import Icon from '$ui/Icon.svelte';
 	import CommentPreview from '$ui/data/CommentPreview.svelte';
 	import PostCard from '$ui/data/PostCard.svelte';
 	import ReactionBar from '$ui/data/ReactionBar.svelte';
@@ -579,17 +578,14 @@
 					comments={item.state === 'failed' && item.error ? queuedError : undefined}
 				>
 						{#snippet author()}
-							<Avatar
+							<PostByline
 								initial={circle.identityInitial}
 								color={circle.colorHex}
 								src={circle.avatarUrl}
+								name={circle.identityName}
+								time="в очереди"
+								icon="clock"
 							/>
-							<div>
-								<div class="n">{circle.identityName}</div>
-								<div class="tm" style="display:flex;align-items:center;gap:5px">
-									<Icon name="clock" size="xs" />в очереди
-								</div>
-							</div>
 						{/snippet}
 						{#snippet headerRight()}
 							<IconButton
@@ -648,19 +644,6 @@
 						coverUrls={mediaUrls}
 					/>
 				{/snippet}
-				{#snippet postComments()}
-					{@const preview = commentPreview(post.comments)}
-					{#if preview.first}
-						<div>
-							{preview.first}{#if preview.createdAt}<span class="tm"
-								> · {formatPostTime(preview.createdAt)}</span
-							>{/if}
-						</div>
-					{/if}
-					{#if preview.more}
-						<div class="mo">ещё {plural(preview.more, WORD.comment)}</div>
-					{/if}
-				{/snippet}
 				<PostCard
 					onclick={() => openPost(post.id)}
 					headerRight={isBackdated(post) ? postDate : undefined}
@@ -670,15 +653,13 @@
 						: undefined}
 				>
 					{#snippet author()}
-						<Avatar
+						<PostByline
 							initial={authorInitial(post.author_name)}
 							color={circle.colorHex}
 							src={authorAvatarSrc(post)}
+							name={post.author_name}
+							time={formatPostTime(post.created_at)}
 						/>
-						<div>
-							<div class="n">{post.author_name}</div>
-							<div class="tm">{formatPostTime(post.created_at)}</div>
-						</div>
 					{/snippet}
 					{#snippet reactions()}
 						{#if !soloCircle}
@@ -702,11 +683,13 @@
 					<Hint style="margin:0 16px 12px">{archiveHint}</Hint>
 				{/if}
 				{#if post.comments?.length}
-					<CommentPreview onclick={() => openPost(post.id)}>
-						{#snippet children()}
-							{@render postComments()}
-						{/snippet}
-					</CommentPreview>
+					{@const preview = commentPreview(post.comments)}
+					<CommentPreview
+						first={preview.first || undefined}
+						time={preview.createdAt ? formatPostTime(preview.createdAt) : undefined}
+						more={preview.more ? `ещё ${plural(preview.more, WORD.comment)}` : undefined}
+						onclick={() => openPost(post.id)}
+					/>
 				{/if}
 				{#if dayPromptDate && circle.canWrite && post.entry_date === dayPromptDate && i === posts.findIndex((p) => p.entry_date === dayPromptDate)}
 					<FeedDayPromptCard

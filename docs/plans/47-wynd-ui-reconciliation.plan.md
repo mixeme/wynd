@@ -127,9 +127,9 @@
 - `circles/[id]/days/[date]/+page.svelte:251` — «внесено сегодня», clock;
 - `circles/[id]/posts/[postId]/+page.svelte:549` — то же без `.tm`, внутри `CommentRow time`.
 
-→ проп `icon` у `EntryDateMark` (по умолчанию `day`) и проп отступа слева (сейчас `margin-left:auto` зашит).
+→ проп `icon` у `EntryDateMark` (по умолчанию `day`) и проп отступа слева (сейчас `margin-left:auto` зашит). **Сделано в 0.18.27:** `EntryDateMark icon`; левая часть шапки — `PostByline` (`icon` у времени) в ленте, очереди, дне и на экране записи. Отступ слева оставлен зашитым: «внесено сегодня» на кадре 5.2 тоже справа — на экране дня оно стояло слева, исправлено.
 
-**1.8 `circles/[id]/+page.svelte:732–744` — содержимое `CommentPreview` собрано вручную (`div` + `span.tm` + `div.mo`) — средняя.** Классы `.mo` и `.tm` внутри `.cm` — внутренности компонента, экран их знать не должен. → пропы `CommentPreview`: `first`, `time`, `more`.
+**1.8 `circles/[id]/+page.svelte:732–744` — содержимое `CommentPreview` собрано вручную (`div` + `span.tm` + `div.mo`) — средняя.** Классы `.mo` и `.tm` внутри `.cm` — внутренности компонента, экран их знать не должен. → пропы `CommentPreview`: `first`, `time`, `more`. **Сделано в 0.18.27.**
 
 **1.9 `circles/[id]/settings/identity/+page.svelte:144–150` — крупный аватар: обёртка-`div` и `style` на `Avatar` (96 px, шрифт 38 px) — средняя.** → проп `size` у `Avatar` (`sm|md|lg`). Тот же крупный аватар нужен и форме из 5.8.
 

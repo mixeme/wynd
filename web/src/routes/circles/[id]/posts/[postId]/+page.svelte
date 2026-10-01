@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PostByline from '$ui/data/PostByline.svelte';
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
 	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
 	import ReactionsSheet from '$ui/overlays/ReactionsSheet.svelte';
@@ -7,7 +8,6 @@
 	import { afterNavigate, goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getContext, onDestroy, onMount, tick } from 'svelte';
-	import Avatar from '$ui/data/Avatar.svelte';
 	import CommentRow from '$ui/data/CommentRow.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -435,17 +435,15 @@
 			media={attachmentMedia(currentPost.media).length ? postMedia : undefined}
 		>
 			{#snippet author()}
-				<Avatar
+				<PostByline
 					initial={authorInitial(currentPost.author_name)}
 					color={circle.colorHex}
 					src={currentPost.identity_id === circle.identityId && circle.avatarUrl
 						? circle.avatarUrl
 						: postAvatarUrl || undefined}
+					name={currentPost.author_name}
+					time={formatPostTime(currentPost.created_at, currentPost.entry_date)}
 				/>
-				<div>
-					<div class="n">{currentPost.author_name}</div>
-					<div class="tm">{formatPostTime(currentPost.created_at, currentPost.entry_date)}</div>
-				</div>
 			{/snippet}
 			{#snippet reactions()}
 				{#if !soloCircle}
