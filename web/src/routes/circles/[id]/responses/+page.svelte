@@ -13,8 +13,7 @@
 		formatClock,
 		formatDayLabel,
 		formatEntryDate,
-		localDayKey,
-		pluralPosts
+		localDayKey
 	} from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { authorInitial, reactionIconName } from '$lib/journal/present';
@@ -32,15 +31,14 @@
 	import { resolveMediaUrls } from '$lib/media/batch';
 	import { registerRefetch } from '$lib/sync/sync';
 
-	// «Отклики» (3.13): комментарии, реакции, названия и обложки дней —
-	// и у старых записей, которые в ленте далеко внизу. Свежее сверху, черта
+	// «Отклики» (3.13): комментарии и реакции — и у старых записей, которые
+	// в ленте далеко внизу. Свежее сверху, черта
 	// «выше — новое» стоит там, где остановились в прошлый раз.
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 
 	let items = $state<ResponseItem[]>([]);
 	let posts = $state<Record<string, ResponsePostRef>>({});
-	let dayPosts = $state<Record<string, number>>({});
 	let hasMore = $state(false);
 	let loading = $state(true);
 	let loadingMore = $state(false);
@@ -56,7 +54,6 @@
 		const ids = new Set<string>();
 		for (const it of list) {
 			if (it.actor_avatar_blob_id) ids.add(it.actor_avatar_blob_id);
-			if (it.cover_blob_id) ids.add(it.cover_blob_id);
 			const ref = it.post_id ? refs[it.post_id] : undefined;
 			if (ref?.cover_blob_id) ids.add(ref.cover_blob_id);
 		}
@@ -76,7 +73,6 @@
 			if (readSeq < 0) readSeq = page.read_seq;
 			items = page.items;
 			posts = page.posts;
-			dayPosts = page.day_posts;
 			hasMore = page.has_more;
 			void resolveMedia(page.items, page.posts);
 			const top = page.items[0]?.seq ?? 0;
@@ -99,7 +95,6 @@
 			const page = await fetchResponses(circle.origin, circle.circleId, last.seq);
 			items = [...items, ...page.items];
 			posts = { ...posts, ...page.posts };
-			dayPosts = { ...dayPosts, ...page.day_posts };
 			hasMore = page.has_more;
 			void resolveMedia(page.items, page.posts);
 		} catch {
@@ -159,8 +154,7 @@
 	{:else if !items.length}
 		<div class="h1s ctr mt-48">Откликов пока нет</div>
 		<Hint class="ctr hint-inset">
-			Здесь соберутся комментарии, реакции и названия дней — и к тем записям, что в ленте уже
-			далеко внизу.
+			Здесь соберутся комментарии и реакции — и к тем записям, что в ленте уже далеко внизу.
 		</Hint>
 	{:else}
 		<div class="resp-list">
@@ -189,23 +183,8 @@
 						{/snippet}
 						{#if row.kind === 'comment' && row.lead.body}
 							<div class="pre">{row.lead.body}</div>
-						{:else if row.kind === 'day_title' && row.lead.title}
-							<div>«{row.lead.title}»</div>
 						{/if}
-						{#if row.kind === 'day_title' || row.kind === 'day_cover'}
-							<div class="resp-ref">
-								{#if row.lead.cover_blob_id}
-									<span class="pic resp-pic"
-										>{#if mediaUrls[row.lead.cover_blob_id]}<img src={mediaUrls[row.lead.cover_blob_id]} alt="" />{/if}</span
-									>
-								{/if}
-								<span class="resp-line"
-									>день · {formatEntryDate(row.lead.entry_date ?? '')}{#if dayPosts[row.lead.entry_date ?? '']}{' · '}{pluralPosts(
-											dayPosts[row.lead.entry_date ?? '']
-										)}{/if}</span
-								>
-							</div>
-						{:else if ref}
+						{#if ref}
 							<div class="resp-ref">
 								{#if ref.cover_blob_id}
 									<span class="pic resp-pic"

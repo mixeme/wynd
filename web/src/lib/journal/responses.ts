@@ -1,10 +1,10 @@
-// «Отклики» (3.12–3.14): комментарии, реакции, названия и обложки дней —
-// всё, что люди сделали с уже лежащими записями, свежее сверху. Своих
-// действий и правок записей тут нет (wynd.html, «Правила ленты»).
+// «Отклики» (3.12–3.14): комментарии и реакции к уже лежащим записям,
+// свежее сверху. Своих действий и правок записей тут нет, название и
+// обложка дня идут в ленту строкой (wynd.html, «Правила ленты»).
 
 import { apiJson } from '$lib/api/client';
 
-export type ResponseKind = 'comment' | 'reaction' | 'day_title' | 'day_cover';
+export type ResponseKind = 'comment' | 'reaction';
 
 export interface ResponseItem {
 	kind: ResponseKind;
@@ -16,10 +16,7 @@ export interface ResponseItem {
 	comment_id?: string;
 	body?: string;
 	emoji?: string;
-	title?: string;
 	post_id?: string;
-	entry_date?: string;
-	cover_blob_id?: string;
 }
 
 export interface ResponsePostRef {
@@ -35,7 +32,6 @@ export interface ResponsePostRef {
 export interface ResponsesPage {
 	items: ResponseItem[];
 	posts: Record<string, ResponsePostRef>;
-	day_posts: Record<string, number>;
 	read_seq: number;
 	has_more: boolean;
 }
@@ -50,7 +46,6 @@ export async function fetchResponses(
 	return {
 		items: page.items ?? [],
 		posts: page.posts ?? {},
-		day_posts: page.day_posts ?? {},
 		read_seq: page.read_seq ?? 0,
 		has_more: Boolean(page.has_more)
 	};
@@ -117,19 +112,12 @@ export function responseKindLabel(kind: ResponseKind): string {
 			return 'комментарий';
 		case 'reaction':
 			return 'реакция';
-		case 'day_title':
-			return 'название дня';
-		case 'day_cover':
-			return 'обложка дня';
 	}
 }
 
-/** Куда ведёт нажатие: комментарий — к нему в обсуждении, реакция — в запись, день — в день. */
+/** Куда ведёт нажатие: комментарий — к нему в обсуждении, реакция — в запись. */
 export function responseHref(circleId: string, item: ResponseItem): string {
 	const base = `/circles/${circleId}`;
-	if ((item.kind === 'day_title' || item.kind === 'day_cover') && item.entry_date) {
-		return `${base}/days/${item.entry_date}`;
-	}
 	if (item.post_id) {
 		const comment = item.kind === 'comment' && item.comment_id ? `?comment=${item.comment_id}` : '';
 		return `${base}/posts/${item.post_id}${comment}`;

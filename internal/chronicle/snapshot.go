@@ -531,7 +531,8 @@ func (c *Chronicle) FeedMetaForAccount(ctx context.Context, circleID, accountID 
 func (c *Chronicle) feedServiceEvents(ctx context.Context, circleID, accountID string) ([]FeedEventSummary, error) {
 	rows, err := c.db.QueryContext(ctx, `
 		SELECT seq, summary, created_at FROM events
-		WHERE circle_id = ? AND is_service = 1 AND summary != ''
+		WHERE circle_id = ? AND summary != ''
+		  AND (is_service = 1 OR event_type IN ('day.titled', 'day.cover_set'))
 		ORDER BY seq DESC
 	`, circleID)
 	if err != nil {

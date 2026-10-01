@@ -8,12 +8,13 @@ import (
 	"time"
 )
 
-// «Отклики» (3.12–3.13): комментарии, реакции, названия и обложки дней —
-// всё, что люди делают с уже лежащими записями, в порядке журнала.
+// «Отклики» (3.12–3.13): комментарии и реакции — то, что люди отвечают на
+// уже лежащие записи, в порядке журнала. Название и обложка дня сюда не
+// входят: они идут в ленту строкой, как служебные события (3.1).
 //
 // Источник — живые строки сказанного, а не лог событий: удалённый
 // комментарий, снятая реакция и схлопнутый день исчезают сами, без
-// отдельной чистки. Правки записей сюда не входят (wynd.html, «Правила
+// отдельной чистки. Правки записей сюда тоже не входят (wynd.html, «Правила
 // ленты»): это продолжение сказанного автором, а не отклик на него. Своих
 // действий нет — что сделал сам, человек знает.
 
@@ -21,8 +22,6 @@ import (
 const (
 	ResponseComment  = "comment"
 	ResponseReaction = "reaction"
-	ResponseDayTitle = "day_title"
-	ResponseDayCover = "day_cover"
 )
 
 // ResponsePageLimit — сколько откликов отдаёт одна страница.
@@ -59,17 +58,16 @@ type ResponsePostRef struct {
 // ResponsesPage — страница откликов и ссылки на записи и дни.
 type ResponsesPage struct {
 	Items    []Response
-	Posts    map[string]ResponsePostRef
-	DayPosts map[string]int
-	ReadSeq  int64
-	HasMore  bool
+	Posts   map[string]ResponsePostRef
+	ReadSeq int64
+	HasMore bool
 }
 
 // responsesSQL собирает отклики круга, видимые участнику и не его. where —
 // условие на seq (`seq < ?` для страницы, `seq > ?` для счётчика).
 //
 // Видимость — как у ленты: отклик должен попасть в отрезок чтения, и запись,
-// к которой он относится, — тоже. День видим, если видно само событие.
+// к которой он относится, — тоже.
 func responsesSQL(selectList, where string) string {
 	return fmt.Sprintf(`
 		SELECT %s FROM (
@@ -88,28 +86,10 @@ func responsesSQL(selectList, where string) string {
 			JOIN posts p ON p.id = r.post_id AND p.deleted = 0
 			WHERE r.circle_id = ? AND r.deleted = 0 AND r.emoji != '' AND r.identity_id != ?
 			  AND %s AND %s
-			UNION ALL
-			SELECT '%s', d.title_event_seq, e.created_at, e.actor_identity_id, e.actor_name,
-				'', '', '', d.title, '', d.entry_date, ''
-			FROM days d
-			JOIN events e ON e.seq = d.title_event_seq
-			WHERE d.circle_id = ? AND d.title IS NOT NULL AND d.title != ''
-			  AND COALESCE(e.actor_identity_id, '') != ?
-			  AND %s
-			UNION ALL
-			SELECT '%s', d.cover_event_seq, e.created_at, e.actor_identity_id, e.actor_name,
-				'', '', '', '', COALESCE(d.cover_post_id, ''), d.entry_date, COALESCE(d.cover_blob_id, '')
-			FROM days d
-			JOIN events e ON e.seq = d.cover_event_seq
-			WHERE d.circle_id = ? AND d.cover_blob_id IS NOT NULL
-			  AND COALESCE(e.actor_identity_id, '') != ?
-			  AND %s
 		) WHERE %s`,
 		selectList,
 		ResponseComment, sqlVisibleAt("c.created_at"), sqlVisibleAt("p.created_at"),
 		ResponseReaction, sqlVisibleAt("r.created_at"), sqlVisibleAt("p.created_at"),
-		ResponseDayTitle, sqlVisibleAt("e.created_at"),
-		ResponseDayCover, sqlVisibleAt("e.created_at"),
 		where)
 }
 
@@ -120,11 +100,6 @@ func responsesArgs(circleID, accountID, identityID string) []any {
 	for range 2 {
 		args = append(args, circleID, identityID)
 		args = append(args, vis...)
-		args = append(args, vis...)
-	}
-	// название и обложка дня: круг, не я, событие видно
-	for range 2 {
-		args = append(args, circleID, identityID)
 		args = append(args, vis...)
 	}
 	return args
@@ -216,7 +191,7 @@ func (c *Chronicle) Responses(ctx context.Context, circleID, accountID string, b
 	}
 	defer rows.Close()
 
-	page := ResponsesPage{ReadSeq: readSeq, Posts: map[string]ResponsePostRef{}, DayPosts: map[string]int{}}
+	page := ResponsesPage{ReadSeq: readSeq, Posts: map[string]ResponsePostRef{}}
 	for rows.Next() {
 		var r Response
 		var at string
@@ -238,18 +213,18 @@ func (c *Chronicle) Responses(ctx context.Context, circleID, accountID string, b
 		page.Items = page.Items[:ResponsePageLimit]
 		page.HasMore = true
 	}
-	if err := c.attachResponseRefs(ctx, circleID, accountID, &page); err != nil {
+	if err := c.attachResponseRefs(ctx, &page); err != nil {
 		return ResponsesPage{}, err
 	}
 	return page, nil
 }
 
-func (c *Chronicle) attachResponseRefs(ctx context.Context, circleID, accountID string, page *ResponsesPage) error {
+func (c *Chronicle) attachResponseRefs(ctx context.Context, page *ResponsesPage) error {
 	var postIDs, actors []string
 	seenPost := map[string]bool{}
 	seenActor := map[string]bool{}
 	for _, r := range page.Items {
-		if r.PostID != "" && !seenPost[r.PostID] && r.Kind != ResponseDayCover {
+		if r.PostID != "" && !seenPost[r.PostID] {
 			seenPost[r.PostID] = true
 			postIDs = append(postIDs, r.PostID)
 		}
@@ -281,24 +256,6 @@ func (c *Chronicle) attachResponseRefs(ctx context.Context, circleID, accountID 
 			}
 			ref.CoverBlobID = responseCover(media[id])
 			page.Posts[id] = ref
-		}
-	}
-	hasDay := false
-	for _, r := range page.Items {
-		if r.Kind == ResponseDayTitle || r.Kind == ResponseDayCover {
-			hasDay = true
-			break
-		}
-	}
-	if hasDay {
-		counts, err := c.visiblePostCountsByDay(ctx, circleID, accountID)
-		if err != nil {
-			return err
-		}
-		for _, r := range page.Items {
-			if r.EntryDate != "" {
-				page.DayPosts[r.EntryDate] = counts[r.EntryDate]
-			}
 		}
 	}
 	return nil

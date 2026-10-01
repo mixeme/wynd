@@ -8,7 +8,7 @@ import (
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 )
 
-// «Отклики» (3.13): страница откликов круга от свежего к старому.
+// «Отклики» (3.13): комментарии и реакции круга от свежего к старому.
 func (s *Server) handleResponses(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	sess, ok := requireSession(w, r)
@@ -42,10 +42,7 @@ func (s *Server) handleResponses(w http.ResponseWriter, r *http.Request) {
 		setIf(item, "comment_id", it.CommentID)
 		setIf(item, "body", it.Body)
 		setIf(item, "emoji", it.Emoji)
-		setIf(item, "title", it.Title)
 		setIf(item, "post_id", it.PostID)
-		setIf(item, "entry_date", it.EntryDate)
-		setIf(item, "cover_blob_id", it.CoverBlobID)
 		items[i] = item
 	}
 	posts := make(map[string]any, len(page.Posts))
@@ -64,7 +61,6 @@ func (s *Server) handleResponses(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"items":     items,
 		"posts":     posts,
-		"day_posts": page.DayPosts,
 		"read_seq":  page.ReadSeq,
 		"has_more":  page.HasMore,
 	})

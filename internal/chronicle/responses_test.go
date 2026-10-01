@@ -32,14 +32,6 @@ func TestResponsesCollectOthersActivityNewestFirst(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := e.ch.SetDayTitle(e.ctx, chronicle.DayTitleInput{
-		CircleID: circle.ID, AccountID: "kot", EntryDate: "2026-07-12", Title: "Яблоки", Now: e.at(8),
-	}); err != nil {
-		// назвать день может только тот, у кого есть запись за этот день
-		if err != chronicle.ErrForbidden {
-			t.Fatal(err)
-		}
-	}
 
 	page, err := e.ch.Responses(e.ctx, circle.ID, "owner", 0)
 	if err != nil {
@@ -124,5 +116,39 @@ func TestResponsesRespectVisibility(t *testing.T) {
 	}
 	if len(page.Items) != 0 {
 		t.Fatalf("новичок видит отклик к невидимой записи: %+v", page.Items)
+	}
+}
+
+// Название дня — строка в ленте (3.1), а не отклик: в «Откликах» его нет,
+// в событиях ленты есть, и с датой — какой это день.
+func TestDayTitleGoesToFeedNotResponses(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	e.join(circle.ID, "kot", "Кот", e.at(0))
+	e.post(circle.ID, "kot", "яблоки", "2026-08-06", e.at(1))
+	if err := e.ch.SetDayTitle(e.ctx, chronicle.DayTitleInput{
+		CircleID: circle.ID, AccountID: "kot", EntryDate: "2026-08-06", Title: "Плёнки", Now: e.at(2),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	page, err := e.ch.Responses(e.ctx, circle.ID, "owner", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Items) != 0 {
+		t.Fatalf("название дня в откликах: %+v", page.Items)
+	}
+	meta, err := e.ch.FeedMetaForAccount(e.ctx, circle.ID, "owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, ev := range meta.Events {
+		if ev.Summary == "Кот назвал 6 августа «Плёнки»" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("названия дня нет в ленте: %+v", meta.Events)
 	}
 }

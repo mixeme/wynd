@@ -40,13 +40,10 @@ describe('отклики', () => {
 	});
 
 	it('подпись без глагола и адрес — туда, где отклик живёт', () => {
-		expect(responseKindLabel('day_title')).toBe('название дня');
+		expect(responseKindLabel('reaction')).toBe('реакция');
 		expect(responseHref('c', item(1, { post_id: 'p', comment_id: 'm' }))).toBe(
 			'/circles/c/posts/p?comment=m'
 		);
 		expect(responseHref('c', item(1, { kind: 'reaction', post_id: 'p' }))).toBe('/circles/c/posts/p');
-		expect(responseHref('c', item(1, { kind: 'day_title', entry_date: '2026-08-06' }))).toBe(
-			'/circles/c/days/2026-08-06'
-		);
 	});
 });

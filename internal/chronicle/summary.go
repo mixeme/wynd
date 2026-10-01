@@ -61,12 +61,27 @@ func summaryReactionSet(name, emoji string) string {
 	return fmt.Sprintf("%s поставил реакцию %s", name, emoji)
 }
 
-func summaryDayTitled(name, title string) string {
-	return fmt.Sprintf("%s назвал день «%s»", name, title)
+// Название и обложка дня идут в ленту строкой, как служебные события
+// (3.1), поэтому в строке — какой это день: «выбрал обложку дня» без даты
+// в ленте не понять.
+func summaryDayTitled(name, title, entryDate string) string {
+	return fmt.Sprintf("%s назвал %s «%s»", name, dayLabel(entryDate), title)
 }
 
-func summaryDayCoverSet(name string) string {
-	return fmt.Sprintf("%s выбрал обложку дня", name)
+func summaryDayCoverSet(name, entryDate string) string {
+	return fmt.Sprintf("%s выбрал обложку для %s", name, dayLabel(entryDate))
+}
+
+var monthsGenitive = [...]string{"января", "февраля", "марта", "апреля", "мая", "июня",
+	"июля", "августа", "сентября", "октября", "ноября", "декабря"}
+
+// dayLabel: "2026-08-06" → "6 августа"; нераспознанное — как есть.
+func dayLabel(entryDate string) string {
+	t, err := time.Parse("2006-01-02", entryDate)
+	if err != nil {
+		return entryDate
+	}
+	return fmt.Sprintf("%d %s", t.Day(), monthsGenitive[t.Month()-1])
 }
 
 func summaryCutoffSet(cutoff string) string {
