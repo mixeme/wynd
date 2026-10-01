@@ -425,7 +425,8 @@
 		{#if canInvite}
 			<SettingsRow
 				title="Пригласить"
-				style="margin-top:14px;border-top:1px solid var(--line)"
+				class="mt-14"
+				divided="top"
 				onclick={() => goto(`/circles/${circle.circleId}/settings/invite`)}
 			/>
 			<SettingsRow

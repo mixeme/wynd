@@ -131,7 +131,7 @@
 
 **1.8 `circles/[id]/+page.svelte:732–744` — содержимое `CommentPreview` собрано вручную (`div` + `span.tm` + `div.mo`) — средняя.** Классы `.mo` и `.tm` внутри `.cm` — внутренности компонента, экран их знать не должен. → пропы `CommentPreview`: `first`, `time`, `more`. **Сделано в 0.18.27.**
 
-**1.9 `circles/[id]/settings/identity/+page.svelte:144–150` — крупный аватар: обёртка-`div` и `style` на `Avatar` (96 px, шрифт 38 px) — средняя.** → проп `size` у `Avatar` (`sm|md|lg`). Тот же крупный аватар нужен и форме из 5.8.
+**1.9 `circles/[id]/settings/identity/+page.svelte:144–150` — крупный аватар: обёртка-`div` и `style` на `Avatar` (96 px, шрифт 38 px) — средняя.** → проп `size` у `Avatar` (`sm|md|lg`). Тот же крупный аватар нужен и форме из 5.8. **Сделано в 0.18.29:** `Avatar size="lg"` (`md` по умолчанию).
 
 **1.10 Заголовок админ-экрана `<h4 style="margin-bottom:…">` + `div.note` вместо заголовка `AdminSection` — средняя.** `AdminSection` уже рисует `<h4>` по `title`, но эти экраны зовут его без заголовка и пишут свой.
 - `admin/check:95–96`, `admin/fix:79–80`
@@ -265,7 +265,7 @@
 - `archive:45,73`
 - `settings:446`
 
-→ проп `divided` (`top|bottom|both`) у `SettingsRow` или обёртка `SettingsGroup`.
+→ проп `divided` (`top|bottom|both`) у `SettingsRow` или обёртка `SettingsGroup`. **Сделано в 0.18.29:** `SettingsRow divided` во всех восьми местах (и через `DateRow`); отступ сверху — служебным классом.
 
 **2.23 Цветная точка `span.dot style="background:…"` — низкая.** `admin/+page:408`, `admin/people/[id]:145`; у `SearchGroupHeader` своя точка. → `ColorDot` (`color`) — или пропы, как в 1.5.
 
@@ -283,7 +283,7 @@
 
 **3.3 `.label-row` / `.label-aside` (ui.css:2523–2531, в блоке служебных классов) — средняя.**
 - Где используется: только `circles/new/you:148–150`. `circles/[id]/join:236–240` делает то же инлайн-стилем.
-- Что сделать: проп `aside` («необязательно») у `Label`.
+- Что сделать: проп `aside` («необязательно») у `Label`. **Сделано в 0.18.29:** `Label aside`; `.label-row` теперь класс компонента (`.lab.label-row`).
 
 **3.4 `.invite-url` (ui.css:2050–2055) — средняя.**
 - Где используется: только `invites:146`. `invite:205` пишет те же три свойства инлайном.

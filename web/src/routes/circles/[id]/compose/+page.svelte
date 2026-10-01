@@ -755,7 +755,8 @@
 			icon="day"
 			title="Отнести к дате"
 			subtitle={entryDateSubtitle}
-			style="margin-top:16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"
+			class="mt-16"
+			divided="both"
 		/>
 		{#if isEdit}
 			<Hint>
@@ -777,7 +778,8 @@
 					? editWindowSubtitle(editingPost)
 					: undefined}
 				chevron={false}
-				style="margin-top:18px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"
+				class="mt-18"
+				divided="both"
 			/>
 			{#if windowsDiverged}
 				<Hint>

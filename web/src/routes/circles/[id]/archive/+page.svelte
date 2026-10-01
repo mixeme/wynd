@@ -42,7 +42,7 @@
 				cycle.personal_archive_bytes
 			)}"
 			chevron={false}
-			style="border-top:1px solid var(--line)"
+			divided="top"
 		/>
 		<SettingsRow
 			icon="file"
@@ -70,7 +70,7 @@
 			title="Снято на {formatEntryDate(cycle.cutoff_date)}"
 			value={cycle.cutoff_locked ? 'дата замерла' : 'можно сдвинуть'}
 			chevron={false}
-			style="border-top:1px solid var(--line)"
+			divided="top"
 		/>
 		<SettingsRow
 			title="Скачать до {formatEntryDate(cycle.deadline.slice(0, 10))}"

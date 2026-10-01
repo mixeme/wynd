@@ -10,14 +10,16 @@
 		title,
 		subtitle,
 		icon,
-		style = ''
+		divided,
+		class: className = ''
 	}: {
 		/** «2026-10-01». */
 		value?: string;
 		title: string;
 		subtitle?: string;
 		icon?: IconName;
-		style?: string;
+		divided?: 'top' | 'bottom' | 'both';
+		class?: string;
 	} = $props();
 
 	let input: HTMLInputElement | undefined = $state();
@@ -35,5 +37,5 @@
 
 <div class="date-row">
 	<input bind:this={input} type="date" bind:value class="date-pick" tabindex="-1" />
-	<SettingsRow {icon} {title} {subtitle} {style} onclick={open} />
+	<SettingsRow {icon} {title} {subtitle} {divided} class={className} onclick={open} />
 </div>

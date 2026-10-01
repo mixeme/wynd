@@ -12,6 +12,7 @@
 		chevron = true,
 		onclick,
 		control,
+		divided,
 		class: className = '',
 		style = ''
 	}: {
@@ -23,14 +24,32 @@
 		chevron?: boolean;
 		onclick?: () => void;
 		control?: Snippet;
+		/** Черта над строкой, под ней или с обеих сторон — отдельная строка
+		 *  среди текста (план 47, 2.22). */
+		divided?: 'top' | 'bottom' | 'both';
 		class?: string;
 		style?: string;
 	} = $props();
+
+	const rowClass = $derived(
+		[
+			className,
+			divided === 'top' || divided === 'both' ? 'divided-top' : '',
+			divided === 'bottom' || divided === 'both' ? 'divided-bottom' : ''
+		]
+			.filter(Boolean)
+			.join(' ')
+	);
 </script>
 
 <!-- С control (переключатель и т. п.) строка не нажимается целиком — иначе
      вложенная кнопка; заголовок тогда без жирного, как в кадрах. -->
-<Row onclick={control ? undefined : onclick} {link} class={className} {style}>
+<Row
+	onclick={control ? undefined : onclick}
+	{link}
+	class={rowClass}
+	{style}
+>
 	{#snippet leading()}
 		{#if icon}
 			<Icon name={icon} />

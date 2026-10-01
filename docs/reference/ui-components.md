@@ -42,7 +42,7 @@
 - Карточки ленты и дней: `PostCard` — корневой `div.post` (вложенные контролы, не `<button>`); клик по телу через action, не `onclick` на разметке. `DayCard` при `onclick` — `<button type="button">`, иначе `div`.
 - `PostCard` action игнорирует `button, a, input, textarea, select, label, .rxpick` — чипам реакций `stopPropagation` не нужен; альбом и прочие не-кнопки по-прежнему останавливают всплытие сами.
 
-**Формы:** ввод — `Input` / `TextArea` / `SearchField`; статика — `FieldDisplay` (бывший `Field`). Админка: `Input admin={true}` и `FieldDisplay admin={true}` (класс `.inp`), не отдельный `AdminInput`. `Input mono` — моноширинный (адрес, почта), `Input small` — 12,5 px для длинного значения в узком поле. Размер и шрифт поля — пропами, не служебными классами: `input.fld` / `input.inp` сильнее одного класса (`.w72`, `.sz-12`, `.mono` на поле не действуют). `SearchField` — редактируемый поиск и поля фильтров (тот же виджет: `/search`, поиск в круге, 9.3 почта); `BackBar` свой `.sfield`. `TextArea variant`: `area` \| `field` \| `compose` \| `comment`.
+**Формы:** `Label aside="необязательно"` — мелкая подпись справа без капители. Ввод — `Input` / `TextArea` / `SearchField`; статика — `FieldDisplay` (бывший `Field`). Админка: `Input admin={true}` и `FieldDisplay admin={true}` (класс `.inp`), не отдельный `AdminInput`. `Input mono` — моноширинный (адрес, почта), `Input small` — 12,5 px для длинного значения в узком поле. Размер и шрифт поля — пропами, не служебными классами: `input.fld` / `input.inp` сильнее одного класса (`.w72`, `.sz-12`, `.mono` на поле не действуют). `SearchField` — редактируемый поиск и поля фильтров (тот же виджет: `/search`, поиск в круге, 9.3 почта); `BackBar` свой `.sfield`. `TextArea variant`: `area` \| `field` \| `compose` \| `comment`.
 
 ---
 
@@ -169,6 +169,8 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 
 Строки с опциональным `onclick`: корень `button.row2` / `button.r` или `div` (`SettingsRow`, `CircleRow`, `ServerRow`, `SearchResultRow`, `MemberRow`).
 
+- `SettingsRow divided` (`top` \| `bottom` \| `both`) — черта над и/или под строкой, когда она стоит среди текста (не в списке строк). `DateRow` пробрасывает `divided` и `class`.
+- `Avatar size="lg"` — 96 px по центру, буква 38 px («Кто вы в этом круге»).
 - `SettingsRow` с snippet `control` — всегда `div.row2`, справа контрол (например `Switch`); `chevron`/`value` не рендерятся; title без `font-weight:600`.
 - `Switch`: `bind:checked` — для формы с кнопкой «Сохранить»; `onchange(checked)` — когда нажатие сразу пишет на сервер: вызывается только от нажатия, не от смены `checked` извне (иначе обновление карточки перезаписало бы сервер старым значением).
 - `PostCard` — `div.post`, клик через action; `DayCard` — `<button>` при `onclick`, иначе `div`. `FoldHeader` — `button.fold` при `onclick`, сворачивание через `expanded`. `DayHeader`: `ontitle` / `oncover` (`button.pic` при `oncover`).

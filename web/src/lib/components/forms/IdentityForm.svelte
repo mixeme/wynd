@@ -75,10 +75,7 @@
 <FilePicker bind:this={photoPicker} accept="image/*" onfiles={([file]) => onSelected(file)} />
 <Label>Имя</Label>
 <Input active type="text" autocomplete="name" bind:value={name} />
-<Label class="label-row">
-	<span>{postLabel}</span>
-	<span class="label-aside">необязательно</span>
-</Label>
+<Label aside="необязательно">{postLabel}</Label>
 <TextArea variant="area" active rows={3} bind:value={firstPost} placeholder={postPlaceholder} />
 
 {#if cropFile}

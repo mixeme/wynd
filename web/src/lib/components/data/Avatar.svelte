@@ -3,18 +3,21 @@
 		initial,
 		color,
 		src,
+		size = 'md',
 		class: className = '',
 		style = ''
 	}: {
 		initial: string;
 		color?: string;
 		src?: string;
+		/** lg — крупный, по центру: «Кто вы в этом круге» (план 47, 1.9). */
+		size?: 'md' | 'lg';
 		class?: string;
 		style?: string;
 	} = $props();
 </script>
 
-<div class="av {className}" style:background={src ? undefined : color} {style}>
+<div class="av {size === 'lg' ? 'av-lg ' : ''}{className}" style:background={src ? undefined : color} {style}>
 	{#if src}
 		<img {src} alt="" />
 	{:else}

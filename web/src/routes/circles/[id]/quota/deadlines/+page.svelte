@@ -144,7 +144,7 @@
 			subtitle={cutoffStats}
 			value="дата замерла"
 			chevron={false}
-			style="border-top:1px solid var(--line);border-bottom:1px solid var(--line)"
+			divided="both"
 		/>
 		<Hint
 			>Кто-то уже скачал архив. Эту отсечку больше не сдвинуть: другой диапазон — новый цикл,
@@ -156,7 +156,7 @@
 			subtitle={cutoffStats}
 			value="изменить"
 			chevron={false}
-			style="border-top:1px solid var(--line);border-bottom:1px solid var(--line)"
+			divided="both"
 			onclick={() => {
 				const el = document.getElementById(cutoffInputId) as HTMLInputElement | null;
 				el?.showPicker?.() ?? el?.focus();

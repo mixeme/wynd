@@ -768,6 +768,12 @@
 	flex: 0 0 auto;
 	background: var(--rc,var(--c));
 }
+.av.av-lg {
+	width: 96px;
+	height: 96px;
+	font-size: 38px;
+	margin: 22px auto 0;
+}
 .pa .n {
 	font-weight: 600;
 }
@@ -1692,6 +1698,13 @@ a.link {
 .row2 + .row2 {
 	border-top: 1px solid var(--line);
 }
+/* SettingsRow divided: строка-ссылка среди текста отчерчена. */
+.row2.divided-top {
+	border-top: 1px solid var(--line);
+}
+.row2.divided-bottom {
+	border-bottom: 1px solid var(--line);
+}
 .row2 .g {
 	flex: 1;
 	min-width: 0;
@@ -2602,10 +2615,10 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 .lh-125 {
 	line-height: 1.25;
 }
-.label-row {
+.lab.label-row {
 	display: flex;
 }
-.label-row .label-aside {
+.lab.label-row .label-aside {
 	margin-left: auto;
 	text-transform: none;
 	letter-spacing: 0;

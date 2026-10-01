@@ -138,14 +138,7 @@
 	title="Кто вы в этом круге"
 	onback={() => goto(`/circles/${circle.circleId}/settings`)}
 >
-	<div style="width:96px;height:96px;margin:22px auto 0;display:grid;place-items:center">
-		<Avatar
-			initial={circle.identityInitial}
-			color={circle.colorHex}
-			src={avatarUrl}
-			style="width:96px;height:96px;font-size:38px"
-		/>
-	</div>
+	<Avatar initial={circle.identityInitial} color={circle.colorHex} src={avatarUrl} size="lg" />
 	<Hint centered class="mt-10">
 		<TextButton onclick={() => photoPicker?.open()}>сменить фото</TextButton>
 	</Hint>

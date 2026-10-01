@@ -146,7 +146,8 @@
 			<SettingsRow
 				title="Попросить у администратора"
 				subtitle="шаг необязательный — можно сразу к отсечке"
-				style="margin-top:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"
+				class="mt-10"
+				divided="both"
 				onclick={() => goto(`/circles/${circle.circleId}/quota/request`)}
 			/>
 		{/if}
