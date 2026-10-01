@@ -275,7 +275,7 @@
 - Где используется: только `circles/[id]/responses`. Правила: `a.resp`, `a.resp + a.resp .cmt`, `.resp .cmt .acts{display:none}`, `.resp .who .tm .ic`, `.resp-ref` / `.resp-pic` / `.resp-line`, `.resp-more`.
 - Что не так: экран лезет во внутренности `CommentRow` (`.cmt`, `.acts`, `.who`, `.tm`) и прячет их чужим CSS.
 - Классы `.resp-list` и `.resp-rx` стоят в разметке, а правил для них нет — мёртвые.
-- Что сделать: `ResponseRow` (или проп `href` у `CommentRow`, без колонки действий, когда нет `onedit/ondelete`) и `PostRef` (обложка, «автор · дата · начало текста»). `PostRef` может заменить и шапку в `MapPostSheet` / `SearchResultRow`. `.resp-more` = `.gutter` на `Button`.
+- Что сделать: `ResponseRow` (или проп `href` у `CommentRow`, без колонки действий, когда нет `onedit/ondelete`) и `PostRef` (обложка, «автор · дата · начало текста»). `PostRef` может заменить и шапку в `MapPostSheet` / `SearchResultRow`. `.resp-more` = `.gutter` на `Button`. **Сделано в 0.18.21:** `ResponseEntry` (имя `ResponseRow` занято типом в `$lib`) и `PostRef`; у `CommentRow` проп `bare` вместо `.resp .cmt .acts{display:none}`, знак реакции — `.resp-kind` внутри компонента, черта между строками — на самих ссылках. Экран больше не лезет во внутренности `CommentRow`. Шапки `MapPostSheet` / `SearchResultRow` на `PostRef` не переведены — у них другая раскладка, решить при их сверке.
 
 **3.2 `.att-group` + `.att.audio.grouped …` (ui.css:1255–1278) — средняя.**
 - Что не так: рамку рисует экран (`div.att-group`, в 2 маршрутах), а вид строк внутри рамки — компонент через проп `grouped`. Ответственность разорвана: без рамки экрана `grouped` ломает строку (border 0, без фона).

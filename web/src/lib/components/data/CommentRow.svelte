@@ -13,6 +13,7 @@
 		children,
 		onedit,
 		ondelete,
+		bare = false,
 		class: className = '',
 		style = ''
 	}: {
@@ -25,6 +26,9 @@
 		children: Snippet;
 		onedit?: () => void;
 		ondelete?: () => void;
+		/** Без колонки действий: строка-ссылка («Отклики»), не тред. В треде
+		 *  колонка стоит всегда — текст одной ширины у своих и чужих. */
+		bare?: boolean;
 		class?: string;
 		style?: string;
 	} = $props();
@@ -39,12 +43,14 @@
 		</div>
 		{@render children()}
 	</div>
-	<div class="acts">
-		{#if onedit}
-			<IconButton name="edit" label="Править" size="sm" onclick={() => onedit()} />
-		{/if}
-		{#if ondelete}
-			<IconButton name="trash" label="Удалить" size="sm" onclick={() => ondelete()} />
-		{/if}
-	</div>
+	{#if !bare}
+		<div class="acts">
+			{#if onedit}
+				<IconButton name="edit" label="Править" size="sm" onclick={() => onedit()} />
+			{/if}
+			{#if ondelete}
+				<IconButton name="trash" label="Удалить" size="sm" onclick={() => ondelete()} />
+			{/if}
+		</div>
+	{/if}
 </div>

@@ -121,13 +121,17 @@ Guard: `npm run check:ui` — экран = существующие `$ui` + `$li
 
 ### `data/`
 
-SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, **ReactionBar**, **CommentPreview**, **CommentRow**, **ReactionListRow**, **SettingsRow**, MemberRow, SearchGroupHeader, **SearchResultRow**, **ServerRow**, FoldHeader, **GroupFoldCard**, AttachmentRow, PhotoPlaceholder, PhotoGrid, **MediaTile**, **MapBadge**, **MapPostSheet**, MonthLabel, DayCard, DayGrid, DayHeader, EntryDateMark, ArchiveBanner, **PayStreetBanner**, **MentionText**, **AttachmentList**, **QrCode**, **InviteLinkCard**, **EmptyState**, **PullRefresh**, **FeedEnd**
+SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, **ReactionBar**, **CommentPreview**, **CommentRow**, **ReactionListRow**, **SettingsRow**, MemberRow, SearchGroupHeader, **SearchResultRow**, **ServerRow**, FoldHeader, **GroupFoldCard**, AttachmentRow, PhotoPlaceholder, PhotoGrid, **MediaTile**, **MapBadge**, **MapPostSheet**, MonthLabel, DayCard, DayGrid, DayHeader, EntryDateMark, ArchiveBanner, **PayStreetBanner**, **MentionText**, **AttachmentList**, **QrCode**, **InviteLinkCard**, **EmptyState**, **PullRefresh**, **FeedEnd**, **ResponseEntry**, **PostRef**
 
 `PayStreetBanner` — баннеры оплаты на улочке (`/circles`, кадр **#e10-5**): `variant` `donate` \| `reminder` \| `pending`. Donate — `text`, `onclick` (help), опционально `dismissible` / `ondismiss`. Reminder — `expiresAtLabel`, `reminderDaysLeft`, `onclick` (extend). Pending — `pendingAtLabel`, опционально `expiresAtLabel`; без корневой кнопки. Стили `.pay-banner*` в `ui.css`; кликабельные зоны — `button.pay-banner-main`, `button.pay-reminder`.
 
 `MentionText` — текст записи или комментария (`body`): `@имя` цветом круга, переносы и пустые строки как написаны (`white-space: pre-wrap` на `.mention-text`).
 
 `AttachmentList` — вложения записи, не фото и не видео (**#e4-13**, **#e4-15**, **#e4-18**): звуки подряд — одна рамка `.att-group` со строками `grouped`, одиночный звук — `AttachmentRow audio`, файл — строка «скачать». `items`, `origin`, `circleId`, `circleName`, `color`, `postId`, `coverUrls` (обложки звуков по blob id).
+
+`ResponseEntry` — строка «Откликов» (**#e3-13**): ссылка туда, где отклик живёт (`href`, `onopen`), внутри `CommentRow bare`; `initial`, `name`, `color`, `src`, `icon` (знак реакции), `label` («комментарий · 14:02»), под словами — children (текст, `PostRef`). Между строками — черта.
+
+`PostRef` — рамка «к чему это» под откликом: `author` (жирным), `date`, `excerpt`, `cover` (место под обложку сразу) и `coverUrl`. Может заменить шапку `MapPostSheet` / `SearchResultRow` (план 47, 3.1).
 
 `FeedEnd` — низ ленты круга (**#e3-1**): знак и откуда лента видна. `since` — человек видит круг не с начала («Вы здесь с…», «что было раньше — не ваше», знак в цвете круга); без него — «Здесь начинается круг», знак приглушён. `started` — дата начала круга (при `since` — с годом). Даты — готовыми строками.
 
@@ -139,7 +143,7 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 
 `InviteLinkCard` — ссылка-приглашение целиком (`FieldDisplay.invite-url`) и «Поделиться / Скопировать» (**#e6-7**, **#e6-21**): `url`, `shared` / `copied` (подписи «Отправлено» / «Скопировано»), `onshare`, `oncopy`, `inSheet` — в листе кнопки без полей экрана (`.rowin.ask`). QR над ней экран ставит сам.
 
-`CommentRow` — строка треда (`div.cmt`, опц. `.q`): аватар, `name`, snippet `time`, snippet `children` (текст / правка); `onedit` / `ondelete` → `.acts` (**#e4-5**–**#e4-7**). Не путать с `CommentPreview` (`button.cm` в ленте).
+`CommentRow` — строка треда (`div.cmt`, опц. `.q`): аватар, `name`, snippet `time`, snippet `children` (текст / правка); `onedit` / `ondelete` → `.acts` (**#e4-5**–**#e4-7**). Колонка `.acts` в треде стоит всегда — текст одной ширины у своих и чужих; `bare` — без неё (строка-ссылка, `ResponseEntry`). Не путать с `CommentPreview` (`button.cm` в ленте).
 
 `FeedDayPromptCard` — служебная карточка в ленте (`div.post.day-prompt`): `title`, snippet текста, `primaryLabel` / `secondaryLabel`, `onprimary` / `onsecondary` (`Button` в `.rowin`). Стили `.day-prompt` и раскладка ленты (`.feed`, `.ptr`, `.empty`, `.feed-end`) — в `ui.css`.
 

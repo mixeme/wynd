@@ -1017,20 +1017,17 @@ a.resp {
 	color: inherit;
 	text-decoration: none;
 }
-a.resp + a.resp .cmt {
+a.resp + a.resp {
 	border-top: 1px solid var(--line);
 }
-.resp .cmt .acts {
-	display: none;
-}
-.resp .who .tm .ic {
+.resp-kind .ic {
 	width: 12px;
 	height: 12px;
 	margin-right: 4px;
 	vertical-align: -2px;
 	color: var(--c);
 }
-.resp-ref {
+.post-ref {
 	display: flex;
 	align-items: center;
 	gap: 10px;
@@ -1041,26 +1038,26 @@ a.resp + a.resp .cmt {
 	color: var(--muted);
 	font-size: 12px;
 }
-.resp-ref .resp-pic {
+.post-ref .post-ref-pic {
 	width: 32px;
 	height: 32px;
 	border-radius: 6px;
 	flex: 0 0 auto;
 	overflow: hidden;
 }
-.resp-ref .resp-pic img {
+.post-ref .post-ref-pic img {
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
 	display: block;
 }
-.resp-ref .resp-line {
+.post-ref .post-ref-line {
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
-.resp-ref .resp-line b {
+.post-ref .post-ref-line b {
 	color: var(--ink);
 	font-weight: 600;
 }

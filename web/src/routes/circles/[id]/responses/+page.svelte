@@ -1,15 +1,15 @@
 <script lang="ts">
+	import ResponseEntry from '$ui/data/ResponseEntry.svelte';
+	import PostRef from '$ui/data/PostRef.svelte';
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
 	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
 	import EmptyState from '$ui/data/EmptyState.svelte';
 	import { goto } from '$app/navigation';
 	import { getContext, onDestroy, onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
-	import CommentRow from '$ui/data/CommentRow.svelte';
 	import MentionText from '$ui/data/MentionText.svelte';
 	import EventDivider from '$ui/data/EventDivider.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
-	import Icon from '$ui/Icon.svelte';
 	import Loading from '$ui/Loading.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { isAccessError } from '$lib/api/client';
@@ -185,36 +185,29 @@
 					<EventDivider text={day} />
 				{/if}
 				{@const ref = row.lead.post_id ? posts[row.lead.post_id] : undefined}
-				<a class="resp" href={responseHref(circle.circleId, row.lead)} onclick={(e) => open(row, e)}>
-					<CommentRow
-						initial={authorInitial(row.lead.actor_name)}
-						name={names(row)}
-						color={circle.colorHex}
-						src={row.lead.actor_avatar_blob_id ? mediaUrls[row.lead.actor_avatar_blob_id] : undefined}
-					>
-						{#snippet time()}
-							{#if row.kind === 'reaction' && row.emoji}<Icon
-									name={reactionIconName(row.emoji)}
-									size="xs"
-								/>{/if}{responseKindLabel(row.kind)} · {formatClock(row.lead.at)}
-						{/snippet}
-						{#if row.kind === 'comment' && row.lead.body}
-							<MentionText body={row.lead.body} />
-						{/if}
-						{#if ref}
-							<div class="resp-ref">
-								{#if ref.cover_blob_id}
-									<span class="pic resp-pic"
-										>{#if mediaUrls[ref.cover_blob_id]}<img src={mediaUrls[ref.cover_blob_id]} alt="" />{/if}</span
-									>
-								{/if}
-								<span class="resp-line"
-									><b>{postLabel(ref)}</b> · {formatEntryDate(ref.entry_date)}{#if ref.excerpt}{' · '}{ref.excerpt}{/if}</span
-								>
-							</div>
-						{/if}
-					</CommentRow>
-				</a>
+				<ResponseEntry
+					href={responseHref(circle.circleId, row.lead)}
+					onopen={(e) => open(row, e)}
+					initial={authorInitial(row.lead.actor_name)}
+					name={names(row)}
+					color={circle.colorHex}
+					src={row.lead.actor_avatar_blob_id ? mediaUrls[row.lead.actor_avatar_blob_id] : undefined}
+					icon={row.kind === 'reaction' && row.emoji ? reactionIconName(row.emoji) : undefined}
+					label="{responseKindLabel(row.kind)} · {formatClock(row.lead.at)}"
+				>
+					{#if row.kind === 'comment' && row.lead.body}
+						<MentionText body={row.lead.body} />
+					{/if}
+					{#if ref}
+						<PostRef
+							author={postLabel(ref)}
+							date={formatEntryDate(ref.entry_date)}
+							excerpt={ref.excerpt}
+							cover={Boolean(ref.cover_blob_id)}
+							coverUrl={ref.cover_blob_id ? mediaUrls[ref.cover_blob_id] : undefined}
+						/>
+					{/if}
+				</ResponseEntry>
 			{/each}
 			{#if hasMore}
 				<Button variant="ghost" class="gutter" loading={loadingMore} onclick={() => void loadMore()}>

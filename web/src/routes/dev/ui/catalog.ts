@@ -102,7 +102,8 @@ export const COMPONENT_MAP: CatalogGroup[] = [
 			{ component: 'QrCode / InviteLinkCard', screen: 'e6-7, e6-21' },
 			{ component: 'EmptyState', screen: 'e2-3, e3-1, e3-14' },
 			{ component: 'PullRefresh', screen: 'e3-5' },
-			{ component: 'FeedEnd', screen: 'e3-1' }
+			{ component: 'FeedEnd', screen: 'e3-1' },
+			{ component: 'ResponseEntry / PostRef', screen: 'e3-13' }
 		]
 	},
 	{
