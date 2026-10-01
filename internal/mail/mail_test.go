@@ -3,7 +3,11 @@ package mail_test
 import (
 	"bufio"
 	"context"
+	"io"
+	"mime"
+	"mime/multipart"
 	"net"
+	netmail "net/mail"
 	"strings"
 	"testing"
 	"time"
@@ -117,8 +121,21 @@ func TestSaveConfigAndSendViaFakeSMTP(t *testing.T) {
 		if !strings.Contains(msg, "Subject:") {
 			t.Fatalf("missing subject: %q", msg)
 		}
-		if !strings.Contains(msg, "Текст") {
+		if !strings.Contains(plainText(t, msg), "Текст") {
 			t.Fatalf("missing body: %q", msg)
+		}
+		// Gmail снимал баллы за 8-битное тело без заголовка, безымянного
+		// отправителя и письмо без HTML-части.
+		for _, want := range []string{
+			"Content-Transfer-Encoding: quoted-printable",
+			"multipart/alternative",
+			"text/html",
+			"Auto-Submitted: auto-generated",
+			`From: "Wynd" <wynd@example.com>`,
+		} {
+			if !strings.Contains(msg, want) {
+				t.Fatalf("нет %q в письме: %s", want, msg)
+			}
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("timeout waiting for smtp message")
@@ -338,4 +355,76 @@ func atoi(s string) int {
 		n = n*10 + int(c-'0')
 	}
 	return n
+}
+
+// plainText — текстовая часть письма, раскодированная из quoted-printable.
+func plainText(t *testing.T, raw string) string {
+	t.Helper()
+	m, err := netmail.ReadMessage(strings.NewReader(raw))
+	if err != nil {
+		t.Fatalf("письмо не разбирается: %v", err)
+	}
+	_, params, err := mime.ParseMediaType(m.Header.Get("Content-Type"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := multipart.NewReader(m.Body, params["boundary"])
+	for {
+		part, err := r.NextPart()
+		if err == io.EOF {
+			t.Fatal("нет text/plain")
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.HasPrefix(part.Header.Get("Content-Type"), "text/plain") {
+			body, err := io.ReadAll(part)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return string(body)
+		}
+	}
+}
+
+// Код — в тексте письма, но не в теме: тема видна в уведомлении на
+// заблокированном экране, код оттуда прочитал бы любой, кто рядом.
+func TestCodeMailKeepsCodeOutOfSubject(t *testing.T) {
+	addr, received := startFakeSMTP(t)
+	host, port, _ := net.SplitHostPort(addr)
+	st, err := store.OpenMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	svc, err := mail.New(st, false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if err := svc.SaveConfig(ctx, mail.Config{Host: host, Port: atoi(port), From: "wynd@example.com"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.SendCode(ctx, "bob@example.com", "276012"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case msg := <-received:
+		m, err := netmail.ReadMessage(strings.NewReader(msg))
+		if err != nil {
+			t.Fatal(err)
+		}
+		subject, err := new(mime.WordDecoder).DecodeHeader(m.Header.Get("Subject"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(subject, "276012") {
+			t.Fatalf("код в теме: %q", subject)
+		}
+		if !strings.Contains(plainText(t, msg), "276012") {
+			t.Fatalf("кода нет в тексте: %q", msg)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for smtp message")
+	}
 }

@@ -2,6 +2,7 @@
 	import Icon from '$ui/Icon.svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import { coverRectStyle, isCoverRect, type CoverRect } from '$lib/media/crop';
+	import { formatBytes } from '$lib/format/bytes';
 
 	type MediaKind = 'photo' | 'video';
 
@@ -13,6 +14,9 @@
 		locationLabel?: string;
 		/** Кадр обложки (4.16): лента рисует этот квадрат снимка. */
 		crop?: CoverRect;
+		/** Пока файл не пришёл: ход скачивания или «не загрузилось». */
+		loading?: { received: number; total: number };
+		failed?: boolean;
 		onclick?: () => void;
 	};
 
@@ -56,6 +60,21 @@
 
 	let props: Feed | Grid | Album | HeaderMini | Compose = $props();
 
+	// Плитка без файла должна говорить, что происходит: видео обложкой
+	// скачивается целиком, и на медленной связи полосатая заглушка выглядела
+	// как ошибка.
+	const loadLabel = $derived.by(() => {
+		if (props.variant !== 'feed' || props.src) return '';
+		if (props.failed) return 'не загрузилось';
+		const l = props.loading;
+		if (l?.total) return `загрузка · ${formatBytes(l.received)} из ${formatBytes(l.total)}`;
+		return 'загрузка…';
+	});
+	const loadPct = $derived.by(() => {
+		if (props.variant !== 'feed' || props.src || !props.loading?.total) return 0;
+		return Math.min(100, (props.loading.received / props.loading.total) * 100);
+	});
+
 	const cropStyle = $derived.by(() => {
 		const crop = props.variant === 'feed' || props.variant === 'compose' ? props.crop : undefined;
 		return isCoverRect(crop) ? coverRectStyle(crop) : undefined;
@@ -92,7 +111,12 @@
 				<img src={props.src} alt="" />
 			{/if}
 		{/if}
-		{#if props.locationLabel}
+		{#if loadLabel}
+			<span class="tile-load">{loadLabel}</span>
+			{#if loadPct > 0}
+				<span class="tile-load-bar"><i style:width="{loadPct}%"></i></span>
+			{/if}
+		{:else if props.locationLabel}
 			<span class="tagr"><Icon name="loc" size="xs" />{props.locationLabel}</span>
 		{/if}
 		{#if props.count != null && (props.src ? props.count > 1 : true)}

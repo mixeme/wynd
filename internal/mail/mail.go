@@ -1,13 +1,16 @@
 package mail
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/tls"
 	"database/sql"
 	"fmt"
+	"html"
 	"log"
 	"mime"
+	"mime/quotedprintable"
 	"net"
 	netmail "net/mail"
 	"net/smtp"
@@ -163,8 +166,17 @@ func (s *Service) SendCode(ctx context.Context, email, code string) error {
 		}
 		return ErrNotConfigured
 	}
-	subject := "Код входа Wynd"
-	body := fmt.Sprintf("Ваш код входа: %s\n\nКод действует 15 минут.", code)
+	// Письмо говорит, что это и почему пришло: короткое безличное «Ваш код:
+	// 276012» Gmail относил в спам. Кода в теме нет: тема видна в
+	// уведомлении на заблокированном экране.
+	where := "в Wynd"
+	if server := s.instanceName(ctx); server != "" {
+		where = fmt.Sprintf("в Wynd на сервере «%s»", server)
+	}
+	subject := "Код входа в Wynd"
+	body := fmt.Sprintf("Здравствуйте!\n\nКод для входа %s:\n\n%s\n\n"+
+		"Код действует 15 минут. Введите его на экране входа.\n\n"+
+		"Если вы не запрашивали код, ничего делать не нужно: без него никто не войдёт.", where, code)
 	return s.sendMessage(ctx, cfg, email, subject, body)
 }
 
@@ -250,7 +262,7 @@ func (s *Service) sendMessage(ctx context.Context, cfg Config, to, subject, body
 		return ErrInvalid
 	}
 
-	msg := buildMessage(cfg.From, to, subject, body)
+	msg := buildMessage(withSenderName(cfg.From, s.instanceName(ctx)), to, subject, body)
 	client, err := s.smtpClient(ctx, cfg)
 	if err != nil {
 		return err
@@ -438,12 +450,97 @@ func buildMessage(from, to, subject, body string) []byte {
 		b.WriteString("\r\nMessage-ID: ")
 		b.WriteString(id)
 	}
-	b.WriteString("\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n")
-	b.WriteString(body)
-	if !strings.HasSuffix(body, "\n") {
-		b.WriteString("\r\n")
-	}
+	boundary := mimeBoundary()
+	b.WriteString("\r\nAuto-Submitted: auto-generated")
+	b.WriteString("\r\nMIME-Version: 1.0")
+	b.WriteString("\r\nContent-Type: multipart/alternative; boundary=\"" + boundary + "\"\r\n\r\n")
+	writePart(&b, boundary, "text/plain", body)
+	writePart(&b, boundary, "text/html", htmlBody(subject, body))
+	b.WriteString("--" + boundary + "--\r\n")
 	return []byte(b.String())
+}
+
+// instanceName — имя сервера из панели: подпись отправителя и текст письма.
+func (s *Service) instanceName(ctx context.Context) string {
+	var name string
+	if err := s.db.QueryRowContext(ctx, `SELECT name FROM instance_settings WHERE id = 1`).Scan(&name); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(name)
+}
+
+// withSenderName даёт отправителю имя, если в настройках только адрес:
+// безымянный noreply@ с цифрами в теле похож на фишинг.
+func withSenderName(from, server string) string {
+	from = strings.TrimSpace(from)
+	if strings.Contains(from, "<") {
+		return from
+	}
+	name := "Wynd"
+	if server != "" {
+		name = "Wynd · " + server
+	}
+	return fmt.Sprintf("%s <%s>", name, from)
+}
+
+func mimeBoundary() string {
+	var rnd [12]byte
+	if _, err := rand.Read(rnd[:]); err != nil {
+		return "wynd-boundary"
+	}
+	return fmt.Sprintf("wynd-%x", rnd)
+}
+
+// writePart — часть письма в quoted-printable: кириллица не идёт сырыми
+// 8-битными байтами в письме, которое без заголовка считается 7-битным.
+func writePart(b *strings.Builder, boundary, contentType, content string) {
+	b.WriteString("--" + boundary + "\r\n")
+	b.WriteString("Content-Type: " + contentType + "; charset=UTF-8\r\n")
+	b.WriteString("Content-Transfer-Encoding: quoted-printable\r\n\r\n")
+	var buf bytes.Buffer
+	w := quotedprintable.NewWriter(&buf)
+	_, _ = w.Write([]byte(strings.ReplaceAll(content, "\n", "\r\n")))
+	_ = w.Close()
+	b.Write(buf.Bytes())
+	b.WriteString("\r\n")
+}
+
+// htmlBody — то же письмо простым HTML: абзацы, шестизначный код крупно.
+func htmlBody(subject, body string) string {
+	var b strings.Builder
+	b.WriteString(`<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>`)
+	b.WriteString(html.EscapeString(subject))
+	b.WriteString(`</title></head><body style="margin:0;padding:24px;background:#f4f0e9;color:#2b2724;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.5">`)
+	b.WriteString(`<div style="max-width:480px;margin:0 auto">`)
+	for _, para := range strings.Split(strings.TrimSpace(body), "\n\n") {
+		para = strings.TrimSpace(para)
+		if para == "" {
+			continue
+		}
+		if isCode(para) {
+			b.WriteString(`<p style="font-size:28px;font-weight:600;letter-spacing:4px;margin:16px 0">`)
+			b.WriteString(para)
+			b.WriteString("</p>")
+			continue
+		}
+		b.WriteString(`<p style="margin:0 0 12px">`)
+		b.WriteString(strings.ReplaceAll(html.EscapeString(para), "\n", "<br>"))
+		b.WriteString("</p>")
+	}
+	b.WriteString("</div></body></html>")
+	return b.String()
+}
+
+func isCode(s string) bool {
+	if len(s) != 6 {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func defaultDial(ctx context.Context, addr string) (net.Conn, error) {

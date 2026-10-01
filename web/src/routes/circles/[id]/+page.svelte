@@ -137,6 +137,10 @@
 	// Лента не ждёт картинок: до двух тысяч записей давали столько же
 	// последовательных await, и экран стоял в «загрузке», пока не доедет
 	// последняя обложка. Пачки — общий хелпер $lib/media/batch (REF-6).
+	// Ход скачивания обложек и неудачи — плитка говорит, что происходит.
+	let mediaProgress = $state<Record<string, { received: number; total: number }>>({});
+	let mediaFailed = $state<Record<string, boolean>>({});
+
 	async function resolveFeedMedia(feedPosts: FeedPost[]) {
 		const avatarJobs = new Map<string, string>();
 		const coverJobs = new Map<string, string>();
@@ -169,9 +173,22 @@
 				authorAvatarUrls = { ...authorAvatarUrls, [identityId]: url };
 			}
 		});
-		await resolveMediaUrls(circle.origin, [...coverJobs.keys()], (blobId, url) => {
-			mediaUrls = { ...mediaUrls, [blobId]: url };
-		});
+		await resolveMediaUrls(
+			circle.origin,
+			[...coverJobs.keys()],
+			(blobId, url) => {
+				mediaUrls = { ...mediaUrls, [blobId]: url };
+			},
+			undefined,
+			{
+				onProgress: (blobId, received, total) => {
+					mediaProgress = { ...mediaProgress, [blobId]: { received, total } };
+				},
+				onFail: (blobId) => {
+					mediaFailed = { ...mediaFailed, [blobId]: true };
+				}
+			}
+		);
 	}
 
 	const soloCircle = $derived(activeMemberCount === 1);
@@ -661,6 +678,8 @@
 							src={mediaUrls[cover.blob_id]}
 							kind={cover.kind === 'video' ? 'video' : 'photo'}
 							crop={cover.crop}
+							loading={mediaProgress[cover.blob_id]}
+							failed={mediaFailed[cover.blob_id]}
 							{count}
 							locationLabel={loc || undefined}
 							onclick={() => openAlbum(post.id)}
