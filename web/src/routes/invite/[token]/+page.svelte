@@ -155,7 +155,7 @@
 	</FormLayout>
 {:else}
 	<PlainLayout app>
-		<ScreenTitle style="margin-top:24px">Вас пригласили</ScreenTitle>
+		<ScreenTitle class="mt-24">Вас пригласили</ScreenTitle>
 		{#if peek && isCircleInvitePeek(peek)}
 			<InviteCard
 				initial={circleInitial(peek.circle_name)}
@@ -164,7 +164,7 @@
 			/>
 			<Label>Сервер</Label>
 			<FieldDisplay>
-				<div style="font-weight:600">{peek.server_name}</div>
+				<div class="bold">{peek.server_name}</div>
 				<div style="font-size:12.5px;color:var(--muted)">{peek.host || displayHost('')}</div>
 			</FieldDisplay>
 		{:else}
@@ -180,10 +180,10 @@
 		<Button {loading} disabled={!peek} onclick={onSendCode}>Получить код</Button>
 
 		{#if error}
-			<Hint style="margin-top:12px">{error}</Hint>
+			<Hint class="mt-12">{error}</Hint>
 		{/if}
 
-		<Hint centered style="margin-top:26px">
+		<Hint class="mt-26" centered>
 			Вход создаётся на этом сервере.<br />Круги с других серверов добавляются позже.
 		</Hint>
 	</PlainLayout>

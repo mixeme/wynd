@@ -134,7 +134,7 @@
 
 <FormLayout shell app title="Приложение" onback={() => goto('/settings')}>
 	<SectionLabel>Уведомления по умолчанию</SectionLabel>
-	<SettingsRow title="Новые записи" style="padding-top:2px">
+	<SettingsRow class="pt-2" title="Новые записи">
 		{#snippet control()}
 			<Switch bind:checked={posts} label="Новые записи" />
 		{/snippet}
@@ -149,14 +149,14 @@
 			<Switch bind:checked={reactions} label="Реакции" />
 		{/snippet}
 	</SettingsRow>
-	<Hint style="margin-top:10px">
+	<Hint class="mt-10">
 		Эти переключатели действуют в кругах, для которых вы не задавали отдельные уведомления, и в
 		тех, в которые вы вступите позже. Круги, где уведомления уже сохранены отдельно, не меняются.
 	</Hint>
 
 	<SectionLabel style="margin-top:22px">Место на устройстве</SectionLabel>
 	<Meter value={cacheBytes} max={Math.max(cacheLimit, 1)} />
-	<Hint style="margin-top:8px">
+	<Hint class="mt-8">
 		{formatBytes(cacheBytes)} кэша из {formatBytes(cacheLimit)}
 	</Hint>
 	<ChipGroup class="mt-8">
@@ -211,7 +211,7 @@
 		{/each}
 	</ChipGroup>
 
-	<Hint style="margin-top:20px">Wynd {appVersion} · AGPL-3.0</Hint>
+	<Hint class="mt-20">Wynd {appVersion} · AGPL-3.0</Hint>
 	{#if error}
 		<Hint>{error}</Hint>
 	{/if}

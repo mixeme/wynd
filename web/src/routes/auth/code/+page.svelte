@@ -174,6 +174,6 @@
 		</div>
 	{/if}
 	{#if error}
-		<Hint style="margin-top:12px">{error}</Hint>
+		<Hint class="mt-12">{error}</Hint>
 	{/if}
 </FormLayout>

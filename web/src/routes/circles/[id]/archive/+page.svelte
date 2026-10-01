@@ -32,7 +32,7 @@
 
 <FormLayout app color={circle.color} title="Архив круга" onback={goBack}>
 	{#if !cycle?.active}
-		<Hint style="margin:16px">Сейчас архивация не идёт.</Hint>
+		<Hint class="gutter">Сейчас архивация не идёт.</Hint>
 	{:else}
 		<Label>Что внутри</Label>
 		<SettingsRow
@@ -51,7 +51,7 @@
 			chevron={false}
 		/>
 
-		<Label style="margin-top:18px">Раскладка</Label>
+		<Label>Раскладка</Label>
 		<ChipGroup>
 			<Chip selected={layout === 'feed'} onclick={() => (layout = 'feed')}>Единая лента</Chip>
 			<Chip selected={layout === 'posts'} onclick={() => (layout = 'posts')}>
@@ -65,7 +65,7 @@
 		>
 		<Hint>Открывается офлайн и без Wynd: стили внутри файла, пути относительные, цвет круга на месте.</Hint>
 
-		<Label style="margin-top:18px">Границы</Label>
+		<Label>Границы</Label>
 		<SettingsRow
 			title="Снято на {formatEntryDate(cycle.cutoff_date)}"
 			value={cycle.cutoff_locked ? 'дата замерла' : 'можно сдвинуть'}
@@ -79,10 +79,10 @@
 		/>
 		<SettingsRow title="Ваша видимость" value="то, что вы застали" chevron={false} />
 
-		<Button variant="colored" style="margin-top:16px" onclick={download}>
+		<Button class="mt-16" variant="colored" onclick={download}>
 			Скачать {formatBytes(cycle.personal_archive_bytes)}
 		</Button>
-		<Hint style="text-align:center;margin-top:12px"
+		<Hint class="mt-12 ctr"
 			>Ссылка не одноразовая: качайте сколько нужно до {formatDeadline(cycle.deadline)}.</Hint
 		>
 	{/if}

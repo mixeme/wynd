@@ -179,14 +179,14 @@
 			другой диапазон — это новый цикл, а не правка этого.</Hint
 		>
 	{/if}
-	<Label style="margin-top:18px">Скачать до</Label>
+	<Label>Скачать до</Label>
 	<Input active type="date" min={minDeadline()} bind:value={deadline} />
 	<Hint
 		>Срок двигается в любую сторону и в любой момент: архив снят на отсечку, а не на срок, и от
 		сдвига не портится.</Hint
 	>
 	{#if showReminderChips}
-		<Label style="margin-top:18px">Напомнить письмом</Label>
+		<Label>Напомнить письмом</Label>
 		<ChipGroup>
 			{#each REMINDER_OPTIONS as opt (opt.sec)}
 				<Chip
@@ -215,15 +215,15 @@
 			items={['Новый цикл архивации']}
 			onitem={() => goto(`/circles/${circle.circleId}/quota`)}
 		/>
-		<Hint style="margin-top:8px"
+		<Hint class="mt-8"
 			>Начнёте заново — уже скачанные архивы останутся у людей, но отсечка и срок будут другими, и
 			качать нужно снова.</Hint
 		>
 	{/if}
-	<Button variant="colored" style="margin-top:14px" {loading} onclick={() => void launch()}>
+	<Button class="mt-14" variant="colored" {loading} onclick={() => void launch()}>
 		{activeCycle ? 'Сохранить сроки' : 'Запустить архивацию'}
 	</Button>
 	{#if error}
-		<Hint style="margin:16px">{error}</Hint>
+		<Hint class="gutter">{error}</Hint>
 	{/if}
 </FormLayout>

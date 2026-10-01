@@ -139,7 +139,7 @@
 		{:else if error && !request}
 			<Hint>{error}</Hint>
 		{:else if request}
-			<h4 style="margin-bottom:6px">{request.account_email}</h4>
+			<h4 class="mb-6">{request.account_email}</h4>
 			<div class="note mb-18">
 				заявка {formatPayDateTime(request.created_at)}
 				{#if statusSubtitle}

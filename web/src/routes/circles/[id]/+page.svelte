@@ -598,16 +598,16 @@
 		{/if}
 
 		{#if joinAvatarHint}
-			<Hint style="margin:16px">{joinAvatarHint}</Hint>
+			<Hint class="gutter">{joinAvatarHint}</Hint>
 		{/if}
 		{#if !circle.canWrite}
-			<Hint style="margin:16px">Вы читаете этот круг и не пишете.</Hint>
+			<Hint class="gutter">Вы читаете этот круг и не пишете.</Hint>
 		{/if}
 		<!-- «?loading» — посмотреть экран загрузки в круге, как «/?loading». -->
 		{#if loading || $page.url.searchParams.has('loading')}
 			<Loading />
 		{:else if error && !posts.length}
-			<Hint style="margin:24px 16px">{error}</Hint>
+			<Hint class="gutter-24">{error}</Hint>
 		{:else}
 			{#each circle.canWrite ? queuedPosts : [] as item (item.id)}
 				<!-- Snippets live outside <PostCard>: a {#snippet} nested in {#if} is not passed as a prop. -->
@@ -813,13 +813,13 @@
 			{/if}
 
 			{#if error}
-				<Hint style="margin:16px">{error}</Hint>
+				<Hint class="gutter">{error}</Hint>
 			{/if}
 
 			{#if !posts.length && !queuedPosts.length}
 				<div class="empty">
 					<Mark />
-					<div class="h1s ctr" style="margin-top:28px">Пока ничего</div>
+					<div class="h1s ctr mt-28">Пока ничего</div>
 					<!-- Читатель не пишет и не зовёт: призыв и «Пригласить» — только пишущим. -->
 					{#if circle.canWrite}
 						<Hint centered style="margin:8px 34px 0">
@@ -849,7 +849,7 @@
 					<div class="feed-end start">
 						<Mark />
 						<Hint centered style="margin:10px 16px 0;color:var(--muted)">Здесь начинается круг</Hint>
-						<div class="hint ctr" style="margin-top:4px;color:var(--muted)">
+						<div class="hint ctr mt-4 muted">
 							{formatIsoDay(circleStartedAt)}
 						</div>
 					</div>
@@ -871,7 +871,7 @@
 					icon={reactionIconName(rx.emoji)}
 				/>
 			{/each}
-			<Hint style="margin-top:14px">
+			<Hint class="mt-14">
 				Реакция одна на человека и подчиняется окну правок. Хотите сказать больше — напишите словами.
 			</Hint>
 		</OverlayLayout>

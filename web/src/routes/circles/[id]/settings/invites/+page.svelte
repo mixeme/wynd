@@ -116,9 +116,9 @@
 	{#if loading}
 		<Loading />
 	{:else if error}
-		<Hint style="margin:16px">{error}</Hint>
+		<Hint class="gutter">{error}</Hint>
 	{:else if liveInvites.length === 0}
-		<Hint style="margin:16px">Живых ссылок нет.</Hint>
+		<Hint class="gutter">Живых ссылок нет.</Hint>
 		<Button variant="ghost" onclick={goInvite}>Пригласить</Button>
 	{:else}
 		{#each liveInvites as inv (inv.id)}
@@ -129,7 +129,7 @@
 			/>
 		{/each}
 		{#if !multiInvitesAllowed && hasLiveMulti}
-			<Hint style="margin-top:8px"
+			<Hint class="mt-8"
 				>Эту многоразовую успели создать раньше. Новую уже нельзя.</Hint
 			>
 		{/if}

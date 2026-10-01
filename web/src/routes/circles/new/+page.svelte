@@ -65,7 +65,7 @@
 			onclick={openServerPick}
 		/>
 	{/if}
-	<Hint style="margin-top:0">
+	<Hint class="mt-0">
 		Круг будет жить здесь. Если потребуется, его можно перенести на другой сервер. Сервер
 		хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или
 		<a class="under" href={sourceUrl(form.selectedOrigin)}>поднимите свой</a>.
@@ -109,7 +109,7 @@
 				bind:value={form.customHours}
 				style="width:72px;margin:0"
 			/>
-			<span class="hint" style="margin:0">часов</span>
+			<span class="hint m-0">часов</span>
 		</div>
 	{/if}
 	<Hint>
@@ -125,15 +125,15 @@
 		{form.diaryMode ? 'Завести дневник' : 'Создать и позвать'}
 	</Button>
 	{#if !form.diaryMode}
-		<Hint centered style="margin-top:26px">
+		<Hint class="mt-26" centered>
 			<TextButton onclick={toggleDiaryMode}>Или круг только для себя, как дневник</TextButton>
 		</Hint>
 	{:else}
-		<Hint centered style="margin-top:26px">
+		<Hint class="mt-26" centered>
 			<TextButton onclick={toggleDiaryMode}>Или круг, куда можно позвать</TextButton>
 		</Hint>
 	{/if}
 	{#if form.error}
-		<Hint style="margin-top:12px">{form.error}</Hint>
+		<Hint class="mt-12">{form.error}</Hint>
 	{/if}
 </FormLayout>

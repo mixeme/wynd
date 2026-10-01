@@ -116,7 +116,7 @@
 		{:else if !acc}
 			<Hint>{error || 'Человек не найден'}</Hint>
 		{:else}
-			<h4 style="margin-bottom:6px">{acc.email}</h4>
+			<h4 class="mb-6">{acc.email}</h4>
 			<div class="note mb-20 lh-15">
 				на сервере с {formatAdminDayYear(acc.created_at)}
 				{#if acc.last_login_at}

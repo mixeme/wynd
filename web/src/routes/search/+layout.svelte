@@ -64,33 +64,32 @@
 	</ShellLayout>
 {:else if gatewayError}
 	<ShellLayout app>
-		<Hint style="margin-top:24px">{gatewayError}</Hint>
+		<Hint class="mt-24">{gatewayError}</Hint>
 	</ShellLayout>
 {:else if blocked && status}
 	<ShellLayout app>
-		<ScreenTitle centered style="margin-top:48px">Доступ закрыт</ScreenTitle>
+		<ScreenTitle class="mt-48" centered>Доступ закрыт</ScreenTitle>
 		{#if pending}
-			<Hint centered style="margin:10px 30px 0">{payGatewayPendingHint(status)}</Hint>
+			<Hint class="hint-inset" centered>{payGatewayPendingHint(status)}</Hint>
 			<SectionLabel style="margin-top:22px">Заявка</SectionLabel>
-			<SettingsRow
+			<SettingsRow class="pt-2"
 				title="На проверке"
 				subtitle={payGatewayPendingSubtitle(status)}
 				chevron={false}
-				style="padding-top:2px"
 			>
 				{#snippet control()}
 					<Icon name="photo" size="sm" />
 				{/snippet}
 			</SettingsRow>
-			<Button disabled style="margin-top:0" onclick={() => {}}>{PAY_GATEWAY_WAIT}</Button>
+			<Button class="mt-0" disabled onclick={() => {}}>{PAY_GATEWAY_WAIT}</Button>
 		{:else}
-			<Hint centered style="margin:10px 30px 0">{payGatewayExpiredHint(status)}</Hint>
+			<Hint class="hint-inset" centered>{payGatewayExpiredHint(status)}</Hint>
 			<SectionLabel style="margin-top:22px">Куда платить</SectionLabel>
 			<RequisitesCard text={status.requisites} />
 			<Button onclick={() => goto('/pay')}>{PAY_GATEWAY_I_PAID}</Button>
 		{/if}
 		{#if session}
-			<Hint centered style="margin-top:22px">
+			<Hint class="mt-22" centered>
 				Вы вошли как {session.email}<br />в «{session.name}» · {displayHost(session.origin)}
 			</Hint>
 		{/if}

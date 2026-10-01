@@ -193,17 +193,17 @@
 	onback={goBack}
 >
 	{#if showFromCircles}
-		<Button variant="ghost" style="margin-top:12px" onclick={goFromCircles}>
+		<Button class="mt-12" variant="ghost" onclick={goFromCircles}>
 			Позвать из других кругов
 		</Button>
 	{/if}
 	{#if qrSvg}
 		<div class="qr">{@html qrSvg}</div>
 	{/if}
-	<Hint style="margin:16px;text-align:center">Кто ещё не на сервере — код или ссылка</Hint>
+	<Hint class="gutter ctr">Кто ещё не на сервере — код или ссылка</Hint>
 	{#if inviteUrl}
 		<FieldDisplay mono value={inviteUrl} style="margin-top:12px;font-size:12.5px;overflow-wrap:anywhere" />
-		<div class="rowin" style="margin-top:12px">
+		<div class="rowin mt-12">
 			<Button variant="colored" style="flex:1" onclick={() => void shareLink()}>
 				{shared ? 'Отправлено' : 'Поделиться'}
 			</Button>
@@ -212,7 +212,7 @@
 			</Button>
 		</div>
 	{/if}
-	<Label style="margin-top:22px">Ссылка</Label>
+	<Label class="mt-22">Ссылка</Label>
 	{#if showKindChips}
 		<ChipGroup>
 			<Chip selected={kind === 'single'} onclick={() => void pickKind('single')}>
@@ -278,8 +278,8 @@
 		<Button variant="ghost" onclick={goCircle}>Сначала в круг, позову потом</Button>
 	{/if}
 	{#if error}
-		<Hint style="margin:16px">{error}</Hint>
+		<Hint class="gutter">{error}</Hint>
 	{:else if loading}
-		<Hint style="margin:16px">Создание ссылки…</Hint>
+		<Hint class="gutter">Создание ссылки…</Hint>
 	{/if}
 </FormLayout>

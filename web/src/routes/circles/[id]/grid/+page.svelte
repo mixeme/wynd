@@ -96,10 +96,10 @@
 	{#if loading}
 		<Loading />
 	{:else if error && !tiles.length}
-		<Hint style="margin:24px 16px">{error}</Hint>
+		<Hint class="gutter-24">{error}</Hint>
 	{:else}
 		{#if tiles.length}
-			<Hint style="margin-top:12px">
+			<Hint class="mt-12">
 				{pluralPosts(tiles.length)} с фотографиями из {pluralPosts(totalPosts)}
 			</Hint>
 		{/if}
@@ -117,7 +117,7 @@
 			</PhotoGrid>
 		{/each}
 		{#if !tiles.length}
-			<Hint style="margin:24px 16px">Записей с фотографиями пока нет</Hint>
+			<Hint class="gutter-24">Записей с фотографиями пока нет</Hint>
 		{/if}
 	{/if}
 </CircleLayout>

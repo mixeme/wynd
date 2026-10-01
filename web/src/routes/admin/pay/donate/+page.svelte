@@ -68,7 +68,7 @@
 			<Icon name="back" size="sm" />
 			Оплата
 		</TextButton>
-		<h4 style="margin-bottom:8px">Сбор</h4>
+		<h4 class="mb-8">Сбор</h4>
 		{#if loading}
 			<Loading compact />
 		{:else if error && !settings}

@@ -56,7 +56,7 @@
 		<RequisitesCard text={requisites} />
 		<Button onclick={() => goto('/pay')}>Я оплатил</Button>
 		{#if error}
-			<Hint style="margin-top:12px">{error}</Hint>
+			<Hint class="mt-12">{error}</Hint>
 		{/if}
 	{/if}
 </FormLayout>

@@ -239,11 +239,11 @@
 		</div>
 	{/if}
 	{#if sourceError}
-		<Hint style="margin-top:16px">{sourceError}</Hint>
+		<Hint class="mt-16">{sourceError}</Hint>
 	{:else if loading}
-		<Hint style="margin-top:16px">Ищем…</Hint>
+		<Hint class="mt-16">Ищем…</Hint>
 	{:else if debounced && !hits.length}
-		<Hint style="margin-top:16px">Ничего не найдено</Hint>
+		<Hint class="mt-16">Ничего не найдено</Hint>
 	{:else if stats}
 		<Hint>{stats}</Hint>
 	{/if}
@@ -258,17 +258,17 @@
 		>
 			{#snippet preview()}
 				{#if hit.kind === 'day'}
-					<span style="color:var(--faint)">день</span>
+					<span class="faint">день</span>
 				{:else}
 					{highlight(hit.snippet, debounced)}
 					{#if hit.kind === 'comment'}
-						<span style="color:var(--faint)"> · комментарий</span>
+						<span class="faint"> · комментарий</span>
 					{/if}
 				{/if}
 			{/snippet}
 		</SearchResultRow>
 	{/each}
-	<Hint centered style="margin-top:22px">
+	<Hint class="mt-22" centered>
 		Фильтр по автору работает только здесь:<br />в других кругах это другие люди.
 	</Hint>
 </CircleLayout>

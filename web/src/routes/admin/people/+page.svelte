@@ -60,7 +60,7 @@
 			<Hint>{error}</Hint>
 		{:else}
 			<div class="flex-mid gap-16 mb-16">
-				<h4 style="margin:0">Люди</h4>
+				<h4 class="m-0">Люди</h4>
 				<SearchField
 					placeholder="почта"
 					style="max-width:260px;flex:1"

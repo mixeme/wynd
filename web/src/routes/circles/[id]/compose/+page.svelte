@@ -815,11 +815,11 @@
 		{/if}
 
 		{#if error}
-			<Hint style="margin-top:12px">{error}</Hint>
+			<Hint class="mt-12">{error}</Hint>
 		{/if}
 
 		{#if isEdit && editingPost && isEditableActive(editingPost.editable_until)}
-			<div style="margin-top:20px">
+			<div class="mt-20">
 				<DangerZone items={['Удалить запись']} onitem={() => void deleteEditedPost()} />
 			</div>
 			<Hint style="margin:8px 16px 0">
@@ -828,7 +828,7 @@
 		{/if}
 
 		{#if isQueue}
-			<div class="hint" style="margin:16px">
+			<div class="hint gutter">
 				<TextButton onclick={deleteDraft}>Удалить черновик</TextButton>
 			</div>
 		{/if}

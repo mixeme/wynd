@@ -139,7 +139,7 @@
 	{#if loading}
 		<Loading />
 	{:else if !items.length}
-		<Hint style="margin:24px 16px">В этот день нет фото или видео</Hint>
+		<Hint class="gutter-24">В этот день нет фото или видео</Hint>
 	{:else}
 		<PhotoGrid style="padding:0 12px 16px">
 			{#each items as item (item.blobId)}
@@ -154,13 +154,13 @@
 		</PhotoGrid>
 	{/if}
 	{#if canClearCover}
-		<Hint centered style="margin-top:12px">
+		<Hint class="mt-12" centered>
 			<TextButton disabled={clearing} onclick={() => void clearCover()}>убрать обложку</TextButton>
 		</Hint>
 	{/if}
 
 	{#if error}
-		<Hint style="margin:12px 16px">{error}</Hint>
+		<Hint class="gutter-12">{error}</Hint>
 	{/if}
 </FormLayout>
 

@@ -127,11 +127,11 @@
 	<!-- Адрес не вводится: приложение открыто с этого сервера, он и есть сервер
 	     входа. Войти на другой — «Настройки → Серверы → Добавить сервер». -->
 	{#if checking}
-		<Hint style="margin-top:8px">Проверяем сервер…</Hint>
+		<Hint class="mt-8">Проверяем сервер…</Hint>
 	{:else if instance}
 		<ServerRow name={instance.name} subtitle={serverSubtitle} variant="ok" card />
 	{/if}
-	<Label style="margin-top:16px">Почта</Label>
+	<Label class="mt-16">Почта</Label>
 	<Input active type="email" autocomplete="email" bind:value={email} />
 	<Hint>Пришлём код для входа. Пароля нет.</Hint>
 	<Button {loading} disabled={!instance} onclick={onSubmit}>Получить код</Button>
@@ -140,7 +140,7 @@
 		Если прислали ссылку — откройте её.
 	</div>
 	{#if error}
-		<Hint centered style="margin-top:12px">{error}</Hint>
+		<Hint class="mt-12" centered>{error}</Hint>
 	{/if}
 </PlainLayout>
 {/if}

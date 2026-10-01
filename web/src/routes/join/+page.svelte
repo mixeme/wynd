@@ -174,7 +174,7 @@
 			знают.
 		</Hint>
 	{/if}
-	<Label style="margin-top:18px">Адрес сервера</Label>
+	<Label>Адрес сервера</Label>
 	<Input
 		active
 		mono
@@ -187,7 +187,7 @@
 		onpaste={onAddressPaste}
 	/>
 	{#if checking}
-		<Hint style="margin-top:8px">Проверяем сервер…</Hint>
+		<Hint class="mt-8">Проверяем сервер…</Hint>
 	{:else if instance}
 		<ServerRow
 			name={instance.name}
@@ -197,16 +197,16 @@
 		/>
 	{/if}
 	{#if blocked}
-		<Hint style="margin-top:14px">
+		<Hint class="mt-14">
 			Сервер жив и отвечает, но сам новых не принимает. Нужна ссылка — в круг или на сервер:
 			первую даёт любой участник круга, вторую — тот, кто держит сервер.
 		</Hint>
 		<Button disabled onclick={() => {}}>Получить код</Button>
-		<Hint centered style="margin-top:26px">
+		<Hint class="mt-26" centered>
 			Закрытый сервер выглядит так же,<br />но у него ссылок не выдают вовсе.
 		</Hint>
 	{:else}
-		<Label style="margin-top:16px">Почта</Label>
+		<Label class="mt-16">Почта</Label>
 		<Input active type="email" autocomplete="email" bind:value={email} />
 		<Hint>
 			Пришлём код. Пароля нет: почта понадобится, только чтобы вернуться на другом
@@ -217,13 +217,13 @@
 			Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или
 			<a class="under" href={sourceUrl(origin)}>поднимите свой</a>.
 		</Hint>
-		<Button variant="ghost" style="margin-top:18px" onclick={openLinkPicker}>
+		<Button class="mt-18" variant="ghost" onclick={openLinkPicker}>
 			Открыть ссылку или QR
 		</Button>
-		<Hint centered style="margin-top:8px">Ссылку можно вставить в поле адреса выше</Hint>
+		<Hint class="mt-8" centered>Ссылку можно вставить в поле адреса выше</Hint>
 	{/if}
 	{#if error}
-		<Hint style="margin-top:12px">{error}</Hint>
+		<Hint class="mt-12">{error}</Hint>
 	{/if}
 </FormLayout>
 

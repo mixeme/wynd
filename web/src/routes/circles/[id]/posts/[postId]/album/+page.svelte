@@ -107,7 +107,7 @@
 	{#if loading}
 		<Loading />
 	{:else if !post}
-		<Hint style="margin:24px 16px">Запись не найдена</Hint>
+		<Hint class="gutter-24">Запись не найдена</Hint>
 	{:else}
 		<PhotoGrid style="padding:0 12px 16px;margin-top:3px;gap:4px">
 			{#each photos as photo, i (photo.blob_id)}

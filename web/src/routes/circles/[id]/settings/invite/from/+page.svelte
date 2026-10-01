@@ -88,7 +88,7 @@
 	{#if loading}
 		<Loading compact />
 	{:else if groups.length === 0}
-		<Hint style="margin:16px">Пока никого позвать — нет людей в других ваших кругах.</Hint>
+		<Hint class="gutter">Пока никого позвать — нет людей в других ваших кругах.</Hint>
 	{:else}
 		{#each groups as group (group.id)}
 			<SearchGroupHeader
@@ -113,6 +113,6 @@
 		<Hint style="margin:18px 16px 0">Кто уже в «{circle.name}», сюда не попадает. Нажмите на человека — ему придёт приглашение, ссылку отправлять не нужно.</Hint>
 	{/if}
 	{#if error}
-		<Hint style="margin:16px">{error}</Hint>
+		<Hint class="gutter">{error}</Hint>
 	{/if}
 </FormLayout>

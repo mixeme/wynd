@@ -240,12 +240,12 @@
 		</div>
 	{/if}
 	{#if sourceError}
-		<Hint style="margin-top:16px">{sourceError}</Hint>
+		<Hint class="mt-16">{sourceError}</Hint>
 	{/if}
 	{#if loading}
-		<Hint style="margin-top:16px">Ищем…</Hint>
+		<Hint class="mt-16">Ищем…</Hint>
 	{:else if debounced && !sourceError && !groups.length}
-		<Hint style="margin-top:16px">Ничего не найдено</Hint>
+		<Hint class="mt-16">Ничего не найдено</Hint>
 	{/if}
 	{#each groups as group (group.circleId)}
 		<SearchGroupHeader color={group.color} name={group.name} count={group.hits.length} />
@@ -260,18 +260,18 @@
 			>
 				{#snippet preview()}
 					{#if hit.kind === 'day'}
-						<span style="color:var(--faint)">день</span>
+						<span class="faint">день</span>
 					{:else}
 						{highlight(hit.snippet, debounced)}
 						{#if hit.kind === 'comment'}
-							<span style="color:var(--faint)"> · комментарий</span>
+							<span class="faint"> · комментарий</span>
 						{/if}
 					{/if}
 				{/snippet}
 			</SearchResultRow>
 		{/each}
 	{/each}
-	<Hint centered style="margin-top:22px">
+	<Hint class="mt-22" centered>
 		Ищется только то, что вы застали:<br />записи до вашего прихода не найдутся.
 	</Hint>
 </FormLayout>

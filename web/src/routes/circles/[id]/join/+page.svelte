@@ -211,29 +211,29 @@
 {:else}
 <FormLayout app color={circle.color} circleTitle={circle.name}>
 	{#if memberTotal > 0}
-		<Label style="margin-top:16px">Кто уже здесь · {memberTotal}</Label>
+		<Label class="mt-16">Кто уже здесь · {memberTotal}</Label>
 		<PeopleStrip people={displayMembers} />
 		{#if moreCount > 0 && (inviteToken || pendingJoin)}
-			<div class="hint ctr" style="margin-top:12px">
+			<div class="hint ctr mt-12">
 				<TextButton onclick={openMembers}>ещё {moreCount}</TextButton>
 			</div>
 		{:else if moreCount > 0}
-			<div class="hint ctr" style="margin-top:12px">ещё {moreCount}</div>
+			<div class="hint ctr mt-12">ещё {moreCount}</div>
 		{/if}
 	{/if}
 
 	{#if inviteToken || pendingJoin}
-		<div class="h1s" style="margin-top:22px;line-height:1.25">
+		<div class="h1s mt-22 lh-125">
 			Как вас зовут<br />в этом круге?
 		</div>
 		<AddPhotoButton previewUrl={avatarPreview || undefined} onclick={openPhotoPicker} />
-		<div class="hint ctr" style="margin-top:8px">
+		<div class="hint ctr mt-8">
 			<TextButton onclick={openPhotoPicker}>добавить фото</TextButton>
 		</div>
 		<input bind:this={fileInput} type="file" accept="image/*" hidden onchange={onPhotoSelected} />
-		<Label style="margin-top:18px">Имя</Label>
+		<Label>Имя</Label>
 		<Input active type="text" autocomplete="name" bind:value={name} />
-		<Label style="display:flex">
+		<Label class="flex">
 			<span>Скажи что-нибудь кругу</span>
 			<span style="margin-left:auto;text-transform:none;letter-spacing:0;font-weight:400"
 				>необязательно</span
@@ -248,17 +248,17 @@
 		/>
 		<Button variant="colored" {loading} onclick={enterCircle}>Войти в круг</Button>
 	{:else}
-		<div class="h1s" style="margin-top:22px;line-height:1.25">
+		<div class="h1s mt-22 lh-125">
 			Добро пожаловать<br />в {circle.name}
 		</div>
-		<Hint style="margin-top:12px">
+		<Hint class="mt-12">
 			Здесь вас зовут «{circle.identityName}». Первую запись можно сделать в ленте.
 		</Hint>
 		<Button variant="colored" onclick={skipToFeed}>Войти в круг</Button>
 	{/if}
 
 	{#if error}
-		<Hint style="margin-top:12px">{error}</Hint>
+		<Hint class="mt-12">{error}</Hint>
 	{/if}
 </FormLayout>
 {/if}

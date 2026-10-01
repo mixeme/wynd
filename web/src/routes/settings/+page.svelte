@@ -29,11 +29,10 @@
 </script>
 
 <FormLayout shell app title="Настройки" onback={goBack}>
-	<SettingsRow
+	<SettingsRow class="mt-8"
 		icon="key"
 		title="Серверы"
 		{subtitle}
-		style="margin-top:8px"
 		onclick={() => goto('/settings/servers')}
 	/>
 	<SettingsRow

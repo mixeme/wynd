@@ -112,7 +112,7 @@
 	{#if pageLoading}
 		<Loading />
 	{:else}
-		<Hint style="margin:16px">
+		<Hint class="gutter">
 			{#if quotaBytes}
 				Сейчас у «{circle.name}» {formatBytes(quotaBytes)} — свою квоту ставит администратор
 				сервера.
@@ -121,7 +121,7 @@
 			{/if}
 			Шаг необязательный: можно вернуться и сразу выбрать отсечку.
 		</Hint>
-		<Label style="margin-top:18px">Сколько нужно</Label>
+		<Label>Сколько нужно</Label>
 		<ChipGroup>
 			{#each QUOTA_CHIPS.filter((c) => c.key !== 'none') as opt (opt.key)}
 				<Chip
@@ -148,21 +148,21 @@
 					bind:value={customGb}
 					style="width:72px;margin:0"
 				/>
-				<span class="hint" style="margin:0">ГБ</span>
+				<span class="hint m-0">ГБ</span>
 			</div>
 		{/if}
-		<Hint style="margin-top:10px">
+		<Hint class="mt-10">
 			{formatBytes(usedBytes)} уже лежит. Ниже этого числа просить незачем — место всё равно
 			кончится.
 		</Hint>
-		<Button variant="colored" style="margin-top:16px" {loading} onclick={() => void submit()}>
+		<Button class="mt-16" variant="colored" {loading} onclick={() => void submit()}>
 			Отправить запрос
 		</Button>
-		<Hint centered style="margin-top:18px"
+		<Hint class="mt-18" centered
 			>Отказ ничего не ломает: цикл архивации останется на вас.</Hint
 		>
 		{#if error}
-			<Hint style="margin:16px">{error}</Hint>
+			<Hint class="gutter">{error}</Hint>
 		{/if}
 	{/if}
 </FormLayout>

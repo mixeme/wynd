@@ -60,13 +60,13 @@
 	{#if pageLoading}
 		<Loading />
 	{:else if isOwner}
-		<Hint style="margin:16px">Сначала передайте владение — пока вы владелец, уйти нельзя.</Hint>
+		<Hint class="gutter">Сначала передайте владение — пока вы владелец, уйти нельзя.</Hint>
 	{:else}
-		<Hint style="margin:16px"
+		<Hint class="gutter"
 			>Записи останутся в «{circle.name}» под именем «{circle.identityName}». В хронике будет
 			«покинул круг» — так же, как если бы вас исключили.</Hint
 		>
-		<Label style="margin-top:22px">Как уйти</Label>
+		<Label class="mt-22">Как уйти</Label>
 		<ChipGroup>
 			<Chip selected={leaveMode === 'read'} onclick={() => (leaveMode = 'read')}>
 				Читать, не писать
@@ -74,11 +74,11 @@
 			<Chip selected={leaveMode === 'gone'} onclick={() => (leaveMode = 'gone')}>Совсем</Chip>
 		</ChipGroup>
 		<Hint>{readHint}</Hint>
-		<Button variant="colored" style="margin-top:16px" {loading} onclick={() => void onLeave()}>
+		<Button class="mt-16" variant="colored" {loading} onclick={() => void onLeave()}>
 			Покинуть круг
 		</Button>
 		{#if error}
-			<Hint style="margin:16px">{error}</Hint>
+			<Hint class="gutter">{error}</Hint>
 		{/if}
 	{/if}
 </FormLayout>

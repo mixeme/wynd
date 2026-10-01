@@ -76,7 +76,7 @@
 <AdminWideLayout app active="Проверка" {server}>
 	<AdminSection>
 		<div class="sz-11 faint mb-8">Проверка · Прокси</div>
-		<h4 style="margin-bottom:8px">{fixText.title}</h4>
+		<h4 class="mb-8">{fixText.title}</h4>
 		<div class="note lh-16" style="max-width:620px">{fixText.body}</div>
 		<div class="flex wrap gap-10 mt-16 mb-18 sz-11 muted">
 			<span class="inp mono">X-Forwarded-For: {xff}</span>

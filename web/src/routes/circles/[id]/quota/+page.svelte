@@ -125,16 +125,16 @@
 	{#if loading}
 		<Loading />
 	{:else if error}
-		<Hint style="margin:16px">{error}</Hint>
+		<Hint class="gutter">{error}</Hint>
 		{#if forbidden}
-			<Button variant="ghost" style="margin-top:8px" onclick={() => goto(`/circles/${circle.circleId}/settings`)}>
+			<Button class="mt-8" variant="ghost" onclick={() => goto(`/circles/${circle.circleId}/settings`)}>
 				К настройкам
 			</Button>
 		{/if}
 	{:else}
 		<Label>Место</Label>
 		<Meter value={capped ? usedGb : 0} max={quotaGb} />
-		<Hint style="margin-top:8px">
+		<Hint class="mt-8">
 			{#if capped}
 				{formatBytes(usedBytes)} из {formatBytes(quotaBytes)}
 			{:else}
@@ -150,14 +150,14 @@
 				onclick={() => goto(`/circles/${circle.circleId}/quota/request`)}
 			/>
 		{/if}
-		<Label style="margin-top:18px">Сколько освободит отсечка</Label>
+		<Label>Сколько освободит отсечка</Label>
 		<VolumeChart
 			{volume}
 			cutoffLabel={cutoffLabel()}
 			bind:cutoffX={chartCutoffX}
 			oncutoff={onChartCutoff}
 		/>
-		<Label style="margin-top:14px">Архивировать всё до</Label>
+		<Label class="mt-14">Архивировать всё до</Label>
 		<Input
 			active
 			type="date"
@@ -170,6 +170,6 @@
 				{#if postsEstimate} Останется ~{plural(postsEstimate, WORD.post)}.{/if}
 			</Hint>
 		{/if}
-		<Button variant="colored" style="margin-top:14px" onclick={next}>Дальше: сроки</Button>
+		<Button class="mt-14" variant="colored" onclick={next}>Дальше: сроки</Button>
 	{/if}
 </FormLayout>

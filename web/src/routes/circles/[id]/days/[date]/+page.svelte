@@ -205,7 +205,7 @@
 	{#if loading}
 		<Loading />
 	{:else if error && !posts.length}
-		<Hint style="margin:24px 16px">{error}</Hint>
+		<Hint class="gutter-24">{error}</Hint>
 	{:else}
 		<DayHeader
 			coverUrl={coverUrl || undefined}
@@ -216,8 +216,8 @@
 		/>
 
 		{#if editingTitle}
-			<Input bind:value={titleDraft} active placeholder={formatEntryDate(entryDate)} style="margin-top:14px" />
-			<div class="rowin" style="margin-top:12px">
+			<Input class="mt-14" bind:value={titleDraft} active placeholder={formatEntryDate(entryDate)} />
+			<div class="rowin mt-12">
 				<Button
 					variant="colored"
 					style="flex:1"
@@ -230,7 +230,7 @@
 				<Button variant="ghost" style="flex:1;margin:0" onclick={cancelEditTitle}>Отмена</Button>
 			</div>
 			{#if canClearTitle}
-				<div class="hint ctr" style="margin-top:8px">
+				<div class="hint ctr mt-8">
 					<TextButton onclick={removeTitle}>убрать название</TextButton>
 				</div>
 			{/if}
@@ -291,7 +291,7 @@
 			</PostCard>
 		{/each}
 		{#if !posts.length}
-			<Hint style="margin:24px 16px">В этот день записей нет</Hint>
+			<Hint class="gutter-24">В этот день записей нет</Hint>
 		{/if}
 		{#if error}
 			<Hint class="gutter-12">{error}</Hint>

@@ -149,7 +149,7 @@
 			style="width:96px;height:96px;font-size:38px"
 		/>
 	</div>
-	<div class="hint ctr" style="margin-top:10px">
+	<div class="hint ctr mt-10">
 		<TextButton onclick={() => fileInput?.click()}>сменить фото</TextButton>
 	</div>
 	{#if avatarUrl}
@@ -164,23 +164,22 @@
 		hidden
 		onchange={(e) => void onPhotoSelected(e)}
 	/>
-	<Label style="margin-top:20px">Имя</Label>
+	<Label class="mt-20">Имя</Label>
 	<Input active bind:value={name} />
 	{#if nameHint}
-		<Hint style="margin-top:8px">{nameHint}</Hint>
+		<Hint class="mt-8">{nameHint}</Hint>
 	{/if}
 	<Hint
 		>Это имя видно только в «{circle.name}». В других кругах вас зовут иначе, и связать одно с
 		другим нельзя — даже администратору сервера.</Hint
 	>
 	{#if history.length > 1}
-		<Label style="margin-top:22px">Прежние имена</Label>
+		<Label class="mt-22">Прежние имена</Label>
 		{#each history.slice(1) as row (row.effective_at)}
-			<SettingsRow
+			<SettingsRow class="pt-2"
 				title={row.name}
 				subtitle="до {formatEntryDate(row.effective_at.slice(0, 10))}"
 				chevron={false}
-				style="padding-top:2px"
 			/>
 		{/each}
 	{/if}
@@ -188,11 +187,11 @@
 		>Старые записи остаются подписаны прежним именем — так, как их читали тогда. Смена имени —
 		событие хроники.</Hint
 	>
-	<Button variant="colored" style="margin-top:16px" loading={saving} onclick={() => void save()}>
+	<Button class="mt-16" variant="colored" loading={saving} onclick={() => void save()}>
 		Сохранить
 	</Button>
 	{#if error}
-		<Hint style="margin:16px">{error}</Hint>
+		<Hint class="gutter">{error}</Hint>
 	{/if}
 </FormLayout>
 

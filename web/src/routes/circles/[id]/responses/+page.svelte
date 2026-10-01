@@ -3,6 +3,7 @@
 	import { getContext, onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import CommentRow from '$ui/data/CommentRow.svelte';
+	import MentionText from '$ui/data/MentionText.svelte';
 	import EventDivider from '$ui/data/EventDivider.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Icon from '$ui/Icon.svelte';
@@ -157,7 +158,7 @@
 			Здесь соберутся комментарии и реакции — и к тем записям, что в ленте уже далеко внизу.
 		</Hint>
 	{:else}
-		<div class="resp-list">
+		<div>
 			{#each rows as row, i (row.key)}
 				{@const day = dayBreak(i)}
 				{#if dividerAt === i}
@@ -178,11 +179,10 @@
 							{#if row.kind === 'reaction' && row.emoji}<Icon
 									name={reactionIconName(row.emoji)}
 									size="xs"
-									class="resp-rx"
 								/>{/if}{responseKindLabel(row.kind)} · {formatClock(row.lead.at)}
 						{/snippet}
 						{#if row.kind === 'comment' && row.lead.body}
-							<div class="pre">{row.lead.body}</div>
+							<MentionText body={row.lead.body} />
 						{/if}
 						{#if ref}
 							<div class="resp-ref">
@@ -200,7 +200,7 @@
 				</a>
 			{/each}
 			{#if hasMore}
-				<Button variant="ghost" class="resp-more" loading={loadingMore} onclick={() => void loadMore()}>
+				<Button variant="ghost" class="gutter" loading={loadingMore} onclick={() => void loadMore()}>
 					Показать раньше
 				</Button>
 			{/if}

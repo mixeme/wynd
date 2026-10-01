@@ -107,7 +107,7 @@
 		{:else if error && !account}
 			<Hint>{error}</Hint>
 		{:else if account}
-			<h4 style="margin-bottom:6px">{account.email}</h4>
+			<h4 class="mb-6">{account.email}</h4>
 			<div class="note mb-22">
 				{subscriptionAdminSubtitle(account.subscription_expires_at)}
 			</div>

@@ -275,7 +275,7 @@
 {#if denied}
 	<PlainLayout app>
 		<div class="h1s ctr" style="margin-top:80px">Нет доступа</div>
-		<div class="hint ctr" style="margin-top:12px">
+		<div class="hint ctr mt-12">
 			<a class="under" href="/circles">К кругам</a>
 		</div>
 	</PlainLayout>

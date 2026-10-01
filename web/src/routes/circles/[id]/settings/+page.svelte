@@ -360,13 +360,13 @@
 	{#if loading}
 		<Loading />
 	{:else if error}
-		<Hint style="margin:16px">{error}</Hint>
+		<Hint class="gutter">{error}</Hint>
 	{:else}
 		<Label>Название</Label>
 		{#if canSettings}
 			<Input active bind:value={name} onchange={() => void saveName()} />
 			{#if nameHint}
-				<Hint style="margin-top:8px">{nameHint}</Hint>
+				<Hint class="mt-8">{nameHint}</Hint>
 			{/if}
 		{:else}
 			<FieldDisplay value={name} />
@@ -402,10 +402,10 @@
 						onchange={() => void onCustomHoursChange()}
 						style="width:72px;margin:0"
 					/>
-					<span class="hint" style="margin:0">часов</span>
+					<span class="hint m-0">часов</span>
 				</div>
 				{#if customHoursHint}
-					<Hint style="margin-top:8px">{customHoursHint}</Hint>
+					<Hint class="mt-8">{customHoursHint}</Hint>
 				{/if}
 			{/if}
 			<Hint
@@ -473,24 +473,22 @@
 		</SettingsRow>
 
 		{#if isOwner && quotaBytes}
-			<Label style="margin-top:20px">Место</Label>
+			<Label class="mt-20">Место</Label>
 			<Meter value={usedBytes / (1024 * 1024 * 1024)} max={quotaBytes / (1024 * 1024 * 1024)} />
-			<Hint style="margin-top:8px"
+			<Hint class="mt-8"
 				>{formatBytes(usedBytes)} из {formatBytes(quotaBytes)} · квоту задал администратор</Hint
 			>
-			<SettingsRow
+			<SettingsRow class="mt-8"
 				title="Архив и очистка"
 				subtitle="освободить место, скачать архив"
-				style="margin-top:8px"
 				onclick={() => goto(`/circles/${circle.circleId}/quota`)}
 			/>
 		{/if}
 		{#if circle.archiveCycle?.active}
 			{#if isOwner}
-				<SettingsRow
+				<SettingsRow class="mt-20"
 					title="Сроки архивации"
 					subtitle="отсечка и дедлайн"
-					style="margin-top:20px"
 					onclick={() => goto(`/circles/${circle.circleId}/quota/deadlines`)}
 				/>
 			{/if}
@@ -502,7 +500,7 @@
 			/>
 		{/if}
 
-		<Label style="margin-top:20px">Участники · {activeMembers.length}</Label>
+		<Label class="mt-20">Участники · {activeMembers.length}</Label>
 		{#each previewMembers as m, i (m.identity_id)}
 			<MemberRow
 				initial={circleInitial(m.name)}
@@ -520,7 +518,7 @@
 		/>
 
 		{#if !soloCircle || isOwner}
-		<div style="margin-top:20px">
+		<div class="mt-20">
 			<DangerZone
 				items={[
 					...(!soloCircle && isOwner ? ['Передать владение'] : []),
@@ -566,7 +564,7 @@
 		<Label style="margin:0 0 7px">Напишите имя круга</Label>
 		<Input active bind:value={deleteConfirm} />
 		{#if deleteError}
-			<Hint style="margin-top:8px">{deleteError}</Hint>
+			<Hint class="mt-8">{deleteError}</Hint>
 		{/if}
 		<div class="rowin" style="margin:18px 0 0">
 			<Button variant="ghost" style="flex:1;margin:0" onclick={closeDeleteDialog}>Отмена</Button>

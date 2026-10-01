@@ -96,11 +96,11 @@
 		<Hint>
 			Администратор увидит скриншот и решит, на сколько продлить доступ. Комментарий не обязателен.
 		</Hint>
-		<Label style="margin-top:18px">Скриншот</Label>
+		<Label>Скриншот</Label>
 		{#if file}
 			<div class="att" style="margin:0 16px">
 				<div class="g">
-					<div style="font-weight:600">{fileLabel.split(' · ')[0]}</div>
+					<div class="bold">{fileLabel.split(' · ')[0]}</div>
 					<div class="sz">{fileLabel.split(' · ')[1] || ''} · как вложение записи</div>
 				</div>
 			</div>
@@ -115,11 +115,11 @@
 			onchange={(e) => void onFilesSelected(e.currentTarget.files)}
 		/>
 		<Hint>Фото из галереи или с камеры.</Hint>
-		<Label style="margin-top:18px">Комментарий</Label>
+		<Label>Комментарий</Label>
 		<TextArea variant="field" active bind:value={comment} />
 		<Button disabled={!canSubmit || loading} onclick={() => void submit()}>Отправить заявку</Button>
 		{#if error}
-			<Hint style="margin-top:12px">{error}</Hint>
+			<Hint class="mt-12">{error}</Hint>
 		{/if}
 	{/if}
 </FormLayout>

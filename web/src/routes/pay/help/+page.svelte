@@ -44,11 +44,11 @@
 		{/if}
 		<SectionLabel style="margin-top:22px">Куда платить</SectionLabel>
 		<RequisitesCard text={requisites} />
-		<Hint centered style="margin-top:22px">
+		<Hint class="mt-22" centered>
 			Это поддержка, не подписка. Круги от перевода не зависят,<br />и заявку отправлять не нужно.
 		</Hint>
 		{#if error}
-			<Hint style="margin-top:12px">{error}</Hint>
+			<Hint class="mt-12">{error}</Hint>
 		{/if}
 	{/if}
 </FormLayout>

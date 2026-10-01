@@ -194,7 +194,7 @@
 	{#if loading}
 		<Loading />
 	{:else if error && !pins.length}
-		<Hint style="margin:24px 16px">{error}</Hint>
+		<Hint class="gutter-24">{error}</Hint>
 	{:else}
 		<div class="map-wrap">
 			{#if badge}

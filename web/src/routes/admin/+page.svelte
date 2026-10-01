@@ -441,7 +441,7 @@
 					<div class="flex-mid gap-10 wrap">
 						<Input
 							admin
-							class="w88" style="font-weight:600"
+						 class="w88 bold"
 							bind:value={circleQuotaGb}
 							onchange={() => void saveCircleQuota('gb')}
 						/>

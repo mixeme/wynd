@@ -1024,10 +1024,6 @@ a.resp + a.resp .cmt {
 	color: var(--ink);
 	font-weight: 600;
 }
-.resp-more {
-	margin: 16px;
-	width: calc(100% - 32px);
-}
 .cmt .acts .ic {
 	width: 15px;
 	height: 15px;

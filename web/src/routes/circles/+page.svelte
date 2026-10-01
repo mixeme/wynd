@@ -536,7 +536,7 @@
 		{/if}
 		{#if empty}
 		<ScreenTitle centered class="mt-24">Ни одного круга</ScreenTitle>
-		<Hint centered style="margin:10px 30px 0">
+		<Hint class="hint-inset" centered>
 			Круг — это место, куда сворачивают. Заведите свой или откройте присланную ссылку.
 		</Hint>
 		<Button style="margin-top:30px" onclick={openNew}>Новый круг</Button>

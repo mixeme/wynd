@@ -186,10 +186,10 @@
 	onback={() => goto(`/circles/${circle.circleId}/settings`)}
 >
 	{#if error}
-		<Hint style="margin:16px">{error}</Hint>
+		<Hint class="gutter">{error}</Hint>
 	{:else}
 		{#if transferMode}
-			<Hint style="margin:16px">Выберите участника, которому передадите круг.</Hint>
+			<Hint class="gutter">Выберите участника, которому передадите круг.</Hint>
 		{/if}
 		<Label>В круге · {active.length}</Label>
 		{#each active as m, i (m.identity_id)}
@@ -210,7 +210,7 @@
 			/>
 		{/each}
 		{#if left.length && !transferMode}
-			<Label style="margin-top:18px">Вышли · {left.length}</Label>
+			<Label>Вышли · {left.length}</Label>
 			{#each left as m, i (m.identity_id)}
 				<MemberRow
 					initial={circleInitial(m.name)}
@@ -224,7 +224,7 @@
 			{/each}
 		{/if}
 		{#if !transferMode}
-			<Hint style="margin:16px"
+			<Hint class="gutter"
 				>Записи вышедших остаются в круге и подписаны тем именем, что было на момент написания.</Hint
 			>
 			<Button
@@ -240,7 +240,7 @@
 
 {#if menuMember}
 	<OverlayLayout label={menuMember.name} ondismiss={closeMenu}>
-		<Label style="margin-top:2px">{menuMember.name}</Label>
+		<Label class="mt-2">{menuMember.name}</Label>
 		<SettingsRow
 			title={menuMember.can_settings
 				? 'Забрать право менять настройки'
@@ -248,13 +248,12 @@
 			chevron={false}
 			onclick={() => void toggleSettings(menuMember!)}
 		/>
-		<SettingsRow
+		<SettingsRow class="muted"
 			title="Исключить"
 			chevron={false}
-			style="color:var(--muted)"
 			onclick={() => menuMember && askExclude(menuMember)}
 		/>
-		<Hint style="margin-top:14px"
+		<Hint class="mt-14"
 			>Право выдаёт только владелец.</Hint
 		>
 	</OverlayLayout>

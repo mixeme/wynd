@@ -385,12 +385,12 @@
 	{#if loading}
 		<Loading />
 	{:else if !post}
-		<Hint style="margin:24px 16px">{error || 'Запись не найдена'}</Hint>
+		<Hint class="gutter-24">{error || 'Запись не найдена'}</Hint>
 	{:else}
 		{@const currentPost = post}
 		{@const cover = coverMedia(currentPost.media)}
 		{#snippet postHeaderRight()}
-			<div style="display:flex;align-items:center;gap:10px;margin-left:auto">
+			<div class="gap-10 ml-auto flex-mid">
 				{#if canEditPost(currentPost)}
 					<IconButton name="edit" label="Править" size="sm" onclick={openEdit} />
 				{/if}
@@ -549,7 +549,7 @@
 					{#snippet children()}
 						<MentionText body={item.body} />
 						{#if item.state === 'failed' && item.error}
-							<Hint style="margin-top:8px">{item.error}</Hint>
+							<Hint class="mt-8">{item.error}</Hint>
 						{/if}
 					{/snippet}
 				</CommentRow>
@@ -574,7 +574,7 @@
 					icon={reactionIconName(rx.emoji)}
 				/>
 			{/each}
-			<Hint style="margin-top:14px">
+			<Hint class="mt-14">
 				Реакция одна на человека и подчиняется окну правок. Хотите сказать больше — напишите словами.
 			</Hint>
 		</OverlayLayout>

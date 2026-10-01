@@ -97,7 +97,7 @@
 >
 	<Label>Присылать</Label>
 	{#if !soloCircle}
-	<SettingsRow title="Новые записи" style="padding-top:2px">
+	<SettingsRow class="pt-2" title="Новые записи">
 		{#snippet control()}
 			<Switch bind:checked={posts} label="Новые записи" />
 		{/snippet}
@@ -131,7 +131,7 @@
 		{/snippet}
 	</SettingsRow>
 
-	<Label style="margin-top:20px">Приглушить</Label>
+	<Label class="mt-20">Приглушить</Label>
 	<ChipGroup>
 		<Chip selected={mute === 'none'} onclick={() => (mute = 'none')}>Нет</Chip>
 		<Chip selected={mute === 'tomorrow'} onclick={() => (mute = 'tomorrow')}>До завтра</Chip>
@@ -141,10 +141,10 @@
 	<Hint>Упоминание пробивается через приглушение: это адресация, а не шум.</Hint>
 	{/if}
 
-	<Hint style="margin-top:14px"
+	<Hint class="mt-14"
 		>В уведомлении нет текста записи — только круг и что произошло.</Hint
 	>
 	{#if error}
-		<Hint style="margin:16px">{error}</Hint>
+		<Hint class="gutter">{error}</Hint>
 	{/if}
 </FormLayout>

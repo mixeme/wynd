@@ -77,13 +77,12 @@
 	{:else}
 		{#each rows as row (row.session.origin + row.session.email)}
 			<SectionLabel raw>
-				<span style="color:var(--ink)">{row.session.name}</span> · {row.host}
+				<span class="ink">{row.session.name}</span> · {row.host}
 			</SectionLabel>
-			<SettingsRow
+			<SettingsRow class="pt-2"
 				title={row.session.email}
 				subtitle={accountSubtitle(row.session, row.circles)}
 				chevron={false}
-				style="padding-top:2px"
 			/>
 			<SettingsRow
 				icon="out"
@@ -94,7 +93,7 @@
 		{/each}
 	{/if}
 
-	<Hint style="margin-top:24px">
+	<Hint class="mt-24">
 		Вы выходите с сервера, не из Wynd. Общего профиля на все серверы нет: даже одна почта
 		на двух серверах — это два разных места, связать их нельзя.
 	</Hint>

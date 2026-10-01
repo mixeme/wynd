@@ -29,7 +29,7 @@
 			onclick={() => pickOrigin(session.origin)}
 		/>
 	{/each}
-	<Hint style="margin-top:18px">
+	<Hint class="mt-18">
 		Здесь серверы, на которых вы уже есть. Добавить другой можно в настройках, до этой формы.
 	</Hint>
 </FormLayout>

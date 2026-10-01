@@ -126,10 +126,10 @@
 	{#if loading}
 		<Loading />
 	{:else if error && !days.length}
-		<Hint style="margin:24px 16px">{error}</Hint>
+		<Hint class="gutter-24">{error}</Hint>
 	{:else}
 		{#if days.length}
-			<Hint style="margin-top:12px">
+			<Hint class="mt-12">
 				{days.length} {days.length === 1 ? 'день' : days.length < 5 ? 'дня' : 'дней'} из {pluralPosts(totalPosts)}
 			</Hint>
 		{/if}
@@ -148,7 +148,7 @@
 			</DayGrid>
 		{/each}
 		{#if !days.length}
-			<Hint style="margin:24px 16px">Пока нет дней с записями</Hint>
+			<Hint class="gutter-24">Пока нет дней с записями</Hint>
 		{/if}
 	{/if}
 </CircleLayout>
