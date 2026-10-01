@@ -32,6 +32,15 @@
 		opacity: 0;
 		animation: loading-in 0.4s ease-out 0.3s forwards;
 	}
+	/* Знак — в одной точке окна при любой шапке: блок высотой 70vh начинался
+	   под шапкой, а шапки у улочки, круга, форм и админки разные — знак
+	   прыгал по высоте (план 46, C10). Касаний не перехватывает. */
+	.loading:not(.compact) {
+		position: fixed;
+		inset: 0;
+		min-height: 0;
+		pointer-events: none;
+	}
 	.loading.compact {
 		min-height: 160px;
 	}

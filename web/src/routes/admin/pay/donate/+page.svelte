@@ -97,6 +97,14 @@
 							class="w180"
 							bind:value={settings.until}
 						/>
+						<!-- Поле даты на телефоне не очищается — срок снимает своя ссылка. -->
+						{#if settings.until}
+							<TextButton class="sz-12" onclick={() => settings && (settings.until = '')}
+								>убрать срок</TextButton
+							>
+						{:else}
+							<span class="note">без срока — пока не выключите</span>
+						{/if}
 					</div>
 				</div>
 			</div>
