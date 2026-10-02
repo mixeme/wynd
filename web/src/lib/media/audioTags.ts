@@ -1,6 +1,7 @@
 import { isAudioMedia } from '$lib/journal/present';
 
-const COVER_EDGE = 144;
+// Обложка звука бывает и обложкой дня на всю ширину — 144 px там расплывались.
+const COVER_EDGE = 1024;
 
 export interface AudioTags {
 	artist: string;
