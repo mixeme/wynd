@@ -888,11 +888,6 @@
 {#snippet composeFooter()}
 	<ComposeToolbar>
 		{#snippet tools()}
-			<IconButton
-				name="photo"
-				label="Фото или видео"
-				onclick={() => photoPicker?.open()}
-			/>
 			<IconButton name="music" label="Звук" onclick={() => audioPicker?.open()} />
 			<IconButton name="file" label="Файл" onclick={() => attachPicker?.open()} />
 			{#if pickedHasPlace}

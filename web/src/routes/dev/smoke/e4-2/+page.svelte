@@ -31,7 +31,6 @@
 {#snippet composeFooter()}
 	<div class="compose-bar">
 		<div class="tools">
-			<IconButton name="photo" label="Фото или видео" onclick={() => {}} />
 			<IconButton name="music" label="Звук" onclick={() => {}} />
 			<IconButton name="file" label="Файл" onclick={() => {}} />
 			<span class="who">до 32 КБ · как Мышь</span>

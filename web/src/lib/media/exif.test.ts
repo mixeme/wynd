@@ -27,6 +27,16 @@ describe('readExif', () => {
 		expect(hints.geo_lng).toBeCloseTo(30.309, 3);
 	});
 
+	// Android вырезает место, оставляя GPS 0/0 (NaN) или нули: места нет, значок не горит.
+	it('treats redacted GPS as no place', async () => {
+		for (const name of ['exif-gps-redacted.jpg', 'exif-gps-zero.jpg']) {
+			const bytes = readFileSync(resolve(process.cwd(), `src/test/fixtures/${name}`));
+			const hints = await readExif(new File([new Uint8Array(bytes)], name, { type: 'image/jpeg' }));
+			expect(hints.geo_lat).toBeUndefined();
+			expect(hints.geo_lng).toBeUndefined();
+		}
+	});
+
 	it('returns no hints for a file without EXIF', async () => {
 		const plain = new File([new Uint8Array([1, 2, 3, 4])], 'plain.bin', {
 			type: 'application/octet-stream'

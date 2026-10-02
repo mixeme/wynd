@@ -21,8 +21,16 @@ export async function readExif(file: File): Promise<ExifHints> {
 			const d = String(data.DateTimeOriginal.getDate()).padStart(2, '0');
 			hints.entry_date = `${y}-${m}-${d}`;
 		}
-		if (typeof data.latitude === 'number') hints.geo_lat = data.latitude;
-		if (typeof data.longitude === 'number') hints.geo_lng = data.longitude;
+		// Android, вырезая место из снимка (браузер без права на геоданные
+		// медиа), оставляет поля GPS с делением 0/0 — exifr отдаёт NaN, а при
+		// отправке NaN становился null: значок места горел, на карту не вставало.
+		// Нули — тоже вырезанное место, «остров Нуль» снимают редко.
+		const lat = data.latitude;
+		const lng = data.longitude;
+		if (Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0)) {
+			hints.geo_lat = lat;
+			hints.geo_lng = lng;
+		}
 		return hints;
 	} catch {
 		return {};
