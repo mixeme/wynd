@@ -7,6 +7,9 @@
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { loadSourceUrl } from '$lib/instance/source.svelte';
 	import { loadSessions } from '$lib/session/session.svelte';
+	import Hint from '$ui/forms/Hint.svelte';
+	import TextButton from '$ui/forms/TextButton.svelte';
+	import { appUpdate, applyAppUpdate, checkAppUpdate } from '$lib/session/appUpdate.svelte';
 
 	let subtitle = $state('нет серверов');
 
@@ -22,6 +25,16 @@
 			subtitle = `${sessions[0].name} и ещё ${sessions.length - 1}`;
 		}
 	});
+
+	// Обновить приложение сразу, не дожидаясь, пока оно уйдёт в фон (C19).
+	let checking = $state(false);
+	let checked = $state(false);
+	async function check() {
+		checking = true;
+		await checkAppUpdate();
+		checking = false;
+		checked = true;
+	}
 
 	function goBack() {
 		void goUp('/circles');
@@ -42,4 +55,17 @@
 		onclick={() => goto('/settings/app')}
 	/>
 	<AboutFooter wrap class="mt-44" />
+	{#if appUpdate.supported}
+		<Hint centered class="mt-8">
+			{#if appUpdate.pending}
+				<TextButton onclick={() => void applyAppUpdate()}>Обновить до новой версии</TextButton>
+			{:else if checking}
+				проверяем…
+			{:else if checked}
+				Это последняя версия
+			{:else}
+				<TextButton onclick={() => void check()}>Проверить обновление</TextButton>
+			{/if}
+		</Hint>
+	{/if}
 </FormLayout>

@@ -8,6 +8,7 @@
 	import { initViewportHeight } from '$lib/session/viewport';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
+	import { initAppUpdate } from '$lib/session/appUpdate.svelte';
 	import { afterNavigate, beforeNavigate } from '$app/navigation';
 	import { armEntryGuard, interceptHistoryBack, recordEntry } from '$lib/navigation/up';
 	import AudioBar from '$ui/chrome/AudioBar.svelte';
@@ -47,25 +48,9 @@
 		const stopViewport = initViewportHeight();
 		const isLocal =
 			location.hostname === '127.0.0.1' || location.hostname === 'localhost';
-		if (pwaInfo && !isLocal) {
-			void import('virtual:pwa-register').then(({ registerSW }) => {
-				// Новая версия не перезагружает открытый экран: она встаёт, когда
-				// приложение ушло в фон, или сама при следующем запуске (vite.config).
-				let pending = false;
-				const update = registerSW({
-					immediate: true,
-					onNeedRefresh() {
-						pending = true;
-					}
-				});
-				document.addEventListener('visibilitychange', () => {
-					if (pending && document.visibilityState === 'hidden') {
-						pending = false;
-						void update(true);
-					}
-				});
-			});
-		}
+		// Новая версия не перезагружает открытый экран: она встаёт, когда
+		// приложение ушло в фон, при следующем запуске или из «Настроек» (C19).
+		if (pwaInfo && !isLocal) initAppUpdate();
 		void initSession().then(() => {
 			startSyncForAllSessions();
 			void initPush();
