@@ -40,14 +40,15 @@ export function initAppUpdate(): void {
 	});
 }
 
-/** Спросить сервер; true — новая версия скачана и готова. */
-export async function checkAppUpdate(): Promise<boolean> {
-	if (!registration) return false;
-	if (appUpdate.pending) return true;
+/** Спросить сервер: новая версия готова, это последняя или спросить не вышло. */
+export async function checkAppUpdate(): Promise<'available' | 'latest' | 'failed'> {
+	if (!registration) return 'failed';
+	if (appUpdate.pending) return 'available';
 	try {
 		await registration.update();
 	} catch {
-		return false;
+		// Нет сети или сервер не отдал воркер — «последняя версия» была бы неправдой.
+		return 'failed';
 	}
 	// Новый воркер ставится не мгновенно: ждём, пока он встанет в очередь.
 	const installing = registration.installing;
@@ -62,7 +63,7 @@ export async function checkAppUpdate(): Promise<boolean> {
 		});
 	}
 	if (registration.waiting) appUpdate.pending = true;
-	return appUpdate.pending;
+	return appUpdate.pending ? 'available' : 'latest';
 }
 
 /** Перезагрузиться на новой версии. */

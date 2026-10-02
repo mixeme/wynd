@@ -28,12 +28,11 @@
 
 	// Обновить приложение сразу, не дожидаясь, пока оно уйдёт в фон (C19).
 	let checking = $state(false);
-	let checked = $state(false);
+	let result = $state<'available' | 'latest' | 'failed' | ''>('');
 	async function check() {
 		checking = true;
-		await checkAppUpdate();
+		result = await checkAppUpdate();
 		checking = false;
-		checked = true;
 	}
 
 	function goBack() {
@@ -61,8 +60,11 @@
 				<TextButton onclick={() => void applyAppUpdate()}>Обновить до новой версии</TextButton>
 			{:else if checking}
 				проверяем…
-			{:else if checked}
+			{:else if result === 'latest'}
 				Это последняя версия
+			{:else if result === 'failed'}
+				Не удалось проверить —
+				<TextButton onclick={() => void check()}>ещё раз</TextButton>
 			{:else}
 				<TextButton onclick={() => void check()}>Проверить обновление</TextButton>
 			{/if}
