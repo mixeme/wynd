@@ -137,11 +137,12 @@ export async function encodePhoto(canvas: BlobEncoder, quality: number): Promise
 export async function compressVideo(
 	file: File,
 	settings?: CompressionSettings,
-	onProgress?: (progress: number) => void
+	onProgress?: (progress: number) => void,
+	opts?: { force?: boolean }
 ): Promise<CompressedMedia & { fallbackReason?: string }> {
 	try {
 		const { encodeVideo } = await import('./video-encode');
-		return await encodeVideo(file, settings, onProgress);
+		return await encodeVideo(file, settings, onProgress, opts);
 	} catch (err) {
 		console.warn('wynd: video compression failed', err);
 		return { ...(await fileToQueueBuffer(file)), fallbackReason: videoFallbackReason(err) };
@@ -152,11 +153,12 @@ export async function compressVideo(
 export async function compressAudio(
 	file: File,
 	settings?: CompressionSettings,
-	onProgress?: (progress: number) => void
+	onProgress?: (progress: number) => void,
+	opts?: { bitrateKbps?: number; force?: boolean }
 ): Promise<CompressedMedia & { fallbackReason?: string }> {
 	try {
 		const { encodeAudio } = await import('./audio-encode');
-		return await encodeAudio(file, settings, onProgress);
+		return await encodeAudio(file, settings, onProgress, opts);
 	} catch (err) {
 		console.warn('wynd: audio compression failed', err);
 		return { ...(await fileToQueueBuffer(file)), fallbackReason: audioFallbackReason(err) };

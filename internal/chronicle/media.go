@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -31,6 +32,11 @@ type MediaInput struct {
 	AudioArtist      string
 	AudioTitle       string
 	AudioCoverBlobID string
+	// Voice — голосовое, записанное в приложении (C14): лента рисует его
+	// волной AudioPeaks (до 64 уровней 0–100) и длительностью.
+	Voice           bool
+	AudioDurationMs int64
+	AudioPeaks      []int
 	// Crop — кадр обложки для ленты (4.16); nil — по центру.
 	Crop *CoverCrop
 }
@@ -72,6 +78,9 @@ type PostMedia struct {
 	AudioArtist      string
 	AudioTitle       string
 	AudioCoverBlobID string
+	Voice            bool
+	AudioDurationMs  int64
+	AudioPeaks       []int
 	Crop             *CoverCrop
 }
 
@@ -104,6 +113,9 @@ func (c *Chronicle) attachMedia(ctx context.Context, q dbtx, postID string, item
 		if item.Kind != MediaPhoto && item.Kind != MediaVideo && item.Kind != MediaAttachment {
 			return ErrInvalid
 		}
+		if err := normalizeVoice(&item); err != nil {
+			return err
+		}
 		if err := normalizeAudioTags(&item); err != nil {
 			return err
 		}
@@ -126,12 +138,15 @@ func (c *Chronicle) attachMedia(ctx context.Context, q dbtx, postID string, item
 		}
 		_, err = q.ExecContext(ctx, `
 			INSERT INTO post_media (id, post_id, blob_id, kind, sort_order, captured_at, geo_lat, geo_lng, is_cover,
-				audio_artist, audio_title, audio_cover_blob_id, crop_x, crop_y, crop_w, crop_h)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?, ?)
+				audio_artist, audio_title, audio_cover_blob_id, crop_x, crop_y, crop_w, crop_h,
+				voice, audio_duration_ms, audio_peaks)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?, ?,
+				?, NULLIF(?, 0), NULLIF(?, ''))
 		`, id, postID, item.BlobID, string(item.Kind), i,
 			formatCaptured(item.CapturedAt), nullableFloat(item.GeoLat), nullableFloat(item.GeoLng),
 			boolToInt(item.IsCover), item.AudioArtist, item.AudioTitle, item.AudioCoverBlobID,
-			cropArg(item.Crop, 0), cropArg(item.Crop, 1), cropArg(item.Crop, 2), cropArg(item.Crop, 3))
+			cropArg(item.Crop, 0), cropArg(item.Crop, 1), cropArg(item.Crop, 2), cropArg(item.Crop, 3),
+			boolToInt(item.Voice), item.AudioDurationMs, joinPeaks(item.AudioPeaks))
 		if err != nil {
 			return err
 		}
@@ -172,6 +187,55 @@ func MediaBlobIDs(items []MediaInput) []string {
 	for _, item := range items {
 		add(item.BlobID)
 		add(item.AudioCoverBlobID)
+	}
+	return out
+}
+
+// MaxVoicePeaks — уровней волны голосового; MaxVoiceDurationMs — запас над
+// пределом записи в 15 минут.
+const (
+	MaxVoicePeaks      = 64
+	MaxVoiceDurationMs = 16 * 60 * 1000
+)
+
+func normalizeVoice(item *MediaInput) error {
+	if !item.Voice {
+		item.AudioDurationMs = 0
+		item.AudioPeaks = nil
+		return nil
+	}
+	if item.Kind != MediaAttachment || len(item.AudioPeaks) > MaxVoicePeaks {
+		return ErrInvalid
+	}
+	if item.AudioDurationMs < 0 || item.AudioDurationMs > MaxVoiceDurationMs {
+		return ErrInvalid
+	}
+	for _, p := range item.AudioPeaks {
+		if p < 0 || p > 100 {
+			return ErrInvalid
+		}
+	}
+	return nil
+}
+
+func joinPeaks(peaks []int) string {
+	parts := make([]string, len(peaks))
+	for i, p := range peaks {
+		parts[i] = strconv.Itoa(p)
+	}
+	return strings.Join(parts, ",")
+}
+
+func splitPeaks(raw string) []int {
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]int, 0, len(parts))
+	for _, p := range parts {
+		if n, err := strconv.Atoi(p); err == nil {
+			out = append(out, n)
+		}
 	}
 	return out
 }
@@ -311,7 +375,8 @@ const postMediaSelect = `
 	SELECT pm.id, pm.post_id, pm.blob_id, pm.kind, pm.sort_order, pm.captured_at, pm.geo_lat, pm.geo_lng, pm.is_cover,
 		COALESCE(b.original_filename, ''), b.size_bytes, COALESCE(b.mime_type, ''),
 		COALESCE(pm.audio_artist, ''), COALESCE(pm.audio_title, ''), COALESCE(pm.audio_cover_blob_id, ''),
-		pm.crop_x, pm.crop_y, pm.crop_w, pm.crop_h
+		pm.crop_x, pm.crop_y, pm.crop_w, pm.crop_h,
+		pm.voice, COALESCE(pm.audio_duration_ms, 0), COALESCE(pm.audio_peaks, '')
 `
 
 func scanPostMedia(rows *sql.Rows) (PostMedia, error) {
@@ -320,11 +385,16 @@ func scanPostMedia(rows *sql.Rows) (PostMedia, error) {
 	var lat, lng sql.NullFloat64
 	var cover int
 	var cx, cy, cw, ch sql.NullFloat64
+	var voice int
+	var peaks string
 	if err := rows.Scan(&m.ID, &m.PostID, &m.BlobID, &m.Kind, &m.SortOrder,
 		&captured, &lat, &lng, &cover, &m.OriginalFilename, &m.SizeBytes, &m.MimeType,
-		&m.AudioArtist, &m.AudioTitle, &m.AudioCoverBlobID, &cx, &cy, &cw, &ch); err != nil {
+		&m.AudioArtist, &m.AudioTitle, &m.AudioCoverBlobID, &cx, &cy, &cw, &ch,
+		&voice, &m.AudioDurationMs, &peaks); err != nil {
 		return PostMedia{}, err
 	}
+	m.Voice = voice != 0
+	m.AudioPeaks = splitPeaks(peaks)
 	if cx.Valid && cy.Valid && cw.Valid && ch.Valid {
 		m.Crop = &CoverCrop{X: cx.Float64, Y: cy.Float64, W: cw.Float64, H: ch.Float64}
 	}
@@ -380,6 +450,9 @@ type MediaSummary struct {
 	AudioArtist      string     `json:"audio_artist,omitempty"`
 	AudioTitle       string     `json:"audio_title,omitempty"`
 	AudioCoverBlobID string     `json:"audio_cover_blob_id,omitempty"`
+	Voice            bool       `json:"voice,omitempty"`
+	AudioDurationMs  int64      `json:"audio_duration_ms,omitempty"`
+	AudioPeaks       []int      `json:"audio_peaks,omitempty"`
 	Crop             *CoverCrop `json:"crop,omitempty"`
 }
 
@@ -407,6 +480,9 @@ func SummarizeMedia(items []PostMedia) []MediaSummary {
 		s.AudioArtist = m.AudioArtist
 		s.AudioTitle = m.AudioTitle
 		s.AudioCoverBlobID = m.AudioCoverBlobID
+		s.Voice = m.Voice
+		s.AudioDurationMs = m.AudioDurationMs
+		s.AudioPeaks = m.AudioPeaks
 		s.Crop = m.Crop
 		out[i] = s
 	}

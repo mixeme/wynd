@@ -8,6 +8,11 @@
 	import { memberAvatarColor } from '$lib/auth/invites';
 	import { circleInitial } from '$lib/circles/meta';
 	import { filterMembersByMention, insertMention, mentionQueryAt } from '$lib/journal/mentions';
+	import { onDestroy, onMount } from 'svelte';
+	import TextButton from '$ui/forms/TextButton.svelte';
+	import VoiceWave from '$ui/data/VoiceWave.svelte';
+	import { VOICE_MAX_MS, canRecord, formatDuration } from '$lib/media/record';
+	import { VoiceRecorder, type VoiceTake } from '$lib/media/voiceRecorder.svelte';
 
 	let {
 		placeholder = 'Написать в журнал…',
@@ -17,6 +22,9 @@
 		onsend,
 		oncompose,
 		onphotos,
+		onvoice,
+		onvideo,
+		status = '',
 		class: className = '',
 		style = ''
 	}: {
@@ -31,11 +39,72 @@
 		// Кнопка «Фото» открывает выбор снимков здесь же; без обработчика
 		// её нет — иначе она повторяла бы шеврон.
 		onphotos?: (files: File[]) => void;
+		// Голосовое и видео (C14, 4.21–4.24): пока поле пустое, круглая
+		// кнопка — «Запись», касание — выбор. Без обработчиков — как раньше.
+		onvoice?: (take: VoiceTake) => void;
+		onvideo?: () => void;
+		/** Строка над полосой: «Готовим видео… 40%». */
+		status?: string;
 		class?: string;
 		style?: string;
 	} = $props();
 
 	const canSend = $derived(Boolean(value.trim()) && !busy);
+
+	const recorder = new VoiceRecorder();
+	onDestroy(() => recorder.dispose());
+	// Микрофон браузер даёт только на защищённом адресе; узнаём после загрузки.
+	let recordOk = $state(false);
+	onMount(() => {
+		recordOk = canRecord();
+	});
+	const recordable = $derived(
+		recordOk && Boolean(onvoice || onvideo) && !value.trim() && !busy && recorder.phase === 'idle'
+	);
+	let menuOpen = $state(false);
+
+	function toggleMenu(e: MouseEvent) {
+		e.stopPropagation();
+		menuOpen = !menuOpen;
+	}
+
+	$effect(() => {
+		if (!menuOpen) return;
+		const close = () => (menuOpen = false);
+		window.addEventListener('click', close);
+		return () => window.removeEventListener('click', close);
+	});
+
+	function pickVoice() {
+		menuOpen = false;
+		void recorder.start();
+	}
+
+	function pickVideo() {
+		menuOpen = false;
+		onvideo?.();
+	}
+
+	// Проверка перед отправкой (4.24): прослушать записанное.
+	let reviewAudio: HTMLAudioElement | undefined = $state();
+	let reviewPlaying = $state(false);
+	let reviewProgress = $state(0);
+
+	function toggleReview() {
+		const el = reviewAudio;
+		if (!el) return;
+		if (el.paused) void el.play();
+		else el.pause();
+	}
+
+	function sendVoice() {
+		const take = recorder.take;
+		if (!take) return;
+		reviewAudio?.pause();
+		onvoice?.(take);
+		recorder.discard();
+		reviewProgress = 0;
+	}
 
 	let bodyInput: HTMLTextAreaElement | undefined = $state();
 	let photoPicker: FilePicker | undefined = $state();
@@ -158,12 +227,67 @@
 	<div class="comp">
 	<!-- Нажатие мимо строки в рамке ставит курсор в поле. С клавиатуры
 	     поле достаётся Tab напрямую, отдельная роль рамке не нужна. -->
+	{#if status}
+		<div class="comp-status">{status}</div>
+	{/if}
+	{#if menuOpen}
+		<div class="rec-menu">
+			{#if onvoice}
+				<button type="button" onclick={pickVoice}><Icon name="mic" />Голосовое</button>
+			{/if}
+			{#if onvideo}
+				<button type="button" onclick={pickVideo}><Icon name="video" />Видео</button>
+			{/if}
+		</div>
+	{/if}
+	{#if recorder.phase === 'recording'}
+		<div class="f rec">
+			<span class="rec-dot"></span>
+			<span class="rec-time" class:late={recorder.elapsedMs > VOICE_MAX_MS - 60_000}
+				>{formatDuration(recorder.elapsedMs)}</span
+			>
+			<VoiceWave peaks={recorder.recent} />
+			<TextButton onclick={() => recorder.discard()}>Отмена</TextButton>
+		</div>
+		<button type="button" class="send" aria-label="Стоп" onclick={() => void recorder.stop()}>
+			<Icon name="stop" style="color:#fff;width:19px;height:19px" />
+		</button>
+	{:else if recorder.phase === 'review'}
+		<div class="f rec">
+			<IconButton
+				name={reviewPlaying ? 'pause' : 'play'}
+				label={reviewPlaying ? 'Пауза' : 'Прослушать'}
+				onclick={toggleReview}
+			/>
+			<VoiceWave peaks={recorder.peaks} progress={reviewProgress} />
+			<span class="rec-time">{formatDuration(recorder.elapsedMs)}</span>
+			<IconButton name="trash" label="Удалить запись" onclick={() => recorder.discard()} />
+			<audio
+				bind:this={reviewAudio}
+				src={recorder.url}
+				preload="auto"
+				onplay={() => (reviewPlaying = true)}
+				onpause={() => (reviewPlaying = false)}
+				onended={() => {
+					reviewPlaying = false;
+					reviewProgress = 0;
+				}}
+				ontimeupdate={(e) => {
+					const el = e.currentTarget;
+					reviewProgress = el.duration && isFinite(el.duration) ? el.currentTime / el.duration : 0;
+				}}
+			></audio>
+		</div>
+		<button type="button" class="send" aria-label="Отправить голосовое" onclick={sendVoice}>
+			<Icon name="send" style="color:#fff;width:19px;height:19px" />
+		</button>
+	{:else}
 	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 	<div class="f" class:ink={canSend} onclick={focusField}>
 		<TextArea
 			variant="comment"
 			rows={1}
-			{placeholder}
+			placeholder={recorder.error || placeholder}
 			bind:el={bodyInput}
 			bind:value
 			oninput={onInput}
@@ -194,15 +318,28 @@
 			/>
 		{/if}
 	</div>
-	<button
-		type="button"
-		class="send"
-		aria-label="Отправить"
-		disabled={!canSend}
-		onclick={handleSendClick}
-	>
-		<Icon name="send" style="color:#fff;width:19px;height:19px" />
-	</button>
+	{#if recordable}
+		<button
+			type="button"
+			class="send"
+			aria-label="Запись"
+			aria-expanded={menuOpen ? 'true' : 'false'}
+			onclick={toggleMenu}
+		>
+			<Icon name="rec" style="color:#fff;width:19px;height:19px" />
+		</button>
+	{:else}
+		<button
+			type="button"
+			class="send"
+			aria-label="Отправить"
+			disabled={!canSend}
+			onclick={handleSendClick}
+		>
+			<Icon name="send" style="color:#fff;width:19px;height:19px" />
+		</button>
+	{/if}
+	{/if}
 	</div>
 </div>
 

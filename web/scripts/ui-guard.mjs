@@ -304,10 +304,11 @@ function searchSource(rel, source, re) {
 export const BUTTON_LAYOUT_CLASSES = new Set([
 	'btn', 'row2', 'r', 'circle-row-action', 'fold', 'att', 'att-play', 'cm', 'rcho', 'addph',
 	'send', 'chip', 'inp', 'one', 'add', 'di', 'pic', 'scrim', 'pay-banner-main',
-	'pay-reminder', 'cell', 'thumb', 'thumb-body', 'map-sheet', 'fab-menu-item', 'audio-bar-main'
+	'pay-reminder', 'cell', 'thumb', 'thumb-body', 'map-sheet', 'fab-menu-item', 'audio-bar-main',
+	'voice', 'vrec-shutter', 'vrec-send'
 ]);
 
-export const BUTTON_TEXT_CLASSES = new Set(['act', 't', 'rt', 'under', 'done', 'sq', 'mini', 'preview']);
+export const BUTTON_TEXT_CLASSES = new Set(['act', 't', 'rt', 'under', 'done', 'sq', 'mini', 'preview', 'vrec-text']);
 
 function stripCssComments(css) {
 	return css.replace(/\/\*[\s\S]*?\*\//g, '');

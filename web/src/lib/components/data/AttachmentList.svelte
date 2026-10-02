@@ -1,5 +1,6 @@
 <script lang="ts">
 	import AttachmentRow from '$ui/data/AttachmentRow.svelte';
+	import VoiceRow from '$ui/data/VoiceRow.svelte';
 	import { formatBytes } from '$lib/format/bytes';
 	import {
 		attachmentBlocks,
@@ -46,6 +47,16 @@
 </script>
 
 {#snippet audioRow(att: MediaSummary, grouped: boolean)}
+	{#if att.voice}
+		<VoiceRow
+			class="m-{att.blob_id}"
+			{origin}
+			blobId={att.blob_id}
+			peaks={att.audio_peaks ?? []}
+			durationMs={att.audio_duration_ms ?? 0}
+			meta={{ title: 'Голосовое', circleId, circleName, color, postId }}
+		/>
+	{:else}
 	<AttachmentRow
 		audio
 		{grouped}
@@ -57,6 +68,7 @@
 		meta={{ title: audioRowLabel(att), coverUrl: cover(att), circleId, circleName, color, postId }}
 		onDownload={() => download(att)}
 	/>
+	{/if}
 {/snippet}
 
 {#each blocks as block, bi (bi)}

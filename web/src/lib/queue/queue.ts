@@ -159,9 +159,12 @@ async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 				const session = await apiJson<{ id: string }>(origin, '/uploads', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
+					// Без имени сервер сохранял «.»: вложение из очереди скачивалось
+					// безымянным (найдено на голосовых, C14).
 					body: JSON.stringify({
 						expected_size: files[i].size,
-						mime_type: files[i].type
+						mime_type: files[i].type,
+						filename: files[i].name
 					})
 				});
 				progress = { file_index: i, session_id: session.id };
@@ -203,6 +206,9 @@ async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 				audio_artist: meta.audio_artist,
 				audio_title: meta.audio_title,
 				audio_cover_blob_id: coverId,
+				voice: meta.voice,
+				audio_duration_ms: meta.audio_duration_ms,
+				audio_peaks: meta.audio_peaks,
 				crop: meta.is_cover ? meta.crop : undefined
 			});
 		}

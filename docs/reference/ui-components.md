@@ -142,6 +142,8 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 `MentionText` — текст записи или комментария (`body`): `@имя` цветом круга, переносы и пустые строки как написаны (`white-space: pre-wrap` на `.mention-text`).
 
 `AttachmentList` — вложения записи, не фото и не видео (**#e4-13**, **#e4-15**, **#e4-18**): звуки подряд — одна рамка `.att-group` со строками `grouped`, одиночный звук — `AttachmentRow audio`, файл — строка «скачать». `items`, `origin`, `circleId`, `circleName`, `color`, `postId`, `coverUrls` (обложки звуков по blob id).
+`VoiceRow` — голосовое в записи (**#e4-27**): круглая кнопка цвета круга, `VoiceWave` и длительность; играет через общий плеер и полосу 4.20. `origin`, `blobId`, `peaks`, `durationMs`, `meta`. Без волны (старое) — ровная линия.
+`VoiceWave` — волна голосового (**#e4-23**, **#e4-24**, **#e4-27**): столбики уровней 0–100, прослушанное — цветом круга. `peaks`, `progress` (0–1).
 
 `PeekMemberList` — «Кто уже здесь» до входа (**#e1-3**): `members` из приглашения или заявки; строки `MemberRow`, цвета по порядку.
 
@@ -198,7 +200,8 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 
 ### `overlays/`
 
-`Fab` — кружок `.fab` в `.fab-wrap`; опц. `menuOpen` + `items[]` — карточка `.fab-menu` над плюсом (**#e2-11**), `role="menu"`: при открытии фокус на первом пункте, стрелки по кругу, Escape → `onclose` (UI-3; `ShellLayout` — `onfabmenuclose`). `ShellLayout` прокидывает `fabMenuOpen` / `fabMenuItems`; snippet `fab` — только содержимое кружка. Fab, CommentBar (`oncompose` — фото и шеврон; пустое поле на таче ведёт на compose, на ПК с мышью только фокус; без `oncompose` — полоса комментария), Scrim (`button.scrim`), Sheet, Dialog, PushBanner, Lightbox (`.mid` — `role="region"`), AvatarCrop, **ConfirmDialog**, **ReactionsSheet**
+`Fab` — кружок `.fab` в `.fab-wrap`; опц. `menuOpen` + `items[]` — карточка `.fab-menu` над плюсом (**#e2-11**), `role="menu"`: при открытии фокус на первом пункте, стрелки по кругу, Escape → `onclose` (UI-3; `ShellLayout` — `onfabmenuclose`). `ShellLayout` прокидывает `fabMenuOpen` / `fabMenuItems`; snippet `fab` — только содержимое кружка. Fab, CommentBar (`oncompose` — фото и шеврон; пустое поле на таче ведёт на compose, на ПК с мышью только фокус; без `oncompose` — полоса комментария; `onvoice` / `onvideo` — пустое поле ставит «Запись» с выбором голос / видео, диктофон прямо в полосе, 4.21–4.24; `status` — строка над полосой), Scrim (`button.scrim`), Sheet, Dialog, PushBanner, Lightbox (`.mid` — `role="region"`), AvatarCrop, **ConfirmDialog**, **ReactionsSheet**
+`VideoRecorder` — запись видео (**#e4-25**) и просмотр перед отправкой (**#e4-26**): камера во весь экран, смена камеры, касание — старт и стоп, предел 5 минут; «Переснять» / «Отправить». `onsend(file)`, `onclose`. Модален (`use:modal`): системная «Назад» закрывает.
 
 `ConfirmDialog` — вопрос с двумя кнопками на `Scrim` + `Dialog` (`.dlgq`, `.rowin.ask`): `title`, `confirmLabel`, опц. `cancelLabel` («Отмена»), `loading`, `onconfirm`, `oncancel`, пояснение — children. Все подтверждения «удалить / исключить / передать / выйти» — на нём.
 

@@ -22,8 +22,8 @@ func TestOpenMigrateClose(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Version: %v", err)
 	}
-	if version != 25 {
-		t.Fatalf("schema version: got %d, want 25", version)
+	if version != 26 {
+		t.Fatalf("schema version: got %d, want 26", version)
 	}
 
 	if err := st.Close(); err != nil {
@@ -56,8 +56,8 @@ func TestReopenAppliesMigrationsOnce(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Version: %v", err)
 	}
-	if version != 25 {
-		t.Fatalf("schema version: got %d, want 25", version)
+	if version != 26 {
+		t.Fatalf("schema version: got %d, want 26", version)
 	}
 
 	s := st.(*SQLite)
@@ -65,8 +65,8 @@ func TestReopenAppliesMigrationsOnce(t *testing.T) {
 	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM schema_migrations`).Scan(&n); err != nil {
 		t.Fatalf("count schema_migrations: %v", err)
 	}
-	if n != 25 {
-		t.Fatalf("schema_migrations rows: got %d, want 25", n)
+	if n != 26 {
+		t.Fatalf("schema_migrations rows: got %d, want 26", n)
 	}
 }
 

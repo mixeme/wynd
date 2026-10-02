@@ -21,9 +21,12 @@ import {
 export async function encodeAudio(
 	file: File,
 	settings?: CompressionSettings,
-	onProgress?: (progress: number) => void
+	onProgress?: (progress: number) => void,
+	/** Голосовое (C14): свой битрейт и перекодировать всегда — запись
+	 *  браузера в WebM или Ogg может не сыграть на iPhone. */
+	opts?: { bitrateKbps?: number; force?: boolean }
 ): Promise<CompressedMedia> {
-	const bitrateKbps = settings?.audio_bitrate_kbps || DEFAULT_AUDIO_BITRATE_KBPS;
+	const bitrateKbps = opts?.bitrateKbps || settings?.audio_bitrate_kbps || DEFAULT_AUDIO_BITRATE_KBPS;
 	const bitrate = bitrateKbps * 1000;
 
 	const mb = await import('mediabunny');
@@ -34,7 +37,7 @@ export async function encodeAudio(
 		const track = await input.getPrimaryAudioTrack();
 		if (!track) throw new Error('no_audio_track');
 		const duration = (await input.getDurationFromMetadata()) ?? 0;
-		if (audioFitsSettings(track.codec, duration, file.size, bitrateKbps)) {
+		if (!opts?.force && audioFitsSettings(track.codec, duration, file.size, bitrateKbps)) {
 			return fileToQueueBuffer(file);
 		}
 
@@ -51,7 +54,7 @@ export async function encodeAudio(
 			? await convertWithMediabunny(input, codec, quality, onProgress)
 			: await encodeViaWebAudio(file, codec, quality, onProgress);
 		if (!buffer || buffer.byteLength === 0) throw new Error('empty_output');
-		if (buffer.byteLength >= file.size) return fileToQueueBuffer(file);
+		if (!opts?.force && buffer.byteLength >= file.size) return fileToQueueBuffer(file);
 
 		const base = file.name.replace(/\.[^.]+$/, '') || 'audio';
 		return { data: buffer, type: 'audio/mp4', name: `${base}.m4a`, size: buffer.byteLength };
@@ -63,7 +66,7 @@ export async function encodeAudio(
 let aacRegistered: Promise<void> | undefined;
 
 /** Нет своего AAC в браузере — регистрируем WASM-кодировщик (один раз). */
-function ensureAacEncoder(): Promise<void> {
+export function ensureAacEncoder(): Promise<void> {
 	aacRegistered ??= (async () => {
 		const { canEncodeAudio } = await import('mediabunny');
 		if (await canEncodeAudio('aac')) return;

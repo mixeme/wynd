@@ -29,6 +29,10 @@ type mediaBody struct {
 	AudioArtist      string   `json:"audio_artist"`
 	AudioTitle       string   `json:"audio_title"`
 	AudioCoverBlobID string   `json:"audio_cover_blob_id"`
+	// Voice, AudioDurationMs, AudioPeaks — голосовое (C14).
+	Voice           bool  `json:"voice"`
+	AudioDurationMs int64 `json:"audio_duration_ms"`
+	AudioPeaks      []int `json:"audio_peaks"`
 	// Crop — кадр обложки для ленты (4.16).
 	Crop *chronicle.CoverCrop `json:"crop"`
 }
@@ -423,6 +427,9 @@ func parseMediaInput(items []mediaBody) ([]chronicle.MediaInput, error) {
 			GeoLat: m.GeoLat, GeoLng: m.GeoLng, IsCover: m.IsCover,
 			AudioArtist: m.AudioArtist, AudioTitle: m.AudioTitle,
 			AudioCoverBlobID: m.AudioCoverBlobID,
+			Voice:            m.Voice,
+			AudioDurationMs:  m.AudioDurationMs,
+			AudioPeaks:       m.AudioPeaks,
 			Crop:             m.Crop,
 		}
 	}

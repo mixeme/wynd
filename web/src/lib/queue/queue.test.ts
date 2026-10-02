@@ -104,4 +104,20 @@ describe('queue', () => {
 		);
 		expect(await listQueueForCircle(origin, 'circle-drain')).toHaveLength(0);
 	});
+	it('загрузка из очереди несёт имя файла', async () => {
+		vi.stubGlobal('navigator', { ...navigator, onLine: true });
+		apiJson.mockResolvedValue({ id: 'session1' });
+		const { enqueuePost, drainQueue } = await import('./queue');
+		const data = new ArrayBuffer(4);
+		await enqueuePost(
+			'https://name.test',
+			'c-name',
+			{ body: '', entry_date: '2026-10-02', media_meta: [{ kind: 'attachment' }] },
+			[{ name: 'Голосовое.m4a', type: 'audio/mp4', size: 4, data }]
+		);
+		await drainQueue();
+		const create = apiJson.mock.calls.find((c) => c[1] === '/uploads');
+		expect(create).toBeTruthy();
+		expect(JSON.parse(String(create![2].body)).filename).toBe('Голосовое.m4a');
+	});
 });

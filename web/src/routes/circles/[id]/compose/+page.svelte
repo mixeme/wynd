@@ -282,7 +282,10 @@
 							geo_lng: m.geo_lng,
 							audio_artist: m.audio_artist,
 							audio_title: m.audio_title,
-							audio_cover_blob_id: m.audio_cover_blob_id
+							audio_cover_blob_id: m.audio_cover_blob_id,
+							voice: m.voice,
+							audio_duration_ms: m.audio_duration_ms,
+							audio_peaks: m.audio_peaks
 						}
 					});
 				}
@@ -477,7 +480,10 @@
 				crop: item.meta.is_cover ? item.meta.crop : undefined,
 				audio_artist: item.meta.audio_artist,
 				audio_title: item.meta.audio_title,
-				audio_cover_blob_id: coverId
+				audio_cover_blob_id: coverId,
+				voice: item.meta.voice,
+				audio_duration_ms: item.meta.audio_duration_ms,
+				audio_peaks: item.meta.audio_peaks
 			});
 		}
 		return out;
@@ -671,7 +677,10 @@
 					crop: meta.is_cover ? meta.crop : undefined,
 					audio_artist: meta.audio_artist,
 					audio_title: meta.audio_title,
-					audio_cover_blob_id: coverId
+					audio_cover_blob_id: coverId,
+					voice: meta.voice,
+					audio_duration_ms: meta.audio_duration_ms,
+					audio_peaks: meta.audio_peaks
 				});
 			}
 

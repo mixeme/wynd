@@ -1,6 +1,7 @@
 ﻿<script lang="ts">
 	import { setBackHandler } from '$lib/navigation/up';
 	import { getContext } from 'svelte';
+	import type { VoiceTake } from '$lib/media/voiceRecorder.svelte';
 	import { goto } from '$app/navigation';
 	import CircleBar, {
 		CIRCLE_TAB_PATHS,
@@ -50,6 +51,9 @@
 		onCommentSend,
 		onCommentCompose,
 		onCommentPhotos,
+		onCommentVoice,
+		onCommentVideo,
+		commentStatus = '',
 		identitySettingsLink = true,
 		children
 	}: {
@@ -78,6 +82,10 @@
 		onCommentSend?: () => void;
 		onCommentCompose?: () => void;
 		onCommentPhotos?: (files: File[]) => void;
+		/** Голосовое и видео из полосы ввода (C14). */
+		onCommentVoice?: (take: VoiceTake) => void;
+		onCommentVideo?: () => void;
+		commentStatus?: string;
 		identitySettingsLink?: boolean;
 		children: Snippet;
 	} = $props();
@@ -194,6 +202,9 @@
 			onsend={onCommentSend}
 			oncompose={onCommentCompose}
 			onphotos={onCommentPhotos}
+			onvoice={onCommentVoice}
+			onvideo={onCommentVideo}
+			status={commentStatus}
 		/>
 	{/if}
 </PhoneFrame>

@@ -11,6 +11,10 @@ export interface MediaSummary {
 	audio_artist?: string;
 	audio_title?: string;
 	audio_cover_blob_id?: string;
+	/** Голосовое, записанное в приложении (C14): волна 0–100 и длительность. */
+	voice?: boolean;
+	audio_duration_ms?: number;
+	audio_peaks?: number[];
 	/** Кадр обложки для ленты (4.16): квадрат в долях снимка. */
 	crop?: { x: number; y: number; w: number; h: number };
 }

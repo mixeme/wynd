@@ -53,7 +53,18 @@
 		unreadDividerIndex
 	} from '$lib/journal/present';
 	import { advanceReadCursor } from '$lib/journal/read-cursor';
-	import { createPost, downloadArchive, removeReaction, setReaction } from '$lib/journal/posts';
+	import {
+		createPost,
+		downloadArchive,
+		fetchCompression,
+		removeReaction,
+		setReaction
+	} from '$lib/journal/posts';
+	import { compressAudio, compressVideo } from '$lib/media/compress';
+	import { audioMime } from '$lib/media/audioTags';
+	import type { VoiceTake } from '$lib/media/voiceRecorder.svelte';
+	import type { QueueMediaMeta } from '$lib/idb/db';
+	import VideoRecorder from '$ui/overlays/VideoRecorder.svelte';
 	import { loadDays } from '$lib/journal/days';
 	import type { FeedEvent, FeedPost, MediaSummary } from '$lib/journal/types';
 	import {
@@ -355,6 +366,81 @@
 		goto(`/circles/${circle.circleId}/compose`);
 	}
 
+	// Голосовое и видео из полосы ввода (C14, 4.24, 4.26): новая запись
+	// журнала, текст из поля — подписью. Через очередь — без сети тоже уйдёт.
+	let videoOpen = $state(false);
+	let preparing = $state('');
+
+	async function enqueueRecorded(
+		file: { name: string; type: string; size: number; data: ArrayBuffer },
+		meta: QueueMediaMeta
+	) {
+		const body = commentDraft.trim();
+		await enqueuePost(
+			circle.origin,
+			circle.circleId,
+			{ body, entry_date: todayEntryDate(), media_meta: [meta] },
+			[file]
+		);
+		commentDraft = '';
+		await loadFeedData();
+	}
+
+	async function sendVoice(take: VoiceTake) {
+		if (preparing) return;
+		preparing = 'Готовим голосовое…';
+		error = '';
+		try {
+			const compression = await fetchCompression(circle.origin).catch(() => undefined);
+			// Голосу хватает 64 кбит/с; перекодируем всегда — WebM с телефона
+			// может не сыграть на iPhone.
+			const { fallbackReason: _reason, ...audio } = await compressAudio(take.file, compression, undefined, {
+				bitrateKbps: 64,
+				force: true
+			});
+			await enqueueRecorded(
+				{ ...audio, type: audioMime(audio.name, audio.type) },
+				{
+					kind: 'attachment',
+					voice: true,
+					audio_duration_ms: Math.round(take.durationMs),
+					audio_peaks: take.peaks
+				}
+			);
+		} catch (err) {
+			error = authErrorHint(err);
+		} finally {
+			preparing = '';
+		}
+	}
+
+	async function sendVideo(file: File) {
+		if (preparing) return;
+		preparing = 'Готовим видео…';
+		error = '';
+		try {
+			const compression = await fetchCompression(circle.origin).catch(() => undefined);
+			const { fallbackReason: _reason, ...video } = await compressVideo(
+				file,
+				compression,
+				(progress) => {
+					preparing = `Готовим видео… ${Math.round(progress * 100)}%`;
+				},
+				{ force: true }
+			);
+			const maxBytes = compression?.attachment_max_bytes ?? 0;
+			if (maxBytes > 0 && video.size > maxBytes) {
+				error = `Видео больше ${formatBytes(maxBytes)} — сервер не примет`;
+				return;
+			}
+			await enqueueRecorded(video, { kind: 'video', is_cover: true });
+		} catch (err) {
+			error = authErrorHint(err);
+		} finally {
+			preparing = '';
+		}
+	}
+
 	function openComposeWithPhotos(files: File[]) {
 		handComposePhotos(circle.circleId, files);
 		openComposeFromBar();
@@ -532,7 +618,13 @@
 	onCommentSend={circle.canWrite ? sendFromBar : undefined}
 	onCommentCompose={circle.canWrite ? openComposeFromBar : undefined}
 	onCommentPhotos={circle.canWrite ? openComposeWithPhotos : undefined}
+	onCommentVoice={circle.canWrite ? (take) => void sendVoice(take) : undefined}
+	onCommentVideo={circle.canWrite ? () => (videoOpen = true) : undefined}
+	commentStatus={preparing}
 >
+	{#if videoOpen}
+		<VideoRecorder onsend={(file) => void sendVideo(file)} onclose={() => (videoOpen = false)} />
+	{/if}
 	<PullRefreshBand pull={ptr.state} />
 
 	<div

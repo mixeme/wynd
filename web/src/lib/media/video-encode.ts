@@ -1,4 +1,5 @@
 import type { CompressionSettings } from '$lib/journal/types';
+import { ensureAacEncoder } from './audio-encode';
 import {
 	DEFAULT_VIDEO_BITRATE_KBPS,
 	DEFAULT_VIDEO_MAX_P,
@@ -11,7 +12,10 @@ import {
 export async function encodeVideo(
 	file: File,
 	settings?: CompressionSettings,
-	onProgress?: (progress: number) => void
+	onProgress?: (progress: number) => void,
+	/** Снятое в приложении (C14): перекодировать всегда — браузер пишет
+	 *  VP9 и Opus, а их не везде играют; выход — H.264 и AAC. */
+	opts?: { force?: boolean }
 ): Promise<CompressedMedia> {
 	const maxP = settings?.video_max_height || DEFAULT_VIDEO_MAX_P;
 	const bitrateKbps = settings?.video_bitrate_kbps || DEFAULT_VIDEO_BITRATE_KBPS;
@@ -41,7 +45,7 @@ export async function encodeVideo(
 		const width = await track.getDisplayWidth();
 		const height = await track.getDisplayHeight();
 		const duration = (await input.getDurationFromMetadata()) ?? 0;
-		if (videoFitsSettings(width, height, duration, file.size, maxP, bitrateKbps)) {
+		if (!opts?.force && videoFitsSettings(width, height, duration, file.size, maxP, bitrateKbps)) {
 			return fileToQueueBuffer(file);
 		}
 
@@ -57,10 +61,12 @@ export async function encodeVideo(
 		const bufferTarget = new BufferTarget();
 		const output = new Output({ format, target: bufferTarget });
 		const quality = new Quality({ bitrate, bitrateMode: 'variable' });
+		if (opts?.force) await ensureAacEncoder();
 		const conversion = await Conversion.init({
 			input,
 			output,
 			tracks: 'primary',
+			audio: opts?.force ? { codec: 'aac', forceTranscode: true } : undefined,
 			video: {
 				width: target.width,
 				height: target.height,
@@ -71,7 +77,13 @@ export async function encodeVideo(
 			}
 		});
 		if (!conversion.isValid) throw new Error('conversion_invalid');
-		if (!conversion.utilizedTracks.some((t) => t.isVideoTrack())) throw new Error('video_discarded');
+		if (!conversion.utilizedTracks.some((t) => t.isVideoTrack())) {
+			console.warn(
+				'wynd: video track discarded',
+				conversion.discardedTracks.map((d) => `${d.track.type}:${d.reason}`)
+			);
+			throw new Error('video_discarded');
+		}
 		const audioDropped = conversion.discardedTracks.some(
 			(d) =>
 				d.track.isAudioTrack() &&
@@ -86,7 +98,7 @@ export async function encodeVideo(
 
 		const buffer = bufferTarget.buffer;
 		if (!buffer || buffer.byteLength === 0) throw new Error('empty_output');
-		if (buffer.byteLength >= file.size) return fileToQueueBuffer(file);
+		if (!opts?.force && buffer.byteLength >= file.size) return fileToQueueBuffer(file);
 
 		const base = file.name.replace(/\.[^.]+$/, '') || 'video';
 		return {
