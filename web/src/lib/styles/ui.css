@@ -117,7 +117,9 @@
 	overflow: hidden;
 }
 .ph.app .comp, .ph.app .comp-wrap {
-	position: static;
+	/* В потоке, но точка привязки: меню «Записи» и строка «Готовим видео…»
+	   встают над полосой (C14). static уводил их за верх экрана. */
+	position: relative;
 	flex-shrink: 0;
 }
 .compose-body, .form-body, .shell-body {
@@ -1601,7 +1603,7 @@ a.link {
 	bottom: 0;
 }
 .comp-wrap > .comp {
-	position: static;
+	position: relative;
 }
 .men-pick {
 	margin: 12px 16px 0;
