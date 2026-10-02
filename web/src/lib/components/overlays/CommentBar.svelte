@@ -97,6 +97,23 @@
 		else el.pause();
 	}
 
+	// Ход прослушивания — каждый кадр, не по редкому timeupdate. У только что
+	// записанного файла браузер часто не знает длительность (Infinity), и
+	// прогресс стоял на нуле: длительность берём у таймера записи.
+	let reviewFrame = 0;
+	function measureReview() {
+		const el = reviewAudio;
+		if (!el) return;
+		const total =
+			el.duration && isFinite(el.duration) ? el.duration : recorder.elapsedMs / 1000;
+		reviewProgress = total > 0 ? Math.min(1, el.currentTime / total) : 0;
+	}
+	function trackReview() {
+		measureReview();
+		if (reviewAudio && !reviewAudio.paused) reviewFrame = requestAnimationFrame(trackReview);
+	}
+	onDestroy(() => cancelAnimationFrame(reviewFrame));
+
 	function sendVoice() {
 		const take = recorder.take;
 		if (!take) return;
@@ -266,15 +283,17 @@
 				bind:this={reviewAudio}
 				src={recorder.url}
 				preload="auto"
-				onplay={() => (reviewPlaying = true)}
+				onplay={() => {
+					reviewPlaying = true;
+					cancelAnimationFrame(reviewFrame);
+					reviewFrame = requestAnimationFrame(trackReview);
+				}}
 				onpause={() => (reviewPlaying = false)}
+				ontimeupdate={measureReview}
 				onended={() => {
 					reviewPlaying = false;
+					cancelAnimationFrame(reviewFrame);
 					reviewProgress = 0;
-				}}
-				ontimeupdate={(e) => {
-					const el = e.currentTarget;
-					reviewProgress = el.duration && isFinite(el.duration) ? el.currentTime / el.duration : 0;
 				}}
 			></audio>
 		</div>

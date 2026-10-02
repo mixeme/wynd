@@ -2649,6 +2649,9 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 	gap: 9px;
 	align-items: center;
 	cursor: default;
+	/* Высота как у поля с текстом (42): содержимое записи ниже строки ввода. */
+	box-sizing: border-box;
+	min-height: 42px;
 }
 .rec-dot {
 	width: 9px;
