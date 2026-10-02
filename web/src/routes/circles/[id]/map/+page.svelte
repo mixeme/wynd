@@ -146,8 +146,11 @@
 		}
 
 		map.addLayer(cluster);
+		map.on('dragstart', () => (userMoved = true));
 
-		if (bounds.length === 0) {
+		if (here) {
+			map.setView(here, HERE_ZOOM);
+		} else if (bounds.length === 0) {
 			map.setView([20, 0], 2);
 		} else if (bounds.length === 1) {
 			map.setView(bounds[0], 15);
@@ -169,7 +172,30 @@
 		});
 	});
 
+	// Карта открывается там, где сейчас телефон (план 46, A4): точки круга от
+	// дачи до другой страны иначе давали вид на полконтинента. Пока место не
+	// пришло (или его не дали) — вид на все точки, как раньше; сдвинул карту
+	// сам — место её уже не переносит.
+	const HERE_ZOOM = 12;
+	let here: [number, number] | null = null;
+	let userMoved = false;
+
+	function locateOnce() {
+		if (!window.isSecureContext || !('geolocation' in navigator)) return;
+		navigator.geolocation.getCurrentPosition(
+			(pos) => {
+				here = [pos.coords.latitude, pos.coords.longitude];
+				if (map && !userMoved) map.setView(here, HERE_ZOOM);
+			},
+			() => {
+				/* не дали или не нашли — остаётся вид на все точки */
+			},
+			{ timeout: 8000, maximumAge: 10 * 60 * 1000, enableHighAccuracy: false }
+		);
+	}
+
 	onMount(() => {
+		locateOnce();
 		void import('leaflet').then(async (L) => {
 			leaflet = L;
 			await import('leaflet.markercluster');
