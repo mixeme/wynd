@@ -489,7 +489,9 @@
 		return out;
 	}
 
-	async function addFiles(list: File[]) {
+	// original — выбрано кнопкой «Файл» (C21): фото, видео и звук уходят как
+	// есть, вложением для скачивания — полное разрешение и EXIF целиком.
+	async function addFiles(list: File[], original = false) {
 		if (filePickLock || !list.length) return;
 		filePickLock = true;
 		// Сжатие видео — минуты; погасший экран сворачивает вкладку (A5).
@@ -497,10 +499,12 @@
 		try {
 			const compression = await fetchCompression(circle.origin).catch(() => undefined);
 			const next = [...picked];
-			const heavyCount = list.filter((file) => isVideoFile(file) || isAudioFile(file)).length;
+			const heavyCount = original
+				? 0
+				: list.filter((file) => isVideoFile(file) || isAudioFile(file)).length;
 			compressTotal = heavyCount;
 			compressIndex = 0;
-			keepOpenHint = list.some((file) => isVideoFile(file) && isLargeVideo(file.size));
+			keepOpenHint = !original && list.some((file) => isVideoFile(file) && isLargeVideo(file.size));
 			compressing = heavyCount > 0;
 			compressProgress = 0;
 
@@ -514,7 +518,9 @@
 			for (const file of list) {
 				const exif = await readExif(file);
 				let queueFile: QueueFile;
-				if (isImageFile(file)) {
+				if (original) {
+					queueFile = await fileToQueueBuffer(file);
+				} else if (isImageFile(file)) {
 					queueFile = await compressImage(file, compression);
 				} else if (isVideoFile(file)) {
 					compressIndex += 1;
@@ -550,14 +556,22 @@
 					continue;
 				}
 
-				const kind = isVideoFile(file) ? 'video' : isImageFile(file) ? 'photo' : 'attachment';
+				const kind = original
+					? 'attachment'
+					: isVideoFile(file)
+						? 'video'
+						: isImageFile(file)
+							? 'photo'
+							: 'attachment';
 
 				const tags = isAudioFile(file) ? await readAudioTags(file) : undefined;
 				const meta: QueueMediaMeta = {
 					kind,
 					captured_at: exif.captured_at,
-					geo_lat: exif.geo_lat,
-					geo_lng: exif.geo_lng,
+					// Место — только у снимков записи: вложение на карту не встаёт,
+					// координаты остаются в самом файле.
+					geo_lat: kind === 'attachment' ? undefined : exif.geo_lat,
+					geo_lng: kind === 'attachment' ? undefined : exif.geo_lng,
 					is_cover:
 						(kind === 'photo' || kind === 'video') &&
 						!next.some((n) => n.meta.is_cover && (n.meta.kind === 'photo' || n.meta.kind === 'video')),
@@ -902,5 +916,10 @@
 	multiple
 	onfiles={(files) => void addFiles(files)}
 />
-<FilePicker bind:this={attachPicker} accept="*/*" multiple onfiles={(files) => void addFiles(files)} />
+<FilePicker
+	bind:this={attachPicker}
+	accept="*/*"
+	multiple
+	onfiles={(files) => void addFiles(files, true)}
+/>
 <FilePicker bind:this={audioPicker} accept="audio/*" multiple onfiles={(files) => void addFiles(files)} />

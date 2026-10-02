@@ -46,7 +46,7 @@
 		<SectionLabel class="mt-22">Куда платить</SectionLabel>
 		<RequisitesCard text={requisites} />
 		<Hint class="mt-22" centered>
-			Это поддержка, не подписка. Круги от перевода не зависят,<br />и заявку отправлять не нужно.
+			Это добровольно: Wynd работает и без перевода. Спасибо, если поддержите.
 		</Hint>
 		{#if error}
 			<Hint class="mt-12">{error}</Hint>
