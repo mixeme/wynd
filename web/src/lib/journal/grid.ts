@@ -56,20 +56,3 @@ export function groupGridTiles(items: GridItem[]): GridTile[] {
 	tiles.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 	return tiles;
 }
-
-export function photoCountByDay(items: GridItem[]): Map<string, number> {
-	const counts = new Map<string, number>();
-	for (const item of items) {
-		counts.set(item.entry_date, (counts.get(item.entry_date) ?? 0) + 1);
-	}
-	return counts;
-}
-
-/** Fallback-обложка: первое фото дня (items отсортированы по created_at desc). */
-export function fallbackCoverByDay(items: GridItem[]): Map<string, string> {
-	const covers = new Map<string, string>();
-	for (const item of items) {
-		covers.set(item.entry_date, item.blob_id);
-	}
-	return covers;
-}

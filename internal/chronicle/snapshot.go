@@ -281,6 +281,9 @@ type DaySummary struct {
 	PostCount          int
 	TitleEditableUntil *time.Time
 	CoverEditableUntil *time.Time
+	// Запасная обложка, если обложку дня не выбирали, и число фото дня (C17).
+	FallbackCoverBlobID string
+	PhotoCount          int
 }
 
 // DaysSnapshot returns days with at least one visible post, ordered by entry_date descending.
@@ -301,6 +304,10 @@ func (c *Chronicle) DaysSnapshot(ctx context.Context, circleID, accountID string
 		return nil, nil
 	}
 	titleUntil, coverUntil, err := c.dayEditableUntils(ctx, circleID)
+	if err != nil {
+		return nil, err
+	}
+	fallbackCovers, photoCounts, err := c.dayMediaFacts(ctx, circleID, accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -355,8 +362,10 @@ func (c *Chronicle) DaysSnapshot(ctx context.Context, circleID, accountID string
 		}
 		out = append(out, DaySummary{
 			Day: d, PostCount: count,
-			TitleEditableUntil: titleEditable,
-			CoverEditableUntil: coverEditable,
+			TitleEditableUntil:  titleEditable,
+			CoverEditableUntil:  coverEditable,
+			FallbackCoverBlobID: fallbackCovers[d.EntryDate],
+			PhotoCount:          photoCounts[d.EntryDate],
 		})
 	}
 	return out, rows.Err()
@@ -386,6 +395,65 @@ func (c *Chronicle) visiblePostCountsByDay(ctx context.Context, circleID, accoun
 		out[date] = n
 	}
 	return out, rows.Err()
+}
+
+// dayMediaFacts — запасная обложка и число фото каждого дня по видимым
+// участнику записям (план 46, C17). Обложка — из первой по времени записи
+// дня, где есть фото, видео или обложка звука: отмеченная обложка записи,
+// иначе первое фото, иначе первое видео, иначе обложка звука.
+func (c *Chronicle) dayMediaFacts(ctx context.Context, circleID, accountID string) (covers map[string]string, photos map[string]int, err error) {
+	rows, err := c.db.QueryContext(ctx, fmt.Sprintf(`
+		SELECT p.entry_date, p.id, pm.kind, pm.blob_id, pm.is_cover, COALESCE(pm.audio_cover_blob_id, '')
+		FROM posts p
+		JOIN memberships m ON m.circle_id = p.circle_id AND m.account_id = ?
+		JOIN post_media pm ON pm.post_id = p.id
+		WHERE p.circle_id = ? AND p.deleted = 0
+		  AND (pm.kind IN ('photo', 'video') OR COALESCE(pm.audio_cover_blob_id, '') != '')
+		  AND %s
+		ORDER BY p.entry_date, p.created_at, p.id, pm.sort_order
+	`, sqlVisibleAtMembership("p.created_at")), accountID, circleID)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+	covers = make(map[string]string)
+	photos = make(map[string]int)
+	// Кандидаты первой записи дня с медиа: ранг меньше — лучше.
+	type pick struct {
+		postID string
+		blob   string
+		rank   int
+	}
+	best := make(map[string]pick)
+	for rows.Next() {
+		var date, postID, kind, blob, audioCover string
+		var isCover bool
+		if err := rows.Scan(&date, &postID, &kind, &blob, &isCover, &audioCover); err != nil {
+			return nil, nil, err
+		}
+		if kind == string(MediaPhoto) {
+			photos[date]++
+		}
+		var cand pick
+		switch {
+		case (kind == string(MediaPhoto) || kind == string(MediaVideo)) && isCover:
+			cand = pick{postID, blob, 0}
+		case kind == string(MediaPhoto):
+			cand = pick{postID, blob, 1}
+		case kind == string(MediaVideo):
+			cand = pick{postID, blob, 2}
+		default:
+			cand = pick{postID, audioCover, 3}
+		}
+		cur, ok := best[date]
+		if !ok || (cur.postID == postID && cand.rank < cur.rank) {
+			best[date] = cand
+		}
+	}
+	for date, b := range best {
+		covers[date] = b.blob
+	}
+	return covers, photos, rows.Err()
 }
 
 // dayEditableUntils отдаёт сроки правки названия и обложки по дням круга —
@@ -588,4 +656,3 @@ func (c *Chronicle) feedVisibilityBounds(ctx context.Context, circleID, accountI
 	}
 	return earliest, circleStartedAt, nil
 }
-

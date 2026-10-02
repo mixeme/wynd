@@ -14,7 +14,6 @@
 	import { formatDayCardSubtitle, formatEntryDate, pluralPosts } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadDays } from '$lib/journal/days';
-	import { fallbackCoverByDay, loadGrid, photoCountByDay } from '$lib/journal/grid';
 	import { groupByMonth } from '$lib/journal/group';
 	import type { DaySummary } from '$lib/journal/types';
 	import { getMediaUrl } from '$lib/media/objectUrl';
@@ -50,14 +49,12 @@
 		coverUrls = next;
 	}
 
-	function buildDayViews(
-		summaries: DaySummary[],
-		photoCounts: Map<string, number>,
-		fallbackCovers: Map<string, string>
-	): DayView[] {
+	// Запасную обложку и число фото считает сервер по всем записям дня (C17):
+	// снимок «Сетки» ограничен по числу записей и знает только фото.
+	function buildDayViews(summaries: DaySummary[]): DayView[] {
 		return summaries.map((day) => {
-			const coverBlobId = day.cover_blob_id ?? fallbackCovers.get(day.entry_date);
-			const photoCount = photoCounts.get(day.entry_date);
+			const coverBlobId = day.cover_blob_id ?? day.fallback_cover_blob_id;
+			const photoCount = day.photo_count;
 			return {
 				entryDate: day.entry_date,
 				title: day.title || formatEntryDate(day.entry_date),
@@ -71,16 +68,9 @@
 	async function loadData() {
 		error = '';
 		try {
-			const [daysSnap, gridSnap] = await Promise.all([
-				loadDays(circle.origin, circle.circleId),
-				loadGrid(circle.origin, circle.circleId)
-			]);
+			const daysSnap = await loadDays(circle.origin, circle.circleId);
 			totalPosts = daysSnap.days.reduce((sum, d) => sum + d.post_count, 0);
-			const views = buildDayViews(
-				daysSnap.days,
-				photoCountByDay(gridSnap.items),
-				fallbackCoverByDay(gridSnap.items)
-			);
+			const views = buildDayViews(daysSnap.days);
 			days = views;
 			await resolveCovers(views);
 		} catch (err) {

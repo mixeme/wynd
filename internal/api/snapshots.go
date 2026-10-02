@@ -129,6 +129,12 @@ func (s *Server) handleDays(w http.ResponseWriter, r *http.Request) {
 		}
 		row["title_editable_until"] = editableUntilJSON(d.TitleEditableUntil)
 		row["cover_editable_until"] = editableUntilJSON(d.CoverEditableUntil)
+		if d.FallbackCoverBlobID != "" {
+			row["fallback_cover_blob_id"] = d.FallbackCoverBlobID
+		}
+		if d.PhotoCount > 0 {
+			row["photo_count"] = d.PhotoCount
+		}
 		out[i] = row
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"circle_id": circleID, "days": out})

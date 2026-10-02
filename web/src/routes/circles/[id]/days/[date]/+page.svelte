@@ -116,8 +116,8 @@
 			if (blobId) {
 				coverBlobId = blobId;
 			} else {
-				const first = posts.find((p) => coverMedia(p.media));
-				coverBlobId = first ? coverMedia(first.media)?.blob_id : undefined;
+				// Запасную считает сервер: первая запись дня с фото, видео или звуком (C17).
+				coverBlobId = meta?.fallback_cover_blob_id;
 			}
 			if (coverBlobId) {
 				try {

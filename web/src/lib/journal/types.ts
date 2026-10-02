@@ -125,6 +125,10 @@ export interface DaySummary {
 	title?: string;
 	cover_post_id?: string;
 	cover_blob_id?: string;
+	/** Обложку дня не выбирали: медиа первой записи дня с фото, видео или звуком (C17). */
+	fallback_cover_blob_id?: string;
+	/** Фото за день — счётчик на карточке. */
+	photo_count?: number;
 	title_editable_until?: string | null;
 	cover_editable_until?: string | null;
 }
