@@ -10,6 +10,10 @@
 		     устанавливается ли сайт как приложение, по странице до гидрации, и
 		     без ссылки делал ярлык, открывающийся во вкладке браузера. -->
 		<link rel="manifest" href="/manifest.webmanifest" />
+		<!-- Цвет строки состояния — тоже в исходном HTML: Vivaldi на Android
+		     берёт его при запуске и метку, вставленную скриптом, не видел —
+		     строка оставалась белой. Тёмную тему ставит корневой макет в эту же метку. -->
+		<meta name="theme-color" content="#F4F0E9" />
 		<script>
 			// Loopback dev via scripts\run.bat: drop stale service workers so rebuilds show up.
 			if (location.hostname === '127.0.0.1' || location.hostname === 'localhost') {

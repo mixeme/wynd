@@ -33,6 +33,11 @@
 	$effect(() => {
 		if (typeof document === 'undefined') return;
 		document.body.classList.toggle('dark', isDark());
+		// Строка состояния установленного приложения — в цвет фона темы (SW-4).
+		// Метка стоит в app.html: так её видит и Vivaldi при запуске.
+		document
+			.querySelector('meta[name="theme-color"]')
+			?.setAttribute('content', isDark() ? '#211E1C' : '#F4F0E9');
 	});
 
 
@@ -77,8 +82,6 @@
 	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
 	<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 	<link rel="apple-touch-icon" href="/icon-192.png" />
-	<!-- Строка состояния установленного приложения — в цвет фона темы (SW-4). -->
-	<meta name="theme-color" content={isDark() ? '#211E1C' : '#F4F0E9'} />
 	<style>
 		/* Golos Text (SIL OFL), variable, split by unicode-range as upstream ships it. */
 		@font-face {
