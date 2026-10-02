@@ -84,7 +84,7 @@ func TestSearchFindsAttachmentsByName(t *testing.T) {
 	}
 
 	hits := find("смета")
-	if len(hits) != 1 || hits[0].Kind != "file" || hits[0].MediaID != mediaID["blob-pdf"] || hits[0].CommentID != "" || hits[0].PostID != post.ID {
+	if len(hits) != 1 || hits[0].Kind != "file" || hits[0].MediaID != mediaID["blob-pdf"] || hits[0].MediaBlobID != "blob-pdf" || hits[0].CommentID != "" || hits[0].PostID != post.ID {
 		t.Fatalf("by file name: %+v", hits)
 	}
 	for _, q := range []string{"колыбельн", "бабушка", "track01"} {

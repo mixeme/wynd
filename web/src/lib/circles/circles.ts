@@ -59,6 +59,8 @@ export interface StreetCircle {
 export interface SearchHit {
 	post_id: string;
 	comment_id?: string;
+	/** Блоб найденного файла или звука — экран записи подсвечивает его строку. */
+	media_blob_id?: string;
 	circle_id: string;
 	author_name?: string;
 	kind: string;

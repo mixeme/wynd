@@ -49,6 +49,7 @@
 	<AttachmentRow
 		audio
 		{grouped}
+		class="m-{att.blob_id}"
 		filename={audioRowLabel(att)}
 		{origin}
 		blobId={att.blob_id}
@@ -71,6 +72,7 @@
 		{/if}
 	{:else}
 		<AttachmentRow
+			class="m-{block.item.blob_id}"
 			filename={attachmentLabel(block.item)}
 			size={attachmentSizeLabel(block.item, formatBytes)}
 			onclick={() => download(block.item)}

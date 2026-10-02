@@ -51,11 +51,14 @@ type Filters struct {
 
 // Hit is a single FTS match after visibility filtering.
 type Hit struct {
-	PostID      string `json:"post_id"`
-	CommentID   string `json:"comment_id,omitempty"`
+	PostID    string `json:"post_id"`
+	CommentID string `json:"comment_id,omitempty"`
 	// MediaID — вложение, найденное по имени файла или названию звука
 	// (Kind file или audio; план 46, C11).
-	MediaID     string `json:"media_id,omitempty"`
+	MediaID string `json:"media_id,omitempty"`
+	// MediaBlobID — блоб этого вложения: экран записи находит по нему строку
+	// и подсвечивает её.
+	MediaBlobID string `json:"media_blob_id,omitempty"`
 	CircleID    string `json:"circle_id"`
 	AuthorName  string `json:"author_name,omitempty"`
 	Kind        string `json:"kind"`
@@ -166,7 +169,9 @@ func (s *Service) search(ctx context.Context, accountID, circleID, query string,
 			snippet(content_fts, 0, '', '', '…', 32),
 			(SELECT pm.blob_id FROM post_media pm
 			 WHERE pm.post_id = f.post_id AND pm.kind IN ('photo', 'video')
-			 ORDER BY pm.sort_order LIMIT 1)
+			 ORDER BY pm.sort_order LIMIT 1),
+			CASE WHEN f.kind IN ('file', 'audio')
+			  THEN (SELECT pm.blob_id FROM post_media pm WHERE pm.id = f.comment_id) END
 		FROM content_fts f
 		LEFT JOIN posts p ON p.id = f.post_id AND f.post_id != ''
 		WHERE content_fts MATCH ?%s%s%s
@@ -190,13 +195,14 @@ func (s *Service) collectHits(ctx context.Context, rows *sql.Rows, limit int, wi
 		var commentID string
 		var author string
 		var created string
-		var thumb sql.NullString
-		if err := rows.Scan(&h.PostID, &commentID, &h.CircleID, &author, &h.Kind, &created, &h.EntryDate, &h.Title, &h.Snippet, &thumb); err != nil {
+		var thumb, mediaBlob sql.NullString
+		if err := rows.Scan(&h.PostID, &commentID, &h.CircleID, &author, &h.Kind, &created, &h.EntryDate, &h.Title, &h.Snippet, &thumb, &mediaBlob); err != nil {
 			return nil, err
 		}
 		if h.Kind == "file" || h.Kind == "audio" {
 			// В индексе вложения id строки post_media лежит в comment_id.
 			h.MediaID = commentID
+			h.MediaBlobID = mediaBlob.String
 		} else {
 			h.CommentID = commentID
 		}

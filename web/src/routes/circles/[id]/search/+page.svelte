@@ -20,7 +20,8 @@
 		replaceSearchUrl,
 		searchChipsFromWindow,
 		searchThumbVariant,
-		quoteMatch
+		quoteMatch,
+		searchHitHref
 	} from '$lib/journal/search';
 	import { searchStats, toggleAuthor, togglePeriod } from '$lib/journal/searchState';
 	import type { CircleSearchHit } from '$lib/journal/types';
@@ -164,11 +165,7 @@
 	}
 
 	function openHit(hit: CircleSearchHit) {
-		if (hit.kind === 'day') {
-			goto(`/circles/${circle.circleId}/days/${hit.entry_date}`);
-			return;
-		}
-		goto(`/circles/${circle.circleId}/posts/${hit.post_id}`);
+		goto(searchHitHref(circle.circleId, hit));
 	}
 
 	function rowAuthor(hit: CircleSearchHit) {

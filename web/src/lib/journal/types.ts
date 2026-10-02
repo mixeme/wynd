@@ -178,6 +178,8 @@ export interface CircleSearchHit {
 	comment_id?: string;
 	/** Вложение, найденное по имени (kind file или audio). */
 	media_id?: string;
+	/** Блоб найденного вложения — по нему экран записи подсвечивает строку. */
+	media_blob_id?: string;
 	circle_id: string;
 	author_name?: string;
 	/** post, comment, day, file или audio. */

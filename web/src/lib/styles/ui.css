@@ -974,8 +974,11 @@
 }
 /* Комментарий, открытый из «Откликов»: подсветка на миг, чтобы глаз нашёл.
    Не .hl — это подсветка слова в поиске, с ней строка теряла отступы. */
-.cmt.linked {
+.cmt.linked, .att.linked, .post.linked {
 	background: var(--ct);
+	transition: background .6s ease;
+}
+.att, .post {
 	transition: background .6s ease;
 }
 .cmt {

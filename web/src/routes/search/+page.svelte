@@ -16,12 +16,14 @@
 	import { formatEntryDate, formatPostTime } from '$lib/format/time';
 	import { loadSessions } from '$lib/session/session.svelte';
 	import { getMediaUrl } from '$lib/media/objectUrl';
-	import { searchChipsFromParams, replaceSearchUrl, searchChipsFromWindow, searchThumbVariant, quoteMatch } from '$lib/journal/search';
+	import { searchChipsFromParams, replaceSearchUrl, searchChipsFromWindow, searchThumbVariant, quoteMatch, searchHitHref } from '$lib/journal/search';
 
 	type Hit = {
 		postId: string;
 		kind: string;
 		entryDate: string;
+		commentId?: string;
+		mediaBlobId?: string;
 		title?: string;
 		author: string;
 		time: string;
@@ -144,6 +146,8 @@
 							postId: hit.post_id,
 							kind: hit.kind,
 							entryDate: hit.entry_date,
+							commentId: hit.comment_id,
+							mediaBlobId: hit.media_blob_id,
 							title: hit.title,
 							author: isDay ? (hit.title ?? hit.snippet) : (hit.author_name ?? '—'),
 							time: isDay
@@ -192,11 +196,15 @@
 		const { origin, circleId } = splitCircleKey(group.circleId);
 		if (!circleId) return;
 		rememberCircleOrigin(circleId, origin);
-		if (hit.kind === 'day') {
-			goto(`/circles/${circleId}/days/${hit.entryDate}`);
-			return;
-		}
-		goto(`/circles/${circleId}/posts/${hit.postId}`);
+		goto(
+			searchHitHref(circleId, {
+				kind: hit.kind,
+				post_id: hit.postId,
+				entry_date: hit.entryDate,
+				comment_id: hit.commentId,
+				media_blob_id: hit.mediaBlobId
+			})
+		);
 	}
 
 	function rowAuthor(hit: Hit) {

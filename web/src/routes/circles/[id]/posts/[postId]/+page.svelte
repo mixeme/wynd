@@ -186,15 +186,24 @@
 		void showLinkedComment();
 	}
 
-	// Из «Откликов» (3.13) комментарий открывается у себя в обсуждении:
-	// экран встаёт на него и на миг подсвечивает. Один раз за вход.
+	// Из «Откликов» (3.13) и из поиска найденное открывается у себя:
+	// комментарий — в обсуждении, файл или звук — строкой, запись — целиком.
+	// Экран встаёт на него и на миг подсвечивает. Один раз за вход.
 	let linkedShown = false;
 	async function showLinkedComment() {
-		const id = $page.url.searchParams.get('comment');
-		if (!id || linkedShown) return;
+		const params = $page.url.searchParams;
+		const comment = params.get('comment');
+		const media = params.get('media');
+		const found = params.has('found');
+		if ((!comment && !media && !found) || linkedShown) return;
 		linkedShown = true;
 		await tick();
-		const el = document.querySelector<HTMLElement>(`.cmt.c-${CSS.escape(id)}`);
+		const selector = comment
+			? `.cmt.c-${CSS.escape(comment)}`
+			: media
+				? `.att.m-${CSS.escape(media)}`
+				: '.post';
+		const el = document.querySelector<HTMLElement>(selector);
 		if (!el) return;
 		el.scrollIntoView({ block: 'center' });
 		el.classList.add('linked');

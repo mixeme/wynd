@@ -75,6 +75,25 @@ export function searchHref(path: string, state: SearchChipState): string {
 }
 
 /** Найденное слово в кавычках-ёлочках: «как найдено» — без разметки, текстом. */
+/**
+ * Куда ведёт находка: день — в день, комментарий — к нему в обсуждение,
+ * файл или звук — к его строке, запись — в запись. Экран записи встаёт на
+ * найденное и на миг подсвечивает, как отклик из «Откликов».
+ */
+export function searchHitHref(
+	circleId: string,
+	hit: { kind: string; post_id: string; entry_date: string; comment_id?: string; media_blob_id?: string }
+): string {
+	const base = `/circles/${circleId}`;
+	if (hit.kind === 'day') return `${base}/days/${hit.entry_date}`;
+	const post = `${base}/posts/${hit.post_id}`;
+	if (hit.kind === 'comment' && hit.comment_id) return `${post}?comment=${hit.comment_id}`;
+	if ((hit.kind === 'file' || hit.kind === 'audio') && hit.media_blob_id) {
+		return `${post}?media=${hit.media_blob_id}`;
+	}
+	return `${post}?found=1`;
+}
+
 export function quoteMatch(text: string, term: string): string {
 	if (!term) return text;
 	const idx = text.toLowerCase().indexOf(term.toLowerCase());
