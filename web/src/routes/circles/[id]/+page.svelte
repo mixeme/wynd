@@ -366,8 +366,9 @@
 		goto(`/circles/${circle.circleId}/compose`);
 	}
 
-	// Голосовое и видео из полосы ввода (C14, 4.24, 4.26): новая запись
-	// журнала, текст из поля — подписью. Через очередь — без сети тоже уйдёт.
+	// Голосовое и видео из полосы ввода (C14, 4.24, 4.26): новая запись журнала
+	// без текста — «Запись» стоит только у пустого поля. Через очередь — без
+	// сети тоже уйдёт.
 	let videoOpen = $state(false);
 	let preparing = $state('');
 
@@ -375,14 +376,12 @@
 		file: { name: string; type: string; size: number; data: ArrayBuffer },
 		meta: QueueMediaMeta
 	) {
-		const body = commentDraft.trim();
 		await enqueuePost(
 			circle.origin,
 			circle.circleId,
-			{ body, entry_date: todayEntryDate(), media_meta: [meta] },
+			{ body: '', entry_date: todayEntryDate(), media_meta: [meta] },
 			[file]
 		);
-		commentDraft = '';
 		await loadFeedData();
 	}
 
