@@ -15,6 +15,8 @@
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadDays } from '$lib/journal/days';
 	import { groupGridTiles, loadGrid, type GridTile } from '$lib/journal/grid';
+	import { fetchOlderPage, mergePages, refetchOlder } from '$lib/journal/pages';
+	import type { GridItem } from '$lib/journal/types';
 	import { groupByMonth } from '$lib/journal/group';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 	import { registerRefetch } from '$lib/sync/sync';
@@ -22,6 +24,12 @@
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 
 	let tiles = $state<GridTile[]>([]);
+	// Порции «Сетки» (C18): первая из снимка, старшие — при прокрутке к концу.
+	let firstItems: GridItem[] = [];
+	let olderItems = $state<GridItem[]>([]);
+	let nextBefore = $state<string | undefined>(undefined);
+	let loadingOlder = $state(false);
+	const itemKey = (i: GridItem) => `${i.post_id}:${i.blob_id}`;
 	let totalPosts = $state(0);
 	let loading = $state(true);
 	let error = $state('');
@@ -49,16 +57,58 @@
 				loadDays(circle.origin, circle.circleId)
 			]);
 			totalPosts = daysSnap.days.reduce((sum, d) => sum + d.post_count, 0);
-			tiles = groupGridTiles(gridSnap.items).map((tile) => ({
-				...tile,
-				entryDate: tile.entryDate
-			}));
+			firstItems = gridSnap.items;
+			nextBefore = gridSnap.next_before;
+			if (olderItems.length) {
+				// Граница первой порции сдвинулась — перечитываем догруженное от неё.
+				const again = await refetchOlder(loadOlderGrid, gridSnap.next_before, olderItems.length).catch(
+					() => ({ items: olderItems, next: nextBefore })
+				);
+				olderItems = again.items;
+				nextBefore = again.next;
+			}
+			setTiles();
 			await resolveUrls(tiles);
 		} catch (err) {
 			error = isAccessError(err) ? 'Нет доступа' : 'Не удалось загрузить сетку';
 		} finally {
 			loading = false;
 		}
+	}
+
+	function setTiles() {
+		tiles = groupGridTiles(mergePages(firstItems, olderItems, itemKey));
+	}
+
+	async function loadOlderGrid(before: string) {
+		const page = await fetchOlderPage<{ items: GridItem[] }>(
+			circle.origin,
+			`/circles/${circle.circleId}/grid`,
+			before
+		);
+		return { items: page.items, next: page.next_before };
+	}
+
+	async function loadOlder() {
+		if (!nextBefore || loadingOlder) return;
+		loadingOlder = true;
+		try {
+			const page = await loadOlderGrid(nextBefore);
+			olderItems = [...olderItems, ...page.items];
+			nextBefore = page.next;
+			setTiles();
+			void resolveUrls(tiles);
+		} catch {
+			// Без сети старшее не догрузится.
+		} finally {
+			loadingOlder = false;
+		}
+	}
+
+	function onListScroll() {
+		const el = listEl;
+		if (!el || !nextBefore) return;
+		if (el.scrollTop + el.clientHeight * 2.5 >= el.scrollHeight) void loadOlder();
 	}
 
 	const monthGroups = $derived(groupByMonth(tiles));
@@ -107,6 +157,7 @@
 		role="feed"
 		aria-label="Сетка"
 		bind:this={listEl}
+		onscroll={onListScroll}
 		ontouchstart={ptr.start}
 		ontouchmove={ptr.move}
 		ontouchend={ptr.end}
@@ -134,6 +185,9 @@
 				{/each}
 			</PhotoGrid>
 		{/each}
+		{#if loadingOlder}
+			<Hint class="gutter-24" centered>Загружаем фото постарше…</Hint>
+		{/if}
 		{#if !tiles.length}
 			<Hint class="gutter-24">Записей с фотографиями пока нет</Hint>
 		{/if}

@@ -7,8 +7,10 @@ import (
 	"time"
 )
 
-// SnapshotPostLimit caps feed/day snapshots; circles beyond this are out of product scope.
-const SnapshotPostLimit = 2000
+// SnapshotPostLimit — порция снимка ленты, «Сетки», «Карты» и дня; старшее
+// лента, «Сетка» и «Карта» догружают по курсору (C18).
+// Переменная, а не константа: тесты порций (C18) ставят маленький предел.
+var SnapshotPostLimit = 2000
 
 // readScope caches membership visibility spans for one circle/account per snapshot request.
 type readScope struct {

@@ -13,7 +13,12 @@ func (s *Server) handleFeed(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	posts, err := s.Chronicle.FeedSnapshot(r.Context(), circleID, sess.AccountID)
+	before, err := chronicle.ParsePageCursor(r.URL.Query().Get("before"))
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	posts, next, err := s.Chronicle.FeedPage(r.Context(), circleID, sess.AccountID, before)
 	if err != nil {
 		writeDomainError(w, err)
 		return
@@ -47,6 +52,11 @@ func (s *Server) handleFeed(w http.ResponseWriter, r *http.Request) {
 	} else {
 		out["visible_from"] = nil
 	}
+	if before != nil {
+		// Старшие порции — только записи: строки журнала пришли с первой.
+		out["events"] = []map[string]any{}
+	}
+	setNextBefore(out, next)
 	writeJSON(w, http.StatusOK, out)
 }
 
@@ -56,7 +66,12 @@ func (s *Server) handleGrid(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	items, err := s.Chronicle.GridSnapshot(r.Context(), circleID, sess.AccountID)
+	before, err := chronicle.ParsePageCursor(r.URL.Query().Get("before"))
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	items, next, err := s.Chronicle.GridPage(r.Context(), circleID, sess.AccountID, before)
 	if err != nil {
 		writeDomainError(w, err)
 		return
@@ -71,7 +86,9 @@ func (s *Server) handleGrid(w http.ResponseWriter, r *http.Request) {
 			"is_cover":   item.IsCover,
 		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"circle_id": circleID, "items": out})
+	resp := map[string]any{"circle_id": circleID, "items": out}
+	setNextBefore(resp, next)
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (s *Server) handleMap(w http.ResponseWriter, r *http.Request) {
@@ -80,7 +97,12 @@ func (s *Server) handleMap(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	pins, err := s.Chronicle.MapSnapshot(r.Context(), circleID, sess.AccountID)
+	before, err := chronicle.ParsePageCursor(r.URL.Query().Get("before"))
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	pins, next, err := s.Chronicle.MapPage(r.Context(), circleID, sess.AccountID, before)
 	if err != nil {
 		writeDomainError(w, err)
 		return
@@ -98,7 +120,16 @@ func (s *Server) handleMap(w http.ResponseWriter, r *http.Request) {
 			"body":        pin.Body,
 		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"circle_id": circleID, "pins": out})
+	resp := map[string]any{"circle_id": circleID, "pins": out}
+	setNextBefore(resp, next)
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// setNextBefore — курсор следующей порции (C18); нет — дальше ничего.
+func setNextBefore(out map[string]any, next *chronicle.PageCursor) {
+	if next != nil {
+		out["next_before"] = next.String()
+	}
 }
 
 func (s *Server) handleDays(w http.ResponseWriter, r *http.Request) {

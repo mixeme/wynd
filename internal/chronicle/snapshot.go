@@ -169,18 +169,8 @@ type FeedPost struct {
 
 // FeedSnapshot returns visible posts ordered by created_at descending.
 func (c *Chronicle) FeedSnapshot(ctx context.Context, circleID, accountID string) ([]FeedPost, error) {
-	if err := c.requireReader(ctx, circleID, accountID); err != nil {
-		return nil, err
-	}
-	scope, err := c.newReadScope(ctx, circleID, accountID)
-	if err != nil {
-		return nil, err
-	}
-	ids, err := c.visiblePostIDs(ctx, circleID, accountID, "1=1", "created_at DESC", SnapshotPostLimit)
-	if err != nil {
-		return nil, err
-	}
-	return c.buildFeedPosts(ctx, ids, circleID, scope)
+	posts, _, err := c.FeedPage(ctx, circleID, accountID, nil)
+	return posts, err
 }
 
 // GridItem is a photo tile for the grid view.
@@ -194,41 +184,8 @@ type GridItem struct {
 
 // GridSnapshot returns visible photo media ordered by post created_at descending.
 func (c *Chronicle) GridSnapshot(ctx context.Context, circleID, accountID string) ([]GridItem, error) {
-	if err := c.requireReader(ctx, circleID, accountID); err != nil {
-		return nil, err
-	}
-	rows, err := c.db.QueryContext(ctx, fmt.Sprintf(`
-		SELECT p.id, pm.blob_id, p.entry_date, p.created_at, pm.is_cover
-		FROM posts p
-		JOIN post_media pm ON pm.post_id = p.id AND pm.kind = 'photo'
-		WHERE p.circle_id = ? AND p.deleted = 0
-		  AND %s
-		ORDER BY p.created_at DESC, pm.sort_order
-		LIMIT ?
-	`, sqlVisibleAt("p.created_at")), circleID, circleID, accountID, SnapshotPostLimit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []GridItem
-	seen := make(map[string]bool)
-	for rows.Next() {
-		var item GridItem
-		var created string
-		var cover int
-		if err := rows.Scan(&item.PostID, &item.BlobID, &item.EntryDate, &created, &cover); err != nil {
-			return nil, err
-		}
-		item.CreatedAt, _ = parseTime(created)
-		item.IsCover = cover == 1
-		key := item.PostID + ":" + item.BlobID
-		if seen[key] {
-			continue
-		}
-		seen[key] = true
-		out = append(out, item)
-	}
-	return out, rows.Err()
+	items, _, err := c.GridPage(ctx, circleID, accountID, nil)
+	return items, err
 }
 
 // MapPin is a geotagged media point for the map view.
@@ -245,34 +202,8 @@ type MapPin struct {
 
 // MapSnapshot returns visible geotagged media ordered by post created_at descending.
 func (c *Chronicle) MapSnapshot(ctx context.Context, circleID, accountID string) ([]MapPin, error) {
-	if err := c.requireReader(ctx, circleID, accountID); err != nil {
-		return nil, err
-	}
-	rows, err := c.db.QueryContext(ctx, fmt.Sprintf(`
-		SELECT p.id, pm.blob_id, p.entry_date, p.created_at, pm.geo_lat, pm.geo_lng, p.author_name, p.body
-		FROM posts p
-		JOIN post_media pm ON pm.post_id = p.id
-		WHERE p.circle_id = ? AND p.deleted = 0
-		  AND pm.geo_lat IS NOT NULL AND pm.geo_lng IS NOT NULL
-		  AND %s
-		ORDER BY p.created_at DESC
-		LIMIT ?
-	`, sqlVisibleAt("p.created_at")), circleID, circleID, accountID, SnapshotPostLimit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []MapPin
-	for rows.Next() {
-		var pin MapPin
-		var created string
-		if err := rows.Scan(&pin.PostID, &pin.BlobID, &pin.EntryDate, &created, &pin.GeoLat, &pin.GeoLng, &pin.AuthorName, &pin.Body); err != nil {
-			return nil, err
-		}
-		pin.CreatedAt, _ = parseTime(created)
-		out = append(out, pin)
-	}
-	return out, rows.Err()
+	pins, _, err := c.MapPage(ctx, circleID, accountID, nil)
+	return pins, err
 }
 
 // DaySummary is a day projection row visible to the account.

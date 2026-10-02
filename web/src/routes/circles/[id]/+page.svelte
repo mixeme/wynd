@@ -33,6 +33,7 @@
 	import { isPostArchiveLocked } from '$lib/journal/archive';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadFeed } from '$lib/journal/feed';
+	import { fetchOlderPage, mergePages, refetchOlder } from '$lib/journal/pages';
 	import { applyOwnReaction, canReact } from '$lib/journal/reactions';
 	import { fetchMembers, type MemberInfo } from '$lib/circles/settings';
 	import {
@@ -97,6 +98,11 @@
 	let queueToRemove = $state<number | null>(null);
 
 	let posts = $state<FeedPost[]>([]);
+	// Догруженные старшие порции (C18): снимок — самые новые записи, остальное
+	// приходит при прокрутке к концу ленты.
+	let olderPosts = $state<FeedPost[]>([]);
+	let nextBefore = $state<string | undefined>(undefined);
+	let loadingOlder = $state(false);
 	let feedEvents = $state<FeedEvent[]>([]);
 	let visibleFrom = $state<string | null>(null);
 	let circleStartedAt = $state('');
@@ -224,7 +230,16 @@
 		error = '';
 		try {
 			const snap = await loadFeed(circle.origin, circle.circleId);
-			posts = snap.posts;
+			nextBefore = snap.next_before;
+			if (olderPosts.length) {
+				// Граница первой порции сдвинулась — перечитываем догруженное от неё.
+				const again = await refetchOlder(loadOlderFeed, snap.next_before, olderPosts.length).catch(
+					() => ({ items: olderPosts, next: nextBefore })
+				);
+				olderPosts = again.items;
+				nextBefore = again.next;
+			}
+			posts = mergePages(snap.posts, olderPosts, (p) => p.id);
 			feedEvents = snap.events ?? [];
 			visibleFrom = snap.visible_from ?? null;
 			circleStartedAt = snap.circle_started_at ?? '';
@@ -238,6 +253,38 @@
 		}
 		feedLoaded = true;
 		await restoreSpot();
+	}
+
+	async function loadOlderFeed(before: string) {
+		const page = await fetchOlderPage<{ posts: FeedPost[] }>(
+			circle.origin,
+			`/circles/${circle.circleId}/feed`,
+			before
+		);
+		return { items: page.posts, next: page.next_before };
+	}
+
+	async function loadOlder() {
+		if (!nextBefore || loadingOlder) return;
+		loadingOlder = true;
+		try {
+			const page = await loadOlderFeed(nextBefore);
+			olderPosts = [...olderPosts, ...page.items];
+			nextBefore = page.next;
+			posts = mergePages(posts, page.items, (p) => p.id);
+			void resolveFeedMedia(page.items);
+		} catch {
+			// Без сети старшее не догрузится — лента остаётся как есть.
+		} finally {
+			loadingOlder = false;
+		}
+	}
+
+	// До конца ленты — полтора экрана: догружаем заранее, чтобы не упираться.
+	function onFeedScroll() {
+		const el = feedEl;
+		if (!el || !nextBefore) return;
+		if (el.scrollTop + el.clientHeight * 2.5 >= el.scrollHeight) void loadOlder();
 	}
 
 	function refreshQueued() {
@@ -631,6 +678,7 @@
 		role="feed"
 		aria-label="Лента"
 		bind:this={feedEl}
+		onscroll={onFeedScroll}
 		ontouchstart={ptr.start}
 		ontouchmove={ptr.move}
 		ontouchend={ptr.end}
@@ -808,6 +856,10 @@
 
 			{#if dividerAt === posts.length}
 				<EventDivider variant="unread" text="выше — новое" />
+			{/if}
+
+			{#if loadingOlder}
+				<Hint class="gutter" centered>Загружаем записи постарше…</Hint>
 			{/if}
 
 			{#if error}

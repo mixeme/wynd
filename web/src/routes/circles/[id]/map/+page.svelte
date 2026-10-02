@@ -12,6 +12,7 @@
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadDays } from '$lib/journal/days';
 	import { loadMap } from '$lib/journal/map';
+	import { fetchOlderPage, mergePages } from '$lib/journal/pages';
 	import type { MapPin } from '$lib/journal/types';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 	import { registerRefetch } from '$lib/sync/sync';
@@ -55,7 +56,25 @@
 				loadMap(circle.origin, circle.circleId),
 				loadDays(circle.origin, circle.circleId)
 			]);
-			pins = mapSnap.pins;
+			// Карта показывает всё место круга сразу (C18): старшие порции
+			// догружаем разом и ставим одним присваиванием — карта перерисовывается
+			// целиком на каждое.
+			let older: MapPin[] = [];
+			let next = mapSnap.next_before;
+			for (let i = 0; next && i < 20; i++) {
+				try {
+					const page = await fetchOlderPage<{ pins: MapPin[] }>(
+						circle.origin,
+						`/circles/${circle.circleId}/map`,
+						next
+					);
+					older = [...older, ...page.pins];
+					next = page.next_before;
+				} catch {
+					break;
+				}
+			}
+			pins = mergePages(mapSnap.pins, older, (p) => `${p.post_id}:${p.blob_id}`);
 			totalPosts = daysSnap.days.reduce((sum, d) => sum + d.post_count, 0);
 			badge = `${pins.length} ${pins.length === 1 ? 'запись' : pins.length < 5 ? 'записи' : 'записей'} с местом из ${pluralPosts(totalPosts)}`;
 		} catch (err) {

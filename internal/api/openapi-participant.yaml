@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.19.5
+  version: 0.19.6
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:
@@ -321,9 +321,14 @@ paths:
           required: true
           schema:
             type: string
+        - name: before
+          in: query
+          description: Cursor from next_before of the previous page; omitted — newest page
+          schema:
+            type: string
       responses:
         "200":
-          description: Posts with media, comments, reactions
+          description: Posts with media, comments, reactions; next_before when older items remain
 
   /circles/{circle_id}/grid:
     get:
@@ -334,9 +339,14 @@ paths:
           required: true
           schema:
             type: string
+        - name: before
+          in: query
+          description: Cursor from next_before of the previous page; omitted — newest page
+          schema:
+            type: string
       responses:
         "200":
-          description: Photo tiles
+          description: Photo tiles; next_before when older items remain
 
   /circles/{circle_id}/map:
     get:
@@ -347,9 +357,14 @@ paths:
           required: true
           schema:
             type: string
+        - name: before
+          in: query
+          description: Cursor from next_before of the previous page; omitted — newest page
+          schema:
+            type: string
       responses:
         "200":
-          description: Geotagged media
+          description: Geotagged media; next_before when older items remain
 
   /circles/{circle_id}/days:
     get:

@@ -75,6 +75,8 @@ export interface FeedSnapshot {
 	events?: FeedEvent[];
 	visible_from?: string | null;
 	circle_started_at?: string;
+	/** Курсор старшей порции (C18); нет — дальше ничего. */
+	next_before?: string;
 }
 
 export interface ArchiveCycle {
@@ -159,6 +161,7 @@ export interface GridItem {
 export interface GridSnapshot {
 	circle_id: string;
 	items: GridItem[];
+	next_before?: string;
 }
 
 export interface MapPin {
@@ -175,6 +178,7 @@ export interface MapPin {
 export interface MapSnapshot {
 	circle_id: string;
 	pins: MapPin[];
+	next_before?: string;
 }
 
 export interface CircleSearchHit {
