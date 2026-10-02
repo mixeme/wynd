@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
@@ -41,7 +42,7 @@
 	});
 </script>
 
-<FormLayout app title="Продлить" onback={() => goto('/circles')}>
+<FormLayout app title="Продлить" onback={() => goUp('/circles')}>
 	{#if loading}
 		<Loading />
 	{:else}

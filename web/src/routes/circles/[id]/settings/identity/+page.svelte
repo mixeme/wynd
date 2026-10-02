@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import GenderPicker from '$ui/forms/GenderPicker.svelte';
 	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import { goto } from '$app/navigation';
@@ -144,7 +145,7 @@
 	app
 	color={circle.color}
 	title="Кто вы в этом круге"
-	onback={() => goto(`/circles/${circle.circleId}/settings`)}
+	onback={() => goUp(`/circles/${circle.circleId}/settings`)}
 >
 	<Avatar initial={circle.identityInitial} color={circle.colorHex} src={avatarUrl} size="lg" />
 	<Hint centered class="mt-10">

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getContext, onMount } from 'svelte';
@@ -90,7 +91,7 @@
 	}
 
 	function goBack() {
-		goto(`/circles/${circle.circleId}/days/${entryDate}`);
+		goUp(`/circles/${circle.circleId}/days/${entryDate}`);
 	}
 
 	function selectItem(item: (typeof items)[number]) {

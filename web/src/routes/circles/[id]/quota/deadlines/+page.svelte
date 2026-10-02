@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getContext } from 'svelte';
@@ -113,9 +114,9 @@
 
 	function goBack() {
 		if (activeCycle) {
-			goto(`/circles/${circle.circleId}/settings`);
+			goUp(`/circles/${circle.circleId}/settings`);
 		} else {
-			goto(`/circles/${circle.circleId}/quota`);
+			goUp(`/circles/${circle.circleId}/quota`);
 		}
 	}
 

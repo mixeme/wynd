@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
 	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
 	import { goto } from '$app/navigation';
@@ -109,7 +110,7 @@
 	});
 
 	function goBack() {
-		goto('/circles');
+		goUp('/circles');
 	}
 
 	function openDay(entryDate: string) {

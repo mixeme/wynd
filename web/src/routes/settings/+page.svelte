@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import AboutFooter from '$ui/data/AboutFooter.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -23,7 +24,7 @@
 	});
 
 	function goBack() {
-		void goto('/circles');
+		void goUp('/circles');
 	}
 </script>
 

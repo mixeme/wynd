@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import NumberField from '$ui/forms/NumberField.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -132,7 +133,7 @@
 	});
 </script>
 
-<FormLayout shell app title="Приложение" onback={() => goto('/settings')}>
+<FormLayout shell app title="Приложение" onback={() => goUp('/settings')}>
 	<SectionLabel>Уведомления по умолчанию</SectionLabel>
 	<SettingsRow class="pt-2" title="Новые записи">
 		{#snippet control()}

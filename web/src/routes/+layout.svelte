@@ -8,6 +8,8 @@
 	import { initViewportHeight } from '$lib/session/viewport';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
+	import { afterNavigate, beforeNavigate } from '$app/navigation';
+	import { armEntryGuard, interceptHistoryBack, recordEntry } from '$lib/navigation/up';
 	import AudioBar from '$ui/chrome/AudioBar.svelte';
 	import { useAudioBar } from '$lib/media/audioBar.svelte';
 	import { pwaInfo } from 'virtual:pwa-info';
@@ -16,6 +18,17 @@
 	const audioBar = useAudioBar();
 
 	let { children } = $props();
+
+	// «Назад» на уровень вверх и системной кнопкой (план 46, C13).
+	beforeNavigate((nav) => {
+		if (nav.type === 'popstate' && interceptHistoryBack(nav.delta)) nav.cancel();
+	});
+	afterNavigate((nav) => {
+		if (!nav.to) return;
+		recordEntry(nav.to.url);
+		const url = nav.to.url;
+		setTimeout(() => armEntryGuard(url));
+	});
 
 	$effect(() => {
 		if (typeof document === 'undefined') return;

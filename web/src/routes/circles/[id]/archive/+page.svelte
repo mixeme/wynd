@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import { getContext } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
@@ -20,7 +21,7 @@
 	const cycle = $derived(circle.archiveCycle);
 
 	function goBack() {
-		goto(`/circles/${circle.circleId}/settings`);
+		goUp(`/circles/${circle.circleId}/settings`);
 	}
 
 	function download() {

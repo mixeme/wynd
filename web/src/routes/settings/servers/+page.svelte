@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { WORD, plural } from '$lib/format/plural';
@@ -69,7 +70,7 @@
 	});
 </script>
 
-<FormLayout shell app title="Серверы" onback={() => goto('/settings')}>
+<FormLayout shell app title="Серверы" onback={() => goUp('/settings')}>
 	{#if loading}
 		<Loading />
 	{:else if rows.length === 0}

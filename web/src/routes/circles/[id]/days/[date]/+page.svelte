@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import PostByline from '$ui/data/PostByline.svelte';
 	import EntryDateMark from '$ui/data/EntryDateMark.svelte';
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
@@ -152,7 +153,7 @@
 	});
 
 	function goBack() {
-		goto(`/circles/${circle.circleId}/days`);
+		goUp(`/circles/${circle.circleId}/days`);
 	}
 
 	function openPost(postId: string) {

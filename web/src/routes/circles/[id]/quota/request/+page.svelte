@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import NumberField from '$ui/forms/NumberField.svelte';
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
@@ -107,7 +108,7 @@
 	app
 	color={circle.color}
 	title="Попросить место"
-	onback={() => goto(`/circles/${circle.circleId}/quota`)}
+	onback={() => goUp(`/circles/${circle.circleId}/quota`)}
 >
 	{#if pageLoading}
 		<Loading />

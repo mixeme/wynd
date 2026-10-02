@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
@@ -55,7 +56,7 @@
 	app
 	color={circle.color}
 	title="Покинуть круг"
-	onback={() => goto(`/circles/${circle.circleId}/settings`)}
+	onback={() => goUp(`/circles/${circle.circleId}/settings`)}
 >
 	{#if pageLoading}
 		<Loading />

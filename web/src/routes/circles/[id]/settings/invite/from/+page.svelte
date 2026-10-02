@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getContext, onMount } from 'svelte';
@@ -27,7 +28,7 @@
 
 	function goBack() {
 		const q = fromCreate ? '?from=create' : '';
-		goto(`/circles/${circle.circleId}/settings/invite${q}`);
+		goUp(`/circles/${circle.circleId}/settings/invite${q}`);
 	}
 
 	function candidateSubtitle(member: InviteCandidate, group: InviteCandidateGroup): string {

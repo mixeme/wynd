@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import DateRange from '$ui/forms/DateRange.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -218,7 +219,7 @@
 
 <!-- Поле — в шапке, как в кадре 2.9. Раньше шапка повторяла запрос текстом,
      а настоящее поле стояло ниже: на экране было две строки поиска. -->
-<FormLayout shell app bar={searchBar} compact onback={() => goto('/circles')}>
+<FormLayout shell app bar={searchBar} compact onback={() => goUp('/circles')}>
 	<ChipGroup style="margin-top:12px">
 		<Chip selected={periodActive} onclick={togglePeriod}>Период</Chip>
 		<Chip selected={filterPhoto} onclick={() => (filterPhoto = !filterPhoto)}>С фото</Chip>

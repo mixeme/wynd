@@ -31,11 +31,13 @@ export class PullRefresh {
 	}
 
 	start = (e: TouchEvent) => {
-		this.state = pullStart(this.state, e.touches[0]?.clientY ?? 0, this.#scrollTop());
+		const t = e.touches[0];
+		this.state = pullStart(this.state, t?.clientY ?? 0, this.#scrollTop(), t?.clientX ?? 0);
 	};
 
 	move = (e: TouchEvent) => {
-		this.state = pullMove(this.state, e.touches[0]?.clientY ?? 0, this.#scrollTop());
+		const t = e.touches[0];
+		this.state = pullMove(this.state, t?.clientY ?? 0, this.#scrollTop(), t?.clientX ?? 0);
 	};
 
 	end = () => {

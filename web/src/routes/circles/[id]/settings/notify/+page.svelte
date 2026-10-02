@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
 	import Chip from '$ui/forms/Chip.svelte';
@@ -93,7 +94,7 @@
 	app
 	color={circle.color}
 	title="Уведомления круга"
-	onback={() => goto(`/circles/${circle.circleId}/settings`)}
+	onback={() => goUp(`/circles/${circle.circleId}/settings`)}
 >
 	<Label>Присылать</Label>
 	{#if !soloCircle}

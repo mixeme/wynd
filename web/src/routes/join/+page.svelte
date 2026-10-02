@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -119,20 +120,6 @@
 		openLinkText(linkText);
 	}
 
-	async function openLinkPicker() {
-		error = '';
-		try {
-			const text = await navigator.clipboard.readText();
-			const path = parseWyndLink(text);
-			if (path) {
-				goto(path);
-				return;
-			}
-		} catch {
-			/* clipboard denied or empty */
-		}
-		linkPicker?.open();
-	}
 
 	async function onLinkImageSelected(file: File) {
 		error = '';
@@ -191,7 +178,7 @@
 	const blockedSubtitle = $derived('только по приглашению');
 </script>
 
-<FormLayout shell app title="Без приглашения" onback={() => goto(backHref)}>
+<FormLayout shell app title="Без приглашения" onback={() => goUp(backHref)}>
 	{#if !blocked}
 		<Hint>
 			Почта живёт на одном сервере. Общей на весь Wynd не бывает: серверы друг о друге не
@@ -257,7 +244,11 @@
 			Ссылку в круг даёт любой его участник, на сервер — тот, кто его держит.
 		</Hint>
 	{/if}
-	<Button class="mt-14" variant="ghost" onclick={openLinkPicker}>Открыть ссылку или QR</Button>
+	<!-- Камерой — как на «Приглашении» (2.17); фото — если код прислали картинкой. -->
+	<Button class="mt-14" variant="ghost" onclick={() => goto('/invite/scan?from=join')}
+		>Сканировать QR-код</Button
+	>
+	<Button variant="ghost" onclick={() => linkPicker?.open()}>Фото с QR-кодом</Button>
 	{#if error}
 		<Hint class="mt-12">{error}</Hint>
 	{/if}

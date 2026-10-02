@@ -1129,13 +1129,16 @@ a.resp + a.resp {
 }
 .ev:before, .ev:after {
 	content: "";
-	flex: 1;
+	/* Длинная строка переносится — линии по бокам не сжимаются в ноль. */
+	flex: 1 0 24px;
 	height: 1px;
 	background: var(--line);
 }
 .ev span {
 	font-size: 11.5px;
 	color: var(--muted);
+	text-align: center;
+	max-width: 78%;
 }
 .ev.new:before, .ev.new:after {
 	background: var(--c);

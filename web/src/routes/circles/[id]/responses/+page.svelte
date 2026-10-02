@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import ResponseEntry from '$ui/data/ResponseEntry.svelte';
 	import PostRef from '$ui/data/PostRef.svelte';
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
@@ -154,7 +155,7 @@
 	identitySettingsLink={circle.canWrite}
 	active="Отклики"
 	commentBar={false}
-	onback={() => goto('/circles')}
+	onback={() => goUp('/circles')}
 >
 	<PullRefreshBand pull={ptr.state} />
 	<div

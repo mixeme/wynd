@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import PostByline from '$ui/data/PostByline.svelte';
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
 	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
@@ -200,16 +201,20 @@
 		setTimeout(() => el.classList.remove('linked'), 1600);
 	}
 
-	// «Назад» возвращает туда, откуда пришли внутри круга: из «Откликов» —
-	// в «Отклики», а не в начало ленты.
+	// Родитель записи — экран круга, где её открыли: вкладка, день, поиск
+	// (план 46, C13). Пришли иначе (пуш, ссылка, своя же правка) — лента.
 	let backTo = '';
 	afterNavigate(({ from }) => {
-		const path = from?.url.pathname ?? '';
-		if (!backTo) backTo = path === `/circles/${circle.circleId}/responses` ? path : '';
+		if (backTo || !from) return;
+		const base = `/circles/${circle.circleId}`;
+		const rest = from.url.pathname.startsWith(base) ? from.url.pathname.slice(base.length) : null;
+		if (rest !== null && /^(|\/days(\/\d{4}-\d{2}-\d{2})?|\/grid|\/map|\/responses|\/search)$/.test(rest)) {
+			backTo = from.url.pathname + from.url.search;
+		}
 	});
 
 	function goBack() {
-		goto(backTo || `/circles/${circle.circleId}`);
+		goUp(backTo || `/circles/${circle.circleId}`);
 	}
 
 	function openEdit() {

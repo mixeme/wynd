@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -184,7 +185,7 @@
 	color={circle.color}
 	title={transferMode ? 'Передать владение' : 'Участники'}
 	right={String(active.length)}
-	onback={() => goto(`/circles/${circle.circleId}/settings`)}
+	onback={() => goUp(`/circles/${circle.circleId}/settings`)}
 >
 	{#if error}
 		<Hint class="gutter">{error}</Hint>

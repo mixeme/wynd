@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import { setBackHandler } from '$lib/navigation/up';
 	import { getContext } from 'svelte';
 	import { goto } from '$app/navigation';
 	import CircleBar, {
@@ -81,6 +82,12 @@
 		children: Snippet;
 	} = $props();
 
+	// Системная «Назад» — тот же обработчик (план 46, C13).
+	$effect(() => {
+		const fn = onback;
+		if (fn) return setBackHandler(() => fn());
+	});
+
 	const circleId = $derived(circleIdProp ?? circleCtx?.circleId);
 
 	// Свайп по вкладкам (план 46, C9): содержимое идёт за пальцем, дальше
@@ -88,6 +95,8 @@
 	let bodyEl: HTMLDivElement | undefined = $state();
 	let swipe = $state(swipeIdle());
 	let leaving = $state(0);
+	// Вкладка, куда уезжаем: полоска стоит на ней до самого перехода, не мигает назад.
+	let leavingTab = $state<CircleTab | undefined>(undefined);
 	// Левый край блока на касании: блок едет за пальцем, мерить от него на ходу нельзя.
 	let bodyLeft = 0;
 	const order = $derived(visibleCircleTabs(circleCtx?.hasOthers ?? false, active));
@@ -97,6 +106,7 @@
 	const hasNext = $derived(tabIndex >= 0 && tabIndex < order.length - 1);
 	const offset = $derived(leaving || swipeOffset(swipe, hasPrev, hasNext));
 	const previewTab = $derived.by(() => {
+		if (leavingTab) return leavingTab;
 		if (swipe.phase !== 'horizontal' || Math.abs(swipe.dx) < swipe.width * SWIPE.commit) return undefined;
 		const next = swipe.dx < 0 ? tabIndex + 1 : tabIndex - 1;
 		return order[next];
@@ -127,9 +137,12 @@
 		if (!dir || !circleId) return;
 		const tab = order[tabIndex + dir];
 		leaving = dir > 0 ? -width : width;
+		leavingTab = tab;
 		setTimeout(() => {
 			const suffix = CIRCLE_TAB_PATHS[tab];
-			void goto(suffix ? `/circles/${circleId}${suffix}` : `/circles/${circleId}`).finally(() => {
+			void goto(suffix ? `/circles/${circleId}${suffix}` : `/circles/${circleId}`, {
+				replaceState: true
+			}).finally(() => {
 				leaving = 0;
 			});
 		}, 160);

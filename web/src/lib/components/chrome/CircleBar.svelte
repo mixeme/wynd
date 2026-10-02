@@ -96,7 +96,8 @@
 		active = t;
 		if (circleId) {
 			const suffix = tabPaths[t];
-			goto(suffix ? `/circles/${circleId}${suffix}` : `/circles/${circleId}`);
+			// Вкладки одного уровня: не копим их в истории (план 46, C13).
+			goto(suffix ? `/circles/${circleId}${suffix}` : `/circles/${circleId}`, { replaceState: true });
 		}
 	}
 </script>

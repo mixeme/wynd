@@ -22,6 +22,12 @@ describe('потянуть, чтобы обновить', () => {
 		expect(pullVisible(s)).toBe(true);
 	});
 
+	it('палец вбок — свайп вкладок, не обновление', () => {
+		const s = pullMove(pullStart(pullIdle(), 100, 0, 200), 104, 0, 140);
+		expect(s.phase).toBe('idle');
+		expect(pullMove(s, 200, 0, 140).pull).toBe(0);
+	});
+
 	it('тянется только от самого верха списка', () => {
 		const started = pullStart(pullIdle(), 100, 40);
 		expect(started.phase).toBe('idle');

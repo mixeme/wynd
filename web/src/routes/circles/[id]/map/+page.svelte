@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import { getContext, onDestroy, onMount } from 'svelte';
 	import MapBadge from '$ui/data/MapBadge.svelte';
@@ -170,7 +171,7 @@
 	});
 
 	function goBack() {
-		goto('/circles');
+		goUp('/circles');
 	}
 
 	function openSelected() {

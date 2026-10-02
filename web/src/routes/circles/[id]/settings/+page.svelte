@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import EditWindowPicker from '$ui/forms/EditWindowPicker.svelte';
 	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
 	import { goto } from '$app/navigation';
@@ -316,7 +317,7 @@
 	}
 
 	function goBack() {
-		goto(`/circles/${circle.circleId}`);
+		goUp(`/circles/${circle.circleId}`);
 	}
 
 	async function onLeave() {

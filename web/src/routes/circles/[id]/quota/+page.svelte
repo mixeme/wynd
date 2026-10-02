@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
@@ -142,7 +143,7 @@
 	app
 	color={circle.color}
 	title="Архив и очистка"
-	onback={() => goto(`/circles/${circle.circleId}/settings`)}
+	onback={() => goUp(`/circles/${circle.circleId}/settings`)}
 >
 	{#if loading}
 		<Loading />

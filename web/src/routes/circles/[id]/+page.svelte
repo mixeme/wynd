@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import PostByline from '$ui/data/PostByline.svelte';
 	import FeedEnd from '$ui/data/FeedEnd.svelte';
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
@@ -276,7 +277,7 @@
 	});
 
 	function goBack() {
-		goto('/circles');
+		goUp('/circles');
 	}
 
 	function openSearch() {

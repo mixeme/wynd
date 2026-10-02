@@ -34,6 +34,8 @@ export interface PullState {
 	pull: number;
 	/** Точка, с которой начался жест; null — жест не начат. */
 	startY: number | null;
+	/** По горизонтали: жест вбок — свайп вкладок, не обновление (C9). */
+	startX?: number;
 }
 
 export function pullIdle(): PullState {
@@ -41,16 +43,19 @@ export function pullIdle(): PullState {
 }
 
 /** Палец коснулся списка. Жест начинается только от самого верха. */
-export function pullStart(state: PullState, y: number, scrollTop: number): PullState {
+export function pullStart(state: PullState, y: number, scrollTop: number, x = 0): PullState {
 	if (state.phase === 'settling' || state.phase === 'refreshing') return state;
 	if (scrollTop > 0) return { ...state, startY: null, pull: 0, phase: 'idle' };
-	return { phase: 'pulling', pull: 0, startY: y };
+	return { phase: 'pulling', pull: 0, startY: y, startX: x };
 }
 
 /** Палец ведёт вниз. Вверх не тянем, дальше maxPull — тоже. */
-export function pullMove(state: PullState, y: number, scrollTop: number): PullState {
+export function pullMove(state: PullState, y: number, scrollTop: number, x = 0): PullState {
 	if (state.phase !== 'pulling' || state.startY === null) return state;
 	if (scrollTop > 0) return { ...state, pull: 0 };
+	// Пока знак не показан: палец ушёл больше вбок, чем вниз — жест не наш.
+	const dx = Math.abs(x - (state.startX ?? x));
+	if (state.pull <= PTR.slop && dx > PTR.slop && dx > Math.abs(y - state.startY)) return pullIdle();
 	const pull = Math.max(0, Math.min(PTR.maxPull, y - state.startY));
 	return { ...state, pull };
 }

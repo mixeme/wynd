@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import NumberField from '$ui/forms/NumberField.svelte';
 	import { copyText } from '$lib/clipboard';
 	import { goto } from '$app/navigation';
@@ -43,7 +44,7 @@
 	// или на улочку оставлял гадать, создан ли круг.
 	function goBack() {
 		if (fromCreate) goCircle();
-		else goto(`/circles/${circle.circleId}/settings`);
+		else goUp(`/circles/${circle.circleId}/settings`);
 	}
 
 

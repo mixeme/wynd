@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import { setBackHandler } from '$lib/navigation/up';
 	import BackBar from '$ui/chrome/BackBar.svelte';
 	import PhoneFrame from '$ui/chrome/PhoneFrame.svelte';
 	import StatusBar from '$ui/chrome/StatusBar.svelte';
@@ -56,6 +57,12 @@
 		onright?: () => void;
 		children: Snippet;
 	} = $props();
+
+	// Системная «Назад» — тот же обработчик (план 46, C13).
+	$effect(() => {
+		const fn = onback;
+		if (fn) return setBackHandler(() => fn());
+	});
 </script>
 
 <PhoneFrame {color} {shell} {dark} {app} {height} class={className}>

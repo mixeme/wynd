@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import EditWindowPicker from '$ui/forms/EditWindowPicker.svelte';
 	import { goto } from '$app/navigation';
 	import { getContext } from 'svelte';
@@ -53,7 +54,7 @@
 	}
 </script>
 
-<FormLayout color={form.color} app title="Новый круг" onback={() => goto('/circles')}>
+<FormLayout color={form.color} app title="Новый круг" onback={() => goUp('/circles')}>
 	<Label>Сервер</Label>
 	{#if selectedSession}
 		<ServerRow

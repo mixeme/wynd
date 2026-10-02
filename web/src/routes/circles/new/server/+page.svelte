@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import { getContext } from 'svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -18,7 +19,7 @@
 	color={form.color}
 	app
 	title="Сервер"
-	onback={() => goto('/circles/new')}
+	onback={() => goUp('/circles/new')}
 >
 	{#each form.sessions as session (session.origin)}
 		<ServerRow

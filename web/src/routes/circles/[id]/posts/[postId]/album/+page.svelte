@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goUp } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import { resolveMediaUrls } from '$lib/media/batch';
 	import { numberParam, withParam, withoutParam } from '$lib/nav/url';
@@ -102,7 +103,7 @@
 	subtitle={post ? albumSubtitle : undefined}
 	tabs={false}
 	commentBar={false}
-	onback={() => goto(`/circles/${circle.circleId}/posts/${postId}`)}
+	onback={() => goUp(`/circles/${circle.circleId}/posts/${postId}`)}
 >
 	{#if loading}
 		<Loading />
