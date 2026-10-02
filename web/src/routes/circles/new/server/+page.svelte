@@ -26,7 +26,7 @@
 			name={session.name}
 			subtitle={form.serverSubtitle(session)}
 			variant={session.origin === form.selectedOrigin ? 'ok' : 'info'}
-			style={session.origin === form.sessions[0]?.origin ? 'margin-top:8px' : undefined}
+			class={session.origin === form.sessions[0]?.origin ? 'mt-8' : undefined}
 			onclick={() => pickOrigin(session.origin)}
 		/>
 	{/each}

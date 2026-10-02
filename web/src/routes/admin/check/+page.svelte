@@ -92,7 +92,7 @@
 		{:else}
 			<div class="flex-top gap-20">
 				<div class="grow">
-					<h4 style="margin-bottom:5px">{headline}</h4>
+					<h4 class="mb-5">{headline}</h4>
 					<div class="note">{subtitle}</div>
 				</div>
 				<div class="right">

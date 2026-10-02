@@ -9,6 +9,7 @@
 	import { afterNavigate, goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getContext, onDestroy, onMount, tick } from 'svelte';
+	import Thread from '$ui/data/Thread.svelte';
 	import CommentRow from '$ui/data/CommentRow.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -482,10 +483,10 @@
 			{/snippet}
 		</PostCard>
 		{#if postLocked}
-			<Hint style="margin:0 16px 12px">{archiveHint}</Hint>
+			<Hint class="m-0-16-12">{archiveHint}</Hint>
 		{/if}
 
-		<div class="thread">
+		<Thread>
 			{#each currentPost.comments ?? [] as comment (comment.id)}
 				<CommentRow
 					class="c-{comment.id}"
@@ -503,16 +504,15 @@
 					{#snippet time()}{formatClock(comment.created_at)}{/snippet}
 					{#snippet children()}
 						{#if editingCommentId === comment.id}
-							<TextArea variant="field" class="ced" bind:value={editingCommentBody} />
+							<TextArea variant="commentEdit" bind:value={editingCommentBody} />
 							<div class="rowin">
-								<Button
+								<Button class="grow-flat"
 									variant="colored"
-									style="flex:1;margin:0"
 									onclick={() => saveCommentEdit(comment.id)}
 								>
 									Сохранить
 								</Button>
-								<Button variant="ghost" style="flex:1;margin:0" onclick={cancelEditComment}>
+								<Button class="grow-flat" variant="ghost" onclick={cancelEditComment}>
 									Отмена
 								</Button>
 							</div>
@@ -531,7 +531,7 @@
 					src={circle.avatarUrl}
 				>
 					{#snippet time()}
-						<span style="display:flex;align-items:center;gap:5px">
+						<span class="flex-mid gap-5">
 							<Icon name="clock" size="xs" />в очереди
 						</span>
 					{/snippet}
@@ -543,10 +543,10 @@
 					{/snippet}
 				</CommentRow>
 			{/each}
-		</div>
+		</Thread>
 
 		{#if error}
-			<Hint style="margin:0 16px 16px">{error}</Hint>
+			<Hint class="m-0-16-16">{error}</Hint>
 		{/if}
 	{/if}
 	</div>

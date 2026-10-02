@@ -270,7 +270,7 @@
 						{/each}
 					{/if}
 				</div>
-				<div style="flex:0 0 auto;width:210px">
+				<div class="flex-fix w210">
 					<QrCode value={inviteUrl} size="sm" class="mt-26" />
 					<div class="sz-11 faint ctr mt-10">
 						та же ссылка кодом
@@ -278,8 +278,7 @@
 				</div>
 			</div>
 			<div
-				class="fine mt-22 lh-16"
-				style="border-top:1px solid var(--line);padding-top:14px;max-width:620px"
+			 class="fine mt-22 lh-16 top-line pt-14 mw-620"
 			>
 				Записи и медиа лежат на этом диске незашифрованными: у вас есть база и файлы, а значит, вы
 				можете прочитать что угодно. Панель этого не показывает и не будет, но и гарантией это не

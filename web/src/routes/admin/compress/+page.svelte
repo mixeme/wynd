@@ -143,7 +143,7 @@
 					</AdminField>
 				</div>
 				<div class="grow">
-					<Panel class="sz-13" style="padding:16px 18px">
+					<Panel class="sz-13 pad-16-18">
 						Wynd хранит то, что сказано, а не вашу медиатеку. Оригиналы остаются на телефоне.
 					</Panel>
 					<div class="note mt-16 lh-16">

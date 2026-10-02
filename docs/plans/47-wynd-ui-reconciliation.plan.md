@@ -481,6 +481,11 @@
 4. Ловить строки служебных классов в `<script>` экранов (`const x = 'flex-mid gap-10'`). **Сделано в 0.18.14:** `checkScriptClassStrings` — строка из двух и больше слов, где каждое — простой класс `ui.css`. Шесть таких было в `admin/bootstrap` и `admin/general`, ушли вместе с `Panel` и `AdminField`.
 5. Классы `ui.css`, которые встречаются только в одном экране, держать списком «только вниз», как `STYLE_BLOCK_SCREENS`. **Сделано в 0.18.14:** `checkSingleScreenClasses` — класс выше служебных, нужный одному экрану и ни одному компоненту; `SINGLE_SCREEN_CLASSES` — 26 нынешних, только вниз.
 
+### Хвост закрыт (0.19.11, 2026-10-03)
+
+- Инлайн-стили экранов: 61 → 1. Статические заменены служебными классами в конце `ui.css` (сокращённая запись `margin` повторена целиком: `.m-верх-бока-низ`), условные — `class={…}` / `class:…`. Остался один: точка цвета круга в таблице админки (`colorFor(id)` — цвет вычисляется, классом не задать). Бюджет `inline-style-budget.json` — нули, у админки 1.
+- Классы одного экрана: 7 → 0, `SINGLE_SCREEN_CLASSES` пуст. `thread`, `map-wrap`, `thumbs` — компоненты `$ui/data/Thread`, `MapPane`, `ThumbStrip`; `compose-body` ставит `FormLayout` в режиме compose; `ced` — `TextArea variant="commentEdit"`; `street-list` → служебный `.minh-full`; мёртвое правило `.ic.fill` удалено (в админке `fill` — служебный класс ширины).
+
 ### Оставить и почему
 - `.tile-load*`: это CSS компонента `MediaTile`, а не экрана.
 - `.street-list`, `.feed`, `.map-wrap`, `.thread`: контейнеры прокрутки, на них завязаны правила `circle-body:has(...)`.

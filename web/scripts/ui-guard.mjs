@@ -821,15 +821,8 @@ export function checkScriptClassStrings(webRoot) {
  * одном компоненте (план 47, сторож п. 5): вёрстка экрана, живущая в
  * глобальном файле. Новые не заводятся — список только вниз.
  */
-export const SINGLE_SCREEN_CLASSES = new Set([
-	'map-wrap',
-	'ced',
-	'fill',
-	'street-list',
-	'compose-body',
-	'thumbs',
-	'thread',
-]);
+// План 47 закрыт: классов одного экрана не осталось — новые сразу в $ui.
+export const SINGLE_SCREEN_CLASSES = new Set(/** @type {string[]} */ ([]));
 
 const UTILITY_MARKER = '/* Служебные классы:';
 

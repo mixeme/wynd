@@ -6,6 +6,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getContext, onMount, tick } from 'svelte';
+	import ThumbStrip from '$ui/data/ThumbStrip.svelte';
 	import AddPhotoButton from '$ui/forms/AddPhotoButton.svelte';
 	import AvatarCrop from '$ui/overlays/AvatarCrop.svelte';
 	import type { CoverRect } from '$lib/media/crop';
@@ -734,143 +735,141 @@
 	onpublish={() => void publish()}
 	footer={composeFooter}
 >
-	<div class="compose-body">
-		{#if uploadTotal > 0}
-			<Hint>{uploadHint}</Hint>
-			<Meter value={uploadPct} />
-		{/if}
-		<TextArea
-			variant="compose"
-			bind:el={bodyInput}
-			bind:value={body}
-			placeholder="Что случилось?"
-			rows={1}
-			oninput={onBodyInput}
-			onclick={syncMentionPicker}
-			onkeyup={syncMentionPicker}
-		/>
+	{#if uploadTotal > 0}
+		<Hint>{uploadHint}</Hint>
+		<Meter value={uploadPct} />
+	{/if}
+	<TextArea
+		variant="compose"
+		bind:el={bodyInput}
+		bind:value={body}
+		placeholder="Что случилось?"
+		rows={1}
+		oninput={onBodyInput}
+		onclick={syncMentionPicker}
+		onkeyup={syncMentionPicker}
+	/>
 
-		{#if showMentionPicker}
-			<MentionPicker>
-				{#each mentionCandidates as member, i (member.identity_id)}
-					<MemberRow
-						initial={circleInitial(member.name)}
-						name={member.name}
-						color={memberAvatarColor(i)}
-						onclick={() => pickMember(member)}
-						style={i === 0 ? 'padding:10px 14px' : undefined}
-					/>
-				{/each}
-			</MentionPicker>
-			<Hint>Выберите участника — в текст встанет @имя, а ему придёт уведомление.</Hint>
-		{/if}
-
-		<div class="thumbs">
-			{#each picked as item, i (i)}
-				<MediaTile
-					variant="compose"
-					src={item.preview}
-					kind={item.meta.kind === 'video' ? 'video' : item.meta.kind === 'photo' ? 'photo' : undefined}
-					isCover={item.meta.is_cover && isVisual(item.meta)}
-					crop={item.meta.is_cover ? item.meta.crop : undefined}
-					coverMark={item.meta.is_cover && item.meta.kind === 'photo' && item.preview
-						? 'кадр'
-						: undefined}
-					fileName={item.preview
-						? undefined
-						: audioRowLabel({
-								blob_id: item.blobId ?? '',
-								kind: 'attachment',
-								is_cover: false,
-								filename: item.file?.name ?? item.fileName,
-								audio_artist: item.meta.audio_artist,
-								audio_title: item.meta.audio_title
-							})}
-					onclick={() => tapTile(i)}
-					onremove={() => removePicked(i)}
+	{#if showMentionPicker}
+		<MentionPicker>
+			{#each mentionCandidates as member, i (member.identity_id)}
+				<MemberRow
+					initial={circleInitial(member.name)}
+					name={member.name}
+					color={memberAvatarColor(i)}
+					onclick={() => pickMember(member)}
+					class={i === 0 ? 'pad-10-14' : undefined}
 				/>
 			{/each}
-			<AddPhotoButton onclick={() => photoPicker?.open()} />
-		</div>
+		</MentionPicker>
+		<Hint>Выберите участника — в текст встанет @имя, а ему придёт уведомление.</Hint>
+	{/if}
 
-		{#if compressing}
-			<Hint>{compressHint}</Hint>
-			{#if keepOpenHint}
-				<Hint>Не сворачивайте приложение, пока видео сжимается.</Hint>
-			{/if}
+	<ThumbStrip>
+		{#each picked as item, i (i)}
+			<MediaTile
+				variant="compose"
+				src={item.preview}
+				kind={item.meta.kind === 'video' ? 'video' : item.meta.kind === 'photo' ? 'photo' : undefined}
+				isCover={item.meta.is_cover && isVisual(item.meta)}
+				crop={item.meta.is_cover ? item.meta.crop : undefined}
+				coverMark={item.meta.is_cover && item.meta.kind === 'photo' && item.preview
+					? 'кадр'
+					: undefined}
+				fileName={item.preview
+					? undefined
+					: audioRowLabel({
+							blob_id: item.blobId ?? '',
+							kind: 'attachment',
+							is_cover: false,
+							filename: item.file?.name ?? item.fileName,
+							audio_artist: item.meta.audio_artist,
+							audio_title: item.meta.audio_title
+						})}
+				onclick={() => tapTile(i)}
+				onremove={() => removePicked(i)}
+			/>
+		{/each}
+		<AddPhotoButton onclick={() => photoPicker?.open()} />
+	</ThumbStrip>
+
+	{#if compressing}
+		<Hint>{compressHint}</Hint>
+		{#if keepOpenHint}
+			<Hint>Не сворачивайте приложение, пока видео сжимается.</Hint>
 		{/if}
+	{/if}
 
-		{#if picked.some((p) => isVisual(p.meta))}
-			<Hint
-				>Обложка — первая. Нажмите на неё, чтобы выбрать кадр для ленты, или на другую, чтобы
-				обложкой стала она.</Hint
-			>
-		{/if}
+	{#if picked.some((p) => isVisual(p.meta))}
+		<Hint
+			>Обложка — первая. Нажмите на неё, чтобы выбрать кадр для ленты, или на другую, чтобы
+			обложкой стала она.</Hint
+		>
+	{/if}
 
-		<DateRow
-			bind:value={entryDate}
-			icon="day"
-			title="Отнести к дате"
-			subtitle={entryDateSubtitle}
-			class="mt-16"
+	<DateRow
+		bind:value={entryDate}
+		icon="day"
+		title="Отнести к дате"
+		subtitle={entryDateSubtitle}
+		class="mt-16"
+		divided="both"
+	/>
+	{#if isEdit}
+		<Hint>
+			В ленте запись останется на своём месте. Дата нужна дню — в «Днях» она соберётся с
+			остальными за {entryDate ? formatEntryDate(entryDate) : 'этот день'}.
+		</Hint>
+	{:else}
+		<Hint>
+			В ленте запись всё равно встанет сегодняшним числом. Дата нужна дню — в «Днях» она
+			соберёт её с остальными за {entryDate ? formatEntryDate(entryDate) : 'этот день'}.
+		</Hint>
+	{/if}
+
+	{#if isEdit && editingPost?.editable_until}
+		<SettingsRow
+			icon="clock"
+			title={editWindowTitle}
+			subtitle={windowsDiverged && editingPost
+				? editWindowSubtitle(editingPost)
+				: undefined}
+			chevron={false}
+			class="mt-18"
 			divided="both"
 		/>
-		{#if isEdit}
+		{#if windowsDiverged}
 			<Hint>
-				В ленте запись останется на своём месте. Дата нужна дню — в «Днях» она соберётся с
-				остальными за {entryDate ? formatEntryDate(entryDate) : 'этот день'}.
-			</Hint>
-		{:else}
-			<Hint>
-				В ленте запись всё равно встанет сегодняшним числом. Дата нужна дню — в «Днях» она
-				соберёт её с остальными за {entryDate ? formatEntryDate(entryDate) : 'этот день'}.
-			</Hint>
-		{/if}
-
-		{#if isEdit && editingPost?.editable_until}
-			<SettingsRow
-				icon="clock"
-				title={editWindowTitle}
-				subtitle={windowsDiverged && editingPost
-					? editWindowSubtitle(editingPost)
-					: undefined}
-				chevron={false}
-				class="mt-18"
-				divided="both"
-			/>
-			{#if windowsDiverged}
-				<Hint>
-					Сейчас в круге стоит {circle.editWindowSec === 3600
-						? 'час'
-						: circle.editWindowSec === 86_400
-							? 'сутки'
-							: circle.editWindowSec == null
-								? 'без ограничения'
-								: `${Math.round((circle.editWindowSec ?? 0) / 3600)} ч`}, но запись сохранила своё
-					окно: правило поменяли после неё. У новых записей будет иначе.
-				</Hint>
-			{/if}
-		{/if}
-
-		{#if error}
-			<Hint class="mt-12">{error}</Hint>
-		{/if}
-
-		{#if isEdit && editingPost && isEditableActive(editingPost.editable_until)}
-			<div class="mt-20">
-				<DangerZone items={['Удалить запись']} onitem={() => void deleteEditedPost()} />
-			</div>
-			<Hint style="margin:8px 16px 0">
-				Удаление живёт по тому же окну: выйдет срок — исчезнет и эта строка.
+				Сейчас в круге стоит {circle.editWindowSec === 3600
+					? 'час'
+					: circle.editWindowSec === 86_400
+						? 'сутки'
+						: circle.editWindowSec == null
+							? 'без ограничения'
+							: `${Math.round((circle.editWindowSec ?? 0) / 3600)} ч`}, но запись сохранила своё
+				окно: правило поменяли после неё. У новых записей будет иначе.
 			</Hint>
 		{/if}
+	{/if}
 
-		{#if isQueue}
-			<Hint class="gutter">
-				<TextButton onclick={deleteDraft}>Удалить черновик</TextButton>
-			</Hint>
-		{/if}
-	</div>
+	{#if error}
+		<Hint class="mt-12">{error}</Hint>
+	{/if}
+
+	{#if isEdit && editingPost && isEditableActive(editingPost.editable_until)}
+		<div class="mt-20">
+			<DangerZone items={['Удалить запись']} onitem={() => void deleteEditedPost()} />
+		</div>
+		<Hint class="m-8-16-0">
+			Удаление живёт по тому же окну: выйдет срок — исчезнет и эта строка.
+		</Hint>
+	{/if}
+
+	{#if isQueue}
+		<Hint class="gutter">
+			<TextButton onclick={deleteDraft}>Удалить черновик</TextButton>
+		</Hint>
+	{/if}
 </FormLayout>
 
 {#if cropItem?.preview}

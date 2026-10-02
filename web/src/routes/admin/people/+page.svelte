@@ -61,9 +61,8 @@
 		{:else}
 			<div class="flex-mid gap-16 mb-16">
 				<h4 class="m-0">Люди</h4>
-				<SearchField
+				<SearchField class="mw-260 grow"
 					placeholder="почта"
-					style="max-width:260px;flex:1"
 					bind:value={query}
 				/>
 				<span class="ml-auto note"
@@ -82,7 +81,7 @@
 				<tbody>
 					{#each filtered as acc (acc.id)}
 						<tr
-							style:color={acc.blocked ? 'var(--faint)' : undefined}
+							class:faint={acc.blocked}
 							class="pointer"
 							onclick={() => goto(`/admin/people/${acc.id}`)}
 						>

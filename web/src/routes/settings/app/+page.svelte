@@ -185,11 +185,10 @@
 		/>
 	{/if}
 	<Hint>Сверх потолка удаляются давно не открытые фото и видео — при просмотре они скачаются заново.</Hint>
-	<SettingsRow
+	<SettingsRow class="mt-6"
 		title="Очистить кэш"
 		subtitle="фотографии скачаются заново при просмотре"
 		chevron={false}
-		style="margin-top:6px"
 		onclick={() => void clearCache()}
 	/>
 	{#if cleared}

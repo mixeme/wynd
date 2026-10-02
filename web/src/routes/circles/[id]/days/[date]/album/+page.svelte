@@ -134,7 +134,7 @@
 
 <FormLayout app color={circle.color} title="Альбом" onback={goBack}>
 	{#snippet bar()}
-		<TextButton variant="bar" style="font-size:13.5px" onclick={goBack}>Отмена</TextButton>
+		<TextButton class="sz-13" variant="bar" onclick={goBack}>Отмена</TextButton>
 		<TextButton
 			variant="barAction"
 			active={Boolean(selected) && !saving}
@@ -146,7 +146,7 @@
 		</TextButton>
 	{/snippet}
 
-	<Hint style="margin:0 16px 8px">{formatEntryDate(entryDate)}</Hint>
+	<Hint class="m-0-16-8">{formatEntryDate(entryDate)}</Hint>
 
 	{#if loading}
 		<Loading />

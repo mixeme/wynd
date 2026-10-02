@@ -212,7 +212,7 @@
 		</DangerNote>
 	{:else if cutoffLocked}
 		<DangerZone
-			style="margin-top:20px"
+			class="mt-20"
 			items={['Новый цикл архивации']}
 			onitem={() => goto(`/circles/${circle.circleId}/quota`)}
 		/>

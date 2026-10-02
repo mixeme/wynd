@@ -125,7 +125,13 @@
 	{:else}
 		<BackBar {title} {right} {search} {compact} {onback} {onright} />
 	{/if}
-	{#if app && !compose}
+	{#if compose}
+		<!-- Тело новой записи — прокручивается под шапкой «Отмена / Опубликовать»
+		     (был класс экрана compose-body, план 47). -->
+		<div class="compose-body">
+			{@render children()}
+		</div>
+	{:else if app}
 		<div class="form-body">
 			{@render children()}
 		</div>

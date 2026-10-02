@@ -12,7 +12,7 @@
 		...rest
 	}: {
 		value?: string;
-		variant?: 'area' | 'field' | 'compose' | 'comment';
+		variant?: 'area' | 'field' | 'compose' | 'comment' | 'commentEdit';
 		active?: boolean;
 		class?: string;
 		style?: string;
@@ -26,7 +26,9 @@
 				? 'compose-text compose-overlay'
 				: variant === 'comment'
 					? 'inp'
-					: 'ta'
+					: variant === 'commentEdit'
+						? 'fld ced'
+						: 'ta'
 	);
 
 	const mentionParts = $derived(variant === 'compose' ? splitMentionBody(value) : []);

@@ -429,10 +429,9 @@
 </script>
 
 {#snippet plusFab()}
-	<IconButton
+	<IconButton class="wh-full"
 		name="plus"
 		label="Новый круг"
-		style="width:100%;height:100%"
 		onclick={openNew}
 		onpointerdown={startFabLongPress}
 		onpointerup={endFabLongPress}
@@ -460,7 +459,7 @@
 	]}
 >
 	<div
-		class="street-list"
+		class="minh-full"
 		role="presentation"
 		bind:this={listEl}
 		ontouchstart={ptr.start}
@@ -512,7 +511,7 @@
 			<SettingsRow title={fact.title} subtitle={fact.text} chevron={false} />
 		{/each}
 		{#if streetSession}
-			<Hint centered style="margin-top:34px">
+			<Hint class="mt-34" centered>
 				Вы вошли как {streetSession.email}<br />в «{streetSession.name}» · {displayHost(
 					streetSession.origin
 				)}
@@ -551,11 +550,10 @@
 		{/if}
 		{#each groups as group (group.id)}
 			{#if editingGroupId === group.id}
-				<Input
+				<Input class="m-8-16-0"
 					bind:value={editGroupName}
 					active
 					placeholder="Название"
-					style="margin:8px 16px 0"
 					onkeydown={(e) => {
 						if (e.key === 'Enter') void saveRenameGroup();
 						if (e.key === 'Escape') {
@@ -615,15 +613,14 @@
 					/>
 				{/each}
 				{#if showGroupChips(group)}
-					<ChipGroup style="margin:10px 16px 0;padding:0">
+					<ChipGroup class="m-10-16-0 p-0">
 						{#each addableCirclesForGroup(group) as circle (circleKey(circle))}
 							<Chip onclick={() => void addCircleToGroup(circle, group.id)}>{circle.name}</Chip>
 						{/each}
 					</ChipGroup>
 				{:else if groupMemberCount(group) > 0 && addableCirclesForGroup(group).length}
-					<TextButton
+					<TextButton class="m-8-16-0"
 						variant="link"
-						style="margin:8px 16px 0"
 						onclick={() => {
 							groupAddOpenId = group.id;
 						}}
@@ -634,11 +631,10 @@
 			{/if}
 		{/each}
 		{#if creatingGroup}
-			<Input
+			<Input class="m-8-16-0"
 				bind:value={newGroupName}
 				active
 				placeholder="Название"
-				style="margin:8px 16px 0"
 				onkeydown={(e) => {
 					if (e.key === 'Enter') void createGroup();
 					if (e.key === 'Escape') {

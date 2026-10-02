@@ -146,22 +146,21 @@
 <FormLayout shell app title={pageTitle} onback={changeEmail}>
 	{#if pending}
 		{#if logDelivery}
-			<Hint style="margin:0 16px">
+			<Hint class="m-0-16">
 				На этом компьютере письмо не уходит. Код напечатан в окне сервера.
 			</Hint>
 		{:else}
-			<div style="margin:0 16px">
+			<div class="m-0-16">
 				Отправлен на <strong>{pending.email}</strong>
 			</div>
 		{/if}
-		<div style="margin:7px 16px 0">
+		<div class="m-7-16-0">
 			<TextButton class="link" onclick={changeEmail}>изменить адрес</TextButton>
 		</div>
 		<CodeBox bind:value={code} bind:el={codeInput} autofocus />
 		<Hint>Код действует 15 минут. Три попытки.</Hint>
 		<div class="rowin">
-			<Button
-				style="flex:1"
+			<Button class="grow"
 				disabled={!canResendCode(pending)}
 				{loading}
 				onclick={resend}

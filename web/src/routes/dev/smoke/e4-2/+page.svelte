@@ -19,13 +19,11 @@
 	onpublish={() => {}}
 	footer={composeFooter}
 >
-	<div class="compose-body">
-		<TextArea variant="compose" placeholder="Что случилось?" rows={1} />
-		<PhotoGrid style="margin-top:12px">
-			<PhotoPlaceholder variant="p1" photoCount={2} />
-			<AddPhotoButton onclick={() => {}} />
-		</PhotoGrid>
-	</div>
+	<TextArea variant="compose" placeholder="Что случилось?" rows={1} />
+	<PhotoGrid style="margin-top:12px">
+		<PhotoPlaceholder variant="p1" photoCount={2} />
+		<AddPhotoButton onclick={() => {}} />
+	</PhotoGrid>
 </FormLayout>
 
 {#snippet composeFooter()}

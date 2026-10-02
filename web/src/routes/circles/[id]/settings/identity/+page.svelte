@@ -152,7 +152,7 @@
 		<TextButton onclick={() => photoPicker?.open()}>сменить фото</TextButton>
 	</Hint>
 	{#if avatarUrl}
-		<Hint centered style="margin-top:6px">
+		<Hint class="mt-6" centered>
 			<TextButton onclick={() => void clearPhoto()}>убрать фото</TextButton>
 		</Hint>
 	{/if}

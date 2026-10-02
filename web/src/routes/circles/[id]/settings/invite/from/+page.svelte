@@ -82,7 +82,7 @@
 	onright={() => goto(`/circles/${circle.circleId}`)}
 	onback={goBack}
 >
-	<Hint style="margin:16px 16px 0">
+	<Hint class="m-16-16-0">
 		Люди из ваших кругов на этом сервере. Группы — круги; имя — как вы их знаете там. В «{circle.name}»
 		каждый выберет своё.
 	</Hint>
@@ -106,12 +106,12 @@
 					subtitle={candidateSubtitle(member, group)}
 					value={inviting === member.account_id ? '…' : rowValue(member)}
 					chevron={false}
-					style="padding-top:2px;opacity:{faded ? 0.6 : 1}"
+					class={faded ? 'pt-2 faded' : 'pt-2'}
 					onclick={member.invited ? undefined : () => void invite(member)}
 				/>
 			{/each}
 		{/each}
-		<Hint style="margin:18px 16px 0">Кто уже в «{circle.name}», сюда не попадает. Нажмите на человека — ему придёт приглашение, ссылку отправлять не нужно.</Hint>
+		<Hint class="m-18-16-0">Кто уже в «{circle.name}», сюда не попадает. Нажмите на человека — ему придёт приглашение, ссылку отправлять не нужно.</Hint>
 	{/if}
 	{#if error}
 		<Hint class="gutter">{error}</Hint>

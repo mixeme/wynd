@@ -42,7 +42,7 @@
 - Карточки ленты и дней: `PostCard` — корневой `div.post` (вложенные контролы, не `<button>`); клик по телу через action, не `onclick` на разметке. `DayCard` при `onclick` — `<button type="button">`, иначе `div`.
 - `PostCard` action игнорирует `button, a, input, textarea, select, label, .rxpick` — чипам реакций `stopPropagation` не нужен; альбом и прочие не-кнопки по-прежнему останавливают всплытие сами.
 
-**Формы:** `Label aside="необязательно"` — мелкая подпись справа без капители. Ввод — `Input` / `TextArea` / `SearchField`; статика — `FieldDisplay` (бывший `Field`). Админка: `Input admin={true}` и `FieldDisplay admin={true}` (класс `.inp`), не отдельный `AdminInput`. `Input mono` — моноширинный (адрес, почта), `Input small` — 12,5 px для длинного значения в узком поле. Размер и шрифт поля — пропами, не служебными классами: `input.fld` / `input.inp` сильнее одного класса (`.w72`, `.sz-12`, `.mono` на поле не действуют). `SearchField` — редактируемый поиск и поля фильтров (тот же виджет: `/search`, поиск в круге, 9.3 почта); `BackBar` свой `.sfield`. `TextArea variant`: `area` \| `field` \| `compose` \| `comment`.
+**Формы:** `Label aside="необязательно"` — мелкая подпись справа без капители. Ввод — `Input` / `TextArea` / `SearchField`; статика — `FieldDisplay` (бывший `Field`). Админка: `Input admin={true}` и `FieldDisplay admin={true}` (класс `.inp`), не отдельный `AdminInput`. `Input mono` — моноширинный (адрес, почта), `Input small` — 12,5 px для длинного значения в узком поле. Размер и шрифт поля — пропами, не служебными классами: `input.fld` / `input.inp` сильнее одного класса (`.w72`, `.sz-12`, `.mono` на поле не действуют). `SearchField` — редактируемый поиск и поля фильтров (тот же виджет: `/search`, поиск в круге, 9.3 почта); `BackBar` свой `.sfield`. `TextArea variant`: `area` \| `field` \| `compose` \| `comment` \| `commentEdit` (правка комментария, `.fld.ced`).
 
 ---
 
@@ -78,7 +78,7 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar, **Comp
 
 ### `forms/`
 
-**Label**, **Input**, **FieldDisplay**, **TextArea**, ScreenTitle, Hint, **Button**, **Chip**, ChipGroup, Switch, ColorSwatches, CodeBox, InviteCard, **RequisitesCard**, **SearchField**, DangerZone (опц. `style`), Meter, PeopleStrip, **MentionPicker**, AddPhotoButton, DangerNote, VolumeChart, **IconButton**, **TextButton**, **EditWindowPicker**, **IdentityForm**, **NumberField**, **DateRow**, **DateRange**, **FilePicker**, **QrScanner**, **GenderPicker**
+**Label**, **Input**, **FieldDisplay**, **TextArea**, ScreenTitle, Hint, **Button**, **Chip**, ChipGroup, Switch, ColorSwatches, CodeBox, InviteCard, **RequisitesCard**, **SearchField**, DangerZone (опц. `class`, `style`), Meter, PeopleStrip, **MentionPicker**, AddPhotoButton, DangerNote, VolumeChart, **IconButton**, **TextButton**, **EditWindowPicker**, **IdentityForm**, **NumberField**, **DateRow**, **DateRange**, **FilePicker**, **QrScanner**, **GenderPicker**
 
 Интерактивные примитивы (фаза 1–4):
 
@@ -144,6 +144,9 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 `AttachmentList` — вложения записи, не фото и не видео (**#e4-13**, **#e4-15**, **#e4-18**): звуки подряд — одна рамка `.att-group` со строками `grouped`, одиночный звук — `AttachmentRow audio`, файл — строка «скачать». `items`, `origin`, `circleId`, `circleName`, `color`, `postId`, `coverUrls` (обложки звуков по blob id).
 `VoiceRow` — голосовое в записи (**#e4-27**): круглая кнопка цвета круга, `VoiceWave` и длительность; играет через общий плеер и полосу 4.20. `origin`, `blobId`, `peaks`, `durationMs`, `meta`. Без волны (старое) — ровная линия.
 `VoiceWave` — волна голосового (**#e4-23**, **#e4-24**, **#e4-27**): столбики уровней 0–100, прослушанное — цветом круга. `peaks`, `progress` (0–1).
+`Thread` — нить комментариев под записью (**#e4-5**): `div.thread` — черта над первым комментарием, запас снизу под полосу. `children`.
+`MapPane` — поле «Карты» (**#e5-6**): `div.map-wrap`, колонка во всю высоту под шапкой круга. `children`.
+`ThumbStrip` — ряд выбранных снимков и вложений на новой записи (**#e4-2**): `div.thumbs`, плюс в конце. `children`.
 
 `PeekMemberList` — «Кто уже здесь» до входа (**#e1-3**): `members` из приглашения или заявки; строки `MemberRow`, цвета по порядку.
 

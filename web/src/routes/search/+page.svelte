@@ -222,13 +222,13 @@
 </script>
 
 {#snippet searchBar()}
-	<SearchField autofocus style="flex:1" placeholder="Искать по всем кругам" bind:value={query} />
+	<SearchField class="grow" autofocus placeholder="Искать по всем кругам" bind:value={query} />
 {/snippet}
 
 <!-- Поле — в шапке, как в кадре 2.9. Раньше шапка повторяла запрос текстом,
      а настоящее поле стояло ниже: на экране было две строки поиска. -->
 <FormLayout shell app bar={searchBar} compact onback={() => goUp('/circles')}>
-	<ChipGroup style="margin-top:12px">
+	<ChipGroup class="mt-12">
 		<Chip selected={periodActive} onclick={togglePeriod}>Период</Chip>
 		<Chip selected={filterPhoto} onclick={() => (filterPhoto = !filterPhoto)}>С фото</Chip>
 		<Chip selected={filterLocation} onclick={() => (filterLocation = !filterLocation)}

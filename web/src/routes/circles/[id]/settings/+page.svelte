@@ -404,7 +404,7 @@
 				</Chip>
 			</ChipGroup>
 			{/if}
-			<ChipGroup style={soloCircle ? undefined : 'margin-top:8px'}>
+			<ChipGroup class={soloCircle ? undefined : 'mt-8'}>
 				<Chip
 					selected={inviteKindDefault === 'single'}
 					onclick={() => void onInviteKindDefault('single')}
@@ -483,7 +483,7 @@
 			<SettingsRow
 				title="Скачать архив"
 				subtitle="персональная копия до отсечки"
-				style={isOwner ? 'margin-top:8px' : 'margin-top:20px'}
+				class={isOwner ? 'mt-8' : 'mt-20'}
 				onclick={() => goto(`/circles/${circle.circleId}/archive`)}
 			/>
 		{/if}
@@ -496,7 +496,7 @@
 				subtitle={memberSubtitle(m)}
 				color={memberColor(m, i)}
 				src={memberSrc(m)}
-				style={i === 0 ? 'padding-top:2px' : undefined}
+				class={i === 0 ? 'pt-2' : undefined}
 			/>
 		{/each}
 		<SettingsRow
@@ -543,9 +543,9 @@
 		oncancel={closeDeleteDialog}
 	>
 		{#if deleteImpactHint}
-			<Hint style="margin-bottom:14px">{deleteImpactHint}</Hint>
+			<Hint class="mb-14">{deleteImpactHint}</Hint>
 		{/if}
-		<Label style="margin:0 0 7px">Напишите имя круга</Label>
+		<Label class="m-0-0-7">Напишите имя круга</Label>
 		<Input active bind:value={deleteConfirm} />
 		{#if deleteError}
 			<Hint class="mt-8">{deleteError}</Hint>

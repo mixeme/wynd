@@ -211,7 +211,7 @@
 		</ChipGroup>
 	{/if}
 	{#if multiInvitesAllowed && kind === 'multi'}
-		<ChipGroup style="margin-top:8px">
+		<ChipGroup class="mt-8">
 			{#each USES_PRESETS as n (n)}
 				<Chip selected={multiUses === n} onclick={() => pickUses(n)}>{n}</Chip>
 			{/each}
@@ -227,7 +227,7 @@
 			/>
 		{/if}
 	{/if}
-	<ChipGroup style="margin-top:8px">
+	<ChipGroup class="mt-8">
 		{#each TTL_PRESETS as opt (opt.sec)}
 			<Chip selected={ttl === opt.sec} onclick={() => pickTtl(opt.sec)}>{opt.label}</Chip>
 		{/each}

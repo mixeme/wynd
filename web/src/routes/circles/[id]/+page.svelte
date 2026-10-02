@@ -825,7 +825,7 @@
 					{/snippet}
 				</PostCard>
 				{#if postArchiveLocked(post)}
-					<Hint style="margin:0 16px 12px">{archiveHint}</Hint>
+					<Hint class="m-0-16-12">{archiveHint}</Hint>
 				{/if}
 				{#if post.comments?.length}
 					{@const preview = commentPreview(post.comments)}

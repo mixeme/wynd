@@ -124,7 +124,7 @@
 	<div class="logo-wrap">
 		<Logo />
 	</div>
-	<ScreenTitle centered style="margin-top:30px">Войти</ScreenTitle>
+	<ScreenTitle class="mt-30" centered>Войти</ScreenTitle>
 	<!-- Адрес не вводится: приложение открыто с этого сервера, он и есть сервер
 	     входа. Войти на другой — «Настройки → Серверы → Добавить сервер». -->
 	{#if checking}
@@ -136,7 +136,7 @@
 	<Input active type="email" autocomplete="email" bind:value={email} />
 	<Hint>Пришлём код для входа. Пароля нет.</Hint>
 	<Button {loading} disabled={!instance} onclick={onSubmit}>Получить код</Button>
-	<Hint centered style="margin-top:30px">
+	<Hint class="mt-30" centered>
 		<a class="under" href="/join">Регистрация без приглашения</a><br />
 		Если прислали ссылку — откройте её.
 	</Hint>

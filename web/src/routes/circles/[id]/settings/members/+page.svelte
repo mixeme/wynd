@@ -208,7 +208,7 @@
 						? () => pickTransfer(m)
 						: undefined
 				}
-				style={i === 0 ? 'padding-top:2px' : undefined}
+				class={i === 0 ? 'pt-2' : undefined}
 			/>
 		{/each}
 		{#if left.length && !transferMode}
@@ -221,7 +221,7 @@
 					color={memberColor(i)}
 					src={memberSrc(m)}
 					faded
-					style={i === 0 ? 'padding-top:2px' : undefined}
+					class={i === 0 ? 'pt-2' : undefined}
 				/>
 			{/each}
 		{/if}
@@ -229,9 +229,8 @@
 			<Hint class="gutter"
 				>Записи вышедших остаются в круге и подписаны тем именем, что было на момент написания.</Hint
 			>
-			<Button
+			<Button class="m-0-16"
 				variant="ghost"
-				style="margin:0 16px"
 				onclick={() => goto(`/circles/${circle.circleId}/settings/invite`)}
 			>
 				Пригласить

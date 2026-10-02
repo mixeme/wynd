@@ -122,7 +122,7 @@
 	{:else if !post}
 		<Hint class="gutter-24">Запись не найдена</Hint>
 	{:else}
-		<PhotoGrid album style="margin-top:3px;gap:4px">
+		<PhotoGrid class="mt-3 gap-4" album>
 			{#each photos as photo, i (photo.blob_id)}
 				<MediaTile
 					variant="album"
@@ -134,7 +134,7 @@
 			{/each}
 		</PhotoGrid>
 		{#if post}
-			<Hint style="margin:16px 16px 0;text-align:center">
+			<Hint class="m-16-16-0 ctr-text">
 				{albumCompressionHint(post)}
 			</Hint>
 		{/if}

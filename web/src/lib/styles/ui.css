@@ -132,9 +132,6 @@
 .shell-body {
 	overscroll-behavior-y: contain;
 }
-.street-list {
-	min-height: 100%;
-}
 .ph.app .bar, .ph.app .cbar, .ph.app .appbar {
 	flex-shrink: 0;
 }
@@ -317,10 +314,6 @@
 	width: 13px;
 	height: 13px;
 	stroke-width: 1.9;
-}
-.ic.fill {
-	fill: currentColor;
-	stroke: none;
 }
 .cbar {
 	background: var(--c);
@@ -3179,4 +3172,110 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 	display: block;
 	aspect-ratio: 4 / 3;
 	object-fit: cover;
+}
+
+/* План 47 (хвост сверки): инлайн-стили экранов → классы. margin повторяет
+   все четыре стороны исходной записи: m-верх-бока-низ. */
+.mt-3 {
+	margin-top: 3px;
+}
+.mt-6 {
+	margin-top: 6px;
+}
+.mt-30 {
+	margin-top: 30px;
+}
+.mt-34 {
+	margin-top: 34px;
+}
+.mb-5 {
+	margin-bottom: 5px;
+}
+.mb-14 {
+	margin-bottom: 14px;
+}
+.m-0-16 {
+	margin: 0 16px;
+}
+.m-0-0-7 {
+	margin: 0 0 7px;
+}
+.m-0-16-8 {
+	margin: 0 16px 8px;
+}
+.m-0-16-12 {
+	margin: 0 16px 12px;
+}
+.m-0-16-16 {
+	margin: 0 16px 16px;
+}
+.m-4-0-10 {
+	margin: 4px 0 10px;
+}
+.m-7-16-0 {
+	margin: 7px 16px 0;
+}
+.m-8-16-0 {
+	margin: 8px 16px 0;
+}
+.m-10-0-22 {
+	margin: 10px 0 22px;
+}
+.m-10-16-0 {
+	margin: 10px 16px 0;
+}
+.m-16-16-0 {
+	margin: 16px 16px 0;
+}
+.m-18-16-0 {
+	margin: 18px 16px 0;
+}
+.pt-14 {
+	padding-top: 14px;
+}
+.pad-16-18 {
+	padding: 16px 18px;
+}
+.pad-2-16-10 {
+	padding: 2px 16px 10px;
+}
+.pad-10-14 {
+	padding: 10px 14px;
+}
+.gap-4 {
+	gap: 4px;
+}
+.gap-5 {
+	gap: 5px;
+}
+.w-34p {
+	width: 34%;
+}
+.w210 {
+	width: 210px;
+}
+.mw-260 {
+	max-width: 260px;
+}
+.mw-620 {
+	max-width: 620px;
+}
+.minh-420 {
+	min-height: 420px;
+}
+.wh-full {
+	width: 100%;
+	height: 100%;
+}
+.ctr-text {
+	text-align: center;
+}
+.bg-ct {
+	background: var(--ct);
+}
+.faded {
+	opacity: 0.6;
+}
+.minh-full {
+	min-height: 100%;
 }

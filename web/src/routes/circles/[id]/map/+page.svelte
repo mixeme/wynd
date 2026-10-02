@@ -2,6 +2,7 @@
 	import { goUp } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import { getContext, onDestroy, onMount } from 'svelte';
+	import MapPane from '$ui/data/MapPane.svelte';
 	import MapBadge from '$ui/data/MapBadge.svelte';
 	import MapPostSheet from '$ui/data/MapPostSheet.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -242,11 +243,11 @@
 	{:else if error && !pins.length}
 		<Hint class="gutter-24">{error}</Hint>
 	{:else}
-		<div class="map-wrap">
+		<MapPane>
 			{#if badge}
 				<MapBadge {badge} />
 			{/if}
-			<div bind:this={mapEl} style="flex:1;min-height:420px"></div>
+			<div class="grow minh-420" bind:this={mapEl}></div>
 			{#if selected}
 				<MapPostSheet
 					thumbUrl={selectedUrl || undefined}
@@ -256,6 +257,6 @@
 					onclick={openSelected}
 				/>
 			{/if}
-		</div>
+		</MapPane>
 	{/if}
 </CircleLayout>

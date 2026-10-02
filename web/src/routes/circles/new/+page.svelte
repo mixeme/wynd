@@ -57,11 +57,10 @@
 <FormLayout color={form.color} app title="Новый круг" onback={() => goUp('/circles')}>
 	<Label>Сервер</Label>
 	{#if selectedSession}
-		<ServerRow
+		<ServerRow class="pad-2-16-10"
 			name={selectedSession.name}
 			subtitle={form.serverSubtitle(selectedSession)}
 			variant="select"
-			style="padding:2px 16px 10px"
 			onclick={openServerPick}
 		/>
 	{/if}

@@ -249,16 +249,15 @@
 		{#if editingTitle}
 			<Input class="mt-14" bind:value={titleDraft} active placeholder={formatEntryDate(entryDate)} />
 			<div class="rowin mt-12">
-				<Button
+				<Button class="grow"
 					variant="colored"
-					style="flex:1"
 					disabled={savingTitle || !titleDraft.trim()}
 					loading={savingTitle}
 					onclick={saveTitle}
 				>
 					Сохранить
 				</Button>
-				<Button variant="ghost" style="flex:1;margin:0" onclick={cancelEditTitle}>Отмена</Button>
+				<Button class="grow-flat" variant="ghost" onclick={cancelEditTitle}>Отмена</Button>
 			</div>
 			{#if canClearTitle}
 				<Hint centered class="mt-8">

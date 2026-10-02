@@ -104,7 +104,7 @@
 		{/snippet}
 	</SettingsRow>
 	{/if}
-	<SettingsRow title="Комментарии к моим записям" style={soloCircle ? 'padding-top:2px' : undefined}>
+	<SettingsRow title="Комментарии к моим записям" class={soloCircle ? 'pt-2' : undefined}>
 		{#snippet control()}
 			<Switch bind:checked={commentsMine} label="Комментарии к моим записям" />
 		{/snippet}

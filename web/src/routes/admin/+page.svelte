@@ -326,7 +326,7 @@
 				threshold="90%"
 				segments={barSegments.length ? barSegments : [{ width: `${usedPct}%`, color: 'var(--ink)' }]}
 			/>
-			<div class="note" style="margin:10px 0 22px">
+			<div class="note m-10-0-22">
 				{formatBytes(used)} из {formatBytes(quota)} · свободно {formatBytes(free)}
 			</div>
 			<div class="flex-mid gap-14 wrap mt-26">
@@ -390,7 +390,7 @@
 				<DataTable class="mt-20">
 					<thead>
 						<tr>
-							<th style="width:34%">Круг</th>
+							<th class="w-34p">Круг</th>
 							<th>Записей</th>
 							<th>Медиа</th>
 							<th>Квота</th>
@@ -403,7 +403,7 @@
 							{@const eff = effectiveQuotaBytes(c)}
 							{@const fill = eff && eff > 0 ? Math.min(100, (c.media_bytes / eff) * 100) : 0}
 							<tr
-								style:background={selectedCircleId === c.id ? 'var(--ct)' : undefined}
+								class:bg-ct={selectedCircleId === c.id}
 								class="pointer"
 								onclick={() => toggleCircle(c.id)}
 							>
@@ -437,7 +437,7 @@
 					<div class="ttl">
 						{selectedCircle.name}{selectedCircle.quota_custom ? ' · своя квота' : ''}
 					</div>
-					<div class="note" style="margin:4px 0 10px">
+					<div class="note m-4-0-10">
 						владелец · {selectedCircle.owner_email}
 					</div>
 					<div class="flex-mid gap-10 wrap">
