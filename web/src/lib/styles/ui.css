@@ -1652,6 +1652,19 @@ a.link {
 .comp .f.ink {
 	color: var(--ink);
 }
+/* «Фото» и «Развернуть» (C15): значок обычного размера, касание 32×32 по
+   центру строки. Отрицательные поля держат высоту полосы — 40. */
+.comp .f > .ib {
+	width: 32px;
+	height: 32px;
+	display: grid;
+	place-items: center;
+	margin-top: -4px;
+	margin-bottom: -4px;
+}
+.comp .f > .ib:last-of-type {
+	margin-right: -7px;
+}
 .comp .send {
 	width: 40px;
 	height: 40px;

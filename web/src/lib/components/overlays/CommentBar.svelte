@@ -173,7 +173,6 @@
 			<IconButton
 				name="photo"
 				label="Фото"
-				size="sm"
 				stopPropagation
 				style="margin-left:auto"
 				onclick={() => photoPicker?.open()}
@@ -189,9 +188,8 @@
 			<IconButton
 				name="chevr"
 				label="Развернуть"
-				size="sm"
 				stopPropagation
-				style="margin-left:{onphotos ? '8px' : 'auto'}"
+				style="margin-left:{onphotos ? '2px' : 'auto'}"
 				onclick={() => oncompose?.()}
 			/>
 		{/if}

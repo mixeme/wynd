@@ -36,6 +36,9 @@
 	// даёт около 10 ГБ при любом телефоне. Раньше здесь было «свободно на
 	// устройстве», и цифра вводила в заблуждение.
 	let quotaBytes = $state(0);
+	// Всё, что Wynd держит на устройстве (storage.estimate().usage): кроме фото
+	// и видео — снимки журнала, очередь отправки, само приложение (план 46, C16).
+	let usageBytes = $state(0);
 	// Потолок кэша: 1 / 2 / 5 ГБ или своё число гигабайт (1–100).
 	const GB = 1024 * 1024 * 1024;
 	const CACHE_PRESETS = [1, 2, 5] as const;
@@ -90,6 +93,7 @@
 		if (navigator.storage?.estimate) {
 			const est = await navigator.storage.estimate();
 			quotaBytes = est.quota ?? 0;
+			usageBytes = est.usage ?? 0;
 		}
 	}
 
@@ -158,7 +162,7 @@
 	<SectionLabel class="mt-22">Место на устройстве</SectionLabel>
 	<Meter value={cacheBytes} max={Math.max(cacheLimit, 1)} />
 	<Hint class="mt-8">
-		{formatBytes(cacheBytes)} кэша из {formatBytes(cacheLimit)}
+		{formatBytes(cacheBytes)} фото и видео из {formatBytes(cacheLimit)}.{#if usageBytes > cacheBytes}{' '}Всего Wynd на устройстве — {formatBytes(usageBytes)}.{/if}
 	</Hint>
 	<ChipGroup class="mt-8">
 		{#each CACHE_PRESETS as gb (gb)}
