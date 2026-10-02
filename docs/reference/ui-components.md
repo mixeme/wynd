@@ -163,7 +163,7 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 
 `QrCode` — QR-код ссылки в рамке `.qr` (**#e6-7**, **#e6-21**, админка «Доступ»): `value` (пусто — ничего), `size` `md` (168 px) \| `sm` (150 px), `class`. SVG строит сам из `qrcode`; `{@html}` в экранах запрещён сторожем.
 
-`InviteLinkCard` — ссылка-приглашение целиком (`FieldDisplay.invite-url`) и «Поделиться / Скопировать» (**#e6-7**, **#e6-21**): `url`, `shared` / `copied` (подписи «Отправлено» / «Скопировано»), `onshare`, `oncopy`, `inSheet` — в листе кнопки без полей экрана (`.rowin.ask`). QR над ней экран ставит сам.
+`InviteLinkCard` — ссылка-приглашение целиком (`FieldDisplay.invite-url`) и «Поделиться / Скопировать» (**#e6-7**, **#e6-21**): `url`, `shared` / `copied` (подписи «Отправлено» / «Скопировано»), `onshare`, `oncopy`. В листе — те же поля экрана, что у ссылки; лист ставится в `footer` макета, чтобы кнопкам достался цвет круга. QR над ней экран ставит сам.
 
 `CommentRow` — строка треда (`div.cmt`, опц. `.q`): аватар, `name`, snippet `time`, snippet `children` (текст / правка); `onedit` / `ondelete` → `.acts` (**#e4-5**–**#e4-7**). Колонка `.acts` в треде стоит всегда — текст одной ширины у своих и чужих; `bare` — без неё (строка-ссылка, `ResponseEntry`). Не путать с `CommentPreview` (`button.cm` в ленте).
 

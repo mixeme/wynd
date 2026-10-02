@@ -88,6 +88,8 @@
 	let bodyEl: HTMLDivElement | undefined = $state();
 	let swipe = $state(swipeIdle());
 	let leaving = $state(0);
+	// Левый край блока на касании: блок едет за пальцем, мерить от него на ходу нельзя.
+	let bodyLeft = 0;
 	const order = $derived(visibleCircleTabs(circleCtx?.hasOthers ?? false, active));
 	const tabIndex = $derived(order.indexOf(active));
 	const swipeOn = $derived(app && tabs && Boolean(circleId) && tabIndex >= 0);
@@ -108,13 +110,14 @@
 		if (!onMap && target?.closest('.leaflet-container')) return;
 		const t = e.touches[0];
 		const rect = bodyEl.getBoundingClientRect();
+		bodyLeft = rect.left;
 		swipe = swipeStart(t.clientX - rect.left, t.clientY, rect.width, onMap);
 	}
 
 	function onSwipeMove(e: TouchEvent) {
-		if (swipe.phase === 'idle' || swipe.phase === 'ignored' || !bodyEl) return;
+		if (swipe.phase === 'idle' || swipe.phase === 'ignored') return;
 		const t = e.touches[0];
-		swipe = swipeMove(swipe, t.clientX - bodyEl.getBoundingClientRect().left, t.clientY);
+		swipe = swipeMove(swipe, t.clientX - bodyLeft, t.clientY);
 	}
 
 	function onSwipeEnd() {

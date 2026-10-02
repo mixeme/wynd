@@ -12,7 +12,7 @@
 	import { formatEntryDate, isEditableActive } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadDay, loadDays, setDayCover, clearDayCover } from '$lib/journal/days';
-	import { photoMedia } from '$lib/journal/present';
+	import { attachmentMedia, photoMedia } from '$lib/journal/present';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
@@ -65,6 +65,17 @@
 						blobId: m.blob_id,
 						kind: m.kind,
 						preview: await getMediaUrl(circle.origin, m.blob_id)
+					});
+				}
+				// Обложка звука тоже годится в обложку дня.
+				for (const a of attachmentMedia(post.media)) {
+					const art = a.audio_cover_blob_id;
+					if (!art || next.some((i) => i.blobId === art)) continue;
+					next.push({
+						postId: post.id,
+						blobId: art,
+						kind: 'photo',
+						preview: await getMediaUrl(circle.origin, art)
 					});
 				}
 			}
@@ -139,7 +150,7 @@
 	{#if loading}
 		<Loading />
 	{:else if !items.length}
-		<Hint class="gutter-24">В этот день нет фото или видео</Hint>
+		<Hint class="gutter-24">В этот день нет фото, видео или обложек звука</Hint>
 	{:else}
 		<PhotoGrid album>
 			{#each items as item (item.blobId)}

@@ -376,7 +376,7 @@ func (c *Chronicle) SetDayCover(ctx context.Context, in DayCoverInput) error {
 	if post.CircleID != in.CircleID || post.EntryDate != in.EntryDate || post.Deleted {
 		return ErrInvalid
 	}
-	okBlob, err := c.BlobOnPost(ctx, in.PostID, in.BlobID)
+	okBlob, err := c.DayCoverBlobOnPost(ctx, in.PostID, in.BlobID)
 	if err != nil {
 		return err
 	}

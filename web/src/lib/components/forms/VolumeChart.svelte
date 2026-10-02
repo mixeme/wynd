@@ -57,8 +57,25 @@
 	const yearStart = $derived(startLabel ?? volume[0]?.period.slice(0, 4) ?? '');
 	const yearEnd = $derived(endLabel ?? volume[volume.length - 1]?.period.slice(0, 4) ?? '');
 
+	// Края пачки: столбиков мало — пачка по центру, подписи и заливка от неё.
+	const packLeft = $derived(barCount ? Math.max(0, volumeBarX(0, barCount) - 4) : 0);
+	const packRight = $derived(
+		barCount ? Math.min(chartWidth, volumeBarX(barCount - 1, barCount) + barWidth + 4) : chartWidth
+	);
+	// Подпись шириной примерно 5,2 на букву при font-size 10: не налезать на подпись отсечки.
+	const textWidth = (t: string) => t.length * 5.2;
+	const cutoffHalf = $derived(cutoffLabel ? textWidth(cutoffLabel) / 2 + 6 : 0);
+	const showStart = $derived(
+		!!yearStart && (!cutoffLabel || packLeft + textWidth(yearStart) < cutoffX - cutoffHalf)
+	);
+	const showEnd = $derived(
+		!!yearEnd &&
+			yearEnd !== yearStart &&
+			(!cutoffLabel || packRight - textWidth(yearEnd) > cutoffX + cutoffHalf)
+	);
+
 	const cutoffLine = $derived(`M${cutoffX} 10 V112`);
-	const shadedWidth = $derived(Math.max(0, cutoffX));
+	const shadedWidth = $derived(Math.max(0, cutoffX - packLeft));
 	const showCutoff = $derived(!!cutoffLabel || volume.length > 0);
 
 	function barCenterX(index: number): number {
@@ -165,7 +182,7 @@
 
 {#snippet plot()}
 		{#if volume.length}
-			<rect x="0" y={barAreaTop} width={shadedWidth} height={barAreaHeight} fill="var(--ct)" />
+			<rect x={packLeft} y={barAreaTop} width={shadedWidth} height={barAreaHeight} fill="var(--ct)" />
 			{#each bars as bar (bar.x)}
 				<rect
 					x={bar.x}
@@ -196,11 +213,11 @@
 				>
 			{/if}
 		{/if}
-		{#if yearStart}
-			<text x="2" y="126" font-size="10" fill="#A8A096">{yearStart}</text>
+		{#if showStart}
+			<text x={packLeft} y="126" font-size="10" fill="#A8A096">{yearStart}</text>
 		{/if}
-		{#if yearEnd && yearEnd !== yearStart}
-			<text x={chartWidth - 2} y="126" font-size="10" fill="#A8A096" text-anchor="end">{yearEnd}</text>
+		{#if showEnd}
+			<text x={packRight} y="126" font-size="10" fill="#A8A096" text-anchor="end">{yearEnd}</text>
 		{/if}
 {/snippet}
 

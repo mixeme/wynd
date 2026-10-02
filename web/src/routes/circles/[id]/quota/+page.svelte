@@ -27,7 +27,9 @@
 	let volumeStep = $state<'day' | 'week' | 'month'>('month');
 	let cutoffDate = $state('');
 	let freedBytes = $state(0);
-	let medianPostBytes = $state(0);
+	let postCount = $state(0);
+	// Записи не раньше отсечки — останутся в круге. Нет — сервер старый.
+	let keptPosts = $state<number | undefined>(undefined);
 	let error = $state('');
 	let forbidden = $state(false);
 	let loading = $state(true);
@@ -37,12 +39,6 @@
 	const full = $derived(quotaBytes > 0 && usedBytes >= quotaBytes);
 	// The instance may run without a storage limit: the API then omits quota_bytes.
 	const capped = $derived(quotaBytes > 0);
-
-	const postsEstimate = $derived.by(() => {
-		if (!volume.length || !medianPostBytes || !capped) return 0;
-		const remaining = Math.max(quotaBytes - usedBytes, 0);
-		return Math.floor(remaining / medianPostBytes);
-	});
 
 	// Начало столбика датой. Старый сервер отдавал месяц «2026-09» (C7).
 	function bucketStart(period: string): string {
@@ -102,11 +98,16 @@
 			quotaBytes = data.quota_bytes ?? 0;
 			volume = data.volume ?? [];
 			volumeStep = data.volume_step ?? 'month';
-			medianPostBytes = data.median_post_bytes ?? 0;
+			postCount = data.post_count;
+			keptPosts = data.posts_kept_at_cutoff;
 			if (data.freed_at_cutoff_bytes !== undefined) {
 				freedBytes = data.freed_at_cutoff_bytes;
 			}
-			if (!cutoffDate && volume.length) cutoffDate = defaultCutoff();
+			if (!cutoffDate && volume.length) {
+				cutoffDate = defaultCutoff();
+				// Сразу и счёт под отсечку по умолчанию — иначе подсказка пуста до первого касания.
+				void loadQuota(cutoffDate, true);
+			}
 			syncChartCutoffX();
 		} catch (err) {
 			if (isAccessError(err)) {
@@ -188,10 +189,13 @@
 			bind:value={cutoffDate}
 			onchange={() => void onCutoffChange(cutoffDate)}
 		/>
-		{#if freedBytes || postsEstimate}
+		{#if freedBytes || keptPosts !== undefined}
+			<!-- 6.10: «Освободится 6,2 ГБ из 10. В круге останется 214 записей из 340.» -->
 			<Hint>
-				{#if freedBytes}Освободится {formatBytes(freedBytes)}{#if capped} из {formatBytes(quotaBytes)}{/if}.{/if}
-				{#if postsEstimate} Останется ~{plural(postsEstimate, WORD.post)}.{/if}
+				{#if freedBytes}Освободится {formatBytes(freedBytes)}{#if capped}{' '}из {formatBytes(
+							quotaBytes
+						)}{/if}.{/if}
+				{#if keptPosts !== undefined}{' '}В круге останется {plural(keptPosts, WORD.post)} из {postCount}.{/if}
 			</Hint>
 		{/if}
 		<Button class="mt-14" variant="colored" onclick={next}>Дальше: сроки</Button>

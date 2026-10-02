@@ -155,6 +155,21 @@ func medianInt64(vals []int64) int64 {
 	return (vals[mid-1] + vals[mid]) / 2
 }
 
+// PostsKeptAtCutoff counts posts the archive cycle leaves in the circle:
+// created at or after the cutoff.
+func (c *Chronicle) PostsKeptAtCutoff(ctx context.Context, circleID, cutoffDate string) (int, error) {
+	cutoff, err := CutoffInstant(cutoffDate)
+	if err != nil {
+		return 0, err
+	}
+	var n int
+	err = c.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM posts
+		WHERE circle_id = ? AND deleted = 0 AND created_at >= ?
+	`, circleID, formatTime(cutoff)).Scan(&n)
+	return n, err
+}
+
 // FreedBytesBeforeCutoff estimates media bytes that would be freed at cutoff.
 func (c *Chronicle) FreedBytesBeforeCutoff(ctx context.Context, circleID, cutoffDate string) (int64, error) {
 	cutoff, err := CutoffInstant(cutoffDate)

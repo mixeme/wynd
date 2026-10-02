@@ -10,8 +10,7 @@
 		shared = false,
 		copied = false,
 		onshare,
-		oncopy,
-		inSheet = false
+		oncopy
 	}: {
 		url: string;
 		/** Только что поделились — «Отправлено». */
@@ -20,13 +19,11 @@
 		copied?: boolean;
 		onshare: () => void;
 		oncopy: () => void;
-		/** В листе (Sheet) кнопки без полей экрана. */
-		inSheet?: boolean;
 	} = $props();
 </script>
 
 <FieldDisplay mono value={url} class="invite-url" />
-<div class="rowin {inSheet ? 'ask' : 'mt-12'}">
+<div class="rowin mt-12">
 	<Button variant="colored" class="grow" onclick={onshare}>
 		{shared ? 'Отправлено' : 'Поделиться'}
 	</Button>

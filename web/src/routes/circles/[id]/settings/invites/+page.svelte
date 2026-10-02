@@ -131,23 +131,25 @@
 			>
 		{/if}
 	{/if}
+	<!-- В рамке круга: иначе у кнопок нет цвета круга (--c). -->
+	{#snippet footer()}
+		{#if opened}
+			{@const inv = opened}
+			<OverlayLayout label={inviteRegistryTitle(inv)} ondismiss={closeInvite}>
+				<Label class="mt-2">{inviteRegistryTitle(inv)}</Label>
+				<QrCode value={inviteUrlFor(inv.token)} />
+				<InviteLinkCard
+					url={inviteUrlFor(inv.token)}
+					{shared}
+					copied={copiedInviteId === inv.id}
+					onshare={() => void shareInvite(inv)}
+					oncopy={() => void copyInvite(inv)}
+				/>
+				<Hint centered class="mt-16">
+					<TextButton onclick={() => void revokeInvite(inv)}>Отозвать ссылку</TextButton>
+				</Hint>
+			</OverlayLayout>
+			{/if}
+	{/snippet}
 </FormLayout>
 
-{#if opened}
-	{@const inv = opened}
-	<OverlayLayout label={inviteRegistryTitle(inv)} ondismiss={closeInvite}>
-		<Label class="mt-2">{inviteRegistryTitle(inv)}</Label>
-		<QrCode value={inviteUrlFor(inv.token)} />
-		<InviteLinkCard
-			url={inviteUrlFor(inv.token)}
-			{shared}
-			copied={copiedInviteId === inv.id}
-			onshare={() => void shareInvite(inv)}
-			oncopy={() => void copyInvite(inv)}
-			inSheet
-		/>
-		<Hint centered class="mt-16">
-			<TextButton onclick={() => void revokeInvite(inv)}>Отозвать ссылку</TextButton>
-		</Hint>
-	</OverlayLayout>
-{/if}

@@ -292,6 +292,21 @@ func (c *Chronicle) BlobOnPost(ctx context.Context, postID, blobID string) (bool
 	return kind == string(MediaPhoto) || kind == string(MediaVideo), nil
 }
 
+// DayCoverBlobOnPost checks blob can be a day cover: a photo or video of the
+// post, or the cover art of one of its audio attachments.
+func (c *Chronicle) DayCoverBlobOnPost(ctx context.Context, postID, blobID string) (bool, error) {
+	ok, err := c.BlobOnPost(ctx, postID, blobID)
+	if err != nil || ok {
+		return ok, err
+	}
+	var n int
+	err = c.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM post_media
+		WHERE post_id = ? AND audio_cover_blob_id = ?
+	`, postID, blobID).Scan(&n)
+	return n > 0, err
+}
+
 const postMediaSelect = `
 	SELECT pm.id, pm.post_id, pm.blob_id, pm.kind, pm.sort_order, pm.captured_at, pm.geo_lat, pm.geo_lng, pm.is_cover,
 		COALESCE(b.original_filename, ''), b.size_bytes, COALESCE(b.mime_type, ''),

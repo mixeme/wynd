@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.18.40
+  version: 0.18.41
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:
@@ -704,7 +704,7 @@ paths:
       parameters:
         - name: cutoff_date
           in: query
-          description: With it the answer also carries freed_at_cutoff_bytes.
+          description: With it the answer also carries freed_at_cutoff_bytes and posts_kept_at_cutoff.
           schema:
             type: string
             format: date

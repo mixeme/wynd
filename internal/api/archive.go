@@ -194,6 +194,12 @@ func (s *Server) handleCircleQuota(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		out["freed_at_cutoff_bytes"] = freed
+		kept, err := s.Chronicle.PostsKeptAtCutoff(r.Context(), circleID, cutoff)
+		if err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		out["posts_kept_at_cutoff"] = kept
 	}
 	writeJSON(w, http.StatusOK, out)
 }

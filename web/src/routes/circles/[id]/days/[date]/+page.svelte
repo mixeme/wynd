@@ -14,6 +14,7 @@
 	import Input from '$ui/forms/Input.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import MediaTile from '$ui/data/MediaTile.svelte';
+	import AttachmentList from '$ui/data/AttachmentList.svelte';
 	import PostCard from '$ui/data/PostCard.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
@@ -21,7 +22,7 @@
 	import { formatEntryDate, formatPostTime, isEditableActive } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { clearDayTitle, loadDay, loadDays, setDayTitle } from '$lib/journal/days';
-	import { authorInitial, coverMedia, locationLabel, mediaCount, photoMedia,
+	import { attachmentMedia, authorInitial, coverMedia, locationLabel, mediaCount, photoMedia,
 		localDayOf
 	} from '$lib/journal/present';
 	import type { FeedPost } from '$lib/journal/types';
@@ -79,10 +80,14 @@
 					/* skip */
 				}
 			}
-			for (const m of photoMedia(post.media)) {
-				if (!next[m.blob_id]) {
+			// Обложки звуков — для AttachmentList, как в ленте.
+			const covers = attachmentMedia(post.media)
+				.map((a) => a.audio_cover_blob_id)
+				.filter((id): id is string => !!id);
+			for (const blobId of [...photoMedia(post.media).map((m) => m.blob_id), ...covers]) {
+				if (!next[blobId]) {
 					try {
-						next[m.blob_id] = await getMediaUrl(circle.origin, m.blob_id);
+						next[blobId] = await getMediaUrl(circle.origin, blobId);
 					} catch {
 						/* skip */
 					}
@@ -285,12 +290,23 @@
 						onclick={() => openAlbum(post.id)}
 					/>
 				{/if}
+				<AttachmentList
+					items={attachmentMedia(post.media)}
+					origin={circle.origin}
+					circleId={circle.circleId}
+					circleName={circle.name}
+					color={circle.colorHex}
+					postId={post.id}
+					coverUrls={mediaUrls}
+				/>
 			{/snippet}
 			<PostCard
 				onclick={() => openPost(post.id)}
 				headerRight={isBackfilled(post) ? backfilled : undefined}
 				text={post.body ? postText : undefined}
-				media={coverMedia(post.media) ? postMedia : undefined}
+				media={coverMedia(post.media) || attachmentMedia(post.media).length
+					? postMedia
+					: undefined}
 			>
 				{#snippet author()}
 					<PostByline

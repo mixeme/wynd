@@ -73,6 +73,8 @@ export interface QuotaInfo {
 	/** Шаг столбиков (C7): дни у молодого круга, недели, месяцы. Старый сервер не шлёт — месяцы. */
 	volume_step?: 'day' | 'week' | 'month';
 	freed_at_cutoff_bytes?: number;
+	/** Сколько записей останется в круге после отсечки (не раньше её). */
+	posts_kept_at_cutoff?: number;
 	median_post_bytes?: number;
 }
 
