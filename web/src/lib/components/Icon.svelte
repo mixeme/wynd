@@ -28,7 +28,13 @@
 		| 'clock'
 		| 'day'
 		| 'cloud'
-		| 'out';
+		| 'out'
+		| 'music'
+		| 'rec'
+		| 'mic'
+		| 'video'
+		| 'flip'
+		| 'stop';
 
 	type IconSize = 'md' | 'sm' | 'xs';
 

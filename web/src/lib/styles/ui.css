@@ -1643,7 +1643,7 @@ a.link {
 	border: 1px solid var(--line);
 	background: var(--card);
 	border-radius: 20px;
-	padding: 8px 15px;
+	padding: 6px 15px;
 	color: var(--faint);
 	display: flex;
 	align-items: flex-end;
@@ -1659,8 +1659,8 @@ a.link {
 	height: 32px;
 	display: grid;
 	place-items: center;
-	margin-top: -4px;
-	margin-bottom: -4px;
+	margin-top: -2px;
+	margin-bottom: -2px;
 }
 .comp .f > .ib:last-of-type {
 	margin-right: -7px;
@@ -1685,10 +1685,10 @@ a.link {
 	background: transparent;
 	resize: none;
 	/* Курсор выше и ниже строки: без отступа overflow:hidden срезал его
-	   краем поля, в пустом поле он был почти не виден. Рамка .f отдала
-	   эти 2 px, высота полосы та же — 40. */
-	padding: 2px 0;
-	min-height: 24px;
+	   краем поля. 2 px не хватало Firefox на Android — его курсор выше
+	   строки; теперь 4, рамка .f отдала их, высота полосы та же — 40. */
+	padding: 4px 0;
+	min-height: 28px;
 	font: inherit;
 	line-height: 20px;
 	color: inherit;

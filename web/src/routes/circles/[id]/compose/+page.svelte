@@ -5,7 +5,7 @@
 	import ComposeToolbar from '$ui/chrome/ComposeToolbar.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { getContext, onMount } from 'svelte';
+	import { getContext, onMount, tick } from 'svelte';
 	import AddPhotoButton from '$ui/forms/AddPhotoButton.svelte';
 	import AvatarCrop from '$ui/overlays/AvatarCrop.svelte';
 	import type { CoverRect } from '$lib/media/crop';
@@ -83,6 +83,7 @@
 	let bodyInput: HTMLTextAreaElement | undefined = $state();
 	let photoPicker: FilePicker | undefined = $state();
 	let attachPicker: FilePicker | undefined = $state();
+	let audioPicker: FilePicker | undefined = $state();
 	let members = $state<MemberInfo[]>([]);
 	let mentionStart = $state<number | null>(null);
 	let mentionQuery = $state('');
@@ -317,14 +318,25 @@
 			const handed = takeComposePhotos(circle.circleId);
 			if (handed.length) void addFiles(handed);
 		}
+		// Курсор — сразу, до сетевых запросов: клавиатура, которую держали
+		// при переходе с полосы ленты, не успевает спрятаться.
+		await tick();
+		focusBodyEnd();
 		try {
 			members = await fetchMembers(circle.origin, circle.circleId);
 		} catch {
 			members = [];
 		}
-		bodyInput?.focus();
+		if (document.activeElement !== bodyInput) focusBodyEnd();
 		resizeBody();
 	});
+
+	function focusBodyEnd() {
+		if (!bodyInput) return;
+		bodyInput.focus({ preventScroll: true });
+		const end = bodyInput.value.length;
+		bodyInput.setSelectionRange(end, end);
+	}
 
 	function feedHref(dayPrompt?: string) {
 		const base = `/circles/${circle.circleId}`;
@@ -858,6 +870,7 @@
 				label="Фото или видео"
 				onclick={() => photoPicker?.open()}
 			/>
+			<IconButton name="music" label="Звук" onclick={() => audioPicker?.open()} />
 			<IconButton name="file" label="Файл" onclick={() => attachPicker?.open()} />
 			{#if pickedHasPlace}
 				<IconButton
@@ -881,3 +894,4 @@
 	onfiles={(files) => void addFiles(files)}
 />
 <FilePicker bind:this={attachPicker} accept="*/*" multiple onfiles={(files) => void addFiles(files)} />
+<FilePicker bind:this={audioPicker} accept="audio/*" multiple onfiles={(files) => void addFiles(files)} />

@@ -74,6 +74,7 @@
 	import { registerRefetch } from '$lib/sync/sync';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { handComposePhotos } from '$lib/journal/compose-handoff';
+	import { holdKeyboard } from '$lib/navigation/keyboard';
 	import { applyFeedSpot, feedSpotKey, saveFeedSpot, takeFeedSpot } from '$lib/journal/feed-scroll';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
@@ -350,6 +351,7 @@
 
 	function openComposeFromBar() {
 		sessionStorage.setItem(`wynd.compose.${circle.circleId}`, commentDraft);
+		holdKeyboard();
 		goto(`/circles/${circle.circleId}/compose`);
 	}
 
