@@ -160,7 +160,7 @@ func (s *Server) handleCircleQuota(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	volume, err := s.Chronicle.MediaVolumeChart(r.Context(), circleID)
+	volume, step, err := s.Chronicle.MediaVolumeChart(r.Context(), circleID)
 	if err != nil {
 		writeDomainError(w, err)
 		return
@@ -176,9 +176,10 @@ func (s *Server) handleCircleQuota(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := map[string]any{
-		"used_bytes": used,
-		"post_count": postCount,
-		"volume":     volume,
+		"used_bytes":  used,
+		"post_count":  postCount,
+		"volume":      volume,
+		"volume_step": step,
 	}
 	if quota.Valid {
 		out["quota_bytes"] = quota.Int64

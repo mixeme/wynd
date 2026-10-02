@@ -70,6 +70,8 @@ export interface QuotaInfo {
 	post_count: number;
 	quota_bytes?: number;
 	volume: VolumeBucket[];
+	/** Шаг столбиков (C7): дни у молодого круга, недели, месяцы. Старый сервер не шлёт — месяцы. */
+	volume_step?: 'day' | 'week' | 'month';
 	freed_at_cutoff_bytes?: number;
 	median_post_bytes?: number;
 }

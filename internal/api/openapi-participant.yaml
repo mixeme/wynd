@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.18.39
+  version: 0.18.40
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:
@@ -700,6 +700,7 @@ paths:
   /circles/{circle_id}/quota:
     get:
       summary: Used bytes, quota and media volume chart (owner)
+      description: volume_step (day, week, month) follows circle age; each volume period is its start date.
       parameters:
         - name: cutoff_date
           in: query

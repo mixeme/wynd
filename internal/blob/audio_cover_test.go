@@ -108,7 +108,7 @@ func TestAudioCoverStaysWithThePost(t *testing.T) {
 	if err != nil || !ref {
 		t.Fatalf("cover referenced: %v %v", ref, err)
 	}
-	chart, err := ch.MediaVolumeChart(ctx, circle.ID)
+	chart, _, err := ch.MediaVolumeChart(ctx, circle.ID)
 	if err != nil {
 		t.Fatal(err)
 	}

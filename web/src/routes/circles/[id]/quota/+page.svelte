@@ -24,6 +24,7 @@
 	let usedBytes = $state(0);
 	let quotaBytes = $state(0);
 	let volume = $state<VolumeBucket[]>([]);
+	let volumeStep = $state<'day' | 'week' | 'month'>('month');
 	let cutoffDate = $state('');
 	let freedBytes = $state(0);
 	let medianPostBytes = $state(0);
@@ -43,10 +44,26 @@
 		return Math.floor(remaining / medianPostBytes);
 	});
 
+	// Начало столбика датой. Старый сервер отдавал месяц «2026-09» (C7).
+	function bucketStart(period: string): string {
+		return period.length === 7 ? `${period}-01` : period;
+	}
+
 	function defaultCutoff(): string {
 		if (!volume.length) return '';
-		return `${volume[Math.floor(volume.length / 2)].period}-01`;
+		return bucketStart(volume[Math.floor(volume.length / 2)].period);
 	}
+
+	const STEP_LABEL = { day: 'по дням', week: 'по неделям', month: 'по месяцам' } as const;
+	// Концы оси: у дней и недель — даты, у месяцев — годы (по умолчанию графика).
+	const axisStart = $derived(
+		volumeStep !== 'month' && volume.length ? formatEntryDate(bucketStart(volume[0].period)) : undefined
+	);
+	const axisEnd = $derived(
+		volumeStep !== 'month' && volume.length > 1
+			? formatEntryDate(bucketStart(volume[volume.length - 1].period))
+			: undefined
+	);
 
 	function cutoffLabel(): string {
 		if (!cutoffDate) return '';
@@ -58,15 +75,18 @@
 
 	function syncChartCutoffX() {
 		if (!volume.length || !cutoffDate) return;
-		const period = cutoffDate.slice(0, 7);
-		const idx = volume.findIndex((b) => b.period === period);
+		// Последний столбик, что начался не позже отсечки.
+		let idx = -1;
+		volume.forEach((b, i) => {
+			if (bucketStart(b.period) <= cutoffDate) idx = i;
+		});
 		if (idx >= 0) chartCutoffX = volumeBarCenterX(idx, volume.length);
 	}
 
 	function onChartCutoff(index: number) {
 		const bucket = volume[index];
 		if (!bucket) return;
-		cutoffDate = `${bucket.period}-01`;
+		cutoffDate = bucketStart(bucket.period);
 		clearTimeout(cutoffFetchTimer);
 		cutoffFetchTimer = setTimeout(() => {
 			void loadQuota(cutoffDate, true);
@@ -81,6 +101,7 @@
 			usedBytes = data.used_bytes;
 			quotaBytes = data.quota_bytes ?? 0;
 			volume = data.volume ?? [];
+			volumeStep = data.volume_step ?? 'month';
 			medianPostBytes = data.median_post_bytes ?? 0;
 			if (data.freed_at_cutoff_bytes !== undefined) {
 				freedBytes = data.freed_at_cutoff_bytes;
@@ -151,9 +172,11 @@
 				onclick={() => goto(`/circles/${circle.circleId}/quota/request`)}
 			/>
 		{/if}
-		<Label>Сколько освободит отсечка</Label>
+		<Label>Сколько освободит отсечка · {STEP_LABEL[volumeStep]}</Label>
 		<VolumeChart
 			{volume}
+			startLabel={axisStart}
+			endLabel={axisEnd}
 			cutoffLabel={cutoffLabel()}
 			bind:cutoffX={chartCutoffX}
 			oncutoff={onChartCutoff}

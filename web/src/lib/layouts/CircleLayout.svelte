@@ -1,6 +1,19 @@
 ﻿<script lang="ts">
 	import { getContext } from 'svelte';
-	import CircleBar, { type CircleTab } from '$ui/chrome/CircleBar.svelte';
+	import { goto } from '$app/navigation';
+	import CircleBar, {
+		CIRCLE_TAB_PATHS,
+		visibleCircleTabs,
+		type CircleTab
+	} from '$ui/chrome/CircleBar.svelte';
+	import {
+		SWIPE,
+		swipeEnd,
+		swipeIdle,
+		swipeMove,
+		swipeOffset,
+		swipeStart
+	} from '$lib/gestures/tabSwipe';
 	import CommentBar from '$ui/overlays/CommentBar.svelte';
 	import PhoneFrame from '$ui/chrome/PhoneFrame.svelte';
 	import StatusBar from '$ui/chrome/StatusBar.svelte';
@@ -69,6 +82,55 @@
 	} = $props();
 
 	const circleId = $derived(circleIdProp ?? circleCtx?.circleId);
+
+	// Свайп по вкладкам (план 46, C9): содержимое идёт за пальцем, дальше
+	// трети ширины — соседняя вкладка. На «Карте» — только от края.
+	let bodyEl: HTMLDivElement | undefined = $state();
+	let swipe = $state(swipeIdle());
+	let leaving = $state(0);
+	const order = $derived(visibleCircleTabs(circleCtx?.hasOthers ?? false, active));
+	const tabIndex = $derived(order.indexOf(active));
+	const swipeOn = $derived(app && tabs && Boolean(circleId) && tabIndex >= 0);
+	const hasPrev = $derived(tabIndex > 0);
+	const hasNext = $derived(tabIndex >= 0 && tabIndex < order.length - 1);
+	const offset = $derived(leaving || swipeOffset(swipe, hasPrev, hasNext));
+	const previewTab = $derived.by(() => {
+		if (swipe.phase !== 'horizontal' || Math.abs(swipe.dx) < swipe.width * SWIPE.commit) return undefined;
+		const next = swipe.dx < 0 ? tabIndex + 1 : tabIndex - 1;
+		return order[next];
+	});
+
+	function onSwipeStart(e: TouchEvent) {
+		if (!swipeOn || !bodyEl || e.touches.length !== 1 || leaving) return;
+		const target = e.target as Element | null;
+		const onMap = active === 'Карта';
+		if (target?.closest('input, textarea, [contenteditable], .lightbox, [data-no-tab-swipe]')) return;
+		if (!onMap && target?.closest('.leaflet-container')) return;
+		const t = e.touches[0];
+		const rect = bodyEl.getBoundingClientRect();
+		swipe = swipeStart(t.clientX - rect.left, t.clientY, rect.width, onMap);
+	}
+
+	function onSwipeMove(e: TouchEvent) {
+		if (swipe.phase === 'idle' || swipe.phase === 'ignored' || !bodyEl) return;
+		const t = e.touches[0];
+		swipe = swipeMove(swipe, t.clientX - bodyEl.getBoundingClientRect().left, t.clientY);
+	}
+
+	function onSwipeEnd() {
+		const dir = swipeEnd(swipe, hasPrev, hasNext);
+		const width = swipe.width;
+		swipe = swipeIdle();
+		if (!dir || !circleId) return;
+		const tab = order[tabIndex + dir];
+		leaving = dir > 0 ? -width : width;
+		setTimeout(() => {
+			const suffix = CIRCLE_TAB_PATHS[tab];
+			void goto(suffix ? `/circles/${circleId}${suffix}` : `/circles/${circleId}`).finally(() => {
+				leaving = 0;
+			});
+		}, 160);
+	}
 </script>
 
 <PhoneFrame {color} {dark} {app} {height} class={className}>
@@ -90,9 +152,21 @@
 		bind:active
 		{identitySettingsLink}
 		responsesTab={circleCtx?.hasOthers ?? false}
+		{previewTab}
 		responsesUnread={circleCtx?.responsesUnread ?? 0}
 	/>
-	<div class="circle-body">
+	<div
+		class="circle-body"
+		class:tab-swipe={swipeOn && active !== 'Карта'}
+		bind:this={bodyEl}
+		style:transform={offset ? `translateX(${offset}px)` : undefined}
+		style:transition={swipe.phase === 'horizontal' ? 'none' : 'transform .16s ease-out'}
+		ontouchstart={onSwipeStart}
+		ontouchmove={onSwipeMove}
+		ontouchend={onSwipeEnd}
+		ontouchcancel={onSwipeEnd}
+		role="presentation"
+	>
 		{@render children()}
 	</div>
 	{#if commentBar && (onCommentCompose || onCommentSend)}

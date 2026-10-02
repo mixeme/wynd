@@ -2,6 +2,18 @@
 	// «Отклики» — пятая вкладка, а не пятый уровень (3.12): тот же журнал, другой срез.
 	export const CIRCLE_TABS = ['Хронология', 'Дни', 'Сетка', 'Карта', 'Отклики'] as const;
 	export type CircleTab = (typeof CIRCLE_TABS)[number];
+	/** Путь вкладки от /circles/{id}. */
+	export const CIRCLE_TAB_PATHS: Record<CircleTab, string> = {
+		Хронология: '',
+		Дни: '/days',
+		Сетка: '/grid',
+		Карта: '/map',
+		Отклики: '/responses'
+	};
+	/** Вкладки по порядку; «Отклики» — только когда в круге есть другие. */
+	export function visibleCircleTabs(responsesTab: boolean, active: CircleTab): CircleTab[] {
+		return CIRCLE_TABS.filter((t) => t !== 'Отклики' || responsesTab || active === 'Отклики');
+	}
 </script>
 
 <script lang="ts">
@@ -26,6 +38,7 @@
 		subtitle,
 		identitySettingsLink = true,
 		responsesTab = true,
+		previewTab,
 		responsesUnread = 0
 	}: {
 		title: string;
@@ -43,23 +56,19 @@
 		identitySettingsLink?: boolean;
 		/** В круге из одного откликаться некому — вкладки нет (3.7). */
 		responsesTab?: boolean;
+		/** Свайп прошёл треть — полоска уже на вкладке, куда перейдём (C9). */
+		previewTab?: CircleTab;
 		/** Число на вкладке: новые отклики с прошлого просмотра. */
 		responsesUnread?: number;
 	} = $props();
 
 	const visibleTabs = $derived(
-		CIRCLE_TABS.filter((t) => t !== 'Отклики' || responsesTab || active === 'Отклики')
+		visibleCircleTabs(responsesTab, active)
 	);
 
 	const searchInBar = $derived(searchPlaceholder !== undefined);
 
-	const tabPaths: Record<CircleTab, string> = {
-		Хронология: '',
-		Дни: '/days',
-		Сетка: '/grid',
-		Карта: '/map',
-		Отклики: '/responses'
-	};
+	const tabPaths = CIRCLE_TAB_PATHS;
 
 	// Повторное нажатие на открытую вкладку поднимает экран в самый верх —
 	// как в любом приложении с вкладками. Прокручивается не окно, а список
@@ -132,7 +141,7 @@
 						{#snippet child({ props })}
 							<span
 								{...props}
-								class:on={active === tab}
+								class:on={(previewTab ?? active) === tab}
 								onpointerdowncapture={() => (tappedOpen = active === tab)}
 								onclick={(e) =>
 									onTabTap(tab, e, props.onclick as ((e: MouseEvent) => void) | undefined)}

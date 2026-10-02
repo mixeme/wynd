@@ -3,19 +3,66 @@ package chronicle
 import (
 	"context"
 	"database/sql"
+	"time"
 )
 
 // VolumeBucket is media bytes aggregated by chronicle period.
+// Period — первый день столбика («2026-09-29»): касание ставит отсечку на него.
 type VolumeBucket struct {
 	Period          string `json:"period"`
 	Bytes           int64  `json:"bytes"`
 	CumulativeBytes int64  `json:"cumulative_bytes"`
 }
 
-// MediaVolumeChart returns monthly media volume for cutoff selection.
-func (c *Chronicle) MediaVolumeChart(ctx context.Context, circleID string) ([]VolumeBucket, error) {
+// VolumeStep — шаг столбиков графика отсечки (план 46, C7).
+type VolumeStep string
+
+const (
+	VolumeStepDay   VolumeStep = "day"
+	VolumeStepWeek  VolumeStep = "week"
+	VolumeStepMonth VolumeStep = "month"
+)
+
+// volumeStepFor: молодому кругу месячный столбик один — выбирать нечего.
+// До двух недель — дни, до трёх месяцев — недели, дальше — месяцы.
+func volumeStepFor(age time.Duration) VolumeStep {
+	switch {
+	case age <= 14*24*time.Hour:
+		return VolumeStepDay
+	case age <= 92*24*time.Hour:
+		return VolumeStepWeek
+	}
+	return VolumeStepMonth
+}
+
+// SQLite: начало столбика по created_at. Неделя — с понедельника.
+var volumePeriodSQL = map[VolumeStep]string{
+	VolumeStepDay:   `date(p.created_at)`,
+	VolumeStepWeek:  `date(p.created_at, '-6 days', 'weekday 1')`,
+	VolumeStepMonth: `strftime('%Y-%m-01', p.created_at)`,
+}
+
+// MediaVolumeChart returns media volume for cutoff selection, bucketed by a
+// step that fits the circle's age.
+func (c *Chronicle) MediaVolumeChart(ctx context.Context, circleID string) ([]VolumeBucket, VolumeStep, error) {
+	return c.mediaVolumeChart(ctx, circleID, time.Now().UTC())
+}
+
+func (c *Chronicle) mediaVolumeChart(ctx context.Context, circleID string, now time.Time) ([]VolumeBucket, VolumeStep, error) {
+	var first sql.NullString
+	if err := c.db.QueryRowContext(ctx, `
+		SELECT MIN(created_at) FROM posts WHERE circle_id = ? AND deleted = 0
+	`, circleID).Scan(&first); err != nil {
+		return nil, VolumeStepMonth, err
+	}
+	step := VolumeStepMonth
+	if first.Valid {
+		if t, err := parseTime(first.String); err == nil {
+			step = volumeStepFor(now.Sub(t))
+		}
+	}
 	rows, err := c.db.QueryContext(ctx, `
-		SELECT strftime('%Y-%m', p.created_at) AS period,
+		SELECT `+volumePeriodSQL[step]+` AS period,
 			COALESCE(SUM(b.size_bytes), 0) AS bytes
 		FROM posts p
 		JOIN (
@@ -30,7 +77,7 @@ func (c *Chronicle) MediaVolumeChart(ctx context.Context, circleID string) ([]Vo
 		ORDER BY period
 	`, circleID)
 	if err != nil {
-		return nil, err
+		return nil, step, err
 	}
 	defer rows.Close()
 	// Пустой, а не nil: nil уходил в JSON как null, и экран квоты круга без
@@ -40,13 +87,13 @@ func (c *Chronicle) MediaVolumeChart(ctx context.Context, circleID string) ([]Vo
 	for rows.Next() {
 		var b VolumeBucket
 		if err := rows.Scan(&b.Period, &b.Bytes); err != nil {
-			return nil, err
+			return nil, step, err
 		}
 		cumulative += b.Bytes
 		b.CumulativeBytes = cumulative
 		out = append(out, b)
 	}
-	return out, rows.Err()
+	return out, step, rows.Err()
 }
 
 // MedianPostBytes returns median media bytes per post for quota estimates.

@@ -10,12 +10,17 @@
 	let {
 		volume = [] as VolumeBucket[],
 		cutoffLabel = '',
+		startLabel,
+		endLabel,
 		cutoffX = $bindable(205),
 		oncutoff,
 		class: className = ''
 	}: {
 		volume?: VolumeBucket[];
 		cutoffLabel?: string;
+		/** Подписи концов оси; по умолчанию — годы первого и последнего столбика. */
+		startLabel?: string;
+		endLabel?: string;
 		cutoffX?: number;
 		oncutoff?: (index: number) => void;
 		class?: string;
@@ -49,8 +54,8 @@
 		})
 	);
 
-	const yearStart = $derived(volume[0]?.period.slice(0, 4) ?? '');
-	const yearEnd = $derived(volume[volume.length - 1]?.period.slice(0, 4) ?? '');
+	const yearStart = $derived(startLabel ?? volume[0]?.period.slice(0, 4) ?? '');
+	const yearEnd = $derived(endLabel ?? volume[volume.length - 1]?.period.slice(0, 4) ?? '');
 
 	const cutoffLine = $derived(`M${cutoffX} 10 V112`);
 	const shadedWidth = $derived(Math.max(0, cutoffX));
@@ -195,7 +200,7 @@
 			<text x="2" y="126" font-size="10" fill="#A8A096">{yearStart}</text>
 		{/if}
 		{#if yearEnd && yearEnd !== yearStart}
-			<text x="330" y="126" font-size="10" fill="#A8A096">{yearEnd}</text>
+			<text x={chartWidth - 2} y="126" font-size="10" fill="#A8A096" text-anchor="end">{yearEnd}</text>
 		{/if}
 {/snippet}
 
