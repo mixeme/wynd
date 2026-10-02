@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>B3 установщик</title>
+<style>
+:root{--paper:#F4F0E9;--card:#FBF9F6;--line:#DDD3C8;--ink:#2B2724;--muted:#7A7269;--faint:#A8A096;--c:#AF5839;--ok:#58673A;--warn:#70571B}
+body{margin:0;padding:22px;background:#E6E0D7;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);font-size:13px}
+.wrap{display:grid;grid-template-columns:repeat(2,640px);gap:26px 26px;justify-content:center}
+.cap{font-weight:600;font-size:13.5px;margin:0 0 7px}
+.note{font-size:12px;color:#5F5850;line-height:1.5;margin-top:9px}
+.win{width:640px;height:430px;background:var(--paper);border:1px solid #CFC5B8;border-radius:10px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.12);display:flex;flex-direction:column}
+.tb{height:34px;display:flex;align-items:center;padding:0 12px;background:#EAE3D8;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}
+.tb b{color:var(--ink);font-weight:600;margin-left:8px}
+.tb .dots{margin-left:auto;letter-spacing:10px;color:#B9AFA3}
+.main{flex:1;display:flex;min-height:0}
+.side{width:170px;border-right:1px solid var(--line);padding:16px 0;background:#EFE9E0}
+.st{display:flex;align-items:center;gap:9px;padding:7px 16px;color:var(--faint)}
+.st i{width:18px;height:18px;border-radius:50%;border:1.5px solid currentColor;display:grid;place-items:center;font-style:normal;font-size:10px}
+.st.done{color:var(--ok)} .st.done i{background:var(--ok);color:#fff;border-color:var(--ok)}
+.st.on{color:var(--ink);font-weight:600} .st.on i{border-color:var(--c);color:var(--c)}
+.st.bad{color:#B5482F} .st.bad i{border-color:#B5482F}
+.body{flex:1;padding:20px 24px;display:flex;flex-direction:column;min-width:0}
+h2{margin:0 0 4px;font-size:17px}
+.sub{color:var(--muted);margin-bottom:14px;line-height:1.45}
+.lab{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin:10px 0 5px}
+.fld{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:8px 11px}
+.fld.mono{font-family:Consolas,monospace}
+.chips{display:flex;gap:8px}
+.chip{border:1px solid var(--line);border-radius:16px;padding:5px 12px;background:var(--card)}
+.chip.on{border-color:var(--c);color:var(--c);background:#F6E7E0}
+.foot{margin-top:auto;display:flex;align-items:center;gap:12px}
+.btn{background:var(--c);color:#fff;border-radius:8px;padding:9px 18px;font-weight:600}
+.btn.gh{background:transparent;color:var(--ink);border:1px solid var(--line);font-weight:400}
+.under{border-bottom:1px solid;color:var(--muted)}
+.row{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid #E8E1D7;line-height:1.4}
+.row:last-child{border-bottom:0}
+.ic{width:16px;flex:0 0 auto;text-align:center;font-weight:700}
+.ok{color:var(--ok)} .w{color:var(--warn)} .no{color:#B5482F}
+.dim{color:var(--muted)}
+.bar{height:5px;border-radius:3px;background:var(--line);overflow:hidden;margin:8px 0}
+.bar i{display:block;height:100%;background:var(--c)}
+.box{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:12px 14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div>
+<p class="cap">1 · Подключение</p>
+<div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st on"><i>1</i>Сервер</div><div class="st"><i>2</i>Осмотр</div><div class="st"><i>3</i>План</div><div class="st"><i>4</i>Установка</div><div class="st"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<h2>Куда ставим Wynd</h2>
+<div class="sub">Адрес и доступ к серверу вам прислал хостинг после покупки.</div>
+<div class="lab">Адрес сервера</div>
+<div class="fld mono">185.12.34.56</div>
+<div class="lab">Вход</div>
+<div class="chips"><span class="chip on">Пароль</span><span class="chip">Ключ с этого компьютера</span><span class="chip">Создать ключ</span></div>
+<div style="display:flex;gap:10px;margin-top:10px">
+<div style="flex:0 0 120px"><div class="lab" style="margin-top:0">Пользователь</div><div class="fld mono">root</div></div>
+<div style="flex:1"><div class="lab" style="margin-top:0">Пароль от сервера</div><div class="fld">••••••••••</div></div>
+</div>
+<div class="foot"><span class="btn">Подключиться</span><span class="dim">Пароль хранится в связке ключей Windows</span></div>
+</div></div></div>
+<p class="note">Три вещи, которые человек знает из письма хостинга. Пользователь заполнен «root» — меняют редко. Ключ можно взять готовый из ~/.ssh или создать здесь. Ничего про порты, домены и прокси на этом шаге не спрашиваем.</p>
+</div>
+
+<div>
+<p class="cap">1а · Первое подключение — отпечаток сервера</p>
+<div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st on"><i>1</i>Сервер</div><div class="st"><i>2</i>Осмотр</div><div class="st"><i>3</i>План</div><div class="st"><i>4</i>Установка</div><div class="st"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<h2>Это ваш сервер?</h2>
+<div class="sub">Подключаемся к 185.12.34.56 впервые. Сервер назвал свой отпечаток — сверьте его с письмом хостинга или панелью, если там он есть.</div>
+<div class="box mono" style="font-family:Consolas,monospace;font-size:12.5px">SHA256:3nC4o0pVb7…Qy8sKw2ZsE</div>
+<div class="sub" style="margin-top:12px">Если отпечатка негде взять — это нормально для нового сервера. Мы запомним его, и при следующем подключении подмену заметим.</div>
+<div class="foot"><span class="btn">Да, подключиться</span><span class="btn gh">Отмена</span></div>
+</div></div></div>
+<p class="note">Знакомство с сервером без жаргона «host key». Отпечаток ложится в обычный ~/.ssh/known_hosts — тот же, что у ssh, так что потом и терминал узнает сервер.</p>
+</div>
+
+<div>
+<p class="cap">2 · Осмотр — до любых изменений</p>
+<div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st on"><i>2</i>Осмотр</div><div class="st"><i>3</i>План</div><div class="st"><i>4</i>Установка</div><div class="st"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<h2>Что на сервере</h2>
+<div class="sub">Только смотрим — ничего не меняем.</div>
+<div class="row"><span class="ic ok">✓</span><div>Ubuntu 24.04 — подходит</div></div>
+<div class="row"><span class="ic ok">✓</span><div>Свободно 31 ГБ</div></div>
+<div class="row"><span class="ic ok">✓</span><div>Часы идут верно</div></div>
+<div class="row"><span class="ic w">!</span><div>Docker не установлен — <span class="dim">поставим</span></div></div>
+<div class="row"><span class="ic w">!</span><div>Уже работает nginx и занимает порты 80 и 443 — <span class="dim">его не трогаем, Wynd встанет за ним</span></div></div>
+<div class="lab">Адрес, по которому будут заходить</div>
+<div style="display:flex;gap:10px;align-items:center"><div class="fld mono" style="flex:1">family.example.ru</div><span class="ok">✓ указывает на этот сервер</span></div>
+<div class="foot"><span class="btn">Дальше — план</span><span class="under">подробнее, что проверили</span></div>
+</div></div></div>
+<p class="note">Всё, что можно узнать осмотром, узнаём сами. Единственный вопрос — адрес сайта, и его тут же проверяем. Чужой nginx не «чиним» и не предлагаем выключить: только говорим, что найден, и что Wynd встанет за ним.</p>
+</div>
+
+<div>
+<p class="cap">2а · Осмотр нашёл помеху</p>
+<div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st bad"><i>!</i>Осмотр</div><div class="st"><i>3</i>План</div><div class="st"><i>4</i>Установка</div><div class="st"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<h2>Пока ставить нельзя</h2>
+<div class="sub">Сервер в порядке, мешает одно:</div>
+<div class="box">
+<div style="font-weight:600;margin-bottom:6px">family.example.ru ещё не указывает на этот сервер</div>
+<div class="dim" style="line-height:1.5">У регистратора домена добавьте запись типа A с адресом 185.12.34.56. Новая запись расходится по интернету до часа — потом нажмите «Проверить снова».</div>
+</div>
+<div class="foot"><span class="btn">Проверить снова</span><span class="btn gh">Другой адрес</span></div>
+</div></div></div>
+<p class="note">Ошибка — словами и с тем, что сделать, а не выводом команды. Ловим до установки: домен, занятые порты без известного прокси, мало места, неверные часы, не та ОС (тогда — «Wynd ставится на Debian и Ubuntu»).</p>
+</div>
+
+<div>
+<p class="cap">3 · План</p>
+<div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st done"><i>✓</i>Осмотр</div><div class="st on"><i>3</i>План</div><div class="st"><i>4</i>Установка</div><div class="st"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<h2>Что сделаем</h2>
+<div class="lab" style="margin-top:4px">Поставим</div>
+<div class="row"><span class="ic">+</span><div>Docker и Wynd 0.19.9</div></div>
+<div class="row"><span class="ic">+</span><div>Сертификат для family.example.ru</div></div>
+<div class="lab">Изменим — с резервной копией</div>
+<div class="row"><span class="ic">~</span><div>Настройку nginx: добавим сайт family.example.ru <span class="dim">(старые сайты не трогаем)</span></div></div>
+<div class="lab">Не тронем</div>
+<div class="row"><span class="ic dim">·</span><div class="dim">Два сайта nginx, которые уже есть</div></div>
+<div class="foot"><span class="btn">Установить</span><span class="btn gh">Назад</span><span class="dim" style="margin-left:auto">займёт 5–10 минут</span></div>
+</div></div></div>
+<p class="note">Перед первым изменением человек видит всё: что появится, что изменится (и что копия будет), что найдено чужого. Ничего не делаем без «Установить».</p>
+</div>
+
+<div>
+<p class="cap">4 · Установка</p>
+<div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st done"><i>✓</i>Осмотр</div><div class="st done"><i>✓</i>План</div><div class="st on"><i>4</i>Установка</div><div class="st"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<h2>Ставим</h2>
+<div class="bar"><i style="width:58%"></i></div>
+<div class="row"><span class="ic ok">✓</span><div>Docker</div></div>
+<div class="row"><span class="ic ok">✓</span><div>Wynd 0.19.9</div></div>
+<div class="row"><span class="ic w">…</span><div>Сертификат для family.example.ru <span class="dim">— ждём ответа Let's Encrypt</span></div></div>
+<div class="row"><span class="ic dim">○</span><div class="dim">Сайт в nginx</div></div>
+<div class="row"><span class="ic dim">○</span><div class="dim">Проверка</div></div>
+<div class="foot"><span class="under">показать, что выполняется</span><span class="dim" style="margin-left:auto">Окно можно свернуть</span></div>
+</div></div></div>
+<p class="note">Каждый шаг виден. Команды и их вывод — за «показать, что выполняется», для тех, кому интересно. Оборвалась связь или закрыли окно — следующий запуск продолжит: сделанное пропускается.</p>
+</div>
+
+<div>
+<p class="cap">4а · Шаг не прошёл</p>
+<div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st done"><i>✓</i>Осмотр</div><div class="st done"><i>✓</i>План</div><div class="st bad"><i>!</i>Установка</div><div class="st"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<h2>Сертификат не выдали</h2>
+<div class="box">
+<div style="line-height:1.5">Let's Encrypt не смог зайти на family.example.ru по порту 80. Скорее всего, порт закрыт в панели хостинга (брандмауэр). Откройте входящие порты 80 и 443 и нажмите «Повторить».</div>
+</div>
+<div class="sub" style="margin-top:12px">Сделанное раньше осталось на месте — повтор начнётся с этого шага.</div>
+<div class="foot"><span class="btn">Повторить</span><span class="btn gh">Откатить установку</span><span class="under" style="margin-left:auto">подробности</span></div>
+</div></div></div>
+<p class="note">Объясняем, что значит отказ и что сделать. «Откатить» возвращает изменённые файлы из резервных копий и убирает поставленное — сервер остаётся как был до плана.</p>
+</div>
+
+<div>
+<p class="cap">5 · Готово</p>
+<div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st done"><i>✓</i>Осмотр</div><div class="st done"><i>✓</i>План</div><div class="st done"><i>✓</i>Установка</div><div class="st on"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<h2>Wynd работает</h2>
+<div class="sub">Проверка прошла: сайт открывается, сертификат действует, часы верные, письма уходят.</div>
+<div class="lab">Ссылка первого запуска — для вас, одна</div>
+<div class="fld mono" style="font-size:12px">https://family.example.ru/setup/7f3a…c91d</div>
+<div class="sub" style="margin-top:8px">По ней вы станете администратором сервера и создадите первый круг. Ссылка действует сутки.</div>
+<div class="foot"><span class="btn">Открыть в браузере</span><span class="btn gh">Скопировать</span></div>
+</div></div></div>
+<p class="note">Итог — прогон той же проверки, что в панели администратора, и ссылка первого запуска. Дальше всё в самом Wynd.</p>
+</div>
+
+<div>
+<p class="cap">6 · Потом — сервер под рукой</p>
+<div class="win"><div class="tb">●<b>Wynd — мои серверы</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="body">
+<h2>family.example.ru</h2>
+<div class="sub">Wynd 0.19.9 · работает · место: 2,1 из 31 ГБ</div>
+<div class="box" style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+<div style="flex:1"><div style="font-weight:600">Вышла версия 0.20.0</div><div class="dim">Перед обновлением сделаем бэкап на сервере.</div></div><span class="btn">Обновить</span></div>
+<div class="row"><span class="ic">↓</span><div style="flex:1">Бэкап на этот компьютер <div class="dim">последний — вчера, 2,0 ГБ</div></div><span class="under">сделать сейчас</span></div>
+<div class="row"><span class="ic">↺</span><div style="flex:1">Вернуть прошлую версию <div class="dim">0.19.8 — сохранена при обновлении</div></div><span class="under">откатить</span></div>
+<div class="row"><span class="ic">✓</span><div style="flex:1">Проверка сервера</div><span class="under">запустить</span></div>
+<div class="foot"><span class="btn gh">+ Ещё сервер</span></div>
+</div></div></div>
+<p class="note">После установки приложение — пульт сервера: обновить (с бэкапом перед), откатить (с предупреждением: телефоны, открывавшие новую версию, могут не открыть старую — их данные на устройстве уже обновились), выгрузить бэкап на компьютер, проверить. Несколько серверов — списком.</p>
+</div>
+
+</div>
+</body>
+</html>
