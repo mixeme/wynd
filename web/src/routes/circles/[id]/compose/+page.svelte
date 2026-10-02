@@ -489,8 +489,10 @@
 		return out;
 	}
 
-	// original — выбрано кнопкой «Файл» (C21): фото, видео и звук уходят как
-	// есть, вложением для скачивания — полное разрешение и EXIF целиком.
+	// original — выбрано кнопкой «Файл» (C21, C24): фото, видео и звук уходят как
+	// есть — полное разрешение и EXIF целиком. Фото и видео при этом — снимки
+	// записи, как сжатые: плитка, альбом, лайтбокс, «Сетка», «Карта». HEIC
+	// браузеры не показывают — он остаётся вложением для скачивания.
 	async function addFiles(list: File[], original = false) {
 		if (filePickLock || !list.length) return;
 		filePickLock = true;
@@ -556,20 +558,18 @@
 					continue;
 				}
 
-				const kind = original
-					? 'attachment'
-					: isVideoFile(file)
-						? 'video'
-						: isImageFile(file)
-							? 'photo'
-							: 'attachment';
+				const heic = /hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name);
+				const kind = isVideoFile(file)
+					? 'video'
+					: isImageFile(file) && !(original && heic)
+						? 'photo'
+						: 'attachment';
 
 				const tags = isAudioFile(file) ? await readAudioTags(file) : undefined;
 				const meta: QueueMediaMeta = {
 					kind,
 					captured_at: exif.captured_at,
-					// Место — только у снимков записи: вложение на карту не встаёт,
-					// координаты остаются в самом файле.
+					// Место — только у снимков записи: вложение на карту не встаёт.
 					geo_lat: kind === 'attachment' ? undefined : exif.geo_lat,
 					geo_lng: kind === 'attachment' ? undefined : exif.geo_lng,
 					is_cover:
