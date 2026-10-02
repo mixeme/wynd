@@ -9,6 +9,7 @@
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { initAppUpdate } from '$lib/session/appUpdate.svelte';
+	import { statusColorOverride } from '$lib/session/statusColor.svelte';
 	import { afterNavigate, beforeNavigate } from '$app/navigation';
 	import { armEntryGuard, interceptHistoryBack, recordEntry } from '$lib/navigation/up';
 	import AudioBar from '$ui/chrome/AudioBar.svelte';
@@ -38,7 +39,7 @@
 		// Метка стоит в app.html: так её видит и Vivaldi при запуске.
 		document
 			.querySelector('meta[name="theme-color"]')
-			?.setAttribute('content', isDark() ? '#211E1C' : '#F4F0E9');
+			?.setAttribute('content', statusColorOverride() ?? (isDark() ? '#211E1C' : '#F4F0E9'));
 	});
 
 

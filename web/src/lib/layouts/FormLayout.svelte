@@ -1,4 +1,6 @@
 ﻿<script lang="ts">
+	import { pushStatusColor } from '$lib/session/statusColor.svelte';
+	import { CIRCLE_COLORS } from '$lib/theme/colors';
 	import { setBackHandler } from '$lib/navigation/up';
 	import BackBar from '$ui/chrome/BackBar.svelte';
 	import PhoneFrame from '$ui/chrome/PhoneFrame.svelte';
@@ -57,6 +59,12 @@
 		onright?: () => void;
 		children: Snippet;
 	} = $props();
+
+	// Строка состояния — в цвет шапки круга (C23): сливается с ней, как в приложении.
+	$effect(() => {
+		if (!(app && compose && color)) return;
+		return pushStatusColor(CIRCLE_COLORS[color ?? 'terracotta'].hex);
+	});
 
 	// Системная «Назад» — тот же обработчик (план 46, C13).
 	$effect(() => {

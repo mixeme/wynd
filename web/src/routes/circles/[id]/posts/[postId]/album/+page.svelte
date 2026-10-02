@@ -145,9 +145,12 @@
 	>
 		{#snippet media()}
 			{#if item.kind === 'video'}
+				<!-- playsinline: на iPhone видео играет в лайтбоксе, а не уходит в полноэкранный плеер. -->
 				<video
 					src={urls[item.blob_id]}
 					controls
+					playsinline
+					preload="metadata"
 					onloadedmetadata={(e) => noteSize(item.blob_id, e.currentTarget.videoWidth, e.currentTarget.videoHeight)}
 				>
 					<track kind="captions" label="Субтитры отсутствуют" />

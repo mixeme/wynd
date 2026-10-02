@@ -1,4 +1,6 @@
 ﻿<script lang="ts">
+	import { pushStatusColor } from '$lib/session/statusColor.svelte';
+	import { CIRCLE_COLORS } from '$lib/theme/colors';
 	import { setBackHandler } from '$lib/navigation/up';
 	import { getContext } from 'svelte';
 	import type { VoiceTake } from '$lib/media/voiceRecorder.svelte';
@@ -89,6 +91,12 @@
 		identitySettingsLink?: boolean;
 		children: Snippet;
 	} = $props();
+
+	// Строка состояния — в цвет шапки круга (C23): сливается с ней, как в приложении.
+	$effect(() => {
+		if (!(app)) return;
+		return pushStatusColor(CIRCLE_COLORS[color ?? 'terracotta'].hex);
+	});
 
 	// Системная «Назад» — тот же обработчик (план 46, C13).
 	$effect(() => {

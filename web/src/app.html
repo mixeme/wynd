@@ -15,6 +15,16 @@
 		     строка оставалась белой. Тёмную тему ставит корневой макет в эту же метку. -->
 		<meta name="theme-color" content="#F4F0E9" />
 		<script>
+			// iPhone увеличивает страницу, когда фокус попадает в поле мельче 16 px
+			// (строка ввода, кнопка фото рядом с ней). maximum-scale=1 iOS понимает
+			// как «без автоувеличения», а щипок пальцами оставляет. Только iOS: на
+			// Android та же метка запретила бы щипок.
+			if (/iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+				var vp = document.querySelector('meta[name="viewport"]');
+				if (vp) vp.setAttribute('content', vp.getAttribute('content') + ', maximum-scale=1');
+			}
+		</script>
+		<script>
 			// Loopback dev via scripts\run.bat: drop stale service workers so rebuilds show up.
 			if (location.hostname === '127.0.0.1' || location.hostname === 'localhost') {
 				navigator.serviceWorker?.getRegistrations().then(function (regs) {
