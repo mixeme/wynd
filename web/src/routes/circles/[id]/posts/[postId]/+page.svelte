@@ -34,7 +34,9 @@
 		groupReactions,
 		ownReaction,
 		reactionIconName,
-		REACTION_KEYS
+		REACTION_KEYS,
+		albumHref,
+		photoMedia
 	} from '$lib/journal/present';
 	import { applyOwnReaction, canReact } from '$lib/journal/reactions';
 	import {
@@ -231,7 +233,7 @@
 	}
 
 	function openAlbum() {
-		goto(`/circles/${circle.circleId}/posts/${postId}/album`);
+		goto(albumHref(circle.circleId, postId, photoMedia(post?.media).length));
 	}
 
 	function canEditComment(comment: Comment): boolean {

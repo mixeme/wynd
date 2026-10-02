@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { albumHref } from '$lib/journal/present';
 	import { goUp } from '$lib/navigation/up';
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
 	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
@@ -134,7 +135,8 @@
 	}
 
 	function openPost(postId: string) {
-		goto(`/circles/${circle.circleId}/posts/${postId}/album`);
+		const tile = tiles.find((t) => t.postId === postId);
+		goto(albumHref(circle.circleId, postId, tile?.photoCount ?? 0));
 	}
 </script>
 

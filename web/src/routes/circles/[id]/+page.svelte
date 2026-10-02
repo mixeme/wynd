@@ -51,7 +51,9 @@
 		REACTION_KEYS,
 		serviceEventsBetween,
 		serviceEventsAboveNewest,
-		unreadDividerIndex
+		unreadDividerIndex,
+		albumHref,
+		photoMedia
 	} from '$lib/journal/present';
 	import { advanceReadCursor } from '$lib/journal/read-cursor';
 	import {
@@ -526,7 +528,8 @@
 	}
 
 	function openAlbum(postId: string) {
-		leaveToPost(`/circles/${circle.circleId}/posts/${postId}/album`);
+		const post = posts.find((p) => p.id === postId);
+		leaveToPost(albumHref(circle.circleId, postId, photoMedia(post?.media).length));
 	}
 
 	// Лист реакций — состояние экрана, а не шаг назад: открытие и закрытие

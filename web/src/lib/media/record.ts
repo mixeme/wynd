@@ -25,15 +25,18 @@ export function canRecord(): boolean {
 	);
 }
 
-// Сначала то, что играет везде (H.264 и AAC в MP4): даже если перекодировать
-// не выйдет, исходник откроется и на iPhone. VP9 в MP4 перекодировщик не читает.
+// Голос: сначала Opus в WebM или Ogg — так пишут Chrome, Vivaldi и Firefox.
+// MP4 — последним, для Safari: Chromium на Android заявлял его и писал пустой
+// файл (Vivaldi, 2026-10-03). Голосовое всё равно перекодируется в AAC.
 const AUDIO_TYPES = [
-	'audio/mp4;codecs=mp4a.40.2',
-	'audio/mp4',
 	'audio/webm;codecs=opus',
 	'audio/ogg;codecs=opus',
-	'audio/webm'
+	'audio/webm',
+	'audio/mp4;codecs=mp4a.40.2',
+	'audio/mp4'
 ];
+// Видео: сначала H.264 и AAC в MP4 — даже если перекодировать не выйдет,
+// исходник откроется и на iPhone. VP9 в MP4 перекодировщик не читает.
 const VIDEO_TYPES = [
 	'video/mp4;codecs=avc1.4D401F,mp4a.40.2',
 	'video/mp4;codecs=avc1.42E01E,mp4a.40.2',

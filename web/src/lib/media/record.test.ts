@@ -25,6 +25,8 @@ describe('record', () => {
 
 	it('выбирает контейнер, который браузер пишет', () => {
 		expect(pickRecorderType('audio', (t) => t.startsWith('audio/webm'))).toBe('audio/webm;codecs=opus');
+		expect(pickRecorderType('audio', () => true)).toBe('audio/webm;codecs=opus');
+		expect(pickRecorderType('audio', (t) => t.startsWith('audio/mp4'))).toBe('audio/mp4;codecs=mp4a.40.2');
 		expect(pickRecorderType('video', () => false)).toBe('');
 		expect(recordingExtension('audio/mp4')).toBe('m4a');
 		expect(recordingExtension('audio/webm;codecs=opus')).toBe('webm');

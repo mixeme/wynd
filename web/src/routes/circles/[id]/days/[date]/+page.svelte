@@ -23,8 +23,15 @@
 	import { formatEntryDate, formatPostTime, isEditableActive } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { clearDayTitle, loadDay, loadDays, setDayTitle } from '$lib/journal/days';
-	import { attachmentMedia, authorInitial, coverMedia, locationLabel, mediaCount, photoMedia,
-		localDayOf
+	import {
+		attachmentMedia,
+		authorInitial,
+		coverMedia,
+		locationLabel,
+		mediaCount,
+		photoMedia,
+		localDayOf,
+		albumHref
 	} from '$lib/journal/present';
 	import type { FeedPost } from '$lib/journal/types';
 	import { getMediaUrl } from '$lib/media/objectUrl';
@@ -161,7 +168,8 @@
 	}
 
 	function openAlbum(postId: string) {
-		goto(`/circles/${circle.circleId}/posts/${postId}/album`);
+		const post = posts.find((p) => p.id === postId);
+		goto(albumHref(circle.circleId, postId, photoMedia(post?.media).length));
 	}
 
 	function openDayAlbum() {

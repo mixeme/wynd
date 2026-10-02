@@ -67,7 +67,8 @@ export class VoiceRecorder {
 		this.#levels = [];
 		this.recent = [];
 		this.#meter(this.#stream);
-		this.#recorder.start(1000);
+		// Без нарезки по секунде: Firefox на Android писал рваный звук на стыках.
+		this.#recorder.start();
 		this.#startedAt = performance.now();
 		this.elapsedMs = 0;
 		this.phase = 'recording';

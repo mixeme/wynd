@@ -63,6 +63,15 @@ export function coverMedia(media: MediaSummary[] | undefined): MediaSummary | un
 	return visual.find((m) => m.is_cover) ?? visual.find((m) => m.kind === 'photo') ?? visual[0];
 }
 
+/**
+ * Касание обложки: несколько снимков — альбом записи, один — сразу он во весь
+ * экран (лайтбокс альбома), листать там нечего.
+ */
+export function albumHref(circleId: string, postId: string, visualCount: number): string {
+	const base = `/circles/${circleId}/posts/${postId}/album`;
+	return visualCount === 1 ? `${base}?lb=0&single=1` : base;
+}
+
 export function photoMedia(media: MediaSummary[] | undefined): MediaSummary[] {
 	return media?.filter((m) => m.kind === 'photo' || m.kind === 'video') ?? [];
 }

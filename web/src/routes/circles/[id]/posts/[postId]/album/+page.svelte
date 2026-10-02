@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goUp } from '$lib/navigation/up';
-	import { goto } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
 	import { resolveMediaUrls } from '$lib/media/batch';
 	import { numberParam, withParam, withoutParam } from '$lib/nav/url';
 	import { page } from '$app/stores';
@@ -80,7 +80,19 @@
 		goto(withParam($page.url.pathname, 'lb', index));
 	}
 
+	// Один снимок открывают сразу во весь экран (albumHref, ?single): альбом
+	// под ним не нужен — закрытие возвращает туда, откуда открыли.
+	const single = $derived($page.url.searchParams.has('single'));
+	let openedFrom = '';
+	afterNavigate(({ from }) => {
+		if (!openedFrom && from) openedFrom = from.url.pathname + from.url.search;
+	});
+
 	function closeLightbox() {
+		if (single) {
+			void goUp(openedFrom || `/circles/${circle.circleId}/posts/${postId}`);
+			return;
+		}
 		const back = withoutParam($page.url, 'lb');
 		if (back) goto(back);
 	}
