@@ -169,6 +169,7 @@ export function audioFallbackReason(err: unknown): string {
 	switch (code) {
 		case 'no_encoder':
 			return 'браузер не умеет кодировать звук';
+		case 'no_decoder':
 		case 'no_audio_track':
 		case 'audio_discarded':
 		case 'conversion_invalid':

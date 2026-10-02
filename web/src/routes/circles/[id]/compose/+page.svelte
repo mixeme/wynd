@@ -491,6 +491,8 @@
 			const maxBytes = compression?.attachment_max_bytes ?? 0;
 			const tooLarge: string[] = [];
 			const notCompressed: string[] = [];
+			// Звук ушёл исходником, хоть и влез в потолок, — сказать, а не молчать.
+			const sentRaw: string[] = [];
 			for (const file of list) {
 				const exif = await readExif(file);
 				let queueFile: QueueFile;
@@ -521,6 +523,7 @@
 						notCompressed.push(`${file.name} (${fallbackReason})`);
 						continue;
 					}
+					if (fallbackReason) sentRaw.push(`${file.name} (${fallbackReason})`);
 				} else {
 					queueFile = await fileToQueueBuffer(file);
 				}
@@ -565,6 +568,9 @@
 				problems.push(
 					`Не сжалось, а без сжатия больше ${formatBytes(maxBytes)}: ${notCompressed.join(', ')}`
 				);
+			}
+			if (sentRaw.length) {
+				problems.push(`Звук без сжатия: ${sentRaw.join(', ')}`);
 			}
 			if (tooLarge.length) {
 				problems.push(`Больше ${formatBytes(maxBytes)} — сервер не примет: ${tooLarge.join(', ')}`);

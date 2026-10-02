@@ -21,7 +21,7 @@
 
 Tailwind, shadcn-svelte, axios, tanstack-query, Dexie, redux/zustand, date-fns/dayjs, tus/uppy, Mapbox, jsQR, Playwright как обязательность, adapter-node, SSR, Google Fonts CDN, `openapi-typescript` (типы API пишутся руками в `$lib`; почему — «OpenAPI» в справочнике сервера).
 
-**Разрешено:** `idb`, `exifr`, `leaflet`, `leaflet.markercluster`, `@vite-pwa/sveltekit`, `vitest`, `fake-indexeddb`, `bits-ui` (только внутри `$ui`), `qrcode` (админ 9.2), `mediabunny` (клиентский encode видео, WebCodecs), `jsqr` (распознавание QR, где нет `BarcodeDetector`; подгружается лениво — 2.16, 2.17).
+**Разрешено:** `idb`, `exifr`, `leaflet`, `leaflet.markercluster`, `@vite-pwa/sveltekit`, `vitest`, `fake-indexeddb`, `bits-ui` (только внутри `$ui`), `qrcode` (админ 9.2), `mediabunny` (клиентский encode видео и звука, WebCodecs), `@mediabunny/aac-encoder` (WASM AAC, где у браузера нет своего — Firefox на Android; подгружается лениво), `jsqr` (распознавание QR, где нет `BarcodeDetector`; подгружается лениво — 2.16, 2.17).
 
 ---
 
@@ -88,6 +88,7 @@ Tailwind, shadcn-svelte, axios, tanstack-query, Dexie, redux/zustand, date-fns/d
 - Чанки API, **1 MiB**. EXIF через `exifr` → `entry_date`, `captured_at`.
 - Аватар: клиентский кадр, JPEG 512×512 quality 0.85 (`media/crop.ts`). Не `compressImage` (лимит постов 2048).
 - Видео: клиентский encode (`media/compress.ts` + `video-encode.ts`), WebCodecs через `mediabunny`. Пороги 9.7: короткая сторона ≤ `video_max_height` (1080p), битрейт `video_bitrate_kbps`. Выход — MP4 (H.264, если браузер умеет). Нет WebCodecs или срыв — файл как есть. Сервер ffmpeg не ставит.
+- Звук: `audio-encode.ts` — AAC в MP4 (`.m4a`) с битрейтом `audio_bitrate_kbps`. Нет своего AAC — WASM-кодировщик; нет декодера (WebCodecs) — звук читает Web Audio `decodeAudioData` и кусками по 10 с идёт в `AudioBufferSource`. Срыв — файл как есть, «Новая запись» называет причину.
 - Экран не гаснет, пока идёт сжатие на 4.2 или слив очереди (`media/wake-lock.ts`, Screen Wake Lock): держателей несколько, блокировка одна, после возврата на вкладку берётся заново. Без API — молча без неё. Большое видео (`isLargeVideo`: от 20 МБ или от 45 с) — строка «Не сворачивайте приложение, пока видео сжимается».
 
 ### Кадр аватара (6.8)
