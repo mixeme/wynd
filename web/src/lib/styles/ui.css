@@ -716,8 +716,13 @@
 .empty-act > .btn:first-child {
 	margin-top: 30px;
 }
+.empty-state.is-feed .empty-act {
+	/* Кадр 3.1: поля 60px; кнопка — width: 100% внутри, на любой ширине ленты. */
+	padding-inline: 60px;
+}
 .empty-state.is-feed .empty-act > .btn {
-	margin: 26px 60px 0;
+	margin: 26px 0 0;
+	width: 100%;
 }
 .feed-end {
 	text-align: center;
