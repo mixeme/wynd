@@ -175,14 +175,15 @@ func (c *Chronicle) FeedSnapshot(ctx context.Context, circleID, accountID string
 
 // GridItem is a photo or video tile for the grid view.
 // Kind video значит, что BlobID — сам ролик (кадра нет). Иначе BlobID — картинка:
-// фотография или JPEG кадра.
+// фотография или JPEG кадра. SourceBlobID — ролик, если BlobID это его кадр.
 type GridItem struct {
-	PostID    string
-	BlobID    string
-	EntryDate string
-	CreatedAt time.Time
-	IsCover   bool
-	Kind      string
+	PostID       string
+	BlobID       string
+	EntryDate    string
+	CreatedAt    time.Time
+	IsCover      bool
+	Kind         string
+	SourceBlobID string
 }
 
 // GridSnapshot returns visible photo media ordered by post created_at descending.
@@ -218,7 +219,7 @@ type DaySummary struct {
 	// Запасная обложка, если обложку дня не выбирали, и число фото дня (C17).
 	FallbackCoverBlobID string
 	PhotoCount          int
-	// JPEG кадра, если выбранная обложка дня — ролик с кадром.
+	// JPEG кадра, если обложка дня — ролик с кадром (выбранный или запасной).
 	CoverImageBlobID string
 }
 
@@ -296,11 +297,18 @@ func (c *Chronicle) DaysSnapshot(ctx context.Context, circleID, accountID string
 			d.CoverPostID = coverPost.String
 		}
 		image := ""
+		fileID := ""
 		if coverBlob.Valid {
 			d.CoverBlobID = coverBlob.String
-			image = posters[coverBlob.String]
+			fileID = coverBlob.String
 		} else {
 			coverEditable = nil
+			fileID = fallbackCovers[d.EntryDate]
+		}
+		// Кадр ролика — отдельной картинкой. Сам файл остаётся в обложке,
+		// чтобы чёрный JPEG можно было заменить видеоэлементом.
+		if fileID != "" {
+			image = posters[fileID]
 		}
 		out = append(out, DaySummary{
 			Day: d, PostCount: count,
@@ -346,8 +354,7 @@ func (c *Chronicle) visiblePostCountsByDay(ctx context.Context, circleID, accoun
 // иначе первое фото, иначе первое видео, иначе обложка звука.
 func (c *Chronicle) dayMediaFacts(ctx context.Context, circleID, accountID string) (covers map[string]string, photos map[string]int, err error) {
 	rows, err := c.db.QueryContext(ctx, fmt.Sprintf(`
-		SELECT p.entry_date, p.id, pm.kind, pm.blob_id, pm.is_cover, COALESCE(pm.audio_cover_blob_id, ''),
-			COALESCE(pm.video_poster_blob_id, '')
+		SELECT p.entry_date, p.id, pm.kind, pm.blob_id, pm.is_cover, COALESCE(pm.audio_cover_blob_id, '')
 		FROM posts p
 		JOIN memberships m ON m.circle_id = p.circle_id AND m.account_id = ?
 		JOIN post_media pm ON pm.post_id = p.id
@@ -370,26 +377,22 @@ func (c *Chronicle) dayMediaFacts(ctx context.Context, circleID, accountID strin
 	}
 	best := make(map[string]pick)
 	for rows.Next() {
-		var date, postID, kind, blob, audioCover, videoPoster string
+		var date, postID, kind, blob, audioCover string
 		var isCover bool
-		if err := rows.Scan(&date, &postID, &kind, &blob, &isCover, &audioCover, &videoPoster); err != nil {
+		if err := rows.Scan(&date, &postID, &kind, &blob, &isCover, &audioCover); err != nil {
 			return nil, nil, err
 		}
 		if kind == string(MediaPhoto) {
 			photos[date]++
 		}
-		shown := blob
-		if kind == string(MediaVideo) && videoPoster != "" {
-			shown = videoPoster
-		}
 		var cand pick
 		switch {
 		case (kind == string(MediaPhoto) || kind == string(MediaVideo)) && isCover:
-			cand = pick{postID, shown, 0}
+			cand = pick{postID, blob, 0}
 		case kind == string(MediaPhoto):
-			cand = pick{postID, shown, 1}
+			cand = pick{postID, blob, 1}
 		case kind == string(MediaVideo):
-			cand = pick{postID, shown, 2}
+			cand = pick{postID, blob, 2}
 		default:
 			cand = pick{postID, audioCover, 3}
 		}

@@ -145,7 +145,9 @@ func (c *Chronicle) GridPage(ctx context.Context, circleID, accountID string, be
 				THEN pm.video_poster_blob_id ELSE pm.blob_id END,
 			p.entry_date, p.created_at, pm.is_cover,
 			CASE WHEN pm.kind = 'video' AND COALESCE(pm.video_poster_blob_id, '') != ''
-				THEN 'photo' ELSE pm.kind END
+				THEN 'photo' ELSE pm.kind END,
+			CASE WHEN pm.kind = 'video' AND COALESCE(pm.video_poster_blob_id, '') != ''
+				THEN pm.blob_id ELSE '' END
 		FROM posts p
 		JOIN post_media pm ON pm.post_id = p.id AND pm.kind IN ('photo', 'video')
 		WHERE p.circle_id = ? AND p.deleted = 0
@@ -163,7 +165,7 @@ func (c *Chronicle) GridPage(ctx context.Context, circleID, accountID string, be
 		var item GridItem
 		var created string
 		var cover int
-		if err := rows.Scan(&item.PostID, &item.BlobID, &item.EntryDate, &created, &cover, &item.Kind); err != nil {
+		if err := rows.Scan(&item.PostID, &item.BlobID, &item.EntryDate, &created, &cover, &item.Kind, &item.SourceBlobID); err != nil {
 			rows.Close()
 			return nil, nil, err
 		}

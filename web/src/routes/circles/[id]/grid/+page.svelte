@@ -19,7 +19,8 @@
 	import { fetchOlderPage, mergePages, refetchOlder } from '$lib/journal/pages';
 	import type { GridItem } from '$lib/journal/types';
 	import { groupByMonth } from '$lib/journal/group';
-	import { getMediaUrl } from '$lib/media/objectUrl';
+	import { coverImageIsBlank } from '$lib/media/audioTags';
+	import { getMediaUrl, loadMedia } from '$lib/media/objectUrl';
 	import { registerRefetch } from '$lib/sync/sync';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
@@ -39,15 +40,29 @@
 	async function resolveUrls(items: GridTile[]) {
 		const next: Record<string, string> = { ...mediaUrls };
 		for (const tile of items) {
-			if (!next[tile.blobId]) {
-				try {
-					next[tile.blobId] = await getMediaUrl(circle.origin, tile.blobId);
-				} catch {
-					/* skip */
+			if (next[tile.blobId]) continue;
+			try {
+				const url = await getMediaUrl(circle.origin, tile.blobId);
+				if (
+					tile.kind !== 'video' &&
+					tile.sourceBlobId &&
+					tile.sourceBlobId !== tile.blobId &&
+					(await coverImageIsBlank(url))
+				) {
+					tile.kind = 'video';
+					tile.blobId = tile.sourceBlobId;
+					if (!next[tile.blobId]) {
+						next[tile.blobId] = (await loadMedia(circle.origin, tile.blobId)).url;
+					}
+				} else {
+					next[tile.blobId] = url;
 				}
+			} catch {
+				/* skip */
 			}
 		}
 		mediaUrls = next;
+		tiles = tiles.slice();
 	}
 
 	async function loadData() {

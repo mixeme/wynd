@@ -35,6 +35,7 @@
 		isVideoMime
 	} from '$lib/journal/present';
 	import type { FeedPost } from '$lib/journal/types';
+	import { coverImageIsBlank } from '$lib/media/audioTags';
 	import { getMediaUrl, loadMedia } from '$lib/media/objectUrl';
 	import { registerRefetch } from '$lib/sync/sync';
 
@@ -132,8 +133,20 @@
 			if (shownBlobId) {
 				try {
 					const media = await loadMedia(circle.origin, shownBlobId);
-					coverUrl = media.url;
-					coverKind = isVideoMime(media.mime) ? 'video' : 'photo';
+					let url = media.url;
+					let kind: 'photo' | 'video' = isVideoMime(media.mime) ? 'video' : 'photo';
+					if (
+						kind === 'photo' &&
+						coverBlobId &&
+						coverBlobId !== shownBlobId &&
+						(await coverImageIsBlank(url))
+					) {
+						const file = await loadMedia(circle.origin, coverBlobId);
+						url = file.url;
+						kind = 'video';
+					}
+					coverUrl = url;
+					coverKind = kind;
 				} catch {
 					coverUrl = '';
 					coverKind = 'photo';

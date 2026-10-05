@@ -33,6 +33,8 @@ export interface GridTile {
 	createdAt: string;
 	photoCount: number;
 	kind: 'photo' | 'video';
+	/** Ролик, если blobId — JPEG его кадра. */
+	sourceBlobId?: string;
 }
 
 /** Одна плитка на запись: обложка и число фото в посте. */
@@ -52,7 +54,8 @@ export function groupGridTiles(items: GridItem[]): GridTile[] {
 			entryDate: cover.entry_date,
 			createdAt: cover.created_at,
 			photoCount: photos.length,
-			kind: cover.kind === 'video' ? 'video' : 'photo'
+			kind: cover.kind === 'video' ? 'video' : 'photo',
+			sourceBlobId: cover.source_blob_id
 		});
 	}
 	tiles.sort((a, b) => b.createdAt.localeCompare(a.createdAt));

@@ -41,7 +41,7 @@ func TestVideoPosterDayCoverAndGrid(t *testing.T) {
 		byDate[day.Day.EntryDate] = day
 	}
 	got := byDate["2026-10-04"]
-	if got.FallbackCoverBlobID != "blob-poster" || got.Day.CoverBlobID != "" {
+	if got.FallbackCoverBlobID != "blob-video" || got.CoverImageBlobID != "blob-poster" || got.Day.CoverBlobID != "" {
 		t.Fatalf("day with poster: %+v", got)
 	}
 	bare := byDate["2026-10-03"]
@@ -76,7 +76,7 @@ func TestVideoPosterDayCoverAndGrid(t *testing.T) {
 	for _, item := range items {
 		seen[item.PostID] = item
 	}
-	if seen[with.ID].BlobID != "blob-poster" || seen[with.ID].Kind != "photo" {
+	if seen[with.ID].BlobID != "blob-poster" || seen[with.ID].Kind != "photo" || seen[with.ID].SourceBlobID != "blob-video" {
 		t.Fatalf("grid poster: %+v", seen[with.ID])
 	}
 	if seen[without.ID].BlobID != "blob-bare" || seen[without.ID].Kind != "video" {

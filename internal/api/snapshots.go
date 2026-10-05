@@ -86,6 +86,9 @@ func (s *Server) handleGrid(w http.ResponseWriter, r *http.Request) {
 			"is_cover":   item.IsCover,
 			"kind":       item.Kind,
 		}
+		if item.SourceBlobID != "" {
+			out[i]["source_blob_id"] = item.SourceBlobID
+		}
 	}
 	resp := map[string]any{"circle_id": circleID, "items": out}
 	setNextBefore(resp, next)
