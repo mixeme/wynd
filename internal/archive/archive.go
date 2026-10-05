@@ -110,6 +110,9 @@ func BuildPersonalArchive(ctx context.Context, w io.Writer, in BuildInput) error
 			if err := addBlob(m.AudioCoverBlobID); err != nil {
 				return err
 			}
+			if err := addBlob(m.VideoPosterBlobID); err != nil {
+				return err
+			}
 		}
 	}
 	for _, blobID := range in.Avatars {

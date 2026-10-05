@@ -167,7 +167,12 @@ func (s *Service) search(ctx context.Context, accountID, circleID, query string,
 			COALESCE(f.entry_date, p.entry_date),
 			CASE WHEN f.kind = 'day' THEN f.body ELSE '' END,
 			snippet(content_fts, 0, '', '', '…', 32),
-			(SELECT pm.blob_id FROM post_media pm
+			(SELECT CASE
+				WHEN pm.kind = 'video' AND COALESCE(pm.video_poster_blob_id, '') != ''
+					THEN pm.video_poster_blob_id
+				ELSE pm.blob_id
+			 END
+			 FROM post_media pm
 			 WHERE pm.post_id = f.post_id AND pm.kind IN ('photo', 'video')
 			 ORDER BY pm.sort_order LIMIT 1),
 			CASE WHEN f.kind IN ('file', 'audio')

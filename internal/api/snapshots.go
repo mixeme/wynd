@@ -84,6 +84,7 @@ func (s *Server) handleGrid(w http.ResponseWriter, r *http.Request) {
 			"entry_date": item.EntryDate,
 			"created_at": item.CreatedAt.UTC().Format(time.RFC3339),
 			"is_cover":   item.IsCover,
+			"kind":       item.Kind,
 		}
 	}
 	resp := map[string]any{"circle_id": circleID, "items": out}
@@ -162,6 +163,9 @@ func (s *Server) handleDays(w http.ResponseWriter, r *http.Request) {
 		row["cover_editable_until"] = editableUntilJSON(d.CoverEditableUntil)
 		if d.FallbackCoverBlobID != "" {
 			row["fallback_cover_blob_id"] = d.FallbackCoverBlobID
+		}
+		if d.CoverImageBlobID != "" {
+			row["cover_image_blob_id"] = d.CoverImageBlobID
 		}
 		if d.PhotoCount > 0 {
 			row["photo_count"] = d.PhotoCount

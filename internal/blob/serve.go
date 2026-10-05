@@ -94,10 +94,10 @@ func (s *Store) CanAccessBlob(ctx context.Context, accountID, blobID string) (bo
 		JOIN posts p ON p.id = pm.post_id AND p.deleted = 0
 		JOIN memberships m ON m.circle_id = p.circle_id AND m.account_id = ?
 		JOIN membership_spans ms ON ms.membership_id = m.id AND ms.can_read = 1
-		WHERE (pm.blob_id = ? OR pm.audio_cover_blob_id = ?)
+		WHERE (pm.blob_id = ? OR pm.audio_cover_blob_id = ? OR pm.video_poster_blob_id = ?)
 		  AND p.created_at >= ms.started_at
 		  AND (ms.ended_at IS NULL OR p.created_at < ms.ended_at)
-	`, accountID, blobID, blobID).Scan(&n)
+	`, accountID, blobID, blobID, blobID).Scan(&n)
 	if err != nil {
 		return false, err
 	}

@@ -64,7 +64,7 @@
 		setReaction
 	} from '$lib/journal/posts';
 	import { compressAudio, compressVideo } from '$lib/media/compress';
-	import { audioMime } from '$lib/media/audioTags';
+	import { audioMime, videoPosterJpeg } from '$lib/media/audioTags';
 	import type { VoiceTake } from '$lib/media/voiceRecorder.svelte';
 	import type { QueueMediaMeta } from '$lib/idb/db';
 	import VideoRecorder from '$ui/overlays/VideoRecorder.svelte';
@@ -481,7 +481,12 @@
 				error = `Видео больше ${formatBytes(maxBytes)} — сервер не примет`;
 				return;
 			}
-			await enqueueRecorded(video, { kind: 'video', is_cover: true });
+			const poster = await videoPosterJpeg(new Blob([video.data], { type: video.type || 'video/mp4' }));
+			await enqueueRecorded(video, {
+				kind: 'video',
+				is_cover: true,
+				video_poster: poster ? { type: 'image/jpeg', data: poster } : undefined
+			});
 		} catch (err) {
 			error = authErrorHint(err);
 		} finally {

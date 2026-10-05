@@ -48,7 +48,7 @@
 		isLargeVideo,
 		isVideoFile
 	} from '$lib/media/compress';
-	import { audioMime, isAudioFile, readAudioTags } from '$lib/media/audioTags';
+	import { audioMime, isAudioFile, readAudioTags, videoPosterJpeg } from '$lib/media/audioTags';
 	import { readExif } from '$lib/media/exif';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 	import { enqueuePost, loadQueuedPost, removeQueueItem, updateQueuedPost } from '$lib/queue/queue';
@@ -284,6 +284,7 @@
 							audio_artist: m.audio_artist,
 							audio_title: m.audio_title,
 							audio_cover_blob_id: m.audio_cover_blob_id,
+							video_poster_blob_id: m.video_poster_blob_id,
 							voice: m.voice,
 							audio_duration_ms: m.audio_duration_ms,
 							audio_peaks: m.audio_peaks
@@ -446,6 +447,7 @@
 			let extra = 0;
 			if (!item.blobId && item.file) extra += 1;
 			if (!item.meta.audio_cover_blob_id && item.meta.audio_cover) extra += 1;
+			if (!item.meta.video_poster_blob_id && item.meta.video_poster) extra += 1;
 			return n + extra;
 		}, 0);
 		const out: MediaSummary[] = [];
@@ -471,6 +473,20 @@
 					pending
 				);
 			}
+			let posterId = item.meta.video_poster_blob_id;
+			if (!posterId && item.meta.video_poster) {
+				uploaded += 1;
+				posterId = await uploadTracked(
+					{
+						name: 'poster.jpg',
+						type: 'image/jpeg',
+						size: item.meta.video_poster.data.byteLength,
+						data: item.meta.video_poster.data
+					},
+					uploaded,
+					pending
+				);
+			}
 			out.push({
 				blob_id: blobId,
 				kind: item.meta.kind as MediaSummary['kind'],
@@ -482,6 +498,7 @@
 				audio_artist: item.meta.audio_artist,
 				audio_title: item.meta.audio_title,
 				audio_cover_blob_id: coverId,
+				video_poster_blob_id: posterId,
 				voice: item.meta.voice,
 				audio_duration_ms: item.meta.audio_duration_ms,
 				audio_peaks: item.meta.audio_peaks
@@ -567,6 +584,10 @@
 						: 'attachment';
 
 				const tags = isAudioFile(file) ? await readAudioTags(file) : undefined;
+				const poster =
+					kind === 'video'
+						? await videoPosterJpeg(new Blob([queueFile.data], { type: queueFile.type || 'video/mp4' }))
+						: undefined;
 				const meta: QueueMediaMeta = {
 					kind,
 					captured_at: exif.captured_at,
@@ -578,7 +599,8 @@
 						!next.some((n) => n.meta.is_cover && (n.meta.kind === 'photo' || n.meta.kind === 'video')),
 					audio_artist: tags?.artist || undefined,
 					audio_title: tags?.title || undefined,
-					audio_cover: tags?.cover ? { type: 'image/jpeg', data: tags.cover } : undefined
+					audio_cover: tags?.cover ? { type: 'image/jpeg', data: tags.cover } : undefined,
+					video_poster: poster ? { type: 'image/jpeg', data: poster } : undefined
 				};
 
 				if (exif.entry_date && entryDate === today()) {
@@ -658,6 +680,7 @@
 			const toUpload = picked.reduce((n, item) => {
 				let extra = item.file ? 1 : 0;
 				if (item.meta.audio_cover && !item.meta.audio_cover_blob_id) extra += 1;
+				if (item.meta.video_poster && !item.meta.video_poster_blob_id) extra += 1;
 				return n + extra;
 			}, 0);
 			const media: MediaSummary[] = [];
@@ -682,6 +705,20 @@
 						toUpload
 					);
 				}
+				let posterId = meta.video_poster_blob_id;
+				if (!posterId && meta.video_poster) {
+					uploaded += 1;
+					posterId = await uploadTracked(
+						{
+							name: 'poster.jpg',
+							type: 'image/jpeg',
+							size: meta.video_poster.data.byteLength,
+							data: meta.video_poster.data
+						},
+						uploaded,
+						toUpload
+					);
+				}
 				media.push({
 					blob_id: blobId,
 					kind: meta.kind as MediaSummary['kind'],
@@ -693,6 +730,7 @@
 					audio_artist: meta.audio_artist,
 					audio_title: meta.audio_title,
 					audio_cover_blob_id: coverId,
+					video_poster_blob_id: posterId,
 					voice: meta.voice,
 					audio_duration_ms: meta.audio_duration_ms,
 					audio_peaks: meta.audio_peaks

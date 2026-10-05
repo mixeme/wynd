@@ -71,6 +71,55 @@ async function coverJpeg(data: Uint8Array, mime: string): Promise<ArrayBuffer | 
 	}
 }
 
+/**
+ * JPEG первого кадра ролика, длинная сторона до 1024 px. Не вышло — ролик
+ * уходит без кадра, и «Дни» со «Сеткой» покажут первый кадр самим видео.
+ */
+export async function videoPosterJpeg(file: Blob): Promise<ArrayBuffer | undefined> {
+	if (typeof document === 'undefined') return;
+	const url = URL.createObjectURL(file);
+	const video = document.createElement('video');
+	video.muted = true;
+	video.playsInline = true;
+	video.preload = 'auto';
+	video.src = url;
+	try {
+		await new Promise<void>((resolve, reject) => {
+			video.onloadeddata = () => resolve();
+			video.onerror = () => reject(new Error('video'));
+		});
+		if (video.videoWidth < 1 || video.videoHeight < 1) return;
+		const target = Math.min(0.1, (Number.isFinite(video.duration) ? video.duration : 0) / 2);
+		if (target > 0) {
+			await new Promise<void>((resolve) => {
+				video.onseeked = () => resolve();
+				try {
+					video.currentTime = target;
+				} catch {
+					resolve();
+				}
+			});
+		}
+		const scale = Math.min(1, COVER_EDGE / Math.max(video.videoWidth, video.videoHeight));
+		const width = Math.max(1, Math.round(video.videoWidth * scale));
+		const height = Math.max(1, Math.round(video.videoHeight * scale));
+		const canvas = document.createElement('canvas');
+		canvas.width = width;
+		canvas.height = height;
+		const ctx = canvas.getContext('2d');
+		if (!ctx) return;
+		ctx.drawImage(video, 0, 0, width, height);
+		const jpeg = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+		if (!jpeg) return;
+		return jpeg.arrayBuffer();
+	} catch {
+		return;
+	} finally {
+		video.src = '';
+		URL.revokeObjectURL(url);
+	}
+}
+
 /** Теги читает отправитель. Ошибка разбора не мешает приложить файл как есть. */
 export async function readAudioTags(file: File): Promise<AudioTags> {
 	const empty: AudioTags = { artist: '', title: '' };

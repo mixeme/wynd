@@ -173,13 +173,16 @@ func (c *Chronicle) FeedSnapshot(ctx context.Context, circleID, accountID string
 	return posts, err
 }
 
-// GridItem is a photo tile for the grid view.
+// GridItem is a photo or video tile for the grid view.
+// Kind video значит, что BlobID — сам ролик (кадра нет). Иначе BlobID — картинка:
+// фотография или JPEG кадра.
 type GridItem struct {
 	PostID    string
 	BlobID    string
 	EntryDate string
 	CreatedAt time.Time
 	IsCover   bool
+	Kind      string
 }
 
 // GridSnapshot returns visible photo media ordered by post created_at descending.
@@ -215,6 +218,8 @@ type DaySummary struct {
 	// Запасная обложка, если обложку дня не выбирали, и число фото дня (C17).
 	FallbackCoverBlobID string
 	PhotoCount          int
+	// JPEG кадра, если выбранная обложка дня — ролик с кадром.
+	CoverImageBlobID string
 }
 
 // DaysSnapshot returns days with at least one visible post, ordered by entry_date descending.
@@ -239,6 +244,10 @@ func (c *Chronicle) DaysSnapshot(ctx context.Context, circleID, accountID string
 		return nil, err
 	}
 	fallbackCovers, photoCounts, err := c.dayMediaFacts(ctx, circleID, accountID)
+	if err != nil {
+		return nil, err
+	}
+	posters, err := c.videoPosterByBlob(ctx, circleID)
 	if err != nil {
 		return nil, err
 	}
@@ -286,8 +295,10 @@ func (c *Chronicle) DaysSnapshot(ctx context.Context, circleID, accountID string
 		if coverPost.Valid {
 			d.CoverPostID = coverPost.String
 		}
+		image := ""
 		if coverBlob.Valid {
 			d.CoverBlobID = coverBlob.String
+			image = posters[coverBlob.String]
 		} else {
 			coverEditable = nil
 		}
@@ -297,6 +308,7 @@ func (c *Chronicle) DaysSnapshot(ctx context.Context, circleID, accountID string
 			CoverEditableUntil:  coverEditable,
 			FallbackCoverBlobID: fallbackCovers[d.EntryDate],
 			PhotoCount:          photoCounts[d.EntryDate],
+			CoverImageBlobID:    image,
 		})
 	}
 	return out, rows.Err()
@@ -334,7 +346,8 @@ func (c *Chronicle) visiblePostCountsByDay(ctx context.Context, circleID, accoun
 // иначе первое фото, иначе первое видео, иначе обложка звука.
 func (c *Chronicle) dayMediaFacts(ctx context.Context, circleID, accountID string) (covers map[string]string, photos map[string]int, err error) {
 	rows, err := c.db.QueryContext(ctx, fmt.Sprintf(`
-		SELECT p.entry_date, p.id, pm.kind, pm.blob_id, pm.is_cover, COALESCE(pm.audio_cover_blob_id, '')
+		SELECT p.entry_date, p.id, pm.kind, pm.blob_id, pm.is_cover, COALESCE(pm.audio_cover_blob_id, ''),
+			COALESCE(pm.video_poster_blob_id, '')
 		FROM posts p
 		JOIN memberships m ON m.circle_id = p.circle_id AND m.account_id = ?
 		JOIN post_media pm ON pm.post_id = p.id
@@ -357,22 +370,26 @@ func (c *Chronicle) dayMediaFacts(ctx context.Context, circleID, accountID strin
 	}
 	best := make(map[string]pick)
 	for rows.Next() {
-		var date, postID, kind, blob, audioCover string
+		var date, postID, kind, blob, audioCover, videoPoster string
 		var isCover bool
-		if err := rows.Scan(&date, &postID, &kind, &blob, &isCover, &audioCover); err != nil {
+		if err := rows.Scan(&date, &postID, &kind, &blob, &isCover, &audioCover, &videoPoster); err != nil {
 			return nil, nil, err
 		}
 		if kind == string(MediaPhoto) {
 			photos[date]++
 		}
+		shown := blob
+		if kind == string(MediaVideo) && videoPoster != "" {
+			shown = videoPoster
+		}
 		var cand pick
 		switch {
 		case (kind == string(MediaPhoto) || kind == string(MediaVideo)) && isCover:
-			cand = pick{postID, blob, 0}
+			cand = pick{postID, shown, 0}
 		case kind == string(MediaPhoto):
-			cand = pick{postID, blob, 1}
+			cand = pick{postID, shown, 1}
 		case kind == string(MediaVideo):
-			cand = pick{postID, blob, 2}
+			cand = pick{postID, shown, 2}
 		default:
 			cand = pick{postID, audioCover, 3}
 		}
@@ -385,6 +402,30 @@ func (c *Chronicle) dayMediaFacts(ctx context.Context, circleID, accountID strin
 		covers[date] = b.blob
 	}
 	return covers, photos, rows.Err()
+}
+
+// videoPosterByBlob — JPEG кадра по блобу ролика в круге.
+func (c *Chronicle) videoPosterByBlob(ctx context.Context, circleID string) (map[string]string, error) {
+	rows, err := c.db.QueryContext(ctx, `
+		SELECT pm.blob_id, pm.video_poster_blob_id
+		FROM post_media pm
+		JOIN posts p ON p.id = pm.post_id
+		WHERE p.circle_id = ? AND p.deleted = 0 AND pm.kind = 'video'
+		  AND COALESCE(pm.video_poster_blob_id, '') != ''
+	`, circleID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make(map[string]string)
+	for rows.Next() {
+		var blob, poster string
+		if err := rows.Scan(&blob, &poster); err != nil {
+			return nil, err
+		}
+		out[blob] = poster
+	}
+	return out, rows.Err()
 }
 
 // dayEditableUntils отдаёт сроки правки названия и обложки по дням круга —

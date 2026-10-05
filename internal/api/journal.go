@@ -20,15 +20,16 @@ type createPostBody struct {
 }
 
 type mediaBody struct {
-	BlobID           string   `json:"blob_id"`
-	Kind             string   `json:"kind"`
-	CapturedAt       *string  `json:"captured_at"`
-	GeoLat           *float64 `json:"geo_lat"`
-	GeoLng           *float64 `json:"geo_lng"`
-	IsCover          bool     `json:"is_cover"`
-	AudioArtist      string   `json:"audio_artist"`
-	AudioTitle       string   `json:"audio_title"`
-	AudioCoverBlobID string   `json:"audio_cover_blob_id"`
+	BlobID            string   `json:"blob_id"`
+	Kind              string   `json:"kind"`
+	CapturedAt        *string  `json:"captured_at"`
+	GeoLat            *float64 `json:"geo_lat"`
+	GeoLng            *float64 `json:"geo_lng"`
+	IsCover           bool     `json:"is_cover"`
+	AudioArtist       string   `json:"audio_artist"`
+	AudioTitle        string   `json:"audio_title"`
+	AudioCoverBlobID  string   `json:"audio_cover_blob_id"`
+	VideoPosterBlobID string   `json:"video_poster_blob_id"`
 	// Voice, AudioDurationMs, AudioPeaks — голосовое (C14).
 	Voice           bool  `json:"voice"`
 	AudioDurationMs int64 `json:"audio_duration_ms"`
@@ -99,6 +100,10 @@ func (s *Server) handleCreatePost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if err := s.validateAudioCovers(r.Context(), media); err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		if err := s.validateVideoPosters(r.Context(), media); err != nil {
 			writeDomainError(w, err)
 			return
 		}
@@ -404,6 +409,26 @@ func (s *Server) validateAudioCovers(ctx context.Context, items []chronicle.Medi
 	return nil
 }
 
+func (s *Server) validateVideoPosters(ctx context.Context, items []chronicle.MediaInput) error {
+	for _, item := range items {
+		if item.VideoPosterBlobID == "" {
+			continue
+		}
+		b, err := s.Blobs.LoadBlob(ctx, item.VideoPosterBlobID)
+		if err != nil {
+			return err
+		}
+		mime := strings.ToLower(strings.TrimSpace(b.MimeType))
+		if i := strings.Index(mime, ";"); i >= 0 {
+			mime = strings.TrimSpace(mime[:i])
+		}
+		if mime != "image/jpeg" && mime != "image/jpg" {
+			return chronicle.ErrInvalid
+		}
+	}
+	return nil
+}
+
 func parseMediaInput(items []mediaBody) ([]chronicle.MediaInput, error) {
 	if len(items) > chronicle.MaxPostMedia {
 		return nil, chronicle.ErrInvalid
@@ -426,11 +451,11 @@ func parseMediaInput(items []mediaBody) ([]chronicle.MediaInput, error) {
 			BlobID: m.BlobID, Kind: kind, CapturedAt: captured,
 			GeoLat: m.GeoLat, GeoLng: m.GeoLng, IsCover: m.IsCover,
 			AudioArtist: m.AudioArtist, AudioTitle: m.AudioTitle,
-			AudioCoverBlobID: m.AudioCoverBlobID,
-			Voice:            m.Voice,
-			AudioDurationMs:  m.AudioDurationMs,
-			AudioPeaks:       m.AudioPeaks,
-			Crop:             m.Crop,
+			AudioCoverBlobID: m.AudioCoverBlobID, VideoPosterBlobID: m.VideoPosterBlobID,
+			Voice:           m.Voice,
+			AudioDurationMs: m.AudioDurationMs,
+			AudioPeaks:      m.AudioPeaks,
+			Crop:            m.Crop,
 		}
 	}
 	if err := chronicle.ValidateMediaKinds(out); err != nil {
@@ -522,6 +547,9 @@ func (s *Server) editPostReplaceMedia(ctx context.Context, circleID, accountID, 
 	// Тип обложки смотрим после проверки владения: чужой блоб не должен
 	// отличаться ответом от несуществующего.
 	if err := s.validateAudioCovers(ctx, media); err != nil {
+		return err
+	}
+	if err := s.validateVideoPosters(ctx, media); err != nil {
 		return err
 	}
 

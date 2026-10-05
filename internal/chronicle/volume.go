@@ -70,6 +70,9 @@ func (c *Chronicle) mediaVolumeChart(ctx context.Context, circleID string, now t
 			UNION
 			SELECT post_id, audio_cover_blob_id FROM post_media
 			 WHERE audio_cover_blob_id IS NOT NULL AND audio_cover_blob_id != ''
+			UNION
+			SELECT post_id, video_poster_blob_id FROM post_media
+			 WHERE video_poster_blob_id IS NOT NULL AND video_poster_blob_id != ''
 		) pm ON pm.post_id = p.id
 		JOIN blobs b ON b.id = pm.blob_id AND b.status = 'complete'
 		WHERE p.circle_id = ? AND p.deleted = 0
@@ -106,6 +109,9 @@ func (c *Chronicle) MedianPostBytes(ctx context.Context, circleID string) (int64
 			UNION
 			SELECT post_id, audio_cover_blob_id FROM post_media
 			 WHERE audio_cover_blob_id IS NOT NULL AND audio_cover_blob_id != ''
+			UNION
+			SELECT post_id, video_poster_blob_id FROM post_media
+			 WHERE video_poster_blob_id IS NOT NULL AND video_poster_blob_id != ''
 		) pm ON pm.post_id = p.id
 		LEFT JOIN blobs b ON b.id = pm.blob_id AND b.status = 'complete'
 		WHERE p.circle_id = ? AND p.deleted = 0
@@ -185,6 +191,9 @@ func (c *Chronicle) FreedBytesBeforeCutoff(ctx context.Context, circleID, cutoff
 			UNION
 			SELECT post_id, audio_cover_blob_id FROM post_media
 			 WHERE audio_cover_blob_id IS NOT NULL AND audio_cover_blob_id != ''
+			UNION
+			SELECT post_id, video_poster_blob_id FROM post_media
+			 WHERE video_poster_blob_id IS NOT NULL AND video_poster_blob_id != ''
 		) pm ON pm.post_id = p.id
 		JOIN blobs b ON b.id = pm.blob_id AND b.status = 'complete'
 		WHERE p.circle_id = ? AND p.deleted = 0 AND p.created_at < ?

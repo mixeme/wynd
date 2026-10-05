@@ -14,9 +14,10 @@
 	import { formatDayCardSubtitle, formatEntryDate, pluralPosts } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadDays } from '$lib/journal/days';
+	import { isVideoMime } from '$lib/journal/present';
 	import { groupByMonth } from '$lib/journal/group';
 	import type { DaySummary } from '$lib/journal/types';
-	import { getMediaUrl } from '$lib/media/objectUrl';
+	import { loadMedia } from '$lib/media/objectUrl';
 	import { markDayPromptSeen } from '$lib/idb/db';
 	import { registerRefetch } from '$lib/sync/sync';
 
@@ -35,25 +36,29 @@
 	let loading = $state(true);
 	let error = $state('');
 	let coverUrls = $state<Record<string, string>>({});
+	let coverVideo = $state<Record<string, boolean>>({});
 
 	async function resolveCovers(items: DayView[]) {
 		const next: Record<string, string> = { ...coverUrls };
+		const video: Record<string, boolean> = { ...coverVideo };
 		for (const day of items) {
 			if (!day.coverBlobId || next[day.coverBlobId]) continue;
 			try {
-				next[day.coverBlobId] = await getMediaUrl(circle.origin, day.coverBlobId);
+				const media = await loadMedia(circle.origin, day.coverBlobId);
+				next[day.coverBlobId] = media.url;
+				video[day.coverBlobId] = isVideoMime(media.mime);
 			} catch {
 				/* skip */
 			}
 		}
 		coverUrls = next;
+		coverVideo = video;
 	}
 
-	// Запасную обложку и число фото считает сервер по всем записям дня (C17):
-	// снимок «Сетки» ограничен по числу записей и знает только фото.
+	// Запасную обложку и число фото считает сервер по всем записям дня (C17).
 	function buildDayViews(summaries: DaySummary[]): DayView[] {
 		return summaries.map((day) => {
-			const coverBlobId = day.cover_blob_id ?? day.fallback_cover_blob_id;
+			const coverBlobId = day.cover_image_blob_id ?? day.cover_blob_id ?? day.fallback_cover_blob_id;
 			const photoCount = day.photo_count;
 			return {
 				entryDate: day.entry_date,
@@ -149,6 +154,7 @@
 						title={day.title}
 						subtitle={day.subtitle}
 						coverUrl={day.coverBlobId ? coverUrls[day.coverBlobId] : undefined}
+						kind={day.coverBlobId && coverVideo[day.coverBlobId] ? 'video' : 'photo'}
 						photoCount={day.photoCount}
 						onclick={() => openDay(day.entryDate)}
 					/>

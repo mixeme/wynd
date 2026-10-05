@@ -181,7 +181,7 @@ async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 		const mediaMeta = [...(postPayload.media_meta ?? [])];
 		const media = [];
 		for (let i = 0; i < blobIds.length; i++) {
-			const meta: QueueMediaMeta = mediaMeta[i] ?? { kind: 'photo' };
+			let meta: QueueMediaMeta = mediaMeta[i] ?? { kind: 'photo' };
 			let coverId = meta.audio_cover_blob_id;
 			if (!coverId && meta.audio_cover) {
 				coverId = await uploadFile(origin, {
@@ -192,6 +192,22 @@ async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 				});
 				const saved: QueueMediaMeta = { ...meta, audio_cover_blob_id: coverId };
 				delete saved.audio_cover;
+				meta = saved;
+				mediaMeta[i] = saved;
+				const nextPayload: PostQueuePayload = { ...postPayload, media_meta: mediaMeta };
+				await putQueueItem(item.id, { ...item, payload: nextPayload, state: 'uploading', uploads });
+			}
+			let posterId = meta.video_poster_blob_id;
+			if (!posterId && meta.video_poster) {
+				posterId = await uploadFile(origin, {
+					name: 'poster.jpg',
+					type: 'image/jpeg',
+					size: meta.video_poster.data.byteLength,
+					data: meta.video_poster.data
+				});
+				const saved: QueueMediaMeta = { ...meta, video_poster_blob_id: posterId };
+				delete saved.video_poster;
+				meta = saved;
 				mediaMeta[i] = saved;
 				const nextPayload: PostQueuePayload = { ...postPayload, media_meta: mediaMeta };
 				await putQueueItem(item.id, { ...item, payload: nextPayload, state: 'uploading', uploads });
@@ -206,6 +222,7 @@ async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 				audio_artist: meta.audio_artist,
 				audio_title: meta.audio_title,
 				audio_cover_blob_id: coverId,
+				video_poster_blob_id: posterId,
 				voice: meta.voice,
 				audio_duration_ms: meta.audio_duration_ms,
 				audio_peaks: meta.audio_peaks,

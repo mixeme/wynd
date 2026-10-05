@@ -11,6 +11,8 @@ export interface MediaSummary {
 	audio_artist?: string;
 	audio_title?: string;
 	audio_cover_blob_id?: string;
+	/** JPEG первого кадра ролика. */
+	video_poster_blob_id?: string;
 	/** Голосовое, записанное в приложении (C14): волна 0–100 и длительность. */
 	voice?: boolean;
 	audio_duration_ms?: number;
@@ -133,6 +135,8 @@ export interface DaySummary {
 	cover_blob_id?: string;
 	/** Обложку дня не выбирали: медиа первой записи дня с фото, видео или звуком (C17). */
 	fallback_cover_blob_id?: string;
+	/** JPEG кадра, если выбранная обложка дня — ролик. */
+	cover_image_blob_id?: string;
 	/** Фото за день — счётчик на карточке. */
 	photo_count?: number;
 	title_editable_until?: string | null;
@@ -156,6 +160,8 @@ export interface GridItem {
 	entry_date: string;
 	created_at: string;
 	is_cover: boolean;
+	/** video — в плитке сам ролик; иначе картинка (фото или кадр). */
+	kind?: 'photo' | 'video';
 }
 
 export interface GridSnapshot {

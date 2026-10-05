@@ -86,6 +86,14 @@ export function attachmentLabel(att: MediaSummary): string {
 
 const AUDIO_EXT = new Set(['m4a', 'mp3', 'aac', 'ogg', 'opus', 'wav', 'flac']);
 
+/** video/mp4 и video/mp4;codecs=… — ролик, не картинка. */
+export function isVideoMime(mime?: string): boolean {
+	const raw = (mime ?? '').toLowerCase();
+	const semi = raw.indexOf(';');
+	const m = (semi >= 0 ? raw.slice(0, semi) : raw).trim();
+	return m.startsWith('video/');
+}
+
 /** Звук — audio/*, а при пустом типе или octet-stream ещё и по расширению. */
 export function isAudioMedia(mime?: string, filename?: string): boolean {
 	const raw = (mime ?? '').toLowerCase();

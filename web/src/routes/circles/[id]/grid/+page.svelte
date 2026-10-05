@@ -171,7 +171,7 @@
 	{:else}
 		{#if tiles.length}
 			<Hint class="mt-12">
-				{pluralPosts(tiles.length)} с фотографиями из {pluralPosts(totalPosts)}
+				{pluralPosts(tiles.length)} с фото и видео из {pluralPosts(totalPosts)}
 			</Hint>
 		{/if}
 		{#each monthGroups as group (group.month)}
@@ -181,6 +181,7 @@
 					<MediaTile
 						variant="grid"
 						src={mediaUrls[tile.blobId]}
+						kind={tile.kind}
 						count={tile.photoCount}
 						onclick={() => openPost(tile.postId)}
 					/>
@@ -188,10 +189,10 @@
 			</PhotoGrid>
 		{/each}
 		{#if loadingOlder}
-			<Hint class="gutter-24" centered>Загружаем фото постарше…</Hint>
+			<Hint class="gutter-24" centered>Загружаем записи постарше…</Hint>
 		{/if}
 		{#if !tiles.length}
-			<Hint class="gutter-24">Записей с фотографиями пока нет</Hint>
+			<Hint class="gutter-24">Записей с фото и видео пока нет</Hint>
 		{/if}
 	{/if}
 	</div>

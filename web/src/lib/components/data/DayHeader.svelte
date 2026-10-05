@@ -4,6 +4,7 @@
 	let {
 		cover,
 		coverUrl,
+		kind = 'photo',
 		title,
 		subtitle,
 		oncover,
@@ -13,6 +14,8 @@
 	}: {
 		cover?: string;
 		coverUrl?: string;
+		/** video — файл ролика без JPEG кадра. */
+		kind?: 'photo' | 'video';
 		title?: string;
 		subtitle?: string;
 		oncover?: () => void;
@@ -20,6 +23,11 @@
 		class?: string;
 		style?: string;
 	} = $props();
+
+	function showFirstFrame(e: Event) {
+		const video = e.currentTarget as HTMLVideoElement;
+		if (video.currentTime === 0) video.currentTime = 0.001;
+	}
 
 	const picClass = $derived([cover, className].filter(Boolean).join(' '));
 </script>
@@ -37,7 +45,11 @@
 		onclick={oncover}
 	>
 		{#if coverUrl}
-			<img src={coverUrl} alt="" />
+			{#if kind === 'video'}
+				<video src={coverUrl} muted playsinline preload="metadata" onloadedmetadata={showFirstFrame}></video>
+			{:else}
+				<img src={coverUrl} alt="" />
+			{/if}
 		{/if}
 		<span class="tagr">обложка дня</span>
 		<span class="cnt">сменить</span>
@@ -52,7 +64,11 @@
 		style:border-bottom="1px solid var(--line)"
 	>
 		{#if coverUrl}
-			<img src={coverUrl} alt="" />
+			{#if kind === 'video'}
+				<video src={coverUrl} muted playsinline preload="metadata" onloadedmetadata={showFirstFrame}></video>
+			{:else}
+				<img src={coverUrl} alt="" />
+			{/if}
 		{/if}
 		<span class="tagr">обложка дня</span>
 	</div>
@@ -66,7 +82,8 @@
 {/if}
 
 <style>
-	img {
+	img,
+	video {
 		width: 100%;
 		height: 100%;
 		object-fit: cover;

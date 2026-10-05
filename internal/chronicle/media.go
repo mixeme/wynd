@@ -32,6 +32,8 @@ type MediaInput struct {
 	AudioArtist      string
 	AudioTitle       string
 	AudioCoverBlobID string
+	// VideoPosterBlobID — JPEG первого кадра ролика. Только у kind=video.
+	VideoPosterBlobID string
 	// Voice — голосовое, записанное в приложении (C14): лента рисует его
 	// волной AudioPeaks (до 64 уровней 0–100) и длительностью.
 	Voice           bool
@@ -63,25 +65,26 @@ func validCoverCrop(c *CoverCrop) bool {
 
 // PostMedia is a row linking a blob to a post.
 type PostMedia struct {
-	ID               string
-	PostID           string
-	BlobID           string
-	Kind             MediaKind
-	SortOrder        int
-	CapturedAt       *time.Time
-	GeoLat           *float64
-	GeoLng           *float64
-	IsCover          bool
-	OriginalFilename string
-	SizeBytes        int64
-	MimeType         string
-	AudioArtist      string
-	AudioTitle       string
-	AudioCoverBlobID string
-	Voice            bool
-	AudioDurationMs  int64
-	AudioPeaks       []int
-	Crop             *CoverCrop
+	ID                string
+	PostID            string
+	BlobID            string
+	Kind              MediaKind
+	SortOrder         int
+	CapturedAt        *time.Time
+	GeoLat            *float64
+	GeoLng            *float64
+	IsCover           bool
+	OriginalFilename  string
+	SizeBytes         int64
+	MimeType          string
+	AudioArtist       string
+	AudioTitle        string
+	AudioCoverBlobID  string
+	VideoPosterBlobID string
+	Voice             bool
+	AudioDurationMs   int64
+	AudioPeaks        []int
+	Crop              *CoverCrop
 }
 
 // AttachMedia links uploaded blobs to a post. Caller must validate blob ownership.
@@ -119,6 +122,9 @@ func (c *Chronicle) attachMedia(ctx context.Context, q dbtx, postID string, item
 		if err := normalizeAudioTags(&item); err != nil {
 			return err
 		}
+		if err := normalizeVideoPoster(&item); err != nil {
+			return err
+		}
 		if item.Crop != nil && (item.Kind == MediaAttachment || !validCoverCrop(item.Crop)) {
 			return ErrInvalid
 		}
@@ -139,14 +145,14 @@ func (c *Chronicle) attachMedia(ctx context.Context, q dbtx, postID string, item
 		_, err = q.ExecContext(ctx, `
 			INSERT INTO post_media (id, post_id, blob_id, kind, sort_order, captured_at, geo_lat, geo_lng, is_cover,
 				audio_artist, audio_title, audio_cover_blob_id, crop_x, crop_y, crop_w, crop_h,
-				voice, audio_duration_ms, audio_peaks)
+				voice, audio_duration_ms, audio_peaks, video_poster_blob_id)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?, ?,
-				?, NULLIF(?, 0), NULLIF(?, ''))
+				?, NULLIF(?, 0), NULLIF(?, ''), NULLIF(?, ''))
 		`, id, postID, item.BlobID, string(item.Kind), i,
 			formatCaptured(item.CapturedAt), nullableFloat(item.GeoLat), nullableFloat(item.GeoLng),
 			boolToInt(item.IsCover), item.AudioArtist, item.AudioTitle, item.AudioCoverBlobID,
 			cropArg(item.Crop, 0), cropArg(item.Crop, 1), cropArg(item.Crop, 2), cropArg(item.Crop, 3),
-			boolToInt(item.Voice), item.AudioDurationMs, joinPeaks(item.AudioPeaks))
+			boolToInt(item.Voice), item.AudioDurationMs, joinPeaks(item.AudioPeaks), item.VideoPosterBlobID)
 		if err != nil {
 			return err
 		}
@@ -187,6 +193,7 @@ func MediaBlobIDs(items []MediaInput) []string {
 	for _, item := range items {
 		add(item.BlobID)
 		add(item.AudioCoverBlobID)
+		add(item.VideoPosterBlobID)
 	}
 	return out
 }
@@ -259,16 +266,30 @@ func normalizeAudioTags(item *MediaInput) error {
 	return checkLen(item.AudioTitle, MaxAudioTagChars)
 }
 
+func normalizeVideoPoster(item *MediaInput) error {
+	item.VideoPosterBlobID = strings.TrimSpace(item.VideoPosterBlobID)
+	if item.VideoPosterBlobID == "" {
+		return nil
+	}
+	if item.Kind != MediaVideo || item.VideoPosterBlobID == item.BlobID {
+		return ErrInvalid
+	}
+	return nil
+}
+
 const postMediaBlobIDsSQL = `
 	SELECT blob_id FROM post_media WHERE post_id = ? AND blob_id != ''
 	UNION
 	SELECT audio_cover_blob_id FROM post_media
 	 WHERE post_id = ? AND audio_cover_blob_id IS NOT NULL AND audio_cover_blob_id != ''
+	UNION
+	SELECT video_poster_blob_id FROM post_media
+	 WHERE post_id = ? AND video_poster_blob_id IS NOT NULL AND video_poster_blob_id != ''
 `
 
 // PostMediaBlobIDs returns blob ids attached to a post, including audio covers.
 func (c *Chronicle) PostMediaBlobIDs(ctx context.Context, postID string) ([]string, error) {
-	rows, err := c.db.QueryContext(ctx, postMediaBlobIDsSQL, postID, postID)
+	rows, err := c.db.QueryContext(ctx, postMediaBlobIDsSQL, postID, postID, postID)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +317,7 @@ func (c *Chronicle) deletePostMediaInTx(ctx context.Context, tx *sql.Tx, postID 
 }
 
 func (c *Chronicle) postMediaBlobIDsInTx(ctx context.Context, tx *sql.Tx, postID string) ([]string, error) {
-	rows, err := tx.QueryContext(ctx, postMediaBlobIDsSQL, postID, postID)
+	rows, err := tx.QueryContext(ctx, postMediaBlobIDsSQL, postID, postID, postID)
 	if err != nil {
 		return nil, err
 	}
@@ -376,7 +397,8 @@ const postMediaSelect = `
 		COALESCE(b.original_filename, ''), b.size_bytes, COALESCE(b.mime_type, ''),
 		COALESCE(pm.audio_artist, ''), COALESCE(pm.audio_title, ''), COALESCE(pm.audio_cover_blob_id, ''),
 		pm.crop_x, pm.crop_y, pm.crop_w, pm.crop_h,
-		pm.voice, COALESCE(pm.audio_duration_ms, 0), COALESCE(pm.audio_peaks, '')
+		pm.voice, COALESCE(pm.audio_duration_ms, 0), COALESCE(pm.audio_peaks, ''),
+		COALESCE(pm.video_poster_blob_id, '')
 `
 
 func scanPostMedia(rows *sql.Rows) (PostMedia, error) {
@@ -390,7 +412,7 @@ func scanPostMedia(rows *sql.Rows) (PostMedia, error) {
 	if err := rows.Scan(&m.ID, &m.PostID, &m.BlobID, &m.Kind, &m.SortOrder,
 		&captured, &lat, &lng, &cover, &m.OriginalFilename, &m.SizeBytes, &m.MimeType,
 		&m.AudioArtist, &m.AudioTitle, &m.AudioCoverBlobID, &cx, &cy, &cw, &ch,
-		&voice, &m.AudioDurationMs, &peaks); err != nil {
+		&voice, &m.AudioDurationMs, &peaks, &m.VideoPosterBlobID); err != nil {
 		return PostMedia{}, err
 	}
 	m.Voice = voice != 0
@@ -438,22 +460,23 @@ func (c *Chronicle) ListPostMedia(ctx context.Context, postID string) ([]PostMed
 
 // MediaSummary is a compact media descriptor for JSON.
 type MediaSummary struct {
-	BlobID           string     `json:"blob_id"`
-	Kind             string     `json:"kind"`
-	CapturedAt       *string    `json:"captured_at,omitempty"`
-	GeoLat           *float64   `json:"geo_lat,omitempty"`
-	GeoLng           *float64   `json:"geo_lng,omitempty"`
-	IsCover          bool       `json:"is_cover"`
-	Filename         *string    `json:"filename,omitempty"`
-	SizeBytes        *int64     `json:"size_bytes,omitempty"`
-	MimeType         string     `json:"mime_type,omitempty"`
-	AudioArtist      string     `json:"audio_artist,omitempty"`
-	AudioTitle       string     `json:"audio_title,omitempty"`
-	AudioCoverBlobID string     `json:"audio_cover_blob_id,omitempty"`
-	Voice            bool       `json:"voice,omitempty"`
-	AudioDurationMs  int64      `json:"audio_duration_ms,omitempty"`
-	AudioPeaks       []int      `json:"audio_peaks,omitempty"`
-	Crop             *CoverCrop `json:"crop,omitempty"`
+	BlobID            string     `json:"blob_id"`
+	Kind              string     `json:"kind"`
+	CapturedAt        *string    `json:"captured_at,omitempty"`
+	GeoLat            *float64   `json:"geo_lat,omitempty"`
+	GeoLng            *float64   `json:"geo_lng,omitempty"`
+	IsCover           bool       `json:"is_cover"`
+	Filename          *string    `json:"filename,omitempty"`
+	SizeBytes         *int64     `json:"size_bytes,omitempty"`
+	MimeType          string     `json:"mime_type,omitempty"`
+	AudioArtist       string     `json:"audio_artist,omitempty"`
+	AudioTitle        string     `json:"audio_title,omitempty"`
+	AudioCoverBlobID  string     `json:"audio_cover_blob_id,omitempty"`
+	VideoPosterBlobID string     `json:"video_poster_blob_id,omitempty"`
+	Voice             bool       `json:"voice,omitempty"`
+	AudioDurationMs   int64      `json:"audio_duration_ms,omitempty"`
+	AudioPeaks        []int      `json:"audio_peaks,omitempty"`
+	Crop              *CoverCrop `json:"crop,omitempty"`
 }
 
 // SummarizeMedia converts PostMedia rows for API output.
@@ -480,6 +503,7 @@ func SummarizeMedia(items []PostMedia) []MediaSummary {
 		s.AudioArtist = m.AudioArtist
 		s.AudioTitle = m.AudioTitle
 		s.AudioCoverBlobID = m.AudioCoverBlobID
+		s.VideoPosterBlobID = m.VideoPosterBlobID
 		s.Voice = m.Voice
 		s.AudioDurationMs = m.AudioDurationMs
 		s.AudioPeaks = m.AudioPeaks

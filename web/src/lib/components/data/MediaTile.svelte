@@ -23,6 +23,7 @@
 	type Grid = {
 		variant: 'grid';
 		src?: string;
+		kind?: MediaKind;
 		count?: number;
 		onclick: () => void;
 	};
@@ -134,7 +135,11 @@
 {:else if props.variant === 'grid'}
 	<button type="button" class="pic" onclick={() => props.onclick()}>
 		{#if props.src}
-			<img src={props.src} alt="" />
+			{#if props.kind === 'video'}
+				<video src={props.src} muted playsinline preload="metadata" onloadedmetadata={showFirstFrame}></video>
+			{:else}
+				<img src={props.src} alt="" />
+			{/if}
 		{/if}
 		{#if props.count != null && props.count > 1}
 			<span class="cnt">{props.count}</span>

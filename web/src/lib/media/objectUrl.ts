@@ -65,6 +65,7 @@ function scheduleTrim(): void {
 interface CachedUrl {
 	url: string;
 	size: number;
+	mime: string;
 }
 
 // Map хранит порядок вставки: первый ключ — давнее всех запрошенный.
@@ -87,24 +88,25 @@ function forget(key: string): void {
 	cachedBytes -= entry.size;
 }
 
-function remember(key: string, blob: Blob): string {
+function remember(key: string, blob: Blob): { url: string; mime: string } {
 	forget(key);
 	const url = URL.createObjectURL(blob);
-	urlCache.set(key, { url, size: blob.size });
+	const mime = blob.type || 'application/octet-stream';
+	urlCache.set(key, { url, size: blob.size, mime });
 	cachedBytes += blob.size;
 	for (const oldKey of urlCache.keys()) {
 		if (cachedBytes <= urlBudget || oldKey === key) break;
 		forget(oldKey);
 	}
-	return url;
+	return { url, mime };
 }
 
-function touch(key: string): string | undefined {
+function touch(key: string): { url: string; mime: string } | undefined {
 	const entry = urlCache.get(key);
 	if (!entry) return undefined;
 	urlCache.delete(key);
 	urlCache.set(key, entry);
-	return entry.url;
+	return { url: entry.url, mime: entry.mime };
 }
 
 export interface MediaLoadOptions {
@@ -134,11 +136,12 @@ async function readWithProgress(
 	return new Blob(parts);
 }
 
-export async function getMediaUrl(
+/** Адрес и тип файла. Тип нужен, чтобы ролик без кадра не рисовать тегом картинки. */
+export async function loadMedia(
 	origin: string,
 	blobId: string,
 	options: MediaLoadOptions = {}
-): Promise<string> {
+): Promise<{ url: string; mime: string }> {
 	const key = mediaKey(origin, blobId);
 	const cached = touch(key);
 	if (cached) return cached;
@@ -154,10 +157,18 @@ export async function getMediaUrl(
 	const blob = options.onProgress ? await readWithProgress(res, options.onProgress) : await res.blob();
 	const typed = blob.type ? blob : new Blob([blob], { type: mime });
 	if (typed.size <= idbLimit) {
-		await putMedia(key, { buffer: await typed.arrayBuffer(), mime });
+		await putMedia(key, { buffer: await typed.arrayBuffer(), mime: typed.type || mime });
 		scheduleTrim();
 	}
 	return remember(key, typed);
+}
+
+export async function getMediaUrl(
+	origin: string,
+	blobId: string,
+	options: MediaLoadOptions = {}
+): Promise<string> {
+	return (await loadMedia(origin, blobId, options)).url;
 }
 
 export async function downloadBlob(
@@ -184,7 +195,7 @@ export function seedMediaUrl(
 	mime: string
 ): string {
 	const key = mediaKey(origin, blobId);
-	const url = remember(key, new Blob([data], { type: mime }));
+	const url = remember(key, new Blob([data], { type: mime })).url
 	if (data.byteLength <= idbLimit) void putMedia(key, { buffer: data, mime }).then(scheduleTrim);
 	return url;
 }

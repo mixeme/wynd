@@ -6,6 +6,7 @@
 		subtitle,
 		cover,
 		coverUrl,
+		kind = 'photo',
 		photoCount,
 		onclick,
 		class: className = '',
@@ -15,17 +16,35 @@
 		subtitle: string;
 		cover?: string;
 		coverUrl?: string;
+		/** video — файл ролика без JPEG кадра: рисуем первый кадр, не картинку. */
+		kind?: 'photo' | 'video';
 		photoCount?: number | string;
 		onclick?: () => void;
 		class?: string;
 		style?: string;
 	} = $props();
+
+	function showFirstFrame(e: Event) {
+		const video = e.currentTarget as HTMLVideoElement;
+		if (video.currentTime === 0) video.currentTime = 0.001;
+	}
 </script>
 
 {#snippet body()}
 	{#if coverUrl}
 		<PhotoPlaceholder {photoCount} compactCount style="aspect-ratio:1/1">
-			<img src={coverUrl} alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit" />
+			{#if kind === 'video'}
+				<video
+					src={coverUrl}
+					muted
+					playsinline
+					preload="metadata"
+					onloadedmetadata={showFirstFrame}
+					style="width:100%;height:100%;object-fit:cover;border-radius:inherit"
+				></video>
+			{:else}
+				<img src={coverUrl} alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit" />
+			{/if}
 		</PhotoPlaceholder>
 	{:else if cover}
 		<PhotoPlaceholder variant={cover} {photoCount} compactCount style="aspect-ratio:1/1" />

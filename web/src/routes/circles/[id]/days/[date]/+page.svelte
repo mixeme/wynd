@@ -31,10 +31,11 @@
 		mediaCount,
 		photoMedia,
 		localDayOf,
-		albumHref
+		albumHref,
+		isVideoMime
 	} from '$lib/journal/present';
 	import type { FeedPost } from '$lib/journal/types';
-	import { getMediaUrl } from '$lib/media/objectUrl';
+	import { getMediaUrl, loadMedia } from '$lib/media/objectUrl';
 	import { registerRefetch } from '$lib/sync/sync';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
@@ -51,6 +52,7 @@
 	let editingTitle = $state(false);
 	let error = $state('');
 	let coverUrl = $state('');
+	let coverKind = $state<'photo' | 'video'>('photo');
 	let mediaUrls = $state<Record<string, string>>({});
 	let authorAvatarUrls = $state<Record<string, string>>({});
 
@@ -126,14 +128,19 @@
 				// Запасную считает сервер: первая запись дня с фото, видео или звуком (C17).
 				coverBlobId = meta?.fallback_cover_blob_id;
 			}
-			if (coverBlobId) {
+			const shownBlobId = meta?.cover_image_blob_id ?? coverBlobId;
+			if (shownBlobId) {
 				try {
-					coverUrl = await getMediaUrl(circle.origin, coverBlobId);
+					const media = await loadMedia(circle.origin, shownBlobId);
+					coverUrl = media.url;
+					coverKind = isVideoMime(media.mime) ? 'video' : 'photo';
 				} catch {
 					coverUrl = '';
+					coverKind = 'photo';
 				}
 			} else {
 				coverUrl = '';
+				coverKind = 'photo';
 			}
 			await resolveMedia(posts);
 		} catch (err) {
@@ -240,6 +247,7 @@
 	{:else}
 		<DayHeader
 			coverUrl={coverUrl || undefined}
+			kind={coverKind}
 			title={editingTitle ? undefined : dayTitle}
 			subtitle={editingTitle ? undefined : titleSubtitle}
 			oncover={canEditDay ? openDayAlbum : undefined}

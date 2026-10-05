@@ -50,6 +50,10 @@ export interface QueueMediaMeta {
 	audio_cover_blob_id?: string;
 	/** JPEG обложки, пока он ещё не загружен на сервер. */
 	audio_cover?: { type: string; data: ArrayBuffer };
+	/** JPEG первого кадра ролика, уже лежащий на сервере. */
+	video_poster_blob_id?: string;
+	/** JPEG первого кадра, пока он ещё не загружен на сервер. */
+	video_poster?: { type: string; data: ArrayBuffer };
 	/** Голосовое, записанное в приложении (C14): волна 0–100 и длительность. */
 	voice?: boolean;
 	audio_duration_ms?: number;
