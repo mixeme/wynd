@@ -124,19 +124,26 @@ export async function videoPosterJpeg(file: Blob): Promise<ArrayBuffer | undefin
 			if (!track) return;
 			const first = await track.getFirstTimestamp();
 			const origin = Number.isFinite(first) ? first : 0;
-			const sink = new VideoSampleSink(track);
+			// Один декодер на весь проход и программный, не аппаратный: три
+			// отдельных кадра занимали все декодеры телефона, и следующее
+			// видео из галереи уже не сжималось.
+			const sink = new VideoSampleSink(track, { hardwareAcceleration: 'prefer-software' });
 			const probe = document.createElement('canvas');
 			probe.width = 32;
 			probe.height = 32;
 			const probeCtx = probe.getContext('2d', { willReadFrequently: true });
 			if (!probeCtx) return;
-			for (const t of [origin, origin + 0.5, origin + 1.5]) {
-				const sample = await sink.getSample(t);
-				if (!sample) continue;
+			const marks = [origin, origin + 0.5, origin + 1.5];
+			let mark = 0;
+			for await (const sample of sink.samples(origin, marks[marks.length - 1] + 0.05)) {
 				try {
 					if (sample.displayWidth < 1 || sample.displayHeight < 1) continue;
+					if (sample.timestamp + 0.04 < marks[mark]) continue;
+					while (mark < marks.length - 1 && sample.timestamp + 0.04 >= marks[mark + 1]) mark += 1;
 					sample.draw(probeCtx, 0, 0, probe.width, probe.height);
 					if (imageDataLooksBlank(probeCtx.getImageData(0, 0, probe.width, probe.height).data)) {
+						mark += 1;
+						if (mark >= marks.length) break;
 						continue;
 					}
 					return await sampleToJpeg(sample);

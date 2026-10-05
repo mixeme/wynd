@@ -43,10 +43,11 @@
 		compressImage,
 		compressAudio,
 		compressVideo,
+		fileIsVideo,
 		fileToQueueBuffer,
+		guessedVideoMime,
 		isImageFile,
-		isLargeVideo,
-		isVideoFile
+		isLargeVideo
 	} from '$lib/media/compress';
 	import { audioMime, isAudioFile, readAudioTags, videoPosterJpeg } from '$lib/media/audioTags';
 	import { readExif } from '$lib/media/exif';
@@ -519,12 +520,14 @@
 		try {
 			const compression = await fetchCompression(circle.origin).catch(() => undefined);
 			const next = [...picked];
+			const videoFlags = await Promise.all(list.map((file) => fileIsVideo(file)));
 			const heavyCount = original
 				? 0
-				: list.filter((file) => isVideoFile(file) || isAudioFile(file)).length;
+				: videoFlags.filter(Boolean).length + list.filter((file) => isAudioFile(file)).length;
 			compressTotal = heavyCount;
 			compressIndex = 0;
-			keepOpenHint = !original && list.some((file) => isVideoFile(file) && isLargeVideo(file.size));
+			keepOpenHint =
+				!original && videoFlags.some((video, i) => video && isLargeVideo(list[i].size));
 			compressing = heavyCount > 0;
 			compressProgress = 0;
 
@@ -533,27 +536,34 @@
 			const maxBytes = compression?.attachment_max_bytes ?? 0;
 			const tooLarge: string[] = [];
 			const notCompressed: string[] = [];
-			// Звук ушёл исходником, хоть и влез в потолок, — сказать, а не молчать.
+			// Звук или видео ушли исходником, хоть и влезли в потолок, — сказать, а не молчать.
 			const sentRaw: string[] = [];
-			for (const file of list) {
+			const sentRawVideo: string[] = [];
+			for (let index = 0; index < list.length; index += 1) {
+				const file = list[index];
+				const video = videoFlags[index];
 				const exif = await readExif(file);
 				let queueFile: QueueFile;
 				if (original) {
-					queueFile = await fileToQueueBuffer(file);
+					const raw = await fileToQueueBuffer(file);
+					queueFile = video && !raw.type ? { ...raw, type: guessedVideoMime(file) } : raw;
 				} else if (isImageFile(file)) {
 					queueFile = await compressImage(file, compression);
-				} else if (isVideoFile(file)) {
+				} else if (video) {
 					compressIndex += 1;
 					compressProgress = 0;
 					compressKind = 'video';
-					const { fallbackReason, ...video } = await compressVideo(file, compression, (progress) => {
+					const { fallbackReason, ...compressed } = await compressVideo(file, compression, (progress) => {
 						compressProgress = progress;
 					});
-					queueFile = video;
-					if (fallbackReason && maxBytes > 0 && video.size > maxBytes) {
+					queueFile = compressed.type
+						? compressed
+						: { ...compressed, type: guessedVideoMime(file) };
+					if (fallbackReason && maxBytes > 0 && compressed.size > maxBytes) {
 						notCompressed.push(`${file.name} (${fallbackReason})`);
 						continue;
 					}
+					if (fallbackReason) sentRawVideo.push(`${file.name} (${fallbackReason})`);
 				} else if (isAudioFile(file)) {
 					// WAV и FLAC с телефона — десятки мегабайт: жмём, как видео (A6).
 					compressIndex += 1;
@@ -577,7 +587,7 @@
 				}
 
 				const heic = /hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name);
-				const kind = isVideoFile(file)
+				const kind = video
 					? 'video'
 					: isImageFile(file) && !(original && heic)
 						? 'photo'
@@ -623,6 +633,9 @@
 				problems.push(
 					`Не сжалось, а без сжатия больше ${formatBytes(maxBytes)}: ${notCompressed.join(', ')}`
 				);
+			}
+			if (sentRawVideo.length) {
+				problems.push(`Видео без сжатия: ${sentRawVideo.join(', ')}`);
 			}
 			if (sentRaw.length) {
 				problems.push(`Звук без сжатия: ${sentRaw.join(', ')}`);

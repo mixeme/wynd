@@ -4,10 +4,46 @@ import {
 	audioFitsSettings,
 	encodePhoto,
 	evenPx,
+	fileIsVideo,
 	isLargeVideo,
+	orientedFrameSize,
 	targetVideoSize,
 	videoFitsSettings
 } from './compress';
+
+describe('orientedFrameSize', () => {
+	it('keeps a landscape frame', () => {
+		expect(orientedFrameSize(1920, 1080, 0)).toEqual({ width: 1920, height: 1080 });
+	});
+
+	it('turns a sideways phone frame upright', () => {
+		expect(orientedFrameSize(1920, 1080, 90)).toEqual({ width: 1080, height: 1920 });
+		expect(orientedFrameSize(1920, 1080, 270)).toEqual({ width: 1080, height: 1920 });
+	});
+});
+
+describe('fileIsVideo', () => {
+	it('reads an mp4 the gallery sent without a type', async () => {
+		const buf = new Uint8Array(16);
+		buf.set([0x66, 0x74, 0x79, 0x70], 4);
+		buf.set([0x69, 0x73, 0x6f, 0x6d], 8);
+		const file = new File([buf], 'picker', { type: '' });
+		expect(await fileIsVideo(file)).toBe(true);
+	});
+
+	it('does not take a heic for a video', async () => {
+		const buf = new Uint8Array(16);
+		buf.set([0x66, 0x74, 0x79, 0x70], 4);
+		buf.set([0x68, 0x65, 0x69, 0x63], 8);
+		const file = new File([buf], 'picker', { type: 'application/octet-stream' });
+		expect(await fileIsVideo(file)).toBe(false);
+	});
+
+	it('keeps a photo a photo', async () => {
+		const file = new File([new Uint8Array(16)], 'a.jpg', { type: 'image/jpeg' });
+		expect(await fileIsVideo(file)).toBe(false);
+	});
+});
 
 describe('targetVideoSize', () => {
 	it('keeps 1080p landscape', () => {
@@ -43,6 +79,10 @@ describe('videoFitsSettings', () => {
 		const duration = 10;
 		const size = (4000 * 1000 * duration) / 8;
 		expect(videoFitsSettings(1920, 1080, duration, size, 1080, 6000)).toBe(true);
+	});
+
+	it('does not treat an unknown size as already small enough', () => {
+		expect(videoFitsSettings(0, 0, 10, 1000, 1080, 6000)).toBe(false);
 	});
 
 	it('rejects 4K even when the file is small', () => {

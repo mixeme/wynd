@@ -37,8 +37,15 @@
 		stopStream();
 		error = '';
 		try {
+			// Обе стороны сразу («1920 и 1080») на телефоне часто сходятся в
+			// квадрат. Просим одну сторону и пропорцию 16:9 или 9:16.
+			const portrait = window.matchMedia('(orientation: portrait)').matches;
 			stream = await navigator.mediaDevices.getUserMedia({
-				video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
+				video: {
+					facingMode: facing,
+					aspectRatio: { ideal: portrait ? 9 / 16 : 16 / 9 },
+					...(portrait ? { height: { ideal: 1920 } } : { width: { ideal: 1920 } })
+				},
 				audio: true
 			});
 		} catch {
