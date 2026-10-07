@@ -183,6 +183,24 @@
   .cmt .rowin { margin:8px 0 0; }
   .cmt .rowin .btn { padding:10px; font-size:12.5px; }
   .thread { padding-bottom:68px; }
+  /* вложения комментария (4.28–4.30): плитки, голос и файл — без рамки, на бумаге */
+  .ctiles { display:flex; gap:6px; margin-top:8px; }
+  .ctiles .pic { width:72px; height:72px; border-radius:8px; flex:0 0 auto; }
+  .ctiles .more { display:grid; place-items:center; color:#fff; font-weight:600; font-size:13.5px; }
+  .ctiles .more:before { content:""; position:absolute; inset:0; background:rgba(43,39,36,.55); }
+  .ctiles .more span { position:relative; }
+  .crow { display:flex; align-items:center; gap:9px; margin-top:8px; }
+  .crow .nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .wave { display:flex; align-items:center; gap:2px; height:20px; flex:1; min-width:0; overflow:hidden; }
+  .wave i { width:3px; flex:0 0 3px; border-radius:2px; background:var(--line); }
+  .wave i.on { background:var(--c); }
+  .cstrip { position:absolute; left:0; right:0; bottom:66px; display:flex; gap:8px; padding:10px 14px 0;
+            background:var(--paper); border-top:1px solid var(--line); }
+  .cstrip .pic, .cstrip .add { width:56px; height:56px; border-radius:8px; flex:0 0 auto; }
+  .cstrip .add { border:1px dashed var(--line); display:grid; place-items:center; }
+  .cstrip .rm { position:absolute; right:3px; top:3px; width:18px; height:18px; border-radius:50%;
+                background:rgba(43,39,36,.82); display:grid; place-items:center; }
+  .cstrip .rm .ic { color:#fff; width:11px; height:11px; }
   .rxpick { display:flex; gap:10px; margin-top:10px; }
   .rcho { width:40px; height:40px; border-radius:20px; border:1px solid var(--line);
           background:var(--card); display:grid; place-items:center; flex:0 0 auto; }
@@ -575,6 +593,9 @@
 <li><a href="#e4-5"><span class="tn">4.5</span>Обсуждение</a></li>
 <li><a href="#e4-6"><span class="tn">4.6</span>Написание комментария</a></li>
 <li><a href="#e4-7"><span class="tn">4.7</span>Правка комментария</a></li>
+<li><a href="#e4-28"><span class="tn">4.28</span>Вложение к комментарию</a></li>
+<li><a href="#e4-29"><span class="tn">4.29</span>Вложения в нити</a></li>
+<li><a href="#e4-30"><span class="tn">4.30</span>Вложение в превью</a></li>
 <li><a href="#e4-8"><span class="tn">4.8</span>Своя запись</a></li>
 <li><a href="#e4-9"><span class="tn">4.9</span>Правка записи</a></li>
 <li><a href="#e4-10"><span class="tn">4.10</span>Выбор реакции</a></li>
@@ -1650,7 +1671,7 @@
 </div></div>
 <h2 id="post">Запись</h2>
 <p class="lede">Всё, что глубже ленты, — про одну запись.</p>
-<p>Сценарий начинается с письма в полосе (4.1): слова уже в поле, и это та же дверь на 4.2. Из ленты ведут ровно четыре двери: развернуть поле ввода, открыть обсуждение, открыть альбом и посмотреть, кто отреагировал. Разворот — не жест без ручки: в полосе стоит шеврон, тот же, что у любой строки на другой экран, и рядом фото — оно сразу открывает выбор снимков. Пустое поле тоже ведёт на 4.2; как только в нём слова — тап ставит курсор, а шеврон и фото уносят черновик. Ни одна дверь не ведёт к человеку — у участника нет страницы, и имя в шапке записи никуда не нажимается. Пятая дверь — не из ленты: в обсуждении своей записи, пока живо окно, в шапке карточки стоит карандаш, справа, перед обложкой. Тот же значок, что у реплики: у комментария он открывает текст на месте, у записи уносит на 4.9, тот же экран, что новая. Вышло окно — карандаша нет, как у иконок в нити. Чужую запись, как на 4.5, править нечем. Комментарий правится там же, где читается: отдельного экрана у него нет, потому что нести нечего, кроме слов, и шеврона в его полосе нет. Плюс в карточке не ставит реакцию втихаря — раскрывает закрытый список прямо в записи; вторая всплывающая панель под это не заводится.</p>
+<p>Сценарий начинается с письма в полосе (4.1): слова уже в поле, и это та же дверь на 4.2. Из ленты ведут ровно четыре двери: развернуть поле ввода, открыть обсуждение, открыть альбом и посмотреть, кто отреагировал. Разворот — не жест без ручки: в полосе стоит шеврон, тот же, что у любой строки на другой экран, и рядом фото — оно сразу открывает выбор снимков. Пустое поле тоже ведёт на 4.2; как только в нём слова — тап ставит курсор, а шеврон и фото уносят черновик. Ни одна дверь не ведёт к человеку — у участника нет страницы, и имя в шапке записи никуда не нажимается. Пятая дверь — не из ленты: в обсуждении своей записи, пока живо окно, в шапке карточки стоит карандаш, справа, перед обложкой. Тот же значок, что у реплики: у комментария он открывает текст на месте, у записи уносит на 4.9, тот же экран, что новая. Вышло окно — карандаша нет, как у иконок в нити. Чужую запись, как на 4.5, править нечем. Комментарий правится там же, где читается: отдельного экрана у него нет, потому что правятся только слова, и шеврона в его полосе нет. К реплике можно приложить снимок, голосовое или файл — прямо из полосы, 4.28. Плюс в карточке не ставит реакцию втихаря — раскрывает закрытый список прямо в записи; вторая всплывающая панель под это не заводится.</p>
 
 <h3>Письмо и новая запись</h3>
 <div class="bleed"><div class="gal">
@@ -1953,7 +1974,7 @@
       <span style="font-variant-numeric:tabular-nums">0:48</span><svg class="ic"><use href="#i-trash"/></svg></div>
     <div class="send"><svg class="ic" style="color:#fff;width:19px;height:19px"><use href="#i-send"/></svg></div></div>
 </div>
-<span class="num">4.24</span><b>Голосовое перед отправкой</b><i>Можно прослушать — волна закрашивается по ходу — и выбросить корзиной. Стрелка отправляет: голосовое уходит новой записью журнала без текста, комментарием его оставить нельзя. «Запись» есть только при пустом поле — подписывать нечего. Без сети запись встаёт в очередь, как фото. Голос сжимается тем же битрейтом, что звук (9.7).</i></figure>
+<span class="num">4.24</span><b>Голосовое перед отправкой</b><i>Можно прослушать — волна закрашивается по ходу — и выбросить корзиной. Стрелка отправляет: из ленты голосовое уходит новой записью журнала без текста, из обсуждения — комментарием (4.28). «Запись» есть только при пустом поле — подписывать нечего. Без сети запись встаёт в очередь, как фото. Голос сжимается тем же битрейтом, что звук (9.7).</i></figure>
 <figure class="s" id="e4-25"><div class="ph" style="background:#1E2219">
   <div class="sb" style="color:#fff"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div style="position:absolute;inset:44px 0 0;background:linear-gradient(160deg,#55624A,#2F3628)"></div>
@@ -2033,10 +2054,10 @@
       <div class="g"><div class="who"><b>Дед</b><span class="tm">16:51</span></div>без яблок и компота не будет</div>
       <div class="acts"></div></div>
   </div>
-  <div class="comp"><div class="f">Написать комментарий…</div>
-    <div class="send off"><svg class="ic" style="color:#fff;width:19px;height:19px"><use href="#i-send"/></svg></div></div>
+  <div class="comp"><div class="f">Написать комментарий…<svg class="ic" style="margin-left:auto"><use href="#i-photo"/></svg><svg class="ic" style="margin-left:6px"><use href="#i-file"/></svg></div>
+    <div class="send"><svg class="ic" style="color:#fff;width:19px;height:19px"><use href="#i-rec"/></svg></div></div>
 </div>
-<span class="num">4.5</span><b>Обсуждение</b><i>Запись остаётся карточкой — это предмет разговора. Комментарии сходят на бумагу: без собственной рамки, без веток, без сворачивания, друг от друга только волосяной чертой. Имя и время на одной строке, слова — сразу под ними. Карандаш и корзина стоят в правой колонке своей реплики, пока живо окно; вышло — иконки гаснут, высота строки та же, потому что колонка зарезервирована. У «сейчас чай» их уже нет, у «вёдра» ещё есть. У деда нет, потому что это не ваши слова. Карандаша у самой записи нет: это Аня, не вы. Своя — 4.8. Поле внизу то же, что в ленте, но без фото. Пустое — кнопка погашена. Поле и правка комментария — 4.6–4.7; реакция — 4.10–4.11.</i></figure>
+<span class="num">4.5</span><b>Обсуждение</b><i>Запись остаётся карточкой — это предмет разговора. Комментарии сходят на бумагу: без собственной рамки, без веток, без сворачивания, друг от друга только волосяной чертой. Имя и время на одной строке, слова — сразу под ними. Карандаш и корзина стоят в правой колонке своей реплики, пока живо окно; вышло — иконки гаснут, высота строки та же, потому что колонка зарезервирована. У «сейчас чай» их уже нет, у «вёдра» ещё есть. У деда нет, потому что это не ваши слова. Карандаша у самой записи нет: это Аня, не вы. Своя — 4.8. Поле внизу — как в ленте: в нём фото и файл (4.28), шеврона нет. Пустое — круглая кнопка «Запись», голосовое. Поле и правка комментария — 4.6–4.7; вложения — 4.28–4.30; реакция — 4.10–4.11.</i></figure>
 
 <figure class="s" id="e4-6"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -2058,10 +2079,10 @@
       <div class="g"><div class="who"><b>Кот</b><span class="tm">14:31</span></div>я всё видел и молчал</div>
       <div class="acts"></div></div>
   </div>
-  <div class="comp"><div class="f ink">а яблоки кто снимет?<span style="border-left:1.5px solid var(--c);margin-left:1px">&nbsp;</span></div>
+  <div class="comp"><div class="f ink">а яблоки кто снимет?<span style="border-left:1.5px solid var(--c);margin-left:1px">&nbsp;</span><svg class="ic" style="margin-left:auto"><use href="#i-photo"/></svg><svg class="ic" style="margin-left:6px"><use href="#i-file"/></svg></div>
     <div class="send"><svg class="ic" style="color:#fff;width:19px;height:19px"><use href="#i-send"/></svg></div></div>
 </div>
-<span class="num">4.6</span><b>Написание комментария</b><i>Поле не разворачивается на весь экран: комментарию некуда расти, кроме слов, и нить должна остаться на виду. Enter переносит строку, отправка — круглой кнопкой цвета круга, как в ленте. Пока в поле пусто, кнопка погашена, чтобы не ушла пустая реплика. Фотографии здесь нет: снимок — в запись, в обсуждении остаются слова. Клавиатура как на 4.2, здесь не повторена, чтобы было видно и поле, и нить.</i></figure>
+<span class="num">4.6</span><b>Написание комментария</b><i>Поле не разворачивается на весь экран: комментарию некуда расти, кроме слов, и нить должна остаться на виду. Enter переносит строку, отправка — круглой кнопкой цвета круга, как в ленте. Пока в поле пусто, на месте стрелки — «Запись»: голосовое комментарием. Справа в поле два значка — фото и файл, те же, что на новой записи (4.2); что они делают — 4.28. Клавиатура как на 4.2, здесь не повторена, чтобы было видно и поле, и нить.</i></figure>
 
 <figure class="s" id="e4-7"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -2088,10 +2109,92 @@
       <div class="g"><div class="who"><b>Дед</b><span class="tm">16:51</span></div>без яблок и компота не будет</div>
       <div class="acts"></div></div>
   </div>
-  <div class="comp"><div class="f">Написать комментарий…</div>
-    <div class="send off"><svg class="ic" style="color:#fff;width:19px;height:19px"><use href="#i-send"/></svg></div></div>
+  <div class="comp"><div class="f">Написать комментарий…<svg class="ic" style="margin-left:auto"><use href="#i-photo"/></svg><svg class="ic" style="margin-left:6px"><use href="#i-file"/></svg></div>
+    <div class="send"><svg class="ic" style="color:#fff;width:19px;height:19px"><use href="#i-rec"/></svg></div></div>
 </div>
-<span class="num">4.7</span><b>Правка комментария</b><i>Отдельного экрана нет: текст открывается на месте. Карандаш и корзина на время правки прячутся — их место занимают две настоящие кнопки, те же, что везде в продукте. Поле с внутренней кромкой: слова стоят с тем же отступом, что и рамка, а не прилипают к краю и не висят в середине. «Удалить» подтверждения не спрашивает: реплика исчезает, строки «удалил комментарий» нет. Вышло окно — иконки гаснут, высота как у соседей. Подпись про расхождение окон сюда не ставится: для одной фразы это шум, и место ей — на правке записи.</i></figure>
+<span class="num">4.7</span><b>Правка комментария</b><i>Отдельного экрана нет: текст открывается на месте. Карандаш и корзина на время правки прячутся — их место занимают две настоящие кнопки, те же, что везде в продукте. Поле с внутренней кромкой: слова стоят с тем же отступом, что и рамка, а не прилипают к краю и не висят в середине. «Удалить» подтверждения не спрашивает: реплика исчезает, строки «удалил комментарий» нет. Вышло окно — иконки гаснут, высота как у соседей. Подпись про расхождение окон сюда не ставится: для одной фразы это шум, и место ей — на правке записи. Правятся только слова: вложения реплики (4.29) стоят под полем как были, заменить или убрать их можно только вместе с комментарием.</i></figure>
+
+<figure class="s" id="e4-28"><div class="ph">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="cbar"><div class="top"><svg class="ic"><use href="#i-back"/></svg><span class="t">Обсуждение</span>
+    <span class="idn">Мышь<span class="av">М</span></span></div><div style="height:12px"></div></div>
+  <div class="post" style="margin-top:12px">
+    <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">сегодня, 14:02</div></div>
+      <div class="pic p1" style="width:44px;height:44px;border-radius:8px;margin-left:auto"></div></div>
+    <div class="pt" style="margin-bottom:0">Были на даче, все живы. Яблони в этом году как с ума сошли.</div>
+  </div>
+  <div class="thread">
+    <div class="cmt"><div class="av" style="background:#357077">П</div>
+      <div class="g"><div class="who"><b>Петя</b><span class="tm">14:20</span></div>а сколько там яблок-то?</div>
+      <div class="acts"></div></div>
+  </div>
+  <div class="cstrip">
+    <div class="pic p2"><span class="rm"><svg class="ic"><use href="#i-x"/></svg></span></div>
+    <div class="pic p5"><span class="rm"><svg class="ic"><use href="#i-x"/></svg></span></div>
+    <div class="add"><svg class="ic"><use href="#i-plus"/></svg></div>
+  </div>
+  <div class="comp" style="border-top:0"><div class="f ink">вот столько<span style="border-left:1.5px solid var(--c);margin-left:1px">&nbsp;</span><svg class="ic" style="margin-left:auto"><use href="#i-photo"/></svg><svg class="ic" style="margin-left:6px"><use href="#i-file"/></svg></div>
+    <div class="send"><svg class="ic" style="color:#fff;width:19px;height:19px"><use href="#i-send"/></svg></div></div>
+</div>
+<span class="num">4.28</span><b>Вложение к комментарию</b><i>Два значка в поле — две двери, без меню: фото открывает выбор снимков, лист — выбор любого файла. Те же значки стоят на новой записи (4.2), и учить заново нечего. Выбранное встаёт полоской над полем: снимки — плитками, файл — плиткой с именем; крестик убирает, плюс добавляет ещё того же. До десяти вложений на реплику. Поле не разворачивается: нить остаётся на виду. Слова необязательны — реплика может быть одним снимком. Пустое поле без вложений — «Запись»: касание сразу начинает голосовое, без выбора «голос или видео» (видео в комментарии нет); дальше та же полоса-диктофон и проверка, что на 4.23–4.24. Без сети комментарий с вложением встаёт в очередь, как запись.</i></figure>
+
+<figure class="s" id="e4-29"><div class="ph">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="cbar"><div class="top"><svg class="ic"><use href="#i-back"/></svg><span class="t">Обсуждение</span>
+    <span class="idn">Мышь<span class="av">М</span></span></div><div style="height:12px"></div></div>
+  <div class="post" style="margin-top:12px">
+    <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">сегодня, 14:02</div></div>
+      <div class="pic p1" style="width:44px;height:44px;border-radius:8px;margin-left:auto"></div></div>
+    <div class="pt" style="margin-bottom:0">Были на даче, все живы. Яблони в этом году как с ума сошли.</div>
+  </div>
+  <div class="thread">
+    <div class="cmt"><div class="av" style="background:#357077">П</div>
+      <div class="g"><div class="who"><b>Петя</b><span class="tm">14:20</span></div>а сколько там яблок-то?</div>
+      <div class="acts"></div></div>
+    <div class="cmt"><div class="av" style="background:#58673A">А</div>
+      <div class="g"><div class="who"><b>Аня</b><span class="tm">14:22</span></div>вот столько
+        <div class="ctiles"><div class="pic p2"></div><div class="pic p5"></div><div class="pic p3 more"><span>+3</span></div></div></div>
+      <div class="acts"></div></div>
+    <div class="cmt"><div class="av" style="background:#62452F">К</div>
+      <div class="g"><div class="who"><b>Кот</b><span class="tm">14:31</span></div>
+        <div class="crow" style="margin-top:6px"><svg class="ic" style="color:var(--c)"><use href="#i-play"/></svg>
+          <span class="wave"><i class="on" style="height:6px"></i><i class="on" style="height:12px"></i><i class="on" style="height:18px"></i><i class="on" style="height:9px"></i><i class="on" style="height:14px"></i><i class="on" style="height:19px"></i><i class="on" style="height:10px"></i><i style="height:7px"></i><i style="height:15px"></i><i style="height:11px"></i><i style="height:5px"></i><i style="height:13px"></i><i style="height:17px"></i><i style="height:8px"></i><i style="height:12px"></i><i style="height:16px"></i><i style="height:6px"></i><i style="height:10px"></i><i style="height:14px"></i><i style="height:9px"></i></span>
+          <span class="tm" style="font-variant-numeric:tabular-nums">0:48</span></div></div>
+      <div class="acts"></div></div>
+    <div class="cmt"><div class="av">М</div>
+      <div class="g"><div class="who"><b>Мышь</b><span class="tm">16:40</span></div>список, что везти в субботу
+        <div class="crow"><svg class="ic sm"><use href="#i-file"/></svg><span class="nm">vedra-i-lestnica.pdf</span><span class="tm">240 КБ</span><svg class="ic sm" role="img" aria-label="Скачать"><use href="#i-download"/></svg></div></div>
+      <div class="acts"><svg class="ic xs"><use href="#i-edit"/></svg><svg class="ic xs"><use href="#i-trash"/></svg></div></div>
+  </div>
+  <div class="comp"><div class="f">Написать комментарий…<svg class="ic" style="margin-left:auto"><use href="#i-photo"/></svg><svg class="ic" style="margin-left:6px"><use href="#i-file"/></svg></div>
+    <div class="send"><svg class="ic" style="color:#fff;width:19px;height:19px"><use href="#i-rec"/></svg></div></div>
+</div>
+<span class="num">4.29</span><b>Вложения в нити</b><i>Реплика остаётся на бумаге: рамки и обложки во всю ширину, как у записи, у неё нет — иначе ответ стал бы тяжелее того, о чём говорят. Снимки — ряд квадратов под словами, до трёх; больше — на третьем стоит «+3». Касание открывает снимок во весь экран, листать — в пределах этой реплики. Голосовое — строка с волной и длительностью, играет через общую полосу (4.20). Файл — значок, имя, размер и «скачать». Снимки из комментариев — часть разговора, а не журнала: в «Сетку», на «Карту», в альбом дня и в выбор обложки дня они не попадают, места с них не берём. В квоту круга и в личный архив — попадают.</i></figure>
+
+<figure class="s" id="e4-30"><div class="ph">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="cbar"><div class="top"><svg class="ic"><use href="#i-back"/></svg><span class="t">Семья</span>
+    <span class="idn">Мышь<span class="av">М</span></span></div>
+    <div class="tabs"><span class="on">Хронология</span><span>Дни</span><span>Сетка</span><span>Карта</span><span>Отклики</span></div></div>
+  <div class="post">
+    <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">сегодня, 14:02</div></div></div>
+    <div class="pt" style="margin:0">Были на даче, все живы. Яблони в этом году как с ума сошли.</div>
+  </div>
+  <div class="cm"><div>Аня: вот столько <span class="tm">сегодня, 14:22</span></div>
+    <div class="ctiles"><div class="pic p2"></div><div class="pic p5"></div><div class="pic p3 more"><span>+3</span></div></div>
+    <div class="mo" style="margin-top:8px">ещё 1 комментарий</div></div>
+  <div class="post">
+    <div class="pa"><div class="av" style="background:#3C4D83">М</div><div><div class="n">Мама</div><div class="tm">вчера, 21:40</div></div></div>
+    <div class="pt" style="margin:0">Дед нашёл на чердаке коробку с плёнками. Будем проявлять.</div>
+  </div>
+  <div class="cm"><div>Кот: <span class="tm">вчера, 21:52</span></div>
+    <div class="crow" style="margin-top:6px"><svg class="ic" style="color:var(--c)"><use href="#i-play"/></svg>
+      <span class="wave"><i style="height:6px"></i><i style="height:12px"></i><i style="height:18px"></i><i style="height:9px"></i><i style="height:14px"></i><i style="height:19px"></i><i style="height:10px"></i><i style="height:7px"></i><i style="height:15px"></i><i style="height:11px"></i><i style="height:5px"></i><i style="height:13px"></i><i style="height:17px"></i><i style="height:8px"></i><i style="height:12px"></i><i style="height:16px"></i><i style="height:6px"></i><i style="height:10px"></i><i style="height:14px"></i><i style="height:9px"></i></span>
+      <span class="tm" style="font-variant-numeric:tabular-nums">0:48</span></div></div>
+  <div class="comp"><div class="f">Написать в журнал…<svg class="ic" style="margin-left:auto"><use href="#i-photo"/></svg><svg class="ic" style="margin-left:2px"><use href="#i-chevr"/></svg></div>
+    <div class="send"><svg class="ic" style="color:#fff;width:19px;height:19px"><use href="#i-rec"/></svg></div></div>
+</div>
+<span class="num">4.30</span><b>Вложение в превью</b><i>Последний комментарий под записью в ленте показан так же, как в нити: те же плитки, та же волна, та же строка файла — слова «фото» вместо снимка нет. Реплика без слов — имя и сразу вложение. Голосовое играет прямо отсюда, касание снимка открывает его во весь экран; касание остального — обсуждение, как раньше. В «Откликах» (3.13) комментарий с вложением стоит тем же видом — над рамкой «к чему это».</i></figure>
 
 <figure class="s" id="e4-8"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
@@ -2113,8 +2216,8 @@
       <div class="g"><div class="who"><b>Мышь</b><span class="tm">22:13</span></div>да, то самое утро</div>
       <div class="acts"><svg class="ic xs"><use href="#i-edit"/></svg><svg class="ic xs"><use href="#i-trash"/></svg></div></div>
   </div>
-  <div class="comp"><div class="f">Написать комментарий…</div>
-    <div class="send off"><svg class="ic" style="color:#fff;width:19px;height:19px"><use href="#i-send"/></svg></div></div>
+  <div class="comp"><div class="f">Написать комментарий…<svg class="ic" style="margin-left:auto"><use href="#i-photo"/></svg><svg class="ic" style="margin-left:6px"><use href="#i-file"/></svg></div>
+    <div class="send"><svg class="ic" style="color:#fff;width:19px;height:19px"><use href="#i-rec"/></svg></div></div>
 </div>
 <span class="num">4.8</span><b>Своя запись</b><i>Пятая дверь стоит здесь, а не в ленте: карточка в хронике и своя, и чужая открывает обсуждение, и отдельной ручки на ней нет. Карандаш — тот же, что у реплики, только ведёт на 4.9, а не правит на месте. Обложка справа — по-прежнему альбом. Вышло окно — значка нет, высота шапки та же. Корзины в шапке нет: удаление живёт на 4.9, в рамке «необратимо».</i></figure>
 
@@ -4176,7 +4279,10 @@
 
 <div class="cardx">
 <h3>Голосовые и видео — одна кнопка «Запись»</h3>
-<p>Две кнопки рядом — «Голос» и «Видео» — тяжелили полосу ввода. Пока поле пустое, круглая кнопка становится «Записью» (<a href="#e4-21">4.21</a>), значок — кольцо с точкой, подходит обоим; выбор — после касания (<a href="#e4-22">4.22</a>). Запись по касанию, не удержанием. Голос — до 15 минут, видео — до 5, обычное, без кружков. Голосовое — только новой записью журнала, не комментарием (<a href="#e4-24">4.24</a>).</p>
+<p>Две кнопки рядом — «Голос» и «Видео» — тяжелили полосу ввода. Пока поле пустое, круглая кнопка становится «Записью» (<a href="#e4-21">4.21</a>), значок — кольцо с точкой, подходит обоим; выбор — после касания (<a href="#e4-22">4.22</a>). Запись по касанию, не удержанием. Голос — до 15 минут, видео — до 5, обычное, без кружков. Из ленты голосовое уходит новой записью журнала (<a href="#e4-24">4.24</a>); в обсуждении та же кнопка пишет голосовое комментарием (<a href="#e4-28">4.28</a>) — сначала это было запрещено, см. ниже.</p>
+
+<h3>В комментарий можно положить снимок, голос и файл</h3>
+<p>Первое решение было строгим: снимок — в запись, в обсуждении остаются слова, голосовое — только записью. На деле на вопрос «а сколько там яблок?» отвечают снимком, а не новой записью журнала, и заводить запись ради ответа — значит засорять хронику. Теперь у реплики могут быть фото, голосовое и файл, до десяти (<a href="#e4-28">4.28</a>). Сравнивали три вида в нити: ряд маленьких плиток, одну обложку во всю ширину, как у записи, и миниатюру справа от слов. Взяли плитки (<a href="#e4-29">4.29</a>): снимок виден сразу, а реплика не тяжелее записи, о которой говорят. Видео и музыки в комментарии нет — это уже запись. Граница проведена так: вложение комментария — часть разговора, не журнала; в «Сетку», на «Карту», в альбом и обложку дня оно не идёт. Править можно только слова; вложение уходит вместе с репликой.</p>
 </div>
 <div class="cardx">
 <h3>Звук не обрывается при уходе с экрана</h3>
