@@ -73,6 +73,9 @@ func (c *Chronicle) mediaVolumeChart(ctx context.Context, circleID string, now t
 			UNION
 			SELECT post_id, video_poster_blob_id FROM post_media
 			 WHERE video_poster_blob_id IS NOT NULL AND video_poster_blob_id != ''
+			UNION
+			SELECT cm.post_id, cmm.blob_id FROM comment_media cmm
+			 JOIN comments cm ON cm.id = cmm.comment_id AND cm.deleted = 0
 		) pm ON pm.post_id = p.id
 		JOIN blobs b ON b.id = pm.blob_id AND b.status = 'complete'
 		WHERE p.circle_id = ? AND p.deleted = 0
@@ -194,6 +197,9 @@ func (c *Chronicle) FreedBytesBeforeCutoff(ctx context.Context, circleID, cutoff
 			UNION
 			SELECT post_id, video_poster_blob_id FROM post_media
 			 WHERE video_poster_blob_id IS NOT NULL AND video_poster_blob_id != ''
+			UNION
+			SELECT cm.post_id, cmm.blob_id FROM comment_media cmm
+			 JOIN comments cm ON cm.id = cmm.comment_id AND cm.deleted = 0
 		) pm ON pm.post_id = p.id
 		JOIN blobs b ON b.id = pm.blob_id AND b.status = 'complete'
 		WHERE p.circle_id = ? AND p.deleted = 0 AND p.created_at < ?

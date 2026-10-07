@@ -371,6 +371,9 @@ func (c *Chronicle) circleBlobIDsTx(ctx context.Context, tx *sql.Tx, circleID st
 		 WHERE video_poster_blob_id IS NOT NULL AND video_poster_blob_id != ''
 		   AND post_id IN (SELECT id FROM posts WHERE circle_id = ?)
 		UNION
+		SELECT blob_id FROM comment_media
+		 WHERE comment_id IN (SELECT id FROM comments WHERE circle_id = ?)
+		UNION
 		SELECT blob_id FROM day_covers WHERE circle_id = ? AND blob_id != ''
 		UNION
 		SELECT cover_blob_id FROM days WHERE circle_id = ? AND cover_blob_id IS NOT NULL
@@ -378,7 +381,7 @@ func (c *Chronicle) circleBlobIDsTx(ctx context.Context, tx *sql.Tx, circleID st
 		SELECT avatar_blob_id FROM identity_names
 		 WHERE avatar_blob_id IS NOT NULL
 		   AND identity_id IN (SELECT id FROM identities WHERE circle_id = ?)
-	`, circleID, circleID, circleID, circleID, circleID, circleID)
+	`, circleID, circleID, circleID, circleID, circleID, circleID, circleID)
 	if err != nil {
 		return nil, err
 	}

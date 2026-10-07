@@ -49,6 +49,7 @@ export interface QueuedCommentView {
 	id: number;
 	post_id: string;
 	body: string;
+	media: QueuedMediaView[];
 	state: QueueRecord['state'];
 	error?: string;
 }
@@ -154,42 +155,54 @@ async function uploadFile(
 	return complete.id;
 }
 
+/**
+ * Грузит файлы записи очереди по одному и запоминает, что уже ушло: после
+ * обрыва отправка продолжается с того же места, а не с начала.
+ */
+async function uploadItemFiles(
+	item: QueueRecordWithId
+): Promise<{ blobIds: string[]; uploads: QueueUploadProgress[] }> {
+	const { origin, files } = item;
+	const blobIds: string[] = [];
+	let uploads = [...(item.uploads ?? [])];
+
+	for (let i = 0; i < files.length; i++) {
+		let progress = uploads.find((u) => u.file_index === i);
+		if (progress?.blob_id) {
+			blobIds.push(progress.blob_id);
+			continue;
+		}
+		if (!progress) {
+			const session = await apiJson<{ id: string }>(origin, '/uploads', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				// Без имени сервер сохранял «.»: вложение из очереди скачивалось
+				// безымянным (найдено на голосовых, C14).
+				body: JSON.stringify({
+					expected_size: files[i].size,
+					mime_type: files[i].type,
+					filename: files[i].name
+				})
+			});
+			progress = { file_index: i, session_id: session.id };
+			uploads = [...uploads.filter((u) => u.file_index !== i), progress];
+			await putQueueItem(item.id, { ...item, state: 'uploading', uploads });
+		}
+		const blobId = await uploadFile(origin, files[i], progress);
+		progress = { ...progress, blob_id: blobId };
+		uploads = [...uploads.filter((u) => u.file_index !== i), progress];
+		await putQueueItem(item.id, { ...item, state: 'uploading', uploads });
+		blobIds.push(blobId);
+	}
+	return { blobIds, uploads };
+}
+
 async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 	const { origin, circle_id: circleId, type, payload, files } = item;
 
 	if (type === 'post') {
 		const postPayload = payload as PostQueuePayload;
-		const blobIds: string[] = [];
-		let uploads = [...(item.uploads ?? [])];
-
-		for (let i = 0; i < files.length; i++) {
-			let progress = uploads.find((u) => u.file_index === i);
-			if (progress?.blob_id) {
-				blobIds.push(progress.blob_id);
-				continue;
-			}
-			if (!progress) {
-				const session = await apiJson<{ id: string }>(origin, '/uploads', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					// Без имени сервер сохранял «.»: вложение из очереди скачивалось
-					// безымянным (найдено на голосовых, C14).
-					body: JSON.stringify({
-						expected_size: files[i].size,
-						mime_type: files[i].type,
-						filename: files[i].name
-					})
-				});
-				progress = { file_index: i, session_id: session.id };
-				uploads = [...uploads.filter((u) => u.file_index !== i), progress];
-				await putQueueItem(item.id, { ...item, state: 'uploading', uploads });
-			}
-			const blobId = await uploadFile(origin, files[i], progress);
-			progress = { ...progress, blob_id: blobId };
-			uploads = [...uploads.filter((u) => u.file_index !== i), progress];
-			await putQueueItem(item.id, { ...item, state: 'uploading', uploads });
-			blobIds.push(blobId);
-		}
+		const { blobIds, uploads } = await uploadItemFiles(item);
 
 		const mediaMeta = [...(postPayload.media_meta ?? [])];
 		const media = [];
@@ -259,13 +272,24 @@ async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 
 	if (type === 'comment') {
 		const commentPayload = payload as CommentQueuePayload;
+		const { blobIds } = await uploadItemFiles(item);
+		const media = blobIds.map((blobId, i) => {
+			const meta = commentPayload.media_meta?.[i];
+			return {
+				blob_id: blobId,
+				kind: meta?.kind === 'attachment' ? 'attachment' : 'photo',
+				voice: meta?.voice,
+				audio_duration_ms: meta?.audio_duration_ms,
+				audio_peaks: meta?.audio_peaks
+			};
+		});
 		await apiJson(
 			origin,
 			`/circles/${circleId}/posts/${commentPayload.post_id}/comments`,
 			{
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ body: commentPayload.body, client_id: item.client_id })
+				body: JSON.stringify({ body: commentPayload.body, client_id: item.client_id, media })
 			}
 		);
 		return;
@@ -441,9 +465,10 @@ export async function enqueuePost(
 export async function enqueueComment(
 	origin: string,
 	circleId: string,
-	payload: CommentQueuePayload
+	payload: CommentQueuePayload,
+	files: QueueFile[] = []
 ): Promise<number> {
-	return enqueue('comment', origin, circleId, payload);
+	return enqueue('comment', origin, circleId, payload, files);
 }
 
 export async function enqueueReaction(
@@ -561,6 +586,7 @@ export async function listQueuedComments(
 				id: item.id,
 				post_id: payload.post_id,
 				body: payload.body,
+				media: queuedMediaViews(item.files, payload.media_meta),
 				state: item.state,
 				error: item.error
 			};

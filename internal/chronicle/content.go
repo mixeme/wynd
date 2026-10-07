@@ -256,6 +256,11 @@ func (c *Chronicle) DeletePost(ctx context.Context, circleID, accountID, postID 
 	if err := c.dropPostMediaInTx(ctx, tx, postID); err != nil {
 		return nil, err
 	}
+	commentBlobs, err := c.takeCommentMediaTx(ctx, tx, commentMediaOfPost, postID)
+	if err != nil {
+		return nil, err
+	}
+	blobIDs = append(blobIDs, commentBlobs...)
 	if err := c.maybeCollapseDay(ctx, tx, circleID, post.EntryDate); err != nil {
 		return nil, err
 	}
@@ -406,7 +411,12 @@ func (c *Chronicle) assertPostInteractive(ctx context.Context, circleID, account
 // CreateComment adds a flat comment with its own edit window snapshot.
 func (c *Chronicle) CreateComment(ctx context.Context, in CommentInput) (Comment, error) {
 	body := strings.TrimSpace(in.Body)
-	if body == "" {
+	media, err := normalizeCommentMedia(in.Media)
+	if err != nil {
+		return Comment{}, err
+	}
+	// Реплика может быть одним снимком или голосовым: слова необязательны.
+	if body == "" && len(media) == 0 {
 		return Comment{}, ErrInvalid
 	}
 	if err := checkByteLen(body, MaxTextBytes); err != nil {
@@ -428,6 +438,12 @@ func (c *Chronicle) CreateComment(ctx context.Context, in CommentInput) (Comment
 			if existing.IdentityID != mem.IdentityID || existing.PostID != in.PostID {
 				return Comment{}, ErrInvalid
 			}
+			byComment, err := c.listMediaForComments(ctx, c.db, []string{existing.ID})
+			if err != nil {
+				return Comment{}, err
+			}
+			existing.Media = byComment[existing.ID]
+			existing.Replayed = true
 			return existing, nil
 		}
 		if err != ErrNotFound {
@@ -485,13 +501,20 @@ func (c *Chronicle) CreateComment(ctx context.Context, in CommentInput) (Comment
 	if err != nil {
 		return Comment{}, err
 	}
+	if err := c.insertCommentMedia(ctx, tx, commentID, media); err != nil {
+		return Comment{}, err
+	}
+	stored, err := c.listMediaForComments(ctx, tx, []string{commentID})
+	if err != nil {
+		return Comment{}, err
+	}
 	if err := tx.Commit(); err != nil {
 		return Comment{}, err
 	}
 	return Comment{
 		ID: commentID, CircleID: in.CircleID, PostID: in.PostID, EventSeq: ev.Seq,
 		IdentityID: mem.IdentityID, AuthorName: name, Body: body, CreatedAt: now,
-		EditWindow: window, EditableUntil: until,
+		EditWindow: window, EditableUntil: until, Media: stored[commentID],
 	}, nil
 }
 
@@ -594,9 +617,6 @@ func (c *Chronicle) EditComment(ctx context.Context, circleID, accountID, commen
 	if err := checkByteLen(body, MaxTextBytes); err != nil {
 		return err
 	}
-	if body == "" {
-		return ErrInvalid
-	}
 	now = utcOrNow(now)
 	comment, err := c.loadComment(ctx, c.db, commentID)
 	if err != nil {
@@ -607,6 +627,16 @@ func (c *Chronicle) EditComment(ctx context.Context, circleID, accountID, commen
 	}
 	if comment.Deleted {
 		return ErrInvalid
+	}
+	// Слова можно стереть, только если у реплики остаются вложения (4.7).
+	if body == "" {
+		n, err := c.commentMediaCount(ctx, c.db, commentID)
+		if err != nil {
+			return err
+		}
+		if n == 0 {
+			return ErrInvalid
+		}
 	}
 	mem, err := c.requireAuthor(ctx, c.db, circleID, accountID, comment.IdentityID, now)
 	if err != nil {
@@ -641,39 +671,47 @@ func (c *Chronicle) EditComment(ctx context.Context, circleID, accountID, commen
 	return tx.Commit()
 }
 
-// DeleteComment scrubs a comment without a journal tombstone.
-func (c *Chronicle) DeleteComment(ctx context.Context, circleID, accountID, commentID string, now time.Time) error {
+// DeleteComment scrubs a comment without a journal tombstone. Возвращает блобы
+// его вложений: вызывающий освобождает их после коммита.
+func (c *Chronicle) DeleteComment(ctx context.Context, circleID, accountID, commentID string, now time.Time) ([]string, error) {
 	now = utcOrNow(now)
 	comment, err := c.loadComment(ctx, c.db, commentID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if comment.CircleID != circleID {
-		return ErrNotFound
+		return nil, ErrNotFound
 	}
 	if comment.Deleted {
-		return ErrInvalid
+		return nil, ErrInvalid
 	}
 	if _, err := c.requireAuthor(ctx, c.db, circleID, accountID, comment.IdentityID, now); err != nil {
-		return err
+		return nil, err
 	}
 	if !comment.EditWindow.CanEdit(comment.CreatedAt, now) {
-		return ErrForbidden
+		return nil, ErrForbidden
 	}
 
 	tx, err := c.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
 	if _, err := tx.ExecContext(ctx, `UPDATE comments SET body = NULL, deleted = 1 WHERE id = ?`, commentID); err != nil {
-		return err
+		return nil, err
 	}
 	if err := c.scrubTargetEvents(ctx, tx, circleID, commentID); err != nil {
-		return err
+		return nil, err
 	}
-	return tx.Commit()
+	blobIDs, err := c.takeCommentMediaTx(ctx, tx, commentMediaOfComment, commentID)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return blobIDs, nil
 }
 
 // DeleteReaction scrubs a reaction without a journal tombstone.

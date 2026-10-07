@@ -43,6 +43,9 @@ func (s *Server) handleResponses(w http.ResponseWriter, r *http.Request) {
 		setIf(item, "body", it.Body)
 		setIf(item, "emoji", it.Emoji)
 		setIf(item, "post_id", it.PostID)
+		if len(it.Media) > 0 {
+			item["media"] = chronicle.SummarizeMedia(it.Media)
+		}
 		items[i] = item
 	}
 	posts := make(map[string]any, len(page.Posts))

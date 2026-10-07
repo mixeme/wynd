@@ -10,7 +10,9 @@
 	import { page } from '$app/stores';
 	import { getContext, onDestroy, onMount, tick } from 'svelte';
 	import Thread from '$ui/data/Thread.svelte';
+	import CommentMedia from '$ui/data/CommentMedia.svelte';
 	import CommentRow from '$ui/data/CommentRow.svelte';
+	import Lightbox from '$ui/overlays/Lightbox.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Loading from '$ui/Loading.svelte';
@@ -37,19 +39,31 @@
 		reactionIconName,
 		REACTION_KEYS,
 		albumHref,
+		commentMediaItems,
+		commentPhotoIds,
 		photoMedia,
-		tileBlobId
+		tileBlobId,
+		type CommentMediaItem
 	} from '$lib/journal/present';
 	import { applyOwnReaction, canReact } from '$lib/journal/reactions';
 	import {
 		createComment,
 		deleteComment,
 		editComment,
+		fetchCompression,
 		removeReaction,
 		setReaction
 	} from '$lib/journal/posts';
 	import type { Comment, FeedPost, MediaSummary } from '$lib/journal/types';
-	import { getMediaUrl } from '$lib/media/objectUrl';
+	import { downloadBlob, getMediaUrl } from '$lib/media/objectUrl';
+	import { resolveMediaUrls } from '$lib/media/batch';
+	import { compressAudio, compressImage, fileToQueueBuffer, isImageFile } from '$lib/media/compress';
+	import { audioMime } from '$lib/media/audioTags';
+	import type { VoiceTake } from '$lib/media/voiceRecorder.svelte';
+	import type { QueueFile, QueueMediaMeta } from '$lib/idb/db';
+	import { formatBytes } from '$lib/format/bytes';
+	import { numberParam } from '$lib/nav/url';
+	import { uuid } from '$lib/uuid';
 	import {
 		enqueueComment,
 		enqueueReaction,
@@ -104,11 +118,204 @@
 			: false
 	);
 
+	// Снимки реплик в очереди ещё на устройстве: адреса живут, пока они в ней.
+	let queuedUrls = $state<Record<string, string>>({});
+
 	function refreshQueued() {
 		void listQueuedComments(circle.origin, circle.circleId, postId).then((items) => {
+			// Реплика ушла из очереди — она уже на сервере, перечитываем нить.
+			const left = items.length < queuedComments.length;
+			const next: Record<string, string> = {};
+			for (const item of items) {
+				item.media.forEach((m, i) => {
+					if (!m.preview) return;
+					const key = `${item.id}:${i}`;
+					next[key] =
+						queuedUrls[key] ??
+						URL.createObjectURL(new Blob([m.preview.data], { type: m.preview.type }));
+				});
+			}
+			for (const [key, url] of Object.entries(queuedUrls)) {
+				if (!next[key]) URL.revokeObjectURL(url);
+			}
+			queuedUrls = next;
 			queuedComments = items;
+			if (left) void load();
 		});
 	}
+
+	function queuedMediaItems(item: QueuedCommentView): CommentMediaItem[] {
+		return item.media.map((m, i) => {
+			const key = `${item.id}:${i}`;
+			if (m.kind === 'photo') return { key, kind: 'photo', url: queuedUrls[key] };
+			if (m.voice) return { key, kind: 'voice', peaks: m.peaks, durationMs: m.duration_ms };
+			return { key, kind: 'file', name: m.name, size: m.size };
+		});
+	}
+
+	// Вложения комментария (4.28): выбранное ждёт отправки полоской над полем.
+	const MAX_COMMENT_MEDIA = 10;
+	interface PendingMedia {
+		key: string;
+		file: QueueFile;
+		meta: QueueMediaMeta;
+		url?: string;
+	}
+	// $state.raw: файлы уходят в IndexedDB, а реактивную обёртку она не клонирует.
+	let pending = $state.raw<PendingMedia[]>([]);
+	let preparing = $state('');
+	// Адреса снимков из комментариев по blob id.
+	let mediaUrls = $state<Record<string, string>>({});
+
+	function takeRoom(files: File[]): File[] {
+		const room = MAX_COMMENT_MEDIA - pending.length;
+		if (files.length > room) error = `В комментарии не больше ${MAX_COMMENT_MEDIA} вложений`;
+		return files.slice(0, Math.max(0, room));
+	}
+
+	async function addPhotos(files: File[]) {
+		error = '';
+		const picked = takeRoom(files.filter(isImageFile));
+		if (!picked.length) return;
+		// Сжатие снимка — секунда-другая: говорим, что выбор принят.
+		preparing = 'Готовим фото…';
+		try {
+			const compression = await fetchCompression(circle.origin).catch(() => undefined);
+			for (const file of picked) {
+				const image = await compressImage(file, compression).catch(() => fileToQueueBuffer(file));
+				pending = [
+					...pending,
+					{
+						key: uuid(),
+						file: image,
+						meta: { kind: 'photo' },
+						url: URL.createObjectURL(new Blob([image.data], { type: image.type }))
+					}
+				];
+			}
+		} finally {
+			preparing = '';
+		}
+	}
+
+	async function addFiles(files: File[]) {
+		error = '';
+		const picked = takeRoom(files);
+		if (!picked.length) return;
+		const compression = await fetchCompression(circle.origin).catch(() => undefined);
+		const maxBytes = compression?.attachment_max_bytes ?? 0;
+		for (const file of picked) {
+			if (maxBytes > 0 && file.size > maxBytes) {
+				error = `Файл больше ${formatBytes(maxBytes)} — сервер не примет`;
+				continue;
+			}
+			pending = [
+				...pending,
+				{ key: uuid(), file: await fileToQueueBuffer(file), meta: { kind: 'attachment' } }
+			];
+		}
+	}
+
+	function dropPending(list: PendingMedia[]) {
+		for (const p of list) if (p.url) URL.revokeObjectURL(p.url);
+	}
+
+	function removePending(index: number) {
+		dropPending(pending.slice(index, index + 1));
+		pending = pending.filter((_, i) => i !== index);
+	}
+
+	// Реплика с вложением всегда идёт через очередь, как запись с фото: файл
+	// догружается после обрыва, без сети ждёт её, второй раз не создаётся.
+	async function enqueueWithMedia(text: string, items: PendingMedia[]) {
+		await enqueueComment(
+			circle.origin,
+			circle.circleId,
+			{ post_id: postId, body: text, media_meta: items.map((p) => p.meta) },
+			items.map((p) => p.file)
+		);
+		refreshQueued();
+	}
+
+	async function sendVoice(take: VoiceTake) {
+		if (postLocked || preparing) return;
+		preparing = 'Готовим голосовое…';
+		error = '';
+		try {
+			const compression = await fetchCompression(circle.origin).catch(() => undefined);
+			// Как голосовое записью (4.24): 64 кбит/с, перекодируем всегда.
+			const { fallbackReason: _reason, ...audio } = await compressAudio(
+				take.file,
+				compression,
+				undefined,
+				{ bitrateKbps: 64, force: true }
+			);
+			await enqueueWithMedia('', [
+				{
+					key: uuid(),
+					file: { ...audio, type: audioMime(audio.name, audio.type) },
+					meta: {
+						kind: 'attachment',
+						voice: true,
+						audio_duration_ms: Math.round(take.durationMs),
+						audio_peaks: take.peaks
+					}
+				}
+			]);
+		} catch (err) {
+			error = authErrorHint(err);
+		} finally {
+			preparing = '';
+		}
+	}
+
+	function downloadFile(item: CommentMediaItem) {
+		if (item.blobId) void downloadBlob(circle.origin, item.blobId, item.name || 'файл');
+	}
+
+	// Снимок комментария во весь экран (4.29): листаем в пределах реплики.
+	// Состояние — в адресе: «Назад» закрывает, а превью в ленте (4.30)
+	// открывает сразу нужный снимок.
+	const lbComment = $derived($page.url.searchParams.get('cphoto') ?? '');
+	const lbPhotos = $derived(
+		lbComment ? commentPhotoIds(post?.comments?.find((c) => c.id === lbComment)?.media) : []
+	);
+	const lbIndex = $derived(
+		Math.min(Math.max(numberParam($page.url, 'lb', 0), 0), Math.max(lbPhotos.length - 1, 0))
+	);
+	// Экран пересоздаётся при смене адреса, поэтому «открыли отсюда» — тоже
+	// в адресе: закрытие тогда оставляет в обсуждении, а не уводит туда,
+	// откуда пришли.
+	const lbOpenedHere = $derived($page.url.searchParams.has('here'));
+
+	function commentPhotoUrl(commentId: string, index: number, here: boolean): string {
+		const params = new URLSearchParams({ cphoto: commentId, lb: String(index) });
+		if (here) params.set('here', '1');
+		return `${$page.url.pathname}?${params}`;
+	}
+
+	function openCommentPhoto(commentId: string, index: number) {
+		goto(commentPhotoUrl(commentId, index, true));
+	}
+
+	function showCommentPhoto(index: number) {
+		goto(commentPhotoUrl(lbComment, index, lbOpenedHere), { replaceState: true });
+	}
+
+	function closeCommentPhoto() {
+		if (lbOpenedHere) {
+			// Не шаг истории: системную «Назад» экран забирает себе (C13).
+			goto($page.url.pathname, { replaceState: true });
+			return;
+		}
+		// Открыли из ленты или по ссылке — возвращаемся туда, откуда пришли.
+		goBack();
+	}
+
+	onDestroy(() => {
+		dropPending(pending);
+		for (const url of Object.values(queuedUrls)) URL.revokeObjectURL(url);
+	});
 
 	// Обновление жестом (3.5), как в ленте: тянешь экран от верха.
 	let listEl: HTMLDivElement | undefined = $state();
@@ -183,6 +390,16 @@
 				}
 			}
 			commentAvatarUrls = avatars;
+			// Снимки из комментариев — пачками поверх, нить их не ждёт.
+			const photoIds = new Set<string>();
+			for (const comment of post?.comments ?? []) {
+				for (const id of commentPhotoIds(comment.media)) {
+					if (!mediaUrls[id]) photoIds.add(id);
+				}
+			}
+			void resolveMediaUrls(circle.origin, [...photoIds], (blobId, url) => {
+				mediaUrls = { ...mediaUrls, [blobId]: url };
+			});
 		} catch {
 			error = 'Не удалось загрузить запись';
 		} finally {
@@ -265,9 +482,10 @@
 		editingCommentBody = '';
 	}
 
-	async function saveCommentEdit(commentId: string) {
+	async function saveCommentEdit(commentId: string, hasMedia: boolean) {
 		const text = editingCommentBody.trim();
-		if (!text) return;
+		// Слова можно стереть, только если у реплики остаются вложения (4.7).
+		if (!text && !hasMedia) return;
 		error = '';
 		try {
 			await editComment(circle.origin, circle.circleId, postId, commentId, text);
@@ -292,12 +510,30 @@
 		// Два быстрых нажатия — два комментария (GUI-8).
 		if (postLocked || sending) return;
 		const text = draft.trim();
-		if (!text) return;
+		if (!text && !pending.length) return;
 		sending = true;
 		error = '';
+		// Ключ один на все попытки: оборванный ответ не создаст вторую реплику.
+		const clientId = uuid();
+		if (pending.length) {
+			// Своя ветка: при сбое вложения остаются над полем, а не уходит
+			// один текст без них.
+			const items = pending;
+			try {
+				await enqueueWithMedia(text, items);
+				pending = [];
+				dropPending(items);
+				draft = '';
+			} catch (err) {
+				error = authErrorHint(err);
+			} finally {
+				sending = false;
+			}
+			return;
+		}
 		try {
 			if (navigator.onLine) {
-				await createComment(circle.origin, circle.circleId, postId, text);
+				await createComment(circle.origin, circle.circleId, postId, text, clientId);
 				draft = '';
 				await load();
 			} else {
@@ -397,6 +633,13 @@
 	commentBusy={sending}
 	bind:commentDraft={draft}
 	commentBar={circle.canWrite && !postLocked}
+	commentStatus={preparing}
+	commentPhotoAccept="image/*"
+	commentPending={pending.map((p) => ({ key: p.key, url: p.url, name: p.file.name }))}
+	onCommentRemovePending={removePending}
+	onCommentPhotos={(files) => void addPhotos(files)}
+	onCommentFiles={(files) => void addFiles(files)}
+	onCommentVoice={(take) => void sendVoice(take)}
 	onback={goBack}
 	onCommentSend={circle.canWrite && !postLocked ? sendComment : undefined}
 >
@@ -510,7 +753,7 @@
 							<div class="rowin">
 								<Button class="grow-flat"
 									variant="colored"
-									onclick={() => saveCommentEdit(comment.id)}
+									onclick={() => saveCommentEdit(comment.id, Boolean(comment.media?.length))}
 								>
 									Сохранить
 								</Button>
@@ -518,8 +761,23 @@
 									Отмена
 								</Button>
 							</div>
+							<CommentMedia items={commentMediaItems(comment.media, mediaUrls)} inert />
 						{:else}
-							<MentionText body={comment.body} />
+							{#if comment.body}
+								<MentionText body={comment.body} />
+							{/if}
+							<CommentMedia
+								items={commentMediaItems(comment.media, mediaUrls)}
+								origin={circle.origin}
+								audio={{
+									circleId: circle.circleId,
+									circleName: circle.name,
+									color: circle.colorHex,
+									postId: currentPost.id
+								}}
+								onphoto={(i) => openCommentPhoto(comment.id, i)}
+								onfile={downloadFile}
+							/>
 						{/if}
 					{/snippet}
 				</CommentRow>
@@ -538,7 +796,10 @@
 						</span>
 					{/snippet}
 					{#snippet children()}
-						<MentionText body={item.body} />
+						{#if item.body}
+							<MentionText body={item.body} />
+						{/if}
+						<CommentMedia items={queuedMediaItems(item)} inert />
 						{#if item.state === 'failed' && item.error}
 							<Hint class="mt-8">{item.error}</Hint>
 						{/if}
@@ -557,4 +818,25 @@
 		<ReactionsSheet reactions={post.reactions ?? []} color={circle.colorHex} ondismiss={closeReactions} />
 	{/if}
 </CircleLayout>
+
+{#if lbComment && lbPhotos.length}
+	{@const blobId = lbPhotos[lbIndex]}
+	<Lightbox
+		fixed
+		counter="{lbIndex + 1} из {lbPhotos.length}"
+		dotCount={lbPhotos.length}
+		dotIndex={lbIndex}
+		onDotSelect={showCommentPhoto}
+		onclose={closeCommentPhoto}
+		ondownload={() => void downloadBlob(circle.origin, blobId, 'photo.jpg')}
+		onprev={lbIndex > 0 ? () => showCommentPhoto(lbIndex - 1) : undefined}
+		onnext={lbIndex < lbPhotos.length - 1 ? () => showCommentPhoto(lbIndex + 1) : undefined}
+	>
+		{#snippet media()}
+			{#if mediaUrls[blobId]}
+				<img src={mediaUrls[blobId]} alt="" />
+			{/if}
+		{/snippet}
+	</Lightbox>
+{/if}
 

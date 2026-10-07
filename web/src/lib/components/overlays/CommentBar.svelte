@@ -22,6 +22,10 @@
 		onsend,
 		oncompose,
 		onphotos,
+		onfiles,
+		photoAccept = 'image/*,video/*',
+		pending = [],
+		onremovepending,
 		onvoice,
 		onvideo,
 		status = '',
@@ -39,6 +43,12 @@
 		// Кнопка «Фото» открывает выбор снимков здесь же; без обработчика
 		// её нет — иначе она повторяла бы шеврон.
 		onphotos?: (files: File[]) => void;
+		// Комментарий (4.28): «Файл» рядом с «Фото», выбранное — полоской над
+		// полем. С вложением слова необязательны.
+		onfiles?: (files: File[]) => void;
+		photoAccept?: string;
+		pending?: { key: string; url?: string; name: string }[];
+		onremovepending?: (index: number) => void;
 		// Голосовое и видео (C14, 4.21–4.24): пока поле пустое, круглая
 		// кнопка — «Запись», касание — выбор. Без обработчиков — как раньше.
 		onvoice?: (take: VoiceTake) => void;
@@ -49,7 +59,7 @@
 		style?: string;
 	} = $props();
 
-	const canSend = $derived(Boolean(value.trim()) && !busy);
+	const canSend = $derived((Boolean(value.trim()) || pending.length > 0) && !busy);
 
 	const recorder = new VoiceRecorder();
 	onDestroy(() => recorder.dispose());
@@ -59,12 +69,22 @@
 		recordOk = canRecord();
 	});
 	const recordable = $derived(
-		recordOk && Boolean(onvoice || onvideo) && !value.trim() && !busy && recorder.phase === 'idle'
+		recordOk &&
+			Boolean(onvoice || onvideo) &&
+			!value.trim() &&
+			!pending.length &&
+			!busy &&
+			recorder.phase === 'idle'
 	);
 	let menuOpen = $state(false);
 
 	function toggleMenu(e: MouseEvent) {
 		e.stopPropagation();
+		// В комментарии видео нет — выбирать не из чего, запись голоса сразу.
+		if (onvoice && !onvideo) {
+			pickVoice();
+			return;
+		}
 		menuOpen = !menuOpen;
 	}
 
@@ -125,6 +145,7 @@
 
 	let bodyInput: HTMLTextAreaElement | undefined = $state();
 	let photoPicker: FilePicker | undefined = $state();
+	let filePicker: FilePicker | undefined = $state();
 
 	let mentionStart = $state<number | null>(null);
 	let mentionQuery = $state('');
@@ -241,7 +262,28 @@
 			{/each}
 		</MentionPicker>
 	{/if}
-	<div class="comp">
+	{#if pending.length}
+		<div class="cstrip">
+			{#each pending as item, i (item.key)}
+				<div class="cpend" class:file={!item.url}>
+					{#if item.url}
+						<img src={item.url} alt="" />
+					{:else}
+						<Icon name="file" /><span class="nm">{item.name}</span>
+					{/if}
+					<button
+						type="button"
+						class="cpend-rm"
+						aria-label="Убрать"
+						onclick={() => onremovepending?.(i)}
+					>
+						<Icon name="x" />
+					</button>
+				</div>
+			{/each}
+		</div>
+	{/if}
+	<div class="comp" class:with-strip={pending.length > 0}>
 	<!-- Нажатие мимо строки в рамке ставит курсор в поле. С клавиатуры
 	     поле достаётся Tab напрямую, отдельная роль рамке не нужна. -->
 	{#if status}
@@ -325,12 +367,21 @@
 				onclick={() => photoPicker?.open()}
 			/>
 		{/if}
+		{#if onfiles}
+			<IconButton
+				name="file"
+				label="Файл"
+				stopPropagation
+				style="margin-left:{onphotos ? '6px' : 'auto'}"
+				onclick={() => filePicker?.open()}
+			/>
+		{/if}
 		{#if oncompose}
 			<IconButton
 				name="chevr"
 				label="Развернуть"
 				stopPropagation
-				style="margin-left:{onphotos ? '2px' : 'auto'}"
+				style="margin-left:{onphotos || onfiles ? '2px' : 'auto'}"
 				onclick={() => oncompose?.()}
 			/>
 		{/if}
@@ -340,10 +391,13 @@
 	{#if onphotos}
 		<FilePicker
 			bind:this={photoPicker}
-			accept="image/*,video/*"
+			accept={photoAccept}
 			multiple
 			onfiles={(files) => onphotos?.(files)}
 		/>
+	{/if}
+	{#if onfiles}
+		<FilePicker bind:this={filePicker} accept="*/*" multiple onfiles={(files) => onfiles?.(files)} />
 	{/if}
 	{#if recordable}
 		<button

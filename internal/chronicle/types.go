@@ -162,6 +162,11 @@ type Comment struct {
 	EditWindow    EditWindow
 	EditableUntil *time.Time
 	Deleted       bool
+	// Media — вложения комментария (4.28): фото, голосовое, файл.
+	Media []PostMedia
+	// Replayed — комментарий не создан сейчас, а найден по client_id:
+	// уведомления второй раз не шлются.
+	Replayed bool
 }
 
 type Reaction struct {
@@ -228,6 +233,9 @@ type CommentInput struct {
 	PostID    string
 	Body      string
 	Now       time.Time
+	// Media — вложения (до MaxCommentMedia); с ними текст необязателен.
+	// Владение блобами и квоту проверяет вызывающий.
+	Media []MediaInput
 }
 
 type ReactionInput struct {

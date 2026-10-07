@@ -148,12 +148,18 @@ func (s *Store) usedBytes(ctx context.Context) (int64, error) {
 
 func (s *Store) circleUsedBytes(ctx context.Context, circleID string) (int64, error) {
 	var used sql.NullInt64
+	// Вложения комментариев — тоже медиа круга (4.29).
 	err := s.db.QueryRowContext(ctx, `
-		SELECT COALESCE(SUM(b.size_bytes), 0)
-		FROM post_media pm
-		JOIN posts p ON p.id = pm.post_id AND p.circle_id = ? AND p.deleted = 0
-		JOIN blobs b ON b.id = pm.blob_id AND b.status = 'complete'
-	`, circleID).Scan(&used)
+		SELECT
+		  (SELECT COALESCE(SUM(b.size_bytes), 0)
+		   FROM post_media pm
+		   JOIN posts p ON p.id = pm.post_id AND p.circle_id = ? AND p.deleted = 0
+		   JOIN blobs b ON b.id = pm.blob_id AND b.status = 'complete')
+		+ (SELECT COALESCE(SUM(b.size_bytes), 0)
+		   FROM comment_media cmm
+		   JOIN comments c ON c.id = cmm.comment_id AND c.circle_id = ? AND c.deleted = 0
+		   JOIN blobs b ON b.id = cmm.blob_id AND b.status = 'complete')
+	`, circleID, circleID).Scan(&used)
 	if err != nil {
 		return 0, err
 	}

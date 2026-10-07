@@ -602,7 +602,7 @@ func TestInvariantCommentEditAndDeleteOwnWindow(t *testing.T) {
 	if !errors.Is(err, chronicle.ErrForbidden) {
 		t.Fatalf("post still in chronicle window: got %v", err)
 	}
-	if err := e.ch.DeleteComment(e.ctx, circle.ID, "owner", c.ID, e.at(2)); err != nil {
+	if _, err := e.ch.DeleteComment(e.ctx, circle.ID, "owner", c.ID, e.at(2)); err != nil {
 		t.Fatal(err)
 	}
 	body, err = e.ch.CommentBody(e.ctx, c.ID)

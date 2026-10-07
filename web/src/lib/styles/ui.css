@@ -1172,6 +1172,154 @@ a.resp + a.resp {
 	color: var(--c);
 	font-weight: 600;
 }
+/* Вложения комментария (4.28–4.30): плитки, голосовое и файл — без рамки. */
+.cmedia {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-top: 8px;
+}
+.ctiles {
+	display: flex;
+	gap: 6px;
+}
+.ctiles .ctile {
+	width: 72px;
+	height: 72px;
+	border-radius: 8px;
+	flex: 0 0 auto;
+	padding: 0;
+	background: var(--tint);
+}
+.ctiles button.ctile {
+	cursor: pointer;
+}
+.ctiles .ctile-more {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	background: rgba(43,39,36,.55);
+	color: #fff;
+	font-weight: 600;
+	font-size: 13.5px;
+}
+.crow {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	width: 100%;
+	min-width: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+}
+button.crow {
+	cursor: pointer;
+}
+.crow .nm {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.crow .sz {
+	font-size: 11.5px;
+	color: var(--faint);
+}
+.crow .ic {
+	width: 16px;
+	height: 16px;
+	flex: 0 0 auto;
+}
+/* Выбранное для комментария — полоской над полем (4.28). */
+.cstrip {
+	display: flex;
+	gap: 8px;
+	padding: 10px 14px 0;
+	background: var(--paper);
+	border-top: 1px solid var(--line);
+	overflow-x: auto;
+}
+.comp.with-strip {
+	border-top: 0;
+}
+.cstrip .cpend {
+	position: relative;
+	width: 56px;
+	height: 56px;
+	border-radius: 8px;
+	flex: 0 0 auto;
+	overflow: hidden;
+	background: var(--tint);
+}
+.cstrip .cpend img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+.cstrip .cpend.file {
+	width: auto;
+	max-width: 170px;
+	box-sizing: border-box;
+	padding: 0 28px 0 10px;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	border: 1px solid var(--line);
+	background: var(--card);
+	font-size: 11.5px;
+}
+.cstrip .cpend.file .nm {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.cstrip .cpend.file > .ic {
+	width: 16px;
+	height: 16px;
+	flex: 0 0 auto;
+}
+.cstrip .cpend-rm {
+	position: absolute;
+	right: 3px;
+	top: 3px;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	border: 0;
+	padding: 0;
+	background: rgba(43,39,36,.82);
+	display: grid;
+	place-items: center;
+	cursor: pointer;
+}
+.cstrip .cpend-rm .ic {
+	color: #fff;
+	width: 11px;
+	height: 11px;
+}
+/* Превью комментария в ленте: строки — кнопки, между ними вложения (4.30). */
+.cm .cm-line {
+	display: block;
+	width: 100%;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+.cm .cmedia + .cm-line {
+	margin-top: 8px;
+}
 /* Открытка дня в ленте (3.15): подложка — тон круга, без рамки. */
 .dayc {
 	display: block;

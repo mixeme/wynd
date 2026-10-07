@@ -23,6 +23,7 @@
 	import Loading from '$ui/Loading.svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import AttachmentRow from '$ui/data/AttachmentRow.svelte';
+	import CommentMedia from '$ui/data/CommentMedia.svelte';
 	import CommentPreview from '$ui/data/CommentPreview.svelte';
 	import VoiceRow from '$ui/data/VoiceRow.svelte';
 	import PostCard from '$ui/data/PostCard.svelte';
@@ -31,6 +32,7 @@
 	import { isAccessError } from '$lib/api/client';
 	import { formatBytes } from '$lib/format/bytes';
 	import { resolveMediaUrls } from '$lib/media/batch';
+	import { downloadBlob } from '$lib/media/objectUrl';
 	import { WORD, plural } from '$lib/format/plural';
 	import { formatDeadline, formatEntryDate, formatPostTime } from '$lib/format/time';
 	import { isPostArchiveLocked } from '$lib/journal/archive';
@@ -43,8 +45,11 @@
 		isAttachedToOtherDay,
 		attachmentMedia,
 		authorInitial,
+		commentMediaItems,
+		commentPhotoIds,
 		commentPreview,
 		coverMedia,
+		type CommentMediaItem,
 		dayCoverTileId,
 		groupReactions,
 		locationLabel,
@@ -167,6 +172,10 @@
 				if (att.audio_cover_blob_id && !mediaUrls[att.audio_cover_blob_id]) {
 					coverJobs.set(att.audio_cover_blob_id, att.audio_cover_blob_id);
 				}
+			}
+			// Снимки последней реплики — превью показывает их как в нити (4.30).
+			for (const id of commentPhotoIds(commentPreview(post.comments).comment?.media).slice(0, 3)) {
+				if (!mediaUrls[id]) coverJobs.set(id, id);
 			}
 		}
 
@@ -588,6 +597,17 @@
 		leaveToPost(`/circles/${circle.circleId}/posts/${postId}`);
 	}
 
+	// Снимок из превью комментария (4.30) открывается во весь экран в обсуждении.
+	function openCommentPhoto(postId: string, commentId: string, index: number) {
+		leaveToPost(
+			`/circles/${circle.circleId}/posts/${postId}?cphoto=${encodeURIComponent(commentId)}&lb=${index}`
+		);
+	}
+
+	function downloadCommentFile(item: CommentMediaItem) {
+		if (item.blobId) void downloadBlob(circle.origin, item.blobId, item.name || 'файл');
+	}
+
 	// Разовый параметр стирается из адреса через $app/navigation: прямой
 	// history.replaceState проходил мимо роутера, и его состояние расходилось
 	// с адресом (GUI-7).
@@ -942,10 +962,26 @@
 				{/if}
 				{#if post.comments?.length}
 					{@const preview = commentPreview(post.comments)}
+					{@const last = preview.comment}
+					{#snippet previewMedia()}
+						<CommentMedia
+							items={commentMediaItems(last?.media, mediaUrls)}
+							origin={circle.origin}
+							audio={{
+								circleId: circle.circleId,
+								circleName: circle.name,
+								color: circle.colorHex,
+								postId: post.id
+							}}
+							onphoto={(n) => last && openCommentPhoto(post.id, last.id, n)}
+							onfile={downloadCommentFile}
+						/>
+					{/snippet}
 					<CommentPreview
 						first={preview.first || undefined}
 						time={preview.createdAt ? formatPostTime(preview.createdAt) : undefined}
 						more={preview.more ? `ещё ${plural(preview.more, WORD.comment)}` : undefined}
+						media={last?.media?.length ? previewMedia : undefined}
 						onclick={() => openPost(post.id)}
 					/>
 				{/if}

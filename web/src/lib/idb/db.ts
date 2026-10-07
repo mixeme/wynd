@@ -74,6 +74,8 @@ export interface PostQueuePayload {
 export interface CommentQueuePayload {
 	post_id: string;
 	body: string;
+	/** Описание вложений по порядку файлов (4.28): вид и данные голосового. */
+	media_meta?: QueueMediaMeta[];
 }
 
 export interface ReactionQueuePayload {

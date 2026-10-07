@@ -170,6 +170,10 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 
 `InviteLinkCard` — ссылка-приглашение целиком (`FieldDisplay.invite-url`) и «Поделиться / Скопировать» (**#e6-7**, **#e6-21**): `url`, `shared` / `copied` (подписи «Отправлено» / «Скопировано»), `onshare`, `oncopy`. В листе — те же поля экрана, что у ссылки; лист ставится в `footer` макета, чтобы кнопкам достался цвет круга. QR над ней экран ставит сам.
 
+`CommentMedia` — вложения комментария (`div.cmedia`, 4.28–4.30): `items` (`CommentMediaItem[]` из `commentMediaItems` в `present.ts`) — до трёх плиток `.ctile` и «+N», голосовое (`VoiceRow`), файл строкой `.crow`; `onphoto(index)`, `onfile(item)`, `audio` (для полосы плеера); `inert` — только вид, без нажатий (строка-ссылка «Откликов», реплика в очереди). Один компонент в нити, в превью под записью и в «Откликах».
+
+`CommentBar` — к полю комментария (4.28): `onfiles` — значок «Файл» рядом с «Фото», `photoAccept`, `pending` (`{key, url?, name}[]`) — полоска выбранного `.cstrip` над полем с крестиком `onremovepending(i)`; с вложением кнопка «Отправить» активна и без слов; `onvoice` без `onvideo` — «Запись» сразу пишет голос, без выбора. `CommentPreview` — слот `media`: вложения последней реплики; рамка `.cm` тогда `div`, строки — кнопки `.cm-line`.
+
 `CommentRow` — строка треда (`div.cmt`, опц. `.q`): аватар, `name`, snippet `time`, snippet `children` (текст / правка); `onedit` / `ondelete` → `.acts` (**#e4-5**–**#e4-7**). Колонка `.acts` в треде стоит всегда — текст одной ширины у своих и чужих; `bare` — без неё (строка-ссылка, `ResponseEntry`). Не путать с `CommentPreview` (`button.cm` в ленте).
 
 `FeedDayCard` — открытка дня в ленте (`button.dayc`, 3.15–3.18): `date`, `title?` (нет — на его месте дата), `hasCover` / `coverUrl` / `video`, `caption`, `onclick` (открывает день). Подложка — `--ct`, в тёмной теме `#3A2E29`; стили `.dayc` — в `ui.css`.

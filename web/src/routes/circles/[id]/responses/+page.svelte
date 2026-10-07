@@ -8,6 +8,7 @@
 	import { goto } from '$app/navigation';
 	import { getContext, onDestroy, onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
+	import CommentMedia from '$ui/data/CommentMedia.svelte';
 	import MentionText from '$ui/data/MentionText.svelte';
 	import EventDivider from '$ui/data/EventDivider.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -21,7 +22,12 @@
 		localDayKey
 	} from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
-	import { authorInitial, reactionIconName } from '$lib/journal/present';
+	import {
+		authorInitial,
+		commentMediaItems,
+		commentPhotoIds,
+		reactionIconName
+	} from '$lib/journal/present';
 	import {
 		fetchResponses,
 		groupResponses,
@@ -61,6 +67,7 @@
 			if (it.actor_avatar_blob_id) ids.add(it.actor_avatar_blob_id);
 			const ref = it.post_id ? refs[it.post_id] : undefined;
 			if (ref?.cover_blob_id) ids.add(ref.cover_blob_id);
+			for (const id of commentPhotoIds(it.media).slice(0, 3)) ids.add(id);
 		}
 		const todo = [...ids].filter((id) => !mediaUrls[id]);
 		if (!todo.length) return;
@@ -198,6 +205,9 @@
 				>
 					{#if row.kind === 'comment' && row.lead.body}
 						<MentionText body={row.lead.body} />
+					{/if}
+					{#if row.kind === 'comment'}
+						<CommentMedia items={commentMediaItems(row.lead.media, mediaUrls)} inert />
 					{/if}
 					{#if ref}
 						<PostRef

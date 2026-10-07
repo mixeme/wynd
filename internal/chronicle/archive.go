@@ -560,6 +560,12 @@ func (c *Chronicle) EstimateArchivePersonal(ctx context.Context, circleID, accou
 			SELECT pm.video_poster_blob_id FROM post_media pm JOIN vp ON vp.id = pm.post_id
 			 WHERE pm.video_poster_blob_id IS NOT NULL AND pm.video_poster_blob_id != ''
 			UNION
+			SELECT cmm.blob_id FROM comment_media cmm
+			JOIN comments cm ON cm.id = cmm.comment_id
+			JOIN vp ON vp.id = cm.post_id
+			JOIN memberships m ON m.circle_id = ? AND m.account_id = ?
+			WHERE cm.deleted = 0 AND cm.created_at < ? AND %s
+			UNION
 			SELECT n.avatar_blob_id FROM identity_names n
 			JOIN slice_identities si ON si.identity_id = n.identity_id
 			WHERE n.erased_at IS NULL AND n.avatar_blob_id IS NOT NULL
@@ -575,11 +581,13 @@ func (c *Chronicle) EstimateArchivePersonal(ctx context.Context, circleID, accou
 		WHERE b.status = 'complete'
 	`, visiblePost,
 		sqlVisibleAtMembership("cm.created_at"),
-		sqlVisibleAtMembership("rx.created_at"))
+		sqlVisibleAtMembership("rx.created_at"),
+		sqlVisibleAtMembership("cm.created_at"))
 	args := []any{
 		accountID, circleID, at, // vp
 		circleID, accountID, at, // комментарии
 		circleID, accountID, at, // реакции
+		circleID, accountID, at, // вложения комментариев
 	}
 	if err := c.db.QueryRowContext(ctx, query, args...).Scan(&stats.MediaFiles, &stats.MediaBytes); err != nil {
 		return ArchivePersonalStats{}, err
@@ -820,7 +828,11 @@ func (c *Chronicle) purgePostBranch(ctx context.Context, tx *sql.Tx, post Post) 
 	if err := c.dropPostMediaInTx(ctx, tx, post.ID); err != nil {
 		return nil, err
 	}
-	return blobIDs, nil
+	commentBlobs, err := c.takeCommentMediaTx(ctx, tx, commentMediaOfPost, post.ID)
+	if err != nil {
+		return nil, err
+	}
+	return append(blobIDs, commentBlobs...), nil
 }
 
 func (c *Chronicle) postMediaBlobIDsTx(ctx context.Context, tx *sql.Tx, postID string) ([]string, error) {

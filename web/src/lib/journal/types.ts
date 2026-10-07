@@ -31,6 +31,8 @@ export interface Comment {
 	created_at: string;
 	edit_window_sec?: number | null;
 	editable_until?: string;
+	/** Вложения комментария (4.28): фото, голосовое, файл. */
+	media?: MediaSummary[];
 }
 
 export type ReactionKey = 'heart' | 'laugh' | 'surprise' | 'anger';

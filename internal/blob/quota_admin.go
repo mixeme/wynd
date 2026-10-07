@@ -31,6 +31,10 @@ func (s *Store) ListStorageCircles(ctx context.Context) ([]StorageCircle, error)
 			 FROM post_media pm
 			 JOIN posts p ON p.id = pm.post_id AND p.circle_id = c.id AND p.deleted = 0
 			 JOIN blobs b ON b.id = pm.blob_id AND b.status = 'complete')
+			+ (SELECT COALESCE(SUM(b.size_bytes), 0)
+			 FROM comment_media cmm
+			 JOIN comments cm ON cm.id = cmm.comment_id AND cm.circle_id = c.id AND cm.deleted = 0
+			 JOIN blobs b ON b.id = cmm.blob_id AND b.status = 'complete')
 		FROM circles c
 		JOIN accounts a ON a.id = c.owner_account_id
 		ORDER BY 7 DESC, c.name COLLATE NOCASE

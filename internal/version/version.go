@@ -2,7 +2,7 @@ package version
 
 // Number is the release semver. Keep identical to the VERSION file
 // at the repository root (enforced by TestMatchesVERSIONFile).
-const Number = "0.24.1"
+const Number = "0.25.0"
 
 // SourceURL is the public address of the Corresponding Source (AGPL §13).
 //

@@ -133,3 +133,6 @@ func stringIndex(s, needle string) int {
 	}
 	return -1
 }
+
+// onlyErr — ошибка вызова, который возвращает ещё и значение.
+func onlyErr[T any](_ T, err error) error { return err }

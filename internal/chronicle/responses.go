@@ -42,6 +42,8 @@ type Response struct {
 	PostID            string
 	EntryDate         string
 	CoverBlobID       string
+	// Media — вложения комментария (4.30): в «Откликах» он тем же видом.
+	Media []PostMedia
 }
 
 // ResponsePostRef — запись, к которой относится отклик: рамка на 3.13.
@@ -220,10 +222,13 @@ func (c *Chronicle) Responses(ctx context.Context, circleID, accountID string, b
 }
 
 func (c *Chronicle) attachResponseRefs(ctx context.Context, page *ResponsesPage) error {
-	var postIDs, actors []string
+	var postIDs, actors, commentIDs []string
 	seenPost := map[string]bool{}
 	seenActor := map[string]bool{}
 	for _, r := range page.Items {
+		if r.Kind == ResponseComment && r.CommentID != "" {
+			commentIDs = append(commentIDs, r.CommentID)
+		}
 		if r.PostID != "" && !seenPost[r.PostID] {
 			seenPost[r.PostID] = true
 			postIDs = append(postIDs, r.PostID)
@@ -237,8 +242,15 @@ func (c *Chronicle) attachResponseRefs(ctx context.Context, page *ResponsesPage)
 	if err != nil {
 		return err
 	}
+	commentMedia, err := c.listMediaForComments(ctx, c.db, commentIDs)
+	if err != nil {
+		return err
+	}
 	for i := range page.Items {
 		page.Items[i].ActorAvatarBlobID = avatars[page.Items[i].ActorIdentityID]
+		if page.Items[i].Kind == ResponseComment {
+			page.Items[i].Media = commentMedia[page.Items[i].CommentID]
+		}
 	}
 	if len(postIDs) > 0 {
 		posts, err := c.loadPostsByIDs(ctx, postIDs)

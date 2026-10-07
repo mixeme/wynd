@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+	commentMediaItems,
+	commentPhotoIds,
 	dayCoverTileId,
 	isLocalPosterId,
 	localPosterId,
@@ -85,9 +87,34 @@ describe('present', () => {
 		expect(commentPreview(comments)).toEqual({
 			first: 'Вера: ещё',
 			createdAt: '2026-01-01T00:02:00Z',
-			more: 2
+			more: 2,
+			comment: comments[2]
 		});
 		expect(commentPreview([])).toEqual({ more: 0 });
+		// Реплика без слов (4.30): имя, а вложение превью покажет само.
+		const voice: Comment = {
+			id: 'c4', post_id: 'p', author_name: 'Кот', body: '', identity_id: 'k', created_at: at,
+			media: [{ blob_id: 'v', kind: 'attachment', is_cover: false, voice: true, audio_duration_ms: 48000 }]
+		};
+		expect(commentPreview([voice]).first).toBe('Кот:');
+	});
+
+	it('describes comment media for display', () => {
+		const items = commentMediaItems(
+			[
+				{ blob_id: 'p1', kind: 'photo', is_cover: false },
+				{ blob_id: 'v', kind: 'attachment', is_cover: false, voice: true, audio_duration_ms: 48000, audio_peaks: [5] },
+				{ blob_id: 'f', kind: 'attachment', is_cover: false, filename: 'list.pdf', size_bytes: 240 }
+			],
+			{ p1: 'blob:1' }
+		);
+		expect(items).toEqual([
+			{ key: 'p1', kind: 'photo', blobId: 'p1', url: 'blob:1' },
+			{ key: 'v', kind: 'voice', blobId: 'v', peaks: [5], durationMs: 48000 },
+			{ key: 'f', kind: 'file', blobId: 'f', name: 'list.pdf', size: 240 }
+		]);
+		expect(commentMediaItems(undefined, {})).toEqual([]);
+		expect(commentPhotoIds([{ blob_id: 'p1', kind: 'photo', is_cover: false }, { blob_id: 'f', kind: 'attachment', is_cover: false }])).toEqual(['p1']);
 	});
 
 	it('places unread divider before first read post', () => {

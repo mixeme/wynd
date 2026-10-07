@@ -155,8 +155,15 @@ func (c *Chronicle) listCommentsForPosts(ctx context.Context, postIDs []string, 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	return scanCommentsMap(rows, scope)
+	out, err := scanCommentsMap(rows, scope)
+	rows.Close()
+	if err != nil {
+		return nil, err
+	}
+	if err := c.attachCommentMedia(ctx, out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *Chronicle) listReactionsForPosts(ctx context.Context, postIDs []string, scope *readScope) (map[string][]Reaction, error) {

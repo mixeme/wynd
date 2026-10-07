@@ -114,6 +114,14 @@ func BuildPersonalArchive(ctx context.Context, w io.Writer, in BuildInput) error
 				return err
 			}
 		}
+		// Вложения комментариев — тоже в архив (4.29).
+		for _, c := range fp.Comments {
+			for _, m := range c.Media {
+				if err := addBlob(m.BlobID); err != nil {
+					return err
+				}
+			}
+		}
 	}
 	for _, blobID := range in.Avatars {
 		if err := addBlob(blobID); err != nil {
@@ -258,6 +266,8 @@ body{font-family:"Golos Text",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto
 .comments{margin-top:12px;border-top:1px solid var(--line);padding-top:8px}
 .comment{font-size:14px;margin:6px 0}
 .comment .author{color:var(--c)}
+.cmedia img{max-width:240px}
+.cfile{margin:6px 0;font-size:14px}
 .toc{list-style:none;margin:8px 0;padding:0}
 .toc li{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:10px 12px;padding:12px 16px}
 .toc a{color:var(--ink);text-decoration:none;font-weight:600}
@@ -466,11 +476,43 @@ func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, d
 			b.WriteString(html.EscapeString(c.AuthorName))
 			b.WriteString(":</span> ")
 			b.WriteString(html.EscapeString(c.Body))
+			appendCommentMediaHTML(b, c.Media, media, prefix)
 			b.WriteString("</div>")
 		}
 		b.WriteString("</div>")
 	}
 	b.WriteString("</article>")
+}
+
+// appendCommentMediaHTML — вложения комментария: снимок картинкой, голосовое
+// и звук плеером, остальное ссылкой на файл.
+func appendCommentMediaHTML(b *strings.Builder, items []chronicle.PostMedia, media map[string]string, prefix string) {
+	for _, m := range items {
+		if playableAudio(m) {
+			appendAudioHTML(b, m, media, prefix)
+			continue
+		}
+		src, ok := media[m.BlobID]
+		if !ok {
+			b.WriteString("<p class=\"gone\">Файл недоступен на сервере</p>")
+			continue
+		}
+		if m.Kind == chronicle.MediaPhoto {
+			b.WriteString("<div class=\"media cmedia\"><img alt=\"\" src=\"")
+			b.WriteString(html.EscapeString(prefix + src))
+			b.WriteString("\"></div>")
+			continue
+		}
+		name := m.OriginalFilename
+		if name == "" {
+			name = "файл"
+		}
+		b.WriteString("<p class=\"cfile\"><a href=\"")
+		b.WriteString(html.EscapeString(prefix + src))
+		b.WriteString("\">")
+		b.WriteString(html.EscapeString(name))
+		b.WriteString("</a></p>")
+	}
 }
 
 func playableAudio(m chronicle.PostMedia) bool {

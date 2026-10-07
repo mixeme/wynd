@@ -3,6 +3,7 @@
 // обложка дня идут в ленту строкой (wynd.html, «Правила ленты»).
 
 import { apiJson } from '$lib/api/client';
+import type { MediaSummary } from './types';
 
 export type ResponseKind = 'comment' | 'reaction';
 
@@ -17,6 +18,8 @@ export interface ResponseItem {
 	body?: string;
 	emoji?: string;
 	post_id?: string;
+	/** Вложения комментария (4.30). */
+	media?: MediaSummary[];
 }
 
 export interface ResponsePostRef {

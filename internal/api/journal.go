@@ -51,6 +51,14 @@ type textBody struct {
 	ClientID string `json:"client_id"`
 }
 
+// commentBody — новый комментарий: слова и вложения (4.28). Из полей media
+// читаются blob_id, kind и данные голосового; остальное — про запись.
+type commentBody struct {
+	Body     string      `json:"body"`
+	ClientID string      `json:"client_id"`
+	Media    []mediaBody `json:"media"`
+}
+
 type reactionBody struct {
 	Emoji string `json:"emoji"`
 }
@@ -216,21 +224,46 @@ func (s *Server) handleCreateComment(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	body, ok := bindJSON[textBody](w, r)
+	body, ok := bindJSON[commentBody](w, r)
 	if !ok {
 		return
+	}
+	media, err := parseCommentMedia(body.Media)
+	if err != nil {
+		writeError(w, chronicle.ErrInvalid)
+		return
+	}
+	if len(media) > 0 {
+		blobIDs := chronicle.MediaBlobIDs(media)
+		if err := s.Blobs.ValidateOwnedComplete(r.Context(), sess.AccountID, blobIDs); err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		total, err := s.Blobs.TotalBytesForBlobs(r.Context(), blobIDs)
+		if err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		if err := s.Blobs.CheckMediaQuota(r.Context(), circleID, total); err != nil {
+			writeDomainError(w, err)
+			return
+		}
 	}
 	c, err := s.Chronicle.CreateComment(r.Context(), chronicle.CommentInput{
 		CircleID: circleID, AccountID: sess.AccountID, PostID: postID,
 		Body: body.Body, Now: time.Now().UTC(), ClientID: strings.TrimSpace(body.ClientID),
+		Media: media,
 	})
 	if err != nil {
 		writeDomainError(w, err)
 		return
 	}
-	s.notifyComment(circleID, sess.AccountID, postID)
-	if ids, err := s.Chronicle.MentionedAccountIDs(r.Context(), circleID, body.Body); err == nil {
-		s.notifyAccounts(circleID, sess.AccountID, "mention", ids)
+	// Повтор очереди с тем же ключом — комментарий уже был, второй раз не звоним.
+	if !c.Replayed {
+		s.notifyComment(circleID, sess.AccountID, postID)
+		if ids, err := s.Chronicle.MentionedAccountIDs(r.Context(), circleID, body.Body); err == nil {
+			s.notifyAccounts(circleID, sess.AccountID, "mention", ids)
+		}
 	}
 	avatars, _ := s.Chronicle.IdentityAvatarBlobIDs(r.Context(), []string{c.IdentityID})
 	writeJSON(w, http.StatusCreated, commentResponse(c, avatars))
@@ -262,10 +295,14 @@ func (s *Server) handleDeleteComment(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	err := s.Chronicle.DeleteComment(r.Context(), circleID, sess.AccountID, commentID, time.Now().UTC())
+	blobIDs, err := s.Chronicle.DeleteComment(r.Context(), circleID, sess.AccountID, commentID, time.Now().UTC())
 	if err != nil {
 		writeDomainError(w, err)
 		return
+	}
+	// Файлы вложений освобождаются после коммита, как у записи.
+	if err := s.Blobs.ReleaseBlobs(r.Context(), blobIDs); err != nil {
+		log.Printf("delete comment %s: release blobs: %v", commentID, err)
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
@@ -467,6 +504,26 @@ func parseMediaInput(items []mediaBody) ([]chronicle.MediaInput, error) {
 	return out, nil
 }
 
+// parseCommentMedia — вложения комментария: фото или файл (в том числе
+// голосовое), не больше MaxCommentMedia. Видео — только в запись.
+func parseCommentMedia(items []mediaBody) ([]chronicle.MediaInput, error) {
+	if len(items) > chronicle.MaxCommentMedia {
+		return nil, chronicle.ErrInvalid
+	}
+	out := make([]chronicle.MediaInput, len(items))
+	for i, m := range items {
+		kind := chronicle.MediaKind(m.Kind)
+		if kind != chronicle.MediaPhoto && kind != chronicle.MediaAttachment {
+			return nil, chronicle.ErrInvalid
+		}
+		out[i] = chronicle.MediaInput{
+			BlobID: strings.TrimSpace(m.BlobID), Kind: kind,
+			Voice: m.Voice, AudioDurationMs: m.AudioDurationMs, AudioPeaks: m.AudioPeaks,
+		}
+	}
+	return out, nil
+}
+
 type postJSON struct {
 	ID         string                   `json:"id"`
 	CircleID   string                   `json:"circle_id"`
@@ -590,6 +647,9 @@ func commentResponse(c chronicle.Comment, avatars map[string]string) map[string]
 		row["author_avatar_blob_id"] = blobID
 	}
 	appendEditPolicy(row, c.EditWindow, c.EditableUntil)
+	if len(c.Media) > 0 {
+		row["media"] = chronicle.SummarizeMedia(c.Media)
+	}
 	return row
 }
 

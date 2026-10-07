@@ -87,7 +87,7 @@ func TestResponsesDropDeletedComment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := e.ch.DeleteComment(e.ctx, circle.ID, "kot", cm.ID, e.at(2).Add(time.Minute)); err != nil {
+	if _, err := e.ch.DeleteComment(e.ctx, circle.ID, "kot", cm.ID, e.at(2).Add(time.Minute)); err != nil {
 		t.Fatal(err)
 	}
 	page, err := e.ch.Responses(e.ctx, circle.ID, "owner", 0)

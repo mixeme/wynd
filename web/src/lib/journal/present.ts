@@ -54,6 +54,8 @@ export function commentPreview(comments: Comment[] | undefined): {
 	first?: string;
 	createdAt?: string;
 	more: number;
+	/** Сама последняя реплика — её вложения превью показывает как в нити (4.30). */
+	comment?: Comment;
 } {
 	if (!comments?.length) return { more: 0 };
 	// Список с сервера идёт от старого к новому. В ленте — последняя реплика.
@@ -61,8 +63,59 @@ export function commentPreview(comments: Comment[] | undefined): {
 	for (const comment of comments) {
 		if (comment.created_at >= latest.created_at) latest = comment;
 	}
-	const line = `${latest.author_name}: ${latest.body}`;
-	return { first: line, createdAt: latest.created_at, more: Math.max(0, comments.length - 1) };
+	// Реплика без слов — имя и сразу вложение.
+	const line = `${latest.author_name}: ${latest.body ?? ''}`.trimEnd();
+	return {
+		first: line,
+		createdAt: latest.created_at,
+		more: Math.max(0, comments.length - 1),
+		comment: latest
+	};
+}
+
+/** Вложение комментария для показа (4.29): в нити, превью и очереди — один вид. */
+export interface CommentMediaItem {
+	key: string;
+	kind: 'photo' | 'voice' | 'file';
+	/** Готовый адрес снимка; нет — плитка пустая, картинка доедет. */
+	url?: string;
+	blobId?: string;
+	peaks?: number[];
+	durationMs?: number;
+	name?: string;
+	size?: number;
+}
+
+export function commentMediaItems(
+	media: MediaSummary[] | undefined,
+	urls: Record<string, string>
+): CommentMediaItem[] {
+	return (media ?? []).map((m) => {
+		if (m.kind === 'photo') {
+			return { key: m.blob_id, kind: 'photo', blobId: m.blob_id, url: urls[m.blob_id] };
+		}
+		if (m.voice) {
+			return {
+				key: m.blob_id,
+				kind: 'voice',
+				blobId: m.blob_id,
+				peaks: m.audio_peaks,
+				durationMs: m.audio_duration_ms
+			};
+		}
+		return {
+			key: m.blob_id,
+			kind: 'file',
+			blobId: m.blob_id,
+			name: attachmentLabel(m),
+			size: m.size_bytes
+		};
+	});
+}
+
+/** Снимки комментария — то, что листает просмотр во весь экран. */
+export function commentPhotoIds(media: MediaSummary[] | undefined): string[] {
+	return (media ?? []).filter((m) => m.kind === 'photo').map((m) => m.blob_id);
 }
 
 export function coverMedia(media: MediaSummary[] | undefined): MediaSummary | undefined {

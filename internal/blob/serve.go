@@ -104,6 +104,29 @@ func (s *Store) CanAccessBlob(ctx context.Context, accountID, blobID string) (bo
 	if n > 0 {
 		return true, nil
 	}
+	// Вложение комментария видит тот, кто видит и запись, и сам комментарий.
+	err = s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM comment_media cmm
+		JOIN comments c ON c.id = cmm.comment_id AND c.deleted = 0
+		JOIN posts p ON p.id = c.post_id AND p.deleted = 0
+		JOIN memberships m ON m.circle_id = p.circle_id AND m.account_id = ?
+		JOIN membership_spans ms ON ms.membership_id = m.id AND ms.can_read = 1
+		WHERE cmm.blob_id = ?
+		  AND p.created_at >= ms.started_at
+		  AND (ms.ended_at IS NULL OR p.created_at < ms.ended_at)
+		  AND EXISTS (
+		    SELECT 1 FROM membership_spans cs
+		    WHERE cs.membership_id = m.id AND cs.can_read = 1
+		      AND c.created_at >= cs.started_at
+		      AND (cs.ended_at IS NULL OR c.created_at < cs.ended_at)
+		  )
+	`, accountID, blobID).Scan(&n)
+	if err != nil {
+		return false, err
+	}
+	if n > 0 {
+		return true, nil
+	}
 	err = s.db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM identity_names inm
 		JOIN identities ident ON ident.id = inm.identity_id

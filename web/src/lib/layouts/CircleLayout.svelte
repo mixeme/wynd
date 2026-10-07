@@ -53,6 +53,10 @@
 		onCommentSend,
 		onCommentCompose,
 		onCommentPhotos,
+		onCommentFiles,
+		commentPhotoAccept,
+		commentPending = [],
+		onCommentRemovePending,
 		onCommentVoice,
 		onCommentVideo,
 		commentStatus = '',
@@ -84,6 +88,11 @@
 		onCommentSend?: () => void;
 		onCommentCompose?: () => void;
 		onCommentPhotos?: (files: File[]) => void;
+		/** Вложения комментария (4.28): файл, выбранное и его снятие. */
+		onCommentFiles?: (files: File[]) => void;
+		commentPhotoAccept?: string;
+		commentPending?: { key: string; url?: string; name: string }[];
+		onCommentRemovePending?: (index: number) => void;
 		/** Голосовое и видео из полосы ввода (C14). */
 		onCommentVoice?: (take: VoiceTake) => void;
 		onCommentVideo?: () => void;
@@ -210,6 +219,10 @@
 			onsend={onCommentSend}
 			oncompose={onCommentCompose}
 			onphotos={onCommentPhotos}
+			onfiles={onCommentFiles}
+			photoAccept={commentPhotoAccept}
+			pending={commentPending}
+			onremovepending={onCommentRemovePending}
 			onvoice={onCommentVoice}
 			onvideo={onCommentVideo}
 			status={commentStatus}

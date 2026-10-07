@@ -78,7 +78,7 @@ func TestAuthorMutatorsRequireWriteAccess(t *testing.T) {
 				{"EditPost", e.ch.EditPost(e.ctx, circle.ID, "bob", post.ID, "переписал", "", now)},
 				{"SetPostCover", e.ch.SetPostCover(e.ctx, circle.ID, "bob", post.ID, "blob-b", now)},
 				{"EditComment", e.ch.EditComment(e.ctx, circle.ID, "bob", comment.ID, "переписал", now)},
-				{"DeleteComment", e.ch.DeleteComment(e.ctx, circle.ID, "bob", comment.ID, now)},
+				{"DeleteComment", onlyErr(e.ch.DeleteComment(e.ctx, circle.ID, "bob", comment.ID, now))},
 				{"DeleteReaction", e.ch.DeleteReaction(e.ctx, circle.ID, "bob", reaction.ID, now)},
 				{"DeletePost", deletePostErr(e, circle.ID, "bob", post.ID, now)},
 			}

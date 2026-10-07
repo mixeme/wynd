@@ -108,12 +108,14 @@ export async function createComment(
 	origin: string,
 	circleId: string,
 	postId: string,
-	body: string
+	body: string,
+	clientId?: string
 ): Promise<void> {
 	await apiJson(origin, `/circles/${circleId}/posts/${postId}/comments`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ body })
+		// Ключ — чтобы повтор после оборванного ответа не создал вторую реплику.
+		body: JSON.stringify({ body, client_id: clientId })
 	});
 	await invalidateCircleSnapshots(origin, circleId);
 }
