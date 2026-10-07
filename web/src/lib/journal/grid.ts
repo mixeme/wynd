@@ -1,5 +1,6 @@
 import { apiJson, isAccessError } from '$lib/api/client';
 import { readCachedSnapshot, writeCachedSnapshot } from '$lib/api/snapshots';
+import { tileBlobId } from './present';
 import type { GridItem, GridSnapshot } from './types';
 
 export async function fetchGrid(origin: string, circleId: string): Promise<GridSnapshot> {
@@ -33,8 +34,8 @@ export interface GridTile {
 	createdAt: string;
 	photoCount: number;
 	kind: 'photo' | 'video';
-	/** Ролик, если blobId — JPEG его кадра. */
-	sourceBlobId?: string;
+	/** Что рисует плитка: фото или кадр ролика (tileBlobId). */
+	tileId: string;
 }
 
 /** Одна плитка на запись: обложка и число фото в посте. */
@@ -55,7 +56,11 @@ export function groupGridTiles(items: GridItem[]): GridTile[] {
 			createdAt: cover.created_at,
 			photoCount: photos.length,
 			kind: cover.kind === 'video' ? 'video' : 'photo',
-			sourceBlobId: cover.source_blob_id
+			tileId: tileBlobId({
+				blob_id: cover.blob_id,
+				kind: cover.kind ?? 'photo',
+				video_poster_blob_id: cover.poster_blob_id
+			})
 		});
 	}
 	tiles.sort((a, b) => b.createdAt.localeCompare(a.createdAt));

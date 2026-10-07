@@ -86,8 +86,8 @@ func (s *Server) handleGrid(w http.ResponseWriter, r *http.Request) {
 			"is_cover":   item.IsCover,
 			"kind":       item.Kind,
 		}
-		if item.SourceBlobID != "" {
-			out[i]["source_blob_id"] = item.SourceBlobID
+		if item.PosterBlobID != "" {
+			out[i]["poster_blob_id"] = item.PosterBlobID
 		}
 	}
 	resp := map[string]any{"circle_id": circleID, "items": out}
@@ -166,6 +166,9 @@ func (s *Server) handleDays(w http.ResponseWriter, r *http.Request) {
 		row["cover_editable_until"] = editableUntilJSON(d.CoverEditableUntil)
 		if d.FallbackCoverBlobID != "" {
 			row["fallback_cover_blob_id"] = d.FallbackCoverBlobID
+		}
+		if d.CoverIsVideo {
+			row["cover_is_video"] = true
 		}
 		if d.CoverImageBlobID != "" {
 			row["cover_image_blob_id"] = d.CoverImageBlobID

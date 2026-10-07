@@ -37,7 +37,8 @@
 		reactionIconName,
 		REACTION_KEYS,
 		albumHref,
-		photoMedia
+		photoMedia,
+		tileBlobId
 	} from '$lib/journal/present';
 	import { applyOwnReaction, canReact } from '$lib/journal/reactions';
 	import {
@@ -145,7 +146,8 @@
 			post = findPost(snap.posts, postId);
 			const cover = post ? coverMedia(post.media) : undefined;
 			if (cover) {
-				coverUrl = await getMediaUrl(circle.origin, cover.blob_id);
+				// Ролик без кадра — плитка со значком, а не ошибка всей записи.
+				coverUrl = await getMediaUrl(circle.origin, tileBlobId(cover)).catch(() => '');
 			} else {
 				coverUrl = '';
 			}
@@ -420,10 +422,10 @@
 				{#if canEditPost(currentPost)}
 					<IconButton name="edit" label="Править" size="sm" onclick={openEdit} />
 				{/if}
-				{#if coverUrl && cover}
+				{#if cover && (coverUrl || cover.kind === 'video')}
 					<MediaTile
 						variant="headerMini"
-						src={coverUrl}
+						src={coverUrl || undefined}
 						kind={cover.kind === 'video' ? 'video' : 'photo'}
 						aria-label="Открыть альбом"
 						onclick={openAlbum}

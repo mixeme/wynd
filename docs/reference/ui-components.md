@@ -178,7 +178,7 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 
 `MapBadge` / `MapPostSheet` — вкладка «Карта» круга: счётчик пинов (`.map-badge`) и нижняя плашка выбранной записи (`button.map-sheet`, thumb + автор + время + текст). Стили в [`map.css`](../../web/src/lib/styles/map.css); сброс кнопки — `button.map-sheet` в `ui.css`.
 
-`MediaTile` — фото/видео в ленте, сетке, альбоме, шапке поста и compose: `variant` `feed` \| `grid` \| `album` \| `headerMini` \| `compose`. `feed` — `div.pic` + `stopPropagation` при `onclick`; `grid` / `album` / `headerMini` / `compose` — `button`. Стили `.cell`, `.thumbs`, `.pic.sq.mini` в `ui.css`; счётчик сетки — `.g3 .cnt`. `Lightbox`: опционально `fixed`, `dotCount` / `dotIndex` / `onDotSelect` (snippet `dots` в приоритете).
+`MediaTile` — фото/видео в ленте, сетке, альбоме, шапке поста и compose: `variant` `feed` \| `grid` \| `album` \| `headerMini` \| `compose`. `feed` — `div.pic` + `stopPropagation` при `onclick`; `grid` / `album` / `headerMini` / `compose` — `button`. Стили `.cell`, `.thumbs`, `.pic.sq.mini` в `ui.css`; счётчик сетки — `.g3 .cnt`. `kind="video"` — плитка рисует картинку кадра (`src`) и значок `.vid-mark` посередине; тега `<video>` в плитке нет ни в одном варианте, без `src` остаётся значок на заглушке (план 49). `Lightbox`: опционально `fixed`, `dotCount` / `dotIndex` / `onDotSelect` (snippet `dots` в приоритете).
 
 Строки с опциональным `onclick`: корень `button.row2` / `button.r` или `div` (`SettingsRow`, `CircleRow`, `ServerRow`, `SearchResultRow`, `MemberRow`).
 

@@ -135,7 +135,9 @@ export interface DaySummary {
 	cover_blob_id?: string;
 	/** Обложку дня не выбирали: медиа первой записи дня с фото, видео или звуком (C17). */
 	fallback_cover_blob_id?: string;
-	/** JPEG кадра, если обложка дня — ролик (выбранный или запасной). */
+	/** Обложка дня (выбранная или запасная) — ролик. */
+	cover_is_video?: boolean;
+	/** JPEG кадра этого ролика, если отправитель его приложил. */
 	cover_image_blob_id?: string;
 	/** Фото за день — счётчик на карточке. */
 	photo_count?: number;
@@ -160,10 +162,9 @@ export interface GridItem {
 	entry_date: string;
 	created_at: string;
 	is_cover: boolean;
-	/** video — в плитке сам ролик; иначе картинка (фото или кадр). */
 	kind?: 'photo' | 'video';
-	/** Ролик, если blob_id — JPEG его кадра. */
-	source_blob_id?: string;
+	/** JPEG кадра ролика; нет — ролик отправлен без кадра. */
+	poster_blob_id?: string;
 }
 
 export interface GridSnapshot {

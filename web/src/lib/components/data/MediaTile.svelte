@@ -39,7 +39,7 @@
 
 	type HeaderMini = {
 		variant: 'headerMini';
-		src: string;
+		src?: string;
 		kind?: MediaKind;
 		'aria-label': string;
 		onclick: () => void;
@@ -61,13 +61,19 @@
 
 	let props: Feed | Grid | Album | HeaderMini | Compose = $props();
 
-	// Плитка без файла должна говорить, что происходит: видео обложкой
-	// скачивается целиком, и на медленной связи полосатая заглушка выглядела
-	// как ошибка.
+	// Ролик в плитке — картинка его кадра и значок посередине (5.5): сам ролик качается и
+	// играет только по касанию. Десяток видеоэлементов в ленте вешал телефон
+	// (план 49). Кадра нет — плитка пустая, со значком.
+	const isVideo = $derived(props.kind === 'video');
+
+	// Плитка без файла должна говорить, что происходит: на медленной связи
+	// полосатая заглушка выглядела как ошибка. У ролика без кадра грузить
+	// нечего — он молчит.
 	const loadLabel = $derived.by(() => {
 		if (props.variant !== 'feed' || props.src) return '';
-		if (props.failed) return 'не загрузилось';
 		const l = props.loading;
+		if (isVideo && !l) return '';
+		if (props.failed) return 'не загрузилось';
 		if (l?.total) return `загрузка · ${formatBytes(l.received)} из ${formatBytes(l.total)}`;
 		return 'загрузка…';
 	});
@@ -80,14 +86,6 @@
 		const crop = props.variant === 'feed' || props.variant === 'compose' ? props.crop : undefined;
 		return isCoverRect(crop) ? coverRectStyle(crop) : undefined;
 	});
-
-	// Firefox (Android) не рисует кадр у видео, которое не играли: плитка
-	// остаётся пустой, хотя файл загружен. Шаг на миллисекунду заставляет
-	// декодировать и показать первый кадр.
-	function showFirstFrame(e: Event) {
-		const video = e.currentTarget as HTMLVideoElement;
-		if (video.currentTime === 0) video.currentTime = 0.001;
-	}
 
 	function onFeedClick(e: MouseEvent) {
 		if (props.variant !== 'feed' || !props.onclick) return;
@@ -104,9 +102,7 @@
 		onclick={onFeedClick}
 	>
 		{#if props.src}
-			{#if props.kind === 'video'}
-				<video src={props.src} muted playsinline preload="metadata" onloadedmetadata={showFirstFrame}></video>
-			{:else if cropStyle}
+			{#if cropStyle}
 				<img
 					class="cropped"
 					src={props.src}
@@ -128,18 +124,20 @@
 		{:else if props.locationLabel}
 			<span class="tagr"><Icon name="loc" size="xs" />{props.locationLabel}</span>
 		{/if}
-		{#if props.count != null && (props.src ? props.count > 1 : true)}
+		{#if isVideo}
+			<Icon name="play" class="vid-mark" />
+		{/if}
+		{#if props.count != null && (props.src || isVideo ? props.count > 1 : true)}
 			<span class="cnt">{props.count}</span>
 		{/if}
 	</div>
 {:else if props.variant === 'grid'}
 	<button type="button" class="pic" onclick={() => props.onclick()}>
 		{#if props.src}
-			{#if props.kind === 'video'}
-				<video src={props.src} muted playsinline preload="metadata" onloadedmetadata={showFirstFrame}></video>
-			{:else}
-				<img src={props.src} alt="" />
-			{/if}
+			<img src={props.src} alt="" />
+		{/if}
+		{#if isVideo}
+			<Icon name="play" class="vid-mark" />
 		{/if}
 		{#if props.count != null && props.count > 1}
 			<span class="cnt">{props.count}</span>
@@ -153,11 +151,10 @@
 		onclick={() => props.onclick()}
 	>
 		{#if props.src}
-			{#if props.kind === 'video'}
-				<video src={props.src} muted playsinline preload="metadata" onloadedmetadata={showFirstFrame}></video>
-			{:else}
-				<img src={props.src} alt="" />
-			{/if}
+			<img src={props.src} alt="" />
+		{/if}
+		{#if isVideo}
+			<Icon name="play" class="vid-mark" />
 		{/if}
 		{#if props.coverLabel}
 			<span class="cov">{props.coverLabel}</span>
@@ -173,19 +170,18 @@
 		aria-label={props['aria-label']}
 		onclick={() => props.onclick()}
 	>
-		{#if props.kind === 'video'}
-			<video src={props.src} muted playsinline preload="metadata" onloadedmetadata={showFirstFrame}></video>
-		{:else}
+		{#if props.src}
 			<img src={props.src} alt="" />
+		{/if}
+		{#if isVideo}
+			<Icon name="play" class="vid-mark" />
 		{/if}
 	</button>
 {:else}
 	<div class="thumb" class:cover={props.isCover}>
 		<button type="button" class="thumb-body" onclick={() => props.onclick()}>
 			{#if props.src}
-				{#if props.kind === 'video'}
-					<video src={props.src} muted playsinline preload="metadata" onloadedmetadata={showFirstFrame}></video>
-				{:else if cropStyle}
+				{#if cropStyle}
 					<img
 						class="cropped"
 						src={props.src}
@@ -198,8 +194,11 @@
 				{:else}
 					<img src={props.src} alt="" />
 				{/if}
-			{:else if props.fileName}
+			{:else if props.fileName && !isVideo}
 				<span class="file">{props.fileName}</span>
+			{/if}
+			{#if isVideo}
+				<Icon name="play" class="vid-mark" />
 			{/if}
 			{#if props.variant === 'compose' && props.coverMark}
 				<span class="cnt thumb-mark">{props.coverMark}</span>

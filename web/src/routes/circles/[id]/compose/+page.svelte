@@ -36,20 +36,21 @@
 		mentionQueryAt,
 		textByteLength
 	} from '$lib/journal/mentions';
-	import { audioRowLabel, findPost } from '$lib/journal/present';
+	import { audioRowLabel, findPost, tileBlobId } from '$lib/journal/present';
 	import { createPost, deletePost, editPost as savePost, fetchCompression, uploadBlob } from '$lib/journal/posts';
 	import type { FeedPost, MediaSummary } from '$lib/journal/types';
 	import {
 		compressImage,
 		compressAudio,
 		compressVideo,
-		fileIsVideo,
 		fileToQueueBuffer,
 		guessedVideoMime,
 		isImageFile,
-		isLargeVideo
+		isLargeVideo,
+		isVideoFile
 	} from '$lib/media/compress';
-	import { audioMime, isAudioFile, readAudioTags, videoPosterJpeg } from '$lib/media/audioTags';
+	import { audioMime, isAudioFile, readAudioTags } from '$lib/media/audioTags';
+	import { videoPosterJpeg } from '$lib/media/videoPoster';
 	import { readExif } from '$lib/media/exif';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 	import { enqueuePost, loadQueuedPost, removeQueueItem, updateQueuedPost } from '$lib/queue/queue';
@@ -269,7 +270,8 @@
 							preview = undefined;
 						}
 					} else if (m.kind !== 'attachment') {
-						preview = await getMediaUrl(circle.origin, m.blob_id);
+						// Ролик без кадра — плитка со значком, а не сорванная правка.
+						preview = await getMediaUrl(circle.origin, tileBlobId(m)).catch(() => undefined);
 					}
 					items.push({
 						preview,
@@ -304,13 +306,12 @@
 				entryDate = payload.entry_date;
 				picked = item.files.map((file, i) => {
 					const meta = payload.media_meta?.[i] ?? { kind: 'photo' };
+					const still = meta.kind === 'video' ? meta.video_poster : meta.audio_cover;
 					const preview =
-						meta.kind === 'photo' || meta.kind === 'video'
+						meta.kind === 'photo'
 							? URL.createObjectURL(new Blob([file.data], { type: file.type }))
-							: meta.audio_cover
-								? URL.createObjectURL(
-										new Blob([meta.audio_cover.data], { type: 'image/jpeg' })
-									)
+							: still
+								? URL.createObjectURL(new Blob([still.data], { type: 'image/jpeg' }))
 								: undefined;
 					return { preview, file, meta };
 				});
@@ -520,7 +521,7 @@
 		try {
 			const compression = await fetchCompression(circle.origin).catch(() => undefined);
 			const next = [...picked];
-			const videoFlags = await Promise.all(list.map((file) => fileIsVideo(file)));
+			const videoFlags = list.map((file) => isVideoFile(file));
 			const heavyCount = original
 				? 0
 				: videoFlags.filter(Boolean).length + list.filter((file) => isAudioFile(file)).length;
@@ -618,11 +619,13 @@
 					entryDateFromExif = true;
 				}
 
+				// У ролика превью — его кадр: видеоэлемент в ряду снимков не нужен.
+				const still = kind === 'video' ? poster : tags?.cover;
 				const preview =
-					kind === 'photo' || kind === 'video'
+					kind === 'photo'
 						? URL.createObjectURL(new Blob([queueFile.data], { type: queueFile.type }))
-						: tags?.cover
-							? URL.createObjectURL(new Blob([tags.cover], { type: 'image/jpeg' }))
+						: still
+							? URL.createObjectURL(new Blob([still], { type: 'image/jpeg' }))
 							: undefined;
 
 				next.push({ preview, file: queueFile, meta });

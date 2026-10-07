@@ -1,4 +1,5 @@
 import { apiFetch } from '$lib/api/client';
+import { isLocalPosterId, localPosterId } from '$lib/journal/present';
 import {
 	getAppSettings,
 	getMedia,
@@ -65,7 +66,6 @@ function scheduleTrim(): void {
 interface CachedUrl {
 	url: string;
 	size: number;
-	mime: string;
 }
 
 // Map хранит порядок вставки: первый ключ — давнее всех запрошенный.
@@ -88,25 +88,24 @@ function forget(key: string): void {
 	cachedBytes -= entry.size;
 }
 
-function remember(key: string, blob: Blob): { url: string; mime: string } {
+function remember(key: string, blob: Blob): string {
 	forget(key);
 	const url = URL.createObjectURL(blob);
-	const mime = blob.type || 'application/octet-stream';
-	urlCache.set(key, { url, size: blob.size, mime });
+	urlCache.set(key, { url, size: blob.size });
 	cachedBytes += blob.size;
 	for (const oldKey of urlCache.keys()) {
 		if (cachedBytes <= urlBudget || oldKey === key) break;
 		forget(oldKey);
 	}
-	return { url, mime };
+	return url;
 }
 
-function touch(key: string): { url: string; mime: string } | undefined {
+function touch(key: string): string | undefined {
 	const entry = urlCache.get(key);
 	if (!entry) return undefined;
 	urlCache.delete(key);
 	urlCache.set(key, entry);
-	return { url: entry.url, mime: entry.mime };
+	return entry.url;
 }
 
 export interface MediaLoadOptions {
@@ -136,12 +135,11 @@ async function readWithProgress(
 	return new Blob(parts);
 }
 
-/** Адрес и тип файла. Тип нужен, чтобы ролик без кадра не рисовать тегом картинки. */
-export async function loadMedia(
+export async function getMediaUrl(
 	origin: string,
 	blobId: string,
 	options: MediaLoadOptions = {}
-): Promise<{ url: string; mime: string }> {
+): Promise<string> {
 	const key = mediaKey(origin, blobId);
 	const cached = touch(key);
 	if (cached) return cached;
@@ -151,24 +149,19 @@ export async function loadMedia(
 		return remember(key, new Blob([stored.buffer], { type: stored.mime }));
 	}
 
+	// Кадр, снятый на устройстве, живёт только в кэше — на сервере его нет.
+	if (isLocalPosterId(blobId)) throw new Error('no_local_poster');
+
 	const res = await apiFetch(origin, `/blobs/${blobId}`, { signal: options.signal });
 	const mime = res.headers.get('Content-Type') || 'application/octet-stream';
 	// Blob, а не arrayBuffer(): браузер держит его вне кучи JS.
 	const blob = options.onProgress ? await readWithProgress(res, options.onProgress) : await res.blob();
 	const typed = blob.type ? blob : new Blob([blob], { type: mime });
 	if (typed.size <= idbLimit) {
-		await putMedia(key, { buffer: await typed.arrayBuffer(), mime: typed.type || mime });
+		await putMedia(key, { buffer: await typed.arrayBuffer(), mime });
 		scheduleTrim();
 	}
 	return remember(key, typed);
-}
-
-export async function getMediaUrl(
-	origin: string,
-	blobId: string,
-	options: MediaLoadOptions = {}
-): Promise<string> {
-	return (await loadMedia(origin, blobId, options)).url;
 }
 
 export async function downloadBlob(
@@ -195,9 +188,14 @@ export function seedMediaUrl(
 	mime: string
 ): string {
 	const key = mediaKey(origin, blobId);
-	const url = remember(key, new Blob([data], { type: mime })).url
+	const url = remember(key, new Blob([data], { type: mime }));
 	if (data.byteLength <= idbLimit) void putMedia(key, { buffer: data, mime }).then(scheduleTrim);
 	return url;
+}
+
+/** Кадр ролика без кадра — в кэш устройства, под ключом localPosterId. */
+export function saveLocalPoster(origin: string, videoBlobId: string, jpeg: ArrayBuffer): string {
+	return seedMediaUrl(origin, localPosterId(videoBlobId), jpeg, 'image/jpeg');
 }
 
 /** Для тестов: сколько байт держат живые адреса. */

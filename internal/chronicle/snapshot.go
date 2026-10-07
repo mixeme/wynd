@@ -174,8 +174,8 @@ func (c *Chronicle) FeedSnapshot(ctx context.Context, circleID, accountID string
 }
 
 // GridItem is a photo or video tile for the grid view.
-// Kind video значит, что BlobID — сам ролик (кадра нет). Иначе BlobID — картинка:
-// фотография или JPEG кадра. SourceBlobID — ролик, если BlobID это его кадр.
+// BlobID — сам файл. У ролика плитку рисует PosterBlobID — JPEG его кадра;
+// пусто — ролик отправлен без кадра, и клиент качать его ради плитки не должен.
 type GridItem struct {
 	PostID       string
 	BlobID       string
@@ -183,7 +183,7 @@ type GridItem struct {
 	CreatedAt    time.Time
 	IsCover      bool
 	Kind         string
-	SourceBlobID string
+	PosterBlobID string
 }
 
 // GridSnapshot returns visible photo media ordered by post created_at descending.
@@ -219,7 +219,9 @@ type DaySummary struct {
 	// Запасная обложка, если обложку дня не выбирали, и число фото дня (C17).
 	FallbackCoverBlobID string
 	PhotoCount          int
-	// JPEG кадра, если обложка дня — ролик с кадром (выбранный или запасной).
+	// Обложка дня (выбранная или запасная) — ролик: CoverIsVideo, а
+	// CoverImageBlobID — JPEG его кадра, если отправитель его приложил.
+	CoverIsVideo     bool
 	CoverImageBlobID string
 }
 
@@ -248,7 +250,7 @@ func (c *Chronicle) DaysSnapshot(ctx context.Context, circleID, accountID string
 	if err != nil {
 		return nil, err
 	}
-	posters, err := c.videoPosterByBlob(ctx, circleID)
+	posters, err := c.videoPosters(ctx, circleID)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +298,6 @@ func (c *Chronicle) DaysSnapshot(ctx context.Context, circleID, accountID string
 		if coverPost.Valid {
 			d.CoverPostID = coverPost.String
 		}
-		image := ""
 		fileID := ""
 		if coverBlob.Valid {
 			d.CoverBlobID = coverBlob.String
@@ -305,17 +306,15 @@ func (c *Chronicle) DaysSnapshot(ctx context.Context, circleID, accountID string
 			coverEditable = nil
 			fileID = fallbackCovers[d.EntryDate]
 		}
-		// Кадр ролика — отдельной картинкой. Сам файл остаётся в обложке,
-		// чтобы чёрный JPEG можно было заменить видеоэлементом.
-		if fileID != "" {
-			image = posters[fileID]
-		}
+		// Обложкой остаётся сам ролик — его и выбирали; рисует её кадр.
+		image, isVideo := posters[fileID]
 		out = append(out, DaySummary{
 			Day: d, PostCount: count,
 			TitleEditableUntil:  titleEditable,
 			CoverEditableUntil:  coverEditable,
 			FallbackCoverBlobID: fallbackCovers[d.EntryDate],
 			PhotoCount:          photoCounts[d.EntryDate],
+			CoverIsVideo:        isVideo,
 			CoverImageBlobID:    image,
 		})
 	}
@@ -407,14 +406,13 @@ func (c *Chronicle) dayMediaFacts(ctx context.Context, circleID, accountID strin
 	return covers, photos, rows.Err()
 }
 
-// videoPosterByBlob — JPEG кадра по блобу ролика в круге.
-func (c *Chronicle) videoPosterByBlob(ctx context.Context, circleID string) (map[string]string, error) {
+// videoPosters — ролики круга: блоб ролика → JPEG его кадра, пусто — без кадра.
+func (c *Chronicle) videoPosters(ctx context.Context, circleID string) (map[string]string, error) {
 	rows, err := c.db.QueryContext(ctx, `
-		SELECT pm.blob_id, pm.video_poster_blob_id
+		SELECT pm.blob_id, COALESCE(pm.video_poster_blob_id, '')
 		FROM post_media pm
 		JOIN posts p ON p.id = pm.post_id
 		WHERE p.circle_id = ? AND p.deleted = 0 AND pm.kind = 'video'
-		  AND COALESCE(pm.video_poster_blob_id, '') != ''
 	`, circleID)
 	if err != nil {
 		return nil, err

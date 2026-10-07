@@ -53,7 +53,8 @@
 		serviceEventsAboveNewest,
 		unreadDividerIndex,
 		albumHref,
-		photoMedia
+		photoMedia,
+		tileBlobId
 	} from '$lib/journal/present';
 	import { advanceReadCursor } from '$lib/journal/read-cursor';
 	import {
@@ -64,7 +65,8 @@
 		setReaction
 	} from '$lib/journal/posts';
 	import { compressAudio, compressVideo } from '$lib/media/compress';
-	import { audioMime, videoPosterJpeg } from '$lib/media/audioTags';
+	import { audioMime } from '$lib/media/audioTags';
+	import { videoPosterJpeg } from '$lib/media/videoPoster';
 	import type { VoiceTake } from '$lib/media/voiceRecorder.svelte';
 	import type { QueueMediaMeta } from '$lib/idb/db';
 	import VideoRecorder from '$ui/overlays/VideoRecorder.svelte';
@@ -154,8 +156,8 @@
 				avatarJobs.set(post.identity_id, avatarBlob);
 			}
 			const cover = coverMedia(post.media);
-			if (cover && !mediaUrls[cover.blob_id]) {
-				coverJobs.set(cover.blob_id, cover.blob_id);
+			if (cover && !mediaUrls[tileBlobId(cover)]) {
+				coverJobs.set(tileBlobId(cover), tileBlobId(cover));
 			}
 			for (const att of attachmentMedia(post.media)) {
 				if (att.audio_cover_blob_id && !mediaUrls[att.audio_cover_blob_id]) {
@@ -468,7 +470,7 @@
 		error = '';
 		try {
 			const compression = await fetchCompression(circle.origin).catch(() => undefined);
-			const { fallbackReason: _reason, ...video } = await compressVideo(
+			const { fallbackReason, ...video } = await compressVideo(
 				file,
 				compression,
 				(progress) => {
@@ -487,6 +489,9 @@
 				is_cover: true,
 				video_poster: poster ? { type: 'image/jpeg', data: poster } : undefined
 			});
+			// Ушло как записано — сказать, а не молчать: такой ролик крупнее и
+			// играет не на всех телефонах.
+			if (fallbackReason) error = `Видео ушло без сжатия: ${fallbackReason}`;
 		} catch (err) {
 			error = authErrorHint(err);
 		} finally {
@@ -774,11 +779,11 @@
 					{#if cover}
 						<MediaTile
 							variant="feed"
-							src={mediaUrls[cover.blob_id]}
+							src={mediaUrls[tileBlobId(cover)]}
 							kind={cover.kind === 'video' ? 'video' : 'photo'}
 							crop={cover.crop}
-							loading={mediaProgress[cover.blob_id]}
-							failed={mediaFailed[cover.blob_id]}
+							loading={mediaProgress[tileBlobId(cover)]}
+							failed={mediaFailed[tileBlobId(cover)]}
 							{count}
 							locationLabel={loc || undefined}
 							onclick={() => openAlbum(post.id)}

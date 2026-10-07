@@ -13,14 +13,14 @@
 	import { formatEntryDate, isEditableActive } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadDay, loadDays, setDayCover, clearDayCover } from '$lib/journal/days';
-	import { attachmentMedia, photoMedia } from '$lib/journal/present';
+	import { attachmentMedia, photoMedia, tileBlobId } from '$lib/journal/present';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 	const entryDate = $derived($page.params.date ?? '');
 
 	let items = $state<
-		Array<{ postId: string; blobId: string; kind: string; preview: string }>
+		Array<{ postId: string; blobId: string; kind: string; preview?: string }>
 	>([]);
 	let selected = $state<{ postId: string; blobId: string } | undefined>();
 	let coverBlobId = $state<string | undefined>();
@@ -65,7 +65,8 @@
 						postId: post.id,
 						blobId: m.blob_id,
 						kind: m.kind,
-						preview: await getMediaUrl(circle.origin, m.blob_id)
+						// Ролик без кадра выбрать можно, но показать нечего.
+						preview: await getMediaUrl(circle.origin, tileBlobId(m)).catch(() => undefined)
 					});
 				}
 				// Обложка звука тоже годится в обложку дня.

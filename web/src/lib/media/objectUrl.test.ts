@@ -64,4 +64,23 @@ describe('objectUrl', () => {
 		expect(await getMedia(mediaKey(origin, 'big-video'))).toBeUndefined();
 		vi.doUnmock('$lib/api/client');
 	});
+
+	// Кадр ролика, снятый на устройстве, на сервере не лежит: запрос за ним
+	// в сеть — это 404 на каждую плитку ленты (план 49).
+	it('never asks the server for a local poster', async () => {
+		uniqueObjectUrls();
+		const apiFetch = vi.fn(async () => new Response(new Uint8Array(4)));
+		vi.doMock('$lib/api/client', async (orig) => ({
+			...(await orig<typeof import('$lib/api/client')>()),
+			apiFetch
+		}));
+		const mod = await import('./objectUrl');
+		const { localPosterId } = await import('$lib/journal/present');
+		await expect(mod.getMediaUrl(origin, localPosterId('clip'))).rejects.toThrow('no_local_poster');
+		expect(apiFetch).not.toHaveBeenCalled();
+		const saved = mod.saveLocalPoster(origin, 'clip', new Uint8Array(4).buffer);
+		expect(await mod.getMediaUrl(origin, localPosterId('clip'))).toBe(saved);
+		expect(apiFetch).not.toHaveBeenCalled();
+		vi.doUnmock('$lib/api/client');
+	});
 });

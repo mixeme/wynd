@@ -1,5 +1,5 @@
 import type { IconName } from '$ui/Icon.svelte';
-import type { Comment, FeedEvent, FeedPost, MediaSummary, Reaction } from './types';
+import type { Comment, DaySummary, FeedEvent, FeedPost, MediaSummary, Reaction } from './types';
 
 export { REACTION_KEYS } from './types';
 export type { ReactionKey } from './types';
@@ -72,6 +72,38 @@ export function albumHref(circleId: string, postId: string, visualCount: number)
 	return visualCount === 1 ? `${base}?lb=0&single=1` : base;
 }
 
+const LOCAL_POSTER_PREFIX = 'local-poster:';
+
+/**
+ * Ключ кадра, снятого на этом устройстве: ролик отправили без кадра, а здесь
+ * его уже открывали. На сервере такого блоба нет — только кэш устройства.
+ */
+export function localPosterId(videoBlobId: string): string {
+	return LOCAL_POSTER_PREFIX + videoBlobId;
+}
+
+export function isLocalPosterId(blobId: string): boolean {
+	return blobId.startsWith(LOCAL_POSTER_PREFIX);
+}
+
+/**
+ * Что рисует плитка: фото — само себя, ролик — JPEG своего кадра. Сам ролик
+ * ради плитки не качают: лента с десятком роликов вешала телефон (план 49).
+ */
+export function tileBlobId(
+	media: Pick<MediaSummary, 'blob_id' | 'kind' | 'video_poster_blob_id'>
+): string {
+	if (media.kind !== 'video') return media.blob_id;
+	return media.video_poster_blob_id || localPosterId(media.blob_id);
+}
+
+/** Картинка обложки дня: у ролика — его кадр, как в плитке. */
+export function dayCoverTileId(day: DaySummary | undefined): string | undefined {
+	const fileId = day?.cover_blob_id ?? day?.fallback_cover_blob_id;
+	if (!fileId || !day?.cover_is_video) return fileId;
+	return day.cover_image_blob_id || localPosterId(fileId);
+}
+
 export function photoMedia(media: MediaSummary[] | undefined): MediaSummary[] {
 	return media?.filter((m) => m.kind === 'photo' || m.kind === 'video') ?? [];
 }
@@ -85,14 +117,6 @@ export function attachmentLabel(att: MediaSummary): string {
 }
 
 const AUDIO_EXT = new Set(['m4a', 'mp3', 'aac', 'ogg', 'opus', 'wav', 'flac']);
-
-/** video/mp4 и video/mp4;codecs=… — ролик, не картинка. */
-export function isVideoMime(mime?: string): boolean {
-	const raw = (mime ?? '').toLowerCase();
-	const semi = raw.indexOf(';');
-	const m = (semi >= 0 ? raw.slice(0, semi) : raw).trim();
-	return m.startsWith('video/');
-}
 
 /** Звук — audio/*, а при пустом типе или octet-stream ещё и по расширению. */
 export function isAudioMedia(mime?: string, filename?: string): boolean {

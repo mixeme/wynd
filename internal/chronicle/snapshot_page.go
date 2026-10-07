@@ -140,14 +140,8 @@ func (c *Chronicle) GridPage(ctx context.Context, circleID, accountID string, be
 	all := append([]any{circleID}, args...)
 	all = append(all, circleID, accountID, SnapshotPostLimit+1)
 	rows, err := c.db.QueryContext(ctx, fmt.Sprintf(`
-		SELECT p.id,
-			CASE WHEN pm.kind = 'video' AND COALESCE(pm.video_poster_blob_id, '') != ''
-				THEN pm.video_poster_blob_id ELSE pm.blob_id END,
-			p.entry_date, p.created_at, pm.is_cover,
-			CASE WHEN pm.kind = 'video' AND COALESCE(pm.video_poster_blob_id, '') != ''
-				THEN 'photo' ELSE pm.kind END,
-			CASE WHEN pm.kind = 'video' AND COALESCE(pm.video_poster_blob_id, '') != ''
-				THEN pm.blob_id ELSE '' END
+		SELECT p.id, pm.blob_id, p.entry_date, p.created_at, pm.is_cover, pm.kind,
+			COALESCE(pm.video_poster_blob_id, '')
 		FROM posts p
 		JOIN post_media pm ON pm.post_id = p.id AND pm.kind IN ('photo', 'video')
 		WHERE p.circle_id = ? AND p.deleted = 0
@@ -165,7 +159,7 @@ func (c *Chronicle) GridPage(ctx context.Context, circleID, accountID string, be
 		var item GridItem
 		var created string
 		var cover int
-		if err := rows.Scan(&item.PostID, &item.BlobID, &item.EntryDate, &created, &cover, &item.Kind, &item.SourceBlobID); err != nil {
+		if err := rows.Scan(&item.PostID, &item.BlobID, &item.EntryDate, &created, &cover, &item.Kind, &item.PosterBlobID); err != nil {
 			rows.Close()
 			return nil, nil, err
 		}
@@ -202,7 +196,8 @@ func (c *Chronicle) MapPage(ctx context.Context, circleID, accountID string, bef
 	all := append([]any{circleID}, args...)
 	all = append(all, circleID, accountID, SnapshotPostLimit+1)
 	rows, err := c.db.QueryContext(ctx, fmt.Sprintf(`
-		SELECT p.id, pm.blob_id, p.entry_date, p.created_at, pm.geo_lat, pm.geo_lng, p.author_name, p.body
+		SELECT p.id, COALESCE(NULLIF(pm.video_poster_blob_id, ''), pm.blob_id),
+			p.entry_date, p.created_at, pm.geo_lat, pm.geo_lng, p.author_name, p.body
 		FROM posts p
 		JOIN post_media pm ON pm.post_id = p.id
 		WHERE p.circle_id = ? AND p.deleted = 0

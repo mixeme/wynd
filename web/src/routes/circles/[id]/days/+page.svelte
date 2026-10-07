@@ -14,11 +14,10 @@
 	import { formatDayCardSubtitle, formatEntryDate, pluralPosts } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadDays } from '$lib/journal/days';
-	import { isVideoMime } from '$lib/journal/present';
 	import { groupByMonth } from '$lib/journal/group';
+	import { dayCoverTileId } from '$lib/journal/present';
 	import type { DaySummary } from '$lib/journal/types';
-	import { coverImageIsBlank } from '$lib/media/audioTags';
-	import { loadMedia } from '$lib/media/objectUrl';
+	import { getMediaUrl } from '$lib/media/objectUrl';
 	import { markDayPromptSeen } from '$lib/idb/db';
 	import { registerRefetch } from '$lib/sync/sync';
 
@@ -29,8 +28,6 @@
 		title: string;
 		subtitle: string;
 		coverBlobId?: string;
-		/** Сам файл, если coverBlobId — картинка кадра. Чёрный кадр меняем на ролик. */
-		coverFileId?: string;
 		photoCount?: number;
 	}
 
@@ -39,49 +36,31 @@
 	let loading = $state(true);
 	let error = $state('');
 	let coverUrls = $state<Record<string, string>>({});
-	let coverVideo = $state<Record<string, boolean>>({});
 
 	async function resolveCovers(items: DayView[]) {
 		const next: Record<string, string> = { ...coverUrls };
-		const video: Record<string, boolean> = { ...coverVideo };
 		for (const day of items) {
 			if (!day.coverBlobId || next[day.coverBlobId]) continue;
 			try {
-				const media = await loadMedia(circle.origin, day.coverBlobId);
-				let url = media.url;
-				let asVideo = isVideoMime(media.mime);
-				if (
-					!asVideo &&
-					day.coverFileId &&
-					day.coverFileId !== day.coverBlobId &&
-					(await coverImageIsBlank(url))
-				) {
-					const file = await loadMedia(circle.origin, day.coverFileId);
-					url = file.url;
-					asVideo = true;
-				}
-				next[day.coverBlobId] = url;
-				video[day.coverBlobId] = asVideo;
+				next[day.coverBlobId] = await getMediaUrl(circle.origin, day.coverBlobId);
 			} catch {
 				/* skip */
 			}
 		}
 		coverUrls = next;
-		coverVideo = video;
 	}
 
-	// Запасную обложку и число фото считает сервер по всем записям дня (C17).
+	// Запасную обложку и число фото считает сервер по всем записям дня (C17):
+	// снимок «Сетки» ограничен по числу записей и знает только фото.
 	function buildDayViews(summaries: DaySummary[]): DayView[] {
 		return summaries.map((day) => {
-			const fileId = day.cover_blob_id ?? day.fallback_cover_blob_id;
-			const coverBlobId = day.cover_image_blob_id ?? fileId;
+			const coverBlobId = dayCoverTileId(day);
 			const photoCount = day.photo_count;
 			return {
 				entryDate: day.entry_date,
 				title: day.title || formatEntryDate(day.entry_date),
 				subtitle: formatDayCardSubtitle(day.entry_date, day.post_count),
 				coverBlobId,
-				coverFileId: day.cover_image_blob_id ? fileId : undefined,
 				photoCount: photoCount && photoCount > 1 ? photoCount : undefined
 			};
 		});
@@ -171,7 +150,6 @@
 						title={day.title}
 						subtitle={day.subtitle}
 						coverUrl={day.coverBlobId ? coverUrls[day.coverBlobId] : undefined}
-						kind={day.coverBlobId && coverVideo[day.coverBlobId] ? 'video' : 'photo'}
 						photoCount={day.photoCount}
 						onclick={() => openDay(day.entryDate)}
 					/>

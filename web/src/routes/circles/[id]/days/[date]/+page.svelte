@@ -27,16 +27,16 @@
 		attachmentMedia,
 		authorInitial,
 		coverMedia,
+		dayCoverTileId,
 		locationLabel,
 		mediaCount,
 		photoMedia,
+		tileBlobId,
 		localDayOf,
-		albumHref,
-		isVideoMime
+		albumHref
 	} from '$lib/journal/present';
 	import type { FeedPost } from '$lib/journal/types';
-	import { coverImageIsBlank } from '$lib/media/audioTags';
-	import { getMediaUrl, loadMedia } from '$lib/media/objectUrl';
+	import { getMediaUrl } from '$lib/media/objectUrl';
 	import { registerRefetch } from '$lib/sync/sync';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
@@ -53,7 +53,6 @@
 	let editingTitle = $state(false);
 	let error = $state('');
 	let coverUrl = $state('');
-	let coverKind = $state<'photo' | 'video'>('photo');
 	let mediaUrls = $state<Record<string, string>>({});
 	let authorAvatarUrls = $state<Record<string, string>>({});
 
@@ -95,7 +94,9 @@
 			const covers = attachmentMedia(post.media)
 				.map((a) => a.audio_cover_blob_id)
 				.filter((id): id is string => !!id);
-			for (const blobId of [...photoMedia(post.media).map((m) => m.blob_id), ...covers]) {
+			// Лента дня рисует только обложку записи — остальное откроет альбом.
+			const cover = coverMedia(post.media);
+			for (const blobId of [...(cover ? [tileBlobId(cover)] : []), ...covers]) {
 				if (!next[blobId]) {
 					try {
 						next[blobId] = await getMediaUrl(circle.origin, blobId);
@@ -122,38 +123,17 @@
 			dayTitle = meta?.title || formatEntryDate(entryDate);
 			titleDraft = meta?.title ?? '';
 			titleEditableUntil = meta?.title_editable_until;
-			const blobId = meta?.cover_blob_id;
-			if (blobId) {
-				coverBlobId = blobId;
-			} else {
-				// Запасную считает сервер: первая запись дня с фото, видео или звуком (C17).
-				coverBlobId = meta?.fallback_cover_blob_id;
-			}
-			const shownBlobId = meta?.cover_image_blob_id ?? coverBlobId;
-			if (shownBlobId) {
+			// Запасную считает сервер: первая запись дня с фото, видео или звуком (C17).
+			coverBlobId = meta?.cover_blob_id ?? meta?.fallback_cover_blob_id;
+			const coverTileId = dayCoverTileId(meta);
+			if (coverTileId) {
 				try {
-					const media = await loadMedia(circle.origin, shownBlobId);
-					let url = media.url;
-					let kind: 'photo' | 'video' = isVideoMime(media.mime) ? 'video' : 'photo';
-					if (
-						kind === 'photo' &&
-						coverBlobId &&
-						coverBlobId !== shownBlobId &&
-						(await coverImageIsBlank(url))
-					) {
-						const file = await loadMedia(circle.origin, coverBlobId);
-						url = file.url;
-						kind = 'video';
-					}
-					coverUrl = url;
-					coverKind = kind;
+					coverUrl = await getMediaUrl(circle.origin, coverTileId);
 				} catch {
 					coverUrl = '';
-					coverKind = 'photo';
 				}
 			} else {
 				coverUrl = '';
-				coverKind = 'photo';
 			}
 			await resolveMedia(posts);
 		} catch (err) {
@@ -260,7 +240,6 @@
 	{:else}
 		<DayHeader
 			coverUrl={coverUrl || undefined}
-			kind={coverKind}
 			title={editingTitle ? undefined : dayTitle}
 			subtitle={editingTitle ? undefined : titleSubtitle}
 			oncover={canEditDay ? openDayAlbum : undefined}
@@ -311,7 +290,7 @@
 				{#if cover}
 					<MediaTile
 						variant="feed"
-						src={mediaUrls[cover.blob_id]}
+						src={mediaUrls[tileBlobId(cover)]}
 						kind={cover.kind === 'video' ? 'video' : 'photo'}
 						crop={cover.crop}
 						{count}

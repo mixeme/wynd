@@ -4,7 +4,6 @@ import {
 	DEFAULT_VIDEO_BITRATE_KBPS,
 	DEFAULT_VIDEO_MAX_P,
 	fileToQueueBuffer,
-	orientedFrameSize,
 	targetVideoSize,
 	videoFitsSettings,
 	type CompressedMedia
@@ -43,13 +42,8 @@ export async function encodeVideo(
 		const track = await input.getPrimaryVideoTrack();
 		if (!track) throw new Error('no_video_track');
 
-		// Размер — пиксели и поворот дорожки. Рамка показа (display box) у ролика
-		// с телефона бывает квадратной: по ней сжатие либо рисовало квадрат,
-		// либо решало, что файл уже маленький, и оставляло оригинал.
-		const codedW = await track.getCodedWidth();
-		const codedH = await track.getCodedHeight();
-		const rotation = await track.getRotation();
-		const { width, height } = orientedFrameSize(codedW, codedH, rotation);
+		const width = await track.getDisplayWidth();
+		const height = await track.getDisplayHeight();
 		const duration = (await input.getDurationFromMetadata()) ?? 0;
 		if (!opts?.force && videoFitsSettings(width, height, duration, file.size, maxP, bitrateKbps)) {
 			return fileToQueueBuffer(file);
@@ -77,8 +71,8 @@ export async function encodeVideo(
 				width: target.width,
 				height: target.height,
 				fit: 'contain',
-				// Поворот вписываем в кадр. Иначе плеер крутит уже повёрнутые
-				// пиксели ещё раз, и прямоугольный ролик становится квадратом.
+				// Поворот — в сами пиксели, не пометкой в файле: пометку плееры
+				// читают по-разному.
 				allowTransformationMetadata: false,
 				codec,
 				quality,

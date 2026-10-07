@@ -854,8 +854,10 @@
 			<div class="card">
 				<h3>MediaTile · #e3-1</h3>
 				<MediaTile variant="feed" count={3} onclick={() => {}} />
+				<MediaTile variant="feed" kind="video" onclick={() => {}} />
 				<PhotoGrid style="margin-top:8px">
 					<MediaTile variant="grid" count={2} onclick={() => {}} />
+					<MediaTile variant="grid" kind="video" onclick={() => {}} />
 					<MediaTile variant="album" coverLabel="обложка" onclick={() => {}} />
 					<MediaTile variant="album" coverLabel="обложка" selected onclick={() => {}} />
 				</PhotoGrid>

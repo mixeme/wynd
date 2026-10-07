@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+	dayCoverTileId,
+	isLocalPosterId,
+	localPosterId,
+	tileBlobId,
 	attachmentBlocks,
 	isAttachedToOtherDay,
 	localDayOf,
@@ -20,6 +24,32 @@ import {
 import type { Comment, FeedPost, Reaction } from './types';
 
 const at = '2026-01-01T00:00:00Z';
+
+describe('tile of a video', () => {
+	it('draws a photo as itself', () => {
+		expect(tileBlobId({ blob_id: 'p', kind: 'photo' })).toBe('p');
+	});
+
+	it('draws a video by its poster, never by the file', () => {
+		expect(tileBlobId({ blob_id: 'v', kind: 'video', video_poster_blob_id: 'j' })).toBe('j');
+		const local = tileBlobId({ blob_id: 'v', kind: 'video' });
+		expect(local).toBe(localPosterId('v'));
+		expect(isLocalPosterId(local)).toBe(true);
+		expect(isLocalPosterId('v')).toBe(false);
+	});
+
+	it('picks the day cover picture the same way', () => {
+		const day = { entry_date: '2026-10-04', post_count: 1 };
+		expect(dayCoverTileId({ ...day, fallback_cover_blob_id: 'p' })).toBe('p');
+		expect(
+			dayCoverTileId({ ...day, cover_blob_id: 'v', cover_is_video: true, cover_image_blob_id: 'j' })
+		).toBe('j');
+		expect(dayCoverTileId({ ...day, fallback_cover_blob_id: 'v', cover_is_video: true })).toBe(
+			localPosterId('v')
+		);
+		expect(dayCoverTileId({ ...day })).toBeUndefined();
+	});
+});
 
 describe('present', () => {
 	it('groups reactions by emoji preserving first-seen order', () => {

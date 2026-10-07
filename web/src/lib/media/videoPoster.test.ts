@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { imageDataLooksBlank } from './audioTags';
+import { imageDataLooksBlank } from './videoPoster';
 
 function fill(rgb: [number, number, number]): Uint8ClampedArray {
 	const data = new Uint8ClampedArray(32 * 32 * 4);

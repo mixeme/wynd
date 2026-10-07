@@ -261,22 +261,30 @@ func (c *Chronicle) attachResponseRefs(ctx context.Context, page *ResponsesPage)
 	return nil
 }
 
-// responseCover — обложка записи для рамки: выбранная автором, иначе первый
-// снимок или ролик. Вложения обложкой не бывают.
+// responseCover — картинка записи для рамки: выбранная автором обложка, иначе
+// первый снимок или ролик. У ролика это JPEG его кадра; кадра нет — рамка без
+// картинки: сам ролик ради неё не качают. Вложения обложкой не бывают.
 func responseCover(items []PostMedia) string {
-	first := ""
-	for _, m := range items {
+	var first *PostMedia
+	for i, m := range items {
 		if m.Kind != MediaPhoto && m.Kind != MediaVideo {
 			continue
 		}
 		if m.IsCover {
-			return m.BlobID
+			first = &items[i]
+			break
 		}
-		if first == "" {
-			first = m.BlobID
+		if first == nil {
+			first = &items[i]
 		}
 	}
-	return first
+	if first == nil {
+		return ""
+	}
+	if first.Kind == MediaVideo {
+		return first.VideoPosterBlobID
+	}
+	return first.BlobID
 }
 
 // excerpt — первая строка записи для рамки; целиком её рисует клиент с

@@ -33,19 +33,19 @@
 	let tick: ReturnType<typeof setInterval> | null = null;
 	let releaseWake: (() => void) | null = null;
 
+	// Без кодировщика (Firefox на Android) ролик уйдёт таким, каким записан:
+	// сжать его потом нечем. Тогда просим у камеры 720p и скромный битрейт.
+	const canEncode = typeof VideoEncoder !== 'undefined';
+	const RAW_VIDEO_BITS = 2_500_000;
+
 	async function openCamera() {
 		stopStream();
 		error = '';
 		try {
-			// Обе стороны сразу («1920 и 1080») на телефоне часто сходятся в
-			// квадрат. Просим одну сторону и пропорцию 16:9 или 9:16.
-			const portrait = window.matchMedia('(orientation: portrait)').matches;
 			stream = await navigator.mediaDevices.getUserMedia({
-				video: {
-					facingMode: facing,
-					aspectRatio: { ideal: portrait ? 9 / 16 : 16 / 9 },
-					...(portrait ? { height: { ideal: 1920 } } : { width: { ideal: 1920 } })
-				},
+				video: canEncode
+					? { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } }
+					: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } },
 				audio: true
 			});
 		} catch {
@@ -71,7 +71,10 @@
 	function start() {
 		if (!stream) return;
 		const type = pickRecorderType('video');
-		recorder = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+		recorder = new MediaRecorder(stream, {
+			...(type ? { mimeType: type } : {}),
+			...(canEncode ? {} : { videoBitsPerSecond: RAW_VIDEO_BITS })
+		});
 		chunks = [];
 		recorder.ondataavailable = (e) => {
 			if (e.data.size) chunks.push(e.data);

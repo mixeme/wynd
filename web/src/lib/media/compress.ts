@@ -19,21 +19,6 @@ export function evenPx(n: number): number {
 	return Math.max(2, v - (v % 2));
 }
 
-/**
- * Размер кадра для сжатия: пиксели файла и поворот, без «рамки показа».
- * Рамка в WebM с телефона бывает квадратной при прямоугольном кадре — если
- * мерить по ней, ролик уходит квадратом, а уже «маленькая» рамка ещё и
- * отменяет сжатие.
- */
-export function orientedFrameSize(
-	codedWidth: number,
-	codedHeight: number,
-	rotation: number
-): { width: number; height: number } {
-	if (rotation % 180 !== 0) return { width: codedHeight, height: codedWidth };
-	return { width: codedWidth, height: codedHeight };
-}
-
 /** 1080p: the shorter side is at most `maxP` (landscape 1920×1080, portrait 1080×1920). */
 export function targetVideoSize(
 	width: number,
@@ -147,60 +132,14 @@ export async function encodePhoto(canvas: BlobEncoder, quality: number): Promise
 
 const VIDEO_EXT = /\.(mp4|m4v|mov|webm|mkv|3gp|3g2)$/i;
 
-/** Марка ftyp у ролика. heic/avif тоже ftyp — их сюда нельзя. */
-const VIDEO_FTYP = new Set([
-	'isom',
-	'iso2',
-	'iso4',
-	'iso5',
-	'iso6',
-	'mp41',
-	'mp42',
-	'mp71',
-	'avc1',
-	'dash',
-	'cmfc',
-	'qt  ',
-	'm4v ',
-	'm4vh',
-	'm4vp',
-	'3gp4',
-	'3gp5',
-	'3gp6',
-	'3g2a',
-	'ndsc',
-	'msnv',
-	'f4v ',
-	'mmp4'
-]);
-
+/** Ролик — по типу, а если телефон тип не назвал, по расширению. */
 export function isVideoFile(file: File): boolean {
 	const mime = file.type.toLowerCase().split(';')[0]?.trim() ?? '';
 	if (mime.startsWith('video/')) return true;
 	return VIDEO_EXT.test(file.name);
 }
 
-/**
- * Галерея телефона часто отдаёт ролик без типа и без расширения. Такой файл
- * раньше шёл вложением как есть — сжатия не было.
- */
-export async function fileIsVideo(file: File): Promise<boolean> {
-	if (isVideoFile(file)) return true;
-	const mime = file.type.toLowerCase().split(';')[0]?.trim() ?? '';
-	if (mime && mime !== 'application/octet-stream') return false;
-	try {
-		const buf = new Uint8Array(await file.slice(0, 64).arrayBuffer());
-		if (buf[0] === 0x1a && buf[1] === 0x45 && buf[2] === 0xdf && buf[3] === 0xa3) return true;
-		if (buf.length < 12) return false;
-		if (String.fromCharCode(buf[4], buf[5], buf[6], buf[7]) !== 'ftyp') return false;
-		const brand = String.fromCharCode(buf[8], buf[9], buf[10], buf[11]).toLowerCase();
-		return VIDEO_FTYP.has(brand);
-	} catch {
-		return false;
-	}
-}
-
-/** Тип, если у файла из галереи его не было. После сжатия всё равно video/mp4. */
+/** Тип ролика, если телефон его не назвал, — по расширению. */
 export function guessedVideoMime(file: File): string {
 	const mime = file.type.toLowerCase().split(';')[0]?.trim() ?? '';
 	if (mime.startsWith('video/')) return file.type;
@@ -209,10 +148,6 @@ export function guessedVideoMime(file: File): string {
 	if (ext === 'mov') return 'video/quicktime';
 	if (ext === 'mkv') return 'video/x-matroska';
 	return 'video/mp4';
-}
-
-function videoErrorCode(err: unknown): string {
-	return err instanceof Error ? err.message : '';
 }
 
 /**
@@ -230,26 +165,6 @@ export async function compressVideo(
 		const { encodeVideo } = await import('./video-encode');
 		return await encodeVideo(file, settings, onProgress, opts);
 	} catch (err) {
-		// Кадр обложки только что держал декодер: на телефоне следующий ролик
-		// из‑за этого не сжимался. Одна повторная попытка, если причина не в файле.
-		const permanent = new Set([
-			'no_video_track',
-			'no_encoder',
-			'video_discarded',
-			'audio_discarded',
-			'conversion_invalid',
-			'empty_output'
-		]);
-		if (!permanent.has(videoErrorCode(err))) {
-			await new Promise((resolve) => setTimeout(resolve, 400));
-			try {
-				const { encodeVideo } = await import('./video-encode');
-				return await encodeVideo(file, settings, onProgress, opts);
-			} catch (retryErr) {
-				console.warn('wynd: video compression failed', retryErr);
-				return { ...(await fileToQueueBuffer(file)), fallbackReason: videoFallbackReason(retryErr) };
-			}
-		}
 		console.warn('wynd: video compression failed', err);
 		return { ...(await fileToQueueBuffer(file)), fallbackReason: videoFallbackReason(err) };
 	}

@@ -4,13 +4,14 @@
 	import { resolveMediaUrls } from '$lib/media/batch';
 	import { numberParam, withParam, withoutParam } from '$lib/nav/url';
 	import { page } from '$app/stores';
-	import { getContext, onMount } from 'svelte';
+	import { getContext, onMount, untrack } from 'svelte';
 	import MediaTile from '$ui/data/MediaTile.svelte';
 	import PhotoGrid from '$ui/data/PhotoGrid.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Loading from '$ui/Loading.svelte';
 	import Lightbox from '$ui/overlays/Lightbox.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
+	import { formatBytes } from '$lib/format/bytes';
 	import { formatPostTime, pluralPhotos } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadFeed } from '$lib/journal/feed';
@@ -19,11 +20,13 @@
 		albumDownloadFilename,
 		findPost,
 		lightboxCaption,
-		photoMedia
+		photoMedia,
+		tileBlobId
 	} from '$lib/journal/present';
 	import type { FeedPost, MediaSummary } from '$lib/journal/types';
 	import type { MediaSize } from '$lib/journal/present';
-	import { downloadBlob } from '$lib/media/objectUrl';
+	import { downloadBlob, getMediaUrl } from '$lib/media/objectUrl';
+	import { keepLocalPoster } from '$lib/media/videoPoster';
 	import { registerRefetch } from '$lib/sync/sync';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
@@ -59,10 +62,12 @@
 			post = findPost(snap.posts, postId);
 			photos = post ? photoMedia(post.media) : [];
 			urls = {};
+			videoAsked.clear();
 			// Пачками: прежний цикл ждал ответа на каждый снимок по очереди.
+			// У ролика плитка — его кадр; сам ролик качается, когда его открыли.
 			await resolveMediaUrls(
 				circle.origin,
-				photos.map((p) => p.blob_id),
+				photos.map((p) => tileBlobId(p)),
 				(blobId, url) => {
 					urls = { ...urls, [blobId]: url };
 				}
@@ -70,6 +75,44 @@
 		} finally {
 			loading = false;
 		}
+	}
+
+	// Ролик качается целиком — на медленной связи подпись говорит, сколько уже есть.
+	let videoNote = $state<Record<string, string>>({});
+	// Не $state: эффект ниже не должен перезапускаться от собственной работы.
+	const videoAsked = new Set<string>();
+
+	async function loadVideo(item: MediaSummary) {
+		if (videoAsked.has(item.blob_id)) return;
+		videoAsked.add(item.blob_id);
+		videoNote = { ...videoNote, [item.blob_id]: 'загрузка…' };
+		try {
+			const url = await getMediaUrl(circle.origin, item.blob_id, {
+				onProgress: (received, total) => {
+					if (!total) return;
+					const note = `загрузка · ${formatBytes(received)} из ${formatBytes(total)}`;
+					videoNote = { ...videoNote, [item.blob_id]: note };
+				}
+			});
+			urls = { ...urls, [item.blob_id]: url };
+		} catch {
+			videoAsked.delete(item.blob_id);
+			videoNote = { ...videoNote, [item.blob_id]: 'не загрузилось' };
+		}
+	}
+
+	$effect(() => {
+		const item = currentItem;
+		if (lightboxIndex < 0 || item?.kind !== 'video') return;
+		untrack(() => void loadVideo(item));
+	});
+
+	// Ролик отправили без кадра: снимаем его здесь, раз файл уже скачан, —
+	// плитки на этом устройстве дальше рисуют картинку.
+	async function keepPoster(item: MediaSummary) {
+		if (item.video_poster_blob_id || urls[tileBlobId(item)]) return;
+		const url = await keepLocalPoster(circle.origin, item.blob_id, urls[item.blob_id]);
+		if (url) urls = { ...urls, [tileBlobId(item)]: url };
 	}
 
 	function noteSize(blobId: string, width: number, height: number) {
@@ -126,7 +169,7 @@
 			{#each photos as photo, i (photo.blob_id)}
 				<MediaTile
 					variant="album"
-					src={urls[photo.blob_id]}
+					src={urls[tileBlobId(photo)]}
 					kind={photo.kind === 'video' ? 'video' : 'photo'}
 					coverLabel={photo.is_cover ? 'обложка' : undefined}
 					onclick={() => openLightbox(i)}
@@ -146,7 +189,9 @@
 	<Lightbox
 		fixed
 		counter="{lightboxIndex + 1} из {photos.length}"
-		caption={lightboxCaption(post, item, formatPostTime, sizes[item.blob_id])}
+		caption={item.kind === 'video' && !urls[item.blob_id]
+			? videoNote[item.blob_id]
+			: lightboxCaption(post, item, formatPostTime, sizes[item.blob_id])}
 		dotCount={photos.length}
 		dotIndex={lightboxIndex}
 		onDotSelect={openLightbox}
@@ -157,16 +202,22 @@
 	>
 		{#snippet media()}
 			{#if item.kind === 'video'}
-				<!-- playsinline: на iPhone видео играет в лайтбоксе, а не уходит в полноэкранный плеер. -->
-				<video
-					src={urls[item.blob_id]}
-					controls
-					playsinline
-					preload="metadata"
-					onloadedmetadata={(e) => noteSize(item.blob_id, e.currentTarget.videoWidth, e.currentTarget.videoHeight)}
-				>
-					<track kind="captions" label="Субтитры отсутствуют" />
-				</video>
+				{#if urls[item.blob_id]}
+					<!-- playsinline: на iPhone видео играет в лайтбоксе, а не уходит в полноэкранный плеер. -->
+					<video
+						src={urls[item.blob_id]}
+						poster={urls[tileBlobId(item)]}
+						controls
+						playsinline
+						preload="metadata"
+						onloadedmetadata={(e) => noteSize(item.blob_id, e.currentTarget.videoWidth, e.currentTarget.videoHeight)}
+						onloadeddata={() => void keepPoster(item)}
+					>
+						<track kind="captions" label="Субтитры отсутствуют" />
+					</video>
+				{:else if urls[tileBlobId(item)]}
+					<img src={urls[tileBlobId(item)]} alt="" />
+				{/if}
 			{:else}
 				<img
 					src={urls[item.blob_id]}
