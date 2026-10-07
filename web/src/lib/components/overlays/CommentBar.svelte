@@ -290,10 +290,14 @@
 				}}
 				onpause={() => (reviewPlaying = false)}
 				ontimeupdate={measureReview}
-				onended={() => {
+				onended={(e) => {
 					reviewPlaying = false;
 					cancelAnimationFrame(reviewFrame);
 					reviewProgress = 0;
+					// Запись браузера — без оглавления: перемотка в начало шла
+					// несколько секунд, и повторное прослушивание запаздывало.
+					// Открываем файл заново — он играет с начала сразу.
+					e.currentTarget.load();
 				}}
 			></audio>
 		</div>
