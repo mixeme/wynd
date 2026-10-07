@@ -23,11 +23,24 @@ import { uuid } from '$lib/uuid';
 
 export const CHUNK_SIZE = 1024 * 1024;
 
+/** Вложение записи в очереди — чтобы лента показала его тем, что оно есть. */
+export interface QueuedMediaView {
+	kind: 'photo' | 'video' | 'attachment';
+	name: string;
+	size: number;
+	voice?: boolean;
+	duration_ms?: number;
+	peaks?: number[];
+	/** Картинка для плитки: сам снимок или кадр ролика. */
+	preview?: { type: string; data: ArrayBuffer };
+}
+
 export interface QueuedPostView {
 	id: number;
 	body: string;
 	entry_date: string;
 	file_count: number;
+	media: QueuedMediaView[];
 	state: QueueRecord['state'];
 	error?: string;
 }
@@ -492,6 +505,26 @@ export async function loadQueuedPost(id: number): Promise<QueueRecordWithId | un
 	return { ...item, id };
 }
 
+/** Что лежит в записи очереди: по файлу и его описанию, как их отправит очередь. */
+export function queuedMediaViews(
+	files: QueueFile[],
+	metas: QueueMediaMeta[] | undefined
+): QueuedMediaView[] {
+	return files.map((file, i) => {
+		const meta = metas?.[i];
+		const kind = meta?.kind === 'video' || meta?.kind === 'attachment' ? meta.kind : 'photo';
+		const view: QueuedMediaView = { kind, name: file.name, size: file.size };
+		if (kind === 'photo') view.preview = { type: file.type, data: file.data };
+		else if (kind === 'video' && meta?.video_poster) view.preview = meta.video_poster;
+		if (meta?.voice) {
+			view.voice = true;
+			view.duration_ms = meta.audio_duration_ms;
+			view.peaks = meta.audio_peaks;
+		}
+		return view;
+	});
+}
+
 export async function listQueuedPosts(
 	origin: string,
 	circleId: string
@@ -506,6 +539,7 @@ export async function listQueuedPosts(
 				body: payload.body,
 				entry_date: payload.entry_date,
 				file_count: item.files.length,
+				media: queuedMediaViews(item.files, payload.media_meta),
 				state: item.state,
 				error: item.error
 			};

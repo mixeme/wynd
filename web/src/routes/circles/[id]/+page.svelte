@@ -22,7 +22,9 @@
 	import Hint from '$ui/forms/Hint.svelte';
 	import Loading from '$ui/Loading.svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
+	import AttachmentRow from '$ui/data/AttachmentRow.svelte';
 	import CommentPreview from '$ui/data/CommentPreview.svelte';
+	import VoiceRow from '$ui/data/VoiceRow.svelte';
 	import PostCard from '$ui/data/PostCard.svelte';
 	import ReactionBar from '$ui/data/ReactionBar.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
@@ -310,8 +312,24 @@
 		if (el.scrollTop + el.clientHeight * 2.5 >= el.scrollHeight) void loadOlder();
 	}
 
+	// Плитка записи в очереди показывает сам снимок (или кадр ролика): он ещё
+	// на устройстве, скачивать нечего. Адреса живут, пока запись в очереди.
+	let queuedPreviewUrls = $state<Record<number, string>>({});
+
 	function refreshQueued() {
 		void listQueuedPosts(circle.origin, circle.circleId).then((items) => {
+			const next: Record<number, string> = {};
+			for (const item of items) {
+				const preview = item.media.find((m) => m.kind !== 'attachment')?.preview;
+				if (!preview) continue;
+				next[item.id] =
+					queuedPreviewUrls[item.id] ??
+					URL.createObjectURL(new Blob([preview.data], { type: preview.type }));
+			}
+			for (const [id, url] of Object.entries(queuedPreviewUrls)) {
+				if (!next[Number(id)]) URL.revokeObjectURL(url);
+			}
+			queuedPreviewUrls = next;
 			queuedPosts = items;
 		});
 	}
@@ -352,6 +370,7 @@
 
 	onDestroy(() => {
 		ptr.destroy();
+		for (const url of Object.values(queuedPreviewUrls)) URL.revokeObjectURL(url);
 		const seq = maxReadSeq(posts);
 		if (seq > 0) {
 			void advanceReadCursor(circle.origin, circle.circleId, seq);
@@ -771,14 +790,33 @@
 			{#each circle.canWrite ? queuedPosts : [] as item (item.id)}
 				<!-- Snippets live outside <PostCard>: a {#snippet} nested in {#if} is not passed as a prop. -->
 				{#snippet queuedMedia()}
-					<MediaTile variant="feed" count={item.file_count} />
+					{@const visual = item.media.filter((m) => m.kind !== 'attachment')}
+					{#if visual.length}
+						<MediaTile
+							variant="feed"
+							src={queuedPreviewUrls[item.id]}
+							kind={visual[0].kind === 'video' ? 'video' : 'photo'}
+							count={visual.length}
+						/>
+					{/if}
+					{#each item.media.filter((m) => m.kind === 'attachment') as att, ai (ai)}
+						{#if att.voice}
+							<VoiceRow blobId="" peaks={att.peaks ?? []} durationMs={att.duration_ms ?? 0} />
+						{:else}
+							<AttachmentRow filename={att.name} size={formatBytes(att.size)} />
+						{/if}
+					{/each}
 				{/snippet}
 				{#snippet queuedError()}
 					<Hint>{item.error}</Hint>
 				{/snippet}
+				{#snippet queuedText()}
+					{item.body}
+				{/snippet}
 				<PostCard
 					queued={true}
 					onclick={() => openQueued(item.id)}
+					text={item.body ? queuedText : undefined}
 					media={item.file_count ? queuedMedia : undefined}
 					comments={item.state === 'failed' && item.error ? queuedError : undefined}
 				>
@@ -800,9 +838,6 @@
 								stopPropagation
 								onclick={() => (queueToRemove = item.id)}
 							/>
-						{/snippet}
-						{#snippet text()}
-							{item.body || 'Без текста'}
 						{/snippet}
 					</PostCard>
 			{/each}

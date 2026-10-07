@@ -43,9 +43,39 @@ describe('queue', () => {
 				body: 'hello',
 				entry_date: '2026-09-02',
 				file_count: 0,
+				media: [],
 				state: 'pending'
 			}
 		]);
+	});
+
+	// Лента рисует запись в очереди тем, что в ней лежит, а не пустой плиткой.
+	it('describes queued media by kind', async () => {
+		const { queuedMediaViews } = await import('./queue');
+		const data = new ArrayBuffer(4);
+		const poster = { type: 'image/jpeg', data: new ArrayBuffer(2) };
+		const views = queuedMediaViews(
+			[
+				{ name: 'a.jpg', type: 'image/jpeg', size: 4, data },
+				{ name: 'v.mp4', type: 'video/mp4', size: 4, data },
+				{ name: 'voice.m4a', type: 'audio/mp4', size: 4, data },
+				{ name: 'list.pdf', type: 'application/pdf', size: 4, data }
+			],
+			[
+				{ kind: 'photo' },
+				{ kind: 'video', video_poster: poster },
+				{ kind: 'attachment', voice: true, audio_duration_ms: 48000, audio_peaks: [10, 90] },
+				{ kind: 'attachment' }
+			]
+		);
+		expect(views.map((v) => v.kind)).toEqual(['photo', 'video', 'attachment', 'attachment']);
+		expect(views[0].preview?.data).toBe(data);
+		expect(views[1].preview).toBe(poster);
+		expect(views[2]).toMatchObject({ voice: true, duration_ms: 48000, peaks: [10, 90] });
+		expect(views[2].preview).toBeUndefined();
+		expect(views[3]).toMatchObject({ name: 'list.pdf', size: 4 });
+		// Старые записи очереди без описания — фото, как их и отправит очередь.
+		expect(queuedMediaViews([{ name: 'x', type: '', size: 4, data }], undefined)[0].kind).toBe('photo');
 	});
 
 	it('updates and removes queued posts', async () => {
