@@ -503,9 +503,11 @@
 				is_cover: true,
 				video_poster: poster ? { type: 'image/jpeg', data: poster } : undefined
 			});
-			// Ушло как записано — сказать, а не молчать: такой ролик крупнее и
-			// играет не на всех телефонах.
-			if (fallbackReason) showBarNote(`Видео ушло без сжатия: ${fallbackReason}`);
+			// Ушло как записано — сказать, а не молчать. Где кодировщика нет
+			// вовсе, об этом уже сказал экран перед отправкой (4.26).
+			if (fallbackReason && typeof VideoEncoder !== 'undefined') {
+				showBarNote(`Видео ушло без сжатия: ${fallbackReason}`);
+			}
 		} catch (err) {
 			showBarNote(authErrorHint(err));
 		} finally {

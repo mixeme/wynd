@@ -2,6 +2,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import { modal } from '$lib/a11y/modal';
+	import { formatBytes } from '$lib/format/bytes';
 	import { holdWakeLock } from '$lib/media/wake-lock';
 	import {
 		VIDEO_MAX_MS,
@@ -37,6 +38,7 @@
 	let recorder: MediaRecorder | null = null;
 	let chunks: Blob[] = [];
 	let take: File | null = null;
+	let takeSize = $state(0);
 	let startedAt = 0;
 	let tick: ReturnType<typeof setInterval> | null = null;
 	let releaseWake: (() => void) | null = null;
@@ -98,14 +100,13 @@
 		const turn = ++opening;
 		error = '';
 		const [long, short] = canEncode ? [1920, 1080] : [1280, 720];
-		const upright = screen.orientation?.type.startsWith('portrait') ?? false;
-		const asks = cameraAsks(long, short, upright);
+		const asks = cameraAsks(long, short);
 		for (const [i, ask] of asks.entries()) {
 			const got = await openWith(ask, turn);
 			if (got === 'stale') return;
 			if (got === 'failed') {
-				// Обычная просьба не прошла — камеры нет. Запасная не прошла —
-				// возвращаемся к обычной: квадрат лучше, чем ничего.
+				// Первая просьба не прошла — камеры нет. Запасная не прошла —
+				// возвращаемся к первой: квадрат лучше, чем ничего.
 				if (i === 0 || (await openWith(asks[0], turn)) === 'failed') error = 'Нет доступа к камере';
 				return;
 			}
@@ -178,6 +179,7 @@
 			return;
 		}
 		take = new File([blob], `Видео.${recordingExtension(type)}`, { type: blob.type });
+		takeSize = blob.size;
 		reviewUrl = URL.createObjectURL(blob);
 		phase = 'review';
 	}
@@ -221,6 +223,12 @@
 	{#if phase === 'review'}
 		<!-- svelte-ignore a11y_media_has_caption -->
 		<video class="vrec-view" src={reviewUrl} controls playsinline></video>
+		{#if !canEncode}
+			<!-- Сказать до отправки (4.26): после неё строку в ленте легко не заметить. -->
+			<div class="vrec-top">
+				<span class="vrec-timer">Уйдёт без сжатия · {formatBytes(takeSize)}</span>
+			</div>
+		{/if}
 		<div class="vrec-foot">
 			<button type="button" class="vrec-text" onclick={retake}>Переснять</button>
 			<span class="rec-time">{formatDuration(elapsedMs)}</span>

@@ -9,16 +9,13 @@ import {
 } from './record';
 
 describe('cameraAsks', () => {
-	it('starts with the plain ask and keeps an upright frame for a phone held upright', () => {
-		expect(cameraAsks(1280, 720, true)).toEqual([
-			{ width: { ideal: 1280 }, height: { ideal: 720 } },
-			{ width: { ideal: 720 }, height: { ideal: 1280 } },
-			{ width: { ideal: 1280 }, height: { ideal: 720 }, resizeMode: 'none' }
+	// Порядок — из диагностики с телефона: без подгонки размера Firefox на
+	// Android отдаёт родной кадр стоймя, с подгонкой — квадрат.
+	it('asks for the native frame first and falls back to the plain ask', () => {
+		expect(cameraAsks(1280, 720)).toEqual([
+			{ width: { ideal: 1280 }, height: { ideal: 720 }, resizeMode: 'none' },
+			{ width: { ideal: 1280 }, height: { ideal: 720 } }
 		]);
-	});
-
-	it('does not ask for an upright frame on a screen that lies on its side', () => {
-		expect(cameraAsks(1920, 1080, false)).toHaveLength(2);
 	});
 });
 

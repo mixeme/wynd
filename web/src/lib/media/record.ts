@@ -51,18 +51,20 @@ const VIDEO_TYPES = [
 
 /**
  * Просьбы к камере по порядку: следующая — если на предыдущую пришёл
- * квадратный кадр. Firefox на Android у телефона, который держат стоймя,
- * сводит «1280 на 720» к 720×720, а в настройках дорожки при этом честно
- * «1280 на 720» (диагностика с realme, 2026-10-07) — поэтому квадрат ловим
- * по самому видео, а не по настройкам. Сначала обычная просьба: Chrome
- * поворачивает кадр сам. Потом рамка стоймя, потом — без подгонки размера.
+ * квадратный кадр.
+ *
+ * Firefox на Android подгоняет кадр под просьбу обрезкой (`resizeMode:
+ * crop-and-scale`), и у телефона, который держат стоймя, «1280 на 720»
+ * выходит 720×720, а «720 на 1280» — лежачим 1280×720. Родной кадр камеры
+ * он отдаёт только без подгонки: «1280 на 720, none» — 720×1280, как надо
+ * (диагностика с realme 8, Firefox 157, 2026-10-07). В настройках дорожки
+ * при этом всегда стоит сама просьба, поэтому квадрат ловится по видео.
+ * Chrome без подгонки берёт тот же родной режим и поворачивает его сам.
  */
-export function cameraAsks(long: number, short: number, upright: boolean): MediaTrackConstraints[] {
-	const asks: MediaTrackConstraints[] = [{ width: { ideal: long }, height: { ideal: short } }];
-	if (upright) asks.push({ width: { ideal: short }, height: { ideal: long } });
+export function cameraAsks(long: number, short: number): MediaTrackConstraints[] {
+	const plain = { width: { ideal: long }, height: { ideal: short } };
 	// resizeMode в типах TypeScript пока нет.
-	asks.push({ width: { ideal: long }, height: { ideal: short }, resizeMode: 'none' } as MediaTrackConstraints);
-	return asks;
+	return [{ ...plain, resizeMode: 'none' } as MediaTrackConstraints, plain];
 }
 
 /** Первый контейнер, который браузер пишет; '' — пусть выберет сам. */
