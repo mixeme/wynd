@@ -29,7 +29,9 @@ LABEL org.opencontainers.image.title="Wynd" \
 	org.opencontainers.image.url="https://github.com/mixeme/wynd" \
 	org.opencontainers.image.licenses="AGPL-3.0-or-later"
 
-RUN apk add --no-cache ca-certificates tzdata \
+# ffmpeg — только чтобы снять кадр ролику, пришедшему без него (план 49,
+# временно). Без него сервер работает, просто такие ролики остаются без кадра.
+RUN apk add --no-cache ca-certificates tzdata ffmpeg \
 	&& addgroup -S wynd \
 	&& adduser -S -G wynd -h /data wynd
 

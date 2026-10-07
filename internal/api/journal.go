@@ -126,6 +126,8 @@ func (s *Server) handleCreatePost(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
+	// До ответа: клиент сразу перечитывает ленту и должен увидеть кадр.
+	s.Posters.FillPost(r.Context(), post.ID)
 	items, _ := s.Chronicle.ListPostMedia(r.Context(), post.ID)
 	if !post.Replayed {
 		s.notifyCircle(circleID, sess.AccountID, "post")
@@ -168,6 +170,7 @@ func (s *Server) handleEditPost(w http.ResponseWriter, r *http.Request) {
 			writeDomainError(w, err)
 			return
 		}
+		s.Posters.FillPost(r.Context(), postID)
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 		return
 	}
