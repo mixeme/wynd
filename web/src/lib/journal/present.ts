@@ -1,5 +1,13 @@
 import type { IconName } from '$ui/Icon.svelte';
-import type { Comment, DaySummary, FeedEvent, FeedPost, MediaSummary, Reaction } from './types';
+import type {
+	Comment,
+	DaySummary,
+	FeedDayCard,
+	FeedEvent,
+	FeedPost,
+	MediaSummary,
+	Reaction
+} from './types';
 
 export { REACTION_KEYS } from './types';
 export type { ReactionKey } from './types';
@@ -98,8 +106,10 @@ export function tileBlobId(
 }
 
 /** Картинка обложки дня: у ролика — его кадр, как в плитке. */
-export function dayCoverTileId(day: DaySummary | undefined): string | undefined {
-	const fileId = day?.cover_blob_id ?? day?.fallback_cover_blob_id;
+export function dayCoverTileId(day: DaySummary | FeedDayCard | undefined): string | undefined {
+	// У открытки дня (3.15) запасной обложки нет: её никто не выбирал.
+	const fallback = day && 'fallback_cover_blob_id' in day ? day.fallback_cover_blob_id : undefined;
+	const fileId = day?.cover_blob_id ?? fallback;
 	if (!fileId || !day?.cover_is_video) return fileId;
 	return day.cover_image_blob_id || localPosterId(fileId);
 }

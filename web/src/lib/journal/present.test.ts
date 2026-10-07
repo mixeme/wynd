@@ -48,6 +48,10 @@ describe('tile of a video', () => {
 			localPosterId('v')
 		);
 		expect(dayCoverTileId({ ...day })).toBeUndefined();
+		// Открытка дня: своя обложка есть или нет, запасной не бывает.
+		const card = { entry_date: '2026-08-06', caption: 'Кот выбрал обложку' };
+		expect(dayCoverTileId({ ...card, cover_blob_id: 'p' })).toBe('p');
+		expect(dayCoverTileId(card)).toBeUndefined();
 	});
 });
 

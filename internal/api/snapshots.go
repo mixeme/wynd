@@ -40,6 +40,20 @@ func (s *Server) handleFeed(w http.ResponseWriter, r *http.Request) {
 			"summary":    ev.Summary,
 			"created_at": ev.CreatedAt.UTC().Format(time.RFC3339),
 		}
+		if d := ev.Day; d != nil {
+			day := map[string]any{"entry_date": d.EntryDate, "caption": d.Caption}
+			if d.Title != "" {
+				day["title"] = d.Title
+			}
+			if d.CoverBlobID != "" {
+				day["cover_blob_id"] = d.CoverBlobID
+				day["cover_is_video"] = d.CoverIsVideo
+				if d.CoverImageBlobID != "" {
+					day["cover_image_blob_id"] = d.CoverImageBlobID
+				}
+			}
+			events[i]["day"] = day
+		}
 	}
 	out := map[string]any{
 		"circle_id":         circleID,

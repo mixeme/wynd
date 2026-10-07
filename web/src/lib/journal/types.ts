@@ -48,10 +48,24 @@ export interface Reaction {
 	editable_until?: string;
 }
 
+/** Открытка дня (3.15): день, каким он стал после этой записи журнала. */
+export interface FeedDayCard {
+	entry_date: string;
+	title?: string;
+	cover_blob_id?: string;
+	cover_is_video?: boolean;
+	/** JPEG кадра ролика-обложки, если отправитель его приложил. */
+	cover_image_blob_id?: string;
+	/** Что сделали: «Мама назвала день и выбрала обложку». */
+	caption: string;
+}
+
 export interface FeedEvent {
 	seq: number;
 	summary: string;
 	created_at: string;
+	/** Есть у записей «назвали день» и «выбрали обложку»; старый сервер не шлёт. */
+	day?: FeedDayCard;
 }
 
 export interface FeedPost {

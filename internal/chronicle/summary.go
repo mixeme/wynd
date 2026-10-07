@@ -131,7 +131,32 @@ func summaryDayCoverCleared(g Gender, name, entryDate string) string {
 	return fmt.Sprintf("%s %s обложку для %s", name, past(g, "убрал", "убрала"), dayLabel(entryDate))
 }
 
-var monthsGenitive = [...]string{"января", "февраля", "марта", "апреля", "мая", "июня",
+// captionDayCard — подпись открытки дня (3.15): что сделали. Даты и названия
+// в ней нет — они в самой открытке.
+func captionDayCard(g Gender, name string, titled, cover bool) string {
+	if g == GenderNone {
+		switch {
+		case titled && cover:
+			return fmt.Sprintf("Название и обложка дня: %s", name)
+		case titled:
+			return fmt.Sprintf("Название дня: %s", name)
+		default:
+			return fmt.Sprintf("Обложка дня: %s", name)
+		}
+	}
+	named := past(g, "назвал", "назвала") + " день"
+	chose := past(g, "выбрал", "выбрала") + " обложку"
+	switch {
+	case titled && cover:
+		return fmt.Sprintf("%s %s и %s", name, named, chose)
+	case titled:
+		return fmt.Sprintf("%s %s", name, named)
+	default:
+		return fmt.Sprintf("%s %s", name, chose)
+	}
+}
+
+var monthsGenitive =[...]string{"января", "февраля", "марта", "апреля", "мая", "июня",
 	"июля", "августа", "сентября", "октября", "ноября", "декабря"}
 
 // dayLabel: "2026-08-06" → "6 августа"; нераспознанное — как есть.

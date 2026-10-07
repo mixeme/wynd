@@ -482,7 +482,25 @@ type FeedEventSummary struct {
 	Seq       int64
 	Summary   string
 	CreatedAt time.Time
+	// Day — открытка дня (3.15): у записей «назвали день» и «выбрали обложку».
+	Day *FeedDayCard
 }
+
+// FeedDayCard — день, каким он стал после этой записи журнала: название и
+// обложка вместе, если оба есть, что бы из двух ни меняли (3.16).
+type FeedDayCard struct {
+	EntryDate        string
+	Title            string
+	CoverBlobID      string
+	CoverIsVideo     bool
+	CoverImageBlobID string
+	// Caption — что сделали: «Мама назвала день и выбрала обложку».
+	Caption string
+}
+
+// dayCardMergeWindow — назвали день и выбрали обложку «разом»: соседние
+// записи одного человека за один день в этих пределах идут одной открыткой.
+const dayCardMergeWindow = 10 * time.Minute
 
 type FeedMeta struct {
 	Events          []FeedEventSummary
@@ -512,7 +530,10 @@ func (c *Chronicle) FeedMetaForAccount(ctx context.Context, circleID, accountID 
 
 func (c *Chronicle) feedServiceEvents(ctx context.Context, circleID, accountID string) ([]FeedEventSummary, error) {
 	rows, err := c.db.QueryContext(ctx, `
-		SELECT seq, summary, created_at FROM events
+		SELECT seq, summary, created_at, event_type,
+		  COALESCE(actor_identity_id, ''), actor_name,
+		  COALESCE(json_extract(payload, '$.entry_date'), '')
+		FROM events
 		WHERE circle_id = ? AND summary != ''
 		  AND (is_service = 1 OR event_type IN ('day.titled', 'day.cover_set', 'day.title_cleared', 'day.cover_cleared'))
 		ORDER BY seq DESC
@@ -520,22 +541,203 @@ func (c *Chronicle) feedServiceEvents(ctx context.Context, circleID, accountID s
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	var out []FeedEventSummary
+	var all []feedEventRow
 	for rows.Next() {
-		var ev FeedEventSummary
+		var ev feedEventRow
 		var created string
-		if err := rows.Scan(&ev.Seq, &ev.Summary, &created); err != nil {
+		if err := rows.Scan(&ev.Seq, &ev.Summary, &created, &ev.eventType,
+			&ev.actorID, &ev.actorName, &ev.entryDate); err != nil {
+			rows.Close()
 			return nil, err
 		}
 		ev.CreatedAt, _ = parseTime(created)
+		all = append(all, ev)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	var visible []feedEventRow
+	hasDay := false
+	for _, ev := range all {
 		ok, err := c.CanReadEvent(ctx, circleID, accountID, ev.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
-		if ok {
-			out = append(out, ev)
+		if !ok {
+			continue
 		}
+		hasDay = hasDay || ev.isDaySet()
+		visible = append(visible, ev)
+	}
+	if hasDay {
+		if visible, err = c.attachDayCards(ctx, circleID, accountID, visible); err != nil {
+			return nil, err
+		}
+	}
+	out := make([]FeedEventSummary, len(visible))
+	for i, ev := range visible {
+		out[i] = ev.FeedEventSummary
+	}
+	return out, nil
+}
+
+type feedEventRow struct {
+	FeedEventSummary
+	eventType string
+	actorID   string
+	actorName string
+	entryDate string
+}
+
+func (ev feedEventRow) isDaySet() bool {
+	return ev.eventType == "day.titled" || ev.eventType == "day.cover_set"
+}
+
+func (ev feedEventRow) isDaySaid() bool {
+	return ev.isDaySet() || ev.eventType == "day.title_cleared" || ev.eventType == "day.cover_cleared"
+}
+
+// daySaidRow — строка истории названия или обложки дня. Пустое значение —
+// «убрали».
+type daySaidRow struct {
+	seq       int64
+	value     string
+	createdAt time.Time
+	// postAt — когда появилась запись, чей файл выбран обложкой.
+	postAt time.Time
+}
+
+// daySaidAsOf — последняя строка истории не позже seq (rows — по возрастанию seq).
+func daySaidAsOf(rows []daySaidRow, seq int64) (daySaidRow, bool) {
+	for i := len(rows) - 1; i >= 0; i-- {
+		if rows[i].seq <= seq {
+			return rows[i], true
+		}
+	}
+	return daySaidRow{}, false
+}
+
+// attachDayCards кладёт в записи «назвали день» и «выбрали обложку» открытку
+// дня и склеивает пару, сделанную разом, в одну (events — от новых к старым).
+func (c *Chronicle) attachDayCards(ctx context.Context, circleID, accountID string, events []feedEventRow) ([]feedEventRow, error) {
+	titles, err := c.daySaidHistory(ctx, `
+		SELECT entry_date, event_seq, title, created_at, created_at FROM day_titles
+		WHERE circle_id = ? ORDER BY event_seq
+	`, circleID)
+	if err != nil {
+		return nil, err
+	}
+	covers, err := c.daySaidHistory(ctx, `
+		SELECT dc.entry_date, dc.event_seq, dc.blob_id, dc.created_at, p.created_at
+		FROM day_covers dc
+		JOIN posts p ON p.id = dc.post_id AND p.deleted = 0
+		WHERE dc.circle_id = ? ORDER BY dc.event_seq
+	`, circleID)
+	if err != nil {
+		return nil, err
+	}
+	posters, err := c.videoPosters(ctx, circleID)
+	if err != nil {
+		return nil, err
+	}
+	// Название и обложка — сказанное в свой момент: данное до вступления
+	// новичку не показывается, как и в «Днях».
+	canRead := func(at time.Time) (bool, error) {
+		return c.CanReadEvent(ctx, circleID, accountID, at)
+	}
+	genders := make(map[string]Gender)
+	gender := func(identityID string) Gender {
+		if identityID == "" {
+			return GenderNone
+		}
+		g, ok := genders[identityID]
+		if !ok {
+			g = c.identityGender(ctx, c.db, identityID)
+			genders[identityID] = g
+		}
+		return g
+	}
+
+	// Сосед по истории дня: следующая (более старая) запись о том же дне.
+	olderSaid := func(i int) int {
+		for j := i + 1; j < len(events); j++ {
+			if events[j].isDaySaid() && events[j].entryDate == events[i].entryDate {
+				return j
+			}
+		}
+		return -1
+	}
+
+	merged := make(map[int]bool)
+	out := make([]feedEventRow, 0, len(events))
+	for i, ev := range events {
+		if merged[i] {
+			continue
+		}
+		if !ev.isDaySet() || ev.entryDate == "" {
+			out = append(out, ev)
+			continue
+		}
+		titled := ev.eventType == "day.titled"
+		cover := !titled
+		if j := olderSaid(i); j >= 0 && !merged[j] {
+			prev := events[j]
+			if prev.isDaySet() && prev.eventType != ev.eventType &&
+				prev.actorID == ev.actorID && ev.CreatedAt.Sub(prev.CreatedAt) <= dayCardMergeWindow {
+				merged[j] = true
+				titled, cover = true, true
+			}
+		}
+		card := &FeedDayCard{
+			EntryDate: ev.entryDate,
+			Caption:   captionDayCard(gender(ev.actorID), ev.actorName, titled, cover),
+		}
+		if t, ok := daySaidAsOf(titles[ev.entryDate], ev.Seq); ok && t.value != "" {
+			seen, err := canRead(t.createdAt)
+			if err != nil {
+				return nil, err
+			}
+			if seen {
+				card.Title = t.value
+			}
+		}
+		if cv, ok := daySaidAsOf(covers[ev.entryDate], ev.Seq); ok && cv.value != "" {
+			seen, err := canRead(cv.createdAt)
+			if err == nil && seen {
+				seen, err = canRead(cv.postAt)
+			}
+			if err != nil {
+				return nil, err
+			}
+			if seen {
+				card.CoverBlobID = cv.value
+				card.CoverImageBlobID, card.CoverIsVideo = posters[cv.value]
+			}
+		}
+		ev.Day = card
+		out = append(out, ev)
+	}
+	return out, nil
+}
+
+func (c *Chronicle) daySaidHistory(ctx context.Context, query, circleID string) (map[string][]daySaidRow, error) {
+	rows, err := c.db.QueryContext(ctx, query, circleID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make(map[string][]daySaidRow)
+	for rows.Next() {
+		var date, created, postCreated string
+		var r daySaidRow
+		if err := rows.Scan(&date, &r.seq, &r.value, &created, &postCreated); err != nil {
+			return nil, err
+		}
+		r.createdAt, _ = parseTime(created)
+		r.postAt, _ = parseTime(postCreated)
+		out[date] = append(out[date], r)
 	}
 	return out, rows.Err()
 }

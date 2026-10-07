@@ -16,6 +16,7 @@
 	import EntryDateMark from '$ui/data/EntryDateMark.svelte';
 	import MediaTile from '$ui/data/MediaTile.svelte';
 	import EventDivider from '$ui/data/EventDivider.svelte';
+	import FeedDayCard from '$ui/data/FeedDayCard.svelte';
 	import FeedDayPromptCard from '$ui/data/FeedDayPromptCard.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -42,6 +43,7 @@
 		authorInitial,
 		commentPreview,
 		coverMedia,
+		dayCoverTileId,
 		groupReactions,
 		locationLabel,
 		mediaCount,
@@ -197,6 +199,18 @@
 		);
 	}
 
+	// Обложки открыток дня (3.15) — в тот же словарь, что обложки записей.
+	async function resolveDayCardMedia(events: FeedEvent[]) {
+		const ids = new Set<string>();
+		for (const ev of events) {
+			const id = ev.day ? dayCoverTileId(ev.day) : undefined;
+			if (id && !mediaUrls[id]) ids.add(id);
+		}
+		await resolveMediaUrls(circle.origin, [...ids], (blobId, url) => {
+			mediaUrls = { ...mediaUrls, [blobId]: url };
+		});
+	}
+
 	const soloCircle = $derived(activeMemberCount === 1);
 	const reactionActor = $derived({
 		identityId: circle.identityId,
@@ -212,7 +226,11 @@
 
 	afterNavigate(({ from }) => {
 		if (cameFromPost !== undefined) return;
-		cameFromPost = Boolean(from?.url.pathname.startsWith(`/circles/${circle.circleId}/posts/`));
+		// День, открытый с открытки (3.15), — тот же уход вглубь, что и запись.
+		const path = from?.url.pathname ?? '';
+		cameFromPost =
+			path.startsWith(`/circles/${circle.circleId}/posts/`) ||
+			path.startsWith(`/circles/${circle.circleId}/days/`);
 		void restoreSpot();
 	});
 
@@ -250,6 +268,7 @@
 			dividerAt = unreadDividerIndex(posts, fixedLastRead);
 			// Не ждём: записи уже есть, картинки доедут пачками поверх.
 			void resolveFeedMedia(posts);
+			void resolveDayCardMedia(feedEvents);
 		} catch (err) {
 			error = isAccessError(err) ? 'Нет доступа' : 'Не удалось загрузить ленту';
 		} finally {
@@ -538,6 +557,10 @@
 		goto(`/circles/${circle.circleId}/days/${date}`);
 	}
 
+	function openDay(entryDate: string) {
+		leaveToPost(`/circles/${circle.circleId}/days/${entryDate}`);
+	}
+
 	function openCompose() {
 		goto(`/circles/${circle.circleId}/compose`);
 	}
@@ -784,8 +807,26 @@
 					</PostCard>
 			{/each}
 
+			<!-- Название и обложка дня — открытка (3.15), остальное — тонкая строка. -->
+			{#snippet feedEvent(ev: FeedEvent)}
+				{#if ev.day}
+					{@const coverId = dayCoverTileId(ev.day)}
+					<FeedDayCard
+						date={formatEntryDate(ev.day.entry_date)}
+						title={ev.day.title}
+						hasCover={Boolean(coverId)}
+						coverUrl={coverId ? mediaUrls[coverId] : undefined}
+						video={ev.day.cover_is_video}
+						caption="{ev.day.caption} · {formatPostTime(ev.created_at)}"
+						onclick={() => openDay(ev.day!.entry_date)}
+					/>
+				{:else}
+					<EventDivider text={ev.summary} />
+				{/if}
+			{/snippet}
+
 			{#each serviceEventsAboveNewest(feedEvents, posts[0]?.event_seq) as ev (ev.seq)}
-				<EventDivider text={ev.summary} />
+				{@render feedEvent(ev)}
 			{/each}
 
 			{#each posts as post, i (post.id)}
@@ -890,7 +931,7 @@
 					post.event_seq,
 					i + 1 < posts.length ? posts[i + 1].event_seq : 0
 				) as ev (ev.seq)}
-					<EventDivider text={ev.summary} />
+					{@render feedEvent(ev)}
 				{/each}
 			{/each}
 

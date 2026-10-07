@@ -172,6 +172,8 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 
 `CommentRow` — строка треда (`div.cmt`, опц. `.q`): аватар, `name`, snippet `time`, snippet `children` (текст / правка); `onedit` / `ondelete` → `.acts` (**#e4-5**–**#e4-7**). Колонка `.acts` в треде стоит всегда — текст одной ширины у своих и чужих; `bare` — без неё (строка-ссылка, `ResponseEntry`). Не путать с `CommentPreview` (`button.cm` в ленте).
 
+`FeedDayCard` — открытка дня в ленте (`button.dayc`, 3.15–3.18): `date`, `title?` (нет — на его месте дата), `hasCover` / `coverUrl` / `video`, `caption`, `onclick` (открывает день). Подложка — `--ct`, в тёмной теме `#3A2E29`; стили `.dayc` — в `ui.css`.
+
 `FeedDayPromptCard` — служебная карточка в ленте (`div.post.day-prompt`): `title`, snippet текста, `primaryLabel` / `secondaryLabel`, `onprimary` / `onsecondary` (`Button` в `.rowin`). Стили `.day-prompt` и раскладка ленты (`.feed`, `.ptr`, `.empty`, `.feed-end`) — в `ui.css`.
 
 `SearchResultRow` — строка найденного (**#e2-9**): `author`, `time`, превью — либо snippet `preview`, либо по `kind` (`post` / `comment` — «· комментарий» / `day` — «день») из `snippet` с найденным словом `query` в ёлочках (`quoteMatch` из `$lib/journal/search`); миниатюра `thumb` / `thumbUrl` / `thumbVariant`.
