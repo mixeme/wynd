@@ -1,7 +1,8 @@
 import { holdWakeLock } from './wake-lock';
 import {
 	VOICE_MAX_MS,
-	levelFromSamples,
+	VOICE_PEAKS,
+	levelsFromPcm,
 	peaksFromLevels,
 	pickRecorderType,
 	recordingExtension
@@ -17,14 +18,20 @@ export interface VoiceTake {
 }
 
 /**
- * Диктофон полосы ввода (4.23, 4.24): микрофон, таймер, уровень звука,
- * предел 15 минут. Экран не гаснет, пока идёт запись. Всё, что взято у
- * браузера (поток, контекст звука, адрес файла), отдаётся в `dispose`.
+ * Диктофон полосы ввода (4.23, 4.24): микрофон, таймер, предел 15 минут.
+ * Экран не гаснет, пока идёт запись. Всё, что взято у браузера (поток,
+ * адрес файла), отдаётся в `dispose`.
+ *
+ * Уровень звука во время записи не снимается. Раньше к микрофону был
+ * подключён ещё и анализатор Web Audio — ради живой волны, — и на телефоне
+ * запись выходила рваной, неполной или пустой (realme 8, Firefox и Vivaldi,
+ * 2026-10-07); видеосообщение, где анализатора нет, пишет звук чисто. Волна
+ * считается из готовой записи после «Стоп».
  */
 export class VoiceRecorder {
 	phase = $state<VoicePhase>('idle');
 	elapsedMs = $state(0);
-	/** Последние уровни — живая волна во время записи. */
+	/** Столбики во время записи: ровные, растут с таймером (уровня нет). */
 	recent = $state<number[]>([]);
 	/** Адрес записанного — прослушать перед отправкой. */
 	url = $state('');
@@ -33,11 +40,8 @@ export class VoiceRecorder {
 	#stream: MediaStream | null = null;
 	#recorder: MediaRecorder | null = null;
 	#chunks: Blob[] = [];
-	#ctx: AudioContext | null = null;
-	#analyser: AnalyserNode | null = null;
 	#tick: ReturnType<typeof setInterval> | null = null;
 	#startedAt = 0;
-	#levels: number[] = [];
 	#releaseWake: (() => void) | null = null;
 	#take: VoiceTake | null = null;
 
@@ -64,9 +68,7 @@ export class VoiceRecorder {
 		this.#recorder.ondataavailable = (e) => {
 			if (e.data.size) this.#chunks.push(e.data);
 		};
-		this.#levels = [];
 		this.recent = [];
-		this.#meter(this.#stream);
 		// Без нарезки по секунде: Firefox на Android писал рваный звук на стыках.
 		this.#recorder.start();
 		this.#startedAt = performance.now();
@@ -96,7 +98,7 @@ export class VoiceRecorder {
 			return;
 		}
 		const file = new File([blob], `Голосовое.${recordingExtension(type)}`, { type: blob.type });
-		this.#take = { file, durationMs, peaks: peaksFromLevels(this.#levels) };
+		this.#take = { file, durationMs, peaks: await peaksOf(blob) };
 		this.url = URL.createObjectURL(blob);
 		this.elapsedMs = durationMs;
 		this.phase = 'review';
@@ -122,32 +124,9 @@ export class VoiceRecorder {
 		this.discard();
 	}
 
-	#meter(stream: MediaStream) {
-		try {
-			const Ctx =
-				globalThis.AudioContext ??
-				(globalThis as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-			if (!Ctx) return;
-			this.#ctx = new Ctx();
-			const source = this.#ctx.createMediaStreamSource(stream);
-			this.#analyser = this.#ctx.createAnalyser();
-			this.#analyser.fftSize = 512;
-			source.connect(this.#analyser);
-		} catch {
-			// Без уровня запись всё равно идёт — волна будет ровной.
-		}
-	}
-
 	#onTick() {
 		this.elapsedMs = performance.now() - this.#startedAt;
-		let level = 0;
-		if (this.#analyser) {
-			const buf = new Uint8Array(this.#analyser.fftSize);
-			this.#analyser.getByteTimeDomainData(buf);
-			level = levelFromSamples(buf);
-		}
-		this.#levels.push(level);
-		this.recent = [...this.recent.slice(-17), level];
+		if (this.recent.length < 18) this.recent = [...this.recent, 0];
 		if (this.elapsedMs >= VOICE_MAX_MS) void this.stop();
 	}
 
@@ -156,11 +135,29 @@ export class VoiceRecorder {
 		this.#tick = null;
 		this.#stream?.getTracks().forEach((t) => t.stop());
 		this.#stream = null;
-		void this.#ctx?.close().catch(() => {});
-		this.#ctx = null;
-		this.#analyser = null;
 		this.#recorder = null;
 		this.#releaseWake?.();
 		this.#releaseWake = null;
 	}
+}
+
+/**
+ * Волна для ленты из готовой записи. Декодируем в 8 кГц и моно: четверть
+ * часа — около 30 МБ отсчётов, а не сотни. Не разобралось — ровная волна.
+ */
+async function peaksOf(blob: Blob): Promise<number[]> {
+	try {
+		const Offline =
+			globalThis.OfflineAudioContext ??
+			(globalThis as { webkitOfflineAudioContext?: typeof OfflineAudioContext })
+				.webkitOfflineAudioContext;
+		if (!Offline) throw new Error('no_decoder');
+		const rate = 8000;
+		const decoded = await new Offline(1, 1, rate).decodeAudioData(await blob.arrayBuffer());
+		const peaks = peaksFromLevels(levelsFromPcm(decoded.getChannelData(0), decoded.sampleRate));
+		if (peaks.length) return peaks;
+	} catch {
+		// ниже — ровная волна
+	}
+	return new Array<number>(VOICE_PEAKS).fill(0);
 }

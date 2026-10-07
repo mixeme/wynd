@@ -121,6 +121,22 @@ export function levelFromSamples(samples: ArrayLike<number>): number {
 	return clampLevel(Math.sqrt(rms) * 160);
 }
 
+/**
+ * Уровни 0–100 из готового звука (отсчёты −1…1): по одному на `stepSec`.
+ * Шкала та же, что у `levelFromSamples`.
+ */
+export function levelsFromPcm(samples: Float32Array, sampleRate: number, stepSec = 0.1): number[] {
+	const step = Math.max(1, Math.round(sampleRate * stepSec));
+	const out: number[] = [];
+	for (let from = 0; from < samples.length; from += step) {
+		const to = Math.min(samples.length, from + step);
+		let sum = 0;
+		for (let i = from; i < to; i++) sum += samples[i] * samples[i];
+		out.push(clampLevel(Math.sqrt(Math.sqrt(sum / (to - from))) * 160));
+	}
+	return out;
+}
+
 /** «0:48», «12:05» — таймер записи и длительность голосового. */
 export function formatDuration(ms: number): string {
 	const total = Math.max(0, Math.round(ms / 1000));

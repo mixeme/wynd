@@ -3,6 +3,7 @@ import {
 	cameraAsks,
 	formatDuration,
 	levelFromSamples,
+	levelsFromPcm,
 	peaksFromLevels,
 	pickRecorderType,
 	recordingExtension
@@ -49,5 +50,14 @@ describe('record', () => {
 		expect(formatDuration(0)).toBe('0:00');
 		expect(formatDuration(48_400)).toBe('0:48');
 		expect(formatDuration(725_000)).toBe('12:05');
+	});
+});
+
+describe('levelsFromPcm', () => {
+	it('gives one level per step on the scale of the live meter', () => {
+		const pcm = new Float32Array(2400);
+		pcm.fill(1, 800, 1600);
+		expect(levelsFromPcm(pcm, 8000)).toEqual([0, 100, 0]);
+		expect(levelsFromPcm(new Float32Array(0), 8000)).toEqual([]);
 	});
 });
