@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Wynd — диагностика видео</title>
+<style>
+  body { font: 15px/1.45 system-ui, sans-serif; margin: 16px; background: #F4F0E9; color: #2B2724; }
+  h1 { font-size: 19px; margin: 0 0 4px; }
+  p { margin: 8px 0; color: #6B635B; }
+  button, label.pick { display: block; width: 100%; box-sizing: border-box; margin: 12px 0 0; padding: 14px;
+    border: 0; border-radius: 12px; background: #2B2724; color: #F4F0E9; font: inherit; font-weight: 600; text-align: center; }
+  button.gh { background: none; border: 1px solid #CFC6BA; color: #2B2724; font-weight: 400; }
+  button:disabled { opacity: .45; }
+  input[type=file] { display: none; }
+  textarea { width: 100%; box-sizing: border-box; height: 300px; margin-top: 14px; padding: 10px;
+    border: 1px solid #CFC6BA; border-radius: 10px; background: #fff; font: 11.5px/1.4 ui-monospace, monospace; }
+  #stage { margin-top: 12px; }
+  #stage video { width: 160px; height: 160px; background: #000; object-fit: contain; }
+</style>
+</head>
+<body>
+<h1>Диагностика видео</h1>
+<p>Временная страница (план 49). Ничего не отправляет: всё остаётся на телефоне, пока вы сами не скопируете текст.</p>
+<p>Держите телефон стоймя. Нажмите обе кнопки по очереди, дождитесь слова «ГОТОВО» в поле и пришлите текст.</p>
+
+<button id="cam">1. Проверить камеру</button>
+<label class="pick">2. Проверить видео из галереи<input id="file" type="file" accept="video/*"></label>
+<button id="copy" class="gh">Скопировать текст</button>
+<div id="stage"></div>
+<textarea id="out" readonly></textarea>
+
+<script>
+(() => {
+  const out = document.getElementById('out');
+  const stage = document.getElementById('stage');
+  const log = (...a) => { out.value += a.map((x) => typeof x === 'string' ? x : JSON.stringify(x)).join(' ') + '\n'; out.scrollTop = out.scrollHeight; };
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const withTimeout = (p, ms) => Promise.race([p, sleep(ms).then(() => 'TIMEOUT')]);
+  const once = (el, ev, ms) => withTimeout(new Promise((r) => {
+    el.addEventListener(ev, () => r('ok'), { once: true });
+    el.addEventListener('error', () => r('ERROR ' + (el.error && el.error.message || '')), { once: true });
+  }), ms);
+
+  log('UA', navigator.userAgent);
+  log('screen', screen.width + 'x' + screen.height, 'dpr', devicePixelRatio,
+    'portrait', matchMedia('(orientation: portrait)').matches,
+    'orientation', screen.orientation && screen.orientation.type + '/' + screen.orientation.angle,
+    'standalone', matchMedia('(display-mode: standalone)').matches);
+  log('VideoEncoder', typeof VideoEncoder, 'VideoDecoder', typeof VideoDecoder,
+    'ImageCapture', typeof ImageCapture, 'createImageBitmap', typeof createImageBitmap,
+    'rVFC', 'requestVideoFrameCallback' in HTMLVideoElement.prototype,
+    'OffscreenCanvas', typeof OffscreenCanvas);
+  log('');
+
+  // Средняя и наибольшая яркость кадра 32×32: 0/0 — чёрный квадрат.
+  function luma(src, how) {
+    try {
+      const c = document.createElement('canvas'); c.width = 32; c.height = 32;
+      const g = c.getContext('2d', { willReadFrequently: true });
+      g.drawImage(src, 0, 0, 32, 32);
+      const d = g.getImageData(0, 0, 32, 32).data;
+      let sum = 0, max = 0, alpha = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        const y = d[i] * 0.2126 + d[i + 1] * 0.7152 + d[i + 2] * 0.0722;
+        sum += y; if (y > max) max = y; alpha += d[i + 3];
+      }
+      return how + ' avg=' + (sum / 1024).toFixed(1) + ' max=' + max.toFixed(0) + ' alpha=' + (alpha / 1024).toFixed(0);
+    } catch (e) { return how + ' THROW ' + e.name + ': ' + e.message; }
+  }
+  async function lumaAll(video, label) {
+    log('  ' + label, 'readyState', video.readyState, 'size', video.videoWidth + 'x' + video.videoHeight,
+      't', (video.currentTime || 0).toFixed(2));
+    log('    ' + luma(video, 'drawImage'));
+    if (typeof createImageBitmap === 'function') {
+      try {
+        const bmp = await withTimeout(createImageBitmap(video), 3000);
+        log('    ' + (bmp === 'TIMEOUT' ? 'bitmap TIMEOUT' : luma(bmp, 'bitmap ' + bmp.width + 'x' + bmp.height)));
+      } catch (e) { log('    bitmap THROW ' + e.name + ': ' + e.message); }
+    }
+    if (typeof VideoFrame === 'function') {
+      try { const f = new VideoFrame(video); log('    ' + luma(f, 'VideoFrame ' + f.displayWidth + 'x' + f.displayHeight)); f.close(); }
+      catch (e) { log('    VideoFrame THROW ' + e.name + ': ' + e.message); }
+    }
+  }
+  const frame = (video, ms) => withTimeout(new Promise((r) => {
+    if ('requestVideoFrameCallback' in video) video.requestVideoFrameCallback((_, m) => r('rVFC ' + (m && m.width + 'x' + m.height)));
+    else r('no rVFC');
+  }), ms);
+
+  // ---------- 1. Камера
+  async function tryCamera(name, video) {
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
+    } catch (e) { log(name, 'THROW', e.name, e.message); return; }
+    const track = stream.getVideoTracks()[0];
+    const s = track.getSettings();
+    log(name, '->', s.width + 'x' + s.height, 'fps', s.frameRate, 'facing', s.facingMode || '?');
+    stream.getTracks().forEach((t) => t.stop());
+    await sleep(350);
+  }
+
+  document.getElementById('cam').onclick = async (e) => {
+    e.target.disabled = true;
+    try {
+      log('=== КАМЕРА ===');
+      log('supported', Object.keys(navigator.mediaDevices.getSupportedConstraints()).join(','));
+      const env = 'environment';
+      await tryCamera('A facing only        ', { facingMode: env });
+      await tryCamera('B w1920 h1080 ideal  ', { facingMode: env, width: { ideal: 1920 }, height: { ideal: 1080 } });
+      await tryCamera('C w1080 h1920 ideal  ', { facingMode: env, width: { ideal: 1080 }, height: { ideal: 1920 } });
+      await tryCamera('D w1280 h720 ideal   ', { facingMode: env, width: { ideal: 1280 }, height: { ideal: 720 } });
+      await tryCamera('E w720 h1280 ideal   ', { facingMode: env, width: { ideal: 720 }, height: { ideal: 1280 } });
+      await tryCamera('F width 1280 only    ', { facingMode: env, width: { ideal: 1280 } });
+      await tryCamera('G height 1280 only   ', { facingMode: env, height: { ideal: 1280 } });
+      await tryCamera('H height 720 only    ', { facingMode: env, height: { ideal: 720 } });
+      await tryCamera('I w1280 h720 exact   ', { facingMode: env, width: { exact: 1280 }, height: { exact: 720 } });
+      await tryCamera('J w720 h1280 exact   ', { facingMode: env, width: { exact: 720 }, height: { exact: 1280 } });
+      await tryCamera('K aspect 16:9        ', { facingMode: env, aspectRatio: { ideal: 16 / 9 } });
+      await tryCamera('L aspect 9:16        ', { facingMode: env, aspectRatio: { ideal: 9 / 16 } });
+      await tryCamera('M min w641 h481      ', { facingMode: env, width: { min: 641 }, height: { min: 481 } });
+      await tryCamera('N front w1280 h720   ', { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } });
+
+      log('--- живой поток, как в приложении (D) ---');
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: env, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: true
+      });
+      const track = stream.getVideoTracks()[0];
+      log('settings', track.getSettings());
+      if (track.getCapabilities) { try { log('capabilities', track.getCapabilities()); } catch (e2) { log('capabilities THROW', e2.message); } }
+      else log('getCapabilities: нет');
+      const v = document.createElement('video');
+      v.muted = true; v.playsInline = true; v.srcObject = stream; stage.replaceChildren(v);
+      await v.play().catch((e2) => log('play THROW', e2.name));
+      await sleep(900);
+      await lumaAll(v, 'кадр с камеры');
+      for (const [n, c] of [
+        ['apply w720 h1280', { width: { ideal: 720 }, height: { ideal: 1280 } }],
+        ['apply height 1280', { height: { ideal: 1280 } }],
+        ['apply w1920 h1080', { width: { ideal: 1920 }, height: { ideal: 1080 } }]
+      ]) {
+        try { await track.applyConstraints(c); await sleep(700); const s = track.getSettings();
+          log(n, '->', s.width + 'x' + s.height, 'video', v.videoWidth + 'x' + v.videoHeight); }
+        catch (e2) { log(n, 'THROW', e2.name, e2.message); }
+      }
+      // Две секунды записи: что пишет MediaRecorder и снимается ли с неё кадр.
+      const types = ['video/mp4;codecs=avc1.4D401F,mp4a.40.2', 'video/mp4', 'video/webm;codecs=h264,opus',
+        'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+      log('recorder types', types.filter((t) => MediaRecorder.isTypeSupported(t)).join(' | '));
+      const rec = new MediaRecorder(stream, { videoBitsPerSecond: 2500000 });
+      const chunks = []; rec.ondataavailable = (ev) => ev.data.size && chunks.push(ev.data);
+      const stopped = new Promise((r) => (rec.onstop = r));
+      rec.start(1000); await sleep(2500); rec.stop(); await stopped;
+      stream.getTracks().forEach((t) => t.stop());
+      const blob = new Blob(chunks, { type: rec.mimeType });
+      log('recorded', rec.mimeType, blob.size, 'bytes');
+      await probeFile(blob, 'ЗАПИСЬ С КАМЕРЫ');
+    } catch (err) { log('CAMERA FAIL', err.name, err.message); }
+    stage.replaceChildren();
+    log('ГОТОВО (камера)'); log('');
+    e.target.disabled = false;
+  };
+
+  // ---------- 2. Кадр из файла
+  async function probeOnce(blob, label, opts) {
+    log('- ' + label);
+    const url = URL.createObjectURL(blob);
+    const v = document.createElement('video');
+    v.muted = true; v.playsInline = true; v.preload = opts.preload;
+    if (opts.attach === 'tiny') v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:.01;pointer-events:none';
+    if (opts.attach) (opts.attach === 'tiny' ? document.body : stage).appendChild(v);
+    try {
+      const t0 = performance.now();
+      const meta = once(v, 'loadedmetadata', 8000); const data = once(v, 'loadeddata', 8000);
+      v.src = url; if (opts.load) v.load();
+      log('  loadedmetadata', await meta, Math.round(performance.now() - t0) + 'ms',
+        'size', v.videoWidth + 'x' + v.videoHeight, 'dur', v.duration);
+      log('  loadeddata', await data, Math.round(performance.now() - t0) + 'ms');
+      await lumaAll(v, 'после загрузки');
+      for (const t of [0.1, 1]) {
+        const seeked = once(v, 'seeked', 4000); v.currentTime = t;
+        log('  seek ' + t, await seeked, await frame(v, 400));
+        await lumaAll(v, 'после seek ' + t);
+      }
+      const playing = once(v, 'playing', 4000);
+      let played = 'ok'; try { await withTimeout(v.play(), 4000); } catch (e) { played = 'THROW ' + e.name + ': ' + e.message; }
+      log('  play', played, 'playing', await playing, await frame(v, 1500));
+      await sleep(400);
+      await lumaAll(v, 'во время игры');
+      v.pause(); await sleep(150);
+      await lumaAll(v, 'после паузы');
+    } catch (e) { log('  FAIL', e.name, e.message); }
+    v.removeAttribute('src'); v.load(); v.remove(); URL.revokeObjectURL(url);
+  }
+
+  async function probeFile(blob, title) {
+    log('=== ' + title + ' === type', blob.type || '(нет)', 'size', blob.size, blob.name ? 'name ' + blob.name.replace(/^.*(\.[^.]+)$/, '*$1') : '');
+    await probeOnce(blob, 'как в приложении: в документе 2px, почти невидимо', { attach: 'tiny', preload: 'auto' });
+    await probeOnce(blob, 'в документе, видимо 160px', { attach: 'stage', preload: 'auto' });
+    await probeOnce(blob, 'вне документа', { attach: '', preload: 'auto', load: true });
+  }
+
+  document.getElementById('file').onchange = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try { await probeFile(file, 'ФАЙЛ ИЗ ГАЛЕРЕИ'); } catch (err) { log('FILE FAIL', err.name, err.message); }
+    stage.replaceChildren();
+    log('ГОТОВО (файл)'); log('');
+    e.target.value = '';
+  };
+
+  document.getElementById('copy').onclick = async (e) => {
+    out.select();
+    try { await navigator.clipboard.writeText(out.value); e.target.textContent = 'Скопировано'; }
+    catch { document.execCommand('copy'); e.target.textContent = 'Скопировано'; }
+    setTimeout(() => (e.target.textContent = 'Скопировать текст'), 1500);
+  };
+})();
+</script>
+</body>
+</html>

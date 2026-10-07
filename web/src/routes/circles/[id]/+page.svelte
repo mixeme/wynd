@@ -422,6 +422,17 @@
 	// сети тоже уйдёт.
 	let videoOpen = $state(false);
 	let preparing = $state('');
+	// Что вышло с записью — над полосой ввода, там же, где «Готовим видео…».
+	// Строка ошибки стоит под лентой: её не видно, и её стирает первая же
+	// перезагрузка ленты после отправки.
+	let barNote = $state('');
+	let barNoteTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function showBarNote(text: string) {
+		clearTimeout(barNoteTimer);
+		barNote = text;
+		barNoteTimer = setTimeout(() => (barNote = ''), 12000);
+	}
 
 	async function enqueueRecorded(
 		file: { name: string; type: string; size: number; data: ArrayBuffer },
@@ -458,7 +469,7 @@
 				}
 			);
 		} catch (err) {
-			error = authErrorHint(err);
+			showBarNote(authErrorHint(err));
 		} finally {
 			preparing = '';
 		}
@@ -480,7 +491,7 @@
 			);
 			const maxBytes = compression?.attachment_max_bytes ?? 0;
 			if (maxBytes > 0 && video.size > maxBytes) {
-				error = `Видео больше ${formatBytes(maxBytes)} — сервер не примет`;
+				showBarNote(`Видео больше ${formatBytes(maxBytes)} — сервер не примет`);
 				return;
 			}
 			const poster = await videoPosterJpeg(new Blob([video.data], { type: video.type || 'video/mp4' }));
@@ -491,9 +502,9 @@
 			});
 			// Ушло как записано — сказать, а не молчать: такой ролик крупнее и
 			// играет не на всех телефонах.
-			if (fallbackReason) error = `Видео ушло без сжатия: ${fallbackReason}`;
+			if (fallbackReason) showBarNote(`Видео ушло без сжатия: ${fallbackReason}`);
 		} catch (err) {
-			error = authErrorHint(err);
+			showBarNote(authErrorHint(err));
 		} finally {
 			preparing = '';
 		}
@@ -679,7 +690,7 @@
 	onCommentPhotos={circle.canWrite ? openComposeWithPhotos : undefined}
 	onCommentVoice={circle.canWrite ? (take) => void sendVoice(take) : undefined}
 	onCommentVideo={circle.canWrite ? () => (videoOpen = true) : undefined}
-	commentStatus={preparing}
+	commentStatus={preparing || barNote}
 >
 	{#if videoOpen}
 		<VideoRecorder onsend={(file) => void sendVideo(file)} onclose={() => (videoOpen = false)} />

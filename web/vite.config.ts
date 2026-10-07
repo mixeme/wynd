@@ -52,7 +52,8 @@ export default defineConfig({
 			},
 			workbox: {
 				navigateFallback: '/index.html',
-				navigateFallbackDenylist: [/^\/api/],
+				// diag-video.html — временная страница диагностики (план 49): не оболочка SPA.
+				navigateFallbackDenylist: [/^\/api/, /^\/diag-video/],
 				// The plugin's default patterns leave out woff2, so offline would
 				// drop back to system fonts.
 				globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,webmanifest,woff2}'],
