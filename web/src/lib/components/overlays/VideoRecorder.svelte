@@ -3,7 +3,13 @@
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import { modal } from '$lib/a11y/modal';
 	import { holdWakeLock } from '$lib/media/wake-lock';
-	import { VIDEO_MAX_MS, formatDuration, pickRecorderType, recordingExtension } from '$lib/media/record';
+	import {
+		VIDEO_MAX_MS,
+		formatDuration,
+		pickRecorderType,
+		recordingExtension,
+		uprightFrame
+	} from '$lib/media/record';
 
 	// Запись видео (4.25) и просмотр перед отправкой (4.26). Камера во весь
 	// экран, задняя по умолчанию; касание большой кнопки — старт и стоп;
@@ -41,17 +47,26 @@
 	async function openCamera() {
 		stopStream();
 		error = '';
+		const [long, short] = canEncode ? [1920, 1080] : [1280, 720];
 		try {
 			stream = await navigator.mediaDevices.getUserMedia({
-				video: canEncode
-					? { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } }
-					: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } },
+				video: { facingMode: facing, width: { ideal: long }, height: { ideal: short } },
 				audio: true
 			});
 		} catch {
 			error = 'Нет доступа к камере';
 			return;
 		}
+		const track = stream.getVideoTracks()[0];
+		const upright = track
+			? uprightFrame(
+					track.getSettings(),
+					long,
+					short,
+					window.matchMedia('(orientation: portrait)').matches
+				)
+			: undefined;
+		if (upright) await track.applyConstraints(upright).catch(() => {});
 		if (liveEl) {
 			liveEl.srcObject = stream;
 			void liveEl.play().catch(() => {});

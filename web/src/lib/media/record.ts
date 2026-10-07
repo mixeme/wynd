@@ -49,6 +49,22 @@ const VIDEO_TYPES = [
 	'video/mp4'
 ];
 
+/**
+ * Камера на просьбу «1920 на 1080» вернула квадрат — так делает Firefox на
+ * Android, когда телефон держат стоймя: видеосообщение уходило 1080×1080
+ * (файл с тестового сервера, 2026-10-07). Тогда просим ту же рамку стоймя.
+ * Не квадрат или телефон лежит — менять нечего.
+ */
+export function uprightFrame(
+	got: { width?: number; height?: number },
+	long: number,
+	short: number,
+	portrait: boolean
+): MediaTrackConstraints | undefined {
+	if (!portrait || !got.width || got.width !== got.height) return undefined;
+	return { width: { ideal: short }, height: { ideal: long } };
+}
+
 /** Первый контейнер, который браузер пишет; '' — пусть выберет сам. */
 export function pickRecorderType(kind: 'audio' | 'video', supports = isTypeSupported): string {
 	const list = kind === 'audio' ? AUDIO_TYPES : VIDEO_TYPES;

@@ -1,11 +1,27 @@
 import { describe, expect, it } from 'vitest';
 import {
+	uprightFrame,
 	formatDuration,
 	levelFromSamples,
 	peaksFromLevels,
 	pickRecorderType,
 	recordingExtension
 } from './record';
+
+describe('uprightFrame', () => {
+	it('asks for an upright frame when a phone held upright gets a square', () => {
+		expect(uprightFrame({ width: 1080, height: 1080 }, 1920, 1080, true)).toEqual({
+			width: { ideal: 1080 },
+			height: { ideal: 1920 }
+		});
+	});
+
+	it('leaves a rectangular frame and a phone on its side alone', () => {
+		expect(uprightFrame({ width: 1080, height: 1920 }, 1920, 1080, true)).toBeUndefined();
+		expect(uprightFrame({ width: 1080, height: 1080 }, 1920, 1080, false)).toBeUndefined();
+		expect(uprightFrame({}, 1920, 1080, true)).toBeUndefined();
+	});
+});
 
 describe('record', () => {
 	it('сжимает уровни до волны, беря максимум отрезка', () => {
