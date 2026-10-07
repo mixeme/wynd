@@ -684,9 +684,9 @@ func TestInvariantReactionRejectsUnknownKey(t *testing.T) {
 	}
 }
 
-// Инвариант: снятие названия дня отслаивает верхний слой к предыдущему
-// названию, и только последнее снятие оставляет день безымянным.
-func TestInvariantClearDayTitlePeelsToPrevious(t *testing.T) {
+// Инвариант: снятие названия дня убирает его целиком — и то, что давали до
+// него: день остаётся безымянным с одного раза, как с обложкой.
+func TestInvariantClearDayTitleClearsWholeChain(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
 	e.post(circle.ID, "owner", "запись", "2026-08-05", e.at(0))
@@ -707,33 +707,15 @@ func TestInvariantClearDayTitlePeelsToPrevious(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if day.Title != "Первое" {
-		t.Fatalf("title after peel: %q", day.Title)
-	}
-	if remains, err := eventTextRemains(e, circle.ID, "Второе"); err != nil {
-		t.Fatal(err)
-	} else if remains {
-		t.Fatal("cleared title remains in journal")
-	}
-	if remains, err := eventTextRemains(e, circle.ID, "Первое"); err != nil {
-		t.Fatal(err)
-	} else if !remains {
-		t.Fatal("previous title must stay until peeled")
-	}
-	if err := e.ch.ClearDayTitle(e.ctx, circle.ID, "owner", "2026-08-05", e.at(0)); err != nil {
-		t.Fatal(err)
-	}
-	day, err = e.ch.GetDay(e.ctx, circle.ID, "2026-08-05")
-	if err != nil {
-		t.Fatal(err)
-	}
 	if day.Title != "" {
-		t.Fatalf("untitled after last peel: %q", day.Title)
+		t.Fatalf("title after clear: %q", day.Title)
 	}
-	if remains, err := eventTextRemains(e, circle.ID, "Первое"); err != nil {
-		t.Fatal(err)
-	} else if remains {
-		t.Fatal("last title remains in journal")
+	for _, title := range []string{"Первое", "Второе"} {
+		if remains, err := eventTextRemains(e, circle.ID, title); err != nil {
+			t.Fatal(err)
+		} else if remains {
+			t.Fatalf("cleared title %q remains in journal", title)
+		}
 	}
 	if n := countDeletedJournalEvents(t, e, circle.ID); n != 0 {
 		t.Fatal("clearing a title is not a journal event")

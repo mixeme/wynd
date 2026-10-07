@@ -465,7 +465,8 @@ func (c *Chronicle) canClearDaySaid(ctx context.Context, circleID, accountID, en
 	return nil
 }
 
-// ClearDayTitle removes the current day title from the journal and falls back to the previous one.
+// ClearDayTitle removes the day title from the journal: the current one and every
+// earlier one that is still editable. An older title whose window has closed stays.
 func (c *Chronicle) ClearDayTitle(ctx context.Context, circleID, accountID, entryDate string, now time.Time) error {
 	now = utcOrNow(now)
 	current, err := c.currentDayTitle(ctx, c.db, circleID, entryDate)
@@ -479,7 +480,11 @@ func (c *Chronicle) ClearDayTitle(ctx context.Context, circleID, accountID, entr
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if err := c.removeSaidHistory(ctx, tx, []int64{current.eventSeq}); err != nil {
+	seqs, err := c.editableDaySaidSeqs(ctx, tx, sqlDayTitleChain, circleID, entryDate, now)
+	if err != nil {
+		return err
+	}
+	if err := c.removeSaidHistory(ctx, tx, seqs); err != nil {
 		return err
 	}
 	if err := c.reprojectDayTitle(ctx, tx, circleID, entryDate); err != nil {
@@ -488,17 +493,26 @@ func (c *Chronicle) ClearDayTitle(ctx context.Context, circleID, accountID, entr
 	return tx.Commit()
 }
 
-// editableDayCoverSeqs — выставленные обложки дня от текущей вглубь, пока их
-// ещё можно стереть. Обложку могли менять несколько раз подряд; для человека
-// она одна, и «убрать» снимает всю цепочку, а не возвращает предыдущую.
-func (c *Chronicle) editableDayCoverSeqs(ctx context.Context, tx *sql.Tx, circleID, entryDate string, now time.Time) ([]int64, error) {
-	rows, err := tx.QueryContext(ctx, `
+const (
+	sqlDayTitleChain = `
+		SELECT event_seq, created_at, edit_window_sec
+		FROM day_titles
+		WHERE circle_id = ? AND entry_date = ?
+		ORDER BY created_at DESC, event_seq DESC`
+	sqlDayCoverChain = `
 		SELECT dc.event_seq, dc.created_at, dc.edit_window_sec
 		FROM day_covers dc
 		JOIN posts p ON p.id = dc.post_id AND p.deleted = 0
 		WHERE dc.circle_id = ? AND dc.entry_date = ?
-		ORDER BY dc.created_at DESC, dc.event_seq DESC
-	`, circleID, entryDate)
+		ORDER BY dc.created_at DESC, dc.event_seq DESC`
+)
+
+// editableDaySaidSeqs — названия или обложки дня от текущей вглубь, пока их
+// ещё можно стереть. Их могли менять несколько раз подряд; для человека
+// название и обложка одни, и «убрать» снимает всю цепочку, а не возвращает
+// предыдущее.
+func (c *Chronicle) editableDaySaidSeqs(ctx context.Context, tx *sql.Tx, chain, circleID, entryDate string, now time.Time) ([]int64, error) {
+	rows, err := tx.QueryContext(ctx, chain, circleID, entryDate)
 	if err != nil {
 		return nil, err
 	}
@@ -536,7 +550,7 @@ func (c *Chronicle) ClearDayCover(ctx context.Context, circleID, accountID, entr
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	seqs, err := c.editableDayCoverSeqs(ctx, tx, circleID, entryDate, now)
+	seqs, err := c.editableDaySaidSeqs(ctx, tx, sqlDayCoverChain, circleID, entryDate, now)
 	if err != nil {
 		return err
 	}
