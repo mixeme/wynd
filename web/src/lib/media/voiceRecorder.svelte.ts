@@ -2,6 +2,7 @@ import { holdWakeLock } from './wake-lock';
 import {
 	VOICE_MAX_MS,
 	VOICE_PEAKS,
+	levelFromSamples,
 	levelsFromPcm,
 	peaksFromLevels,
 	pickRecorderType,
@@ -22,16 +23,19 @@ export interface VoiceTake {
  * Экран не гаснет, пока идёт запись. Всё, что взято у браузера (поток,
  * адрес файла), отдаётся в `dispose`.
  *
- * Уровень звука во время записи не снимается. Раньше к микрофону был
- * подключён ещё и анализатор Web Audio — ради живой волны, — и на телефоне
- * запись выходила рваной, неполной или пустой (realme 8, Firefox и Vivaldi,
- * 2026-10-07); видеосообщение, где анализатора нет, пишет звук чисто. Волна
+ * Живая волна — с копии микрофона: запись получает звук напрямую, анализатор
+ * Web Audio слушает свою дорожку (`stream.clone()`). До 0.22.5 анализатор
+ * сидел на той же дорожке, что и запись, и на телефоне она выходила рваной,
+ * неполной или пустой (realme 8, Firefox и Vivaldi, 2026-10-07); без него
+ * запись чистая. На отдельной странице диагностики чистыми вышли все способы,
+ * включая прежний, так что точная причина не установлена — если запись снова
+ * испортится, убирать `#meter` первым. Волна для ленты от живой не зависит:
  * считается из готовой записи после «Стоп».
  */
 export class VoiceRecorder {
 	phase = $state<VoicePhase>('idle');
 	elapsedMs = $state(0);
-	/** Столбики во время записи: ровные, растут с таймером (уровня нет). */
+	/** Последние уровни — живая волна во время записи; без анализатора ровная. */
 	recent = $state<number[]>([]);
 	/** Адрес записанного — прослушать перед отправкой. */
 	url = $state('');
@@ -40,6 +44,9 @@ export class VoiceRecorder {
 	#stream: MediaStream | null = null;
 	#recorder: MediaRecorder | null = null;
 	#chunks: Blob[] = [];
+	#meterStream: MediaStream | null = null;
+	#ctx: AudioContext | null = null;
+	#analyser: AnalyserNode | null = null;
 	#tick: ReturnType<typeof setInterval> | null = null;
 	#startedAt = 0;
 	#releaseWake: (() => void) | null = null;
@@ -69,6 +76,7 @@ export class VoiceRecorder {
 			if (e.data.size) this.#chunks.push(e.data);
 		};
 		this.recent = [];
+		this.#meter(this.#stream);
 		// Без нарезки по секунде: Firefox на Android писал рваный звук на стыках.
 		this.#recorder.start();
 		this.#startedAt = performance.now();
@@ -124,9 +132,34 @@ export class VoiceRecorder {
 		this.discard();
 	}
 
+	#meter(stream: MediaStream) {
+		try {
+			const Ctx =
+				globalThis.AudioContext ??
+				(globalThis as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+			if (!Ctx) return;
+			this.#meterStream = stream.clone();
+			this.#ctx = new Ctx();
+			// После запроса микрофона контекст может родиться приостановленным.
+			void this.#ctx.resume().catch(() => {});
+			this.#analyser = this.#ctx.createAnalyser();
+			this.#analyser.fftSize = 512;
+			this.#ctx.createMediaStreamSource(this.#meterStream).connect(this.#analyser);
+		} catch {
+			// Без уровня запись всё равно идёт — волна будет ровной.
+			this.#analyser = null;
+		}
+	}
+
 	#onTick() {
 		this.elapsedMs = performance.now() - this.#startedAt;
-		if (this.recent.length < 18) this.recent = [...this.recent, 0];
+		let level = 0;
+		if (this.#analyser) {
+			const buf = new Uint8Array(this.#analyser.fftSize);
+			this.#analyser.getByteTimeDomainData(buf);
+			level = levelFromSamples(buf);
+		}
+		this.recent = [...this.recent.slice(-17), level];
 		if (this.elapsedMs >= VOICE_MAX_MS) void this.stop();
 	}
 
@@ -135,6 +168,11 @@ export class VoiceRecorder {
 		this.#tick = null;
 		this.#stream?.getTracks().forEach((t) => t.stop());
 		this.#stream = null;
+		this.#meterStream?.getTracks().forEach((t) => t.stop());
+		this.#meterStream = null;
+		void this.#ctx?.close().catch(() => {});
+		this.#ctx = null;
+		this.#analyser = null;
 		this.#recorder = null;
 		this.#releaseWake?.();
 		this.#releaseWake = null;
