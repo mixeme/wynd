@@ -162,8 +162,6 @@ func (s *Server) handleDays(w http.ResponseWriter, r *http.Request) {
 		if d.Day.CoverBlobID != "" {
 			row["cover_blob_id"] = d.Day.CoverBlobID
 		}
-		row["title_editable_until"] = editableUntilJSON(d.TitleEditableUntil)
-		row["cover_editable_until"] = editableUntilJSON(d.CoverEditableUntil)
 		if d.FallbackCoverBlobID != "" {
 			row["fallback_cover_blob_id"] = d.FallbackCoverBlobID
 		}

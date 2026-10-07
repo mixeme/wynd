@@ -766,7 +766,7 @@ func (c *Chronicle) PurgeBeforeCutoff(ctx context.Context, circleID, cutoffDate 
 		WHERE circle_id = ?
 		  AND is_service = 0
 		  AND created_at < ?
-		  AND event_type IN ('day.titled', 'day.cover_set')
+		  AND event_type IN ('day.titled', 'day.cover_set', 'day.title_cleared', 'day.cover_cleared')
 	`, circleID, formatTime(cutoff)); err != nil {
 		return nil, err
 	}

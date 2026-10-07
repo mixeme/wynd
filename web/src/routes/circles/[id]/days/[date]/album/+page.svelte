@@ -10,7 +10,7 @@
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
-	import { formatEntryDate, isEditableActive } from '$lib/format/time';
+	import { formatEntryDate } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadDay, loadDays, setDayCover, clearDayCover } from '$lib/journal/days';
 	import { attachmentMedia, photoMedia, tileBlobId } from '$lib/journal/present';
@@ -25,16 +25,14 @@
 	let selected = $state<{ postId: string; blobId: string } | undefined>();
 	let coverBlobId = $state<string | undefined>();
 	let coverPostId = $state<string | undefined>();
-	let coverEditableUntil = $state<string | null | undefined>();
 	let ownPostThatDay = $state(false);
 	let loading = $state(true);
 	let saving = $state(false);
 	let clearing = $state(false);
 	let error = $state('');
 
-	const canClearCover = $derived(
-		Boolean(coverPostId) && ownPostThatDay && isEditableActive(coverEditableUntil)
-	);
+	// Окна правок у обложки нет: убрать — такая же запись журнала, как выбрать.
+	const canClearCover = $derived(Boolean(coverPostId) && ownPostThatDay);
 
 	onMount(() => {
 		// Альбом дня — выбор обложки; читателю он не нужен (SCR-2).
@@ -56,7 +54,6 @@
 			const meta = daysSnap.days.find((d) => d.entry_date === entryDate);
 			coverBlobId = meta?.cover_blob_id;
 			coverPostId = meta?.cover_post_id;
-			coverEditableUntil = meta?.cover_editable_until;
 			ownPostThatDay = day.posts.some((p) => p.identity_id === circle.identityId);
 			const next = [];
 			for (const post of day.posts) {

@@ -141,8 +141,6 @@ export interface DaySummary {
 	cover_image_blob_id?: string;
 	/** Фото за день — счётчик на карточке. */
 	photo_count?: number;
-	title_editable_until?: string | null;
-	cover_editable_until?: string | null;
 }
 
 export interface DaysSnapshot {

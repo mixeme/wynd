@@ -684,23 +684,21 @@ func TestInvariantReactionRejectsUnknownKey(t *testing.T) {
 	}
 }
 
-// Инвариант: снятие названия дня убирает его целиком — и то, что давали до
-// него: день остаётся безымянным с одного раза, как с обложкой.
-func TestInvariantClearDayTitleClearsWholeChain(t *testing.T) {
+// Инвариант: снятие названия дня — своя запись журнала. Прежние названия
+// остаются в журнале, день становится безымянным и из поиска уходит; новое
+// название после снятия — следующая запись.
+func TestInvariantClearDayTitleIsJournalEntry(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
 	e.post(circle.ID, "owner", "запись", "2026-08-05", e.at(0))
-	if err := e.ch.SetDayTitle(e.ctx, chronicle.DayTitleInput{
-		CircleID: circle.ID, AccountID: "owner", EntryDate: "2026-08-05", Title: "Первое", Now: e.at(0),
-	}); err != nil {
-		t.Fatal(err)
+	for _, title := range []string{"Первое", "Второе"} {
+		if err := e.ch.SetDayTitle(e.ctx, chronicle.DayTitleInput{
+			CircleID: circle.ID, AccountID: "owner", EntryDate: "2026-08-05", Title: title, Now: e.at(0),
+		}); err != nil {
+			t.Fatal(err)
+		}
 	}
-	if err := e.ch.SetDayTitle(e.ctx, chronicle.DayTitleInput{
-		CircleID: circle.ID, AccountID: "owner", EntryDate: "2026-08-05", Title: "Второе", Now: e.at(0),
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if err := e.ch.ClearDayTitle(e.ctx, circle.ID, "owner", "2026-08-05", e.at(0)); err != nil {
+	if err := e.ch.ClearDayTitle(e.ctx, circle.ID, "owner", "2026-08-05", e.at(1)); err != nil {
 		t.Fatal(err)
 	}
 	day, err := e.ch.GetDay(e.ctx, circle.ID, "2026-08-05")
@@ -710,21 +708,42 @@ func TestInvariantClearDayTitleClearsWholeChain(t *testing.T) {
 	if day.Title != "" {
 		t.Fatalf("title after clear: %q", day.Title)
 	}
-	for _, title := range []string{"Первое", "Второе"} {
-		if remains, err := eventTextRemains(e, circle.ID, title); err != nil {
-			t.Fatal(err)
-		} else if remains {
-			t.Fatalf("cleared title %q remains in journal", title)
-		}
+	if n := countEventType(t, e, circle.ID, "day.titled"); n != 2 {
+		t.Fatalf("titles must stay in journal: %d", n)
 	}
-	if n := countDeletedJournalEvents(t, e, circle.ID); n != 0 {
-		t.Fatal("clearing a title is not a journal event")
+	if n := countEventType(t, e, circle.ID, "day.title_cleared"); n != 1 {
+		t.Fatalf("clearing must be a journal entry: %d", n)
+	}
+	var found int
+	if err := e.ch.DB().QueryRowContext(e.ctx, `
+		SELECT COUNT(*) FROM content_fts WHERE kind = 'day' AND circle_id = ?
+	`, circle.ID).Scan(&found); err != nil {
+		t.Fatal(err)
+	}
+	if found != 0 {
+		t.Fatal("untitled day must leave the search index")
+	}
+	// Убирать нечего — не запись.
+	if err := e.ch.ClearDayTitle(e.ctx, circle.ID, "owner", "2026-08-05", e.at(2)); !errors.Is(err, chronicle.ErrInvalid) {
+		t.Fatalf("second clear: got %v, want ErrInvalid", err)
+	}
+	if err := e.ch.SetDayTitle(e.ctx, chronicle.DayTitleInput{
+		CircleID: circle.ID, AccountID: "owner", EntryDate: "2026-08-05", Title: "Третье", Now: e.at(3),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	day, err = e.ch.GetDay(e.ctx, circle.ID, "2026-08-05")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if day.Title != "Третье" {
+		t.Fatalf("title after re-set: %q", day.Title)
 	}
 }
 
-// Инвариант: название дня не снять в летописи и не снять за день, в котором
-// нет записи.
-func TestInvariantClearDayTitleRequiresPostAndWindow(t *testing.T) {
+// Инвариант: у названия дня нет окна правок — убрать его можно и в летописи;
+// но не за день, в котором нет своей записи.
+func TestInvariantClearDayTitleNeedsPostNotWindow(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.ChronicleWindow())
 	e.post(circle.ID, "owner", "запись", "2026-08-05", e.at(0))
@@ -733,9 +752,8 @@ func TestInvariantClearDayTitleRequiresPostAndWindow(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	err := e.ch.ClearDayTitle(e.ctx, circle.ID, "owner", "2026-08-05", e.at(1))
-	if !errors.Is(err, chronicle.ErrForbidden) {
-		t.Fatalf("chronicle title: got %v, want ErrForbidden", err)
+	if err := e.ch.ClearDayTitle(e.ctx, circle.ID, "owner", "2026-08-05", e.at(1)); err != nil {
+		t.Fatalf("chronicle title: %v", err)
 	}
 
 	open := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -746,7 +764,7 @@ func TestInvariantClearDayTitleRequiresPostAndWindow(t *testing.T) {
 		t.Fatal(err)
 	}
 	e.join(open.ID, "guest", "Боря", e.at(0))
-	err = e.ch.ClearDayTitle(e.ctx, open.ID, "guest", "2026-08-05", e.at(0))
+	err := e.ch.ClearDayTitle(e.ctx, open.ID, "guest", "2026-08-05", e.at(0))
 	if !errors.Is(err, chronicle.ErrForbidden) {
 		t.Fatalf("no post that day: got %v, want ErrForbidden", err)
 	}
@@ -806,26 +824,28 @@ func TestInvariantCoverRollsBackWhenPostDeleted(t *testing.T) {
 	}
 }
 
-// Инвариант: снятие обложки дня убирает её целиком — и ту, что выставляли до
-// неё, — и день при этом не сворачивает. Раньше возвращалась предыдущая, и
-// «убрать обложку» приходилось нажимать дважды.
-func TestInvariantClearDayCoverFallsBack(t *testing.T) {
+// Инвариант: снятие обложки дня — своя запись журнала. Выставленные обложки
+// остаются в журнале, день возвращается к автовыбору и не сворачивается;
+// снятие уходит из журнала вместе с записью, на чьей обложке оно стоит.
+func TestInvariantClearDayCoverIsJournalEntry(t *testing.T) {
 	e := newTestEnv(t)
-	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
-	p := e.post(circle.ID, "owner", "запись", "2026-08-05", e.at(0))
+	circle := e.createCircle("owner", "Аня", chronicle.ChronicleWindow())
+	p1 := e.post(circle.ID, "owner", "первая", "2026-08-05", e.at(0))
+	p2 := e.post(circle.ID, "owner", "вторая", "2026-08-05", e.at(0))
 	e.seedBlob("blob-1", "owner")
 	e.seedBlob("blob-2", "owner")
-	e.attachPhoto(p.ID, "blob-1")
-	e.attachPhoto(p.ID, "blob-2")
-	for _, blob := range []string{"blob-1", "blob-2"} {
+	e.attachPhoto(p1.ID, "blob-1")
+	e.attachPhoto(p2.ID, "blob-2")
+	for _, c := range []struct{ post, blob string }{{p1.ID, "blob-1"}, {p2.ID, "blob-2"}} {
 		if err := e.ch.SetDayCover(e.ctx, chronicle.DayCoverInput{
 			CircleID: circle.ID, AccountID: "owner", EntryDate: "2026-08-05",
-			PostID: p.ID, BlobID: blob, Now: e.at(0),
+			PostID: c.post, BlobID: c.blob, Now: e.at(0),
 		}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := e.ch.ClearDayCover(e.ctx, circle.ID, "owner", "2026-08-05", e.at(0)); err != nil {
+	// Окна правок у обложки нет: в летописи её тоже можно убрать.
+	if err := e.ch.ClearDayCover(e.ctx, circle.ID, "owner", "2026-08-05", e.at(1)); err != nil {
 		t.Fatal(err)
 	}
 	day, err := e.ch.GetDay(e.ctx, circle.ID, "2026-08-05")
@@ -835,8 +855,14 @@ func TestInvariantClearDayCoverFallsBack(t *testing.T) {
 	if day.CoverPostID != "" || day.CoverBlobID != "" {
 		t.Fatalf("cover after clear: %+v", day)
 	}
-	if n := countEventType(t, e, circle.ID, "day.cover_set"); n != 0 {
-		t.Fatalf("cleared cover still in journal: %d", n)
+	if n := countEventType(t, e, circle.ID, "day.cover_set"); n != 2 {
+		t.Fatalf("covers must stay in journal: %d", n)
+	}
+	if n := countEventType(t, e, circle.ID, "day.cover_cleared"); n != 1 {
+		t.Fatalf("clearing must be a journal entry: %d", n)
+	}
+	if err := e.ch.ClearDayCover(e.ctx, circle.ID, "owner", "2026-08-05", e.at(2)); !errors.Is(err, chronicle.ErrInvalid) {
+		t.Fatalf("second clear: got %v, want ErrInvalid", err)
 	}
 	exists, err := e.ch.DayExists(e.ctx, circle.ID, "2026-08-05")
 	if err != nil || !exists {

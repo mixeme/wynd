@@ -214,8 +214,6 @@ func (c *Chronicle) MapSnapshot(ctx context.Context, circleID, accountID string)
 type DaySummary struct {
 	Day                Day
 	PostCount          int
-	TitleEditableUntil *time.Time
-	CoverEditableUntil *time.Time
 	// Запасная обложка, если обложку дня не выбирали, и число фото дня (C17).
 	FallbackCoverBlobID string
 	PhotoCount          int
@@ -241,10 +239,6 @@ func (c *Chronicle) DaysSnapshot(ctx context.Context, circleID, accountID string
 	}
 	if len(counts) == 0 {
 		return nil, nil
-	}
-	titleUntil, coverUntil, err := c.dayEditableUntils(ctx, circleID)
-	if err != nil {
-		return nil, err
 	}
 	fallbackCovers, photoCounts, err := c.dayMediaFacts(ctx, circleID, accountID)
 	if err != nil {
@@ -289,11 +283,8 @@ func (c *Chronicle) DaysSnapshot(ctx context.Context, circleID, accountID string
 		if count == 0 {
 			continue
 		}
-		titleEditable, coverEditable := titleUntil[d.EntryDate], coverUntil[d.EntryDate]
 		if title.Valid {
 			d.Title = title.String
-		} else {
-			titleEditable = nil
 		}
 		if coverPost.Valid {
 			d.CoverPostID = coverPost.String
@@ -303,15 +294,12 @@ func (c *Chronicle) DaysSnapshot(ctx context.Context, circleID, accountID string
 			d.CoverBlobID = coverBlob.String
 			fileID = coverBlob.String
 		} else {
-			coverEditable = nil
 			fileID = fallbackCovers[d.EntryDate]
 		}
 		// Обложкой остаётся сам ролик — его и выбирали; рисует её кадр.
 		image, isVideo := posters[fileID]
 		out = append(out, DaySummary{
 			Day: d, PostCount: count,
-			TitleEditableUntil:  titleEditable,
-			CoverEditableUntil:  coverEditable,
 			FallbackCoverBlobID: fallbackCovers[d.EntryDate],
 			PhotoCount:          photoCounts[d.EntryDate],
 			CoverIsVideo:        isVideo,
@@ -429,53 +417,6 @@ func (c *Chronicle) videoPosters(ctx context.Context, circleID string) (map[stri
 	return out, rows.Err()
 }
 
-// dayEditableUntils отдаёт сроки правки названия и обложки по дням круга —
-// по последней строке сказанного на каждый день.
-func (c *Chronicle) dayEditableUntils(ctx context.Context, circleID string) (titles, covers map[string]*time.Time, err error) {
-	titles = make(map[string]*time.Time)
-	covers = make(map[string]*time.Time)
-	rows, err := c.db.QueryContext(ctx, `
-		SELECT 'title', t.entry_date, t.editable_until
-		FROM day_titles t
-		WHERE t.circle_id = ?
-		  AND t.event_seq = (
-			SELECT t2.event_seq FROM day_titles t2
-			WHERE t2.circle_id = t.circle_id AND t2.entry_date = t.entry_date
-			ORDER BY t2.created_at DESC, t2.event_seq DESC LIMIT 1
-		  )
-		UNION ALL
-		SELECT 'cover', dc.entry_date, dc.editable_until
-		FROM day_covers dc
-		WHERE dc.circle_id = ?
-		  AND dc.event_seq = (
-			SELECT dc2.event_seq FROM day_covers dc2
-			WHERE dc2.circle_id = dc.circle_id AND dc2.entry_date = dc.entry_date
-			ORDER BY dc2.created_at DESC, dc2.event_seq DESC LIMIT 1
-		  )
-	`, circleID, circleID)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var kind, date string
-		var until sql.NullString
-		if err := rows.Scan(&kind, &date, &until); err != nil {
-			return nil, nil, err
-		}
-		parsed, err := parseEditableUntil(until)
-		if err != nil {
-			return nil, nil, err
-		}
-		if kind == "title" {
-			titles[date] = parsed
-			continue
-		}
-		covers[date] = parsed
-	}
-	return titles, covers, rows.Err()
-}
-
 // DayPostsSnapshot returns visible posts for a day ordered by captured_at then created_at.
 func (c *Chronicle) DayPostsSnapshot(ctx context.Context, circleID, accountID, entryDate string) ([]FeedPost, error) {
 	if err := c.requireReader(ctx, circleID, accountID); err != nil {
@@ -573,7 +514,7 @@ func (c *Chronicle) feedServiceEvents(ctx context.Context, circleID, accountID s
 	rows, err := c.db.QueryContext(ctx, `
 		SELECT seq, summary, created_at FROM events
 		WHERE circle_id = ? AND summary != ''
-		  AND (is_service = 1 OR event_type IN ('day.titled', 'day.cover_set'))
+		  AND (is_service = 1 OR event_type IN ('day.titled', 'day.cover_set', 'day.title_cleared', 'day.cover_cleared'))
 		ORDER BY seq DESC
 	`, circleID)
 	if err != nil {

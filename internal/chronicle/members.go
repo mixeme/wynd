@@ -371,7 +371,7 @@ func (c *Chronicle) circleBlobIDsTx(ctx context.Context, tx *sql.Tx, circleID st
 		 WHERE video_poster_blob_id IS NOT NULL AND video_poster_blob_id != ''
 		   AND post_id IN (SELECT id FROM posts WHERE circle_id = ?)
 		UNION
-		SELECT blob_id FROM day_covers WHERE circle_id = ?
+		SELECT blob_id FROM day_covers WHERE circle_id = ? AND blob_id != ''
 		UNION
 		SELECT cover_blob_id FROM days WHERE circle_id = ? AND cover_blob_id IS NOT NULL
 		UNION

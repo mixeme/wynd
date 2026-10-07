@@ -48,59 +48,6 @@ func TestDaysSnapshotCountsOnlyVisiblePosts(t *testing.T) {
 	}
 }
 
-// Инвариант: сроки правки названия и обложки дня приходят вместе со списком
-// дней — одним запросом на весь круг, а не по два на каждый день.
-func TestDaysSnapshotCarriesEditableUntil(t *testing.T) {
-	e := newTestEnv(t)
-	circle := e.createCircle("owner", "Аня", chronicle.DurationWindow(time.Hour))
-
-	post := e.post(circle.ID, "owner", "запись", "2026-08-01", e.at(0))
-	e.seedBlob("blob-1", "owner")
-	e.attachPhoto(post.ID, "blob-1")
-
-	if err := e.ch.SetDayTitle(e.ctx, chronicle.DayTitleInput{
-		CircleID: circle.ID, AccountID: "owner", EntryDate: "2026-08-01",
-		Title: "Название", Now: e.at(0),
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if err := e.ch.SetDayCover(e.ctx, chronicle.DayCoverInput{
-		CircleID: circle.ID, AccountID: "owner", EntryDate: "2026-08-01",
-		PostID: post.ID, BlobID: "blob-1", Now: e.at(0),
-	}); err != nil {
-		t.Fatal(err)
-	}
-
-	days, err := e.ch.DaysSnapshot(e.ctx, circle.ID, "owner")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(days) != 1 {
-		t.Fatalf("дней: %d", len(days))
-	}
-	if days[0].TitleEditableUntil == nil || days[0].CoverEditableUntil == nil {
-		t.Fatalf("сроки правки не пришли: %+v", days[0])
-	}
-	if !days[0].TitleEditableUntil.After(e.at(0)) {
-		t.Fatalf("срок правки названия в прошлом: %v", days[0].TitleEditableUntil)
-	}
-
-	// День без сказанного сроков не несёт.
-	e.post(circle.ID, "owner", "другой день", "2026-08-02", e.at(1))
-	days, err = e.ch.DaysSnapshot(e.ctx, circle.ID, "owner")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, d := range days {
-		if d.Day.EntryDate != "2026-08-02" {
-			continue
-		}
-		if d.TitleEditableUntil != nil || d.CoverEditableUntil != nil {
-			t.Fatalf("у дня без названия и обложки есть сроки: %+v", d)
-		}
-	}
-}
-
 // Инвариант: название и обложка дня — сказанное в свой момент. Новичок видит
 // день по своей записи, но название и обложку, данные до его вступления, —
 // нет; владелец видит всё. Раньше день приходил с чужим прошлым названием.
@@ -136,9 +83,6 @@ func TestDaysSnapshotHidesTitleAndCoverBeforeJoin(t *testing.T) {
 	d := newbie[0].Day
 	if d.Title != "" || d.CoverPostID != "" || d.CoverBlobID != "" {
 		t.Fatalf("новичку ушло сказанное до него: title=%q cover=%q/%q", d.Title, d.CoverPostID, d.CoverBlobID)
-	}
-	if newbie[0].TitleEditableUntil != nil || newbie[0].CoverEditableUntil != nil {
-		t.Fatal("сроки правки скрытых названия и обложки не отдаются")
 	}
 
 	owner, err := e.ch.DaysSnapshot(e.ctx, circle.ID, "owner")

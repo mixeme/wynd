@@ -145,7 +145,8 @@ func (c *Chronicle) reprojectDayTitle(ctx context.Context, tx *sql.Tx, circleID,
 		WHERE circle_id = ? AND entry_date = ?
 		ORDER BY created_at DESC, event_seq DESC LIMIT 1
 	`, circleID, entryDate).Scan(&title, &seq)
-	if err == sql.ErrNoRows {
+	// Последняя строка с пустым названием — «убрали название».
+	if err == sql.ErrNoRows || (err == nil && title.String == "") {
 		_, err = tx.ExecContext(ctx, `
 			UPDATE days SET title = NULL, title_event_seq = NULL
 			WHERE circle_id = ? AND entry_date = ?
@@ -171,7 +172,8 @@ func (c *Chronicle) reprojectDayCover(ctx context.Context, tx *sql.Tx, circleID,
 		WHERE dc.circle_id = ? AND dc.entry_date = ?
 		ORDER BY dc.created_at DESC, dc.event_seq DESC LIMIT 1
 	`, circleID, entryDate).Scan(&postID, &blobID, &seq)
-	if err == sql.ErrNoRows {
+	// Последняя строка без файла — «убрали обложку».
+	if err == sql.ErrNoRows || (err == nil && blobID.String == "") {
 		_, err = tx.ExecContext(ctx, `
 			UPDATE days SET cover_post_id = NULL, cover_blob_id = NULL, cover_event_seq = NULL
 			WHERE circle_id = ? AND entry_date = ?
@@ -188,89 +190,6 @@ func (c *Chronicle) reprojectDayCover(ctx context.Context, tx *sql.Tx, circleID,
 	return err
 }
 
-type daySaidRow struct {
-	eventSeq   int64
-	createdAt  time.Time
-	editWindow EditWindow
-}
-
-func (c *Chronicle) currentDayTitle(ctx context.Context, q querier, circleID, entryDate string) (daySaidRow, error) {
-	var row daySaidRow
-	var created string
-	var ew sql.NullInt64
-	err := q.QueryRowContext(ctx, `
-		SELECT event_seq, created_at, edit_window_sec
-		FROM day_titles
-		WHERE circle_id = ? AND entry_date = ?
-		ORDER BY created_at DESC, event_seq DESC LIMIT 1
-	`, circleID, entryDate).Scan(&row.eventSeq, &created, &ew)
-	if err == sql.ErrNoRows {
-		return daySaidRow{}, ErrNotFound
-	}
-	if err != nil {
-		return daySaidRow{}, err
-	}
-	row.createdAt, _ = parseTime(created)
-	row.editWindow, _ = editWindowFromSQL(ew)
-	return row, nil
-}
-
-func (c *Chronicle) currentLiveDayCover(ctx context.Context, q querier, circleID, entryDate string) (daySaidRow, error) {
-	var row daySaidRow
-	var created string
-	var ew sql.NullInt64
-	err := q.QueryRowContext(ctx, `
-		SELECT dc.event_seq, dc.created_at, dc.edit_window_sec
-		FROM day_covers dc
-		JOIN posts p ON p.id = dc.post_id AND p.deleted = 0
-		WHERE dc.circle_id = ? AND dc.entry_date = ?
-		ORDER BY dc.created_at DESC, dc.event_seq DESC LIMIT 1
-	`, circleID, entryDate).Scan(&row.eventSeq, &created, &ew)
-	if err == sql.ErrNoRows {
-		return daySaidRow{}, ErrNotFound
-	}
-	if err != nil {
-		return daySaidRow{}, err
-	}
-	row.createdAt, _ = parseTime(created)
-	row.editWindow, _ = editWindowFromSQL(ew)
-	return row, nil
-}
-
-func (c *Chronicle) dayTitleEditableUntil(ctx context.Context, circleID, entryDate string) (*time.Time, error) {
-	var until sql.NullString
-	err := c.db.QueryRowContext(ctx, `
-		SELECT editable_until FROM day_titles
-		WHERE circle_id = ? AND entry_date = ?
-		ORDER BY created_at DESC, event_seq DESC LIMIT 1
-	`, circleID, entryDate).Scan(&until)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return parseEditableUntil(until)
-}
-
-func (c *Chronicle) dayCoverEditableUntil(ctx context.Context, circleID, entryDate string) (*time.Time, error) {
-	var until sql.NullString
-	err := c.db.QueryRowContext(ctx, `
-		SELECT dc.editable_until
-		FROM day_covers dc
-		JOIN posts p ON p.id = dc.post_id AND p.deleted = 0
-		WHERE dc.circle_id = ? AND dc.entry_date = ?
-		ORDER BY dc.created_at DESC, dc.event_seq DESC LIMIT 1
-	`, circleID, entryDate).Scan(&until)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return parseEditableUntil(until)
-}
-
 func (c *Chronicle) hasPostForDay(ctx context.Context, q querier, circleID, accountID, entryDate string) (bool, error) {
 	mem, err := c.membership(ctx, q, circleID, accountID)
 	if err != nil {
@@ -283,6 +202,12 @@ func (c *Chronicle) hasPostForDay(ctx context.Context, q querier, circleID, acco
 	`, circleID, mem.IdentityID, entryDate).Scan(&n)
 	return n > 0, err
 }
+
+// Название и обложка дня — свой род записи: не правится и не стирается, окна
+// правок у него нет (столбцы окна в таблицах остались от прежней модели и
+// пишутся пустыми). Сменить или убрать — новая запись, действует последняя.
+// Но запись зависимая: уходит из журнала вместе с днём, а обложка — ещё и
+// вместе с записью, чей файл выбран.
 
 // SetDayTitle sets day title (last-write-wins projection).
 func (c *Chronicle) SetDayTitle(ctx context.Context, in DayTitleInput) error {
@@ -304,10 +229,6 @@ func (c *Chronicle) SetDayTitle(ctx context.Context, in DayTitleInput) error {
 		return ErrForbidden
 	}
 	mem, err := c.requireWriter(ctx, in.CircleID, in.AccountID, now)
-	if err != nil {
-		return err
-	}
-	window, err := c.circleEditWindow(ctx, c.db, in.CircleID)
 	if err != nil {
 		return err
 	}
@@ -336,14 +257,12 @@ func (c *Chronicle) SetDayTitle(ctx context.Context, in DayTitleInput) error {
 	if err != nil {
 		return err
 	}
-	until := window.EditableUntil(now)
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO day_titles (
 			circle_id, entry_date, event_seq, identity_id, title, created_at,
 			edit_window_sec, editable_until
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-	`, in.CircleID, in.EntryDate, ev.Seq, mem.IdentityID, in.Title, formatTime(now),
-		editWindowToSQL(window), editableUntilToSQL(until))
+	`, in.CircleID, in.EntryDate, ev.Seq, mem.IdentityID, in.Title, formatTime(now), nil, nil)
 	if err != nil {
 		return err
 	}
@@ -387,10 +306,6 @@ func (c *Chronicle) SetDayCover(ctx context.Context, in DayCoverInput) error {
 	if err != nil {
 		return err
 	}
-	window, err := c.circleEditWindow(ctx, c.db, in.CircleID)
-	if err != nil {
-		return err
-	}
 	name, err := c.identityName(ctx, c.db, mem.IdentityID)
 	if err != nil {
 		return err
@@ -418,14 +333,12 @@ func (c *Chronicle) SetDayCover(ctx context.Context, in DayCoverInput) error {
 	if err != nil {
 		return err
 	}
-	until := window.EditableUntil(now)
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO day_covers (
 			circle_id, entry_date, event_seq, identity_id, post_id, blob_id, created_at,
 			edit_window_sec, editable_until
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, in.CircleID, in.EntryDate, ev.Seq, mem.IdentityID, in.PostID, in.BlobID, formatTime(now),
-		editWindowToSQL(window), editableUntilToSQL(until))
+	`, in.CircleID, in.EntryDate, ev.Seq, mem.IdentityID, in.PostID, in.BlobID, formatTime(now), nil, nil)
 	if err != nil {
 		return err
 	}
@@ -439,38 +352,33 @@ func (c *Chronicle) SetDayCover(ctx context.Context, in DayCoverInput) error {
 	return tx.Commit()
 }
 
-func (c *Chronicle) canClearDaySaid(ctx context.Context, circleID, accountID, entryDate string, now time.Time, current daySaidRow, errCurrent error) error {
-	if errCurrent != nil {
-		if errCurrent == ErrNotFound {
-			return ErrInvalid
-		}
-		return errCurrent
-	}
-	// Стереть заголовок/обложку дня может только тот, кто сейчас пишет в
-	// круг (раздел B плана 42 «Право писать»); hasPostForDay проверяет лишь
-	// наличие записи, и исключённый проходил (аудит 2026-09-22).
-	if _, err := c.requireWriter(ctx, circleID, accountID, now); err != nil {
-		return err
+// daySaidAuthor — кто вправе убрать название или обложку дня: тот, кто сейчас
+// пишет в круг и у кого есть запись за этот день.
+func (c *Chronicle) daySaidAuthor(ctx context.Context, circleID, accountID, entryDate string, now time.Time) (identityID, name string, g Gender, err error) {
+	mem, err := c.requireWriter(ctx, circleID, accountID, now)
+	if err != nil {
+		return "", "", GenderNone, err
 	}
 	ok, err := c.hasPostForDay(ctx, c.db, circleID, accountID, entryDate)
 	if err != nil {
-		return err
+		return "", "", GenderNone, err
 	}
 	if !ok {
-		return ErrForbidden
+		return "", "", GenderNone, ErrForbidden
 	}
-	if !current.editWindow.CanEdit(current.createdAt, now) {
-		return ErrForbidden
+	name, err = c.identityName(ctx, c.db, mem.IdentityID)
+	if err != nil {
+		return "", "", GenderNone, err
 	}
-	return nil
+	return mem.IdentityID, name, c.identityGender(ctx, c.db, mem.IdentityID), nil
 }
 
-// ClearDayTitle removes the day title from the journal: the current one and every
-// earlier one that is still editable. An older title whose window has closed stays.
+// ClearDayTitle records that the day title was removed: a journal entry of its own,
+// stored as a title row with an empty title. Earlier titles stay in the journal.
 func (c *Chronicle) ClearDayTitle(ctx context.Context, circleID, accountID, entryDate string, now time.Time) error {
 	now = utcOrNow(now)
-	current, err := c.currentDayTitle(ctx, c.db, circleID, entryDate)
-	if err := c.canClearDaySaid(ctx, circleID, accountID, entryDate, now, current, err); err != nil {
+	identityID, name, g, err := c.daySaidAuthor(ctx, circleID, accountID, entryDate, now)
+	if err != nil {
 		return err
 	}
 
@@ -480,67 +388,47 @@ func (c *Chronicle) ClearDayTitle(ctx context.Context, circleID, accountID, entr
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	seqs, err := c.editableDaySaidSeqs(ctx, tx, sqlDayTitleChain, circleID, entryDate, now)
+	var title sql.NullString
+	err = tx.QueryRowContext(ctx, `
+		SELECT title FROM days WHERE circle_id = ? AND entry_date = ?
+	`, circleID, entryDate).Scan(&title)
+	if err == sql.ErrNoRows || (err == nil && title.String == "") {
+		return ErrInvalid
+	}
 	if err != nil {
 		return err
 	}
-	if err := c.removeSaidHistory(ctx, tx, seqs); err != nil {
+
+	ev, err := c.appendEvent(ctx, tx, appendEventInput{
+		circleID: circleID, eventType: "day.title_cleared", isService: false,
+		actorIdentityID: identityID, actorName: name,
+		payload: map[string]any{"entry_date": entryDate},
+		summary: summaryDayTitleCleared(g, name, entryDate), now: now,
+	})
+	if err != nil {
 		return err
 	}
-	if err := c.reprojectDayTitle(ctx, tx, circleID, entryDate); err != nil {
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO day_titles (circle_id, entry_date, event_seq, identity_id, title, created_at)
+		VALUES (?, ?, ?, ?, '', ?)
+	`, circleID, entryDate, ev.Seq, identityID, formatTime(now)); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE days SET title = NULL, title_event_seq = NULL WHERE circle_id = ? AND entry_date = ?
+	`, circleID, entryDate); err != nil {
 		return err
 	}
 	return tx.Commit()
 }
 
-const (
-	sqlDayTitleChain = `
-		SELECT event_seq, created_at, edit_window_sec
-		FROM day_titles
-		WHERE circle_id = ? AND entry_date = ?
-		ORDER BY created_at DESC, event_seq DESC`
-	sqlDayCoverChain = `
-		SELECT dc.event_seq, dc.created_at, dc.edit_window_sec
-		FROM day_covers dc
-		JOIN posts p ON p.id = dc.post_id AND p.deleted = 0
-		WHERE dc.circle_id = ? AND dc.entry_date = ?
-		ORDER BY dc.created_at DESC, dc.event_seq DESC`
-)
-
-// editableDaySaidSeqs — названия или обложки дня от текущей вглубь, пока их
-// ещё можно стереть. Их могли менять несколько раз подряд; для человека
-// название и обложка одни, и «убрать» снимает всю цепочку, а не возвращает
-// предыдущее.
-func (c *Chronicle) editableDaySaidSeqs(ctx context.Context, tx *sql.Tx, chain, circleID, entryDate string, now time.Time) ([]int64, error) {
-	rows, err := tx.QueryContext(ctx, chain, circleID, entryDate)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var seqs []int64
-	for rows.Next() {
-		var seq int64
-		var created string
-		var ew sql.NullInt64
-		if err := rows.Scan(&seq, &created, &ew); err != nil {
-			return nil, err
-		}
-		createdAt, _ := parseTime(created)
-		window, _ := editWindowFromSQL(ew)
-		if !window.CanEdit(createdAt, now) {
-			break
-		}
-		seqs = append(seqs, seq)
-	}
-	return seqs, rows.Err()
-}
-
-// ClearDayCover removes the day cover from the journal: the current one and every
-// earlier one that is still editable. An older cover whose window has closed stays.
+// ClearDayCover records that the day cover was removed: a journal entry of its own,
+// stored as a cover row with an empty blob. It hangs on the post of the cover it
+// removes and leaves the journal with that post, like the cover itself.
 func (c *Chronicle) ClearDayCover(ctx context.Context, circleID, accountID, entryDate string, now time.Time) error {
 	now = utcOrNow(now)
-	current, err := c.currentLiveDayCover(ctx, c.db, circleID, entryDate)
-	if err := c.canClearDaySaid(ctx, circleID, accountID, entryDate, now, current, err); err != nil {
+	identityID, name, g, err := c.daySaidAuthor(ctx, circleID, accountID, entryDate, now)
+	if err != nil {
 		return err
 	}
 
@@ -550,14 +438,40 @@ func (c *Chronicle) ClearDayCover(ctx context.Context, circleID, accountID, entr
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	seqs, err := c.editableDaySaidSeqs(ctx, tx, sqlDayCoverChain, circleID, entryDate, now)
+	var postID, blobID string
+	err = tx.QueryRowContext(ctx, `
+		SELECT dc.post_id, dc.blob_id
+		FROM day_covers dc
+		JOIN posts p ON p.id = dc.post_id AND p.deleted = 0
+		WHERE dc.circle_id = ? AND dc.entry_date = ?
+		ORDER BY dc.created_at DESC, dc.event_seq DESC LIMIT 1
+	`, circleID, entryDate).Scan(&postID, &blobID)
+	if err == sql.ErrNoRows || (err == nil && blobID == "") {
+		return ErrInvalid
+	}
 	if err != nil {
 		return err
 	}
-	if err := c.removeSaidHistory(ctx, tx, seqs); err != nil {
+
+	ev, err := c.appendEvent(ctx, tx, appendEventInput{
+		circleID: circleID, eventType: "day.cover_cleared", isService: false,
+		actorIdentityID: identityID, actorName: name,
+		payload: map[string]any{"entry_date": entryDate},
+		summary: summaryDayCoverCleared(g, name, entryDate), now: now,
+	})
+	if err != nil {
 		return err
 	}
-	if err := c.reprojectDayCover(ctx, tx, circleID, entryDate); err != nil {
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO day_covers (circle_id, entry_date, event_seq, identity_id, post_id, blob_id, created_at)
+		VALUES (?, ?, ?, ?, ?, '', ?)
+	`, circleID, entryDate, ev.Seq, identityID, postID, formatTime(now)); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE days SET cover_post_id = NULL, cover_blob_id = NULL, cover_event_seq = NULL
+		WHERE circle_id = ? AND entry_date = ?
+	`, circleID, entryDate); err != nil {
 		return err
 	}
 	return tx.Commit()

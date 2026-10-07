@@ -117,6 +117,20 @@ func summaryDayCoverSet(g Gender, name, entryDate string) string {
 	return fmt.Sprintf("%s %s обложку для %s", name, past(g, "выбрал", "выбрала"), dayLabel(entryDate))
 }
 
+func summaryDayTitleCleared(g Gender, name, entryDate string) string {
+	if g == GenderNone {
+		return fmt.Sprintf("Название для %s убрано: %s", dayLabel(entryDate), name)
+	}
+	return fmt.Sprintf("%s %s название для %s", name, past(g, "убрал", "убрала"), dayLabel(entryDate))
+}
+
+func summaryDayCoverCleared(g Gender, name, entryDate string) string {
+	if g == GenderNone {
+		return fmt.Sprintf("Обложка для %s убрана: %s", dayLabel(entryDate), name)
+	}
+	return fmt.Sprintf("%s %s обложку для %s", name, past(g, "убрал", "убрала"), dayLabel(entryDate))
+}
+
 var monthsGenitive = [...]string{"января", "февраля", "марта", "апреля", "мая", "июня",
 	"июля", "августа", "сентября", "октября", "ноября", "декабря"}
 

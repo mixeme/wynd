@@ -20,7 +20,7 @@
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { isAccessError } from '$lib/api/client';
-	import { formatEntryDate, formatPostTime, isEditableActive } from '$lib/format/time';
+	import { formatEntryDate, formatPostTime } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { clearDayTitle, loadDay, loadDays, setDayTitle } from '$lib/journal/days';
 	import {
@@ -45,7 +45,6 @@
 	let posts = $state<FeedPost[]>([]);
 	let dayTitle = $state('');
 	let titleDraft = $state('');
-	let titleEditableUntil = $state<string | null | undefined>();
 	let hasCustomTitle = $state(false);
 	let coverBlobId = $state<string | undefined>();
 	let loading = $state(true);
@@ -56,7 +55,8 @@
 	let mediaUrls = $state<Record<string, string>>({});
 	let authorAvatarUrls = $state<Record<string, string>>({});
 
-	const canClearTitle = $derived(hasCustomTitle && isEditableActive(titleEditableUntil));
+	// Окна правок у названия нет: убрать — такая же запись журнала, как назвать.
+	const canClearTitle = $derived(hasCustomTitle);
 	// Вышедший с доступом читает, но не пишет: подсказка и правка названия ему
 	// не показываются — сервер ответил бы forbidden (план 42, SCR-2).
 	// Название и обложку меняет тот, у кого есть запись за этот день
@@ -122,7 +122,6 @@
 			hasCustomTitle = Boolean(meta?.title);
 			dayTitle = meta?.title || formatEntryDate(entryDate);
 			titleDraft = meta?.title ?? '';
-			titleEditableUntil = meta?.title_editable_until;
 			// Запасную считает сервер: первая запись дня с фото, видео или звуком (C17).
 			coverBlobId = meta?.cover_blob_id ?? meta?.fallback_cover_blob_id;
 			const coverTileId = dayCoverTileId(meta);
