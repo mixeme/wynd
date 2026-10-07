@@ -4,7 +4,7 @@
 	import { initQueueDrain } from '$lib/queue/queue';
 	import { initPush } from '$lib/push/push';
 	import { initSession, initTheme, isDark } from '$lib/session/session.svelte';
-	import { startSyncForAllSessions } from '$lib/sync/sync';
+	import { initSyncResume, startSyncForAllSessions } from '$lib/sync/sync';
 	import { initViewportHeight } from '$lib/session/viewport';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
@@ -47,6 +47,7 @@
 		const stopTheme = initTheme();
 		const stopQueue = initQueueDrain();
 		const stopViewport = initViewportHeight();
+		const stopSyncResume = initSyncResume();
 		const isLocal =
 			location.hostname === '127.0.0.1' || location.hostname === 'localhost';
 		// Новая версия не перезагружает открытый экран: она встаёт при
@@ -58,6 +59,7 @@
 		});
 		return () => {
 			stopTheme();
+			stopSyncResume();
 			stopQueue();
 			stopViewport();
 		};

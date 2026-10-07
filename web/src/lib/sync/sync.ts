@@ -30,6 +30,8 @@ export interface RefetchRegistration {
 }
 
 const streams = new Map<string, AbortController>();
+/** Прервать текущую попытку потока и начать новую без паузы. */
+const kicks = new Map<string, () => void>();
 const refetchRegistrations: RefetchRegistration[] = [];
 
 const RETRY_BASE_MS = 5000;
@@ -182,50 +184,69 @@ export async function handleSyncFrame(origin: string, raw: string): Promise<void
 }
 
 async function runSyncLoop(origin: string, signal: AbortSignal): Promise<void> {
+	const key = normalizeOrigin(origin);
 	let attempt = 0;
 	while (!signal.aborted) {
-		const session = await getSession(origin);
-		if (!session?.token) {
-			stopSync(origin);
-			return;
-		}
-
-		const cursor = (await getCursor(origin))?.seq ?? 0;
-
-		let res: Response;
+		// У каждой попытки своя отмена. Она закрывает поток, который замолчал
+		// (без неё соединение оставалось занятым, а их у браузера шесть на
+		// сервер), и даёт переподключиться сразу, не дожидаясь сторожа.
+		const turn = new AbortController();
+		const stop = () => turn.abort(signal.reason);
+		signal.addEventListener('abort', stop, { once: true });
+		let kicked = false;
+		kicks.set(key, () => {
+			kicked = true;
+			turn.abort();
+		});
+		const pause = (ms: number) => (kicked ? Promise.resolve() : sleep(ms, turn.signal).catch(() => {}));
 		try {
-			res = await apiFetch(origin, `/sync?cursor=${cursor}`, {
-				headers: { Accept: 'text/event-stream' },
-				signal
-			});
-		} catch (err) {
-			if (signal.aborted) return;
-			if (isSessionRejected(err)) {
+			const session = await getSession(origin);
+			if (!session?.token) {
 				stopSync(origin);
-				await dropParticipantSession(origin);
 				return;
 			}
-			await sleep(retryDelayMs(attempt++), signal);
-			continue;
+
+			const cursor = (await getCursor(origin))?.seq ?? 0;
+
+			let res: Response;
+			try {
+				res = await apiFetch(origin, `/sync?cursor=${cursor}`, {
+					headers: { Accept: 'text/event-stream' },
+					signal: turn.signal
+				});
+			} catch (err) {
+				if (signal.aborted) return;
+				if (isSessionRejected(err)) {
+					stopSync(origin);
+					await dropParticipantSession(origin);
+					return;
+				}
+				await pause(retryDelayMs(attempt++));
+				continue;
+			}
+
+			if (!res.body) {
+				await pause(retryDelayMs(attempt++));
+				continue;
+			}
+
+			// Поток открыт — счётчик неудач сброшен.
+			attempt = 0;
+			void drainQueue();
+
+			try {
+				await readSSE(res.body, turn.signal, (data) => handleSyncFrame(origin, data));
+			} catch {
+				if (signal.aborted) return;
+				if (!kicked) attempt++;
+			}
+
+			await pause(retryDelayMs(attempt));
+		} finally {
+			signal.removeEventListener('abort', stop);
+			turn.abort();
+			kicks.delete(key);
 		}
-
-		if (!res.body) {
-			await sleep(retryDelayMs(attempt++), signal);
-			continue;
-		}
-
-		// Поток открыт — счётчик неудач сброшен.
-		attempt = 0;
-		void drainQueue();
-
-		try {
-			await readSSE(res.body, signal, (data) => handleSyncFrame(origin, data));
-		} catch {
-			if (signal.aborted) return;
-			attempt++;
-		}
-
-		await sleep(retryDelayMs(attempt), signal);
 	}
 }
 
@@ -246,6 +267,41 @@ export function stopSync(origin: string): void {
 	const key = normalizeOrigin(origin);
 	streams.get(key)?.abort();
 	streams.delete(key);
+}
+
+/**
+ * Переподключить все потоки сейчас. Сервер досылает пропущенное по курсору,
+ * и экраны перечитываются сами.
+ */
+export function reconnectSync(): void {
+	for (const kick of [...kicks.values()]) kick();
+}
+
+/** Дольше этого в фоне — поток считаем мёртвым. */
+const STALE_HIDDEN_MS = 10_000;
+
+/**
+ * Возврат из фона и возврат сети. Телефон рвёт соединение свёрнутого
+ * приложения молча и замораживает таймеры: сторож тишины срабатывал только
+ * через 45 с после возврата, потом шла пауза перед повтором — около минуты
+ * лента стояла со старым, и новое показывала лишь перезагрузка страницы.
+ */
+export function initSyncResume(): () => void {
+	let hiddenAt = 0;
+	const onVisibility = () => {
+		if (document.visibilityState === 'hidden') {
+			hiddenAt = Date.now();
+		} else if (hiddenAt && Date.now() - hiddenAt >= STALE_HIDDEN_MS) {
+			hiddenAt = 0;
+			reconnectSync();
+		}
+	};
+	document.addEventListener('visibilitychange', onVisibility);
+	window.addEventListener('online', reconnectSync);
+	return () => {
+		document.removeEventListener('visibilitychange', onVisibility);
+		window.removeEventListener('online', reconnectSync);
+	};
 }
 
 export async function startSyncForAllSessions(): Promise<void> {
