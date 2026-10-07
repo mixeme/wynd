@@ -7,7 +7,7 @@
 
 ## Архитектура
 
-Схема клиента — в [ARCHITECTURE.md](../../ARCHITECTURE.md#клиент).
+Схема клиента — в [ARCHITECTURE.md](../ARCHITECTURE.md#клиент).
 
 Страницы не содержат `fetch` — только kernel + layout + компоненты.
 

@@ -1,6 +1,6 @@
 # Разработка
 
-Для того, кто правит код Wynd: как запустить локально, собрать и проверить, как здесь называют вещи, что значат номера в коде и коммитах, как вести справочники, CHANGELOG и версию. Как устроена система — [ARCHITECTURE.md](ARCHITECTURE.md). Индекс планов — [ROADMAP.md](ROADMAP.md). Как поставить и обслуживать инстанс — [README](README.md). Безопасность и аудиты — [SECURITY.md](SECURITY.md).
+Для того, кто правит код Wynd: как запустить локально, собрать и проверить, как здесь называют вещи, что значат номера в коде и коммитах, как вести справочники, CHANGELOG и версию. Как устроена система — [ARCHITECTURE.md](ARCHITECTURE.md). Индекс планов — [ROADMAP.md](ROADMAP.md). Как поставить и обслуживать инстанс — [README](../README.md). Безопасность и аудиты — [SECURITY.md](SECURITY.md).
 
 ## Что нужно
 
@@ -30,7 +30,7 @@ cd web && npm install && npm run dev
 curl http://127.0.0.1:7676/health
 ```
 
-На loopback первый запуск и код входа работают без SMTP (код в логе сервера и в `dev/data/dev-auth-codes.log`). Что здесь проверяется, а что нет — [server-reference.md](docs/reference/server-reference.md), раздел «Локальный прогон».
+На loopback первый запуск и код входа работают без SMTP (код в логе сервера и в `dev/data/dev-auth-codes.log`). Что здесь проверяется, а что нет — [server-reference.md](reference/server-reference.md), раздел «Локальный прогон».
 
 Два участника в одном браузере: `http://127.0.0.1:5173` и `http://localhost:5173` — разные origin, у каждого свой IndexedDB. Правку экрана проверять и в `vite build` + бинарнике, не только в `vite dev`.
 
@@ -66,13 +66,13 @@ go build -o dist/wynd ./cmd/wynd
 scripts\test-integration.bat
 ```
 
-**Инварианты.** Отдельной таблицы областей тестов нет: она устаревала быстрее, чем обновлялась. Перечень инвариантов — в [server-reference.md](docs/reference/server-reference.md) (хроника, панель, архив); у каждого теста в `internal/chronicle/invariants_test.go` и `archive_test.go` над ним строка с тем, что он держит.
+**Инварианты.** Отдельной таблицы областей тестов нет: она устаревала быстрее, чем обновлялась. Перечень инвариантов — в [server-reference.md](reference/server-reference.md) (хроника, панель, архив); у каждого теста в `internal/chronicle/invariants_test.go` и `archive_test.go` над ним строка с тем, что он держит.
 
-**Ручная проверка перед релизом** — [docs/testing/qa-manual.md](docs/testing/qa-manual.md).
+**Ручная проверка перед релизом** — [docs/testing/qa-manual.md](testing/qa-manual.md).
 
 ## Глоссарий
 
-Слова продукта, которые встречаются в коде, коммитах и справочниках. Подробный образ — [wynd.html](docs/wynd.html).
+Слова продукта, которые встречаются в коде, коммитах и справочниках. Подробный образ — [wynd.html](wynd.html).
 
 | Термин | Что это | В коде |
 |---|---|---|
@@ -120,7 +120,7 @@ scripts\test-integration.bat
 
 ## CHANGELOG и VERSION
 
-**Журнал изменений — для оператора и участника, не дневник работ.** В `CHANGELOG.md` — все вышедшие версии и `Unreleased`. Записи вышедших версий не переписываются и не удаляются.
+**Журнал изменений — для оператора и участника, не дневник работ.** В `docs/CHANGELOG.md` — все вышедшие версии и `Unreleased`. Записи вышедших версий не переписываются и не удаляются.
 
 Запись версии:
 

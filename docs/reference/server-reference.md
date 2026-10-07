@@ -7,7 +7,7 @@
 
 ## Архитектура
 
-Карта пакетов `internal/` и связи между ними — в [ARCHITECTURE.md](../../ARCHITECTURE.md#сервер).
+Карта пакетов `internal/` и связи между ними — в [ARCHITECTURE.md](../ARCHITECTURE.md#сервер).
 
 ---
 

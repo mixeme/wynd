@@ -3,9 +3,9 @@
 Self-hosted журнал кругов: один бинарник Go, SQLite, SvelteKit SPA внутри `go:embed`.
 Для домашнего инстанса на несколько человек, не для SaaS.
 
-Круг — закрытая группа со своим журналом: семья, друзья, коллеги. Общей ленты, подписчиков и рекомендаций нет; в круг попадают только по ссылке от того, кто уже в нём. Сервер поднимает один человек для своих, остальные открывают приложение в браузере телефона и ставят его на экран. Как это устроено — [ARCHITECTURE.md](ARCHITECTURE.md).
+Круг — закрытая группа со своим журналом: семья, друзья, коллеги. Общей ленты, подписчиков и рекомендаций нет; в круг попадают только по ссылке от того, кто уже в нём. Сервер поднимает один человек для своих, остальные открывают приложение в браузере телефона и ставят его на экран. Как это устроено — [ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-**Версия:** файл [`VERSION`](VERSION); что менялось — [CHANGELOG.md](CHANGELOG.md).
+**Версия:** файл [`VERSION`](VERSION); что менялось — [CHANGELOG.md](docs/CHANGELOG.md).
 
 **Лицензия:** [GNU AGPL v3](LICENSE). Исходный код: <https://github.com/mixeme/wynd>.
 
@@ -20,7 +20,7 @@ Self-hosted журнал кругов: один бинарник Go, SQLite, Sve
 - домен и обратный прокси с TLS перед `127.0.0.1:7676` — Caddy ставит `install.sh`, шаблоны Apache, nginx и Traefik лежат в `deploy/proxy/`; таймаут чтения прокси не меньше 300 с (SSE и длинные загрузки);
 - SMTP-релей: участники входят по коду из письма. Без релея вход работает только на loopback — код пишется в журнал сервера и в `<каталог данных>/dev-auth-codes.log`.
 
-**Чтобы собрать из исходников или править код:** Go 1.26 и Node 22 — подробно в [DEVELOPMENT.md](DEVELOPMENT.md).
+**Чтобы собрать из исходников или править код:** Go 1.26 и Node 22 — подробно в [DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ---
 
@@ -126,7 +126,7 @@ read -rs P && printf '%s\n' "$P" | sudo -u wynd env WYND_DATA_DIR=/var/lib/wynd 
 
 ## Обновление
 
-1. Прочитать в [CHANGELOG.md](CHANGELOG.md) блоки «Оператору» всех версий между текущей и новой: миграции, новые поля конфигурации, требования к прокси.
+1. Прочитать в [CHANGELOG.md](docs/CHANGELOG.md) блоки «Оператору» всех версий между текущей и новой: миграции, новые поля конфигурации, требования к прокси.
 2. systemd — тот же `install.sh` поверх установленного:
 
    ```bash
@@ -146,11 +146,11 @@ read -rs P && printf '%s\n' "$P" | sudo -u wynd env WYND_DATA_DIR=/var/lib/wynd 
 
 | Что | Где |
 |-----|-----|
-| Как устроена система | [ARCHITECTURE.md](ARCHITECTURE.md) |
-| Разработка: локальный запуск, сборка, тесты, правила | [DEVELOPMENT.md](DEVELOPMENT.md) |
-| Безопасность: как сообщить об уязвимости, модель доверия, аудиты | [SECURITY.md](SECURITY.md) |
-| Индекс планов | [ROADMAP.md](ROADMAP.md) |
-| Изменения | [CHANGELOG.md](CHANGELOG.md) |
+| Как устроена система | [ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| Разработка: локальный запуск, сборка, тесты, правила | [DEVELOPMENT.md](docs/DEVELOPMENT.md) |
+| Безопасность: как сообщить об уязвимости, модель доверия, аудиты | [SECURITY.md](docs/SECURITY.md) |
+| Индекс планов | [ROADMAP.md](docs/ROADMAP.md) |
+| Изменения | [CHANGELOG.md](docs/CHANGELOG.md) |
 | Знакомство с Wynd — для будущих участников и тех, кто поднимет сервер | [docs/about.html](docs/about.html) |
 | Образ продукта | [docs/wynd.html](docs/wynd.html) |
 | Экраны (макеты) | [docs/visual/screens.html](docs/visual/screens.html) |
@@ -158,4 +158,4 @@ read -rs P && printf '%s\n' "$P" | sudo -u wynd env WYND_DATA_DIR=/var/lib/wynd 
 | Справочники | [сервер](docs/reference/server-reference.md), [клиент](docs/reference/client-reference.md), [Wynd UI](docs/reference/ui-components.md) |
 
 Шрифт интерфейса — Golos Text ([SIL OFL](web/static/fonts/OFL.txt)).
-Версия продукта — файл [`VERSION`](VERSION); где ещё живёт номер и как его менять — [DEVELOPMENT.md](DEVELOPMENT.md#changelog-и-version).
+Версия продукта — файл [`VERSION`](VERSION); где ещё живёт номер и как его менять — [DEVELOPMENT.md](docs/DEVELOPMENT.md#changelog-и-version).
