@@ -171,18 +171,6 @@ func runServer() {
 		log.Fatalf("embed web dist: %v", err)
 	}
 	mux.Handle("/", web.SPA(buildFS, loopback))
-	// Временная диагностика видео (план 49). Под /api: на любой другой адрес
-	// уже установленный service worker отдаёт оболочку приложения — пустой экран.
-	mux.HandleFunc("GET /api/diag-video", func(w http.ResponseWriter, _ *http.Request) {
-		page, err := fs.ReadFile(buildFS, "diag-video.html")
-		if err != nil {
-			http.NotFound(w, nil)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Header().Set("Cache-Control", "no-store")
-		_, _ = w.Write(page)
-	})
 	apiSrv.ArchiveFonts = buildFS
 
 	srv := &http.Server{

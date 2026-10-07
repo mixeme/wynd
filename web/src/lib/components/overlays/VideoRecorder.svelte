@@ -4,7 +4,11 @@
 	import { modal } from '$lib/a11y/modal';
 	import { formatBytes } from '$lib/format/bytes';
 	import type { CompressionSettings } from '$lib/journal/types';
-	import { DEFAULT_VIDEO_BITRATE_KBPS, DEFAULT_VIDEO_MAX_P } from '$lib/media/compress';
+	import {
+		DEFAULT_VIDEO_BITRATE_KBPS,
+		DEFAULT_VIDEO_MAX_P,
+		targetVideoSize
+	} from '$lib/media/compress';
 	import { holdWakeLock } from '$lib/media/wake-lock';
 	import {
 		VIDEO_MAX_MS,
@@ -44,6 +48,8 @@
 	let chunks: Blob[] = [];
 	let take: File | null = null;
 	let takeSize = $state(0);
+	// Размер кадра снятого — его знает сам ролик на экране просмотра.
+	let takeFrame = $state<{ width: number; height: number } | undefined>();
 	let startedAt = 0;
 	let tick: ReturnType<typeof setInterval> | null = null;
 	let releaseWake: (() => void) | null = null;
@@ -55,6 +61,18 @@
 	const short = $derived(settings?.video_max_height || DEFAULT_VIDEO_MAX_P);
 	const long = $derived(Math.round((short * 16) / 9));
 	const rawVideoBits = $derived((settings?.video_bitrate_kbps || DEFAULT_VIDEO_BITRATE_KBPS) * 1000);
+
+	// Что уйдёт (4.26): сказать до отправки, а не чтобы человек узнал это из
+	// ленты. Со сжатием — размер кадра после него; без сжатия — ещё и вес,
+	// потому что ролик уйдёт как записан.
+	const sendNote = $derived.by(() => {
+		if (!takeFrame) return canEncode ? '' : `Без сжатия · ${formatBytes(takeSize)}`;
+		if (!canEncode) {
+			return `Без сжатия · ${takeFrame.width} × ${takeFrame.height} · ${formatBytes(takeSize)}`;
+		}
+		const out = targetVideoSize(takeFrame.width, takeFrame.height, short);
+		return `${out.width} × ${out.height}`;
+	});
 
 	// Кадр для ленты — с живой камеры, пока идёт запись.
 	let poster: ArrayBuffer | undefined;
@@ -187,6 +205,7 @@
 		}
 		take = new File([blob], `Видео.${recordingExtension(type)}`, { type: blob.type });
 		takeSize = blob.size;
+		takeFrame = undefined;
 		reviewUrl = URL.createObjectURL(blob);
 		phase = 'review';
 	}
@@ -229,13 +248,20 @@
 <div class="vrec" role="dialog" aria-modal="true" aria-label="Запись видео" use:modal={{ ondismiss: close }}>
 	{#if phase === 'review'}
 		<!-- svelte-ignore a11y_media_has_caption -->
-		<video class="vrec-view" src={reviewUrl} controls playsinline></video>
-		{#if !canEncode}
-			<!-- Сказать до отправки (4.26): после неё строку в ленте легко не заметить. -->
-			<div class="vrec-top">
-				<span class="vrec-timer">Уйдёт без сжатия · {formatBytes(takeSize)}</span>
-			</div>
-		{/if}
+		<video
+			class="vrec-view"
+			src={reviewUrl}
+			controls
+			playsinline
+			onloadedmetadata={(e) => {
+				const { videoWidth: width, videoHeight: height } = e.currentTarget;
+				if (width && height) takeFrame = { width, height };
+			}}
+		></video>
+		<div class="vrec-top">
+			<IconButton name="x" label="Закрыть" onclick={close} />
+			<span class="vrec-timer">{sendNote}</span>
+		</div>
 		<div class="vrec-foot">
 			<button type="button" class="vrec-text" onclick={retake}>Переснять</button>
 			<span class="rec-time">{formatDuration(elapsedMs)}</span>
