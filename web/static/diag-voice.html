@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Wynd — диагностика голосовых</title>
+<style>
+  body { font: 15px/1.45 system-ui, sans-serif; margin: 16px; background: #F4F0E9; color: #2B2724; }
+  h1 { font-size: 19px; margin: 0 0 4px; }
+  p { margin: 8px 0; color: #6B635B; }
+  .row { margin-top: 16px; padding-top: 12px; border-top: 1px solid #CFC6BA; }
+  .row b { display: block; }
+  button { display: block; width: 100%; box-sizing: border-box; margin: 8px 0 0; padding: 14px;
+    border: 0; border-radius: 12px; background: #2B2724; color: #F4F0E9; font: inherit; font-weight: 600; }
+  button:disabled { opacity: .45; }
+  audio { width: 100%; margin-top: 8px; }
+  .lvl { height: 8px; margin-top: 8px; border-radius: 4px; background: #E3DBCF; overflow: hidden; }
+  .lvl i { display: block; height: 100%; width: 0; background: #B5482F; }
+  small { color: #6B635B; }
+</style>
+</head>
+<body>
+<h1>Диагностика голосовых</h1>
+<p>Временная страница (план 46). Ничего не отправляет: записи остаются на телефоне.</p>
+<p>Четыре способа записи. Нажмите кнопку и 8 секунд говорите обычным голосом, например считайте вслух. Потом прослушайте. Напишите, какие записи чистые (А, Б, В, Г) и двигалась ли при записи полоска.</p>
+
+<div class="row" data-mode="a"><b>А. Как сейчас</b><small>без уровня звука, полоска не двигается</small></div>
+<div class="row" data-mode="b"><b>Б. Как было до 0.22.5</b><small>уровень снимается с того же микрофона — ожидаем плохую запись</small></div>
+<div class="row" data-mode="c"><b>В. Уровень с копии микрофона</b><small>запись и полоска получают звук порознь</small></div>
+<div class="row" data-mode="d"><b>Г. Запись через обработку звука</b><small>микрофон слушает одна обработка, запись идёт с её выхода</small></div>
+
+<script>
+(() => {
+  const SEC = 8;
+  const TYPES = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm', 'audio/mp4;codecs=mp4a.40.2', 'audio/mp4'];
+  const type = TYPES.find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const buttons = [];
+
+  for (const row of document.querySelectorAll('.row')) {
+    const btn = document.createElement('button');
+    btn.textContent = 'Записать ' + SEC + ' секунд';
+    const lvl = document.createElement('div');
+    lvl.className = 'lvl';
+    const bar = document.createElement('i');
+    lvl.append(bar);
+    const note = document.createElement('small');
+    const audio = document.createElement('audio');
+    audio.controls = true;
+    audio.hidden = true;
+    row.append(btn, lvl, audio, note);
+    buttons.push(btn);
+    btn.addEventListener('click', () => run(row.dataset.mode, btn, bar, audio, note));
+  }
+
+  async function run(mode, btn, bar, audio, note) {
+    buttons.forEach((b) => (b.disabled = true));
+    note.textContent = '';
+    audio.hidden = true;
+    let stream, copy, ctx, timer;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      let recorded = stream;
+      let analyser = null;
+      if (mode !== 'a') {
+        ctx = new Ctx();
+        if (ctx.state === 'suspended') await ctx.resume();
+        analyser = ctx.createAnalyser();
+        analyser.fftSize = 512;
+        if (mode === 'b') {
+          ctx.createMediaStreamSource(stream).connect(analyser);
+        } else if (mode === 'c') {
+          copy = stream.clone();
+          ctx.createMediaStreamSource(copy).connect(analyser);
+        } else {
+          const dest = ctx.createMediaStreamDestination();
+          const source = ctx.createMediaStreamSource(stream);
+          source.connect(analyser);
+          source.connect(dest);
+          recorded = dest.stream;
+        }
+      }
+      const rec = new MediaRecorder(recorded, type ? { mimeType: type } : undefined);
+      const chunks = [];
+      rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+      const stopped = new Promise((r) => (rec.onstop = r));
+      rec.start();
+      const started = Date.now();
+      let moved = 0;
+      timer = setInterval(() => {
+        btn.textContent = 'Говорите… ' + Math.max(0, SEC - Math.floor((Date.now() - started) / 1000));
+        if (!analyser) return;
+        const buf = new Uint8Array(analyser.fftSize);
+        analyser.getByteTimeDomainData(buf);
+        let sum = 0;
+        for (const v of buf) sum += ((v - 128) / 128) ** 2;
+        const level = Math.min(100, Math.sqrt(Math.sqrt(sum / buf.length)) * 160);
+        if (level > 5) moved++;
+        bar.style.width = level + '%';
+      }, 100);
+      await sleep(SEC * 1000);
+      rec.stop();
+      await stopped;
+      const blob = new Blob(chunks, { type: rec.mimeType || type || 'audio/webm' });
+      audio.src = URL.createObjectURL(blob);
+      audio.hidden = false;
+      note.textContent = (rec.mimeType || type || '?') + ' · ' + Math.round(blob.size / 1024) + ' КБ' +
+        (analyser ? ' · полоска двигалась ' + moved + ' раз из ' + SEC * 10 : '') +
+        (ctx ? ' · ' + ctx.sampleRate + ' Гц' : '');
+    } catch (err) {
+      note.textContent = 'Ошибка: ' + (err && err.message || err);
+    } finally {
+      clearInterval(timer);
+      bar.style.width = '0';
+      for (const s of [stream, copy]) if (s) s.getTracks().forEach((t) => t.stop());
+      if (ctx) ctx.close().catch(() => {});
+      btn.textContent = 'Записать ещё раз';
+      buttons.forEach((b) => (b.disabled = false));
+    }
+  }
+})();
+</script>
+</body>
+</html>
