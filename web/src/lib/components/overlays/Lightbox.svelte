@@ -113,7 +113,7 @@
 		<div class="dots">
 			{@render dots()}
 		</div>
-	{:else if dotCount != null && onDotSelect}
+	{:else if dotCount != null && dotCount > 1 && onDotSelect}
 		<div class="dots">
 			{#each Array.from({ length: dotCount }, (_, i) => i) as i (i)}
 				<button

@@ -49,8 +49,8 @@
 		const stopViewport = initViewportHeight();
 		const isLocal =
 			location.hostname === '127.0.0.1' || location.hostname === 'localhost';
-		// Новая версия не перезагружает открытый экран: она встаёт, когда
-		// приложение ушло в фон, при следующем запуске или из «Настроек» (C19).
+		// Новая версия не перезагружает открытый экран: она встаёт при
+		// следующем запуске или из «Настроек» (C19).
 		if (pwaInfo && !isLocal) initAppUpdate();
 		void initSession().then(() => {
 			startSyncForAllSessions();

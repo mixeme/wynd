@@ -488,7 +488,41 @@ func (c *Chronicle) ClearDayTitle(ctx context.Context, circleID, accountID, entr
 	return tx.Commit()
 }
 
-// ClearDayCover removes the current day cover from the journal and falls back to the previous live one.
+// editableDayCoverSeqs — выставленные обложки дня от текущей вглубь, пока их
+// ещё можно стереть. Обложку могли менять несколько раз подряд; для человека
+// она одна, и «убрать» снимает всю цепочку, а не возвращает предыдущую.
+func (c *Chronicle) editableDayCoverSeqs(ctx context.Context, tx *sql.Tx, circleID, entryDate string, now time.Time) ([]int64, error) {
+	rows, err := tx.QueryContext(ctx, `
+		SELECT dc.event_seq, dc.created_at, dc.edit_window_sec
+		FROM day_covers dc
+		JOIN posts p ON p.id = dc.post_id AND p.deleted = 0
+		WHERE dc.circle_id = ? AND dc.entry_date = ?
+		ORDER BY dc.created_at DESC, dc.event_seq DESC
+	`, circleID, entryDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var seqs []int64
+	for rows.Next() {
+		var seq int64
+		var created string
+		var ew sql.NullInt64
+		if err := rows.Scan(&seq, &created, &ew); err != nil {
+			return nil, err
+		}
+		createdAt, _ := parseTime(created)
+		window, _ := editWindowFromSQL(ew)
+		if !window.CanEdit(createdAt, now) {
+			break
+		}
+		seqs = append(seqs, seq)
+	}
+	return seqs, rows.Err()
+}
+
+// ClearDayCover removes the day cover from the journal: the current one and every
+// earlier one that is still editable. An older cover whose window has closed stays.
 func (c *Chronicle) ClearDayCover(ctx context.Context, circleID, accountID, entryDate string, now time.Time) error {
 	now = utcOrNow(now)
 	current, err := c.currentLiveDayCover(ctx, c.db, circleID, entryDate)
@@ -502,7 +536,11 @@ func (c *Chronicle) ClearDayCover(ctx context.Context, circleID, accountID, entr
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if err := c.removeSaidHistory(ctx, tx, []int64{current.eventSeq}); err != nil {
+	seqs, err := c.editableDayCoverSeqs(ctx, tx, circleID, entryDate, now)
+	if err != nil {
+		return err
+	}
+	if err := c.removeSaidHistory(ctx, tx, seqs); err != nil {
 		return err
 	}
 	if err := c.reprojectDayCover(ctx, tx, circleID, entryDate); err != nil {

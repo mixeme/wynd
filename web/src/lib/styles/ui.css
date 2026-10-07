@@ -1534,6 +1534,11 @@ input.fld.sm {
 	border-color: var(--c);
 	color: #fff;
 }
+/* На экранах без цвета круга акцент — цвет текста; в тёмной теме он светлый,
+   и белая надпись на нём пропадала. */
+.ph.dark.shell .chip.on {
+	color: var(--paper);
+}
 .chip.off {
 	opacity: .45;
 	pointer-events: none;

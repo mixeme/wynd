@@ -320,12 +320,6 @@
 				style="margin-left:auto"
 				onclick={() => photoPicker?.open()}
 			/>
-			<FilePicker
-				bind:this={photoPicker}
-				accept="image/*,video/*"
-				multiple
-				onfiles={(files) => onphotos?.(files)}
-			/>
 		{/if}
 		{#if oncompose}
 			<IconButton
@@ -337,6 +331,16 @@
 			/>
 		{/if}
 	</div>
+	<!-- Вне рамки: нажатие, которым открывается выбор файлов, всплывало до неё,
+	     курсор вставал в поле, и телефон сначала показывал клавиатуру. -->
+	{#if onphotos}
+		<FilePicker
+			bind:this={photoPicker}
+			accept="image/*,video/*"
+			multiple
+			onfiles={(files) => onphotos?.(files)}
+		/>
+	{/if}
 	{#if recordable}
 		<button
 			type="button"

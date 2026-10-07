@@ -824,19 +824,24 @@ func TestInvariantCoverRollsBackWhenPostDeleted(t *testing.T) {
 	}
 }
 
-// Инвариант: снятие обложки дня возвращает предыдущую и день при этом не
-// сворачивает.
+// Инвариант: снятие обложки дня убирает её целиком — и ту, что выставляли до
+// неё, — и день при этом не сворачивает. Раньше возвращалась предыдущая, и
+// «убрать обложку» приходилось нажимать дважды.
 func TestInvariantClearDayCoverFallsBack(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
 	p := e.post(circle.ID, "owner", "запись", "2026-08-05", e.at(0))
 	e.seedBlob("blob-1", "owner")
+	e.seedBlob("blob-2", "owner")
 	e.attachPhoto(p.ID, "blob-1")
-	if err := e.ch.SetDayCover(e.ctx, chronicle.DayCoverInput{
-		CircleID: circle.ID, AccountID: "owner", EntryDate: "2026-08-05",
-		PostID: p.ID, BlobID: "blob-1", Now: e.at(0),
-	}); err != nil {
-		t.Fatal(err)
+	e.attachPhoto(p.ID, "blob-2")
+	for _, blob := range []string{"blob-1", "blob-2"} {
+		if err := e.ch.SetDayCover(e.ctx, chronicle.DayCoverInput{
+			CircleID: circle.ID, AccountID: "owner", EntryDate: "2026-08-05",
+			PostID: p.ID, BlobID: blob, Now: e.at(0),
+		}); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if err := e.ch.ClearDayCover(e.ctx, circle.ID, "owner", "2026-08-05", e.at(0)); err != nil {
 		t.Fatal(err)

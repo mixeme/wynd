@@ -26,7 +26,7 @@
 		}
 	});
 
-	// Обновить приложение сразу, не дожидаясь, пока оно уйдёт в фон (C19).
+	// Обновить приложение сразу, не дожидаясь следующего запуска (C19).
 	let checking = $state(false);
 	let result = $state<'available' | 'latest' | 'failed' | ''>('');
 	async function check() {
