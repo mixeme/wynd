@@ -6,10 +6,11 @@
 	import {
 		VIDEO_MAX_MS,
 		formatDuration,
+		cameraAsks,
 		pickRecorderType,
-		recordingExtension,
-		uprightFrame
+		recordingExtension
 	} from '$lib/media/record';
+	import { liveFrameJpeg } from '$lib/media/videoPoster';
 
 	// Запись видео (4.25) и просмотр перед отправкой (4.26). Камера во весь
 	// экран, задняя по умолчанию; касание большой кнопки — старт и стоп;
@@ -19,7 +20,8 @@
 		onsend,
 		onclose
 	}: {
-		onsend: (file: File) => void;
+		/** poster — JPEG кадра, снятый с камеры во время записи. */
+		onsend: (file: File, poster?: ArrayBuffer) => void;
 		onclose: () => void;
 	} = $props();
 
@@ -44,32 +46,71 @@
 	const canEncode = typeof VideoEncoder !== 'undefined';
 	const RAW_VIDEO_BITS = 2_500_000;
 
-	async function openCamera() {
+	// Кадр для ленты — с живой камеры, пока идёт запись.
+	let poster: ArrayBuffer | undefined;
+	let opening = 0;
+
+	/**
+	 * Открыть камеру с одной просьбой и вернуть настоящий размер кадра. Его
+	 * знает только само видео: настройки дорожки повторяют просьбу. Две камеры
+	 * разом телефон не даёт — прежний поток гасим до запроса.
+	 */
+	async function openWith(
+		ask: MediaTrackConstraints,
+		turn: number
+	): Promise<{ w: number; h: number } | 'failed' | 'stale' | undefined> {
 		stopStream();
-		error = '';
-		const [long, short] = canEncode ? [1920, 1080] : [1280, 720];
+		let next: MediaStream;
 		try {
-			stream = await navigator.mediaDevices.getUserMedia({
-				video: { facingMode: facing, width: { ideal: long }, height: { ideal: short } },
+			next = await navigator.mediaDevices.getUserMedia({
+				video: { facingMode: facing, ...ask },
 				audio: true
 			});
 		} catch {
-			error = 'Нет доступа к камере';
-			return;
+			return 'failed';
 		}
-		const track = stream.getVideoTracks()[0];
-		const upright = track
-			? uprightFrame(
-					track.getSettings(),
-					long,
-					short,
-					window.matchMedia('(orientation: portrait)').matches
-				)
-			: undefined;
-		if (upright) await track.applyConstraints(upright).catch(() => {});
-		if (liveEl) {
-			liveEl.srcObject = stream;
-			void liveEl.play().catch(() => {});
+		if (turn !== opening) {
+			next.getTracks().forEach((t) => t.stop());
+			return 'stale';
+		}
+		stream = next;
+		const video = liveEl;
+		if (!video) return undefined;
+		const ready = new Promise<void>((resolve) => {
+			const timer = setTimeout(resolve, 3000);
+			video.addEventListener(
+				'loadedmetadata',
+				() => {
+					clearTimeout(timer);
+					resolve();
+				},
+				{ once: true }
+			);
+		});
+		video.srcObject = next;
+		void video.play().catch(() => {});
+		await ready;
+		if (turn !== opening) return 'stale';
+		return video.videoWidth ? { w: video.videoWidth, h: video.videoHeight } : undefined;
+	}
+
+	async function openCamera() {
+		const turn = ++opening;
+		error = '';
+		const [long, short] = canEncode ? [1920, 1080] : [1280, 720];
+		const upright = screen.orientation?.type.startsWith('portrait') ?? false;
+		const asks = cameraAsks(long, short, upright);
+		for (const [i, ask] of asks.entries()) {
+			const got = await openWith(ask, turn);
+			if (got === 'stale') return;
+			if (got === 'failed') {
+				// Обычная просьба не прошла — камеры нет. Запасная не прошла —
+				// возвращаемся к обычной: квадрат лучше, чем ничего.
+				if (i === 0 || (await openWith(asks[0], turn)) === 'failed') error = 'Нет доступа к камере';
+				return;
+			}
+			// Не квадрат — годится. Квадрат — пробуем следующую просьбу.
+			if (!got || got.w !== got.h) return;
 		}
 	}
 
@@ -100,9 +141,19 @@
 		elapsedMs = 0;
 		phase = 'recording';
 		releaseWake = holdWakeLock();
+		poster = undefined;
+		let grabbing = false;
 		tick = setInterval(() => {
 			elapsedMs = performance.now() - startedAt;
 			if (elapsedMs >= VIDEO_MAX_MS) stop();
+			// Первый нечёрный кадр записи; пока его нет — пробуем на каждом тике.
+			if (!poster && !grabbing && liveEl) {
+				grabbing = true;
+				void liveFrameJpeg(liveEl).then((jpeg) => {
+					poster ??= jpeg;
+					grabbing = false;
+				});
+			}
 		}, 200);
 	}
 
@@ -135,13 +186,14 @@
 		if (reviewUrl) URL.revokeObjectURL(reviewUrl);
 		reviewUrl = '';
 		take = null;
+		poster = undefined;
 		phase = 'live';
 		void openCamera();
 	}
 
 	function send() {
 		if (!take) return;
-		onsend(take);
+		onsend(take, poster);
 		close();
 	}
 

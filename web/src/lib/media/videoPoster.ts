@@ -68,10 +68,30 @@ async function frameJpeg(video: HTMLVideoElement): Promise<ArrayBuffer | undefin
 }
 
 /**
- * JPEG кадра ролика, длинная сторона до 1024 px. Кадр снимает обычный
- * видеоэлемент: декодер WebCodecs есть не везде (Firefox на Android), а
- * играть ролик умеет любой браузер. Не вышло — ролик уходит без кадра, и
- * плитка рисует заглушку.
+ * Кадр с видеоэлемента, который уже показывает картинку, — с живой камеры.
+ * Так берётся кадр видеосообщения: с ролика из файла Firefox на Android
+ * картинку не отдаёт вовсе, а с камеры отдаёт (диагностика, 2026-10-07).
+ * Чёрный кадр не годится — вернётся пусто.
+ */
+export async function liveFrameJpeg(video: HTMLVideoElement): Promise<ArrayBuffer | undefined> {
+	if (!video.videoWidth || !video.videoHeight) return;
+	const probe = document.createElement('canvas');
+	probe.width = 32;
+	probe.height = 32;
+	const probeCtx = probe.getContext('2d', { willReadFrequently: true });
+	if (!probeCtx) return;
+	try {
+		if (frameIsBlank(video, probeCtx)) return;
+		return await frameJpeg(video);
+	} catch {
+		return;
+	}
+}
+
+/**
+ * JPEG кадра ролика из файла, длинная сторона до 1024 px. Кадр снимает
+ * обычный видеоэлемент: WebCodecs для этого не нужен. В Firefox на Android
+ * не выходит и так — тогда ролик уходит без кадра, и плитка рисует заглушку.
  */
 export async function videoPosterJpeg(source: Blob | string): Promise<ArrayBuffer | undefined> {
 	if (typeof document === 'undefined') return;

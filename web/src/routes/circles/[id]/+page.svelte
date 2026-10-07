@@ -475,7 +475,7 @@
 		}
 	}
 
-	async function sendVideo(file: File) {
+	async function sendVideo(file: File, livePoster?: ArrayBuffer) {
 		if (preparing) return;
 		preparing = 'Готовим видео…';
 		error = '';
@@ -494,7 +494,10 @@
 				showBarNote(`Видео больше ${formatBytes(maxBytes)} — сервер не примет`);
 				return;
 			}
-			const poster = await videoPosterJpeg(new Blob([video.data], { type: video.type || 'video/mp4' }));
+			// Кадр с камеры надёжнее: с готового файла его отдаёт не каждый браузер.
+			const poster =
+				livePoster ??
+				(await videoPosterJpeg(new Blob([video.data], { type: video.type || 'video/mp4' })));
 			await enqueueRecorded(video, {
 				kind: 'video',
 				is_cover: true,
@@ -693,7 +696,7 @@
 	commentStatus={preparing || barNote}
 >
 	{#if videoOpen}
-		<VideoRecorder onsend={(file) => void sendVideo(file)} onclose={() => (videoOpen = false)} />
+		<VideoRecorder onsend={(file, poster) => void sendVideo(file, poster)} onclose={() => (videoOpen = false)} />
 	{/if}
 	<PullRefreshBand pull={ptr.state} />
 

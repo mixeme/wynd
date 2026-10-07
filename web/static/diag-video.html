@@ -16,12 +16,12 @@
   input[type=file] { display: none; }
   textarea { width: 100%; box-sizing: border-box; height: 300px; margin-top: 14px; padding: 10px;
     border: 1px solid #CFC6BA; border-radius: 10px; background: #fff; font: 11.5px/1.4 ui-monospace, monospace; }
-  #stage { margin-top: 12px; }
-  #stage video { width: 160px; height: 160px; background: #000; object-fit: contain; }
+  #stage { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+  #stage video, #stage canvas { width: 120px; height: 120px; background: #000; object-fit: contain; }
 </style>
 </head>
 <body>
-<h1>Диагностика видео</h1>
+<h1>Диагностика видео · 2</h1>
 <p>Временная страница (план 49). Ничего не отправляет: всё остаётся на телефоне, пока вы сами не скопируете текст.</p>
 <p>Держите телефон стоймя. Нажмите обе кнопки по очереди, дождитесь слова «ГОТОВО» в поле и пришлите текст.</p>
 
@@ -43,119 +43,138 @@
     el.addEventListener('error', () => r('ERROR ' + (el.error && el.error.message || '')), { once: true });
   }), ms);
 
-  log('UA', navigator.userAgent);
-  log('screen', screen.width + 'x' + screen.height, 'dpr', devicePixelRatio,
-    'portrait', matchMedia('(orientation: portrait)').matches,
-    'orientation', screen.orientation && screen.orientation.type + '/' + screen.orientation.angle,
-    'standalone', matchMedia('(display-mode: standalone)').matches);
-  log('VideoEncoder', typeof VideoEncoder, 'VideoDecoder', typeof VideoDecoder,
-    'ImageCapture', typeof ImageCapture, 'createImageBitmap', typeof createImageBitmap,
-    'rVFC', 'requestVideoFrameCallback' in HTMLVideoElement.prototype,
-    'OffscreenCanvas', typeof OffscreenCanvas);
+  log('v2 UA', navigator.userAgent);
+  log('screen', screen.width + 'x' + screen.height, 'orientation', screen.orientation && screen.orientation.type,
+    'VideoDecoder', typeof VideoDecoder,
+    'captureStream', typeof HTMLVideoElement.prototype.captureStream,
+    'mozCaptureStream', typeof HTMLVideoElement.prototype.mozCaptureStream);
   log('');
 
-  // Средняя и наибольшая яркость кадра 32×32: 0/0 — чёрный квадрат.
-  function luma(src, how) {
-    try {
-      const c = document.createElement('canvas'); c.width = 32; c.height = 32;
-      const g = c.getContext('2d', { willReadFrequently: true });
-      g.drawImage(src, 0, 0, 32, 32);
-      const d = g.getImageData(0, 0, 32, 32).data;
-      let sum = 0, max = 0, alpha = 0;
-      for (let i = 0; i < d.length; i += 4) {
-        const y = d[i] * 0.2126 + d[i + 1] * 0.7152 + d[i + 2] * 0.0722;
-        sum += y; if (y > max) max = y; alpha += d[i + 3];
-      }
-      return how + ' avg=' + (sum / 1024).toFixed(1) + ' max=' + max.toFixed(0) + ' alpha=' + (alpha / 1024).toFixed(0);
-    } catch (e) { return how + ' THROW ' + e.name + ': ' + e.message; }
+  // Яркость картинки 32×32 с программного холста: avg=0 alpha=0 — пусто.
+  function lumaOf(src) {
+    const c = document.createElement('canvas'); c.width = 32; c.height = 32;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    g.drawImage(src, 0, 0, 32, 32);
+    const d = g.getImageData(0, 0, 32, 32).data;
+    let sum = 0, alpha = 0;
+    for (let i = 0; i < d.length; i += 4) { sum += d[i] * 0.2126 + d[i + 1] * 0.7152 + d[i + 2] * 0.0722; alpha += d[i + 3]; }
+    return 'avg=' + (sum / 1024).toFixed(1) + ' alpha=' + (alpha / 1024).toFixed(0);
   }
-  async function lumaAll(video, label) {
+  const attempt = async (name, fn) => {
+    try { log('    ' + name + ': ' + await withTimeout(fn(), 6000)); }
+    catch (e) { log('    ' + name + ': THROW ' + e.name + ': ' + e.message); }
+  };
+
+  // Все способы достать картинку из видеоэлемента.
+  async function grabAll(video, label) {
     log('  ' + label, 'readyState', video.readyState, 'size', video.videoWidth + 'x' + video.videoHeight,
       't', (video.currentTime || 0).toFixed(2));
-    log('    ' + luma(video, 'drawImage'));
-    if (typeof createImageBitmap === 'function') {
-      try {
-        const bmp = await withTimeout(createImageBitmap(video), 3000);
-        log('    ' + (bmp === 'TIMEOUT' ? 'bitmap TIMEOUT' : luma(bmp, 'bitmap ' + bmp.width + 'x' + bmp.height)));
-      } catch (e) { log('    bitmap THROW ' + e.name + ': ' + e.message); }
-    }
-    if (typeof VideoFrame === 'function') {
-      try { const f = new VideoFrame(video); log('    ' + luma(f, 'VideoFrame ' + f.displayWidth + 'x' + f.displayHeight)); f.close(); }
-      catch (e) { log('    VideoFrame THROW ' + e.name + ': ' + e.message); }
-    }
+    await attempt('1 программный холст', async () => lumaOf(video));
+    await attempt('2 обычный холст', async () => {
+      const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+      c.getContext('2d').drawImage(video, 0, 0, 64, 64);
+      return lumaOf(c);
+    });
+    await attempt('3 обычный холст -> JPEG', async () => {
+      const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+      c.getContext('2d').drawImage(video, 0, 0, 64, 64);
+      const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.8));
+      const img = new Image(); img.src = URL.createObjectURL(blob);
+      await new Promise((r, j) => { img.onload = r; img.onerror = () => j(new Error('jpeg не открылся')); });
+      return lumaOf(img) + ' bytes=' + blob.size;
+    });
+    await attempt('4 createImageBitmap', async () => lumaOf(await createImageBitmap(video)));
+    await attempt('5 WebGL', async () => {
+      const c = document.createElement('canvas'); c.width = 32; c.height = 32;
+      const gl = c.getContext('webgl', { preserveDrawingBuffer: true });
+      if (!gl) return 'нет webgl';
+      const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; };
+      const pr = gl.createProgram();
+      gl.attachShader(pr, sh(gl.VERTEX_SHADER, 'attribute vec2 p;varying vec2 u;void main(){u=p*.5+.5;gl_Position=vec4(p,0.,1.);}'));
+      gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, 'precision mediump float;varying vec2 u;uniform sampler2D t;void main(){gl_FragColor=texture2D(t,u);}'));
+      gl.linkProgram(pr); gl.useProgram(pr);
+      gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+      const loc = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+      gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      const px = new Uint8Array(32 * 32 * 4); gl.readPixels(0, 0, 32, 32, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      let sum = 0, alpha = 0;
+      for (let i = 0; i < px.length; i += 4) { sum += px[i] * 0.2126 + px[i + 1] * 0.7152 + px[i + 2] * 0.0722; alpha += px[i + 3]; }
+      return 'avg=' + (sum / 1024).toFixed(1) + ' alpha=' + (alpha / 1024).toFixed(0) + ' err=' + gl.getError();
+    });
   }
-  const frame = (video, ms) => withTimeout(new Promise((r) => {
-    if ('requestVideoFrameCallback' in video) video.requestVideoFrameCallback((_, m) => r('rVFC ' + (m && m.width + 'x' + m.height)));
-    else r('no rVFC');
-  }), ms);
 
-  // ---------- 1. Камера
+  // Поток из играющего ролика -> второй видеоэлемент: с потока камеры кадр снимается.
+  async function grabViaStream(video) {
+    const cap = video.captureStream || video.mozCaptureStream;
+    if (!cap) { log('  поток из ролика: нет captureStream'); return; }
+    let st;
+    try { st = cap.call(video); } catch (e) { log('  поток из ролика: THROW ' + e.name + ': ' + e.message); return; }
+    const v2 = document.createElement('video'); v2.muted = true; v2.playsInline = true; v2.srcObject = st; stage.appendChild(v2);
+    const meta = once(v2, 'loadedmetadata', 4000);
+    await v2.play().catch((e) => log('  поток play THROW', e.name));
+    log('  поток из ролика: tracks', st.getVideoTracks().length, 'loadedmetadata', await meta);
+    await sleep(700);
+    await grabAll(v2, 'кадр через поток');
+    st.getTracks().forEach((t) => t.stop()); v2.srcObject = null; v2.remove();
+  }
+
+  // ---------- 1. Камера: настоящий размер кадра — по самому видео
   async function tryCamera(name, video) {
     let stream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
-    } catch (e) { log(name, 'THROW', e.name, e.message); return; }
-    const track = stream.getVideoTracks()[0];
-    const s = track.getSettings();
-    log(name, '->', s.width + 'x' + s.height, 'fps', s.frameRate, 'facing', s.facingMode || '?');
-    stream.getTracks().forEach((t) => t.stop());
-    await sleep(350);
+    try { stream = await navigator.mediaDevices.getUserMedia({ video, audio: false }); }
+    catch (e) { log(name, 'THROW', e.name, e.message); await sleep(400); return; }
+    const s = stream.getVideoTracks()[0].getSettings();
+    const v = document.createElement('video'); v.muted = true; v.playsInline = true;
+    const meta = once(v, 'loadedmetadata', 4000);
+    v.srcObject = stream; stage.replaceChildren(v);
+    await v.play().catch(() => {});
+    const m = await meta; const first = v.videoWidth + 'x' + v.videoHeight;
+    await sleep(900);
+    log(name, 'settings', s.width + 'x' + s.height, s.resizeMode || '', '| video', first, '->', v.videoWidth + 'x' + v.videoHeight, m === 'ok' ? '' : m);
+    stream.getTracks().forEach((t) => t.stop()); v.srcObject = null;
+    await sleep(500);
   }
 
   document.getElementById('cam').onclick = async (e) => {
     e.target.disabled = true;
     try {
       log('=== КАМЕРА ===');
-      log('supported', Object.keys(navigator.mediaDevices.getSupportedConstraints()).join(','));
-      const env = 'environment';
-      await tryCamera('A facing only        ', { facingMode: env });
-      await tryCamera('B w1920 h1080 ideal  ', { facingMode: env, width: { ideal: 1920 }, height: { ideal: 1080 } });
-      await tryCamera('C w1080 h1920 ideal  ', { facingMode: env, width: { ideal: 1080 }, height: { ideal: 1920 } });
-      await tryCamera('D w1280 h720 ideal   ', { facingMode: env, width: { ideal: 1280 }, height: { ideal: 720 } });
-      await tryCamera('E w720 h1280 ideal   ', { facingMode: env, width: { ideal: 720 }, height: { ideal: 1280 } });
-      await tryCamera('F width 1280 only    ', { facingMode: env, width: { ideal: 1280 } });
-      await tryCamera('G height 1280 only   ', { facingMode: env, height: { ideal: 1280 } });
-      await tryCamera('H height 720 only    ', { facingMode: env, height: { ideal: 720 } });
-      await tryCamera('I w1280 h720 exact   ', { facingMode: env, width: { exact: 1280 }, height: { exact: 720 } });
-      await tryCamera('J w720 h1280 exact   ', { facingMode: env, width: { exact: 720 }, height: { exact: 1280 } });
-      await tryCamera('K aspect 16:9        ', { facingMode: env, aspectRatio: { ideal: 16 / 9 } });
-      await tryCamera('L aspect 9:16        ', { facingMode: env, aspectRatio: { ideal: 9 / 16 } });
-      await tryCamera('M min w641 h481      ', { facingMode: env, width: { min: 641 }, height: { min: 481 } });
-      await tryCamera('N front w1280 h720   ', { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } });
+      const f = 'environment';
+      await tryCamera('A w1280 h720           ', { facingMode: f, width: { ideal: 1280 }, height: { ideal: 720 } });
+      await tryCamera('B w720 h1280           ', { facingMode: f, width: { ideal: 720 }, height: { ideal: 1280 } });
+      await tryCamera('C w1280 h720 none      ', { facingMode: f, width: { ideal: 1280 }, height: { ideal: 720 }, resizeMode: 'none' });
+      await tryCamera('D w720 h1280 none      ', { facingMode: f, width: { ideal: 720 }, height: { ideal: 1280 }, resizeMode: 'none' });
+      await tryCamera('E w1920 h1080          ', { facingMode: f, width: { ideal: 1920 }, height: { ideal: 1080 } });
+      await tryCamera('F w1080 h1920          ', { facingMode: f, width: { ideal: 1080 }, height: { ideal: 1920 } });
+      await tryCamera('G w1920 h1080 none     ', { facingMode: f, width: { ideal: 1920 }, height: { ideal: 1080 }, resizeMode: 'none' });
+      await tryCamera('H facing only          ', { facingMode: f });
+      await tryCamera('I facing only none     ', { facingMode: f, resizeMode: 'none' });
+      await tryCamera('J height 1280 only     ', { facingMode: f, height: { ideal: 1280 } });
+      await tryCamera('K width 720 only       ', { facingMode: f, width: { ideal: 720 } });
+      await tryCamera('L w720 h1280 exact     ', { facingMode: f, width: { exact: 720 }, height: { exact: 1280 } });
+      await tryCamera('M front w1280 h720     ', { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } });
+      await tryCamera('N front w720 h1280     ', { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 1280 } });
 
-      log('--- живой поток, как в приложении (D) ---');
+      log('--- запись 2,5 с с просьбой B (w720 h1280) ---');
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: env, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: true
+        video: { facingMode: f, width: { ideal: 720 }, height: { ideal: 1280 } }, audio: true
       });
-      const track = stream.getVideoTracks()[0];
-      log('settings', track.getSettings());
-      if (track.getCapabilities) { try { log('capabilities', track.getCapabilities()); } catch (e2) { log('capabilities THROW', e2.message); } }
-      else log('getCapabilities: нет');
-      const v = document.createElement('video');
-      v.muted = true; v.playsInline = true; v.srcObject = stream; stage.replaceChildren(v);
-      await v.play().catch((e2) => log('play THROW', e2.name));
-      await sleep(900);
-      await lumaAll(v, 'кадр с камеры');
-      for (const [n, c] of [
-        ['apply w720 h1280', { width: { ideal: 720 }, height: { ideal: 1280 } }],
-        ['apply height 1280', { height: { ideal: 1280 } }],
-        ['apply w1920 h1080', { width: { ideal: 1920 }, height: { ideal: 1080 } }]
-      ]) {
-        try { await track.applyConstraints(c); await sleep(700); const s = track.getSettings();
-          log(n, '->', s.width + 'x' + s.height, 'video', v.videoWidth + 'x' + v.videoHeight); }
-        catch (e2) { log(n, 'THROW', e2.name, e2.message); }
-      }
-      // Две секунды записи: что пишет MediaRecorder и снимается ли с неё кадр.
-      const types = ['video/mp4;codecs=avc1.4D401F,mp4a.40.2', 'video/mp4', 'video/webm;codecs=h264,opus',
-        'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
-      log('recorder types', types.filter((t) => MediaRecorder.isTypeSupported(t)).join(' | '));
+      const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.srcObject = stream; stage.replaceChildren(v);
+      await v.play().catch(() => {}); await sleep(900);
+      await grabAll(v, 'кадр с живой камеры');
       const rec = new MediaRecorder(stream, { videoBitsPerSecond: 2500000 });
       const chunks = []; rec.ondataavailable = (ev) => ev.data.size && chunks.push(ev.data);
       const stopped = new Promise((r) => (rec.onstop = r));
       rec.start(1000); await sleep(2500); rec.stop(); await stopped;
       stream.getTracks().forEach((t) => t.stop());
-      const blob = new Blob(chunks, { type: rec.mimeType });
-      log('recorded', rec.mimeType, blob.size, 'bytes');
+      const blob = new Blob(chunks, { type: rec.mimeType || 'video/webm' });
+      log('recorded', rec.mimeType || '(тип не назван)', blob.size, 'bytes');
       await probeFile(blob, 'ЗАПИСЬ С КАМЕРЫ');
     } catch (err) { log('CAMERA FAIL', err.name, err.message); }
     stage.replaceChildren();
@@ -164,42 +183,27 @@
   };
 
   // ---------- 2. Кадр из файла
-  async function probeOnce(blob, label, opts) {
-    log('- ' + label);
+  async function probeFile(blob, title) {
+    log('=== ' + title + ' === type', blob.type || '(нет)', 'size', blob.size);
     const url = URL.createObjectURL(blob);
     const v = document.createElement('video');
-    v.muted = true; v.playsInline = true; v.preload = opts.preload;
-    if (opts.attach === 'tiny') v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:.01;pointer-events:none';
-    if (opts.attach) (opts.attach === 'tiny' ? document.body : stage).appendChild(v);
+    v.muted = true; v.playsInline = true; v.preload = 'auto'; v.loop = true;
+    stage.replaceChildren(v);
     try {
-      const t0 = performance.now();
-      const meta = once(v, 'loadedmetadata', 8000); const data = once(v, 'loadeddata', 8000);
-      v.src = url; if (opts.load) v.load();
-      log('  loadedmetadata', await meta, Math.round(performance.now() - t0) + 'ms',
-        'size', v.videoWidth + 'x' + v.videoHeight, 'dur', v.duration);
-      log('  loadeddata', await data, Math.round(performance.now() - t0) + 'ms');
-      await lumaAll(v, 'после загрузки');
-      for (const t of [0.1, 1]) {
-        const seeked = once(v, 'seeked', 4000); v.currentTime = t;
-        log('  seek ' + t, await seeked, await frame(v, 400));
-        await lumaAll(v, 'после seek ' + t);
-      }
+      const data = once(v, 'loadeddata', 8000);
+      v.src = url;
+      log('  loadeddata', await data, 'size', v.videoWidth + 'x' + v.videoHeight, 'dur', v.duration);
+      await grabAll(v, 'до игры');
       const playing = once(v, 'playing', 4000);
       let played = 'ok'; try { await withTimeout(v.play(), 4000); } catch (e) { played = 'THROW ' + e.name + ': ' + e.message; }
-      log('  play', played, 'playing', await playing, await frame(v, 1500));
-      await sleep(400);
-      await lumaAll(v, 'во время игры');
-      v.pause(); await sleep(150);
-      await lumaAll(v, 'после паузы');
+      log('  play', played, 'playing', await playing);
+      await sleep(600);
+      await grabAll(v, 'во время игры');
+      await grabViaStream(v);
+      v.pause(); await sleep(200);
+      await grabAll(v, 'после паузы');
     } catch (e) { log('  FAIL', e.name, e.message); }
     v.removeAttribute('src'); v.load(); v.remove(); URL.revokeObjectURL(url);
-  }
-
-  async function probeFile(blob, title) {
-    log('=== ' + title + ' === type', blob.type || '(нет)', 'size', blob.size, blob.name ? 'name ' + blob.name.replace(/^.*(\.[^.]+)$/, '*$1') : '');
-    await probeOnce(blob, 'как в приложении: в документе 2px, почти невидимо', { attach: 'tiny', preload: 'auto' });
-    await probeOnce(blob, 'в документе, видимо 160px', { attach: 'stage', preload: 'auto' });
-    await probeOnce(blob, 'вне документа', { attach: '', preload: 'auto', load: true });
   }
 
   document.getElementById('file').onchange = async (e) => {
@@ -213,8 +217,9 @@
 
   document.getElementById('copy').onclick = async (e) => {
     out.select();
-    try { await navigator.clipboard.writeText(out.value); e.target.textContent = 'Скопировано'; }
-    catch { document.execCommand('copy'); e.target.textContent = 'Скопировано'; }
+    try { await navigator.clipboard.writeText(out.value); }
+    catch { document.execCommand('copy'); }
+    e.target.textContent = 'Скопировано';
     setTimeout(() => (e.target.textContent = 'Скопировать текст'), 1500);
   };
 })();

@@ -50,19 +50,19 @@ const VIDEO_TYPES = [
 ];
 
 /**
- * Камера на просьбу «1920 на 1080» вернула квадрат — так делает Firefox на
- * Android, когда телефон держат стоймя: видеосообщение уходило 1080×1080
- * (файл с тестового сервера, 2026-10-07). Тогда просим ту же рамку стоймя.
- * Не квадрат или телефон лежит — менять нечего.
+ * Просьбы к камере по порядку: следующая — если на предыдущую пришёл
+ * квадратный кадр. Firefox на Android у телефона, который держат стоймя,
+ * сводит «1280 на 720» к 720×720, а в настройках дорожки при этом честно
+ * «1280 на 720» (диагностика с realme, 2026-10-07) — поэтому квадрат ловим
+ * по самому видео, а не по настройкам. Сначала обычная просьба: Chrome
+ * поворачивает кадр сам. Потом рамка стоймя, потом — без подгонки размера.
  */
-export function uprightFrame(
-	got: { width?: number; height?: number },
-	long: number,
-	short: number,
-	portrait: boolean
-): MediaTrackConstraints | undefined {
-	if (!portrait || !got.width || got.width !== got.height) return undefined;
-	return { width: { ideal: short }, height: { ideal: long } };
+export function cameraAsks(long: number, short: number, upright: boolean): MediaTrackConstraints[] {
+	const asks: MediaTrackConstraints[] = [{ width: { ideal: long }, height: { ideal: short } }];
+	if (upright) asks.push({ width: { ideal: short }, height: { ideal: long } });
+	// resizeMode в типах TypeScript пока нет.
+	asks.push({ width: { ideal: long }, height: { ideal: short }, resizeMode: 'none' } as MediaTrackConstraints);
+	return asks;
 }
 
 /** Первый контейнер, который браузер пишет; '' — пусть выберет сам. */

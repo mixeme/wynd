@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-	uprightFrame,
+	cameraAsks,
 	formatDuration,
 	levelFromSamples,
 	peaksFromLevels,
@@ -8,18 +8,17 @@ import {
 	recordingExtension
 } from './record';
 
-describe('uprightFrame', () => {
-	it('asks for an upright frame when a phone held upright gets a square', () => {
-		expect(uprightFrame({ width: 1080, height: 1080 }, 1920, 1080, true)).toEqual({
-			width: { ideal: 1080 },
-			height: { ideal: 1920 }
-		});
+describe('cameraAsks', () => {
+	it('starts with the plain ask and keeps an upright frame for a phone held upright', () => {
+		expect(cameraAsks(1280, 720, true)).toEqual([
+			{ width: { ideal: 1280 }, height: { ideal: 720 } },
+			{ width: { ideal: 720 }, height: { ideal: 1280 } },
+			{ width: { ideal: 1280 }, height: { ideal: 720 }, resizeMode: 'none' }
+		]);
 	});
 
-	it('leaves a rectangular frame and a phone on its side alone', () => {
-		expect(uprightFrame({ width: 1080, height: 1920 }, 1920, 1080, true)).toBeUndefined();
-		expect(uprightFrame({ width: 1080, height: 1080 }, 1920, 1080, false)).toBeUndefined();
-		expect(uprightFrame({}, 1920, 1080, true)).toBeUndefined();
+	it('does not ask for an upright frame on a screen that lies on its side', () => {
+		expect(cameraAsks(1920, 1080, false)).toHaveLength(2);
 	});
 });
 
