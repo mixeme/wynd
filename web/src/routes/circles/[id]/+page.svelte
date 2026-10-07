@@ -421,6 +421,13 @@
 	// без текста — «Запись» стоит только у пустого поля. Через очередь — без
 	// сети тоже уйдёт.
 	let videoOpen = $state(false);
+	let videoSettings = $state<Awaited<ReturnType<typeof fetchCompression>> | undefined>();
+
+	// Камере нужны настройки сжатия сервера: она пишет сразу в этот размер.
+	async function openVideo() {
+		videoSettings = await fetchCompression(circle.origin).catch(() => undefined);
+		videoOpen = true;
+	}
 	let preparing = $state('');
 	// Что вышло с записью — над полосой ввода, там же, где «Готовим видео…».
 	// Строка ошибки стоит под лентой: её не видно, и её стирает первая же
@@ -694,11 +701,15 @@
 	onCommentCompose={circle.canWrite ? openComposeFromBar : undefined}
 	onCommentPhotos={circle.canWrite ? openComposeWithPhotos : undefined}
 	onCommentVoice={circle.canWrite ? (take) => void sendVoice(take) : undefined}
-	onCommentVideo={circle.canWrite ? () => (videoOpen = true) : undefined}
+	onCommentVideo={circle.canWrite ? () => void openVideo() : undefined}
 	commentStatus={preparing || barNote}
 >
 	{#if videoOpen}
-		<VideoRecorder onsend={(file, poster) => void sendVideo(file, poster)} onclose={() => (videoOpen = false)} />
+		<VideoRecorder
+			settings={videoSettings}
+			onsend={(file, poster) => void sendVideo(file, poster)}
+			onclose={() => (videoOpen = false)}
+		/>
 	{/if}
 	<PullRefreshBand pull={ptr.state} />
 

@@ -3,6 +3,8 @@
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import { modal } from '$lib/a11y/modal';
 	import { formatBytes } from '$lib/format/bytes';
+	import type { CompressionSettings } from '$lib/journal/types';
+	import { DEFAULT_VIDEO_BITRATE_KBPS, DEFAULT_VIDEO_MAX_P } from '$lib/media/compress';
 	import { holdWakeLock } from '$lib/media/wake-lock';
 	import {
 		VIDEO_MAX_MS,
@@ -18,9 +20,12 @@
 	// предел — 5 минут. Видео обычное, прямоугольное. Крестик и системная
 	// «Назад» выбрасывают снятое.
 	let {
+		settings,
 		onsend,
 		onclose
 	}: {
+		/** Настройки сжатия сервера (9.7): высота кадра и битрейт видео. */
+		settings?: CompressionSettings;
 		/** poster — JPEG кадра, снятый с камеры во время записи. */
 		onsend: (file: File, poster?: ArrayBuffer) => void;
 		onclose: () => void;
@@ -43,10 +48,13 @@
 	let tick: ReturnType<typeof setInterval> | null = null;
 	let releaseWake: (() => void) | null = null;
 
-	// Без кодировщика (Firefox на Android) ролик уйдёт таким, каким записан:
-	// сжать его потом нечем. Тогда просим у камеры 720p и скромный битрейт.
+	// Камера пишет сразу тем, до чего видео сжимается по настройкам сервера
+	// (9.7): та же высота кадра. Без кодировщика (Firefox на Android) ролик
+	// уйдёт таким, каким записан, — тогда записи задаём и тот же битрейт.
 	const canEncode = typeof VideoEncoder !== 'undefined';
-	const RAW_VIDEO_BITS = 2_500_000;
+	const short = $derived(settings?.video_max_height || DEFAULT_VIDEO_MAX_P);
+	const long = $derived(Math.round((short * 16) / 9));
+	const rawVideoBits = $derived((settings?.video_bitrate_kbps || DEFAULT_VIDEO_BITRATE_KBPS) * 1000);
 
 	// Кадр для ленты — с живой камеры, пока идёт запись.
 	let poster: ArrayBuffer | undefined;
@@ -99,7 +107,6 @@
 	async function openCamera() {
 		const turn = ++opening;
 		error = '';
-		const [long, short] = canEncode ? [1920, 1080] : [1280, 720];
 		const asks = cameraAsks(long, short);
 		for (const [i, ask] of asks.entries()) {
 			const got = await openWith(ask, turn);
@@ -130,7 +137,7 @@
 		const type = pickRecorderType('video');
 		recorder = new MediaRecorder(stream, {
 			...(type ? { mimeType: type } : {}),
-			...(canEncode ? {} : { videoBitsPerSecond: RAW_VIDEO_BITS })
+			...(canEncode ? {} : { videoBitsPerSecond: rawVideoBits })
 		});
 		chunks = [];
 		recorder.ondataavailable = (e) => {
