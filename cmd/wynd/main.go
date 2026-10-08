@@ -170,6 +170,18 @@ func runServer() {
 	if err != nil {
 		log.Fatalf("embed web dist: %v", err)
 	}
+	// Временный журнал запуска (план 46, «Запуск после фона»). Под /api: на любой
+	// другой адрес уже установленный service worker отдаёт оболочку приложения.
+	mux.HandleFunc("GET /api/diag-boot", func(w http.ResponseWriter, _ *http.Request) {
+		page, err := fs.ReadFile(buildFS, "diag-boot.html")
+		if err != nil {
+			http.NotFound(w, nil)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		_, _ = w.Write(page)
+	})
 	mux.Handle("/", web.SPA(buildFS, loopback))
 	apiSrv.ArchiveFonts = buildFS
 

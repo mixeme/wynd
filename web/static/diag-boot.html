@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ru">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Wynd — журнал запуска</title>
+		<style>
+			body {
+				margin: 0;
+				padding: 16px;
+				background: #211e1c;
+				color: #efe9e0;
+				font: 15px/1.4 system-ui, sans-serif;
+			}
+			h1 {
+				margin: 0 0 8px;
+				font-size: 18px;
+			}
+			p {
+				margin: 0 0 12px;
+				color: #b5aca0;
+			}
+			button {
+				margin: 0 8px 12px 0;
+				padding: 10px 16px;
+				border: 1px solid #5a534c;
+				border-radius: 999px;
+				background: #efe9e0;
+				color: #211e1c;
+				font: inherit;
+			}
+			button.quiet {
+				background: none;
+				color: #efe9e0;
+			}
+			pre {
+				margin: 0;
+				font: 11px/1.45 monospace;
+				white-space: pre-wrap;
+				word-break: break-all;
+			}
+			.gap {
+				color: #e0a45c;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Журнал запуска</h1>
+		<p>
+			Временная страница (план 46). Каждая строка — время, метка запуска и событие. После
+			неудачного запуска откройте её и пришлите текст.
+		</p>
+		<button id="copy">Скопировать</button>
+		<button id="clear" class="quiet">Очистить</button>
+		<span id="note"></span>
+		<pre id="out"></pre>
+		<script>
+			var KEY = 'wynd:bootlog';
+			var out = document.getElementById('out');
+			var note = document.getElementById('note');
+			function read() {
+				try {
+					return JSON.parse(localStorage.getItem(KEY) || '[]');
+				} catch (e) {
+					return ['журнал не читается: ' + e];
+				}
+			}
+			function text() {
+				return navigator.userAgent + '\n' + read().join('\n');
+			}
+			function show() {
+				out.textContent = '';
+				var head = document.createElement('div');
+				head.textContent = navigator.userAgent;
+				out.appendChild(head);
+				read().forEach(function (line) {
+					var row = document.createElement('div');
+					row.textContent = line;
+					// Строка нового запуска — заметнее: по ним считают запуски.
+					if (/ start /.test(line)) row.className = 'gap';
+					out.appendChild(row);
+				});
+			}
+			document.getElementById('copy').onclick = function () {
+				var value = text();
+				function fallback() {
+					var area = document.createElement('textarea');
+					area.value = value;
+					document.body.appendChild(area);
+					area.select();
+					document.execCommand('copy');
+					area.remove();
+				}
+				if (navigator.clipboard && navigator.clipboard.writeText) {
+					navigator.clipboard.writeText(value).catch(fallback);
+				} else {
+					fallback();
+				}
+				note.textContent = 'Скопировано';
+			};
+			document.getElementById('clear').onclick = function () {
+				localStorage.removeItem(KEY);
+				note.textContent = 'Очищено';
+				show();
+			};
+			show();
+		</script>
+	</body>
+</html>

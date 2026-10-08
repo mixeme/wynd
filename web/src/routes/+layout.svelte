@@ -45,6 +45,7 @@
 
 
 	onMount(() => {
+		window.__wyndBoot?.('mounted');
 		const stopTheme = initTheme();
 		const stopQueue = initQueueDrain();
 		const stopViewport = initViewportHeight();
@@ -56,6 +57,7 @@
 		// следующем запуске или из «Настроек» (C19).
 		if (pwaInfo && !isLocal) initAppUpdate();
 		void initSession().then(() => {
+			window.__wyndBoot?.('session');
 			startSyncForAllSessions();
 			void initPush();
 		});

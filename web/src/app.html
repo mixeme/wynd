@@ -34,6 +34,94 @@
 				});
 			}
 		</script>
+		<script>
+			// Временный журнал запуска (план 46, «Запуск после фона»): веб-приложение
+			// Firefox на Android после долгого простоя закрывается при запуске.
+			// Пишем в localStorage сразу, до загрузки приложения: по журналу видно,
+			// дошло ли дело до страницы и что было перед закрытием. Читать —
+			// /api/diag-boot. Убрать, когда причина найдена.
+			(function () {
+				var KEY = 'wynd:bootlog';
+				var ALIVE = 'wynd:bootlog-alive';
+				var id = Math.random().toString(36).slice(2, 6);
+				function two(n) {
+					return (n < 10 ? '0' : '') + n;
+				}
+				function stamp(ms) {
+					var d = new Date(ms);
+					return (
+						two(d.getDate()) + '.' + two(d.getMonth() + 1) + ' ' + two(d.getHours()) + ':' +
+						two(d.getMinutes()) + ':' + two(d.getSeconds()) + '.' + ('00' + d.getMilliseconds()).slice(-3)
+					);
+				}
+				function log(what) {
+					try {
+						var list = JSON.parse(localStorage.getItem(KEY) || '[]');
+						list.push(stamp(Date.now()) + ' ' + id + ' ' + what);
+						localStorage.setItem(KEY, JSON.stringify(list.slice(-200)));
+					} catch (e) {
+						/* хранилище закрыто — журнала не будет */
+					}
+				}
+				function alive() {
+					try {
+						localStorage.setItem(ALIVE, String(Date.now()));
+					} catch (e) {
+						/* то же */
+					}
+				}
+				var nav = '';
+				try {
+					nav = performance.getEntriesByType('navigation')[0].type;
+				} catch (e) {
+					/* старый браузер */
+				}
+				var last = 0;
+				try {
+					last = Number(localStorage.getItem(ALIVE)) || 0;
+				} catch (e) {
+					/* то же */
+				}
+				log(
+					'start ' + location.pathname + ' nav=' + nav + ' vis=' + document.visibilityState +
+						' app=' + (matchMedia('(display-mode: standalone)').matches ? 1 : 0) +
+						' sw=' + (navigator.serviceWorker && navigator.serviceWorker.controller ? 1 : 0) +
+						' discarded=' + (document.wasDiscarded ? 1 : 0) + ' hist=' + history.length +
+						' prev-alive=' + (last ? stamp(last) : '-')
+				);
+				alive();
+				setInterval(alive, 5000);
+				document.addEventListener('DOMContentLoaded', function () {
+					log('dom');
+				});
+				addEventListener('load', function () {
+					log('load');
+				});
+				document.addEventListener('visibilitychange', function () {
+					log(document.visibilityState);
+					alive();
+				});
+				addEventListener('pagehide', function (e) {
+					log('pagehide persisted=' + (e.persisted ? 1 : 0));
+				});
+				addEventListener('pageshow', function (e) {
+					log('pageshow persisted=' + (e.persisted ? 1 : 0));
+				});
+				document.addEventListener('freeze', function () {
+					log('freeze');
+				});
+				document.addEventListener('resume', function () {
+					log('resume');
+				});
+				addEventListener('error', function (e) {
+					log('error ' + String(e.message || (e.target && (e.target.src || e.target.href)) || '').slice(0, 160));
+				}, true);
+				addEventListener('unhandledrejection', function (e) {
+					log('rejection ' + String((e.reason && e.reason.message) || e.reason).slice(0, 160));
+				});
+				window.__wyndBoot = log;
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
