@@ -52,11 +52,26 @@ function isTextField(el: Element | null): el is HTMLElement {
 	);
 }
 
+/** Есть ли над полем экран, который ещё можно прокрутить вниз. */
+function canScrollDown(el: HTMLElement): boolean {
+	for (let node = el.parentElement; node && node !== document.body; node = node.parentElement) {
+		const overflow = getComputedStyle(node).overflowY;
+		if (overflow !== 'auto' && overflow !== 'scroll') continue;
+		if (node.scrollHeight - node.clientHeight - node.scrollTop > 1) return true;
+	}
+	return false;
+}
+
 function revealFocusedField(visibleHeight: number): boolean {
 	const el = document.activeElement;
 	if (!isTextField(el)) return false;
 	const rect = el.getBoundingClientRect();
 	if (rect.top >= 0 && rect.bottom <= visibleHeight - KEYBOARD_BAR_PX) return false;
+	// Поле видно, но вплотную к клавиатуре, и прокручивать нечего — строка
+	// ввода внизу окна стоит так всегда. Двигать её некуда: scrollIntoView
+	// сдвигал саму страницу, мы возвращали её назад, и экран мигал на каждой
+	// перепроверке (iPhone, 0.28.3: два касания поля — восемь попыток).
+	if (rect.top >= 0 && rect.bottom <= visibleHeight && !canScrollDown(el)) return false;
 	el.scrollIntoView({ block: 'center' });
 	return true;
 }

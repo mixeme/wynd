@@ -104,8 +104,14 @@ describe('высота окна по видимой области', () => {
 		const vv = fakeViewport({ height: 800 });
 		const stop = initViewportHeight();
 
+		// Поле — внутри экрана, который прокручивается: его есть куда подвести.
+		const scroller = document.createElement('div');
+		scroller.style.overflowY = 'auto';
+		vi.spyOn(scroller, 'scrollHeight', 'get').mockReturnValue(1200);
+		vi.spyOn(scroller, 'clientHeight', 'get').mockReturnValue(400);
 		const input = document.createElement('input');
-		document.body.append(input);
+		scroller.append(input);
+		document.body.append(scroller);
 		const reveal = vi.fn();
 		input.scrollIntoView = reveal;
 		const rect = vi.spyOn(input, 'getBoundingClientRect');
@@ -148,9 +154,51 @@ describe('высота окна по видимой области', () => {
 		vi.advanceTimersByTime(1000);
 		expect(reveal).not.toHaveBeenCalled();
 
-		input.remove();
+		scroller.remove();
 		stop();
 		vi.useRealTimers();
+	});
+
+	// iPhone: строка ввода внизу окна всегда вплотную к клавиатуре. Двигать её
+	// некуда — попытки сдвигали страницу, экран мигал.
+	it('поле у клавиатуры не трогается, если прокручивать нечего', () => {
+		vi.stubGlobal('requestAnimationFrame', (fn: FrameRequestCallback) => {
+			fn(0);
+			return 0;
+		});
+		vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+		const vv = fakeViewport({ height: 800 });
+		const stop = initViewportHeight();
+
+		const scroller = document.createElement('div');
+		scroller.style.overflowY = 'auto';
+		const inside = document.createElement('input');
+		const pinned = document.createElement('input');
+		scroller.append(inside);
+		document.body.append(scroller, pinned);
+		const revealPinned = vi.fn();
+		const revealInside = vi.fn();
+		pinned.scrollIntoView = revealPinned;
+		inside.scrollIntoView = revealInside;
+		// Оба поля видны, но ближе 80 px к клавиатуре (область 480).
+		for (const el of [pinned, inside]) {
+			vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({ top: 420, bottom: 464 } as DOMRect);
+		}
+
+		pinned.focus();
+		vv.height = 480;
+		vv.fire('resize');
+		expect(revealPinned).not.toHaveBeenCalled();
+
+		// Поле внутри экрана, который ещё прокручивается, — подводим.
+		vi.spyOn(scroller, 'scrollHeight', 'get').mockReturnValue(1200);
+		vi.spyOn(scroller, 'clientHeight', 'get').mockReturnValue(400);
+		inside.focus();
+		expect(revealInside).toHaveBeenCalledWith({ block: 'center' });
+
+		scroller.remove();
+		pinned.remove();
+		stop();
 	});
 
 	// iPhone, приложение с экрана «Домой»: окно короче экрана, под строкой
