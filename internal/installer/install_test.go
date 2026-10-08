@@ -482,11 +482,11 @@ func TestDiskThresholdDependsOnDocker(t *testing.T) {
 	if f := disk(head + "## disk\n/dev/vda1 7017040 1025940 5661188 16% /\n## docker\n"); f.Level != LevelOK {
 		t.Fatalf("чистый сервер, 5,4 ГБ: %+v", f)
 	}
-	if f := disk(head + "## disk\n/dev/vda1 7017040 1900000 2600000 43% /\n## docker\n"); f.Level != LevelBlock {
-		t.Fatalf("без Docker 2,5 ГБ мало: %+v", f)
+	if f := disk(head + "## disk\n/dev/vda1 7017040 5400000 1600000 78% /\n## docker\n"); f.Level != LevelBlock {
+		t.Fatalf("без Docker 1,5 ГБ установке мало: %+v", f)
 	}
-	if f := disk(head + "## disk\n/dev/vda1 7017040 1900000 2600000 43% /\n## docker\nDocker version 29.9.0\n"); f.Level != LevelOK {
-		t.Fatalf("с Docker 2,5 ГБ хватает: %+v", f)
+	if f := disk(head + "## disk\n/dev/vda1 7017040 5400000 1600000 78% /\n## docker\nDocker version 29.9.0\n"); f.Level != LevelOK {
+		t.Fatalf("с Docker 1,5 ГБ хватает: %+v", f)
 	}
 }
 
