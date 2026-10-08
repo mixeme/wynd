@@ -192,8 +192,10 @@
 		error = '';
 		try {
 			await setDayTitle(circle.origin, circle.circleId, entryDate, title);
-			editingTitle = false;
+			// Форму убираем после перечитывания: иначе на её месте успевало
+			// мелькнуть старое название.
 			await loadData();
+			editingTitle = false;
 		} catch (err) {
 			error = authErrorHint(err);
 		} finally {
@@ -205,8 +207,8 @@
 		error = '';
 		try {
 			await clearDayTitle(circle.origin, circle.circleId, entryDate);
-			editingTitle = false;
 			await loadData();
+			editingTitle = false;
 		} catch (err) {
 			error = authErrorHint(err);
 		}

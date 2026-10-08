@@ -93,6 +93,7 @@
 	let reacting = $state(false);
 	let editingCommentId = $state('');
 	let editingCommentBody = $state('');
+	let savingCommentEdit = $state(false);
 	let activeMemberCount = $state(2);
 	let members = $state<MemberInfo[]>([]);
 	let queuedComments = $state<QueuedCommentView[]>([]);
@@ -497,13 +498,19 @@
 		const text = editingCommentBody.trim();
 		// Слова можно стереть, только если у реплики остаются вложения (4.7).
 		if (!text && !hasMedia) return;
+		if (savingCommentEdit) return;
+		savingCommentEdit = true;
 		error = '';
 		try {
 			await editComment(circle.origin, circle.circleId, postId, commentId, text);
-			cancelEditComment();
+			// Форму убираем после перечитывания: иначе на её месте успевал
+			// мелькнуть старый текст.
 			await load();
+			cancelEditComment();
 		} catch (err) {
 			error = authErrorHint(err);
+		} finally {
+			savingCommentEdit = false;
 		}
 	}
 
@@ -765,6 +772,7 @@
 								<Button class="grow-flat"
 									variant="colored"
 									keepFocus
+									loading={savingCommentEdit}
 									onclick={() => saveCommentEdit(comment.id, Boolean(comment.media?.length))}
 								>
 									Сохранить
