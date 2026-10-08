@@ -27,6 +27,12 @@
 // под строкой ввода — пустая полоса. Причина не установлена; высоту
 // перечитываем ещё и по событиям окна и несколько раз после запуска — на
 // случай, если Safari назвал её до того, как окно встало, и промолчал.
+//
+// iPhone: при касании поля Safari сам везёт страницу к нему, пока выезжает
+// клавиатура, а мы в это же время сжимаем окно и возвращаем страницу — шапка
+// на треть секунды оказывается посреди экрана и съезжает наверх (запись
+// экрана, 0.28.4). Поэтому на iPhone поле получает фокус от нас, с
+// preventScroll: страницу никто не везёт, окно просто сжимается.
 
 /** Клавиатура заметно ниже любой панели браузера: меньшее сжатие — не она. */
 const KEYBOARD_MIN_PX = 120;
@@ -60,6 +66,54 @@ function canScrollDown(el: HTMLElement): boolean {
 		if (node.scrollHeight - node.clientHeight - node.scrollTop > 1) return true;
 	}
 	return false;
+}
+
+const TYPED_INPUTS = ['text', 'search', 'email', 'url', 'tel', 'password', 'number'];
+
+/** Поле, в которое печатают с клавиатуры: у даты и файла свой выбор, их не трогаем. */
+function isTypedField(el: Element | null): el is HTMLElement {
+	if (el instanceof HTMLTextAreaElement) return !el.disabled && !el.readOnly;
+	if (el instanceof HTMLInputElement) return TYPED_INPUTS.includes(el.type) && !el.disabled && !el.readOnly;
+	return el instanceof HTMLElement && el.isContentEditable;
+}
+
+function isIOS(): boolean {
+	return (
+		/iP(hone|ad|od)/.test(navigator.userAgent) ||
+		(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+	);
+}
+
+/** Палец сдвинулся дальше — это прокрутка, а не касание поля. */
+const TAP_SLOP_PX = 10;
+
+/**
+ * Касание поля не в фокусе — фокус ставим сами, без подвоза страницы.
+ * Курсор при этом встаёт, куда его ставит браузер по умолчанию; место в
+ * тексте выбирается вторым касанием.
+ */
+function focusWithoutScroll(): () => void {
+	let start: { x: number; y: number } | undefined;
+	const onStart = (event: TouchEvent) => {
+		const touch = event.touches.length === 1 ? event.touches[0] : undefined;
+		start = touch ? { x: touch.clientX, y: touch.clientY } : undefined;
+	};
+	const onEnd = (event: TouchEvent) => {
+		const from = start;
+		start = undefined;
+		const touch = event.changedTouches[0];
+		const target = event.target as Element | null;
+		if (!from || !touch || !isTypedField(target) || document.activeElement === target) return;
+		if (Math.abs(touch.clientX - from.x) > TAP_SLOP_PX || Math.abs(touch.clientY - from.y) > TAP_SLOP_PX) return;
+		event.preventDefault();
+		target.focus({ preventScroll: true });
+	};
+	document.addEventListener('touchstart', onStart, { passive: true });
+	document.addEventListener('touchend', onEnd, { passive: false });
+	return () => {
+		document.removeEventListener('touchstart', onStart);
+		document.removeEventListener('touchend', onEnd);
+	};
 }
 
 function revealFocusedField(visibleHeight: number): boolean {
@@ -176,12 +230,14 @@ export function initViewportHeight(): () => void {
 	document.addEventListener('visibilitychange', reread);
 	document.addEventListener('focusin', onFocusIn);
 	const startup = STARTUP_RECHECK_MS.map((ms) => setTimeout(reread, ms));
+	const stopFocus = isIOS() ? focusWithoutScroll() : undefined;
 	apply();
 	return () => {
 		document.removeEventListener('focusin', onFocusIn);
 		document.removeEventListener('visibilitychange', reread);
 		WINDOW_EVENTS.forEach((type) => window.removeEventListener(type, reread));
 		startup.forEach(clearTimeout);
+		stopFocus?.();
 		timers.forEach(clearTimeout);
 		clearInterval(debugTimer);
 		debug?.remove();

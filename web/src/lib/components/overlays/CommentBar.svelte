@@ -179,7 +179,7 @@
 	function focusField(e: MouseEvent) {
 		const target = e.target as HTMLElement | null;
 		if (target?.closest('button')) return;
-		bodyInput?.focus();
+		bodyInput?.focus({ preventScroll: true });
 	}
 
 	// fromInput — набор человека. Полный экран открывает только он: замер

@@ -228,6 +228,45 @@ describe('высота окна по видимой области', () => {
 		vi.useRealTimers();
 	});
 
+	// iPhone: Safari везёт страницу к полю, пока выезжает клавиатура, — шапка
+	// съезжает. Фокус ставим сами, без подвоза.
+	it('на iPhone касание поля ставит фокус без подвоза страницы', () => {
+		vi.stubGlobal('navigator', { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X)' });
+		fakeViewport({ height: 800 });
+		const stop = initViewportHeight();
+		const input = document.createElement('textarea');
+		const button = document.createElement('button');
+		document.body.append(input, button);
+		const focus = vi.spyOn(input, 'focus');
+		const touch = (el: Element, type: string, x: number, y: number) => {
+			const event = new Event(type, { bubbles: true, cancelable: true });
+			const point = { clientX: x, clientY: y };
+			Object.assign(event, { touches: type === 'touchstart' ? [point] : [], changedTouches: [point] });
+			el.dispatchEvent(event);
+			return event;
+		};
+
+		// Прокрутка пальцем по полю — не касание.
+		touch(input, 'touchstart', 100, 500);
+		expect(touch(input, 'touchend', 100, 440).defaultPrevented).toBe(false);
+		expect(focus).not.toHaveBeenCalled();
+		// Кнопку не трогаем.
+		touch(button, 'touchstart', 10, 10);
+		expect(touch(button, 'touchend', 10, 10).defaultPrevented).toBe(false);
+
+		touch(input, 'touchstart', 100, 500);
+		expect(touch(input, 'touchend', 102, 501).defaultPrevented).toBe(true);
+		expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+
+		// Поле уже в фокусе: касание ставит курсор, как обычно.
+		touch(input, 'touchstart', 100, 500);
+		expect(touch(input, 'touchend', 100, 500).defaultPrevented).toBe(false);
+
+		input.remove();
+		button.remove();
+		stop();
+	});
+
 	it('увеличение щипком — не клавиатура, высоту не трогаем', () => {
 		fakeViewport({ height: 400, scale: 2 });
 		const stop = initViewportHeight();
