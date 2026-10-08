@@ -466,7 +466,18 @@ func (s *Service) instanceName(ctx context.Context) string {
 	if err := s.db.QueryRowContext(ctx, `SELECT name FROM instance_settings WHERE id = 1`).Scan(&name); err != nil {
 		return ""
 	}
-	return strings.TrimSpace(name)
+	return serverLabel(name)
+}
+
+// serverLabel — имя сервера для письма. Сервер, названный как сам продукт,
+// имени не добавляет: «Wynd · Wynd» и «в Wynd на сервере «Wynd»» читаются
+// как незаполненный шаблон.
+func serverLabel(name string) string {
+	name = strings.TrimSpace(name)
+	if strings.EqualFold(name, "Wynd") {
+		return ""
+	}
+	return name
 }
 
 // withSenderName даёт отправителю имя, если в настройках только адрес:

@@ -428,3 +428,59 @@ func TestCodeMailKeepsCodeOutOfSubject(t *testing.T) {
 		t.Fatal("timeout waiting for smtp message")
 	}
 }
+
+// Сервер, названный как сам продукт, в письме не повторяется: отправитель
+// «Wynd», а не «Wynd · Wynd», и в тексте нет «на сервере «Wynd»». Своё имя
+// сервера остаётся и там, и там.
+func TestCodeMailDoesNotRepeatProductName(t *testing.T) {
+	cases := []struct {
+		server, sender string
+		inBody         bool
+	}{
+		{"Wynd", "Wynd", false},
+		{" wynd ", "Wynd", false},
+		{"Дача", "Wynd · Дача", true},
+	}
+	for _, tc := range cases {
+		addr, received := startFakeSMTP(t)
+		host, port, _ := net.SplitHostPort(addr)
+		st, err := store.OpenMemory()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer st.Close()
+		svc, err := mail.New(st, false, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ctx := context.Background()
+		if _, err := svc.DB().ExecContext(ctx, `UPDATE instance_settings SET name = ? WHERE id = 1`, tc.server); err != nil {
+			t.Fatal(err)
+		}
+		if err := svc.SaveConfig(ctx, mail.Config{Host: host, Port: atoi(port), From: "wynd@example.com"}); err != nil {
+			t.Fatal(err)
+		}
+		if err := svc.SendCode(ctx, "bob@example.com", "276012"); err != nil {
+			t.Fatal(err)
+		}
+		select {
+		case msg := <-received:
+			m, err := netmail.ReadMessage(strings.NewReader(msg))
+			if err != nil {
+				t.Fatal(err)
+			}
+			from, err := (&netmail.AddressParser{WordDecoder: new(mime.WordDecoder)}).Parse(m.Header.Get("From"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if from.Name != tc.sender {
+				t.Fatalf("сервер %q: отправитель %q, нужен %q", tc.server, from.Name, tc.sender)
+			}
+			if got := strings.Contains(plainText(t, msg), "на сервере"); got != tc.inBody {
+				t.Fatalf("сервер %q: «на сервере» в тексте = %v, нужно %v", tc.server, got, tc.inBody)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatal("timeout waiting for smtp message")
+		}
+	}
+}
