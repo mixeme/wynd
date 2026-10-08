@@ -11,3 +11,11 @@ web/.svelte-kit/
 
 # Конфигурация локального запуска для инструментов разработчика.
 .claude/
+
+# Настольный установщик (план 45): сборка окна, зависимости и то, что Wails
+# создаёт сам при каждой сборке.
+cmd/wynd-installer/build/bin/
+cmd/wynd-installer/frontend/node_modules/
+cmd/wynd-installer/frontend/dist/
+cmd/wynd-installer/frontend/wailsjs/
+cmd/wynd-installer/frontend/package.json.md5

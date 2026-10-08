@@ -1,0 +1,239 @@
+/* Окно установщика (docs/visual/installer.html). Компоненты — из $ui, а их
+   телефонные поля (16 px по бокам, кнопка во всю ширину) здесь сняты: окно
+   настольное, с боковой колонкой шагов. */
+html,
+body,
+#app {
+	height: 100%;
+	margin: 0;
+}
+body {
+	background: var(--paper);
+	color: var(--ink);
+	font-family: var(--ui);
+	font-size: 13.5px;
+	line-height: 1.4;
+}
+.ins {
+	--c: var(--terracotta);
+	--ok: var(--olive);
+	--warn: var(--ochre);
+	--bad: #b5482f;
+	display: flex;
+	height: 100%;
+}
+.ins-side {
+	flex: none;
+	width: 170px;
+	padding: 18px 0;
+	border-right: 1px solid var(--line);
+	background: var(--tint);
+}
+.ins-step {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	padding: 7px 16px;
+	color: var(--faint);
+}
+.ins-step i {
+	display: grid;
+	place-items: center;
+	width: 18px;
+	height: 18px;
+	border: 1.5px solid currentColor;
+	border-radius: 50%;
+	font-style: normal;
+	font-size: 10px;
+}
+.ins-step.done {
+	color: var(--ok);
+}
+.ins-step.done i {
+	border-color: var(--ok);
+	background: var(--ok);
+	color: #fff;
+}
+.ins-step.on {
+	color: var(--ink);
+	font-weight: 600;
+}
+.ins-step.on i {
+	border-color: var(--c);
+	color: var(--c);
+}
+.ins-step.bad {
+	color: var(--bad);
+	font-weight: 600;
+}
+.ins-body {
+	flex: 1;
+	min-width: 0;
+	padding: 22px 26px;
+	overflow-y: auto;
+}
+.ins-body h2 {
+	margin: 0 0 4px;
+	font-size: 18px;
+}
+.ins-sub {
+	margin: 0 0 14px;
+	color: var(--muted);
+	line-height: 1.45;
+}
+.ins-sub.mt {
+	margin-top: 12px;
+}
+.ins-form {
+	display: block;
+}
+
+/* $ui без телефонных полей */
+.ins .lab {
+	margin: 12px 0 5px;
+}
+.ins .fld,
+.ins input.fld {
+	width: 100%;
+	margin: 0;
+	padding: 8px 11px;
+	border-radius: 8px;
+	box-sizing: border-box;
+}
+.ins input.fld:focus {
+	border-color: var(--c);
+	outline: none;
+}
+.ins .btn {
+	display: inline-block;
+	width: auto;
+	margin: 0;
+	padding: 9px 18px;
+	border-radius: 8px;
+}
+.ins .btn:not(:disabled):not(.off) {
+	cursor: pointer;
+}
+.ins .chip {
+	cursor: pointer;
+}
+.ins .chip.on {
+	background: color-mix(in srgb, var(--c) 12%, var(--card));
+	color: var(--c);
+}
+
+.ins-chips {
+	display: flex;
+	gap: 8px;
+}
+.ins-pair {
+	display: flex;
+	gap: 10px;
+}
+.ins-user {
+	flex: 0 0 130px;
+}
+.ins-grow,
+.ins input.fld.ins-grow {
+	flex: 1;
+	min-width: 0;
+}
+.ins-check {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	margin-top: 12px;
+}
+.ins-check input {
+	accent-color: var(--c);
+	margin: 0;
+}
+.ins-note {
+	margin: 12px 0 0;
+	color: var(--muted);
+}
+.ins-dim {
+	color: var(--muted);
+}
+.ins-strong {
+	font-weight: 600;
+}
+.ins-mono,
+.ins .fld.mono {
+	font-family: Consolas, 'Cascadia Mono', ui-monospace, monospace;
+	font-size: 12.5px;
+}
+.ins-box {
+	margin-top: 12px;
+	padding: 12px 14px;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	background: var(--card);
+	line-height: 1.5;
+}
+.ins-box.bad {
+	border-color: color-mix(in srgb, var(--bad) 45%, var(--line));
+}
+.ins-box .ins-strong + * {
+	margin-top: 6px;
+}
+.ins-box .ins-mono {
+	word-break: break-all;
+}
+.ins-foot {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin-top: 18px;
+}
+.ins-rows {
+	margin-bottom: 6px;
+}
+.ins-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 7px 0;
+	border-bottom: 1px solid var(--line);
+}
+.ins-row:last-child {
+	border-bottom: 0;
+}
+.ins-mark {
+	flex: none;
+	width: 16px;
+	text-align: center;
+	font-weight: 700;
+}
+.ins-mark.wide {
+	width: auto;
+	font-weight: 400;
+}
+.ins-mark.ok {
+	color: var(--ok);
+}
+.ins-mark.note {
+	color: var(--warn);
+}
+.ins-mark.block {
+	color: var(--bad);
+}
+.ins-domain {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+.ins-raw {
+	margin: 14px 0 0;
+	padding: 10px 12px;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	background: var(--card);
+	font-family: Consolas, 'Cascadia Mono', ui-monospace, monospace;
+	font-size: 11.5px;
+	white-space: pre-wrap;
+	word-break: break-all;
+	max-height: 220px;
+	overflow: auto;
+}

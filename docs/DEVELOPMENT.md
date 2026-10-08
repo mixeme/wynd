@@ -134,6 +134,19 @@ scripts\test-integration.bat
 
 **Ворота.** Коммит, меняющий `VERSION`, допустим только после зелёного `scripts/test.bat` (на Unix — `make test`) на том же дереве. Слово «проверено» в записи без прогона не пишется.
 
+## Настольный установщик
+
+`cmd/wynd-installer` — отдельное приложение (план 45), на Wails v2. В воротах сервера участвует только его ядро `internal/installer`; само окно собирается своим инструментом:
+
+```bash
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
+cd cmd/wynd-installer
+wails dev      # окно с горячей перезагрузкой; то же в браузере на http://localhost:34115
+wails build    # build/bin/wynd-installer(.exe)
+```
+
+Нужен Node (как для `web/`) и на Windows — WebView2. `wails dev` понимает две переменные для проверки без настоящего сервера: `WYND_INSTALLER_SSH_PORT` (порт вместо 22) и `WYND_INSTALLER_SSH_DIR` (каталог вместо `~/.ssh`); в собранном приложении их нет. Правки в `internal/installer` `wails dev` сам не подхватывает — перезапустить.
+
 ## Выпуск версии
 
 Версия выходит после каждой заметной правки: исправление — патч, новая возможность или миграция — минорная (правила номера и записи — «CHANGELOG и VERSION» выше).
