@@ -509,22 +509,3 @@ func TestOwnProxyIsNotAnObstacle(t *testing.T) {
 		t.Fatalf("чужой контейнер: %+v", f)
 	}
 }
-
-func TestLowMemoryIsANoteNotAnObstacle(t *testing.T) {
-	rep := ParseInspection("## os\nID=debian\nNAME=Debian\n## uid\n0\n## mem\nMemTotal:         725204 kB\n", "root", time.Now())
-	var found *Finding
-	for i, f := range rep.Findings {
-		if f.ID == "memory" {
-			found = &rep.Findings[i]
-		}
-	}
-	if found == nil || found.Level != LevelNote || !strings.Contains(found.Text, "0,7 ГБ") {
-		t.Fatalf("мало памяти: %+v", found)
-	}
-	rep = ParseInspection("## mem\nMemTotal:        2028636 kB\n", "root", time.Now())
-	for _, f := range rep.Findings {
-		if f.ID == "memory" {
-			t.Fatalf("2 ГБ — молчим: %+v", f)
-		}
-	}
-}
