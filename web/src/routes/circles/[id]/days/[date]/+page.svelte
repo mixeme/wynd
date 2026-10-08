@@ -251,13 +251,14 @@
 			<div class="rowin mt-12">
 				<Button class="grow"
 					variant="colored"
+					keepFocus
 					disabled={savingTitle || !titleDraft.trim()}
 					loading={savingTitle}
 					onclick={saveTitle}
 				>
 					Сохранить
 				</Button>
-				<Button class="grow-flat" variant="ghost" onclick={cancelEditTitle}>Отмена</Button>
+				<Button class="grow-flat" variant="ghost" keepFocus onclick={cancelEditTitle}>Отмена</Button>
 			</div>
 			{#if canClearTitle}
 				<Hint centered class="mt-8">

@@ -764,11 +764,12 @@
 							<div class="rowin">
 								<Button class="grow-flat"
 									variant="colored"
+									keepFocus
 									onclick={() => saveCommentEdit(comment.id, Boolean(comment.media?.length))}
 								>
 									Сохранить
 								</Button>
-								<Button class="grow-flat" variant="ghost" onclick={cancelEditComment}>
+								<Button class="grow-flat" variant="ghost" keepFocus onclick={cancelEditComment}>
 									Отмена
 								</Button>
 							</div>
