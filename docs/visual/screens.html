@@ -3557,6 +3557,74 @@
 </div>
 <span class="num">7.16</span><b>Принять круг</b><i>Черновик 2026-10-08, не реализовано. Две дороги и одна подсказка, откуда берётся то, что они просят: человек чаще приходит сюда раньше, чем сделал ссылку или файл. Сервер назван сверху вместе со свободным местом — это первое, во что упрётся большой круг. «Перенести» открывает 2.18, «Оживить» — выбор файла, затем 2.21 (если файл зашифрован) и 2.22. Оживлять удобнее с компьютера: файл в гигабайты лежит, скорее всего, там — экраны те же, приложение в браузере одно.</i></figure>
 </div></div>
+<h3>Обёртка для Android</h3>
+<p>Черновик 2026-10-08, не реализовано (<a href="../plans/50-android-wrapper.plan.md">план 50</a>). Приложение для Android открывает тот же интерфейс с сервера — своих экранов у него два: спросить сервер при первом запуске и сказать, что сервер не ответил. Всё остальное — экраны выше; отличия от браузера — на 7.20 и 7.21. В браузере этих кадров нет: там сервер известен по адресу страницы.</p>
+<div class="bleed"><div class="gal">
+<figure class="s" id="e7-17"><div class="ph shell">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div style="margin:38px 0 0;display:flex;justify-content:center;color:var(--ink)"><svg width="139.6" height="48" role="img" aria-label="Wynd" style="display:block"><use href="#logo" fill="currentColor"/></svg></div>
+  <div class="h1s ctr" style="margin-top:30px">Где ваш сервер?</div>
+  <div class="lab" style="margin-top:18px">Адрес сервера</div>
+  <div class="fld act mono gr" style="font-size:12.5px">home.example.org</div>
+  <div class="hint">Адрес даёт тот, кто держит сервер. Он же стоит в начале ссылки-приглашения.</div>
+  <div class="btn off">Дальше</div>
+  <div class="lab" style="margin-top:22px">Есть приглашение</div>
+  <div class="fld act mono gr" style="font-size:12.5px">вставьте ссылку</div>
+  <div class="btn gh" style="margin-top:14px">Сканировать QR-код</div>
+</div>
+<span class="num">7.17</span><b>Первый запуск</b><i>Черновик 2026-10-08, не реализовано. Единственный вопрос, которого нет в браузере: там сервер известен по адресу страницы, здесь его надо назвать. Спрашивается один раз. Две дороги, как на 1.8: адрес руками или приглашение — ссылка и QR несут адрес с собой, и после них человек сразу на 1.1 или 1.7. Ссылку приходится вставлять: открыть приглашение из мессенджера прямо в приложении Android позволяет только для адресов, известных при сборке, а серверы у всех свои. Знак стоит, как на 1.5: это первый экран.</i></figure>
+
+<figure class="s" id="e7-18"><div class="ph shell">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div style="margin:38px 0 0;display:flex;justify-content:center;color:var(--ink)"><svg width="139.6" height="48" role="img" aria-label="Wynd" style="display:block"><use href="#logo" fill="currentColor"/></svg></div>
+  <div class="h1s ctr" style="margin-top:30px">Где ваш сервер?</div>
+  <div class="lab" style="margin-top:18px">Адрес сервера</div>
+  <div class="fld act mono" style="font-size:12.5px">home.example.org</div>
+  <div class="row2" style="margin:14px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px">
+    <svg class="ic"><use href="#i-cloud"/></svg>
+    <div class="g"><div style="font-weight:600">Дом Ани</div><div class="sub">home.example.org · Wynd 0.28.2</div></div>
+    <span class="st ok"><svg class="ic"><use href="#i-check"/></svg></span></div>
+  <div class="btn">Дальше</div>
+  <div class="hint">Приложение будет открываться с этого сервера. Сменить его можно в настройках.</div>
+</div>
+<span class="num">7.18</span><b>Сервер ответил</b><i>Черновик 2026-10-08, не реализовано. Сервер назван именем, как везде: человек видит «Дом Ани» и понимает, что не ошибся буквой. Карточка та же, что на 1.5 и 1.8. «Дальше» ведёт на экран входа самого сервера (1.5) — с этого места всё рисует он. Если по адресу отвечает не Wynd или никто — вместо карточки строка под полем: «По этому адресу нет сервера Wynd» или «Сервер не отвечает — проверьте адрес и сеть»; кнопка остаётся погашенной.</i></figure>
+
+<figure class="s" id="e7-19"><div class="ph shell">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div style="margin:120px 0 0;display:flex;justify-content:center;color:var(--ink)"><svg width="139.6" height="48" role="img" aria-label="Wynd" style="display:block"><use href="#logo" fill="currentColor"/></svg></div>
+  <div class="h1s ctr" style="margin-top:30px">Сервер не отвечает</div>
+  <div class="hint ctr" style="margin-top:10px">Дом Ани · home.example.org</div>
+  <div class="hint ctr" style="margin-top:14px">Проверьте сеть. Если сеть есть — сервер выключен или переехал.</div>
+  <div class="btn" style="margin-top:22px">Повторить</div>
+  <div class="hint ctr" style="margin-top:26px"><span class="under">Другой сервер</span></div>
+</div>
+<span class="num">7.19</span><b>Сервер не отвечает</b><i>Черновик 2026-10-08, не реализовано. Только когда показать нечего: первый запуск после выбора сервера оборвался, или сохранённое приложение стёрто. В обычный день этого экрана нет — без сети открывается сохранённое, и о связи говорит полоса под шапкой (7.5–7.9). Сервер назван, чтобы было видно, кого ждём. «Другой сервер» возвращает на 7.17 и ничего не стирает, пока новый сервер не выбран.</i></figure>
+
+<figure class="s" id="e7-20"><div class="ph shell">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Новая запись</span></div>
+  <div class="hint" style="margin-top:18px">…</div>
+  <div class="scrim"></div>
+  <div class="dlg" style="top:300px;border-radius:24px;text-align:center">
+    <div style="font-size:15px;margin-bottom:16px">Разрешить приложению <strong>Wynd</strong> снимать фото и видео?</div>
+    <div style="border-top:1px solid var(--line);padding:12px 0;color:var(--muted)">При использовании приложения</div>
+    <div style="border-top:1px solid var(--line);padding:12px 0;color:var(--muted)">Только в этот раз</div>
+    <div style="border-top:1px solid var(--line);padding:12px 0 0;color:var(--muted)">Запретить</div>
+  </div>
+</div>
+<span class="num">7.20</span><b>Разрешение — когда понадобилось</b><i>Черновик 2026-10-08, не реализовано. Своего экрана разрешений нет, и при запуске приложение ничего не просит. Вопрос задаёт система, своим окном, в ту минуту, когда человек сам нажал то, чему разрешение нужно: камера — на съёмке, микрофон — на голосовом, уведомления — на переключателе в настройках (7.3). Так понятно, зачем спрашивают. Отказ — не тупик: на месте остаётся та же строка, что в браузере («Нет доступа к камере — разрешите в настройках телефона»). В браузере разрешение спрашивали про сайт, здесь — про приложение, один раз.</i></figure>
+
+<figure class="s" id="e7-21"><div class="ph shell">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Настройки</span></div>
+  <div class="row2" style="margin-top:8px"><svg class="ic"><use href="#i-key"/></svg><div class="g"><div style="font-weight:600">Серверы</div><div class="sub">Дом Ани</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="row2"><svg class="ic"><use href="#i-bell"/></svg><div class="g"><div style="font-weight:600">Приложение</div><div class="sub">уведомления, место, тема</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="hint ctr" style="margin-top:44px">Wynd 0.28.2 · AGPL-3.0<br><a class="under" href="https://github.com/mixeme/wynd">исходный код</a></div>
+  <div class="hint ctr" style="margin-top:8px"><span class="under">Что нового</span></div>
+  <div class="hint ctr" style="margin-top:8px">Открыто с home.example.org<br><span class="under">Сменить сервер</span></div>
+</div>
+<span class="num">7.21</span><b>Настройки в приложении для Android</b><i>Черновик 2026-10-08, не реализовано. Тот же 7.1 с одним отличием внизу: вместо «Проверить обновление» — откуда открыто приложение и «Сменить сервер». Обновление проверять нечем: интерфейс приходит с сервера и новый встаёт сам при следующем запуске. «Сменить сервер» спрашивает подтверждение — вход и неотправленное на этом телефоне останутся при старом сервере — и ведёт на 7.17. Строка видна только в приложении для Android: в браузере сервер меняют адресом в строке.</i></figure>
+</div></div>
 <h2 id="night">Тёмная тема</h2>
 <p class="lede">Меняются бумага и чернила. Круги не меняются.</p>
 <p>Тема — единственная настройка внешнего вида, и она переставляет две переменные из шести: бумага темнеет, чернила светлеют, карточка и линия идут следом. Восемь цветов кругов остаются прежними: они выбраны по лестнице контраста для белого текста и на тёмном фоне работают так же. Перекрашивать их под тему значило бы, что «Семья» на ночь становится другим кругом.</p>
