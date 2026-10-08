@@ -158,8 +158,12 @@
 		return unsub;
 	});
 
+	// День, открытый с открытки в ленте (?from=feed), возвращает в ленту;
+	// иначе его родитель — вкладка «Дни» (план 46, C13 и C29).
+	const fromFeed = $derived($page.url.searchParams.get('from') === 'feed');
+
 	function goBack() {
-		goUp(`/circles/${circle.circleId}/days`);
+		goUp(fromFeed ? `/circles/${circle.circleId}` : `/circles/${circle.circleId}/days`);
 	}
 
 	function openPost(postId: string) {
@@ -172,7 +176,7 @@
 	}
 
 	function openDayAlbum() {
-		goto(`/circles/${circle.circleId}/days/${entryDate}/album`);
+		goto(`/circles/${circle.circleId}/days/${entryDate}/album${$page.url.search}`);
 	}
 
 	function startEditTitle() {

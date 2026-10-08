@@ -596,8 +596,11 @@
 		goto(`/circles/${circle.circleId}/days/${date}`);
 	}
 
+	// ?from=feed — «Назад» со дня вернёт в ленту, на то же место, а не во
+	// вкладку «Дни» (план 46, C29). В адресе, а не в памяти экрана: день
+	// строится заново после каждого захода в запись или альбом.
 	function openDay(entryDate: string) {
-		leaveToPost(`/circles/${circle.circleId}/days/${entryDate}`);
+		leaveToPost(`/circles/${circle.circleId}/days/${entryDate}?from=feed`);
 	}
 
 	function openCompose() {

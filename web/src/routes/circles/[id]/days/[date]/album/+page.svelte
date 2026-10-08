@@ -37,7 +37,7 @@
 	onMount(() => {
 		// Альбом дня — выбор обложки; читателю он не нужен (SCR-2).
 		if (!circle.canWrite) {
-			goto(`/circles/${circle.circleId}/days/${entryDate}`, { replaceState: true });
+			goto(`/circles/${circle.circleId}/days/${entryDate}${$page.url.search}`, { replaceState: true });
 			return;
 		}
 		void load();
@@ -89,7 +89,7 @@
 	}
 
 	function goBack() {
-		goUp(`/circles/${circle.circleId}/days/${entryDate}`);
+		goUp(`/circles/${circle.circleId}/days/${entryDate}${$page.url.search}`);
 	}
 
 	function selectItem(item: (typeof items)[number]) {
