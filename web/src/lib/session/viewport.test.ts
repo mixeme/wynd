@@ -29,7 +29,8 @@ describe('высота окна по видимой области', () => {
 	it('клавиатура сжимает окно, сдвиг страницы сбрасывается', () => {
 		vi.stubGlobal('requestAnimationFrame', (fn: FrameRequestCallback) => {
 			fn(0);
-			return 1;
+			// 0, не 1: иначе «кадр уже заказан», и следующие события не дойдут.
+			return 0;
 		});
 		const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 		const vv = fakeViewport({ height: 800 });
@@ -50,7 +51,8 @@ describe('высота окна по видимой области', () => {
 	it('поле под клавиатурой доводится до видимого, видимое не трогается', () => {
 		vi.stubGlobal('requestAnimationFrame', (fn: FrameRequestCallback) => {
 			fn(0);
-			return 1;
+			// 0, не 1: иначе «кадр уже заказан», и следующие события не дойдут.
+			return 0;
 		});
 		vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 		const vv = fakeViewport({ height: 800 });
@@ -87,6 +89,58 @@ describe('высота окна по видимой области', () => {
 
 		input.remove();
 		stop();
+	});
+
+	// Vivaldi: клавиатуру спрятали, нажали другое поле — оно под клавиатурой.
+	// Поле проверяется и при входе в него, и после: экран мог уехать позже.
+	it('поле перепроверяется при входе в него и пока клавиатура встаёт', () => {
+		vi.useFakeTimers();
+		vi.stubGlobal('requestAnimationFrame', (fn: FrameRequestCallback) => {
+			fn(0);
+			// 0, не 1: иначе «кадр уже заказан», и следующие события не дойдут.
+			return 0;
+		});
+		vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+		const vv = fakeViewport({ height: 800 });
+		const stop = initViewportHeight();
+
+		const input = document.createElement('input');
+		document.body.append(input);
+		const reveal = vi.fn();
+		input.scrollIntoView = reveal;
+		const rect = vi.spyOn(input, 'getBoundingClientRect');
+		const place = (top: number) => rect.mockReturnValue({ top, bottom: top + 44 } as DOMRect);
+
+		// Клавиатура закрыта: вход в поле сам ничего не двигает.
+		place(600);
+		input.focus();
+		expect(reveal).not.toHaveBeenCalled();
+
+		// Клавиатура встала, поле на виду — а потом экран уехал.
+		place(200);
+		vv.height = 480;
+		vv.fire('resize');
+		expect(reveal).not.toHaveBeenCalled();
+		place(600);
+		vi.advanceTimersByTime(1000);
+		expect(reveal).toHaveBeenCalledWith({ block: 'center' });
+
+		// Клавиатура открыта, перешли в поле ниже края.
+		reveal.mockClear();
+		input.blur();
+		input.focus();
+		expect(reveal).toHaveBeenCalledTimes(1);
+
+		// Клавиатуру убрали: отложенные проверки поле не трогают.
+		reveal.mockClear();
+		vv.height = 800;
+		vv.fire('resize');
+		vi.advanceTimersByTime(1000);
+		expect(reveal).not.toHaveBeenCalled();
+
+		input.remove();
+		stop();
+		vi.useRealTimers();
 	});
 
 	it('увеличение щипком — не клавиатура, высоту не трогаем', () => {

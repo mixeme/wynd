@@ -15,9 +15,17 @@
 // Окно сжалось — поле, в которое пишут, могло остаться под клавиатурой:
 // браузер подводит к нему страницу, а страница здесь не едет, прокручивается
 // экран внутри окна. Поэтому поле под нижним краем доводим до видимого сами.
+//
+// Одной проверки в момент сжатия мало (Vivaldi, 0.25.4): клавиатуру спрятали,
+// фокус остался, нажали другое поле — оно оказалось под клавиатурой. Вслед за
+// клавиатурой выезжает панель автозаполнения, браузер двигает экран сам, и
+// порядок событий у браузеров разный. Поэтому проверяем ещё и при входе в
+// поле, и несколько раз после — пока клавиатура встаёт.
 
 /** Клавиатура заметно ниже любой панели браузера: меньшее сжатие — не она. */
 const KEYBOARD_MIN_PX = 120;
+/** Когда перепроверить поле после сжатия окна или входа в поле. */
+const RECHECK_MS = [150, 400, 900];
 
 function isTextField(el: Element | null): el is HTMLElement {
 	if (!(el instanceof HTMLElement)) return false;
@@ -43,6 +51,21 @@ export function initViewportHeight(): () => void {
 	let frame = 0;
 	let lastHeight = 0;
 	let fullHeight = 0;
+	let timers: ReturnType<typeof setTimeout>[] = [];
+
+	const keyboardOpen = () => fullHeight - lastHeight >= KEYBOARD_MIN_PX;
+	const reveal = () => {
+		if (keyboardOpen()) revealFocusedField(lastHeight);
+	};
+	const recheck = () => {
+		timers.forEach(clearTimeout);
+		timers = RECHECK_MS.map((ms) => setTimeout(reveal, ms));
+	};
+	const onFocusIn = (event: FocusEvent) => {
+		if (!isTextField(event.target as Element | null)) return;
+		reveal();
+		recheck();
+	};
 
 	const apply = () => {
 		frame = 0;
@@ -58,7 +81,10 @@ export function initViewportHeight(): () => void {
 		lastHeight = height;
 		root.style.setProperty('--app-h', `${height}px`);
 		if (window.scrollY !== 0 || vv.offsetTop !== 0) window.scrollTo(0, 0);
-		if (shrunk) revealFocusedField(height);
+		if (shrunk) {
+			revealFocusedField(height);
+			recheck();
+		}
 	};
 	const schedule = () => {
 		if (!frame) frame = requestAnimationFrame(apply);
@@ -66,8 +92,11 @@ export function initViewportHeight(): () => void {
 
 	vv.addEventListener('resize', schedule);
 	vv.addEventListener('scroll', schedule);
+	document.addEventListener('focusin', onFocusIn);
 	apply();
 	return () => {
+		document.removeEventListener('focusin', onFocusIn);
+		timers.forEach(clearTimeout);
 		vv.removeEventListener('resize', schedule);
 		vv.removeEventListener('scroll', schedule);
 		if (frame) cancelAnimationFrame(frame);
