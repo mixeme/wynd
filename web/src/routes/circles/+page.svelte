@@ -87,9 +87,6 @@
 	async function refresh() {
 		circles = await loadStreetCircles();
 		groups = await listGroups();
-		// Новичку без кругов рассказывать об изменениях не о чем: для него
-		// новое всё. Отметка ставится молча, баннер встанет со следующей записью.
-		if (newsUnseen && circles.length === 0) hideNews();
 		if (streetSession) {
 			try {
 				payStatus = await fetchPayStatus(streetSession.origin);

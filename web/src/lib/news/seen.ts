@@ -5,7 +5,9 @@ import { NEWS } from './notes';
  * устройстве: это отметка о баннере, а не настройка учётки — приложение
  * обновляется на каждом устройстве само по себе.
  */
-const KEY = 'wynd:news-seen';
+// Ключ 0.26.0 (`wynd:news-seen`) брошен: та версия ставила отметку сама,
+// когда список кругов пришёл пустым — в том числе из-за сбоя сети.
+const KEY = 'wynd:news-read';
 
 export function latestNewsVersion(): string {
 	return NEWS[0]?.version ?? '';

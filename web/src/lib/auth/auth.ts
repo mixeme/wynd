@@ -1,5 +1,5 @@
 import { apiJson, ApiError, normalizeOrigin } from '$lib/api/client';
-import { putAdminSession, putSession, type SessionRecord } from '$lib/idb/db';
+import { getSession, putAdminSession, putSession, type SessionRecord } from '$lib/idb/db';
 import { startSync } from '$lib/sync/sync';
 import { rememberSourceUrl } from '$lib/instance/source.svelte';
 import type { PendingAuth, PendingAuthFlow } from './pending';
@@ -53,7 +53,31 @@ export function rateLimitedHint(retryAfterSec: number): string {
 	return `Слишком много запросов. Следующий код можно запросить через ${min} мин.`;
 }
 
+/**
+ * На устройстве один вход на сервер: входы хранятся по адресу сервера, и
+ * вторая почта на том же адресе молча заменила бы первую вместе с её
+ * кругами. Поэтому код для другой почты не запрашиваем — говорим, что делать.
+ */
+export class SecondAccountError extends Error {
+	constructor(readonly email: string) {
+		super('second account on the same server');
+	}
+}
+
+export function secondAccountHint(email: string): string {
+	return `На этом сервере вы уже вошли как ${email}. Две учётные записи на одном сервере на одном устройстве держать нельзя. Чтобы войти другой почтой, сначала выйдите: «Настройки» → «Серверы».`;
+}
+
+/** Отказ, если на этом сервере уже есть вход другой почтой. */
+export async function refuseSecondAccount(origin: string, email: string): Promise<void> {
+	const session = await getSession(normalizeOrigin(origin));
+	if (session && session.email.trim().toLowerCase() !== email.trim().toLowerCase()) {
+		throw new SecondAccountError(session.email);
+	}
+}
+
 export function authErrorHint(err: unknown): string {
+	if (err instanceof SecondAccountError) return secondAccountHint(err.email);
 	if (err instanceof ApiError) {
 		if (err.code === 'rate_limited' && err.retryAfterSec != null) {
 			return rateLimitedHint(err.retryAfterSec);
@@ -146,6 +170,7 @@ export async function persistSession(
 
 export async function sendAuthCode(pending: PendingAuth): Promise<PendingAuth> {
 	const { origin, email, flow, inviteToken, inviteName } = pending;
+	await refuseSecondAccount(origin, email);
 	if (flow === 'register') {
 		await requestRegister(origin, email);
 	} else if (flow === 'login') {

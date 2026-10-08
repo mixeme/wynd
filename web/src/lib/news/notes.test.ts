@@ -43,7 +43,7 @@ describe('отметка «видел»', () => {
 	it('после открытия — уже нет, до следующей записи', () => {
 		markNewsSeen();
 		expect(hasUnseenNews()).toBe(false);
-		localStorage.setItem('wynd:news-seen', '0.1');
+		localStorage.setItem('wynd:news-read', '0.1');
 		expect(hasUnseenNews()).toBe(true);
 		expect(latestNewsVersion()).toBe(NEWS[0].version);
 	});
