@@ -123,7 +123,10 @@ type issueCodeInput struct {
 	flow       Flow
 	inviteID   string
 	inviteName string
-	when       time.Time
+	// accountID — учётка, запросившая смену почты (FlowEmailChange): код
+	// ушёл на новую почту, а принадлежит ей.
+	accountID string
+	when      time.Time
 }
 
 func (s *Service) issueCode(ctx context.Context, in issueCodeInput) error {
@@ -147,10 +150,18 @@ func (s *Service) issueCode(ctx context.Context, in issueCodeInput) error {
 	`, in.email); err != nil {
 		return fmt.Errorf("purge pending codes: %w", err)
 	}
+	if in.accountID != "" {
+		// Передумал и назвал другой адрес — прежний код смены гаснет.
+		if _, err := tx.ExecContext(ctx, `
+			DELETE FROM pending_codes WHERE account_id = ? AND flow = ?
+		`, in.accountID, string(in.flow)); err != nil {
+			return fmt.Errorf("purge pending change codes: %w", err)
+		}
+	}
 	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO pending_codes (id, email, code_hash, attempts, client_ip, flow, invite_id, invite_name, expires_at, created_at)
-		VALUES (?, ?, ?, 0, ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?)
-	`, pendingID, in.email, hashCode(pendingID, code), in.clientIP, string(in.flow), in.inviteID, in.inviteName, formatTime(expires), formatTime(in.when)); err != nil {
+		INSERT INTO pending_codes (id, email, code_hash, attempts, client_ip, flow, invite_id, invite_name, account_id, expires_at, created_at)
+		VALUES (?, ?, ?, 0, ?, ?, NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), ?, ?)
+	`, pendingID, in.email, hashCode(pendingID, code), in.clientIP, string(in.flow), in.inviteID, in.inviteName, in.accountID, formatTime(expires), formatTime(in.when)); err != nil {
 		return fmt.Errorf("insert pending code: %w", err)
 	}
 	// Запрос уже посчитан в chargeRate до выдачи: там попытка засчитывается
@@ -206,10 +217,10 @@ func (s *Service) verify(ctx context.Context, in VerifyInput) (VerifyResult, err
 	err := s.db.QueryRowContext(ctx, `
 		SELECT id, flow, COALESCE(invite_id, ''), COALESCE(invite_name, ''), expires_at, code_hash
 		FROM pending_codes
-		WHERE email = ?
+		WHERE email = ? AND flow != ?
 		ORDER BY created_at DESC
 		LIMIT 1
-	`, email).Scan(&pendingID, &flow, &inviteID, &inviteName, &expiresRaw, &codeHash)
+	`, email, string(FlowEmailChange)).Scan(&pendingID, &flow, &inviteID, &inviteName, &expiresRaw, &codeHash)
 	if err == sql.ErrNoRows {
 		return VerifyResult{}, ErrNotFound
 	}

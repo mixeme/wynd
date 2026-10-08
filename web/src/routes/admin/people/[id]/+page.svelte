@@ -10,15 +10,19 @@
 	import Hint from '$ui/forms/Hint.svelte';
 	import Loading from '$ui/Loading.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
+	import Input from '$ui/forms/Input.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
+	import { ApiError } from '$lib/api/client';
+	import { INVALID_EMAIL_HINT, isValidParticipantEmail } from '$lib/auth/email';
 	import { CIRCLE_COLORS, type CircleColor } from '$lib/theme/colors';
 	import {
 		blockAccount,
 		deleteAccount,
 		fetchAccount,
 		serverCaption,
+		setAccountEmail,
 		unblockAccount,
 		type AdminAccountDetail
 	} from '$lib/admin/admin';
@@ -34,6 +38,9 @@
 	let loading = $state(true);
 	let ready = $state(false);
 	let deleting = $state(false);
+	let newEmail = $state('');
+	let changingEmail = $state(false);
+	let emailNote = $state('');
 
 	function dotColor(color: string): string {
 		if (color in CIRCLE_COLORS) return CIRCLE_COLORS[color as CircleColor].cssVar;
@@ -68,6 +75,33 @@
 		} catch (err) {
 			loginOpen = knownOpen;
 			error = authErrorHint(err);
+		}
+	}
+
+	async function changeEmail() {
+		if (!acc) return;
+		const trimmed = newEmail.trim();
+		emailNote = '';
+		if (!isValidParticipantEmail(trimmed)) {
+			emailNote = INVALID_EMAIL_HINT;
+			return;
+		}
+		if (trimmed.toLowerCase() === acc.email.toLowerCase()) {
+			emailNote = 'Это его нынешняя почта';
+			return;
+		}
+		changingEmail = true;
+		try {
+			acc.email = await setAccountEmail(acc.id, trimmed);
+			newEmail = '';
+			emailNote = 'Почта сменена';
+		} catch (err) {
+			emailNote =
+				err instanceof ApiError && err.code === 'conflict'
+					? 'Эта почта уже есть на этом сервере'
+					: authErrorHint(err);
+		} finally {
+			changingEmail = false;
 		}
 	}
 
@@ -160,7 +194,33 @@
 					</div>
 				</div>
 				<div>
-					<SectionLabel class="mt-0 mx-0 mb-10">Вход</SectionLabel>
+					<SectionLabel class="mt-0 mx-0 mb-10">Почта</SectionLabel>
+					<div class="flex-mid gap-10">
+						<Input
+							admin
+							class="grow"
+							type="email"
+							placeholder="новая почта"
+							bind:value={newEmail}
+						/>
+						<TextButton
+							variant="adminBox"
+							class="bold"
+							loading={changingEmail}
+							onclick={() => void changeEmail()}>Сменить</TextButton
+						>
+					</div>
+					{#if emailNote}
+						<div class="note mt-10">{emailNote}</div>
+					{/if}
+					<div class="fine mt-10">
+						Без кода — для того, кто потерял прежний ящик и сам сменить не может. Убедитесь, что
+						просит именно этот человек: с новой почтой он получит все его круги.
+					</div>
+					<div class="fine mt-8">
+						На оба адреса уйдёт письмо. Все его устройства попросят войти заново.
+					</div>
+					<SectionLabel class="mt-26 mx-0 mb-10">Вход</SectionLabel>
 					<SwitchRow bind:checked={loginOpen} title={loginOpen ? 'Вход открыт' : 'Вход закрыт'}>
 						Закрыть — код перестанет приходить, круги не трогаются. Открыть можно снова.
 					</SwitchRow>

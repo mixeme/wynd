@@ -38,9 +38,12 @@ const (
 type Flow string
 
 const (
-	FlowLogin    Flow = "login"
-	FlowRegister Flow = "register"
-	FlowInvite   Flow = "invite"
+	FlowLogin       Flow = "login"
+	FlowRegister    Flow = "register"
+	FlowInvite      Flow = "invite"
+	// FlowEmailChange — код на новую почту вошедшего участника. Сессии не даёт:
+	// его принимает только ConfirmEmailChange.
+	FlowEmailChange Flow = "email_change"
 )
 
 type InstanceInfo struct {

@@ -201,6 +201,16 @@ export async function unblockAccount(id: string): Promise<void> {
 	await adminJson(`/admin/accounts/${id}/unblock`, { method: 'POST' });
 }
 
+/** Без кода: все устройства человека выйдут, письмо уйдёт на оба адреса. */
+export async function setAccountEmail(id: string, email: string): Promise<string> {
+	const res = await adminJson<{ email: string }>(`/admin/accounts/${id}/email`, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ email })
+	});
+	return res.email;
+}
+
 export async function fetchInvites(): Promise<AdminInvite[]> {
 	const data = await adminJson<{ invites: AdminInvite[] }>('/admin/invites');
 	return data.invites ?? [];

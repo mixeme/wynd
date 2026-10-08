@@ -101,6 +101,22 @@ func (s *Server) handleAdminUnblockAccount(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
+// handleAdminSetAccountEmail меняет почту учётки без кода (кадр 9.11): письмо
+// уходит на оба адреса, все сессии учётки закрыты.
+func (s *Server) handleAdminSetAccountEmail(w http.ResponseWriter, r *http.Request) {
+	body, ok := bindJSON[emailBody](w, r)
+	if !ok {
+		return
+	}
+	change, err := s.Auth.AdminSetAccountEmail(r.Context(), r.PathValue("id"), body.Email)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	s.notifyEmailChanged(r, change, true)
+	writeJSON(w, http.StatusOK, map[string]string{"email": change.NewEmail})
+}
+
 func (s *Server) handleAdminListInvites(w http.ResponseWriter, r *http.Request) {
 	invites, err := s.Auth.ListServerInvites(r.Context())
 	if err != nil {

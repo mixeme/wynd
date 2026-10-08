@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.26.1
+  version: 0.27.0
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:
@@ -551,6 +551,36 @@ paths:
       responses:
         "200":
           description: OK
+
+  /auth/email:
+    post:
+      summary: Send a code to the new email of the signed-in account
+      responses:
+        "202":
+          description: Code sent to the new address; nothing changes until it is entered
+        "400":
+          description: Not an address, or the current one
+        "409":
+          description: The address already belongs to an account on this server
+        "429":
+          description: Rate limited
+
+  /auth/email/verify:
+    post:
+      summary: Change the account email with the code from the new address
+      responses:
+        "200":
+          description: New email; this session stays, the other sessions of the account are revoked
+        "400":
+          description: Wrong code
+        "404":
+          description: No code was requested
+        "409":
+          description: The address was taken meanwhile
+        "410":
+          description: Code expired
+        "429":
+          description: Attempts used up or rate limited
 
   /invites/{token}:
     get:

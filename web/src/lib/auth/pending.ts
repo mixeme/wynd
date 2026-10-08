@@ -16,6 +16,12 @@ export interface PendingAuth {
 	retryUntil?: number;
 }
 
+/** Когда ушёл код и когда можно просить следующий — общее у входа и смены почты. */
+export interface CodeTiming {
+	codeSentAt?: number;
+	retryUntil?: number;
+}
+
 const KEY = 'wynd:pending-auth';
 
 export function loadPendingAuth(): PendingAuth | undefined {
@@ -37,13 +43,13 @@ export function clearPendingAuth(): void {
 	sessionStorage.removeItem(KEY);
 }
 
-export function canResendCode(pending: PendingAuth, cooldownMs = 60_000): boolean {
+export function canResendCode(pending: CodeTiming, cooldownMs = 60_000): boolean {
 	if (pending.retryUntil && Date.now() < pending.retryUntil) return false;
 	if (!pending.codeSentAt) return true;
 	return Date.now() - pending.codeSentAt >= cooldownMs;
 }
 
-export function resendCooldownSec(pending: PendingAuth, cooldownMs = 60_000): number {
+export function resendCooldownSec(pending: CodeTiming, cooldownMs = 60_000): number {
 	if (pending.retryUntil) {
 		const left = pending.retryUntil - Date.now();
 		if (left > 0) return Math.ceil(left / 1000);
@@ -53,9 +59,9 @@ export function resendCooldownSec(pending: PendingAuth, cooldownMs = 60_000): nu
 	return left > 0 ? Math.ceil(left / 1000) : 0;
 }
 
-export function applyRateLimitToPending(
-	pending: PendingAuth,
+export function applyRateLimitToPending<T extends CodeTiming>(
+	pending: T,
 	retryAfterSec: number
-): PendingAuth {
+): T {
 	return { ...pending, retryUntil: Date.now() + retryAfterSec * 1000 };
 }

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd admin API
-  version: 0.26.1
+  version: 0.27.0
   description: Admin routes (Bearer admin session). Participant routes are in openapi-participant.yaml.
 
 servers:
@@ -152,6 +152,23 @@ paths:
       responses:
         "200":
           description: OK
+
+  /admin/accounts/{id}/email:
+    put:
+      summary: Change the account email without a code; revokes all its sessions, mails both addresses
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: New email
+        "400":
+          description: Not an address, or the current one
+        "409":
+          description: The address already belongs to another account
 
   /admin/accounts/{id}/unblock:
     post:

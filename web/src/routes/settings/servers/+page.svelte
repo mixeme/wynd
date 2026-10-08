@@ -16,6 +16,7 @@
 	import type { SessionRecord } from '$lib/idb/db';
 	import { formatSessionDay } from '$lib/format/time';
 	import { stopSync } from '$lib/sync/sync';
+	import { savePendingEmailChange } from '$lib/auth/emailChange';
 
 	interface ServerRowState {
 		session: SessionRecord;
@@ -65,6 +66,17 @@
 		await refresh();
 	}
 
+	function changeEmail(row: ServerRowState) {
+		savePendingEmailChange({
+			origin: row.session.origin,
+			serverName: row.session.name,
+			host: row.host,
+			currentEmail: row.session.email,
+			email: ''
+		});
+		void goto('/settings/servers/email');
+	}
+
 	onMount(() => {
 		void refresh();
 	});
@@ -85,6 +97,7 @@
 				subtitle={accountSubtitle(row.session, row.circles)}
 				chevron={false}
 			/>
+			<SettingsRow title="Сменить почту" onclick={() => changeEmail(row)} />
 			<SettingsRow
 				icon="out"
 				title="Выйти с этого сервера"
