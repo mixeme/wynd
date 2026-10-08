@@ -19,7 +19,8 @@ const defaultAuthorLimit = 100
 // моменту, когда название дали: новичок того же дня не видит данное до него.
 // Комментарий дополнительно должен сам попадать в отрезок: иначе вышедший с
 // доступом находил поиском комментарии, написанные после его ухода, которые
-// лента скрывает (аудит 2026-09-22).
+// лента скрывает (аудит 2026-09-22). То же — файл из комментария ('cfile',
+// 'caudio'; миграция 0030): время его строки — время комментария.
 // Параметр — account_id; запрос обязан делать LEFT JOIN posts p ON p.id = f.post_id.
 const visibleCarrierSQL = `
 	AND (f.kind = 'day' OR (p.id IS NOT NULL AND p.deleted = 0))
@@ -34,7 +35,7 @@ const visibleCarrierSQL = `
 	        ELSE
 	          p.created_at >= ms.started_at
 	          AND (ms.ended_at IS NULL OR p.created_at < ms.ended_at)
-	          AND (f.kind <> 'comment' OR (
+	          AND (f.kind NOT IN ('comment', 'cfile', 'caudio') OR (
 	            f.created_at >= ms.started_at
 	            AND (ms.ended_at IS NULL OR f.created_at < ms.ended_at)))
 	        END
@@ -173,7 +174,11 @@ func (s *Service) search(ctx context.Context, accountID, circleID, query string,
 			 WHERE pm.post_id = f.post_id AND pm.kind IN ('photo', 'video')
 			 ORDER BY pm.sort_order LIMIT 1),
 			CASE WHEN f.kind IN ('file', 'audio')
-			  THEN (SELECT pm.blob_id FROM post_media pm WHERE pm.id = f.comment_id) END
+			  THEN (SELECT pm.blob_id FROM post_media pm WHERE pm.id = f.comment_id)
+			  WHEN f.kind IN ('cfile', 'caudio')
+			  THEN (SELECT cmm.blob_id FROM comment_media cmm WHERE cmm.id = f.comment_id) END,
+			CASE WHEN f.kind IN ('cfile', 'caudio')
+			  THEN (SELECT cmm.comment_id FROM comment_media cmm WHERE cmm.id = f.comment_id) END
 		FROM content_fts f
 		LEFT JOIN posts p ON p.id = f.post_id AND f.post_id != ''
 		WHERE content_fts MATCH ?%s%s%s
@@ -197,11 +202,18 @@ func (s *Service) collectHits(ctx context.Context, rows *sql.Rows, limit int, wi
 		var commentID string
 		var author string
 		var created string
-		var thumb, mediaBlob sql.NullString
-		if err := rows.Scan(&h.PostID, &commentID, &h.CircleID, &author, &h.Kind, &created, &h.EntryDate, &h.Title, &h.Snippet, &thumb, &mediaBlob); err != nil {
+		var thumb, mediaBlob, mediaComment sql.NullString
+		if err := rows.Scan(&h.PostID, &commentID, &h.CircleID, &author, &h.Kind, &created, &h.EntryDate, &h.Title, &h.Snippet, &thumb, &mediaBlob, &mediaComment); err != nil {
 			return nil, err
 		}
-		if h.Kind == "file" || h.Kind == "audio" {
+		if h.Kind == "cfile" || h.Kind == "caudio" {
+			// Файл из комментария: наружу — обычный файл или звук, но с id
+			// комментария — находка ведёт к реплике в обсуждении.
+			h.Kind = strings.TrimPrefix(h.Kind, "c")
+			h.MediaID = commentID
+			h.MediaBlobID = mediaBlob.String
+			h.CommentID = mediaComment.String
+		} else if h.Kind == "file" || h.Kind == "audio" {
 			// В индексе вложения id строки post_media лежит в comment_id.
 			h.MediaID = commentID
 			h.MediaBlobID = mediaBlob.String

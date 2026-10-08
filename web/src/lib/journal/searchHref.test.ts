@@ -10,4 +10,16 @@ describe('searchHitHref', () => {
 		expect(searchHitHref('c', { ...base, kind: 'file', media_blob_id: 'b' })).toBe('/circles/c/posts/p?media=b');
 		expect(searchHitHref('c', { ...base, kind: 'post' })).toBe('/circles/c/posts/p?found=1');
 	});
+
+	it('ведёт файл из комментария к реплике', () => {
+		expect(
+			searchHitHref('c', {
+				kind: 'file',
+				post_id: 'p',
+				entry_date: '2026-10-01',
+				comment_id: 'cm',
+				media_blob_id: 'b'
+			})
+		).toBe('/circles/c/posts/p?comment=cm');
+	});
 });

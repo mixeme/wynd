@@ -76,8 +76,8 @@ export function searchHref(path: string, state: SearchChipState): string {
 
 /** Найденное слово в кавычках-ёлочках: «как найдено» — без разметки, текстом. */
 /**
- * Куда ведёт находка: день — в день, комментарий — к нему в обсуждение,
- * файл или звук — к его строке, запись — в запись. Экран записи встаёт на
+ * Куда ведёт находка: день — в день, комментарий и файл из комментария — к
+ * реплике в обсуждение, файл или звук записи — к его строке, запись — в запись. Экран записи встаёт на
  * найденное и на миг подсвечивает, как отклик из «Откликов».
  */
 export function searchHitHref(
@@ -87,7 +87,10 @@ export function searchHitHref(
 	const base = `/circles/${circleId}`;
 	if (hit.kind === 'day') return `${base}/days/${hit.entry_date}`;
 	const post = `${base}/posts/${hit.post_id}`;
-	if (hit.kind === 'comment' && hit.comment_id) return `${post}?comment=${hit.comment_id}`;
+	// Файл из комментария приходит с его id — ведём к реплике.
+	if (hit.comment_id && (hit.kind === 'comment' || hit.kind === 'file' || hit.kind === 'audio')) {
+		return `${post}?comment=${hit.comment_id}`;
+	}
 	if ((hit.kind === 'file' || hit.kind === 'audio') && hit.media_blob_id) {
 		return `${post}?media=${hit.media_blob_id}`;
 	}
