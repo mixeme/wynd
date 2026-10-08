@@ -262,6 +262,11 @@
 			{/each}
 		</MentionPicker>
 	{/if}
+	<!-- Над всей полосой, не над строкой ввода: иначе «Готовим фото…» ложится
+	     на миниатюры уже выбранных снимков. -->
+	{#if status}
+		<div class="comp-status">{status}</div>
+	{/if}
 	{#if pending.length}
 		<div class="cstrip">
 			{#each pending as item, i (item.key)}
@@ -286,9 +291,6 @@
 	<div class="comp" class:with-strip={pending.length > 0}>
 	<!-- Нажатие мимо строки в рамке ставит курсор в поле. С клавиатуры
 	     поле достаётся Tab напрямую, отдельная роль рамке не нужна. -->
-	{#if status}
-		<div class="comp-status">{status}</div>
-	{/if}
 	{#if menuOpen}
 		<div class="rec-menu">
 			{#if onvoice}

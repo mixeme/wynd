@@ -7,6 +7,7 @@
 	import Input from '$ui/forms/Input.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
+	import { page } from '$app/state';
 	import {
 		decodeQrFromFile,
 		foreignWyndLinkOrigin,
@@ -20,6 +21,8 @@
 	let link = $state('');
 	let error = $state('');
 	let photoPicker: FilePicker | undefined = $state();
+	// С «Войти» (1.5) сюда приходят ещё без учётки — назад туда же.
+	const fromLogin = $derived(page.url.searchParams.get('from') === 'login');
 
 	function open(text: string): boolean {
 		const target = inviteTarget(text);
@@ -51,7 +54,7 @@
 	}
 </script>
 
-<FormLayout shell app title="Приглашение" onback={() => goUp('/circles')}>
+<FormLayout shell app title="Приглашение" onback={() => goUp(fromLogin ? '/' : '/circles')}>
 	<Hint>Вставьте ссылку, которую вам прислали, или отсканируйте QR-код.</Hint>
 	<Label>Ссылка</Label>
 	<Input
@@ -64,7 +67,7 @@
 		placeholder="https://…/invite/…"
 	/>
 	<Button disabled={!link.trim()} onclick={() => open(link)}>Открыть</Button>
-	<Button variant="ghost" onclick={() => goto('/invite/scan')}>Сканировать QR-код</Button>
+	<Button variant="ghost" onclick={() => goto(fromLogin ? '/invite/scan?from=login' : '/invite/scan')}>Сканировать QR-код</Button>
 	<Button variant="ghost" onclick={() => photoPicker?.open()}>Фото с QR-кодом</Button>
 	{#if error}
 		<Hint>{error}</Hint>

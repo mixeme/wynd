@@ -12,6 +12,9 @@
 	let error = $state('');
 	let notice = $state('');
 
+	const PARENTS: Record<string, string> = { join: '/join', login: '/invite?from=login' };
+	const parent = $derived(PARENTS[$page.url.searchParams.get('from') ?? ''] ?? '/invite');
+
 	function onread(text: string): boolean {
 		const target = inviteTarget(text);
 		if ('path' in target) {
@@ -24,7 +27,7 @@
 	}
 </script>
 
-<FormLayout shell app title="Сканер" onback={() => goUp($page.url.searchParams.get('from') === 'join' ? '/join' : '/invite')}>
+<FormLayout shell app title="Сканер" onback={() => goUp(parent)}>
 	<QrScanner {onread} onerror={(message) => (error = message)} />
 	{#if error}
 		<Hint>{error}</Hint>

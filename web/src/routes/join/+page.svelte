@@ -21,6 +21,7 @@
 	import { displayHost, resolveServerOrigin } from '$lib/auth/origin';
 	import { INVALID_EMAIL_HINT, isValidParticipantEmail } from '$lib/auth/email';
 	import { loadPendingAuth, savePendingAuth } from '$lib/auth/pending';
+	import { loadSessions } from '$lib/session/session.svelte';
 	import { appVersion } from '$lib/appinfo';
 	import { sourceUrl } from '$lib/instance/source.svelte';
 
@@ -34,11 +35,17 @@
 	let linkPicker: FilePicker | undefined = $state();
 	let linkText = $state('');
 
-	// Из «Серверов» («Добавить сервер») назад — туда же: «/» у вошедшего
-	// перекидывает в список кругов, и путь обратно терялся.
-	const backHref = $derived(
-		page.url.searchParams.get('from') === 'servers' ? '/settings/servers' : '/'
-	);
+	// Два экрана на одном адресе. С «Войти» (1.5) — учётка на этом сервере:
+	// приложение открыто с него, адрес не спрашиваем. Из «Серверов»
+	// («Добавить сервер») — другой сервер: адрес, почта и поле для ссылки.
+	// Вошедший сюда попадает только добавлять — так режим переживает возврат
+	// со сканера и с экрана кода, где `from` уже нет.
+	let adding = $state(page.url.searchParams.get('from') === 'servers');
+	let ready = $state(false);
+
+	// Из «Серверов» назад — туда же: «/» у вошедшего перекидывает в список
+	// кругов, и путь обратно терялся.
+	const backHref = $derived(adding ? '/settings/servers' : '/');
 
 	const blocked = $derived(instance ? instance.registration_mode !== 'open' : false);
 
@@ -63,11 +70,13 @@
 		}
 	}
 
-	onMount(() => {
+	onMount(async () => {
+		if (!adding) adding = (await loadSessions()).length > 0;
+		ready = true;
 		const pending = loadPendingAuth();
 		if (pending?.flow === 'register') {
 			email = pending.email;
-			if (pending.origin) {
+			if (adding && pending.origin) {
 				address = displayHost(pending.origin);
 				void checkServer();
 				return;
@@ -178,7 +187,8 @@
 	const blockedSubtitle = $derived('только по приглашению');
 </script>
 
-<FormLayout shell app title="Без приглашения" onback={() => goUp(backHref)}>
+{#if adding}
+<FormLayout shell app title="Добавить сервер" onback={() => goUp(backHref)}>
 	{#if !blocked}
 		<Hint>
 			Почта живёт на одном сервере. Общей на весь Wynd не бывает: серверы друг о друге не
@@ -253,5 +263,41 @@
 		<Hint class="mt-12">{error}</Hint>
 	{/if}
 </FormLayout>
+{:else}
+<FormLayout shell app title="Без приглашения" onback={() => goUp(backHref)}>
+	{#if !ready}
+		<!-- режим ещё не известен: пусто, а не форма, которая сменится -->
+	{:else if checking}
+		<Hint>Проверяем сервер…</Hint>
+	{:else if instance && blocked}
+		<ServerRow name={instance.name} subtitle={blockedSubtitle} variant="warn" card />
+		<Hint class="mt-14">
+			Сервер новых не принимает — нужна ссылка-приглашение. Если учётка здесь уже есть,
+			вернитесь и войдите почтой.
+		</Hint>
+		<Button variant="ghost" onclick={() => goto('/invite?from=login')}
+			>У меня есть приглашение</Button
+		>
+	{:else}
+		{#if instance}
+			<ServerRow name={instance.name} subtitle={openSubtitle} variant="ok" card />
+		{/if}
+		<Label class="mt-16">Почта</Label>
+		<Input active type="email" autocomplete="email" bind:value={email} />
+		<Hint>
+			Пришлём код. Пароля нет: почта понадобится, только чтобы вернуться на другом
+			устройстве.
+		</Hint>
+		<Button {loading} disabled={!instance} onclick={onSubmit}>Получить код</Button>
+		<Hint>
+			Сервер хранит данные незашифрованными. Присоединение к этому серверу означает, что вы
+			доверяете его администратору.
+		</Hint>
+	{/if}
+	{#if error}
+		<Hint class="mt-12">{error}</Hint>
+	{/if}
+</FormLayout>
+{/if}
 
 <FilePicker bind:this={linkPicker} accept="image/*" onfiles={([file]) => void onLinkImageSelected(file)} />

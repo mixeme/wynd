@@ -137,8 +137,11 @@
 	<Hint>Пришлём код для входа. Пароля нет.</Hint>
 	<Button {loading} disabled={!instance} onclick={onSubmit}>Получить код</Button>
 	<Hint class="mt-30" centered>
-		<a class="under" href="/join">Регистрация без приглашения</a><br />
-		Если прислали ссылку — откройте её.
+		<!-- Без приглашения — только на открытом сервере: иначе дверь вела в тупик. -->
+		{#if instance?.registration_mode === 'open'}
+			<a class="under" href="/join">Регистрация без приглашения</a><br />
+		{/if}
+		<a class="under" href="/invite?from=login">У меня есть приглашение</a>
 	</Hint>
 	{#if error}
 		<Hint class="mt-12" centered>{error}</Hint>
