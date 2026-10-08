@@ -239,9 +239,10 @@
 	{:else}
 		<DayHeader
 			coverUrl={coverUrl || undefined}
+			empty={!coverBlobId}
 			title={editingTitle ? undefined : dayTitle}
 			subtitle={editingTitle ? undefined : titleSubtitle}
-			oncover={canEditDay ? openDayAlbum : undefined}
+			oncover={canEditDay && coverBlobId ? openDayAlbum : undefined}
 			ontitle={editingTitle || !canEditDay ? undefined : startEditTitle}
 		/>
 

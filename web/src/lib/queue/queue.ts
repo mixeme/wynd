@@ -106,6 +106,45 @@ export function subscribeQueue(listener: QueueListener): () => void {
 	return () => listeners.delete(listener);
 }
 
+/**
+ * Ход отправки записи: доля ушедших байт, 0..1. Живёт в памяти вкладки и идёт
+ * мимо `notify`: тот перечитывает очередь из IndexedDB вместе с файлами, а
+ * на каждый мегабайт ролика это слишком дорого.
+ */
+type QueueProgressListener = (id: number, fraction: number | undefined) => void;
+
+const progressListeners = new Set<QueueProgressListener>();
+const sendProgress = new Map<number, number>();
+
+function setSendProgress(id: number, fraction: number | undefined): void {
+	if (fraction === undefined) {
+		if (!sendProgress.delete(id)) return;
+	} else {
+		sendProgress.set(id, fraction);
+	}
+	for (const listener of progressListeners) {
+		listener(id, fraction);
+	}
+}
+
+/** Подписка на ход отправки; уже идущие отправки приходят сразу. */
+export function subscribeQueueProgress(listener: QueueProgressListener): () => void {
+	progressListeners.add(listener);
+	for (const [id, fraction] of sendProgress) listener(id, fraction);
+	return () => progressListeners.delete(listener);
+}
+
+/**
+ * Подпись записи в очереди: «в очереди», пока ждёт, и «отправляется», пока
+ * уходит. Процент есть, когда файлы больше одной порции: мелкое уходит разом,
+ * и «0%» у него только обманывал бы.
+ */
+export function queuedTimeLabel(state: QueueRecord['state'], fraction?: number): string {
+	if (state !== 'uploading') return 'в очереди';
+	if (fraction === undefined) return 'отправляется';
+	return `отправляется · ${Math.min(100, Math.floor(fraction * 100))}%`;
+}
+
 async function getUploadOffset(origin: string, sessionId: string): Promise<number> {
 	const res = await apiFetch(origin, `/uploads/${sessionId}`, { method: 'HEAD' });
 	const offset = res.headers.get('Upload-Offset');
@@ -115,13 +154,15 @@ async function getUploadOffset(origin: string, sessionId: string): Promise<numbe
 async function uploadFile(
 	origin: string,
 	file: QueueFile,
-	progress?: QueueUploadProgress
+	progress?: QueueUploadProgress,
+	onSent?: (bytes: number) => void
 ): Promise<string> {
 	let sessionId = progress?.session_id;
 	let offset = 0;
 
 	if (sessionId) {
 		offset = await getUploadOffset(origin, sessionId);
+		onSent?.(offset);
 	} else {
 		const session = await apiJson<{ id: string }>(origin, '/uploads', {
 			method: 'POST',
@@ -144,6 +185,7 @@ async function uploadFile(
 		});
 		const body = (await res.json()) as { received_bytes: number };
 		offset = body.received_bytes;
+		onSent?.(offset);
 	}
 
 	const complete = await apiJson<{ id: string }>(origin, `/uploads/${sessionId}/complete`, {
@@ -165,11 +207,18 @@ async function uploadItemFiles(
 	const { origin, files } = item;
 	const blobIds: string[] = [];
 	let uploads = [...(item.uploads ?? [])];
+	const total = files.reduce((sum, file) => sum + file.size, 0);
+	let done = 0;
+	const report = (sent: number) => {
+		if (total > CHUNK_SIZE) setSendProgress(item.id, Math.min(1, (done + sent) / total));
+	};
 
 	for (let i = 0; i < files.length; i++) {
 		let progress = uploads.find((u) => u.file_index === i);
 		if (progress?.blob_id) {
 			blobIds.push(progress.blob_id);
+			done += files[i].size;
+			report(0);
 			continue;
 		}
 		if (!progress) {
@@ -188,7 +237,8 @@ async function uploadItemFiles(
 			uploads = [...uploads.filter((u) => u.file_index !== i), progress];
 			await putQueueItem(item.id, { ...item, state: 'uploading', uploads });
 		}
-		const blobId = await uploadFile(origin, files[i], progress);
+		const blobId = await uploadFile(origin, files[i], progress, report);
+		done += files[i].size;
 		progress = { ...progress, blob_id: blobId };
 		uploads = [...uploads.filter((u) => u.file_index !== i), progress];
 		await putQueueItem(item.id, { ...item, state: 'uploading', uploads });
@@ -332,9 +382,11 @@ async function processItem(item: QueueRecordWithId): Promise<boolean> {
 		await submitQueueItem(item);
 		await deleteQueueItem(item.id);
 		await invalidateCircleSnapshots(item.origin, item.circle_id);
+		setSendProgress(item.id, undefined);
 		notify();
 		return true;
 	} catch (err) {
+		setSendProgress(item.id, undefined);
 		const stored = await getQueueItem(item.id);
 		const latest = stored ? { ...stored, id: item.id } : item;
 		const attempts = (latest.attempts ?? 0) + 1;

@@ -45,6 +45,50 @@ describe('высота окна по видимой области', () => {
 		expect(document.documentElement.style.getPropertyValue('--app-h')).toBe('');
 	});
 
+	// Поле имени на экране входа в круг оставалось под клавиатурой: окно
+	// сжалось, а экран внутри него никто не прокрутил.
+	it('поле под клавиатурой доводится до видимого, видимое не трогается', () => {
+		vi.stubGlobal('requestAnimationFrame', (fn: FrameRequestCallback) => {
+			fn(0);
+			return 1;
+		});
+		vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+		const vv = fakeViewport({ height: 800 });
+		const stop = initViewportHeight();
+
+		const input = document.createElement('input');
+		document.body.append(input);
+		input.focus();
+		const reveal = vi.fn();
+		input.scrollIntoView = reveal;
+		const place = (top: number) =>
+			vi.spyOn(input, 'getBoundingClientRect').mockReturnValue({ top, bottom: top + 44 } as DOMRect);
+
+		place(600);
+		vv.height = 480;
+		vv.fire('resize');
+		expect(reveal).toHaveBeenCalledWith({ block: 'center' });
+
+		reveal.mockClear();
+		vv.height = 800;
+		vv.fire('resize');
+		place(200);
+		vv.height = 480;
+		vv.fire('resize');
+		expect(reveal).not.toHaveBeenCalled();
+
+		// Панель браузера спряталась и вернулась — не клавиатура.
+		place(790);
+		vv.height = 800;
+		vv.fire('resize');
+		vv.height = 744;
+		vv.fire('resize');
+		expect(reveal).not.toHaveBeenCalled();
+
+		input.remove();
+		stop();
+	});
+
 	it('увеличение щипком — не клавиатура, высоту не трогаем', () => {
 		fakeViewport({ height: 400, scale: 2 });
 		const stop = initViewportHeight();

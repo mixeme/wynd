@@ -91,8 +91,10 @@
 		enqueueReaction,
 		enqueueReactionRemove,
 		listQueuedPosts,
+		queuedTimeLabel,
 		removeQueueItem,
 		subscribeQueue,
+		subscribeQueueProgress,
 		type QueuedPostView
 	} from '$lib/queue/queue';
 	import { isTransportError } from '$lib/queue/transport';
@@ -324,6 +326,8 @@
 	// Плитка записи в очереди показывает сам снимок (или кадр ролика): он ещё
 	// на устройстве, скачивать нечего. Адреса живут, пока запись в очереди.
 	let queuedPreviewUrls = $state<Record<number, string>>({});
+	// Доля ушедших байт у записи, которая отправляется сейчас.
+	let sendProgress = $state<Record<number, number>>({});
 
 	function refreshQueued() {
 		void listQueuedPosts(circle.origin, circle.circleId).then((items) => {
@@ -365,6 +369,12 @@
 			});
 		refreshQueued();
 		const unsubQueue = subscribeQueue(refreshQueued);
+		const unsubProgress = subscribeQueueProgress((id, fraction) => {
+			const next = { ...sendProgress };
+			if (fraction === undefined) delete next[id];
+			else next[id] = fraction;
+			sendProgress = next;
+		});
 		const unsubSync = registerRefetch({
 			origin: circle.origin,
 			circleId: circle.circleId,
@@ -373,6 +383,7 @@
 		});
 		return () => {
 			unsubQueue();
+			unsubProgress();
 			unsubSync();
 		};
 	});
@@ -846,7 +857,7 @@
 								color={circle.colorHex}
 								src={circle.avatarUrl}
 								name={circle.identityName}
-								time="в очереди"
+								time={queuedTimeLabel(item.state, sendProgress[item.id])}
 								icon="clock"
 							/>
 						{/snippet}

@@ -69,7 +69,9 @@
 		enqueueReaction,
 		enqueueReactionRemove,
 		listQueuedComments,
+		queuedTimeLabel,
 		subscribeQueue,
+		subscribeQueueProgress,
 		type QueuedCommentView
 	} from '$lib/queue/queue';
 	import { isTransportError } from '$lib/queue/transport';
@@ -120,6 +122,8 @@
 
 	// Снимки реплик в очереди ещё на устройстве: адреса живут, пока они в ней.
 	let queuedUrls = $state<Record<string, string>>({});
+	// Доля ушедших байт у реплики, которая отправляется сейчас.
+	let sendProgress = $state<Record<number, number>>({});
 
 	function refreshQueued() {
 		void listQueuedComments(circle.origin, circle.circleId, postId).then((items) => {
@@ -335,6 +339,12 @@
 		void load();
 		refreshQueued();
 		const unsubQueue = subscribeQueue(refreshQueued);
+		const unsubProgress = subscribeQueueProgress((id, fraction) => {
+			const next = { ...sendProgress };
+			if (fraction === undefined) delete next[id];
+			else next[id] = fraction;
+			sendProgress = next;
+		});
 		const unsubSync = registerRefetch({
 			origin: circle.origin,
 			circleId: circle.circleId,
@@ -343,6 +353,7 @@
 		});
 		return () => {
 			unsubQueue();
+			unsubProgress();
 			unsubSync();
 		};
 	});
@@ -792,7 +803,7 @@
 				>
 					{#snippet time()}
 						<span class="flex-mid gap-5">
-							<Icon name="clock" size="xs" />в очереди
+							<Icon name="clock" size="xs" />{queuedTimeLabel(item.state, sendProgress[item.id])}
 						</span>
 					{/snippet}
 					{#snippet children()}

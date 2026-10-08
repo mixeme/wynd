@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiJson = vi.fn();
+const apiFetch = vi.fn();
 
 vi.mock('$lib/api/client', () => ({
 	ApiError: class ApiError extends Error {
@@ -12,7 +13,7 @@ vi.mock('$lib/api/client', () => ({
 			this.code = code;
 		}
 	},
-	apiFetch: vi.fn(),
+	apiFetch: (...args: unknown[]) => apiFetch(...args),
 	apiJson: (...args: unknown[]) => apiJson(...args)
 }));
 
@@ -25,6 +26,7 @@ describe('queue', () => {
 		vi.resetModules();
 		apiJson.mockReset();
 		apiJson.mockResolvedValue({});
+		apiFetch.mockReset();
 		vi.stubGlobal('navigator', { ...navigator, onLine: false });
 	});
 
@@ -47,6 +49,18 @@ describe('queue', () => {
 				state: 'pending'
 			}
 		]);
+	});
+
+	// Запись в очереди подписана тем, что с ней происходит: ждёт или уходит.
+	// Процент — только когда его есть чем измерить.
+	it('labels a queued item by its send state', async () => {
+		const { queuedTimeLabel } = await import('./queue');
+		expect(queuedTimeLabel('pending')).toBe('в очереди');
+		expect(queuedTimeLabel('failed', 0.5)).toBe('в очереди');
+		expect(queuedTimeLabel('uploading')).toBe('отправляется');
+		expect(queuedTimeLabel('uploading', 0)).toBe('отправляется · 0%');
+		expect(queuedTimeLabel('uploading', 0.428)).toBe('отправляется · 42%');
+		expect(queuedTimeLabel('uploading', 1)).toBe('отправляется · 100%');
 	});
 
 	// Лента рисует запись в очереди тем, что в ней лежит, а не пустой плиткой.
@@ -149,5 +163,55 @@ describe('queue', () => {
 		const create = apiJson.mock.calls.find((c) => c[1] === '/uploads');
 		expect(create).toBeTruthy();
 		expect(JSON.parse(String(create![2].body)).filename).toBe('Голосовое.m4a');
+	});
+
+	// Ролик уходит порциями по мегабайту: подписчик видит долю после каждой,
+	// а когда запись ушла — что следить больше не за чем.
+	it('сообщает ход отправки по порциям', async () => {
+		vi.stubGlobal('navigator', { ...navigator, onLine: true });
+		apiJson.mockResolvedValue({ id: 'session1' });
+		apiFetch.mockImplementation(
+			async (_origin: string, _path: string, init: { method: string; headers?: Record<string, string>; body?: ArrayBuffer }) => {
+				if (init.method === 'HEAD') return { headers: new Headers({ 'Upload-Offset': '0' }) };
+				const received = Number(init.headers!['Upload-Offset']) + init.body!.byteLength;
+				return { json: async () => ({ received_bytes: received }) };
+			}
+		);
+		const { enqueuePost, drainQueue, subscribeQueueProgress, CHUNK_SIZE } = await import('./queue');
+		const seen: (number | undefined)[] = [];
+		const unsub = subscribeQueueProgress((_id, fraction) => seen.push(fraction));
+		const size = CHUNK_SIZE * 2 + CHUNK_SIZE / 2;
+		await enqueuePost(
+			'https://progress.test',
+			'c-progress',
+			{ body: '', entry_date: '2026-10-08', media_meta: [{ kind: 'video' }] },
+			[{ name: 'v.mp4', type: 'video/mp4', size, data: new ArrayBuffer(size) }]
+		);
+		await drainQueue();
+		unsub();
+		expect(seen).toEqual([0, 0.4, 0.8, 1, undefined]);
+	});
+
+	// Мелкое уходит одной порцией: доли нет, подпись — просто «отправляется».
+	it('не считает проценты у файла в одну порцию', async () => {
+		vi.stubGlobal('navigator', { ...navigator, onLine: true });
+		apiJson.mockResolvedValue({ id: 'session1' });
+		apiFetch.mockImplementation(async (_o: string, _p: string, init: { method: string; body?: ArrayBuffer }) =>
+			init.method === 'HEAD'
+				? { headers: new Headers() }
+				: { json: async () => ({ received_bytes: init.body!.byteLength }) }
+		);
+		const { enqueuePost, drainQueue, subscribeQueueProgress } = await import('./queue');
+		const seen: (number | undefined)[] = [];
+		const unsub = subscribeQueueProgress((_id, fraction) => seen.push(fraction));
+		await enqueuePost(
+			'https://small.test',
+			'c-small',
+			{ body: '', entry_date: '2026-10-08', media_meta: [{ kind: 'attachment', voice: true }] },
+			[{ name: 'voice.m4a', type: 'audio/mp4', size: 4, data: new ArrayBuffer(4) }]
+		);
+		await drainQueue();
+		unsub();
+		expect(seen).toEqual([]);
 	});
 });

@@ -758,6 +758,12 @@
 				</PhoneFrame>
 			</div>
 			<div class="card">
+				<h3>DayHeader · день без фотографий</h3>
+				<PhoneFrame color="terracotta" height="200px">
+					<DayHeader empty title="6 октября" subtitle="6 октября" />
+				</PhoneFrame>
+			</div>
+			<div class="card">
 				<h3>ArchiveBanner · #e6-15</h3>
 				<PhoneFrame color="terracotta" height="200px">
 					<ArchiveBanner title="Архив готов">
