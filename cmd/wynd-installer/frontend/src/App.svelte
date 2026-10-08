@@ -9,12 +9,16 @@
 		type ConnectResult,
 		type DomainCheck,
 		type Finding,
-		type InspectResult
+		type InspectResult,
+		type Plan,
+		type Progress,
+		type StepState
 	} from './api';
 
 	// Окна установщика (docs/visual/installer.html): 1 — подключение, 1а —
-	// отпечаток, 2 — осмотр, 2а — помеха. План, установка и итог — следующие срезы.
-	type Screen = 'connect' | 'fingerprint' | 'inspect';
+	// отпечаток, 2 — осмотр, 2а — помеха, 3 — план, 4 — установка, 4а — шаг не
+	// прошёл, 5 — готово. Пульт сервера (6) — следующий срез.
+	type Screen = 'connect' | 'fingerprint' | 'inspect' | 'plan' | 'install' | 'done';
 	const STEPS = ['Сервер', 'Осмотр', 'План', 'Установка', 'Готово'];
 
 	let screen = $state<Screen>('connect');
@@ -36,8 +40,31 @@
 
 	const findings = $derived<Finding[]>(inspection?.report.findings ?? []);
 	const blocks = $derived(findings.filter((f) => f.level === 'block'));
-	const stepIndex = $derived(screen === 'inspect' ? 1 : 0);
-	const stepBad = $derived(screen === 'inspect' && (blocks.length > 0 || inspection?.ok === false));
+	let plan = $state<Plan | undefined>();
+	let planning = $state(false);
+	let progress = $state<Progress | undefined>();
+	let showLog = $state(false);
+	let askRollback = $state(false);
+	let dropData = $state(false);
+	let rolling = $state(false);
+	let rollbackNote = $state('');
+	let rollbackError = $state('');
+	let copied = $state(false);
+
+	const SCREEN_STEP: Record<Screen, number> = {
+		connect: 0,
+		fingerprint: 0,
+		inspect: 1,
+		plan: 2,
+		install: 3,
+		done: 4
+	};
+	const stepIndex = $derived(SCREEN_STEP[screen]);
+	const stepBad = $derived(
+		(screen === 'inspect' && (blocks.length > 0 || inspection?.ok === false)) ||
+			(screen === 'plan' && plan?.ok === false) ||
+			(screen === 'install' && Boolean(progress?.failure))
+	);
 	const domainOk = $derived(domainCheck?.level === 'ok');
 
 	// Есть сохранённый пароль — поле можно оставить пустым.
@@ -110,6 +137,9 @@
 	}
 
 	async function toConnect() {
+		stopPoll();
+		plan = undefined;
+		progress = undefined;
 		await backend().Disconnect();
 		inspection = undefined;
 		domainCheck = undefined;
@@ -120,6 +150,78 @@
 	function mark(level: Finding['level']): string {
 		return level === 'ok' ? '✓' : '!';
 	}
+
+	async function toPlan() {
+		if (planning || !domainOk) return;
+		planning = true;
+		rollbackNote = '';
+		try {
+			plan = await backend().MakePlan(domain);
+			progress = undefined;
+			screen = 'plan';
+		} finally {
+			planning = false;
+		}
+	}
+
+	// Установка идёт в Go сама; окно только спрашивает, как дела.
+	let poll: ReturnType<typeof setInterval> | undefined;
+	function stopPoll() {
+		clearInterval(poll);
+		poll = undefined;
+	}
+	function applyProgress(next: Progress) {
+		progress = next;
+		if (next.running) return;
+		stopPoll();
+		if (next.done) screen = 'done';
+	}
+	async function install() {
+		askRollback = false;
+		rollbackError = '';
+		screen = 'install';
+		applyProgress(await backend().StartInstall());
+		if (progress?.running && !poll) {
+			poll = setInterval(() => void backend().InstallProgress().then(applyProgress), 500);
+		}
+	}
+
+	async function rollback() {
+		if (rolling) return;
+		rolling = true;
+		rollbackError = '';
+		try {
+			const res = await backend().Rollback(!dropData);
+			if (res.ok) {
+				askRollback = false;
+				progress = undefined;
+				rollbackNote = dropData
+					? 'Установка откачена: Wynd и его данные с сервера убраны, остался только Docker.'
+					: 'Установка откачена: Wynd с сервера убран, его данные оставлены, Docker остался.';
+				screen = 'plan';
+			} else {
+				rollbackError = [res.message, res.advice].filter(Boolean).join(' ');
+			}
+		} finally {
+			rolling = false;
+		}
+	}
+
+	async function copyLink() {
+		if (!progress?.link) return;
+		copied = await backend().CopyText(progress.link);
+		setTimeout(() => (copied = false), 2000);
+	}
+
+	function stepMark(step: StepState): string {
+		if (step.status === 'done') return '✓';
+		if (step.status === 'failed') return '!';
+		return step.status === 'running' ? '…' : '○';
+	}
+
+	const logText = $derived(
+		(progress?.log ?? []).map((e) => ('$ ' + e.command + '\n' + e.output).trimEnd()).join('\n\n')
+	);
 </script>
 
 <div class="ins">
@@ -231,6 +333,134 @@
 				</Button>
 				<Button variant="ghost" disabled={busy} onclick={() => void toConnect()}>Отмена</Button>
 			</div>
+		{:else if screen === 'plan' && plan && !plan.ok}
+			<h2>Пока ставить нельзя</h2>
+			<div class="ins-box" role="alert">
+				<div class="ins-strong">{plan.message}</div>
+				{#if plan.advice}
+					<div class="ins-dim">{plan.advice}</div>
+				{/if}
+			</div>
+			<div class="ins-foot">
+				<Button variant="ghost" onclick={() => (screen = 'inspect')}>Назад</Button>
+			</div>
+		{:else if screen === 'plan' && plan}
+			<h2>Что сделаем</h2>
+			<p class="ins-sub">До кнопки «Установить» на сервере ничего не меняется.</p>
+			{#if rollbackNote}
+				<div class="ins-box">{rollbackNote}</div>
+			{/if}
+			<div class="ins-sec">Поставим</div>
+			{#each plan.install ?? [] as item (item)}
+				<div class="ins-row"><span class="ins-mark ok">+</span>{item}</div>
+			{/each}
+			{#if plan.change?.length}
+				<div class="ins-sec">Изменим — с резервной копией</div>
+				{#each plan.change as item (item)}
+					<div class="ins-row"><span class="ins-mark note">~</span>{item}</div>
+				{/each}
+			{/if}
+			{#if plan.keep?.length}
+				<div class="ins-sec">Не тронем</div>
+				{#each plan.keep as item (item)}
+					<div class="ins-row"><span class="ins-mark">·</span>{item}</div>
+				{/each}
+			{/if}
+			<div class="ins-foot">
+				<Button variant="colored" onclick={() => void install()}>Установить</Button>
+				<Button variant="ghost" onclick={() => (screen = 'inspect')}>Назад</Button>
+				<span class="ins-dim">{plan.duration}</span>
+			</div>
+		{:else if screen === 'install' && progress?.failure}
+			<h2>{progress.failure.message}</h2>
+			<p class="ins-sub">{progress.failure.advice}</p>
+			{#if progress.steps?.some((s) => s.status === 'done')}
+				<div class="ins-box">
+					Сделанное раньше осталось на месте — повтор начнётся с этого шага.
+				</div>
+			{/if}
+			{#if askRollback}
+				<div class="ins-box bad">
+					<div class="ins-strong">Убрать Wynd с сервера?</div>
+					<div class="ins-dim">
+						Уберём Wynd и его папку /opt/wynd. Docker останется: сам по себе он ничего не меняет.
+					</div>
+					<label class="ins-check">
+						<input type="checkbox" bind:checked={dropData} />
+						Удалить и данные Wynd — записи, фотографии, учётные записи
+					</label>
+					{#if rollbackError}
+						<div class="ins-dim" role="alert">{rollbackError}</div>
+					{/if}
+					<div class="ins-foot">
+						<Button variant="colored" loading={rolling} onclick={() => void rollback()}>
+							Да, откатить
+						</Button>
+						<Button variant="ghost" disabled={rolling} onclick={() => (askRollback = false)}>
+							Отмена
+						</Button>
+					</div>
+				</div>
+			{:else}
+				<div class="ins-foot">
+					<Button variant="colored" onclick={() => void install()}>Повторить</Button>
+					<Button variant="ghost" onclick={() => (askRollback = true)}>Откатить установку</Button>
+					<TextButton class="link under" onclick={() => (showLog = !showLog)}>подробности</TextButton>
+				</div>
+			{/if}
+			{#if showLog}
+				<pre class="ins-raw">{logText}</pre>
+			{/if}
+		{:else if screen === 'install'}
+			<h2>Ставим</h2>
+			<div class="ins-rows">
+				{#each progress?.steps ?? [] as step (step.id)}
+					<div class="ins-row" class:ins-dim={step.status === 'pending'}>
+						<span class="ins-mark {step.status === 'done' ? 'ok' : ''}">{stepMark(step)}</span>
+						<div>
+							{step.title}{#if step.note}&nbsp;<span class="ins-dim">— {step.note}</span>{/if}
+						</div>
+					</div>
+				{/each}
+			</div>
+			<div class="ins-foot">
+				<TextButton class="link under" onclick={() => (showLog = !showLog)}>
+					показать, что выполняется
+				</TextButton>
+				<span class="ins-dim">Окно можно свернуть</span>
+			</div>
+			{#if showLog}
+				<pre class="ins-raw">{logText}</pre>
+			{/if}
+		{:else if screen === 'done' && progress}
+			<h2>Wynd работает</h2>
+			<p class="ins-sub">Проверка прошла: сайт открывается, сертификат действует.</p>
+			{#if progress.link}
+				<Label>Ссылка первого запуска — для вас, одна</Label>
+				<div class="ins-box ins-mono">{progress.link}</div>
+				<p class="ins-sub mt">
+					По ней вы станете администратором сервера и создадите первый круг. Никому её не
+					передавайте.
+				</p>
+				<div class="ins-foot">
+					<Button variant="colored" onclick={() => void backend().OpenLink(progress?.link ?? '')}>
+						Открыть в браузере
+					</Button>
+					<Button variant="ghost" onclick={() => void copyLink()}>
+						{copied ? 'Скопировано' : 'Скопировать'}
+					</Button>
+				</div>
+			{:else}
+				<div class="ins-box">
+					Этот сервер уже настроен: администратор у него есть, ссылки первого запуска нет.
+					Откройте сайт и войдите как обычно.
+				</div>
+				<div class="ins-foot">
+					<Button variant="colored" onclick={() => void backend().OpenLink(progress?.site ?? '')}>
+						Открыть {plan?.domain}
+					</Button>
+				</div>
+			{/if}
 		{:else if !inspection}
 			<h2>Что на сервере</h2>
 			<p class="ins-sub">Только смотрим — ничего не меняем.</p>
@@ -320,11 +550,17 @@
 				</div>
 			{/if}
 			<div class="ins-foot">
-				<Button variant="off" onclick={() => {}}>Дальше — план</Button>
+				<Button
+					variant={domainOk ? 'colored' : 'off'}
+					loading={planning}
+					onclick={() => void toPlan()}
+				>
+					Дальше — план
+				</Button>
 				<Button variant="ghost" onclick={() => void toConnect()}>Другой сервер</Button>
-				<span class="ins-dim">
-					{domainOk ? 'План и установка — в следующей версии установщика' : 'Сначала укажите адрес сайта'}
-				</span>
+				{#if !domainOk}
+					<span class="ins-dim">Сначала укажите адрес сайта</span>
+				{/if}
 				<TextButton class="link under" onclick={() => (showRaw = !showRaw)}>
 					подробнее, что проверили
 				</TextButton>

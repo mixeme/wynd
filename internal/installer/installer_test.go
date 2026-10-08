@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/pem"
 	"errors"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -24,6 +25,9 @@ type testServer struct {
 	host     string
 	port     int
 	commands chan string
+	// handler, если задан, отвечает на команду сам: вывод и код выхода.
+	// stdin — то, что пришло на вход команды (файл, образ).
+	handler func(command string, stdin []byte) (string, int)
 }
 
 func startServer(t *testing.T, password string, authorized ssh.PublicKey, output string) *testServer {
@@ -96,8 +100,15 @@ func (s *testServer) serve(conn net.Conn, cfg *ssh.ServerConfig, output string) 
 				}
 				var payload struct{ Command string }
 				_ = ssh.Unmarshal(req.Payload, &payload)
-				s.commands <- payload.Command
 				_ = req.Reply(true, nil)
+				if s.handler != nil {
+					stdin, _ := io.ReadAll(ch)
+					out, code := s.handler(payload.Command, stdin)
+					_, _ = ch.Write([]byte(out))
+					_, _ = ch.SendRequest("exit-status", false, ssh.Marshal(struct{ Status uint32 }{uint32(code)}))
+					return
+				}
+				s.commands <- payload.Command
 				_, _ = ch.Write([]byte(output))
 				_, _ = ch.SendRequest("exit-status", false, ssh.Marshal(struct{ Status uint32 }{0}))
 				return
@@ -384,7 +395,7 @@ func TestParseInspectionFindings(t *testing.T) {
 		{"чужая программа", "ports", "LISTEN 0 4096 0.0.0.0:443 0.0.0.0:* users:((\"docker-proxy\",pid=9,fd=4))\n", "ports", LevelBlock, "Порт 443 на сервере уже занят: docker-proxy"},
 		{"два веб-сервера", "ports",
 			"LISTEN 0 511 0.0.0.0:80 0.0.0.0:* users:((\"nginx\",pid=1,fd=6))\nLISTEN 0 511 0.0.0.0:443 0.0.0.0:* users:((\"caddy\",pid=3,fd=6))\n",
-			"ports", LevelBlock, "Порты 80 и 443 на сервере уже занят: caddy, nginx"},
+			"ports", LevelBlock, "Порты 80 и 443 на сервере уже заняты: caddy, nginx"},
 		{"wynd уже стоит", "wynd", "/opt/wynd/compose.yaml\n", "wynd", LevelNote, "Wynd на этом сервере уже стоит"},
 	}
 	for _, c := range cases {

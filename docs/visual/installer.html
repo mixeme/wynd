@@ -143,7 +143,7 @@ h2{margin:0 0 4px;font-size:17px}
 <div class="row"><span class="ic">~</span><div>Настройку nginx: добавим сайт family.example.ru <span class="dim">(старые сайты не трогаем)</span></div></div>
 <div class="lab">Не тронем</div>
 <div class="row"><span class="ic dim">·</span><div class="dim">Два сайта nginx, которые уже есть</div></div>
-<div class="foot"><span class="btn">Установить</span><span class="btn gh">Назад</span><span class="dim" style="margin-left:auto">займёт 5–10 минут</span></div>
+<div class="foot"><span class="btn">Установить</span><span class="btn gh">Назад</span><span class="dim" style="margin-left:auto">обычно 5–10 минут, на медленном сервере — до получаса</span></div>
 </div></div></div>
 <p class="note">Перед первым изменением человек видит всё: что появится, что изменится (и что копия будет), что найдено чужого. Ничего не делаем без «Установить».</p>
 </div>
@@ -195,13 +195,13 @@ h2{margin:0 0 4px;font-size:17px}
 </div>
 <div class="body">
 <h2>Wynd работает</h2>
-<div class="sub">Проверка прошла: сайт открывается, сертификат действует, часы верные, письма уходят.</div>
+<div class="sub">Проверка прошла: сайт открывается, сертификат действует.</div>
 <div class="lab">Ссылка первого запуска — для вас, одна</div>
-<div class="fld mono" style="font-size:12px">https://family.example.ru/setup/7f3a…c91d</div>
-<div class="sub" style="margin-top:8px">По ней вы станете администратором сервера и создадите первый круг. Ссылка действует сутки.</div>
+<div class="fld mono" style="font-size:12px">https://family.example.ru/admin/bootstrap?token=7f3a…c91d</div>
+<div class="sub" style="margin-top:8px">По ней вы станете администратором сервера и создадите первый круг. Никому её не передавайте.</div>
 <div class="foot"><span class="btn">Открыть в браузере</span><span class="btn gh">Скопировать</span></div>
 </div></div></div>
-<p class="note">Итог — прогон той же проверки, что в панели администратора, и ссылка первого запуска. Дальше всё в самом Wynd.</p>
+<p class="note">Итог — сайт открыт снаружи с действующим сертификатом, и ссылка первого запуска: её сервер пишет в свой журнал при старте, срока у неё нет — действует, пока администратор не создан. Полная проверка (часы, письма) — в панели администратора: до первого запуска писем настроить негде. Сервер, где администратор уже есть, вместо ссылки получает «Этот сервер уже настроен». Дальше всё в самом Wynd.</p>
 </div>
 
 <div>

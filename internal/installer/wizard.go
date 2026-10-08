@@ -59,6 +59,11 @@ type Wizard struct {
 	Dialer   Dialer
 	Resolver Resolver
 	Vault    Vault
+	// Version — версия Wynd, которую ставим; Image — откуда сервер её возьмёт.
+	Version string
+	Image   ImageSource
+	// Probe — как открыть сайт с этого компьютера; пусто — обычный запрос.
+	Probe func(ctx context.Context, url string) (string, error)
 
 	mu      sync.Mutex
 	input   ConnectInput
@@ -66,6 +71,12 @@ type Wizard struct {
 	pending *UnknownHostError
 	session *Session
 	report  *Report
+
+	plan     *Plan
+	progress Progress
+	cancel   context.CancelFunc
+	// finished закрывается, когда прогон установки кончился.
+	finished chan struct{}
 }
 
 // HasSavedPassword — лежит ли в связке пароль для этого сервера: окно тогда
@@ -217,4 +228,152 @@ func (w *Wizard) closeLocked() {
 		_ = w.session.Close()
 	}
 	w.session, w.pending, w.report = nil, nil, nil
+	if w.cancel != nil {
+		w.cancel()
+		w.cancel = nil
+	}
+	w.plan = nil
+	w.progress = Progress{}
+}
+
+// MakePlan составляет план установки на осмотренный сервер (окно 3). Адрес
+// сайта проверяется заново: между осмотром и планом запись могла измениться.
+func (w *Wizard) MakePlan(ctx context.Context, domain string) Plan {
+	check := w.CheckDomain(ctx, domain)
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.session == nil || w.report == nil {
+		return Plan{Message: "Сначала подключитесь к серверу и дождитесь осмотра"}
+	}
+	if check.Level != LevelOK {
+		return Plan{Domain: check.Domain, Message: check.Text, Advice: check.Advice}
+	}
+	plan := BuildPlan(*w.report, check.Domain, w.Version)
+	w.plan = nil
+	if plan.OK {
+		w.plan = &plan
+		w.progress = Progress{Steps: StepTitles(w.specLocked(plan))}
+	}
+	return plan
+}
+
+func (w *Wizard) specLocked(plan Plan) Spec {
+	return Spec{Domain: plan.Domain, Version: plan.Version, Image: w.Image, FixClock: plan.FixClock, Probe: w.Probe}
+}
+
+// StartInstall запускает установку по плану и сразу возвращает её состояние;
+// дальше окно спрашивает InstallProgress. Повторный вызов после отказа —
+// «Повторить»: сделанное пропускается. Оборванное подключение поднимается заново.
+func (w *Wizard) StartInstall(ctx context.Context) Progress {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.plan == nil {
+		return Progress{Failure: &Failure{Message: "Сначала составьте план установки"}}
+	}
+	if w.progress.Running {
+		return w.progress
+	}
+	if !w.aliveLocked(ctx) {
+		if res := w.dialLocked(ctx); res.Status != StatusConnected {
+			w.progress.Failure = &Failure{Message: res.Message, Advice: res.Advice}
+			if res.Status == StatusUnknownHost {
+				w.progress.Failure = &Failure{
+					Message: "Сервер назвал незнакомый отпечаток",
+					Advice:  "Подключитесь к серверу заново с первого окна.",
+				}
+			}
+			return w.progress
+		}
+	}
+	spec, sess := w.specLocked(*w.plan), w.session
+	runCtx, cancel := context.WithCancel(context.Background())
+	w.cancel = cancel
+	finished := make(chan struct{})
+	w.finished = finished
+	w.progress = Progress{Steps: StepTitles(spec), Running: true}
+	go func() {
+		defer close(finished)
+		defer cancel()
+		last := Install(runCtx, sess, spec, func(p Progress) {
+			w.mu.Lock()
+			if w.finished == finished {
+				w.progress = p
+			}
+			w.mu.Unlock()
+		})
+		w.mu.Lock()
+		if w.finished == finished {
+			w.progress = last
+		}
+		w.mu.Unlock()
+	}()
+	return w.progress
+}
+
+// aliveLocked — жива ли связь с сервером.
+func (w *Wizard) aliveLocked(ctx context.Context) bool {
+	if w.session == nil {
+		return false
+	}
+	_, err := w.session.Exec(ctx, "true", nil, dialTimeout)
+	if err != nil {
+		_ = w.session.Close()
+		w.session = nil
+	}
+	return err == nil
+}
+
+// InstallProgress — как идёт установка.
+func (w *Wizard) InstallProgress() Progress {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.progress
+}
+
+// WaitInstall ждёт конца прогона установки (для тестов и пробы без окна).
+func (w *Wizard) WaitInstall() Progress {
+	w.mu.Lock()
+	finished := w.finished
+	w.mu.Unlock()
+	if finished != nil {
+		<-finished
+	}
+	return w.InstallProgress()
+}
+
+// RollbackResult — чем кончился откат.
+type RollbackResult struct {
+	OK      bool       `json:"ok"`
+	Message string     `json:"message,omitempty"`
+	Advice  string     `json:"advice,omitempty"`
+	Log     []LogEntry `json:"log"`
+}
+
+// Rollback убирает поставленное этой установкой. keepData — оставить на
+// сервере данные Wynd (записи, фотографии): нужны, если ставить заново.
+func (w *Wizard) Rollback(ctx context.Context, keepData bool) RollbackResult {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.plan == nil {
+		return RollbackResult{Message: "Откатывать нечего: установка не начиналась"}
+	}
+	if w.progress.Running {
+		return RollbackResult{Message: "Установка ещё идёт", Advice: "Дождитесь, пока текущий шаг закончится."}
+	}
+	if !w.aliveLocked(ctx) {
+		if res := w.dialLocked(ctx); res.Status != StatusConnected {
+			return RollbackResult{Message: "Связь с сервером оборвалась", Advice: "Подключитесь заново и повторите откат."}
+		}
+	}
+	spec := w.specLocked(*w.plan)
+	log, err := Rollback(ctx, w.session, spec, keepData)
+	if err != nil {
+		return RollbackResult{
+			Log:     log,
+			Message: "Откатить не получилось",
+			Advice:  "Нажмите «Откатить установку» ещё раз. Что осталось на сервере — видно в «подробностях».",
+		}
+	}
+	w.progress = Progress{Steps: StepTitles(spec)}
+	return RollbackResult{OK: true, Log: log}
 }

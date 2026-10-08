@@ -8,11 +8,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -49,6 +51,9 @@ var (
 	ErrUnreachable = errors.New("installer: server unreachable")
 	// ErrNoKeys — в ~/.ssh нет ключа, которым можно войти.
 	ErrNoKeys = errors.New("installer: no usable keys")
+	// ErrTimeout — команда на сервере не уложилась в срок. Связь при этом
+	// жива, и сама команда на сервере может ещё идти.
+	ErrTimeout = errors.New("installer: command timed out")
 	// ErrInvalid — адрес или пользователь не заполнены.
 	ErrInvalid = errors.New("installer: invalid access")
 )
@@ -286,11 +291,15 @@ func (s *Session) RemoteIP() string {
 
 // limitedBuffer копит вывод до потолка, остальное молча отбрасывает.
 type limitedBuffer struct {
+	// Exec пишет сюда и вывод, и ошибки — из двух горутин.
+	mu  sync.Mutex
 	buf bytes.Buffer
 	max int
 }
 
 func (b *limitedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	if room := b.max - b.buf.Len(); room > 0 {
 		if len(p) > room {
 			b.buf.Write(p[:room])
@@ -325,5 +334,62 @@ func (s *Session) Run(ctx context.Context, command string) (string, error) {
 	case <-runCtx.Done():
 		_ = sess.Close()
 		return "", fmt.Errorf("%w: %v", ErrUnreachable, runCtx.Err())
+	}
+}
+
+// ExecResult — чем кончилась команда установки: общий вывод (stdout и stderr
+// вперемешку, как в терминале) и код выхода.
+type ExecResult struct {
+	Output string
+	Code   int
+}
+
+// shQuote — строка одним словом для sh.
+func shQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+// Exec выполняет команду, меняющую сервер: вывод с ошибками, код выхода, свой
+// срок (установка пакетов идёт минуты) и, если надо, поток на вход — так на
+// сервер уезжают файлы и образ. Не root — через sudo: осмотр уже убедился,
+// что оно есть и пароль не спросит.
+func (s *Session) Exec(ctx context.Context, command string, stdin io.Reader, timeout time.Duration) (ExecResult, error) {
+	sess, err := s.client.NewSession()
+	if err != nil {
+		return ExecResult{}, fmt.Errorf("%w: %v", ErrUnreachable, err)
+	}
+	defer func() { _ = sess.Close() }()
+	if s.User != "root" {
+		command = "sudo -n sh -c " + shQuote(command)
+	}
+	out := &limitedBuffer{max: maxCommandOutput}
+	sess.Stdout = out
+	sess.Stderr = out
+	sess.Stdin = stdin
+	runCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- sess.Run(command) }()
+	select {
+	case err := <-done:
+		res := ExecResult{Output: out.buf.String()}
+		var exit *ssh.ExitError
+		switch {
+		case err == nil:
+		case errors.As(err, &exit):
+			res.Code = exit.ExitStatus()
+		default:
+			return res, fmt.Errorf("%w: %v", ErrUnreachable, err)
+		}
+		return res, nil
+	case <-runCtx.Done():
+		_ = sess.Close()
+		out.mu.Lock()
+		partial := out.buf.String()
+		out.mu.Unlock()
+		if ctx.Err() == nil {
+			return ExecResult{Output: partial}, ErrTimeout
+		}
+		return ExecResult{Output: partial}, fmt.Errorf("%w: %v", ErrUnreachable, ctx.Err())
 	}
 }

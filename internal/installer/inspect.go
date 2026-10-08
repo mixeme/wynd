@@ -55,8 +55,13 @@ func (r Report) Blocked() bool {
 }
 
 const (
-	// Меньше — не ставим: образ, база и первые фотографии не поместятся.
-	minFreeBytes = 5 << 30
+	// Меньше — не ставим: Docker, Wynd, база и первые фотографии не
+	// поместятся. Docker с пакетами занимает около гигабайта; где он уже
+	// стоит (или установка оборвалась на полпути), нужно меньше. Порог в
+	// 5 ГБ отказывал дешёвому VPS с диском 7 ГБ — и ему же после первой,
+	// оборванной попытки (проба 2026-10-09).
+	minFreeBytes           = 3 << 30
+	minFreeBytesWithDocker = 2 << 30
 	// Расхождение часов, с которого коды входа и сертификаты начинают
 	// отказывать. Синхронизацию установщик настроит сам.
 	maxClockSkew = 60 * time.Second
@@ -78,6 +83,7 @@ echo '## compose'; docker compose version 2>/dev/null
 echo '## ports'; ss -H -ltnp 2>/dev/null
 echo '## addr'; ip -4 -o addr show scope global 2>/dev/null
 echo '## wynd'; ls -d /opt/wynd/compose.yaml /etc/wynd 2>/dev/null
+echo '## ownproxy'; docker ps --filter label=com.docker.compose.project.working_dir=/opt/wynd --filter publish=443 --format '{{.Names}}' 2>/dev/null
 `
 
 // Inspect осматривает сервер: одна команда, только чтение.
@@ -127,10 +133,14 @@ func ParseInspection(out, user string, now time.Time) Report {
 	if f, ok := rootFinding(user, first(sec["uid"]), first(sec["sudo"]) == "yes"); ok {
 		add(f)
 	}
-	add(diskFinding(first(sec["disk"])))
+	need := uint64(minFreeBytes)
+	if first(sec["docker"]) != "" {
+		need = minFreeBytesWithDocker
+	}
+	add(diskFinding(first(sec["disk"]), need))
 	add(clockFinding(first(sec["time"]), first(sec["ntp"]), now))
 	add(dockerFinding(first(sec["docker"]), first(sec["compose"])))
-	proxy, f := portsFinding(sec["ports"])
+	proxy, f := portsFinding(sec["ports"], len(sec["ownproxy"]) > 0)
 	rep.Proxy = proxy
 	add(f)
 	if len(sec["wynd"]) > 0 {
@@ -202,7 +212,7 @@ func rootFinding(user, uid string, sudo bool) (Finding, bool) {
 	}, true
 }
 
-func diskFinding(line string) Finding {
+func diskFinding(line string, need uint64) Finding {
 	// df -Pk: файловая система, всего, занято, свободно (КБ), процент, точка.
 	fields := strings.Fields(line)
 	if len(fields) < 4 {
@@ -222,11 +232,11 @@ func diskFinding(line string) Finding {
 	}
 	free := kb * 1024
 	text := "Свободно " + formatGB(free)
-	if free < minFreeBytes {
+	if free < need {
 		return Finding{
 			ID: "disk", Level: LevelBlock,
 			Text:   text + " — этого мало",
-			Advice: fmt.Sprintf("Нужно хотя бы %s: сам Wynd и первые фотографии. Освободите место или увеличьте диск в панели хостинга.", formatGB(minFreeBytes)),
+			Advice: fmt.Sprintf("Нужно хотя бы %s: сам Wynd и первые фотографии. Освободите место или увеличьте диск в панели хостинга.", formatGB(need)),
 		}
 	}
 	return Finding{ID: "disk", Level: LevelOK, Text: text}
@@ -303,7 +313,7 @@ var knownProxies = map[string]string{
 }
 
 // portsFinding читает `ss -H -ltnp`: кто слушает 80 и 443.
-func portsFinding(lines []string) (string, Finding) {
+func portsFinding(lines []string, ownProxy bool) (string, Finding) {
 	type holder struct{ ports map[int]bool }
 	holders := map[string]*holder{}
 	for _, line := range lines {
@@ -339,7 +349,11 @@ func portsFinding(lines []string) (string, Finding) {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	// docker-proxy на 80/443 — чей-то контейнер; какой именно, осмотр не знает.
+	// docker-proxy на 80/443 — чей-то контейнер. Если это Caddy из нашей же
+	// папки /opt/wynd — установка уже была, порты держит сам Wynd.
+	if len(names) == 1 && names[0] == "docker-proxy" && ownProxy {
+		return "", Finding{ID: "ports", Level: LevelOK, Text: "Порты 80 и 443 занимает сам Wynd"}
+	}
 	if len(names) == 1 {
 		if proxy, ok := knownProxies[names[0]]; ok {
 			return proxy, Finding{
@@ -357,9 +371,16 @@ func portsFinding(lines []string) (string, Finding) {
 	}
 	return "", Finding{
 		ID: "ports", Level: LevelBlock,
-		Text:   fmt.Sprintf("%s на сервере уже занят: %s", capitalize(portList(all)), strings.Join(names, ", ")),
+		Text:   fmt.Sprintf("%s на сервере уже %s: %s", capitalize(portList(all)), busyWord(all), strings.Join(names, ", ")),
 		Advice: "Через эти порты сайты открываются в браузере. Wynd умеет встать за nginx, Apache и Caddy, а эту программу не знает — мы её не трогаем. Освободите порты или возьмите для Wynd отдельный сервер.",
 	}
+}
+
+func busyWord(ports map[int]bool) string {
+	if ports[80] && ports[443] {
+		return "заняты"
+	}
+	return "занят"
 }
 
 func portList(ports map[int]bool) string {

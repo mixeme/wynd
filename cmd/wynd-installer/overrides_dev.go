@@ -14,6 +14,7 @@ import (
 //
 //	WYND_INSTALLER_SSH_PORT — порт вместо 22
 //	WYND_INSTALLER_SSH_DIR  — каталог вместо ~/.ssh (known_hosts и ключи)
+//	WYND_INSTALLER_IMAGE    — файл образа Wynd (docker save), который уедет на сервер
 func devPort() int {
 	port, _ := strconv.Atoi(os.Getenv("WYND_INSTALLER_SSH_PORT"))
 	return port
@@ -21,4 +22,11 @@ func devPort() int {
 
 func devDialer() installer.Dialer {
 	return installer.Dialer{SSHDir: os.Getenv("WYND_INSTALLER_SSH_DIR")}
+}
+
+func imageSource() installer.ImageSource {
+	if path := os.Getenv("WYND_INSTALLER_IMAGE"); path != "" {
+		return installer.TarImage{Path: path}
+	}
+	return nil
 }
