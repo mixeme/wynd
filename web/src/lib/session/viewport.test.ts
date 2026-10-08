@@ -153,6 +153,33 @@ describe('высота окна по видимой области', () => {
 		vi.useRealTimers();
 	});
 
+	// iPhone, приложение с экрана «Домой»: окно короче экрана, под строкой
+	// ввода пустая полоса — высота названа рано, события visualViewport нет.
+	it('высота перечитывается по событию окна и после запуска', () => {
+		vi.useFakeTimers();
+		vi.stubGlobal('requestAnimationFrame', (fn: FrameRequestCallback) => {
+			fn(0);
+			return 0;
+		});
+		vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+		const vv = fakeViewport({ height: 726 });
+		const stop = initViewportHeight();
+		const appH = () => document.documentElement.style.getPropertyValue('--app-h');
+		expect(appH()).toBe('726px');
+
+		// Окно выросло, visualViewport промолчал: хватает события окна…
+		vv.height = 848;
+		window.dispatchEvent(new Event('resize'));
+		expect(appH()).toBe('848px');
+		// …а без событий — проверки после запуска.
+		vv.height = 880;
+		vi.advanceTimersByTime(3000);
+		expect(appH()).toBe('880px');
+
+		stop();
+		vi.useRealTimers();
+	});
+
 	it('увеличение щипком — не клавиатура, высоту не трогаем', () => {
 		fakeViewport({ height: 400, scale: 2 });
 		const stop = initViewportHeight();

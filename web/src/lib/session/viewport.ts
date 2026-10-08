@@ -21,6 +21,12 @@
 // клавиатурой выезжает панель автозаполнения, браузер двигает экран сам, и
 // порядок событий у браузеров разный. Поэтому проверяем ещё и при входе в
 // поле, и несколько раз после — пока клавиатура встаёт.
+//
+// Одного события visualViewport мало (iPhone, приложение с экрана «Домой»,
+// iOS 18.5, 0.28.2): окно приложения оказалось на 120 пунктов короче экрана,
+// под строкой ввода — пустая полоса. Причина не установлена; высоту
+// перечитываем ещё и по событиям окна и несколько раз после запуска — на
+// случай, если Safari назвал её до того, как окно встало, и промолчал.
 
 /** Клавиатура заметно ниже любой панели браузера: меньшее сжатие — не она. */
 const KEYBOARD_MIN_PX = 120;
@@ -34,6 +40,8 @@ const KEYBOARD_MIN_PX = 120;
 const KEYBOARD_BAR_PX = 80;
 /** Когда перепроверить поле после сжатия окна или входа в поле. */
 const RECHECK_MS = [150, 400, 900];
+/** Когда перечитать высоту после запуска: событие об исправлении может не прийти. */
+const STARTUP_RECHECK_MS = [300, 1000, 3000];
 
 function isTextField(el: Element | null): el is HTMLElement {
 	if (!(el instanceof HTMLElement)) return false;
@@ -94,7 +102,8 @@ export function initViewportHeight(): () => void {
 		const rect = el?.getBoundingClientRect();
 		debug.textContent =
 			`vv ${Math.round(vv.height)} top ${Math.round(vv.offsetTop)} scale ${vv.scale.toFixed(3)}` +
-			` · inner ${window.innerHeight} · doc ${root.clientHeight} · scrollY ${Math.round(window.scrollY)}
+			` · inner ${window.innerHeight} · doc ${root.clientHeight} · screen ${screen.height}` +
+			` · app ${matchMedia('(display-mode: standalone)').matches ? 1 : 0} · scrollY ${Math.round(window.scrollY)}
 ` +
 			`full ${fullHeight} last ${lastHeight} app-h ${root.style.getPropertyValue('--app-h') || '—'}` +
 			` · kb ${fullHeight - lastHeight >= KEYBOARD_MIN_PX ? 'open' : 'no'}
@@ -144,12 +153,20 @@ export function initViewportHeight(): () => void {
 		if (!frame) frame = requestAnimationFrame(apply);
 	};
 
+	const reread = () => schedule();
+	const WINDOW_EVENTS = ['resize', 'orientationchange', 'pageshow'];
 	vv.addEventListener('resize', schedule);
 	vv.addEventListener('scroll', schedule);
+	WINDOW_EVENTS.forEach((type) => window.addEventListener(type, reread));
+	document.addEventListener('visibilitychange', reread);
 	document.addEventListener('focusin', onFocusIn);
+	const startup = STARTUP_RECHECK_MS.map((ms) => setTimeout(reread, ms));
 	apply();
 	return () => {
 		document.removeEventListener('focusin', onFocusIn);
+		document.removeEventListener('visibilitychange', reread);
+		WINDOW_EVENTS.forEach((type) => window.removeEventListener(type, reread));
+		startup.forEach(clearTimeout);
 		timers.forEach(clearTimeout);
 		clearInterval(debugTimer);
 		debug?.remove();
