@@ -1,4 +1,4 @@
-import { ApiError, apiFetch, apiJson } from '$lib/api/client';
+import { ApiError, apiFetch, apiJson, normalizeOrigin } from '$lib/api/client';
 import { invalidateCircleSnapshots } from '$lib/api/snapshots';
 import {
 	addQueueItem,
@@ -471,6 +471,23 @@ export async function drainQueue(): Promise<void> {
 	});
 	draining = promise;
 	return promise;
+}
+
+/**
+ * Сервер снова отвечает: его ожидающие записи уходят сразу, не дожидаясь
+ * паузы после прежних неудач — пауза берегла молчавший сервер (C25).
+ */
+export async function drainQueueFor(origin: string): Promise<void> {
+	const key = normalizeOrigin(origin);
+	let woke = false;
+	for (const item of await listQueueItems()) {
+		if (normalizeOrigin(item.origin) !== key) continue;
+		if (item.state !== 'pending' || !(item.attempts ?? 0)) continue;
+		await putQueueItem(item.id, { ...item, attempts: 0 });
+		woke = true;
+	}
+	if (woke) notify();
+	return drainQueue();
 }
 
 export function initQueueDrain(): () => void {

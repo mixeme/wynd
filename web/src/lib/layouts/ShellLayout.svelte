@@ -1,5 +1,7 @@
 ﻿<script lang="ts">
 	import AppBar from '$ui/chrome/AppBar.svelte';
+	import ConnectionStrip from '$ui/chrome/ConnectionStrip.svelte';
+	import { connectionNotice } from '$lib/session/connection.svelte';
 	import Fab from '$ui/overlays/Fab.svelte';
 	import PhoneFrame from '$ui/chrome/PhoneFrame.svelte';
 	import StatusBar from '$ui/chrome/StatusBar.svelte';
@@ -40,6 +42,7 @@
 	{/if}
 	<AppBar {onsearch} {searchDisabled} {onsettings} />
 	{#if app}
+		<ConnectionStrip notice={connectionNotice()} />
 		<div class="shell-body">
 			{@render children()}
 		</div>

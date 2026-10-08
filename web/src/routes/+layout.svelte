@@ -2,6 +2,7 @@
 	import '$lib/styles/tokens.css';
 	import '$lib/styles/ui.css';
 	import { initQueueDrain } from '$lib/queue/queue';
+	import { initConnection } from '$lib/session/connection.svelte';
 	import { initPush } from '$lib/push/push';
 	import { initSession, initTheme, isDark } from '$lib/session/session.svelte';
 	import { initSyncResume, startSyncForAllSessions } from '$lib/sync/sync';
@@ -48,6 +49,7 @@
 		const stopQueue = initQueueDrain();
 		const stopViewport = initViewportHeight();
 		const stopSyncResume = initSyncResume();
+		const stopConnection = initConnection();
 		const isLocal =
 			location.hostname === '127.0.0.1' || location.hostname === 'localhost';
 		// Новая версия не перезагружает открытый экран: она встаёт при
@@ -60,6 +62,7 @@
 		return () => {
 			stopTheme();
 			stopSyncResume();
+			stopConnection();
 			stopQueue();
 			stopViewport();
 		};

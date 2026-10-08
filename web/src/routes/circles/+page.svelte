@@ -31,6 +31,7 @@
 		type PressMark
 	} from '$lib/gestures/longpress';
 	import { displayHost } from '$lib/auth/origin';
+	import { isServerDown } from '$lib/session/connection.svelte';
 	import {
 		deleteGroup,
 		deletePin,
@@ -114,6 +115,11 @@
 			});
 		return () => unsubs.forEach((u) => u());
 	});
+
+	// Молчит один сервер из нескольких — общей полосы нет, сказано у его кругов (7.9).
+	function silentHost(circle: StreetCircle): string | undefined {
+		return isServerDown(circle.origin) ? displayHost(circle.origin) : undefined;
+	}
 
 	const circleMap = $derived(new Map(circles.map((c) => [circleKey(c), c])));
 	const groupedKeys = $derived(new Set(groups.flatMap((g) => g.circleIds)));
@@ -542,6 +548,7 @@
 					initial={circle.initial}
 					name={circle.name}
 					preview={circle.preview}
+					silent={silentHost(circle)}
 					time={circle.time}
 					badge={circle.unread || undefined}
 					dot={circle.responses}
@@ -610,6 +617,7 @@
 						initial={circle.initial}
 						name={circle.name}
 						preview={circle.preview}
+						silent={silentHost(circle)}
 						time={circle.time}
 						badge={circle.unread || undefined}
 					dot={circle.responses}
@@ -671,6 +679,7 @@
 					initial={circle.initial}
 					name={circle.name}
 					preview={circle.preview}
+					silent={silentHost(circle)}
 					time={circle.time}
 					badge={circle.unread || undefined}
 					dot={circle.responses}

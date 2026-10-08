@@ -6,7 +6,13 @@ import {
 	type SnapshotKind
 } from '$lib/api/snapshots';
 import { getCursor, getSession, listSessions, putCursor } from '$lib/idb/db';
-import { drainQueue } from '$lib/queue/queue';
+import { drainQueueFor } from '$lib/queue/queue';
+import { isTransportError } from '$lib/queue/transport';
+import {
+	forgetServer,
+	reportServerSilent,
+	reportServerUp
+} from '$lib/session/connection.svelte';
 
 export interface SyncEvent {
 	seq: number;
@@ -221,6 +227,13 @@ async function runSyncLoop(origin: string, signal: AbortSignal): Promise<void> {
 					await dropParticipantSession(origin);
 					return;
 				}
+				// Ответ с отказом (нет оплаты и т. п.) — сервер жив; молчит он,
+				// когда не ответил вовсе или ответил пятисотой (C25).
+				if (isTransportError(err) || (err instanceof ApiError && err.status >= 500)) {
+					reportServerSilent(origin);
+				} else {
+					reportServerUp(origin);
+				}
 				await pause(retryDelayMs(attempt++));
 				continue;
 			}
@@ -232,7 +245,8 @@ async function runSyncLoop(origin: string, signal: AbortSignal): Promise<void> {
 
 			// Поток открыт — счётчик неудач сброшен.
 			attempt = 0;
-			void drainQueue();
+			void drainQueueFor(origin);
+			reportServerUp(origin);
 
 			try {
 				await readSSE(res.body, turn.signal, (data) => handleSyncFrame(origin, data));
@@ -240,6 +254,8 @@ async function runSyncLoop(origin: string, signal: AbortSignal): Promise<void> {
 				if (signal.aborted) return;
 				if (!kicked) attempt++;
 			}
+			// Поток закрылся или оборвался; оживёт до срока — полосы не будет.
+			if (!signal.aborted) reportServerSilent(origin);
 
 			await pause(retryDelayMs(attempt));
 		} finally {
@@ -265,6 +281,7 @@ export function startSync(origin: string): void {
 
 export function stopSync(origin: string): void {
 	const key = normalizeOrigin(origin);
+	forgetServer(origin);
 	streams.get(key)?.abort();
 	streams.delete(key);
 }

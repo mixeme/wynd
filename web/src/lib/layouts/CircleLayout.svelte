@@ -19,6 +19,8 @@
 		swipeStart
 	} from '$lib/gestures/tabSwipe';
 	import CommentBar from '$ui/overlays/CommentBar.svelte';
+	import ConnectionStrip from '$ui/chrome/ConnectionStrip.svelte';
+	import { connectionNotice } from '$lib/session/connection.svelte';
 	import PhoneFrame from '$ui/chrome/PhoneFrame.svelte';
 	import StatusBar from '$ui/chrome/StatusBar.svelte';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
@@ -196,6 +198,9 @@
 		{previewTab}
 		responsesUnread={circleCtx?.responsesUnread ?? 0}
 	/>
+	{#if app}
+		<ConnectionStrip notice={connectionNotice(circleCtx?.origin)} />
+	{/if}
 	<div
 		class="circle-body"
 		class:tab-swipe={swipeOn && active !== 'Карта'}

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Icon from '$ui/Icon.svelte';
+
 	let {
 		initial,
 		name,
@@ -6,6 +8,7 @@
 		time,
 		badge,
 		dot = false,
+		silent,
 		color,
 		card = false,
 		actionLabel,
@@ -29,6 +32,8 @@
 		badge?: number | string;
 		/** Новые отклики без новых записей (2.1): точка, а не число. */
 		dot?: boolean;
+		/** Сервер круга молчит (7.9): вместо последней строки — какой, круг приглушён. */
+		silent?: string;
 		color?: string;
 		card?: boolean;
 		actionLabel?: string;
@@ -58,7 +63,11 @@
 	<div class="sq">{initial}</div>
 	<div class="m">
 		<div class="n">{name}</div>
-		<div class="p">{preview}</div>
+		{#if silent}
+			<div class="p with-ic"><Icon name="clock" size="xs" />{silent} не отвечает</div>
+		{:else}
+			<div class="p">{preview}</div>
+		{/if}
 	</div>
 	<div class="rt">
 		<span>{time}</span>
@@ -95,7 +104,7 @@
 
 {#if card}
 	<div class="circle-row-card {className}">
-		{@render row('r')}
+		{@render row(silent ? 'r silent' : 'r')}
 		{#if showAction}
 			<button type="button" class="circle-row-action" onclick={() => onaction?.()}>
 				{actionLabel}
@@ -108,5 +117,5 @@
 		{/if}
 	</div>
 {:else}
-	{@render row(`r ${className}`)}
+	{@render row(`r ${silent ? 'silent ' : ''}${className}`)}
 {/if}
