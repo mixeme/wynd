@@ -20,8 +20,12 @@ import (
 )
 
 const (
-	dialTimeout    = 15 * time.Second
-	commandTimeout = 30 * time.Second
+	// Срок на TCP-соединение: неверный адрес и выключенный сервер видны сразу.
+	dialTimeout = 15 * time.Second
+	// Срок на рукопожатие и вход, отдельный: только что заказанный VPS отдаёт
+	// приветствие через десять секунд и проверяет пароль ещё несколько.
+	handshakeTimeout = 60 * time.Second
+	commandTimeout   = 30 * time.Second
 	// Потолок вывода команды: осмотр печатает килобайты, а чужой сервер не
 	// должен уметь залить память приложения.
 	maxCommandOutput = 1 << 20
@@ -133,7 +137,6 @@ func (d Dialer) Dial(ctx context.Context, access Access) (*Session, error) {
 		User:            a.User,
 		Auth:            auth,
 		HostKeyCallback: hostKey,
-		Timeout:         dialTimeout,
 	}
 	dialCtx, cancel := context.WithTimeout(ctx, dialTimeout)
 	defer cancel()
@@ -143,7 +146,7 @@ func (d Dialer) Dial(ctx context.Context, access Access) (*Session, error) {
 	}
 	// Рукопожатие тоже под сроком: сервер, принявший TCP и замолчавший,
 	// иначе держал бы окно на «Подключаемся…» без конца.
-	_ = conn.SetDeadline(time.Now().Add(dialTimeout))
+	_ = conn.SetDeadline(time.Now().Add(handshakeTimeout))
 	sshConn, chans, reqs, err := ssh.NewClientConn(conn, address, cfg)
 	if err != nil {
 		_ = conn.Close()
