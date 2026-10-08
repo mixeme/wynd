@@ -21,8 +21,10 @@ type fakeHost struct {
 	files   map[string]string
 	running bool
 	synced  bool
-	changes []string
-	loaded  []byte
+	// siteDown — сайт не отвечает и с самого сервера.
+	siteDown bool
+	changes  []string
+	loaded   []byte
 	// aptLocked — первые столько попыток поставить пакеты упрутся в замок.
 	aptLocked int
 	// freeKB — что ответит df.
@@ -42,6 +44,14 @@ func (h *fakeHost) handle(command string, stdin []byte) (string, int) {
 	switch {
 	case command == "true":
 		return "", 0
+	case strings.HasPrefix(command, "curl -fsS --max-time 20 "):
+		if h.siteDown {
+			return "curl: (60) SSL certificate problem", 60
+		}
+		if strings.HasSuffix(command, "/api/v1/instance'") {
+			return `{"version":"9.9.9","bootstrapped":false}`, 0
+		}
+		return "ok", 0
 	case strings.Contains(command, "docker compose down"):
 		change()
 		h.running = false
@@ -302,12 +312,27 @@ func TestInstallExplainsMissingCertificate(t *testing.T) {
 	certWait = 30 * time.Millisecond
 	t.Cleanup(func() { certWait = oldWait })
 	host := newFakeHost()
+	host.siteDown = true
 	sess := dialHost(t, host)
 	spec := testSpec(t)
 	spec.Probe = func(context.Context, string) (string, error) { return "", errors.New("tls: handshake failure") }
 	res := Install(context.Background(), sess, spec, nil)
 	if res.Failure == nil || res.Failure.Step != "cert" || res.Failure.Message != "Сертификат не выдали" {
 		t.Fatalf("ждали отказ сертификата: %+v", res.Failure)
+	}
+}
+
+// С компьютера человека сайт не открылся (VPN, медленный прокси), а с сервера
+// открывается с действующим сертификатом — установка не должна на этом падать.
+func TestInstallAcceptsSiteSeenFromServer(t *testing.T) {
+	fastPolls(t)
+	host := newFakeHost()
+	sess := dialHost(t, host)
+	spec := testSpec(t)
+	spec.Probe = func(context.Context, string) (string, error) { return "", errors.New("context deadline exceeded") }
+	res := Install(context.Background(), sess, spec, nil)
+	if !res.Done || res.Link != testLink {
+		t.Fatalf("ждали успех через проверку с сервера: %+v", res.Failure)
 	}
 }
 
@@ -482,5 +507,24 @@ func TestOwnProxyIsNotAnObstacle(t *testing.T) {
 	}
 	if f := find(ports + "## ownproxy\n"); f.Level != LevelBlock {
 		t.Fatalf("чужой контейнер: %+v", f)
+	}
+}
+
+func TestLowMemoryIsANoteNotAnObstacle(t *testing.T) {
+	rep := ParseInspection("## os\nID=debian\nNAME=Debian\n## uid\n0\n## mem\nMemTotal:         725204 kB\n", "root", time.Now())
+	var found *Finding
+	for i, f := range rep.Findings {
+		if f.ID == "memory" {
+			found = &rep.Findings[i]
+		}
+	}
+	if found == nil || found.Level != LevelNote || !strings.Contains(found.Text, "0,7 ГБ") {
+		t.Fatalf("мало памяти: %+v", found)
+	}
+	rep = ParseInspection("## mem\nMemTotal:        2028636 kB\n", "root", time.Now())
+	for _, f := range rep.Findings {
+		if f.ID == "memory" {
+			t.Fatalf("2 ГБ — молчим: %+v", f)
+		}
 	}
 }

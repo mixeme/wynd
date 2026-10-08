@@ -11,3 +11,5 @@ func devDialer() installer.Dialer { return installer.Dialer{} }
 // Реестра образов у Wynd пока нет: собранный установщик не знает, откуда
 // сервер возьмёт Wynd, и шаг «Wynd» честно откажет (план 45, «До выпуска»).
 func imageSource() installer.ImageSource { return nil }
+
+func devPassword() string { return "" }

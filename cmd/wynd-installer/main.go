@@ -42,6 +42,9 @@ func (a *App) HasSavedPassword(host, user string) bool {
 func (a *App) Connect(in installer.ConnectInput) installer.ConnectResult {
 	// Порт окно не спрашивает и задать не может.
 	in.Port = devPort()
+	if in.Password == "" && !in.UseKeys {
+		in.Password = devPassword()
+	}
 	return a.wizard.Connect(a.ctx, in)
 }
 

@@ -76,6 +76,7 @@ echo '## arch'; uname -m 2>/dev/null
 echo '## uid'; id -u 2>/dev/null
 echo '## sudo'; if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then echo yes; fi
 echo '## disk'; df -Pk / 2>/dev/null | tail -n 1
+echo '## mem'; grep MemTotal /proc/meminfo 2>/dev/null
 echo '## time'; date -u +%s 2>/dev/null
 echo '## ntp'; timedatectl show -p NTPSynchronized --value 2>/dev/null
 echo '## docker'; docker --version 2>/dev/null
@@ -138,6 +139,9 @@ func ParseInspection(out, user string, now time.Time) Report {
 		need = minFreeBytesWithDocker
 	}
 	add(diskFinding(first(sec["disk"]), need))
+	if f, ok := memoryFinding(first(sec["mem"])); ok {
+		add(f)
+	}
 	add(clockFinding(first(sec["time"]), first(sec["ntp"]), now))
 	add(dockerFinding(first(sec["docker"]), first(sec["compose"])))
 	proxy, f := portsFinding(sec["ports"], len(sec["ownproxy"]) > 0)
@@ -148,7 +152,7 @@ func ParseInspection(out, user string, now time.Time) Report {
 			ID:    "wynd",
 			Level: LevelNote,
 			Text:  "Wynd на этом сервере уже стоит",
-			Plan:  "ставить заново не будем — обновим",
+			Plan:  "проверим и доделаем, чего не хватает",
 		})
 	}
 	return rep
@@ -240,6 +244,30 @@ func diskFinding(line string, need uint64) Finding {
 		}
 	}
 	return Finding{ID: "disk", Level: LevelOK, Text: text}
+}
+
+// lowMemoryBytes — ниже этого серверу с Docker тесно. Проба 2026-10-09 на
+// 708 МБ: Wynd встал и работает, но установка шла полчаса, а вход по SSH
+// после неё — больше минуты. Не помеха, а предупреждение: порог — оценка по
+// одной машине.
+const lowMemoryBytes = 950 << 20
+
+// memoryFinding молчит, когда памяти хватает.
+func memoryFinding(line string) (Finding, bool) {
+	// MemTotal:         725204 kB
+	fields := strings.Fields(line)
+	if len(fields) < 2 {
+		return Finding{}, false
+	}
+	kb, err := strconv.ParseUint(fields[1], 10, 64)
+	if err != nil || kb*1024 >= lowMemoryBytes {
+		return Finding{}, false
+	}
+	return Finding{
+		ID: "memory", Level: LevelNote,
+		Text: "Памяти на сервере мало — " + formatGB(kb*1024),
+		Plan: "поставим, но ставиться и работать будет медленно; лучше сервер с 1 ГБ и больше",
+	}, true
 }
 
 func formatGB(n uint64) string {

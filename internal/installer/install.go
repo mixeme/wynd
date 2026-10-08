@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -759,7 +758,7 @@ func startStep() step {
 // httpProbe открывает адрес с этого компьютера. Сертификат проверяется как
 // в браузере: непроверенный сайт — отказ.
 func httpProbe(ctx context.Context, url string) (string, error) {
-	reqCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	reqCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, url, nil)
 	if err != nil {
@@ -777,27 +776,29 @@ func httpProbe(ctx context.Context, url string) (string, error) {
 	return string(body), nil
 }
 
-// probe открывает адрес сайта: с этого компьютера, а если у него не работает
-// сам DNS (бывает за VPN) — с сервера. Проверка с сервера слабее: закрытые
-// снаружи порты она не увидит.
+// probe открывает адрес сайта: с этого компьютера, а если не вышло — с
+// сервера. Проверка с сервера слабее (закрытые снаружи порты она не увидит),
+// но сертификат Let's Encrypt выдаёт, только зайдя на сервер снаружи: раз он
+// есть и сайт отвечает, порты открыты. А с компьютера человека сайт может не
+// открыться по причинам, которые к серверу не относятся: мёртвый DNS за VPN,
+// медленный прокси (проба 2026-10-09: ответ через 17 секунд и через раз).
 func (r *Run) probe(ctx context.Context, url string) (string, error) {
 	probe := r.spec.Probe
 	if probe == nil {
 		probe = httpProbe
 	}
 	body, err := probe(ctx, url)
-	var dns *net.DNSError
-	if err != nil && errors.As(err, &dns) {
-		res, execErr := r.sess.Exec(ctx, "curl -fsS --max-time 10 "+shQuote(url), nil, shortTimeout)
-		if execErr != nil {
-			return "", execErr
-		}
-		if res.Code != 0 {
-			return "", fmt.Errorf("curl: %s", strings.TrimSpace(res.Output))
-		}
-		return res.Output, nil
+	if err == nil {
+		return body, nil
 	}
-	return body, err
+	res, execErr := r.sess.Exec(ctx, "curl -fsS --max-time 20 "+shQuote(url), nil, shortTimeout)
+	if execErr != nil {
+		return "", execErr
+	}
+	if res.Code != 0 {
+		return "", fmt.Errorf("с этого компьютера: %v; с сервера: %s", err, strings.TrimSpace(res.Output))
+	}
+	return res.Output, nil
 }
 
 func certStep(spec Spec) step {
