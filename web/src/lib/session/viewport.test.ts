@@ -125,7 +125,17 @@ describe('высота окна по видимой области', () => {
 		vi.advanceTimersByTime(1000);
 		expect(reveal).toHaveBeenCalledWith({ block: 'center' });
 
+		// Поле вплотную к клавиатуре: панель автозаполнения ложится поверх
+		// страницы, в видимую область не входит — и закрывает его.
+		reveal.mockClear();
+		place(429);
+		vi.advanceTimersByTime(1000);
+		input.blur();
+		input.focus();
+		expect(reveal).toHaveBeenCalledTimes(1);
+
 		// Клавиатура открыта, перешли в поле ниже края.
+		place(600);
 		reveal.mockClear();
 		input.blur();
 		input.focus();

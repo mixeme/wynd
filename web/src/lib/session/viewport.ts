@@ -24,6 +24,14 @@
 
 /** Клавиатура заметно ниже любой панели браузера: меньшее сжатие — не она. */
 const KEYBOARD_MIN_PX = 120;
+/**
+ * Запас над клавиатурой. Панель автозаполнения (ключ, карта, метка) в
+ * установленном приложении на Chromium ложится поверх страницы и в видимую
+ * область не входит: браузер ставил поле вплотную к клавиатуре, панель его
+ * закрывала, а по числам поле было «видно» (Vivaldi, 0.25.7: область 460,
+ * поле 409–458, видно на деле до 395).
+ */
+const KEYBOARD_BAR_PX = 80;
 /** Когда перепроверить поле после сжатия окна или входа в поле. */
 const RECHECK_MS = [150, 400, 900];
 
@@ -40,7 +48,7 @@ function revealFocusedField(visibleHeight: number): boolean {
 	const el = document.activeElement;
 	if (!isTextField(el)) return false;
 	const rect = el.getBoundingClientRect();
-	if (rect.top >= 0 && rect.bottom <= visibleHeight) return false;
+	if (rect.top >= 0 && rect.bottom <= visibleHeight - KEYBOARD_BAR_PX) return false;
 	el.scrollIntoView({ block: 'center' });
 	return true;
 }
