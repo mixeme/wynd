@@ -36,12 +36,37 @@ function isTextField(el: Element | null): el is HTMLElement {
 	);
 }
 
-function revealFocusedField(visibleHeight: number): void {
+function revealFocusedField(visibleHeight: number): boolean {
 	const el = document.activeElement;
-	if (!isTextField(el)) return;
+	if (!isTextField(el)) return false;
 	const rect = el.getBoundingClientRect();
-	if (rect.top >= 0 && rect.bottom <= visibleHeight) return;
+	if (rect.top >= 0 && rect.bottom <= visibleHeight) return false;
 	el.scrollIntoView({ block: 'center' });
+	return true;
+}
+
+// Отладка на телефоне, где инструментов разработчика нет: «/?debug=viewport»
+// включает строку с числами поверх экрана, «/?debug=off» убирает. Что браузер
+// сообщает о клавиатуре, иначе не узнать — у каждого своё.
+const DEBUG_KEY = 'wynd:debug-viewport';
+
+function debugWanted(): boolean {
+	try {
+		const flag = new URLSearchParams(location.search).get('debug');
+		if (flag === 'viewport') localStorage.setItem(DEBUG_KEY, '1');
+		else if (flag === 'off') localStorage.removeItem(DEBUG_KEY);
+		return localStorage.getItem(DEBUG_KEY) === '1';
+	} catch {
+		return false;
+	}
+}
+
+function debugLine(): HTMLElement {
+	const el = document.createElement('div');
+	el.style.cssText =
+		'position:fixed;left:0;right:0;top:0;z-index:99999;padding:3px 6px;background:#000;color:#0f0;font:10px/1.3 monospace;white-space:pre-wrap;pointer-events:none;';
+	document.body.appendChild(el);
+	return el;
 }
 
 export function initViewportHeight(): () => void {
@@ -53,9 +78,27 @@ export function initViewportHeight(): () => void {
 	let fullHeight = 0;
 	let timers: ReturnType<typeof setTimeout>[] = [];
 
+	const stats = { resize: 0, scroll: 0, focus: 0, reveal: 0 };
+	const debug = debugWanted() ? debugLine() : undefined;
+	const report = () => {
+		if (!debug) return;
+		const el = document.activeElement;
+		const rect = el?.getBoundingClientRect();
+		debug.textContent =
+			`vv ${Math.round(vv.height)} top ${Math.round(vv.offsetTop)} scale ${vv.scale.toFixed(3)}` +
+			` · inner ${window.innerHeight} · doc ${root.clientHeight} · scrollY ${Math.round(window.scrollY)}
+` +
+			`full ${fullHeight} last ${lastHeight} app-h ${root.style.getPropertyValue('--app-h') || '—'}` +
+			` · kb ${fullHeight - lastHeight >= KEYBOARD_MIN_PX ? 'open' : 'no'}
+` +
+			`ev resize ${stats.resize} scroll ${stats.scroll} focus ${stats.focus} reveal ${stats.reveal}` +
+			` · ${el?.tagName ?? '—'} ${rect ? `${Math.round(rect.top)}–${Math.round(rect.bottom)}` : ''}`;
+	};
+	const debugTimer = debug ? setInterval(report, 300) : undefined;
+
 	const keyboardOpen = () => fullHeight - lastHeight >= KEYBOARD_MIN_PX;
 	const reveal = () => {
-		if (keyboardOpen()) revealFocusedField(lastHeight);
+		if (keyboardOpen() && revealFocusedField(lastHeight)) stats.reveal++;
 	};
 	const recheck = () => {
 		timers.forEach(clearTimeout);
@@ -63,6 +106,7 @@ export function initViewportHeight(): () => void {
 	};
 	const onFocusIn = (event: FocusEvent) => {
 		if (!isTextField(event.target as Element | null)) return;
+		stats.focus++;
 		reveal();
 		recheck();
 	};
@@ -82,11 +126,13 @@ export function initViewportHeight(): () => void {
 		root.style.setProperty('--app-h', `${height}px`);
 		if (window.scrollY !== 0 || vv.offsetTop !== 0) window.scrollTo(0, 0);
 		if (shrunk) {
-			revealFocusedField(height);
+			if (revealFocusedField(height)) stats.reveal++;
 			recheck();
 		}
 	};
-	const schedule = () => {
+	const schedule = (event?: Event) => {
+		if (event?.type === 'resize') stats.resize++;
+		else if (event) stats.scroll++;
 		if (!frame) frame = requestAnimationFrame(apply);
 	};
 
@@ -97,6 +143,8 @@ export function initViewportHeight(): () => void {
 	return () => {
 		document.removeEventListener('focusin', onFocusIn);
 		timers.forEach(clearTimeout);
+		clearInterval(debugTimer);
+		debug?.remove();
 		vv.removeEventListener('resize', schedule);
 		vv.removeEventListener('scroll', schedule);
 		if (frame) cancelAnimationFrame(frame);
