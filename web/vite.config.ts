@@ -33,7 +33,11 @@ export default defineConfig({
 			manifest: {
 				name: 'Wynd',
 				short_name: 'Wynd',
-				theme_color: '#F4F0E9',
+				// Опыт (план 46, C23): без theme_color. Установленное приложение
+				// Firefox на Android красит строку состояния этим цветом и за тёмной
+				// темой не идёт; без него, возможно, возьмёт системные цвета. undefined,
+				// а не пропуск: иначе плагин подставит свой зелёный по умолчанию.
+				theme_color: undefined,
 				background_color: '#F4F0E9',
 				display: 'standalone',
 				start_url: '/',
