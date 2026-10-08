@@ -4,6 +4,7 @@
 	import { getContext, onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { goUp } from '$lib/navigation/up';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Label from '$ui/forms/Label.svelte';
@@ -156,7 +157,14 @@
 		<PeekMemberList members={peek.members} />
 	</FormLayout>
 {:else}
-<FormLayout app color={circle.color} circleTitle={circle.name}>
+<!-- Имя можно выбрать и позже: позванный круг стоит в списке кругов строкой
+     «Вас позвали — выберите имя», стрелка ведёт туда. -->
+<FormLayout
+	app
+	color={circle.color}
+	circleTitle={circle.name}
+	onback={() => goUp('/circles')}
+>
 	{#if memberTotal > 0}
 		<Label class="mt-16">Кто уже здесь · {memberTotal}</Label>
 		<PeopleStrip people={displayMembers} />

@@ -47,6 +47,13 @@ func migrate(db *sql.DB) error {
 		known[m.version] = true
 	}
 	if !known[maxVersion] {
+		// Шаги до свёрнутой схемы остались в 0.25.10: базу младше неё этот
+		// бинарник довести не может.
+		if len(migrations) > 0 && maxVersion < migrations[0].version {
+			return fmt.Errorf(
+				"схема БД версии %d старше свёрнутой (%d): сначала запустите на этой базе Wynd 0.25.10, затем эту версию",
+				maxVersion, migrations[0].version)
+		}
 		return fmt.Errorf("устаревшая схема БД (версия %d): удалите wynd.db и запустите снова", maxVersion)
 	}
 

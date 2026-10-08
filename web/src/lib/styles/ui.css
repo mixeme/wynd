@@ -572,6 +572,15 @@
 	width: 100%;
 	text-align: left;
 }
+.news {
+	margin: 0 16px;
+	padding: 0 0 0 18px;
+	font-size: 14px;
+	line-height: 1.45;
+}
+.news li + li {
+	margin-top: 6px;
+}
 .map-sheet {
 	display: flex;
 	gap: 12px;
@@ -2963,6 +2972,21 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 	align-items: center;
 	gap: 7px;
 	font-size: 14px;
+}
+.vrec-note {
+	position: absolute;
+	left: 28px;
+	right: 28px;
+	top: 50%;
+	transform: translateY(-50%);
+	text-align: center;
+	font-size: 14px;
+	line-height: 1.45;
+}
+.vrec-code {
+	margin-top: 8px;
+	font-size: 11.5px;
+	color: rgba(255, 255, 255, 0.55);
 }
 .vrec-shutter {
 	position: absolute;

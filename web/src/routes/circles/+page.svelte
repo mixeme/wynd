@@ -14,6 +14,8 @@
 	import Hint from '$ui/forms/Hint.svelte';
 	import Loading from '$ui/Loading.svelte';
 	import PayStreetBanner from '$ui/data/PayStreetBanner.svelte';
+	import NewsBanner from '$ui/data/NewsBanner.svelte';
+	import { hasUnseenNews, latestNewsVersion, markNewsSeen } from '$lib/news/seen';
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
@@ -53,6 +55,8 @@
 	let sessions = $state<SessionRecord[]>([]);
 	let payStatus = $state<PayStatus | undefined>();
 	let loading = $state(true);
+	// «Что нового?» — пока свежую запись не открыли и не закрыли (7.10).
+	let newsUnseen = $state(hasUnseenNews());
 	// Отметка последнего длинного нажатия: клик в её хвосте — часть того же
 	// жеста (GUI-6). Прежний общий флаг гасили в каждом обработчике, и
 	// порядок pointerup/click решал исход.
@@ -83,6 +87,9 @@
 	async function refresh() {
 		circles = await loadStreetCircles();
 		groups = await listGroups();
+		// Новичку без кругов рассказывать об изменениях не о чем: для него
+		// новое всё. Отметка ставится молча, баннер встанет со следующей записью.
+		if (newsUnseen && circles.length === 0) hideNews();
 		if (streetSession) {
 			try {
 				payStatus = await fetchPayStatus(streetSession.origin);
@@ -421,6 +428,11 @@
 		goto('/settings');
 	}
 
+	function hideNews() {
+		markNewsSeen();
+		newsUnseen = false;
+	}
+
 	async function hideDonateBanner() {
 		if (!streetSession) return;
 		await dismissPayBanner(streetSession.origin);
@@ -493,6 +505,13 @@
 				variant="pending"
 				pendingAtLabel={formatPayDate(payStatus.pending_at)}
 				expiresAtLabel={payStatus.expires_at ? formatPayDate(payStatus.expires_at) : null}
+			/>
+		{/if}
+		{#if newsUnseen && !empty}
+			<NewsBanner
+				version={latestNewsVersion()}
+				onclick={() => goto('/settings/news?from=circles')}
+				ondismiss={hideNews}
 			/>
 		{/if}
 		{#if empty}

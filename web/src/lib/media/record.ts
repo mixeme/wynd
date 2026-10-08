@@ -67,6 +67,32 @@ export function cameraAsks(long: number, short: number): MediaTrackConstraints[]
 	return [{ ...plain, resizeMode: 'none' } as MediaTrackConstraints, plain];
 }
 
+/**
+ * Почему камера не открылась — словами, по имени отказа getUserMedia.
+ * `final` — просить иначе бессмысленно: это запрет, а не неподходящий кадр.
+ */
+export function cameraFailure(name: string): { text: string; final: boolean } {
+	switch (name) {
+		case 'NotAllowedError':
+		case 'SecurityError':
+			return {
+				text: 'Камера или микрофон запрещены. Разрешите их этому сайту в браузере, а самому браузеру — в настройках устройства.',
+				final: true
+			};
+		case 'NotFoundError':
+		case 'OverconstrainedError':
+			return { text: 'Браузер не нашёл камеру или микрофон.', final: false };
+		case 'NotReadableError':
+		case 'AbortError':
+			return {
+				text: 'Камера или микрофон заняты другим приложением. Закройте его и откройте запись снова.',
+				final: false
+			};
+		default:
+			return { text: 'Камера не открылась.', final: false };
+	}
+}
+
 /** Первый контейнер, который браузер пишет; '' — пусть выберет сам. */
 export function pickRecorderType(kind: 'audio' | 'video', supports = isTypeSupported): string {
 	const list = kind === 'audio' ? AUDIO_TYPES : VIDEO_TYPES;

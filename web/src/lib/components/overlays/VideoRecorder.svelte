@@ -14,6 +14,7 @@
 		VIDEO_MAX_MS,
 		formatDuration,
 		cameraAsks,
+		cameraFailure,
 		pickRecorderType,
 		recordingExtension
 	} from '$lib/media/record';
@@ -40,6 +41,9 @@
 	let facing = $state<'environment' | 'user'>('environment');
 	let elapsedMs = $state(0);
 	let error = $state('');
+	// Имя отказа браузера (NotAllowedError…) — мелкой строкой под текстом:
+	// по нему видно, что именно не дало камеру на этом устройстве.
+	let errorCode = $state('');
 	let reviewUrl = $state('');
 
 	let liveEl: HTMLVideoElement | undefined = $state();
@@ -86,7 +90,7 @@
 	async function openWith(
 		ask: MediaTrackConstraints,
 		turn: number
-	): Promise<{ w: number; h: number } | 'failed' | 'stale' | undefined> {
+	): Promise<{ w: number; h: number } | { failed: string } | 'stale' | undefined> {
 		stopStream();
 		let next: MediaStream;
 		try {
@@ -94,8 +98,8 @@
 				video: { facingMode: facing, ...ask },
 				audio: true
 			});
-		} catch {
-			return 'failed';
+		} catch (err) {
+			return { failed: err instanceof Error ? err.name : 'Error' };
 		}
 		if (turn !== opening) {
 			next.getTracks().forEach((t) => t.stop());
@@ -125,18 +129,38 @@
 	async function openCamera() {
 		const turn = ++opening;
 		error = '';
-		const asks = cameraAsks(long, short);
-		for (const [i, ask] of asks.entries()) {
+		errorCode = '';
+		// Последняя просьба — без размеров кадра: на неё идём, только если
+		// ни одна с размерами не открыла камеру (Firefox на планшете).
+		const asks = [...cameraAsks(long, short), {}];
+		let failed = '';
+		let square: MediaTrackConstraints | undefined;
+		for (const ask of asks) {
+			if (ask === asks[asks.length - 1] && square) break;
 			const got = await openWith(ask, turn);
 			if (got === 'stale') return;
-			if (got === 'failed') {
-				// Первая просьба не прошла — камеры нет. Запасная не прошла —
-				// возвращаемся к первой: квадрат лучше, чем ничего.
-				if (i === 0 || (await openWith(asks[0], turn)) === 'failed') error = 'Нет доступа к камере';
-				return;
+			if (got && 'failed' in got) {
+				failed = got.failed;
+				// Запрет другая просьба не снимет, только спросит человека заново.
+				if (cameraFailure(failed).final) break;
+				continue;
 			}
+			failed = '';
 			// Не квадрат — годится. Квадрат — пробуем следующую просьбу.
 			if (!got || got.w !== got.h) return;
+			square = ask;
+		}
+		// После квадрата следующая просьба не прошла — возвращаемся к нему:
+		// квадрат лучше, чем ничего.
+		if (failed && square) {
+			const got = await openWith(square, turn);
+			if (got === 'stale') return;
+			if (!(got && 'failed' in got)) return;
+			failed = got.failed;
+		}
+		if (failed) {
+			error = cameraFailure(failed).text;
+			errorCode = failed;
 		}
 	}
 
@@ -277,7 +301,7 @@
 					<span class="rec-time">{formatDuration(elapsedMs)} / {formatDuration(VIDEO_MAX_MS)}</span>
 				</span>
 			{:else}
-				<span class="vrec-timer">{error}</span>
+				<span class="vrec-timer"></span>
 			{/if}
 			<IconButton
 				name="flip"
@@ -286,6 +310,12 @@
 				onclick={flip}
 			/>
 		</div>
+		{#if error && phase === 'live'}
+			<div class="vrec-note" role="alert">
+				{error}
+				{#if errorCode}<div class="vrec-code">{errorCode}</div>{/if}
+			</div>
+		{/if}
 		<button
 			type="button"
 			class="vrec-shutter"

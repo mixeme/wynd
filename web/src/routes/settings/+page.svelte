@@ -54,6 +54,9 @@
 		onclick={() => goto('/settings/app')}
 	/>
 	<AboutFooter wrap class="mt-44" />
+	<Hint centered class="mt-8">
+		<TextButton onclick={() => goto('/settings/news')}>Что нового</TextButton>
+	</Hint>
 	{#if appUpdate.supported}
 		<Hint centered class="mt-8">
 			{#if appUpdate.pending}

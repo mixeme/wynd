@@ -65,8 +65,8 @@ func TestReopenAppliesMigrationsOnce(t *testing.T) {
 	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM schema_migrations`).Scan(&n); err != nil {
 		t.Fatalf("count schema_migrations: %v", err)
 	}
-	if n != 30 {
-		t.Fatalf("schema_migrations rows: got %d, want 30", n)
+	if n != 1 {
+		t.Fatalf("schema_migrations rows: got %d, want 1", n)
 	}
 }
 
@@ -107,12 +107,12 @@ func TestSQLitePragmas(t *testing.T) {
 }
 
 func TestParseMigrationVersion(t *testing.T) {
-	v, err := parseMigrationVersion("0001_schema.sql")
+	v, err := parseMigrationVersion("0030_schema.sql")
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if v != 1 {
-		t.Fatalf("version: got %d, want 1", v)
+	if v != 30 {
+		t.Fatalf("version: got %d, want 30", v)
 	}
 	if _, err := parseMigrationVersion("init.sql"); err == nil {
 		t.Fatal("want error for missing version")

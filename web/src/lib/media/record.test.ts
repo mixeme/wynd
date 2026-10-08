@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	cameraAsks,
+	cameraFailure,
 	formatDuration,
 	levelFromSamples,
 	levelsFromPcm,
@@ -59,5 +60,22 @@ describe('levelsFromPcm', () => {
 		pcm.fill(1, 800, 1600);
 		expect(levelsFromPcm(pcm, 8000)).toEqual([0, 100, 0]);
 		expect(levelsFromPcm(new Float32Array(0), 8000)).toEqual([]);
+	});
+});
+
+describe('cameraFailure', () => {
+	it('запрет — окончательный: другая просьба его не снимет', () => {
+		expect(cameraFailure('NotAllowedError').final).toBe(true);
+		expect(cameraFailure('SecurityError').final).toBe(true);
+	});
+
+	it('занятая или не найденная камера — повод попросить иначе', () => {
+		expect(cameraFailure('NotReadableError').final).toBe(false);
+		expect(cameraFailure('NotFoundError').final).toBe(false);
+		expect(cameraFailure('AbortError').text).toContain('заняты');
+	});
+
+	it('незнакомый отказ не остаётся без слов', () => {
+		expect(cameraFailure('Whatever')).toEqual({ text: 'Камера не открылась.', final: false });
 	});
 });

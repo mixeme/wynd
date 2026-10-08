@@ -139,6 +139,8 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 
 `PayStreetBanner` — баннеры оплаты на улочке (`/circles`, кадр **#e10-5**): `variant` `donate` \| `reminder` \| `pending`. Donate — `text`, `onclick` (help), опционально `dismissible` / `ondismiss`. Reminder — `expiresAtLabel`, `reminderDaysLeft`, `onclick` (extend). Pending — `pendingAtLabel`, опционально `expiresAtLabel`; без корневой кнопки. Стили `.pay-banner*` в `ui.css`; кликабельные зоны — `button.pay-banner-main`, `button.pay-reminder`.
 
+`NewsBanner` — баннер «Что нового?» на улочке (кадр **#e7-10**), тем же видом, что donate у `PayStreetBanner`: `version` (минорная, «0.26»), `onclick` — к странице, `ondismiss` — крестик. `NewsBlock` — одна версия на странице «Что нового» (**#e7-11**): `version`, `day` («8 октября»), `items` — строки списком. Текст — `$lib/news/notes.ts`, отметка «видел» — `$lib/news/seen.ts` (localStorage).
+
 `MentionText` — текст записи или комментария (`body`): `@имя` цветом круга, переносы и пустые строки как написаны (`white-space: pre-wrap` на `.mention-text`).
 
 `AttachmentList` — вложения записи, не фото и не видео (**#e4-13**, **#e4-15**, **#e4-18**): звуки подряд — одна рамка `.att-group` со строками `grouped`, одиночный звук — `AttachmentRow audio`, файл — строка «скачать». `items`, `origin`, `circleId`, `circleName`, `color`, `postId`, `coverUrls` (обложки звуков по blob id).
