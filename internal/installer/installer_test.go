@@ -511,3 +511,39 @@ type brokenResolver struct{}
 func (brokenResolver) LookupHost(context.Context, string) ([]string, error) {
 	return nil, &net.DNSError{Err: "server misbehaving", Name: "family.example.ru", IsTemporary: true}
 }
+
+// Диск: счётчики сбросов ядра. Быстрый диск и нехватка данных — молчим;
+// медленный — замечание, а не помеха.
+func TestFlushFinding(t *testing.T) {
+	stat := func(flushes, ms string) string {
+		return "22134 4202 1738400 574484 115549 34090 4376161 19574082 0 11857796 38662054 0 0 0 0 " + flushes + " " + ms
+	}
+	cases := []struct {
+		name, line string
+		want       string
+	}{
+		{"пробный сервер 2026-10-09", stat("13723", "18513487"), "1,3 с на каждую"},
+		{"медленный, но меньше секунды", stat("1000", "450000"), "450 мс на каждую"},
+		{"SSD", stat("5000", "9000"), ""},
+		{"только загрузился", stat("7", "20000"), ""},
+		{"старое ядро: полей меньше", "22134 4202 1738400 574484 115549 34090 4376161 19574082 0 11857796 38662054", ""},
+		{"пусто", "", ""},
+	}
+	for _, c := range cases {
+		f, ok := flushFinding(c.line)
+		if ok != (c.want != "") {
+			t.Fatalf("%s: находка=%v, ждали %q", c.name, ok, c.want)
+		}
+		if !ok {
+			continue
+		}
+		if f.Level != LevelNote || !strings.Contains(f.Text, c.want) {
+			t.Fatalf("%s: %+v", c.name, f)
+		}
+	}
+	// Замечание не мешает ставить.
+	rep := ParseInspection("## os\nID=debian\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"12\"\n## uid\n0\n## disk\n/dev/vda1 7017040 2135632 4551496 32% /\n## flush\n"+stat("13723", "18513487")+"\n## time\n1791527811\n## ntp\nyes\n", "root", time.Unix(1791527811, 0))
+	if rep.Blocked() || findings(rep)["flush"].Level != LevelNote {
+		t.Fatalf("медленный диск — замечание, не помеха: %+v", rep.Findings)
+	}
+}

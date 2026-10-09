@@ -65,6 +65,13 @@ const (
 	// Расхождение часов, с которого коды входа и сертификаты начинают
 	// отказывать. Синхронизацию установщик настроит сам.
 	maxClockSkew = 60 * time.Second
+	// Сколько диск в среднем подтверждает запись на носитель (сброс кэша,
+	// его ждёт каждый fsync). У SSD это миллисекунды, у обычного диска —
+	// десятки; пробный сервер 2026-10-09 отвечал 1,3–1,7 секунды, и на нём
+	// вход по SSH шёл минуту, а пакеты ставились десятки минут.
+	slowFlush = 200 * time.Millisecond
+	// Меньше сбросов — среднему верить рано (сервер только что загрузился).
+	minFlushes = 20
 )
 
 // inspectScript только читает. Каждая секция — от строки «## имя» до
@@ -76,6 +83,7 @@ echo '## arch'; uname -m 2>/dev/null
 echo '## uid'; id -u 2>/dev/null
 echo '## sudo'; if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then echo yes; fi
 echo '## disk'; df -Pk / 2>/dev/null | tail -n 1
+echo '## flush'; d=$(findmnt -no SOURCE / 2>/dev/null); p="/sys/class/block/${d##*/}"; if [ -e "$p/partition" ]; then p=$(readlink -f "$p/.."); fi; cat "$p/stat" 2>/dev/null
 echo '## time'; date -u +%s 2>/dev/null
 echo '## ntp'; timedatectl show -p NTPSynchronized --value 2>/dev/null
 echo '## docker'; docker --version 2>/dev/null
@@ -138,6 +146,9 @@ func ParseInspection(out, user string, now time.Time) Report {
 		need = minFreeBytesWithDocker
 	}
 	add(diskFinding(first(sec["disk"]), need))
+	if f, ok := flushFinding(first(sec["flush"])); ok {
+		add(f)
+	}
 	add(clockFinding(first(sec["time"]), first(sec["ntp"]), now))
 	add(dockerFinding(first(sec["docker"]), first(sec["compose"])))
 	proxy, f := portsFinding(sec["ports"], len(sec["ownproxy"]) > 0)
@@ -240,6 +251,36 @@ func diskFinding(line string, need uint64) Finding {
 		}
 	}
 	return Finding{ID: "disk", Level: LevelOK, Text: text}
+}
+
+// flushFinding смотрит, как быстро диск подтверждает запись, — по счётчикам
+// ядра с загрузки (/sys/block/…/stat: шестнадцатое поле — сколько было сбросов
+// кэша, семнадцатое — сколько миллисекунд они заняли). Сам осмотр ничего не
+// пишет. Счётчиков нет (старое ядро, том LVM, сбросы отключены) или их мало —
+// находки нет: молчим, а не гадаем.
+func flushFinding(line string) (Finding, bool) {
+	fields := strings.Fields(line)
+	if len(fields) < 17 {
+		return Finding{}, false
+	}
+	count, err1 := strconv.ParseUint(fields[15], 10, 64)
+	ms, err2 := strconv.ParseUint(fields[16], 10, 64)
+	if err1 != nil || err2 != nil || count < minFlushes {
+		return Finding{}, false
+	}
+	avg := time.Duration(ms) * time.Millisecond / time.Duration(count)
+	if avg < slowFlush {
+		return Finding{}, false
+	}
+	took := fmt.Sprintf("%d мс", avg.Milliseconds())
+	if avg >= time.Second {
+		took = strings.Replace(fmt.Sprintf("%.1f с", avg.Seconds()), ".", ",", 1)
+	}
+	return Finding{
+		ID: "flush", Level: LevelNote,
+		Text: "Диск сервера медленно сохраняет записи: " + took + " на каждую",
+		Plan: "поставим, но и установка, и сам Wynd будут медленными: дело в диске хостинга",
+	}, true
 }
 
 func formatGB(n uint64) string {
