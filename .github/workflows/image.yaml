@@ -14,11 +14,14 @@ name: Image
 # (Packages → wynd → Package settings → Change visibility → Public), иначе
 # сервер не скачает образ без входа.
 #
-# Версии без меток (untagged, с именем sha256:…) на странице пакета удалять
-# нельзя: это и есть сборки под x86-64 и ARM64, а метка — только оглавление,
-# которое на них ссылается. Без них docker pull отвечает «not found» при живой
-# метке (так было 2026-10-09). Лечится повторным запуском: Actions → Image →
-# Run workflow.
+# У каждой сборки своя метка: <версия>-amd64 и <версия>-arm64. Метки <версия>
+# и latest — оглавление, которое ссылается на эти две. Версий без меток
+# (untagged) на странице пакета при этом не остаётся: раньше сборки под
+# архитектуры лежали именно там, выглядели мусором, и их удаление ломало
+# docker pull при живой метке (2026-10-09). Подтверждения происхождения
+# (provenance) выключены по той же причине: они тоже ложатся без меток.
+#
+# Удалять со страницы пакета можно только выпуск целиком — все три метки.
 
 on:
   push:
@@ -64,16 +67,42 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: docker/build-push-action@v6
+      # Клиент и бинарь собираются один раз на машине сборки: вторая сборка
+      # берёт их из кэша сборщика и доделывает только свою последнюю стадию.
+      - name: amd64
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: deploy/docker/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           build-args: |
             VERSION=${{ steps.meta.outputs.version }}
-          tags: |
-            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}
-            ${{ steps.meta.outputs.image }}:latest
+          tags: ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}-amd64
+          provenance: false
           push: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=amd64
+          cache-to: type=gha,mode=max,scope=amd64
+
+      - name: arm64
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/Dockerfile
+          platforms: linux/arm64
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+          tags: ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}-arm64
+          provenance: false
+          push: true
+          cache-from: type=gha,scope=arm64
+          cache-to: type=gha,mode=max,scope=arm64
+
+      # Оглавление: docker pull <версия> сам выберет сборку под свой процессор.
+      - name: version and latest
+        run: |
+          image="${{ steps.meta.outputs.image }}"
+          version="${{ steps.meta.outputs.version }}"
+          docker buildx imagetools create \
+            -t "${image}:${version}" -t "${image}:latest" \
+            "${image}:${version}-amd64" "${image}:${version}-arm64"
+          docker buildx imagetools inspect "${image}:${version}"
