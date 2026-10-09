@@ -17,6 +17,7 @@ import (
 //	WYND_INSTALLER_IMAGE    — файл образа Wynd (docker save), который уедет на
 //	                          сервер вместо скачивания из реестра: версия ещё
 //	                          не выложена или проба без интернета
+//	WYND_INSTALLER_SOURCE   — не пусто: сервер собирает образ сам из открытого кода
 //	WYND_INSTALLER_PASSWORD — пароль, если поле в окне оставили пустым: проба
 //	                          на тестовом сервере без ввода пароля руками
 func devPort() int {
@@ -31,6 +32,9 @@ func devDialer() installer.Dialer {
 func imageSource() installer.ImageSource {
 	if path := os.Getenv("WYND_INSTALLER_IMAGE"); path != "" {
 		return installer.TarImage{Path: path}
+	}
+	if os.Getenv("WYND_INSTALLER_SOURCE") != "" {
+		return installer.SourceImage{Repo: installer.DefaultSource}
 	}
 	return installer.RegistryImage{Repo: installer.DefaultRegistry}
 }

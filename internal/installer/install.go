@@ -27,14 +27,18 @@ const (
 	imageName = "wynd"
 	// DefaultRegistry — где лежат образы выпусков (.github/workflows/image.yaml).
 	DefaultRegistry = "ghcr.io/mixeme/wynd"
-	caddyImage      = "caddy:2-alpine"
+	// DefaultSource — открытый код выпусков: из него сервер собирает образ сам.
+	DefaultSource = "https://github.com/mixeme/wynd"
+	caddyImage    = "caddy:2-alpine"
 
 	shortTimeout = 2 * time.Minute
 	// Пакеты на дешёвом VPS (одно ядро, медленный диск) ставятся десятки
 	// минут: Docker на пробном сервере — больше пятнадцати.
 	packageTimeout = 40 * time.Minute
 	imageTimeout   = 40 * time.Minute
-	healthWait     = 90 * time.Second
+	// Сборка из исходников на одном ядре: срок с запасом, замера пока нет.
+	buildTimeout = 2 * time.Hour
+	healthWait   = 90 * time.Second
 	// Образ, Caddy и база должны поместиться и после установки Docker.
 	minFreeForImage = 1 << 30
 )
@@ -634,6 +638,62 @@ func (t TarImage) Provide(ctx context.Context, r *Run, tag string) error {
 	return nil
 }
 
+// SourceImage — образ, собранный на самом сервере из открытого кода выпуска:
+// для тех, кому нельзя ставить чужой готовый образ, и на случай, когда в
+// реестре версии нет. Сервер клонирует метку v<версия> и собирает по
+// deploy/docker/Dockerfile — так же, как это делают руками.
+type SourceImage struct {
+	// Repo — адрес открытого репозитория, например https://github.com/mixeme/wynd.
+	Repo string
+}
+
+// Ref — собранный образ зовётся коротко: реестра за ним нет.
+func (s SourceImage) Ref(version string) string { return imageName + ":" + version }
+
+// sourceDir — куда клонируем на время сборки.
+const sourceDir = "/var/tmp/wynd-src"
+
+// gitScript ставит git, если его нет: клонировать больше нечем.
+const gitScript = `command -v git >/dev/null 2>&1 || {
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get -o DPkg::Lock::Timeout=600 install -y -qq git
+}`
+
+// Provide клонирует выпуск и собирает образ. Исходники после сборки убираем;
+// сборочный кэш Docker остаётся — с ним следующая сборка не качает заново
+// базовые образы и зависимости. Откат его тоже не трогает: кэш у Docker
+// общий, чужое от своего в нём не отличить (docker builder prune — руками).
+func (s SourceImage) Provide(ctx context.Context, r *Run, tag string) error {
+	_, version, _ := strings.Cut(tag, ":")
+	ref := "v" + version
+	if _, err := r.must(ctx, gitScript, packageTimeout); err != nil {
+		return err
+	}
+	r.note("сервер скачивает исходный код Wynd")
+	clone := "rm -rf " + sourceDir + " && git clone -q --depth 1 --branch " + shQuote(ref) + " " + shQuote(s.Repo) + " " + sourceDir + " 2>&1"
+	if out, err := r.must(ctx, clone, shortTimeout); err != nil {
+		if containsAny(out, "not found in upstream", "Remote branch", "Repository not found", "returned error: 404") {
+			return &StepError{
+				Message: "Этой версии Wynd в открытом коде ещё нет",
+				Advice:  "Установщик ищет метку " + ref + " в " + s.Repo + ", а её там нет. Скачайте свежий установщик или попробуйте позже.",
+			}
+		}
+		return err
+	}
+	r.note("сервер собирает Wynd из исходного кода — это долго")
+	build := "cd " + sourceDir + " && docker build -q -f deploy/docker/Dockerfile --build-arg VERSION=" + shQuote(version) + " -t " + tag + " . 2>&1"
+	out, err := r.must(ctx, build, buildTimeout)
+	// Исходники больше не нужны, чем бы сборка ни кончилась.
+	_, _ = r.sh(ctx, "rm -rf "+sourceDir, shortTimeout)
+	if err != nil && containsAny(out, "exit code: 137", "signal: killed", "Killed", "cannot allocate memory", "out of memory") {
+		return &StepError{
+			Message: "Серверу не хватило памяти, чтобы собрать Wynd",
+			Advice:  "Сборка из исходного кода требует больше памяти, чем работа Wynd. Поставьте готовый Wynd из хранилища или возьмите сервер с большей памятью.",
+		}
+	}
+	return err
+}
+
 // ComposeFile — /opt/wynd/compose.yaml: то же, что deploy/docker/compose.yaml,
 // но с готовым образом вместо сборки из исходников.
 func ComposeFile(spec Spec) string {
@@ -945,6 +1005,7 @@ rm -rf ` + installDir + `
 if command -v docker >/dev/null 2>&1; then
   docker image rm ` + spec.imageTag() + ` >/dev/null 2>&1 || true
   docker image rm ` + caddyImage + ` >/dev/null 2>&1 || true
+  rm -rf ` + sourceDir + `
 fi
 test ! -e ` + installDir
 	res, err := sess.Exec(ctx, script, nil, packageTimeout)
