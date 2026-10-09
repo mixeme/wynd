@@ -9,6 +9,9 @@ COPY VERSION ./
 COPY web/package.json web/package-lock.json ./web/
 RUN cd web && npm ci
 COPY web/ ./web/
+# Node меряет свою кучу по памяти машины и подкачку не считает: на сервере
+# с 708 МБ сборка клиента падала с «heap out of memory» и при подкачке.
+ENV NODE_OPTIONS=--max-old-space-size=2048
 RUN cd web && npm run build
 
 FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build

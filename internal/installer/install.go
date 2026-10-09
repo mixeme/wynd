@@ -36,9 +36,16 @@ const (
 	// минут: Docker на пробном сервере — больше пятнадцати.
 	packageTimeout = 40 * time.Minute
 	imageTimeout   = 40 * time.Minute
-	// Сборка из исходников на одном ядре: срок с запасом, замера пока нет.
-	buildTimeout = 2 * time.Hour
-	healthWait   = 90 * time.Second
+	// Сборка из исходников: на одном ядре с подкачкой — 8 минут (замер
+	// 2026-10-09), срок — с запасом на сервер медленнее.
+	buildTimeout = time.Hour
+	// Сборке клиента (vite) мало памяти маленького сервера: на 708 МБ без
+	// подкачки сервер не падает с ошибкой, а перестаёт отвечать. Замер: на
+	// пике занято 1,6 ГБ памяти вместе с подкачкой.
+	buildMemoryKB = 2 << 20
+	// Сборочный кэш и образ — 2 ГБ по замеру, плюс запас.
+	minFreeForBuild = 2300 << 20
+	healthWait      = 90 * time.Second
 	// Образ, Caddy и база должны поместиться и после установки Docker.
 	minFreeForImage = 1 << 30
 )
@@ -659,6 +666,26 @@ const gitScript = `command -v git >/dev/null 2>&1 || {
   apt-get -o DPkg::Lock::Timeout=600 install -y -qq git
 }`
 
+// buildSwap — временный файл подкачки на время сборки.
+const buildSwap = "/var/tmp/wynd-build.swap"
+
+// memoryKB — память сервера вместе с подкачкой, в килобайтах.
+const memoryKB = `awk '/^(MemTotal|SwapTotal):/{s+=$2} END{print s}' /proc/meminfo`
+
+const swapOff = "swapoff " + buildSwap + " 2>/dev/null; rm -f " + buildSwap
+
+// swapOn заводит файл подкачки на столько мегабайт. fallocate умеет не
+// всякая файловая система — тогда пишем нули.
+func swapOn(mb uint64) string {
+	size := fmt.Sprint(mb)
+	return swapOff + `
+set -e
+fallocate -l ` + size + `M ` + buildSwap + ` 2>/dev/null || dd if=/dev/zero of=` + buildSwap + ` bs=1M count=` + size + ` status=none
+chmod 600 ` + buildSwap + `
+mkswap -q ` + buildSwap + `
+swapon ` + buildSwap
+}
+
 // Provide клонирует выпуск и собирает образ. Исходники после сборки убираем;
 // сборочный кэш Docker остаётся — с ним следующая сборка не качает заново
 // базовые образы и зависимости. Откат его тоже не трогает: кэш у Docker
@@ -680,12 +707,41 @@ func (s SourceImage) Provide(ctx context.Context, r *Run, tag string) error {
 		}
 		return err
 	}
+	// Памяти мало — на время сборки добавляем подкачку; место под неё и под
+	// сборочный кэш проверяем заранее: отказ лучше зависшего сервера.
+	var swapMB uint64
+	if out, err := r.must(ctx, memoryKB, shortTimeout); err == nil {
+		var kb uint64
+		if _, err := fmt.Sscan(strings.TrimSpace(out), &kb); err == nil && kb < buildMemoryKB {
+			swapMB = (buildMemoryKB-kb)>>10 + 1
+		}
+	}
+	if out, err := r.must(ctx, "df -Pk / | tail -n 1", shortTimeout); err == nil {
+		need := uint64(minFreeForBuild) + swapMB<<20
+		if free, ok := freeBytes(out); ok && free < need {
+			_, _ = r.sh(ctx, "rm -rf "+sourceDir, shortTimeout)
+			return &StepError{
+				Message: "На сервере мало места, чтобы собрать Wynd",
+				Advice:  "Для сборки из исходного кода нужно " + formatGB(need) + " свободного места, а есть " + formatGB(free) + ". Поставьте готовый Wynd из хранилища или увеличьте диск в панели хостинга.",
+			}
+		}
+	}
+	if swapMB > 0 {
+		r.note("серверу мало памяти для сборки — добавляем временную подкачку")
+		if _, err := r.must(ctx, swapOn(swapMB), shortTimeout); err != nil {
+			_, _ = r.sh(ctx, swapOff+"; rm -rf "+sourceDir, shortTimeout)
+			return err
+		}
+	}
 	r.note("сервер собирает Wynd из исходного кода — это долго")
 	build := "cd " + sourceDir + " && docker build -q -f deploy/docker/Dockerfile --build-arg VERSION=" + shQuote(version) + " -t " + tag + " . 2>&1"
 	out, err := r.must(ctx, build, buildTimeout)
 	// Исходники больше не нужны, чем бы сборка ни кончилась.
 	_, _ = r.sh(ctx, "rm -rf "+sourceDir, shortTimeout)
-	if err != nil && containsAny(out, "exit code: 137", "signal: killed", "Killed", "cannot allocate memory", "out of memory") {
+	if swapMB > 0 {
+		_, _ = r.sh(ctx, swapOff, shortTimeout)
+	}
+	if err != nil && containsAny(out, "heap out of memory", "exit code: 137", "signal: killed", "Killed", "cannot allocate memory", "out of memory") {
 		return &StepError{
 			Message: "Серверу не хватило памяти, чтобы собрать Wynd",
 			Advice:  "Сборка из исходного кода требует больше памяти, чем работа Wynd. Поставьте готовый Wynd из хранилища или возьмите сервер с большей памятью.",
@@ -1006,6 +1062,7 @@ if command -v docker >/dev/null 2>&1; then
   docker image rm ` + spec.imageTag() + ` >/dev/null 2>&1 || true
   docker image rm ` + caddyImage + ` >/dev/null 2>&1 || true
   rm -rf ` + sourceDir + `
+  ` + swapOff + `
 fi
 test ! -e ` + installDir
 	res, err := sess.Exec(ctx, script, nil, packageTimeout)

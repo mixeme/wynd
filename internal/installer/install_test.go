@@ -34,10 +34,15 @@ type fakeHost struct {
 	// cloned — исходники лежат на сервере; buildKilled — сборке не хватит памяти.
 	cloned      bool
 	buildKilled bool
+	// memKB — память вместе с подкачкой; swap — размер временной подкачки, пока она включена.
+	memKB int
+	swap  string
+	// swapAtBuild — какой была подкачка в момент сборки.
+	swapAtBuild string
 }
 
 func newFakeHost() *fakeHost {
-	return &fakeHost{images: map[string]bool{}, files: map[string]string{}, freeKB: 5 << 20}
+	return &fakeHost{images: map[string]bool{}, files: map[string]string{}, freeKB: 5 << 20, memKB: 4 << 20}
 }
 
 const testLink = "https://family.example.ru/admin/bootstrap?token=s3cr3t-t0ken"
@@ -96,6 +101,15 @@ func (h *fakeHost) handle(command string, stdin []byte) (string, int) {
 		return tag + "\n", 0
 	case command == gitScript:
 		return "", 0
+	case command == memoryKB:
+		return itoa(h.memKB) + "\n", 0
+	case strings.HasPrefix(command, swapOff+"\nset -e\nfallocate -l "):
+		change()
+		h.swap = strings.Fields(command)[len(strings.Fields(swapOff))+4]
+		return "", 0
+	case command == swapOff:
+		h.swap = ""
+		return "", 0
 	case strings.HasPrefix(command, "rm -rf "+sourceDir+" && git clone "):
 		change()
 		if h.noSuchImage {
@@ -105,6 +119,7 @@ func (h *fakeHost) handle(command string, stdin []byte) (string, int) {
 		return "", 0
 	case strings.HasPrefix(command, "cd "+sourceDir+" && docker build "):
 		change()
+		h.swapAtBuild = h.swap
 		if h.buildKilled {
 			return "ERROR: process \"/bin/sh -c cd web && npm run build\" did not complete successfully: exit code: 137\n", 1
 		}
@@ -635,5 +650,59 @@ func TestInstallFromSourceExplainsOutOfMemory(t *testing.T) {
 	}
 	if host.cloned {
 		t.Fatal("исходники остались на сервере после отказа")
+	}
+}
+
+// Маленький сервер: на время сборки появляется подкачка и потом исчезает.
+func TestInstallFromSourceAddsSwapOnSmallServer(t *testing.T) {
+	fastPolls(t)
+	host := newFakeHost()
+	host.memKB = 725000 // 708 МБ, как у пробного сервера
+	sess := dialHost(t, host)
+	spec := testSpec(t)
+	spec.Image = SourceImage{Repo: "https://example.org/wynd"}
+	res := Install(context.Background(), sess, spec, nil)
+	if !res.Done {
+		t.Fatalf("установка: %+v", res.Failure)
+	}
+	if host.swapAtBuild != "1340M" {
+		t.Fatalf("подкачка на время сборки: %q", host.swapAtBuild)
+	}
+	if host.swap != "" {
+		t.Fatal("подкачка осталась после сборки")
+	}
+}
+
+// Памяти хватает — подкачку не трогаем.
+func TestInstallFromSourceNoSwapOnBigServer(t *testing.T) {
+	fastPolls(t)
+	host := newFakeHost()
+	sess := dialHost(t, host)
+	spec := testSpec(t)
+	spec.Image = SourceImage{Repo: "https://example.org/wynd"}
+	if res := Install(context.Background(), sess, spec, nil); !res.Done {
+		t.Fatalf("установка: %+v", res.Failure)
+	}
+	for _, c := range host.changes {
+		if strings.Contains(c, "swap") {
+			t.Fatalf("подкачку завели зря: %q", c)
+		}
+	}
+}
+
+// Места под кэш и подкачку нет — отказ до сборки, а не зависший сервер.
+func TestInstallFromSourceRefusesWithoutRoom(t *testing.T) {
+	host := newFakeHost()
+	host.memKB = 725000
+	host.freeKB = 3 << 20 // 3 ГБ: образу хватит, сборке с подкачкой — нет
+	sess := dialHost(t, host)
+	spec := testSpec(t)
+	spec.Image = SourceImage{Repo: "https://example.org/wynd"}
+	res := Install(context.Background(), sess, spec, nil)
+	if res.Failure == nil || res.Failure.Step != "image" || !strings.Contains(res.Failure.Message, "мало места, чтобы собрать") {
+		t.Fatalf("ждали отказ по месту для сборки: %+v", res.Failure)
+	}
+	if host.swapAtBuild != "" || host.images["wynd:9.9.9"] || host.cloned {
+		t.Fatal("сборка началась или исходники остались")
 	}
 }
