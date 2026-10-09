@@ -1,4 +1,8 @@
-FROM node:22-alpine AS web
+# Клиент и бинарь собирает машина сборки ($BUILDPLATFORM) — под ту
+# архитектуру, для которой образ ($TARGETARCH): образ под ARM64 выходит без
+# эмуляции Node и компилятора (.github/workflows/image.yaml). Обычный
+# docker build собирает под свою же архитектуру, как и раньше.
+FROM --platform=$BUILDPLATFORM node:22-alpine AS web
 
 WORKDIR /src
 COPY VERSION ./
@@ -7,7 +11,10 @@ RUN cd web && npm ci
 COPY web/ ./web/
 RUN cd web && npm run build
 
-FROM golang:1.26-alpine AS build
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build
+
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /src
 COPY go.mod go.sum ./
@@ -15,7 +22,7 @@ RUN go mod download
 COPY . .
 COPY --from=web /src/web/dist ./web/dist
 # -trimpath убирает пути сборочной машины из бинаря (DEP-3).
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /wynd ./cmd/wynd
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w" -o /wynd ./cmd/wynd
 
 FROM alpine:3.21
 

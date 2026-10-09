@@ -23,9 +23,11 @@ import (
 
 const (
 	installDir = "/opt/wynd"
-	// Образ Wynd на сервере зовётся так; версия — тег.
-	imageName  = "wynd"
-	caddyImage = "caddy:2-alpine"
+	// Так зовётся образ, приехавший файлом (TarImage); версия — тег.
+	imageName = "wynd"
+	// DefaultRegistry — где лежат образы выпусков (.github/workflows/image.yaml).
+	DefaultRegistry = "ghcr.io/mixeme/wynd"
+	caddyImage      = "caddy:2-alpine"
 
 	shortTimeout = 2 * time.Minute
 	// Пакеты на дешёвом VPS (одно ядро, медленный диск) ставятся десятки
@@ -59,10 +61,20 @@ type Spec struct {
 	Probe func(ctx context.Context, url string) (string, error)
 }
 
-func (s Spec) imageTag() string { return imageName + ":" + s.Version }
+// imageTag — имя образа, как оно записано в compose.yaml. Образ из реестра
+// зовётся полным именем: администратор потом обновляет его обычным
+// docker compose pull.
+func (s Spec) imageTag() string {
+	if s.Image != nil {
+		return s.Image.Ref(s.Version)
+	}
+	return imageName + ":" + s.Version
+}
 
 // ImageSource — способ доставить образ Wynd на сервер.
 type ImageSource interface {
+	// Ref — имя образа этой версии на сервере.
+	Ref(version string) string
 	// Provide делает так, чтобы на сервере появился образ tag.
 	Provide(ctx context.Context, r *Run, tag string) error
 }
@@ -489,8 +501,8 @@ func imageStep(spec Spec) step {
 		do: func(ctx context.Context, r *Run) error {
 			if spec.Image == nil {
 				return &StepError{
-					Message: "В этой сборке установщика нет Wynd",
-					Advice:  "Установщик не знает, откуда взять Wynd " + spec.Version + ". Скачайте свежую версию установщика.",
+					Message: "Установщик не знает, откуда взять Wynd",
+					Advice:  "Это ошибка сборки установщика. Скачайте свежую версию установщика.",
 				}
 			}
 			out, err := r.must(ctx, "df -Pk / | tail -n 1", shortTimeout)
@@ -561,6 +573,31 @@ func (c *countingReader) Read(p []byte) (int, error) {
 		c.note(fmt.Sprintf("отправляем на сервер: %d из %d МБ", c.read>>20, c.total>>20))
 	}
 	return n, err
+}
+
+// Ref — образ из файла зовётся коротко: реестра за ним нет.
+func (t TarImage) Ref(version string) string { return imageName + ":" + version }
+
+// RegistryImage — образ из реестра: сервер скачивает его сам.
+type RegistryImage struct {
+	// Repo — имя без тега, например ghcr.io/mixeme/wynd.
+	Repo string
+}
+
+// Ref — полное имя образа в реестре.
+func (g RegistryImage) Ref(version string) string { return g.Repo + ":" + version }
+
+// Provide скачивает образ на сервер.
+func (g RegistryImage) Provide(ctx context.Context, r *Run, tag string) error {
+	r.note("сервер скачивает Wynd")
+	out, err := r.must(ctx, "docker pull -q "+tag+" 2>&1", imageTimeout)
+	if err != nil && containsAny(out, "manifest unknown", "not found", "denied", "unauthorized") {
+		return &StepError{
+			Message: "Этой версии Wynd в хранилище ещё нет",
+			Advice:  "Установщик ищет " + tag + ", а его там нет: версия ещё не выложена или хранилище закрыто. Скачайте свежий установщик или попробуйте позже.",
+		}
+	}
+	return err
 }
 
 // Provide отправляет файл образа в docker load.

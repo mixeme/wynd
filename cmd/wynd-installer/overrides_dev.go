@@ -14,7 +14,9 @@ import (
 //
 //	WYND_INSTALLER_SSH_PORT — порт вместо 22
 //	WYND_INSTALLER_SSH_DIR  — каталог вместо ~/.ssh (known_hosts и ключи)
-//	WYND_INSTALLER_IMAGE    — файл образа Wynd (docker save), который уедет на сервер
+//	WYND_INSTALLER_IMAGE    — файл образа Wynd (docker save), который уедет на
+//	                          сервер вместо скачивания из реестра: версия ещё
+//	                          не выложена или проба без интернета
 //	WYND_INSTALLER_PASSWORD — пароль, если поле в окне оставили пустым: проба
 //	                          на тестовом сервере без ввода пароля руками
 func devPort() int {
@@ -30,7 +32,7 @@ func imageSource() installer.ImageSource {
 	if path := os.Getenv("WYND_INSTALLER_IMAGE"); path != "" {
 		return installer.TarImage{Path: path}
 	}
-	return nil
+	return installer.RegistryImage{Repo: installer.DefaultRegistry}
 }
 
 func devPassword() string { return os.Getenv("WYND_INSTALLER_PASSWORD") }

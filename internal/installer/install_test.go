@@ -23,8 +23,10 @@ type fakeHost struct {
 	synced  bool
 	// siteDown — сайт не отвечает и с самого сервера.
 	siteDown bool
-	changes  []string
-	loaded   []byte
+	// noSuchImage — в реестре нет образа этой версии.
+	noSuchImage bool
+	changes     []string
+	loaded      []byte
 	// aptLocked — первые столько попыток поставить пакеты упрутся в замок.
 	aptLocked int
 	// freeKB — что ответит df.
@@ -81,6 +83,14 @@ func (h *fakeHost) handle(command string, stdin []byte) (string, int) {
 		return "sha256:abc\n", exit(!h.images[tag[len(tag)-1]])
 	case strings.HasPrefix(command, "df -Pk"):
 		return "/dev/vda1 7017040 1025940 " + itoa(h.freeKB) + " 16% /\n", 0
+	case strings.HasPrefix(command, "docker pull -q "):
+		change()
+		tag := strings.Fields(command)[3]
+		if h.noSuchImage {
+			return "Error response from daemon: manifest unknown\n", 1
+		}
+		h.images[tag] = true
+		return tag + "\n", 0
 	case command == "docker load":
 		change()
 		h.loaded = stdin
@@ -507,5 +517,39 @@ func TestOwnProxyIsNotAnObstacle(t *testing.T) {
 	}
 	if f := find(ports + "## ownproxy\n"); f.Level != LevelBlock {
 		t.Fatalf("чужой контейнер: %+v", f)
+	}
+}
+
+// Образ из реестра: сервер скачивает его сам, а в compose.yaml стоит полное
+// имя — администратор потом обновит его обычным docker compose pull.
+func TestInstallFromRegistry(t *testing.T) {
+	fastPolls(t)
+	host := newFakeHost()
+	sess := dialHost(t, host)
+	spec := testSpec(t)
+	spec.Image = RegistryImage{Repo: "ghcr.io/mixeme/wynd"}
+
+	res := Install(context.Background(), sess, spec, nil)
+	if !res.Done {
+		t.Fatalf("установка: %+v", res.Failure)
+	}
+	if !host.images["ghcr.io/mixeme/wynd:9.9.9"] || host.loaded != nil {
+		t.Fatalf("образ должен прийти из реестра: %v", host.images)
+	}
+	if !strings.Contains(host.files[installDir+"/compose.yaml"], "image: ghcr.io/mixeme/wynd:9.9.9\n") {
+		t.Fatalf("compose.yaml: %s", host.files[installDir+"/compose.yaml"])
+	}
+}
+
+// Версия ещё не выложена — говорим это, а не «нет интернета».
+func TestInstallExplainsMissingRelease(t *testing.T) {
+	host := newFakeHost()
+	host.noSuchImage = true
+	sess := dialHost(t, host)
+	spec := testSpec(t)
+	spec.Image = RegistryImage{Repo: "ghcr.io/mixeme/wynd"}
+	res := Install(context.Background(), sess, spec, nil)
+	if res.Failure == nil || res.Failure.Step != "image" || !strings.Contains(res.Failure.Message, "в хранилище ещё нет") {
+		t.Fatalf("ждали отказ про невыложенную версию: %+v", res.Failure)
 	}
 }
