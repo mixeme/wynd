@@ -666,88 +666,95 @@ const gitScript = `command -v git >/dev/null 2>&1 || {
   apt-get -o DPkg::Lock::Timeout=600 install -y -qq git
 }`
 
-// buildSwap — временный файл подкачки на время сборки.
-const buildSwap = "/var/tmp/wynd-build.swap"
+// buildSwap — временный файл подкачки на время сборки; buildLock — замок,
+// чтобы две сборки не пошли разом.
+const (
+	buildSwap = "/var/tmp/wynd-build.swap"
+	buildLock = "/var/tmp/wynd-build.lock"
+)
 
-// memoryKB — память сервера вместе с подкачкой, в килобайтах.
-const memoryKB = `awk '/^(MemTotal|SwapTotal):/{s+=$2} END{print s}' /proc/meminfo`
+const swapOff = "swapoff " + buildSwap + " 2>/dev/null || true; rm -f " + buildSwap
 
-const swapOff = "swapoff " + buildSwap + " 2>/dev/null; rm -f " + buildSwap
+// Коды выхода сценария сборки, которые установщик объясняет сам.
+const (
+	exitNoRoom = 3
+	exitNoTag  = 4
+)
 
-// swapOn заводит файл подкачки на столько мегабайт. fallocate умеет не
-// всякая файловая система — тогда пишем нули.
-func swapOn(mb uint64) string {
-	size := fmt.Sprint(mb)
-	return swapOff + `
-set -e
-fallocate -l ` + size + `M ` + buildSwap + ` 2>/dev/null || dd if=/dev/zero of=` + buildSwap + ` bs=1M count=` + size + ` status=none
-chmod 600 ` + buildSwap + `
-mkswap -q ` + buildSwap + `
-swapon ` + buildSwap
+// buildScript — вся сборка одной командой: клон метки выпуска, подкачка,
+// docker build, уборка. Одной — потому что связь может оборваться, а сервер
+// должен довести дело и убрать за собой сам (проба 2026-10-09: соединение
+// пропало на первой минуте, сборка шла дальше, подкачка и исходники остались
+// бы навсегда). Замок: «Повторить» после обрыва ждёт идущую сборку и берёт её
+// образ, а не запускает вторую — двум памяти не хватит.
+//
+// Памяти мало — на время сборки заводим подкачку: без неё маленький сервер не
+// отказывает, а перестаёт отвечать. Место под неё и под сборочный кэш
+// проверяем заранее.
+func buildScript(repo, version, tag string) string {
+	return `set -e
+exec 9>` + buildLock + `
+flock 9
+if docker image inspect ` + tag + ` >/dev/null 2>&1; then exit 0; fi
+kb=$(awk '/^(MemTotal|SwapTotal):/{s+=$2} END{print s}' /proc/meminfo)
+swap=0
+if [ "$kb" -lt ` + fmt.Sprint(buildMemoryKB) + ` ]; then swap=$(( (` + fmt.Sprint(buildMemoryKB) + ` - kb) / 1024 + 1 )); fi
+free=$(df -Pk / | awk 'END{print $4}')
+need=$(( ` + fmt.Sprint(minFreeForBuild>>10) + ` + swap * 1024 ))
+if [ "$free" -lt "$need" ]; then echo "WYND_NO_ROOM $free $need"; exit ` + fmt.Sprint(exitNoRoom) + `; fi
+cleanup() { ` + swapOff + `; rm -rf ` + sourceDir + `; }
+trap cleanup EXIT
+cleanup
+if [ "$swap" -gt 0 ]; then
+  fallocate -l "${swap}M" ` + buildSwap + ` 2>/dev/null || dd if=/dev/zero of=` + buildSwap + ` bs=1M count="$swap" status=none
+  chmod 600 ` + buildSwap + `
+  mkswap -q ` + buildSwap + `
+  swapon ` + buildSwap + `
+fi
+git -c advice.detachedHead=false clone -q --depth 1 --branch ` + shQuote("v"+version) + ` ` + shQuote(repo) + ` ` + sourceDir + ` 2>&1 || exit ` + fmt.Sprint(exitNoTag) + `
+cd ` + sourceDir + `
+docker build -q -f deploy/docker/Dockerfile --build-arg VERSION=` + shQuote(version) + ` -t ` + tag + ` . 2>&1`
 }
 
-// Provide клонирует выпуск и собирает образ. Исходники после сборки убираем;
-// сборочный кэш Docker остаётся — с ним следующая сборка не качает заново
-// базовые образы и зависимости. Откат его тоже не трогает: кэш у Docker
-// общий, чужое от своего в нём не отличить (docker builder prune — руками).
+// Provide собирает образ на сервере. Сборочный кэш Docker остаётся — с ним
+// следующая сборка не качает заново базовые образы и зависимости. Откат его
+// тоже не трогает: кэш у Docker общий, чужое от своего в нём не отличить
+// (docker builder prune — руками).
 func (s SourceImage) Provide(ctx context.Context, r *Run, tag string) error {
 	_, version, _ := strings.Cut(tag, ":")
-	ref := "v" + version
 	if _, err := r.must(ctx, gitScript, packageTimeout); err != nil {
 		return err
 	}
-	r.note("сервер скачивает исходный код Wynd")
-	clone := "rm -rf " + sourceDir + " && git clone -q --depth 1 --branch " + shQuote(ref) + " " + shQuote(s.Repo) + " " + sourceDir + " 2>&1"
-	if out, err := r.must(ctx, clone, shortTimeout); err != nil {
-		if containsAny(out, "not found in upstream", "Remote branch", "Repository not found", "returned error: 404") {
-			return &StepError{
-				Message: "Этой версии Wynd в открытом коде ещё нет",
-				Advice:  "Установщик ищет метку " + ref + " в " + s.Repo + ", а её там нет. Скачайте свежий установщик или попробуйте позже.",
-			}
-		}
+	r.note("сервер собирает Wynd из исходного кода — на маленьком сервере это минут десять")
+	res, err := r.sh(ctx, buildScript(s.Repo, version, tag), buildTimeout)
+	if err != nil {
 		return err
 	}
-	// Памяти мало — на время сборки добавляем подкачку; место под неё и под
-	// сборочный кэш проверяем заранее: отказ лучше зависшего сервера.
-	var swapMB uint64
-	if out, err := r.must(ctx, memoryKB, shortTimeout); err == nil {
-		var kb uint64
-		if _, err := fmt.Sscan(strings.TrimSpace(out), &kb); err == nil && kb < buildMemoryKB {
-			swapMB = (buildMemoryKB-kb)>>10 + 1
+	out := res.Output
+	switch {
+	case res.Code == 0:
+		return nil
+	case res.Code == exitNoRoom:
+		var free, need uint64
+		if i := strings.Index(out, "WYND_NO_ROOM "); i >= 0 {
+			_, _ = fmt.Sscan(out[i+len("WYND_NO_ROOM "):], &free, &need)
 		}
-	}
-	if out, err := r.must(ctx, "df -Pk / | tail -n 1", shortTimeout); err == nil {
-		need := uint64(minFreeForBuild) + swapMB<<20
-		if free, ok := freeBytes(out); ok && free < need {
-			_, _ = r.sh(ctx, "rm -rf "+sourceDir, shortTimeout)
-			return &StepError{
-				Message: "На сервере мало места, чтобы собрать Wynd",
-				Advice:  "Для сборки из исходного кода нужно " + formatGB(need) + " свободного места, а есть " + formatGB(free) + ". Поставьте готовый Wynd из хранилища или увеличьте диск в панели хостинга.",
-			}
+		return &StepError{
+			Message: "На сервере мало места, чтобы собрать Wynd",
+			Advice:  "Для сборки из исходного кода нужно " + formatGB(need<<10) + " свободного места, а есть " + formatGB(free<<10) + ". Поставьте готовый Wynd из хранилища или увеличьте диск в панели хостинга.",
 		}
-	}
-	if swapMB > 0 {
-		r.note("серверу мало памяти для сборки — добавляем временную подкачку")
-		if _, err := r.must(ctx, swapOn(swapMB), shortTimeout); err != nil {
-			_, _ = r.sh(ctx, swapOff+"; rm -rf "+sourceDir, shortTimeout)
-			return err
+	case res.Code == exitNoTag && containsAny(out, "not found in upstream", "Remote branch", "Repository not found", "returned error: 404"):
+		return &StepError{
+			Message: "Этой версии Wynd в открытом коде ещё нет",
+			Advice:  "Установщик ищет метку v" + version + " в " + s.Repo + ", а её там нет. Скачайте свежий установщик или попробуйте позже.",
 		}
-	}
-	r.note("сервер собирает Wynd из исходного кода — это долго")
-	build := "cd " + sourceDir + " && docker build -q -f deploy/docker/Dockerfile --build-arg VERSION=" + shQuote(version) + " -t " + tag + " . 2>&1"
-	out, err := r.must(ctx, build, buildTimeout)
-	// Исходники больше не нужны, чем бы сборка ни кончилась.
-	_, _ = r.sh(ctx, "rm -rf "+sourceDir, shortTimeout)
-	if swapMB > 0 {
-		_, _ = r.sh(ctx, swapOff, shortTimeout)
-	}
-	if err != nil && containsAny(out, "heap out of memory", "exit code: 137", "signal: killed", "Killed", "cannot allocate memory", "out of memory") {
+	case containsAny(out, "heap out of memory", "exit code: 137", "signal: killed", "Killed", "cannot allocate memory", "out of memory"):
 		return &StepError{
 			Message: "Серверу не хватило памяти, чтобы собрать Wynd",
 			Advice:  "Сборка из исходного кода требует больше памяти, чем работа Wynd. Поставьте готовый Wynd из хранилища или возьмите сервер с большей памятью.",
 		}
 	}
-	return err
+	return &commandError{command: "сборка Wynd из исходного кода", output: out, code: res.Code}
 }
 
 // ComposeFile — /opt/wynd/compose.yaml: то же, что deploy/docker/compose.yaml,
@@ -1063,6 +1070,7 @@ if command -v docker >/dev/null 2>&1; then
   docker image rm ` + caddyImage + ` >/dev/null 2>&1 || true
   rm -rf ` + sourceDir + `
   ` + swapOff + `
+  rm -f ` + buildLock + `
 fi
 test ! -e ` + installDir
 	res, err := sess.Exec(ctx, script, nil, packageTimeout)

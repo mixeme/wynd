@@ -31,14 +31,14 @@ type fakeHost struct {
 	aptLocked int
 	// freeKB — что ответит df.
 	freeKB int
-	// cloned — исходники лежат на сервере; buildKilled — сборке не хватит памяти.
-	cloned      bool
+	// buildKilled — сборке не хватит памяти.
 	buildKilled bool
 	// memKB — память вместе с подкачкой; swap — размер временной подкачки, пока она включена.
 	memKB int
-	swap  string
-	// swapAtBuild — какой была подкачка в момент сборки.
-	swapAtBuild string
+	swap  int
+	// swapAtBuild — сколько мегабайт подкачки было в момент сборки.
+	swapAtBuild int
+	builds      int
 }
 
 func newFakeHost() *fakeHost {
@@ -101,33 +101,8 @@ func (h *fakeHost) handle(command string, stdin []byte) (string, int) {
 		return tag + "\n", 0
 	case command == gitScript:
 		return "", 0
-	case command == memoryKB:
-		return itoa(h.memKB) + "\n", 0
-	case strings.HasPrefix(command, swapOff+"\nset -e\nfallocate -l "):
-		change()
-		h.swap = strings.Fields(command)[len(strings.Fields(swapOff))+4]
-		return "", 0
-	case command == swapOff:
-		h.swap = ""
-		return "", 0
-	case strings.HasPrefix(command, "rm -rf "+sourceDir+" && git clone "):
-		change()
-		if h.noSuchImage {
-			return "warning: Could not find remote branch v9.9.9 to clone.\nfatal: Remote branch v9.9.9 not found in upstream origin\n", 128
-		}
-		h.cloned = true
-		return "", 0
-	case strings.HasPrefix(command, "cd "+sourceDir+" && docker build "):
-		change()
-		h.swapAtBuild = h.swap
-		if h.buildKilled {
-			return "ERROR: process \"/bin/sh -c cd web && npm run build\" did not complete successfully: exit code: 137\n", 1
-		}
-		h.images["wynd:9.9.9"] = h.cloned
-		return "sha256:abc\n", exit(!h.cloned)
-	case command == "rm -rf "+sourceDir:
-		h.cloned = false
-		return "", 0
+	case strings.HasPrefix(command, "set -e\nexec 9>"+buildLock):
+		return h.build(command)
 	case command == "docker load":
 		change()
 		h.loaded = stdin
@@ -167,6 +142,31 @@ func (h *fakeHost) handle(command string, stdin []byte) (string, int) {
 		return "bootstrap URL: " + testLink + "\n", 0
 	}
 	return "unexpected: " + command, 127
+}
+
+// build — что сделал бы сценарий сборки: те же проверки, тот же порядок.
+func (h *fakeHost) build(command string) (string, int) {
+	if h.images["wynd:9.9.9"] {
+		return "", 0
+	}
+	swap := 0
+	if h.memKB < buildMemoryKB {
+		swap = (buildMemoryKB-h.memKB)/1024 + 1
+	}
+	if need := minFreeForBuild>>10 + swap*1024; h.freeKB < need {
+		return "WYND_NO_ROOM " + itoa(h.freeKB) + " " + itoa(need) + "\n", exitNoRoom
+	}
+	h.changes = append(h.changes, "build: "+command)
+	h.builds++
+	if h.noSuchImage {
+		return "warning: Could not find remote branch v9.9.9 to clone.\nfatal: Remote branch v9.9.9 not found in upstream origin\n", exitNoTag
+	}
+	h.swapAtBuild = swap
+	if h.buildKilled {
+		return "ERROR: process \"/bin/sh -c cd web && npm run build\" did not complete successfully: exit code: 137\n", 1
+	}
+	h.images["wynd:9.9.9"] = true
+	return "sha256:abc\n", 0
 }
 
 func exit(failed bool) int {
@@ -591,102 +591,60 @@ func TestInstallExplainsMissingRelease(t *testing.T) {
 	}
 }
 
-// Сборка на сервере: клонируем метку выпуска, собираем, исходники убираем;
-// в compose.yaml — короткое имя, как у образа из файла.
+func sourceSpec(t *testing.T) Spec {
+	spec := testSpec(t)
+	spec.Image = SourceImage{Repo: "https://example.org/wynd"}
+	return spec
+}
+
+// Сборка на сервере: один сценарий клонирует метку выпуска, собирает и
+// убирает за собой; в compose.yaml — короткое имя, как у образа из файла.
 func TestInstallFromSource(t *testing.T) {
 	fastPolls(t)
 	host := newFakeHost()
 	sess := dialHost(t, host)
-	spec := testSpec(t)
-	spec.Image = SourceImage{Repo: "https://example.org/wynd"}
-
-	res := Install(context.Background(), sess, spec, nil)
+	res := Install(context.Background(), sess, sourceSpec(t), nil)
 	if !res.Done {
 		t.Fatalf("установка: %+v", res.Failure)
 	}
 	if !host.images["wynd:9.9.9"] || host.loaded != nil {
 		t.Fatalf("образ должен быть собран на сервере: %v", host.images)
 	}
-	if host.cloned {
-		t.Fatal("исходники остались на сервере")
-	}
-	var clone string
+	var script string
 	for _, c := range host.changes {
-		if strings.Contains(c, "git clone") {
-			clone = c
+		if strings.HasPrefix(c, "build: ") {
+			script = c
 		}
 	}
-	if !strings.Contains(clone, "--branch 'v9.9.9' 'https://example.org/wynd'") {
-		t.Fatalf("клонировать надо метку выпуска: %q", clone)
+	for _, want := range []string{
+		"flock 9",
+		"--branch 'v9.9.9' 'https://example.org/wynd' " + sourceDir,
+		"trap cleanup EXIT",
+		"--build-arg VERSION='9.9.9' -t wynd:9.9.9 .",
+	} {
+		if !strings.Contains(script, want) {
+			t.Fatalf("в сценарии сборки нет %q:\n%s", want, script)
+		}
+	}
+	if host.swapAtBuild != 0 {
+		t.Fatalf("памяти хватало, а подкачку завели: %d МБ", host.swapAtBuild)
 	}
 	if !strings.Contains(host.files[installDir+"/compose.yaml"], "image: wynd:9.9.9\n") {
 		t.Fatalf("compose.yaml: %s", host.files[installDir+"/compose.yaml"])
 	}
 }
 
-// Метки выпуска в открытом коде нет — говорим это.
-func TestInstallFromSourceExplainsMissingTag(t *testing.T) {
-	host := newFakeHost()
-	host.noSuchImage = true
-	sess := dialHost(t, host)
-	spec := testSpec(t)
-	spec.Image = SourceImage{Repo: "https://example.org/wynd"}
-	res := Install(context.Background(), sess, spec, nil)
-	if res.Failure == nil || res.Failure.Step != "image" || !strings.Contains(res.Failure.Message, "в открытом коде ещё нет") {
-		t.Fatalf("ждали отказ про метку: %+v", res.Failure)
-	}
-}
-
-// Сборку убила нехватка памяти — совет про память, исходники убраны.
-func TestInstallFromSourceExplainsOutOfMemory(t *testing.T) {
-	host := newFakeHost()
-	host.buildKilled = true
-	sess := dialHost(t, host)
-	spec := testSpec(t)
-	spec.Image = SourceImage{Repo: "https://example.org/wynd"}
-	res := Install(context.Background(), sess, spec, nil)
-	if res.Failure == nil || res.Failure.Step != "image" || !strings.Contains(res.Failure.Message, "не хватило памяти") {
-		t.Fatalf("ждали отказ про память: %+v", res.Failure)
-	}
-	if host.cloned {
-		t.Fatal("исходники остались на сервере после отказа")
-	}
-}
-
-// Маленький сервер: на время сборки появляется подкачка и потом исчезает.
+// Маленький сервер (708 МБ, как пробный): сценарий заводит подкачку до 2 ГБ.
 func TestInstallFromSourceAddsSwapOnSmallServer(t *testing.T) {
 	fastPolls(t)
 	host := newFakeHost()
-	host.memKB = 725000 // 708 МБ, как у пробного сервера
+	host.memKB = 725000
 	sess := dialHost(t, host)
-	spec := testSpec(t)
-	spec.Image = SourceImage{Repo: "https://example.org/wynd"}
-	res := Install(context.Background(), sess, spec, nil)
-	if !res.Done {
+	if res := Install(context.Background(), sess, sourceSpec(t), nil); !res.Done {
 		t.Fatalf("установка: %+v", res.Failure)
 	}
-	if host.swapAtBuild != "1340M" {
-		t.Fatalf("подкачка на время сборки: %q", host.swapAtBuild)
-	}
-	if host.swap != "" {
-		t.Fatal("подкачка осталась после сборки")
-	}
-}
-
-// Памяти хватает — подкачку не трогаем.
-func TestInstallFromSourceNoSwapOnBigServer(t *testing.T) {
-	fastPolls(t)
-	host := newFakeHost()
-	sess := dialHost(t, host)
-	spec := testSpec(t)
-	spec.Image = SourceImage{Repo: "https://example.org/wynd"}
-	if res := Install(context.Background(), sess, spec, nil); !res.Done {
-		t.Fatalf("установка: %+v", res.Failure)
-	}
-	for _, c := range host.changes {
-		if strings.Contains(c, "swap") {
-			t.Fatalf("подкачку завели зря: %q", c)
-		}
+	if host.swapAtBuild != 1340 {
+		t.Fatalf("подкачка на время сборки: %d МБ", host.swapAtBuild)
 	}
 }
 
@@ -696,13 +654,56 @@ func TestInstallFromSourceRefusesWithoutRoom(t *testing.T) {
 	host.memKB = 725000
 	host.freeKB = 3 << 20 // 3 ГБ: образу хватит, сборке с подкачкой — нет
 	sess := dialHost(t, host)
-	spec := testSpec(t)
-	spec.Image = SourceImage{Repo: "https://example.org/wynd"}
-	res := Install(context.Background(), sess, spec, nil)
+	res := Install(context.Background(), sess, sourceSpec(t), nil)
 	if res.Failure == nil || res.Failure.Step != "image" || !strings.Contains(res.Failure.Message, "мало места, чтобы собрать") {
 		t.Fatalf("ждали отказ по месту для сборки: %+v", res.Failure)
 	}
-	if host.swapAtBuild != "" || host.images["wynd:9.9.9"] || host.cloned {
-		t.Fatal("сборка началась или исходники остались")
+	if !strings.Contains(res.Failure.Advice, "нужно 3,6 ГБ") || !strings.Contains(res.Failure.Advice, "есть 3,0 ГБ") {
+		t.Fatalf("в совете должны быть цифры: %q", res.Failure.Advice)
+	}
+	if host.builds != 0 {
+		t.Fatal("сборка началась")
+	}
+}
+
+// Метки выпуска в открытом коде нет — говорим это.
+func TestInstallFromSourceExplainsMissingTag(t *testing.T) {
+	host := newFakeHost()
+	host.noSuchImage = true
+	sess := dialHost(t, host)
+	res := Install(context.Background(), sess, sourceSpec(t), nil)
+	if res.Failure == nil || res.Failure.Step != "image" || !strings.Contains(res.Failure.Message, "в открытом коде ещё нет") {
+		t.Fatalf("ждали отказ про метку: %+v", res.Failure)
+	}
+}
+
+// Сборку убила нехватка памяти — совет про память.
+func TestInstallFromSourceExplainsOutOfMemory(t *testing.T) {
+	host := newFakeHost()
+	host.buildKilled = true
+	sess := dialHost(t, host)
+	res := Install(context.Background(), sess, sourceSpec(t), nil)
+	if res.Failure == nil || res.Failure.Step != "image" || !strings.Contains(res.Failure.Message, "не хватило памяти") {
+		t.Fatalf("ждали отказ про память: %+v", res.Failure)
+	}
+}
+
+// «Повторить» после обрыва связи: образ уже собран прежней попыткой — второй
+// сборки нет.
+func TestInstallFromSourceReusesFinishedBuild(t *testing.T) {
+	fastPolls(t)
+	host := newFakeHost()
+	sess := dialHost(t, host)
+	if code := func() int {
+		_, c := host.handle(buildScript("https://example.org/wynd", "9.9.9", "wynd:9.9.9"), nil)
+		return c
+	}(); code != 0 {
+		t.Fatalf("первая сборка: код %d", code)
+	}
+	if res := Install(context.Background(), sess, sourceSpec(t), nil); !res.Done {
+		t.Fatalf("установка: %+v", res.Failure)
+	}
+	if host.builds != 1 {
+		t.Fatalf("сборок: %d, ждали одну", host.builds)
 	}
 }

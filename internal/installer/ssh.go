@@ -170,7 +170,9 @@ func (d Dialer) Dial(ctx context.Context, access Access) (*Session, error) {
 		return nil, fmt.Errorf("%w: %v", ErrUnreachable, err)
 	}
 	_ = conn.SetDeadline(time.Time{})
-	return &Session{client: ssh.NewClient(sshConn, chans, reqs), Host: a.Host, User: a.User}, nil
+	sess := &Session{client: ssh.NewClient(sshConn, chans, reqs), Host: a.Host, User: a.User}
+	go sess.keepAlive()
+	return sess, nil
 }
 
 // Trust запоминает отпечаток сервера, который человек подтвердил.
@@ -273,6 +275,21 @@ type Session struct {
 	client *ssh.Client
 	Host   string
 	User   string
+}
+
+// keepAliveEvery — как часто напоминаем о себе. Долгая команда молчит
+// минутами (сборка образа), а молчащее соединение по дороге рвут: проба
+// 2026-10-09 — обрыв ровно через минуту тишины.
+const keepAliveEvery = 15 * time.Second
+
+// keepAlive шлёт серверу пустой запрос, пока соединение живо.
+func (s *Session) keepAlive() {
+	for {
+		time.Sleep(keepAliveEvery)
+		if _, _, err := s.client.SendRequest("keepalive@openssh.com", true, nil); err != nil {
+			return
+		}
+	}
 }
 
 // Close закрывает подключение.
