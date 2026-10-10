@@ -96,7 +96,7 @@ echo '## ports'; ss -H -ltnp 2>/dev/null
 echo '## addr'; ip -4 -o addr show scope global 2>/dev/null
 echo '## git'; git --version 2>/dev/null
 echo '## wynd'; ls -d /opt/wynd/compose.yaml /etc/wynd 2>/dev/null
-echo '## ownproxy'; docker ps --filter label=com.docker.compose.project.working_dir=/opt/wynd --filter publish=443 --format '{{.Names}}' 2>/dev/null
+echo '## ownproxy'; docker ps --filter label=com.docker.compose.project.working_dir=/opt/wynd --filter publish=443 --format '{{.Names}} {{.Image}}' 2>/dev/null
 `
 
 // Inspect осматривает сервер: одна команда, только чтение.
@@ -162,7 +162,7 @@ func ParseInspection(out, user string, now time.Time) Report {
 	}
 	add(clockFinding(first(sec["time"]), first(sec["ntp"]), now))
 	add(dockerFinding(first(sec["docker"]), first(sec["compose"])))
-	proxy, f := portsFinding(sec["ports"], len(sec["ownproxy"]) > 0)
+	proxy, f := portsFinding(sec["ports"], first(sec["ownproxy"]))
 	rep.Proxy = proxy
 	add(f)
 	if len(sec["wynd"]) > 0 {
@@ -365,7 +365,7 @@ var knownProxies = map[string]string{
 }
 
 // portsFinding читает `ss -H -ltnp`: кто слушает 80 и 443.
-func portsFinding(lines []string, ownProxy bool) (string, Finding) {
+func portsFinding(lines []string, ownProxy string) (string, Finding) {
 	type holder struct{ ports map[int]bool }
 	holders := map[string]*holder{}
 	for _, line := range lines {
@@ -394,23 +394,32 @@ func portsFinding(lines []string, ownProxy bool) (string, Finding) {
 		holders[name].ports[port] = true
 	}
 	if len(holders) == 0 {
-		return "", Finding{ID: "ports", Level: LevelOK, Text: "Порты 80 и 443 свободны"}
+		return "", Finding{ID: "ports", Level: LevelOK, Text: "Веб-сервера нет: порты 80 и 443 свободны"}
 	}
 	names := make([]string, 0, len(holders))
 	for name := range holders {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	// docker-proxy на 80/443 — чей-то контейнер. Если это Caddy из нашей же
-	// папки /opt/wynd — установка уже была, порты держит сам Wynd.
-	if len(names) == 1 && names[0] == "docker-proxy" && ownProxy {
-		return "", Finding{ID: "ports", Level: LevelOK, Text: "Порты 80 и 443 занимает веб-сервер, поставленный вместе с Wynd"}
+	// docker-proxy на 80/443 — чей-то контейнер. Запущен из нашей папки
+	// /opt/wynd (так говорит метка Docker) — веб-сервер свой. Какой именно,
+	// человеку не важно: называем по образу, без подробностей.
+	if len(names) == 1 && names[0] == "docker-proxy" && ownProxy != "" {
+		text := "Веб-сервер есть: контейнер из папки Wynd"
+		if _, image, ok := strings.Cut(ownProxy, " "); ok {
+			image = image[strings.LastIndex(image, "/")+1:]
+			image, _, _ = strings.Cut(image, ":")
+			if image != "" {
+				text += " (" + image + ")"
+			}
+		}
+		return "", Finding{ID: "ports", Level: LevelOK, Text: text}
 	}
 	if len(names) == 1 {
 		if proxy, ok := knownProxies[names[0]]; ok {
 			return proxy, Finding{
 				ID: "ports", Level: LevelNote,
-				Text: fmt.Sprintf("Уже работает %s и занимает %s", proxy, portList(holders[names[0]].ports)),
+				Text: fmt.Sprintf("Веб-сервер есть: %s", proxy),
 				Plan: "его не трогаем, Wynd встанет за ним",
 			}
 		}

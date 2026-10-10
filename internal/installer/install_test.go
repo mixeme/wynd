@@ -637,7 +637,7 @@ func TestOwnProxyIsNotAnObstacle(t *testing.T) {
 		}
 		return Finding{}
 	}
-	if f := find(ports + "## ownproxy\nwynd-caddy-1\n"); f.Level != LevelOK {
+	if f := find(ports + "## ownproxy\nwynd-caddy-1 caddy:2-alpine\n"); f.Level != LevelOK || f.Text != "Веб-сервер есть: контейнер из папки Wynd (caddy)" {
 		t.Fatalf("свой Caddy: %+v", f)
 	}
 	if f := find(ports + "## ownproxy\n"); f.Level != LevelBlock {

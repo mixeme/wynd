@@ -101,7 +101,7 @@ h2{margin:0 0 4px;font-size:17px}
 <div class="row"><span class="ic ok">✓</span><div>Часы идут верно</div></div>
 <div class="row"><span class="ic w">!</span><div>Docker не установлен — <span class="dim">поставим</span></div></div>
 <div class="row"><span class="ic w">!</span><div>Диск сервера медленно сохраняет записи: 1,3 с на каждую — <span class="dim">поставим, но и установка, и сам Wynd будут медленными: дело в диске хостинга</span></div></div>
-<div class="row"><span class="ic w">!</span><div>Уже работает nginx и занимает порты 80 и 443 — <span class="dim">его не трогаем, Wynd встанет за ним</span></div></div>
+<div class="row"><span class="ic w">!</span><div>Веб-сервер есть: nginx — <span class="dim">его не трогаем, Wynd встанет за ним</span></div></div>
 <div class="lab">Адрес, по которому будут заходить</div>
 <div style="display:flex;gap:10px;align-items:center"><div class="fld mono" style="flex:1">family.example.ru</div><span class="ok">✓ указывает на этот сервер</span></div>
 <div class="foot"><span class="btn">Дальше — план</span><span class="under">подробнее, что проверили</span></div>
@@ -122,7 +122,7 @@ h2{margin:0 0 4px;font-size:17px}
 <div class="row"><span class="ic ok">✓</span><div>Ubuntu 24.04 — подходит</div></div>
 <div class="row"><span class="ic ok">✓</span><div>Свободно 3,9 ГБ</div></div>
 <div class="row"><span class="ic ok">✓</span><div>Docker установлен</div></div>
-<div class="row"><span class="ic ok">✓</span><div>Порты 80 и 443 занимает веб-сервер, поставленный вместе с Wynd</div></div>
+<div class="row"><span class="ic ok">✓</span><div>Веб-сервер есть: контейнер из папки Wynd (caddy)</div></div>
 <div class="row"><span class="ic w">!</span><div>Wynd на этом сервере уже стоит — <span class="dim">проверим и доделаем, чего не хватает.</span> <span class="under">Убрать Wynd с сервера</span></div></div>
 <div class="lab">Адрес, по которому будут заходить</div>
 <div style="display:flex;gap:10px;align-items:center"><div class="fld mono" style="flex:1">family.example.ru</div><span class="ok">✓ указывает на этот сервер</span></div>
