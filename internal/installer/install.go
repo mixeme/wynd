@@ -121,6 +121,8 @@ type Failure struct {
 	Step    string `json:"step"`
 	Message string `json:"message"`
 	Advice  string `json:"advice"`
+	// Unpublished — готового образа этой версии нет; см. StepError.
+	Unpublished bool `json:"unpublished,omitempty"`
 }
 
 // Progress — всё, что окно показывает об установке.
@@ -140,6 +142,9 @@ type Progress struct {
 type StepError struct {
 	Message string
 	Advice  string
+	// Unpublished — готового образа этой версии в реестре нет: окно предложит
+	// собрать Wynd на сервере.
+	Unpublished bool
 }
 
 func (e *StepError) Error() string { return e.Message }
@@ -350,7 +355,7 @@ func failure(s step, err error) *Failure {
 	var cmd *commandError
 	switch {
 	case errors.As(err, &explained):
-		f.Message, f.Advice = explained.Message, explained.Advice
+		f.Message, f.Advice, f.Unpublished = explained.Message, explained.Advice, explained.Unpublished
 	case errors.Is(err, ErrTimeout):
 		f.Message = fmt.Sprintf("Шаг «%s» идёт дольше, чем мы ждали", s.title)
 		f.Advice = "Сервер, скорее всего, ещё занят этим шагом — он просто медленный. Подождите несколько минут и нажмите «Повторить»: сделанное не пропадёт."
@@ -604,8 +609,9 @@ func (g RegistryImage) Provide(ctx context.Context, r *Run, tag string) error {
 	out, err := r.must(ctx, "docker pull -q "+tag+" 2>&1", imageTimeout)
 	if err != nil && containsAny(out, "manifest unknown", "not found", "denied", "unauthorized") {
 		return &StepError{
-			Message: "Этой версии Wynd в хранилище ещё нет",
-			Advice:  "Установщик ищет " + tag + ", а его там нет: версия ещё не выложена или хранилище закрыто. Скачайте свежий установщик или попробуйте позже.",
+			Message:     "Этой версии Wynd в хранилище ещё нет",
+			Advice:      "Установщик ищет " + tag + ", а его там нет: версия ещё не выложена или хранилище закрыто. Скачайте свежий установщик или попробуйте позже.",
+			Unpublished: true,
 		}
 	}
 	return err
@@ -1098,6 +1104,10 @@ type Plan struct {
 	Change   []string `json:"change"`
 	Keep     []string `json:"keep"`
 	Duration string   `json:"duration"`
+	// Build — Wynd собирается на сервере из открытого кода, а не скачивается
+	// готовым; CanBuild — такой способ у установщика есть.
+	Build    bool `json:"build"`
+	CanBuild bool `json:"canBuild"`
 	// FixClock уходит в Spec.
 	FixClock bool `json:"-"`
 }
@@ -1111,10 +1121,14 @@ func isASCIIDomain(d string) bool {
 	return d != ""
 }
 
-// BuildPlan составляет план по осмотру. Сервер с чужим веб-сервером — пока
+// BuildPlan составляет план по осмотру. build — собрать Wynd на сервере из
+// открытого кода вместо готового образа. Сервер с чужим веб-сервером — пока
 // отказ с причиной: это следующий срез.
-func BuildPlan(rep Report, domain, version string) Plan {
-	p := Plan{Domain: domain, Version: version, Duration: "обычно 5–10 минут, на медленном сервере — до получаса"}
+func BuildPlan(rep Report, domain, version string, build bool) Plan {
+	p := Plan{Domain: domain, Version: version, Build: build, Duration: "обычно 5–10 минут, на медленном сервере — до получаса"}
+	if build {
+		p.Duration = "сборка идёт на сервере: 10–15 минут, на маленьком сервере — до часа"
+	}
 	level := map[string]Level{}
 	for _, f := range rep.Findings {
 		level[f.ID] = f.Level
@@ -1136,9 +1150,15 @@ func BuildPlan(rep Report, domain, version string) Plan {
 	if level["docker"] != LevelOK {
 		p.Install = append(p.Install, "Docker — в нём работает Wynd")
 	}
-	if _, has := level["wynd"]; has {
+	if build && !rep.Git {
+		p.Install = append(p.Install, "git — им сервер возьмёт открытый код Wynd")
+	}
+	switch _, has := level["wynd"]; {
+	case build:
+		p.Install = append(p.Install, "Wynd "+version+" — сервер соберёт его сам из открытого кода")
+	case has:
 		p.Install = append(p.Install, "Wynd "+version+" — доделаем то, чего на сервере не хватает")
-	} else {
+	default:
 		p.Install = append(p.Install, "Wynd "+version)
 	}
 	p.Install = append(p.Install, "Веб-сервер Caddy и сертификат для "+domain)

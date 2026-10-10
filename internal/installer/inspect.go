@@ -40,6 +40,8 @@ type Report struct {
 	Addresses []string `json:"addresses"`
 	// Proxy — чужой веб-сервер на 80/443 («nginx», «apache», «caddy») или пусто.
 	Proxy string `json:"proxy,omitempty"`
+	// Git — на сервере есть git: сборке из открытого кода ставить его не надо.
+	Git bool `json:"-"`
 	// Raw — вывод команд осмотра, для «подробнее, что проверили».
 	Raw string `json:"raw"`
 }
@@ -90,6 +92,7 @@ echo '## docker'; docker --version 2>/dev/null
 echo '## compose'; docker compose version 2>/dev/null
 echo '## ports'; ss -H -ltnp 2>/dev/null
 echo '## addr'; ip -4 -o addr show scope global 2>/dev/null
+echo '## git'; git --version 2>/dev/null
 echo '## wynd'; ls -d /opt/wynd/compose.yaml /etc/wynd 2>/dev/null
 echo '## ownproxy'; docker ps --filter label=com.docker.compose.project.working_dir=/opt/wynd --filter publish=443 --format '{{.Names}}' 2>/dev/null
 `
@@ -134,7 +137,7 @@ func first(lines []string) string {
 // этом компьютере в момент, когда сервер назвал своё.
 func ParseInspection(out, user string, now time.Time) Report {
 	sec := sections(out)
-	rep := Report{Raw: out, Addresses: parseAddresses(sec["addr"])}
+	rep := Report{Raw: out, Addresses: parseAddresses(sec["addr"]), Git: first(sec["git"]) != ""}
 	add := func(f Finding) { rep.Findings = append(rep.Findings, f) }
 
 	add(osFinding(sec["os"], first(sec["arch"])))

@@ -62,6 +62,9 @@ type Wizard struct {
 	// Version — версия Wynd, которую ставим; Image — откуда сервер её возьмёт.
 	Version string
 	Image   ImageSource
+	// Source — второй способ: сервер собирает Wynd сам из открытого кода.
+	// Пусто — выбора в окне нет.
+	Source ImageSource
 	// Probe — как открыть сайт с этого компьютера; пусто — обычный запрос.
 	Probe func(ctx context.Context, url string) (string, error)
 
@@ -72,7 +75,9 @@ type Wizard struct {
 	session *Session
 	report  *Report
 
-	plan     *Plan
+	plan *Plan
+	// build — человек выбрал сборку на сервере (ChooseBuild).
+	build    bool
 	progress Progress
 	cancel   context.CancelFunc
 	// finished закрывается, когда прогон установки кончился.
@@ -232,7 +237,7 @@ func (w *Wizard) closeLocked() {
 		w.cancel()
 		w.cancel = nil
 	}
-	w.plan = nil
+	w.plan, w.build = nil, false
 	w.progress = Progress{}
 }
 
@@ -248,7 +253,14 @@ func (w *Wizard) MakePlan(ctx context.Context, domain string) Plan {
 	if check.Level != LevelOK {
 		return Plan{Domain: check.Domain, Message: check.Text, Advice: check.Advice}
 	}
-	plan := BuildPlan(*w.report, check.Domain, w.Version)
+	return w.planLocked(*w.report, check.Domain)
+}
+
+// planLocked составляет план по осмотру и запоминает его, если по нему можно
+// ставить.
+func (w *Wizard) planLocked(rep Report, domain string) Plan {
+	plan := BuildPlan(rep, domain, w.Version, w.build && w.Source != nil)
+	plan.CanBuild = w.Source != nil
 	w.plan = nil
 	if plan.OK {
 		w.plan = &plan
@@ -257,8 +269,28 @@ func (w *Wizard) MakePlan(ctx context.Context, domain string) Plan {
 	return plan
 }
 
+// ChooseBuild переключает способ: собрать Wynd на сервере из открытого кода
+// (on) или скачать готовый образ. План пересоставляется; начатая установка
+// продолжится новым способом с шага, на котором встала.
+func (w *Wizard) ChooseBuild(on bool) Plan {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.plan == nil || w.report == nil {
+		return Plan{Message: "Сначала составьте план установки"}
+	}
+	if w.progress.Running {
+		return Plan{Message: "Установка ещё идёт", Advice: "Дождитесь, пока текущий шаг закончится."}
+	}
+	w.build = on && w.Source != nil
+	return w.planLocked(*w.report, w.plan.Domain)
+}
+
 func (w *Wizard) specLocked(plan Plan) Spec {
-	return Spec{Domain: plan.Domain, Version: plan.Version, Image: w.Image, FixClock: plan.FixClock, Probe: w.Probe}
+	image := w.Image
+	if plan.Build && w.Source != nil {
+		image = w.Source
+	}
+	return Spec{Domain: plan.Domain, Version: plan.Version, Image: image, FixClock: plan.FixClock, Probe: w.Probe}
 }
 
 // StartInstall запускает установку по плану и сразу возвращает её состояние;
@@ -368,7 +400,8 @@ func (w *Wizard) Rollback(ctx context.Context, keepData bool) RollbackResult {
 			return RollbackResult{Message: "Связь с сервером оборвалась", Advice: "Подключитесь заново и повторите откат."}
 		}
 	}
-	spec := w.specLocked(*w.plan)
+	old := *w.plan
+	spec := w.specLocked(old)
 	log, err := Rollback(ctx, w.session, spec, keepData)
 	if err != nil {
 		return RollbackResult{
@@ -382,10 +415,11 @@ func (w *Wizard) Rollback(ctx context.Context, keepData bool) RollbackResult {
 	// Прежний план писался для сервера, где Wynd уже стоял. Осмотр не вышел —
 	// остаётся прежний: установка по нему всё равно доделает недостающее.
 	if rep, err := Inspect(ctx, w.session); err == nil {
-		if plan := BuildPlan(rep, spec.Domain, w.Version); plan.OK {
-			w.report, w.plan = &rep, &plan
-			w.progress = Progress{Steps: StepTitles(w.specLocked(plan))}
+		if plan := w.planLocked(rep, spec.Domain); plan.OK {
+			w.report = &rep
 			res.Report, res.Plan = &rep, &plan
+		} else {
+			w.plan = &old
 		}
 	}
 	return res

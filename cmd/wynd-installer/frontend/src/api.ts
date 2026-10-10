@@ -57,6 +57,8 @@ export interface Plan {
 	change: string[] | null;
 	keep: string[] | null;
 	duration: string;
+	build: boolean;
+	canBuild: boolean;
 }
 
 export interface StepState {
@@ -75,6 +77,7 @@ export interface Failure {
 	step: string;
 	message: string;
 	advice: string;
+	unpublished?: boolean;
 }
 
 export interface Progress {
@@ -103,6 +106,7 @@ interface Backend {
 	Inspect(): Promise<InspectResult>;
 	CheckDomain(domain: string): Promise<DomainCheck>;
 	MakePlan(domain: string): Promise<Plan>;
+	ChooseBuild(on: boolean): Promise<Plan>;
 	StartInstall(): Promise<Progress>;
 	InstallProgress(): Promise<Progress>;
 	Rollback(keepData: boolean): Promise<RollbackResult>;

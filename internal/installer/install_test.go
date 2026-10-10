@@ -448,23 +448,23 @@ func TestFilesMatchDeployTemplates(t *testing.T) {
 
 func TestBuildPlan(t *testing.T) {
 	clean := ParseInspection(cleanUbuntu, "root", time.Unix(1791460003, 0))
-	plan := BuildPlan(clean, "family.example.ru", "9.9.9")
+	plan := BuildPlan(clean, "family.example.ru", "9.9.9", false)
 	if !plan.OK || len(plan.Install) != 3 || !strings.HasPrefix(plan.Install[0], "Docker") || len(plan.Change) != 0 {
 		t.Fatalf("план чистого сервера: %+v", plan)
 	}
 
 	withProxy := clean
 	withProxy.Proxy = "nginx"
-	if plan := BuildPlan(withProxy, "family.example.ru", "9.9.9"); plan.OK || !strings.Contains(plan.Message, "nginx") {
+	if plan := BuildPlan(withProxy, "family.example.ru", "9.9.9", false); plan.OK || !strings.Contains(plan.Message, "nginx") {
 		t.Fatalf("чужой веб-сервер — пока отказ: %+v", plan)
 	}
-	if plan := BuildPlan(clean, "семья.рф", "9.9.9"); plan.OK {
+	if plan := BuildPlan(clean, "семья.рф", "9.9.9", false); plan.OK {
 		t.Fatalf("адрес не латиницей — отказ: %+v", plan)
 	}
 	blocked := clean
 	blocked.Findings = append([]Finding{}, clean.Findings...)
 	blocked.Findings = append(blocked.Findings, Finding{ID: "disk", Level: LevelBlock, Text: "мало места"})
-	if plan := BuildPlan(blocked, "family.example.ru", "9.9.9"); plan.OK {
+	if plan := BuildPlan(blocked, "family.example.ru", "9.9.9", false); plan.OK {
 		t.Fatalf("помеха — отказ: %+v", plan)
 	}
 }
@@ -520,6 +520,53 @@ func TestWizardInstallAndRollback(t *testing.T) {
 	// Сервер после отката осмотрен заново, план — по новому осмотру.
 	if back.Report == nil || back.Plan == nil || !back.Plan.OK || back.Plan.Domain != "family.example.ru" {
 		t.Fatalf("после отката нет нового плана: %+v", back)
+	}
+}
+
+// Сборка на сервере: план называет git и сборку; способ переключается и до
+// установки, и после отказа «в хранилище ещё нет».
+func TestPlanBuildsFromSource(t *testing.T) {
+	clean := ParseInspection(cleanUbuntu, "root", time.Unix(1791460003, 0))
+	plan := BuildPlan(clean, "family.example.ru", "9.9.9", true)
+	joined := strings.Join(plan.Install, "\n")
+	if !plan.OK || !plan.Build || !strings.Contains(joined, "git") || !strings.Contains(joined, "соберёт его сам") {
+		t.Fatalf("план сборки: %+v", plan)
+	}
+	withGit := ParseInspection(cleanUbuntu+"## git\ngit version 2.43.0\n", "root", time.Unix(1791460003, 0))
+	if plan := BuildPlan(withGit, "family.example.ru", "9.9.9", true); strings.Contains(strings.Join(plan.Install, "\n"), "git —") {
+		t.Fatalf("git уже стоит, а план его ставит: %+v", plan.Install)
+	}
+
+	srv := startServer(t, "pw", nil, cleanUbuntu)
+	w, _ := newWizard(t)
+	w.Version, w.Image = "9.9.9", RegistryImage{Repo: "ghcr.io/mixeme/wynd"}
+	ctx := context.Background()
+	w.Connect(ctx, ConnectInput{Host: srv.host, Port: srv.port, User: "root", Password: "pw"})
+	w.ConfirmHost(ctx)
+	w.Inspect(ctx)
+	// Второго способа нет — выбора тоже нет.
+	if plan := w.MakePlan(ctx, "family.example.ru"); !plan.OK || plan.CanBuild {
+		t.Fatalf("план без второго способа: %+v", plan)
+	}
+	if plan := w.ChooseBuild(true); plan.Build {
+		t.Fatalf("сборка без исходников: %+v", plan)
+	}
+	w.Source = SourceImage{Repo: DefaultSource}
+	if plan := w.MakePlan(ctx, "family.example.ru"); !plan.CanBuild || plan.Build {
+		t.Fatalf("план со вторым способом: %+v", plan)
+	}
+	built := w.ChooseBuild(true)
+	if !built.OK || !built.Build {
+		t.Fatalf("выбрали сборку: %+v", built)
+	}
+	w.mu.Lock()
+	_, fromSource := w.specLocked(*w.plan).Image.(SourceImage)
+	w.mu.Unlock()
+	if !fromSource {
+		t.Fatal("установка пойдёт не из исходников")
+	}
+	if back := w.ChooseBuild(false); back.Build {
+		t.Fatalf("вернули готовый образ: %+v", back)
 	}
 }
 
@@ -596,7 +643,7 @@ func TestInstallExplainsMissingRelease(t *testing.T) {
 	spec := testSpec(t)
 	spec.Image = RegistryImage{Repo: "ghcr.io/mixeme/wynd"}
 	res := Install(context.Background(), sess, spec, nil)
-	if res.Failure == nil || res.Failure.Step != "image" || !strings.Contains(res.Failure.Message, "в хранилище ещё нет") {
+	if res.Failure == nil || res.Failure.Step != "image" || !res.Failure.Unpublished || !strings.Contains(res.Failure.Message, "в хранилище ещё нет") {
 		t.Fatalf("ждали отказ про невыложенную версию: %+v", res.Failure)
 	}
 }

@@ -68,6 +68,11 @@ func (a *App) MakePlan(domain string) installer.Plan {
 	return a.wizard.MakePlan(a.ctx, domain)
 }
 
+// ChooseBuild переключает способ: собрать Wynd на сервере или скачать готовый.
+func (a *App) ChooseBuild(on bool) installer.Plan {
+	return a.wizard.ChooseBuild(on)
+}
+
 // StartInstall запускает установку (или повторяет её с места отказа).
 func (a *App) StartInstall() installer.Progress {
 	return a.wizard.StartInstall(a.ctx)
@@ -104,6 +109,7 @@ func main() {
 		Vault:   keyringVault{},
 		Version: version.Number,
 		Image:   imageSource(),
+		Source:  installer.SourceImage{Repo: installer.DefaultSource},
 	}}
 	err := wails.Run(&options.App{
 		Title:       "Wynd — установка на свой сервер",
