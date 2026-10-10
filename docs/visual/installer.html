@@ -110,6 +110,28 @@ h2{margin:0 0 4px;font-size:17px}
 </div>
 
 <div>
+<p class="cap">2б · Осмотр: Wynd уже стоит — черновик 2026-10-10, не реализовано</p>
+<div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st on"><i>2</i>Осмотр</div><div class="st"><i>3</i>План</div><div class="st"><i>4</i>Установка</div><div class="st"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<h2>Что на сервере</h2>
+<div class="sub">Только смотрим — ничего не меняем.</div>
+<div class="row"><span class="ic ok">✓</span><div>Ubuntu 24.04 — подходит</div></div>
+<div class="row"><span class="ic ok">✓</span><div>Свободно 3,9 ГБ</div></div>
+<div class="row"><span class="ic ok">✓</span><div>Docker установлен</div></div>
+<div class="row"><span class="ic ok">✓</span><div>Порты 80 и 443 занимает веб-сервер, поставленный вместе с Wynd</div></div>
+<div class="row"><span class="ic w">!</span><div>Wynd на этом сервере уже стоит — <span class="dim">проверим и доделаем, чего не хватает.</span> <span class="under">Убрать Wynd с сервера</span></div></div>
+<div class="lab">Адрес, по которому будут заходить</div>
+<div style="display:flex;gap:10px;align-items:center"><div class="fld mono" style="flex:1">family.example.ru</div><span class="ok">✓ указывает на этот сервер</span></div>
+<div class="foot" style="white-space:nowrap"><span class="btn">Дальше — план</span><span class="under">подробнее, что проверили</span></div>
+</div></div></div>
+<p class="note">Человек вернулся к серверу, где Wynd уже работает, — например, переезжает на другую машину. Убрать Wynd можно прямо отсюда, не проходя установку заново.</p>
+</div>
+
+<div>
 <p class="cap">2а · Осмотр нашёл помеху</p>
 <div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
 <div class="main">
@@ -159,9 +181,10 @@ h2{margin:0 0 4px;font-size:17px}
 <div class="body">
 <h2>Что сделаем</h2>
 <div class="lab" style="margin-top:4px">Поставим</div>
-<div class="row"><span class="ic">+</span><div>Docker — в нём работает Wynd</div></div>
-<div class="row"><span class="ic">+</span><div>Wynd 0.28.9</div></div>
-<div class="row"><span class="ic">+</span><div>Веб-сервер Caddy и сертификат для family.example.ru</div></div>
+<div class="row"><span class="ic">+</span><div>Docker — он запускает контейнеры</div></div>
+<div class="row"><span class="ic">+</span><div>Контейнер Wynd 0.28.9</div></div>
+<div class="row"><span class="ic">+</span><div>Контейнер с веб-сервером Caddy</div></div>
+<div class="row"><span class="ic">+</span><div>Сертификат для family.example.ru</div></div>
 <div class="lab">Не тронем</div>
 <div class="row"><span class="ic dim">·</span><div class="dim">Всё, что на сервере уже есть: Wynd займёт свою папку /opt/wynd</div></div>
 <div class="sub" style="margin-top:12px">Сервер скачает Wynd готовым. <span class="under">Собрать самому</span></div>
@@ -180,10 +203,11 @@ h2{margin:0 0 4px;font-size:17px}
 <div class="body">
 <h2>Что сделаем</h2>
 <div class="lab" style="margin-top:4px">Поставим</div>
-<div class="row"><span class="ic">+</span><div>Docker — в нём работает Wynd</div></div>
+<div class="row"><span class="ic">+</span><div>Docker — он запускает контейнеры</div></div>
 <div class="row"><span class="ic">+</span><div>git — им сервер скачает исходный код Wynd</div></div>
-<div class="row"><span class="ic">+</span><div>Wynd 0.28.9 — сервер соберёт его сам из исходного кода</div></div>
-<div class="row"><span class="ic">+</span><div>Веб-сервер Caddy и сертификат для family.example.ru</div></div>
+<div class="row"><span class="ic">+</span><div>Контейнер Wynd 0.28.9 — сервер соберёт из исходного кода</div></div>
+<div class="row"><span class="ic">+</span><div>Контейнер с веб-сервером Caddy</div></div>
+<div class="row"><span class="ic">+</span><div>Сертификат для family.example.ru</div></div>
 <div class="lab">Не тронем</div>
 <div class="row"><span class="ic dim">·</span><div class="dim">Всё, что на сервере уже есть: Wynd займёт свою папку /opt/wynd</div></div>
 <div class="sub" style="margin-top:12px">Сервер соберёт Wynd сам. <span class="under">Скачать готовый</span></div>
@@ -202,10 +226,11 @@ h2{margin:0 0 4px;font-size:17px}
 <div class="body">
 <h2>Что сделаем</h2>
 <div class="lab" style="margin-top:4px">Поставим</div>
-<div class="row"><span class="ic">+</span><div>Docker — в нём работает Wynd</div></div>
+<div class="row"><span class="ic">+</span><div>Docker — он запускает контейнеры</div></div>
 <div class="row"><span class="ic">+</span><div>git — им сервер скачает исходный код Wynd</div></div>
-<div class="row"><span class="ic">+</span><div>Wynd 0.28.9 — сервер соберёт его сам из исходного кода</div></div>
-<div class="row"><span class="ic">+</span><div>Веб-сервер Caddy и сертификат для family.example.ru</div></div>
+<div class="row"><span class="ic">+</span><div>Контейнер Wynd 0.28.9 — сервер соберёт из исходного кода</div></div>
+<div class="row"><span class="ic">+</span><div>Контейнер с веб-сервером Caddy</div></div>
+<div class="row"><span class="ic">+</span><div>Сертификат для family.example.ru</div></div>
 <div class="lab">Не тронем</div>
 <div class="row"><span class="ic dim">·</span><div class="dim">Всё, что на сервере уже есть: Wynd займёт свою папку /opt/wynd</div></div>
 <div class="sub" style="margin-top:12px">Эту версию ещё нельзя скачать готовой — сервер соберёт Wynd сам.</div>
@@ -268,6 +293,43 @@ h2{margin:0 0 4px;font-size:17px}
 <div class="foot"><span class="btn">Открыть в браузере</span><span class="btn gh">Скопировать</span></div>
 </div></div></div>
 <p class="note">Итог — сайт открыт снаружи с действующим сертификатом, и ссылка первого запуска: её сервер пишет в свой журнал при старте, срока у неё нет — действует, пока администратор не создан. Полная проверка (часы, письма) — в панели администратора: до первого запуска писем настроить негде. Сервер, где администратор уже есть, вместо ссылки получает «Этот сервер уже настроен». Дальше всё в самом Wynd.</p>
+</div>
+
+<div>
+<p class="cap">5а · Готово на сервере, где Wynd давно работает: убрать Wynd — черновик 2026-10-10, не реализовано</p>
+<div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st done"><i>✓</i>Осмотр</div><div class="st done"><i>✓</i>План</div><div class="st done"><i>✓</i>Установка</div><div class="st on"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<h2>Wynd работает</h2>
+<div class="sub">Проверка прошла: сайт открывается, сертификат действует.</div>
+<div class="box" style="margin-top:12px"><div style="line-height:1.5">Этот сервер уже настроен: администратор у него есть, ссылки первого запуска нет. Откройте сайт и войдите как обычно.</div></div>
+<div class="foot" style="white-space:nowrap"><span class="btn">Открыть family.example.ru</span><span class="under" style="margin-left:auto">Убрать Wynd</span></div>
+</div></div></div>
+<p class="note">Ссылка первого запуска показывается, только пока администратора нет (кадр 5): установщик спрашивает об этом сам сервер. Здесь администратор уже есть — ссылки нет. «Убрать Wynd» стоит справа от главной кнопки в обоих случаях.</p>
+</div>
+
+<div>
+<p class="cap">5б · Убрать Wynd с сервера? — черновик 2026-10-10, не реализовано</p>
+<div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st done"><i>✓</i>Осмотр</div><div class="st done"><i>✓</i>План</div><div class="st done"><i>✓</i>Установка</div><div class="st on"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<h2>Wynd работает</h2>
+<div class="sub">Проверка прошла: сайт открывается, сертификат действует.</div>
+<div class="box" style="margin-top:12px;border-color:#C9A39A">
+<div style="font-weight:600">Убрать Wynd с сервера?</div>
+<div class="dim" style="margin-top:4px;line-height:1.5">Сайт family.example.ru перестанет открываться. Уберём Wynd и его папку /opt/wynd. Docker останется.</div>
+<div style="margin-top:8px">☐ Удалить и данные Wynd — записи, фотографии, учётные записи</div>
+<div class="dim" style="margin-top:4px;line-height:1.5">Без галочки данные останутся на сервере: поставите Wynd снова — всё будет на месте.</div>
+<div class="foot" style="margin-top:12px"><span class="btn">Да, убрать</span><span class="btn gh">Отмена</span></div>
+</div>
+</div></div></div>
+<p class="note">Вопрос тот же, что у «Откатить установку» на экране отказа, только сказано, что сайт перестанет открываться, и что значит оставить данные. После — возврат к осмотру: сервер без Wynd.</p>
 </div>
 
 <div>

@@ -452,7 +452,7 @@ func TestFilesMatchDeployTemplates(t *testing.T) {
 func TestBuildPlan(t *testing.T) {
 	clean := ParseInspection(cleanUbuntu, "root", time.Unix(1791460003, 0))
 	plan := BuildPlan(clean, "family.example.ru", "9.9.9", false)
-	if !plan.OK || len(plan.Install) != 3 || !strings.HasPrefix(plan.Install[0], "Docker") || len(plan.Change) != 0 {
+	if !plan.OK || len(plan.Install) != 4 || !strings.HasPrefix(plan.Install[0], "Docker") || len(plan.Change) != 0 {
 		t.Fatalf("план чистого сервера: %+v", plan)
 	}
 
@@ -532,7 +532,7 @@ func TestPlanBuildsFromSource(t *testing.T) {
 	clean := ParseInspection(cleanUbuntu, "root", time.Unix(1791460003, 0))
 	plan := BuildPlan(clean, "family.example.ru", "9.9.9", true)
 	joined := strings.Join(plan.Install, "\n")
-	if !plan.OK || !plan.Build || !strings.Contains(joined, "git") || !strings.Contains(joined, "соберёт его сам") {
+	if !plan.OK || !plan.Build || !strings.Contains(joined, "git") || !strings.Contains(joined, "соберёт из исходного кода") {
 		t.Fatalf("план сборки: %+v", plan)
 	}
 	withGit := ParseInspection(cleanUbuntu+"## git\ngit version 2.43.0\n", "root", time.Unix(1791460003, 0))

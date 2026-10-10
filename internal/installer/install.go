@@ -1197,20 +1197,21 @@ func BuildPlan(rep Report, domain, version string, build bool) Plan {
 	}
 	p.OK = true
 	if level["docker"] != LevelOK {
-		p.Install = append(p.Install, "Docker — в нём работает Wynd")
+		p.Install = append(p.Install, "Docker — он запускает контейнеры")
 	}
 	if build && !rep.Git {
 		p.Install = append(p.Install, "git — им сервер скачает исходный код Wynd")
 	}
 	switch _, has := level["wynd"]; {
 	case build:
-		p.Install = append(p.Install, "Wynd "+version+" — сервер соберёт его сам из исходного кода")
+		p.Install = append(p.Install, "Контейнер Wynd "+version+" — сервер соберёт из исходного кода")
 	case has:
-		p.Install = append(p.Install, "Wynd "+version+" — доделаем то, чего на сервере не хватает")
+		p.Install = append(p.Install, "Контейнер Wynd "+version+" — доделаем то, чего на сервере не хватает")
 	default:
-		p.Install = append(p.Install, "Wynd "+version)
+		p.Install = append(p.Install, "Контейнер Wynd "+version)
 	}
-	p.Install = append(p.Install, "Веб-сервер Caddy и сертификат для "+domain)
+	p.Install = append(p.Install, "Контейнер с веб-сервером Caddy")
+	p.Install = append(p.Install, "Сертификат для "+domain)
 	if level["clock"] == LevelNote {
 		p.FixClock = true
 		p.Install = append(p.Install, "Синхронизацию часов")

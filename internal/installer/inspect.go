@@ -404,7 +404,7 @@ func portsFinding(lines []string, ownProxy bool) (string, Finding) {
 	// docker-proxy на 80/443 — чей-то контейнер. Если это Caddy из нашей же
 	// папки /opt/wynd — установка уже была, порты держит сам Wynd.
 	if len(names) == 1 && names[0] == "docker-proxy" && ownProxy {
-		return "", Finding{ID: "ports", Level: LevelOK, Text: "Порты 80 и 443 занимает сам Wynd"}
+		return "", Finding{ID: "ports", Level: LevelOK, Text: "Порты 80 и 443 занимает веб-сервер, поставленный вместе с Wynd"}
 	}
 	if len(names) == 1 {
 		if proxy, ok := knownProxies[names[0]]; ok {
