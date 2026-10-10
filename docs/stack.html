@@ -144,7 +144,7 @@
 <table>
   <tr><th>Компонент</th><th>Выбор</th><th>Обоснование</th></tr>
   <tr><td>HTTP</td><td><code>net/http</code> (<code>ServeMux</code> с методами в шаблонах — появились в Go 1.22; сборка на Go 1.26, см. <code>go.mod</code>)</td><td>Минимум зависимостей; роутер в stdlib</td></tr>
-  <tr><td>Конфиг</td><td>Файл + env, настройка через админку</td><td>При установке — одна команда; YAML руками не редактируется</td></tr>
+  <tr><td>Конфиг</td><td>Файл + env, настройка через админку</td><td>Ставит установщик, дальше — панель; YAML руками не редактируется</td></tr>
   <tr><td>Блобы</td><td>Файловая система</td><td>Сервер не перекодирует; только кладёт и отдаёт байты</td></tr>
   <tr><td>Почта</td><td>Внешний SMTP</td><td>Участники входят по коду из письма; паролей нет</td></tr>
   <tr><td>Лицензия</td><td>AGPL-3.0</td><td>Self-hosted без венчурного давления; защита от облачного присвоения</td></tr>
@@ -265,14 +265,16 @@
 </table>
 
 <h2>Деплой</h2>
-<p class="lede">Одна команда, HTTPS обязателен</p>
+<p class="lede">Ставит установщик, HTTPS обязателен</p>
 
 <table>
   <tr><th>Способ</th><th>Для кого</th></tr>
-  <tr><td><code>curl | sh</code> → бинарник + systemd</td><td>Чистый VPS, домашний сервер</td></tr>
+  <tr><td><strong>Настольный установщик</strong> — главный путь: по SSH осматривает сервер, показывает план, ставит Docker и образ Wynd; за чужим nginx, Apache или Caddy добавляет сайт своим файлом (<a href="plans/45-desktop-installer.plan.md">план 45</a>, в работе)</td><td>Тот, кто не работает в терминале; чистый VPS и сервер с чужим веб-сервером</td></tr>
   <tr><td>Docker / compose — образ <code>ghcr.io/mixeme/wynd</code>, собирается при каждом выпуске</td><td>Unraid, YunoHost, привычный контейнерный стек</td></tr>
-  <tr><td>Настольный установщик — ставит тот же образ на сервер по SSH (<a href="plans/45-desktop-installer.plan.md">план 45</a>, в работе)</td><td>Тот, кто не работает в терминале</td></tr>
+  <tr><td><code>deploy/install.sh</code> из клона репозитория → бинарник + systemd</td><td>Тот, кто ставит руками и без Docker</td></tr>
 </table>
+
+<p class="note">Установка одной командой (<code>curl | sh</code>, скрипт сам качает бинарник) отложена: <a href="plans/43-docs-drift.plan.md">план 43</a>, A3.</p>
 
 <p>TLS — на реверс-прокси. Дефолт — <strong>Caddy</strong> с автонастройкой; при существующем Apache/nginx/Traefik — шаблон в <code>deploy/proxy/</code> и готовый конфиг в панели («Проверка» → прокси). Без HTTPS продукт не работает: service worker, PWA, пуши, камера.</p>
 
