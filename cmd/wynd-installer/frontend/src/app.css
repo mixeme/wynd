@@ -248,3 +248,8 @@ body {
 .ins-row.ins-dim {
 	color: var(--faint);
 }
+
+/* Неброское действие справа от главных кнопок (окно 5а). */
+.ins-foot .push {
+	margin-left: auto;
+}

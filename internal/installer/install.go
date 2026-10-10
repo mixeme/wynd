@@ -1103,7 +1103,8 @@ func linkStep(spec Spec) step {
 
 // Rollback убирает поставленное: контейнеры, папку /opt/wynd, образ Wynd и
 // образ Caddy (тот — только если им не пользуется чужой контейнер: docker
-// занятый образ не удалит).
+// занятый образ не удалит). Образы берутся и из самих контейнеров: Wynd мог
+// быть поставлен другим способом или другой версии, чем ставит это окно.
 // Данные (тома) — только если keepData ложно. Docker остаётся: он мог
 // понадобиться чему-то ещё, и сам по себе ничего не меняет.
 func Rollback(ctx context.Context, sess *Session, spec Spec, keepData bool) ([]LogEntry, error) {
@@ -1111,12 +1112,16 @@ func Rollback(ctx context.Context, sess *Session, spec Spec, keepData bool) ([]L
 	if !keepData {
 		down += " --volumes"
 	}
-	script := `if [ -f ` + installDir + `/compose.yaml ] && command -v docker >/dev/null 2>&1; then
-  cd ` + installDir + ` && ` + down + ` 2>&1
+	script := `imgs=
+if [ -f ` + installDir + `/compose.yaml ] && command -v docker >/dev/null 2>&1; then
+  cd ` + installDir + `
+  imgs=$(docker compose images -q 2>/dev/null || true)
+  ` + down + ` 2>&1
 fi
 cd /
 rm -rf ` + installDir + `
 if command -v docker >/dev/null 2>&1; then
+  for i in $imgs; do docker image rm "$i" >/dev/null 2>&1 || true; done
   docker image rm ` + spec.imageTag() + ` >/dev/null 2>&1 || true
   docker image rm ` + caddyImage + ` >/dev/null 2>&1 || true
   rm -rf ` + sourceDir + `

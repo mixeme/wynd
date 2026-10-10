@@ -403,8 +403,10 @@ type RollbackResult struct {
 func (w *Wizard) Rollback(ctx context.Context, keepData bool) RollbackResult {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.plan == nil {
-		return RollbackResult{Message: "Откатывать нечего: установка не начиналась"}
+	// Без плана убирать можно то, что нашёл осмотр: человек вернулся к серверу,
+	// где Wynd уже стоит (окно 2б).
+	if w.plan == nil && !w.foundWyndLocked() {
+		return RollbackResult{Message: "Убирать нечего: Wynd на этом сервере не стоит"}
 	}
 	if w.progress.Running {
 		return RollbackResult{Message: "Установка ещё идёт", Advice: "Дождитесь, пока текущий шаг закончится."}
@@ -414,14 +416,17 @@ func (w *Wizard) Rollback(ctx context.Context, keepData bool) RollbackResult {
 			return RollbackResult{Message: "Связь с сервером оборвалась", Advice: "Подключитесь заново и повторите откат."}
 		}
 	}
-	old := *w.plan
-	spec := w.specLocked(old)
+	spec := Spec{Version: w.Version, Image: w.Image}
+	if w.plan != nil {
+		spec = w.specLocked(*w.plan)
+	}
+	old := w.plan
 	log, err := Rollback(ctx, w.session, spec, keepData)
 	if err != nil {
 		return RollbackResult{
 			Log:     log,
 			Message: "Откатить не получилось",
-			Advice:  "Нажмите «Да, откатить» ещё раз. Что осталось на сервере — видно в «подробностях».",
+			Advice:  "Нажмите кнопку ещё раз. Что осталось на сервере — видно в «подробностях».",
 		}
 	}
 	w.progress = Progress{Steps: StepTitles(spec)}
@@ -429,12 +434,28 @@ func (w *Wizard) Rollback(ctx context.Context, keepData bool) RollbackResult {
 	// Прежний план писался для сервера, где Wynd уже стоял. Осмотр не вышел —
 	// остаётся прежний: установка по нему всё равно доделает недостающее.
 	if rep, err := Inspect(ctx, w.session); err == nil {
-		if plan := w.planLocked(rep, spec.Domain); plan.OK {
-			w.report = &rep
-			res.Report, res.Plan = &rep, &plan
-		} else {
-			w.plan = &old
+		w.report = &rep
+		res.Report = &rep
+		if old != nil {
+			if plan := w.planLocked(rep, spec.Domain); plan.OK {
+				res.Plan = &plan
+			} else {
+				w.plan = old
+			}
 		}
 	}
 	return res
+}
+
+// foundWyndLocked — нашёл ли осмотр на сервере Wynd.
+func (w *Wizard) foundWyndLocked() bool {
+	if w.report == nil {
+		return false
+	}
+	for _, f := range w.report.Findings {
+		if f.ID == "wynd" {
+			return true
+		}
+	}
+	return false
 }

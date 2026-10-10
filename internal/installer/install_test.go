@@ -798,3 +798,42 @@ func TestInstallFromSourceReusesFinishedBuild(t *testing.T) {
 		t.Fatalf("сборок: %d, ждали одну", host.builds)
 	}
 }
+
+// Вернулись к серверу, где Wynd уже стоит: убрать его можно сразу с осмотра,
+// без плана; с чистого сервера убирать нечего.
+func TestWizardRemovesFoundWynd(t *testing.T) {
+	host := newFakeHost()
+	srv := startServer(t, "pw", nil, cleanUbuntu)
+	w, _ := newWizard(t)
+	w.Version, w.Image = "9.9.9", RegistryImage{Repo: "ghcr.io/mixeme/wynd"}
+	ctx := context.Background()
+	w.Connect(ctx, ConnectInput{Host: srv.host, Port: srv.port, User: "root", Password: "pw"})
+	w.ConfirmHost(ctx)
+	w.Inspect(ctx)
+	if res := w.Rollback(ctx, true); res.OK {
+		t.Fatalf("на чистом сервере убирать нечего: %+v", res)
+	}
+
+	installed := cleanUbuntu + "## wynd\n" + installDir + "/compose.yaml\n"
+	host.running = true
+	srv.handler = func(command string, stdin []byte) (string, int) {
+		if command == inspectScript {
+			if host.running {
+				return installed, 0
+			}
+			return cleanUbuntu, 0
+		}
+		return host.handle(command, stdin)
+	}
+	w.Inspect(ctx)
+	res := w.Rollback(ctx, true)
+	if !res.OK || host.running {
+		t.Fatalf("убрать найденный Wynd: %+v", res)
+	}
+	if res.Report == nil || res.Plan != nil {
+		t.Fatalf("после удаления ждали новый осмотр без плана: %+v", res)
+	}
+	if !strings.Contains(res.Log[0].Command, "docker compose images -q") {
+		t.Fatalf("образы контейнеров не убираются: %s", res.Log[0].Command)
+	}
+}

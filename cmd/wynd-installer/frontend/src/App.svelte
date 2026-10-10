@@ -209,15 +209,24 @@
 		try {
 			const res = await backend().Rollback(!dropData);
 			if (res.ok) {
+				const failed = screen === 'install';
 				askRollback = false;
 				rollbackLog = [];
 				progress = undefined;
 				if (res.report) inspection = { ok: true, report: res.report };
 				if (res.plan) plan = res.plan;
-				rollbackNote = dropData
-					? 'Установка откачена: Wynd и его данные с сервера убраны, остался только Docker.'
-					: 'Установка откачена: Wynd с сервера убран, его данные оставлены, Docker остался.';
-				screen = 'plan';
+				if (failed) {
+					rollbackNote = dropData
+						? 'Установка откачена: Wynd и его данные с сервера убраны, остался только Docker.'
+						: 'Установка откачена: Wynd с сервера убран, его данные оставлены, Docker остался.';
+					screen = 'plan';
+				} else {
+					// Убрали работавший Wynd (окна 2б, 5а): назад к осмотру, сервер уже без него.
+					rollbackNote = dropData
+						? 'Wynd, его данные и сертификат с сервера убраны. Docker остался.'
+						: 'Wynd с сервера убран, его данные и сертификат оставлены. Docker остался.';
+					screen = 'inspect';
+				}
 			} else {
 				rollbackError = [res.message, res.advice].filter(Boolean).join('. ');
 				// Что откат успел и на чём встал — в тех же «подробностях».
@@ -244,6 +253,32 @@
 		[...(progress?.log ?? []), ...rollbackLog].map((e) => ('$ ' + e.command + '\n' + e.output).trimEnd()).join('\n\n')
 	);
 </script>
+
+{#snippet removeBox(yes: string, site: string)}
+	<div class="ins-box bad">
+		<div class="ins-strong">Убрать Wynd с сервера?</div>
+		<div class="ins-dim">
+			{#if site}Сайт {site} перестанет открываться.{/if}
+			Уберём контейнеры Wynd и Caddy и папку /opt/wynd. Docker останется.
+		</div>
+		<label class="ins-check">
+			<input type="checkbox" bind:checked={dropData} />
+			Удалить данные Wynd — записи, фотографии, учётные записи — и сертификат сайта
+		</label>
+		<div class="ins-dim">
+			Без галочки данные и сертификат останутся на сервере: поставите Wynd снова — всё будет на
+			месте.
+		</div>
+		{#if rollbackError}
+			<div class="ins-dim" role="alert">{rollbackError}</div>
+			<TextButton class="link under" onclick={() => (showLog = !showLog)}>подробности</TextButton>
+		{/if}
+		<div class="ins-foot">
+			<Button variant="colored" loading={rolling} onclick={() => void rollback()}>{yes}</Button>
+			<Button variant="ghost" disabled={rolling} onclick={() => (askRollback = false)}>Отмена</Button>
+		</div>
+	</div>
+{/snippet}
 
 <div class="ins">
 	<nav class="ins-side" aria-label="Шаги установки">
@@ -411,28 +446,7 @@
 				</div>
 			{/if}
 			{#if askRollback}
-				<div class="ins-box bad">
-					<div class="ins-strong">Убрать Wynd с сервера?</div>
-					<div class="ins-dim">
-						Уберём Wynd и его папку /opt/wynd. Docker останется: сам по себе он ничего не меняет.
-					</div>
-					<label class="ins-check">
-						<input type="checkbox" bind:checked={dropData} />
-						Удалить и данные Wynd — записи, фотографии, учётные записи
-					</label>
-					{#if rollbackError}
-						<div class="ins-dim" role="alert">{rollbackError}</div>
-						<TextButton class="link under" onclick={() => (showLog = !showLog)}>подробности</TextButton>
-					{/if}
-					<div class="ins-foot">
-						<Button variant="colored" loading={rolling} onclick={() => void rollback()}>
-							Да, откатить
-						</Button>
-						<Button variant="ghost" disabled={rolling} onclick={() => (askRollback = false)}>
-							Отмена
-						</Button>
-					</div>
-				</div>
+				{@render removeBox('Да, откатить', '')}
 			{:else}
 				<div class="ins-foot">
 					<Button variant="colored" onclick={() => void install()}>Повторить</Button>
@@ -467,7 +481,12 @@
 		{:else if screen === 'done' && progress}
 			<h2>Wynd работает</h2>
 			<p class="ins-sub">Проверка прошла: сайт открывается, сертификат действует.</p>
-			{#if progress.link}
+			{#if askRollback}
+				{@render removeBox('Да, убрать', plan?.domain ?? '')}
+				{#if showLog && rollbackLog.length}
+					<pre class="ins-raw">{logText}</pre>
+				{/if}
+			{:else if progress.link}
 				<Label>Ссылка первого запуска — для вас, одна</Label>
 				<div class="ins-box ins-mono">{progress.link}</div>
 				<p class="ins-sub mt">
@@ -481,6 +500,9 @@
 					<Button variant="ghost" onclick={() => void copyLink()}>
 						{copied ? 'Скопировано' : 'Скопировать'}
 					</Button>
+					<TextButton class="link under push" onclick={() => (askRollback = true)}>
+						Убрать Wynd
+					</TextButton>
 				</div>
 			{:else}
 				<div class="ins-box">
@@ -491,6 +513,9 @@
 					<Button variant="colored" onclick={() => void backend().OpenLink(progress?.site ?? '')}>
 						Открыть {plan?.domain}
 					</Button>
+					<TextButton class="link under push" onclick={() => (askRollback = true)}>
+						Убрать Wynd
+					</TextButton>
 				</div>
 			{/if}
 		{:else if !inspection}
@@ -538,16 +563,30 @@
 		{:else}
 			<h2>Что на сервере</h2>
 			<p class="ins-sub">Только смотрим — ничего не меняем.</p>
+			{#if rollbackNote}
+				<div class="ins-box">{rollbackNote}</div>
+			{/if}
 			<div class="ins-rows">
 				{#each findings as f (f.id)}
 					<div class="ins-row">
 						<span class="ins-mark {f.level}">{mark(f.level)}</span>
 						<div>
-							{f.text}{#if f.plan}&nbsp;— <span class="ins-dim">{f.plan}</span>{/if}
+							{f.text}{#if f.plan}&nbsp;— <span class="ins-dim">{f.plan}{f.id === 'wynd' ? '.' : ''}</span>{/if}
+							{#if f.id === 'wynd' && !askRollback}
+								<TextButton class="link under" onclick={() => (askRollback = true)}>
+									Убрать Wynd с сервера
+								</TextButton>
+							{/if}
 						</div>
 					</div>
 				{/each}
 			</div>
+			{#if askRollback}
+				{@render removeBox('Да, убрать', domainOk ? domain : '')}
+				{#if showLog && rollbackLog.length}
+					<pre class="ins-raw">{logText}</pre>
+				{/if}
+			{/if}
 			<Label>Адрес, по которому будут заходить</Label>
 			<form
 				class="ins-domain"
