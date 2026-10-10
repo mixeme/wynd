@@ -145,6 +145,8 @@ wails dev      # окно с горячей перезагрузкой; то ж�
 wails build    # build/bin/wynd-installer(.exe)
 ```
 
+На Windows то же одной командой — `scriptsuild-installer.bat`: сам находит Wails в `GOPATHin` и Node в `Program Files`, если их нет в `PATH`, ставит предел памяти для сборки окна и передаёт свои аргументы в `wails build` (например, `-clean`).
+
 Нужен Node (как для `web/`) и на Windows — WebView2. `wails dev` понимает две переменные для проверки без настоящего сервера: `WYND_INSTALLER_SSH_PORT` (порт вместо 22) и `WYND_INSTALLER_SSH_DIR` (каталог вместо `~/.ssh`); в собранном приложении их нет. Правки в `internal/installer` `wails dev` сам не подхватывает — перезапустить.
 
 ## Выпуск версии
