@@ -287,3 +287,90 @@ func TestProxyFilesMatchDeployTemplates(t *testing.T) {
 		t.Fatalf("сайт Caddy разошёлся с deploy/proxy/Caddyfile:\n--- установщик\n%s\n--- deploy\n%s", got, want)
 	}
 }
+
+const apachePorts = "LISTEN 0 511 *:80 *:* users:((\"apache2\",pid=1,fd=4))\n"
+
+// За чужим Apache: тот же порядок, что за nginx; недостающие модули включаются
+// тем же сценарием, что кладёт сайт, — до проверки настройки.
+func TestInstallBehindApache(t *testing.T) {
+	fastPolls(t)
+	host := newFakeHost()
+	host.layout = "layout=sites\nmissing=proxy\nmissing=ssl\n"
+	spec := testSpec(t)
+	spec.Proxy = ProxyApache
+	sess := dialHost(t, host)
+	res := Install(context.Background(), sess, spec, nil)
+	if !res.Done {
+		t.Fatalf("установка не прошла: %+v\n%+v", res.Failure, res.Log)
+	}
+	site := host.files["/etc/apache2/sites-available/wynd-family.example.ru.conf"]
+	if site != ApacheSite(spec.Domain, true) || !strings.HasPrefix(site, siteMark) {
+		t.Fatalf("файл сайта: %q", site)
+	}
+	hook := false
+	for _, c := range host.changes {
+		if strings.HasPrefix(c, "cb certonly") {
+			hook = strings.Contains(c, "--deploy-hook 'systemctl reload apache2'")
+		}
+	}
+	if !hook {
+		t.Fatalf("после продления Apache должен перечитать настройку: %q", host.changes)
+	}
+	k := proxyOf(ProxyApache)
+	if !strings.HasPrefix(k.prepare, "a2enmod ") || strings.Contains(k.reload, "restart") {
+		t.Fatalf("Apache: %+v", k)
+	}
+	for _, m := range apacheMods {
+		if !strings.Contains(k.prepare, " "+m) || !strings.Contains(apacheLayout, " "+m) {
+			t.Errorf("модуль %s не включается или не проверяется", m)
+		}
+	}
+}
+
+// План за Apache называет модули, которые включим, — и только недостающие.
+func TestPlanBehindApache(t *testing.T) {
+	now := time.Unix(1791460003, 0)
+	out := replaceSection(cleanUbuntu, "ports", apachePorts)
+	rep := ParseInspection(out+"## apache\nlayout=sites\nmissing=proxy\nmissing=proxy_http\ntest=ok\n", "root", now)
+	plan := BuildPlan(rep, "family.example.ru", "9.9.9", false)
+	if !plan.OK || plan.Proxy != ProxyApache || len(plan.Change) != 1 || !strings.Contains(plan.Change[0], "модули: proxy, proxy_http") {
+		t.Fatalf("план за Apache: %+v", plan)
+	}
+	if !strings.Contains(strings.Join(plan.Install, "\n"), "в Apache — отдельным файлом") || !strings.Contains(plan.Keep[0], "Apache и его сайты") {
+		t.Fatalf("план за Apache: %+v", plan)
+	}
+	rep = ParseInspection(out+"## apache\nlayout=sites\ntest=ok\n", "root", now)
+	if plan := BuildPlan(rep, "family.example.ru", "9.9.9", false); !plan.OK || len(plan.Change) != 0 {
+		t.Fatalf("все модули на месте — менять нечего: %+v", plan)
+	}
+	for _, c := range []struct{ body, text string }{
+		{"layout=sites\ntest=fail\n", "В настройке Apache сейчас ошибка"},
+		{"test=ok\n", "Apache на сервере настроен необычно"},
+	} {
+		rep := ParseInspection(out+"## apache\n"+c.body, "root", now)
+		if f := findings(rep)["proxy"]; !rep.Blocked() || f.Text != c.text || f.Advice == "" {
+			t.Errorf("%q: %+v", c.body, f)
+		}
+	}
+}
+
+func TestApacheSiteMatchesDeployTemplate(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "deploy", "proxy", "apache.conf"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	deploy := strings.ReplaceAll(string(raw), "\r\n", "\n")
+	_, https, ok := strings.Cut(deploy, "<VirtualHost *:443>")
+	if !ok {
+		t.Fatal("в deploy/proxy/apache.conf нет блока на 443")
+	}
+	if got, want := apacheHTTPS("example.org"), "<VirtualHost *:443>"+https; got != want {
+		t.Fatalf("сайт Apache разошёлся с deploy/proxy/apache.conf:\n--- установщик\n%s\n--- deploy\n%s", got, want)
+	}
+	if !strings.Contains(ApacheSite("example.org", true), apacheHTTPS("example.org")) || strings.Contains(ApacheSite("example.org", false), "SSLEngine") {
+		t.Fatal("до сертификата сайт Apache — только порт 80")
+	}
+	if drop := rollbackProxy(false); !strings.Contains(drop, "/etc/apache2/sites-enabled/wynd-*.conf") || !strings.Contains(drop, "if apache2ctl configtest 2>&1; then systemctl reload apache2") {
+		t.Fatalf("откат за Apache: %s", drop)
+	}
+}

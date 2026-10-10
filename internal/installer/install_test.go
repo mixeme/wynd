@@ -114,7 +114,7 @@ func (h *fakeHost) handle(command string, stdin []byte) (string, int) {
 		h.loaded = stdin
 		h.images["wynd:9.9.9"] = true
 		return "Loaded image: wynd:9.9.9\n", 0
-	case command == nginxLayout || strings.HasPrefix(command, "grep -Es '^import"):
+	case command == nginxLayout || command == apacheLayout || strings.HasPrefix(command, "grep -Es '^import"):
 		return h.layout, 0
 	case strings.HasPrefix(command, "test -s /etc/letsencrypt/live/"):
 		return "", exit(!h.cert)
@@ -489,11 +489,6 @@ func TestBuildPlan(t *testing.T) {
 		t.Fatalf("план чистого сервера: %+v", plan)
 	}
 
-	withProxy := clean
-	withProxy.Proxy = "apache"
-	if plan := BuildPlan(withProxy, "family.example.ru", "9.9.9", false); plan.OK || !strings.Contains(plan.Message, "Apache") {
-		t.Fatalf("Apache — пока отказ: %+v", plan)
-	}
 	if plan := BuildPlan(clean, "семья.рф", "9.9.9", false); plan.OK {
 		t.Fatalf("адрес не латиницей — отказ: %+v", plan)
 	}

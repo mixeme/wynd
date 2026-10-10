@@ -44,8 +44,10 @@ type Report struct {
 	Arch string `json:"-"`
 	// Git — на сервере есть git: сборке из открытого кода ставить его не надо.
 	Git bool `json:"-"`
-	// Certbot — на сервере есть certbot: за nginx сертификат получает он.
+	// Certbot — на сервере есть certbot: за nginx и Apache сертификат получает он.
 	Certbot bool `json:"-"`
+	// ApacheMods — модули, которые придётся включить в чужом Apache.
+	ApacheMods []string `json:"-"`
 	// Raw — вывод команд осмотра, для «подробнее, что проверили».
 	Raw string `json:"raw"`
 }
@@ -101,6 +103,7 @@ echo '## git'; git --version 2>/dev/null
 echo '## wynd'; ls -d /opt/wynd/compose.yaml /etc/wynd 2>/dev/null
 echo '## certbot'; command -v certbot 2>/dev/null
 echo '## nginx'; if command -v nginx >/dev/null 2>&1; then ` + nginxLayout + `; if asroot nginx -t >/dev/null 2>&1; then echo test=ok; else echo test=fail; fi; fi
+echo '## apache'; if command -v apache2ctl >/dev/null 2>&1; then ` + apacheLayout + `; if asroot apache2ctl configtest >/dev/null 2>&1; then echo test=ok; else echo test=fail; fi; fi
 echo '## caddy'; if command -v caddy >/dev/null 2>&1; then grep -Es '^import[[:space:]]' ` + caddyConfig + ` | head -n 20; if asroot caddy validate --config ` + caddyConfig + ` --adapter caddyfile >/dev/null 2>&1; then echo test=ok; else echo test=fail; fi; fi
 echo '## ownproxy'; docker ps --filter label=com.docker.compose.project.working_dir=/opt/wynd --filter publish=443 --format '{{.Names}} {{.Image}}' 2>/dev/null
 `
@@ -171,6 +174,9 @@ func ParseInspection(out, user string, now time.Time) Report {
 	proxy, f := portsFinding(sec["ports"], first(sec["ownproxy"]))
 	rep.Proxy = proxy
 	add(f)
+	if proxy == ProxyApache {
+		rep.ApacheMods = missingMods(sec[proxy])
+	}
 	if f, ok := proxyFinding(proxy, sec[proxy]); ok {
 		add(f)
 	}

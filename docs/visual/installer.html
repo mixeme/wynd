@@ -304,6 +304,28 @@ h2{margin:0 0 4px;font-size:17px}
 </div>
 
 <div>
+<p class="cap">3е · План: на сервере чужой Apache</p>
+<div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st done"><i>✓</i>Осмотр</div><div class="st on"><i>3</i>План</div><div class="st"><i>4</i>Установка</div><div class="st"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<h2>Что сделаем</h2>
+<div class="lab" style="margin-top:4px">Поставим</div>
+<div class="row"><span class="ic">+</span><div>Контейнер Wynd 0.28.9</div></div>
+<div class="row"><span class="ic">+</span><div>Сайт family.example.ru в Apache — отдельным файлом</div></div>
+<div class="row"><span class="ic">+</span><div>Сертификат для family.example.ru</div></div>
+<div class="lab">Изменим</div>
+<div class="row"><span class="ic">~</span><div>В Apache включим модули: proxy, proxy_http, ssl, headers, rewrite — без них сайт Wynd не заработает</div></div>
+<div class="lab">Не тронем</div>
+<div class="row"><span class="ic dim">·</span><div class="dim">Apache и его сайты: чужие файлы не правим, Apache перечитает настройку без остановки</div></div>
+<div class="foot"><span class="btn">Установить</span><span class="btn gh">Назад</span><span class="dim" style="margin-left:auto">обычно 5–10 минут, на медленном сервере — до получаса</span></div>
+</div></div></div>
+<p class="note">Черновик 2026-10-11, реализовано, владельцем не утверждено. Единственный план, где раздел «Изменим» не пуст: недостающие модули Apache включаем сами (решение владельца, 2026-10-11) и говорим об этом заранее. Резервной копии здесь нет — копировать нечего, поэтому раздел в окне теперь называется «Изменим», без «с резервной копией». В кадре опущены вторая строка «Не тронем» и строка про сборку — в окне они есть.</p>
+</div>
+
+<div>
 <p class="cap">4 · Установка</p>
 <div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
 <div class="main">

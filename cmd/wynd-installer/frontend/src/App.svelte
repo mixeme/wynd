@@ -211,9 +211,9 @@
 		return '';
 	}
 
-	// Чужой веб-сервер, за которым стоит Wynd: «nginx», «Caddy» или пусто — свой Caddy.
+	// Чужой веб-сервер, за которым стоит Wynd: «nginx», «Apache», «Caddy» или пусто — свой Caddy.
 	const proxyName = $derived(
-		inspection?.report?.proxy === 'nginx' ? 'nginx' : inspection?.report?.proxy === 'caddy' ? 'Caddy' : ''
+({ nginx: 'nginx', apache: 'Apache', caddy: 'Caddy' } as Record<string, string>)[inspection?.report?.proxy ?? ''] ?? ''
 	);
 
 	async function rollback() {
@@ -443,7 +443,7 @@
 				<div class="ins-row"><span class="ins-mark ok">+</span>{item}</div>
 			{/each}
 			{#if plan.change?.length}
-				<div class="ins-sec">Изменим — с резервной копией</div>
+				<div class="ins-sec">Изменим</div>
 				{#each plan.change as item (item)}
 					<div class="ins-row"><span class="ins-mark note">~</span>{item}</div>
 				{/each}

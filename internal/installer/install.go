@@ -1286,8 +1286,7 @@ func isASCIIDomain(d string) bool {
 }
 
 // BuildPlan составляет план по осмотру. build — собрать Wynd на сервере из
-// открытого кода вместо готового образа. За чужим nginx и Caddy Wynd ставим;
-// Apache — пока отказ с причиной.
+// открытого кода вместо готового образа.
 func BuildPlan(rep Report, domain, version string, build bool) Plan {
 	p := Plan{Domain: domain, Version: version, Build: build, Duration: "обычно 5–10 минут, на медленном сервере — до получаса"}
 	if build {
@@ -1304,10 +1303,6 @@ func BuildPlan(rep Report, domain, version string, build bool) Plan {
 	case !isASCIIDomain(domain):
 		p.Message = "Адрес с нелатинскими буквами установщик пока не умеет"
 		p.Advice = "Возьмите адрес латиницей, например family.example.ru."
-		return p
-	case rep.Proxy != "" && rep.Proxy != ProxyNginx && rep.Proxy != ProxyCaddy:
-		p.Message = "На сервере уже работает " + proxyNames[rep.Proxy]
-		p.Advice = "Установка рядом с ним появится в следующей версии установщика. Пока Wynd ставится на сервер, где порты 80 и 443 свободны или их держит nginx или Caddy."
 		return p
 	}
 	p.OK = true
@@ -1334,7 +1329,10 @@ func BuildPlan(rep Report, domain, version string, build bool) Plan {
 		p.Install = append(p.Install, "Сайт "+domain+" в Caddy — отдельным файлом")
 		p.Install = append(p.Install, "Сертификат для "+domain+" — его получит Caddy")
 	default:
-		p.Install = append(p.Install, "Сайт "+domain+" в nginx — отдельным файлом")
+		p.Install = append(p.Install, "Сайт "+domain+" в "+proxyNames[rep.Proxy]+" — отдельным файлом")
+		if len(rep.ApacheMods) > 0 {
+			p.Change = append(p.Change, "В Apache включим модули: "+strings.Join(rep.ApacheMods, ", ")+" — без них сайт Wynd не заработает")
+		}
 		if !rep.Certbot {
 			p.Install = append(p.Install, "certbot — он получает сертификаты")
 		}

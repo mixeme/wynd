@@ -45,6 +45,28 @@ var proxyNames = map[string]string{ProxyNginx: "nginx", ProxyApache: "Apache", P
 // Ничего не печатает — устроен иначе, своего файла положить некуда.
 const nginxLayout = `if grep -Eqs '^[[:space:]]*include[[:space:]].*sites-enabled' /etc/nginx/nginx.conf && [ -d /etc/nginx/sites-available ]; then echo layout=sites; elif grep -Eqs '^[[:space:]]*include[[:space:]].*conf\.d' /etc/nginx/nginx.conf && [ -d /etc/nginx/conf.d ]; then echo layout=confd; fi`
 
+// apacheMods — модули Apache, без которых сайт Wynd не заработает
+// (deploy/proxy/apache.conf). Недостающие включаем сами — решение владельца,
+// 2026-10-11; это единственное, что меняется в чужом веб-сервере помимо
+// своего файла сайта, и план говорит об этом заранее.
+var apacheMods = []string{"proxy", "proxy_http", "ssl", "headers", "rewrite", "setenvif"}
+
+// apacheLayout печатает «layout=sites», если Apache устроен как в Debian и
+// Ubuntu (sites-available и sites-enabled), и «missing=<модуль>» на каждый
+// модуль из apacheMods, который не включён.
+const apacheLayout = `if [ -d /etc/apache2/sites-available ] && [ -d /etc/apache2/sites-enabled ]; then echo layout=sites; fi; for m in proxy proxy_http ssl headers rewrite setenvif; do [ -e /etc/apache2/mods-enabled/$m.load ] || echo missing=$m; done`
+
+// missingMods читает строки «missing=…» из вывода apacheLayout.
+func missingMods(lines []string) []string {
+	var res []string
+	for _, l := range lines {
+		if m, ok := strings.CutPrefix(strings.TrimSpace(l), "missing="); ok && m != "" {
+			res = append(res, m)
+		}
+	}
+	return res
+}
+
 func hasLine(lines []string, want string) bool {
 	for _, l := range lines {
 		if strings.TrimSpace(l) == want {
@@ -54,14 +76,15 @@ func hasLine(lines []string, want string) bool {
 	return false
 }
 
-// nginxSitePaths — куда лечь файлу сайта и нужна ли ссылка на него.
-func nginxSitePaths(lines []string, domain string) (file, link string, ok bool) {
+// nginxSitePaths — куда лечь файлу сайта и нужна ли ссылка на него. root —
+// папка настройки веб-сервера: у Apache раскладка та же.
+func nginxSitePaths(lines []string, domain, root string) (file, link string, ok bool) {
 	name := "wynd-" + domain + ".conf"
 	switch {
 	case hasLine(lines, "layout=sites"):
-		return "/etc/nginx/sites-available/" + name, "/etc/nginx/sites-enabled/" + name, true
+		return root + "/sites-available/" + name, root + "/sites-enabled/" + name, true
 	case hasLine(lines, "layout=confd"):
-		return "/etc/nginx/conf.d/" + name, "", true
+		return root + "/conf.d/" + name, "", true
 	}
 	return "", "", false
 }
@@ -109,7 +132,7 @@ func proxyFinding(proxy string, lines []string) (Finding, bool) {
 	}
 	switch proxy {
 	case ProxyNginx:
-		if _, _, ok := nginxSitePaths(lines, "x"); !ok {
+		if _, _, ok := nginxSitePaths(lines, "x", "/etc/nginx"); !ok {
 			return Finding{
 				ID: "proxy", Level: LevelBlock,
 				Text:   "nginx на сервере настроен необычно",
@@ -118,6 +141,17 @@ func proxyFinding(proxy string, lines []string) (Finding, bool) {
 		}
 		if !hasLine(lines, "test=ok") {
 			return broken("nginx", "nginx -t"), true
+		}
+	case ProxyApache:
+		if !hasLine(lines, "layout=sites") {
+			return Finding{
+				ID: "proxy", Level: LevelBlock,
+				Text:   "Apache на сервере настроен необычно",
+				Advice: "Wynd кладёт свой сайт отдельным файлом в папку sites-enabled, а у этого Apache её нет. Чужую настройку мы не правим. Возьмите для Wynd отдельный сервер или поставьте Wynd вручную по инструкции.",
+			}, true
+		}
+		if !hasLine(lines, "test=ok") {
+			return broken("Apache", "apache2ctl configtest"), true
 		}
 	case ProxyCaddy:
 		if _, ok := caddySitePath(lines, "x"); !ok {
@@ -219,6 +253,64 @@ server {
 `
 }
 
+// apacheHTTPS — то же, что блок на 443 в deploy/proxy/apache.conf.
+func apacheHTTPS(domain string) string {
+	return `<VirtualHost *:443>
+    ServerName ` + domain + `
+    SSLEngine on
+    SSLCertificateFile /etc/letsencrypt/live/` + domain + `/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/` + domain + `/privkey.pem
+
+    RequestHeader unset X-Forwarded-For
+    RequestHeader set X-Real-IP "%{REMOTE_ADDR}s"
+    RequestHeader set X-Forwarded-Proto "https"
+
+    ProxyPreserveHost On
+    ProxyPass        "/" "http://127.0.0.1:7676/" timeout=300 flushpackets=on
+    ProxyPassReverse "/" "http://127.0.0.1:7676/"
+
+    LimitRequestBody 104857600
+    # mod_deflate buffers streamed responses: keep SSE and probes uncompressed.
+    SetEnvIfNoCase Accept "text/event-stream" no-gzip
+    SetEnvIf Request_URI "^/api/v1/probe/" no-gzip
+
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</VirtualHost>
+`
+}
+
+// ApacheSite — файл сайта Wynd для чужого Apache; withCert — как у NginxSite.
+func ApacheSite(domain string, withCert bool) string {
+	s := siteMark + ` Сайт Wynd за Apache; устроен так же, как
+# deploy/proxy/apache.conf в исходниках. Чтобы убрать — удалите этот файл и
+# ссылку на него в sites-enabled и попросите Apache перечитать настройку.
+
+<VirtualHost *:80>
+    ServerName ` + domain + `
+    Alias /.well-known/acme-challenge/ ` + acmeRoot + `/.well-known/acme-challenge/
+    <Directory ` + acmeRoot + `>
+        Require all granted
+    </Directory>
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} !^/\.well-known/acme-challenge/
+    RewriteRule ^ https://%{SERVER_NAME}%{REQUEST_URI} [R=301,L]
+</VirtualHost>
+`
+	if !withCert {
+		return s
+	}
+	return s + "\n" + apacheHTTPS(domain)
+}
+
+// siteContent — файл сайта для веб-сервера, которому сертификат получает
+// certbot (nginx, Apache).
+func siteContent(spec Spec, withCert bool) string {
+	if spec.Proxy == ProxyApache {
+		return ApacheSite(spec.Domain, withCert)
+	}
+	return NginxSite(spec.Domain, withCert)
+}
+
 // CaddySite — файл сайта Wynd для чужого Caddy: deploy/proxy/Caddyfile с
 // адресом человека. Сертификат Caddy получает сам.
 func CaddySite(domain string) string {
@@ -249,6 +341,10 @@ type proxyKind struct {
 	name   string
 	test   string
 	reload string
+	// prepare — что сделать до проверки настройки (включить модули Apache).
+	prepare string
+	// root — папка настройки веб-сервера.
+	root string
 	// layout печатает, куда класть файл сайта (строки для nginxSitePaths и
 	// caddySitePath).
 	layout string
@@ -263,8 +359,17 @@ func proxyOf(name string) proxyKind {
 			reload: "systemctl reload caddy",
 			layout: "grep -Es '^import[[:space:]]' " + caddyConfig,
 		}
+	case ProxyApache:
+		return proxyKind{
+			name:    "Apache",
+			test:    "apache2ctl configtest",
+			reload:  "systemctl reload apache2",
+			prepare: "a2enmod -q " + strings.Join(apacheMods, " "),
+			root:    "/etc/apache2",
+			layout:  apacheLayout,
+		}
 	}
-	return proxyKind{name: "nginx", test: "nginx -t", reload: "systemctl reload nginx", layout: nginxLayout}
+	return proxyKind{name: "nginx", test: "nginx -t", reload: "systemctl reload nginx", root: "/etc/nginx", layout: nginxLayout}
 }
 
 // sitePaths спрашивает сервер, куда лечь файлу сайта.
@@ -279,7 +384,7 @@ func sitePaths(ctx context.Context, r *Run) (file, link string, err error) {
 	if r.spec.Proxy == ProxyCaddy {
 		file, ok = caddySitePath(lines, r.spec.Domain)
 	} else {
-		file, link, ok = nginxSitePaths(lines, r.spec.Domain)
+		file, link, ok = nginxSitePaths(lines, r.spec.Domain, kind.root)
 	}
 	if !ok {
 		return "", "", &StepError{
@@ -311,6 +416,7 @@ if [ -f ` + file + ` ]; then cp -p ` + file + ` "$keep"; fi
 cat > ` + installDir + `/site.new
 mv ` + installDir + `/site.new ` + file + `
 ` + enable + `
+` + kind.prepare + `
 if ` + kind.test + ` 2>&1; then
   rm -f "$keep"
   ` + kind.reload + ` 2>&1
@@ -358,7 +464,7 @@ func siteStep(spec Spec) step {
 			if spec.Proxy == ProxyCaddy {
 				return strings.Contains(res.Output, sum(CaddySite(spec.Domain))), nil
 			}
-			return strings.Contains(res.Output, sum(NginxSite(spec.Domain, true))) || strings.Contains(res.Output, sum(NginxSite(spec.Domain, false))), nil
+			return strings.Contains(res.Output, sum(siteContent(spec, true))) || strings.Contains(res.Output, sum(siteContent(spec, false))), nil
 		},
 		do: func(ctx context.Context, r *Run) error {
 			file, link, err := sitePaths(ctx, r)
@@ -375,7 +481,7 @@ func siteStep(spec Spec) step {
 			if err != nil {
 				return err
 			}
-			return applySite(ctx, r, file, link, NginxSite(spec.Domain, has))
+			return applySite(ctx, r, file, link, siteContent(spec, has))
 		},
 	}
 }
@@ -410,7 +516,7 @@ const certbotWait = `cb() {
 // перечитывает настройку — иначе продолжит отдавать прежний сертификат.
 func certbotIssue(spec Spec) string {
 	cmd := certbotWait + "cb certonly --non-interactive --agree-tos --register-unsafely-without-email --webroot -w " + acmeRoot +
-		" -d " + spec.Domain + " --deploy-hook 'systemctl reload nginx'"
+		" -d " + spec.Domain + " --deploy-hook '" + proxyOf(spec.Proxy).reload + "'"
 	if spec.TestCert {
 		cmd += " --test-cert"
 	}
@@ -479,7 +585,7 @@ func nginxCertStep(spec Spec) step {
 			if err != nil {
 				return err
 			}
-			full := NginxSite(spec.Domain, true)
+			full := siteContent(spec, true)
 			res, err := r.sess.Exec(ctx, "sha256sum "+file+" 2>/dev/null", nil, shortTimeout)
 			if err != nil {
 				return err
@@ -517,7 +623,10 @@ func nginxCertStep(spec Spec) step {
 func rollbackProxy(keepData bool) string {
 	script := `dom=$(sed -n 's|.*WYND_PUBLIC_URL: https://||p' ` + installDir + `/compose.yaml 2>/dev/null | head -n 1)
 mark=` + shQuote(siteMark) + `
-ngx=; cdy=
+ngx=; cdy=; apa=
+for f in /etc/apache2/sites-enabled/wynd-*.conf /etc/apache2/sites-available/wynd-*.conf; do
+  if grep -qsF "$mark" "$f"; then rm -f "$f"; apa=1; fi
+done
 for f in /etc/nginx/sites-enabled/wynd-*.conf /etc/nginx/sites-available/wynd-*.conf /etc/nginx/conf.d/wynd-*.conf; do
   if grep -qsF "$mark" "$f"; then rm -f "$f"; ngx=1; fi
 done
@@ -526,6 +635,9 @@ for f in $(grep -rlsF "$mark" ` + path.Dir(caddyConfig) + ` 2>/dev/null); do
 done
 if [ -n "$ngx" ]; then
   if nginx -t 2>&1; then systemctl reload nginx 2>&1 || echo ` + markNotReloaded + `; else echo ` + markNotReloaded + `; fi
+fi
+if [ -n "$apa" ]; then
+  if apache2ctl configtest 2>&1; then systemctl reload apache2 2>&1 || echo ` + markNotReloaded + `; else echo ` + markNotReloaded + `; fi
 fi
 if [ -n "$cdy" ]; then
   if ` + proxyOf(ProxyCaddy).test + ` 2>&1; then systemctl reload caddy 2>&1 || echo ` + markNotReloaded + `; else echo ` + markNotReloaded + `; fi
