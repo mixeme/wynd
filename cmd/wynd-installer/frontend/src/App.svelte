@@ -202,6 +202,15 @@
 		}
 	}
 
+	// Данные удаляли — сертификат отзывали: сказать, вышло ли.
+	function certNote(cert: 'revoked' | 'failed' | undefined): string {
+		if (cert === 'revoked') return ' Сертификат сайта отозван.';
+		if (cert === 'failed') {
+			return ' Отозвать сертификат сайта не получилось: он удалён вместе с ключом и перестанет действовать сам, когда выйдет его срок.';
+		}
+		return '';
+	}
+
 	async function rollback() {
 		if (rolling) return;
 		rolling = true;
@@ -216,15 +225,19 @@
 				if (res.report) inspection = { ok: true, report: res.report };
 				if (res.plan) plan = res.plan;
 				if (failed) {
-					rollbackNote = dropData
-						? 'Установка откачена: Wynd и его данные с сервера убраны, остался только Docker.'
-						: 'Установка откачена: Wynd с сервера убран, его данные оставлены, Docker остался.';
+					rollbackNote =
+						(dropData
+							? 'Установка откачена: Wynd и его данные с сервера убраны, остался только Docker.'
+							: 'Установка откачена: Wynd с сервера убран, его данные оставлены, Docker остался.') +
+						certNote(res.cert);
 					screen = 'plan';
 				} else {
 					// Убрали работавший Wynd (окна 2б, 5а): назад к осмотру, сервер уже без него.
-					rollbackNote = dropData
-						? 'Wynd, его данные и сертификат с сервера убраны. Docker остался.'
-						: 'Wynd с сервера убран, его данные и сертификат оставлены. Docker остался.';
+					rollbackNote =
+						(dropData
+							? 'Wynd, его данные и сертификат с сервера убраны. Docker остался.'
+							: 'Wynd с сервера убран, его данные и сертификат оставлены. Docker остался.') +
+						certNote(res.cert);
 					screen = 'inspect';
 				}
 			} else {

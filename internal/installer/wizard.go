@@ -393,6 +393,10 @@ type RollbackResult struct {
 	Message string     `json:"message,omitempty"`
 	Advice  string     `json:"advice,omitempty"`
 	Log     []LogEntry `json:"log"`
+	// Cert — что стало с сертификатом, когда удаляли данные: «revoked» —
+	// отозван, «failed» — отозвать не вышло (он удалён вместе с ключом), пусто —
+	// сертификата не было или данные оставлены.
+	Cert string `json:"cert,omitempty"`
 	// Report и Plan — сервер после отката: осмотрен заново, план пересоставлен.
 	Report *Report `json:"report,omitempty"`
 	Plan   *Plan   `json:"plan,omitempty"`
@@ -431,6 +435,14 @@ func (w *Wizard) Rollback(ctx context.Context, keepData bool) RollbackResult {
 	}
 	w.progress = Progress{Steps: StepTitles(spec)}
 	res := RollbackResult{OK: true, Log: log}
+	for _, e := range log {
+		switch {
+		case strings.Contains(e.Output, markRevokeFailed):
+			res.Cert = "failed"
+		case strings.Contains(e.Output, markRevoked) && res.Cert == "":
+			res.Cert = "revoked"
+		}
+	}
 	// Прежний план писался для сервера, где Wynd уже стоял. Осмотр не вышел —
 	// остаётся прежний: установка по нему всё равно доделает недостающее.
 	if rep, err := Inspect(ctx, w.session); err == nil {

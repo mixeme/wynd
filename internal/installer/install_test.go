@@ -399,12 +399,17 @@ func TestRollbackKeepsOrDropsData(t *testing.T) {
 		// Подставной сервер на многострочный сценарий отвечает «down» — код 0.
 		_ = log
 	}
-	if strings.Contains(log[0].Command, "--volumes") {
+	if strings.Contains(log[0].Command, "--volumes") || strings.Contains(log[0].Command, "certbot revoke") {
 		t.Fatalf("данные просили оставить: %s", log[0].Command)
 	}
 	log, _ = Rollback(context.Background(), sess, spec, false)
 	if !strings.Contains(log[0].Command, "--volumes") || !strings.Contains(log[0].Command, "rm -rf "+installDir) {
 		t.Fatalf("откат: %s", log[0].Command)
+	}
+	// Данные удаляют — сертификат отзывают, и раньше, чем уйдёт том с ключом.
+	revoke, down := strings.Index(log[0].Command, "certbot revoke"), strings.Index(log[0].Command, "docker compose down")
+	if revoke < 0 || revoke > down {
+		t.Fatalf("сертификат должен быть отозван до удаления данных: %s", log[0].Command)
 	}
 	if host.running {
 		t.Fatal("после отката Wynd работает")

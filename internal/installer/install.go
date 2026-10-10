@@ -1101,21 +1101,66 @@ func linkStep(spec Spec) step {
 	}
 }
 
+// certbotImage — им отзываем сертификат: у Caddy своей команды отзыва нет.
+const certbotImage = "certbot/certbot"
+
+// Метки в выводе отката: что вышло с отзывом сертификата.
+const (
+	markRevoked      = "WYND_REVOKED"
+	markRevokeFailed = "WYND_REVOKE_FAILED"
+)
+
+// revokeScript отзывает сертификаты из тома нашего Caddy, пока том ещё есть.
+// Отзыв подписывается ключом самого сертификата — учётная запись у
+// удостоверяющего центра не нужна. Центр узнаём по имени папки, в которую
+// Caddy кладёт сертификат; незнакомый — отзыв не вышел. Неудача откат не
+// останавливает: сертификат всё равно уйдёт вместе с ключом.
+const revokeScript = `  proj=$(docker compose config 2>/dev/null | sed -n 's/^name: //p' | head -n 1)
+  vol=$(docker volume ls -q --filter label=com.docker.compose.project="${proj:-wynd}" --filter label=com.docker.compose.volume=caddy-data 2>/dev/null | head -n 1)
+  if [ -n "$vol" ]; then
+    docker run --rm -v "$vol":/data:ro --entrypoint sh ` + certbotImage + ` -c '
+      for crt in /data/caddy/certificates/*/*/*.crt; do
+        [ -f "$crt" ] || continue
+        ca=$(basename "$(dirname "$(dirname "$crt")")")
+        case "$ca" in
+          acme-v02.api.letsencrypt.org-directory) srv=https://acme-v02.api.letsencrypt.org/directory ;;
+          acme-staging-v02.api.letsencrypt.org-directory) srv=https://acme-staging-v02.api.letsencrypt.org/directory ;;
+          acme.zerossl.com-v2-dv90) srv=https://acme.zerossl.com/v2/DV90 ;;
+          *) echo "` + markRevokeFailed + ` $crt: unknown CA $ca"; continue ;;
+        esac
+        if certbot revoke --non-interactive --no-delete-after-revoke --reason cessationofoperation --server "$srv" --cert-path "$crt" --key-path "${crt%.crt}.key" --config-dir /tmp/c --work-dir /tmp/w --logs-dir /tmp/l 2>&1; then
+          echo "` + markRevoked + ` $crt"
+        else
+          echo "` + markRevokeFailed + ` $crt"
+        fi
+      done' 2>&1 || echo "` + markRevokeFailed + ` certbot did not run"
+    docker image rm ` + certbotImage + ` >/dev/null 2>&1 || true
+  fi`
+
 // Rollback убирает поставленное: контейнеры, папку /opt/wynd, образ Wynd и
 // образ Caddy (тот — только если им не пользуется чужой контейнер: docker
 // занятый образ не удалит). Образы берутся и из самих контейнеров: Wynd мог
 // быть поставлен другим способом или другой версии, чем ставит это окно.
 // Данные (тома) — только если keepData ложно. Docker остаётся: он мог
 // понадобиться чему-то ещё, и сам по себе ничего не меняет.
+//
+// Данные удаляют — сертификат сначала отзываем (решение владельца,
+// 2026-10-10): ключ уходит вместе с томом, а отозванный сертификат перестаёт
+// действовать сразу, не дожидаясь срока.
 func Rollback(ctx context.Context, sess *Session, spec Spec, keepData bool) ([]LogEntry, error) {
 	down := "docker compose down --remove-orphans"
 	if !keepData {
 		down += " --volumes"
 	}
+	revoke := ""
+	if !keepData {
+		revoke = revokeScript
+	}
 	script := `imgs=
 if [ -f ` + installDir + `/compose.yaml ] && command -v docker >/dev/null 2>&1; then
   cd ` + installDir + `
   imgs=$(docker compose images -q 2>/dev/null || true)
+` + revoke + `
   ` + down + ` 2>&1
 fi
 cd /
