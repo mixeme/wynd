@@ -673,10 +673,23 @@ const gitScript = `command -v git >/dev/null 2>&1 || {
 }`
 
 // buildSwap — временный файл подкачки на время сборки; buildLock — замок,
-// чтобы две сборки не пошли разом.
+// чтобы две сборки не пошли разом; buildCacheOurs — пометка «сборочный кэш
+// Docker до нашей сборки был пуст».
 const (
-	buildSwap = "/var/tmp/wynd-build.swap"
-	buildLock = "/var/tmp/wynd-build.lock"
+	buildSwap      = "/var/tmp/wynd-build.swap"
+	buildLock      = "/var/tmp/wynd-build.lock"
+	buildCacheOurs = "/var/tmp/wynd-build.cache-ours"
+)
+
+// Сборочный кэш у Docker один на всех, своё от чужого в нём не отличить.
+// Поэтому перед сборкой смотрим, пуст ли он: пуст — после сборки в нём только
+// наше (базовые образы node и golang, слои зависимостей — около 2 ГБ), и его
+// можно убрать целиком. Не пуст — на сервере собирает кто-то ещё, не трогаем.
+// Пометка переживает оборванную сборку: повтор начнёт уже с непустым кэшем,
+// но это всё ещё наш кэш.
+const (
+	markCacheOurs  = `if [ "$(docker system df --format '{{.Type}}={{.TotalCount}}' 2>/dev/null | sed -n 's/^Build Cache=//p')" = 0 ]; then : > ` + buildCacheOurs + `; fi`
+	pruneCacheOurs = `if [ -e ` + buildCacheOurs + ` ]; then docker builder prune -af >/dev/null 2>&1 || true; rm -f ` + buildCacheOurs + `; fi`
 )
 
 const swapOff = "swapoff " + buildSwap + " 2>/dev/null || true; rm -f " + buildSwap
@@ -688,7 +701,7 @@ const (
 )
 
 // buildScript — вся сборка одной командой: клон метки выпуска, подкачка,
-// docker build, уборка. Одной — потому что связь может оборваться, а сервер
+// docker build, уборка (и сборочного кэша, если он весь наш). Одной — потому что связь может оборваться, а сервер
 // должен довести дело и убрать за собой сам (проба 2026-10-09: соединение
 // пропало на первой минуте, сборка шла дальше, подкачка и исходники остались
 // бы навсегда). Замок: «Повторить» после обрыва ждёт идущую сборку и берёт её
@@ -719,13 +732,14 @@ if [ "$swap" -gt 0 ]; then
 fi
 git -c advice.detachedHead=false clone -q --depth 1 --branch ` + shQuote("v"+version) + ` ` + shQuote(repo) + ` ` + sourceDir + ` 2>&1 || exit ` + fmt.Sprint(exitNoTag) + `
 cd ` + sourceDir + `
-docker build -q -f deploy/docker/Dockerfile --build-arg VERSION=` + shQuote(version) + ` -t ` + tag + ` . 2>&1`
+` + markCacheOurs + `
+docker build -q -f deploy/docker/Dockerfile --build-arg VERSION=` + shQuote(version) + ` -t ` + tag + ` . 2>&1
+` + pruneCacheOurs
 }
 
-// Provide собирает образ на сервере. Сборочный кэш Docker остаётся — с ним
-// следующая сборка не качает заново базовые образы и зависимости. Откат его
-// тоже не трогает: кэш у Docker общий, чужое от своего в нём не отличить
-// (docker builder prune — руками).
+// Provide собирает образ на сервере. Сборочный кэш после удачной сборки
+// убирается, если до неё был пуст (markCacheOurs); после неудачной остаётся —
+// повтор не качает всё заново, — и тогда его уберёт удачный повтор или откат.
 func (s SourceImage) Provide(ctx context.Context, r *Run, tag string) error {
 	_, version, _ := strings.Cut(tag, ":")
 	if _, err := r.must(ctx, gitScript, packageTimeout); err != nil {
@@ -1077,6 +1091,7 @@ if command -v docker >/dev/null 2>&1; then
   rm -rf ` + sourceDir + `
   ` + swapOff + `
   rm -f ` + buildLock + `
+  ` + pruneCacheOurs + `
 fi
 test ! -e ` + installDir
 	res, err := sess.Exec(ctx, script, nil, packageTimeout)

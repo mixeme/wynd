@@ -392,6 +392,9 @@ func TestRollbackKeepsOrDropsData(t *testing.T) {
 		t.Fatalf("установка: %+v", res.Failure)
 	}
 	log, err := Rollback(context.Background(), sess, spec, true)
+	if len(log) == 0 || !strings.Contains(log[0].Command, "if [ -e "+buildCacheOurs+" ]; then docker builder prune -af") {
+		t.Fatalf("откат не убирает наш сборочный кэш: %+v", log)
+	}
 	if err == nil || len(log) != 1 {
 		// Подставной сервер на многострочный сценарий отвечает «down» — код 0.
 		_ = log
@@ -678,6 +681,9 @@ func TestInstallFromSource(t *testing.T) {
 		"--branch 'v9.9.9' 'https://example.org/wynd' " + sourceDir,
 		"trap cleanup EXIT",
 		"--build-arg VERSION='9.9.9' -t wynd:9.9.9 .",
+		// Кэш убираем, только если до сборки он был пуст.
+		"Build Cache=//p')\" = 0 ]; then : > " + buildCacheOurs,
+		"if [ -e " + buildCacheOurs + " ]; then docker builder prune -af",
 	} {
 		if !strings.Contains(script, want) {
 			t.Fatalf("в сценарии сборки нет %q:\n%s", want, script)
