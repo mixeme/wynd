@@ -10,6 +10,7 @@
 		type DomainCheck,
 		type Finding,
 		type InspectResult,
+		type LogEntry,
 		type Plan,
 		type Progress,
 		type StepState
@@ -49,6 +50,7 @@
 	let rolling = $state(false);
 	let rollbackNote = $state('');
 	let rollbackError = $state('');
+	let rollbackLog = $state<LogEntry[]>([]);
 	let copied = $state(false);
 
 	const SCREEN_STEP: Record<Screen, number> = {
@@ -179,6 +181,7 @@
 	async function install() {
 		askRollback = false;
 		rollbackError = '';
+		rollbackLog = [];
 		screen = 'install';
 		applyProgress(await backend().StartInstall());
 		if (progress?.running && !poll) {
@@ -194,13 +197,18 @@
 			const res = await backend().Rollback(!dropData);
 			if (res.ok) {
 				askRollback = false;
+				rollbackLog = [];
 				progress = undefined;
+				if (res.report) inspection = { ok: true, report: res.report };
+				if (res.plan) plan = res.plan;
 				rollbackNote = dropData
 					? 'Установка откачена: Wynd и его данные с сервера убраны, остался только Docker.'
 					: 'Установка откачена: Wynd с сервера убран, его данные оставлены, Docker остался.';
 				screen = 'plan';
 			} else {
-				rollbackError = [res.message, res.advice].filter(Boolean).join(' ');
+				rollbackError = [res.message, res.advice].filter(Boolean).join('. ');
+				// Что откат успел и на чём встал — в тех же «подробностях».
+				rollbackLog = res.log ?? [];
 			}
 		} finally {
 			rolling = false;
@@ -220,7 +228,7 @@
 	}
 
 	const logText = $derived(
-		(progress?.log ?? []).map((e) => ('$ ' + e.command + '\n' + e.output).trimEnd()).join('\n\n')
+		[...(progress?.log ?? []), ...rollbackLog].map((e) => ('$ ' + e.command + '\n' + e.output).trimEnd()).join('\n\n')
 	);
 </script>
 
@@ -391,6 +399,7 @@
 					</label>
 					{#if rollbackError}
 						<div class="ins-dim" role="alert">{rollbackError}</div>
+						<TextButton class="link under" onclick={() => (showLog = !showLog)}>подробности</TextButton>
 					{/if}
 					<div class="ins-foot">
 						<Button variant="colored" loading={rolling} onclick={() => void rollback()}>

@@ -53,6 +53,61 @@ func TestFeedDayCardMergesTitleAndCover(t *testing.T) {
 	}
 }
 
+// Переименовали и сменили обложку несколько раз подряд — одна открытка с
+// последним; подпись называет то, что меняли.
+func TestFeedDayCardMergesRunOfChanges(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	p := e.post(circle.ID, "owner", "плёнки", "2026-08-06", e.after(time.Minute))
+	e.seedBlob("blob-p1", "owner")
+	e.seedBlob("blob-p2", "owner")
+	e.attachPhoto(p.ID, "blob-p1")
+	e.attachPhoto(p.ID, "blob-p2")
+	title := func(text string, when time.Time) {
+		t.Helper()
+		if err := e.ch.SetDayTitle(e.ctx, chronicle.DayTitleInput{
+			CircleID: circle.ID, AccountID: "owner", EntryDate: "2026-08-06", Title: text, Now: when,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cover := func(blob string, when time.Time) {
+		t.Helper()
+		if err := e.ch.SetDayCover(e.ctx, chronicle.DayCoverInput{
+			CircleID: circle.ID, AccountID: "owner", EntryDate: "2026-08-06",
+			PostID: p.ID, BlobID: blob, Now: when,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	start := e.at(1)
+	title("Плёнки", start)
+	title("Чердак", start.Add(4*time.Minute))
+	title("Чердак и плёнки", start.Add(8*time.Minute))
+	cards := feedDayCards(t, e, circle.ID, "owner")
+	if len(cards) != 1 || cards[0].Day.Title != "Чердак и плёнки" || cards[0].Day.Caption != "Название дня: Аня" {
+		t.Fatalf("три названия подряд: %+v", cards)
+	}
+
+	// Окно — между соседними, а не от первой: 16 минут от начала ещё склеиваются.
+	cover("blob-p1", start.Add(12*time.Minute))
+	cover("blob-p2", start.Add(16*time.Minute))
+	cards = feedDayCards(t, e, circle.ID, "owner")
+	if len(cards) != 1 {
+		t.Fatalf("открыток %d, нужна одна: %+v", len(cards), cards)
+	}
+	d := cards[0].Day
+	if d.Title != "Чердак и плёнки" || d.CoverBlobID != "blob-p2" || d.Caption != "Название и обложка дня: Аня" {
+		t.Fatalf("открытка = %+v", d)
+	}
+
+	// Перерыв дольше окна — новая открытка.
+	title("Август", start.Add(40*time.Minute))
+	if cards = feedDayCards(t, e, circle.ID, "owner"); len(cards) != 2 {
+		t.Fatalf("после перерыва открыток %d, нужно две", len(cards))
+	}
+}
+
 // Сменили одно — в открытке оба (3.16); старая открытка остаётся прежней.
 func TestFeedDayCardShowsWholeDay(t *testing.T) {
 	e := newTestEnv(t)

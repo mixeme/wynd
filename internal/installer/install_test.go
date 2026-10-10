@@ -490,7 +490,13 @@ func TestWizardInstallAndRollback(t *testing.T) {
 		t.Fatalf("осмотр: %+v", res)
 	}
 	// Осмотр прошёл на заготовленном выводе; дальше сервер отвечает по командам.
-	srv.handler = host.handle
+	// Кроме осмотра: после отката окно осматривает сервер ещё раз.
+	srv.handler = func(command string, stdin []byte) (string, int) {
+		if command == inspectScript {
+			return cleanUbuntu, 0
+		}
+		return host.handle(command, stdin)
+	}
 
 	plan := w.MakePlan(ctx, "https://Family.Example.ru/")
 	if !plan.OK || plan.Domain != "family.example.ru" {
@@ -510,6 +516,10 @@ func TestWizardInstallAndRollback(t *testing.T) {
 	}
 	if p := w.InstallProgress(); p.Done || p.Link != "" {
 		t.Fatalf("после отката окно помнит итог: %+v", p)
+	}
+	// Сервер после отката осмотрен заново, план — по новому осмотру.
+	if back.Report == nil || back.Plan == nil || !back.Plan.OK || back.Plan.Domain != "family.example.ru" {
+		t.Fatalf("после отката нет нового плана: %+v", back)
 	}
 }
 

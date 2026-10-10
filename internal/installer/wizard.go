@@ -347,6 +347,9 @@ type RollbackResult struct {
 	Message string     `json:"message,omitempty"`
 	Advice  string     `json:"advice,omitempty"`
 	Log     []LogEntry `json:"log"`
+	// Report и Plan — сервер после отката: осмотрен заново, план пересоставлен.
+	Report *Report `json:"report,omitempty"`
+	Plan   *Plan   `json:"plan,omitempty"`
 }
 
 // Rollback убирает поставленное этой установкой. keepData — оставить на
@@ -371,9 +374,19 @@ func (w *Wizard) Rollback(ctx context.Context, keepData bool) RollbackResult {
 		return RollbackResult{
 			Log:     log,
 			Message: "Откатить не получилось",
-			Advice:  "Нажмите «Откатить установку» ещё раз. Что осталось на сервере — видно в «подробностях».",
+			Advice:  "Нажмите «Да, откатить» ещё раз. Что осталось на сервере — видно в «подробностях».",
 		}
 	}
 	w.progress = Progress{Steps: StepTitles(spec)}
-	return RollbackResult{OK: true, Log: log}
+	res := RollbackResult{OK: true, Log: log}
+	// Прежний план писался для сервера, где Wynd уже стоял. Осмотр не вышел —
+	// остаётся прежний: установка по нему всё равно доделает недостающее.
+	if rep, err := Inspect(ctx, w.session); err == nil {
+		if plan := BuildPlan(rep, spec.Domain, w.Version); plan.OK {
+			w.report, w.plan = &rep, &plan
+			w.progress = Progress{Steps: StepTitles(w.specLocked(plan))}
+			res.Report, res.Plan = &rep, &plan
+		}
+	}
+	return res
 }

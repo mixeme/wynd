@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.28.8
+  version: 0.28.9
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:

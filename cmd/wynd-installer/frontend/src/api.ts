@@ -92,6 +92,8 @@ export interface RollbackResult {
 	message?: string;
 	advice?: string;
 	log: LogEntry[] | null;
+	report?: Report;
+	plan?: Plan;
 }
 
 interface Backend {

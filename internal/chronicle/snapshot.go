@@ -499,7 +499,8 @@ type FeedDayCard struct {
 }
 
 // dayCardMergeWindow — назвали день и выбрали обложку «разом»: соседние
-// записи одного человека за один день в этих пределах идут одной открыткой.
+// записи одного человека за один день в этих пределах идут одной открыткой,
+// сколько бы раз подряд он ни менял название и обложку.
 const dayCardMergeWindow = 10 * time.Minute
 
 type FeedMeta struct {
@@ -620,7 +621,7 @@ func daySaidAsOf(rows []daySaidRow, seq int64) (daySaidRow, bool) {
 }
 
 // attachDayCards кладёт в записи «назвали день» и «выбрали обложку» открытку
-// дня и склеивает пару, сделанную разом, в одну (events — от новых к старым).
+// дня и склеивает сделанное разом в одну (events — от новых к старым).
 func (c *Chronicle) attachDayCards(ctx context.Context, circleID, accountID string, events []feedEventRow) ([]feedEventRow, error) {
 	titles, err := c.daySaidHistory(ctx, `
 		SELECT entry_date, event_seq, title, created_at, created_at FROM day_titles
@@ -682,12 +683,18 @@ func (c *Chronicle) attachDayCards(ctx context.Context, circleID, accountID stri
 		}
 		titled := ev.eventType == "day.titled"
 		cover := !titled
-		if j := olderSaid(i); j >= 0 && !merged[j] {
+		// Цепочка: каждая более старая запись — не дальше окна от соседней.
+		for last, j := i, olderSaid(i); j >= 0 && !merged[j]; last, j = j, olderSaid(j) {
 			prev := events[j]
-			if prev.isDaySet() && prev.eventType != ev.eventType &&
-				prev.actorID == ev.actorID && ev.CreatedAt.Sub(prev.CreatedAt) <= dayCardMergeWindow {
-				merged[j] = true
-				titled, cover = true, true
+			if !prev.isDaySet() || prev.actorID != ev.actorID ||
+				events[last].CreatedAt.Sub(prev.CreatedAt) > dayCardMergeWindow {
+				break
+			}
+			merged[j] = true
+			if prev.eventType == "day.titled" {
+				titled = true
+			} else {
+				cover = true
 			}
 		}
 		card := &FeedDayCard{
