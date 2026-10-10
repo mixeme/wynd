@@ -110,6 +110,8 @@ func main() {
 		Version: version.Number,
 		Image:   imageSource(),
 		Source:  installer.SourceImage{Repo: installer.DefaultSource},
+		// В собранном приложении всегда ложно.
+		TestCert: devTestCert(),
 	}}
 	err := wails.Run(&options.App{
 		Title:       "Wynd — установка на свой сервер",

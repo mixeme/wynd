@@ -391,7 +391,7 @@ func TestParseInspectionFindings(t *testing.T) {
 		{"nginx на портах", "ports",
 			"LISTEN 0 511 0.0.0.0:80 0.0.0.0:* users:((\"nginx\",pid=1,fd=6),(\"nginx\",pid=2,fd=6))\nLISTEN 0 511 [::]:443 [::]:* users:((\"nginx\",pid=1,fd=7))\n",
 			"ports", LevelNote, "Веб-сервер есть: nginx"},
-		{"apache только на 80", "ports", "LISTEN 0 511 *:80 *:* users:((\"apache2\",pid=1,fd=4))\n", "ports", LevelNote, "Веб-сервер есть: apache"},
+		{"apache только на 80", "ports", "LISTEN 0 511 *:80 *:* users:((\"apache2\",pid=1,fd=4))\n", "ports", LevelNote, "Веб-сервер есть: Apache"},
 		{"чужая программа", "ports", "LISTEN 0 4096 0.0.0.0:443 0.0.0.0:* users:((\"docker-proxy\",pid=9,fd=4))\n", "ports", LevelBlock, "Порт 443 на сервере уже занят: docker-proxy"},
 		{"два веб-сервера", "ports",
 			"LISTEN 0 511 0.0.0.0:80 0.0.0.0:* users:((\"nginx\",pid=1,fd=6))\nLISTEN 0 511 0.0.0.0:443 0.0.0.0:* users:((\"caddy\",pid=3,fd=6))\n",
@@ -458,7 +458,7 @@ func TestInspectRunsOneReadOnlyCommand(t *testing.T) {
 		t.Fatal("на сервер ушла не команда осмотра")
 	}
 	// Осмотр только читает: в команде нет ничего, что пишет или ставит.
-	for _, word := range []string{"rm ", "apt", "install", "systemctl", " > /", ">>", "tee ", "chmod", "mkdir", "curl", "wget"} {
+	for _, word := range []string{"rm ", "apt-get", "apt ", "install", "systemctl", " > /", ">>", "tee ", "chmod", "mkdir", "curl", "wget"} {
 		if strings.Contains(inspectScript, word) {
 			t.Errorf("в команде осмотра есть %q", word)
 		}

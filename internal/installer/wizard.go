@@ -65,6 +65,8 @@ type Wizard struct {
 	// Source — второй способ: сервер собирает Wynd сам из открытого кода.
 	// Пусто — выбора в окне нет.
 	Source ImageSource
+	// TestCert — сертификат проверочного сервера Let's Encrypt (Spec.TestCert).
+	TestCert bool
 	// Probe — как открыть сайт с этого компьютера; пусто — обычный запрос.
 	Probe func(ctx context.Context, url string) (string, error)
 
@@ -304,7 +306,7 @@ func (w *Wizard) specLocked(plan Plan) Spec {
 	if plan.Build && w.Source != nil {
 		image = w.Source
 	}
-	return Spec{Domain: plan.Domain, Version: plan.Version, Image: image, FixClock: plan.FixClock, Probe: w.Probe}
+	return Spec{Domain: plan.Domain, Version: plan.Version, Image: image, FixClock: plan.FixClock, Proxy: plan.Proxy, TestCert: w.TestCert, Probe: w.Probe}
 }
 
 // StartInstall запускает установку по плану и сразу возвращает её состояние;
@@ -397,6 +399,9 @@ type RollbackResult struct {
 	// отозван, «failed» — отозвать не вышло (он удалён вместе с ключом), пусто —
 	// сертификата не было или данные оставлены.
 	Cert string `json:"cert,omitempty"`
+	// Stale — чужой веб-сервер настройку не перечитал: в ней ошибка, и не наша.
+	// Наш файл сайта убран, но сайт пропадёт, только когда он её перечитает.
+	Stale bool `json:"stale,omitempty"`
 	// Report и Plan — сервер после отката: осмотрен заново, план пересоставлен.
 	Report *Report `json:"report,omitempty"`
 	Plan   *Plan   `json:"plan,omitempty"`
@@ -436,6 +441,9 @@ func (w *Wizard) Rollback(ctx context.Context, keepData bool) RollbackResult {
 	w.progress = Progress{Steps: StepTitles(spec)}
 	res := RollbackResult{OK: true, Log: log}
 	for _, e := range log {
+		if strings.Contains(e.Output, markNotReloaded) {
+			res.Stale = true
+		}
 		switch {
 		case strings.Contains(e.Output, markRevokeFailed):
 			res.Cert = "failed"

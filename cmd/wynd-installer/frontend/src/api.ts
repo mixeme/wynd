@@ -97,6 +97,7 @@ export interface RollbackResult {
 	advice?: string;
 	log: LogEntry[] | null;
 	cert?: 'revoked' | 'failed';
+	stale?: boolean;
 	report?: Report;
 	plan?: Plan;
 }

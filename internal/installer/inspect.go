@@ -44,6 +44,8 @@ type Report struct {
 	Arch string `json:"-"`
 	// Git — на сервере есть git: сборке из открытого кода ставить его не надо.
 	Git bool `json:"-"`
+	// Certbot — на сервере есть certbot: за nginx сертификат получает он.
+	Certbot bool `json:"-"`
 	// Raw — вывод команд осмотра, для «подробнее, что проверили».
 	Raw string `json:"raw"`
 }
@@ -82,6 +84,7 @@ const (
 // следующей; порядок и наличие секций разбор не предполагает. Команды, которых
 // на сервере нет, молчат: пустая секция — тоже ответ.
 const inspectScript = `export LC_ALL=C
+asroot() { if [ "$(id -u)" = 0 ]; then "$@"; else sudo -n "$@"; fi; }
 echo '## os'; cat /etc/os-release 2>/dev/null
 echo '## arch'; uname -m 2>/dev/null
 echo '## uid'; id -u 2>/dev/null
@@ -96,6 +99,9 @@ echo '## ports'; ss -H -ltnp 2>/dev/null
 echo '## addr'; ip -4 -o addr show scope global 2>/dev/null
 echo '## git'; git --version 2>/dev/null
 echo '## wynd'; ls -d /opt/wynd/compose.yaml /etc/wynd 2>/dev/null
+echo '## certbot'; command -v certbot 2>/dev/null
+echo '## nginx'; if command -v nginx >/dev/null 2>&1; then ` + nginxLayout + `; if asroot nginx -t >/dev/null 2>&1; then echo test=ok; else echo test=fail; fi; fi
+echo '## caddy'; if command -v caddy >/dev/null 2>&1; then grep -Es '^import[[:space:]]' ` + caddyConfig + ` | head -n 20; if asroot caddy validate --config ` + caddyConfig + ` --adapter caddyfile >/dev/null 2>&1; then echo test=ok; else echo test=fail; fi; fi
 echo '## ownproxy'; docker ps --filter label=com.docker.compose.project.working_dir=/opt/wynd --filter publish=443 --format '{{.Names}} {{.Image}}' 2>/dev/null
 `
 
@@ -139,7 +145,7 @@ func first(lines []string) string {
 // этом компьютере в момент, когда сервер назвал своё.
 func ParseInspection(out, user string, now time.Time) Report {
 	sec := sections(out)
-	rep := Report{Raw: out, Addresses: parseAddresses(sec["addr"]), Git: first(sec["git"]) != ""}
+	rep := Report{Raw: out, Addresses: parseAddresses(sec["addr"]), Git: first(sec["git"]) != "", Certbot: first(sec["certbot"]) != ""}
 	switch first(sec["arch"]) {
 	case "x86_64", "amd64":
 		rep.Arch = "amd64"
@@ -165,6 +171,9 @@ func ParseInspection(out, user string, now time.Time) Report {
 	proxy, f := portsFinding(sec["ports"], first(sec["ownproxy"]))
 	rep.Proxy = proxy
 	add(f)
+	if f, ok := proxyFinding(proxy, sec[proxy]); ok {
+		add(f)
+	}
 	if len(sec["wynd"]) > 0 {
 		add(Finding{
 			ID:    "wynd",
@@ -419,7 +428,7 @@ func portsFinding(lines []string, ownProxy string) (string, Finding) {
 		if proxy, ok := knownProxies[names[0]]; ok {
 			return proxy, Finding{
 				ID: "ports", Level: LevelNote,
-				Text: fmt.Sprintf("Веб-сервер есть: %s", proxy),
+				Text: "Веб-сервер есть: " + proxyNames[proxy],
 				Plan: "его не трогаем, Wynd встанет за ним",
 			}
 		}

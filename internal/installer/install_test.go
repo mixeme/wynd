@@ -39,6 +39,12 @@ type fakeHost struct {
 	// swapAtBuild — сколько мегабайт подкачки было в момент сборки.
 	swapAtBuild int
 	builds      int
+	// Чужой веб-сервер: что ответит на вопрос, куда класть сайт; есть ли
+	// сертификат от certbot; примет ли настройку с нашим файлом.
+	layout       string
+	cert         bool
+	rejectsSite  bool
+	certbotFails string
 }
 
 func newFakeHost() *fakeHost {
@@ -108,9 +114,31 @@ func (h *fakeHost) handle(command string, stdin []byte) (string, int) {
 		h.loaded = stdin
 		h.images["wynd:9.9.9"] = true
 		return "Loaded image: wynd:9.9.9\n", 0
+	case command == nginxLayout || strings.HasPrefix(command, "grep -Es '^import"):
+		return h.layout, 0
+	case strings.HasPrefix(command, "test -s /etc/letsencrypt/live/"):
+		return "", exit(!h.cert)
+	case command == certbotScript:
+		return "", 0
+	case strings.HasPrefix(command, certbotWait+"cb certonly "):
+		h.changes = append(h.changes, strings.TrimPrefix(command, certbotWait))
+		if h.certbotFails != "" {
+			return h.certbotFails, 1
+		}
+		h.cert = true
+		return "Successfully received certificate.\n", 0
+	case strings.HasPrefix(command, "set -e\nkeep="):
+		change()
+		_, rest, _ := strings.Cut(command, "/site.new\nmv "+installDir+"/site.new ")
+		path, _, _ := strings.Cut(rest, "\n")
+		if h.rejectsSite {
+			return "nginx: [emerg] unknown directive\nnginx: configuration file /etc/nginx/nginx.conf test failed\n", exitRejected
+		}
+		h.files[path] = string(stdin)
+		return "", 0
 	case strings.HasPrefix(command, "sha256sum "):
 		out := ""
-		for _, path := range []string{installDir + "/compose.yaml", installDir + "/Caddyfile"} {
+		for _, path := range strings.Fields(strings.TrimSuffix(command, " 2>/dev/null"))[1:] {
 			if content, ok := h.files[path]; ok {
 				out += sum(content) + "  " + path + "\n"
 			}
@@ -462,9 +490,9 @@ func TestBuildPlan(t *testing.T) {
 	}
 
 	withProxy := clean
-	withProxy.Proxy = "nginx"
-	if plan := BuildPlan(withProxy, "family.example.ru", "9.9.9", false); plan.OK || !strings.Contains(plan.Message, "nginx") {
-		t.Fatalf("чужой веб-сервер — пока отказ: %+v", plan)
+	withProxy.Proxy = "apache"
+	if plan := BuildPlan(withProxy, "family.example.ru", "9.9.9", false); plan.OK || !strings.Contains(plan.Message, "Apache") {
+		t.Fatalf("Apache — пока отказ: %+v", plan)
 	}
 	if plan := BuildPlan(clean, "семья.рф", "9.9.9", false); plan.OK {
 		t.Fatalf("адрес не латиницей — отказ: %+v", plan)

@@ -211,10 +211,21 @@
 		return '';
 	}
 
+	// Чужой веб-сервер, за которым стоит Wynd: «nginx», «Caddy» или пусто — свой Caddy.
+	const proxyName = $derived(
+		inspection?.report?.proxy === 'nginx' ? 'nginx' : inspection?.report?.proxy === 'caddy' ? 'Caddy' : ''
+	);
+
 	async function rollback() {
 		if (rolling) return;
 		rolling = true;
 		rollbackError = '';
+		// Осмотр после отката тот же веб-сервер найдёт снова; имя берём заранее.
+		const stays = proxyName ? `Docker и ${proxyName} остались.` : 'Docker остался.';
+		const stale = (res: { stale?: boolean }) =>
+			res.stale && proxyName
+				? ` ${proxyName} настройку не перечитал: в ней есть ошибка, и она не наша. Сайт Wynd из настройки убран и пропадёт, когда ${proxyName} перечитает её.`
+				: '';
 		try {
 			const res = await backend().Rollback(!dropData);
 			if (res.ok) {
@@ -227,17 +238,21 @@
 				if (failed) {
 					rollbackNote =
 						(dropData
-							? 'Установка откачена: Wynd и его данные с сервера убраны, остался только Docker.'
-							: 'Установка откачена: Wynd с сервера убран, его данные оставлены, Docker остался.') +
-						certNote(res.cert);
+							? 'Установка откачена: Wynd и его данные с сервера убраны. '
+							: 'Установка откачена: Wynd с сервера убран, его данные оставлены. ') +
+						stays +
+						certNote(res.cert) +
+						stale(res);
 					screen = 'plan';
 				} else {
 					// Убрали работавший Wynd (окна 2б, 5а): назад к осмотру, сервер уже без него.
 					rollbackNote =
 						(dropData
-							? 'Wynd, его данные и сертификат с сервера убраны. Docker остался.'
-							: 'Wynd с сервера убран, его данные и сертификат оставлены. Docker остался.') +
-						certNote(res.cert);
+							? 'Wynd, его данные и сертификат с сервера убраны. '
+							: 'Wynd с сервера убран, его данные и сертификат оставлены. ') +
+						stays +
+						certNote(res.cert) +
+						stale(res);
 					screen = 'inspect';
 				}
 			} else {
@@ -272,7 +287,11 @@
 		<div class="ins-strong">Убрать Wynd с сервера?</div>
 		<div class="ins-dim">
 			{#if site}Сайт {site} перестанет открываться.{/if}
-			Уберём контейнеры Wynd и Caddy и папку /opt/wynd. Docker останется.
+			{#if proxyName}
+				Уберём контейнер Wynd, его сайт из {proxyName} и папку /opt/wynd. Docker и {proxyName} останутся.
+			{:else}
+				Уберём контейнеры Wynd и Caddy и папку /opt/wynd. Docker останется.
+			{/if}
 		</div>
 		<label class="ins-check">
 			<input type="checkbox" bind:checked={dropData} />

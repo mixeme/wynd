@@ -20,6 +20,10 @@ import (
 //	WYND_INSTALLER_SOURCE   — не пусто: сервер собирает образ сам из открытого кода
 //	WYND_INSTALLER_PASSWORD — пароль, если поле в окне оставили пустым: проба
 //	                          на тестовом сервере без ввода пароля руками
+//	WYND_INSTALLER_TEST_CERT — не пусто: сертификат проверочного сервера
+//	                          Let's Encrypt (за чужим nginx) и доверие такому
+//	                          сертификату при проверке сайта — пробы не тратят
+//	                          пять настоящих сертификатов в неделю
 func devPort() int {
 	port, _ := strconv.Atoi(os.Getenv("WYND_INSTALLER_SSH_PORT"))
 	return port
@@ -40,3 +44,5 @@ func imageSource() installer.ImageSource {
 }
 
 func devPassword() string { return os.Getenv("WYND_INSTALLER_PASSWORD") }
+
+func devTestCert() bool { return os.Getenv("WYND_INSTALLER_TEST_CERT") != "" }

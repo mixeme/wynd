@@ -14,3 +14,5 @@ func imageSource() installer.ImageSource {
 }
 
 func devPassword() string { return "" }
+
+func devTestCert() bool { return false }

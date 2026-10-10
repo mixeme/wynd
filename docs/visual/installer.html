@@ -151,6 +151,25 @@ h2{margin:0 0 4px;font-size:17px}
 </div>
 
 <div>
+<p class="cap">2в · Осмотр: чужой Caddy не читает дополнительные файлы</p>
+<div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st bad"><i>!</i>Осмотр</div><div class="st"><i>3</i>План</div><div class="st"><i>4</i>Установка</div><div class="st"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<h2>Пока ставить нельзя</h2>
+<div class="sub">Сервер в порядке, мешает одно:</div>
+<div class="box">
+<div style="font-weight:600;margin-bottom:6px">Caddy на сервере не читает дополнительные файлы настройки</div>
+<div class="dim" style="line-height:1.5">Wynd кладёт свой сайт отдельным файлом, а чужой файл /etc/caddy/Caddyfile не правит. Допишите в его конец строку «import /etc/caddy/conf.d/*» и нажмите «Проверить снова».</div>
+</div>
+<div class="foot"><span class="btn">Проверить снова</span><span class="btn gh">Другой адрес</span></div>
+</div></div></div>
+<p class="note">Черновик 2026-10-10, реализовано, владельцем не утверждено. Единственное, о чём просим человека на сервере с чужим Caddy: сам Caddyfile установщик не трогает. Так же выглядят «В настройке nginx сейчас ошибка» и «nginx на сервере настроен необычно».</p>
+</div>
+
+<div>
 <p class="cap">3 · План</p>
 <div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
 <div class="main">
@@ -237,6 +256,51 @@ h2{margin:0 0 4px;font-size:17px}
 <div class="foot"><span class="btn">Установить</span><span class="btn gh">Назад</span><span class="dim" style="margin-left:auto">около 15 минут</span></div>
 </div></div></div>
 <p class="note">Есть ли готовый Wynd, сервер узнаёт, когда составляется план, — до «Установить», а не отказом посреди установки. Выбора здесь нет: скачивать нечего.</p>
+</div>
+
+<div>
+<p class="cap">3г · План: на сервере чужой nginx</p>
+<div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st done"><i>✓</i>Осмотр</div><div class="st on"><i>3</i>План</div><div class="st"><i>4</i>Установка</div><div class="st"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<h2>Что сделаем</h2>
+<div class="lab" style="margin-top:4px">Поставим</div>
+<div class="row"><span class="ic">+</span><div>Контейнер Wynd 0.28.9</div></div>
+<div class="row"><span class="ic">+</span><div>Сайт family.example.ru в nginx — отдельным файлом</div></div>
+<div class="row"><span class="ic">+</span><div>certbot — он получает сертификаты</div></div>
+<div class="row"><span class="ic">+</span><div>Сертификат для family.example.ru</div></div>
+<div class="lab">Не тронем</div>
+<div class="row"><span class="ic dim">·</span><div class="dim">nginx и его сайты: чужие файлы не правим, nginx перечитает настройку без остановки</div></div>
+<div class="row"><span class="ic dim">·</span><div class="dim">Всё, что на сервере уже есть: Wynd займёт свою папку /opt/wynd</div></div>
+<div class="sub" style="margin-top:12px">Сервер скачает Wynd готовым. <span class="under">Собрать самому</span></div>
+<div class="foot"><span class="btn">Установить</span><span class="btn gh">Назад</span><span class="dim" style="margin-left:auto">обычно 5–10 минут, на медленном сервере — до получаса</span></div>
+</div></div></div>
+<p class="note">Черновик 2026-10-10, реализовано, владельцем не утверждено. Своего Caddy нет: сайт Wynd добавляется к nginx отдельным файлом, чужие файлы не правятся — раздела «Изменим» поэтому нет (в кадре 3 он ещё есть, там замысел 2026-10-03). Строки про certbot нет, если он на сервере уже стоит.</p>
+</div>
+
+<div>
+<p class="cap">3д · План: на сервере чужой Caddy</p>
+<div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st done"><i>✓</i>Осмотр</div><div class="st on"><i>3</i>План</div><div class="st"><i>4</i>Установка</div><div class="st"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<h2>Что сделаем</h2>
+<div class="lab" style="margin-top:4px">Поставим</div>
+<div class="row"><span class="ic">+</span><div>Контейнер Wynd 0.28.9</div></div>
+<div class="row"><span class="ic">+</span><div>Сайт family.example.ru в Caddy — отдельным файлом</div></div>
+<div class="row"><span class="ic">+</span><div>Сертификат для family.example.ru — его получит Caddy</div></div>
+<div class="lab">Не тронем</div>
+<div class="row"><span class="ic dim">·</span><div class="dim">Caddy и его сайты: чужие файлы не правим, Caddy перечитает настройку без остановки</div></div>
+<div class="row"><span class="ic dim">·</span><div class="dim">Всё, что на сервере уже есть: Wynd займёт свою папку /opt/wynd</div></div>
+<div class="sub" style="margin-top:12px">Сервер скачает Wynd готовым. <span class="under">Собрать самому</span></div>
+<div class="foot"><span class="btn">Установить</span><span class="btn gh">Назад</span><span class="dim" style="margin-left:auto">обычно 5–10 минут, на медленном сервере — до получаса</span></div>
+</div></div></div>
+<p class="note">Черновик 2026-10-10, реализовано, владельцем не утверждено. Сертификат чужой Caddy получает сам, certbot не нужен.</p>
 </div>
 
 <div>

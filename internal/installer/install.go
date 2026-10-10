@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -67,6 +68,13 @@ type Spec struct {
 	Image ImageSource
 	// FixClock — осмотр нашёл, что часы не сверяются.
 	FixClock bool
+	// Proxy — чужой веб-сервер, за который встаёт Wynd (ProxyNginx,
+	// ProxyCaddy); пусто — ставим свой Caddy.
+	Proxy string
+	// TestCert — сертификат проверочного сервера Let's Encrypt: браузеры ему не
+	// верят. Только для проб разработчика — у настоящего центра пять
+	// сертификатов на адрес в неделю.
+	TestCert bool
 	// Probe открывает адрес с этого компьютера и возвращает тело ответа.
 	// Пусто — обычный HTTPS-запрос.
 	Probe func(ctx context.Context, url string) (string, error)
@@ -263,7 +271,16 @@ func steps(spec Spec) []step {
 	if spec.FixClock {
 		list = append(list, clockStep())
 	}
-	return append(list, imageStep(spec), filesStep(spec), startStep(), certStep(spec), linkStep(spec))
+	list = append(list, imageStep(spec), filesStep(spec), startStep(spec))
+	switch spec.Proxy {
+	case "":
+		list = append(list, certStep(spec))
+	case ProxyCaddy:
+		list = append(list, siteStep(spec), certStep(spec))
+	default:
+		list = append(list, siteStep(spec), nginxCertStep(spec))
+	}
+	return append(list, linkStep(spec))
 }
 
 // StepTitles — шаги установки по порядку, для окна до её начала.
@@ -811,6 +828,9 @@ func (s SourceImage) Provide(ctx context.Context, r *Run, tag string) error {
 // ComposeFile — /opt/wynd/compose.yaml: то же, что deploy/docker/compose.yaml,
 // но с готовым образом вместо сборки из исходников.
 func ComposeFile(spec Spec) string {
+	if spec.Proxy != "" {
+		return ownProxyCompose(spec)
+	}
 	return `# Wynd со своим Caddy. Файл создал установщик Wynd; устроен так же, как
 # deploy/docker/compose.yaml в исходниках, — обслуживается по той же документации.
 
@@ -876,19 +896,29 @@ func sum(content string) string {
 }
 
 func filesStep(spec Spec) step {
-	files := []struct{ path, content string }{
-		{installDir + "/compose.yaml", ComposeFile(spec)},
-		{installDir + "/Caddyfile", CaddyFile(spec)},
+	type file struct{ path, content string }
+	files := []file{{installDir + "/compose.yaml", ComposeFile(spec)}}
+	if spec.Proxy == "" {
+		files = append(files, file{installDir + "/Caddyfile", CaddyFile(spec)})
 	}
 	return step{
 		id:    "files",
 		title: "Настройка",
 		done: func(ctx context.Context, r *Run) (bool, error) {
-			res, err := r.sess.Exec(ctx, "sha256sum "+files[0].path+" "+files[1].path+" 2>/dev/null", nil, shortTimeout)
+			command := "sha256sum"
+			for _, f := range files {
+				command += " " + f.path
+			}
+			res, err := r.sess.Exec(ctx, command+" 2>/dev/null", nil, shortTimeout)
 			if err != nil {
 				return false, err
 			}
-			return strings.Contains(res.Output, sum(files[0].content)) && strings.Contains(res.Output, sum(files[1].content)), nil
+			for _, f := range files {
+				if !strings.Contains(res.Output, sum(f.content)) {
+					return false, nil
+				}
+			}
+			return true, nil
 		},
 		do: func(ctx context.Context, r *Run) error {
 			// Wynd с другим адресом уже стоит: смена адреса — не установка.
@@ -920,13 +950,15 @@ func filesStep(spec Spec) step {
 	}
 }
 
-func startStep() step {
+func startStep(spec Spec) step {
 	compose := "cd " + installDir + " && docker compose "
 	return step{
 		id:    "start",
 		title: "Запуск",
 		do: func(ctx context.Context, r *Run) error {
-			r.note("скачиваем веб-сервер и запускаем")
+			if spec.Proxy == "" {
+				r.note("скачиваем веб-сервер и запускаем")
+			}
 			_, err := r.must(ctx, compose+"up -d --quiet-pull 2>&1", packageTimeout)
 			return err
 		},
@@ -955,7 +987,14 @@ func startStep() step {
 			}
 		},
 		explain: func(_ error, output string) *StepError {
-			if containsAny(output, "address already in use", "port is already allocated") {
+			busy := containsAny(output, "address already in use", "port is already allocated")
+			if busy && spec.Proxy != "" {
+				return &StepError{
+					Message: "Порт 7676 на сервере кто-то занял",
+					Advice:  "Через него веб-сервер передаёт запросы Wynd. Освободите порт и нажмите «Повторить».",
+				}
+			}
+			if busy {
 				return &StepError{
 					Message: "Порты 80 или 443 на сервере кто-то занял",
 					Advice:  "При осмотре они были свободны. Через них сайт открывается в браузере. Освободите их и нажмите «Повторить».",
@@ -969,13 +1008,26 @@ func startStep() step {
 // httpProbe открывает адрес с этого компьютера. Сертификат проверяется как
 // в браузере: непроверенный сайт — отказ.
 func httpProbe(ctx context.Context, url string) (string, error) {
+	return httpGet(ctx, http.DefaultClient, url)
+}
+
+// untrustedProbe — то же, но сертификату не верим: для проб с проверочным
+// сервером Let's Encrypt (Spec.TestCert).
+func untrustedProbe(ctx context.Context, url string) (string, error) {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // только Spec.TestCert
+	defer transport.CloseIdleConnections()
+	return httpGet(ctx, &http.Client{Transport: transport}, url)
+}
+
+func httpGet(ctx context.Context, client *http.Client, url string) (string, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, url, nil)
 	if err != nil {
 		return "", err
 	}
-	res, err := http.DefaultClient.Do(req)
+	res, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -994,15 +1046,21 @@ func httpProbe(ctx context.Context, url string) (string, error) {
 // открыться по причинам, которые к серверу не относятся: мёртвый DNS за VPN,
 // медленный прокси (проба 2026-10-09: ответ через 17 секунд и через раз).
 func (r *Run) probe(ctx context.Context, url string) (string, error) {
-	probe := r.spec.Probe
+	probe, curl := r.spec.Probe, "curl -fsS --max-time 20 "
 	if probe == nil {
 		probe = httpProbe
+		if r.spec.TestCert {
+			probe = untrustedProbe
+		}
+	}
+	if r.spec.TestCert {
+		curl = "curl -kfsS --max-time 20 "
 	}
 	body, err := probe(ctx, url)
 	if err == nil {
 		return body, nil
 	}
-	res, execErr := r.sess.Exec(ctx, "curl -fsS --max-time 20 "+shQuote(url), nil, shortTimeout)
+	res, execErr := r.sess.Exec(ctx, curl+shQuote(url), nil, shortTimeout)
 	if execErr != nil {
 		return "", execErr
 	}
@@ -1012,34 +1070,23 @@ func (r *Run) probe(ctx context.Context, url string) (string, error) {
 	return res.Output, nil
 }
 
+// certStep ждёт сертификат, который Caddy получает сам, — свой в контейнере
+// или чужой, которому мы добавили сайт.
 func certStep(spec Spec) step {
+	logs := "cd " + installDir + " && docker compose logs --no-color --tail 30 caddy 2>&1"
+	if spec.Proxy != "" {
+		logs = "journalctl -u caddy --no-pager -n 30 2>&1"
+	}
 	return step{
 		id:    "cert",
 		title: "Сертификат для " + spec.Domain,
 		do: func(ctx context.Context, r *Run) error {
 			r.note("ждём ответа Let's Encrypt")
-			url := "https://" + spec.Domain + "/health"
-			deadline := time.Now().Add(certWait)
-			var last error
-			for {
-				_, err := r.probe(ctx, url)
-				if err == nil {
-					r.record("проверка "+url, "сайт открывается, сертификат действует")
-					return nil
-				}
-				if errors.Is(err, ErrUnreachable) {
-					return err
-				}
-				last = err
-				if time.Now().After(deadline) {
-					break
-				}
-				if err := sleep(ctx, pollInterval); err != nil {
-					return err
-				}
+			err := waitSite(ctx, r, spec, certWait)
+			if !errors.Is(err, errSiteDown) {
+				return err
 			}
-			r.record("проверка "+url, last.Error())
-			_, _ = r.sh(ctx, "cd "+installDir+" && docker compose logs --no-color --tail 30 caddy 2>&1", shortTimeout)
+			_, _ = r.sh(ctx, logs, shortTimeout)
 			return &StepError{
 				Message: "Сертификат не выдали",
 				Advice:  "Let's Encrypt не смог зайти на " + spec.Domain + " по порту 80, или сайт не открывается снаружи. Чаще всего порты 80 и 443 закрыты в панели хостинга (брандмауэр). Откройте входящие порты 80 и 443 и нажмите «Повторить».",
@@ -1114,13 +1161,24 @@ const (
 // Отзыв подписывается ключом самого сертификата — учётная запись у
 // удостоверяющего центра не нужна. Центр узнаём по имени папки, в которую
 // Caddy кладёт сертификат; незнакомый — отзыв не вышел. Неудача откат не
-// останавливает: сертификат всё равно уйдёт вместе с ключом.
+// останавливает: сертификат всё равно уйдёт вместе с ключом. Отозванный раньше
+// — тоже отозван. Запрос подписан ключом сертификата, поэтому Let's Encrypt
+// сам ставит причину «ключ раскрыт» вместо названной и больше не выдаёт
+// сертификаты на этот ключ (проба 2026-10-10) — ключ всё равно удаляется.
 const revokeScript = `  proj=$(docker compose config 2>/dev/null | sed -n 's/^name: //p' | head -n 1)
   vol=$(docker volume ls -q --filter label=com.docker.compose.project="${proj:-wynd}" --filter label=com.docker.compose.volume=caddy-data 2>/dev/null | head -n 1)
   if [ -n "$vol" ]; then
-    docker run --rm -v "$vol":/data:ro --entrypoint sh ` + certbotImage + ` -c '
+    docker run --rm -v "$vol":/data:ro --entrypoint sh ` + certbotImage + ` -c '` + revokeLoop + `' 2>&1 || echo "` + markRevokeFailed + ` certbot did not run"
+    docker image rm ` + certbotImage + ` >/dev/null 2>&1 || true
+  fi`
+
+// revokeLoop идёт внутри контейнера certbot: отзывает сертификаты из хранилища
+// Caddy, подключённого в /data/caddy. DOM задан — только этого адреса (в
+// хранилище чужого Caddy лежат и чужие сертификаты).
+const revokeLoop = `
       for crt in /data/caddy/certificates/*/*/*.crt; do
         [ -f "$crt" ] || continue
+        if [ -n "$DOM" ] && [ "$(basename "$(dirname "$crt")")" != "$DOM" ]; then continue; fi
         ca=$(basename "$(dirname "$(dirname "$crt")")")
         case "$ca" in
           acme-v02.api.letsencrypt.org-directory) srv=https://acme-v02.api.letsencrypt.org/directory ;;
@@ -1128,14 +1186,15 @@ const revokeScript = `  proj=$(docker compose config 2>/dev/null | sed -n 's/^na
           acme.zerossl.com-v2-dv90) srv=https://acme.zerossl.com/v2/DV90 ;;
           *) echo "` + markRevokeFailed + ` $crt: unknown CA $ca"; continue ;;
         esac
-        if certbot revoke --non-interactive --no-delete-after-revoke --reason cessationofoperation --server "$srv" --cert-path "$crt" --key-path "${crt%.crt}.key" --config-dir /tmp/c --work-dir /tmp/w --logs-dir /tmp/l 2>&1; then
+        out=$(certbot revoke --non-interactive --no-delete-after-revoke --reason cessationofoperation --server "$srv" --cert-path "$crt" --key-path "${crt%.crt}.key" --config-dir /tmp/c --work-dir /tmp/w --logs-dir /tmp/l 2>&1) && ok=1 || ok=
+        echo "$out"
+        case "$out" in *"already revoked"*) ok=1 ;; esac
+        if [ -n "$ok" ]; then
           echo "` + markRevoked + ` $crt"
         else
           echo "` + markRevokeFailed + ` $crt"
         fi
-      done' 2>&1 || echo "` + markRevokeFailed + ` certbot did not run"
-    docker image rm ` + certbotImage + ` >/dev/null 2>&1 || true
-  fi`
+      done`
 
 // Rollback убирает поставленное: контейнеры, папку /opt/wynd, образ Wynd и
 // образ Caddy (тот — только если им не пользуется чужой контейнер: docker
@@ -1155,8 +1214,13 @@ func Rollback(ctx context.Context, sess *Session, spec Spec, keepData bool) ([]L
 	revoke := ""
 	if !keepData {
 		revoke = revokeScript
+		// Тома берём по метке, а не только из нынешнего compose.yaml: Wynd могли
+		// раньше ставить иначе (свой Caddy, потом чужой веб-сервер), и том с
+		// отозванным сертификатом остался бы на сервере.
+		down += ` 2>&1
+  docker volume ls -q --filter label=com.docker.compose.project="${proj:-wynd}" 2>/dev/null | xargs -r docker volume rm`
 	}
-	script := `imgs=
+	script := rollbackProxy(keepData) + `imgs=
 if [ -f ` + installDir + `/compose.yaml ] && command -v docker >/dev/null 2>&1; then
   cd ` + installDir + `
   imgs=$(docker compose images -q 2>/dev/null || true)
@@ -1207,8 +1271,9 @@ type Plan struct {
 	// Unpublished — готового Wynd этой версии нет, выбирать не из чего:
 	// сервер соберёт сам.
 	Unpublished bool `json:"unpublished"`
-	// FixClock уходит в Spec.
-	FixClock bool `json:"-"`
+	// FixClock и Proxy уходят в Spec.
+	FixClock bool   `json:"-"`
+	Proxy    string `json:"-"`
 }
 
 func isASCIIDomain(d string) bool {
@@ -1221,8 +1286,8 @@ func isASCIIDomain(d string) bool {
 }
 
 // BuildPlan составляет план по осмотру. build — собрать Wynd на сервере из
-// открытого кода вместо готового образа. Сервер с чужим веб-сервером — пока
-// отказ с причиной: это следующий срез.
+// открытого кода вместо готового образа. За чужим nginx и Caddy Wynd ставим;
+// Apache — пока отказ с причиной.
 func BuildPlan(rep Report, domain, version string, build bool) Plan {
 	p := Plan{Domain: domain, Version: version, Build: build, Duration: "обычно 5–10 минут, на медленном сервере — до получаса"}
 	if build {
@@ -1240,12 +1305,13 @@ func BuildPlan(rep Report, domain, version string, build bool) Plan {
 		p.Message = "Адрес с нелатинскими буквами установщик пока не умеет"
 		p.Advice = "Возьмите адрес латиницей, например family.example.ru."
 		return p
-	case rep.Proxy != "":
-		p.Message = "На сервере уже работает " + rep.Proxy
-		p.Advice = "Установка рядом с чужим веб-сервером появится в следующей версии установщика. Пока Wynd ставится на сервер, где порты 80 и 443 свободны."
+	case rep.Proxy != "" && rep.Proxy != ProxyNginx && rep.Proxy != ProxyCaddy:
+		p.Message = "На сервере уже работает " + proxyNames[rep.Proxy]
+		p.Advice = "Установка рядом с ним появится в следующей версии установщика. Пока Wynd ставится на сервер, где порты 80 и 443 свободны или их держит nginx или Caddy."
 		return p
 	}
 	p.OK = true
+	p.Proxy = rep.Proxy
 	if level["docker"] != LevelOK {
 		p.Install = append(p.Install, "Docker — он запускает контейнеры")
 	}
@@ -1260,12 +1326,28 @@ func BuildPlan(rep Report, domain, version string, build bool) Plan {
 	default:
 		p.Install = append(p.Install, "Контейнер Wynd "+version)
 	}
-	p.Install = append(p.Install, "Контейнер с веб-сервером Caddy")
-	p.Install = append(p.Install, "Сертификат для "+domain)
+	switch rep.Proxy {
+	case "":
+		p.Install = append(p.Install, "Контейнер с веб-сервером Caddy")
+		p.Install = append(p.Install, "Сертификат для "+domain)
+	case ProxyCaddy:
+		p.Install = append(p.Install, "Сайт "+domain+" в Caddy — отдельным файлом")
+		p.Install = append(p.Install, "Сертификат для "+domain+" — его получит Caddy")
+	default:
+		p.Install = append(p.Install, "Сайт "+domain+" в nginx — отдельным файлом")
+		if !rep.Certbot {
+			p.Install = append(p.Install, "certbot — он получает сертификаты")
+		}
+		p.Install = append(p.Install, "Сертификат для "+domain)
+	}
 	if level["clock"] == LevelNote {
 		p.FixClock = true
 		p.Install = append(p.Install, "Синхронизацию часов")
 	}
-	p.Keep = []string{"Всё, что на сервере уже есть: Wynd займёт свою папку /opt/wynd"}
+	if rep.Proxy != "" {
+		name := proxyOf(rep.Proxy).name
+		p.Keep = append(p.Keep, name+" и его сайты: чужие файлы не правим, "+name+" перечитает настройку без остановки")
+	}
+	p.Keep = append(p.Keep, "Всё, что на сервере уже есть: Wynd займёт свою папку /opt/wynd")
 	return p
 }
