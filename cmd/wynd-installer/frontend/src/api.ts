@@ -59,6 +59,7 @@ export interface Plan {
 	duration: string;
 	build: boolean;
 	canBuild: boolean;
+	unpublished: boolean;
 }
 
 export interface StepState {

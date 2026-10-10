@@ -571,6 +571,34 @@ func TestPlanBuildsFromSource(t *testing.T) {
 	if back := w.ChooseBuild(false); back.Build {
 		t.Fatalf("вернули готовый образ: %+v", back)
 	}
+
+	// Готового Wynd в реестре нет — это видно уже в плане, и выбора нет.
+	answer := "404"
+	srv.handler = func(command string, _ []byte) (string, int) {
+		if strings.HasPrefix(command, "t=$(curl ") {
+			if !strings.Contains(command, "/v2/mixeme/wynd/manifests/9.9.9-amd64'") {
+				t.Errorf("спросили не ту сборку: %s", command)
+			}
+			return answer, 0
+		}
+		return "", 0
+	}
+	missing := w.MakePlan(ctx, "family.example.ru")
+	if !missing.OK || !missing.Unpublished || !missing.Build {
+		t.Fatalf("готового нет, а план не про сборку: %+v", missing)
+	}
+	if still := w.ChooseBuild(false); !still.Build {
+		t.Fatalf("скачивать нечего, а план — скачать: %+v", still)
+	}
+	answer = "200"
+	if there := w.MakePlan(ctx, "family.example.ru"); there.Unpublished || there.Build {
+		t.Fatalf("готовый есть, а план про сборку: %+v", there)
+	}
+	// Реестр не ответил — не знаем; план обычный.
+	answer = "000"
+	if unknown := w.MakePlan(ctx, "family.example.ru"); unknown.Unpublished || unknown.Build {
+		t.Fatalf("реестр молчит, а план про сборку: %+v", unknown)
+	}
 }
 
 // Диск 7 ГБ: чистому серверу 5,4 ГБ хватает, а после оборванной установки

@@ -40,6 +40,8 @@ type Report struct {
 	Addresses []string `json:"addresses"`
 	// Proxy — чужой веб-сервер на 80/443 («nginx», «apache», «caddy») или пусто.
 	Proxy string `json:"proxy,omitempty"`
+	// Arch — архитектура, как её зовут образы: «amd64», «arm64» или пусто.
+	Arch string `json:"-"`
 	// Git — на сервере есть git: сборке из открытого кода ставить его не надо.
 	Git bool `json:"-"`
 	// Raw — вывод команд осмотра, для «подробнее, что проверили».
@@ -138,6 +140,12 @@ func first(lines []string) string {
 func ParseInspection(out, user string, now time.Time) Report {
 	sec := sections(out)
 	rep := Report{Raw: out, Addresses: parseAddresses(sec["addr"]), Git: first(sec["git"]) != ""}
+	switch first(sec["arch"]) {
+	case "x86_64", "amd64":
+		rep.Arch = "amd64"
+	case "aarch64", "arm64":
+		rep.Arch = "arm64"
+	}
 	add := func(f Finding) { rep.Findings = append(rep.Findings, f) }
 
 	add(osFinding(sec["os"], first(sec["arch"])))

@@ -166,6 +166,19 @@
 		}
 	}
 
+	// Собрать Wynd на сервере или скачать готовым (окна 3а–3в).
+	let choosing = $state(false);
+	async function chooseBuild(on: boolean) {
+		if (choosing) return;
+		choosing = true;
+		try {
+			const next = await backend().ChooseBuild(on);
+			if (next.ok) plan = next;
+		} finally {
+			choosing = false;
+		}
+	}
+
 	// Установка идёт в Go сама; окно только спрашивает, как дела.
 	let poll: ReturnType<typeof setInterval> | undefined;
 	function stopPoll() {
@@ -373,6 +386,16 @@
 				{#each plan.keep as item (item)}
 					<div class="ins-row"><span class="ins-mark">·</span>{item}</div>
 				{/each}
+			{/if}
+			{#if plan.unpublished}
+				<p class="ins-sub">Эту версию ещё нельзя скачать готовой — сервер соберёт Wynd сам.</p>
+			{:else if plan.canBuild}
+				<p class="ins-sub">
+					{plan.build ? 'Сервер соберёт Wynd сам.' : 'Сервер скачает Wynd готовым.'}
+					<TextButton class="link under" onclick={() => void chooseBuild(!plan?.build)}>
+						{plan.build ? 'Скачать готовый' : 'Собрать самому'}
+					</TextButton>
+				</p>
 			{/if}
 			<div class="ins-foot">
 				<Button variant="colored" onclick={() => void install()}>Установить</Button>

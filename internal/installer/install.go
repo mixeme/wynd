@@ -603,6 +603,37 @@ type RegistryImage struct {
 // Ref — полное имя образа в реестре.
 func (g RegistryImage) Ref(version string) string { return g.Repo + ":" + version }
 
+// publishedScript спрашивает реестр, есть ли сборка этой версии под
+// архитектуру сервера, и печатает код ответа. Спрашивает сам сервер: качать
+// будет он. Метка «<версия>-<архитектура>» — сама сборка, а не оглавление:
+// оглавление отвечает 200 и тогда, когда сборок под ним уже нет.
+func (g RegistryImage) publishedScript(version, arch string) string {
+	host, path, _ := strings.Cut(g.Repo, "/")
+	return `t=$(curl -fsS --max-time 15 ` + shQuote("https://"+host+"/token?scope=repository:"+path+":pull") + ` 2>/dev/null | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+[ -n "$t" ] || exit 0
+curl -s --max-time 15 -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $t" -H 'Accept: application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json' ` + shQuote("https://"+host+"/v2/"+path+"/manifests/"+version+"-"+arch)
+}
+
+// Published — выложена ли версия в реестр. known ложно, когда узнать не
+// вышло (нет связи с реестром, незнакомая архитектура): тогда план составляем
+// как обычно, а отказ скажет своё на шаге.
+func (g RegistryImage) Published(ctx context.Context, sess *Session, version, arch string) (published, known bool) {
+	if arch == "" {
+		return false, false
+	}
+	res, err := sess.Exec(ctx, g.publishedScript(version, arch), nil, shortTimeout)
+	if err != nil {
+		return false, false
+	}
+	switch strings.TrimSpace(res.Output) {
+	case "200":
+		return true, true
+	case "404":
+		return false, true
+	}
+	return false, false
+}
+
 // Provide скачивает образ на сервер.
 func (g RegistryImage) Provide(ctx context.Context, r *Run, tag string) error {
 	r.note("сервер скачивает Wynd")
@@ -1123,6 +1154,9 @@ type Plan struct {
 	// готовым; CanBuild — такой способ у установщика есть.
 	Build    bool `json:"build"`
 	CanBuild bool `json:"canBuild"`
+	// Unpublished — готового Wynd этой версии нет, выбирать не из чего:
+	// сервер соберёт сам.
+	Unpublished bool `json:"unpublished"`
 	// FixClock уходит в Spec.
 	FixClock bool `json:"-"`
 }
@@ -1142,7 +1176,7 @@ func isASCIIDomain(d string) bool {
 func BuildPlan(rep Report, domain, version string, build bool) Plan {
 	p := Plan{Domain: domain, Version: version, Build: build, Duration: "обычно 5–10 минут, на медленном сервере — до получаса"}
 	if build {
-		p.Duration = "сборка идёт на сервере: 10–15 минут, на маленьком сервере — до часа"
+		p.Duration = "около 15 минут"
 	}
 	level := map[string]Level{}
 	for _, f := range rep.Findings {
@@ -1166,11 +1200,11 @@ func BuildPlan(rep Report, domain, version string, build bool) Plan {
 		p.Install = append(p.Install, "Docker — в нём работает Wynd")
 	}
 	if build && !rep.Git {
-		p.Install = append(p.Install, "git — им сервер возьмёт открытый код Wynd")
+		p.Install = append(p.Install, "git — им сервер скачает исходный код Wynd")
 	}
 	switch _, has := level["wynd"]; {
 	case build:
-		p.Install = append(p.Install, "Wynd "+version+" — сервер соберёт его сам из открытого кода")
+		p.Install = append(p.Install, "Wynd "+version+" — сервер соберёт его сам из исходного кода")
 	case has:
 		p.Install = append(p.Install, "Wynd "+version+" — доделаем то, чего на сервере не хватает")
 	default:

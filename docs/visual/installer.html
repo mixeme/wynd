@@ -150,7 +150,7 @@ h2{margin:0 0 4px;font-size:17px}
 </div>
 
 <div>
-<p class="cap">3а · План: собрать на сервере — черновик 2026-10-10, не реализовано</p>
+<p class="cap">3а · План: готовый Wynd есть</p>
 <div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
 <div class="main">
 <div class="side">
@@ -160,15 +160,58 @@ h2{margin:0 0 4px;font-size:17px}
 <h2>Что сделаем</h2>
 <div class="lab" style="margin-top:4px">Поставим</div>
 <div class="row"><span class="ic">+</span><div>Docker — в нём работает Wynd</div></div>
-<div class="row"><span class="ic">+</span><div>git — им сервер возьмёт открытый код Wynd</div></div>
-<div class="row"><span class="ic">+</span><div>Wynd 0.28.9 — сервер соберёт его сам из открытого кода</div></div>
+<div class="row"><span class="ic">+</span><div>Wynd 0.28.9</div></div>
 <div class="row"><span class="ic">+</span><div>Веб-сервер Caddy и сертификат для family.example.ru</div></div>
 <div class="lab">Не тронем</div>
 <div class="row"><span class="ic dim">·</span><div class="dim">Всё, что на сервере уже есть: Wynd займёт свою папку /opt/wynd</div></div>
-<div class="sub" style="margin-top:12px">Wynd соберётся на сервере. <span class="under">Взять готовый</span></div>
-<div class="foot"><span class="btn">Установить</span><span class="btn gh">Назад</span><span class="dim" style="margin-left:auto">сборка идёт на сервере: 10–15 минут, на маленьком — до часа</span></div>
+<div class="sub" style="margin-top:12px">Сервер скачает Wynd готовым. <span class="under">Собрать самому</span></div>
+<div class="foot"><span class="btn">Установить</span><span class="btn gh">Назад</span><span class="dim" style="margin-left:auto">обычно 5–10 минут, на медленном сервере — до получаса</span></div>
 </div></div></div>
-<p class="note">Обычный план берёт готовый Wynd, и под списком стоит одна строка: «Wynd возьмём готовым. <u>Собрать на сервере из открытого кода</u>» — для тех, кому готовые сборки брать нельзя. Нажали — план становится таким: появляются git и сборка, срок другой, строка предлагает вернуться. Новичку выбирать ничего не надо.</p>
+<p class="note">Обычный план. Под списком — одна строка с выбором: кому готовое брать нельзя, нажимает «Собрать самому». Остальным читать её не обязательно.</p>
+</div>
+
+<div>
+<p class="cap">3б · План: выбрали «Собрать самому»</p>
+<div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st done"><i>✓</i>Осмотр</div><div class="st on"><i>3</i>План</div><div class="st"><i>4</i>Установка</div><div class="st"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<h2>Что сделаем</h2>
+<div class="lab" style="margin-top:4px">Поставим</div>
+<div class="row"><span class="ic">+</span><div>Docker — в нём работает Wynd</div></div>
+<div class="row"><span class="ic">+</span><div>git — им сервер скачает исходный код Wynd</div></div>
+<div class="row"><span class="ic">+</span><div>Wynd 0.28.9 — сервер соберёт его сам из исходного кода</div></div>
+<div class="row"><span class="ic">+</span><div>Веб-сервер Caddy и сертификат для family.example.ru</div></div>
+<div class="lab">Не тронем</div>
+<div class="row"><span class="ic dim">·</span><div class="dim">Всё, что на сервере уже есть: Wynd займёт свою папку /opt/wynd</div></div>
+<div class="sub" style="margin-top:12px">Сервер соберёт Wynd сам. <span class="under">Скачать готовый</span></div>
+<div class="foot"><span class="btn">Установить</span><span class="btn gh">Назад</span><span class="dim" style="margin-left:auto">около 15 минут</span></div>
+</div></div></div>
+<p class="note">Тот же план после «Собрать самому»: появились git и сборка, срок другой, строка предлагает вернуться.</p>
+</div>
+
+<div>
+<p class="cap">3в · План: готового Wynd этой версии ещё нет</p>
+<div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st done"><i>✓</i>Осмотр</div><div class="st on"><i>3</i>План</div><div class="st"><i>4</i>Установка</div><div class="st"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<h2>Что сделаем</h2>
+<div class="lab" style="margin-top:4px">Поставим</div>
+<div class="row"><span class="ic">+</span><div>Docker — в нём работает Wynd</div></div>
+<div class="row"><span class="ic">+</span><div>git — им сервер скачает исходный код Wynd</div></div>
+<div class="row"><span class="ic">+</span><div>Wynd 0.28.9 — сервер соберёт его сам из исходного кода</div></div>
+<div class="row"><span class="ic">+</span><div>Веб-сервер Caddy и сертификат для family.example.ru</div></div>
+<div class="lab">Не тронем</div>
+<div class="row"><span class="ic dim">·</span><div class="dim">Всё, что на сервере уже есть: Wynd займёт свою папку /opt/wynd</div></div>
+<div class="sub" style="margin-top:12px">Эту версию ещё нельзя скачать готовой — сервер соберёт Wynd сам.</div>
+<div class="foot"><span class="btn">Установить</span><span class="btn gh">Назад</span><span class="dim" style="margin-left:auto">около 15 минут</span></div>
+</div></div></div>
+<p class="note">Есть ли готовый Wynd, сервер узнаёт, когда составляется план, — до «Установить», а не отказом посреди установки. Выбора здесь нет: скачивать нечего.</p>
 </div>
 
 <div>
@@ -207,24 +250,6 @@ h2{margin:0 0 4px;font-size:17px}
 <div class="foot"><span class="btn">Повторить</span><span class="btn gh">Откатить установку</span><span class="under" style="margin-left:auto">подробности</span></div>
 </div></div></div>
 <p class="note">Объясняем, что значит отказ и что сделать. «Откатить» возвращает изменённые файлы из резервных копий и убирает поставленное — сервер остаётся как был до плана.</p>
-</div>
-
-<div>
-<p class="cap">4б · Готового Wynd нет — черновик 2026-10-10, не реализовано</p>
-<div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
-<div class="main">
-<div class="side">
-<div class="st done"><i>✓</i>Сервер</div><div class="st done"><i>✓</i>Осмотр</div><div class="st done"><i>✓</i>План</div><div class="st bad"><i>!</i>Установка</div><div class="st"><i>5</i>Готово</div>
-</div>
-<div class="body">
-<h2>Готового Wynd этой версии ещё нет</h2>
-<div class="box">
-<div style="line-height:1.5">Версию 0.28.9 ещё не выложили готовой. Сервер может собрать её сам из открытого кода — это 10–15 минут, на маленьком сервере до часа. Или попробуйте позже.</div>
-</div>
-<div class="sub" style="margin-top:12px">Сделанное раньше осталось на месте — продолжим с этого шага. <span class="under">подробности</span></div>
-<div class="foot" style="white-space:nowrap;gap:6px"><span class="btn" style="padding-inline:12px">Собрать на сервере</span><span class="btn gh" style="padding-inline:12px">Повторить</span><span class="btn gh" style="padding-inline:12px">Откатить установку</span></div>
-</div></div></div>
-<p class="note">Единственный отказ, у которого главная кнопка — не «Повторить»: установщик сам знает выход. «Собрать на сервере» меняет способ и продолжает с того же шага; «Повторить» ещё раз спрашивает хранилище.</p>
 </div>
 
 <div>

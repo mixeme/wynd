@@ -76,10 +76,12 @@ type Wizard struct {
 	report  *Report
 
 	plan *Plan
-	// build — человек выбрал сборку на сервере (ChooseBuild).
-	build    bool
-	progress Progress
-	cancel   context.CancelFunc
+	// build — человек выбрал сборку на сервере (ChooseBuild); unpublished —
+	// готового Wynd этой версии в реестре нет (узнаём, составляя план).
+	build       bool
+	unpublished bool
+	progress    Progress
+	cancel      context.CancelFunc
 	// finished закрывается, когда прогон установки кончился.
 	finished chan struct{}
 }
@@ -237,7 +239,7 @@ func (w *Wizard) closeLocked() {
 		w.cancel()
 		w.cancel = nil
 	}
-	w.plan, w.build = nil, false
+	w.plan, w.build, w.unpublished = nil, false, false
 	w.progress = Progress{}
 }
 
@@ -246,10 +248,21 @@ func (w *Wizard) closeLocked() {
 func (w *Wizard) MakePlan(ctx context.Context, domain string) Plan {
 	check := w.CheckDomain(ctx, domain)
 	w.mu.Lock()
+	sess, rep := w.session, w.report
+	w.mu.Unlock()
+	// Есть ли готовый Wynd, спрашиваем до плана: человек должен увидеть сборку
+	// в плане, а не отказом посреди установки.
+	unpublished := false
+	if reg, ok := w.Image.(RegistryImage); ok && w.Source != nil && sess != nil && rep != nil {
+		published, known := reg.Published(ctx, sess, w.Version, rep.Arch)
+		unpublished = known && !published
+	}
+	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.session == nil || w.report == nil {
 		return Plan{Message: "Сначала подключитесь к серверу и дождитесь осмотра"}
 	}
+	w.unpublished = unpublished
 	if check.Level != LevelOK {
 		return Plan{Domain: check.Domain, Message: check.Text, Advice: check.Advice}
 	}
@@ -259,8 +272,9 @@ func (w *Wizard) MakePlan(ctx context.Context, domain string) Plan {
 // planLocked составляет план по осмотру и запоминает его, если по нему можно
 // ставить.
 func (w *Wizard) planLocked(rep Report, domain string) Plan {
-	plan := BuildPlan(rep, domain, w.Version, w.build && w.Source != nil)
+	plan := BuildPlan(rep, domain, w.Version, (w.build || w.unpublished) && w.Source != nil)
 	plan.CanBuild = w.Source != nil
+	plan.Unpublished = w.unpublished && w.Source != nil
 	w.plan = nil
 	if plan.OK {
 		w.plan = &plan
