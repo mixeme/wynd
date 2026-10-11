@@ -135,22 +135,14 @@ func proxyFinding(proxy string, lines []string) (Finding, bool) {
 	switch proxy {
 	case ProxyNginx:
 		if _, _, ok := nginxSitePaths(lines, "x", "/etc/nginx"); !ok {
-			return Finding{
-				ID: "proxy", Level: LevelBlock,
-				Text:   "nginx на сервере настроен необычно",
-				Advice: "Wynd кладёт свой сайт отдельным файлом в папку sites-enabled или conf.d, а этот nginx ни одну из них не читает. Чужую настройку мы не правим. Возьмите для Wynd отдельный сервер или поставьте Wynd вручную по инструкции.",
-			}, true
+			return unusualWebServer("proxy"), true
 		}
 		if !hasLine(lines, "test=ok") {
 			return broken("nginx", "nginx -t"), true
 		}
 	case ProxyApache:
 		if !hasLine(lines, "layout=sites") {
-			return Finding{
-				ID: "proxy", Level: LevelBlock,
-				Text:   "Apache на сервере настроен необычно",
-				Advice: "Wynd кладёт свой сайт отдельным файлом в папку sites-enabled, а у этого Apache её нет. Чужую настройку мы не правим. Возьмите для Wynd отдельный сервер или поставьте Wynd вручную по инструкции.",
-			}, true
+			return unusualWebServer("proxy"), true
 		}
 		if !hasLine(lines, "test=ok") {
 			return broken("Apache", "apache2ctl configtest"), true

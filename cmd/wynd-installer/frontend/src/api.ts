@@ -27,6 +27,8 @@ export interface Finding {
 	/** Строка, которую человек вставит на сервере; after — текст под ней. */
 	copy?: string;
 	after?: string;
+	/** Повторная проверка ничего не изменит: главная кнопка — «Другой сервер». */
+	final?: boolean;
 }
 
 export interface Report {

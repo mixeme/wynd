@@ -26,6 +26,7 @@ const (
 // установщик с этим сделает (у LevelNote); Advice — что сделать человеку (у
 // LevelBlock). Copy — строка, которую человеку предстоит вставить на сервере:
 // окно показывает её отдельным полем с «Скопировать», After — текст под ней.
+// Final — повторная проверка ничего не изменит: главная кнопка — «Другой сервер».
 type Finding struct {
 	ID     string `json:"id"`
 	Level  Level  `json:"level"`
@@ -34,6 +35,7 @@ type Finding struct {
 	Advice string `json:"advice,omitempty"`
 	Copy   string `json:"copy,omitempty"`
 	After  string `json:"after,omitempty"`
+	Final  bool   `json:"final,omitempty"`
 }
 
 // Report — итог осмотра. Сервер при осмотре не меняется.
@@ -442,34 +444,20 @@ func portsFinding(lines []string, ownProxy string) (string, Finding) {
 			}
 		}
 	}
-	all := map[int]bool{}
-	for _, h := range holders {
-		for p := range h.ports {
-			all[p] = true
-		}
-	}
-	return "", Finding{
-		ID: "ports", Level: LevelBlock,
-		Text:   fmt.Sprintf("%s на сервере уже %s: %s", capitalize(portList(all)), busyWord(all), strings.Join(names, ", ")),
-		Advice: "Через эти порты сайты открываются в браузере. Wynd умеет встать за nginx, Apache и Caddy, а эту программу не знает — мы её не трогаем. Освободите порты или возьмите для Wynd отдельный сервер.",
-	}
+	return "", unusualWebServer("ports")
 }
 
-func busyWord(ports map[int]bool) string {
-	if ports[80] && ports[443] {
-		return "заняты"
+// unusualWebServer — один ответ на все необычные случаи (кадр 2д): порты 80 и
+// 443 держит незнакомая программа или несколько сразу, nginx или Apache
+// устроены так, что свой файл сайта положить некуда. Веб-сервер не называем:
+// человеку с именем делать нечего, оно видно в «подробнее, что проверили».
+func unusualWebServer(id string) Finding {
+	return Finding{
+		ID: id, Level: LevelBlock, Final: true,
+		Text:   "На этот сервер установщик Wynd не поставит",
+		Advice: "На сервере уже работает веб-сервер, и устроен он не так, как принято. Его ставили не мы, и его настройку установщик не меняет — добавить к нему сайт Wynd он не может.",
+		After:  "Возьмите для Wynd другой сервер. Или попросите того, кто настраивал этот, поставить Wynd вручную.",
 	}
-	return "занят"
-}
-
-func portList(ports map[int]bool) string {
-	switch {
-	case ports[80] && ports[443]:
-		return "порты 80 и 443"
-	case ports[80]:
-		return "порт 80"
-	}
-	return "порт 443"
 }
 
 func capitalize(s string) string {

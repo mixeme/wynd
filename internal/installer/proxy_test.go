@@ -184,7 +184,7 @@ func TestProxyFindings(t *testing.T) {
 		{"nginx в порядке", withNginx + "## nginx\nlayout=sites\ntest=ok\n", false, ""},
 		{"nginx с conf.d", withNginx + "## nginx\nlayout=confd\ntest=ok\n", false, ""},
 		{"nginx с ошибкой", withNginx + "## nginx\nlayout=sites\ntest=fail\n", true, "В настройке веб-сервера nginx есть ошибка"},
-		{"nginx устроен иначе", withNginx + "## nginx\ntest=ok\n", true, "nginx на сервере настроен необычно"},
+		{"nginx устроен иначе", withNginx + "## nginx\ntest=ok\n", true, "На этот сервер установщик Wynd не поставит"},
 		{"caddy с import", replaceSection(cleanUbuntu, "ports", caddyPorts) + "## caddy\nimport conf.d/*\ntest=ok\n", false, ""},
 		{"caddy без import", replaceSection(cleanUbuntu, "ports", caddyPorts) + "## caddy\ntest=ok\n", true, "Веб-серверу Caddy нужна одна строка в настройке"},
 		{"caddy с ошибкой", replaceSection(cleanUbuntu, "ports", caddyPorts) + "## caddy\nimport conf.d/*\ntest=fail\n", true, "В настройке веб-сервера Caddy есть ошибка"},
@@ -345,7 +345,7 @@ func TestPlanBehindApache(t *testing.T) {
 	}
 	for _, c := range []struct{ body, text string }{
 		{"layout=sites\ntest=fail\n", "В настройке веб-сервера Apache есть ошибка"},
-		{"test=ok\n", "Apache на сервере настроен необычно"},
+		{"test=ok\n", "На этот сервер установщик Wynd не поставит"},
 	} {
 		rep := ParseInspection(out+"## apache\n"+c.body, "root", now)
 		if f := findings(rep)["proxy"]; !rep.Blocked() || f.Text != c.text || f.Advice == "" {

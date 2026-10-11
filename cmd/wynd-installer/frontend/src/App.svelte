@@ -596,13 +596,7 @@
 					{/if}
 				</div>
 			{/each}
-			<div class="ins-foot">
-				<Button variant="colored" loading={busy} onclick={() => void inspect()}>
-					Проверить снова
-				</Button>
-				<Button variant="ghost" disabled={busy} onclick={() => void toConnect()}>
-					Другой сервер
-				</Button>
+			<div class="ins-more">
 				<TextButton class="link under" onclick={() => (showRaw = !showRaw)}>
 					подробнее, что проверили
 				</TextButton>
@@ -610,6 +604,23 @@
 			{#if showRaw}
 				<pre class="ins-raw">{inspection.report.raw}</pre>
 			{/if}
+			<div class="ins-foot">
+				{#if blocks.every((b) => b.final)}
+					<Button variant="colored" disabled={busy} onclick={() => void toConnect()}>
+						Другой сервер
+					</Button>
+					<Button variant="ghost" loading={busy} onclick={() => void inspect()}>
+						Проверить снова
+					</Button>
+				{:else}
+					<Button variant="colored" loading={busy} onclick={() => void inspect()}>
+						Проверить снова
+					</Button>
+					<Button variant="ghost" disabled={busy} onclick={() => void toConnect()}>
+						Другой сервер
+					</Button>
+				{/if}
+			</div>
 		{:else}
 			<h2>Что на сервере</h2>
 			<p class="ins-sub">Только смотрим — ничего не меняем.</p>

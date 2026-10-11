@@ -240,6 +240,10 @@ body {
 	align-items: center;
 	gap: 10px;
 }
+/* «подробнее, что проверили» — сразу под рамкой с текстом отказа. */
+.ins-more {
+	margin-top: 10px;
+}
 .ins-raw {
 	margin: 14px 0 0;
 	padding: 10px 12px;

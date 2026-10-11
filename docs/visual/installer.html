@@ -145,7 +145,8 @@ h2{margin:0 0 4px;font-size:17px}
 <div style="font-weight:600;margin-bottom:6px">family.example.ru ещё не указывает на этот сервер</div>
 <div class="dim" style="line-height:1.5">У регистратора домена добавьте запись типа A с адресом 185.12.34.56. Новая запись расходится по интернету до часа — потом нажмите «Проверить снова».</div>
 </div>
-<div class="foot"><span class="btn">Проверить снова</span><span class="btn gh">Другой адрес</span></div>
+<div style="margin-top:10px"><span class="under">подробнее, что проверили</span></div>
+<div class="foot"><span class="btn">Проверить снова</span><span class="btn gh">Другой сервер</span></div>
 </div></div></div>
 <p class="note">Ошибка — словами и с тем, что сделать, а не выводом команды. Ловим до установки: домен, занятые порты без известного прокси, мало места, неверные часы, не та ОС (тогда — «Wynd ставится на Debian и Ubuntu»).</p>
 </div>
@@ -166,9 +167,53 @@ h2{margin:0 0 4px;font-size:17px}
 <div style="display:flex;gap:8px;align-items:center;margin:8px 0"><div class="fld mono" style="flex:1">import /etc/caddy/conf.d/*</div><span class="btn gh" style="padding:7px 12px">Скопировать</span></div>
 <div class="dim" style="line-height:1.5">Потом нажмите «Проверить снова». Сервер настраивал кто-то другой — попросите его.</div>
 </div>
-<div class="foot"><span class="btn">Проверить снова</span><span class="btn gh">Другой адрес</span></div>
+<div style="margin-top:10px"><span class="under">подробнее, что проверили</span></div>
+<div class="foot"><span class="btn">Проверить снова</span><span class="btn gh">Другой сервер</span></div>
 </div></div></div>
-<p class="note">Утверждено владельцем 2026-10-11 (текст переписан: прежний был сложен), реализовано. Единственное, о чём просим человека на сервере с чужим Caddy: сам Caddyfile установщик не трогает. Строку не перепечатывают — её копируют кнопкой. «В настройке nginx сейчас ошибка» и «nginx на сервере настроен необычно» — та же рамка, тексты прежние, не утверждены.</p>
+<p class="note">Утверждено владельцем 2026-10-11 (текст переписан: прежний был сложен), реализовано. Единственное, о чём просим человека на сервере с чужим Caddy: сам Caddyfile установщик не трогает. Строку не перепечатывают — её копируют кнопкой.</p>
+</div>
+
+<div>
+<p class="cap">2г · Осмотр: в настройке чужого веб-сервера ошибка</p>
+<div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st bad"><i>!</i>Осмотр</div><div class="st"><i>3</i>План</div><div class="st"><i>4</i>Установка</div><div class="st"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<h2>Пока ставить нельзя</h2>
+<div class="sub">Сервер в порядке, мешает одно:</div>
+<div class="box">
+<div style="font-weight:600;margin-bottom:6px">В настройке веб-сервера nginx есть ошибка</div>
+<div class="dim" style="line-height:1.5">На сервере уже работает веб-сервер nginx. Его ставили не мы, и его настройку установщик не меняет. Сейчас в ней ошибка, и с ней nginx не примет сайт Wynd. Что не так, покажет на сервере команда:</div>
+<div style="display:flex;gap:8px;align-items:center;margin:8px 0"><div class="fld mono" style="flex:1">nginx -t</div><span class="btn gh" style="padding:7px 12px">Скопировать</span></div>
+<div class="dim" style="line-height:1.5">Исправьте ошибку и нажмите «Проверить снова». Сервер настраивал кто-то другой — попросите его.</div>
+</div>
+<div style="margin-top:10px"><span class="under">подробнее, что проверили</span></div>
+<div class="foot"><span class="btn">Проверить снова</span><span class="btn gh">Другой сервер</span></div>
+</div></div></div>
+<p class="note">Утверждено владельцем 2026-10-11, реализовано. Так же — для Apache (команда «apache2ctl configtest») и Caddy («caddy validate --config /etc/caddy/Caddyfile»).</p>
+</div>
+
+<div>
+<p class="cap">2д · Осмотр: чужой веб-сервер настроен необычно</p>
+<div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st bad"><i>!</i>Осмотр</div><div class="st"><i>3</i>План</div><div class="st"><i>4</i>Установка</div><div class="st"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<h2>Пока ставить нельзя</h2>
+<div class="sub">Сервер в порядке, мешает одно:</div>
+<div class="box">
+<div style="font-weight:600;margin-bottom:6px">На этот сервер установщик Wynd не поставит</div>
+<div class="dim" style="line-height:1.5">На сервере уже работает веб-сервер, и устроен он не так, как принято. Его ставили не мы, и его настройку установщик не меняет — добавить к нему сайт Wynd он не может.</div>
+<div class="dim" style="line-height:1.5;margin-top:8px">Возьмите для Wynd другой сервер. Или попросите того, кто настраивал этот, поставить Wynd вручную.</div>
+</div>
+<div style="margin-top:10px"><span class="under">подробнее, что проверили</span></div>
+<div class="foot"><span class="btn">Другой сервер</span><span class="btn gh">Проверить снова</span></div>
+</div></div></div>
+<p class="note">Утверждено владельцем 2026-10-11, реализовано. Один кадр на все необычные случаи, веб-сервер не называется (владелец, 2026-10-11): nginx без папок sites-enabled и conf.d, Apache не из пакета Debian и Ubuntu, порты 80 и 443 держит программа, которую установщик не знает. Что именно нашли, видно по ссылке «подробнее, что проверили»: она стоит сразу под рамкой с текстом (владелец, 2026-10-11) и раскрывает ответы сервера на команды осмотра — для того, кто в них разбирается.</p>
 </div>
 
 <div>
