@@ -457,7 +457,7 @@ func dockerStep() step {
 		title: "Docker",
 		done:  func(ctx context.Context, r *Run) (bool, error) { return r.ok(ctx, dockerReady) },
 		do: func(ctx context.Context, r *Run) error {
-			r.note("скачиваем и ставим — от пары минут до получаса на медленном сервере")
+			r.note("скачиваем и ставим — обычно пара минут")
 			_, err := r.must(ctx, dockerScript, packageTimeout)
 			return err
 		},
@@ -1288,9 +1288,11 @@ func isASCIIDomain(d string) bool {
 // BuildPlan составляет план по осмотру. build — собрать Wynd на сервере из
 // открытого кода вместо готового образа.
 func BuildPlan(rep Report, domain, version string, build bool) Plan {
-	p := Plan{Domain: domain, Version: version, Build: build, Duration: "обычно 5–10 минут, на медленном сервере — до получаса"}
+	// Сроки — замеры на самом слабом сервере (1 ядро, 709 МБ; план 45): Docker —
+	// 103 с, установка готового образа — 36–66 с, сборка из кода — 603 и 621 с.
+	p := Plan{Domain: domain, Version: version, Build: build, Duration: "обычно 2–3 минуты"}
 	if build {
-		p.Duration = "около 15 минут"
+		p.Duration = "около 10 минут"
 	}
 	level := map[string]Level{}
 	for _, f := range rep.Findings {
