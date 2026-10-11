@@ -172,6 +172,10 @@ body {
 	background: var(--card);
 	line-height: 1.5;
 }
+/* Итог удаления над экраном помехи: рамка стоит выше заголовка. */
+.ins-box.ins-note {
+	margin: 0 0 16px;
+}
 .ins-box.bad {
 	border-color: color-mix(in srgb, var(--bad) 45%, var(--line));
 }

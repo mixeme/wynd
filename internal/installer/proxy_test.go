@@ -233,10 +233,15 @@ func TestPlanBehindProxy(t *testing.T) {
 // только когда удаляют данные и только полученный нами.
 func TestRollbackBehindProxy(t *testing.T) {
 	keep, drop := rollbackProxy(true), rollbackProxy(false)
-	for _, want := range []string{siteMark, "/etc/nginx/sites-enabled/wynd-*.conf", "if nginx -t 2>&1; then systemctl reload nginx", markNotReloaded} {
+	for _, want := range []string{siteMark, "/etc/nginx/sites-enabled/wynd-*.conf", "if nginx -t 2>&1; then systemctl reload nginx", markNotReloaded, markBrokenBefore, markBrokenAfter} {
 		if !strings.Contains(keep, want) {
 			t.Errorf("в откате нет %q", want)
 		}
+	}
+	// Настройку проверяем и до удаления своего файла: иначе чужую ошибку не
+	// отличить от той, что появилась из-за удаления.
+	if pre, rm := strings.Index(keep, "nginx -t >/dev/null"), strings.Index(keep, "rm -f"); pre < 0 || pre > rm {
+		t.Errorf("проверка до удаления должна стоять раньше удаления: %d, %d", pre, rm)
 	}
 	if strings.Contains(keep, "certbot") || strings.Contains(keep, "restart") || strings.Contains(keep, "cb ") {
 		t.Fatalf("данные оставлены — сертификат не трогаем: %s", keep)

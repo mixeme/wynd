@@ -233,10 +233,17 @@
 		rollbackError = '';
 		// Осмотр после отката тот же веб-сервер найдёт снова; имя берём заранее.
 		const stays = proxyName ? `Docker и ${proxyName} остались.` : 'Docker остался.';
-		const stale = (res: { stale?: boolean }) =>
-			res.stale && proxyName
-				? ` ${proxyName} настройку не перечитал: в ней есть ошибка, и она не наша. Сайт Wynd из настройки убран и пропадёт, когда ${proxyName} перечитает её.`
-				: '';
+		// Кадр 5д: что именно помешало, знаем по проверке до удаления и после него.
+		const stale = (res: { stale?: string }) => {
+			if (!res.stale || !proxyName) return '';
+			if (res.stale === 'before') {
+				return ` Но ${proxyName} это изменение ещё не принял: в его настройке ошибка, и она была там ещё до удаления — о ней ниже. Когда её исправят, сайт Wynd пропадёт из ${proxyName} сам.`;
+			}
+			if (res.stale === 'after') {
+				return ` Но ${proxyName} это изменение не принял: без файла сайта Wynd его настройка перестала проходить проверку — похоже, на этот файл ссылается чужая настройка. Что не так, сказано ниже.`;
+			}
+			return ` Но перечитать настройку ${proxyName} не удалось, хотя ошибок в ней нет. Сайт Wynd пропадёт из ${proxyName}, когда его попросят перечитать настройку или перезапустят.`;
+		};
 		try {
 			const res = await backend().Rollback(!dropData);
 			if (res.ok) {
@@ -444,6 +451,9 @@
 				<Button variant="ghost" disabled={busy} onclick={() => void toConnect()}>Отмена</Button>
 			</div>
 		{:else if screen === 'plan' && plan && !plan.ok}
+			{#if rollbackNote}
+				<div class="ins-box ins-note">{rollbackNote}</div>
+			{/if}
 			<h2>Пока ставить нельзя</h2>
 			<div class="ins-box" role="alert">
 				<div class="ins-strong">{plan.message}</div>
@@ -588,6 +598,10 @@
 				<Button variant="colored" onclick={() => void toConnect()}>Подключиться ещё раз</Button>
 			</div>
 		{:else if blocks.length}
+			<!-- Итог удаления не теряется, когда новый осмотр нашёл помеху (кадр 5д). -->
+			{#if rollbackNote}
+				<div class="ins-box ins-note">{rollbackNote}</div>
+			{/if}
 			<h2>Пока ставить нельзя</h2>
 			<p class="ins-sub">
 				{blocks.length === 1 ? 'Мешает одно:' : 'Мешает вот что:'}

@@ -102,7 +102,8 @@ export interface RollbackResult {
 	advice?: string;
 	log: LogEntry[] | null;
 	cert?: 'revoked' | 'failed';
-	stale?: boolean;
+	/** Чужой веб-сервер настройку не перечитал: ошибка была до удаления, появилась после него или не вышло перечитать. */
+	stale?: 'before' | 'after' | 'reload';
 	report?: Report;
 	plan?: Plan;
 }

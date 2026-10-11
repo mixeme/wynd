@@ -33,8 +33,13 @@ const (
 	caddyConfig = "/etc/caddy/Caddyfile"
 
 	// exitRejected — веб-сервер не принял настройку с нашим файлом.
-	exitRejected    = 5
-	markNotReloaded = "WYND_PROXY_NOT_RELOADED"
+	exitRejected = 5
+	// Чем кончилась просьба перечитать настройку после удаления нашего файла:
+	// настройка не проходила проверку ещё до удаления; перестала проходить
+	// после него; проверку прошла, а перечитать не вышло.
+	markBrokenBefore = "WYND_PROXY_BROKEN_BEFORE"
+	markBrokenAfter  = "WYND_PROXY_BROKEN_AFTER"
+	markNotReloaded  = "WYND_PROXY_NOT_RELOADED"
 )
 
 // proxyNames — как веб-сервер зовут в окне.
@@ -614,12 +619,19 @@ func nginxCertStep(spec Spec) step {
 // rollbackProxy — часть отката для чужого веб-сервера. Сама находит, что
 // убирать: откат зовут и без плана, для сервера, где Wynd уже стоял. Свои
 // файлы сайта узнаёт по первой строке, адрес сайта читает из compose.yaml.
-// Веб-сервер перечитывает настройку только после своей проверки; не прошла
-// (чужая ошибка) — наш файл уже убран, а перечитает он её при следующем случае.
+// Веб-сервер перечитывает настройку только после своей проверки. Проверка
+// идёт дважды — до удаления нашего файла и после: иначе не отличить ошибку,
+// которая в настройке уже была, от той, что появилась из-за удаления. Не
+// прошла — наш файл всё равно убран, а перечитают настройку при следующем случае.
 func rollbackProxy(keepData bool) string {
 	script := `dom=$(sed -n 's|.*WYND_PUBLIC_URL: https://||p' ` + installDir + `/compose.yaml 2>/dev/null | head -n 1)
 mark=` + shQuote(siteMark) + `
 ngx=; cdy=; apa=
+ngx_pre=; apa_pre=; cdy_pre=
+if command -v nginx >/dev/null 2>&1 && nginx -t >/dev/null 2>&1; then ngx_pre=ok; fi
+if command -v apache2ctl >/dev/null 2>&1 && apache2ctl configtest >/dev/null 2>&1; then apa_pre=ok; fi
+if command -v caddy >/dev/null 2>&1 && ` + proxyOf(ProxyCaddy).test + ` >/dev/null 2>&1; then cdy_pre=ok; fi
+broken() { if [ -n "$1" ]; then echo ` + markBrokenAfter + `; else echo ` + markBrokenBefore + `; fi; }
 for f in /etc/apache2/sites-enabled/wynd-*.conf /etc/apache2/sites-available/wynd-*.conf; do
   if grep -qsF "$mark" "$f"; then rm -f "$f"; apa=1; fi
 done
@@ -630,13 +642,13 @@ for f in $(grep -rlsF "$mark" ` + path.Dir(caddyConfig) + ` 2>/dev/null); do
   case "$(basename "$f")" in wynd-*) rm -f "$f"; cdy=1 ;; esac
 done
 if [ -n "$ngx" ]; then
-  if nginx -t 2>&1; then systemctl reload nginx 2>&1 || echo ` + markNotReloaded + `; else echo ` + markNotReloaded + `; fi
+  if nginx -t 2>&1; then systemctl reload nginx 2>&1 || echo ` + markNotReloaded + `; else broken "$ngx_pre"; fi
 fi
 if [ -n "$apa" ]; then
-  if apache2ctl configtest 2>&1; then systemctl reload apache2 2>&1 || echo ` + markNotReloaded + `; else echo ` + markNotReloaded + `; fi
+  if apache2ctl configtest 2>&1; then systemctl reload apache2 2>&1 || echo ` + markNotReloaded + `; else broken "$apa_pre"; fi
 fi
 if [ -n "$cdy" ]; then
-  if ` + proxyOf(ProxyCaddy).test + ` 2>&1; then systemctl reload caddy 2>&1 || echo ` + markNotReloaded + `; else echo ` + markNotReloaded + `; fi
+  if ` + proxyOf(ProxyCaddy).test + ` 2>&1; then systemctl reload caddy 2>&1 || echo ` + markNotReloaded + `; else broken "$cdy_pre"; fi
 fi
 `
 	if keepData {

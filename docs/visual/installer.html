@@ -525,6 +525,50 @@ x86_64
 </div>
 
 <div>
+<p class="cap">5г · После «Да, убрать»: назад к осмотру</p>
+<div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st on"><i>2</i>Осмотр</div><div class="st"><i>3</i>План</div><div class="st"><i>4</i>Установка</div><div class="st"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<h2>Что на сервере</h2>
+<div class="sub">Только смотрим — ничего не меняем.</div>
+<div class="box" style="margin-bottom:8px;line-height:1.5">Wynd с сервера убран, его данные и сертификат оставлены. Docker и nginx остались.</div>
+<div class="row"><span class="ic ok">✓</span><div>Ubuntu 24.04 — подходит</div></div>
+<div class="row"><span class="ic ok">✓</span><div>Свободно 31 ГБ</div></div>
+<div class="row"><span class="ic ok">✓</span><div>Часы идут верно</div></div>
+<div class="row"><span class="ic ok">✓</span><div>Docker установлен</div></div>
+<div class="row"><span class="ic w">!</span><div>Веб-сервер есть: nginx — <span class="dim">его не трогаем, Wynd встанет за ним</span></div></div>
+<div class="foot"><span class="btn">Дальше — план</span><span class="under">подробнее, что проверили</span></div>
+</div></div></div>
+<p class="note">Утверждено владельцем 2026-10-11, реализовано. Итог удаления — рамкой над осмотром, который сделан заново: сервер уже без Wynd. С галочкой «Удалить данные» первая фраза — «Wynd, его данные и сертификат с сервера убраны», и следом «Сертификат сайта отозван». Со своим Caddy в конце — «Docker остался». Поля адреса в кадре нет — в окне оно есть, как в кадре 2.</p>
+</div>
+
+<div>
+<p class="cap">5д · После «Да, убрать»: чужой веб-сервер изменение не принял</p>
+<div class="win" style="height:560px"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st bad"><i>!</i>Осмотр</div><div class="st"><i>3</i>План</div><div class="st"><i>4</i>Установка</div><div class="st"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<div class="box" style="margin-bottom:16px;line-height:1.5">Wynd с сервера убран, его данные и сертификат оставлены. Docker и nginx остались. Но nginx это изменение ещё не принял: в его настройке ошибка, и она была там ещё до удаления — о ней ниже. Когда её исправят, сайт Wynd пропадёт из nginx сам.</div>
+<h2>Пока ставить нельзя</h2>
+<div class="sub">Мешает одно:</div>
+<div class="box">
+<div style="font-weight:600;margin-bottom:6px">В настройке веб-сервера nginx есть ошибка</div>
+<div class="dim" style="line-height:1.5">На сервере уже работает веб-сервер nginx. Его ставили не мы, и его настройку установщик не меняет. Сейчас в ней ошибка, и с ней nginx не примет сайт Wynd. Что не так, покажет на сервере команда:</div>
+<div style="display:flex;gap:8px;align-items:center;margin:8px 0"><div class="fld mono" style="flex:1">nginx -t</div><span class="btn gh" style="padding:7px 12px">Скопировать</span></div>
+<div class="dim" style="line-height:1.5">Исправьте ошибку и нажмите «Проверить снова». Сервер настраивал кто-то другой — попросите его.</div>
+</div>
+<div style="margin-top:10px"><span class="under">подробнее, что проверили</span></div>
+<div class="foot"><span class="btn">Проверить снова</span><span class="btn gh">Другой сервер</span></div>
+</div></div></div>
+<p class="note">Черновик 2026-10-11, реализовано, владельцем не утверждено. Редкий случай: пока Wynd работал, кто-то поправил настройку чужого веб-сервера с ошибкой и не попросил её перечитать — веб-сервер работал по старой. Наш файл сайта убран, но перечитать настройку веб-сервер отказался. Новый осмотр тут же находит эту ошибку, поэтому итог удаления стоит рамкой над экраном помехи (кадр 2г). Откуда ошибка, установщик знает точно: он проверяет настройку и до удаления своего файла, и после (решение владельца, 2026-10-11). Ещё два исхода с другой последней фразой: настройка перестала проходить проверку после удаления — «…без файла сайта Wynd его настройка перестала проходить проверку — похоже, на этот файл ссылается чужая настройка. Что не так, сказано ниже»; проверку прошла, а перечитать не вышло — «Но перечитать настройку nginx не удалось, хотя ошибок в ней нет. Сайт Wynd пропадёт из nginx, когда его попросят перечитать настройку или перезапустят» (тогда помехи ниже нет, рамка стоит над обычным осмотром, как в кадре 5г).</p>
+</div>
+
+<div>
 <p class="cap">6 · Потом — сервер под рукой</p>
 <div class="win"><div class="tb">●<b>Wynd — мои серверы</b><span class="dots">— ▢ ✕</span></div>
 <div class="main">

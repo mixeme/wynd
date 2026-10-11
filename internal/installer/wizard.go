@@ -399,9 +399,11 @@ type RollbackResult struct {
 	// отозван, «failed» — отозвать не вышло (он удалён вместе с ключом), пусто —
 	// сертификата не было или данные оставлены.
 	Cert string `json:"cert,omitempty"`
-	// Stale — чужой веб-сервер настройку не перечитал: в ней ошибка, и не наша.
-	// Наш файл сайта убран, но сайт пропадёт, только когда он её перечитает.
-	Stale bool `json:"stale,omitempty"`
+	// Stale — чужой веб-сервер настройку не перечитал; наш файл сайта убран, но
+	// сайт пропадёт, только когда он её перечитает. «before» — настройка не
+	// проходила проверку ещё до удаления, «after» — перестала проходить после
+	// него, «reload» — проверку прошла, а перечитать не вышло.
+	Stale string `json:"stale,omitempty"`
 	// Report и Plan — сервер после отката: осмотрен заново, план пересоставлен.
 	Report *Report `json:"report,omitempty"`
 	Plan   *Plan   `json:"plan,omitempty"`
@@ -441,8 +443,13 @@ func (w *Wizard) Rollback(ctx context.Context, keepData bool) RollbackResult {
 	w.progress = Progress{Steps: StepTitles(spec)}
 	res := RollbackResult{OK: true, Log: log}
 	for _, e := range log {
-		if strings.Contains(e.Output, markNotReloaded) {
-			res.Stale = true
+		switch {
+		case strings.Contains(e.Output, markBrokenAfter):
+			res.Stale = "after"
+		case strings.Contains(e.Output, markBrokenBefore) && res.Stale != "after":
+			res.Stale = "before"
+		case strings.Contains(e.Output, markNotReloaded) && res.Stale == "":
+			res.Stale = "reload"
 		}
 		switch {
 		case strings.Contains(e.Output, markRevokeFailed):
