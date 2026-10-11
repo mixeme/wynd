@@ -186,7 +186,7 @@ func TestProxyFindings(t *testing.T) {
 		{"nginx с ошибкой", withNginx + "## nginx\nlayout=sites\ntest=fail\n", true, "В настройке nginx сейчас ошибка"},
 		{"nginx устроен иначе", withNginx + "## nginx\ntest=ok\n", true, "nginx на сервере настроен необычно"},
 		{"caddy с import", replaceSection(cleanUbuntu, "ports", caddyPorts) + "## caddy\nimport conf.d/*\ntest=ok\n", false, ""},
-		{"caddy без import", replaceSection(cleanUbuntu, "ports", caddyPorts) + "## caddy\ntest=ok\n", true, "Caddy на сервере не читает дополнительные файлы настройки"},
+		{"caddy без import", replaceSection(cleanUbuntu, "ports", caddyPorts) + "## caddy\ntest=ok\n", true, "Веб-серверу Caddy нужна одна строка в настройке"},
 		{"caddy с ошибкой", replaceSection(cleanUbuntu, "ports", caddyPorts) + "## caddy\nimport conf.d/*\ntest=fail\n", true, "В настройке Caddy сейчас ошибка"},
 	}
 	for _, c := range cases {
@@ -195,12 +195,12 @@ func TestProxyFindings(t *testing.T) {
 		if rep.Blocked() != c.blocked || found != c.blocked || f.Text != c.text {
 			t.Errorf("%s: blocked=%v %+v", c.name, rep.Blocked(), f)
 		}
-		if found && (f.Advice == "" || !strings.Contains(f.Advice, "Проверить снова") && c.name != "nginx устроен иначе") {
+		if found && (f.Advice == "" || !strings.Contains(f.Advice+f.After, "Проверить снова") && c.name != "nginx устроен иначе") {
 			t.Errorf("%s: совет: %q", c.name, f.Advice)
 		}
 	}
-	if !strings.Contains(findings(ParseInspection(cases[5].out, "root", now))["proxy"].Advice, "import /etc/caddy/conf.d/*") {
-		t.Error("совет должен называть строку, которую дописать")
+	if findings(ParseInspection(cases[5].out, "root", now))["proxy"].Copy != "import /etc/caddy/conf.d/*" {
+		t.Error("строка, которую дописать, должна стоять отдельно — её копируют")
 	}
 }
 

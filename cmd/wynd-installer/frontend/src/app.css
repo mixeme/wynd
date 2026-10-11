@@ -180,6 +180,22 @@ body {
 .ins-box .ins-mono {
 	word-break: break-all;
 }
+/* Строка, которую человек вставит на сервере, и «Скопировать» рядом. */
+.ins-copyline {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 8px 0;
+}
+.ins-copyline .ins-mono {
+	flex: 1;
+	min-width: 0;
+	padding: 8px 11px;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	background: var(--paper);
+	user-select: all;
+}
 .ins-foot {
 	display: flex;
 	align-items: center;

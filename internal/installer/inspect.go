@@ -24,13 +24,16 @@ const (
 
 // Finding — строка осмотра словами человека. Text — что найдено; Plan — что
 // установщик с этим сделает (у LevelNote); Advice — что сделать человеку (у
-// LevelBlock).
+// LevelBlock). Copy — строка, которую человеку предстоит вставить на сервере:
+// окно показывает её отдельным полем с «Скопировать», After — текст под ней.
 type Finding struct {
 	ID     string `json:"id"`
 	Level  Level  `json:"level"`
 	Text   string `json:"text"`
 	Plan   string `json:"plan,omitempty"`
 	Advice string `json:"advice,omitempty"`
+	Copy   string `json:"copy,omitempty"`
+	After  string `json:"after,omitempty"`
 }
 
 // Report — итог осмотра. Сервер при осмотре не меняется.

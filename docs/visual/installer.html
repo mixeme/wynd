@@ -161,12 +161,14 @@ h2{margin:0 0 4px;font-size:17px}
 <h2>Пока ставить нельзя</h2>
 <div class="sub">Сервер в порядке, мешает одно:</div>
 <div class="box">
-<div style="font-weight:600;margin-bottom:6px">Caddy на сервере не читает дополнительные файлы настройки</div>
-<div class="dim" style="line-height:1.5">Wynd кладёт свой сайт отдельным файлом, а чужой файл /etc/caddy/Caddyfile не правит. Допишите в его конец строку «import /etc/caddy/conf.d/*» и нажмите «Проверить снова».</div>
+<div style="font-weight:600;margin-bottom:6px">Веб-серверу Caddy нужна одна строка в настройке</div>
+<div class="dim" style="line-height:1.5">На сервере уже работает веб-сервер Caddy. Его ставили не мы, и его настройку установщик не меняет. Чтобы Caddy показывал Wynd, откройте на сервере файл /etc/caddy/Caddyfile и допишите в конец строку:</div>
+<div style="display:flex;gap:8px;align-items:center;margin:8px 0"><div class="fld mono" style="flex:1">import /etc/caddy/conf.d/*</div><span class="btn gh" style="padding:7px 12px">Скопировать</span></div>
+<div class="dim" style="line-height:1.5">Потом нажмите «Проверить снова». Сервер настраивал кто-то другой — попросите его.</div>
 </div>
 <div class="foot"><span class="btn">Проверить снова</span><span class="btn gh">Другой адрес</span></div>
 </div></div></div>
-<p class="note">Черновик 2026-10-10, реализовано, владельцем не утверждено. Единственное, о чём просим человека на сервере с чужим Caddy: сам Caddyfile установщик не трогает. Так же выглядят «В настройке nginx сейчас ошибка» и «nginx на сервере настроен необычно».</p>
+<p class="note">Утверждено владельцем 2026-10-11 (текст переписан: прежний был сложен), реализовано. Единственное, о чём просим человека на сервере с чужим Caddy: сам Caddyfile установщик не трогает. Строку не перепечатывают — её копируют кнопкой. «В настройке nginx сейчас ошибка» и «nginx на сервере настроен необычно» — та же рамка, тексты прежние, не утверждены.</p>
 </div>
 
 <div>

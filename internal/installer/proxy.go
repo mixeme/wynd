@@ -157,8 +157,10 @@ func proxyFinding(proxy string, lines []string) (Finding, bool) {
 		if _, ok := caddySitePath(lines, "x"); !ok {
 			return Finding{
 				ID: "proxy", Level: LevelBlock,
-				Text:   "Caddy на сервере не читает дополнительные файлы настройки",
-				Advice: "Wynd кладёт свой сайт отдельным файлом, а чужой файл " + caddyConfig + " не правит. Допишите в его конец строку «import " + path.Dir(caddyConfig) + "/conf.d/*» и нажмите «Проверить снова».",
+				Text:   "Веб-серверу Caddy нужна одна строка в настройке",
+				Advice: "На сервере уже работает веб-сервер Caddy. Его ставили не мы, и его настройку установщик не меняет. Чтобы Caddy показывал Wynd, откройте на сервере файл " + caddyConfig + " и допишите в конец строку:",
+				Copy:   "import " + path.Dir(caddyConfig) + "/conf.d/*",
+				After:  "Потом нажмите «Проверить снова». Сервер настраивал кто-то другой — попросите его.",
 			}, true
 		}
 		if !hasLine(lines, "test=ok") {

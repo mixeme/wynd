@@ -24,6 +24,9 @@ export interface Finding {
 	text: string;
 	plan?: string;
 	advice?: string;
+	/** Строка, которую человек вставит на сервере; after — текст под ней. */
+	copy?: string;
+	after?: string;
 }
 
 export interface Report {

@@ -52,6 +52,7 @@
 	let rollbackError = $state('');
 	let rollbackLog = $state<LogEntry[]>([]);
 	let copied = $state(false);
+	let copiedLine = $state('');
 
 	const SCREEN_STEP: Record<Screen, number> = {
 		connect: 0,
@@ -263,6 +264,12 @@
 		} finally {
 			rolling = false;
 		}
+	}
+
+	async function copyLine(line: string) {
+		if (!(await backend().CopyText(line))) return;
+		copiedLine = line;
+		setTimeout(() => (copiedLine = ''), 2000);
 	}
 
 	async function copyLink() {
@@ -575,6 +582,17 @@
 					<div class="ins-strong">{block.text}</div>
 					{#if block.advice}
 						<div class="ins-dim">{block.advice}</div>
+					{/if}
+					{#if block.copy}
+						<div class="ins-copyline">
+							<div class="ins-mono">{block.copy}</div>
+							<Button variant="ghost" onclick={() => void copyLine(block.copy ?? '')}>
+								{copiedLine === block.copy ? 'Скопировано' : 'Скопировать'}
+							</Button>
+						</div>
+					{/if}
+					{#if block.after}
+						<div class="ins-dim">{block.after}</div>
 					{/if}
 				</div>
 			{/each}
