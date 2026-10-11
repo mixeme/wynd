@@ -183,11 +183,11 @@ func TestProxyFindings(t *testing.T) {
 	}{
 		{"nginx в порядке", withNginx + "## nginx\nlayout=sites\ntest=ok\n", false, ""},
 		{"nginx с conf.d", withNginx + "## nginx\nlayout=confd\ntest=ok\n", false, ""},
-		{"nginx с ошибкой", withNginx + "## nginx\nlayout=sites\ntest=fail\n", true, "В настройке nginx сейчас ошибка"},
+		{"nginx с ошибкой", withNginx + "## nginx\nlayout=sites\ntest=fail\n", true, "В настройке веб-сервера nginx есть ошибка"},
 		{"nginx устроен иначе", withNginx + "## nginx\ntest=ok\n", true, "nginx на сервере настроен необычно"},
 		{"caddy с import", replaceSection(cleanUbuntu, "ports", caddyPorts) + "## caddy\nimport conf.d/*\ntest=ok\n", false, ""},
 		{"caddy без import", replaceSection(cleanUbuntu, "ports", caddyPorts) + "## caddy\ntest=ok\n", true, "Веб-серверу Caddy нужна одна строка в настройке"},
-		{"caddy с ошибкой", replaceSection(cleanUbuntu, "ports", caddyPorts) + "## caddy\nimport conf.d/*\ntest=fail\n", true, "В настройке Caddy сейчас ошибка"},
+		{"caddy с ошибкой", replaceSection(cleanUbuntu, "ports", caddyPorts) + "## caddy\nimport conf.d/*\ntest=fail\n", true, "В настройке веб-сервера Caddy есть ошибка"},
 	}
 	for _, c := range cases {
 		rep := ParseInspection(c.out, "root", now)
@@ -344,7 +344,7 @@ func TestPlanBehindApache(t *testing.T) {
 		t.Fatalf("все модули на месте — менять нечего: %+v", plan)
 	}
 	for _, c := range []struct{ body, text string }{
-		{"layout=sites\ntest=fail\n", "В настройке Apache сейчас ошибка"},
+		{"layout=sites\ntest=fail\n", "В настройке веб-сервера Apache есть ошибка"},
 		{"test=ok\n", "Apache на сервере настроен необычно"},
 	} {
 		rep := ParseInspection(out+"## apache\n"+c.body, "root", now)
