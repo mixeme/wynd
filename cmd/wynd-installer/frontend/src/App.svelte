@@ -15,6 +15,7 @@
 		type Progress,
 		type StepState
 	} from './api';
+	import { rawSections } from './raw';
 
 	// Окна установщика (docs/visual/installer.html): 1 — подключение, 1а —
 	// отпечаток, 2 — осмотр, 2а — помеха, 3 — план, 4 — установка, 4а — шаг не
@@ -35,12 +36,21 @@
 
 	let inspection = $state<InspectResult | undefined>();
 	let showRaw = $state(false);
+	let copiedRaw = $state(false);
 	let domain = $state('');
 	let domainCheck = $state<DomainCheck | undefined>();
 	let checkingDomain = $state(false);
 
 	const findings = $derived<Finding[]>(inspection?.report.findings ?? []);
 	const blocks = $derived(findings.filter((f) => f.level === 'block'));
+	const rawParts = $derived(
+		inspection
+			? rawSections(
+					inspection.report.raw,
+					blocks.map((b) => b.id)
+				)
+			: []
+	);
 	let plan = $state<Plan | undefined>();
 	let planning = $state(false);
 	let progress = $state<Progress | undefined>();
@@ -264,6 +274,11 @@
 		} finally {
 			rolling = false;
 		}
+	}
+
+	async function copyRaw() {
+		copiedRaw = await backend().CopyText(inspection?.report.raw ?? '');
+		setTimeout(() => (copiedRaw = false), 2000);
 	}
 
 	async function copyLine(line: string) {
@@ -597,13 +612,10 @@
 				</div>
 			{/each}
 			<div class="ins-more">
-				<TextButton class="link under" onclick={() => (showRaw = !showRaw)}>
+				<TextButton class="link under" onclick={() => (showRaw = true)}>
 					подробнее, что проверили
 				</TextButton>
 			</div>
-			{#if showRaw}
-				<pre class="ins-raw">{inspection.report.raw}</pre>
-			{/if}
 			<div class="ins-foot">
 				{#if blocks.every((b) => b.final)}
 					<Button variant="colored" disabled={busy} onclick={() => void toConnect()}>
@@ -693,13 +705,43 @@
 				{#if !domainOk}
 					<span class="ins-dim">Сначала укажите адрес сайта</span>
 				{/if}
-				<TextButton class="link under" onclick={() => (showRaw = !showRaw)}>
+				<TextButton class="link under" onclick={() => (showRaw = true)}>
 					подробнее, что проверили
 				</TextButton>
 			</div>
-			{#if showRaw}
-				<pre class="ins-raw">{inspection.report.raw}</pre>
-			{/if}
 		{/if}
 	</main>
+	{#if showRaw && inspection}
+		<!-- Окно поверх (кадр 2е): читать ответы сервера, а не подглядывать в три строки. -->
+		<div class="ins-over" role="presentation" onclick={() => (showRaw = false)}></div>
+		<div class="ins-sheet" role="dialog" aria-modal="true" aria-label="Что проверили">
+			<div class="ins-sheet-head">
+				<b>Что проверили</b>
+				<span class="ins-dim">ответы сервера на команды осмотра</span>
+				<button class="ins-x" type="button" aria-label="Закрыть" onclick={() => (showRaw = false)}>
+					✕
+				</button>
+			</div>
+			<div class="ins-raw">
+				{#each rawParts as s, i (i)}
+					<div class:ins-cause-part={s.cause}>
+						{#if s.cause}<b class="ins-cause">## {s.name} — из-за этого отказ</b>{:else}## {s.name}{/if}
+						{#if s.body}<div>{s.body}</div>{/if}
+					</div>
+				{/each}
+			</div>
+			<div class="ins-sheet-foot">
+				<Button variant="ghost" onclick={() => void copyRaw()}>
+					{copiedRaw ? 'Скопировано' : 'Скопировать всё'}
+				</Button>
+				<Button variant="ghost" onclick={() => (showRaw = false)}>Закрыть</Button>
+			</div>
+		</div>
+	{/if}
 </div>
+
+<svelte:window
+	onkeydown={(e) => {
+		if (e.key === 'Escape' && showRaw) showRaw = false;
+	}}
+/>

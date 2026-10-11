@@ -217,6 +217,44 @@ h2{margin:0 0 4px;font-size:17px}
 </div>
 
 <div>
+<p class="cap">2е · Осмотр: «подробнее, что проверили» — окно поверх</p>
+<div class="win" style="position:relative"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st bad"><i>!</i>Осмотр</div><div class="st"><i>3</i>План</div><div class="st"><i>4</i>Установка</div><div class="st"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<h2>Пока ставить нельзя</h2>
+<div class="sub">Сервер в порядке, мешает одно:</div>
+<div class="box">
+<div style="font-weight:600;margin-bottom:6px">На этот сервер установщик Wynd не поставит</div>
+<div class="dim" style="line-height:1.5">На сервере уже работает веб-сервер, и устроен он не так, как принято. Его ставили не мы, и его настройку установщик не меняет — добавить к нему сайт Wynd он не может.</div>
+</div>
+</div></div>
+<div style="position:absolute;inset:34px 0 0 0;background:rgba(43,39,36,.38)"></div>
+<div style="position:absolute;inset:50px 18px 16px 18px;background:var(--paper);border:1px solid #CFC5B8;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.25);display:flex;flex-direction:column;padding:14px 16px">
+<div style="display:flex;align-items:center;margin-bottom:8px"><b style="font-size:15px">Что проверили</b><span class="dim" style="margin-left:10px">ответы сервера на команды осмотра</span><span style="margin-left:auto;color:var(--muted);font-size:15px">✕</span></div>
+<pre style="flex:1;min-height:0;margin:0;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-family:Consolas,monospace;font-size:11.5px;line-height:1.45;overflow:hidden;white-space:pre-wrap;word-break:break-all"><b style="color:#B5482F">## ports — из-за этого отказ</b>
+LISTEN 0 4096 0.0.0.0:80  0.0.0.0:* users:(("haproxy",pid=812,fd=6))
+LISTEN 0 4096 0.0.0.0:443 0.0.0.0:* users:(("haproxy",pid=812,fd=7))
+LISTEN 0 128  0.0.0.0:22  0.0.0.0:* users:(("sshd",pid=702,fd=3))
+
+## os
+PRETTY_NAME="Ubuntu 24.04.1 LTS"
+VERSION_ID="24.04"
+ID=ubuntu
+## arch
+x86_64
+## disk
+/dev/vda1  41152736 8234124 32901228  21% /
+## docker</pre>
+<div style="display:flex;gap:10px;margin-top:10px"><span class="btn gh">Скопировать всё</span><span class="btn gh" style="margin-left:auto">Закрыть</span></div>
+</div>
+</div>
+<p class="note">Утверждено владельцем 2026-10-11, реализовано; пройдено в окне на подставном сервере. Замысел владельца: окно поверх, чтобы читать, а не подглядывать в блок на три строки. Первым идёт раздел, из-за которого отказ, и он помечен; остальное — ниже, как пришло, с прокруткой. «Скопировать всё» — чтобы переслать тому, кто настраивал сервер. Закрывается крестиком, «Закрыть» и клавишей Esc. То же окно открывает ссылка на экране «Что на сервере» (кадры 2 и 2б) — там без пометки.</p>
+</div>
+
+<div>
 <p class="cap">3 · План</p>
 <div class="win"><div class="tb">●<b>Wynd — установка на свой сервер</b><span class="dots">— ▢ ✕</span></div>
 <div class="main">
