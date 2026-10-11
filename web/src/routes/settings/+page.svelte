@@ -7,8 +7,6 @@
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { loadSourceUrl } from '$lib/instance/source.svelte';
 	import { loadSessions } from '$lib/session/session.svelte';
-	import Hint from '$ui/forms/Hint.svelte';
-	import TextButton from '$ui/forms/TextButton.svelte';
 	import { appUpdate, applyAppUpdate, checkAppUpdate } from '$lib/session/appUpdate.svelte';
 
 	let subtitle = $state('нет серверов');
@@ -34,6 +32,16 @@
 		result = await checkAppUpdate();
 		checking = false;
 	}
+	// Строка отвечает на месте своей подписью (кадры 7.23–7.27).
+	const updateNote = $derived(
+		checking
+			? 'проверяем…'
+			: result === 'latest'
+				? 'это последняя версия'
+				: result === 'failed'
+					? 'не удалось проверить — коснитесь ещё раз'
+					: 'новая версия и так встаёт сама'
+	);
 
 	function goBack() {
 		void goUp('/circles');
@@ -53,24 +61,31 @@
 		subtitle="уведомления, место, тема"
 		onclick={() => goto('/settings/app')}
 	/>
-	<AboutFooter wrap class="mt-44" />
-	<Hint centered class="mt-8">
-		<TextButton onclick={() => goto('/settings/news')}>Что нового</TextButton>
-	</Hint>
+	<SettingsRow
+		icon="day"
+		title="Что нового"
+		subtitle="что изменилось в Wynd"
+		onclick={() => goto('/settings/news')}
+	/>
 	{#if appUpdate.supported}
-		<Hint centered class="mt-8">
-			{#if appUpdate.pending}
-				<TextButton onclick={() => void applyAppUpdate()}>Обновить до новой версии</TextButton>
-			{:else if checking}
-				проверяем…
-			{:else if result === 'latest'}
-				Это последняя версия
-			{:else if result === 'failed'}
-				Не удалось проверить —
-				<TextButton onclick={() => void check()}>ещё раз</TextButton>
-			{:else}
-				<TextButton onclick={() => void check()}>Проверить обновление</TextButton>
-			{/if}
-		</Hint>
+		{#if appUpdate.pending}
+			<SettingsRow
+				icon="download"
+				title="Обновить до новой версии"
+				subtitle="приложение перезапустится"
+				chevron={false}
+				onclick={() => void applyAppUpdate()}
+			/>
+		{:else}
+			<SettingsRow
+				icon="download"
+				title="Проверить обновление"
+				subtitle={updateNote}
+				chevron={false}
+				opacity={checking ? 0.55 : undefined}
+				onclick={checking ? undefined : () => void check()}
+			/>
+		{/if}
 	{/if}
+	<AboutFooter wrap class="mt-28" />
 </FormLayout>

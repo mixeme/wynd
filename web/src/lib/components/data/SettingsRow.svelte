@@ -13,6 +13,7 @@
 		onclick,
 		control,
 		divided,
+		opacity,
 		class: className = '',
 		style = ''
 	}: {
@@ -27,6 +28,8 @@
 		/** Черта над строкой, под ней или с обеих сторон — отдельная строка
 		 *  среди текста (план 47, 2.22). */
 		divided?: 'top' | 'bottom' | 'both';
+		/** Приглушить строку, пока она занята (7.24: «проверяем…»). */
+		opacity?: number;
 		class?: string;
 		style?: string;
 	} = $props();
@@ -47,6 +50,7 @@
 <Row
 	onclick={control ? undefined : onclick}
 	{link}
+	{opacity}
 	class={rowClass}
 	{style}
 >
