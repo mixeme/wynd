@@ -688,6 +688,7 @@
 <li><a href="#e7-25"><span class="tn">7.25</span>Обновление: последняя версия</a></li>
 <li><a href="#e7-26"><span class="tn">7.26</span>Обновление: не удалось</a></li>
 <li><a href="#e7-27"><span class="tn">7.27</span>Обновление: есть новая</a></li>
+<li><a href="#e7-28"><span class="tn">7.28</span>Android: сменить сервер?</a></li>
 </ul>
 </div>
 <div class="toc-g">
@@ -3706,6 +3707,25 @@
   <div class="hint ctr" style="margin-top:28px">Wynd 0.28.9 · AGPL-3.0<br><a class="under" href="https://github.com/mixeme/wynd">исходный код</a> · <span class="under">лицензии компонентов</span></div>
 </div>
 <span class="num">7.27</span><b>Обновление: есть новая версия</b><i>Утверждено владельцем 2026-10-12, сделано в 0.28.10. Новая версия скачана и ждёт. Заголовок строки меняется на действие; касание ставит её и перезапускает приложение. Так же строка выглядит сразу при входе на экран, если новая версия уже ждёт.</i></figure>
+
+<figure class="s" id="e7-28"><div class="ph shell">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Настройки</span></div>
+  <div class="row2" style="margin-top:8px"><svg class="ic"><use href="#i-key"/></svg><div class="g"><div style="font-weight:600">Серверы</div><div class="sub">Дом Ани</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="row2"><svg class="ic"><use href="#i-bell"/></svg><div class="g"><div style="font-weight:600">Приложение</div><div class="sub">уведомления, место, тема</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="row2"><svg class="ic"><use href="#i-day"/></svg><div class="g"><div style="font-weight:600">Что нового</div><div class="sub">что изменилось в Wynd</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="row2"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">Сменить сервер</div><div class="sub">приложение открыто с home.example.org</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="scrim"></div>
+  <div class="dlg" style="top:190px">
+    <div style="font-size:17px;font-weight:600;margin-bottom:10px">Сменить сервер?</div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">Этот сервер — то, откуда берётся само приложение: сейчас Wynd загружается с home.example.org.</div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">Ваши круги от него не зависят: круги с других серверов добавляют в «Серверах», и менять для этого ничего не нужно.</div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">Менять нужно, если home.example.org закрылся или переехал.</div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:4px">После смены на новом сервере нужно войти заново; записи, которые не успели отправиться, не уйдут.</div>
+    <div class="rowin" style="margin:18px 0 0"><div class="btn gh" style="flex:1;margin:0">Отмена</div><div class="btn" style="flex:1;margin:0">Сменить</div></div>
+  </div>
+</div>
+<span class="num">7.28</span><b>Сменить сервер?</b><i>Утверждено владельцем 2026-10-12, не реализовано. Вопрос после строки «Сменить сервер» на 7.21. Первым сказано главное (владелец, 2026-10-12): смена сервера — это про то, откуда берётся приложение, а не про круги. Интерфейс не вшит и загружается с выбранного сервера (план 50); круги с других серверов собираются в том же списке через «Серверы», как в браузере. Причина менять одна: сервер приложения закрылся или переехал. Вход, сохранённое и неотправленное лежат в телефоне под прежним адресом и на новый не переносятся. «Сменить» ведёт на 7.17; прежний сервер забывается, только когда выбран новый.</i></figure>
 </div></div>
 <h2 id="night">Тёмная тема</h2>
 <p class="lede">Меняются бумага и чернила. Круги не меняются.</p>
