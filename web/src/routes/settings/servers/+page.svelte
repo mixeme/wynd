@@ -5,7 +5,7 @@
 	import { WORD, plural } from '$lib/format/plural';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Loading from '$ui/Loading.svelte';
-	import SectionLabel from '$ui/data/SectionLabel.svelte';
+	import ServerRow from '$ui/data/ServerRow.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import Button from '$ui/forms/Button.svelte';
@@ -88,11 +88,9 @@
 	{:else if rows.length === 0}
 		<Hint>На этом устройстве вы ни на одном сервере.</Hint>
 	{:else}
-		{#each rows as row (row.session.origin + row.session.email)}
-			<SectionLabel raw>
-				<span class="ink">{row.session.name}</span> · {row.host}
-			</SectionLabel>
-			<SettingsRow class="pt-2"
+		{#each rows as row, i (row.session.origin + row.session.email)}
+			<ServerRow name={row.session.name || row.host} subtitle={row.host} card top={i === 0 ? 10 : 26} />
+			<SettingsRow
 				title={row.session.email}
 				subtitle={accountSubtitle(row.session, row.circles)}
 				chevron={false}

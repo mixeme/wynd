@@ -1984,6 +1984,10 @@ a.link {
 .row2 + .row2 {
 	border-top: 1px solid var(--line);
 }
+/* Строка под карточкой сервера: рамка карточки уже отделяет её. */
+.row2.server-card + .row2 {
+	border-top: 0;
+}
 /* SettingsRow divided: строка-ссылка среди текста отчерчена. */
 .row2.divided-top {
 	border-top: 1px solid var(--line);

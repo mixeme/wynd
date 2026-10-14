@@ -163,7 +163,7 @@
 				subtitle={peek.host || displayHost('')}
 				variant="ok"
 				card
-				underLabel
+				top={0}
 			/>
 		{:else}
 			<InviteCard initial="…" name="…" preview="Загрузка…" />

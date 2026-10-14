@@ -14,7 +14,7 @@
 	<ScreenTitle style="margin-top:24px">Вас пригласили</ScreenTitle>
 	<InviteCard initial="С" name="Семья" preview="22 участника · пригласила Аня" />
 	<Label>Сервер</Label>
-	<ServerRow name="Дом Ани" subtitle="home.example.org" variant="ok" card underLabel />
+	<ServerRow name="Дом Ани" subtitle="home.example.org" variant="ok" card top={0} />
 	<Label>Почта</Label>
 	<FieldDisplay value="you@example.com" active />
 	<Hint>

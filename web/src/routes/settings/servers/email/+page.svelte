@@ -6,6 +6,7 @@
 	import Hint from '$ui/forms/Hint.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
+	import ServerRow from '$ui/data/ServerRow.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { fetchInstance } from '$lib/auth/auth';
@@ -82,13 +83,9 @@
 
 <FormLayout shell app title="Новая почта" onback={back}>
 	{#if pending}
+		<ServerRow name={pending.serverName || pending.host} subtitle={pending.host} card top={10} />
 		<SectionLabel>Сейчас</SectionLabel>
-		<SettingsRow
-			class="pt-2"
-			title={pending.currentEmail}
-			subtitle={pending.serverName ? `${pending.serverName} · ${pending.host}` : pending.host}
-			chevron={false}
-		/>
+		<SettingsRow class="pt-2" title={pending.currentEmail} chevron={false} />
 		<SectionLabel>Новая почта</SectionLabel>
 		<Input active type="email" autocomplete="email" bind:value={email} />
 		{#if error}
