@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/blob"
+	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 	"gitea.mixdep.ru/mix/wynd/internal/xtime"
 )
 
@@ -66,7 +67,25 @@ func (s *Server) handleAdminStorage(w http.ResponseWriter, r *http.Request) {
 		q := defaultQuota.Int64
 		defaultPtr = &q
 	}
+	// Готовые архивы (9.12, 9.5): сколько места занимают и сколько их.
+	files, err := s.Chronicle.FullArchivesWithFiles(r.Context(), "")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	var archiveBytes int64
+	for _, a := range files {
+		archiveBytes += a.SizeBytes
+	}
+	retention, err := s.Chronicle.ArchiveRetention(r.Context())
+	if err != nil {
+		writeError(w, err)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
+		"archives_bytes":             archiveBytes,
+		"archives_count":             len(files),
+		"archive_retention_hours":    int(retention / time.Hour),
 		"used_bytes":                 used,
 		"quota_bytes":                quota,
 		"storage_quota_bytes":        absQuota,
@@ -74,6 +93,39 @@ func (s *Server) handleAdminStorage(w http.ResponseWriter, r *http.Request) {
 		"default_circle_quota_bytes": defaultPtr,
 		"circles":                    storageCirclesJSON(circles),
 	})
+}
+
+type archiveRetentionBody struct {
+	Hours int `json:"hours"`
+}
+
+// handleAdminSetArchiveRetention — «Хранить готовый архив» (9.12): сколько
+// часов не скачанный архив ждёт после сборки. Новый срок — для новых архивов.
+func (s *Server) handleAdminSetArchiveRetention(w http.ResponseWriter, r *http.Request) {
+	body, ok := bindJSON[archiveRetentionBody](w, r)
+	if !ok {
+		return
+	}
+	if err := s.Chronicle.SetArchiveRetention(r.Context(), body.Hours); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// handleAdminClearArchives — «Удалить все» (9.12): аварийная очистка готовых
+// и собираемых архивов. Круги и записи не трогаются: владелец увидит, что
+// файла нет (6.41), и соберёт архив снова.
+func (s *Server) handleAdminClearArchives(w http.ResponseWriter, r *http.Request) {
+	files, err := s.Chronicle.FullArchivesWithFiles(r.Context(), "")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	for _, a := range files {
+		s.removeFullArchive(r.Context(), a.ID, chronicle.RemovedAdmin)
+	}
+	writeJSON(w, http.StatusOK, map[string]int{"removed": len(files)})
 }
 
 type storageCircle struct {

@@ -356,3 +356,39 @@ func TestFullArchiveReviveCircle(t *testing.T) {
 		t.Fatalf("запись после оживления: %d %s", rec.Code, rec.Body.String())
 	}
 }
+
+// Панель (9.12): готовые архивы видны с размером, «Удалить все» стирает их,
+// а владелец видит, что файл удалил администратор (6.41); срок меняется.
+func TestAdminClearsReadyArchives(t *testing.T) {
+	srv, tok, circleID := fullArchiveCircle(t)
+	admin := adminToken(t, srv)
+	doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/full_archive", tok, map[string]any{})
+	st := waitFullStatus(t, srv, tok, circleID, "ready")
+	var storage struct {
+		ArchivesBytes int64 `json:"archives_bytes"`
+		ArchivesCount int   `json:"archives_count"`
+		Retention     int   `json:"archive_retention_hours"`
+		UsedBytes     int64 `json:"used_bytes"`
+	}
+	_ = json.Unmarshal(doGET(t, srv, "/api/v1/admin/storage", admin).Body.Bytes(), &storage)
+	if storage.ArchivesCount != 1 || storage.ArchivesBytes != st.Archive.SizeBytes || storage.Retention != 72 || storage.UsedBytes < storage.ArchivesBytes {
+		t.Fatalf("хранилище: %+v, архив %d байт", storage, st.Archive.SizeBytes)
+	}
+	if rec := doJSON(t, srv, http.MethodPut, "/api/v1/admin/storage/archive_retention", admin, map[string]any{"hours": 0}); rec.Code != http.StatusBadRequest {
+		t.Fatalf("срок 0 часов: %d", rec.Code)
+	}
+	if rec := doJSON(t, srv, http.MethodPut, "/api/v1/admin/storage/archive_retention", admin, map[string]any{"hours": 24}); rec.Code != http.StatusOK {
+		t.Fatalf("срок: %d %s", rec.Code, rec.Body.String())
+	}
+	if rec := doJSON(t, srv, http.MethodPost, "/api/v1/admin/storage/archives/clear", admin, nil); rec.Code != http.StatusOK {
+		t.Fatalf("удалить все: %d %s", rec.Code, rec.Body.String())
+	}
+	st = readFullState(t, srv, tok, circleID)
+	if st.Archive.Status != "removed" || st.Archive.RemovedReason != "admin" || st.Archive == nil {
+		t.Fatalf("после очистки: %+v", st.Archive)
+	}
+	_ = json.Unmarshal(doGET(t, srv, "/api/v1/admin/storage", admin).Body.Bytes(), &storage)
+	if storage.ArchivesCount != 0 || storage.ArchivesBytes != 0 || storage.Retention != 24 {
+		t.Fatalf("хранилище после очистки: %+v", storage)
+	}
+}

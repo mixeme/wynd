@@ -63,6 +63,20 @@ paths:
         "200":
           description: OK
 
+  /admin/storage/archive_retention:
+    put:
+      summary: How many hours a ready full circle archive waits to be downloaded (1..8760, default 72)
+      responses:
+        "200":
+          description: OK
+
+  /admin/storage/archives/clear:
+    post:
+      summary: Delete every ready or building full circle archive; circles and posts stay
+      responses:
+        "200":
+          description: "{removed}"
+
   /admin/circles/{id}/quota:
     put:
       summary: Set circle-specific quota override

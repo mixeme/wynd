@@ -1889,6 +1889,23 @@ a.link {
 	text-align: center;
 	line-height: 1.5;
 }
+/* Легенда шкалы хранилища (StackLegend; 9.5). */
+.stack-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 22px;
+	margin: 0 0 18px;
+	font-size: 12.5px;
+	color: var(--muted);
+}
+.stack-legend-swatch {
+	display: inline-block;
+	width: 14px;
+	height: 10px;
+	margin-right: 6px;
+	border-radius: 3px;
+	vertical-align: -1px;
+}
 /* Карточка «что происходит» (StatusCard; 6.40, 6.43). */
 .status-card {
 	margin: 16px 16px 0;
@@ -3582,6 +3599,9 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 }
 .m-8-16-0 {
 	margin: 8px 16px 0;
+}
+.m-10-0-6 {
+	margin: 10px 0 6px;
 }
 .m-10-0-22 {
 	margin: 10px 0 22px;

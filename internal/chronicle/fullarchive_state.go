@@ -369,6 +369,15 @@ func (c *Chronicle) ArchiveRetention(ctx context.Context) (time.Duration, error)
 	return time.Duration(hours) * time.Hour, nil
 }
 
+// SetArchiveRetention — «Хранить готовый архив» (9.12): от часа до года.
+func (c *Chronicle) SetArchiveRetention(ctx context.Context, hours int) error {
+	if hours < 1 || hours > 24*365 {
+		return ErrInvalid
+	}
+	_, err := c.db.ExecContext(ctx, `UPDATE instance_settings SET archive_retention_hours = ? WHERE id = 1`, hours)
+	return err
+}
+
 // CircleArchiveEstimate — сколько примерно займёт полный архив (6.29): файлы
 // круга и его текст. Точную длину даёт сборка; этой оценки хватает для
 // «8,4 ГБ» на экране и проверки, есть ли на сервере место.

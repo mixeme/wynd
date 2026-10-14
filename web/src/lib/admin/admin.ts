@@ -31,6 +31,10 @@ export interface AdminStorage {
 	storage_quota_disk_percent: number | null;
 	default_circle_quota_bytes: number | null;
 	circles: AdminStorageCircle[];
+	/** Готовые полные архивы кругов (9.12): место, число, срок хранения. */
+	archives_bytes?: number;
+	archives_count?: number;
+	archive_retention_hours?: number;
 }
 
 export interface CompressionSettings {
@@ -111,6 +115,20 @@ export interface ProxySnippet {
 
 export async function fetchStorage(): Promise<AdminStorage> {
 	return adminJson('/admin/storage');
+}
+
+/** «Хранить готовый архив» (9.12): часов после сборки. */
+export async function setArchiveRetention(hours: number): Promise<void> {
+	await adminJson('/admin/storage/archive_retention', {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ hours })
+	});
+}
+
+/** «Удалить все» (9.12): готовые архивы стираются, круги остаются. */
+export async function clearReadyArchives(): Promise<void> {
+	await adminJson('/admin/storage/archives/clear', { method: 'POST' });
 }
 
 export async function setStorageQuotaBytes(quotaBytes: number): Promise<void> {

@@ -16,18 +16,24 @@
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
 	import DataTable from '$ui/admin/DataTable.svelte';
 	import StackBar from '$ui/admin/StackBar.svelte';
+	import StackLegend from '$ui/admin/StackLegend.svelte';
+	import CheckRow from '$ui/admin/CheckRow.svelte';
+	import Button from '$ui/forms/Button.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { formatBytes } from '$lib/format/bytes';
+	import { WORD, plural } from '$lib/format/plural';
 	import { formatAdminDay } from '$lib/format/time';
 	import { loadSourceUrl } from '$lib/instance/source.svelte';
 	import { CIRCLE_COLOR_ORDER, CIRCLE_COLORS, type CircleColor } from '$lib/theme/colors';
 	import {
+		clearReadyArchives,
 		fetchQuotaRequests,
 		fetchStorage,
 		resolveQuotaRequest,
 		serverCaption,
 		setCircleQuota,
+		setArchiveRetention,
 		setDefaultCircleQuota,
 		setStorageQuotaBytes,
 		setStorageQuotaDiskPercent,
@@ -72,14 +78,52 @@
 
 	const usedPct = $derived(quota > 0 ? Math.min(100, (used / quota) * 100) : 0);
 	const free = $derived(Math.max(0, quota - used));
-	const barSegments = $derived(
-		circles
+	// Готовые архивы на шкале (9.5) — штриховкой: в потолке они есть, но это
+	// не круг.
+	const ARCHIVE_HATCH = 'repeating-linear-gradient(135deg,#C9C0B2 0 6px,#DFD8CD 6px 12px)';
+	let archivesBytes = $state(0);
+	let archivesCount = $state(0);
+	let retentionInput = $state('72');
+	let retentionHint = $state('');
+	let clearing = $state(false);
+	const circlesBytes = $derived(circles.reduce((sum, c) => sum + c.media_bytes, 0));
+	const barSegments = $derived([
+		...circles
 			.filter((c) => c.media_bytes > 0 && quota > 0)
 			.map((c) => ({
 				width: `${Math.max(0.4, (c.media_bytes / quota) * 100)}%`,
 				color: colorForCircle(c)
-			}))
-	);
+			})),
+		...(archivesBytes > 0 && quota > 0
+			? [{ width: `${Math.max(0.4, (archivesBytes / quota) * 100)}%`, color: ARCHIVE_HATCH }]
+			: [])
+	]);
+
+	async function saveRetention() {
+		retentionHint = '';
+		const hours = Number(String(retentionInput).trim());
+		if (!Number.isInteger(hours) || hours < 1 || hours > 8760) {
+			retentionHint = 'Срок — целое число часов, от 1 до 8760 (год).';
+			return;
+		}
+		try {
+			await setArchiveRetention(hours);
+		} catch (err) {
+			retentionHint = authErrorHint(err);
+		}
+	}
+
+	async function clearArchives() {
+		clearing = true;
+		try {
+			await clearReadyArchives();
+			await load();
+		} catch (err) {
+			retentionHint = authErrorHint(err);
+		} finally {
+			clearing = false;
+		}
+	}
 
 	function colorFor(id: string): string {
 		const hash = id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
@@ -189,6 +233,9 @@
 			defaultQuota = storage.default_circle_quota_bytes;
 			syncDefaultChip(storage.default_circle_quota_bytes);
 			circles = storage.circles ?? [];
+			archivesBytes = storage.archives_bytes ?? 0;
+			archivesCount = storage.archives_count ?? 0;
+			retentionInput = String(storage.archive_retention_hours ?? 72);
 			requests = list;
 			server = caption;
 			syncCircleField(selectedCircle, pendingForCircle);
@@ -326,9 +373,22 @@
 				threshold="90%"
 				segments={barSegments.length ? barSegments : [{ width: `${usedPct}%`, color: 'var(--ink)' }]}
 			/>
-			<div class="note m-10-0-22">
+			<div class="note {archivesBytes > 0 ? 'm-10-0-6' : 'm-10-0-22'}">
 				{formatBytes(used)} из {formatBytes(quota)} · свободно {formatBytes(free)}
 			</div>
+			{#if archivesBytes > 0}
+				<!-- 9.5: круги и готовые архивы отдельно. -->
+				<StackLegend
+					items={[
+						{
+							label: `круги — ${formatBytes(circlesBytes)}, цвета как в таблице ниже`,
+							swatch:
+								'linear-gradient(90deg,var(--terracotta) 0 25%,var(--olive) 25% 50%,var(--indigo) 50% 75%,var(--ochre) 75%)'
+						},
+						{ label: `готовые архивы — ${formatBytes(archivesBytes)}`, swatch: ARCHIVE_HATCH }
+					]}
+				/>
+			{/if}
 			<div class="flex-mid gap-14 wrap mt-26">
 				<span class="ttl flab">Потолок инстанса</span>
 				<Input
@@ -494,6 +554,37 @@
 					Отказ ничего не ломает: владелец круга сам выберет отсечку и срок, скажет об этом людям
 					и освободит место. Ни отсечку, ни срок панель не двигает — этих кнопок здесь нет.
 				</div>
+				<!-- 9.12: готовые полные архивы кругов — срок хранения и аварийная очистка. -->
+				<SectionLabel class="mt-26 mx-0">Готовые архивы</SectionLabel>
+				<CheckRow
+					name="Хранить готовый архив"
+					description="Скачанный архив сервер удаляет сразу. Не скачанный — через это время после сборки."
+				>
+					{#snippet actions()}
+						<span class="flex-mid gap-10">
+							<Input admin class="w88" bind:value={retentionInput} onchange={() => void saveRetention()} />
+							<span class="note">ч</span>
+						</span>
+					{/snippet}
+				</CheckRow>
+				<CheckRow
+					name={`${formatBytes(archivesBytes)} · ${plural(archivesCount, WORD.file)}`}
+					description="Полные архивы кругов: собраны по просьбе владельцев и ждут скачивания; в квоты кругов не входят. Удаление круги и записи не трогает: владелец увидит, что файла нет, и соберёт архив снова."
+				>
+					{#snippet actions()}
+						<Button
+							variant="ghost"
+							loading={clearing}
+							disabled={archivesCount === 0}
+							onclick={() => void clearArchives()}
+						>
+							Удалить все
+						</Button>
+					{/snippet}
+				</CheckRow>
+				{#if retentionHint}
+					<Hint class="mt-8">{retentionHint}</Hint>
+				{/if}
 			{/if}
 		{/if}
 	</AdminSection>

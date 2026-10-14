@@ -109,6 +109,8 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("GET /api/v1/admin/storage", admin(s.handleAdminStorage))
 	s.Mux.HandleFunc("PUT /api/v1/admin/storage/quota", admin(s.handleAdminSetStorageQuota))
 	s.Mux.HandleFunc("PUT /api/v1/admin/storage/default_quota", admin(s.handleAdminSetDefaultQuota))
+	s.Mux.HandleFunc("PUT /api/v1/admin/storage/archive_retention", admin(s.handleAdminSetArchiveRetention))
+	s.Mux.HandleFunc("POST /api/v1/admin/storage/archives/clear", admin(s.handleAdminClearArchives))
 	s.Mux.HandleFunc("PUT /api/v1/admin/circles/{id}/quota", admin(s.handleAdminSetCircleQuota))
 	s.Mux.HandleFunc("GET /api/v1/admin/compression", admin(s.handleAdminCompression))
 	s.Mux.HandleFunc("PUT /api/v1/admin/compression", admin(s.handleAdminSetCompression))
