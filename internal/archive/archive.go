@@ -63,7 +63,16 @@ func BuildPersonalArchive(ctx context.Context, w io.Writer, in BuildInput) error
 		return fmt.Errorf("archive: nil blob store")
 	}
 	zw := zip.NewWriter(w)
+	if err := buildReadable(ctx, zw, in, nil, style{hex: circleHex(in.Color)}); err != nil {
+		return err
+	}
+	return zw.Close()
+}
 
+// buildReadable пишет в zw медиа и читаемую ленту — общее у архива участника
+// и полного архива круга. extra — файлы, которых нет в ленте (обложки дней,
+// аватары ушедших): полный архив кладёт все файлы круга.
+func buildReadable(ctx context.Context, zw *zip.Writer, in BuildInput, extra []string, st style) error {
 	mediaNames := make(map[string]string)
 	addBlob := func(blobID string) error {
 		if blobID == "" {
@@ -150,8 +159,12 @@ func BuildPersonalArchive(ctx context.Context, w io.Writer, in BuildInput) error
 			return err
 		}
 	}
+	for _, blobID := range extra {
+		if err := addBlob(blobID); err != nil {
+			return err
+		}
+	}
 
-	st := style{hex: circleHex(in.Color)}
 	for _, f := range archiveFonts {
 		data, err := readFont(in.Fonts, f)
 		if err != nil || data == nil {
@@ -181,8 +194,7 @@ func BuildPersonalArchive(ctx context.Context, w io.Writer, in BuildInput) error
 			return err
 		}
 	}
-
-	return zw.Close()
+	return nil
 }
 
 func writeZipFile(zw *zip.Writer, name string, data []byte) error {
@@ -299,6 +311,15 @@ func circleHex(color string) string {
 type style struct {
 	hex   string
 	fonts []string
+	// full — полный архив круга: шапка «на дату», а не «до», и своя подпись.
+	full bool
+}
+
+func (st style) pageEnd() string {
+	if st.full {
+		return pageEndFull
+	}
+	return pageEnd
 }
 
 // Вёрстка — как в клиенте (wynd.html, «Квота и архив»): бумага и чернила из
@@ -357,12 +378,19 @@ func (st style) head(b *strings.Builder, title, prefix string) {
 func (st style) header(b *strings.Builder, circleName, cutoff string) {
 	b.WriteString("<header class=\"head\"><h1>")
 	b.WriteString(html.EscapeString(circleName))
-	b.WriteString("</h1><p>Архив круга до ")
+	if st.full {
+		b.WriteString("</h1><p>Полный архив круга на ")
+	} else {
+		b.WriteString("</h1><p>Архив круга до ")
+	}
 	b.WriteString(html.EscapeString(humanDate(cutoff)))
 	b.WriteString("</p></header>")
 }
 
-const pageEnd = "<p class=\"end\">Wynd · персональный архив</p></div></body></html>"
+const (
+	pageEnd     = "<p class=\"end\">Wynd · персональный архив</p></div></body></html>"
+	pageEndFull = "<p class=\"end\">Wynd · полный архив круга</p></div></body></html>"
+)
 
 var monthsGen = [...]string{"января", "февраля", "марта", "апреля", "мая", "июня",
 	"июля", "августа", "сентября", "октября", "ноября", "декабря"}
@@ -413,7 +441,7 @@ func renderFeedIndex(st style, circleName, cutoff string, posts []chronicle.Feed
 	for _, fp := range posts {
 		appendPostHTML(&b, fp, media, avatars, dayTitles, false)
 	}
-	b.WriteString(pageEnd)
+	b.WriteString(st.pageEnd())
 	return b.String()
 }
 
@@ -437,7 +465,7 @@ func renderPostsIndex(st style, circleName, cutoff string, posts []chronicle.Fee
 		b.WriteString("</div></li>")
 	}
 	b.WriteString("</ul>")
-	b.WriteString(pageEnd)
+	b.WriteString(st.pageEnd())
 	return b.String()
 }
 
@@ -446,7 +474,7 @@ func renderPostPage(st style, circleName string, fp chronicle.FeedPost, media, a
 	st.head(&b, circleName, "../")
 	b.WriteString("<a class=\"back\" href=\"index.html\">← оглавление</a>")
 	appendPostHTML(&b, fp, media, avatars, dayTitles, true)
-	b.WriteString(pageEnd)
+	b.WriteString(st.pageEnd())
 	return b.String()
 }
 

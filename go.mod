@@ -7,6 +7,7 @@ go 1.26.0
 ignore ./web/node_modules
 
 require (
+	filippo.io/age v1.2.1
 	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/google/uuid v1.6.0
 	github.com/wailsapp/wails/v2 v2.16.0
