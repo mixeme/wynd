@@ -297,7 +297,7 @@ export class ZipReader {
 		const raw = await this.src.read(await this.dataOffset(e), e.compressedSize);
 		if (e.method === 0) return raw;
 		if (e.method !== 8) throw new NotWyndError(`method ${e.method}`);
-		const input = new ReadableStream<Uint8Array>({
+		const input = new ReadableStream<BufferSource>({
 			start(c) {
 				c.enqueue(raw);
 				c.close();
@@ -308,7 +308,7 @@ export class ZipReader {
 		for (;;) {
 			const { done, value } = await reader.read();
 			if (done) break;
-			parts.push(value);
+			parts.push(value as Uint8Array);
 		}
 		return concat(...parts);
 	}
