@@ -5,7 +5,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import Button from '$ui/forms/Button.svelte';
-	import FieldDisplay from '$ui/forms/FieldDisplay.svelte';
+	import ServerRow from '$ui/data/ServerRow.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import Label from '$ui/forms/Label.svelte';
@@ -158,10 +158,13 @@
 				preview={inviteCardPreview(peek)}
 			/>
 			<Label>Сервер</Label>
-			<FieldDisplay>
-				<div class="bold">{peek.server_name}</div>
-				<div class="note">{peek.host || displayHost('')}</div>
-			</FieldDisplay>
+			<ServerRow
+				name={peek.server_name}
+				subtitle={peek.host || displayHost('')}
+				variant="ok"
+				card
+				underLabel
+			/>
 		{:else}
 			<InviteCard initial="…" name="…" preview="Загрузка…" />
 		{/if}

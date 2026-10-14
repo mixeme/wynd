@@ -782,7 +782,10 @@
   <div class="h1s" style="margin-top:24px">Вас пригласили</div>
   <div class="icard"><div class="sq">С</div><div class="m"><div class="n">Семья</div><div class="p">22 участника · пригласила Аня</div></div></div>
   <div class="lab">Сервер</div>
-  <div class="fld"><div style="font-weight:600">Дом Ани</div><div style="font-size:12.5px;color:var(--muted)">home.example.org</div></div>
+  <div class="row2" style="margin:0 16px;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px">
+    <svg class="ic"><use href="#i-cloud"/></svg>
+    <div class="g"><div style="font-weight:600">Дом Ани</div><div class="sub">home.example.org</div></div>
+    <span class="st ok"><svg class="ic"><use href="#i-check"/></svg></span></div>
   <div class="lab">Почта</div>
   <div class="fld act">you@example.com</div>
   <div class="hint">Пришлём код для входа. Пароля нет.</div>
@@ -887,7 +890,8 @@
   <div class="h1s" style="margin-top:24px">Вас позвали на сервер</div>
   <div class="row2" style="margin:14px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px">
     <svg class="ic"><use href="#i-cloud"/></svg>
-    <div class="g"><div style="font-weight:600">У Славы</div><div class="sub">wynd.u-slavy.ru</div></div></div>
+    <div class="g"><div style="font-weight:600">У Славы</div><div class="sub">wynd.u-slavy.ru</div></div>
+    <span class="st ok"><svg class="ic"><use href="#i-check"/></svg></span></div>
   <div class="lab" style="margin-top:16px">Почта</div>
   <div class="fld act">you@example.com</div>
   <div class="hint">Пришлём код для входа. Пароля нет.</div>
@@ -938,14 +942,17 @@
   <div class="h1s" style="margin-top:24px">Вас пригласили</div>
   <div class="icard"><div class="sq">С</div><div class="m"><div class="n">Семья</div><div class="p">22 участника · пригласила Аня</div></div></div>
   <div class="lab">Сервер</div>
-  <div class="fld"><div style="font-weight:600">Дом Ани</div><div style="font-size:12.5px;color:var(--muted)">home.example.org</div><div style="font-size:12.5px;color:var(--ink);margin-top:6px">Соблюдает GDPR: уходя, можно стереть свои имена и фото</div></div>
+  <div class="row2" style="margin:0 16px;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px">
+    <svg class="ic"><use href="#i-cloud"/></svg>
+    <div class="g"><div style="font-weight:600">Дом Ани<span style="font-size:10.5px;font-weight:600;letter-spacing:.04em;border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin-left:8px;color:var(--muted);vertical-align:1px">GDPR</span></div><div class="sub">home.example.org</div></div>
+    <span class="st ok"><svg class="ic"><use href="#i-check"/></svg></span></div>
   <div class="lab">Почта</div>
   <div class="fld act">you@example.com</div>
   <div class="hint">Пришлём код для входа. Пароля нет.</div>
   <div class="btn">Получить код</div>
   <div class="hint ctr" style="margin-top:26px">Вход создаётся на этом сервере.<br>Круги с других серверов добавляются позже.</div>
 </div>
-<span class="num">1.10</span><b>Вас пригласили: сервер соблюдает GDPR</b><i>Черновик 2026-10-14, не реализовано. Тот же 1.1 на сервере, где администратор включил «Разрешить стирать имена и фото» (9.13). Сюда приходит почти каждый, и сервер виден здесь в первый раз — до того как человек что-то напишет. Строка стоит в поле сервера, а не подсказкой внизу: это свойство сервера. Та же строка — подписью в карточке сервера на 1.5, 1.6 и 1.8. Без переключателя строки нет.</i></figure>
+<span class="num">1.10</span><b>Вас пригласили: сервер соблюдает GDPR</b><i>Утверждён владельцем 2026-10-14; карточка сервера на 1.1 — в 0.28.13, значок не реализован. Тот же 1.1 на сервере, где администратор включил «Разрешить стирать имена и фото» (9.13). Сюда приходит почти каждый, и сервер виден здесь в первый раз — до того как человек что-то напишет. Значок GDPR стоит в карточке сервера у имени: это свойство сервера, и карточка с ним одна и та же везде, где виден сервер. Та же строка — подписью в карточке сервера на 1.5, 1.6 и 1.8. Без переключателя строки нет.</i></figure>
 </div></div>
 <h2 id="street">Улочка</h2>
 <p class="lede">Список кругов — единственный экран, где видно всё сразу.</p>

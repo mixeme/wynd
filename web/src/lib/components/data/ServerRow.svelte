@@ -9,6 +9,7 @@
 		subtitle,
 		variant = 'info',
 		card = false,
+		underLabel = false,
 		onclick,
 		class: className = '',
 		style = ''
@@ -17,6 +18,8 @@
 		subtitle: string;
 		variant?: ServerRowVariant;
 		card?: boolean;
+		/** Карточка сразу под подписью поля («Сервер» на 1.1) — без верхнего отступа. */
+		underLabel?: boolean;
 		onclick?: () => void;
 		class?: string;
 		style?: string;
@@ -26,7 +29,7 @@
 	// вылезала за правый край на 32 px (экран приглашения 1.7).
 	const cardStyle = $derived(
 		card
-			? 'margin:14px 16px 0;width:auto;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px'
+			? `margin:${underLabel ? 0 : 14}px 16px 0;width:auto;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px`
 			: ''
 	);
 	const rowStyle = $derived(cardStyle ? `${cardStyle};${style}` : style);

@@ -2,6 +2,7 @@
 <script lang="ts">
 	import Button from '$ui/forms/Button.svelte';
 	import FieldDisplay from '$ui/forms/FieldDisplay.svelte';
+	import ServerRow from '$ui/data/ServerRow.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import InviteCard from '$ui/forms/InviteCard.svelte';
@@ -13,10 +14,7 @@
 	<ScreenTitle style="margin-top:24px">Вас пригласили</ScreenTitle>
 	<InviteCard initial="С" name="Семья" preview="22 участника · пригласила Аня" />
 	<Label>Сервер</Label>
-	<FieldDisplay>
-		<div style="font-weight:600">Дом Ани</div>
-		<div style="font-size:12.5px;color:var(--muted)">home.example.org</div>
-	</FieldDisplay>
+	<ServerRow name="Дом Ани" subtitle="home.example.org" variant="ok" card underLabel />
 	<Label>Почта</Label>
 	<FieldDisplay value="you@example.com" active />
 	<Hint>
