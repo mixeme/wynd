@@ -762,9 +762,12 @@
 	}
 </script>
 
-<!-- Полоса вместо строки ввода, когда места нет (3.19, 3.20). -->
+<!-- Полоса вместо строки ввода, когда места нет (3.19, 3.20) и когда круг
+     замер (6.36). -->
 {#snippet spaceNote()}
-	{#if notice}
+	{#if circle.frozenAt}
+		Круг замер: его убирают с сервера
+	{:else if notice}
 		{notice.first}<br />
 		{#if notice.href}
 			<a class="under" href={notice.href}>{notice.second}</a>
@@ -784,7 +787,7 @@
 	circleId={circle.circleId}
 	identitySettingsLink={circle.canWrite}
 	commentBar={canSay}
-	notice={notice ? spaceNote : undefined}
+	notice={notice || circle.frozenAt ? spaceNote : undefined}
 	onback={goBack}
 	onsearch={openSearch}
 	bind:commentDraft
@@ -817,7 +820,29 @@
 		ontouchmove={ptr.move}
 		ontouchend={ptr.end}
 	>
-		{#if circle.archiveCycle?.active}
+		{#if circle.frozenAt}
+			<!-- 6.36: круг уходит с сервера — что происходит, чьим решением и что успеть. -->
+			<ArchiveBanner
+				title="Круг уходит с сервера"
+				action={circle.youOwn ? 'Полный архив круга' : 'Скачать свой архив'}
+				onaction={circle.youOwn
+					? () => goto(`/circles/${circle.circleId}/quota/full`)
+					: () =>
+							void downloadArchive(
+								circle.origin,
+								`/api/v1/circles/${circle.circleId}/archive/download`
+							)}
+			>
+				{#if circle.youOwn}
+					Вы убираете круг «{circle.name}» с сервера и сохраняете его в файл. Читать можно, писать
+					нельзя.
+				{:else}
+					{circle.ownerName || 'Владелец'} убирает круг «{circle.name}» с сервера и сохраняет его в
+					файл. Читать можно, писать нельзя. Свой архив — всё, что вы видели в круге, — можно скачать,
+					пока круг здесь.
+				{/if}
+			</ArchiveBanner>
+		{:else if circle.archiveCycle?.active}
 			<ArchiveBanner
 				title="Архивация · {formatDeadline(circle.archiveCycle.deadline)}"
 				onaction={downloadArchiveClick}
@@ -830,7 +855,7 @@
 		{#if joinAvatarHint}
 			<Hint class="gutter">{joinAvatarHint}</Hint>
 		{/if}
-		{#if !circle.canWrite}
+		{#if !circle.canWrite && !circle.frozenAt}
 			<Hint class="gutter">Вы читаете этот круг и не пишете.</Hint>
 		{/if}
 		<!-- «?loading» — посмотреть экран загрузки в круге, как «/?loading». -->

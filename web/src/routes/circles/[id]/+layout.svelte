@@ -64,6 +64,7 @@
 		spaceFull: '',
 		ownerName: '',
 		youOwn: false,
+		frozenAt: '',
 		serverName: '',
 		sharePlace: true,
 		responsesUnread: 0,
@@ -78,6 +79,9 @@
 		ctx.spaceFull = item.space_full ?? '';
 		ctx.ownerName = item.owner_name ?? '';
 		ctx.youOwn = item.you_own ?? false;
+		// Замерший круг (6.36): писать нельзя никому — как «читает, не пишет».
+		ctx.frozenAt = item.frozen_at ?? '';
+		if (ctx.frozenAt) ctx.canWrite = false;
 		if (ctx.spaceFull === 'server' && !ctx.serverName) {
 			void getSession(ctx.origin).then((s) => (ctx.serverName = s?.name ?? ''));
 		}
@@ -139,6 +143,7 @@
 		ctx.archiveCycle = undefined;
 		ctx.canWrite = true;
 		ctx.spaceFull = '';
+		ctx.frozenAt = '';
 		ctx.refresh = loadMeta;
 		rememberLastCircle(circleId);
 	}

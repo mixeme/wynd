@@ -36,6 +36,8 @@ export interface CircleListItem {
 	/** Владелец круга — при «circle»: его называет полоса 3.19. */
 	owner_name?: string;
 	you_own?: boolean;
+	/** Круг замер под полный архив с удалением (6.36, 2.29). */
+	frozen_at?: string;
 }
 
 export interface CirclesResponse {
@@ -191,12 +193,18 @@ export async function loadStreetCircles(): Promise<StreetCircle[]> {
 			if (circle.status !== 'active' && circle.status !== 'left_with_access') continue;
 			const pinKey = `${session.origin}:${circle.id}`;
 			const pinnedAt = pinMap.get(pinKey) ?? 0;
-			const preview =
-				circle.status === 'left_with_access'
+			// Круг уходит с сервера (2.29): что с ним и что можно успеть — вместо
+			// последней записи, без времени.
+			const leaving = circle.status === 'active' && Boolean(circle.frozen_at);
+			const preview = leaving
+				? circle.you_own
+					? 'Круг уходит с сервера'
+					: 'Круг уходит с сервера — скачайте своё'
+				: circle.status === 'left_with_access'
 					? 'читает, не пишет'
 					: (circle.last_summary ??
 						(sessions.length > 1 ? session.name : 'Откройте, чтобы посмотреть'));
-			const time = circle.last_at ? formatPostTime(circle.last_at, '') : '';
+			const time = circle.last_at && !leaving ? formatPostTime(circle.last_at, '') : '';
 			const row: StreetCircle = {
 				origin: session.origin,
 				instanceName: session.name,

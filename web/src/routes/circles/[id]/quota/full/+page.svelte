@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { goUp } from '$lib/navigation/up';
+	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
+	import DangerZone from '$ui/forms/DangerZone.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import Label from '$ui/forms/Label.svelte';
@@ -10,6 +12,7 @@
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import StatusCard from '$ui/data/StatusCard.svelte';
+	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { ApiError, isAccessError } from '$lib/api/client';
@@ -18,7 +21,9 @@
 	import {
 		downloadFullArchive,
 		fetchFullArchive,
+		removeFrozenCircle,
 		removeFullArchive,
+		reviveCircle,
 		startFullArchive,
 		streamFullArchive,
 		type FullArchiveState
@@ -28,8 +33,10 @@
 	import { formatClock, formatSessionDay } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 
-	// Полный архив круга (план 51): собрать (6.29), собирается (6.40), готов
-	// (6.33); готовый файл положить некуда — скачать сразу (6.43).
+	// Полный архив круга (план 51). Без удаления круга: собрать (6.29),
+	// собирается (6.40), готов (6.33). С удалением: собрать (6.32), собирается
+	// (6.40), файл не скачан (6.34), скачан (6.30), срок вышел (6.41). Готовый
+	// файл положить некуда — скачать сразу (6.43).
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 
 	let info = $state<FullArchiveState | undefined>();
@@ -39,13 +46,26 @@
 	let busyNote = $state('');
 	let encrypt = $state(true);
 	let password = $state(suggestArchivePassword());
+	let deleteCircle = $state(false);
+	// «Собрать архив ещё раз» (6.30, 6.41): снова форма, пароль задаётся заново.
+	let rebuild = $state(false);
+	let askRemove = $state(false);
 
 	const archive = $derived(info?.archive ?? null);
-	const building = $derived(archive?.status === 'building');
-	const ready = $derived(archive?.status === 'ready');
-	const failed = $derived(archive?.status === 'failed');
+	const frozenAt = $derived(info?.frozen_at ?? '');
+	const view = $derived.by(() => {
+		const a = archive;
+		if (rebuild || !a) return 'form';
+		if (a.status === 'building') return 'building';
+		if (a.status === 'ready') return a.delete_circle ? 'notDownloaded' : 'ready';
+		if (a.status === 'removed' && a.delete_circle && frozenAt) {
+			if (a.removed_reason === 'downloaded') return 'downloaded';
+			if (a.removed_reason === 'expired' || a.removed_reason === 'admin') return 'gone';
+		}
+		return 'form';
+	});
 
-	function at(iso: string | undefined): string {
+	function at(iso: string | undefined | null): string {
 		return iso ? `${formatSessionDay(iso)} в ${formatClock(iso)}` : '';
 	}
 
@@ -53,6 +73,8 @@
 		error = '';
 		try {
 			info = await fetchFullArchive(circle.origin, circle.circleId);
+			// Круг уже замер — новый архив только с удалением.
+			if (info.frozen_at) deleteCircle = true;
 		} catch (err) {
 			error = isAccessError(err)
 				? 'Полный архив собирает только владелец круга'
@@ -68,13 +90,11 @@
 		return deriveArchiveKey(password.trim());
 	}
 
-	async function build() {
-		if (encrypt && !password.trim()) return;
+	async function act(fn: () => Promise<unknown>) {
 		busy = true;
 		error = '';
 		try {
-			await startFullArchive(circle.origin, circle.circleId, await key());
-			await load();
+			await fn();
 		} catch (err) {
 			if (err instanceof ApiError && err.code === 'no_room') {
 				// Место кончилось, пока экран был открыт, — путь 6.43.
@@ -88,73 +108,52 @@
 		}
 	}
 
-	async function streamNow() {
-		if (encrypt && !password.trim()) return;
-		busy = true;
-		error = '';
-		try {
-			await streamFullArchive(circle.origin, circle.circleId, await key());
-		} catch (err) {
-			error = authErrorHint(err);
-		} finally {
-			busy = false;
-			busyNote = '';
-		}
-	}
+	const build = () =>
+		act(async () => {
+			await startFullArchive(circle.origin, circle.circleId, await key(), deleteCircle);
+			rebuild = false;
+			password = suggestArchivePassword();
+			await load();
+			await circle.refresh();
+		});
 
-	async function download() {
-		error = '';
-		try {
-			await downloadFullArchive(circle.origin, circle.circleId);
-		} catch (err) {
-			error = authErrorHint(err);
-		}
-	}
+	const streamNow = () =>
+		act(async () => {
+			await streamFullArchive(circle.origin, circle.circleId, await key(), deleteCircle);
+			if (deleteCircle) await circle.refresh();
+		});
 
-	async function remove() {
-		busy = true;
-		error = '';
-		try {
+	const download = () => act(() => downloadFullArchive(circle.origin, circle.circleId));
+
+	const remove = () =>
+		act(async () => {
 			await removeFullArchive(circle.origin, circle.circleId);
 			password = suggestArchivePassword();
 			await load();
-		} catch (err) {
-			error = authErrorHint(err);
-		} finally {
-			busy = false;
-		}
-	}
+		});
+
+	const revive = () =>
+		act(async () => {
+			await reviveCircle(circle.origin, circle.circleId);
+			rebuild = false;
+			deleteCircle = false;
+			password = suggestArchivePassword();
+			await load();
+			await circle.refresh();
+		});
+
+	const removeCircle = () =>
+		act(async () => {
+			await removeFrozenCircle(circle.origin, circle.circleId);
+			askRemove = false;
+			await goto('/circles');
+		});
 
 	onMount(() => void load());
 </script>
 
-<FormLayout
-	app
-	color={circle.color}
-	title="Полный архив круга"
-	onback={() => goUp(`/circles/${circle.circleId}/quota`)}
->
-	{#if loading}
-		<Loading />
-	{:else if !info}
-		<Hint class="gutter">{error}</Hint>
-	{:else if building && archive}
-		<!-- 6.40: сборка идёт на сервере; о готовности экран узнаёт при открытии. -->
-		<StatusCard
-			title="Сервер собирает архив"
-			text={`Вы попросили собрать его ${at(archive.requested_at)}. Когда файл будет готов, придёт письмо — скачать его можно будет здесь.`}
-		/>
-		<Hint class="mt-14">
-			В файле будет круг, каким он был {at(archive.snapshot_at ?? archive.requested_at)}. Написанное
-			позже в него не попадёт.
-		</Hint>
-		<Hint class="mt-10">Круг работает как обычно.</Hint>
-		<Hint class="mt-22 ctr-text">Можно уйти: сборка идёт на сервере.</Hint>
-		<Hint class="mt-14 ctr-text">
-			<TextButton disabled={busy} onclick={() => void remove()}>Отменить сборку</TextButton>
-		</Hint>
-	{:else if ready && archive}
-		<!-- 6.33: файл готов, круг остаётся. -->
+{#snippet fileRow(withDownload: boolean)}
+	{#if archive}
 		<Label>Файл</Label>
 		<SettingsRow
 			icon="file"
@@ -166,10 +165,62 @@
 			]
 				.filter(Boolean)
 				.join(' · ')}
-			trailingIcon="download"
+			trailingIcon={withDownload ? 'download' : undefined}
+			chevron={false}
 			divided="both"
-			onclick={() => void download()}
+			onclick={withDownload ? () => void download() : undefined}
 		/>
+	{/if}
+{/snippet}
+
+{#snippet reviveLink()}
+	<Hint class="mt-14 ctr-text">
+		<TextButton disabled={busy} onclick={() => void revive()}>Отменить — оживить круг</TextButton>
+	</Hint>
+{/snippet}
+
+{#snippet removeLocked()}
+	<!-- 6.34, 6.41: убрать круг, не скачав файл, нельзя. -->
+	<DangerZone class="mt-20" items={['Убрать круг с сервера']} disabled>
+		Сначала скачайте файл: без него круг не вернуть.
+	</DangerZone>
+{/snippet}
+
+<FormLayout
+	app
+	color={circle.color}
+	title="Полный архив круга"
+	onback={() => goUp(`/circles/${circle.circleId}/quota`)}
+>
+	{#if loading}
+		<Loading />
+	{:else if !info}
+		<Hint class="gutter">{error}</Hint>
+	{:else if view === 'building' && archive}
+		<!-- 6.40: сборка идёт на сервере; о готовности экран узнаёт при открытии. -->
+		<StatusCard
+			title="Сервер собирает архив"
+			text={`Вы попросили собрать его ${at(archive.requested_at)}. Когда файл будет готов, придёт письмо — скачать его можно будет здесь.`}
+		/>
+		<Hint class="mt-14">
+			В файле будет круг, каким он был {at(archive.snapshot_at ?? archive.requested_at)}. Написанное
+			позже в него не попадёт.
+		</Hint>
+		<Hint class="mt-10">
+			{#if archive.delete_circle && frozenAt}Круг замер {at(frozenAt)}.{:else}Круг работает как
+				обычно.{/if}
+		</Hint>
+		<Hint class="mt-22 ctr-text">Можно уйти: сборка идёт на сервере.</Hint>
+		{#if archive.delete_circle}
+			{@render reviveLink()}
+		{:else}
+			<Hint class="mt-14 ctr-text">
+				<TextButton disabled={busy} onclick={() => void remove()}>Отменить сборку</TextButton>
+			</Hint>
+		{/if}
+	{:else if view === 'ready' && archive}
+		<!-- 6.33: файл готов, круг остаётся. -->
+		{@render fileRow(true)}
 		<Hint>
 			В файле круг, каким он был {at(archive.snapshot_at ?? archive.ready_at)}. Написанное позже в
 			него не попадёт.
@@ -181,8 +232,49 @@
 		<Hint class="mt-22 ctr-text">
 			<TextButton disabled={busy} onclick={() => void remove()}>Удалить архив, не скачивая</TextButton>
 		</Hint>
+	{:else if view === 'notDownloaded' && archive}
+		<!-- 6.34: файл готов и ещё не скачан, круг замер. -->
+		{@render fileRow(true)}
+		<Hint>
+			Круг замер {at(frozenAt)}. Сервер удалит файл, когда вы его скачаете, или {at(
+				archive.expires_at
+			)}, если не скачаете.
+		</Hint>
+		<Hint class="mt-10">Вы ещё не скачали файл.</Hint>
+		{@render removeLocked()}
+		{@render reviveLink()}
+	{:else if view === 'downloaded' && archive}
+		<!-- 6.30: файл у владельца, на сервере его нет; круг можно убрать. -->
+		{@render fileRow(false)}
+		<Hint>Круг замер {at(frozenAt)}.</Hint>
+		<Hint class="mt-10">
+			Вы скачали файл {at(archive.downloaded_at)}. На сервере его больше нет.
+		</Hint>
+		<Hint class="mt-10">
+			<TextButton disabled={busy} onclick={() => (rebuild = true)}>Собрать архив ещё раз</TextButton>
+		</Hint>
+		<DangerZone class="mt-20" items={['Убрать круг с сервера']} onitem={() => (askRemove = true)}>
+			Останется только файл у вас. Сервер его не хранит: потеряете файл или пароль — круг не
+			вернуть.<br /><br />Участники получили письмо {at(frozenAt)}: свой архив они могут скачать,
+			пока круг здесь.
+		</DangerZone>
+		{@render reviveLink()}
+	{:else if view === 'gone' && archive}
+		<!-- 6.41: срок вышел (или файл стёр администратор), круг стоит замершим. -->
+		<StatusCard
+			title="Файла на сервере нет"
+			text={archive.removed_reason === 'admin'
+				? `Архив был собран ${at(archive.ready_at)}. Вы его не скачали, и ${at(archive.removed_at)} администратор сервера удалил файл.`
+				: `Архив был собран ${at(archive.ready_at)}. Вы его не скачали, и ${at(archive.removed_at)} сервер удалил файл.`}
+		/>
+		<Hint class="mt-14">Круг замер {at(frozenAt)} и стоит замершим.</Hint>
+		<Button class="mt-14" variant="colored" onclick={() => (rebuild = true)}>
+			Собрать архив ещё раз
+		</Button>
+		{@render removeLocked()}
+		{@render reviveLink()}
 	{:else}
-		<!-- 6.29 и, когда готовый файл положить некуда, 6.43. -->
+		<!-- 6.29 / 6.32 и, когда готовый файл положить некуда, 6.43. -->
 		<Label>Что уйдёт в файл</Label>
 		<SettingsRow
 			title={`Весь журнал «${circle.name}» и ${plural(info.members, WORD.member)}`}
@@ -204,32 +296,83 @@
 		{:else}
 			<Hint>Файл не зашифрован — храните его так же бережно, как сам сервер.</Hint>
 		{/if}
-		{#if failed}
+		<SettingsRow
+			class="mt-10"
+			title="Удалить круг с сервера"
+			subtitle="после того как файл скачан"
+			divided="both"
+		>
+			{#snippet control()}
+				<Switch
+					bind:checked={deleteCircle}
+					disabled={Boolean(frozenAt)}
+					label="Удалить круг с сервера"
+				/>
+			{/snippet}
+		</SettingsRow>
+		{#if archive?.status === 'failed'}
 			<Hint class="mt-10 ink">Прошлая сборка не удалась. Соберите архив ещё раз.</Hint>
 		{/if}
 		{#if info.fits}
 			<Label class="mt-16">Как это пройдёт</Label>
-			<Hint class="ink">
-				1. Сервер собирает файл. Круг работает как обычно.<br />2. Вы скачиваете файл.<br />3.
-				Круг остаётся на сервере.
-			</Hint>
-			<Button class="mt-14" variant="colored" loading={busy} disabled={encrypt && !password.trim()} onclick={() => void build()}>
-				Собрать архив
+			{#if deleteCircle}
+				<Hint class="ink">
+					1. Круг замирает: читать можно, писать нельзя. Участникам уходит письмо.<br />2. Вы
+					скачиваете файл. Участники, пока круг здесь, могут скачать свой архив.<br />3. Вы
+					убираете круг с сервера. Остаётся только файл.<br />4. Круг можно оживить из файла — здесь
+					или на другом сервере.
+				</Hint>
+			{:else}
+				<Hint class="ink">
+					1. Сервер собирает файл. Круг работает как обычно.<br />2. Вы скачиваете файл.<br />3.
+					Круг остаётся на сервере.
+				</Hint>
+			{/if}
+			<Button
+				class="mt-14"
+				variant="colored"
+				loading={busy}
+				disabled={encrypt && !password.trim()}
+				onclick={() => void build()}
+			>
+				{deleteCircle && !frozenAt ? 'Остановить круг и собрать архив' : 'Собрать архив'}
 			</Button>
 		{:else}
 			<StatusCard
 				title="Готовый файл положить некуда"
 				text={`Архиву нужно ${formatBytes(info.estimate_bytes)}, а на сервере${circle.serverName ? ` «${circle.serverName}»` : ''} столько места нет. Его можно скачать сразу: сервер соберёт файл прямо в скачивание. Если оно оборвётся, начнётся заново.`}
 			/>
-			<Button class="mt-14" variant="colored" loading={busy} disabled={encrypt && !password.trim()} onclick={() => void streamNow()}>
+			<Button
+				class="mt-14"
+				variant="colored"
+				loading={busy}
+				disabled={encrypt && !password.trim()}
+				onclick={() => void streamNow()}
+			>
 				Скачать сразу
 			</Button>
 		{/if}
 		{#if busyNote}
 			<Hint class="mt-8">{busyNote}</Hint>
 		{/if}
+		{#if frozenAt}
+			{@render reviveLink()}
+		{/if}
 	{/if}
 	{#if error && info}
 		<Hint class="mt-12">{error}</Hint>
+	{/if}
+
+	{#if askRemove}
+		<ConfirmDialog
+			title="Убрать круг с сервера?"
+			confirmLabel="Убрать"
+			cancelLabel="Оставить"
+			loading={busy}
+			onconfirm={() => void removeCircle()}
+			oncancel={() => (askRemove = false)}
+		>
+			<Hint>Круг «{circle.name}» останется только в файле у вас.</Hint>
+		</ConfirmDialog>
 	{/if}
 </FormLayout>

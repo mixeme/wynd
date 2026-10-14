@@ -132,7 +132,7 @@ func (s *Server) handleCircleDetail(w http.ResponseWriter, r *http.Request) {
 	if banner != nil {
 		out["archive_cycle"] = banner
 	}
-	s.addFrozen(r, out, circleID)
+	s.addFrozen(r, out, circleID, sess.AccountID)
 	// «Отклики» (3.12): есть ли вкладка и сколько на ней нового.
 	if others, err := s.Chronicle.CircleHasOthers(r.Context(), circleID, sess.AccountID); err == nil {
 		out["has_others"] = others

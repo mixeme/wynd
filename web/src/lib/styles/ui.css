@@ -2104,6 +2104,13 @@ a.link {
 .danger.off {
 	opacity: 0.45;
 }
+/* Пояснение под действием рамки (DangerZone children; 6.30, 6.34). */
+.danger .di + .note {
+	padding: 0 14px 13px;
+	font-size: 12.5px;
+	color: var(--muted);
+	line-height: 1.5;
+}
 .danger .di + .di {
 	border-top: 1px solid var(--line);
 }

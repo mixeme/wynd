@@ -115,6 +115,9 @@ export interface CircleDetail {
 	color?: string;
 	status: string;
 	archive_cycle?: ArchiveCycle;
+	/** Круг замер под полный архив с удалением (6.36). */
+	frozen_at?: string;
+	owner_name?: string;
 	edit_window_sec?: number | null;
 	is_owner?: boolean;
 	can_settings?: boolean;
