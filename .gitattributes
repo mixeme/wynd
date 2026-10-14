@@ -14,3 +14,7 @@
 *.webp  binary
 *.pdf   binary
 *.db    binary
+
+# cmd.exe misreads LF batch files: a line can run as a command from mid-text.
+*.bat text eol=crlf
+*.cmd text eol=crlf

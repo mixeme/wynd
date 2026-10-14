@@ -1,8 +1,8 @@
 @echo off
 setlocal EnableExtensions
 
-rem Ворота релиза (план 42, раздел B): коммит, меняющий VERSION, допустим
-rem только после зелёного прогона этого файла на том же дереве.
+rem Release gate (plan 42, section B): run before every commit that changes VERSION,
+rem and only after the whole gate run has passed on the same tree.
 
 for %%I in ("%~dp0..") do set "WYND_ROOT=%%~fI"
 cd /d "%WYND_ROOT%"
