@@ -152,7 +152,8 @@ func TestFeedDayCardShowsWholeDay(t *testing.T) {
 		{"Чердак", "blob-p2"},
 		{"Плёнки", "blob-p2"},
 		{"Плёнки", "blob-p1"},
-		{"Плёнки", ""},
+		// Обложку ещё не выбрали — та же фотография, что у дня на «Днях» (3.17, C34).
+		{"Плёнки", "blob-p1"},
 	}
 	for i, w := range want {
 		d := cards[i].Day
@@ -195,5 +196,21 @@ func TestFeedDayCardHidesTitleFromBeforeJoin(t *testing.T) {
 	cards := feedDayCards(t, e, circle.ID, "kot")
 	if len(cards) != 1 || cards[0].Day.Title != "" || cards[0].Day.CoverBlobID != "blob-p1" {
 		t.Fatalf("новичок: %+v", cards)
+	}
+}
+
+// В дне нет ни одного снимка — открытка без него (3.17): места под снимок нет.
+func TestFeedDayCardWithoutPhotosHasNoCover(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	e.post(circle.ID, "owner", "только текст", "2026-08-06", e.after(time.Minute))
+	if err := e.ch.SetDayTitle(e.ctx, chronicle.DayTitleInput{
+		CircleID: circle.ID, AccountID: "owner", EntryDate: "2026-08-06", Title: "Плёнки", Now: e.after(2 * time.Minute),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	cards := feedDayCards(t, e, circle.ID, "owner")
+	if len(cards) != 1 || cards[0].Day.CoverBlobID != "" {
+		t.Fatalf("открытка = %+v", cards)
 	}
 }

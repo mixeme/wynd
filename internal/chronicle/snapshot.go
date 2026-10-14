@@ -643,6 +643,12 @@ func (c *Chronicle) attachDayCards(ctx context.Context, circleID, accountID stri
 	if err != nil {
 		return nil, err
 	}
+	// Обложку не выбирали — в открытке та же фотография, что у дня на «Днях»
+	// (кадр 3.17, решение владельца 2026-10-13, план 46, C34).
+	fallbackCovers, _, err := c.dayMediaFacts(ctx, circleID, accountID)
+	if err != nil {
+		return nil, err
+	}
 	// Название и обложка — сказанное в свой момент: данное до вступления
 	// новичку не показывается, как и в «Днях».
 	canRead := func(at time.Time) (bool, error) {
@@ -721,6 +727,12 @@ func (c *Chronicle) attachDayCards(ctx context.Context, circleID, accountID stri
 			if seen {
 				card.CoverBlobID = cv.value
 				card.CoverImageBlobID, card.CoverIsVideo = posters[cv.value]
+			}
+		}
+		if card.CoverBlobID == "" {
+			if fb := fallbackCovers[ev.entryDate]; fb != "" {
+				card.CoverBlobID = fb
+				card.CoverImageBlobID, card.CoverIsVideo = posters[fb]
 			}
 		}
 		ev.Day = card
