@@ -1,0 +1,348 @@
+package chronicle
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"regexp"
+	"slices"
+	"strings"
+	"time"
+)
+
+// Оживление круга из полного архива (план 52, A1 этап 2). Устройство читает
+// файл и присылает строки таблиц как есть (data/<таблица>.json) и
+// соответствие «блоб архива → блоб этого сервера». Здесь круг вставляется
+// заново: все идентификаторы новые — круг может ожить рядом с живым исходным,
+// и на том же сервере; люди — по почте; владелец — тот, кто оживил.
+
+// ReviveSchemaVersions — какие схемы архива сервер умеет оживлять. Новая
+// схема с другими колонками — сюда и в переводчик строк.
+var ReviveSchemaVersions = []int{34}
+
+// reviveOrder — порядок вставки: по зависимостям.
+var reviveOrder = []string{
+	"circles", "identities", "identity_names", "memberships", "membership_spans",
+	"events", "posts", "post_media", "comments", "comment_media", "reactions",
+	"days", "day_titles", "day_covers",
+}
+
+// ReviveInput — что прислало устройство.
+type ReviveInput struct {
+	SchemaVersion int
+	Tables        map[string]FullArchiveTable
+	// Accounts — почта по id учётки архива (data/accounts.json).
+	Accounts map[string]string
+	// BlobMap — блоб архива → блоб этого сервера (уже загружен).
+	BlobMap   map[string]string
+	ReviverID string
+	Now       time.Time
+}
+
+// ReviveResult — что получилось, для итога 2.28 / 2.34.
+type ReviveResult struct {
+	CircleID string
+	Posts    int
+	Names    int
+	Bytes    int64
+	// NotJoined — учётки, заведённые по почте из архива: на этом сервере
+	// они ещё не были («Ещё не вошли», 6.35).
+	NotJoined []string
+}
+
+// ReviveCircle вставляет круг из строк архива одной транзакцией.
+func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveResult, error) {
+	var res ReviveResult
+	if !slices.Contains(ReviveSchemaVersions, in.SchemaVersion) {
+		return res, fmt.Errorf("%w: archive schema %d", ErrInvalid, in.SchemaVersion)
+	}
+	circles := in.Tables["circles"]
+	if len(circles.Rows) != 1 {
+		return res, fmt.Errorf("%w: archive has %d circles", ErrInvalid, len(circles.Rows))
+	}
+	now := utcOrNow(in.Now)
+	ids := map[string]string{}
+	newID := func(old string) (string, error) {
+		if v, ok := ids[old]; ok {
+			return v, nil
+		}
+		v, err := newIDFn()
+		if err != nil {
+			return "", err
+		}
+		ids[old] = v
+		return v, nil
+	}
+	// Блобы: только присланные устройством и уже лежащие здесь.
+	for old, nw := range in.BlobMap {
+		ids[old] = nw
+	}
+
+	tx, err := c.db.BeginTx(ctx, nil)
+	if err != nil {
+		return res, err
+	}
+	defer tx.Rollback()
+
+	// Учётки — по почте. Есть на сервере — она; нет — заводится без входа.
+	owner, _ := rowMap(circles, 0)["owner_account_id"].(string)
+	reviverEmail := ""
+	if err := tx.QueryRowContext(ctx, `SELECT email FROM accounts WHERE id = ?`, in.ReviverID).Scan(&reviverEmail); err != nil {
+		return res, err
+	}
+	reviverInArchive := false
+	for _, email := range in.Accounts {
+		if strings.EqualFold(email, reviverEmail) {
+			reviverInArchive = true
+		}
+	}
+	accounts := map[string]string{}
+	for oldID, email := range in.Accounts {
+		if !reviverInArchive && oldID == owner {
+			// Тот, кто оживил, — владелец и лицо прежнего владельца (план 52).
+			accounts[oldID] = in.ReviverID
+			continue
+		}
+		var id string
+		err := tx.QueryRowContext(ctx, `SELECT id FROM accounts WHERE email = ? COLLATE NOCASE`, email).Scan(&id)
+		if err == sql.ErrNoRows {
+			if id, err = newIDFn(); err != nil {
+				return res, err
+			}
+			if _, err := tx.ExecContext(ctx, `INSERT INTO accounts (id, email, created_at) VALUES (?, ?, ?)`, id, email, formatTime(now)); err != nil {
+				return res, err
+			}
+			res.NotJoined = append(res.NotJoined, id)
+		} else if err != nil {
+			return res, err
+		}
+		accounts[oldID] = id
+	}
+	if _, ok := accounts[owner]; !ok {
+		accounts[owner] = in.ReviverID
+	}
+
+	// Новые id — заранее, всем строкам: событие ссылается на запись, которая
+	// вставится позже.
+	for _, name := range reviveOrder {
+		t := in.Tables[name]
+		col := slices.Index(t.Columns, "id")
+		if col < 0 {
+			continue
+		}
+		for _, r := range t.Rows {
+			if old, ok := r[col].(string); ok {
+				if _, err := newID(old); err != nil {
+					return res, err
+				}
+			}
+		}
+	}
+
+	seqs := map[int64]int64{}
+	for _, name := range reviveOrder {
+		t, ok := in.Tables[name]
+		if !ok {
+			continue
+		}
+		cols, err := c.tableColumns(ctx, tx, name)
+		if err != nil {
+			return res, err
+		}
+		for i := range t.Rows {
+			row := rowMap(t, i)
+			if err := c.reviveRow(ctx, tx, name, row, cols, ids, newID, accounts, seqs, in, now, &res); err != nil {
+				return res, fmt.Errorf("revive %s: %w", name, err)
+			}
+		}
+	}
+	res.CircleID = ids[rowMap(circles, 0)["id"].(string)]
+	res.Posts = len(in.Tables["posts"].Rows)
+	res.Names = len(in.Tables["identities"].Rows)
+
+	// Служебная строка: журнал продолжается с того места, где замер.
+	var reviverIdentity, reviverName string
+	if err := tx.QueryRowContext(ctx, `SELECT identity_id FROM memberships WHERE circle_id = ? AND account_id = ?`, res.CircleID, in.ReviverID).Scan(&reviverIdentity); err != nil {
+		return res, fmt.Errorf("revive: reviver has no identity: %w", err)
+	}
+	if reviverName, err = c.identityName(ctx, tx, reviverIdentity); err != nil {
+		return res, err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE memberships SET status = 'active', can_settings = 1, updated_at = ? WHERE circle_id = ? AND account_id = ?`,
+		formatTime(now), res.CircleID, in.ReviverID); err != nil {
+		return res, err
+	}
+	if _, err := c.appendEvent(ctx, tx, appendEventInput{
+		circleID: res.CircleID, eventType: "circle_revived", isService: true,
+		actorIdentityID: reviverIdentity, actorName: reviverName,
+		summary: summaryCircleRevived(c.identityGender(ctx, tx, reviverIdentity), reviverName),
+		now:     now,
+	}); err != nil {
+		return res, err
+	}
+	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(SUM(size_bytes), 0) FROM blobs WHERE id IN (`+
+		placeholders(len(in.BlobMap))+`)`, mapValues(in.BlobMap)...).Scan(&res.Bytes); err != nil {
+		return res, err
+	}
+	return res, tx.Commit()
+}
+
+var newIDFn = newID
+
+var uuidRe = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
+
+func rowMap(t FullArchiveTable, i int) map[string]any {
+	m := make(map[string]any, len(t.Columns))
+	for j, col := range t.Columns {
+		if j < len(t.Rows[i]) {
+			m[col] = t.Rows[i][j]
+		}
+	}
+	return m
+}
+
+func (c *Chronicle) tableColumns(ctx context.Context, tx *sql.Tx, table string) (map[string]bool, error) {
+	rows, err := tx.QueryContext(ctx, `SELECT name FROM pragma_table_info(?)`, table)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]bool{}
+	for rows.Next() {
+		var n string
+		if err := rows.Scan(&n); err != nil {
+			return nil, err
+		}
+		out[n] = true
+	}
+	return out, rows.Err()
+}
+
+// reviveRow переводит одну строку архива и вставляет её.
+func (c *Chronicle) reviveRow(ctx context.Context, tx *sql.Tx, table string, row map[string]any, cols map[string]bool,
+	ids map[string]string, newID func(string) (string, error), accounts map[string]string,
+	seqs map[int64]int64, in ReviveInput, now time.Time, res *ReviveResult) error {
+
+	// Собственный id строки — новый (у days, day_titles, day_covers его нет).
+	if v, ok := row["id"].(string); ok && table != "events" {
+		nv, err := newID(v)
+		if err != nil {
+			return err
+		}
+		row["id"] = nv
+	}
+	var oldSeq int64
+	if table == "events" {
+		oldSeq = asInt64(row["seq"])
+		delete(row, "seq")
+		nv, err := newID(row["id"].(string))
+		if err != nil {
+			return err
+		}
+		row["id"] = nv
+	}
+	for col, v := range row {
+		switch {
+		case col == "id":
+		case col == "account_id" || col == "owner_account_id":
+			if s, ok := v.(string); ok && s != "" {
+				row[col] = accounts[s]
+			}
+		case strings.HasSuffix(col, "event_seq"):
+			if v != nil {
+				ns, ok := seqs[asInt64(v)]
+				if !ok {
+					return fmt.Errorf("%s.%s: unknown event %v", table, col, v)
+				}
+				row[col] = ns
+			}
+		case col == "payload":
+			// В данных события — id записей и лиц: их тоже на новые.
+			if s, ok := v.(string); ok {
+				row[col] = uuidRe.ReplaceAllStringFunc(s, func(old string) string {
+					if nw, ok := ids[old]; ok {
+						return nw
+					}
+					return old
+				})
+			}
+		default:
+			if s, ok := v.(string); ok {
+				if nv, ok := ids[s]; ok {
+					row[col] = nv
+				} else if isBlobColumn(col) && s != "" {
+					return fmt.Errorf("%s.%s: file %s was not uploaded", table, col, s)
+				}
+			}
+		}
+	}
+	if table == "circles" {
+		// Живёт заново: без цикла архивации, не замерший, место — по
+		// правилам этого сервера, текст сочтут триггеры.
+		for _, col := range []string{"archive_cutoff_date", "archive_deadline", "archive_reminder_before_sec",
+			"cutoff_locked_at", "archive_reminder_sent_at", "archive_cycle_started_at", "frozen_at", "quota_bytes"} {
+			row[col] = nil
+		}
+		row["quota_custom"] = 0
+		row["text_bytes"] = 0
+		row["owner_account_id"] = in.ReviverID
+		row["updated_at"] = formatTime(now)
+	}
+	if table == "identities" {
+		if s, ok := row["account_id"].(string); ok && s == "" {
+			row["account_id"] = nil
+		}
+	}
+	var names []string
+	var args []any
+	for col, v := range row {
+		if !cols[col] {
+			continue
+		}
+		names = append(names, col)
+		args = append(args, v)
+	}
+	r, err := tx.ExecContext(ctx, `INSERT INTO `+table+` (`+strings.Join(names, ", ")+`) VALUES (`+placeholders(len(names))+`)`, args...)
+	if err != nil {
+		return err
+	}
+	if table == "events" {
+		ns, err := r.LastInsertId()
+		if err != nil {
+			return err
+		}
+		seqs[oldSeq] = ns
+	}
+	return nil
+}
+
+func isBlobColumn(col string) bool {
+	return col == "blob_id" || strings.HasSuffix(col, "_blob_id")
+}
+
+func asInt64(v any) int64 {
+	switch n := v.(type) {
+	case int64:
+		return n
+	case float64:
+		return int64(n)
+	case int:
+		return int64(n)
+	}
+	return 0
+}
+
+func placeholders(n int) string {
+	if n == 0 {
+		return "NULL"
+	}
+	return strings.TrimSuffix(strings.Repeat("?, ", n), ", ")
+}
+
+func mapValues(m map[string]string) []any {
+	out := make([]any, 0, len(m))
+	for _, v := range m {
+		out = append(out, v)
+	}
+	return out
+}

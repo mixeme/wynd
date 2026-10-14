@@ -202,3 +202,11 @@ func summaryDeadlineMoved(from, to string) string {
 func formatDeadlineLabel(t time.Time) string {
 	return t.UTC().Format("02.01.2006 15:04")
 }
+
+// Круг оживлён из полного архива (план 52): журнал продолжается.
+func summaryCircleRevived(g Gender, name string) string {
+	if g == GenderNone {
+		return fmt.Sprintf("Круг оживлён из архива: %s", name)
+	}
+	return fmt.Sprintf("%s %s круг из архива", name, past(g, "оживил", "оживила"))
+}

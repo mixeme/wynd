@@ -77,3 +77,18 @@ func (s *Service) SendCircleLeaving(ctx context.Context, email, circle, owner, l
 	body := fmt.Sprintf("%s убирает «%s» с сервера и сохраняет круг в файл. Читать можно, писать нельзя.\n\nСвой архив — всё, что вы видели в круге, — можно скачать, пока круг здесь:\n%s\n", who, circle, link)
 	return s.notify(ctx, email, subject, body)
 }
+
+// SendCircleWaiting — письмо человеку, чей круг перенесли или оживили на этом
+// сервере (2.22, 6.35): войти той же почтой — и он в своём имени и записях.
+func (s *Service) SendCircleWaiting(ctx context.Context, email, circle, owner, link string) error {
+	email = strings.TrimSpace(email)
+	if email == "" {
+		return ErrInvalid
+	}
+	subject := "Wynd: вас ждут в круге «" + circle + "»"
+	body := fmt.Sprintf("Круг «%s» теперь живёт на этом сервере. Войдите этой почтой — вы попадёте в своё имя и свои записи:\n%s\n", circle, link)
+	if strings.TrimSpace(owner) != "" {
+		body = fmt.Sprintf("Круг «%s» теперь живёт на этом сервере, владелец — %s. Войдите этой почтой — вы попадёте в своё имя и свои записи:\n%s\n", circle, owner, link)
+	}
+	return s.notify(ctx, email, subject, body)
+}

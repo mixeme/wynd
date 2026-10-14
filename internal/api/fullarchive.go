@@ -249,9 +249,9 @@ func (s *Server) sendCircleLeavingEmails(circleID, ownerAccountID string) {
 	}()
 }
 
-// handleReviveCircle — «Отменить — оживить круг» (6.34, 6.30, 6.41): архив
+// handleReviveFrozenCircle — «Отменить — оживить круг» (6.34, 6.30, 6.41): архив
 // убирается, если он ещё на сервере, круг снова пишет.
-func (s *Server) handleReviveCircle(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleReviveFrozenCircle(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	sess, ok := requireSession(w, r)
 	if !ok {

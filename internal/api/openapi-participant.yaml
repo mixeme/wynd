@@ -807,6 +807,16 @@ paths:
       summary: Remove the frozen circle from the server once its archive file was downloaded (owner)
       description: 409 not_downloaded until the last byte of the archive with removal reached the device.
 
+  /revive/blobs:
+    post:
+      summary: Which archive files the caller already has on the server (by sha256) — not uploaded again
+      description: Body {sha256 [..]}; answer {blobs {sha256 → blob id}}. Only the caller's own complete blobs.
+
+  /revive:
+    post:
+      summary: Revive a circle from a full archive (plan 52)
+      description: Body {manifest, tables {name → {columns, rows}}, blob_map {archive blob → uploaded blob}, send_invites}. Every archive file must be uploaded by the caller with the same sha256 and size (400 blob_missing / blob_mismatch). New ids for everything; people by e-mail (unknown e-mails get accounts without a login); the caller owns the circle. Answer {circle_id, posts, names, bytes, verified, invited, not_joined}. Body up to 256 MB.
+
   /full_archive/{token}:
     get:
       summary: Ready full archive by link

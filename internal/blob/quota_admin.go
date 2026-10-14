@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/uid"
@@ -265,4 +266,51 @@ func (s *Store) CircleExists(ctx context.Context, circleID string) (bool, error)
 		return false, nil
 	}
 	return err == nil, err
+}
+
+// BlobDigest — сумма, длина и хозяин готового файла: оживление сверяет
+// загруженное с описанием в архиве (план 52).
+func (s *Store) BlobDigest(ctx context.Context, id string) (sha string, size int64, owner string, err error) {
+	err = s.db.QueryRowContext(ctx, `
+		SELECT sha256, size_bytes, account_id FROM blobs WHERE id = ? AND status = 'complete'
+	`, id).Scan(&sha, &size, &owner)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", 0, "", ErrNotFound
+	}
+	return sha, size, owner, err
+}
+
+// OwnBlobsBySHA — готовые файлы учётки с такими суммами: сумма → id. Только
+// свои: поиск по чужим выдавал бы, лежит ли на сервере такой файл.
+func (s *Store) OwnBlobsBySHA(ctx context.Context, accountID string, shas []string) (map[string]string, error) {
+	out := map[string]string{}
+	for start := 0; start < len(shas); start += 200 {
+		part := shas[start:min(start+200, len(shas))]
+		args := []any{accountID}
+		marks := make([]string, len(part))
+		for i, sh := range part {
+			marks[i] = "?"
+			args = append(args, sh)
+		}
+		rows, err := s.db.QueryContext(ctx, `
+			SELECT sha256, id FROM blobs
+			WHERE account_id = ? AND status = 'complete' AND sha256 IN (`+strings.Join(marks, ",")+`)
+		`, args...)
+		if err != nil {
+			return nil, err
+		}
+		for rows.Next() {
+			var sh, id string
+			if err := rows.Scan(&sh, &id); err != nil {
+				rows.Close()
+				return nil, err
+			}
+			out[sh] = id
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
 }
