@@ -342,3 +342,42 @@ func TestLockCutoffOnlyForTheCutoffUsed(t *testing.T) {
 		t.Fatalf("current cutoff locked=%v err=%v", locked, err)
 	}
 }
+
+// Инвариант (кадр 6.45): отказ в месте виден на «Месте», пока не пройдена
+// отсечка; отсечка его стирает, ждущую просьбу не трогает.
+func TestArchivePurgeDropsRejectedQuotaRequests(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	e.post(circle.ID, "owner", "старая", "2026-08-01", e.at(0))
+	e.seedAccount("owner")
+	for _, r := range []struct{ id, status string }{{"rej", "rejected"}, {"pen", "pending"}} {
+		if _, err := e.ch.DB().ExecContext(e.ctx, `
+			INSERT INTO quota_requests (id, circle_id, requested_by_account_id, requested_bytes, status, created_at)
+			VALUES (?, ?, 'owner', 1024, ?, ?)
+		`, r.id, circle.ID, r.status, e.at(0).Format(time.RFC3339)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := e.ch.StartArchiveCycle(e.ctx, circle.ID, "owner", "2026-08-10", e.at(2), 86400, e.at(0)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.ch.PurgeBeforeCutoff(e.ctx, circle.ID, "2026-08-10", e.at(6)); err != nil {
+		t.Fatal(err)
+	}
+	var left []string
+	rows, err := e.ch.DB().QueryContext(e.ctx, `SELECT id FROM quota_requests WHERE circle_id = ? ORDER BY id`, circle.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		left = append(left, id)
+	}
+	if len(left) != 1 || left[0] != "pen" {
+		t.Fatalf("после отсечки остались просьбы %v, ждали только ждущую", left)
+	}
+}

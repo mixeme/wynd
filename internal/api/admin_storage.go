@@ -3,7 +3,9 @@ package api
 import (
 	"context"
 	"database/sql"
+	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/blob"
@@ -294,10 +296,49 @@ func (s *Server) resolveQuotaRequest(w http.ResponseWriter, r *http.Request, app
 	id := r.PathValue("id")
 	var body quotaResolveBody
 	_ = readJSON(r, &body)
+	req, err := s.Blobs.QuotaRequestByID(r.Context(), id)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	var before sql.NullInt64
+	if req != nil {
+		if before, err = s.Blobs.CircleQuotaBytes(r.Context(), req.CircleID); err != nil {
+			writeError(w, err)
+			return
+		}
+	}
 	status, err := s.Blobs.ResolveQuotaRequest(r.Context(), id, approve, body.AdminNote)
 	if err != nil {
 		writeError(w, err)
 		return
 	}
+	if req != nil {
+		s.sendQuotaAnswer(*req, before, approve)
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": status})
+}
+
+// sendQuotaAnswer пишет владельцу об ответе на просьбу о месте (решение
+// владельца 2026-10-13: об ответе узнают письмом). В фоне, как рассылка о
+// цикле архивации: администратор не ждёт релея, сбой — строка в журнале.
+func (s *Server) sendQuotaAnswer(req blob.QuotaRequest, before sql.NullInt64, approved bool) {
+	if s.Mail == nil {
+		return
+	}
+	link := strings.TrimRight(s.PublicURL(), "/") + "/circles/" + req.CircleID + "/quota"
+	s.notifyWG.Add(1)
+	go func() {
+		defer s.notifyWG.Done()
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		name, err := s.Chronicle.CircleName(ctx, req.CircleID)
+		if err != nil {
+			log.Printf("quota answer mail %s: circle: %v", req.CircleID, err)
+			return
+		}
+		if err := s.Mail.SendQuotaAnswer(ctx, req.RequesterEmail, name, req.RequestedBytes, before, approved, link); err != nil {
+			log.Printf("quota answer mail %s to %s: %v", req.CircleID, req.RequesterEmail, err)
+		}
+	}()
 }

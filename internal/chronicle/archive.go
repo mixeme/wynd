@@ -811,6 +811,13 @@ func (c *Chronicle) PurgeBeforeCutoff(ctx context.Context, circleID, cutoffDate 
 	`, formatTime(now), circleID); err != nil {
 		return nil, err
 	}
+	// Отказ в месте виден на «Месте», пока не пройдена отсечка (6.45): место
+	// освобождено, отказ больше не нужен. Ждущую просьбу не трогаем.
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM quota_requests WHERE circle_id = ? AND status = 'rejected'
+	`, circleID); err != nil {
+		return nil, err
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}

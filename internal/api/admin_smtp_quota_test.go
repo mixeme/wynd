@@ -99,6 +99,24 @@ func TestAdminQuotaRequestApproveRejectAndInviteRevoke(t *testing.T) {
 		v, _ := out["quota_bytes"].(float64)
 		return v
 	}
+	// Последняя просьба на «Месте»: ждёт (6.44), отказана (6.45) или её нет.
+	lastRequest := func() string {
+		t.Helper()
+		rec := doGET(t, srv, "/api/v1/circles/"+circleID+"/quota", ownerTok)
+		var out struct {
+			Last *struct {
+				Status         string `json:"status"`
+				RequestedBytes int64  `json:"requested_bytes"`
+			} `json:"last_request"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+			t.Fatal(err)
+		}
+		if out.Last == nil {
+			return ""
+		}
+		return out.Last.Status
+	}
 	pending := func() []any {
 		t.Helper()
 		rec := doGET(t, srv, "/api/v1/admin/quota_requests", admin)
@@ -126,6 +144,15 @@ func TestAdminQuotaRequestApproveRejectAndInviteRevoke(t *testing.T) {
 	if len(pending()) != 1 {
 		t.Fatalf("заявка не видна в панели: %+v", pending())
 	}
+	if got := lastRequest(); got != "pending" {
+		t.Fatalf("«Место» не знает о ждущей просьбе: %q", got)
+	}
+	// Просьба одна, пока на неё не ответили.
+	if rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/quota_requests", ownerTok, map[string]any{
+		"requested_bytes": 8 * gb,
+	}); rec.Code != http.StatusBadRequest {
+		t.Fatalf("вторая просьба при ждущей: %d %s", rec.Code, rec.Body.String())
+	}
 	rec = doJSON(t, srv, http.MethodPost, "/api/v1/admin/quota_requests/"+rejected+"/reject", admin, map[string]any{
 		"admin_note": "места нет",
 	})
@@ -137,6 +164,9 @@ func TestAdminQuotaRequestApproveRejectAndInviteRevoke(t *testing.T) {
 	}
 	if len(pending()) != 0 {
 		t.Fatalf("решённая заявка осталась ожидающей: %+v", pending())
+	}
+	if got := lastRequest(); got != "rejected" {
+		t.Fatalf("«Место» не показывает отказ: %q", got)
 	}
 	if rec := doJSON(t, srv, http.MethodPost, "/api/v1/admin/quota_requests/"+rejected+"/approve", admin, nil); rec.Code != http.StatusNotFound {
 		t.Fatalf("повторное решение по заявке: %d %s", rec.Code, rec.Body.String())
@@ -150,6 +180,9 @@ func TestAdminQuotaRequestApproveRejectAndInviteRevoke(t *testing.T) {
 	}
 	if got := quotaBytes(); int64(got) != 9*gb {
 		t.Fatalf("квота после утверждения: %v", got)
+	}
+	if got := lastRequest(); got != "" {
+		t.Fatalf("одобренная просьба видна на «Месте»: %q", got)
 	}
 	if len(pending()) != 0 {
 		t.Fatalf("утверждённая заявка осталась ожидающей: %+v", pending())

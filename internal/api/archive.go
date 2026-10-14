@@ -189,6 +189,22 @@ func (s *Server) handleCircleQuota(w http.ResponseWriter, r *http.Request) {
 	if median > 0 {
 		out["median_post_bytes"] = median
 	}
+	// Ждущая просьба (6.44) и отказ (6.45); одобренная не показывается — её
+	// видно по квоте.
+	if req, err := s.Blobs.LastQuotaRequest(r.Context(), circleID); err != nil {
+		writeDomainError(w, err)
+		return
+	} else if req != nil && req.Status != "approved" {
+		last := map[string]any{
+			"requested_bytes": req.RequestedBytes,
+			"status":          req.Status,
+			"created_at":      req.CreatedAt,
+		}
+		if req.ResolvedAt != nil {
+			last["resolved_at"] = *req.ResolvedAt
+		}
+		out["last_request"] = last
+	}
 	if cutoff := r.URL.Query().Get("cutoff_date"); cutoff != "" {
 		freed, err := s.Chronicle.FreedBytesBeforeCutoff(r.Context(), circleID, cutoff)
 		if err != nil {

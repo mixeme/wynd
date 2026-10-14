@@ -108,8 +108,18 @@ type QuotaRequest struct {
 }
 
 // CreateQuotaRequest opens a pending quota request for a circle owner.
+// Просьба одна, пока на неё не ответили (кадр 6.44): вторая — ErrInvalid.
 func (s *Store) CreateQuotaRequest(ctx context.Context, circleID, accountID string, requestedBytes int64) (string, error) {
 	if requestedBytes < 1 {
+		return "", ErrInvalid
+	}
+	var pending int
+	if err := s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM quota_requests WHERE circle_id = ? AND status = 'pending'
+	`, circleID).Scan(&pending); err != nil {
+		return "", err
+	}
+	if pending > 0 {
 		return "", ErrInvalid
 	}
 	id, err := uid.NewID()
@@ -158,6 +168,43 @@ func (s *Store) ListPendingQuotaRequests(ctx context.Context) ([]QuotaRequest, e
 		out = append(out, item)
 	}
 	return out, rows.Err()
+}
+
+// LastQuotaRequest — последняя просьба круга о месте, если есть: экран
+// «Место» показывает ждущую (6.44) и отказанную (6.45). Отказанные стираются
+// отсечкой — после неё отказ уже не показывается.
+func (s *Store) LastQuotaRequest(ctx context.Context, circleID string) (*QuotaRequest, error) {
+	return s.quotaRequest(ctx, `qr.circle_id = ? ORDER BY qr.created_at DESC, qr.rowid DESC LIMIT 1`, circleID)
+}
+
+// QuotaRequestByID — просьба с почтой просившего: ей уходит письмо об ответе.
+func (s *Store) QuotaRequestByID(ctx context.Context, id string) (*QuotaRequest, error) {
+	return s.quotaRequest(ctx, `qr.id = ?`, id)
+}
+
+func (s *Store) quotaRequest(ctx context.Context, where string, arg string) (*QuotaRequest, error) {
+	var item QuotaRequest
+	var note, resolved sql.NullString
+	err := s.db.QueryRowContext(ctx, `
+		SELECT qr.id, qr.circle_id, qr.requested_by_account_id, a.email,
+			qr.requested_bytes, qr.status, qr.admin_note, qr.created_at, qr.resolved_at
+		FROM quota_requests qr
+		JOIN accounts a ON a.id = qr.requested_by_account_id
+		WHERE `+where, arg).Scan(&item.ID, &item.CircleID, &item.RequesterID, &item.RequesterEmail,
+		&item.RequestedBytes, &item.Status, &note, &item.CreatedAt, &resolved)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if note.Valid {
+		item.AdminNote = &note.String
+	}
+	if resolved.Valid {
+		item.ResolvedAt = &resolved.String
+	}
+	return &item, nil
 }
 
 // QuotaRequestLowers — просьба опускает квоту круга: меньше действующей (или
