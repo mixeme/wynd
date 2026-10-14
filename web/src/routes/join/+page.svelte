@@ -219,7 +219,7 @@
 	{/if}
 	{#if blocked}
 		<Hint class="mt-14">
-			Сервер новых не принимает. Если у вас здесь уже есть учётка — войдите своей почтой.
+			Сервер новых не принимает. Если вы уже на этом сервере — войдите своей почтой.
 		</Hint>
 		<Label class="mt-16">Почта</Label>
 		<Input active type="email" autocomplete="email" bind:value={email} />
@@ -272,7 +272,7 @@
 	{:else if instance && blocked}
 		<ServerRow name={instance.name} subtitle={blockedSubtitle} variant="warn" card />
 		<Hint class="mt-14">
-			Сервер новых не принимает — нужна ссылка-приглашение. Если учётка здесь уже есть,
+			Сервер новых не принимает — нужна ссылка-приглашение. Если вы уже на этом сервере,
 			вернитесь и войдите почтой.
 		</Hint>
 		<Button variant="ghost" onclick={() => goto('/invite?from=login')}
