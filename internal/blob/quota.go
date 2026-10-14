@@ -136,13 +136,16 @@ func (s *Store) reservedBytes(ctx context.Context) (int64, error) {
 	return reserved.Int64, nil
 }
 
-// usedBytes — занятое на сервере: файлы и текст всех кругов (C42). Шкала
-// панели и потолок сервера смотрят на одно и то же число.
+// usedBytes — занятое на сервере: файлы и текст всех кругов (C42) и полные
+// архивы, которые собираются или ждут скачивания (план 51; 9.5: «готовые
+// архивы считаются в потолке»). Шкала панели и потолок сервера смотрят на
+// одно и то же число; квоты кругов архивов не видят.
 func (s *Store) usedBytes(ctx context.Context) (int64, error) {
 	var used sql.NullInt64
 	err := s.db.QueryRowContext(ctx, `
 		SELECT (SELECT COALESCE(SUM(size_bytes), 0) FROM blobs WHERE status = 'complete')
 		     + (SELECT COALESCE(SUM(text_bytes), 0) FROM circles)
+		     + (SELECT COALESCE(SUM(size_bytes), 0) FROM circle_archives WHERE status IN ('building', 'ready'))
 	`).Scan(&used)
 	if err != nil {
 		return 0, err
@@ -280,6 +283,29 @@ func (s *Store) CheckWriteQuota(ctx context.Context, circleID string, cost int64
 		return ErrQuotaExceeded
 	}
 	return nil
+}
+
+// RoomBytes — сколько ещё помещается на сервер (план 51, 6.43): до потолка
+// сервера за вычетом занятого и начатых загрузок — и не больше, чем свободно
+// на самом диске. Меньше нуля не бывает.
+func (s *Store) RoomBytes(ctx context.Context) (int64, error) {
+	instQuota, err := s.effectiveInstanceQuotaBytes(ctx)
+	if err != nil {
+		return 0, err
+	}
+	used, err := s.usedBytes(ctx)
+	if err != nil {
+		return 0, err
+	}
+	reserved, err := s.reservedBytes(ctx)
+	if err != nil {
+		return 0, err
+	}
+	room := instQuota - used - reserved
+	if free, _, err := check.DiskUsage(filepath.Dir(s.dir)); err == nil && int64(free) < room {
+		room = int64(free)
+	}
+	return max(room, 0), nil
 }
 
 // UsedBytes returns bytes used on the server: complete blobs and circle text.

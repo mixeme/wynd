@@ -52,6 +52,10 @@ type Server struct {
 	// archiveLink. Живут в памяти минуту; перезапуск их гасит — приложение
 	// просит новую.
 	archiveLinks sync.Map
+	// fullBuilds — идущие сборки полных архивов (план 51): id → отмена.
+	fullBuilds sync.Map
+	// fullLinks — ссылки на готовый полный архив и на сборку потоком (6.43).
+	fullLinks sync.Map
 	// Posters снимает кадр ролику, пришедшему без него (план 49, временно —
 	// до нативной обёртки). nil или без ffmpeg — ничего не делает.
 	Posters *poster.Maker
@@ -220,6 +224,14 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/transfer", paid(s.handleTransferOwnership))
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/exclude", paid(s.handleExcludeMember))
 	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}/quota", paid(s.handleCircleQuota))
+	// Полный архив круга (план 51).
+	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}/full_archive", paid(s.handleFullArchive))
+	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/full_archive", paid(s.handleStartFullArchive))
+	s.Mux.HandleFunc("DELETE /api/v1/circles/{circle_id}/full_archive", paid(s.handleRemoveFullArchive))
+	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/full_archive/link", paid(s.handleFullArchiveLink))
+	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/full_archive/stream_link", paid(s.handleFullArchiveStreamLink))
+	s.Mux.HandleFunc("GET /api/v1/full_archive/{token}", s.handleFullArchiveByLink)
+	s.Mux.HandleFunc("GET /api/v1/full_archive_stream/{token}", s.handleFullArchiveStream)
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/archive", paid(s.handleStartArchiveCycle))
 	s.Mux.HandleFunc("PUT /api/v1/circles/{circle_id}/archive/cutoff", paid(s.handleMoveCutoff))
 	s.Mux.HandleFunc("PUT /api/v1/circles/{circle_id}/archive/deadline", paid(s.handleMoveDeadline))

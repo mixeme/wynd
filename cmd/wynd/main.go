@@ -147,7 +147,11 @@ func runServer() {
 		// Первый прогон — здесь, а не до ListenAndServe: после ночного
 		// простоя рутина с письмами по медленному релею держала старт, и
 		// /ready не отвечал минутами (SCH-1).
+		// Полные архивы (план 51): прерванные остановкой сборки — сбой, в
+		// каталоге архивов — только то, что ждёт скачивания.
+		apiSrv.RecoverFullArchives(baseCtx)
 		maybeRunRoutine(baseCtx, authSvc, blobsDir, ch, blobStore, mailSvc, pushSvc, apiSrv.PublicURL())
+		expireFullArchives(baseCtx, apiSrv)
 		// Ролики, лежавшие без кадра до этой версии, — один проход при старте.
 		if n := apiSrv.Posters.Backfill(baseCtx); n > 0 {
 			log.Printf("video posters: made %d frames for earlier videos", n)
@@ -162,6 +166,7 @@ func runServer() {
 				// Адрес берётся свежим: письма фоновых задач уходили со
 				// старым public_url до перезапуска (API-4).
 				maybeRunRoutine(baseCtx, authSvc, blobsDir, ch, blobStore, mailSvc, pushSvc, apiSrv.PublicURL())
+				expireFullArchives(baseCtx, apiSrv)
 			}
 		}
 	}()
@@ -242,6 +247,13 @@ func maybeRunRoutine(ctx context.Context, authSvc *auth.Service, blobsDir string
 	maybeRunDailyRoutine(ctx, authSvc.DB(), blobsDir, now)
 	runArchiveJobs(ctx, authSvc.DB(), ch, blobs, mailSvc, publicURL, now)
 	runPayJobs(ctx, authSvc, mailSvc, pushSvc, blobsDir, now)
+}
+
+// expireFullArchives стирает готовые полные архивы, чей срок вышел (9.12).
+func expireFullArchives(ctx context.Context, apiSrv *api.Server) {
+	if n := apiSrv.ExpireFullArchives(ctx, time.Now().UTC()); n > 0 {
+		log.Printf("full archives expired: %d", n)
+	}
 }
 
 func runPayJobs(ctx context.Context, authSvc *auth.Service, mailSvc *mail.Service, pushSvc *push.Service, blobsDir string, now time.Time) {

@@ -779,6 +779,45 @@ paths:
             type: string
             format: date
 
+  /circles/{circle_id}/full_archive:
+    get:
+      summary: Full circle archive state and estimate (owner)
+      description: estimate_bytes, posts, members, fits (room on the server for a ready file), retention_hours and the latest archive (status building, ready, failed or removed with removed_reason).
+    post:
+      summary: Build the full circle archive in the background (owner)
+      description: Body {delete_circle, key?} — key is {public_key, salt, iterations} of an X25519 key the device derived from the password (PBKDF2-SHA-256); the password never reaches the server. 409 archive_busy while one is building or ready; 507 no_room when the ready file does not fit.
+    delete:
+      summary: Cancel the build or delete the ready file without downloading (owner)
+
+  /circles/{circle_id}/full_archive/link:
+    post:
+      summary: Link to the ready full archive (owner)
+      description: The link lives a day and supports Range; the file is deleted once its last byte is delivered.
+
+  /circles/{circle_id}/full_archive/stream_link:
+    post:
+      summary: One-time link that builds the full archive straight into the download (owner, no room for a ready file)
+
+  /full_archive/{token}:
+    get:
+      summary: Ready full archive by link
+      security: []
+      responses:
+        "200":
+          description: The .wynd file (or 206 for a Range)
+        "404":
+          description: Link unknown or the file is gone
+
+  /full_archive_stream/{token}:
+    get:
+      summary: Full archive built straight into the response
+      security: []
+      responses:
+        "200":
+          description: The .wynd file
+        "404":
+          description: Link unknown, used or expired
+
   /circles/{circle_id}/archive:
     post:
       summary: Start archive cycle (owner)

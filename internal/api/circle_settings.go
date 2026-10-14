@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"time"
@@ -271,10 +272,23 @@ func (s *Server) handleDeleteCircle(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	// Полные архивы круга уходят вместе с ним: строки — каскадом, файлы и
+	// идущие сборки — здесь (план 51).
+	archives, err := s.Chronicle.FullArchivesWithFiles(r.Context(), circleID)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
 	blobIDs, err := s.Chronicle.DeleteCircle(r.Context(), circleID, sess.AccountID, body.Name, time.Now().UTC())
 	if err != nil {
 		writeDomainError(w, err)
 		return
+	}
+	for _, a := range archives {
+		if cancel, ok := s.fullBuilds.Load(a.ID); ok {
+			cancel.(context.CancelFunc)()
+		}
+		s.deleteFullArchiveFiles(a.ID)
 	}
 	// Файлы освобождаются после коммита; их судьба не меняет ответ (BLB-4).
 	if s.Blobs != nil {

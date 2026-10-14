@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"time"
 )
 
 // SendQuotaAnswer — письмо владельцу круга об ответе администратора на
@@ -46,4 +47,17 @@ func formatBytes(n int64) string {
 		return fmt.Sprintf("%d %s", int64(math.Round(v)), units[i])
 	}
 	return strings.Replace(fmt.Sprintf("%.1f %s", v, units[i]), ".", ",", 1)
+}
+
+// SendFullArchiveReady — письмо владельцу: полный архив круга собран и ждёт
+// скачивания до срока (6.40, 6.33).
+func (s *Service) SendFullArchiveReady(ctx context.Context, email, circle string, expires time.Time, link string) error {
+	email = strings.TrimSpace(email)
+	if email == "" {
+		return ErrInvalid
+	}
+	subject := "Wynd: архив круга готов"
+	body := fmt.Sprintf("Архив круга «%s» собран. Скачать его можно до %s — потом сервер удалит файл.\n\n%s\n",
+		circle, expires.UTC().Format("02.01.2006 15:04")+" UTC", link)
+	return s.notify(ctx, email, subject, body)
 }
