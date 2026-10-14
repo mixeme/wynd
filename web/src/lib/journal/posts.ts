@@ -1,4 +1,4 @@
-import { apiFetch, apiJson } from '$lib/api/client';
+import { apiFetch, apiJson, apiPath } from '$lib/api/client';
 import { invalidateCircleSnapshots } from '$lib/api/snapshots';
 import type { QueueFile } from '$lib/idb/db';
 import { CHUNK_SIZE } from '$lib/queue/queue';
@@ -172,22 +172,21 @@ export async function removeReaction(
 	await invalidateCircleSnapshots(origin, circleId);
 }
 
+/**
+ * Архив участника (6.37, план 46, C38): приложение берёт у сервера
+ * одноразовую ссылку, а качает сам браузер — со своим ходом и без копии
+ * архива в памяти вкладки. Раньше fetch собирал весь ZIP в Blob, и запрос на
+ * сохранение приходил только через минуты, а на телефоне гигабайты в памяти
+ * могли уронить вкладку. Сервер отдаёт архив потоком, сразу с первым байтом.
+ */
 export async function downloadArchive(
 	origin: string,
-	downloadUrl: string,
-	layout?: 'feed' | 'posts'
+	downloadUrl: string
 ): Promise<void> {
-	let path = downloadUrl.replace(/^\/api\/v1/, '');
-	if (layout) {
-		const sep = path.includes('?') ? '&' : '?';
-		path += `${sep}layout=${layout}`;
-	}
-	const res = await apiFetch(origin, path);
-	const blob = await res.blob();
-	const url = URL.createObjectURL(blob);
+	const path = downloadUrl.replace(/^\/api\/v1/, '').replace(/\/download$/, '/link');
+	const { url } = await apiJson<{ url: string }>(origin, path, { method: 'POST' });
 	const a = document.createElement('a');
-	a.href = url;
-	a.download = 'archive.zip';
+	a.href = apiPath(origin, url.replace(/^\/api\/v1/, ''));
+	a.rel = 'noopener';
 	a.click();
-	URL.revokeObjectURL(url);
 }

@@ -105,3 +105,38 @@ func TestPostsIndexSnippetIsValidUTF8(t *testing.T) {
 		t.Fatalf("обрыв не по слову:\n%s", html)
 	}
 }
+
+// Инвариант (план 46, C38): холостая сборка даёт ровно ту длину, что потом
+// уходит потоком — на неё ставится Content-Length. Ошибка на байт обрывала
+// бы скачивание у самого конца.
+func TestSizeMatchesStreamedArchive(t *testing.T) {
+	blobs, cleanup := openBlobStore(t)
+	defer cleanup()
+	for _, layout := range []archive.Layout{archive.LayoutFeed, archive.LayoutPosts} {
+		in := archive.BuildInput{
+			CircleName: "Семья",
+			CutoffDate: "2026-08-10",
+			Layout:     layout,
+			Posts: []chronicle.FeedPost{{
+				Post: chronicle.Post{
+					ID: "post1", AuthorName: "Аня", Body: strings.Repeat("на даче ", 300),
+					EntryDate: "2026-08-09", CreatedAt: time.Date(2026, 8, 9, 12, 0, 0, 0, time.UTC),
+				},
+				Media: []chronicle.PostMedia{{BlobID: "00000000-0000-7000-8000-000000000000", Kind: chronicle.MediaPhoto}},
+			}},
+			DayTitles: map[string]string{"2026-08-09": "Дача"},
+			Blobs:     blobs,
+		}
+		size, err := archive.Size(t.Context(), in)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var buf bytes.Buffer
+		if err := archive.BuildPersonalArchive(t.Context(), &buf, in); err != nil {
+			t.Fatal(err)
+		}
+		if size != int64(buf.Len()) {
+			t.Fatalf("%s: Size = %d, а архив — %d байт", layout, size, buf.Len())
+		}
+	}
+}

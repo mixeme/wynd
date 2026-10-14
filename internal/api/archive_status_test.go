@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -95,19 +96,34 @@ func cutoffLocked(t *testing.T, srv *api.Server, tok, circleID string) bool {
 	return out.ArchiveCycle.CutoffLocked
 }
 
-func rangeGET(t *testing.T, srv *api.Server, path, tok, rng string) *httptest.ResponseRecorder {
+// brokenWriter — клиент, у которого связь рвётся после limit байт тела.
+type brokenWriter struct {
+	*httptest.ResponseRecorder
+	limit int
+}
+
+func (b *brokenWriter) Write(p []byte) (int, error) {
+	if b.Body.Len()+len(p) > b.limit {
+		return 0, errors.New("connection reset")
+	}
+	return b.ResponseRecorder.Write(p)
+}
+
+func brokenGET(t *testing.T, srv *api.Server, path, tok string, limit int) {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, path, nil)
 	req.Header.Set("Authorization", "Bearer "+tok)
-	req.Header.Set("Range", rng)
-	rec := httptest.NewRecorder()
-	srv.ServeHTTP(rec, req)
-	return rec
+	defer func() {
+		if r := recover(); r != nil && r != http.ErrAbortHandler {
+			panic(r)
+		}
+	}()
+	srv.ServeHTTP(&brokenWriter{ResponseRecorder: httptest.NewRecorder(), limit: limit}, req)
 }
 
 // Инвариант (план 42, ARC-8): отсечка замирает, когда архив отдан до
-// последнего байта, а не когда собран: оборванная (частичная) отдача её не
-// фиксирует, докачка до конца — фиксирует.
+// последнего байта, а не когда собран: оборванная отдача её не фиксирует,
+// отдача целиком — фиксирует.
 func TestArchiveCutoffLocksOnlyAfterFullDelivery(t *testing.T) {
 	srv, caps, _, _ := setupAPI(t)
 	tok, _ := registerSession(t, srv, caps, "lock@example.com")
@@ -121,15 +137,11 @@ func TestArchiveCutoffLocksOnlyAfterFullDelivery(t *testing.T) {
 	startArchive(t, srv, tok, circleID)
 	download := "/api/v1/circles/" + circleID + "/archive/download"
 
-	if r := rangeGET(t, srv, download, tok, "bytes=0-9"); r.Code != http.StatusPartialContent {
-		t.Fatalf("partial: %d", r.Code)
-	}
+	brokenGET(t, srv, download, tok, 10)
 	if cutoffLocked(t, srv, tok, circleID) {
-		t.Fatal("отсечка замерла после частичной отдачи")
+		t.Fatal("отсечка замерла после оборванной отдачи")
 	}
-	if r := rangeGET(t, srv, download, tok, "bytes=10-"); r.Code != http.StatusPartialContent {
-		t.Fatalf("rest: %d", r.Code)
-	}
+	downloadArchive(t, srv, tok, circleID)
 	if !cutoffLocked(t, srv, tok, circleID) {
 		t.Fatal("отсечка не замерла после отдачи до конца")
 	}

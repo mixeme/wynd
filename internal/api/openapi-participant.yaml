@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.30.0
+  version: 0.30.1
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:
@@ -800,6 +800,26 @@ paths:
           schema:
             type: string
             enum: [feed, posts]
+      description: >
+        Streamed as it is built (nothing is stored on the server); Content-Length
+        is exact. No Range — an interrupted download starts over.
+
+  /circles/{circle_id}/archive/link:
+    post:
+      summary: One-time link to the personal archive (lives one minute)
+      description: >
+        Returns `{"url": "/api/v1/archive/{token}"}`; the browser downloads it
+        natively, without the session header. Query `layout` as for download.
+
+  /archive/{token}:
+    get:
+      summary: Personal archive by a one-time link
+      security: []
+      responses:
+        "200":
+          description: ZIP stream
+        "404":
+          description: Link unknown, used or expired
 
   /notify_prefs:
     get:

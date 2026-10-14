@@ -2,11 +2,13 @@ package api
 
 import (
 	"context"
-	"fmt"
+	"crypto/rand"
+	"encoding/hex"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -288,12 +290,80 @@ func (s *Server) handleMoveDeadline(w http.ResponseWriter, r *http.Request) {
 // если предыдущая сборка той же учётки ещё идёт.
 const archiveRetryAfterSec = 30
 
-func (s *Server) handleArchiveDownload(w http.ResponseWriter, r *http.Request) {
+// archiveLinkTTL — сколько живёт одноразовая ссылка на архив: приложение
+// открывает её сразу после выдачи.
+const archiveLinkTTL = time.Minute
+
+type archiveLink struct {
+	accountID, circleID string
+	expires             time.Time
+}
+
+// handleArchiveLink выдаёт одноразовую ссылку на архив участника (план 46,
+// C38). По ней качает сам браузер — со своим ходом и без копии архива в
+// памяти вкладки: fetch с заголовком входа собирал гигабайты в Blob, и
+// запрос на сохранение появлялся только через минуты. Ссылка живёт минуту,
+// работает один раз и ведёт только к этому архиву этого участника.
+func (s *Server) handleArchiveLink(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	sess, ok := requireSession(w, r)
 	if !ok {
 		return
 	}
+	if err := s.Chronicle.RequireReader(r.Context(), circleID, sess.AccountID); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	cycle, err := s.Chronicle.GetArchiveCycle(r.Context(), circleID)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	if !cycle.Active {
+		writeDomainError(w, chronicle.ErrNotFound)
+		return
+	}
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		writeError(w, err)
+		return
+	}
+	token := hex.EncodeToString(buf)
+	now := time.Now()
+	// Просроченные ссылки убираются при выдаче новых — их немного.
+	s.archiveLinks.Range(func(k, v any) bool {
+		if now.After(v.(archiveLink).expires) {
+			s.archiveLinks.Delete(k)
+		}
+		return true
+	})
+	s.archiveLinks.Store(token, archiveLink{
+		accountID: sess.AccountID, circleID: circleID, expires: now.Add(archiveLinkTTL),
+	})
+	writeJSON(w, http.StatusOK, map[string]string{"url": "/api/v1/archive/" + token})
+}
+
+// handleArchiveByLink отдаёт архив по одноразовой ссылке — без заголовка входа.
+func (s *Server) handleArchiveByLink(w http.ResponseWriter, r *http.Request) {
+	v, ok := s.archiveLinks.LoadAndDelete(r.PathValue("token"))
+	if !ok || time.Now().After(v.(archiveLink).expires) {
+		writeDomainError(w, chronicle.ErrNotFound)
+		return
+	}
+	link := v.(archiveLink)
+	s.streamArchive(w, r, link.circleID, link.accountID)
+}
+
+func (s *Server) handleArchiveDownload(w http.ResponseWriter, r *http.Request) {
+	sess, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+	// ?layout= прежних клиентов не мешает: в архиве обе раскладки (6.37).
+	s.streamArchive(w, r, r.PathValue("circle_id"), sess.AccountID)
+}
+
+func (s *Server) streamArchive(w http.ResponseWriter, r *http.Request, circleID, accountID string) {
 	cycle, err := s.Chronicle.GetArchiveCycle(r.Context(), circleID)
 	if err != nil {
 		writeDomainError(w, err)
@@ -308,21 +378,17 @@ func (s *Server) handleArchiveDownload(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, chronicle.ErrForbidden)
 		return
 	}
-	layout := archive.LayoutFeed
-	if v := strings.TrimSpace(r.URL.Query().Get("layout")); v == "posts" {
-		layout = archive.LayoutPosts
-	}
-	if _, busy := s.archiveBuilds.LoadOrStore(sess.AccountID, struct{}{}); busy {
+	if _, busy := s.archiveBuilds.LoadOrStore(accountID, struct{}{}); busy {
 		writeError(w, &auth.RateLimitError{RetryAfterSec: archiveRetryAfterSec})
 		return
 	}
-	defer s.archiveBuilds.Delete(sess.AccountID)
-	posts, err := s.Chronicle.ArchiveSnapshot(r.Context(), circleID, sess.AccountID, cycle.CutoffDate)
+	defer s.archiveBuilds.Delete(accountID)
+	posts, err := s.Chronicle.ArchiveSnapshot(r.Context(), circleID, accountID, cycle.CutoffDate)
 	if err != nil {
 		writeDomainError(w, err)
 		return
 	}
-	circles, err := s.Chronicle.ListAccountCircles(r.Context(), sess.AccountID)
+	circles, err := s.Chronicle.ListAccountCircles(r.Context(), accountID)
 	if err != nil {
 		writeDomainError(w, err)
 		return
@@ -344,51 +410,47 @@ func (s *Server) handleArchiveDownload(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	// Сборка — во временный файл каталога данных, отдача — ServeContent:
-	// память не растёт с размером круга, а обрыв докачивается Range-запросом
-	// (ARC-1). Сборка детерминирована, поэтому повторная даёт те же байты.
-	f, err := s.createArchiveTemp()
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	defer func() {
-		_ = f.Close()
-		_ = os.Remove(f.Name())
-	}()
-	if err := archive.BuildPersonalArchive(r.Context(), f, archive.BuildInput{
+	in := archive.BuildInput{
 		CircleName: circleName,
 		CutoffDate: cycle.CutoffDate,
-		Layout:     layout,
 		Posts:      posts,
 		Blobs:      s.Blobs,
 		Avatars:    avatars,
 		DayTitles:  dayTitles,
 		Color:      circleColor,
 		Fonts:      s.ArchiveFonts,
-	}); err != nil {
-		writeError(w, err)
-		return
 	}
-	info, err := f.Stat()
+	// Архив участника — потоком (решение владельца 2026-10-14, план 46, C38):
+	// собирается прямо в ответ и на сервере не лежит, иначе цикл архивации
+	// круга без места заполнял бы диск копиями. Первый байт уходит сразу, а
+	// длину заранее даёт холостая сборка — браузер показывает ход. Цена:
+	// оборванное скачивание начинается заново, докачки нет.
+	size, err := archive.Size(r.Context(), in)
 	if err != nil {
 		writeError(w, err)
 		return
 	}
-	var modtime time.Time
-	if cycle.CycleStartedAt != nil {
-		modtime = *cycle.CycleStartedAt
-	}
 	w.Header().Set("Content-Type", "application/zip")
 	w.Header().Set("Content-Disposition", "attachment; filename=\"wynd-archive-"+circleID+".zip\"")
+	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
+	w.Header().Set("Cache-Control", "no-store")
+	if r.Method == http.MethodHead {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 	rec := &deliveryRecorder{ResponseWriter: w}
-	http.ServeContent(rec, r, "", modtime, f)
+	rec.WriteHeader(http.StatusOK)
+	if err := archive.BuildPersonalArchive(r.Context(), rec, in); err != nil || rec.written != size {
+		// Заголовки ушли — сказать об ошибке можно только оборвав ответ:
+		// недописанный ZIP не должен выглядеть скачанным целиком.
+		log.Printf("archive %s: stream: %v (written %d of %d)", circleID, err, rec.written, size)
+		panic(http.ErrAbortHandler)
+	}
 
 	// Отсечка замирает, когда участник получил архив целиком — последний байт
 	// ушёл, — а не когда архив собран: обрыв на отдаче замораживал её, хотя
-	// никто ничего не получил (ARC-8). Докачка по Range засчитывается запросом,
-	// который дошёл до конца файла.
-	if r.Method == http.MethodGet && rec.deliveredToEnd(info.Size()) {
+	// никто ничего не получил (ARC-8).
+	if rec.deliveredToEnd(size) {
 		if _, err := s.Chronicle.LockCutoff(context.WithoutCancel(r.Context()), circleID, cycle.CutoffDate, now); err != nil {
 			log.Printf("archive %s: lock cutoff: %v", circleID, err)
 		}
@@ -417,37 +479,18 @@ func (d *deliveryRecorder) Write(p []byte) (int, error) {
 	return n, err
 }
 
-// deliveredToEnd: 200 — ушёл весь файл; 206 — ушёл диапазон, кончающийся
-// последним байтом файла.
+// deliveredToEnd: ответ ушёл целиком — 200 и все size байт тела.
 func (d *deliveryRecorder) deliveredToEnd(size int64) bool {
-	switch d.status {
-	case http.StatusOK:
-		return d.written == size
-	case http.StatusPartialContent:
-		var first, last, total int64
-		if _, err := fmt.Sscanf(d.Header().Get("Content-Range"), "bytes %d-%d/%d", &first, &last, &total); err != nil {
-			return false
-		}
-		return total == size && last == size-1 && d.written == last-first+1
-	}
-	return false
+	return d.status == http.StatusOK && d.written == size
 }
 
-// ArchiveTempDir — каталог недособранных архивов внутри каталога данных. Его
-// содержимое живёт только на время запроса; сервер чистит его при старте.
+// ArchiveTempDir — каталог, где до 0.30.1 собирались архивы участников. Теперь
+// архив идёт потоком; сервер при старте чистит каталог от остатков прежних версий.
 func ArchiveTempDir(dataDir string) string {
 	if dataDir == "" {
 		return filepath.Join(os.TempDir(), "wynd-archive")
 	}
 	return filepath.Join(dataDir, "tmp")
-}
-
-func (s *Server) createArchiveTemp() (*os.File, error) {
-	dir := ArchiveTempDir(s.DataDir)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return nil, err
-	}
-	return os.CreateTemp(dir, "archive-*.zip")
 }
 
 // sendArchiveCycleStartEmails рассылает письма о старте цикла в фоне.

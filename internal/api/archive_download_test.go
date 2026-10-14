@@ -14,10 +14,11 @@ import (
 	"gitea.mixdep.ru/mix/wynd/internal/api"
 )
 
-// Инвариант (план 42, ARC-1, ARC-2): архив отдаётся с длиной и поддержкой
-// Range — обрыв на гигабайтах докачивается, а не собирается заново с нуля;
-// повторная сборка даёт те же байты. Медиа лежат в ZIP без сжатия, HTML —
-// сжат. После ответа во временном каталоге ничего не остаётся.
+// Инвариант (план 42, ARC-1, ARC-2; план 46, C38): архив участника идёт
+// потоком с точной длиной заранее — браузер видит ход; повторная сборка даёт
+// те же байты. Range не поддерживается: оборванное начинается заново (решение
+// владельца 2026-10-14). Медиа лежат в ZIP без сжатия, HTML — сжат. На диске
+// сервера архив не лежит.
 func TestArchiveDownloadRangeAndStoredMedia(t *testing.T) {
 	srv, caps, _, _ := setupAPI(t)
 	tok, _ := registerSession(t, srv, caps, "range@example.com")
@@ -69,20 +70,28 @@ func TestArchiveDownloadRangeAndStoredMedia(t *testing.T) {
 	if !sawMedia {
 		t.Fatal("архив без медиа")
 	}
+	// Обе раскладки сразу (6.37): лента и страницы по записям с оглавлением.
+	names := map[string]bool{}
+	for _, f := range zr.File {
+		names[f.Name] = true
+	}
+	if !names["index.html"] || !names["posts/index.html"] {
+		t.Fatalf("нет одной из раскладок: %v", names)
+	}
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/circles/"+circleID+"/archive/download", nil)
 	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("Range", "bytes=10-")
-	part := httptest.NewRecorder()
-	srv.ServeHTTP(part, req)
-	if part.Code != http.StatusPartialContent {
-		t.Fatalf("range: %d %s", part.Code, part.Body.String())
+	again := httptest.NewRecorder()
+	srv.ServeHTTP(again, req)
+	if again.Code != http.StatusOK {
+		t.Fatalf("повтор с Range: %d, ждали весь архив заново", again.Code)
 	}
-	if !bytes.Equal(part.Body.Bytes(), full[10:]) {
-		t.Fatal("докачка не совпала с хвостом полного архива: сборка недетерминирована")
+	if !bytes.Equal(again.Body.Bytes(), full) {
+		t.Fatal("повторная сборка дала другие байты: сборка недетерминирована")
 	}
-	if got := part.Header().Get("Content-Length"); got != strconv.Itoa(len(full)-10) {
-		t.Fatalf("Content-Length = %q, want %d", got, len(full)-10)
+	if got := again.Header().Get("Content-Length"); got != strconv.Itoa(len(full)) {
+		t.Fatalf("Content-Length = %q, а пришло %d байт", got, len(full))
 	}
 
 	entries, err := os.ReadDir(api.ArchiveTempDir(srv.DataDir))
@@ -91,5 +100,40 @@ func TestArchiveDownloadRangeAndStoredMedia(t *testing.T) {
 	}
 	if len(entries) != 0 {
 		t.Fatalf("во временном каталоге остались файлы: %v", entries)
+	}
+}
+
+// Инвариант (C38): одноразовая ссылка отдаёт тот же архив без заголовка
+// входа, работает один раз, и выдаётся только участнику круга.
+func TestArchiveOneTimeLink(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	tok, _ := registerSession(t, srv, caps, "link@example.com")
+	stranger, _ := registerSession(t, srv, caps, "stranger@example.com")
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles", tok, map[string]any{
+		"name": "Семья", "owner_name": "Аня",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("circle: %d %s", rec.Code, rec.Body.String())
+	}
+	circleID := jsonStr(t, rec, "id")
+	startArchive(t, srv, tok, circleID)
+
+	if rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/archive/link", stranger, nil); rec.Code != http.StatusForbidden && rec.Code != http.StatusNotFound {
+		t.Fatalf("ссылка чужому: %d %s", rec.Code, rec.Body.String())
+	}
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/archive/link", tok, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("link: %d %s", rec.Code, rec.Body.String())
+	}
+	url := jsonStr(t, rec, "url")
+	byLink := doGET(t, srv, url, "")
+	if byLink.Code != http.StatusOK || byLink.Header().Get("Content-Type") != "application/zip" {
+		t.Fatalf("по ссылке: %d %s", byLink.Code, byLink.Header().Get("Content-Type"))
+	}
+	if !bytes.Equal(byLink.Body.Bytes(), downloadArchive(t, srv, tok, circleID)) {
+		t.Fatal("по ссылке пришёл другой архив")
+	}
+	if again := doGET(t, srv, url, ""); again.Code != http.StatusNotFound {
+		t.Fatalf("второй раз по той же ссылке: %d", again.Code)
 	}
 }

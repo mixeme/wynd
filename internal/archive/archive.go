@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"os"
 	"path"
 	"strings"
 	"time"
@@ -30,9 +31,11 @@ const (
 type BuildInput struct {
 	CircleName string
 	CutoffDate string
-	Layout     Layout
-	Posts      []chronicle.FeedPost
-	Blobs      *blob.Store
+	// Layout не влияет на архив: с 0.30.1 в нём обе раскладки (кадр 6.37).
+	// Поле осталось, чтобы старые клиенты с ?layout= получали тот же архив.
+	Layout Layout
+	Posts  []chronicle.FeedPost
+	Blobs  *blob.Store
 	// Avatars maps identity id to avatar blob id (faces are not anonymized).
 	Avatars map[string]string
 	// DayTitles maps entry date to the day title said before the cutoff.
@@ -42,6 +45,11 @@ type BuildInput struct {
 	// Fonts — сборка клиента (web/dist); из неё в ZIP кладётся Golos Text.
 	// nil или файла нет — архив на системном шрифте.
 	Fonts fs.FS
+	// SizeOnly — холостая сборка: вместо медиа нули той же длины. Длина ZIP
+	// от содержимого файлов не зависит (Store, заголовки без времени), так что
+	// холостой проход заранее даёт точный размер для Content-Length — и диск
+	// при этом не читается.
+	SizeOnly bool
 }
 
 // BuildPersonalArchive writes a self-contained ZIP with media/ and HTML to w.
@@ -53,10 +61,6 @@ type BuildInput struct {
 func BuildPersonalArchive(ctx context.Context, w io.Writer, in BuildInput) error {
 	if in.Blobs == nil {
 		return fmt.Errorf("archive: nil blob store")
-	}
-	layout := in.Layout
-	if layout == "" {
-		layout = LayoutFeed
 	}
 	zw := zip.NewWriter(w)
 
@@ -82,6 +86,25 @@ func BuildPersonalArchive(ctx context.Context, w io.Writer, in BuildInput) error
 		if err != nil {
 			return fmt.Errorf("archive: blob %s: %w", blobID, err)
 		}
+		name := "media/" + blobID + extensionForMime(info.MimeType)
+		if in.SizeOnly {
+			fi, err := os.Stat(info.Path)
+			if errors.Is(err, fs.ErrNotExist) {
+				return nil
+			}
+			if err != nil {
+				return fmt.Errorf("archive: stat blob %s: %w", blobID, err)
+			}
+			fw, err := zw.CreateHeader(&zip.FileHeader{Name: name, Method: zip.Store})
+			if err != nil {
+				return err
+			}
+			if _, err := io.CopyN(fw, zeros{}, fi.Size()); err != nil {
+				return err
+			}
+			mediaNames[blobID] = name
+			return nil
+		}
 		f, err := openBlobFile(info.Path)
 		if errors.Is(err, fs.ErrNotExist) {
 			log.Printf("archive: blob %s file missing, skipped", blobID)
@@ -91,7 +114,6 @@ func BuildPersonalArchive(ctx context.Context, w io.Writer, in BuildInput) error
 			return fmt.Errorf("archive: open blob %s: %w", blobID, err)
 		}
 		defer f.Close()
-		name := "media/" + blobID + extensionForMime(info.MimeType)
 		fw, err := zw.CreateHeader(&zip.FileHeader{Name: name, Method: zip.Store})
 		if err != nil {
 			return err
@@ -141,22 +163,21 @@ func BuildPersonalArchive(ctx context.Context, w io.Writer, in BuildInput) error
 		st.fonts = append(st.fonts, f)
 	}
 
-	switch layout {
-	case LayoutPosts:
-		index := renderPostsIndex(st, in.CircleName, in.CutoffDate, in.Posts, in.DayTitles)
-		if err := writeZipFile(zw, "index.html", []byte(index)); err != nil {
-			return err
-		}
-		for _, fp := range in.Posts {
-			body := renderPostPage(st, in.CircleName, fp, mediaNames, in.Avatars, in.DayTitles)
-			fname := path.Join("posts", fp.Post.ID+".html")
-			if err := writeZipFile(zw, fname, []byte(body)); err != nil {
-				return err
-			}
-		}
-	default:
-		feed := renderFeedIndex(st, in.CircleName, in.CutoffDate, in.Posts, mediaNames, in.Avatars, in.DayTitles)
-		if err := writeZipFile(zw, "index.html", []byte(feed)); err != nil {
+	// В архиве обе раскладки (кадр 6.37, решение 2026-10-13): единая лента в
+	// index.html и страница на каждую запись в posts/ с оглавлением, медиа у
+	// них общее. Выбирать заранее не нужно — и пересобирать ради другой тоже.
+	feed := renderFeedIndex(st, in.CircleName, in.CutoffDate, in.Posts, mediaNames, in.Avatars, in.DayTitles)
+	if err := writeZipFile(zw, "index.html", []byte(feed)); err != nil {
+		return err
+	}
+	toc := renderPostsIndex(st, in.CircleName, in.CutoffDate, in.Posts, in.DayTitles)
+	if err := writeZipFile(zw, "posts/index.html", []byte(toc)); err != nil {
+		return err
+	}
+	for _, fp := range in.Posts {
+		body := renderPostPage(st, in.CircleName, fp, mediaNames, in.Avatars, in.DayTitles)
+		fname := path.Join("posts", fp.Post.ID+".html")
+		if err := writeZipFile(zw, fname, []byte(body)); err != nil {
 			return err
 		}
 	}
@@ -359,15 +380,16 @@ func renderFeedIndex(st style, circleName, cutoff string, posts []chronicle.Feed
 
 func renderPostsIndex(st style, circleName, cutoff string, posts []chronicle.FeedPost, dayTitles map[string]string) string {
 	var b strings.Builder
-	st.head(&b, circleName+" — оглавление", "")
+	st.head(&b, circleName+" — оглавление", "../")
 	st.header(&b, circleName, cutoff)
+	b.WriteString("<a class=\"back\" href=\"../index.html\">← единая лента</a>")
 	b.WriteString("<ul class=\"toc\">")
 	for _, fp := range posts {
 		label := fp.Post.AuthorName
 		if fp.Post.Body != "" {
 			label += ": " + snippet(fp.Post.Body, snippetRunes)
 		}
-		b.WriteString("<li><a href=\"posts/")
+		b.WriteString("<li><a href=\"")
 		b.WriteString(html.EscapeString(fp.Post.ID))
 		b.WriteString(".html\">")
 		b.WriteString(html.EscapeString(label))
@@ -383,9 +405,7 @@ func renderPostsIndex(st style, circleName, cutoff string, posts []chronicle.Fee
 func renderPostPage(st style, circleName string, fp chronicle.FeedPost, media, avatars, dayTitles map[string]string) string {
 	var b strings.Builder
 	st.head(&b, circleName, "../")
-	b.WriteString("<a class=\"back\" href=\"../index.html\">← ")
-	b.WriteString(html.EscapeString(circleName))
-	b.WriteString("</a>")
+	b.WriteString("<a class=\"back\" href=\"index.html\">← оглавление</a>")
 	appendPostHTML(&b, fp, media, avatars, dayTitles, true)
 	b.WriteString(pageEnd)
 	return b.String()
@@ -584,4 +604,29 @@ func reactionMark(key string) string {
 func HasExternalLinks(htmlDoc string) bool {
 	lower := strings.ToLower(htmlDoc)
 	return strings.Contains(lower, "http://") || strings.Contains(lower, "https://") || strings.Contains(lower, "//www.")
+}
+
+// zeros — бесконечный поток нулей для холостой сборки (SizeOnly).
+type zeros struct{}
+
+func (zeros) Read(p []byte) (int, error) {
+	clear(p)
+	return len(p), nil
+}
+
+// Size — точная длина архива in в байтах: холостая сборка без чтения медиа.
+func Size(ctx context.Context, in BuildInput) (int64, error) {
+	in.SizeOnly = true
+	var cw countWriter
+	if err := BuildPersonalArchive(ctx, &cw, in); err != nil {
+		return 0, err
+	}
+	return cw.n, nil
+}
+
+type countWriter struct{ n int64 }
+
+func (c *countWriter) Write(p []byte) (int, error) {
+	c.n += int64(len(p))
+	return len(p), nil
 }

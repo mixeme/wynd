@@ -48,6 +48,10 @@ type Server struct {
 	// в памяти, и N параллельных запросов одного участника держали N копий
 	// среза (аудит 2026-09-22). Одна сборка на учётку, повтор — 429.
 	archiveBuilds sync.Map
+	// archiveLinks — одноразовые ссылки на архив участника (C38): токен →
+	// archiveLink. Живут в памяти минуту; перезапуск их гасит — приложение
+	// просит новую.
+	archiveLinks sync.Map
 	// Posters снимает кадр ролику, пришедшему без него (план 49, временно —
 	// до нативной обёртки). nil или без ffmpeg — ничего не делает.
 	Posters *poster.Maker
@@ -220,6 +224,8 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("PUT /api/v1/circles/{circle_id}/archive/cutoff", paid(s.handleMoveCutoff))
 	s.Mux.HandleFunc("PUT /api/v1/circles/{circle_id}/archive/deadline", paid(s.handleMoveDeadline))
 	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}/archive/download", paid(s.handleArchiveDownload))
+	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/archive/link", paid(s.handleArchiveLink))
+	s.Mux.HandleFunc("GET /api/v1/archive/{token}", s.handleArchiveByLink)
 }
 
 // ServeHTTP sets nosniff on every response and dispatches to Mux.
