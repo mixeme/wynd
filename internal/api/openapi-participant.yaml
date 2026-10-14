@@ -785,7 +785,7 @@ paths:
       description: estimate_bytes, posts, members, fits (room on the server for a ready file), retention_hours and the latest archive (status building, ready, failed or removed with removed_reason).
     post:
       summary: Build the full circle archive in the background (owner)
-      description: Body {delete_circle, key?} — key is {public_key, salt, iterations} of an X25519 key the device derived from the password (PBKDF2-SHA-256); the password never reaches the server. 409 archive_busy while one is building or ready; 507 no_room when the ready file does not fit.
+      description: Body {delete_circle, key?} — key is {public_key, salt, log_n} of an X25519 key the device derived from the password (scrypt, N = 2^log_n, r = 8, p = 1); the password never reaches the server. 409 archive_busy while one is building or ready; 507 no_room when the ready file does not fit.
     delete:
       summary: Cancel the build or delete the ready file without downloading (owner)
 

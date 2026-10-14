@@ -55,9 +55,9 @@ type fullLink struct {
 }
 
 type fullArchiveKeyBody struct {
-	PublicKey  string `json:"public_key"`
-	Salt       string `json:"salt"`
-	Iterations int    `json:"iterations"`
+	PublicKey string `json:"public_key"`
+	Salt      string `json:"salt"`
+	LogN      int    `json:"log_n"`
 }
 
 type fullArchiveStartBody struct {
@@ -74,7 +74,7 @@ func (b *fullArchiveKeyBody) params() (*archive.KeyParams, error) {
 	if err1 != nil || err2 != nil {
 		return nil, chronicle.ErrInvalid
 	}
-	k := &archive.KeyParams{PublicKey: pub, Salt: salt, Iterations: b.Iterations}
+	k := &archive.KeyParams{PublicKey: pub, Salt: salt, LogN: b.LogN}
 	// Проверка ключа — та же, что при шифровании: плохой ключ — отказ сразу,
 	// а не сборка, которая упадёт через полчаса.
 	if _, err := archive.EncryptedSize(0, *k); err != nil {

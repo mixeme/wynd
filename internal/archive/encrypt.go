@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/ecdh"
-	"crypto/pbkdf2"
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -14,12 +12,14 @@ import (
 	"strings"
 
 	"filippo.io/age"
+	"golang.org/x/crypto/scrypt"
 )
 
 // Шифрование полного архива (план 51). Пароль на сервер не уходит: устройство
-// выводит из него закрытый ключ X25519 (PBKDF2-SHA-256 — есть в WebCrypto на
-// всех браузерах) и отдаёт серверу только открытый ключ и соль. Сервер
-// шифрует на открытый ключ потоком age и расшифровать файл сам не может.
+// выводит из него закрытый ключ X25519 (scrypt — на устройстве чистым JS, без
+// WebCrypto, которого нет вне защищённого контекста; к подбору на видеокартах
+// он стоек благодаря памяти) и отдаёт серверу только открытый ключ и соль.
+// Сервер шифрует на открытый ключ потоком age и расшифровать файл сам не может.
 // Соль и параметры лежат в заголовке файла открыто — без них ключ не вывести.
 //
 // Файл: строка EncryptedMagic, строка JSON EncryptedHeader, затем поток age
@@ -27,12 +27,15 @@ import (
 
 const (
 	EncryptedMagic = "wynd-encrypted/v1"
-	// KDFPBKDF2 — вывод ключа из пароля. Повторов столько, сколько советует
-	// OWASP для PBKDF2-HMAC-SHA256 (2023): телефон считает около секунды.
-	KDFPBKDF2         = "pbkdf2-sha256"
-	DefaultIterations = 600_000
-	minIterations     = 100_000
-	saltLen           = 16
+	// KDFScrypt — вывод ключа из пароля: scrypt с N = 2^LogN, r = 8, p = 1.
+	// 2^15 — 32 МБ памяти, на телефоне около секунды; меньше не принимаем.
+	KDFScrypt   = "scrypt"
+	DefaultLogN = 15
+	minLogN     = 15
+	maxLogN     = 20
+	scryptR     = 8
+	scryptP     = 1
+	saltLen     = 16
 	// ageChunk — кусок потока age: на каждый 16 байт метки.
 	ageChunk = 64 << 10
 	ageTag   = 16
@@ -40,26 +43,28 @@ const (
 
 // EncryptedHeader — открытые параметры ключа в начале зашифрованного файла.
 type EncryptedHeader struct {
-	KDF        string `json:"kdf"`
-	Iterations int    `json:"iterations"`
-	Salt       string `json:"salt"`
+	KDF  string `json:"kdf"`
+	LogN int    `json:"log_n"`
+	R    int    `json:"r"`
+	P    int    `json:"p"`
+	Salt string `json:"salt"`
 	// Recipient — открытый ключ в записи age («age1…»).
 	Recipient string `json:"recipient"`
 }
 
 // KeyParams — что устройство прислало для шифрования: открытый ключ X25519,
-// соль и число повторов, с которыми ключ выведен из пароля.
+// соль и стоимость scrypt, с которыми ключ выведен из пароля.
 type KeyParams struct {
-	PublicKey  []byte
-	Salt       []byte
-	Iterations int
+	PublicKey []byte
+	Salt      []byte
+	LogN      int
 }
 
 // ErrBadKey — открытый ключ или параметры вывода не годятся.
 var ErrBadKey = errors.New("archive: bad encryption key")
 
 func (k KeyParams) validate() error {
-	if len(k.PublicKey) != 32 || len(k.Salt) != saltLen || k.Iterations < minIterations {
+	if len(k.PublicKey) != 32 || len(k.Salt) != saltLen || k.LogN < minLogN || k.LogN > maxLogN {
 		return ErrBadKey
 	}
 	if _, err := ecdh.X25519().NewPublicKey(k.PublicKey); err != nil {
@@ -77,7 +82,7 @@ func (k KeyParams) header() (string, error) {
 		return "", err
 	}
 	h, err := json.Marshal(EncryptedHeader{
-		KDF: KDFPBKDF2, Iterations: k.Iterations,
+		KDF: KDFScrypt, LogN: k.LogN, R: scryptR, P: scryptP,
 		Salt: base64.StdEncoding.EncodeToString(k.Salt), Recipient: rec,
 	})
 	if err != nil {
@@ -140,8 +145,11 @@ func EncryptedSize(plain int64, k KeyParams) (int64, error) {
 
 // DeriveKey выводит из пароля закрытый ключ X25519 так же, как устройство.
 // Сервер её не зовёт — она для проверок и оживления на этой стороне.
-func DeriveKey(password string, salt []byte, iterations int) (*ecdh.PrivateKey, error) {
-	raw, err := pbkdf2.Key(sha256.New, password, salt, iterations, 32)
+func DeriveKey(password string, salt []byte, logN int) (*ecdh.PrivateKey, error) {
+	if logN < 1 || logN > maxLogN {
+		return nil, ErrBadKey
+	}
+	raw, err := scrypt.Key([]byte(password), salt, 1<<logN, scryptR, scryptP, 32)
 	if err != nil {
 		return nil, err
 	}
@@ -161,14 +169,14 @@ func Decrypt(r io.Reader, password string) (io.Reader, error) {
 		return nil, fmt.Errorf("archive: broken header: %w", err)
 	}
 	var h EncryptedHeader
-	if err := json.Unmarshal(bytes.TrimSpace(line), &h); err != nil || h.KDF != KDFPBKDF2 {
+	if err := json.Unmarshal(bytes.TrimSpace(line), &h); err != nil || h.KDF != KDFScrypt || h.R != scryptR || h.P != scryptP {
 		return nil, fmt.Errorf("archive: broken header")
 	}
 	salt, err := base64.StdEncoding.DecodeString(h.Salt)
 	if err != nil {
 		return nil, fmt.Errorf("archive: broken header")
 	}
-	priv, err := DeriveKey(password, salt, h.Iterations)
+	priv, err := DeriveKey(password, salt, h.LogN)
 	if err != nil {
 		return nil, err
 	}

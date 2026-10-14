@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -20,13 +21,11 @@ func testKey(t *testing.T, password string) archive.KeyParams {
 	if _, err := rand.Read(salt); err != nil {
 		t.Fatal(err)
 	}
-	// Меньше повторов, чем у устройства: проверке хватает нижней границы.
-	const iterations = 100_000
-	priv, err := archive.DeriveKey(password, salt, iterations)
+	priv, err := archive.DeriveKey(password, salt, archive.DefaultLogN)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return archive.KeyParams{PublicKey: priv.PublicKey().Bytes(), Salt: salt, Iterations: iterations}
+	return archive.KeyParams{PublicKey: priv.PublicKey().Bytes(), Salt: salt, LogN: archive.DefaultLogN}
 }
 
 // Инвариант (план 51): файл, зашифрованный на открытый ключ, открывается
@@ -86,9 +85,9 @@ func TestEncryptRejectsBadKey(t *testing.T) {
 		t.Fatalf("короткая соль: %v", err)
 	}
 	bad = k
-	bad.Iterations = 1000
+	bad.LogN = 10
 	if _, err := archive.Encrypt(io.Discard, bad); err != archive.ErrBadKey {
-		t.Fatalf("мало повторов: %v", err)
+		t.Fatalf("дешёвый scrypt: %v", err)
 	}
 	bad = k
 	bad.PublicKey = make([]byte, 31)
@@ -211,5 +210,19 @@ func TestFullArchiveEncrypted(t *testing.T) {
 	z, _ := io.ReadAll(r)
 	if _, err := zip.NewReader(bytes.NewReader(z), int64(len(z))); err != nil {
 		t.Fatalf("внутри не ZIP: %v", err)
+	}
+}
+
+// Тот же пример, что в web/src/lib/archive/fullkey.test.ts: ключ из пароля
+// выводят одинаково устройство (JS) и эта сторона (Go). Разошлись — файл,
+// зашифрованный на устройстве, здесь не открыть.
+func TestDeriveKeyMatchesDevice(t *testing.T) {
+	priv, err := archive.DeriveKey("дача-самовар-облако-17", []byte("wynd-test-salt16"), 15)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const wantPub = "fc2e4afacf6e841679da98516ae8bf3f5c3abf0eb163f63ba693e7dd75f99735"
+	if got := fmt.Sprintf("%x", priv.PublicKey().Bytes()); got != wantPub {
+		t.Fatalf("открытый ключ %s, ждали %s", got, wantPub)
 	}
 }

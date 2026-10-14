@@ -214,17 +214,17 @@ func TestFullArchiveEncryptedWithDeviceKey(t *testing.T) {
 	srv, tok, circleID := fullArchiveCircle(t)
 	salt := make([]byte, 16)
 	_, _ = rand.Read(salt)
-	priv, err := archive.DeriveKey("дача-самовар-облако-17", salt, 100_000)
+	priv, err := archive.DeriveKey("дача-самовар-облако-17", salt, archive.DefaultLogN)
 	if err != nil {
 		t.Fatal(err)
 	}
 	key := map[string]any{
 		"public_key": base64.StdEncoding.EncodeToString(priv.PublicKey().Bytes()),
 		"salt":       base64.StdEncoding.EncodeToString(salt),
-		"iterations": 100_000,
+		"log_n":      archive.DefaultLogN,
 	}
 	if rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/full_archive", tok, map[string]any{
-		"key": map[string]any{"public_key": "AAAA", "salt": key["salt"], "iterations": 100_000},
+		"key": map[string]any{"public_key": "AAAA", "salt": key["salt"], "log_n": archive.DefaultLogN},
 	}); rec.Code != http.StatusBadRequest {
 		t.Fatalf("негодный ключ: %d %s", rec.Code, rec.Body.String())
 	}
