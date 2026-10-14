@@ -163,7 +163,7 @@
 			{:else}
 				{formatBytes(usedBytes)} · ограничение не задано
 			{/if}
-			{#if full}· писать в круг больше нельзя: ни текст, ни фотографии{/if}
+			{#if full}· писать в круг больше нельзя{/if}
 		</Hint>
 		{#if capped}
 			<SettingsRow

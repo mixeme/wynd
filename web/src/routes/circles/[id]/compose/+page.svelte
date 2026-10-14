@@ -27,7 +27,7 @@
 	import { authErrorHint } from '$lib/auth/auth';
 	import { circleInitial } from '$lib/circles/meta';
 	import { fetchMembers, type MemberInfo } from '$lib/circles/settings';
-	import { formatEditableUntil, formatEntryDate, formatPostTime, isEditableActive } from '$lib/format/time';
+	import { formatEditableUntil, formatEntryDate, isEditableActive } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadFeedCached } from '$lib/journal/feed';
 	import {
@@ -131,12 +131,6 @@
 		const what = compressKind === 'audio' ? 'звук' : 'видео';
 		return pct > 0 ? `Сжимаем ${what}${of}… ${pct}%` : `Сжимаем ${what}${of}…`;
 	});
-	const windowsDiverged = $derived(
-		isEdit &&
-			editingPost &&
-			editingPost.edit_window_sec !== circle.editWindowSec &&
-			!(editingPost.edit_window_sec == null && circle.editWindowSec == null)
-	);
 	const editWindowTitle = $derived(
 		editingPost?.editable_until?.startsWith('9999-')
 			? 'Правится без ограничения'
@@ -194,20 +188,6 @@
 			/* приватный режим без хранилища — черновик просто не сохраняется */
 		}
 	});
-
-	function editWindowSubtitle(post: FeedPost): string {
-		const when = formatPostTime(post.created_at, post.entry_date).split(',')[0];
-		const sec = post.edit_window_sec;
-		if (sec == null) return `вышла ${when}, когда в круге не было ограничения`;
-		if (sec === 86_400) return `вышла ${when}, когда в круге стояли сутки`;
-		if (sec === 3600) return `вышла ${when}, когда в круге стоял час`;
-		const hours = Math.round(sec / 3600);
-		if (hours < 24) {
-			return `вышла ${when}, когда в круге стоял${hours === 1 ? '' : 'и'} ${hours} ч`;
-		}
-		const days = Math.round(hours / 24);
-		return `вышла ${when}, когда в круге стояли ${days === 1 ? 'сутки' : `${days} суток`}`;
-	}
 
 	function resizeBody() {
 		if (!bodyInput) return;
@@ -875,7 +855,7 @@
 	/>
 	{#if isEdit}
 		<Hint>
-			В ленте запись останется на своём месте. Дата нужна дню — в «Днях» она соберётся с
+			В ленте запись останется на своём месте. Дата нужна дню — в «Днях» запись соберётся с
 			остальными за {entryDate ? formatEntryDate(entryDate) : 'этот день'}.
 		</Hint>
 	{:else}
@@ -889,25 +869,10 @@
 		<SettingsRow
 			icon="clock"
 			title={editWindowTitle}
-			subtitle={windowsDiverged && editingPost
-				? editWindowSubtitle(editingPost)
-				: undefined}
 			chevron={false}
 			class="mt-18"
 			divided="both"
 		/>
-		{#if windowsDiverged}
-			<Hint>
-				Сейчас в круге стоит {circle.editWindowSec === 3600
-					? 'час'
-					: circle.editWindowSec === 86_400
-						? 'сутки'
-						: circle.editWindowSec == null
-							? 'без ограничения'
-							: `${Math.round((circle.editWindowSec ?? 0) / 3600)} ч`}, но запись сохранила своё
-				окно: правило поменяли после неё. У новых записей будет иначе.
-			</Hint>
-		{/if}
 	{/if}
 
 	{#if error}
@@ -928,9 +893,6 @@
 		<div class="mt-20">
 			<DangerZone items={['Удалить запись']} onitem={() => void deleteEditedPost()} />
 		</div>
-		<Hint class="m-8-16-0">
-			Удаление живёт по тому же окну: выйдет срок — исчезнет и эта строка.
-		</Hint>
 	{/if}
 
 	{#if isQueue}

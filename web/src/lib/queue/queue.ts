@@ -144,9 +144,9 @@ export function queuedTimeLabel(
 	fraction?: number,
 	error?: string
 ): string {
-	// Места нет (C42, 3.19): запись ждёт и уйдёт сама, когда место появится.
-	if (state !== 'uploading' && error === QUOTA_CIRCLE) return 'в круге кончилось место';
-	if (state !== 'uploading' && error === QUOTA_SERVER) return 'на сервере кончилось место';
+	// Места нет (C42, 3.21): запись ждёт и уйдёт сама, когда место появится.
+	if (state !== 'uploading' && error === QUOTA_CIRCLE) return 'в очереди · в круге кончилось место';
+	if (state !== 'uploading' && error === QUOTA_SERVER) return 'в очереди · на сервере кончилось место';
 	if (state !== 'uploading') return 'в очереди';
 	if (fraction === undefined) return 'отправляется';
 	return `отправляется · ${Math.min(100, Math.floor(fraction * 100))}%`;
