@@ -137,3 +137,49 @@ func TestArchiveOneTimeLink(t *testing.T) {
 		t.Fatalf("второй раз по той же ссылке: %d", again.Code)
 	}
 }
+
+// Инвариант (C39): звук и видео лежат в архиве со своим расширением —
+// с диска браузер узнаёт тип только по нему, и «.bin» не играл.
+func TestArchiveKeepsMediaExtensions(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	tok, _ := registerSession(t, srv, caps, "ext@example.com")
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles", tok, map[string]any{
+		"name": "Семья", "owner_name": "Аня",
+	})
+	circleID := jsonStr(t, rec, "id")
+	voice := uploadBytes(t, srv, tok, bytes.Repeat([]byte("webm"), 32), "audio/webm")
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/posts", tok, map[string]any{
+		"body": "голосовое", "entry_date": "2026-08-01",
+		"media": []map[string]any{{"blob_id": voice, "kind": "attachment"}},
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("post: %d %s", rec.Code, rec.Body.String())
+	}
+	startArchive(t, srv, tok, circleID)
+	data := downloadArchive(t, srv, tok, circleID)
+	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "media/" + voice + ".webm"
+	var found bool
+	var index string
+	for _, f := range zr.File {
+		if f.Name == want {
+			found = true
+		}
+		if f.Name == "index.html" {
+			rc, _ := f.Open()
+			b := new(bytes.Buffer)
+			_, _ = b.ReadFrom(rc)
+			_ = rc.Close()
+			index = b.String()
+		}
+	}
+	if !found {
+		t.Fatalf("в архиве нет %s", want)
+	}
+	if !strings.Contains(index, `<audio controls src="`+want+`"`) {
+		t.Fatalf("плеер не на том файле:\n%s", index)
+	}
+}

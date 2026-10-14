@@ -113,6 +113,13 @@ func TestAdminQuotaRequestApproveRejectAndInviteRevoke(t *testing.T) {
 		return items
 	}
 
+	// У круга своя квота 5 ГБ: просьбы о большем ждут администратора.
+	if rec := doJSON(t, srv, http.MethodPut, "/api/v1/admin/circles/"+circleID+"/quota", admin, map[string]any{
+		"custom": true, "quota_bytes": 5 * gb,
+	}); rec.Code != http.StatusOK {
+		t.Fatalf("квота круга: %d %s", rec.Code, rec.Body.String())
+	}
+
 	// Отказ: квота не меняется, заявка уходит из ожидающих и второй раз не решается.
 	before := quotaBytes()
 	rejected := request(7 * gb)
@@ -146,6 +153,21 @@ func TestAdminQuotaRequestApproveRejectAndInviteRevoke(t *testing.T) {
 	}
 	if len(pending()) != 0 {
 		t.Fatalf("утверждённая заявка осталась ожидающей: %+v", pending())
+	}
+
+	// Просьба о меньшем одобряется сама (решение владельца 2026-10-14):
+	// администратору решать нечего, квота сразу опускается.
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/quota_requests", ownerTok, map[string]any{
+		"requested_bytes": 3 * gb,
+	})
+	if rec.Code != http.StatusCreated || jsonStr(t, rec, "status") != "approved" {
+		t.Fatalf("просьба о меньшем: %d %s", rec.Code, rec.Body.String())
+	}
+	if got := quotaBytes(); int64(got) != 3*gb {
+		t.Fatalf("квота после просьбы о меньшем: %v", got)
+	}
+	if len(pending()) != 0 {
+		t.Fatalf("просьба о меньшем ждёт администратора: %+v", pending())
 	}
 
 	// Серверная ссылка: до отзыва работает, после — нет.

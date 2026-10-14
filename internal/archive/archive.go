@@ -86,7 +86,7 @@ func BuildPersonalArchive(ctx context.Context, w io.Writer, in BuildInput) error
 		if err != nil {
 			return fmt.Errorf("archive: blob %s: %w", blobID, err)
 		}
-		name := "media/" + blobID + extensionForMime(info.MimeType)
+		name := "media/" + blobID + mediaExtension(info.MimeType, info.Filename)
 		if in.SizeOnly {
 			fi, err := os.Stat(info.Path)
 			if errors.Is(err, fs.ErrNotExist) {
@@ -194,6 +194,21 @@ func writeZipFile(zw *zip.Writer, name string, data []byte) error {
 	return err
 }
 
+// mediaExtension — расширение файла в архиве. Архив открывают с диска, и
+// браузер узнаёт тип файла только по расширению: звук и видео с «.bin» не
+// играли (план 46, C39) — голосовые и видеосообщения из Firefox приходят WebM.
+// Тип без своего расширения в таблице — расширение исходного имени файла.
+func mediaExtension(mime, filename string) string {
+	if ext := extensionForMime(mime); ext != ".bin" {
+		return ext
+	}
+	ext := strings.ToLower(path.Ext(filename))
+	if len(ext) >= 2 && len(ext) <= 6 && strings.Trim(ext[1:], "abcdefghijklmnopqrstuvwxyz0123456789") == "" {
+		return ext
+	}
+	return ".bin"
+}
+
 func extensionForMime(mime string) string {
 	m := strings.ToLower(strings.TrimSpace(mime))
 	if i := strings.Index(m, ";"); i >= 0 {
@@ -208,8 +223,32 @@ func extensionForMime(mime string) string {
 		return ".gif"
 	case "image/webp":
 		return ".webp"
+	case "image/heic", "image/heif":
+		return ".heic"
 	case "video/mp4":
 		return ".mp4"
+	case "video/webm":
+		return ".webm"
+	case "video/quicktime":
+		return ".mov"
+	case "audio/mpeg", "audio/mp3":
+		return ".mp3"
+	case "audio/mp4", "audio/x-m4a", "audio/m4a":
+		return ".m4a"
+	case "audio/aac":
+		return ".aac"
+	case "audio/ogg":
+		return ".ogg"
+	case "audio/opus":
+		return ".opus"
+	case "audio/webm":
+		return ".webm"
+	case "audio/wav", "audio/x-wav", "audio/wave":
+		return ".wav"
+	case "audio/flac", "audio/x-flac":
+		return ".flac"
+	case "application/pdf":
+		return ".pdf"
 	default:
 		return ".bin"
 	}
@@ -461,6 +500,20 @@ func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, d
 		src, ok := media[m.BlobID]
 		if !ok {
 			b.WriteString("<p class=\"gone\">Файл недоступен на сервере</p>")
+			continue
+		}
+		if m.Kind == chronicle.MediaAttachment {
+			// Файл записи — ссылкой, как в комментарии: картинкой он не
+			// показывался, на его месте была пустая рамка (C39).
+			name := m.OriginalFilename
+			if name == "" {
+				name = "файл"
+			}
+			b.WriteString("<p class=\"cfile\"><a href=\"")
+			b.WriteString(html.EscapeString(prefix + src))
+			b.WriteString("\">")
+			b.WriteString(html.EscapeString(name))
+			b.WriteString("</a></p>")
 			continue
 		}
 		b.WriteString("<div class=\"media\">")

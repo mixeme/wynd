@@ -160,6 +160,24 @@ func (s *Store) ListPendingQuotaRequests(ctx context.Context) ([]QuotaRequest, e
 	return out, rows.Err()
 }
 
+// QuotaRequestLowers — просьба опускает квоту круга: меньше действующей (или
+// круг был без ограничения) и не меньше занятого. Такую просьбу одобрять
+// некому и незачем — она одобряется сама.
+func (s *Store) QuotaRequestLowers(ctx context.Context, circleID string, requested int64) (bool, error) {
+	used, err := s.circleUsedBytes(ctx, circleID)
+	if err != nil {
+		return false, err
+	}
+	if requested <= used {
+		return false, nil
+	}
+	cq, err := s.effectiveCircleQuotaBytes(ctx, circleID)
+	if err != nil {
+		return false, err
+	}
+	return !cq.Valid || requested < cq.Int64, nil
+}
+
 // ResolveQuotaRequest approves (sets absolute quota) or rejects a pending request.
 func (s *Store) ResolveQuotaRequest(ctx context.Context, id string, approve bool, adminNote string) (string, error) {
 	var circleID string

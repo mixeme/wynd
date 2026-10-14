@@ -32,7 +32,10 @@
 	let error = $state('');
 
 	const minGb = $derived(Math.max(1, Math.ceil(usedBytes / QUOTA_GB)));
-	const requestFloor = $derived(quotaBytes > 0 ? Math.max(usedBytes, quotaBytes) : usedBytes);
+	// Нижняя граница — уже занятое, как сказано под полем (6.11): «Ниже этого
+	// числа просить незачем». Меньше нынешней квоты попросить можно (C35):
+	// раньше экран требовал больше квоты, хотя подпись этого не говорила.
+	const requestFloor = $derived(usedBytes);
 	const selectedBytes = $derived.by(() => {
 		if (chip === 'custom') {
 			const n = Number(customGb);

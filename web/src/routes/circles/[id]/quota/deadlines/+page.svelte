@@ -104,6 +104,9 @@
 					deadline: deadlineIso,
 					reminder_before_sec: reminderSec
 				});
+				// Без перечитывания круг открывался без баннера цикла — до
+				// перезагрузки (C37): данные круга живут в общем макете.
+				await circle.refresh();
 				goto(`/circles/${circle.circleId}`);
 			}
 		} catch (err) {

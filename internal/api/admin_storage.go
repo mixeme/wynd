@@ -237,7 +237,20 @@ func (s *Server) handleCreateQuotaRequest(w http.ResponseWriter, r *http.Request
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]string{"id": id})
+	// Просьба о меньшем, чем есть, одобряется сама (решение владельца
+	// 2026-10-14): место она только возвращает серверу, администратору
+	// решать нечего. Меньше занятого — нельзя: круг сразу упёрся бы.
+	status := "pending"
+	if lower, err := s.Blobs.QuotaRequestLowers(r.Context(), circleID, body.RequestedBytes); err != nil {
+		writeError(w, err)
+		return
+	} else if lower {
+		if status, err = s.Blobs.ResolveQuotaRequest(r.Context(), id, true, ""); err != nil {
+			writeError(w, err)
+			return
+		}
+	}
+	writeJSON(w, http.StatusCreated, map[string]string{"id": id, "status": status})
 }
 
 func (s *Server) handleAdminQuotaRequests(w http.ResponseWriter, r *http.Request) {
