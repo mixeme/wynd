@@ -12,6 +12,8 @@ export interface InstanceInfo {
 	bootstrapped: boolean;
 	code_delivery?: 'log' | 'mail';
 	source_url?: string;
+	/** Значок «GDPR» у имени сервера (1.10) и выбор «Стереть моё имя и фото» (7.29). */
+	allow_name_erasure?: boolean;
 }
 
 export interface VerifyResult {

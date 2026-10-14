@@ -130,7 +130,7 @@
 	{#if checking}
 		<Hint class="mt-8">Проверяем сервер…</Hint>
 	{:else if instance}
-		<ServerRow name={instance.name} subtitle={serverSubtitle} variant="ok" card />
+		<ServerRow name={instance.name} subtitle={serverSubtitle} variant="ok" card gdpr={instance.allow_name_erasure} />
 	{/if}
 	<Label class="mt-16">Почта</Label>
 	<Input active type="email" autocomplete="email" bind:value={email} />

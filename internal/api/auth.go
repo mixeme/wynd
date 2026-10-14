@@ -83,6 +83,44 @@ func (s *Server) handleVerify(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type leaveServerBody struct {
+	EraseNames bool `json:"erase_names"`
+}
+
+// handleLeaveServer — уход с сервера насовсем (кадры 7.29–7.32): учётка
+// удаляется, из кругов ничего не удаляется. 409 — человек владеет кругами
+// (7.30); 403 — стирание имён на этом сервере не разрешено.
+func (s *Server) handleLeaveServer(w http.ResponseWriter, r *http.Request) {
+	sess, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+	body, ok := bindJSON[leaveServerBody](w, r)
+	if !ok {
+		return
+	}
+	if err := s.Auth.LeaveServer(r.Context(), sess.AccountID, body.EraseNames, time.Now().UTC()); err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// handleLeavePreview — круги на экране ухода: сколько их и какими человек
+// владеет (7.30).
+func (s *Server) handleLeavePreview(w http.ResponseWriter, r *http.Request) {
+	sess, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+	preview, err := s.Auth.LeavePreview(r.Context(), sess.AccountID)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, preview)
+}
+
 // handleRequestEmailChange шлёт код на новую почту вошедшего участника.
 func (s *Server) handleRequestEmailChange(w http.ResponseWriter, r *http.Request) {
 	sess, ok := requireSession(w, r)

@@ -1984,6 +1984,18 @@ a.link {
 .row2 + .row2 {
 	border-top: 1px solid var(--line);
 }
+/* Значок «GDPR» у имени сервера (1.10): название закона, без перевода. */
+.gdpr {
+	font-size: 10.5px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	padding: 1px 6px;
+	margin-left: 8px;
+	color: var(--muted);
+	vertical-align: 1px;
+}
 /* Строка под карточкой сервера: рамка карточки уже отделяет её. */
 .row2.server-card + .row2 {
 	border-top: 0;
@@ -2048,6 +2060,9 @@ a.link {
 	font-weight: 600;
 	color: var(--ink);
 	padding: 12px 14px 2px;
+}
+.danger.off {
+	opacity: 0.45;
 }
 .danger .di + .di {
 	border-top: 1px solid var(--line);

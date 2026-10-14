@@ -393,9 +393,11 @@ func TestInvariantEraseIdentityNames(t *testing.T) {
 	if before != after {
 		t.Fatal("events must not change")
 	}
-	_, err = e.ch.ResolveIdentityName(e.ctx, mem.IdentityID)
-	if !errors.Is(err, chronicle.ErrNotFound) {
-		t.Fatalf("name should not resolve: %v", err)
+	// Стёртое имя разрешается в пустую строку, а не в «нет участника»:
+	// строки ленты и хроники с ним продолжают собираться.
+	name, err := e.ch.ResolveIdentityName(e.ctx, mem.IdentityID)
+	if err != nil || name != "" {
+		t.Fatalf("name should not resolve: %q, %v", name, err)
 	}
 }
 

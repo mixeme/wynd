@@ -12,6 +12,7 @@ type accessBody struct {
 	Name             string  `json:"name"`
 	RegistrationMode string  `json:"registration_mode"`
 	PublicURL        *string `json:"public_url"`
+	AllowNameErasure *bool   `json:"allow_name_erasure"`
 }
 
 func (s *Server) handleAdminAccess(w http.ResponseWriter, r *http.Request) {
@@ -21,9 +22,10 @@ func (s *Server) handleAdminAccess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"name":              info.Name,
-		"registration_mode": info.RegistrationMode,
-		"public_url":        s.PublicURL(),
+		"name":               info.Name,
+		"registration_mode":  info.RegistrationMode,
+		"public_url":         s.PublicURL(),
+		"allow_name_erasure": info.AllowNameErasure,
 	})
 }
 
@@ -41,6 +43,12 @@ func (s *Server) handleAdminSetAccess(w http.ResponseWriter, r *http.Request) {
 	if body.RegistrationMode != "" {
 		mode := auth.RegistrationMode(body.RegistrationMode)
 		if err := s.Auth.SetRegistrationMode(r.Context(), mode); err != nil {
+			writeError(w, err)
+			return
+		}
+	}
+	if body.AllowNameErasure != nil {
+		if err := s.Auth.SetNameErasure(r.Context(), *body.AllowNameErasure); err != nil {
 			writeError(w, err)
 			return
 		}

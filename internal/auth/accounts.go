@@ -162,6 +162,28 @@ func (s *Service) AccountDetail(ctx context.Context, id string) (AccountDetail, 
 
 // DeleteAccount soft-deletes a participant account. Owner accounts return ErrConflict.
 func (s *Service) DeleteAccount(ctx context.Context, id string, now time.Time) error {
+	return s.deleteAccount(ctx, id, false, now)
+}
+
+// LeaveServer — уход участника с сервера насовсем (кадры 7.29–7.32, план 46,
+// A3). Учётка удаляется так же, как у администратора: из кругов ничего не
+// удаляется. eraseNames стирает имя, фото и пол во всех кругах сервера и
+// разрешён, только когда администратор включил «Разрешить стирать имена и
+// фото» (9.13); иначе ErrForbidden. Владелец кругов получает ErrConflict.
+func (s *Service) LeaveServer(ctx context.Context, id string, eraseNames bool, now time.Time) error {
+	if eraseNames {
+		allowed, err := s.NameErasureAllowed(ctx)
+		if err != nil {
+			return err
+		}
+		if !allowed {
+			return ErrForbidden
+		}
+	}
+	return s.deleteAccount(ctx, id, eraseNames, now)
+}
+
+func (s *Service) deleteAccount(ctx context.Context, id string, eraseNames bool, now time.Time) error {
 	if id == "" {
 		return ErrInvalid
 	}
@@ -211,6 +233,13 @@ func (s *Service) DeleteAccount(ctx context.Context, id string, now time.Time) e
 			return err
 		}
 	}
+	// Стирать — до того, как идентичности отвяжутся от учётки: потом их
+	// уже не найти.
+	if eraseNames {
+		if err := s.chronicle.EraseAccountNamesInTx(ctx, tx, id, now); err != nil {
+			return err
+		}
+	}
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE identities SET account_id = NULL WHERE account_id = ?
 	`, id); err != nil {
@@ -242,6 +271,17 @@ func (s *Service) DeleteAccount(ctx context.Context, id string, now time.Time) e
 	`, id); err != nil {
 		return fmt.Errorf("drop push subscriptions: %w", err)
 	}
+	// Настройки уведомлений и коды входа уходят вместе с учёткой: на экране
+	// ухода сказано, что исчезнут вход и уведомления (7.29).
+	for _, q := range []string{
+		`DELETE FROM account_notify_prefs WHERE account_id = ?`,
+		`DELETE FROM circle_notify_prefs WHERE account_id = ?`,
+		`DELETE FROM pending_codes WHERE account_id = ?`,
+	} {
+		if _, err := tx.ExecContext(ctx, q, id); err != nil {
+			return fmt.Errorf("drop account settings: %w", err)
+		}
+	}
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE invites SET revoked_at = ?
 		WHERE target_account_id = ? AND revoked_at IS NULL
@@ -254,4 +294,47 @@ func (s *Service) DeleteAccount(ctx context.Context, id string, now time.Time) e
 		return err
 	}
 	return tx.Commit()
+}
+
+// OwnedCircle — круг, который уходящий с сервера должен сначала передать или
+// удалить (кадр 7.30).
+type OwnedCircle struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Members int    `json:"members"`
+}
+
+// LeavePreview — что показать на экране ухода с сервера (7.29, 7.30): в
+// скольких кругах человек и какими владеет.
+type LeavePreview struct {
+	Circles int           `json:"circles"`
+	Owned   []OwnedCircle `json:"owned"`
+}
+
+func (s *Service) LeavePreview(ctx context.Context, accountID string) (LeavePreview, error) {
+	out := LeavePreview{Owned: []OwnedCircle{}}
+	if err := s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM memberships WHERE account_id = ? AND status = 'active'
+	`, accountID).Scan(&out.Circles); err != nil {
+		return LeavePreview{}, fmt.Errorf("leave preview: %w", err)
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT c.id, c.name,
+			(SELECT COUNT(*) FROM memberships m WHERE m.circle_id = c.id AND m.status = 'active')
+		FROM circles c
+		WHERE c.owner_account_id = ?
+		ORDER BY c.name COLLATE NOCASE
+	`, accountID)
+	if err != nil {
+		return LeavePreview{}, fmt.Errorf("leave preview: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var c OwnedCircle
+		if err := rows.Scan(&c.ID, &c.Name, &c.Members); err != nil {
+			return LeavePreview{}, err
+		}
+		out.Owned = append(out.Owned, c)
+	}
+	return out, rows.Err()
 }

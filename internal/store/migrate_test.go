@@ -118,3 +118,44 @@ func TestMigrateRefusesDatabaseBelowBaseline(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+// Инвариант (TST-4): 0032 добавляет переключатель стирания имён к уже
+// заполненной базе — выключенным, остальные настройки сервера целы.
+func TestMigrateNameErasureOverPopulatedBase(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "wynd.db")
+	s, err := openSQLite(fileDSN(path), true)
+	if err != nil {
+		t.Fatalf("openSQLite: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+	all, err := loadMigrations()
+	if err != nil {
+		t.Fatalf("loadMigrations: %v", err)
+	}
+	if _, err := s.db.Exec(`CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)`); err != nil {
+		t.Fatalf("schema_migrations: %v", err)
+	}
+	for _, m := range all {
+		if m.version >= 32 {
+			break
+		}
+		if err := applyMigration(s.db, m); err != nil {
+			t.Fatalf("migration %d: %v", m.version, err)
+		}
+	}
+	if _, err := s.db.Exec(`UPDATE instance_settings SET name = 'Дом Ани', registration_mode = 'open' WHERE id = 1`); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	if err := migrate(s.db); err != nil {
+		t.Fatalf("migrate over populated base: %v", err)
+	}
+	var name, mode string
+	var allow int
+	if err := s.db.QueryRow(`SELECT name, registration_mode, allow_name_erasure FROM instance_settings WHERE id = 1`).Scan(&name, &mode, &allow); err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	if name != "Дом Ани" || mode != "open" || allow != 0 {
+		t.Fatalf("name = %q, mode = %q, allow_name_erasure = %d", name, mode, allow)
+	}
+}

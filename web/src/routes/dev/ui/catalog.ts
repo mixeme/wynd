@@ -61,7 +61,7 @@ export const COMPONENT_MAP: CatalogGroup[] = [
 			{ component: 'AddPhotoButton', screen: 'e4-2, e1-3', smoke: '/dev/smoke/e4-2' },
 			{ component: 'IconButton', screen: 'e3-1', smoke: '/dev/smoke/e3-1' },
 			{ component: 'TextButton', screen: 'e4-2, e6-2', smoke: '/dev/smoke/e4-2' },
-			{ component: 'DangerZone', screen: 'e6-2', smoke: '/dev/smoke/e6-2' },
+			{ component: 'DangerZone', screen: 'e6-2, e7-30', smoke: '/dev/smoke/e6-2' },
 			{ component: 'DangerNote', screen: 'e6-12', smoke: '/dev/smoke/e6-12' },
 			{ component: 'VolumeChart', screen: 'e6-10', smoke: '/dev/smoke/e6-10' },
 			{ component: 'EditWindowPicker', screen: 'e2-4, e6-2', smoke: '/dev/smoke/e2-4' },
@@ -94,7 +94,7 @@ export const COMPONENT_MAP: CatalogGroup[] = [
 			{ component: 'MemberRow', screen: 'e6-3', smoke: '/dev/smoke/e6-3' },
 			{ component: 'SearchGroupHeader', screen: 'e2-9', smoke: '/dev/smoke/e2-9' },
 			{ component: 'SearchResultRow', screen: 'e2-9', smoke: '/dev/smoke/e2-9' },
-			{ component: 'ServerRow', screen: 'e1-6, e2-4, e2-5', smoke: '/dev/smoke/e2-4' },
+			{ component: 'ServerRow', screen: 'e1-6, e1-10, e2-4, e2-5', smoke: '/dev/smoke/e2-4' },
 			{ component: 'FoldHeader', screen: 'e4-5' },
 			{ component: 'GroupFoldCard', screen: 'e2-14' },
 			{ component: 'AttachmentRow', screen: 'e4-13, e4-15' },
@@ -147,7 +147,7 @@ export const COMPONENT_MAP: CatalogGroup[] = [
 			{ component: 'CodeBlock', screen: 'e9-9' },
 			{ component: 'InlineInput', screen: 'e9-5', smoke: '/dev/smoke/e9-5' },
 			{ component: 'AdminField / Panel', screen: 'e9-*' },
-			{ component: 'SwitchRow', screen: 'e9-6, e10-*' }
+			{ component: 'SwitchRow', screen: 'e9-6, e9-13, e10-*', smoke: '/dev/smoke/e9-13' }
 		]
 	},
 	{
@@ -168,6 +168,7 @@ export const SMOKE_ROUTES = [
 	{ id: 'e1-1', label: 'Приглашение', href: '/dev/smoke/e1-1' },
 	{ id: 'e1-2', label: 'Код из письма', href: '/dev/smoke/e1-2' },
 	{ id: 'e1-5', label: 'Войти', href: '/dev/smoke/e1-5' },
+	{ id: 'e1-10', label: 'Сервер соблюдает GDPR', href: '/dev/smoke/e1-10' },
 	{ id: 'e2-1', label: 'Список кругов', href: '/dev/smoke/e2-1' },
 	{ id: 'e2-15', label: 'Читает, не пишет', href: '/dev/smoke/e2-15' },
 	{ id: 'e2-4', label: 'Новый круг', href: '/dev/smoke/e2-4' },
@@ -185,8 +186,12 @@ export const SMOKE_ROUTES = [
 	{ id: 'e6-10', label: 'Место кончилось', href: '/dev/smoke/e6-10' },
 	{ id: 'e6-12', label: 'Сроки архивации', href: '/dev/smoke/e6-12' },
 	{ id: 'e7-4', label: 'Пуши', href: '/dev/smoke/e7-4' },
+	{ id: 'e7-29', label: 'Уйти с сервера насовсем', href: '/dev/smoke/e7-29' },
+	{ id: 'e7-30', label: 'Уйти: вы владелец', href: '/dev/smoke/e7-30' },
+	{ id: 'e7-31', label: 'Уйти: подтверждение', href: '/dev/smoke/e7-31' },
 	{ id: 'e9-5', label: 'Хранилище', href: '/dev/smoke/e9-5' },
-	{ id: 'e9-8', label: 'Проверка', href: '/dev/smoke/e9-8' }
+	{ id: 'e9-8', label: 'Проверка', href: '/dev/smoke/e9-8' },
+	{ id: 'e9-13', label: 'Люди: уход с сервера', href: '/dev/smoke/e9-13' }
 ] as const;
 
 export const ACCEPTANCE = [

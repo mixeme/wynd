@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+	authorInitial,
+	ERASED_NAME,
 	commentMediaItems,
 	commentPhotoIds,
 	dayCoverTileId,
@@ -232,5 +234,12 @@ describe('present', () => {
 		expect(localDayOf(at)).toBe('2026-09-30');
 		expect(isAttachedToOtherDay({ entry_date: '2026-09-30', created_at: at })).toBe(false);
 		expect(isAttachedToOtherDay({ entry_date: '2026-09-27', created_at: at })).toBe(true);
+	});
+});
+
+describe('authorInitial', () => {
+	it('у стёртого имени буквы нет (план 46, A3)', () => {
+		expect(authorInitial(ERASED_NAME)).toBe('');
+		expect(authorInitial('Боб')).toBe('Б');
 	});
 });

@@ -17,11 +17,15 @@
 	import { formatSessionDay } from '$lib/format/time';
 	import { stopSync } from '$lib/sync/sync';
 	import { savePendingEmailChange } from '$lib/auth/emailChange';
+	import { savePendingLeave } from '$lib/auth/leaveServer';
+	import { fetchInstance } from '$lib/auth/auth';
 
 	interface ServerRowState {
 		session: SessionRecord;
 		host: string;
 		circles: number;
+		/** Значок «GDPR» у имени сервера (1.10). */
+		gdpr: boolean;
 	}
 
 	let rows = $state<ServerRowState[]>([]);
@@ -43,16 +47,22 @@
 		const next: ServerRowState[] = [];
 		for (const session of sessions) {
 			let circles = 0;
+			let gdpr = false;
 			try {
-				circles = (await fetchCircles(session.origin)).filter((c) => c.status === 'active')
-					.length;
+				const [list, instance] = await Promise.all([
+					fetchCircles(session.origin),
+					fetchInstance(session.origin).catch(() => undefined)
+				]);
+				circles = list.filter((c) => c.status === 'active').length;
+				gdpr = Boolean(instance?.allow_name_erasure);
 			} catch {
 				/* unreachable origin */
 			}
 			next.push({
 				session,
 				host: displayHost(session.origin),
-				circles
+				circles,
+				gdpr
 			});
 		}
 		rows = next;
@@ -77,6 +87,16 @@
 		void goto('/settings/servers/email');
 	}
 
+	function leave(row: ServerRowState) {
+		savePendingLeave({
+			origin: row.session.origin,
+			serverName: row.session.name,
+			host: row.host,
+			email: row.session.email
+		});
+		void goto('/settings/servers/leave');
+	}
+
 	onMount(() => {
 		void refresh();
 	});
@@ -89,7 +109,13 @@
 		<Hint>На этом устройстве вы ни на одном сервере.</Hint>
 	{:else}
 		{#each rows as row, i (row.session.origin + row.session.email)}
-			<ServerRow name={row.session.name || row.host} subtitle={row.host} card top={i === 0 ? 10 : 26} />
+			<ServerRow
+				name={row.session.name || row.host}
+				subtitle={row.host}
+				card
+				gdpr={row.gdpr}
+				top={i === 0 ? 10 : 26}
+			/>
 			<SettingsRow
 				title={row.session.email}
 				subtitle={accountSubtitle(row.session, row.circles)}
@@ -102,6 +128,8 @@
 				chevron={false}
 				onclick={() => void logout(row.session.origin)}
 			/>
+			<!-- Уходят с одного сервера: строка под каждым (7.33). -->
+			<SettingsRow title="Уйти с сервера насовсем" onclick={() => leave(row)} />
 		{/each}
 	{/if}
 

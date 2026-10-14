@@ -38,6 +38,12 @@ describe('row components markup', () => {
 		}
 	});
 
+	it('ServerRow: значок GDPR у имени (1.10)', () => {
+		const html = render(ServerRow, { name: 'Дом', subtitle: 'wynd.example', card: true, gdpr: true });
+		expect(html).toContain('Дом<span class="gdpr">GDPR</span>');
+		expect(render(ServerRow, { name: 'Дом', subtitle: 'wynd.example', card: true })).not.toContain('GDPR');
+	});
+
 	it('SettingsRow', () => {
 		const cases: Array<[string, Record<string, unknown>]> = [
 			['plain', { title: 'Имя' }],

@@ -115,7 +115,12 @@ func (s *Service) Instance(ctx context.Context) (InstanceInfo, error) {
 	if err != nil {
 		return InstanceInfo{}, err
 	}
+	erasure, err := s.NameErasureAllowed(ctx)
+	if err != nil {
+		return InstanceInfo{}, err
+	}
 	return InstanceInfo{
+		AllowNameErasure: erasure,
 		Name:             name,
 		Version:          s.version,
 		RegistrationMode: mode,

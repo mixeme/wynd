@@ -9,6 +9,7 @@
 		subtitle,
 		variant = 'info',
 		card = false,
+		gdpr = false,
 		top = 14,
 		onclick,
 		class: className = '',
@@ -18,6 +19,11 @@
 		subtitle: string;
 		variant?: ServerRowVariant;
 		card?: boolean;
+		/**
+		 * Значок «GDPR» у имени (1.10): администратор разрешил уходящим стирать
+		 * имена и фото (9.13). Свойство сервера — стоит везде, где виден сервер.
+		 */
+		gdpr?: boolean;
 		/** Верхний отступ карточки, px: 0 — сразу под подписью поля («Сервер» на 1.1). */
 		top?: number;
 		onclick?: () => void;
@@ -38,7 +44,7 @@
 <Row {onclick} class={card ? `server-card ${className}`.trim() : className} style={rowStyle}>
 	{#snippet leading()}<Icon name="cloud" />{/snippet}
 	{#snippet main()}
-		<div style="font-weight:600">{name}</div>
+		<div style="font-weight:600">{name}{#if gdpr}<span class="gdpr">GDPR</span>{/if}</div>
 		<div class="sub">{subtitle}</div>
 	{/snippet}
 	{#snippet trailing()}

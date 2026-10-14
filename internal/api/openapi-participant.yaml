@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.28.14
+  version: 0.29.0
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:
@@ -581,6 +581,31 @@ paths:
           description: Code expired
         "429":
           description: Attempts used up or rate limited
+
+  /auth/leave:
+    get:
+      summary: What the leave screen shows (7.29, 7.30)
+      description: >
+        `{"circles": n, "owned": [{"id", "name", "members"}]}` — active circles
+        of the caller and the circles they own (must be transferred or deleted
+        before leaving).
+      responses:
+        "200":
+          description: Preview
+    post:
+      summary: Leave this server for good (screens 7.29–7.32)
+      description: >
+        Deletes the caller's account on this server; nothing is removed from
+        circles. Body `{"erase_names": bool}` — erase names, photos and gender
+        in every circle of the server; allowed only when the admin enabled
+        `allow_name_erasure`.
+      responses:
+        "200":
+          description: Account deleted, all sessions revoked
+        "403":
+          description: Name erasure is not allowed on this server
+        "409":
+          description: The caller owns circles — transfer or delete them first
 
   /invites/{token}:
     get:

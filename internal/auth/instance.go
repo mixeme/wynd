@@ -34,3 +34,28 @@ func (s *Service) SetRegistrationMode(ctx context.Context, mode RegistrationMode
 	`, string(mode), formatTime(time.Now().UTC()))
 	return err
 }
+
+// NameErasureAllowed — включён ли у сервера переключатель «Разрешить стирать
+// имена и фото» (кадр 9.13, план 46, A3).
+func (s *Service) NameErasureAllowed(ctx context.Context) (bool, error) {
+	var v int
+	if err := s.db.QueryRowContext(ctx, `
+		SELECT allow_name_erasure FROM instance_settings WHERE id = 1
+	`).Scan(&v); err != nil {
+		return false, fmt.Errorf("load name erasure: %w", err)
+	}
+	return v == 1, nil
+}
+
+// SetNameErasure включает и выключает стирание имён. Действует только на
+// будущие уходы: тех, кто ушёл раньше, переключатель не касается.
+func (s *Service) SetNameErasure(ctx context.Context, allow bool) error {
+	v := 0
+	if allow {
+		v = 1
+	}
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE instance_settings SET allow_name_erasure = ?, updated_at = ? WHERE id = 1
+	`, v, formatTime(time.Now().UTC()))
+	return err
+}

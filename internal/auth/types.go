@@ -52,6 +52,7 @@ type InstanceInfo struct {
 	RegistrationMode RegistrationMode `json:"registration_mode"`
 	Loopback         bool             `json:"loopback"`
 	Bootstrapped     bool             `json:"bootstrapped"`
+	AllowNameErasure bool             `json:"allow_name_erasure"`
 }
 
 type Account struct {

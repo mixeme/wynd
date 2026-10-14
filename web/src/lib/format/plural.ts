@@ -30,5 +30,10 @@ export const WORD = {
 	photo: ['фотография', 'фотографии', 'фотографий'] as PluralForms,
 	person: ['человек', 'человека', 'человек'] as PluralForms,
 	circle: ['круг', 'круга', 'кругов'] as PluralForms,
+	/** После «владелец»: владелец 21 круга, 5 кругов. */
+	circleGenitive: ['круга', 'кругов', 'кругов'] as PluralForms,
+	/** После «во всех»: во всех 21 круге, 5 кругах. */
+	circlePrepositional: ['круге', 'кругах', 'кругах'] as PluralForms,
+	member: ['участник', 'участника', 'участников'] as PluralForms,
 	yourCircle: ['ваш круг', 'ваших круга', 'ваших кругов'] as PluralForms
 } as const;

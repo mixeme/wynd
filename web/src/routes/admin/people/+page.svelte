@@ -9,15 +9,25 @@
 	import Loading from '$ui/Loading.svelte';
 	import Icon from '$ui/Icon.svelte';
 	import SearchField from '$ui/forms/SearchField.svelte';
+	import SectionLabel from '$ui/data/SectionLabel.svelte';
+	import SwitchRow from '$ui/admin/SwitchRow.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
-	import { fetchAccounts, serverCaption, type AdminAccount } from '$lib/admin/admin';
+	import {
+		fetchAccess,
+		fetchAccounts,
+		saveAccess,
+		serverCaption,
+		type AdminAccount
+	} from '$lib/admin/admin';
 
 	let accounts = $state<AdminAccount[]>([]);
 	let query = $state('');
 	let server = $state('');
 	let error = $state('');
 	let loading = $state(true);
+	let erasure = $state(false);
+	let erasureError = $state('');
 
 	const filtered = $derived(
 		accounts.filter((acc) => {
@@ -35,15 +45,31 @@
 		return String(acc.circle_count);
 	}
 
+	// Переключатель на весь сервер (9.13) — сохраняется сразу, как «Вход открыт».
+	async function saveErasure(on: boolean) {
+		erasureError = '';
+		try {
+			await saveAccess({ allow_name_erasure: on });
+		} catch (err) {
+			erasure = !on;
+			erasureError = authErrorHint(err);
+		}
+	}
+
 	function pluralPeople(n: number): string {
 		return plural(n, WORD.person);
 	}
 
 	onMount(async () => {
 		try {
-			const [list, caption] = await Promise.all([fetchAccounts(), serverCaption()]);
+			const [list, caption, access] = await Promise.all([
+				fetchAccounts(),
+				serverCaption(),
+				fetchAccess()
+			]);
 			accounts = list;
 			server = caption;
+			erasure = Boolean(access.allow_name_erasure);
 		} catch (err) {
 			error = authErrorHint(err);
 		} finally {
@@ -99,6 +125,21 @@
 				Панель знает почту и круги, не лица. Строка ведёт в карточку — закрыть вход и удалить
 				можно только там.
 			</div>
+			<SectionLabel class="mt-30 mx-0 mb-10">Уход с сервера</SectionLabel>
+			<SwitchRow
+				end
+				bind:checked={erasure}
+				onchange={(on) => void saveErasure(on)}
+				title="Разрешить стирать имена и фото"
+			>
+				Кто уходит с сервера насовсем, сможет стереть свои имена, фото и пол во всех кругах.
+				Записи останутся без подписи. Это право на удаление по GDPR: включите, если сервер
+				должен его соблюдать.
+			</SwitchRow>
+			<div class="fine mt-8">Тех, кто ушёл раньше, это не касается.</div>
+			{#if erasureError}
+				<Hint>{erasureError}</Hint>
+			{/if}
 		{/if}
 	</AdminSection>
 </AdminWideLayout>

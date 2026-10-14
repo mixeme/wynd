@@ -163,6 +163,7 @@
 				subtitle={peek.host || displayHost('')}
 				variant="ok"
 				card
+				gdpr={peek.allow_name_erasure}
 				top={0}
 			/>
 		{:else}

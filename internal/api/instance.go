@@ -30,6 +30,9 @@ func (s *Server) handleInstance(w http.ResponseWriter, r *http.Request) {
 		"loopback":          info.Loopback,
 		"bootstrapped":      info.Bootstrapped,
 		"code_delivery":     delivery,
+		// Значок «GDPR» у имени сервера (кадр 1.10): люди узнают заранее,
+		// что уходящий может стереть своё имя и фото во всех кругах.
+		"allow_name_erasure": info.AllowNameErasure,
 		// AGPL §13: клиент показывает ссылку на исходники этого сервера,
 		// а не адрес, зашитый в сборку клиента (LIC-2).
 		"source_url": version.SourceURL,

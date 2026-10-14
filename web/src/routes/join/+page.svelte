@@ -215,6 +215,7 @@
 			subtitle={blocked ? blockedSubtitle : openSubtitle}
 			variant={blocked ? 'warn' : 'ok'}
 			card
+			gdpr={instance.allow_name_erasure}
 		/>
 	{/if}
 	{#if blocked}
@@ -270,7 +271,7 @@
 	{:else if checking}
 		<Hint>Проверяем сервер…</Hint>
 	{:else if instance && blocked}
-		<ServerRow name={instance.name} subtitle={blockedSubtitle} variant="warn" card />
+		<ServerRow name={instance.name} subtitle={blockedSubtitle} variant="warn" card gdpr={instance.allow_name_erasure} />
 		<Hint class="mt-14">
 			Сервер новых не принимает — нужна ссылка-приглашение. Если вы уже на этом сервере,
 			вернитесь и войдите почтой.
@@ -280,7 +281,7 @@
 		>
 	{:else}
 		{#if instance}
-			<ServerRow name={instance.name} subtitle={openSubtitle} variant="ok" card />
+			<ServerRow name={instance.name} subtitle={openSubtitle} variant="ok" card gdpr={instance.allow_name_erasure} />
 		{/if}
 		<Label class="mt-16">Почта</Label>
 		<Input active type="email" autocomplete="email" bind:value={email} />

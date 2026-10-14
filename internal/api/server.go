@@ -145,6 +145,8 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("POST /api/v1/auth/logout", participant(s.handleLogout))
 	s.Mux.HandleFunc("POST /api/v1/auth/email", participant(s.handleRequestEmailChange))
 	s.Mux.HandleFunc("POST /api/v1/auth/email/verify", participant(s.handleConfirmEmailChange))
+	s.Mux.HandleFunc("GET /api/v1/auth/leave", participant(s.handleLeavePreview))
+	s.Mux.HandleFunc("POST /api/v1/auth/leave", participant(s.handleLeaveServer))
 	s.Mux.HandleFunc("GET /api/v1/sync", paid(s.handleSync))
 	s.Mux.HandleFunc("GET /api/v1/circles", paid(s.handleListCircles))
 	s.Mux.HandleFunc("POST /api/v1/circles", paid(s.handleCreateCircle))

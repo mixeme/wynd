@@ -69,8 +69,9 @@ func (s *Server) handlePeekInvite(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		out := map[string]any{
-			"server_name": info.Name,
-			"host":        host,
+			"server_name":        info.Name,
+			"host":               host,
+			"allow_name_erasure": info.AllowNameErasure,
 		}
 		if name != "" {
 			out["inviter_name"] = name
@@ -86,12 +87,13 @@ func (s *Server) handlePeekInvite(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"server_name":  info.Name,
-		"host":         host,
-		"circle_name":  peek.CircleName,
-		"color":        peek.Color,
-		"member_count": peek.MemberCount,
-		"members":      peek.Members,
+		"server_name":        info.Name,
+		"host":               host,
+		"allow_name_erasure": info.AllowNameErasure,
+		"circle_name":        peek.CircleName,
+		"color":              peek.Color,
+		"member_count":       peek.MemberCount,
+		"members":            peek.Members,
 	})
 }
 

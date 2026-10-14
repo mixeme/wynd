@@ -101,7 +101,7 @@
 {:else}
 <PlainLayout shell app>
 	<ScreenTitle class="mt-24">Вас позвали на сервер</ScreenTitle>
-	<ServerRow name={serverName} subtitle={serverSubtitle} variant="ok" card />
+	<ServerRow name={serverName} subtitle={serverSubtitle} variant="ok" card gdpr={peek?.allow_name_erasure} />
 	<Label class="mt-16">Почта</Label>
 	<Input active type="email" autocomplete="email" bind:value={email} />
 	<Hint>Пришлём код для входа. Пароля нет.</Hint>

@@ -216,7 +216,7 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 `Fab` — кружок `.fab` в `.fab-wrap`; опц. `menuOpen` + `items[]` — карточка `.fab-menu` над плюсом (**#e2-11**), `role="menu"`: при открытии фокус на первом пункте, стрелки по кругу, Escape → `onclose` (UI-3; `ShellLayout` — `onfabmenuclose`). `ShellLayout` прокидывает `fabMenuOpen` / `fabMenuItems`; snippet `fab` — только содержимое кружка. Fab, CommentBar (`oncompose` — фото и шеврон; пустое поле на таче ведёт на compose, на ПК с мышью только фокус; без `oncompose` — полоса комментария; `onvoice` / `onvideo` — пустое поле ставит «Запись» с выбором голос / видео, диктофон прямо в полосе, 4.21–4.24; `status` — строка над полосой), Scrim (`button.scrim`), Sheet, Dialog, PushBanner, Lightbox (`.mid` — `role="region"`), AvatarCrop, **ConfirmDialog**, **ReactionsSheet**
 `VideoRecorder` — запись видео (**#e4-25**) и просмотр перед отправкой (**#e4-26**): камера во весь экран, смена камеры, касание — старт и стоп, предел 5 минут; «Переснять» / «Отправить». `onsend(file)`, `onclose`. Модален (`use:modal`): системная «Назад» закрывает.
 
-`ConfirmDialog` — вопрос с двумя кнопками на `Scrim` + `Dialog` (`.dlgq`, `.rowin.ask`): `title`, `confirmLabel`, опц. `cancelLabel` («Отмена»), `loading`, `onconfirm`, `oncancel`, пояснение — children. Все подтверждения «удалить / исключить / передать / выйти» — на нём.
+`ConfirmDialog` — вопрос с двумя кнопками на `Scrim` + `Dialog` (`.dlgq`, `.rowin.ask`): `title`, `confirmLabel`, опц. `cancelLabel` («Отмена»), `loading`, `confirmDisabled` (действие не нажимается, пока не набрано имя — 7.31), `onconfirm`, `oncancel`, пояснение — children. Все подтверждения «удалить / исключить / передать / выйти» — на нём.
 
 `ReactionsSheet` — лист «Кто отреагировал» (**#e4-12**) на `Scrim` + `Sheet`: `reactions`, `color`, `ondismiss`; строки — `ReactionListRow`.
 
@@ -224,13 +224,15 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 
 **Модальность оверлеев (UI-1, UI-2).** `Dialog` и `Sheet` с `ondismiss`, `Lightbox` с `fixed` и `onclose` — `role="dialog"`, `aria-modal`, action `modal` из `$lib/a11y/modal`: фокус при открытии — на первый фокусируемый элемент, Tab по кругу внутри, фокус снаружи возвращается внутрь, Escape → `ondismiss`, при закрытии фокус — туда, где был. Оверлеи в стеке: клавиши слушает только верхний. Без `ondismiss` (каталог `/dev/ui`) оверлей статичен и ничего не перехватывает. Экран даёт оверлею имя через `label` — обычно его заголовок. `AvatarCrop` на том же action с `initialFocus: 'last'`: фокусируемы только кнопки панели, фокус при открытии и при возврате снаружи — на «Готово», Escape → «Отмена» (во время сохранения — ничего). (светлые токены на корне `.crop`, не следует `.ph.dark`)
 
+`ServerRow` — сервер карточкой (`card`) или строкой; `gdpr` ставит у имени значок «GDPR» (1.10): администратор разрешил стирать имена и фото (9.13), признак — `allow_name_erasure` из `/instance` и ответа на приглашение. `DangerZone` — блок «Необратимо»; `disabled` гасит его и снимает нажатие: правило видно, действие недоступно (7.30).
+
 **Строки `row2` — на общей основе `Row`** (UI-5): `ServerRow`, `SettingsRow`, `MemberRow`, `SearchResultRow` — тонкие обёртки над `$ui/data/Row.svelte` (сниппеты `leading` / `main` / `trailing`; с `onclick` — `<button>`, без — `<div>`). Экраны зовут именные строки: их имена и параметры — словарь кадров, кадры не меняются. `CircleRow` (`.r`, другая форма) держит одно содержимое в сниппете вместо четырёх копий. Разметку всех пяти во всех вариантах сторожат слепки `rows.test.ts`, снятые с прежних компонентов. Новая строка `row2` — ещё одна обёртка над `Row`, не копия разметки.
 
 ### `admin/`
 
 AdminNav (`ADMIN_NAV`: Проверка, Общие, Доступ, Люди, Хранилище, Сжатие, Оплата; кадры 9.1–9.10 без «Оплата»), AdminSection, DataTable, StackBar, CheckRow, StatusIcon, CodeBlock (`lines[]`, `.hi` / `span.cmt`), InlineInput, **CheckRow** (`dotColor` — цветной квадратик вместо значка статуса), QuotaRequestRow (`Button` `.btn` / `.btn.gh` на «Дать» / «Отказать», не `.act`), **Panel**, **AdminField**, **SwitchRow**
 
-`SwitchRow` — переключатель админки с заголовком и пояснением (кадры 9.x, 10.x): `bind:checked`, `title` (он же подпись `Switch` для чтения с экрана), пояснение — children. Переключатель на 2 px ниже верха строки, как на кадрах.
+`SwitchRow` — переключатель админки с заголовком и пояснением (кадры 9.x, 10.x): `bind:checked`, `title` (он же подпись `Switch` для чтения с экрана), пояснение — children, опц. `onchange` (только нажатие человеком), `disabled`, `end` — переключатель справа от текста (9.13). Переключатель на 2 px ниже верха строки, как на кадрах.
 
 `Panel` — карточка админки `.panel` (рамка, фон карточки, скругление; отступ — служебным классом: `pad-12`, `pad-16`). `AdminField` — строка формы «подпись · поле · единица» (**#e9-***): `label`, `width` 88 \| 120 (короткие и длинные подписи, чтобы поля стояли столбцом), опц. `unit`, поле — children. Сетку мастера (`form-grid`) не заменяет.
 

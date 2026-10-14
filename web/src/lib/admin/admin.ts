@@ -46,6 +46,8 @@ export interface AccessSettings {
 	name: string;
 	registration_mode: 'open' | 'invite' | 'closed';
 	public_url?: string;
+	/** «Разрешить стирать имена и фото» (9.13, «Люди»). */
+	allow_name_erasure?: boolean;
 }
 
 export interface AdminAccount {

@@ -12,6 +12,7 @@
 		confirmLabel,
 		cancelLabel = 'Отмена',
 		loading = false,
+		confirmDisabled = false,
 		onconfirm,
 		oncancel,
 		children
@@ -20,6 +21,8 @@
 		confirmLabel: string;
 		cancelLabel?: string;
 		loading?: boolean;
+		/** Действие не нажимается, пока не выполнено условие — например, не набрано имя (7.31). */
+		confirmDisabled?: boolean;
 		onconfirm: () => void;
 		oncancel: () => void;
 		/** Пояснение под вопросом; может нести и поле (удаление круга). */
@@ -37,6 +40,6 @@
 	{@render children?.()}
 	<div class="rowin ask">
 		<Button variant="ghost" onclick={cancel}>{cancelLabel}</Button>
-		<Button {loading} onclick={() => onconfirm()}>{confirmLabel}</Button>
+		<Button {loading} disabled={confirmDisabled} onclick={() => onconfirm()}>{confirmLabel}</Button>
 	</div>
 </Dialog>

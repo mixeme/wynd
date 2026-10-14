@@ -37,6 +37,9 @@ func (c *Chronicle) ListInviteCandidates(ctx context.Context, targetCircleID, in
 		  AND inv_src.circle_id != ?
 		  AND m.account_id != ? AND m.account_id != ''
 		  AND m.status IN (?, ?, ?)
+		  AND NOT EXISTS (
+			SELECT 1 FROM accounts a WHERE a.id = m.account_id AND a.deleted_at IS NOT NULL
+		  )
 		  AND m.account_id NOT IN (
 		    SELECT account_id FROM memberships WHERE circle_id = ? AND status = ?
 		  )

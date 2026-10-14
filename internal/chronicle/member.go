@@ -353,11 +353,13 @@ func (c *Chronicle) addIdentityName(ctx context.Context, tx dbtx, identityID, na
 }
 
 func (c *Chronicle) identityName(ctx context.Context, q querier, identityID string) (string, error) {
+	// Стёртое имя (уход с сервера, план 46, A3) — пустая строка, не «нет
+	// такого участника»: строки имён у идентичности есть, но все стёрты.
 	var name string
 	err := q.QueryRowContext(ctx, `
-		SELECT name FROM identity_names
-		WHERE identity_id = ? AND erased_at IS NULL
-		ORDER BY effective_at DESC LIMIT 1
+		SELECT CASE WHEN erased_at IS NULL THEN name ELSE '' END FROM identity_names
+		WHERE identity_id = ?
+		ORDER BY erased_at IS NULL DESC, effective_at DESC LIMIT 1
 	`, identityID).Scan(&name)
 	if err == sql.ErrNoRows {
 		return "", ErrNotFound

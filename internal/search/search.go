@@ -117,7 +117,8 @@ func (s *Service) SearchCircleAuthors(ctx context.Context, accountID, circleID, 
 		WHERE content_fts MATCH ?
 		  AND f.circle_id = ?
 		  AND f.kind != 'day'
-		  AND f.author_name != ''%s%s
+		  AND f.author_name != ''
+		  AND f.author_name != '`+chronicle.ErasedName+`'%s%s
 		ORDER BY f.author_name COLLATE NOCASE
 		LIMIT ?
 	`, visibleCarrierSQL, whereExtra), args...)
