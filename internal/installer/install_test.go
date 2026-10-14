@@ -71,8 +71,16 @@ func (h *fakeHost) handle(command string, stdin []byte) (string, int) {
 	case strings.Contains(command, "docker compose down"):
 		change()
 		h.running = false
-		h.files = map[string]string{}
+		// Данные оставили — папка /opt/wynd с настройкой на месте.
+		if strings.Contains(command, "rm -rf "+installDir+"\n") {
+			h.files = map[string]string{}
+		}
 		h.images = map[string]bool{}
+		return "", 0
+	case command == wyndRunning:
+		if h.running {
+			return "3f2a9c1b7d4e\n", 0
+		}
 		return "", 0
 	case command == clockSynced:
 		return "", exit(!h.synced)
@@ -393,6 +401,36 @@ func TestInstallRefusesOtherDomain(t *testing.T) {
 	}
 }
 
+// Убрали с оставленными данными — папка /opt/wynd цела; поставить снова
+// можно и с другим адресом: Wynd не запущен, настройка перепишется.
+func TestInstallAfterRollbackKeepsFolder(t *testing.T) {
+	fastPolls(t)
+	host := newFakeHost()
+	sess := dialHost(t, host)
+	spec := testSpec(t)
+	if res := Install(context.Background(), sess, spec, nil); !res.Done {
+		t.Fatalf("первая установка: %+v", res.Failure)
+	}
+	if _, err := Rollback(context.Background(), sess, spec, true); err != nil {
+		t.Fatalf("откат: %v", err)
+	}
+	if host.files[installDir+"/compose.yaml"] != ComposeFile(spec) {
+		t.Fatal("откат с оставленными данными убрал настройку")
+	}
+	spec.Domain = "other.example.ru"
+	// Данные прежние — администратор у Wynd уже есть.
+	spec.Probe = func(_ context.Context, url string) (string, error) {
+		return `{"version":"9.9.9","bootstrapped":true}`, nil
+	}
+	res := Install(context.Background(), sess, spec, nil)
+	if !res.Done {
+		t.Fatalf("установка с новым адресом: %+v", res.Failure)
+	}
+	if host.files[installDir+"/compose.yaml"] != ComposeFile(spec) {
+		t.Fatal("настройка не переписана на новый адрес")
+	}
+}
+
 // Сертификата нет — объясняем про порты, как в макете (окно 4а).
 func TestInstallExplainsMissingCertificate(t *testing.T) {
 	fastPolls(t)
@@ -441,7 +479,7 @@ func TestRollbackKeepsOrDropsData(t *testing.T) {
 		_ = log
 	}
 	if strings.Contains(log[0].Command, "--volumes") || strings.Contains(log[0].Command, "certbot revoke") ||
-		strings.Contains(log[0].Command, "rm -rf "+installDir+"\n") || !strings.Contains(log[0].Command, "! -name data ! -name caddy -exec rm -rf") {
+		strings.Contains(log[0].Command, "rm -rf "+installDir) {
 		t.Fatalf("данные просили оставить: %s", log[0].Command)
 	}
 	log, _ = Rollback(context.Background(), sess, spec, false)

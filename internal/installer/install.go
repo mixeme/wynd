@@ -32,6 +32,9 @@ const (
 	caddyDir = installDir + "/caddy"
 	// wyndOwner — пользователь wynd в образе (deploy/docker/Dockerfile).
 	wyndOwner = "100:101"
+	// wyndRunning печатает контейнер Wynd из /opt/wynd, если он запущен.
+	// Папка без него — Wynd убран с оставленными данными (или остановлен).
+	wyndRunning = "docker ps -q --filter label=com.docker.compose.project.working_dir=" + installDir + " --filter label=com.docker.compose.service=wynd 2>/dev/null"
 	// Так зовётся образ, приехавший файлом (TarImage); версия — тег.
 	imageName = "wynd"
 	// DefaultRegistry — где лежат образы выпусков (.github/workflows/image.yaml).
@@ -930,12 +933,22 @@ func filesStep(spec Spec) step {
 			return true, nil
 		},
 		do: func(ctx context.Context, r *Run) error {
-			// Wynd с другим адресом уже стоит: смена адреса — не установка.
+			// Wynd с другим адресом работает: смена адреса — не установка.
+			// Не запущен (убран с оставленными данными) — настройку пишем с
+			// новым адресом, прежняя остаётся копией рядом.
 			res, err := r.sess.Exec(ctx, "grep -o 'WYND_PUBLIC_URL: .*' "+files[0].path+" 2>/dev/null", nil, shortTimeout)
 			if err != nil {
 				return err
 			}
-			if old, ok := strings.CutPrefix(strings.TrimSpace(res.Output), "WYND_PUBLIC_URL: "); ok && old != "https://"+spec.Domain {
+			old, ok := strings.CutPrefix(strings.TrimSpace(res.Output), "WYND_PUBLIC_URL: ")
+			if ok && old != "https://"+spec.Domain {
+				up, err := r.sess.Exec(ctx, wyndRunning, nil, shortTimeout)
+				if err != nil {
+					return err
+				}
+				ok = strings.TrimSpace(up.Output) != ""
+			}
+			if ok && old != "https://"+spec.Domain {
 				return &StepError{
 					Message: "На сервере уже стоит Wynd с другим адресом",
 					Advice:  "Он настроен на " + old + ". Смену адреса установщик пока не умеет. Чтобы поставить заново с адресом " + spec.Domain + ", сначала нажмите «Откатить установку».",
@@ -1211,9 +1224,10 @@ const revokeLoop = `
 // образ Caddy (тот — только если им не пользуется чужой контейнер: docker
 // занятый образ не удалит). Образы берутся и из самих контейнеров: Wynd мог
 // быть поставлен другим способом или другой версии, чем ставит это окно.
-// keepData — в /opt/wynd остаются data и caddy (данные и сертификат), прочее
-// уходит; иначе уходит вся папка и тома прежних установок. Docker остаётся: он
-// мог понадобиться чему-то ещё, и сам по себе ничего не меняет.
+// keepData — папка /opt/wynd остаётся как есть: данные, сертификат и
+// настройка, поставить снова — тот же compose up (решение владельца
+// 2026-10-14); иначе уходит вся папка и тома прежних установок. Docker
+// остаётся: он мог понадобиться чему-то ещё, и сам по себе ничего не меняет.
 //
 // Данные удаляют — сертификат сначала отзываем (решение владельца,
 // 2026-10-10): ключ уходит вместе с томом, а отозванный сертификат перестаёт
@@ -1232,12 +1246,11 @@ func Rollback(ctx context.Context, sess *Session, spec Spec, keepData bool) ([]L
 		down += ` 2>&1
   docker volume ls -q --filter label=com.docker.compose.project="${proj:-wynd}" 2>/dev/null | xargs -r docker volume rm`
 	}
-	// keepData: всё, кроме данных и сертификата, — и чужое, что положили рядом.
 	clear := "rm -rf " + installDir
 	gone := "test ! -e " + installDir
 	if keepData {
-		clear = "find " + installDir + " -mindepth 1 -maxdepth 1 ! -name data ! -name caddy -exec rm -rf {} + 2>/dev/null || true"
-		gone = "test ! -e " + installDir + "/compose.yaml"
+		clear = ":"
+		gone = `test -z "$(` + wyndRunning + `)"`
 	}
 	script := rollbackProxy(keepData) + `imgs=
 if [ -f ` + installDir + `/compose.yaml ] && command -v docker >/dev/null 2>&1; then

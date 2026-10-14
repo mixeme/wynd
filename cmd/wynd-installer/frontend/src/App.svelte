@@ -317,9 +317,9 @@
 		<div class="ins-dim">
 			{#if site}Сайт {site} перестанет открываться.{/if}
 			{#if proxyName}
-				Уберём контейнер Wynd, его сайт из {proxyName} и папку /opt/wynd. Docker и {proxyName} останутся.
+				Уберём контейнер Wynd и его сайт из {proxyName}. Docker и {proxyName} останутся.
 			{:else}
-				Уберём контейнеры Wynd и Caddy и папку /opt/wynd. Docker останется.
+				Уберём контейнеры Wynd и Caddy. Docker останется.
 			{/if}
 		</div>
 		<label class="ins-check">
@@ -327,8 +327,12 @@
 			Удалить данные Wynd — записи, фотографии, учётные записи — и сертификат сайта
 		</label>
 		<div class="ins-dim">
-			Без галочки данные и сертификат останутся на сервере: поставите Wynd снова — всё будет на
-			месте.
+			{#if proxyName}
+				Без галочки папка /opt/wynd и сертификат останутся.
+			{:else}
+				Без галочки папка /opt/wynd останется как есть.
+			{/if}
+			Поставите Wynd снова — всё будет на месте.
 		</div>
 		{#if rollbackError}
 			<div class="ins-dim" role="alert">{rollbackError}</div>

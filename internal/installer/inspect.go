@@ -110,6 +110,7 @@ echo '## certbot'; command -v certbot 2>/dev/null
 echo '## nginx'; if command -v nginx >/dev/null 2>&1; then ` + nginxLayout + `; if asroot nginx -t >/dev/null 2>&1; then echo test=ok; else echo test=fail; fi; fi
 echo '## apache'; if command -v apache2ctl >/dev/null 2>&1; then ` + apacheLayout + `; if asroot apache2ctl configtest >/dev/null 2>&1; then echo test=ok; else echo test=fail; fi; fi
 echo '## caddy'; if command -v caddy >/dev/null 2>&1; then grep -Es '^import[[:space:]]' ` + caddyConfig + ` | head -n 20; if asroot caddy validate --config ` + caddyConfig + ` --adapter caddyfile >/dev/null 2>&1; then echo test=ok; else echo test=fail; fi; fi
+echo '## wyndup'; ` + wyndRunning + `
 echo '## ownproxy'; docker ps --filter label=com.docker.compose.project.working_dir=/opt/wynd --filter publish=443 --format '{{.Names}} {{.Image}}' 2>/dev/null
 `
 
@@ -185,7 +186,17 @@ func ParseInspection(out, user string, now time.Time) Report {
 	if f, ok := proxyFinding(proxy, sec[proxy]); ok {
 		add(f)
 	}
-	if len(sec["wynd"]) > 0 {
+	switch {
+	case len(sec["wynd"]) == 0:
+	case len(sec["wyndup"]) == 0 && strings.Join(sec["wynd"], "\n") == installDir+"/compose.yaml":
+		// Убран с оставленными данными: папка /opt/wynd есть, контейнера нет.
+		add(Finding{
+			ID:    "wynd",
+			Level: LevelNote,
+			Text:  "Wynd на этом сервере не запущен, его данные на месте",
+			Plan:  "поставим снова с ними",
+		})
+	default:
 		add(Finding{
 			ID:    "wynd",
 			Level: LevelNote,

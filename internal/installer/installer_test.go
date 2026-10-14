@@ -396,7 +396,9 @@ func TestParseInspectionFindings(t *testing.T) {
 		{"два веб-сервера", "ports",
 			"LISTEN 0 511 0.0.0.0:80 0.0.0.0:* users:((\"nginx\",pid=1,fd=6))\nLISTEN 0 511 0.0.0.0:443 0.0.0.0:* users:((\"caddy\",pid=3,fd=6))\n",
 			"ports", LevelBlock, "На этот сервер установщик Wynd не поставит"},
-		{"wynd уже стоит", "wynd", "/opt/wynd/compose.yaml\n", "wynd", LevelNote, "Wynd на этом сервере уже стоит"},
+		{"wynd убран, данные оставлены", "wynd", "/opt/wynd/compose.yaml\n", "wynd", LevelNote, "Wynd на этом сервере не запущен, его данные на месте"},
+		{"wynd уже стоит", "wynd", "/opt/wynd/compose.yaml\n## wyndup\n3f2a9c1b7d4e\n", "wynd", LevelNote, "Wynd на этом сервере уже стоит"},
+		{"wynd без docker", "wynd", "/etc/wynd\n", "wynd", LevelNote, "Wynd на этом сервере уже стоит"},
 	}
 	for _, c := range cases {
 		rep := ParseInspection(replaceSection(cleanUbuntu, c.section, c.body), "root", now)
