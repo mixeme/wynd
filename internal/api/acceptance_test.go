@@ -220,7 +220,8 @@ func TestAcceptanceQuotaArchiveLockPurge(t *testing.T) {
 	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/posts", ownerTok, map[string]any{
 		"body": "только текст", "entry_date": "2026-08-21",
 	})
-	if rec.Code != http.StatusCreated {
+	// Квота считает и текст (C42): в упёршемся круге не пишется и он.
+	if rec.Code != http.StatusInsufficientStorage || !strings.Contains(rec.Body.String(), `"detail":"circle"`) {
 		t.Fatalf("text at quota: %d %s", rec.Code, rec.Body.String())
 	}
 

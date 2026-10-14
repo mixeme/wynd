@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { spaceNotice } from '$lib/circles/space';
 	import { goUp } from '$lib/navigation/up';
 	import PostByline from '$ui/data/PostByline.svelte';
 	import FeedEnd from '$ui/data/FeedEnd.svelte';
@@ -105,6 +106,9 @@
 	import { applyFeedSpot, feedSpotKey, saveFeedSpot, takeFeedSpot } from '$lib/journal/feed-scroll';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
+	// Места нет (C42): читать и удалять своё можно, писать — нет (3.19, 3.20).
+	const canSay = $derived(circle.canWrite && !circle.spaceFull);
+	const notice = $derived(spaceNotice(circle));
 
 	// Флаги «идёт отправка»: защита от второго нажатия (GUI-8).
 	let sending = $state(false);
@@ -677,7 +681,7 @@
 
 	function showReactionPlus(post: FeedPost): boolean {
 		return canReact(post.reactions, reactionActor, {
-			canWrite: circle.canWrite,
+			canWrite: canSay,
 			solo: soloCircle,
 			locked: postArchiveLocked(post)
 		});
@@ -758,6 +762,18 @@
 	}
 </script>
 
+<!-- Полоса вместо строки ввода, когда места нет (3.19, 3.20). -->
+{#snippet spaceNote()}
+	{#if notice}
+		{notice.first}<br />
+		{#if notice.href}
+			<a class="under" href={notice.href}>{notice.second}</a>
+		{:else}
+			{notice.second}
+		{/if}
+	{/if}
+{/snippet}
+
 <CircleLayout
 	app
 	color={circle.color}
@@ -767,19 +783,21 @@
 	avatarSrc={circle.avatarUrl}
 	circleId={circle.circleId}
 	identitySettingsLink={circle.canWrite}
-	commentBar={circle.canWrite}
+	commentBar={canSay}
+	notice={notice ? spaceNote : undefined}
 	onback={goBack}
 	onsearch={openSearch}
 	bind:commentDraft
 	commentMembers={commentMembers}
 	commentBusy={sending}
-	onCommentSend={circle.canWrite ? sendFromBar : undefined}
-	onCommentCompose={circle.canWrite ? openComposeFromBar : undefined}
-	onCommentPhotos={circle.canWrite ? openComposeWithPhotos : undefined}
-	onCommentVoice={circle.canWrite ? (take) => void sendVoice(take) : undefined}
-	onCommentVideo={circle.canWrite ? () => void openVideo() : undefined}
+	onCommentSend={canSay ? sendFromBar : undefined}
+	onCommentCompose={canSay ? openComposeFromBar : undefined}
+	onCommentPhotos={canSay ? openComposeWithPhotos : undefined}
+	onCommentVoice={canSay ? (take) => void sendVoice(take) : undefined}
+	onCommentVideo={canSay ? () => void openVideo() : undefined}
 	commentStatus={preparing || barNote}
 >
+
 	{#if videoOpen}
 		<VideoRecorder
 			settings={videoSettings}
@@ -860,7 +878,7 @@
 								color={circle.colorHex}
 								src={circle.avatarUrl}
 								name={circle.identityName}
-								time={queuedTimeLabel(item.state, sendProgress[item.id])}
+								time={queuedTimeLabel(item.state, sendProgress[item.id], item.error)}
 								icon="clock"
 							/>
 						{/snippet}
@@ -999,7 +1017,7 @@
 						onclick={() => openPost(post.id)}
 					/>
 				{/if}
-				{#if dayPromptDate && circle.canWrite && post.entry_date === dayPromptDate && i === posts.findIndex((p) => p.entry_date === dayPromptDate)}
+				{#if dayPromptDate && canSay && post.entry_date === dayPromptDate && i === posts.findIndex((p) => p.entry_date === dayPromptDate)}
 					<FeedDayPromptCard
 						title="Первая запись за {formatEntryDate(dayPromptDate)}"
 						primaryLabel="Назвать день"
@@ -1043,7 +1061,7 @@
 				<EmptyState
 					title="Пока ничего"
 					place="feed"
-					children={circle.canWrite ? callToWrite : undefined}
+					children={canSay ? callToWrite : undefined}
 					actions={circle.canWrite ? inviteAction : undefined}
 				/>
 			{:else if posts.length}

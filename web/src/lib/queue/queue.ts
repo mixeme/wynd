@@ -139,7 +139,14 @@ export function subscribeQueueProgress(listener: QueueProgressListener): () => v
  * уходит. Процент есть, когда файлы больше одной порции: мелкое уходит разом,
  * и «0%» у него только обманывал бы.
  */
-export function queuedTimeLabel(state: QueueRecord['state'], fraction?: number): string {
+export function queuedTimeLabel(
+	state: QueueRecord['state'],
+	fraction?: number,
+	error?: string
+): string {
+	// Места нет (C42, 3.19): запись ждёт и уйдёт сама, когда место появится.
+	if (state !== 'uploading' && error === QUOTA_CIRCLE) return 'в круге кончилось место';
+	if (state !== 'uploading' && error === QUOTA_SERVER) return 'на сервере кончилось место';
 	if (state !== 'uploading') return 'в очереди';
 	if (fraction === undefined) return 'отправляется';
 	return `отправляется · ${Math.min(100, Math.floor(fraction * 100))}%`;
@@ -369,6 +376,9 @@ async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 	}
 }
 
+const QUOTA_CIRCLE = 'quota_exceeded';
+const QUOTA_SERVER = 'quota_exceeded:server';
+
 async function processItem(item: QueueRecordWithId): Promise<boolean> {
 	await putQueueItem(item.id, {
 		...item,
@@ -390,6 +400,19 @@ async function processItem(item: QueueRecordWithId): Promise<boolean> {
 		const stored = await getQueueItem(item.id);
 		const latest = stored ? { ...stored, id: item.id } : item;
 		const attempts = (latest.attempts ?? 0) + 1;
+		// Места нет (507, C42) — не отказ: запись ждёт с подписью и уходит
+		// сама, когда место появится. Остальные записи сервера не держит.
+		if (err instanceof ApiError && err.status === 507) {
+			await putQueueItem(item.id, {
+				...latest,
+				state: 'pending',
+				attempts,
+				uploading_at: Date.now(),
+				error: err.detail === 'server' ? QUOTA_SERVER : QUOTA_CIRCLE
+			});
+			notify();
+			return false;
+		}
 		// 401 — не приговор отправке: сессия могла истечь, и после входа
 		// запись должна уйти. Остальные 4xx — отказ по существу (QUE-1).
 		if (err instanceof ApiError && err.status >= 400 && err.status < 500 && err.status !== 401) {

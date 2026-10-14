@@ -31,6 +31,11 @@ export interface CircleListItem {
 	archive_cycle?: ArchiveCycleBanner;
 	/** Новые отклики к записям (3.12): на улочке — точка, если записей новых нет. */
 	responses_unread?: number;
+	/** Места нет (C42): «circle» — упёрлась квота круга (3.19), «server» — потолок сервера (3.20). */
+	space_full?: 'circle' | 'server';
+	/** Владелец круга — при «circle»: его называет полоса 3.19. */
+	owner_name?: string;
+	you_own?: boolean;
 }
 
 export interface CirclesResponse {

@@ -27,14 +27,7 @@ func (s *Store) ListStorageCircles(ctx context.Context) ([]StorageCircle, error)
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT c.id, c.name, c.color, c.quota_bytes, c.quota_custom, a.email,
 			(SELECT COUNT(*) FROM posts p WHERE p.circle_id = c.id AND p.deleted = 0),
-			(SELECT COALESCE(SUM(b.size_bytes), 0)
-			 FROM post_media pm
-			 JOIN posts p ON p.id = pm.post_id AND p.circle_id = c.id AND p.deleted = 0
-			 JOIN blobs b ON b.id = pm.blob_id AND b.status = 'complete')
-			+ (SELECT COALESCE(SUM(b.size_bytes), 0)
-			 FROM comment_media cmm
-			 JOIN comments cm ON cm.id = cmm.comment_id AND cm.circle_id = c.id AND cm.deleted = 0
-			 JOIN blobs b ON b.id = cmm.blob_id AND b.status = 'complete')
+			`+circleUsedSQL("c.id")+`
 		FROM circles c
 		JOIN accounts a ON a.id = c.owner_account_id
 		ORDER BY 7 DESC, c.name COLLATE NOCASE

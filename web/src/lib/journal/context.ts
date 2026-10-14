@@ -18,6 +18,13 @@ export interface CircleContext {
 	lastReadSeq: number;
 	archiveCycle?: ArchiveCycle;
 	canWrite: boolean;
+	/** Места нет (C42): писать, отвечать, ставить реакции и править нельзя. */
+	spaceFull: '' | 'circle' | 'server';
+	/** Кто может освободить место (3.19) и не вы ли это. */
+	ownerName: string;
+	youOwn: boolean;
+	/** Имя сервера для 3.20: «Помочь может администратор «…»». */
+	serverName: string;
 	/** «Место со снимков» (6.1): начальное положение значка места на 4.2. */
 	sharePlace: boolean;
 	/** «Отклики» (3.12): сколько нового с прошлого просмотра — число на вкладке. */

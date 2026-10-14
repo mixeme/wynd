@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { spaceNotice } from '$lib/circles/space';
 	import { goUp } from '$lib/navigation/up';
 	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import DateRow from '$ui/forms/DateRow.svelte';
@@ -111,8 +112,11 @@
 	);
 	const showMentionPicker = $derived(mentionStart != null && mentionCandidates.length > 0);
 
+	// Места нет (C42): новую запись сюда не пускаем, правку не сохранить —
+	// удалить свою запись можно.
+	const notice = $derived(spaceNotice(circle));
 	const canPublish = $derived(
-		!compressing && (Boolean(body.trim()) || picked.length > 0)
+		!compressing && !circle.spaceFull && (Boolean(body.trim()) || picked.length > 0)
 	);
 	const uploadHint = $derived(
 		uploadTotal > 1
@@ -247,7 +251,7 @@
 	}
 
 	onMount(async () => {
-		if (!circle.canWrite) {
+		if (!circle.canWrite || (circle.spaceFull && !editPostId)) {
 			goto(`/circles/${circle.circleId}`, { replaceState: true });
 			return;
 		}
@@ -908,6 +912,16 @@
 
 	{#if error}
 		<Hint class="mt-12">{error}</Hint>
+	{/if}
+	{#if isEdit && notice}
+		<Hint class="mt-12">
+			{notice.first}<br />
+			{#if notice.href}
+				<a class="under" href={notice.href}>{notice.second}</a>
+			{:else}
+				{notice.second}
+			{/if}
+		</Hint>
 	{/if}
 
 	{#if isEdit && editingPost && isEditableActive(editingPost.editable_until)}

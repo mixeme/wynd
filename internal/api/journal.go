@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"gitea.mixdep.ru/mix/wynd/internal/blob"
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 )
 
@@ -86,6 +87,10 @@ func (s *Server) handleCreatePost(w http.ResponseWriter, r *http.Request) {
 		writeError(w, chronicle.ErrInvalid)
 		return
 	}
+	if !s.Chronicle.ClientIDSeen(r.Context(), circleID, strings.TrimSpace(body.ClientID), false) &&
+		!s.requireWriteSpace(w, r, circleID, sess.AccountID, blob.TextCost(body.Body)) {
+		return
+	}
 	now := time.Now().UTC()
 	var captured *time.Time
 	if body.CapturedAt != nil {
@@ -155,6 +160,10 @@ func (s *Server) handleEditPost(w http.ResponseWriter, r *http.Request) {
 	}
 	body, ok := bindJSON[editPostBody](w, r)
 	if !ok {
+		return
+	}
+	// Правка места не освобождает — в упёршемся круге её нет (C42).
+	if !s.requireWriteSpace(w, r, circleID, sess.AccountID, blob.TextCost(body.Body)) {
 		return
 	}
 	now := time.Now().UTC()
@@ -228,6 +237,10 @@ func (s *Server) handleCreateComment(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if !s.Chronicle.ClientIDSeen(r.Context(), circleID, strings.TrimSpace(body.ClientID), true) &&
+		!s.requireWriteSpace(w, r, circleID, sess.AccountID, blob.TextCost(body.Body)) {
+		return
+	}
 	media, err := parseCommentMedia(body.Media)
 	if err != nil {
 		writeError(w, chronicle.ErrInvalid)
@@ -280,6 +293,9 @@ func (s *Server) handleEditComment(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if !s.requireWriteSpace(w, r, circleID, sess.AccountID, blob.TextCost(body.Body)) {
+		return
+	}
 	err := s.Chronicle.EditComment(r.Context(), circleID, sess.AccountID, commentID, body.Body, time.Now().UTC())
 	if err != nil {
 		writeDomainError(w, err)
@@ -318,6 +334,9 @@ func (s *Server) handleSetReaction(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if !s.requireWriteSpace(w, r, circleID, sess.AccountID, blob.ReactionCost) {
+		return
+	}
 	rx, err := s.Chronicle.SetReaction(r.Context(), chronicle.ReactionInput{
 		CircleID: circleID, AccountID: sess.AccountID, PostID: postID,
 		Emoji: body.Emoji, Now: time.Now().UTC(),
@@ -335,6 +354,10 @@ func (s *Server) handleDeleteReaction(w http.ResponseWriter, r *http.Request) {
 	postID := r.PathValue("post_id")
 	sess, ok := requireSession(w, r)
 	if !ok {
+		return
+	}
+	// Снять реакцию — тоже запись в журнал (решение владельца 2026-10-14, C42).
+	if !s.requireWriteSpace(w, r, circleID, sess.AccountID, blob.EventCost) {
 		return
 	}
 	mem, err := s.Chronicle.MembershipForAccount(r.Context(), circleID, sess.AccountID)
@@ -366,6 +389,9 @@ func (s *Server) handleSetDayTitle(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if !s.requireWriteSpace(w, r, circleID, sess.AccountID, blob.TextCost(body.Title)) {
+		return
+	}
 	err := s.Chronicle.SetDayTitle(r.Context(), chronicle.DayTitleInput{
 		CircleID: circleID, AccountID: sess.AccountID, EntryDate: entryDate,
 		Title: body.Title, Now: time.Now().UTC(),
@@ -382,6 +408,9 @@ func (s *Server) handleClearDayTitle(w http.ResponseWriter, r *http.Request) {
 	entryDate := r.PathValue("date")
 	sess, ok := requireSession(w, r)
 	if !ok {
+		return
+	}
+	if !s.requireWriteSpace(w, r, circleID, sess.AccountID, blob.EventCost) {
 		return
 	}
 	err := s.Chronicle.ClearDayTitle(r.Context(), circleID, sess.AccountID, entryDate, time.Now().UTC())
@@ -403,6 +432,9 @@ func (s *Server) handleSetDayCover(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if !s.requireWriteSpace(w, r, circleID, sess.AccountID, blob.EventCost) {
+		return
+	}
 	err := s.Chronicle.SetDayCover(r.Context(), chronicle.DayCoverInput{
 		CircleID: circleID, AccountID: sess.AccountID, EntryDate: entryDate,
 		PostID: body.PostID, BlobID: body.BlobID, Now: time.Now().UTC(),
@@ -421,12 +453,30 @@ func (s *Server) handleClearDayCover(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if !s.requireWriteSpace(w, r, circleID, sess.AccountID, blob.EventCost) {
+		return
+	}
 	err := s.Chronicle.ClearDayCover(r.Context(), circleID, sess.AccountID, entryDate, time.Now().UTC())
 	if err != nil {
 		writeDomainError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// requireWriteSpace — есть ли в круге и на сервере место под запись (C42).
+// Сначала доступ: про квоту чужого круга ответ не рассказывает. Удалять своё
+// можно и без места — эти пути сюда не ходят.
+func (s *Server) requireWriteSpace(w http.ResponseWriter, r *http.Request, circleID, accountID string, cost int64) bool {
+	if err := s.Chronicle.RequireReader(r.Context(), circleID, accountID); err != nil {
+		writeDomainError(w, err)
+		return false
+	}
+	if err := s.Blobs.CheckWriteQuota(r.Context(), circleID, cost); err != nil {
+		writeDomainError(w, err)
+		return false
+	}
+	return true
 }
 
 func (s *Server) validateAudioCovers(ctx context.Context, items []chronicle.MediaInput) error {

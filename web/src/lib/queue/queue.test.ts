@@ -61,6 +61,12 @@ describe('queue', () => {
 		expect(queuedTimeLabel('uploading', 0)).toBe('отправляется · 0%');
 		expect(queuedTimeLabel('uploading', 0.428)).toBe('отправляется · 42%');
 		expect(queuedTimeLabel('uploading', 1)).toBe('отправляется · 100%');
+		// Места нет (C42, 3.19): запись ждёт с подписью, а не «в очереди».
+		expect(queuedTimeLabel('pending', undefined, 'quota_exceeded')).toBe('в круге кончилось место');
+		expect(queuedTimeLabel('pending', undefined, 'quota_exceeded:server')).toBe(
+			'на сервере кончилось место'
+		);
+		expect(queuedTimeLabel('uploading', undefined, 'quota_exceeded')).toBe('отправляется');
 	});
 
 	// Лента рисует запись в очереди тем, что в ней лежит, а не пустой плиткой.

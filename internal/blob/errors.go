@@ -2,6 +2,7 @@ package blob
 
 import (
 	"errors"
+	"fmt"
 )
 
 var (
@@ -9,6 +10,9 @@ var (
 	ErrForbidden     = errors.New("blob: forbidden")
 	ErrInvalid       = errors.New("blob: invalid")
 	ErrQuotaExceeded = errors.New("blob: quota exceeded")
-	ErrIncomplete    = errors.New("blob: incomplete")
-	ErrExpired       = errors.New("blob: expired")
+	// ErrInstanceQuotaExceeded — упёрся потолок сервера, а не квота круга
+	// (3.20): писать нельзя ни в один круг. Is(ErrQuotaExceeded) тоже верно.
+	ErrInstanceQuotaExceeded = fmt.Errorf("%w: instance", ErrQuotaExceeded)
+	ErrIncomplete            = errors.New("blob: incomplete")
+	ErrExpired               = errors.New("blob: expired")
 )

@@ -62,8 +62,9 @@
 	// Название и обложку меняет тот, у кого есть запись за этот день
 	// (wynd.html, «Дни»). Без своей записи сервер ответил бы forbidden —
 	// поэтому ни подсказки «нажмите», ни входа в правку.
+	// Места нет (C42) — название и обложку дня тоже не сменить: это запись в журнал.
 	const canEditDay = $derived(
-		circle.canWrite && posts.some((p) => p.identity_id === circle.identityId)
+		circle.canWrite && !circle.spaceFull && posts.some((p) => p.identity_id === circle.identityId)
 	);
 	const titleSubtitle = $derived(
 		canEditDay ? `${formatEntryDate(entryDate)} · нажмите, чтобы изменить` : formatEntryDate(entryDate)
@@ -278,7 +279,7 @@
 				День общий: название и обложку может сменить любой, у кого есть запись за этот день. Если
 				поменяют несколько — останется последнее.
 			</Hint>
-		{:else if circle.canWrite}
+		{:else if circle.canWrite && !circle.spaceFull}
 			<Hint class="gutter-12">
 				Название и обложку дня меняют те, у кого есть запись за этот день.
 			</Hint>

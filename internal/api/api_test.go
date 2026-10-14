@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -381,7 +382,8 @@ func TestMediaOnlyPostAndTextWhenQuotaFull(t *testing.T) {
 	req.Header.Set("Authorization", "Bearer "+token)
 	rec = httptest.NewRecorder()
 	srv.ServeHTTP(rec, req)
-	if rec.Code != http.StatusCreated {
+	// Потолок сервера считает и текст (C42): упёрся сервер — молчат все круги.
+	if rec.Code != http.StatusInsufficientStorage || !strings.Contains(rec.Body.String(), `"detail":"server"`) {
 		t.Fatalf("text post at quota: %d %s", rec.Code, rec.Body.String())
 	}
 	blocked, _ := json.Marshal(map[string]any{"expected_size": 20, "mime_type": "image/jpeg"})

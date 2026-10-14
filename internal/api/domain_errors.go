@@ -21,8 +21,11 @@ func writeDomainError(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "too_long"})
 	case errors.Is(err, chronicle.ErrInvalid), errors.Is(err, blob.ErrInvalid), errors.Is(err, push.ErrInvalid), errors.Is(err, mail.ErrInvalid):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid"})
+	case errors.Is(err, blob.ErrInstanceQuotaExceeded):
+		// Упёрся сервер (3.20): помочь может только его администратор.
+		writeJSON(w, http.StatusInsufficientStorage, map[string]any{"error": "quota_exceeded", "detail": "server"})
 	case errors.Is(err, blob.ErrQuotaExceeded):
-		writeJSON(w, http.StatusInsufficientStorage, map[string]any{"error": "quota_exceeded"})
+		writeJSON(w, http.StatusInsufficientStorage, map[string]any{"error": "quota_exceeded", "detail": "circle"})
 	case errors.Is(err, blob.ErrIncomplete):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "incomplete"})
 	case errors.Is(err, blob.ErrExpired):

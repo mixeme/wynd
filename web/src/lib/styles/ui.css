@@ -1875,6 +1875,20 @@ a.link {
 	right: 0;
 	bottom: 0;
 }
+/* Полоса вместо строки ввода (3.19, 3.20): писать нельзя — что и кто поможет. */
+.write-note {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	padding: 14px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+	border-top: 1px solid var(--line);
+	background: var(--paper);
+	font-size: 12.5px;
+	color: var(--faint);
+	text-align: center;
+	line-height: 1.5;
+}
 .comp-wrap > .comp {
 	position: relative;
 }

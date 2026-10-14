@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"path/filepath"
+	"strings"
 
 	"gitea.mixdep.ru/mix/wynd/internal/check"
 )
@@ -135,10 +136,13 @@ func (s *Store) reservedBytes(ctx context.Context) (int64, error) {
 	return reserved.Int64, nil
 }
 
+// usedBytes — занятое на сервере: файлы и текст всех кругов (C42). Шкала
+// панели и потолок сервера смотрят на одно и то же число.
 func (s *Store) usedBytes(ctx context.Context) (int64, error) {
 	var used sql.NullInt64
 	err := s.db.QueryRowContext(ctx, `
-		SELECT COALESCE(SUM(size_bytes), 0) FROM blobs WHERE status = 'complete'
+		SELECT (SELECT COALESCE(SUM(size_bytes), 0) FROM blobs WHERE status = 'complete')
+		     + (SELECT COALESCE(SUM(text_bytes), 0) FROM circles)
 	`).Scan(&used)
 	if err != nil {
 		return 0, err
@@ -146,20 +150,30 @@ func (s *Store) usedBytes(ctx context.Context) (int64, error) {
 	return used.Int64, nil
 }
 
-func (s *Store) circleUsedBytes(ctx context.Context, circleID string) (int64, error) {
-	var used sql.NullInt64
-	// Вложения комментариев — тоже медиа круга (4.29).
-	err := s.db.QueryRowContext(ctx, `
-		SELECT
-		  (SELECT COALESCE(SUM(b.size_bytes), 0)
+// circleUsedSQL — занятое кругом col: файлы записей и комментариев (4.29),
+// фото участников и текст (C42: «считать надо всё»). Текст ведут триггеры
+// базы в circles.text_bytes — замер того, сколько он весит на диске.
+func circleUsedSQL(col string) string {
+	return `(SELECT COALESCE(SUM(b.size_bytes), 0)
 		   FROM post_media pm
-		   JOIN posts p ON p.id = pm.post_id AND p.circle_id = ? AND p.deleted = 0
+		   JOIN posts p ON p.id = pm.post_id AND p.circle_id = ` + col + ` AND p.deleted = 0
 		   JOIN blobs b ON b.id = pm.blob_id AND b.status = 'complete')
 		+ (SELECT COALESCE(SUM(b.size_bytes), 0)
 		   FROM comment_media cmm
-		   JOIN comments c ON c.id = cmm.comment_id AND c.circle_id = ? AND c.deleted = 0
+		   JOIN comments cm ON cm.id = cmm.comment_id AND cm.circle_id = ` + col + ` AND cm.deleted = 0
 		   JOIN blobs b ON b.id = cmm.blob_id AND b.status = 'complete')
-	`, circleID, circleID).Scan(&used)
+		+ (SELECT COALESCE(SUM(b.size_bytes), 0)
+		   FROM blobs b
+		   WHERE b.status = 'complete' AND b.id IN (
+			SELECT n.avatar_blob_id FROM identity_names n
+			JOIN identities i ON i.id = n.identity_id AND i.circle_id = ` + col + `
+			WHERE n.erased_at IS NULL AND n.avatar_blob_id IS NOT NULL))
+		+ (SELECT text_bytes FROM circles tc WHERE tc.id = ` + col + `)`
+}
+
+func (s *Store) circleUsedBytes(ctx context.Context, circleID string) (int64, error) {
+	var used sql.NullInt64
+	err := s.db.QueryRowContext(ctx, `SELECT `+strings.ReplaceAll(circleUsedSQL("?"), "?", "?1"), circleID).Scan(&used)
 	if err != nil {
 		return 0, err
 	}
@@ -194,7 +208,7 @@ func (s *Store) CheckMediaQuota(ctx context.Context, circleID string, additional
 		instanceExtra = 0
 	}
 	if used+instanceExtra > instQuota {
-		return ErrQuotaExceeded
+		return ErrInstanceQuotaExceeded
 	}
 	if circleID == "" {
 		return nil
@@ -216,7 +230,59 @@ func (s *Store) CheckMediaQuota(ctx context.Context, circleID string, additional
 	return nil
 }
 
-// UsedBytes returns total size of complete blobs.
+// TextCost — сколько места займёт на диске запись, комментарий или название
+// дня с текстом text: строка, событие журнала и поиск. Те же постоянные, что у
+// счёта в базе (миграция 0033).
+func TextCost(text string) int64 {
+	return 550 + 400 + 4*int64(len(text))
+}
+
+// ReactionCost — место под реакцию и её событие (0033).
+const ReactionCost int64 = 450 + 400
+
+// EventCost — строка журнала без текста: снять реакцию, убрать название дня (0033).
+const EventCost int64 = 400
+
+// CheckWriteQuota — можно ли писать в круг (C42): квота круга и потолок
+// сервера считают и текст. Упёрся круг — ErrQuotaExceeded, упёрся сервер —
+// ErrInstanceQuotaExceeded: тогда замолкают все круги, и без своей квоты.
+func (s *Store) CheckWriteQuota(ctx context.Context, circleID string, cost int64) error {
+	if cost < 0 {
+		return ErrInvalid
+	}
+	instQuota, err := s.effectiveInstanceQuotaBytes(ctx)
+	if err != nil {
+		return err
+	}
+	used, err := s.usedBytes(ctx)
+	if err != nil {
+		return err
+	}
+	reserved, err := s.reservedBytes(ctx)
+	if err != nil {
+		return err
+	}
+	if used+reserved+cost > instQuota {
+		return ErrInstanceQuotaExceeded
+	}
+	cq, err := s.effectiveCircleQuotaBytes(ctx, circleID)
+	if err != nil {
+		return err
+	}
+	if !cq.Valid {
+		return nil
+	}
+	cUsed, err := s.circleUsedBytes(ctx, circleID)
+	if err != nil {
+		return err
+	}
+	if cUsed+cost > cq.Int64 {
+		return ErrQuotaExceeded
+	}
+	return nil
+}
+
+// UsedBytes returns bytes used on the server: complete blobs and circle text.
 func (s *Store) UsedBytes(ctx context.Context) (int64, error) {
 	return s.usedBytes(ctx)
 }
@@ -239,7 +305,7 @@ func (s *Store) InstanceQuotaSettings(ctx context.Context) (absolute int64, disk
 	return abs, &p, nil
 }
 
-// CircleUsedBytes returns media bytes used by a circle.
+// CircleUsedBytes returns bytes used by a circle: media, member photos and text.
 func (s *Store) CircleUsedBytes(ctx context.Context, circleID string) (int64, error) {
 	return s.circleUsedBytes(ctx, circleID)
 }

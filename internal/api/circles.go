@@ -1,11 +1,13 @@
 package api
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
+	"gitea.mixdep.ru/mix/wynd/internal/blob"
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 )
 
@@ -39,6 +41,11 @@ func (s *Server) handleListCircles(w http.ResponseWriter, r *http.Request) {
 		// Новые отклики (3.12): число на вкладке, точка на улочке.
 		if n, err := s.Chronicle.UnreadResponses(r.Context(), c.ID, sess.AccountID); err == nil {
 			item["responses_unread"] = n
+		}
+		// Места нет (C42, кадры 3.19, 3.20): вместо строки ввода — полоса,
+		// которая называет, кто может помочь.
+		if c.Status == chronicle.StatusActive {
+			s.addSpaceFull(r, item, c.ID, sess.AccountID)
 		}
 		out[i] = item
 	}
@@ -244,4 +251,26 @@ func (s *Server) handleSetReadCursor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// addSpaceFull ставит space_full: "circle" — упёрлась квота круга, "server" —
+// потолок сервера; при "circle" — кто владелец и не вы ли это.
+func (s *Server) addSpaceFull(r *http.Request, item map[string]any, circleID, accountID string) {
+	err := s.Blobs.CheckWriteQuota(r.Context(), circleID, 1)
+	switch {
+	case err == nil:
+		return
+	case errors.Is(err, blob.ErrInstanceQuotaExceeded):
+		item["space_full"] = "server"
+	case errors.Is(err, blob.ErrQuotaExceeded):
+		item["space_full"] = "circle"
+		if owner, err := s.Chronicle.CircleOwnerAccount(r.Context(), circleID); err == nil {
+			item["you_own"] = owner == accountID
+		}
+		if name, err := s.Chronicle.OwnerName(r.Context(), circleID); err == nil {
+			item["owner_name"] = name
+		}
+	default:
+		log.Printf("circles: space of %s: %v", circleID, err)
+	}
 }

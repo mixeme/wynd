@@ -854,6 +854,21 @@ func (c *Chronicle) DeleteServiceEvent(ctx context.Context, circleID, accountID 
 	return ErrForbidden
 }
 
+// ClientIDSeen — запись или комментарий с этим ключом очереди уже есть: повтор
+// отправки, места он не займёт (C42 — квота такой повтор не останавливает).
+func (c *Chronicle) ClientIDSeen(ctx context.Context, circleID, clientID string, comment bool) bool {
+	if clientID == "" {
+		return false
+	}
+	var err error
+	if comment {
+		_, err = c.commentByClientID(ctx, c.db, circleID, clientID)
+	} else {
+		_, err = c.postByClientID(ctx, c.db, circleID, clientID)
+	}
+	return err == nil
+}
+
 // postByClientID находит запись по ключу идемпотентности очереди (CLI-2).
 func (c *Chronicle) postByClientID(ctx context.Context, q querier, circleID, clientID string) (Post, error) {
 	var id string

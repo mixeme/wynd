@@ -78,8 +78,14 @@ func TestPatchPostMedia(t *testing.T) {
 		"body": "оставить одно", "entry_date": entryDate,
 		"media": []map[string]any{{"blob_id": blobA, "kind": "photo", "is_cover": true}},
 	})
-	if rec.Code != http.StatusOK {
+	// Правка места не освобождает — в упёршемся сервере её нет (C42).
+	if rec.Code != http.StatusInsufficientStorage {
 		t.Fatalf("patch keeping existing blob at quota: %d %s", rec.Code, rec.Body.String())
+	}
+	if _, err := blobs.DB().ExecContext(t.Context(), `
+		UPDATE instance_settings SET storage_quota_bytes = 107374182400 WHERE id = 1
+	`); err != nil {
+		t.Fatal(err)
 	}
 
 	rec = doJSON(t, srv, http.MethodPatch, "/api/v1/circles/"+circleID+"/posts/"+postID, token, map[string]any{

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { spaceNotice } from '$lib/circles/space';
 	import { goUp } from '$lib/navigation/up';
 	import PostByline from '$ui/data/PostByline.svelte';
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
@@ -78,6 +79,9 @@
 	import { registerRefetch } from '$lib/sync/sync';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
+	// Места нет (C42): ни ответить, ни поправить, ни реакции (3.19).
+	const canSay = $derived(circle.canWrite && !circle.spaceFull);
+	const notice = $derived(spaceNotice(circle));
 	const postId = $derived($page.params.postId ?? '');
 
 	let post = $state<FeedPost | undefined>();
@@ -470,6 +474,16 @@
 
 	function canEditComment(comment: Comment): boolean {
 		return (
+			canSay &&
+			comment.identity_id === circle.identityId &&
+			isEditableActive(comment.editable_until)
+		);
+	}
+
+	// Удалять своё можно и без места (C42): удаление освобождает его. Правка —
+	// нет: на экране правки «Сохранить» погашено, «Удалить запись» на месте.
+	function canDeleteComment(comment: Comment): boolean {
+		return (
 			circle.canWrite &&
 			comment.identity_id === circle.identityId &&
 			isEditableActive(comment.editable_until)
@@ -587,7 +601,7 @@
 
 	function showReactionPlus(currentPost: FeedPost): boolean {
 		return canReact(currentPost.reactions, reactionActor, {
-			canWrite: circle.canWrite,
+			canWrite: canSay,
 			solo: soloCircle,
 			locked: postLocked
 		});
@@ -637,6 +651,18 @@
 	}
 </script>
 
+<!-- Полоса вместо строки ввода, когда места нет (3.19, 3.20). -->
+{#snippet spaceNote()}
+	{#if notice}
+		{notice.first}<br />
+		{#if notice.href}
+			<a class="under" href={notice.href}>{notice.second}</a>
+		{:else}
+			{notice.second}
+		{/if}
+	{/if}
+{/snippet}
+
 <CircleLayout
 	app
 	color={circle.color}
@@ -650,7 +676,8 @@
 	commentMembers={commentMembers}
 	commentBusy={sending}
 	bind:commentDraft={draft}
-	commentBar={circle.canWrite && !postLocked}
+	commentBar={canSay && !postLocked}
+	notice={notice ? spaceNote : undefined}
 	commentStatus={preparing}
 	commentPhotoAccept="image/*"
 	commentPending={pending.map((p) => ({ key: p.key, url: p.url, name: p.file.name }))}
@@ -659,8 +686,9 @@
 	onCommentFiles={(files) => void addFiles(files)}
 	onCommentVoice={(take) => void sendVoice(take)}
 	onback={goBack}
-	onCommentSend={circle.canWrite && !postLocked ? sendComment : undefined}
+	onCommentSend={canSay && !postLocked ? sendComment : undefined}
 >
+
 	<PullRefreshBand pull={ptr.state} />
 	<div
 		class="feed"
@@ -760,7 +788,7 @@
 					onedit={canEditComment(comment) && editingCommentId !== comment.id
 						? () => startEditComment(comment)
 						: undefined}
-					ondelete={canEditComment(comment) && editingCommentId !== comment.id
+					ondelete={canDeleteComment(comment) && editingCommentId !== comment.id
 						? () => removeComment(comment.id)
 						: undefined}
 				>
@@ -812,7 +840,7 @@
 				>
 					{#snippet time()}
 						<span class="flex-mid gap-5">
-							<Icon name="clock" size="xs" />{queuedTimeLabel(item.state, sendProgress[item.id])}
+							<Icon name="clock" size="xs" />{queuedTimeLabel(item.state, sendProgress[item.id], item.error)}
 						</span>
 					{/snippet}
 					{#snippet children()}

@@ -43,6 +43,7 @@
 		tabs = true,
 		active = $bindable<CircleTab>('Хронология'),
 		commentBar = true,
+		notice,
 		commentPlaceholder,
 		commentDraft = $bindable(''),
 		commentMembers = [],
@@ -78,6 +79,11 @@
 		tabs?: boolean;
 		active?: CircleTab;
 		commentBar?: boolean;
+		/**
+		 * Полоса на месте строки ввода, когда писать нельзя (3.19, 3.20): что
+		 * случилось и кто может помочь. Стоит вместо строки, не рядом с ней.
+		 */
+		notice?: Snippet;
 		commentPlaceholder?: string;
 		commentDraft?: string;
 		commentMembers?: { identity_id: string; name: string }[];
@@ -215,7 +221,9 @@
 	>
 		{@render children()}
 	</div>
-	{#if commentBar && (onCommentCompose || onCommentSend)}
+	{#if notice}
+		<div class="write-note">{@render notice()}</div>
+	{:else if commentBar && (onCommentCompose || onCommentSend)}
 		<CommentBar
 			placeholder={commentPlaceholder}
 			bind:value={commentDraft}

@@ -289,3 +289,19 @@ func (c *Chronicle) circleEditWindow(ctx context.Context, q querier, circleID st
 type querier interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
+
+// OwnerName — имя владельца в этом круге: полоса «в круге кончилось место»
+// называет того, кто может освободить место (кадр 3.19).
+func (c *Chronicle) OwnerName(ctx context.Context, circleID string) (string, error) {
+	owner, err := c.circleOwner(ctx, c.db, circleID)
+	if err != nil {
+		return "", err
+	}
+	var identityID string
+	if err := c.db.QueryRowContext(ctx, `
+		SELECT identity_id FROM memberships WHERE circle_id = ? AND account_id = ?
+	`, circleID, owner).Scan(&identityID); err != nil {
+		return "", err
+	}
+	return c.identityName(ctx, c.db, identityID)
+}

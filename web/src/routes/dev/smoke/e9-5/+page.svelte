@@ -87,8 +87,8 @@
 			<InlineInput>80% диска</InlineInput>
 		</div>
 		<div style="font-size:11.5px;color:var(--faint);margin-top:8px;line-height:1.5">
-			Действует одно: гигабайты или доля диска. Сохранение одного очищает другое. При упоре текст
-			пишется, медиа — нет.
+			Действует одно: гигабайты или доля диска. Сохранение одного очищает другое. При упоре писать
+			нельзя ни в один круг: ни текст, ни фото.
 		</div>
 		<SectionLabel style="margin:26px 0 8px">Просят больше</SectionLabel>
 		<QuotaRequestRow

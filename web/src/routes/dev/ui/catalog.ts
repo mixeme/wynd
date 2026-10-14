@@ -176,6 +176,8 @@ export const SMOKE_ROUTES = [
 	{ id: 'e3-1', label: 'Хронология', href: '/dev/smoke/e3-1' },
 	{ id: 'e3-9', label: 'Круг, который читаете', href: '/dev/smoke/e3-9' },
 	{ id: 'e3-15', label: 'Открытка дня', href: '/dev/smoke/e3-15' },
+	{ id: 'e3-19', label: 'В круге кончилось место', href: '/dev/smoke/e3-19' },
+	{ id: 'e3-20', label: 'На сервере кончилось место', href: '/dev/smoke/e3-19?server' },
 	{ id: 'e4-29', label: 'Вложения в нити', href: '/dev/smoke/e4-29' },
 	{ id: 'e4-2', label: 'Новая запись', href: '/dev/smoke/e4-2' },
 	{ id: 'e4-14', label: 'Лайтбокс', href: '/dev/smoke/e4-14' },

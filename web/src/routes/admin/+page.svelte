@@ -62,7 +62,7 @@
 	const quotaGbHintText = 'Квота — целые гигабайты';
 	const quotaPercentHintText = 'Процент диска — целое число от 1 до 100';
 	const instanceQuotaExplainHint =
-		'Действует одно: гигабайты или доля диска. Сохранение одного очищает другое. При упоре текст пишется, медиа — нет.';
+		'Действует одно: гигабайты или доля диска. Сохранение одного очищает другое. При упоре писать нельзя ни в один круг: ни текст, ни фото.';
 
 	const selectedCircleId = $derived($page.url.searchParams.get('circle') ?? '');
 	const selectedCircle = $derived(circles.find((c) => c.id === selectedCircleId));

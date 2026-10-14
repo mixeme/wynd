@@ -61,6 +61,10 @@
 		lastReadSeq: 0,
 		archiveCycle: undefined,
 		canWrite: true,
+		spaceFull: '',
+		ownerName: '',
+		youOwn: false,
+		serverName: '',
 		sharePlace: true,
 		responsesUnread: 0,
 		hasOthers: false,
@@ -68,6 +72,16 @@
 	});
 
 	setContext(CIRCLE_CTX, ctx);
+
+	// Места нет (C42): полоса вместо строки ввода называет, кто поможет.
+	function applySpace(item: CircleListItem) {
+		ctx.spaceFull = item.space_full ?? '';
+		ctx.ownerName = item.owner_name ?? '';
+		ctx.youOwn = item.you_own ?? false;
+		if (ctx.spaceFull === 'server' && !ctx.serverName) {
+			void getSession(ctx.origin).then((s) => (ctx.serverName = s?.name ?? ''));
+		}
+	}
 
 	async function loadAvatarUrl(origin: string, blobId?: string) {
 		if (blobId) {
@@ -88,6 +102,7 @@
 				ctx.lastReadSeq = item.last_read_seq;
 				if (item.archive_cycle?.active) ctx.archiveCycle = item.archive_cycle;
 				ctx.canWrite = item.status === 'active';
+				applySpace(item);
 			}
 			const detail = await fetchCircleDetail(ctx.origin, ctx.circleId);
 			if (detail.archive_cycle?.active) ctx.archiveCycle = detail.archive_cycle;
@@ -123,6 +138,7 @@
 		ctx.lastReadSeq = 0;
 		ctx.archiveCycle = undefined;
 		ctx.canWrite = true;
+		ctx.spaceFull = '';
 		ctx.refresh = loadMeta;
 		rememberLastCircle(circleId);
 	}
@@ -246,6 +262,7 @@
 		ctx.lastReadSeq = listItem.last_read_seq;
 		ctx.archiveCycle = archiveCycle;
 		ctx.canWrite = listItem.status === 'active';
+		applySpace(listItem);
 		ctx.refresh = refreshMeta;
 
 		try {

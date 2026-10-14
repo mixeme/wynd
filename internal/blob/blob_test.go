@@ -2,6 +2,7 @@ package blob_test
 
 import (
 	"bytes"
+	"errors"
 	"crypto/sha256"
 	"encoding/hex"
 	"io"
@@ -368,7 +369,7 @@ func TestQuotaExceededRejectsUpload(t *testing.T) {
 		AccountID: "acc1", ExpectedSize: 50, MimeType: "image/jpeg",
 		Now: uploadNow(),
 	})
-	if err != blob.ErrQuotaExceeded {
+	if !errors.Is(err, blob.ErrQuotaExceeded) {
 		t.Fatalf("err: %v", err)
 	}
 }
