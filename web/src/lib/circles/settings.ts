@@ -76,6 +76,15 @@ export interface QuotaInfo {
 	/** Сколько записей останется в круге после отсечки (не раньше её). */
 	posts_kept_at_cutoff?: number;
 	median_post_bytes?: number;
+	/** Просьба о месте: ждёт ответа (6.44) или отказана (6.45). Одобренной нет. */
+	last_request?: QuotaRequestInfo;
+}
+
+export interface QuotaRequestInfo {
+	requested_bytes: number;
+	status: 'pending' | 'rejected';
+	created_at: string;
+	resolved_at?: string;
 }
 
 export type EditWindowKey = 'chronicle' | '10m' | '1h' | '1d' | 'unlimited' | 'custom';

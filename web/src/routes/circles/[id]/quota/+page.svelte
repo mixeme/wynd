@@ -13,11 +13,11 @@
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { isAccessError } from '$lib/api/client';
-	import { fetchQuota, type VolumeBucket } from '$lib/circles/settings';
+	import { fetchQuota, type QuotaRequestInfo, type VolumeBucket } from '$lib/circles/settings';
 	import { volumeBarCenterX } from '$lib/circles/volumeChart';
 	import { formatBytes } from '$lib/format/bytes';
 	import { WORD, plural } from '$lib/format/plural';
-	import { formatEntryDate } from '$lib/format/time';
+	import { formatEntryDate, formatSessionDay } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
@@ -31,6 +31,7 @@
 	let postCount = $state(0);
 	// Записи не раньше отсечки — останутся в круге. Нет — сервер старый.
 	let keptPosts = $state<number | undefined>(undefined);
+	let lastRequest = $state<QuotaRequestInfo | undefined>(undefined);
 	let error = $state('');
 	let forbidden = $state(false);
 	let loading = $state(true);
@@ -101,6 +102,7 @@
 			volumeStep = data.volume_step ?? 'month';
 			postCount = data.post_count;
 			keptPosts = data.posts_kept_at_cutoff;
+			lastRequest = data.last_request;
 			if (data.freed_at_cutoff_bytes !== undefined) {
 				freedBytes = data.freed_at_cutoff_bytes;
 			}
@@ -165,10 +167,24 @@
 			{/if}
 			{#if full}· писать в круг больше нельзя{/if}
 		</Hint>
-		{#if capped}
+		{#if lastRequest?.status === 'pending'}
+			<!-- Просьба отправлена (6.44): одна, пока не ответили. -->
+			<SettingsRow
+				title={capped
+					? `Попросили ${formatBytes(lastRequest.requested_bytes)} вместо ${formatBytes(quotaBytes)}`
+					: `Попросили ${formatBytes(lastRequest.requested_bytes)}`}
+				subtitle={`${formatSessionDay(lastRequest.created_at)} · ждём ответа администратора, он придёт письмом`}
+				chevron={false}
+				class="mt-10"
+				divided="both"
+			/>
+		{:else if capped}
+			<!-- Отказ (6.45) виден до новой просьбы или отсечки. -->
 			<SettingsRow
 				title="Попросить у администратора"
-				subtitle="шаг необязательный — можно сразу к отсечке"
+				subtitle={lastRequest?.status === 'rejected'
+					? `${formatSessionDay(lastRequest.resolved_at ?? lastRequest.created_at)} администратор отказал в ${formatBytes(lastRequest.requested_bytes)}. Можно попросить ещё раз`
+					: 'шаг необязательный — можно сразу к отсечке'}
 				class="mt-10"
 				divided="both"
 				onclick={() => goto(`/circles/${circle.circleId}/quota/request`)}
