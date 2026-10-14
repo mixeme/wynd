@@ -1,6 +1,9 @@
 /dev/
 /data/
 /data-*/
+# Данные запуска из deploy/docker (compose.yaml кладёт их рядом с собой).
+deploy/docker/data/
+deploy/docker/caddy/
 /dist/
 *.test
 *.out

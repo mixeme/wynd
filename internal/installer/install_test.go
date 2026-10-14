@@ -293,6 +293,19 @@ func TestInstallOnCleanServer(t *testing.T) {
 	if host.files[installDir+"/compose.yaml"] != ComposeFile(spec) || host.files[installDir+"/Caddyfile"] != CaddyFile(spec) {
 		t.Fatalf("файлы: %v", host.files)
 	}
+	// Данные — папкой рядом с настройкой, и пишет в неё Wynd из контейнера.
+	dirs := false
+	for _, entry := range res.Log {
+		if strings.HasPrefix(entry.Command, "mkdir -p "+dataDir+" "+caddyDir+"/data "+caddyDir+"/config && chown -R 100:101 "+dataDir) {
+			dirs = true
+		}
+	}
+	if !dirs {
+		t.Fatalf("папки данных не созданы: %+v", res.Log)
+	}
+	if strings.Contains(ComposeFile(spec), "\nvolumes:") {
+		t.Fatalf("данные в томах Docker:\n%s", ComposeFile(spec))
+	}
 	for _, entry := range res.Log {
 		if strings.Contains(entry.Command+entry.Output, "s3cr3t-t0ken") {
 			t.Fatalf("ссылка первого запуска попала в журнал: %+v", entry)
@@ -427,11 +440,13 @@ func TestRollbackKeepsOrDropsData(t *testing.T) {
 		// Подставной сервер на многострочный сценарий отвечает «down» — код 0.
 		_ = log
 	}
-	if strings.Contains(log[0].Command, "--volumes") || strings.Contains(log[0].Command, "certbot revoke") {
+	if strings.Contains(log[0].Command, "--volumes") || strings.Contains(log[0].Command, "certbot revoke") ||
+		strings.Contains(log[0].Command, "rm -rf "+installDir+"\n") || !strings.Contains(log[0].Command, "! -name data ! -name caddy -exec rm -rf") {
 		t.Fatalf("данные просили оставить: %s", log[0].Command)
 	}
 	log, _ = Rollback(context.Background(), sess, spec, false)
-	if !strings.Contains(log[0].Command, "--volumes") || !strings.Contains(log[0].Command, "rm -rf "+installDir) {
+	if !strings.Contains(log[0].Command, "--volumes") || !strings.Contains(log[0].Command, "rm -rf "+installDir+"\n") ||
+		!strings.Contains(log[0].Command, "vol="+caddyDir+"/data") {
 		t.Fatalf("откат: %s", log[0].Command)
 	}
 	// Данные удаляют — сертификат отзывают, и раньше, чем уйдёт том с ключом.

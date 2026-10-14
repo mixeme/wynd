@@ -42,8 +42,8 @@ LABEL org.opencontainers.image.title="Wynd" \
 # ffmpeg — только чтобы снять кадр ролику, пришедшему без него (план 49,
 # временно). Без него сервер работает, просто такие ролики остаются без кадра.
 RUN apk add --no-cache ca-certificates tzdata ffmpeg \
-	&& addgroup -S wynd \
-	&& adduser -S -G wynd -h /data wynd
+	&& addgroup -S -g 101 wynd \
+	&& adduser -S -u 100 -G wynd -h /data wynd
 
 COPY --from=build /wynd /usr/local/bin/wynd
 # AGPL §4: копия лицензии едет вместе с бинарём (LIC-5).

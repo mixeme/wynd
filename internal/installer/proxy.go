@@ -182,7 +182,7 @@ services:
     ports:
       - "127.0.0.1:7676:7676"
     volumes:
-      - wynd-data:/data
+      - ./data:/data
     environment:
       WYND_PUBLIC_URL: https://` + spec.Domain + `
       # The host proxy reaches the container through docker-proxy, so the
@@ -199,9 +199,6 @@ networks:
       config:
         - subnet: 172.30.76.0/24
           gateway: 172.30.76.1
-
-volumes:
-  wynd-data:
 `
 }
 

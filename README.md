@@ -34,7 +34,7 @@ sudo ./deploy/install.sh --from-source --public-url https://home.example.org
 
 Скрипт заводит пользователя `wynd`, каталог данных `/var/lib/wynd`, юнит `wynd.service`, при публичном адресе — Caddy (`--own-proxy` — не трогать прокси, напечатать фрагмент конфигурации). В конце печатает адрес первого запуска с токеном: там задаются пароль панели, имя инстанса и SMTP.
 
-Docker — `deploy/docker/compose.yaml` (Wynd и Caddy, данные в томе `wynd-data`); адрес — в `WYND_PUBLIC_URL`, домен — в `deploy/caddy/Caddyfile`. Если на хосте уже есть прокси — `deploy/docker/compose.own-proxy.yaml`: только Wynd на `127.0.0.1:7676`, доверенный прокси — шлюз сети контейнера; конфиг прокси — из `deploy/proxy/`.
+Docker — `deploy/docker/compose.yaml` (Wynd и Caddy; данные — в папке `data/` рядом с ним, её до первого запуска создать с хозяином `100:101` — команда в начале файла; сертификат — в `caddy/`); адрес — в `WYND_PUBLIC_URL`, домен — в `deploy/caddy/Caddyfile`. Если на хосте уже есть прокси — `deploy/docker/compose.own-proxy.yaml`: только Wynd на `127.0.0.1:7676`, доверенный прокси — шлюз сети контейнера; конфиг прокси — из `deploy/proxy/`.
 
 ---
 

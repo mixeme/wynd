@@ -20,10 +20,18 @@ import (
 // Caddy с сертификатом. Не обёртка над deploy/install.sh, а шаги: у каждого
 // «уже сделано?», «сделать», «убедиться». Повторный запуск пропускает
 // сделанное, оборванное доделывает. Результат — тот же, что у ручной
-// установки по deploy/docker: /opt/wynd/compose.yaml и Caddyfile.
+// установки по deploy/docker: /opt/wynd/compose.yaml и Caddyfile, данные — в
+// /opt/wynd/data, сертификат своего Caddy — в /opt/wynd/caddy.
 
 const (
 	installDir = "/opt/wynd"
+	// Данные Wynd и Caddy — папками рядом с настройкой, не томами Docker
+	// (план 46, C32): бэкап и переезд — копия одной папки, а «убрать папку»
+	// значит то, что написано.
+	dataDir  = installDir + "/data"
+	caddyDir = installDir + "/caddy"
+	// wyndOwner — пользователь wynd в образе (deploy/docker/Dockerfile).
+	wyndOwner = "100:101"
 	// Так зовётся образ, приехавший файлом (TarImage); версия — тег.
 	imageName = "wynd"
 	// DefaultRegistry — где лежат образы выпусков (.github/workflows/image.yaml).
@@ -838,7 +846,7 @@ services:
   wynd:
     image: ` + spec.imageTag() + `
     volumes:
-      - wynd-data:/data
+      - ./data:/data
     environment:
       WYND_PUBLIC_URL: https://` + spec.Domain + `
       # Only the caddy service can reach wynd (no published port), so its
@@ -853,16 +861,11 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
+      - ./caddy/data:/data
+      - ./caddy/config:/config
     depends_on:
       - wynd
     restart: unless-stopped
-
-volumes:
-  wynd-data:
-  caddy-data:
-  caddy-config:
 `
 }
 
@@ -898,9 +901,15 @@ func sum(content string) string {
 func filesStep(spec Spec) step {
 	type file struct{ path, content string }
 	files := []file{{installDir + "/compose.yaml", ComposeFile(spec)}}
+	dirs := "mkdir -p " + dataDir
 	if spec.Proxy == "" {
 		files = append(files, file{installDir + "/Caddyfile", CaddyFile(spec)})
+		dirs += " " + caddyDir + "/data " + caddyDir + "/config"
 	}
+	// Папку данных Docker сам не создаст правильно: создал бы от root, и Wynd
+	// в контейнере не смог бы в неё писать. Данные остались от прошлой
+	// установки или принесены с другой машины — хозяин тот же.
+	dirs += " && chown -R " + wyndOwner + " " + dataDir + " && chmod 700 " + dataDir
 	return step{
 		id:    "files",
 		title: "Настройка",
@@ -932,7 +941,7 @@ func filesStep(spec Spec) step {
 					Advice:  "Он настроен на " + old + ". Смену адреса установщик пока не умеет. Чтобы поставить заново с адресом " + spec.Domain + ", сначала нажмите «Откатить установку».",
 				}
 			}
-			if _, err := r.must(ctx, "mkdir -p "+installDir, shortTimeout); err != nil {
+			if _, err := r.must(ctx, dirs, shortTimeout); err != nil {
 				return err
 			}
 			for _, f := range files {
@@ -1157,7 +1166,8 @@ const (
 	markRevokeFailed = "WYND_REVOKE_FAILED"
 )
 
-// revokeScript отзывает сертификаты из тома нашего Caddy, пока том ещё есть.
+// revokeScript отзывает сертификаты из хранилища нашего Caddy, пока оно ещё
+// есть: из папки /opt/wynd/caddy/data, а у установки до плана 46, C32, — из тома.
 // Отзыв подписывается ключом самого сертификата — учётная запись у
 // удостоверяющего центра не нужна. Центр узнаём по имени папки, в которую
 // Caddy кладёт сертификат; незнакомый — отзыв не вышел. Неудача откат не
@@ -1167,6 +1177,7 @@ const (
 // сертификаты на этот ключ (проба 2026-10-10) — ключ всё равно удаляется.
 const revokeScript = `  proj=$(docker compose config 2>/dev/null | sed -n 's/^name: //p' | head -n 1)
   vol=$(docker volume ls -q --filter label=com.docker.compose.project="${proj:-wynd}" --filter label=com.docker.compose.volume=caddy-data 2>/dev/null | head -n 1)
+  if [ -d ` + caddyDir + `/data/caddy ]; then vol=` + caddyDir + `/data; fi
   if [ -n "$vol" ]; then
     docker run --rm -v "$vol":/data:ro --entrypoint sh ` + certbotImage + ` -c '` + revokeLoop + `' 2>&1 || echo "` + markRevokeFailed + ` certbot did not run"
     docker image rm ` + certbotImage + ` >/dev/null 2>&1 || true
@@ -1200,8 +1211,9 @@ const revokeLoop = `
 // образ Caddy (тот — только если им не пользуется чужой контейнер: docker
 // занятый образ не удалит). Образы берутся и из самих контейнеров: Wynd мог
 // быть поставлен другим способом или другой версии, чем ставит это окно.
-// Данные (тома) — только если keepData ложно. Docker остаётся: он мог
-// понадобиться чему-то ещё, и сам по себе ничего не меняет.
+// keepData — в /opt/wynd остаются data и caddy (данные и сертификат), прочее
+// уходит; иначе уходит вся папка и тома прежних установок. Docker остаётся: он
+// мог понадобиться чему-то ещё, и сам по себе ничего не меняет.
 //
 // Данные удаляют — сертификат сначала отзываем (решение владельца,
 // 2026-10-10): ключ уходит вместе с томом, а отозванный сертификат перестаёт
@@ -1220,6 +1232,13 @@ func Rollback(ctx context.Context, sess *Session, spec Spec, keepData bool) ([]L
 		down += ` 2>&1
   docker volume ls -q --filter label=com.docker.compose.project="${proj:-wynd}" 2>/dev/null | xargs -r docker volume rm`
 	}
+	// keepData: всё, кроме данных и сертификата, — и чужое, что положили рядом.
+	clear := "rm -rf " + installDir
+	gone := "test ! -e " + installDir
+	if keepData {
+		clear = "find " + installDir + " -mindepth 1 -maxdepth 1 ! -name data ! -name caddy -exec rm -rf {} + 2>/dev/null || true"
+		gone = "test ! -e " + installDir + "/compose.yaml"
+	}
 	script := rollbackProxy(keepData) + `imgs=
 if [ -f ` + installDir + `/compose.yaml ] && command -v docker >/dev/null 2>&1; then
   cd ` + installDir + `
@@ -1228,7 +1247,7 @@ if [ -f ` + installDir + `/compose.yaml ] && command -v docker >/dev/null 2>&1; 
   ` + down + ` 2>&1
 fi
 cd /
-rm -rf ` + installDir + `
+` + clear + `
 if command -v docker >/dev/null 2>&1; then
   for i in $imgs; do docker image rm "$i" >/dev/null 2>&1 || true; done
   docker image rm ` + spec.imageTag() + ` >/dev/null 2>&1 || true
@@ -1238,7 +1257,7 @@ if command -v docker >/dev/null 2>&1; then
   rm -f ` + buildLock + `
   ` + pruneCacheOurs + `
 fi
-test ! -e ` + installDir
+` + gone
 	res, err := sess.Exec(ctx, script, nil, packageTimeout)
 	log := []LogEntry{{Command: script, Output: strings.TrimRight(res.Output, "\n")}}
 	if err != nil {

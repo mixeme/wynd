@@ -494,13 +494,13 @@ x86_64
 <div class="sub">Проверка прошла: сайт открывается, сертификат действует.</div>
 <div class="box" style="margin-top:12px;border-color:#C9A39A">
 <div style="font-weight:600">Убрать Wynd с сервера?</div>
-<div class="dim" style="margin-top:4px;line-height:1.5">Сайт family.example.ru перестанет открываться. Уберём контейнеры Wynd и Caddy и папку /opt/wynd. Docker останется.</div>
+<div class="dim" style="margin-top:4px;line-height:1.5">Сайт family.example.ru перестанет открываться. Уберём контейнеры Wynd и Caddy и их настройку из папки /opt/wynd. Docker останется.</div>
 <div style="margin-top:8px">☐ Удалить данные Wynd — записи, фотографии, учётные записи — и сертификат сайта</div>
-<div class="dim" style="margin-top:4px;line-height:1.5">Без галочки данные и сертификат останутся на сервере: поставите Wynd снова — всё будет на месте.</div>
+<div class="dim" style="margin-top:4px;line-height:1.5">Без галочки данные и сертификат останутся на сервере, данные — в папке /opt/wynd/data: поставите Wynd снова — всё будет на месте.</div>
 <div class="foot" style="margin-top:12px"><span class="btn">Да, убрать</span><span class="btn gh">Отмена</span></div>
 </div>
 </div></div></div>
-<p class="note">Вопрос тот же, что у «Откатить установку» на экране отказа, только сказано, что сайт перестанет открываться, и что значит оставить данные. После — возврат к осмотру: сервер без Wynd.</p>
+<p class="note">Черновик 2026-10-14, не реализовано: данные теперь лежат в /opt/wynd/data (план 46, C32), поэтому «уберём папку /opt/wynd» стало бы неправдой — убирается только настройка, а где остаются данные, сказано. Вопрос тот же, что у «Откатить установку» на экране отказа, только сказано, что сайт перестанет открываться, и что значит оставить данные. После — возврат к осмотру: сервер без Wynd.</p>
 </div>
 
 <div>
@@ -515,13 +515,13 @@ x86_64
 <div class="sub">Проверка прошла: сайт открывается, сертификат действует.</div>
 <div class="box" style="margin-top:12px;border-color:#C9A39A">
 <div style="font-weight:600">Убрать Wynd с сервера?</div>
-<div class="dim" style="margin-top:4px;line-height:1.5">Сайт family.example.ru перестанет открываться. Уберём контейнер Wynd, его сайт из nginx и папку /opt/wynd. Docker и nginx останутся.</div>
+<div class="dim" style="margin-top:4px;line-height:1.5">Сайт family.example.ru перестанет открываться. Уберём контейнер Wynd, его сайт из nginx и настройку из папки /opt/wynd. Docker и nginx останутся.</div>
 <div style="margin-top:8px">☐ Удалить данные Wynd — записи, фотографии, учётные записи — и сертификат сайта</div>
-<div class="dim" style="margin-top:4px;line-height:1.5">Без галочки данные и сертификат останутся на сервере: поставите Wynd снова — всё будет на месте.</div>
+<div class="dim" style="margin-top:4px;line-height:1.5">Без галочки данные и сертификат останутся на сервере, данные — в папке /opt/wynd/data: поставите Wynd снова — всё будет на месте.</div>
 <div class="foot" style="margin-top:12px"><span class="btn">Да, убрать</span><span class="btn gh">Отмена</span></div>
 </div>
 </div></div></div>
-<p class="note">Утверждено владельцем 2026-10-11, реализовано. От кадра 5б отличается одной фразой: вместо своего Caddy убирается наш файл сайта из чужого веб-сервера, сам веб-сервер остаётся. Для Apache и Caddy — то же с их именем.</p>
+<p class="note">Утверждено владельцем 2026-10-11, реализовано; черновик 2026-10-14 — те же две фразы, что в 5б. От кадра 5б отличается одной фразой: вместо своего Caddy убирается наш файл сайта из чужого веб-сервера, сам веб-сервер остаётся. Для Apache и Caddy — то же с их именем.</p>
 </div>
 
 <div>

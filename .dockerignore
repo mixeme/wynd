@@ -2,6 +2,8 @@
 .cursor
 dev/
 data/
+deploy/docker/data/
+deploy/docker/caddy/
 data-*/
 web/node_modules/
 web/.svelte-kit/

@@ -1,10 +1,15 @@
+# Данные — в папках рядом с этим файлом: data/ (база, фотографии, видео) и
+# caddy/ (сертификат). Wynd в контейнере работает от uid 100, gid 101 — папку
+# данных создайте до первого запуска:
+#   mkdir -p data && chown 100:101 data && chmod 700 data
+
 services:
   wynd:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile
     volumes:
-      - wynd-data:/data
+      - ./data:/data
     environment:
       WYND_PUBLIC_URL: https://example.org
       # Only the caddy service can reach wynd (no published port), so its
@@ -19,13 +24,8 @@ services:
       - "443:443"
     volumes:
       - ../caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
+      - ./caddy/data:/data
+      - ./caddy/config:/config
     depends_on:
       - wynd
     restart: unless-stopped
-
-volumes:
-  wynd-data:
-  caddy-data:
-  caddy-config:
