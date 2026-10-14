@@ -10,6 +10,7 @@
 		icon,
 		link = false,
 		chevron = true,
+		trailingIcon,
 		onclick,
 		control,
 		divided,
@@ -23,6 +24,8 @@
 		icon?: IconName;
 		link?: boolean;
 		chevron?: boolean;
+		/** Значок справа вместо шеврона: скачать файл (6.33). */
+		trailingIcon?: IconName;
 		onclick?: () => void;
 		control?: Snippet;
 		/** Черта над строкой, под ней или с обеих сторон — отдельная строка
@@ -83,7 +86,9 @@
 			{#if value}
 				<span class="val">{value}</span>
 			{/if}
-			{#if chevron}
+			{#if trailingIcon}
+				<Icon name={trailingIcon} size="sm" />
+			{:else if chevron}
 				<Icon name="chevr" size="sm" />
 			{/if}
 		{/if}

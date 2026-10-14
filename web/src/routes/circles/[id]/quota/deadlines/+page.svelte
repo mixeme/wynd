@@ -119,7 +119,7 @@
 		if (activeCycle) {
 			goUp(`/circles/${circle.circleId}/settings`);
 		} else {
-			goUp(`/circles/${circle.circleId}/quota`);
+			goUp(`/circles/${circle.circleId}/quota/cleanup`);
 		}
 	}
 
@@ -135,7 +135,7 @@
 			if (!deadline) deadline = defaultDeadline();
 			void loadCutoffStats(cutoffParam);
 		} else if (!cutoffDate) {
-			goto(`/circles/${circle.circleId}/quota`);
+			goto(`/circles/${circle.circleId}/quota/cleanup`);
 		}
 	});
 </script>
@@ -217,7 +217,7 @@
 		<DangerZone
 			class="mt-20"
 			items={['Новый цикл архивации']}
-			onitem={() => goto(`/circles/${circle.circleId}/quota`)}
+			onitem={() => goto(`/circles/${circle.circleId}/quota/cleanup`)}
 		/>
 		<Hint class="mt-8"
 			>Начнёте заново — уже скачанные архивы останутся у людей, но отсечка и срок будут другими, и

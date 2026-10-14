@@ -1889,6 +1889,23 @@ a.link {
 	text-align: center;
 	line-height: 1.5;
 }
+/* Карточка «что происходит» (StatusCard; 6.40, 6.43). */
+.status-card {
+	margin: 16px 16px 0;
+	padding: 12px 14px;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	background: var(--card);
+}
+.status-card-title {
+	font-weight: 600;
+}
+.status-card-text {
+	margin-top: 4px;
+	font-size: 12.5px;
+	line-height: 1.5;
+	color: var(--muted);
+}
 /* Та же полоса наверху экрана правки (4.31): писать нельзя, удалить можно. */
 .write-note-top {
 	padding: 12px 16px;
