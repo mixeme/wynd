@@ -29,7 +29,7 @@
 				<tr>
 					<th style="width:38%">Круг</th>
 					<th>Записей</th>
-					<th>Медиа</th>
+					<th>Занято</th>
 					<th>Квота</th>
 				</tr>
 			</thead>
