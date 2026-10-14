@@ -70,13 +70,14 @@
 
 ### `chrome/`
 
-PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar, **ComposeToolbar**, **ConnectionStrip**
+PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar, **ComposeToolbar**, **ConnectionStrip**, **SpaceNote**
 
 `ComposeToolbar` — нижняя полоса новой записи (**#e4-2**): snippet `tools` (кнопки вложений), опц. snippet `note` — мелкая подпись справа («до 32 КБ · как Мышь»). Ставится в `footer` у `FormLayout compose`.
 
 `AudioBar` — полоса плеера (**#e4-20**): что играет, откуда, ход в цвете круга, пауза и крестик; ставится один раз в корневом `+layout`. Видна на любом экране, кроме ленты круга звука и экрана его записи. Пока видна, задаёт `--player-h` — полоса ввода, плюс и нижние панели встают над ней. Только вид: `title`, `subtitle`, `coverUrl`, `color`, `progress`, `loading`, `playing`, `onopen`, `ontoggle`, `onstop`. Что играет, когда прятать и `--player-h` — `useAudioBar()` из `$lib/media/audioBar.svelte` (план 48).
 
 `ConnectionStrip` — полоса связи под шапкой (**#e7-6–e7-8**, C25): `notice` — `offline` («Нет сети. Новое уйдёт само…», значок облака), `down` («Сервер не отвечает — доступно сохранённое», часы) или `sending` («Соединение установлено — отправляем N записей» и ход цветом круга); без `notice` не рисует ничего — на связи знака нет (**#e7-5**). Состояние считает `$lib/session/connection.svelte` (`connectionNotice(origin?)`); ставят `CircleLayout` (сервер своего круга) и `ShellLayout` (улочка — только «нет сети»). `CircleRow silent="хост"` — круг молчащего сервера на улочке (**#e7-9**): «хост не отвечает» со значком часов вместо последней строки, строка приглушена.
+`SpaceNote` — полоса «места нет» наверху экрана (**#e4-31**, C42): `notice` из `spaceNotice()` (`$lib/circles/space`) — две строки, у владельца вторая — ссылка на «Архив и очистку». Ставит экран правки записи в круге без места; внизу ленты та же полоса — `CircleLayout notice` (**#e3-19**).
 
 ### `forms/`
 

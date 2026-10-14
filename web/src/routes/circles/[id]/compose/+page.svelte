@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { spaceNotice } from '$lib/circles/space';
+	import SpaceNote from '$ui/chrome/SpaceNote.svelte';
 	import { goUp } from '$lib/navigation/up';
 	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import DateRow from '$ui/forms/DateRow.svelte';
@@ -115,6 +116,9 @@
 	// Места нет (C42): новую запись сюда не пускаем, правку не сохранить —
 	// удалить свою запись можно.
 	const notice = $derived(spaceNotice(circle));
+	// Правка в круге без места (4.31): править нельзя, удалить можно — экран
+	// остаётся ради «Удалить запись», добавлять и менять на нём нечего.
+	const frozen = $derived(isEdit && Boolean(notice));
 	const canPublish = $derived(
 		!compressing && !circle.spaceFull && (Boolean(body.trim()) || picked.length > 0)
 	);
@@ -771,8 +775,11 @@
 	publishing={loading}
 	oncancel={goBack}
 	onpublish={() => void publish()}
-	footer={composeFooter}
+	footer={frozen ? undefined : composeFooter}
 >
+	{#if frozen && notice}
+		<SpaceNote {notice} />
+	{/if}
 	{#if uploadTotal > 0}
 		<Hint>{uploadHint}</Hint>
 		<Meter value={uploadPct} />
@@ -783,6 +790,7 @@
 		bind:value={body}
 		placeholder="Что случилось?"
 		rows={1}
+		readonly={frozen}
 		oninput={onBodyInput}
 		onclick={syncMentionPicker}
 		onkeyup={syncMentionPicker}
@@ -824,11 +832,15 @@
 							audio_artist: item.meta.audio_artist,
 							audio_title: item.meta.audio_title
 						})}
-				onclick={() => tapTile(i)}
-				onremove={() => removePicked(i)}
+				onclick={() => {
+					if (!frozen) tapTile(i);
+				}}
+				onremove={frozen ? undefined : () => removePicked(i)}
 			/>
 		{/each}
-		<AddPhotoButton onclick={() => photoPicker?.open()} />
+		{#if !frozen}
+			<AddPhotoButton onclick={() => photoPicker?.open()} />
+		{/if}
 	</ThumbStrip>
 
 	{#if compressing}
@@ -838,31 +850,33 @@
 		{/if}
 	{/if}
 
-	{#if picked.some((p) => isVisual(p.meta))}
+	{#if !frozen && picked.some((p) => isVisual(p.meta))}
 		<Hint
 			>Обложка — первая. Нажмите на неё, чтобы выбрать кадр для ленты, или на другую, чтобы
 			обложкой стала она.</Hint
 		>
 	{/if}
 
-	<DateRow
-		bind:value={entryDate}
-		icon="day"
-		title="Отнести к дате"
-		subtitle={entryDateSubtitle}
-		class="mt-16"
-		divided="both"
-	/>
-	{#if isEdit}
-		<Hint>
-			В ленте запись останется на своём месте. Дата нужна дню — в «Днях» запись соберётся с
-			остальными за {entryDate ? formatEntryDate(entryDate) : 'этот день'}.
-		</Hint>
-	{:else}
-		<Hint>
-			В ленте запись всё равно встанет сегодняшним числом. Дата нужна дню — в «Днях» она
-			соберёт её с остальными за {entryDate ? formatEntryDate(entryDate) : 'этот день'}.
-		</Hint>
+	{#if !frozen}
+		<DateRow
+			bind:value={entryDate}
+			icon="day"
+			title="Отнести к дате"
+			subtitle={entryDateSubtitle}
+			class="mt-16"
+			divided="both"
+		/>
+		{#if isEdit}
+			<Hint>
+				В ленте запись останется на своём месте. Дата нужна дню — в «Днях» запись соберётся с
+				остальными за {entryDate ? formatEntryDate(entryDate) : 'этот день'}.
+			</Hint>
+		{:else}
+			<Hint>
+				В ленте запись всё равно встанет сегодняшним числом. Дата нужна дню — в «Днях» она
+				соберёт её с остальными за {entryDate ? formatEntryDate(entryDate) : 'этот день'}.
+			</Hint>
+		{/if}
 	{/if}
 
 	{#if isEdit && editingPost?.editable_until}
@@ -877,16 +891,6 @@
 
 	{#if error}
 		<Hint class="mt-12">{error}</Hint>
-	{/if}
-	{#if isEdit && notice}
-		<Hint class="mt-12">
-			{notice.first}<br />
-			{#if notice.href}
-				<a class="under" href={notice.href}>{notice.second}</a>
-			{:else}
-				{notice.second}
-			{/if}
-		</Hint>
 	{/if}
 
 	{#if isEdit && editingPost && isEditableActive(editingPost.editable_until)}
