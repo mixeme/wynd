@@ -299,7 +299,7 @@ export class ZipReader {
 		if (e.method !== 8) throw new NotWyndError(`method ${e.method}`);
 		const input = new ReadableStream<BufferSource>({
 			start(c) {
-				c.enqueue(raw);
+				c.enqueue(new Uint8Array(raw));
 				c.close();
 			}
 		});
