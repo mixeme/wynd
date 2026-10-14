@@ -168,6 +168,21 @@ func dayLabel(entryDate string) string {
 	return fmt.Sprintf("%d %s", t.Day(), monthsGenitive[t.Month()-1])
 }
 
+// Круг замер под полный архив с удалением (6.36) и ожил.
+func summaryCircleFrozen(g Gender, name string) string {
+	if g == GenderNone {
+		return fmt.Sprintf("Круг остановлен: %s", name)
+	}
+	return fmt.Sprintf("%s %s круг", name, past(g, "остановил", "остановила"))
+}
+
+func summaryCircleUnfrozen(g Gender, name string) string {
+	if g == GenderNone {
+		return fmt.Sprintf("Круг снова открыт: %s", name)
+	}
+	return fmt.Sprintf("%s %s круг", name, past(g, "оживил", "оживила"))
+}
+
 func summaryCutoffSet(cutoff string) string {
 	return fmt.Sprintf("Отсечка архивации: %s", cutoff)
 }

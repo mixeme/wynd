@@ -132,6 +132,7 @@ func (s *Server) handleCircleDetail(w http.ResponseWriter, r *http.Request) {
 	if banner != nil {
 		out["archive_cycle"] = banner
 	}
+	s.addFrozen(r, out, circleID)
 	// «Отклики» (3.12): есть ли вкладка и сколько на ней нового.
 	if others, err := s.Chronicle.CircleHasOthers(r.Context(), circleID, sess.AccountID); err == nil {
 		out["has_others"] = others
@@ -330,13 +331,8 @@ func (s *Server) handleArchiveLink(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	cycle, err := s.Chronicle.GetArchiveCycle(r.Context(), circleID)
-	if err != nil {
+	if _, err := s.personalArchiveCutoff(r.Context(), circleID); err != nil {
 		writeDomainError(w, err)
-		return
-	}
-	if !cycle.Active {
-		writeDomainError(w, chronicle.ErrNotFound)
 		return
 	}
 	buf := make([]byte, 32)
@@ -379,14 +375,32 @@ func (s *Server) handleArchiveDownload(w http.ResponseWriter, r *http.Request) {
 	s.streamArchive(w, r, r.PathValue("circle_id"), sess.AccountID)
 }
 
-func (s *Server) streamArchive(w http.ResponseWriter, r *http.Request, circleID, accountID string) {
-	cycle, err := s.Chronicle.GetArchiveCycle(r.Context(), circleID)
+// personalArchiveCutoff — до какого дня собирать архив участника: отсечка
+// цикла архивации или, когда круг замер под полный архив с удалением (6.36),
+// всё, что было («свой архив — всё, что вы видели в круге»). Ни того ни
+// другого — архива участника нет.
+func (s *Server) personalArchiveCutoff(ctx context.Context, circleID string) (chronicle.ArchiveCycle, error) {
+	frozen, err := s.Chronicle.CircleFrozenAt(ctx, circleID)
 	if err != nil {
-		writeDomainError(w, err)
-		return
+		return chronicle.ArchiveCycle{}, err
+	}
+	if frozen != nil {
+		return chronicle.ArchiveCycle{CutoffDate: time.Now().UTC().AddDate(0, 0, 1).Format("2006-01-02")}, nil
+	}
+	cycle, err := s.Chronicle.GetArchiveCycle(ctx, circleID)
+	if err != nil {
+		return cycle, err
 	}
 	if !cycle.Active {
-		writeDomainError(w, chronicle.ErrNotFound)
+		return cycle, chronicle.ErrNotFound
+	}
+	return cycle, nil
+}
+
+func (s *Server) streamArchive(w http.ResponseWriter, r *http.Request, circleID, accountID string) {
+	cycle, err := s.personalArchiveCutoff(r.Context(), circleID)
+	if err != nil {
+		writeDomainError(w, err)
 		return
 	}
 	now := time.Now().UTC()
@@ -466,7 +480,7 @@ func (s *Server) streamArchive(w http.ResponseWriter, r *http.Request, circleID,
 	// Отсечка замирает, когда участник получил архив целиком — последний байт
 	// ушёл, — а не когда архив собран: обрыв на отдаче замораживал её, хотя
 	// никто ничего не получил (ARC-8).
-	if rec.deliveredToEnd(size) {
+	if cycle.Active && rec.deliveredToEnd(size) {
 		if _, err := s.Chronicle.LockCutoff(context.WithoutCancel(r.Context()), circleID, cycle.CutoffDate, now); err != nil {
 			log.Printf("archive %s: lock cutoff: %v", circleID, err)
 		}

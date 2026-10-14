@@ -16,6 +16,7 @@ import (
 
 	"gitea.mixdep.ru/mix/wynd/internal/api"
 	"gitea.mixdep.ru/mix/wynd/internal/archive"
+	"gitea.mixdep.ru/mix/wynd/internal/auth"
 )
 
 type fullState struct {
@@ -276,5 +277,82 @@ func TestFullArchiveGoesWithCircle(t *testing.T) {
 	}
 	if entries, _ := os.ReadDir(filepath.Join(srv.DataDir, "archives")); len(entries) != 0 {
 		t.Fatalf("архив удалённого круга остался: %v", entries)
+	}
+}
+
+// Инвариант (план 51, 6.32 → 6.34 → 6.30, 6.36): архив с удалением круга
+// замораживает его — писать нельзя никому, участник качает свой архив, в
+// ленте «остановил круг»; убрать круг можно только после скачивания файла;
+// «Отменить — оживить круг» возвращает запись.
+func TestFullArchiveWithCircleRemoval(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	owner, _ := registerSession(t, srv, caps, "anya@example.com")
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles", owner, map[string]any{"name": "Семья", "owner_name": "Аня", "owner_gender": "f"})
+	circleID := jsonStr(t, rec, "id")
+	inv, err := srv.Auth.CreateInvite(t.Context(), auth.CreateInviteInput{CircleID: circleID, Kind: auth.InviteSingle, MaxUses: 1, TTL: time.Hour})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bob := acceptInvite(t, srv, caps, inv.Token, "bob@example.com", "Боб")
+	post := func(tok string) int {
+		return doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/posts", tok, map[string]any{"body": "ещё запись", "entry_date": "2026-10-14"}).Code
+	}
+	if code := post(bob); code != http.StatusCreated {
+		t.Fatalf("запись до заморозки: %d", code)
+	}
+
+	if rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/full_archive", owner, map[string]any{"delete_circle": true}); rec.Code != http.StatusCreated {
+		t.Fatalf("архив с удалением: %d %s", rec.Code, rec.Body.String())
+	}
+	if code := post(bob); code != http.StatusForbidden {
+		t.Fatalf("участник пишет в замерший круг: %d", code)
+	}
+	if code := post(owner); code != http.StatusForbidden {
+		t.Fatalf("владелец пишет в замерший круг: %d", code)
+	}
+	var list struct {
+		Circles []map[string]any `json:"circles"`
+	}
+	_ = json.Unmarshal(doGET(t, srv, "/api/v1/circles", bob).Body.Bytes(), &list)
+	if len(list.Circles) != 1 || list.Circles[0]["frozen_at"] == nil || list.Circles[0]["owner_name"] != "Аня" {
+		t.Fatalf("строка круга у участника: %+v", list.Circles)
+	}
+	if !eventsContain(syncEvents(t, srv, bob), "Аня остановила круг") {
+		t.Fatal("в ленте нет «Аня остановила круг»")
+	}
+	// Свой архив участник качает и без цикла архивации.
+	if rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/archive/link", bob, nil); rec.Code != http.StatusOK {
+		t.Fatalf("архив участника в замершем круге: %d %s", rec.Code, rec.Body.String())
+	}
+
+	waitFullStatus(t, srv, owner, circleID, "ready")
+	if rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/full_archive/remove_circle", owner, nil); rec.Code != http.StatusConflict {
+		t.Fatalf("убрать круг до скачивания файла: %d %s", rec.Code, rec.Body.String())
+	}
+	if got := fetch(srv, fullLink(t, srv, owner, circleID), ""); got.Code != http.StatusOK {
+		t.Fatalf("скачать: %d", got.Code)
+	}
+	if rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/full_archive/remove_circle", owner, nil); rec.Code != http.StatusOK {
+		t.Fatalf("убрать круг после скачивания: %d %s", rec.Code, rec.Body.String())
+	}
+	if rec := doGET(t, srv, "/api/v1/circles/"+circleID, bob); rec.Code != http.StatusNotFound {
+		t.Fatalf("круг остался у участника: %d", rec.Code)
+	}
+}
+
+// «Отменить — оживить круг»: сборка отменена, круг снова пишет.
+func TestFullArchiveReviveCircle(t *testing.T) {
+	srv, tok, circleID := fullArchiveCircle(t)
+	doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/full_archive", tok, map[string]any{"delete_circle": true})
+	waitFullStatus(t, srv, tok, circleID, "ready")
+	if rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/full_archive/revive", tok, nil); rec.Code != http.StatusOK {
+		t.Fatalf("оживить: %d %s", rec.Code, rec.Body.String())
+	}
+	st := readFullState(t, srv, tok, circleID)
+	if st.Archive.Status != "removed" {
+		t.Fatalf("архив после оживления: %+v", st.Archive)
+	}
+	if rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/posts", tok, map[string]any{"body": "снова пишем", "entry_date": "2026-10-15"}); rec.Code != http.StatusCreated {
+		t.Fatalf("запись после оживления: %d %s", rec.Code, rec.Body.String())
 	}
 }

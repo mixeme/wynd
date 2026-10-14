@@ -61,3 +61,19 @@ func (s *Service) SendFullArchiveReady(ctx context.Context, email, circle string
 		circle, expires.UTC().Format("02.01.2006 15:04")+" UTC", link)
 	return s.notify(ctx, email, subject, body)
 }
+
+// SendCircleLeaving — единственное письмо участникам, когда круг замер под
+// полный архив с удалением (6.36): что происходит и что можно успеть.
+func (s *Service) SendCircleLeaving(ctx context.Context, email, circle, owner, link string) error {
+	email = strings.TrimSpace(email)
+	if email == "" {
+		return ErrInvalid
+	}
+	who := "Владелец"
+	if strings.TrimSpace(owner) != "" {
+		who = owner
+	}
+	subject := "Wynd: круг «" + circle + "» уходит с сервера"
+	body := fmt.Sprintf("%s убирает «%s» с сервера и сохраняет круг в файл. Читать можно, писать нельзя.\n\nСвой архив — всё, что вы видели в круге, — можно скачать, пока круг здесь:\n%s\n", who, circle, link)
+	return s.notify(ctx, email, subject, body)
+}

@@ -47,6 +47,8 @@ func (s *Server) handleListCircles(w http.ResponseWriter, r *http.Request) {
 		if c.Status == chronicle.StatusActive {
 			s.addSpaceFull(r, item, c.ID, sess.AccountID)
 		}
+		// Круг уходит с сервера (2.29): строка вместо последней записи.
+		s.addFrozen(r, item, c.ID)
 		out[i] = item
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"circles": out})
@@ -255,6 +257,19 @@ func (s *Server) handleSetReadCursor(w http.ResponseWriter, r *http.Request) {
 
 // addSpaceFull ставит space_full: "circle" — упёрлась квота круга, "server" —
 // потолок сервера; при "circle" — кто владелец и не вы ли это.
+// addFrozen — круг замер под полный архив с удалением (6.36, 2.29): когда и
+// чьим решением.
+func (s *Server) addFrozen(r *http.Request, item map[string]any, circleID string) {
+	frozen, err := s.Chronicle.CircleFrozenAt(r.Context(), circleID)
+	if err != nil || frozen == nil {
+		return
+	}
+	item["frozen_at"] = frozen.UTC().Format(time.RFC3339)
+	if name, err := s.Chronicle.OwnerName(r.Context(), circleID); err == nil {
+		item["owner_name"] = name
+	}
+}
+
 func (s *Server) addSpaceFull(r *http.Request, item map[string]any, circleID, accountID string) {
 	err := s.Blobs.CheckWriteQuota(r.Context(), circleID, 1)
 	switch {

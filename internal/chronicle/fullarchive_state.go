@@ -107,38 +107,121 @@ func (c *Chronicle) GetFullArchive(ctx context.Context, id string) (*FullArchive
 
 // StartFullArchive записывает запрос: архив собирается, оценка его длины уже
 // занимает место на сервере. Второй, пока первый собирается или ждёт
-// скачивания, — ErrArchiveBusy.
-func (c *Chronicle) StartFullArchive(ctx context.Context, circleID, accountID string, deleteCircle, encrypted bool, estimate int64, now time.Time) (*FullArchive, error) {
+// скачивания, — ErrArchiveBusy. С удалением круга (6.32) круг замирает той же
+// транзакцией, и в ленте встаёт «Кот остановил круг» (6.36); froze — круг
+// замер сейчас, а не раньше: тогда участникам уходит письмо.
+func (c *Chronicle) StartFullArchive(ctx context.Context, circleID, accountID string, deleteCircle, encrypted bool, estimate int64, now time.Time) (a *FullArchive, froze bool, err error) {
 	id, err := newID()
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	now = utcOrNow(now)
+	var actor Membership
+	var actorName string
+	if deleteCircle {
+		if actor, err = c.membership(ctx, c.db, circleID, accountID); err != nil {
+			return nil, false, err
+		}
+		if actorName, err = c.identityName(ctx, c.db, actor.IdentityID); err != nil {
+			return nil, false, err
+		}
+	}
 	tx, err := c.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	defer tx.Rollback()
 	var busy int
 	if err := tx.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM circle_archives WHERE circle_id = ? AND status IN ('building', 'ready')
 	`, circleID).Scan(&busy); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if busy > 0 {
-		return nil, ErrArchiveBusy
+		return nil, false, ErrArchiveBusy
 	}
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO circle_archives (id, circle_id, requested_by_account_id, requested_at,
 			delete_circle, encrypted, status, size_bytes)
 		VALUES (?, ?, ?, ?, ?, ?, 'building', ?)
 	`, id, circleID, accountID, formatTime(now), deleteCircle, encrypted, estimate); err != nil {
-		return nil, err
+		return nil, false, err
+	}
+	if deleteCircle {
+		res, err := tx.ExecContext(ctx, `
+			UPDATE circles SET frozen_at = ?, updated_at = ? WHERE id = ? AND frozen_at IS NULL
+		`, formatTime(now), formatTime(now), circleID)
+		if err != nil {
+			return nil, false, err
+		}
+		n, _ := res.RowsAffected()
+		froze = n > 0
+		if froze {
+			if _, err := c.appendEvent(ctx, tx, appendEventInput{
+				circleID: circleID, eventType: "circle_frozen", isService: true,
+				actorIdentityID: actor.IdentityID, actorName: actorName,
+				summary: summaryCircleFrozen(c.identityGender(ctx, tx, actor.IdentityID), actorName),
+				now:     now,
+			}); err != nil {
+				return nil, false, err
+			}
+		}
 	}
 	if err := tx.Commit(); err != nil {
+		return nil, false, err
+	}
+	a, err = c.GetFullArchive(ctx, id)
+	return a, froze, err
+}
+
+// CircleFrozenAt — когда круг замер под архив с удалением; nil — не замер.
+func (c *Chronicle) CircleFrozenAt(ctx context.Context, circleID string) (*time.Time, error) {
+	var v sql.NullString
+	err := c.db.QueryRowContext(ctx, `SELECT frozen_at FROM circles WHERE id = ?`, circleID).Scan(&v)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
 		return nil, err
 	}
-	return c.GetFullArchive(ctx, id)
+	return optTime(v), nil
+}
+
+// UnfreezeCircle — «Отменить — оживить круг» (6.34, 6.30, 6.41): круг снова
+// пишет, в ленте — «Кот оживил круг».
+func (c *Chronicle) UnfreezeCircle(ctx context.Context, circleID, accountID string, now time.Time) error {
+	now = utcOrNow(now)
+	actor, err := c.membership(ctx, c.db, circleID, accountID)
+	if err != nil {
+		return err
+	}
+	name, err := c.identityName(ctx, c.db, actor.IdentityID)
+	if err != nil {
+		return err
+	}
+	tx, err := c.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	res, err := tx.ExecContext(ctx, `
+		UPDATE circles SET frozen_at = NULL, updated_at = ? WHERE id = ? AND frozen_at IS NOT NULL
+	`, formatTime(now), circleID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return tx.Commit()
+	}
+	if _, err := c.appendEvent(ctx, tx, appendEventInput{
+		circleID: circleID, eventType: "circle_unfrozen", isService: true,
+		actorIdentityID: actor.IdentityID, actorName: name,
+		summary: summaryCircleUnfrozen(c.identityGender(ctx, tx, actor.IdentityID), name),
+		now:     now,
+	}); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // SetFullArchiveSnapshot — момент, на который снят круг (6.40).

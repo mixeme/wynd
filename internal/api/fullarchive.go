@@ -140,7 +140,13 @@ func (s *Server) handleFullArchive(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
+	frozen, err := s.Chronicle.CircleFrozenAt(r.Context(), circleID)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
+		"frozen_at":       frozen,
 		"estimate_bytes":  estimate,
 		"posts":           posts,
 		"members":         members,
@@ -166,11 +172,6 @@ func (s *Server) handleStartFullArchive(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	// Архив с удалением круга (6.32) — следующий шаг плана 51.
-	if body.DeleteCircle {
-		writeDomainError(w, chronicle.ErrInvalid)
-		return
-	}
 	key, err := body.Key.params()
 	if err != nil {
 		writeDomainError(w, err)
@@ -190,7 +191,7 @@ func (s *Server) handleStartFullArchive(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusInsufficientStorage, map[string]string{"error": "no_room"})
 		return
 	}
-	a, err := s.Chronicle.StartFullArchive(r.Context(), circleID, sess.AccountID, false, key != nil, estimate, time.Now())
+	a, froze, err := s.Chronicle.StartFullArchive(r.Context(), circleID, sess.AccountID, body.DeleteCircle, key != nil, estimate, time.Now())
 	if errors.Is(err, chronicle.ErrArchiveBusy) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "archive_busy"})
 		return
@@ -199,8 +200,134 @@ func (s *Server) handleStartFullArchive(w http.ResponseWriter, r *http.Request) 
 		writeDomainError(w, err)
 		return
 	}
+	if froze {
+		s.circleFrozen(circleID, sess.AccountID)
+	}
 	s.buildFullArchive(a, key)
 	writeJSON(w, http.StatusCreated, fullArchiveJSON(a))
+}
+
+// circleFrozen — круг замер (6.32): участникам одно письмо, экранам —
+// сигнал перечитать круг (баннер 6.36, строка 2.29).
+func (s *Server) circleFrozen(circleID, ownerAccountID string) {
+	s.sendCircleLeavingEmails(circleID, ownerAccountID)
+	s.notifyCircle(circleID, ownerAccountID, "event")
+}
+
+// sendCircleLeavingEmails — единственное письмо участникам о замершем круге
+// (решение владельца 2026-10-12: сроков и напоминаний нет).
+func (s *Server) sendCircleLeavingEmails(circleID, ownerAccountID string) {
+	if s.Mail == nil {
+		return
+	}
+	link := strings.TrimRight(s.PublicURL(), "/") + "/circles/" + circleID
+	s.notifyWG.Add(1)
+	go func() {
+		defer s.notifyWG.Done()
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		name, err := s.Chronicle.CircleName(ctx, circleID)
+		if err != nil {
+			log.Printf("circle leaving mail %s: %v", circleID, err)
+			return
+		}
+		owner, _ := s.Chronicle.OwnerName(ctx, circleID)
+		ownerEmail, _ := s.Chronicle.AccountEmail(ctx, ownerAccountID)
+		emails, err := s.Chronicle.CircleMemberEmails(ctx, circleID)
+		if err != nil {
+			log.Printf("circle leaving mail %s: members: %v", circleID, err)
+			return
+		}
+		for _, email := range emails {
+			if email == ownerEmail {
+				continue
+			}
+			if err := s.Mail.SendCircleLeaving(ctx, email, name, owner, link); err != nil {
+				log.Printf("circle leaving mail %s to %s: %v", circleID, email, err)
+			}
+		}
+	}()
+}
+
+// handleReviveCircle — «Отменить — оживить круг» (6.34, 6.30, 6.41): архив
+// убирается, если он ещё на сервере, круг снова пишет.
+func (s *Server) handleReviveCircle(w http.ResponseWriter, r *http.Request) {
+	circleID := r.PathValue("circle_id")
+	sess, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+	if err := s.Chronicle.RequireOwner(r.Context(), circleID, sess.AccountID); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	a, err := s.Chronicle.LatestFullArchive(r.Context(), circleID)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	if a != nil && (a.Status == chronicle.FullArchiveBuilding || a.Status == chronicle.FullArchiveReady) {
+		reason := chronicle.RemovedOwner
+		if a.Status == chronicle.FullArchiveBuilding {
+			reason = chronicle.RemovedCanceled
+		}
+		s.removeFullArchive(r.Context(), a.ID, reason)
+	}
+	if err := s.Chronicle.UnfreezeCircle(r.Context(), circleID, sess.AccountID, time.Now()); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	s.notifyCircle(circleID, sess.AccountID, "event")
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// handleRemoveFrozenCircle — «Убрать круг с сервера» (6.30): только когда
+// файл архива с удалением скачан до последнего байта — без него круг не
+// вернуть.
+func (s *Server) handleRemoveFrozenCircle(w http.ResponseWriter, r *http.Request) {
+	circleID := r.PathValue("circle_id")
+	sess, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+	if err := s.Chronicle.RequireOwner(r.Context(), circleID, sess.AccountID); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	a, err := s.Chronicle.LatestFullArchive(r.Context(), circleID)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	if a == nil || !a.DeleteCircle || a.DownloadedAt == nil {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "not_downloaded"})
+		return
+	}
+	name, err := s.Chronicle.CircleName(r.Context(), circleID)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	archives, err := s.Chronicle.FullArchivesWithFiles(r.Context(), circleID)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	blobIDs, err := s.Chronicle.DeleteCircle(r.Context(), circleID, sess.AccountID, name, time.Now().UTC())
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	for _, x := range archives {
+		if cancel, ok := s.fullBuilds.Load(x.ID); ok {
+			cancel.(context.CancelFunc)()
+		}
+		s.deleteFullArchiveFiles(x.ID)
+	}
+	if err := s.Blobs.ReleaseBlobs(r.Context(), blobIDs); err != nil {
+		log.Printf("remove frozen circle %s: release blobs: %v", circleID, err)
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 // handleRemoveFullArchive — «Отменить сборку» (6.40) и «Удалить архив, не
@@ -301,16 +428,31 @@ func (s *Server) handleFullArchiveStreamLink(w http.ResponseWriter, r *http.Requ
 	if !ok {
 		return
 	}
-	if body.DeleteCircle {
-		writeDomainError(w, chronicle.ErrInvalid)
-		return
-	}
 	key, err := body.Key.params()
 	if err != nil {
 		writeDomainError(w, err)
 		return
 	}
-	token, err := s.issueFullLink(fullLink{circleID: circleID, accountID: sess.AccountID, key: key, stream: true}, fullStreamLinkTTL)
+	link := fullLink{circleID: circleID, accountID: sess.AccountID, key: key, stream: true}
+	if body.DeleteCircle {
+		// С удалением (6.43 при включённом переключателе): круг замирает до
+		// снимка, а «скачано» записывается, когда поток дошёл до конца, — тогда
+		// откроется 6.30. Места поток не занимает: размер записи — ноль.
+		a, froze, err := s.Chronicle.StartFullArchive(r.Context(), circleID, sess.AccountID, true, key != nil, 0, time.Now())
+		if errors.Is(err, chronicle.ErrArchiveBusy) {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "archive_busy"})
+			return
+		}
+		if err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		if froze {
+			s.circleFrozen(circleID, sess.AccountID)
+		}
+		link.archiveID = a.ID
+	}
+	token, err := s.issueFullLink(link, fullStreamLinkTTL)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -388,10 +530,26 @@ func (s *Server) handleFullArchiveStream(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	link := v.(fullLink)
+	// Запись архива с удалением: поток не дошёл — сбой, и владелец видит
+	// экран сборки снова; дошёл — «скачано» (6.30).
+	finished := false
+	if link.archiveID != "" {
+		defer func() {
+			if !finished {
+				_ = s.Chronicle.FailFullArchive(context.WithoutCancel(r.Context()), link.archiveID)
+			}
+		}()
+	}
 	in, err := s.fullArchiveInput(r.Context(), link.circleID)
 	if err != nil {
 		writeDomainError(w, err)
 		return
+	}
+	if link.archiveID != "" {
+		if err := s.Chronicle.SetFullArchiveSnapshot(r.Context(), link.archiveID, in.Data.SnapshotAt); err != nil {
+			writeDomainError(w, err)
+			return
+		}
 	}
 	size, err := archive.FullSize(r.Context(), in)
 	if err != nil {
@@ -417,6 +575,12 @@ func (s *Server) handleFullArchiveStream(w http.ResponseWriter, r *http.Request)
 	if err := writeFullArchive(r.Context(), rec, in, link.key); err != nil || rec.written != size {
 		log.Printf("full archive %s: stream: %v (written %d of %d)", link.circleID, err, rec.written, size)
 		panic(http.ErrAbortHandler)
+	}
+	if link.archiveID != "" && rec.deliveredToEnd(size) {
+		if _, err := s.Chronicle.RemoveFullArchive(context.WithoutCancel(r.Context()), link.archiveID, chronicle.RemovedDownloaded, time.Now()); err != nil {
+			log.Printf("full archive %s: stream downloaded: %v", link.archiveID, err)
+		}
+		finished = true
 	}
 }
 

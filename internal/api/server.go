@@ -230,6 +230,8 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("DELETE /api/v1/circles/{circle_id}/full_archive", paid(s.handleRemoveFullArchive))
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/full_archive/link", paid(s.handleFullArchiveLink))
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/full_archive/stream_link", paid(s.handleFullArchiveStreamLink))
+	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/full_archive/revive", paid(s.handleReviveCircle))
+	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/full_archive/remove_circle", paid(s.handleRemoveFrozenCircle))
 	s.Mux.HandleFunc("GET /api/v1/full_archive/{token}", s.handleFullArchiveByLink)
 	s.Mux.HandleFunc("GET /api/v1/full_archive_stream/{token}", s.handleFullArchiveStream)
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/archive", paid(s.handleStartArchiveCycle))
