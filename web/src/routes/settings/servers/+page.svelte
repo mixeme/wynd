@@ -100,7 +100,7 @@
 			<SettingsRow title="Сменить почту" onclick={() => changeEmail(row)} />
 			<SettingsRow
 				icon="out"
-				title="Выйти с этого сервера"
+				title="Выйти на этом устройстве"
 				chevron={false}
 				onclick={() => void logout(row.session.origin)}
 			/>
