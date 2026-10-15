@@ -15,6 +15,7 @@
 	import {
 		excludeMember,
 		fetchMembers,
+		inviteWaiting,
 		setMemberCanSettings,
 		transferOwnership,
 		type MemberInfo
@@ -41,7 +42,21 @@
 	let excludeLoading = $state(false);
 
 	const transferMode = $derived($page.url.searchParams.get('transfer') === '1');
-	const active = $derived(members.filter((m) => m.status === 'active'));
+	const active = $derived(members.filter((m) => m.status === 'active' && !m.not_joined));
+	// Приехали с кругом и здесь ещё не входили (6.35); раздел исчезает сам.
+	const waiting = $derived(members.filter((m) => m.status === 'active' && m.not_joined));
+	let inviteNote = $state('');
+
+	async function invite(identityId?: string) {
+		inviteNote = '';
+		try {
+			const n = await inviteWaiting(circle.origin, circle.circleId, identityId);
+			inviteNote = n === 1 ? 'Письмо отправлено.' : `Письма отправлены: ${n}.`;
+		} catch (err) {
+			inviteNote = authErrorHint(err);
+		}
+		menuMember = null;
+	}
 	const left = $derived(members.filter((m) => m.status !== 'active'));
 
 	function subtitle(m: MemberInfo): string {
@@ -211,6 +226,33 @@
 				class={i === 0 ? 'pt-2' : undefined}
 			/>
 		{/each}
+		{#if waiting.length && !transferMode}
+			<Label>Ещё не вошли · {waiting.length}</Label>
+			{#each waiting as m, i (m.identity_id)}
+				<MemberRow
+					initial={circleInitial(m.name)}
+					name={m.name}
+					color={memberColor(active.length + i)}
+					src={memberSrc(m)}
+					faded
+					menu={isOwner}
+					onmenu={() => (menuMember = m)}
+					class={i === 0 ? 'pt-2' : undefined}
+				/>
+			{/each}
+			<Hint class="gutter">
+				Эти люди были в круге раньше. Их имена и записи на месте; войдут на этот сервер своей почтой —
+				окажутся в круге.
+			</Hint>
+			{#if isOwner}
+				<Button class="m-0-16" variant="colored" onclick={() => void invite()}>
+					Позвать всех письмом
+				</Button>
+			{/if}
+			{#if inviteNote}
+				<Hint class="gutter">{inviteNote}</Hint>
+			{/if}
+		{/if}
 		{#if left.length && !transferMode}
 			<Label>Вышли · {left.length}</Label>
 			{#each left as m, i (m.identity_id)}
@@ -242,6 +284,13 @@
 {#if menuMember}
 	<OverlayLayout label={menuMember.name} ondismiss={closeMenu}>
 		<Label class="mt-2">{menuMember.name}</Label>
+		{#if menuMember.not_joined}
+			<SettingsRow
+				title="Позвать письмом"
+				chevron={false}
+				onclick={() => menuMember && void invite(menuMember.identity_id)}
+			/>
+		{/if}
 		<SettingsRow
 			title={menuMember.can_settings
 				? 'Забрать право менять настройки'

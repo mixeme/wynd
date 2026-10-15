@@ -807,6 +807,10 @@ paths:
       summary: Remove the frozen circle from the server once its archive file was downloaded (owner)
       description: 409 not_downloaded until the last byte of the archive with removal reached the device.
 
+  /circles/{circle_id}/members/invite_waiting:
+    post:
+      summary: Mail the members who came with a revived or moved circle and never signed in here (6.35); body {identity_id?} — one or all (owner)
+
   /revive/blobs:
     post:
       summary: Which archive files the caller already has on the server (by sha256) — not uploaded again

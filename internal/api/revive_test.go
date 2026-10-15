@@ -200,3 +200,49 @@ func sha256Hex(b []byte) string {
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])
 }
+
+// «Ещё не вошли» (6.35): участник из архива с незнакомой серверу почтой —
+// в списке с not_joined, и владелец зовёт его письмом.
+func TestReviveWaitingMembers(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	slava, _ := registerSession(t, srv, caps, "slava@example.com")
+	c, i1, i2, n1, n2, m1, m2 := "00000000-0000-7000-8000-00000000c001", "00000000-0000-7000-8000-00000000d001", "00000000-0000-7000-8000-00000000d002",
+		"00000000-0000-7000-8000-00000000e001", "00000000-0000-7000-8000-00000000e002", "00000000-0000-7000-8000-00000000f001", "00000000-0000-7000-8000-00000000f002"
+	ts := "2026-01-01T00:00:00Z"
+	tables := map[string]any{
+		"circles":        map[string]any{"columns": []string{"id", "name", "owner_account_id", "created_at", "updated_at", "color"}, "rows": [][]any{{c, "Дача", "a1", ts, ts, "ochre"}}},
+		"identities":     map[string]any{"columns": []string{"id", "circle_id", "account_id", "created_at"}, "rows": [][]any{{i1, c, "a1", ts}, {i2, c, "a2", ts}}},
+		"identity_names": map[string]any{"columns": []string{"id", "identity_id", "name", "effective_at"}, "rows": [][]any{{n1, i1, "Слава", ts}, {n2, i2, "Коля", ts}}},
+		"memberships": map[string]any{"columns": []string{"id", "circle_id", "account_id", "identity_id", "status", "created_at", "updated_at"},
+			"rows": [][]any{{m1, c, "a1", i1, "active", ts, ts}, {m2, c, "a2", i2, "active", ts, ts}}},
+		"membership_spans": map[string]any{"columns": []string{"id", "membership_id", "started_at"},
+			"rows": [][]any{{"00000000-0000-7000-8000-00000000f101", m1, ts}, {"00000000-0000-7000-8000-00000000f102", m2, ts}}},
+		"accounts": map[string]any{"columns": []string{"id", "email"}, "rows": [][]any{{"a1", "slava@example.com"}, {"a2", "kolya@elsewhere.example"}}},
+	}
+	manifest := map[string]any{"format": "wynd-circle", "format_version": 1, "schema_version": 35, "posts": 0}
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/revive", slava, map[string]any{"manifest": manifest, "tables": tables, "blob_map": map[string]string{}})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("оживить: %d %s", rec.Code, rec.Body.String())
+	}
+	circleID := jsonStr(t, rec, "circle_id")
+	var members struct {
+		Members []map[string]any `json:"members"`
+	}
+	_ = json.Unmarshal(doGET(t, srv, "/api/v1/circles/"+circleID+"/members", slava).Body.Bytes(), &members)
+	waiting := 0
+	for _, m := range members.Members {
+		if m["not_joined"] == true {
+			waiting++
+			if m["name"] != "Коля" {
+				t.Fatalf("не вошёл не тот: %+v", m)
+			}
+		}
+	}
+	if waiting != 1 {
+		t.Fatalf("ещё не вошли: %+v", members.Members)
+	}
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/members/invite_waiting", slava, map[string]any{})
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"invited":1`) {
+		t.Fatalf("позвать всех: %d %s", rec.Code, rec.Body.String())
+	}
+}

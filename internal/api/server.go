@@ -219,6 +219,7 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("PATCH /api/v1/circles/{circle_id}", paid(s.handlePatchCircle))
 	s.Mux.HandleFunc("DELETE /api/v1/circles/{circle_id}", paid(s.handleDeleteCircle))
 	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}/members", paid(s.handleCircleMembers))
+	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/members/invite_waiting", paid(s.handleInviteWaiting))
 	s.Mux.HandleFunc("PUT /api/v1/circles/{circle_id}/identity", paid(s.handleUpdateIdentity))
 	s.Mux.HandleFunc("PUT /api/v1/circles/{circle_id}/place", paid(s.handleSetSharePlace))
 	s.Mux.HandleFunc("PUT /api/v1/circles/{circle_id}/members/{account_id}", paid(s.handleSetMember))

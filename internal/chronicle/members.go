@@ -21,6 +21,9 @@ type MemberRow struct {
 	CanRead      bool             `json:"can_read"`
 	CanWrite     bool             `json:"can_write"`
 	AvatarBlobID string           `json:"avatar_blob_id,omitempty"`
+	// NotJoined — учётка приехала с кругом (оживление, перенос) и на этом
+	// сервере ещё не входила: «Ещё не вошли» (6.35).
+	NotJoined bool `json:"not_joined,omitempty"`
 }
 
 // MembershipForAccount returns the caller's membership row.
@@ -43,7 +46,8 @@ func (c *Chronicle) ListMembers(ctx context.Context, circleID, actorAccountID st
 		return nil, err
 	}
 	rows, err := c.db.QueryContext(ctx, `
-		SELECT m.account_id, m.identity_id, m.can_settings, m.status, m.created_at
+		SELECT m.account_id, m.identity_id, m.can_settings, m.status, m.created_at,
+			COALESCE((SELECT a.last_login_at IS NULL FROM accounts a WHERE a.id = m.account_id), 0)
 		FROM memberships m
 		WHERE m.circle_id = ?
 		  AND NOT EXISTS (
@@ -61,7 +65,7 @@ func (c *Chronicle) ListMembers(ctx context.Context, circleID, actorAccountID st
 		var row MemberRow
 		var status string
 		var created string
-		if err := rows.Scan(&row.AccountID, &row.IdentityID, &row.CanSettings, &status, &created); err != nil {
+		if err := rows.Scan(&row.AccountID, &row.IdentityID, &row.CanSettings, &status, &created, &row.NotJoined); err != nil {
 			return nil, err
 		}
 		row.Status = MembershipStatus(status)

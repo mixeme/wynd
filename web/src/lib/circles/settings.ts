@@ -31,6 +31,8 @@ export interface MemberInfo {
 	can_read: boolean;
 	can_write: boolean;
 	avatar_blob_id?: string;
+	/** Приехал с кругом (оживление, перенос) и здесь ещё не входил (6.35). */
+	not_joined?: boolean;
 }
 
 export interface IdentityNameRow {
@@ -212,6 +214,16 @@ export async function patchCircle(
 		body: JSON.stringify(patch)
 	});
 	await invalidateSnapshots(origin, { kind: 'circles', circleId });
+}
+
+/** «Позвать всех письмом» и «позвать одного» (6.35): письма шлёт сервер. */
+export async function inviteWaiting(origin: string, circleId: string, identityId?: string): Promise<number> {
+	const res = await apiJson<{ invited: number }>(origin, `/circles/${circleId}/members/invite_waiting`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ identity_id: identityId ?? '' })
+	});
+	return res.invited;
 }
 
 export async function fetchMembers(origin: string, circleId: string): Promise<MemberInfo[]> {

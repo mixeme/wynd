@@ -46,11 +46,47 @@ func (s *Server) handleCircleMembers(w http.ResponseWriter, r *http.Request) {
 		if m.AvatarBlobID != "" {
 			out[i]["avatar_blob_id"] = m.AvatarBlobID
 		}
+		if m.NotJoined {
+			out[i]["not_joined"] = true
+		}
 		if showAccounts {
 			out[i]["account_id"] = m.AccountID
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"members": out})
+}
+
+// handleInviteWaiting — «Позвать всех письмом» и «позвать одного» (6.35):
+// письмо тем, кто приехал с кругом и на этом сервере ещё не входил. Почты
+// владелец не видит — письма шлёт сервер.
+func (s *Server) handleInviteWaiting(w http.ResponseWriter, r *http.Request) {
+	circleID := r.PathValue("circle_id")
+	sess, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+	if err := s.Chronicle.RequireOwner(r.Context(), circleID, sess.AccountID); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	body, ok := bindJSON[struct {
+		IdentityID string `json:"identity_id"`
+	}](w, r)
+	if !ok {
+		return
+	}
+	members, err := s.Chronicle.ListMembers(r.Context(), circleID, sess.AccountID)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	var ids []string
+	for _, m := range members {
+		if m.NotJoined && m.Status == chronicle.StatusActive && (body.IdentityID == "" || body.IdentityID == m.IdentityID) {
+			ids = append(ids, m.AccountID)
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]int{"invited": s.inviteNotJoined(circleID, sess.AccountID, ids)})
 }
 
 type patchCircleBody struct {
