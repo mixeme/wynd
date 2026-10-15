@@ -30,7 +30,7 @@
 	import { fetchMembers, type MemberInfo } from '$lib/circles/settings';
 	import { formatEditableUntil, formatEntryDate, isEditableActive } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
-	import { loadFeedCached } from '$lib/journal/feed';
+	import { loadFeed, loadFeedCached } from '$lib/journal/feed';
 	import {
 		filterMembersByMention,
 		insertMention,
@@ -243,7 +243,14 @@
 		usePlace = circle.sharePlace;
 		if (editPostId) {
 			const cached = await loadFeedCached(circle.origin, circle.circleId);
-			const post = cached ? findPost(cached.posts, editPostId) : undefined;
+			let post = cached ? findPost(cached.posts, editPostId) : undefined;
+			// Записи нет в сохранённой ленте (открыли по ссылке или из уведомления) —
+			// спросить сервер, иначе правка открывалась пустой, с сегодняшней датой.
+			if (!post) {
+				post = await loadFeed(circle.origin, circle.circleId)
+					.then((snap) => findPost(snap.posts, editPostId))
+					.catch(() => undefined);
+			}
 			if (post) {
 				editingPost = post;
 				body = post.body;
