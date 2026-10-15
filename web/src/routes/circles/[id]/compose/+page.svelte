@@ -804,18 +804,26 @@
 	/>
 
 	{#if showMentionPicker}
-		<MentionPicker>
-			{#each mentionCandidates as member, i (member.identity_id)}
-				<MemberRow
-					initial={circleInitial(member.name)}
-					name={member.name}
-					color={memberAvatarColor(i)}
-					onclick={() => pickMember(member)}
-					class={i === 0 ? 'pad-10-14' : undefined}
-				/>
-			{/each}
-		</MentionPicker>
-		<Hint>Выберите участника — в текст встанет @имя, а ему придёт уведомление.</Hint>
+		<!-- Список поверх экрана (владелец, 2026-10-15): снимки и дата под ним не
+		     сдвигаются; подсказка — последней строкой в самом списке. -->
+		<div class="men-anchor">
+			<div class="men-float">
+				<MentionPicker>
+					{#each mentionCandidates as member, i (member.identity_id)}
+						<MemberRow
+							initial={circleInitial(member.name)}
+							name={member.name}
+							color={memberAvatarColor(i)}
+							onclick={() => pickMember(member)}
+							class={i === 0 ? 'pad-10-14' : undefined}
+						/>
+					{/each}
+					<Hint class="men-hint">
+						Выберите участника — в текст встанет @имя, а ему придёт уведомление.
+					</Hint>
+				</MentionPicker>
+			</div>
+		</div>
 	{/if}
 
 	<ThumbStrip>
@@ -858,10 +866,11 @@
 	{/if}
 
 	{#if !frozen && picked.some((p) => isVisual(p.meta))}
-		<Hint
-			>Обложка — первая. Нажмите на неё, чтобы выбрать кадр для ленты, или на другую, чтобы
-			обложкой стала она.</Hint
-		>
+		<!-- Слова владельца, 2026-10-15. -->
+		<Hint>
+			Выбранное медиа будет использоваться в качестве обложки записи. Повторное нажатие —
+			кадрирование обложки.
+		</Hint>
 	{/if}
 
 	{#if !frozen}
@@ -873,17 +882,8 @@
 			class="mt-16"
 			divided="both"
 		/>
-		{#if isEdit}
-			<Hint>
-				В ленте запись останется на своём месте. Дата нужна дню — в «Днях» запись соберётся с
-				остальными за {entryDate ? formatEntryDate(entryDate) : 'этот день'}.
-			</Hint>
-		{:else}
-			<Hint>
-				В ленте запись всё равно встанет сегодняшним числом. Дата нужна дню — в «Днях» она
-				соберёт её с остальными за {entryDate ? formatEntryDate(entryDate) : 'этот день'}.
-			</Hint>
-		{/if}
+		<!-- Слова владельца, 2026-10-15: одна строка и для новой записи, и для правки. -->
+		<Hint>Дата учитывается для группировки записей на вкладке «Дни».</Hint>
 	{/if}
 
 	{#if isEdit && editingPost?.editable_until}
@@ -958,3 +958,25 @@
 	onfiles={(files) => void addFiles(files, true)}
 />
 <FilePicker bind:this={audioPicker} accept="audio/*" multiple onfiles={(files) => void addFiles(files)} />
+
+<style>
+	.men-anchor {
+		position: relative;
+		height: 0;
+	}
+	.men-float {
+		position: absolute;
+		left: 0;
+		right: 0;
+		top: 0;
+		z-index: 5;
+	}
+	.men-float :global(.men-pick) {
+		box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+	}
+	.men-float :global(.men-hint) {
+		margin: 0;
+		padding: 10px 14px 12px;
+		border-top: 1px solid var(--line);
+	}
+</style>
