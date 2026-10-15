@@ -32,6 +32,8 @@ export const WORD = {
 	circle: ['круг', 'круга', 'кругов'] as PluralForms,
 	/** После «владелец»: владелец 21 круга, 5 кругов. */
 	circleGenitive: ['круга', 'кругов', 'кругов'] as PluralForms,
+	/** «каждого из 21 участника», «из 5 участников». */
+	memberGenitive: ['участника', 'участников', 'участников'] as PluralForms,
 	/** После «во всех»: во всех 21 круге, 5 кругах. */
 	circlePrepositional: ['круге', 'кругах', 'кругах'] as PluralForms,
 	member: ['участник', 'участника', 'участников'] as PluralForms,

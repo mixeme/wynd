@@ -462,9 +462,20 @@ func (s *Server) pullMoveArchive(ctx context.Context, m *chronicle.IncomingMove)
 			claimed = false
 			_ = os.Remove(path)
 			s.moveWait(ctx)
-		default: // archive_building, обрыв
+		case state == "archive_building":
+			// Прежний сервер собирает архив: спрашивать чаще, чем после обрыва.
+			s.movePollWait(ctx)
+		default: // обрыв
 			s.moveWait(ctx)
 		}
+	}
+}
+
+// movePollWait — пауза, пока прежний сервер собирает архив: 5 секунд.
+func (s *Server) movePollWait(ctx context.Context) {
+	select {
+	case <-ctx.Done():
+	case <-time.After(min(5*time.Second, s.moveRetry())):
 	}
 }
 

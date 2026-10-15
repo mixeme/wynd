@@ -255,7 +255,7 @@
 			<Label class="mt-16">Участники</Label>
 			<SettingsRow
 				title="Разослать приглашения"
-				subtitle={`письмо на почту каждого из ${plural(invitable, WORD.member)}`}
+				subtitle={`письмо на почту каждого из ${plural(invitable, WORD.memberGenitive)}`}
 				divided="both"
 			>
 				{#snippet control()}
