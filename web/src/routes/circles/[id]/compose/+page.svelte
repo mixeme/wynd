@@ -107,7 +107,10 @@
 	const pickedHasPlace = $derived(picked.some((p) => hasPlace(p.meta)));
 	let filePickLock = false;
 
-	const activeMembers = $derived(members.filter((m) => m.status === 'active'));
+	// Себя не упоминают: в списке — остальные участники круга.
+	const activeMembers = $derived(
+		members.filter((m) => m.status === 'active' && m.identity_id !== circle.identityId)
+	);
 	const mentionCandidates = $derived(
 		mentionStart == null ? [] : filterMembersByMention(activeMembers, mentionQuery)
 	);
@@ -804,26 +807,18 @@
 	/>
 
 	{#if showMentionPicker}
-		<!-- Список поверх экрана (владелец, 2026-10-15): снимки и дата под ним не
-		     сдвигаются; подсказка — последней строкой в самом списке. -->
-		<div class="men-anchor">
-			<div class="men-float">
-				<MentionPicker>
-					{#each mentionCandidates as member, i (member.identity_id)}
-						<MemberRow
-							initial={circleInitial(member.name)}
-							name={member.name}
-							color={memberAvatarColor(i)}
-							onclick={() => pickMember(member)}
-							class={i === 0 ? 'pad-10-14' : undefined}
-						/>
-					{/each}
-					<Hint class="men-hint">
-						Выберите участника — ему придёт уведомление.
-					</Hint>
-				</MentionPicker>
-			</div>
-		</div>
+		<!-- Список поверх экрана (владелец, 2026-10-15). -->
+		<MentionPicker floating hint="Выберите участника — ему придёт уведомление.">
+			{#each mentionCandidates as member, i (member.identity_id)}
+				<MemberRow
+					initial={circleInitial(member.name)}
+					name={member.name}
+					color={memberAvatarColor(i)}
+					onclick={() => pickMember(member)}
+					class={i === 0 ? 'pad-10-14' : undefined}
+				/>
+			{/each}
+		</MentionPicker>
 	{/if}
 
 	<ThumbStrip>
@@ -959,24 +954,3 @@
 />
 <FilePicker bind:this={audioPicker} accept="audio/*" multiple onfiles={(files) => void addFiles(files)} />
 
-<style>
-	.men-anchor {
-		position: relative;
-		height: 0;
-	}
-	.men-float {
-		position: absolute;
-		left: 0;
-		right: 0;
-		top: 0;
-		z-index: 5;
-	}
-	.men-float :global(.men-pick) {
-		box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
-	}
-	.men-float :global(.men-hint) {
-		margin: 0;
-		padding: 10px 14px 12px;
-		border-top: 1px solid var(--line);
-	}
-</style>

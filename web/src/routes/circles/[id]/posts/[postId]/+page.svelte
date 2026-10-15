@@ -103,7 +103,10 @@
 	let queuedComments = $state<QueuedCommentView[]>([]);
 	let pickerOpen = $state(false);
 
-	const commentMembers = $derived(members.filter((m) => m.status === 'active'));
+	// Себя не упоминают: в списке — остальные участники круга.
+	const commentMembers = $derived(
+		members.filter((m) => m.status === 'active' && m.identity_id !== circle.identityId)
+	);
 
 	const soloCircle = $derived(activeMemberCount === 1);
 	const reactionActor = $derived({

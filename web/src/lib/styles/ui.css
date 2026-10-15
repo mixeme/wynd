@@ -1942,6 +1942,27 @@ a.link {
 	border-radius: 12px;
 	overflow: hidden;
 }
+.men-anchor {
+	position: relative;
+	height: 0;
+}
+.men-float {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	z-index: 5;
+}
+.men-float .men-pick {
+	box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+}
+.men-hint {
+	padding: 10px 14px 12px;
+	border-top: 1px solid var(--line);
+	font-size: 12.5px;
+	line-height: 1.5;
+	color: var(--muted);
+}
 .comp-wrap .men-pick {
 	margin: 0 12px 8px;
 	max-height: 40vh;

@@ -128,7 +128,10 @@
 	let circleStartedAt = $state('');
 	let members = $state<MemberInfo[]>([]);
 	let activeMemberCount = $state(2);
-	const commentMembers = $derived(members.filter((m) => m.status === 'active'));
+	// Себя не упоминают: в списке — остальные участники круга.
+	const commentMembers = $derived(
+		members.filter((m) => m.status === 'active' && m.identity_id !== circle.identityId)
+	);
 	let queuedPosts = $state<QueuedPostView[]>([]);
 	let loading = $state(true);
 	let error = $state('');
