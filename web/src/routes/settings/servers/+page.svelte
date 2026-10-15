@@ -122,6 +122,11 @@
 				chevron={false}
 			/>
 			<SettingsRow title="Сменить почту" onclick={() => changeEmail(row)} />
+			<!-- 7.15: круг приезжает на тот сервер, под которым стоит строка. -->
+			<SettingsRow
+				title="Принять круг"
+				onclick={() => goto(`/settings/servers/accept?origin=${encodeURIComponent(row.session.origin)}`)}
+			/>
 			<SettingsRow
 				icon="out"
 				title="Выйти на этом устройстве"

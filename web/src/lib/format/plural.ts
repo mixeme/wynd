@@ -35,5 +35,6 @@ export const WORD = {
 	/** После «во всех»: во всех 21 круге, 5 кругах. */
 	circlePrepositional: ['круге', 'кругах', 'кругах'] as PluralForms,
 	member: ['участник', 'участника', 'участников'] as PluralForms,
+	name: ['имя', 'имени', 'имён'] as PluralForms,
 	yourCircle: ['ваш круг', 'ваших круга', 'ваших кругов'] as PluralForms
 } as const;
