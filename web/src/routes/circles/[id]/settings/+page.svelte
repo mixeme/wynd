@@ -398,9 +398,7 @@
 			{#if editWindow === 'custom' && customHoursHint}
 				<Hint class="mt-8">{customHoursHint}</Hint>
 			{/if}
-			<Hint
-				>Сколько времени после публикации запись можно править. Новое правило подействует только на новые записи.</Hint
-			>
+			<Hint>Новое правило подействует только на новые записи.</Hint>
 
 			<Label>Приглашения</Label>
 			{#if !soloCircle}
@@ -425,9 +423,6 @@
 					Многоразовые
 				</Chip>
 			</ChipGroup>
-			<Hint
-				>Какие ссылки смогут создавать участники. По многоразовой войдут несколько человек.</Hint
-			>
 		{/if}
 
 		{#if canInvite}
@@ -539,7 +534,7 @@
 		}}
 		oncancel={() => (ownerLeaveOpen = false)}
 	>
-		<Hint>Подвешенных кругов не бывает. Пока вы владелец «{circle.name}», уйти нельзя.</Hint>
+		<Hint>Пока вы владелец «{circle.name}», уйти нельзя.</Hint>
 	</ConfirmDialog>
 {/if}
 

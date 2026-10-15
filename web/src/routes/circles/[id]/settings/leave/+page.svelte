@@ -91,6 +91,6 @@
 		onconfirm={() => goto(`/circles/${circle.circleId}/settings/members?transfer=1`)}
 		oncancel={() => goto(`/circles/${circle.circleId}/settings`)}
 	>
-		<Hint>Подвешенных кругов не бывает. Пока вы владелец «{circle.name}», уйти нельзя.</Hint>
+		<Hint>Пока вы владелец «{circle.name}», уйти нельзя.</Hint>
 	</ConfirmDialog>
 {/if}
