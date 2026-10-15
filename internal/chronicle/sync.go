@@ -39,7 +39,7 @@ func (c *Chronicle) SyncEvents(ctx context.Context, accountID string, cursor int
 		    WHERE m.circle_id = e.circle_id AND m.account_id = ?
 		      AND ms.can_read = 1
 		      AND e.created_at >= ms.started_at
-		      AND (ms.ended_at IS NULL OR e.created_at < ms.ended_at)
+		      AND (ms.ended_at IS NULL OR e.created_at <= ms.ended_at)
 		  )
 		ORDER BY e.seq
 		LIMIT ?

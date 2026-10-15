@@ -139,7 +139,7 @@ func (c *Chronicle) batchLastVisibleEvents(ctx context.Context, accountID string
 			  AND %s
 		) t
 		WHERE rn = 1
-	`, sqlVisibleAtMembership("e.created_at")), accountID)
+	`, sqlEventVisibleAtMembership("e.created_at")), accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -562,7 +562,7 @@ func (c *Chronicle) feedServiceEvents(ctx context.Context, circleID, accountID s
 	var visible []feedEventRow
 	hasDay := false
 	for _, ev := range all {
-		ok, err := c.CanReadEvent(ctx, circleID, accountID, ev.CreatedAt)
+		ok, err := c.CanReadServiceEvent(ctx, circleID, accountID, ev.CreatedAt)
 		if err != nil {
 			return nil, err
 		}

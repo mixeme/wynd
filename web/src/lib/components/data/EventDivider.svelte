@@ -1,6 +1,6 @@
 <script lang="ts">
-	// cutoff — граница архивации в ленте (владелец, 2026-10-15): сплошная линия,
-	// под ней — что будет с записями ниже.
+	// cutoff — граница архивации в ленте: того же вида, что граница
+	// непрочитанного (владелец, 2026-10-15).
 	type DividerVariant = 'event' | 'unread' | 'cutoff';
 
 	let {
@@ -15,15 +15,9 @@
 		style?: string;
 	} = $props();
 
-	const variantClass = $derived(variant === 'unread' ? 'new' : '');
+	const variantClass = $derived(variant === 'event' ? '' : 'new');
 </script>
 
-{#if variant === 'cutoff'}
-	<div class="ev-cutoff {className}" {style} role="separator">
-		<div class="ev-cutoff-note">{text}</div>
-	</div>
-{:else}
-	<div class="ev {variantClass} {className}" {style}>
-		<span>{text}</span>
-	</div>
-{/if}
+<div class="ev {variantClass} {className}" {style} role={variant === 'cutoff' ? 'separator' : undefined}>
+	<span>{text}</span>
+</div>

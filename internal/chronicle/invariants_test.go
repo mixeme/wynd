@@ -56,6 +56,16 @@ func TestInvariantLeftWithAccessReadsUntilLeave(t *testing.T) {
 	if err != nil || ok {
 		t.Fatal("guest must not read events after leave")
 	}
+	// Строка о самом уходе — последняя, что вышедший видит (владелец,
+	// 2026-10-15); то, что после, — нет.
+	ok, err = e.ch.CanReadServiceEvent(e.ctx, circle.ID, "guest", e.at(2))
+	if err != nil || !ok {
+		t.Fatal("guest should see the line about own leave")
+	}
+	ok, err = e.ch.CanReadServiceEvent(e.ctx, circle.ID, "guest", e.at(3))
+	if err != nil || ok {
+		t.Fatal("guest must not see service lines after leave")
+	}
 	canWrite, err := e.ch.CanWrite(e.ctx, circle.ID, "guest", e.at(4))
 	if err != nil || canWrite {
 		t.Fatal("guest must not write after leave")

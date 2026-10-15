@@ -1942,16 +1942,6 @@ a.link {
 	border-radius: 12px;
 	overflow: hidden;
 }
-.ev-cutoff {
-	margin: 18px 16px 12px;
-	border-top: 1.5px solid var(--ink);
-}
-.ev-cutoff-note {
-	margin-top: 8px;
-	font-size: 12.5px;
-	line-height: 1.5;
-	color: var(--muted);
-}
 .men-anchor {
 	position: relative;
 	height: 0;

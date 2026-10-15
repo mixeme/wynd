@@ -87,6 +87,40 @@ func (c *Chronicle) CanReadEvent(ctx context.Context, circleID, accountID string
 	return false, nil
 }
 
+// CanReadServiceEvent — как CanReadEvent, но конец отрезка включительно:
+// строка хронологии о самом уходе («Боб покинул круг») встаёт в тот же миг,
+// когда отрезок закрывается, и вышедший видит её последней (владелец,
+// 2026-10-15). Записи и комментарии — по строгой границе, как прежде.
+func (c *Chronicle) CanReadServiceEvent(ctx context.Context, circleID, accountID string, createdAt time.Time) (bool, error) {
+	spans, err := c.visibilitySpans(ctx, circleID, accountID)
+	if err != nil {
+		return false, err
+	}
+	for _, sp := range spans {
+		if !sp.CanRead || createdAt.Before(sp.StartedAt) {
+			continue
+		}
+		if sp.EndedAt != nil && createdAt.After(*sp.EndedAt) {
+			continue
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
+// sqlEventVisibleAtMembership — sqlVisibleAtMembership для строк хронологии:
+// конец отрезка включительно (см. CanReadServiceEvent).
+func sqlEventVisibleAtMembership(atColumn string) string {
+	return fmt.Sprintf(`
+EXISTS (
+  SELECT 1 FROM membership_spans ms
+  WHERE ms.membership_id = m.id
+    AND ms.can_read = 1
+    AND %s >= ms.started_at
+    AND (ms.ended_at IS NULL OR %s <= ms.ended_at)
+)`, atColumn, atColumn)
+}
+
 // CanWrite reports whether account can publish content now.
 func (c *Chronicle) CanWrite(ctx context.Context, circleID, accountID string, now time.Time) (bool, error) {
 	mem, err := c.membership(ctx, c.db, circleID, accountID)
