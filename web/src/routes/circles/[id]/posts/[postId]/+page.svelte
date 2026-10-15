@@ -26,7 +26,7 @@
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { fetchMembers, type MemberInfo } from '$lib/circles/settings';
-	import { formatClock, formatPostTime, isEditableActive } from '$lib/format/time';
+	import { formatClock, formatPostTime, formatSessionDay, isEditableActive } from '$lib/format/time';
 	import { isPostArchiveLocked } from '$lib/journal/archive';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadFeed } from '$lib/journal/feed';
@@ -115,9 +115,6 @@
 	});
 	const reactionsOpen = $derived($page.url.searchParams.has('reactions'));
 
-	const archiveHint =
-		'Эта запись уйдёт с сервера в срок архивации. Новые комментарии и оценки к ней не принимаются.';
-
 	const postLocked = $derived(
 		post
 			? isPostArchiveLocked(
@@ -126,6 +123,14 @@
 					post.created_at
 				)
 			: false
+	);
+
+	// Запись старше отсечки: полоса на месте поля комментария — когда она
+	// удалится и что комментировать нельзя (владелец, 2026-10-15).
+	const lockedNote = $derived(
+		postLocked && circle.canWrite && circle.archiveCycle?.deadline
+			? `Запись удалится ${formatSessionDay(circle.archiveCycle.deadline)} — комментировать нельзя`
+			: ''
 	);
 
 	// Снимки реплик в очереди ещё на устройстве: адреса живут, пока они в ней.
@@ -654,9 +659,12 @@
 	}
 </script>
 
-<!-- Полоса вместо строки ввода, когда места нет (3.19, 3.20). -->
+<!-- Полоса вместо строки ввода, когда места нет (3.19, 3.20) и когда запись
+     старше отсечки архивации (владелец, 2026-10-15). -->
 {#snippet spaceNote()}
-	{#if notice}
+	{#if lockedNote}
+		{lockedNote}
+	{:else if notice}
 		{notice.first}<br />
 		{#if notice.href}
 			<a class="under" href={notice.href}>{notice.second}</a>
@@ -680,7 +688,7 @@
 	commentBusy={sending}
 	bind:commentDraft={draft}
 	commentBar={canSay && !postLocked}
-	notice={notice ? spaceNote : undefined}
+	notice={notice || lockedNote ? spaceNote : undefined}
 	commentStatus={preparing}
 	commentPhotoAccept="image/*"
 	commentPending={pending.map((p) => ({ key: p.key, url: p.url, name: p.file.name }))}
@@ -776,9 +784,6 @@
 				{/if}
 			{/snippet}
 		</PostCard>
-		{#if postLocked}
-			<Hint class="m-0-16-12">{archiveHint}</Hint>
-		{/if}
 
 		<Thread>
 			{#each currentPost.comments ?? [] as comment (comment.id)}
