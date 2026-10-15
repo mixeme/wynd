@@ -70,7 +70,7 @@
 		<SettingsRow title="Ваша видимость" value="то, что вы застали" chevron={false} />
 
 		<Button class="mt-16" variant="colored" onclick={download}>
-			Скачать {formatBytes(cycle.personal_archive_bytes)}
+			Скачать{cycle.personal_archive_bytes ? ` ${formatBytes(cycle.personal_archive_bytes)}` : ''}
 		</Button>
 		<!-- Архив идёт потоком (6.37, план 46, C38): докачки нет, повтор — заново. -->
 		<Hint class="mt-12 ctr"

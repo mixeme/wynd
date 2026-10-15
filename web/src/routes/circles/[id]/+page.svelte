@@ -898,7 +898,11 @@
 				onaction={downloadArchiveClick}
 			>
 				Всё до <strong>{formatEntryDate(circle.archiveCycle.cutoff_date)}</strong> будет удалено.
-				Реакции и комментарии к этим записям закрыты. Ваш архив — {formatBytes(circle.archiveCycle.personal_archive_bytes)}.
+				Реакции и комментарии к этим записям закрыты.
+				<!-- Размер — только файлы; без них «0 Б» читалось как пустой архив. -->
+				{#if circle.archiveCycle.personal_archive_bytes}
+					Ваш архив — {formatBytes(circle.archiveCycle.personal_archive_bytes)}.
+				{/if}
 			</ArchiveBanner>
 		{/if}
 

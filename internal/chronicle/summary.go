@@ -183,12 +183,14 @@ func summaryCircleUnfrozen(g Gender, name string) string {
 	return fmt.Sprintf("%s %s круг", name, past(g, "оживил", "оживила"))
 }
 
+// Даты в строках архивации — человеческие, как везде в ленте: «13 октября»,
+// а не «2026-10-13» (план 46, C44).
 func summaryCutoffSet(cutoff string) string {
-	return fmt.Sprintf("Отсечка архивации: %s", cutoff)
+	return fmt.Sprintf("Отсечка архивации: %s", dayLabel(cutoff))
 }
 
 func summaryCutoffMoved(from, to string) string {
-	return fmt.Sprintf("Отсечка перенесена: %s → %s", from, to)
+	return fmt.Sprintf("Отсечка перенесена: %s → %s", dayLabel(from), dayLabel(to))
 }
 
 func summaryDeadlineSet(label string) string {
@@ -200,7 +202,7 @@ func summaryDeadlineMoved(from, to string) string {
 }
 
 func formatDeadlineLabel(t time.Time) string {
-	return t.UTC().Format("02.01.2006 15:04")
+	return dayLabel(t.UTC().Format("2006-01-02"))
 }
 
 // Круг оживлён из полного архива (план 52): журнал продолжается.
