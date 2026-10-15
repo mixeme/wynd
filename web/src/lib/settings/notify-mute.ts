@@ -51,3 +51,21 @@ export function baselineFromPrefs(prefs: NotifyPrefs): NotifyBaseline {
 		mute_until: prefs.mute_until ?? null
 	};
 }
+
+/**
+ * Подпись под «Уведомлениями» в настройках круга: что включено сейчас, в том
+ * же порядке, что на экране «Уведомления круга». Упоминания приходят всегда.
+ */
+export function notifySummary(prefs: NotifyPrefs, dayLabel: (iso: string) => string): string {
+	if (muteKeyFromUntil(prefs.mute_until) !== 'none' && prefs.mute_until) {
+		return `выключены до ${dayLabel(prefs.mute_until)}`;
+	}
+	const parts: string[] = [];
+	if (prefs.posts) parts.push('записи');
+	if (prefs.comments_all) parts.push('все комментарии');
+	else if (prefs.comments_mine) parts.push('комментарии к моим записям');
+	if (prefs.reactions) parts.push('реакции');
+	if (prefs.events) parts.push('события круга');
+	if (!parts.length) return 'только упоминания';
+	return `${parts.join(', ')} и упоминания`;
+}

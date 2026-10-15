@@ -32,9 +32,11 @@
 		fetchQuota,
 		isValidCustomHours,
 		patchCircle,
+		fetchNotifyPrefs,
 		type EditWindowKey,
 		type MemberInfo
 	} from '$lib/circles/settings';
+	import { notifySummary } from '$lib/settings/notify-mute';
 	import { formatBytes } from '$lib/format/bytes';
 	import {
 		formatEntryDate,
@@ -120,8 +122,14 @@
 		});
 	}
 
+	// Подпись под «Уведомлениями» — что включено сейчас (владелец, 2026-10-15).
+	let notifyLine = $state('');
+
 	async function load() {
 		loading = true;
+		void fetchNotifyPrefs(circle.origin, circle.circleId)
+			.then((prefs) => (notifyLine = notifySummary(prefs, formatSessionDay)))
+			.catch(() => (notifyLine = ''));
 		error = '';
 		try {
 			const [settings, list] = await Promise.all([
@@ -400,7 +408,9 @@
 			{/if}
 			<Hint>Новое правило подействует только на новые записи.</Hint>
 
-			<Label>Приглашения</Label>
+			<!-- Заголовок раздела говорит, о чём выбор (владелец, 2026-10-15): кто
+			     может создавать приглашения и какие. -->
+			<Label>Создать приглашения</Label>
 			{#if !soloCircle}
 			<ChipGroup>
 				<Chip selected={inviteWho === 'all'} onclick={() => void onInviteWho('all')}>Могут все</Chip>
@@ -445,10 +455,10 @@
 		/>
 		<SettingsRow
 			title="Уведомления"
-			subtitle={soloCircle ? undefined : 'записи и упоминания'}
+			subtitle={soloCircle ? undefined : notifyLine}
 			onclick={() => goto(`/circles/${circle.circleId}/settings/notify`)}
 		/>
-		<SettingsRow title="Место со снимков" subtitle="точка на карте круга">
+		<SettingsRow title="Место со снимков" subtitle="точка на карте круга" divided="bottom">
 			{#snippet control()}
 				<Switch
 					checked={circle.sharePlace}
