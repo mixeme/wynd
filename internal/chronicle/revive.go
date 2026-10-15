@@ -18,7 +18,7 @@ import (
 
 // ReviveSchemaVersions — какие схемы архива сервер умеет оживлять. Новая
 // схема с другими колонками — сюда и в переводчик строк.
-var ReviveSchemaVersions = []int{34, 35}
+var ReviveSchemaVersions = []int{34, 35, 36}
 
 // reviveOrder — порядок вставки: по зависимостям.
 var reviveOrder = []string{
@@ -37,6 +37,9 @@ type ReviveInput struct {
 	BlobMap   map[string]string
 	ReviverID string
 	Now       time.Time
+	// MovedFrom — адрес прежнего сервера, если круг приехал переносом (план
+	// 53): в ленте тогда «Круг перенесён с …» (2.19), а не «оживил из архива».
+	MovedFrom string
 }
 
 // ReviveResult — что получилось, для итога 2.28 / 2.34.
@@ -172,10 +175,14 @@ func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveRes
 		formatTime(now), res.CircleID, in.ReviverID); err != nil {
 		return res, err
 	}
+	event, summary := "circle_revived", summaryCircleRevived(c.identityGender(ctx, tx, reviverIdentity), reviverName)
+	if in.MovedFrom != "" {
+		event, summary = "circle_moved_in", summaryCircleMovedIn(in.MovedFrom)
+	}
 	if _, err := c.appendEvent(ctx, tx, appendEventInput{
-		circleID: res.CircleID, eventType: "circle_revived", isService: true,
+		circleID: res.CircleID, eventType: event, isService: true,
 		actorIdentityID: reviverIdentity, actorName: reviverName,
-		summary: summaryCircleRevived(c.identityGender(ctx, tx, reviverIdentity), reviverName),
+		summary: summary,
 		now:     now,
 	}); err != nil {
 		return res, err

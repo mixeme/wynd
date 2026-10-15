@@ -210,3 +210,23 @@ func summaryCircleRevived(g Gender, name string) string {
 	}
 	return fmt.Sprintf("%s %s круг из архива", name, past(g, "оживил", "оживила"))
 }
+
+// Перенос круга по ссылке (план 53): начат (6.27), принят новым сервером
+// (6.28), и на новом сервере — откуда приехал (2.19).
+func summaryCircleMoveStarted(g Gender, name string) string {
+	if g == GenderNone {
+		return fmt.Sprintf("Перенос круга начат: %s", name)
+	}
+	return fmt.Sprintf("%s %s перенос круга", name, past(g, "начал", "начала"))
+}
+
+func summaryCircleMoved(g Gender, name, host string) string {
+	if g == GenderNone {
+		return fmt.Sprintf("Круг перенесён на %s: %s", host, name)
+	}
+	return fmt.Sprintf("%s %s круг на %s", name, past(g, "перенёс", "перенесла"), host)
+}
+
+func summaryCircleMovedIn(host string) string {
+	return fmt.Sprintf("Круг перенесён с %s", host)
+}

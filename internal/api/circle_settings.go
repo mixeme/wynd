@@ -258,6 +258,9 @@ func (s *Server) handleTransferOwnership(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
+	if s.refuseWhileMoving(w, r, circleID) {
+		return
+	}
 	err := s.Chronicle.TransferOwnership(r.Context(), circleID, sess.AccountID, body.NewOwnerAccountID, time.Now().UTC())
 	if err != nil {
 		writeDomainError(w, err)
@@ -306,6 +309,9 @@ func (s *Server) handleDeleteCircle(w http.ResponseWriter, r *http.Request) {
 	}
 	body, ok := bindJSON[deleteCircleBody](w, r)
 	if !ok {
+		return
+	}
+	if s.refuseWhileMoving(w, r, circleID) {
 		return
 	}
 	// Полные архивы круга уходят вместе с ним: строки — каскадом, файлы и

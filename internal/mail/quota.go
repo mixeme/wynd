@@ -92,3 +92,31 @@ func (s *Service) SendCircleWaiting(ctx context.Context, email, circle, owner, l
 	}
 	return s.notify(ctx, email, subject, body)
 }
+
+// SendCircleMoving — письмо участникам, когда владелец начал перенос круга
+// на другой сервер (6.27): круг замер, адрес придёт отдельным письмом.
+func (s *Service) SendCircleMoving(ctx context.Context, email, circle, owner, link string) error {
+	email = strings.TrimSpace(email)
+	if email == "" {
+		return ErrInvalid
+	}
+	who := "Владелец"
+	if strings.TrimSpace(owner) != "" {
+		who = owner
+	}
+	subject := "Wynd: круг «" + circle + "» переезжает"
+	body := fmt.Sprintf("%s переносит «%s» на другой сервер. Читать можно, писать пока нельзя. Когда перенос закончится, на эту почту придёт письмо с новым адресом круга.\n\n%s\n", who, circle, link)
+	return s.notify(ctx, email, subject, body)
+}
+
+// SendCircleMoved — письмо участникам, когда владелец завершил перенос (6.26):
+// круг здесь удалён, живёт он теперь на новом сервере.
+func (s *Service) SendCircleMoved(ctx context.Context, email, circle, newServer string) error {
+	email = strings.TrimSpace(email)
+	if email == "" {
+		return ErrInvalid
+	}
+	subject := "Wynd: круг «" + circle + "» переехал"
+	body := fmt.Sprintf("Круг «%s» теперь живёт на другом сервере:\n%s\n\nВойдите там этой почтой (%s) — попадёте в своё имя и свои записи. На прежнем сервере круга больше нет.\n", circle, newServer, email)
+	return s.notify(ctx, email, subject, body)
+}

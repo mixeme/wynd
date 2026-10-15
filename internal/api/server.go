@@ -241,6 +241,16 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("POST /api/v1/revive", s.withReviveBody(s.handleReviveCircle))
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/full_archive/remove_circle", paid(s.handleRemoveFrozenCircle))
 	s.Mux.HandleFunc("GET /api/v1/full_archive/{token}", s.handleFullArchiveByLink)
+	// Перенос круга по ссылке (план 53): владелец на прежнем сервере...
+	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}/move", paid(s.handleCircleMove))
+	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/move", paid(s.handleStartMove))
+	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/move/cancel", paid(s.handleCancelMove))
+	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/move/complete", paid(s.handleCompleteMove))
+	// ...и обмен серверов — без входа, по ключу ссылки.
+	s.Mux.HandleFunc("GET /api/v1/move", s.handleMoveCard)
+	s.Mux.HandleFunc("POST /api/v1/move/claim", s.handleMoveClaim)
+	s.Mux.HandleFunc("GET /api/v1/move/archive", s.handleMoveArchive)
+	s.Mux.HandleFunc("POST /api/v1/move/accepted", s.handleMoveAccepted)
 	s.Mux.HandleFunc("GET /api/v1/full_archive_stream/{token}", s.handleFullArchiveStream)
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/archive", paid(s.handleStartArchiveCycle))
 	s.Mux.HandleFunc("PUT /api/v1/circles/{circle_id}/archive/cutoff", paid(s.handleMoveCutoff))

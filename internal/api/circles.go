@@ -271,6 +271,19 @@ func (s *Server) addFrozen(r *http.Request, item map[string]any, circleID, accou
 	if owner, err := s.Chronicle.CircleOwnerAccount(r.Context(), circleID); err == nil {
 		item["you_own"] = owner == accountID
 	}
+	// Замер под перенос (план 53): переезжает (6.27) или уже принят новым
+	// сервером (6.28, 2.20) — тогда с его адресом и почтой, которой входить.
+	if m, err := s.Chronicle.LiveMove(r.Context(), circleID); err == nil && m != nil {
+		move := map[string]any{"status": m.Status}
+		if m.Status == chronicle.MoveAccepted {
+			move["dest_url"] = m.DestURL
+			move["dest_name"] = m.DestName
+		}
+		if email, err := s.Chronicle.AccountEmail(r.Context(), accountID); err == nil {
+			move["email"] = email
+		}
+		item["move"] = move
+	}
 }
 
 func (s *Server) addSpaceFull(r *http.Request, item map[string]any, circleID, accountID string) {

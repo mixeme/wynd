@@ -834,6 +834,35 @@ paths:
       summary: Revive a circle from a full archive (plan 52)
       description: Body {manifest, tables {name → {columns, rows}}, blob_map {archive blob → uploaded blob}, send_invites}. Every archive file must be uploaded by the caller with the same sha256 and size (400 blob_missing / blob_mismatch). New ids for everything; people by e-mail (unknown e-mails get accounts without a login); the caller owns the circle. Answer {circle_id, posts, names, bytes, verified, invited, not_joined}. Body up to 256 MB.
 
+  /circles/{circle_id}/move:
+    get:
+      summary: Circle move as the owner sees it (plan 53, 6.24–6.26) — estimate {posts, members, bytes} and the live move or null
+    post:
+      summary: Freeze the circle and issue a one-time move link (6.24); the link is only in this answer; 409 circle_frozen
+  /circles/{circle_id}/move/cancel:
+    post:
+      summary: Cancel the move (6.25, 6.26) — the link dies, the circle writes again
+  /circles/{circle_id}/move/complete:
+    post:
+      summary: Finish the move after the new server accepted it (6.26) — the circle is deleted here, members get a "circle moved" e-mail; 409 not_accepted
+
+  /move:
+    get:
+      summary: Server to server — circle card for the new server (2.18); header "Authorization: Move <key>"; status waiting/pulling/accepted/canceled/completed/expired
+      security: []
+  /move/claim:
+    post:
+      summary: Server to server — the new server takes the move, body {dest_url, dest_name}; the first address keeps it (409 move_taken), 410 move_expired; starts building the archive
+      security: []
+  /move/archive:
+    get:
+      summary: Server to server — the plain .wynd archive with Range; 409 archive_building / archive_failed
+      security: []
+  /move/accepted:
+    post:
+      summary: Server to server — "accepted and verified", body {posts, names, bytes}; must match the archive (409 mismatch)
+      security: []
+
   /full_archive/{token}:
     get:
       summary: Ready full archive by link

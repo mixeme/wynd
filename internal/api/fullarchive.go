@@ -177,6 +177,9 @@ func (s *Server) handleStartFullArchive(w http.ResponseWriter, r *http.Request) 
 		writeDomainError(w, err)
 		return
 	}
+	if body.DeleteCircle && s.refuseWhileMoving(w, r, circleID) {
+		return
+	}
 	estimate, _, _, err := s.Chronicle.CircleArchiveEstimate(r.Context(), circleID)
 	if err != nil {
 		writeDomainError(w, err)
@@ -259,6 +262,9 @@ func (s *Server) handleReviveFrozenCircle(w http.ResponseWriter, r *http.Request
 	}
 	if err := s.Chronicle.RequireOwner(r.Context(), circleID, sess.AccountID); err != nil {
 		writeDomainError(w, err)
+		return
+	}
+	if s.refuseWhileMoving(w, r, circleID) {
 		return
 	}
 	a, err := s.Chronicle.LatestFullArchive(r.Context(), circleID)

@@ -150,6 +150,8 @@ func runServer() {
 		// Полные архивы (план 51): прерванные остановкой сборки — сбой, в
 		// каталоге архивов — только то, что ждёт скачивания.
 		apiSrv.RecoverFullArchives(baseCtx)
+		// Переносы кругов (план 53): то же для архивов под перенос.
+		apiSrv.RecoverMoveArchives(baseCtx)
 		maybeRunRoutine(baseCtx, authSvc, blobsDir, ch, blobStore, mailSvc, pushSvc, apiSrv.PublicURL())
 		expireFullArchives(baseCtx, apiSrv)
 		// Ролики, лежавшие без кадра до этой версии, — один проход при старте.
@@ -253,6 +255,9 @@ func maybeRunRoutine(ctx context.Context, authSvc *auth.Service, blobsDir string
 func expireFullArchives(ctx context.Context, apiSrv *api.Server) {
 	if n := apiSrv.ExpireFullArchives(ctx, time.Now().UTC()); n > 0 {
 		log.Printf("full archives expired: %d", n)
+	}
+	if n := apiSrv.ExpireMoveArchives(ctx, time.Now().UTC()); n > 0 {
+		log.Printf("move archives removed: %d", n)
 	}
 }
 
