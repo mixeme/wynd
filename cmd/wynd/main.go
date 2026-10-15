@@ -152,6 +152,7 @@ func runServer() {
 		apiSrv.RecoverFullArchives(baseCtx)
 		// Переносы кругов (план 53): то же для архивов под перенос.
 		apiSrv.RecoverMoveArchives(baseCtx)
+		apiSrv.ResumeIncomingMoves(baseCtx)
 		maybeRunRoutine(baseCtx, authSvc, blobsDir, ch, blobStore, mailSvc, pushSvc, apiSrv.PublicURL())
 		expireFullArchives(baseCtx, apiSrv)
 		// Ролики, лежавшие без кадра до этой версии, — один проход при старте.

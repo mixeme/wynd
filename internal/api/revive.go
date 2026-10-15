@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -155,6 +156,69 @@ func (s *Server) handleReviveCircle(w http.ResponseWriter, r *http.Request) {
 	for name, t := range body.Tables {
 		tables[name] = chronicle.FullArchiveTable{Name: name, Columns: t.Columns, Rows: t.Rows}
 	}
+	out, err := s.reviveFromTables(r.Context(), reviveRequest{
+		AccountID:     sess.AccountID,
+		SchemaVersion: body.Manifest.SchemaVersion,
+		Posts:         body.Manifest.Posts,
+		Tables:        tables,
+		BlobMap:       body.BlobMap,
+		SendInvites:   body.SendInvites,
+	})
+	var re *reviveError
+	if errors.As(err, &re) {
+		writeJSON(w, re.status, map[string]string{"error": re.code, "detail": re.detail})
+		return
+	}
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"circle_id":  out.CircleID,
+		"posts":      out.Posts,
+		"names":      out.Names,
+		"bytes":      out.Bytes,
+		"verified":   out.Verified,
+		"invited":    out.Invited,
+		"not_joined": out.NotJoined,
+	})
+}
+
+// reviveRequest — круг из строк архива: от устройства (оживление) или от
+// самого сервера (перенос, план 53).
+type reviveRequest struct {
+	AccountID     string
+	SchemaVersion int
+	Posts         int
+	Tables        map[string]chronicle.FullArchiveTable
+	BlobMap       map[string]string
+	SendInvites   bool
+	MovedFrom     string
+}
+
+// reviveOutcome — итог для 2.19 / 2.28 / 2.32 / 2.34.
+type reviveOutcome struct {
+	CircleID  string
+	Posts     int
+	Names     int
+	Bytes     int64
+	Verified  bool
+	Invited   int
+	NotJoined int
+}
+
+// reviveError — отказ с кодом для экрана: файла нет, сумма не та, места нет.
+type reviveError struct {
+	status       int
+	code, detail string
+}
+
+func (e *reviveError) Error() string { return "revive: " + e.code + " " + e.detail }
+
+// reviveFromTables проверяет файлы и место и вставляет круг.
+func (s *Server) reviveFromTables(ctx context.Context, in reviveRequest) (reviveOutcome, error) {
+	var out reviveOutcome
+	tables := in.Tables
 	accounts := map[string]string{}
 	if t, ok := tables["accounts"]; ok {
 		id, email := slices.Index(t.Columns, "id"), slices.Index(t.Columns, "email")
@@ -176,79 +240,84 @@ func (s *Server) handleReviveCircle(w http.ResponseWriter, r *http.Request) {
 		id, sum, size := slices.Index(t.Columns, "id"), slices.Index(t.Columns, "sha256"), slices.Index(t.Columns, "size_bytes")
 		for _, row := range t.Rows {
 			old, _ := row[id].(string)
-			nw, ok := body.BlobMap[old]
+			nw, ok := in.BlobMap[old]
 			if !ok {
-				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "blob_missing", "detail": old})
-				return
+				return out, &reviveError{http.StatusBadRequest, "blob_missing", old}
 			}
-			gotSum, gotSize, owner, err := s.Blobs.BlobDigest(r.Context(), nw)
-			if err != nil || owner != sess.AccountID {
-				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "blob_missing", "detail": old})
-				return
+			gotSum, gotSize, owner, err := s.Blobs.BlobDigest(ctx, nw)
+			if err != nil || owner != in.AccountID {
+				return out, &reviveError{http.StatusBadRequest, "blob_missing", old}
 			}
 			wantSum, _ := row[sum].(string)
-			wantSize, _ := row[size].(float64)
-			if gotSum != wantSum || gotSize != int64(wantSize) {
-				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "blob_mismatch", "detail": old})
-				return
+			if gotSum != wantSum || gotSize != jsonInt64(row[size]) {
+				return out, &reviveError{http.StatusBadRequest, "blob_mismatch", old}
 			}
 			archiveBytes += gotSize
 		}
 	}
 	// Помещается ли (2.23). Файлы уже загружены — место на сервере ими занято;
 	// предел здесь — нового круга: одобренная просьба или квота по умолчанию.
-	_, approved, _, err := s.reviveRoom(r.Context(), sess.AccountID)
+	_, approved, _, err := s.reviveRoom(ctx, in.AccountID)
 	if err != nil {
-		writeError(w, err)
-		return
+		return out, err
 	}
 	limit := int64(-1)
 	if approved != nil {
 		limit = approved.RequestedBytes
-	} else if def, err := s.Blobs.DefaultCircleQuotaBytes(r.Context()); err == nil && def.Valid {
+	} else if def, err := s.Blobs.DefaultCircleQuotaBytes(ctx); err == nil && def.Valid {
 		limit = def.Int64
 	}
 	if limit >= 0 && archiveBytes > limit {
-		writeJSON(w, http.StatusInsufficientStorage, map[string]string{"error": "no_room"})
-		return
+		return out, &reviveError{http.StatusInsufficientStorage, "no_room", ""}
 	}
-	res, err := s.Chronicle.ReviveCircle(r.Context(), chronicle.ReviveInput{
-		SchemaVersion: body.Manifest.SchemaVersion,
+	res, err := s.Chronicle.ReviveCircle(ctx, chronicle.ReviveInput{
+		SchemaVersion: in.SchemaVersion,
 		Tables:        tables,
 		Accounts:      accounts,
-		BlobMap:       body.BlobMap,
-		ReviverID:     sess.AccountID,
+		BlobMap:       in.BlobMap,
+		ReviverID:     in.AccountID,
 		Now:           time.Now(),
+		MovedFrom:     in.MovedFrom,
 	})
 	if err != nil {
 		if errors.Is(err, chronicle.ErrInvalid) {
 			log.Printf("revive: %v", err)
 		}
-		writeDomainError(w, err)
-		return
+		return out, err
 	}
 	if approved != nil {
 		// Место дали под этот круг: оно и есть его квота.
-		if err := s.Blobs.SetCircleQuotaAdmin(r.Context(), res.CircleID, true, &approved.RequestedBytes); err != nil {
+		if err := s.Blobs.SetCircleQuotaAdmin(ctx, res.CircleID, true, &approved.RequestedBytes); err != nil {
 			log.Printf("revive %s: quota: %v", res.CircleID, err)
 		}
-		if err := s.Blobs.UsePlaceRequest(r.Context(), approved.ID); err != nil {
+		if err := s.Blobs.UsePlaceRequest(ctx, approved.ID); err != nil {
 			log.Printf("revive %s: place request: %v", res.CircleID, err)
 		}
 	}
-	invited := 0
-	if body.SendInvites {
-		invited = s.inviteNotJoined(res.CircleID, sess.AccountID, res.NotJoined)
+	if in.SendInvites {
+		out.Invited = s.inviteNotJoined(res.CircleID, in.AccountID, res.NotJoined)
 	}
-	writeJSON(w, http.StatusCreated, map[string]any{
-		"circle_id":  res.CircleID,
-		"posts":      res.Posts,
-		"names":      res.Names,
-		"bytes":      res.Bytes,
-		"verified":   res.Posts == body.Manifest.Posts && res.Bytes == archiveBytes,
-		"invited":    invited,
-		"not_joined": len(res.NotJoined),
-	})
+	out.CircleID, out.Posts, out.Names, out.Bytes = res.CircleID, res.Posts, res.Names, res.Bytes
+	out.Verified = res.Posts == in.Posts && res.Bytes == archiveBytes
+	out.NotJoined = len(res.NotJoined)
+	return out, nil
+}
+
+// jsonInt64 — число из строки JSON-таблицы: float64 после encoding/json,
+// json.Number или целое — если таблицу собрал сам сервер.
+func jsonInt64(v any) int64 {
+	switch x := v.(type) {
+	case float64:
+		return int64(x)
+	case int64:
+		return x
+	case int:
+		return int64(x)
+	case json.Number:
+		n, _ := x.Int64()
+		return n
+	}
+	return 0
 }
 
 // inviteNotJoined — письмо каждому, кто приехал с кругом, но на этом сервере

@@ -863,6 +863,15 @@ paths:
       summary: Server to server — "accepted and verified", body {posts, names, bytes}; must match the archive (409 mismatch)
       security: []
 
+  /moves/incoming:
+    get:
+      summary: The caller's latest incoming move (2.18 on open, progress, result 2.19/2.32) with room for it (2.27–2.31); {move} or {move:null, room_bytes}
+    post:
+      summary: Paste a move link (2.18) — this server asks the old one for the circle card and remembers the link; body {link}; errors link_invalid, move_not_found, source_too_old, move_canceled, move_completed (400), source_unreachable (502), move_busy (409)
+  /moves/incoming/{id}/start:
+    post:
+      summary: «Поднять круг здесь» — body {send_invites}; the server pulls the circle itself with resume and revives it; 507 no_room, 410 move_expired
+
   /full_archive/{token}:
     get:
       summary: Ready full archive by link

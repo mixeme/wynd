@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/api"
+	"gitea.mixdep.ru/mix/wynd/internal/auth"
 )
 
 // moveCall — запрос нового сервера к прежнему: без входа, ключ ссылки в
@@ -280,5 +281,150 @@ func TestMoveCancelAndExpiry(t *testing.T) {
 	}
 	if st := readMoveState(t, srv, tok, circleID); st.Move == nil || st.Move.LinkAlive || st.FrozenAt == "" {
 		t.Fatalf("истёкший перенос держит круг замершим до отмены: %+v", st)
+	}
+}
+
+// Инвариант (план 53, 2.18 → 2.19, 6.26): два сервера. Владелица на прежнем
+// выдаёт ссылку; на новом её вставляет другой человек — сервер показывает
+// карточку круга, забирает архив сам (кусками, после «ещё собирается»),
+// поднимает круг со снимком и записью, владелец — тот, кто вставил ссылку, в
+// ленте «Круг перенесён с …»; прежний сервер получил «принято и сверено».
+func TestMoveBetweenServers(t *testing.T) {
+	src, srcCaps, _, _ := setupAPI(t)
+	anya, _ := registerSession(t, src, srcCaps, "anya@example.com")
+	rec := doJSON(t, src, http.MethodPost, "/api/v1/circles", anya, map[string]any{"name": "Семья", "owner_name": "Аня"})
+	circleID := jsonStr(t, rec, "id")
+	inv, err := src.Auth.CreateInvite(t.Context(), auth.CreateInviteInput{CircleID: circleID, Kind: auth.InviteSingle, MaxUses: 1, TTL: time.Hour})
+	if err != nil {
+		t.Fatal(err)
+	}
+	acceptInvite(t, src, srcCaps, inv.Token, "bob@example.com", "Боб")
+	photo := []byte(strings.Repeat("jpeg-bytes-", 1000))
+	blobID := uploadBytes(t, src, anya, photo, "image/jpeg")
+	if rec := doJSON(t, src, http.MethodPost, "/api/v1/circles/"+circleID+"/posts", anya, map[string]any{
+		"body": "на даче", "entry_date": "2026-10-14",
+		"media": []map[string]any{{"blob_id": blobID, "kind": "photo", "is_cover": true}},
+	}); rec.Code != http.StatusCreated {
+		t.Fatalf("запись: %d %s", rec.Code, rec.Body.String())
+	}
+	srcHTTP := httptest.NewServer(src)
+	defer srcHTTP.Close()
+	link := startMove(t, src, anya, circleID)
+	link = srcHTTP.URL + "/move/" + link[strings.LastIndex(link, "/")+1:]
+
+	dst, dstCaps, _, _ := setupAPI(t)
+	dst.MoveRetry = 10 * time.Millisecond
+	kot, _ := registerSession(t, dst, dstCaps, "kot@example.com")
+
+	for link, want := range map[string]string{
+		"https://example.org/not-a-move":                  "link_invalid",
+		srcHTTP.URL + "/move/AAAA-BBBB-CCCC-DDDD":         "move_not_found",
+		srcHTTP.URL + "/move/" + strings.Repeat("x", 300): "link_invalid",
+	} {
+		rec := doJSON(t, dst, http.MethodPost, "/api/v1/moves/incoming", kot, map[string]string{"link": link})
+		if rec.Code != http.StatusBadRequest || jsonStr(t, rec, "error") != want {
+			t.Fatalf("%s: %d %s, ждали %s", link, rec.Code, rec.Body.String(), want)
+		}
+	}
+	plain := httptest.NewServer(http.NotFoundHandler())
+	defer plain.Close()
+	if rec := doJSON(t, dst, http.MethodPost, "/api/v1/moves/incoming", kot, map[string]string{"link": plain.URL + "/move/AAAA-BBBB-CCCC-DDDD"}); jsonStr(t, rec, "error") != "source_too_old" {
+		t.Fatalf("не Wynd: %d %s", rec.Code, rec.Body.String())
+	}
+
+	rec = doJSON(t, dst, http.MethodPost, "/api/v1/moves/incoming", kot, map[string]string{"link": link})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("ссылка: %d %s", rec.Code, rec.Body.String())
+	}
+	var card struct {
+		ID         string `json:"id"`
+		Status     string `json:"status"`
+		SourceName string `json:"source_name"`
+		LinkAlive  bool   `json:"link_alive"`
+		Fits       bool   `json:"fits"`
+		Circle     struct {
+			Name    string `json:"name"`
+			Posts   int    `json:"posts"`
+			Members int    `json:"members"`
+			Bytes   int64  `json:"bytes"`
+		} `json:"circle"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &card); err != nil {
+		t.Fatal(err)
+	}
+	if card.Status != "draft" || card.SourceName != "Дом Ани" || !card.LinkAlive || !card.Fits ||
+		card.Circle.Name != "Семья" || card.Circle.Posts != 1 || card.Circle.Members != 2 || card.Circle.Bytes < int64(len(photo)) {
+		t.Fatalf("карточка 2.18: %s", rec.Body.String())
+	}
+	if rec := doJSON(t, dst, http.MethodPost, "/api/v1/moves/incoming/"+card.ID+"/start", kot, map[string]any{"send_invites": true}); rec.Code != http.StatusOK {
+		t.Fatalf("поднять: %d %s", rec.Code, rec.Body.String())
+	}
+
+	var got struct {
+		Move struct {
+			Status string `json:"status"`
+			Error  string `json:"error"`
+			Link   string `json:"link"`
+			Result struct {
+				CircleID string `json:"circle_id"`
+				Posts    int    `json:"posts"`
+				Names    int    `json:"names"`
+				Bytes    int64  `json:"bytes"`
+				Verified bool   `json:"verified"`
+				Invited  int    `json:"invited"`
+			} `json:"result"`
+		} `json:"move"`
+	}
+	deadline := time.Now().Add(15 * time.Second)
+	for {
+		rec := doGET(t, dst, "/api/v1/moves/incoming", kot)
+		got.Move.Link = ""
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatal(err)
+		}
+		if got.Move.Status == "done" || got.Move.Status == "failed" {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("перенос не закончился: %s", rec.Body.String())
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	r := got.Move.Result
+	if got.Move.Status != "done" || !r.Verified || r.Posts != 1 || r.Names != 2 || r.Bytes != int64(len(photo)) || got.Move.Link != "" {
+		t.Fatalf("итог 2.19: %+v", got.Move)
+	}
+	// Кот вставил ссылку и получил лицо прежней владелицы (план 52); Боб здесь
+	// не бывал — ему письмо.
+	if r.Invited != 1 {
+		t.Fatalf("приглашения: %d", r.Invited)
+	}
+
+	// Круг на новом сервере — у Кота, со снимком и строкой о переносе.
+	rec = doGET(t, dst, "/api/v1/circles/"+r.CircleID+"/feed", kot)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "на даче") {
+		t.Fatalf("лента нового круга: %d %s", rec.Code, rec.Body.String())
+	}
+	host := strings.TrimPrefix(srcHTTP.URL, "http://")
+	var movedIn int
+	if err := dst.Chronicle.DB().QueryRow(`SELECT COUNT(*) FROM events WHERE circle_id = ? AND event_type = 'circle_moved_in' AND summary = ?`,
+		r.CircleID, "Круг перенесён с "+host).Scan(&movedIn); err != nil || movedIn != 1 {
+		t.Fatalf("строка «Круг перенесён с %s»: %d %v", host, movedIn, err)
+	}
+	if rec := doJSON(t, dst, http.MethodPost, "/api/v1/circles/"+r.CircleID+"/posts", kot, map[string]any{
+		"body": "уже здесь", "entry_date": "2026-10-15",
+	}); rec.Code != http.StatusCreated {
+		t.Fatalf("писать в перенесённый круг: %d %s", rec.Code, rec.Body.String())
+	}
+
+	// Прежний сервер: «принято и сверено», адрес нового — из обмена.
+	deadline = time.Now().Add(5 * time.Second)
+	st := readMoveState(t, src, anya, circleID)
+	for st.Move.Status != "accepted" && time.Now().Before(deadline) {
+		time.Sleep(20 * time.Millisecond)
+		st = readMoveState(t, src, anya, circleID)
+	}
+	if st.Move.Status != "accepted" || st.Move.AcceptedPosts != 1 || st.Move.DestURL != strings.TrimRight(dst.PublicURL(), "/") {
+		t.Fatalf("прежний сервер: %+v", st.Move)
 	}
 }

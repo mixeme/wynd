@@ -519,24 +519,12 @@ func fullArchiveCounts(d *chronicle.FullArchiveData) (posts, names int, media in
 			}
 			for _, row := range t.Rows {
 				if col >= 0 {
-					media += asInt64(row[col])
+					media += jsonInt64(row[col])
 				}
 			}
 		}
 	}
 	return posts, names, media
-}
-
-func asInt64(v any) int64 {
-	switch x := v.(type) {
-	case int64:
-		return x
-	case int:
-		return int64(x)
-	case float64:
-		return int64(x)
-	}
-	return 0
 }
 
 // handleMoveArchive отдаёт архив под перенос с докачкой (Range). Пока он

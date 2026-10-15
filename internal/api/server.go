@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"time"
 	"sync/atomic"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
@@ -62,6 +63,13 @@ type Server struct {
 	// ArchiveFonts — вшитая сборка клиента (web/dist): из неё архив берёт
 	// Golos Text и кладёт внутрь ZIP. nil — архив на системном шрифте.
 	ArchiveFonts fs.FS
+	// MoveClient — запросы к прежнему серверу при переносе круга (план 53);
+	// nil — свой клиент без переходов по редиректам.
+	MoveClient *http.Client
+	// MoveRetry — пауза перед повтором после обрыва между серверами; 0 — минута.
+	MoveRetry time.Duration
+	// incomingRuns — идущие входящие переносы: id → struct{}.
+	incomingRuns sync.Map
 }
 
 // NewServer wires the services into one HTTP handler and registers every route on Mux.
@@ -251,6 +259,10 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("POST /api/v1/move/claim", s.handleMoveClaim)
 	s.Mux.HandleFunc("GET /api/v1/move/archive", s.handleMoveArchive)
 	s.Mux.HandleFunc("POST /api/v1/move/accepted", s.handleMoveAccepted)
+	// ...и новый сервер: ссылка, место, «Поднять круг здесь», ход и итог.
+	s.Mux.HandleFunc("GET /api/v1/moves/incoming", paid(s.handleIncomingMove))
+	s.Mux.HandleFunc("POST /api/v1/moves/incoming", paid(s.handlePutIncomingMove))
+	s.Mux.HandleFunc("POST /api/v1/moves/incoming/{id}/start", paid(s.handleStartIncomingMove))
 	s.Mux.HandleFunc("GET /api/v1/full_archive_stream/{token}", s.handleFullArchiveStream)
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/archive", paid(s.handleStartArchiveCycle))
 	s.Mux.HandleFunc("PUT /api/v1/circles/{circle_id}/archive/cutoff", paid(s.handleMoveCutoff))
