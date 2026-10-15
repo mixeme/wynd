@@ -87,3 +87,15 @@ func (c *Chronicle) SeeArrival(ctx context.Context, circleID, accountID string, 
 	`, formatTime(utcOrNow(now)), circleID, accountID)
 	return err
 }
+
+// CircleArrivedKind — как круг приехал на этот сервер: moved или revived;
+// пусто — не приезжал. Для «Ещё не вошли» (6.35): после переноса или после
+// оживления из архива.
+func (c *Chronicle) CircleArrivedKind(ctx context.Context, circleID string) (string, error) {
+	var kind string
+	err := c.db.QueryRowContext(ctx, `SELECT kind FROM circle_arrivals WHERE circle_id = ? LIMIT 1`, circleID).Scan(&kind)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	return kind, err
+}

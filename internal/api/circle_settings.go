@@ -31,6 +31,7 @@ func (s *Server) handleCircleMembers(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
+	arrived := ""
 	out := make([]map[string]any, len(members))
 	for i, m := range members {
 		out[i] = map[string]any{
@@ -48,9 +49,19 @@ func (s *Server) handleCircleMembers(w http.ResponseWriter, r *http.Request) {
 		}
 		if m.NotJoined {
 			out[i]["not_joined"] = true
+			// «Ещё не вошли» (6.35): после переноса или после оживления.
+			if arrived == "" {
+				arrived, _ = s.Chronicle.CircleArrivedKind(r.Context(), circleID)
+			}
+			if arrived != "" {
+				out[i]["arrived"] = arrived
+			}
 		}
 		if showAccounts {
 			out[i]["account_id"] = m.AccountID
+			if m.LeftLine != "" {
+				out[i]["left_line"] = m.LeftLine
+			}
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"members": out})

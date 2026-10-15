@@ -33,6 +33,10 @@ export interface MemberInfo {
 	avatar_blob_id?: string;
 	/** Приехал с кругом (оживление, перенос) и здесь ещё не входил (6.35). */
 	not_joined?: boolean;
+	/** Что встанет в хронологию, если исключить: «Боб покинул круг». Владельцу. */
+	left_line?: string;
+	/** Как круг приехал сюда — для «Ещё не вошли»: перенос или архив. */
+	arrived?: 'moved' | 'revived';
 }
 
 export interface IdentityNameRow {

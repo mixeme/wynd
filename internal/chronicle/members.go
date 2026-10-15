@@ -24,6 +24,9 @@ type MemberRow struct {
 	// NotJoined — учётка приехала с кругом (оживление, перенос) и на этом
 	// сервере ещё не входила: «Ещё не вошли» (6.35).
 	NotJoined bool `json:"not_joined,omitempty"`
+	// LeftLine — строка, которая встанет в хронологию, если человек выйдет или
+	// его исключат («Боб покинул круг»): её называет окно «Исключить».
+	LeftLine string `json:"left_line,omitempty"`
 }
 
 // MembershipForAccount returns the caller's membership row.
@@ -80,6 +83,9 @@ func (c *Chronicle) ListMembers(ctx context.Context, circleID, actorAccountID st
 		row.Name, err = c.identityName(ctx, c.db, row.IdentityID)
 		if err != nil {
 			return nil, err
+		}
+		if row.Status == StatusActive {
+			row.LeftLine = summaryMemberLeft(c.identityGender(ctx, c.db, row.IdentityID), row.Name)
 		}
 		row.CanRead, row.CanWrite, err = c.memberAccessNow(ctx, circleID, row.AccountID)
 		if err != nil {

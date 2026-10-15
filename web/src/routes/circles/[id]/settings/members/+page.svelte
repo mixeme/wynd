@@ -240,9 +240,11 @@
 					class={i === 0 ? 'pt-2' : undefined}
 				/>
 			{/each}
+			<!-- Только факт (владелец, 2026-10-15). -->
 			<Hint class="gutter">
-				Эти люди были в круге раньше. Их имена и записи на месте; войдут на этот сервер своей почтой —
-				окажутся в круге.
+				{waiting[0].arrived === 'revived'
+					? 'Не входили сюда после того, как круг оживили из архива.'
+					: 'Не входили сюда после переноса круга.'}
 			</Hint>
 			{#if isOwner}
 				<Button class="m-0-16" variant="colored" onclick={() => void invite()}>
@@ -266,11 +268,9 @@
 					class={i === 0 ? 'pt-2' : undefined}
 				/>
 			{/each}
+			<Hint class="gutter">Записи вышедших остаются в круге.</Hint>
 		{/if}
 		{#if !transferMode}
-			<Hint class="gutter"
-				>Записи вышедших остаются в круге и подписаны тем именем, что было на момент написания.</Hint
-			>
 			<Button class="m-0-16"
 				variant="ghost"
 				onclick={() => goto(`/circles/${circle.circleId}/settings/invite`)}
@@ -303,9 +303,6 @@
 			chevron={false}
 			onclick={() => menuMember && askExclude(menuMember)}
 		/>
-		<Hint class="mt-14"
-			>Право выдаёт только владелец.</Hint
-		>
 	</OverlayLayout>
 {/if}
 
@@ -317,10 +314,11 @@
 		onconfirm={() => void confirmExclude()}
 		oncancel={closeExclude}
 	>
-		<Hint
-			>Записи останутся в круге под этим именем. В журнале будет «покинул круг». Доступа больше не
-			будет.</Hint
-		>
+		<!-- Только что запишется в круге и про доступ (владелец, 2026-10-15). -->
+		<Hint>
+			В хронологии будет: «{excludeTarget.left_line ?? `Больше не в круге: ${excludeTarget.name}`}».
+			Доступа к кругу больше не будет.
+		</Hint>
 	</ConfirmDialog>
 {/if}
 
