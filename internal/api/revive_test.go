@@ -245,4 +245,26 @@ func TestReviveWaitingMembers(t *testing.T) {
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"invited":1`) {
 		t.Fatalf("позвать всех: %d %s", rec.Code, rec.Body.String())
 	}
+	// Сервер закрыт для новых — а Коля входит своей почтой из архива и
+	// попадает в круг (план 46, A1).
+	for _, mode := range []auth.RegistrationMode{auth.ModeInvite, auth.ModeClosed} {
+		if err := srv.Auth.SetRegistrationMode(t.Context(), mode); err != nil {
+			t.Fatal(err)
+		}
+		if rec := doJSON(t, srv, http.MethodPost, "/api/v1/auth/code", "", map[string]string{"email": "kolya@elsewhere.example"}); rec.Code >= 300 {
+			t.Fatalf("%s: код для Коли: %d %s", mode, rec.Code, rec.Body.String())
+		}
+	}
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/auth/verify", "", map[string]string{"email": "kolya@elsewhere.example", "code": caps.Last("kolya@elsewhere.example")})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("Коля входит: %d %s", rec.Code, rec.Body.String())
+	}
+	kolya := jsonStr(t, rec, "token")
+	var list struct {
+		Circles []map[string]any `json:"circles"`
+	}
+	_ = json.Unmarshal(doGET(t, srv, "/api/v1/circles", kolya).Body.Bytes(), &list)
+	if len(list.Circles) != 1 || list.Circles[0]["id"] != circleID {
+		t.Fatalf("круг у Коли: %+v", list.Circles)
+	}
 }
