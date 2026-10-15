@@ -6,9 +6,11 @@ import (
 	"log"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
+	"gitea.mixdep.ru/mix/wynd/internal/blob"
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 )
 
@@ -57,6 +59,80 @@ func (s *Server) handleReviveBlobs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"blobs": found})
+}
+
+// reviveRoom — сколько места этот сервер даёт новому кругу этой учётки (2.22:
+// «для круга есть 3 ГБ»): квота круга по умолчанию или одобренная просьба о
+// месте для него (2.24), но не больше, чем свободно на сервере. approved —
+// одобренная просьба, если её место и считается.
+func (s *Server) reviveRoom(ctx context.Context, accountID string) (room int64, approved *blob.QuotaRequest, last *blob.QuotaRequest, err error) {
+	if room, err = s.Blobs.RoomBytes(ctx); err != nil {
+		return 0, nil, nil, err
+	}
+	def, err := s.Blobs.DefaultCircleQuotaBytes(ctx)
+	if err != nil {
+		return 0, nil, nil, err
+	}
+	if last, err = s.Blobs.LastPlaceRequest(ctx, accountID); err != nil {
+		return 0, nil, nil, err
+	}
+	switch {
+	case last != nil && last.Status == "approved":
+		approved = last
+		room = min(room, last.RequestedBytes)
+	case def.Valid:
+		room = min(room, def.Int64)
+	}
+	return room, approved, last, nil
+}
+
+// handleReviveRoom — помещается ли круг из архива сюда (2.22, 2.23) и что с
+// просьбой о месте для него (2.24, 2.26). Экран спрашивает при открытии.
+func (s *Server) handleReviveRoom(w http.ResponseWriter, r *http.Request) {
+	sess, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+	need, _ := strconv.ParseInt(r.URL.Query().Get("bytes"), 10, 64)
+	room, _, last, err := s.reviveRoom(r.Context(), sess.AccountID)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	out := map[string]any{"room_bytes": room, "fits": need <= room}
+	if last != nil {
+		req := map[string]any{
+			"status": last.Status, "requested_bytes": last.RequestedBytes,
+			"circle_name": last.CircleName, "created_at": last.CreatedAt,
+		}
+		if last.ResolvedAt != nil {
+			req["resolved_at"] = *last.ResolvedAt
+		}
+		out["request"] = req
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// handleRevivePlaceRequest — «Попросить место» на 2.23: просьба о месте для
+// круга, которого пока нет; встаёт в ту же очередь панели.
+func (s *Server) handleRevivePlaceRequest(w http.ResponseWriter, r *http.Request) {
+	sess, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+	body, ok := bindJSON[struct {
+		Bytes      int64  `json:"bytes"`
+		CircleName string `json:"circle_name"`
+	}](w, r)
+	if !ok {
+		return
+	}
+	id, err := s.Blobs.CreatePlaceRequest(r.Context(), sess.AccountID, body.CircleName, body.Bytes)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]string{"id": id, "status": "pending"})
 }
 
 // handleReviveCircle — «Оживить круг здесь» (2.22): круг вставляется заново,
@@ -119,6 +195,23 @@ func (s *Server) handleReviveCircle(w http.ResponseWriter, r *http.Request) {
 			archiveBytes += gotSize
 		}
 	}
+	// Помещается ли (2.23). Файлы уже загружены — место на сервере ими занято;
+	// предел здесь — нового круга: одобренная просьба или квота по умолчанию.
+	_, approved, _, err := s.reviveRoom(r.Context(), sess.AccountID)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	limit := int64(-1)
+	if approved != nil {
+		limit = approved.RequestedBytes
+	} else if def, err := s.Blobs.DefaultCircleQuotaBytes(r.Context()); err == nil && def.Valid {
+		limit = def.Int64
+	}
+	if limit >= 0 && archiveBytes > limit {
+		writeJSON(w, http.StatusInsufficientStorage, map[string]string{"error": "no_room"})
+		return
+	}
 	res, err := s.Chronicle.ReviveCircle(r.Context(), chronicle.ReviveInput{
 		SchemaVersion: body.Manifest.SchemaVersion,
 		Tables:        tables,
@@ -133,6 +226,15 @@ func (s *Server) handleReviveCircle(w http.ResponseWriter, r *http.Request) {
 		}
 		writeDomainError(w, err)
 		return
+	}
+	if approved != nil {
+		// Место дали под этот круг: оно и есть его квота.
+		if err := s.Blobs.SetCircleQuotaAdmin(r.Context(), res.CircleID, true, &approved.RequestedBytes); err != nil {
+			log.Printf("revive %s: quota: %v", res.CircleID, err)
+		}
+		if err := s.Blobs.UsePlaceRequest(r.Context(), approved.ID); err != nil {
+			log.Printf("revive %s: place request: %v", res.CircleID, err)
+		}
 	}
 	invited := 0
 	if body.SendInvites {

@@ -812,6 +812,19 @@ paths:
       summary: Which archive files the caller already has on the server (by sha256) — not uploaded again
       description: Body {sha256 [..]}; answer {blobs {sha256 → blob id}}. Only the caller's own complete blobs.
 
+  /revive/room:
+    get:
+      summary: Room this server gives a new circle of the caller (default circle quota or an approved request), and the caller's place request (2.22–2.26)
+      parameters:
+        - name: bytes
+          in: query
+          schema:
+            type: integer
+
+  /revive/place_request:
+    post:
+      summary: Ask the admin for room for a circle that does not exist yet (2.23); body {bytes, circle_name}; one pending per account
+
   /revive:
     post:
       summary: Revive a circle from a full archive (plan 52)

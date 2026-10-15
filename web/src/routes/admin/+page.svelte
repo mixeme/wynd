@@ -345,6 +345,19 @@
 	}
 
 	function giveQuota(req: QuotaRequest) {
+		// Круга ещё нет — править нечего: «Дать» одобряет просьбу, квоту круг
+		// получит, когда оживёт.
+		if (!req.circle_id) {
+			void (async () => {
+				try {
+					await resolveQuotaRequest(req.id, true);
+					await load();
+				} catch (err) {
+					error = authErrorHint(err);
+				}
+			})();
+			return;
+		}
 		const params = new URLSearchParams($page.url.searchParams);
 		params.set('circle', req.circle_id);
 		void goto(`/admin?${params.toString()}`, { keepFocus: true });
@@ -538,8 +551,10 @@
 						{@const circle = circles.find((c) => c.id === req.circle_id)}
 						{@const prev = circle ? effectiveQuotaBytes(circle) : null}
 						<QuotaRequestRow
-							circleColor={colorFor(req.circle_id)}
-							circleName={circleName(req.circle_id)}
+							circleColor={req.circle_id ? colorFor(req.circle_id) : 'var(--line)'}
+							circleName={req.circle_id
+								? circleName(req.circle_id)
+								: `${req.circle_name ?? 'Круг'} — оживляют из архива`}
 							requested={formatQuota(req.requested_bytes)}
 							previous={prev != null ? String(Math.round(prev / GB)) : undefined}
 							requester={req.requester_email}

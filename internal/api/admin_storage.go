@@ -316,6 +316,7 @@ func (s *Server) handleAdminQuotaRequests(w http.ResponseWriter, r *http.Request
 	type row struct {
 		ID             string  `json:"id"`
 		CircleID       string  `json:"circle_id"`
+		CircleName     string  `json:"circle_name,omitempty"`
 		RequesterID    string  `json:"requester_id"`
 		RequesterMail  string  `json:"requester_email"`
 		RequestedBytes int64   `json:"requested_bytes"`
@@ -327,7 +328,7 @@ func (s *Server) handleAdminQuotaRequests(w http.ResponseWriter, r *http.Request
 	out := make([]row, len(items))
 	for i, item := range items {
 		out[i] = row{
-			ID: item.ID, CircleID: item.CircleID, RequesterID: item.RequesterID,
+			ID: item.ID, CircleID: item.CircleID, CircleName: item.CircleName, RequesterID: item.RequesterID,
 			RequesterMail: item.RequesterEmail, RequestedBytes: item.RequestedBytes,
 			Status: item.Status, AdminNote: item.AdminNote, CreatedAt: item.CreatedAt,
 			ResolvedAt: item.ResolvedAt,
@@ -354,7 +355,7 @@ func (s *Server) resolveQuotaRequest(w http.ResponseWriter, r *http.Request, app
 		return
 	}
 	var before sql.NullInt64
-	if req != nil {
+	if req != nil && req.CircleID != "" {
 		if before, err = s.Blobs.CircleQuotaBytes(r.Context(), req.CircleID); err != nil {
 			writeError(w, err)
 			return
@@ -379,15 +380,22 @@ func (s *Server) sendQuotaAnswer(req blob.QuotaRequest, before sql.NullInt64, ap
 		return
 	}
 	link := strings.TrimRight(s.PublicURL(), "/") + "/circles/" + req.CircleID + "/quota"
+	if req.CircleID == "" {
+		// Просьба для круга, которого пока нет (2.24): оживляют его из «Серверов».
+		link = strings.TrimRight(s.PublicURL(), "/") + "/settings/servers"
+	}
 	s.notifyWG.Add(1)
 	go func() {
 		defer s.notifyWG.Done()
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		defer cancel()
-		name, err := s.Chronicle.CircleName(ctx, req.CircleID)
-		if err != nil {
-			log.Printf("quota answer mail %s: circle: %v", req.CircleID, err)
-			return
+		name := req.CircleName
+		if req.CircleID != "" {
+			var err error
+			if name, err = s.Chronicle.CircleName(ctx, req.CircleID); err != nil {
+				log.Printf("quota answer mail %s: circle: %v", req.CircleID, err)
+				return
+			}
 		}
 		if err := s.Mail.SendQuotaAnswer(ctx, req.RequesterEmail, name, req.RequestedBytes, before, approved, link); err != nil {
 			log.Printf("quota answer mail %s to %s: %v", req.CircleID, req.RequesterEmail, err)

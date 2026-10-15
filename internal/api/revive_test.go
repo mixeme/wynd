@@ -3,14 +3,18 @@ package api_test
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
+	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 )
 
 // Инвариант (план 52): полный архив, собранный сервером, оживает у другого
@@ -111,4 +115,88 @@ func TestReviveCircleFromArchiveHTTP(t *testing.T) {
 	if !eventsContain(syncEvents(t, srv, bob), "круг из архива") && !eventsContain(syncEvents(t, srv, bob), "Круг оживлён из архива") {
 		t.Fatal("нет служебной строки оживления")
 	}
+}
+
+// Новая миграция — новая схема архивов: оживление обязано её знать, иначе
+// архив, собранный этим же сервером, здесь не оживить.
+func TestReviveKnowsCurrentSchema(t *testing.T) {
+	srv, _, ch, _ := setupAPI(t)
+	var v int
+	if err := ch.DB().QueryRowContext(t.Context(), `SELECT MAX(version) FROM schema_migrations`).Scan(&v); err != nil {
+		t.Fatal(err)
+	}
+	_ = srv
+	if !slices.Contains(chronicle.ReviveSchemaVersions, v) {
+		t.Fatalf("схема %d не в chronicle.ReviveSchemaVersions %v: проверить, менялись ли таблицы круга, и добавить", v, chronicle.ReviveSchemaVersions)
+	}
+}
+
+// Место для круга, которого пока нет (2.23 → 2.24): не помещается — просьба
+// встаёт в очередь панели с именем круга; дали — круг оживает со своей квотой.
+func TestRevivePlaceRequest(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	admin := adminToken(t, srv)
+	slava, _ := registerSession(t, srv, caps, "slava@example.com")
+	photo := []byte(strings.Repeat("x", 5000))
+	blobID := uploadBytes(t, srv, slava, photo, "image/jpeg")
+	if rec := doJSON(t, srv, http.MethodPut, "/api/v1/admin/storage/default_quota", admin, map[string]any{"default_circle_quota_bytes": 1000}); rec.Code != http.StatusOK {
+		t.Fatalf("квота по умолчанию: %d %s", rec.Code, rec.Body.String())
+	}
+	room := func() map[string]any {
+		var out map[string]any
+		_ = json.Unmarshal(doGET(t, srv, "/api/v1/revive/room?bytes=5000", slava).Body.Bytes(), &out)
+		return out
+	}
+	if r := room(); r["fits"] != false || r["room_bytes"].(float64) != 1000 {
+		t.Fatalf("место до просьбы: %+v", r)
+	}
+	// Архив из одного круга с одним файлом — собран руками, как его прислало бы устройство.
+	tables := map[string]any{
+		"circles":    map[string]any{"columns": []string{"id", "name", "owner_account_id", "created_at", "updated_at", "color"}, "rows": [][]any{{"00000000-0000-7000-8000-00000000c001", "Дача", "old-owner", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z", "ochre"}}},
+		"identities": map[string]any{"columns": []string{"id", "circle_id", "account_id", "created_at"}, "rows": [][]any{{"00000000-0000-7000-8000-00000000d001", "00000000-0000-7000-8000-00000000c001", "old-owner", "2026-01-01T00:00:00Z"}}},
+		"identity_names": map[string]any{"columns": []string{"id", "identity_id", "name", "effective_at"}, "rows": [][]any{{"00000000-0000-7000-8000-00000000e001", "00000000-0000-7000-8000-00000000d001", "Слава", "2026-01-01T00:00:00Z"}}},
+		"memberships": map[string]any{"columns": []string{"id", "circle_id", "account_id", "identity_id", "status", "created_at", "updated_at"}, "rows": [][]any{{"00000000-0000-7000-8000-00000000f001", "00000000-0000-7000-8000-00000000c001", "old-owner", "00000000-0000-7000-8000-00000000d001", "active", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z"}}},
+		"membership_spans": map[string]any{"columns": []string{"id", "membership_id", "started_at"}, "rows": [][]any{{"00000000-0000-7000-8000-00000000f101", "00000000-0000-7000-8000-00000000f001", "2026-01-01T00:00:00Z"}}},
+		"accounts": map[string]any{"columns": []string{"id", "email"}, "rows": [][]any{{"old-owner", "slava@example.com"}}},
+		"blobs":    map[string]any{"columns": []string{"id", "sha256", "size_bytes"}, "rows": [][]any{{"00000000-0000-7000-8000-0000000000b1", sha256Hex(photo), len(photo)}}},
+	}
+	manifest := map[string]any{"format": "wynd-circle", "format_version": 1, "schema_version": 35, "posts": 0}
+	revive := func() int {
+		return doJSON(t, srv, http.MethodPost, "/api/v1/revive", slava, map[string]any{
+			"manifest": manifest, "tables": tables, "blob_map": map[string]string{"00000000-0000-7000-8000-0000000000b1": blobID},
+		}).Code
+	}
+	if code := revive(); code != http.StatusInsufficientStorage {
+		t.Fatalf("оживление больше квоты: %d", code)
+	}
+	if rec := doJSON(t, srv, http.MethodPost, "/api/v1/revive/place_request", slava, map[string]any{"bytes": 6000, "circle_name": "Дача"}); rec.Code != http.StatusCreated {
+		t.Fatalf("просьба: %d %s", rec.Code, rec.Body.String())
+	}
+	if r := room(); r["request"].(map[string]any)["status"] != "pending" {
+		t.Fatalf("просьба на экране: %+v", r)
+	}
+	var queue struct {
+		Requests []map[string]any `json:"requests"`
+	}
+	_ = json.Unmarshal(doGET(t, srv, "/api/v1/admin/quota_requests", admin).Body.Bytes(), &queue)
+	if len(queue.Requests) != 1 || queue.Requests[0]["circle_name"] != "Дача" || queue.Requests[0]["circle_id"] != "" {
+		t.Fatalf("очередь панели: %+v", queue.Requests)
+	}
+	if rec := doJSON(t, srv, http.MethodPost, "/api/v1/admin/quota_requests/"+queue.Requests[0]["id"].(string)+"/approve", admin, nil); rec.Code != http.StatusOK {
+		t.Fatalf("дать: %d %s", rec.Code, rec.Body.String())
+	}
+	if r := room(); r["fits"] != true {
+		t.Fatalf("место после «дать»: %+v", r)
+	}
+	if code := revive(); code != http.StatusCreated {
+		t.Fatalf("оживление после «дать»: %d", code)
+	}
+	if r := room(); r["fits"] != false || r["request"] != nil {
+		t.Fatalf("просьба не израсходована: %+v", r)
+	}
+}
+
+func sha256Hex(b []byte) string {
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
 }

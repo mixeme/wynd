@@ -97,8 +97,11 @@ func (s *Store) SetCircleQuotaAdmin(ctx context.Context, circleID string, custom
 
 // QuotaRequest is a pending or resolved storage increase request.
 type QuotaRequest struct {
-	ID             string
+	ID string
+	// CircleID пуст у просьбы для круга, которого пока нет (оживление, 2.23):
+	// у неё — CircleName.
 	CircleID       string
+	CircleName     string
 	RequesterID    string
 	RequesterEmail string
 	RequestedBytes int64
@@ -141,7 +144,7 @@ func (s *Store) CreateQuotaRequest(ctx context.Context, circleID, accountID stri
 // ListPendingQuotaRequests returns open quota requests for admin review.
 func (s *Store) ListPendingQuotaRequests(ctx context.Context) ([]QuotaRequest, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT qr.id, qr.circle_id, qr.requested_by_account_id, a.email,
+		SELECT qr.id, COALESCE(qr.circle_id, ''), COALESCE(qr.circle_name, ''), qr.requested_by_account_id, a.email,
 			qr.requested_bytes, qr.status, qr.admin_note, qr.created_at, qr.resolved_at
 		FROM quota_requests qr
 		JOIN accounts a ON a.id = qr.requested_by_account_id
@@ -156,7 +159,7 @@ func (s *Store) ListPendingQuotaRequests(ctx context.Context) ([]QuotaRequest, e
 	for rows.Next() {
 		var item QuotaRequest
 		var note, resolved sql.NullString
-		if err := rows.Scan(&item.ID, &item.CircleID, &item.RequesterID, &item.RequesterEmail,
+		if err := rows.Scan(&item.ID, &item.CircleID, &item.CircleName, &item.RequesterID, &item.RequesterEmail,
 			&item.RequestedBytes, &item.Status, &note, &item.CreatedAt, &resolved); err != nil {
 			return nil, err
 		}
@@ -187,11 +190,11 @@ func (s *Store) quotaRequest(ctx context.Context, where string, arg string) (*Qu
 	var item QuotaRequest
 	var note, resolved sql.NullString
 	err := s.db.QueryRowContext(ctx, `
-		SELECT qr.id, qr.circle_id, qr.requested_by_account_id, a.email,
+		SELECT qr.id, COALESCE(qr.circle_id, ''), COALESCE(qr.circle_name, ''), qr.requested_by_account_id, a.email,
 			qr.requested_bytes, qr.status, qr.admin_note, qr.created_at, qr.resolved_at
 		FROM quota_requests qr
 		JOIN accounts a ON a.id = qr.requested_by_account_id
-		WHERE `+where, arg).Scan(&item.ID, &item.CircleID, &item.RequesterID, &item.RequesterEmail,
+		WHERE `+where, arg).Scan(&item.ID, &item.CircleID, &item.CircleName, &item.RequesterID, &item.RequesterEmail,
 		&item.RequestedBytes, &item.Status, &note, &item.CreatedAt, &resolved)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
@@ -228,7 +231,7 @@ func (s *Store) QuotaRequestLowers(ctx context.Context, circleID string, request
 
 // ResolveQuotaRequest approves (sets absolute quota) or rejects a pending request.
 func (s *Store) ResolveQuotaRequest(ctx context.Context, id string, approve bool, adminNote string) (string, error) {
-	var circleID string
+	var circleID sql.NullString
 	var requested int64
 	err := s.db.QueryRowContext(ctx, `
 		SELECT circle_id, requested_bytes FROM quota_requests WHERE id = ? AND status = 'pending'
@@ -242,10 +245,13 @@ func (s *Store) ResolveQuotaRequest(ctx context.Context, id string, approve bool
 	status := "rejected"
 	if approve {
 		status = "approved"
-		if _, err := s.db.ExecContext(ctx, `
-			UPDATE circles SET quota_custom = 1, quota_bytes = ? WHERE id = ?
-		`, requested, circleID); err != nil {
-			return "", err
+		// Просьба для круга, которого пока нет, квоту ставит при оживлении.
+		if circleID.Valid {
+			if _, err := s.db.ExecContext(ctx, `
+				UPDATE circles SET quota_custom = 1, quota_bytes = ? WHERE id = ?
+			`, requested, circleID.String); err != nil {
+				return "", err
+			}
 		}
 	}
 	now := xtime.Format(time.Now().UTC())
@@ -266,6 +272,47 @@ func (s *Store) CircleExists(ctx context.Context, circleID string) (bool, error)
 		return false, nil
 	}
 	return err == nil, err
+}
+
+// CreatePlaceRequest — просьба о месте для круга, которого пока нет (2.23):
+// оживляют круг из архива, а он больше, чем сервер даёт новому кругу. Одна
+// на учётку, пока на неё не ответили.
+func (s *Store) CreatePlaceRequest(ctx context.Context, accountID, circleName string, requested int64) (string, error) {
+	if requested < 1 || strings.TrimSpace(circleName) == "" {
+		return "", ErrInvalid
+	}
+	var pending int
+	if err := s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM quota_requests
+		WHERE circle_id IS NULL AND requested_by_account_id = ? AND status = 'pending'
+	`, accountID).Scan(&pending); err != nil {
+		return "", err
+	}
+	if pending > 0 {
+		return "", ErrInvalid
+	}
+	id, err := uid.NewID()
+	if err != nil {
+		return "", err
+	}
+	_, err = s.db.ExecContext(ctx, `
+		INSERT INTO quota_requests (id, circle_id, circle_name, requested_by_account_id, requested_bytes, created_at)
+		VALUES (?, NULL, ?, ?, ?, ?)
+	`, id, circleName, accountID, requested, xtime.Format(time.Now().UTC()))
+	return id, err
+}
+
+// LastPlaceRequest — последняя неиспользованная просьба учётки о месте для
+// будущего круга (2.24, 2.26); nil — не просили.
+func (s *Store) LastPlaceRequest(ctx context.Context, accountID string) (*QuotaRequest, error) {
+	return s.quotaRequest(ctx, `qr.circle_id IS NULL AND qr.used_at IS NULL AND qr.requested_by_account_id = ?
+		ORDER BY qr.created_at DESC, qr.rowid DESC LIMIT 1`, accountID)
+}
+
+// UsePlaceRequest — круг ожил по одобренной просьбе: она больше не действует.
+func (s *Store) UsePlaceRequest(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE quota_requests SET used_at = ? WHERE id = ?`, xtime.Format(time.Now().UTC()), id)
+	return err
 }
 
 // BlobDigest — сумма, длина и хозяин готового файла: оживление сверяет

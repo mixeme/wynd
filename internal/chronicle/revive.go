@@ -18,7 +18,7 @@ import (
 
 // ReviveSchemaVersions — какие схемы архива сервер умеет оживлять. Новая
 // схема с другими колонками — сюда и в переводчик строк.
-var ReviveSchemaVersions = []int{34}
+var ReviveSchemaVersions = []int{34, 35}
 
 // reviveOrder — порядок вставки: по зависимостям.
 var reviveOrder = []string{

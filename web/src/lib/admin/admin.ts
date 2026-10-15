@@ -93,7 +93,9 @@ export interface AdminInvite {
 
 export interface QuotaRequest {
 	id: string;
+	/** Пусто — просьба для круга, которого пока нет: его оживляют из архива (2.23). */
 	circle_id: string;
+	circle_name?: string;
 	requester_id: string;
 	requester_email: string;
 	requested_bytes: number;
