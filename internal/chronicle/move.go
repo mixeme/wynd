@@ -37,6 +37,7 @@ var (
 type CircleMove struct {
 	ID            string
 	CircleID      string
+	Token         string
 	StartedBy     string
 	StartedAt     time.Time
 	ExpiresAt     time.Time
@@ -67,7 +68,7 @@ func (m *CircleMove) LinkAlive(now time.Time) bool {
 	return (m.Status == MoveWaiting || m.Status == MovePulling) && now.Before(m.ExpiresAt)
 }
 
-const circleMoveCols = `id, circle_id, started_by_account_id, started_at, expires_at, status,
+const circleMoveCols = `id, circle_id, token, started_by_account_id, started_at, expires_at, status,
 	COALESCE(dest_url, ''), COALESCE(dest_name, ''), archive_status, archive_bytes, pulled_bytes,
 	archive_posts, archive_names, archive_media_bytes,
 	accepted_at, COALESCE(accepted_posts, 0), COALESCE(accepted_names, 0), COALESCE(accepted_bytes, 0), ended_at`
@@ -76,7 +77,7 @@ func scanCircleMove(row interface{ Scan(...any) error }) (*CircleMove, error) {
 	var m CircleMove
 	var started, expires string
 	var accepted, ended sql.NullString
-	if err := row.Scan(&m.ID, &m.CircleID, &m.StartedBy, &started, &expires, &m.Status,
+	if err := row.Scan(&m.ID, &m.CircleID, &m.Token, &m.StartedBy, &started, &expires, &m.Status,
 		&m.DestURL, &m.DestName, &m.ArchiveStatus, &m.ArchiveBytes, &m.PulledBytes,
 		&m.ArchivePosts, &m.ArchiveNames, &m.ArchiveMediaBytes,
 		&accepted, &m.AcceptedPosts, &m.AcceptedNames, &m.AcceptedBytes, &ended); err != nil {
@@ -127,7 +128,7 @@ func (c *Chronicle) GetMove(ctx context.Context, id string) (*CircleMove, error)
 // StartMove — «Остановить круг и получить ссылку» (6.24): круг замирает той же
 // транзакцией, в ленте — «Кот начал перенос круга» (6.27). Круг, который уже
 // замер (под архив с удалением или под другой перенос), — ErrMoveBusy.
-func (c *Chronicle) StartMove(ctx context.Context, circleID, accountID, tokenHash string, now time.Time) (*CircleMove, error) {
+func (c *Chronicle) StartMove(ctx context.Context, circleID, accountID, token, tokenHash string, now time.Time) (*CircleMove, error) {
 	id, err := newID()
 	if err != nil {
 		return nil, err
@@ -156,9 +157,9 @@ func (c *Chronicle) StartMove(ctx context.Context, circleID, accountID, tokenHas
 		return nil, ErrMoveBusy
 	}
 	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO circle_moves (id, circle_id, started_by_account_id, started_at, token_hash, expires_at, status)
-		VALUES (?, ?, ?, ?, ?, ?, 'waiting')
-	`, id, circleID, accountID, formatTime(now), tokenHash, formatTime(now.Add(MoveLinkTTL))); err != nil {
+		INSERT INTO circle_moves (id, circle_id, started_by_account_id, started_at, token, token_hash, expires_at, status)
+		VALUES (?, ?, ?, ?, ?, ?, ?, 'waiting')
+	`, id, circleID, accountID, formatTime(now), token, tokenHash, formatTime(now.Add(MoveLinkTTL))); err != nil {
 		return nil, err
 	}
 	if _, err := c.appendEvent(ctx, tx, appendEventInput{

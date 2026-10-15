@@ -7,7 +7,9 @@ CREATE TABLE circle_moves (
     circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
     started_by_account_id TEXT NOT NULL REFERENCES accounts(id),
     started_at TEXT NOT NULL,
-    -- sha256 ключа ссылки: сам ключ не хранится.
+    -- Ключ ссылки: владелец видит ссылку на 6.25, сколько бы раз ни открыл
+    -- экран; новый сервер находит перенос по sha256 ключа.
+    token TEXT NOT NULL,
     token_hash TEXT NOT NULL UNIQUE,
     expires_at TEXT NOT NULL,
     status TEXT NOT NULL CHECK (status IN ('waiting', 'pulling', 'accepted', 'canceled', 'completed')),

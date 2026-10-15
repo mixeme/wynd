@@ -118,7 +118,11 @@ func (s *Server) handleCircleMove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if m != nil {
-		out["move"] = moveJSON(m, time.Now())
+		move := moveJSON(m, time.Now())
+		if m.LinkAlive(time.Now()) {
+			move["link"] = s.moveLink(m.Token)
+		}
+		out["move"] = move
 	}
 	if frozen, err := s.Chronicle.CircleFrozenAt(r.Context(), circleID); err == nil && frozen != nil {
 		out["frozen_at"] = frozen.UTC().Format(time.RFC3339)
@@ -127,7 +131,7 @@ func (s *Server) handleCircleMove(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleStartMove — «Остановить круг и получить ссылку» (6.24): круг замер,
-// ссылка — в ответе. Сервер хранит только её отпечаток.
+// ссылка — в ответе и на 6.25, пока жива.
 func (s *Server) handleStartMove(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	sess, ok := requireSession(w, r)
@@ -143,7 +147,7 @@ func (s *Server) handleStartMove(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	m, err := s.Chronicle.StartMove(r.Context(), circleID, sess.AccountID, moveTokenHash(token), time.Now())
+	m, err := s.Chronicle.StartMove(r.Context(), circleID, sess.AccountID, token, moveTokenHash(token), time.Now())
 	if errors.Is(err, chronicle.ErrMoveBusy) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "circle_frozen"})
 		return
