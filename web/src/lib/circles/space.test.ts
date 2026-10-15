@@ -28,4 +28,14 @@ describe('spaceNotice (3.19, 3.20)', () => {
 			second: 'Помочь может администратор «Дома Ани».'
 		});
 	});
+	it('во время архивации — когда место освободится, без ссылки', () => {
+		const n = spaceNotice({
+			...base,
+			spaceFull: 'circle',
+			youOwn: true,
+			archiveCycle: { active: true, deadline: '2026-11-12T10:00:00Z' }
+		});
+		expect(n?.href).toBeUndefined();
+		expect(n?.second).toMatch(/^Место освободится 12 ноября$/);
+	});
 });
