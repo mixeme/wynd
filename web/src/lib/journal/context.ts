@@ -1,5 +1,6 @@
 import type { CircleColor } from '$lib/theme/colors';
 import type { ArchiveCycle } from './types';
+import type { CircleMoveBanner } from '$lib/circles/circles';
 
 export const CIRCLE_CTX = Symbol('circle');
 
@@ -25,6 +26,8 @@ export interface CircleContext {
 	youOwn: boolean;
 	/** Круг замер под полный архив с удалением (6.36): писать нельзя никому. */
 	frozenAt: string;
+	/** Замер под перенос (план 53): переезжает (6.27) или переехал (6.28). */
+	move?: CircleMoveBanner;
 	/** Имя сервера для 3.20: «Помочь может администратор «…»». */
 	serverName: string;
 	/** «Место со снимков» (6.1): начальное положение значка места на 4.2. */

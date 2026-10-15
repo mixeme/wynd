@@ -6,6 +6,7 @@ import { readCachedSnapshot, writeCachedSnapshot } from '$lib/api/snapshots';
 import { getCircleColor, setCircleColor, circleInitial } from './meta';
 import { CIRCLE_COLORS, type CircleColor } from '$lib/theme/colors';
 import { formatPostTime } from '$lib/format/time';
+import { serverHost } from './move';
 
 export interface ArchiveCycleBanner {
 	active: true;
@@ -36,8 +37,28 @@ export interface CircleListItem {
 	/** Владелец круга — при «circle»: его называет полоса 3.19. */
 	owner_name?: string;
 	you_own?: boolean;
-	/** Круг замер под полный архив с удалением (6.36, 2.29). */
+	/** Круг замер под полный архив с удалением (6.36, 2.29) или под перенос (6.27). */
 	frozen_at?: string;
+	/** Круг переезжает на другой сервер (план 53): 6.27, после «принято» — 6.28, 2.20. */
+	move?: CircleMoveBanner;
+}
+
+/** Перенос круга глазами участника: куда и какой почтой входить там. */
+export interface CircleMoveBanner {
+	status: 'waiting' | 'pulling' | 'accepted';
+	dest_url?: string;
+	dest_name?: string;
+	email?: string;
+}
+
+// Что с замершим кругом — вместо последней записи на улочке: переехал (2.20),
+// переезжает, уходит с сервера (2.29).
+function leavingPreview(circle: CircleListItem): string {
+	if (circle.move?.status === 'accepted') {
+		return `Круг переехал — войдите на ${serverHost(circle.move.dest_url)}`;
+	}
+	if (circle.move) return 'Круг замер на время переезда';
+	return circle.you_own ? 'Круг уходит с сервера' : 'Круг уходит с сервера — скачайте своё';
 }
 
 export interface CirclesResponse {
@@ -197,9 +218,7 @@ export async function loadStreetCircles(): Promise<StreetCircle[]> {
 			// последней записи, без времени.
 			const leaving = circle.status === 'active' && Boolean(circle.frozen_at);
 			const preview = leaving
-				? circle.you_own
-					? 'Круг уходит с сервера'
-					: 'Круг уходит с сервера — скачайте своё'
+				? leavingPreview(circle)
 				: circle.status === 'left_with_access'
 					? 'читает, не пишет'
 					: (circle.last_summary ??

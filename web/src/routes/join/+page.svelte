@@ -82,6 +82,15 @@
 				return;
 			}
 		}
+		// «Перейти на новый сервер» с баннера переехавшего круга (6.28): адрес
+		// приходит с собой.
+		const preset = page.url.searchParams.get('server');
+		if (preset) {
+			adding = true;
+			address = displayHost(preset);
+			void checkServer();
+			return;
+		}
 		if (typeof window !== 'undefined') {
 			address = window.location.host;
 			void checkServer();

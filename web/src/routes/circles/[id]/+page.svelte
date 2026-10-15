@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { serverHost } from '$lib/circles/move';
 	import { spaceNotice } from '$lib/circles/space';
 	import { goUp } from '$lib/navigation/up';
 	import PostByline from '$ui/data/PostByline.svelte';
@@ -765,7 +766,11 @@
 <!-- Полоса вместо строки ввода, когда места нет (3.19, 3.20) и когда круг
      замер (6.36). -->
 {#snippet spaceNote()}
-	{#if circle.frozenAt}
+	{#if circle.frozenAt && circle.move?.status === 'accepted'}
+		Круг переехал — писать можно на новом сервере
+	{:else if circle.frozenAt && circle.move}
+		Круг замер на время переезда
+	{:else if circle.frozenAt}
 		Круг замер: его убирают с сервера
 	{:else if notice}
 		{notice.first}<br />
@@ -820,7 +825,41 @@
 		ontouchmove={ptr.move}
 		ontouchend={ptr.end}
 	>
-		{#if circle.frozenAt}
+		{#if circle.frozenAt && circle.move?.status === 'accepted'}
+			<!-- 6.28: новый сервер принял круг — куда идти и какой почтой входить. -->
+			{@const dest = serverHost(circle.move.dest_url)}
+			<ArchiveBanner
+				title="Круг переехал"
+				action={circle.youOwn ? 'Перенос круга' : 'Перейти на новый сервер'}
+				onaction={circle.youOwn
+					? () => goto(`/circles/${circle.circleId}/move`)
+					: () => goto(`/join?server=${encodeURIComponent(circle.move?.dest_url ?? '')}`)}
+			>
+				{#if circle.youOwn}
+					«{circle.name}» теперь на <strong>{dest}</strong>. Здесь круг замер и исчезнет, когда вы
+					завершите перенос.
+				{:else}
+					«{circle.name}» теперь на <strong>{dest}</strong>. Войдите там почтой {circle.move.email} —
+					попадёте в своё имя и свои записи. Здесь круг замер и исчезнет, когда {circle.ownerName ||
+						'владелец'} завершит перенос.
+				{/if}
+			</ArchiveBanner>
+		{:else if circle.frozenAt && circle.move}
+			<!-- 6.27: круг переезжает; куда — старый сервер пока не знает. -->
+			<ArchiveBanner
+				title="Переезд · круг замер"
+				action={circle.youOwn ? 'Перенос круга' : undefined}
+				onaction={circle.youOwn ? () => goto(`/circles/${circle.circleId}/move`) : undefined}
+			>
+				{#if circle.youOwn}
+					Вы переносите «{circle.name}» на другой сервер. Читать можно, писать пока нельзя.
+				{:else}
+					{circle.ownerName || 'Владелец'} переносит «{circle.name}» на другой сервер. Читать можно,
+					писать пока нельзя. Когда перенос закончится, на {circle.move.email} придёт письмо с новым
+					адресом круга.
+				{/if}
+			</ArchiveBanner>
+		{:else if circle.frozenAt}
 			<!-- 6.36: круг уходит с сервера — что происходит, чьим решением и что успеть. -->
 			<ArchiveBanner
 				title="Круг уходит с сервера"

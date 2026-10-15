@@ -81,6 +81,7 @@
 		ctx.youOwn = item.you_own ?? false;
 		// Замерший круг (6.36): писать нельзя никому — как «читает, не пишет».
 		ctx.frozenAt = item.frozen_at ?? '';
+		ctx.move = item.move;
 		if (ctx.frozenAt) ctx.canWrite = false;
 		if (ctx.spaceFull === 'server' && !ctx.serverName) {
 			void getSession(ctx.origin).then((s) => (ctx.serverName = s?.name ?? ''));
@@ -144,6 +145,7 @@
 		ctx.canWrite = true;
 		ctx.spaceFull = '';
 		ctx.frozenAt = '';
+		ctx.move = undefined;
 		ctx.refresh = loadMeta;
 		rememberLastCircle(circleId);
 	}

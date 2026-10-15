@@ -333,6 +333,8 @@
 			goto(`/circles/${circle.circleId}/settings/members?transfer=1`);
 		} else if (label === 'Покинуть круг') {
 			void onLeave();
+		} else if (label === 'Перенести на другой сервер') {
+			goto(`/circles/${circle.circleId}/move`);
 		} else if (label === 'Удалить круг и все записи') {
 			void openDeleteDialog();
 		}
@@ -511,7 +513,8 @@
 				items={[
 					...(!soloCircle && isOwner ? ['Передать владение'] : []),
 					...(!soloCircle ? ['Покинуть круг'] : []),
-					...(isOwner ? ['Удалить круг и все записи'] : [])
+					// 6.23: круг живёт дальше в другом месте, новый сервер забирает его сам.
+					...(isOwner ? ['Перенести на другой сервер', 'Удалить круг и все записи'] : [])
 				]}
 				onitem={onDangerItem}
 			/>
