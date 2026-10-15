@@ -36,7 +36,7 @@
 	import { resolveMediaUrls } from '$lib/media/batch';
 	import { downloadBlob } from '$lib/media/objectUrl';
 	import { WORD, plural } from '$lib/format/plural';
-	import { formatDeadline, formatEntryDate, formatPostTime } from '$lib/format/time';
+	import { formatDeadline, formatEntryDate, formatPostTime, formatSessionDay } from '$lib/format/time';
 	import { isPostArchiveLocked } from '$lib/journal/archive';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadFeed } from '$lib/journal/feed';
@@ -672,10 +672,12 @@
 		pickerPostId = pickerPostId === postId ? '' : postId;
 	}
 
-	// Граница архивации (владелец, 2026-10-15): одна линия над первой записью
-	// старше отсечки вместо строки под каждой.
-	const archiveLineText =
-		'Всё, что ниже, будет удалено. Реакции и комментарии к этим записям ставить нельзя.';
+	// Граница архивации (владелец, 2026-10-15): одна строка над первой записью
+	// старше отсечки, вид — как «выше — новое»; что реакции и комментарии
+	// закрыты, говорит полоса «Архивация» наверху.
+	const archiveLineText = $derived(
+		`ниже — удалится ${formatSessionDay(circle.archiveCycle?.deadline ?? '')}`
+	);
 	const archiveLineAt = $derived.by(() => {
 		const i = posts.findIndex((p) => postArchiveLocked(p));
 		return i < 0 ? null : i;
@@ -896,7 +898,7 @@
 				onaction={downloadArchiveClick}
 			>
 				Всё до <strong>{formatEntryDate(circle.archiveCycle.cutoff_date)}</strong> будет удалено.
-				Ваш архив — {formatBytes(circle.archiveCycle.personal_archive_bytes)}.
+				Реакции и комментарии к этим записям закрыты. Ваш архив — {formatBytes(circle.archiveCycle.personal_archive_bytes)}.
 			</ArchiveBanner>
 		{/if}
 
