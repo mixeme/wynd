@@ -3,7 +3,6 @@
 	import Avatar from '$ui/data/Avatar.svelte';
 	import CommentPreview from '$ui/data/CommentPreview.svelte';
 	import EventDivider from '$ui/data/EventDivider.svelte';
-	import Hint from '$ui/forms/Hint.svelte';
 	import Icon from '$ui/Icon.svelte';
 	import PostCard from '$ui/data/PostCard.svelte';
 	import ReactionBar from '$ui/data/ReactionBar.svelte';
@@ -17,7 +16,6 @@
 	identitySettingsLink={false}
 	commentBar={false}
 >
-	<Hint style="margin-top:14px">Вы читаете этот круг и не пишете.</Hint>
 	<EventDivider text="Мышка теперь Мышь" />
 	<PostCard>
 		{#snippet author()}

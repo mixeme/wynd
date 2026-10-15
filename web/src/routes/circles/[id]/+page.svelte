@@ -672,8 +672,14 @@
 		pickerPostId = pickerPostId === postId ? '' : postId;
 	}
 
-	const archiveHint =
-		'Эта запись уйдёт с сервера в срок архивации. Новые комментарии и оценки к ней не принимаются.';
+	// Граница архивации (владелец, 2026-10-15): одна линия над первой записью
+	// старше отсечки вместо строки под каждой.
+	const archiveLineText =
+		'Всё, что ниже, будет удалено. Реакции и комментарии к этим записям ставить нельзя.';
+	const archiveLineAt = $derived.by(() => {
+		const i = posts.findIndex((p) => postArchiveLocked(p));
+		return i < 0 ? null : i;
+	});
 
 	function postArchiveLocked(post: FeedPost): boolean {
 		return isPostArchiveLocked(
@@ -897,9 +903,6 @@
 		{#if joinAvatarHint}
 			<Hint class="gutter">{joinAvatarHint}</Hint>
 		{/if}
-		{#if !circle.canWrite && !circle.frozenAt}
-			<Hint class="gutter">Вы читаете этот круг и не пишете.</Hint>
-		{/if}
 		<!-- «?loading» — посмотреть экран загрузки в круге, как «/?loading». -->
 		{#if loading || $page.url.searchParams.has('loading')}
 			<Loading />
@@ -950,7 +953,9 @@
 							/>
 						{/snippet}
 						{#snippet headerRight()}
+							<!-- У правого края, где у записи дата (владелец, 2026-10-15). -->
 							<IconButton
+								class="ml-auto"
 								name="trash"
 								size="sm"
 								label="Удалить из очереди"
@@ -986,6 +991,9 @@
 			{#each posts as post, i (post.id)}
 				{#if dividerAt === i}
 					<EventDivider variant="unread" text="выше — новое" />
+				{/if}
+				{#if archiveLineAt === i}
+					<EventDivider variant="cutoff" text={archiveLineText} />
 				{/if}
 				<!-- Snippets live outside <PostCard>: a {#snippet} nested in {#if} is not passed as a prop. -->
 				{#snippet postDate()}
@@ -1056,9 +1064,6 @@
 						{/if}
 					{/snippet}
 				</PostCard>
-				{#if postArchiveLocked(post)}
-					<Hint class="m-0-16-12">{archiveHint}</Hint>
-				{/if}
 				{#if post.comments?.length}
 					{@const preview = commentPreview(post.comments)}
 					{@const last = preview.comment}
@@ -1153,8 +1158,6 @@
 			cancelLabel="Оставить"
 			onconfirm={() => void confirmQueueRemove()}
 			oncancel={() => (queueToRemove = null)}
-		>
-			<Hint>Она ещё не ушла на сервер. Удалить — значит потерять текст и снимки.</Hint>
-		</ConfirmDialog>
+		/>
 	{/if}
 </CircleLayout>
