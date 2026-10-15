@@ -36,7 +36,12 @@
 		type MemberInfo
 	} from '$lib/circles/settings';
 	import { formatBytes } from '$lib/format/bytes';
-	import { pluralPeople, pluralPosts } from '$lib/format/time';
+	import {
+		formatEntryDate,
+		formatSessionDay,
+		pluralPeople,
+		pluralPosts
+	} from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { resolveMediaUrls } from '$lib/media/batch';
 	import { setCircleColor, circleInitial } from '$lib/circles/meta';
@@ -468,24 +473,25 @@
 			{:else}
 				<Hint class="mt-8">{formatBytes(usedBytes)} · ограничение не задано</Hint>
 			{/if}
-			<SettingsRow class="mt-8"
+			<!-- C43 (6.46): у владельца про архив одна строка; сроки идущей
+			     архивации — внутри (6.48), своя копия — с баннера в ленте. -->
+			<SettingsRow
+				class="mt-8"
 				title="Архив и очистка"
-				subtitle="освободить место, скачать архив"
+				subtitle={circle.archiveCycle?.active
+					? `идёт архивация: всё до ${formatEntryDate(circle.archiveCycle.cutoff_date)} удалится ${formatSessionDay(circle.archiveCycle.deadline)}`
+					: 'освободить место, скачать архив'}
+				divided="both"
 				onclick={() => goto(`/circles/${circle.circleId}/quota`)}
 			/>
 		{/if}
-		{#if circle.archiveCycle?.active}
-			{#if isOwner}
-				<SettingsRow class="mt-20"
-					title="Сроки архивации"
-					subtitle="отсечка и дедлайн"
-					onclick={() => goto(`/circles/${circle.circleId}/quota/deadlines`)}
-				/>
-			{/if}
+		{#if circle.archiveCycle?.active && !isOwner}
+			<!-- 6.47: участнику — одна строка, своя копия того, что удалится. -->
+			<Label class="mt-20">Архивация</Label>
 			<SettingsRow
-				title="Скачать архив"
-				subtitle="персональная копия до отсечки"
-				class={isOwner ? 'mt-8' : 'mt-20'}
+				title="Скачать свой архив"
+				subtitle={`всё, что вы видели до ${formatEntryDate(circle.archiveCycle.cutoff_date)}${circle.archiveCycle.personal_archive_bytes ? ` · ${formatBytes(circle.archiveCycle.personal_archive_bytes)}` : ''}`}
+				divided="both"
 				onclick={() => goto(`/circles/${circle.circleId}/archive`)}
 			/>
 		{/if}

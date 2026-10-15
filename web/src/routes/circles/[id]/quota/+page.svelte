@@ -13,7 +13,7 @@
 	import { isAccessError } from '$lib/api/client';
 	import { fetchQuota, type QuotaRequestInfo } from '$lib/circles/settings';
 	import { formatBytes } from '$lib/format/bytes';
-	import { formatSessionDay } from '$lib/format/time';
+	import { formatEntryDate, formatSessionDay } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 
 	// «Архив и очистка» списком (6.31): место и просьба о нём, освободить
@@ -106,16 +106,26 @@
 			/>
 		{/if}
 		<Label class="mt-22">Освободить место</Label>
-		<SettingsRow
-			title="Заархивировать и удалить старое"
-			subtitle="записи до выбранной даты: каждый скачает свой архив, потом они удалятся"
-			divided="both"
-			onclick={() => goto(`/circles/${circle.circleId}/quota/cleanup`)}
-		/>
+		{#if circle.archiveCycle?.active}
+			<!-- 6.48: архивация идёт — вторую не запустить, строка ведёт к срокам. -->
+			<SettingsRow
+				title="Сроки архивации"
+				subtitle={`идёт: всё до ${formatEntryDate(circle.archiveCycle.cutoff_date)} удалится ${formatSessionDay(circle.archiveCycle.deadline)}`}
+				divided="both"
+				onclick={() => goto(`/circles/${circle.circleId}/quota/deadlines`)}
+			/>
+		{:else}
+			<SettingsRow
+				title="Заархивировать и удалить старое"
+				subtitle="записи до выбранной даты: каждый скачает свой архив, потом они удалятся"
+				divided="both"
+				onclick={() => goto(`/circles/${circle.circleId}/quota/cleanup`)}
+			/>
+		{/if}
 		<Label class="mt-22">Полный архив круга</Label>
 		<SettingsRow
-			title="Скачать"
-			subtitle="один файл со всеми записями и фотографиями"
+			title="Скачать круг"
+			subtitle="один файл: все записи, фото и участники"
 			divided="both"
 			onclick={() => goto(`/circles/${circle.circleId}/quota/full`)}
 		/>
