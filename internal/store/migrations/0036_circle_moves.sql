@@ -66,3 +66,17 @@ CREATE TABLE incoming_moves (
 
 CREATE INDEX idx_incoming_moves_account ON incoming_moves (account_id, created_at);
 CREATE INDEX idx_incoming_moves_status ON incoming_moves (status);
+
+-- Кто приехал с кругом (план 53, 1.9): участники перенесённого или
+-- оживлённого круга, кроме того, кто его поднял. Первый вход в круг
+-- встречает их экраном «Круг переехал» / «Круг оживили из архива» вместо
+-- вступления; «Войти в круг» отмечает, что встречу видели. Это жизнь круга
+-- на этом сервере — в полный архив не идёт.
+CREATE TABLE circle_arrivals (
+    circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL CHECK (kind IN ('moved', 'revived')),
+    created_at TEXT NOT NULL,
+    seen_at TEXT,
+    PRIMARY KEY (circle_id, account_id)
+);

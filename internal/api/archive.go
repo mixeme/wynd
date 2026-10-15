@@ -140,7 +140,31 @@ func (s *Server) handleCircleDetail(w http.ResponseWriter, r *http.Request) {
 	if n, err := s.Chronicle.UnreadResponses(r.Context(), circleID, sess.AccountID); err == nil {
 		out["responses_unread"] = n
 	}
+	// Приехал с кругом и ещё не входил — встреча 1.9 вместо ленты (план 53).
+	if a, err := s.Chronicle.CircleArrival(r.Context(), circleID, sess.AccountID); err == nil && a != nil {
+		returned := a.Returned
+		if returned == nil {
+			returned = []string{}
+		}
+		out["arrival"] = map[string]any{
+			"kind": a.Kind, "returned": returned, "returned_count": a.ReturnedCount,
+			"total": a.Total, "your_posts": a.YourPosts,
+		}
+	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// handleSeeArrival — «Войти в круг» на 1.9: встреча больше не показывается.
+func (s *Server) handleSeeArrival(w http.ResponseWriter, r *http.Request) {
+	sess, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+	if err := s.Chronicle.SeeArrival(r.Context(), r.PathValue("circle_id"), sess.AccountID, time.Now()); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (s *Server) handleCircleQuota(w http.ResponseWriter, r *http.Request) {

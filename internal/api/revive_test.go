@@ -115,6 +115,35 @@ func TestReviveCircleFromArchiveHTTP(t *testing.T) {
 	if !eventsContain(syncEvents(t, srv, bob), "круг из архива") && !eventsContain(syncEvents(t, srv, bob), "Круг оживлён из архива") {
 		t.Fatal("нет служебной строки оживления")
 	}
+
+	// Боб приехал с кругом — первый вход встречает его 1.9 («Круг оживили из
+	// архива»: его запись на месте, вернулись оба); у Славы, который поднял
+	// круг, встречи нет; «Войти в круг» её убирает.
+	var detail struct {
+		Arrival *struct {
+			Kind          string   `json:"kind"`
+			Returned      []string `json:"returned"`
+			ReturnedCount int      `json:"returned_count"`
+			Total         int      `json:"total"`
+			YourPosts     int      `json:"your_posts"`
+		} `json:"arrival"`
+	}
+	_ = json.Unmarshal(doGET(t, srv, "/api/v1/circles/"+res.CircleID, bob).Body.Bytes(), &detail)
+	if a := detail.Arrival; a == nil || a.Kind != "revived" || a.Total != 2 || a.ReturnedCount != 2 || a.YourPosts != 0 || len(a.Returned) != 2 {
+		t.Fatalf("встреча 1.9 у Боба: %+v", detail.Arrival)
+	}
+	detail.Arrival = nil
+	_ = json.Unmarshal(doGET(t, srv, "/api/v1/circles/"+res.CircleID, slava).Body.Bytes(), &detail)
+	if detail.Arrival != nil {
+		t.Fatalf("встреча у поднявшего круг: %+v", detail.Arrival)
+	}
+	if rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+res.CircleID+"/arrival/seen", bob, nil); rec.Code != http.StatusOK {
+		t.Fatalf("войти в круг: %d %s", rec.Code, rec.Body.String())
+	}
+	_ = json.Unmarshal(doGET(t, srv, "/api/v1/circles/"+res.CircleID, bob).Body.Bytes(), &detail)
+	if detail.Arrival != nil {
+		t.Fatalf("встреча после «Войти в круг»: %+v", detail.Arrival)
+	}
 }
 
 // Новая миграция — новая схема архивов: оживление обязано её знать, иначе

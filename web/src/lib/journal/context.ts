@@ -1,5 +1,5 @@
 import type { CircleColor } from '$lib/theme/colors';
-import type { ArchiveCycle } from './types';
+import type { ArchiveCycle, CircleArrival } from './types';
 import type { CircleMoveBanner } from '$lib/circles/circles';
 
 export const CIRCLE_CTX = Symbol('circle');
@@ -28,6 +28,8 @@ export interface CircleContext {
 	frozenAt: string;
 	/** Замер под перенос (план 53): переезжает (6.27) или переехал (6.28). */
 	move?: CircleMoveBanner;
+	/** Приехал с кругом и ещё не входил (1.9): лента сначала показывает встречу. */
+	arrival?: CircleArrival;
 	/** Имя сервера для 3.20: «Помочь может администратор «…»». */
 	serverName: string;
 	/** «Место со снимков» (6.1): начальное положение значка места на 4.2. */

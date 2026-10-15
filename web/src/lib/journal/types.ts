@@ -109,6 +109,17 @@ export interface ArchiveCycle {
 	download_url: string;
 }
 
+/** Встреча 1.9: «Круг переехал» / «Круг оживили из архива». */
+export interface CircleArrival {
+	kind: 'moved' | 'revived';
+	/** Кто уже вернулся (до трёх имён) — «Уже вернулись · 3 из 22». */
+	returned: string[];
+	returned_count: number;
+	total: number;
+	/** Записи этого человека в круге — «118 записей на месте». */
+	your_posts: number;
+}
+
 export interface CircleDetail {
 	id: string;
 	name: string;
@@ -117,6 +128,8 @@ export interface CircleDetail {
 	archive_cycle?: ArchiveCycle;
 	/** Круг замер под полный архив с удалением (6.36). */
 	frozen_at?: string;
+	/** Приехал с перенесённым или оживлённым кругом и ещё не входил — встреча 1.9. */
+	arrival?: CircleArrival;
 	owner_name?: string;
 	edit_window_sec?: number | null;
 	is_owner?: boolean;

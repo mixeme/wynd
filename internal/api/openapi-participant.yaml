@@ -863,6 +863,9 @@ paths:
       summary: Server to server — "accepted and verified", body {posts, names, bytes}; must match the archive (409 mismatch)
       security: []
 
+  /circles/{circle_id}/arrival/seen:
+    post:
+      summary: «Войти в круг» on 1.9 — the caller came with a moved or revived circle and has seen the welcome; circle detail stops carrying `arrival`
   /moves/incoming:
     get:
       summary: The caller's latest incoming move (2.18 on open, progress, result 2.19/2.32) with room for it (2.27–2.31); {move} or {move:null, room_bytes}

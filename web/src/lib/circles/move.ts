@@ -62,3 +62,8 @@ export function serverHost(url: string | undefined): string {
 		return url.replace(/^https?:\/\//, '').replace(/\/+$/, '');
 	}
 }
+
+/** «Войти в круг» на встрече 1.9: больше не показывать. */
+export async function seeArrival(origin: string, circleId: string): Promise<void> {
+	await apiJson(origin, `/circles/${circleId}/arrival/seen`, { method: 'POST' });
+}

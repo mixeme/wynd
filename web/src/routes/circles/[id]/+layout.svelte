@@ -1,6 +1,7 @@
 <script lang="ts">
 	import EmptyState from '$ui/data/EmptyState.svelte';
 	import { goto } from '$app/navigation';
+	import type { CircleArrival } from '$lib/journal/types';
 	import { page } from '$app/stores';
 	import { page as pageState } from '$app/state';
 	import { setContext, untrack } from 'svelte';
@@ -232,6 +233,7 @@
 		let responsesUnread = 0;
 		let avatarBlobId: string | undefined;
 		let serverIdentityName = '';
+		let arrival: CircleArrival | undefined;
 		try {
 			const detail = await fetchCircleDetail(resolved, circleId);
 			if (detail.archive_cycle?.active) archiveCycle = detail.archive_cycle;
@@ -242,6 +244,7 @@
 			responsesUnread = detail.responses_unread ?? 0;
 			avatarBlobId = detail.avatar_blob_id;
 			serverIdentityName = detail.identity_name?.trim() ?? '';
+			arrival = detail.arrival;
 		} catch {
 			/* list banner enough */
 		}
@@ -266,6 +269,7 @@
 		ctx.sharePlace = sharePlace;
 		ctx.hasOthers = hasOthers;
 		ctx.responsesUnread = responsesUnread;
+		ctx.arrival = arrival;
 		ctx.lastReadSeq = listItem.last_read_seq;
 		ctx.archiveCycle = archiveCycle;
 		ctx.canWrite = listItem.status === 'active';
@@ -281,6 +285,10 @@
 
 		rememberLastCircle(circleId);
 		ready = true;
+		// Приехал с кругом (1.9): в ленту — через встречу.
+		if (arrival && $page.url.pathname === `/circles/${circleId}`) {
+			goto(`/circles/${circleId}/arrived`, { replaceState: true });
+		}
 	}
 
 	// Мета круга перечитывается при смене круга, а не только при монтировании:

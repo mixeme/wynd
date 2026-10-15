@@ -175,6 +175,18 @@ func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveRes
 		formatTime(now), res.CircleID, in.ReviverID); err != nil {
 		return res, err
 	}
+	// Кто приехал с кругом — встретить экраном 1.9 при первом входе.
+	kind := "revived"
+	if in.MovedFrom != "" {
+		kind = "moved"
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO circle_arrivals (circle_id, account_id, kind, created_at)
+		SELECT circle_id, account_id, ?, ? FROM memberships
+		WHERE circle_id = ? AND account_id != ? AND status = 'active'
+	`, kind, formatTime(now), res.CircleID, in.ReviverID); err != nil {
+		return res, err
+	}
 	event, summary := "circle_revived", summaryCircleRevived(c.identityGender(ctx, tx, reviverIdentity), reviverName)
 	if in.MovedFrom != "" {
 		event, summary = "circle_moved_in", summaryCircleMovedIn(in.MovedFrom)

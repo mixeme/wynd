@@ -260,6 +260,7 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("GET /api/v1/move/archive", s.handleMoveArchive)
 	s.Mux.HandleFunc("POST /api/v1/move/accepted", s.handleMoveAccepted)
 	// ...и новый сервер: ссылка, место, «Поднять круг здесь», ход и итог.
+	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/arrival/seen", paid(s.handleSeeArrival))
 	s.Mux.HandleFunc("GET /api/v1/moves/incoming", paid(s.handleIncomingMove))
 	s.Mux.HandleFunc("POST /api/v1/moves/incoming", paid(s.handlePutIncomingMove))
 	s.Mux.HandleFunc("POST /api/v1/moves/incoming/{id}/start", paid(s.handleStartIncomingMove))
