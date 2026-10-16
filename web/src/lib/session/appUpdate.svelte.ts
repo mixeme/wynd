@@ -23,8 +23,24 @@ export const appUpdate = $state({
 let update: UpdateFn | null = null;
 let registration: ServiceWorkerRegistration | undefined;
 
+function useRegistration(reg: ServiceWorkerRegistration | undefined): void {
+	if (!reg) return;
+	registration = reg;
+	appUpdate.supported = true;
+	if (reg.waiting) appUpdate.pending = true;
+}
+
+/** Уже установленный воркер: строка в «Настройках» не ждёт регистрации. */
+function useExistingRegistration(): void {
+	void navigator.serviceWorker
+		?.getRegistration()
+		.then(useRegistration)
+		.catch(() => {});
+}
+
 /** Корневой макет: регистрация сервис-воркера (не на 127.0.0.1). */
 export function initAppUpdate(): void {
+	useExistingRegistration();
 	void import('virtual:pwa-register').then(({ registerSW }) => {
 		update = registerSW({
 			immediate: true,
@@ -32,34 +48,52 @@ export function initAppUpdate(): void {
 				appUpdate.pending = true;
 			},
 			onRegisteredSW(_url, reg) {
-				registration = reg;
-				appUpdate.supported = Boolean(reg);
+				useRegistration(reg);
+			},
+			// Сервер не ответил на запуске (нет сети, медленная связь):
+			// регистрация падает, но установленный воркер на месте — без
+			// этого строка обновления пропадала до следующего запуска.
+			onRegisterError() {
+				useExistingRegistration();
 			}
 		});
 	});
 }
 
-/** Спросить сервер: новая версия готова, это последняя или спросить не вышло. */
-export async function checkAppUpdate(): Promise<'available' | 'latest' | 'failed'> {
+/** Сколько ждать скачивания новой версии, прежде чем отпустить строку. */
+const DOWNLOAD_WAIT_MS = 120_000;
+
+/**
+ * Спросить сервер: новая версия готова, это последняя или спросить не вышло.
+ * Пока новая версия скачивается — onDownloading (строка пишет об этом);
+ * не скачалась за DOWNLOAD_WAIT_MS — 'downloading': встанет сама, строку
+ * переключит onNeedRefresh.
+ */
+export async function checkAppUpdate(
+	onDownloading?: () => void
+): Promise<'available' | 'latest' | 'failed' | 'downloading'> {
 	if (!registration) return 'failed';
 	if (appUpdate.pending) return 'available';
-	try {
-		await registration.update();
-	} catch {
-		// Нет сети или сервер не отдал воркер — «последняя версия» была бы неправдой.
-		return 'failed';
+	if (!registration.installing) {
+		try {
+			await registration.update();
+		} catch {
+			// Нет сети или сервер не отдал воркер — «последняя версия» была бы неправдой.
+			return 'failed';
+		}
 	}
-	// Новый воркер ставится не мгновенно: ждём, пока он встанет в очередь.
 	const installing = registration.installing;
 	if (installing) {
-		await new Promise<void>((resolve) => {
+		onDownloading?.();
+		const settled = await new Promise<boolean>((resolve) => {
 			const done = () => {
-				if (installing.state === 'installed' || installing.state === 'redundant') resolve();
+				if (installing.state === 'installed' || installing.state === 'redundant') resolve(true);
 			};
 			installing.addEventListener('statechange', done);
-			setTimeout(resolve, 15_000);
+			setTimeout(() => resolve(false), DOWNLOAD_WAIT_MS);
 			done();
 		});
+		if (!settled && !registration.waiting) return 'downloading';
 	}
 	if (registration.waiting) appUpdate.pending = true;
 	return appUpdate.pending ? 'available' : 'latest';

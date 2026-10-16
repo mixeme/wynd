@@ -22,21 +22,24 @@
 
 	// Обновить приложение сразу, не дожидаясь следующего запуска (C19).
 	let checking = $state(false);
-	let result = $state<'available' | 'latest' | 'failed' | ''>('');
+	let result = $state<'available' | 'latest' | 'failed' | 'downloading' | ''>('');
 	async function check() {
 		checking = true;
-		result = await checkAppUpdate();
+		result = '';
+		result = await checkAppUpdate(() => (result = 'downloading'));
 		checking = false;
 	}
 	// Строка отвечает на месте своей подписью (кадры 7.1–7.5).
 	const updateNote = $derived(
-		checking
-			? 'проверяем…'
-			: result === 'latest'
-				? 'это последняя версия'
-				: result === 'failed'
-					? 'не удалось проверить — коснитесь ещё раз'
-					: 'Wynd обновляется сам'
+		result === 'downloading'
+			? 'загружаем новую версию…'
+			: checking
+				? 'проверяем…'
+				: result === 'latest'
+					? 'это последняя версия'
+					: result === 'failed'
+						? 'не удалось проверить — коснитесь ещё раз'
+						: 'Wynd обновляется сам'
 	);
 
 	function goBack() {
