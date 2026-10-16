@@ -60,6 +60,14 @@
 	}
 
 	const stats = $derived(searchStats(hits));
+	// Текст — один фильтр из многих (концепция, «Поиск»): с периодом, фото,
+	// местом или автором поиск идёт и без слов — «все записи за период».
+	const hasFilter = $derived(
+		(periodActive && Boolean(periodFrom || periodTo)) ||
+			filterPhoto ||
+			filterLocation ||
+			Boolean(authorFilter)
+	);
 
 	$effect(() => {
 		replaceSearchUrl(searchPath, {
@@ -89,7 +97,7 @@
 	});
 
 	$effect(() => {
-		if (!debounced) {
+		if (!debounced && !hasFilter) {
 			hits = [];
 			authorFilter = '';
 			authorNames = [];
@@ -109,7 +117,7 @@
 			try {
 				const chipFilters = { from, to, hasPhoto: photo, hasLocation: location };
 				const [next, authors] = await Promise.all([
-					searchCircle(circle.origin, circle.circleId, debounced, 50, {
+					searchCircle(circle.origin, circle.circleId, debounced, debounced ? 50 : 500, {
 						...chipFilters,
 						author
 					}),
@@ -159,8 +167,11 @@
 				periodFrom,
 				periodTo,
 				hasPhoto: filterPhoto,
-				hasLocation: filterLocation
-			})
+				hasLocation: filterLocation,
+				circle: circle.circleId
+			}),
+			// Переключение «Этот круг / Все круги» — замена экрана, не шаг вглубь.
+			{ replaceState: true }
 		);
 	}
 
@@ -231,7 +242,7 @@
 		<Hint class="mt-16">{sourceError}</Hint>
 	{:else if loading}
 		<Hint class="mt-16">Ищем…</Hint>
-	{:else if debounced && !hits.length}
+	{:else if (debounced || hasFilter) && !hits.length}
 		<Hint class="mt-16">Ничего не найдено</Hint>
 	{:else if stats}
 		<Hint>{stats}</Hint>

@@ -54,11 +54,11 @@ describe('appUpdate', () => {
 		vi.stubGlobal('navigator', { ...navigator, serviceWorker: { getRegistration } });
 		const { appUpdate, initAppUpdate } = await import('./appUpdate.svelte');
 		initAppUpdate();
-		await flush();
+		// registerSW подгружается отдельным модулем — ждём, пока он встанет.
+		await vi.waitFor(() => expect(options.onRegisterError).toBeTypeOf('function'));
 		expect(appUpdate.supported).toBe(false);
 		options.onRegisterError?.(new TypeError('Failed to fetch'));
-		await flush();
-		expect(appUpdate.supported).toBe(true);
+		await vi.waitFor(() => expect(appUpdate.supported).toBe(true));
 	});
 
 	it('пока новая версия скачивается — «загружаем», а не «последняя версия»', async () => {

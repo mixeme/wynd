@@ -50,8 +50,14 @@ describe('searchChipsFromParams', () => {
 			to: '',
 			hasPhoto: true,
 			hasLocation: false,
-			author: ''
+			author: '',
+			circle: ''
 		});
+	});
+
+	it('keeps the circle the global search was opened from', () => {
+		const href = searchHref('/search', { q: 'дом', circle: 'c1' });
+		expect(searchChipsFromParams(new URL(href, 'http://x').searchParams).circle).toBe('c1');
 	});
 
 	it('reads author chip from the query', () => {

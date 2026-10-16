@@ -358,7 +358,8 @@ export async function circleNameMap(): Promise<Map<string, { name: string; color
 
 export async function searchAllOrigins(
 	query: string,
-	filters?: import('$lib/journal/search').SearchFilters
+	filters?: import('$lib/journal/search').SearchFilters,
+	limit = 50
 ): Promise<{
 	results: Array<{ origin: string; hits: SearchHit[] }>;
 	failedInstanceNames: string[];
@@ -369,7 +370,7 @@ export async function searchAllOrigins(
 	await Promise.all(
 		sessions.map(async (session) => {
 			try {
-				const hits = await searchOrigin(session.origin, query, 50, filters);
+				const hits = await searchOrigin(session.origin, query, limit, filters);
 				if (hits.length) results.push({ origin: session.origin, hits });
 			} catch {
 				failedInstanceNames.push(session.name);

@@ -58,6 +58,11 @@ export type SearchChipState = {
 	hasPhoto?: boolean;
 	hasLocation?: boolean;
 	author?: string;
+	/**
+	 * Общий поиск, открытый из круга: id этого круга. Тогда на экране чипы
+	 * «Этот круг / Все круги», и в круг можно вернуться одним касанием.
+	 */
+	circle?: string;
 };
 
 export function searchHref(path: string, state: SearchChipState): string {
@@ -70,6 +75,7 @@ export function searchHref(path: string, state: SearchChipState): string {
 	if (state.hasLocation) params.set('location', '1');
 	const author = state.author?.trim();
 	if (author) params.set('author', author);
+	if (state.circle) params.set('circle', state.circle);
 	const qs = params.toString();
 	return qs ? `${path}?${qs}` : path;
 }
@@ -138,6 +144,7 @@ export function searchChipsFromParams(params: URLSearchParams): {
 	hasPhoto: boolean;
 	hasLocation: boolean;
 	author: string;
+	circle: string;
 } {
 	const from = params.get('from') ?? '';
 	const to = params.get('to') ?? '';
@@ -147,6 +154,7 @@ export function searchChipsFromParams(params: URLSearchParams): {
 		to,
 		hasPhoto: params.get('photo') === '1' || params.get('has_photo') === '1',
 		hasLocation: params.get('location') === '1' || params.get('has_location') === '1',
-		author: params.get('author') ?? ''
+		author: params.get('author') ?? '',
+		circle: params.get('circle') ?? ''
 	};
 }

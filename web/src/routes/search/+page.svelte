@@ -16,7 +16,7 @@
 	import { formatEntryDate, formatPostTime } from '$lib/format/time';
 	import { loadSessions } from '$lib/session/session.svelte';
 	import { getMediaUrl } from '$lib/media/objectUrl';
-	import { searchChipsFromParams, replaceSearchUrl, searchChipsFromWindow, searchThumbVariant, quoteMatch, searchHitHref } from '$lib/journal/search';
+	import { searchChipsFromParams, replaceSearchUrl, searchChipsFromWindow, searchThumbVariant, quoteMatch, searchHitHref, searchHref } from '$lib/journal/search';
 
 	type Hit = {
 		postId: string;
@@ -52,6 +52,9 @@
 	let periodActive = $state(Boolean(initialChips.from || initialChips.to));
 	let periodFrom = $state(initialChips.from);
 	let periodTo = $state(initialChips.to);
+	// Пришли из поиска круга: «Этот круг» возвращает туда с тем же запросом —
+	// человек передумал искать везде (замечание владельца 2026-10-17).
+	const fromCircle = initialChips.circle;
 	let loading = $state(false);
 	let thumbUrls = $state<Record<string, string>>({});
 	let groups = $state<Group[]>([]);
@@ -60,6 +63,10 @@
 	let searchGen = 0;
 
 	const searchPath = $derived($page.url.pathname);
+	// С периодом, фото или местом поиск идёт и без слов (концепция, «Поиск»).
+	const hasFilter = $derived(
+		(periodActive && Boolean(periodFrom || periodTo)) || filterPhoto || filterLocation
+	);
 
 	function applyUrlChips() {
 		const chips = searchChipsFromWindow();
@@ -79,9 +86,24 @@
 			periodFrom,
 			periodTo,
 			hasPhoto: filterPhoto,
-			hasLocation: filterLocation
+			hasLocation: filterLocation,
+			circle: fromCircle
 		});
 	});
+
+	function backToCircle() {
+		goto(
+			searchHref(`/circles/${fromCircle}/search`, {
+				q: debounced || query.trim(),
+				periodActive,
+				periodFrom,
+				periodTo,
+				hasPhoto: filterPhoto,
+				hasLocation: filterLocation
+			}),
+			{ replaceState: true }
+		);
+	}
 
 	// onMount обязан быть синхронным: async-вариант возвращает промис вместо
 	// функции очистки, и слушатель popstate живёт после ухода с экрана (GUI-3).
@@ -105,7 +127,7 @@
 	});
 
 	$effect(() => {
-		if (!debounced) {
+		if (!debounced && !hasFilter) {
 			groups = [];
 			thumbUrls = {};
 			sourceError = '';
@@ -120,12 +142,11 @@
 			loading = true;
 			sourceError = '';
 			try {
-				const { results, failedInstanceNames } = await searchAllOrigins(debounced, {
-					from,
-					to,
-					hasPhoto: photo,
-					hasLocation: location
-				});
+				const { results, failedInstanceNames } = await searchAllOrigins(
+					debounced,
+					{ from, to, hasPhoto: photo, hasLocation: location },
+					debounced ? 50 : 500
+				);
 				const names = await circleNameMap();
 				if (gen !== searchGen) return;
 				if (failedInstanceNames.length) {
@@ -227,8 +248,20 @@
 
 <!-- Поле — в шапке, как в кадре 2.19. Раньше шапка повторяла запрос текстом,
      а настоящее поле стояло ниже: на экране было две строки поиска. -->
-<FormLayout shell app bar={searchBar} compact onback={() => goUp('/circles')}>
-	<ChipGroup class="mt-12">
+<FormLayout
+	shell
+	app
+	bar={searchBar}
+	compact
+	onback={() => goUp(fromCircle ? `/circles/${fromCircle}` : '/circles')}
+>
+	{#if fromCircle}
+		<ChipGroup class="mt-12">
+			<Chip onclick={backToCircle}>Этот круг</Chip>
+			<Chip selected>Все круги</Chip>
+		</ChipGroup>
+	{/if}
+	<ChipGroup class={fromCircle ? undefined : 'mt-12'}>
 		<Chip selected={periodActive} onclick={togglePeriod}>Период</Chip>
 		<Chip selected={filterPhoto} onclick={() => (filterPhoto = !filterPhoto)}>С фото</Chip>
 		<Chip selected={filterLocation} onclick={() => (filterLocation = !filterLocation)}
@@ -243,7 +276,7 @@
 	{/if}
 	{#if loading}
 		<Hint class="mt-16">Ищем…</Hint>
-	{:else if debounced && !sourceError && !groups.length}
+	{:else if (debounced || hasFilter) && !sourceError && !groups.length}
 		<Hint class="mt-16">Ничего не найдено</Hint>
 	{/if}
 	{#each groups as group (group.circleId)}

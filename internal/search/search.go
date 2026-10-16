@@ -83,24 +83,30 @@ func New(ch *chronicle.Chronicle) *Service {
 
 // SearchCircle finds matches in one circle; includes author name.
 func (s *Service) SearchCircle(ctx context.Context, accountID, circleID, query string, limit int, filters Filters) ([]Hit, error) {
-	if strings.TrimSpace(query) == "" {
+	if strings.TrimSpace(query) == "" && !filters.any() {
 		return nil, chronicle.ErrInvalid
 	}
 	if err := s.ch.RequireReader(ctx, circleID, accountID); err != nil {
 		return nil, err
+	}
+	if strings.TrimSpace(query) == "" {
+		return s.browse(ctx, accountID, circleID, limit, filters)
 	}
 	return s.search(ctx, accountID, circleID, query, limit, true, filters)
 }
 
 // SearchCircleAuthors lists distinct author names in FTS matches (not circle members).
 func (s *Service) SearchCircleAuthors(ctx context.Context, accountID, circleID, query string, filters Filters) ([]string, error) {
-	if strings.TrimSpace(query) == "" {
+	filters.Author = ""
+	if strings.TrimSpace(query) == "" && !filters.any() {
 		return nil, chronicle.ErrInvalid
 	}
 	if err := s.ch.RequireReader(ctx, circleID, accountID); err != nil {
 		return nil, err
 	}
-	filters.Author = ""
+	if strings.TrimSpace(query) == "" {
+		return s.browseAuthors(ctx, accountID, circleID, filters)
+	}
 	fts, err := ftsQuery(query)
 	if err != nil {
 		return nil, err
@@ -139,10 +145,130 @@ func (s *Service) SearchCircleAuthors(ctx context.Context, accountID, circleID, 
 
 // SearchAll finds matches across all circles for the account; includes author name.
 func (s *Service) SearchAll(ctx context.Context, accountID, query string, limit int, filters Filters) ([]Hit, error) {
-	if strings.TrimSpace(query) == "" {
+	if strings.TrimSpace(query) == "" && !filters.any() {
 		return nil, chronicle.ErrInvalid
 	}
+	if strings.TrimSpace(query) == "" {
+		return s.browse(ctx, accountID, "", limit, filters)
+	}
 	return s.search(ctx, accountID, "", query, limit, true, filters)
+}
+
+// browseLimit — сколько записей отдаёт поиск без слов: «все записи за
+// период» не режутся на полусотне, как попадания по словам.
+const browseLimit = 500
+
+// visiblePostSQL — запись видна, если её время в отрезке видимости читателя
+// (как в ленте). Параметр — account_id.
+const visiblePostSQL = `
+	AND EXISTS (
+	  SELECT 1 FROM memberships m
+	  JOIN membership_spans ms ON ms.membership_id = m.id
+	  WHERE m.circle_id = p.circle_id AND m.account_id = ?
+	    AND ms.can_read = 1
+	    AND p.created_at >= ms.started_at
+	    AND (ms.ended_at IS NULL OR p.created_at < ms.ended_at)
+	)`
+
+// browse — поиск без слов, только по фильтрам (период, фото, место, автор):
+// по концепции текст — один фильтр из многих («Поиск», wynd.html). Идёт по
+// записям, а не по индексу: запись из одних фото в индекс слов не попадает.
+// Комментарии и дни сами по себе фильтрам не отвечают — только записи, новые
+// даты сверху.
+func (s *Service) browse(ctx context.Context, accountID, circleID string, limit int, filters Filters) ([]Hit, error) {
+	if limit <= 0 || limit > browseLimit {
+		limit = browseLimit
+	}
+	args := []any{accountID}
+	whereCircle := ""
+	if circleID != "" {
+		whereCircle = " AND p.circle_id = ?"
+		args = append(args, circleID)
+	}
+	whereExtra, filterArgs := browseFilterSQL(filters)
+	args = append(args, filterArgs...)
+	args = append(args, limit)
+	rows, err := s.db.QueryContext(ctx, fmt.Sprintf(`
+		SELECT p.id, '', p.circle_id, p.author_name, 'post', p.created_at, p.entry_date, '',
+			substr(COALESCE(p.body, ''), 1, 200),
+			(SELECT CASE WHEN pm.kind = 'video' THEN NULLIF(pm.video_poster_blob_id, '')
+				ELSE pm.blob_id END
+			 FROM post_media pm
+			 WHERE pm.post_id = p.id AND pm.kind IN ('photo', 'video')
+			 ORDER BY pm.sort_order LIMIT 1),
+			NULL, NULL
+		FROM posts p
+		WHERE p.deleted = 0%s%s%s
+		ORDER BY p.entry_date DESC, p.created_at DESC
+		LIMIT ?
+	`, visiblePostSQL, whereCircle, whereExtra), args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return s.collectHits(ctx, rows, limit, true)
+}
+
+// browseAuthors — авторы записей, подходящих под фильтры (чипы автора без слов).
+func (s *Service) browseAuthors(ctx context.Context, accountID, circleID string, filters Filters) ([]string, error) {
+	whereExtra, filterArgs := browseFilterSQL(filters)
+	args := append([]any{accountID, circleID}, filterArgs...)
+	args = append(args, defaultAuthorLimit)
+	rows, err := s.db.QueryContext(ctx, fmt.Sprintf(`
+		SELECT DISTINCT p.author_name
+		FROM posts p
+		WHERE p.deleted = 0%s
+		  AND p.circle_id = ?
+		  AND p.author_name != ''
+		  AND p.author_name != '`+chronicle.ErasedName+`'%s
+		ORDER BY p.author_name COLLATE NOCASE
+		LIMIT ?
+	`, visiblePostSQL, whereExtra), args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		out = append(out, name)
+	}
+	return out, rows.Err()
+}
+
+func (f Filters) any() bool {
+	return f.From != "" || f.To != "" || f.HasPhoto || f.HasLocation || f.Author != ""
+}
+
+// browseFilterSQL — те же фильтры, что filterSQL, но по самой записи p.
+func browseFilterSQL(f Filters) (string, []any) {
+	var parts []string
+	var args []any
+	if f.From != "" {
+		parts = append(parts, " AND p.entry_date >= ?")
+		args = append(args, f.From)
+	}
+	if f.To != "" {
+		parts = append(parts, " AND p.entry_date <= ?")
+		args = append(args, f.To)
+	}
+	if f.HasPhoto {
+		parts = append(parts, ` AND EXISTS (
+			SELECT 1 FROM post_media pm WHERE pm.post_id = p.id AND pm.kind IN ('photo', 'video'))`)
+	}
+	if f.HasLocation {
+		parts = append(parts, ` AND EXISTS (
+			SELECT 1 FROM post_media pm
+			WHERE pm.post_id = p.id AND pm.geo_lat IS NOT NULL AND pm.geo_lng IS NOT NULL)`)
+	}
+	if f.Author != "" {
+		parts = append(parts, " AND p.author_name = ?")
+		args = append(args, f.Author)
+	}
+	return strings.Join(parts, ""), args
 }
 
 func (s *Service) search(ctx context.Context, accountID, circleID, query string, limit int, withAuthor bool, filters Filters) ([]Hit, error) {
