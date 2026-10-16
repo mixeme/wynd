@@ -30,6 +30,7 @@ export const WORD = {
 	photo: ['фотография', 'фотографии', 'фотографий'] as PluralForms,
 	person: ['человек', 'человека', 'человек'] as PluralForms,
 	circle: ['круг', 'круга', 'кругов'] as PluralForms,
+	server: ['сервер', 'сервера', 'серверов'] as PluralForms,
 	/** После «владелец»: владелец 21 круга, 5 кругов. */
 	circleGenitive: ['круга', 'кругов', 'кругов'] as PluralForms,
 	/** «каждого из 21 участника», «из 5 участников». */

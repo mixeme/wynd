@@ -11,7 +11,6 @@
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import Switch from '$ui/forms/Switch.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
-	import { appVersion } from '$lib/appinfo';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { formatBytes } from '$lib/format/bytes';
 	import { clearMediaStore, getAppSettings, mediaStoreBytes, type Theme } from '$lib/idb/db';
@@ -154,15 +153,12 @@
 			<Switch bind:checked={reactions} label="Реакции" />
 		{/snippet}
 	</SettingsRow>
-	<Hint class="mt-10">
-		Эти переключатели действуют в кругах, для которых вы не задавали отдельные уведомления, и в
-		тех, в которые вы вступите позже. Круги, где уведомления уже сохранены отдельно, не меняются.
-	</Hint>
+	<Hint class="mt-10">Для новых кругов и тех, где настройки уведомлений не менялись.</Hint>
 
 	<SectionLabel class="mt-22">Место на устройстве</SectionLabel>
 	<Meter value={cacheBytes} max={Math.max(cacheLimit, 1)} />
 	<Hint class="mt-8">
-		{formatBytes(cacheBytes)} фото и видео из {formatBytes(cacheLimit)}.{#if usageBytes > cacheBytes}{' '}Всего Wynd на устройстве — {formatBytes(usageBytes)}.{/if}
+		{formatBytes(cacheBytes)} медиа и файлов из {formatBytes(cacheLimit)}.{#if usageBytes > cacheBytes}{' '}Всего Wynd на устройстве — {formatBytes(usageBytes)}.{/if}
 	</Hint>
 	<ChipGroup class="mt-8">
 		{#each CACHE_PRESETS as gb (gb)}
@@ -172,9 +168,6 @@
 		{/each}
 		<Chip selected={customCache} onclick={() => (customCache = true)}>Своё…</Chip>
 	</ChipGroup>
-	{#if quotaBytes && cacheLimit > quotaBytes}
-		<Hint>Браузер отводит Wynd до {formatBytes(quotaBytes)} — больше кэш не вырастет.</Hint>
-	{/if}
 	{#if customCache}
 		<NumberField
 			bind:value={customCacheGb}
@@ -184,18 +177,19 @@
 			unit="ГБ, до 100"
 		/>
 	{/if}
-	<Hint>Сверх потолка удаляются давно не открытые фото и видео — при просмотре они скачаются заново.</Hint>
+	<!-- Под полем, а не между чипами и полем: строка отвечает на введённое число (C44). -->
+	{#if quotaBytes && cacheLimit > quotaBytes}
+		<Hint>Браузер отводит Wynd до {formatBytes(quotaBytes)} — больше кэш не вырастет.</Hint>
+	{/if}
+	<Hint>Сверх потолка удаляются давно не открытые медиа и файлы — при просмотре они скачаются заново.</Hint>
 	<SettingsRow class="mt-6"
 		title="Очистить кэш"
-		subtitle="фотографии скачаются заново при просмотре"
+		subtitle={cleared ? 'кэш очищен' : undefined}
 		chevron={false}
 		onclick={() => void clearCache()}
 	/>
-	{#if cleared}
-		<Hint>Кэш очищен. Оригиналы на сервере на месте.</Hint>
-	{/if}
 
-	<SectionLabel class="mt-20">Тема</SectionLabel>
+	<SectionLabel class="mt-8">Тема</SectionLabel>
 	<ChipGroup>
 		{#each themes as item (item.key)}
 			<Chip
@@ -210,7 +204,6 @@
 		{/each}
 	</ChipGroup>
 
-	<Hint class="mt-20">Wynd {appVersion} · AGPL-3.0</Hint>
 	{#if error}
 		<Hint>{error}</Hint>
 	{/if}

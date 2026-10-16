@@ -1,5 +1,6 @@
 ﻿<script lang="ts">
 	import { goUp } from '$lib/navigation/up';
+	import { plural, WORD } from '$lib/format/plural';
 	import AboutFooter from '$ui/data/AboutFooter.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -14,14 +15,9 @@
 	onMount(async () => {
 		// Ссылку на исходники даёт сервер, с которого открыт клиент (LIC-2).
 		loadSourceUrl();
+		// Только число: имена серверов — на экране «Серверы» (C44).
 		const sessions = await loadSessions();
-		if (sessions.length === 1) {
-			subtitle = sessions[0].name;
-		} else if (sessions.length === 2) {
-			subtitle = `${sessions[0].name} и ещё один`;
-		} else if (sessions.length > 2) {
-			subtitle = `${sessions[0].name} и ещё ${sessions.length - 1}`;
-		}
+		if (sessions.length) subtitle = plural(sessions.length, WORD.server);
 	});
 
 	// Обновить приложение сразу, не дожидаясь следующего запуска (C19).
@@ -40,7 +36,7 @@
 				? 'это последняя версия'
 				: result === 'failed'
 					? 'не удалось проверить — коснитесь ещё раз'
-					: 'новая версия и так встаёт сама'
+					: 'Wynd обновляется сам'
 	);
 
 	function goBack() {
@@ -63,23 +59,22 @@
 	/>
 	<SettingsRow
 		icon="day"
-		title="Что нового"
-		subtitle="что изменилось в Wynd"
+		title="Что нового в Wynd"
 		onclick={() => goto('/settings/news')}
 	/>
 	{#if appUpdate.supported}
 		{#if appUpdate.pending}
 			<SettingsRow
 				icon="download"
-				title="Обновить до новой версии"
-				subtitle="приложение перезапустится"
+				title="Перейти на новую версию"
+				subtitle="Wynd откроется заново"
 				chevron={false}
 				onclick={() => void applyAppUpdate()}
 			/>
 		{:else}
 			<SettingsRow
 				icon="download"
-				title="Проверить обновление"
+				title="Проверить обновления"
 				subtitle={updateNote}
 				chevron={false}
 				opacity={checking ? 0.55 : undefined}
