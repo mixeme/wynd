@@ -18,11 +18,16 @@ import (
 
 // FullFormat и FullFormatVersion — что за файл и какой версии его разметка.
 // Версия растёт, когда меняется сама разметка архива; схема базы — отдельно
-// (manifest.schema_version), её переводит оживление.
+// (manifest.schema_version), её переводит оживление. Версия 2 — та же
+// разметка, но номер схемы по новой нумерации миграций (с 0.34.0, план 46,
+// C45): в версии 1 он по прежней (34–36), в версии 2 — с 1.
 const (
 	FullFormat        = "wynd-circle"
-	FullFormatVersion = 1
+	FullFormatVersion = 2
 )
+
+// FullFormatKnown — разметка, которую этот сервер читает.
+func FullFormatKnown(v int) bool { return v == 1 || v == 2 }
 
 // FullManifest — manifest.json полного архива.
 type FullManifest struct {

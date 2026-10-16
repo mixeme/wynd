@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"gitea.mixdep.ru/mix/wynd/internal/archive"
 	"gitea.mixdep.ru/mix/wynd/internal/blob"
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 )
@@ -148,7 +149,7 @@ func (s *Server) handleReviveCircle(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	if body.Manifest.Format != "wynd-circle" || body.Manifest.FormatVersion != 1 {
+	if body.Manifest.Format != archive.FullFormat || !archive.FullFormatKnown(body.Manifest.FormatVersion) {
 		writeDomainError(w, chronicle.ErrInvalid)
 		return
 	}
@@ -158,6 +159,7 @@ func (s *Server) handleReviveCircle(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := s.reviveFromTables(r.Context(), reviveRequest{
 		AccountID:     sess.AccountID,
+		FormatVersion: body.Manifest.FormatVersion,
 		SchemaVersion: body.Manifest.SchemaVersion,
 		Posts:         body.Manifest.Posts,
 		Tables:        tables,
@@ -188,6 +190,7 @@ func (s *Server) handleReviveCircle(w http.ResponseWriter, r *http.Request) {
 // самого сервера (перенос, план 53).
 type reviveRequest struct {
 	AccountID     string
+	FormatVersion int
 	SchemaVersion int
 	Posts         int
 	Tables        map[string]chronicle.FullArchiveTable
@@ -271,6 +274,7 @@ func (s *Server) reviveFromTables(ctx context.Context, in reviveRequest) (revive
 		return out, &reviveError{http.StatusInsufficientStorage, "no_room", ""}
 	}
 	res, err := s.Chronicle.ReviveCircle(ctx, chronicle.ReviveInput{
+		FormatVersion: in.FormatVersion,
 		SchemaVersion: in.SchemaVersion,
 		Tables:        tables,
 		Accounts:      accounts,

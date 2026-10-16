@@ -16,9 +16,25 @@ import (
 // заново: все идентификаторы новые — круг может ожить рядом с живым исходным,
 // и на том же сервере; люди — по почте; владелец — тот, кто оживил.
 
-// ReviveSchemaVersions — какие схемы архива сервер умеет оживлять. Новая
-// схема с другими колонками — сюда и в переводчик строк.
-var ReviveSchemaVersions = []int{34, 35, 36}
+// ReviveSchemaVersions — какие схемы архива сервер умеет оживлять (разметка
+// архива 2, новая нумерация миграций). Новая схема с другими колонками —
+// сюда и в переводчик строк.
+var ReviveSchemaVersions = []int{1}
+
+// ReviveLegacySchemaVersions — схемы архивов разметки 1: номера прежней
+// нумерации (до 0.34.0). Схема 36 — та же, что 1.
+var ReviveLegacySchemaVersions = []int{34, 35, 36}
+
+// ReviveSchemaKnown — оживляет ли сервер архив такой разметки и схемы.
+func ReviveSchemaKnown(formatVersion, schema int) bool {
+	switch formatVersion {
+	case 1:
+		return slices.Contains(ReviveLegacySchemaVersions, schema)
+	case 2:
+		return slices.Contains(ReviveSchemaVersions, schema)
+	}
+	return false
+}
 
 // reviveOrder — порядок вставки: по зависимостям.
 var reviveOrder = []string{
@@ -29,6 +45,9 @@ var reviveOrder = []string{
 
 // ReviveInput — что прислало устройство.
 type ReviveInput struct {
+	// FormatVersion — разметка архива (manifest.format_version): от неё
+	// зависит, по какой нумерации SchemaVersion.
+	FormatVersion int
 	SchemaVersion int
 	Tables        map[string]FullArchiveTable
 	// Accounts — почта по id учётки архива (data/accounts.json).
@@ -56,8 +75,8 @@ type ReviveResult struct {
 // ReviveCircle вставляет круг из строк архива одной транзакцией.
 func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveResult, error) {
 	var res ReviveResult
-	if !slices.Contains(ReviveSchemaVersions, in.SchemaVersion) {
-		return res, fmt.Errorf("%w: archive schema %d", ErrInvalid, in.SchemaVersion)
+	if !ReviveSchemaKnown(in.FormatVersion, in.SchemaVersion) {
+		return res, fmt.Errorf("%w: archive format %d schema %d", ErrInvalid, in.FormatVersion, in.SchemaVersion)
 	}
 	circles := in.Tables["circles"]
 	if len(circles.Rows) != 1 {

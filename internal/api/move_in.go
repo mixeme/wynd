@@ -608,6 +608,7 @@ func (s *Server) reviveMoveFile(ctx context.Context, m *chronicle.IncomingMove) 
 	}
 	return s.reviveFromTables(ctx, reviveRequest{
 		AccountID:     m.AccountID,
+		FormatVersion: zr.Manifest.FormatVersion,
 		SchemaVersion: zr.Manifest.SchemaVersion,
 		Posts:         zr.Manifest.Posts,
 		Tables:        tables,

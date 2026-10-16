@@ -1,7 +1,8 @@
--- Схема базы целиком. В этот файл свёрнута цепочка 0001–0030 (версии
--- 0.3.0–0.25.10): отдельных шагов до него нет. Номер 0030 оставлен, чтобы
--- базы, дошедшие до конца прежней цепочки, считались уже мигрированными;
--- следующая миграция — 0031.
+-- Схема базы целиком. В этот файл свёрнуты обе прежние цепочки: 0001–0030
+-- (версии 0.3.0–0.25.10) и 0030–0036 (0.26.0–0.33.6). Нумерация начата
+-- заново (план 46, C45): база, дошедшая до 0036 по прежней нумерации, при
+-- запуске получает отметку «версия 1» без изменений таблиц (migrate.go);
+-- следующая миграция — 0002.
 --
 -- Время везде — TEXT фиксированной ширины (xtime.Layout), порядок строк
 -- совпадает с порядком времени.
@@ -51,6 +52,76 @@ CREATE TABLE blobs (
     original_filename TEXT
 );
 
+-- Полный архив круга (план 51, A1): владелец просит собрать файл со всем
+-- кругом, сервер собирает его в фоне и держит до скачивания или до срока.
+-- Готовые и собираемые архивы входят в потолок сервера (9.5), но не в квоту
+-- круга (решение владельца 2026-10-13: файл временный).
+CREATE TABLE circle_archives (
+    id TEXT PRIMARY KEY,
+    circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
+    requested_by_account_id TEXT NOT NULL REFERENCES accounts(id),
+    requested_at TEXT NOT NULL,
+    snapshot_at TEXT,
+    -- Архив с удалением круга (6.32): круг замирает, владелец убирает его сам.
+    delete_circle INTEGER NOT NULL DEFAULT 0,
+    encrypted INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL CHECK (status IN ('building', 'ready', 'failed', 'removed')),
+    -- Пока собирается — оценка (место занято заранее), потом — точная длина файла.
+    size_bytes INTEGER NOT NULL DEFAULT 0,
+    ready_at TEXT,
+    expires_at TEXT,
+    downloaded_at TEXT,
+    removed_reason TEXT CHECK (removed_reason IN ('downloaded', 'expired', 'admin', 'owner', 'canceled')),
+    removed_at TEXT
+);
+
+-- Кто приехал с кругом (план 53, 1.9): участники перенесённого или
+-- оживлённого круга, кроме того, кто его поднял. Первый вход в круг
+-- встречает их экраном «Круг переехал» / «Круг оживили из архива» вместо
+-- вступления; «Войти в круг» отмечает, что встречу видели. Это жизнь круга
+-- на этом сервере — в полный архив не идёт.
+CREATE TABLE circle_arrivals (
+    circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL CHECK (kind IN ('moved', 'revived')),
+    created_at TEXT NOT NULL,
+    seen_at TEXT,
+    PRIMARY KEY (circle_id, account_id)
+);
+
+-- Перенос круга по ссылке (план 53, A1 этап 3). На прежнем сервере —
+-- circle_moves: владелец выдал ссылку, круг замер, новый сервер забирает
+-- полный архив без шифрования и сообщает «принято и сверено»; владелец
+-- завершает перенос (круг удаляется) или отменяет его (круг оживает).
+CREATE TABLE circle_moves (
+    id TEXT PRIMARY KEY,
+    circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
+    started_by_account_id TEXT NOT NULL REFERENCES accounts(id),
+    started_at TEXT NOT NULL,
+    -- Ключ ссылки: владелец видит ссылку на 6.25, сколько бы раз ни открыл
+    -- экран; новый сервер находит перенос по sha256 ключа.
+    token TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('waiting', 'pulling', 'accepted', 'canceled', 'completed')),
+    -- Новый сервер — из обмена: кто первым пришёл по ссылке.
+    dest_url TEXT,
+    dest_name TEXT,
+    -- Архив под перенос: собирается, готов, сбой; длина и сколько забрано.
+    archive_status TEXT NOT NULL DEFAULT 'none' CHECK (archive_status IN ('none', 'building', 'ready', 'failed')),
+    archive_bytes INTEGER NOT NULL DEFAULT 0,
+    pulled_bytes INTEGER NOT NULL DEFAULT 0,
+    -- Что в архиве — для сверки с «принято» нового сервера (6.26).
+    archive_posts INTEGER NOT NULL DEFAULT 0,
+    archive_names INTEGER NOT NULL DEFAULT 0,
+    archive_media_bytes INTEGER NOT NULL DEFAULT 0,
+    accepted_at TEXT,
+    accepted_posts INTEGER,
+    accepted_names INTEGER,
+    accepted_bytes INTEGER,
+    ended_at TEXT
+);
+
 CREATE TABLE circle_notify_prefs (
     account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
@@ -81,7 +152,13 @@ CREATE TABLE circles (
     color TEXT NOT NULL DEFAULT 'ochre',
     invite_who TEXT NOT NULL DEFAULT 'all' CHECK (invite_who IN ('all', 'owner')),
     invite_kind_default TEXT NOT NULL DEFAULT 'single' CHECK (invite_kind_default IN ('single', 'multi')),
-    quota_custom INTEGER NOT NULL DEFAULT 0
+    quota_custom INTEGER NOT NULL DEFAULT 0,
+    -- Квота круга считает и текст (C42): байты строк круга в базе, ведут
+    -- триггеры quota_text_* ниже.
+    text_bytes INTEGER NOT NULL DEFAULT 0,
+    -- Круг замер под архив с удалением или перенос (6.32, 6.36): читать
+    -- можно, писать нельзя.
+    frozen_at TEXT
 );
 
 CREATE TABLE code_request_log (
@@ -177,6 +254,37 @@ CREATE TABLE identity_names (
     erased_at TEXT
 );
 
+-- На новом сервере — incoming_moves: кто вставил ссылку (он и станет
+-- владельцем), карточка круга с прежнего сервера, ход и итог.
+CREATE TABLE incoming_moves (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    -- Ссылка с ключом: нужна, пока круг забирается; после — стирается.
+    link TEXT NOT NULL,
+    source_url TEXT NOT NULL,
+    source_name TEXT NOT NULL DEFAULT '',
+    circle_name TEXT NOT NULL,
+    circle_color TEXT NOT NULL DEFAULT '',
+    posts INTEGER NOT NULL DEFAULT 0,
+    members INTEGER NOT NULL DEFAULT 0,
+    bytes INTEGER NOT NULL DEFAULT 0,
+    frozen_at TEXT,
+    expires_at TEXT NOT NULL,
+    send_invites INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL CHECK (status IN ('draft', 'pulling', 'reviving', 'done', 'failed')),
+    pulled_bytes INTEGER NOT NULL DEFAULT 0,
+    circle_id TEXT,
+    result_posts INTEGER,
+    result_names INTEGER,
+    result_bytes INTEGER,
+    verified INTEGER NOT NULL DEFAULT 0,
+    invited INTEGER NOT NULL DEFAULT 0,
+    not_joined INTEGER NOT NULL DEFAULT 0,
+    error TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
 CREATE TABLE instance_settings (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     name TEXT NOT NULL DEFAULT '',
@@ -210,7 +318,11 @@ CREATE TABLE instance_settings (
     pay_subscription_remind_days INTEGER NOT NULL DEFAULT 7 CHECK (pay_subscription_remind_days IN (1, 3, 7)),
     storage_quota_disk_percent INTEGER NULL,
     smtp_last_error TEXT NOT NULL DEFAULT '',
-    compress_audio_bitrate_kbps INTEGER NOT NULL DEFAULT 192
+    compress_audio_bitrate_kbps INTEGER NOT NULL DEFAULT 192,
+    -- «Разрешить стирать имена и фото» (A3, 9.13): по умолчанию выключено.
+    allow_name_erasure INTEGER NOT NULL DEFAULT 0,
+    -- Сколько часов готовый полный архив ждёт скачивания (9.12).
+    archive_retention_hours INTEGER NOT NULL DEFAULT 72
 );
 
 CREATE TABLE invites (
@@ -266,9 +378,11 @@ CREATE TABLE pending_codes (
     code_hash TEXT NOT NULL,
     attempts INTEGER NOT NULL DEFAULT 0,
     client_ip TEXT NOT NULL,
-    flow TEXT NOT NULL CHECK (flow IN ('login', 'register', 'invite')),
+    flow TEXT NOT NULL CHECK (flow IN ('login', 'register', 'invite', 'email_change')),
     invite_id TEXT REFERENCES invites(id),
     invite_name TEXT,
+    -- Смена почты (A8): код уходит на новую почту и привязан к учётке.
+    account_id TEXT REFERENCES accounts(id) ON DELETE CASCADE,
     expires_at TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
@@ -322,15 +436,20 @@ CREATE TABLE push_subscriptions (
     created_at TEXT NOT NULL
 );
 
+-- Просьба о месте. Без круга — место для круга, которого ещё нет (оживление
+-- из архива, план 52): с именем будущего круга; одобренная отмечается
+-- использованной, когда круг ожил.
 CREATE TABLE quota_requests (
     id TEXT PRIMARY KEY,
-    circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
+    circle_id TEXT REFERENCES circles(id) ON DELETE CASCADE,
     requested_by_account_id TEXT NOT NULL REFERENCES accounts(id),
     requested_bytes INTEGER NOT NULL CHECK (requested_bytes > 0),
     status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
     admin_note TEXT,
     created_at TEXT NOT NULL,
-    resolved_at TEXT
+    resolved_at TEXT,
+    circle_name TEXT,
+    used_at TEXT
 );
 
 CREATE TABLE reactions (
@@ -409,13 +528,19 @@ CREATE TABLE comment_media (
 -- Индексы
 
 CREATE INDEX idx_blobs_account ON blobs (account_id);
+CREATE INDEX idx_circle_archives_circle ON circle_archives (circle_id, requested_at);
+CREATE INDEX idx_circle_archives_status ON circle_archives (status, expires_at);
+CREATE INDEX idx_circle_moves_circle ON circle_moves (circle_id, started_at);
 CREATE INDEX idx_code_request_log_ip_time ON code_request_log (client_ip, requested_at);
 CREATE INDEX idx_comments_post ON comments (post_id, created_at);
 CREATE INDEX idx_events_circle_created ON events (circle_id, created_at);
 CREATE INDEX idx_events_circle_seq ON events (circle_id, seq);
+CREATE INDEX idx_incoming_moves_account ON incoming_moves (account_id, created_at);
+CREATE INDEX idx_incoming_moves_status ON incoming_moves (status);
 CREATE INDEX idx_invites_token ON invites (token);
 CREATE INDEX idx_membership_spans_membership ON membership_spans (membership_id, started_at);
 CREATE INDEX idx_pending_codes_email ON pending_codes (email, created_at);
+CREATE INDEX idx_pending_codes_account ON pending_codes (account_id) WHERE account_id IS NOT NULL;
 CREATE INDEX idx_post_media_blob ON post_media (blob_id);
 CREATE INDEX idx_post_media_post ON post_media (post_id, sort_order);
 CREATE INDEX idx_posts_circle_created ON posts (circle_id, created_at);
@@ -589,6 +714,115 @@ CREATE TRIGGER fts_comment_media_post_update AFTER UPDATE OF entry_date ON posts
 BEGIN
     UPDATE content_fts SET entry_date = NEW.entry_date
     WHERE post_id = NEW.id AND kind IN ('cfile', 'caudio');
+END;
+
+-- Квота текста (C42): триггеры ведут circles.text_bytes — сколько байт
+-- занимают строки круга в базе. Вес строки — служебная часть + байты текста;
+-- тело записи, комментария и название дня лежат ещё в поисковом индексе
+-- (копией и словарём), поэтому их байты считаются трижды. Постоянные
+-- подобраны замером роста файла базы 2026-10-14 (600 записей по 60 и 3000
+-- байт русского текста, файл после VACUUM): запись 550, комментарий 560,
+-- реакция 450, событие 400, название дня 250 байт.
+
+CREATE TRIGGER quota_text_post_insert AFTER INSERT ON posts
+BEGIN
+    UPDATE circles SET text_bytes = text_bytes + 550
+        + 3 * length(CAST(COALESCE(NEW.body, '') AS BLOB)) + length(CAST(NEW.author_name AS BLOB))
+    WHERE id = NEW.circle_id;
+END;
+
+CREATE TRIGGER quota_text_post_update AFTER UPDATE OF body, author_name ON posts
+BEGIN
+    UPDATE circles SET text_bytes = text_bytes
+        + 3 * (length(CAST(COALESCE(NEW.body, '') AS BLOB)) - length(CAST(COALESCE(OLD.body, '') AS BLOB)))
+        + length(CAST(NEW.author_name AS BLOB)) - length(CAST(OLD.author_name AS BLOB))
+    WHERE id = NEW.circle_id;
+END;
+
+CREATE TRIGGER quota_text_post_delete AFTER DELETE ON posts
+BEGIN
+    UPDATE circles SET text_bytes = text_bytes - 550
+        - 3 * length(CAST(COALESCE(OLD.body, '') AS BLOB)) - length(CAST(OLD.author_name AS BLOB))
+    WHERE id = OLD.circle_id;
+END;
+
+CREATE TRIGGER quota_text_comment_insert AFTER INSERT ON comments
+BEGIN
+    UPDATE circles SET text_bytes = text_bytes + 560
+        + 3 * length(CAST(COALESCE(NEW.body, '') AS BLOB)) + length(CAST(NEW.author_name AS BLOB))
+    WHERE id = NEW.circle_id;
+END;
+
+CREATE TRIGGER quota_text_comment_update AFTER UPDATE OF body, author_name ON comments
+BEGIN
+    UPDATE circles SET text_bytes = text_bytes
+        + 3 * (length(CAST(COALESCE(NEW.body, '') AS BLOB)) - length(CAST(COALESCE(OLD.body, '') AS BLOB)))
+        + length(CAST(NEW.author_name AS BLOB)) - length(CAST(OLD.author_name AS BLOB))
+    WHERE id = NEW.circle_id;
+END;
+
+CREATE TRIGGER quota_text_comment_delete AFTER DELETE ON comments
+BEGIN
+    UPDATE circles SET text_bytes = text_bytes - 560
+        - 3 * length(CAST(COALESCE(OLD.body, '') AS BLOB)) - length(CAST(OLD.author_name AS BLOB))
+    WHERE id = OLD.circle_id;
+END;
+
+CREATE TRIGGER quota_text_reaction_insert AFTER INSERT ON reactions
+BEGIN
+    UPDATE circles SET text_bytes = text_bytes + 450
+        + length(CAST(NEW.emoji AS BLOB)) + length(CAST(NEW.author_name AS BLOB))
+    WHERE id = NEW.circle_id;
+END;
+
+CREATE TRIGGER quota_text_reaction_update AFTER UPDATE OF emoji, author_name ON reactions
+BEGIN
+    UPDATE circles SET text_bytes = text_bytes
+        + length(CAST(NEW.emoji AS BLOB)) - length(CAST(OLD.emoji AS BLOB))
+        + length(CAST(NEW.author_name AS BLOB)) - length(CAST(OLD.author_name AS BLOB))
+    WHERE id = NEW.circle_id;
+END;
+
+CREATE TRIGGER quota_text_reaction_delete AFTER DELETE ON reactions
+BEGIN
+    UPDATE circles SET text_bytes = text_bytes - 450
+        - length(CAST(OLD.emoji AS BLOB)) - length(CAST(OLD.author_name AS BLOB))
+    WHERE id = OLD.circle_id;
+END;
+
+CREATE TRIGGER quota_text_event_insert AFTER INSERT ON events
+BEGIN
+    UPDATE circles SET text_bytes = text_bytes + 400
+        + length(CAST(NEW.payload AS BLOB)) + length(CAST(NEW.summary AS BLOB)) + length(CAST(NEW.actor_name AS BLOB))
+    WHERE id = NEW.circle_id;
+END;
+
+CREATE TRIGGER quota_text_event_update AFTER UPDATE OF payload, summary, actor_name ON events
+BEGIN
+    UPDATE circles SET text_bytes = text_bytes
+        + length(CAST(NEW.payload AS BLOB)) - length(CAST(OLD.payload AS BLOB))
+        + length(CAST(NEW.summary AS BLOB)) - length(CAST(OLD.summary AS BLOB))
+        + length(CAST(NEW.actor_name AS BLOB)) - length(CAST(OLD.actor_name AS BLOB))
+    WHERE id = NEW.circle_id;
+END;
+
+CREATE TRIGGER quota_text_event_delete AFTER DELETE ON events
+BEGIN
+    UPDATE circles SET text_bytes = text_bytes - 400
+        - length(CAST(OLD.payload AS BLOB)) - length(CAST(OLD.summary AS BLOB)) - length(CAST(OLD.actor_name AS BLOB))
+    WHERE id = OLD.circle_id;
+END;
+
+CREATE TRIGGER quota_text_title_insert AFTER INSERT ON day_titles
+BEGIN
+    UPDATE circles SET text_bytes = text_bytes + 250 + 3 * length(CAST(NEW.title AS BLOB))
+    WHERE id = NEW.circle_id;
+END;
+
+CREATE TRIGGER quota_text_title_delete AFTER DELETE ON day_titles
+BEGIN
+    UPDATE circles SET text_bytes = text_bytes - 250 - 3 * length(CAST(OLD.title AS BLOB))
+    WHERE id = OLD.circle_id;
 END;
 
 -- Единственная строка настроек сервера. Потолок хранилища — 80 % диска.

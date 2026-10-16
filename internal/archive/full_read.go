@@ -41,7 +41,7 @@ func OpenFullArchive(path string) (*FullReader, error) {
 		zr.Close()
 		return nil, err
 	}
-	if r.Manifest.Format != FullFormat || r.Manifest.FormatVersion != FullFormatVersion {
+	if r.Manifest.Format != FullFormat || !FullFormatKnown(r.Manifest.FormatVersion) {
 		zr.Close()
 		return nil, fmt.Errorf("archive: not a circle archive (%q v%d)", r.Manifest.Format, r.Manifest.FormatVersion)
 	}

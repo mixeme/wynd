@@ -111,7 +111,7 @@ func fullInput(t *testing.T) archive.FullInput {
 		},
 	}
 	return archive.FullInput{
-		Manifest: archive.FullManifest{WyndVersion: "9.9.9", SchemaVersion: 34, Server: "https://home.example.org"},
+		Manifest: archive.FullManifest{WyndVersion: "9.9.9", SchemaVersion: 1, Server: "https://home.example.org"},
 		Data:     data,
 		Readable: archive.BuildInput{
 			CircleName: "Семья", CutoffDate: "2026-10-15", Blobs: blobs,
@@ -157,7 +157,7 @@ func TestBuildFullArchive(t *testing.T) {
 	if err := json.Unmarshal(read("manifest.json"), &m); err != nil {
 		t.Fatal(err)
 	}
-	if m.Format != archive.FullFormat || m.FormatVersion != 1 || m.SchemaVersion != 34 || m.CircleID != "c1" ||
+	if m.Format != archive.FullFormat || m.FormatVersion != 2 || m.SchemaVersion != 1 || m.CircleID != "c1" ||
 		m.Posts != 1 || len(m.Tables) != 4 || !m.SnapshotAt.Equal(in.Data.SnapshotAt) {
 		t.Fatalf("manifest: %+v", m)
 	}
