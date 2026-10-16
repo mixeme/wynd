@@ -114,7 +114,8 @@ func main() {
 		TestCert: devTestCert(),
 	}}
 	err := wails.Run(&options.App{
-		Title:       "Wynd — установка на свой сервер",
+		// Версия установщика — та же, что у Wynd, который он ставит.
+		Title:       "Wynd — установка на свой сервер [" + version.Number + "]",
 		Width:       760,
 		Height:      560,
 		MinWidth:    680,
