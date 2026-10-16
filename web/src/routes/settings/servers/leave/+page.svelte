@@ -24,7 +24,6 @@
 		leaveServer,
 		loadPendingLeave,
 		ownedCircleSubtitle,
-		ownedCirclesLine,
 		type LeavePreview,
 		type PendingLeave
 	} from '$lib/auth/leaveServer';
@@ -118,10 +117,9 @@
 		{:else if !preview}
 			<Loading />
 		{:else if owns}
-			<SectionLabel class="mt-18">Сначала — ваши круги</SectionLabel>
+			<SectionLabel class="mt-8">Сначала — ваши круги</SectionLabel>
 			<Hint class="mt-0 ink">
-				{ownedCirclesLine(preview.owned.length)} Без владельца круг остаться не может: передайте
-				его кому-то из участников или удалите.
+				Без владельца круг остаться не может.
 			</Hint>
 			{#each preview.owned as c, i (c.id)}
 				<SettingsRow
@@ -140,14 +138,13 @@
 			<!-- Правило видно, как на 6.39: кнопка на месте, но не нажимается. -->
 			<DangerZone class="mt-22" disabled items={[`Уйти с «${serverLabel}» насовсем`]} />
 		{:else}
-			<SectionLabel class="mt-18">Исчезнет</SectionLabel>
+			<SectionLabel class="mt-8">Исчезнет</SectionLabel>
 			<Hint class="mt-0 ink">
-				Вход на {pending.host} на всех ваших устройствах, уведомления отсюда. Вернуться с этой
-				почтой можно — как новый человек.
+				Вход на всех ваших устройствах. Вернуться с этой почтой можно — как новый человек.
 			</Hint>
 			<SectionLabel class="mt-18">Останется в кругах</SectionLabel>
 			<Hint class="mt-0 ink">
-				Всё, что вы написали и выложили, — под вашими именами, как у тех, кто ушёл из круга.
+				Всё, что вы написали и выложили, — под вашими именами.
 			</Hint>
 			{#if erasureAllowed}
 				<SettingsRow
@@ -160,7 +157,6 @@
 						<Switch bind:checked={eraseNames} label="Стереть моё имя и фото во всех кругах" />
 					{/snippet}
 				</SettingsRow>
-				<Hint>Ваши круги на других серверах останутся как есть.</Hint>
 			{/if}
 			<DangerZone
 				class="mt-18"

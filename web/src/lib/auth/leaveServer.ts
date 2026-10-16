@@ -66,14 +66,6 @@ export function leaveErrorHint(err: unknown): string {
 	return 'Не получилось уйти — проверьте связь и попробуйте ещё раз.';
 }
 
-const OWNED_WORDS = ['', 'одного', 'двух', 'трёх', 'четырёх'];
-
-/** «Вы владелец двух кругов» (7.15): «владелец» правит родительным падежом. */
-export function ownedCirclesLine(n: number): string {
-	if (n === 1) return 'Вы владелец круга.';
-	return `Вы владелец ${OWNED_WORDS[n] ?? n} ${pluralForm(n, WORD.circleGenitive)}.`;
-}
-
 /** Подпись круга в списке 7.15: куда ведёт строка. */
 export function ownedCircleSubtitle(c: OwnedCircle): string {
 	if (c.members <= 1) return 'кроме вас никого · удалить круг';
@@ -82,12 +74,12 @@ export function ownedCircleSubtitle(c: OwnedCircle): string {
 
 /** Окно подтверждения (7.16, 7.17): что будет, сказано до кнопки. */
 export function leaveConfirmText(circles: number, eraseNames: boolean): string {
+	// Оба окна — в одном порядке: выход, записи, возвращение.
+	const back =
+		'Вернуться с этой почтой можно, но как новый человек: в круги — по новому приглашению, ' +
+		'и прежнее в них будет не видно.';
 	if (!eraseNames) {
-		return (
-			'Вы выйдете со всех устройств. Вернуться с этой почтой можно, но как новый человек: ' +
-			'в круги — по новому приглашению, и прежнее в них будет не видно. ' +
-			'Ваши записи останутся под вашими именами.'
-		);
+		return `Вы выйдете со всех устройств. Ваши записи останутся под вашими именами. ${back}`;
 	}
 	const where =
 		circles === 1
@@ -96,8 +88,7 @@ export function leaveConfirmText(circles: number, eraseNames: boolean): string {
 				? `Во всех ${circles} ${pluralForm(circles, WORD.circlePrepositional)}`
 				: 'Во всех кругах';
 	return (
-		`Вы выйдете со всех устройств. ${where} сотрутся ваши имена и фото, которыми подписаны ` +
-		'ваши записи, — записи останутся без имени. Вернуть подпись будет нельзя. ' +
-		'Вернуться с этой почтой можно, но как новый человек: в круги — по новому приглашению.'
+		`Вы выйдете со всех устройств. ${where} сотрутся ваши имена и фото — записи останутся ` +
+		`без имени, вернуть подпись будет нельзя. ${back}`
 	);
 }

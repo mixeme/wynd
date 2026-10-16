@@ -14,14 +14,13 @@
 <FormLayout shell title="Уйти с сервера насовсем" onback={() => {}}>
 	<ServerRow name="Дом Ани" subtitle="home.example.org" card gdpr top={10} />
 	<SettingsRow title="anya@example.com" subtitle="5 кругов" chevron={false} />
-	<SectionLabel class="mt-18">Исчезнет</SectionLabel>
+	<SectionLabel class="mt-8">Исчезнет</SectionLabel>
 	<Hint class="mt-0 ink">
-		Вход на home.example.org на всех ваших устройствах, уведомления отсюда. Вернуться с этой
-		почтой можно — как новый человек.
+		Вход на всех ваших устройствах. Вернуться с этой почтой можно — как новый человек.
 	</Hint>
 	<SectionLabel class="mt-18">Останется в кругах</SectionLabel>
 	<Hint class="mt-0 ink">
-		Всё, что вы написали и выложили, — под вашими именами, как у тех, кто ушёл из круга.
+		Всё, что вы написали и выложили, — под вашими именами.
 	</Hint>
 	<SettingsRow
 		class="mt-14"
@@ -33,6 +32,5 @@
 			<Switch bind:checked={erase} label="Стереть моё имя и фото во всех кругах" />
 		{/snippet}
 	</SettingsRow>
-	<Hint>Ваши круги на других серверах останутся как есть.</Hint>
 	<DangerZone class="mt-18" items={['Уйти с «Дома Ани» насовсем']} onitem={() => {}} />
 </FormLayout>

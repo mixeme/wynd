@@ -11,10 +11,9 @@
 <FormLayout shell title="Уйти с сервера насовсем" onback={() => {}}>
 	<ServerRow name="Дом Ани" subtitle="home.example.org" card top={10} />
 	<SettingsRow title="anya@example.com" subtitle="5 кругов" chevron={false} />
-	<SectionLabel class="mt-18">Сначала — ваши круги</SectionLabel>
+	<SectionLabel class="mt-8">Сначала — ваши круги</SectionLabel>
 	<Hint class="mt-0 ink">
-		Вы владелец двух кругов. Без владельца круг остаться не может: передайте его кому-то из
-		участников или удалите.
+		Без владельца круг остаться не может.
 	</Hint>
 	<SettingsRow
 		class="mt-8"
