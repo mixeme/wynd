@@ -136,16 +136,43 @@ export interface MediaMeta {
 	used: number;
 }
 
+/** Закрепление на устройстве — до A2; переносится на сервер (street.ts). */
 export interface PinRecord {
 	pinned_at: number;
 }
 
+/**
+ * Группа на устройстве. С A2 группы живут на серверах, а здесь — то, что
+ * серверам не нужно: свёрнута ли группа и только что заведённая пустая
+ * группа (пока в неё не положили круг). circleIds — раскладка до A2,
+ * переносится на сервер и опустошается.
+ */
 export interface GroupRecord {
 	id: string;
 	name: string;
 	circleIds: string[];
 	collapsed: boolean;
+	/** В группе бывали круги: опустела — уходит и с устройства. */
+	filled?: boolean;
 }
+
+/**
+ * Изменение раскладки улочки, ещё не принятое сервером (A2): молчащий
+ * сервер получает его, когда ответит, а до тех пор улочка показывает его
+ * поверх ответа сервера или снимка.
+ */
+export interface StreetOpRecord {
+	origin: string;
+	op: 'pin' | 'unpin' | 'group' | 'ungroup' | 'rename' | 'drop';
+	circle_id?: string;
+	/** Группа: куда положить, что переименовать или удалить. */
+	name?: string;
+	new_name?: string;
+	/** Когда закрепили (мс). */
+	pinned_at?: number;
+}
+
+export type StreetOpWithId = StreetOpRecord & { id: number };
 
 export interface CircleMeta {
 	color?: CircleColor;
@@ -210,6 +237,11 @@ interface WyndDB extends DBSchema {
 		key: string;
 		value: GroupRecord;
 	};
+	street_ops: {
+		key: number;
+		value: StreetOpRecord;
+		autoIncrement: true;
+	};
 	settings: {
 		key: 'app';
 		value: AppSettings;
@@ -217,7 +249,7 @@ interface WyndDB extends DBSchema {
 }
 
 const DB_NAME = 'wynd';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 let dbPromise: Promise<IDBPDatabase<WyndDB>> | undefined;
 
@@ -257,6 +289,9 @@ export function getDb(): Promise<IDBPDatabase<WyndDB>> {
 							cursor = await cursor.continue();
 						}
 					})();
+				}
+				if (oldVersion < 4) {
+					db.createObjectStore('street_ops', { autoIncrement: true });
 				}
 			},
 			// Открытая старая вкладка держит прежнюю версию: без blocked
@@ -495,6 +530,33 @@ export async function deleteGroup(id: string): Promise<void> {
 	await db.delete('groups', id);
 }
 
+export async function addStreetOp(op: StreetOpRecord): Promise<void> {
+	const db = await getDb();
+	await db.add('street_ops', op);
+}
+
+/** Изменения раскладки по порядку записи. */
+export async function listStreetOps(): Promise<StreetOpWithId[]> {
+	const db = await getDb();
+	const out: StreetOpWithId[] = [];
+	let cursor = await db.transaction('street_ops').store.openCursor();
+	while (cursor) {
+		out.push({ ...cursor.value, id: cursor.key });
+		cursor = await cursor.continue();
+	}
+	return out;
+}
+
+export async function deleteStreetOp(id: number): Promise<void> {
+	const db = await getDb();
+	await db.delete('street_ops', id);
+}
+
+export async function clearPins(): Promise<void> {
+	const db = await getDb();
+	await db.clear('pins');
+}
+
 export async function listPins(): Promise<PinRow[]> {
 	const db = await getDb();
 	const keys = await db.getAllKeys('pins');
@@ -582,7 +644,7 @@ export async function clearMediaStore(): Promise<void> {
 /**
  * Стирает всё локальное состояние одного сервера, кроме сессии, курсора и
  * снимков (их снимает dropParticipantSession отдельно): очередь, кэш медиа,
- * закреплённые круги. Без этого после выхода на общем устройстве очередь
+ * закреплённые круги, неотправленная раскладка улочки. Без этого после выхода на общем устройстве очередь
  * уходила под следующей учёткой, а фото оставались в IDB (аудит 2026-09-22).
  */
 export async function clearOriginState(origin: string): Promise<void> {
@@ -595,6 +657,13 @@ export async function clearOriginState(origin: string): Promise<void> {
 		q = await q.continue();
 	}
 	await queue.done;
+	const ops = db.transaction('street_ops', 'readwrite');
+	let o = await ops.store.openCursor();
+	while (o) {
+		if (o.value.origin === origin) await o.delete();
+		o = await o.continue();
+	}
+	await ops.done;
 	for (const store of ['media', 'media_meta', 'pins'] as const) {
 		const tx = db.transaction(store, 'readwrite');
 		let cursor = await tx.store.openCursor();

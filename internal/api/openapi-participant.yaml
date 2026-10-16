@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.34.0
+  version: 0.35.0
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:
@@ -81,7 +81,10 @@ paths:
       summary: Account circles with unread counts
       responses:
         "200":
-          description: Circle list
+          description: >-
+            Circle list. Each circle carries pinned_at (RFC 3339) when the account
+            pinned it; groups[] — the account's street groups on this server
+            ({name, circle_ids[]}, by name; an empty group is never stored).
     post:
       summary: Create circle
       responses:
@@ -269,6 +272,86 @@ paths:
       responses:
         "200":
           description: OK
+
+  /circles/{circle_id}/pin:
+    put:
+      summary: Pin the circle on the street (plan 46, A2)
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pinned_at:
+                  type: string
+                  format: date-time
+                  description: When it was pinned on the device; empty or future — now
+      responses:
+        "200":
+          description: OK
+        "403":
+          description: The account left the circle for good
+        "404":
+          description: Not a member
+    delete:
+      summary: Unpin the circle
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK (also when it was not pinned)
+
+  /circles/{circle_id}/group:
+    put:
+      summary: Put the circle into the account's group by name (created if missing; moved out of its former group)
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  maxLength: 100
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Empty or too long name
+        "403":
+          description: The account is not active in the circle
+        "404":
+          description: Not a member
+    delete:
+      summary: Take the circle out of its group; a group left empty is gone
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK (also when it was in no group)
 
   /circles/{circle_id}/responses:
     get:
@@ -936,6 +1019,45 @@ paths:
           description: ZIP stream
         "404":
           description: Link unknown, used or expired
+
+  /groups/rename:
+    post:
+      summary: Rename the account's group on this server; into an existing name — groups merge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, new_name]
+              properties:
+                name:
+                  type: string
+                new_name:
+                  type: string
+                  maxLength: 100
+      responses:
+        "200":
+          description: OK (also when there is no such group here)
+        "400":
+          description: Empty or too long name
+
+  /groups/delete:
+    post:
+      summary: Delete the account's group on this server; its circles stay on the street
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+      responses:
+        "200":
+          description: OK (also when there is no such group here)
 
   /notify_prefs:
     get:

@@ -1,12 +1,22 @@
 import { apiJson } from '$lib/api/client';
 import { dropParticipantSession, isSessionRejected } from '$lib/session/session.svelte';
-import { listSessions, listPins, type SessionRecord } from '$lib/idb/db';
+import { listGroups, listSessions, type SessionRecord } from '$lib/idb/db';
 import { invalidateSnapshots } from '$lib/idb/db';
 import { readCachedSnapshot, writeCachedSnapshot } from '$lib/api/snapshots';
 import { getCircleColor, setCircleColor, circleInitial } from './meta';
 import { CIRCLE_COLORS, type CircleColor } from '$lib/theme/colors';
 import { formatPostTime } from '$lib/format/time';
 import { serverHost } from './move';
+import {
+	applyStreetOps,
+	flushStreetOps,
+	mergeStreetGroups,
+	moveDeviceStreetToServers,
+	pendingStreetOps,
+	settleLocalGroups,
+	type ServerGroup,
+	type StreetGroupView
+} from './street';
 
 export interface ArchiveCycleBanner {
 	active: true;
@@ -41,6 +51,8 @@ export interface CircleListItem {
 	frozen_at?: string;
 	/** Круг переезжает на другой сервер (план 53): 3.14, после «принято» — 3.15, 2.4. */
 	move?: CircleMoveBanner;
+	/** Закреплён на улочке (A2), RFC 3339. */
+	pinned_at?: string;
 }
 
 /** Перенос круга глазами участника: куда и какой почтой входить там. */
@@ -63,6 +75,8 @@ function leavingPreview(circle: CircleListItem): string {
 
 export interface CirclesResponse {
 	circles: CircleListItem[];
+	/** Группы учётки на этом сервере (A2); у снимка до A2 — нет. */
+	groups?: ServerGroup[];
 }
 
 export interface StreetCircle {
@@ -82,6 +96,8 @@ export interface StreetCircle {
 	/** Есть новые отклики — точка у круга (2.1). */
 	responses?: boolean;
 	pendingJoin?: boolean;
+	/** Вышел, читает (2.1): в группу не кладётся — вышедший уходит из групп. */
+	readOnly?: boolean;
 }
 
 export interface SearchHit {
@@ -113,9 +129,13 @@ export interface CreateCircleInput {
 }
 
 export async function fetchCircles(origin: string): Promise<CircleListItem[]> {
+	return (await fetchCirclesResponse(origin)).circles;
+}
+
+async function fetchCirclesResponse(origin: string): Promise<CirclesResponse> {
 	const data = await apiJson<CirclesResponse>(origin, '/circles');
 	await writeCachedSnapshot(origin, 'circles', '_list', data);
-	return data.circles;
+	return data;
 }
 
 export async function fetchPendingCircleJoins(origin: string): Promise<string[]> {
@@ -174,46 +194,80 @@ async function colorForCircle(
 }
 
 /**
+ * Свежесть (2.1): приглашение, где ещё не выбрано имя, — самое свежее. Круги
+ * без событий в конце, по имени. Так стоят и круги внутри группы.
+ */
+export function byFreshness(a: StreetCircle, b: StreetCircle): number {
+	const fresh = (row: StreetCircle) => (row.pendingJoin ? Infinity : Date.parse(row.lastAt ?? '') || 0);
+	const fa = fresh(a);
+	const fb = fresh(b);
+	if (fa !== fb) return fb - fa;
+	return a.name.localeCompare(b.name, 'ru');
+}
+
+/**
  * Порядок улицы (2.1): закреплённые сверху — по времени закрепления, дальше
- * по свежести. Приглашение, где ещё не выбрано имя, — самое свежее. Круги без
- * событий в конце, по имени.
+ * по свежести.
  */
 export function sortStreetCircles(rows: StreetCircle[]): StreetCircle[] {
-	const fresh = (row: StreetCircle) => (row.pendingJoin ? Infinity : Date.parse(row.lastAt ?? '') || 0);
 	return rows.sort((a, b) => {
 		if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
 		if (a.pinned && b.pinned) return b.pinnedAt - a.pinnedAt;
-		const fa = fresh(a);
-		const fb = fresh(b);
-		if (fa !== fb) return fb - fa;
-		return a.name.localeCompare(b.name, 'ru');
+		return byFreshness(a, b);
 	});
 }
 
+/** Улочка: круги всех серверов и группы, сложенные по названию (A2). */
+export interface Street {
+	circles: StreetCircle[];
+	groups: StreetGroupView[];
+}
+
 export async function loadStreetCircles(): Promise<StreetCircle[]> {
+	return (await loadStreet()).circles;
+}
+
+export async function loadStreet(): Promise<Street> {
 	const sessions = await listSessions();
-	const pins = await listPins();
-	const pinMap = new Map(pins.map((p) => [`${p.origin}:${p.circleId}`, p.pinned_at]));
+	await moveDeviceStreetToServers(sessions.map((s) => s.origin));
 
 	const rows: StreetCircle[] = [];
+	const layouts: Array<{ origin: string; groups: ServerGroup[] }> = [];
 	// Ряды «читает, не пишет» — по статусу, а не по тексту превью.
 	const readOnly = new Set<StreetCircle>();
 
 	for (const session of sessions) {
-		let circles: CircleListItem[];
+		// Изменения раскладки, которых сервер ещё не принял, — сначала: ответ
+		// придёт уже с ними. Молчит — останутся в очереди и лягут поверх снимка.
+		await flushStreetOps(session.origin).catch(() => {});
+		let data: CirclesResponse;
 		try {
-			circles = await fetchCircles(session.origin);
+			data = await fetchCirclesResponse(session.origin);
 		} catch (err) {
 			if (isSessionRejected(err)) {
 				await dropParticipantSession(session.origin);
 				continue;
 			}
-			circles = await loadCirclesCached(session.origin);
+			data = (await readCachedSnapshot<CirclesResponse>(session.origin, 'circles', '_list')) ?? {
+				circles: []
+			};
 		}
+		const circles = data.circles ?? [];
+		const layout = applyStreetOps(
+			{
+				pins: new Map(
+					circles
+						.filter((c) => c.pinned_at)
+						.map((c) => [c.id, Date.parse(c.pinned_at ?? '') || 1] as [string, number])
+				),
+				groups: data.groups ?? []
+			},
+			await pendingStreetOps(session.origin)
+		);
+		layouts.push({ origin: session.origin, groups: layout.groups });
 		for (const circle of circles) {
 			if (circle.status !== 'active' && circle.status !== 'left_with_access') continue;
-			const pinKey = `${session.origin}:${circle.id}`;
-			const pinnedAt = pinMap.get(pinKey) ?? 0;
+			const pinnedAt = layout.pins.get(circle.id) ?? 0;
 			// Круг уходит с сервера (2.5): что с ним и что можно успеть — вместо
 			// последней записи, без времени.
 			const leaving = circle.status === 'active' && Boolean(circle.frozen_at);
@@ -240,7 +294,10 @@ export async function loadStreetCircles(): Promise<StreetCircle[]> {
 				responses: circle.status === 'active' && (circle.responses_unread ?? 0) > 0
 			};
 			rows.push(row);
-			if (circle.status === 'left_with_access') readOnly.add(row);
+			if (circle.status === 'left_with_access') {
+				readOnly.add(row);
+				row.readOnly = true;
+			}
 		}
 		let pendingIds: string[] = [];
 		try {
@@ -285,7 +342,9 @@ export async function loadStreetCircles(): Promise<StreetCircle[]> {
 		}
 	}
 
-	return sortStreetCircles(rows);
+	const merged = mergeStreetGroups(layouts, await listGroups());
+	await settleLocalGroups(merged.drop, merged.fill);
+	return { circles: sortStreetCircles(rows), groups: merged.groups };
 }
 
 export function ownerNameFromSession(session: SessionRecord): string {

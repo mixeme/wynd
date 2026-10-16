@@ -21,6 +21,17 @@ func (s *Server) handleListCircles(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
+	// Раскладка улочки (A2): закрепления и группы учётки на этом сервере.
+	pins, err := s.Chronicle.AccountPins(r.Context(), sess.AccountID)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	groups, err := s.Chronicle.AccountGroups(r.Context(), sess.AccountID)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
 	out := make([]map[string]any, len(circles))
 	for i, c := range circles {
 		item := map[string]any{
@@ -38,6 +49,9 @@ func (s *Server) handleListCircles(w http.ResponseWriter, r *http.Request) {
 		if banner, err := s.archiveCycleJSON(r.Context(), c.ID, sess.AccountID); err == nil && banner != nil {
 			item["archive_cycle"] = banner
 		}
+		if at, ok := pins[c.ID]; ok {
+			item["pinned_at"] = at.UTC().Format(time.RFC3339Nano)
+		}
 		// Новые отклики (3.17): число на вкладке, точка на улочке.
 		if n, err := s.Chronicle.UnreadResponses(r.Context(), c.ID, sess.AccountID); err == nil {
 			item["responses_unread"] = n
@@ -51,7 +65,11 @@ func (s *Server) handleListCircles(w http.ResponseWriter, r *http.Request) {
 		s.addFrozen(r, item, c.ID, sess.AccountID)
 		out[i] = item
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"circles": out})
+	groupsOut := make([]map[string]any, len(groups))
+	for i, g := range groups {
+		groupsOut[i] = map[string]any{"name": g.Name, "circle_ids": g.CircleIDs}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"circles": out, "groups": groupsOut})
 }
 
 type createCircleBody struct {

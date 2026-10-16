@@ -2,9 +2,11 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
 	addQueueItem,
+	addStreetOp,
 	clearOriginState,
 	getDb,
 	listQueueItems,
+	listStreetOps,
 	mediaKey,
 	putMedia,
 	putPin,
@@ -29,12 +31,13 @@ describe('clearOriginState', () => {
 		await db.clear('queue');
 		await db.clear('media');
 		await db.clear('pins');
+		await db.clear('street_ops');
 	});
 
 	// Аудит 2026-09-22: после выхода на общем устройстве очередь уходила под
 	// следующей учёткой, а фото оставались в IDB. Стирается только состояние
 	// своего сервера.
-	it('drops queue, media and pins of one origin only', async () => {
+	it('drops queue, media, pins and street ops of one origin only', async () => {
 		const a = 'https://a.example';
 		const b = 'https://b.example';
 		await addQueueItem(queueRecord(a));
@@ -43,6 +46,8 @@ describe('clearOriginState', () => {
 		await putMedia(mediaKey(b, 'blob-2'), { buffer: new ArrayBuffer(8), mime: 'image/jpeg' });
 		await putPin(a, 'c1');
 		await putPin(b, 'c1');
+		await addStreetOp({ origin: a, op: 'unpin', circle_id: 'c1' });
+		await addStreetOp({ origin: b, op: 'unpin', circle_id: 'c1' });
 
 		await clearOriginState(a);
 
@@ -51,5 +56,6 @@ describe('clearOriginState', () => {
 		const db = await getDb();
 		expect((await db.getAllKeys('media')) as string[]).toEqual([mediaKey(b, 'blob-2')]);
 		expect(((await db.getAllKeys('pins')) as string[]).every((k) => k.startsWith(`${b}:`))).toBe(true);
+		expect((await listStreetOps()).map((op) => op.origin)).toEqual([b]);
 	});
 });

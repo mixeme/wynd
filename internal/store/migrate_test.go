@@ -20,18 +20,38 @@ const textQuotaBackfill = `UPDATE circles SET text_bytes =
   + COALESCE((SELECT SUM(250 + 3 * length(CAST(t.title AS BLOB)))
         FROM day_titles t WHERE t.circle_id = circles.id), 0)`
 
-// formerChainBase — база, дошедшая по прежней нумерации до top: схема та же,
-// что 0001 (свёртка её не меняла), отметки — 0030…top.
-func formerChainBase(t *testing.T, top int) *SQLite {
+// baseAt — база, прошедшая миграции новой нумерации по version включительно
+// (как у выпуска, где последней была она).
+func baseAt(t *testing.T, version int) *SQLite {
 	t.Helper()
 	s, err := openSQLite(fileDSN(filepath.Join(t.TempDir(), "wynd.db")), true)
 	if err != nil {
 		t.Fatalf("openSQLite: %v", err)
 	}
 	t.Cleanup(func() { _ = s.Close() })
-	if err := migrate(s.db); err != nil {
-		t.Fatalf("migrate: %v", err)
+	all, err := loadMigrations()
+	if err != nil {
+		t.Fatal(err)
 	}
+	if _, err := s.db.Exec(`CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)`); err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range all {
+		if m.version > version {
+			break
+		}
+		if err := applyMigration(s.db, m); err != nil {
+			t.Fatalf("migration %d: %v", m.version, err)
+		}
+	}
+	return s
+}
+
+// formerChainBase — база, дошедшая по прежней нумерации до top: схема та же,
+// что 0001 (свёртка её не меняла), отметки — 0030…top.
+func formerChainBase(t *testing.T, top int) *SQLite {
+	t.Helper()
+	s := baseAt(t, 1)
 	if _, err := s.db.Exec(`DELETE FROM schema_migrations`); err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +66,8 @@ func formerChainBase(t *testing.T, top int) *SQLite {
 }
 
 // База прежней нумерации, дошедшая до 0036 (рабочий сервер на 0.33.x), при
-// запуске получает одну отметку «версия 1»; таблицы и данные целы (C45).
+// запуске получает отметку «версия 1» и идёт дальше по новой нумерации;
+// таблицы и данные целы (C45).
 func TestMigrateRenumbersFormerChain(t *testing.T) {
 	s := formerChainBase(t, legacyTop)
 	if _, err := s.db.Exec(
@@ -61,7 +82,8 @@ func TestMigrateRenumbersFormerChain(t *testing.T) {
 	if err := s.db.QueryRow(`SELECT count(*), MAX(version) FROM schema_migrations`).Scan(&rows, &version); err != nil {
 		t.Fatal(err)
 	}
-	if rows != 1 || version != 1 {
+	top := latestVersion(t)
+	if rows != top || version != top {
 		t.Fatalf("отметок %d, версия %d", rows, version)
 	}
 	if err := s.db.QueryRow(`SELECT count(*) FROM accounts`).Scan(&accounts); err != nil {
@@ -74,7 +96,7 @@ func TestMigrateRenumbersFormerChain(t *testing.T) {
 	if err := migrate(s.db); err != nil {
 		t.Fatalf("второй запуск: %v", err)
 	}
-	if err := s.db.QueryRow(`SELECT count(*) FROM schema_migrations`).Scan(&rows); err != nil || rows != 1 {
+	if err := s.db.QueryRow(`SELECT count(*) FROM schema_migrations`).Scan(&rows); err != nil || rows != top {
 		t.Fatalf("после второго запуска отметок %d (%v)", rows, err)
 	}
 }
@@ -119,6 +141,72 @@ func TestMigrateRefusesDatabaseBelowBaseline(t *testing.T) {
 		t.Fatal("база версии 16 должна получать отказ")
 	}
 	if !strings.Contains(err.Error(), legacyChainRelease) || !strings.Contains(err.Error(), legacyLastRelease) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func latestVersion(t *testing.T) int {
+	t.Helper()
+	all, err := loadMigrations()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return all[len(all)-1].version
+}
+
+// Инвариант (TST-4): миграция применяется к заполненной базе прежней версии.
+// 0002 заводит раскладку улочки (A2): люди, круги и участие целы, а выход из
+// круга убирает круг из групп человека, и опустевшая группа уходит.
+func TestMigrateStreetGroupsOverPopulatedBase(t *testing.T) {
+	s := baseAt(t, 1)
+	if _, err := s.db.Exec(`
+		INSERT INTO accounts (id, email, created_at) VALUES ('acc', 'a@test.local', '2026-08-30T09:00:00.000000000Z');
+		INSERT INTO circles (id, name, owner_account_id, created_at, updated_at) VALUES ('c1', 'Семья', 'acc', '2026-08-30T09:00:00.000000000Z', '2026-08-30T09:00:00.000000000Z');
+		INSERT INTO identities (id, circle_id, created_at) VALUES ('i1', 'c1', '2026-08-30T09:00:00.000000000Z');
+		INSERT INTO memberships (id, circle_id, account_id, identity_id, status, created_at, updated_at)
+		VALUES ('m1', 'c1', 'acc', 'i1', 'active', '2026-08-30T09:00:00.000000000Z', '2026-08-30T09:00:00.000000000Z');
+	`); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if err := migrate(s.db); err != nil {
+		t.Fatalf("migrate over populated base: %v", err)
+	}
+	var accounts, members int
+	if err := s.db.QueryRow(`SELECT (SELECT count(*) FROM accounts), (SELECT count(*) FROM memberships WHERE status = 'active')`).Scan(&accounts, &members); err != nil {
+		t.Fatal(err)
+	}
+	if accounts != 1 || members != 1 {
+		t.Fatalf("accounts = %d, active memberships = %d", accounts, members)
+	}
+	if _, err := s.db.Exec(`
+		INSERT INTO circle_groups (id, account_id, name, created_at) VALUES ('g1', 'acc', 'Родные', '2026-10-16T00:00:00Z');
+		INSERT INTO circle_group_items (group_id, account_id, circle_id, added_at) VALUES ('g1', 'acc', 'c1', '2026-10-16T00:00:00Z');
+		INSERT INTO circle_pins (account_id, circle_id, pinned_at) VALUES ('acc', 'c1', '2026-10-16T00:00:00Z');
+		UPDATE memberships SET status = 'left_with_access' WHERE id = 'm1';
+	`); err != nil {
+		t.Fatalf("раскладка: %v", err)
+	}
+	var groups, pins int
+	if err := s.db.QueryRow(`SELECT (SELECT count(*) FROM circle_groups), (SELECT count(*) FROM circle_pins)`).Scan(&groups, &pins); err != nil {
+		t.Fatal(err)
+	}
+	if groups != 0 || pins != 1 {
+		t.Fatalf("после выхода с доступом: групп %d, закреплений %d", groups, pins)
+	}
+}
+
+// Пропущенная миграция ниже уже применённой — отказ запуска, а не доливка
+// середины цепочки поверх более новой схемы (MIG-1).
+func TestMigrateRefusesSkippedVersion(t *testing.T) {
+	s := baseAt(t, latestVersion(t))
+	if _, err := s.db.Exec(`DELETE FROM schema_migrations WHERE version = 1`); err != nil {
+		t.Fatal(err)
+	}
+	err := migrate(s.db)
+	if err == nil {
+		t.Fatal("пропущенная 0001 должна давать отказ")
+	}
+	if !strings.Contains(err.Error(), "0001_schema.sql") {
 		t.Fatalf("err = %v", err)
 	}
 }

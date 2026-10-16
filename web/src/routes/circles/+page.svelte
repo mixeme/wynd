@@ -22,7 +22,19 @@
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import ShellLayout from '$lib/layouts/ShellLayout.svelte';
-	import { loadStreetCircles, type StreetCircle } from '$lib/circles/circles';
+	import {
+		byFreshness,
+		loadStreet,
+		sortStreetCircles,
+		type StreetCircle
+	} from '$lib/circles/circles';
+	import {
+		applyStreetOpToView,
+		groupOrigins,
+		queueStreetOp,
+		type StreetGroupView
+	} from '$lib/circles/street';
+	import type { StreetOpRecord } from '$lib/idb/db';
 	import { rememberCircleOrigin } from '$lib/circles/origin';
 	import {
 		LONG_PRESS_MS,
@@ -32,15 +44,7 @@
 	} from '$lib/gestures/longpress';
 	import { displayHost } from '$lib/auth/origin';
 	import { isServerDown } from '$lib/session/connection.svelte';
-	import {
-		deleteGroup,
-		deletePin,
-		getPin,
-		listGroups,
-		putGroup,
-		putPin,
-		type GroupRecord
-	} from '$lib/idb/db';
+	import { deleteGroup, listGroups, putGroup } from '$lib/idb/db';
 	import { registerRefetch } from '$lib/sync/sync';
 	import { initSession, loadSessions } from '$lib/session/session.svelte';
 	import {
@@ -52,7 +56,8 @@
 	import type { SessionRecord } from '$lib/idb/db';
 
 	let circles = $state<StreetCircle[]>([]);
-	let groups = $state<GroupRecord[]>([]);
+	// Группы со всех серверов, сложенные по названию (A2): название — ключ.
+	let groups = $state<StreetGroupView[]>([]);
 	let sessions = $state<SessionRecord[]>([]);
 	let payStatus = $state<PayStatus | undefined>();
 	let loading = $state(true);
@@ -65,10 +70,10 @@
 	let pinMenuKey = $state<string | null>(null);
 	let creatingGroup = $state(false);
 	let newGroupName = $state('');
-	let groupMenuId = $state<string | null>(null);
-	let editingGroupId = $state<string | null>(null);
+	let groupMenuName = $state<string | null>(null);
+	let editingGroupName = $state<string | null>(null);
 	let editGroupName = $state('');
-	let groupAddOpenId = $state<string | null>(null);
+	let groupAddOpenName = $state<string | null>(null);
 	let fabMenuOpen = $state(false);
 	let groupLongPressTimer: ReturnType<typeof setTimeout> | undefined;
 	let longPressTimer: ReturnType<typeof setTimeout> | undefined;
@@ -85,9 +90,17 @@
 	const ptr = new PullRefresh(listScrollTop, () => refresh());
 	onDestroy(() => ptr.destroy());
 
+	// Обновления идут вперемешку (жест, поток, действие на улочке); ответ
+	// молчащего сервера приходит через секунды и не должен перетирать более
+	// свежий — показывается только последнее.
+	let refreshSeq = 0;
+
 	async function refresh() {
-		circles = await loadStreetCircles();
-		groups = await listGroups();
+		const seq = ++refreshSeq;
+		const street = await loadStreet();
+		if (seq !== refreshSeq) return;
+		circles = street.circles;
+		groups = street.groups;
 		if (streetSession) {
 			try {
 				payStatus = await fetchPayStatus(streetSession.origin);
@@ -122,7 +135,7 @@
 	}
 
 	const circleMap = $derived(new Map(circles.map((c) => [circleKey(c), c])));
-	const groupedKeys = $derived(new Set(groups.flatMap((g) => g.circleIds)));
+	const groupedKeys = $derived(new Set(groups.flatMap((g) => g.keys)));
 	const pinned = $derived(circles.filter((c) => c.pinned));
 	const rest = $derived(circles.filter((c) => !c.pinned && !groupedKeys.has(circleKey(c))));
 	const empty = $derived(!loading && circles.length === 0);
@@ -151,7 +164,6 @@
 			text: 'Сервер держит его администратор, данные на нём не зашифрованы. Пользуясь им, вы доверяете этому человеку.'
 		}
 	]);
-	const showGroupHint = $derived(groups.length > 0);
 	const showDonateBanner = $derived(
 		payStatus?.banner && !payStatus.dismissed && payStatus.has_requisites
 	);
@@ -171,39 +183,45 @@
 		return `${circle.origin}:${circle.id}`;
 	}
 
-	function circlesInGroup(group: GroupRecord): StreetCircle[] {
-		return group.circleIds
-			.map((id) => circleMap.get(id))
+	function circlesInGroup(group: StreetGroupView): StreetCircle[] {
+		return group.keys
+			.map((key) => circleMap.get(key))
 			// Закреплённый круг остаётся в своей группе: закрепление — ярлык
 			// сверху, а не переезд. Раньше он пропадал из папки, и группа
 			// показывала счётчик при пустом содержимом.
-			.filter((c): c is StreetCircle => c !== undefined);
+			.filter((c): c is StreetCircle => c !== undefined)
+			// Внутри группы — по свежести, закреплённые не выше прочих.
+			.sort(byFreshness);
 	}
 
-	function groupMemberCount(group: GroupRecord): number {
-		return group.circleIds.filter((id) => circleMap.has(id)).length;
+	function groupMemberCount(group: StreetGroupView): number {
+		return group.keys.filter((key) => circleMap.has(key)).length;
 	}
 
-	function circleGroupId(circle: StreetCircle): string | undefined {
+	function circleGroupName(circle: StreetCircle): string | undefined {
 		const key = circleKey(circle);
-		return groups.find((g) => g.circleIds.includes(key))?.id;
+		return groups.find((g) => g.keys.includes(key))?.name;
 	}
 
-	function addableCirclesForGroup(group: GroupRecord): StreetCircle[] {
-		return circles.filter((c) => !group.circleIds.includes(circleKey(c)));
+	// Вышедший из круга уходит из групп (A2) — такой круг в группу не кладётся;
+	// круг, где ещё не выбрано имя, — тоже: участия пока нет.
+	function addableCirclesForGroup(group: StreetGroupView): StreetCircle[] {
+		return circles.filter(
+			(c) => !c.readOnly && !c.pendingJoin && !group.keys.includes(circleKey(c))
+		);
 	}
 
-	function showGroupChips(group: GroupRecord): boolean {
+	function showGroupChips(group: StreetGroupView): boolean {
 		if (!addableCirclesForGroup(group).length) return false;
-		return groupMemberCount(group) === 0 || groupAddOpenId === group.id;
+		return groupMemberCount(group) === 0 || groupAddOpenName === group.name;
 	}
 
 	function openCircle(circle: StreetCircle) {
 		// Нажатие при открытом меню закрывает его и на этом останавливается —
 		// иначе тем же тапом человек проваливался бы в круг.
-		const menuOpen = pinMenuKey !== null || groupMenuId !== null || fabMenuOpen;
+		const menuOpen = pinMenuKey !== null || groupMenuName !== null || fabMenuOpen;
 		pinMenuKey = null;
-		groupMenuId = null;
+		groupMenuName = null;
 		fabMenuOpen = false;
 		if (menuOpen || swallowsClick(pressMark)) return;
 		rememberCircleOrigin(circle.id, circle.origin);
@@ -220,9 +238,9 @@
 			fabMenuOpen = false;
 			closed = true;
 		}
-		if ((pinMenuKey !== null || groupMenuId !== null) && !target.closest('.circle-row-card')) {
+		if ((pinMenuKey !== null || groupMenuName !== null) && !target.closest('.circle-row-card')) {
 			pinMenuKey = null;
-			groupMenuId = null;
+			groupMenuName = null;
 			closed = true;
 		}
 		if (closed) pressMark = markLongPress();
@@ -247,100 +265,100 @@
 		clearTimeout(longPressTimer);
 	}
 
+	// Закрепление и группы — изменения раскладки на сервере круга (A2): уходят
+	// при обновлении списка, молчащий сервер получит их, когда ответит.
+	// Изменение — сразу на экране, серверам — в фоне: молчащий отвечал бы
+	// секундами, а раскладка до A2 менялась мгновенно.
+	async function changeStreet(ops: StreetOpRecord[]) {
+		for (const op of ops) {
+			await queueStreetOp(op);
+			groups = applyStreetOpToView(groups, op);
+		}
+		void refresh();
+	}
+
 	async function confirmPin(circle: StreetCircle) {
-		const pin = await getPin(circle.origin, circle.id);
-		if (pin) await deletePin(circle.origin, circle.id);
-		else await putPin(circle.origin, circle.id);
+		const pinnedAt = circle.pinned ? 0 : Date.now();
 		pinMenuKey = null;
-		await refresh();
+		circles = sortStreetCircles(
+			circles.map((c) =>
+				c === circle ? { ...c, pinned: pinnedAt > 0, pinnedAt } : c
+			)
+		);
+		await changeStreet([
+			pinnedAt
+				? { origin: circle.origin, op: 'pin', circle_id: circle.id, pinned_at: pinnedAt }
+				: { origin: circle.origin, op: 'unpin', circle_id: circle.id }
+		]);
 	}
 
 	let groupDownAt = 0;
 	let groupMenuOpenedAt = 0;
 
-	function plainGroup(group: GroupRecord, patch: Partial<GroupRecord> = {}): GroupRecord {
-		return {
-			id: group.id,
-			name: patch.name ?? group.name,
-			circleIds: [...(patch.circleIds ?? group.circleIds)],
-			collapsed: patch.collapsed ?? group.collapsed
-		};
-	}
-
-	function onGroupPointerDown(groupId: string, e: PointerEvent) {
+	function onGroupPointerDown(name: string, e: PointerEvent) {
 		if (e.pointerType === 'mouse' && e.button !== 0) return;
 		groupDownAt = Date.now();
-		startGroupLongPress(groupId);
+		startGroupLongPress(name);
 	}
 
-	function onGroupPointerUp(group: GroupRecord) {
+	function onGroupPointerUp(group: StreetGroupView) {
 		const short = Date.now() - groupDownAt < LONG_PRESS_MS;
-		const openedByThisHold = groupMenuOpenedAt >= groupDownAt && groupMenuId === group.id;
+		const openedByThisHold = groupMenuOpenedAt >= groupDownAt && groupMenuName === group.name;
 		cancelGroupLongPress();
 		if (!short || openedByThisHold || swallowsClick(pressMark)) return;
-		groupMenuId = null;
+		groupMenuName = null;
 		void setGroupCollapsed(group, !group.collapsed);
 	}
 
-	async function setGroupCollapsed(group: GroupRecord, collapsed: boolean) {
-		const next = plainGroup(group, { collapsed });
-		groups = groups.map((item) => (item.id === group.id ? next : item));
-		await putGroup(next);
+	// Свёрнута ли группа — только на этом устройстве: запись по названию.
+	// Записи нет — группа пришла с сервера, значит, в ней бывали круги.
+	async function setGroupCollapsed(group: StreetGroupView, collapsed: boolean) {
+		groups = groups.map((item) => (item.name === group.name ? { ...item, collapsed } : item));
+		const record = (await listGroups()).find((g) => g.name === group.name);
+		await putGroup({
+			id: record?.id ?? uuid(),
+			name: group.name,
+			circleIds: [],
+			collapsed,
+			filled: record ? record.filled : true
+		});
 	}
 
-	async function addCircleToGroup(circle: StreetCircle, groupId: string) {
-		const key = circleKey(circle);
-		for (const group of groups) {
-			if (group.id === groupId) {
-				if (!group.circleIds.includes(key)) {
-					await putGroup(plainGroup(group, { circleIds: [...group.circleIds, key] }));
-				}
-			} else if (group.circleIds.includes(key)) {
-				await putGroup(
-					plainGroup(group, { circleIds: group.circleIds.filter((id) => id !== key) })
-				);
-			}
-		}
-		await refresh();
-		const group = groups.find((g) => g.id === groupId);
+	async function addCircleToGroup(circle: StreetCircle, name: string) {
+		await changeStreet([{ origin: circle.origin, op: 'group', circle_id: circle.id, name }]);
+		const group = groups.find((g) => g.name === name);
 		if (group && addableCirclesForGroup(group).length === 0) {
-			groupAddOpenId = null;
+			groupAddOpenName = null;
 		}
 	}
 
 	async function removeFromGroup(circle: StreetCircle) {
-		const key = circleKey(circle);
-		const groupId = circleGroupId(circle);
-		if (!groupId) return;
-		const group = groups.find((g) => g.id === groupId);
-		if (!group) return;
-		await putGroup(plainGroup(group, { circleIds: group.circleIds.filter((id) => id !== key) }));
+		if (!circleGroupName(circle)) return;
 		pinMenuKey = null;
-		await refresh();
+		await changeStreet([{ origin: circle.origin, op: 'ungroup', circle_id: circle.id }]);
 	}
 
+	// Новая группа пуста — серверам она не нужна, живёт на устройстве, пока
+	// в неё не положили круг.
 	async function createGroup() {
 		const name = newGroupName.trim();
 		creatingGroup = false;
 		newGroupName = '';
 		fabMenuOpen = false;
-		if (!name) return;
-		await putGroup({
-			id: uuid(),
-			name,
-			circleIds: [],
-			collapsed: false
-		});
-		groups = await listGroups();
+		if (!name || groups.some((g) => g.name === name)) return;
+		await putGroup({ id: uuid(), name, circleIds: [], collapsed: false });
+		groups = [...groups, { name, keys: [], collapsed: false }].sort((a, b) =>
+			a.name.localeCompare(b.name, 'ru')
+		);
 	}
 
-	function startGroupLongPress(groupId: string) {
+	function startGroupLongPress(name: string) {
 		clearTimeout(groupLongPressTimer);
 		groupLongPressTimer = setTimeout(() => {
 			pressMark = markLongPress();
-			groupMenuId = groupId;
+			groupMenuName = name;
 			groupMenuOpenedAt = Date.now();
-			editingGroupId = null;
+			editingGroupName = null;
 		}, LONG_PRESS_MS);
 	}
 
@@ -348,29 +366,44 @@
 		clearTimeout(groupLongPressTimer);
 	}
 
-	function startRenameGroup(group: GroupRecord) {
-		editingGroupId = group.id;
+	function startRenameGroup(group: StreetGroupView) {
+		editingGroupName = group.name;
 		editGroupName = group.name;
-		groupMenuId = null;
+		groupMenuName = null;
 	}
 
+	// Переименование — одна запись на каждом сервере, где есть круги группы.
 	async function saveRenameGroup() {
-		const id = editingGroupId;
+		const from = editingGroupName;
 		const name = editGroupName.trim();
-		editingGroupId = null;
+		editingGroupName = null;
 		editGroupName = '';
-		if (!id || !name) return;
-		const group = groups.find((g) => g.id === id);
+		if (from === null || !name || name === from) return;
+		const group = groups.find((g) => g.name === from);
 		if (!group) return;
-		await putGroup(plainGroup(group, { name }));
-		groups = await listGroups();
+		const records = await listGroups();
+		const record = records.find((g) => g.name === from);
+		if (record) {
+			if (records.some((g) => g.name === name)) await deleteGroup(record.id);
+			else await putGroup({ ...record, circleIds: [...record.circleIds], name });
+		}
+		// Пустая новая группа серверам неизвестна — переименовать её на экране.
+		const rename = { origin: '', op: 'rename', name: from, new_name: name } as const;
+		groups = applyStreetOpToView(groups, rename);
+		await changeStreet(groupOrigins(group).map((origin) => ({ ...rename, origin })));
 	}
 
-	async function deleteGroupById(id: string) {
-		groupMenuId = null;
-		editingGroupId = null;
-		await deleteGroup(id);
-		groups = await listGroups();
+	async function deleteGroupByName(name: string) {
+		groupMenuName = null;
+		editingGroupName = null;
+		const group = groups.find((g) => g.name === name);
+		for (const record of await listGroups()) {
+			if (record.name === name) await deleteGroup(record.id);
+		}
+		groups = groups.filter((g) => g.name !== name);
+		await changeStreet(
+			(group ? groupOrigins(group) : []).map((origin) => ({ origin, op: 'drop', name }) as const)
+		);
 	}
 
 	function startCreateGroup() {
@@ -385,7 +418,7 @@
 			pressMark = markLongPress();
 			fabMenuOpen = true;
 			pinMenuKey = null;
-			groupMenuId = null;
+			groupMenuName = null;
 		}, LONG_PRESS_MS);
 	}
 
@@ -409,7 +442,7 @@
 	}
 
 	function doorRowActions(circle: StreetCircle) {
-		const inGroup = Boolean(circleGroupId(circle));
+		const inGroup = Boolean(circleGroupName(circle));
 		return {
 			actionLabel: circle.pinned ? 'Открепить' : 'Закрепить',
 			actionLabel2: inGroup ? 'Убрать из группы' : undefined,
@@ -571,8 +604,8 @@
 				<div class="sep"></div>
 			{/if}
 		{/if}
-		{#each groups as group (group.id)}
-			{#if editingGroupId === group.id}
+		{#each groups as group (group.name)}
+			{#if editingGroupName === group.name}
 				<Input class="m-8-16-0"
 					bind:value={editGroupName}
 					active
@@ -580,37 +613,37 @@
 					onkeydown={(e) => {
 						if (e.key === 'Enter') void saveRenameGroup();
 						if (e.key === 'Escape') {
-							editingGroupId = null;
+							editingGroupName = null;
 							editGroupName = '';
 						}
 					}}
 					onblur={() => void saveRenameGroup()}
 				/>
-			{:else if groupMenuId === group.id}
+			{:else if groupMenuName === group.name}
 				<GroupFoldCard
 					label={group.name}
 					count={groupMemberCount(group)}
 					expanded={!group.collapsed}
 					foldStyle="padding-top:12px"
-					onpointerdown={(e) => onGroupPointerDown(group.id, e)}
+					onpointerdown={(e) => onGroupPointerDown(group.name, e)}
 					onpointerup={() => onGroupPointerUp(group)}
 					onpointercancel={cancelGroupLongPress}
 					actionLabel="Переименовать"
 					onaction={() => startRenameGroup(group)}
 					actionLabel2="Удалить группу"
-					onaction2={() => void deleteGroupById(group.id)}
+					onaction2={() => void deleteGroupByName(group.name)}
 				/>
 			{:else}
 				<FoldHeader
 					label={group.name}
 					count={groupMemberCount(group)}
 					expanded={!group.collapsed}
-					onpointerdown={(e) => onGroupPointerDown(group.id, e)}
+					onpointerdown={(e) => onGroupPointerDown(group.name, e)}
 					onpointerup={() => onGroupPointerUp(group)}
 					onpointercancel={cancelGroupLongPress}
 				/>
 			{/if}
-			{#if !group.collapsed && groupMenuId !== group.id}
+			{#if !group.collapsed && groupMenuName !== group.name}
 				{#each circlesInGroup(group) as circle (circleKey(circle))}
 					{@const door = doorRowActions(circle)}
 					<CircleRow
@@ -622,16 +655,16 @@
 						badge={circle.unread || undefined}
 					dot={circle.responses}
 						color={circle.color}
-						card={pinMenuKey === menuKey(`g:${group.id}`, circle)}
+						card={pinMenuKey === menuKey(`g:${group.name}`, circle)}
 						actionLabel={door.actionLabel}
 						actionLabel2={door.actionLabel2}
 						onaction={() => void confirmPin(circle)}
 						onaction2={door.onaction2}
 						onclick={() => openCircle(circle)}
-						onmousedown={() => startLongPress(circle, `g:${group.id}`)}
+						onmousedown={() => startLongPress(circle, `g:${group.name}`)}
 						onmouseup={cancelLongPress}
 						onmouseleave={cancelLongPress}
-						ontouchstart={() => startLongPress(circle, `g:${group.id}`)}
+						ontouchstart={() => startLongPress(circle, `g:${group.name}`)}
 						ontouchend={cancelLongPress}
 						ontouchcancel={cancelLongPress}
 					/>
@@ -639,14 +672,14 @@
 				{#if showGroupChips(group)}
 					<ChipGroup class="m-10-16-0 p-0">
 						{#each addableCirclesForGroup(group) as circle (circleKey(circle))}
-							<Chip onclick={() => void addCircleToGroup(circle, group.id)}>{circle.name}</Chip>
+							<Chip onclick={() => void addCircleToGroup(circle, group.name)}>{circle.name}</Chip>
 						{/each}
 					</ChipGroup>
 				{:else if groupMemberCount(group) > 0 && addableCirclesForGroup(group).length}
 					<TextButton class="m-8-16-0"
 						variant="link"
 						onclick={() => {
-							groupAddOpenId = group.id;
+							groupAddOpenName = group.name;
 						}}
 					>
 						положить ещё
@@ -698,9 +731,6 @@
 					ontouchcancel={cancelLongPress}
 				/>
 			{/each}
-		{/if}
-		{#if showGroupHint}
-			<Hint centered class="mt-26">группы видны только на этом устройстве</Hint>
 		{/if}
 		{/if}
 	{/if}
