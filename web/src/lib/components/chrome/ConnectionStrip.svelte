@@ -3,7 +3,7 @@
 	import { plural, WORD } from '$lib/format/plural';
 	import type { ConnectionNotice } from '$lib/session/connection.svelte';
 
-	// Полоса связи под шапкой (7.6–7.8). На связи её нет вовсе (7.5): знак
+	// Полоса связи под шапкой (7.37–7.39). На связи её нет вовсе (7.36): знак
 	// появляется, когда что-то не так, и уходит сам. Цвета бумаги, без
 	// красного — подвал или метро, а не авария.
 	let { notice }: { notice: ConnectionNotice | undefined } = $props();

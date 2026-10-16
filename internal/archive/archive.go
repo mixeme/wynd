@@ -31,7 +31,7 @@ const (
 type BuildInput struct {
 	CircleName string
 	CutoffDate string
-	// Layout не влияет на архив: с 0.30.1 в нём обе раскладки (кадр 6.37).
+	// Layout не влияет на архив: с 0.30.1 в нём обе раскладки (кадр 6.23).
 	// Поле осталось, чтобы старые клиенты с ?layout= получали тот же архив.
 	Layout Layout
 	Posts  []chronicle.FeedPost
@@ -145,7 +145,7 @@ func buildReadable(ctx context.Context, zw *zip.Writer, in BuildInput, extra []s
 				return err
 			}
 		}
-		// Вложения комментариев — тоже в архив (4.29).
+		// Вложения комментариев — тоже в архив (4.21).
 		for _, c := range fp.Comments {
 			for _, m := range c.Media {
 				if err := addBlob(m.BlobID); err != nil {
@@ -176,7 +176,7 @@ func buildReadable(ctx context.Context, zw *zip.Writer, in BuildInput, extra []s
 		st.fonts = append(st.fonts, f)
 	}
 
-	// В архиве обе раскладки (кадр 6.37, решение 2026-10-13): единая лента в
+	// В архиве обе раскладки (кадр 6.23, решение 2026-10-13): единая лента в
 	// index.html и страница на каждую запись в posts/ с оглавлением, медиа у
 	// них общее. Выбирать заранее не нужно — и пересобирать ради другой тоже.
 	feed := renderFeedIndex(st, in.CircleName, in.CutoffDate, in.Posts, mediaNames, in.Avatars, in.DayTitles)

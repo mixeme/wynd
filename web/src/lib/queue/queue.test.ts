@@ -61,7 +61,7 @@ describe('queue', () => {
 		expect(queuedTimeLabel('uploading', 0)).toBe('отправляется · 0%');
 		expect(queuedTimeLabel('uploading', 0.428)).toBe('отправляется · 42%');
 		expect(queuedTimeLabel('uploading', 1)).toBe('отправляется · 100%');
-		// Места нет (C42, 3.21): запись ждёт, и в подписи сказано почему.
+		// Места нет (C42, 3.12): запись ждёт, и в подписи сказано почему.
 		expect(queuedTimeLabel('pending', undefined, 'quota_exceeded')).toBe('в очереди · в круге кончилось место');
 		expect(queuedTimeLabel('pending', undefined, 'quota_exceeded:server')).toBe(
 			'в очереди · на сервере кончилось место'

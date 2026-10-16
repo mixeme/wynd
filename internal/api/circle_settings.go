@@ -49,7 +49,7 @@ func (s *Server) handleCircleMembers(w http.ResponseWriter, r *http.Request) {
 		}
 		if m.NotJoined {
 			out[i]["not_joined"] = true
-			// «Ещё не вошли» (6.35): после переноса или после оживления.
+			// «Ещё не вошли» (6.6): после переноса или после оживления.
 			if arrived == "" {
 				arrived, _ = s.Chronicle.CircleArrivedKind(r.Context(), circleID)
 			}
@@ -67,7 +67,7 @@ func (s *Server) handleCircleMembers(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"members": out})
 }
 
-// handleInviteWaiting — «Позвать всех письмом» и «позвать одного» (6.35):
+// handleInviteWaiting — «Позвать всех письмом» и «позвать одного» (6.6):
 // письмо тем, кто приехал с кругом и на этом сервере ещё не входил. Почты
 // владелец не видит — письма шлёт сервер.
 func (s *Server) handleInviteWaiting(w http.ResponseWriter, r *http.Request) {

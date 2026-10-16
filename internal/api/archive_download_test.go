@@ -70,7 +70,7 @@ func TestArchiveDownloadRangeAndStoredMedia(t *testing.T) {
 	if !sawMedia {
 		t.Fatal("архив без медиа")
 	}
-	// Обе раскладки сразу (6.37): лента и страницы по записям с оглавлением.
+	// Обе раскладки сразу (6.23): лента и страницы по записям с оглавлением.
 	names := map[string]bool{}
 	for _, f := range zr.File {
 		names[f.Name] = true

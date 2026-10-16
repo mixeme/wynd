@@ -17,7 +17,7 @@ function daysBetween(a: Date, b: Date): number {
 	return Math.round(ms / 86_400_000);
 }
 
-/** Строка-разделитель дня в «Откликах» (3.13): «сегодня», «вчера», «6 августа». */
+/** Строка-разделитель дня в «Откликах» (3.18): «сегодня», «вчера», «6 августа». */
 export function formatDayLabel(iso: string, now: Date = new Date()): string {
 	const at = new Date(iso);
 	const diff = daysBetween(now, at);

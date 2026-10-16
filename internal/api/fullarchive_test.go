@@ -98,7 +98,7 @@ func fetch(srv *api.Server, url, rangeHeader string) *httptest.ResponseRecorder 
 	return rec
 }
 
-// Инвариант (план 51, 6.29 → 6.40 → 6.33): архив собирается в фоне, готовый
+// Инвариант (план 51, 6.29 → 6.26 → 6.27): архив собирается в фоне, готовый
 // файл — ZIP со всем кругом; оборванное скачивание файл не трогает, докачка
 // по той же ссылке работает; дошёл последний байт — файл стёрт, место
 // освободилось, круг можно архивировать снова.
@@ -161,7 +161,7 @@ func TestFullArchiveBuildDownloadAndResume(t *testing.T) {
 	}
 }
 
-// «Удалить архив, не скачивая» (6.33): файл стёрт, место освободилось.
+// «Удалить архив, не скачивая» (6.27): файл стёрт, место освободилось.
 func TestFullArchiveRemoveByOwner(t *testing.T) {
 	srv, tok, circleID := fullArchiveCircle(t)
 	doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/full_archive", tok, map[string]any{})
@@ -178,7 +178,7 @@ func TestFullArchiveRemoveByOwner(t *testing.T) {
 	}
 }
 
-// Готовый файл положить некуда (6.43): сборка — отказ no_room, а поток
+// Готовый файл положить некуда (6.31): сборка — отказ no_room, а поток
 // собирает архив прямо в ответ.
 func TestFullArchiveNoRoomStreams(t *testing.T) {
 	srv, tok, circleID := fullArchiveCircle(t)
@@ -250,7 +250,7 @@ func TestFullArchiveEncryptedWithDeviceKey(t *testing.T) {
 	}
 }
 
-// Срок вышел — файл стёрт (9.12).
+// Срок вышел — файл стёрт (9.9).
 func TestFullArchiveExpires(t *testing.T) {
 	srv, tok, circleID := fullArchiveCircle(t)
 	doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/full_archive", tok, map[string]any{})
@@ -280,7 +280,7 @@ func TestFullArchiveGoesWithCircle(t *testing.T) {
 	}
 }
 
-// Инвариант (план 51, 6.32 → 6.34 → 6.30, 6.36): архив с удалением круга
+// Инвариант (план 51, 6.32 → 6.28 → 6.29, 3.16): архив с удалением круга
 // замораживает его — писать нельзя никому, участник качает свой архив, в
 // ленте «остановил круг»; убрать круг можно только после скачивания файла;
 // «Отменить — оживить круг» возвращает запись.
@@ -357,8 +357,8 @@ func TestFullArchiveReviveCircle(t *testing.T) {
 	}
 }
 
-// Панель (9.12): готовые архивы видны с размером, «Удалить все» стирает их,
-// а владелец видит, что файл удалил администратор (6.41); срок меняется.
+// Панель (9.9): готовые архивы видны с размером, «Удалить все» стирает их,
+// а владелец видит, что файл удалил администратор (6.30); срок меняется.
 func TestAdminClearsReadyArchives(t *testing.T) {
 	srv, tok, circleID := fullArchiveCircle(t)
 	admin := adminToken(t, srv)

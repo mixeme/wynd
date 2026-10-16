@@ -1,7 +1,7 @@
 <script lang="ts">
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
 
-	// Одна версия на странице «Что нового» (7.11): подпись и строки изменений.
+	// Одна версия на странице «Что нового» (7.8): подпись и строки изменений.
 	let {
 		version,
 		day,

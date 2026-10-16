@@ -35,7 +35,7 @@ type mediaBody struct {
 	Voice           bool  `json:"voice"`
 	AudioDurationMs int64 `json:"audio_duration_ms"`
 	AudioPeaks      []int `json:"audio_peaks"`
-	// Crop — кадр обложки для ленты (4.16).
+	// Crop — кадр обложки для ленты (4.3).
 	Crop *chronicle.CoverCrop `json:"crop"`
 }
 
@@ -52,7 +52,7 @@ type textBody struct {
 	ClientID string `json:"client_id"`
 }
 
-// commentBody — новый комментарий: слова и вложения (4.28). Из полей media
+// commentBody — новый комментарий: слова и вложения (4.20). Из полей media
 // читаются blob_id, kind и данные голосового; остальное — про запись.
 type commentBody struct {
 	Body     string      `json:"body"`

@@ -33,10 +33,10 @@
 	import { formatClock, formatSessionDay } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 
-	// Полный архив круга (план 51). Без удаления круга: собрать (6.29),
-	// собирается (6.40), готов (6.33). С удалением: собрать (6.32), собирается
-	// (6.40), файл не скачан (6.34), скачан (6.30), срок вышел (6.41). Готовый
-	// файл положить некуда — скачать сразу (6.43).
+	// Полный архив круга (план 51). Без удаления круга: собрать (6.24),
+	// собирается (6.26), готов (6.27). С удалением: собрать (6.25), собирается
+	// (6.26), файл не скачан (6.28), скачан (6.29), срок вышел (6.30). Готовый
+	// файл положить некуда — скачать сразу (6.31).
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 
 	let info = $state<FullArchiveState | undefined>();
@@ -47,7 +47,7 @@
 	let encrypt = $state(true);
 	let password = $state(suggestArchivePassword());
 	let deleteCircle = $state(false);
-	// «Собрать архив ещё раз» (6.30, 6.41): снова форма, пароль задаётся заново.
+	// «Собрать архив ещё раз» (6.29, 6.30): снова форма, пароль задаётся заново.
 	let rebuild = $state(false);
 	let askRemove = $state(false);
 
@@ -97,7 +97,7 @@
 			await fn();
 		} catch (err) {
 			if (err instanceof ApiError && err.code === 'no_room') {
-				// Место кончилось, пока экран был открыт, — путь 6.43.
+				// Место кончилось, пока экран был открыт, — путь 6.31.
 				await load();
 			} else {
 				error = authErrorHint(err);
@@ -180,7 +180,7 @@
 {/snippet}
 
 {#snippet removeLocked()}
-	<!-- 6.34, 6.41: убрать круг, не скачав файл, нельзя. -->
+	<!-- 6.28, 6.30: убрать круг, не скачав файл, нельзя. -->
 	<DangerZone class="mt-20" items={['Убрать круг с сервера']} disabled>
 		Сначала скачайте файл: без него круг не вернуть.
 	</DangerZone>
@@ -197,7 +197,7 @@
 	{:else if !info}
 		<Hint class="gutter">{error}</Hint>
 	{:else if view === 'building' && archive}
-		<!-- 6.40: сборка идёт на сервере; о готовности экран узнаёт при открытии. -->
+		<!-- 6.26: сборка идёт на сервере; о готовности экран узнаёт при открытии. -->
 		<StatusCard
 			title="Сервер собирает архив"
 			text={`Вы попросили собрать его ${at(archive.requested_at)}. Когда файл будет готов, придёт письмо — скачать его можно будет здесь.`}
@@ -219,7 +219,7 @@
 			</Hint>
 		{/if}
 	{:else if view === 'ready' && archive}
-		<!-- 6.33: файл готов, круг остаётся. -->
+		<!-- 6.27: файл готов, круг остаётся. -->
 		{@render fileRow(true)}
 		<Hint>
 			В файле круг, каким он был {at(archive.snapshot_at ?? archive.ready_at)}. Написанное позже в
@@ -233,7 +233,7 @@
 			<TextButton disabled={busy} onclick={() => void remove()}>Удалить архив, не скачивая</TextButton>
 		</Hint>
 	{:else if view === 'notDownloaded' && archive}
-		<!-- 6.34: файл готов и ещё не скачан, круг замер. -->
+		<!-- 6.28: файл готов и ещё не скачан, круг замер. -->
 		{@render fileRow(true)}
 		<Hint>
 			Круг замер {at(frozenAt)}. Сервер удалит файл, когда вы его скачаете, или {at(
@@ -244,7 +244,7 @@
 		{@render removeLocked()}
 		{@render reviveLink()}
 	{:else if view === 'downloaded' && archive}
-		<!-- 6.30: файл у владельца, на сервере его нет; круг можно убрать. -->
+		<!-- 6.29: файл у владельца, на сервере его нет; круг можно убрать. -->
 		{@render fileRow(false)}
 		<Hint>Круг замер {at(frozenAt)}.</Hint>
 		<Hint class="mt-10">
@@ -260,7 +260,7 @@
 		</DangerZone>
 		{@render reviveLink()}
 	{:else if view === 'gone' && archive}
-		<!-- 6.41: срок вышел (или файл стёр администратор), круг стоит замершим. -->
+		<!-- 6.30: срок вышел (или файл стёр администратор), круг стоит замершим. -->
 		<StatusCard
 			title="Файла на сервере нет"
 			text={archive.removed_reason === 'admin'
@@ -274,7 +274,7 @@
 		{@render removeLocked()}
 		{@render reviveLink()}
 	{:else}
-		<!-- 6.29 / 6.32 и, когда готовый файл положить некуда, 6.43. -->
+		<!-- 6.24 / 6.25 и, когда готовый файл положить некуда, 6.31. -->
 		<Label>Что уйдёт в файл</Label>
 		<SettingsRow
 			title={`Весь журнал «${circle.name}» и ${plural(info.members, WORD.member)}`}

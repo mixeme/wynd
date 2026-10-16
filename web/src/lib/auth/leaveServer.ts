@@ -2,7 +2,7 @@ import { apiJson, ApiError } from '$lib/api/client';
 import { WORD, plural, pluralForm } from '$lib/format/plural';
 
 /**
- * Уход с сервера насовсем (кадры 7.29–7.33, план 46, A3). Сервер выбирают в
+ * Уход с сервера насовсем (кадры 7.13–7.17, план 46, A3). Сервер выбирают в
  * «Серверах» — до экрана ухода это живёт во вкладке, как у смены почты.
  */
 export interface PendingLeave {
@@ -68,19 +68,19 @@ export function leaveErrorHint(err: unknown): string {
 
 const OWNED_WORDS = ['', 'одного', 'двух', 'трёх', 'четырёх'];
 
-/** «Вы владелец двух кругов» (7.30): «владелец» правит родительным падежом. */
+/** «Вы владелец двух кругов» (7.15): «владелец» правит родительным падежом. */
 export function ownedCirclesLine(n: number): string {
 	if (n === 1) return 'Вы владелец круга.';
 	return `Вы владелец ${OWNED_WORDS[n] ?? n} ${pluralForm(n, WORD.circleGenitive)}.`;
 }
 
-/** Подпись круга в списке 7.30: куда ведёт строка. */
+/** Подпись круга в списке 7.15: куда ведёт строка. */
 export function ownedCircleSubtitle(c: OwnedCircle): string {
 	if (c.members <= 1) return 'кроме вас никого · удалить круг';
 	return `${plural(c.members, WORD.member)} · передать владение`;
 }
 
-/** Окно подтверждения (7.31, 7.32): что будет, сказано до кнопки. */
+/** Окно подтверждения (7.16, 7.17): что будет, сказано до кнопки. */
 export function leaveConfirmText(circles: number, eraseNames: boolean): string {
 	if (!eraseNames) {
 		return (

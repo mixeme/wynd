@@ -24,7 +24,7 @@
 		session: SessionRecord;
 		host: string;
 		circles: number;
-		/** Значок «GDPR» у имени сервера (1.10). */
+		/** Значок «GDPR» у имени сервера (1.2). */
 		gdpr: boolean;
 	}
 
@@ -122,7 +122,7 @@
 				chevron={false}
 			/>
 			<SettingsRow title="Сменить почту" onclick={() => changeEmail(row)} />
-			<!-- 7.15: круг приезжает на тот сервер, под которым стоит строка. -->
+			<!-- 7.18: круг приезжает на тот сервер, под которым стоит строка. -->
 			<SettingsRow
 				title="Принять круг"
 				onclick={() => goto(`/settings/servers/accept?origin=${encodeURIComponent(row.session.origin)}`)}
@@ -133,7 +133,7 @@
 				chevron={false}
 				onclick={() => void logout(row.session.origin)}
 			/>
-			<!-- Уходят с одного сервера: строка под каждым (7.33). -->
+			<!-- Уходят с одного сервера: строка под каждым (7.13). -->
 			<SettingsRow title="Уйти с сервера насовсем" onclick={() => leave(row)} />
 		{/each}
 	{/if}

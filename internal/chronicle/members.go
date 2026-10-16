@@ -22,7 +22,7 @@ type MemberRow struct {
 	CanWrite     bool             `json:"can_write"`
 	AvatarBlobID string           `json:"avatar_blob_id,omitempty"`
 	// NotJoined — учётка приехала с кругом (оживление, перенос) и на этом
-	// сервере ещё не входила: «Ещё не вошли» (6.35).
+	// сервере ещё не входила: «Ещё не вошли» (6.6).
 	NotJoined bool `json:"not_joined,omitempty"`
 	// LeftLine — строка, которая встанет в хронологию, если человек выйдет или
 	// его исключат («Боб покинул круг»): её называет окно «Исключить».

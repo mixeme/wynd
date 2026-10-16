@@ -9,7 +9,7 @@ import (
 
 // Перенос круга по ссылке (план 53), новый сервер: кто вставил ссылку (он и
 // станет владельцем), карточка круга с прежнего сервера, ход и итог. Ссылку
-// сервер помнит вместе с просьбой о месте (2.30).
+// сервер помнит вместе с просьбой о месте (7.22).
 
 // Состояния переноса на новом сервере.
 const (
@@ -49,7 +49,7 @@ type IncomingMove struct {
 	UpdatedAt   time.Time
 }
 
-// IncomingCard — карточка круга с прежнего сервера (2.18).
+// IncomingCard — карточка круга с прежнего сервера (7.20).
 type IncomingCard struct {
 	SourceURL   string
 	SourceName  string
@@ -89,8 +89,8 @@ func (m *IncomingMove) Active() bool {
 	return m.Status == IncomingPulling || m.Status == IncomingReviving
 }
 
-// PutIncomingDraft — вставили ссылку (2.18): прежний черновик этой учётки
-// заменяется новым (2.33: «новую ссылку вставьте в это же поле»). Пока
+// PutIncomingDraft — вставили ссылку (7.20): прежний черновик этой учётки
+// заменяется новым (7.24: «новую ссылку вставьте в это же поле»). Пока
 // сервер забирает другой круг этой учётки — ErrMoveBusy.
 func (c *Chronicle) PutIncomingDraft(ctx context.Context, accountID, link string, card IncomingCard, now time.Time) (*IncomingMove, error) {
 	id, err := newID()
@@ -156,7 +156,7 @@ func (c *Chronicle) LatestIncoming(ctx context.Context, accountID string) (*Inco
 	return m, err
 }
 
-// StartIncoming — «Поднять круг здесь» (2.18): черновик или неудавшийся
+// StartIncoming — «Поднять круг здесь» (7.20): черновик или неудавшийся
 // перенос — в работу. false — он уже идёт или закончен.
 func (c *Chronicle) StartIncoming(ctx context.Context, id string, sendInvites bool, now time.Time) (bool, error) {
 	res, err := c.db.ExecContext(ctx, `
@@ -190,7 +190,7 @@ func (c *Chronicle) SetIncomingStatus(ctx context.Context, id, status, errCode s
 	return err
 }
 
-// SetIncomingRevived — круг поднят (2.19, 2.32): итог записан сразу, до
+// SetIncomingRevived — круг поднят (7.25, 7.26): итог записан сразу, до
 // «принято» прежнему серверу, — перезапуск между ними не поднимет круг второй
 // раз.
 func (c *Chronicle) SetIncomingRevived(ctx context.Context, id, circleID string, posts, names int, bytes int64, verified bool, invited, notJoined int) error {

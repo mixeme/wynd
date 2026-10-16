@@ -93,7 +93,7 @@ describe('present', () => {
 			comment: comments[2]
 		});
 		expect(commentPreview([])).toEqual({ more: 0 });
-		// Реплика без слов (4.30): имя, а вложение превью покажет само.
+		// Реплика без слов (4.22): имя, а вложение превью покажет само.
 		const voice: Comment = {
 			id: 'c4', post_id: 'p', author_name: 'Кот', body: '', identity_id: 'k', created_at: at,
 			media: [{ blob_id: 'v', kind: 'attachment', is_cover: false, voice: true, audio_duration_ms: 48000 }]

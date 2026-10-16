@@ -7,7 +7,7 @@ export interface CircleMove {
 	status: 'waiting' | 'pulling' | 'accepted';
 	started_at: string;
 	expires_at: string;
-	/** Ссылка жива: по ней ещё можно забрать круг (72 часа, 6.25). */
+	/** Ссылка жива: по ней ещё можно забрать круг (72 часа, 6.34). */
 	link_alive: boolean;
 	/** Сама ссылка — только владельцу и пока она жива. */
 	link?: string;
@@ -24,7 +24,7 @@ export interface CircleMove {
 }
 
 export interface CircleMoveState {
-	/** Что уедет (6.24). */
+	/** Что уедет (6.33). */
 	estimate: { posts: number; members: number; bytes: number };
 	move: CircleMove | null;
 	frozen_at?: string;
@@ -34,20 +34,20 @@ export function fetchCircleMove(origin: string, circleId: string): Promise<Circl
 	return apiJson<CircleMoveState>(origin, `/circles/${circleId}/move`);
 }
 
-/** «Остановить круг и получить ссылку» (6.24). */
+/** «Остановить круг и получить ссылку» (6.33). */
 export async function startCircleMove(origin: string, circleId: string): Promise<CircleMove> {
 	const move = await apiJson<CircleMove>(origin, `/circles/${circleId}/move`, { method: 'POST' });
 	await invalidateSnapshots(origin, { kind: 'circles' });
 	return move;
 }
 
-/** «Отменить перенос» (6.25, 6.26): ссылка гаснет, круг оживает. */
+/** «Отменить перенос» (6.34, 6.35): ссылка гаснет, круг оживает. */
 export async function cancelCircleMove(origin: string, circleId: string): Promise<void> {
 	await apiJson(origin, `/circles/${circleId}/move/cancel`, { method: 'POST' });
 	await invalidateSnapshots(origin, { kind: 'circles' });
 }
 
-/** «Завершить перенос» (6.26): круг удаляется здесь, участникам — письмо. */
+/** «Завершить перенос» (6.35): круг удаляется здесь, участникам — письмо. */
 export async function completeCircleMove(origin: string, circleId: string): Promise<void> {
 	await apiJson(origin, `/circles/${circleId}/move/complete`, { method: 'POST' });
 	await invalidateSnapshots(origin, { kind: 'circles' });
@@ -63,7 +63,7 @@ export function serverHost(url: string | undefined): string {
 	}
 }
 
-/** «Войти в круг» на встрече 1.9: больше не показывать. */
+/** «Войти в круг» на встрече 1.10: больше не показывать. */
 export async function seeArrival(origin: string, circleId: string): Promise<void> {
 	await apiJson(origin, `/circles/${circleId}/arrival/seen`, { method: 'POST' });
 }

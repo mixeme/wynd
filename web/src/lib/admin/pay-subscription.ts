@@ -35,7 +35,7 @@ export function subscriptionAdminSubtitle(iso: string | null | undefined): strin
 	return `подписка истекла ${formatPayDate(iso)}`;
 }
 
-/** One-line subscription on the people card (9.4). */
+/** One-line subscription on the people card (9.5). */
 export function subscriptionPeopleLine(iso: string | null | undefined): string {
 	if (!iso) return 'не было';
 	if (isSubscriptionUnlimited(iso)) return 'бессрочно';

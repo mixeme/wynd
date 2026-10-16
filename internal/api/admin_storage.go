@@ -67,7 +67,7 @@ func (s *Server) handleAdminStorage(w http.ResponseWriter, r *http.Request) {
 		q := defaultQuota.Int64
 		defaultPtr = &q
 	}
-	// Готовые архивы (9.12, 9.5): сколько места занимают и сколько их.
+	// Готовые архивы (9.9, 9.7): сколько места занимают и сколько их.
 	files, err := s.Chronicle.FullArchivesWithFiles(r.Context(), "")
 	if err != nil {
 		writeError(w, err)
@@ -99,7 +99,7 @@ type archiveRetentionBody struct {
 	Hours int `json:"hours"`
 }
 
-// handleAdminSetArchiveRetention — «Хранить готовый архив» (9.12): сколько
+// handleAdminSetArchiveRetention — «Хранить готовый архив» (9.9): сколько
 // часов не скачанный архив ждёт после сборки. Новый срок — для новых архивов.
 func (s *Server) handleAdminSetArchiveRetention(w http.ResponseWriter, r *http.Request) {
 	body, ok := bindJSON[archiveRetentionBody](w, r)
@@ -113,9 +113,9 @@ func (s *Server) handleAdminSetArchiveRetention(w http.ResponseWriter, r *http.R
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// handleAdminClearArchives — «Удалить все» (9.12): аварийная очистка готовых
+// handleAdminClearArchives — «Удалить все» (9.9): аварийная очистка готовых
 // и собираемых архивов. Круги и записи не трогаются: владелец увидит, что
-// файла нет (6.41), и соберёт архив снова.
+// файла нет (6.30), и соберёт архив снова.
 func (s *Server) handleAdminClearArchives(w http.ResponseWriter, r *http.Request) {
 	files, err := s.Chronicle.FullArchivesWithFiles(r.Context(), "")
 	if err != nil {
@@ -381,7 +381,7 @@ func (s *Server) sendQuotaAnswer(req blob.QuotaRequest, before sql.NullInt64, ap
 	}
 	link := strings.TrimRight(s.PublicURL(), "/") + "/circles/" + req.CircleID + "/quota"
 	if req.CircleID == "" {
-		// Просьба для круга, которого пока нет (2.24): оживляют его из «Серверов».
+		// Просьба для круга, которого пока нет (7.31): оживляют его из «Серверов».
 		link = strings.TrimRight(s.PublicURL(), "/") + "/settings/servers"
 	}
 	s.notifyWG.Add(1)

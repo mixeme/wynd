@@ -23,7 +23,7 @@ const (
 )
 
 // DefaultArchiveRetentionHours — сколько готовый архив ждёт скачивания, если
-// администратор не задал иного (9.12; решение владельца 2026-10-13).
+// администратор не задал иного (9.9; решение владельца 2026-10-13).
 const DefaultArchiveRetentionHours = 72
 
 // ErrArchiveBusy — у круга уже собирается или ждёт скачивания архив.
@@ -107,8 +107,8 @@ func (c *Chronicle) GetFullArchive(ctx context.Context, id string) (*FullArchive
 
 // StartFullArchive записывает запрос: архив собирается, оценка его длины уже
 // занимает место на сервере. Второй, пока первый собирается или ждёт
-// скачивания, — ErrArchiveBusy. С удалением круга (6.32) круг замирает той же
-// транзакцией, и в ленте встаёт «Кот остановил круг» (6.36); froze — круг
+// скачивания, — ErrArchiveBusy. С удалением круга (6.25) круг замирает той же
+// транзакцией, и в ленте встаёт «Кот остановил круг» (3.16); froze — круг
 // замер сейчас, а не раньше: тогда участникам уходит письмо.
 func (c *Chronicle) StartFullArchive(ctx context.Context, circleID, accountID string, deleteCircle, encrypted bool, estimate int64, now time.Time) (a *FullArchive, froze bool, err error) {
 	id, err := newID()
@@ -187,7 +187,7 @@ func (c *Chronicle) CircleFrozenAt(ctx context.Context, circleID string) (*time.
 	return optTime(v), nil
 }
 
-// UnfreezeCircle — «Отменить — оживить круг» (6.34, 6.30, 6.41): круг снова
+// UnfreezeCircle — «Отменить — оживить круг» (6.28, 6.29, 6.30): круг снова
 // пишет, в ленте — «Кот оживил круг».
 func (c *Chronicle) UnfreezeCircle(ctx context.Context, circleID, accountID string, now time.Time) error {
 	now = utcOrNow(now)
@@ -224,7 +224,7 @@ func (c *Chronicle) UnfreezeCircle(ctx context.Context, circleID, accountID stri
 	return tx.Commit()
 }
 
-// SetFullArchiveSnapshot — момент, на который снят круг (6.40).
+// SetFullArchiveSnapshot — момент, на который снят круг (6.26).
 func (c *Chronicle) SetFullArchiveSnapshot(ctx context.Context, id string, at time.Time) error {
 	_, err := c.db.ExecContext(ctx, `UPDATE circle_archives SET snapshot_at = ? WHERE id = ?`, formatTime(at), id)
 	return err
@@ -354,7 +354,7 @@ func (c *Chronicle) AccountEmail(ctx context.Context, accountID string) (string,
 	return email, err
 }
 
-// ArchiveRetention — срок хранения готового архива (9.12).
+// ArchiveRetention — срок хранения готового архива (9.9).
 func (c *Chronicle) ArchiveRetention(ctx context.Context) (time.Duration, error) {
 	var hours int
 	if err := c.db.QueryRowContext(ctx, `SELECT archive_retention_hours FROM instance_settings WHERE id = 1`).Scan(&hours); err != nil {
@@ -369,7 +369,7 @@ func (c *Chronicle) ArchiveRetention(ctx context.Context) (time.Duration, error)
 	return time.Duration(hours) * time.Hour, nil
 }
 
-// SetArchiveRetention — «Хранить готовый архив» (9.12): от часа до года.
+// SetArchiveRetention — «Хранить готовый архив» (9.9): от часа до года.
 func (c *Chronicle) SetArchiveRetention(ctx context.Context, hours int) error {
 	if hours < 1 || hours > 24*365 {
 		return ErrInvalid
@@ -378,7 +378,7 @@ func (c *Chronicle) SetArchiveRetention(ctx context.Context, hours int) error {
 	return err
 }
 
-// CircleArchiveEstimate — сколько примерно займёт полный архив (6.29): файлы
+// CircleArchiveEstimate — сколько примерно займёт полный архив (6.24): файлы
 // круга и его текст. Точную длину даёт сборка; этой оценки хватает для
 // «8,4 ГБ» на экране и проверки, есть ли на сервере место.
 func (c *Chronicle) CircleArchiveEstimate(ctx context.Context, circleID string) (bytes int64, posts, members int, err error) {

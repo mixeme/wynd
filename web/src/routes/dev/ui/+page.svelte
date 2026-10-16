@@ -248,7 +248,7 @@
 				</CircleLayout>
 			</figure>
 			<figure>
-				<figcaption>FormLayout · #e1-3 (вступление)</figcaption>
+				<figcaption>FormLayout · #e1-4 (вступление)</figcaption>
 				<FormLayout app circleTitle="Семья" {color} height="220px">
 					<div class="h1s" style="margin-top:22px;line-height:1.25">
 						Как вас зовут<br />в этом круге?
@@ -256,7 +256,7 @@
 				</FormLayout>
 			</figure>
 			<figure>
-				<figcaption>FormLayout · #e2-4</figcaption>
+				<figcaption>FormLayout · #e2-14</figcaption>
 				<FormLayout title="Новый круг" {color} height="400px">
 					<Label>Сервер</Label>
 					<ServerRow
@@ -273,7 +273,7 @@
 				</FormLayout>
 			</figure>
 			<figure>
-				<figcaption>OverlayLayout · #e4-12</figcaption>
+				<figcaption>OverlayLayout · #e4-28</figcaption>
 				<div class="overlay-wrap">
 					<CircleLayout title="Семья" identity="Мышь" avatar="М" commentBar={false} height="360px">
 						<PostCard>
@@ -295,7 +295,7 @@
 				</div>
 			</figure>
 			<figure>
-				<figcaption>AdminWideLayout · #e9-5</figcaption>
+				<figcaption>AdminWideLayout · #e9-7</figcaption>
 				<AdminWideLayout active="Хранилище" server="Дом Ани" height="320px">
 					<AdminSection title="Хранилище">
 						<StackBar
@@ -324,7 +324,7 @@
 				</div>
 			</div>
 			<div class="card">
-				<h3>Logo · #e1-5</h3>
+				<h3>Logo · #e1-6</h3>
 				<div class="demo-inline" style="padding:20px">
 					<Logo />
 				</div>
@@ -358,14 +358,14 @@
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>BackBar · #e2-4</figcaption>
+				<figcaption>BackBar · #e2-14</figcaption>
 				<PhoneFrame color="ochre" height="100px">
 					<StatusBar />
 					<BackBar title="Новый круг" />
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>AdminBar · #e9-5</figcaption>
+				<figcaption>AdminBar · #e9-7</figcaption>
 				<PhoneFrame shell wide height="80px">
 					<AdminBar active="Хранилище" server="Дом Ани · home.example.org" />
 				</PhoneFrame>
@@ -389,7 +389,7 @@
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>#e1-2 — CodeBox</figcaption>
+				<figcaption>#e1-3 — CodeBox</figcaption>
 				<PhoneFrame shell height="280px">
 					<StatusBar />
 					<ScreenTitle>Код из письма</ScreenTitle>
@@ -398,7 +398,7 @@
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>#e2-4 — Chip, ColorSwatches</figcaption>
+				<figcaption>#e2-14 — Chip, ColorSwatches</figcaption>
 				<PhoneFrame color="ochre" height="300px">
 					<StatusBar />
 					<BackBar title="Новый круг" />
@@ -423,7 +423,7 @@
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>#e6-10 — VolumeChart</figcaption>
+				<figcaption>#e6-17 — VolumeChart</figcaption>
 				<PhoneFrame color="terracotta" height="360px">
 					<StatusBar />
 					<CircleBar title="Архив" tabs={false} />
@@ -437,7 +437,7 @@
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>#e6-12 — DangerNote</figcaption>
+				<figcaption>#e6-21 — DangerNote</figcaption>
 				<PhoneFrame color="terracotta" height="260px">
 					<StatusBar />
 					<CircleBar title="Сроки" tabs={false} />
@@ -451,11 +451,11 @@
 				<TextArea value="Что нового?" active />
 			</div>
 			<div class="card">
-				<h3>Switch · #e6-9</h3>
+				<h3>Switch · #e6-14</h3>
 				<Switch bind:checked={swOn} />
 			</div>
 			<div class="card">
-				<h3>SearchField · #e2-3</h3>
+				<h3>SearchField · #e2-6</h3>
 				<SearchField placeholder="Поиск по кругам" />
 			</div>
 			<div class="card">
@@ -467,7 +467,7 @@
 				<CodeBox bind:value={demoCode} />
 			</div>
 			<div class="card">
-				<h3>PeopleStrip · #e1-3</h3>
+				<h3>PeopleStrip · #e1-4</h3>
 				<PeopleStrip
 					people={[
 						{ name: 'Аня', initial: 'А', color: '#58673A' },
@@ -483,7 +483,7 @@
 				</MentionPicker>
 			</div>
 			<div class="card">
-				<h3>AddPhotoButton · #e4-2, #e1-3</h3>
+				<h3>AddPhotoButton · #e4-2, #e1-4</h3>
 				<AddPhotoButton onclick={() => {}} />
 				<AddPhotoButton
 					onclick={() => {}}
@@ -491,7 +491,7 @@
 				/>
 			</div>
 			<div class="card">
-				<h3>EditWindowPicker · #e2-4, #e6-2</h3>
+				<h3>EditWindowPicker · #e2-14, #e6-2</h3>
 				<EditWindowPicker
 					value={demoEditWindow}
 					bind:customHours={demoCustomHours}
@@ -499,11 +499,11 @@
 				/>
 			</div>
 			<div class="card">
-				<h3>IdentityForm · #e1-3</h3>
+				<h3>IdentityForm · #e1-4</h3>
 				<IdentityForm color="ochre" onerror={() => {}} />
 			</div>
 			<div class="card">
-				<h3>MentionText · #e3-1, #e4-5</h3>
+				<h3>MentionText · #e3-1, #e4-17</h3>
 				<MentionText body={'Были на даче с @Аня.\n\nЗавтра — снова.'} />
 			</div>
 			<div class="card">
@@ -554,7 +554,7 @@
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>#e4-5 — CommentRow</figcaption>
+				<figcaption>#e4-17 — CommentRow</figcaption>
 				<PhoneFrame color="terracotta" height="320px">
 					<StatusBar />
 					<CircleBar title="Семья" identity="Мышь" avatar="М" tabs={false} />
@@ -573,7 +573,7 @@
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>#e4-7 — CommentRow · правка</figcaption>
+				<figcaption>#e4-19 — CommentRow · правка</figcaption>
 				<PhoneFrame color="terracotta" height="360px">
 					<StatusBar />
 					<CircleBar title="Семья" identity="Мышь" avatar="М" tabs={false} />
@@ -592,7 +592,7 @@
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>#e4-7 — CommentRow · очередь `.q`</figcaption>
+				<figcaption>#e4-19 — CommentRow · очередь `.q`</figcaption>
 				<PhoneFrame color="terracotta" height="280px">
 					<StatusBar />
 					<CircleBar title="Семья" identity="Мышь" avatar="М" tabs={false} />
@@ -609,7 +609,7 @@
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>#e4-10 — ReactionBar picker</figcaption>
+				<figcaption>#e4-26 — ReactionBar picker</figcaption>
 				<PhoneFrame color="terracotta" height="280px">
 					<StatusBar />
 					<CircleBar title="Семья" identity="Мышь" avatar="М" tabs={false} />
@@ -664,7 +664,7 @@
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>#e2-9 — SearchResultRow</figcaption>
+				<figcaption>#e2-19 — SearchResultRow</figcaption>
 				<PhoneFrame shell height="280px">
 					<StatusBar />
 					<BackBar compact search="яблони" />
@@ -689,7 +689,7 @@
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>#e6-3 — MemberRow</figcaption>
+				<figcaption>#e6-5 — MemberRow</figcaption>
 				<PhoneFrame color="terracotta" height="240px">
 					<StatusBar />
 					<CircleBar title="Участники" tabs={false} />
@@ -699,7 +699,7 @@
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>#e6-9 — SettingsRow + Switch</figcaption>
+				<figcaption>#e6-14 — SettingsRow + Switch</figcaption>
 				<PhoneFrame color="terracotta" height="360px">
 					<StatusBar />
 					<CircleBar title="Уведомления круга" tabs={false} />
@@ -722,7 +722,7 @@
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>#e1-6 — ServerRow</figcaption>
+				<figcaption>#e1-7 — ServerRow</figcaption>
 				<PhoneFrame height="200px">
 					<StatusBar />
 					<ServerRow name="Дом Ани" subtitle="home.example.org" variant="select" card />
@@ -765,7 +765,7 @@
 				</PhoneFrame>
 			</div>
 			<div class="card">
-				<h3>ArchiveBanner · #e6-15</h3>
+				<h3>ArchiveBanner · #e3-13</h3>
 				<PhoneFrame color="terracotta" height="200px">
 					<ArchiveBanner title="Архив готов">
 						Скачайте до 20 сентября — потом удалится с сервера.
@@ -810,11 +810,11 @@
 				</PhoneFrame>
 			</div>
 			<div class="card">
-				<h3>FoldHeader · #e4-5</h3>
+				<h3>FoldHeader · #e4-17</h3>
 				<FoldHeader label="Комментарии" count={11} />
 			</div>
 			<div class="card">
-				<h3>GroupFoldCard · #e2-14</h3>
+				<h3>GroupFoldCard · #e2-13</h3>
 				<GroupFoldCard
 					label="Семья"
 					count={3}
@@ -828,7 +828,7 @@
 				/>
 			</div>
 			<div class="card">
-				<h3>AttachmentRow · #e4-13, #e4-15</h3>
+				<h3>AttachmentRow · #e4-29, #e4-6</h3>
 				<AttachmentRow filename="scan.pdf" size="1,2 МБ" />
 				<AttachmentRow
 					audio
@@ -902,7 +902,7 @@
 				</ShellLayout>
 			</figure>
 			<figure>
-				<figcaption>#e2-11 — Fab menu</figcaption>
+				<figcaption>#e2-10 — Fab menu</figcaption>
 				<ShellLayout
 					height="320px"
 					onsearch={() => {}}
@@ -943,7 +943,7 @@
 				</CircleLayout>
 			</figure>
 			<figure>
-				<figcaption>#e4-14 — Lightbox</figcaption>
+				<figcaption>#e4-30 — Lightbox</figcaption>
 				<PhoneFrame height="360px">
 					<Lightbox
 						counter="3 из 12"
@@ -961,7 +961,7 @@
 				</PhoneFrame>
 			</figure>
 			<figure>
-				<figcaption>#e7-4 — PushBanner</figcaption>
+				<figcaption>#e7-35 — PushBanner</figcaption>
 				<PhoneFrame height="200px">
 					<PushBanner
 						initial="С"
@@ -992,11 +992,11 @@
 		<h2>Admin</h2>
 		<div class="row">
 			<div class="card">
-				<h3>AdminNav · #e9-5</h3>
+				<h3>AdminNav · #e9-7</h3>
 				<AdminNav active="Проверка" />
 			</div>
 			<div class="card">
-				<h3>StatusIcon · #e9-8</h3>
+				<h3>StatusIcon · #e9-11</h3>
 				<div class="status-icons">
 					<StatusIcon status="ok" />
 					<StatusIcon status="warn" />
@@ -1004,7 +1004,7 @@
 				</div>
 			</div>
 			<div class="card wide">
-				<h3>CheckRow · #e9-8</h3>
+				<h3>CheckRow · #e9-11</h3>
 				<CheckRow
 					status="ok"
 					name="HTTPS снаружи"
@@ -1019,7 +1019,7 @@
 		</div>
 		<div class="phones" style="margin-top:20px">
 			<figure>
-				<figcaption>#e9-5 — DataTable, QuotaRequestRow</figcaption>
+				<figcaption>#e9-7 — DataTable, QuotaRequestRow</figcaption>
 				<AdminWideLayout active="Хранилище" server="Дом Ани" height="400px">
 					<AdminSection title="Хранилище">
 						<DataTable>
@@ -1062,7 +1062,7 @@
 				</AdminWideLayout>
 			</figure>
 			<figure>
-				<figcaption>#e9-9 — CodeBlock</figcaption>
+				<figcaption>#e9-12 — CodeBlock</figcaption>
 				<PhoneFrame shell wide height="200px">
 					<CodeBlock>
 						proxy_set_header X-Forwarded-For $remote_addr;<br />

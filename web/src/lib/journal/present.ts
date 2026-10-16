@@ -59,7 +59,7 @@ export function commentPreview(comments: Comment[] | undefined): {
 	first?: string;
 	createdAt?: string;
 	more: number;
-	/** Сама последняя реплика — её вложения превью показывает как в нити (4.30). */
+	/** Сама последняя реплика — её вложения превью показывает как в нити (4.22). */
 	comment?: Comment;
 } {
 	if (!comments?.length) return { more: 0 };
@@ -78,7 +78,7 @@ export function commentPreview(comments: Comment[] | undefined): {
 	};
 }
 
-/** Вложение комментария для показа (4.29): в нити, превью и очереди — один вид. */
+/** Вложение комментария для показа (4.21): в нити, превью и очереди — один вид. */
 export interface CommentMediaItem {
 	key: string;
 	kind: 'photo' | 'voice' | 'file';
@@ -165,7 +165,7 @@ export function tileBlobId(
 
 /** Картинка обложки дня: у ролика — его кадр, как в плитке. */
 export function dayCoverTileId(day: DaySummary | FeedDayCard | undefined): string | undefined {
-	// У открытки дня (3.15) запасной обложки нет: её никто не выбирал.
+	// У открытки дня (3.20) запасной обложки нет: её никто не выбирал.
 	const fallback = day && 'fallback_cover_blob_id' in day ? day.fallback_cover_blob_id : undefined;
 	const fileId = day?.cover_blob_id ?? fallback;
 	if (!fileId || !day?.cover_is_video) return fileId;
@@ -199,7 +199,7 @@ export function isAudioMedia(mime?: string, filename?: string): boolean {
 
 /**
  * Вложения записи по порядку, но звуки подряд — одной группой: несколько
- * звуков рисуются одной рамкой (4.18), одиночный — как на 4.15.
+ * звуков рисуются одной рамкой (4.7), одиночный — как на 4.6.
  */
 export type AttachmentBlock =
 	| { kind: 'audio'; items: MediaSummary[] }
@@ -264,7 +264,7 @@ export function audioTimeLabel(started: boolean, current: number, duration: numb
 	return `${now} · ${formatAudioClock(duration)}`;
 }
 
-/** Имя файла при скачивании из лайтбокса альбома (4.14). */
+/** Имя файла при скачивании из лайтбокса альбома (4.30). */
 export function albumDownloadFilename(media: MediaSummary, index: number): string {
 	const name = media.filename?.trim();
 	if (name) return name;
@@ -288,8 +288,8 @@ export function locationLabel(media: MediaSummary | undefined): string | undefin
 
 const shotDateFmt = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' });
 
-/** Строка под сеткой альбома (4.13): когда снято и что файлы сжаты. Размер
- *  каждого снимка — в его подписи на 4.14, а не одной цифрой настройки. */
+/** Строка под сеткой альбома (4.29): когда снято и что файлы сжаты. Размер
+ *  каждого снимка — в его подписи на 4.30, а не одной цифрой настройки. */
 export function albumCompressionHint(post: FeedPost): string {
 	const captured =
 		post.captured_at ?? post.media?.find((m) => m.captured_at)?.captured_at;
@@ -304,7 +304,7 @@ export interface MediaSize {
 	height: number;
 }
 
-/** Подпись лайтбокса: автор · время · место · размер снимка (макет 4.14). */
+/** Подпись лайтбокса: автор · время · место · размер снимка (макет 4.30). */
 export function lightboxCaption(
 	post: FeedPost,
 	media: MediaSummary | undefined,

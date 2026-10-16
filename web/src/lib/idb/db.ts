@@ -58,7 +58,7 @@ export interface QueueMediaMeta {
 	voice?: boolean;
 	audio_duration_ms?: number;
 	audio_peaks?: number[];
-	/** Кадр обложки для ленты (4.16). */
+	/** Кадр обложки для ленты (4.3). */
 	crop?: { x: number; y: number; w: number; h: number };
 }
 
@@ -74,7 +74,7 @@ export interface PostQueuePayload {
 export interface CommentQueuePayload {
 	post_id: string;
 	body: string;
-	/** Описание вложений по порядку файлов (4.28): вид и данные голосового. */
+	/** Описание вложений по порядку файлов (4.20): вид и данные голосового. */
 	media_meta?: QueueMediaMeta[];
 }
 

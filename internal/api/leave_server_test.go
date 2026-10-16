@@ -82,7 +82,7 @@ func setNameErasure(t *testing.T, srv *api.Server, allow bool) {
 	}
 }
 
-// Уход насовсем (7.29, 7.31): учётки нет, вход закрыт на всех устройствах,
+// Уход насовсем (7.14, 7.16): учётки нет, вход закрыт на всех устройствах,
 // а сказанное в круге осталось под прежним именем.
 func TestLeaveServerKeepsWhatWasSaid(t *testing.T) {
 	srv, caps, ch, _ := setupAPI(t)
@@ -115,7 +115,7 @@ func TestLeaveServerKeepsWhatWasSaid(t *testing.T) {
 	}
 }
 
-// Стирание имён (7.32, 9.13): без переключателя администратора — отказ; с ним
+// Стирание имён (7.17, 9.4): без переключателя администратора — отказ; с ним
 // имя, фото и пол уходят из всех копий, записи остаются без подписи.
 func TestLeaveServerErasesNamesWhenAllowed(t *testing.T) {
 	srv, caps, ch, _ := setupAPI(t)
@@ -167,7 +167,7 @@ func TestLeaveServerErasesNamesWhenAllowed(t *testing.T) {
 	}
 }
 
-// Владелец не уходит, пока у него есть круги (7.30): ничего не меняется.
+// Владелец не уходит, пока у него есть круги (7.15): ничего не меняется.
 func TestLeaveServerRefusesCircleOwner(t *testing.T) {
 	srv, caps, _, _ := setupAPI(t)
 	ownerTok, _, circleID, _ := circleWithMember(t, srv, caps)

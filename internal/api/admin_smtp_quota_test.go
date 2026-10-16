@@ -99,7 +99,7 @@ func TestAdminQuotaRequestApproveRejectAndInviteRevoke(t *testing.T) {
 		v, _ := out["quota_bytes"].(float64)
 		return v
 	}
-	// Последняя просьба на «Месте»: ждёт (6.44), отказана (6.45) или её нет.
+	// Последняя просьба на «Месте»: ждёт (6.19), отказана (6.20) или её нет.
 	lastRequest := func() string {
 		t.Helper()
 		rec := doGET(t, srv, "/api/v1/circles/"+circleID+"/quota", ownerTok)

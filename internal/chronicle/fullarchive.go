@@ -51,7 +51,7 @@ var fullArchiveQueries = []struct{ name, query string }{
 	{"days", `SELECT * FROM days WHERE circle_id = ?`},
 	{"day_titles", `SELECT * FROM day_titles WHERE circle_id = ?`},
 	{"day_covers", `SELECT * FROM day_covers WHERE circle_id = ?`},
-	// Почта — чтобы при оживлении позвать людей (6.29: «имена, фото и почта
+	// Почта — чтобы при оживлении позвать людей (6.24: «имена, фото и почта
 	// каждого»). Остального об учётной записи круг не знает.
 	{"accounts", `SELECT id, email FROM accounts WHERE id IN (
 		SELECT account_id FROM memberships WHERE circle_id = ?

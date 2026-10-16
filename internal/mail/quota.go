@@ -10,7 +10,7 @@ import (
 )
 
 // SendQuotaAnswer — письмо владельцу круга об ответе администратора на
-// просьбу о месте (решение владельца 2026-10-13; кадры 6.44, 6.45).
+// просьбу о месте (решение владельца 2026-10-13; кадры 6.19, 6.20).
 func (s *Service) SendQuotaAnswer(ctx context.Context, email, circle string, requested int64, before sql.NullInt64, approved bool, link string) error {
 	email = strings.TrimSpace(email)
 	if email == "" {
@@ -50,7 +50,7 @@ func formatBytes(n int64) string {
 }
 
 // SendFullArchiveReady — письмо владельцу: полный архив круга собран и ждёт
-// скачивания до срока (6.40, 6.33).
+// скачивания до срока (6.26, 6.27).
 func (s *Service) SendFullArchiveReady(ctx context.Context, email, circle string, expires time.Time, link string) error {
 	email = strings.TrimSpace(email)
 	if email == "" {
@@ -63,7 +63,7 @@ func (s *Service) SendFullArchiveReady(ctx context.Context, email, circle string
 }
 
 // SendCircleLeaving — единственное письмо участникам, когда круг замер под
-// полный архив с удалением (6.36): что происходит и что можно успеть.
+// полный архив с удалением (3.16): что происходит и что можно успеть.
 func (s *Service) SendCircleLeaving(ctx context.Context, email, circle, owner, link string) error {
 	email = strings.TrimSpace(email)
 	if email == "" {
@@ -79,7 +79,7 @@ func (s *Service) SendCircleLeaving(ctx context.Context, email, circle, owner, l
 }
 
 // SendCircleWaiting — письмо человеку, чей круг перенесли или оживили на этом
-// сервере (2.22, 6.35): войти той же почтой — и он в своём имени и записях.
+// сервере (7.29, 6.6): войти той же почтой — и он в своём имени и записях.
 func (s *Service) SendCircleWaiting(ctx context.Context, email, circle, owner, link string) error {
 	email = strings.TrimSpace(email)
 	if email == "" {
@@ -94,7 +94,7 @@ func (s *Service) SendCircleWaiting(ctx context.Context, email, circle, owner, l
 }
 
 // SendCircleMoving — письмо участникам, когда владелец начал перенос круга
-// на другой сервер (6.27): круг замер, адрес придёт отдельным письмом.
+// на другой сервер (3.14): круг замер, адрес придёт отдельным письмом.
 func (s *Service) SendCircleMoving(ctx context.Context, email, circle, owner, link string) error {
 	email = strings.TrimSpace(email)
 	if email == "" {
@@ -109,7 +109,7 @@ func (s *Service) SendCircleMoving(ctx context.Context, email, circle, owner, li
 	return s.notify(ctx, email, subject, body)
 }
 
-// SendCircleMoved — письмо участникам, когда владелец завершил перенос (6.26):
+// SendCircleMoved — письмо участникам, когда владелец завершил перенос (6.35):
 // круг здесь удалён, живёт он теперь на новом сервере.
 func (s *Service) SendCircleMoved(ctx context.Context, email, circle, newServer string) error {
 	email = strings.TrimSpace(email)

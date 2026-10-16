@@ -20,7 +20,7 @@ func feedComments(t *testing.T, e *testEnv, circleID, accountID string) []chroni
 	return out
 }
 
-// Комментарий несёт фото, голосовое и файл; слова необязательны (4.28).
+// Комментарий несёт фото, голосовое и файл; слова необязательны (4.20).
 func TestCommentWithMedia(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())

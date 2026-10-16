@@ -8,7 +8,7 @@
 	import { NEWS } from '$lib/news/notes';
 	import { markNewsSeen } from '$lib/news/seen';
 
-	// Что нового (7.11). Открывается с баннера на списке кругов и из
+	// Что нового (7.8). Открывается с баннера на списке кругов и из
 	// «Настроек»; откуда пришли — в адресе, «Назад» ведёт туда же.
 	const parent = $derived(
 		$page.url.searchParams.get('from') === 'circles' ? '/circles' : '/settings'

@@ -109,7 +109,7 @@ func (s *Server) handleAdminUnblockAccount(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// handleAdminSetAccountEmail меняет почту учётки без кода (кадр 9.11): письмо
+// handleAdminSetAccountEmail меняет почту учётки без кода (кадр 9.6): письмо
 // уходит на оба адреса, все сессии учётки закрыты.
 func (s *Server) handleAdminSetAccountEmail(w http.ResponseWriter, r *http.Request) {
 	body, ok := bindJSON[emailBody](w, r)

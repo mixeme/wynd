@@ -7,7 +7,7 @@
 	import { authorInitial, reactionIconName } from '$lib/journal/present';
 	import type { Reaction } from '$lib/journal/types';
 
-	// Лист «Кто отреагировал» (4.8; план 47, 2.4): одинаков в ленте и на
+	// Лист «Кто отреагировал» (4.23; план 47, 2.4): одинаков в ленте и на
 	// экране записи — был скопирован дословно.
 	let {
 		reactions,

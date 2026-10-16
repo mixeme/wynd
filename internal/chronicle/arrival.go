@@ -10,7 +10,7 @@ import (
 // Встреча приехавшего с кругом (план 53, 1.9): «Круг переехал» или «Круг
 // оживили из архива» вместо вступления, пока человек не вошёл в круг.
 
-// Arrival — что показать на 1.9.
+// Arrival — что показать на 1.10.
 type Arrival struct {
 	Kind string // moved | revived
 	// Returned — кто уже вернулся: входил на этот сервер (имена, до трёх);
@@ -80,7 +80,7 @@ func (c *Chronicle) CircleArrival(ctx context.Context, circleID, accountID strin
 	return &a, nil
 }
 
-// SeeArrival — «Войти в круг» на 1.9: встреча больше не показывается.
+// SeeArrival — «Войти в круг» на 1.10: встреча больше не показывается.
 func (c *Chronicle) SeeArrival(ctx context.Context, circleID, accountID string, now time.Time) error {
 	_, err := c.db.ExecContext(ctx, `
 		UPDATE circle_arrivals SET seen_at = ? WHERE circle_id = ? AND account_id = ? AND seen_at IS NULL
@@ -89,7 +89,7 @@ func (c *Chronicle) SeeArrival(ctx context.Context, circleID, accountID string, 
 }
 
 // CircleArrivedKind — как круг приехал на этот сервер: moved или revived;
-// пусто — не приезжал. Для «Ещё не вошли» (6.35): после переноса или после
+// пусто — не приезжал. Для «Ещё не вошли» (6.6): после переноса или после
 // оживления из архива.
 func (c *Chronicle) CircleArrivedKind(ctx context.Context, circleID string) (string, error) {
 	var kind string

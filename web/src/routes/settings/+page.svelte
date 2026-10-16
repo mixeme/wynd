@@ -28,7 +28,7 @@
 		result = await checkAppUpdate();
 		checking = false;
 	}
-	// Строка отвечает на месте своей подписью (кадры 7.23–7.27).
+	// Строка отвечает на месте своей подписью (кадры 7.1–7.5).
 	const updateNote = $derived(
 		checking
 			? 'проверяем…'

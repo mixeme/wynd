@@ -34,7 +34,7 @@
 	let loading = $state(true);
 	let copiedInviteId = $state('');
 	// Ссылка, открытая нажатием на строку: QR тому, кто рядом, ссылка —
-	// кому отправить (6.21). Действия ссылки живут здесь же.
+	// кому отправить (6.10). Действия ссылки живут здесь же.
 	let opened = $state<CircleInvite | null>(null);
 	let shared = $state(false);
 

@@ -165,11 +165,11 @@ func (s *Service) DeleteAccount(ctx context.Context, id string, now time.Time) e
 	return s.deleteAccount(ctx, id, false, now)
 }
 
-// LeaveServer — уход участника с сервера насовсем (кадры 7.29–7.32, план 46,
+// LeaveServer — уход участника с сервера насовсем (кадры 7.14–7.17, план 46,
 // A3). Учётка удаляется так же, как у администратора: из кругов ничего не
 // удаляется. eraseNames стирает имя, фото и пол во всех кругах сервера и
 // разрешён, только когда администратор включил «Разрешить стирать имена и
-// фото» (9.13); иначе ErrForbidden. Владелец кругов получает ErrConflict.
+// фото» (9.4); иначе ErrForbidden. Владелец кругов получает ErrConflict.
 func (s *Service) LeaveServer(ctx context.Context, id string, eraseNames bool, now time.Time) error {
 	if eraseNames {
 		allowed, err := s.NameErasureAllowed(ctx)
@@ -272,7 +272,7 @@ func (s *Service) deleteAccount(ctx context.Context, id string, eraseNames bool,
 		return fmt.Errorf("drop push subscriptions: %w", err)
 	}
 	// Настройки уведомлений и коды входа уходят вместе с учёткой: на экране
-	// ухода сказано, что исчезнут вход и уведомления (7.29).
+	// ухода сказано, что исчезнут вход и уведомления (7.14).
 	for _, q := range []string{
 		`DELETE FROM account_notify_prefs WHERE account_id = ?`,
 		`DELETE FROM circle_notify_prefs WHERE account_id = ?`,
@@ -297,14 +297,14 @@ func (s *Service) deleteAccount(ctx context.Context, id string, eraseNames bool,
 }
 
 // OwnedCircle — круг, который уходящий с сервера должен сначала передать или
-// удалить (кадр 7.30).
+// удалить (кадр 7.15).
 type OwnedCircle struct {
 	ID      string `json:"id"`
 	Name    string `json:"name"`
 	Members int    `json:"members"`
 }
 
-// LeavePreview — что показать на экране ухода с сервера (7.29, 7.30): в
+// LeavePreview — что показать на экране ухода с сервера (7.14, 7.15): в
 // скольких кругах человек и какими владеет.
 type LeavePreview struct {
 	Circles int           `json:"circles"`

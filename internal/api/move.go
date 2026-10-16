@@ -21,7 +21,7 @@ import (
 )
 
 // Перенос круга по ссылке (план 53, A1 этап 3), прежний сервер. Владелец
-// выдаёт ссылку (6.24, 6.25), круг замирает. Новый сервер приходит по ней сам:
+// выдаёт ссылку (6.33, 6.34), круг замирает. Новый сервер приходит по ней сам:
 // карточка круга, «беру», полный архив без шифрования с докачкой, «принято и
 // сверено». Через телефон владельца не идёт ни байта журнала.
 
@@ -39,7 +39,7 @@ func (s *Server) moveArchivePath(id string) string {
 // переписать руками.
 const moveTokenAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
 
-// newMoveToken — ключ ссылки: 16 знаков по четыре через дефис, как на 6.25
+// newMoveToken — ключ ссылки: 16 знаков по четыре через дефис, как на 6.34
 // («7Kq2-Zt9w-Xb41-Lm8c»), около 93 бит.
 func newMoveToken() (string, error) {
 	var b strings.Builder
@@ -91,8 +91,8 @@ func moveJSON(m *chronicle.CircleMove, now time.Time) map[string]any {
 	return out
 }
 
-// handleCircleMove — экран переноса у владельца: что уедет (6.24) и что с
-// переносом сейчас (6.25, 6.26).
+// handleCircleMove — экран переноса у владельца: что уедет (6.33) и что с
+// переносом сейчас (6.34, 6.35).
 func (s *Server) handleCircleMove(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	sess, ok := requireSession(w, r)
@@ -130,8 +130,8 @@ func (s *Server) handleCircleMove(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-// handleStartMove — «Остановить круг и получить ссылку» (6.24): круг замер,
-// ссылка — в ответе и на 6.25, пока жива.
+// handleStartMove — «Остановить круг и получить ссылку» (6.33): круг замер,
+// ссылка — в ответе и на 6.34, пока жива.
 func (s *Server) handleStartMove(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	sess, ok := requireSession(w, r)
@@ -163,7 +163,7 @@ func (s *Server) handleStartMove(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, out)
 }
 
-// sendCircleMovingEmails — письмо участникам: круг переезжает (6.27).
+// sendCircleMovingEmails — письмо участникам: круг переезжает (3.14).
 func (s *Server) sendCircleMovingEmails(circleID, ownerAccountID string) {
 	if s.Mail == nil {
 		return
@@ -197,7 +197,7 @@ func (s *Server) sendCircleMovingEmails(circleID, ownerAccountID string) {
 	}()
 }
 
-// handleCancelMove — «Отменить перенос» (6.25, 6.26): ключ гаснет, архив
+// handleCancelMove — «Отменить перенос» (6.34, 6.35): ключ гаснет, архив
 // стирается, круг оживает.
 func (s *Server) handleCancelMove(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
@@ -219,7 +219,7 @@ func (s *Server) handleCancelMove(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// handleCompleteMove — «Завершить перенос» (6.26): только когда новый сервер
+// handleCompleteMove — «Завершить перенос» (6.35): только когда новый сервер
 // принял круг и сверил. Круг удаляется, участникам — письмо с новым адресом.
 func (s *Server) handleCompleteMove(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
@@ -276,7 +276,7 @@ func (s *Server) handleCompleteMove(w http.ResponseWriter, r *http.Request) {
 }
 
 // sendCircleMovedEmails — уведомление «круг переехал» с адресом нового
-// сервера (6.26): его шлёт прежний сервер всегда, приглашение — новый.
+// сервера (6.35): его шлёт прежний сервер всегда, приглашение — новый.
 func (s *Server) sendCircleMovedEmails(circleName, destURL, ownerEmail string, emails []string) {
 	if s.Mail == nil {
 		return
@@ -352,7 +352,7 @@ func (s *Server) moveByRequest(w http.ResponseWriter, r *http.Request) (*chronic
 }
 
 // moveState — состояние для нового сервера: истёкшая ссылка — «expired»
-// (2.33), отменённый или законченный перенос — как есть.
+// (7.24), отменённый или законченный перенос — как есть.
 func moveState(m *chronicle.CircleMove, now time.Time) string {
 	if (m.Status == chronicle.MoveWaiting || m.Status == chronicle.MovePulling) && !now.Before(m.ExpiresAt) {
 		return "expired"
@@ -360,7 +360,7 @@ func moveState(m *chronicle.CircleMove, now time.Time) string {
 	return m.Status
 }
 
-// handleMoveCard — карточка круга для 2.18: что забирает новый сервер.
+// handleMoveCard — карточка круга для 7.20: что забирает новый сервер.
 func (s *Server) handleMoveCard(w http.ResponseWriter, r *http.Request) {
 	m, ok := s.moveByRequest(w, r)
 	if !ok {
@@ -563,7 +563,7 @@ func (s *Server) handleMoveArchive(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/zip")
 	rec := &rangeRecorder{ResponseWriter: w}
 	http.ServeContent(rec, r, "circle.wynd", fi.ModTime(), f)
-	// Ход для 6.25: докуда дошёл этот кусок.
+	// Ход для 6.34: докуда дошёл этот кусок.
 	var start, end, total int64
 	switch rec.status {
 	case http.StatusOK:
@@ -580,7 +580,7 @@ func (s *Server) handleMoveArchive(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleMoveAccepted — новый сервер поднял круг и сверил (6.26). Числа
+// handleMoveAccepted — новый сервер поднял круг и сверил (6.35). Числа
 // сверяются с архивом под перенос: не сошлись — 409, перенос не принят.
 func (s *Server) handleMoveAccepted(w http.ResponseWriter, r *http.Request) {
 	m, ok := s.moveByRequest(w, r)

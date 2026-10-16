@@ -1,7 +1,7 @@
 import { getMediaUrl } from '$lib/media/objectUrl';
 
-// Звук во вложении (4.15–4.20). Одна строка звучит за раз; уход с экрана
-// звук не обрывает — внизу любого экрана полоса плеера (4.20), она читает
+// Звук во вложении (4.6–4.9). Одна строка звучит за раз; уход с экрана
+// звук не обрывает — внизу любого экрана полоса плеера (4.9), она читает
 // отсюда, что играет и откуда.
 
 export interface AudioTrack {
@@ -9,7 +9,7 @@ export interface AudioTrack {
 	duration: number;
 	started: boolean;
 	playing: boolean;
-	/** Файл ещё скачивается (4.19): сколько получено из скольких; total 0 — неизвестно. */
+	/** Файл ещё скачивается (4.8): сколько получено из скольких; total 0 — неизвестно. */
 	loading?: { received: number; total: number };
 }
 
@@ -152,7 +152,7 @@ export async function toggleAudio(origin: string, blobId: string, meta?: AudioMe
 		return;
 	}
 
-	// Второе нажатие, пока файл скачивается, — отмена (4.19).
+	// Второе нажатие, пока файл скачивается, — отмена (4.8).
 	if (currentKey === key && !realSrc(el)) {
 		token += 1;
 		cancelLoad();
@@ -218,7 +218,7 @@ export async function toggleAudio(origin: string, blobId: string, meta?: AudioMe
 	}
 }
 
-/** Крестик полосы (4.20): звук смолкает, полоса уходит. */
+/** Крестик полосы (4.9): звук смолкает, полоса уходит. */
 export function stopAudio() {
 	if (!currentKey) return;
 	const key = currentKey;

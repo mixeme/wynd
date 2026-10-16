@@ -104,7 +104,7 @@
 	{:else if circleTitle}
 		<div class="cbar">
 			<div class="top" style="justify-content:center">
-				<!-- Вступающему (1.3) — к списку кругов; создателю (1.3 после 2.4) — к форме круга. -->
+				<!-- Вступающему (1.4) — к списку кругов; создателю (1.4 после 2.14) — к форме круга. -->
 				{#if onback}
 					<IconButton name="back" label="Назад" class="top-back" onclick={() => onback()} />
 				{/if}

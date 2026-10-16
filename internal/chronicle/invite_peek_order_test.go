@@ -6,7 +6,7 @@ import (
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 )
 
-// Инвариант (wynd.html, «Вступление»): ряд 1.3 — владелец, пригласивший,
+// Инвариант (wynd.html, «Вступление»): ряд 1.4 — владелец, пригласивший,
 // дальше самые активные за 90 дней, при равенстве раньше вступивший.
 // Сказанное старше 90 дней в счёт не идёт.
 func TestInvitePeekOrdersByRecentActivity(t *testing.T) {

@@ -94,7 +94,7 @@
 		const left = await loadSessions();
 		leaving = false;
 		confirmOpen = false;
-		// Серверов не осталось — первый запуск (7.31).
+		// Серверов не осталось — первый запуск (7.16).
 		await goto(left.length > 0 ? '/settings/servers' : '/', { replaceState: true });
 	}
 </script>
@@ -137,7 +137,7 @@
 						)}
 				/>
 			{/each}
-			<!-- Правило видно, как на 6.19: кнопка на месте, но не нажимается. -->
+			<!-- Правило видно, как на 6.39: кнопка на месте, но не нажимается. -->
 			<DangerZone class="mt-22" disabled items={[`Уйти с «${serverLabel}» насовсем`]} />
 		{:else}
 			<SectionLabel class="mt-18">Исчезнет</SectionLabel>

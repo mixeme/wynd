@@ -52,7 +52,7 @@ export interface LoadedArchive {
 	manifest: WyndManifest;
 	tables: Record<string, WyndTable>;
 	blobs: ArchiveBlob[];
-	/** Для 2.22: «340 записей · 22 участника · 8,4 ГБ», «Последняя запись — …». */
+	/** Для 7.29: «340 записей · 22 участника · 8,4 ГБ», «Последняя запись — …». */
 	posts: number;
 	members: number;
 	/** Сколько почт позовут письмом: все, кроме того, кто оживляет. */
@@ -144,7 +144,7 @@ async function uploadOne(
 	let offset = 0;
 	let failures = 0;
 	// Файл кусками из архива, без копии целиком в памяти; обрыв связи —
-	// узнать у сервера, сколько он принял, и продолжить оттуда (2.22).
+	// узнать у сервера, сколько он принял, и продолжить оттуда (7.29).
 	while (offset < blob.size) {
 		let sent = 0;
 		try {

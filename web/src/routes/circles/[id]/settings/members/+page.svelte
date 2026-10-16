@@ -43,7 +43,7 @@
 
 	const transferMode = $derived($page.url.searchParams.get('transfer') === '1');
 	const active = $derived(members.filter((m) => m.status === 'active' && !m.not_joined));
-	// Приехали с кругом и здесь ещё не входили (6.35); раздел исчезает сам.
+	// Приехали с кругом и здесь ещё не входили (6.6); раздел исчезает сам.
 	const waiting = $derived(members.filter((m) => m.status === 'active' && m.not_joined));
 	let inviteNote = $state('');
 

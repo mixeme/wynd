@@ -79,7 +79,7 @@
 	import { registerRefetch } from '$lib/sync/sync';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
-	// Места нет (C42): ни ответить, ни поправить, ни реакции (3.19).
+	// Места нет (C42): ни ответить, ни поправить, ни реакции (3.10).
 	const canSay = $derived(circle.canWrite && !circle.spaceFull);
 	const notice = $derived(spaceNotice(circle));
 	const postId = $derived($page.params.postId ?? '');
@@ -170,7 +170,7 @@
 		});
 	}
 
-	// Вложения комментария (4.28): выбранное ждёт отправки полоской над полем.
+	// Вложения комментария (4.20): выбранное ждёт отправки полоской над полем.
 	const MAX_COMMENT_MEDIA = 10;
 	interface PendingMedia {
 		key: string;
@@ -260,7 +260,7 @@
 		error = '';
 		try {
 			const compression = await fetchCompression(circle.origin).catch(() => undefined);
-			// Как голосовое записью (4.24): 64 кбит/с, перекодируем всегда.
+			// Как голосовое записью (4.13): 64 кбит/с, перекодируем всегда.
 			const { fallbackReason: _reason, ...audio } = await compressAudio(
 				take.file,
 				compression,
@@ -290,8 +290,8 @@
 		if (item.blobId) void downloadBlob(circle.origin, item.blobId, item.name || 'файл');
 	}
 
-	// Снимок комментария во весь экран (4.29): листаем в пределах реплики.
-	// Состояние — в адресе: «Назад» закрывает, а превью в ленте (4.30)
+	// Снимок комментария во весь экран (4.21): листаем в пределах реплики.
+	// Состояние — в адресе: «Назад» закрывает, а превью в ленте (4.22)
 	// открывает сразу нужный снимок.
 	const lbComment = $derived($page.url.searchParams.get('cphoto') ?? '');
 	const lbPhotos = $derived(
@@ -432,7 +432,7 @@
 		void showLinkedComment();
 	}
 
-	// Из «Откликов» (3.13) и из поиска найденное открывается у себя:
+	// Из «Откликов» (3.18) и из поиска найденное открывается у себя:
 	// комментарий — в обсуждении, файл или звук — строкой, запись — целиком.
 	// Экран встаёт на него и на миг подсвечивает. Один раз за вход.
 	let linkedShown = false;
@@ -518,7 +518,7 @@
 
 	async function saveCommentEdit(commentId: string, hasMedia: boolean) {
 		const text = editingCommentBody.trim();
-		// Слова можно стереть, только если у реплики остаются вложения (4.7).
+		// Слова можно стереть, только если у реплики остаются вложения (4.19).
 		if (!text && !hasMedia) return;
 		if (savingCommentEdit) return;
 		savingCommentEdit = true;
@@ -659,7 +659,7 @@
 	}
 </script>
 
-<!-- Полоса вместо строки ввода, когда места нет (3.19, 3.20) и когда запись
+<!-- Полоса вместо строки ввода, когда места нет (3.10, 3.11) и когда запись
      старше отсечки архивации (владелец, 2026-10-15). -->
 {#snippet spaceNote()}
 	{#if lockedNote}

@@ -4,7 +4,7 @@
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import type { EditWindowKey } from '$lib/circles/settings';
 
-	// Выбор окна правок (2.4, 6.1; план 47, 2.10): шесть чипов в два ряда и
+	// Выбор окна правок (2.14, 6.1; план 47, 2.10): шесть чипов в два ряда и
 	// «Своё…» — поле часов. Был скопирован в «Новый круг» и настройки круга.
 	let {
 		value,

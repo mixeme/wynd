@@ -87,9 +87,9 @@ type leaveServerBody struct {
 	EraseNames bool `json:"erase_names"`
 }
 
-// handleLeaveServer — уход с сервера насовсем (кадры 7.29–7.32): учётка
+// handleLeaveServer — уход с сервера насовсем (кадры 7.14–7.17): учётка
 // удаляется, из кругов ничего не удаляется. 409 — человек владеет кругами
-// (7.30); 403 — стирание имён на этом сервере не разрешено.
+// (7.15); 403 — стирание имён на этом сервере не разрешено.
 func (s *Server) handleLeaveServer(w http.ResponseWriter, r *http.Request) {
 	sess, ok := requireSession(w, r)
 	if !ok {
@@ -107,7 +107,7 @@ func (s *Server) handleLeaveServer(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleLeavePreview — круги на экране ухода: сколько их и какими человек
-// владеет (7.30).
+// владеет (7.15).
 func (s *Server) handleLeavePreview(w http.ResponseWriter, r *http.Request) {
 	sess, ok := requireSession(w, r)
 	if !ok {

@@ -80,7 +80,7 @@
 		active?: CircleTab;
 		commentBar?: boolean;
 		/**
-		 * Полоса на месте строки ввода, когда писать нельзя (3.19, 3.20): что
+		 * Полоса на месте строки ввода, когда писать нельзя (3.10, 3.11): что
 		 * случилось и кто может помочь. Стоит вместо строки, не рядом с ней.
 		 */
 		notice?: Snippet;
@@ -96,7 +96,7 @@
 		onCommentSend?: () => void;
 		onCommentCompose?: () => void;
 		onCommentPhotos?: (files: File[]) => void;
-		/** Вложения комментария (4.28): файл, выбранное и его снятие. */
+		/** Вложения комментария (4.20): файл, выбранное и его снятие. */
 		onCommentFiles?: (files: File[]) => void;
 		commentPhotoAccept?: string;
 		commentPending?: { key: string; url?: string; name: string }[];

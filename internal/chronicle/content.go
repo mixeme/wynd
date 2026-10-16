@@ -628,7 +628,7 @@ func (c *Chronicle) EditComment(ctx context.Context, circleID, accountID, commen
 	if comment.Deleted {
 		return ErrInvalid
 	}
-	// Слова можно стереть, только если у реплики остаются вложения (4.7).
+	// Слова можно стереть, только если у реплики остаются вложения (4.19).
 	if body == "" {
 		n, err := c.commentMediaCount(ctx, c.db, commentID)
 		if err != nil {

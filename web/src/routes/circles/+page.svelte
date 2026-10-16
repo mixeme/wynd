@@ -56,7 +56,7 @@
 	let sessions = $state<SessionRecord[]>([]);
 	let payStatus = $state<PayStatus | undefined>();
 	let loading = $state(true);
-	// «Что нового?» — пока свежую запись не открыли и не закрыли (7.10).
+	// «Что нового?» — пока свежую запись не открыли и не закрыли (7.7).
 	let newsUnseen = $state(hasUnseenNews());
 	// Отметка последнего длинного нажатия: клик в её хвосте — часть того же
 	// жеста (GUI-6). Прежний общий флаг гасили в каждом обработчике, и
@@ -116,7 +116,7 @@
 		return () => unsubs.forEach((u) => u());
 	});
 
-	// Молчит один сервер из нескольких — общей полосы нет, сказано у его кругов (7.9).
+	// Молчит один сервер из нескольких — общей полосы нет, сказано у его кругов (7.40).
 	function silentHost(circle: StreetCircle): string | undefined {
 		return isServerDown(circle.origin) ? displayHost(circle.origin) : undefined;
 	}
@@ -128,7 +128,7 @@
 	const empty = $derived(!loading && circles.length === 0);
 	const streetSession = $derived(sessions[0]);
 
-	// Рассказ пустой улочки (2.3): что такое Wynd и чем он не соцсеть.
+	// Рассказ пустой улочки (2.6): что такое Wynd и чем он не соцсеть.
 	const streetFacts = $derived([
 		{
 			title: 'Круги вместо ленты',
@@ -417,7 +417,7 @@
 		};
 	}
 
-	// «У меня есть приглашение» — экран, куда вставить присланную ссылку (2.16).
+	// «У меня есть приглашение» — экран, куда вставить присланную ссылку (2.7).
 	// Раньше вёл на «Без приглашения» (/join) — подпись и экран спорили.
 	function openInvite() {
 		goto('/invite');
@@ -469,7 +469,7 @@
 		{ label: 'Новый круг', onclick: openNewFromMenu },
 		{ label: 'Новая группа', onclick: startCreateGroup },
 		// Круги уже есть, а ссылка пришла в мессенджер и открылась в браузере —
-		// вставить её можно здесь, как с пустой улочки (2.16).
+		// вставить её можно здесь, как с пустой улочки (2.7).
 		{ label: 'Присоединиться', onclick: () => ((fabMenuOpen = false), goto('/invite')) }
 	]}
 >

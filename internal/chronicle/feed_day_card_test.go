@@ -22,7 +22,7 @@ func feedDayCards(t *testing.T, e *testEnv, circleID, accountID string) []chroni
 	return out
 }
 
-// Назвали день и тут же выбрали обложку — в ленте одна открытка (3.15).
+// Назвали день и тут же выбрали обложку — в ленте одна открытка (3.20).
 func TestFeedDayCardMergesTitleAndCover(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -108,7 +108,7 @@ func TestFeedDayCardMergesRunOfChanges(t *testing.T) {
 	}
 }
 
-// Сменили одно — в открытке оба (3.16); старая открытка остаётся прежней.
+// Сменили одно — в открытке оба (3.21); старая открытка остаётся прежней.
 func TestFeedDayCardShowsWholeDay(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
@@ -152,7 +152,7 @@ func TestFeedDayCardShowsWholeDay(t *testing.T) {
 		{"Чердак", "blob-p2"},
 		{"Плёнки", "blob-p2"},
 		{"Плёнки", "blob-p1"},
-		// Обложку ещё не выбрали — та же фотография, что у дня на «Днях» (3.17, C34).
+		// Обложку ещё не выбрали — та же фотография, что у дня на «Днях» (3.22, C34).
 		{"Плёнки", "blob-p1"},
 	}
 	for i, w := range want {
@@ -199,7 +199,7 @@ func TestFeedDayCardHidesTitleFromBeforeJoin(t *testing.T) {
 	}
 }
 
-// В дне нет ни одного снимка — открытка без него (3.17): места под снимок нет.
+// В дне нет ни одного снимка — открытка без него (3.22): места под снимок нет.
 func TestFeedDayCardWithoutPhotosHasNoCover(t *testing.T) {
 	e := newTestEnv(t)
 	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())

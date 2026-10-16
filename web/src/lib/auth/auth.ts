@@ -12,7 +12,7 @@ export interface InstanceInfo {
 	bootstrapped: boolean;
 	code_delivery?: 'log' | 'mail';
 	source_url?: string;
-	/** Значок «GDPR» у имени сервера (1.10) и выбор «Стереть моё имя и фото» (7.29). */
+	/** Значок «GDPR» у имени сервера (1.2) и выбор «Стереть моё имя и фото» (7.14). */
 	allow_name_erasure?: boolean;
 }
 

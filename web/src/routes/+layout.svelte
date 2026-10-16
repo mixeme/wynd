@@ -17,7 +17,7 @@
 	import { useAudioBar } from '$lib/media/audioBar.svelte';
 	import { pwaInfo } from 'virtual:pwa-info';
 
-	// Полоса плеера (4.20): звук играет и вне своего экрана (план 47, 5.4).
+	// Полоса плеера (4.9): звук играет и вне своего экрана (план 47, 5.4).
 	const audioBar = useAudioBar();
 
 	let { children } = $props();

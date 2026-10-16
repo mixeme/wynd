@@ -7,7 +7,7 @@
 	import { inviteTarget } from '$lib/auth/links';
 	import { page } from '$app/stores';
 
-	// 2.17: QR-код приглашения показывают на чужом экране (2.7, 9.2) — значит,
+	// 2.8: QR-код приглашения показывают на чужом экране (2.17, 9.2) — значит,
 	// считывать его логично здесь же, камерой.
 	let error = $state('');
 	let notice = $state('');

@@ -72,7 +72,7 @@
 		<Button class="mt-16" variant="colored" onclick={download}>
 			Скачать{cycle.personal_archive_bytes ? ` ${formatBytes(cycle.personal_archive_bytes)}` : ''}
 		</Button>
-		<!-- Архив идёт потоком (6.37, план 46, C38): докачки нет, повтор — заново. -->
+		<!-- Архив идёт потоком (6.23, план 46, C38): докачки нет, повтор — заново. -->
 		<Hint class="mt-12 ctr"
 			>Скачивание начнётся сразу. Если оно оборвётся, начнётся заново. Качать можно сколько
 			угодно раз до {formatEntryDate(cycle.deadline.slice(0, 10))}.</Hint

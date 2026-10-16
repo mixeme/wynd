@@ -57,18 +57,18 @@ type ReviveInput struct {
 	ReviverID string
 	Now       time.Time
 	// MovedFrom — адрес прежнего сервера, если круг приехал переносом (план
-	// 53): в ленте тогда «Круг перенесён с …» (2.19), а не «оживил из архива».
+	// 53): в ленте тогда «Круг перенесён с …» (7.25), а не «оживил из архива».
 	MovedFrom string
 }
 
-// ReviveResult — что получилось, для итога 2.28 / 2.34.
+// ReviveResult — что получилось, для итога 7.33 / 7.34.
 type ReviveResult struct {
 	CircleID string
 	Posts    int
 	Names    int
 	Bytes    int64
 	// NotJoined — учётки, заведённые по почте из архива: на этом сервере
-	// они ещё не были («Ещё не вошли», 6.35).
+	// они ещё не были («Ещё не вошли», 6.6).
 	NotJoined []string
 }
 
@@ -194,7 +194,7 @@ func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveRes
 		formatTime(now), res.CircleID, in.ReviverID); err != nil {
 		return res, err
 	}
-	// Кто приехал с кругом — встретить экраном 1.9 при первом входе.
+	// Кто приехал с кругом — встретить экраном 1.10 при первом входе.
 	kind := "revived"
 	if in.MovedFrom != "" {
 		kind = "moved"

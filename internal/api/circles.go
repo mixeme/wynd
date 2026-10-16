@@ -38,16 +38,16 @@ func (s *Server) handleListCircles(w http.ResponseWriter, r *http.Request) {
 		if banner, err := s.archiveCycleJSON(r.Context(), c.ID, sess.AccountID); err == nil && banner != nil {
 			item["archive_cycle"] = banner
 		}
-		// Новые отклики (3.12): число на вкладке, точка на улочке.
+		// Новые отклики (3.17): число на вкладке, точка на улочке.
 		if n, err := s.Chronicle.UnreadResponses(r.Context(), c.ID, sess.AccountID); err == nil {
 			item["responses_unread"] = n
 		}
-		// Места нет (C42, кадры 3.19, 3.20): вместо строки ввода — полоса,
+		// Места нет (C42, кадры 3.10, 3.11): вместо строки ввода — полоса,
 		// которая называет, кто может помочь.
 		if c.Status == chronicle.StatusActive {
 			s.addSpaceFull(r, item, c.ID, sess.AccountID)
 		}
-		// Круг уходит с сервера (2.29): строка вместо последней записи.
+		// Круг уходит с сервера (2.5): строка вместо последней записи.
 		s.addFrozen(r, item, c.ID, sess.AccountID)
 		out[i] = item
 	}
@@ -257,7 +257,7 @@ func (s *Server) handleSetReadCursor(w http.ResponseWriter, r *http.Request) {
 
 // addSpaceFull ставит space_full: "circle" — упёрлась квота круга, "server" —
 // потолок сервера; при "circle" — кто владелец и не вы ли это.
-// addFrozen — круг замер под полный архив с удалением (6.36, 2.29): когда и
+// addFrozen — круг замер под полный архив с удалением (3.16, 2.5): когда и
 // чьим решением.
 func (s *Server) addFrozen(r *http.Request, item map[string]any, circleID, accountID string) {
 	frozen, err := s.Chronicle.CircleFrozenAt(r.Context(), circleID)
@@ -271,8 +271,8 @@ func (s *Server) addFrozen(r *http.Request, item map[string]any, circleID, accou
 	if owner, err := s.Chronicle.CircleOwnerAccount(r.Context(), circleID); err == nil {
 		item["you_own"] = owner == accountID
 	}
-	// Замер под перенос (план 53): переезжает (6.27) или уже принят новым
-	// сервером (6.28, 2.20) — тогда с его адресом и почтой, которой входить.
+	// Замер под перенос (план 53): переезжает (3.14) или уже принят новым
+	// сервером (3.15, 2.4) — тогда с его адресом и почтой, которой входить.
 	if m, err := s.Chronicle.LiveMove(r.Context(), circleID); err == nil && m != nil {
 		move := map[string]any{"status": m.Status}
 		if m.Status == chronicle.MoveAccepted {

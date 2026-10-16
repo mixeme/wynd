@@ -16,7 +16,7 @@
 	import { formatEntryDate, formatSessionDay } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 
-	// «Архив и очистка» списком (6.31): место и просьба о нём, освободить
+	// «Архив и очистка» списком (6.15): место и просьба о нём, освободить
 	// место отсечкой, полный архив круга.
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 
@@ -83,7 +83,7 @@
 			{#if full}· писать в круг больше нельзя{/if}
 		</Hint>
 		{#if lastRequest?.status === 'pending'}
-			<!-- Просьба отправлена (6.44): одна, пока не ответили. -->
+			<!-- Просьба отправлена (6.19): одна, пока не ответили. -->
 			<SettingsRow
 				title={capped
 					? `Попросили ${formatBytes(lastRequest.requested_bytes)} вместо ${formatBytes(quotaBytes)}`
@@ -94,7 +94,7 @@
 				divided="both"
 			/>
 		{:else if capped}
-			<!-- Отказ (6.45) виден до новой просьбы или отсечки. -->
+			<!-- Отказ (6.20) виден до новой просьбы или отсечки. -->
 			<SettingsRow
 				title="Попросить у администратора"
 				subtitle={lastRequest?.status === 'rejected'
@@ -107,7 +107,7 @@
 		{/if}
 		<Label class="mt-22">Освободить место</Label>
 		{#if circle.archiveCycle?.active}
-			<!-- 6.48: архивация идёт — вторую не запустить, строка ведёт к срокам. -->
+			<!-- 6.16: архивация идёт — вторую не запустить, строка ведёт к срокам. -->
 			<SettingsRow
 				title="Сроки архивации"
 				subtitle={`идёт: всё до ${formatEntryDate(circle.archiveCycle.cutoff_date)} удалится ${formatSessionDay(circle.archiveCycle.deadline)}`}

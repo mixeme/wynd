@@ -291,7 +291,7 @@ type querier interface {
 }
 
 // OwnerName — имя владельца в этом круге: полоса «в круге кончилось место»
-// называет того, кто может освободить место (кадр 3.19).
+// называет того, кто может освободить место (кадр 3.10).
 func (c *Chronicle) OwnerName(ctx context.Context, circleID string) (string, error) {
 	owner, err := c.circleOwner(ctx, c.db, circleID)
 	if err != nil {

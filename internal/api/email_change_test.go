@@ -32,7 +32,7 @@ func circlesStatus(t *testing.T, srv *api.Server, token string) int {
 	return rec.Code
 }
 
-// Смена почты самим участником (кадры 7.13–7.14): код уходит на новую почту,
+// Смена почты самим участником (кадры 7.11–7.12): код уходит на новую почту,
 // до ввода кода ничего не меняется; после — это устройство вошло, остальные
 // нет, а прежний адрес на сервере больше не известен.
 func TestEmailChangeByParticipant(t *testing.T) {
@@ -160,7 +160,7 @@ func TestEmailChangeAddressTakenMeanwhile(t *testing.T) {
 	}
 }
 
-// Запасной путь (кадр 9.11): администратор меняет без кода, все устройства
+// Запасной путь (кадр 9.6): администратор меняет без кода, все устройства
 // человека выходят, вход — кодом на новую почту.
 func TestAdminSetAccountEmail(t *testing.T) {
 	srv, caps, _, _ := setupAPI(t)

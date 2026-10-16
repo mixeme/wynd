@@ -133,14 +133,14 @@ func (s *Server) handleCircleDetail(w http.ResponseWriter, r *http.Request) {
 		out["archive_cycle"] = banner
 	}
 	s.addFrozen(r, out, circleID, sess.AccountID)
-	// «Отклики» (3.12): есть ли вкладка и сколько на ней нового.
+	// «Отклики» (3.17): есть ли вкладка и сколько на ней нового.
 	if others, err := s.Chronicle.CircleHasOthers(r.Context(), circleID, sess.AccountID); err == nil {
 		out["has_others"] = others
 	}
 	if n, err := s.Chronicle.UnreadResponses(r.Context(), circleID, sess.AccountID); err == nil {
 		out["responses_unread"] = n
 	}
-	// Приехал с кругом и ещё не входил — встреча 1.9 вместо ленты (план 53).
+	// Приехал с кругом и ещё не входил — встреча 1.10 вместо ленты (план 53).
 	if a, err := s.Chronicle.CircleArrival(r.Context(), circleID, sess.AccountID); err == nil && a != nil {
 		returned := a.Returned
 		if returned == nil {
@@ -154,7 +154,7 @@ func (s *Server) handleCircleDetail(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-// handleSeeArrival — «Войти в круг» на 1.9: встреча больше не показывается.
+// handleSeeArrival — «Войти в круг» на 1.10: встреча больше не показывается.
 func (s *Server) handleSeeArrival(w http.ResponseWriter, r *http.Request) {
 	sess, ok := requireSession(w, r)
 	if !ok {
@@ -214,7 +214,7 @@ func (s *Server) handleCircleQuota(w http.ResponseWriter, r *http.Request) {
 	if median > 0 {
 		out["median_post_bytes"] = median
 	}
-	// Ждущая просьба (6.44) и отказ (6.45); одобренная не показывается — её
+	// Ждущая просьба (6.19) и отказ (6.20); одобренная не показывается — её
 	// видно по квоте.
 	if req, err := s.Blobs.LastQuotaRequest(r.Context(), circleID); err != nil {
 		writeDomainError(w, err)
@@ -395,12 +395,12 @@ func (s *Server) handleArchiveDownload(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	// ?layout= прежних клиентов не мешает: в архиве обе раскладки (6.37).
+	// ?layout= прежних клиентов не мешает: в архиве обе раскладки (6.23).
 	s.streamArchive(w, r, r.PathValue("circle_id"), sess.AccountID)
 }
 
 // personalArchiveCutoff — до какого дня собирать архив участника: отсечка
-// цикла архивации или, когда круг замер под полный архив с удалением (6.36),
+// цикла архивации или, когда круг замер под полный архив с удалением (3.16),
 // всё, что было («свой архив — всё, что вы видели в круге»). Ни того ни
 // другого — архива участника нет.
 func (s *Server) personalArchiveCutoff(ctx context.Context, circleID string) (chronicle.ArchiveCycle, error) {

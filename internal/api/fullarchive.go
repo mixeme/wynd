@@ -25,8 +25,8 @@ import (
 )
 
 // Полный архив круга (план 51, A1): владелец просит собрать файл со всем
-// кругом (6.29), сервер собирает его в фоне (6.40) и держит до скачивания или
-// до срока (6.33); места под готовый файл нет — отдаёт потоком (6.43).
+// кругом (6.24), сервер собирает его в фоне (6.26) и держит до скачивания или
+// до срока (6.27); места под готовый файл нет — отдаёт потоком (6.31).
 
 // FullArchiveDir — где лежат готовые полные архивы. Не DataDir/tmp: её чистит
 // запуск, а готовый архив ждёт скачивания и через перезапуск.
@@ -43,7 +43,7 @@ func (s *Server) fullArchivePath(id string) string {
 // ссылке (план 46: «докачка работает»), а файл лежит, пока его не скачали.
 const fullLinkTTL = 24 * time.Hour
 
-// fullStreamLinkTTL — ссылка на сборку потоком (6.43): приложение открывает
+// fullStreamLinkTTL — ссылка на сборку потоком (6.31): приложение открывает
 // её сразу, работает она один раз.
 const fullStreamLinkTTL = time.Minute
 
@@ -108,7 +108,7 @@ func fullArchiveJSON(a *chronicle.FullArchive) map[string]any {
 }
 
 // handleFullArchive — что с полным архивом круга: последний запрос и оценка
-// для экрана «Полный архив круга» (6.29: «340 записей… · 8,4 ГБ»; 6.43:
+// для экрана «Полный архив круга» (6.24: «340 записей… · 8,4 ГБ»; 6.31:
 // помещается ли готовый файл на сервер).
 func (s *Server) handleFullArchive(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
@@ -156,8 +156,8 @@ func (s *Server) handleFullArchive(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleStartFullArchive — «Собрать архив» (6.29): запрос записан, место под
-// оценку занято, сборка пошла в фоне. Места нет — 507 no_room (6.43).
+// handleStartFullArchive — «Собрать архив» (6.24): запрос записан, место под
+// оценку занято, сборка пошла в фоне. Места нет — 507 no_room (6.31).
 func (s *Server) handleStartFullArchive(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	sess, ok := requireSession(w, r)
@@ -210,8 +210,8 @@ func (s *Server) handleStartFullArchive(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusCreated, fullArchiveJSON(a))
 }
 
-// circleFrozen — круг замер (6.32): участникам одно письмо, экранам —
-// сигнал перечитать круг (баннер 6.36, строка 2.29).
+// circleFrozen — круг замер (6.25): участникам одно письмо, экранам —
+// сигнал перечитать круг (баннер 3.16, строка 2.5).
 func (s *Server) circleFrozen(circleID, ownerAccountID string) {
 	s.sendCircleLeavingEmails(circleID, ownerAccountID)
 	s.notifyCircle(circleID, ownerAccountID, "event")
@@ -252,7 +252,7 @@ func (s *Server) sendCircleLeavingEmails(circleID, ownerAccountID string) {
 	}()
 }
 
-// handleReviveFrozenCircle — «Отменить — оживить круг» (6.34, 6.30, 6.41): архив
+// handleReviveFrozenCircle — «Отменить — оживить круг» (6.28, 6.29, 6.30): архив
 // убирается, если он ещё на сервере, круг снова пишет.
 func (s *Server) handleReviveFrozenCircle(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
@@ -287,7 +287,7 @@ func (s *Server) handleReviveFrozenCircle(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// handleRemoveFrozenCircle — «Убрать круг с сервера» (6.30): только когда
+// handleRemoveFrozenCircle — «Убрать круг с сервера» (6.29): только когда
 // файл архива с удалением скачан до последнего байта — без него круг не
 // вернуть.
 func (s *Server) handleRemoveFrozenCircle(w http.ResponseWriter, r *http.Request) {
@@ -336,8 +336,8 @@ func (s *Server) handleRemoveFrozenCircle(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// handleRemoveFullArchive — «Отменить сборку» (6.40) и «Удалить архив, не
-// скачивая» (6.33): файл стирается, место освобождается.
+// handleRemoveFullArchive — «Отменить сборку» (6.26) и «Удалить архив, не
+// скачивая» (6.27): файл стирается, место освобождается.
 func (s *Server) handleRemoveFullArchive(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	sess, ok := requireSession(w, r)
@@ -418,7 +418,7 @@ func (s *Server) handleFullArchiveLink(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"url": "/api/v1/full_archive/" + token})
 }
 
-// handleFullArchiveStreamLink — «Скачать сразу» (6.43): готовый файл положить
+// handleFullArchiveStreamLink — «Скачать сразу» (6.31): готовый файл положить
 // некуда, сервер собирает архив прямо в скачивание.
 func (s *Server) handleFullArchiveStreamLink(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
@@ -441,9 +441,9 @@ func (s *Server) handleFullArchiveStreamLink(w http.ResponseWriter, r *http.Requ
 	}
 	link := fullLink{circleID: circleID, accountID: sess.AccountID, key: key, stream: true}
 	if body.DeleteCircle {
-		// С удалением (6.43 при включённом переключателе): круг замирает до
+		// С удалением (6.31 при включённом переключателе): круг замирает до
 		// снимка, а «скачано» записывается, когда поток дошёл до конца, — тогда
-		// откроется 6.30. Места поток не занимает: размер записи — ноль.
+		// откроется 6.29. Места поток не занимает: размер записи — ноль.
 		a, froze, err := s.Chronicle.StartFullArchive(r.Context(), circleID, sess.AccountID, true, key != nil, 0, time.Now())
 		if errors.Is(err, chronicle.ErrArchiveBusy) {
 			writeJSON(w, http.StatusConflict, map[string]string{"error": "archive_busy"})
@@ -486,7 +486,7 @@ func (s *Server) issueFullLink(l fullLink, ttl time.Duration) (string, error) {
 
 // handleFullArchiveByLink отдаёт готовый файл — с докачкой (Range). Дошёл
 // последний байт — файл стирается: «скачал» — когда до устройства дошёл
-// конец файла (6.33), оборванное скачивание файл не трогает.
+// конец файла (6.27), оборванное скачивание файл не трогает.
 func (s *Server) handleFullArchiveByLink(w http.ResponseWriter, r *http.Request) {
 	v, ok := s.fullLinks.Load(r.PathValue("token"))
 	if !ok || time.Now().After(v.(fullLink).expires) || v.(fullLink).stream {
@@ -527,7 +527,7 @@ func (s *Server) handleFullArchiveByLink(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-// handleFullArchiveStream собирает полный архив прямо в ответ (6.43): докачки
+// handleFullArchiveStream собирает полный архив прямо в ответ (6.31): докачки
 // нет, на сервере ничего не остаётся.
 func (s *Server) handleFullArchiveStream(w http.ResponseWriter, r *http.Request) {
 	v, ok := s.fullLinks.LoadAndDelete(r.PathValue("token"))
@@ -537,7 +537,7 @@ func (s *Server) handleFullArchiveStream(w http.ResponseWriter, r *http.Request)
 	}
 	link := v.(fullLink)
 	// Запись архива с удалением: поток не дошёл — сбой, и владелец видит
-	// экран сборки снова; дошёл — «скачано» (6.30).
+	// экран сборки снова; дошёл — «скачано» (6.29).
 	finished := false
 	if link.archiveID != "" {
 		defer func() {
@@ -739,7 +739,7 @@ func (s *Server) runFullArchiveBuild(ctx context.Context, a *chronicle.FullArchi
 	return nil
 }
 
-// sendFullArchiveReady — письмо владельцу: файл готов (6.40: «Когда файл
+// sendFullArchiveReady — письмо владельцу: файл готов (6.26: «Когда файл
 // будет готов, придёт письмо»).
 func (s *Server) sendFullArchiveReady(a *chronicle.FullArchive, circleName string) {
 	if s.Mail == nil {

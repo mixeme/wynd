@@ -30,16 +30,16 @@ export interface CircleListItem {
 	last_summary?: string;
 	last_at?: string;
 	archive_cycle?: ArchiveCycleBanner;
-	/** Новые отклики к записям (3.12): на улочке — точка, если записей новых нет. */
+	/** Новые отклики к записям (3.17): на улочке — точка, если записей новых нет. */
 	responses_unread?: number;
-	/** Места нет (C42): «circle» — упёрлась квота круга (3.19), «server» — потолок сервера (3.20). */
+	/** Места нет (C42): «circle» — упёрлась квота круга (3.10), «server» — потолок сервера (3.11). */
 	space_full?: 'circle' | 'server';
-	/** Владелец круга — при «circle»: его называет полоса 3.19. */
+	/** Владелец круга — при «circle»: его называет полоса 3.10. */
 	owner_name?: string;
 	you_own?: boolean;
-	/** Круг замер под полный архив с удалением (6.36, 2.29) или под перенос (6.27). */
+	/** Круг замер под полный архив с удалением (3.16, 2.5) или под перенос (3.14). */
 	frozen_at?: string;
-	/** Круг переезжает на другой сервер (план 53): 6.27, после «принято» — 6.28, 2.20. */
+	/** Круг переезжает на другой сервер (план 53): 3.14, после «принято» — 3.15, 2.4. */
 	move?: CircleMoveBanner;
 }
 
@@ -51,8 +51,8 @@ export interface CircleMoveBanner {
 	email?: string;
 }
 
-// Что с замершим кругом — вместо последней записи на улочке: переехал (2.20),
-// переезжает, уходит с сервера (2.29).
+// Что с замершим кругом — вместо последней записи на улочке: переехал (2.4),
+// переезжает, уходит с сервера (2.5).
 function leavingPreview(circle: CircleListItem): string {
 	if (circle.move?.status === 'accepted') {
 		return `Круг переехал — войдите на ${serverHost(circle.move.dest_url)}`;
@@ -214,7 +214,7 @@ export async function loadStreetCircles(): Promise<StreetCircle[]> {
 			if (circle.status !== 'active' && circle.status !== 'left_with_access') continue;
 			const pinKey = `${session.origin}:${circle.id}`;
 			const pinnedAt = pinMap.get(pinKey) ?? 0;
-			// Круг уходит с сервера (2.29): что с ним и что можно успеть — вместо
+			// Круг уходит с сервера (2.5): что с ним и что можно успеть — вместо
 			// последней записи, без времени.
 			const leaving = circle.status === 'active' && Boolean(circle.frozen_at);
 			const preview = leaving

@@ -39,7 +39,7 @@ type MediaInput struct {
 	Voice           bool
 	AudioDurationMs int64
 	AudioPeaks      []int
-	// Crop — кадр обложки для ленты (4.16); nil — по центру.
+	// Crop — кадр обложки для ленты (4.3); nil — по центру.
 	Crop *CoverCrop
 }
 

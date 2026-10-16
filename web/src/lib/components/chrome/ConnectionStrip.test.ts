@@ -14,7 +14,7 @@ function render(notice: ConnectionNotice | undefined): HTMLElement {
 }
 
 describe('ConnectionStrip', () => {
-	// На связи знака нет вовсе (7.5).
+	// На связи знака нет вовсе (7.36).
 	it('без повода не рисует ничего', () => {
 		expect(render(undefined).querySelector('.conn')).toBeNull();
 	});
@@ -47,7 +47,7 @@ describe('ConnectionStrip', () => {
 	});
 });
 
-// Круг молчащего сервера на улочке (7.9).
+// Круг молчащего сервера на улочке (7.40).
 describe('CircleRow silent', () => {
 	it('вместо последней строки — какой сервер не отвечает, строка приглушена', () => {
 		const target = document.createElement('div');

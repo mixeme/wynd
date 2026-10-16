@@ -98,7 +98,7 @@ func (s *Store) SetCircleQuotaAdmin(ctx context.Context, circleID string, custom
 // QuotaRequest is a pending or resolved storage increase request.
 type QuotaRequest struct {
 	ID string
-	// CircleID пуст у просьбы для круга, которого пока нет (оживление, 2.23):
+	// CircleID пуст у просьбы для круга, которого пока нет (оживление, 7.30):
 	// у неё — CircleName.
 	CircleID       string
 	CircleName     string
@@ -112,7 +112,7 @@ type QuotaRequest struct {
 }
 
 // CreateQuotaRequest opens a pending quota request for a circle owner.
-// Просьба одна, пока на неё не ответили (кадр 6.44): вторая — ErrInvalid.
+// Просьба одна, пока на неё не ответили (кадр 6.19): вторая — ErrInvalid.
 func (s *Store) CreateQuotaRequest(ctx context.Context, circleID, accountID string, requestedBytes int64) (string, error) {
 	if requestedBytes < 1 {
 		return "", ErrInvalid
@@ -175,7 +175,7 @@ func (s *Store) ListPendingQuotaRequests(ctx context.Context) ([]QuotaRequest, e
 }
 
 // LastQuotaRequest — последняя просьба круга о месте, если есть: экран
-// «Место» показывает ждущую (6.44) и отказанную (6.45). Отказанные стираются
+// «Место» показывает ждущую (6.19) и отказанную (6.20). Отказанные стираются
 // отсечкой — после неё отказ уже не показывается.
 func (s *Store) LastQuotaRequest(ctx context.Context, circleID string) (*QuotaRequest, error) {
 	return s.quotaRequest(ctx, `qr.circle_id = ? ORDER BY qr.created_at DESC, qr.rowid DESC LIMIT 1`, circleID)
@@ -274,7 +274,7 @@ func (s *Store) CircleExists(ctx context.Context, circleID string) (bool, error)
 	return err == nil, err
 }
 
-// CreatePlaceRequest — просьба о месте для круга, которого пока нет (2.23):
+// CreatePlaceRequest — просьба о месте для круга, которого пока нет (7.30):
 // оживляют круг из архива, а он больше, чем сервер даёт новому кругу. Одна
 // на учётку, пока на неё не ответили.
 func (s *Store) CreatePlaceRequest(ctx context.Context, accountID, circleName string, requested int64) (string, error) {
@@ -303,7 +303,7 @@ func (s *Store) CreatePlaceRequest(ctx context.Context, accountID, circleName st
 }
 
 // LastPlaceRequest — последняя неиспользованная просьба учётки о месте для
-// будущего круга (2.24, 2.26); nil — не просили.
+// будущего круга (7.31, 7.32); nil — не просили.
 func (s *Store) LastPlaceRequest(ctx context.Context, accountID string) (*QuotaRequest, error) {
 	return s.quotaRequest(ctx, `qr.circle_id IS NULL AND qr.used_at IS NULL AND qr.requested_by_account_id = ?
 		ORDER BY qr.created_at DESC, qr.rowid DESC LIMIT 1`, accountID)

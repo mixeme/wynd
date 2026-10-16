@@ -80,7 +80,7 @@
 		ctx.spaceFull = item.space_full ?? '';
 		ctx.ownerName = item.owner_name ?? '';
 		ctx.youOwn = item.you_own ?? false;
-		// Замерший круг (6.36): писать нельзя никому — как «читает, не пишет».
+		// Замерший круг (3.16): писать нельзя никому — как «читает, не пишет».
 		ctx.frozenAt = item.frozen_at ?? '';
 		ctx.move = item.move;
 		if (ctx.frozenAt) ctx.canWrite = false;
@@ -285,7 +285,7 @@
 
 		rememberLastCircle(circleId);
 		ready = true;
-		// Приехал с кругом (1.9): в ленту — через встречу.
+		// Приехал с кругом (1.10): в ленту — через встречу.
 		if (arrival && $page.url.pathname === `/circles/${circleId}`) {
 			goto(`/circles/${circleId}/arrived`, { replaceState: true });
 		}

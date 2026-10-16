@@ -107,7 +107,7 @@
 	import { applyFeedSpot, feedSpotKey, saveFeedSpot, takeFeedSpot } from '$lib/journal/feed-scroll';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
-	// Места нет (C42): читать и удалять своё можно, писать — нет (3.19, 3.20).
+	// Места нет (C42): читать и удалять своё можно, писать — нет (3.10, 3.11).
 	const canSay = $derived(circle.canWrite && !circle.spaceFull);
 	const notice = $derived(spaceNotice(circle));
 
@@ -183,7 +183,7 @@
 					coverJobs.set(att.audio_cover_blob_id, att.audio_cover_blob_id);
 				}
 			}
-			// Снимки последней реплики — превью показывает их как в нити (4.30).
+			// Снимки последней реплики — превью показывает их как в нити (4.22).
 			for (const id of commentPhotoIds(commentPreview(post.comments).comment?.media).slice(0, 3)) {
 				if (!mediaUrls[id]) coverJobs.set(id, id);
 			}
@@ -220,7 +220,7 @@
 		);
 	}
 
-	// Обложки открыток дня (3.15) — в тот же словарь, что обложки записей.
+	// Обложки открыток дня (3.20) — в тот же словарь, что обложки записей.
 	async function resolveDayCardMedia(events: FeedEvent[]) {
 		const ids = new Set<string>();
 		for (const ev of events) {
@@ -247,7 +247,7 @@
 
 	afterNavigate(({ from }) => {
 		if (cameFromPost !== undefined) return;
-		// День, открытый с открытки (3.15), — тот же уход вглубь, что и запись.
+		// День, открытый с открытки (3.20), — тот же уход вглубь, что и запись.
 		const path = from?.url.pathname ?? '';
 		cameFromPost =
 			path.startsWith(`/circles/${circle.circleId}/posts/`) ||
@@ -483,7 +483,7 @@
 		goto(`/circles/${circle.circleId}/compose`);
 	}
 
-	// Голосовое и видео из полосы ввода (C14, 4.24, 4.26): новая запись журнала
+	// Голосовое и видео из полосы ввода (C14, 4.13, 4.15): новая запись журнала
 	// без текста — «Запись» стоит только у пустого поля. Через очередь — без
 	// сети тоже уйдёт.
 	let videoOpen = $state(false);
@@ -577,7 +577,7 @@
 				video_poster: poster ? { type: 'image/jpeg', data: poster } : undefined
 			});
 			// Ушло как записано — сказать, а не молчать. Где кодировщика нет
-			// вовсе, об этом уже сказал экран перед отправкой (4.26).
+			// вовсе, об этом уже сказал экран перед отправкой (4.15).
 			if (fallbackReason && typeof VideoEncoder !== 'undefined') {
 				showBarNote(`Видео ушло без сжатия: ${fallbackReason}`);
 			}
@@ -619,7 +619,7 @@
 		leaveToPost(`/circles/${circle.circleId}/posts/${postId}`);
 	}
 
-	// Снимок из превью комментария (4.30) открывается во весь экран в обсуждении.
+	// Снимок из превью комментария (4.22) открывается во весь экран в обсуждении.
 	function openCommentPhoto(postId: string, commentId: string, index: number) {
 		leaveToPost(
 			`/circles/${circle.circleId}/posts/${postId}?cphoto=${encodeURIComponent(commentId)}&lb=${index}`
@@ -774,8 +774,8 @@
 	}
 </script>
 
-<!-- Полоса вместо строки ввода, когда места нет (3.19, 3.20) и когда круг
-     замер (6.36). -->
+<!-- Полоса вместо строки ввода, когда места нет (3.10, 3.11) и когда круг
+     замер (3.16). -->
 {#snippet spaceNote()}
 	{#if circle.frozenAt && circle.move?.status === 'accepted'}
 		Круг переехал — писать можно на новом сервере
@@ -837,7 +837,7 @@
 		ontouchend={ptr.end}
 	>
 		{#if circle.frozenAt && circle.move?.status === 'accepted'}
-			<!-- 6.28: новый сервер принял круг — куда идти и какой почтой входить. -->
+			<!-- 3.15: новый сервер принял круг — куда идти и какой почтой входить. -->
 			{@const dest = serverHost(circle.move.dest_url)}
 			<ArchiveBanner
 				title="Круг переехал"
@@ -856,7 +856,7 @@
 				{/if}
 			</ArchiveBanner>
 		{:else if circle.frozenAt && circle.move}
-			<!-- 6.27: круг переезжает; куда — старый сервер пока не знает. -->
+			<!-- 3.14: круг переезжает; куда — старый сервер пока не знает. -->
 			<ArchiveBanner
 				title="Переезд · круг замер"
 				action={circle.youOwn ? 'Перенос круга' : undefined}
@@ -871,7 +871,7 @@
 				{/if}
 			</ArchiveBanner>
 		{:else if circle.frozenAt}
-			<!-- 6.36: круг уходит с сервера — что происходит, чьим решением и что успеть. -->
+			<!-- 3.16: круг уходит с сервера — что происходит, чьим решением и что успеть. -->
 			<ArchiveBanner
 				title="Круг уходит с сервера"
 				action={circle.youOwn ? 'Полный архив круга' : 'Скачать свой архив'}
@@ -972,7 +972,7 @@
 					</PostCard>
 			{/each}
 
-			<!-- Название и обложка дня — открытка (3.15), остальное — тонкая строка. -->
+			<!-- Название и обложка дня — открытка (3.20), остальное — тонкая строка. -->
 			{#snippet feedEvent(ev: FeedEvent)}
 				{#if ev.day}
 					{@const coverId = dayCoverTileId(ev.day)}

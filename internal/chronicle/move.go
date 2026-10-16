@@ -21,7 +21,7 @@ const (
 	MoveCompleted = "completed"
 )
 
-// MoveLinkTTL — сколько живёт ссылка переноса (6.25: «живёт 72 часа»).
+// MoveLinkTTL — сколько живёт ссылка переноса (6.34: «живёт 72 часа»).
 const MoveLinkTTL = 72 * time.Hour
 
 var (
@@ -47,7 +47,7 @@ type CircleMove struct {
 	ArchiveStatus string
 	ArchiveBytes  int64
 	PulledBytes   int64
-	// Что в архиве: записей, имён, байт файлов — для сверки (6.26).
+	// Что в архиве: записей, имён, байт файлов — для сверки (6.35).
 	ArchivePosts      int
 	ArchiveNames      int
 	ArchiveMediaBytes int64
@@ -125,8 +125,8 @@ func (c *Chronicle) GetMove(ctx context.Context, id string) (*CircleMove, error)
 	return m, err
 }
 
-// StartMove — «Остановить круг и получить ссылку» (6.24): круг замирает той же
-// транзакцией, в ленте — «Кот начал перенос круга» (6.27). Круг, который уже
+// StartMove — «Остановить круг и получить ссылку» (6.33): круг замирает той же
+// транзакцией, в ленте — «Кот начал перенос круга» (3.14). Круг, который уже
 // замер (под архив с удалением или под другой перенос), — ErrMoveBusy.
 func (c *Chronicle) StartMove(ctx context.Context, circleID, accountID, token, tokenHash string, now time.Time) (*CircleMove, error) {
 	id, err := newID()
@@ -231,7 +231,7 @@ func (c *Chronicle) MoveArchiveReady(ctx context.Context, id string, size int64,
 	return err
 }
 
-// SetMovePulled — сколько байт архива новый сервер уже забрал (6.25: «3,1 из
+// SetMovePulled — сколько байт архива новый сервер уже забрал (6.34: «3,1 из
 // 8,4 ГБ»). Только вперёд: повтор куска после обрыва ход не откатывает.
 func (c *Chronicle) SetMovePulled(ctx context.Context, id string, upTo int64) error {
 	_, err := c.db.ExecContext(ctx, `
@@ -240,8 +240,8 @@ func (c *Chronicle) SetMovePulled(ctx context.Context, id string, upTo int64) er
 	return err
 }
 
-// AcceptMove — новый сервер принял круг и сверил (6.26). В ленте — «Кот
-// перенёс круг на wynd.u-slavy.ru» (6.28), от имени начавшего перенос.
+// AcceptMove — новый сервер принял круг и сверил (6.35). В ленте — «Кот
+// перенёс круг на wynd.u-slavy.ru» (3.15), от имени начавшего перенос.
 func (c *Chronicle) AcceptMove(ctx context.Context, id string, posts, names int, bytes int64, destHost string, now time.Time) error {
 	now = utcOrNow(now)
 	m, err := c.GetMove(ctx, id)
@@ -289,7 +289,7 @@ func (c *Chronicle) AcceptMove(ctx context.Context, id string, posts, names int,
 	return tx.Commit()
 }
 
-// CancelMove — «Отменить перенос» (6.25, 6.26): ключ гаснет, круг оживает.
+// CancelMove — «Отменить перенос» (6.34, 6.35): ключ гаснет, круг оживает.
 func (c *Chronicle) CancelMove(ctx context.Context, circleID, accountID string, now time.Time) (*CircleMove, error) {
 	now = utcOrNow(now)
 	m, err := c.LiveMove(ctx, circleID)

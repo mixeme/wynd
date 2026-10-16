@@ -25,7 +25,7 @@
 	}: {
 		author: string;
 		time: string;
-		/** Своё превью; без него — по kind из snippet и query (2.9, 3.x). */
+		/** Своё превью; без него — по kind из snippet и query (2.19, 3.x). */
 		preview?: Snippet;
 		/** Что нашлось: `post`, `comment` / `file` / `audio` (« · комментарий», « · файл», « · звук») или `day` («день»). */
 		kind?: string;

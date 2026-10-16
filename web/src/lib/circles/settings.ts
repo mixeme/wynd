@@ -31,7 +31,7 @@ export interface MemberInfo {
 	can_read: boolean;
 	can_write: boolean;
 	avatar_blob_id?: string;
-	/** Приехал с кругом (оживление, перенос) и здесь ещё не входил (6.35). */
+	/** Приехал с кругом (оживление, перенос) и здесь ещё не входил (6.6). */
 	not_joined?: boolean;
 	/** Что встанет в хронологию, если исключить: «Боб покинул круг». Владельцу. */
 	left_line?: string;
@@ -82,7 +82,7 @@ export interface QuotaInfo {
 	/** Сколько записей останется в круге после отсечки (не раньше её). */
 	posts_kept_at_cutoff?: number;
 	median_post_bytes?: number;
-	/** Просьба о месте: ждёт ответа (6.44) или отказана (6.45). Одобренной нет. */
+	/** Просьба о месте: ждёт ответа (6.19) или отказана (6.20). Одобренной нет. */
 	last_request?: QuotaRequestInfo;
 }
 
@@ -220,7 +220,7 @@ export async function patchCircle(
 	await invalidateSnapshots(origin, { kind: 'circles', circleId });
 }
 
-/** «Позвать всех письмом» и «позвать одного» (6.35): письма шлёт сервер. */
+/** «Позвать всех письмом» и «позвать одного» (6.6): письма шлёт сервер. */
 export async function inviteWaiting(origin: string, circleId: string, identityId?: string): Promise<number> {
 	const res = await apiJson<{ invited: number }>(origin, `/circles/${circleId}/members/invite_waiting`, {
 		method: 'POST',

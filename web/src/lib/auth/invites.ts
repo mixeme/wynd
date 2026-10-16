@@ -11,7 +11,7 @@ export interface InvitePeek {
 	server_name: string;
 	host: string;
 	inviter_name?: string;
-	/** Значок «GDPR» у имени сервера (1.10). */
+	/** Значок «GDPR» у имени сервера (1.2). */
 	allow_name_erasure?: boolean;
 	circle_name?: string;
 	color?: CircleColor;

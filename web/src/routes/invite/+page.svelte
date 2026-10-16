@@ -15,13 +15,13 @@
 		parseWyndLink
 	} from '$lib/auth/links';
 
-	// 2.16: куда вставить присланную ссылку. В установленном приложении ссылка
+	// 2.7: куда вставить присланную ссылку. В установленном приложении ссылка
 	// из мессенджера открывается в браузере, а не здесь, — человеку с пустой
 	// улочкой нужно место, куда её положить.
 	let link = $state('');
 	let error = $state('');
 	let photoPicker: FilePicker | undefined = $state();
-	// С «Войти» (1.5) сюда приходят ещё без учётки — назад туда же.
+	// С «Войти» (1.6) сюда приходят ещё без учётки — назад туда же.
 	const fromLogin = $derived(page.url.searchParams.get('from') === 'login');
 
 	function open(text: string): boolean {

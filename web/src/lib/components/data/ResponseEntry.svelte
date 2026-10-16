@@ -3,7 +3,7 @@
 	import Icon, { type IconName } from '$ui/Icon.svelte';
 	import CommentRow from '$ui/data/CommentRow.svelte';
 
-	// Строка «Откликов» (3.13; план 47, 3.1): кто и что сделал — ссылкой туда,
+	// Строка «Откликов» (3.18; план 47, 3.1): кто и что сделал — ссылкой туда,
 	// где отклик живёт. Под словами экран ставит текст комментария и PostRef.
 	let {
 		href,

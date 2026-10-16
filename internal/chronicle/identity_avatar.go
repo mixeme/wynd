@@ -63,7 +63,7 @@ func (c *Chronicle) UpdateIdentity(ctx context.Context, circleID, accountID stri
 }
 
 // avatarJoinGrace — первое фото в эти минуты после входа — часть вступления
-// (1.3 ставит фото сразу за входом), строки в ленте оно не даёт.
+// (1.4 ставит фото сразу за входом), строки в ленте оно не даёт.
 const avatarJoinGrace = 10 * time.Minute
 
 // setIdentityAvatar меняет фото и пишет строку в ленту (3.1): «Новое фото:

@@ -37,7 +37,7 @@ export async function fetchIncomingMove(
 	return apiJson(origin, '/moves/incoming');
 }
 
-/** Вставили ссылку (2.18): сервер спрашивает карточку у прежнего. */
+/** Вставили ссылку (7.20): сервер спрашивает карточку у прежнего. */
 export function putIncomingMove(origin: string, link: string): Promise<IncomingMoveView> {
 	return apiJson<IncomingMoveView>(origin, '/moves/incoming', {
 		method: 'POST',
@@ -46,7 +46,7 @@ export function putIncomingMove(origin: string, link: string): Promise<IncomingM
 	});
 }
 
-/** «Поднять круг здесь» (2.18): дальше сервер работает сам. */
+/** «Поднять круг здесь» (7.20): дальше сервер работает сам. */
 export async function startIncomingMove(
 	origin: string,
 	id: string,

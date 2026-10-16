@@ -17,7 +17,7 @@ export interface MediaSummary {
 	voice?: boolean;
 	audio_duration_ms?: number;
 	audio_peaks?: number[];
-	/** Кадр обложки для ленты (4.16): квадрат в долях снимка. */
+	/** Кадр обложки для ленты (4.3): квадрат в долях снимка. */
 	crop?: { x: number; y: number; w: number; h: number };
 }
 
@@ -31,7 +31,7 @@ export interface Comment {
 	created_at: string;
 	edit_window_sec?: number | null;
 	editable_until?: string;
-	/** Вложения комментария (4.28): фото, голосовое, файл. */
+	/** Вложения комментария (4.20): фото, голосовое, файл. */
 	media?: MediaSummary[];
 }
 
@@ -50,7 +50,7 @@ export interface Reaction {
 	editable_until?: string;
 }
 
-/** Открытка дня (3.15): день, каким он стал после этой записи журнала. */
+/** Открытка дня (3.20): день, каким он стал после этой записи журнала. */
 export interface FeedDayCard {
 	entry_date: string;
 	title?: string;
@@ -109,7 +109,7 @@ export interface ArchiveCycle {
 	download_url: string;
 }
 
-/** Встреча 1.9: «Круг переехал» / «Круг оживили из архива». */
+/** Встреча 1.10: «Круг переехал» / «Круг оживили из архива». */
 export interface CircleArrival {
 	kind: 'moved' | 'revived';
 	/** Кто уже вернулся (до трёх имён) — «Уже вернулись · 3 из 22». */
@@ -126,9 +126,9 @@ export interface CircleDetail {
 	color?: string;
 	status: string;
 	archive_cycle?: ArchiveCycle;
-	/** Круг замер под полный архив с удалением (6.36). */
+	/** Круг замер под полный архив с удалением (3.16). */
 	frozen_at?: string;
-	/** Приехал с перенесённым или оживлённым кругом и ещё не входил — встреча 1.9. */
+	/** Приехал с перенесённым или оживлённым кругом и ещё не входил — встреча 1.10. */
 	arrival?: CircleArrival;
 	owner_name?: string;
 	edit_window_sec?: number | null;
@@ -141,7 +141,7 @@ export interface CircleDetail {
 	share_place?: boolean;
 	/** Был ли в круге кто-то ещё: в круге из одного нет вкладки «Отклики». */
 	has_others?: boolean;
-	/** Новые отклики с прошлого просмотра (3.12). */
+	/** Новые отклики с прошлого просмотра (3.17). */
 	responses_unread?: number;
 }
 

@@ -31,7 +31,7 @@ type inviteMemberRow struct {
 	activity  int
 }
 
-// inviteActivityWindow — за какой срок считать активность для ряда 1.3.
+// inviteActivityWindow — за какой срок считать активность для ряда 1.4.
 const inviteActivityWindow = 90 * 24 * time.Hour
 
 // InvitePeekForCircle returns member names for an invite link (no account ids).
@@ -163,8 +163,8 @@ func (c *Chronicle) inviteActivity(ctx context.Context, circleID string, since t
 	return out, rows.Err()
 }
 
-// ServerInviteInviterName is the public name on a server invite (1.7): the
-// live face of whoever created the link, or "" — then 1.7 shows only the
+// ServerInviteInviterName is the public name on a server invite (1.8): the
+// live face of whoever created the link, or "" — then 1.8 shows only the
 // address. The admin sentinel has no face, so admin links carry no name.
 // It used to fall back to the owner of the oldest circle: an anonymous link
 // holder saw a member's name, though that member invited no one.

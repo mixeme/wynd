@@ -162,7 +162,7 @@ type Comment struct {
 	EditWindow    EditWindow
 	EditableUntil *time.Time
 	Deleted       bool
-	// Media — вложения комментария (4.28): фото, голосовое, файл.
+	// Media — вложения комментария (4.20): фото, голосовое, файл.
 	Media []PostMedia
 	// Replayed — комментарий не создан сейчас, а найден по client_id:
 	// уведомления второй раз не шлются.

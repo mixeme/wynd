@@ -1,5 +1,5 @@
 <script lang="ts">
-	// Отсечка по дате (6.10, 6.12): с 6.31 — за строкой «Заархивировать и
+	// Отсечка по дате (6.17, 6.21): с 6.15 — за строкой «Заархивировать и
 	// удалить старое» на «Архиве и очистке».
 	import { goUp } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
@@ -167,7 +167,7 @@
 			onchange={() => void onCutoffChange(cutoffDate)}
 		/>
 		{#if freedBytes || keptPosts !== undefined}
-			<!-- 6.10: «Освободится 6,2 ГБ из 10. В круге останется 214 записей из 340.» -->
+			<!-- 6.17: «Освободится 6,2 ГБ из 10. В круге останется 214 записей из 340.» -->
 			<Hint>
 				{#if freedBytes}Освободится {formatBytes(freedBytes)}{#if capped}{' '}из {formatBytes(
 							quotaBytes

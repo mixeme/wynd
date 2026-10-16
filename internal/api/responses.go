@@ -8,7 +8,7 @@ import (
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 )
 
-// «Отклики» (3.13): комментарии и реакции круга от свежего к старому.
+// «Отклики» (3.18): комментарии и реакции круга от свежего к старому.
 func (s *Server) handleResponses(w http.ResponseWriter, r *http.Request) {
 	circleID := r.PathValue("circle_id")
 	sess, ok := requireSession(w, r)

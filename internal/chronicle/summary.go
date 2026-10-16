@@ -131,7 +131,7 @@ func summaryDayCoverCleared(g Gender, name, entryDate string) string {
 	return fmt.Sprintf("%s %s обложку для %s", name, past(g, "убрал", "убрала"), dayLabel(entryDate))
 }
 
-// captionDayCard — подпись открытки дня (3.15): что сделали. Даты и названия
+// captionDayCard — подпись открытки дня (3.20): что сделали. Даты и названия
 // в ней нет — они в самой открытке.
 func captionDayCard(g Gender, name string, titled, cover bool) string {
 	if g == GenderNone {
@@ -168,7 +168,7 @@ func dayLabel(entryDate string) string {
 	return fmt.Sprintf("%d %s", t.Day(), monthsGenitive[t.Month()-1])
 }
 
-// Круг замер под полный архив с удалением (6.36) и ожил.
+// Круг замер под полный архив с удалением (3.16) и ожил.
 func summaryCircleFrozen(g Gender, name string) string {
 	if g == GenderNone {
 		return fmt.Sprintf("Круг остановлен: %s", name)
@@ -213,8 +213,8 @@ func summaryCircleRevived(g Gender, name string) string {
 	return fmt.Sprintf("%s %s круг из архива", name, past(g, "оживил", "оживила"))
 }
 
-// Перенос круга по ссылке (план 53): начат (6.27), принят новым сервером
-// (6.28), и на новом сервере — откуда приехал (2.19).
+// Перенос круга по ссылке (план 53): начат (3.14), принят новым сервером
+// (3.15), и на новом сервере — откуда приехал (7.25).
 func summaryCircleMoveStarted(g Gender, name string) string {
 	if g == GenderNone {
 		return fmt.Sprintf("Перенос круга начат: %s", name)

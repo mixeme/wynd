@@ -167,7 +167,7 @@ func (s *Service) confirmEmailChange(ctx context.Context, in ConfirmEmailChangeI
 		return EmailChange{}, err
 	}
 	// Это устройство остаётся вошедшим, остальные попросят войти заново уже
-	// новой почтой (кадр 7.14).
+	// новой почтой (кадр 7.12).
 	if _, err := tx.ExecContext(ctx, `
 		DELETE FROM sessions WHERE account_id = ? AND kind = ? AND token_hash != ?
 	`, acc.ID, string(SessionParticipant), hashSessionToken(in.SessionToken)); err != nil {
@@ -181,7 +181,7 @@ func (s *Service) confirmEmailChange(ctx context.Context, in ConfirmEmailChangeI
 
 // AdminSetAccountEmail — запасной путь: человек потерял ящик и вышел со всех
 // устройств. Без кода; все сессии и push-подписки учётки закрываются, войти
-// можно только кодом на новую почту (кадр 9.11).
+// можно только кодом на новую почту (кадр 9.6).
 func (s *Service) AdminSetAccountEmail(ctx context.Context, id, rawEmail string) (EmailChange, error) {
 	if id == "" {
 		return EmailChange{}, ErrInvalid

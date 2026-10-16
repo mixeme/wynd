@@ -225,7 +225,7 @@
 	<SearchField class="grow" autofocus placeholder="Искать по всем кругам" bind:value={query} />
 {/snippet}
 
-<!-- Поле — в шапке, как в кадре 2.9. Раньше шапка повторяла запрос текстом,
+<!-- Поле — в шапке, как в кадре 2.19. Раньше шапка повторяла запрос текстом,
      а настоящее поле стояло ниже: на экране было две строки поиска. -->
 <FormLayout shell app bar={searchBar} compact onback={() => goUp('/circles')}>
 	<ChipGroup class="mt-12">

@@ -63,9 +63,9 @@ func (s *Server) handleReviveBlobs(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"blobs": found})
 }
 
-// reviveRoom — сколько места этот сервер даёт новому кругу этой учётки (2.22:
+// reviveRoom — сколько места этот сервер даёт новому кругу этой учётки (7.29:
 // «для круга есть 3 ГБ»): квота круга по умолчанию или одобренная просьба о
-// месте для него (2.24), но не больше, чем свободно на сервере. approved —
+// месте для него (7.31), но не больше, чем свободно на сервере. approved —
 // одобренная просьба, если её место и считается.
 func (s *Server) reviveRoom(ctx context.Context, accountID string) (room int64, approved *blob.QuotaRequest, last *blob.QuotaRequest, err error) {
 	if room, err = s.Blobs.RoomBytes(ctx); err != nil {
@@ -88,8 +88,8 @@ func (s *Server) reviveRoom(ctx context.Context, accountID string) (room int64, 
 	return room, approved, last, nil
 }
 
-// handleReviveRoom — помещается ли круг из архива сюда (2.22, 2.23) и что с
-// просьбой о месте для него (2.24, 2.26). Экран спрашивает при открытии.
+// handleReviveRoom — помещается ли круг из архива сюда (7.29, 7.30) и что с
+// просьбой о месте для него (7.31, 7.32). Экран спрашивает при открытии.
 func (s *Server) handleReviveRoom(w http.ResponseWriter, r *http.Request) {
 	sess, ok := requireSession(w, r)
 	if !ok {
@@ -115,7 +115,7 @@ func (s *Server) handleReviveRoom(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-// handleRevivePlaceRequest — «Попросить место» на 2.23: просьба о месте для
+// handleRevivePlaceRequest — «Попросить место» на 7.30: просьба о месте для
 // круга, которого пока нет; встаёт в ту же очередь панели.
 func (s *Server) handleRevivePlaceRequest(w http.ResponseWriter, r *http.Request) {
 	sess, ok := requireSession(w, r)
@@ -137,8 +137,8 @@ func (s *Server) handleRevivePlaceRequest(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusCreated, map[string]string{"id": id, "status": "pending"})
 }
 
-// handleReviveCircle — «Оживить круг здесь» (2.22): круг вставляется заново,
-// тот, кто оживил, — владелец; итог — для 2.28 / 2.34.
+// handleReviveCircle — «Оживить круг здесь» (7.29): круг вставляется заново,
+// тот, кто оживил, — владелец; итог — для 7.33 / 7.34.
 func (s *Server) handleReviveCircle(w http.ResponseWriter, r *http.Request) {
 	sess, ok := requireSession(w, r)
 	if !ok {
@@ -199,7 +199,7 @@ type reviveRequest struct {
 	MovedFrom     string
 }
 
-// reviveOutcome — итог для 2.19 / 2.28 / 2.32 / 2.34.
+// reviveOutcome — итог для 7.25 / 7.33 / 7.26 / 7.34.
 type reviveOutcome struct {
 	CircleID  string
 	Posts     int
@@ -236,7 +236,7 @@ func (s *Server) reviveFromTables(ctx context.Context, in reviveRequest) (revive
 			}
 		}
 	}
-	// Каждый файл архива — на сервере, своей суммой и длиной (2.28: «сверено
+	// Каждый файл архива — на сервере, своей суммой и длиной (7.33: «сверено
 	// с файлом архива, ничего не потерялось»).
 	var archiveBytes int64
 	if t, ok := tables["blobs"]; ok {
@@ -258,7 +258,7 @@ func (s *Server) reviveFromTables(ctx context.Context, in reviveRequest) (revive
 			archiveBytes += gotSize
 		}
 	}
-	// Помещается ли (2.23). Файлы уже загружены — место на сервере ими занято;
+	// Помещается ли (7.30). Файлы уже загружены — место на сервере ими занято;
 	// предел здесь — нового круга: одобренная просьба или квота по умолчанию.
 	_, approved, _, err := s.reviveRoom(ctx, in.AccountID)
 	if err != nil {
@@ -325,7 +325,7 @@ func jsonInt64(v any) int64 {
 }
 
 // inviteNotJoined — письмо каждому, кто приехал с кругом, но на этом сервере
-// ещё не был (2.22, 6.35): войти той же почтой — и он в своём имени.
+// ещё не был (7.29, 6.6): войти той же почтой — и он в своём имени.
 func (s *Server) inviteNotJoined(circleID, ownerAccountID string, accountIDs []string) int {
 	if s.Mail == nil || len(accountIDs) == 0 {
 		return 0

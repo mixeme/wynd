@@ -36,7 +36,7 @@ func (s *Service) SetRegistrationMode(ctx context.Context, mode RegistrationMode
 }
 
 // NameErasureAllowed — включён ли у сервера переключатель «Разрешить стирать
-// имена и фото» (кадр 9.13, план 46, A3).
+// имена и фото» (кадр 9.4, план 46, A3).
 func (s *Service) NameErasureAllowed(ctx context.Context) (bool, error) {
 	var v int
 	if err := s.db.QueryRowContext(ctx, `

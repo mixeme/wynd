@@ -130,7 +130,7 @@ func (c *Chronicle) CanWrite(ctx context.Context, circleID, accountID string, no
 	if mem.Status != StatusActive {
 		return false, nil
 	}
-	// Круг замер под полный архив с удалением (6.36): читать можно, писать
+	// Круг замер под полный архив с удалением (3.16): читать можно, писать
 	// нельзя никому, и владельцу тоже.
 	frozen, err := c.CircleFrozenAt(ctx, circleID)
 	if err != nil {

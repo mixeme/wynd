@@ -19,12 +19,12 @@ export interface FullArchive {
 }
 
 export interface FullArchiveState {
-	/** Круг замер под архив с удалением (6.32): с этого момента. */
+	/** Круг замер под архив с удалением (6.25): с этого момента. */
 	frozen_at?: string | null;
 	estimate_bytes: number;
 	posts: number;
 	members: number;
-	/** Готовый файл помещается на сервер; нет — 6.43, «Скачать сразу». */
+	/** Готовый файл помещается на сервер; нет — 6.31, «Скачать сразу». */
 	fits: boolean;
 	retention_hours: number;
 	archive: FullArchive | null;
@@ -34,7 +34,7 @@ export function fetchFullArchive(origin: string, circleId: string): Promise<Full
 	return apiJson<FullArchiveState>(origin, `/circles/${circleId}/full_archive`);
 }
 
-/** «Собрать архив» (6.29, 6.32). Ключ — открытый ключ и соль, пароль остаётся тут. */
+/** «Собрать архив» (6.24, 6.25). Ключ — открытый ключ и соль, пароль остаётся тут. */
 export function startFullArchive(
 	origin: string,
 	circleId: string,
@@ -48,18 +48,18 @@ export function startFullArchive(
 	});
 }
 
-/** «Отменить сборку» (6.40) и «Удалить архив, не скачивая» (6.33). */
+/** «Отменить сборку» (6.26) и «Удалить архив, не скачивая» (6.27). */
 export async function removeFullArchive(origin: string, circleId: string): Promise<void> {
 	await apiJson(origin, `/circles/${circleId}/full_archive`, { method: 'DELETE' });
 }
 
-/** «Отменить — оживить круг» (6.34, 6.30, 6.41). */
+/** «Отменить — оживить круг» (6.28, 6.29, 6.30). */
 export async function reviveCircle(origin: string, circleId: string): Promise<void> {
 	await apiJson(origin, `/circles/${circleId}/full_archive/revive`, { method: 'POST' });
 	await invalidateSnapshots(origin, { kind: 'circles' });
 }
 
-/** «Убрать круг с сервера» (6.30): только когда файл скачан. */
+/** «Убрать круг с сервера» (6.29): только когда файл скачан. */
 export async function removeFrozenCircle(origin: string, circleId: string): Promise<void> {
 	await apiJson(origin, `/circles/${circleId}/full_archive/remove_circle`, { method: 'POST' });
 	await invalidateSnapshots(origin, { kind: 'circles' });
@@ -80,7 +80,7 @@ export async function downloadFullArchive(origin: string, circleId: string): Pro
 	openDownload(origin, url);
 }
 
-/** «Скачать сразу» (6.43): сервер собирает файл прямо в скачивание. */
+/** «Скачать сразу» (6.31): сервер собирает файл прямо в скачивание. */
 export async function streamFullArchive(
 	origin: string,
 	circleId: string,

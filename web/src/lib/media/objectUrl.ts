@@ -109,7 +109,7 @@ function touch(key: string): string | undefined {
 }
 
 export interface MediaLoadOptions {
-	/** Ход скачивания: звук показывает «загрузка · N из M МБ» (4.19). */
+	/** Ход скачивания: звук показывает «загрузка · N из M МБ» (4.8). */
 	onProgress?: (received: number, total: number) => void;
 	signal?: AbortSignal;
 }

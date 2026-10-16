@@ -24,7 +24,7 @@ import (
 // Перенос круга по ссылке (план 53), новый сервер. Устройство отдаёт ссылку
 // своему серверу; он спрашивает карточку у прежнего (из браузера туда нельзя —
 // другой адрес) и после «Поднять круг здесь» забирает круг сам: телефон не
-// нужен (2.18), обрыв не страшен — докачка с места обрыва, пока жива ссылка.
+// нужен (7.20), обрыв не страшен — докачка с места обрыва, пока жива ссылка.
 
 // moveChunk — сколько байт архива за один запрос: обрыв теряет не больше.
 const moveChunk = 32 << 20
@@ -120,7 +120,7 @@ type moveCard struct {
 	} `json:"circle"`
 }
 
-// fetchMoveCard спрашивает карточку. Ошибки — коды для 2.18: link_invalid,
+// fetchMoveCard спрашивает карточку. Ошибки — коды для 7.20: link_invalid,
 // move_not_found, source_unreachable, source_too_old.
 func (s *Server) fetchMoveCard(ctx context.Context, link string) (*moveCard, string) {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
@@ -186,8 +186,8 @@ func incomingJSON(m *chronicle.IncomingMove, now time.Time) map[string]any {
 	return out
 }
 
-// withRoom добавляет к ответу место для круга и просьбу о нём (2.27, 2.30,
-// 2.31) — как у оживления из архива.
+// withRoom добавляет к ответу место для круга и просьбу о нём (7.21, 7.22,
+// 7.23) — как у оживления из архива.
 func (s *Server) withRoom(ctx context.Context, out map[string]any, accountID string, need int64) error {
 	room, _, last, err := s.reviveRoom(ctx, accountID)
 	if err != nil {
@@ -208,8 +208,8 @@ func (s *Server) withRoom(ctx context.Context, out map[string]any, accountID str
 	return nil
 }
 
-// handlePutIncomingMove — вставили ссылку на 2.18: карточка круга с прежнего
-// сервера, место здесь. Ссылка запоминается (2.30).
+// handlePutIncomingMove — вставили ссылку на 7.20: карточка круга с прежнего
+// сервера, место здесь. Ссылка запоминается (7.22).
 func (s *Server) handlePutIncomingMove(w http.ResponseWriter, r *http.Request) {
 	sess, ok := requireSession(w, r)
 	if !ok {
@@ -267,8 +267,8 @@ func (s *Server) handlePutIncomingMove(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-// handleIncomingMove — последний входящий перенос этой учётки (2.18 при
-// открытии, ход, итог 2.19 / 2.32) и место для него.
+// handleIncomingMove — последний входящий перенос этой учётки (7.20 при
+// открытии, ход, итог 7.25 / 7.26) и место для него.
 func (s *Server) handleIncomingMove(w http.ResponseWriter, r *http.Request) {
 	sess, ok := requireSession(w, r)
 	if !ok {
@@ -296,7 +296,7 @@ func (s *Server) handleIncomingMove(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"move": out})
 }
 
-// handleStartIncomingMove — «Поднять круг здесь» (2.18): дальше сервер
+// handleStartIncomingMove — «Поднять круг здесь» (7.20): дальше сервер
 // работает сам.
 func (s *Server) handleStartIncomingMove(w http.ResponseWriter, r *http.Request) {
 	sess, ok := requireSession(w, r)
@@ -676,7 +676,7 @@ func (s *Server) importMoveBlobs(ctx context.Context, accountID string, zr *arch
 	return out, nil
 }
 
-// acceptMove — «принято и сверено» прежнему серверу (6.26). Круг здесь уже
+// acceptMove — «принято и сверено» прежнему серверу (6.35). Круг здесь уже
 // стоит; обрыв — несколько повторов. Не дошло — на прежнем сервере перенос
 // так и ждёт, пока не выйдет срок ссылки, и владелец там решает сам.
 func (s *Server) acceptMove(ctx context.Context, link string, posts, names int, bytes int64) {

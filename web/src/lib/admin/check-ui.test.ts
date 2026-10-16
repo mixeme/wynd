@@ -7,7 +7,7 @@ function row(id: string, status: CheckResult['status']): CheckResult {
 }
 
 describe('checkHeadline', () => {
-	it('counts only fail, not warn — as on #e9-8', () => {
+	it('counts only fail, not warn — as on #e9-11', () => {
 		const checks = [
 			row('proxy_client', 'fail'),
 			row('proxy_body_limit', 'fail'),

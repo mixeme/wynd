@@ -31,7 +31,7 @@ export interface AdminStorage {
 	storage_quota_disk_percent: number | null;
 	default_circle_quota_bytes: number | null;
 	circles: AdminStorageCircle[];
-	/** Готовые полные архивы кругов (9.12): место, число, срок хранения. */
+	/** Готовые полные архивы кругов (9.9): место, число, срок хранения. */
 	archives_bytes?: number;
 	archives_count?: number;
 	archive_retention_hours?: number;
@@ -50,7 +50,7 @@ export interface AccessSettings {
 	name: string;
 	registration_mode: 'open' | 'invite' | 'closed';
 	public_url?: string;
-	/** «Разрешить стирать имена и фото» (9.13, «Люди»). */
+	/** «Разрешить стирать имена и фото» (9.4, «Люди»). */
 	allow_name_erasure?: boolean;
 }
 
@@ -93,7 +93,7 @@ export interface AdminInvite {
 
 export interface QuotaRequest {
 	id: string;
-	/** Пусто — просьба для круга, которого пока нет: его оживляют из архива (2.23). */
+	/** Пусто — просьба для круга, которого пока нет: его оживляют из архива (7.30). */
 	circle_id: string;
 	circle_name?: string;
 	requester_id: string;
@@ -119,7 +119,7 @@ export async function fetchStorage(): Promise<AdminStorage> {
 	return adminJson('/admin/storage');
 }
 
-/** «Хранить готовый архив» (9.12): часов после сборки. */
+/** «Хранить готовый архив» (9.9): часов после сборки. */
 export async function setArchiveRetention(hours: number): Promise<void> {
 	await adminJson('/admin/storage/archive_retention', {
 		method: 'PUT',
@@ -128,7 +128,7 @@ export async function setArchiveRetention(hours: number): Promise<void> {
 	});
 }
 
-/** «Удалить все» (9.12): готовые архивы стираются, круги остаются. */
+/** «Удалить все» (9.9): готовые архивы стираются, круги остаются. */
 export async function clearReadyArchives(): Promise<void> {
 	await adminJson('/admin/storage/archives/clear', { method: 'POST' });
 }

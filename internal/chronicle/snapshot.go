@@ -482,12 +482,12 @@ type FeedEventSummary struct {
 	Seq       int64
 	Summary   string
 	CreatedAt time.Time
-	// Day — открытка дня (3.15): у записей «назвали день» и «выбрали обложку».
+	// Day — открытка дня (3.20): у записей «назвали день» и «выбрали обложку».
 	Day *FeedDayCard
 }
 
 // FeedDayCard — день, каким он стал после этой записи журнала: название и
-// обложка вместе, если оба есть, что бы из двух ни меняли (3.16).
+// обложка вместе, если оба есть, что бы из двух ни меняли (3.21).
 type FeedDayCard struct {
 	EntryDate        string
 	Title            string
@@ -644,7 +644,7 @@ func (c *Chronicle) attachDayCards(ctx context.Context, circleID, accountID stri
 		return nil, err
 	}
 	// Обложку не выбирали — в открытке та же фотография, что у дня на «Днях»
-	// (кадр 3.17, решение владельца 2026-10-13, план 46, C34).
+	// (кадр 3.22, решение владельца 2026-10-13, план 46, C34).
 	fallbackCovers, _, err := c.dayMediaFacts(ctx, circleID, accountID)
 	if err != nil {
 		return nil, err

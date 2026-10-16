@@ -38,9 +38,9 @@
 		type ReviveRoom
 	} from '$lib/archive/revive';
 
-	// «Принять круг» (7.16) и оживление из архива (2.21–2.26, 2.28, 2.34).
+	// «Принять круг» (7.19) и оживление из архива (7.27–7.32, 7.33, 7.34).
 	// Файл и пароль живут только на этом экране: уйти — значит выбрать файл
-	// заново (2.24).
+	// заново (7.31).
 	const GB = 1024 * 1024 * 1024;
 	// У сервера на своём адресе origin — пустая строка: не проверять как истину.
 	const origin = $page.url.searchParams.get('origin') ?? '';
@@ -165,7 +165,7 @@
 >
 	<FilePicker bind:this={picker} accept=".wynd" onfiles={(files) => void pick(files)} />
 	{#if step === 'choose'}
-		<!-- 7.16: две дороги — перенос по ссылке (план 53) и оживление из файла. -->
+		<!-- 7.19: две дороги — перенос по ссылке (план 53) и оживление из файла. -->
 		<ServerRow
 			name={serverName || host}
 			subtitle={freeBytes !== undefined ? `${host} · свободно ${formatBytes(freeBytes)}` : host}
@@ -191,7 +191,7 @@
 			названием — здесь вы станете его владельцем.
 		</Hint>
 	{:else if step === 'password' && file}
-		<!-- 2.21 / 2.25: файл расшифровывается на этом устройстве. -->
+		<!-- 7.27 / 7.28: файл расшифровывается на этом устройстве. -->
 		<Label>Файл архива</Label>
 		<SettingsRow
 			icon="file"
@@ -224,7 +224,7 @@
 		{/if}
 		<Hint class="mt-14 ctr-text">Без пароля файл не открыть — его не знает ни сервер, ни Wynd.</Hint>
 	{:else if step === 'review' && archive && room}
-		<!-- 2.22 и, когда круг не помещается, 2.23 / 2.24 / 2.26. -->
+		<!-- 7.29 и, когда круг не помещается, 7.30 / 7.31 / 7.32. -->
 		<Label>Сервер</Label>
 		<ServerRow
 			name={serverName || host}
@@ -303,7 +303,7 @@
 			{formatBytes(sent)} из {formatBytes(total)}. Не закрывайте страницу, пока круг загружается.
 		</Hint>
 	{:else if step === 'done' && result && archive}
-		<!-- 2.28 / 2.34. -->
+		<!-- 7.33 / 7.34. -->
 		<StatusCard
 			title="Круг на месте"
 			text={result.verified

@@ -45,7 +45,7 @@
 		return String(acc.circle_count);
 	}
 
-	// Переключатель на весь сервер (9.13) — сохраняется сразу, как «Вход открыт».
+	// Переключатель на весь сервер (9.4) — сохраняется сразу, как «Вход открыт».
 	async function saveErasure(on: boolean) {
 		erasureError = '';
 		try {

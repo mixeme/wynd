@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-// MaxCommentMedia — вложений на комментарий (4.28).
+// MaxCommentMedia — вложений на комментарий (4.20).
 const MaxCommentMedia = 10
 
 // normalizeCommentMedia проверяет вложения комментария: фото, голосовое или

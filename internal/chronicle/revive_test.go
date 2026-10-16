@@ -110,7 +110,7 @@ func TestReviveCircleNextToOriginal(t *testing.T) {
 }
 
 // Тот, кто оживил, не из архива — он владелец и получает лицо прежнего
-// владельца; почта, которой на сервере нет, — учётка без входа (6.35).
+// владельца; почта, которой на сервере нет, — учётка без входа (6.6).
 func TestReviveCircleByStranger(t *testing.T) {
 	e := newTestEnv(t)
 	e.seedAccount("owner")

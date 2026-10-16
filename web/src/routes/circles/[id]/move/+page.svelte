@@ -30,7 +30,7 @@
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 
 	// Перенос круга на другой сервер (план 53), прежний сервер: что уедет и
-	// как (6.24), ссылка и ход (6.25), новый сервер принял круг (6.26).
+	// как (6.33), ссылка и ход (6.34), новый сервер принял круг (6.35).
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 
 	let info = $state<CircleMoveState | undefined>();
@@ -60,7 +60,7 @@
 		}
 	}
 
-	// «Что происходит» живая (6.25): пока новый сервер забирает круг, экран
+	// «Что происходит» живая (6.34): пока новый сервер забирает круг, экран
 	// переспрашивает свой сервер.
 	$effect(() => {
 		const live = move && move.status !== 'accepted' && move.link_alive;
@@ -130,7 +130,7 @@
 	{:else if !info}
 		<Hint class="gutter">{error}</Hint>
 	{:else if move?.status === 'accepted'}
-		<!-- 6.26: новый сервер принял круг и сверил; удаляет круг владелец. -->
+		<!-- 6.35: новый сервер принял круг и сверил; удаляет круг владелец. -->
 		<Label>Что происходит</Label>
 		<SettingsRow
 			icon="check"
@@ -152,7 +152,7 @@
 		</Hint>
 		<Hint class="ctr-text">Круг здесь оживёт. Поднятый на новом сервере останется там отдельной копией.</Hint>
 	{:else if move}
-		<!-- 6.25: круг замер, ссылка выдана; ход — живой. -->
+		<!-- 6.34: круг замер, ссылка выдана; ход — живой. -->
 		{#if move.link_alive && move.link}
 			<Label>Ссылка переноса</Label>
 			<FieldDisplay mono value={move.link} />
@@ -203,7 +203,7 @@
 			<TextButton disabled={busy} onclick={() => void cancel()}>Отменить перенос</TextButton>
 		</Hint>
 	{:else}
-		<!-- 6.24: что уедет и как это пройдёт. -->
+		<!-- 6.33: что уедет и как это пройдёт. -->
 		<Label>Что уедет</Label>
 		<SettingsRow
 			title={`Весь журнал круга «${circle.name}»`}

@@ -65,7 +65,7 @@ func TestTextQuotaFullCircle(t *testing.T) {
 
 	setCircleQuota(t, blobs, circleID, circleUsed(t, blobs, circleID))
 
-	// Улочка знает, что места нет, и кто может помочь (3.19).
+	// Улочка знает, что места нет, и кто может помочь (3.10).
 	for _, who := range []struct {
 		tok string
 		own bool

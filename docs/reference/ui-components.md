@@ -52,15 +52,15 @@
 
 | Layout | CSS | Примеры экранов |
 |--------|-----|-----------------|
-| PlainLayout | `.ph` | e1-1, e1-3 |
-| ShellLayout | `.ph.shell` + при `app` `.shell-body` | e2-1, e2-3, e7-* |
+| PlainLayout | `.ph` | e1-1, e1-4 |
+| ShellLayout | `.ph.shell` + при `app` `.shell-body` | e2-1, e2-6, e7-* |
 | CircleLayout | `.ph.{color}` | e3-*, e4-*, e5-*, e6-* |
-| FormLayout | `.ph.{color\|shell}` | e1-3, e1-4, e2-4, e2-7, e6-1 |
+| FormLayout | `.ph.{color\|shell}` | e1-4, e1-5, e2-14, e2-17, e6-1 |
 | OverlayLayout | absolute | sheets, dialogs, push; `ondismiss` → Scrim и модальность; `label` → `aria-label` |
 | AdminWideLayout | `.ph.wide.shell` | e9-* |
 | PayGateLayout | — (шлюз, не каркас) | `+layout` групп `/circles/*` и `/search/*`: пока доступ не оплачен — вместо экрана «Доступ закрыт» с реквизитами или заявкой в ожидании (**#e10-***), иначе children |
 
-`FormLayout`: при `circleTitle` — шапка вступления **#e1-3** (`div.cbar`, имя по центру, без `BackBar`); список участников на join (`?members=1`) — `color` + `subtitle` (цветная `.cbar` с назад), не серый `BackBar`. Ветки: `compose`, `circleTitle`, snippet `bar`, `color && subtitle`, иначе `BackBar`.
+`FormLayout`: при `circleTitle` — шапка вступления **#e1-4** (`div.cbar`, имя по центру, без `BackBar`); список участников на join (`?members=1`) — `color` + `subtitle` (цветная `.cbar` с назад), не серый `BackBar`. Ветки: `compose`, `circleTitle`, snippet `bar`, `color && subtitle`, иначе `BackBar`.
 
 Сиблинги `.dlg` / `.sheet` / `.scrim` вне `.ph.app` — колонка `--app-max-width` (не `inset:auto` на scrim: сбивает `left:50%`). Лайтбокс `fixed` — весь вьюпорт. `VolumeChart` — шаг 26px или сжатый, пачка по центру; отсечка квоты из `volumeChart.ts`.
 
@@ -74,14 +74,14 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar, **Comp
 
 `ComposeToolbar` — нижняя полоса новой записи (**#e4-2**): snippet `tools` (кнопки вложений), опц. snippet `note` — мелкая подпись справа («до 32 КБ · как Мышь»). Ставится в `footer` у `FormLayout compose`.
 
-`AudioBar` — полоса плеера (**#e4-20**): что играет, откуда, ход в цвете круга, пауза и крестик; ставится один раз в корневом `+layout`. Видна на любом экране, кроме ленты круга звука и экрана его записи. Пока видна, задаёт `--player-h` — полоса ввода, плюс и нижние панели встают над ней. Только вид: `title`, `subtitle`, `coverUrl`, `color`, `progress`, `loading`, `playing`, `onopen`, `ontoggle`, `onstop`. Что играет, когда прятать и `--player-h` — `useAudioBar()` из `$lib/media/audioBar.svelte` (план 48).
+`AudioBar` — полоса плеера (**#e4-9**): что играет, откуда, ход в цвете круга, пауза и крестик; ставится один раз в корневом `+layout`. Видна на любом экране, кроме ленты круга звука и экрана его записи. Пока видна, задаёт `--player-h` — полоса ввода, плюс и нижние панели встают над ней. Только вид: `title`, `subtitle`, `coverUrl`, `color`, `progress`, `loading`, `playing`, `onopen`, `ontoggle`, `onstop`. Что играет, когда прятать и `--player-h` — `useAudioBar()` из `$lib/media/audioBar.svelte` (план 48).
 
-`ConnectionStrip` — полоса связи под шапкой (**#e7-6–e7-8**, C25): `notice` — `offline` («Нет сети. Новое уйдёт само…», значок облака), `down` («Сервер не отвечает — доступно сохранённое», часы) или `sending` («Соединение установлено — отправляем N записей» и ход цветом круга); без `notice` не рисует ничего — на связи знака нет (**#e7-5**). Состояние считает `$lib/session/connection.svelte` (`connectionNotice(origin?)`); ставят `CircleLayout` (сервер своего круга) и `ShellLayout` (улочка — только «нет сети»). `CircleRow silent="хост"` — круг молчащего сервера на улочке (**#e7-9**): «хост не отвечает» со значком часов вместо последней строки, строка приглушена.
-`StackLegend` — легенда под `StackBar` (**#e9-5**): `items` — `{label, swatch}`, образец цвета полоской; «круги — 18,4 ГБ, цвета как в таблице ниже», «готовые архивы — 10,5 ГБ» (штриховка `ARCHIVE_HATCH`).
+`ConnectionStrip` — полоса связи под шапкой (**#e7-37–e7-39**, C25): `notice` — `offline` («Нет сети. Новое уйдёт само…», значок облака), `down` («Сервер не отвечает — доступно сохранённое», часы) или `sending` («Соединение установлено — отправляем N записей» и ход цветом круга); без `notice` не рисует ничего — на связи знака нет (**#e7-36**). Состояние считает `$lib/session/connection.svelte` (`connectionNotice(origin?)`); ставят `CircleLayout` (сервер своего круга) и `ShellLayout` (улочка — только «нет сети»). `CircleRow silent="хост"` — круг молчащего сервера на улочке (**#e7-40**): «хост не отвечает» со значком часов вместо последней строки, строка приглушена.
+`StackLegend` — легенда под `StackBar` (**#e9-7**): `items` — `{label, swatch}`, образец цвета полоской; «круги — 18,4 ГБ, цвета как в таблице ниже», «готовые архивы — 10,5 ГБ» (штриховка `ARCHIVE_HATCH`).
 
-`StatusCard` — карточка «что происходит» (**#e6-40**, **#e6-43**): `title` и `text`, скругление и подложка карточки; без действия — кнопка или тихая ссылка стоят под ней. `SettingsRow trailingIcon` — значок справа вместо шеврона (скачать файл, **#e6-33**).
+`StatusCard` — карточка «что происходит» (**#e6-26**, **#e6-31**): `title` и `text`, скругление и подложка карточки; без действия — кнопка или тихая ссылка стоят под ней. `SettingsRow trailingIcon` — значок справа вместо шеврона (скачать файл, **#e6-27**).
 
-`SpaceNote` — полоса «места нет» наверху экрана (**#e4-31**, C42): `notice` из `spaceNotice()` (`$lib/circles/space`) — две строки, у владельца вторая — ссылка на «Архив и очистку». Ставит экран правки записи в круге без места; внизу ленты та же полоса — `CircleLayout notice` (**#e3-19**).
+`SpaceNote` — полоса «места нет» наверху экрана (**#e4-25**, C42): `notice` из `spaceNotice()` (`$lib/circles/space`) — две строки, у владельца вторая — ссылка на «Архив и очистку». Ставит экран правки записи в круге без места; внизу ленты та же полоса — `CircleLayout notice` (**#e3-10**).
 
 ### `forms/`
 
@@ -95,33 +95,33 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar, **Comp
 | `Chip` | `<button class="chip">` или `<span>` | — | с `onclick` — кнопка, `aria-pressed={selected}` |
 | `IconButton` | `<button class="ib">` | `name`, `label`, `onclick` | рендер только при `onclick`; опц. pointer-события (длинное нажатие FAB); `pressed` — переключатель: `true` в цвете круга, `false` приглушён (`.ib.off`), с `aria-pressed` |
 | `TextButton` | `<button>` | `onclick` | `variant`: `link` (`.under`), `admin` (`.act` в `.chk`), `adminBox` (`.inp`), `bar` (`.t`), `barAction` (`.rt`/`.rt.on`) |
-| `AddPhotoButton` | `button.addph` | `onclick` | без `previewUrl` — плюс; с `previewUrl` — `.addph.preview`, cover-фон, `aria-label` «сменить фото» (**#e1-3**) |
+| `AddPhotoButton` | `button.addph` | `onclick` | без `previewUrl` — плюс; с `previewUrl` — `.addph.preview`, cover-фон, `aria-label` «сменить фото» (**#e1-4**) |
 
-`CodeBox` — шесть клеток `.codebox`; без `bind:value` — display (`digits` / `active`, каталог). С `bind:value` — прозрачный `input.code-input` поверх (**.code-wrap**), `inputmode="numeric"`, `autocomplete="one-time-code"`, обрезка до `length`; опц. `bind:el`, `autofocus` (**#e1-2**).
+`CodeBox` — шесть клеток `.codebox`; без `bind:value` — display (`digits` / `active`, каталог). С `bind:value` — прозрачный `input.code-input` поверх (**.code-wrap**), `inputmode="numeric"`, `autocomplete="one-time-code"`, обрезка до `length`; опц. `bind:el`, `autofocus` (**#e1-3**).
 
-`DangerZone` пояснение под действием — children (**#e6-30**, **#e6-34**): чем действие грозит или что сделать сначала; с `disabled` блок погашен.
+`DangerZone` пояснение под действием — children (**#e6-29**, **#e6-28**): чем действие грозит или что сделать сначала; с `disabled` блок погашен.
 
 `DangerNote` — красная зона «Необратимо»: пояснение — children; с `title` — заголовок действия («Удалить с сервера») и snippet `action` с кнопкой под текстом (`.danger.titled`).
 
-`EditWindowPicker` — «Окно правок» (**#e2-4**, **#e6-2**): шесть чипов в два ряда и при «Своё…» поле часов; `value`, `bind:customHours`, `onpick(key)`, опц. `oncustomchange` — настройки круга сохраняют сразу. Подсказку о сдвиге часов экран ставит сам.
+`EditWindowPicker` — «Окно правок» (**#e2-14**, **#e6-2**): шесть чипов в два ряда и при «Своё…» поле часов; `value`, `bind:customHours`, `onpick(key)`, опц. `oncustomchange` — настройки круга сохраняют сразу. Подсказку о сдвиге часов экран ставит сам.
 
-`GenderPicker` — «Пол» для строк журнала (**#e1-3**, **#e6-7**; план 46, A5): чипы «Мужской» / «Женский», `bind:value` (`''` \| `'m'` \| `'f'`), повторное касание снимает выбор. Стоит в `IdentityForm` и в «Кто вы в этом круге».
+`GenderPicker` — «Пол» для строк журнала (**#e1-4**, **#e6-12**; план 46, A5): чипы «Мужской» / «Женский», `bind:value` (`''` \| `'m'` \| `'f'`), повторное касание снимает выбор. Стоит в `IdentityForm` и в «Кто вы в этом круге».
 
-`QrScanner` — видоискатель QR (**#e2-17**): задняя камера, кадр раз в 250 мс; `onread(text)` → `true` — хватит (камера гаснет), `false` — ждать следующий; `onerror(message)` — камеры нет или её не дали. Камера гаснет и при уходе с экрана.
+`QrScanner` — видоискатель QR (**#e2-8**): задняя камера, кадр раз в 250 мс; `onread(text)` → `true` — хватит (камера гаснет), `false` — ждать следующий; `onerror(message)` — камеры нет или её не дали. Камера гаснет и при уходе с экрана.
 
 `FilePicker` — скрытый выбор файлов, который открывает своя кнопка: `accept`, `multiple`, `capture`, `onfiles(files)`; экран держит его через `bind:this` и зовёт `open()`. Поле сбрасывается само — тот же файл можно выбрать снова. Сырые `<input type="file" hidden>` на экранах не ставить.
 
-`DateRange` — период «с — по» двумя полями даты поровну (**#e2-9**, поиск в круге): `bind:from`, `bind:to`.
+`DateRange` — период «с — по» двумя полями даты поровну (**#e2-19**, поиск в круге): `bind:from`, `bind:to`.
 
 `DateRow` — строка, которая открывает системный выбор дня (**#e4-2** «Отнести к дате»): `bind:value` (`2026-10-01`), `title`, `subtitle`, `icon`, `style`. Поле даты скрыто под строкой (`.date-pick`), выбор открывается у неё; без `showPicker` — по клику.
 
 `NumberField` — число «Своё…» с единицей справа: `Input` 72 px и подпись `.hint` в `.rowin` (окно правок, кэш, квота, люди и дни приглашения). `bind:value` (число), `min`, `max`, `unit` («часов», «ГБ, до 100»), опц. `onchange` — подтверждение поля. Строки админки с подписью слева — `AdminField`.
 
-`IdentityForm` — «Как вас зовут в этом круге?» (**#e1-3**) у вступающего и у создателя круга: заголовок, `AddPhotoButton` + кадрирование `AvatarCrop`, «Имя», первая запись с «необязательно». `color`, `bind:name`, `bind:firstPost`, `bind:avatar` (откадрированное фото; загружает экран — `setIdentityAvatar` из `$lib/circles/settings`), опц. `postLabel` / `postPlaceholder` (дневник), `onerror`. Кнопку и ошибку ставит экран.
+`IdentityForm` — «Как вас зовут в этом круге?» (**#e1-4**) у вступающего и у создателя круга: заголовок, `AddPhotoButton` + кадрирование `AvatarCrop`, «Имя», первая запись с «необязательно». `color`, `bind:name`, `bind:firstPost`, `bind:avatar` (откадрированное фото; загружает экран — `setIdentityAvatar` из `$lib/circles/settings`), опц. `postLabel` / `postPlaceholder` (дневник), `onerror`. Кнопку и ошибку ставит экран.
 
 `RequisitesCard` — платёжные реквизиты в `div.req` (**#e10-1** / **#e10-2** / **#e10-6** / **#e10-8**): проп `text` или snippet `children`; стили в `ui.css`, не кликабельна.
 
-`MentionPicker` — оболочка `div.men-pick` для списка `@` (**#e4-2**, **#e4-3**): snippet `children` (`MemberRow` с экрана). Базовые стили `.men-pick` в `ui.css`; в полосе комментария — `.comp-wrap .men-pick` (отступы, `max-height`). Фильтрация — в `CommentBar` / compose, не в компоненте.
+`MentionPicker` — оболочка `div.men-pick` для списка `@` (**#e4-2**, **#e4-4**): snippet `children` (`MemberRow` с экрана). Базовые стили `.men-pick` в `ui.css`; в полосе комментария — `.comp-wrap .men-pick` (отступы, `max-height`). Фильтрация — в `CommentBar` / compose, не в компоненте.
 
 Формы (фаза 5):
 
@@ -148,18 +148,18 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 
 `PayStreetBanner` — баннеры оплаты на улочке (`/circles`, кадр **#e10-5**): `variant` `donate` \| `reminder` \| `pending`. Donate — `text`, `onclick` (help), опционально `dismissible` / `ondismiss`. Reminder — `expiresAtLabel`, `reminderDaysLeft`, `onclick` (extend). Pending — `pendingAtLabel`, опционально `expiresAtLabel`; без корневой кнопки. Стили `.pay-banner*` в `ui.css`; кликабельные зоны — `button.pay-banner-main`, `button.pay-reminder`.
 
-`NewsBanner` — баннер «Что нового?» на улочке (кадр **#e7-10**), тем же видом, что donate у `PayStreetBanner`: `version` (минорная, «0.26»), `onclick` — к странице, `ondismiss` — крестик. `NewsBlock` — одна версия на странице «Что нового» (**#e7-11**): `version`, `day` («8 октября»), `items` — строки списком. Текст — `$lib/news/notes.ts`, отметка «видел» — `$lib/news/seen.ts` (localStorage).
+`NewsBanner` — баннер «Что нового?» на улочке (кадр **#e7-7**), тем же видом, что donate у `PayStreetBanner`: `version` (минорная, «0.26»), `onclick` — к странице, `ondismiss` — крестик. `NewsBlock` — одна версия на странице «Что нового» (**#e7-8**): `version`, `day` («8 октября»), `items` — строки списком. Текст — `$lib/news/notes.ts`, отметка «видел» — `$lib/news/seen.ts` (localStorage).
 
 `MentionText` — текст записи или комментария (`body`): `@имя` цветом круга, переносы и пустые строки как написаны (`white-space: pre-wrap` на `.mention-text`).
 
-`AttachmentList` — вложения записи, не фото и не видео (**#e4-13**, **#e4-15**, **#e4-18**): звуки подряд — одна рамка `.att-group` со строками `grouped`, одиночный звук — `AttachmentRow audio`, файл — строка «скачать». `items`, `origin`, `circleId`, `circleName`, `color`, `postId`, `coverUrls` (обложки звуков по blob id).
-`VoiceRow` — голосовое в записи (**#e4-27**): круглая кнопка цвета круга, `VoiceWave` и длительность; играет через общий плеер и полосу 4.20. `origin`, `blobId`, `peaks`, `durationMs`, `meta`. Без волны (старое) — ровная линия.
-`VoiceWave` — волна голосового (**#e4-23**, **#e4-24**, **#e4-27**): столбики уровней 0–100, прослушанное — цветом круга. `peaks`, `progress` (0–1).
-`Thread` — нить комментариев под записью (**#e4-5**): `div.thread` — черта над первым комментарием, запас снизу под полосу. `children`.
+`AttachmentList` — вложения записи, не фото и не видео (**#e4-29**, **#e4-6**, **#e4-7**): звуки подряд — одна рамка `.att-group` со строками `grouped`, одиночный звук — `AttachmentRow audio`, файл — строка «скачать». `items`, `origin`, `circleId`, `circleName`, `color`, `postId`, `coverUrls` (обложки звуков по blob id).
+`VoiceRow` — голосовое в записи (**#e4-16**): круглая кнопка цвета круга, `VoiceWave` и длительность; играет через общий плеер и полосу 4.9. `origin`, `blobId`, `peaks`, `durationMs`, `meta`. Без волны (старое) — ровная линия.
+`VoiceWave` — волна голосового (**#e4-12**, **#e4-13**, **#e4-16**): столбики уровней 0–100, прослушанное — цветом круга. `peaks`, `progress` (0–1).
+`Thread` — нить комментариев под записью (**#e4-17**): `div.thread` — черта над первым комментарием, запас снизу под полосу. `children`.
 `MapPane` — поле «Карты» (**#e5-6**): `div.map-wrap`, колонка во всю высоту под шапкой круга. `children`.
 `ThumbStrip` — ряд выбранных снимков и вложений на новой записи (**#e4-2**): `div.thumbs`, плюс в конце. `children`.
 
-`PeekMemberList` — «Кто уже здесь» до входа (**#e1-3**): `members` из приглашения или заявки; строки `MemberRow`, цвета по порядку.
+`PeekMemberList` — «Кто уже здесь» до входа (**#e1-4**): `members` из приглашения или заявки; строки `MemberRow`, цвета по порядку.
 
 `AboutFooter` — подвал «Wynd x.y · AGPL-3.0 · исходный код · лицензии» (настройки приложения, панель): `wrap` — ссылки второй строкой, `class` — отступ. Адрес исходников экран загружает сам (`loadSourceUrl`).
 
@@ -167,7 +167,7 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 
 `CommentPreview` — комментарии под карточкой в ленте (`button.cm`): `first` (с временем `time`), `more` («ещё N»), `onclick`; `children` — своё содержимое (кадры /dev).
 
-`ResponseEntry` — строка «Откликов» (**#e3-13**): ссылка туда, где отклик живёт (`href`, `onopen`), внутри `CommentRow bare`; `initial`, `name`, `color`, `src`, `icon` (знак реакции), `label` («комментарий · 14:02»), под словами — children (текст, `PostRef`). Между строками — черта.
+`ResponseEntry` — строка «Откликов» (**#e3-18**): ссылка туда, где отклик живёт (`href`, `onopen`), внутри `CommentRow bare`; `initial`, `name`, `color`, `src`, `icon` (знак реакции), `label` («комментарий · 14:02»), под словами — children (текст, `PostRef`). Между строками — черта.
 
 `PostRef` — рамка «к чему это» под откликом: `author` (жирным), `date`, `excerpt`, `cover` (место под обложку сразу) и `coverUrl`. Может заменить шапку `MapPostSheet` / `SearchResultRow` (план 47, 3.1).
 
@@ -175,23 +175,23 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 
 `PullRefresh` — полоса «потянуть, чтобы обновить» (3.5): знак дорисовывается с жестом и держится, пока идёт обновление; проп `pull` (состояние). Жест ведёт контроллер `PullRefresh` из `$lib/gestures/pullRefresh.svelte` (`new PullRefresh(scrollTop, refresh)`, обработчики `start` / `move` / `end` на прокручиваемом списке, `destroy()` при уходе). Полоса — над списком; список — `.feed` (`overscroll-behavior: contain`, иначе браузер показывает своё обновление).
 
-`EmptyState` — экран или вкладка без содержимого: заголовок по центру, пояснение (children), кнопки (snippet `actions`). `place` — отступы по кадрам: `screen` (экран-состояние, 48 px, поля пояснения 10/30), `list` (пустая улочка **#e2-3**, 24 px), `tab` (пустая вкладка **#e3-14**, заголовок посередине, 8/34), `feed` (пустая лента **#e3-1** со знаком, 8/34, кнопка с полями 60 px).
+`EmptyState` — экран или вкладка без содержимого: заголовок по центру, пояснение (children), кнопки (snippet `actions`). `place` — отступы по кадрам: `screen` (экран-состояние, 48 px, поля пояснения 10/30), `list` (пустая улочка **#e2-6**, 24 px), `tab` (пустая вкладка **#e3-19**, заголовок посередине, 8/34), `feed` (пустая лента **#e3-1** со знаком, 8/34, кнопка с полями 60 px).
 
-`QrCode` — QR-код ссылки в рамке `.qr` (**#e6-7**, **#e6-21**, админка «Доступ»): `value` (пусто — ничего), `size` `md` (168 px) \| `sm` (150 px), `class`. SVG строит сам из `qrcode`; `{@html}` в экранах запрещён сторожем.
+`QrCode` — QR-код ссылки в рамке `.qr` (**#e6-12**, **#e6-10**, админка «Доступ»): `value` (пусто — ничего), `size` `md` (168 px) \| `sm` (150 px), `class`. SVG строит сам из `qrcode`; `{@html}` в экранах запрещён сторожем.
 
-`InviteLinkCard` — ссылка-приглашение целиком (`FieldDisplay.invite-url`) и «Поделиться / Скопировать» (**#e6-7**, **#e6-21**): `url`, `shared` / `copied` (подписи «Отправлено» / «Скопировано»), `onshare`, `oncopy`. В листе — те же поля экрана, что у ссылки; лист ставится в `footer` макета, чтобы кнопкам достался цвет круга. QR над ней экран ставит сам.
+`InviteLinkCard` — ссылка-приглашение целиком (`FieldDisplay.invite-url`) и «Поделиться / Скопировать» (**#e6-12**, **#e6-10**): `url`, `shared` / `copied` (подписи «Отправлено» / «Скопировано»), `onshare`, `oncopy`. В листе — те же поля экрана, что у ссылки; лист ставится в `footer` макета, чтобы кнопкам достался цвет круга. QR над ней экран ставит сам.
 
-`CommentMedia` — вложения комментария (`div.cmedia`, 4.28–4.30): `items` (`CommentMediaItem[]` из `commentMediaItems` в `present.ts`) — до трёх плиток `.ctile` и «+N», голосовое (`VoiceRow`), файл строкой `.crow`; `onphoto(index)`, `onfile(item)`, `audio` (для полосы плеера); `inert` — только вид, без нажатий (строка-ссылка «Откликов», реплика в очереди). Один компонент в нити, в превью под записью и в «Откликах».
+`CommentMedia` — вложения комментария (`div.cmedia`, 4.20–4.22): `items` (`CommentMediaItem[]` из `commentMediaItems` в `present.ts`) — до трёх плиток `.ctile` и «+N», голосовое (`VoiceRow`), файл строкой `.crow`; `onphoto(index)`, `onfile(item)`, `audio` (для полосы плеера); `inert` — только вид, без нажатий (строка-ссылка «Откликов», реплика в очереди). Один компонент в нити, в превью под записью и в «Откликах».
 
-`CommentBar` — к полю комментария (4.28): `onfiles` — значок «Файл» рядом с «Фото», `photoAccept`, `pending` (`{key, url?, name}[]`) — полоска выбранного `.cstrip` над полем с крестиком `onremovepending(i)`; с вложением кнопка «Отправить» активна и без слов; `onvoice` без `onvideo` — «Запись» сразу пишет голос, без выбора. `CommentPreview` — слот `media`: вложения последней реплики; рамка `.cm` тогда `div`, строки — кнопки `.cm-line`.
+`CommentBar` — к полю комментария (4.20): `onfiles` — значок «Файл» рядом с «Фото», `photoAccept`, `pending` (`{key, url?, name}[]`) — полоска выбранного `.cstrip` над полем с крестиком `onremovepending(i)`; с вложением кнопка «Отправить» активна и без слов; `onvoice` без `onvideo` — «Запись» сразу пишет голос, без выбора. `CommentPreview` — слот `media`: вложения последней реплики; рамка `.cm` тогда `div`, строки — кнопки `.cm-line`.
 
-`CommentRow` — строка треда (`div.cmt`, опц. `.q`): аватар, `name`, snippet `time`, snippet `children` (текст / правка); `onedit` / `ondelete` → `.acts` (**#e4-5**–**#e4-7**). Колонка `.acts` в треде стоит всегда — текст одной ширины у своих и чужих; `bare` — без неё (строка-ссылка, `ResponseEntry`). Не путать с `CommentPreview` (`button.cm` в ленте).
+`CommentRow` — строка треда (`div.cmt`, опц. `.q`): аватар, `name`, snippet `time`, snippet `children` (текст / правка); `onedit` / `ondelete` → `.acts` (**#e4-17**–**#e4-19**). Колонка `.acts` в треде стоит всегда — текст одной ширины у своих и чужих; `bare` — без неё (строка-ссылка, `ResponseEntry`). Не путать с `CommentPreview` (`button.cm` в ленте).
 
-`FeedDayCard` — открытка дня в ленте (`button.dayc`, 3.15–3.18): `date`, `title?` (нет — на его месте дата), `hasCover` / `coverUrl` / `video`, `caption`, `onclick` (открывает день). Подложка — `--ct`, в тёмной теме `#3A2E29`; стили `.dayc` — в `ui.css`.
+`FeedDayCard` — открытка дня в ленте (`button.dayc`, 3.20–3.23): `date`, `title?` (нет — на его месте дата), `hasCover` / `coverUrl` / `video`, `caption`, `onclick` (открывает день). Подложка — `--ct`, в тёмной теме `#3A2E29`; стили `.dayc` — в `ui.css`.
 
 `FeedDayPromptCard` — служебная карточка в ленте (`div.post.day-prompt`): `title`, snippet текста, `primaryLabel` / `secondaryLabel`, `onprimary` / `onsecondary` (`Button` в `.rowin`). Стили `.day-prompt` и раскладка ленты (`.feed`, `.ptr`, `.empty`, `.feed-end`) — в `ui.css`.
 
-`SearchResultRow` — строка найденного (**#e2-9**): `author`, `time`, превью — либо snippet `preview`, либо по `kind` (`post` / `comment` — «· комментарий» / `day` — «день») из `snippet` с найденным словом `query` в ёлочках (`quoteMatch` из `$lib/journal/search`); миниатюра `thumb` / `thumbUrl` / `thumbVariant`.
+`SearchResultRow` — строка найденного (**#e2-19**): `author`, `time`, превью — либо snippet `preview`, либо по `kind` (`post` / `comment` — «· комментарий» / `day` — «день») из `snippet` с найденным словом `query` в ёлочках (`quoteMatch` из `$lib/journal/search`); миниатюра `thumb` / `thumbUrl` / `thumbVariant`.
 
 `MapBadge` / `MapPostSheet` — вкладка «Карта» круга: счётчик пинов (`.map-badge`) и нижняя плашка выбранной записи (`button.map-sheet`, thumb + автор + время + текст). Стили в [`map.css`](../../web/src/lib/styles/map.css); сброс кнопки — `button.map-sheet` в `ui.css`.
 
@@ -206,40 +206,40 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 - `SettingsRow` с snippet `control` — всегда `div.row2`, справа контрол (например `Switch`); `chevron`/`value` не рендерятся; title без `font-weight:600`.
 - `Switch`: `bind:checked` — для формы с кнопкой «Сохранить»; `onchange(checked)` — когда нажатие сразу пишет на сервер: вызывается только от нажатия, не от смены `checked` извне (иначе обновление карточки перезаписало бы сервер старым значением).
 - `PostCard` — `div.post`, клик через action; `DayCard` — `<button>` при `onclick`, иначе `div`. `FoldHeader` — `button.fold` при `onclick`, сворачивание через `expanded`. `DayHeader`: `ontitle` / `oncover` (`button.pic` при `oncover`).
-- `CircleRow`: при `card` — оболочка `.circle-row-card`, `actionLabel` / опционально `actionLabel2` под строкой (`circle-row-action`). `GroupFoldCard` — та же оболочка для **группы** на улочке (**#e2-14**): `FoldHeader` + до двух `circle-row-action`; long-press и сворачивание — rest на `FoldHeader`, опционально `foldStyle`.
+- `CircleRow`: при `card` — оболочка `.circle-row-card`, `actionLabel` / опционально `actionLabel2` под строкой (`circle-row-action`). `GroupFoldCard` — та же оболочка для **группы** на улочке (**#e2-13**): `FoldHeader` + до двух `circle-row-action`; long-press и сворачивание — rest на `FoldHeader`, опционально `foldStyle`.
 
-Лента (3.1 / 4.12 / 4.10):
+Лента (3.1 / 4.28 / 4.26):
 
 | Компонент | Корень | Поведение |
 |-----------|--------|-----------|
 | `ReactionBar` | `.rx` + при открытии `.rxpick` | `groups` → `button.one`; `showAdd` → `button.add`; `pickerOpen` → `button.rcho` (`selectedKey` → `.on`); колбэки `onopenList` / `onadd` / `onpick`. Иконка — уже resolved `IconName`; группировка, плюс, `?reactions=` — на маршруте (ниже). |
 | `CommentPreview` | `button.cm` | Сосед `PostCard`, не внутри `.post` (слот `comments` у карточки — другое, напр. ошибка очереди). Контент — snippet. |
-| `ReactionListRow` | `div.row2` | Оверлей 4.12: Avatar + имя + Icon. Без `onclick`. Не расширять `MemberRow`: справа знак реакции, не subtitle/меню. |
+| `ReactionListRow` | `div.row2` | Оверлей 4.28: Avatar + имя + Icon. Без `onclick`. Не расширять `MemberRow`: справа знак реакции, не subtitle/меню. |
 
 `ReactionBar` получает иконку готовой: `reactionIconName` живёт в `$lib`, не в `$ui`. Ночная тема: `.ph.dark .rx .one` — подложка `#3A2E29`.
 
 ### `overlays/`
 
-`Fab` — кружок `.fab` в `.fab-wrap`; опц. `menuOpen` + `items[]` — карточка `.fab-menu` над плюсом (**#e2-11**), `role="menu"`: при открытии фокус на первом пункте, стрелки по кругу, Escape → `onclose` (UI-3; `ShellLayout` — `onfabmenuclose`). `ShellLayout` прокидывает `fabMenuOpen` / `fabMenuItems`; snippet `fab` — только содержимое кружка. Fab, CommentBar (`oncompose` — фото и шеврон; пустое поле на таче ведёт на compose, на ПК с мышью только фокус; без `oncompose` — полоса комментария; `onvoice` / `onvideo` — пустое поле ставит «Запись» с выбором голос / видео, диктофон прямо в полосе, 4.21–4.24; `status` — строка над полосой), Scrim (`button.scrim`), Sheet, Dialog, PushBanner, Lightbox (`.mid` — `role="region"`), AvatarCrop, **ConfirmDialog**, **ReactionsSheet**
-`VideoRecorder` — запись видео (**#e4-25**) и просмотр перед отправкой (**#e4-26**): камера во весь экран, смена камеры, касание — старт и стоп, предел 5 минут; «Переснять» / «Отправить». `onsend(file)`, `onclose`. Модален (`use:modal`): системная «Назад» закрывает.
+`Fab` — кружок `.fab` в `.fab-wrap`; опц. `menuOpen` + `items[]` — карточка `.fab-menu` над плюсом (**#e2-10**), `role="menu"`: при открытии фокус на первом пункте, стрелки по кругу, Escape → `onclose` (UI-3; `ShellLayout` — `onfabmenuclose`). `ShellLayout` прокидывает `fabMenuOpen` / `fabMenuItems`; snippet `fab` — только содержимое кружка. Fab, CommentBar (`oncompose` — фото и шеврон; пустое поле на таче ведёт на compose, на ПК с мышью только фокус; без `oncompose` — полоса комментария; `onvoice` / `onvideo` — пустое поле ставит «Запись» с выбором голос / видео, диктофон прямо в полосе, 4.10–4.13; `status` — строка над полосой), Scrim (`button.scrim`), Sheet, Dialog, PushBanner, Lightbox (`.mid` — `role="region"`), AvatarCrop, **ConfirmDialog**, **ReactionsSheet**
+`VideoRecorder` — запись видео (**#e4-14**) и просмотр перед отправкой (**#e4-15**): камера во весь экран, смена камеры, касание — старт и стоп, предел 5 минут; «Переснять» / «Отправить». `onsend(file)`, `onclose`. Модален (`use:modal`): системная «Назад» закрывает.
 
-`ConfirmDialog` — вопрос с двумя кнопками на `Scrim` + `Dialog` (`.dlgq`, `.rowin.ask`): `title`, `confirmLabel`, опц. `cancelLabel` («Отмена»), `loading`, `confirmDisabled` (действие не нажимается, пока не набрано имя — 7.31), `onconfirm`, `oncancel`, пояснение — children. Все подтверждения «удалить / исключить / передать / выйти» — на нём.
+`ConfirmDialog` — вопрос с двумя кнопками на `Scrim` + `Dialog` (`.dlgq`, `.rowin.ask`): `title`, `confirmLabel`, опц. `cancelLabel` («Отмена»), `loading`, `confirmDisabled` (действие не нажимается, пока не набрано имя — 7.16), `onconfirm`, `oncancel`, пояснение — children. Все подтверждения «удалить / исключить / передать / выйти» — на нём.
 
-`ReactionsSheet` — лист «Кто отреагировал» (**#e4-12**) на `Scrim` + `Sheet`: `reactions`, `color`, `ondismiss`; строки — `ReactionListRow`.
+`ReactionsSheet` — лист «Кто отреагировал» (**#e4-28**) на `Scrim` + `Sheet`: `reactions`, `color`, `ondismiss`; строки — `ReactionListRow`.
 
 **`VideoDiag` — временный** (план 46, C26): страница диагностики видео для iPhone и кнопка-вход на неё (`link`) в окне просмотра ролика. Свои стили, в каталог `/dev/ui` не входит; убрать вместе с маршрутом `album/diag`, когда причина найдена.
 
 **Модальность оверлеев (UI-1, UI-2).** `Dialog` и `Sheet` с `ondismiss`, `Lightbox` с `fixed` и `onclose` — `role="dialog"`, `aria-modal`, action `modal` из `$lib/a11y/modal`: фокус при открытии — на первый фокусируемый элемент, Tab по кругу внутри, фокус снаружи возвращается внутрь, Escape → `ondismiss`, при закрытии фокус — туда, где был. Оверлеи в стеке: клавиши слушает только верхний. Без `ondismiss` (каталог `/dev/ui`) оверлей статичен и ничего не перехватывает. Экран даёт оверлею имя через `label` — обычно его заголовок. `AvatarCrop` на том же action с `initialFocus: 'last'`: фокусируемы только кнопки панели, фокус при открытии и при возврате снаружи — на «Готово», Escape → «Отмена» (во время сохранения — ничего). (светлые токены на корне `.crop`, не следует `.ph.dark`)
 
-`CircleLayout` — опц. `notice` (snippet): полоса на месте строки ввода, когда писать нельзя (3.19, 3.20) — `.write-note`; тексты — `$lib/circles/space.ts`. `ServerRow` — сервер карточкой (`card`) или строкой; `gdpr` ставит у имени значок «GDPR» (1.10): администратор разрешил стирать имена и фото (9.13), признак — `allow_name_erasure` из `/instance` и ответа на приглашение. `DangerZone` — блок «Необратимо»; `disabled` гасит его и снимает нажатие: правило видно, действие недоступно (7.30).
+`CircleLayout` — опц. `notice` (snippet): полоса на месте строки ввода, когда писать нельзя (3.10, 3.11) — `.write-note`; тексты — `$lib/circles/space.ts`. `ServerRow` — сервер карточкой (`card`) или строкой; `gdpr` ставит у имени значок «GDPR» (1.2): администратор разрешил стирать имена и фото (9.4), признак — `allow_name_erasure` из `/instance` и ответа на приглашение. `DangerZone` — блок «Необратимо»; `disabled` гасит его и снимает нажатие: правило видно, действие недоступно (7.15).
 
 **Строки `row2` — на общей основе `Row`** (UI-5): `ServerRow`, `SettingsRow`, `MemberRow`, `SearchResultRow` — тонкие обёртки над `$ui/data/Row.svelte` (сниппеты `leading` / `main` / `trailing`; с `onclick` — `<button>`, без — `<div>`). Экраны зовут именные строки: их имена и параметры — словарь кадров, кадры не меняются. `CircleRow` (`.r`, другая форма) держит одно содержимое в сниппете вместо четырёх копий. Разметку всех пяти во всех вариантах сторожат слепки `rows.test.ts`, снятые с прежних компонентов. Новая строка `row2` — ещё одна обёртка над `Row`, не копия разметки.
 
 ### `admin/`
 
-AdminNav (`ADMIN_NAV`: Проверка, Общие, Доступ, Люди, Хранилище, Сжатие, Оплата; кадры 9.1–9.10 без «Оплата»), AdminSection, DataTable, StackBar, CheckRow, StatusIcon, CodeBlock (`lines[]`, `.hi` / `span.cmt`), InlineInput, **CheckRow** (`dotColor` — цветной квадратик вместо значка статуса), QuotaRequestRow (`Button` `.btn` / `.btn.gh` на «Дать» / «Отказать», не `.act`), **Panel**, **AdminField**, **SwitchRow**
+AdminNav (`ADMIN_NAV`: Проверка, Общие, Доступ, Люди, Хранилище, Сжатие, Оплата; кадры 9.1–9.3, 9.5, 9.7–9.8, 9.10–9.13 без «Оплата»), AdminSection, DataTable, StackBar, CheckRow, StatusIcon, CodeBlock (`lines[]`, `.hi` / `span.cmt`), InlineInput, **CheckRow** (`dotColor` — цветной квадратик вместо значка статуса), QuotaRequestRow (`Button` `.btn` / `.btn.gh` на «Дать» / «Отказать», не `.act`), **Panel**, **AdminField**, **SwitchRow**
 
-`SwitchRow` — переключатель админки с заголовком и пояснением (кадры 9.x, 10.x): `bind:checked`, `title` (он же подпись `Switch` для чтения с экрана), пояснение — children, опц. `onchange` (только нажатие человеком), `disabled`, `end` — переключатель справа от текста (9.13). Переключатель на 2 px ниже верха строки, как на кадрах.
+`SwitchRow` — переключатель админки с заголовком и пояснением (кадры 9.x, 10.x): `bind:checked`, `title` (он же подпись `Switch` для чтения с экрана), пояснение — children, опц. `onchange` (только нажатие человеком), `disabled`, `end` — переключатель справа от текста (9.4). Переключатель на 2 px ниже верха строки, как на кадрах.
 
 `Panel` — карточка админки `.panel` (рамка, фон карточки, скругление; отступ — служебным классом: `pad-12`, `pad-16`). `AdminField` — строка формы «подпись · поле · единица» (**#e9-***): `label`, `width` 88 \| 120 (короткие и длинные подписи, чтобы поля стояли столбцом), опц. `unit`, поле — children. Сетку мастера (`form-grid`) не заменяет.
 

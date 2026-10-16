@@ -21,7 +21,7 @@
 		confirmLabel: string;
 		cancelLabel?: string;
 		loading?: boolean;
-		/** Действие не нажимается, пока не выполнено условие — например, не набрано имя (7.31). */
+		/** Действие не нажимается, пока не выполнено условие — например, не набрано имя (7.16). */
 		confirmDisabled?: boolean;
 		onconfirm: () => void;
 		oncancel: () => void;

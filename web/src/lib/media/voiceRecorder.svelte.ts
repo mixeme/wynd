@@ -19,7 +19,7 @@ export interface VoiceTake {
 }
 
 /**
- * Диктофон полосы ввода (4.23, 4.24): микрофон, таймер, предел 15 минут.
+ * Диктофон полосы ввода (4.12, 4.13): микрофон, таймер, предел 15 минут.
  * Экран не гаснет, пока идёт запись. Всё, что взято у браузера (поток,
  * адрес файла), отдаётся в `dispose`.
  *
@@ -86,7 +86,7 @@ export class VoiceRecorder {
 		this.#tick = setInterval(() => this.#onTick(), 100);
 	}
 
-	/** Стоп — к проверке (4.24). */
+	/** Стоп — к проверке (4.13). */
 	async stop(): Promise<void> {
 		const recorder = this.#recorder;
 		if (this.phase !== 'recording' || !recorder) return;

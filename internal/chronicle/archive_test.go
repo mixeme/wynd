@@ -343,7 +343,7 @@ func TestLockCutoffOnlyForTheCutoffUsed(t *testing.T) {
 	}
 }
 
-// Инвариант (кадр 6.45): отказ в месте виден на «Месте», пока не пройдена
+// Инвариант (кадр 6.20): отказ в месте виден на «Месте», пока не пройдена
 // отсечка; отсечка его стирает, ждущую просьбу не трогает.
 func TestArchivePurgeDropsRejectedQuotaRequests(t *testing.T) {
 	e := newTestEnv(t)
