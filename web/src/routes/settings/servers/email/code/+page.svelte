@@ -101,12 +101,10 @@
 <FormLayout shell app title={pageTitle} onback={changeEmail}>
 	{#if pending}
 		{#if logDelivery}
-			<Hint class="m-0-16">
-				На этом компьютере письмо не уходит. Код напечатан в окне сервера.
-			</Hint>
+			<div class="m-0-16">На этом компьютере письмо не уходит. Код напечатан в окне сервера.</div>
 		{:else}
 			<div class="m-0-16">
-				Отправлен на <strong>{pending.email}</strong>
+				Код отправлен на <strong>{pending.email}</strong>
 			</div>
 		{/if}
 		<div class="m-7-16-0">

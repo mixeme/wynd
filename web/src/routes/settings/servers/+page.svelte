@@ -97,6 +97,10 @@
 		void goto('/settings/servers/leave');
 	}
 
+	function addServer() {
+		void goto('/join?from=servers');
+	}
+
 	onMount(() => {
 		void refresh();
 	});
@@ -106,7 +110,9 @@
 	{#if loading}
 		<Loading />
 	{:else if rows.length === 0}
-		<Hint>На этом устройстве вы ни на одном сервере.</Hint>
+		<!-- Спокойная констатация, не заголовок: обычный кегль, цвет подсказки. -->
+		<Hint centered class="mt-28 sz-15">На этом устройстве вы ни на одном сервере</Hint>
+		<Button onclick={addServer}>Добавить сервер</Button>
 	{:else}
 		{#each rows as row, i (row.session.origin + row.session.email)}
 			<ServerRow
@@ -136,12 +142,10 @@
 			<!-- Уходят с одного сервера: строка под каждым (7.13). -->
 			<SettingsRow title="Уйти с сервера насовсем" onclick={() => leave(row)} />
 		{/each}
+		<Hint class="mt-24">
+			Общего профиля на все серверы нет: каждый сервер — отдельное место, даже с той же почтой.
+		</Hint>
+		<Button onclick={addServer}>Добавить сервер</Button>
 	{/if}
-
-	<Hint class="mt-24">
-		Вы выходите с сервера, не из Wynd. Общего профиля на все серверы нет: даже одна почта
-		на двух серверах — это два разных места, связать их нельзя.
-	</Hint>
-	<Button onclick={() => goto('/join?from=servers')}>Добавить сервер</Button>
-	<Hint>По ссылке или прямо по адресу — если сервер открыт для новых. Закрытый попросит приглашение.</Hint>
 </FormLayout>
+
