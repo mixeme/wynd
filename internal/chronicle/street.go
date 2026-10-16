@@ -86,19 +86,15 @@ func (c *Chronicle) UnpinCircle(ctx context.Context, circleID, accountID string)
 }
 
 // PutCircleInGroup кладёт круг в группу по названию: группы нет — заводится,
-// круг был в другой — переезжает (а та, опустев, уходит). Класть можно только
-// круг, где человек сейчас: вышедший из круга уходит и из групп.
+// круг был в другой — переезжает (а та, опустев, уходит). Класть можно круг,
+// который на улочке человека, — и тот, что читаешь, выйдя.
 func (c *Chronicle) PutCircleInGroup(ctx context.Context, circleID, accountID, name string, now time.Time) error {
 	name, err := groupName(name)
 	if err != nil {
 		return err
 	}
-	mem, err := c.streetMembership(ctx, circleID, accountID)
-	if err != nil {
+	if _, err := c.streetMembership(ctx, circleID, accountID); err != nil {
 		return err
-	}
-	if mem.Status != StatusActive {
-		return ErrForbidden
 	}
 	tx, err := c.beginWrite(ctx)
 	if err != nil {

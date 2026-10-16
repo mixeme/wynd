@@ -155,8 +155,9 @@ func latestVersion(t *testing.T) int {
 }
 
 // Инвариант (TST-4): миграция применяется к заполненной базе прежней версии.
-// 0002 заводит раскладку улочки (A2): люди, круги и участие целы, а выход из
-// круга убирает круг из групп человека, и опустевшая группа уходит.
+// 0002–0003 заводят раскладку улочки (A2): люди, круги и участие целы; выход
+// с правом читать раскладку не трогает, уход совсем убирает круг из групп
+// человека, и опустевшая группа уходит.
 func TestMigrateStreetGroupsOverPopulatedBase(t *testing.T) {
 	s := baseAt(t, 1)
 	if _, err := s.db.Exec(`
@@ -187,11 +188,22 @@ func TestMigrateStreetGroupsOverPopulatedBase(t *testing.T) {
 		t.Fatalf("раскладка: %v", err)
 	}
 	var groups, pins int
-	if err := s.db.QueryRow(`SELECT (SELECT count(*) FROM circle_groups), (SELECT count(*) FROM circle_pins)`).Scan(&groups, &pins); err != nil {
+	count := func() {
+		t.Helper()
+		if err := s.db.QueryRow(`SELECT (SELECT count(*) FROM circle_groups), (SELECT count(*) FROM circle_pins)`).Scan(&groups, &pins); err != nil {
+			t.Fatal(err)
+		}
+	}
+	count()
+	if groups != 1 || pins != 1 {
+		t.Fatalf("после выхода с доступом: групп %d, закреплений %d", groups, pins)
+	}
+	if _, err := s.db.Exec(`UPDATE memberships SET status = 'gone' WHERE id = 'm1'`); err != nil {
 		t.Fatal(err)
 	}
-	if groups != 0 || pins != 1 {
-		t.Fatalf("после выхода с доступом: групп %d, закреплений %d", groups, pins)
+	count()
+	if groups != 0 || pins != 0 {
+		t.Fatalf("после ухода совсем: групп %d, закреплений %d", groups, pins)
 	}
 }
 

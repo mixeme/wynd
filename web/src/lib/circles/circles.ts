@@ -96,8 +96,6 @@ export interface StreetCircle {
 	/** Есть новые отклики — точка у круга (2.1). */
 	responses?: boolean;
 	pendingJoin?: boolean;
-	/** Вышел, читает (2.1): в группу не кладётся — вышедший уходит из групп. */
-	readOnly?: boolean;
 }
 
 export interface SearchHit {
@@ -294,10 +292,7 @@ export async function loadStreet(): Promise<Street> {
 				responses: circle.status === 'active' && (circle.responses_unread ?? 0) > 0
 			};
 			rows.push(row);
-			if (circle.status === 'left_with_access') {
-				readOnly.add(row);
-				row.readOnly = true;
-			}
+			if (circle.status === 'left_with_access') readOnly.add(row);
 		}
 		let pendingIds: string[] = [];
 		try {

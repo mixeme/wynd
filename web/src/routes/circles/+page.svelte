@@ -203,12 +203,10 @@
 		return groups.find((g) => g.keys.includes(key))?.name;
 	}
 
-	// Вышедший из круга уходит из групп (A2) — такой круг в группу не кладётся;
-	// круг, где ещё не выбрано имя, — тоже: участия пока нет.
+	// Круг, где ещё не выбрано имя, в группу не кладётся: участия пока нет.
+	// Вышедший с правом читать — кладётся (A2): круг на его улочке.
 	function addableCirclesForGroup(group: StreetGroupView): StreetCircle[] {
-		return circles.filter(
-			(c) => !c.readOnly && !c.pendingJoin && !group.keys.includes(circleKey(c))
-		);
+		return circles.filter((c) => !c.pendingJoin && !group.keys.includes(circleKey(c)));
 	}
 
 	function showGroupChips(group: StreetGroupView): boolean {

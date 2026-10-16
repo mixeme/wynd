@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.35.0
+  version: 0.35.1
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:
@@ -338,7 +338,7 @@ paths:
         "400":
           description: Empty or too long name
         "403":
-          description: The account is not active in the circle
+          description: The account left the circle for good
         "404":
           description: Not a member
     delete:

@@ -77,7 +77,8 @@ func TestStreetGroups(t *testing.T) {
 	}
 }
 
-// Ушёл из круга — круг уходит из групп; ушёл совсем — и закрепление.
+// Вышел с правом читать — круг остаётся и в группе, и закреплённым (владелец,
+// 2026-10-16); ушёл совсем — уходит из групп и закрепление снимается.
 // Удалённый круг уходит отовсюду. Чужой круг не закрепить.
 func TestStreetFollowsMembership(t *testing.T) {
 	e := newTestEnv(t)
@@ -97,22 +98,28 @@ func TestStreetFollowsMembership(t *testing.T) {
 	if err := e.ch.LeaveWithAccess(e.ctx, c.ID, "bob", e.at(3)); err != nil {
 		t.Fatal(err)
 	}
-	if got := e.groups("bob"); len(got) != 0 {
-		t.Fatalf("вышел, а круг в группе: %+v", got)
+	if got := e.groups("bob"); len(got) != 1 {
+		t.Fatalf("вышедший с доступом потерял группу: %+v", got)
 	}
 	pins, _ := e.ch.AccountPins(e.ctx, "bob")
 	if !pins[c.ID].Equal(e.at(2)) {
 		t.Fatalf("вышедший с доступом потерял закрепление: %v", pins)
 	}
-	if err := e.ch.PutCircleInGroup(e.ctx, c.ID, "bob", "Семья", e.at(3)); !errors.Is(err, chronicle.ErrForbidden) {
-		t.Fatalf("вышедший положил круг в группу: %v", err)
+	if err := e.ch.PutCircleInGroup(e.ctx, c.ID, "bob", "Читаю", e.at(3)); err != nil {
+		t.Fatalf("вышедший с доступом не переложил круг: %v", err)
 	}
 
 	if err := e.ch.Leave(e.ctx, c.ID, "bob", e.at(4)); err != nil {
 		t.Fatal(err)
 	}
+	if got := e.groups("bob"); len(got) != 0 {
+		t.Fatalf("ушёл совсем, а круг в группе: %+v", got)
+	}
 	if pins, _ := e.ch.AccountPins(e.ctx, "bob"); len(pins) != 0 {
 		t.Fatalf("ушёл совсем, а закрепление осталось: %v", pins)
+	}
+	if err := e.ch.PutCircleInGroup(e.ctx, c.ID, "bob", "Семья", e.at(4)); !errors.Is(err, chronicle.ErrForbidden) {
+		t.Fatalf("ушедший совсем положил круг в группу: %v", err)
 	}
 
 	if err := e.ch.PinCircle(e.ctx, c.ID, "owner", e.at(5)); err != nil {
