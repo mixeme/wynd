@@ -2,6 +2,6 @@ import { mount } from 'svelte';
 import '$lib/styles/tokens.css';
 import '$lib/styles/ui.css';
 import './app.css';
-import App from './App.svelte';
+import Window from './Window.svelte';
 
-mount(App, { target: document.getElementById('app')! });
+mount(Window, { target: document.getElementById('app')! });

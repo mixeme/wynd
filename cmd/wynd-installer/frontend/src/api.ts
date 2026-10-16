@@ -122,6 +122,7 @@ interface Backend {
 	OpenLink(url: string): Promise<void>;
 	CopyText(text: string): Promise<boolean>;
 	Disconnect(): Promise<void>;
+	Version(): Promise<string>;
 }
 
 export function backend(): Backend {

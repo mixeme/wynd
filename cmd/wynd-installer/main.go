@@ -98,6 +98,9 @@ func (a *App) CopyText(text string) bool {
 	return runtime.ClipboardSetText(a.ctx, text) == nil
 }
 
+// Version — номер версии для полосы заголовка (своя рамка окна).
+func (a *App) Version() string { return version.Number }
+
 // Disconnect рвёт подключение и забывает пароль из памяти.
 func (a *App) Disconnect() {
 	a.wizard.Close()
@@ -123,6 +126,10 @@ func main() {
 		AssetServer: &assetserver.Options{Assets: assets},
 		// Цвет бумаги (--paper): окно не мигает белым, пока грузится страница.
 		BackgroundColour: &options.RGBA{R: 0xF4, G: 0xF0, B: 0xE9, A: 0xFF},
+		// Своя рамка, как на макете (frontend/src/Window.svelte): системный
+		// заголовок на Windows 10 в цвет не перекрашивается. Название окна
+		// выше остаётся — его видно на панели задач.
+		Frameless: true,
 		OnStartup:        app.startup,
 		OnShutdown:       app.shutdown,
 		Bind:             []any{app},
