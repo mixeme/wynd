@@ -16,6 +16,7 @@
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import StatusCard from '$ui/data/StatusCard.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
+	import { loadSourceUrl, sourceUrl } from '$lib/instance/source.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { displayHost } from '$lib/auth/origin';
 	import { circleInitial } from '$lib/circles/meta';
@@ -44,6 +45,10 @@
 	const GB = 1024 * 1024 * 1024;
 	// У сервера на своём адресе origin — пустая строка: не проверять как истину.
 	const origin = $page.url.searchParams.get('origin') ?? '';
+	// Ссылка «поднимите свой» ведёт на исходники этого сервера (LIC-2).
+	$effect(() => {
+		loadSourceUrl(origin);
+	});
 
 	type Step = 'choose' | 'password' | 'review' | 'upload' | 'done';
 	let step = $state<Step>('choose');
@@ -65,7 +70,7 @@
 	let error = $state('');
 	let picker = $state<FilePicker | undefined>();
 
-	const need = $derived(archive?.bytes ?? 0);
+	const need = $derived(archive?.circleBytes ?? 0);
 	const circleName = $derived(String(archive?.manifest.circle_name ?? ''));
 	const invitable = $derived(Math.max(0, (archive?.emails.length ?? 1) - 1));
 	const srv = $derived(serverName ? `«${serverName}»` : 'этого сервера');
@@ -117,7 +122,7 @@
 
 	async function load(src: Parameters<typeof loadArchive>[0]) {
 		archive = await loadArchive(src);
-		room = await fetchReviveRoom(origin, archive.bytes);
+		room = await fetchReviveRoom(origin, archive.circleBytes);
 		step = 'review';
 	}
 
@@ -126,8 +131,8 @@
 		busy = true;
 		error = '';
 		try {
-			await requestRevivePlace(origin, Math.ceil(archive.bytes / GB) * GB, circleName);
-			room = await fetchReviveRoom(origin, archive.bytes);
+			await requestRevivePlace(origin, Math.ceil(archive.circleBytes / GB) * GB, circleName);
+			room = await fetchReviveRoom(origin, archive.circleBytes);
 		} catch (err) {
 			error = authErrorHint(err);
 		} finally {
@@ -185,11 +190,7 @@
 			divided="both"
 			onclick={() => picker?.open()}
 		/>
-		<Hint>
-			Ссылку и файл делает владелец круга в его настройках: ссылку — «Перенести на другой сервер»,
-			файл — «Архив и очистка» → «Полный архив круга». Круг приедет со своим журналом, людьми и
-			названием — здесь вы станете его владельцем.
-		</Hint>
+		<Hint>Круг будет перенесён полностью. Вы станете его владельцем.</Hint>
 	{:else if step === 'password' && file}
 		<!-- 7.27 / 7.28: файл расшифровывается на этом устройстве. -->
 		<Label>Файл архива</Label>
@@ -203,7 +204,7 @@
 		<Label class="mt-16">Пароль от файла</Label>
 		<Input active bind:value={password} autocomplete="off" spellcheck="false" />
 		{#if passwordWrong}
-			<Hint class="ink">Пароль не подошёл. Проверьте раскладку и цифры.</Hint>
+			<Hint class="ink">Пароль неверный</Hint>
 		{:else}
 			<Hint>
 				Тот, что задали, когда собирали архив. Файл расшифровывается на этом устройстве, пароль на
@@ -222,7 +223,6 @@
 		{#if busyNote}
 			<Hint class="mt-8">{busyNote}</Hint>
 		{/if}
-		<Hint class="mt-14 ctr-text">Без пароля файл не открыть — его не знает ни сервер, ни Wynd.</Hint>
 	{:else if step === 'review' && archive && room}
 		<!-- 7.29 и, когда круг не помещается, 7.30 / 7.31 / 7.32. -->
 		<Label>Сервер</Label>
@@ -235,14 +235,14 @@
 			top={4}
 		/>
 		<Hint>
-			Круг будет жить здесь. Сервер хранит данные незашифрованными. Выбирайте тот, которому
-			доверяете.
+			Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или
+			<a class="under" href={sourceUrl(origin)}>поднимите свой</a>.
 		</Hint>
 		<Label class="mt-16">Архив</Label>
 		<CircleRow
 			initial={circleInitial(circleName)}
 			name={circleName}
-			preview={`${plural(archive.posts, WORD.post)} · ${plural(archive.members, WORD.member)} · ${formatBytes(archive.bytes)}`}
+			preview={`${plural(archive.posts, WORD.post)} · ${plural(archive.members, WORD.member)} · ${formatBytes(archive.circleBytes)}`}
 			time=""
 		/>
 		<Hint>
@@ -255,7 +255,7 @@
 			<Label class="mt-16">Участники</Label>
 			<SettingsRow
 				title="Разослать приглашения"
-				subtitle={`письмо на почту каждого из ${plural(invitable, WORD.memberGenitive)}`}
+				subtitle="письмо на почту каждому участнику"
 				divided="both"
 			>
 				{#snippet control()}
@@ -264,13 +264,12 @@
 			</SettingsRow>
 			<Hint>
 				Почты в архиве — на день, когда его собрали. Кто войдёт сюда той же почтой, попадёт в своё
-				имя; остальных позовёте сами.
+				имя.
 			</Hint>
 			{/if}
 			<Button class="mt-14" variant="colored" onclick={() => void revive()}>
 				Оживить круг здесь
 			</Button>
-			<Hint class="mt-8 ctr-text">Файл загружается частями и переживает обрыв связи.</Hint>
 		{:else if room.request?.status === 'pending'}
 			<StatusCard
 				title="Место попросили"
@@ -327,7 +326,7 @@
 				onclick={() => goto(`/circles/${result?.circle_id}/settings/members`)}
 			/>
 		{/if}
-		<Hint>Кто войдёт на этот сервер почтой из архива, попадёт в своё имя и свои записи.</Hint>
+		<Hint>Кто войдёт сюда той же почтой, попадёт в своё имя.</Hint>
 		<Button class="mt-14" variant="colored" onclick={() => goto(`/circles/${result?.circle_id}`)}>
 			Открыть круг
 		</Button>

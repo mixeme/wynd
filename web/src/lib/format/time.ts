@@ -61,7 +61,9 @@ export function formatPostTime(createdAt: string, entryDate?: string): string {
 export function formatEntryDate(entryDate: string): string {
 	if (!entryDate) return '';
 	const [y, m, d] = entryDate.split('-').map(Number);
-	return dateFmt.format(new Date(y, m - 1, d));
+	const date = new Date(y, m - 1, d);
+	// Не дата — пустая строка, а не RangeError на весь экран.
+	return Number.isNaN(date.getTime()) ? '' : dateFmt.format(date);
 }
 
 /** День входа на устройстве: локальный календарный день ISO-метки. */

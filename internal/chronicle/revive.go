@@ -67,7 +67,11 @@ type ReviveResult struct {
 	CircleID string
 	Posts    int
 	Names    int
-	Bytes    int64
+	// Bytes — файлы круга: по ним сверяется архив (7.33).
+	Bytes int64
+	// TextBytes — текст круга, как его считает квота (C42): в итог для
+	// экрана, чтобы «Круг на месте» не показывал 0 Б у круга без файлов.
+	TextBytes int64
 	// NotJoined — учётки, заведённые по почте из архива: на этом сервере
 	// они ещё не были («Ещё не вошли», 6.6).
 	NotJoined []string
@@ -221,6 +225,10 @@ func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveRes
 	}
 	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(SUM(size_bytes), 0) FROM blobs WHERE id IN (`+
 		placeholders(len(in.BlobMap))+`)`, mapValues(in.BlobMap)...).Scan(&res.Bytes); err != nil {
+		return res, err
+	}
+	// Текст уже сочли триггеры базы.
+	if err := tx.QueryRowContext(ctx, `SELECT text_bytes FROM circles WHERE id = ?`, res.CircleID).Scan(&res.TextBytes); err != nil {
 		return res, err
 	}
 	return res, tx.Commit()

@@ -15,6 +15,7 @@
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import StatusCard from '$ui/data/StatusCard.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
+	import { loadSourceUrl, sourceUrl } from '$lib/instance/source.svelte';
 	import { ApiError } from '$lib/api/client';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { displayHost } from '$lib/auth/origin';
@@ -40,6 +41,10 @@
 	const GB = 1024 * 1024 * 1024;
 	// У сервера на своём адресе origin — пустая строка: не проверять как истину.
 	const origin = $page.url.searchParams.get('origin') ?? '';
+	// Ссылка «поднимите свой» ведёт на исходники этого сервера (LIC-2).
+	$effect(() => {
+		loadSourceUrl(origin);
+	});
 
 	let serverName = $state('');
 	const host = displayHost(origin);
@@ -250,8 +255,8 @@
 		/>
 		{#if !move || move.fits}
 			<Hint>
-				Круг будет жить здесь. Сервер хранит данные незашифрованными. Выбирайте тот, которому
-				доверяете.
+				Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или
+				<a class="under" href={sourceUrl(origin)}>поднимите свой</a>.
 			</Hint>
 		{/if}
 		<Label class="mt-16">Ссылка переноса</Label>
@@ -305,7 +310,7 @@
 					<Label class="mt-16">Участники</Label>
 					<SettingsRow
 						title="Разослать приглашения"
-						subtitle={`письмо на почту каждого из ${plural(move.circle.members - 1, WORD.memberGenitive)}`}
+						subtitle="письмо на почту каждому участнику"
 						divided="both"
 					>
 						{#snippet control()}

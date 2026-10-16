@@ -40,7 +40,11 @@ type IncomingMove struct {
 	CircleID    string
 	ResultPosts int
 	ResultNames int
+	// ResultBytes — файлы поднятого круга: их сверяет прежний сервер.
 	ResultBytes int64
+	// ResultTextBytes — текст поднятого круга сейчас (C42): к итогу 7.25 для
+	// экрана, чтобы круг без файлов не показывал 0 Б.
+	ResultTextBytes int64
 	Verified    bool
 	Invited     int
 	NotJoined   int
@@ -65,6 +69,7 @@ type IncomingCard struct {
 const incomingCols = `id, account_id, link, source_url, source_name, circle_name, circle_color,
 	posts, members, bytes, frozen_at, expires_at, send_invites, status, pulled_bytes,
 	COALESCE(circle_id, ''), COALESCE(result_posts, 0), COALESCE(result_names, 0), COALESCE(result_bytes, 0),
+	COALESCE((SELECT text_bytes FROM circles WHERE circles.id = incoming_moves.circle_id), 0),
 	verified, invited, not_joined, COALESCE(error, ''), created_at, updated_at`
 
 func scanIncoming(row interface{ Scan(...any) error }) (*IncomingMove, error) {
@@ -73,7 +78,7 @@ func scanIncoming(row interface{ Scan(...any) error }) (*IncomingMove, error) {
 	var expires, created, updated string
 	if err := row.Scan(&m.ID, &m.AccountID, &m.Link, &m.SourceURL, &m.SourceName, &m.CircleName, &m.CircleColor,
 		&m.Posts, &m.Members, &m.Bytes, &frozen, &expires, &m.SendInvites, &m.Status, &m.PulledBytes,
-		&m.CircleID, &m.ResultPosts, &m.ResultNames, &m.ResultBytes,
+		&m.CircleID, &m.ResultPosts, &m.ResultNames, &m.ResultBytes, &m.ResultTextBytes,
 		&m.Verified, &m.Invited, &m.NotJoined, &m.Error, &created, &updated); err != nil {
 		return nil, err
 	}

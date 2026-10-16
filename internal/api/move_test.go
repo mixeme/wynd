@@ -391,8 +391,16 @@ func TestMoveBetweenServers(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	r := got.Move.Result
-	if got.Move.Status != "done" || !r.Verified || r.Posts != 1 || r.Names != 2 || r.Bytes != int64(len(photo)) || got.Move.Link != "" {
+	if got.Move.Status != "done" || !r.Verified || r.Posts != 1 || r.Names != 2 || r.Bytes <= int64(len(photo)) || got.Move.Link != "" {
 		t.Fatalf("итог 2.19: %+v", got.Move)
+	}
+	// Итог — сколько круг занимает по квоте: фото и текст (C42).
+	var quota struct {
+		Used int64 `json:"used_bytes"`
+	}
+	_ = json.Unmarshal(doGET(t, dst, "/api/v1/circles/"+r.CircleID+"/quota", kot).Body.Bytes(), &quota)
+	if r.Bytes != quota.Used {
+		t.Fatalf("итог переноса %d байт, по квоте %d", r.Bytes, quota.Used)
 	}
 	// Кот вставил ссылку и получил лицо прежней владелицы (план 52); Боб здесь
 	// не бывал — ему письмо.

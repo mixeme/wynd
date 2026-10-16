@@ -80,6 +80,7 @@ describe('format helpers', () => {
 
 	it('returns empty for blank dates', () => {
 		expect(formatEntryDate('')).toBe('');
+		expect(formatEntryDate('undefined')).toBe('');
 		expect(formatDeadline('')).toBe('');
 	});
 });

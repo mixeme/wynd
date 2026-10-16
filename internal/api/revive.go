@@ -204,8 +204,11 @@ type reviveOutcome struct {
 	CircleID  string
 	Posts     int
 	Names     int
-	Bytes     int64
-	Verified  bool
+	// Bytes — для экрана: файлы и текст, как считает квота (C42).
+	Bytes int64
+	// MediaBytes — только файлы: их сверяет прежний сервер при переносе.
+	MediaBytes int64
+	Verified   bool
 	Invited   int
 	NotJoined int
 }
@@ -301,7 +304,10 @@ func (s *Server) reviveFromTables(ctx context.Context, in reviveRequest) (revive
 	if in.SendInvites {
 		out.Invited = s.inviteNotJoined(res.CircleID, in.AccountID, res.NotJoined)
 	}
-	out.CircleID, out.Posts, out.Names, out.Bytes = res.CircleID, res.Posts, res.Names, res.Bytes
+	// На экран — сколько круг занимает по квоте, с текстом (C42); сверка
+	// с архивом — по файлам, их размер архив знает точно.
+	out.CircleID, out.Posts, out.Names, out.Bytes = res.CircleID, res.Posts, res.Names, res.Bytes+res.TextBytes
+	out.MediaBytes = res.Bytes
 	out.Verified = res.Posts == in.Posts && res.Bytes == archiveBytes
 	out.NotJoined = len(res.NotJoined)
 	return out, nil

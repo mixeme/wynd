@@ -95,6 +95,7 @@ func TestReviveCircleFromArchiveHTTP(t *testing.T) {
 		CircleID string `json:"circle_id"`
 		Posts    int    `json:"posts"`
 		Names    int    `json:"names"`
+		Bytes    int64  `json:"bytes"`
 		Verified bool   `json:"verified"`
 	}
 	_ = json.Unmarshal(rec.Body.Bytes(), &res)
@@ -102,8 +103,17 @@ func TestReviveCircleFromArchiveHTTP(t *testing.T) {
 		t.Fatalf("итог оживления: %s", rec.Body.String())
 	}
 	// Слава — владелец; Боб видит оживлённый круг рядом с исходным.
-	if rec := doGET(t, srv, "/api/v1/circles/"+res.CircleID+"/quota", slava); rec.Code != http.StatusOK {
-		t.Fatalf("ожививший не владелец: %d", rec.Code)
+	quotaRec := doGET(t, srv, "/api/v1/circles/"+res.CircleID+"/quota", slava)
+	if quotaRec.Code != http.StatusOK {
+		t.Fatalf("ожививший не владелец: %d", quotaRec.Code)
+	}
+	// Итог «Круг на месте» — столько же, сколько круг занимает по квоте: с текстом (C42).
+	var quota struct {
+		Used int64 `json:"used_bytes"`
+	}
+	_ = json.Unmarshal(quotaRec.Body.Bytes(), &quota)
+	if res.Bytes == 0 || res.Bytes != quota.Used {
+		t.Fatalf("итог оживления %d байт, по квоте %d", res.Bytes, quota.Used)
 	}
 	var list struct {
 		Circles []map[string]any `json:"circles"`

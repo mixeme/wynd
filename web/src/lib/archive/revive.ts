@@ -57,7 +57,10 @@ export interface LoadedArchive {
 	members: number;
 	/** Сколько почт позовут письмом: все, кроме того, кто оживляет. */
 	emails: string[];
+	/** Файлы: столько уходит загрузкой. */
 	bytes: number;
+	/** Сколько круг займёт по квоте: файлы и текст (C42) — для экрана и места. */
+	circleBytes: number;
 	lastEntry: string;
 }
 
@@ -85,8 +88,14 @@ export async function loadArchive(src: RandomSource): Promise<LoadedArchive> {
 		};
 	});
 	const posts = rows(tables.posts).filter((p) => !Number(p.deleted));
-	const lastEntry = posts.reduce((max, p) => (String(p.entry_date) > max ? String(p.entry_date) : max), '');
+	const lastEntry = posts.reduce(
+		(max, p) => (typeof p.entry_date === 'string' && p.entry_date > max ? p.entry_date : max),
+		''
+	);
 	const members = rows(tables.memberships).filter((m) => m.status !== 'gone');
+	const bytes = blobs.reduce((n, b) => n + b.size, 0);
+	// Вес текста архив несёт в строке круга — так его считал прежний сервер.
+	const textBytes = Number(rows(tables.circles)[0]?.text_bytes) || 0;
 	return {
 		zip,
 		manifest,
@@ -95,7 +104,8 @@ export async function loadArchive(src: RandomSource): Promise<LoadedArchive> {
 		posts: posts.length,
 		members: members.length,
 		emails: rows(tables.accounts).map((a) => String(a.email)),
-		bytes: blobs.reduce((n, b) => n + b.size, 0),
+		bytes,
+		circleBytes: bytes + textBytes,
 		lastEntry
 	};
 }
@@ -169,8 +179,14 @@ async function uploadOne(
 			failures++;
 			if (failures > 8) throw err;
 			await new Promise((r) => setTimeout(r, Math.min(30_000, 1000 * 2 ** failures)));
-			const head = await apiFetch(origin, `/uploads/${session.id}`, { method: 'HEAD' });
-			offset = parseInt(head.headers.get('Upload-Offset') ?? '0', 10);
+			// Связи может ещё не быть: тогда это просто ещё одна неудачная
+			// попытка, а не конец загрузки.
+			try {
+				const head = await apiFetch(origin, `/uploads/${session.id}`, { method: 'HEAD' });
+				offset = parseInt(head.headers.get('Upload-Offset') ?? '0', 10);
+			} catch {
+				/* следующий круг цикла попробует снова */
+			}
 		}
 	}
 	const done = await apiJson<{ id: string }>(origin, `/uploads/${session.id}/complete`, {

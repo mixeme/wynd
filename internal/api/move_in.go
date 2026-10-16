@@ -179,7 +179,7 @@ func incomingJSON(m *chronicle.IncomingMove, now time.Time) map[string]any {
 	}
 	if m.Status == chronicle.IncomingDone {
 		out["result"] = map[string]any{
-			"circle_id": m.CircleID, "posts": m.ResultPosts, "names": m.ResultNames, "bytes": m.ResultBytes,
+			"circle_id": m.CircleID, "posts": m.ResultPosts, "names": m.ResultNames, "bytes": m.ResultBytes + m.ResultTextBytes,
 			"verified": m.Verified, "invited": m.Invited, "not_joined": m.NotJoined,
 		}
 	}
@@ -575,10 +575,10 @@ func (s *Server) reviveIncoming(ctx context.Context, m *chronicle.IncomingMove) 
 		if err != nil {
 			return err
 		}
-		if err := s.Chronicle.SetIncomingRevived(ctx, m.ID, out.CircleID, out.Posts, out.Names, out.Bytes, out.Verified, out.Invited, out.NotJoined); err != nil {
+		if err := s.Chronicle.SetIncomingRevived(ctx, m.ID, out.CircleID, out.Posts, out.Names, out.MediaBytes, out.Verified, out.Invited, out.NotJoined); err != nil {
 			return err
 		}
-		m.ResultPosts, m.ResultNames, m.ResultBytes = out.Posts, out.Names, out.Bytes
+		m.ResultPosts, m.ResultNames, m.ResultBytes = out.Posts, out.Names, out.MediaBytes
 	}
 	s.acceptMove(ctx, m.Link, m.ResultPosts, m.ResultNames, m.ResultBytes)
 	return s.Chronicle.FinishIncoming(ctx, m.ID)
