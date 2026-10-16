@@ -1,7 +1,8 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 
-rem Builds the desktop installer (plan 45): cmd\wynd-installer\build\bin\wynd-installer.exe
+rem Builds the desktop installer (plan 45): dist\wynd-installer.exe
+rem (Wails writes it into cmd\wynd-installer\build\bin, the script copies it to dist).
 rem Needs Go, Node and the Wails CLI:
 rem   go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
 rem Extra arguments go to "wails build" as is, e.g.  build-installer.bat -clean
@@ -51,6 +52,16 @@ if !BUILD_EXIT! neq 0 (
   exit /b !BUILD_EXIT!
 )
 
+rem Wails always writes into build\bin of its project; the result goes to dist
+rem next to the server binary (scripts\build.bat).
+set "BIN_DIR=%WYND_ROOT%\dist"
+if not exist "%BIN_DIR%" mkdir "%BIN_DIR%"
+copy /y "%APP_DIR%\build\bin\wynd-installer.exe" "%BIN_DIR%\wynd-installer.exe" >nul
+if errorlevel 1 (
+  echo ERROR: could not copy wynd-installer.exe to %BIN_DIR%.
+  exit /b 1
+)
+
 echo.
-echo Build complete: %APP_DIR%\build\bin\wynd-installer.exe
+echo Build complete: %BIN_DIR%\wynd-installer.exe
 exit /b 0
