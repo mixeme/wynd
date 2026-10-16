@@ -252,7 +252,7 @@ func maybeRunRoutine(ctx context.Context, authSvc *auth.Service, blobsDir string
 	runPayJobs(ctx, authSvc, mailSvc, pushSvc, blobsDir, now)
 }
 
-// expireFullArchives стирает готовые полные архивы, чей срок вышел (9.12).
+// expireFullArchives стирает готовые полные архивы, чей срок вышел (9.9).
 func expireFullArchives(ctx context.Context, apiSrv *api.Server) {
 	if n := apiSrv.ExpireFullArchives(ctx, time.Now().UTC()); n > 0 {
 		log.Printf("full archives expired: %d", n)
