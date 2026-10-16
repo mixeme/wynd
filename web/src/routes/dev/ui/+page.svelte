@@ -752,15 +752,16 @@
 					<DayHeader
 						cover="p1"
 						title="Дача, яблони"
-						subtitle="12 августа · 4 записи"
+						subtitle="нажмите, чтобы изменить"
 						oncover={() => {}}
+						ontitle={() => {}}
 					/>
 				</PhoneFrame>
 			</div>
 			<div class="card">
 				<h3>DayHeader · день без фотографий</h3>
 				<PhoneFrame color="terracotta" height="200px">
-					<DayHeader empty title="6 октября" subtitle="6 октября" />
+					<DayHeader empty ontitle={() => {}} />
 				</PhoneFrame>
 			</div>
 			<div class="card">

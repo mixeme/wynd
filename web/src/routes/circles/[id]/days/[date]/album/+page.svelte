@@ -130,21 +130,23 @@
 	}
 </script>
 
-<FormLayout app color={circle.color} title="Альбом" onback={goBack}>
-	{#snippet bar()}
-		<TextButton class="sz-13" variant="bar" onclick={goBack}>Отмена</TextButton>
-		<TextButton
-			variant="barAction"
-			active={Boolean(selected) && !saving}
-			disabled={!selected}
-			loading={saving}
-			onclick={() => save()}
-		>
-			Сохранить
-		</TextButton>
-	{/snippet}
-
-	<Hint class="m-0-16-8">{formatEntryDate(entryDate)}</Hint>
+<!-- Шапка «‹ · Обложка дня · Сохранить» в цвет круга (C44, слово владельца).
+     Была стрелка «Назад» и рядом «Отмена» — две кнопки на одно действие, без
+     названия экрана. -->
+<FormLayout
+	app
+	compose
+	cancelBack
+	color={circle.color}
+	title="Обложка дня"
+	publishLabel="Сохранить"
+	canPublish={Boolean(selected) && !saving}
+	publishing={saving}
+	oncancel={goBack}
+	onpublish={() => void save()}
+	onback={goBack}
+>
+	<Hint class="m-12-16-8">{formatEntryDate(entryDate)}</Hint>
 
 	{#if loading}
 		<Loading />

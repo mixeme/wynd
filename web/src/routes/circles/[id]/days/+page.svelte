@@ -59,7 +59,10 @@
 			return {
 				entryDate: day.entry_date,
 				title: day.title || formatEntryDate(day.entry_date),
-				subtitle: formatDayCardSubtitle(day.entry_date, day.post_count),
+				// Безымянный день уже назван датой — второй раз её не пишем (5.1).
+				subtitle: day.title
+					? formatDayCardSubtitle(day.entry_date, day.post_count)
+					: pluralPosts(day.post_count),
 				coverBlobId,
 				photoCount: photoCount && photoCount > 1 ? photoCount : undefined
 			};

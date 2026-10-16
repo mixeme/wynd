@@ -305,7 +305,7 @@ export const BUTTON_LAYOUT_CLASSES = new Set([
 	'btn', 'row2', 'r', 'circle-row-action', 'fold', 'att', 'att-play', 'cm', 'rcho', 'addph',
 	'send', 'chip', 'inp', 'one', 'add', 'di', 'pic', 'scrim', 'pay-banner-main',
 	'pay-reminder', 'cell', 'thumb', 'thumb-body', 'map-sheet', 'fab-menu-item', 'audio-bar-main',
-	'voice', 'vrec-shutter', 'vrec-send', 'dayc', 'ctile', 'crow', 'cpend-rm', 'cm-line'
+	'voice', 'vrec-shutter', 'vrec-send', 'dayc', 'dayh', 'ctile', 'crow', 'cpend-rm', 'cm-line'
 ]);
 
 export const BUTTON_TEXT_CLASSES = new Set(['act', 't', 'rt', 'under', 'done', 'sq', 'mini', 'preview', 'vrec-text', 'mo']);

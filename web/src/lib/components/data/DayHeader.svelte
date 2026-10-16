@@ -1,5 +1,5 @@
 ﻿<script lang="ts">
-	import SettingsRow from '$ui/data/SettingsRow.svelte';
+	import TextButton from '$ui/forms/TextButton.svelte';
 
 	let {
 		cover,
@@ -69,12 +69,18 @@
 		<span class="tagr">обложка дня</span>
 	</div>
 {/if}
-{#if title && subtitle}
-	{#if ontitle}
-		<SettingsRow {title} {subtitle} chevron={false} onclick={ontitle} />
-	{:else}
-		<SettingsRow {title} {subtitle} chevron={false} />
-	{/if}
+<!-- Название — заголовком под обложкой, дата — в шапке (C44, слово владельца):
+     длинное название в шапку не влезало. Без названия заголовка нет; кто может
+     назвать день, видит тихую строку «назвать день». -->
+{#if title && ontitle}
+	<button type="button" class="dayh" onclick={ontitle}>
+		<span class="dayh-name">{title}</span>
+		{#if subtitle}<span class="dayh-sub">{subtitle}</span>{/if}
+	</button>
+{:else if title}
+	<div class="dayh"><span class="dayh-name">{title}</span></div>
+{:else if ontitle}
+	<div class="dayh"><TextButton onclick={ontitle}>назвать день</TextButton></div>
 {/if}
 
 <style>
@@ -83,6 +89,29 @@
 		height: 100%;
 		object-fit: cover;
 		display: block;
+	}
+	.dayh {
+		display: block;
+		width: 100%;
+		padding: 14px 16px 2px;
+		border: 0;
+		background: none;
+		color: inherit;
+		font: inherit;
+		text-align: left;
+	}
+	.dayh-name {
+		display: block;
+		font-size: 22px;
+		font-weight: 600;
+		line-height: 1.25;
+		overflow-wrap: anywhere;
+	}
+	.dayh-sub {
+		display: block;
+		margin-top: 3px;
+		font-size: 12.5px;
+		color: var(--muted);
 	}
 	.wait {
 		background: var(--tint);

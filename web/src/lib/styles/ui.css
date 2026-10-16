@@ -239,6 +239,9 @@
 	-webkit-tap-highlight-color: transparent;
 	justify-self: start;
 }
+.cbar .top.compose-top .back {
+	justify-self: start;
+}
 .cbar .top.compose-top .act:disabled, .cbar .top.compose-top .rt:disabled {
 	opacity: .45;
 	cursor: default;
@@ -3605,6 +3608,9 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 }
 .m-0-16-8 {
 	margin: 0 16px 8px;
+}
+.m-12-16-8 {
+	margin: 12px 16px 8px;
 }
 .m-0-16-12 {
 	margin: 0 16px 12px;

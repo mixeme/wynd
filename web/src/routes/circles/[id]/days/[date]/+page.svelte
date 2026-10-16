@@ -66,9 +66,8 @@
 	const canEditDay = $derived(
 		circle.canWrite && !circle.spaceFull && posts.some((p) => p.identity_id === circle.identityId)
 	);
-	const titleSubtitle = $derived(
-		canEditDay ? `${formatEntryDate(entryDate)} · нажмите, чтобы изменить` : formatEntryDate(entryDate)
-	);
+	// Дата дня уже стоит справа в шапке — под названием её не повторяем (C44).
+	const titleSubtitle = $derived(canEditDay ? 'нажмите, чтобы изменить' : undefined);
 
 	function isBackfilled(post: FeedPost): boolean {
 		return post.entry_date === entryDate && localDayOf(post.created_at) > entryDate;
@@ -223,8 +222,7 @@
 <CircleLayout
 	app
 	color={circle.color}
-	title={dayTitle}
-	identity={formatEntryDate(entryDate)}
+	title={formatEntryDate(entryDate)}
 	tabs={false}
 	commentBar={false}
 	onback={goBack}
@@ -247,7 +245,7 @@
 		<DayHeader
 			coverUrl={coverUrl || undefined}
 			empty={!coverBlobId}
-			title={editingTitle ? undefined : dayTitle}
+			title={editingTitle || !hasCustomTitle ? undefined : dayTitle}
 			subtitle={editingTitle ? undefined : titleSubtitle}
 			oncover={canEditDay && coverBlobId ? openDayAlbum : undefined}
 			ontitle={editingTitle || !canEditDay ? undefined : startEditTitle}
@@ -274,16 +272,6 @@
 			{/if}
 		{/if}
 
-		{#if canEditDay}
-			<Hint class="gutter-12">
-				День общий: название и обложку может сменить любой, у кого есть запись за этот день. Если
-				поменяют несколько — останется последнее.
-			</Hint>
-		{:else if circle.canWrite && !circle.spaceFull}
-			<Hint class="gutter-12">
-				Название и обложку дня меняют те, у кого есть запись за этот день.
-			</Hint>
-		{/if}
 		{#each posts as post (post.id)}
 			{#snippet backfilled()}
 				<EntryDateMark icon="clock" label="внесено сегодня" />

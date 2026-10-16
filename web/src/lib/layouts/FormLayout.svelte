@@ -26,6 +26,7 @@
 		bar,
 		compose = false,
 		publishLabel = 'Опубликовать',
+		cancelBack = false,
 		canPublish = false,
 		publishing = false,
 		oncancel,
@@ -50,6 +51,8 @@
 		bar?: Snippet;
 		compose?: boolean;
 		publishLabel?: string;
+		/** Слева стрелка «Назад» вместо «Отмена» (обложка дня, C44). */
+		cancelBack?: boolean;
 		canPublish?: boolean;
 		publishing?: boolean;
 		oncancel?: () => void;
@@ -80,7 +83,11 @@
 	{#if compose}
 		<div class="cbar">
 			<div class="top compose-top">
-				<TextButton variant="admin" onclick={() => oncancel?.()}>Отмена</TextButton>
+				{#if cancelBack}
+					<IconButton name="back" label="Назад" class="back" onclick={() => oncancel?.()} />
+				{:else}
+					<TextButton variant="admin" onclick={() => oncancel?.()}>Отмена</TextButton>
+				{/if}
 				<span class="t">{title}</span>
 				<TextButton
 					variant="barAction"
