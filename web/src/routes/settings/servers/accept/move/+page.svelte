@@ -38,7 +38,9 @@
 	// не помещается / место попросили / отказали (7.21, 7.22, 7.23), срок
 	// ссылки вышел (7.24), ход, итог (7.25, 7.26). Ссылку сервер помнит вместе
 	// с просьбой о месте: экран при открытии показывает её снова.
-	const GB = 1024 * 1024 * 1024;
+	// Просим столько, сколько нужно кругу, с запасом до мегабайта: при
+	// округлении до гигабайта «попросить меньше» после отказа было нельзя.
+	const MB = 1024 * 1024;
 	// У сервера на своём адресе origin — пустая строка: не проверять как истину.
 	const origin = $page.url.searchParams.get('origin') ?? '';
 	// Ссылка «поднимите свой» ведёт на исходники этого сервера (LIC-2).
@@ -149,7 +151,7 @@
 		busy = true;
 		error = '';
 		try {
-			await requestRevivePlace(origin, Math.ceil(move.circle.bytes / GB) * GB, move.circle.name);
+			await requestRevivePlace(origin, Math.ceil(move.circle.bytes / MB) * MB, move.circle.name);
 			await refresh();
 		} catch (err) {
 			error = authErrorHint(err);
@@ -246,7 +248,7 @@
 		<ServerRow
 			name={serverName || host}
 			subtitle={move && !move.fits
-				? `${host} · для круга есть ${formatBytes(move.room_bytes)}`
+				? `${host} · свободно ${formatBytes(move.room_bytes)}`
 				: freeBytes !== undefined || move
 					? `${host} · свободно ${formatBytes(move?.room_bytes ?? freeBytes ?? 0)}`
 					: host}
@@ -331,7 +333,7 @@
 				<StatusCard
 					class="mt-14"
 					title="Место попросили"
-					text={`${day(move.request.created_at)} вы попросили у администратора ${srv} ${formatBytes(move.request.requested_bytes)} для этого круга. Когда место дадут, здесь появится кнопка «Поднять круг здесь».`}
+					text={`${day(move.request.created_at)} вы попросили у администратора ${formatBytes(move.request.requested_bytes)} для этого круга. Ответ администратора придёт письмом. Когда место дадут, здесь появится кнопка «Поднять круг здесь».`}
 				/>
 				<Hint class="mt-10">{@render deadline()}</Hint>
 				<Hint class="mt-14 ctr-text">Можно уйти и вернуться позже: просьба и ссылка останутся.</Hint>
@@ -340,7 +342,7 @@
 				<StatusCard
 					class="mt-14"
 					title="В месте отказали"
-					text={`${day(move.request.resolved_at ?? move.request.created_at)} администратор ${srv} отказал в ${formatBytes(move.request.requested_bytes)} для этого круга. Можно попросить меньше — кругу нужно ${formatBytes(move.circle.bytes)} — или выбрать другой сервер.`}
+					text={`${day(move.request.resolved_at ?? move.request.created_at)} администратор отказал в ${formatBytes(move.request.requested_bytes)} для этого круга. Можно попросить меньше — кругу нужно ${formatBytes(move.circle.bytes)} — или выбрать другой сервер.`}
 				/>
 				<Hint class="mt-10">{@render deadline()}</Hint>
 				<Hint class="mt-14 ctr-text">
@@ -351,7 +353,7 @@
 				<StatusCard
 					class="mt-14"
 					title="Круг сюда не помещается"
-					text={`Ему нужно ${formatBytes(move.circle.bytes)}, а ${srv} для круга есть ${formatBytes(move.room_bytes)}. Выберите другой сервер или попросите место у администратора этого.`}
+					text={`Нужно ${formatBytes(move.circle.bytes)} — свободно ${formatBytes(move.room_bytes)}. Попросите место у администратора или выберите другой сервер.`}
 				/>
 				<Hint class="mt-10">{@render deadline()}</Hint>
 				<Button class="mt-14" variant="colored" loading={busy} onclick={() => void askPlace()}>

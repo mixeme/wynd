@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goUp } from '$lib/navigation/up';
-	import NumberField from '$ui/forms/NumberField.svelte';
+	import SizeField from '$ui/forms/SizeField.svelte';
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
@@ -26,22 +26,20 @@
 	let usedBytes = $state(0);
 	let quotaBytes = $state(0);
 	let chip = $state<QuotaChipKey>('10');
-	let customGb = $state(20);
+	let customBytes = $state(20 * QUOTA_GB);
 	let loading = $state(false);
 	let pageLoading = $state(true);
 	let error = $state('');
 
-	const minGb = $derived(Math.max(1, Math.ceil(usedBytes / QUOTA_GB)));
 	// Нижняя граница — уже занятое, как сказано под полем (6.18): «Ниже этого
 	// числа просить незачем». Меньше нынешней квоты попросить можно (C35):
 	// раньше экран требовал больше квоты, хотя подпись этого не говорила.
 	const requestFloor = $derived(usedBytes);
 	const selectedBytes = $derived.by(() => {
 		if (chip === 'custom') {
-			const n = Number(customGb);
-			if (!Number.isInteger(n) || n < minGb || n > 1024) return null;
-			const bytes = n * QUOTA_GB;
-			if (bytes <= requestFloor) return null;
+			// Своё — в мегабайтах или гигабайтах (поле с чипами «МБ / ГБ»).
+			const bytes = customBytes;
+			if (bytes <= 0 || bytes <= requestFloor || bytes > 1024 * QUOTA_GB) return null;
 			return bytes;
 		}
 		const picked = QUOTA_CHIPS.find((c) => c.key === chip);
@@ -60,7 +58,7 @@
 			return;
 		}
 		chip = 'custom';
-		customGb = Math.max(minGb, Math.round(bytes / QUOTA_GB));
+		customBytes = bytes;
 	}
 
 	function chipDisabled(key: QuotaChipKey): boolean {
@@ -74,7 +72,7 @@
 			error =
 				requestFloor > 0
 					? `Укажите больше ${formatBytes(requestFloor)}`
-					: `Укажите не меньше ${minGb} ГБ — столько уже занято`;
+					: 'Укажите, сколько нужно';
 			return;
 		}
 		loading = true;
@@ -134,7 +132,7 @@
 					onclick={() => {
 						chip = opt.key;
 						if (opt.key !== 'custom' && opt.bytes != null) {
-							customGb = Math.round(opt.bytes / QUOTA_GB);
+							customBytes = opt.bytes;
 						}
 					}}
 				>
@@ -143,12 +141,7 @@
 			{/each}
 		</ChipGroup>
 		{#if chip === 'custom'}
-			<NumberField
-				bind:value={customGb}
-				min={minGb}
-				max={1024}
-				unit="ГБ"
-			/>
+			<SizeField bind:bytes={customBytes} />
 		{/if}
 		<Hint class="mt-10">
 			{formatBytes(usedBytes)} уже лежит. Ниже этого числа просить незачем — место всё равно

@@ -42,7 +42,9 @@
 	// «Принять круг» (7.19) и оживление из архива (7.27–7.32, 7.33, 7.34).
 	// Файл и пароль живут только на этом экране: уйти — значит выбрать файл
 	// заново (7.31).
-	const GB = 1024 * 1024 * 1024;
+	// Просим столько, сколько нужно кругу, с запасом до мегабайта: при
+	// округлении до гигабайта «попросить меньше» после отказа было нельзя.
+	const MB = 1024 * 1024;
 	// У сервера на своём адресе origin — пустая строка: не проверять как истину.
 	const origin = $page.url.searchParams.get('origin') ?? '';
 	// Ссылка «поднимите свой» ведёт на исходники этого сервера (LIC-2).
@@ -73,7 +75,6 @@
 	const need = $derived(archive?.circleBytes ?? 0);
 	const circleName = $derived(String(archive?.manifest.circle_name ?? ''));
 	const invitable = $derived(Math.max(0, (archive?.emails.length ?? 1) - 1));
-	const srv = $derived(serverName ? `«${serverName}»` : 'этого сервера');
 
 	onMount(async () => {
 		const sessions = await loadSessions();
@@ -131,7 +132,7 @@
 		busy = true;
 		error = '';
 		try {
-			await requestRevivePlace(origin, Math.ceil(archive.circleBytes / GB) * GB, circleName);
+			await requestRevivePlace(origin, Math.ceil(archive.circleBytes / MB) * MB, circleName);
 			room = await fetchReviveRoom(origin, archive.circleBytes);
 		} catch (err) {
 			error = authErrorHint(err);
@@ -230,7 +231,7 @@
 			name={serverName || host}
 			subtitle={room.fits
 				? `${host} · свободно ${formatBytes(room.room_bytes)}`
-				: `${host} · для круга есть ${formatBytes(room.room_bytes)}`}
+				: `${host} · свободно ${formatBytes(room.room_bytes)}`}
 			card
 			top={4}
 		/>
@@ -268,12 +269,12 @@
 			</Hint>
 			{/if}
 			<Button class="mt-14" variant="colored" onclick={() => void revive()}>
-				Оживить круг здесь
+				Оживить круг
 			</Button>
 		{:else if room.request?.status === 'pending'}
 			<StatusCard
 				title="Место попросили"
-				text={`${day(room.request.created_at)} вы попросили у администратора ${srv} ${formatBytes(room.request.requested_bytes)} для этого круга. Когда место дадут, здесь появится кнопка «Оживить круг здесь».`}
+				text={`${day(room.request.created_at)} вы попросили у администратора ${formatBytes(room.request.requested_bytes)} для этого круга. Ответ администратора придёт письмом. Когда место дадут, здесь появится кнопка «Оживить круг».`}
 			/>
 			<Hint class="mt-14">
 				Можно уйти и вернуться позже: просьба останется, файл нужно будет выбрать заново.
@@ -281,7 +282,7 @@
 		{:else if room.request?.status === 'rejected'}
 			<StatusCard
 				title="В месте отказали"
-				text={`${day(room.request.resolved_at ?? room.request.created_at)} администратор ${srv} отказал в ${formatBytes(room.request.requested_bytes)} для этого круга. Можно попросить меньше — кругу нужно ${formatBytes(need)} — или выбрать другой сервер.`}
+				text={`${day(room.request.resolved_at ?? room.request.created_at)} администратор отказал в ${formatBytes(room.request.requested_bytes)} для этого круга. Можно попросить меньше — кругу нужно ${formatBytes(need)} — или выбрать другой сервер.`}
 			/>
 			<Hint class="mt-14 ctr-text">
 				<TextButton disabled={busy} onclick={() => void askPlace()}>Попросить ещё раз</TextButton>
@@ -289,7 +290,7 @@
 		{:else}
 			<StatusCard
 				title="Круг сюда не помещается"
-				text={`Ему нужно ${formatBytes(need)}, а ${srv} для круга есть ${formatBytes(room.room_bytes)}. Выберите другой сервер или попросите место у администратора этого.`}
+				text={`Нужно ${formatBytes(need)} — свободно ${formatBytes(room.room_bytes)}. Попросите место у администратора или выберите другой сервер.`}
 			/>
 			<Button class="mt-14" variant="colored" loading={busy} onclick={() => void askPlace()}>
 				Попросить место

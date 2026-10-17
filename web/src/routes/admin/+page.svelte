@@ -12,6 +12,7 @@
 	import Loading from '$ui/Loading.svelte';
 	import Icon from '$ui/Icon.svelte';
 	import Input from '$ui/forms/Input.svelte';
+	import SizeField from '$ui/forms/SizeField.svelte';
 	import QuotaRequestRow from '$ui/admin/QuotaRequestRow.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
 	import DataTable from '$ui/admin/DataTable.svelte';
@@ -55,17 +56,19 @@
 	let quotaPercentInput = $state('');
 	let defaultQuota = $state<number | null>(null);
 	let defaultChip = $state<'none' | '5' | '10' | 'custom'>('none');
-	let defaultCustomGb = $state('5');
+	let defaultCustomBytes = $state(5 * GB);
 	let circles = $state<AdminStorageCircle[]>([]);
 	let requests = $state<QuotaRequest[]>([]);
 	let server = $state('');
 	let error = $state('');
 	let loading = $state(true);
-	let circleQuotaGb = $state('');
+	let circleQuotaBytes = $state(0);
 	let circleQuotaHint = $state('');
 	let defaultCustomHint = $state('');
 	let instanceQuotaHint = $state('');
 	const quotaGbHintText = 'Квота — целые гигабайты';
+	// Квоты кругов — в мегабайтах или гигабайтах (поле с чипами «МБ / ГБ»).
+	const circleQuotaHintText = 'Квота — больше нуля, до 1024 ГБ';
 	const quotaPercentHintText = 'Процент диска — целое число от 1 до 100';
 	const instanceQuotaExplainHint =
 		'Действует одно: гигабайты или доля диска. Сохранение одного очищает другое. При упоре писать нельзя ни в один круг: ни текст, ни фото.';
@@ -198,24 +201,23 @@
 			return;
 		}
 		defaultChip = 'custom';
-		defaultCustomGb = String(Math.round(bytes / GB));
+		defaultCustomBytes = bytes;
 	}
 
 	function syncCircleField(c: AdminStorageCircle | undefined, pending?: QuotaRequest) {
 		if (!c) {
-			circleQuotaGb = '';
+			circleQuotaBytes = 0;
 			return;
 		}
 		if (pending) {
-			circleQuotaGb = String(Math.round(pending.requested_bytes / GB));
+			circleQuotaBytes = pending.requested_bytes;
 			return;
 		}
 		if (c.quota_custom && c.quota_bytes != null) {
-			circleQuotaGb = String(Math.round(c.quota_bytes / GB));
+			circleQuotaBytes = c.quota_bytes;
 			return;
 		}
-		const eff = effectiveQuotaBytes(c);
-		circleQuotaGb = eff != null ? String(Math.round(eff / GB)) : '';
+		circleQuotaBytes = effectiveQuotaBytes(c) ?? 0;
 	}
 
 	async function load() {
@@ -292,14 +294,17 @@
 		await saveDefaultQuota(chip?.bytes ?? null);
 	}
 
+	function quotaBytesOk(bytes: number): boolean {
+		return bytes > 0 && bytes <= 1024 * GB;
+	}
+
 	async function saveDefaultCustom() {
-		const gb = parseGbInt(defaultCustomGb, 1024);
-		if (gb == null) {
-			defaultCustomHint = quotaGbHintText;
+		if (!quotaBytesOk(defaultCustomBytes)) {
+			defaultCustomHint = circleQuotaHintText;
 			return;
 		}
 		defaultCustomHint = '';
-		await saveDefaultQuota(gb * GB);
+		await saveDefaultQuota(defaultCustomBytes);
 	}
 
 	function toggleCircle(id: string) {
@@ -321,13 +326,12 @@
 			} else if (mode === 'none') {
 				await setCircleQuota(selectedCircle.id, { custom: true, quota_bytes: null });
 			} else {
-				const gb = parseGbInt(circleQuotaGb);
-				if (gb == null) {
-					circleQuotaHint = quotaGbHintText;
+				if (!quotaBytesOk(circleQuotaBytes)) {
+					circleQuotaHint = circleQuotaHintText;
 					return;
 				}
 				circleQuotaHint = '';
-				await setCircleQuota(selectedCircle.id, { custom: true, quota_bytes: gb * GB });
+				await setCircleQuota(selectedCircle.id, { custom: true, quota_bytes: circleQuotaBytes });
 			}
 			await load();
 		} catch (err) {
@@ -440,15 +444,12 @@
 						{/each}
 					</ChipGroup>
 					{#if defaultChip === 'custom'}
-						<div class="flex-mid gap-10 mt-8">
-							<Input
-								admin
-								class="w88"
-								bind:value={defaultCustomGb}
-								onchange={() => void saveDefaultCustom()}
-							/>
-							<span class="note">ГБ</span>
-						</div>
+						<SizeField
+							admin
+							class="mt-8"
+							bind:bytes={defaultCustomBytes}
+							onchange={() => void saveDefaultCustom()}
+						/>
 						{#if defaultCustomHint}
 							<Hint class="mt-8">{defaultCustomHint}</Hint>
 						{/if}
@@ -514,20 +515,18 @@
 						владелец · {selectedCircle.owner_email}
 					</div>
 					<div class="flex-mid gap-10 wrap">
-						<Input
+						<SizeField
 							admin
-						 class="w88 bold"
-							bind:value={circleQuotaGb}
+							bind:bytes={circleQuotaBytes}
 							onchange={() => void saveCircleQuota('gb')}
 						/>
-						<span class="note">ГБ</span>
 						<ChipGroup class="m-0">
 							<Chip onclick={() => void saveCircleQuota('default')}>
 								Как умолчание · {defaultLabel()}
 							</Chip>
 							{#if pendingForCircle}
 								<Chip selected onclick={() => void saveCircleQuota('gb')}>
-									{Math.round(pendingForCircle.requested_bytes / GB)} ГБ
+									{formatQuota(pendingForCircle.requested_bytes)}
 								</Chip>
 							{/if}
 							<Chip onclick={() => void saveCircleQuota('none')}>Без квоты</Chip>
@@ -556,7 +555,7 @@
 								? circleName(req.circle_id)
 								: `${req.circle_name ?? 'Круг'} — оживляют из архива`}
 							requested={formatQuota(req.requested_bytes)}
-							previous={prev != null ? String(Math.round(prev / GB)) : undefined}
+							previous={prev != null ? formatQuota(prev) : undefined}
 							requester={req.requester_email}
 							date={formatAdminDay(req.created_at)}
 							freeSpace={formatBytes(free)}

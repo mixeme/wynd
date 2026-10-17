@@ -85,7 +85,7 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar, **Comp
 
 ### `forms/`
 
-**Label**, **Input**, **FieldDisplay**, **TextArea**, ScreenTitle, Hint, **Button**, **Chip**, ChipGroup, Switch, ColorSwatches, CodeBox, InviteCard, **RequisitesCard**, **SearchField**, DangerZone (опц. `class`, `style`), Meter, PeopleStrip, **MentionPicker**, AddPhotoButton, DangerNote, VolumeChart, **IconButton**, **TextButton**, **EditWindowPicker**, **IdentityForm**, **NumberField**, **DateRow**, **DateRange**, **FilePicker**, **QrScanner**, **GenderPicker**
+**Label**, **Input**, **FieldDisplay**, **TextArea**, ScreenTitle, Hint, **Button**, **Chip**, ChipGroup, Switch, ColorSwatches, CodeBox, InviteCard, **RequisitesCard**, **SearchField**, DangerZone (опц. `class`, `style`), Meter, PeopleStrip, **MentionPicker**, AddPhotoButton, DangerNote, VolumeChart, **IconButton**, **TextButton**, **EditWindowPicker**, **IdentityForm**, **NumberField**, **SizeField**, **DateRow**, **DateRange**, **FilePicker**, **QrScanner**, **GenderPicker**
 
 Интерактивные примитивы (фаза 1–4):
 
@@ -116,6 +116,8 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar, **Comp
 `DateRow` — строка, которая открывает системный выбор дня (**#e4-2** «Отнести к дате»): `bind:value` (`2026-10-01`), `title`, `subtitle`, `icon`, `style`. Поле даты скрыто под строкой (`.date-pick`), выбор открывается у неё; без `showPicker` — по клику.
 
 `NumberField` — число «Своё…» с единицей справа: `Input` 72 px и подпись `.hint` в `.rowin` (окно правок, кэш, квота, люди и дни приглашения). `bind:value` (число), `min`, `max`, `unit` («часов», «ГБ, до 100»), опц. `onchange` — подтверждение поля. Строки админки с подписью слева — `AdminField`.
+
+`SizeField` — размер места «Своё…»: число и единица чипами «МБ / ГБ» (2026-10-17, владелец: «просить и ставить мегабайты»). `bind:bytes` — байты, 0 пока число не задано; значение снаружи (загрузка, другой круг) поле перечитывает. Опц. `admin` — поле панели (`Input admin`, в строку с чипами), `onchange` — число или единицу поменяли. «Попросить место» (6.18), квота круга по умолчанию и квота круга в панели. Потолок сервера — в ГБ, `Input` с подписью.
 
 `IdentityForm` — «Как вас зовут в этом круге?» (**#e1-4**) у вступающего и у создателя круга: заголовок, `AddPhotoButton` + кадрирование `AvatarCrop`, «Имя», первая запись с «необязательно». `color`, `bind:name`, `bind:firstPost`, `bind:avatar` (откадрированное фото; загружает экран — `setIdentityAvatar` из `$lib/circles/settings`), опц. `postLabel` / `postPlaceholder` (дневник), `onerror`. Кнопку и ошибку ставит экран.
 

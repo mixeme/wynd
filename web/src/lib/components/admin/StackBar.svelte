@@ -19,7 +19,8 @@
 
 <div class={className} style="position:relative;{style}">
 	<div class="stack">
-		{#each segments as segment (segment.color + segment.width)}
+		<!-- Ключ — место в полосе: у двух кругов бывают один цвет и одна ширина. -->
+		{#each segments as segment, i (i)}
 			<u style="width:{segment.width};background:{segment.color}"></u>
 		{/each}
 	</div>
