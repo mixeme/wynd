@@ -189,8 +189,11 @@ func incomingJSON(m *chronicle.IncomingMove, now time.Time) map[string]any {
 // withRoom добавляет к ответу место для круга и просьбу о нём (7.21, 7.22,
 // 7.23) — как у оживления из архива.
 func (s *Server) withRoom(ctx context.Context, out map[string]any, accountID string, need int64) error {
-	room, _, last, err := s.reviveRoom(ctx, accountID)
+	room, approved, last, err := s.reviveRoom(ctx, accountID)
 	if err != nil {
+		return err
+	}
+	if err := s.roomLimit(ctx, out, room, approved != nil); err != nil {
 		return err
 	}
 	out["room_bytes"] = room

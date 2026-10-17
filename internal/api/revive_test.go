@@ -186,7 +186,8 @@ func TestRevivePlaceRequest(t *testing.T) {
 		_ = json.Unmarshal(doGET(t, srv, "/api/v1/revive/room?bytes=5000", slava).Body.Bytes(), &out)
 		return out
 	}
-	if r := room(); r["fits"] != false || r["room_bytes"].(float64) != 1000 {
+	// Упёрлись в квоту по умолчанию, а не в диск: экран пишет «новому кругу здесь дают».
+	if r := room(); r["fits"] != false || r["room_bytes"].(float64) != 1000 || r["limit"] != "quota" || r["disk_bytes"].(float64) <= 1000 {
 		t.Fatalf("место до просьбы: %+v", r)
 	}
 	// Архив из одного круга с одним файлом — собран руками, как его прислало бы устройство.

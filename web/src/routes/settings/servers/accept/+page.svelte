@@ -6,6 +6,7 @@
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Input from '$ui/forms/Input.svelte';
+	import SizeField from '$ui/forms/SizeField.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import Meter from '$ui/forms/Meter.svelte';
 	import Switch from '$ui/forms/Switch.svelte';
@@ -27,6 +28,8 @@
 	import { WrongPasswordError } from '$lib/archive/wyndfile';
 	import {
 		fetchReviveRoom,
+		noRoomText,
+		roomCaption,
 		loadArchive,
 		openFile,
 		requestRevivePlace,
@@ -56,7 +59,7 @@
 	let step = $state<Step>('choose');
 	let serverName = $state('');
 	let host = $state(displayHost(origin));
-	let freeBytes = $state<number | undefined>();
+	let freeRoom = $state<ReviveRoom | undefined>();
 	let file = $state<File | undefined>();
 	let opened = $state<OpenedFile | undefined>();
 	let password = $state('');
@@ -81,7 +84,7 @@
 		const s = sessions.find((x) => x.origin === origin);
 		serverName = s?.name ?? '';
 		try {
-			freeBytes = (await fetchReviveRoom(origin, 0)).room_bytes;
+			freeRoom = await fetchReviveRoom(origin, 0);
 		} catch {
 			/* без «свободно» */
 		}
@@ -123,16 +126,23 @@
 
 	async function load(src: Parameters<typeof loadArchive>[0]) {
 		archive = await loadArchive(src);
+		placeBytes = Math.ceil(archive.circleBytes / MB) * MB;
 		room = await fetchReviveRoom(origin, archive.circleBytes);
 		step = 'review';
 	}
 
+	let placeBytes = $state(0);
+
 	async function askPlace() {
 		if (!archive) return;
+		if (placeBytes < need) {
+			error = `Попросите не меньше ${formatBytes(need)} — столько нужно кругу`;
+			return;
+		}
 		busy = true;
 		error = '';
 		try {
-			await requestRevivePlace(origin, Math.ceil(archive.circleBytes / MB) * MB, circleName);
+			await requestRevivePlace(origin, placeBytes, circleName);
 			room = await fetchReviveRoom(origin, archive.circleBytes);
 		} catch (err) {
 			error = authErrorHint(err);
@@ -163,6 +173,16 @@
 	}
 </script>
 
+{#snippet placeAsk(label: string)}
+	<!-- Сколько попросить — человек выбирает сам (владелец, 2026-10-17): после
+	     отказа можно попросить меньше. Сначала — вес круга с запасом до МБ. -->
+	<Label class="mt-16">Сколько попросить</Label>
+	<SizeField bind:bytes={placeBytes} />
+	<Button class="mt-14" variant="colored" loading={busy} onclick={() => void askPlace()}>
+		{label}
+	</Button>
+{/snippet}
+
 <FormLayout
 	shell
 	app
@@ -174,7 +194,7 @@
 		<!-- 7.19: две дороги — перенос по ссылке (план 53) и оживление из файла. -->
 		<ServerRow
 			name={serverName || host}
-			subtitle={freeBytes !== undefined ? `${host} · свободно ${formatBytes(freeBytes)}` : host}
+			subtitle={freeRoom ? `${host} · ${roomCaption(freeRoom, formatBytes)}` : host}
 			card
 			top={10}
 		/>
@@ -230,8 +250,8 @@
 		<ServerRow
 			name={serverName || host}
 			subtitle={room.fits
-				? `${host} · свободно ${formatBytes(room.room_bytes)}`
-				: `${host} · свободно ${formatBytes(room.room_bytes)}`}
+				? `${host} · ${roomCaption(room, formatBytes)}`
+				: `${host} · ${roomCaption(room, formatBytes)}`}
 			card
 			top={4}
 		/>
@@ -284,17 +304,13 @@
 				title="В месте отказали"
 				text={`${day(room.request.resolved_at ?? room.request.created_at)} администратор отказал в ${formatBytes(room.request.requested_bytes)} для этого круга. Можно попросить меньше — кругу нужно ${formatBytes(need)} — или выбрать другой сервер.`}
 			/>
-			<Hint class="mt-14 ctr-text">
-				<TextButton disabled={busy} onclick={() => void askPlace()}>Попросить ещё раз</TextButton>
-			</Hint>
+			{@render placeAsk('Попросить ещё раз')}
 		{:else}
 			<StatusCard
 				title="Круг сюда не помещается"
-				text={`Нужно ${formatBytes(need)} — свободно ${formatBytes(room.room_bytes)}. Попросите место у администратора или выберите другой сервер.`}
+				text={noRoomText(formatBytes(need), room, formatBytes)}
 			/>
-			<Button class="mt-14" variant="colored" loading={busy} onclick={() => void askPlace()}>
-				Попросить место
-			</Button>
+			{@render placeAsk('Попросить место')}
 		{/if}
 	{:else if step === 'upload'}
 		<Label>Загружаем круг</Label>

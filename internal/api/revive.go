@@ -88,6 +88,26 @@ func (s *Server) reviveRoom(ctx context.Context, accountID string) (room int64, 
 	return room, approved, last, nil
 }
 
+// roomLimit — чем ограничено место для круга (владелец, 2026-10-17: «если на
+// сервере доступно только 100 МБ, откуда нужный объём возьмёт админ?»):
+// "quota" — квотой круга по умолчанию, "approved" — одобренной просьбой,
+// хотя диск свободнее; "disk" — самим диском. disk_bytes — свободно на сервере.
+func (s *Server) roomLimit(ctx context.Context, out map[string]any, room int64, approved bool) error {
+	disk, err := s.Blobs.RoomBytes(ctx)
+	if err != nil {
+		return err
+	}
+	out["disk_bytes"] = disk
+	if room < disk && approved {
+		out["limit"] = "approved"
+	} else if room < disk {
+		out["limit"] = "quota"
+	} else {
+		out["limit"] = "disk"
+	}
+	return nil
+}
+
 // handleReviveRoom — помещается ли круг из архива сюда (7.29, 7.30) и что с
 // просьбой о месте для него (7.31, 7.32). Экран спрашивает при открытии.
 func (s *Server) handleReviveRoom(w http.ResponseWriter, r *http.Request) {
@@ -96,12 +116,16 @@ func (s *Server) handleReviveRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	need, _ := strconv.ParseInt(r.URL.Query().Get("bytes"), 10, 64)
-	room, _, last, err := s.reviveRoom(r.Context(), sess.AccountID)
+	room, approved, last, err := s.reviveRoom(r.Context(), sess.AccountID)
 	if err != nil {
 		writeError(w, err)
 		return
 	}
 	out := map[string]any{"room_bytes": room, "fits": need <= room}
+	if err := s.roomLimit(r.Context(), out, room, approved != nil); err != nil {
+		writeError(w, err)
+		return
+	}
 	if last != nil {
 		req := map[string]any{
 			"status": last.Status, "requested_bytes": last.RequestedBytes,

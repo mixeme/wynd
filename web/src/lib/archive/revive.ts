@@ -113,6 +113,10 @@ export async function loadArchive(src: RandomSource): Promise<LoadedArchive> {
 export interface ReviveRoom {
 	room_bytes: number;
 	fits: boolean;
+	/** Свободно на сервере (диск); room_bytes бывает меньше — квота круга. */
+	disk_bytes?: number;
+	/** Чем ограничено место: квотой по умолчанию, одобренной просьбой или диском. */
+	limit?: 'quota' | 'approved' | 'disk';
 	request?: {
 		status: 'pending' | 'approved' | 'rejected';
 		requested_bytes: number;
@@ -120,6 +124,26 @@ export interface ReviveRoom {
 		created_at: string;
 		resolved_at?: string;
 	};
+}
+
+/**
+ * Подпись карточки сервера: сколько круг здесь получит — квота по
+ * умолчанию или, если на сервере свободно меньше, свободное место (владелец,
+ * 2026-10-17).
+ */
+export function roomCaption(room: Pick<ReviveRoom, 'room_bytes' | 'limit'>, fmt: (n: number) => string): string {
+	if (room.limit === 'quota') return `квота по умолчанию ${fmt(room.room_bytes)}`;
+	if (room.limit === 'approved') return `одобрено ${fmt(room.room_bytes)}`;
+	return `свободно ${fmt(room.room_bytes)}`;
+}
+
+/** «Не помещается»: квота — «новому кругу здесь дают», диск — «на сервере свободно». */
+export function noRoomText(need: string, room: ReviveRoom, fmt: (n: number) => string): string {
+	const has =
+		room.limit !== 'disk'
+			? `новому кругу здесь дают ${fmt(room.room_bytes)}`
+			: `на сервере свободно ${fmt(room.room_bytes)}`;
+	return `Нужно ${need} — ${has}. Попросите место у администратора или выберите другой сервер.`;
 }
 
 export function fetchReviveRoom(origin: string, bytes: number): Promise<ReviveRoom> {

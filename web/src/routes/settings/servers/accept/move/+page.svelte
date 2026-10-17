@@ -6,6 +6,7 @@
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Input from '$ui/forms/Input.svelte';
+	import SizeField from '$ui/forms/SizeField.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import Meter from '$ui/forms/Meter.svelte';
 	import Switch from '$ui/forms/Switch.svelte';
@@ -20,7 +21,13 @@
 	import { authErrorHint } from '$lib/auth/auth';
 	import { displayHost } from '$lib/auth/origin';
 	import { circleInitial } from '$lib/circles/meta';
-	import { fetchReviveRoom, requestRevivePlace } from '$lib/archive/revive';
+	import {
+		fetchReviveRoom,
+		noRoomText,
+		requestRevivePlace,
+		roomCaption,
+		type ReviveRoom
+	} from '$lib/archive/revive';
 	import {
 		fetchIncomingMove,
 		moveErrorText,
@@ -50,7 +57,7 @@
 
 	let serverName = $state('');
 	const host = displayHost(origin);
-	let freeBytes = $state<number | undefined>();
+	let freeRoom = $state<ReviveRoom | undefined>();
 	let link = $state('');
 	let move = $state<IncomingMoveView | undefined>();
 	let sendInvites = $state(false);
@@ -87,7 +94,7 @@
 			const m = res.move;
 			if (!m || (m.status === 'done' && !watching)) {
 				move = undefined;
-				if (res.room_bytes !== undefined) freeBytes = res.room_bytes;
+				if (res.room_bytes !== undefined) freeRoom = { ...res, room_bytes: res.room_bytes, fits: res.fits ?? true };
 				return;
 			}
 			move = m;
@@ -113,9 +120,9 @@
 		serverName = sessions.find((x) => x.origin === origin)?.name ?? '';
 		await refresh();
 		if (active) watching = true;
-		if (freeBytes === undefined) {
+		if (freeRoom === undefined) {
 			try {
-				freeBytes = (await fetchReviveRoom(origin, 0)).room_bytes;
+				freeRoom = await fetchReviveRoom(origin, 0);
 			} catch {
 				/* без «свободно» */
 			}
@@ -146,12 +153,22 @@
 		void check(link);
 	}
 
+	let placeBytes = $state(0);
+	// Сначала — вес круга с запасом до мегабайта; дальше человек меняет сам.
+	$effect(() => {
+		if (move && placeBytes === 0) placeBytes = Math.ceil(move.circle.bytes / MB) * MB;
+	});
+
 	async function askPlace() {
 		if (!move) return;
+		if (placeBytes < move.circle.bytes) {
+			error = `Попросите не меньше ${formatBytes(move.circle.bytes)} — столько нужно кругу`;
+			return;
+		}
 		busy = true;
 		error = '';
 		try {
-			await requestRevivePlace(origin, Math.ceil(move.circle.bytes / MB) * MB, move.circle.name);
+			await requestRevivePlace(origin, placeBytes, move.circle.name);
 			await refresh();
 		} catch (err) {
 			error = authErrorHint(err);
@@ -180,6 +197,16 @@
 {#snippet deadline()}
 	Ссылка переноса действует до {until(move?.expires_at)}. До тех пор круг на прежнем сервере стоит
 	замершим.
+{/snippet}
+
+{#snippet placeAsk(label: string)}
+	<!-- Сколько попросить — человек выбирает сам (владелец, 2026-10-17): после
+	     отказа можно попросить меньше. Сначала — вес круга с запасом до МБ. -->
+	<Label class="mt-16">Сколько попросить</Label>
+	<SizeField bind:bytes={placeBytes} />
+	<Button class="mt-14" variant="colored" loading={busy} onclick={() => void askPlace()}>
+		{label}
+	</Button>
 {/snippet}
 
 <FormLayout
@@ -238,7 +265,7 @@
 			<Hint class="mt-8">
 				{move.pulled_bytes
 					? `Сервер забирает круг с ${source}: ${formatBytes(move.pulled_bytes)} из ${formatBytes(move.circle.bytes)}.`
-					: `Сервер договаривается с ${source}: тот собирает круг для переноса.`}
+					: `${move.source_name ? `«${move.source_name}»` : source} собирает круг для переноса.`}
 			</Hint>
 		{/if}
 		<Hint class="mt-14 ctr-text">Приложение можно закрыть: серверы работают между собой.</Hint>
@@ -248,9 +275,9 @@
 		<ServerRow
 			name={serverName || host}
 			subtitle={move && !move.fits
-				? `${host} · свободно ${formatBytes(move.room_bytes)}`
-				: freeBytes !== undefined || move
-					? `${host} · свободно ${formatBytes(move?.room_bytes ?? freeBytes ?? 0)}`
+				? `${host} · ${roomCaption(move, formatBytes)}`
+				: freeRoom !== undefined || move
+					? `${host} · ${roomCaption(move ?? freeRoom ?? { room_bytes: 0 }, formatBytes)}`
 					: host}
 			card
 			top={4}
@@ -276,7 +303,7 @@
 			<Hint>Спрашиваем прежний сервер…</Hint>
 		{:else if !move}
 			<Hint>
-				Ссылку выдаёт владелец круга на прежнем сервере: настройки круга → «Перенести на другой
+				Ссылку получает владелец круга на прежнем сервере: настройки круга → «Перенести на другой
 				сервер».
 			</Hint>
 		{/if}
@@ -289,10 +316,12 @@
 				preview={`${plural(move.circle.posts, WORD.post)} · ${plural(move.circle.members, WORD.member)} · ${formatBytes(move.circle.bytes)}`}
 				time=""
 			/>
-			<Hint>
-				С сервера {move.source_name ? `«${move.source_name}», ` : ''}{source}.{#if move.frozen_at}{' '}Круг
-					замер {at(move.frozen_at)}.{/if}
-			</Hint>
+			<!-- Прежний сервер — той же карточкой, что и этот (владелец, 2026-10-17). -->
+			<Label class="mt-16">Прежний сервер</Label>
+			<ServerRow name={move.source_name || source} subtitle={source} card top={4} />
+			{#if move.frozen_at}
+				<Hint>Круг замер {at(move.frozen_at)}.</Hint>
+			{/if}
 
 			{#if expired}
 				<!-- 7.24: срок ссылки вышел. -->
@@ -325,7 +354,7 @@
 					</Hint>
 				{/if}
 				<Button class="mt-14" variant="colored" loading={busy} onclick={() => void start()}>
-					Поднять круг здесь
+					Поднять круг
 				</Button>
 				<Hint class="mt-8 ctr-text">Сервер заберёт круг сам. Приложение можно закрыть.</Hint>
 			{:else if move.request?.status === 'pending'}
@@ -333,7 +362,7 @@
 				<StatusCard
 					class="mt-14"
 					title="Место попросили"
-					text={`${day(move.request.created_at)} вы попросили у администратора ${formatBytes(move.request.requested_bytes)} для этого круга. Ответ администратора придёт письмом. Когда место дадут, здесь появится кнопка «Поднять круг здесь».`}
+					text={`${day(move.request.created_at)} вы попросили у администратора ${formatBytes(move.request.requested_bytes)} для этого круга. Ответ администратора придёт письмом. Когда место дадут, здесь появится кнопка «Поднять круг».`}
 				/>
 				<Hint class="mt-10">{@render deadline()}</Hint>
 				<Hint class="mt-14 ctr-text">Можно уйти и вернуться позже: просьба и ссылка останутся.</Hint>
@@ -345,20 +374,16 @@
 					text={`${day(move.request.resolved_at ?? move.request.created_at)} администратор отказал в ${formatBytes(move.request.requested_bytes)} для этого круга. Можно попросить меньше — кругу нужно ${formatBytes(move.circle.bytes)} — или выбрать другой сервер.`}
 				/>
 				<Hint class="mt-10">{@render deadline()}</Hint>
-				<Hint class="mt-14 ctr-text">
-					<TextButton disabled={busy} onclick={() => void askPlace()}>Попросить ещё раз</TextButton>
-				</Hint>
+				{@render placeAsk('Попросить ещё раз')}
 			{:else}
 				<!-- 7.21 -->
 				<StatusCard
 					class="mt-14"
 					title="Круг сюда не помещается"
-					text={`Нужно ${formatBytes(move.circle.bytes)} — свободно ${formatBytes(move.room_bytes)}. Попросите место у администратора или выберите другой сервер.`}
+					text={noRoomText(formatBytes(move.circle.bytes), move, formatBytes)}
 				/>
 				<Hint class="mt-10">{@render deadline()}</Hint>
-				<Button class="mt-14" variant="colored" loading={busy} onclick={() => void askPlace()}>
-					Попросить место
-				</Button>
+				{@render placeAsk('Попросить место')}
 			{/if}
 		{/if}
 	{/if}
