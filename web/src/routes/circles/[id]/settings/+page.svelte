@@ -376,6 +376,19 @@
 	});
 </script>
 
+<!-- Свой архив — любому, в любой момент (A7, решение владельца 2026-10-14):
+     в архивацию — до отсечки, иначе всё, что человек видел в круге. -->
+{#snippet ownArchive(divided: 'top' | 'bottom' | 'both')}
+	<SettingsRow
+		title="Скачать свой архив"
+		subtitle={circle.archiveCycle?.active
+			? `всё, что вы видели до ${formatEntryDate(circle.archiveCycle.cutoff_date)}${circle.archiveCycle.personal_archive_bytes ? ` · ${formatBytes(circle.archiveCycle.personal_archive_bytes)}` : ''}`
+			: 'всё, что вы видели в круге: лента и фото'}
+		{divided}
+		onclick={() => goto(`/circles/${circle.circleId}/archive`)}
+	/>
+{/snippet}
+
 <FormLayout app color={circle.color} title="Настройки круга" onback={goBack}>
 	{#if loading}
 		<Loading />
@@ -489,16 +502,10 @@
 				divided="both"
 				onclick={() => goto(`/circles/${circle.circleId}/quota`)}
 			/>
+			{@render ownArchive('bottom')}
 		{/if}
-		{#if circle.archiveCycle?.active && !isOwner}
-			<!-- 6.4: участнику — одна строка, своя копия того, что удалится. -->
-			<Label class="mt-20">Архивация</Label>
-			<SettingsRow
-				title="Скачать свой архив"
-				subtitle={`всё, что вы видели до ${formatEntryDate(circle.archiveCycle.cutoff_date)}${circle.archiveCycle.personal_archive_bytes ? ` · ${formatBytes(circle.archiveCycle.personal_archive_bytes)}` : ''}`}
-				divided="both"
-				onclick={() => goto(`/circles/${circle.circleId}/archive`)}
-			/>
+		{#if !isOwner}
+			{@render ownArchive('bottom')}
 		{/if}
 
 		<Label class="mt-20">Участники · {activeMembers.length}</Label>

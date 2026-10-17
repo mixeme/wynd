@@ -21,15 +21,47 @@
 	}
 
 	function download() {
-		if (cycle?.download_url) {
-			void downloadArchive(circle.origin, cycle.download_url);
-		}
+		// Вне архивации — всё, что человек видел в круге на момент скачивания
+		// (A7, решение владельца 2026-10-14; wynd.html, «Квота и архив»).
+		void downloadArchive(
+			circle.origin,
+			cycle?.active && cycle.download_url
+				? cycle.download_url
+				: `/api/v1/circles/${circle.circleId}/archive/download`
+		);
 	}
 </script>
 
 <FormLayout app color={circle.color} title="Архив круга" onback={goBack}>
 	{#if !cycle?.active}
-		<Hint class="gutter">Сейчас архивация не идёт.</Hint>
+		<!-- Вне архивации: тот же экран без строк о сроке и отсечке. -->
+		<Label>Что внутри</Label>
+		<SettingsRow
+			icon="photo"
+			title="/media"
+			subtitle="фото, видео и файлы, которые вы видели"
+			chevron={false}
+			divided="top"
+		/>
+		<SettingsRow
+			icon="file"
+			title="index.html"
+			subtitle="единая лента: записи и все комментарии к ним"
+			chevron={false}
+		/>
+		<SettingsRow
+			icon="file"
+			title="/posts"
+			subtitle="те же записи — по странице на каждую, с оглавлением"
+			chevron={false}
+		/>
+		<Hint>Открывается офлайн и без Wynd: стили внутри файлов, пути относительные, цвет круга на месте.</Hint>
+
+		<Label>Границы</Label>
+		<SettingsRow title="Ваша видимость" value="то, что вы застали" chevron={false} divided="top" />
+
+		<Button class="mt-16" variant="colored" onclick={download}>Скачать</Button>
+		<Hint class="mt-12 ctr">Скачивание начнётся сразу. Если оно оборвётся, начнётся заново.</Hint>
 	{:else}
 		<Label>Что внутри</Label>
 		<SettingsRow

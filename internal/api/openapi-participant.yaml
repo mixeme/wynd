@@ -1001,7 +1001,10 @@ paths:
             enum: [feed, posts]
       description: >
         Streamed as it is built (nothing is stored on the server); Content-Length
-        is exact. No Range — an interrupted download starts over.
+        is exact. No Range — an interrupted download starts over. During an
+        archive cycle — up to its cutoff (a full delivery locks the cutoff);
+        otherwise at any time — everything the person saw in the circle, and
+        nothing gets locked.
 
   /circles/{circle_id}/archive/link:
     post:

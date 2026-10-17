@@ -400,23 +400,26 @@ func (s *Server) handleArchiveDownload(w http.ResponseWriter, r *http.Request) {
 }
 
 // personalArchiveCutoff — до какого дня собирать архив участника: отсечка
-// цикла архивации или, когда круг замер под полный архив с удалением (3.16),
-// всё, что было («свой архив — всё, что вы видели в круге»). Ни того ни
-// другого — архива участника нет.
+// идущего цикла архивации, иначе — всё, что было: «Свой архив можно скачать
+// и вне цикла, в любой момент: тогда в нём всё, что человек видел в круге на
+// момент скачивания» (wynd.html, «Квота и архив»; A7, решение владельца
+// 2026-10-14). Так же — когда круг замер под полный архив с удалением (3.16).
+// Вне цикла скачивание ничего в круге не фиксирует: отсечки нет.
 func (s *Server) personalArchiveCutoff(ctx context.Context, circleID string) (chronicle.ArchiveCycle, error) {
+	all := chronicle.ArchiveCycle{CutoffDate: time.Now().UTC().AddDate(0, 0, 1).Format("2006-01-02")}
 	frozen, err := s.Chronicle.CircleFrozenAt(ctx, circleID)
 	if err != nil {
 		return chronicle.ArchiveCycle{}, err
 	}
 	if frozen != nil {
-		return chronicle.ArchiveCycle{CutoffDate: time.Now().UTC().AddDate(0, 0, 1).Format("2006-01-02")}, nil
+		return all, nil
 	}
 	cycle, err := s.Chronicle.GetArchiveCycle(ctx, circleID)
 	if err != nil {
 		return cycle, err
 	}
 	if !cycle.Active {
-		return cycle, chronicle.ErrNotFound
+		return all, nil
 	}
 	return cycle, nil
 }

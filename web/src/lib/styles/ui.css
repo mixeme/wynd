@@ -2088,6 +2088,10 @@ a.link {
 .row2.divided-bottom {
 	border-bottom: 1px solid var(--line);
 }
+/* После строки с чертой снизу своя черта сверху не нужна: вышла бы двойная. */
+.row2.divided-bottom + .row2 {
+	border-top: 0;
+}
 .row2 .g {
 	flex: 1;
 	min-width: 0;

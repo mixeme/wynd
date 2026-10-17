@@ -24,7 +24,7 @@ func startArchive(t *testing.T, srv *api.Server, tok, circleID string) {
 	}
 }
 
-// Инвариант (план 42, ARC-11): ответы скачивания архива — 404 без цикла,
+// Инвариант (план 42, ARC-11; A7 — 2026-10-17): без цикла свой архив отдаётся целиком,
 // 429 с Retry-After, пока у учётки идёт другая сборка, 403 после срока.
 func TestArchiveDownloadStatuses(t *testing.T) {
 	srv, caps, ch, _ := setupAPI(t)
@@ -38,8 +38,13 @@ func TestArchiveDownloadStatuses(t *testing.T) {
 	circleID := jsonStr(t, rec, "id")
 	download := "/api/v1/circles/" + circleID + "/archive/download"
 
-	if r := doGET(t, srv, download, tok); r.Code != http.StatusNotFound {
+	if r := doGET(t, srv, download, tok); r.Code != http.StatusOK {
 		t.Fatalf("без цикла: %d %s", r.Code, r.Body.String())
+	}
+	// Вне цикла скачивание ничего не фиксирует: отсечка потом свободно ставится.
+	var locked int
+	if err := ch.DB().QueryRowContext(t.Context(), `SELECT COUNT(*) FROM circles WHERE id = ? AND cutoff_locked_at IS NOT NULL`, circleID).Scan(&locked); err != nil || locked != 0 {
+		t.Fatalf("отсечка зафиксирована без цикла: %v %d", err, locked)
 	}
 
 	startArchive(t, srv, tok, circleID)
