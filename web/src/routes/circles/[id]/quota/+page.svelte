@@ -6,7 +6,7 @@
 	import Hint from '$ui/forms/Hint.svelte';
 	import Loading from '$ui/Loading.svelte';
 	import Label from '$ui/forms/Label.svelte';
-	import Meter from '$ui/forms/Meter.svelte';
+	import CirclePlace from '$ui/data/CirclePlace.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
@@ -27,9 +27,6 @@
 	let forbidden = $state(false);
 	let loading = $state(true);
 
-	const usedGb = $derived(usedBytes / (1024 * 1024 * 1024));
-	const quotaGb = $derived(Math.max(quotaBytes / (1024 * 1024 * 1024), 0.001));
-	const full = $derived(quotaBytes > 0 && usedBytes >= quotaBytes);
 	// The instance may run without a storage limit: the API then omits quota_bytes.
 	const capped = $derived(quotaBytes > 0);
 
@@ -72,16 +69,7 @@
 			</Button>
 		{/if}
 	{:else}
-		<Label>Место</Label>
-		<Meter value={capped ? usedGb : 0} max={quotaGb} />
-		<Hint class="mt-8">
-			{#if capped}
-				{formatBytes(usedBytes)} из {formatBytes(quotaBytes)}
-			{:else}
-				{formatBytes(usedBytes)} · ограничение не задано
-			{/if}
-			{#if full}· писать в круг больше нельзя{/if}
-		</Hint>
+		<CirclePlace {usedBytes} {quotaBytes} />
 		{#if lastRequest?.status === 'pending'}
 			<!-- Просьба отправлена (6.19): одна, пока не ответили. -->
 			<SettingsRow
@@ -124,8 +112,8 @@
 		{/if}
 		<Label class="mt-22">Полный архив круга</Label>
 		<SettingsRow
-			title="Скачать круг"
-			subtitle="один файл: все записи, фото и участники"
+			title="Сохранить круг в файл"
+			subtitle="все записи, фото и участники"
 			divided="both"
 			onclick={() => goto(`/circles/${circle.circleId}/quota/full`)}
 		/>

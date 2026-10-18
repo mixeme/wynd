@@ -498,7 +498,7 @@
 				title="Архив и очистка"
 				subtitle={circle.archiveCycle?.active
 					? `идёт архивация: всё до ${formatEntryDate(circle.archiveCycle.cutoff_date)} удалится ${formatSessionDay(circle.archiveCycle.deadline)}`
-					: 'освободить место, скачать архив'}
+					: 'освободить место, сохранить круг в файл'}
 				divided="both"
 				onclick={() => goto(`/circles/${circle.circleId}/quota`)}
 			/>

@@ -22,7 +22,7 @@
 	<Hint style="margin-top:8px">8,4 ГБ из 10 ГБ в «Доме Ани» · квоту задал администратор</Hint>
 	<SettingsRow
 		title="Архив и очистка"
-		subtitle="освободить место, скачать архив"
+		subtitle="освободить место, сохранить круг в файл"
 		style="margin-top:8px"
 	/>
 	<Label style="margin-top:20px">Участники · 22</Label>

@@ -9,6 +9,7 @@
 	import Hint from '$ui/forms/Hint.svelte';
 	import Loading from '$ui/Loading.svelte';
 	import Label from '$ui/forms/Label.svelte';
+	import CirclePlace from '$ui/data/CirclePlace.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import {
@@ -31,9 +32,8 @@
 	let pageLoading = $state(true);
 	let error = $state('');
 
-	// Нижняя граница — уже занятое, как сказано под полем (6.18): «Ниже этого
-	// числа просить незачем». Меньше нынешней квоты попросить можно (C35):
-	// раньше экран требовал больше квоты, хотя подпись этого не говорила.
+	// Нижняя граница — уже занятое (оно видно в «Месте» наверху, 6.18): ниже
+	// просить незачем. Меньше нынешней квоты попросить можно (C35).
 	const requestFloor = $derived(usedBytes);
 	const selectedBytes = $derived.by(() => {
 		if (chip === 'custom') {
@@ -114,16 +114,8 @@
 	{#if pageLoading}
 		<Loading />
 	{:else}
-		<Hint class="gutter">
-			{#if quotaBytes}
-				Сейчас у «{circle.name}» {formatBytes(quotaBytes)} — свою квоту ставит администратор
-				сервера.
-			{:else}
-				У «{circle.name}» ограничение не задано — администратор сервера может выделить место.
-			{/if}
-			Шаг необязательный: можно вернуться и сразу выбрать отсечку.
-		</Hint>
-		<Label>Сколько нужно</Label>
+		<CirclePlace {usedBytes} {quotaBytes} />
+		<Label class="mt-22">Сколько нужно</Label>
 		<ChipGroup>
 			{#each QUOTA_CHIPS.filter((c) => c.key !== 'none') as opt (opt.key)}
 				<Chip
@@ -143,16 +135,9 @@
 		{#if chip === 'custom'}
 			<SizeField bind:bytes={customBytes} />
 		{/if}
-		<Hint class="mt-10">
-			{formatBytes(usedBytes)} уже лежит. Ниже этого числа просить незачем — место всё равно
-			кончится.
-		</Hint>
 		<Button class="mt-16" variant="colored" {loading} onclick={() => void submit()}>
 			Отправить запрос
 		</Button>
-		<Hint class="mt-18" centered
-			>Отказ ничего не ломает: цикл архивации останется на вас.</Hint
-		>
 		{#if error}
 			<Hint class="gutter">{error}</Hint>
 		{/if}
