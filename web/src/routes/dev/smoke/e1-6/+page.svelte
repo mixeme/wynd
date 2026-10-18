@@ -23,7 +23,9 @@
 	<Hint>Пришлём код для входа. Пароля нет.</Hint>
 	<Button onclick={() => {}}>Получить код</Button>
 	<div class="hint ctr" style="margin-top:30px">
-		<TextButton onclick={() => {}}>Регистрация без приглашения</TextButton><br />
+		<TextButton onclick={() => {}}>Регистрация без приглашения</TextButton>
+	</div>
+	<div class="hint ctr" style="margin-top:18px">
 		<TextButton onclick={() => {}}>У меня есть приглашение</TextButton>
 	</div>
 </div>

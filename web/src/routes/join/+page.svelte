@@ -198,12 +198,6 @@
 
 {#if adding}
 <FormLayout shell app title="Добавить сервер" onback={() => goUp(backHref)}>
-	{#if !blocked}
-		<Hint>
-			Почта живёт на одном сервере. Общей на весь Wynd не бывает: серверы друг о друге не
-			знают.
-		</Hint>
-	{/if}
 	<Label>Адрес сервера</Label>
 	<Input
 		active
@@ -237,10 +231,7 @@
 	{:else}
 		<Label class="mt-16">Почта</Label>
 		<Input active type="email" autocomplete="email" bind:value={email} />
-		<Hint>
-			Пришлём код. Пароля нет: почта понадобится, только чтобы вернуться на другом
-			устройстве.
-		</Hint>
+		<Hint>Пришлём код для входа. Пароля нет.</Hint>
 		<Button {loading} disabled={!instance} onclick={onSubmit}>Получить код</Button>
 		<Hint>
 			Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или
@@ -294,10 +285,7 @@
 		{/if}
 		<Label class="mt-16">Почта</Label>
 		<Input active type="email" autocomplete="email" bind:value={email} />
-		<Hint>
-			Пришлём код. Пароля нет: почта понадобится, только чтобы вернуться на другом
-			устройстве.
-		</Hint>
+		<Hint>Пришлём код для входа. Пароля нет.</Hint>
 		<Button {loading} disabled={!instance} onclick={onSubmit}>Получить код</Button>
 		<Hint>
 			Сервер хранит данные незашифрованными. Присоединение к этому серверу означает, что вы
