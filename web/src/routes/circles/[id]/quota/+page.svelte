@@ -76,7 +76,7 @@
 				title={capped
 					? `Попросили ${formatBytes(lastRequest.requested_bytes)} вместо ${formatBytes(quotaBytes)}`
 					: `Попросили ${formatBytes(lastRequest.requested_bytes)}`}
-				subtitle={`${formatSessionDay(lastRequest.created_at)} · ждём ответа администратора, он придёт письмом`}
+				subtitle={`${formatSessionDay(lastRequest.created_at)} · ответ администратора придёт письмом`}
 				chevron={false}
 				class="mt-10"
 				divided="both"
