@@ -5,6 +5,8 @@ export interface InvitePeekMember {
 	name: string;
 	is_owner: boolean;
 	is_inviter: boolean;
+	/** Род участника: глагол «пригласил / пригласила»; не выбран — без глагола. */
+	gender?: 'm' | 'f';
 }
 
 export interface InvitePeek {
@@ -94,7 +96,9 @@ export function inviteCardPreview(peek: InvitePeek): string {
 				: `${n} участников`;
 	const inviter = peek.members?.find((m) => m.is_inviter);
 	if (inviter) {
-		return `${count} · пригласила ${inviter.name}`;
+		if (inviter.gender === 'm') return `${count} · пригласил ${inviter.name}`;
+		if (inviter.gender === 'f') return `${count} · пригласила ${inviter.name}`;
+		return `${count} · приглашение: ${inviter.name}`;
 	}
 	return count;
 }
@@ -114,7 +118,14 @@ export function memberAvatarColor(index: number): string {
 }
 
 export function memberSubtitle(m: InvitePeekMember): string | undefined {
-	if (m.is_owner) return 'владелец';
-	if (m.is_inviter) return 'пригласила вас';
-	return undefined;
+	// Владелец, который сам и позвал, — обе части: иначе «пригласила вас» терялось.
+	const invited = m.is_inviter
+		? m.gender === 'm'
+			? 'пригласил вас'
+			: m.gender === 'f'
+				? 'пригласила вас'
+				: 'автор приглашения'
+		: '';
+	if (m.is_owner) return invited ? `владелец · ${invited}` : 'владелец';
+	return invited || undefined;
 }

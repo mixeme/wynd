@@ -17,12 +17,6 @@
 	<ServerRow name="Дом Ани" subtitle="home.example.org" variant="ok" card top={0} />
 	<Label>Почта</Label>
 	<FieldDisplay value="you@example.com" active />
-	<Hint>
-		Пришлём код для входа. Пароля нет: почта понадобится, только чтобы вернуться на
-		другом устройстве.
-	</Hint>
+	<Hint>Пришлём код для входа. Пароля нет.</Hint>
 	<Button onclick={() => {}}>Получить код</Button>
-	<Hint centered style="margin-top:26px">
-		Вход создаётся на этом сервере.<br />Круги с других серверов добавляются позже.
-	</Hint>
 </PlainLayout>

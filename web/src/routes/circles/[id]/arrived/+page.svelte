@@ -2,6 +2,8 @@
 	import { getContext, onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { goUp } from '$lib/navigation/up';
+	import Avatar from '$ui/data/Avatar.svelte';
+	import ServerRow from '$ui/data/ServerRow.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Label from '$ui/forms/Label.svelte';
@@ -9,6 +11,7 @@
 	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
+	import { displayHost } from '$lib/auth/origin';
 	import { memberAvatarColor } from '$lib/auth/invites';
 	import { circleInitial } from '$lib/circles/meta';
 	import { seeArrival } from '$lib/circles/move';
@@ -22,6 +25,7 @@
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 
 	let serverName = $state('');
+	let serverHost = $state('');
 	let loading = $state(false);
 	let error = $state('');
 
@@ -33,9 +37,11 @@
 			color: memberAvatarColor(i)
 		}))
 	);
+	// Тот, кто входит, — крупно, как на «Кто вы в этом круге» (владелец,
+	// 2026-10-18: «данные того, кто входит, более заметно и красиво»).
 	const kept = $derived(
 		arrival?.your_posts
-			? `имя, фото и ${plural(arrival.your_posts, WORD.post)} на месте`
+			? `${plural(arrival.your_posts, WORD.post)} — имя, фото и записи на месте`
 			: 'имя и фото на месте'
 	);
 
@@ -44,7 +50,9 @@
 			goto(`/circles/${circle.circleId}`, { replaceState: true });
 			return;
 		}
-		serverName = (await getSession(circle.origin))?.name ?? '';
+		const session = await getSession(circle.origin);
+		serverName = session?.name ?? '';
+		serverHost = displayHost(session?.origin ?? circle.origin);
 	});
 
 	async function enter() {
@@ -64,17 +72,25 @@
 
 <FormLayout app color={circle.color} circleTitle={circle.name} onback={() => goUp('/circles')}>
 	{#if arrival}
+		<!-- Сервер — плашкой и первым (владелец, 2026-10-18). -->
+		<Label class="mt-16">Сервер</Label>
+		<ServerRow name={serverName || serverHost} subtitle={serverHost} card top={4} />
 		{#if arrival.returned_count > 0}
-			<Label class="mt-16">Уже вернулись · {arrival.returned_count} из {arrival.total}</Label>
+			<Label class="mt-22">Уже вернулись · {arrival.returned_count} из {arrival.total}</Label>
 			<PeopleStrip {people} />
 		{/if}
 		<ScreenTitle class="mt-22 lh-125">
 			{arrival.kind === 'moved' ? 'Круг переехал' : 'Круг оживили из архива'}
 		</ScreenTitle>
-		<Hint class="mt-12">
-			«{circle.name}» теперь здесь{serverName ? `, на «${serverName}»` : ''}. Вы в круге — {circle.identityName}:
-			{kept}.
-		</Hint>
+		<Avatar
+			class="mt-18"
+			initial={circle.identityInitial}
+			color={circle.colorHex}
+			src={circle.avatarUrl || undefined}
+			size="lg"
+		/>
+		<ScreenTitle centered class="mt-10">{circle.identityName}</ScreenTitle>
+		<Hint centered class="mt-4">{kept}</Hint>
 		<Button variant="colored" {loading} onclick={() => void enter()}>Войти в круг</Button>
 		{#if error}
 			<Hint class="mt-12">{error}</Hint>

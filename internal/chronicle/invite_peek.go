@@ -13,6 +13,9 @@ type InvitePeekMember struct {
 	Name      string `json:"name"`
 	IsOwner   bool   `json:"is_owner"`
 	IsInviter bool   `json:"is_inviter"`
+	// Gender — род для «пригласил / пригласила вас» (A5); пустой — не выбран,
+	// тогда строка без глагола («Голос»).
+	Gender Gender `json:"gender,omitempty"`
 }
 
 // InvitePeek is public invite metadata for pre-auth screens.
@@ -26,6 +29,7 @@ type InvitePeek struct {
 type inviteMemberRow struct {
 	accountID string
 	name      string
+	gender    Gender
 	isOwner   bool
 	joinedAt  time.Time
 	activity  int
@@ -89,6 +93,7 @@ func (c *Chronicle) InvitePeekForCircle(ctx context.Context, circleID, inviterAc
 		raw = append(raw, inviteMemberRow{
 			accountID: accountID,
 			name:      displayName,
+			gender:    c.identityGender(ctx, c.db, identityID),
 			isOwner:   accountID == owner,
 			joinedAt:  joinedAt,
 			activity:  activity[identityID],
@@ -123,6 +128,7 @@ func (c *Chronicle) InvitePeekForCircle(ctx context.Context, circleID, inviterAc
 			Name:      row.name,
 			IsOwner:   row.isOwner,
 			IsInviter: inviterAccountID != "" && row.accountID == inviterAccountID,
+			Gender:    row.gender,
 		}
 	}
 

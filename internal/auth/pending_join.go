@@ -40,6 +40,25 @@ func (s *Service) insertPendingCircleJoin(ctx context.Context, tx *sql.Tx, accou
 	return nil
 }
 
+// PendingJoinInviter — кто позвал в круг по приглашению, с которого началось
+// вступление: «Кто уже здесь» помечает его «пригласил вас» (1.5) и после того,
+// как одноразовая ссылка израсходована. Вступление без приглашения — "".
+func (s *Service) PendingJoinInviter(ctx context.Context, accountID, circleID string) (string, error) {
+	var inviter sql.NullString
+	err := s.db.QueryRowContext(ctx, `
+		SELECT i.created_by_account_id FROM pending_circle_joins p
+		JOIN invites i ON i.id = p.invite_id
+		WHERE p.account_id = ? AND p.circle_id = ?
+	`, accountID, circleID).Scan(&inviter)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return inviter.String, nil
+}
+
 // hasPendingCircleJoin — право действительно, пока не вышел срок. Строки без
 // срока (заведены до миграции 0016) не считаются действительными.
 func (s *Service) hasPendingCircleJoin(ctx context.Context, accountID, circleID string, when time.Time) (bool, error) {

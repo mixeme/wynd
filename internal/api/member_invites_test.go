@@ -131,6 +131,10 @@ func TestMemberInviteFromOtherCircle(t *testing.T) {
 	if jsonStr(t, rec, "circle_name") != "Дача" {
 		t.Fatalf("preview name: %s", rec.Body.String())
 	}
+	// Кто позвал — помечен и в просмотре вступления (1.5), хотя ссылка уже израсходована.
+	if !strings.Contains(rec.Body.String(), `"is_inviter":true`) {
+		t.Fatalf("preview without inviter: %s", rec.Body.String())
+	}
 
 	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+dachaID+"/join", bobTok, map[string]string{
 		"name": "Бобик",

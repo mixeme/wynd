@@ -19,7 +19,4 @@
 	<FieldDisplay value="you@example.com" active />
 	<Hint>Пришлём код для входа. Пароля нет.</Hint>
 	<Button onclick={() => {}}>Получить код</Button>
-	<Hint centered class="mt-26">
-		Вход создаётся на этом сервере.<br />Круги с других серверов добавляются позже.
-	</Hint>
 </PlainLayout>

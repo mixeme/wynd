@@ -260,7 +260,7 @@
 			onclick={() => openHit(hit)}
 		/>
 	{/each}
-	<Hint class="mt-22" centered>
+	<Hint class="mt-8" centered>
 		Фильтр по автору работает только здесь:<br />в других кругах это другие люди.
 	</Hint>
 </CircleLayout>

@@ -172,18 +172,12 @@
 
 		<Label>Почта</Label>
 		<Input active type="email" autocomplete="email" bind:value={email} />
-		<Hint>
-			Пришлём код для входа. Пароля нет: почта понадобится, только чтобы вернуться на
-			другом устройстве.
-		</Hint>
+		<Hint>Пришлём код для входа. Пароля нет.</Hint>
 		<Button {loading} disabled={!peek} onclick={onSendCode}>Получить код</Button>
 
 		{#if error}
 			<Hint class="mt-12">{error}</Hint>
 		{/if}
 
-		<Hint class="mt-26" centered>
-			Вход создаётся на этом сервере.<br />Круги с других серверов добавляются позже.
-		</Hint>
 	</PlainLayout>
 {/if}

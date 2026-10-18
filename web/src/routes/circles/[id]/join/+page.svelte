@@ -68,9 +68,19 @@
 	onMount(async () => {
 		inviteToken = loadInviteJoinToken(circle.circleId);
 		try {
+			// Одноразовая ссылка к этому экрану уже израсходована (claim при входе),
+			// а исчерпанную сервер больше не показывает (SEC-9): тогда круг и тех,
+			// кто уже здесь, отдаёт просмотр вступления — без ошибки на экране.
+			let peeked = false;
 			if (inviteToken) {
-				peek = await fetchInvitePeek(circle.origin, inviteToken);
-			} else {
+				try {
+					peek = await fetchInvitePeek(circle.origin, inviteToken);
+					peeked = true;
+				} catch {
+					/* ниже — просмотр вступления */
+				}
+			}
+			if (!peeked) {
 				try {
 					const preview = await fetchJoinPreview(circle.origin, circle.circleId);
 					pendingJoin = true;
