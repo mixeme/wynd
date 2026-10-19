@@ -301,7 +301,7 @@
 			{/snippet}
 		</SettingsRow>
 		{#if archive?.status === 'failed'}
-			<Hint class="mt-10 ink">Прошлая сборка не удалась. Соберите архив ещё раз.</Hint>
+			<Hint class="mt-10 ink">Прошлая сборка не удалась.</Hint>
 		{/if}
 		{#if info.fits}
 			{#if deleteCircle}
@@ -326,7 +326,7 @@
 		{:else}
 			<StatusCard
 				title="Готовый файл положить некуда"
-				text={`Архиву нужно ${formatBytes(info.estimate_bytes)}, а на сервере${circle.serverName ? ` «${circle.serverName}»` : ''} столько места нет. Его можно скачать сразу: сервер соберёт файл прямо в скачивание. Если оно оборвётся, начнётся заново.`}
+				text={`Архиву нужно ${formatBytes(info.estimate_bytes)}, а на сервере${circle.serverName ? ` «${circle.serverName}»` : ''} столько места нет. Скачайте его сразу: если скачивание оборвётся, оно начнётся заново.`}
 			/>
 			<Button
 				class="mt-14"
