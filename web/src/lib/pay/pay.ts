@@ -49,7 +49,9 @@ export function formatPayDate(iso: string): string {
 		day: 'numeric',
 		month: 'long',
 		year: 'numeric'
-	}).format(d);
+	})
+		.format(d)
+		.replace(/\s*г\.$/, ''); // «19 октября 2026», без «г.»: за датой в тексте и так стоит точка
 }
 
 export function formatPayDateTime(iso: string): string {
