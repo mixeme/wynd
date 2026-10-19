@@ -28,9 +28,6 @@ export function checkHeadline(checks: CheckResult[]): string {
 
 export function checkSubtitle(checks: CheckResult[]): string {
 	const failed = failedChecks(checks);
-	if (failed.length === 0) {
-		return 'Статус — формой, а не цветом. Снаружи проверяет этот браузер.';
-	}
 	const proxyFails = failed.filter((c) => PROXY_IDS.has(c.id));
 	if (failed.length === 2 && proxyFails.length === 2) {
 		return 'Обе про прокси и обе чинятся одной вставкой в конфиг. Остальное в порядке.';
@@ -38,7 +35,7 @@ export function checkSubtitle(checks: CheckResult[]): string {
 	if (proxyFails.length > 0 && proxyFails.length === failed.length) {
 		return 'Все поломки про прокси и чинятся одной вставкой в конфиг.';
 	}
-	return 'Статус — формой, а не цветом. Снаружи проверяет этот браузер.';
+	return '';
 }
 
 export const CHECK_GROUPS: { label: string; ids: string[] }[] = [

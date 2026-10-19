@@ -9,6 +9,7 @@
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
+	import { formatClock, formatSessionDay } from '$lib/format/time';
 	import {
 		CHECK_GROUPS,
 		checkHeadline,
@@ -45,6 +46,11 @@
 
 	const headline = $derived(checkHeadline(checks));
 	const subtitle = $derived(checkSubtitle(checks));
+
+	// Момент из сервера (суточная рутина) — днём и временем этого браузера, как «проверено».
+	function rowDetail(row: CheckResult): string {
+		return row.at ? `последний запуск ${formatSessionDay(row.at)} в ${formatClock(row.at)}` : row.detail;
+	}
 
 	function byId(id: string): CheckResult | undefined {
 		if (id === 'push_test') {
@@ -93,7 +99,7 @@
 			<div class="flex-top gap-20">
 				<div class="grow">
 					<h4 class="mb-5">{headline}</h4>
-					<div class="note">{subtitle}</div>
+					{#if subtitle}<div class="note">{subtitle}</div>{/if}
 				</div>
 				<div class="right">
 					<TextButton variant="adminBox" class="bold" onclick={() => void load()}
@@ -116,7 +122,7 @@
 									status={rowStatus(row.status)}
 									bad={row.status === 'fail'}
 									name={row.title}
-									description={row.detail}
+									description={rowDetail(row)}
 								>
 									{#snippet actions()}
 										{#if proxyFixId(id) && (row.status === 'fail' || row.status === 'warn')}
@@ -140,7 +146,7 @@
 									status={rowStatus(row.status)}
 									bad={row.status === 'fail'}
 									name={row.title}
-									description={row.detail}
+									description={rowDetail(row)}
 								>
 									{#snippet actions()}
 										{#if id === 'backup' && row.status === 'warn'}
@@ -186,9 +192,7 @@
 				</div>
 			</div>
 			<div class="fine mt-18 lh-16">
-				Снаружи проверяет ваш браузер: панель просит его сходить на публичный адрес и сравнивает
-				с тем, что видит сервер. Wynd никуда не звонит — если браузер окажется в одной сети с
-				сервером, здесь будет сказано, что проверка вышла изнутри.
+				Снаружи проверяет ваш браузер: сам Wynd никуда не звонит.
 			</div>
 		{/if}
 	</AdminSection>

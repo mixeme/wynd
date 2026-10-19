@@ -1,6 +1,7 @@
 ﻿<script lang="ts">
 	import CheckRow from '$ui/admin/CheckRow.svelte';
-	import DangerNote from '$ui/forms/DangerNote.svelte';
+	import DangerZone from '$ui/forms/DangerZone.svelte';
+	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
 	import SwitchRow from '$ui/admin/SwitchRow.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -38,6 +39,7 @@
 	let loading = $state(true);
 	let ready = $state(false);
 	let deleting = $state(false);
+	let askDelete = $state(false);
 	let newEmail = $state('');
 	let changingEmail = $state(false);
 	let emailNote = $state('');
@@ -113,6 +115,7 @@
 			await deleteAccount(acc.id);
 			await goto('/admin/people');
 		} catch (err) {
+			askDelete = false;
 			error = authErrorHint(err);
 		} finally {
 			deleting = false;
@@ -185,7 +188,6 @@
 						{/each}
 					{/if}
 					<div class="fine mt-10">
-						Имён в кругах нет: это лица, не вход на сервер.
 						{#if acc.owns_circle}
 							Владельца с этой страницы не удалить.
 						{:else}
@@ -222,23 +224,31 @@
 					</div>
 					<SectionLabel class="mt-26 mx-0 mb-10">Вход</SectionLabel>
 					<SwitchRow bind:checked={loginOpen} title={loginOpen ? 'Вход открыт' : 'Вход закрыт'}>
-						Закрыть — код перестанет приходить, круги не трогаются. Открыть можно снова.
+						Закрыть — код перестанет приходить, круги не тронуты.
 					</SwitchRow>
 					{#if !acc.owns_circle}
-						<DangerNote title="Удалить с сервера" class="mt-28 mx-0 mb-0">
-							Записи останутся, события входа и ухода останутся. Имя в круге больше не к чему
-							привязать — в хронике будет факт без лица. С этого сервера человек уйдёт.
-							{#snippet action()}
-								<TextButton variant="admin" onclick={() => void removeAccount()} disabled={deleting}>
-									{deleting ? 'Удаляем…' : 'Удалить'}
-								</TextButton>
-							{/snippet}
-						</DangerNote>
+						<!-- Одно действие в рамке: строка «Удалить с сервера» и есть кнопка (C44). -->
+						<DangerZone
+							items={['Удалить с сервера']}
+							disabled={deleting}
+							onitem={() => (askDelete = true)}
+							class="mt-28 mx-0 mb-0"
+						>
+							Записи и имена в кругах останутся. С этого сервера человек уйдёт.
+						</DangerZone>
+						{#if askDelete}
+							<ConfirmDialog
+								title="Удалить с сервера?"
+								confirmLabel="Удалить"
+								cancelLabel="Оставить"
+								loading={deleting}
+								onconfirm={() => void removeAccount()}
+								oncancel={() => (askDelete = false)}
+							>
+								<Hint>{acc.email} больше не войдёт на этот сервер.</Hint>
+							</ConfirmDialog>
+						{/if}
 					{/if}
-					<div class="fine mt-14">
-						У кого есть круг во владении, этой кнопки нет: сначала передать владение в круге.
-						Панель его не передаёт, подвешенных кругов не бывает.
-					</div>
 				</div>
 			</div>
 			{#if error}

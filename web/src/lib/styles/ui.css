@@ -2338,6 +2338,8 @@ a.link {
 	height: auto;
 }
 .ph.app.wide .sheet, .ph.app.wide .scrim {
+	/* ширина тоже: иначе затемнение в панели (820) остаётся шириной приложения */
+	width: min(100%, var(--app-wide-max-width));
 	max-width: var(--app-wide-max-width);
 }
 body .scrim, body .sheet, body .dlg {

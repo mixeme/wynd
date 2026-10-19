@@ -108,6 +108,8 @@ export interface CheckResult {
 	status: 'ok' | 'warn' | 'fail' | 'na';
 	title: string;
 	detail: string;
+	/** Момент, о котором строка (суточная рутина): день и время — в часовом поясе браузера. */
+	at?: string;
 }
 
 export interface ProxySnippet {

@@ -67,6 +67,9 @@ type Result struct {
 	Status Status `json:"status"`
 	Title  string `json:"title"`
 	Detail string `json:"detail"`
+	// At — момент, о котором строка (суточная рутина): клиент пишет его
+	// днём и временем своего часового пояса, Detail — запасной текст.
+	At *time.Time `json:"at,omitempty"`
 }
 
 // RunChecks evaluates instance health and returns a fixed-order result list.
@@ -140,7 +143,7 @@ func checkDiskSpace(dataDir string) Result {
 		r.Detail = fmt.Sprintf("не удалось проверить: %v", err)
 		return r
 	}
-	r.Detail = fmt.Sprintf("свободно %.1f ГБ из %.1f", bytesToGB(free), bytesToGB(total))
+	r.Detail = fmt.Sprintf("свободно %s из %s", formatGB(free), formatGB(total))
 	switch {
 	case free < 100*1024*1024:
 		r.Status = StatusFail
@@ -233,10 +236,12 @@ func checkDailyRoutine(in Input, now time.Time) Result {
 	if age > 36*time.Hour {
 		r.Status = StatusWarn
 		r.Detail = fmt.Sprintf("последний запуск %s", in.LastRoutineAt.UTC().Format(time.RFC3339))
+		r.At = in.LastRoutineAt
 		return r
 	}
 	r.Status = StatusOK
 	r.Detail = fmt.Sprintf("последний запуск %s", in.LastRoutineAt.UTC().Format(time.RFC3339))
+	r.At = in.LastRoutineAt
 	return r
 }
 
@@ -395,6 +400,12 @@ func proxyCheck(in Input, id, title string, eval func(*ExternalReport) (Status, 
 	}
 	r.Status, r.Detail = eval(in.External)
 	return r
+}
+
+// formatGB — «34,9 ГБ», «150 ГБ»: десятичная запятая, без «,0».
+func formatGB(n uint64) string {
+	s := strings.Replace(fmt.Sprintf("%.1f", bytesToGB(n)), ".", ",", 1)
+	return strings.TrimSuffix(s, ",0") + " ГБ"
 }
 
 func bytesToGB(n uint64) float64 {

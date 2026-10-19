@@ -40,10 +40,15 @@
 		type AdminInvite
 	} from '$lib/admin/admin';
 
-	const modes: { key: AccessSettings['registration_mode']; label: string }[] = [
-		{ key: 'open', label: 'Открытый' },
-		{ key: 'invite', label: 'По приглашению' },
-		{ key: 'closed', label: 'Закрытый' }
+	// Под чипами — строка только выбранного режима (C44).
+	const modes: { key: AccessSettings['registration_mode']; label: string; note: string }[] = [
+		{ key: 'open', label: 'Открытый', note: 'Завестись может любой, кто знает адрес.' },
+		{
+			key: 'invite',
+			label: 'По приглашению',
+			note: 'Завестись можно только по ссылке: в круг её даёт участник, на сервер — вы.'
+		},
+		{ key: 'closed', label: 'Закрытый', note: 'Никто не заведётся; выданные ссылки перестанут работать.' }
 	];
 
 
@@ -180,11 +185,7 @@
 							</Chip>
 						{/each}
 					</ChipGroup>
-					<div class="note mt-10 lh-16">
-						Завестись можно только по ссылке: в круг её выдаёт любой участник, на сервер — вы.
-						Открытый пускает всякого, кто знает адрес; закрытый не пускает никого, и старые ссылки
-						перестают работать.
-					</div>
+					<div class="note mt-10 lh-16">{modes.find((m) => m.key === mode)?.note}</div>
 					<SectionLabel class="mt-24 mx-0 mb-8">Позвать на сервер</SectionLabel>
 					<div class="flex-top gap-12">
 						<FieldDisplay
@@ -272,17 +273,7 @@
 				</div>
 				<div class="flex-fix w210">
 					<QrCode value={inviteUrl} size="sm" class="mt-26" />
-					<div class="sz-11 faint ctr mt-10">
-						та же ссылка кодом
-					</div>
 				</div>
-			</div>
-			<div
-			 class="fine mt-22 lh-16 top-line pt-14 mw-620"
-			>
-				Записи и медиа лежат на этом диске незашифрованными: у вас есть база и файлы, а значит, вы
-				можете прочитать что угодно. Панель этого не показывает и не будет, но и гарантией это не
-				притворяется — то же самое написано людям на экране, где они заводят здесь круг.
 			</div>
 			{#if error}
 				<Hint class="mt-12">{error}</Hint>
