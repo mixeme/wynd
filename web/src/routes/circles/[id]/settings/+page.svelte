@@ -39,7 +39,7 @@
 	import { notifySummary } from '$lib/settings/notify-mute';
 	import { formatBytes } from '$lib/format/bytes';
 	import {
-		formatEntryDate,
+		formatCutoffDate,
 		formatSessionDay,
 		pluralPeople,
 		pluralPosts
@@ -382,7 +382,7 @@
 	<SettingsRow
 		title="Скачать свой архив"
 		subtitle={circle.archiveCycle?.active
-			? `всё, что вы видели до ${formatEntryDate(circle.archiveCycle.cutoff_date)}${circle.archiveCycle.personal_archive_bytes ? ` · ${formatBytes(circle.archiveCycle.personal_archive_bytes)}` : ''}`
+			? `всё, что вы видели до ${formatCutoffDate(circle.archiveCycle.cutoff_date)}${circle.archiveCycle.personal_archive_bytes ? ` · ${formatBytes(circle.archiveCycle.personal_archive_bytes)}` : ''}`
 			: 'всё, что вы видели в круге: лента и фото'}
 		{divided}
 		onclick={() => goto(`/circles/${circle.circleId}/archive`)}
@@ -497,7 +497,7 @@
 				class="mt-8"
 				title="Архив и очистка"
 				subtitle={circle.archiveCycle?.active
-					? `идёт архивация: всё до ${formatEntryDate(circle.archiveCycle.cutoff_date)} удалится ${formatSessionDay(circle.archiveCycle.deadline)}`
+					? `идёт архивация: всё до ${formatCutoffDate(circle.archiveCycle.cutoff_date)} удалится ${formatSessionDay(circle.archiveCycle.deadline)}`
 					: 'освободить место, сохранить круг в файл'}
 				divided="both"
 				onclick={() => goto(`/circles/${circle.circleId}/quota`)}

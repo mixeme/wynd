@@ -4,6 +4,7 @@ import {
 	formatDayCardSubtitle,
 	formatDeadline,
 	formatEntryDate,
+	formatCutoffDate,
 	formatMonthYear,
 	formatPostTime,
 	pluralFiles,
@@ -76,6 +77,13 @@ describe('format helpers', () => {
 	it('formats deadline and day card subtitle', () => {
 		expect(formatDeadline('2026-09-15T00:00:00Z')).toMatch(/^до /);
 		expect(formatDayCardSubtitle('2026-08-12', 4)).toContain('4 записи');
+	});
+
+	it('adds the year to a cutoff from another year', () => {
+		const now = new Date(2026, 9, 19);
+		expect(formatCutoffDate('2026-06-30', now)).toBe('30 июня');
+		expect(formatCutoffDate('2025-06-30', now)).toBe('30 июня 2025');
+		expect(formatCutoffDate('', now)).toBe('');
 	});
 
 	it('returns empty for blank dates', () => {

@@ -13,7 +13,7 @@
 	import { isAccessError } from '$lib/api/client';
 	import { fetchQuota, type QuotaRequestInfo } from '$lib/circles/settings';
 	import { formatBytes } from '$lib/format/bytes';
-	import { formatEntryDate, formatSessionDay } from '$lib/format/time';
+	import { formatCutoffDate, formatSessionDay } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 
 	// «Архив и очистка» списком (6.15): место и просьба о нём, освободить
@@ -98,7 +98,7 @@
 			<!-- 6.16: архивация идёт — вторую не запустить, строка ведёт к срокам. -->
 			<SettingsRow
 				title="Сроки архивации"
-				subtitle={`идёт: всё до ${formatEntryDate(circle.archiveCycle.cutoff_date)} удалится ${formatSessionDay(circle.archiveCycle.deadline)}`}
+				subtitle={`идёт: всё до ${formatCutoffDate(circle.archiveCycle.cutoff_date)} удалится ${formatSessionDay(circle.archiveCycle.deadline)}`}
 				divided="both"
 				onclick={() => goto(`/circles/${circle.circleId}/quota/deadlines`)}
 			/>

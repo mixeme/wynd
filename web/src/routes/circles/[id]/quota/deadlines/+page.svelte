@@ -7,7 +7,6 @@
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import DangerNote from '$ui/forms/DangerNote.svelte';
-	import DangerZone from '$ui/forms/DangerZone.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import Label from '$ui/forms/Label.svelte';
@@ -22,7 +21,7 @@
 		startArchiveCycle
 	} from '$lib/circles/settings';
 	import { formatBytes } from '$lib/format/bytes';
-	import { formatEntryDate } from '$lib/format/time';
+	import { formatCutoffDate, formatEntryDate } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
@@ -48,14 +47,14 @@
 	);
 	let cutoffStats = $state('');
 	let cutoffLocked = $state(Boolean(circle.archiveCycle?.cutoff_locked));
-	const cutoffInputId = 'quota-cutoff-date';
 	let error = $state('');
 	let loading = $state(false);
 
-	const showReminderChips = $derived(!activeCycle || cutoffLocked);
-	const reminderReadOnly = $derived(activeCycle && cutoffLocked);
+	// Интервал напоминания задаётся при запуске; у идущей архивации чипы те же,
+	// только без нажатия — экран сроков выглядит одинаково (C44).
+	const reminderReadOnly = $derived(activeCycle);
 
-	const cutoffTitle = $derived(cutoffDate ? formatEntryDate(cutoffDate) : '…');
+	const cutoffTitle = $derived(cutoffDate ? formatCutoffDate(cutoffDate) : '…');
 
 	function defaultDeadline(): string {
 		const d = new Date();
@@ -150,79 +149,38 @@
 			chevron={false}
 			divided="both"
 		/>
-		<Hint
-			>Кто-то уже скачал архив. Эту отсечку больше не сдвинуть: другой диапазон — новый цикл,
-			и все качают заново.</Hint
-		>
-	{:else if activeCycle}
-		<SettingsRow
-			title={cutoffTitle}
-			subtitle={cutoffStats}
-			value="изменить"
-			chevron={false}
-			divided="both"
-			onclick={() => {
-				const el = document.getElementById(cutoffInputId) as HTMLInputElement | null;
-				el?.showPicker?.() ?? el?.focus();
-			}}
-		/>
-	{/if}
-	{#if !activeCycle || !cutoffLocked}
+		<Hint>Кто-то уже скачал архив — отсечку не сдвинуть.</Hint>
+	{:else}
 		<Input
-			id={cutoffInputId}
 			active
 			type="date"
 			bind:value={cutoffDate}
-			disabled={cutoffLocked}
 			onchange={() => void loadCutoffStats(cutoffDate)}
 		/>
-	{/if}
-	{#if !activeCycle || !cutoffLocked}
-		<Hint
-			>Отсечка двигается, пока никто не скачал архив. После первого скачивания она замирает:
-			другой диапазон — это новый цикл, а не правка этого.</Hint
-		>
+		<Hint>Пока никто не скачал архив, отсечку можно сдвинуть.</Hint>
 	{/if}
 	<Label>Скачать до</Label>
 	<Input active type="date" min={minDeadline()} bind:value={deadline} />
-	<Hint
-		>Срок двигается в любую сторону и в любой момент: архив снят на отсечку, а не на срок, и от
-		сдвига не портится.</Hint
-	>
-	{#if showReminderChips}
-		<Label>Напомнить письмом</Label>
-		<ChipGroup>
-			{#each REMINDER_OPTIONS as opt (opt.sec)}
-				<Chip
-					selected={reminderSec === opt.sec}
-					onclick={reminderReadOnly ? undefined : () => (reminderSec = opt.sec)}
-				>
-					{opt.label}
-				</Chip>
-			{/each}
-		</ChipGroup>
-		<Hint
-			>Писем два: на старте и напоминание. Сдвинете срок — напоминание пересчитается от новой даты,
-			интервал останется прежним.</Hint
-		>
-	{/if}
+	<Hint>Срок можно сдвинуть в любой момент.</Hint>
+	<Label>Напомнить письмом</Label>
+	<ChipGroup>
+		{#each REMINDER_OPTIONS as opt (opt.sec)}
+			<Chip
+				selected={reminderSec === opt.sec}
+				onclick={reminderReadOnly ? undefined : () => (reminderSec = opt.sec)}
+			>
+				{opt.label}
+			</Chip>
+		{/each}
+	</ChipGroup>
+	<Hint>Письмо придёт всем сразу и ещё раз перед сроком.</Hint>
 	{#if !activeCycle}
 		<DangerNote class="mt-20">
 			{deadline ? formatEntryDate(deadline) : '…'} всё до {cutoffDate
-				? formatEntryDate(cutoffDate)
+				? formatCutoffDate(cutoffDate)
 				: '…'} удалится с сервера — независимо от того, все ли успели скачать. Предупредить людей —
 			на вас.
 		</DangerNote>
-	{:else if cutoffLocked}
-		<DangerZone
-			class="mt-20"
-			items={['Новый цикл архивации']}
-			onitem={() => goto(`/circles/${circle.circleId}/quota/cleanup`)}
-		/>
-		<Hint class="mt-8"
-			>Начнёте заново — уже скачанные архивы останутся у людей, но отсечка и срок будут другими, и
-			качать нужно снова.</Hint
-		>
 	{/if}
 	<Button class="mt-14" variant="colored" {loading} onclick={() => void launch()}>
 		{activeCycle ? 'Сохранить сроки' : 'Запустить архивацию'}

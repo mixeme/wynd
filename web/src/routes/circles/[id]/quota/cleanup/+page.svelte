@@ -17,7 +17,7 @@
 	import { volumeBarCenterX } from '$lib/circles/volumeChart';
 	import { formatBytes } from '$lib/format/bytes';
 	import { WORD, plural } from '$lib/format/plural';
-	import { formatEntryDate } from '$lib/format/time';
+	import { formatCutoffDate, formatEntryDate } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
@@ -60,7 +60,7 @@
 
 	function cutoffLabel(): string {
 		if (!cutoffDate) return '';
-		return formatEntryDate(cutoffDate);
+		return formatCutoffDate(cutoffDate);
 	}
 
 	let chartCutoffX = $state(205);

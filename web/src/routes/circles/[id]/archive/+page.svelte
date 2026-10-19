@@ -8,7 +8,7 @@
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { formatBytes } from '$lib/format/bytes';
-	import { formatEntryDate, daysUntil, pluralFiles, pluralPosts } from '$lib/format/time';
+	import { formatCutoffDate, formatEntryDate, daysUntil, pluralFiles, pluralPosts } from '$lib/format/time';
 	import { downloadArchive } from '$lib/journal/posts';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 
@@ -89,7 +89,7 @@
 
 		<Label>Границы</Label>
 		<SettingsRow
-			title="Снято на {formatEntryDate(cycle.cutoff_date)}"
+			title="Снято на {formatCutoffDate(cycle.cutoff_date)}"
 			value={cycle.cutoff_locked ? 'дата замерла' : 'можно сдвинуть'}
 			chevron={false}
 			divided="top"

@@ -66,6 +66,16 @@ export function formatEntryDate(entryDate: string): string {
 	return Number.isNaN(date.getTime()) ? '' : dateFmt.format(date);
 }
 
+/** Отсечка архивации: «30 июня», с годом — если год не нынешний («30 июня 2025»). */
+export function formatCutoffDate(entryDate: string, now: Date = new Date()): string {
+	if (!entryDate) return '';
+	const [y, m, d] = entryDate.split('-').map(Number);
+	const date = new Date(y, m - 1, d);
+	if (Number.isNaN(date.getTime())) return '';
+	if (y === now.getFullYear()) return dateFmt.format(date);
+	return dayYearFmt.format(date).replace(/\s*г\.$/, '');
+}
+
 /** День входа на устройстве: локальный календарный день ISO-метки. */
 export function formatSessionDay(iso: string): string {
 	if (!iso) return '';

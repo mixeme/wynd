@@ -16,22 +16,14 @@
 	<StatusBar />
 	<CircleBar title="Сроки архивации" tabs={false} />
 	<Label>Отсечка</Label>
-	<div class="row2" style="border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
-		<div class="g">
-			<div style="font-weight:600">1 июня 2025</div>
-			<div class="sub">126 записей, 6,2 ГБ</div>
-		</div>
-		<span class="val">изменить</span>
-	</div>
+	<FieldDisplay value="1 июня 2025" active />
 	<Hint>
-		Отсечка двигается, пока никто не скачал архив. После первого скачивания она замирает:
-		другой диапазон — это новый цикл, а не правка этого.
+		Пока никто не скачал архив, отсечку можно сдвинуть.
 	</Hint>
 	<Label style="margin-top:18px">Скачать до</Label>
 	<FieldDisplay value="20 сентября 2026" active />
 	<Hint>
-		Срок двигается в любую сторону и в любой момент: архив снят на отсечку, а не на срок, и
-		от сдвига не портится.
+		Срок можно сдвинуть в любой момент.
 	</Hint>
 	<Label style="margin-top:18px">Напомнить письмом</Label>
 	<ChipGroup>
@@ -40,8 +32,7 @@
 		<Chip>За неделю</Chip>
 	</ChipGroup>
 	<Hint>
-		Писем два: на старте и напоминание. Сдвинете срок — напоминание пересчитается от новой
-		даты, интервал останется прежним.
+		Письмо придёт всем сразу и ещё раз перед сроком.
 	</Hint>
 	<DangerNote style="margin-top:20px">
 		20 сентября всё до 1 июня 2025 удалится с сервера — независимо от того, все ли успели

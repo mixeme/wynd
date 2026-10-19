@@ -36,7 +36,13 @@
 	import { resolveMediaUrls } from '$lib/media/batch';
 	import { downloadBlob } from '$lib/media/objectUrl';
 	import { WORD, plural } from '$lib/format/plural';
-	import { formatDeadline, formatEntryDate, formatPostTime, formatSessionDay } from '$lib/format/time';
+	import {
+		formatCutoffDate,
+		formatDeadline,
+		formatEntryDate,
+		formatPostTime,
+		formatSessionDay
+	} from '$lib/format/time';
 	import { isPostArchiveLocked } from '$lib/journal/archive';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadFeed } from '$lib/journal/feed';
@@ -897,7 +903,7 @@
 				title="Архивация · {formatDeadline(circle.archiveCycle.deadline)}"
 				onaction={downloadArchiveClick}
 			>
-				Всё до <strong>{formatEntryDate(circle.archiveCycle.cutoff_date)}</strong> будет удалено.
+				Всё до <strong>{formatCutoffDate(circle.archiveCycle.cutoff_date)}</strong> будет удалено.
 				Реакции и комментарии к этим записям закрыты.
 				<!-- Размер — только файлы; без них «0 Б» читалось как пустой архив. -->
 				{#if circle.archiveCycle.personal_archive_bytes}
