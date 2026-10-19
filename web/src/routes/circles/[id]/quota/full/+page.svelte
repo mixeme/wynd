@@ -200,21 +200,17 @@
 		<!-- 6.26: сборка идёт на сервере; о готовности экран узнаёт при открытии. -->
 		<StatusCard
 			title="Сервер собирает архив"
-			text={`Вы попросили собрать его ${at(archive.requested_at)}. Когда файл будет готов, придёт письмо — скачать его можно будет здесь.`}
+			text="Когда файл будет готов, придёт письмо."
 		/>
 		<Hint class="mt-14">
-			В файле будет круг, каким он был {at(archive.snapshot_at ?? archive.requested_at)}. Написанное
-			позже в него не попадёт.
-		</Hint>
-		<Hint class="mt-10">
+			В файле будет круг, каким он был {at(archive.snapshot_at ?? archive.requested_at)}.
 			{#if archive.delete_circle && frozenAt}Круг замер {at(frozenAt)}.{:else}Круг работает как
 				обычно.{/if}
 		</Hint>
-		<Hint class="mt-22 ctr-text">Можно уйти: сборка идёт на сервере.</Hint>
 		{#if archive.delete_circle}
 			{@render reviveLink()}
 		{:else}
-			<Hint class="mt-14 ctr-text">
+			<Hint class="mt-22 ctr-text">
 				<TextButton disabled={busy} onclick={() => void remove()}>Отменить сборку</TextButton>
 			</Hint>
 		{/if}
@@ -222,13 +218,12 @@
 		<!-- 6.27: файл готов, круг остаётся. -->
 		{@render fileRow(true)}
 		<Hint>
-			В файле круг, каким он был {at(archive.snapshot_at ?? archive.ready_at)}. Написанное позже в
-			него не попадёт.
+			В файле круг, каким он был {at(archive.snapshot_at ?? archive.ready_at)}. Круг работает как
+			обычно.
 		</Hint>
 		<Hint class="mt-10 ink">
 			Сервер удалит файл, когда вы его скачаете, или {at(archive.expires_at)}, если не скачаете.
 		</Hint>
-		<Hint class="mt-10">Круг работает как обычно.</Hint>
 		<Hint class="mt-22 ctr-text">
 			<TextButton disabled={busy} onclick={() => void remove()}>Удалить архив, не скачивая</TextButton>
 		</Hint>
@@ -293,11 +288,9 @@
 		{#if encrypt}
 			<Input active bind:value={password} autocomplete="off" spellcheck="false" />
 			<Hint>Пароль нигде не хранится. Забудете — файл не открыть.</Hint>
-		{:else}
-			<Hint>Файл не зашифрован — храните его так же бережно, как сам сервер.</Hint>
 		{/if}
 		<SettingsRow
-			class="mt-10"
+			class={encrypt ? 'mt-10' : ''}
 			title="Удалить круг с сервера"
 			subtitle="после того как файл скачан"
 			divided="both"
@@ -314,22 +307,18 @@
 			<Hint class="mt-10 ink">Прошлая сборка не удалась. Соберите архив ещё раз.</Hint>
 		{/if}
 		{#if info.fits}
-			<Label class="mt-16">Как это пройдёт</Label>
 			{#if deleteCircle}
+				<!-- Без удаления круга шаги очевидны — их нет (C44). -->
+				<Label class="mt-16">Как это пройдёт</Label>
 				<Hint class="ink">
 					1. Круг замирает: читать можно, писать нельзя. Участникам уходит письмо.<br />2. Вы
 					скачиваете файл. Участники, пока круг здесь, могут скачать свой архив.<br />3. Вы
 					убираете круг с сервера. Остаётся только файл.<br />4. Круг можно оживить из файла — здесь
 					или на другом сервере.
 				</Hint>
-			{:else}
-				<Hint class="ink">
-					1. Сервер собирает файл. Круг работает как обычно.<br />2. Вы скачиваете файл.<br />3.
-					Круг остаётся на сервере.
-				</Hint>
 			{/if}
 			<Button
-				class="mt-14"
+				class={deleteCircle ? 'mt-14' : 'mt-22'}
 				variant="colored"
 				loading={busy}
 				disabled={encrypt && !password.trim()}
