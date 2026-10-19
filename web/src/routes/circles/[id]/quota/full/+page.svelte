@@ -203,9 +203,9 @@
 			text="Когда файл будет готов, придёт письмо."
 		/>
 		<Hint class="mt-14">
-			В файле будет круг, каким он был {at(archive.snapshot_at ?? archive.requested_at)}.
-			{#if archive.delete_circle && frozenAt}Круг замер {at(frozenAt)}.{:else}Круг работает как
-				обычно.{/if}
+			<!-- С удалением круг замер в момент снимка — одна строка вместо двух с тем же временем. -->
+			{#if archive.delete_circle && frozenAt}Круг замер {at(frozenAt)}.{:else}В файле будет круг,
+				каким он был {at(archive.snapshot_at ?? archive.requested_at)}. Круг работает как обычно.{/if}
 		</Hint>
 		{#if archive.delete_circle}
 			{@render reviveLink()}
@@ -230,27 +230,24 @@
 	{:else if view === 'notDownloaded' && archive}
 		<!-- 6.28: файл готов и ещё не скачан, круг замер. -->
 		{@render fileRow(true)}
-		<Hint>
-			Круг замер {at(frozenAt)}. Сервер удалит файл, когда вы его скачаете, или {at(
-				archive.expires_at
-			)}, если не скачаете.
+		<Hint>Круг замер {at(frozenAt)}.</Hint>
+		<Hint class="mt-10 ink">
+			Сервер удалит файл, когда вы его скачаете, или {at(archive.expires_at)}, если не скачаете.
 		</Hint>
-		<Hint class="mt-10">Вы ещё не скачали файл.</Hint>
 		{@render removeLocked()}
 		{@render reviveLink()}
 	{:else if view === 'downloaded' && archive}
 		<!-- 6.29: файл у владельца, на сервере его нет; круг можно убрать. -->
 		{@render fileRow(false)}
 		<Hint>Круг замер {at(frozenAt)}.</Hint>
-		<Hint class="mt-10">
+		<Hint class="mt-10 ink">
 			Вы скачали файл {at(archive.downloaded_at)}. На сервере его больше нет.
 		</Hint>
 		<Hint class="mt-10">
 			<TextButton disabled={busy} onclick={() => (rebuild = true)}>Собрать архив ещё раз</TextButton>
 		</Hint>
 		<DangerZone class="mt-20" items={['Убрать круг с сервера']} onitem={() => (askRemove = true)}>
-			Останется только файл у вас. Сервер его не хранит: потеряете файл или пароль — круг не
-			вернуть.<br /><br />Участники получили письмо {at(frozenAt)}: свой архив они могут скачать,
+			Останется только файл у вас: потеряете файл или пароль — круг не вернуть.<br /><br />Участники получили письмо {at(frozenAt)}: свой архив они могут скачать,
 			пока круг здесь.
 		</DangerZone>
 		{@render reviveLink()}
@@ -262,7 +259,7 @@
 				? `Архив был собран ${at(archive.ready_at)}. Вы его не скачали, и ${at(archive.removed_at)} администратор сервера удалил файл.`
 				: `Архив был собран ${at(archive.ready_at)}. Вы его не скачали, и ${at(archive.removed_at)} сервер удалил файл.`}
 		/>
-		<Hint class="mt-14">Круг замер {at(frozenAt)} и стоит замершим.</Hint>
+		<Hint class="mt-14">Круг замер {at(frozenAt)}.</Hint>
 		<Button class="mt-14" variant="colored" onclick={() => (rebuild = true)}>
 			Собрать архив ещё раз
 		</Button>
