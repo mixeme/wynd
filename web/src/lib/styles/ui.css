@@ -2881,6 +2881,9 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 .codeblk .hi {
 	font-weight: 600;
 }
+.codeblk .dim {
+	color: var(--faint);
+}
 .codeblk span.cmt {
 	display: inline;
 	padding: 0;

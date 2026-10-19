@@ -7,7 +7,6 @@
 	import Loading from '$ui/Loading.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
-	import Switch from '$ui/forms/Switch.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import {
@@ -146,23 +145,8 @@
 					<Panel class="sz-13 pad-16-18">
 						Wynd хранит то, что сказано, а не вашу медиатеку. Оригиналы остаются на телефоне.
 					</Panel>
-					<div class="note mt-16 lh-16">
-						Дефолты щедрые, а не экономные: сжатие необратимо, оригинал сюда не приезжает. Если
-						через год качества окажется мало, переделать будет нечего — экономия должна быть
-						осознанным выбором.
-					</div>
-					<div class="note mt-14 lh-16">
-						Изменение настроек не трогает загруженное. В круге будут соседствовать записи разного
-						качества, и это нормально.
-					</div>
-					<div class="flex-mid gap-12 mt-20">
-						<Switch checked={true} disabled label="Отдавать вложения только как загрузку" />
-						<span class="sz-12"
-							>Отдавать вложения только как загрузку<br /><span class="faint"
-								>Content-Disposition: attachment · выключать нельзя</span
-							></span
-						>
-					</div>
+					<div class="note mt-16 lh-16">Сжатие необратимо: оригинал на сервер не загружается. Экономьте осознанно.</div>
+					<div class="note mt-14 lh-16">Новые настройки касаются только новых загрузок.</div>
 				</div>
 			</div>
 			{#if error}

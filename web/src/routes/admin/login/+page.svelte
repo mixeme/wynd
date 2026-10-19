@@ -40,9 +40,6 @@
 
 <AdminWideLayout app nav={false}>
 	<AdminSection title="Панель администратора">
-		<Hint class="mb-18">
-			Отдельный пароль, не тот, которым входят в круги. Журналов кругов здесь нет.
-		</Hint>
 		<Label>Пароль</Label>
 		<Input
 			active

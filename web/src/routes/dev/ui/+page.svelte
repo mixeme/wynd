@@ -1047,7 +1047,6 @@
 							previous="10"
 							requester="владелец"
 							date="9 августа"
-							freeSpace="21,6 ГБ"
 							onapprove={() => {}}
 							onreject={() => {}}
 						/>

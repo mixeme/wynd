@@ -4331,7 +4331,7 @@
       <div style="display:flex;gap:16px;align-items:stretch">
         <div style="flex:1;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:16px">
           <div style="font-weight:600;margin-bottom:6px">1 · Пароль администратора</div>
-          <div style="font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.5">Пароль для доступа в панель администратора. Можно сбросить через консоль.</div>
+          <div style="font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.5">Задайте пароль для панели администратора.</div>
           <span class="inp" style="width:100%">••••••••••••</span>
         </div>
         <div style="flex:1;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:16px">
@@ -4344,7 +4344,7 @@
       </div>
       <div style="border:1px solid var(--line);background:var(--card);border-radius:12px;padding:16px">
         <div style="font-weight:600;margin-bottom:6px">3 · Почта</div>
-        <div style="font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.5">Люди входят по коду из письма. Почту можно настроить и позже в панели — до этого коды входа не уходят.</div>
+        <div style="font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.5">Без SMTP люди не получат код для входа. Почту можно настроить позже.</div>
         <div style="display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center;font-size:12.5px">
           <span style="color:var(--muted)">Хост</span>
           <span class="inp mono" style="width:100%">smtp.selfpost.io</span>
@@ -4369,7 +4369,7 @@
     <div class="btn" style="margin:20px 0 0">Сохранить и открыть панель</div>
   </div>
 </div>
-<span class="num">9.1</span><b>Первый запуск</b><i>Одна команда ставит бинарник и печатает ссылку с токеном; дальше человек не видит ни конфига, ни YAML. Первая карточка — пароль панели, единственное обязательное поле. Имя, адрес и почта — вторым рядом, всё можно задать позже в панели; адрес подставлен из открытой ссылки, если она по HTTPS. Ошибка формы — над кнопкой сохранения. Проверка почты до сохранения: подпись кнопки на месте, слева галочка если вход принят. Сохранение тоже не прячет кнопку. TLS и Caddy — на установке, не в форме.</i></figure>
+<span class="num">9.1</span><b>Первый запуск</b><i>Одна команда ставит бинарник и печатает ссылку с токеном; дальше человек не видит ни конфига, ни YAML. Первая карточка — пароль панели, единственное обязательное поле. Имя, адрес и почта — вторым рядом, всё можно задать позже в панели; адрес подставлен из открытой ссылки, если она по HTTPS. Ошибка формы — над кнопкой сохранения. Проверка почты до сохранения: подпись кнопки на месте, слева галочка если вход принят. Сохранение тоже не прячет кнопку. TLS и Caddy — на установке, не в форме. C44, 2026-10-19: «Задайте пароль для панели администратора.» (слово владельца), карточка пароля по своей высоте; под почтой всегда «Без SMTP люди не получат код для входа. Почту можно настроить позже.»; вход в панель — без «Отдельный пароль…».</i></figure>
 <figure class="s" id="e9-2" style="width:820px"><div class="ph wide shell" style="height:600px">
   <div class="admbar">
     <svg class="mk" viewBox="-21.67 -31.8 42.9 64.47" aria-label="Wynd" role="img"><use href="#mark" fill="currentColor" x="-21.67" y="-31.8" width="42.9" height="64.47"/></svg>
@@ -4591,18 +4591,18 @@
       <div style="position:absolute;left:90%;top:-14px;bottom:-4px;width:1px;background:var(--terracotta)"></div>
       <div style="position:absolute;left:90%;top:-30px;transform:translateX(-50%);font-size:11.5px;color:var(--terracotta)">порог 90%</div>
     </div>
-    <div style="font-size:12.5px;color:var(--muted);margin:10px 0 6px">28,9 ГБ из 40 ГБ · свободно 11,1 ГБ</div><div style="font-size:12.5px;color:var(--muted);margin:0 0 18px;display:flex;gap:22px;flex-wrap:wrap"><span><span style="display:inline-block;width:14px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:6px;background:linear-gradient(90deg,var(--terracotta) 0 25%,var(--olive) 25% 50%,var(--indigo) 50% 75%,var(--ochre) 75%)"></span>круги — 18,4 ГБ, цвета как в таблице ниже</span><span><span style="display:inline-block;width:14px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:6px;background:repeating-linear-gradient(135deg,#C9C0B2 0 6px,#DFD8CD 6px 12px)"></span>готовые архивы — 10,5 ГБ</span></div>
+    <div style="font-size:12.5px;color:var(--muted);margin:10px 0 6px">28,9 ГБ из 40 ГБ · свободно 11,1 ГБ</div><div style="font-size:12.5px;color:var(--muted);margin:0 0 18px;display:flex;gap:22px;flex-wrap:wrap"><span><span style="display:inline-block;width:14px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:6px;background:linear-gradient(90deg,var(--terracotta) 0 25%,var(--olive) 25% 50%,var(--indigo) 50% 75%,var(--ochre) 75%)"></span>круги — 18,4 ГБ</span><span><span style="display:inline-block;width:14px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:6px;background:repeating-linear-gradient(135deg,#C9C0B2 0 6px,#DFD8CD 6px 12px)"></span>готовые архивы — 10,5 ГБ</span></div>
     <div style="display:flex;align-items:center;gap:14px">
       <span style="font-size:13.5px;font-weight:600;width:168px;flex:0 0 auto">Потолок инстанса</span>
       <span class="inp" style="color:var(--faint)">40 ГБ</span><span style="font-size:12.5px;color:var(--muted)">или</span>
       <span class="inp">80% диска</span>
     </div>
-    <div style="font-size:11.5px;color:var(--faint);margin-top:8px;line-height:1.5">Действует одно: гигабайты или доля диска. Сохранение одного очищает другое. При упоре писать нельзя ни в один круг: ни текст, ни фото.</div>
+    <div style="font-size:11.5px;color:var(--faint);margin-top:8px;line-height:1.5">Действует одно из двух. Упрётся — писать нельзя ни в один круг.</div>
     <div style="display:flex;align-items:flex-start;gap:14px;margin-top:14px">
       <span style="font-size:13.5px;font-weight:600;width:168px;flex:0 0 auto;padding-top:8px">Квота круга по умолчанию</span>
       <div>
         <span class="chips" style="margin:0"><span class="chip">Нет</span><span class="chip on">5 ГБ</span><span class="chip">10 ГБ</span><span class="chip">Своё…</span></span>
-        <div style="font-size:11.5px;color:var(--faint);margin-top:8px;line-height:1.5">Новые круги и те, у кого в таблице не «своя». Потолок инстанса при этом никто не обходит.</div>
+        <div style="font-size:11.5px;color:var(--faint);margin-top:8px;line-height:1.5">Для новых кругов и тех, у кого в таблице не «своя».</div>
       </div>
     </div>
     <table class="tbl" style="margin-top:20px">
@@ -4627,19 +4627,19 @@
     <div class="chk" style="align-items:center">
       <span class="st warn">!</span>
       <div class="g"><div class="n"><span style="width:12px;height:12px;border-radius:4px;display:inline-block;vertical-align:-1px;margin-right:8px;background:var(--terracotta)"></span>Семья · 20 ГБ вместо 10</div>
-        <div class="d">попросил владелец 9 августа; свободно 11,1 ГБ</div></div>
+        <div class="d">попросил владелец 9 августа</div></div>
       <span class="btn" style="margin:0;padding:8px 16px;font-size:12.5px">Дать</span>
       <span class="btn gh" style="margin:0;padding:8px 16px;font-size:12.5px">Отказать</span>
     </div>
     <div style="font-size:11.5px;color:var(--faint);margin-top:14px;line-height:1.6">
-      Отказ ничего не ломает: владелец круга сам выберет отсечку и срок, скажет об этом людям и освободит место. Ни отсечку, ни срок панель не двигает — этих кнопок здесь нет.
+      Отказ ничего не ломает: место освободит владелец круга.
     </div>
       <div style="font-size:11.5px;color:var(--faint);margin-top:22px;line-height:1.6;border-top:1px solid var(--line);padding-top:14px">
-      Записи и медиа лежат на этом диске незашифрованными: вы можете прочитать любой круг. Людям это сказано, когда они заводят здесь круг.
+      Записи и медиа хранятся на этом диске незашифрованными.
     </div>
 </div>
 </div>
-<span class="num">9.7</span><b>Хранилище</b><i>Колонка «Занято» (было «Медиа») — утверждено владельцем 2026-10-15: с 0.30.0 в ней всё, что круг занял, включая текст. Шкала с 2026-10-13 показывает и готовые архивы (решение владельца: они входят в потолок инстанса) — заштрихованным отрезком, с легендой под итогом: круги и архивы отдельно; утверждено, не реализовано. Две цифры админа стоят рядом: потолок инстанса обязателен, квота круга — нет, и «нет» здесь чип, а не отсутствие поля. Умолчание 5 ГБ видно и в чипах, и в таблице: без подписи «своя» — это оно, со «своя» — исключение, в том числе «без квоты». Строка круга ведёт на 9.8: свою квоту ставят там. Запрос — две кнопки, не подчёркнутый текст; «Дать» открывает ту же правку, сразу на 20 ГБ. Отсечки в панели нет. C44, 2026-10-19: внизу — «Записи и медиа лежат на этом диске незашифрованными: вы можете прочитать любой круг. Людям это сказано, когда они заводят здесь круг.» (перенесено из «Доступа», слово владельца).</i></figure>
+<span class="num">9.7</span><b>Хранилище</b><i>Колонка «Занято» (было «Медиа») — утверждено владельцем 2026-10-15: с 0.30.0 в ней всё, что круг занял, включая текст. Шкала с 2026-10-13 показывает и готовые архивы (решение владельца: они входят в потолок инстанса) — заштрихованным отрезком, с легендой под итогом: круги и архивы отдельно; утверждено, не реализовано. Две цифры админа стоят рядом: потолок инстанса обязателен, квота круга — нет, и «нет» здесь чип, а не отсутствие поля. Умолчание 5 ГБ видно и в чипах, и в таблице: без подписи «своя» — это оно, со «своя» — исключение, в том числе «без квоты». Строка круга ведёт на 9.8: свою квоту ставят там. Запрос — две кнопки, не подчёркнутый текст; «Дать» открывает ту же правку, сразу на 20 ГБ. Отсечки в панели нет. C44, 2026-10-19: внизу — «Записи и медиа хранятся на этом диске незашифрованными.» (перенесено из «Доступа», слово владельца).</i></figure>
 <figure class="s" id="e9-8" style="width:820px"><div class="ph wide shell" style="height:800px">
   <div class="admbar">
     <svg class="mk" viewBox="-21.67 -31.8 42.9 64.47" aria-label="Wynd" role="img"><use href="#mark" fill="currentColor" x="-21.67" y="-31.8" width="42.9" height="64.47"/></svg>
@@ -4657,18 +4657,18 @@
       <div style="position:absolute;left:90%;top:-14px;bottom:-4px;width:1px;background:var(--terracotta)"></div>
       <div style="position:absolute;left:90%;top:-30px;transform:translateX(-50%);font-size:11.5px;color:var(--terracotta)">порог 90%</div>
     </div>
-    <div style="font-size:12.5px;color:var(--muted);margin:10px 0 6px">28,9 ГБ из 40 ГБ · свободно 11,1 ГБ</div><div style="font-size:12.5px;color:var(--muted);margin:0 0 18px;display:flex;gap:22px;flex-wrap:wrap"><span><span style="display:inline-block;width:14px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:6px;background:linear-gradient(90deg,var(--terracotta) 0 25%,var(--olive) 25% 50%,var(--indigo) 50% 75%,var(--ochre) 75%)"></span>круги — 18,4 ГБ, цвета как в таблице ниже</span><span><span style="display:inline-block;width:14px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:6px;background:repeating-linear-gradient(135deg,#C9C0B2 0 6px,#DFD8CD 6px 12px)"></span>готовые архивы — 10,5 ГБ</span></div>
+    <div style="font-size:12.5px;color:var(--muted);margin:10px 0 6px">28,9 ГБ из 40 ГБ · свободно 11,1 ГБ</div><div style="font-size:12.5px;color:var(--muted);margin:0 0 18px;display:flex;gap:22px;flex-wrap:wrap"><span><span style="display:inline-block;width:14px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:6px;background:linear-gradient(90deg,var(--terracotta) 0 25%,var(--olive) 25% 50%,var(--indigo) 50% 75%,var(--ochre) 75%)"></span>круги — 18,4 ГБ</span><span><span style="display:inline-block;width:14px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:6px;background:repeating-linear-gradient(135deg,#C9C0B2 0 6px,#DFD8CD 6px 12px)"></span>готовые архивы — 10,5 ГБ</span></div>
     <div style="display:flex;align-items:center;gap:14px">
       <span style="font-size:13.5px;font-weight:600;width:168px;flex:0 0 auto">Потолок инстанса</span>
       <span class="inp" style="color:var(--faint)">40 ГБ</span><span style="font-size:12.5px;color:var(--muted)">или</span>
       <span class="inp">80% диска</span>
     </div>
-    <div style="font-size:11.5px;color:var(--faint);margin-top:8px;line-height:1.5">Действует одно: гигабайты или доля диска. Сохранение одного очищает другое. При упоре писать нельзя ни в один круг: ни текст, ни фото.</div>
+    <div style="font-size:11.5px;color:var(--faint);margin-top:8px;line-height:1.5">Действует одно из двух. Упрётся — писать нельзя ни в один круг.</div>
     <div style="display:flex;align-items:flex-start;gap:14px;margin-top:14px">
       <span style="font-size:13.5px;font-weight:600;width:168px;flex:0 0 auto;padding-top:8px">Квота круга по умолчанию</span>
       <div>
         <span class="chips" style="margin:0"><span class="chip">Нет</span><span class="chip on">5 ГБ</span><span class="chip">10 ГБ</span><span class="chip">Своё…</span></span>
-        <div style="font-size:11.5px;color:var(--faint);margin-top:8px;line-height:1.5">Новые круги и те, у кого в таблице не «своя». Потолок инстанса при этом никто не обходит.</div>
+        <div style="font-size:11.5px;color:var(--faint);margin-top:8px;line-height:1.5">Для новых кругов и тех, у кого в таблице не «своя».</div>
       </div>
     </div>
     <table class="tbl" style="margin-top:20px">
@@ -4700,7 +4700,7 @@
     </div>
   </div>
 </div>
-<span class="num">9.8</span><b>Хранилище</b><i>Тот же экран: нажата строка «Семья». Поле и чипы — своя квота этого круга, не умолчание сверху. Владелец — почта, не «Кот»: лиц панель не знает. «Как умолчание» снимает исключение; 20 ГБ — то, что просили. «Дать» в запросе приводит сюда же, сразу с 20 в поле. 2026-10-17: квота круга и квота по умолчанию — число и чипы «МБ / ГБ»; потолок инстанса — в ГБ.</i></figure>
+<span class="num">9.8</span><b>Хранилище</b><i>Тот же экран: нажата строка «Семья». Поле и чипы — своя квота этого круга, не умолчание сверху. Владелец — почта, не «Кот»: лиц панель не знает. «Как умолчание» снимает исключение; 20 ГБ — то, что просили. «Дать» в запросе приводит сюда же, сразу с 20 в поле. 2026-10-17: квота круга и квота по умолчанию — число и чипы «МБ / ГБ»; потолок инстанса — в ГБ. C44, 2026-10-19: легенда без «цвета как в таблице ниже»; под потолком — «Действует одно из двух. Упрётся — писать нельзя ни в один круг.»; под квотой по умолчанию — «Для новых кругов и тех, у кого в таблице не «своя».»; просьба — без «свободно …», кружок цветом круга.</i></figure>
 <figure class="s" id="e9-9" style="width:820px"><div class="ph wide shell" style="height:440px">
   <div class="admbar">
     <svg class="mk" viewBox="-21.67 -31.8 42.9 64.47" aria-label="Wynd" role="img"><use href="#mark" fill="currentColor" x="-21.67" y="-31.8" width="42.9" height="64.47"/></svg>
@@ -4718,12 +4718,12 @@
     </div>
     <div class="chk" style="align-items:center">
       <div class="g"><div class="n">10,5 ГБ · 2 файла</div>
-        <div class="d">Полные архивы кругов: собраны по просьбе владельцев и ждут скачивания; в квоты кругов не входят. Удаление круги и записи не трогает: владелец увидит, что файла нет, и соберёт архив снова.</div></div>
+        <div class="d">Ждут, пока владельцы скачают; в квоты кругов не входят. Удаление круги не трогает: владелец соберёт архив снова.</div></div>
       <span class="btn gh" style="margin:0;padding:8px 16px;font-size:12.5px;flex:0 0 auto">Удалить все</span>
     </div>
   </div>
 </div>
-<span class="num">9.9</span><b>Хранилище: готовые архивы</b><i>Утверждено владельцем 2026-10-13, реализовано в 0.31.0; пояснение к готовым архивам после разделения схемы (2026-10-14) — «Полные архивы кругов: собраны по просьбе владельцев…» — утверждено 2026-10-14. Новый блок на 9.7, под просьбами; остальной экран на кадре свёрнут в одну строку. Решения владельца 2026-10-13: архивы собираются по просьбе и лежат на сервере до скачивания или до срока; срок задаёт администратор — «мы не знаем, сколько он готов хранить архивы и какой у него диск»; администратор видит, сколько места они занимают, и может стереть их — «чтобы спасти сервер от исчерпания диска». Сказано, что это за файлы и что они вне квот кругов. Обе строки собраны одинаково — слева что это и пояснение, справа действие или поле (замечание владельца 2026-10-13: подпись под полем «72 часа» смотрелась плохо; порядок строк — тоже его: сначала срок, потом занятое место и удаление). Кнопка тихая, без рамки «Необратимо»: архив можно собрать снова, теряется только ожидание. Что увидит владелец после очистки — 6.30 при архиве с удалением круга, снова 6.24 у резервной копии. Архивов участников здесь нет: они отдаются потоком и на сервере не лежат (2026-10-14). Готовые архивы считаются в потолке инстанса — входят в шкалу сверху (владелец, 2026-10-13); на шкале они пока не нарисованы. Списка архивов и удаления по одному нет (владелец, 2026-10-14): кнопка аварийная, «Удалить все» для неё достаточно, а разбираться, какой файл чей, администратору незачем.</i></figure>
+<span class="num">9.9</span><b>Хранилище: готовые архивы</b><i>Утверждено владельцем 2026-10-13, реализовано в 0.31.0; пояснение к готовым архивам после разделения схемы (2026-10-14) — «Полные архивы кругов: собраны по просьбе владельцев…» — утверждено 2026-10-14. Новый блок на 9.7, под просьбами; остальной экран на кадре свёрнут в одну строку. Решения владельца 2026-10-13: архивы собираются по просьбе и лежат на сервере до скачивания или до срока; срок задаёт администратор — «мы не знаем, сколько он готов хранить архивы и какой у него диск»; администратор видит, сколько места они занимают, и может стереть их — «чтобы спасти сервер от исчерпания диска». Сказано, что это за файлы и что они вне квот кругов. Обе строки собраны одинаково — слева что это и пояснение, справа действие или поле (замечание владельца 2026-10-13: подпись под полем «72 часа» смотрелась плохо; порядок строк — тоже его: сначала срок, потом занятое место и удаление). Кнопка тихая, без рамки «Необратимо»: архив можно собрать снова, теряется только ожидание. Что увидит владелец после очистки — 6.30 при архиве с удалением круга, снова 6.24 у резервной копии. Архивов участников здесь нет: они отдаются потоком и на сервере не лежат (2026-10-14). Готовые архивы считаются в потолке инстанса — входят в шкалу сверху (владелец, 2026-10-13); на шкале они пока не нарисованы. Списка архивов и удаления по одному нет (владелец, 2026-10-14): кнопка аварийная, «Удалить все» для неё достаточно, а разбираться, какой файл чей, администратору незачем. C44, 2026-10-19: «Ждут, пока владельцы скачают; в квоты кругов не входят. Удаление круги не трогает: владелец соберёт архив снова.»</i></figure>
 <figure class="s" id="e9-10" style="width:820px"><div class="ph wide shell">
   <div class="admbar">
     <svg class="mk" viewBox="-21.67 -31.8 42.9 64.47" aria-label="Wynd" role="img"><use href="#mark" fill="currentColor" x="-21.67" y="-31.8" width="42.9" height="64.47"/></svg>
@@ -4750,20 +4750,16 @@
           Wynd хранит то, что сказано, а не вашу медиатеку. Оригиналы остаются на телефоне.
         </div>
         <div style="font-size:12.5px;color:var(--muted);margin-top:16px;line-height:1.6">
-          Дефолты щедрые, а не экономные: сжатие необратимо, оригинал сюда не приезжает. Если через год качества окажется мало, переделать будет нечего — экономия должна быть осознанным выбором.
+          Сжатие необратимо: оригинал на сервер не загружается. Экономьте осознанно.
         </div>
         <div style="font-size:12.5px;color:var(--muted);margin-top:14px;line-height:1.6">
-          Изменение настроек не трогает загруженное. В круге будут соседствовать записи разного качества, и это нормально.
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;margin-top:20px">
-          <span class="sw on" style="--c:var(--ink)"></span>
-          <span style="font-size:12.5px">Отдавать вложения только как загрузку<br><span style="color:var(--faint)">Content-Disposition: attachment · выключать нельзя</span></span>
+          Новые настройки касаются только новых загрузок.
         </div>
       </div>
     </div>
   </div>
 </div>
-<span class="num">9.10</span><b>Сжатие и вложения</b><i>Единых разумных порогов не существует: у одного 20 ГБ на VPS, у другого домашний диск на 4 ТБ. Поэтому пороги задаёт админ, а объяснение, зачем сжатие вообще есть, стоит рядом с полями, а не в документации. Переключатель справа зафиксирован: SVG здесь считается файлом, а не картинкой.</i></figure>
+<span class="num">9.10</span><b>Сжатие и вложения</b><i>Единых разумных порогов не существует: у одного 20 ГБ на VPS, у другого домашний диск на 4 ТБ. Поэтому пороги задаёт админ, а объяснение, зачем сжатие вообще есть, стоит рядом с полями, а не в документации. Переключатель справа зафиксирован: SVG здесь считается файлом, а не картинкой. C44, 2026-10-19: «Сжатие необратимо: оригинал на сервер не загружается. Экономьте осознанно.», «Новые настройки касаются только новых загрузок.»; без выключателя «Отдавать вложения только как загрузку».</i></figure>
 </div></div>
 <h3>Проверка</h3>
 <div class="bleed"><div class="gal">
@@ -4831,7 +4827,7 @@
     <div style="font-size:11.5px;color:var(--faint);margin-bottom:8px">Проверка · Прокси</div>
     <h4 style="margin-bottom:8px">Прокси не передаёт настоящий адрес</h4>
     <div style="font-size:12.5px;color:var(--muted);max-width:620px;line-height:1.6">
-      Сервер видит все запросы как приходящие с 127.0.0.1. «Три попытки» на код входа считаются на всех сразу: одному не войти, у другого код можно перебирать. Та же вставка чинит и потолок тела запроса — без неё не загрузится ни одна фотография.
+      Сервер видит все запросы как приходящие с 127.0.0.1: попытки ввода кода считаются на всех сразу — одному не войти, у другого код можно перебирать.
     </div>
     <div style="display:flex;gap:10px;margin:16px 0 18px;font-size:11.5px;color:var(--muted)">
       <span class="inp mono">X-Forwarded-For: —</span><span class="inp mono">X-Real-IP: —</span><span class="inp mono">клиент: 127.0.0.1</span>
@@ -4856,7 +4852,7 @@
     </div>
   </div>
 </div>
-<span class="num">9.12</span><b>Разбор поломки</b><i>«При любом сомнении — печатает готовый конфиг»: обещание из образа продукта здесь становится экраном. Строки, которых не хватает, выделены жирным прямо в блоке, комментарии объясняют не синтаксис, а последствия. Обе поломки прокси показаны одной страницей, потому что чинятся одной вставкой; порт в примере панель подставляет свой.</i></figure>
+<span class="num">9.12</span><b>Разбор поломки</b><i>«При любом сомнении — печатает готовый конфиг»: обещание из образа продукта здесь становится экраном. Строки, которых не хватает, выделены жирным прямо в блоке, комментарии объясняют не синтаксис, а последствия. Обе поломки прокси показаны одной страницей, потому что чинятся одной вставкой; порт в примере панель подставляет свой. C44, 2026-10-19: пояснение короче; в конфиге выделены только строки этой поломки с пояснением, остальные приглушены.</i></figure>
 </div></div>
 <h3>Общие</h3>
 <div class="bleed"><div class="gal">

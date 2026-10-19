@@ -87,8 +87,7 @@
 			<InlineInput>80% диска</InlineInput>
 		</div>
 		<div style="font-size:11.5px;color:var(--faint);margin-top:8px;line-height:1.5">
-			Действует одно: гигабайты или доля диска. Сохранение одного очищает другое. При упоре писать
-			нельзя ни в один круг: ни текст, ни фото.
+			Действует одно из двух. Упрётся — писать нельзя ни в один круг.
 		</div>
 		<SectionLabel style="margin:26px 0 8px">Просят больше</SectionLabel>
 		<QuotaRequestRow
@@ -98,13 +97,11 @@
 			previous="10"
 			requester="владелец"
 			date="9 августа"
-			freeSpace="21,6 ГБ"
 			onapprove={() => {}}
 			onreject={() => {}}
 		/>
 		<div style="font-size:11.5px;color:var(--faint);margin-top:14px;line-height:1.6">
-			Отказ ничего не ломает: владелец круга сам выберет отсечку и срок, скажет об этом людям и
-			освободит место. Ни отсечку, ни срок панель не двигает — этих кнопок здесь нет.
+			Отказ ничего не ломает: место освободит владелец круга.
 		</div>
 	</AdminSection>
 </AdminWideLayout>

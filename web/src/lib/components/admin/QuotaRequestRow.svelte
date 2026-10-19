@@ -9,7 +9,6 @@
 		previous,
 		requester,
 		date,
-		freeSpace,
 		onapprove,
 		onreject,
 		class: className = '',
@@ -21,7 +20,6 @@
 		previous?: string;
 		requester: string;
 		date: string;
-		freeSpace: string;
 		onapprove?: () => void;
 		onreject?: () => void;
 		class?: string;
@@ -37,7 +35,7 @@
 	status="warn"
 	class={className}
 	{style}
-	description="попросил {requester} {date}; свободно {freeSpace}"
+	description="попросил {requester} {date}"
 >
 	{#snippet title()}
 		<span

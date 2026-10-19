@@ -1,49 +1,38 @@
 import type { CodeLine } from '$ui/admin/CodeBlock.svelte';
 
-const HIGHLIGHT_PATTERNS = [
-	/client_max_body_size/,
-	/max_size/,
-	/maxRequestBodyBytes/,
-	/LimitRequestBody/,
-	/proxy_buffering off/,
-	/flush_interval/,
-	/flushpackets/,
-	/X-Forwarded-Proto/,
-	/X-Forwarded-For/,
-	/proxy_set_header X-Real-IP/,
-	/header_up X-Real-IP/,
-	/RequestHeader (unset X-Forwarded-For|set X-Real-IP)/,
-	/forwardedHeaders/,
-	/read_timeout/,
-	/timeout=\d+/
-];
+interface Focus {
+	re: RegExp;
+	cmt: string;
+}
+
+// Строки, которые чинят каждую поломку (C44: экран показывает, на какую
+// строку смотреть; остальные приглушены — вставка всё равно целиком).
+const FOCUS: Record<string, Focus> = {
+	proxy_client: {
+		re: /X-Forwarded-For|X-Real-IP|RequestHeader|forwardedHeaders/,
+		cmt: 'настоящий адрес клиента'
+	},
+	proxy_body_limit: {
+		re: /client_max_body_size|max_size|maxRequestBodyBytes|LimitRequestBody/,
+		cmt: 'потолок вложений из настроек'
+	},
+	proxy_headers: { re: /X-Forwarded-Proto/, cmt: 'протокол для ссылок' },
+	proxy_sse: {
+		re: /proxy_buffering off|flush_interval|flushpackets/,
+		cmt: 'иначе лента не обновляется'
+	},
+	proxy_timeout: { re: /read_timeout|timeout=\d+/, cmt: 'длинная загрузка не рвётся' }
+};
 
 /** Annotate proxy snippet lines for CodeBlock highlighting. */
 export function annotateProxySnippet(snippet: string, fail?: string): CodeLine[] {
+	const focus = fail ? FOCUS[fail] : undefined;
 	return snippet.split('\n').map((text) => {
-		const hi = HIGHLIGHT_PATTERNS.some((re) => re.test(text));
-		let cmt: string | undefined;
-		if (/client_max_body_size|max_size|maxRequestBodyBytes|LimitRequestBody/.test(text)) {
-			cmt = 'потолок вложений из настроек';
-		} else if (/proxy_buffering off|flush_interval|flushpackets/.test(text)) {
-			cmt = 'иначе лента не обновляется';
-		} else if (/read_timeout|timeout=\d+/.test(text)) {
-			cmt = 'длинная загрузка не рвётся';
+		if (focus) {
+			return focus.re.test(text) ? { text, hi: true, cmt: focus.cmt } : { text, dim: true };
 		}
-		if (fail === 'proxy_body_limit' && /client_max_body_size|max_size|maxRequestBodyBytes|LimitRequestBody/.test(text)) {
-			cmt = 'потолок вложений из настроек';
-		} else if (fail === 'proxy_sse' && /proxy_buffering off|flush_interval|flushpackets/.test(text)) {
-			cmt = 'иначе лента не обновляется';
-		} else if (fail === 'proxy_headers' && /X-Forwarded-Proto/.test(text)) {
-			cmt = 'протокол для ссылок';
-		} else if (
-			fail === 'proxy_client' &&
-			/proxy_set_header X-Forwarded-For|proxy_set_header X-Real-IP|header_up X-Forwarded-For|header_up X-Real-IP|RequestHeader|forwardedHeaders/.test(
-				text
-			)
-		) {
-			cmt = undefined;
-		}
-		return { text, hi: hi || Boolean(cmt), cmt };
+		// Без поломки — все строки, которые что-то чинят, с пояснением.
+		const hit = Object.values(FOCUS).find((f) => f.re.test(text));
+		return hit ? { text, hi: true, cmt: hit.cmt } : { text };
 	});
 }

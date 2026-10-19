@@ -71,7 +71,7 @@
 	const circleQuotaHintText = 'Квота — больше нуля, до 1024 ГБ';
 	const quotaPercentHintText = 'Процент диска — целое число от 1 до 100';
 	const instanceQuotaExplainHint =
-		'Действует одно: гигабайты или доля диска. Сохранение одного очищает другое. При упоре писать нельзя ни в один круг: ни текст, ни фото.';
+		'Действует одно из двух. Упрётся — писать нельзя ни в один круг.';
 
 	const selectedCircleId = $derived($page.url.searchParams.get('circle') ?? '');
 	const selectedCircle = $derived(circles.find((c) => c.id === selectedCircleId));
@@ -139,6 +139,13 @@
 			return CIRCLE_COLORS[c.color as CircleColor].cssVar;
 		}
 		return colorFor(c.id);
+	}
+
+	// Просьба о месте — цветом самого круга, как в таблице (раньше — цветом от хеша id).
+	function requestColor(id: string | undefined): string {
+		if (!id) return 'var(--line)';
+		const c = circles.find((x) => x.id === id);
+		return c ? colorForCircle(c) : colorFor(id);
 	}
 
 	function circleName(id: string): string {
@@ -398,7 +405,7 @@
 				<StackLegend
 					items={[
 						{
-							label: `круги — ${formatBytes(circlesBytes)}, цвета как в таблице ниже`,
+							label: `круги — ${formatBytes(circlesBytes)}`,
 							swatch:
 								'linear-gradient(90deg,var(--terracotta) 0 25%,var(--olive) 25% 50%,var(--indigo) 50% 75%,var(--ochre) 75%)'
 						},
@@ -455,8 +462,7 @@
 						{/if}
 					{/if}
 					<div class="fine mt-8">
-						Новые круги и те, у кого в таблице не «своя». Потолок инстанса при этом никто не
-						обходит.
+						Для новых кругов и тех, у кого в таблице не «своя».
 					</div>
 				</div>
 			</div>
@@ -550,7 +556,7 @@
 						{@const circle = circles.find((c) => c.id === req.circle_id)}
 						{@const prev = circle ? effectiveQuotaBytes(circle) : null}
 						<QuotaRequestRow
-							circleColor={req.circle_id ? colorFor(req.circle_id) : 'var(--line)'}
+							circleColor={requestColor(req.circle_id)}
 							circleName={req.circle_id
 								? circleName(req.circle_id)
 								: `${req.circle_name ?? 'Круг'} — оживляют из архива`}
@@ -558,15 +564,13 @@
 							previous={prev != null ? formatQuota(prev) : undefined}
 							requester={req.requester_email}
 							date={formatAdminDay(req.created_at)}
-							freeSpace={formatBytes(free)}
 							onapprove={() => giveQuota(req)}
 							onreject={() => void onReject(req.id)}
 						/>
 					{/each}
 				{/if}
 				<div class="faint lh-16 sz-11 mt-14">
-					Отказ ничего не ломает: владелец круга сам выберет отсечку и срок, скажет об этом людям
-					и освободит место. Ни отсечку, ни срок панель не двигает — этих кнопок здесь нет.
+					Отказ ничего не ломает: место освободит владелец круга.
 				</div>
 				<!-- 9.9: готовые полные архивы кругов — срок хранения и аварийная очистка. -->
 				<SectionLabel class="mt-26 mx-0">Готовые архивы</SectionLabel>
@@ -583,7 +587,7 @@
 				</CheckRow>
 				<CheckRow
 					name={`${formatBytes(archivesBytes)} · ${plural(archivesCount, WORD.file)}`}
-					description="Полные архивы кругов: собраны по просьбе владельцев и ждут скачивания; в квоты кругов не входят. Удаление круги и записи не трогает: владелец увидит, что файла нет, и соберёт архив снова."
+					description="Ждут, пока владельцы скачают; в квоты кругов не входят. Удаление круги не трогает: владелец соберёт архив снова."
 				>
 					{#snippet actions()}
 						<Button
@@ -602,8 +606,7 @@
 			{/if}
 			<!-- Про незашифрованное хранение — здесь, где диск (C44, слово владельца 2026-10-19). -->
 			<div class="fine mt-22 lh-16 top-line pt-14 mw-620">
-				Записи и медиа лежат на этом диске незашифрованными: вы можете прочитать любой круг. Людям
-				это сказано, когда они заводят здесь круг.
+				Записи и медиа хранятся на этом диске незашифрованными.
 			</div>
 		{/if}
 	</AdminSection>

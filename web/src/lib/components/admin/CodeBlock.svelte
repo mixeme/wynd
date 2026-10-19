@@ -2,6 +2,8 @@
 	export interface CodeLine {
 		text: string;
 		hi?: boolean;
+		/** Строка не про эту поломку — приглушена (9.12). */
+		dim?: boolean;
 		cmt?: string;
 	}
 </script>
@@ -25,8 +27,10 @@
 <div class="codeblk {className}" {style}>
 	{#if lines}
 		{#each lines as line, i (i)}
-			{#if line.hi}<span class="hi">{line.text}</span>{:else}{line.text}{/if}{#if line.cmt}<span
-					class="cmt">  # {line.cmt}</span
+			{#if line.hi}<span class="hi">{line.text}</span>{:else if line.dim}<span class="dim"
+					>{line.text}</span
+				>{:else}{line.text}{/if}{#if line.cmt}<span
+					class="cmt">{`  # ${line.cmt}`}</span
 				>{/if}{#if i < lines.length - 1}
 {'\n'}{/if}
 		{/each}

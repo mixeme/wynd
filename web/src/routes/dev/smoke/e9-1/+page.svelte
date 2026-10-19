@@ -24,7 +24,7 @@
 				<div style="flex:1;min-width:0;{cardStyle}">
 					<div style="font-weight:600;margin-bottom:6px">1 · Пароль администратора</div>
 					<div style={descStyle}>
-						Пароль для доступа в панель администратора. Можно сбросить через консоль.
+						Задайте пароль для панели администратора.
 					</div>
 					<Input admin type="password" value="••••••••••••" style="width:100%;box-sizing:border-box" />
 				</div>
@@ -40,7 +40,7 @@
 			</div>
 			<div style={cardStyle}>
 				<div style="font-weight:600;margin-bottom:6px">3 · Почта</div>
-				<div style={descStyle}>Люди входят по коду из письма. Почту можно настроить и позже в панели — до этого коды входа не уходят.</div>
+				<div style={descStyle}>Без SMTP люди не получат код для входа. Почту можно настроить позже.</div>
 				<div
 					style="display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center"
 				>

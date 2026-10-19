@@ -17,7 +17,6 @@
 		fetchInstance,
 		probeBootstrapSmtp
 	} from '$lib/auth/auth';
-	import { isLoopbackPublicURL } from '$lib/auth/origin';
 
 	const token = $derived(page.url.searchParams.get('token') ?? '');
 
@@ -29,7 +28,6 @@
 	let smtpPassword = $state('');
 	let smtpFrom = $state('');
 	let password = $state('');
-	let isLoopback = $state(true);
 	let loading = $state(false);
 	let smtpTesting = $state(false);
 	let smtpCheckedKey = $state('');
@@ -42,7 +40,6 @@
 		`${smtpHost}\0${smtpPort}\0${smtpUsername}\0${smtpPassword}\0${smtpFrom}`
 	);
 	const smtpOk = $derived(smtpCheckedKey !== '' && smtpCheckedKey === smtpKey);
-	const loopbackNow = $derived(publicUrl.trim() ? isLoopbackPublicURL(publicUrl) : isLoopback);
 
 	// Ошибка стоит над кнопкой, но на телефоне кнопку и её окрестность
 	// закрывают клавиатура и панель браузера: без прокрутки нажатие выглядит
@@ -61,7 +58,6 @@
 		}
 		try {
 			const instance = await fetchInstance('');
-			isLoopback = instance.loopback;
 			if (instance.bootstrapped) {
 				alreadyDone = true;
 			}
@@ -154,12 +150,10 @@
 			<Button onclick={() => goto('/admin')}>Открыть панель</Button>
 		{:else}
 			<div class="col gap-16">
-				<div class="flex gap-16 stretch col-narrow">
+				<div class="flex-top gap-16 col-narrow">
 					<Panel class="grow min0 pad-16">
 						<div class="bold mb-6">1 · Пароль администратора</div>
-						<div class="note mb-12 lh-15">
-							Пароль для доступа в панель администратора. Можно сбросить через консоль.
-						</div>
+						<div class="note mb-12 lh-15">Задайте пароль для панели администратора.</div>
 						<Input
 							admin
 							type="password"
@@ -196,11 +190,7 @@
 				<Panel class="pad-16">
 					<div class="bold mb-6">3 · Почта</div>
 					<div class="note mb-12 lh-15">
-						{#if loopbackNow}
-							На этом компьютере код входа пишется в окно сервера. Почту можно не указывать и настроить позже.
-						{:else}
-							Люди входят по коду из письма. Почту можно настроить и позже в панели — до этого коды входа не уходят.
-						{/if}
+						Без SMTP люди не получат код для входа. Почту можно настроить позже.
 					</div>
 					<div class="form-grid-2">
 						<SectionLabel raw class="m-0 sz-12 nowrap">Хост</SectionLabel>
