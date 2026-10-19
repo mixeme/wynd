@@ -80,9 +80,7 @@ export async function apiFetch(
 	if (!res.ok) {
 		const err = await parseApiError(res);
 		if (isPaymentRequired(err)) {
-			if (typeof window !== 'undefined' && !path.startsWith('/admin')) {
-				window.location.assign('/circles');
-			}
+			if (shouldOpenPaywall(path)) window.location.assign('/circles');
 		} else if (err.status === 403) {
 			const match = path.match(circlePathRe);
 			if (match) {
@@ -92,6 +90,19 @@ export async function apiFetch(
 		throw err;
 	}
 	return res;
+}
+
+/**
+ * Закрытые подпиской круги показывает «/circles». Туда уводим только из экранов
+ * участника: панель администратора живёт своим входом (иначе фоновая проверка
+ * сессии участника уводила админа без подписки из панели), а на самом
+ * «/circles» переход перезагружал бы страницу по кругу.
+ */
+export function shouldOpenPaywall(path: string, here?: string): boolean {
+	if (path.startsWith('/admin')) return false;
+	const at = here ?? (typeof window !== 'undefined' ? window.location.pathname : undefined);
+	if (at === undefined) return false;
+	return !at.startsWith('/admin') && at !== '/circles';
 }
 
 export function isPaymentRequired(err: unknown): err is ApiError & { code: 'payment_required' } {
