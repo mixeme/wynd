@@ -2,7 +2,7 @@
 	import AboutFooter from '$ui/data/AboutFooter.svelte';
 	import Meter from '$ui/forms/Meter.svelte';
 	import Panel from '$ui/admin/Panel.svelte';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import AdminSection from '$ui/admin/AdminSection.svelte';
@@ -379,10 +379,15 @@
 		circleQuotaHint = '';
 	});
 
-	onMount(() => {
+	onMount(async () => {
 		// Ссылка на исходники в футере — от этого же сервера (LIC-2).
 		loadSourceUrl();
-		void load();
+		await load();
+		// Письмо администратору о просьбе о месте ведёт сюда: /admin#requests.
+		if (location.hash === '#requests') {
+			await tick();
+			document.getElementById('requests')?.scrollIntoView({ block: 'start' });
+		}
 	});
 </script>
 
@@ -548,7 +553,7 @@
 				</Panel>
 			{/if}
 			{#if !selectedCircleId}
-				<SectionLabel class="mt-26 mx-0">Просят больше</SectionLabel>
+				<div id="requests"><SectionLabel class="mt-26 mx-0">Просят больше</SectionLabel></div>
 				{#if requests.length === 0}
 					<Hint>Запросов нет.</Hint>
 				{:else}

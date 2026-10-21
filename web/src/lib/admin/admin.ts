@@ -337,6 +337,26 @@ export interface SmtpSettings {
 	from: string;
 	configured: boolean;
 	test_sent_at?: string | null;
+	/** Куда писать администратору о просьбах о месте и заявках об оплате. */
+	admin_email?: string;
+}
+
+export async function saveAdminEmail(email: string): Promise<void> {
+	await adminJson('/admin/admin_email', {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ email })
+	});
+}
+
+/** Сколько ждёт решения администратора — счётчики в шапке панели. */
+export interface AdminPending {
+	quota_requests: number;
+	pay_requests: number;
+}
+
+export async function fetchAdminPending(): Promise<AdminPending> {
+	return adminJson('/admin/pending');
 }
 
 export async function fetchSmtp(): Promise<SmtpSettings> {

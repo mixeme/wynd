@@ -304,6 +304,9 @@ func (s *Server) handleCreateQuotaRequest(w http.ResponseWriter, r *http.Request
 			return
 		}
 	}
+	if status == "pending" {
+		s.notifyAdminQuota(id)
+	}
 	writeJSON(w, http.StatusCreated, map[string]string{"id": id, "status": status})
 }
 

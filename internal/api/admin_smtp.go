@@ -26,7 +26,13 @@ func (s *Server) handleAdminSMTP(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
+	adminEmail, err := s.Mail.AdminEmail(r.Context())
+	if err != nil {
+		writeError(w, err)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
+		"admin_email":  adminEmail,
 		"host":         cfg.Host,
 		"port":         cfg.Port,
 		"username":     cfg.Username,
@@ -60,6 +66,38 @@ func (s *Server) handleAdminSetSMTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// handleAdminSetAdminEmail — куда писать администратору (2026-10-21); пусто —
+// писем нет. Отдельно от SMTP: адрес можно задать и до настройки почты.
+func (s *Server) handleAdminSetAdminEmail(w http.ResponseWriter, r *http.Request) {
+	body, ok := bindJSON[struct {
+		Email string `json:"email"`
+	}](w, r)
+	if !ok {
+		return
+	}
+	if err := s.Mail.SetAdminEmail(r.Context(), body.Email); err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// handleAdminPending — сколько ждёт решения администратора: счётчики в шапке
+// панели (2026-10-21), видны и без почты.
+func (s *Server) handleAdminPending(w http.ResponseWriter, r *http.Request) {
+	quota, err := s.Blobs.ListPendingQuotaRequests(r.Context())
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	pay, err := s.Auth.ListPendingPayRequests(r.Context())
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]int{"quota_requests": len(quota), "pay_requests": len(pay)})
 }
 
 func (s *Server) handleAdminSMTPTest(w http.ResponseWriter, r *http.Request) {

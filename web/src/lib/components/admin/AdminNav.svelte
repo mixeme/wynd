@@ -18,11 +18,14 @@
 	let {
 		active = 'Хранилище',
 		links = false,
+		counts = {},
 		class: className = '',
 		style = ''
 	}: {
 		active?: AdminNavItem;
 		links?: boolean;
+		/** Сколько ждёт решения в разделе: просьбы о месте, заявки об оплате. */
+		counts?: Partial<Record<AdminNavItem, number>>;
 		class?: string;
 		style?: string;
 	} = $props();
@@ -36,7 +39,8 @@
 				class:on={active === item}
 				onclick={() => goto(ADMIN_HREF[item])}
 			>
-				{item}
+				{item}{#if counts[item]}<span class="wait" aria-label="ждут решения">{counts[item]}</span
+					>{/if}
 			</button>
 		{:else}
 			<span class:on={active === item}>{item}</span>

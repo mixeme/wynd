@@ -15,6 +15,7 @@
 		fetchAccess,
 		fetchSmtp,
 		saveAccess,
+		saveAdminEmail,
 		saveSmtp,
 		sendSmtpTest,
 		serverCaption
@@ -30,6 +31,7 @@
 	let smtpPassword = $state('');
 	let from = $state('');
 	let configured = $state(false);
+	let adminEmail = $state('');
 	let testTo = $state('');
 	let server = $state('');
 	let error = $state('');
@@ -81,6 +83,17 @@
 		} catch (err) {
 			error = authErrorHint(err);
 			return false;
+		}
+	}
+
+	async function persistAdminEmail() {
+		error = '';
+		notice = '';
+		try {
+			await saveAdminEmail(adminEmail.trim());
+			notice = 'Сохранено';
+		} catch (err) {
+			error = authErrorHint(err);
 		}
 	}
 
@@ -144,6 +157,7 @@
 			username = smtp.username;
 			from = smtp.from;
 			configured = smtp.configured;
+			adminEmail = smtp.admin_email ?? '';
 			server = caption;
 		} catch (err) {
 			error = authErrorHint(err);
@@ -176,6 +190,18 @@
 						loading={savingPassword}
 						onclick={() => void savePassword()}>Сохранить</TextButton
 					>
+					<SectionLabel class="mt-28 mx-0 mb-8">Письма администратору</SectionLabel>
+					<div class="note mb-12 lh-15">Сюда сервер пишет о заявках и поломках.</div>
+					<div class="flex-mid">
+						<Input
+							admin
+							mono
+							class="grow"
+							placeholder="почта"
+							bind:value={adminEmail}
+							onchange={() => void persistAdminEmail()}
+						/>
+					</div>
 					<SectionLabel class="mt-28 mx-0 mb-10">Имя и адрес</SectionLabel>
 					<AdminField label="Имя" width={88} class="mb-10">
 						<Input admin class="grow" bind:value={name} onchange={() => void persistName()} />

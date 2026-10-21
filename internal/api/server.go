@@ -134,6 +134,8 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("GET /api/v1/admin/smtp", admin(s.handleAdminSMTP))
 	s.Mux.HandleFunc("PUT /api/v1/admin/smtp", admin(s.handleAdminSetSMTP))
 	s.Mux.HandleFunc("POST /api/v1/admin/smtp/test", admin(s.handleAdminSMTPTest))
+	s.Mux.HandleFunc("GET /api/v1/admin/pending", admin(s.handleAdminPending))
+	s.Mux.HandleFunc("PUT /api/v1/admin/admin_email", admin(s.handleAdminSetAdminEmail))
 	s.Mux.HandleFunc("GET /api/v1/admin/push/vapid", admin(s.handleAdminVAPID))
 	s.Mux.HandleFunc("POST /api/v1/admin/push/test", admin(s.handleAdminPushTest))
 	s.Mux.HandleFunc("POST /api/v1/admin/check", admin(s.handleAdminCheck))

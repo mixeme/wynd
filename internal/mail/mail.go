@@ -534,7 +534,8 @@ func htmlBody(subject, body string) string {
 			b.WriteString("</p>")
 			continue
 		}
-		b.WriteString(`<p style="margin:0 0 12px">`)
+		// overflow-wrap: длинная ссылка переносится, а не уходит за край экрана телефона.
+		b.WriteString(`<p style="margin:0 0 12px;overflow-wrap:anywhere;word-break:break-word">`)
 		b.WriteString(strings.ReplaceAll(html.EscapeString(para), "\n", "<br>"))
 		b.WriteString("</p>")
 	}

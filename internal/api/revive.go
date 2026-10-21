@@ -158,6 +158,7 @@ func (s *Server) handleRevivePlaceRequest(w http.ResponseWriter, r *http.Request
 		writeError(w, err)
 		return
 	}
+	s.notifyAdminQuota(id)
 	writeJSON(w, http.StatusCreated, map[string]string{"id": id, "status": "pending"})
 }
 

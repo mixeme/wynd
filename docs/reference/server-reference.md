@@ -92,6 +92,7 @@
 
 ### Почта
 
+- **Письма администратору (2026-10-21, миграция 0004).** `instance_settings.admin_email`; `PUT /admin/admin_email` (`{email}`, пусто — писем нет), адрес отдаёт `GET /admin/smtp` (`admin_email`). Новая просьба о месте (`POST /circles/{id}/quota_requests` со статусом `pending`, `POST /revive/room` — для круга, которого здесь ещё нет) и новая заявка об оплате (`POST /pay/requests`) — письмо администратору в фоне (`api/admin_notify.go`, `mail/admin.go`); ссылки — `/admin#requests` и `/admin/pay/requests/{id}`. `GET /admin/pending` → `{quota_requests, pay_requests}` — числа у «Хранилища» и «Оплаты» в шапке панели (`AdminBar`). Письма о поломках сервера — следующим шагом (план 46, A10).
 - **SMTP / VAPID не настроены.** `mail.ErrNotConfigured` / `push.ErrNotConfigured` → 400 `smtp_not_configured` / `push_not_configured`, не 500.
 - **Сбой отправки** → 502 `smtp_failed`, где `detail` — **метка причины** (`dial` | `tls` | `starttls_required` | `auth` | `protocol`), а не ответ релея: сырая строка уходила в панель как есть, вместе с чужими именами хостов. Полный текст остаётся в журнале сервера (`mail.SendError`).
 - **Разговор с релеем.** Порт 465 — implicit TLS, иначе STARTTLS; не дольше 15 с. Вне localhost письмо не уходит без TLS: релей без STARTTLS — ошибка `STARTTLS required` (502). `MAIL FROM` и `RCPT` — envelope-адрес из «От кого» / получателя (display-name в угловых скобках срезается). CR/LF в адресах и теме заменяются пробелом до кодирования.

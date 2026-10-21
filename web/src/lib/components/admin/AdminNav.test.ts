@@ -33,4 +33,14 @@ describe('AdminNav', () => {
 		expect(buttons[2]?.classList.contains('on')).toBe(true);
 		unmount(instance);
 	});
+	it('shows what waits for a decision next to the section', () => {
+		const target = document.createElement('div');
+		const instance = mount(AdminNav, {
+			target,
+			props: { active: 'Доступ', links: true, counts: { Хранилище: 1, Оплата: 0 } }
+		});
+		const badges = [...target.querySelectorAll('.wait')].map((el) => el.textContent);
+		expect(badges).toEqual(['1']);
+		unmount(instance);
+	});
 });

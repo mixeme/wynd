@@ -207,6 +207,26 @@ func TestMigrateStreetGroupsOverPopulatedBase(t *testing.T) {
 	}
 }
 
+// 0004 добавляет почту администратора к заполненной настройке сервера:
+// прежние значения целы, новый столбец пуст — писем администратору нет.
+func TestMigrateAdminEmailOverPopulatedBase(t *testing.T) {
+	s := baseAt(t, 3)
+	if _, err := s.db.Exec(`INSERT OR IGNORE INTO instance_settings (id, updated_at) VALUES (1, '2026-10-01T00:00:00Z');
+		UPDATE instance_settings SET name = 'Дом Ани', smtp_host = 'smtp.test.local' WHERE id = 1`); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if err := migrate(s.db); err != nil {
+		t.Fatalf("migrate over populated base: %v", err)
+	}
+	var name, host, adminEmail string
+	if err := s.db.QueryRow(`SELECT name, smtp_host, admin_email FROM instance_settings WHERE id = 1`).Scan(&name, &host, &adminEmail); err != nil {
+		t.Fatal(err)
+	}
+	if name != "Дом Ани" || host != "smtp.test.local" || adminEmail != "" {
+		t.Fatalf("name %q, smtp_host %q, admin_email %q", name, host, adminEmail)
+	}
+}
+
 // Пропущенная миграция ниже уже применённой — отказ запуска, а не доливка
 // середины цепочки поверх более новой схемы (MIG-1).
 func TestMigrateRefusesSkippedVersion(t *testing.T) {

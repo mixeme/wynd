@@ -253,7 +253,7 @@ paths:
       summary: SMTP settings (password omitted)
       responses:
         "200":
-          description: SMTP config
+          description: SMTP config and admin_email
     put:
       summary: Save SMTP settings
       responses:
@@ -266,6 +266,20 @@ paths:
       responses:
         "200":
           description: OK
+
+  /admin/admin_email:
+    put:
+      summary: Where to mail the admin about space and payment requests (empty — no mail)
+      responses:
+        "200":
+          description: OK
+
+  /admin/pending:
+    get:
+      summary: What waits for the admin (quota_requests, pay_requests) — counters in the panel header
+      responses:
+        "200":
+          description: counts
 
   /admin/push/vapid:
     get:

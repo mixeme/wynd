@@ -36,6 +36,7 @@ func (s *Server) handleCreatePayRequest(w http.ResponseWriter, r *http.Request) 
 		writeError(w, err)
 		return
 	}
+	s.notifyAdminPay(id)
 	writeJSON(w, http.StatusCreated, map[string]string{"id": id})
 }
 
