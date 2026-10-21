@@ -156,11 +156,11 @@
 					{/each}
 				</ChipGroup>
 				<div class="note mt-8 lh-15">
-					За столько дней до конца — письмо и строка на улочке. По умолчанию семь.
+					Придёт письмо и строка в списке кругов.
 				</div>
 				<SectionLabel class="mt-22 mx-0 mb-8">Заявки</SectionLabel>
 				{#if requests.length === 0}
-					<Hint>Очередь пуста.</Hint>
+					<Hint>Заявок нет.</Hint>
 				{:else}
 					<DataTable>
 						<tr>
@@ -222,11 +222,6 @@
 						{/each}
 					</DataTable>
 				{/if}
-			{:else}
-				<div class="note lh-15">
-					Напоминания и очереди нет: спрашивать оплату некого. Реквизиты остаются на «Оплате» — ими
-					пользуется баннер.
-				</div>
 			{/if}
 			{#if error}
 				<Hint class="mt-12">{error}</Hint>

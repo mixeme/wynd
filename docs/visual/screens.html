@@ -5156,7 +5156,6 @@
           <div style="margin-top:4px;font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted)">2200 20•• •••• 4412</div>
           <div style="margin-top:6px;font-size:12.5px;color:var(--muted)">В назначении: wynd, anya@example.com</div>
         </div>
-        <div style="font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.5">Когда круги закрыты, когда человек продлевает и когда открывает баннер.</div>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:12px;margin-top:22px;padding:13px 0;border-top:1px solid var(--line)">
@@ -5175,7 +5174,7 @@
     </div>
   </div>
 </div>
-<span class="num">10.10</span><b>Оплата</b><i>Сначала реквизиты — без них нечего прикладывать к заявке и некуда слать донат. Дальше две строки с шевроном, в этом порядке: сбор, подписка. Очереди и переключателя шлюза здесь нет — они на 10.14. Превью справа — та же карточка, что на 10.1, 10.6 и 10.8.</i></figure>
+<span class="num">10.10</span><b>Оплата</b><i>Сначала реквизиты — без них нечего прикладывать к заявке и некуда слать донат. Дальше две строки с шевроном, в этом порядке: сбор, подписка. Очереди и переключателя шлюза здесь нет — они на 10.14. Превью справа — та же карточка, что на 10.1, 10.6 и 10.8. C44, 2026-10-21: без строки «Когда круги закрыты…»; пока реквизитов нет — «Пока реквизитов нет, подписка не действует и баннер не показывается.» (так в коде: без реквизитов круги не закрываются).</i></figure>
 <figure class="s" id="e10-11" style="width:820px"><div class="ph wide shell" style="height:420px">
   <div class="admbar">
     <svg class="mk" viewBox="-21.67 -31.8 42.9 64.47" aria-label="Wynd" role="img"><use href="#mark" fill="currentColor" x="-21.67" y="-31.8" width="42.9" height="64.47"/></svg>
@@ -5195,10 +5194,9 @@
         <div style="font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.5">Круги открыты. Платить не нужно.</div>
       </div>
     </div>
-    <div style="font-size:12.5px;color:var(--muted);line-height:1.5">Напоминания и очереди нет: спрашивать оплату некого. Реквизиты остаются на «Оплате» — ими пользуется баннер. Включить — снова 10.14.</div>
   </div>
 </div>
-<span class="num">10.11</span><b>Подписка выключена</b><i>Тот же экран 10.14, переключатель выключен. Очереди нет и списка со статусом нет: спрашивать оплату некого. Назад — на хаб 10.10, где реквизиты и строка сбора на месте.</i></figure>
+<span class="num">10.11</span><b>Подписка выключена</b><i>Тот же экран 10.14, переключатель выключен. Очереди нет и списка со статусом нет: спрашивать оплату некого. Назад — на хаб 10.10, где реквизиты и строка сбора на месте. C44, 2026-10-21: напоминание — «Придёт письмо и строка в списке кругов.»; выключена — без строки «Напоминания и очереди нет…»; пустая очередь — «Заявок нет.»</i></figure>
 <figure class="s" id="e10-12" style="width:820px"><div class="ph wide shell" style="height:540px">
   <div class="admbar">
     <svg class="mk" viewBox="-21.67 -31.8 42.9 64.47" aria-label="Wynd" role="img"><use href="#mark" fill="currentColor" x="-21.67" y="-31.8" width="42.9" height="64.47"/></svg>
@@ -5249,23 +5247,22 @@
       <div>
         <div class="lab" style="margin:0 0 8px">Баннер в списке кругов</div>
         <div class="ta" style="margin:0;height:88px;color:var(--ink);white-space:pre-wrap">Сервер живёт на домашнем диске Ани. Если пользуетесь — можно помочь с электричеством и доменом.</div>
-        <div style="font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.5">Без сумм и без прогресса. Один баннер.</div>
       </div>
       <div>
         <div style="display:flex;align-items:flex-start;gap:12px">
           <span class="sw on" style="--c:var(--ink);margin-top:2px"></span>
-          <div><div style="font-size:13.5px;font-weight:600">Показывать</div><div style="font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.5">Выключить можно раньше срока. Баннер не связан с подпиской.</div></div>
+          <div><div style="font-size:13.5px;font-weight:600">Показывать</div></div>
         </div>
         <div style="display:flex;align-items:flex-start;gap:12px;margin-top:18px">
           <span class="sw on" style="--c:var(--ink);margin-top:2px"></span>
-          <div><div style="font-size:13.5px;font-weight:600">Можно скрыть</div><div style="font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.5">Скрытие постоянное, пока не выйдет новый баннер.</div></div>
+          <div><div style="font-size:13.5px;font-weight:600">Можно скрыть</div><div style="font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.5">Каждый сможет скрыть баннер у себя. Скрытый не вернётся, пока не выйдет новый.</div></div>
         </div>
         <div style="display:flex;align-items:center;gap:10px;margin-top:18px"><span style="font-size:12.5px">До</span><span class="inp">1 ноября 2026</span></div>
       </div>
     </div>
   </div>
 </div>
-<span class="num">10.13</span><b>Сбор</b><i>Строка с 10.10. Пункта «Сбор» в навбаре нет, активна «Оплата». Реквизитов здесь нет — они общие, на экране выше. Баннер не связан с подпиской. Срок «До» необязателен: рядом с датой — ссылка «убрать срок», без даты — «без срока — пока не выключите».</i></figure>
+<span class="num">10.13</span><b>Сбор</b><i>Строка с 10.10. Пункта «Сбор» в навбаре нет, активна «Оплата». Реквизитов здесь нет — они общие, на экране выше. Баннер не связан с подпиской. Срок «До» необязателен: рядом с датой — ссылка «убрать срок», без даты — «без срока — пока не выключите». C44, 2026-10-21: без «Без сумм и без прогресса»; под «Показывать» текста нет; «Можно скрыть» — «Каждый сможет скрыть баннер у себя. Скрытый не вернётся, пока не выйдет новый.»; у срока — «без срока».</i></figure>
 <figure class="s" id="e10-14" style="width:820px"><div class="ph wide shell" style="height:920px">
   <div class="admbar">
     <svg class="mk" viewBox="-21.67 -31.8 42.9 64.47" aria-label="Wynd" role="img"><use href="#mark" fill="currentColor" x="-21.67" y="-31.8" width="42.9" height="64.47"/></svg>
@@ -5287,7 +5284,7 @@
     </div>
     <div class="lab" style="margin:0 0 8px">Напомнить об истечении</div>
     <div class="chips" style="margin:0"><span class="chip">За сутки</span><span class="chip">За 3 дня</span><span class="chip on">За 7 дней</span></div>
-    <div style="font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.5">За столько дней до конца — письмо и строка на улочке. По умолчанию семь.</div>
+    <div style="font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.5">Придёт письмо и строка в списке кругов.</div>
     <div class="lab" style="margin:22px 0 8px">Заявки</div>
     <table class="tbl">
       <tr><th>Почта</th><th>Когда</th><th>Скрин</th><th>Комментарий</th><th></th></tr>

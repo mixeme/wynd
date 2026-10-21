@@ -78,16 +78,11 @@
 				<div>
 					<SectionLabel class="mt-0 mx-0 mb-8">Баннер в списке кругов</SectionLabel>
 					<TextArea class="m-0 h-88 ink" bind:value={settings.text} />
-					<div class="note mt-8 lh-15">
-						Без сумм и без прогресса. Один баннер.
-					</div>
 				</div>
 				<div>
-					<SwitchRow bind:checked={settings.show} title="Показывать">
-						Выключить можно раньше срока. Баннер не связан с подпиской.
-					</SwitchRow>
+					<SwitchRow bind:checked={settings.show} title="Показывать" />
 					<SwitchRow bind:checked={settings.dismissible} title="Можно скрыть" class="mt-18">
-						Скрытие постоянное, пока не выйдет новый баннер.
+						Каждый сможет скрыть баннер у себя. Скрытый не вернётся, пока не выйдет новый.
 					</SwitchRow>
 					<div class="flex-mid gap-10 mt-18">
 						<span class="sz-12">До</span>
@@ -103,7 +98,7 @@
 								>убрать срок</TextButton
 							>
 						{:else}
-							<span class="note">без срока — пока не выключите</span>
+							<span class="note">без срока</span>
 						{/if}
 					</div>
 				</div>
