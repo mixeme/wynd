@@ -57,7 +57,7 @@
 			return {
 				id: 'push_test',
 				status: pushFailed ? 'warn' : 'ok',
-				title: 'Тестовый пуш',
+				title: 'Пробное уведомление',
 				detail: pushDetail
 			};
 		}
@@ -92,7 +92,7 @@
 <AdminWideLayout app active="Проверка" {server}>
 	<AdminSection>
 		{#if loading && !checks.length}
-			<Hint>Проверяем инстанс…</Hint>
+			<Hint>Проверяем сервер…</Hint>
 		{:else if error}
 			<Hint>{error}</Hint>
 		{:else}
@@ -127,7 +127,7 @@
 									{#snippet actions()}
 										{#if proxyFixId(id) && (row.status === 'fail' || row.status === 'warn')}
 											<TextButton variant="admin" onclick={() => goto(`/admin/fix?fail=${id}`)}>
-												Показать конфиг
+												Показать вставку
 											</TextButton>
 										{/if}
 									{/snippet}

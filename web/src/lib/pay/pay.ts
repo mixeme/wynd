@@ -109,7 +109,7 @@ export function payGatewayPendingHint(status: PayStatus): string {
 }
 
 export function payGatewayPendingSubtitle(status: PayStatus): string {
-	const file = status.pending_blob_filename || 'скриншот';
+	const file = status.pending_blob_filename || 'снимок экрана';
 	const comment = status.pending_comment
 		? ` · ${status.pending_comment}`
 		: ' · без комментария можно было';

@@ -30,10 +30,10 @@ export function checkSubtitle(checks: CheckResult[]): string {
 	const failed = failedChecks(checks);
 	const proxyFails = failed.filter((c) => PROXY_IDS.has(c.id));
 	if (failed.length === 2 && proxyFails.length === 2) {
-		return 'Обе про прокси и обе чинятся одной вставкой в конфиг. Остальное в порядке.';
+		return 'Обе про прокси и обе чинятся одной вставкой. Остальное в порядке.';
 	}
 	if (proxyFails.length > 0 && proxyFails.length === failed.length) {
-		return 'Все поломки про прокси и чинятся одной вставкой в конфиг.';
+		return 'Все поломки про прокси и чинятся одной вставкой.';
 	}
 	return '';
 }
@@ -62,7 +62,7 @@ export const CHECK_GROUPS: { label: string; ids: string[] }[] = [
 		ids: ['mail']
 	},
 	{
-		label: 'Пуши',
+		label: 'Уведомления',
 		ids: ['vapid_keys', 'push_test']
 	},
 	{

@@ -201,7 +201,7 @@ export function audioFallbackReason(err: unknown): string {
 			return 'сжатие вернуло пустой файл';
 	}
 	if (typeof globalThis.AudioEncoder === 'undefined') {
-		return 'в браузере нет кодировщика звука (WebCodecs)';
+		return 'этот браузер не умеет сжимать звук';
 	}
 	return 'сжатие прервалось с ошибкой';
 }
@@ -222,7 +222,7 @@ export function videoFallbackReason(err: unknown): string {
 			return 'сжатие вернуло пустой файл';
 	}
 	if (typeof globalThis.VideoEncoder === 'undefined') {
-		return 'в браузере нет кодировщика видео (WebCodecs)';
+		return 'этот браузер не умеет сжимать видео';
 	}
 	return 'сжатие прервалось с ошибкой';
 }

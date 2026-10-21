@@ -59,6 +59,6 @@ func (s *Service) SendAdminPayRequest(ctx context.Context, requester, comment, l
 	if c := strings.TrimSpace(comment); c != "" {
 		body += fmt.Sprintf(" Комментарий: «%s».", c)
 	}
-	body += fmt.Sprintf("\n\nПосмотреть скриншот и ответить можно в панели:\n%s\n", link)
+	body += fmt.Sprintf("\n\nПосмотреть снимок экрана и ответить можно в панели:\n%s\n", link)
 	return s.notify(ctx, to, subject, body)
 }

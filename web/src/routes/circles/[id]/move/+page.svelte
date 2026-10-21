@@ -134,7 +134,7 @@
 		<Label>Что происходит</Label>
 		<SettingsRow
 			icon="check"
-			title={`Круг поднят на ${dest}`}
+			title={`Круг переехал на ${dest}`}
 			subtitle={`${at(move.accepted_at)} · сверено: ${plural(move.accepted_posts ?? 0, WORD.post)}, ${plural(move.accepted_names ?? 0, WORD.name)}, ${formatBytes(move.accepted_bytes ?? 0)}`}
 			chevron={false}
 			divided="both"

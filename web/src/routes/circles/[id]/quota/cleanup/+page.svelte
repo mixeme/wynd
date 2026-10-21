@@ -150,7 +150,7 @@
 			</Button>
 		{/if}
 	{:else}
-		<Label>Сколько освободит отсечка · {STEP_LABEL[volumeStep]}</Label>
+		<Label>Сколько освободится · {STEP_LABEL[volumeStep]}</Label>
 		<VolumeChart
 			{volume}
 			startLabel={axisStart}

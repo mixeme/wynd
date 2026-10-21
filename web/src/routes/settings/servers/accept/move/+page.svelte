@@ -50,7 +50,7 @@
 	const MB = 1024 * 1024;
 	// У сервера на своём адресе origin — пустая строка: не проверять как истину.
 	const origin = $page.url.searchParams.get('origin') ?? '';
-	// Ссылка «поднимите свой» ведёт на исходники этого сервера (LIC-2).
+	// Ссылка «запустите свой» ведёт на исходники этого сервера (LIC-2).
 	$effect(() => {
 		loadSourceUrl(origin);
 	});
@@ -259,7 +259,7 @@
 		/>
 		<Label class="mt-16">Что происходит</Label>
 		{#if move.status === 'reviving'}
-			<Hint class="ink">Круг здесь. Сервер поднимает его и сверяет с прежним.</Hint>
+			<Hint class="ink">Круг здесь. Сервер переносит его и сверяет с прежним.</Hint>
 		{:else}
 			<Meter value={move.circle.bytes ? Math.min(1, move.pulled_bytes / move.circle.bytes) : 0} max={1} />
 			<Hint class="mt-8">
@@ -285,7 +285,7 @@
 		{#if !move || move.fits}
 			<Hint>
 				Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или
-				<a class="under" href={sourceUrl(origin)}>поднимите свой</a>.
+				<a class="under" href={sourceUrl(origin)}>запустите свой</a>.
 			</Hint>
 		{/if}
 		<Label class="mt-16">Ссылка переноса</Label>
@@ -354,7 +354,7 @@
 					</Hint>
 				{/if}
 				<Button class="mt-14" variant="colored" loading={busy} onclick={() => void start()}>
-					Поднять круг
+					Перенести круг
 				</Button>
 				<Hint class="mt-8 ctr-text">Сервер заберёт круг сам. Приложение можно закрыть.</Hint>
 			{:else if move.request?.status === 'pending'}
@@ -362,7 +362,7 @@
 				<StatusCard
 					class="mt-14"
 					title="Место попросили"
-					text={`${day(move.request.created_at)} вы попросили у администратора ${formatBytes(move.request.requested_bytes)} для этого круга. Ответ администратора придёт письмом. Когда место дадут, здесь появится кнопка «Поднять круг».`}
+					text={`${day(move.request.created_at)} вы попросили у администратора ${formatBytes(move.request.requested_bytes)} для этого круга. Ответ администратора придёт письмом. Когда место дадут, здесь появится кнопка «Перенести круг».`}
 				/>
 				<Hint class="mt-10">{@render deadline()}</Hint>
 				<Hint class="mt-14 ctr-text">Можно уйти и вернуться позже: просьба и ссылка останутся.</Hint>

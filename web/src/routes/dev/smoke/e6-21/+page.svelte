@@ -15,10 +15,10 @@
 <PhoneFrame color="terracotta">
 	<StatusBar />
 	<CircleBar title="Сроки архивации" tabs={false} />
-	<Label>Отсечка</Label>
+	<Label>Архивировать всё до</Label>
 	<FieldDisplay value="1 июня 2025" active />
 	<Hint>
-		Пока никто не скачал архив, отсечку можно сдвинуть.
+		Пока никто не скачал архив, эту дату можно сдвинуть.
 	</Hint>
 	<Label style="margin-top:18px">Скачать до</Label>
 	<FieldDisplay value="20 сентября 2026" active />

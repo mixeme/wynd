@@ -72,7 +72,7 @@
 		error = '';
 		smtpCheckedKey = '';
 		if (!token) {
-			error = 'Нет токена в ссылке — откройте URL из лога установки';
+			error = 'Ссылка неполная — откройте ту, что напечатала установка';
 			return;
 		}
 		const host = smtpHost.trim();
@@ -103,7 +103,7 @@
 		error = '';
 		smtpCheckedKey = '';
 		if (!token) {
-			error = 'Нет токена в ссылке — откройте URL из лога установки';
+			error = 'Ссылка неполная — откройте ту, что напечатала установка';
 			return;
 		}
 		if (!password) {
@@ -142,7 +142,7 @@
 </script>
 
 <AdminWideLayout app height="auto" nav={false}>
-	<AdminSection title="Сервер поднят">
+	<AdminSection title="Сервер запущен">
 		{#if !ready}
 			<Hint>Проверяем сервер…</Hint>
 		{:else if alreadyDone}

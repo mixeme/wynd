@@ -15,7 +15,7 @@
 			<div style="flex:1">
 				<h4 style="margin-bottom:5px">Две проверки не прошли</h4>
 				<div style="font-size:12.5px;color:var(--muted)">
-					Обе про прокси и обе чинятся одной вставкой в конфиг. Остальное в порядке.
+					Обе про прокси и обе чинятся одной вставкой. Остальное в порядке.
 				</div>
 			</div>
 			<div style="text-align:right">
@@ -54,7 +54,7 @@
 					description="X-Forwarded-For не приходит: «три попытки» на код считаются всем сразу"
 				>
 					{#snippet actions()}
-						<TextButton variant="admin" onclick={() => {}}>Показать конфиг</TextButton>
+						<TextButton variant="admin" onclick={() => {}}>Показать вставку</TextButton>
 					{/snippet}
 				</CheckRow>
 				<CheckRow
@@ -64,7 +64,7 @@
 					description="1 МБ: фотография 2048 px вернётся с 413"
 				>
 					{#snippet actions()}
-						<TextButton variant="admin" onclick={() => {}}>Показать конфиг</TextButton>
+						<TextButton variant="admin" onclick={() => {}}>Показать вставку</TextButton>
 					{/snippet}
 				</CheckRow>
 				<CheckRow
@@ -78,13 +78,13 @@
 			<div>
 				<SectionLabel style="margin:0 0 6px">Почта</SectionLabel>
 				<CheckRow status="ok" name="Письмо" description="ушло 2 минуты назад" />
-				<SectionLabel style="margin:16px 0 6px">Пуши</SectionLabel>
+				<SectionLabel style="margin:16px 0 6px">Уведомления</SectionLabel>
 				<CheckRow status="ok" name="VAPID-ключи" description="созданы при установке">
 					{#snippet actions()}
 						<TextButton variant="admin" onclick={() => {}}>Скачать копию</TextButton>
 					{/snippet}
 				</CheckRow>
-				<CheckRow status="ok" name="Тестовый пуш" description="отправили на этот браузер">
+				<CheckRow status="ok" name="Пробное уведомление" description="отправили на этот браузер">
 					{#snippet actions()}
 						<TextButton variant="admin" onclick={() => {}}>Отправить</TextButton>
 					{/snippet}

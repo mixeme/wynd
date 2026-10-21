@@ -235,7 +235,7 @@
 		<Button {loading} disabled={!instance} onclick={onSubmit}>Получить код</Button>
 		<Hint>
 			Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или
-			<a class="under" href={sourceUrl(origin)}>поднимите свой</a>.
+			<a class="under" href={sourceUrl(origin)}>запустите свой</a>.
 		</Hint>
 	{/if}
 	<Label class="mt-22">Есть приглашение</Label>

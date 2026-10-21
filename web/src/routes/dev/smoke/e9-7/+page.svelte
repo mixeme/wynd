@@ -81,7 +81,7 @@
 			</tbody>
 		</DataTable>
 		<div style="display:flex;align-items:center;gap:14px;margin-top:26px;flex-wrap:wrap">
-			<span style="font-size:13.5px;font-weight:600;width:168px;flex:0 0 auto">Потолок инстанса</span>
+			<span style="font-size:13.5px;font-weight:600;width:168px;flex:0 0 auto">Предел сервера</span>
 			<InlineInput><span style="color:var(--faint)">40 ГБ</span></InlineInput>
 			<span style="font-size:12.5px;color:var(--muted)">или</span>
 			<InlineInput>80% диска</InlineInput>

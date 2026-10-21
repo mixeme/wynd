@@ -64,7 +64,7 @@
 		<Hint class="gutter">Сначала передайте владение — пока вы владелец, уйти нельзя.</Hint>
 	{:else}
 		<Hint class="gutter"
-			>Записи останутся в «{circle.name}» под именем «{circle.identityName}». В хронике будет
+			>Записи останутся в «{circle.name}» под именем «{circle.identityName}». В хронологии будет
 			«покинул круг» — так же, как если бы вас исключили.</Hint
 		>
 		<Label class="mt-22">Как уйти</Label>

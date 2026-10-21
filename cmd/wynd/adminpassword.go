@@ -59,7 +59,7 @@ func runAdminPassword(args []string) {
 	case errors.Is(err, auth.ErrWeakPassword):
 		log.Fatalf("admin-password: пароль короче %d знаков", auth.MinPasswordLen)
 	case errors.Is(err, auth.ErrNotFound):
-		log.Fatalf("admin-password: инстанс ещё не установлен — задайте пароль на странице первого запуска")
+		log.Fatalf("admin-password: сервер ещё не установлен — задайте пароль на странице первого запуска")
 	case err != nil:
 		log.Fatalf("admin-password: %v", err)
 	}

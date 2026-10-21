@@ -140,7 +140,7 @@
 </script>
 
 <FormLayout app color={circle.color} title="Сроки архивации" onback={goBack}>
-	<Label>Отсечка</Label>
+	<Label>Архивировать всё до</Label>
 	{#if activeCycle && cutoffLocked}
 		<SettingsRow
 			title={cutoffTitle}
@@ -149,7 +149,7 @@
 			chevron={false}
 			divided="both"
 		/>
-		<Hint>Кто-то уже скачал архив — отсечку не сдвинуть.</Hint>
+		<Hint>Кто-то уже скачал архив — эту дату не сдвинуть.</Hint>
 	{:else}
 		<Input
 			active
@@ -157,7 +157,7 @@
 			bind:value={cutoffDate}
 			onchange={() => void loadCutoffStats(cutoffDate)}
 		/>
-		<Hint>Пока никто не скачал архив, отсечку можно сдвинуть.</Hint>
+		<Hint>Пока никто не скачал архив, эту дату можно сдвинуть.</Hint>
 	{/if}
 	<Label>Скачать до</Label>
 	<Input active type="date" min={minDeadline()} bind:value={deadline} />

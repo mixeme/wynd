@@ -20,7 +20,7 @@
 		form.sessions.find((s) => s.origin === form.selectedOrigin)
 	);
 
-	// Ссылка «поднимите свой» ведёт на исходники выбранного сервера (LIC-2).
+	// Ссылка «запустите свой» ведёт на исходники выбранного сервера (LIC-2).
 	$effect(() => {
 		loadSourceUrl(form.selectedOrigin);
 	});
@@ -66,7 +66,7 @@
 	{/if}
 	<Hint class="mt-0">
 		Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или
-		<a class="under" href={sourceUrl(form.selectedOrigin)}>поднимите свой</a>.
+		<a class="under" href={sourceUrl(form.selectedOrigin)}>запустите свой</a>.
 	</Hint>
 	<Label>Название</Label>
 	<Input active type="text" bind:value={form.name} />

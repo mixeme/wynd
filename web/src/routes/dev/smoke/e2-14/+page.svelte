@@ -25,7 +25,7 @@
 	/>
 	<Hint style="margin-top:0">
 		Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или
-		<a class="under" href="https://github.com/mixeme/wynd">поднимите свой</a>.
+		<a class="under" href="https://github.com/mixeme/wynd">запустите свой</a>.
 	</Hint>
 	<Label>Название</Label>
 	<FieldDisplay value="Дача" active />

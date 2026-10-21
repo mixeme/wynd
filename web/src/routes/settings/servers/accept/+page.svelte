@@ -50,7 +50,7 @@
 	const MB = 1024 * 1024;
 	// У сервера на своём адресе origin — пустая строка: не проверять как истину.
 	const origin = $page.url.searchParams.get('origin') ?? '';
-	// Ссылка «поднимите свой» ведёт на исходники этого сервера (LIC-2).
+	// Ссылка «запустите свой» ведёт на исходники этого сервера (LIC-2).
 	$effect(() => {
 		loadSourceUrl(origin);
 	});
@@ -257,7 +257,7 @@
 		/>
 		<Hint>
 			Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или
-			<a class="under" href={sourceUrl(origin)}>поднимите свой</a>.
+			<a class="under" href={sourceUrl(origin)}>запустите свой</a>.
 		</Hint>
 		<Label class="mt-16">Архив</Label>
 		<CircleRow

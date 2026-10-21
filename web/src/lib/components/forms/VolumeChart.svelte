@@ -164,7 +164,7 @@
 			aria-valuemax={volume.length - 1}
 			aria-valuenow={lastIndex ?? indexAtX(cutoffX)}
 			aria-valuetext={cutoffLabel || undefined}
-			aria-label="Отсечка архива"
+			aria-label="Архивировать всё до"
 			onkeydown={onKeydown}
 			onpointerdown={onPointerDown}
 			onpointermove={onPointerMove}

@@ -419,7 +419,7 @@
 				/>
 			{/if}
 			<div class="flex-mid gap-14 wrap mt-26">
-				<span class="ttl flab">Потолок инстанса</span>
+				<span class="ttl flab">Предел сервера</span>
 				<Input
 					admin
 					class="w88"

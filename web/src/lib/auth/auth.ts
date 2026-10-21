@@ -26,7 +26,7 @@ export interface VerifyResult {
 
 export const AUTH_ERROR_HINTS: Record<string, string> = {
 	invalid: 'Проверьте адрес и попробуйте снова',
-	not_found: 'Аккаунт с такой почтой не найден',
+	not_found: 'Учётной записи с такой почтой нет',
 	forbidden: 'Нет доступа',
 	registration_closed: 'Сервер не принимает новых участников',
 	closed: 'Сервер не принимает новых участников',

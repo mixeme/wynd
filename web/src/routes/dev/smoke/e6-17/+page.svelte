@@ -25,7 +25,7 @@
 		subtitle="шаг необязательный — можно сразу к отсечке"
 		style="margin-top:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"
 	/>
-	<Label style="margin-top:18px">Сколько освободит отсечка</Label>
+	<Label style="margin-top:18px">Сколько освободится</Label>
 	<VolumeChart />
 	<Label style="margin-top:14px">Архивировать всё до</Label>
 	<FieldDisplay value="1 июня 2025" active />

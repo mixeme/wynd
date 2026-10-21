@@ -427,7 +427,7 @@
 				<PhoneFrame color="terracotta" height="360px">
 					<StatusBar />
 					<CircleBar title="Архив" tabs={false} />
-					<Label style="margin-top:8px">Сколько освободит отсечка</Label>
+					<Label style="margin-top:8px">Сколько освободится</Label>
 					<VolumeChart
 						volume={demoVolume}
 						cutoffLabel={demoCutoffLabel}

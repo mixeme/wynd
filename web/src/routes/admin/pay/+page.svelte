@@ -27,7 +27,7 @@
 
 	function donateSubtitle(data: PayHub): string {
 		if (!data.donate.show) return 'выключен';
-		const parts = ['баннер в списке кругов'];
+		const parts = ['объявление в списке кругов'];
 		if (data.donate.until) parts.push(`до ${formatPayDate(data.donate.until)}`);
 		return parts.join(' · ');
 	}

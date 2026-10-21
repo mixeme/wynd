@@ -18,7 +18,7 @@
 </script>
 
 <AdminWideLayout app height="660px" nav={false}>
-	<AdminSection title="Сервер поднят">
+	<AdminSection title="Сервер запущен">
 		<div style="display:flex;flex-direction:column;gap:16px">
 			<div style="display:flex;gap:16px;align-items:stretch">
 				<div style="flex:1;min-width:0;{cardStyle}">
