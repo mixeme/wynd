@@ -84,9 +84,9 @@
 		{:else if capped}
 			<!-- Отказ (6.20) виден до новой просьбы или отсечки. -->
 			<SettingsRow
-				title="Попросить у администратора"
+				title="Попросить место"
 				subtitle={lastRequest?.status === 'rejected'
-					? `${formatSessionDay(lastRequest.resolved_at ?? lastRequest.created_at)} администратор отказал в ${formatBytes(lastRequest.requested_bytes)}. Можно попросить ещё раз`
+					? `${formatSessionDay(lastRequest.resolved_at ?? lastRequest.created_at)} администратор отказал в ${formatBytes(lastRequest.requested_bytes)}`
 					: 'больше места для круга'}
 				class="mt-10"
 				divided="both"

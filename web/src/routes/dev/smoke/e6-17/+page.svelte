@@ -21,7 +21,7 @@
 		>10 ГБ из 10 ГБ · писать в круг больше нельзя</Hint
 	>
 	<SettingsRow
-		title="Попросить у администратора"
+		title="Попросить место"
 		subtitle="шаг необязательный — можно сразу к отсечке"
 		style="margin-top:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"
 	/>
