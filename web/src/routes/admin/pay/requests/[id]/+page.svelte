@@ -10,6 +10,7 @@
 	import Loading from '$ui/Loading.svelte';
 	import Icon from '$ui/Icon.svelte';
 	import Input from '$ui/forms/Input.svelte';
+	import Lightbox from '$ui/overlays/Lightbox.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
@@ -34,6 +35,8 @@
 
 	let request = $state<PayRequest | undefined>();
 	let thumb = $state('');
+	// Снимок заявки на весь экран — по нажатию на миниатюру.
+	let fullShot = $state(false);
 	let days = $state(90);
 	let customDays = $state('');
 	let custom = $state(false);
@@ -54,7 +57,7 @@
 	});
 
 	const extendHint = $derived(
-		payExtendHint(request?.subscription_expires_at ?? null, 'request')
+		payExtendHint(request?.subscription_expires_at ?? null)
 	);
 
 	const statusSubtitle = $derived(
@@ -149,11 +152,9 @@
 			<div class="cols">
 				<div>
 					{#if thumb}
-						<img
-							src={thumb}
-							alt=""
-							class="shot"
-						/>
+						<button type="button" class="shot-btn" aria-label="Открыть снимок" onclick={() => (fullShot = true)}>
+							<img src={thumb} alt="" class="shot" />
+						</button>
 					{/if}
 					{#if request.blob_filename}
 						<div class="sz-11 faint mt-8">
@@ -228,6 +229,14 @@
 		{/if}
 	</AdminSection>
 </AdminWideLayout>
+
+{#if fullShot && thumb}
+	<Lightbox fixed onclose={() => (fullShot = false)}>
+		{#snippet media()}
+			<img src={thumb} alt="" />
+		{/snippet}
+	</Lightbox>
+{/if}
 
 <style>
 	.cols {

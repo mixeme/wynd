@@ -3603,7 +3603,17 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 	border-radius: 12px;
 	display: block;
 	aspect-ratio: 4 / 3;
-	object-fit: cover;
+	/* снимок заявки целиком: скриншот телефона высокий, обрезка прятала сумму */
+	object-fit: contain;
+	background: var(--line);
+}
+.shot-btn {
+	display: block;
+	width: 100%;
+	padding: 0;
+	border: 0;
+	background: none;
+	cursor: zoom-in;
 }
 
 /* План 47 (хвост сверки): инлайн-стили экранов → классы. margin повторяет

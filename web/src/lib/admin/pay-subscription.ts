@@ -46,20 +46,14 @@ export function subscriptionPeopleLine(iso: string | null | undefined): string {
 	return `подписка истекла ${formatPayDate(iso)}`;
 }
 
-export function payExtendHint(
-	expiresAt: string | null | undefined,
-	kind: 'request' | 'grant'
-): string {
-	if (kind === 'grant') {
-		return 'Заявки нет: скрин не спрашиваем. Срок кончился — считают от сегодня. «Бессрочно» — круги открыты, пока не выберете срок; напоминаний не будет.';
-	}
-	if (!expiresAt) return 'Подписки не было — считают от сегодня.';
-	if (isSubscriptionUnlimited(expiresAt)) {
+export function payExtendHint(expiresAt: string | null | undefined): string {
+	// Заявка и выдача без заявки говорят одно и то же (C44): откуда пойдёт срок
+	// и что значит «Бессрочно». Что подписки не было, уже сказано под почтой.
+	if (expiresAt && isSubscriptionUnlimited(expiresAt)) {
 		return 'Сейчас бессрочно. Срок в днях заменит бессрочный доступ.';
 	}
-	const end = new Date(expiresAt);
-	if (Number.isNaN(end.getTime()) || end < new Date()) {
-		return 'Подписка кончилась — считают от сегодня.';
-	}
-	return 'Считают от конца текущей подписки, если она ещё идёт.';
+	const end = expiresAt ? new Date(expiresAt) : null;
+	const running = end !== null && !Number.isNaN(end.getTime()) && end >= new Date();
+	const from = running ? 'Срок добавится к текущей подписке.' : 'Срок пойдёт с сегодняшнего дня.';
+	return `${from} «Бессрочно» — без срока и без напоминаний.`;
 }

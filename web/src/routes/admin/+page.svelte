@@ -547,8 +547,8 @@
 						<Hint class="mt-8">{circleQuotaHint}</Hint>
 					{/if}
 					<div class="fine mt-10">
-						{formatBytes(selectedCircle.media_bytes)} уже лежит. Ниже этого числа поставить можно —
-						владелец увидит «место кончилось» и сам выберет отсечку. Панель её не ставит.
+						Занято {formatBytes(selectedCircle.media_bytes)}. Если поставить меньше, писать в круг станет
+						нельзя, пока владелец не освободит место.
 					</div>
 				</Panel>
 			{/if}

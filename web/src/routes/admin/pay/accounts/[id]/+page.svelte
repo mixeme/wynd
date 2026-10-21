@@ -49,7 +49,7 @@
 		return days;
 	});
 
-	const extendHint = $derived(payExtendHint(account?.subscription_expires_at, 'grant'));
+	const extendHint = $derived(payExtendHint(account?.subscription_expires_at));
 
 	async function grant() {
 		if (!account) return;
