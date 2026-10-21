@@ -11,6 +11,9 @@
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
+	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
+	import PayTermPicker from '$ui/admin/PayTermPicker.svelte';
+	import { WORD, plural } from '$lib/format/plural';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { formatPayDateTime } from '$lib/pay/pay';
@@ -24,7 +27,7 @@
 		type PayRequest,
 		type PaySubscriptionSettings
 	} from '$lib/admin/admin';
-	import { subscriptionTableStatus } from '$lib/admin/pay-subscription';
+	import { parseCustomDays, subscriptionTableStatus } from '$lib/admin/pay-subscription';
 	import { apiFetch } from '$lib/api/client';
 	import { getAdminSession } from '$lib/idb/db';
 
@@ -43,11 +46,49 @@
 	let loading = $state(true);
 	let ready = $state(false);
 	let lastSaved = '';
+	// Включение подписки (2026-10-21): у кого её нет, круги закрылись бы сразу —
+	// перед включением спрашиваем, дать ли всем срок на переход.
+	// Срок — те же чипы, что у заявки и учётки (PayTermPicker), плюс «Не давать».
+	let askGrant = $state(false);
+	let grantDays = $state(90);
+	let grantCustom = $state(false);
+	let grantCustomDays = $state('');
+	let grantUnlimited = $state(false);
+	let grantNone = $state(false);
+	let grantChosen = false;
+
+	function confirmGrant() {
+		if (!settings) return;
+		const days = grantNone || grantUnlimited ? 0 : grantCustom ? parseCustomDays(grantCustomDays) : grantDays;
+		if (days === null) {
+			error = 'Укажите число дней';
+			return;
+		}
+		grantChosen = true;
+		askGrant = false;
+		settings = {
+			...settings,
+			required: true,
+			grant_days: days,
+			grant_unlimited: grantUnlimited && !grantNone
+		};
+	}
+
+	function cancelGrant() {
+		askGrant = false;
+		if (settings) settings = { ...settings, required: false };
+	}
 
 	async function persist() {
 		if (!settings) return;
 		try {
 			await savePaySubscription(settings);
+			if (grantChosen) {
+				// Включили после вопроса о сроке: срок выдан один раз, счётчик — заново.
+				settings = await fetchPaySubscription();
+				lastSaved = JSON.stringify(settings);
+				grantChosen = false;
+			}
 			if (settings.required) {
 				requests = await fetchPayRequests();
 				accounts = await fetchPayAccounts();
@@ -106,6 +147,17 @@
 		if (!ready || !settings) return;
 		const json = JSON.stringify(settings);
 		if (json === lastSaved) return;
+		const before = lastSaved ? (JSON.parse(lastSaved) as PaySubscriptionSettings) : undefined;
+		if (
+			settings.required &&
+			before &&
+			!before.required &&
+			!grantChosen &&
+			(settings.without_subscription ?? 0) > 0
+		) {
+			askGrant = true;
+			return;
+		}
 		lastSaved = json;
 		void persist();
 	});
@@ -228,4 +280,28 @@
 			{/if}
 		{/if}
 	</AdminSection>
+	{#if askGrant && settings}
+		<ConfirmDialog
+			title="Включить подписку?"
+			confirmLabel="Включить"
+			cancelLabel="Не включать"
+			onconfirm={confirmGrant}
+			oncancel={cancelGrant}
+		>
+			<Hint class="mx-0">
+				Без подписки сейчас {plural(settings.without_subscription ?? 0, WORD.person)}: круги у них
+				закроются сразу. Можно дать всем срок на переход.
+			</Hint>
+			<div class="mt-12">
+				<PayTermPicker
+					bind:days={grantDays}
+					bind:custom={grantCustom}
+					bind:customDays={grantCustomDays}
+					bind:unlimited={grantUnlimited}
+					bind:none={grantNone}
+					noneLabel="Не давать"
+				/>
+			</div>
+		</ConfirmDialog>
+	{/if}
 </AdminWideLayout>

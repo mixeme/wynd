@@ -306,3 +306,85 @@ func readExpires(t *testing.T, e *env, accountID string) time.Time {
 	}
 	return got
 }
+
+// Переходный срок при включении подписки (2026-10-21): дни получают те, у
+// кого подписки нет или она прошла; идущая и бессрочная не трогаются; повторное
+// сохранение настроек дни не раздаёт.
+func TestEnableSubscriptionGrantsTransitionTerm(t *testing.T) {
+	e := newEnv(t)
+	e.bootstrap(t)
+	if err := e.auth.SetRegistrationMode(e.ctx, auth.ModeOpen); err != nil {
+		t.Fatal(err)
+	}
+	ids := map[string]string{}
+	for _, email := range []string{"none@example.com", "past@example.com", "live@example.com", "forever@example.com"} {
+		if err := e.auth.Register(e.ctx, auth.RegisterInput{Email: email, ClientIP: "127.0.0.1", Now: e.t0}); err != nil {
+			t.Fatal(err)
+		}
+		res, err := e.auth.Verify(e.ctx, auth.VerifyInput{Email: email, Code: e.caps.Last(email), ClientIP: "127.0.0.1", Now: e.t0})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids[email] = res.Account.ID
+	}
+	now := time.Now().UTC()
+	live := now.AddDate(0, 0, 10)
+	for email, at := range map[string]string{
+		"past@example.com":    now.AddDate(0, 0, -3).Format(time.RFC3339Nano),
+		"live@example.com":    live.Format(time.RFC3339Nano),
+		"forever@example.com": auth.SubscriptionUnlimitedAt.Format(time.RFC3339Nano),
+	} {
+		if _, err := e.auth.DB().ExecContext(e.ctx, `UPDATE accounts SET subscription_expires_at = ? WHERE id = ?`, at, ids[email]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := e.auth.PaySubscriptionSettings(e.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.WithoutSubscription < 2 {
+		t.Fatalf("без подписки: %d, ждали хотя бы 2 (none, past)", got.WithoutSubscription)
+	}
+	if err := e.auth.SetPaySubscriptionSettings(e.ctx, auth.PaySubscriptionSettings{Required: true, RemindDays: 7, GrantDays: 30}); err != nil {
+		t.Fatal(err)
+	}
+	want := time.Now().UTC().AddDate(0, 0, 30)
+	for _, email := range []string{"none@example.com", "past@example.com"} {
+		if got := readExpires(t, e, ids[email]); got.Sub(want).Abs() > 5*time.Second {
+			t.Fatalf("%s: %s, ждали ~%s", email, got, want)
+		}
+	}
+	if got := readExpires(t, e, ids["live@example.com"]); got.Sub(live).Abs() > time.Second {
+		t.Fatalf("идущая подписка сдвинулась: %s", got)
+	}
+	if got := readExpires(t, e, ids["forever@example.com"]); !got.Equal(auth.SubscriptionUnlimitedAt) {
+		t.Fatalf("бессрочная сдвинулась: %s", got)
+	}
+	// Бессрочный переход: выключить, снять срок, включить с бессрочной.
+	if err := e.auth.SetPaySubscriptionSettings(e.ctx, auth.PaySubscriptionSettings{Required: false, RemindDays: 7}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.auth.DB().ExecContext(e.ctx, `UPDATE accounts SET subscription_expires_at = NULL WHERE id = ?`, ids["past@example.com"]); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.auth.SetPaySubscriptionSettings(e.ctx, auth.PaySubscriptionSettings{Required: true, RemindDays: 7, GrantUnlimited: true}); err != nil {
+		t.Fatal(err)
+	}
+	if got := readExpires(t, e, ids["past@example.com"]); !got.Equal(auth.SubscriptionUnlimitedAt) {
+		t.Fatalf("бессрочный переход: %s", got)
+	}
+	// Подписка уже включена: новый срок не раздаётся.
+	if _, err := e.auth.DB().ExecContext(e.ctx, `UPDATE accounts SET subscription_expires_at = NULL WHERE id = ?`, ids["none@example.com"]); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.auth.SetPaySubscriptionSettings(e.ctx, auth.PaySubscriptionSettings{Required: true, RemindDays: 3, GrantDays: 30}); err != nil {
+		t.Fatal(err)
+	}
+	var expires sql.NullString
+	if err := e.auth.DB().QueryRowContext(e.ctx, `SELECT subscription_expires_at FROM accounts WHERE id = ?`, ids["none@example.com"]).Scan(&expires); err != nil {
+		t.Fatal(err)
+	}
+	if expires.Valid {
+		t.Fatalf("повторное сохранение раздало срок: %s", expires.String)
+	}
+}

@@ -4,16 +4,14 @@
 	import { onMount } from 'svelte';
 	import AdminSection from '$ui/admin/AdminSection.svelte';
 	import Button from '$ui/forms/Button.svelte';
-	import Chip from '$ui/forms/Chip.svelte';
-	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Loading from '$ui/Loading.svelte';
 	import Icon from '$ui/Icon.svelte';
-	import Input from '$ui/forms/Input.svelte';
 	import Lightbox from '$ui/overlays/Lightbox.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
+	import PayTermPicker from '$ui/admin/PayTermPicker.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { formatPayDateTime } from '$lib/pay/pay';
 	import { payExtendHint, parseCustomDays, subscriptionAdminSubtitle } from '$lib/admin/pay-subscription';
@@ -26,12 +24,6 @@
 	} from '$lib/admin/admin';
 	import { apiFetch } from '$lib/api/client';
 	import { getAdminSession } from '$lib/idb/db';
-
-	const DAY_CHIPS = [
-		{ days: 30, label: '30 дней' },
-		{ days: 90, label: '3 месяца' },
-		{ days: 365, label: 'Год' }
-	] as const;
 
 	let request = $state<PayRequest | undefined>();
 	let thumb = $state('');
@@ -171,55 +163,15 @@
 						{request.comment || 'Без комментария'}
 					</div>
 					<SectionLabel class="mt-22 mx-0 mb-8">Продлить на</SectionLabel>
-					<ChipGroup class="m-0">
-						{#each DAY_CHIPS as chip (chip.days)}
-							<Chip
-								selected={!unlimited && !custom && days === chip.days}
-								onclick={() => {
-									unlimited = false;
-									custom = false;
-									days = chip.days;
-								}}
-							>
-								{chip.label}
-							</Chip>
-						{/each}
-						<Chip
-							selected={!unlimited && custom}
-							onclick={() => {
-								unlimited = false;
-								custom = true;
-							}}
-						>
-							Своё…
-						</Chip>
-					</ChipGroup>
-					<ChipGroup class="mt-8 mx-0">
-						<Chip
-							selected={unlimited}
-							onclick={() => {
-								unlimited = true;
-								custom = false;
-							}}
-						>
-							Бессрочно
-						</Chip>
-					</ChipGroup>
-					{#if custom && !unlimited}
-						<Input
-							admin
-							type="number"
-							placeholder="дней"
-							class="mt-10 w120"
-							bind:value={customDays}
-						/>
-					{/if}
+					<PayTermPicker bind:days bind:custom bind:customDays bind:unlimited />
 					<div class="note mt-10 lh-15">
 						{extendHint}
 					</div>
 					<div class="actions">
-						<Button disabled={acting} onclick={() => void approve()}>Дать</Button>
-						<Button variant="ghost" disabled={acting} onclick={() => void reject()}>Отказать</Button>
+						<Button class="btn-flush" disabled={acting} onclick={() => void approve()}>Дать</Button>
+						<Button class="btn-flush" variant="ghost" disabled={acting} onclick={() => void reject()}
+							>Отказать</Button
+						>
 					</div>
 				</div>
 			</div>

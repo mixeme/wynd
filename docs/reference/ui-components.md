@@ -81,6 +81,8 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar, **Comp
 
 `StatusCard` — карточка «что происходит» (**#e6-26**, **#e6-31**): `title` и `text`, скругление и подложка карточки; без действия — кнопка или тихая ссылка стоят под ней. `SettingsRow trailingIcon` — значок справа вместо шеврона (скачать файл, **#e6-27**).
 
+`PayTermPicker` — срок подписки в панели (**#e10-12**, **#e10-15** и окно включения подписки): одной группой чипы «30 дней», «3 месяца», «Год», «Своё…» (поле дней), «Бессрочно»; `noneLabel` добавляет «Не давать». Привязки `days`, `custom`, `customDays`, `unlimited`, `none`.
+
 `CirclePlace` — «Место» круга (**#e6-15**, **#e6-18**): подпись, шкала и «776 МБ из 1,0 ГБ» (без квоты — «· ограничение не задано», круг полон — «· писать в круг больше нельзя»); `usedBytes`, `quotaBytes`. Одно и то же на «Архиве и очистке» и на «Попросить место».
 
 `SpaceNote` — полоса «места нет» наверху экрана (**#e4-25**, C42): `notice` из `spaceNotice()` (`$lib/circles/space`) — две строки, у владельца вторая — ссылка на «Архив и очистку». Ставит экран правки записи в круге без места; внизу ленты та же полоса — `CircleLayout notice` (**#e3-10**).
@@ -148,7 +150,7 @@ Guard: `npm run check:ui` — экран = существующие `$ui` + `$li
 
 ### `data/`
 
-SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, **ReactionBar**, **CommentPreview**, **CommentRow**, **ReactionListRow**, **SettingsRow**, MemberRow, SearchGroupHeader, **SearchResultRow**, **ServerRow**, FoldHeader, **GroupFoldCard**, AttachmentRow, PhotoPlaceholder, PhotoGrid, **MediaTile**, **MapBadge**, **MapPostSheet**, MonthLabel, DayCard, DayGrid, DayHeader, EntryDateMark, ArchiveBanner, **PayStreetBanner**, **MentionText**, **AttachmentList**, **QrCode**, **InviteLinkCard**, **EmptyState**, **PullRefresh**, **FeedEnd**, **ResponseEntry**, **PostRef**, **PostByline**, **PeekMemberList**, **AboutFooter**, **CirclePlace**
+SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, **ReactionBar**, **CommentPreview**, **CommentRow**, **ReactionListRow**, **SettingsRow**, MemberRow, SearchGroupHeader, **SearchResultRow**, **ServerRow**, FoldHeader, **GroupFoldCard**, AttachmentRow, PhotoPlaceholder, PhotoGrid, **MediaTile**, **MapBadge**, **MapPostSheet**, MonthLabel, DayCard, DayGrid, DayHeader, EntryDateMark, ArchiveBanner, **PayStreetBanner**, **MentionText**, **AttachmentList**, **QrCode**, **InviteLinkCard**, **EmptyState**, **PullRefresh**, **FeedEnd**, **ResponseEntry**, **PostRef**, **PostByline**, **PeekMemberList**, **AboutFooter**, **CirclePlace**, **PayTermPicker**
 
 `PayStreetBanner` — баннеры оплаты на улочке (`/circles`, кадр **#e10-5**): `variant` `donate` \| `reminder` \| `pending`. Donate — `text`, `onclick` (help), опционально `dismissible` / `ondismiss`. Reminder — `expiresAtLabel`, `reminderDaysLeft`, `onclick` (extend). Pending — `pendingAtLabel`, опционально `expiresAtLabel`; без корневой кнопки. Стили `.pay-banner*` в `ui.css`; кликабельные зоны — `button.pay-banner-main`, `button.pay-reminder`.
 

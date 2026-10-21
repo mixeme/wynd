@@ -393,6 +393,12 @@ export interface PayDonateSettings {
 export interface PaySubscriptionSettings {
 	required: boolean;
 	remind_days: number;
+	/** Переходный срок при включении: столько дней всем, у кого подписки нет. */
+	grant_days?: number;
+	/** Переходный срок — бессрочно. */
+	grant_unlimited?: boolean;
+	/** Сколько учёток сейчас без подписки (только в ответе). */
+	without_subscription?: number;
 }
 
 export interface PayRequest {

@@ -3311,6 +3311,12 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 	flex: 1;
 	margin: 0;
 }
+.btn.btn-flush {
+	/* кнопка в колонке панели — вровень с чипами и текстом, без полей экрана */
+	margin-left: 0;
+	margin-right: 0;
+	width: 100%;
+}
 .mx-0 {
 	margin-left: 0;
 	margin-right: 0;

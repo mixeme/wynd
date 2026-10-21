@@ -4,15 +4,13 @@
 	import { onMount } from 'svelte';
 	import AdminSection from '$ui/admin/AdminSection.svelte';
 	import Button from '$ui/forms/Button.svelte';
-	import Chip from '$ui/forms/Chip.svelte';
-	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Loading from '$ui/Loading.svelte';
 	import Icon from '$ui/Icon.svelte';
-	import Input from '$ui/forms/Input.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
+	import PayTermPicker from '$ui/admin/PayTermPicker.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import {
 		fetchPayAccount,
@@ -22,12 +20,6 @@
 		type PayAccount
 	} from '$lib/admin/admin';
 	import { payExtendHint, parseCustomDays, subscriptionAdminSubtitle } from '$lib/admin/pay-subscription';
-
-	const DAY_CHIPS = [
-		{ days: 30, label: '30 дней' },
-		{ days: 90, label: '3 месяца' },
-		{ days: 365, label: 'Год' }
-	] as const;
 
 	let account = $state<PayAccount | undefined>();
 	let days = $state(90);
@@ -112,54 +104,13 @@
 				{subscriptionAdminSubtitle(account.subscription_expires_at)}
 			</div>
 			<SectionLabel class="mt-0 mx-0 mb-8">Продлить на</SectionLabel>
-			<ChipGroup class="m-0">
-				{#each DAY_CHIPS as chip (chip.days)}
-					<Chip
-						selected={!unlimited && !custom && days === chip.days}
-						onclick={() => {
-							unlimited = false;
-							custom = false;
-							days = chip.days;
-						}}
-					>
-						{chip.label}
-					</Chip>
-				{/each}
-				<Chip
-					selected={!unlimited && custom}
-					onclick={() => {
-						unlimited = false;
-						custom = true;
-					}}
-				>
-					Своё…
-				</Chip>
-			</ChipGroup>
-			<ChipGroup class="mt-8 mx-0">
-				<Chip
-					selected={unlimited}
-					onclick={() => {
-						unlimited = true;
-						custom = false;
-					}}
-				>
-					Бессрочно
-				</Chip>
-			</ChipGroup>
-			{#if custom && !unlimited}
-				<Input
-					admin
-					type="number"
-					placeholder="дней"
-					class="mt-10 w120"
-					bind:value={customDays}
-				/>
-			{/if}
+			<PayTermPicker bind:days bind:custom bind:customDays bind:unlimited />
 			<div class="note mt-10 lh-15 mw-420">
 				{extendHint}
 			</div>
-			<div class="mt-18">
-				<Button disabled={acting} onclick={() => void grant()}>Дать</Button>
+			<!-- Кнопка шириной как на заявке (10.12), а не во всю страницу. -->
+			<div class="mt-18 w180">
+				<Button class="btn-flush" disabled={acting} onclick={() => void grant()}>Дать</Button>
 			</div>
 			{#if error}
 				<Hint class="mt-12">{error}</Hint>

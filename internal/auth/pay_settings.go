@@ -46,6 +46,14 @@ type PayDonateSettings struct {
 type PaySubscriptionSettings struct {
 	Required   bool `json:"required"`
 	RemindDays int  `json:"remind_days"`
+	// GrantDays — переходный срок при включении (2026-10-21): всем, у кого
+	// сейчас нет подписки, выдаётся столько дней, как «продлить без заявки».
+	// 0 — не выдавать. Учитывается только в момент включения.
+	GrantDays int `json:"grant_days,omitempty"`
+	// GrantUnlimited — вместо дней выдать всем бессрочную подписку.
+	GrantUnlimited bool `json:"grant_unlimited,omitempty"`
+	// WithoutSubscription — сколько учёток сейчас без подписки (только ответ).
+	WithoutSubscription int `json:"without_subscription"`
 }
 
 // PayBannerState is an active donate banner for the street.
@@ -163,8 +171,13 @@ func (s *Service) PaySubscriptionSettings(ctx context.Context) (PaySubscriptionS
 	if err != nil {
 		return PaySubscriptionSettings{}, err
 	}
+	without, err := s.countWithoutSubscription(ctx, time.Now().UTC())
+	if err != nil {
+		return PaySubscriptionSettings{}, err
+	}
 	return PaySubscriptionSettings{
 		Required: row.SubscriptionRequired, RemindDays: row.SubscriptionRemindDays,
+		WithoutSubscription: without,
 	}, nil
 }
 
@@ -173,16 +186,92 @@ func (s *Service) SetPaySubscriptionSettings(ctx context.Context, in PaySubscrip
 	if in.RemindDays != 1 && in.RemindDays != 3 && in.RemindDays != 7 {
 		return ErrInvalid
 	}
+	if in.GrantDays < 0 || in.GrantDays > MaxPayGrantDays {
+		return ErrInvalid
+	}
 	required := 0
 	if in.Required {
 		required = 1
 	}
-	_, err := s.db.ExecContext(ctx, `
+	now := time.Now().UTC()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	var was bool
+	if err := tx.QueryRowContext(ctx, `SELECT pay_subscription_required FROM instance_settings WHERE id = 1`).Scan(&was); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `
 		UPDATE instance_settings SET
 			pay_subscription_required = ?, pay_subscription_remind_days = ?, updated_at = ?
 		WHERE id = 1
-	`, required, in.RemindDays, formatTime(time.Now().UTC()))
-	return err
+	`, required, in.RemindDays, formatTime(now)); err != nil {
+		return err
+	}
+	// Переходный срок — только при включении: иначе повторное сохранение
+	// напоминания снова раздало бы дни тем, у кого подписка кончилась.
+	if in.Required && !was && (in.GrantDays > 0 || in.GrantUnlimited) {
+		if err := grantWithoutSubscription(ctx, tx, in.GrantDays, in.GrantUnlimited, now); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// withoutSubscription — учётки без действующей подписки: срока не было или он
+// прошёл. Бессрочная и идущая подписки не трогаются.
+func withoutSubscription(ctx context.Context, q interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+}, now time.Time) ([]string, error) {
+	rows, err := q.QueryContext(ctx, `
+		SELECT id, subscription_expires_at FROM accounts
+		WHERE email != ? AND deleted_at IS NULL
+	`, AdminSentinelEmail)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		var expires sql.NullString
+		if err := rows.Scan(&id, &expires); err != nil {
+			return nil, err
+		}
+		if expires.Valid && expires.String != "" {
+			if t, err := parseTime(expires.String); err == nil && t.After(now) {
+				continue
+			}
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+func (s *Service) countWithoutSubscription(ctx context.Context, now time.Time) (int, error) {
+	ids, err := withoutSubscription(ctx, s.db, now)
+	return len(ids), err
+}
+
+func grantWithoutSubscription(ctx context.Context, tx *sql.Tx, days int, unlimited bool, now time.Time) error {
+	ids, err := withoutSubscription(ctx, tx, now)
+	if err != nil {
+		return err
+	}
+	until := formatTime(now.AddDate(0, 0, days))
+	if unlimited {
+		until = subscriptionUnlimitedExpiry()
+	}
+	for _, id := range ids {
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE accounts SET subscription_expires_at = ?, pay_reminder_sent_for = NULL WHERE id = ?
+		`, until, id); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // DismissPayBanner hides the current donation banner version for the account.
