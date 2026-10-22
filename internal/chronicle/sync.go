@@ -23,6 +23,23 @@ func (c *Chronicle) MaxEventSeq(ctx context.Context) (int64, error) {
 	return seq.Int64, nil
 }
 
+// StreetFingerprint — отпечаток того, что меняет список кругов учётки помимо
+// событий её кругов: приглашения, которых ещё нет в её кругах (отложенные
+// вступления), и её членства. Поток sync сверяет его на каждом опросе и шлёт
+// сигнал, когда он сменился: раньше человек, которого позвали в круг, не
+// видел приглашения до ручного обновления списка (владелец, 2026-10-22).
+func (c *Chronicle) StreetFingerprint(ctx context.Context, accountID string) (string, error) {
+	var fp sql.NullString
+	err := c.db.QueryRowContext(ctx, `
+		SELECT
+			(SELECT COUNT(*) || ':' || COALESCE(MAX(created_at), '') FROM pending_circle_joins WHERE account_id = ?)
+			|| '|' ||
+			(SELECT COALESCE(group_concat(circle_id || '=' || status, ','), '')
+			   FROM (SELECT circle_id, status FROM memberships WHERE account_id = ? ORDER BY circle_id))
+	`, accountID, accountID).Scan(&fp)
+	return fp.String, err
+}
+
 // SyncEvents returns events with seq > cursor visible to account, ordered by seq.
 func (c *Chronicle) SyncEvents(ctx context.Context, accountID string, cursor int64, limit int) ([]Event, error) {
 	if limit <= 0 || limit > syncBatchSize {

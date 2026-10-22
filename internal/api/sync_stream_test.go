@@ -161,3 +161,44 @@ func syncSSE(t *testing.T, srv *api.Server, token string, cursor int64) (int64, 
 	}
 	return maxSeq, events
 }
+
+// Список кругов меняется и без событий своих кругов: человека позвали в
+// чужой круг. Поток шлёт кадр street, и список перечитывается сам —
+// раньше приглашение появлялось только после ручного обновления.
+func TestSSEStreetFrameOnInvite(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	ownerTok, _ := registerSession(t, srv, caps, "anya@example.com")
+	bobTok, _ := registerSession(t, srv, caps, "bob@example.com")
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles", ownerTok, map[string]any{
+		"name": "Семья", "owner_name": "Аня",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create circle: %d %s", rec.Code, rec.Body.String())
+	}
+	circleID := jsonStr(t, rec, "id")
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/invites", ownerTok, map[string]any{"kind": "single"})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("invite: %d %s", rec.Code, rec.Body.String())
+	}
+	invite := jsonStr(t, rec, "token")
+
+	ctx, cancel := context.WithTimeout(t.Context(), 3500*time.Millisecond)
+	defer cancel()
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/api/v1/sync", nil)
+	req.Header.Set("Authorization", "Bearer "+bobTok)
+	req.Header.Set("Accept", "text/event-stream")
+	stream := httptest.NewRecorder()
+	done := make(chan struct{})
+	go func() {
+		srv.ServeHTTP(stream, req)
+		close(done)
+	}()
+	time.Sleep(300 * time.Millisecond)
+	if rec := doJSON(t, srv, http.MethodPost, "/api/v1/invites/"+invite+"/claim", bobTok, map[string]any{}); rec.Code != http.StatusOK {
+		t.Fatalf("claim: %d %s", rec.Code, rec.Body.String())
+	}
+	<-done
+	if body := stream.Body.String(); !strings.Contains(body, "event: street\ndata: {\"street\":true}") {
+		t.Fatalf("нет кадра street:\n%s", body)
+	}
+}

@@ -173,7 +173,7 @@ async function handleHello(origin: string, maxSeq: number): Promise<void> {
 
 /** Разбирает кадр `data:` потока sync: событие хроники или приветствие `max_seq`. */
 export async function handleSyncFrame(origin: string, raw: string): Promise<void> {
-	let event: Partial<SyncEvent> & { max_seq?: number };
+	let event: Partial<SyncEvent> & { max_seq?: number; street?: boolean };
 	try {
 		event = JSON.parse(raw) as typeof event;
 	} catch {
@@ -181,6 +181,12 @@ export async function handleSyncFrame(origin: string, raw: string): Promise<void
 	}
 	if (typeof event.seq !== 'number') {
 		if (typeof event.max_seq === 'number') await handleHello(origin, event.max_seq);
+		// Кадр street: список кругов сменился без событий своих кругов (позвали
+		// в новый круг) — перечитывают экраны без круга, то есть список.
+		if (event.street) {
+			await invalidateSnapshots(origin, { kind: 'circles' });
+			triggerRefetch(origin, '');
+		}
 		return;
 	}
 	await putCursor(origin, event.seq);

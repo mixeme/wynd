@@ -82,6 +82,9 @@ func (s *Server) syncSSE(w http.ResponseWriter, r *http.Request, accountID strin
 	token := bearerToken(r)
 	lastBeat := time.Now()
 	cur := cursor
+	// Список кругов меняется и без событий её кругов: позвали в новый круг.
+	// Отпечаток сменился — кадр street, клиент перечитывает список.
+	street, _ := s.Chronicle.StreetFingerprint(ctx, accountID)
 	for {
 		// Сессия и подписка перечитываются перед каждым опросом: иначе
 		// заблокированная учётка и истёкшая подписка получают события до
@@ -107,6 +110,13 @@ func (s *Server) syncSSE(w http.ResponseWriter, r *http.Request, accountID strin
 		}
 		if len(events) > 0 {
 			continue
+		}
+		if fp, err := s.Chronicle.StreetFingerprint(ctx, accountID); err == nil && fp != street {
+			street = fp
+			if !write("event: street\ndata: {\"street\":true}\n\n") {
+				return
+			}
+			lastBeat = time.Now()
 		}
 		if time.Since(lastBeat) >= sseHeartbeat {
 			if !write(":\n\n") {
