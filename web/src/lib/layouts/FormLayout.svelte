@@ -2,6 +2,9 @@
 	import { pushStatusColor } from '$lib/session/statusColor.svelte';
 	import { CIRCLE_COLORS } from '$lib/theme/colors';
 	import { setBackHandler } from '$lib/navigation/up';
+	import { rememberScroll, restoreScroll, scrollKey } from '$lib/navigation/scrollSpot';
+	import { afterNavigate, beforeNavigate } from '$app/navigation';
+	import { onDestroy } from 'svelte';
 	import BackBar from '$ui/chrome/BackBar.svelte';
 	import PhoneFrame from '$ui/chrome/PhoneFrame.svelte';
 	import StatusBar from '$ui/chrome/StatusBar.svelte';
@@ -68,6 +71,20 @@
 		if (!(app && compose && color)) return;
 		return pushStatusColor(CIRCLE_COLORS[color ?? 'terracotta'].hex);
 	});
+
+	// Прокрутка экрана: уходя — запомнить, вернувшись шагом назад — поставить.
+	let formBody = $state<HTMLDivElement | undefined>();
+	let stopRestore = () => {};
+	beforeNavigate(({ from }) => {
+		if (formBody && from?.url) rememberScroll(scrollKey(from.url), formBody.scrollTop);
+	});
+	afterNavigate(({ type, to }) => {
+		stopRestore();
+		if (type === 'popstate' && formBody && to?.url) {
+			stopRestore = restoreScroll(formBody, scrollKey(to.url));
+		}
+	});
+	onDestroy(() => stopRestore());
 
 	// Системная «Назад» — тот же обработчик (план 46, C13).
 	$effect(() => {
@@ -139,7 +156,7 @@
 			{@render children()}
 		</div>
 	{:else if app}
-		<div class="form-body">
+		<div class="form-body" bind:this={formBody}>
 			{@render children()}
 		</div>
 	{:else}

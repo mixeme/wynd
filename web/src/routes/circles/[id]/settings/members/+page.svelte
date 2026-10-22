@@ -42,6 +42,14 @@
 	let excludeLoading = $state(false);
 
 	const transferMode = $derived($page.url.searchParams.get('transfer') === '1');
+	// С итога оживления или переноса «Назад» ведёт обратно на него, а не в
+	// настройки круга. Только на экраны «Принять круг» — чужой адрес не берём.
+	const upTarget = $derived.by(() => {
+		const back = $page.url.searchParams.get('back') ?? '';
+		return back.startsWith('/settings/servers/accept')
+			? back
+			: `/circles/${circle.circleId}/settings`;
+	});
 	const active = $derived(members.filter((m) => m.status === 'active' && !m.not_joined));
 	// Приехали с кругом и здесь ещё не входили (6.6); раздел исчезает сам.
 	const waiting = $derived(members.filter((m) => m.status === 'active' && m.not_joined));
@@ -200,7 +208,7 @@
 	color={circle.color}
 	title={transferMode ? 'Передать владение' : 'Участники'}
 	right={String(active.length)}
-	onback={() => goUp(`/circles/${circle.circleId}/settings`)}
+	onback={() => goUp(upTarget)}
 >
 	{#if error}
 		<Hint class="gutter">{error}</Hint>

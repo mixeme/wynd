@@ -118,6 +118,8 @@
 	onMount(async () => {
 		const sessions = await loadSessions();
 		serverName = sessions.find((x) => x.origin === origin)?.name ?? '';
+		// ?done — вернулись из участников на итог переноса: показать его снова.
+		if ($page.url.searchParams.has('done')) watching = true;
 		await refresh();
 		if (active) watching = true;
 		if (freeRoom === undefined) {
@@ -238,7 +240,14 @@
 				title="Приглашения не отправлены"
 				subtitle="позвать можно сейчас или позже — в участниках круга"
 				divided="both"
-				onclick={() => goto(`/circles/${r.circle_id}/settings/members`)}
+				onclick={() => {
+					const here = new URL($page.url);
+					here.searchParams.set('done', '1');
+					const back = here.pathname + here.search;
+					void goto(back, { replaceState: true, noScroll: true, keepFocus: true }).then(() =>
+						goto(`/circles/${r.circle_id}/settings/members?back=${encodeURIComponent(back)}`)
+					);
+				}}
 			/>
 		{/if}
 		<Hint>

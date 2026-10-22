@@ -1800,7 +1800,8 @@ input.fld.sm {
 }
 /* На экранах без цвета круга акцент — цвет текста; в тёмной теме он светлый,
    и белая надпись на нём пропадала. */
-.ph.dark.shell .chip.on {
+.ph.dark.shell .chip.on,
+.ph.dark.shell .btn.c {
 	color: var(--paper);
 }
 .chip.off {

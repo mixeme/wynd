@@ -21,6 +21,7 @@
 	import { authErrorHint } from '$lib/auth/auth';
 	import { displayHost } from '$lib/auth/origin';
 	import { circleInitial } from '$lib/circles/meta';
+	import { CIRCLE_COLORS, type CircleColor } from '$lib/theme/colors';
 	import { formatBytes } from '$lib/format/bytes';
 	import { WORD, plural } from '$lib/format/plural';
 	import { formatAdminDayYear, formatEntryDate, formatSessionDay } from '$lib/format/time';
@@ -76,10 +77,23 @@
 	let picker = $state<FilePicker | undefined>();
 
 	const need = $derived(archive?.circleBytes ?? 0);
-	const circleName = $derived(String(archive?.manifest.circle_name ?? ''));
+	// Итог оживления (7.33) переживает уход в участники и шаг назад: архива в
+	// памяти тогда уже нет, имя и цвет круга — из sessionStorage (владелец,
+	// 2026-10-22: «Провалился в неё, а вернулся в настройки круга»).
+	let doneCircle = $state<{ name: string; color: string } | undefined>();
+	const circleName = $derived(String(archive?.manifest.circle_name ?? doneCircle?.name ?? ''));
+	// Экран оживления — цветом самого круга, как 7.29: плитка и «Оживить круг».
+	// Без него акцент — цвет текста, и в тёмной теме кнопка была светлой с
+	// белой надписью (владелец, 2026-10-22: «Кнопки странного цвета»).
+	const circleColor = $derived(
+		(archive?.circleColor ?? doneCircle?.color ?? '') in CIRCLE_COLORS
+			? ((archive?.circleColor ?? doneCircle?.color) as CircleColor)
+			: undefined
+	);
 	const invitable = $derived(Math.max(0, (archive?.emails.length ?? 1) - 1));
 
 	onMount(async () => {
+		restoreDone();
 		const sessions = await loadSessions();
 		const s = sessions.find((x) => x.origin === origin);
 		serverName = s?.name ?? '';
@@ -162,9 +176,46 @@
 			});
 			result = await reviveCircle(origin, archive, map, sendInvites);
 			step = 'done';
+			keepDone();
 		} catch (err) {
 			error = authErrorHint(err);
 			step = 'review';
+		}
+	}
+
+	const DONE_KEY = 'wynd:revive-done';
+
+	function keepDone() {
+		if (!result) return;
+		try {
+			sessionStorage.setItem(
+				DONE_KEY,
+				JSON.stringify({ result, name: circleName, color: archive?.circleColor ?? '' })
+			);
+		} catch {
+			/* без хранилища итог живёт, пока открыт экран */
+		}
+		void goto(doneUrl(result.circle_id), { replaceState: true, noScroll: true, keepFocus: true });
+	}
+
+	// Адрес итога: тот же экран с ?done=, сервер (?origin=) не теряется.
+	function doneUrl(circleId: string): string {
+		const here = new URL($page.url);
+		here.searchParams.set('done', circleId);
+		return here.pathname + here.search;
+	}
+
+	function restoreDone() {
+		const id = $page.url.searchParams.get('done');
+		if (!id) return;
+		try {
+			const saved = JSON.parse(sessionStorage.getItem(DONE_KEY) ?? 'null');
+			if (saved?.result?.circle_id !== id) return;
+			result = saved.result;
+			doneCircle = { name: String(saved.name ?? ''), color: String(saved.color ?? '') };
+			step = 'done';
+		} catch {
+			/* нечего вернуть — экран с начала */
 		}
 	}
 
@@ -184,7 +235,8 @@
 {/snippet}
 
 <FormLayout
-	shell
+	shell={!circleColor}
+	color={circleColor}
 	app
 	title={step === 'done' ? circleName : step === 'choose' ? 'Принять круг' : 'Оживить круг'}
 	onback={() => goUp('/settings/servers')}
@@ -318,7 +370,7 @@
 		<Hint class="mt-8">
 			{formatBytes(sent)} из {formatBytes(total)}. Не закрывайте страницу, пока круг загружается.
 		</Hint>
-	{:else if step === 'done' && result && archive}
+	{:else if step === 'done' && result}
 		<!-- 7.33 / 7.34. -->
 		<StatusCard
 			title="Круг на месте"
@@ -340,7 +392,10 @@
 				title="Приглашения не отправлены"
 				subtitle="позвать можно сейчас или позже — в участниках круга"
 				divided="both"
-				onclick={() => goto(`/circles/${result?.circle_id}/settings/members`)}
+				onclick={() =>
+					goto(
+						`/circles/${result?.circle_id}/settings/members?back=${encodeURIComponent(doneUrl(result?.circle_id ?? ''))}`
+					)}
 			/>
 		{/if}
 		<Hint>Кто войдёт сюда той же почтой, попадёт в своё имя.</Hint>

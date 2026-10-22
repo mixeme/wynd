@@ -123,7 +123,31 @@
 			if (deleteCircle) await circle.refresh();
 		});
 
-	const download = () => act(() => downloadFullArchive(circle.origin, circle.circleId));
+	// Скачивание идёт в браузере мимо страницы: что файл скачан, знает только
+	// сервер. Пока ждём — спрашиваем его сами, иначе «Убрать круг с сервера»
+	// появлялось лишь после ручного обновления (владелец, 2026-10-22).
+	let downloadStarted = $state(false);
+	const download = () =>
+		act(async () => {
+			await downloadFullArchive(circle.origin, circle.circleId);
+			downloadStarted = true;
+		});
+
+	const waiting = $derived(view === 'building' || (downloadStarted && view === 'notDownloaded'));
+	$effect(() => {
+		if (!waiting) return;
+		const timer = setInterval(() => {
+			if (!busy) void load();
+		}, 3000);
+		return () => clearInterval(timer);
+	});
+	$effect(() => {
+		const onVisible = () => {
+			if (document.visibilityState === 'visible') void load();
+		};
+		document.addEventListener('visibilitychange', onVisible);
+		return () => document.removeEventListener('visibilitychange', onVisible);
+	});
 
 	const remove = () =>
 		act(async () => {

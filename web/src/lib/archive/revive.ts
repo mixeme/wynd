@@ -62,6 +62,8 @@ export interface LoadedArchive {
 	/** Сколько круг займёт по квоте: файлы и текст (C42) — для экрана и места. */
 	circleBytes: number;
 	lastEntry: string;
+	/** Цвет круга (токен, «terracotta»): экран оживления — его цветом, как 7.29. */
+	circleColor: string;
 }
 
 function rows(t: WyndTable | undefined): Record<string, unknown>[] {
@@ -106,7 +108,8 @@ export async function loadArchive(src: RandomSource): Promise<LoadedArchive> {
 		emails: rows(tables.accounts).map((a) => String(a.email)),
 		bytes,
 		circleBytes: bytes + textBytes,
-		lastEntry
+		lastEntry,
+		circleColor: String(rows(tables.circles)[0]?.color ?? '')
 	};
 }
 
