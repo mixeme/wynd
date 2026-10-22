@@ -13,12 +13,13 @@ export { REACTION_KEYS } from './types';
 export type { ReactionKey } from './types';
 
 /** Подпись вместо стёртого имени — её ставит сервер (`chronicle.ErasedName`, план 46, A3). */
-export const ERASED_NAME = 'без имени';
+export const ERASED_NAME = 'Без имени';
 
 export function authorInitial(name: string): string {
 	const t = name.trim();
-	// Буква «Б» в кружке читалась бы как начало чьего-то имени.
-	if (t === ERASED_NAME) return '';
+	// Буква «Б» в кружке читалась бы как начало чьего-то имени. Регистр не
+	// важен: до 0.38.2 подпись была строчной и могла остаться в старых архивах.
+	if (t.toLowerCase() === ERASED_NAME.toLowerCase()) return '';
 	return t ? t[0].toUpperCase() : '?';
 }
 
