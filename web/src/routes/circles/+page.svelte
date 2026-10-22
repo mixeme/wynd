@@ -15,6 +15,8 @@
 	import Loading from '$ui/Loading.svelte';
 	import PayStreetBanner from '$ui/data/PayStreetBanner.svelte';
 	import NewsBanner from '$ui/data/NewsBanner.svelte';
+	import HintBanner from '$ui/data/HintBanner.svelte';
+	import { closeBrowserHint, showBrowserHint } from '$lib/session/browserHint';
 	import { hasUnseenNews, latestNewsVersion, markNewsSeen } from '$lib/news/seen';
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import Input from '$ui/forms/Input.svelte';
@@ -63,6 +65,8 @@
 	let loading = $state(true);
 	// «Что нового?» — пока свежую запись не открыли и не закрыли (7.7).
 	let newsUnseen = $state(hasUnseenNews());
+	// Подсказка про браузер (7.7а) — на Android, кроме Chrome и Vivaldi.
+	let browserHint = $state(showBrowserHint());
 	// Отметка последнего длинного нажатия: клик в её хвосте — часть того же
 	// жеста (GUI-6). Прежний общий флаг гасили в каждом обработчике, и
 	// порядок pointerup/click решал исход.
@@ -468,6 +472,11 @@
 		newsUnseen = false;
 	}
 
+	function hideBrowserHint() {
+		closeBrowserHint();
+		browserHint = false;
+	}
+
 	async function hideDonateBanner() {
 		if (!streetSession) return;
 		await dismissPayBanner(streetSession.origin);
@@ -547,6 +556,13 @@
 				version={latestNewsVersion()}
 				onclick={() => goto('/settings/news?from=circles')}
 				ondismiss={hideNews}
+			/>
+		{/if}
+		{#if browserHint && !empty}
+			<HintBanner
+				title="Рекомендуем Chrome или Vivaldi"
+				text="В них Wynd на Android работает стабильнее."
+				ondismiss={hideBrowserHint}
 			/>
 		{/if}
 		{#if empty}
