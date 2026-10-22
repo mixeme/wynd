@@ -154,6 +154,23 @@ describe('queue', () => {
 		);
 		expect(await listQueueForCircle(origin, 'circle-drain')).toHaveLength(0);
 	});
+
+	// Запись уходит из очереди, когда лента её уже перечитала: иначе карточка
+	// очереди пропадала на 100%, а запись появлялась только с обновлением.
+	it('даёт ленте перечитать круг до того, как снять запись', async () => {
+		vi.stubGlobal('navigator', { ...navigator, onLine: true });
+		const { enqueuePost, drainQueue, listQueueForCircle, subscribePostSent } = await import('./queue');
+		const origin = 'https://sent.test';
+		const stillQueued: number[] = [];
+		const unsub = subscribePostSent(async (o, c) => {
+			stillQueued.push((await listQueueForCircle(o, c)).length);
+		});
+		await enqueuePost(origin, 'circle-sent', { body: 'видео', entry_date: '2026-10-22' });
+		await drainQueue();
+		unsub();
+		expect(stillQueued).toEqual([1]);
+		expect(await listQueueForCircle(origin, 'circle-sent')).toHaveLength(0);
+	});
 	it('загрузка из очереди несёт имя файла', async () => {
 		vi.stubGlobal('navigator', { ...navigator, onLine: true });
 		apiJson.mockResolvedValue({ id: 'session1' });

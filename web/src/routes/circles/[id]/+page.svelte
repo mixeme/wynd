@@ -101,6 +101,7 @@
 		listQueuedPosts,
 		queuedTimeLabel,
 		removeQueueItem,
+		subscribePostSent,
 		subscribeQueue,
 		subscribeQueueProgress,
 		type QueuedPostView
@@ -395,10 +396,15 @@
 			kinds: ['feed'],
 			refetch: loadFeedData
 		});
+		// Ушедшая запись встаёт в ленту до того, как пропадёт из очереди.
+		const unsubSent = subscribePostSent(async (origin, circleId) => {
+			if (origin === circle.origin && circleId === circle.circleId) await loadFeedData();
+		});
 		return () => {
 			unsubQueue();
 			unsubProgress();
 			unsubSync();
+			unsubSent();
 		};
 	});
 

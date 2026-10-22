@@ -106,6 +106,26 @@ export function subscribeQueue(listener: QueueListener): () => void {
 	return () => listeners.delete(listener);
 }
 
+type PostSentListener = (origin: string, circleId: string) => Promise<void>;
+const postSentListeners = new Set<PostSentListener>();
+const POST_SENT_WAIT_MS = 5000;
+
+/**
+ * Запись принята сервером: экран круга перечитывает ленту, пока карточка
+ * очереди ещё стоит. Ждём не дольше POST_SENT_WAIT_MS — медленная лента не
+ * держит очередь.
+ */
+export function subscribePostSent(listener: PostSentListener): () => void {
+	postSentListeners.add(listener);
+	return () => postSentListeners.delete(listener);
+}
+
+async function announcePostSent(origin: string, circleId: string): Promise<void> {
+	if (!postSentListeners.size) return;
+	const all = Promise.all([...postSentListeners].map((l) => l(origin, circleId).catch(() => undefined)));
+	await Promise.race([all, new Promise((resolve) => setTimeout(resolve, POST_SENT_WAIT_MS))]);
+}
+
 /**
  * Ход отправки записи: доля ушедших байт, 0..1. Живёт в памяти вкладки и идёт
  * мимо `notify`: тот перечитывает очередь из IndexedDB вместе с файлами, а
@@ -391,8 +411,12 @@ async function processItem(item: QueueRecordWithId): Promise<boolean> {
 
 	try {
 		await submitQueueItem(item);
-		await deleteQueueItem(item.id);
 		await invalidateCircleSnapshots(item.origin, item.circle_id);
+		// Запись уходит из очереди, когда лента её уже показывает: раньше
+		// карточка очереди пропадала на 100%, а запись появлялась только с
+		// обновлением ленты (владелец, 2026-10-22).
+		if (item.type === 'post') await announcePostSent(item.origin, item.circle_id);
+		await deleteQueueItem(item.id);
 		setSendProgress(item.id, undefined);
 		notify();
 		return true;
