@@ -166,7 +166,15 @@ export async function compressVideo(
 		return await encodeVideo(file, settings, onProgress, opts);
 	} catch (err) {
 		console.warn('wynd: video compression failed', err);
-		return { ...(await fileToQueueBuffer(file)), fallbackReason: videoFallbackReason(err) };
+		const fallbackReason = videoFallbackReason(err);
+		// Сжать нечем, но WebM с камеры хотя бы пересобираем: без длительности
+		// и оглавления он не играл второй раз.
+		if (/webm/i.test(file.type) || /\.webm$/i.test(file.name)) {
+			const { remuxWebm } = await import('./video-encode');
+			const remuxed = await remuxWebm(file);
+			if (remuxed) return { ...remuxed, fallbackReason };
+		}
+		return { ...(await fileToQueueBuffer(file)), fallbackReason };
 	}
 }
 

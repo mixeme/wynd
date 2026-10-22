@@ -114,3 +114,33 @@ export async function encodeVideo(
 		input.dispose();
 	}
 }
+
+/**
+ * WebM, записанный камерой браузера, — пересобрать без пережатия: записать
+ * длительность и оглавление для перемотки. MediaRecorder в Firefox пишет без
+ * них, и ролик не играл второй раз и не перематывался (владелец, 2026-10-22).
+ * Нужен там, где сжать нечем (Firefox на Android без WebCodecs): пакеты
+ * копируются как есть, кодировщик не нужен. Не вышло — undefined, ролик
+ * уходит как записан.
+ */
+export async function remuxWebm(file: File): Promise<CompressedMedia | undefined> {
+	const { ALL_FORMATS, BlobSource, BufferTarget, Conversion, Input, Output, WebMOutputFormat } =
+		await import('mediabunny');
+	const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
+	try {
+		const bufferTarget = new BufferTarget();
+		const output = new Output({ format: new WebMOutputFormat(), target: bufferTarget });
+		const conversion = await Conversion.init({ input, output, tracks: 'primary' });
+		if (!conversion.isValid || !conversion.utilizedTracks.some((t) => t.isVideoTrack())) return;
+		await conversion.execute();
+		const buffer = bufferTarget.buffer;
+		if (!buffer || buffer.byteLength === 0) return;
+		const base = file.name.replace(/\.[^.]+$/, '') || 'video';
+		return { data: buffer, type: 'video/webm', name: `${base}.webm`, size: buffer.byteLength };
+	} catch (err) {
+		console.warn('wynd: webm remux failed', err);
+		return;
+	} finally {
+		input.dispose();
+	}
+}
