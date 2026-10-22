@@ -55,13 +55,20 @@
 	let grantCustomDays = $state('');
 	let grantUnlimited = $state(false);
 	let grantNone = $state(false);
+	// Ошибка срока — в самом окне: строка ошибки страницы под затемнением не видна.
+	let grantError = $state('');
 	let grantChosen = false;
+
+	$effect(() => {
+		void [grantDays, grantCustom, grantCustomDays, grantUnlimited, grantNone];
+		grantError = '';
+	});
 
 	function confirmGrant() {
 		if (!settings) return;
 		const days = grantNone || grantUnlimited ? 0 : grantCustom ? parseCustomDays(grantCustomDays) : grantDays;
 		if (days === null) {
-			error = 'Укажите число дней';
+			grantError = 'Укажите число дней';
 			return;
 		}
 		grantChosen = true;
@@ -302,6 +309,9 @@
 					noneLabel="Не давать"
 				/>
 			</div>
+			{#if grantError}
+				<Hint class="mx-0 mt-8">{grantError}</Hint>
+			{/if}
 		</ConfirmDialog>
 	{/if}
 </AdminWideLayout>

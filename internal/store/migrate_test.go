@@ -227,6 +227,27 @@ func TestMigrateAdminEmailOverPopulatedBase(t *testing.T) {
 	}
 }
 
+// 0005 добавляет отметку письма о поломках: почта администратора цела,
+// письма ещё не было.
+func TestMigrateAdminTroubleOverPopulatedBase(t *testing.T) {
+	s := baseAt(t, 4)
+	if _, err := s.db.Exec(`INSERT OR IGNORE INTO instance_settings (id, updated_at) VALUES (1, '2026-10-01T00:00:00Z');
+		UPDATE instance_settings SET admin_email = 'admin@example.com' WHERE id = 1`); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if err := migrate(s.db); err != nil {
+		t.Fatalf("migrate over populated base: %v", err)
+	}
+	var adminEmail string
+	var sentAt *string
+	if err := s.db.QueryRow(`SELECT admin_email, admin_trouble_sent_at FROM instance_settings WHERE id = 1`).Scan(&adminEmail, &sentAt); err != nil {
+		t.Fatal(err)
+	}
+	if adminEmail != "admin@example.com" || sentAt != nil {
+		t.Fatalf("admin_email %q, admin_trouble_sent_at %+v", adminEmail, sentAt)
+	}
+}
+
 // Пропущенная миграция ниже уже применённой — отказ запуска, а не доливка
 // середины цепочки поверх более новой схемы (MIG-1).
 func TestMigrateRefusesSkippedVersion(t *testing.T) {

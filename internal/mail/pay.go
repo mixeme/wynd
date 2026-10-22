@@ -13,7 +13,7 @@ func (s *Service) SendSubscriptionReminder(ctx context.Context, email, instanceN
 	if email == "" {
 		return ErrInvalid
 	}
-	subject := "Wynd: подписка скоро закончится"
+	subject := "Подписка скоро закончится"
 	body := fmt.Sprintf(
 		"Подписка на «%s» действует до %s — через %d %s круги на этом сервере закроются.\n\nОткройте приложение и продлите доступ.\n",
 		instanceName,

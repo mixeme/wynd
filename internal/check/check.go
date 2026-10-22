@@ -3,6 +3,7 @@ package check
 import (
 	"context"
 	"fmt"
+	"math"
 	"net"
 	"strings"
 	"time"
@@ -53,6 +54,10 @@ type Input struct {
 	VAPIDConfigured bool
 	LastRoutineAt   *time.Time
 	LastBackupAt    *time.Time
+	// UsedBytes и LimitBytes — занятое и предел сервера, как на шкале
+	// «Хранилища». LimitBytes ≤ 0 — предел не прочитан.
+	UsedBytes  int64
+	LimitBytes int64
 	External        *ExternalReport
 	// ReachedThisServer: браузер открыл панель по имени из public_url и
 	// получил из /probe метку этого процесса.
@@ -95,6 +100,7 @@ func RunChecks(ctx context.Context, in Input) []Result {
 		checkPWA(in),
 		checkClocks(ctx, now),
 		checkDiskSpace(in.DataDir),
+		checkServerLimit(in),
 		checkDailyRoutine(in, now),
 		checkBackup(in, now),
 	}
@@ -145,9 +151,30 @@ func checkDiskSpace(dataDir string) Result {
 	}
 	r.Detail = fmt.Sprintf("свободно %s из %s", formatGB(free), formatGB(total))
 	switch {
-	case free < 100*1024*1024:
+	case free < DiskCriticalBytes:
 		r.Status = StatusFail
-	case free < 1024*1024*1024:
+	case free < DiskLowBytes:
+		r.Status = StatusWarn
+	default:
+		r.Status = StatusOK
+	}
+	return r
+}
+
+// checkServerLimit — занятое против предела сервера из «Хранилища» (A10, ч. 2):
+// с порога 90% — предупреждение, у предела — новое в круги не добавить.
+func checkServerLimit(in Input) Result {
+	r := Result{ID: "server_limit", Title: "Предел сервера"}
+	if in.LimitBytes <= 0 {
+		r.Status = StatusWarn
+		r.Detail = "не удалось прочитать предел"
+		return r
+	}
+	r.Detail = fmt.Sprintf("занято %s из %s", formatSize(in.UsedBytes), formatSize(in.LimitBytes))
+	switch {
+	case ServerFull(in.UsedBytes, in.LimitBytes):
+		r.Status = StatusFail
+	case ServerNearlyFull(in.UsedBytes, in.LimitBytes):
 		r.Status = StatusWarn
 	default:
 		r.Status = StatusOK
@@ -233,7 +260,7 @@ func checkDailyRoutine(in Input, now time.Time) Result {
 		return r
 	}
 	age := now.Sub(in.LastRoutineAt.UTC())
-	if age > 36*time.Hour {
+	if age > RoutineMaxAge {
 		r.Status = StatusWarn
 		r.Detail = fmt.Sprintf("последний запуск %s", in.LastRoutineAt.UTC().Format(time.RFC3339))
 		r.At = in.LastRoutineAt
@@ -253,7 +280,7 @@ func checkBackup(in Input, now time.Time) Result {
 		return r
 	}
 	age := now.Sub(in.LastBackupAt.UTC())
-	if age > 7*24*time.Hour {
+	if age > BackupMaxAge {
 		r.Status = StatusWarn
 		r.Detail = fmt.Sprintf("последняя копия %s", in.LastBackupAt.UTC().Format(time.RFC3339))
 		return r
@@ -406,6 +433,24 @@ func proxyCheck(in Input, id, title string, eval func(*ExternalReport) (Status, 
 func formatGB(n uint64) string {
 	s := strings.Replace(fmt.Sprintf("%.1f", bytesToGB(n)), ".", ",", 1)
 	return strings.TrimSuffix(s, ",0") + " ГБ"
+}
+
+// formatSize — «12 КБ», «2,4 ГБ», «37 ГБ»: единицы, как в «Хранилище» и в
+// письмах, чтобы малое занятое не читалось как «0 ГБ».
+func formatSize(n int64) string {
+	units := []string{"Б", "КБ", "МБ", "ГБ", "ТБ"}
+	if n <= 0 {
+		return "0 Б"
+	}
+	v, i := float64(n), 0
+	for v >= 1024 && i < len(units)-1 {
+		v /= 1024
+		i++
+	}
+	if v >= 10 || i == 0 {
+		return fmt.Sprintf("%d %s", int64(math.Round(v)), units[i])
+	}
+	return strings.Replace(fmt.Sprintf("%.1f %s", v, units[i]), ".", ",", 1)
 }
 
 func bytesToGB(n uint64) float64 {

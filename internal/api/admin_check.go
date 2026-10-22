@@ -66,7 +66,14 @@ func (s *Server) runChecks(ctx context.Context, external *check.ExternalReport) 
 		}()
 	}
 	wg.Wait()
+	var used, limit int64
+	if s.Blobs != nil {
+		used, _ = s.Blobs.UsedBytes(ctx)
+		limit, _ = s.Blobs.InstanceQuotaBytes(ctx)
+	}
 	return check.RunChecks(ctx, check.Input{
+		UsedBytes:       used,
+		LimitBytes:      limit,
 		Loopback:        s.Loopback(),
 		PublicURL:       s.PublicURL(),
 		DataDir:         s.DataDir,

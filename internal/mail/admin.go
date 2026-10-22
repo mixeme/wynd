@@ -42,7 +42,7 @@ func (s *Service) SendAdminQuotaRequest(ctx context.Context, requester, circle s
 	if arriving {
 		what = fmt.Sprintf("для круга «%s», который переносят или оживляют на этом сервере", circle)
 	}
-	subject := "Wynd: просят место для круга"
+	subject := "Просят место для круга"
 	body := fmt.Sprintf("%s просит %s %s.\n\nОтветить можно в панели:\n%s\n", requester, asked, what, link)
 	return s.notify(ctx, to, subject, body)
 }
@@ -54,7 +54,7 @@ func (s *Service) SendAdminPayRequest(ctx context.Context, requester, comment, l
 	if err != nil || to == "" {
 		return err
 	}
-	subject := "Wynd: заявка об оплате"
+	subject := "Заявка об оплате"
 	body := fmt.Sprintf("Заявка об оплате подписки от %s.", requester)
 	if c := strings.TrimSpace(comment); c != "" {
 		body += fmt.Sprintf(" Комментарий: «%s».", c)

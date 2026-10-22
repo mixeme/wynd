@@ -33,7 +33,7 @@ func TestRunChecksLoopbackDefaults(t *testing.T) {
 		LastBackupAt:    &backupAt,
 		Now:             now,
 	})
-	if len(results) != 17 {
+	if len(results) != 18 {
 		t.Fatalf("result count: %d", len(results))
 	}
 

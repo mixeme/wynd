@@ -102,6 +102,7 @@
 					description="расходятся с NTP на 0,4 с; код живёт 15 минут"
 				/>
 				<CheckRow status="ok" name="Место" description="свободно 21,6 ГБ из 40" />
+				<CheckRow status="ok" name="Предел сервера" description="занято 12,4 ГБ из 40 ГБ" />
 				<CheckRow status="ok" name="Суточная рутина" description="прошла сегодня в 04:00" />
 				<CheckRow
 					status="warn"

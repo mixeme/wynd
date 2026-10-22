@@ -154,6 +154,7 @@ func runServer() {
 		apiSrv.RecoverMoveArchives(baseCtx)
 		apiSrv.ResumeIncomingMoves(baseCtx)
 		maybeRunRoutine(baseCtx, authSvc, blobsDir, ch, blobStore, mailSvc, pushSvc, apiSrv.PublicURL())
+		apiSrv.MaybeSendServerTrouble(baseCtx, time.Now().UTC())
 		expireFullArchives(baseCtx, apiSrv)
 		// Ролики, лежавшие без кадра до этой версии, — один проход при старте.
 		if n := apiSrv.Posters.Backfill(baseCtx); n > 0 {
@@ -169,6 +170,7 @@ func runServer() {
 				// Адрес берётся свежим: письма фоновых задач уходили со
 				// старым public_url до перезапуска (API-4).
 				maybeRunRoutine(baseCtx, authSvc, blobsDir, ch, blobStore, mailSvc, pushSvc, apiSrv.PublicURL())
+				apiSrv.MaybeSendServerTrouble(baseCtx, time.Now().UTC())
 				expireFullArchives(baseCtx, apiSrv)
 			}
 		}

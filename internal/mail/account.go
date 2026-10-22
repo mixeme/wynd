@@ -20,7 +20,7 @@ func (s *Service) SendEmailChangedNotice(ctx context.Context, oldEmail string, b
 	}
 	b.WriteString("Круги, имена и записи остались прежними.\n\n")
 	b.WriteString("Если почту меняли не вы и не по вашей просьбе — напишите администратору сервера.\n")
-	return s.notify(ctx, oldEmail, "Wynd: почта для входа изменена", b.String())
+	return s.notify(ctx, oldEmail, "Почта для входа изменена", b.String())
 }
 
 // SendEmailAssignedNotice уходит на новый адрес, когда почту сменил
@@ -33,7 +33,7 @@ func (s *Service) SendEmailAssignedNotice(ctx context.Context, newEmail string) 
 	body := "Администратор сервера назначил этот адрес почтой для входа" + s.onServer(ctx) + ".\n\n" +
 		"Откройте Wynd и войдите с этим адресом — код придёт сюда. Круги, имена и записи остались прежними.\n\n" +
 		"Если вы об этом не просили — напишите администратору сервера.\n"
-	return s.notify(ctx, newEmail, "Wynd: новая почта для входа", body)
+	return s.notify(ctx, newEmail, "Новая почта для входа", body)
 }
 
 // onServer — « на сервере «Имя»» или пусто, если сервер назван как продукт.

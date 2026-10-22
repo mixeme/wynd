@@ -142,13 +142,13 @@ func checkCertLE(in Input) Result {
 	}
 	remaining := in.TLS.NotAfter.Sub(in.Now.UTC())
 	days := int(remaining.Hours() / 24)
-	if remaining < 0 || in.TLS.Verify == VerifyExpired {
+	if CertExpired(in.TLS, in.Now) {
 		r.Status = StatusFail
 		r.Detail = fmt.Sprintf("истёк %s", formatCertDate(in.TLS.NotAfter))
 		return r
 	}
 	r.Status = StatusOK
-	if remaining < renewalOverdue(in.TLS) {
+	if CertNotRenewed(in.TLS, in.Now) {
 		r.Status = StatusWarn
 	}
 	if isLetsEncryptIssuer(in.TLS) {
@@ -161,6 +161,17 @@ func checkCertLE(in Input) Result {
 	}
 	r.Detail = fmt.Sprintf("выпустил %s; до %s, %d дн.", issuer, formatCertDate(in.TLS.NotAfter), days)
 	return r
+}
+
+// CertExpired — сертификат истёк: браузеры сайт не откроют.
+func CertExpired(info *TLSInfo, now time.Time) bool {
+	return info.Verify == VerifyExpired || info.NotAfter.Before(now.UTC())
+}
+
+// CertNotRenewed — сертификат ещё действует, но продление уже должно было
+// пройти (renewalOverdue).
+func CertNotRenewed(info *TLSInfo, now time.Time) bool {
+	return !CertExpired(info, now) && info.NotAfter.Sub(now.UTC()) < renewalOverdue(info)
 }
 
 // renewalOverdue — сколько срока должно остаться у исправно продлеваемого

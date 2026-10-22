@@ -14,7 +14,7 @@ func (s *Service) SendArchiveCycleStart(ctx context.Context, email, cutoffDate s
 	if email == "" {
 		return ErrInvalid
 	}
-	subject := "Wynd: началась архивация круга"
+	subject := "Началась архивация круга"
 	body := fmt.Sprintf(
 		"В круге начался цикл архивации.\n\nОтсечка: %s\nСкачать до: %s\n\nСкачать персональный архив:\n%s\n",
 		cutoffDate,
@@ -30,7 +30,7 @@ func (s *Service) SendArchiveReminder(ctx context.Context, email, cutoffDate str
 	if email == "" {
 		return ErrInvalid
 	}
-	subject := "Wynd: напоминание об архиве круга"
+	subject := "Напоминание об архиве круга"
 	body := fmt.Sprintf(
 		"Скоро истечёт срок скачивания архива.\n\nОтсечка: %s\nСкачать до: %s\n\nСкачать персональный архив:\n%s\n",
 		cutoffDate,

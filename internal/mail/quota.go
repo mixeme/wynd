@@ -22,10 +22,10 @@ func (s *Service) SendQuotaAnswer(ctx context.Context, email, circle string, req
 	}
 	var subject, body string
 	if approved {
-		subject = "Wynd: кругу дали место"
+		subject = "Кругу дали место"
 		body = fmt.Sprintf("Администратор дал кругу «%s» %s.\n\n%s\n", circle, asked, link)
 	} else {
-		subject = "Wynd: в месте отказали"
+		subject = "В месте отказали"
 		body = fmt.Sprintf("Администратор отказал кругу «%s» в %s. Можно попросить ещё раз или освободить место:\n%s\n", circle, formatBytes(requested), link)
 	}
 	return s.notify(ctx, email, subject, body)
@@ -56,7 +56,7 @@ func (s *Service) SendFullArchiveReady(ctx context.Context, email, circle string
 	if email == "" {
 		return ErrInvalid
 	}
-	subject := "Wynd: архив круга готов"
+	subject := "Архив круга готов"
 	body := fmt.Sprintf("Архив круга «%s» собран. Скачать его можно до %s — потом сервер удалит файл.\n\n%s\n",
 		circle, expires.UTC().Format("02.01.2006 15:04")+" UTC", link)
 	return s.notify(ctx, email, subject, body)
@@ -73,7 +73,7 @@ func (s *Service) SendCircleLeaving(ctx context.Context, email, circle, owner, l
 	if strings.TrimSpace(owner) != "" {
 		who = owner
 	}
-	subject := "Wynd: круг «" + circle + "» уходит с сервера"
+	subject := "Круг «" + circle + "» уходит с сервера"
 	body := fmt.Sprintf("%s убирает «%s» с сервера и сохраняет круг в файл. Читать можно, писать нельзя.\n\nСвой архив — всё, что вы видели в круге, — можно скачать, пока круг здесь:\n%s\n", who, circle, link)
 	return s.notify(ctx, email, subject, body)
 }
@@ -85,7 +85,7 @@ func (s *Service) SendCircleWaiting(ctx context.Context, email, circle, owner, l
 	if email == "" {
 		return ErrInvalid
 	}
-	subject := "Wynd: вас ждут в круге «" + circle + "»"
+	subject := "Вас ждут в круге «" + circle + "»"
 	body := fmt.Sprintf("Круг «%s» теперь живёт на этом сервере. Войдите этой почтой — вы попадёте в своё имя и свои записи:\n%s\n", circle, link)
 	if strings.TrimSpace(owner) != "" {
 		body = fmt.Sprintf("Круг «%s» теперь живёт на этом сервере, владелец — %s. Войдите этой почтой — вы попадёте в своё имя и свои записи:\n%s\n", circle, owner, link)
@@ -104,7 +104,7 @@ func (s *Service) SendCircleMoving(ctx context.Context, email, circle, owner, li
 	if strings.TrimSpace(owner) != "" {
 		who = owner
 	}
-	subject := "Wynd: круг «" + circle + "» переезжает"
+	subject := "Круг «" + circle + "» переезжает"
 	body := fmt.Sprintf("%s переносит «%s» на другой сервер. Читать можно, писать пока нельзя. Когда перенос закончится, на эту почту придёт письмо с новым адресом круга.\n\n%s\n", who, circle, link)
 	return s.notify(ctx, email, subject, body)
 }
@@ -116,7 +116,7 @@ func (s *Service) SendCircleMoved(ctx context.Context, email, circle, newServer 
 	if email == "" {
 		return ErrInvalid
 	}
-	subject := "Wynd: круг «" + circle + "» переехал"
+	subject := "Круг «" + circle + "» переехал"
 	body := fmt.Sprintf("Круг «%s» теперь живёт на другом сервере:\n%s\n\nВойдите там этой почтой (%s) — попадёте в своё имя и свои записи. На прежнем сервере круга больше нет.\n", circle, newServer, email)
 	return s.notify(ctx, email, subject, body)
 }

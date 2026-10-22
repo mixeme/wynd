@@ -71,7 +71,7 @@ export const CHECK_GROUPS: { label: string; ids: string[] }[] = [
 	},
 	{
 		label: 'Сервер',
-		ids: ['clocks', 'disk_space', 'daily_routine', 'backup']
+		ids: ['clocks', 'disk_space', 'server_limit', 'daily_routine', 'backup']
 	}
 ];
 
