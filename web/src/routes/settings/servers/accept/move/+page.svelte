@@ -264,7 +264,7 @@
 			<Meter value={move.circle.bytes ? Math.min(1, move.pulled_bytes / move.circle.bytes) : 0} max={1} />
 			<Hint class="mt-8">
 				{move.pulled_bytes
-					? `Сервер забирает круг с ${source}: ${formatBytes(move.pulled_bytes)} из ${formatBytes(move.circle.bytes)}.`
+					? `Сервер скачивает круг с ${source}: ${formatBytes(move.pulled_bytes)} из ${formatBytes(move.circle.bytes)}.`
 					: `${move.source_name ? `«${move.source_name}»` : source} собирает круг для переноса.`}
 			</Hint>
 		{/if}
@@ -356,7 +356,7 @@
 				<Button class="mt-14" variant="colored" loading={busy} onclick={() => void start()}>
 					Перенести круг
 				</Button>
-				<Hint class="mt-8 ctr-text">Сервер заберёт круг сам. Приложение можно закрыть.</Hint>
+				<Hint class="mt-8 ctr-text">Сервер скачает круг сам. Приложение можно закрыть.</Hint>
 			{:else if move.request?.status === 'pending'}
 				<!-- 7.22 -->
 				<StatusCard

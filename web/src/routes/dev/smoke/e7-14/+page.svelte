@@ -16,7 +16,7 @@
 	<SettingsRow title="anya@example.com" subtitle="5 кругов" chevron={false} />
 	<SectionLabel class="mt-8">Исчезнет</SectionLabel>
 	<Hint class="mt-0 ink">
-		Вход на всех ваших устройствах. Вернуться с этой почтой можно — как новый человек.
+		Вход на всех ваших устройствах. Вернуться с этой почтой можно — как новый человек: в круги по новому приглашению, прежнее в них будет не видно.
 	</Hint>
 	<SectionLabel class="mt-18">Останется в кругах</SectionLabel>
 	<Hint class="mt-0 ink">
@@ -25,12 +25,12 @@
 	<SettingsRow
 		class="mt-14"
 		title="Стереть моё имя и фото во всех кругах"
-		subtitle="записи останутся без имени"
+		subtitle="записи останутся без имени, вернуть подпись будет нельзя"
 		divided="both"
 	>
 		{#snippet control()}
 			<Switch bind:checked={erase} label="Стереть моё имя и фото во всех кругах" />
 		{/snippet}
 	</SettingsRow>
-	<DangerZone class="mt-18" items={['Уйти с «Дома Ани» насовсем']} onitem={() => {}} />
+	<DangerZone class="mt-18" items={['Уйти с сервера «Дом Ани» насовсем']} onitem={() => {}} />
 </FormLayout>

@@ -81,7 +81,7 @@ export function moveErrorText(code: string | undefined): string {
 		case 'source_unreachable':
 			return 'Сервер по ссылке не отвечает. Проверьте адрес или попробуйте позже.';
 		case 'move_busy':
-			return 'Этот сервер уже забирает другой ваш круг — дождитесь, пока он закончит.';
+			return 'Этот сервер уже скачивает другой ваш круг — дождитесь, пока он закончит.';
 		case 'no_room':
 			return 'Круг сюда не поместился.';
 		case 'archive_invalid':

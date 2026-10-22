@@ -19,7 +19,6 @@
 	import {
 		clearPendingLeave,
 		fetchLeavePreview,
-		leaveConfirmText,
 		leaveErrorHint,
 		leaveServer,
 		loadPendingLeave,
@@ -136,11 +135,12 @@
 				/>
 			{/each}
 			<!-- Правило видно, как на 6.39: кнопка на месте, но не нажимается. -->
-			<DangerZone class="mt-22" disabled items={[`Уйти с «${serverLabel}» насовсем`]} />
+			<DangerZone class="mt-22" disabled items={[`Уйти с сервера «${serverLabel}» насовсем`]} />
 		{:else}
 			<SectionLabel class="mt-8">Исчезнет</SectionLabel>
 			<Hint class="mt-0 ink">
-				Вход на всех ваших устройствах. Вернуться с этой почтой можно — как новый человек.
+				Вход на всех ваших устройствах. Вернуться с этой почтой можно — как новый человек: в круги
+				по новому приглашению, прежнее в них будет не видно.
 			</Hint>
 			<SectionLabel class="mt-18">Останется в кругах</SectionLabel>
 			<Hint class="mt-0 ink">
@@ -150,7 +150,7 @@
 				<SettingsRow
 					class="mt-14"
 					title="Стереть моё имя и фото во всех кругах"
-					subtitle="записи останутся без имени"
+					subtitle="записи останутся без имени, вернуть подпись будет нельзя"
 					divided="both"
 				>
 					{#snippet control()}
@@ -160,7 +160,7 @@
 			{/if}
 			<DangerZone
 				class="mt-18"
-				items={[`Уйти с «${serverLabel}» насовсем`]}
+				items={[`Уйти с сервера «${serverLabel}» насовсем`]}
 				onitem={openConfirm}
 			/>
 		{/if}
@@ -169,14 +169,15 @@
 
 {#if confirmOpen && pending && preview}
 	<ConfirmDialog
-		title="Уйти с «{serverLabel}» насовсем?"
+		title="Уйти с сервера «{serverLabel}» насовсем?"
 		confirmLabel="Уйти"
 		confirmDisabled={!typedRight}
 		loading={leaving}
 		onconfirm={() => void onLeave()}
 		oncancel={() => (confirmOpen = false)}
 	>
-		<Hint class="mb-14">{leaveConfirmText(preview.circles, erasureAllowed && eraseNames)}</Hint>
+		<!-- Что будет, сказано на экране; окно только подтверждает (владелец, 2026-10-22). -->
+		<Hint class="mb-14">Впишите имя сервера, чтобы уйти.</Hint>
 		<Input active placeholder={serverLabel} bind:value={confirmName} />
 		{#if leaveError}
 			<Hint class="mt-8">{leaveError}</Hint>

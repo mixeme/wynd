@@ -201,7 +201,7 @@
 		<SettingsRow
 			class="mt-14"
 			title="Перенести с другого сервера"
-			subtitle="по ссылке переноса — сервер заберёт круг сам"
+			subtitle="по ссылке переноса — сервер скачает круг сам"
 			divided="top"
 			onclick={() => goto(`/settings/servers/accept/move?origin=${encodeURIComponent(origin)}`)}
 		/>

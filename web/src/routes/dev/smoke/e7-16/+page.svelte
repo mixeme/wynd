@@ -13,14 +13,12 @@
 	<ServerRow name="Дом Ани" subtitle="home.example.org" card gdpr top={10} />
 </FormLayout>
 <ConfirmDialog
-	title="Уйти с «Дома Ани» насовсем?"
+	title="Уйти с сервера «Дом Ани» насовсем?"
 	confirmLabel="Уйти"
 	confirmDisabled={name.trim() !== 'Дом Ани'}
 	onconfirm={() => {}}
 	oncancel={() => {}}
 >
-	<Hint class="mb-14">
-		Вы выйдете со всех устройств. Ваши записи останутся под вашими именами. Вернуться с этой почтой можно, но как новый человек: в круги — по новому приглашению, и прежнее в них будет не видно.
-	</Hint>
+	<Hint class="mb-14">Впишите имя сервера, чтобы уйти.</Hint>
 	<Input active placeholder="Дом Ани" bind:value={name} />
 </ConfirmDialog>

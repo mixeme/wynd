@@ -183,19 +183,19 @@
 		return `${circle.origin}:${circle.id}`;
 	}
 
+	// Закрепление — переезд, как «Отмеченные» в Slack (владелец, 2026-10-22:
+	// «С переездом»): закреплённый круг стоит только сверху, группа его помнит
+	// и покажет снова, когда открепят. Счётчик группы — по тому, что в ней
+	// видно: раньше он считал и уехавшие, и группа с числом была пустой.
 	function circlesInGroup(group: StreetGroupView): StreetCircle[] {
 		return group.keys
 			.map((key) => circleMap.get(key))
-			// Закреплённый круг остаётся в своей группе: закрепление — ярлык
-			// сверху, а не переезд. Раньше он пропадал из папки, и группа
-			// показывала счётчик при пустом содержимом.
-			.filter((c): c is StreetCircle => c !== undefined)
-			// Внутри группы — по свежести, закреплённые не выше прочих.
+			.filter((c): c is StreetCircle => c !== undefined && !c.pinned)
 			.sort(byFreshness);
 	}
 
 	function groupMemberCount(group: StreetGroupView): number {
-		return group.keys.filter((key) => circleMap.has(key)).length;
+		return circlesInGroup(group).length;
 	}
 
 	function circleGroupName(circle: StreetCircle): string | undefined {
@@ -206,7 +206,8 @@
 	// Круг, где ещё не выбрано имя, в группу не кладётся: участия пока нет.
 	// Вышедший с правом читать — кладётся (A2): круг на его улочке.
 	function addableCirclesForGroup(group: StreetGroupView): StreetCircle[] {
-		return circles.filter((c) => !c.pendingJoin && !group.keys.includes(circleKey(c)));
+		// Закреплённый в чипах не предлагается: в группе его сейчас не видно бы.
+		return circles.filter((c) => !c.pendingJoin && !c.pinned && !group.keys.includes(circleKey(c)));
 	}
 
 	function showGroupChips(group: StreetGroupView): boolean {
