@@ -3126,6 +3126,44 @@
   <div class="btn c">Дальше: сроки</div>
 </div>
 <span class="num">6.17</span><b>Место кончилось</b><i>Выбирать отсечку вслепую нельзя, поэтому даты стоят на графике занятого места: двигая линию, владелец сразу видит, сколько освободит именно эта дата. Полоса заполнена целиком — и сказано, что именно перестало работать: писать в круг нельзя совсем. Строка под шкалой утверждена владельцем 2026-10-13 вместе с правилом (план 46, C42): квота считает всё, что круг кладёт на диск, включая текст, и при упоре не пишется ничего — иначе диск сервера можно заполнить текстом мимо квоты. В приложении — с 0.30.0, вместе с правилом. Хвост «: ни текст, ни фотографии» снят владельцем 2026-10-15 — в приложении ещё стоит. Запрос администратору стоит первым и назван необязательным: он может отказать, и цикл всё равно придётся пройти.</i></figure>
+<figure class="s" id="e6-17a"><div class="ph">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="cbar"><div class="top"><svg class="ic"><use href="#i-back"/></svg><span class="t">Архив и очистка</span></div><div style="height:12px"></div></div>
+  <div class="lab">Место</div>
+  <div class="meter"><u style="width:100%"></u></div>
+  <div class="hint" style="margin-top:8px">10 ГБ из 10 ГБ · писать в круг больше нельзя</div>
+  <div class="row2" style="margin-top:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+    <div class="g"><div style="font-weight:600">Попросить место</div><div class="sub">шаг необязательный — можно сразу к отсечке</div></div>
+    <svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="lab" style="margin-top:18px">Сколько освободится</div>
+  <div style="margin:0 16px">
+    <svg viewBox="0 0 358 132" style="display:block;width:100%;height:auto">
+      <rect x="0" y="16" width="205" height="88" fill="var(--ct)"/>
+      <g fill="#C9C0B2">
+        <rect x="209" y="76" width="18" height="28" rx="2"/><rect x="235" y="82" width="18" height="22" rx="2"/>
+        <rect x="261" y="70" width="18" height="34" rx="2"/><rect x="287" y="86" width="18" height="18" rx="2"/>
+        <rect x="313" y="78" width="18" height="26" rx="2"/><rect x="339" y="74" width="18" height="30" rx="2"/>
+      </g>
+      <g fill="var(--c)">
+        <rect x="1" y="70" width="18" height="34" rx="2"/><rect x="27" y="52" width="18" height="52" rx="2"/>
+        <rect x="53" y="36" width="18" height="68" rx="2"/><rect x="79" y="24" width="18" height="80" rx="2"/>
+        <rect x="105" y="46" width="18" height="58" rx="2"/><rect x="131" y="60" width="18" height="44" rx="2"/>
+        <rect x="157" y="42" width="18" height="62" rx="2"/><rect x="183" y="28" width="18" height="76" rx="2"/>
+      </g>
+      <path d="M0 104 H358" stroke="#DFD8CD" stroke-width="1" fill="none"/>
+      <path d="M205 10 V112" stroke="var(--c)" stroke-width="1.5" fill="none"/>
+      <text x="205" y="126" text-anchor="middle" font-size="10" fill="var(--c)">1 июня 2025</text>
+      <text x="2" y="126" font-size="10" fill="#A8A096">2024</text>
+      <text x="330" y="126" font-size="10" fill="#A8A096">2026</text>
+    </svg>
+  </div>
+  <div class="lab" style="margin-top:14px">Архивировать всё до</div>
+  <div class="fld act">1 июня 2025</div>
+  <div class="hint">Освободится 6,2 ГБ из 10. В круге останется 214 записей из 340.</div>
+  <div class="hint" style="color:var(--ink)">Вы видите круг с 3 марта 2025. Что было раньше, вам не видно и в ваш архив не попадёт, но удалится тоже.</div>
+  <div class="btn c">Дальше: сроки</div>
+</div>
+<span class="num">6.17а</span><b>Место кончилось: владелец пришёл позже</b><i>Утверждено владельцем 2026-10-22, не реализовано (план 46, A12, «Е»). Состояние 6.17 у владельца, чей отрезок видимости начинается позже начала круга: круг ему передали или он оживил его новым человеком (7.29в). График и «Освободится…» считают весь круг, а лента и личный архив владельца — только его отрезок. Поэтому — отдельной строкой в чернилах: с какого дня он видит круг и что раньшее удалится, хотя он его не видел и в его архив оно не попадёт. Строка есть, только когда выбранная дата позже начала его отрезка, — иначе удаляется лишь то, что он сам видел.</i></figure>
 <figure class="s" id="e6-18"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="cbar"><div class="top"><svg class="ic"><use href="#i-back"/></svg><span class="t">Попросить место</span></div><div style="height:12px"></div></div>
@@ -3975,6 +4013,68 @@
   <div class="btn c">Оживить круг</div>
 </div>
 <span class="num">7.29</span><b>Оживить круг из архива</b><i>Утверждено владельцем 2026-10-12, реализовано в 0.32.0. После выбора файла (и пароля, 7.27). Тот же каркас, что 7.20, но источник — файл, и он идёт через устройство: оно расшифровывает файл и загружает круг на сервер частями. Скорее всего это компьютер — экран тот же. Под карточкой — когда архив собран и какой датой кончается журнал: архив может пролежать годы. Сказано «собран», а не «убран»: файл бывает и резервной копией круга, который живёт дальше (6.27), и сам файл не знает, убрали ли круг потом. Поэтому рассылка здесь по умолчанию выключена — почты могли устареть, а письмо «вас зовут в круг трёхлетней давности» лучше отправлять осознанно. Владельцем становится тот, кто оживил: файл и пароль у него. Под выбором сервера — строка о незашифрованном хранении, как на форме нового круга (2.14) и на 7.20: её говорят тому, кто решает, где жить кругу (2026-10-12). Журнал продолжается с того места, где замер; оживление — служебная строка. Итог — экран 7.25, участников встречает 1.10. C44, 2026-10-17: под сервером — как на «Новом круге» (2.14), со ссылкой «запустите свой»; у переключателя — «письмо на почту каждому участнику»; без «остальных позовёте сами» и без строки под кнопкой. Размер круга — файлы и текст, как считает квота (C42): у круга без файлов больше не «0 Б».</i></figure>
+<figure class="s" id="e7-29a"><div class="ph terracotta">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Оживить круг</span></div>
+  <div class="lab">Сервер</div>
+  <div class="row2" style="padding:2px 16px 10px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">У Славы</div><div class="sub">wynd.u-slavy.ru · свободно 40 ГБ</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="hint" style="margin-top:0;margin-bottom:12px">Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или <span class="under">запустите свой</span>.</div>
+  <div class="lab">Архив</div>
+  <div class="icard"><div class="sq">С</div><div class="m"><div class="n">Семья</div><div class="p">340 записей · 22 участника · 8,4 ГБ</div></div></div>
+  <div class="hint">Архив собран 4 сентября 2026 на сервере home.example.org. Последняя запись — 4 сентября.</div>
+  <div class="hint" style="color:var(--ink)">Вашей почты среди участников этого круга нет.</div>
+  <div class="lab" style="margin-top:20px">Участники</div>
+  <div class="row2" style="padding-top:2px"><div class="g"><div style="font-weight:600">Разослать приглашения</div><div class="sub">письмо на почту каждому участнику</div></div><span class="sw"></span></div>
+  <div class="hint">Почты в архиве — на день, когда его собрали. Кто войдёт сюда той же почтой, попадёт в своё имя.</div>
+  <div class="btn c">Оживить круг</div>
+</div>
+<span class="num">7.29а</span><b>Оживить круг: вашей почты нет</b><i>Утверждено владельцем 2026-10-22, не реализовано (план 46, A12). Состояние 7.29, когда почты того, кто оживляет, среди участников архива нет. Предупреждение — отдельной строкой в чернилах под датой архива. «Оживить круг» спрашивает окном, владелец ли он под другой почтой (7.29б); «Нет» — экран входа в круг (7.29в). Прежний вариант с блоком владельца на этом экране владелец отверг: «Плохо. Давай сделаем иначе». Так же на 7.20 при переносе.</i></figure>
+<figure class="s" id="e7-29b"><div class="ph terracotta">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Оживить круг</span></div>
+  <div class="lab">Сервер</div>
+  <div class="row2" style="padding:2px 16px 10px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">У Славы</div><div class="sub">wynd.u-slavy.ru · свободно 40 ГБ</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="hint" style="margin-top:0;margin-bottom:12px">Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или <span class="under">запустите свой</span>.</div>
+  <div class="lab">Архив</div>
+  <div class="icard"><div class="sq">С</div><div class="m"><div class="n">Семья</div><div class="p">340 записей · 22 участника · 8,4 ГБ</div></div></div>
+  <div class="hint">Архив собран 4 сентября 2026 на сервере home.example.org. Последняя запись — 4 сентября.</div>
+  <div class="hint" style="color:var(--ink)">Вашей почты среди участников этого круга нет.</div>
+  <div class="lab" style="margin-top:20px">Участники</div>
+  <div class="row2" style="padding-top:2px"><div class="g"><div style="font-weight:600">Разослать приглашения</div><div class="sub">письмо на почту каждому участнику</div></div><span class="sw"></span></div>
+  <div class="hint">Почты в архиве — на день, когда его собрали. Кто войдёт сюда той же почтой, попадёт в своё имя.</div>
+  <div class="btn c">Оживить круг</div>
+  <div class="scrim"></div>
+  <div class="dlg" style="top:250px">
+    <div style="font-size:17px;font-weight:600;margin-bottom:14px">Аня — это вы?</div>
+    <div style="display:flex;align-items:center;gap:12px"><div class="av" style="background:#58673A;flex:0 0 auto">А</div><div><div style="font-weight:600">Аня</div><div style="font-size:12.5px;color:var(--muted)">владелец круга «Семья»</div></div></div>
+    <div class="rowin" style="margin:20px 0 0"><div class="btn gh" style="flex:1;margin:0">Нет</div><div class="btn" style="flex:1;margin:0">Да, это я</div></div>
+  </div>
+</div>
+<span class="num">7.29б</span><b>Оживить круг: это вы?</b><i>Утверждено владельцем 2026-10-22, не реализовано (план 46, A12). С 7.29а, «Оживить круг». Окно поверх экрана: лицо владельца из архива, почты нет. «Да, это я» — круг оживает, человек становится Аней со всем её прошлым, почта Ани переходит к его учётке. «Нет» — экран входа в круг (7.29в). Так же на 7.20 при переносе.</i></figure>
+<figure class="s" id="e7-29v"><div class="ph terracotta">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="cbar"><div class="top" style="justify-content:center;position:relative"><svg class="ic" style="position:absolute;left:0"><use href="#i-back"/></svg><span class="t">Семья</span></div><div style="height:10px"></div></div>
+  <div class="lab" style="margin-top:16px">Кто уже здесь · 22</div>
+  <div class="people">
+    <div class="pp"><div class="av2" style="background:#58673A">А</div>Аня</div>
+    <div class="pp"><div class="av2" style="background:#62452F">К</div>Кот</div>
+    <div class="pp"><div class="av2" style="background:#3C4D83">М</div>Мама</div>
+    <div class="pp"><div class="av2" style="background:#7A4265">Д</div>Дед</div>
+    <div class="pp"><div class="av2" style="background:#357077">П</div>Петя</div>
+  </div>
+  <div class="hint ctr" style="margin-top:12px"><span class="under">ещё 17</span></div>
+  <div class="h1s" style="margin-top:22px;line-height:1.25">Как вас зовут<br>в этом круге?</div>
+  <div class="addph"><svg class="ic"><use href="#i-plus"/></svg></div>
+  <div class="hint ctr" style="margin-top:8px"><span class="under">добавить фото</span></div>
+  <div class="lab" style="margin-top:18px">Имя</div>
+  <div class="fld act">&nbsp;</div>
+  <div class="lab">Пол</div>
+  <div class="chips"><span class="chip">Мужской</span><span class="chip">Женский</span></div>
+  <div class="lab" style="display:flex"><span>Скажи что-нибудь кругу</span><span style="margin-left:auto;text-transform:none;letter-spacing:0;font-weight:400">необязательно</span></div>
+  <div class="ta">Первая запись в журнале круга</div>
+  <div class="btn c">Оживить круг</div>
+</div>
+<span class="num">7.29в</span><b>Оживить круг: кто вы</b><i>Утверждено владельцем 2026-10-22, не реализовано (план 46, A12). С 7.29б, «Нет». Экран входа в круг (1.4): кто здесь — по архиву, имя, фото, пол. «Скажи что-нибудь кругу» — как при вступлении (владелец: «Верни поле приветствия»), запись идёт после строки «круг оживлён». Кнопка — «Оживить круг»: круг оживает, человек входит новым участником и владельцем и видит круг с этого дня (отрезок видимости — с оживления). Прошлое остаётся у тех, кто в нём был. Так же после переноса (7.20).</i></figure>
 <figure class="s" id="e7-30"><div class="ph terracotta">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Оживить круг</span></div>
