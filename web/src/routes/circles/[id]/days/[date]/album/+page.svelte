@@ -20,7 +20,7 @@
 	const entryDate = $derived($page.params.date ?? '');
 
 	let items = $state<
-		Array<{ postId: string; blobId: string; kind: string; preview?: string }>
+		Array<{ postId: string; blobId: string; kind: string; durationMs?: number; preview?: string }>
 	>([]);
 	let selected = $state<{ postId: string; blobId: string } | undefined>();
 	let coverBlobId = $state<string | undefined>();
@@ -62,6 +62,7 @@
 						postId: post.id,
 						blobId: m.blob_id,
 						kind: m.kind,
+						durationMs: m.video_duration_ms,
 						// Ролик без кадра выбрать можно, но показать нечего.
 						preview: await getMediaUrl(circle.origin, tileBlobId(m)).catch(() => undefined)
 					});
@@ -159,6 +160,7 @@
 					variant="album"
 					src={item.preview}
 					kind={item.kind === 'video' ? 'video' : 'photo'}
+					durationMs={item.durationMs}
 					selected={selected?.blobId === item.blobId}
 					onclick={() => selectItem(item)}
 				/>

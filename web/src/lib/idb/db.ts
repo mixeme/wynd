@@ -54,6 +54,8 @@ export interface QueueMediaMeta {
 	video_poster_blob_id?: string;
 	/** JPEG первого кадра, пока он ещё не загружен на сервер. */
 	video_poster?: { type: string; data: ArrayBuffer };
+	/** Длительность ролика (4.16а), измеренная при отправке. */
+	video_duration_ms?: number;
 	/** Голосовое, записанное в приложении (C14): волна 0–100 и длительность. */
 	voice?: boolean;
 	audio_duration_ms?: number;

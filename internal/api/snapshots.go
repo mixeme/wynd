@@ -103,6 +103,9 @@ func (s *Server) handleGrid(w http.ResponseWriter, r *http.Request) {
 		if item.PosterBlobID != "" {
 			out[i]["poster_blob_id"] = item.PosterBlobID
 		}
+		if item.DurationMs > 0 {
+			out[i]["video_duration_ms"] = item.DurationMs
+		}
 	}
 	resp := map[string]any{"circle_id": circleID, "items": out}
 	setNextBefore(resp, next)

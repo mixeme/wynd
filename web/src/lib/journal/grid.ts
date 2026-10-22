@@ -34,6 +34,8 @@ export interface GridTile {
 	createdAt: string;
 	photoCount: number;
 	kind: 'photo' | 'video';
+	/** Длительность ролика-обложки для угла плитки (4.16а). */
+	durationMs?: number;
 	/** Что рисует плитка: фото или кадр ролика (tileBlobId). */
 	tileId: string;
 }
@@ -56,6 +58,7 @@ export function groupGridTiles(items: GridItem[]): GridTile[] {
 			createdAt: cover.created_at,
 			photoCount: photos.length,
 			kind: cover.kind === 'video' ? 'video' : 'photo',
+			durationMs: cover.kind === 'video' ? cover.video_duration_ms : undefined,
 			tileId: tileBlobId({
 				blob_id: cover.blob_id,
 				kind: cover.kind ?? 'photo',

@@ -181,6 +181,7 @@
 						variant="grid"
 						src={mediaUrls[tile.tileId]}
 						kind={tile.kind}
+						durationMs={tile.durationMs}
 						count={tile.photoCount}
 						onclick={() => openPost(tile.postId)}
 					/>

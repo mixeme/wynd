@@ -52,7 +52,7 @@
 		isVideoFile
 	} from '$lib/media/compress';
 	import { audioMime, isAudioFile, readAudioTags } from '$lib/media/audioTags';
-	import { videoPosterJpeg } from '$lib/media/videoPoster';
+	import { videoDurationMs, videoPosterJpeg } from '$lib/media/videoPoster';
 	import { readExif } from '$lib/media/exif';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 	import { enqueuePost, loadQueuedPost, removeQueueItem, updateQueuedPost } from '$lib/queue/queue';
@@ -286,6 +286,7 @@
 							audio_title: m.audio_title,
 							audio_cover_blob_id: m.audio_cover_blob_id,
 							video_poster_blob_id: m.video_poster_blob_id,
+							video_duration_ms: m.video_duration_ms,
 							voice: m.voice,
 							audio_duration_ms: m.audio_duration_ms,
 							audio_peaks: m.audio_peaks
@@ -499,6 +500,7 @@
 				audio_title: item.meta.audio_title,
 				audio_cover_blob_id: coverId,
 				video_poster_blob_id: posterId,
+				video_duration_ms: item.meta.kind === 'video' ? item.meta.video_duration_ms : undefined,
 				voice: item.meta.voice,
 				audio_duration_ms: item.meta.audio_duration_ms,
 				audio_peaks: item.meta.audio_peaks
@@ -593,10 +595,11 @@
 						: 'attachment';
 
 				const tags = isAudioFile(file) ? await readAudioTags(file) : undefined;
-				const poster =
-					kind === 'video'
-						? await videoPosterJpeg(new Blob([queueFile.data], { type: queueFile.type || 'video/mp4' }))
-						: undefined;
+				const videoBlob =
+					kind === 'video' ? new Blob([queueFile.data], { type: queueFile.type || 'video/mp4' }) : undefined;
+				const poster = videoBlob ? await videoPosterJpeg(videoBlob) : undefined;
+				// Длительность для угла плитки (4.16а); не узнали — только значок.
+				const durationMs = videoBlob ? await videoDurationMs(videoBlob) : undefined;
 				const meta: QueueMediaMeta = {
 					kind,
 					captured_at: exif.captured_at,
@@ -609,7 +612,8 @@
 					audio_artist: tags?.artist || undefined,
 					audio_title: tags?.title || undefined,
 					audio_cover: tags?.cover ? { type: 'image/jpeg', data: tags.cover } : undefined,
-					video_poster: poster ? { type: 'image/jpeg', data: poster } : undefined
+					video_poster: poster ? { type: 'image/jpeg', data: poster } : undefined,
+					video_duration_ms: durationMs
 				};
 
 				if (exif.entry_date && entryDate === today()) {
@@ -745,6 +749,7 @@
 					audio_title: meta.audio_title,
 					audio_cover_blob_id: coverId,
 					video_poster_blob_id: posterId,
+					video_duration_ms: meta.kind === 'video' ? meta.video_duration_ms : undefined,
 					voice: meta.voice,
 					audio_duration_ms: meta.audio_duration_ms,
 					audio_peaks: meta.audio_peaks

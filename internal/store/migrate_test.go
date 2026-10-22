@@ -248,6 +248,22 @@ func TestMigrateAdminTroubleOverPopulatedBase(t *testing.T) {
 	}
 }
 
+// 0006 добавляет длительность ролика: прежние вложения целы, длительности у
+// них нет — на плитке только значок.
+func TestMigrateVideoDurationOverPopulatedBase(t *testing.T) {
+	s := baseAt(t, 5)
+	if err := migrate(s.db); err != nil {
+		t.Fatalf("migrate over populated base: %v", err)
+	}
+	var n int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('post_media') WHERE name = 'video_duration_ms'`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatalf("video_duration_ms columns: %d", n)
+	}
+}
+
 // Пропущенная миграция ниже уже применённой — отказ запуска, а не доливка
 // середины цепочки поверх более новой схемы (MIG-1).
 func TestMigrateRefusesSkippedVersion(t *testing.T) {

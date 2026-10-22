@@ -288,6 +288,7 @@
 						variant="feed"
 						src={mediaUrls[tileBlobId(cover)]}
 						kind={cover.kind === 'video' ? 'video' : 'photo'}
+						durationMs={cover.video_duration_ms}
 						crop={cover.crop}
 						{count}
 						locationLabel={loc || undefined}

@@ -141,7 +141,7 @@ func (c *Chronicle) GridPage(ctx context.Context, circleID, accountID string, be
 	all = append(all, circleID, accountID, SnapshotPostLimit+1)
 	rows, err := c.db.QueryContext(ctx, fmt.Sprintf(`
 		SELECT p.id, pm.blob_id, p.entry_date, p.created_at, pm.is_cover, pm.kind,
-			COALESCE(pm.video_poster_blob_id, '')
+			COALESCE(pm.video_poster_blob_id, ''), COALESCE(pm.video_duration_ms, 0)
 		FROM posts p
 		JOIN post_media pm ON pm.post_id = p.id AND pm.kind IN ('photo', 'video')
 		WHERE p.circle_id = ? AND p.deleted = 0
@@ -159,7 +159,7 @@ func (c *Chronicle) GridPage(ctx context.Context, circleID, accountID string, be
 		var item GridItem
 		var created string
 		var cover int
-		if err := rows.Scan(&item.PostID, &item.BlobID, &item.EntryDate, &created, &cover, &item.Kind, &item.PosterBlobID); err != nil {
+		if err := rows.Scan(&item.PostID, &item.BlobID, &item.EntryDate, &created, &cover, &item.Kind, &item.PosterBlobID, &item.DurationMs); err != nil {
 			rows.Close()
 			return nil, nil, err
 		}

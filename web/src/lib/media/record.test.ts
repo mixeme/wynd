@@ -51,6 +51,8 @@ describe('record', () => {
 		expect(formatDuration(0)).toBe('0:00');
 		expect(formatDuration(48_400)).toBe('0:48');
 		expect(formatDuration(725_000)).toBe('12:05');
+		// Ролик длиннее часа (4.16а).
+		expect(formatDuration(3_725_000)).toBe('1:02:05');
 	});
 });
 

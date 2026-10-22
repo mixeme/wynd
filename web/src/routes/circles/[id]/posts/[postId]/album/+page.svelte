@@ -172,6 +172,7 @@
 					variant="album"
 					src={urls[tileBlobId(photo)]}
 					kind={photo.kind === 'video' ? 'video' : 'photo'}
+					durationMs={photo.video_duration_ms}
 					coverLabel={photo.is_cover ? 'обложка' : undefined}
 					onclick={() => openLightbox(i)}
 				/>

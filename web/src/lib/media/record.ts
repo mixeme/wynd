@@ -163,10 +163,12 @@ export function levelsFromPcm(samples: Float32Array, sampleRate: number, stepSec
 	return out;
 }
 
-/** «0:48», «12:05» — таймер записи и длительность голосового. */
+/** «0:48», «12:05», «1:02:05» — таймер записи, голосовое и ролик (4.16а). */
 export function formatDuration(ms: number): string {
 	const total = Math.max(0, Math.round(ms / 1000));
-	const m = Math.floor(total / 60);
+	const h = Math.floor(total / 3600);
+	const m = Math.floor((total % 3600) / 60);
 	const s = total % 60;
-	return `${m}:${String(s).padStart(2, '0')}`;
+	const ss = String(s).padStart(2, '0');
+	return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
 }

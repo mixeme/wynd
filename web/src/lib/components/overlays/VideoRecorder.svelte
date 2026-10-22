@@ -32,7 +32,8 @@
 		/** Настройки сжатия сервера (9.10): высота кадра и битрейт видео. */
 		settings?: CompressionSettings;
 		/** poster — JPEG кадра, снятый с камеры во время записи. */
-		onsend: (file: File, poster?: ArrayBuffer) => void;
+		/** durationMs — сколько шла запись: запасная длительность, если файл её не скажет. */
+		onsend: (file: File, poster?: ArrayBuffer, durationMs?: number) => void;
 		onclose: () => void;
 	} = $props();
 
@@ -245,7 +246,7 @@
 
 	function send() {
 		if (!take) return;
-		onsend(take, poster);
+		onsend(take, poster, elapsedMs > 0 ? Math.round(elapsedMs) : undefined);
 		close();
 	}
 

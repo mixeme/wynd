@@ -13,6 +13,8 @@ export interface MediaSummary {
 	audio_cover_blob_id?: string;
 	/** JPEG первого кадра ролика. */
 	video_poster_blob_id?: string;
+	/** Длительность ролика (4.16а); нет — отправлен до 0.39 или не измерилась. */
+	video_duration_ms?: number;
 	/** Голосовое, записанное в приложении (C14): волна 0–100 и длительность. */
 	voice?: boolean;
 	audio_duration_ms?: number;
@@ -195,6 +197,8 @@ export interface GridItem {
 	kind?: 'photo' | 'video';
 	/** JPEG кадра ролика; нет — ролик отправлен без кадра. */
 	poster_blob_id?: string;
+	/** Длительность ролика для угла плитки (4.16а). */
+	video_duration_ms?: number;
 }
 
 export interface GridSnapshot {

@@ -993,6 +993,18 @@
 .cnt {
 	right: 10px;
 }
+/* Правый нижний угол плитки (4.16а): длительность ролика и число снимков —
+   одной строкой; внутри ряда ярлыки не позиционируются сами. */
+.tile-br {
+	position: absolute;
+	right: 10px;
+	bottom: 10px;
+	display: flex;
+	gap: 6px;
+}
+.tile-br > .cnt {
+	position: static;
+}
 .rx {
 	display: flex;
 	gap: 8px;
@@ -2198,6 +2210,15 @@ a.link {
 .g3 .cnt {
 	bottom: 6px;
 	right: 6px;
+	padding: 3px 8px;
+}
+.g3 .tile-br,
+.cell .tile-br {
+	bottom: 6px;
+	right: 6px;
+	gap: 4px;
+}
+.cell .tile-br > .cnt {
 	padding: 3px 8px;
 }
 .cell {

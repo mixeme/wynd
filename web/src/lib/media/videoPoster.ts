@@ -89,6 +89,37 @@ export async function liveFrameJpeg(video: HTMLVideoElement): Promise<ArrayBuffe
 }
 
 /**
+ * Длительность ролика в миллисекундах для угла плитки (4.16а, план 46, C47);
+ * не узнали — undefined, и плитка остаётся со значком. У записи с камеры
+ * (MediaRecorder) длительность в заголовке бывает Infinity: браузер считает
+ * её, только когда его попросят перейти в конец ролика.
+ */
+export async function videoDurationMs(source: Blob | string): Promise<number | undefined> {
+	if (typeof document === 'undefined') return;
+	const url = typeof source === 'string' ? source : URL.createObjectURL(source);
+	const video = document.createElement('video');
+	video.muted = true;
+	video.preload = 'metadata';
+	try {
+		video.src = url;
+		if (video.readyState < 1 && !(await waitFor(video, 'loadedmetadata', 10000))) return;
+		if (!Number.isFinite(video.duration)) {
+			video.currentTime = Number.MAX_SAFE_INTEGER;
+			await waitFor(video, 'durationchange', 3000);
+		}
+		const seconds = video.duration;
+		if (!Number.isFinite(seconds) || seconds <= 0) return;
+		return Math.round(seconds * 1000);
+	} catch {
+		return;
+	} finally {
+		video.removeAttribute('src');
+		video.load();
+		if (typeof source !== 'string') URL.revokeObjectURL(url);
+	}
+}
+
+/**
  * JPEG кадра ролика из файла, длинная сторона до 1024 px. Кадр снимает
  * обычный видеоэлемент: WebCodecs для этого не нужен. В Firefox на Android
  * не выходит и так — тогда ролик уходит без кадра, и плитка рисует заглушку.

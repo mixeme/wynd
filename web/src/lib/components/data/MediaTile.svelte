@@ -3,6 +3,7 @@
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import { coverRectStyle, isCoverRect, type CoverRect } from '$lib/media/crop';
 	import { formatBytes } from '$lib/format/bytes';
+	import { formatDuration } from '$lib/media/record';
 
 	type MediaKind = 'photo' | 'video';
 
@@ -14,6 +15,8 @@
 		locationLabel?: string;
 		/** Кадр обложки (4.3): лента рисует этот квадрат снимка. */
 		crop?: CoverRect;
+		/** Длительность ролика в углу (4.16а); нет — только значок. */
+		durationMs?: number;
 		/** Пока файл не пришёл: ход скачивания или «не загрузилось». */
 		loading?: { received: number; total: number };
 		failed?: boolean;
@@ -25,6 +28,7 @@
 		src?: string;
 		kind?: MediaKind;
 		count?: number;
+		durationMs?: number;
 		onclick: () => void;
 	};
 
@@ -32,6 +36,7 @@
 		variant: 'album';
 		src?: string;
 		kind?: MediaKind;
+		durationMs?: number;
 		coverLabel?: string;
 		selected?: boolean;
 		onclick: () => void;
@@ -65,6 +70,16 @@
 	// играет только по касанию. Десяток видеоэлементов в ленте вешал телефон
 	// (план 49). Кадра нет — плитка пустая, со значком.
 	const isVideo = $derived(props.kind === 'video');
+	// Длительность в правом нижнем углу (4.16а, план 46, C47); у роликов,
+	// отправленных раньше, её нет — тогда только значок.
+	const duration = $derived.by(() => {
+		if (!isVideo) return '';
+		const ms =
+			props.variant === 'feed' || props.variant === 'grid' || props.variant === 'album'
+				? props.durationMs
+				: undefined;
+		return ms && ms > 0 ? formatDuration(ms) : '';
+	});
 
 	// Плитка без файла должна говорить, что происходит: на медленной связи
 	// полосатая заглушка выглядела как ошибка. У ролика без кадра грузить
@@ -93,6 +108,21 @@
 		props.onclick();
 	}
 </script>
+
+<!-- Правый нижний угол: длительность ролика и число снимков записи — рядом,
+     одной строкой, а не друг на друге. -->
+{#snippet corner(count: number | undefined)}
+	{#if duration}
+		<span class="tile-br">
+			<span class="cnt">{duration}</span>
+			{#if count != null}
+				<span class="cnt">{count}</span>
+			{/if}
+		</span>
+	{:else if count != null}
+		<span class="cnt">{count}</span>
+	{/if}
+{/snippet}
 
 {#if props.variant === 'feed'}
 	<div
@@ -127,9 +157,9 @@
 		{#if isVideo}
 			<Icon name="play" class="vid-mark" />
 		{/if}
-		{#if props.count != null && (props.src || isVideo ? props.count > 1 : true)}
-			<span class="cnt">{props.count}</span>
-		{/if}
+		{@render corner(
+			props.count != null && (props.src || isVideo ? props.count > 1 : true) ? props.count : undefined
+		)}
 	</div>
 {:else if props.variant === 'grid'}
 	<button type="button" class="pic" onclick={() => props.onclick()}>
@@ -139,9 +169,7 @@
 		{#if isVideo}
 			<Icon name="play" class="vid-mark" />
 		{/if}
-		{#if props.count != null && props.count > 1}
-			<span class="cnt">{props.count}</span>
-		{/if}
+		{@render corner(props.count != null && props.count > 1 ? props.count : undefined)}
 	</button>
 {:else if props.variant === 'album'}
 	<button
@@ -156,6 +184,7 @@
 		{#if isVideo}
 			<Icon name="play" class="vid-mark" />
 		{/if}
+		{@render corner(undefined)}
 		{#if props.coverLabel}
 			<span class="cov">{props.coverLabel}</span>
 		{/if}

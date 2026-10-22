@@ -83,7 +83,7 @@
 	} from '$lib/journal/posts';
 	import { compressAudio, compressVideo } from '$lib/media/compress';
 	import { audioMime } from '$lib/media/audioTags';
-	import { videoPosterJpeg } from '$lib/media/videoPoster';
+	import { videoDurationMs, videoPosterJpeg } from '$lib/media/videoPoster';
 	import type { VoiceTake } from '$lib/media/voiceRecorder.svelte';
 	import type { QueueMediaMeta } from '$lib/idb/db';
 	import VideoRecorder from '$ui/overlays/VideoRecorder.svelte';
@@ -554,7 +554,7 @@
 		}
 	}
 
-	async function sendVideo(file: File, livePoster?: ArrayBuffer) {
+	async function sendVideo(file: File, livePoster?: ArrayBuffer, recordedMs?: number) {
 		if (preparing) return;
 		preparing = 'Готовим видео…';
 		error = '';
@@ -574,13 +574,15 @@
 				return;
 			}
 			// Кадр с камеры надёжнее: с готового файла его отдаёт не каждый браузер.
-			const poster =
-				livePoster ??
-				(await videoPosterJpeg(new Blob([video.data], { type: video.type || 'video/mp4' })));
+			const blob = new Blob([video.data], { type: video.type || 'video/mp4' });
+			const poster = livePoster ?? (await videoPosterJpeg(blob));
+			// Длительность для угла плитки (4.16а): из файла, иначе — сколько шла запись.
+			const durationMs = (await videoDurationMs(blob)) ?? recordedMs;
 			await enqueueRecorded(video, {
 				kind: 'video',
 				is_cover: true,
-				video_poster: poster ? { type: 'image/jpeg', data: poster } : undefined
+				video_poster: poster ? { type: 'image/jpeg', data: poster } : undefined,
+				video_duration_ms: durationMs
 			});
 			// Ушло как записано — сказать, а не молчать. Где кодировщика нет
 			// вовсе, об этом уже сказал экран перед отправкой (4.15).
@@ -826,7 +828,7 @@
 	{#if videoOpen}
 		<VideoRecorder
 			settings={videoSettings}
-			onsend={(file, poster) => void sendVideo(file, poster)}
+			onsend={(file, poster, durationMs) => void sendVideo(file, poster, durationMs)}
 			onclose={() => (videoOpen = false)}
 		/>
 	{/if}
@@ -930,6 +932,7 @@
 							variant="feed"
 							src={queuedPreviewUrls[item.id]}
 							kind={visual[0].kind === 'video' ? 'video' : 'photo'}
+							durationMs={visual[0].duration_ms}
 							count={visual.length}
 						/>
 					{/if}
@@ -1023,6 +1026,7 @@
 							variant="feed"
 							src={mediaUrls[tileBlobId(cover)]}
 							kind={cover.kind === 'video' ? 'video' : 'photo'}
+							durationMs={cover.video_duration_ms}
 							crop={cover.crop}
 							loading={mediaProgress[tileBlobId(cover)]}
 							failed={mediaFailed[tileBlobId(cover)]}

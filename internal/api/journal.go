@@ -31,6 +31,8 @@ type mediaBody struct {
 	AudioTitle        string   `json:"audio_title"`
 	AudioCoverBlobID  string   `json:"audio_cover_blob_id"`
 	VideoPosterBlobID string   `json:"video_poster_blob_id"`
+	// VideoDurationMs — длительность ролика, мерит клиент (4.16а).
+	VideoDurationMs int64 `json:"video_duration_ms"`
 	// Voice, AudioDurationMs, AudioPeaks — голосовое (C14).
 	Voice           bool  `json:"voice"`
 	AudioDurationMs int64 `json:"audio_duration_ms"`
@@ -542,6 +544,7 @@ func parseMediaInput(items []mediaBody) ([]chronicle.MediaInput, error) {
 			GeoLat: m.GeoLat, GeoLng: m.GeoLng, IsCover: m.IsCover,
 			AudioArtist: m.AudioArtist, AudioTitle: m.AudioTitle,
 			AudioCoverBlobID: m.AudioCoverBlobID, VideoPosterBlobID: m.VideoPosterBlobID,
+			VideoDurationMs: m.VideoDurationMs,
 			Voice:           m.Voice,
 			AudioDurationMs: m.AudioDurationMs,
 			AudioPeaks:      m.AudioPeaks,

@@ -34,6 +34,9 @@ type MediaInput struct {
 	AudioCoverBlobID string
 	// VideoPosterBlobID — JPEG первого кадра ролика. Только у kind=video.
 	VideoPosterBlobID string
+	// VideoDurationMs — длительность ролика, её меряет клиент при отправке
+	// (4.16а, план 46, C47). Только у kind=video; 0 — не знаем.
+	VideoDurationMs int64
 	// Voice — голосовое, записанное в приложении (C14): лента рисует его
 	// волной AudioPeaks (до 64 уровней 0–100) и длительностью.
 	Voice           bool
@@ -81,6 +84,7 @@ type PostMedia struct {
 	AudioTitle        string
 	AudioCoverBlobID  string
 	VideoPosterBlobID string
+	VideoDurationMs   int64
 	Voice             bool
 	AudioDurationMs   int64
 	AudioPeaks        []int
@@ -125,6 +129,9 @@ func (c *Chronicle) attachMedia(ctx context.Context, q dbtx, postID string, item
 		if err := normalizeVideoPoster(&item); err != nil {
 			return err
 		}
+		if err := normalizeVideoDuration(&item); err != nil {
+			return err
+		}
 		if item.Crop != nil && (item.Kind == MediaAttachment || !validCoverCrop(item.Crop)) {
 			return ErrInvalid
 		}
@@ -145,14 +152,15 @@ func (c *Chronicle) attachMedia(ctx context.Context, q dbtx, postID string, item
 		_, err = q.ExecContext(ctx, `
 			INSERT INTO post_media (id, post_id, blob_id, kind, sort_order, captured_at, geo_lat, geo_lng, is_cover,
 				audio_artist, audio_title, audio_cover_blob_id, crop_x, crop_y, crop_w, crop_h,
-				voice, audio_duration_ms, audio_peaks, video_poster_blob_id)
+				voice, audio_duration_ms, audio_peaks, video_poster_blob_id, video_duration_ms)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?, ?,
-				?, NULLIF(?, 0), NULLIF(?, ''), NULLIF(?, ''))
+				?, NULLIF(?, 0), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, 0))
 		`, id, postID, item.BlobID, string(item.Kind), i,
 			formatCaptured(item.CapturedAt), nullableFloat(item.GeoLat), nullableFloat(item.GeoLng),
 			boolToInt(item.IsCover), item.AudioArtist, item.AudioTitle, item.AudioCoverBlobID,
 			cropArg(item.Crop, 0), cropArg(item.Crop, 1), cropArg(item.Crop, 2), cropArg(item.Crop, 3),
-			boolToInt(item.Voice), item.AudioDurationMs, joinPeaks(item.AudioPeaks), item.VideoPosterBlobID)
+			boolToInt(item.Voice), item.AudioDurationMs, joinPeaks(item.AudioPeaks), item.VideoPosterBlobID,
+			item.VideoDurationMs)
 		if err != nil {
 			return err
 		}
@@ -272,6 +280,20 @@ func normalizeVideoPoster(item *MediaInput) error {
 		return nil
 	}
 	if item.Kind != MediaVideo || item.VideoPosterBlobID == item.BlobID {
+		return ErrInvalid
+	}
+	return nil
+}
+
+// MaxVideoDurationMs — сутки: длиннее ролик в круг не попадёт, а число
+// больше — ошибка измерения, а не длительность.
+const MaxVideoDurationMs = 24 * 60 * 60 * 1000
+
+func normalizeVideoDuration(item *MediaInput) error {
+	if item.VideoDurationMs == 0 {
+		return nil
+	}
+	if item.Kind != MediaVideo || item.VideoDurationMs < 0 || item.VideoDurationMs > MaxVideoDurationMs {
 		return ErrInvalid
 	}
 	return nil
@@ -398,7 +420,7 @@ const postMediaSelect = `
 		COALESCE(pm.audio_artist, ''), COALESCE(pm.audio_title, ''), COALESCE(pm.audio_cover_blob_id, ''),
 		pm.crop_x, pm.crop_y, pm.crop_w, pm.crop_h,
 		pm.voice, COALESCE(pm.audio_duration_ms, 0), COALESCE(pm.audio_peaks, ''),
-		COALESCE(pm.video_poster_blob_id, '')
+		COALESCE(pm.video_poster_blob_id, ''), COALESCE(pm.video_duration_ms, 0)
 `
 
 func scanPostMedia(rows *sql.Rows) (PostMedia, error) {
@@ -412,7 +434,7 @@ func scanPostMedia(rows *sql.Rows) (PostMedia, error) {
 	if err := rows.Scan(&m.ID, &m.PostID, &m.BlobID, &m.Kind, &m.SortOrder,
 		&captured, &lat, &lng, &cover, &m.OriginalFilename, &m.SizeBytes, &m.MimeType,
 		&m.AudioArtist, &m.AudioTitle, &m.AudioCoverBlobID, &cx, &cy, &cw, &ch,
-		&voice, &m.AudioDurationMs, &peaks, &m.VideoPosterBlobID); err != nil {
+		&voice, &m.AudioDurationMs, &peaks, &m.VideoPosterBlobID, &m.VideoDurationMs); err != nil {
 		return PostMedia{}, err
 	}
 	m.Voice = voice != 0
@@ -473,6 +495,7 @@ type MediaSummary struct {
 	AudioTitle        string     `json:"audio_title,omitempty"`
 	AudioCoverBlobID  string     `json:"audio_cover_blob_id,omitempty"`
 	VideoPosterBlobID string     `json:"video_poster_blob_id,omitempty"`
+	VideoDurationMs   int64      `json:"video_duration_ms,omitempty"`
 	Voice             bool       `json:"voice,omitempty"`
 	AudioDurationMs   int64      `json:"audio_duration_ms,omitempty"`
 	AudioPeaks        []int      `json:"audio_peaks,omitempty"`
@@ -504,6 +527,7 @@ func SummarizeMedia(items []PostMedia) []MediaSummary {
 		s.AudioTitle = m.AudioTitle
 		s.AudioCoverBlobID = m.AudioCoverBlobID
 		s.VideoPosterBlobID = m.VideoPosterBlobID
+		s.VideoDurationMs = m.VideoDurationMs
 		s.Voice = m.Voice
 		s.AudioDurationMs = m.AudioDurationMs
 		s.AudioPeaks = m.AudioPeaks

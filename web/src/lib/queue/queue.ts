@@ -306,6 +306,7 @@ async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 				audio_title: meta.audio_title,
 				audio_cover_blob_id: coverId,
 				video_poster_blob_id: posterId,
+				video_duration_ms: meta.kind === 'video' ? meta.video_duration_ms : undefined,
 				voice: meta.voice,
 				audio_duration_ms: meta.audio_duration_ms,
 				audio_peaks: meta.audio_peaks,
@@ -633,6 +634,7 @@ export function queuedMediaViews(
 		const view: QueuedMediaView = { kind, name: file.name, size: file.size };
 		if (kind === 'photo') view.preview = { type: file.type, data: file.data };
 		else if (kind === 'video' && meta?.video_poster) view.preview = meta.video_poster;
+		if (kind === 'video') view.duration_ms = meta?.video_duration_ms;
 		if (meta?.voice) {
 			view.voice = true;
 			view.duration_ms = meta.audio_duration_ms;

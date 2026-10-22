@@ -184,6 +184,8 @@ type GridItem struct {
 	IsCover      bool
 	Kind         string
 	PosterBlobID string
+	// DurationMs — длительность ролика для угла плитки (4.16а); 0 — не знаем.
+	DurationMs int64
 }
 
 // GridSnapshot returns visible photo media ordered by post created_at descending.
