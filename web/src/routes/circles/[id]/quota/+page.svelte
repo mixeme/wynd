@@ -23,6 +23,7 @@
 	let usedBytes = $state(0);
 	let quotaBytes = $state(0);
 	let lastRequest = $state<QuotaRequestInfo | undefined>(undefined);
+	let postCount = $state(0);
 	let error = $state('');
 	let forbidden = $state(false);
 	let loading = $state(true);
@@ -38,6 +39,7 @@
 			usedBytes = data.used_bytes;
 			quotaBytes = data.quota_bytes ?? 0;
 			lastRequest = data.last_request;
+			postCount = data.post_count;
 		} catch (err) {
 			if (isAccessError(err)) {
 				forbidden = true;
@@ -101,6 +103,15 @@
 				subtitle={`идёт: всё до ${formatCutoffDate(circle.archiveCycle.cutoff_date)} удалится ${formatSessionDay(circle.archiveCycle.deadline)}`}
 				divided="both"
 				onclick={() => goto(`/circles/${circle.circleId}/quota/deadlines`)}
+			/>
+		{:else if postCount === 0}
+			<!-- Без записей архивировать нечего — строка погашена (владелец, 2026-10-23). -->
+			<SettingsRow
+				title="Заархивировать и удалить старое"
+				subtitle="в круге пока нет записей"
+				chevron={false}
+				opacity={0.5}
+				divided="both"
 			/>
 		{:else}
 			<SettingsRow
