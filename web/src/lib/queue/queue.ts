@@ -647,6 +647,38 @@ export async function loadQueuedPost(id: number): Promise<QueueRecordWithId | un
 	return { ...item, id };
 }
 
+/** Реплика в очереди целиком — для правки на месте (C53). */
+export async function loadQueuedComment(id: number): Promise<QueueRecordWithId | undefined> {
+	const item = await getQueueItem(id);
+	if (!item || item.type !== 'comment') return undefined;
+	return { ...item, id };
+}
+
+/**
+ * Правка реплики, которая ещё в очереди (C53): слова и вложения заменяются
+ * целиком, как у записи в очереди. Уже уходящую не трогаем.
+ */
+export async function updateQueuedComment(
+	id: number,
+	payload: CommentQueuePayload,
+	files: QueueFile[]
+): Promise<void> {
+	const item = await getQueueItem(id);
+	if (!item || item.type !== 'comment') return;
+	if (item.state === 'uploading') return;
+
+	await putQueueItem(id, {
+		...item,
+		payload,
+		files,
+		state: 'pending',
+		error: undefined,
+		uploads: undefined
+	});
+	notify();
+	if (navigator.onLine) void drainQueue();
+}
+
 /** Что лежит в записи очереди: по файлу и его описанию, как их отправит очередь. */
 export function queuedMediaViews(
 	files: QueueFile[],

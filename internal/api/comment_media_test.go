@@ -102,3 +102,92 @@ func TestCommentMediaOverHTTP(t *testing.T) {
 		t.Fatalf("blob of a deleted comment not released: %d", rec.Code)
 	}
 }
+
+// Правка вложений комментария (C53): список заменяется целиком, убранный файл
+// освобождается, новый — свой и проверенный; без media правятся только слова.
+func TestCommentEditMediaOverHTTP(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	ownerTok, _ := registerSession(t, srv, caps, "owner-cme@example.com")
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles", ownerTok, map[string]any{
+		"name": "Семья", "owner_name": "Аня",
+	})
+	circleID := jsonStr(t, rec, "id")
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/posts", ownerTok, map[string]any{
+		"body": "яблоки", "entry_date": "2026-10-07",
+	})
+	postID := jsonStr(t, rec, "id")
+	commentsURL := "/api/v1/circles/" + circleID + "/posts/" + postID + "/comments"
+
+	first := uploadBlob(t, srv, ownerTok, []byte("first-photo"), "image/jpeg")
+	second := uploadBlob(t, srv, ownerTok, []byte("second-photo"), "image/jpeg")
+	added := uploadBlob(t, srv, ownerTok, []byte("added-photo"), "image/jpeg")
+	rec = doJSON(t, srv, http.MethodPost, commentsURL, ownerTok, map[string]any{
+		"body": "вот", "media": []map[string]any{{"blob_id": first, "kind": "photo"}, {"blob_id": second, "kind": "photo"}},
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("comment: %d %s", rec.Code, rec.Body.String())
+	}
+	commentURL := commentsURL + "/" + jsonStr(t, rec, "id")
+
+	media := func() []string {
+		rec := doJSON(t, srv, http.MethodGet, "/api/v1/circles/"+circleID+"/feed", ownerTok, nil)
+		var feed struct {
+			Posts []struct {
+				Comments []struct {
+					Body  string `json:"body"`
+					Media []struct {
+						BlobID string `json:"blob_id"`
+					} `json:"media"`
+				} `json:"comments"`
+			} `json:"posts"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &feed); err != nil || len(feed.Posts[0].Comments) != 1 {
+			t.Fatalf("feed: %v %s", err, rec.Body.String())
+		}
+		var ids []string
+		for _, m := range feed.Posts[0].Comments[0].Media {
+			ids = append(ids, m.BlobID)
+		}
+		return ids
+	}
+
+	// Только слова — вложения на месте.
+	if rec = doJSON(t, srv, http.MethodPatch, commentURL, ownerTok, map[string]any{"body": "вот так"}); rec.Code != http.StatusOK {
+		t.Fatalf("edit words: %d %s", rec.Code, rec.Body.String())
+	}
+	if got := media(); len(got) != 2 {
+		t.Fatalf("after words-only edit: %v", got)
+	}
+
+	// Пусто совсем — нельзя.
+	if rec = doJSON(t, srv, http.MethodPatch, commentURL, ownerTok, map[string]any{"body": "", "media": []any{}}); rec.Code != http.StatusBadRequest {
+		t.Fatalf("empty comment: %d %s", rec.Code, rec.Body.String())
+	}
+
+	// Убрали первый снимок, добавили новый.
+	rec = doJSON(t, srv, http.MethodPatch, commentURL, ownerTok, map[string]any{
+		"body": "вот так", "media": []map[string]any{{"blob_id": second, "kind": "photo"}, {"blob_id": added, "kind": "photo"}},
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("edit media: %d %s", rec.Code, rec.Body.String())
+	}
+	if got := media(); len(got) != 2 || got[0] != second || got[1] != added {
+		t.Fatalf("after media edit: %v", got)
+	}
+	if rec = doJSON(t, srv, http.MethodGet, "/api/v1/blobs/"+first, ownerTok, nil); rec.Code == http.StatusOK {
+		t.Fatalf("removed photo still served: %d", rec.Code)
+	}
+	if rec = doJSON(t, srv, http.MethodGet, "/api/v1/blobs/"+added, ownerTok, nil); rec.Code != http.StatusOK {
+		t.Fatalf("added photo not served: %d", rec.Code)
+	}
+
+	// Чужой файл в правку не добавить.
+	kotTok := joinAsMember(t, srv, caps, ownerTok, circleID, "kot-cme@example.com", "Кот")
+	foreign := uploadBlob(t, srv, kotTok, []byte("kot-photo"), "image/jpeg")
+	rec = doJSON(t, srv, http.MethodPatch, commentURL, ownerTok, map[string]any{
+		"body": "вот так", "media": []map[string]any{{"blob_id": foreign, "kind": "photo"}},
+	})
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("foreign blob in edit: %d %s", rec.Code, rec.Body.String())
+	}
+}

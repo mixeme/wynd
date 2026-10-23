@@ -18,6 +18,8 @@
 	import Hint from '$ui/forms/Hint.svelte';
 	import Loading from '$ui/Loading.svelte';
 	import TextArea from '$ui/forms/TextArea.svelte';
+	import CommentMediaEdit from '$ui/forms/CommentMediaEdit.svelte';
+	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import MediaTile from '$ui/data/MediaTile.svelte';
 	import PostCard from '$ui/data/PostCard.svelte';
 	import ReactionBar from '$ui/data/ReactionBar.svelte';
@@ -53,7 +55,8 @@
 		editComment,
 		fetchCompression,
 		removeReaction,
-		setReaction
+		setReaction,
+		uploadBlob
 	} from '$lib/journal/posts';
 	import type { Comment, FeedPost, MediaSummary } from '$lib/journal/types';
 	import { downloadBlob, getMediaUrl } from '$lib/media/objectUrl';
@@ -61,7 +64,7 @@
 	import { compressAudio, compressImage, fileToQueueBuffer, isImageFile } from '$lib/media/compress';
 	import { audioMime } from '$lib/media/audioTags';
 	import type { VoiceTake } from '$lib/media/voiceRecorder.svelte';
-	import type { QueueFile, QueueMediaMeta } from '$lib/idb/db';
+	import type { CommentQueuePayload, QueueFile, QueueMediaMeta } from '$lib/idb/db';
 	import { formatBytes } from '$lib/format/bytes';
 	import { numberParam } from '$lib/nav/url';
 	import { uuid } from '$lib/uuid';
@@ -70,7 +73,10 @@
 		enqueueReaction,
 		enqueueReactionRemove,
 		listQueuedComments,
+		loadQueuedComment,
 		queuedTimeLabel,
+		removeQueueItem,
+		updateQueuedComment,
 		subscribeQueue,
 		subscribeQueueProgress,
 		type QueuedCommentView
@@ -98,6 +104,14 @@
 	let editingCommentId = $state('');
 	let editingCommentBody = $state('');
 	let savingCommentEdit = $state(false);
+	// Правка вложений (C53): оставшиеся с сервера и добавленные при правке.
+	let editingKept = $state<MediaSummary[]>([]);
+	let editingAdded = $state.raw<PendingMedia[]>([]);
+	let editingOriginalCount = 0;
+	let editPicker: FilePicker | undefined = $state();
+	// Правка реплики, которая ещё в очереди: её файлы — на устройстве.
+	let editingQueueId = $state<number | null>(null);
+	let editingQueuePayload: CommentQueuePayload | undefined;
 	let activeMemberCount = $state(2);
 	let members = $state<MemberInfo[]>([]);
 	let queuedComments = $state<QueuedCommentView[]>([]);
@@ -509,22 +523,148 @@
 	function startEditComment(comment: Comment) {
 		editingCommentId = comment.id;
 		editingCommentBody = comment.body;
+		editingKept = [...(comment.media ?? [])];
+		editingOriginalCount = editingKept.length;
+		dropPending(editingAdded);
+		editingAdded = [];
+	}
+
+	async function startEditQueued(id: number) {
+		const record = await loadQueuedComment(id);
+		if (!record) return;
+		cancelEditComment();
+		const payload = record.payload as CommentQueuePayload;
+		editingQueueId = id;
+		editingQueuePayload = payload;
+		editingCommentBody = payload.body;
+		editingAdded = (record.files ?? []).map((file, i) => {
+			const meta = payload.media_meta?.[i] ?? { kind: 'attachment' };
+			return {
+				key: uuid(),
+				file,
+				meta,
+				url:
+					meta.kind === 'photo'
+						? URL.createObjectURL(new Blob([file.data], { type: file.type }))
+						: undefined
+			};
+		});
+	}
+
+	async function saveQueuedEdit() {
+		const id = editingQueueId;
+		const payload = editingQueuePayload;
+		const text = editingCommentBody.trim();
+		if (id === null || !payload || (!text && !editingAdded.length)) return;
+		await updateQueuedComment(
+			id,
+			{ ...payload, body: text, media_meta: editingAdded.map((p) => p.meta) },
+			editingAdded.map((p) => p.file)
+		);
+		cancelEditComment();
+		refreshQueued();
+	}
+
+	async function removeQueued(id: number) {
+		await removeQueueItem(id);
+		refreshQueued();
 	}
 
 	function cancelEditComment() {
+		editingQueueId = null;
+		editingQueuePayload = undefined;
 		editingCommentId = '';
 		editingCommentBody = '';
+		editingKept = [];
+		dropPending(editingAdded);
+		editingAdded = [];
 	}
 
-	async function saveCommentEdit(commentId: string, hasMedia: boolean) {
+	const editingItems = $derived([
+		...editingKept.map((m) => ({
+			key: m.blob_id,
+			url: m.kind === 'photo' ? mediaUrls[m.blob_id] : undefined,
+			name: m.voice ? 'голосовое' : m.filename || 'файл'
+		})),
+		...editingAdded.map((p) => ({ key: p.key, url: p.url, name: p.file.name }))
+	]);
+
+	function removeEditingItem(index: number) {
+		if (index < editingKept.length) {
+			editingKept = editingKept.filter((_, i) => i !== index);
+			return;
+		}
+		const at = index - editingKept.length;
+		dropPending(editingAdded.slice(at, at + 1));
+		editingAdded = editingAdded.filter((_, i) => i !== at);
+	}
+
+	// Снимок сжимается, как в строке ввода; файл больше предела сервера — отказ.
+	async function addEditingFiles(files: File[]) {
+		error = '';
+		const room = MAX_COMMENT_MEDIA - editingKept.length - editingAdded.length;
+		if (files.length > room) error = `В комментарии не больше ${MAX_COMMENT_MEDIA} вложений`;
+		const picked = files.slice(0, Math.max(0, room));
+		if (!picked.length) return;
+		preparing = 'Готовим вложения…';
+		try {
+			const compression = await fetchCompression(circle.origin).catch(() => undefined);
+			const maxBytes = compression?.attachment_max_bytes ?? 0;
+			for (const file of picked) {
+				if (isImageFile(file)) {
+					const image = await compressImage(file, compression).catch(() => fileToQueueBuffer(file));
+					editingAdded = [
+						...editingAdded,
+						{
+							key: uuid(),
+							file: image,
+							meta: { kind: 'photo' },
+							url: URL.createObjectURL(new Blob([image.data], { type: image.type }))
+						}
+					];
+					continue;
+				}
+				if (maxBytes > 0 && file.size > maxBytes) {
+					error = `Файл больше ${formatBytes(maxBytes)} — сервер не примет`;
+					continue;
+				}
+				editingAdded = [
+					...editingAdded,
+					{ key: uuid(), file: await fileToQueueBuffer(file), meta: { kind: 'attachment' } }
+				];
+			}
+		} finally {
+			preparing = '';
+		}
+	}
+
+	async function saveCommentEdit(commentId: string) {
 		const text = editingCommentBody.trim();
 		// Слова можно стереть, только если у реплики остаются вложения (4.19).
-		if (!text && !hasMedia) return;
+		if (!text && !editingItems.length) return;
 		if (savingCommentEdit) return;
 		savingCommentEdit = true;
 		error = '';
 		try {
-			await editComment(circle.origin, circle.circleId, postId, commentId, text);
+			const mediaChanged = editingAdded.length > 0 || editingKept.length !== editingOriginalCount;
+			if (mediaChanged) {
+				// Новые файлы — на сервер, затем весь список разом.
+				const ids: string[] = [];
+				for (const p of editingAdded) ids.push(await uploadBlob(circle.origin, p.file));
+				const media = [
+					...editingKept.map((m) => ({
+						blob_id: m.blob_id,
+						kind: m.kind,
+						voice: m.voice,
+						audio_duration_ms: m.audio_duration_ms,
+						audio_peaks: m.audio_peaks
+					})),
+					...editingAdded.map((p, i) => ({ blob_id: ids[i], kind: p.meta.kind }))
+				];
+				await editComment(circle.origin, circle.circleId, postId, commentId, text, media);
+			} else {
+				await editComment(circle.origin, circle.circleId, postId, commentId, text);
+			}
 			// Форму убираем после перечитывания: иначе на её месте успевал
 			// мелькнуть старый текст.
 			await load();
@@ -785,6 +925,7 @@
 			{/snippet}
 		</PostCard>
 
+		<FilePicker bind:this={editPicker} accept="*/*" multiple onfiles={(files) => void addEditingFiles(files)} />
 		<Thread>
 			{#each currentPost.comments ?? [] as comment (comment.id)}
 				<CommentRow
@@ -804,12 +945,18 @@
 					{#snippet children()}
 						{#if editingCommentId === comment.id}
 							<TextArea variant="commentEdit" bind:value={editingCommentBody} />
+							<CommentMediaEdit
+								items={editingItems}
+								onremove={removeEditingItem}
+								onadd={editingItems.length < MAX_COMMENT_MEDIA ? () => editPicker?.open() : undefined}
+							/>
+							{#if preparing}<Hint class="m-0">{preparing}</Hint>{/if}
 							<div class="rowin">
 								<Button class="grow-flat"
 									variant="colored"
 									keepFocus
 									loading={savingCommentEdit}
-									onclick={() => saveCommentEdit(comment.id, Boolean(comment.media?.length))}
+									onclick={() => saveCommentEdit(comment.id)}
 								>
 									Сохранить
 								</Button>
@@ -817,7 +964,6 @@
 									Отмена
 								</Button>
 							</div>
-							<CommentMedia items={commentMediaItems(comment.media, mediaUrls)} inert />
 						{:else}
 							{#if comment.body}
 								<MentionText body={comment.body} />
@@ -839,12 +985,20 @@
 				</CommentRow>
 			{/each}
 			{#each queuedComments as item (item.id)}
+				<!-- Реплику в очереди можно поправить и убрать, как отправленную (C53);
+				     уходящую сейчас — нет. -->
 				<CommentRow
 					queued
 					initial={circle.identityInitial}
 					name={circle.identityName}
 					color={circle.colorHex}
 					src={circle.avatarUrl}
+					onedit={item.state !== 'uploading' && editingQueueId !== item.id
+						? () => void startEditQueued(item.id)
+						: undefined}
+					ondelete={item.state !== 'uploading' && editingQueueId !== item.id
+						? () => void removeQueued(item.id)
+						: undefined}
 				>
 					{#snippet time()}
 						<span class="flex-mid gap-5">
@@ -852,12 +1006,30 @@
 						</span>
 					{/snippet}
 					{#snippet children()}
+						{#if editingQueueId === item.id}
+							<TextArea variant="commentEdit" bind:value={editingCommentBody} />
+							<CommentMediaEdit
+								items={editingItems}
+								onremove={removeEditingItem}
+								onadd={editingItems.length < MAX_COMMENT_MEDIA ? () => editPicker?.open() : undefined}
+							/>
+							{#if preparing}<Hint class="m-0">{preparing}</Hint>{/if}
+							<div class="rowin">
+								<Button class="grow-flat" variant="colored" keepFocus onclick={() => void saveQueuedEdit()}>
+									Сохранить
+								</Button>
+								<Button class="grow-flat" variant="ghost" keepFocus onclick={cancelEditComment}>
+									Отмена
+								</Button>
+							</div>
+						{:else}
 						{#if item.body}
 							<MentionText body={item.body} />
 						{/if}
 						<CommentMedia items={queuedMediaItems(item)} inert />
 						{#if item.state === 'failed' && item.error}
 							<Hint class="mt-8">{item.error}</Hint>
+						{/if}
 						{/if}
 					{/snippet}
 				</CommentRow>

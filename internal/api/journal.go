@@ -62,6 +62,13 @@ type commentBody struct {
 	Media    []mediaBody `json:"media"`
 }
 
+// editCommentBody — правка комментария: слова и, если поле есть, вложения
+// целиком (C53). Без media вложения не трогаются — прежние клиенты шлют только body.
+type editCommentBody struct {
+	Body  string       `json:"body"`
+	Media *[]mediaBody `json:"media"`
+}
+
 type reactionBody struct {
 	Emoji string `json:"emoji"`
 }
@@ -291,17 +298,67 @@ func (s *Server) handleEditComment(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	body, ok := bindJSON[textBody](w, r)
+	body, ok := bindJSON[editCommentBody](w, r)
 	if !ok {
 		return
 	}
 	if !s.requireWriteSpace(w, r, circleID, sess.AccountID, blob.TextCost(body.Body)) {
 		return
 	}
-	err := s.Chronicle.EditComment(r.Context(), circleID, sess.AccountID, commentID, body.Body, time.Now().UTC())
+	now := time.Now().UTC()
+	if body.Media == nil {
+		if err := s.Chronicle.EditComment(r.Context(), circleID, sess.AccountID, commentID, body.Body, now); err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		return
+	}
+	media, err := parseCommentMedia(*body.Media)
+	if err != nil {
+		writeError(w, chronicle.ErrInvalid)
+		return
+	}
+	// Новые файлы — свои и помещаются, как при создании комментария; прежние
+	// уже проверены и посчитаны.
+	old, err := s.Chronicle.CommentMediaBlobIDs(r.Context(), commentID)
 	if err != nil {
 		writeDomainError(w, err)
 		return
+	}
+	oldSet := make(map[string]struct{}, len(old))
+	for _, id := range old {
+		oldSet[id] = struct{}{}
+	}
+	var added []string
+	for _, id := range chronicle.MediaBlobIDs(media) {
+		if _, ok := oldSet[id]; !ok {
+			added = append(added, id)
+		}
+	}
+	if len(added) > 0 {
+		if err := s.Blobs.ValidateOwnedComplete(r.Context(), sess.AccountID, added); err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		total, err := s.Blobs.TotalBytesForBlobs(r.Context(), added)
+		if err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		if err := s.Blobs.CheckMediaQuota(r.Context(), circleID, total); err != nil {
+			writeDomainError(w, err)
+			return
+		}
+	}
+	removed, err := s.Chronicle.EditCommentWithMedia(r.Context(), circleID, sess.AccountID, commentID, body.Body, media, now)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	// Убранные файлы освобождаются после коммита, как при удалении комментария.
+	if err := s.Blobs.ReleaseBlobs(r.Context(), removed); err != nil {
+		log.Printf("edit comment %s: release blobs: %v", commentID, err)
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }

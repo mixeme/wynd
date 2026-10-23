@@ -1331,7 +1331,8 @@ button.crow {
 .comp.with-strip {
 	border-top: 0;
 }
-.cstrip .cpend {
+.cstrip .cpend,
+.cstrip .cpend-add {
 	position: relative;
 	width: 56px;
 	height: 56px;
@@ -1387,6 +1388,26 @@ button.crow {
 	color: #fff;
 	width: 11px;
 	height: 11px;
+}
+/* Те же плитки в правке комментария (C53): под полем, без своей черты и фона. */
+.cstrip.cstrip-edit {
+	padding: 0;
+	margin: 10px 0;
+	border-top: 0;
+	background: none;
+	/* В узкой колонке комментария плитки переносятся, а не уезжают вбок с «+». */
+	flex-wrap: wrap;
+	overflow: visible;
+}
+.cstrip .cpend-add {
+	display: grid;
+	place-items: center;
+	border: 1px dashed var(--line);
+	background: var(--card);
+	color: var(--muted);
+	cursor: pointer;
+	padding: 0;
+	font: inherit;
 }
 /* Превью комментария в ленте: строки — кнопки, между ними вложения (4.30). */
 .cm .cm-line {

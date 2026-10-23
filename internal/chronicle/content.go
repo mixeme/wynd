@@ -613,51 +613,94 @@ func (c *Chronicle) SetReaction(ctx context.Context, in ReactionInput) (Reaction
 
 // EditComment updates comment body within its own edit window.
 func (c *Chronicle) EditComment(ctx context.Context, circleID, accountID, commentID, body string, now time.Time) error {
+	_, err := c.editComment(ctx, circleID, accountID, commentID, body, nil, now)
+	return err
+}
+
+// EditCommentWithMedia — правка слов и вложений разом (владелец, 2026-10-23,
+// план 46, C53): список вложений заменяет прежний целиком. Возвращает блобы,
+// которых в новом списке нет: вызывающий освобождает их после коммита.
+// Свои ли новые файлы и хватит ли на них места, проверяет вызывающий.
+func (c *Chronicle) EditCommentWithMedia(ctx context.Context, circleID, accountID, commentID, body string, media []MediaInput, now time.Time) ([]string, error) {
+	return c.editComment(ctx, circleID, accountID, commentID, body, &media, now)
+}
+
+// editComment: media == nil — вложения не трогаются (прежний PATCH только со
+// словами).
+func (c *Chronicle) editComment(ctx context.Context, circleID, accountID, commentID, body string, media *[]MediaInput, now time.Time) ([]string, error) {
 	body = strings.TrimSpace(body)
 	if err := checkByteLen(body, MaxTextBytes); err != nil {
-		return err
+		return nil, err
+	}
+	var items []MediaInput
+	if media != nil {
+		var err error
+		if items, err = normalizeCommentMedia(*media); err != nil {
+			return nil, err
+		}
 	}
 	now = utcOrNow(now)
 	comment, err := c.loadComment(ctx, c.db, commentID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if comment.CircleID != circleID {
-		return ErrNotFound
+		return nil, ErrNotFound
 	}
 	if comment.Deleted {
-		return ErrInvalid
+		return nil, ErrInvalid
 	}
 	// Слова можно стереть, только если у реплики остаются вложения (4.19).
 	if body == "" {
-		n, err := c.commentMediaCount(ctx, c.db, commentID)
-		if err != nil {
-			return err
+		n := len(items)
+		if media == nil {
+			if n, err = c.commentMediaCount(ctx, c.db, commentID); err != nil {
+				return nil, err
+			}
 		}
 		if n == 0 {
-			return ErrInvalid
+			return nil, ErrInvalid
 		}
 	}
 	mem, err := c.requireAuthor(ctx, c.db, circleID, accountID, comment.IdentityID, now)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !comment.EditWindow.CanEdit(comment.CreatedAt, now) {
-		return ErrForbidden
+		return nil, ErrForbidden
 	}
 
 	tx, err := c.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
 	if _, err := tx.ExecContext(ctx, `UPDATE comments SET body = ? WHERE id = ?`, body, commentID); err != nil {
-		return err
+		return nil, err
+	}
+	var removed []string
+	if media != nil {
+		old, err := c.takeCommentMediaTx(ctx, tx, commentMediaOfComment, commentID)
+		if err != nil {
+			return nil, err
+		}
+		if err := c.insertCommentMedia(ctx, tx, commentID, items); err != nil {
+			return nil, err
+		}
+		kept := make(map[string]struct{}, len(items))
+		for _, it := range items {
+			kept[it.BlobID] = struct{}{}
+		}
+		for _, id := range old {
+			if _, ok := kept[id]; !ok {
+				removed = append(removed, id)
+			}
+		}
 	}
 	name, err := c.identityName(ctx, tx, mem.IdentityID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	g := c.identityGender(ctx, tx, mem.IdentityID)
 	if _, err := c.appendEvent(ctx, tx, appendEventInput{
@@ -666,9 +709,12 @@ func (c *Chronicle) EditComment(ctx context.Context, circleID, accountID, commen
 		payload: map[string]any{"post_id": comment.PostID, "body": body},
 		summary: summaryCommentEdited(g, name), now: now,
 	}); err != nil {
-		return err
+		return nil, err
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return removed, nil
 }
 
 // DeleteComment scrubs a comment without a journal tombstone. Возвращает блобы

@@ -795,6 +795,7 @@ paths:
   /circles/{circle_id}/posts/{post_id}/comments/{comment_id}:
     patch:
       summary: Edit comment
+      description: Body {body, media?}. Without media only the words change. With media the list replaces the attachments entirely (photo or attachment, up to 10); new blobs must be the caller's and fit the quota; removed blobs are released. Empty words with no attachments — 400.
     delete:
       summary: Delete comment
 

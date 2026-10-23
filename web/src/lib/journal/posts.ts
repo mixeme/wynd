@@ -125,12 +125,20 @@ export async function editComment(
 	circleId: string,
 	postId: string,
 	commentId: string,
-	body: string
+	body: string,
+	/** Вложения целиком (C53); нет — меняются только слова. */
+	media?: Array<{
+		blob_id: string;
+		kind: string;
+		voice?: boolean;
+		audio_duration_ms?: number;
+		audio_peaks?: number[];
+	}>
 ): Promise<void> {
 	await apiJson(origin, `/circles/${circleId}/posts/${postId}/comments/${commentId}`, {
 		method: 'PATCH',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ body })
+		body: JSON.stringify(media ? { body, media } : { body })
 	});
 	await invalidateCircleSnapshots(origin, circleId);
 }

@@ -89,7 +89,7 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar, **Comp
 
 ### `forms/`
 
-**Label**, **Input**, **FieldDisplay**, **TextArea**, ScreenTitle, Hint, **Button**, **Chip**, ChipGroup, Switch, ColorSwatches, CodeBox, InviteCard, **RequisitesCard**, **SearchField**, DangerZone (опц. `class`, `style`), Meter, PeopleStrip, **MentionPicker**, AddPhotoButton, DangerNote, VolumeChart, **IconButton**, **TextButton**, **EditWindowPicker**, **IdentityForm**, **NumberField**, **SizeField**, **DateRow**, **DateRange**, **FilePicker**, **QrScanner**, **GenderPicker**
+**Label**, **Input**, **FieldDisplay**, **TextArea**, ScreenTitle, Hint, **Button**, **Chip**, ChipGroup, Switch, ColorSwatches, CodeBox, InviteCard, **RequisitesCard**, **SearchField**, DangerZone (опц. `class`, `style`), Meter, PeopleStrip, **MentionPicker**, AddPhotoButton, DangerNote, VolumeChart, **IconButton**, **TextButton**, **EditWindowPicker**, **IdentityForm**, **NumberField**, **SizeField**, **DateRow**, **DateRange**, **FilePicker**, **QrScanner**, **GenderPicker**, **CommentMediaEdit**
 
 Интерактивные примитивы (фаза 1–4):
 
@@ -112,6 +112,8 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar, **Comp
 `GenderPicker` — «Пол» для строк журнала (**#e1-4**, **#e6-12**; план 46, A5): чипы «Мужской» / «Женский», `bind:value` (`''` \| `'m'` \| `'f'`), повторное касание снимает выбор. Стоит в `IdentityForm` и в «Кто вы в этом круге».
 
 `QrScanner` — видоискатель QR (**#e2-8**): задняя камера, кадр раз в 250 мс; `onread(text)` → `true` — хватит (камера гаснет), `false` — ждать следующий; `onerror(message)` — камеры нет или её не дали. Камера гаснет и при уходе с экрана.
+
+`CommentMediaEdit` — вложения комментария при правке (4.19, C53): `items` (`{key, url?, name}[]`) — те же плитки `.cpend` с крестиком, что в `.cstrip` под строкой ввода, в `.cstrip.cstrip-edit` (без черты и фона, с переносом); `onremove(i)`; `onadd` — плитка «+» `.cpend-add`, нет — места больше нет. Выбор файлов держит экран (`FilePicker`).
 
 `FilePicker` — скрытый выбор файлов, который открывает своя кнопка: `accept`, `multiple`, `capture`, `onfiles(files)`; экран держит его через `bind:this` и зовёт `open()`. Поле сбрасывается само — тот же файл можно выбрать снова. Сырые `<input type="file" hidden>` на экранах не ставить.
 

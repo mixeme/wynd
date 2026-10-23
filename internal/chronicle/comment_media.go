@@ -153,6 +153,25 @@ func (c *Chronicle) takeCommentMediaTx(ctx context.Context, tx *sql.Tx, where, a
 	return ids, nil
 }
 
+// CommentMediaBlobIDs — блобы вложений комментария: при правке новые файлы
+// проверяются, прежние — нет (C53).
+func (c *Chronicle) CommentMediaBlobIDs(ctx context.Context, commentID string) ([]string, error) {
+	rows, err := c.db.QueryContext(ctx, `SELECT blob_id FROM comment_media WHERE comment_id = ?`, commentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
 // CommentMediaCount — сколько вложений у комментария; правка текста в пустоту
 // разрешена только при них.
 func (c *Chronicle) commentMediaCount(ctx context.Context, q querier, commentID string) (int, error) {
