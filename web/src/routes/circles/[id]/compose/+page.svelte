@@ -379,12 +379,20 @@
 		return meta.kind === 'photo' || meta.kind === 'video';
 	}
 
+	// В очередь — обычные копии, не обёртки $state: хранилище устройства
+	// обёртку не принимает (DataCloneError), и без сети «Опубликовать» с
+	// роликом не делало ничего — кадр обложки лежит в описании объектом
+	// (C58, iPhone 2026-10-23).
 	function postQueuePayload(trimmed: string): PostQueuePayload {
 		return {
 			body: trimmed,
 			entry_date: entryDate,
-			media_meta: picked.map((p) => withPlace({ ...p.meta }, usePlace))
+			media_meta: $state.snapshot(picked).map((p) => withPlace({ ...p.meta }, usePlace))
 		};
+	}
+
+	function queueFiles(): QueueFile[] {
+		return $state.snapshot(picked).flatMap((p) => (p.file ? [p.file] : []));
 	}
 
 	// Сменили обложку — кадр начинается с центра снова (4.3).
@@ -690,7 +698,7 @@
 				return;
 			}
 
-			const files = picked.map((p) => p.file!).filter(Boolean);
+			const files = queueFiles();
 			const payload = postQueuePayload(trimmed);
 
 			if (editQueueId) {
@@ -778,8 +786,14 @@
 			goto(feedHref(entryDate));
 		} catch (err) {
 			if (!isEdit && !editQueueId && isTransportError(err)) {
-				const files = picked.map((p) => p.file!).filter(Boolean);
-				await enqueuePost(circle.origin, circle.circleId, postQueuePayload(trimmed), files);
+				try {
+					await enqueuePost(circle.origin, circle.circleId, postQueuePayload(trimmed), queueFiles());
+				} catch (queueErr) {
+					// Очередь не приняла — сказать, а не молчать.
+					console.warn('wynd: enqueue post failed', queueErr);
+					error = 'Не получилось сохранить запись на устройстве — попробуйте ещё раз';
+					return;
+				}
 				clearDraft();
 				goto(feedHref());
 				return;
