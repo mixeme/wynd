@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// VolumeBucket is media bytes aggregated by chronicle period.
+// VolumeBucket is media and text bytes aggregated by chronicle period.
 // Period — первый день столбика («2026-09-29»): касание ставит отсечку на него.
 type VolumeBucket struct {
 	Period          string `json:"period"`
@@ -41,6 +41,45 @@ var volumePeriodSQL = map[VolumeStep]string{
 	VolumeStepWeek:  `date(p.created_at, '-6 days', 'weekday 1')`,
 	VolumeStepMonth: `strftime('%Y-%m-01', p.created_at)`,
 }
+
+// postWeightSQL — сколько весит каждая живая запись круга так, как её
+// считает квота: файлы записи и её комментариев плюс текст записи, её
+// комментариев и откликов по формулам триггеров quota_text_* (C42). Это то,
+// что архивация удаляет вместе с записью. Без текста круг из одних
+// текстовых записей давал пустой график и не давал выбрать дату (план 46,
+// C55, владелец 2026-10-23: «Текст считаем»). Параметры: circle_id ×4.
+const postWeightSQL = `
+	SELECT p.id AS post_id,
+		550 + 3 * length(CAST(COALESCE(p.body, '') AS BLOB)) + length(CAST(p.author_name AS BLOB))
+		+ COALESCE(cmt.bytes, 0) + COALESCE(rx.bytes, 0) + COALESCE(md.bytes, 0) AS bytes
+	FROM posts p
+	LEFT JOIN (
+		SELECT post_id, SUM(560 + 3 * length(CAST(COALESCE(body, '') AS BLOB)) + length(CAST(author_name AS BLOB))) AS bytes
+		FROM comments WHERE circle_id = ? GROUP BY post_id
+	) cmt ON cmt.post_id = p.id
+	LEFT JOIN (
+		SELECT post_id, SUM(450 + length(CAST(emoji AS BLOB)) + length(CAST(author_name AS BLOB))) AS bytes
+		FROM reactions WHERE circle_id = ? GROUP BY post_id
+	) rx ON rx.post_id = p.id
+	LEFT JOIN (
+		SELECT pm.post_id, SUM(b.size_bytes) AS bytes
+		FROM (
+			SELECT post_id, blob_id FROM post_media
+			UNION
+			SELECT post_id, audio_cover_blob_id FROM post_media
+			 WHERE audio_cover_blob_id IS NOT NULL AND audio_cover_blob_id != ''
+			UNION
+			SELECT post_id, video_poster_blob_id FROM post_media
+			 WHERE video_poster_blob_id IS NOT NULL AND video_poster_blob_id != ''
+			UNION
+			SELECT cm.post_id, cmm.blob_id FROM comment_media cmm
+			 JOIN comments cm ON cm.id = cmm.comment_id AND cm.deleted = 0
+		) pm
+		JOIN blobs b ON b.id = pm.blob_id AND b.status = 'complete'
+		JOIN posts mp ON mp.id = pm.post_id AND mp.circle_id = ?
+		GROUP BY pm.post_id
+	) md ON md.post_id = p.id
+	WHERE p.circle_id = ? AND p.deleted = 0`
 
 // MediaVolumeChart returns media volume for cutoff selection, bucketed by a
 // step that fits the circle's age.
@@ -92,26 +131,12 @@ var finerVolumeStep = map[VolumeStep]VolumeStep{
 
 func (c *Chronicle) volumeBuckets(ctx context.Context, circleID string, step VolumeStep) ([]VolumeBucket, error) {
 	rows, err := c.db.QueryContext(ctx, `
-		SELECT `+volumePeriodSQL[step]+` AS period,
-			COALESCE(SUM(b.size_bytes), 0) AS bytes
-		FROM posts p
-		JOIN (
-			SELECT post_id, blob_id FROM post_media
-			UNION
-			SELECT post_id, audio_cover_blob_id FROM post_media
-			 WHERE audio_cover_blob_id IS NOT NULL AND audio_cover_blob_id != ''
-			UNION
-			SELECT post_id, video_poster_blob_id FROM post_media
-			 WHERE video_poster_blob_id IS NOT NULL AND video_poster_blob_id != ''
-			UNION
-			SELECT cm.post_id, cmm.blob_id FROM comment_media cmm
-			 JOIN comments cm ON cm.id = cmm.comment_id AND cm.deleted = 0
-		) pm ON pm.post_id = p.id
-		JOIN blobs b ON b.id = pm.blob_id AND b.status = 'complete'
-		WHERE p.circle_id = ? AND p.deleted = 0
+		SELECT `+volumePeriodSQL[step]+` AS period, SUM(w.bytes) AS bytes
+		FROM (`+postWeightSQL+`) w
+		JOIN posts p ON p.id = w.post_id
 		GROUP BY period
 		ORDER BY period
-	`, circleID)
+	`, circleID, circleID, circleID, circleID)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +234,8 @@ func (c *Chronicle) PostsKeptAtCutoff(ctx context.Context, circleID, cutoffDate 
 	return n, err
 }
 
-// FreedBytesBeforeCutoff estimates media bytes that would be freed at cutoff.
+// FreedBytesBeforeCutoff estimates bytes freed at cutoff: media and text, as
+// the quota counts them (postWeightSQL).
 func (c *Chronicle) FreedBytesBeforeCutoff(ctx context.Context, circleID, cutoffDate string) (int64, error) {
 	cutoff, err := CutoffInstant(cutoffDate)
 	if err != nil {
@@ -217,23 +243,11 @@ func (c *Chronicle) FreedBytesBeforeCutoff(ctx context.Context, circleID, cutoff
 	}
 	var total sql.NullInt64
 	err = c.db.QueryRowContext(ctx, `
-		SELECT COALESCE(SUM(b.size_bytes), 0)
-		FROM posts p
-		JOIN (
-			SELECT post_id, blob_id FROM post_media
-			UNION
-			SELECT post_id, audio_cover_blob_id FROM post_media
-			 WHERE audio_cover_blob_id IS NOT NULL AND audio_cover_blob_id != ''
-			UNION
-			SELECT post_id, video_poster_blob_id FROM post_media
-			 WHERE video_poster_blob_id IS NOT NULL AND video_poster_blob_id != ''
-			UNION
-			SELECT cm.post_id, cmm.blob_id FROM comment_media cmm
-			 JOIN comments cm ON cm.id = cmm.comment_id AND cm.deleted = 0
-		) pm ON pm.post_id = p.id
-		JOIN blobs b ON b.id = pm.blob_id AND b.status = 'complete'
-		WHERE p.circle_id = ? AND p.deleted = 0 AND p.created_at < ?
-	`, circleID, formatTime(cutoff)).Scan(&total)
+		SELECT COALESCE(SUM(w.bytes), 0)
+		FROM (`+postWeightSQL+`) w
+		JOIN posts p ON p.id = w.post_id
+		WHERE p.created_at < ?
+	`, circleID, circleID, circleID, circleID, formatTime(cutoff)).Scan(&total)
 	if err != nil {
 		return 0, err
 	}
