@@ -11,7 +11,6 @@
 	import Hint from '$ui/forms/Hint.svelte';
 	import Loading from '$ui/Loading.svelte';
 	import Lightbox from '$ui/overlays/Lightbox.svelte';
-	import VideoDiag from '$ui/overlays/VideoDiag.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { formatBytes } from '$lib/format/bytes';
 	import { formatPostTime, pluralPhotos } from '$lib/format/time';
@@ -215,7 +214,8 @@
 				{#if urls[item.blob_id]}
 					<!-- playsinline: на iPhone видео играет в лайтбоксе, а не уходит в полноэкранный плеер.
 					     Без <track>: пустая дорожка субтитров держала Safari на readyState 2 —
-					     ролик не играл (C26, страница диагностики с iPhone 2026-10-23). -->
+					     ролик не играл (C26, найдено страницей диагностики, подтверждено
+					     с iPhone 2026-10-23). Дорожку не возвращать. -->
 					<!-- svelte-ignore a11y_media_has_caption -->
 					<video
 						src={urls[item.blob_id]}
@@ -241,10 +241,4 @@
 			{/if}
 		{/snippet}
 	</Lightbox>
-	{#if item.kind === 'video'}
-		<!-- Временно (план 46, C26): вход на страницу диагностики видео. -->
-		<VideoDiag
-			link="/circles/{circle.circleId}/posts/{postId}/album/diag?m={encodeURIComponent(item.blob_id)}&p={encodeURIComponent(tileBlobId(item))}"
-		/>
-	{/if}
 {/if}

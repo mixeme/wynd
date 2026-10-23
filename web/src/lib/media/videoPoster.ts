@@ -138,7 +138,16 @@ export async function videoPosterJpeg(source: Blob | string): Promise<ArrayBuffe
 	document.body.appendChild(video);
 	try {
 		video.src = url;
-		if (video.readyState < 2 && !(await waitFor(video, 'loadeddata', 10000))) return;
+		if (video.readyState < 2 && !(await waitFor(video, 'loadeddata', 1500))) {
+			// iPhone не грузит ролик заранее, пока его не играют (preload там не
+			// действует): кадра не было, обложка выходила пустой (2026-10-23).
+			// Без звука играть можно и без нажатия — запускаем и сразу ждём кадр.
+			const started = video.play().catch(() => undefined);
+			const loaded = video.readyState >= 2 || (await waitFor(video, 'loadeddata', 8500));
+			await started;
+			video.pause();
+			if (!loaded) return;
+		}
 		if (!video.videoWidth || !video.videoHeight) return;
 		const probe = document.createElement('canvas');
 		probe.width = 32;
