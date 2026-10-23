@@ -389,7 +389,14 @@ func (s *Server) handleMoveCard(w http.ResponseWriter, r *http.Request) {
 			writeDomainError(w, err)
 			return
 		}
-		out["circle"] = map[string]any{"name": name, "color": color, "posts": posts, "members": members, "bytes": bytes}
+		circle := map[string]any{"name": name, "color": color, "posts": posts, "members": members, "bytes": bytes}
+		// «Аня — это вы?» на новом сервере (A12): кто владелец и чьи почты в
+		// круге. Ссылку даёт сам владелец, и в архиве по ней те же почты.
+		if owner, emails, err := s.Chronicle.CircleMoveFolk(r.Context(), m.CircleID); err == nil {
+			circle["owner_name"] = owner
+			circle["emails"] = emails
+		}
+		out["circle"] = circle
 		if frozen, err := s.Chronicle.CircleFrozenAt(r.Context(), m.CircleID); err == nil && frozen != nil {
 			out["frozen_at"] = frozen.UTC().Format(time.RFC3339)
 		}

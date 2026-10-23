@@ -15,7 +15,14 @@
 	import ServerRow from '$ui/data/ServerRow.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import StatusCard from '$ui/data/StatusCard.svelte';
+	import MemberRow from '$ui/data/MemberRow.svelte';
+	import IdentityForm from '$ui/forms/IdentityForm.svelte';
+	import Dialog from '$ui/overlays/Dialog.svelte';
+	import Scrim from '$ui/overlays/Scrim.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
+	import { memberAvatarColor } from '$lib/auth/invites';
+	import { setIdentityAvatar } from '$lib/circles/settings';
+	import type { CroppedImage } from '$lib/media/crop';
 	import { loadSourceUrl, sourceUrl } from '$lib/instance/source.svelte';
 	import { ApiError } from '$lib/api/client';
 	import { authErrorHint } from '$lib/auth/auth';
@@ -68,6 +75,15 @@
 	// каждом открытии.
 	let watching = $state(false);
 	let timer: ReturnType<typeof setInterval> | undefined;
+	// «Аня — это вы?» (A12, как 7.29б–в при оживлении): окно и шаг «кто вы».
+	let askOwner = $state(false);
+	let who = $state(false);
+	let newName = $state('');
+	let newGender = $state<'' | 'm' | 'f'>('');
+	let greeting = $state('');
+	let newAvatar = $state<CroppedImage | undefined>();
+	// Фото ставится, когда круг поднят: до того круга здесь нет.
+	let avatarFor = $state('');
 
 	const srv = $derived(serverName ? `«${serverName}»` : 'этого сервера');
 	const source = $derived(move ? displayHost(move.source_url) : '');
@@ -99,6 +115,10 @@
 			}
 			move = m;
 			if (m.link && !link) link = m.link;
+			if (m.status === 'done' && m.result && newAvatar && avatarFor !== m.result.circle_id) {
+				avatarFor = m.result.circle_id;
+				await setIdentityAvatar(origin, m.result.circle_id, newAvatar).catch(() => false);
+			}
 			if (m.status === 'draft') sendInvites = m.send_invites;
 		} catch (err) {
 			error = authErrorHint(err);
@@ -179,12 +199,33 @@
 		}
 	}
 
-	async function start() {
+	// «Перенести круг»: почты в круге нет — сначала «Аня — это вы?».
+	function startMove() {
+		if (move?.reviver_absent && move.owner_name) {
+			askOwner = true;
+			return;
+		}
+		void start();
+	}
+
+	async function start(asNew = false) {
 		if (!move) return;
+		askOwner = false;
+		const name = newName.trim();
+		if (asNew && !name) {
+			error = 'Введите имя';
+			return;
+		}
 		busy = true;
 		error = '';
 		try {
-			await startIncomingMove(origin, move.id, sendInvites);
+			await startIncomingMove(
+				origin,
+				move.id,
+				sendInvites,
+				asNew ? { name, gender: newGender, body: greeting.trim() || undefined } : undefined
+			);
+			who = false;
 			watching = true;
 			await refresh();
 		} catch (err) {
@@ -214,8 +255,8 @@
 <FormLayout
 	shell
 	app
-	title={move?.status === 'done' ? move.circle.name : 'Перенос круга'}
-	onback={() => goUp(`/settings/servers/accept?origin=${encodeURIComponent(origin)}`)}
+	title={move?.status === 'done' || who ? (move?.circle.name ?? '') : 'Перенос круга'}
+	onback={() => (who ? (who = false) : goUp(`/settings/servers/accept?origin=${encodeURIComponent(origin)}`))}
 >
 	{#if move?.status === 'done' && move.result}
 		<!-- 7.25 / 7.26: круг поднят и сверен; остаётся завершить перенос там. -->
@@ -266,6 +307,18 @@
 		<Button class="mt-14" variant="colored" onclick={() => goto(`/circles/${r.circle_id}`)}>
 			Открыть круг
 		</Button>
+	{:else if who && move}
+		<!-- «Нет» на «Аня — это вы?» (A12): вход своим именем, как 7.29в. Имён
+		     участников карточка переноса не несёт — «Кто уже здесь» нет. -->
+		<IdentityForm
+			color={(move.circle.color in CIRCLE_COLORS ? move.circle.color : 'terracotta') as CircleColor}
+			bind:name={newName}
+			bind:firstPost={greeting}
+			bind:avatar={newAvatar}
+			bind:gender={newGender}
+			onerror={(message) => (error = message)}
+		/>
+		<Button variant="colored" loading={busy} onclick={() => void start(true)}>Перенести круг</Button>
 	{:else if move && active}
 		<!-- Ход: сервер забирает и поднимает круг сам (кадра нет). -->
 		<CircleRow
@@ -340,6 +393,10 @@
 			{#if move.frozen_at}
 				<Hint>Круг замер {at(move.frozen_at)}.</Hint>
 			{/if}
+			{#if move.reviver_absent && move.owner_name}
+				<!-- Как 7.29а при оживлении (A12). -->
+				<Hint class="ink">Вашей почты среди участников этого круга нет.</Hint>
+			{/if}
 
 			{#if expired}
 				<!-- 7.24: срок ссылки вышел. -->
@@ -371,7 +428,7 @@
 						или без.
 					</Hint>
 				{/if}
-				<Button class="mt-14" variant="colored" loading={busy} onclick={() => void start()}>
+				<Button class="mt-14" variant="colored" loading={busy} onclick={startMove}>
 					Перенести круг
 				</Button>
 				<Hint class="mt-8 ctr-text">Сервер скачает круг сам. Приложение можно закрыть.</Hint>
@@ -409,3 +466,28 @@
 		<Hint class="mt-12">{error}</Hint>
 	{/if}
 </FormLayout>
+
+{#if askOwner && move?.owner_name}
+	<!-- Как 7.29б (A12): фон закрывает окно; «Нет» — на вход своим именем. -->
+	<Scrim onclick={() => (askOwner = false)} />
+	<Dialog label="{move.owner_name} — это вы?" ondismiss={() => (askOwner = false)}>
+		<div class="dlgq">{move.owner_name} — это вы?</div>
+		<MemberRow
+			initial={circleInitial(move.owner_name)}
+			name={move.owner_name}
+			subtitle="владелец круга «{move.circle.name}»"
+			color={memberAvatarColor(0)}
+		/>
+		<div class="rowin ask">
+			<Button
+				variant="ghost"
+				onclick={() => {
+					askOwner = false;
+					error = '';
+					who = true;
+				}}>Нет</Button
+			>
+			<Button onclick={() => void start()}>Да, это я</Button>
+		</div>
+	</Dialog>
+{/if}

@@ -342,6 +342,9 @@ func TestMoveBetweenServers(t *testing.T) {
 		SourceName string `json:"source_name"`
 		LinkAlive  bool   `json:"link_alive"`
 		Fits       bool   `json:"fits"`
+		// «Аня — это вы?» (A12): почты Кота в круге нет.
+		OwnerName     string `json:"owner_name"`
+		ReviverAbsent bool   `json:"reviver_absent"`
 		Circle     struct {
 			Name    string `json:"name"`
 			Posts   int    `json:"posts"`
@@ -356,6 +359,15 @@ func TestMoveBetweenServers(t *testing.T) {
 		card.Circle.Name != "Семья" || card.Circle.Posts != 1 || card.Circle.Members != 2 || card.Circle.Bytes < int64(len(photo)) {
 		t.Fatalf("карточка 2.18: %s", rec.Body.String())
 	}
+	if card.OwnerName != "Аня" || !card.ReviverAbsent {
+		t.Fatalf("«Аня — это вы?»: %s", rec.Body.String())
+	}
+	if rec := doJSON(t, dst, http.MethodPost, "/api/v1/moves/incoming/"+card.ID+"/start", kot, map[string]any{
+		"new_member": map[string]any{"name": " "},
+	}); rec.Code != http.StatusBadRequest {
+		t.Fatalf("без имени: %d %s", rec.Code, rec.Body.String())
+	}
+	// «Да, это я» — лицо прежней владелицы, как и до A12.
 	if rec := doJSON(t, dst, http.MethodPost, "/api/v1/moves/incoming/"+card.ID+"/start", kot, map[string]any{"send_invites": true}); rec.Code != http.StatusOK {
 		t.Fatalf("поднять: %d %s", rec.Code, rec.Body.String())
 	}

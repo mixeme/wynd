@@ -51,7 +51,14 @@ type IncomingMove struct {
 	// AlreadyHere — сколько людей круга уже было на этом сервере (C51):
 	// «Все уже на этом сервере» на итоге 7.25, как у оживления.
 	AlreadyHere int
-	Error       string
+	// OwnerName — владелец по карточке прежнего сервера; ReviverAbsent —
+	// почты поднимающего среди участников нет: «Аня — это вы?» (A12).
+	OwnerName     string
+	ReviverAbsent bool
+	// NewMember — ответ «Нет» (JSON: name, gender, body, entry_date); пусто —
+	// поднять лицом прежнего владельца.
+	NewMember string
+	Error     string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
@@ -67,13 +74,18 @@ type IncomingCard struct {
 	Bytes       int64
 	FrozenAt    *time.Time
 	ExpiresAt   time.Time
+	// OwnerName и ReviverAbsent — для «Аня — это вы?» (A12); старый прежний
+	// сервер их не отдаёт — вопроса нет.
+	OwnerName     string
+	ReviverAbsent bool
 }
 
 const incomingCols = `id, account_id, link, source_url, source_name, circle_name, circle_color,
 	posts, members, bytes, frozen_at, expires_at, send_invites, status, pulled_bytes,
 	COALESCE(circle_id, ''), COALESCE(result_posts, 0), COALESCE(result_names, 0), COALESCE(result_bytes, 0),
 	COALESCE((SELECT text_bytes FROM circles WHERE circles.id = incoming_moves.circle_id), 0),
-	verified, invited, not_joined, already_here, COALESCE(error, ''), created_at, updated_at`
+	verified, invited, not_joined, already_here, owner_name, reviver_absent, COALESCE(new_member, ''),
+	COALESCE(error, ''), created_at, updated_at`
 
 func scanIncoming(row interface{ Scan(...any) error }) (*IncomingMove, error) {
 	var m IncomingMove
@@ -82,7 +94,8 @@ func scanIncoming(row interface{ Scan(...any) error }) (*IncomingMove, error) {
 	if err := row.Scan(&m.ID, &m.AccountID, &m.Link, &m.SourceURL, &m.SourceName, &m.CircleName, &m.CircleColor,
 		&m.Posts, &m.Members, &m.Bytes, &frozen, &expires, &m.SendInvites, &m.Status, &m.PulledBytes,
 		&m.CircleID, &m.ResultPosts, &m.ResultNames, &m.ResultBytes, &m.ResultTextBytes,
-		&m.Verified, &m.Invited, &m.NotJoined, &m.AlreadyHere, &m.Error, &created, &updated); err != nil {
+		&m.Verified, &m.Invited, &m.NotJoined, &m.AlreadyHere, &m.OwnerName, &m.ReviverAbsent, &m.NewMember,
+		&m.Error, &created, &updated); err != nil {
 		return nil, err
 	}
 	m.FrozenAt = optTime(frozen)
@@ -131,10 +144,11 @@ func (c *Chronicle) PutIncomingDraft(ctx context.Context, accountID, link string
 	}
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO incoming_moves (id, account_id, link, source_url, source_name, circle_name, circle_color,
-			posts, members, bytes, frozen_at, expires_at, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)
+			posts, members, bytes, frozen_at, expires_at, status, owner_name, reviver_absent, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?)
 	`, id, accountID, link, card.SourceURL, card.SourceName, card.CircleName, card.CircleColor,
-		card.Posts, card.Members, card.Bytes, frozen, formatTime(card.ExpiresAt), formatTime(now), formatTime(now)); err != nil {
+		card.Posts, card.Members, card.Bytes, frozen, formatTime(card.ExpiresAt), card.OwnerName, card.ReviverAbsent,
+		formatTime(now), formatTime(now)); err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -166,11 +180,17 @@ func (c *Chronicle) LatestIncoming(ctx context.Context, accountID string) (*Inco
 
 // StartIncoming — «Поднять круг здесь» (7.20): черновик или неудавшийся
 // перенос — в работу. false — он уже идёт или закончен.
-func (c *Chronicle) StartIncoming(ctx context.Context, id string, sendInvites bool, now time.Time) (bool, error) {
+// newMember — ответ «Нет» на «Аня — это вы?» (JSON) или пусто (A12); пусто
+// при повторе после сбоя прежний ответ не стирает.
+func (c *Chronicle) StartIncoming(ctx context.Context, id string, sendInvites bool, newMember string, now time.Time) (bool, error) {
+	var nm any
+	if newMember != "" {
+		nm = newMember
+	}
 	res, err := c.db.ExecContext(ctx, `
-		UPDATE incoming_moves SET status = 'pulling', send_invites = ?, error = NULL, updated_at = ?
+		UPDATE incoming_moves SET status = 'pulling', send_invites = ?, new_member = COALESCE(?, new_member), error = NULL, updated_at = ?
 		WHERE id = ? AND status IN ('draft', 'failed')
-	`, sendInvites, formatTime(utcOrNow(now)), id)
+	`, sendInvites, nm, formatTime(utcOrNow(now)), id)
 	if err != nil {
 		return false, err
 	}

@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -117,6 +118,10 @@ type moveCard struct {
 		Posts   int    `json:"posts"`
 		Members int    `json:"members"`
 		Bytes   int64  `json:"bytes"`
+		// OwnerName и Emails — для «Аня — это вы?» (A12); у прежнего сервера
+		// старше 0.42 их нет.
+		OwnerName string   `json:"owner_name"`
+		Emails    []string `json:"emails"`
 	} `json:"circle"`
 }
 
@@ -163,6 +168,9 @@ func incomingJSON(m *chronicle.IncomingMove, now time.Time) map[string]any {
 		"link_alive":   now.Before(m.ExpiresAt),
 		"send_invites": m.SendInvites,
 		"pulled_bytes": m.PulledBytes,
+		// «Аня — это вы?» (A12): спрашивать, если reviver_absent.
+		"owner_name":     m.OwnerName,
+		"reviver_absent": m.ReviverAbsent,
 		"circle": map[string]any{
 			"name": m.CircleName, "color": m.CircleColor,
 			"posts": m.Posts, "members": m.Members, "bytes": m.Bytes,
@@ -251,6 +259,13 @@ func (s *Server) handlePutIncomingMove(w http.ResponseWriter, r *http.Request) {
 	if t, err := time.Parse(time.RFC3339, card.FrozenAt); err == nil {
 		in.FrozenAt = &t
 	}
+	// Спросить «это вы?» — только когда карточка назвала владельца и почты,
+	// и почты поднимающего среди них нет.
+	if card.Circle.OwnerName != "" && len(card.Circle.Emails) > 0 {
+		in.OwnerName = card.Circle.OwnerName
+		mine, _ := s.Chronicle.AccountEmail(r.Context(), sess.AccountID)
+		in.ReviverAbsent = !slices.ContainsFunc(card.Circle.Emails, func(e string) bool { return strings.EqualFold(e, mine) })
+	}
 	m, err := s.Chronicle.PutIncomingDraft(r.Context(), sess.AccountID, link, in, time.Now())
 	if errors.Is(err, chronicle.ErrMoveBusy) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "move_busy"})
@@ -309,9 +324,20 @@ func (s *Server) handleStartIncomingMove(w http.ResponseWriter, r *http.Request)
 	}
 	body, ok := bindJSON[struct {
 		SendInvites bool `json:"send_invites"`
+		// NewMember — «Аня — это вы?» → «Нет» (7.29в при переносе, A12).
+		NewMember *reviveNewMember `json:"new_member,omitempty"`
 	}](w, r)
 	if !ok {
 		return
+	}
+	newMember := ""
+	if body.NewMember != nil {
+		if _, _, err := body.NewMember.parse(); err != nil {
+			writeError(w, err)
+			return
+		}
+		raw, _ := json.Marshal(body.NewMember)
+		newMember = string(raw)
 	}
 	m, err := s.Chronicle.GetIncoming(r.Context(), r.PathValue("id"))
 	if err != nil || m.AccountID != sess.AccountID {
@@ -331,7 +357,7 @@ func (s *Server) handleStartIncomingMove(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusInsufficientStorage, map[string]string{"error": "no_room"})
 		return
 	}
-	started, err := s.Chronicle.StartIncoming(r.Context(), m.ID, body.SendInvites, time.Now())
+	started, err := s.Chronicle.StartIncoming(r.Context(), m.ID, body.SendInvites, newMember, time.Now())
 	if err != nil {
 		writeDomainError(w, err)
 		return
@@ -610,7 +636,21 @@ func (s *Server) reviveMoveFile(ctx context.Context, m *chronicle.IncomingMove) 
 	if u, err := url.Parse(m.SourceURL); err == nil && u.Host != "" {
 		host = u.Host
 	}
+	var nm *reviveNewMember
+	if m.NewMember != "" {
+		nm = &reviveNewMember{}
+		if err := json.Unmarshal([]byte(m.NewMember), nm); err != nil {
+			nm = nil
+		}
+	}
+	newMember, greeting, err := nm.parse()
+	if err != nil {
+		newMember, greeting = nil, ""
+	}
 	return s.reviveFromTables(ctx, reviveRequest{
+		NewMember:     newMember,
+		Greeting:      greeting,
+		GreetingDay:   entryDayOf(nm),
 		AccountID:     m.AccountID,
 		FormatVersion: zr.Manifest.FormatVersion,
 		SchemaVersion: zr.Manifest.SchemaVersion,

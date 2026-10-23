@@ -1,3 +1,4 @@
+import { localDayOf } from '$lib/journal/present';
 import { apiJson } from '$lib/api/client';
 import { invalidateSnapshots } from '$lib/idb/db';
 import type { ReviveRoom } from '$lib/archive/revive';
@@ -17,6 +18,10 @@ export interface IncomingMove {
 	/** Код причины сбоя: move_expired, move_taken, archive_invalid, no_room… */
 	error?: string;
 	circle: { name: string; color: string; posts: number; members: number; bytes: number };
+	/** «Аня — это вы?» (A12): владелец по карточке прежнего сервера. */
+	owner_name?: string;
+	/** Почты того, кто поднимает, среди участников нет — спросить. */
+	reviver_absent?: boolean;
 	result?: {
 		circle_id: string;
 		posts: number;
@@ -52,12 +57,19 @@ export function putIncomingMove(origin: string, link: string): Promise<IncomingM
 export async function startIncomingMove(
 	origin: string,
 	id: string,
-	sendInvites: boolean
+	sendInvites: boolean,
+	/** «Аня — это вы?» → «Нет» (A12): кто поднимает круг своим именем. */
+	newMember?: { name: string; gender: '' | 'm' | 'f'; body?: string }
 ): Promise<IncomingMove> {
 	const move = await apiJson<IncomingMove>(origin, `/moves/incoming/${id}/start`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ send_invites: sendInvites })
+		body: JSON.stringify({
+			send_invites: sendInvites,
+			...(newMember
+				? { new_member: { ...newMember, entry_date: localDayOf(new Date().toISOString()) } }
+				: {})
+		})
 	});
 	await invalidateSnapshots(origin, { kind: 'circles' });
 	return move;

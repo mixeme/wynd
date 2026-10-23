@@ -265,6 +265,42 @@ func (c *Chronicle) CircleEditWindow(ctx context.Context, circleID string) (Edit
 	return c.circleEditWindow(ctx, c.db, circleID)
 }
 
+// CircleMoveFolk — для карточки переноса (A12, 7.20): имя владельца и почты
+// всех, кто в круге (и вышедших — их записи переезжают с кругом). Новый
+// сервер по ним решает, спрашивать ли «Аня — это вы?».
+func (c *Chronicle) CircleMoveFolk(ctx context.Context, circleID string) (ownerName string, emails []string, err error) {
+	var ownerIdentity sql.NullString
+	if err := c.db.QueryRowContext(ctx, `
+		SELECT m.identity_id FROM circles ci
+		LEFT JOIN memberships m ON m.circle_id = ci.id AND m.account_id = ci.owner_account_id
+		WHERE ci.id = ?`, circleID).Scan(&ownerIdentity); err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil, ErrNotFound
+		}
+		return "", nil, err
+	}
+	if ownerIdentity.Valid {
+		if ownerName, err = c.identityName(ctx, c.db, ownerIdentity.String); err != nil {
+			return "", nil, err
+		}
+	}
+	rows, err := c.db.QueryContext(ctx, `
+		SELECT DISTINCT lower(a.email) FROM memberships m JOIN accounts a ON a.id = m.account_id
+		WHERE m.circle_id = ? AND a.email != ''`, circleID)
+	if err != nil {
+		return "", nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var e string
+		if err := rows.Scan(&e); err != nil {
+			return "", nil, err
+		}
+		emails = append(emails, e)
+	}
+	return ownerName, emails, rows.Err()
+}
+
 func (c *Chronicle) circleOwner(ctx context.Context, q querier, circleID string) (string, error) {
 	var owner string
 	err := q.QueryRowContext(ctx, `SELECT owner_account_id FROM circles WHERE id = ?`, circleID).Scan(&owner)
