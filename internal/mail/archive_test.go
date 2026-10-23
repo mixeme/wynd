@@ -26,12 +26,16 @@ func TestArchiveLettersLinkToAppScreen(t *testing.T) {
 		lines   []string
 	}{
 		{
-			func() error { return svc.SendArchiveCycleStart(ctx, "anya@example.com", "Семья", cutoff, deadline, link) },
+			func() error {
+				return svc.SendArchiveCycleStart(ctx, "anya@example.com", "Семья", cutoff, deadline, link)
+			},
 			"Архивация круга «Семья»",
 			[]string{"В круге «Семья» всё, что написано до 30 сентября, уходит в архив. 25 октября оно удалится с сервера.", "Скачайте свой архив до этого дня:", link},
 		},
 		{
-			func() error { return svc.SendArchiveReminder(ctx, "anya@example.com", "Семья", cutoff, deadline, link) },
+			func() error {
+				return svc.SendArchiveReminder(ctx, "anya@example.com", "Семья", cutoff, deadline, link)
+			},
 			"Скоро удаление в круге «Семья»",
 			[]string{"25 октября в круге «Семья» удалится всё, что написано до 30 сентября.", "Скачайте свой архив до этого дня:", link},
 		},
