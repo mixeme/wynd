@@ -568,7 +568,7 @@
 					<Button variant="ghost" onclick={() => void copyLink()}>
 						{copied ? 'Скопировано' : 'Скопировать'}
 					</Button>
-					<TextButton class="link under push" onclick={() => (askRollback = true)}>
+					<TextButton class="link under ins-push" onclick={() => (askRollback = true)}>
 						Убрать Wynd
 					</TextButton>
 				</div>
@@ -581,7 +581,7 @@
 					<Button variant="colored" onclick={() => void backend().OpenLink(progress?.site ?? '')}>
 						Открыть {plan?.domain}
 					</Button>
-					<TextButton class="link under push" onclick={() => (askRollback = true)}>
+					<TextButton class="link under ins-push" onclick={() => (askRollback = true)}>
 						Убрать Wynd
 					</TextButton>
 				</div>

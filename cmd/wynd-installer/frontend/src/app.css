@@ -53,13 +53,22 @@ body {
 	margin-left: auto;
 }
 .ins-tb-btns button {
+	display: grid;
+	place-items: center;
 	width: 44px;
+	padding: 0;
 	border: 0;
 	background: none;
 	color: #b9afa3;
-	font: inherit;
-	font-size: 13px;
 	cursor: default;
+}
+.ins-tb-btns svg {
+	display: block;
+	width: 10px;
+	height: 10px;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1;
 }
 .ins-tb-btns button:hover {
 	background: rgba(0, 0, 0, 0.06);
@@ -383,6 +392,6 @@ body {
 }
 
 /* Неброское действие справа от главных кнопок (окно 5а). */
-.ins-foot .push {
+.ins-foot .ins-push {
 	margin-left: auto;
 }

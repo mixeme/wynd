@@ -202,13 +202,70 @@ type Run struct {
 const maxLogOutput = 8 << 10
 
 func (r *Run) record(command, output string) {
+	r.mu.Lock()
+	r.log = append(r.log, LogEntry{Command: strings.TrimSpace(command), Output: logOutput(output)})
+	r.mu.Unlock()
+	r.report()
+}
+
+// logOutput — хвост вывода для окна: последние maxLogOutput байт.
+func logOutput(output string) string {
 	if len(output) > maxLogOutput {
 		output = "…\n" + output[len(output)-maxLogOutput:]
 	}
+	return strings.TrimRight(output, "\n")
+}
+
+// liveReport — как часто окно получает вывод идущей команды.
+const liveReport = 400 * time.Millisecond
+
+// liveLog — строка журнала идущей команды: встаёт сразу, вывод дописывается
+// по ходу (раньше команда попадала в журнал, только когда кончалась).
+type liveLog struct {
+	r    *Run
+	idx  int
+	mu   sync.Mutex
+	tail []byte
+	last time.Time
+}
+
+// begin ставит команду в журнал до запуска.
+func (r *Run) begin(command string) *liveLog {
 	r.mu.Lock()
-	r.log = append(r.log, LogEntry{Command: strings.TrimSpace(command), Output: strings.TrimRight(output, "\n")})
+	r.log = append(r.log, LogEntry{Command: strings.TrimSpace(command)})
+	idx := len(r.log) - 1
 	r.mu.Unlock()
 	r.report()
+	return &liveLog{r: r, idx: idx, last: time.Now()}
+}
+
+func (l *liveLog) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	l.tail = append(l.tail, p...)
+	if extra := len(l.tail) - maxLogOutput; extra > 0 {
+		l.tail = append([]byte(nil), l.tail[extra:]...)
+	}
+	due := time.Since(l.last) >= liveReport
+	if due {
+		l.last = time.Now()
+	}
+	text := string(l.tail)
+	l.mu.Unlock()
+	if due {
+		l.r.mu.Lock()
+		l.r.log[l.idx].Output = strings.TrimRight(text, "\n")
+		l.r.mu.Unlock()
+		l.r.report()
+	}
+	return len(p), nil
+}
+
+// finish кладёт в строку весь вывод, как его вернула команда.
+func (l *liveLog) finish(output string) {
+	l.r.mu.Lock()
+	l.r.log[l.idx].Output = logOutput(output)
+	l.r.mu.Unlock()
+	l.r.report()
 }
 
 // note пишет под текущим шагом, что сейчас происходит.
@@ -224,8 +281,9 @@ func (r *Run) note(text string) {
 
 // sh выполняет команду и кладёт её в журнал. Код выхода — в результате.
 func (r *Run) sh(ctx context.Context, command string, timeout time.Duration) (ExecResult, error) {
-	res, err := r.sess.Exec(ctx, command, nil, timeout)
-	r.record(command, res.Output)
+	live := r.begin(command)
+	res, err := r.sess.ExecWatch(ctx, command, nil, timeout, live)
+	live.finish(res.Output)
 	return res, err
 }
 
@@ -691,8 +749,9 @@ func (t TarImage) Provide(ctx context.Context, r *Run, tag string) error {
 		return err
 	}
 	reader := &countingReader{r: f, total: info.Size(), note: r.note}
-	res, err := r.sess.Exec(ctx, "docker load", reader, imageTimeout)
-	r.record("docker load  (образ с этого компьютера)", res.Output)
+	live := r.begin("docker load  (образ с этого компьютера)")
+	res, err := r.sess.ExecWatch(ctx, "docker load", reader, imageTimeout, live)
+	live.finish(res.Output)
 	if err != nil {
 		return err
 	}

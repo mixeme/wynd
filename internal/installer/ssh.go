@@ -373,6 +373,13 @@ func shQuote(s string) string {
 // сервер уезжают файлы и образ. Не root — через sudo: осмотр уже убедился,
 // что оно есть и пароль не спросит.
 func (s *Session) Exec(ctx context.Context, command string, stdin io.Reader, timeout time.Duration) (ExecResult, error) {
+	return s.ExecWatch(ctx, command, stdin, timeout, nil)
+}
+
+// ExecWatch — как Exec, и вывод по ходу ещё и в watch (журнал окна живьём:
+// установка Docker идёт минуты, и пустая полоса «что выполняется» выглядела
+// зависанием). watch пишут две горутины — вывод и ошибки; он сам под замком.
+func (s *Session) ExecWatch(ctx context.Context, command string, stdin io.Reader, timeout time.Duration, watch io.Writer) (ExecResult, error) {
 	sess, err := s.client.NewSession()
 	if err != nil {
 		return ExecResult{}, fmt.Errorf("%w: %v", ErrUnreachable, err)
@@ -382,8 +389,12 @@ func (s *Session) Exec(ctx context.Context, command string, stdin io.Reader, tim
 		command = "sudo -n sh -c " + shQuote(command)
 	}
 	out := &limitedBuffer{max: maxCommandOutput}
-	sess.Stdout = out
-	sess.Stderr = out
+	var sink io.Writer = out
+	if watch != nil {
+		sink = io.MultiWriter(out, watch)
+	}
+	sess.Stdout = sink
+	sess.Stderr = sink
 	sess.Stdin = stdin
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
