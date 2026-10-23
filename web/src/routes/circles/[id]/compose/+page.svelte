@@ -72,7 +72,8 @@
 
 	let body = $state('');
 	let entryDate = $state('');
-	let entryDateFromExif = $state(false);
+	// Откуда день записи: из снимка (EXIF) или из ролика (заголовок MP4, A14).
+	let entryDateFrom = $state<'' | 'photo' | 'video'>('');
 	let loading = $state(false);
 	let error = $state('');
 	let editingPost = $state<FeedPost | undefined>();
@@ -148,8 +149,8 @@
 	);
 	const entryDateSubtitle = $derived(
 		entryDate
-			? entryDateFromExif
-				? `${formatEntryDate(entryDate)} · взято из снимка`
+			? entryDateFrom
+				? `${formatEntryDate(entryDate)} · взято из ${entryDateFrom === 'video' ? 'видео' : 'снимка'}`
 				: formatEntryDate(entryDate)
 			: ''
 	);
@@ -546,6 +547,17 @@
 				const video = videoFlags[index];
 				// Дата дня: у снимка — из EXIF, у ролика — из заголовка MP4 (A14).
 				const exif = video ? await readVideoDate(file) : await readExif(file);
+				// День ставится сразу, а не после сжатия ролика — оно идёт минуты.
+				// Файл не взяли (больше потолка) — день возвращается прежний.
+				const dateBefore = { date: entryDate, from: entryDateFrom };
+				if (exif.entry_date && entryDate === today()) {
+					entryDate = exif.entry_date;
+					entryDateFrom = video ? 'video' : 'photo';
+				}
+				const skipFile = () => {
+					entryDate = dateBefore.date;
+					entryDateFrom = dateBefore.from;
+				};
 				let queueFile: QueueFile;
 				if (original) {
 					const raw = await fileToQueueBuffer(file);
@@ -564,6 +576,7 @@
 						: { ...compressed, type: guessedVideoMime(file) };
 					if (fallbackReason && maxBytes > 0 && compressed.size > maxBytes) {
 						notCompressed.push(`${file.name} (${fallbackReason})`);
+						skipFile();
 						continue;
 					}
 					if (fallbackReason) sentRawVideo.push(`${file.name} (${fallbackReason})`);
@@ -578,6 +591,7 @@
 					queueFile = { ...audio, type: audioMime(audio.name, audio.type) };
 					if (fallbackReason && maxBytes > 0 && audio.size > maxBytes) {
 						notCompressed.push(`${file.name} (${fallbackReason})`);
+						skipFile();
 						continue;
 					}
 					if (fallbackReason) sentRaw.push(`${file.name} (${fallbackReason})`);
@@ -586,6 +600,7 @@
 				}
 				if (maxBytes > 0 && queueFile.size > maxBytes) {
 					tooLarge.push(file.name);
+					skipFile();
 					continue;
 				}
 
@@ -617,11 +632,6 @@
 					video_poster: poster ? { type: 'image/jpeg', data: poster } : undefined,
 					video_duration_ms: durationMs
 				};
-
-				if (exif.entry_date && entryDate === today()) {
-					entryDate = exif.entry_date;
-					entryDateFromExif = true;
-				}
 
 				// У ролика превью — его кадр: видеоэлемент в ряду снимков не нужен.
 				const still = kind === 'video' ? poster : tags?.cover;
