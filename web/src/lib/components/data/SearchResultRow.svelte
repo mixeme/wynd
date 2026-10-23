@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Row from '$ui/data/Row.svelte';
+	import EntryDateMark from '$ui/data/EntryDateMark.svelte';
 	import type { Snippet } from 'svelte';
 	import { quoteMatch } from '$lib/journal/search';
 
@@ -12,6 +13,7 @@
 	let {
 		author,
 		time,
+		entryDay,
 		preview,
 		kind,
 		snippet = '',
@@ -25,6 +27,9 @@
 	}: {
 		author: string;
 		time: string;
+		/** День, к которому запись привязана, если внесена в другой (C49): справа,
+		 *  как в шапке записи в ленте. */
+		entryDay?: string;
 		/** Своё превью; без него — по kind из snippet и query (2.19, 3.x). */
 		preview?: Snippet;
 		/** Что нашлось: `post`, `comment` / `file` / `audio` (« · комментарий», « · файл», « · звук») или `day` («день»). */
@@ -43,8 +48,9 @@
 
 <Row {onclick} class={className} {style}>
 	{#snippet main()}
-		<div style="font-weight:600">
-			{author}<span style="font-weight:400;color:var(--faint);font-size:11.5px">{' · '}{time}</span>
+		<div class="sr-top">
+			<span>{author}<span class="sr-time">{' · '}{time}</span></span>
+			{#if entryDay}<EntryDateMark label={entryDay} />{/if}
 		</div>
 		<div class="sub">
 			{#if preview}
@@ -69,3 +75,18 @@
 		{/if}
 	{/snippet}
 </Row>
+
+<style>
+	.sr-top {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-weight: 600;
+	}
+	.sr-time,
+	.sr-top :global(.tm) {
+		font-weight: 400;
+		color: var(--faint);
+		font-size: 11.5px;
+	}
+</style>

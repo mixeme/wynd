@@ -15,6 +15,7 @@
 	import { circleNameMap, searchAllOrigins } from '$lib/circles/circles';
 	import { rememberCircleOrigin } from '$lib/circles/origin';
 	import { formatEntryDate, formatPostTime } from '$lib/format/time';
+	import { isAttachedToOtherDay } from '$lib/journal/present';
 	import { loadSessions } from '$lib/session/session.svelte';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 	import { searchChipsFromParams, replaceSearchUrl, searchChipsFromWindow, searchThumbVariant, quoteMatch, searchHitHref, searchHref } from '$lib/journal/search';
@@ -28,6 +29,7 @@
 		title?: string;
 		author: string;
 		time: string;
+		entryDay?: string;
 		snippet: string;
 		thumbBlobId?: string;
 	};
@@ -172,9 +174,12 @@
 							mediaBlobId: hit.media_blob_id,
 							title: hit.title,
 							author: isDay ? (hit.title ?? hit.snippet) : (hit.author_name ?? '—'),
-							time: isDay
-								? formatEntryDate(hit.entry_date)
-								: formatPostTime(hit.created_at ?? '', hit.entry_date),
+							time: isDay ? formatEntryDate(hit.entry_date) : formatPostTime(hit.created_at ?? ''),
+							// Запись задним числом — справа её день, как в ленте (C49).
+							entryDay:
+								!isDay && hit.kind !== 'comment' && isAttachedToOtherDay({ entry_date: hit.entry_date, created_at: hit.created_at ?? '' })
+									? formatEntryDate(hit.entry_date)
+									: undefined,
 							snippet: hit.snippet,
 							thumbBlobId: hit.thumb_blob_id
 						});
@@ -286,6 +291,7 @@
 			<SearchResultRow
 				author={rowAuthor(hit)}
 				time={hit.time}
+				entryDay={hit.entryDay}
 				thumb={Boolean(hit.thumbBlobId)}
 				thumbUrl={thumbUrls[`${group.circleId}-${hit.postId}`]}
 				thumbVariant={searchThumbVariant(hit.postId)}

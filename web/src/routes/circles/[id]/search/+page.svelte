@@ -10,6 +10,7 @@
 	import SearchResultRow from '$ui/data/SearchResultRow.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { formatEntryDate, formatPostTime } from '$lib/format/time';
+	import { isAttachedToOtherDay } from '$lib/journal/present';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 	import {
@@ -186,7 +187,13 @@
 
 	function rowTime(hit: CircleSearchHit) {
 		if (hit.kind === 'day') return formatEntryDate(hit.entry_date);
-		return formatPostTime(hit.created_at, hit.entry_date);
+		return formatPostTime(hit.created_at);
+	}
+
+	// Запись задним числом — справа её день, как в ленте (C49); у комментария нет.
+	function rowEntryDay(hit: CircleSearchHit) {
+		if (hit.kind === 'day' || hit.kind === 'comment') return undefined;
+		return isAttachedToOtherDay(hit) ? formatEntryDate(hit.entry_date) : undefined;
 	}
 
 	function chipState() {
@@ -251,6 +258,7 @@
 		<SearchResultRow
 			author={rowAuthor(hit)}
 			time={rowTime(hit)}
+			entryDay={rowEntryDay(hit)}
 			thumb={Boolean(hit.thumb_blob_id)}
 			thumbUrl={thumbUrls[hit.post_id]}
 			thumbVariant={searchThumbVariant(hit.post_id)}
