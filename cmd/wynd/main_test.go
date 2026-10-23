@@ -34,7 +34,10 @@ func TestBinaryEmptyDataDir(t *testing.T) {
 		t.Fatalf("go build: %v\n%s", err, out)
 	}
 
-	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
+	// Минута, а не 20 с: под нагрузкой ворот свежий бинарник на Windows
+	// стартует долго (его при первом запуске проверяет антивирус), и тест
+	// падал, не дождавшись /health (план 46, C54).
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, bin)
@@ -115,12 +118,15 @@ func TestBinaryEmptyDataDir(t *testing.T) {
 	}
 }
 
+// waitHealth ждёт /health до срока ctx.
 func waitHealth(ctx context.Context, addr string) error {
-	deadline := time.Now().Add(10 * time.Second)
 	var last error
-	for time.Now().Before(deadline) {
+	for {
 		if ctx.Err() != nil {
-			return ctx.Err()
+			if last == nil {
+				last = ctx.Err()
+			}
+			return fmt.Errorf("timeout waiting for health: %w", last)
 		}
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://"+addr+"/health", nil)
 		if err != nil {
@@ -140,10 +146,6 @@ func waitHealth(ctx context.Context, addr string) error {
 		last = fmt.Errorf("status %d", resp.StatusCode)
 		time.Sleep(50 * time.Millisecond)
 	}
-	if last == nil {
-		last = fmt.Errorf("timeout waiting for health")
-	}
-	return last
 }
 
 func packageDir(t *testing.T) string {

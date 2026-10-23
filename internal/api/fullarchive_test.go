@@ -159,6 +159,9 @@ func TestFullArchiveBuildDownloadAndResume(t *testing.T) {
 	if rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/full_archive", tok, map[string]any{}); rec.Code != http.StatusCreated {
 		t.Fatalf("новый архив после скачанного: %d %s", rec.Code, rec.Body.String())
 	}
+	// Дождаться сборки: иначе она пишет файл, пока Go стирает TempDir, и на
+	// Windows уборка падала на открытом файле (план 46, C54).
+	waitFullStatus(t, srv, tok, circleID, "ready")
 }
 
 // «Удалить архив, не скачивая» (6.27): файл стёрт, место освободилось.
