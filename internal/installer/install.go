@@ -545,8 +545,8 @@ func imageStep(spec Spec) step {
 		do: func(ctx context.Context, r *Run) error {
 			if spec.Image == nil {
 				return &StepError{
-					Message: "Установщик не знает, откуда взять Wynd",
-					Advice:  "Это ошибка сборки установщика. Скачайте свежую версию установщика.",
+					Message: "Мастерская не знает, откуда взять Wynd",
+					Advice:  "Это ошибка сборки Мастерской. Скачайте свежую версию Мастерской.",
 				}
 			}
 			out, err := r.must(ctx, "df -Pk / | tail -n 1", shortTimeout)
@@ -669,7 +669,7 @@ func (g RegistryImage) Provide(ctx context.Context, r *Run, tag string) error {
 	if err != nil && containsAny(out, "manifest unknown", "not found", "denied", "unauthorized") {
 		return &StepError{
 			Message:     "Этой версии Wynd в хранилище ещё нет",
-			Advice:      "Установщик ищет " + tag + ", а его там нет: версия ещё не выложена или хранилище закрыто. Скачайте свежий установщик или попробуйте позже.",
+			Advice:      "Мастерская ищет " + tag + ", а его там нет: версия ещё не выложена или хранилище закрыто. Скачайте свежую версию Мастерской или попробуйте позже.",
 			Unpublished: true,
 		}
 	}
@@ -682,7 +682,7 @@ func (t TarImage) Provide(ctx context.Context, r *Run, tag string) error {
 	if err != nil {
 		return &StepError{
 			Message: "Не нашли файл с Wynd на этом компьютере",
-			Advice:  "Установщик ждал образ в файле " + t.Path + ". Скачайте установщик заново.",
+			Advice:  "Мастерская ждала образ в файле " + t.Path + ". Скачайте Мастерскую заново.",
 		}
 	}
 	defer func() { _ = f.Close() }()
@@ -825,7 +825,7 @@ func (s SourceImage) Provide(ctx context.Context, r *Run, tag string) error {
 	case res.Code == exitNoTag && containsAny(out, "not found in upstream", "Remote branch", "Repository not found", "returned error: 404"):
 		return &StepError{
 			Message: "Этой версии Wynd в открытом коде ещё нет",
-			Advice:  "Установщик ищет метку v" + version + " в " + s.Repo + ", а её там нет. Скачайте свежий установщик или попробуйте позже.",
+			Advice:  "Мастерская ищет метку v" + version + " в " + s.Repo + ", а её там нет. Скачайте свежую версию Мастерской или попробуйте позже.",
 		}
 	case containsAny(out, "heap out of memory", "exit code: 137", "signal: killed", "Killed", "cannot allocate memory", "out of memory"):
 		return &StepError{
@@ -951,7 +951,7 @@ func filesStep(spec Spec) step {
 			if ok && old != "https://"+spec.Domain {
 				return &StepError{
 					Message: "На сервере уже стоит Wynd с другим адресом",
-					Advice:  "Он настроен на " + old + ". Смену адреса установщик пока не умеет. Чтобы поставить заново с адресом " + spec.Domain + ", сначала нажмите «Откатить установку».",
+					Advice:  "Он настроен на " + old + ". Смену адреса Мастерская пока не умеет. Чтобы поставить заново с адресом " + spec.Domain + ", сначала нажмите «Откатить установку».",
 				}
 			}
 			if _, err := r.must(ctx, dirs, shortTimeout); err != nil {
@@ -1335,7 +1335,7 @@ func BuildPlan(rep Report, domain, version string, build bool) Plan {
 		p.Message = "Сначала нужно убрать помеху, которую нашёл осмотр"
 		return p
 	case !isASCIIDomain(domain):
-		p.Message = "Адрес с нелатинскими буквами установщик пока не умеет"
+		p.Message = "Адрес с нелатинскими буквами Мастерская пока не умеет"
 		p.Advice = "Возьмите адрес латиницей, например family.example.ru."
 		return p
 	}

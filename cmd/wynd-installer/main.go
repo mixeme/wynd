@@ -118,7 +118,7 @@ func main() {
 	}}
 	err := wails.Run(&options.App{
 		// Версия установщика — та же, что у Wynd, который он ставит.
-		Title:       "Wynd — установка на свой сервер [" + version.Number + "]",
+		Title:       "Wynd Мастерская [" + version.Number + "]",
 		Width:       760,
 		Height:      560,
 		MinWidth:    680,

@@ -136,16 +136,16 @@ scripts\test-integration.bat
 
 ## Настольный установщик
 
-`cmd/wynd-installer` — отдельное приложение (план 45), на Wails v2. В воротах сервера участвует только его ядро `internal/installer`; само окно собирается своим инструментом:
+`cmd/wynd-installer` — отдельное приложение «Wynd Мастерская» (план 45), на Wails v2. В воротах сервера участвует только его ядро `internal/installer`; само окно собирается своим инструментом:
 
 ```bash
 go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
 cd cmd/wynd-installer
 wails dev      # окно с горячей перезагрузкой; то же в браузере на http://localhost:34115
-wails build    # build/bin/wynd-installer(.exe) — так кладёт Wails, папку не сменить
+wails build    # build/bin/wynd-workshop(.exe) — так кладёт Wails, папку не сменить
 ```
 
-На Windows то же одной командой — `scripts\build-installer.bat`: сам находит Wails в `GOPATH\bin` и Node в `Program Files`, если их нет в `PATH`, ставит предел памяти для сборки окна и передаёт свои аргументы в `wails build` (например, `-clean`). Готовый файл скрипт копирует в `dist\wynd-installer.exe`, рядом с `dist\wynd.exe` сервера.
+На Windows то же одной командой — `scripts\build-installer.bat`: сам находит Wails в `GOPATH\bin` и Node в `Program Files`, если их нет в `PATH`, ставит предел памяти для сборки окна и передаёт свои аргументы в `wails build` (например, `-clean`). Готовый файл скрипт копирует в `dist\wynd-workshop.exe`, рядом с `dist\wynd.exe` сервера.
 
 Нужен Node (как для `web/`) и на Windows — WebView2. `wails dev` понимает две переменные для проверки без настоящего сервера: `WYND_INSTALLER_SSH_PORT` (порт вместо 22) и `WYND_INSTALLER_SSH_DIR` (каталог вместо `~/.ssh`); в собранном приложении их нет. Правки в `internal/installer` `wails dev` сам не подхватывает — перезапустить.
 

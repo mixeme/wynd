@@ -35,7 +35,7 @@
 <div class="ins-win" class:maximised>
 	<header class="ins-tb">
 		<span class="ins-tb-dot" aria-hidden="true">●</span>
-		<b>Wynd — установка на свой сервер{version ? ` [${version}]` : ''}</b>
+		<b>Wynd Мастерская{version ? ` [${version}]` : ''}</b>
 		<span class="ins-tb-btns">
 			<button type="button" aria-label="Свернуть" onclick={() => rt?.WindowMinimise()}>—</button>
 			<button
