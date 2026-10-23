@@ -47,7 +47,7 @@ func TestArchiveReminderSurvivesOneBadAddress(t *testing.T) {
 	}
 
 	var sent []string
-	send := func(_ context.Context, email, _ string, _ time.Time, _ string) error {
+	send := func(_ context.Context, email, _, _ string, _ time.Time, _ string) error {
 		if email == "0bad@example.com" || email == "dead@example.com" {
 			return errors.New("relay refused")
 		}

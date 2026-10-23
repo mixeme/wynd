@@ -8,36 +8,48 @@ import (
 	"time"
 )
 
+// Письма архивации ведут на экран «Архив круга» в приложении, а не на
+// /api/…/archive/download: браузер из почты ключа входа не несёт и получал
+// голое {"error":"forbidden"} (владелец, 2026-10-23, снимок с телефона).
+// Даты — словами, как на экранах: «30 сентября», без «Отсечки» и UTC.
+
 // SendArchiveCycleStart notifies a member that an archive cycle has started.
-func (s *Service) SendArchiveCycleStart(ctx context.Context, email, cutoffDate string, deadline time.Time, downloadURL string) error {
+func (s *Service) SendArchiveCycleStart(ctx context.Context, email, circle, cutoffDate string, deadline time.Time, link string) error {
 	email = strings.TrimSpace(email)
 	if email == "" {
 		return ErrInvalid
 	}
-	subject := "Началась архивация круга"
+	now := time.Now()
+	subject := fmt.Sprintf("Архивация круга «%s»", circle)
 	body := fmt.Sprintf(
-		"В круге начался цикл архивации.\n\nОтсечка: %s\nСкачать до: %s\n\nСкачать персональный архив:\n%s\n",
-		cutoffDate,
-		deadline.UTC().Format("02.01.2006 15:04"),
-		downloadURL,
+		"В круге «%s» всё, что написано до %s, уходит в архив. %s оно удалится с сервера.\n\nСкачайте свой архив до этого дня:\n%s\n",
+		circle, cutoffWords(cutoffDate, now), letterDate(deadline, now), link,
 	)
 	return s.notify(ctx, email, subject, body)
 }
 
 // SendArchiveReminder reminds a member before the archive deadline.
-func (s *Service) SendArchiveReminder(ctx context.Context, email, cutoffDate string, deadline time.Time, downloadURL string) error {
+func (s *Service) SendArchiveReminder(ctx context.Context, email, circle, cutoffDate string, deadline time.Time, link string) error {
 	email = strings.TrimSpace(email)
 	if email == "" {
 		return ErrInvalid
 	}
-	subject := "Напоминание об архиве круга"
+	now := time.Now()
+	subject := fmt.Sprintf("Скоро удаление в круге «%s»", circle)
 	body := fmt.Sprintf(
-		"Скоро истечёт срок скачивания архива.\n\nОтсечка: %s\nСкачать до: %s\n\nСкачать персональный архив:\n%s\n",
-		cutoffDate,
-		deadline.UTC().Format("02.01.2006 15:04"),
-		downloadURL,
+		"%s в круге «%s» удалится всё, что написано до %s.\n\nСкачайте свой архив до этого дня:\n%s\n",
+		letterDate(deadline, now), circle, cutoffWords(cutoffDate, now), link,
 	)
 	return s.notify(ctx, email, subject, body)
+}
+
+// cutoffWords — «30 сентября» из «2026-09-30»; непонятную строку отдаёт как есть.
+func cutoffWords(cutoffDate string, now time.Time) string {
+	t, err := time.Parse("2006-01-02", cutoffDate)
+	if err != nil {
+		return cutoffDate
+	}
+	return letterDate(t, now)
 }
 
 func (s *Service) notify(ctx context.Context, email, subject, body string) error {

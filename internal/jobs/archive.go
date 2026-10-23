@@ -20,7 +20,7 @@ type ArchiveJobCounts struct {
 }
 
 // archiveReminderSender отправляет одно письмо-напоминание; nil — почты нет.
-type archiveReminderSender func(ctx context.Context, email, cutoffDate string, deadline time.Time, downloadURL string) error
+type archiveReminderSender func(ctx context.Context, email, circle, cutoffDate string, deadline time.Time, link string) error
 
 // RunArchiveJobs purges expired archive cycles and sends reminder emails.
 func RunArchiveJobs(ctx context.Context, db *sql.DB, ch *chronicle.Chronicle, blobs *blob.Store, mailSvc *mail.Service, publicURL string, now time.Time) (ArchiveJobCounts, error) {
@@ -86,11 +86,17 @@ func runArchiveJobs(ctx context.Context, db *sql.DB, ch *chronicle.Chronicle, bl
 			errs = append(errs, fmt.Errorf("archive reminder circle %s: %w", circleID, err))
 			continue
 		}
-		download := base + "/api/v1/circles/" + circleID + "/archive/download"
+		name, err := ch.CircleName(ctx, circleID)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("archive reminder circle %s: %w", circleID, err))
+			continue
+		}
+		// Экран «Архив круга», а не адрес API: из почты браузер идёт без ключа входа.
+		link := base + "/circles/" + circleID + "/archive"
 		if send != nil {
 			sent := 0
 			for _, email := range emails {
-				if err := send(ctx, email, cycle.CutoffDate, cycle.Deadline, download); err != nil {
+				if err := send(ctx, email, name, cycle.CutoffDate, cycle.Deadline, link); err != nil {
 					errs = append(errs, fmt.Errorf("archive reminder circle %s to %s: %w", circleID, email, err))
 					continue
 				}

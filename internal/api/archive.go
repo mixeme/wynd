@@ -561,7 +561,8 @@ func (s *Server) sendArchiveCycleStartEmails(circleID string) {
 	if s.Mail == nil {
 		return
 	}
-	download := strings.TrimRight(s.PublicURL(), "/") + "/api/v1/circles/" + circleID + "/archive/download"
+	// Экран «Архив круга», а не адрес API: из почты браузер идёт без ключа входа.
+	link := strings.TrimRight(s.PublicURL(), "/") + "/circles/" + circleID + "/archive"
 	s.notifyWG.Add(1)
 	go func() {
 		defer s.notifyWG.Done()
@@ -572,13 +573,18 @@ func (s *Server) sendArchiveCycleStartEmails(circleID string) {
 			log.Printf("archive start mail %s: cycle: %v", circleID, err)
 			return
 		}
+		name, err := s.Chronicle.CircleName(ctx, circleID)
+		if err != nil {
+			log.Printf("archive start mail %s: name: %v", circleID, err)
+			return
+		}
 		emails, err := s.Chronicle.CircleMemberEmails(ctx, circleID)
 		if err != nil {
 			log.Printf("archive start mail %s: members: %v", circleID, err)
 			return
 		}
 		for _, email := range emails {
-			if err := s.Mail.SendArchiveCycleStart(ctx, email, cycle.CutoffDate, cycle.Deadline, download); err != nil {
+			if err := s.Mail.SendArchiveCycleStart(ctx, email, name, cycle.CutoffDate, cycle.Deadline, link); err != nil {
 				log.Printf("archive start mail %s to %s: %v", circleID, email, err)
 			}
 		}
