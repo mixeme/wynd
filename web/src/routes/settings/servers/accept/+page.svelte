@@ -115,19 +115,20 @@
 		file = f;
 		// Большой файл читается не сразу — экран не молчит (владелец, 2026-10-23:
 		// «после выбора файла архива на экране долго ничего не происходит»).
-		reading = true;
+		// Шаг назван строкой: с телефона видно, что тормозит — файл или сервер.
+		readingNote = 'Читаем файл…';
 		try {
 			opened = await openFile(f);
 			if (opened.encrypted) {
 				step = 'password';
 			} else {
-				await load(opened.src);
+				await load(opened.src, (note) => (readingNote = note));
 			}
 		} catch (err) {
 			error = 'Это не файл архива круга Wynd.';
 			console.warn('revive: open', err);
 		} finally {
-			reading = false;
+			readingNote = '';
 		}
 	}
 
@@ -137,7 +138,7 @@
 		passwordWrong = false;
 		busyNote = 'Открываем файл…';
 		try {
-			await load(await unlock(opened, password.trim()));
+			await load(await unlock(opened, password.trim()), (note) => (busyNote = note));
 		} catch (err) {
 			if (err instanceof WrongPasswordError) passwordWrong = true;
 			else error = 'Файл не открылся: он повреждён или это не архив круга Wynd.';
@@ -147,10 +148,17 @@
 		}
 	}
 
-	async function load(src: Parameters<typeof loadArchive>[0]) {
+	async function load(src: Parameters<typeof loadArchive>[0], setNote: (note: string) => void) {
 		archive = await loadArchive(src);
 		placeBytes = Math.ceil(archive.circleBytes / MB) * MB;
-		room = await fetchReviveRoom(origin, archive.circleBytes);
+		setNote('Спрашиваем сервер о месте…');
+		// Сбой связи — не «это не файл архива»: файл уже прочитан.
+		try {
+			room = await fetchReviveRoom(origin, archive.circleBytes);
+		} catch (err) {
+			error = authErrorHint(err);
+			return;
+		}
 		invitable = await fetchInvitable(origin, archive.emails).catch(() => Math.max(0, archive!.emails.length - 1));
 		if (invitable === 0) sendInvites = false;
 		step = 'review';
@@ -161,7 +169,7 @@
 	const allHere = $derived(
 		!!result && result.invited === 0 && result.not_joined === 0 && (result.already_here ?? 0) > 0
 	);
-	let reading = $state(false);
+	let readingNote = $state('');
 
 	async function askPlace() {
 		if (!archive) return;
@@ -280,8 +288,8 @@
 			onclick={() => picker?.open()}
 		/>
 		<Hint>Круг будет перенесён полностью. Вы станете его владельцем.</Hint>
-		{#if reading}
-			<Hint class="ink">Читаем файл…</Hint>
+		{#if readingNote}
+			<Hint class="ink">{readingNote}</Hint>
 		{/if}
 	{:else if step === 'password' && file}
 		<!-- 7.27 / 7.28: файл расшифровывается на этом устройстве. -->
