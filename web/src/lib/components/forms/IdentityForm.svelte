@@ -23,7 +23,7 @@
 		firstPost = $bindable(''),
 		avatar = $bindable(),
 		gender = $bindable(''),
-		postLabel = 'Скажи что-нибудь кругу',
+		postLabel = 'Скажите что-нибудь кругу',
 		postPlaceholder = 'Первая запись в журнале круга',
 		onerror
 	}: {
