@@ -1,6 +1,7 @@
 ﻿<script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { takeWantedPath } from '$lib/navigation/afterLogin';
 	import Button from '$ui/forms/Button.svelte';
 	import CodeBox from '$ui/forms/CodeBox.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
@@ -93,7 +94,7 @@
 					/* street is fine */
 				}
 			}
-			goto('/circles');
+			goto(takeWantedPath() ?? '/circles');
 		} catch (err) {
 			error = authErrorHint(err);
 			code = '';

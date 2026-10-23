@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goUp } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
+	import { goToLogin } from '$lib/navigation/afterLogin';
 	import { onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -23,7 +24,7 @@
 			await initSession();
 			const sessions = await loadSessions();
 			if (!sessions.length) {
-				goto('/');
+				goToLogin();
 				return;
 			}
 			const status = await fetchPayStatus(sessions[0].origin);

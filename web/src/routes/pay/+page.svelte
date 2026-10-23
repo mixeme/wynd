@@ -3,6 +3,7 @@
 	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import AttachmentRow from '$ui/data/AttachmentRow.svelte';
 	import { goto } from '$app/navigation';
+	import { goToLogin } from '$lib/navigation/afterLogin';
 	import { onMount } from 'svelte';
 	import AddPhotoButton from '$ui/forms/AddPhotoButton.svelte';
 	import Button from '$ui/forms/Button.svelte';
@@ -70,7 +71,7 @@
 			await initSession();
 			const sessions = await loadSessions();
 			if (!sessions.length) {
-				goto('/');
+				goToLogin();
 				return;
 			}
 			origin = sessions[0].origin;

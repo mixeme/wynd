@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { goToLogin } from '$lib/navigation/afterLogin';
 	import { page } from '$app/stores';
 	import { onMount, setContext } from 'svelte';
 	import { fetchCircles } from '$lib/circles/circles';
@@ -57,7 +58,7 @@
 	onMount(async () => {
 		const sessions = await loadSessions();
 		if (!sessions.length) {
-			goto('/');
+			goToLogin();
 			return;
 		}
 		form.sessions = sessions;

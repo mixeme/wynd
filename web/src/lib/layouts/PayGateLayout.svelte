@@ -2,6 +2,7 @@
 	// Шлюз оплаты (9.x) вокруг экранов участника: улочка и поиск. Был
 	// побайтно скопирован в два +layout (план 47, 2.1) — теперь один.
 	import { goto } from '$app/navigation';
+	import { goToLogin } from '$lib/navigation/afterLogin';
 	import { onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -44,7 +45,7 @@
 			.then(() => loadSessions())
 			.then(async (sessions) => {
 				if (!sessions.length) {
-					goto('/');
+					goToLogin();
 					return;
 				}
 				session = sessions[0];

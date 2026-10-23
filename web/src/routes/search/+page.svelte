@@ -3,6 +3,7 @@
 	import DateRange from '$ui/forms/DateRange.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { goToLogin } from '$lib/navigation/afterLogin';
 	import { page } from '$app/stores';
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
@@ -112,7 +113,7 @@
 		window.addEventListener('popstate', onPop);
 		void (async () => {
 			const sessions = await loadSessions();
-			if (!sessions.length) goto('/');
+			if (!sessions.length) goToLogin();
 		})();
 		return () => window.removeEventListener('popstate', onPop);
 	});

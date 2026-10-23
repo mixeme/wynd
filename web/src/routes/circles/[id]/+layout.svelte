@@ -1,6 +1,7 @@
 <script lang="ts">
 	import EmptyState from '$ui/data/EmptyState.svelte';
 	import { goto } from '$app/navigation';
+	import { rememberWantedPath } from '$lib/navigation/afterLogin';
 	import type { CircleArrival } from '$lib/journal/types';
 	import { page } from '$app/stores';
 	import { page as pageState } from '$app/state';
@@ -185,6 +186,9 @@
 		const resolved = await resolveCircleOrigin(circleId);
 		// '' is the same-origin base, not "not found": only null means unknown circle.
 		if (resolved === null) {
+			// Круг не найден среди входов — возможно, входа нет вовсе: список
+			// кругов уведёт на «Войти», а после кода вернём сюда.
+			rememberWantedPath(window.location.pathname + window.location.search);
 			goto('/circles');
 			return;
 		}
