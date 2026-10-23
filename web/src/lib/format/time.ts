@@ -95,7 +95,8 @@ export function formatAdminDay(iso: string): string {
 export function formatAdminDayYear(iso: string): string {
 	const d = new Date(iso);
 	if (Number.isNaN(d.getTime())) return iso;
-	return dayYearFmt.format(d);
+	// Без «г.», который дописывает Intl: «24 октября 2026», как на кадрах.
+	return dayYearFmt.format(d).replace(/\s*г\.$/, '');
 }
 
 /** Дедлайн архивации: «до 15 сентября». */

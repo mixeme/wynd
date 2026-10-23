@@ -1,3 +1,4 @@
+import { localDayOf } from '$lib/journal/present';
 import { ApiError, apiJson } from '$lib/api/client';
 import type { CircleColor } from '$lib/theme/colors';
 
@@ -65,7 +66,8 @@ export async function joinViaInvite(
 	return apiJson<{ circle_id: string }>(origin, `/invites/${token}/join`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify(input)
+		// День первой записи — по этому устройству, не по UTC сервера.
+		body: JSON.stringify({ ...input, entry_date: localDayOf(new Date().toISOString()) })
 	});
 }
 

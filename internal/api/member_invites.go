@@ -133,6 +133,8 @@ type joinPendingBody struct {
 	Name   string `json:"name"`
 	Gender string `json:"gender"`
 	Body   string `json:"body"`
+	// EntryDate — день устройства для первой записи (greetingDay).
+	EntryDate string `json:"entry_date"`
 }
 
 func (s *Server) handleJoinPendingCircle(w http.ResponseWriter, r *http.Request) {
@@ -167,7 +169,7 @@ func (s *Server) handleJoinPendingCircle(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if text := strings.TrimSpace(body.Body); text != "" {
-		entryDate := now.Format("2006-01-02")
+		entryDate := greetingDay(body.EntryDate, now)
 		if _, err := s.Chronicle.CreatePost(r.Context(), chronicle.PostInput{
 			CircleID:  circleID,
 			AccountID: sess.AccountID,

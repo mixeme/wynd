@@ -9,7 +9,8 @@ import {
 	formatPostTime,
 	pluralFiles,
 	pluralPhotos,
-	pluralPosts
+	pluralPosts,
+	formatAdminDayYear
 } from './time';
 
 describe('formatPostTime', () => {
@@ -90,5 +91,11 @@ describe('format helpers', () => {
 		expect(formatEntryDate('')).toBe('');
 		expect(formatEntryDate('undefined')).toBe('');
 		expect(formatDeadline('')).toBe('');
+	});
+});
+
+describe('formatAdminDayYear', () => {
+	it('год без «г.»', () => {
+		expect(formatAdminDayYear('2026-10-24T09:00:00')).toBe('24 октября 2026');
 	});
 });

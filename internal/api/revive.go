@@ -48,6 +48,8 @@ type reviveNewMember struct {
 	Name   string `json:"name"`
 	Gender string `json:"gender"`
 	Body   string `json:"body"`
+	// EntryDate — день устройства для приветствия (greetingDay).
+	EntryDate string `json:"entry_date"`
 }
 
 // parse — имя и пол для круга; приветствие — отдельно, оно пишется после
@@ -56,6 +58,7 @@ func (m *reviveNewMember) parse() (*chronicle.ReviveNewMember, string, error) {
 	if m == nil {
 		return nil, "", nil
 	}
+	m.EntryDate = strings.TrimSpace(m.EntryDate)
 	name := strings.TrimSpace(m.Name)
 	if name == "" {
 		return nil, "", chronicle.ErrInvalid
@@ -216,6 +219,7 @@ func (s *Server) handleReviveCircle(w http.ResponseWriter, r *http.Request) {
 	out, err := s.reviveFromTables(r.Context(), reviveRequest{
 		NewMember:     newMember,
 		Greeting:      greeting,
+		GreetingDay:   entryDayOf(body.NewMember),
 		AccountID:     sess.AccountID,
 		FormatVersion: body.Manifest.FormatVersion,
 		SchemaVersion: body.Manifest.SchemaVersion,
@@ -258,8 +262,16 @@ type reviveRequest struct {
 	SendInvites   bool
 	MovedFrom     string
 	// NewMember и Greeting — оживляет не прежний владелец (A12, 7.29в).
-	NewMember *chronicle.ReviveNewMember
-	Greeting  string
+	NewMember   *chronicle.ReviveNewMember
+	Greeting    string
+	GreetingDay string
+}
+
+func entryDayOf(m *reviveNewMember) string {
+	if m == nil {
+		return ""
+	}
+	return m.EntryDate
 }
 
 // reviveOutcome — итог для 7.25 / 7.33 / 7.26 / 7.34.
@@ -376,7 +388,7 @@ func (s *Server) reviveFromTables(ctx context.Context, in reviveRequest) (revive
 		now := time.Now().UTC()
 		if _, err := s.Chronicle.CreatePost(ctx, chronicle.PostInput{
 			CircleID: res.CircleID, AccountID: in.AccountID, Body: in.Greeting,
-			EntryDate: now.Format("2006-01-02"), Now: now,
+			EntryDate: greetingDay(in.GreetingDay, now), Now: now,
 		}); err != nil {
 			log.Printf("revive %s: greeting: %v", res.CircleID, err)
 		}

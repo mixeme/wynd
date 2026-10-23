@@ -761,7 +761,8 @@
 	function formatIsoDay(iso: string, withYear = false): string {
 		const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' };
 		if (withYear) opts.year = 'numeric';
-		return new Intl.DateTimeFormat('ru-RU', opts).format(new Date(iso));
+		// Без «г.» после года: «круг живёт с 20 октября 2026».
+		return new Intl.DateTimeFormat('ru-RU', opts).format(new Date(iso)).replace(/\s*г\.$/, '');
 	}
 
 	function openInvite() {

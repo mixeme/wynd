@@ -19,6 +19,8 @@ type joinInviteBody struct {
 	Name   string `json:"name"`
 	Gender string `json:"gender"`
 	Body   string `json:"body"`
+	// EntryDate — день устройства для первой записи (greetingDay).
+	EntryDate string `json:"entry_date"`
 }
 
 func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) {
@@ -158,7 +160,7 @@ func (s *Server) handleJoinInvite(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if text := strings.TrimSpace(body.Body); text != "" {
-		entryDate := now.Format("2006-01-02")
+		entryDate := greetingDay(body.EntryDate, now)
 		if _, err := s.Chronicle.CreatePost(r.Context(), chronicle.PostInput{
 			CircleID:  inv.CircleID,
 			AccountID: sess.AccountID,

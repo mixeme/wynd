@@ -1,3 +1,4 @@
+import { localDayOf } from '$lib/journal/present';
 import { apiJson } from '$lib/api/client';
 import { invalidateSnapshots } from '$lib/idb/db';
 import { fetchCircleDetail } from '$lib/journal/read-cursor';
@@ -189,7 +190,8 @@ export async function joinPendingCircle(
 	await apiJson(origin, `/circles/${circleId}/join`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify(input)
+		// День первой записи — по этому устройству, не по UTC сервера.
+		body: JSON.stringify({ ...input, entry_date: localDayOf(new Date().toISOString()) })
 	});
 	await invalidateSnapshots(origin, { kind: 'circles' });
 }

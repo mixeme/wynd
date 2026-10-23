@@ -1,3 +1,4 @@
+import { localDayOf } from '$lib/journal/present';
 import { apiFetch, apiJson } from '$lib/api/client';
 import { invalidateSnapshots } from '$lib/idb/db';
 import {
@@ -340,7 +341,9 @@ export async function reviveCircle(
 			tables: archive.tables,
 			blob_map: blobMap,
 			send_invites: sendInvites,
-			...(newMember ? { new_member: newMember } : {})
+			...(newMember
+				? { new_member: { ...newMember, entry_date: localDayOf(new Date().toISOString()) } }
+				: {})
 		})
 	});
 	await invalidateSnapshots(origin, { kind: 'circles' });
