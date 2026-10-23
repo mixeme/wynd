@@ -594,6 +594,28 @@ export async function putMedia(key: string, record: MediaRecord): Promise<void> 
 }
 
 /** Размер кэша медиа — по метаданным, не читая сами файлы. */
+/**
+ * Сколько весят тексты для чтения без сети — снимки экранов (C46, владелец
+ * 2026-10-23: «выделить подсчёт текста»). Под потолок они не попадают и
+ * кнопкой не чистятся; строка на «Месте на устройстве» показывает, растут ли.
+ * Вес — длина записи в JSON: так близко к тому, что лежит в базе.
+ */
+export async function snapshotStoreBytes(): Promise<number> {
+	const db = await getDb();
+	const enc = new TextEncoder();
+	let total = 0;
+	let cursor = await db.transaction('snapshots').store.openCursor();
+	while (cursor) {
+		try {
+			total += enc.encode(JSON.stringify(cursor.value)).byteLength;
+		} catch {
+			/* не сериализуется — не считаем */
+		}
+		cursor = await cursor.continue();
+	}
+	return total;
+}
+
 export async function mediaStoreBytes(): Promise<number> {
 	const db = await getDb();
 	let total = 0;

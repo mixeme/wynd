@@ -13,7 +13,7 @@
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { formatBytes } from '$lib/format/bytes';
-	import { clearMediaStore, getAppSettings, mediaStoreBytes, type Theme } from '$lib/idb/db';
+	import { clearMediaStore, getAppSettings, mediaStoreBytes, snapshotStoreBytes, type Theme } from '$lib/idb/db';
 	import { getMediaCacheLimit, setMediaCacheLimit } from '$lib/media/objectUrl';
 	import { loadSessions, setTheme } from '$lib/session/session.svelte';
 	import {
@@ -30,6 +30,8 @@
 	let reactions = $state(false);
 	let theme = $state<Theme>('system');
 	let cacheBytes = $state(0);
+	// Тексты для чтения без сети — снимки экранов (C46): отдельно, чтобы видеть рост.
+	let textBytes = $state(0);
 	// Сколько браузер отводит сайту (storage.estimate().quota). Это не свободное
 	// место на диске — его браузер странице не сообщает; Firefox, например,
 	// даёт около 10 ГБ при любом телефоне. Раньше здесь было «свободно на
@@ -89,6 +91,7 @@
 		customCache = !(CACHE_PRESETS as readonly number[]).includes(gb);
 		if (customCache) customCacheGb = gb;
 		cacheBytes = await mediaStoreBytes();
+		textBytes = await snapshotStoreBytes().catch(() => 0);
 		if (navigator.storage?.estimate) {
 			const est = await navigator.storage.estimate();
 			quotaBytes = est.quota ?? 0;
@@ -158,7 +161,7 @@
 	<SectionLabel class="mt-22">Место на устройстве</SectionLabel>
 	<Meter value={cacheBytes} max={Math.max(cacheLimit, 1)} />
 	<Hint class="mt-8">
-		{formatBytes(cacheBytes)} медиа и файлов из {formatBytes(cacheLimit)}.{#if usageBytes > cacheBytes}{' '}Всего Wynd на устройстве — {formatBytes(usageBytes)}.{/if}
+		{formatBytes(cacheBytes)} медиа и файлов из {formatBytes(cacheLimit)}.{#if textBytes > 0}{' '}Тексты для чтения без сети — {formatBytes(textBytes)}.{/if}{#if usageBytes > cacheBytes}{' '}Всего Wynd на устройстве — {formatBytes(usageBytes)}.{/if}
 	</Hint>
 	<ChipGroup class="mt-8">
 		{#each CACHE_PRESETS as gb (gb)}
