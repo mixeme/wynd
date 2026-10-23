@@ -19,6 +19,7 @@
 	import { WORD, plural } from '$lib/format/plural';
 	import { formatCutoffDate, formatEntryDate } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
+	import { localDayOf } from '$lib/journal/present';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 
@@ -30,6 +31,8 @@
 	let postCount = $state(0);
 	// Записи не раньше отсечки — останутся в круге. Нет — сервер старый.
 	let keptPosts = $state<number | undefined>(undefined);
+	// С какого дня владелец видит круг, если не с начала (A12, 6.17а).
+	let visibleFrom = $state('');
 	let error = $state('');
 	let forbidden = $state(false);
 	let loading = $state(true);
@@ -96,6 +99,7 @@
 			volume = data.volume ?? [];
 			volumeStep = data.volume_step ?? 'month';
 			postCount = data.post_count;
+			visibleFrom = data.visible_from ? localDayOf(data.visible_from) : '';
 			keptPosts = data.posts_kept_at_cutoff;
 			if (data.freed_at_cutoff_bytes !== undefined) {
 				freedBytes = data.freed_at_cutoff_bytes;
@@ -181,6 +185,14 @@
 						)}{/if}.{/if}
 				{#if keptPosts !== undefined}{' '}В круге останется {plural(keptPosts, WORD.post)} из {postCount}.{/if}
 			</Hint>
+			{#if visibleFrom && keptPosts !== undefined && keptPosts < postCount}
+				<!-- 6.17а (A12): владелец видит круг не с начала — удалится и то, чего
+				     он не видел; отдельной строкой в чернилах. -->
+				<Hint class="ink">
+					Вы видите круг с {formatCutoffDate(visibleFrom)}. Что было раньше, вам не видно и в ваш
+					архив не попадёт, но удалится тоже.
+				</Hint>
+			{/if}
 		{/if}
 		<Button class="mt-14" variant="colored" disabled={!cutoffDate || nothingBefore} onclick={next}>
 			Дальше: сроки

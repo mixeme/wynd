@@ -211,6 +211,11 @@ func (s *Server) handleCircleQuota(w http.ResponseWriter, r *http.Request) {
 	if quota.Valid {
 		out["quota_bytes"] = quota.Int64
 	}
+	// Владелец видит круг не с начала — передали или оживил новым человеком
+	// (A12, 6.17а): с какого дня; график и «Освободится» считают весь круг.
+	if meta, err := s.Chronicle.FeedMetaForAccount(r.Context(), circleID, sess.AccountID); err == nil && meta.VisibleFrom != nil {
+		out["visible_from"] = meta.VisibleFrom.UTC().Format(time.RFC3339)
+	}
 	if median > 0 {
 		out["median_post_bytes"] = median
 	}

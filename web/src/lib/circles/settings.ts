@@ -83,6 +83,8 @@ export interface QuotaInfo {
 	/** Сколько записей останется в круге после отсечки (не раньше её). */
 	posts_kept_at_cutoff?: number;
 	median_post_bytes?: number;
+	/** Владелец видит круг не с начала — с этого момента (A12, 6.17а). */
+	visible_from?: string;
 	/** Просьба о месте: ждёт ответа (6.19) или отказана (6.20). Одобренной нет. */
 	last_request?: QuotaRequestInfo;
 }
