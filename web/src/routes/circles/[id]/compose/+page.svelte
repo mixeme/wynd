@@ -54,6 +54,7 @@
 	import { audioMime, isAudioFile, readAudioTags } from '$lib/media/audioTags';
 	import { videoDurationMs, videoPosterJpeg } from '$lib/media/videoPoster';
 	import { readExif } from '$lib/media/exif';
+	import { readVideoDate } from '$lib/media/mp4date';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 	import { enqueuePost, loadQueuedPost, removeQueueItem, updateQueuedPost } from '$lib/queue/queue';
 	import { isTransportError } from '$lib/queue/transport';
@@ -543,7 +544,8 @@
 			for (let index = 0; index < list.length; index += 1) {
 				const file = list[index];
 				const video = videoFlags[index];
-				const exif = await readExif(file);
+				// Дата дня: у снимка — из EXIF, у ролика — из заголовка MP4 (A14).
+				const exif = video ? await readVideoDate(file) : await readExif(file);
 				let queueFile: QueueFile;
 				if (original) {
 					const raw = await fileToQueueBuffer(file);
