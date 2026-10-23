@@ -9,7 +9,8 @@
 	import Loading from '$ui/Loading.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { isAccessError } from '$lib/api/client';
-	import { formatPostTime, pluralPosts } from '$lib/format/time';
+	import { formatEntryDate, formatPostTime, pluralPosts } from '$lib/format/time';
+	import { isAttachedToOtherDay } from '$lib/journal/present';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadDays } from '$lib/journal/days';
 	import { loadMap } from '$lib/journal/map';
@@ -252,7 +253,8 @@
 				<MapPostSheet
 					thumbUrl={selectedUrl || undefined}
 					author={selected.author_name}
-					time={formatPostTime(selected.created_at, selected.entry_date)}
+					time={formatPostTime(selected.created_at)}
+					day={isAttachedToOtherDay(selected) ? formatEntryDate(selected.entry_date) : undefined}
 					body={selected.body}
 					onclick={openSelected}
 				/>

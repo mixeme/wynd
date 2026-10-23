@@ -152,7 +152,7 @@ Guard: `npm run check:ui` — экран = существующие `$ui` + `$li
 
 ### `data/`
 
-SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, **ReactionBar**, **CommentPreview**, **CommentRow**, **ReactionListRow**, **SettingsRow**, MemberRow, SearchGroupHeader, **SearchResultRow**, **ServerRow**, FoldHeader, **GroupFoldCard**, AttachmentRow, PhotoPlaceholder, PhotoGrid, **MediaTile**, **HintBanner**, **MapBadge**, **MapPostSheet**, MonthLabel, DayCard, DayGrid, DayHeader, EntryDateMark, ArchiveBanner, **PayStreetBanner**, **MentionText**, **AttachmentList**, **QrCode**, **InviteLinkCard**, **EmptyState**, **PullRefresh**, **FeedEnd**, **ResponseEntry**, **PostRef**, **PostByline**, **PeekMemberList**, **AboutFooter**, **CirclePlace**, **PayTermPicker**
+SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, **ReactionBar**, **CommentPreview**, **CommentRow**, **ReactionListRow**, **SettingsRow**, MemberRow, SearchGroupHeader, **SearchResultRow**, **ServerRow**, FoldHeader, **GroupFoldCard**, AttachmentRow, PhotoPlaceholder, PhotoGrid, **MediaTile**, **HintBanner**, **MapBadge**, **MapPostSheet**, MonthLabel, DayCard, DayGrid, DayHeader, EntryDateMark, ArchiveBanner, **PayStreetBanner**, **MentionText**, **AttachmentList**, **QrCode**, **InviteLinkCard**, **EmptyState**, **PullRefresh**, **FeedEnd**, **ResponseEntry**, **PostRef**, **PostByline**, **BylineParts**, **PeekMemberList**, **AboutFooter**, **CirclePlace**, **PayTermPicker**
 
 `PayStreetBanner` — баннеры оплаты на улочке (`/circles`, кадр **#e10-5**): `variant` `donate` \| `reminder` \| `pending`. Donate — `text`, `onclick` (help), опционально `dismissible` / `ondismiss`. Reminder — `expiresAtLabel`, `reminderDaysLeft`, `onclick` (extend). Pending — `pendingAtLabel`, опционально `expiresAtLabel`; без корневой кнопки. Стили `.pay-banner*` в `ui.css`; кликабельные зоны — `button.pay-banner-main`, `button.pay-reminder`.
 
@@ -171,7 +171,7 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 
 `AboutFooter` — подвал «Wynd x.y · AGPL-3.0 · исходный код · лицензии» (настройки приложения, панель): `wrap` — ссылки второй строкой, `class` — отступ. Адрес исходников экран загружает сам (`loadSourceUrl`).
 
-`PostByline` — левая часть шапки карточки записи, для snippet `author` у `PostCard`: аватар (`initial`, `color`, `src`), `name`, `time`, опц. `icon` перед временем (часы у записи в очереди). Справа в шапке — `EntryDateMark` (`label`, `icon`: `day` — к какому дню, `clock` — «внесено сегодня»).
+`PostByline` — левая часть шапки карточки записи, для snippet `author` у `PostCard`: аватар (`initial`, `color`, `src`), `name`, `time`, опц. `icon` перед временем (часы у записи в очереди), опц. `day` — день записи строкой под временем (экран записи, где справа правка и обложка). `time` — всегда когда внесли (`formatPostTime`), день записи — отдельно значком календаря (C49). Справа в шапке ленты — `EntryDateMark` (`label`, `icon`: `day` — к какому дню). `BylineParts` — «Аня · 20 октября, 17:37 · [календарь] 28 сентября» одной строкой (`parts` из `postBylineParts` / `lightboxCaption`): шапка альбома (`subtitle` у `CircleLayout` и `CircleBar` принимает snippet), подпись `Lightbox` (`caption` — тоже), время в `MapPostSheet` (опц. `day`).
 
 `CommentPreview` — комментарии под карточкой в ленте (`button.cm`): `first` (с временем `time`), `more` («ещё N»), `onclick`; `children` — своё содержимое (кадры /dev).
 

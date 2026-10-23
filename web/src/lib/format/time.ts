@@ -37,7 +37,12 @@ export function formatClock(createdAt: string): string {
 	return timeFmt.format(new Date(createdAt));
 }
 
-export function formatPostTime(createdAt: string, entryDate?: string): string {
+/**
+ * Когда запись внесли: «сегодня, 14:20», «20 октября, 14:20». День записи,
+ * если он другой, показывается отдельно значком календаря (C49): склейка
+ * дня записи со временем внесения давала время, которого не было.
+ */
+export function formatPostTime(createdAt: string): string {
 	const created = new Date(createdAt);
 	const now = new Date();
 	const diff = daysBetween(now, created);
@@ -45,15 +50,6 @@ export function formatPostTime(createdAt: string, entryDate?: string): string {
 
 	if (diff === 0) return `сегодня, ${time}`;
 	if (diff === 1) return `вчера, ${time}`;
-
-	if (entryDate) {
-		const [y, m, d] = entryDate.split('-').map(Number);
-		const entry = new Date(y, m - 1, d);
-		if (daysBetween(entry, created) !== 0) {
-			return `${dateFmt.format(entry)}, ${time}`;
-		}
-	}
-
 	return `${dateFmt.format(created)}, ${time}`;
 }
 

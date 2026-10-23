@@ -1,4 +1,5 @@
 import type { IconName } from '$ui/Icon.svelte';
+import { formatEntryDate } from '$lib/format/time';
 import type {
 	Comment,
 	DaySummary,
@@ -305,18 +306,35 @@ export interface MediaSize {
 	height: number;
 }
 
+/** Часть строки «кто и когда»; у дня записи — значок календаря, как в ленте. */
+export type BylinePart = { text: string; icon?: IconName };
+
+/**
+ * Кто и когда одной строкой — шапка альбома и подпись лайтбокса: автор ·
+ * когда внесли, а у записи на другой день — ещё и её день (C49), иначе
+ * время внесения читается как время того дня.
+ */
+export function postBylineParts(
+	post: FeedPost,
+	formatPostTime: (createdAt: string) => string
+): BylinePart[] {
+	const parts: BylinePart[] = [{ text: post.author_name }, { text: formatPostTime(post.created_at) }];
+	if (isAttachedToOtherDay(post)) parts.push({ text: formatEntryDate(post.entry_date), icon: 'day' });
+	return parts;
+}
+
 /** Подпись лайтбокса: автор · время · место · размер снимка (макет 4.30). */
 export function lightboxCaption(
 	post: FeedPost,
 	media: MediaSummary | undefined,
-	formatPostTime: (createdAt: string, entryDate?: string) => string,
+	formatPostTime: (createdAt: string) => string,
 	size?: MediaSize
-): string {
-	const parts = [post.author_name, formatPostTime(post.created_at, post.entry_date)];
+): BylinePart[] {
+	const parts = postBylineParts(post, formatPostTime);
 	const loc = locationLabel(media);
-	if (loc) parts.push(loc);
-	if (size && size.width > 0 && size.height > 0) parts.push(`${size.width} × ${size.height}`);
-	return parts.join(' · ');
+	if (loc) parts.push({ text: loc });
+	if (size && size.width > 0 && size.height > 0) parts.push({ text: `${size.width} × ${size.height}` });
+	return parts;
 }
 
 export function findPost(posts: FeedPost[], postId: string): FeedPost | undefined {

@@ -21,7 +21,7 @@
 		onnext
 	}: {
 		counter?: string;
-		caption?: string;
+		caption?: string | Snippet;
 		media: Snippet;
 		dots?: Snippet;
 		dotCount?: number;
@@ -126,6 +126,6 @@
 		</div>
 	{/if}
 	{#if caption}
-		<div class="cap">{caption}</div>
+		<div class="cap">{#if typeof caption === 'function'}{@render caption()}{:else}{caption}{/if}</div>
 	{/if}
 </div>

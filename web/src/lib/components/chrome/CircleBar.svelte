@@ -22,6 +22,7 @@
 	import SearchField from '$ui/forms/SearchField.svelte';
 	import Avatar from '$ui/data/Avatar.svelte';
 	import { Tabs } from 'bits-ui';
+	import type { Snippet } from 'svelte';
 
 	let {
 		title,
@@ -52,7 +53,8 @@
 		onsearch?: () => void;
 		searchPlaceholder?: string;
 		searchQuery?: string;
-		subtitle?: string;
+		/** Строка под названием; snippet — когда в ней значок (шапка альбома). */
+		subtitle?: string | Snippet;
 		identitySettingsLink?: boolean;
 		/** В круге из одного откликаться некому — вкладки нет (3.7). */
 		responsesTab?: boolean;
@@ -157,7 +159,7 @@
 			</Tabs.List>
 		</Tabs.Root>
 	{:else if subtitle}
-		<div style="padding-bottom:12px;font-size:12.5px;color:rgba(255,255,255,.85)">{subtitle}</div>
+		<div style="padding-bottom:12px;font-size:12.5px;color:rgba(255,255,255,.85)">{#if typeof subtitle === 'function'}{@render subtitle()}{:else}{subtitle}{/if}</div>
 	{:else}
 		<div style="height:12px"></div>
 	{/if}

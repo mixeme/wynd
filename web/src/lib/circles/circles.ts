@@ -275,7 +275,7 @@ export async function loadStreet(): Promise<Street> {
 					? 'читает, не пишет'
 					: (circle.last_summary ??
 						(sessions.length > 1 ? session.name : 'Откройте, чтобы посмотреть'));
-			const time = circle.last_at && !leaving ? formatPostTime(circle.last_at, '') : '';
+			const time = circle.last_at && !leaving ? formatPostTime(circle.last_at) : '';
 			const row: StreetCircle = {
 				origin: session.origin,
 				instanceName: session.name,

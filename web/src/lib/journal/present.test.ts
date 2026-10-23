@@ -205,12 +205,27 @@ describe('present', () => {
 			media: []
 		} as unknown as FeedPost;
 		const fmt = () => 'сегодня, 14:02';
-		expect(lightboxCaption(post, undefined, fmt, { width: 2048, height: 1536 })).toBe(
+		const line = (parts: { text: string }[]) => parts.map((p) => p.text).join(' · ');
+		expect(line(lightboxCaption(post, undefined, fmt, { width: 2048, height: 1536 }))).toBe(
 			'Аня · сегодня, 14:02 · 2048 × 1536'
 		);
-		expect(lightboxCaption(post, undefined, fmt)).toBe('Аня · сегодня, 14:02');
+		expect(line(lightboxCaption(post, undefined, fmt))).toBe('Аня · сегодня, 14:02');
 		expect(albumCompressionHint(post)).toBe('снято 12 августа · файлы сжаты');
 		expect(albumCompressionHint(post)).not.toMatch(/px/);
+	});
+
+	it('adds the entry day with a calendar icon when the post is for another day (C49)', () => {
+		const post = {
+			id: 'p',
+			author_name: 'Аня',
+			created_at: '2026-10-20T14:37:00',
+			entry_date: '2026-09-28',
+			media: []
+		} as unknown as FeedPost;
+		const parts = lightboxCaption(post, undefined, () => '20 октября, 14:37');
+		expect(parts.at(-1)).toEqual({ text: '28 сентября', icon: 'day' });
+		const sameDay = { ...post, entry_date: '2026-10-20' } as FeedPost;
+		expect(lightboxCaption(sameDay, undefined, () => '20 октября, 14:37')).toHaveLength(2);
 	});
 
 	it('звуки подряд — одна группа, файл между ними её разрывает', () => {

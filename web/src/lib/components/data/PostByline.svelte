@@ -11,7 +11,8 @@
 		src,
 		name,
 		time,
-		icon
+		icon,
+		day
 	}: {
 		initial: string;
 		color?: string;
@@ -21,6 +22,9 @@
 		time: string;
 		/** Значок перед временем: часы у записи в очереди. */
 		icon?: IconName;
+		/** День записи, если он не день публикации, — строкой под временем
+		 * (экран записи: справа в шапке уже правка и обложка). */
+		day?: string;
 	} = $props();
 </script>
 
@@ -28,4 +32,5 @@
 <div>
 	<div class="n">{name}</div>
 	<div class="tm" class:tm-icon={Boolean(icon)}>{#if icon}<Icon name={icon} size="xs" />{/if}{time}</div>
+	{#if day}<div class="tm tm-icon"><Icon name="day" size="xs" />{day}</div>{/if}
 </div>

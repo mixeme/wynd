@@ -30,9 +30,9 @@ describe('formatPostTime', () => {
 		expect(formatPostTime('2026-09-01T21:40:00')).toMatch(/^вчера,/);
 	});
 
-	it('uses entry date when it differs from created day', () => {
-		const text = formatPostTime('2026-08-30T10:00:00', '2026-07-12');
-		expect(text).toContain('июл');
+	it('shows when the post was entered, not its day (C49)', () => {
+		const text = formatPostTime('2026-08-30T10:00:00');
+		expect(text).toBe('30 августа, 10:00');
 	});
 });
 

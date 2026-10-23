@@ -72,7 +72,7 @@
 		height?: string;
 		class?: string;
 		title: string;
-		subtitle?: string;
+		subtitle?: string | Snippet;
 		identity?: string;
 		avatar?: string;
 		avatarSrc?: string;

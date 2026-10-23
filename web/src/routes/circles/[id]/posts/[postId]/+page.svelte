@@ -28,7 +28,7 @@
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { fetchMembers, type MemberInfo } from '$lib/circles/settings';
-	import { formatClock, formatPostTime, formatSessionDay, isEditableActive } from '$lib/format/time';
+	import { formatClock, formatEntryDate, formatPostTime, formatSessionDay, isEditableActive } from '$lib/format/time';
 	import { isPostArchiveLocked } from '$lib/journal/archive';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadFeed } from '$lib/journal/feed';
@@ -38,6 +38,7 @@
 		coverMedia,
 		findPost,
 		groupReactions,
+		isAttachedToOtherDay,
 		ownReaction,
 		reactionIconName,
 		REACTION_KEYS,
@@ -901,7 +902,8 @@
 						? circle.avatarUrl
 						: postAvatarUrl || undefined}
 					name={currentPost.author_name}
-					time={formatPostTime(currentPost.created_at, currentPost.entry_date)}
+					time={formatPostTime(currentPost.created_at)}
+					day={isAttachedToOtherDay(currentPost) ? formatEntryDate(currentPost.entry_date) : undefined}
 				/>
 			{/snippet}
 			{#snippet reactions()}

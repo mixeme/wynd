@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { goUp } from '$lib/navigation/up';
 	import PostByline from '$ui/data/PostByline.svelte';
-	import EntryDateMark from '$ui/data/EntryDateMark.svelte';
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
 	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
 	import MentionText from '$ui/data/MentionText.svelte';
@@ -32,7 +31,6 @@
 		mediaCount,
 		photoMedia,
 		tileBlobId,
-		localDayOf,
 		albumHref
 	} from '$lib/journal/present';
 	import type { FeedPost } from '$lib/journal/types';
@@ -68,10 +66,6 @@
 	);
 	// Дата дня уже стоит справа в шапке — под названием её не повторяем (C44).
 	const titleSubtitle = $derived(canEditDay ? 'нажмите, чтобы изменить' : undefined);
-
-	function isBackfilled(post: FeedPost): boolean {
-		return post.entry_date === entryDate && localDayOf(post.created_at) > entryDate;
-	}
 
 	function authorAvatarSrc(post: FeedPost): string | undefined {
 		if (post.identity_id === circle.identityId && circle.avatarUrl) return circle.avatarUrl;
@@ -273,9 +267,6 @@
 		{/if}
 
 		{#each posts as post (post.id)}
-			{#snippet backfilled()}
-				<EntryDateMark icon="clock" label="внесено сегодня" />
-			{/snippet}
 			{#snippet postText()}
 				<MentionText body={post.body} />
 			{/snippet}
@@ -307,7 +298,6 @@
 			{/snippet}
 			<PostCard
 				onclick={() => openPost(post.id)}
-				headerRight={isBackfilled(post) ? backfilled : undefined}
 				text={post.body ? postText : undefined}
 				media={coverMedia(post.media) || attachmentMedia(post.media).length
 					? postMedia
@@ -319,7 +309,7 @@
 						color={circle.colorHex}
 						src={authorAvatarSrc(post)}
 						name={post.author_name}
-						time={formatPostTime(post.created_at, post.entry_date)}
+						time={formatPostTime(post.created_at)}
 					/>
 				{/snippet}
 			</PostCard>

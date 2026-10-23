@@ -5,6 +5,7 @@
 	import { numberParam, withParam, withoutParam } from '$lib/nav/url';
 	import { page } from '$app/stores';
 	import { getContext, onMount, untrack } from 'svelte';
+	import BylineParts from '$ui/data/BylineParts.svelte';
 	import MediaTile from '$ui/data/MediaTile.svelte';
 	import PhotoGrid from '$ui/data/PhotoGrid.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -21,6 +22,7 @@
 		albumDownloadFilename,
 		findPost,
 		lightboxCaption,
+		postBylineParts,
 		photoMedia,
 		tileBlobId
 	} from '$lib/journal/present';
@@ -43,9 +45,6 @@
 
 	const currentItem = $derived(photos[lightboxIndex]);
 	const albumTitle = $derived(post ? pluralPhotos(photos.length) : '');
-	const albumSubtitle = $derived(
-		post ? `${post.author_name} · ${formatPostTime(post.created_at, post.entry_date)}` : ''
-	);
 
 	onMount(() => {
 		void load();
@@ -152,6 +151,15 @@
 	}
 </script>
 
+{#snippet albumSubtitle()}
+	{#if post}<BylineParts parts={postBylineParts(post, formatPostTime)} />{/if}
+{/snippet}
+{#snippet photoCaption()}
+	{#if post && currentItem}
+		<BylineParts parts={lightboxCaption(post, currentItem, formatPostTime, sizes[currentItem.blob_id])} />
+	{/if}
+{/snippet}
+
 <CircleLayout
 	app
 	color={circle.color}
@@ -193,7 +201,7 @@
 		counter="{lightboxIndex + 1} из {photos.length}"
 		caption={item.kind === 'video' && !urls[item.blob_id]
 			? videoNote[item.blob_id]
-			: lightboxCaption(post, item, formatPostTime, sizes[item.blob_id])}
+			: photoCaption}
 		dotCount={photos.length}
 		dotIndex={lightboxIndex}
 		onDotSelect={openLightbox}
