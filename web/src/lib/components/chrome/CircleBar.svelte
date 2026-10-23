@@ -119,14 +119,14 @@
 		{#if !searchInBar && identity}
 			{#if circleId && avatar && identitySettingsLink}
 				<button type="button" class="idn" onclick={() => goto(`/circles/${circleId}/settings`)}>
-					{identity}<Avatar
+					<span class="idn-t">{identity}</span><Avatar
 						initial={avatar}
 						src={avatarSrc}
 						style="width:30px;height:30px;font-size:12.5px;border:1px solid rgba(255,255,255,.55)"
 					/>
 				</button>
 			{:else}
-				<span class="idn">{identity}{#if avatar}<Avatar
+				<span class="idn"><span class="idn-t">{identity}</span>{#if avatar}<Avatar
 							initial={avatar}
 							src={avatarSrc}
 							style="width:30px;height:30px;font-size:12.5px;border:1px solid rgba(255,255,255,.55)"
