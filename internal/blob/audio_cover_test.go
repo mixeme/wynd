@@ -116,7 +116,9 @@ func TestAudioCoverStaysWithThePost(t *testing.T) {
 	for _, bucket := range chart {
 		bytes += bucket.Bytes
 	}
-	want := int64(len("audio-bytes") + len("cover-bytes"))
+	// Файлы записи и обложка звука плюс текст записи, как считает квота (C55):
+	// 550 + 3 × тело + имя автора.
+	want := int64(len("audio-bytes") + len("cover-bytes") + 550 + 3*len("утро") + len("Аня"))
 	if bytes != want {
 		t.Fatalf("volume: got %d want %d", bytes, want)
 	}
