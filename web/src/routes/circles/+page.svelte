@@ -210,8 +210,10 @@
 	// Круг, где ещё не выбрано имя, в группу не кладётся: участия пока нет.
 	// Вышедший с правом читать — кладётся (A2): круг на его улочке.
 	function addableCirclesForGroup(group: StreetGroupView): StreetCircle[] {
-		// Закреплённый в чипах не предлагается: в группе его сейчас не видно бы.
-		return circles.filter((c) => !c.pendingJoin && !c.pinned && !group.keys.includes(circleKey(c)));
+		// Закреплённый тоже предлагается (A13, владелец 2026-10-23: «Как в Slack»):
+		// кладём — он переезжает в группу и открепляется. Даже если группа его
+		// помнит: сейчас он виден только среди закреплённых.
+		return circles.filter((c) => !c.pendingJoin && (c.pinned || !group.keys.includes(circleKey(c))));
 	}
 
 	function showGroupChips(group: StreetGroupView): boolean {
@@ -328,7 +330,15 @@
 	}
 
 	async function addCircleToGroup(circle: StreetCircle, name: string) {
-		await changeStreet([{ origin: circle.origin, op: 'group', circle_id: circle.id, name }]);
+		const ops: StreetOpRecord[] = [];
+		if (circle.pinned) {
+			circles = sortStreetCircles(
+				circles.map((c) => (c === circle ? { ...c, pinned: false, pinnedAt: 0 } : c))
+			);
+			ops.push({ origin: circle.origin, op: 'unpin', circle_id: circle.id });
+		}
+		ops.push({ origin: circle.origin, op: 'group', circle_id: circle.id, name });
+		await changeStreet(ops);
 		const group = groups.find((g) => g.name === name);
 		if (group && addableCirclesForGroup(group).length === 0) {
 			groupAddOpenName = null;
