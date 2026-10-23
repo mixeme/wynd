@@ -351,7 +351,21 @@
 			)}.{#if archive.lastEntry}{' '}Последняя запись — {formatEntryDate(archive.lastEntry)}.{/if}
 		</Hint>
 		{#if room.fits}
-			{#if invitable > 0}
+			{#if invitable === 0}
+			<!-- Писать некому — переключатель виден, но погашен (владелец, 2026-10-23). -->
+			<Label class="mt-16">Участники</Label>
+			<SettingsRow
+				title="Разослать приглашения"
+				subtitle={archive.emails.length > 1
+					? 'все участники уже на этом сервере'
+					: 'кроме вас, в круге никого нет'}
+				divided="both"
+			>
+				{#snippet control()}
+					<Switch checked={false} disabled label="Разослать приглашения" />
+				{/snippet}
+			</SettingsRow>
+			{:else}
 			<Label class="mt-16">Участники</Label>
 			<SettingsRow
 				title="Разослать приглашения"
