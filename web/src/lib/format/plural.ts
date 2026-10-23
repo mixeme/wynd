@@ -24,6 +24,8 @@ export function plural(count: number, forms: PluralForms): string {
 
 export const WORD = {
 	post: ['запись', 'записи', 'записей'] as PluralForms,
+	/** После «из»: из 1 записи, из 2 записей, из 21 записи. */
+	postGenitive: ['записи', 'записей', 'записей'] as PluralForms,
 	comment: ['комментарий', 'комментария', 'комментариев'] as PluralForms,
 	day: ['день', 'дня', 'дней'] as PluralForms,
 	file: ['файл', 'файла', 'файлов'] as PluralForms,

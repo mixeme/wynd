@@ -36,6 +36,13 @@ describe('склонение по числу', () => {
 		expect(plural(100, WORD.person)).toBe('100 человек');
 	});
 
+	it('после «из» — родительный: «из 2 записей», «из 21 записи»', () => {
+		expect(plural(1, WORD.postGenitive)).toBe('1 записи');
+		expect(plural(2, WORD.postGenitive)).toBe('2 записей');
+		expect(plural(12, WORD.postGenitive)).toBe('12 записей');
+		expect(plural(21, WORD.postGenitive)).toBe('21 записи');
+	});
+
 	it('форма отдельно от числа', () => {
 		expect(pluralForm(1, WORD.comment)).toBe('комментарий');
 		expect(pluralForm(3, WORD.comment)).toBe('комментария');

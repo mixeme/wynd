@@ -10,6 +10,7 @@
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { isAccessError } from '$lib/api/client';
 	import { formatEntryDate, formatPostTime, pluralPosts } from '$lib/format/time';
+	import { plural, WORD } from '$lib/format/plural';
 	import { isAttachedToOtherDay } from '$lib/journal/present';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadDays } from '$lib/journal/days';
@@ -78,7 +79,8 @@
 			}
 			pins = mergePages(mapSnap.pins, older, (p) => `${p.post_id}:${p.blob_id}`);
 			totalPosts = daysSnap.days.reduce((sum, d) => sum + d.post_count, 0);
-			badge = `${pins.length} ${pins.length === 1 ? 'запись' : pins.length < 5 ? 'записи' : 'записей'} с местом из ${pluralPosts(totalPosts)}`;
+			// После «из» — родительный: «из 2 записей», а не «из 2 записи».
+			badge = `${pluralPosts(pins.length)} с местом из ${plural(totalPosts, WORD.postGenitive)}`;
 		} catch (err) {
 			error = isAccessError(err) ? 'Нет доступа' : 'Не удалось загрузить карту';
 		} finally {
