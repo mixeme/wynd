@@ -308,3 +308,17 @@ func TestReviveWaitingMembers(t *testing.T) {
 		t.Fatalf("круг у Коли: %+v", list.Circles)
 	}
 }
+
+// 7.29: письмо уйдёт только тем, чьей почты на сервере нет; своя почта и
+// повторы не считаются. Отдаётся одно число.
+func TestReviveInvitableCountsOnlyNewEmails(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	tok, _ := registerSession(t, srv, caps, "anya@example.com")
+	registerSession(t, srv, caps, "bob@example.com")
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/revive/invitable", tok, map[string]any{
+		"emails": []string{"anya@example.com", "Bob@example.com", "vera@example.com", "vera@example.com"},
+	})
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"invitable":1`) {
+		t.Fatalf("invitable: %d %s", rec.Code, rec.Body.String())
+	}
+}

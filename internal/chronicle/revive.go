@@ -77,6 +77,9 @@ type ReviveResult struct {
 	// NotJoined — учётки, заведённые по почте из архива: на этом сервере
 	// они ещё не были («Ещё не вошли», 6.6).
 	NotJoined []string
+	// AlreadyHere — сколько людей круга уже есть на этом сервере (кроме того,
+	// кто оживил): письмо им не нужно, круг сам встаёт в их список.
+	AlreadyHere int
 }
 
 // ReviveCircle вставляет круг из строк архива одной транзакцией.
@@ -144,6 +147,8 @@ func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveRes
 			res.NotJoined = append(res.NotJoined, id)
 		} else if err != nil {
 			return res, err
+		} else if id != in.ReviverID {
+			res.AlreadyHere++
 		}
 		accounts[oldID] = id
 	}

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.39.6
+  version: 0.39.7
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:
@@ -908,6 +908,10 @@ paths:
           schema:
             type: integer
 
+  /revive/invitable:
+    post:
+      summary: How many archive e-mails have no account on this server (7.29) — they get a letter; 0 hides «Разослать приглашения». Body {emails [..]} up to 500; answer {invitable} — a count only
+
   /revive/place_request:
     post:
       summary: Ask the admin for room for a circle that does not exist yet (2.23); body {bytes, circle_name}; one pending per account
@@ -915,7 +919,7 @@ paths:
   /revive:
     post:
       summary: Revive a circle from a full archive (plan 52)
-      description: Body {manifest, tables {name → {columns, rows}}, blob_map {archive blob → uploaded blob}, send_invites}. Every archive file must be uploaded by the caller with the same sha256 and size (400 blob_missing / blob_mismatch). New ids for everything; people by e-mail (unknown e-mails get accounts without a login); the caller owns the circle. Answer {circle_id, posts, names, bytes, verified, invited, not_joined}. Body up to 256 MB.
+      description: Body {manifest, tables {name → {columns, rows}}, blob_map {archive blob → uploaded blob}, send_invites}. Every archive file must be uploaded by the caller with the same sha256 and size (400 blob_missing / blob_mismatch). New ids for everything; people by e-mail (unknown e-mails get accounts without a login); the caller owns the circle. Answer {circle_id, posts, names, bytes, verified, invited, not_joined, already_here}. Body up to 256 MB.
 
   /circles/{circle_id}/move:
     get:

@@ -28,6 +28,7 @@
 	import { loadSessions } from '$lib/session/session.svelte';
 	import { WrongPasswordError } from '$lib/archive/wyndfile';
 	import {
+		fetchInvitable,
 		fetchReviveRoom,
 		noRoomText,
 		roomCaption,
@@ -90,7 +91,10 @@
 			? ((archive?.circleColor ?? doneCircle?.color) as CircleColor)
 			: undefined
 	);
-	const invitable = $derived(Math.max(0, (archive?.emails.length ?? 1) - 1));
+	// Скольким уйдёт письмо — спрашиваем сервер: кто уже здесь, тому писать не
+	// нужно. Ноль — переключателя нет (владелец, 2026-10-23: «Если письма не
+	// нужны, то надо было переключатель убрать, чтобы не путать людей»).
+	let invitable = $state(0);
 
 	onMount(async () => {
 		restoreDone();
@@ -109,6 +113,9 @@
 		if (!f) return;
 		error = '';
 		file = f;
+		// Большой файл читается не сразу — экран не молчит (владелец, 2026-10-23:
+		// «после выбора файла архива на экране долго ничего не происходит»).
+		reading = true;
 		try {
 			opened = await openFile(f);
 			if (opened.encrypted) {
@@ -119,6 +126,8 @@
 		} catch (err) {
 			error = 'Это не файл архива круга Wynd.';
 			console.warn('revive: open', err);
+		} finally {
+			reading = false;
 		}
 	}
 
@@ -142,10 +151,17 @@
 		archive = await loadArchive(src);
 		placeBytes = Math.ceil(archive.circleBytes / MB) * MB;
 		room = await fetchReviveRoom(origin, archive.circleBytes);
+		invitable = await fetchInvitable(origin, archive.emails).catch(() => Math.max(0, archive!.emails.length - 1));
+		if (invitable === 0) sendInvites = false;
 		step = 'review';
 	}
 
 	let placeBytes = $state(0);
+	// Все, кроме оживившего, уже на этом сервере: писать некому.
+	const allHere = $derived(
+		!!result && result.invited === 0 && result.not_joined === 0 && (result.already_here ?? 0) > 0
+	);
+	let reading = $state(false);
 
 	async function askPlace() {
 		if (!archive) return;
@@ -264,6 +280,9 @@
 			onclick={() => picker?.open()}
 		/>
 		<Hint>Круг будет перенесён полностью. Вы станете его владельцем.</Hint>
+		{#if reading}
+			<Hint class="ink">Читаем файл…</Hint>
+		{/if}
 	{:else if step === 'password' && file}
 		<!-- 7.27 / 7.28: файл расшифровывается на этом устройстве. -->
 		<Label>Файл архива</Label>
@@ -378,7 +397,16 @@
 				? `${plural(result.posts, WORD.post)}, ${plural(result.names, WORD.name)}, ${formatBytes(result.bytes)} — сверено с файлом архива, ничего не потерялось.`
 				: `${plural(result.posts, WORD.post)}, ${plural(result.names, WORD.name)}, ${formatBytes(result.bytes)} — с файлом архива сошлось не всё.`}
 		/>
-		{#if result.invited > 0}
+		{#if allHere}
+			<!-- Все, кроме вас, уже на этом сервере: письма не нужны, круг у них в списке. -->
+			<SettingsRow
+				class="mt-14"
+				title="Все уже на этом сервере"
+				subtitle="круг уже в их списке кругов — письма не нужны"
+				chevron={false}
+				divided="both"
+			/>
+		{:else if result.invited > 0}
 			<SettingsRow
 				class="mt-14"
 				title="Приглашения отправлены"
@@ -398,7 +426,9 @@
 					)}
 			/>
 		{/if}
-		<Hint>Кто войдёт сюда той же почтой, попадёт в своё имя.</Hint>
+		{#if !allHere}
+			<Hint>Кто войдёт сюда той же почтой, попадёт в своё имя.</Hint>
+		{/if}
 		<Button class="mt-14" variant="colored" onclick={() => goto(`/circles/${result?.circle_id}`)}>
 			Открыть круг
 		</Button>

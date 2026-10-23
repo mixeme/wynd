@@ -262,6 +262,18 @@ export interface ReviveResult {
 	verified: boolean;
 	invited: number;
 	not_joined: number;
+	/** Уже на этом сервере: письмо им не нужно, круг у них в списке. */
+	already_here?: number;
+}
+
+/** Скольким людям из архива уйдёт письмо: тем, чьей почты на сервере нет (7.29). */
+export async function fetchInvitable(origin: string, emails: string[]): Promise<number> {
+	const res = await apiJson<{ invitable: number }>(origin, '/revive/invitable', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ emails })
+	});
+	return res.invitable;
 }
 
 export async function reviveCircle(

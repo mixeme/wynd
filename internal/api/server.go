@@ -253,6 +253,7 @@ func (s *Server) routes() {
 	// Оживление круга из полного архива (план 52).
 	s.Mux.HandleFunc("POST /api/v1/revive/blobs", paid(s.handleReviveBlobs))
 	s.Mux.HandleFunc("GET /api/v1/revive/room", paid(s.handleReviveRoom))
+	s.Mux.HandleFunc("POST /api/v1/revive/invitable", paid(s.handleReviveInvitable))
 	s.Mux.HandleFunc("POST /api/v1/revive/place_request", paid(s.handleRevivePlaceRequest))
 	s.Mux.HandleFunc("POST /api/v1/revive", s.withReviveBody(s.handleReviveCircle))
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/full_archive/remove_circle", paid(s.handleRemoveFrozenCircle))

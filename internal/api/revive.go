@@ -208,6 +208,8 @@ func (s *Server) handleReviveCircle(w http.ResponseWriter, r *http.Request) {
 		"verified":   out.Verified,
 		"invited":    out.Invited,
 		"not_joined": out.NotJoined,
+		// Уже на этом сервере: письмо им не нужно, круг у них в списке.
+		"already_here": out.AlreadyHere,
 	})
 }
 
@@ -226,16 +228,17 @@ type reviveRequest struct {
 
 // reviveOutcome — итог для 7.25 / 7.33 / 7.26 / 7.34.
 type reviveOutcome struct {
-	CircleID  string
-	Posts     int
-	Names     int
+	CircleID string
+	Posts    int
+	Names    int
 	// Bytes — для экрана: файлы и текст, как считает квота (C42).
 	Bytes int64
 	// MediaBytes — только файлы: их сверяет прежний сервер при переносе.
-	MediaBytes int64
-	Verified   bool
-	Invited   int
-	NotJoined int
+	MediaBytes  int64
+	Verified    bool
+	Invited     int
+	NotJoined   int
+	AlreadyHere int
 }
 
 // reviveError — отказ с кодом для экрана: файла нет, сумма не та, места нет.
@@ -335,6 +338,7 @@ func (s *Server) reviveFromTables(ctx context.Context, in reviveRequest) (revive
 	out.MediaBytes = res.Bytes
 	out.Verified = res.Posts == in.Posts && res.Bytes == archiveBytes
 	out.NotJoined = len(res.NotJoined)
+	out.AlreadyHere = res.AlreadyHere
 	return out, nil
 }
 
