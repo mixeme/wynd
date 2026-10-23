@@ -58,3 +58,23 @@ func TestVolumeStepAndPeriods(t *testing.T) {
 		t.Errorf("monday stays monday: %s", monday)
 	}
 }
+
+// Меньше трёх столбиков — шаг мельче, пока есть куда (владелец, 2026-10-23).
+func TestPickVolumeRefinesFewBars(t *testing.T) {
+	bars := map[VolumeStep]int{VolumeStepMonth: 1, VolumeStepWeek: 2, VolumeStepDay: 5}
+	fetch := func(s VolumeStep) ([]VolumeBucket, error) {
+		return make([]VolumeBucket, bars[s]), nil
+	}
+	out, step, err := pickVolume(VolumeStepMonth, fetch)
+	if err != nil || step != VolumeStepDay || len(out) != 5 {
+		t.Fatalf("month → day: %s, %d bars, %v", step, len(out), err)
+	}
+	bars[VolumeStepWeek] = 3
+	if _, step, _ = pickVolume(VolumeStepMonth, fetch); step != VolumeStepWeek {
+		t.Fatalf("three weekly bars stay weekly: %s", step)
+	}
+	bars[VolumeStepDay] = 1
+	if out, step, _ = pickVolume(VolumeStepDay, fetch); step != VolumeStepDay || len(out) != 1 {
+		t.Fatalf("day is the finest: %s, %d", step, len(out))
+	}
+}

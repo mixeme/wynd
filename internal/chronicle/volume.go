@@ -61,6 +61,36 @@ func (c *Chronicle) mediaVolumeChart(ctx context.Context, circleID string, now t
 			step = volumeStepFor(now.Sub(t))
 		}
 	}
+	return pickVolume(step, func(s VolumeStep) ([]VolumeBucket, error) {
+		return c.volumeBuckets(ctx, circleID, s)
+	})
+}
+
+// minVolumeBars: меньше трёх столбиков — выбирать дату не из чего (владелец,
+// 2026-10-23: круг старше двух недель с записями за одну неделю давал один
+// недельный столбик). Тогда шаг мельче: месяц → неделя → день.
+const minVolumeBars = 3
+
+func pickVolume(step VolumeStep, buckets func(VolumeStep) ([]VolumeBucket, error)) ([]VolumeBucket, VolumeStep, error) {
+	for {
+		out, err := buckets(step)
+		if err != nil {
+			return nil, step, err
+		}
+		finer, ok := finerVolumeStep[step]
+		if len(out) >= minVolumeBars || !ok {
+			return out, step, nil
+		}
+		step = finer
+	}
+}
+
+var finerVolumeStep = map[VolumeStep]VolumeStep{
+	VolumeStepMonth: VolumeStepWeek,
+	VolumeStepWeek:  VolumeStepDay,
+}
+
+func (c *Chronicle) volumeBuckets(ctx context.Context, circleID string, step VolumeStep) ([]VolumeBucket, error) {
 	rows, err := c.db.QueryContext(ctx, `
 		SELECT `+volumePeriodSQL[step]+` AS period,
 			COALESCE(SUM(b.size_bytes), 0) AS bytes
@@ -83,7 +113,7 @@ func (c *Chronicle) mediaVolumeChart(ctx context.Context, circleID string, now t
 		ORDER BY period
 	`, circleID)
 	if err != nil {
-		return nil, step, err
+		return nil, err
 	}
 	defer rows.Close()
 	// Пустой, а не nil: nil уходил в JSON как null, и экран квоты круга без
@@ -93,13 +123,13 @@ func (c *Chronicle) mediaVolumeChart(ctx context.Context, circleID string, now t
 	for rows.Next() {
 		var b VolumeBucket
 		if err := rows.Scan(&b.Period, &b.Bytes); err != nil {
-			return nil, step, err
+			return nil, err
 		}
 		cumulative += b.Bytes
 		b.CumulativeBytes = cumulative
 		out = append(out, b)
 	}
-	return out, step, rows.Err()
+	return out, rows.Err()
 }
 
 // MedianPostBytes returns median media bytes per post for quota estimates.

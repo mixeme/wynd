@@ -36,6 +36,7 @@
 
 	// The instance may run without a storage limit: the API then omits quota_bytes.
 	const capped = $derived(quotaBytes > 0);
+	const nothingBefore = $derived(keptPosts !== undefined && postCount > 0 && keptPosts >= postCount);
 
 	// Начало столбика датой. Старый сервер отдавал месяц «2026-09» (C7).
 	function bucketStart(period: string): string {
@@ -169,7 +170,10 @@
 			bind:value={cutoffDate}
 			onchange={() => void onCutoffChange(cutoffDate)}
 		/>
-		{#if freedBytes || keptPosts !== undefined}
+		{#if nothingBefore}
+			<!-- Отсечка раньше первой записи — архивировать нечего (владелец, 2026-10-23). -->
+			<Hint>До этой даты записей нет — выберите дату позже.</Hint>
+		{:else if freedBytes || keptPosts !== undefined}
 			<!-- 6.17: «Освободится 6,2 ГБ из 10. В круге останется 214 записей из 340.» -->
 			<Hint>
 				{#if freedBytes}Освободится {formatBytes(freedBytes)}{#if capped}{' '}из {formatBytes(
@@ -178,6 +182,8 @@
 				{#if keptPosts !== undefined}{' '}В круге останется {plural(keptPosts, WORD.post)} из {postCount}.{/if}
 			</Hint>
 		{/if}
-		<Button class="mt-14" variant="colored" onclick={next}>Дальше: сроки</Button>
+		<Button class="mt-14" variant="colored" disabled={!cutoffDate || nothingBefore} onclick={next}>
+			Дальше: сроки
+		</Button>
 	{/if}
 </FormLayout>
