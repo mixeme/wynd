@@ -213,7 +213,10 @@
 		{#snippet media()}
 			{#if item.kind === 'video'}
 				{#if urls[item.blob_id]}
-					<!-- playsinline: на iPhone видео играет в лайтбоксе, а не уходит в полноэкранный плеер. -->
+					<!-- playsinline: на iPhone видео играет в лайтбоксе, а не уходит в полноэкранный плеер.
+					     Без <track>: пустая дорожка субтитров держала Safari на readyState 2 —
+					     ролик не играл (C26, страница диагностики с iPhone 2026-10-23). -->
+					<!-- svelte-ignore a11y_media_has_caption -->
 					<video
 						src={urls[item.blob_id]}
 						poster={urls[tileBlobId(item)]}
@@ -222,9 +225,7 @@
 						preload="metadata"
 						onloadedmetadata={(e) => noteSize(item.blob_id, e.currentTarget.videoWidth, e.currentTarget.videoHeight)}
 						onloadeddata={() => void keepPoster(item)}
-					>
-						<track kind="captions" label="Субтитры отсутствуют" />
-					</video>
+					></video>
 				{:else if urls[tileBlobId(item)]}
 					<img src={urls[tileBlobId(item)]} alt="" />
 				{/if}

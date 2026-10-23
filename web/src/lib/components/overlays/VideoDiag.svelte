@@ -120,7 +120,7 @@
 			say(`canPlayType: «${mime}» → «${probeEl.canPlayType(mime)}» · «${base}» → «${probeEl.canPlayType(base)}»`);
 
 			variants = [
-				{ id: 'a', title: 'А. Как в окне просмотра: кэш, обложка, preload, субтитры', url: cachedUrl, poster: posterUrl, full: true, result: '' },
+				{ id: 'a', title: 'А. Как в окне просмотра: кэш, обложка, preload (без субтитров с 0.41.2)', url: cachedUrl, poster: posterUrl, full: true, result: '' },
 				{ id: 'b', title: 'Б. Тот же адрес из кэша, голый плеер', url: cachedUrl, result: '' },
 				{ id: 'c', title: 'В. Свежий ответ сервера как есть', url: make(fresh), result: '' },
 				{ id: 'd', title: `Г. Свежие байты, тип «${base}» без параметров`, url: make(new Blob([buffer], { type: base })), result: '' },
@@ -158,6 +158,7 @@
 		<div class="row">
 			<p><b>{variant.title}</b></p>
 			{#if variant.full}
+				<!-- svelte-ignore a11y_media_has_caption -->
 				<video
 					bind:this={els[variant.id]}
 					src={variant.url}
@@ -165,9 +166,7 @@
 					controls
 					playsinline
 					preload="metadata"
-				>
-					<track kind="captions" label="Субтитры отсутствуют" />
-				</video>
+				></video>
 			{:else}
 				<!-- svelte-ignore a11y_media_has_caption -->
 				<video bind:this={els[variant.id]} src={variant.url} controls playsinline></video>
