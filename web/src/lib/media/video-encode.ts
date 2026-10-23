@@ -66,7 +66,10 @@ export async function encodeVideo(
 			input,
 			output,
 			tracks: 'primary',
-			audio: opts?.force ? { codec: 'aac', forceTranscode: true } : undefined,
+			// На выходе — AAC; уже AAC (так пишет iPhone) копируется как есть.
+			// Перекодировать его заново нельзя без AudioDecoder, а его в Safari
+			// до 26 нет: звук отбрасывался, и видеосообщение уходило без сжатия (C30).
+			audio: opts?.force ? { codec: 'aac' } : undefined,
 			video: {
 				width: target.width,
 				height: target.height,
