@@ -1,5 +1,6 @@
 import { apiFetch, apiJson, apiPath } from '$lib/api/client';
 import { invalidateCircleSnapshots } from '$lib/api/snapshots';
+import { openDownload } from '$lib/navigation/openDownload';
 import type { QueueFile } from '$lib/idb/db';
 import { CHUNK_SIZE } from '$lib/queue/queue';
 import { sha256Hex } from '$lib/sha256';
@@ -193,8 +194,5 @@ export async function downloadArchive(
 ): Promise<void> {
 	const path = downloadUrl.replace(/^\/api\/v1/, '').replace(/\/download$/, '/link');
 	const { url } = await apiJson<{ url: string }>(origin, path, { method: 'POST' });
-	const a = document.createElement('a');
-	a.href = apiPath(origin, url.replace(/^\/api\/v1/, ''));
-	a.rel = 'noopener';
-	a.click();
+	openDownload(apiPath(origin, url.replace(/^\/api\/v1/, '')));
 }

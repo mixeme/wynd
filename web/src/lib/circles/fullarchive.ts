@@ -1,5 +1,6 @@
 import { apiJson, apiPath } from '$lib/api/client';
 import { invalidateSnapshots } from '$lib/idb/db';
+import { openDownload } from '$lib/navigation/openDownload';
 import type { ArchiveKey } from '$lib/archive/fullkey';
 
 /** Полный архив круга (план 51): что с ним на сервере. */
@@ -65,11 +66,8 @@ export async function removeFrozenCircle(origin: string, circleId: string): Prom
 	await invalidateSnapshots(origin, { kind: 'circles' });
 }
 
-function openDownload(origin: string, url: string) {
-	const a = document.createElement('a');
-	a.href = apiPath(origin, url.replace(/^\/api\/v1/, ''));
-	a.rel = 'noopener';
-	a.click();
+function openServerDownload(origin: string, url: string) {
+	openDownload(apiPath(origin, url.replace(/^\/api\/v1/, '')));
 }
 
 /** Скачать готовый файл: качает сам браузер, с ходом и докачкой. */
@@ -77,7 +75,7 @@ export async function downloadFullArchive(origin: string, circleId: string): Pro
 	const { url } = await apiJson<{ url: string }>(origin, `/circles/${circleId}/full_archive/link`, {
 		method: 'POST'
 	});
-	openDownload(origin, url);
+	openServerDownload(origin, url);
 }
 
 /** «Скачать сразу» (6.31): сервер собирает файл прямо в скачивание. */
@@ -96,5 +94,5 @@ export async function streamFullArchive(
 			body: JSON.stringify({ key, delete_circle: deleteCircle })
 		}
 	);
-	openDownload(origin, url);
+	openServerDownload(origin, url);
 }
