@@ -64,6 +64,52 @@ export interface LoadedArchive {
 	lastEntry: string;
 	/** Цвет круга (токен, «terracotta»): экран оживления — его цветом, как 7.29. */
 	circleColor: string;
+	/** Владелец круга по архиву: «Аня — это вы?» (7.29б, A12). Почты нет — undefined. */
+	owner?: { email: string; name: string };
+	/** Имена тех, кто в круге, — «Кто уже здесь» на 7.29в. */
+	people: string[];
+}
+
+/** Текущее имя лица: последнее по effective_at (лицо могло переименоваться). */
+function identityNames(tables: Record<string, WyndTable>): Map<string, string> {
+	const latest = new Map<string, { name: string; at: string }>();
+	for (const n of rows(tables.identity_names)) {
+		const id = String(n.identity_id);
+		const at = String(n.effective_at ?? '');
+		const prev = latest.get(id);
+		if (!prev || at >= prev.at) latest.set(id, { name: String(n.name ?? ''), at });
+	}
+	return new Map([...latest].map(([id, v]) => [id, v.name]));
+}
+
+/** Владелец круга по таблицам архива: почта и текущее имя (7.29б). */
+export function archiveOwner(tables: Record<string, WyndTable>): { email: string; name: string } | undefined {
+	const names = identityNames(tables);
+	const ownerId = String(rows(tables.circles)[0]?.owner_account_id ?? '');
+	const email = rows(tables.accounts).find((a) => String(a.id) === ownerId)?.email;
+	const membership = rows(tables.memberships).find((m) => String(m.account_id) === ownerId);
+	const name = membership ? (names.get(String(membership.identity_id)) ?? '') : '';
+	return email && name ? { email: String(email), name } : undefined;
+}
+
+/** Имена тех, кто сейчас в круге (не вышел), — «Кто уже здесь» (7.29в). */
+export function archivePeople(tables: Record<string, WyndTable>): string[] {
+	const names = identityNames(tables);
+	return rows(tables.memberships)
+		.filter((m) => m.status === 'active')
+		.map((m) => names.get(String(m.identity_id)) ?? '')
+		.filter(Boolean);
+}
+
+/**
+ * Почты того, кто оживляет, в архиве нет (7.29а) — и есть ли кого спросить
+ * «это вы?»: только когда у владельца в архиве есть почта (иначе его лицо
+ * сервер всё равно отдаст оживляющему).
+ */
+export function reviverIsStranger(archive: LoadedArchive, myEmail: string): boolean {
+	const me = myEmail.trim().toLowerCase();
+	if (!me) return false;
+	return !archive.emails.some((e) => e.trim().toLowerCase() === me);
 }
 
 function rows(t: WyndTable | undefined): Record<string, unknown>[] {
@@ -109,7 +155,9 @@ export async function loadArchive(src: RandomSource): Promise<LoadedArchive> {
 		bytes,
 		circleBytes: bytes + textBytes,
 		lastEntry,
-		circleColor: String(rows(tables.circles)[0]?.color ?? '')
+		circleColor: String(rows(tables.circles)[0]?.color ?? ''),
+		owner: archiveOwner(tables),
+		people: archivePeople(tables)
 	};
 }
 
@@ -280,7 +328,9 @@ export async function reviveCircle(
 	origin: string,
 	archive: LoadedArchive,
 	blobMap: Record<string, string>,
-	sendInvites: boolean
+	sendInvites: boolean,
+	/** «Аня — это вы?» → «Нет» (7.29в, A12): кто оживляет своим именем. */
+	newMember?: { name: string; gender: '' | 'm' | 'f'; body?: string }
 ): Promise<ReviveResult> {
 	const res = await apiJson<ReviveResult>(origin, '/revive', {
 		method: 'POST',
@@ -289,7 +339,8 @@ export async function reviveCircle(
 			manifest: archive.manifest,
 			tables: archive.tables,
 			blob_map: blobMap,
-			send_invites: sendInvites
+			send_invites: sendInvites,
+			...(newMember ? { new_member: newMember } : {})
 		})
 	});
 	await invalidateSnapshots(origin, { kind: 'circles' });

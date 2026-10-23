@@ -50,47 +50,9 @@ func (c *Chronicle) JoinInTx(ctx context.Context, tx *sql.Tx, in JoinInput) (Mem
 		return Membership{}, Identity{}, err
 	}
 
-	identityID, err := newID()
+	membershipID, identityID, err := insertMemberTx(ctx, tx, in.CircleID, in.AccountID, in.Name, in.Gender, false, now)
 	if err != nil {
 		return Membership{}, Identity{}, err
-	}
-	nameID, err := newID()
-	if err != nil {
-		return Membership{}, Identity{}, err
-	}
-	membershipID, err := newID()
-	if err != nil {
-		return Membership{}, Identity{}, err
-	}
-	spanID, err := newID()
-	if err != nil {
-		return Membership{}, Identity{}, err
-	}
-
-	created := formatTime(now)
-	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO identities (id, circle_id, account_id, created_at, gender)
-		VALUES (?, ?, ?, ?, ?)
-	`, identityID, in.CircleID, in.AccountID, created, genderArg(in.Gender)); err != nil {
-		return Membership{}, Identity{}, fmt.Errorf("insert identity: %w", err)
-	}
-	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO identity_names (id, identity_id, name, effective_at)
-		VALUES (?, ?, ?, ?)
-	`, nameID, identityID, in.Name, created); err != nil {
-		return Membership{}, Identity{}, fmt.Errorf("insert identity name: %w", err)
-	}
-	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO memberships (id, circle_id, account_id, identity_id, can_settings, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, 0, ?, ?, ?)
-	`, membershipID, in.CircleID, in.AccountID, identityID, StatusActive, created, created); err != nil {
-		return Membership{}, Identity{}, fmt.Errorf("insert membership: %w", err)
-	}
-	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO membership_spans (id, membership_id, started_at, can_read, can_write)
-		VALUES (?, ?, ?, 1, 1)
-	`, spanID, membershipID, created); err != nil {
-		return Membership{}, Identity{}, fmt.Errorf("insert span: %w", err)
 	}
 
 	if _, err := c.appendEvent(ctx, tx, appendEventInput{
@@ -122,6 +84,56 @@ func (c *Chronicle) JoinInTx(ctx context.Context, tx *sql.Tx, in JoinInput) (Mem
 		CreatedAt: now,
 	}
 	return membership, identity, nil
+}
+
+// insertMemberTx заводит лицо, имя, участие и отрезок видимости с now — без
+// строки журнала: её пишет тот, кто зовёт (вступление — «вступил в круг»,
+// оживление новым человеком — «оживил круг», A12).
+func insertMemberTx(ctx context.Context, tx *sql.Tx, circleID, accountID, name string, gender Gender, canSettings bool, now time.Time) (membershipID, identityID string, err error) {
+	if identityID, err = newID(); err != nil {
+		return "", "", err
+	}
+	nameID, err := newID()
+	if err != nil {
+		return "", "", err
+	}
+	if membershipID, err = newID(); err != nil {
+		return "", "", err
+	}
+	spanID, err := newID()
+	if err != nil {
+		return "", "", err
+	}
+	settings := 0
+	if canSettings {
+		settings = 1
+	}
+	created := formatTime(now)
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO identities (id, circle_id, account_id, created_at, gender)
+		VALUES (?, ?, ?, ?, ?)
+	`, identityID, circleID, accountID, created, genderArg(gender)); err != nil {
+		return "", "", fmt.Errorf("insert identity: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO identity_names (id, identity_id, name, effective_at)
+		VALUES (?, ?, ?, ?)
+	`, nameID, identityID, name, created); err != nil {
+		return "", "", fmt.Errorf("insert identity name: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO memberships (id, circle_id, account_id, identity_id, can_settings, status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`, membershipID, circleID, accountID, identityID, settings, StatusActive, created, created); err != nil {
+		return "", "", fmt.Errorf("insert membership: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO membership_spans (id, membership_id, started_at, can_read, can_write)
+		VALUES (?, ?, ?, 1, 1)
+	`, spanID, membershipID, created); err != nil {
+		return "", "", fmt.Errorf("insert span: %w", err)
+	}
+	return membershipID, identityID, nil
 }
 
 func (c *Chronicle) rejoinTx(ctx context.Context, tx *sql.Tx, existing Membership, name string, gender Gender, now time.Time) (Membership, Identity, error) {

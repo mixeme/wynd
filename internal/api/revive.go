@@ -39,6 +39,32 @@ type reviveBody struct {
 	Tables      map[string]reviveTable `json:"tables"`
 	BlobMap     map[string]string      `json:"blob_map"`
 	SendInvites bool                   `json:"send_invites"`
+	// NewMember — «Аня — это вы?» → «Нет» (7.29в, A12): имя, пол и
+	// приветствие того, кто оживляет. Нет поля — «Да, это я».
+	NewMember *reviveNewMember `json:"new_member,omitempty"`
+}
+
+type reviveNewMember struct {
+	Name   string `json:"name"`
+	Gender string `json:"gender"`
+	Body   string `json:"body"`
+}
+
+// parse — имя и пол для круга; приветствие — отдельно, оно пишется после
+// строки «оживил круг».
+func (m *reviveNewMember) parse() (*chronicle.ReviveNewMember, string, error) {
+	if m == nil {
+		return nil, "", nil
+	}
+	name := strings.TrimSpace(m.Name)
+	if name == "" {
+		return nil, "", chronicle.ErrInvalid
+	}
+	gender, err := chronicle.ParseGender(m.Gender)
+	if err != nil {
+		return nil, "", err
+	}
+	return &chronicle.ReviveNewMember{Name: name, Gender: gender}, strings.TrimSpace(m.Body), nil
 }
 
 // handleReviveBlobs — какие файлы архива у этого человека уже есть на
@@ -178,11 +204,18 @@ func (s *Server) handleReviveCircle(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, chronicle.ErrInvalid)
 		return
 	}
+	newMember, greeting, err := body.NewMember.parse()
+	if err != nil {
+		writeError(w, err)
+		return
+	}
 	tables := map[string]chronicle.FullArchiveTable{}
 	for name, t := range body.Tables {
 		tables[name] = chronicle.FullArchiveTable{Name: name, Columns: t.Columns, Rows: t.Rows}
 	}
 	out, err := s.reviveFromTables(r.Context(), reviveRequest{
+		NewMember:     newMember,
+		Greeting:      greeting,
 		AccountID:     sess.AccountID,
 		FormatVersion: body.Manifest.FormatVersion,
 		SchemaVersion: body.Manifest.SchemaVersion,
@@ -224,6 +257,9 @@ type reviveRequest struct {
 	BlobMap       map[string]string
 	SendInvites   bool
 	MovedFrom     string
+	// NewMember и Greeting — оживляет не прежний владелец (A12, 7.29в).
+	NewMember *chronicle.ReviveNewMember
+	Greeting  string
 }
 
 // reviveOutcome — итог для 7.25 / 7.33 / 7.26 / 7.34.
@@ -313,6 +349,7 @@ func (s *Server) reviveFromTables(ctx context.Context, in reviveRequest) (revive
 		ReviverID:     in.AccountID,
 		Now:           time.Now(),
 		MovedFrom:     in.MovedFrom,
+		NewMember:     in.NewMember,
 	})
 	if err != nil {
 		if errors.Is(err, chronicle.ErrInvalid) {
@@ -331,6 +368,18 @@ func (s *Server) reviveFromTables(ctx context.Context, in reviveRequest) (revive
 	}
 	if in.SendInvites {
 		out.Invited = s.inviteNotJoined(res.CircleID, in.AccountID, res.NotJoined)
+	}
+	// Приветствие нового человека — после строки «оживил круг», как при
+	// вступлении (7.29в: «Скажите что-нибудь кругу»). Не вышло — круг уже
+	// ожил, это не повод говорить об отказе.
+	if in.NewMember != nil && in.Greeting != "" {
+		now := time.Now().UTC()
+		if _, err := s.Chronicle.CreatePost(ctx, chronicle.PostInput{
+			CircleID: res.CircleID, AccountID: in.AccountID, Body: in.Greeting,
+			EntryDate: now.Format("2006-01-02"), Now: now,
+		}); err != nil {
+			log.Printf("revive %s: greeting: %v", res.CircleID, err)
+		}
 	}
 	// На экран — сколько круг занимает по квоте, с текстом (C42); сверка
 	// с архивом — по файлам, их размер архив знает точно.

@@ -154,6 +154,43 @@ func TestReviveCircleFromArchiveHTTP(t *testing.T) {
 	if detail.Arrival != nil {
 		t.Fatalf("встреча после «Войти в круг»: %+v", detail.Arrival)
 	}
+
+	// «Аня — это вы?» → «Нет» (A12, 7.29в): тот же архив Слава оживляет своим
+	// именем; приветствие — записью после строки «оживил круг».
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/revive", slava, map[string]any{
+		"manifest": manifest, "tables": tables, "blob_map": blobMap,
+		"new_member": map[string]any{"name": "Слава", "gender": "m", "body": "Привет, я теперь здесь"},
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("оживить новым человеком: %d %s", rec.Code, rec.Body.String())
+	}
+	asNew := jsonStr(t, rec, "circle_id")
+	var name, greeting string
+	var revivedSeq, postSeq int64
+	db := srv.Chronicle.DB()
+	if err := db.QueryRowContext(t.Context(), `
+		SELECT n.name FROM memberships m JOIN identity_names n ON n.identity_id = m.identity_id
+		JOIN accounts a ON a.id = m.account_id
+		WHERE m.circle_id = ? AND a.email = 'slava@example.com'`, asNew).Scan(&name); err != nil || name != "Слава" {
+		t.Fatalf("Слава в круге: %q %v", name, err)
+	}
+	if err := db.QueryRowContext(t.Context(), `SELECT seq FROM events WHERE circle_id = ? AND event_type = 'circle_revived'`, asNew).Scan(&revivedSeq); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRowContext(t.Context(), `
+		SELECT p.body, p.event_seq FROM posts p WHERE p.circle_id = ? AND p.body LIKE 'Привет%'`, asNew).Scan(&greeting, &postSeq); err != nil {
+		t.Fatalf("приветствие: %v", err)
+	}
+	if postSeq <= revivedSeq {
+		t.Fatalf("приветствие %d раньше строки оживления %d", postSeq, revivedSeq)
+	}
+	// Пустое имя — отказ, круг не оживает.
+	if rec := doJSON(t, srv, http.MethodPost, "/api/v1/revive", slava, map[string]any{
+		"manifest": manifest, "tables": tables, "blob_map": blobMap,
+		"new_member": map[string]any{"name": "  "},
+	}); rec.Code != http.StatusBadRequest {
+		t.Fatalf("без имени: %d %s", rec.Code, rec.Body.String())
+	}
 }
 
 // Новая миграция — новая схема архивов: оживление обязано её знать, иначе

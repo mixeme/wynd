@@ -16,7 +16,15 @@
 	import ServerRow from '$ui/data/ServerRow.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import StatusCard from '$ui/data/StatusCard.svelte';
+	import MemberRow from '$ui/data/MemberRow.svelte';
+	import IdentityForm from '$ui/forms/IdentityForm.svelte';
+	import PeopleStrip from '$ui/forms/PeopleStrip.svelte';
+	import Dialog from '$ui/overlays/Dialog.svelte';
+	import Scrim from '$ui/overlays/Scrim.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
+	import { memberAvatarColor } from '$lib/auth/invites';
+	import { setIdentityAvatar } from '$lib/circles/settings';
+	import type { CroppedImage } from '$lib/media/crop';
 	import { loadSourceUrl, sourceUrl } from '$lib/instance/source.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { displayHost } from '$lib/auth/origin';
@@ -36,6 +44,7 @@
 		openFile,
 		requestRevivePlace,
 		reviveCircle,
+		reviverIsStranger,
 		unlock,
 		uploadArchiveFiles,
 		type LoadedArchive,
@@ -57,7 +66,8 @@
 		loadSourceUrl(origin);
 	});
 
-	type Step = 'choose' | 'password' | 'review' | 'upload' | 'done';
+	// 'who' — 7.29в: почты нет в архиве, на «Аня — это вы?» ответили «Нет».
+	type Step = 'choose' | 'password' | 'review' | 'who' | 'upload' | 'done';
 	let step = $state<Step>('choose');
 	let serverName = $state('');
 	let host = $state(displayHost(origin));
@@ -76,6 +86,23 @@
 	let busyNote = $state('');
 	let error = $state('');
 	let picker = $state<FilePicker | undefined>();
+	// Почта на этом сервере: есть ли она в архиве (7.29а, A12).
+	let myEmail = $state('');
+	let askOwner = $state(false);
+	let newName = $state('');
+	let newGender = $state<'' | 'm' | 'f'>('');
+	let greeting = $state('');
+	let newAvatar = $state<CroppedImage | undefined>();
+	const stranger = $derived(!!archive && reviverIsStranger(archive, myEmail));
+	// Кто уже здесь (7.29в) — по архиву: до пяти лиц и «ещё N».
+	const people = $derived(
+		(archive?.people ?? []).slice(0, 5).map((name, i) => ({
+			name,
+			initial: circleInitial(name),
+			color: memberAvatarColor(i)
+		}))
+	);
+	const morePeople = $derived(Math.max(0, (archive?.people.length ?? 0) - people.length));
 
 	const need = $derived(archive?.circleBytes ?? 0);
 	// Итог оживления (7.33) переживает уход в участники и шаг назад: архива в
@@ -101,6 +128,7 @@
 		const sessions = await loadSessions();
 		const s = sessions.find((x) => x.origin === origin);
 		serverName = s?.name ?? '';
+		myEmail = s?.email ?? '';
 		try {
 			freeRoom = await fetchReviveRoom(origin, 0);
 		} catch {
@@ -189,21 +217,56 @@
 		}
 	}
 
-	async function revive() {
+	// «Оживить круг» на 7.29: почты в архиве нет — сначала «Аня — это вы?»
+	// (7.29б); владельца с почтой в архиве нет — спросить не о ком.
+	function startRevive() {
+		if (stranger && archive?.owner) {
+			askOwner = true;
+			return;
+		}
+		void revive();
+	}
+
+	function notOwner() {
+		askOwner = false;
+		error = '';
+		step = 'who';
+	}
+
+	// asNew — 7.29в: своим именем, новым участником и владельцем.
+	async function revive(asNew = false) {
 		if (!archive) return;
 		error = '';
+		askOwner = false;
+		const name = newName.trim();
+		if (asNew && !name) {
+			error = 'Введите имя';
+			return;
+		}
+		const back = asNew ? 'who' : 'review';
 		step = 'upload';
 		try {
 			const map = await uploadArchiveFiles(origin, archive, (s, t) => {
 				sent = s;
 				total = t;
 			});
-			result = await reviveCircle(origin, archive, map, sendInvites);
+			result = await reviveCircle(
+				origin,
+				archive,
+				map,
+				sendInvites,
+				asNew ? { name, gender: newGender, body: greeting.trim() || undefined } : undefined
+			);
+			// Фото — после входа, как при вступлении (1.4); не встало — круг
+			// уже ожил, фото можно поставить в настройках круга.
+			if (asNew && newAvatar) {
+				await setIdentityAvatar(origin, result.circle_id, newAvatar).catch(() => false);
+			}
 			step = 'done';
 			keepDone();
 		} catch (err) {
 			error = authErrorHint(err);
-			step = 'review';
+			step = back;
 		}
 	}
 
@@ -262,8 +325,8 @@
 	shell={!circleColor}
 	color={circleColor}
 	app
-	title={step === 'done' ? circleName : step === 'choose' ? 'Принять круг' : 'Оживить круг'}
-	onback={() => goUp('/settings/servers')}
+	title={step === 'done' || step === 'who' ? circleName : step === 'choose' ? 'Принять круг' : 'Оживить круг'}
+	onback={() => (step === 'who' ? (step = 'review') : goUp('/settings/servers'))}
 >
 	<FilePicker bind:this={picker} accept=".wynd" onfiles={(files) => void pick(files)} />
 	{#if step === 'choose'}
@@ -350,6 +413,10 @@
 				archive.manifest.server
 			)}.{#if archive.lastEntry}{' '}Последняя запись — {formatEntryDate(archive.lastEntry)}.{/if}
 		</Hint>
+		{#if stranger}
+			<!-- 7.29а (A12): отдельной строкой в чернилах. -->
+			<Hint class="ink">Вашей почты среди участников этого круга нет.</Hint>
+		{/if}
 		{#if room.fits}
 			{#if invitable === 0}
 			<!-- Писать некому — переключатель виден, но погашен (владелец, 2026-10-23). -->
@@ -381,7 +448,7 @@
 				имя.
 			</Hint>
 			{/if}
-			<Button class="mt-14" variant="colored" onclick={() => void revive()}>
+			<Button class="mt-14" variant="colored" onclick={startRevive}>
 				Оживить круг
 			</Button>
 		{:else if room.request?.status === 'pending'}
@@ -405,6 +472,26 @@
 			/>
 			{@render placeAsk('Попросить место')}
 		{/if}
+	{:else if step === 'who' && archive}
+		<!-- 7.29в (A12): вход в круг, как 1.4 — кто здесь по архиву, имя, фото,
+		     пол, приветствие. Круг оживает, человек — новый участник и
+		     владелец, видит круг с этого дня. -->
+		{#if people.length}
+			<Label class="mt-16">Кто уже здесь · {archive.people.length}</Label>
+			<PeopleStrip {people} />
+			{#if morePeople > 0}
+				<Hint centered class="mt-12">ещё {morePeople}</Hint>
+			{/if}
+		{/if}
+		<IdentityForm
+			color={circleColor ?? 'terracotta'}
+			bind:name={newName}
+			bind:firstPost={greeting}
+			bind:avatar={newAvatar}
+			bind:gender={newGender}
+			onerror={(message) => (error = message)}
+		/>
+		<Button variant="colored" onclick={() => void revive(true)}>Оживить круг</Button>
 	{:else if step === 'upload'}
 		<Label>Загружаем круг</Label>
 		<Meter value={total ? sent / total : 0} max={1} />
@@ -459,3 +546,21 @@
 		<Hint class="mt-12">{error}</Hint>
 	{/if}
 </FormLayout>
+
+{#if askOwner && archive?.owner}
+	<!-- 7.29б (A12): фон закрывает окно; «Нет» — на 7.29в, а не закрытие. -->
+	<Scrim onclick={() => (askOwner = false)} />
+	<Dialog label="{archive.owner.name} — это вы?" ondismiss={() => (askOwner = false)}>
+		<div class="dlgq">{archive.owner.name} — это вы?</div>
+		<MemberRow
+			initial={circleInitial(archive.owner.name)}
+			name={archive.owner.name}
+			subtitle="владелец круга «{circleName}»"
+			color={memberAvatarColor(0)}
+		/>
+		<div class="rowin ask">
+			<Button variant="ghost" onclick={notOwner}>Нет</Button>
+			<Button onclick={() => void revive()}>Да, это я</Button>
+		</div>
+	</Dialog>
+{/if}

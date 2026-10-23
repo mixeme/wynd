@@ -12,7 +12,13 @@ vi.mock('$lib/idb/db', () => ({
 	invalidateSnapshots: vi.fn()
 }));
 
-import { uploadArchiveFiles, type LoadedArchive } from './revive';
+import {
+	archiveOwner,
+	archivePeople,
+	reviverIsStranger,
+	uploadArchiveFiles,
+	type LoadedArchive
+} from './revive';
 
 const MB = 1024 * 1024;
 
@@ -65,5 +71,41 @@ describe('uploadArchiveFiles', () => {
 		await expect(done).resolves.toEqual({ b1: 'blob-on-server' });
 		expect(received).toBe(3 * MB);
 		expect(headCalls).toBe(1);
+	});
+});
+
+// «Аня — это вы?» (A12, 7.29а–в): кто владелец по архиву, кто в круге и есть
+// ли почта того, кто оживляет, среди участников.
+describe('владелец и люди архива', () => {
+	const t = (columns: string[], rows: unknown[][]) => ({ columns, rows });
+	const tables = {
+		circles: t(['id', 'owner_account_id'], [['c1', 'a1']]),
+		accounts: t(['id', 'email'], [['a1', 'anya@example.org'], ['a2', 'bob@example.org']]),
+		memberships: t(
+			['account_id', 'identity_id', 'status'],
+			[['a1', 'i1', 'active'], ['a2', 'i2', 'active'], ['a3', 'i3', 'gone']]
+		),
+		identity_names: t(
+			['identity_id', 'name', 'effective_at'],
+			[['i1', 'Анечка', '2026-01-01T00:00:00Z'], ['i1', 'Аня', '2026-05-01T00:00:00Z'], ['i2', 'Боб', '2026-01-01T00:00:00Z'], ['i3', 'Ушёл', '2026-01-01T00:00:00Z']]
+		)
+	};
+
+	it('владелец — с почтой и последним именем', () => {
+		expect(archiveOwner(tables)).toEqual({ email: 'anya@example.org', name: 'Аня' });
+	});
+
+	it('без почты владельца спросить не о ком', () => {
+		expect(archiveOwner({ ...tables, accounts: t(['id', 'email'], [['a2', 'bob@example.org']]) })).toBeUndefined();
+	});
+
+	it('«Кто уже здесь» — без вышедших', () => {
+		expect(archivePeople(tables)).toEqual(['Аня', 'Боб']);
+	});
+
+	it('почта в архиве — без оглядки на регистр', () => {
+		const archive = { emails: ['anya@example.org', 'bob@example.org'] } as LoadedArchive;
+		expect(reviverIsStranger(archive, 'Anya@Example.org')).toBe(false);
+		expect(reviverIsStranger(archive, 'slava@example.org')).toBe(true);
 	});
 });

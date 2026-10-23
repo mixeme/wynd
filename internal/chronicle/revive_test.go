@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"slices"
 	"testing"
+	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 )
@@ -149,6 +150,75 @@ func TestReviveCircleByStranger(t *testing.T) {
 	}
 	if ok, _ := e.ch.CanWrite(e.ctx, res.CircleID, "slava", e.at(4)); !ok {
 		t.Fatal("ожививший не пишет в круг")
+	}
+}
+
+// «Аня — это вы?» → «Нет» (A12, 7.29в): оживляет не прежний владелец —
+// он входит своим именем новым участником и владельцем, видит круг с
+// оживления; лицо и прошлое Ани остаются за её почтой, настройки она больше
+// не меняет — как после передачи владения.
+func TestReviveCircleByStrangerAsNewMember(t *testing.T) {
+	e := newTestEnv(t)
+	e.seedAccount("owner")
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	e.post(circle.ID, "owner", "на даче", "2026-08-01", e.at(1))
+	data, err := e.ch.FullArchiveData(e.ctx, circle.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tables, accounts, blobs := archiveOverJSON(t, data)
+	e.seedAccount("slava")
+	res, err := e.ch.ReviveCircle(e.ctx, chronicle.ReviveInput{
+		FormatVersion: 2, SchemaVersion: 1, Tables: tables, Accounts: accounts, BlobMap: blobs,
+		ReviverID: "slava", Now: e.at(3),
+		NewMember: &chronicle.ReviveNewMember{Name: "Слава", Gender: chronicle.GenderMale},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if owner, _ := e.ch.CircleOwnerAccount(e.ctx, res.CircleID); owner != "slava" {
+		t.Fatalf("владелец: %q", owner)
+	}
+	if res.AlreadyHere != 1 {
+		t.Fatalf("Аня уже на сервере: %+v", res)
+	}
+	type member struct {
+		name     string
+		settings int
+		started  string
+	}
+	read := func(account string) member {
+		var m member
+		if err := e.ch.DB().QueryRowContext(e.ctx, `
+			SELECT n.name, m.can_settings, MIN(s.started_at)
+			FROM memberships m
+			JOIN identity_names n ON n.identity_id = m.identity_id
+			JOIN membership_spans s ON s.membership_id = m.id
+			WHERE m.circle_id = ? AND m.account_id = ?`, res.CircleID, account).Scan(&m.name, &m.settings, &m.started); err != nil {
+			t.Fatalf("участие %s: %v", account, err)
+		}
+		return m
+	}
+	slava, anya := read("slava"), read("owner")
+	started, _ := time.Parse(time.RFC3339Nano, slava.started)
+	if slava.name != "Слава" || slava.settings != 1 || !started.Equal(e.at(3)) {
+		t.Fatalf("Слава: %+v (ждали отрезок с %s)", slava, e.at(3))
+	}
+	if anya.name != "Аня" || anya.settings != 0 {
+		t.Fatalf("Аня: %+v", anya)
+	}
+	feed, _ := e.ch.FullArchiveFeed(e.ctx, res.CircleID, e.at(4))
+	if len(feed) != 1 || feed[0].Post.AuthorName != "Аня" {
+		t.Fatalf("запись Ани: %+v", feed)
+	}
+	// В журнале одна строка — «оживил круг» от Славы, без «вступил».
+	var revivedBy string
+	var joined int
+	if err := e.ch.DB().QueryRowContext(e.ctx, `SELECT actor_name FROM events WHERE circle_id = ? AND event_type = 'circle_revived'`, res.CircleID).Scan(&revivedBy); err != nil || revivedBy != "Слава" {
+		t.Fatalf("строка оживления: %q %v", revivedBy, err)
+	}
+	if err := e.ch.DB().QueryRowContext(e.ctx, `SELECT COUNT(*) FROM events WHERE circle_id = ? AND event_type = 'member.joined' AND created_at >= ?`, res.CircleID, "2026-08-04").Scan(&joined); err != nil || joined != 0 {
+		t.Fatalf("лишняя строка «вступил»: %d %v", joined, err)
 	}
 }
 

@@ -63,6 +63,18 @@ type ReviveInput struct {
 	// MovedFrom — адрес прежнего сервера, если круг приехал переносом (план
 	// 53): в ленте тогда «Круг перенесён с …» (7.25), а не «оживил из архива».
 	MovedFrom string
+	// NewMember — почты того, кто оживляет, в архиве нет, и на «Аня — это
+	// вы?» он ответил «Нет» (7.29б → 7.29в, A12): входит своим именем,
+	// новым участником и владельцем, видит круг с оживления; лицо прежнего
+	// владельца остаётся за его почтой. Пусто — «Да, это я»: лицо и прошлое
+	// прежнего владельца переходят к нему (так было и до A12).
+	NewMember *ReviveNewMember
+}
+
+// ReviveNewMember — кто оживляет, если он не прежний владелец (7.29в).
+type ReviveNewMember struct {
+	Name   string
+	Gender Gender
 }
 
 // ReviveResult — что получилось, для итога 7.33 / 7.34.
@@ -129,9 +141,24 @@ func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveRes
 			reviverInArchive = true
 		}
 	}
+	newMember := in.NewMember
+	if _, ownerHasEmail := in.Accounts[owner]; reviverInArchive || !ownerHasEmail {
+		// Почта оживляющего в архиве — он и так в своём имени; почты прежнего
+		// владельца нет — его лицо не за кем оставить, оно переходит к нему.
+		newMember = nil
+	}
+	if newMember != nil {
+		newMember.Name = strings.TrimSpace(newMember.Name)
+		if newMember.Name == "" {
+			return res, ErrInvalid
+		}
+		if err := checkLen(newMember.Name, MaxNameChars); err != nil {
+			return res, err
+		}
+	}
 	accounts := map[string]string{}
 	for oldID, email := range in.Accounts {
-		if !reviverInArchive && oldID == owner {
+		if !reviverInArchive && newMember == nil && oldID == owner {
 			// Тот, кто оживил, — владелец и лицо прежнего владельца (план 52).
 			accounts[oldID] = in.ReviverID
 			continue
@@ -153,7 +180,7 @@ func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveRes
 		}
 		accounts[oldID] = id
 	}
-	if _, ok := accounts[owner]; !ok {
+	if _, ok := accounts[owner]; !ok && newMember == nil {
 		accounts[owner] = in.ReviverID
 	}
 
@@ -197,7 +224,19 @@ func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveRes
 
 	// Служебная строка: журнал продолжается с того места, где замер.
 	var reviverIdentity, reviverName string
-	if err := tx.QueryRowContext(ctx, `SELECT identity_id FROM memberships WHERE circle_id = ? AND account_id = ?`, res.CircleID, in.ReviverID).Scan(&reviverIdentity); err != nil {
+	if newMember != nil {
+		// Новым человеком: своё лицо и отрезок с оживления; прежний владелец
+		// остаётся участником без права менять настройки, как после передачи.
+		if _, reviverIdentity, err = insertMemberTx(ctx, tx, res.CircleID, in.ReviverID, newMember.Name, newMember.Gender, true, now); err != nil {
+			return res, err
+		}
+		if old := accounts[owner]; old != "" {
+			if _, err := tx.ExecContext(ctx, `UPDATE memberships SET can_settings = 0, updated_at = ? WHERE circle_id = ? AND account_id = ?`,
+				formatTime(now), res.CircleID, old); err != nil {
+				return res, err
+			}
+		}
+	} else if err := tx.QueryRowContext(ctx, `SELECT identity_id FROM memberships WHERE circle_id = ? AND account_id = ?`, res.CircleID, in.ReviverID).Scan(&reviverIdentity); err != nil {
 		return res, fmt.Errorf("revive: reviver has no identity: %w", err)
 	}
 	if reviverName, err = c.identityName(ctx, tx, reviverIdentity); err != nil {
