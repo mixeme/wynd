@@ -98,8 +98,8 @@ func (a *App) CopyText(text string) bool {
 	return runtime.ClipboardSetText(a.ctx, text) == nil
 }
 
-// Version — номер версии для полосы заголовка (своя рамка окна).
-func (a *App) Version() string { return version.Number }
+// Version — номер версии Мастерской для полосы заголовка (своя рамка окна).
+func (a *App) Version() string { return installer.WorkshopVersion }
 
 // Disconnect рвёт подключение и забывает пароль из памяти.
 func (a *App) Disconnect() {
@@ -110,6 +110,8 @@ func main() {
 	app := &App{wizard: &installer.Wizard{
 		Dialer:  devDialer(),
 		Vault:   keyringVault{},
+		// Версия Wynd, которую Мастерская знает со сборки; ставит она свежую
+		// из хранилища, эта — когда хранилище не ответило.
 		Version: version.Number,
 		Image:   imageSource(),
 		Source:  installer.SourceImage{Repo: installer.DefaultSource},
@@ -117,8 +119,8 @@ func main() {
 		TestCert: devTestCert(),
 	}}
 	err := wails.Run(&options.App{
-		// Версия установщика — та же, что у Wynd, который он ставит.
-		Title:       "Wynd Мастерская [" + version.Number + "]",
+		// Своя версия Мастерской, не Wynd (план 45, 2026-10-24).
+		Title:       "Wynd Мастерская [" + installer.WorkshopVersion + "]",
 		Width:       760,
 		Height:      560,
 		MinWidth:    680,

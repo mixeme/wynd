@@ -720,6 +720,86 @@ func (g RegistryImage) Published(ctx context.Context, sess *Session, version, ar
 	return false, false
 }
 
+// tagsScript — список меток образа в хранилище; токен анонимный, как у
+// publishedScript.
+func (g RegistryImage) tagsScript() string {
+	host, path, _ := strings.Cut(g.Repo, "/")
+	return `t=$(curl -fsS --max-time 15 ` + shQuote("https://"+host+"/token?scope=repository:"+path+":pull") + ` 2>/dev/null | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+[ -n "$t" ] || exit 0
+curl -fsS --max-time 15 -H "Authorization: Bearer $t" ` + shQuote("https://"+host+"/v2/"+path+"/tags/list?n=1000")
+}
+
+// Latest — самая свежая версия Wynd в хранилище, у которой есть сборка под
+// архитектуру сервера. Мастерская ставит её, а не свой номер: версии
+// Мастерской и Wynd разделены (план 45, решение владельца 2026-10-24) —
+// новую Мастерскую под каждый выпуск Wynd никто не скачивает. ok ложно,
+// когда хранилище не ответило: тогда ставим версию, которую Мастерская знает.
+func (g RegistryImage) Latest(ctx context.Context, sess *Session, arch string) (string, bool) {
+	if arch == "" {
+		return "", false
+	}
+	res, err := sess.Exec(ctx, g.tagsScript(), nil, shortTimeout)
+	if err != nil || res.Code != 0 {
+		return "", false
+	}
+	var body struct {
+		Tags []string `json:"tags"`
+	}
+	if json.Unmarshal([]byte(strings.TrimSpace(res.Output)), &body) != nil {
+		return "", false
+	}
+	return newestRelease(body.Tags, arch)
+}
+
+// newestRelease — старшая «X.Y.Z» среди меток, у которой есть «X.Y.Z-arch».
+// Метки с хвостом (сборки под архитектуру, пробные) версиями не считаются.
+func newestRelease(tags []string, arch string) (string, bool) {
+	have := make(map[string]bool, len(tags))
+	for _, t := range tags {
+		have[t] = true
+	}
+	best, bestNum := "", [3]int{}
+	for _, t := range tags {
+		num, ok := releaseNumber(t)
+		if !ok || !have[t+"-"+arch] {
+			continue
+		}
+		if best == "" || versionLess(bestNum, num) {
+			best, bestNum = t, num
+		}
+	}
+	return best, best != ""
+}
+
+func releaseNumber(tag string) ([3]int, bool) {
+	var num [3]int
+	parts := strings.Split(tag, ".")
+	if len(parts) != 3 {
+		return num, false
+	}
+	for i, p := range parts {
+		if p == "" || len(p) > 6 {
+			return num, false
+		}
+		for _, c := range p {
+			if c < '0' || c > '9' {
+				return num, false
+			}
+			num[i] = num[i]*10 + int(c-'0')
+		}
+	}
+	return num, true
+}
+
+func versionLess(a, b [3]int) bool {
+	for i := range a {
+		if a[i] != b[i] {
+			return a[i] < b[i]
+		}
+	}
+	return false
+}
+
 // Provide скачивает образ на сервер.
 func (g RegistryImage) Provide(ctx context.Context, r *Run, tag string) error {
 	r.note("сервер скачивает Wynd")

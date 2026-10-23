@@ -656,6 +656,10 @@ func TestPlanBuildsFromSource(t *testing.T) {
 	// Готового Wynd в реестре нет — это видно уже в плане, и выбора нет.
 	answer := "404"
 	srv.handler = func(command string, _ []byte) (string, int) {
+		// Список версий хранилище здесь не отдаёт — ставим ту, что знаем.
+		if strings.Contains(command, "/tags/list") {
+			return "", 0
+		}
 		if strings.HasPrefix(command, "t=$(curl ") {
 			if !strings.Contains(command, "/v2/mixeme/wynd/manifests/9.9.9-amd64'") {
 				t.Errorf("спросили не ту сборку: %s", command)
@@ -916,5 +920,52 @@ func TestWizardRemovesFoundWynd(t *testing.T) {
 	}
 	if !strings.Contains(res.Log[0].Command, "docker compose images -q") {
 		t.Fatalf("образы контейнеров не убираются: %s", res.Log[0].Command)
+	}
+}
+
+// Мастерская ставит самую свежую версию Wynd из хранилища, а не свой номер
+// (план 45, 2026-10-24): старшая «X.Y.Z», у которой есть сборка под сервер.
+func TestNewestRelease(t *testing.T) {
+	tags := []string{"0.9.10", "0.9.10-amd64", "0.10.2", "0.10.2-amd64", "0.10.2-arm64", "0.11.0", "0.11.0-arm64", "latest", "0.12.0-rc1"}
+	if got, ok := newestRelease(tags, "amd64"); !ok || got != "0.10.2" {
+		t.Fatalf("amd64: %q %v", got, ok)
+	}
+	if got, ok := newestRelease(tags, "arm64"); !ok || got != "0.11.0" {
+		t.Fatalf("arm64: %q %v", got, ok)
+	}
+	if _, ok := newestRelease([]string{"latest"}, "amd64"); ok {
+		t.Fatal("без версий — не знаем")
+	}
+}
+
+func TestPlanTakesNewestWyndFromRegistry(t *testing.T) {
+	srv := startServer(t, "pw", nil, cleanUbuntu)
+	w, _ := newWizard(t)
+	w.Version = "9.9.9"
+	w.Image = RegistryImage{Repo: "ghcr.io/mixeme/wynd"}
+	w.Source = SourceImage{Repo: "https://example.org/wynd"}
+	ctx := context.Background()
+	w.Connect(ctx, ConnectInput{Host: srv.host, Port: srv.port, User: "root", Password: "pw"})
+	if res := w.ConfirmHost(ctx); res.Status != StatusConnected {
+		t.Fatalf("подключение: %+v", res)
+	}
+	if res := w.Inspect(ctx); !res.OK {
+		t.Fatalf("осмотр: %+v", res)
+	}
+	tags := `{"name":"mixeme/wynd","tags":["9.9.9","9.9.9-amd64","10.0.1","10.0.1-amd64","10.0.2"]}`
+	srv.handler = func(command string, _ []byte) (string, int) {
+		if strings.Contains(command, "/tags/list") {
+			return tags, 0
+		}
+		return "", 0
+	}
+	plan := w.MakePlan(ctx, "family.example.ru")
+	if !plan.OK || plan.Version != "10.0.1" || plan.Build || plan.Unpublished {
+		t.Fatalf("ждали свежую 10.0.1 из хранилища: %+v", plan)
+	}
+	// Хранилище молчит — версия, которую Мастерская знает.
+	tags = ""
+	if quiet := w.MakePlan(ctx, "family.example.ru"); !quiet.OK || quiet.Version != "9.9.9" {
+		t.Fatalf("хранилище молчит: %+v", quiet)
 	}
 }

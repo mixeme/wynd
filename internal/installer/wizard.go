@@ -59,7 +59,9 @@ type Wizard struct {
 	Dialer   Dialer
 	Resolver Resolver
 	Vault    Vault
-	// Version — версия Wynd, которую ставим; Image — откуда сервер её возьмёт.
+	// Version — версия Wynd, которую Мастерская знает со сборки: её ставим,
+	// только если хранилище не назвало свежую (RegistryImage.Latest). Image —
+	// откуда сервер её возьмёт.
 	Version string
 	Image   ImageSource
 	// Source — второй способ: сервер собирает Wynd сам из открытого кода.
@@ -82,7 +84,9 @@ type Wizard struct {
 	// готового Wynd этой версии в реестре нет (узнаём, составляя план).
 	build       bool
 	unpublished bool
-	progress    Progress
+	// wynd — версия Wynd этого плана: свежая из хранилища или Version.
+	wynd     string
+	progress Progress
 	cancel      context.CancelFunc
 	// finished закрывается, когда прогон установки кончился.
 	finished chan struct{}
@@ -255,9 +259,14 @@ func (w *Wizard) MakePlan(ctx context.Context, domain string) Plan {
 	// Есть ли готовый Wynd, спрашиваем до плана: человек должен увидеть сборку
 	// в плане, а не отказом посреди установки.
 	unpublished := false
-	if reg, ok := w.Image.(RegistryImage); ok && w.Source != nil && sess != nil && rep != nil {
-		published, known := reg.Published(ctx, sess, w.Version, rep.Arch)
-		unpublished = known && !published
+	wynd := w.Version
+	if reg, ok := w.Image.(RegistryImage); ok && sess != nil && rep != nil {
+		if latest, found := reg.Latest(ctx, sess, rep.Arch); found {
+			wynd = latest
+		} else if w.Source != nil {
+			published, known := reg.Published(ctx, sess, wynd, rep.Arch)
+			unpublished = known && !published
+		}
 	}
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -265,6 +274,7 @@ func (w *Wizard) MakePlan(ctx context.Context, domain string) Plan {
 		return Plan{Message: "Сначала подключитесь к серверу и дождитесь осмотра"}
 	}
 	w.unpublished = unpublished
+	w.wynd = wynd
 	if check.Level != LevelOK {
 		return Plan{Domain: check.Domain, Message: check.Text, Advice: check.Advice}
 	}
@@ -274,7 +284,11 @@ func (w *Wizard) MakePlan(ctx context.Context, domain string) Plan {
 // planLocked составляет план по осмотру и запоминает его, если по нему можно
 // ставить.
 func (w *Wizard) planLocked(rep Report, domain string) Plan {
-	plan := BuildPlan(rep, domain, w.Version, (w.build || w.unpublished) && w.Source != nil)
+	wynd := w.wynd
+	if wynd == "" {
+		wynd = w.Version
+	}
+	plan := BuildPlan(rep, domain, wynd, (w.build || w.unpublished) && w.Source != nil)
 	plan.CanBuild = w.Source != nil
 	plan.Unpublished = w.unpublished && w.Source != nil
 	w.plan = nil
