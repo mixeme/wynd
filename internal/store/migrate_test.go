@@ -264,6 +264,31 @@ func TestMigrateVideoDurationOverPopulatedBase(t *testing.T) {
 	}
 }
 
+// 0007 добавляет итог переноса «уже здесь» (C51): прежние переносы целы, у них 0.
+func TestMigrateIncomingAlreadyHereOverPopulatedBase(t *testing.T) {
+	s := baseAt(t, 6)
+	const ts = "2026-10-20T09:00:00.000000000Z"
+	for _, q := range []string{
+		`INSERT INTO accounts (id, email, created_at) VALUES ('acc', 'a@test.local', '` + ts + `')`,
+		`INSERT INTO incoming_moves (id, account_id, link, source_url, circle_name, expires_at, status, created_at, updated_at)
+		 VALUES ('m1', 'acc', '', 'https://old.example', 'Семья', '` + ts + `', 'done', '` + ts + `', '` + ts + `')`,
+	} {
+		if _, err := s.db.Exec(q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := migrate(s.db); err != nil {
+		t.Fatalf("migrate over populated base: %v", err)
+	}
+	var here int
+	if err := s.db.QueryRow(`SELECT already_here FROM incoming_moves WHERE id = 'm1'`).Scan(&here); err != nil {
+		t.Fatal(err)
+	}
+	if here != 0 {
+		t.Fatalf("already_here: %d", here)
+	}
+}
+
 // Пропущенная миграция ниже уже применённой — отказ запуска, а не доливка
 // середины цепочки поверх более новой схемы (MIG-1).
 func TestMigrateRefusesSkippedVersion(t *testing.T) {

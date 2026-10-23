@@ -372,6 +372,7 @@ func TestMoveBetweenServers(t *testing.T) {
 				Bytes    int64  `json:"bytes"`
 				Verified bool   `json:"verified"`
 				Invited  int    `json:"invited"`
+				Here     *int   `json:"already_here"`
 			} `json:"result"`
 		} `json:"move"`
 	}
@@ -406,6 +407,10 @@ func TestMoveBetweenServers(t *testing.T) {
 	// не бывал — ему письмо.
 	if r.Invited != 1 {
 		t.Fatalf("приглашения: %d", r.Invited)
+	}
+	// «Уже здесь» в итоге (C51): кроме Кота, на новом сервере никого.
+	if r.Here == nil || *r.Here != 0 {
+		t.Fatalf("already_here: %v", r.Here)
 	}
 
 	// Круг на новом сервере — у Кота, со снимком и строкой о переносе.

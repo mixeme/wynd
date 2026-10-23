@@ -25,6 +25,8 @@ export interface IncomingMove {
 		verified: boolean;
 		invited: number;
 		not_joined: number;
+		/** Сколько людей круга уже было на этом сервере (C51); старый сервер — нет поля. */
+		already_here?: number;
 	};
 }
 

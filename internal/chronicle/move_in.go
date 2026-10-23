@@ -48,6 +48,9 @@ type IncomingMove struct {
 	Verified    bool
 	Invited     int
 	NotJoined   int
+	// AlreadyHere — сколько людей круга уже было на этом сервере (C51):
+	// «Все уже на этом сервере» на итоге 7.25, как у оживления.
+	AlreadyHere int
 	Error       string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
@@ -70,7 +73,7 @@ const incomingCols = `id, account_id, link, source_url, source_name, circle_name
 	posts, members, bytes, frozen_at, expires_at, send_invites, status, pulled_bytes,
 	COALESCE(circle_id, ''), COALESCE(result_posts, 0), COALESCE(result_names, 0), COALESCE(result_bytes, 0),
 	COALESCE((SELECT text_bytes FROM circles WHERE circles.id = incoming_moves.circle_id), 0),
-	verified, invited, not_joined, COALESCE(error, ''), created_at, updated_at`
+	verified, invited, not_joined, already_here, COALESCE(error, ''), created_at, updated_at`
 
 func scanIncoming(row interface{ Scan(...any) error }) (*IncomingMove, error) {
 	var m IncomingMove
@@ -79,7 +82,7 @@ func scanIncoming(row interface{ Scan(...any) error }) (*IncomingMove, error) {
 	if err := row.Scan(&m.ID, &m.AccountID, &m.Link, &m.SourceURL, &m.SourceName, &m.CircleName, &m.CircleColor,
 		&m.Posts, &m.Members, &m.Bytes, &frozen, &expires, &m.SendInvites, &m.Status, &m.PulledBytes,
 		&m.CircleID, &m.ResultPosts, &m.ResultNames, &m.ResultBytes, &m.ResultTextBytes,
-		&m.Verified, &m.Invited, &m.NotJoined, &m.Error, &created, &updated); err != nil {
+		&m.Verified, &m.Invited, &m.NotJoined, &m.AlreadyHere, &m.Error, &created, &updated); err != nil {
 		return nil, err
 	}
 	m.FrozenAt = optTime(frozen)
@@ -198,12 +201,12 @@ func (c *Chronicle) SetIncomingStatus(ctx context.Context, id, status, errCode s
 // SetIncomingRevived — круг поднят (7.25, 7.26): итог записан сразу, до
 // «принято» прежнему серверу, — перезапуск между ними не поднимет круг второй
 // раз.
-func (c *Chronicle) SetIncomingRevived(ctx context.Context, id, circleID string, posts, names int, bytes int64, verified bool, invited, notJoined int) error {
+func (c *Chronicle) SetIncomingRevived(ctx context.Context, id, circleID string, posts, names int, bytes int64, verified bool, invited, notJoined, alreadyHere int) error {
 	_, err := c.db.ExecContext(ctx, `
 		UPDATE incoming_moves SET circle_id = ?, result_posts = ?, result_names = ?,
-			result_bytes = ?, verified = ?, invited = ?, not_joined = ?, updated_at = ?
+			result_bytes = ?, verified = ?, invited = ?, not_joined = ?, already_here = ?, updated_at = ?
 		WHERE id = ?
-	`, circleID, posts, names, bytes, verified, invited, notJoined, formatTime(time.Now().UTC()), id)
+	`, circleID, posts, names, bytes, verified, invited, notJoined, alreadyHere, formatTime(time.Now().UTC()), id)
 	return err
 }
 

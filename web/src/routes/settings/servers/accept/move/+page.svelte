@@ -226,7 +226,16 @@
 				? `${plural(r.posts, WORD.post)}, ${plural(r.names, WORD.name)}, ${formatBytes(r.bytes)} — сверено с прежним сервером, ничего не потерялось.`
 				: `${plural(r.posts, WORD.post)}, ${plural(r.names, WORD.name)}, ${formatBytes(r.bytes)} — с прежним сервером сошлось не всё.`}
 		/>
-		{#if r.invited > 0}
+		{#if r.invited === 0 && r.not_joined === 0 && (r.already_here ?? 0) > 0}
+			<!-- Все, кроме вас, уже на этом сервере: письма не нужны (C51, как у оживления). -->
+			<SettingsRow
+				class="mt-14"
+				title="Все уже на этом сервере"
+				subtitle="круг уже в их списке кругов — письма не нужны"
+				chevron={false}
+				divided="both"
+			/>
+		{:else if r.invited > 0}
 			<SettingsRow
 				class="mt-14"
 				title="Приглашения отправлены"

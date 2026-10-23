@@ -181,6 +181,7 @@ func incomingJSON(m *chronicle.IncomingMove, now time.Time) map[string]any {
 		out["result"] = map[string]any{
 			"circle_id": m.CircleID, "posts": m.ResultPosts, "names": m.ResultNames, "bytes": m.ResultBytes + m.ResultTextBytes,
 			"verified": m.Verified, "invited": m.Invited, "not_joined": m.NotJoined,
+			"already_here": m.AlreadyHere,
 		}
 	}
 	return out
@@ -578,7 +579,7 @@ func (s *Server) reviveIncoming(ctx context.Context, m *chronicle.IncomingMove) 
 		if err != nil {
 			return err
 		}
-		if err := s.Chronicle.SetIncomingRevived(ctx, m.ID, out.CircleID, out.Posts, out.Names, out.MediaBytes, out.Verified, out.Invited, out.NotJoined); err != nil {
+		if err := s.Chronicle.SetIncomingRevived(ctx, m.ID, out.CircleID, out.Posts, out.Names, out.MediaBytes, out.Verified, out.Invited, out.NotJoined, out.AlreadyHere); err != nil {
 			return err
 		}
 		m.ResultPosts, m.ResultNames, m.ResultBytes = out.Posts, out.Names, out.MediaBytes
