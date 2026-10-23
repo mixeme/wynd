@@ -1400,8 +1400,10 @@ button.crow {
 	overflow: visible;
 }
 .cstrip .cpend-add {
-	display: grid;
-	place-items: center;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
 	border: 1px dashed var(--line);
 	background: var(--card);
 	color: var(--muted);

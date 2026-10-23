@@ -110,6 +110,7 @@
 	let editingAdded = $state.raw<PendingMedia[]>([]);
 	let editingOriginalCount = 0;
 	let editPicker: FilePicker | undefined = $state();
+	let editPhotoPicker: FilePicker | undefined = $state();
 	// Правка реплики, которая ещё в очереди: её файлы — на устройстве.
 	let editingQueueId = $state<number | null>(null);
 	let editingQueuePayload: CommentQueuePayload | undefined;
@@ -153,6 +154,12 @@
 	// Доля ушедших байт у реплики, которая отправляется сейчас.
 	let sendProgress = $state<Record<number, number>>({});
 
+	// Ключ снимка — вместе с файлом, а не только номером: после правки реплики
+	// в очереди на том же месте другой снимок, и старый адрес показал бы прежний.
+	function queuedMediaKey(id: number, i: number, m: { name: string; size: number }): string {
+		return `${id}:${i}:${m.name}:${m.size}`;
+	}
+
 	function refreshQueued() {
 		void listQueuedComments(circle.origin, circle.circleId, postId).then((items) => {
 			// Реплика ушла из очереди — она уже на сервере, перечитываем нить.
@@ -161,7 +168,7 @@
 			for (const item of items) {
 				item.media.forEach((m, i) => {
 					if (!m.preview) return;
-					const key = `${item.id}:${i}`;
+					const key = queuedMediaKey(item.id, i, m);
 					next[key] =
 						queuedUrls[key] ??
 						URL.createObjectURL(new Blob([m.preview.data], { type: m.preview.type }));
@@ -178,7 +185,7 @@
 
 	function queuedMediaItems(item: QueuedCommentView): CommentMediaItem[] {
 		return item.media.map((m, i) => {
-			const key = `${item.id}:${i}`;
+			const key = queuedMediaKey(item.id, i, m);
 			if (m.kind === 'photo') return { key, kind: 'photo', url: queuedUrls[key] };
 			if (m.voice) return { key, kind: 'voice', peaks: m.peaks, durationMs: m.duration_ms };
 			return { key, kind: 'file', name: m.name, size: m.size };
@@ -927,6 +934,7 @@
 			{/snippet}
 		</PostCard>
 
+		<FilePicker bind:this={editPhotoPicker} accept="image/*" multiple onfiles={(files) => void addEditingFiles(files)} />
 		<FilePicker bind:this={editPicker} accept="*/*" multiple onfiles={(files) => void addEditingFiles(files)} />
 		<Thread>
 			{#each currentPost.comments ?? [] as comment (comment.id)}
@@ -950,7 +958,8 @@
 							<CommentMediaEdit
 								items={editingItems}
 								onremove={removeEditingItem}
-								onadd={editingItems.length < MAX_COMMENT_MEDIA ? () => editPicker?.open() : undefined}
+								onaddphoto={editingItems.length < MAX_COMMENT_MEDIA ? () => editPhotoPicker?.open() : undefined}
+								onaddfile={editingItems.length < MAX_COMMENT_MEDIA ? () => editPicker?.open() : undefined}
 							/>
 							{#if preparing}<Hint class="m-0">{preparing}</Hint>{/if}
 							<div class="rowin">
@@ -989,8 +998,9 @@
 			{#each queuedComments as item (item.id)}
 				<!-- Реплику в очереди можно поправить и убрать, как отправленную (C53);
 				     уходящую сейчас — нет. -->
+				<!-- Правка не приглушается: в поле пишут. -->
 				<CommentRow
-					queued
+					queued={editingQueueId !== item.id}
 					initial={circle.identityInitial}
 					name={circle.identityName}
 					color={circle.colorHex}
@@ -1013,7 +1023,8 @@
 							<CommentMediaEdit
 								items={editingItems}
 								onremove={removeEditingItem}
-								onadd={editingItems.length < MAX_COMMENT_MEDIA ? () => editPicker?.open() : undefined}
+								onaddphoto={editingItems.length < MAX_COMMENT_MEDIA ? () => editPhotoPicker?.open() : undefined}
+								onaddfile={editingItems.length < MAX_COMMENT_MEDIA ? () => editPicker?.open() : undefined}
 							/>
 							{#if preparing}<Hint class="m-0">{preparing}</Hint>{/if}
 							<div class="rowin">
