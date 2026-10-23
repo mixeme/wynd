@@ -1001,7 +1001,7 @@
 						onclick={() => openDay(ev.day!.entry_date)}
 					/>
 				{:else}
-					<EventDivider text={ev.summary} />
+					<EventDivider text={ev.summary} time={formatPostTime(ev.created_at)} />
 				{/if}
 			{/snippet}
 

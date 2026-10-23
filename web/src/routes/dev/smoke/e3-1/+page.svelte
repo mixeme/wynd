@@ -17,7 +17,7 @@
 	onCommentCompose={() => {}}
 	onCommentPhotos={() => {}}
 >
-	<EventDivider text="Мышка теперь Мышь" />
+	<EventDivider text="Мышка теперь Мышь" time="сегодня, 09:13" />
 	<PostCard>
 		{#snippet author()}
 			<Avatar initial="А" color="#58673A" />

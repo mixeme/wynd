@@ -211,6 +211,7 @@
   .ev { display:flex; align-items:center; gap:10px; padding:9px 18px; }
   .ev:before, .ev:after { content:""; flex:1; height:1px; background:var(--line); }
   .ev span { font-size:11.5px; color:var(--muted); }
+  .ev .ev-t { display:block; font-size:10.5px; opacity:.8; text-align:center; }
   .ev.new:before, .ev.new:after { background:var(--c); opacity:.45; }
   .ev.new span { color:var(--c); font-weight:600; }
   /* день в ленте: название и обложка — открытка на тоне круга (3.15) */
@@ -1451,7 +1452,7 @@
   <div class="cbar"><div class="top"><svg class="ic"><use href="#i-back"/></svg><span class="t">Семья</span>
     <span class="idn">Мышь<span class="av">М</span></span></div>
     <div class="tabs"><span class="on">Хронология</span><span>Дни</span><span>Сетка</span><span>Карта</span><span>Отклики</span></div></div>
-  <div class="ev"><span>Мышка теперь Мышь</span></div>
+  <div class="ev"><span>Мышка теперь Мышь<small class="ev-t">сегодня, 09:13</small></span></div>
   <div class="post">
     <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">сегодня, 14:02</div></div></div>
     <div class="pt">Были на даче, все живы. Яблони в этом году как с ума сошли.</div>
@@ -1510,7 +1511,7 @@
     <div class="pt">Рады тебя видеть!</div>
     <div class="rx"><span class="one"><svg class="ic xs" style="color:var(--c)"><use href="#i-heart"/></svg>Мышь</span></div>
   </div>
-  <div class="ev"><span>Мышь присоединилась</span></div>
+  <div class="ev"><span>Мышь присоединилась<small class="ev-t">вчера, 21:40</small></span></div>
   <div style="text-align:center;color:var(--c);margin-top:26px">
     <svg viewBox="-21.67 -31.8 42.9 76" width="60" height="106" style="display:inline-block"><use href="#mark" fill="currentColor" x="-21.67" y="-31.8" width="42.9" height="64.47"/><circle cx="0" cy="38" r="2.6" fill="currentColor"/></svg>
     <div style="font-size:12.5px;margin-top:6px">Вы здесь с 5 августа</div>
@@ -1536,7 +1537,7 @@
     <div class="pa"><div class="av" style="background:#62452F">К</div><div><div class="n">Кот</div><div class="tm">12 марта 2024</div></div></div>
     <div class="pt">Ну вот, попробуем.</div>
   </div>
-  <div class="ev"><span>Кот завёл круг</span></div>
+  <div class="ev"><span>Кот завёл круг<small class="ev-t">10 октября, 17:52</small></span></div>
   <div style="text-align:center;color:var(--ink);margin-top:62px">
     <svg viewBox="-21.67 -31.8 42.9 64.47" width="62" height="93" style="display:inline-block">
       <defs><linearGradient id="fadeA" x1="0" y1="0" x2="0" y2="1">
@@ -1627,7 +1628,7 @@
     <div class="pt">Доехали. Связи нет совсем, пишу в пустоту.</div>
     <div class="pic sq p2" style="aspect-ratio:4/3"><span class="cnt">3</span></div>
   </div>
-  <div class="ev"><span>Мышь присоединилась</span></div>
+  <div class="ev"><span>Мышь присоединилась<small class="ev-t">вчера, 21:40</small></span></div>
   <div class="post">
     <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">5 августа, 19:12</div></div></div>
     <div class="pt">Рады тебя видеть!</div>
@@ -1642,7 +1643,7 @@
   <div class="cbar"><div class="top"><svg class="ic"><use href="#i-back"/></svg><span class="t">Поход на Алтай</span>
     <span class="idn">Мышь<span class="av">М</span></span></div>
     <div class="tabs"><span class="on">Хронология</span><span>Дни</span><span>Сетка</span><span>Карта</span><span>Отклики</span></div></div>
-  <div class="ev"><span>Мышка теперь Мышь</span></div>
+  <div class="ev"><span>Мышка теперь Мышь<small class="ev-t">сегодня, 09:13</small></span></div>
   <div class="post">
     <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">сегодня, 14:02</div></div></div>
     <div class="pt">Были на даче, все живы. Яблони в этом году как с ума сошли.</div>
@@ -1726,7 +1727,7 @@
     <div class="pt">Скачала. Дед, тебе помочь?</div>
     <div class="rx"><span class="one"><svg class="ic xs" style="color:var(--c)"><use href="#i-heart"/></svg>Кот</span><span class="add">+</span></div>
   </div>
-  <div class="ev"><span>Кот назначил архивацию до 1 июня 2025</span></div>
+  <div class="ev"><span>Кот назначил архивацию до 1 июня 2025<small class="ev-t">12 мая, 10:05</small></span></div>
   <div class="post">
     <div class="pa"><div class="av" style="background:#3C4D83">М</div><div><div class="n">Мама</div><div class="tm">вчера, 21:40</div></div></div>
     <div class="pt">Дед нашёл на чердаке коробку с плёнками. Будем проявлять.</div>
@@ -1744,7 +1745,7 @@
     <div class="dl">Переезд · круг замер</div>
     <div style="padding:0 14px 12px;font-size:12.5px;color:var(--muted);line-height:1.5">Кот переносит «Семью» на другой сервер. Читать можно, писать пока нельзя. Когда перенос закончится, на <strong>anya@example.com</strong> придёт письмо с новым адресом круга.</div>
   </div>
-  <div class="ev"><span>Кот начал перенос круга</span></div>
+  <div class="ev"><span>Кот начал перенос круга<small class="ev-t">сегодня, 08:30</small></span></div>
   <div class="post">
     <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">сегодня, 13:40</div></div></div>
     <div class="pt">Переезжаем к Славе, там места больше. Ничего не пропадёт.</div>
@@ -1766,8 +1767,8 @@
     <div style="padding:0 14px 12px;font-size:12.5px;color:var(--muted);line-height:1.5">«Семья» теперь на <strong>wynd.u-slavy.ru</strong>. Войдите там почтой <strong>anya@example.com</strong> — попадёте в своё имя и свои записи. Здесь круг замер и исчезнет, когда Кот завершит перенос.</div>
     <div class="di" style="border-top:1px solid var(--line);display:flex;align-items:center">Перейти на новый сервер<svg class="ic sm" style="margin-left:auto"><use href="#i-chevr"/></svg></div>
   </div>
-  <div class="ev"><span>Кот перенёс круг на wynd.u-slavy.ru</span></div>
-  <div class="ev"><span>Кот начал перенос круга</span></div>
+  <div class="ev"><span>Кот перенёс круг на wynd.u-slavy.ru<small class="ev-t">сегодня, 08:47</small></span></div>
+  <div class="ev"><span>Кот начал перенос круга<small class="ev-t">сегодня, 08:30</small></span></div>
   <div class="post">
     <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">сегодня, 13:40</div></div></div>
     <div class="pt">Переезжаем к Славе, там места больше. Ничего не пропадёт.</div>
@@ -1785,7 +1786,7 @@
     <div style="padding:0 14px 12px;font-size:12.5px;color:var(--muted);line-height:1.5">Кот убирает «Семью» с «Дома Ани» и сохраняет её в файл. Читать можно, писать нельзя. Свой архив — всё, что вы видели в круге, — можно скачать, пока круг здесь.</div>
     <div class="di" style="border-top:1px solid var(--line);display:flex;align-items:center">Скачать свой архив<svg class="ic sm" style="margin-left:auto"><use href="#i-chevr"/></svg></div>
   </div>
-  <div class="ev"><span>Кот остановил круг</span></div>
+  <div class="ev"><span>Кот остановил круг<small class="ev-t">сегодня, 08:30</small></span></div>
   <div class="post">
     <div class="pa"><div class="av" style="background:#3C4D83">М</div><div><div class="n">Мама</div><div class="tm">4 сентября, 21:40</div></div></div>
     <div class="pt">Дед нашёл на чердаке коробку с плёнками. Будем проявлять.</div>
@@ -1896,7 +1897,7 @@
     <div class="pic p1" role="img" aria-label="Фотография дня"></div>
     <div class="tx"><div class="dd">2 августа</div><div class="dn">Река</div><div class="dw">Петя назвал день · вчера, 18:10</div></div>
   </div>
-  <div class="ev"><span>Аня убрала название для 30 июля</span></div>
+  <div class="ev"><span>Аня убрала название для 30 июля<small class="ev-t">31 июля, 19:20</small></span></div>
   <div class="dayc">
     <div class="pic p7" role="img" aria-label="Обложка дня"></div>
     <div class="tx"><div class="dn">30 июля</div><div class="dw">Кот выбрал обложку · вчера, 17:02</div></div>
@@ -1938,7 +1939,7 @@
   <div class="cbar"><div class="top"><svg class="ic"><use href="#i-back"/></svg><span class="t">Семья</span>
     <span class="idn">Мышь<span class="av">М</span></span></div>
     <div class="tabs"><span class="on">Хронология</span><span>Дни</span><span>Сетка</span><span>Карта</span><span>Отклики</span></div></div>
-  <div class="ev"><span>Мышка теперь Мышь</span></div>
+  <div class="ev"><span>Мышка теперь Мышь<small class="ev-t">сегодня, 09:13</small></span></div>
   <div class="post">
     <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">сегодня, 14:02</div></div></div>
     <div class="pt">Были на даче, все живы. Яблони в этом году как с ума сошли.</div>
@@ -4437,7 +4438,7 @@
   <div class="cbar"><div class="top"><svg class="ic"><use href="#i-back"/></svg><span class="t">Семья</span>
     <span class="idn">Мышь<span class="av">М</span></span></div>
     <div class="tabs"><span class="on">Хронология</span><span>Дни</span><span>Сетка</span><span>Карта</span><span>Отклики</span></div></div>
-  <div class="ev"><span>Мышка теперь Мышь</span></div>
+  <div class="ev"><span>Мышка теперь Мышь<small class="ev-t">сегодня, 09:13</small></span></div>
   <div class="post">
     <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">сегодня, 14:02</div></div></div>
     <div class="pt">Были на даче, все живы. Яблони в этом году как с ума сошли.</div>
