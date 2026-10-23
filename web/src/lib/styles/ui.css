@@ -1077,6 +1077,11 @@
 	background: var(--ct);
 	transition: background .6s ease;
 }
+/* --ct светлый и в тёмной теме: светлый текст на нём пропадал (запись из
+   поиска). Тот же тёмный тон, что у реакций и карточек дней. */
+.ph.dark .cmt.linked, .ph.dark .att.linked, .ph.dark .post.linked {
+	background: #3A2E29;
+}
 .att, .post {
 	transition: background .6s ease;
 }
