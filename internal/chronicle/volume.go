@@ -271,6 +271,28 @@ func (c *Chronicle) PostsKeptAtCutoffTZ(ctx context.Context, circleID, cutoffDat
 	return n, err
 }
 
+// UnseenPostsAtCutoff — сколько живых записей отсечка удалит из тех, что
+// внесены раньше seenFrom (начало отрезка владельца): их он не видел (A12,
+// 6.17а; владелец 2026-10-24: строка «нужна только если попали записи,
+// которых он не видит»).
+func (c *Chronicle) UnseenPostsAtCutoff(ctx context.Context, circleID, cutoffDate, tz string, seenFrom time.Time) (int, error) {
+	if tz == "" {
+		tz = c.archiveTimeZone(ctx, circleID)
+	}
+	cutoff, err := CutoffInstantIn(cutoffDate, tz)
+	if err != nil {
+		return 0, err
+	}
+	if seenFrom.Before(cutoff) {
+		cutoff = seenFrom
+	}
+	var n int
+	err = c.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM posts WHERE circle_id = ? AND deleted = 0 AND created_at < ?
+	`, circleID, formatTime(cutoff)).Scan(&n)
+	return n, err
+}
+
 // FreedBytesBeforeCutoff estimates bytes freed at cutoff: media and text, as
 // the quota counts them (postWeightSQL).
 func (c *Chronicle) FreedBytesBeforeCutoff(ctx context.Context, circleID, cutoffDate string) (int64, error) {

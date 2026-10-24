@@ -85,6 +85,8 @@ export interface QuotaInfo {
 	median_post_bytes?: number;
 	/** Владелец видит круг не с начала — с этого момента (A12, 6.17а). */
 	visible_from?: string;
+	/** Сколько удаляемых отсечкой записей владелец не видел (6.17а). */
+	unseen_at_cutoff?: number;
 	/** Просьба о месте: ждёт ответа (6.19) или отказана (6.20). Одобренной нет. */
 	last_request?: QuotaRequestInfo;
 }

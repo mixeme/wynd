@@ -33,6 +33,8 @@
 	let keptPosts = $state<number | undefined>(undefined);
 	// С какого дня владелец видит круг, если не с начала (A12, 6.17а).
 	let visibleFrom = $state('');
+	// Сколько из удаляемого он не видел: строка 6.17а — только когда больше нуля.
+	let unseenAtCutoff = $state(0);
 	let error = $state('');
 	let forbidden = $state(false);
 	let loading = $state(true);
@@ -100,6 +102,7 @@
 			volumeStep = data.volume_step ?? 'month';
 			postCount = data.post_count;
 			visibleFrom = data.visible_from ? localDayOf(data.visible_from) : '';
+			unseenAtCutoff = data.unseen_at_cutoff ?? 0;
 			keptPosts = data.posts_kept_at_cutoff;
 			if (data.freed_at_cutoff_bytes !== undefined) {
 				freedBytes = data.freed_at_cutoff_bytes;
@@ -185,9 +188,9 @@
 						)}{/if}.{/if}
 				{#if keptPosts !== undefined}{' '}В круге останется {plural(keptPosts, WORD.post)} из {postCount}.{/if}
 			</Hint>
-			{#if visibleFrom && keptPosts !== undefined && keptPosts < postCount}
-				<!-- 6.17а (A12): владелец видит круг не с начала — удалится и то, чего
-				     он не видел; отдельной строкой в чернилах. -->
+			{#if visibleFrom && unseenAtCutoff > 0}
+				<!-- 6.17а (A12): под отсечку попали записи, которых владелец не видел
+				     (владелец 2026-10-24); отдельной строкой в чернилах. -->
 				<Hint class="ink">
 					Вы видите круг с {formatCutoffDate(visibleFrom)}. Что было раньше, вам не видно и в ваш
 					архив не попадёт, но удалится тоже.

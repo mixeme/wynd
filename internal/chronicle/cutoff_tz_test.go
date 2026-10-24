@@ -44,3 +44,27 @@ func TestCutoffByOwnerTimeZone(t *testing.T) {
 		t.Fatal("незнакомый пояс принят")
 	}
 }
+
+// 6.17а (владелец 2026-10-24): строка — только если под отсечку попали
+// записи, которых владелец не видел (внесённые раньше начала его отрезка).
+func TestUnseenPostsAtCutoff(t *testing.T) {
+	e := newTestEnv(t)
+	e.seedAccount("owner")
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	day := func(d int) time.Time { return time.Date(2026, 10, d, 12, 0, 0, 0, time.UTC) }
+	e.post(circle.ID, "owner", "двадцатое", "2026-10-20", day(20))
+	e.post(circle.ID, "owner", "двадцать первое", "2026-10-21", day(21))
+	e.post(circle.ID, "owner", "двадцать пятое", "2026-10-25", day(25))
+	seen := day(24) // отрезок владельца — с 24-го
+	for cutoff, want := range map[string]int{
+		"2026-10-19": 0, // раньше первой записи — ничего
+		"2026-10-21": 1, // уходит только невиданное 20-е
+		"2026-10-23": 2,
+		"2026-10-26": 2, // уходит и виденное 25-е, но невиданных — две
+	} {
+		n, err := e.ch.UnseenPostsAtCutoff(e.ctx, circle.ID, cutoff, "", seen)
+		if err != nil || n != want {
+			t.Errorf("до %s: невиданных %d, ждали %d (%v)", cutoff, n, want, err)
+		}
+	}
+}

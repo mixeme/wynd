@@ -218,7 +218,9 @@ func (s *Server) handleCircleQuota(w http.ResponseWriter, r *http.Request) {
 	}
 	// Владелец видит круг не с начала — передали или оживил новым человеком
 	// (A12, 6.17а): с какого дня; график и «Освободится» считают весь круг.
+	var seenFrom *time.Time
 	if meta, err := s.Chronicle.FeedMetaForAccount(r.Context(), circleID, sess.AccountID); err == nil && meta.VisibleFrom != nil {
+		seenFrom = meta.VisibleFrom
 		out["visible_from"] = meta.VisibleFrom.UTC().Format(time.RFC3339)
 	}
 	if median > 0 {
@@ -254,6 +256,15 @@ func (s *Server) handleCircleQuota(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		out["posts_kept_at_cutoff"] = kept
+		// Сколько из удаляемого владелец не видел: строка 6.17а — только тогда.
+		if seenFrom != nil {
+			unseen, err := s.Chronicle.UnseenPostsAtCutoff(r.Context(), circleID, cutoff, tz, *seenFrom)
+			if err != nil {
+				writeDomainError(w, err)
+				return
+			}
+			out["unseen_at_cutoff"] = unseen
+		}
 	}
 	writeJSON(w, http.StatusOK, out)
 }
