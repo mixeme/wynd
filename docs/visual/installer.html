@@ -688,6 +688,75 @@ x86_64
 <p class="note">Утверждено владельцем 2026-10-24 («7д — да»), не реализовано. Это не «откат» из кадра 6: он только для неудачного обновления, пока новой версией никто не пользовался, — поэтому без предупреждения о телефонах. Новая версия могла успеть изменить базу при запуске, поэтому возвращаем и данные из копии.</p>
 </div>
 
+<div>
+<p class="cap">8а · Бэкап на компьютер</p>
+<div class="win"><div class="tb">●<b>Wynd Мастерская [0.1.0]</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st on"><i>2</i>Бэкап</div><div class="st"><i>3</i>Готово</div>
+</div>
+<div class="body">
+<h2>Бэкап на этот компьютер</h2>
+<div class="sub">Всё, из чего Wynd можно поставить заново: записи, фото и видео, учётные записи и настройки сервера.</div>
+<div class="lab">Папка</div>
+<div style="display:flex;gap:8px;align-items:center"><div class="fld mono" style="flex:1">D:\Бэкапы Wynd\family.example.ru</div><span class="btn gh" style="padding:7px 12px">Выбрать</span></div>
+<div class="row" style="margin-top:10px"><span class="ic">↓</span><div>Скачаем 140 МБ <span class="dim">— в папке уже есть бэкап от 20 октября, берём только новое. Всего 2,1 ГБ</span></div></div>
+<div class="row"><span class="ic ok">✓</span><div>Сайт работает, пока идёт бэкап</div></div>
+<div class="foot"><span class="btn">Сделать бэкап</span><span class="btn gh">Назад</span></div>
+</div></div></div>
+<p class="note">Черновик 2026-10-24, не утверждено (план 45, срез 4). Сюда — со строки «Бэкап на этот компьютер» страницы сервера (7а). Бэкап — папка, как копия перед обновлением: в той же папке следующий раз докачивается только новое (фото и видео Wynd не меняет; `wynd backup -incremental`), база копируется на сервере без остановки сайта и скачивается целиком. Папку Мастерская запоминает для этого сервера. Первый бэкап — без строки «уже есть», только «Скачаем 2,1 ГБ». Места на компьютере не хватает — вместо строки «Скачаем» отказ с цифрами, как 7б2.</p>
+</div>
+
+<div>
+<p class="cap">8б · Скачиваем</p>
+<div class="win"><div class="tb">●<b>Wynd Мастерская [0.1.0]</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st on"><i>2</i>Бэкап</div><div class="st"><i>3</i>Готово</div>
+</div>
+<div class="body">
+<h2>Делаем бэкап</h2>
+<div class="bar"><i style="width:40%"></i></div>
+<div class="row"><span class="ic ok">✓</span><div>Копия базы на сервере</div></div>
+<div class="row"><span class="ic w">…</span><div>Скачиваем <span class="dim">— 56 из 140 МБ</span></div></div>
+<div class="row"><span class="ic dim">○</span><div class="dim">Проверка скачанного</div></div>
+<div class="foot"><span class="under">показать, что выполняется</span><span class="dim" style="margin-left:auto">Окно можно свернуть</span></div>
+</div></div></div>
+<p class="note">Черновик 2026-10-24, не утверждено. Как ход установки и обновления. «Проверка» — размеры и суммы скачанных файлов против описи на сервере; временная копия базы на сервере после скачивания убирается.</p>
+</div>
+
+<div>
+<p class="cap">8в · Бэкап готов</p>
+<div class="win"><div class="tb">●<b>Wynd Мастерская [0.1.0]</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st done"><i>✓</i>Бэкап</div><div class="st on"><i>3</i>Готово</div>
+</div>
+<div class="body">
+<h2>Бэкап готов</h2>
+<div class="sub">24 октября, 2,1 ГБ — в папке D:\Бэкапы Wynd\family.example.ru.</div>
+<div class="box" style="line-height:1.5">В бэкапе — все записи и ключи сервера. Храните его так же бережно, как пароли: кто получит папку, прочтёт все круги.</div>
+<div class="foot"><span class="btn">Открыть папку</span><span class="btn gh">К серверу</span></div>
+</div></div></div>
+<p class="note">Черновик 2026-10-24, не утверждено. Предупреждение — факт: в бэкапе база с почтами и ключи сервера (как в `wynd backup`, каталог только владельцу). Шифровать ли бэкап паролем — отдельный вопрос владельцу. На странице сервера (7а) строка «Бэкап на этот компьютер» показывает «последний — 24 октября, 2,1 ГБ».</p>
+</div>
+
+<div>
+<p class="cap">8г · Связь прервалась</p>
+<div class="win"><div class="tb">●<b>Wynd Мастерская [0.1.0]</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st bad"><i>!</i>Бэкап</div><div class="st"><i>3</i>Готово</div>
+</div>
+<div class="body">
+<h2>Связь с сервером прервалась</h2>
+<div class="box" style="line-height:1.5">Скачано 56 из 140 МБ. Скачанное осталось в папке — повтор продолжит с того же места.</div>
+<div class="sub" style="margin-top:12px">Прошлый бэкап в папке не тронут, пока новый не скачан целиком.</div>
+<div class="foot"><span class="btn">Повторить</span><span class="btn gh">К серверу</span><span class="under" style="margin-left:auto">подробности</span></div>
+</div></div></div>
+<p class="note">Черновик 2026-10-24, не утверждено. Новый бэкап собирается рядом и заменяет прошлый только целиком: оборванный не оставляет папку наполовину старой, наполовину новой.</p>
+</div>
+
 </div>
 </body>
 </html>
