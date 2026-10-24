@@ -191,8 +191,12 @@ export interface NotifyDefaults {
 	mute_until?: string | null;
 }
 
+export type AvatarShape = 'circle' | 'square';
+
 export interface AppSettings {
 	theme: Theme;
+	/** Форма аватаров (A16); общая для всех устройств — сверяется с сервером. */
+	avatar_shape?: AvatarShape;
 	notify_defaults?: NotifyDefaults;
 	circle_meta?: Record<string, CircleMeta>;
 	day_prompt_seen?: Record<string, true>;

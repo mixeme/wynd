@@ -430,6 +430,11 @@
 		pointer-events: none;
 	}
 
+	/* Аватар в форме скруглённого квадрата (A16): рамка — как его покажут. */
+	:global(body[data-avatars='square']) .ring:not(.square) {
+		border-radius: 28%;
+	}
+
 	/* Обложка в ленте — квадрат со скруглением плитки, не круг (4.3). */
 	.ring.square {
 		border-radius: 12px;

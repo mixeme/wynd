@@ -4,7 +4,7 @@
 	import { initQueueDrain } from '$lib/queue/queue';
 	import { initConnection } from '$lib/session/connection.svelte';
 	import { initPush } from '$lib/push/push';
-	import { initSession, initTheme, isDark } from '$lib/session/session.svelte';
+	import { getAvatarShape, initSession, initTheme, isDark } from '$lib/session/session.svelte';
 	import { initSyncResume, startSyncForAllSessions } from '$lib/sync/sync';
 	import { initViewportHeight } from '$lib/session/viewport';
 	import { page } from '$app/stores';
@@ -36,6 +36,8 @@
 	$effect(() => {
 		if (typeof document === 'undefined') return;
 		document.body.classList.toggle('dark', isDark());
+		// Форма аватаров (A16): стили в ui.css по body[data-avatars].
+		document.body.dataset.avatars = getAvatarShape();
 		// Строка состояния установленного приложения — в цвет фона темы (SW-4).
 		// Метка стоит в app.html: так её видит и Vivaldi при запуске.
 		document

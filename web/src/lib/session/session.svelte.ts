@@ -3,6 +3,7 @@ import { unsubscribePush } from '$lib/push/push';
 import {
 	getAppSettings,
 	saveAppSettings,
+	type AvatarShape,
 	type SessionRecord,
 	type Theme,
 	getSession,
@@ -19,6 +20,9 @@ import {
 } from '$lib/idb/db';
 
 let theme = $state<Theme>('system');
+// Форма аватаров (A16): одна на все устройства — хранится у учётной записи на
+// сервере, здесь — для мгновенного показа при запуске.
+let avatarShape = $state<AvatarShape>('circle');
 let systemDark = $state(
 	typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
 );
@@ -37,6 +41,49 @@ export function isDark(): boolean {
 export function setTheme(next: Theme): void {
 	theme = next;
 	void persistTheme(next);
+}
+
+export function getAvatarShape(): AvatarShape {
+	return avatarShape;
+}
+
+/** Выбор в «Настройки → Приложение»: здесь и на всех серверах, где вошли. */
+export async function setAvatarShape(next: AvatarShape): Promise<void> {
+	avatarShape = next;
+	const current = (await getAppSettings()) ?? { theme: 'system' as Theme };
+	await saveAppSettings({ ...current, avatar_shape: next });
+	const sessions = await listSessions();
+	await Promise.all(
+		sessions.map((s) =>
+			apiJson(s.origin, '/appearance', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ avatar_shape: next })
+			}).catch(() => undefined)
+		)
+	);
+}
+
+/**
+ * Форма с сервера: её могли сменить на другом устройстве. Берём ответ
+ * первого сервера, который ответил; сервер до 0.43 формы не знает — остаётся
+ * своя.
+ */
+async function syncAvatarShape(): Promise<void> {
+	for (const s of await listSessions()) {
+		try {
+			const res = await apiJson<{ avatar_shape?: string }>(s.origin, '/appearance');
+			const shape: AvatarShape = res.avatar_shape === 'square' ? 'square' : 'circle';
+			if (shape !== avatarShape) {
+				avatarShape = shape;
+				const current = (await getAppSettings()) ?? { theme: 'system' as Theme };
+				await saveAppSettings({ ...current, avatar_shape: shape });
+			}
+			return;
+		} catch {
+			/* следующий сервер */
+		}
+	}
 }
 
 export function initTheme(): () => void {
@@ -120,8 +167,10 @@ export async function initSession(): Promise<void> {
 	if (initialized) return;
 	const settings = await getAppSettings();
 	if (settings?.theme) theme = settings.theme;
+	if (settings?.avatar_shape) avatarShape = settings.avatar_shape;
 	await reconcileStoredSessions();
 	initialized = true;
+	void syncAvatarShape();
 }
 
 export async function loadSessions(): Promise<SessionRecord[]> {

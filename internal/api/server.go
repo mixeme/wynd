@@ -220,6 +220,8 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("PUT /api/v1/circles/{circle_id}/days/{date}/cover", paid(s.handleSetDayCover))
 	s.Mux.HandleFunc("DELETE /api/v1/circles/{circle_id}/days/{date}/cover", paid(s.handleClearDayCover))
 
+	s.Mux.HandleFunc("GET /api/v1/appearance", participant(s.handleGetAppearance))
+	s.Mux.HandleFunc("PUT /api/v1/appearance", participant(s.handleSetAppearance))
 	s.Mux.HandleFunc("GET /api/v1/notify_prefs", paid(s.handleGetAccountNotifyPrefs))
 	s.Mux.HandleFunc("PUT /api/v1/notify_prefs", paid(s.handleSetAccountNotifyPrefs))
 	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}/notify_prefs", paid(s.handleGetCircleNotifyPrefs))

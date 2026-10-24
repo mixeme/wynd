@@ -15,7 +15,7 @@
 	import { formatBytes } from '$lib/format/bytes';
 	import { clearMediaStore, getAppSettings, mediaStoreBytes, snapshotStoreBytes, type Theme } from '$lib/idb/db';
 	import { getMediaCacheLimit, setMediaCacheLimit } from '$lib/media/objectUrl';
-	import { loadSessions, setTheme } from '$lib/session/session.svelte';
+	import { getAvatarShape, loadSessions, setAvatarShape, setTheme } from '$lib/session/session.svelte';
 	import {
 		accountNotifyPrefsFromAppDefaults,
 		appNotifyDefaultsEqual,
@@ -56,6 +56,10 @@
 		{ key: 'light', label: 'Светлая' },
 		{ key: 'dark', label: 'Тёмная' }
 	];
+	const avatarShapes = [
+		{ key: 'circle', label: 'Круг' },
+		{ key: 'square', label: 'Скруглённый квадрат' }
+	] as const;
 
 	function currentDefaults(): AppNotifyDefaults {
 		return { posts, comments_mine: commentsMine, reactions };
@@ -192,7 +196,17 @@
 		onclick={() => void clearCache()}
 	/>
 
-	<SectionLabel class="mt-8">Тема</SectionLabel>
+	<!-- A16: одна форма на все устройства (владелец, 2026-10-24), над «Темой». -->
+	<SectionLabel class="mt-8">Аватары</SectionLabel>
+	<ChipGroup>
+		{#each avatarShapes as item (item.key)}
+			<Chip selected={getAvatarShape() === item.key} onclick={() => void setAvatarShape(item.key)}>
+				{item.label}
+			</Chip>
+		{/each}
+	</ChipGroup>
+
+	<SectionLabel class="mt-16">Тема</SectionLabel>
 	<ChipGroup>
 		{#each themes as item (item.key)}
 			<Chip

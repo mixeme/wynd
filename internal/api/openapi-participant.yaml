@@ -1067,6 +1067,12 @@ paths:
         "200":
           description: OK (also when there is no such group here)
 
+  /appearance:
+    get:
+      summary: Avatar shape shared by all of the person's devices (circle | square)
+    put:
+      summary: Set avatar shape (avatar_shape circle | square)
+
   /notify_prefs:
     get:
       summary: Account notification defaults

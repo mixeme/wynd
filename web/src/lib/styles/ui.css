@@ -838,6 +838,13 @@
 	flex: 0 0 auto;
 	background: var(--rc,var(--c));
 }
+/* Форма аватаров — скруглённый квадрат (A16, «Настройки → Приложение»):
+   лица везде, «Кто уже здесь» и кружок «добавить фото». */
+body[data-avatars='square'] .av,
+body[data-avatars='square'] .people .av2,
+body[data-avatars='square'] .addph {
+	border-radius: 28%;
+}
 .av.av-lg {
 	width: 96px;
 	height: 96px;
