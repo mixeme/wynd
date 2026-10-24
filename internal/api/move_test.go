@@ -453,3 +453,105 @@ func TestMoveBetweenServers(t *testing.T) {
 		t.Fatalf("прежний сервер: %+v", st.Move)
 	}
 }
+
+// «Аня — это вы?» → «Нет» при переносе (A12): Кот поднимает круг своим
+// именем — новый участник и владелец, видит круг с переноса; лицо Ани — за
+// её почтой; приветствие после строки «Круг перенесён»; в карточке — имена
+// для «Кто уже здесь».
+func TestMoveAsNewMember(t *testing.T) {
+	src, srcCaps, _, _ := setupAPI(t)
+	anya, _ := registerSession(t, src, srcCaps, "anya@example.com")
+	rec := doJSON(t, src, http.MethodPost, "/api/v1/circles", anya, map[string]any{"name": "Семья", "owner_name": "Аня"})
+	circleID := jsonStr(t, rec, "id")
+	if rec := doJSON(t, src, http.MethodPost, "/api/v1/circles/"+circleID+"/posts", anya, map[string]any{
+		"body": "на даче", "entry_date": "2026-10-14",
+	}); rec.Code != http.StatusCreated {
+		t.Fatalf("запись: %d %s", rec.Code, rec.Body.String())
+	}
+	srcHTTP := httptest.NewServer(src)
+	defer srcHTTP.Close()
+	link := startMove(t, src, anya, circleID)
+	link = srcHTTP.URL + "/move/" + link[strings.LastIndex(link, "/")+1:]
+
+	dst, dstCaps, _, _ := setupAPI(t)
+	dst.MoveRetry = 10 * time.Millisecond
+	kot, _ := registerSession(t, dst, dstCaps, "kot@example.com")
+	rec = doJSON(t, dst, http.MethodPost, "/api/v1/moves/incoming", kot, map[string]string{"link": link})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("ссылка: %d %s", rec.Code, rec.Body.String())
+	}
+	var card struct {
+		ID            string   `json:"id"`
+		OwnerName     string   `json:"owner_name"`
+		ReviverAbsent bool     `json:"reviver_absent"`
+		People        []string `json:"people"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &card); err != nil {
+		t.Fatal(err)
+	}
+	if card.OwnerName != "Аня" || !card.ReviverAbsent || len(card.People) != 1 || card.People[0] != "Аня" {
+		t.Fatalf("карточка: %s", rec.Body.String())
+	}
+	if rec := doJSON(t, dst, http.MethodPost, "/api/v1/moves/incoming/"+card.ID+"/start", kot, map[string]any{
+		"new_member": map[string]any{"name": "Кот", "gender": "m", "body": "Привет из нового дома"},
+	}); rec.Code != http.StatusOK {
+		t.Fatalf("поднять: %d %s", rec.Code, rec.Body.String())
+	}
+	var got struct {
+		Move struct {
+			Status string `json:"status"`
+			Result struct {
+				CircleID string `json:"circle_id"`
+			} `json:"result"`
+		} `json:"move"`
+	}
+	deadline := time.Now().Add(15 * time.Second)
+	for {
+		rec := doGET(t, dst, "/api/v1/moves/incoming", kot)
+		_ = json.Unmarshal(rec.Body.Bytes(), &got)
+		if got.Move.Status == "done" || got.Move.Status == "failed" {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("перенос не закончился: %s", rec.Body.String())
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if got.Move.Status != "done" {
+		t.Fatalf("перенос: %+v", got.Move)
+	}
+	cid := got.Move.Result.CircleID
+	db := dst.Chronicle.DB()
+	var kotName, anyaName string
+	var kotSettings, anyaSettings int
+	member := func(email string, name *string, settings *int) {
+		t.Helper()
+		if err := db.QueryRowContext(t.Context(), `
+			SELECT n.name, m.can_settings FROM memberships m
+			JOIN identity_names n ON n.identity_id = m.identity_id
+			JOIN accounts a ON a.id = m.account_id
+			WHERE m.circle_id = ? AND a.email = ?`, cid, email).Scan(name, settings); err != nil {
+			t.Fatalf("%s: %v", email, err)
+		}
+	}
+	member("kot@example.com", &kotName, &kotSettings)
+	member("anya@example.com", &anyaName, &anyaSettings)
+	if kotName != "Кот" || kotSettings != 1 || anyaName != "Аня" || anyaSettings != 0 {
+		t.Fatalf("Кот %q/%d, Аня %q/%d", kotName, kotSettings, anyaName, anyaSettings)
+	}
+	if owner, _ := dst.Chronicle.CircleOwnerAccount(t.Context(), cid); owner == "" {
+		t.Fatal("нет владельца")
+	}
+	var movedSeq, greetSeq int64
+	if err := db.QueryRowContext(t.Context(), `SELECT seq FROM events WHERE circle_id = ? AND event_type = 'circle_moved_in'`, cid).Scan(&movedSeq); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRowContext(t.Context(), `SELECT event_seq FROM posts WHERE circle_id = ? AND body = 'Привет из нового дома'`, cid).Scan(&greetSeq); err != nil || greetSeq <= movedSeq {
+		t.Fatalf("приветствие %d, строка переноса %d, %v", greetSeq, movedSeq, err)
+	}
+	// Запись Ани Коту не видна: он здесь с переноса.
+	feed := doGET(t, dst, "/api/v1/circles/"+cid+"/feed", kot).Body.String()
+	if strings.Contains(feed, "на даче") || !strings.Contains(feed, "Привет из нового дома") {
+		t.Fatalf("лента Кота: %s", feed)
+	}
+}

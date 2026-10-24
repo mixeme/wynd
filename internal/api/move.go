@@ -392,9 +392,10 @@ func (s *Server) handleMoveCard(w http.ResponseWriter, r *http.Request) {
 		circle := map[string]any{"name": name, "color": color, "posts": posts, "members": members, "bytes": bytes}
 		// «Аня — это вы?» на новом сервере (A12): кто владелец и чьи почты в
 		// круге. Ссылку даёт сам владелец, и в архиве по ней те же почты.
-		if owner, emails, err := s.Chronicle.CircleMoveFolk(r.Context(), m.CircleID); err == nil {
+		if owner, emails, names, err := s.Chronicle.CircleMoveFolk(r.Context(), m.CircleID); err == nil {
 			circle["owner_name"] = owner
 			circle["emails"] = emails
+			circle["names"] = names
 		}
 		out["circle"] = circle
 		if frozen, err := s.Chronicle.CircleFrozenAt(r.Context(), m.CircleID); err == nil && frozen != nil {

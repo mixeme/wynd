@@ -55,6 +55,8 @@ type IncomingMove struct {
 	// почты поднимающего среди участников нет: «Аня — это вы?» (A12).
 	OwnerName     string
 	ReviverAbsent bool
+	// People — имена тех, кто в круге (JSON-массив), для «Кто уже здесь».
+	People string
 	// NewMember — ответ «Нет» (JSON: name, gender, body, entry_date); пусто —
 	// поднять лицом прежнего владельца.
 	NewMember string
@@ -78,13 +80,15 @@ type IncomingCard struct {
 	// сервер их не отдаёт — вопроса нет.
 	OwnerName     string
 	ReviverAbsent bool
+	// People — имена тех, кто в круге, JSON-массивом («Кто уже здесь»).
+	People string
 }
 
 const incomingCols = `id, account_id, link, source_url, source_name, circle_name, circle_color,
 	posts, members, bytes, frozen_at, expires_at, send_invites, status, pulled_bytes,
 	COALESCE(circle_id, ''), COALESCE(result_posts, 0), COALESCE(result_names, 0), COALESCE(result_bytes, 0),
 	COALESCE((SELECT text_bytes FROM circles WHERE circles.id = incoming_moves.circle_id), 0),
-	verified, invited, not_joined, already_here, owner_name, reviver_absent, COALESCE(new_member, ''),
+	verified, invited, not_joined, already_here, owner_name, reviver_absent, people, COALESCE(new_member, ''),
 	COALESCE(error, ''), created_at, updated_at`
 
 func scanIncoming(row interface{ Scan(...any) error }) (*IncomingMove, error) {
@@ -94,7 +98,7 @@ func scanIncoming(row interface{ Scan(...any) error }) (*IncomingMove, error) {
 	if err := row.Scan(&m.ID, &m.AccountID, &m.Link, &m.SourceURL, &m.SourceName, &m.CircleName, &m.CircleColor,
 		&m.Posts, &m.Members, &m.Bytes, &frozen, &expires, &m.SendInvites, &m.Status, &m.PulledBytes,
 		&m.CircleID, &m.ResultPosts, &m.ResultNames, &m.ResultBytes, &m.ResultTextBytes,
-		&m.Verified, &m.Invited, &m.NotJoined, &m.AlreadyHere, &m.OwnerName, &m.ReviverAbsent, &m.NewMember,
+		&m.Verified, &m.Invited, &m.NotJoined, &m.AlreadyHere, &m.OwnerName, &m.ReviverAbsent, &m.People, &m.NewMember,
 		&m.Error, &created, &updated); err != nil {
 		return nil, err
 	}
@@ -103,6 +107,13 @@ func scanIncoming(row interface{ Scan(...any) error }) (*IncomingMove, error) {
 	m.CreatedAt = parseTimeOrZero(created)
 	m.UpdatedAt = parseTimeOrZero(updated)
 	return &m, nil
+}
+
+func peopleJSON(s string) string {
+	if s == "" {
+		return "[]"
+	}
+	return s
 }
 
 // Active — сервер забирает или поднимает круг.
@@ -144,11 +155,11 @@ func (c *Chronicle) PutIncomingDraft(ctx context.Context, accountID, link string
 	}
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO incoming_moves (id, account_id, link, source_url, source_name, circle_name, circle_color,
-			posts, members, bytes, frozen_at, expires_at, status, owner_name, reviver_absent, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?)
+			posts, members, bytes, frozen_at, expires_at, status, owner_name, reviver_absent, people, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?)
 	`, id, accountID, link, card.SourceURL, card.SourceName, card.CircleName, card.CircleColor,
 		card.Posts, card.Members, card.Bytes, frozen, formatTime(card.ExpiresAt), card.OwnerName, card.ReviverAbsent,
-		formatTime(now), formatTime(now)); err != nil {
+		peopleJSON(card.People), formatTime(now), formatTime(now)); err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(); err != nil {

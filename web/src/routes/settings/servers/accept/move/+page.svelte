@@ -17,6 +17,7 @@
 	import StatusCard from '$ui/data/StatusCard.svelte';
 	import MemberRow from '$ui/data/MemberRow.svelte';
 	import IdentityForm from '$ui/forms/IdentityForm.svelte';
+	import PeopleStrip from '$ui/forms/PeopleStrip.svelte';
 	import Dialog from '$ui/overlays/Dialog.svelte';
 	import Scrim from '$ui/overlays/Scrim.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
@@ -84,6 +85,15 @@
 	let newAvatar = $state<CroppedImage | undefined>();
 	// Фото ставится, когда круг поднят: до того круга здесь нет.
 	let avatarFor = $state('');
+	// «Кто уже здесь» — по карточке прежнего сервера: до пяти лиц и «ещё N».
+	const people = $derived(
+		(move?.people ?? []).slice(0, 5).map((name, i) => ({
+			name,
+			initial: circleInitial(name),
+			color: memberAvatarColor(i)
+		}))
+	);
+	const morePeople = $derived(Math.max(0, (move?.people?.length ?? 0) - people.length));
 
 	const srv = $derived(serverName ? `«${serverName}»` : 'этого сервера');
 	const source = $derived(move ? displayHost(move.source_url) : '');
@@ -308,8 +318,15 @@
 			Открыть круг
 		</Button>
 	{:else if who && move}
-		<!-- «Нет» на «Аня — это вы?» (A12): вход своим именем, как 7.29в. Имён
-		     участников карточка переноса не несёт — «Кто уже здесь» нет. -->
+		<!-- «Нет» на «Аня — это вы?» (A12): вход своим именем, как 7.29в; «Кто
+		     уже здесь» — по карточке прежнего сервера (с 0.43). -->
+		{#if people.length}
+			<Label class="mt-16">Кто уже здесь · {move.people?.length ?? 0}</Label>
+			<PeopleStrip {people} />
+			{#if morePeople > 0}
+				<Hint centered class="mt-12">ещё {morePeople}</Hint>
+			{/if}
+		{/if}
 		<IdentityForm
 			color={(move.circle.color in CIRCLE_COLORS ? move.circle.color : 'terracotta') as CircleColor}
 			bind:name={newName}

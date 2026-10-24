@@ -265,40 +265,64 @@ func (c *Chronicle) CircleEditWindow(ctx context.Context, circleID string) (Edit
 	return c.circleEditWindow(ctx, c.db, circleID)
 }
 
-// CircleMoveFolk — для карточки переноса (A12, 7.20): имя владельца и почты
-// всех, кто в круге (и вышедших — их записи переезжают с кругом). Новый
-// сервер по ним решает, спрашивать ли «Аня — это вы?».
-func (c *Chronicle) CircleMoveFolk(ctx context.Context, circleID string) (ownerName string, emails []string, err error) {
+// CircleMoveFolk — для карточки переноса (A12, 7.20): имя владельца, почты
+// всех, кто был в круге (и вышедших — их записи переезжают с кругом), и имена
+// тех, кто в нём сейчас («Кто уже здесь»). Новый сервер по почтам решает,
+// спрашивать ли «Аня — это вы?».
+func (c *Chronicle) CircleMoveFolk(ctx context.Context, circleID string) (ownerName string, emails, names []string, err error) {
 	var ownerIdentity sql.NullString
 	if err := c.db.QueryRowContext(ctx, `
 		SELECT m.identity_id FROM circles ci
 		LEFT JOIN memberships m ON m.circle_id = ci.id AND m.account_id = ci.owner_account_id
 		WHERE ci.id = ?`, circleID).Scan(&ownerIdentity); err != nil {
 		if err == sql.ErrNoRows {
-			return "", nil, ErrNotFound
+			return "", nil, nil, ErrNotFound
 		}
-		return "", nil, err
+		return "", nil, nil, err
 	}
 	if ownerIdentity.Valid {
 		if ownerName, err = c.identityName(ctx, c.db, ownerIdentity.String); err != nil {
-			return "", nil, err
+			return "", nil, nil, err
 		}
 	}
 	rows, err := c.db.QueryContext(ctx, `
 		SELECT DISTINCT lower(a.email) FROM memberships m JOIN accounts a ON a.id = m.account_id
 		WHERE m.circle_id = ? AND a.email != ''`, circleID)
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var e string
 		if err := rows.Scan(&e); err != nil {
-			return "", nil, err
+			return "", nil, nil, err
 		}
 		emails = append(emails, e)
 	}
-	return ownerName, emails, rows.Err()
+	if err := rows.Err(); err != nil {
+		return "", nil, nil, err
+	}
+	idRows, err := c.db.QueryContext(ctx, `
+		SELECT identity_id FROM memberships WHERE circle_id = ? AND status = ? ORDER BY created_at`, circleID, StatusActive)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	var ids []string
+	for idRows.Next() {
+		var id string
+		if err := idRows.Scan(&id); err != nil {
+			idRows.Close()
+			return "", nil, nil, err
+		}
+		ids = append(ids, id)
+	}
+	idRows.Close()
+	for _, id := range ids {
+		if n, err := c.identityName(ctx, c.db, id); err == nil && n != "" {
+			names = append(names, n)
+		}
+	}
+	return ownerName, emails, names, nil
 }
 
 func (c *Chronicle) circleOwner(ctx context.Context, q querier, circleID string) (string, error) {

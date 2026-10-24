@@ -22,6 +22,8 @@ export interface IncomingMove {
 	owner_name?: string;
 	/** Почты того, кто поднимает, среди участников нет — спросить. */
 	reviver_absent?: boolean;
+	/** Кто в круге — «Кто уже здесь» на шаге «кто вы»; прежний сервер старше 0.43 — пусто. */
+	people?: string[];
 	result?: {
 		circle_id: string;
 		posts: number;

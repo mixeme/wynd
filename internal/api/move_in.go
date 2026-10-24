@@ -122,6 +122,8 @@ type moveCard struct {
 		// старше 0.42 их нет.
 		OwnerName string   `json:"owner_name"`
 		Emails    []string `json:"emails"`
+		// Names — «Кто уже здесь» (7.29в при переносе); с 0.43.
+		Names []string `json:"names"`
 	} `json:"circle"`
 }
 
@@ -158,6 +160,14 @@ func (s *Server) fetchMoveCard(ctx context.Context, link string) (*moveCard, str
 	return &card, ""
 }
 
+func peopleOrEmpty(s string) string {
+	var names []string
+	if json.Unmarshal([]byte(s), &names) != nil {
+		return "[]"
+	}
+	return s
+}
+
 func incomingJSON(m *chronicle.IncomingMove, now time.Time) map[string]any {
 	out := map[string]any{
 		"id":           m.ID,
@@ -171,6 +181,7 @@ func incomingJSON(m *chronicle.IncomingMove, now time.Time) map[string]any {
 		// «Аня — это вы?» (A12): спрашивать, если reviver_absent.
 		"owner_name":     m.OwnerName,
 		"reviver_absent": m.ReviverAbsent,
+		"people":         json.RawMessage(peopleOrEmpty(m.People)),
 		"circle": map[string]any{
 			"name": m.CircleName, "color": m.CircleColor,
 			"posts": m.Posts, "members": m.Members, "bytes": m.Bytes,
@@ -265,6 +276,9 @@ func (s *Server) handlePutIncomingMove(w http.ResponseWriter, r *http.Request) {
 		in.OwnerName = card.Circle.OwnerName
 		mine, _ := s.Chronicle.AccountEmail(r.Context(), sess.AccountID)
 		in.ReviverAbsent = !slices.ContainsFunc(card.Circle.Emails, func(e string) bool { return strings.EqualFold(e, mine) })
+		if raw, err := json.Marshal(card.Circle.Names); err == nil && len(card.Circle.Names) > 0 {
+			in.People = string(raw)
+		}
 	}
 	m, err := s.Chronicle.PutIncomingDraft(r.Context(), sess.AccountID, link, in, time.Now())
 	if errors.Is(err, chronicle.ErrMoveBusy) {

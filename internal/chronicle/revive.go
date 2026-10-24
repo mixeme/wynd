@@ -23,8 +23,8 @@ import (
 // поломках) таблиц круга не меняли. Схема 6 добавила post_media.video_duration_ms:
 // reviveRow берёт только столбцы, что есть в обеих схемах, архив без него — NULL.
 // Схема 7 (итог переноса, incoming_moves.already_here) таблиц круга не меняла.
-// Схема 8 (владелец в переносе, A12) — тоже только incoming_moves.
-var ReviveSchemaVersions = []int{1, 2, 3, 4, 5, 6, 7, 8}
+// Схемы 8 и 9 (владелец и имена в переносе, A12) — тоже только incoming_moves.
+var ReviveSchemaVersions = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
 
 // ReviveLegacySchemaVersions — схемы архивов разметки 1: номера прежней
 // нумерации (до 0.34.0). Схема 36 — та же, что 1.
