@@ -13,6 +13,7 @@
 		type LogEntry,
 		type Plan,
 		type Progress,
+		type ServerPage,
 		type StepState
 	} from './api';
 	import { rawSections } from './raw';
@@ -20,8 +21,20 @@
 	// Окна установщика (docs/visual/installer.html): 1 — подключение, 1а —
 	// отпечаток, 2 — осмотр, 2а — помеха, 3 — план, 4 — установка, 4а — шаг не
 	// прошёл, 5 — готово. Пульт сервера (6) — следующий срез.
-	type Screen = 'connect' | 'fingerprint' | 'inspect' | 'plan' | 'install' | 'done';
-	const STEPS = ['Сервер', 'Осмотр', 'План', 'Установка', 'Готово'];
+	type Screen =
+		| 'connect'
+		| 'fingerprint'
+		| 'inspect'
+		| 'plan'
+		| 'install'
+		| 'done'
+		| 'server'
+		| 'uplan'
+		| 'update'
+		| 'udone';
+	const INSTALL_STEPS = ['Сервер', 'Осмотр', 'План', 'Установка', 'Готово'];
+	// Обновление со страницы сервера (кадры 7б–7д).
+	const UPDATE_STEPS = ['Сервер', 'План', 'Обновление', 'Готово'];
 
 	let screen = $state<Screen>('connect');
 	let host = $state('');
@@ -54,6 +67,8 @@
 	let plan = $state<Plan | undefined>();
 	let planning = $state(false);
 	let progress = $state<Progress | undefined>();
+	// Страница сервера, где Wynd уже стоит (пульт).
+	let page = $state<ServerPage | undefined>();
 	let showLog = $state(false);
 	let askRollback = $state(false);
 	let dropData = $state(false);
@@ -70,13 +85,20 @@
 		inspect: 1,
 		plan: 2,
 		install: 3,
-		done: 4
+		done: 4,
+		server: 0,
+		uplan: 1,
+		update: 2,
+		udone: 3
 	};
+	const updating = $derived(screen === 'uplan' || screen === 'update' || screen === 'udone');
+	const STEPS = $derived(updating ? UPDATE_STEPS : INSTALL_STEPS);
 	const stepIndex = $derived(SCREEN_STEP[screen]);
 	const stepBad = $derived(
 		(screen === 'inspect' && (blocks.length > 0 || inspection?.ok === false)) ||
 			(screen === 'plan' && plan?.ok === false) ||
-			(screen === 'install' && Boolean(progress?.failure))
+			((screen === 'install' || screen === 'update') && Boolean(progress?.failure)) ||
+			(screen === 'uplan' && noRoom(page))
 	);
 	const domainOk = $derived(domainCheck?.level === 'ok');
 
@@ -133,8 +155,120 @@
 		domainCheck = undefined;
 		try {
 			inspection = await backend().Inspect();
+			// Wynd здесь уже стоит — сразу страница сервера (владелец, 2026-10-24: 7а).
+			if (inspection.ok && inspection.report.findings?.some((f) => f.id === 'wynd')) {
+				const p = await backend().ServerPage();
+				if (p.ok && p.state.installed && p.state.container) {
+					page = p;
+					screen = 'server';
+				}
+			}
 		} finally {
 			busy = false;
+		}
+	}
+
+	// Пульт (кадры 7а–7ж2).
+	const CHANGES = 'https://github.com/mixeme/wynd/blob/main/docs/CHANGELOG.md';
+	let askStop = $state(false);
+	let svcBusy = $state('');
+	let svcError = $state('');
+	let svcLog = $state<LogEntry[]>([]);
+	let stopForCopy = $state(true);
+	let startAfter = $state(true);
+	let buildUpdate = $state(false);
+	let returning = $state(false);
+	// С какой версии и на какую идёт обновление: окно помнит, пока оно не кончилось.
+	let upFrom = $state('');
+	let upTo = $state('');
+
+	const st = $derived(page?.state);
+	// Кадр 7б2: места не хватает даже на копию базы.
+	function noRoom(p: ServerPage | undefined): boolean {
+		return Boolean(p && p.state.free_bytes > 0 && p.state.free_bytes < p.copy_bytes + 64 * 1024 * 1024);
+	}
+	const uplanNoRoom = $derived(noRoom(page));
+
+	function gb(bytes: number): string {
+		if (bytes >= 1024 ** 3) return (bytes / 1024 ** 3).toFixed(1).replace('.', ',') + ' ГБ';
+		return Math.max(1, Math.round(bytes / 1024 ** 2)) + ' МБ';
+	}
+	function day(iso: string): string {
+		const d = new Date(iso);
+		return Number.isNaN(d.getTime())
+			? iso
+			: d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+	}
+
+	async function refreshPage() {
+		page = await backend().ServerPage();
+	}
+
+	async function service(action: 'start' | 'stop' | 'restart') {
+		if (svcBusy) return;
+		svcBusy = action;
+		svcError = '';
+		try {
+			const res = await backend().Service(action);
+			page = res.page;
+			svcLog = res.log ?? [];
+			if (!res.ok) svcError = [res.message, res.advice].filter(Boolean).join('. ');
+			askStop = false;
+		} finally {
+			svcBusy = '';
+		}
+	}
+
+	function toUpdatePlan() {
+		if (!page) return;
+		stopForCopy = true;
+		startAfter = !page.state.stopped_at;
+		buildUpdate = false;
+		screen = 'uplan';
+	}
+
+	async function startUpdate() {
+		if (!page) return;
+		upFrom = page.state.update?.from ?? page.state.version ?? '';
+		upTo = page.state.update?.to ?? page.latest ?? '';
+		screen = 'update';
+		applyUpdate(
+			await backend().StartUpdate({
+				stop_for_copy: stopForCopy || !page.live_copy,
+				start_after: page.state.running || startAfter,
+				build: buildUpdate
+			})
+		);
+		if (progress?.running && !poll) {
+			poll = setInterval(() => void backend().InstallProgress().then(applyUpdate), 500);
+		}
+	}
+	function applyUpdate(next: Progress) {
+		progress = next;
+		if (next.running) return;
+		stopPoll();
+		if (next.done) {
+			screen = 'udone';
+			void refreshPage();
+		}
+	}
+
+	async function returnPrevious() {
+		if (returning) return;
+		returning = true;
+		svcError = '';
+		try {
+			const res = await backend().ReturnPrevious();
+			page = res.page;
+			svcLog = res.log ?? [];
+			if (res.ok) {
+				progress = undefined;
+				screen = 'server';
+			} else {
+				svcError = [res.message, res.advice].filter(Boolean).join('. ');
+			}
+		} finally {
+			returning = false;
 		}
 	}
 
@@ -307,7 +441,7 @@
 	}
 
 	const logText = $derived(
-		[...(progress?.log ?? []), ...rollbackLog].map((e) => ('$ ' + e.command + '\n' + e.output).trimEnd()).join('\n\n')
+		[...(progress?.log ?? []), ...rollbackLog, ...svcLog].map((e) => ('$ ' + e.command + '\n' + e.output).trimEnd()).join('\n\n')
 	);
 </script>
 
@@ -346,6 +480,7 @@
 {/snippet}
 
 <div class="ins">
+	{#if screen !== 'server'}
 	<nav class="ins-side" aria-label="Шаги установки">
 		{#each STEPS as step, i (step)}
 			<div
@@ -359,6 +494,7 @@
 			</div>
 		{/each}
 	</nav>
+	{/if}
 
 	<main class="ins-body">
 		{#if screen === 'connect'}
@@ -437,6 +573,264 @@
 					{/if}
 				</div>
 			</form>
+		{:else if screen === 'server' && page && st}
+			<!-- Пульт (кадры 7а, 7а2, 7а3, 7е). -->
+			<h2>{st.domain}</h2>
+			<p class="ins-sub">
+				Wynd {st.version} · {st.running
+					? 'работает'
+					: st.stopped_at
+						? `остановлен вами ${day(st.stopped_at)}`
+						: 'не работает'} · свободно {gb(st.free_bytes)}
+			</p>
+			{#if st.update}
+				<div class="ins-box">
+					<div class="ins-strong">Обновление до {st.update.to} не закончено</div>
+					<div class="ins-dim">
+						Связь с сервером прервалась{st.update.stopped ? ', когда Wynd был остановлен' : ''}{st.running
+							? ''
+							: ' — с тех пор сайт не открывается'}. Копия данных перед обновлением на месте.
+					</div>
+					<div class="ins-foot">
+						<Button variant="colored" onclick={() => void startUpdate()}>Продолжить обновление</Button>
+						<Button variant="ghost" loading={returning} onclick={() => void returnPrevious()}>
+							Вернуть {st.update.from}
+						</Button>
+					</div>
+				</div>
+			{:else}
+				<div class="ins-svcbar">
+					{#if st.running}
+						<Button
+							variant="ghost"
+							loading={svcBusy === 'restart'}
+							disabled={Boolean(svcBusy)}
+							onclick={() => void service('restart')}>Перезапустить</Button
+						>
+						<Button variant="ghost" disabled={Boolean(svcBusy)} onclick={() => (askStop = true)}>
+							Остановить
+						</Button>
+					{:else}
+						<Button variant="colored" loading={svcBusy === 'start'} onclick={() => void service('start')}>
+							Запустить
+						</Button>
+					{/if}
+				</div>
+				{#if askStop}
+					<div class="ins-box">
+						<div class="ins-strong">Остановить сайт?</div>
+						<div class="ins-dim">
+							Пока он остановлен, круги не открываются ни у кого, письма с сервера не уходят. Данные
+							остаются на месте — «Запустить» вернёт всё как было.
+						</div>
+						<div class="ins-foot">
+							<Button variant="colored" loading={svcBusy === 'stop'} onclick={() => void service('stop')}>
+								Остановить
+							</Button>
+							<Button variant="ghost" onclick={() => (askStop = false)}>Отмена</Button>
+						</div>
+					</div>
+				{/if}
+				{#if page.latest}
+					<div class="ins-box ins-update">
+						<div>
+							<div class="ins-strong">Вышла версия {page.latest}</div>
+							<div class="ins-dim">
+								Перед обновлением сохраним копию данных на сервере.
+								<TextButton class="link under" onclick={() => void backend().OpenLink(CHANGES)}>
+									что нового
+								</TextButton>
+							</div>
+						</div>
+						<Button variant={st.running ? 'colored' : 'ghost'} onclick={toUpdatePlan}>Обновить</Button>
+					</div>
+				{:else}
+					<p class="ins-dim">Стоит самая свежая версия.</p>
+				{/if}
+			{/if}
+			{#if svcError}
+				<div class="ins-box bad" role="alert">
+					{svcError}
+					<TextButton class="link under" onclick={() => (showLog = !showLog)}>подробности</TextButton>
+				</div>
+			{/if}
+			{#if askRollback}
+				{@render removeBox('Да, убрать', st.domain ?? '')}
+			{/if}
+			<div class="ins-foot">
+				<Button variant="ghost" onclick={() => void toConnect()}>Другой сервер</Button>
+				{#if !askRollback}
+					<TextButton class="link under ins-push" onclick={() => (askRollback = true)}>
+						Убрать Wynd
+					</TextButton>
+				{/if}
+			</div>
+			{#if showLog}
+				<pre class="ins-raw">{logText}</pre>
+			{/if}
+		{:else if screen === 'uplan' && page && st && uplanNoRoom}
+			<!-- Кадр 7б2. -->
+			<h2>Пока обновить нельзя</h2>
+			<div class="ins-box">
+				<div class="ins-strong">На сервере мало места для копии</div>
+				<div class="ins-dim">
+					Перед обновлением сохраняем копию данных: без неё при неудаче их нечем вернуть. Копии нужно
+					{gb(page.copy_bytes)}, свободно {gb(st.free_bytes)}. Освободите место на сервере и нажмите
+					«Проверить снова».
+				</div>
+			</div>
+			<div class="ins-foot">
+				<Button variant="colored" onclick={() => void refreshPage()}>Проверить снова</Button>
+				<Button variant="ghost" onclick={() => (screen = 'server')}>Назад</Button>
+			</div>
+		{:else if screen === 'uplan' && page && st}
+			<!-- Кадры 7б, 7б3, 7б4. -->
+			{@const get = buildUpdate ? `Соберём Wynd ${page.latest} из исходного кода` : `Скачаем Wynd ${page.latest}`}
+			{@const stopLive = st.running && !(stopForCopy || !page.live_copy)}
+			<h2>Обновим до {page.latest}</h2>
+			<div class="ins-rows">
+				<div class="ins-row">
+					<span class="ins-mark">1</span>
+					<div>{get}{#if st.running}&nbsp;<span class="ins-dim">— сайт пока работает</span>{/if}</div>
+				</div>
+				{#if st.running && !stopLive}
+					<div class="ins-row">
+						<span class="ins-mark">2</span>
+						<div>Остановим Wynd <span class="ins-dim">— с этой минуты сайт не открывается</span></div>
+					</div>
+				{/if}
+				<div class="ins-row">
+					<span class="ins-mark">{st.running && !stopLive ? 3 : 2}</span>
+					<div>
+						Сохраним копию данных на сервере
+						<span class="ins-dim"
+							>— займёт {gb(page.copy_bytes)}, свободно {gb(st.free_bytes)}. Фото и видео обновление не
+							меняет: в копии они те же файлы и места не занимают</span
+						>
+					</div>
+				</div>
+				{#if stopLive}
+					<div class="ins-row">
+						<span class="ins-mark">3</span>
+						<div>Остановим Wynd <span class="ins-dim">— с этой минуты сайт не открывается</span></div>
+					</div>
+				{/if}
+				<div class="ins-row">
+					<span class="ins-mark">{st.running ? 4 : 3}</span>
+					<div>{st.running || startAfter ? `Запустим ${page.latest} и проверим сайт` : `Поставим ${page.latest}`}</div>
+				</div>
+			</div>
+			{#if st.running}
+				<label class="ins-check">
+					<input type="checkbox" bind:checked={stopForCopy} disabled={!page.live_copy} />
+					<span>
+						Остановить сайт на время копии
+						<span class="ins-dim">
+							{#if !page.live_copy}
+								— Wynd {st.version} копию без остановки не умеет.
+							{/if}
+							Пока идёт копия, никто ничего не напишет — при возврате к {st.version} ничего не пропадёт.
+							Без галочки сайт закрыт только на запуск новой версии, но то, что напишут во время копии,
+							при возврате пропадёт.
+						</span>
+					</span>
+				</label>
+			{:else}
+				<Label>После обновления</Label>
+				<label class="ins-check">
+					<input type="radio" name="after" value={true} bind:group={startAfter} />
+					<span>Запустить новую версию</span>
+				</label>
+				<label class="ins-check">
+					<input type="radio" name="after" value={false} bind:group={startAfter} />
+					<span>
+						Оставить сайт остановленным
+						{#if st.stopped_at}<span class="ins-dim">— его остановили вы {day(st.stopped_at)}</span>{/if}
+					</span>
+				</label>
+			{/if}
+			{#if page.can_build}
+				<p class="ins-sub">
+					{buildUpdate ? 'Сервер соберёт Wynd сам.' : 'Сервер скачает Wynd готовым.'}
+					<TextButton class="link under" onclick={() => (buildUpdate = !buildUpdate)}>
+						{buildUpdate ? 'Скачать готовый' : 'Собрать самому'}
+					</TextButton>
+				</p>
+			{/if}
+			<div class="ins-foot">
+				<Button variant="colored" onclick={() => void startUpdate()}>Обновить</Button>
+				<Button variant="ghost" onclick={() => (screen = 'server')}>Назад</Button>
+				{#if buildUpdate}<span class="ins-dim">около 10 минут</span>{/if}
+			</div>
+		{:else if screen === 'update' && progress?.failure}
+			<!-- Кадр 7д: после остановки — вернуть прежнюю; раньше сайт работает, только повторить. -->
+			{@const stopped = ['start', 'check'].includes(progress.failure.step)}
+			<h2>{progress.failure.message}</h2>
+			{#if progress.failure.advice}<div class="ins-box">{progress.failure.advice}</div>{/if}
+			{#if stopped}
+				<p class="ins-sub mt">
+					«Вернуть {upFrom}» запустит прежнюю версию с данными из копии — сайт заработает как до
+					обновления.
+				</p>
+			{/if}
+			{#if svcError}<div class="ins-box bad" role="alert">{svcError}</div>{/if}
+			<div class="ins-foot">
+				{#if stopped}
+					<Button variant="colored" loading={returning} onclick={() => void returnPrevious()}>
+						Вернуть {upFrom}
+					</Button>
+					<Button variant="ghost" disabled={returning} onclick={() => void startUpdate()}>Повторить</Button>
+				{:else}
+					<Button variant="colored" onclick={() => void startUpdate()}>Повторить</Button>
+					<Button variant="ghost" onclick={() => (screen = 'server')}>К серверу</Button>
+				{/if}
+				<TextButton class="link under ins-push" onclick={() => (showLog = !showLog)}>подробности</TextButton>
+			</div>
+			{#if showLog}
+				<pre class="ins-raw">{logText}</pre>
+			{/if}
+		{:else if screen === 'update'}
+			<h2>Обновляем</h2>
+			<div class="ins-rows">
+				{#each progress?.steps ?? [] as step (step.id)}
+					<div class="ins-row" class:ins-dim={step.status === 'pending'}>
+						<span class="ins-mark {step.status === 'done' ? 'ok' : ''}">{stepMark(step)}</span>
+						<div>
+							{step.title}{#if step.note}&nbsp;<span class="ins-dim">— {step.note}</span>{/if}
+						</div>
+					</div>
+				{/each}
+			</div>
+			<div class="ins-foot">
+				<TextButton class="link under" onclick={() => (showLog = !showLog)}>
+					показать, что выполняется
+				</TextButton>
+				<span class="ins-dim">Окно можно свернуть</span>
+			</div>
+			{#if showLog}
+				<pre class="ins-raw">{logText}</pre>
+			{/if}
+		{:else if screen === 'udone'}
+			<!-- Кадр 7г. -->
+			<h2>Wynd обновлён</h2>
+			<p class="ins-sub">
+				{page?.state.running
+					? `Проверка прошла: работает ${upTo}, сайт открывается.`
+					: `Wynd ${upTo} поставлен, сайт остановлен.`}
+			</p>
+			<div class="ins-box">
+				Копия данных до обновления лежит на сервере в папке /opt/wynd/backups/{upFrom}{page
+					? ` — ${gb(page.copy_bytes)}`
+					: ''}.
+			</div>
+			<div class="ins-foot">
+				{#if page?.state.running}
+					<Button variant="colored" onclick={() => void backend().OpenLink(`https://${page?.state.domain}`)}>
+						Открыть {page?.state.domain}
+					</Button>
+				{/if}
+				<Button variant="ghost" onclick={() => (screen = 'server')}>К серверу</Button>
+			</div>
 		{:else if screen === 'fingerprint'}
 			<h2>Это ваш сервер?</h2>
 			<p class="ins-sub">

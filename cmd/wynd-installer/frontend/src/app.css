@@ -206,13 +206,75 @@ body {
 }
 .ins-check {
 	display: flex;
-	align-items: center;
-	gap: 7px;
+	align-items: flex-start;
+	gap: 9px;
 	margin-top: 12px;
+	line-height: 1.4;
+	cursor: pointer;
 }
+/* Галочка и выбор одного — нарисованные, в цвете Wynd (макет installer.html,
+   .cbx; владелец 2026-10-24: «Галочки у нас какие-то страшные»). */
 .ins-check input {
-	accent-color: var(--c);
-	margin: 0;
+	appearance: none;
+	flex: 0 0 18px;
+	display: grid;
+	place-content: center;
+	width: 18px;
+	height: 18px;
+	margin: 1px 0 0;
+	border: 1.5px solid var(--faint);
+	border-radius: 5px;
+	background: var(--card);
+	cursor: pointer;
+}
+.ins-check input:checked {
+	border-color: var(--c);
+	background: var(--c);
+}
+.ins-check input[type='checkbox']:checked::after {
+	content: '';
+	box-sizing: border-box;
+	width: 5px;
+	height: 9px;
+	border: solid #fff;
+	border-width: 0 2px 2px 0;
+	transform: translateY(-1px) rotate(45deg);
+}
+.ins-check input[type='radio'] {
+	border-radius: 50%;
+}
+.ins-check input[type='radio']:checked {
+	background: var(--card);
+}
+.ins-check input[type='radio']:checked::after {
+	content: '';
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--c);
+}
+.ins-check input:focus-visible {
+	outline: 2px solid var(--c);
+	outline-offset: 2px;
+}
+.ins-check input:disabled,
+.ins-check input:disabled + span {
+	opacity: 0.5;
+	cursor: default;
+}
+.ins-svcbar {
+	display: flex;
+	gap: 8px;
+	margin: 4px 0 14px;
+}
+.ins-update {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin: 0 0 10px;
+}
+.ins-update > div {
+	flex: 1;
 }
 .ins-note {
 	margin: 12px 0 0;

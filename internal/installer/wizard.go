@@ -87,6 +87,8 @@ type Wizard struct {
 	// wynd — версия Wynd этого плана: свежая из хранилища или Version.
 	wynd     string
 	progress Progress
+	// state — страница сервера, где Wynd уже стоит (пульт).
+	state       *ServerPage
 	cancel      context.CancelFunc
 	// finished закрывается, когда прогон установки кончился.
 	finished chan struct{}
@@ -245,7 +247,7 @@ func (w *Wizard) closeLocked() {
 		w.cancel()
 		w.cancel = nil
 	}
-	w.plan, w.build, w.unpublished = nil, false, false
+	w.plan, w.build, w.unpublished, w.state = nil, false, false, nil
 	w.progress = Progress{}
 }
 

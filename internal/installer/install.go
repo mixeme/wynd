@@ -364,8 +364,26 @@ func StepTitles(spec Spec) []StepState {
 // Install ставит Wynd. report зовётся при каждом изменении: окно показывает
 // шаги живьём. Возвращает итог — он же последнее, что видел report.
 func Install(ctx context.Context, sess *Session, spec Spec, report func(Progress)) Progress {
-	list := steps(spec)
-	r := &Run{sess: sess, spec: spec, steps: StepTitles(spec)}
+	p := runSteps(ctx, sess, spec, steps(spec), report, func(r *Run, p *Progress) {
+		p.Site = "https://" + spec.Domain
+		p.Link = r.link
+	})
+	return p
+}
+
+// titles — строки шагов для окна до начала прогона.
+func titles(list []step) []StepState {
+	var res []StepState
+	for _, s := range list {
+		res = append(res, StepState{ID: s.id, Title: s.title, Status: StepPending})
+	}
+	return res
+}
+
+// runSteps проходит шаги по порядку: установка и обновление (пульт) — один
+// прогон. done дописывает итог удачного прогона.
+func runSteps(ctx context.Context, sess *Session, spec Spec, list []step, report func(Progress), done func(r *Run, p *Progress)) Progress {
+	r := &Run{sess: sess, spec: spec, steps: titles(list)}
 	result := Progress{Running: true}
 	snapshot := func() Progress {
 		r.mu.Lock()
@@ -407,8 +425,9 @@ func Install(ctx context.Context, sess *Session, spec Spec, report func(Progress
 	r.mu.Lock()
 	result.Running = false
 	result.Done = true
-	result.Site = "https://" + spec.Domain
-	result.Link = r.link
+	if done != nil {
+		done(r, &result)
+	}
 	r.mu.Unlock()
 	r.report()
 	return snapshot()

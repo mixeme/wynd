@@ -108,6 +108,53 @@ export interface RollbackResult {
 	plan?: Plan;
 }
 
+export interface UpdateMark {
+	from: string;
+	to: string;
+	ref: string;
+	stopped: boolean;
+	start_after: boolean;
+	started: string;
+}
+
+export interface ServerState {
+	installed: boolean;
+	version?: string;
+	image?: string;
+	domain?: string;
+	running: boolean;
+	container: boolean;
+	stopped_at?: string;
+	free_bytes: number;
+	update?: UpdateMark;
+}
+
+/** Страница сервера, где Wynd уже стоит (пульт, кадры 7а–7е). */
+export interface ServerPage {
+	ok: boolean;
+	message?: string;
+	advice?: string;
+	state: ServerState;
+	latest?: string;
+	copy_bytes: number;
+	live_copy: boolean;
+	can_build: boolean;
+}
+
+export interface ServiceResult {
+	ok: boolean;
+	message?: string;
+	advice?: string;
+	log: LogEntry[] | null;
+	page: ServerPage;
+}
+
+export interface UpdateOptions {
+	stop_for_copy: boolean;
+	start_after: boolean;
+	build: boolean;
+}
+
 interface Backend {
 	HasSavedPassword(host: string, user: string): Promise<boolean>;
 	Connect(input: ConnectInput): Promise<ConnectResult>;
@@ -123,6 +170,10 @@ interface Backend {
 	CopyText(text: string): Promise<boolean>;
 	Disconnect(): Promise<void>;
 	Version(): Promise<string>;
+	ServerPage(): Promise<ServerPage>;
+	Service(action: 'start' | 'stop' | 'restart'): Promise<ServiceResult>;
+	StartUpdate(opt: UpdateOptions): Promise<Progress>;
+	ReturnPrevious(): Promise<ServiceResult>;
 }
 
 export function backend(): Backend {

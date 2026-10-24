@@ -88,6 +88,26 @@ func (a *App) Rollback(keepData bool) installer.RollbackResult {
 	return a.wizard.Rollback(a.ctx, keepData)
 }
 
+// ServerPage — страница сервера, где Wynd уже стоит (пульт, кадры 7а–7е).
+func (a *App) ServerPage() installer.ServerPage {
+	return a.wizard.ServerPage(a.ctx)
+}
+
+// Service — «Запустить», «Остановить», «Перезапустить».
+func (a *App) Service(action string) installer.ServiceResult {
+	return a.wizard.Service(a.ctx, action)
+}
+
+// StartUpdate обновляет Wynd; ход — InstallProgress.
+func (a *App) StartUpdate(opt installer.UpdateOptions) installer.Progress {
+	return a.wizard.StartUpdate(a.ctx, opt)
+}
+
+// ReturnPrevious возвращает прежнюю версию с данными из копии.
+func (a *App) ReturnPrevious() installer.ServiceResult {
+	return a.wizard.ReturnPrevious(a.ctx)
+}
+
 // OpenLink открывает ссылку первого запуска в браузере человека.
 func (a *App) OpenLink(url string) {
 	runtime.BrowserOpenURL(a.ctx, url)
