@@ -586,6 +586,93 @@ x86_64
 <p class="note">После установки приложение — пульт сервера: обновить (с бэкапом перед), откатить (с предупреждением: телефоны, открывавшие новую версию, могут не открыть старую — их данные на устройстве уже обновились), выгрузить бэкап на компьютер, проверить. Несколько серверов — списком.</p>
 </div>
 
+<div>
+<p class="cap">7а · Сервер, где Wynd уже работает</p>
+<div class="win"><div class="tb">●<b>Wynd Мастерская [0.1.0]</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="body">
+<h2>family.example.ru</h2>
+<div class="sub">Wynd 0.42.2 · работает · свободно 29 ГБ</div>
+<div class="box" style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+<div style="flex:1"><div style="font-weight:600">Вышла версия 0.43.0</div><div class="dim">Перед обновлением сохраним копию данных на сервере. <span class="under">что нового</span></div></div><span class="btn">Обновить</span></div>
+<div class="row"><span class="ic">↓</span><div style="flex:1">Бэкап на этот компьютер</div><span class="under">сделать</span></div>
+<div class="row"><span class="ic">→</span><div style="flex:1">Переехать на другой сервер</div><span class="under">начать</span></div>
+<div class="foot"><span class="btn gh">Другой сервер</span><span class="under" style="margin-left:auto">Убрать Wynd</span></div>
+</div></div></div>
+<p class="note">Черновик 2026-10-24, не утверждено (план 45, срез 4). Сюда ведёт подключение к серверу, где Wynd уже работает, — вместо осмотра и плана установки. Версию на сервере Мастерская узнаёт у контейнера, свежую — у хранилища, как при установке. Свежей нет — вместо блока строка «Стоит самая свежая версия». «Бэкап на компьютер» и «Переехать» — места для следующих кадров, здесь не рисуются. Отката в первом выпуске нет (владелец, 2026-10-24).</p>
+</div>
+
+<div>
+<p class="cap">7б · План обновления</p>
+<div class="win"><div class="tb">●<b>Wynd Мастерская [0.1.0]</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st on"><i>2</i>План</div><div class="st"><i>3</i>Обновление</div><div class="st"><i>4</i>Готово</div>
+</div>
+<div class="body">
+<h2>Обновим до 0.43.0</h2>
+<div class="row"><span class="ic">1</span><div>Скачаем Wynd 0.43.0 <span class="dim">— сайт пока работает</span></div></div>
+<div class="row"><span class="ic">2</span><div>Остановим Wynd <span class="dim">— с этой минуты сайт не открывается</span></div></div>
+<div class="row"><span class="ic">3</span><div>Сохраним копию данных на сервере <span class="dim">— 2,0 ГБ, свободно 29 ГБ</span></div></div>
+<div class="row"><span class="ic">4</span><div>Запустим 0.43.0 и проверим сайт</div></div>
+<div class="sub" style="margin-top:10px">Не тронем: Docker, nginx, сертификат сайта.</div>
+<div class="foot"><span class="btn">Обновить</span><span class="btn gh">Назад</span></div>
+</div></div></div>
+<p class="note">Черновик 2026-10-24, не утверждено. Скачиваем до остановки — сайт не открывается только на время копии и запуска. Копию делаем при остановленном Wynd: база не меняется, пока её копируют. Места на копию не хватает — обновить нельзя, об этом говорит строка 3 вместо размера. Сроков нет: не замерены.</p>
+</div>
+
+<div>
+<p class="cap">7в · Обновляем</p>
+<div class="win"><div class="tb">●<b>Wynd Мастерская [0.1.0]</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st done"><i>✓</i>План</div><div class="st on"><i>3</i>Обновление</div><div class="st"><i>4</i>Готово</div>
+</div>
+<div class="body">
+<h2>Обновляем</h2>
+<div class="bar"><i style="width:55%"></i></div>
+<div class="row"><span class="ic ok">✓</span><div>Скачали Wynd 0.43.0</div></div>
+<div class="row"><span class="ic ok">✓</span><div>Остановили Wynd</div></div>
+<div class="row"><span class="ic w">…</span><div>Копия данных <span class="dim">— 1,1 из 2,0 ГБ</span></div></div>
+<div class="row"><span class="ic dim">○</span><div class="dim">Запуск 0.43.0</div></div>
+<div class="row"><span class="ic dim">○</span><div class="dim">Проверка</div></div>
+<div class="foot"><span class="under">показать, что выполняется</span><span class="dim" style="margin-left:auto">Окно можно свернуть</span></div>
+</div></div></div>
+<p class="note">Черновик 2026-10-24, не утверждено. Как экран установки (4): шаги, журнал за ссылкой.</p>
+</div>
+
+<div>
+<p class="cap">7г · Обновлено</p>
+<div class="win"><div class="tb">●<b>Wynd Мастерская [0.1.0]</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st done"><i>✓</i>План</div><div class="st done"><i>✓</i>Обновление</div><div class="st on"><i>4</i>Готово</div>
+</div>
+<div class="body">
+<h2>Wynd обновлён</h2>
+<div class="sub">Проверка прошла: работает 0.43.0, сайт открывается.</div>
+<div class="box" style="line-height:1.5">Копия данных до обновления лежит на сервере в папке /opt/wynd/backups/0.42.2 — 2,0 ГБ.</div>
+<div class="foot"><span class="btn">Открыть family.example.ru</span><span class="btn gh">К серверу</span></div>
+</div></div></div>
+<p class="note">Черновик 2026-10-24, не утверждено. Сколько копий хранить и когда убирать старые — отдельный вопрос владельцу. «К серверу» — на 7а.</p>
+</div>
+
+<div>
+<p class="cap">7д · Новая версия не запустилась</p>
+<div class="win"><div class="tb">●<b>Wynd Мастерская [0.1.0]</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st done"><i>✓</i>План</div><div class="st bad"><i>!</i>Обновление</div><div class="st"><i>4</i>Готово</div>
+</div>
+<div class="body">
+<h2>Wynd 0.43.0 не запустился</h2>
+<div class="box" style="line-height:1.5">Сайт сейчас не открывается. Данные целы: копия, сделанная перед обновлением, на месте.</div>
+<div class="sub" style="margin-top:12px">«Вернуть 0.42.2» запустит прежнюю версию с данными из копии — сайт заработает как до обновления.</div>
+<div class="foot"><span class="btn">Вернуть 0.42.2</span><span class="btn gh">Повторить</span><span class="under" style="margin-left:auto">подробности</span></div>
+</div></div></div>
+<p class="note">Черновик 2026-10-24, не утверждено. Это не «откат» из кадра 6: он только для неудачного обновления, пока новой версией никто не пользовался, — поэтому без предупреждения о телефонах. Новая версия могла успеть изменить базу при запуске, поэтому возвращаем и данные из копии.</p>
+</div>
+
 </div>
 </body>
 </html>
