@@ -185,7 +185,53 @@ paths:
             type: string
       responses:
         "200":
-          description: peek fields
+          description: >
+            peek fields; for a circle split off another (A9) also `split` —
+            split_from, invite_line, you_name, past_from
+
+  /circles/{circle_id}/split:
+    get:
+      summary: What a split takes (posts seen, since when) and whom to call (A9)
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: posts, since, people
+        "403":
+          description: not an active member
+    post:
+      summary: Split off a new circle from what the member has seen; invites the chosen people (A9)
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                invite:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "201":
+          description: circle_id, posts, invited
+        "400":
+          description: empty name or someone not in the circle
+        "403":
+          description: not an active member
 
   /circles/{circle_id}/join:
     post:

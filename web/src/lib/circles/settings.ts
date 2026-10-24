@@ -180,6 +180,42 @@ export interface JoinPreview {
 	color: CircleColor;
 	member_count: number;
 	members: { name: string; is_owner: boolean; is_inviter: boolean }[];
+	/** Круг отделён от другого (A9, 6.44): кто зовёт и под каким именем войдёте. */
+	split?: SplitJoin;
+}
+
+export interface SplitJoin {
+	split_from: string;
+	/** «Мышь отделила круг от круга «Семья» и зовёт вас». */
+	invite_line?: string;
+	you_name?: string;
+	past_from?: string;
+}
+
+/** «Отделиться» (A9, 6.42–6.43): что перейдёт и кого можно позвать. */
+export interface SplitPreview {
+	posts: number;
+	since?: string;
+	people: { account_id: string; name: string; avatar_blob_id?: string }[];
+}
+
+export async function fetchSplitPreview(origin: string, circleId: string): Promise<SplitPreview> {
+	return apiJson<SplitPreview>(origin, `/circles/${circleId}/split`);
+}
+
+/** Новый круг из того, что вы видели; позванным — приглашения. */
+export async function splitCircle(
+	origin: string,
+	circleId: string,
+	input: { name: string; invite: string[] }
+): Promise<{ circle_id: string }> {
+	const res = await apiJson<{ circle_id: string }>(origin, `/circles/${circleId}/split`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(input)
+	});
+	await invalidateSnapshots(origin, { kind: 'circles' });
+	return res;
 }
 
 export async function fetchJoinPreview(origin: string, circleId: string): Promise<JoinPreview> {

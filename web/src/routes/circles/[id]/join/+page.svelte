@@ -20,7 +20,10 @@
 		memberAvatarColor,
 		type InvitePeek
 	} from '$lib/auth/invites';
-	import { fetchJoinPreview, joinPendingCircle } from '$lib/circles/settings';
+	import { fetchJoinPreview, joinPendingCircle, type SplitJoin } from '$lib/circles/settings';
+	import Row from '$ui/data/Row.svelte';
+	import { formatCutoffDate } from '$lib/format/time';
+	import { localDayOf } from '$lib/journal/present';
 	import { circleInitial, setCircleIdentity } from '$lib/circles/meta';
 	import { rememberCircleOrigin } from '$lib/circles/origin';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
@@ -43,6 +46,8 @@
 	let pendingJoin = $state(false);
 	let pendingAvatar = $state<CroppedImage | undefined>();
 	let gender = $state<'' | 'm' | 'f'>('');
+	// Позвали в отделённый круг (A9, 6.44): имя и прошлое уже есть.
+	let split = $state<SplitJoin | undefined>();
 
 	const displayMembers = $derived.by(() => {
 		if (peek?.members) {
@@ -84,6 +89,7 @@
 				try {
 					const preview = await fetchJoinPreview(circle.origin, circle.circleId);
 					pendingJoin = true;
+					split = preview.split?.you_name ? preview.split : undefined;
 					peek = {
 						server_name: '',
 						host: '',
@@ -111,6 +117,7 @@
 
 	async function enterCircle() {
 		error = '';
+		if (split?.you_name) name = split.you_name;
 		const trimmed = name.trim();
 		if (!trimmed) {
 			error = 'Введите имя';
@@ -175,6 +182,9 @@
 	circleTitle={circle.name}
 	onback={() => goUp('/circles')}
 >
+	{#if split && pendingJoin}
+		<ScreenTitle class="mt-22 lh-125">{split.invite_line || `Круг отделён от круга «${split.split_from}»`}</ScreenTitle>
+	{/if}
 	{#if memberTotal > 0}
 		<Label class="mt-16">Кто уже здесь · {memberTotal}</Label>
 		<PeopleStrip people={displayMembers} />
@@ -187,7 +197,19 @@
 		{/if}
 	{/if}
 
-	{#if inviteToken || pendingJoin}
+	{#if split && pendingJoin}
+		{#if split.past_from}
+			<Row class="mt-12">
+				{#snippet main()}
+					<div class="bold">Прошлое — с {formatCutoffDate(localDayOf(split?.past_from ?? ''))}</div>
+					<div class="sub">то, что вы видели в круге «{split?.split_from}»</div>
+				{/snippet}
+			</Row>
+		{/if}
+		<Hint>Вы войдёте как {split.you_name}. Круг «{split.split_from}» остаётся как есть.</Hint>
+		<Button variant="colored" {loading} onclick={enterCircle}>Войти</Button>
+		<Button variant="ghost" class="mt-8" onclick={() => goUp('/circles')}>Не сейчас</Button>
+	{:else if inviteToken || pendingJoin}
 		<IdentityForm
 			color={circle.color}
 			bind:name

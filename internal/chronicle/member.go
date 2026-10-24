@@ -155,7 +155,13 @@ func (c *Chronicle) rejoinTx(ctx context.Context, tx *sql.Tx, existing Membershi
 		return Membership{}, Identity{}, err
 	}
 
-	if name != "" {
+	// Тем же именем — без новой строки в истории имён: позванный в
+	// отделённый круг входит под своим прежним (A9, 6.44).
+	current, err := c.identityName(ctx, tx, existing.IdentityID)
+	if err != nil {
+		return Membership{}, Identity{}, err
+	}
+	if name != "" && name != current {
 		if err := c.addIdentityName(ctx, tx, existing.IdentityID, name, now); err != nil {
 			return Membership{}, Identity{}, err
 		}

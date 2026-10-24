@@ -313,10 +313,11 @@ export async function loadStreet(): Promise<Street> {
 				continue;
 			}
 			try {
-				const preview = await apiJson<{ circle_name: string; color?: string }>(
-					session.origin,
-					`/circles/${id}/join-preview`
-				);
+				const preview = await apiJson<{
+					circle_name: string;
+					color?: string;
+					split?: { invite_line?: string };
+				}>(session.origin, `/circles/${id}/join-preview`);
 				rows.push({
 					origin: session.origin,
 					instanceName: session.name,
@@ -327,7 +328,8 @@ export async function loadStreet(): Promise<Street> {
 					pinnedAt: 0,
 					color: await colorForCircle(session.origin, id, preview.color),
 					initial: circleInitial(preview.circle_name),
-					preview: 'Вас позвали — выберите имя',
+					// Отделённый круг (A9, 6.44): кто отделил и от какого.
+					preview: preview.split?.invite_line || 'Вас позвали — выберите имя',
 					time: '',
 					pendingJoin: true
 				});

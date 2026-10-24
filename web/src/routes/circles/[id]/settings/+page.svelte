@@ -507,6 +507,16 @@
 		{#if !isOwner}
 			{@render ownArchive('bottom')}
 		{/if}
+		<!-- A9 (6.41): отделиться может любой — рядом со своим архивом, не в
+		     «Необратимо»: в этом круге ничего не меняется. -->
+		{#if !soloCircle}
+			<SettingsRow
+				title="Отделиться"
+				subtitle="новый круг с тем, что вы видели, — и с теми, кого позовёте"
+				divided="bottom"
+				onclick={() => goto(`/circles/${circle.circleId}/split`)}
+			/>
+		{/if}
 
 		<Label class="mt-20">Участники · {activeMembers.length}</Label>
 		{#each previewMembers as m, i (m.identity_id)}

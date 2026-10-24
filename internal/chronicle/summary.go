@@ -206,6 +206,22 @@ func formatDeadlineLabel(t time.Time) string {
 }
 
 // Круг оживлён из полного архива (план 52): журнал продолжается.
+// summaryCircleSplit — граница в ленте отделённого круга (A9, 6.45): ниже —
+// прошлое из старого круга, выше — жизнь нового. Слова владельца; имя
+// круга не склоняем — «от круга «Семья»», а не «от «Семьи»».
+func summaryCircleSplit(from string) string {
+	return fmt.Sprintf("Круг отделён от круга «%s»", from)
+}
+
+// SplitInviteLine — чем зовут в отделённый круг (6.44, строка в списке
+// кругов, письмо): «Мышь отделила круг от «Семьи» и зовёт вас».
+func SplitInviteLine(g Gender, name, from string) string {
+	if g == GenderNone {
+		return fmt.Sprintf("Круг отделён от круга «%s», %s зовёт вас", from, name)
+	}
+	return fmt.Sprintf("%s %s круг от круга «%s» и зовёт вас", name, past(g, "отделил", "отделила"), from)
+}
+
 func summaryCircleRevived(g Gender, name string) string {
 	if g == GenderNone {
 		return fmt.Sprintf("Круг оживлён из архива: %s", name)

@@ -176,6 +176,8 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}/invite-candidates", paid(s.handleListInviteCandidates))
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/member-invites", paid(s.handleCreateMemberInvite))
 	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}/join-preview", paid(s.handleJoinPreview))
+	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}/split", paid(s.handleSplitPreview))
+	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/split", paid(s.handleSplit))
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/join", paid(s.handleJoinPendingCircle))
 	s.Mux.HandleFunc("GET /api/v1/pending-circle-joins", paid(s.handleListPendingCircleJoins))
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/leave", paid(s.handleLeaveCircle))

@@ -72,6 +72,15 @@ type ReviveInput struct {
 	// владельца остаётся за его почтой. Пусто — «Да, это я»: лицо и прошлое
 	// прежнего владельца переходят к нему (так было и до A12).
 	NewMember *ReviveNewMember
+	// SplitFrom — имя круга, от которого отделились (A9, 6.41–6.45): круг
+	// собран на этом же сервере из того, что видел ReviverID; в ленте —
+	// «Круг отделён от «…»», а не «оживил из архива».
+	SplitFrom string
+	// SameServer — учётки архива — учётки этого сервера (A9): id те же, по
+	// почте не ищем и новых не заводим.
+	SameServer bool
+	// afterInsert — доделать в той же транзакции, до служебной строки.
+	afterInsert func(ctx context.Context, tx *sql.Tx, circleID string) error
 }
 
 // ReviveNewMember — кто оживляет, если он не прежний владелец (7.29в).
@@ -161,6 +170,10 @@ func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveRes
 	}
 	accounts := map[string]string{}
 	for oldID, email := range in.Accounts {
+		if in.SameServer {
+			accounts[oldID] = oldID
+			continue
+		}
 		if !reviverInArchive && newMember == nil && oldID == owner {
 			// Тот, кто оживил, — владелец и лицо прежнего владельца (план 52).
 			accounts[oldID] = in.ReviverID
@@ -249,6 +262,11 @@ func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveRes
 		formatTime(now), res.CircleID, in.ReviverID); err != nil {
 		return res, err
 	}
+	if in.afterInsert != nil {
+		if err := in.afterInsert(ctx, tx, res.CircleID); err != nil {
+			return res, err
+		}
+	}
 	// Кто приехал с кругом — встретить экраном 1.10 при первом входе.
 	kind := "revived"
 	if in.MovedFrom != "" {
@@ -262,14 +280,19 @@ func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveRes
 		return res, err
 	}
 	event, summary := "circle_revived", summaryCircleRevived(c.identityGender(ctx, tx, reviverIdentity), reviverName)
+	var payload any
 	if in.MovedFrom != "" {
 		event, summary = "circle_moved_in", summaryCircleMovedIn(in.MovedFrom)
+	}
+	if in.SplitFrom != "" {
+		event, summary = EventCircleSplit, summaryCircleSplit(in.SplitFrom)
+		payload = map[string]string{"from": in.SplitFrom}
 	}
 	if _, err := c.appendEvent(ctx, tx, appendEventInput{
 		circleID: res.CircleID, eventType: event, isService: true,
 		actorIdentityID: reviverIdentity, actorName: reviverName,
-		summary: summary,
-		now:     now,
+		summary: summary, payload: payload,
+		now: now,
 	}); err != nil {
 		return res, err
 	}

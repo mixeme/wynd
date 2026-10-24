@@ -121,12 +121,22 @@ func (s *Server) handleJoinPreview(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	out := map[string]any{
 		"circle_name":  peek.CircleName,
 		"color":        peek.Color,
 		"member_count": peek.MemberCount,
 		"members":      peek.Members,
-	})
+	}
+	// Отделённый круг (A9, 6.44): кто зовёт, откуда, под каким именем войдёте.
+	split, err := s.Chronicle.SplitJoinFor(r.Context(), circleID, sess.AccountID, inviter)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	if split != nil {
+		out["split"] = split
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 type joinPendingBody struct {

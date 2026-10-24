@@ -93,6 +93,18 @@ func (s *Service) SendCircleWaiting(ctx context.Context, email, circle, owner, l
 	return s.notify(ctx, email, subject, body)
 }
 
+// SendSplitInvite — письмо позванному в отделённый круг (A9, 6.44): кто
+// отделил круг и от какого, ссылка — на экран «позвали».
+func (s *Service) SendSplitInvite(ctx context.Context, email, circle, from, line, link string) error {
+	email = strings.TrimSpace(email)
+	if email == "" {
+		return ErrInvalid
+	}
+	subject := "Вас зовут в круг «" + circle + "»"
+	body := fmt.Sprintf("%s. В новом круге «%s» — то, что вы видели в круге «%s»; круг «%s» остаётся как есть. Войти — по ссылке:\n%s\n", line, circle, from, from, link)
+	return s.notify(ctx, email, subject, body)
+}
+
 // SendCircleMoving — письмо участникам, когда владелец начал перенос круга
 // на другой сервер (3.14): круг замер, адрес придёт отдельным письмом.
 func (s *Service) SendCircleMoving(ctx context.Context, email, circle, owner, link string) error {
