@@ -32,6 +32,18 @@ type blobEntry struct {
 // When incremental is true, only blob files absent from the destination manifest
 // are copied; config, database, and keys are always refreshed.
 func Backup(dataDir, destDir string, incremental bool) error {
+	return backup(dataDir, destDir, incremental, true)
+}
+
+// BackupNoBlobs — то же без файлов: база снимком, настройки и ключи. Копия
+// перед обновлением из Мастерской (план 45, кадр 7б): фото и видео Wynd не
+// меняет, их Мастерская кладёт в копию жёсткими ссылками сама. Отметку
+// «последний бэкап» такая копия не ставит — она неполная.
+func BackupNoBlobs(dataDir, destDir string) error {
+	return backup(dataDir, destDir, false, false)
+}
+
+func backup(dataDir, destDir string, incremental, blobs bool) error {
 	if dataDir == "" || destDir == "" {
 		return fmt.Errorf("backup: empty path")
 	}
@@ -55,9 +67,11 @@ func Backup(dataDir, destDir string, incremental bool) error {
 	// Сначала файлы, потом база: запись, удалённая во время бэкапа, тогда
 	// оставляет в копии лишний файл без ссылок (его уберёт рутина), а не
 	// строку базы без файла — битую картинку после восстановления (BKP-6).
-	prev, _ := loadManifest(filepath.Join(destDir, "blobs", manifestName))
-	if err := backupBlobs(filepath.Join(dataDir, "blobs"), filepath.Join(destDir, "blobs"), incremental, prev); err != nil {
-		return err
+	if blobs {
+		prev, _ := loadManifest(filepath.Join(destDir, "blobs", manifestName))
+		if err := backupBlobs(filepath.Join(dataDir, "blobs"), filepath.Join(destDir, "blobs"), incremental, prev); err != nil {
+			return err
+		}
 	}
 	if err := copyFile(filepath.Join(dataDir, "config.json"), filepath.Join(destDir, "config.json")); err != nil && !os.IsNotExist(err) {
 		return err
@@ -67,6 +81,9 @@ func Backup(dataDir, destDir string, incremental bool) error {
 	}
 	if err := backupDatabase(filepath.Join(dataDir, "wynd.db"), filepath.Join(destDir, "wynd.db")); err != nil {
 		return err
+	}
+	if !blobs {
+		return nil
 	}
 
 	if err := touchLastBackupAt(filepath.Join(dataDir, "wynd.db")); err != nil {

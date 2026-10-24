@@ -15,11 +15,12 @@ import (
 func runBackup(args []string) {
 	fs := flag.NewFlagSet("backup", flag.ExitOnError)
 	incremental := fs.Bool("incremental", false, "copy only new or changed blobs")
+	noBlobs := fs.Bool("no-blobs", false, "database, config and keys only (Workshop links the files itself)")
 	_ = fs.Parse(args)
 
 	dest := fs.Arg(0)
 	if dest == "" {
-		fmt.Fprintln(os.Stderr, "usage: wynd backup [-incremental] <destination-dir>")
+		fmt.Fprintln(os.Stderr, "usage: wynd backup [-incremental | -no-blobs] <destination-dir>")
 		os.Exit(2)
 	}
 	dest, err := filepath.Abs(dest)
@@ -27,7 +28,11 @@ func runBackup(args []string) {
 		log.Fatalf("dest: %v", err)
 	}
 	cfg := loadExistingConfig("backup")
-	if err := backup.Backup(cfg.DataDir, dest, *incremental); err != nil {
+	run := func() error { return backup.Backup(cfg.DataDir, dest, *incremental) }
+	if *noBlobs {
+		run = func() error { return backup.BackupNoBlobs(cfg.DataDir, dest) }
+	}
+	if err := run(); err != nil {
 		log.Fatalf("backup: %v", err)
 	}
 	log.Printf("backup written to %s", dest)
