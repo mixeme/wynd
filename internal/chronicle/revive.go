@@ -24,7 +24,8 @@ import (
 // reviveRow берёт только столбцы, что есть в обеих схемах, архив без него — NULL.
 // Схема 7 (итог переноса, incoming_moves.already_here) таблиц круга не меняла.
 // Схемы 8 и 9 (владелец и имена в переносе, A12) — тоже только incoming_moves.
-var ReviveSchemaVersions = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
+// Схема 10 добавила circles.archive_cutoff_tz — его оживление и так обнуляет.
+var ReviveSchemaVersions = []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 
 // ReviveLegacySchemaVersions — схемы архивов разметки 1: номера прежней
 // нумерации (до 0.34.0). Схема 36 — та же, что 1.
@@ -374,7 +375,7 @@ func (c *Chronicle) reviveRow(ctx context.Context, tx *sql.Tx, table string, row
 	if table == "circles" {
 		// Живёт заново: без цикла архивации, не замерший, место — по
 		// правилам этого сервера, текст сочтут триггеры.
-		for _, col := range []string{"archive_cutoff_date", "archive_deadline", "archive_reminder_before_sec",
+		for _, col := range []string{"archive_cutoff_date", "archive_cutoff_tz", "archive_deadline", "archive_reminder_before_sec",
 			"cutoff_locked_at", "archive_reminder_sent_at", "archive_cycle_started_at", "frozen_at", "quota_bytes"} {
 			row[col] = nil
 		}

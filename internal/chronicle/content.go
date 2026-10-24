@@ -398,7 +398,7 @@ func (c *Chronicle) assertPostInteractive(ctx context.Context, circleID, account
 	if !cycle.Active {
 		return nil
 	}
-	cutoff, err := CutoffInstant(cycle.CutoffDate)
+	cutoff, err := c.cutoffInstant(ctx, circleID, cycle.CutoffDate)
 	if err != nil {
 		return err
 	}

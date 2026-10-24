@@ -3,6 +3,7 @@ package chronicle
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 )
 
@@ -37,9 +38,17 @@ func volumeStepFor(age time.Duration) VolumeStep {
 
 // SQLite: начало столбика по created_at. Неделя — с понедельника.
 var volumePeriodSQL = map[VolumeStep]string{
-	VolumeStepDay:   `date(p.created_at)`,
-	VolumeStepWeek:  `date(p.created_at, '-6 days', 'weekday 1')`,
-	VolumeStepMonth: `strftime('%Y-%m-01', p.created_at)`,
+	VolumeStepDay:   `date(p.created_at, %s)`,
+	VolumeStepWeek:  `date(p.created_at, %s, '-6 days', 'weekday 1')`,
+	VolumeStepMonth: `strftime('%%Y-%%m-01', p.created_at, %s)`,
+}
+
+// volumePeriod — столбик по дню устройства, а не UTC (C59, владелец
+// 2026-10-24: «человек выбирает так, как видит это у себя»): ко времени
+// прибавляется смещение пояса на сейчас. Там, где переводят часы, у записей
+// около полуночи в другой половине года столбик может съехать на час.
+func volumePeriod(step VolumeStep, offsetSec int) string {
+	return fmt.Sprintf(volumePeriodSQL[step], fmt.Sprintf("'%+d seconds'", offsetSec))
 }
 
 // postWeightSQL — сколько весит каждая живая запись круга так, как её
@@ -84,10 +93,29 @@ const postWeightSQL = `
 // MediaVolumeChart returns media volume for cutoff selection, bucketed by a
 // step that fits the circle's age.
 func (c *Chronicle) MediaVolumeChart(ctx context.Context, circleID string) ([]VolumeBucket, VolumeStep, error) {
-	return c.mediaVolumeChart(ctx, circleID, time.Now().UTC())
+	return c.MediaVolumeChartTZ(ctx, circleID, "")
+}
+
+// MediaVolumeChartTZ — столбики по дням пояса tz (устройство, C59); пусто —
+// пояс круга, его нет — UTC.
+func (c *Chronicle) MediaVolumeChartTZ(ctx context.Context, circleID, tz string) ([]VolumeBucket, VolumeStep, error) {
+	if tz == "" {
+		tz = c.archiveTimeZone(ctx, circleID)
+	}
+	return c.mediaVolumeChartIn(ctx, circleID, time.Now().UTC(), tz)
 }
 
 func (c *Chronicle) mediaVolumeChart(ctx context.Context, circleID string, now time.Time) ([]VolumeBucket, VolumeStep, error) {
+	return c.mediaVolumeChartIn(ctx, circleID, now, "")
+}
+
+func (c *Chronicle) mediaVolumeChartIn(ctx context.Context, circleID string, now time.Time, tz string) ([]VolumeBucket, VolumeStep, error) {
+	offset := 0
+	if tz != "" {
+		if loc, err := time.LoadLocation(tz); err == nil {
+			_, offset = now.In(loc).Zone()
+		}
+	}
 	var first sql.NullString
 	if err := c.db.QueryRowContext(ctx, `
 		SELECT MIN(created_at) FROM posts WHERE circle_id = ? AND deleted = 0
@@ -101,7 +129,7 @@ func (c *Chronicle) mediaVolumeChart(ctx context.Context, circleID string, now t
 		}
 	}
 	return pickVolume(step, func(s VolumeStep) ([]VolumeBucket, error) {
-		return c.volumeBuckets(ctx, circleID, s)
+		return c.volumeBuckets(ctx, circleID, s, offset)
 	})
 }
 
@@ -129,9 +157,9 @@ var finerVolumeStep = map[VolumeStep]VolumeStep{
 	VolumeStepWeek:  VolumeStepDay,
 }
 
-func (c *Chronicle) volumeBuckets(ctx context.Context, circleID string, step VolumeStep) ([]VolumeBucket, error) {
+func (c *Chronicle) volumeBuckets(ctx context.Context, circleID string, step VolumeStep, offsetSec int) ([]VolumeBucket, error) {
 	rows, err := c.db.QueryContext(ctx, `
-		SELECT `+volumePeriodSQL[step]+` AS period, SUM(w.bytes) AS bytes
+		SELECT `+volumePeriod(step, offsetSec)+` AS period, SUM(w.bytes) AS bytes
 		FROM (`+postWeightSQL+`) w
 		JOIN posts p ON p.id = w.post_id
 		GROUP BY period
@@ -222,7 +250,16 @@ func medianInt64(vals []int64) int64 {
 // PostsKeptAtCutoff counts posts the archive cycle leaves in the circle:
 // created at or after the cutoff.
 func (c *Chronicle) PostsKeptAtCutoff(ctx context.Context, circleID, cutoffDate string) (int, error) {
-	cutoff, err := CutoffInstant(cutoffDate)
+	return c.PostsKeptAtCutoffTZ(ctx, circleID, cutoffDate, "")
+}
+
+// PostsKeptAtCutoffTZ — то же, день отсечки в поясе tz (устройство, C59);
+// пусто — пояс круга.
+func (c *Chronicle) PostsKeptAtCutoffTZ(ctx context.Context, circleID, cutoffDate, tz string) (int, error) {
+	if tz == "" {
+		tz = c.archiveTimeZone(ctx, circleID)
+	}
+	cutoff, err := CutoffInstantIn(cutoffDate, tz)
 	if err != nil {
 		return 0, err
 	}
@@ -237,7 +274,15 @@ func (c *Chronicle) PostsKeptAtCutoff(ctx context.Context, circleID, cutoffDate 
 // FreedBytesBeforeCutoff estimates bytes freed at cutoff: media and text, as
 // the quota counts them (postWeightSQL).
 func (c *Chronicle) FreedBytesBeforeCutoff(ctx context.Context, circleID, cutoffDate string) (int64, error) {
-	cutoff, err := CutoffInstant(cutoffDate)
+	return c.FreedBytesBeforeCutoffTZ(ctx, circleID, cutoffDate, "")
+}
+
+// FreedBytesBeforeCutoffTZ — то же, день отсечки в поясе tz (C59).
+func (c *Chronicle) FreedBytesBeforeCutoffTZ(ctx context.Context, circleID, cutoffDate, tz string) (int64, error) {
+	if tz == "" {
+		tz = c.archiveTimeZone(ctx, circleID)
+	}
+	cutoff, err := CutoffInstantIn(cutoffDate, tz)
 	if err != nil {
 		return 0, err
 	}

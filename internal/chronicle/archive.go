@@ -26,11 +26,56 @@ const MinArchiveWindow = 24 * time.Hour
 
 // CutoffInstant returns UTC midnight on the cutoff date (exclusive upper bound for purge).
 func CutoffInstant(cutoffDate string) (time.Time, error) {
-	t, err := time.Parse("2006-01-02", cutoffDate)
+	return CutoffInstantIn(cutoffDate, "")
+}
+
+// CutoffInstantIn — полночь дня отсечки в поясе tz (IANA, «Europe/Moscow»):
+// «Архивировать всё до 24 октября» — до начала 24-го там, где живёт владелец
+// (C59, владелец 2026-10-24: «По устройству»). Пустой или незнакомый пояс —
+// полночь по UTC.
+func CutoffInstantIn(cutoffDate, tz string) (time.Time, error) {
+	loc := time.UTC
+	if tz != "" {
+		if l, err := time.LoadLocation(tz); err == nil {
+			loc = l
+		}
+	}
+	t, err := time.ParseInLocation("2006-01-02", cutoffDate, loc)
 	if err != nil {
 		return time.Time{}, ErrInvalid
 	}
 	return t.UTC(), nil
+}
+
+// ValidTimeZone — знакомый серверу пояс IANA (пусто — нет пояса).
+func ValidTimeZone(tz string) bool {
+	if tz == "" || len(tz) > 64 {
+		return false
+	}
+	_, err := time.LoadLocation(tz)
+	return err == nil
+}
+
+// archiveTimeZone — пояс отсечки круга; пусто — UTC.
+func (c *Chronicle) archiveTimeZone(ctx context.Context, circleID string) string {
+	var tz sql.NullString
+	_ = c.db.QueryRowContext(ctx, `SELECT archive_cutoff_tz FROM circles WHERE id = ?`, circleID).Scan(&tz)
+	return tz.String
+}
+
+// cutoffInstant — полночь дня отсечки в поясе круга.
+func (c *Chronicle) cutoffInstant(ctx context.Context, circleID, cutoffDate string) (time.Time, error) {
+	return CutoffInstantIn(cutoffDate, c.archiveTimeZone(ctx, circleID))
+}
+
+// SetArchiveTimeZone — пояс устройства владельца при постановке и сдвиге
+// отсечки (C59). Незнакомый пояс не пишется: остаётся прежний или UTC.
+func (c *Chronicle) SetArchiveTimeZone(ctx context.Context, circleID, tz string) error {
+	if !ValidTimeZone(tz) {
+		return nil
+	}
+	_, err := c.db.ExecContext(ctx, `UPDATE circles SET archive_cutoff_tz = ? WHERE id = ?`, tz, circleID)
+	return err
 }
 
 // GetArchiveCycle loads the current archive cycle for a circle.
@@ -315,7 +360,7 @@ func (c *Chronicle) LockCutoff(ctx context.Context, circleID, cutoffDate string,
 
 // ArchiveSnapshot returns visible posts before cutoff for personal archive export.
 func (c *Chronicle) ArchiveSnapshot(ctx context.Context, circleID, accountID, cutoffDate string) ([]FeedPost, error) {
-	cutoff, err := CutoffInstant(cutoffDate)
+	cutoff, err := c.cutoffInstant(ctx, circleID, cutoffDate)
 	if err != nil {
 		return nil, err
 	}
@@ -369,7 +414,7 @@ func (c *Chronicle) ArchiveSnapshot(ctx context.Context, circleID, accountID, cu
 // ARC-6). Видимость — как у списка дней: название видно, если в дне есть
 // видимая читателю запись, поэтому берутся только дни из среза posts.
 func (c *Chronicle) ArchiveDayTitles(ctx context.Context, circleID, cutoffDate string, posts []FeedPost) (map[string]string, error) {
-	cutoff, err := CutoffInstant(cutoffDate)
+	cutoff, err := c.cutoffInstant(ctx, circleID, cutoffDate)
 	if err != nil {
 		return nil, err
 	}
@@ -503,7 +548,7 @@ type ArchivePersonalStats struct {
 // цикла на каждом GET /circles, а срез — это все записи круга до отсечки со
 // всеми комментариями и реакциями (аудит 2026-09-22).
 func (c *Chronicle) EstimateArchivePersonal(ctx context.Context, circleID, accountID, cutoffDate string) (ArchivePersonalStats, error) {
-	cutoff, err := CutoffInstant(cutoffDate)
+	cutoff, err := c.cutoffInstant(ctx, circleID, cutoffDate)
 	if err != nil {
 		return ArchivePersonalStats{}, err
 	}
@@ -715,7 +760,7 @@ func (c *Chronicle) CircleMemberEmails(ctx context.Context, circleID string) ([]
 // PurgeBeforeCutoff deletes said content and media before cutoff; structural events remain.
 // Returns blob ids that were detached for GC.
 func (c *Chronicle) PurgeBeforeCutoff(ctx context.Context, circleID, cutoffDate string, now time.Time) ([]string, error) {
-	cutoff, err := CutoffInstant(cutoffDate)
+	cutoff, err := c.cutoffInstant(ctx, circleID, cutoffDate)
 	if err != nil {
 		return nil, err
 	}

@@ -444,12 +444,26 @@ export async function deleteCircle(
 	await invalidateSnapshots(origin, { kind: 'circles' });
 }
 
+/** Пояс этого устройства (IANA): день отсечки — по нему, как дни в ленте (C59). */
+export function deviceTimeZone(): string {
+	try {
+		return Intl.DateTimeFormat().resolvedOptions().timeZone ?? '';
+	} catch {
+		return '';
+	}
+}
+
 export async function fetchQuota(
 	origin: string,
 	circleId: string,
 	cutoffDate?: string
 ): Promise<QuotaInfo> {
-	const params = cutoffDate ? `?cutoff_date=${encodeURIComponent(cutoffDate)}` : '';
+	// Пояс — и для столбиков, и для «освободится» (C59).
+	const query = new URLSearchParams();
+	if (cutoffDate) query.set('cutoff_date', cutoffDate);
+	const tz = deviceTimeZone();
+	if (tz) query.set('tz', tz);
+	const params = query.size ? `?${query}` : '';
 	return apiJson<QuotaInfo>(origin, `/circles/${circleId}/quota${params}`);
 }
 
@@ -473,7 +487,7 @@ export async function startArchiveCycle(
 	await apiJson(origin, `/circles/${circleId}/archive`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify(input)
+		body: JSON.stringify({ ...input, time_zone: deviceTimeZone() })
 	});
 	await invalidateSnapshots(origin, { circleId });
 }
@@ -486,7 +500,7 @@ export async function moveCutoff(
 	await apiJson(origin, `/circles/${circleId}/archive/cutoff`, {
 		method: 'PUT',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ cutoff_date: cutoffDate })
+		body: JSON.stringify({ cutoff_date: cutoffDate, time_zone: deviceTimeZone() })
 	});
 	await invalidateSnapshots(origin, { circleId });
 }

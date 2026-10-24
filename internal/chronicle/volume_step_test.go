@@ -42,7 +42,7 @@ func TestVolumeStepAndPeriods(t *testing.T) {
 		VolumeStepMonth: "2026-10-01",
 	} {
 		var got string
-		q := `SELECT ` + volumePeriodSQL[step] + ` FROM (SELECT '2026-10-01T15:04:05Z' AS created_at) p`
+		q := `SELECT ` + volumePeriod(step, 0) + ` FROM (SELECT '2026-10-01T15:04:05Z' AS created_at) p`
 		if err := c.db.QueryRow(q).Scan(&got); err != nil {
 			t.Fatal(err)
 		}
@@ -51,11 +51,19 @@ func TestVolumeStepAndPeriods(t *testing.T) {
 		}
 	}
 	var monday string
-	if err := c.db.QueryRow(`SELECT ` + volumePeriodSQL[VolumeStepWeek] + ` FROM (SELECT '2026-09-28T01:00:00Z' AS created_at) p`).Scan(&monday); err != nil {
+	if err := c.db.QueryRow(`SELECT ` + volumePeriod(VolumeStepWeek, 0) + ` FROM (SELECT '2026-09-28T01:00:00Z' AS created_at) p`).Scan(&monday); err != nil {
 		t.Fatal(err)
 	}
 	if monday != "2026-09-28" {
 		t.Errorf("monday stays monday: %s", monday)
+	}
+	// По Москве (+3 ч) 21:48 UTC 30 сентября — уже 1 октября (C59).
+	var moscow string
+	if err := c.db.QueryRow(`SELECT ` + volumePeriod(VolumeStepDay, 3*3600) + ` FROM (SELECT '2026-09-30T21:48:00Z' AS created_at) p`).Scan(&moscow); err != nil {
+		t.Fatal(err)
+	}
+	if moscow != "2026-10-01" {
+		t.Errorf("moscow day: %s", moscow)
 	}
 }
 

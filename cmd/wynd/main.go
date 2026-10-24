@@ -15,6 +15,9 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	// Пояса IANA в самом бинарнике: отсечка архивации по поясу устройства
+	// (C59) не зависит от того, есть ли zoneinfo в образе.
+	_ "time/tzdata"
 
 	"gitea.mixdep.ru/mix/wynd/internal/api"
 	"gitea.mixdep.ru/mix/wynd/internal/auth"

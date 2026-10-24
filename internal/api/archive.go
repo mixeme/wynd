@@ -187,7 +187,12 @@ func (s *Server) handleCircleQuota(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	volume, step, err := s.Chronicle.MediaVolumeChart(r.Context(), circleID)
+	// Пояс устройства (C59): столбики и отсечка — по дням, как их видит человек.
+	tz := r.URL.Query().Get("tz")
+	if !chronicle.ValidTimeZone(tz) {
+		tz = ""
+	}
+	volume, step, err := s.Chronicle.MediaVolumeChartTZ(r.Context(), circleID, tz)
 	if err != nil {
 		writeDomainError(w, err)
 		return
@@ -236,13 +241,14 @@ func (s *Server) handleCircleQuota(w http.ResponseWriter, r *http.Request) {
 		out["last_request"] = last
 	}
 	if cutoff := r.URL.Query().Get("cutoff_date"); cutoff != "" {
-		freed, err := s.Chronicle.FreedBytesBeforeCutoff(r.Context(), circleID, cutoff)
+		// «Освободится» и «останется» — в том же поясе, как потом отсечёт архивация.
+		freed, err := s.Chronicle.FreedBytesBeforeCutoffTZ(r.Context(), circleID, cutoff, tz)
 		if err != nil {
 			writeDomainError(w, err)
 			return
 		}
 		out["freed_at_cutoff_bytes"] = freed
-		kept, err := s.Chronicle.PostsKeptAtCutoff(r.Context(), circleID, cutoff)
+		kept, err := s.Chronicle.PostsKeptAtCutoffTZ(r.Context(), circleID, cutoff, tz)
 		if err != nil {
 			writeDomainError(w, err)
 			return
@@ -256,6 +262,8 @@ type startArchiveBody struct {
 	CutoffDate        string `json:"cutoff_date"`
 	Deadline          string `json:"deadline"`
 	ReminderBeforeSec int64  `json:"reminder_before_sec"`
+	// TimeZone — пояс устройства владельца (IANA): день отсечки — по нему (C59).
+	TimeZone string `json:"time_zone"`
 }
 
 func (s *Server) handleStartArchiveCycle(w http.ResponseWriter, r *http.Request) {
@@ -278,6 +286,9 @@ func (s *Server) handleStartArchiveCycle(w http.ResponseWriter, r *http.Request)
 		writeDomainError(w, err)
 		return
 	}
+	if err := s.Chronicle.SetArchiveTimeZone(r.Context(), circleID, body.TimeZone); err != nil {
+		log.Printf("archive %s: time zone: %v", circleID, err)
+	}
 	s.sendArchiveCycleStartEmails(circleID)
 	s.notifyCircle(circleID, sess.AccountID, "event")
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -285,6 +296,8 @@ func (s *Server) handleStartArchiveCycle(w http.ResponseWriter, r *http.Request)
 
 type moveCutoffBody struct {
 	CutoffDate string `json:"cutoff_date"`
+	// TimeZone — пояс устройства владельца (C59).
+	TimeZone string `json:"time_zone"`
 }
 
 func (s *Server) handleMoveCutoff(w http.ResponseWriter, r *http.Request) {
@@ -301,6 +314,9 @@ func (s *Server) handleMoveCutoff(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeDomainError(w, err)
 		return
+	}
+	if err := s.Chronicle.SetArchiveTimeZone(r.Context(), circleID, body.TimeZone); err != nil {
+		log.Printf("archive %s: time zone: %v", circleID, err)
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
