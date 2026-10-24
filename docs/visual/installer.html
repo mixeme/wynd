@@ -40,6 +40,13 @@ h2{margin:0 0 4px;font-size:17px}
 .dim{color:var(--muted)}
 .bar{height:5px;border-radius:3px;background:var(--line);overflow:hidden;margin:8px 0}
 .bar i{display:block;height:100%;background:var(--c)}
+.cbx{display:flex;align-items:flex-start;gap:9px;line-height:1.4}
+.cbx>i{flex:0 0 18px;height:18px;box-sizing:border-box;border:1.5px solid #BDB2A5;border-radius:5px;background:var(--card);margin-top:0;position:relative}
+.cbx.on>i{background:var(--c);border-color:var(--c)}
+.cbx.on>i::after{content:'';position:absolute;left:5px;top:1.5px;width:4px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.cbx.rd>i{border-radius:50%}
+.cbx.rd.on>i{background:var(--card)}
+.cbx.rd.on>i::after{left:3.5px;top:3.5px;width:8px;height:8px;border:0;border-radius:50%;background:var(--c);transform:none}
 .box{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:12px 14px}
 </style>
 </head>
@@ -495,7 +502,7 @@ x86_64
 <div class="box" style="margin-top:12px;border-color:#C9A39A">
 <div style="font-weight:600">Убрать Wynd с сервера?</div>
 <div class="dim" style="margin-top:4px;line-height:1.5">Сайт family.example.ru перестанет открываться. Уберём контейнеры Wynd и Caddy. Docker останется.</div>
-<div style="margin-top:8px">☐ Удалить данные Wynd — записи, фотографии, учётные записи — и сертификат сайта</div>
+<div class="cbx" style="margin-top:8px"><i></i><span>Удалить данные Wynd — записи, фотографии, учётные записи — и сертификат сайта</span></div>
 <div class="dim" style="margin-top:4px;line-height:1.5">Без галочки папка /opt/wynd останется как есть. Поставите Wynd снова — всё будет на месте.</div>
 <div class="foot" style="margin-top:12px"><span class="btn">Да, убрать</span><span class="btn gh">Отмена</span></div>
 </div>
@@ -516,7 +523,7 @@ x86_64
 <div class="box" style="margin-top:12px;border-color:#C9A39A">
 <div style="font-weight:600">Убрать Wynd с сервера?</div>
 <div class="dim" style="margin-top:4px;line-height:1.5">Сайт family.example.ru перестанет открываться. Уберём контейнер Wynd и его сайт из nginx. Docker и nginx останутся.</div>
-<div style="margin-top:8px">☐ Удалить данные Wynd — записи, фотографии, учётные записи — и сертификат сайта</div>
+<div class="cbx" style="margin-top:8px"><i></i><span>Удалить данные Wynd — записи, фотографии, учётные записи — и сертификат сайта</span></div>
 <div class="dim" style="margin-top:4px;line-height:1.5">Без галочки папка /opt/wynd и сертификат останутся. Поставите Wynd снова — всё будет на месте.</div>
 <div class="foot" style="margin-top:12px"><span class="btn">Да, убрать</span><span class="btn gh">Отмена</span></div>
 </div>
@@ -616,7 +623,7 @@ x86_64
 <div class="row"><span class="ic">2</span><div>Остановим Wynd <span class="dim">— с этой минуты сайт не открывается</span></div></div>
 <div class="row"><span class="ic">3</span><div>Сохраним копию данных на сервере <span class="dim">— займёт 40 МБ, свободно 29 ГБ. Фото и видео обновление не меняет: в копии они те же файлы и места не занимают</span></div></div>
 <div class="row"><span class="ic">4</span><div>Запустим 0.43.0 и проверим сайт</div></div>
-<div style="margin-top:10px">☑ Остановить сайт на время копии</div>
+<div class="cbx on" style="margin-top:10px"><i></i><span>Остановить сайт на время копии</span></div>
 <div class="dim" style="margin-top:4px;line-height:1.5">Пока идёт копия, никто ничего не напишет — при возврате к 0.42.2 ничего не пропадёт. Без галочки сайт закрыт только на запуск новой версии, но то, что напишут во время копии, при возврате пропадёт.</div>
 <div class="sub" style="margin-top:10px">Не тронем: Docker, nginx, сертификат сайта.</div>
 <div class="foot"><span class="btn">Обновить</span><span class="btn gh">Назад</span></div>
@@ -651,7 +658,8 @@ x86_64
 <div class="row"><span class="ic">2</span><div>Сохраним копию данных на сервере <span class="dim">— займёт 40 МБ, свободно 29 ГБ</span></div></div>
 <div class="row"><span class="ic">3</span><div>Поставим 0.43.0</div></div>
 <div class="lab">После обновления</div>
-<div style="line-height:1.7">○ Запустить новую версию<br>◉ Оставить сайт остановленным <span class="dim">— его остановили вы 24 октября</span></div>
+<div class="cbx rd" style="margin-top:4px"><i></i><span>Запустить новую версию</span></div>
+<div class="cbx rd on" style="margin-top:8px"><i></i><span>Оставить сайт остановленным <span class="dim">— его остановили вы 24 октября</span></span></div>
 <div class="foot"><span class="btn">Обновить</span><span class="btn gh">Назад</span></div>
 </div></div></div>
 <p class="note">Утверждено владельцем 2026-10-24, не реализовано. Сайт стоит — Мастерская не знает почему: сломался (обновление может починить — запустить) или остановлен нарочно (переезд, закрытие, свои правки — оставить). Поэтому вместо галочки «Остановить на время копии» — выбор «после» (владелец, 2026-10-24: «Да»). По умолчанию: остановила сама Мастерская (бэкап «Остановить и не запускать», переезд) — она оставляет на сервере пометку, и выбран «Оставить остановленным» с подписью, кто и когда остановил; иначе — «Запустить новую версию», без подписи. «Оставить остановленным» — шаг 3 только ставит новую версию, не запуская; проверки сайта нет, «Готово» говорит: «Wynd 0.43.0 поставлен, сайт остановлен». На странице сервера (7а) статус — «остановлен вами 24 октября» или «не работает».</p>
@@ -702,7 +710,7 @@ x86_64
 <div class="row"><span class="ic">2</span><div>Остановим Wynd <span class="dim">— с этой минуты сайт не открывается</span></div></div>
 <div class="row"><span class="ic">3</span><div>Сохраним копию данных на сервере <span class="dim">— займёт 40 МБ, свободно 29 ГБ</span></div></div>
 <div class="row"><span class="ic">4</span><div>Запустим 0.43.0 и проверим сайт</div></div>
-<div style="margin-top:10px">☑ Остановить сайт на время копии</div>
+<div class="cbx on" style="margin-top:10px"><i></i><span>Остановить сайт на время копии</span></div>
 <div class="dim" style="margin-top:4px;line-height:1.5">Пока идёт копия, никто ничего не напишет — при возврате к 0.42.2 ничего не пропадёт. Без галочки сайт закрыт только на запуск новой версии, но то, что напишут во время копии, при возврате пропадёт.</div>
 <div class="sub" style="margin-top:10px">Сервер соберёт Wynd сам. <span class="under">Скачать готовый</span></div>
 <div class="foot"><span class="btn">Обновить</span><span class="btn gh">Назад</span><span class="dim" style="margin-left:auto">около 10 минут</span></div>
@@ -764,7 +772,7 @@ x86_64
 
 <div>
 <p class="cap">8а · Бэкап на компьютер</p>
-<div class="win"><div class="tb">●<b>Wynd Мастерская [0.1.0]</b><span class="dots">— ▢ ✕</span></div>
+<div class="win" style="height:540px"><div class="tb">●<b>Wynd Мастерская [0.1.0]</b><span class="dots">— ▢ ✕</span></div>
 <div class="main">
 <div class="side">
 <div class="st done"><i>✓</i>Сервер</div><div class="st on"><i>2</i>Бэкап</div><div class="st"><i>3</i>Готово</div>
@@ -776,8 +784,10 @@ x86_64
 <div style="display:flex;gap:8px;align-items:center"><div class="fld mono" style="flex:1">D:\Бэкапы Wynd\family.example.ru</div><span class="btn gh" style="padding:7px 12px">Выбрать</span></div>
 <div class="row" style="margin-top:10px"><span class="ic">↓</span><div>Скачаем 140 МБ <span class="dim">— в папке уже есть бэкап от 20 октября, берём только новое. Всего 2,1 ГБ</span></div></div>
 <div class="lab">Сайт</div>
-<div style="line-height:1.7">◉ Работает, пока идёт бэкап<br>○ Остановить на время бэкапа и запустить снова<br>○ Остановить и не запускать <span class="dim">— сервер переезжает или закрывается</span></div>
-<div style="margin-top:10px">☐ Зашифровать паролем</div>
+<div class="cbx rd on" style="margin-top:4px"><i></i><span>Работает, пока идёт бэкап</span></div>
+<div class="cbx rd" style="margin-top:8px"><i></i><span>Остановить на время бэкапа и запустить снова</span></div>
+<div class="cbx rd" style="margin-top:8px"><i></i><span>Остановить и не запускать <span class="dim">— сервер переезжает или закрывается</span></span></div>
+<div class="cbx" style="margin-top:10px"><i></i><span>Зашифровать паролем</span></div>
 <div class="foot"><span class="btn">Сделать бэкап</span><span class="btn gh">Назад</span></div>
 </div></div></div>
 <p class="note">Утверждено владельцем 2026-10-24, не реализовано (план 45, срез 4). Сюда — со строки «Бэкап на этот компьютер» страницы сервера (7а). Бэкап — папка, как копия перед обновлением: в той же папке следующий раз докачивается только новое (фото и видео Wynd не меняет; `wynd backup -incremental`), база копируется на сервере без остановки сайта и скачивается целиком. Папку Мастерская запоминает для этого сервера. Сайт на время бэкапа — выбор человека из трёх (владелец, 2026-10-24: «Дать человеку выбор. Может человек не хочет, чтобы писать, пока идёт копия. Например, сервер прекращает свою работу»; три варианта вместо галочки — по таблице сценариев, владелец: «Да»): работает (обычный бэкап), остановить и запустить снова (перед своими правками на сервере), остановить и не запускать (переезд, закрытие сервера, перед «Убрать Wynd»). По умолчанию — первый. Сайт уже не работает — выбора нет: бэкап с остановленного, сайт остаётся как был. «Зашифровать паролем» — галочка, по умолчанию выключена (владелец, 2026-10-24: «1»); шифрует Мастерская на компьютере, уже скачанное: пароль не уходит на сервер, серверу не нужно места на зашифрованную копию; с галочкой — 8а2. Первый бэкап — без строки «уже есть», только «Скачаем 2,1 ГБ». Места на компьютере не хватает — вместо строки «Скачаем» отказ с цифрами, как 7б2.</p>
@@ -794,10 +804,10 @@ x86_64
 <div class="lab" style="margin-top:4px">Папка</div>
 <div style="display:flex;gap:8px;align-items:center"><div class="fld mono" style="flex:1">D:\Бэкапы Wynd\family.example.ru</div><span class="btn gh" style="padding:7px 12px">Выбрать</span></div>
 <div class="row" style="margin-top:10px"><span class="ic">↓</span><div>Скачаем 140 МБ <span class="dim">— в папке уже есть бэкап от 20 октября, берём только новое. Всего 2,1 ГБ</span></div></div>
-<div style="margin-top:10px">☑ Зашифровать паролем</div>
+<div class="cbx on" style="margin-top:10px"><i></i><span>Зашифровать паролем</span></div>
 <div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1"><div class="lab" style="margin-top:0">Пароль</div><div class="fld">••••••••••</div></div><div style="flex:1"><div class="lab" style="margin-top:0">Ещё раз</div><div class="fld">••••••••••</div></div></div>
 <div class="dim" style="margin-top:6px;line-height:1.5">Без пароля бэкап не открыть никак — запишите его.</div>
-<div style="margin-top:6px">☐ Запомнить пароль на этом компьютере</div>
+<div class="cbx" style="margin-top:6px"><i></i><span>Запомнить пароль на этом компьютере</span></div>
 <div class="foot"><span class="btn">Сделать бэкап</span><span class="btn gh">Назад</span></div>
 </div></div></div>
 <p class="note">Черновик 2026-10-24, не утверждено. С галочкой «Зашифровать паролем»: пароль и повтор; «Запомнить» — в системной связке ключей, как пароль SSH. Блок «Сайт» — как на 8а, здесь не показан ради места. В папке, где уже лежит бэкап с паролем, галочка стоит и поле просит тот же пароль: докачка работает только с ним; другой пароль — новый бэкап целиком. Каждый файл шифруется отдельно (тот же способ, что у полного архива круга: ключ из пароля — scrypt, шифр — age), опись хранит суммы исходных файлов — докачка «только нового» работает. На 8в вместо предупреждения о хранении — «Бэкап зашифрован. Без пароля его не открыть».</p>
