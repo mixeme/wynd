@@ -119,10 +119,10 @@ type moveCard struct {
 		Members int    `json:"members"`
 		Bytes   int64  `json:"bytes"`
 		// OwnerName и Emails — для «Аня — это вы?» (A12); у прежнего сервера
-		// старше 0.42 их нет.
+		// до 0.42 их нет.
 		OwnerName string   `json:"owner_name"`
 		Emails    []string `json:"emails"`
-		// Names — «Кто уже здесь» (7.29в при переносе); с 0.43.
+		// Names — «Кто уже здесь» (7.29в при переносе); с 0.42.1.
 		Names []string `json:"names"`
 	} `json:"circle"`
 }
