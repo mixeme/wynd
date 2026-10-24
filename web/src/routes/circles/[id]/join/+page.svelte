@@ -20,7 +20,13 @@
 		memberAvatarColor,
 		type InvitePeek
 	} from '$lib/auth/invites';
-	import { fetchJoinPreview, joinPendingCircle, type SplitJoin } from '$lib/circles/settings';
+	import {
+		declinePendingCircle,
+		fetchJoinPreview,
+		joinPendingCircle,
+		type SplitJoin
+	} from '$lib/circles/settings';
+	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
 	import Row from '$ui/data/Row.svelte';
 	import { formatCutoffDate } from '$lib/format/time';
 	import { localDayOf } from '$lib/journal/present';
@@ -48,6 +54,23 @@
 	let gender = $state<'' | 'm' | 'f'>('');
 	// Позвали в отделённый круг (A9, 6.44): имя и прошлое уже есть.
 	let split = $state<SplitJoin | undefined>();
+	let askDecline = $state(false);
+	let declining = $state(false);
+
+	// Отказаться (владелец, 2026-10-25: «Отказаться войти нельзя»).
+	async function decline() {
+		if (declining) return;
+		declining = true;
+		try {
+			await declinePendingCircle(circle.origin, circle.circleId);
+			goto('/circles');
+		} catch (err) {
+			error = authErrorHint(err);
+			askDecline = false;
+		} finally {
+			declining = false;
+		}
+	}
 
 	const displayMembers = $derived.by(() => {
 		if (peek?.members) {
@@ -209,6 +232,9 @@
 		<Hint>Вы войдёте как {split.you_name}. Круг «{split.split_from}» остаётся как есть.</Hint>
 		<Button variant="colored" {loading} onclick={enterCircle}>Войти</Button>
 		<Button variant="ghost" class="mt-8" onclick={() => goUp('/circles')}>Не сейчас</Button>
+		<Hint centered class="mt-16">
+			<TextButton onclick={() => (askDecline = true)}>Отказаться</TextButton>
+		</Hint>
 	{:else if inviteToken || pendingJoin}
 		<IdentityForm
 			color={circle.color}
@@ -233,5 +259,16 @@
 		<Hint class="mt-12">{error}</Hint>
 	{/if}
 </FormLayout>
+{/if}
+
+{#if askDecline}
+	<ConfirmDialog
+		title="Отказаться от «{circle.name}»?"
+		confirmLabel="Отказаться"
+		onconfirm={() => void decline()}
+		oncancel={() => (askDecline = false)}
+	>
+		<Hint>Круг уйдёт из вашего списка. Позвать снова сможет тот, кто звал.</Hint>
+	</ConfirmDialog>
 {/if}
 

@@ -89,6 +89,17 @@ func TestSplitCircleAPI(t *testing.T) {
 		peek.Split.InviteLine != "Мышь отделила круг от круга «Семья» и зовёт вас" {
 		t.Fatalf("экран «позвали»: %s", rec.Body.String())
 	}
+	// «Отказаться» убирает строку; позвать снова — и она вернётся.
+	if rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+newID+"/join/decline", anyaTok, map[string]string{}); rec.Code != http.StatusOK {
+		t.Fatalf("decline: %d %s", rec.Code, rec.Body.String())
+	}
+	rec = doGET(t, srv, "/api/v1/pending-circle-joins", anyaTok)
+	if err := json.Unmarshal(rec.Body.Bytes(), &pending); err != nil || len(pending.CircleIDs) != 0 {
+		t.Fatalf("после отказа строка осталась: %s", rec.Body.String())
+	}
+	if rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+newID+"/member-invites", mouseTok, map[string]string{"account_id": anyaID}); rec.Code != http.StatusCreated {
+		t.Fatalf("позвать снова: %d %s", rec.Code, rec.Body.String())
+	}
 	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+newID+"/join", anyaTok, map[string]string{"name": "Аня"})
 	if rec.Code != http.StatusOK {
 		t.Fatalf("join: %d %s", rec.Code, rec.Body.String())

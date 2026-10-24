@@ -74,6 +74,10 @@ func TestSplitCircle(t *testing.T) {
 	if len(feed) != 2 || bodies["Боб до Ани"] != 0 || bodies["на даче"] != 1 {
 		t.Fatalf("лента отделившегося: %v", bodies)
 	}
+	// Перенесённое — не новое: его видели в старом круге.
+	if n, err := e.ch.UnreadResponses(e.ctx, res.CircleID, "mouse"); err != nil || n != 0 {
+		t.Fatalf("отклики отделившейся: %d %v", n, err)
+	}
 	if ok, err := e.ch.CanWrite(e.ctx, res.CircleID, "mouse", e.at(6)); err != nil || !ok {
 		t.Fatalf("писать в новом круге: %v %v", ok, err)
 	}
@@ -99,6 +103,10 @@ func TestSplitCircle(t *testing.T) {
 	feed, err = e.ch.FeedSnapshot(e.ctx, res.CircleID, "anya")
 	if err != nil {
 		t.Fatal(err)
+	}
+	// Комментарий Боба к записи Ани был и в старом круге — в «Откликах» не новый.
+	if n, err := e.ch.UnreadResponses(e.ctx, res.CircleID, "anya"); err != nil || n != 0 {
+		t.Fatalf("отклики позванной: %d %v", n, err)
 	}
 	if len(feed) != 1 || feed[0].Post.Body != "на даче" {
 		t.Fatalf("лента позванной: %+v", feed)

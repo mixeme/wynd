@@ -226,7 +226,34 @@ func (c *Chronicle) SplitCircle(ctx context.Context, in SplitInput) (SplitResult
 	}
 	res.CircleID = revived.CircleID
 	res.Posts = revived.Posts
+	// Прошлое в новом круге — уже прочитанное: его видели в старом. Без
+	// отметок лента и «Отклики» считали всё перенесённое новым (владелец,
+	// 2026-10-25: «счётчик в Откликах такой, как будто всё непрочитано»).
+	for _, acc := range append([]string{in.AccountID}, res.Invited...) {
+		if err := c.markSplitRead(ctx, res.CircleID, acc, now); err != nil {
+			return res, err
+		}
+	}
 	return res, nil
+}
+
+func (c *Chronicle) markSplitRead(ctx context.Context, circleID, accountID string, now time.Time) error {
+	var seq int64
+	if err := c.db.QueryRowContext(ctx, `SELECT COALESCE(MAX(seq), 0) FROM events WHERE circle_id = ?`, circleID).Scan(&seq); err != nil {
+		return err
+	}
+	at := formatTime(now)
+	if _, err := c.db.ExecContext(ctx, `
+		INSERT INTO read_cursors (account_id, circle_id, last_read_seq, updated_at) VALUES (?, ?, ?, ?)
+		ON CONFLICT(account_id, circle_id) DO UPDATE SET last_read_seq = excluded.last_read_seq, updated_at = excluded.updated_at
+	`, accountID, circleID, seq, at); err != nil {
+		return err
+	}
+	_, err := c.db.ExecContext(ctx, `
+		INSERT INTO response_cursors (account_id, circle_id, seq, updated_at) VALUES (?, ?, ?, ?)
+		ON CONFLICT(account_id, circle_id) DO UPDATE SET seq = excluded.seq, updated_at = excluded.updated_at
+	`, accountID, circleID, seq, at)
+	return err
 }
 
 // splitTables — строки снимка, отобранные по видимости отделяющегося.

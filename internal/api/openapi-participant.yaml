@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.43.1
+  version: 0.43.2
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:
@@ -257,6 +257,19 @@ paths:
       responses:
         "200":
           description: OK
+
+  /circles/{circle_id}/join/decline:
+    post:
+      summary: Decline a personal invite — the circle row disappears from the list (A9, 6.44)
+      parameters:
+        - name: circle_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: declined
 
   /pending-circle-joins:
     get:

@@ -236,6 +236,12 @@ export async function joinPendingCircle(
 	await invalidateSnapshots(origin, { kind: 'circles' });
 }
 
+/** «Отказаться» на экране «позвали» (A9): строка уходит из списка кругов. */
+export async function declinePendingCircle(origin: string, circleId: string): Promise<void> {
+	await apiJson(origin, `/circles/${circleId}/join/decline`, { method: 'POST' });
+	await invalidateSnapshots(origin, { kind: 'circles' });
+}
+
 export async function fetchCircleSettings(
 	origin: string,
 	circleId: string

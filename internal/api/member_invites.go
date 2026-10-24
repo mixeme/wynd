@@ -139,6 +139,18 @@ func (s *Server) handleJoinPreview(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+func (s *Server) handleDeclinePendingJoin(w http.ResponseWriter, r *http.Request) {
+	sess, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+	if err := s.Auth.DeclinePendingJoin(r.Context(), sess.AccountID, r.PathValue("circle_id"), time.Now().UTC()); err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "declined"})
+}
+
 type joinPendingBody struct {
 	Name   string `json:"name"`
 	Gender string `json:"gender"`

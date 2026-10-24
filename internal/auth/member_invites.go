@@ -183,6 +183,27 @@ func (s *Service) ListPendingCircleJoins(ctx context.Context, accountID string) 
 	return out, rows.Err()
 }
 
+// DeclinePendingJoin — «Отказаться» на экране «позвали» (A9, 6.44): право
+// войти и личная ссылка снимаются, строка «зовёт вас» уходит из списка
+// кругов. Позвать снова может тот, кто звал.
+func (s *Service) DeclinePendingJoin(ctx context.Context, accountID, circleID string, now time.Time) error {
+	if accountID == "" || circleID == "" {
+		return ErrInvalid
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := s.deletePendingCircleJoin(ctx, tx, accountID, circleID); err != nil {
+		return err
+	}
+	if err := s.revokeLiveMemberInvites(ctx, tx, circleID, accountID, now.UTC()); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 // consumeMemberInvite удалён (STB-1): он повторно увеличивал uses личной
 // ссылки, уже израсходованной в Verify, а оба его выхода возвращали nil —
 // охраной он не был.
