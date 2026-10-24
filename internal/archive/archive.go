@@ -29,6 +29,9 @@ const (
 
 // BuildInput is passed to BuildPersonalArchive.
 type BuildInput struct {
+	// CircleID — в метаданных архива: архивы разных кругов Мастерская не
+	// объединяет.
+	CircleID   string
 	CircleName string
 	CutoffDate string
 	// Layout не влияет на архив: с 0.30.1 в нём обе раскладки (кадр 6.23).
@@ -179,6 +182,13 @@ func buildReadable(ctx context.Context, zw *zip.Writer, in BuildInput, extra []s
 	// В архиве обе раскладки (кадр 6.23, решение 2026-10-13): единая лента в
 	// index.html и страница на каждую запись в posts/ с оглавлением, медиа у
 	// них общее. Выбирать заранее не нужно — и пересобирать ради другой тоже.
+	meta, err := buildMeta(in, mediaNames)
+	if err != nil {
+		return err
+	}
+	if err := writeZipFile(zw, MetaName, meta); err != nil {
+		return err
+	}
 	feed := renderFeedIndex(st, in.CircleName, in.CutoffDate, in.Posts, mediaNames, in.Avatars, in.DayTitles)
 	if err := writeZipFile(zw, "index.html", []byte(feed)); err != nil {
 		return err
@@ -439,7 +449,10 @@ func renderFeedIndex(st style, circleName, cutoff string, posts []chronicle.Feed
 	st.head(&b, circleName, "")
 	st.header(&b, circleName, cutoff)
 	for _, fp := range posts {
+		// Метки — для Мастерской: объединённая лента склеивается из кусков.
+		b.WriteString(MetaPostOpen(fp.Post.ID))
 		appendPostHTML(&b, fp, media, avatars, dayTitles, false)
+		b.WriteString(MetaPostClose)
 	}
 	b.WriteString(st.pageEnd())
 	return b.String()

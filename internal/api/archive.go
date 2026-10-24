@@ -500,6 +500,7 @@ func (s *Server) streamArchive(w http.ResponseWriter, r *http.Request, circleID,
 		return
 	}
 	in := archive.BuildInput{
+		CircleID:   circleID,
 		CircleName: circleName,
 		CutoffDate: cycle.CutoffDate,
 		Posts:      posts,

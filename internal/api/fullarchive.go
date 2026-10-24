@@ -647,6 +647,7 @@ func (s *Server) fullArchiveInput(ctx context.Context, circleID string) (archive
 		},
 		Data: data,
 		Readable: archive.BuildInput{
+			CircleID:   data.CircleID,
 			CircleName: data.CircleName,
 			CutoffDate: data.SnapshotAt.Format("2006-01-02"),
 			Posts:      posts,
