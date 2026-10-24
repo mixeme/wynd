@@ -41,12 +41,12 @@ h2{margin:0 0 4px;font-size:17px}
 .bar{height:5px;border-radius:3px;background:var(--line);overflow:hidden;margin:8px 0}
 .bar i{display:block;height:100%;background:var(--c)}
 .cbx{display:flex;align-items:flex-start;gap:9px;line-height:1.4}
-.cbx>i{flex:0 0 18px;height:18px;box-sizing:border-box;border:1.5px solid #BDB2A5;border-radius:5px;background:var(--card);margin-top:0;position:relative}
+.cbx>i{flex:0 0 18px;height:18px;box-sizing:border-box;border:1.5px solid #BDB2A5;border-radius:5px;background:var(--card);display:flex;align-items:center;justify-content:center;margin-top:1px}
 .cbx.on>i{background:var(--c);border-color:var(--c)}
-.cbx.on>i::after{content:'';position:absolute;left:5px;top:1.5px;width:4px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.cbx.on>i::after{content:'';box-sizing:border-box;width:5px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:translateY(-1px) rotate(45deg)}
 .cbx.rd>i{border-radius:50%}
 .cbx.rd.on>i{background:var(--card)}
-.cbx.rd.on>i::after{left:3.5px;top:3.5px;width:8px;height:8px;border:0;border-radius:50%;background:var(--c);transform:none}
+.cbx.rd.on>i::after{width:8px;height:8px;border:0;border-radius:50%;background:var(--c);transform:none}
 .box{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:12px 14px}
 </style>
 </head>
