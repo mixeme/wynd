@@ -915,6 +915,90 @@ x86_64
 </div></div></div>
 <p class="note">Утверждено владельцем 2026-10-24, не реализовано. Докачка (вопрос владельца «Докачка будет при обрыве?»): скачанные целиком файлы при повторе не качаются заново — сверка по описи (размер и сумма); файл, оборванный посередине, докачивается с того места, где оборвался (SFTP читает файл с любого места) — важно для больших видео; снимок базы на сервере остаётся до конца бэкапа, повтор берёт его же. Новый бэкап собирается рядом и заменяет прошлый только целиком: оборванный не оставляет папку наполовину старой, наполовину новой.</p>
 </div>
+<div>
+<p class="cap">9а · Переезд: новый сервер</p>
+<div class="win"><div class="tb">●<b>Wynd Мастерская [0.1.0]</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st on"><i>1</i>Новый сервер</div><div class="st"><i>2</i>План</div><div class="st"><i>3</i>Переезд</div><div class="st"><i>4</i>Готово</div>
+</div>
+<div class="body">
+<h2>Куда переезжает family.example.ru</h2>
+<div class="sub">Адрес сайта останется прежним — люди откроют Wynd как раньше, с тех же телефонов.</div>
+<div class="lab">Адрес нового сервера</div>
+<div class="fld mono">203.0.113.7</div>
+<div class="lab">Вход</div>
+<div class="chips"><span class="chip on">Пароль</span><span class="chip">Ключ с этого компьютера</span><span class="chip">Создать ключ</span></div>
+<div style="display:flex;gap:10px;margin-top:10px">
+<div style="flex:0 0 120px"><div class="lab" style="margin-top:0">Пользователь</div><div class="fld mono">root</div></div>
+<div style="flex:1"><div class="lab" style="margin-top:0">Пароль от сервера</div><div class="fld">••••••••••</div></div>
+</div>
+<div class="foot"><span class="btn">Подключиться</span><span class="btn gh">Назад</span></div>
+</div></div></div>
+<p class="note">Черновик 2026-10-24, не утверждено (план 45, срез 4). Сюда — со строки «Переехать на другой сервер» страницы сервера (7а). Подключение — как при установке (1), с отпечатком при первом подключении (2) и осмотром нового сервера (те же строки и отказы, что 2–2е): на новом сервере не должно быть Wynd, порты 80 и 443 — свободны или за знакомым веб-сервером. Адрес сайта не меняется: у людей в телефонах сохранён адрес, новый адрес оборвал бы все устройства.</p>
+</div>
+
+<div>
+<p class="cap">9б · План переезда</p>
+<div class="win" style="height:560px"><div class="tb">●<b>Wynd Мастерская [0.1.0]</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Новый сервер</div><div class="st on"><i>2</i>План</div><div class="st"><i>3</i>Переезд</div><div class="st"><i>4</i>Готово</div>
+</div>
+<div class="body">
+<h2>Что сделаем</h2>
+<div class="row"><span class="ic">1</span><div>Поставим Wynd 0.42.2 на новый сервер <span class="dim">— пока без данных и не запуская</span></div></div>
+<div class="row"><span class="ic">2</span><div>Остановим сайт на старом <span class="dim">— с этой минуты он не открывается</span></div></div>
+<div class="row"><span class="ic">3</span><div>Перенесём папку Wynd на новый сервер <span class="dim">— 2,1 ГБ, напрямую со старого, мимо этого компьютера</span></div></div>
+<div class="row"><span class="ic">4</span><div>Вы смените адрес <span class="dim">— запись family.example.ru у регистратора укажет на 203.0.113.7; подскажем, где</span></div></div>
+<div class="row"><span class="ic">5</span><div>Запустим Wynd на новом и проверим сайт</div></div>
+<div class="lab">Старый сервер</div>
+<div class="cbx rd on" style="margin-top:4px"><i></i><span>Оставить Wynd остановленным <span class="dim">— убрать потом, когда убедитесь, что всё на месте</span></span></div>
+<div class="cbx rd" style="margin-top:8px"><i></i><span>Убрать Wynd после переезда <span class="dim">— данные и сертификат удалятся</span></span></div>
+<div class="foot"><span class="btn">Переехать</span><span class="btn gh">Назад</span></div>
+</div></div></div>
+<p class="note">Черновик 2026-10-24, не утверждено. Версия на новом — та же, что на старом: переезд и обновление не смешиваем. Сайт стоит со 2-го шага до 5-го: дольше всего — перенос и смена адреса (сколько ждать DNS, зависит от регистратора; не замерено). Папка — вся (решение по бэкапу): с сертификатом сайта, поэтому новому серверу не нужен новый сертификат — предел Let's Encrypt не тратится. Напрямую: Мастерская заводит на новом сервере временный ключ, пускает его на старый только на чтение папки Wynd, после переноса убирает с обоих — 2,1 ГБ не идут через домашний интернет дважды. Если серверы друг друга не видят — через этот компьютер (дольше, с докачкой, как бэкап 8г).</p>
+</div>
+
+<div>
+<p class="cap">9в · Смените адрес</p>
+<div class="win" style="height:580px"><div class="tb">●<b>Wynd Мастерская [0.1.0]</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Новый сервер</div><div class="st done"><i>✓</i>План</div><div class="st on"><i>3</i>Переезд</div><div class="st"><i>4</i>Готово</div>
+</div>
+<div class="body">
+<h2>Переезжаем</h2>
+<div class="bar"><i style="width:70%"></i></div>
+<div class="row"><span class="ic ok">✓</span><div>Wynd 0.42.2 на новом сервере</div></div>
+<div class="row"><span class="ic ok">✓</span><div>Сайт на старом остановлен</div></div>
+<div class="row"><span class="ic ok">✓</span><div>Папка Wynd перенесена</div></div>
+<div class="row"><span class="ic w">…</span><div>Ждём новый адрес <span class="dim">— family.example.ru пока указывает на старый сервер 198.51.100.4</span></div></div>
+<div class="box" style="line-height:1.5;margin-top:10px">
+<div class="dim">В панели, где покупали адрес family.example.ru, поменяйте у записи A адрес сервера на этот:</div>
+<div style="display:flex;gap:8px;align-items:center;margin:8px 0"><div class="fld mono" style="flex:1">203.0.113.7</div><span class="btn gh" style="padding:7px 12px">Скопировать</span></div>
+<div class="dim">Мастерская проверяет сама каждую минуту — окно можно свернуть.</div>
+</div>
+<div class="foot"><span class="btn gh">Проверить сейчас</span><span class="under" style="margin-left:auto">Отменить переезд</span></div>
+</div></div></div>
+<p class="note">Черновик 2026-10-24, не утверждено. Единственный шаг, который делает человек: Мастерская не входит в панель регистратора. Проверка — как при установке (адрес сайта указывает на сервер). Запись AAAA (IPv6) у адреса есть — строка просит поменять и её. «Отменить переезд» — запустить сайт на старом сервере снова и убрать Wynd с нового: адрес ещё не менялся, люди ничего не потеряли. Окно закрыли — при следующем подключении к старому серверу Мастерская видит незаконченный переезд, как 7е.</p>
+</div>
+
+<div>
+<p class="cap">9г · Переехали</p>
+<div class="win"><div class="tb">●<b>Wynd Мастерская [0.1.0]</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Новый сервер</div><div class="st done"><i>✓</i>План</div><div class="st done"><i>✓</i>Переезд</div><div class="st on"><i>4</i>Готово</div>
+</div>
+<div class="body">
+<h2>Wynd на новом сервере</h2>
+<div class="sub">Проверка прошла: family.example.ru открывается с сервера 203.0.113.7.</div>
+<div class="box" style="line-height:1.5">Старый сервер 198.51.100.4: Wynd остановлен, данные на месте. Когда убедитесь, что на новом всё есть, уберите его со страницы старого сервера.</div>
+<div class="foot"><span class="btn">Открыть family.example.ru</span><span class="btn gh">К серверу</span></div>
+</div></div></div>
+<p class="note">Черновик 2026-10-24, не утверждено. «К серверу» — страница нового сервера (7а). В «Других серверах» остаётся и старый: на его странице — «остановлен вами 24 октября» (7а2) и «Убрать Wynd». Выбрали «Убрать после переезда» — вместо рамки строка «Wynd со старого сервера убран, сертификат отозван».</p>
+</div>
 
 </div>
 </body>
