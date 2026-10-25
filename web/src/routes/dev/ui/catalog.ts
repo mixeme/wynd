@@ -180,6 +180,7 @@ export const SMOKE_ROUTES = [
 	{ id: 'e3-11', label: 'На сервере кончилось место', href: '/dev/smoke/e3-10?server' },
 	{ id: 'e4-21', label: 'Вложения в нити', href: '/dev/smoke/e4-21' },
 	{ id: 'e4-2', label: 'Новая запись', href: '/dev/smoke/e4-2' },
+	{ id: 'e4-2a', label: 'Новая запись: ролик сжимается', href: '/dev/smoke/e4-2a' },
 	{ id: 'e4-30', label: 'Лайтбокс', href: '/dev/smoke/e4-30' },
 	{ id: 'e4-28', label: 'Реакции', href: '/dev/smoke/e4-28' },
 	{ id: 'e5-1', label: 'Дни', href: '/dev/smoke/e5-1' },

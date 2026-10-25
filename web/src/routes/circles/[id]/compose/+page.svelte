@@ -97,7 +97,12 @@
 	let compressing = $state(false);
 	// Что сейчас жмётся — для подписи хода: видео или звук (A6).
 	let compressKind = $state<'video' | 'audio'>('video');
-	let compressProgress = $state(0);
+	// Ролики и звук, которые ещё сжимаются (4.2а): плитка видна сразу —
+	// кадр ролика или имя файла, приглушённая; progress — сколько сжато,
+	// null — ждёт очереди. Готовый файл уходит отсюда в picked.
+	let pending = $state<
+		Array<{ index: number; kind: 'video' | 'audio'; name: string; preview?: string; progress: number | null }>
+	>([]);
 	let compressIndex = $state(0);
 	let compressTotal = $state(0);
 	let keepOpenHint = $state(false);
@@ -134,11 +139,11 @@
 	);
 	const compressHint = $derived.by(() => {
 		if (!compressing) return '';
-		const pct = Math.round(compressProgress * 100);
+		// Процент — на плитке (4.2а, владелец: «Тогда у нас процент дублируется»).
 		const of =
 			compressTotal > 1 ? ` (${compressIndex} из ${compressTotal})` : '';
 		const what = compressKind === 'audio' ? 'звук' : 'видео';
-		return pct > 0 ? `Сжимаем ${what}${of}… ${pct}%` : `Сжимаем ${what}${of}…`;
+		return `Сжимаем ${what}${of}…`;
 	});
 	const editWindowTitle = $derived(
 		editingPost?.editable_until?.startsWith('9999-')
@@ -523,6 +528,16 @@
 	// есть — полное разрешение и EXIF целиком. Фото и видео при этом — снимки
 	// записи, как сжатые: плитка, альбом, лайтбокс, «Сетка», «Карта». HEIC
 	// браузеры не показывают — он остаётся вложением для скачивания.
+	function setPending(index: number, progress: number) {
+		const entry = pending.find((p) => p.index === index);
+		if (entry) entry.progress = progress;
+	}
+
+	function dropPending(gone: (p: (typeof pending)[number]) => boolean) {
+		for (const p of pending) if (gone(p) && p.preview) URL.revokeObjectURL(p.preview);
+		pending = pending.filter((p) => !gone(p));
+	}
+
 	async function addFiles(list: File[], original = false) {
 		if (filePickLock || !list.length) return;
 		filePickLock = true;
@@ -540,7 +555,23 @@
 			keepOpenHint =
 				!original && videoFlags.some((video, i) => video && isLargeVideo(list[i].size));
 			compressing = heavyCount > 0;
-			compressProgress = 0;
+			pending = original
+				? []
+				: list.flatMap((file, index) =>
+						videoFlags[index] || isAudioFile(file)
+							? [{ index, kind: videoFlags[index] ? ('video' as const) : ('audio' as const), name: file.name, progress: null }]
+							: []
+					);
+			// Кадр ролика — с исходного файла, пока сжатый ещё не готов.
+			for (const entry of pending) {
+				if (entry.kind !== 'video') continue;
+				void videoPosterJpeg(list[entry.index]).then((jpeg) => {
+					const live = pending.find((p) => p.index === entry.index);
+					if (jpeg && live && !live.preview) {
+						live.preview = URL.createObjectURL(new Blob([jpeg], { type: 'image/jpeg' }));
+					}
+				});
+			}
 
 			// Потолок вложения сервера: больший файл вернулся бы 413 уже после
 			// полной отправки — отсекаем здесь, после сжатия (план 42, MED-5).
@@ -551,6 +582,9 @@
 			const sentRaw: string[] = [];
 			const sentRawVideo: string[] = [];
 			for (let index = 0; index < list.length; index += 1) {
+				// Файлы до этого уже готовы (или не взяты): их сжимающиеся плитки
+				// убираем в том же такте, в каком легла настоящая.
+				dropPending((p) => p.index < index);
 				const file = list[index];
 				const video = videoFlags[index];
 				// Дата дня: у снимка — из EXIF, у ролика — из заголовка MP4 (A14).
@@ -574,10 +608,10 @@
 					queueFile = await compressImage(file, compression);
 				} else if (video) {
 					compressIndex += 1;
-					compressProgress = 0;
 					compressKind = 'video';
+					setPending(index, 0);
 					const { fallbackReason, ...compressed } = await compressVideo(file, compression, (progress) => {
-						compressProgress = progress;
+						setPending(index, progress);
 					});
 					queueFile = compressed.type
 						? compressed
@@ -591,10 +625,10 @@
 				} else if (isAudioFile(file)) {
 					// WAV и FLAC с телефона — десятки мегабайт: жмём, как видео (A6).
 					compressIndex += 1;
-					compressProgress = 0;
 					compressKind = 'audio';
+					setPending(index, 0);
 					const { fallbackReason, ...audio } = await compressAudio(file, compression, (progress) => {
-						compressProgress = progress;
+						setPending(index, progress);
 					});
 					queueFile = { ...audio, type: audioMime(audio.name, audio.type) };
 					if (fallbackReason && maxBytes > 0 && audio.size > maxBytes) {
@@ -671,7 +705,7 @@
 			if (problems.length) error = problems.join('. ');
 		} finally {
 			compressing = false;
-			compressProgress = 0;
+			dropPending(() => true);
 			keepOpenHint = false;
 			filePickLock = false;
 			releaseWake();
@@ -877,6 +911,16 @@
 					if (!frozen) tapTile(i);
 				}}
 				onremove={frozen ? undefined : () => removePicked(i)}
+			/>
+		{/each}
+		{#each pending as entry (entry.index)}
+			<MediaTile
+				variant="compose"
+				src={entry.preview}
+				kind={entry.kind === 'video' ? 'video' : undefined}
+				fileName={entry.kind === 'audio' ? entry.name : undefined}
+				progress={entry.progress}
+				onclick={() => {}}
 			/>
 		{/each}
 		{#if !frozen}

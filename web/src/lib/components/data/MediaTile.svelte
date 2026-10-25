@@ -60,6 +60,9 @@
 		/** Метка на плитке-обложке — дверь в кадр (4.2 → 4.3). */
 		coverMark?: string;
 		fileName?: string;
+		/** Ролик или звук ещё сжимается (4.2а): плитка приглушена, поверх —
+		 *  сколько сжато (0…1); null — ждёт своей очереди, без числа. */
+		progress?: number | null;
 		onclick: () => void;
 		onremove?: () => void;
 	};
@@ -207,7 +210,8 @@
 		{/if}
 	</button>
 {:else}
-	<div class="thumb" class:cover={props.isCover}>
+	{@const busy = props.variant === 'compose' && props.progress !== undefined}
+	<div class="thumb" class:cover={props.isCover} class:busy>
 		<button type="button" class="thumb-body" onclick={() => props.onclick()}>
 			{#if props.src}
 				{#if cropStyle}
@@ -231,6 +235,9 @@
 			{/if}
 			{#if props.variant === 'compose' && props.coverMark}
 				<span class="cnt thumb-mark">{props.coverMark}</span>
+			{/if}
+			{#if props.variant === 'compose' && props.progress !== undefined}
+				<span class="thumb-busy">{props.progress === null ? '' : `${Math.round(props.progress * 100)} %`}</span>
 			{/if}
 		</button>
 		{#if props.onremove}

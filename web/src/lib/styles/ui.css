@@ -2345,6 +2345,28 @@ a.link {
 	outline: 2px solid var(--c);
 	outline-offset: 2px;
 }
+/* Ролик или звук ещё сжимается (4.2а): плитка приглушена, поверх — сколько сжато. */
+.thumbs .thumb.busy .thumb-body {
+	cursor: default;
+}
+.thumbs .thumb.busy .vid-mark {
+	display: none;
+}
+.thumbs .thumb-busy {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	background: rgba(0, 0, 0, .45);
+	color: #fff;
+	font-size: 15px;
+	font-weight: 600;
+}
+/* У звука под числом — имя файла: число внизу, имя видно. */
+.thumbs .thumb-body:has(.file) .thumb-busy {
+	place-items: end center;
+	padding-bottom: 6px;
+}
 .thumbs .thumb img, .thumbs .thumb video, .thumbs .thumb-body img, .thumbs .thumb-body video {
 	width: 100%;
 	height: 100%;
