@@ -469,6 +469,7 @@ func renderPostsIndex(st style, circleName, cutoff string, posts []chronicle.Fee
 		if fp.Post.Body != "" {
 			label += ": " + snippet(fp.Post.Body, snippetRunes)
 		}
+		b.WriteString(MetaTocOpen(fp.Post.ID))
 		b.WriteString("<li><a href=\"")
 		b.WriteString(html.EscapeString(fp.Post.ID))
 		b.WriteString(".html\">")
@@ -476,6 +477,7 @@ func renderPostsIndex(st style, circleName, cutoff string, posts []chronicle.Fee
 		b.WriteString("</a><div class=\"meta\">")
 		b.WriteString(entryDateHTML(fp.Post.EntryDate, dayTitles))
 		b.WriteString("</div></li>")
+		b.WriteString(MetaTocClose)
 	}
 	b.WriteString("</ul>")
 	b.WriteString(st.pageEnd())

@@ -30,6 +30,12 @@ func MetaPostOpen(postID string) string { return "<!-- wynd-post " + postID + " 
 
 const MetaPostClose = "<!-- /wynd-post -->"
 
+// MetaTocOpen и MetaTocClose обрамляют строку оглавления posts/index.html:
+// объединённое оглавление склеивается так же, как лента.
+func MetaTocOpen(postID string) string { return "<!-- wynd-toc " + postID + " -->" }
+
+const MetaTocClose = "<!-- /wynd-toc -->"
+
 // Meta — wynd-archive.json.
 type Meta struct {
 	Format        string `json:"format"`
@@ -53,7 +59,9 @@ type MetaPost struct {
 	EntryDate string    `json:"entry_date"`
 	CreatedAt time.Time `json:"created_at"`
 	AuthorID  string    `json:"author_id"`
-	Page      string    `json:"page"`
+	// AuthorName — имя автора: строка оглавления, если в архиве нет её меток.
+	AuthorName string `json:"author_name,omitempty"`
+	Page       string `json:"page"`
 	// Files — файлы записи и её комментариев в архиве (media/…).
 	Files    []string `json:"files,omitempty"`
 	Comments int      `json:"comments"`
@@ -68,7 +76,7 @@ func buildMeta(in BuildInput, mediaNames map[string]string) ([]byte, error) {
 	for _, fp := range in.Posts {
 		mp := MetaPost{
 			ID: fp.Post.ID, EntryDate: fp.Post.EntryDate, CreatedAt: fp.Post.CreatedAt.UTC(),
-			AuthorID: fp.Post.IdentityID, Page: "posts/" + fp.Post.ID + ".html", Comments: len(fp.Comments),
+			AuthorID: fp.Post.IdentityID, AuthorName: fp.Post.AuthorName, Page: "posts/" + fp.Post.ID + ".html", Comments: len(fp.Comments),
 		}
 		seen := map[string]bool{}
 		add := func(blobID string) {
