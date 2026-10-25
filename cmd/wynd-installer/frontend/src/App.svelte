@@ -15,6 +15,7 @@
 		type MovePlan,
 		type Plan,
 		type Progress,
+		type SelfUpdate,
 		type ServerPage,
 		type StepState
 	} from './api';
@@ -23,6 +24,36 @@
 
 	// Вкладки «Серверы» и «Архивы» (владелец, 2026-10-24: «Лучше отдельной вкладкой»).
 	let tab = $state<'servers' | 'archives'>('servers');
+
+	// Новая Мастерская (10а–10в): спрашиваем при запуске; «✕» прячет только
+	// полосу — тихая строка внизу остаётся, пока не обновились (10а2).
+	let selfUp = $state<SelfUpdate | undefined>();
+	let selfHidden = $state(false);
+	let selfOpen = $state(false);
+	let selfBusy = $state(false);
+	let selfBad = $state(false);
+	let selfError = $state('');
+	let ownVersion = $state('');
+	void backend()
+		.CheckSelfUpdate()
+		.then((u) => (selfUp = u.available ? u : undefined))
+		.catch(() => undefined);
+	void backend()
+		.Version()
+		.then((v) => (ownVersion = v))
+		.catch(() => undefined);
+	async function applySelf() {
+		if (selfBusy) return;
+		selfBusy = true;
+		selfError = '';
+		try {
+			const res = await backend().ApplySelfUpdate();
+			if (res === 'signature') selfBad = true;
+			else if (res) selfError = res;
+		} finally {
+			selfBusy = false;
+		}
+	}
 
 	// Окна установщика (docs/visual/installer.html): 1 — подключение, 1а —
 	// отпечаток, 2 — осмотр, 2а — помеха, 3 — план, 4 — установка, 4а — шаг не
@@ -674,9 +705,69 @@
 	</button>
 </div>
 
-{#if tab === 'archives'}
+{#if selfOpen && selfUp}
+	<!-- Кадры 10б, 10в. -->
+	<div class="ins">
+		<main class="ins-body">
+			{#if selfBad}
+				<h2>Эту версию Мастерская не поставит</h2>
+				<div class="ins-box">
+					<div class="ins-strong">Мастерская {selfUp.version} не подписана ключом Wynd</div>
+					<div class="ins-dim">
+						Файл мог испортиться при скачивании — или его подменили. Ставить такую версию опасно: у
+						Мастерской есть доступ к вашему серверу. Текущая Мастерская {ownVersion} работает как прежде.
+					</div>
+				</div>
+				<div class="ins-foot">
+					<Button variant="colored" loading={selfBusy} onclick={() => void applySelf()}>Попробовать ещё раз</Button>
+					<Button variant="ghost" onclick={() => (selfOpen = false)}>Закрыть</Button>
+					<TextButton class="link under ins-push" onclick={() => void backend().ReleasesPage()}>страница выпусков</TextButton>
+				</div>
+			{:else}
+				<h2>Мастерская {selfUp.version}</h2>
+				{#if selfUp.notes?.length}
+					<p class="ins-sub">Что нового:</p>
+					<div class="ins-rows">
+						{#each selfUp.notes as n (n)}<div class="ins-row"><span class="ins-mark">·</span><div>{n}</div></div>{/each}
+					</div>
+				{/if}
+				<div class="ins-rows">
+					<div class="ins-row">
+						<span class="ins-mark ok">✓</span>
+						<div>Подписана ключом Wynd <span class="ins-dim">— выложил тот, кто делает Wynd, файл не подменён</span></div>
+					</div>
+					<div class="ins-row">
+						<span class="ins-mark ok">✓</span>
+						<div>
+							Собрана из открытого кода тега workshop-v{selfUp.version} в GitHub Actions
+							<TextButton class="link under" onclick={() => void backend().OpenLink(selfUp?.attestation ?? '')}>проверить</TextButton>
+						</div>
+					</div>
+				</div>
+				{#if selfError}<div class="ins-box bad" role="alert">{selfError}</div>{/if}
+				<div class="ins-foot">
+					<Button
+						variant={progress?.running ? 'off' : 'colored'}
+						loading={selfBusy}
+						onclick={() => void (progress?.running ? undefined : applySelf())}>Обновить и перезапустить</Button
+					>
+					<Button variant="ghost" onclick={() => (selfOpen = false)}>Не сейчас</Button>
+					{#if progress?.running}<span class="ins-dim">Сначала дождитесь окончания</span>{/if}
+				</div>
+			{/if}
+		</main>
+	</div>
+{:else if tab === 'archives'}
 	<Archives />
 {:else}
+{#if selfUp && !selfHidden}
+	<!-- Кадр 10а. -->
+	<div class="ins-selfbar">
+		<span>Вышла Мастерская {selfUp.version}</span>
+		<Button variant="ghost" onclick={() => (selfOpen = true)}>Обновить</Button>
+		<button class="ins-x" type="button" aria-label="Скрыть" onclick={() => (selfHidden = true)}>✕</button>
+	</div>
+{/if}
 <div class="ins">
 	{#if screen !== 'server'}
 	<nav class="ins-side" aria-label="Шаги установки">
@@ -878,8 +969,14 @@
 			{/if}
 			<div class="ins-foot">
 				<Button variant="ghost" onclick={() => void toConnect()}>Другой сервер</Button>
+				{#if selfUp && selfHidden}
+					<span class="ins-dim ins-push"
+						>Мастерская {ownVersion} · есть {selfUp.version} —
+						<TextButton class="link under" onclick={() => (selfOpen = true)}>обновить</TextButton></span
+					>
+				{/if}
 				{#if !askRollback}
-					<TextButton class="link under ins-push" onclick={() => (askRollback = true)}>
+					<TextButton class="link under {selfUp && selfHidden ? '' : 'ins-push'}" onclick={() => (askRollback = true)}>
 						Убрать Wynd
 					</TextButton>
 				{/if}

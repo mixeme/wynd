@@ -1,0 +1,58 @@
+name: Workshop
+
+# Мастерская (настольное приложение, план 45) — сборка выпуска из тега
+# workshop-vX.Y.Z на чистой машине GitHub и удостоверение сборки
+# (attestation): любой проверит, из какого коммита собран exe, командой
+#   gh attestation verify wynd-workshop.exe --repo mixeme/wynd
+#
+# Выпуск создаётся ЧЕРНОВИКОМ и без подписи. Подпись ставит владелец у себя:
+# скачивает exe, сверяет его с удостоверением, подписывает своим ключом
+# (закрытый ключ — только у него, не здесь и не на GitHub), кладёт к выпуску
+# wynd-workshop.exe.sig и публикует черновик. Мастерская без подписи себя не
+# обновит (internal/installer/selfupdate.go), а предложит выпуск только
+# через несколько дней после публикации.
+
+on:
+  push:
+    tags: ['workshop-v*']
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
+
+      - name: build
+        shell: cmd
+        run: scripts\build-installer.bat
+
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/wynd-workshop.exe
+
+      # Черновик выпуска с exe и его суммой; «Что нового» — раздел
+      # Мастерской, строками «- …» (их показывает окно 10б).
+      - name: draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha256sum dist/wynd-workshop.exe | cut -d' ' -f1 > dist/wynd-workshop.exe.sha256
+          gh release create "$GITHUB_REF_NAME" dist/wynd-workshop.exe dist/wynd-workshop.exe.sha256 \
+            --draft --title "Мастерская ${GITHUB_REF_NAME#workshop-v}" --notes "- (что нового — дописать до публикации)"

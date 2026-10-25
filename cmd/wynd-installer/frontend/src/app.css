@@ -101,6 +101,19 @@ body {
 	color: var(--ink);
 	font-weight: 600;
 }
+.ins-selfbar {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin: 10px 24px 0;
+	padding: 6px 8px 6px 14px;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	background: var(--card);
+}
+.ins-selfbar span {
+	flex: 1;
+}
 .ins-file {
 	display: flex;
 	align-items: flex-start;

@@ -227,6 +227,14 @@ export interface MovePlan {
 	size: number;
 }
 
+/** Новая Мастерская (кадры 10а–10в). */
+export interface SelfUpdate {
+	available: boolean;
+	version?: string;
+	notes?: string[] | null;
+	attestation?: string;
+}
+
 interface Backend {
 	HasSavedPassword(host: string, user: string): Promise<boolean>;
 	Connect(input: ConnectInput): Promise<ConnectResult>;
@@ -267,6 +275,9 @@ interface Backend {
 	MoveCheckNow(): Promise<void>;
 	CancelMove(): Promise<ServiceResult>;
 	MoveAdopt(): Promise<ServerPage>;
+	CheckSelfUpdate(): Promise<SelfUpdate>;
+	ApplySelfUpdate(): Promise<string>;
+	ReleasesPage(): Promise<void>;
 }
 
 export function backend(): Backend {

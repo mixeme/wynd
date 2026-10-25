@@ -8,9 +8,13 @@ package main
 import (
 	"context"
 	"embed"
+	"errors"
 	"log"
+	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -29,9 +33,14 @@ var assets embed.FS
 type App struct {
 	ctx    context.Context
 	wizard *installer.Wizard
+	// update — последняя найденная новая Мастерская (10а–10в).
+	update installer.SelfUpdate
 }
 
-func (a *App) startup(ctx context.Context) { a.ctx = ctx }
+func (a *App) startup(ctx context.Context) {
+	a.ctx = ctx
+	installer.CleanOldSelf()
+}
 
 func (a *App) shutdown(context.Context) { a.wizard.Close() }
 
@@ -155,6 +164,36 @@ func (a *App) CancelMove() installer.ServiceResult { return a.wizard.CancelMove(
 
 // MoveAdopt — после переезда — страница нового сервера (9г).
 func (a *App) MoveAdopt() installer.ServerPage { return a.wizard.MoveAdopt(a.ctx) }
+
+// CheckSelfUpdate — есть ли новая Мастерская (10а).
+func (a *App) CheckSelfUpdate() installer.SelfUpdate {
+	ctx, cancel := context.WithTimeout(a.ctx, 20*time.Second)
+	defer cancel()
+	a.update = installer.CheckSelfUpdate(ctx, http.DefaultClient, installer.WorkshopVersion, time.Now())
+	return a.update
+}
+
+// ApplySelfUpdate — «Обновить и перезапустить» (10б): подпись не сошлась —
+// "signature" (10в); вышло — новая Мастерская запускается, эта закрывается.
+func (a *App) ApplySelfUpdate() string {
+	ctx, cancel := context.WithTimeout(a.ctx, 10*time.Minute)
+	defer cancel()
+	path, err := installer.ApplySelfUpdate(ctx, http.DefaultClient, a.update)
+	if errors.Is(err, installer.ErrBadSignature) {
+		return "signature"
+	}
+	if err != nil {
+		return err.Error()
+	}
+	if err := exec.Command(path).Start(); err != nil {
+		return err.Error()
+	}
+	runtime.Quit(a.ctx)
+	return ""
+}
+
+// ReleasesPage — страница выпусков Мастерской.
+func (a *App) ReleasesPage() { runtime.BrowserOpenURL(a.ctx, installer.ReleasesPage) }
 
 // OpenLink открывает ссылку первого запуска в браузере человека.
 func (a *App) OpenLink(url string) {
