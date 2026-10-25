@@ -3,6 +3,9 @@ import {
 	VOLUME_BAR_STEP,
 	VOLUME_BAR_WIDTH,
 	VOLUME_CHART_WIDTH,
+	VOLUME_BAR_GAP,
+	volumeBarCenterX,
+	volumeBarEdgeX,
 	volumeBarStep,
 	volumeBarX,
 	volumeChartOffsetX
@@ -21,6 +24,14 @@ describe('volumeChart', () => {
 		expect(packed).toBeLessThanOrEqual(VOLUME_CHART_WIDTH);
 		expect(volumeBarStep(n)).toBe(VOLUME_BAR_STEP);
 		expect(volumeChartOffsetX(n)).toBe((VOLUME_CHART_WIDTH - packed) / 2);
+	});
+
+	// «Всё до 1 марта» сам март не берёт: линия — в зазоре перед столбиком.
+	it('puts the edge in the gap before a bar', () => {
+		expect(volumeBarEdgeX(3, 10)).toBe(volumeBarX(3, 10) - VOLUME_BAR_GAP / 2);
+		expect(volumeBarEdgeX(3, 10)).toBeGreaterThan(volumeBarCenterX(2, 10));
+		expect(volumeBarEdgeX(3, 10)).toBeLessThan(volumeBarCenterX(3, 10));
+		expect(volumeBarEdgeX(0, 1)).toBe(volumeBarX(0, 1) - VOLUME_BAR_GAP / 2);
 	});
 
 	it('compresses the step when months overflow the viewBox', () => {

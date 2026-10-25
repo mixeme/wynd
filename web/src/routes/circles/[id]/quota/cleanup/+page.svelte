@@ -14,7 +14,7 @@
 	import { authErrorHint } from '$lib/auth/auth';
 	import { isAccessError } from '$lib/api/client';
 	import { fetchQuota, type VolumeBucket } from '$lib/circles/settings';
-	import { volumeBarCenterX } from '$lib/circles/volumeChart';
+	import { volumeBarCenterX, volumeBarEdgeX } from '$lib/circles/volumeChart';
 	import { formatBytes } from '$lib/format/bytes';
 	import { WORD, plural } from '$lib/format/plural';
 	import { formatCutoffDate, formatEntryDate } from '$lib/format/time';
@@ -74,12 +74,18 @@
 
 	function syncChartCutoffX() {
 		if (!volume.length || !cutoffDate) return;
-		// Последний столбик, что начался не позже отсечки.
+		// Последний столбик, что начался не позже отсечки. Дата — его начало:
+		// линия по левому краю, сам столбик не уходит; дата внутри — посередине.
 		let idx = -1;
 		volume.forEach((b, i) => {
 			if (bucketStart(b.period) <= cutoffDate) idx = i;
 		});
-		if (idx >= 0) chartCutoffX = volumeBarCenterX(idx, volume.length);
+		if (idx >= 0) {
+			chartCutoffX =
+				bucketStart(volume[idx].period) === cutoffDate
+					? volumeBarEdgeX(idx, volume.length)
+					: volumeBarCenterX(idx, volume.length);
+		}
 	}
 
 	function onChartCutoff(index: number) {

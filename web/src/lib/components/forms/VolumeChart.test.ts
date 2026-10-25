@@ -40,6 +40,28 @@ describe('VolumeChart keyboard', () => {
 		target.remove();
 	});
 
+	// Касание столбика — «всё до его начала»: сам он остаётся серым, а не
+	// цветом «уйдёт в архив» (владелец, 2026-10-25: «Столбик выглядит странно»).
+	it('leaves the tapped bar out of the archive', () => {
+		const oncutoff = vi.fn();
+		const target = document.createElement('div');
+		document.body.append(target);
+		const instance = mount(VolumeChart, { target, props: { volume, oncutoff } });
+		flushSync();
+		const slider = target.querySelector('[role="slider"]')!;
+		key(slider, 'Home');
+		key(slider, 'ArrowRight');
+		key(slider, 'ArrowRight');
+		const fills = [...target.querySelectorAll('rect[rx="2"]')].map((r) => r.getAttribute('fill'));
+		expect(fills.slice(0, 2)).toEqual(['var(--c)', 'var(--c)']);
+		expect(fills[2]).not.toBe('var(--c)');
+		key(slider, 'Home');
+		const first = [...target.querySelectorAll('rect[rx="2"]')].map((r) => r.getAttribute('fill'));
+		expect(first.every((f) => f !== 'var(--c)')).toBe(true);
+		unmount(instance);
+		target.remove();
+	});
+
 	it('is not focusable without oncutoff', () => {
 		const target = document.createElement('div');
 		const instance = mount(VolumeChart, { target, props: { volume } });

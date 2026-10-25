@@ -25,3 +25,10 @@ export function volumeBarX(index: number, barCount: number): number {
 export function volumeBarCenterX(index: number, barCount: number): number {
 	return volumeBarX(index, barCount) + VOLUME_BAR_WIDTH / 2;
 }
+
+/** Левый край столбика — середина зазора перед ним. Здесь линия отсечки,
+ *  когда дата — начало столбика: «всё до 1 марта» сам март не берёт. */
+export function volumeBarEdgeX(index: number, barCount: number): number {
+	const gap = Math.max(0, volumeBarStep(barCount) - VOLUME_BAR_WIDTH);
+	return volumeBarX(index, barCount) - Math.min(gap, VOLUME_BAR_GAP) / 2;
+}

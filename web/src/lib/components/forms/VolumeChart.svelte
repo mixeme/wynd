@@ -4,6 +4,7 @@
 		VOLUME_BAR_WIDTH,
 		VOLUME_CHART_WIDTH,
 		volumeBarCenterX,
+		volumeBarEdgeX,
 		volumeBarX
 	} from '$lib/circles/volumeChart';
 
@@ -49,7 +50,9 @@
 				y: baselineY - h,
 				w: barWidth,
 				h,
-				beforeCutoff: volumeBarCenterX(i, barCount) <= cutoffX
+				// Уйдёт в архив, если линия отсечки правее его середины: линия
+				// по левому краю (дата — начало столбика) его не берёт.
+				beforeCutoff: volumeBarCenterX(i, barCount) < cutoffX
 			};
 		})
 	);
@@ -82,6 +85,15 @@
 		return volumeBarCenterX(index, barCount);
 	}
 
+	// Столбик под линией: та стоит по его левому краю или посередине.
+	function indexAtCutoff(x: number): number {
+		let best = 0;
+		for (let i = 0; i < volume.length; i++) {
+			if (volumeBarEdgeX(i, barCount) <= x + 0.5) best = i;
+		}
+		return best;
+	}
+
 	function indexAtX(x: number): number {
 		if (!volume.length) return 0;
 		let best = 0;
@@ -105,7 +117,8 @@
 	function applyIndex(index: number) {
 		if (!volume.length) return;
 		const idx = Math.max(0, Math.min(volume.length - 1, index));
-		cutoffX = barCenterX(idx);
+		// Касание столбика — «всё до его начала»: линия по левому краю.
+		cutoffX = volumeBarEdgeX(idx, barCount);
 		if (lastIndex !== idx) {
 			lastIndex = idx;
 			oncutoff?.(idx);
@@ -135,7 +148,7 @@
 	// месяц, поэтому PageUp/PageDown — год.
 	function onKeydown(e: KeyboardEvent) {
 		if (!oncutoff || !volume.length) return;
-		const current = lastIndex ?? indexAtX(cutoffX);
+		const current = lastIndex ?? indexAtCutoff(cutoffX);
 		const last = volume.length - 1;
 		const next: Record<string, number> = {
 			ArrowLeft: current - 1,
@@ -162,7 +175,7 @@
 			tabindex="0"
 			aria-valuemin={0}
 			aria-valuemax={volume.length - 1}
-			aria-valuenow={lastIndex ?? indexAtX(cutoffX)}
+			aria-valuenow={lastIndex ?? indexAtCutoff(cutoffX)}
 			aria-valuetext={cutoffLabel || undefined}
 			aria-label="Архивировать всё до"
 			onkeydown={onKeydown}
@@ -182,7 +195,7 @@
 
 {#snippet plot()}
 		{#if volume.length}
-			<rect x={packLeft} y={barAreaTop} width={shadedWidth} height={barAreaHeight} fill="var(--ct)" />
+			<rect class="shade" x={packLeft} y={barAreaTop} width={shadedWidth} height={barAreaHeight} />
 			{#each bars as bar (bar.x)}
 				<rect
 					x={bar.x}
@@ -236,6 +249,14 @@
 	}
 	.handle {
 		cursor: ew-resize;
+	}
+	.shade {
+		fill: var(--ct);
+	}
+	/* --ct светлый и в тёмной теме: зона «уйдёт в архив» горела светлой
+	   полосой. Тот же тёмный тон, что у реакций и подсветки из поиска. */
+	:global(.ph.dark) .shade {
+		fill: #3A2E29;
 	}
 	.chart svg:focus-visible {
 		outline: 2px solid var(--c);
