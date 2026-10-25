@@ -2248,6 +2248,11 @@ a.link {
 	height: 100%;
 	background: var(--c);
 }
+/* Светлая подложка в тёмной теме читалась как полная шкала: «446 Б из 2 ГБ»
+   выглядело «места нет» (2026-10-26). Тот же тёмный тон, что у зоны графика. */
+.ph.dark .meter, .ph.dark .qbar {
+	background: #3A2E29;
+}
 .g3 {
 	display: grid;
 	grid-template-columns: repeat(3,1fr);

@@ -8,6 +8,7 @@
 	import PhoneFrame from '$ui/chrome/PhoneFrame.svelte';
 	import StatusBar from '$ui/chrome/StatusBar.svelte';
 	import VolumeChart from '$ui/forms/VolumeChart.svelte';
+	import CirclePlace from '$ui/data/CirclePlace.svelte';
 	import { volumeBarEdgeX } from '$lib/circles/volumeChart';
 
 	// Тёмная тема (владелец, 2026-10-25: «Столбик выглядит странно. Он
@@ -36,6 +37,8 @@
 <PhoneFrame color="terracotta" dark>
 	<StatusBar />
 	<CircleBar title="Заархивировать и удалить старое" tabs={false} />
+	<!-- «Место» почти пустого круга: подложка шкалы тёмная, а не светлая полоса. -->
+	<CirclePlace usedBytes={446} quotaBytes={2 * 1024 * 1024 * 1024} />
 	<Label>Сколько освободится · по дням</Label>
 	<VolumeChart volume={oneDay} cutoffLabel="25 октября" cutoffX={volumeBarEdgeX(0, 1)} oncutoff={() => {}} />
 	<Label style="margin-top:14px">Архивировать всё до</Label>
