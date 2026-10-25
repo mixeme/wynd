@@ -93,8 +93,15 @@ type Wizard struct {
 	wynd     string
 	progress Progress
 	// state — страница сервера, где Wynd уже стоит (пульт).
-	state       *ServerPage
-	cancel      context.CancelFunc
+	state *ServerPage
+	// Переезд (9а–9г): подключение к новому серверу и его план.
+	target    *Session
+	tInput    ConnectInput
+	tAccess   Access
+	tPending  *UnknownHostError
+	movePlan  *MovePlan
+	moveCheck chan struct{}
+	cancel    context.CancelFunc
 	// finished закрывается, когда прогон установки кончился.
 	finished chan struct{}
 }
@@ -258,6 +265,10 @@ func (w *Wizard) closeLocked() {
 		_ = w.session.Close()
 	}
 	w.session, w.pending, w.report = nil, nil, nil
+	if w.target != nil {
+		_ = w.target.Close()
+	}
+	w.target, w.tPending, w.movePlan = nil, nil, nil
 	if w.cancel != nil {
 		w.cancel()
 		w.cancel = nil

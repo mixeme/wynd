@@ -1,0 +1,232 @@
+package installer
+
+import (
+	"context"
+	"encoding/json"
+	"strings"
+	"time"
+)
+
+// Переезд на другой сервер (план 45, кадры 9а–9г). Адрес сайта прежний —
+// у людей в телефонах сохранён он. Папка установки переносится целиком, с
+// сертификатом: новому серверу не нужен новый сертификат. Данные идут
+// напрямую со старого сервера на новый: новый сервер на время переноса
+// получает ключ, которым старый отдаёт ему только архив папки Wynd, и после
+// переноса ключ убирается с обоих. Единственный шаг человека — поменять у
+// регистратора запись A адреса сайта.
+
+const (
+	moveMark     = installDir + "/.workshop-move"
+	moveKey      = "/root/.wynd-move"
+	moveKnown    = "/root/.wynd-move-known"
+	moveKeyLabel = "wynd-move"
+)
+
+// moveTar — что отдаёт старый сервер: папка Wynd без копий и временного.
+const moveTar = `tar -C /opt --exclude=wynd/backups --exclude=wynd/src --exclude=wynd/data/backups --exclude='wynd/data/.workshop-*' --exclude='wynd/.workshop-*' -cf - wynd`
+
+// MoveSpec — переезд.
+type MoveSpec struct {
+	Domain  string
+	Version string
+	Image   ImageSource
+	// OldIP — адрес старого сервера, по которому новый его достанет; NewIP —
+	// адрес нового: на него должна указать запись A.
+	OldIP, NewIP string
+	// RemoveOld — убрать Wynd со старого после переезда (9б); нет — оставить остановленным.
+	RemoveOld bool
+	// Resolve — куда сейчас указывает адрес сайта (адреса A).
+	Resolve func(ctx context.Context, domain string) []string
+	// CheckNow — «Проверить сейчас» на 9в.
+	CheckNow <-chan struct{}
+	Probe    func(ctx context.Context, url string) (string, error)
+}
+
+// MoveMark — пометка начатого переезда на старом сервере.
+type MoveMark struct {
+	To      string `json:"to"`
+	Started string `json:"started"`
+}
+
+// dnsWait — как часто сами проверяем адрес на 9в.
+var dnsWait = time.Minute
+
+// onOld выполняет команду на старом сервере и кладёт её в общий журнал.
+func onOld(ctx context.Context, r *Run, old *Session, command string, timeout time.Duration) (string, error) {
+	res, err := old.Exec(ctx, command, nil, timeout)
+	r.record("старый сервер: "+command, res.Output)
+	if err != nil {
+		return res.Output, err
+	}
+	if res.Code != 0 {
+		return res.Output, &commandError{command: command, output: res.Output, code: res.Code}
+	}
+	return res.Output, nil
+}
+
+func moveSteps(old *Session, spec MoveSpec) []step {
+	image := imageStep(Spec{Version: spec.Version, Image: spec.Image})
+	docker := dockerStep()
+	mark, _ := json.Marshal(MoveMark{To: spec.NewIP, Started: time.Now().UTC().Format(time.RFC3339)})
+	return []step{
+		{
+			id: "install", title: "Wynd " + spec.Version + " на новом сервере",
+			do: func(ctx context.Context, r *Run) error {
+				if err := runStep(ctx, r, docker); err != nil {
+					return err
+				}
+				return runStep(ctx, r, image)
+			},
+		},
+		{
+			id: "stop", title: "Сайт на старом остановлен",
+			do: func(ctx context.Context, r *Run) error {
+				_, err := onOld(ctx, r, old, "printf '%s\\n' "+shQuote(string(mark))+" > "+moveMark+" && "+composeCmd+"stop wynd 2>&1", shortTimeout)
+				return err
+			},
+		},
+		{
+			id: "transfer", title: "Папка Wynd перенесена",
+			do: func(ctx context.Context, r *Run) error {
+				pub, err := r.must(ctx, "test -f "+moveKey+" || ssh-keygen -q -t ed25519 -N '' -C "+moveKeyLabel+" -f "+moveKey+"; cat "+moveKey+".pub", shortTimeout)
+				if err != nil {
+					return err
+				}
+				pub = strings.TrimSpace(pub)
+				hostKey, err := onOld(ctx, r, old, "cat /etc/ssh/ssh_host_ed25519_key.pub 2>/dev/null || cat /etc/ssh/ssh_host_ecdsa_key.pub", shortTimeout)
+				if err != nil {
+					return err
+				}
+				fields := strings.Fields(hostKey)
+				if len(fields) < 2 {
+					return &StepError{Message: "Старый сервер не назвал свой ключ", Advice: "Нажмите «Повторить»."}
+				}
+				// Старый отдаёт по этому ключу только архив папки Wynd.
+				line := `restrict,command="` + moveTar + `" ` + pub
+				if _, err := onOld(ctx, r, old, "umask 077; mkdir -p /root/.ssh && grep -qF "+shQuote(pub)+" /root/.ssh/authorized_keys 2>/dev/null || echo "+shQuote(line)+" >> /root/.ssh/authorized_keys", shortTimeout); err != nil {
+					return err
+				}
+				known := spec.OldIP + " " + fields[0] + " " + fields[1]
+				pull := "set -e; printf '%s\\n' " + shQuote(known) + " > " + moveKnown +
+					"; mkdir -p /opt && ssh -i " + moveKey + " -o UserKnownHostsFile=" + moveKnown +
+					" -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=20 root@" + spec.OldIP + " | tar -C /opt -xpf -"
+				_, pullErr := r.must(ctx, pull, imageTimeout)
+				// Ключ — с обоих серверов, даже если перенос не вышел.
+				_, _ = onOld(ctx, r, old, "sed -i '/ "+moveKeyLabel+"$/d' /root/.ssh/authorized_keys", shortTimeout)
+				_, _ = r.sh(ctx, "rm -f "+moveKey+" "+moveKey+".pub "+moveKnown, shortTimeout)
+				return pullErr
+			},
+			explain: func(_ error, output string) *StepError {
+				if containsAny(output, "Connection timed out", "Connection refused", "No route to host", "Could not resolve") {
+					return &StepError{
+						Message: "Новый сервер не достучался до старого",
+						Advice:  "Серверы друг друга не видят: старый принимает подключения не от всех. Разрешите на старом вход по SSH с адреса " + spec.NewIP + " и нажмите «Повторить».",
+					}
+				}
+				return &StepError{Message: "Папку перенести не получилось", Advice: "Нажмите «Повторить». Что ответили серверы — в «подробностях»."}
+			},
+		},
+		dnsStep(spec),
+		{
+			id: "start", title: "Wynd на новом сервере запущен",
+			do: func(ctx context.Context, r *Run) error {
+				if _, err := r.must(ctx, composeCmd+"up -d --quiet-pull 2>&1", packageTimeout); err != nil {
+					return err
+				}
+				if err := waitHealthy(ctx, r); err != nil {
+					return err
+				}
+				if spec.Probe == nil {
+					return nil
+				}
+				r.note("проверяем сайт")
+				deadline := time.Now().Add(certWait)
+				for {
+					body, err := spec.Probe(ctx, "https://"+spec.Domain+"/api/v1/instance")
+					if err == nil && strings.Contains(body, `"version":"`+spec.Version+`"`) {
+						return nil
+					}
+					if time.Now().After(deadline) {
+						return &StepError{
+							Message: "Сайт " + spec.Domain + " не открывается с нового сервера",
+							Advice:  "Wynd на новом сервере запущен. Возможно, адрес ещё не везде сменился — подождите и нажмите «Повторить».",
+						}
+					}
+					if err := sleep(ctx, pollInterval); err != nil {
+						return err
+					}
+				}
+			},
+		},
+		{
+			id: "old", title: "Старый сервер",
+			do: func(ctx context.Context, r *Run) error {
+				if spec.RemoveOld {
+					// Сертификат не отзываем: он переехал и работает на новом.
+					_, err := onOld(ctx, r, old, composeCmd+"down 2>&1; rm -rf "+installDir, packageTimeout)
+					return err
+				}
+				_, err := onOld(ctx, r, old, "rm -f "+moveMark+" && date -u +%Y-%m-%dT%H:%M:%SZ > "+stoppedMark, shortTimeout)
+				return err
+			},
+		},
+	}
+}
+
+// dnsStep ждёт, пока адрес сайта укажет на новый сервер (9в).
+func dnsStep(spec MoveSpec) step {
+	return step{
+		id: "dns", title: "Ждём новый адрес",
+		do: func(ctx context.Context, r *Run) error {
+			for {
+				addrs := spec.Resolve(ctx, spec.Domain)
+				if len(addrs) > 0 && allEqual(addrs, spec.NewIP) {
+					return nil
+				}
+				now := "никуда"
+				if len(addrs) > 0 {
+					now = strings.Join(addrs, ", ")
+				}
+				r.note(spec.Domain + " пока указывает на " + now)
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-spec.CheckNow:
+				case <-time.After(dnsWait):
+				}
+			}
+		},
+	}
+}
+
+func allEqual(addrs []string, want string) bool {
+	for _, a := range addrs {
+		if a != want {
+			return false
+		}
+	}
+	return true
+}
+
+// Move переносит Wynd со старого сервера (old) на новый (sess).
+func Move(ctx context.Context, old, sess *Session, spec MoveSpec, report func(Progress)) Progress {
+	return runSteps(ctx, sess, Spec{Domain: spec.Domain, Version: spec.Version, Image: spec.Image}, moveSteps(old, spec), report,
+		func(_ *Run, p *Progress) { p.Site = "https://" + spec.Domain })
+}
+
+// MoveTitles — шаги переезда для окна до начала.
+func MoveTitles(spec MoveSpec) []StepState { return titles(moveSteps(nil, spec)) }
+
+// CancelMove — «Отменить переезд» (9в): адрес ещё не менялся — сайт снова
+// запускается на старом, с нового Wynd убирается.
+func CancelMove(ctx context.Context, old, sess *Session) ([]LogEntry, error) {
+	r := &Run{sess: sess, steps: []StepState{{ID: "cancel"}}, report: func() {}}
+	if _, err := onOld(ctx, r, old, composeCmd+"up -d 2>&1 && rm -f "+moveMark+" "+stoppedMark, packageTimeout); err != nil {
+		return r.log, err
+	}
+	_, _ = onOld(ctx, r, old, "sed -i '/ "+moveKeyLabel+"$/d' /root/.ssh/authorized_keys", shortTimeout)
+	if sess != nil {
+		_, _ = r.sh(ctx, "cd "+installDir+" 2>/dev/null && docker compose down 2>&1; rm -rf "+installDir+" "+moveKey+" "+moveKey+".pub "+moveKnown, packageTimeout)
+	}
+	return r.log, nil
+}

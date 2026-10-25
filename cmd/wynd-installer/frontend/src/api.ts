@@ -216,6 +216,17 @@ export interface BackupOptions {
 	password: string;
 }
 
+export interface MovePlan {
+	ok: boolean;
+	message?: string;
+	advice?: string;
+	domain: string;
+	version: string;
+	new_ip: string;
+	old_ip: string;
+	size: number;
+}
+
 interface Backend {
 	HasSavedPassword(host: string, user: string): Promise<boolean>;
 	Connect(input: ConnectInput): Promise<ConnectResult>;
@@ -249,6 +260,13 @@ interface Backend {
 	PlanBackup(folder: string): Promise<LocalBackupPlan>;
 	StartBackup(opt: BackupOptions): Promise<Progress>;
 	DefaultBackupFolder(domain: string): Promise<string>;
+	MoveConnect(input: ConnectInput): Promise<ConnectResult>;
+	MoveConfirmHost(): Promise<ConnectResult>;
+	MovePlan(): Promise<MovePlan>;
+	StartMove(removeOld: boolean): Promise<Progress>;
+	MoveCheckNow(): Promise<void>;
+	CancelMove(): Promise<ServiceResult>;
+	MoveAdopt(): Promise<ServerPage>;
 }
 
 export function backend(): Backend {

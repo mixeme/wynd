@@ -12,6 +12,7 @@
 		type InspectResult,
 		type LogEntry,
 		type LocalBackupPlan,
+		type MovePlan,
 		type Plan,
 		type Progress,
 		type ServerPage,
@@ -39,12 +40,19 @@
 		| 'udone'
 		| 'bplan'
 		| 'backup'
-		| 'bdone';
+		| 'bdone'
+		| 'mconnect'
+		| 'mfinger'
+		| 'mplan'
+		| 'move'
+		| 'mdone';
 	const INSTALL_STEPS = ['Сервер', 'Осмотр', 'План', 'Установка', 'Готово'];
 	// Обновление со страницы сервера (кадры 7б–7д).
 	const UPDATE_STEPS = ['Сервер', 'План', 'Обновление', 'Готово'];
 	// Бэкап на этот компьютер (кадры 8а–8г).
 	const BACKUP_STEPS = ['Сервер', 'Бэкап', 'Готово'];
+	// Переезд на другой сервер (кадры 9а–9г).
+	const MOVE_STEPS = ['Новый сервер', 'План', 'Переезд', 'Готово'];
 
 	let screen = $state<Screen>('connect');
 	let host = $state('');
@@ -81,6 +89,8 @@
 	let progress = $state<Progress | undefined>();
 	// Страница сервера, где Wynd уже стоит (пульт).
 	let page = $state<ServerPage | undefined>();
+	// План переезда (9б).
+	let mplan = $state<MovePlan | undefined>();
 	let showLog = $state(false);
 	let askRollback = $state(false);
 	let dropData = $state(false);
@@ -104,16 +114,26 @@
 		udone: 3,
 		bplan: 1,
 		backup: 1,
-		bdone: 2
+		bdone: 2,
+		mconnect: 0,
+		mfinger: 0,
+		mplan: 1,
+		move: 2,
+		mdone: 3
 	};
 	const updating = $derived(screen === 'uplan' || screen === 'update' || screen === 'udone');
 	const backingUp = $derived(screen === 'bplan' || screen === 'backup' || screen === 'bdone');
-	const STEPS = $derived(updating ? UPDATE_STEPS : backingUp ? BACKUP_STEPS : INSTALL_STEPS);
+	const moving = $derived(['mconnect', 'mfinger', 'mplan', 'move', 'mdone'].includes(screen));
+	const STEPS = $derived(
+		updating ? UPDATE_STEPS : backingUp ? BACKUP_STEPS : moving ? MOVE_STEPS : INSTALL_STEPS
+	);
 	const stepIndex = $derived(SCREEN_STEP[screen]);
 	const stepBad = $derived(
 		(screen === 'inspect' && (blocks.length > 0 || inspection?.ok === false)) ||
 			(screen === 'plan' && plan?.ok === false) ||
-			((screen === 'install' || screen === 'update' || screen === 'backup') && Boolean(progress?.failure)) ||
+			((screen === 'install' || screen === 'update' || screen === 'backup' || screen === 'move') &&
+				Boolean(progress?.failure)) ||
+			(screen === 'mplan' && mplan?.ok === false) ||
 			(screen === 'uplan' && noRoom(page))
 	);
 	const domainOk = $derived(domainCheck?.level === 'ok');
@@ -332,6 +352,91 @@
 		if (progress?.running && !poll) {
 			poll = setInterval(() => void backend().InstallProgress().then(apply), 500);
 		}
+	}
+
+	// Переезд (9а–9г).
+	let mHost = $state('');
+	let mUser = $state('root');
+	let mPass = $state('');
+	let mUseKeys = $state(false);
+	let mMakeKey = $state(false);
+	let mFail = $state<ConnectResult | undefined>();
+	let mFinger = $state('');
+	let mRemoveOld = $state(false);
+	let mBusy = $state(false);
+
+	function toMove() {
+		mFail = undefined;
+		mPass = '';
+		screen = 'mconnect';
+	}
+	async function applyMove(res: ConnectResult) {
+		mFail = undefined;
+		if (res.status === 'connected') {
+			mPass = '';
+			keyNote = res.key_note ?? '';
+			screen = 'mplan';
+			mplan = undefined;
+			mplan = await backend().MovePlan();
+		} else if (res.status === 'unknown_host') {
+			mFinger = res.fingerprint ?? '';
+			screen = 'mfinger';
+		} else {
+			mFail = res;
+			screen = 'mconnect';
+		}
+	}
+	async function moveConnect() {
+		if (mBusy) return;
+		mBusy = true;
+		try {
+			await applyMove(
+				await backend().MoveConnect({ host: mHost, user: mUser, password: mPass, use_keys: mUseKeys, remember: false, make_key: mMakeKey })
+			);
+		} finally {
+			mBusy = false;
+		}
+	}
+	async function moveConfirm() {
+		if (mBusy) return;
+		mBusy = true;
+		try {
+			await applyMove(await backend().MoveConfirmHost());
+		} finally {
+			mBusy = false;
+		}
+	}
+	async function startMove() {
+		screen = 'move';
+		const apply = (next: Progress) => {
+			progress = next;
+			if (next.running) return;
+			stopPoll();
+			if (next.done) screen = 'mdone';
+		};
+		apply(await backend().StartMove(mRemoveOld));
+		if (progress?.running && !poll) {
+			poll = setInterval(() => void backend().InstallProgress().then(apply), 500);
+		}
+	}
+	async function cancelMove() {
+		if (mBusy) return;
+		mBusy = true;
+		try {
+			stopPoll();
+			const res = await backend().CancelMove();
+			page = res.page;
+			svcLog = res.log ?? [];
+			if (!res.ok) svcError = [res.message, res.advice].filter(Boolean).join('. ');
+			progress = undefined;
+			screen = 'server';
+		} finally {
+			mBusy = false;
+		}
+	}
+	async function adoptNew() {
+		page = await backend().MoveAdopt();
+		screen = 'server';
 	}
 
 	async function returnPrevious() {
@@ -755,6 +860,11 @@
 						<div class="ins-grow">Бэкап на этот компьютер</div>
 						<TextButton class="link under" onclick={() => void toBackupPlan()}>сделать</TextButton>
 					</div>
+					<div class="ins-row">
+						<span class="ins-mark">→</span>
+						<div class="ins-grow">Переехать на другой сервер</div>
+						<TextButton class="link under" onclick={toMove}>начать</TextButton>
+					</div>
 				</div>
 			{/if}
 			{#if svcError}
@@ -1060,6 +1170,162 @@
 					Открыть папку
 				</Button>
 				<Button variant="ghost" onclick={() => (screen = 'server')}>К серверу</Button>
+			</div>
+		{:else if screen === 'mconnect' && st}
+			<!-- Кадр 9а. -->
+			<h2>Куда переезжает {st.domain}</h2>
+			<p class="ins-sub">Адрес сайта останется прежним — люди откроют Wynd как раньше, с тех же телефонов.</p>
+			<form
+				class="ins-form"
+				onsubmit={(e) => {
+					e.preventDefault();
+					void moveConnect();
+				}}
+			>
+				<Label>Адрес нового сервера</Label>
+				<Input mono autocomplete="off" spellcheck={false} placeholder="203.0.113.7" bind:value={mHost} />
+				<Label>Вход</Label>
+				<div class="ins-chips">
+					<Chip selected={!mUseKeys} onclick={() => (mUseKeys = false)}>Пароль</Chip>
+					<Chip selected={mUseKeys} onclick={() => (mUseKeys = true)}>Ключ с этого компьютера</Chip>
+				</div>
+				<div class="ins-pair">
+					<div class="ins-user">
+						<Label>Пользователь</Label>
+						<Input mono autocomplete="off" spellcheck={false} bind:value={mUser} />
+					</div>
+					{#if !mUseKeys}
+						<div class="ins-grow">
+							<Label>Пароль от сервера</Label>
+							<Input type="password" autocomplete="off" bind:value={mPass} />
+						</div>
+					{/if}
+				</div>
+				{#if !mUseKeys}
+					<label class="ins-check">
+						<input type="checkbox" bind:checked={mMakeKey} />
+						<span
+							>Дальше входить по ключу <span class="ins-dim"
+								>— Мастерская создаст ключ на этом компьютере и положит его на сервер</span
+							></span
+						>
+					</label>
+				{/if}
+				{#if mFail}
+					<div class="ins-box bad" role="alert">
+						<div class="ins-strong">{mFail.message}</div>
+						{#if mFail.advice}<div class="ins-dim">{mFail.advice}</div>{/if}
+					</div>
+				{/if}
+				<div class="ins-foot">
+					<Button variant="colored" loading={mBusy} onclick={() => void moveConnect()}>Подключиться</Button>
+					<Button variant="ghost" onclick={() => (screen = 'server')}>Назад</Button>
+				</div>
+			</form>
+		{:else if screen === 'mfinger'}
+			<h2>Это ваш новый сервер?</h2>
+			<p class="ins-sub">
+				Подключаемся к {mHost.trim()} впервые. Сервер назвал свой отпечаток — сверьте его с письмом хостинга
+				или панелью, если там он есть.
+			</p>
+			<div class="ins-box ins-mono">{mFinger}</div>
+			<div class="ins-foot">
+				<Button variant="colored" loading={mBusy} onclick={() => void moveConfirm()}>Да, подключиться</Button>
+				<Button variant="ghost" disabled={mBusy} onclick={() => (screen = 'mconnect')}>Отмена</Button>
+			</div>
+		{:else if screen === 'mplan' && !mplan}
+			<h2>Что сделаем</h2>
+			<p class="ins-dim">Осматриваем новый сервер…</p>
+		{:else if screen === 'mplan' && mplan && !mplan.ok}
+			<h2>Пока переехать нельзя</h2>
+			<div class="ins-box" role="alert">
+				<div class="ins-strong">{mplan.message}</div>
+				{#if mplan.advice}<div class="ins-dim">{mplan.advice}</div>{/if}
+			</div>
+			<div class="ins-foot">
+				<Button variant="ghost" onclick={() => (screen = 'mconnect')}>Другой сервер</Button>
+				<Button variant="ghost" onclick={() => (screen = 'server')}>К серверу</Button>
+			</div>
+		{:else if screen === 'mplan' && mplan}
+			<!-- Кадр 9б. -->
+			<h2>Что сделаем</h2>
+			<div class="ins-rows">
+				<div class="ins-row"><span class="ins-mark">1</span><div>Поставим Wynd {mplan.version} на новый сервер <span class="ins-dim">— пока без данных и не запуская</span></div></div>
+				<div class="ins-row"><span class="ins-mark">2</span><div>Остановим сайт на старом <span class="ins-dim">— с этой минуты он не открывается</span></div></div>
+				<div class="ins-row"><span class="ins-mark">3</span><div>Перенесём папку Wynd на новый сервер <span class="ins-dim">— {gb(mplan.size)}, напрямую со старого, мимо этого компьютера</span></div></div>
+				<div class="ins-row"><span class="ins-mark">4</span><div>Вы смените адрес <span class="ins-dim">— у записи A для {mplan.domain} поставите {mplan.new_ip}</span></div></div>
+				<div class="ins-row"><span class="ins-mark">5</span><div>Запустим Wynd на новом и проверим сайт</div></div>
+			</div>
+			<Label>Старый сервер</Label>
+			<label class="ins-check">
+				<input type="radio" name="mold" value={false} bind:group={mRemoveOld} />
+				<span>Оставить Wynd остановленным <span class="ins-dim">— убрать потом, когда убедитесь, что всё на месте</span></span>
+			</label>
+			<label class="ins-check">
+				<input type="radio" name="mold" value={true} bind:group={mRemoveOld} />
+				<span>Убрать Wynd после переезда <span class="ins-dim">— со старого сервера уйдут его данные; сертификат переедет на новый</span></span>
+			</label>
+			<div class="ins-foot">
+				<Button variant="colored" onclick={() => void startMove()}>Переехать</Button>
+				<Button variant="ghost" onclick={() => (screen = 'server')}>Назад</Button>
+			</div>
+		{:else if screen === 'move' && progress?.failure}
+			<h2>{progress.failure.message}</h2>
+			{#if progress.failure.advice}<div class="ins-box">{progress.failure.advice}</div>{/if}
+			<div class="ins-foot">
+				<Button variant="colored" onclick={() => void startMove()}>Повторить</Button>
+				<Button variant="ghost" loading={mBusy} onclick={() => void cancelMove()}>Отменить переезд</Button>
+				<TextButton class="link under ins-push" onclick={() => (showLog = !showLog)}>подробности</TextButton>
+			</div>
+			{#if showLog}<pre class="ins-raw">{logText}</pre>{/if}
+		{:else if screen === 'move'}
+			<!-- Кадр 9в. -->
+			{@const waitingDNS = progress?.steps?.some((s) => s.id === 'dns' && s.status === 'running')}
+			<h2>Переезжаем</h2>
+			<div class="ins-rows">
+				{#each progress?.steps ?? [] as step (step.id)}
+					<div class="ins-row" class:ins-dim={step.status === 'pending'}>
+						<span class="ins-mark {step.status === 'done' ? 'ok' : ''}">{stepMark(step)}</span>
+						<div>{step.title}{#if step.note}&nbsp;<span class="ins-dim">— {step.note}</span>{/if}</div>
+					</div>
+				{/each}
+			</div>
+			{#if waitingDNS && mplan}
+				<div class="ins-box">
+					<div class="ins-dim">В панели, где покупали адрес {mplan.domain}, поменяйте у записи A адрес сервера на этот:</div>
+					<div class="ins-copyline">
+						<div class="ins-mono">{mplan.new_ip}</div>
+						<Button variant="ghost" onclick={() => void copyLine(mplan?.new_ip ?? '')}>
+							{copiedLine === mplan.new_ip ? 'Скопировано' : 'Скопировать'}
+						</Button>
+					</div>
+					<div class="ins-dim">Мастерская проверяет сама каждую минуту — окно можно свернуть.</div>
+				</div>
+				<div class="ins-foot">
+					<Button variant="ghost" onclick={() => void backend().MoveCheckNow()}>Проверить сейчас</Button>
+					<TextButton class="link under ins-push" onclick={() => void cancelMove()}>Отменить переезд</TextButton>
+				</div>
+			{:else}
+				<div class="ins-foot">
+					<TextButton class="link under" onclick={() => (showLog = !showLog)}>показать, что выполняется</TextButton>
+					<span class="ins-dim">Окно можно свернуть</span>
+				</div>
+			{/if}
+			{#if showLog}<pre class="ins-raw">{logText}</pre>{/if}
+		{:else if screen === 'mdone' && mplan}
+			<!-- Кадр 9г. -->
+			<h2>Wynd на новом сервере</h2>
+			<p class="ins-sub">Проверка прошла: {mplan.domain} открывается с сервера {mplan.new_ip}.</p>
+			<div class="ins-box">
+				{mRemoveOld
+					? `Wynd со старого сервера ${mplan.old_ip} убран.`
+					: `Старый сервер ${mplan.old_ip}: Wynd остановлен, данные на месте. Когда убедитесь, что на новом всё есть, уберите его со страницы старого сервера.`}
+			</div>
+			<div class="ins-foot">
+				<Button variant="colored" onclick={() => void backend().OpenLink(`https://${mplan?.domain}`)}>
+					Открыть {mplan.domain}
+				</Button>
+				<Button variant="ghost" onclick={() => void adoptNew()}>К серверу</Button>
 			</div>
 		{:else if screen === 'fingerprint'}
 			<h2>Это ваш сервер?</h2>

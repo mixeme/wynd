@@ -129,6 +129,33 @@ func (a *App) ReturnPrevious() installer.ServiceResult {
 	return a.wizard.ReturnPrevious(a.ctx)
 }
 
+// MoveConnect — подключение к новому серверу (9а).
+func (a *App) MoveConnect(in installer.ConnectInput) installer.ConnectResult {
+	return a.wizard.MoveConnect(a.ctx, in)
+}
+
+// MoveConfirmHost — отпечаток нового сервера сверен.
+func (a *App) MoveConfirmHost() installer.ConnectResult {
+	return a.wizard.MoveConfirmHost(a.ctx)
+}
+
+// MovePlan — план переезда (9б).
+func (a *App) MovePlan() installer.MovePlan { return a.wizard.MovePlan(a.ctx) }
+
+// StartMove — «Переехать»; ход — InstallProgress (9в).
+func (a *App) StartMove(removeOld bool) installer.Progress {
+	return a.wizard.StartMove(a.ctx, removeOld)
+}
+
+// MoveCheckNow — «Проверить сейчас» (9в).
+func (a *App) MoveCheckNow() { a.wizard.MoveCheckNow() }
+
+// CancelMove — «Отменить переезд» (9в).
+func (a *App) CancelMove() installer.ServiceResult { return a.wizard.CancelMove(a.ctx) }
+
+// MoveAdopt — после переезда — страница нового сервера (9г).
+func (a *App) MoveAdopt() installer.ServerPage { return a.wizard.MoveAdopt(a.ctx) }
+
 // OpenLink открывает ссылку первого запуска в браузере человека.
 func (a *App) OpenLink(url string) {
 	runtime.BrowserOpenURL(a.ctx, url)
