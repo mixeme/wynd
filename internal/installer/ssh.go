@@ -372,6 +372,40 @@ func shQuote(s string) string {
 // срок (установка пакетов идёт минуты) и, если надо, поток на вход — так на
 // сервер уезжают файлы и образ. Не root — через sudo: осмотр уже убедился,
 // что оно есть и пароль не спросит.
+// Download выполняет команду и пишет её вывод прямо в w — для файлов с
+// сервера (бэкап на компьютер, кадры 8а–8г): гигабайты не держатся в памяти.
+// Ошибки команды — в возвращаемой ошибке; прерывается отменой ctx.
+func (s *Session) Download(ctx context.Context, command string, w io.Writer) error {
+	sess, err := s.client.NewSession()
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrUnreachable, err)
+	}
+	defer func() { _ = sess.Close() }()
+	if s.User != "root" {
+		command = "sudo -n sh -c " + shQuote(command)
+	}
+	errs := &limitedBuffer{max: 4 << 10}
+	sess.Stdout = w
+	sess.Stderr = errs
+	done := make(chan error, 1)
+	go func() { done <- sess.Run(command) }()
+	select {
+	case err := <-done:
+		var exit *ssh.ExitError
+		switch {
+		case err == nil:
+			return nil
+		case errors.As(err, &exit):
+			return &commandError{command: command, output: errs.buf.String(), code: exit.ExitStatus()}
+		default:
+			return fmt.Errorf("%w: %v", ErrUnreachable, err)
+		}
+	case <-ctx.Done():
+		_ = sess.Close()
+		return fmt.Errorf("%w: %v", ErrUnreachable, ctx.Err())
+	}
+}
+
 func (s *Session) Exec(ctx context.Context, command string, stdin io.Reader, timeout time.Duration) (ExecResult, error) {
 	return s.ExecWatch(ctx, command, stdin, timeout, nil)
 }

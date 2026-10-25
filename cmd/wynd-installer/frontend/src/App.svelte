@@ -11,12 +11,17 @@
 		type Finding,
 		type InspectResult,
 		type LogEntry,
+		type LocalBackupPlan,
 		type Plan,
 		type Progress,
 		type ServerPage,
 		type StepState
 	} from './api';
 	import { rawSections } from './raw';
+	import Archives from './Archives.svelte';
+
+	// Вкладки «Серверы» и «Архивы» (владелец, 2026-10-24: «Лучше отдельной вкладкой»).
+	let tab = $state<'servers' | 'archives'>('servers');
 
 	// Окна установщика (docs/visual/installer.html): 1 — подключение, 1а —
 	// отпечаток, 2 — осмотр, 2а — помеха, 3 — план, 4 — установка, 4а — шаг не
@@ -31,10 +36,15 @@
 		| 'server'
 		| 'uplan'
 		| 'update'
-		| 'udone';
+		| 'udone'
+		| 'bplan'
+		| 'backup'
+		| 'bdone';
 	const INSTALL_STEPS = ['Сервер', 'Осмотр', 'План', 'Установка', 'Готово'];
 	// Обновление со страницы сервера (кадры 7б–7д).
 	const UPDATE_STEPS = ['Сервер', 'План', 'Обновление', 'Готово'];
+	// Бэкап на этот компьютер (кадры 8а–8г).
+	const BACKUP_STEPS = ['Сервер', 'Бэкап', 'Готово'];
 
 	let screen = $state<Screen>('connect');
 	let host = $state('');
@@ -89,15 +99,19 @@
 		server: 0,
 		uplan: 1,
 		update: 2,
-		udone: 3
+		udone: 3,
+		bplan: 1,
+		backup: 1,
+		bdone: 2
 	};
 	const updating = $derived(screen === 'uplan' || screen === 'update' || screen === 'udone');
-	const STEPS = $derived(updating ? UPDATE_STEPS : INSTALL_STEPS);
+	const backingUp = $derived(screen === 'bplan' || screen === 'backup' || screen === 'bdone');
+	const STEPS = $derived(updating ? UPDATE_STEPS : backingUp ? BACKUP_STEPS : INSTALL_STEPS);
 	const stepIndex = $derived(SCREEN_STEP[screen]);
 	const stepBad = $derived(
 		(screen === 'inspect' && (blocks.length > 0 || inspection?.ok === false)) ||
 			(screen === 'plan' && plan?.ok === false) ||
-			((screen === 'install' || screen === 'update') && Boolean(progress?.failure)) ||
+			((screen === 'install' || screen === 'update' || screen === 'backup') && Boolean(progress?.failure)) ||
 			(screen === 'uplan' && noRoom(page))
 	);
 	const domainOk = $derived(domainCheck?.level === 'ok');
@@ -250,6 +264,70 @@
 		if (next.done) {
 			screen = 'udone';
 			void refreshPage();
+		}
+	}
+
+	// Бэкап на этот компьютер (8а–8г).
+	let bFolder = $state('');
+	let bSite = $state<'keep' | 'pause' | 'stop'>('keep');
+	let bEncrypt = $state(false);
+	let bPass = $state('');
+	let bPass2 = $state('');
+	let bPlan = $state<LocalBackupPlan | undefined>();
+
+	async function toBackupPlan() {
+		if (!page) return;
+		const key = 'wynd-workshop-backup:' + (page.state.domain ?? '');
+		let saved = '';
+		try {
+			saved = localStorage.getItem(key) ?? '';
+		} catch {
+			saved = '';
+		}
+		bFolder = saved || (await backend().DefaultBackupFolder(page.state.domain ?? 'wynd'));
+		bSite = page.live_copy ? 'keep' : 'pause';
+		bPass = bPass2 = '';
+		screen = 'bplan';
+		await planBackup();
+	}
+	async function planBackup() {
+		bPlan = await backend().PlanBackup(bFolder);
+		bEncrypt = Boolean(bPlan.encrypted);
+	}
+	async function chooseBackupFolder() {
+		const p = await backend().PickFolder();
+		if (p) {
+			bFolder = p;
+			await planBackup();
+		}
+	}
+	const passOk = $derived(!bEncrypt || (bPass.length > 0 && (bPlan?.encrypted || bPass === bPass2)));
+	async function startBackup() {
+		if (!page || !bFolder || !passOk) return;
+		try {
+			localStorage.setItem('wynd-workshop-backup:' + (page.state.domain ?? ''), bFolder);
+		} catch {
+			/* без памяти папки — спросим её в следующий раз */
+		}
+		screen = 'backup';
+		const apply = (next: Progress) => {
+			progress = next;
+			if (next.running) return;
+			stopPoll();
+			if (next.done) {
+				screen = 'bdone';
+				void refreshPage();
+			}
+		};
+		apply(
+			await backend().StartBackup({
+				folder: bFolder,
+				site: page.state.running ? bSite : 'keep',
+				password: bEncrypt ? bPass : ''
+			})
+		);
+		if (progress?.running && !poll) {
+			poll = setInterval(() => void backend().InstallProgress().then(apply), 500);
 		}
 	}
 
@@ -479,6 +557,18 @@
 	</div>
 {/snippet}
 
+<div class="ins-tabs" role="tablist">
+	<button type="button" role="tab" class:on={tab === 'servers'} aria-selected={tab === 'servers'} onclick={() => (tab = 'servers')}>
+		Серверы
+	</button>
+	<button type="button" role="tab" class:on={tab === 'archives'} aria-selected={tab === 'archives'} onclick={() => (tab = 'archives')}>
+		Архивы
+	</button>
+</div>
+
+{#if tab === 'archives'}
+	<Archives />
+{:else}
 <div class="ins">
 	{#if screen !== 'server'}
 	<nav class="ins-side" aria-label="Шаги установки">
@@ -647,6 +737,13 @@
 				{:else}
 					<p class="ins-dim">Стоит самая свежая версия.</p>
 				{/if}
+				<div class="ins-rows">
+					<div class="ins-row">
+						<span class="ins-mark">↓</span>
+						<div class="ins-grow">Бэкап на этот компьютер</div>
+						<TextButton class="link under" onclick={() => void toBackupPlan()}>сделать</TextButton>
+					</div>
+				</div>
 			{/if}
 			{#if svcError}
 				<div class="ins-box bad" role="alert">
@@ -829,6 +926,127 @@
 						Открыть {page?.state.domain}
 					</Button>
 				{/if}
+				<Button variant="ghost" onclick={() => (screen = 'server')}>К серверу</Button>
+			</div>
+		{:else if screen === 'bplan' && page && st}
+			<!-- Кадры 8а, 8а2. -->
+			<h2>Бэкап на этот компьютер</h2>
+			<p class="ins-sub">
+				Вся папка Wynd на сервере — из неё Wynd можно поставить заново: записи, фото и видео, учётные
+				записи, настройки и сертификат сайта.
+			</p>
+			<Label>Папка</Label>
+			<div class="ins-copyline">
+				<Input mono class="ins-grow" bind:value={bFolder} onblur={() => void planBackup()} />
+				<Button variant="ghost" onclick={() => void chooseBackupFolder()}>Выбрать</Button>
+			</div>
+			{#if bPlan?.ok}
+				<div class="ins-row">
+					<span class="ins-mark">↓</span>
+					<div>
+						Скачаем {gb(bPlan.fetch)}
+						<span class="ins-dim"
+							>{bPlan.prev
+								? `— в папке уже есть бэкап от ${day(bPlan.prev)}, берём только новое. Всего ${gb(bPlan.total)}`
+								: ''}</span
+						>
+					</div>
+				</div>
+			{:else if bPlan}
+				<div class="ins-box bad" role="alert">{bPlan.message}</div>
+			{/if}
+			{#if st.running}
+				<Label>Сайт</Label>
+				<label class="ins-check">
+					<input type="radio" name="bsite" value="keep" bind:group={bSite} disabled={!page.live_copy} />
+					<span>Работает, пока идёт бэкап{#if !page.live_copy}<span class="ins-dim"> — Wynd {st.version} так не умеет</span>{/if}</span>
+				</label>
+				<label class="ins-check">
+					<input type="radio" name="bsite" value="pause" bind:group={bSite} />
+					<span>Остановить на время бэкапа и запустить снова</span>
+				</label>
+				<label class="ins-check">
+					<input type="radio" name="bsite" value="stop" bind:group={bSite} />
+					<span>Остановить и не запускать <span class="ins-dim">— сервер переезжает или закрывается</span></span>
+				</label>
+			{/if}
+			<label class="ins-check">
+				<input type="checkbox" bind:checked={bEncrypt} disabled={bPlan?.encrypted} />
+				<span>Зашифровать паролем</span>
+			</label>
+			{#if bEncrypt}
+				<div class="ins-pair">
+					<div class="ins-grow">
+						<Label>Пароль</Label><Input type="password" autocomplete="off" bind:value={bPass} />
+					</div>
+					{#if !bPlan?.encrypted}
+						<div class="ins-grow">
+							<Label>Ещё раз</Label><Input type="password" autocomplete="off" bind:value={bPass2} />
+						</div>
+					{/if}
+				</div>
+				<p class="ins-dim">
+					{bPlan?.encrypted
+						? 'В этой папке бэкап с паролем — нужен тот же пароль, иначе бэкап скачается целиком заново в другую папку.'
+						: 'Без пароля бэкап не открыть никак — запишите его.'}
+				</p>
+			{/if}
+			<div class="ins-foot">
+				<Button
+					variant={bFolder && passOk && bPlan?.ok && (bSite !== 'keep' || page.live_copy || !st.running)
+						? 'colored'
+						: 'off'}
+					onclick={() => void startBackup()}>Сделать бэкап</Button
+				>
+				<Button variant="ghost" onclick={() => (screen = 'server')}>Назад</Button>
+			</div>
+		{:else if screen === 'backup' && progress?.failure}
+			<!-- Кадр 8г. -->
+			<h2>{progress.failure.message}</h2>
+			{#if progress.failure.advice}<div class="ins-box">{progress.failure.advice}</div>{/if}
+			<div class="ins-foot">
+				<Button variant="colored" onclick={() => void startBackup()}>Попробовать ещё раз</Button>
+				<Button variant="ghost" onclick={() => (screen = 'server')}>К серверу</Button>
+				<TextButton class="link under ins-push" onclick={() => (showLog = !showLog)}>подробности</TextButton>
+			</div>
+			{#if showLog}
+				<pre class="ins-raw">{logText}</pre>
+			{/if}
+		{:else if screen === 'backup'}
+			<!-- Кадр 8б. -->
+			<h2>Делаем бэкап</h2>
+			<div class="ins-rows">
+				{#each progress?.steps ?? [] as step (step.id)}
+					<div class="ins-row" class:ins-dim={step.status === 'pending'}>
+						<span class="ins-mark {step.status === 'done' ? 'ok' : ''}">{stepMark(step)}</span>
+						<div>
+							{step.title}{#if step.note}&nbsp;<span class="ins-dim">— {step.note}</span>{/if}
+						</div>
+					</div>
+				{/each}
+			</div>
+			<div class="ins-foot">
+				<TextButton class="link under" onclick={() => (showLog = !showLog)}>
+					показать, что выполняется
+				</TextButton>
+				<span class="ins-dim">Окно можно свернуть</span>
+			</div>
+			{#if showLog}
+				<pre class="ins-raw">{logText}</pre>
+			{/if}
+		{:else if screen === 'bdone'}
+			<!-- Кадр 8в. -->
+			<h2>Бэкап готов</h2>
+			<p class="ins-sub">В папке {bFolder}.</p>
+			<div class="ins-box">
+				{bEncrypt
+					? 'Бэкап зашифрован. Без пароля его не открыть.'
+					: 'В бэкапе — все записи и ключи сервера. Храните его так же бережно, как пароли: кто получит папку, прочтёт все круги.'}
+			</div>
+			<div class="ins-foot">
+				<Button variant="colored" onclick={() => void backend().ShowInFolder(bFolder + '\\wynd-backup.json')}>
+					Открыть папку
+				</Button>
 				<Button variant="ghost" onclick={() => (screen = 'server')}>К серверу</Button>
 			</div>
 		{:else if screen === 'fingerprint'}
@@ -1151,6 +1369,7 @@
 		</div>
 	{/if}
 </div>
+{/if}
 
 <svelte:window
 	onkeydown={(e) => {

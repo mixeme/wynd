@@ -9,6 +9,8 @@ import (
 	"context"
 	"embed"
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -101,6 +103,25 @@ func (a *App) Service(action string) installer.ServiceResult {
 // StartUpdate обновляет Wynd; ход — InstallProgress.
 func (a *App) StartUpdate(opt installer.UpdateOptions) installer.Progress {
 	return a.wizard.StartUpdate(a.ctx, opt)
+}
+
+// PlanBackup — сколько скачать в папку folder (8а).
+func (a *App) PlanBackup(folder string) installer.LocalBackupPlan {
+	return a.wizard.PlanBackup(a.ctx, folder)
+}
+
+// StartBackup — бэкап на этот компьютер; ход — InstallProgress (8б).
+func (a *App) StartBackup(opt installer.BackupOptions) installer.Progress {
+	return a.wizard.StartBackup(a.ctx, opt)
+}
+
+// DefaultBackupFolder — папка бэкапа по умолчанию: «Документы\Бэкапы Wynd\<адрес>».
+func (a *App) DefaultBackupFolder(domain string) string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, "Documents", "Бэкапы Wynd", domain)
 }
 
 // ReturnPrevious возвращает прежнюю версию с данными из копии.

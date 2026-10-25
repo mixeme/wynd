@@ -78,6 +78,46 @@ body {
 	background: #b5482f;
 	color: #fff;
 }
+/* Вкладки «Серверы» и «Архивы» под заголовком окна (кадры 1, 11а). */
+.ins-tabs {
+	display: flex;
+	gap: 22px;
+	padding: 0 24px;
+	border-bottom: 1px solid var(--line);
+	background: var(--paper);
+}
+.ins-tabs button {
+	margin-bottom: -1px;
+	padding: 10px 0 9px;
+	border: 0;
+	border-bottom: 2px solid transparent;
+	background: none;
+	color: var(--muted);
+	font: inherit;
+	cursor: pointer;
+}
+.ins-tabs button.on {
+	border-bottom-color: var(--terracotta);
+	color: var(--ink);
+	font-weight: 600;
+}
+.ins-file {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 8px 0;
+	border-bottom: 1px solid var(--line);
+}
+.ins-file > div {
+	flex: 1;
+	min-width: 0;
+}
+.ins-file .ins-x {
+	flex: none;
+}
+.ins-err {
+	color: var(--bad);
+}
 .ins {
 	--c: var(--terracotta);
 	--ok: var(--olive);

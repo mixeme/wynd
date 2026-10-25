@@ -169,6 +169,71 @@ func (w *Wizard) StartUpdate(ctx context.Context, opt UpdateOptions) Progress {
 	return w.progress
 }
 
+// BackupOptions — выбор на 8а и 8а2.
+type BackupOptions struct {
+	Folder   string `json:"folder"`
+	Site     string `json:"site"`
+	Password string `json:"password"`
+}
+
+// PlanBackup — строка «Скачаем …» на 8а для папки folder.
+func (w *Wizard) PlanBackup(ctx context.Context, folder string) LocalBackupPlan {
+	w.mu.Lock()
+	sess := w.session
+	w.mu.Unlock()
+	if sess == nil {
+		return LocalBackupPlan{Message: "Сначала подключитесь к серверу"}
+	}
+	return PlanLocalBackup(ctx, sess, folder)
+}
+
+// StartBackup — бэкап на компьютер; ход — InstallProgress (8б).
+func (w *Wizard) StartBackup(ctx context.Context, opt BackupOptions) Progress {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.state == nil || !w.state.OK {
+		return Progress{Failure: &Failure{Message: "Сначала откройте страницу сервера"}}
+	}
+	if w.progress.Running {
+		return w.progress
+	}
+	if !w.aliveLocked(ctx) {
+		if res := w.dialLocked(ctx); res.Status != StatusConnected {
+			return Progress{Failure: &Failure{Message: res.Message, Advice: res.Advice}}
+		}
+	}
+	st := w.state.State
+	spec := LocalBackupSpec{Folder: opt.Folder, Site: opt.Site, Password: opt.Password,
+		Running: st.Running, LiveCopy: w.state.LiveCopy, Server: st.Domain, Version: st.Version}
+	sess := w.session
+	runCtx, cancel := context.WithCancel(context.Background())
+	w.cancel = cancel
+	finished := make(chan struct{})
+	w.finished = finished
+	w.progress = Progress{Running: true, Steps: []StepState{
+		{ID: "snapshot", Title: "Копия базы на сервере", Status: StepPending},
+		{ID: "fetch", Title: "Скачиваем", Status: StepPending},
+		{ID: "check", Title: "Проверка скачанного", Status: StepPending},
+	}}
+	go func() {
+		defer close(finished)
+		defer cancel()
+		last := LocalBackup(runCtx, sess, spec, func(p Progress) {
+			w.mu.Lock()
+			if w.finished == finished {
+				w.progress = p
+			}
+			w.mu.Unlock()
+		})
+		w.mu.Lock()
+		if w.finished == finished {
+			w.progress = last
+		}
+		w.mu.Unlock()
+	}()
+	return w.progress
+}
+
 // ReturnPrevious — «Вернуть 0.42.2» (кадры 7д, 7е).
 func (w *Wizard) ReturnPrevious(ctx context.Context) ServiceResult {
 	w.mu.Lock()

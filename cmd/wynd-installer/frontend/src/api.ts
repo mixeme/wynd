@@ -155,6 +155,64 @@ export interface UpdateOptions {
 	build: boolean;
 }
 
+/** Архивы на этом компьютере (кадры 11а–11г). */
+export interface ArchiveSummary {
+	circle_name: string;
+	from?: string;
+	to?: string;
+	posts: number;
+	duplicates: number;
+	bytes: number;
+}
+
+export interface ArchiveFile {
+	path: string;
+	name: string;
+	ok: boolean;
+	error?: string;
+	summary: ArchiveSummary;
+}
+
+export interface MergeInfo {
+	files: ArchiveFile[] | null;
+	ok: boolean;
+	summary: ArchiveSummary;
+	suggest?: string;
+}
+
+export interface SplitInfo {
+	file: ArchiveFile;
+	years: { year: number; summary: ArchiveSummary }[] | null;
+}
+
+export interface ArchiveResult {
+	ok: boolean;
+	message?: string;
+	files?: string[] | null;
+}
+
+export interface FullInfo {
+	ok: boolean;
+	name?: string;
+	bytes?: number;
+	encrypted?: boolean;
+}
+
+export interface LocalBackupPlan {
+	ok: boolean;
+	message?: string;
+	total: number;
+	fetch: number;
+	prev?: string;
+	encrypted?: boolean;
+}
+
+export interface BackupOptions {
+	folder: string;
+	site: 'keep' | 'pause' | 'stop';
+	password: string;
+}
+
 interface Backend {
 	HasSavedPassword(host: string, user: string): Promise<boolean>;
 	Connect(input: ConnectInput): Promise<ConnectResult>;
@@ -174,6 +232,20 @@ interface Backend {
 	Service(action: 'start' | 'stop' | 'restart'): Promise<ServiceResult>;
 	StartUpdate(opt: UpdateOptions): Promise<Progress>;
 	ReturnPrevious(): Promise<ServiceResult>;
+	PickArchives(): Promise<string[] | null>;
+	PickArchive(full: boolean): Promise<string>;
+	PickSave(name: string): Promise<string>;
+	PickFolder(): Promise<string>;
+	MergeInfo(paths: string[]): Promise<MergeInfo>;
+	Merge(paths: string[], out: string): Promise<ArchiveResult>;
+	SplitInfo(path: string): Promise<SplitInfo>;
+	Split(path: string, years: number[], from: string, to: string, dir: string): Promise<ArchiveResult>;
+	FullInfo(path: string): Promise<FullInfo>;
+	Readable(path: string, password: string, out: string): Promise<ArchiveResult>;
+	ShowInFolder(path: string): Promise<void>;
+	PlanBackup(folder: string): Promise<LocalBackupPlan>;
+	StartBackup(opt: BackupOptions): Promise<Progress>;
+	DefaultBackupFolder(domain: string): Promise<string>;
 }
 
 export function backend(): Backend {
