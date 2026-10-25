@@ -27,7 +27,15 @@ on:
   push:
     branches: [main]
     paths: [VERSION]
+  # Руками: с галочкой — как выпуск; без неё образ только собирается
+  # (проверка сценария): метки в пакете не трогаются, безымянных версий
+  # от перезаписи не появляется.
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Опубликовать образ в пакете
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -41,7 +49,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # VERSION в рабочей копии бывает с CRLF: голый cat дал бы негодный тег.
       # Имя образа — строчными: ghcr.io заглавных букв во владельце не принимает.
@@ -55,13 +63,13 @@ jobs:
 
       # QEMU нужен только последней стадии образа под ARM64 (apk add); клиент
       # и бинарь собираются на машине сборки и под чужую архитектуру — без него.
-      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-qemu-action@v4
         with:
           platforms: arm64
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -70,7 +78,7 @@ jobs:
       # Клиент и бинарь собираются один раз на машине сборки: вторая сборка
       # берёт их из кэша сборщика и доделывает только свою последнюю стадию.
       - name: amd64
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deploy/docker/Dockerfile
@@ -79,12 +87,12 @@ jobs:
             VERSION=${{ steps.meta.outputs.version }}
           tags: ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}-amd64
           provenance: false
-          push: true
+          push: ${{ github.event_name != 'workflow_dispatch' || inputs.publish }}
           cache-from: type=gha,scope=amd64
           cache-to: type=gha,mode=max,scope=amd64
 
       - name: arm64
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deploy/docker/Dockerfile
@@ -93,12 +101,13 @@ jobs:
             VERSION=${{ steps.meta.outputs.version }}
           tags: ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}-arm64
           provenance: false
-          push: true
+          push: ${{ github.event_name != 'workflow_dispatch' || inputs.publish }}
           cache-from: type=gha,scope=arm64
           cache-to: type=gha,mode=max,scope=arm64
 
       # Оглавление: docker pull <версия> сам выберет сборку под свой процессор.
       - name: version and latest
+        if: github.event_name != 'workflow_dispatch' || inputs.publish
         run: |
           image="${{ steps.meta.outputs.image }}"
           version="${{ steps.meta.outputs.version }}"
