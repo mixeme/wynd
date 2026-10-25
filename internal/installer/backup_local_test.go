@@ -34,6 +34,8 @@ func TestPlanFetch(t *testing.T) {
 		{"из прошлого", blob, false, false, 0, prev, fetchLink},
 		{"другой размер", RemoteFile{Path: blob.Path, Size: 7}, false, false, 0, prev, fetchAll},
 		{"база всегда заново", db, false, false, 0, prev, fetchAll},
+		{"база скачана прошлой попыткой — заново", db, false, true, 50, prev, fetchAll},
+		{"база наполовину — заново", db, false, false, 20, prev, fetchAll},
 		{"прошлого нет", blob, false, false, 0, nil, fetchAll},
 	}
 	for _, c := range cases {

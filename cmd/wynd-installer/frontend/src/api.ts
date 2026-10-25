@@ -118,6 +118,7 @@ export interface UpdateMark {
 	stopped: boolean;
 	start_after: boolean;
 	started: string;
+	copied?: boolean;
 }
 
 export interface ServerState {

@@ -54,6 +54,8 @@ type UpdateMark struct {
 	// StartAfter — запустить новую версию; нет — только поставить (кадр 7б3).
 	StartAfter bool   `json:"start_after"`
 	Started    string `json:"started"`
+	// Copied — копия перед обновлением сделана (кадр 7е говорит, что она на месте).
+	Copied bool `json:"copied,omitempty"`
 }
 
 const stateScript = `cd ` + installDir + ` 2>/dev/null || { echo '@none'; exit 0; }
@@ -281,6 +283,15 @@ mv "$d.new" "$d"`
 	return step{
 		id:    "copy",
 		title: "Копия данных",
+		// Новая версия уже вписана в compose.yaml — она могла запускаться и
+		// поменять базу: повтор не перезаписывает ею копию прежней версии.
+		done: func(ctx context.Context, r *Run) (bool, error) {
+			st, err := ReadServerState(ctx, r.sess)
+			if err != nil {
+				return false, err
+			}
+			return newPlaced(st, spec.From), nil
+		},
 		do: func(ctx context.Context, r *Run) error {
 			if writeMark {
 				if err := r.put(ctx, updateMark, string(mark)+"\n"); err != nil {
@@ -301,10 +312,24 @@ mv "$d.new" "$d"`
 					}
 				}
 			}
-			_, err = r.must(ctx, script, imageTimeout)
-			return err
+			if _, err = r.must(ctx, script, imageTimeout); err != nil {
+				return err
+			}
+			var m UpdateMark
+			if json.Unmarshal(mark, &m) != nil {
+				return nil
+			}
+			m.Copied = true
+			copied, _ := json.Marshal(m)
+			return r.put(ctx, updateMark, string(copied)+"\n")
 		},
 	}
+}
+
+// newPlaced — в compose.yaml уже не прежняя версия: шаг «Запуск» её вписал.
+// До этого новая версия не запускалась и данных не трогала.
+func newPlaced(st ServerState, from string) bool {
+	return st.Version != "" && st.Version != from
 }
 
 // startNewStep вписывает новую версию в compose.yaml (только строку образа,
@@ -391,9 +416,27 @@ func UpdateTitles(spec UpdateSpec) []StepState { return titles(updateSteps(spec)
 
 // ReturnPrevious возвращает прежнюю версию с данными из копии (кадры 7д, 7е):
 // compose.yaml и база — из копии, удалённые новой версией файлы — ссылками
-// обратно. start — запускать ли (сайт работал до обновления).
+// обратно. start — запускать ли (сайт работал до обновления). Новая версия
+// ещё не вписана в compose.yaml — данные она не трогала, и копия не нужна:
+// в папке копии может лежать прошлая, старше живой базы.
 func ReturnPrevious(ctx context.Context, sess *Session, from string, start bool) ([]LogEntry, error) {
 	r := &Run{sess: sess, steps: []StepState{{ID: "return"}}, report: func() {}}
+	st, err := ReadServerState(ctx, sess)
+	if err != nil {
+		return nil, err
+	}
+	if !newPlaced(st, from) {
+		if start {
+			if _, err := r.must(ctx, composeCmd+"up -d wynd 2>&1", packageTimeout); err != nil {
+				return r.log, err
+			}
+			if err := waitHealthy(ctx, r); err != nil {
+				return r.log, err
+			}
+		}
+		_, err := r.must(ctx, "rm -f "+updateMark, shortTimeout)
+		return r.log, err
+	}
 	d := backupFor(from)
 	script := `set -e
 cd ` + installDir + `
@@ -418,7 +461,7 @@ cp -aln "$d/blobs/." data/blobs/`
 			return r.log, err
 		}
 	}
-	_, err := r.must(ctx, "rm -f "+updateMark, shortTimeout)
+	_, err = r.must(ctx, "rm -f "+updateMark, shortTimeout)
 	return r.log, err
 }
 

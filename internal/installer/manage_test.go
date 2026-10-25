@@ -28,6 +28,30 @@ func TestParseServerState(t *testing.T) {
 	}
 }
 
+// «Вернуть» берёт базу из копии, только если новая версия уже вписана в
+// compose.yaml: до этого она не запускалась, а в папке копии может лежать
+// прошлая, старше живой базы (обрыв после остановки, до копии — кадр 7е).
+func TestNewPlaced(t *testing.T) {
+	if newPlaced(ServerState{Version: "0.42.2"}, "0.42.2") {
+		t.Fatal("в compose.yaml прежняя версия — новая не вписана")
+	}
+	if !newPlaced(ServerState{Version: "0.43.0"}, "0.42.2") {
+		t.Fatal("в compose.yaml новая версия — вписана")
+	}
+	if newPlaced(ServerState{}, "0.42.2") {
+		t.Fatal("строки версии нет — не знаем, не трогаем")
+	}
+}
+
+func TestFetchedOf(t *testing.T) {
+	if got := fetchedOf(56<<20, 140<<20); got != "56 из 140 МБ" {
+		t.Fatal(got)
+	}
+	if got := fetchedOf(1<<30, 3<<30); got != "1,0 ГБ из 3,0 ГБ" {
+		t.Fatal(got)
+	}
+}
+
 // Мастерская меняет в compose.yaml только строку образа Wynd (кадр 7ж).
 func TestSetImage(t *testing.T) {
 	compose := "services:\n  wynd:\n    image: ghcr.io/mixeme/wynd:0.42.2\n    mem_limit: 512m\n  caddy:\n    image: caddy:2-alpine\n"

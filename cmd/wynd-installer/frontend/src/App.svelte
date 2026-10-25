@@ -272,6 +272,22 @@
 		page = await backend().ServerPage();
 	}
 
+	// «К серверу» после обновления, бэкапа или переезда: состояние сервера
+	// могло поменяться (обрыв посреди обновления — кадр 7е), читаем заново.
+	async function toServer() {
+		screen = 'server';
+		svcError = '';
+		const p = await backend().ServerPage();
+		if (p.ok) page = p;
+		else svcError = [p.message, p.advice].filter(Boolean).join('. ');
+	}
+
+	function dayTime(iso: string): string {
+		const d = new Date(iso);
+		if (Number.isNaN(d.getTime())) return iso;
+		return `${day(iso)} в ${d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+	}
+
 	async function service(action: 'start' | 'stop' | 'restart') {
 		if (svcBusy) return;
 		svcBusy = action;
@@ -885,9 +901,12 @@
 				<div class="ins-box">
 					<div class="ins-strong">Обновление до {st.update.to} не закончено</div>
 					<div class="ins-dim">
-						Связь с сервером прервалась{st.update.stopped ? ', когда Wynd был остановлен' : ''}{st.running
-							? ''
-							: ' — с тех пор сайт не открывается'}. Копия данных перед обновлением на месте.
+						<!-- Момент обрыва Мастерская не знает — время начала обновления (владелец, 2026-10-25). -->
+						Обновление началось {dayTime(st.update.started)}. Связь с сервером прервалась{st.update.stopped
+							? ', когда Wynd был остановлен,'
+							: ''}{st.running ? '' : ' — с тех пор сайт не открывается'}. {st.update.copied
+							? 'Копия данных перед обновлением на месте.'
+							: 'Копию сделать не успели — данные не менялись.'}
 					</div>
 					<div class="ins-foot">
 						<Button variant="colored" onclick={() => void startUpdate()}>Продолжить обновление</Button>
@@ -1065,6 +1084,7 @@
 					</span>
 				</label>
 			{/if}
+			<p class="ins-sub mt">Не тронем: Docker, {proxyName || 'Caddy'}, сертификат сайта.</p>
 			{#if page.can_build}
 				<p class="ins-sub">
 					{buildUpdate ? 'Сервер соберёт Wynd сам.' : 'Сервер скачает Wynd готовым.'}
@@ -1098,7 +1118,7 @@
 					<Button variant="ghost" disabled={returning} onclick={() => void startUpdate()}>Повторить</Button>
 				{:else}
 					<Button variant="colored" onclick={() => void startUpdate()}>Повторить</Button>
-					<Button variant="ghost" onclick={() => (screen = 'server')}>К серверу</Button>
+					<Button variant="ghost" onclick={() => void toServer()}>К серверу</Button>
 				{/if}
 				<TextButton class="link under ins-push" onclick={() => (showLog = !showLog)}>подробности</TextButton>
 			</div>
@@ -1145,7 +1165,7 @@
 						Открыть {page?.state.domain}
 					</Button>
 				{/if}
-				<Button variant="ghost" onclick={() => (screen = 'server')}>К серверу</Button>
+				<Button variant="ghost" onclick={() => void toServer()}>К серверу</Button>
 			</div>
 		{:else if screen === 'bplan' && page && st}
 			<!-- Кадры 8а, 8а2. -->
@@ -1178,7 +1198,7 @@
 				<Label>Сайт</Label>
 				<label class="ins-check">
 					<input type="radio" name="bsite" value="keep" bind:group={bSite} disabled={!page.live_copy} />
-					<span>Работает, пока идёт бэкап{#if !page.live_copy}<span class="ins-dim"> — Wynd {st.version} так не умеет</span>{/if}</span>
+					<span>Работает, пока идёт бэкап{#if !page.live_copy}&nbsp;<span class="ins-dim">— Wynd {st.version} так не умеет</span>{/if}</span>
 				</label>
 				<label class="ins-check">
 					<input type="radio" name="bsite" value="pause" bind:group={bSite} />
@@ -1223,9 +1243,12 @@
 			<!-- Кадр 8г. -->
 			<h2>{progress.failure.message}</h2>
 			{#if progress.failure.advice}<div class="ins-box">{progress.failure.advice}</div>{/if}
+			{#if progress.failure.step === 'fetch' && bPlan?.prev}
+				<p class="ins-sub mt">Прошлый бэкап в папке не тронут, пока новый не скачан целиком.</p>
+			{/if}
 			<div class="ins-foot">
-				<Button variant="colored" onclick={() => void startBackup()}>Попробовать ещё раз</Button>
-				<Button variant="ghost" onclick={() => (screen = 'server')}>К серверу</Button>
+				<Button variant="colored" onclick={() => void startBackup()}>Повторить</Button>
+				<Button variant="ghost" onclick={() => void toServer()}>К серверу</Button>
 				<TextButton class="link under ins-push" onclick={() => (showLog = !showLog)}>подробности</TextButton>
 			</div>
 			{#if showLog}
@@ -1266,7 +1289,7 @@
 				<Button variant="colored" onclick={() => void backend().ShowInFolder(bFolder + '\\wynd-backup.json')}>
 					Открыть папку
 				</Button>
-				<Button variant="ghost" onclick={() => (screen = 'server')}>К серверу</Button>
+				<Button variant="ghost" onclick={() => void toServer()}>К серверу</Button>
 			</div>
 		{:else if screen === 'mconnect' && st}
 			<!-- Кадр 9а. -->
@@ -1341,7 +1364,7 @@
 			</div>
 			<div class="ins-foot">
 				<Button variant="ghost" onclick={() => (screen = 'mconnect')}>Другой сервер</Button>
-				<Button variant="ghost" onclick={() => (screen = 'server')}>К серверу</Button>
+				<Button variant="ghost" onclick={() => void toServer()}>К серверу</Button>
 			</div>
 		{:else if screen === 'mplan' && mplan}
 			<!-- Кадр 9б. -->

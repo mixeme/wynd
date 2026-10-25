@@ -42,11 +42,20 @@ type UpdateOptions struct {
 // ServerPage читает состояние сервера и свежую версию.
 func (w *Wizard) ServerPage(ctx context.Context) ServerPage {
 	w.mu.Lock()
-	sess, rep := w.session, w.report
-	w.mu.Unlock()
-	if sess == nil {
+	if w.session == nil {
+		w.mu.Unlock()
 		return ServerPage{Message: "Сначала подключитесь к серверу"}
 	}
+	// Связь могла оборваться посреди обновления или бэкапа (кадр 7е):
+	// подключаемся снова, как «Повторить».
+	if !w.aliveLocked(ctx) {
+		if res := w.dialLocked(ctx); res.Status != StatusConnected {
+			w.mu.Unlock()
+			return ServerPage{Message: "Связь с сервером оборвалась", Advice: "Подключитесь ещё раз."}
+		}
+	}
+	sess, rep := w.session, w.report
+	w.mu.Unlock()
 	st, err := ReadServerState(ctx, sess)
 	if err != nil {
 		return ServerPage{Message: "Связь с сервером оборвалась", Advice: "Подключитесь ещё раз."}

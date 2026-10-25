@@ -104,9 +104,13 @@ const (
 
 // planFetch решает по файлу: done — файл скачан целиком (журнал .fetched в
 // папке.new), partial — сколько его уже лежит в папке.new, prev — размеры
-// прошлого бэкапа той же шифровки.
+// прошлого бэкапа той же шифровки. Пропуск и докачка — только у фото и видео:
+// база и настройки между попытками могут поменяться (снимок базы повтор
+// снимает заново), их кусок от прошлой попытки с ними не сойдётся.
 func planFetch(f RemoteFile, encrypted, done bool, partial int64, prev map[string]int64) fetchAction {
 	switch {
+	case !immutable(f.Path):
+		return fetchAll
 	case done:
 		return fetchSkip
 	case partial > 0 && !encrypted && partial < f.Size:
@@ -295,10 +299,11 @@ func LocalBackup(ctx context.Context, sess *Session, spec LocalBackupSpec, repor
 				}
 				return localErr(os.Remove(filepath.Join(work, fetchedFile)))
 			},
+			// Кадр 8г; «Прошлый бэкап в папке не тронут…» окно пишет под рамкой.
 			explain: func(_ error, output string) *StepError {
 				return &StepError{
 					Message: "Связь с сервером прервалась",
-					Advice:  "Скачанное осталось в папке — повтор продолжит с того же места. Прошлый бэкап в папке не тронут, пока новый не скачан целиком.",
+					Advice:  "Скачано " + fetchedOf(fetched.Load(), total.Load()) + ". Скачанное осталось в папке — повтор продолжит с того же места.",
 				}
 			},
 		},
@@ -331,7 +336,22 @@ func LocalBackup(ctx context.Context, sess *Session, spec LocalBackupSpec, repor
 			},
 		},
 	}
-	return runSteps(ctx, sess, Spec{}, list, report, nil)
+	p := runSteps(ctx, sess, Spec{}, list, report, nil)
+	if p.Failure != nil && spec.Running && spec.Site == SitePauseResume {
+		// «Остановить на время бэкапа и запустить снова»: бэкап не вышел — сайт
+		// всё равно запускаем, а не оставляем стоять до повтора. Связи нет —
+		// страница сервера скажет «не работает», там есть «Запустить».
+		_, _ = sess.Exec(ctx, composeCmd+"start wynd 2>&1", nil, shortTimeout)
+	}
+	return p
+}
+
+// fetchedOf — «56 из 140 МБ» (кадр 8г).
+func fetchedOf(done, total int64) string {
+	if total < 1<<30 {
+		return fmt.Sprintf("%d из %d МБ", done>>20, total>>20)
+	}
+	return formatGB(uint64(done)) + " из " + formatGB(uint64(total))
 }
 
 func failed(msg, advice string) Progress {
