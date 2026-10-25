@@ -41,6 +41,15 @@ if errorlevel 1 (
 rem The frontend build runs out of memory on a small machine without a heap limit.
 if not defined NODE_OPTIONS set "NODE_OPTIONS=--max-old-space-size=3072"
 
+rem main.go embeds frontend\dist, which is not in git. Wails compiles the Go
+rem code for its bindings before it builds the frontend, so on a fresh clone
+rem (GitHub Actions) the embed has nothing to match. A placeholder is enough:
+rem the frontend build replaces the folder's contents.
+if not exist "%APP_DIR%\frontend\dist\" (
+  mkdir "%APP_DIR%\frontend\dist"
+  echo placeholder> "%APP_DIR%\frontend\dist\placeholder.txt"
+)
+
 echo Building installer (wails build)...
 pushd "%APP_DIR%"
 "%WAILS%" build %*
