@@ -8,6 +8,8 @@ export interface ConnectInput {
 	password: string;
 	use_keys: boolean;
 	remember: boolean;
+	/** «Дальше входить по ключу» (кадр 1). */
+	make_key: boolean;
 }
 
 export interface ConnectResult {
@@ -16,6 +18,7 @@ export interface ConnectResult {
 	fingerprint?: string;
 	message?: string;
 	advice?: string;
+	key_note?: string;
 }
 
 export interface Finding {

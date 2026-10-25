@@ -27,6 +27,9 @@ type ConnectInput struct {
 	// Remember — «Запомнить пароль»: после удачного входа положить его в
 	// связку ключей. Без галочки прежде сохранённый пароль стирается.
 	Remember bool `json:"remember"`
+	// MakeKey — «Дальше входить по ключу» (кадр 1): после входа по паролю
+	// Мастерская создаёт свой ключ на этом компьютере и кладёт его на сервер.
+	MakeKey bool `json:"make_key"`
 }
 
 // Состояния подключения для окна.
@@ -43,6 +46,8 @@ type ConnectResult struct {
 	Fingerprint string `json:"fingerprint,omitempty"`
 	Message     string `json:"message,omitempty"`
 	Advice      string `json:"advice,omitempty"`
+	// KeyNote — ключ положить не вышло: вошли паролем, ключа на сервере нет.
+	KeyNote string `json:"key_note,omitempty"`
 }
 
 // InspectResult — осмотр для окна.
@@ -160,7 +165,17 @@ func (w *Wizard) dialLocked(ctx context.Context) ConnectResult {
 			_ = w.Vault.Delete(w.access.Host, w.access.User)
 		}
 	}
-	return ConnectResult{Status: StatusConnected, Host: w.access.Host}
+	res := ConnectResult{Status: StatusConnected, Host: w.access.Host}
+	if w.input.MakeKey && !w.input.UseKeys {
+		line, err := w.Dialer.EnsureWorkshopKey()
+		if err == nil {
+			err = sess.InstallKey(ctx, line)
+		}
+		if err != nil {
+			res.KeyNote = "Положить ключ на сервер не получилось — в следующий раз войдите паролем."
+		}
+	}
+	return res
 }
 
 func connectFailure(a Access, err error) ConnectResult {

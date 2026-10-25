@@ -275,6 +275,24 @@ func TestDialWithKeyFromSSHDir(t *testing.T) {
 }
 
 // Запись в known_hosts без перевода строки в конце не должна слипнуться с новой.
+// Ключ Мастерской (кадр 1, «Дальше входить по ключу»): создаётся один раз и
+// дальше пробуется при входе по ключу.
+func TestEnsureWorkshopKey(t *testing.T) {
+	d := Dialer{SSHDir: t.TempDir()}
+	line, err := d.EnsureWorkshopKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := d.EnsureWorkshopKey()
+	if err != nil || again != line || !strings.HasPrefix(line, "ssh-ed25519 ") {
+		t.Fatalf("ключ: %q / %q %v", line, again, err)
+	}
+	methods, err := d.authMethods(Access{UseKeys: true})
+	if err != nil || len(methods) != 1 {
+		t.Fatalf("ключ Мастерской не пробуется: %v", err)
+	}
+}
+
 func TestTrustKeepsExistingKnownHostsLines(t *testing.T) {
 	srv := startServer(t, "pw", nil, "")
 	dir := filepath.Join(t.TempDir(), "ssh")

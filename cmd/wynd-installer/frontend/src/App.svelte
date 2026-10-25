@@ -52,6 +52,8 @@
 	let password = $state('');
 	let useKeys = $state(false);
 	let remember = $state(false);
+	let makeKey = $state(false);
+	let keyNote = $state('');
 	let saved = $state(false);
 	let busy = $state(false);
 	let failure = $state<ConnectResult | undefined>();
@@ -130,6 +132,7 @@
 		failure = undefined;
 		if (res.status === 'connected') {
 			password = '';
+			keyNote = res.key_note ?? '';
 			screen = 'inspect';
 			void inspect();
 		} else if (res.status === 'unknown_host') {
@@ -146,7 +149,7 @@
 		busy = true;
 		try {
 			applyConnect(
-				await backend().Connect({ host, user, password, use_keys: useKeys, remember })
+				await backend().Connect({ host, user, password, use_keys: useKeys, remember, make_key: makeKey })
 			);
 		} finally {
 			busy = false;
@@ -637,10 +640,18 @@
 				{#if useKeys}
 					<p class="ins-note">Возьмём ключ из папки .ssh вашего профиля — тот же, что у программы ssh.</p>
 				{:else}
+					<!-- Две независимые галочки, обе выключены (владелец, 2026-10-24). -->
 					<label class="ins-check">
 						<input type="checkbox" bind:checked={remember} />
-						Запомнить пароль
-						<span class="ins-dim">— в хранилище паролей этого компьютера</span>
+						<span>Запомнить пароль на этом компьютере <span class="ins-dim">— Мастерская будет входить сама</span></span>
+					</label>
+					<label class="ins-check">
+						<input type="checkbox" bind:checked={makeKey} />
+						<span
+							>Дальше входить по ключу <span class="ins-dim"
+								>— Мастерская создаст ключ на этом компьютере и положит его на сервер</span
+							></span
+						>
 					</label>
 				{/if}
 				{#if failure}
@@ -665,6 +676,7 @@
 			</form>
 		{:else if screen === 'server' && page && st}
 			<!-- Пульт (кадры 7а, 7а2, 7а3, 7е). -->
+			{#if keyNote}<div class="ins-box ins-note">{keyNote}</div>{/if}
 			<h2>{st.domain}</h2>
 			<p class="ins-sub">
 				Wynd {st.version} · {st.running

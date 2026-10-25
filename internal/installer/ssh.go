@@ -6,6 +6,9 @@ package installer
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -238,7 +241,11 @@ func (d Dialer) hostKeyCallback(host string) (ssh.HostKeyCallback, error) {
 }
 
 // keyFiles — имена ключей в порядке, в каком их пробует ssh.
-var keyFiles = []string{"id_ed25519", "id_ecdsa", "id_rsa"}
+// WorkshopKey — ключ, который Мастерская создаёт сама по галочке «Дальше
+// входить по ключу» (кадр 1); пробуется после обычных.
+var keyFiles = []string{"id_ed25519", "id_ecdsa", "id_rsa", WorkshopKey}
+
+const WorkshopKey = "wynd_workshop_ed25519"
 
 func (d Dialer) authMethods(a Access) ([]ssh.AuthMethod, error) {
 	if !a.UseKeys {
@@ -268,6 +275,62 @@ func (d Dialer) authMethods(a Access) ([]ssh.AuthMethod, error) {
 		return nil, ErrNoKeys
 	}
 	return []ssh.AuthMethod{ssh.PublicKeys(signers...)}, nil
+}
+
+// EnsureWorkshopKey создаёт ключ Мастерской в каталоге ключей, если его нет,
+// и возвращает его открытую часть строкой authorized_keys.
+func (d Dialer) EnsureWorkshopKey() (string, error) {
+	dir, err := d.dir()
+	if err != nil {
+		return "", err
+	}
+	path := filepath.Join(dir, WorkshopKey)
+	if raw, err := os.ReadFile(path); err == nil {
+		signer, err := ssh.ParsePrivateKey(raw)
+		if err != nil {
+			return "", err
+		}
+		return strings.TrimSpace(string(ssh.MarshalAuthorizedKey(signer.PublicKey()))) + " wynd-workshop", nil
+	}
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return "", err
+	}
+	block, err := ssh.MarshalPrivateKey(priv, "wynd-workshop")
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(path, pem.EncodeToMemory(block), 0o600); err != nil {
+		return "", err
+	}
+	sshPub, err := ssh.NewPublicKey(pub)
+	if err != nil {
+		return "", err
+	}
+	line := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(sshPub))) + " wynd-workshop"
+	_ = os.WriteFile(path+".pub", []byte(line+"\n"), 0o644)
+	return line, nil
+}
+
+// InstallKey дописывает открытый ключ в authorized_keys того, кто вошёл,
+// если его там ещё нет. Команды идут через sudo, поэтому дом — по имени.
+func (s *Session) InstallKey(ctx context.Context, line string) error {
+	user := shQuote(s.User)
+	script := `set -e; h=$(getent passwd ` + user + ` | cut -d: -f6); test -n "$h"
+umask 077; mkdir -p "$h/.ssh"; touch "$h/.ssh/authorized_keys"
+grep -qxF ` + shQuote(line) + ` "$h/.ssh/authorized_keys" || echo ` + shQuote(line) + ` >> "$h/.ssh/authorized_keys"
+chown ` + user + ` "$h/.ssh" "$h/.ssh/authorized_keys"`
+	res, err := s.Exec(ctx, script, nil, dialTimeout)
+	if err != nil {
+		return err
+	}
+	if res.Code != 0 {
+		return &commandError{command: script, output: res.Output, code: res.Code}
+	}
+	return nil
 }
 
 // Session — открытое подключение к серверу.
