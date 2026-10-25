@@ -21,7 +21,11 @@
 		setCircleIdentity,
 		circleInitial
 	} from '$lib/circles/meta';
-	import { getSession } from '$lib/idb/db';
+	import { getSession, listSessions } from '$lib/idb/db';
+	import { normalizeOrigin } from '$lib/api/client';
+	import Button from '$ui/forms/Button.svelte';
+	import Hint from '$ui/forms/Hint.svelte';
+	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
 	import { CIRCLE_COLORS, type CircleColor } from '$lib/theme/colors';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { fetchCircleDetail } from '$lib/journal/read-cursor';
@@ -42,6 +46,8 @@
 
 	let ready = $state(false);
 	let denied = $state(false);
+	// 1.11: на сервере из ссылки вход есть, а круга среди ваших нет.
+	let notMember = $state<{ server: string; email: string } | null>(null);
 	let pendingJoinOnly = $state(false);
 
 	function membershipReadable(status: string | undefined): boolean {
@@ -186,8 +192,20 @@
 		const resolved = await resolveCircleOrigin(circleId);
 		// '' is the same-origin base, not "not found": only null means unknown circle.
 		if (resolved === null) {
-			// Круг не найден среди входов — возможно, входа нет вовсе: список
-			// кругов уведёт на «Войти», а после кода вернём сюда.
+			// На этом сервере вход есть, и он ответил, что такого круга у вас
+			// нет, — так и говорим (1.11), а не молча открываем список: ссылка
+			// из письма открылась там, где вошли другой почтой (2026-10-25).
+			const here = (await listSessions()).find((s) => normalizeOrigin(s.origin) === '');
+			if (here) {
+				const mine = await fetchCircles(here.origin).catch(() => undefined);
+				if (mine && !mine.some((c) => c.id === circleId)) {
+					notMember = { server: window.location.host, email: here.email };
+					ready = true;
+					return;
+				}
+			}
+			// Входа нет вовсе (или сервер не ответил): список кругов уведёт на
+			// «Войти», а после кода вернём сюда.
 			rememberWantedPath(window.location.pathname + window.location.search);
 			goto('/circles');
 			return;
@@ -305,11 +323,23 @@
 		loadedCircle = id;
 		ready = false;
 		denied = false;
+		notMember = null;
 		untrack(() => void loadMeta());
 	});
 </script>
 
-{#if denied}
+{#if notMember}
+	<!-- Кадр 1.11. Названия круга не знаем: сервер не скажет его тому, кто не в круге. -->
+	<PlainLayout app>
+		<ScreenTitle class="mt-24">Вас нет в этом круге</ScreenTitle>
+		<Hint class="ink">
+			Ссылка ведёт в круг на сервере {notMember.server}. Здесь вы вошли как {notMember.email} — с этой
+			почтой вас в нём нет.
+		</Hint>
+		<Hint>Если в круг вы входили другой почтой, откройте ссылку там, где вошли с ней.</Hint>
+		<Button variant="colored" onclick={() => goto('/circles')}>К кругам</Button>
+	</PlainLayout>
+{:else if denied}
 	<PlainLayout app>
 		<EmptyState title="Нет доступа">
 			<a class="under" href="/circles">К кругам</a>
