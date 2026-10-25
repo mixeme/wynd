@@ -226,6 +226,9 @@ export interface MovePlan {
 	new_ip: string;
 	old_ip: string;
 	size: number;
+	/** На старом Wynd не со своим Caddy: переезжают только данные (кадр 9б2). */
+	data_only: boolean;
+	old_proxy?: string;
 }
 
 /** Новая Мастерская (кадры 10а–10в). */

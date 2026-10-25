@@ -14,6 +14,12 @@ import (
 // получает ключ, которым старый отдаёт ему только архив папки Wynd, и после
 // переноса ключ убирается с обоих. Единственный шаг человека — поменять у
 // регистратора запись A адреса сайта.
+//
+// Wynd на старом стоит не со своим Caddy (за чужим веб-сервером, поставлен
+// не Мастерской) — переезжают только данные и адрес, а на новом сервере
+// обычная установка Мастерской со своим Caddy и новым сертификатом: чужой
+// сертификат получала не Мастерская, и не ей решать его судьбу (владелец,
+// 2026-10-25; кадр 9б2).
 
 const (
 	moveMark     = installDir + "/.workshop-move"
@@ -25,6 +31,9 @@ const (
 // moveTar — что отдаёт старый сервер: папка Wynd без копий и временного.
 const moveTar = `tar -C /opt --exclude=wynd/backups --exclude=wynd/src --exclude=wynd/data/backups --exclude='wynd/data/.workshop-*' --exclude='wynd/.workshop-*' -cf - wynd`
 
+// dataTar — то же для переезда одних данных (9б2): папка данных без копий.
+const dataTar = `tar -C /opt/wynd --exclude=data/backups --exclude='data/.workshop-*' -cf - data`
+
 // MoveSpec — переезд.
 type MoveSpec struct {
 	Domain  string
@@ -35,6 +44,9 @@ type MoveSpec struct {
 	OldIP, NewIP string
 	// RemoveOld — убрать Wynd со старого после переезда (9б); нет — оставить остановленным.
 	RemoveOld bool
+	// DataOnly — на старом Wynd не со своим Caddy: везём одни данные, на
+	// новом — обычная установка со своим Caddy (9б2).
+	DataOnly bool
 	// Resolve — куда сейчас указывает адрес сайта (адреса A).
 	Resolve func(ctx context.Context, domain string) []string
 	// CheckNow — «Проверить сейчас» на 9в.
@@ -68,14 +80,29 @@ func moveSteps(old *Session, spec MoveSpec) []step {
 	image := imageStep(Spec{Version: spec.Version, Image: spec.Image})
 	docker := dockerStep()
 	mark, _ := json.Marshal(MoveMark{To: spec.NewIP, Started: time.Now().UTC().Format(time.RFC3339)})
+	install := "Wynd " + spec.Version + " на новом сервере"
+	sendTar, pullDir, moved := moveTar, "/opt", "Папка Wynd перенесена"
+	if spec.DataOnly {
+		install = "Wynd " + spec.Version + " и Caddy на новом сервере"
+		sendTar, pullDir, moved = dataTar, installDir, "Данные Wynd перенесены"
+	}
+	files := filesStep(Spec{Domain: spec.Domain, Version: spec.Version, Image: spec.Image})
 	return []step{
 		{
-			id: "install", title: "Wynd " + spec.Version + " на новом сервере",
+			id: "install", title: install,
 			do: func(ctx context.Context, r *Run) error {
 				if err := runStep(ctx, r, docker); err != nil {
 					return err
 				}
-				return runStep(ctx, r, image)
+				if err := runStep(ctx, r, image); err != nil {
+					return err
+				}
+				if !spec.DataOnly {
+					return nil
+				}
+				// Своя установка, как обычная: compose.yaml и Caddyfile
+				// Мастерской, папки данных и Caddy; данные приедут следом.
+				return runStep(ctx, r, files)
 			},
 		},
 		{
@@ -86,7 +113,7 @@ func moveSteps(old *Session, spec MoveSpec) []step {
 			},
 		},
 		{
-			id: "transfer", title: "Папка Wynd перенесена",
+			id: "transfer", title: moved,
 			do: func(ctx context.Context, r *Run) error {
 				pub, err := r.must(ctx, "test -f "+moveKey+" || ssh-keygen -q -t ed25519 -N '' -C "+moveKeyLabel+" -f "+moveKey+"; cat "+moveKey+".pub", shortTimeout)
 				if err != nil {
@@ -102,14 +129,16 @@ func moveSteps(old *Session, spec MoveSpec) []step {
 					return &StepError{Message: "Старый сервер не назвал свой ключ", Advice: "Нажмите «Повторить»."}
 				}
 				// Старый отдаёт по этому ключу только архив папки Wynd.
-				line := `restrict,command="` + moveTar + `" ` + pub
+				line := `restrict,command="` + sendTar + `" ` + pub
 				if _, err := onOld(ctx, r, old, "umask 077; mkdir -p /root/.ssh && grep -qF "+shQuote(pub)+" /root/.ssh/authorized_keys 2>/dev/null || echo "+shQuote(line)+" >> /root/.ssh/authorized_keys", shortTimeout); err != nil {
 					return err
 				}
 				known := spec.OldIP + " " + fields[0] + " " + fields[1]
 				pull := "set -e; printf '%s\\n' " + shQuote(known) + " > " + moveKnown +
-					"; mkdir -p /opt && ssh -i " + moveKey + " -o UserKnownHostsFile=" + moveKnown +
-					" -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=20 root@" + spec.OldIP + " | tar -C /opt -xpf -"
+					"; mkdir -p " + pullDir + " && ssh -i " + moveKey + " -o UserKnownHostsFile=" + moveKnown +
+					" -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=20 root@" + spec.OldIP + " | tar -C " + pullDir + " --numeric-owner -xpf -"
+				// Владельцы — числами: у uid 100 и 101 Wynd в контейнере на разных
+				// системах разные имена, по именам tar раздал бы файлы чужим.
 				_, pullErr := r.must(ctx, pull, imageTimeout)
 				// Ключ — с обоих серверов, даже если перенос не вышел.
 				_, _ = onOld(ctx, r, old, "sed -i '/ "+moveKeyLabel+"$/d' /root/.ssh/authorized_keys", shortTimeout)
@@ -162,7 +191,9 @@ func moveSteps(old *Session, spec MoveSpec) []step {
 			id: "old", title: "Старый сервер",
 			do: func(ctx context.Context, r *Run) error {
 				if spec.RemoveOld {
-					// Сертификат не отзываем: он переехал и работает на новом.
+					// Сертификат не отзываем: он переехал и работает на новом —
+					// или он чужой (9б2), и его судьба не наша. Файл сайта
+					// чужого веб-сервера тоже не наш: остаётся.
 					_, err := onOld(ctx, r, old, composeCmd+"down 2>&1; rm -rf "+installDir, packageTimeout)
 					return err
 				}

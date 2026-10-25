@@ -1367,15 +1367,20 @@
 				<Button variant="ghost" onclick={() => void toServer()}>К серверу</Button>
 			</div>
 		{:else if screen === 'mplan' && mplan}
-			<!-- Кадр 9б. -->
+			<!-- Кадры 9б и 9б2 (на старом Wynd не со своим Caddy — переезжают одни данные). -->
+			{@const dataOnly = mplan.data_only}
+			{@const oldProxy = ({ nginx: 'nginx', apache: 'Apache', caddy: 'Caddy' } as Record<string, string>)[mplan.old_proxy ?? ''] ?? ''}
 			<h2>Что сделаем</h2>
 			<div class="ins-rows">
-				<div class="ins-row"><span class="ins-mark">1</span><div>Поставим Wynd {mplan.version} на новый сервер <span class="ins-dim">— пока без данных и не запуская</span></div></div>
+				<div class="ins-row"><span class="ins-mark">1</span><div>Поставим Wynd {mplan.version}{dataOnly ? ' и Caddy' : ''} на новый сервер <span class="ins-dim">— пока без данных и не запуская</span></div></div>
 				<div class="ins-row"><span class="ins-mark">2</span><div>Остановим сайт на старом <span class="ins-dim">— с этой минуты он не открывается</span></div></div>
-				<div class="ins-row"><span class="ins-mark">3</span><div>Перенесём папку Wynd на новый сервер <span class="ins-dim">— {gb(mplan.size)}, напрямую со старого, мимо этого компьютера</span></div></div>
+				<div class="ins-row"><span class="ins-mark">3</span><div>Перенесём {dataOnly ? 'данные' : 'папку'} Wynd на новый сервер <span class="ins-dim">— {gb(mplan.size)}, напрямую со старого, мимо этого компьютера</span></div></div>
 				<div class="ins-row"><span class="ins-mark">4</span><div>Вы смените адрес <span class="ins-dim">— у записи A для {mplan.domain} поставите {mplan.new_ip}</span></div></div>
-				<div class="ins-row"><span class="ins-mark">5</span><div>Запустим Wynd на новом и проверим сайт</div></div>
+				<div class="ins-row"><span class="ins-mark">5</span><div>{dataOnly ? 'Запустим Wynd на новом, получим сертификат сайта и проверим сайт' : 'Запустим Wynd на новом и проверим сайт'}</div></div>
 			</div>
+			{#if dataOnly && oldProxy}
+				<p class="ins-sub mt">Не тронем на старом: {oldProxy} и его сертификат.</p>
+			{/if}
 			<Label>Старый сервер</Label>
 			<label class="ins-check">
 				<input type="radio" name="mold" value={false} bind:group={mRemoveOld} />
@@ -1383,7 +1388,7 @@
 			</label>
 			<label class="ins-check">
 				<input type="radio" name="mold" value={true} bind:group={mRemoveOld} />
-				<span>Убрать Wynd после переезда <span class="ins-dim">— со старого сервера уйдут его данные; сертификат переедет на новый</span></span>
+				<span>Убрать Wynd после переезда <span class="ins-dim">— со старого сервера уйдут его данные{dataOnly ? '' : '; сертификат переедет на новый'}</span></span>
 			</label>
 			<div class="ins-foot">
 				<Button variant="colored" onclick={() => void startMove()}>Переехать</Button>

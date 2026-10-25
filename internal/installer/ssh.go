@@ -154,6 +154,7 @@ func (d Dialer) Dial(ctx context.Context, access Access) (*Session, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUnreachable, err)
 	}
+	cfg.HostKeyAlgorithms = d.knownAlgorithms(address, conn.RemoteAddr())
 	// Рукопожатие тоже под сроком: сервер, принявший TCP и замолчавший,
 	// иначе держал бы окно на «Подключаемся…» без конца.
 	_ = conn.SetDeadline(time.Now().Add(handshakeTimeout))
@@ -206,6 +207,49 @@ func (d Dialer) Trust(unknown *UnknownHostError) error {
 		return fmt.Errorf("known_hosts: %w", err)
 	}
 	return nil
+}
+
+// knownAlgorithms — какие ключи сервера просить: тех типов, что уже записаны
+// в known_hosts. Программа ssh запоминает один ключ сервера (обычно ed25519),
+// а у сервера их несколько; попроси мы другой — он не совпал бы с записанным
+// и выглядел бы подменой. Сервер не записан — nil, порядок по умолчанию.
+func (d Dialer) knownAlgorithms(address string, remote net.Addr) []string {
+	path, err := d.knownHostsPath()
+	if err != nil {
+		return nil
+	}
+	check, err := knownhosts.New(path)
+	if err != nil {
+		return nil
+	}
+	// Заведомо чужой ключ: в ответ библиотека перечисляет записанные.
+	pub, _, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return nil
+	}
+	probe, err := ssh.NewPublicKey(pub)
+	if err != nil {
+		return nil
+	}
+	var keyErr *knownhosts.KeyError
+	if !errors.As(check(address, remote, probe), &keyErr) {
+		return nil
+	}
+	var algos []string
+	seen := map[string]bool{}
+	for _, k := range keyErr.Want {
+		list := []string{k.Key.Type()}
+		if k.Key.Type() == ssh.KeyAlgoRSA {
+			list = []string{ssh.KeyAlgoRSASHA512, ssh.KeyAlgoRSASHA256, ssh.KeyAlgoRSA}
+		}
+		for _, a := range list {
+			if !seen[a] {
+				seen[a] = true
+				algos = append(algos, a)
+			}
+		}
+	}
+	return algos
 }
 
 func (d Dialer) hostKeyCallback(host string) (ssh.HostKeyCallback, error) {

@@ -17,6 +17,24 @@ func TestMoveStepOrder(t *testing.T) {
 	}
 }
 
+// 9б2: на старом Wynd не со своим Caddy — на новом ставим и Caddy, везём одни
+// данные; порядок шагов тот же.
+func TestMoveDataOnlyTitles(t *testing.T) {
+	var got []string
+	for _, s := range MoveTitles(MoveSpec{Version: "0.43.2", Image: RegistryImage{Repo: DefaultRegistry}, DataOnly: true}) {
+		got = append(got, s.ID+"="+s.Title)
+	}
+	joined := strings.Join(got, "; ")
+	for _, want := range []string{"install=Wynd 0.43.2 и Caddy на новом сервере", "transfer=Данные Wynd перенесены"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("нет %q в %s", want, joined)
+		}
+	}
+	if !strings.Contains(dataTar, "--exclude=data/backups") || !strings.HasSuffix(dataTar, " data") {
+		t.Fatalf("архив данных: %s", dataTar)
+	}
+}
+
 // 9в: ждём, пока адрес укажет на новый сервер; «Проверить сейчас» — сразу.
 func TestDNSStepWaitsForNewAddress(t *testing.T) {
 	answers := [][]string{{"198.51.100.4"}, {"198.51.100.4", "203.0.113.7"}, {"203.0.113.7"}}

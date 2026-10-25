@@ -2,7 +2,9 @@ package installer
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"crypto/ed25519"
+	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/pem"
 	"errors"
@@ -16,6 +18,7 @@ import (
 	"time"
 
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/knownhosts"
 )
 
 // testServer — подставной SSH-сервер: принимает один пароль или один ключ и
@@ -31,6 +34,13 @@ type testServer struct {
 }
 
 func startServer(t *testing.T, password string, authorized ssh.PublicKey, output string) *testServer {
+	t.Helper()
+	return startServerKeys(t, password, authorized, output)
+}
+
+// startServerKeys — как startServer, но у сервера есть ещё ключи хоста extra
+// (у настоящего sshd их обычно три: ed25519, ecdsa, rsa).
+func startServerKeys(t *testing.T, password string, authorized ssh.PublicKey, output string, extra ...ssh.Signer) *testServer {
 	t.Helper()
 	_, hostPriv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -55,6 +65,9 @@ func startServer(t *testing.T, password string, authorized ssh.PublicKey, output
 		},
 	}
 	cfg.AddHostKey(hostSigner)
+	for _, k := range extra {
+		cfg.AddHostKey(k)
+	}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -161,6 +174,45 @@ func TestDialAsksAboutUnknownHostThenRemembers(t *testing.T) {
 		t.Fatalf("RemoteIP: %q", sess.RemoteIP())
 	}
 
+}
+
+// Сервер, к которому человек заходил программой ssh: в known_hosts записан
+// один его ключ (ed25519), а у сервера есть и другие. Мастерская просит тот
+// ключ, что записан, — а не другой, который совпасть не может и выглядел бы
+// подменой (так было с wynd3, 2026-10-25).
+func TestDialUsesKnownHostKeyType(t *testing.T) {
+	ecPriv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ecSigner, err := ssh.NewSignerFromKey(ecPriv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := startServerKeys(t, "pw", nil, "", ecSigner)
+	// Ключ ed25519 этого сервера — как его запомнил бы ssh.
+	var edKey ssh.PublicKey
+	probe := &ssh.ClientConfig{User: "root", Auth: []ssh.AuthMethod{ssh.Password("pw")},
+		HostKeyAlgorithms: []string{ssh.KeyAlgoED25519},
+		HostKeyCallback: func(_ string, _ net.Addr, key ssh.PublicKey) error { edKey = key; return nil }}
+	c, err := ssh.Dial("tcp", srv.addr, probe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = c.Close()
+	d := Dialer{SSHDir: filepath.Join(t.TempDir(), "ssh")}
+	if err := os.MkdirAll(d.SSHDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	line := knownhosts.Line([]string{knownhosts.Normalize(srv.addr)}, edKey)
+	if err := os.WriteFile(filepath.Join(d.SSHDir, "known_hosts"), []byte(line+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	sess, err := d.Dial(context.Background(), srv.access("pw"))
+	if err != nil {
+		t.Fatalf("сервер с записанным ключом ed25519: %v", err)
+	}
+	_ = sess.Close()
 }
 
 func TestDialRefusesChangedHostKey(t *testing.T) {

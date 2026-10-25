@@ -19,6 +19,11 @@ type MovePlan struct {
 	NewIP   string `json:"new_ip"`
 	OldIP   string `json:"old_ip"`
 	Size    int64  `json:"size"`
+	// DataOnly — на старом Wynd не со своим Caddy: переезжают только данные,
+	// на новом — своя установка с новым сертификатом (9б2). OldProxy — чужой
+	// веб-сервер старого («nginx», «apache», «caddy»), его не трогаем.
+	DataOnly bool   `json:"data_only"`
+	OldProxy string `json:"old_proxy,omitempty"`
 }
 
 // MoveConnect подключается к новому серверу (9а); незнакомый — отпечаток.
@@ -73,7 +78,7 @@ func (w *Wizard) moveDialLocked(ctx context.Context) ConnectResult {
 // MovePlan осматривает новый сервер и составляет план переезда (9б).
 func (w *Wizard) MovePlan(ctx context.Context) MovePlan {
 	w.mu.Lock()
-	old, target, page := w.session, w.target, w.state
+	old, target, page, oldRep := w.session, w.target, w.state, w.report
 	w.mu.Unlock()
 	if old == nil || target == nil || page == nil {
 		return MovePlan{Message: "Сначала подключитесь к обоим серверам"}
@@ -102,7 +107,22 @@ func (w *Wizard) MovePlan(ctx context.Context) MovePlan {
 		plan.Message, plan.Advice = "На новом сервере уже есть веб-сервер", "Переезд пока умеет только сервер без своего веб-сервера: порты 80 и 443 должны быть свободны."
 		return plan
 	}
-	if res, err := old.Exec(ctx, "du -sb --exclude=backups --exclude=src "+installDir+" | cut -f1", nil, shortTimeout); err == nil {
+	// Свой Caddy старого — его Caddyfile в папке установки и нет чужого
+	// веб-сервера на портах; иначе сертификат получала не Мастерская.
+	if oldRep != nil {
+		plan.OldProxy = oldRep.Proxy
+	}
+	own, err := old.Exec(ctx, "test -f "+installDir+"/Caddyfile && echo own", nil, shortTimeout)
+	if err != nil {
+		plan.Message = "Связь со старым сервером оборвалась"
+		return plan
+	}
+	plan.DataOnly = plan.OldProxy != "" || strings.TrimSpace(own.Output) != "own"
+	what := installDir
+	if plan.DataOnly {
+		what = dataDir
+	}
+	if res, err := old.Exec(ctx, "du -sb --exclude=backups --exclude=src --exclude='.workshop-*' "+what+" | cut -f1", nil, shortTimeout); err == nil {
 		plan.Size = parseInt64(strings.TrimSpace(res.Output))
 	}
 	plan.OK = true
@@ -137,7 +157,7 @@ func (w *Wizard) StartMove(ctx context.Context, removeOld bool) Progress {
 	check := make(chan struct{}, 1)
 	w.moveCheck = check
 	spec := MoveSpec{Domain: plan.Domain, Version: plan.Version, Image: w.Image, OldIP: plan.OldIP, NewIP: plan.NewIP,
-		RemoveOld: removeOld, CheckNow: check, Probe: w.Probe,
+		RemoveOld: removeOld, DataOnly: plan.DataOnly, CheckNow: check, Probe: w.Probe,
 		Resolve: func(ctx context.Context, domain string) []string {
 			r := w.Resolver
 			if r == nil {
