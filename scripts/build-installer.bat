@@ -50,9 +50,21 @@ if not exist "%APP_DIR%\frontend\dist\" (
   echo placeholder> "%APP_DIR%\frontend\dist\placeholder.txt"
 )
 
+rem The public key of Workshop releases (scripts\sign-workshop.bat keygen) goes
+rem into the build: self-update installs only releases signed with it. No key
+rem file - self-update stays off.
+set "SIGNING_KEY="
+if exist "%APP_DIR%\signing-key.pub" set /p SIGNING_KEY=<"%APP_DIR%\signing-key.pub"
+
 echo Building installer (wails build)...
 pushd "%APP_DIR%"
-"%WAILS%" build %*
+if defined SIGNING_KEY (
+  echo Signing key: !SIGNING_KEY!
+  "%WAILS%" build -ldflags "-X gitea.mixdep.ru/mix/wynd/internal/installer.SigningKey=!SIGNING_KEY!" %*
+) else (
+  echo No signing key: self-update will be off in this build.
+  "%WAILS%" build %*
+)
 set "BUILD_EXIT=!ERRORLEVEL!"
 popd
 
