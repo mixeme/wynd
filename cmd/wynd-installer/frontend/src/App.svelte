@@ -424,8 +424,20 @@
 	let mFinger = $state('');
 	let mRemoveOld = $state(false);
 	let mBusy = $state(false);
+	// Незаконченный переезд (9в2): после подключения к новому серверу —
+	// продолжить его или отменить.
+	let mIntent = $state<'' | 'continue' | 'cancel'>('');
 
 	function toMove() {
+		mIntent = '';
+		mFail = undefined;
+		mPass = '';
+		screen = 'mconnect';
+	}
+	function resumeMove(intent: 'continue' | 'cancel') {
+		if (!st?.move) return;
+		mIntent = intent;
+		mHost = st.move.to;
 		mFail = undefined;
 		mPass = '';
 		screen = 'mconnect';
@@ -435,9 +447,17 @@
 		if (res.status === 'connected') {
 			mPass = '';
 			keyNote = res.key_note ?? '';
+			if (mIntent === 'cancel') {
+				await cancelMove(true);
+				return;
+			}
 			screen = 'mplan';
 			mplan = undefined;
 			mplan = await backend().MovePlan();
+			if (mIntent === 'continue' && mplan.ok && mplan.resume) {
+				mRemoveOld = Boolean(mplan.remove_old);
+				await startMove();
+			}
 		} else if (res.status === 'unknown_host') {
 			mFinger = res.fingerprint ?? '';
 			screen = 'mfinger';
@@ -479,8 +499,8 @@
 			poll = setInterval(() => void backend().InstallProgress().then(apply), 500);
 		}
 	}
-	async function cancelMove() {
-		if (mBusy) return;
+	async function cancelMove(force = false) {
+		if (mBusy && !force) return;
 		mBusy = true;
 		try {
 			stopPoll();
@@ -489,6 +509,7 @@
 			svcLog = res.log ?? [];
 			if (!res.ok) svcError = [res.message, res.advice].filter(Boolean).join('. ');
 			progress = undefined;
+			mIntent = '';
 			screen = 'server';
 		} finally {
 			mBusy = false;
@@ -869,13 +890,24 @@
 			{#if keyNote}<Notice tone="note">{keyNote}</Notice>{/if}
 			<h2>{st.domain}</h2>
 			<p class="ins-sub">
-				Wynd {st.version} · {st.running
+				Сервер {page.host} · Wynd {st.version} · {st.running
 					? 'работает'
 					: st.stopped_at
 						? `остановлен вами ${day(st.stopped_at)}`
 						: 'не работает'} · свободно {gb(st.free_bytes)}
 			</p>
-			{#if st.update}
+			{#if st.move}
+				<!-- Кадр 9в2. -->
+				<Notice title="Переезд на сервер {st.move.to} не закончен">
+					<div class="ins-dim">
+						Переезд начался {dayTime(st.move.started)}. С тех пор сайт на старом сервере {page.host} остановлен.
+					</div>
+					<FootBar>
+						<Button variant="colored" onclick={() => resumeMove('continue')}>Продолжить переезд</Button>
+						<Button variant="ghost" onclick={() => resumeMove('cancel')}>Отменить переезд</Button>
+					</FootBar>
+				</Notice>
+			{:else if st.update}
 				<Notice title="Обновление до {st.update.to} не закончено">
 					<div class="ins-dim">
 						<!-- Момент обрыва Мастерская не знает — время начала обновления (владелец, 2026-10-25). -->
@@ -971,7 +1003,7 @@
 						<TextButton class="link under" onclick={() => (selfOpen = true)}>обновить</TextButton></span
 					>
 				{/if}
-				{#if !askRollback}
+				{#if !askRollback && !st.move}
 					<TextButton class="link under {selfUp && selfHidden ? '' : 'ins-push'}" onclick={() => (askRollback = true)}>
 						Убрать Wynd
 					</TextButton>
@@ -1264,7 +1296,13 @@
 				{/if}
 				<FootBar>
 					<Button variant="colored" loading={mBusy} onclick={() => void moveConnect()}>Подключиться</Button>
-					<Button variant="ghost" onclick={() => (screen = 'server')}>Назад</Button>
+					<Button
+						variant="ghost"
+						onclick={() => {
+							mIntent = '';
+							screen = 'server';
+						}}>Назад</Button
+					>
 				</FootBar>
 			</form>
 		{:else if screen === 'mfinger'}

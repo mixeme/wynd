@@ -62,3 +62,38 @@ func TestDNSStepWaitsForNewAddress(t *testing.T) {
 		t.Fatalf("проверок %d, подпись %q", calls, r.steps[0].Note)
 	}
 }
+
+// 9в2: пульт старого сервера видит незаконченный переезд по пометке.
+func TestServerStateReadsMoveMark(t *testing.T) {
+	out := "@image ghcr.io/mixeme/wynd:0.43.2\n@url https://family.example.ru\n@running \n@container abc\n" +
+		`@move {"to":"203.0.113.7","started":"2026-10-26T12:28:00Z","remove_old":true,"transferred":true}` + "\n@free /dev/vda1 1 1 1 1% /\n"
+	st := parseServerState(out)
+	if st.Move == nil || st.Move.To != "203.0.113.7" || !st.Move.RemoveOld || !st.Move.Transferred || st.Move.Launched {
+		t.Fatalf("пометка: %+v", st.Move)
+	}
+	if parseServerState(strings.Replace(out, "@move {", "@move x{", 1)).Move != nil {
+		t.Fatal("испорченная пометка не должна читаться")
+	}
+}
+
+// 9в2: «Продолжить переезд» не переносит данные второй раз — на новом могли
+// уже писать; пометка сохраняет выбор «убрать старый».
+func TestMoveResumeSkipsTransfer(t *testing.T) {
+	spec := MoveSpec{Version: "0.43.2", Image: RegistryImage{Repo: DefaultRegistry}, NewIP: "203.0.113.7", RemoveOld: true,
+		Resume: &MoveMark{To: "203.0.113.7", Started: "2026-10-26T12:28:00Z", Transferred: true}}
+	steps := moveSteps(nil, spec)
+	if steps[2].id != "transfer" {
+		t.Fatalf("третий шаг: %s", steps[2].id)
+	}
+	r := &Run{steps: []StepState{{ID: "transfer"}}, report: func() {}}
+	if err := steps[2].do(context.Background(), r); err != nil {
+		t.Fatal(err)
+	}
+	if r.steps[0].Note != "перенесено раньше" || len(r.log) != 0 {
+		t.Fatalf("подпись %q, команд %d", r.steps[0].Note, len(r.log))
+	}
+	cmd := markCmd(MoveMark{To: "203.0.113.7", Started: "2026-10-26T12:28:00Z", RemoveOld: true})
+	if !strings.Contains(cmd, `"remove_old":true`) || !strings.HasSuffix(cmd, "> "+moveMark) {
+		t.Fatalf("пометка: %s", cmd)
+	}
+}

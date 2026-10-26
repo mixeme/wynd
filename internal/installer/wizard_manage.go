@@ -14,6 +14,9 @@ type ServerPage struct {
 	Message string      `json:"message,omitempty"`
 	Advice  string      `json:"advice,omitempty"`
 	State   ServerState `json:"state"`
+	// Host — адрес сервера: у старого и нового при переезде домен один,
+	// различает их только он (кадр 9в2, строка под доменом на пульте).
+	Host string `json:"host"`
 	// Latest — свежая версия в хранилище, если она новее стоящей.
 	Latest string `json:"latest,omitempty"`
 	// CopyBytes — сколько займёт копия перед обновлением (база).
@@ -60,7 +63,7 @@ func (w *Wizard) ServerPage(ctx context.Context) ServerPage {
 	if err != nil {
 		return ServerPage{Message: "Связь с сервером оборвалась", Advice: "Подключитесь ещё раз."}
 	}
-	page := ServerPage{OK: true, State: st, CanBuild: w.Source != nil, LiveCopy: CanCopyLive(st.Version)}
+	page := ServerPage{OK: true, State: st, Host: sess.RemoteIP(), CanBuild: w.Source != nil, LiveCopy: CanCopyLive(st.Version)}
 	if reg, ok := w.Image.(RegistryImage); ok && rep != nil {
 		if latest, found := reg.Latest(ctx, sess, rep.Arch); found {
 			cur, okCur := releaseNumber(st.Version)

@@ -24,6 +24,12 @@ type MovePlan struct {
 	// веб-сервер старого («nginx», «apache», «caddy»), его не трогаем.
 	DataOnly bool   `json:"data_only"`
 	OldProxy string `json:"old_proxy,omitempty"`
+	// Resume — переезд на этот сервер уже начат (9в2): «Продолжить» идёт
+	// с того шага, где он остановился; RemoveOld — выбор, сделанный тогда.
+	Resume    bool `json:"resume,omitempty"`
+	RemoveOld bool `json:"remove_old,omitempty"`
+
+	resume *MoveMark
 }
 
 // MoveConnect подключается к новому серверу (9а); незнакомый — отпечаток.
@@ -88,10 +94,20 @@ func (w *Wizard) MovePlan(ctx context.Context) MovePlan {
 	}
 	st := page.State
 	plan := MovePlan{Domain: st.Domain, Version: st.Version, OldIP: old.RemoteIP(), NewIP: target.RemoteIP()}
+	if st.Move != nil && st.Move.To != plan.NewIP {
+		plan.Message = "Переезд начат на сервер " + st.Move.To
+		plan.Advice = "Подключитесь к нему, чтобы продолжить или отменить переезд."
+		return plan
+	}
 	rep, err := Inspect(ctx, target)
 	if err != nil {
 		plan.Message = "Связь с новым сервером оборвалась"
 		return plan
+	}
+	if st.Move != nil {
+		// Новый сервер уже приняли на 9б, и Wynd на нём — наш, перенесённый.
+		plan.Resume, plan.RemoveOld, plan.resume = true, st.Move.RemoveOld, st.Move
+		rep.Findings, rep.Proxy = nil, ""
 	}
 	for _, f := range rep.Findings {
 		switch {
@@ -157,7 +173,7 @@ func (w *Wizard) StartMove(ctx context.Context, removeOld bool) Progress {
 	check := make(chan struct{}, 1)
 	w.moveCheck = check
 	spec := MoveSpec{Domain: plan.Domain, Version: plan.Version, Image: w.Image, OldIP: plan.OldIP, NewIP: plan.NewIP,
-		RemoveOld: removeOld, DataOnly: plan.DataOnly, CheckNow: check, Probe: w.Probe,
+		RemoveOld: removeOld, DataOnly: plan.DataOnly, CheckNow: check, Probe: w.Probe, Resume: plan.resume,
 		Resolve: func(ctx context.Context, domain string) []string {
 			r := w.Resolver
 			if r == nil {
@@ -250,6 +266,15 @@ func (w *Wizard) CancelMove(ctx context.Context) ServiceResult {
 		select {
 		case <-finished:
 		case <-time.After(30 * time.Second):
+		}
+	}
+	// Wynd на новом уже запущен — туда могли писать: отменить значило бы
+	// потерять написанное.
+	if old != nil {
+		if st, err := ReadServerState(ctx, old); err == nil && st.Move != nil && st.Move.Launched {
+			res := ServiceResult{Message: "Отменить переезд уже нельзя", Advice: "Wynd на новом сервере запущен, там могли писать. Продолжите переезд."}
+			res.Page = w.ServerPage(ctx)
+			return res
 		}
 	}
 	log, err := CancelMove(ctx, old, target)

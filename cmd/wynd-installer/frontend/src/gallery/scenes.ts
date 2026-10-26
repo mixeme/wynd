@@ -59,6 +59,7 @@ const interrupted = page({
 	update: { from: '0.43.2', to: '0.43.3', ref: 'v0.43.3', stopped: true, start_after: true, started: '2026-10-24T11:05:00Z', copied: true }
 });
 const noRoom = page({ free_bytes: 20 * 1024 ** 2 });
+const moving = page({ running: false, move: { to: '203.0.113.7', started: '2026-10-26T12:28:00Z', transferred: true } });
 
 const doneSteps = steps(['Docker', 'done'], ['Wynd', 'done'], ['Сертификат', 'done']);
 
@@ -156,6 +157,23 @@ export const SCENES: Scene[] = [
 		acts: [...go, { click: 'начать' }, { click: 'Подключиться' }, { click: 'Переехать' }]
 	},
 	{ name: '9v-move-failed', fake: { ...toPult(pult), StartMove: () => progress(steps(['Перенос', 'failed']), { running: false, failure: { step: 'transfer', message: 'Перенос прервался', advice: 'Связь между серверами оборвалась.' } }) }, acts: [...go, { click: 'начать' }, { click: 'Подключиться' }, { click: 'Переехать' }, { click: 'подробности' }] },
+	{ name: '9v2-unfinished', fake: toPult(moving), acts: go },
+	{ name: '9v2-continue-connect', fake: toPult(moving), acts: [...go, { click: 'Продолжить переезд' }] },
+	{
+		name: '9v2-continue',
+		fake: {
+			...toPult(moving),
+			MovePlan: () => ({ ...movePlan, resume: true }),
+			StartMove: () => progress(steps(['Wynd на новом', 'done'], ['Сайт на старом остановлен', 'done'], ['Папка Wynd перенесена', 'done', 'перенесено раньше'], ['Ждём новый адрес', 'running']))
+		},
+		acts: [...go, { click: 'Продолжить переезд' }, { click: 'Подключиться' }]
+	},
+	{
+		name: '9v2-cancel-refused',
+		fake: { ...toPult(moving), CancelMove: () => ({ ...service(moving, false), message: 'Отменить переезд уже нельзя', advice: 'Wynd на новом сервере запущен, там могли писать. Продолжите переезд.' }) },
+		acts: [...go, { click: 'Отменить переезд' }, { click: 'Подключиться' }]
+	},
+	{ name: '9v2-cancelled', fake: { ...toPult(moving), CancelMove: () => service(pult) }, acts: [...go, { click: 'Отменить переезд' }, { click: 'Подключиться' }] },
 	{ name: '9g-mdone', fake: { ...toPult(pult), StartMove: () => progress(doneSteps, { running: false, done: true }) }, acts: [...go, { click: 'начать' }, { click: 'Подключиться' }, { click: 'Переехать' }] },
 	{ name: '11a-archives', acts: [{ tab: 'archives' }] },
 	{

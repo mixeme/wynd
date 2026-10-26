@@ -131,6 +131,16 @@ export interface ServerState {
 	stopped_at?: string;
 	free_bytes: number;
 	update?: UpdateMark;
+	/** Переезд с этого сервера начат и не закончен (кадр 9в2). */
+	move?: MoveMark;
+}
+
+export interface MoveMark {
+	to: string;
+	started: string;
+	remove_old?: boolean;
+	transferred?: boolean;
+	launched?: boolean;
 }
 
 /** Страница сервера, где Wynd уже стоит (пульт, кадры 7а–7е). */
@@ -139,6 +149,8 @@ export interface ServerPage {
 	message?: string;
 	advice?: string;
 	state: ServerState;
+	/** Адрес сервера: при переезде домен у старого и нового один (кадр 9в2). */
+	host: string;
 	latest?: string;
 	copy_bytes: number;
 	live_copy: boolean;
@@ -229,6 +241,9 @@ export interface MovePlan {
 	/** На старом Wynd не со своим Caddy: переезжают только данные (кадр 9б2). */
 	data_only: boolean;
 	old_proxy?: string;
+	/** Переезд на этот сервер уже начат (9в2): продолжаем с того шага, где остановился. */
+	resume?: boolean;
+	remove_old?: boolean;
 }
 
 /** Новая Мастерская (кадры 10а–10в). */

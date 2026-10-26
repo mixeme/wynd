@@ -59,6 +59,7 @@ export const page = (over: Partial<ServerPage['state']> = {}, top: Partial<Serve
 		free_bytes: 4.3 * 1024 ** 3,
 		...over
 	},
+	host: '198.51.100.4',
 	latest: '0.43.3',
 	copy_bytes: 12 * 1024 ** 2,
 	live_copy: true,

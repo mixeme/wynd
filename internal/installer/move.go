@@ -52,12 +52,29 @@ type MoveSpec struct {
 	// CheckNow — «Проверить сейчас» на 9в.
 	CheckNow <-chan struct{}
 	Probe    func(ctx context.Context, url string) (string, error)
+	// Resume — переезд продолжается (кадр 9в2): пометка со старого сервера.
+	// Перенесённое второй раз не переносится — на новом могли уже писать.
+	Resume *MoveMark
 }
 
-// MoveMark — пометка начатого переезда на старом сервере.
+// MoveMark — пометка начатого переезда на старом сервере. Кладёт её шаг
+// «Сайт на старом остановлен», убирают «Готово» и «Отменить переезд»; пока
+// она лежит, пульт старого сервера показывает незаконченный переезд (9в2).
 type MoveMark struct {
 	To      string `json:"to"`
 	Started string `json:"started"`
+	// RemoveOld — выбор на 9б: убрать Wynd со старого после переезда.
+	RemoveOld bool `json:"remove_old,omitempty"`
+	// Transferred — данные на новом; Launched — Wynd на новом запущен: после
+	// этого отменять переезд нельзя — на новом могли уже писать.
+	Transferred bool `json:"transferred,omitempty"`
+	Launched    bool `json:"launched,omitempty"`
+}
+
+// markCmd записывает пометку переезда на старом сервере.
+func markCmd(m MoveMark) string {
+	b, _ := json.Marshal(m)
+	return "printf '%s\\n' " + shQuote(string(b)) + " > " + moveMark
 }
 
 // dnsWait — как часто сами проверяем адрес на 9в.
@@ -79,7 +96,12 @@ func onOld(ctx context.Context, r *Run, old *Session, command string, timeout ti
 func moveSteps(old *Session, spec MoveSpec) []step {
 	image := imageStep(Spec{Version: spec.Version, Image: spec.Image})
 	docker := dockerStep()
-	mark, _ := json.Marshal(MoveMark{To: spec.NewIP, Started: time.Now().UTC().Format(time.RFC3339)})
+	mark := &MoveMark{To: spec.NewIP, Started: time.Now().UTC().Format(time.RFC3339), RemoveOld: spec.RemoveOld}
+	if spec.Resume != nil {
+		resumed := *spec.Resume
+		resumed.RemoveOld = spec.RemoveOld
+		mark = &resumed
+	}
 	install := "Wynd " + spec.Version + " на новом сервере"
 	sendTar, pullDir, moved := moveTar, "/opt", "Папка Wynd перенесена"
 	if spec.DataOnly {
@@ -108,13 +130,17 @@ func moveSteps(old *Session, spec MoveSpec) []step {
 		{
 			id: "stop", title: "Сайт на старом остановлен",
 			do: func(ctx context.Context, r *Run) error {
-				_, err := onOld(ctx, r, old, "printf '%s\\n' "+shQuote(string(mark))+" > "+moveMark+" && "+composeCmd+"stop wynd 2>&1", shortTimeout)
+				_, err := onOld(ctx, r, old, markCmd(*mark)+" && "+composeCmd+"stop wynd 2>&1", shortTimeout)
 				return err
 			},
 		},
 		{
 			id: "transfer", title: moved,
 			do: func(ctx context.Context, r *Run) error {
+				if mark.Transferred {
+					r.note("перенесено раньше")
+					return nil
+				}
 				pub, err := r.must(ctx, "test -f "+moveKey+" || ssh-keygen -q -t ed25519 -N '' -C "+moveKeyLabel+" -f "+moveKey+"; cat "+moveKey+".pub", shortTimeout)
 				if err != nil {
 					return err
@@ -143,7 +169,12 @@ func moveSteps(old *Session, spec MoveSpec) []step {
 				// Ключ — с обоих серверов, даже если перенос не вышел.
 				_, _ = onOld(ctx, r, old, "sed -i '/ "+moveKeyLabel+"$/d' /root/.ssh/authorized_keys", shortTimeout)
 				_, _ = r.sh(ctx, "rm -f "+moveKey+" "+moveKey+".pub "+moveKnown, shortTimeout)
-				return pullErr
+				if pullErr != nil {
+					return pullErr
+				}
+				mark.Transferred = true
+				_, err = onOld(ctx, r, old, markCmd(*mark), shortTimeout)
+				return err
 			},
 			explain: func(_ error, output string) *StepError {
 				if containsAny(output, "Connection timed out", "Connection refused", "No route to host", "Could not resolve") {
@@ -163,6 +194,10 @@ func moveSteps(old *Session, spec MoveSpec) []step {
 					return err
 				}
 				if err := waitHealthy(ctx, r); err != nil {
+					return err
+				}
+				mark.Launched = true
+				if _, err := onOld(ctx, r, old, markCmd(*mark), shortTimeout); err != nil {
 					return err
 				}
 				if spec.Probe == nil {

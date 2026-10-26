@@ -41,6 +41,8 @@ type ServerState struct {
 	FreeBytes uint64 `json:"free_bytes"`
 	// Update — обновление начато и не закончено (кадр 7е).
 	Update *UpdateMark `json:"update,omitempty"`
+	// Move — переезд с этого сервера начат и не закончен (кадр 9в2).
+	Move *MoveMark `json:"move,omitempty"`
 }
 
 // UpdateMark — пометка начатого обновления.
@@ -66,6 +68,7 @@ echo "@running $(` + wyndRunning + ` | head -n 1)"
 echo "@container $(docker ps -aq --filter label=com.docker.compose.project.working_dir=` + installDir + ` --filter label=com.docker.compose.service=wynd 2>/dev/null | head -n 1)"
 echo "@stopped $(cat ` + stoppedMark + ` 2>/dev/null)"
 echo "@update $(cat ` + updateMark + ` 2>/dev/null)"
+echo "@move $(cat ` + moveMark + ` 2>/dev/null)"
 echo "@free $(df -Pk ` + installDir + ` | tail -n 1)"`
 
 // ReadServerState смотрит, что стоит на сервере. Ничего не меняет.
@@ -106,6 +109,13 @@ func parseServerState(out string) ServerState {
 				var m UpdateMark
 				if json.Unmarshal([]byte(val), &m) == nil && m.To != "" {
 					st.Update = &m
+				}
+			}
+		case "@move":
+			if val != "" {
+				var m MoveMark
+				if json.Unmarshal([]byte(val), &m) == nil && m.To != "" {
+					st.Move = &m
 				}
 			}
 		case "@free":
