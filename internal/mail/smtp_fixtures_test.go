@@ -45,8 +45,12 @@ func loadLiveSMTPFixtures(t *testing.T) []liveSMTPFixture {
 	out = append(out, loadJSONCredentialDir(t)...)
 
 	root := repoRoot(t)
-	for _, name := range []string{"credentials.txt", "credentials"} {
-		path := filepath.Join(root, "dev", name)
+	// The owner keeps credentials in the private myenv repo checked out next to this one.
+	for _, path := range []string{
+		filepath.Join(root, "dev", "credentials.txt"),
+		filepath.Join(root, "dev", "credentials"),
+		filepath.Join(root, "..", "myenv", "wynd", "credentials.txt"),
+	} {
 		raw, err := os.ReadFile(path)
 		if err != nil {
 			continue
@@ -62,7 +66,7 @@ func loadLiveSMTPFixtures(t *testing.T) []liveSMTPFixture {
 	}
 
 	if len(out) == 0 {
-		t.Skipf("smtp live: no credentials (JSON in %s, or dev/credentials.txt; see internal/mail/testdata/)", credentialsDir(t))
+		t.Skipf("smtp live: no credentials (JSON in %s, dev/credentials.txt or ../myenv/wynd/credentials.txt; see internal/mail/testdata/)", credentialsDir(t))
 	}
 	return out
 }
