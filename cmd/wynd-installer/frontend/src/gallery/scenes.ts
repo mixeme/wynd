@@ -141,6 +141,7 @@ export const SCENES: Scene[] = [
 	{ name: '7b-uplan', fake: toPult(pult), acts: [...go, { click: 'Обновить' }] },
 	{ name: '7b-uplan-stopped', fake: toPult(page({ running: false, stopped_at: '2026-10-24T09:00:00Z' })), acts: [...go, { click: 'Обновить' }] },
 	{ name: '7b-uplan-build', fake: toPult(pult), acts: [...go, { click: 'Обновить' }, { click: 'Собрать самому' }] },
+	{ name: '7b4-uplan-built-on-server', fake: toPult(page({ image: 'wynd:0.43.2' }, { built: true })), acts: [...go, { click: 'Обновить' }] },
 	{ name: '7b2-noroom', fake: toPult(noRoom), acts: [...go, { click: 'Обновить' }] },
 	{ name: '7c-update', fake: { ...toPult(pult), StartUpdate: () => progress(steps(['Скачаем', 'done'], ['Копия', 'running', '12 МБ'], ['Запуск', 'pending'])) }, acts: [...go, { click: 'Обновить' }, { click: 'Обновить' }] },
 	{

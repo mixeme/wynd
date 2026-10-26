@@ -157,6 +157,8 @@ export interface ServerPage {
 	copy_bytes: number;
 	live_copy: boolean;
 	can_build: boolean;
+	/** Стоящий Wynd собран на сервере — план обновления сразу со сборкой (7б4). */
+	built: boolean;
 }
 
 export interface ServiceResult {

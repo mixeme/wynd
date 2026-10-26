@@ -320,7 +320,8 @@
 		if (!page) return;
 		stopForCopy = true;
 		startAfter = !page.state.stopped_at;
-		buildUpdate = false;
+		// Собран на сервере — и новый собираем, а не молча берём из хранилища (7б4).
+		buildUpdate = page.built && page.can_build;
 		screen = 'uplan';
 	}
 

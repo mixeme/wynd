@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 )
 
@@ -24,6 +25,15 @@ type ServerPage struct {
 	// LiveCopy — стоящий Wynd умеет копию без остановки (галочка 7б).
 	LiveCopy bool `json:"live_copy"`
 	CanBuild bool `json:"can_build"`
+	// Built — стоящий Wynd собран на сервере из открытого кода: план
+	// обновления сразу предлагает собрать и новый (кадр 7б4), а не молча
+	// переходит на хранилище.
+	Built bool `json:"built"`
+}
+
+// builtOnServer — образ собран на сервере: так его называет SourceImage.
+func builtOnServer(image string) bool {
+	return strings.HasPrefix(image, imageName+":")
 }
 
 // ServiceResult — чем кончилась кнопка «Запустить», «Остановить» или «Перезапустить».
@@ -63,7 +73,7 @@ func (w *Wizard) ServerPage(ctx context.Context) ServerPage {
 	if err != nil {
 		return ServerPage{Message: "Связь с сервером оборвалась", Advice: "Подключитесь ещё раз."}
 	}
-	page := ServerPage{OK: true, State: st, Host: sess.RemoteIP(), CanBuild: w.Source != nil, LiveCopy: CanCopyLive(st.Version)}
+	page := ServerPage{OK: true, State: st, Host: sess.RemoteIP(), CanBuild: w.Source != nil, LiveCopy: CanCopyLive(st.Version), Built: builtOnServer(st.Image)}
 	if reg, ok := w.Image.(RegistryImage); ok && rep != nil {
 		if latest, found := reg.Latest(ctx, sess, rep.Arch); found {
 			cur, okCur := releaseNumber(st.Version)

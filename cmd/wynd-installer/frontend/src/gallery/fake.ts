@@ -64,6 +64,7 @@ export const page = (over: Partial<ServerPage['state']> = {}, top: Partial<Serve
 	copy_bytes: 12 * 1024 ** 2,
 	live_copy: true,
 	can_build: true,
+	built: false,
 	...top
 });
 

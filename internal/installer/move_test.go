@@ -134,3 +134,10 @@ func TestInspectionForeignSite(t *testing.T) {
 		t.Fatal("поиск чужого файла должен идти по ссылкам и узнавать нашу первую строку")
 	}
 }
+
+// 7б4: образ, собранный на сервере, план обновления узнаёт по имени.
+func TestBuiltOnServer(t *testing.T) {
+	if !builtOnServer("wynd:0.43.2") || builtOnServer("ghcr.io/mixeme/wynd:0.43.2") || builtOnServer("") {
+		t.Fatal("собранный на сервере образ — wynd:<версия>, из хранилища — нет")
+	}
+}
