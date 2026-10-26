@@ -11,7 +11,6 @@
 	import Meter from '$ui/forms/Meter.svelte';
 	import Switch from '$ui/forms/Switch.svelte';
 	import FilePicker from '$ui/forms/FilePicker.svelte';
-	import TextButton from '$ui/forms/TextButton.svelte';
 	import CircleRow from '$ui/data/CircleRow.svelte';
 	import ServerRow from '$ui/data/ServerRow.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
@@ -187,7 +186,9 @@
 			error = authErrorHint(err);
 			return;
 		}
-		invitable = await fetchInvitable(origin, archive.emails).catch(() => Math.max(0, archive!.emails.length - 1));
+		invitable = await fetchInvitable(origin, archive.emails).catch(() =>
+			Math.max(0, archive!.emails.length - 1)
+		);
 		if (invitable === 0) sendInvites = false;
 		step = 'review';
 	}
@@ -325,7 +326,11 @@
 	shell={!circleColor}
 	color={circleColor}
 	app
-	title={step === 'done' || step === 'who' ? circleName : step === 'choose' ? 'Принять круг' : 'Оживить круг'}
+	title={step === 'done' || step === 'who'
+		? circleName
+		: step === 'choose'
+			? 'Принять круг'
+			: 'Оживить круг'}
 	onback={() => (step === 'who' ? (step = 'review') : goUp('/settings/servers'))}
 >
 	<FilePicker bind:this={picker} accept=".wynd" onfiles={(files) => void pick(files)} />
@@ -419,38 +424,36 @@
 		{/if}
 		{#if room.fits}
 			{#if invitable === 0}
-			<!-- Писать некому — переключатель виден, но погашен (владелец, 2026-10-23). -->
-			<Label class="mt-16">Участники</Label>
-			<SettingsRow
-				title="Разослать приглашения"
-				subtitle={archive.emails.length > 1
-					? 'все участники уже на этом сервере'
-					: 'кроме вас, в круге никого нет'}
-				divided="both"
-			>
-				{#snippet control()}
-					<Switch checked={false} disabled label="Разослать приглашения" />
-				{/snippet}
-			</SettingsRow>
+				<!-- Писать некому — переключатель виден, но погашен (владелец, 2026-10-23). -->
+				<Label class="mt-16">Участники</Label>
+				<SettingsRow
+					title="Разослать приглашения"
+					subtitle={archive.emails.length > 1
+						? 'все участники уже на этом сервере'
+						: 'кроме вас, в круге никого нет'}
+					divided="both"
+				>
+					{#snippet control()}
+						<Switch checked={false} disabled label="Разослать приглашения" />
+					{/snippet}
+				</SettingsRow>
 			{:else}
-			<Label class="mt-16">Участники</Label>
-			<SettingsRow
-				title="Разослать приглашения"
-				subtitle="письмо на почту каждому участнику"
-				divided="both"
-			>
-				{#snippet control()}
-					<Switch bind:checked={sendInvites} label="Разослать приглашения" />
-				{/snippet}
-			</SettingsRow>
-			<Hint>
-				Почты в архиве — на день, когда его собрали. Кто войдёт сюда той же почтой, попадёт в своё
-				имя.
-			</Hint>
+				<Label class="mt-16">Участники</Label>
+				<SettingsRow
+					title="Разослать приглашения"
+					subtitle="письмо на почту каждому участнику"
+					divided="both"
+				>
+					{#snippet control()}
+						<Switch bind:checked={sendInvites} label="Разослать приглашения" />
+					{/snippet}
+				</SettingsRow>
+				<Hint>
+					Почты в архиве — на день, когда его собрали. Кто войдёт сюда той же почтой, попадёт в своё
+					имя.
+				</Hint>
 			{/if}
-			<Button class="mt-14" variant="colored" onclick={startRevive}>
-				Оживить круг
-			</Button>
+			<Button class="mt-14" variant="colored" onclick={startRevive}>Оживить круг</Button>
 		{:else if room.request?.status === 'pending'}
 			<StatusCard
 				title="Место попросили"

@@ -111,8 +111,7 @@
 			// Атрибуция обязана быть ссылкой на условия (LIC-4).
 			.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 				maxZoom: 19,
-				attribution:
-					'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+				attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
 			})
 			.addTo(map);
 

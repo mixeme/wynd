@@ -68,11 +68,16 @@
 			// Фото и первая запись — не повод терять уже созданный круг: не
 			// вышло — круг открывается всё равно, фото ставится в профиле.
 			let avatarFailed = false;
-			if (pendingAvatar) avatarFailed = !(await setIdentityAvatar(origin, created.id, pendingAvatar));
+			if (pendingAvatar)
+				avatarFailed = !(await setIdentityAvatar(origin, created.id, pendingAvatar));
 			const body = firstPost.trim();
 			if (body) {
 				try {
-					await createPost(origin, created.id, { body, entry_date: localDayOf(new Date().toISOString()), media: [] });
+					await createPost(origin, created.id, {
+						body,
+						entry_date: localDayOf(new Date().toISOString()),
+						media: []
+					});
 				} catch {
 					/* запись можно написать в ленте */
 				}
@@ -87,7 +92,6 @@
 			loading = false;
 		}
 	}
-
 </script>
 
 <FormLayout app color={form.color} circleTitle={form.name} onback={() => goUp('/circles/new')}>
@@ -108,4 +112,3 @@
 		<Hint class="mt-12">{error}</Hint>
 	{/if}
 </FormLayout>
-

@@ -196,7 +196,8 @@ async function colorForCircle(
  * без событий в конце, по имени. Так стоят и круги внутри группы.
  */
 export function byFreshness(a: StreetCircle, b: StreetCircle): number {
-	const fresh = (row: StreetCircle) => (row.pendingJoin ? Infinity : Date.parse(row.lastAt ?? '') || 0);
+	const fresh = (row: StreetCircle) =>
+		row.pendingJoin ? Infinity : Date.parse(row.lastAt ?? '') || 0;
 	const fa = fresh(a);
 	const fb = fresh(b);
 	if (fa !== fb) return fb - fa;

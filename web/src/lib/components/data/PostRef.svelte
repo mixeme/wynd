@@ -21,7 +21,9 @@
 
 <div class="post-ref">
 	{#if cover}
-		<span class="pic post-ref-pic">{#if coverUrl}<img src={coverUrl} alt="" />{/if}</span>
+		<span class="pic post-ref-pic"
+			>{#if coverUrl}<img src={coverUrl} alt="" />{/if}</span
+		>
 	{/if}
 	<span class="post-ref-line"
 		><b>{author}</b> · {date}{#if excerpt}{' · '}{excerpt}{/if}</span

@@ -183,8 +183,8 @@
 		<DangerNote class="mt-20">
 			{deadline ? formatEntryDate(deadline) : '…'} всё до {cutoffDate
 				? formatCutoffDate(cutoffDate)
-				: '…'} удалится с сервера — независимо от того, все ли успели скачать. Предупредить людей —
-			на вас.
+				: '…'} удалится с сервера — независимо от того, все ли успели скачать. Предупредить людей — на
+			вас.
 		</DangerNote>
 	{/if}
 	<Button class="mt-14" variant="colored" {loading} onclick={() => void launch()}>

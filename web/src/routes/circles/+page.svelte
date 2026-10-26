@@ -49,12 +49,7 @@
 	import { deleteGroup, listGroups, putGroup } from '$lib/idb/db';
 	import { registerRefetch } from '$lib/sync/sync';
 	import { initSession, loadSessions } from '$lib/session/session.svelte';
-	import {
-		dismissPayBanner,
-		fetchPayStatus,
-		formatPayDate,
-		type PayStatus
-	} from '$lib/pay/pay';
+	import { dismissPayBanner, fetchPayStatus, formatPayDate, type PayStatus } from '$lib/pay/pay';
 	import type { SessionRecord } from '$lib/idb/db';
 
 	let circles = $state<StreetCircle[]>([]);
@@ -173,10 +168,7 @@
 	);
 	const showReminder = $derived(
 		Boolean(
-			payStatus?.reminder &&
-				payStatus.expires_at &&
-				payStatus.has_requisites &&
-				!payStatus.pending
+			payStatus?.reminder && payStatus.expires_at && payStatus.has_requisites && !payStatus.pending
 		)
 	);
 	const showPendingNotice = $derived(
@@ -213,7 +205,9 @@
 		// Закреплённый тоже предлагается (A13, владелец 2026-10-23: «Как в Slack»):
 		// кладём — он переезжает в группу и открепляется. Даже если группа его
 		// помнит: сейчас он виден только среди закреплённых.
-		return circles.filter((c) => !c.pendingJoin && (c.pinned || !group.keys.includes(circleKey(c))));
+		return circles.filter(
+			(c) => !c.pendingJoin && (c.pinned || !group.keys.includes(circleKey(c)))
+		);
 	}
 
 	function showGroupChips(group: StreetGroupView): boolean {
@@ -286,9 +280,7 @@
 		const pinnedAt = circle.pinned ? 0 : Date.now();
 		pinMenuKey = null;
 		circles = sortStreetCircles(
-			circles.map((c) =>
-				c === circle ? { ...c, pinned: pinnedAt > 0, pinnedAt } : c
-			)
+			circles.map((c) => (c === circle ? { ...c, pinned: pinnedAt > 0, pinnedAt } : c))
 		);
 		await changeStreet([
 			pinnedAt
@@ -495,7 +487,8 @@
 </script>
 
 {#snippet plusFab()}
-	<IconButton class="wh-full"
+	<IconButton
+		class="wh-full"
 		name="plus"
 		label="Новый круг"
 		onclick={openNew}
@@ -514,7 +507,7 @@
 	onsearch={empty ? undefined : openSearch}
 	onsettings={openSettings}
 	fab={empty ? undefined : plusFab}
-	fabMenuOpen={fabMenuOpen}
+	{fabMenuOpen}
 	onfabmenuclose={() => (fabMenuOpen = false)}
 	fabMenuItems={[
 		{ label: 'Новый круг', onclick: openNewFromMenu },
@@ -532,232 +525,237 @@
 		ontouchmove={ptr.move}
 		ontouchend={ptr.end}
 	>
-	<PullRefreshBand pull={ptr.state} />
+		<PullRefreshBand pull={ptr.state} />
 
-	{#if loading}
-		<Loading />
-	{:else}
-		{#if showDonateBanner && payStatus?.banner}
-			<PayStreetBanner
-				variant="donate"
-				text={payStatus.banner.text}
-				dismissible={payStatus.banner.dismissible}
-				onclick={() => goto('/pay/help')}
-				ondismiss={() => void hideDonateBanner()}
-			/>
-		{/if}
-		{#if showReminder && payStatus?.expires_at}
-			<PayStreetBanner
-				variant="reminder"
-				expiresAtLabel={formatPayDate(payStatus.expires_at)}
-				reminderDaysLeft={payStatus.reminder_days_left}
-				onclick={() => goto('/pay/extend')}
-			/>
-		{/if}
-		{#if showPendingNotice && payStatus?.pending_at}
-			<PayStreetBanner
-				variant="pending"
-				pendingAtLabel={formatPayDate(payStatus.pending_at)}
-				expiresAtLabel={payStatus.expires_at ? formatPayDate(payStatus.expires_at) : null}
-			/>
-		{/if}
-		{#if newsUnseen && !empty}
-			<NewsBanner
-				version={latestNewsVersion()}
-				onclick={() => goto('/settings/news?from=circles')}
-				ondismiss={hideNews}
-			/>
-		{/if}
-		{#if browserHint && !empty}
-			<HintBanner
-				title="Рекомендуем Chrome или Vivaldi"
-				text="В них Wynd на Android работает стабильнее."
-				ondismiss={hideBrowserHint}
-			/>
-		{/if}
-		{#if empty}
-		<EmptyState title="Ни одного круга" place="list">
-			Круг — это место, куда сворачивают. Заведите свой или откройте присланную ссылку.
-			{#snippet actions()}
-				<Button onclick={openNew}>Новый круг</Button>
-				<Button variant="ghost" onclick={openInvite}>У меня есть приглашение</Button>
-			{/snippet}
-		</EmptyState>
-		<!-- Пока кругов нет, объяснить некому: людей, чьим примером всё понятно,
+		{#if loading}
+			<Loading />
+		{:else}
+			{#if showDonateBanner && payStatus?.banner}
+				<PayStreetBanner
+					variant="donate"
+					text={payStatus.banner.text}
+					dismissible={payStatus.banner.dismissible}
+					onclick={() => goto('/pay/help')}
+					ondismiss={() => void hideDonateBanner()}
+				/>
+			{/if}
+			{#if showReminder && payStatus?.expires_at}
+				<PayStreetBanner
+					variant="reminder"
+					expiresAtLabel={formatPayDate(payStatus.expires_at)}
+					reminderDaysLeft={payStatus.reminder_days_left}
+					onclick={() => goto('/pay/extend')}
+				/>
+			{/if}
+			{#if showPendingNotice && payStatus?.pending_at}
+				<PayStreetBanner
+					variant="pending"
+					pendingAtLabel={formatPayDate(payStatus.pending_at)}
+					expiresAtLabel={payStatus.expires_at ? formatPayDate(payStatus.expires_at) : null}
+				/>
+			{/if}
+			{#if newsUnseen && !empty}
+				<NewsBanner
+					version={latestNewsVersion()}
+					onclick={() => goto('/settings/news?from=circles')}
+					ondismiss={hideNews}
+				/>
+			{/if}
+			{#if browserHint && !empty}
+				<HintBanner
+					title="Рекомендуем Chrome или Vivaldi"
+					text="В них Wynd на Android работает стабильнее."
+					ondismiss={hideBrowserHint}
+				/>
+			{/if}
+			{#if empty}
+				<EmptyState title="Ни одного круга" place="list">
+					Круг — это место, куда сворачивают. Заведите свой или откройте присланную ссылку.
+					{#snippet actions()}
+						<Button onclick={openNew}>Новый круг</Button>
+						<Button variant="ghost" onclick={openInvite}>У меня есть приглашение</Button>
+					{/snippet}
+				</EmptyState>
+				<!-- Пока кругов нет, объяснить некому: людей, чьим примером всё понятно,
 		     ещё нет. Тогда оболочка коротко рассказывает обстановку. С первым
 		     кругом этот рассказ уходит — дальше объясняют люди. -->
-		<SectionLabel class="mt-24">Как устроен Wynd</SectionLabel>
-		{#each streetFacts as fact (fact.title)}
-			<SettingsRow title={fact.title} subtitle={fact.text} chevron={false} />
-		{/each}
-		{#if streetSession}
-			<Hint class="mt-34" centered>
-				Вы вошли как {streetSession.email}<br />в «{streetSession.name}» · {displayHost(
-					streetSession.origin
-				)}
-			</Hint>
-		{/if}
-		{:else}
-		{#if pinned.length}
-			<SectionLabel>Закреплённые</SectionLabel>
-			{#each pinned as circle (circleKey(circle))}
-				{@const door = doorRowActions(circle)}
-				<CircleRow
-					initial={circle.initial}
-					name={circle.name}
-					preview={circle.preview}
-					silent={silentHost(circle)}
-					time={circle.time}
-					badge={circle.unread || undefined}
-					dot={circle.responses}
-					color={circle.color}
-					card={pinMenuKey === menuKey('pin', circle)}
-					actionLabel={door.actionLabel}
-					actionLabel2={door.actionLabel2}
-					onaction={() => void confirmPin(circle)}
-					onaction2={door.onaction2}
-					onclick={() => openCircle(circle)}
-					onmousedown={() => startLongPress(circle, 'pin')}
-					onmouseup={cancelLongPress}
-					onmouseleave={cancelLongPress}
-					ontouchstart={() => startLongPress(circle, 'pin')}
-					ontouchend={cancelLongPress}
-					ontouchcancel={cancelLongPress}
-				/>
-			{/each}
-			{#if groups.length || rest.length}
-				<div class="sep"></div>
-			{/if}
-		{/if}
-		{#each groups as group (group.name)}
-			{#if editingGroupName === group.name}
-				<Input class="m-8-16-0"
-					bind:value={editGroupName}
-					active
-					placeholder="Название"
-					onkeydown={(e) => {
-						if (e.key === 'Enter') void saveRenameGroup();
-						if (e.key === 'Escape') {
-							editingGroupName = null;
-							editGroupName = '';
-						}
-					}}
-					onblur={() => void saveRenameGroup()}
-				/>
-			{:else if groupMenuName === group.name}
-				<GroupFoldCard
-					label={group.name}
-					count={groupMemberCount(group)}
-					expanded={!group.collapsed}
-					foldStyle="padding-top:12px"
-					onpointerdown={(e) => onGroupPointerDown(group.name, e)}
-					onpointerup={() => onGroupPointerUp(group)}
-					onpointercancel={cancelGroupLongPress}
-					actionLabel="Переименовать"
-					onaction={() => startRenameGroup(group)}
-					actionLabel2="Удалить группу"
-					onaction2={() => void deleteGroupByName(group.name)}
-				/>
-			{:else}
-				<FoldHeader
-					label={group.name}
-					count={groupMemberCount(group)}
-					expanded={!group.collapsed}
-					onpointerdown={(e) => onGroupPointerDown(group.name, e)}
-					onpointerup={() => onGroupPointerUp(group)}
-					onpointercancel={cancelGroupLongPress}
-				/>
-			{/if}
-			{#if !group.collapsed && groupMenuName !== group.name}
-				{#each circlesInGroup(group) as circle (circleKey(circle))}
-					{@const door = doorRowActions(circle)}
-					<CircleRow
-						initial={circle.initial}
-						name={circle.name}
-						preview={circle.preview}
-						silent={silentHost(circle)}
-						time={circle.time}
-						badge={circle.unread || undefined}
-					dot={circle.responses}
-						color={circle.color}
-						card={pinMenuKey === menuKey(`g:${group.name}`, circle)}
-						actionLabel={door.actionLabel}
-						actionLabel2={door.actionLabel2}
-						onaction={() => void confirmPin(circle)}
-						onaction2={door.onaction2}
-						onclick={() => openCircle(circle)}
-						onmousedown={() => startLongPress(circle, `g:${group.name}`)}
-						onmouseup={cancelLongPress}
-						onmouseleave={cancelLongPress}
-						ontouchstart={() => startLongPress(circle, `g:${group.name}`)}
-						ontouchend={cancelLongPress}
-						ontouchcancel={cancelLongPress}
-					/>
+				<SectionLabel class="mt-24">Как устроен Wynd</SectionLabel>
+				{#each streetFacts as fact (fact.title)}
+					<SettingsRow title={fact.title} subtitle={fact.text} chevron={false} />
 				{/each}
-				{#if showGroupChips(group)}
-					<ChipGroup class="m-10-16-0 p-0">
-						{#each addableCirclesForGroup(group) as circle (circleKey(circle))}
-							<Chip onclick={() => void addCircleToGroup(circle, group.name)}>{circle.name}</Chip>
+				{#if streetSession}
+					<Hint class="mt-34" centered>
+						Вы вошли как {streetSession.email}<br />в «{streetSession.name}» · {displayHost(
+							streetSession.origin
+						)}
+					</Hint>
+				{/if}
+			{:else}
+				{#if pinned.length}
+					<SectionLabel>Закреплённые</SectionLabel>
+					{#each pinned as circle (circleKey(circle))}
+						{@const door = doorRowActions(circle)}
+						<CircleRow
+							initial={circle.initial}
+							name={circle.name}
+							preview={circle.preview}
+							silent={silentHost(circle)}
+							time={circle.time}
+							badge={circle.unread || undefined}
+							dot={circle.responses}
+							color={circle.color}
+							card={pinMenuKey === menuKey('pin', circle)}
+							actionLabel={door.actionLabel}
+							actionLabel2={door.actionLabel2}
+							onaction={() => void confirmPin(circle)}
+							onaction2={door.onaction2}
+							onclick={() => openCircle(circle)}
+							onmousedown={() => startLongPress(circle, 'pin')}
+							onmouseup={cancelLongPress}
+							onmouseleave={cancelLongPress}
+							ontouchstart={() => startLongPress(circle, 'pin')}
+							ontouchend={cancelLongPress}
+							ontouchcancel={cancelLongPress}
+						/>
+					{/each}
+					{#if groups.length || rest.length}
+						<div class="sep"></div>
+					{/if}
+				{/if}
+				{#each groups as group (group.name)}
+					{#if editingGroupName === group.name}
+						<Input
+							class="m-8-16-0"
+							bind:value={editGroupName}
+							active
+							placeholder="Название"
+							onkeydown={(e) => {
+								if (e.key === 'Enter') void saveRenameGroup();
+								if (e.key === 'Escape') {
+									editingGroupName = null;
+									editGroupName = '';
+								}
+							}}
+							onblur={() => void saveRenameGroup()}
+						/>
+					{:else if groupMenuName === group.name}
+						<GroupFoldCard
+							label={group.name}
+							count={groupMemberCount(group)}
+							expanded={!group.collapsed}
+							foldStyle="padding-top:12px"
+							onpointerdown={(e) => onGroupPointerDown(group.name, e)}
+							onpointerup={() => onGroupPointerUp(group)}
+							onpointercancel={cancelGroupLongPress}
+							actionLabel="Переименовать"
+							onaction={() => startRenameGroup(group)}
+							actionLabel2="Удалить группу"
+							onaction2={() => void deleteGroupByName(group.name)}
+						/>
+					{:else}
+						<FoldHeader
+							label={group.name}
+							count={groupMemberCount(group)}
+							expanded={!group.collapsed}
+							onpointerdown={(e) => onGroupPointerDown(group.name, e)}
+							onpointerup={() => onGroupPointerUp(group)}
+							onpointercancel={cancelGroupLongPress}
+						/>
+					{/if}
+					{#if !group.collapsed && groupMenuName !== group.name}
+						{#each circlesInGroup(group) as circle (circleKey(circle))}
+							{@const door = doorRowActions(circle)}
+							<CircleRow
+								initial={circle.initial}
+								name={circle.name}
+								preview={circle.preview}
+								silent={silentHost(circle)}
+								time={circle.time}
+								badge={circle.unread || undefined}
+								dot={circle.responses}
+								color={circle.color}
+								card={pinMenuKey === menuKey(`g:${group.name}`, circle)}
+								actionLabel={door.actionLabel}
+								actionLabel2={door.actionLabel2}
+								onaction={() => void confirmPin(circle)}
+								onaction2={door.onaction2}
+								onclick={() => openCircle(circle)}
+								onmousedown={() => startLongPress(circle, `g:${group.name}`)}
+								onmouseup={cancelLongPress}
+								onmouseleave={cancelLongPress}
+								ontouchstart={() => startLongPress(circle, `g:${group.name}`)}
+								ontouchend={cancelLongPress}
+								ontouchcancel={cancelLongPress}
+							/>
 						{/each}
-					</ChipGroup>
-				{:else if groupMemberCount(group) > 0 && addableCirclesForGroup(group).length}
-					<TextButton class="m-8-16-0"
-						variant="link"
-						onclick={() => {
-							groupAddOpenName = group.name;
+						{#if showGroupChips(group)}
+							<ChipGroup class="m-10-16-0 p-0">
+								{#each addableCirclesForGroup(group) as circle (circleKey(circle))}
+									<Chip onclick={() => void addCircleToGroup(circle, group.name)}
+										>{circle.name}</Chip
+									>
+								{/each}
+							</ChipGroup>
+						{:else if groupMemberCount(group) > 0 && addableCirclesForGroup(group).length}
+							<TextButton
+								class="m-8-16-0"
+								variant="link"
+								onclick={() => {
+									groupAddOpenName = group.name;
+								}}
+							>
+								положить ещё
+							</TextButton>
+						{/if}
+					{/if}
+				{/each}
+				{#if creatingGroup}
+					<Input
+						class="m-8-16-0"
+						bind:value={newGroupName}
+						active
+						placeholder="Название"
+						onkeydown={(e) => {
+							if (e.key === 'Enter') void createGroup();
+							if (e.key === 'Escape') {
+								creatingGroup = false;
+								newGroupName = '';
+							}
 						}}
-					>
-						положить ещё
-					</TextButton>
+						onblur={() => void createGroup()}
+					/>
+				{/if}
+				{#if rest.length}
+					{#if pinned.length || groups.length}
+						<SectionLabel>Остальные</SectionLabel>
+					{/if}
+					{#each rest as circle (circleKey(circle))}
+						{@const door = doorRowActions(circle)}
+						<CircleRow
+							initial={circle.initial}
+							name={circle.name}
+							preview={circle.preview}
+							silent={silentHost(circle)}
+							time={circle.time}
+							badge={circle.unread || undefined}
+							dot={circle.responses}
+							color={circle.color}
+							card={pinMenuKey === menuKey('rest', circle)}
+							actionLabel={door.actionLabel}
+							actionLabel2={door.actionLabel2}
+							onaction={() => void confirmPin(circle)}
+							onaction2={door.onaction2}
+							onclick={() => openCircle(circle)}
+							onmousedown={() => startLongPress(circle, 'rest')}
+							onmouseup={cancelLongPress}
+							onmouseleave={cancelLongPress}
+							ontouchstart={() => startLongPress(circle, 'rest')}
+							ontouchend={cancelLongPress}
+							ontouchcancel={cancelLongPress}
+						/>
+					{/each}
 				{/if}
 			{/if}
-		{/each}
-		{#if creatingGroup}
-			<Input class="m-8-16-0"
-				bind:value={newGroupName}
-				active
-				placeholder="Название"
-				onkeydown={(e) => {
-					if (e.key === 'Enter') void createGroup();
-					if (e.key === 'Escape') {
-						creatingGroup = false;
-						newGroupName = '';
-					}
-				}}
-				onblur={() => void createGroup()}
-			/>
 		{/if}
-		{#if rest.length}
-			{#if pinned.length || groups.length}
-				<SectionLabel>Остальные</SectionLabel>
-			{/if}
-			{#each rest as circle (circleKey(circle))}
-				{@const door = doorRowActions(circle)}
-				<CircleRow
-					initial={circle.initial}
-					name={circle.name}
-					preview={circle.preview}
-					silent={silentHost(circle)}
-					time={circle.time}
-					badge={circle.unread || undefined}
-					dot={circle.responses}
-					color={circle.color}
-					card={pinMenuKey === menuKey('rest', circle)}
-					actionLabel={door.actionLabel}
-					actionLabel2={door.actionLabel2}
-					onaction={() => void confirmPin(circle)}
-					onaction2={door.onaction2}
-					onclick={() => openCircle(circle)}
-					onmousedown={() => startLongPress(circle, 'rest')}
-					onmouseup={cancelLongPress}
-					onmouseleave={cancelLongPress}
-					ontouchstart={() => startLongPress(circle, 'rest')}
-					ontouchend={cancelLongPress}
-					ontouchcancel={cancelLongPress}
-				/>
-			{/each}
-		{/if}
-		{/if}
-	{/if}
 	</div>
 </ShellLayout>

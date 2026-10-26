@@ -13,11 +13,7 @@
 	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import PlainLayout from '$lib/layouts/PlainLayout.svelte';
-	import {
-		authErrorHint,
-		fetchInstance,
-		sendAuthCode
-	} from '$lib/auth/auth';
+	import { authErrorHint, fetchInstance, sendAuthCode } from '$lib/auth/auth';
 	import {
 		claimInvite,
 		fetchInvitePeek,
@@ -120,10 +116,6 @@
 		}
 	}
 
-	function openMembers() {
-		goto(`/invite/${token}?members=1`);
-	}
-
 	function closeMembers() {
 		goto(`/invite/${token}`);
 	}
@@ -132,7 +124,8 @@
 {#if dead}
 	<PlainLayout shell app>
 		<EmptyState title="Приглашение не действует">
-			Ссылку отозвали, она истекла, по ней уже вошли или круг удалён. Попросите новую у того, кто вас звал.
+			Ссылку отозвали, она истекла, по ней уже вошли или круг удалён. Попросите новую у того, кто
+			вас звал.
 			{#snippet actions()}
 				<Button onclick={() => goto('/')}>На главную</Button>
 			{/snippet}
@@ -178,6 +171,5 @@
 		{#if error}
 			<Hint class="mt-12">{error}</Hint>
 		{/if}
-
 	</PlainLayout>
 {/if}

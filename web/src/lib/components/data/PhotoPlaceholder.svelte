@@ -38,9 +38,7 @@
 	<div class="pic {variant ?? ''} {className}" {style}>
 		{@render children?.()}
 		{#if photoCount !== undefined}
-			<span
-				class="cnt"
-				style={compactCount ? 'bottom:6px;right:6px;padding:3px 8px' : undefined}
+			<span class="cnt" style={compactCount ? 'bottom:6px;right:6px;padding:3px 8px' : undefined}
 				>{photoCount}</span
 			>
 		{/if}

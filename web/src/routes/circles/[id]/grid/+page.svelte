@@ -61,9 +61,11 @@
 			nextBefore = gridSnap.next_before;
 			if (olderItems.length) {
 				// Граница первой порции сдвинулась — перечитываем догруженное от неё.
-				const again = await refetchOlder(loadOlderGrid, gridSnap.next_before, olderItems.length).catch(
-					() => ({ items: olderItems, next: nextBefore })
-				);
+				const again = await refetchOlder(
+					loadOlderGrid,
+					gridSnap.next_before,
+					olderItems.length
+				).catch(() => ({ items: olderItems, next: nextBefore }));
 				olderItems = again.items;
 				nextBefore = again.next;
 			}
@@ -115,7 +117,10 @@
 
 	// Обновление жестом (3.5), как в ленте: тянешь экран от верха.
 	let listEl: HTMLDivElement | undefined = $state();
-	const ptr = new PullRefresh(() => listEl?.scrollTop ?? 0, () => loadData());
+	const ptr = new PullRefresh(
+		() => listEl?.scrollTop ?? 0,
+		() => loadData()
+	);
 	onDestroy(() => ptr.destroy());
 
 	onMount(() => {
@@ -163,38 +168,37 @@
 		ontouchmove={ptr.move}
 		ontouchend={ptr.end}
 	>
-	{#if loading}
-		<Loading />
-	{:else if error && !tiles.length}
-		<Hint class="gutter-24">{error}</Hint>
-	{:else}
-		{#if tiles.length}
-			<Hint class="mt-12">
-				{pluralPosts(tiles.length)} с фото и видео из {pluralPosts(totalPosts)}
-			</Hint>
+		{#if loading}
+			<Loading />
+		{:else if error && !tiles.length}
+			<Hint class="gutter-24">{error}</Hint>
+		{:else}
+			{#if tiles.length}
+				<Hint class="mt-12">
+					{pluralPosts(tiles.length)} с фото и видео из {pluralPosts(totalPosts)}
+				</Hint>
+			{/if}
+			{#each monthGroups as group (group.month)}
+				<MonthLabel>{group.label}</MonthLabel>
+				<PhotoGrid>
+					{#each group.items as tile (tile.postId)}
+						<MediaTile
+							variant="grid"
+							src={mediaUrls[tile.tileId]}
+							kind={tile.kind}
+							durationMs={tile.durationMs}
+							count={tile.photoCount}
+							onclick={() => openPost(tile.postId)}
+						/>
+					{/each}
+				</PhotoGrid>
+			{/each}
+			{#if loadingOlder}
+				<Hint class="gutter-24" centered>Загружаем записи постарше…</Hint>
+			{/if}
+			{#if !tiles.length}
+				<Hint class="gutter-24">Записей с фото и видео пока нет</Hint>
+			{/if}
 		{/if}
-		{#each monthGroups as group (group.month)}
-			<MonthLabel>{group.label}</MonthLabel>
-			<PhotoGrid>
-				{#each group.items as tile (tile.postId)}
-					<MediaTile
-						variant="grid"
-						src={mediaUrls[tile.tileId]}
-						kind={tile.kind}
-						durationMs={tile.durationMs}
-						count={tile.photoCount}
-						onclick={() => openPost(tile.postId)}
-					/>
-				{/each}
-			</PhotoGrid>
-		{/each}
-		{#if loadingOlder}
-			<Hint class="gutter-24" centered>Загружаем записи постарше…</Hint>
-		{/if}
-		{#if !tiles.length}
-			<Hint class="gutter-24">Записей с фото и видео пока нет</Hint>
-		{/if}
-	{/if}
 	</div>
 </CircleLayout>
-

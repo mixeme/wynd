@@ -9,7 +9,10 @@
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import type { CommentMediaItem } from '$lib/journal/present';
 
-	const photos: CommentMediaItem[] = ['a', 'b', 'c', 'd', 'e'].map((key) => ({ key, kind: 'photo' }));
+	const photos: CommentMediaItem[] = ['a', 'b', 'c', 'd', 'e'].map((key) => ({
+		key,
+		kind: 'photo'
+	}));
 	const voice: CommentMediaItem[] = [
 		{ key: 'v', kind: 'voice', durationMs: 48000, peaks: [10, 40, 80, 30, 60, 90, 20, 50, 70, 35] }
 	];
@@ -42,7 +45,12 @@
 			Были на даче, все живы.
 		{/snippet}
 	</PostCard>
-	<CommentPreview first="Аня: вот столько" time="сегодня, 14:22" more="ещё 1 комментарий" onclick={() => {}}>
+	<CommentPreview
+		first="Аня: вот столько"
+		time="сегодня, 14:22"
+		more="ещё 1 комментарий"
+		onclick={() => {}}
+	>
 		{#snippet media()}
 			<CommentMedia items={photos} onphoto={() => {}} />
 		{/snippet}

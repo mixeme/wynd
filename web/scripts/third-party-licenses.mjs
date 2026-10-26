@@ -58,7 +58,8 @@ function collectNpm() {
 	const found = new Map();
 	for (const [where, node] of Object.entries(lock.packages ?? {})) {
 		if (where === '' || node.dev || node.devOptional) continue;
-		const name = node.name ?? where.slice(where.lastIndexOf('node_modules/') + 'node_modules/'.length);
+		const name =
+			node.name ?? where.slice(where.lastIndexOf('node_modules/') + 'node_modules/'.length);
 		if (!found.has(name)) found.set(name, { version: node.version, where });
 	}
 

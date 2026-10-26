@@ -17,7 +17,11 @@
 	} = $props();
 </script>
 
-<div class="av {size === 'lg' ? 'av-lg ' : ''}{className}" style:background={src ? undefined : color} {style}>
+<div
+	class="av {size === 'lg' ? 'av-lg ' : ''}{className}"
+	style:background={src ? undefined : color}
+	{style}
+>
 	{#if src}
 		<img {src} alt="" />
 	{:else}

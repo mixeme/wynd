@@ -124,8 +124,7 @@
 	function measureReview() {
 		const el = reviewAudio;
 		if (!el) return;
-		const total =
-			el.duration && isFinite(el.duration) ? el.duration : recorder.elapsedMs / 1000;
+		const total = el.duration && isFinite(el.duration) ? el.duration : recorder.elapsedMs / 1000;
 		reviewProgress = total > 0 ? Math.min(1, el.currentTime / total) : 0;
 	}
 	function trackReview() {
@@ -289,140 +288,146 @@
 		</div>
 	{/if}
 	<div class="comp" class:with-strip={pending.length > 0}>
-	<!-- Нажатие мимо строки в рамке ставит курсор в поле. С клавиатуры
+		<!-- Нажатие мимо строки в рамке ставит курсор в поле. С клавиатуры
 	     поле достаётся Tab напрямую, отдельная роль рамке не нужна. -->
-	{#if menuOpen}
-		<div class="rec-menu">
-			{#if onvoice}
-				<button type="button" onclick={pickVoice}><Icon name="mic" />Голосовое</button>
-			{/if}
-			{#if onvideo}
-				<button type="button" onclick={pickVideo}><Icon name="video" />Видео</button>
-			{/if}
-		</div>
-	{/if}
-	{#if recorder.phase === 'recording'}
-		<div class="f rec">
-			<span class="rec-dot"></span>
-			<span class="rec-time" class:late={recorder.elapsedMs > VOICE_MAX_MS - 60_000}
-				>{formatDuration(recorder.elapsedMs)}</span
-			>
-			<VoiceWave peaks={recorder.recent} />
-			<TextButton onclick={() => recorder.discard()}>Отмена</TextButton>
-		</div>
-		<button type="button" class="send" aria-label="Стоп" onclick={() => void recorder.stop()}>
-			<Icon name="stop" style="color:#fff;width:19px;height:19px" />
-		</button>
-	{:else if recorder.phase === 'review'}
-		<div class="f rec">
-			<IconButton
-				name={reviewPlaying ? 'pause' : 'play'}
-				label={reviewPlaying ? 'Пауза' : 'Прослушать'}
-				onclick={toggleReview}
-			/>
-			<VoiceWave peaks={recorder.peaks} progress={reviewProgress} />
-			<span class="rec-time">{formatDuration(recorder.elapsedMs)}</span>
-			<IconButton name="trash" label="Удалить запись" onclick={() => recorder.discard()} />
-			<audio
-				bind:this={reviewAudio}
-				src={recorder.url}
-				preload="auto"
-				onplay={() => {
-					reviewPlaying = true;
-					cancelAnimationFrame(reviewFrame);
-					reviewFrame = requestAnimationFrame(trackReview);
-				}}
-				onpause={() => (reviewPlaying = false)}
-				ontimeupdate={measureReview}
-				onended={(e) => {
-					reviewPlaying = false;
-					cancelAnimationFrame(reviewFrame);
-					reviewProgress = 0;
-					// Запись браузера — без оглавления: перемотка в начало шла
-					// несколько секунд, и повторное прослушивание запаздывало.
-					// Открываем файл заново — он играет с начала сразу.
-					e.currentTarget.load();
-				}}
-			></audio>
-		</div>
-		<button type="button" class="send" aria-label="Отправить голосовое" onclick={sendVoice}>
-			<Icon name="send" style="color:#fff;width:19px;height:19px" />
-		</button>
-	{:else}
-	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-	<div class="f" class:ink={canSend} onclick={focusField}>
-		<TextArea
-			variant="comment"
-			rows={1}
-			placeholder={recorder.error || placeholder}
-			bind:el={bodyInput}
-			bind:value
-			oninput={onInput}
-			onkeyup={syncMentionPicker}
-		/>
-		{#if onphotos}
-			<IconButton
-				name="photo"
-				label="Фото"
-				stopPropagation
-				style="margin-left:auto"
-				onclick={() => photoPicker?.open()}
-			/>
+		{#if menuOpen}
+			<div class="rec-menu">
+				{#if onvoice}
+					<button type="button" onclick={pickVoice}><Icon name="mic" />Голосовое</button>
+				{/if}
+				{#if onvideo}
+					<button type="button" onclick={pickVideo}><Icon name="video" />Видео</button>
+				{/if}
+			</div>
 		{/if}
-		{#if onfiles}
-			<IconButton
-				name="file"
-				label="Файл"
-				stopPropagation
-				style="margin-left:{onphotos ? '6px' : 'auto'}"
-				onclick={() => filePicker?.open()}
-			/>
-		{/if}
-		{#if oncompose}
-			<IconButton
-				name="chevr"
-				label="Развернуть"
-				stopPropagation
-				style="margin-left:{onphotos || onfiles ? '2px' : 'auto'}"
-				onclick={() => oncompose?.()}
-			/>
-		{/if}
-	</div>
-	<!-- Вне рамки: нажатие, которым открывается выбор файлов, всплывало до неё,
+		{#if recorder.phase === 'recording'}
+			<div class="f rec">
+				<span class="rec-dot"></span>
+				<span class="rec-time" class:late={recorder.elapsedMs > VOICE_MAX_MS - 60_000}
+					>{formatDuration(recorder.elapsedMs)}</span
+				>
+				<VoiceWave peaks={recorder.recent} />
+				<TextButton onclick={() => recorder.discard()}>Отмена</TextButton>
+			</div>
+			<button type="button" class="send" aria-label="Стоп" onclick={() => void recorder.stop()}>
+				<Icon name="stop" style="color:#fff;width:19px;height:19px" />
+			</button>
+		{:else if recorder.phase === 'review'}
+			<div class="f rec">
+				<IconButton
+					name={reviewPlaying ? 'pause' : 'play'}
+					label={reviewPlaying ? 'Пауза' : 'Прослушать'}
+					onclick={toggleReview}
+				/>
+				<VoiceWave peaks={recorder.peaks} progress={reviewProgress} />
+				<span class="rec-time">{formatDuration(recorder.elapsedMs)}</span>
+				<IconButton name="trash" label="Удалить запись" onclick={() => recorder.discard()} />
+				<audio
+					bind:this={reviewAudio}
+					src={recorder.url}
+					preload="auto"
+					onplay={() => {
+						reviewPlaying = true;
+						cancelAnimationFrame(reviewFrame);
+						reviewFrame = requestAnimationFrame(trackReview);
+					}}
+					onpause={() => (reviewPlaying = false)}
+					ontimeupdate={measureReview}
+					onended={(e) => {
+						reviewPlaying = false;
+						cancelAnimationFrame(reviewFrame);
+						reviewProgress = 0;
+						// Запись браузера — без оглавления: перемотка в начало шла
+						// несколько секунд, и повторное прослушивание запаздывало.
+						// Открываем файл заново — он играет с начала сразу.
+						e.currentTarget.load();
+					}}
+				></audio>
+			</div>
+			<button type="button" class="send" aria-label="Отправить голосовое" onclick={sendVoice}>
+				<Icon name="send" style="color:#fff;width:19px;height:19px" />
+			</button>
+		{:else}
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div class="f" class:ink={canSend} onclick={focusField}>
+				<TextArea
+					variant="comment"
+					rows={1}
+					placeholder={recorder.error || placeholder}
+					bind:el={bodyInput}
+					bind:value
+					oninput={onInput}
+					onkeyup={syncMentionPicker}
+				/>
+				{#if onphotos}
+					<IconButton
+						name="photo"
+						label="Фото"
+						stopPropagation
+						style="margin-left:auto"
+						onclick={() => photoPicker?.open()}
+					/>
+				{/if}
+				{#if onfiles}
+					<IconButton
+						name="file"
+						label="Файл"
+						stopPropagation
+						style="margin-left:{onphotos ? '6px' : 'auto'}"
+						onclick={() => filePicker?.open()}
+					/>
+				{/if}
+				{#if oncompose}
+					<IconButton
+						name="chevr"
+						label="Развернуть"
+						stopPropagation
+						style="margin-left:{onphotos || onfiles ? '2px' : 'auto'}"
+						onclick={() => oncompose?.()}
+					/>
+				{/if}
+			</div>
+			<!-- Вне рамки: нажатие, которым открывается выбор файлов, всплывало до неё,
 	     курсор вставал в поле, и телефон сначала показывал клавиатуру. -->
-	{#if onphotos}
-		<FilePicker
-			bind:this={photoPicker}
-			accept={photoAccept}
-			multiple
-			onfiles={(files) => onphotos?.(files)}
-		/>
-	{/if}
-	{#if onfiles}
-		<FilePicker bind:this={filePicker} accept="*/*" multiple onfiles={(files) => onfiles?.(files)} />
-	{/if}
-	{#if recordable}
-		<button
-			type="button"
-			class="send"
-			aria-label="Запись"
-			aria-expanded={menuOpen ? 'true' : 'false'}
-			onclick={toggleMenu}
-		>
-			<Icon name="rec" style="color:#fff;width:19px;height:19px" />
-		</button>
-	{:else}
-		<button
-			type="button"
-			class="send"
-			aria-label="Отправить"
-			disabled={!canSend}
-			onclick={handleSendClick}
-		>
-			<Icon name="send" style="color:#fff;width:19px;height:19px" />
-		</button>
-	{/if}
-	{/if}
+			{#if onphotos}
+				<FilePicker
+					bind:this={photoPicker}
+					accept={photoAccept}
+					multiple
+					onfiles={(files) => onphotos?.(files)}
+				/>
+			{/if}
+			{#if onfiles}
+				<FilePicker
+					bind:this={filePicker}
+					accept="*/*"
+					multiple
+					onfiles={(files) => onfiles?.(files)}
+				/>
+			{/if}
+			{#if recordable}
+				<button
+					type="button"
+					class="send"
+					aria-label="Запись"
+					aria-expanded={menuOpen ? 'true' : 'false'}
+					onclick={toggleMenu}
+				>
+					<Icon name="rec" style="color:#fff;width:19px;height:19px" />
+				</button>
+			{:else}
+				<button
+					type="button"
+					class="send"
+					aria-label="Отправить"
+					disabled={!canSend}
+					onclick={handleSendClick}
+				>
+					<Icon name="send" style="color:#fff;width:19px;height:19px" />
+				</button>
+			{/if}
+		{/if}
 	</div>
 </div>
 

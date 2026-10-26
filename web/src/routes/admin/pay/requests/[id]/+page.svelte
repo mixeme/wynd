@@ -14,7 +14,11 @@
 	import PayTermPicker from '$ui/admin/PayTermPicker.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { formatPayDateTime } from '$lib/pay/pay';
-	import { payExtendHint, parseCustomDays, subscriptionAdminSubtitle } from '$lib/admin/pay-subscription';
+	import {
+		payExtendHint,
+		parseCustomDays,
+		subscriptionAdminSubtitle
+	} from '$lib/admin/pay-subscription';
 	import {
 		approvePayRequest,
 		fetchPayRequest,
@@ -48,9 +52,7 @@
 		return days;
 	});
 
-	const extendHint = $derived(
-		payExtendHint(request?.subscription_expires_at ?? null)
-	);
+	const extendHint = $derived(payExtendHint(request?.subscription_expires_at ?? null));
 
 	const statusSubtitle = $derived(
 		request ? subscriptionAdminSubtitle(request.subscription_expires_at) : ''
@@ -144,7 +146,12 @@
 			<div class="cols">
 				<div>
 					{#if thumb}
-						<button type="button" class="shot-btn" aria-label="Открыть снимок" onclick={() => (fullShot = true)}>
+						<button
+							type="button"
+							class="shot-btn"
+							aria-label="Открыть снимок"
+							onclick={() => (fullShot = true)}
+						>
 							<img src={thumb} alt="" class="shot" />
 						</button>
 					{/if}
@@ -169,8 +176,11 @@
 					</div>
 					<div class="actions">
 						<Button class="btn-flush" disabled={acting} onclick={() => void approve()}>Дать</Button>
-						<Button class="btn-flush" variant="ghost" disabled={acting} onclick={() => void reject()}
-							>Отказать</Button
+						<Button
+							class="btn-flush"
+							variant="ghost"
+							disabled={acting}
+							onclick={() => void reject()}>Отказать</Button
 						>
 					</div>
 				</div>

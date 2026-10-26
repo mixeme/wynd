@@ -12,13 +12,15 @@
 	import ServerRow from '$ui/data/ServerRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { loadSourceUrl, sourceUrl } from '$lib/instance/source.svelte';
-	import { NEW_CIRCLE_CTX, type NewCircleContext, type NewCircleEditWindow } from '$lib/circles/new-circle';
+	import {
+		NEW_CIRCLE_CTX,
+		type NewCircleContext,
+		type NewCircleEditWindow
+	} from '$lib/circles/new-circle';
 
 	const form = getContext<NewCircleContext>(NEW_CIRCLE_CTX);
 
-	const selectedSession = $derived(
-		form.sessions.find((s) => s.origin === form.selectedOrigin)
-	);
+	const selectedSession = $derived(form.sessions.find((s) => s.origin === form.selectedOrigin));
 
 	// Ссылка «запустите свой» ведёт на исходники выбранного сервера (LIC-2).
 	$effect(() => {
@@ -57,7 +59,8 @@
 <FormLayout color={form.color} app title="Новый круг" onback={() => goUp('/circles')}>
 	<Label>Сервер</Label>
 	{#if selectedSession}
-		<ServerRow class="pad-2-16-10"
+		<ServerRow
+			class="pad-2-16-10"
 			name={selectedSession.name}
 			subtitle={form.serverSubtitle(selectedSession)}
 			variant="select"

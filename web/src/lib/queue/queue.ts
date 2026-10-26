@@ -122,7 +122,9 @@ export function subscribePostSent(listener: PostSentListener): () => void {
 
 async function announcePostSent(origin: string, circleId: string): Promise<void> {
 	if (!postSentListeners.size) return;
-	const all = Promise.all([...postSentListeners].map((l) => l(origin, circleId).catch(() => undefined)));
+	const all = Promise.all(
+		[...postSentListeners].map((l) => l(origin, circleId).catch(() => undefined))
+	);
 	await Promise.race([all, new Promise((resolve) => setTimeout(resolve, POST_SENT_WAIT_MS))]);
 }
 
@@ -166,7 +168,8 @@ export function queuedTimeLabel(
 ): string {
 	// Места нет (C42, 3.12): запись ждёт и уйдёт сама, когда место появится.
 	if (state !== 'uploading' && error === QUOTA_CIRCLE) return 'в очереди · в круге кончилось место';
-	if (state !== 'uploading' && error === QUOTA_SERVER) return 'в очереди · на сервере кончилось место';
+	if (state !== 'uploading' && error === QUOTA_SERVER)
+		return 'в очереди · на сервере кончилось место';
 	if (state !== 'uploading') return 'в очереди';
 	if (fraction === undefined) return 'отправляется';
 	return `отправляется · ${Math.min(100, Math.floor(fraction * 100))}%`;
@@ -275,7 +278,7 @@ async function uploadItemFiles(
 }
 
 async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
-	const { origin, circle_id: circleId, type, payload, files } = item;
+	const { origin, circle_id: circleId, type, payload } = item;
 
 	if (type === 'post') {
 		const postPayload = payload as PostQueuePayload;
@@ -361,39 +364,29 @@ async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 				audio_peaks: meta?.audio_peaks
 			};
 		});
-		await apiJson(
-			origin,
-			`/circles/${circleId}/posts/${commentPayload.post_id}/comments`,
-			{
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ body: commentPayload.body, client_id: item.client_id, media })
-			}
-		);
+		await apiJson(origin, `/circles/${circleId}/posts/${commentPayload.post_id}/comments`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ body: commentPayload.body, client_id: item.client_id, media })
+		});
 		return;
 	}
 
 	if (type === 'reaction') {
 		const reactionPayload = payload as ReactionQueuePayload;
-		await apiJson(
-			origin,
-			`/circles/${circleId}/posts/${reactionPayload.post_id}/reactions`,
-			{
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ emoji: reactionPayload.emoji })
-			}
-		);
+		await apiJson(origin, `/circles/${circleId}/posts/${reactionPayload.post_id}/reactions`, {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ emoji: reactionPayload.emoji })
+		});
 		return;
 	}
 
 	if (type === 'reaction_remove') {
 		const reactionPayload = payload as ReactionQueuePayload;
-		await apiFetch(
-			origin,
-			`/circles/${circleId}/posts/${reactionPayload.post_id}/reactions`,
-			{ method: 'DELETE' }
-		);
+		await apiFetch(origin, `/circles/${circleId}/posts/${reactionPayload.post_id}/reactions`, {
+			method: 'DELETE'
+		});
 	}
 }
 
@@ -700,10 +693,7 @@ export function queuedMediaViews(
 	});
 }
 
-export async function listQueuedPosts(
-	origin: string,
-	circleId: string
-): Promise<QueuedPostView[]> {
+export async function listQueuedPosts(origin: string, circleId: string): Promise<QueuedPostView[]> {
 	const items = await listQueueForCircle(origin, circleId);
 	return items
 		.filter((item) => item.type === 'post')

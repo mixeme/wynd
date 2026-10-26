@@ -29,12 +29,20 @@ const shot = new Date(Date.UTC(2026, 8, 28, 10, 30, 0));
 
 describe('дата съёмки ролика из заголовка MP4 (A14)', () => {
 	it('moov в начале, mvhd первой версии 0', async () => {
-		const f = file(box('ftyp', new Uint8Array(8)), box('moov', mvhd(shot, 0)), box('mdat', new Uint8Array(100)));
+		const f = file(
+			box('ftyp', new Uint8Array(8)),
+			box('moov', mvhd(shot, 0)),
+			box('mdat', new Uint8Array(100))
+		);
 		expect((await mp4CreationTime(f))?.toISOString()).toBe(shot.toISOString());
 	});
 
 	it('moov после данных ролика и mvhd версии 1', async () => {
-		const f = file(box('ftyp', new Uint8Array(8)), box('mdat', new Uint8Array(5000)), box('moov', mvhd(shot, 1)));
+		const f = file(
+			box('ftyp', new Uint8Array(8)),
+			box('mdat', new Uint8Array(5000)),
+			box('moov', mvhd(shot, 1))
+		);
 		expect((await mp4CreationTime(f))?.toISOString()).toBe(shot.toISOString());
 	});
 
@@ -54,6 +62,8 @@ describe('дата съёмки ролика из заголовка MP4 (A14)',
 
 	it('дату из будущего не берёт', async () => {
 		const later = new Date(Date.UTC(2030, 0, 1));
-		expect(await readVideoDate(file(box('moov', mvhd(later, 0))), new Date(Date.UTC(2026, 9, 23)))).toEqual({});
+		expect(
+			await readVideoDate(file(box('moov', mvhd(later, 0))), new Date(Date.UTC(2026, 9, 23)))
+		).toEqual({});
 	});
 });

@@ -155,7 +155,9 @@ export async function getMediaUrl(
 	const res = await apiFetch(origin, `/blobs/${blobId}`, { signal: options.signal });
 	const mime = res.headers.get('Content-Type') || 'application/octet-stream';
 	// Blob, а не arrayBuffer(): браузер держит его вне кучи JS.
-	const blob = options.onProgress ? await readWithProgress(res, options.onProgress) : await res.blob();
+	const blob = options.onProgress
+		? await readWithProgress(res, options.onProgress)
+		: await res.blob();
 	const typed = blob.type ? blob : new Blob([blob], { type: mime });
 	if (typed.size <= idbLimit) {
 		await putMedia(key, { buffer: await typed.arrayBuffer(), mime });

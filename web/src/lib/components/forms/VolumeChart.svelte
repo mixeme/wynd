@@ -194,44 +194,37 @@
 </div>
 
 {#snippet plot()}
+	{#if volume.length}
+		<rect class="shade" x={packLeft} y={barAreaTop} width={shadedWidth} height={barAreaHeight} />
+		{#each bars as bar (bar.x)}
+			<rect
+				x={bar.x}
+				y={bar.y}
+				width={bar.w}
+				height={bar.h}
+				rx="2"
+				fill={bar.beforeCutoff ? 'var(--c)' : '#C9C0B2'}
+			/>
+		{/each}
+	{/if}
+	<path d="M0 {baselineY} H{chartWidth}" stroke="#DFD8CD" stroke-width="1" fill="none" />
+	{#if showCutoff}
+		<path d={cutoffLine} stroke="var(--c)" stroke-width="1.5" fill="none" />
 		{#if volume.length}
-			<rect class="shade" x={packLeft} y={barAreaTop} width={shadedWidth} height={barAreaHeight} />
-			{#each bars as bar (bar.x)}
-				<rect
-					x={bar.x}
-					y={bar.y}
-					width={bar.w}
-					height={bar.h}
-					rx="2"
-					fill={bar.beforeCutoff ? 'var(--c)' : '#C9C0B2'}
-				/>
-			{/each}
+			<rect x={cutoffX - 14} y="8" width="28" height="106" fill="transparent" class="handle" />
 		{/if}
-		<path d="M0 {baselineY} H{chartWidth}" stroke="#DFD8CD" stroke-width="1" fill="none" />
-		{#if showCutoff}
-			<path d={cutoffLine} stroke="var(--c)" stroke-width="1.5" fill="none" />
-			{#if volume.length}
-				<rect
-					x={cutoffX - 14}
-					y="8"
-					width="28"
-					height="106"
-					fill="transparent"
-					class="handle"
-				/>
-			{/if}
-			{#if cutoffLabel}
-				<text x={cutoffX} y="126" text-anchor="middle" font-size="10" fill="var(--c)"
-					>{cutoffLabel}</text
-				>
-			{/if}
+		{#if cutoffLabel}
+			<text x={cutoffX} y="126" text-anchor="middle" font-size="10" fill="var(--c)"
+				>{cutoffLabel}</text
+			>
 		{/if}
-		{#if showStart}
-			<text x={packLeft} y="126" font-size="10" fill="#A8A096">{yearStart}</text>
-		{/if}
-		{#if showEnd}
-			<text x={packRight} y="126" font-size="10" fill="#A8A096" text-anchor="end">{yearEnd}</text>
-		{/if}
+	{/if}
+	{#if showStart}
+		<text x={packLeft} y="126" font-size="10" fill="#A8A096">{yearStart}</text>
+	{/if}
+	{#if showEnd}
+		<text x={packRight} y="126" font-size="10" fill="#A8A096" text-anchor="end">{yearEnd}</text>
+	{/if}
 {/snippet}
 
 <style>
@@ -256,7 +249,7 @@
 	/* --ct светлый и в тёмной теме: зона «уйдёт в архив» горела светлой
 	   полосой. Тот же тёмный тон, что у реакций и подсветки из поиска. */
 	:global(.ph.dark) .shade {
-		fill: #3A2E29;
+		fill: #3a2e29;
 	}
 	.chart svg:focus-visible {
 		outline: 2px solid var(--c);

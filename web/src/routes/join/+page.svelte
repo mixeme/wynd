@@ -138,7 +138,6 @@
 		openLinkText(linkText);
 	}
 
-
 	async function onLinkImageSelected(file: File) {
 		error = '';
 		try {
@@ -197,105 +196,119 @@
 </script>
 
 {#if adding}
-<FormLayout shell app title="Добавить сервер" onback={() => goUp(backHref)}>
-	<Label>Адрес сервера</Label>
-	<Input
-		active
-		mono
-		small
-		type="text"
-		spellcheck="false"
-		bind:value={address}
-		onchange={checkServer}
-		onblur={checkServer}
-		onpaste={onAddressPaste}
-	/>
-	{#if checking}
-		<Hint class="mt-8">Проверяем сервер…</Hint>
-	{:else if instance}
-		<ServerRow
-			name={instance.name}
-			subtitle={blocked ? blockedSubtitle : openSubtitle}
-			variant={blocked ? 'warn' : 'ok'}
-			card
-			gdpr={instance.allow_name_erasure}
+	<FormLayout shell app title="Добавить сервер" onback={() => goUp(backHref)}>
+		<Label>Адрес сервера</Label>
+		<Input
+			active
+			mono
+			small
+			type="text"
+			spellcheck="false"
+			bind:value={address}
+			onchange={checkServer}
+			onblur={checkServer}
+			onpaste={onAddressPaste}
 		/>
-	{/if}
-	{#if blocked}
-		<Hint class="mt-14">
-			Сервер новых не принимает. Если вы уже на этом сервере — войдите своей почтой.
-		</Hint>
-		<Label class="mt-16">Почта</Label>
-		<Input active type="email" autocomplete="email" bind:value={email} />
-		<Button {loading} onclick={onSubmit}>Войти</Button>
-	{:else}
-		<Label class="mt-16">Почта</Label>
-		<Input active type="email" autocomplete="email" bind:value={email} />
-		<Hint>Пришлём код для входа. Пароля нет.</Hint>
-		<Button {loading} disabled={!instance} onclick={onSubmit}>Получить код</Button>
-		<Hint>
-			Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или
-			<a class="under" href={sourceUrl(origin)}>запустите свой</a>.
-		</Hint>
-	{/if}
-	<Label class="mt-22">Есть приглашение</Label>
-	<Input
-		active
-		mono
-		small
-		type="text"
-		spellcheck="false"
-		placeholder="вставьте ссылку"
-		bind:value={linkText}
-		onpaste={onLinkPaste}
-		onchange={() => openLinkText(linkText)}
-	/>
-	{#if blocked}
-		<Hint>
-			Ссылку в круг даёт любой его участник, на сервер — тот, кто его держит.
-		</Hint>
-	{/if}
-	<!-- Камерой — как на «Приглашении» (2.8); фото — если код прислали картинкой. -->
-	<Button class="mt-14" variant="ghost" onclick={() => goto('/invite/scan?from=join')}
-		>Сканировать QR-код</Button
-	>
-	<Button variant="ghost" onclick={() => linkPicker?.open()}>Фото с QR-кодом</Button>
-	{#if error}
-		<Hint class="mt-12">{error}</Hint>
-	{/if}
-</FormLayout>
-{:else}
-<FormLayout shell app title="Без приглашения" onback={() => goUp(backHref)}>
-	{#if !ready}
-		<!-- режим ещё не известен: пусто, а не форма, которая сменится -->
-	{:else if checking}
-		<Hint>Проверяем сервер…</Hint>
-	{:else if instance && blocked}
-		<ServerRow name={instance.name} subtitle={blockedSubtitle} variant="warn" card gdpr={instance.allow_name_erasure} />
-		<Hint class="mt-14">
-			Сервер новых не принимает — нужна ссылка-приглашение. Если вы уже на этом сервере,
-			вернитесь и войдите почтой.
-		</Hint>
-		<Button variant="ghost" onclick={() => goto('/invite?from=login')}
-			>У меня есть приглашение</Button
-		>
-	{:else}
-		{#if instance}
-			<ServerRow name={instance.name} subtitle={openSubtitle} variant="ok" card gdpr={instance.allow_name_erasure} />
+		{#if checking}
+			<Hint class="mt-8">Проверяем сервер…</Hint>
+		{:else if instance}
+			<ServerRow
+				name={instance.name}
+				subtitle={blocked ? blockedSubtitle : openSubtitle}
+				variant={blocked ? 'warn' : 'ok'}
+				card
+				gdpr={instance.allow_name_erasure}
+			/>
 		{/if}
-		<Label class="mt-16">Почта</Label>
-		<Input active type="email" autocomplete="email" bind:value={email} />
-		<Hint>Пришлём код для входа. Пароля нет.</Hint>
-		<Button {loading} disabled={!instance} onclick={onSubmit}>Получить код</Button>
-		<Hint>
-			Сервер хранит данные незашифрованными. Присоединение к этому серверу означает, что вы
-			доверяете его администратору.
-		</Hint>
-	{/if}
-	{#if error}
-		<Hint class="mt-12">{error}</Hint>
-	{/if}
-</FormLayout>
+		{#if blocked}
+			<Hint class="mt-14">
+				Сервер новых не принимает. Если вы уже на этом сервере — войдите своей почтой.
+			</Hint>
+			<Label class="mt-16">Почта</Label>
+			<Input active type="email" autocomplete="email" bind:value={email} />
+			<Button {loading} onclick={onSubmit}>Войти</Button>
+		{:else}
+			<Label class="mt-16">Почта</Label>
+			<Input active type="email" autocomplete="email" bind:value={email} />
+			<Hint>Пришлём код для входа. Пароля нет.</Hint>
+			<Button {loading} disabled={!instance} onclick={onSubmit}>Получить код</Button>
+			<Hint>
+				Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или
+				<a class="under" href={sourceUrl(origin)}>запустите свой</a>.
+			</Hint>
+		{/if}
+		<Label class="mt-22">Есть приглашение</Label>
+		<Input
+			active
+			mono
+			small
+			type="text"
+			spellcheck="false"
+			placeholder="вставьте ссылку"
+			bind:value={linkText}
+			onpaste={onLinkPaste}
+			onchange={() => openLinkText(linkText)}
+		/>
+		{#if blocked}
+			<Hint>Ссылку в круг даёт любой его участник, на сервер — тот, кто его держит.</Hint>
+		{/if}
+		<!-- Камерой — как на «Приглашении» (2.8); фото — если код прислали картинкой. -->
+		<Button class="mt-14" variant="ghost" onclick={() => goto('/invite/scan?from=join')}
+			>Сканировать QR-код</Button
+		>
+		<Button variant="ghost" onclick={() => linkPicker?.open()}>Фото с QR-кодом</Button>
+		{#if error}
+			<Hint class="mt-12">{error}</Hint>
+		{/if}
+	</FormLayout>
+{:else}
+	<FormLayout shell app title="Без приглашения" onback={() => goUp(backHref)}>
+		{#if !ready}
+			<!-- режим ещё не известен: пусто, а не форма, которая сменится -->
+		{:else if checking}
+			<Hint>Проверяем сервер…</Hint>
+		{:else if instance && blocked}
+			<ServerRow
+				name={instance.name}
+				subtitle={blockedSubtitle}
+				variant="warn"
+				card
+				gdpr={instance.allow_name_erasure}
+			/>
+			<Hint class="mt-14">
+				Сервер новых не принимает — нужна ссылка-приглашение. Если вы уже на этом сервере, вернитесь
+				и войдите почтой.
+			</Hint>
+			<Button variant="ghost" onclick={() => goto('/invite?from=login')}
+				>У меня есть приглашение</Button
+			>
+		{:else}
+			{#if instance}
+				<ServerRow
+					name={instance.name}
+					subtitle={openSubtitle}
+					variant="ok"
+					card
+					gdpr={instance.allow_name_erasure}
+				/>
+			{/if}
+			<Label class="mt-16">Почта</Label>
+			<Input active type="email" autocomplete="email" bind:value={email} />
+			<Hint>Пришлём код для входа. Пароля нет.</Hint>
+			<Button {loading} disabled={!instance} onclick={onSubmit}>Получить код</Button>
+			<Hint>
+				Сервер хранит данные незашифрованными. Присоединение к этому серверу означает, что вы
+				доверяете его администратору.
+			</Hint>
+		{/if}
+		{#if error}
+			<Hint class="mt-12">{error}</Hint>
+		{/if}
+	</FormLayout>
 {/if}
 
-<FilePicker bind:this={linkPicker} accept="image/*" onfiles={([file]) => void onLinkImageSelected(file)} />
+<FilePicker
+	bind:this={linkPicker}
+	accept="image/*"
+	onfiles={([file]) => void onLinkImageSelected(file)}
+/>

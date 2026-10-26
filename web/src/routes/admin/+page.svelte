@@ -400,7 +400,9 @@
 		{:else}
 			<StackBar
 				threshold="90%"
-				segments={barSegments.length ? barSegments : [{ width: `${usedPct}%`, color: 'var(--ink)' }]}
+				segments={barSegments.length
+					? barSegments
+					: [{ width: `${usedPct}%`, color: 'var(--ink)' }]}
 			/>
 			<div class="note {archivesBytes > 0 ? 'm-10-0-6' : 'm-10-0-22'}">
 				{formatBytes(used)} из {formatBytes(quota)} · свободно {formatBytes(free)}
@@ -466,9 +468,7 @@
 							<Hint class="mt-8">{defaultCustomHint}</Hint>
 						{/if}
 					{/if}
-					<div class="fine mt-8">
-						Для новых кругов и тех, у кого в таблице не «своя».
-					</div>
+					<div class="fine mt-8">Для новых кругов и тех, у кого в таблице не «своя».</div>
 				</div>
 			</div>
 			{#if circles.length}
@@ -509,9 +509,7 @@
 										<span class="faint">без квоты</span>
 									{/if}
 								</td>
-								<td class="chev"
-									><Icon name="chevr" size="sm" /></td
-								>
+								<td class="chev"><Icon name="chevr" size="sm" /></td>
 							</tr>
 						{/each}
 					</tbody>
@@ -547,8 +545,8 @@
 						<Hint class="mt-8">{circleQuotaHint}</Hint>
 					{/if}
 					<div class="fine mt-10">
-						Занято {formatBytes(selectedCircle.media_bytes)}. Если поставить меньше, писать в круг станет
-						нельзя, пока владелец не освободит место.
+						Занято {formatBytes(selectedCircle.media_bytes)}. Если поставить меньше, писать в круг
+						станет нельзя, пока владелец не освободит место.
 					</div>
 				</Panel>
 			{/if}
@@ -585,7 +583,12 @@
 				>
 					{#snippet actions()}
 						<span class="flex-mid gap-10">
-							<Input admin class="w88" bind:value={retentionInput} onchange={() => void saveRetention()} />
+							<Input
+								admin
+								class="w88"
+								bind:value={retentionInput}
+								onchange={() => void saveRetention()}
+							/>
 							<span class="note">ч</span>
 						</span>
 					{/snippet}

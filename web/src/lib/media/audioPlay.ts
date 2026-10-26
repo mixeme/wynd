@@ -49,12 +49,17 @@ export function audioTrack(key: string): AudioTrack | undefined {
 
 /** Текущий звук для полосы плеера; нет — полосы нет. */
 export function currentAudio():
-	| { key: string; origin: string; blobId: string; meta?: AudioMeta; track: AudioTrack }
-	| undefined {
+	{ key: string; origin: string; blobId: string; meta?: AudioMeta; track: AudioTrack } | undefined {
 	if (!currentKey) return undefined;
 	const track = tracks.get(currentKey);
 	if (!track?.started) return undefined;
-	return { key: currentKey, origin: currentOrigin, blobId: currentBlobId, meta: currentMeta, track };
+	return {
+		key: currentKey,
+		origin: currentOrigin,
+		blobId: currentBlobId,
+		meta: currentMeta,
+		track
+	};
 }
 
 export function subscribeAudio(listener: () => void): () => void {

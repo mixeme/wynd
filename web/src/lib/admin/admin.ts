@@ -151,9 +151,7 @@ export async function setStorageQuotaDiskPercent(percent: number): Promise<void>
 	});
 }
 
-export async function setDefaultCircleQuota(
-	defaultCircleQuotaBytes: number | null
-): Promise<void> {
+export async function setDefaultCircleQuota(defaultCircleQuotaBytes: number | null): Promise<void> {
 	await adminJson('/admin/storage/default_quota', {
 		method: 'PUT',
 		headers: { 'Content-Type': 'application/json' },

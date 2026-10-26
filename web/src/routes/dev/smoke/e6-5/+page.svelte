@@ -42,13 +42,7 @@
 		faded
 		style="padding-top:2px"
 	/>
-	<MemberRow
-		initial="Л"
-		name="Люся"
-		subtitle="без доступа · до 14 января"
-		color="#3D494F"
-		faded
-	/>
+	<MemberRow initial="Л" name="Люся" subtitle="без доступа · до 14 января" color="#3D494F" faded />
 	<Hint style="margin-top:16px">
 		Записи вышедших остаются в круге и подписаны тем именем, что было на момент написания.
 	</Hint>

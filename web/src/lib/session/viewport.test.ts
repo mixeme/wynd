@@ -64,7 +64,9 @@ describe('высота окна по видимой области', () => {
 		const reveal = vi.fn();
 		input.scrollIntoView = reveal;
 		const place = (top: number) =>
-			vi.spyOn(input, 'getBoundingClientRect').mockReturnValue({ top, bottom: top + 44 } as DOMRect);
+			vi
+				.spyOn(input, 'getBoundingClientRect')
+				.mockReturnValue({ top, bottom: top + 44 } as DOMRect);
 
 		place(600);
 		vv.height = 480;
@@ -231,7 +233,9 @@ describe('высота окна по видимой области', () => {
 	// iPhone: Safari везёт страницу к полю, пока выезжает клавиатура, — шапка
 	// съезжает. Фокус ставим сами, без подвоза.
 	it('на iPhone касание поля ставит фокус без подвоза страницы', () => {
-		vi.stubGlobal('navigator', { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X)' });
+		vi.stubGlobal('navigator', {
+			userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X)'
+		});
 		fakeViewport({ height: 800 });
 		const stop = initViewportHeight();
 		const input = document.createElement('textarea');
@@ -241,7 +245,10 @@ describe('высота окна по видимой области', () => {
 		const touch = (el: Element, type: string, x: number, y: number) => {
 			const event = new Event(type, { bubbles: true, cancelable: true });
 			const point = { clientX: x, clientY: y };
-			Object.assign(event, { touches: type === 'touchstart' ? [point] : [], changedTouches: [point] });
+			Object.assign(event, {
+				touches: type === 'touchstart' ? [point] : [],
+				changedTouches: [point]
+			});
 			el.dispatchEvent(event);
 			return event;
 		};

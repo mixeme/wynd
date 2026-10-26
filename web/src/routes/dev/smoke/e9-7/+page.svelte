@@ -35,28 +35,21 @@
 			</thead>
 			<tbody>
 				<tr>
-					<td class="n"
-						><span class="dot" style="background:var(--terracotta)"></span>Семья</td
-					>
+					<td class="n"><span class="dot" style="background:var(--terracotta)"></span>Семья</td>
 					<td>340</td>
 					<td>8,4 ГБ</td>
 					<td
-						><span class="qbar"><u style="width:84%;background:var(--terracotta)"></u></span>10
-						ГБ</td
+						><span class="qbar"><u style="width:84%;background:var(--terracotta)"></u></span>10 ГБ</td
 					>
 				</tr>
 				<tr>
-					<td class="n"
-						><span class="dot" style="background:var(--olive)"></span>Поход на Алтай</td
-					>
+					<td class="n"><span class="dot" style="background:var(--olive)"></span>Поход на Алтай</td>
 					<td>128</td>
 					<td>5,1 ГБ</td>
 					<td style="color:var(--faint)">без квоты</td>
 				</tr>
 				<tr>
-					<td class="n"
-						><span class="dot" style="background:var(--indigo)"></span>Универ</td
-					>
+					<td class="n"><span class="dot" style="background:var(--indigo)"></span>Универ</td>
 					<td>96</td>
 					<td>2,6 ГБ</td>
 					<td style="color:var(--faint)">без квоты</td>
@@ -65,15 +58,10 @@
 					<td class="n"><span class="dot" style="background:var(--ochre)"></span>Дача</td>
 					<td>210</td>
 					<td>1,9 ГБ</td>
-					<td
-						><span class="qbar"><u style="width:38%;background:var(--ochre)"></u></span>5
-						ГБ</td
-					>
+					<td><span class="qbar"><u style="width:38%;background:var(--ochre)"></u></span>5 ГБ</td>
 				</tr>
 				<tr>
-					<td class="n"
-						><span class="dot" style="background:var(--slate)"></span>Соседи</td
-					>
+					<td class="n"><span class="dot" style="background:var(--slate)"></span>Соседи</td>
 					<td>34</td>
 					<td>0,4 ГБ</td>
 					<td style="color:var(--faint)">без квоты</td>

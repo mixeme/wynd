@@ -62,9 +62,30 @@ describe('tile of a video', () => {
 describe('present', () => {
 	it('groups reactions by emoji preserving first-seen order', () => {
 		const reactions: Reaction[] = [
-			{ id: 'r1', post_id: 'p', emoji: 'heart', author_name: 'Аня', identity_id: 'a', created_at: at },
-			{ id: 'r2', post_id: 'p', emoji: 'laugh', author_name: 'Боб', identity_id: 'b', created_at: at },
-			{ id: 'r3', post_id: 'p', emoji: 'heart', author_name: 'Вера', identity_id: 'c', created_at: at }
+			{
+				id: 'r1',
+				post_id: 'p',
+				emoji: 'heart',
+				author_name: 'Аня',
+				identity_id: 'a',
+				created_at: at
+			},
+			{
+				id: 'r2',
+				post_id: 'p',
+				emoji: 'laugh',
+				author_name: 'Боб',
+				identity_id: 'b',
+				created_at: at
+			},
+			{
+				id: 'r3',
+				post_id: 'p',
+				emoji: 'heart',
+				author_name: 'Вера',
+				identity_id: 'c',
+				created_at: at
+			}
 		];
 		expect(groupReactions(reactions)).toEqual([
 			{ emoji: 'heart', names: 'Аня, Вера' },
@@ -82,9 +103,30 @@ describe('present', () => {
 
 	it('builds comment preview with more count', () => {
 		const comments: Comment[] = [
-			{ id: 'c1', post_id: 'p', author_name: 'Аня', body: 'привет', identity_id: 'a', created_at: at },
-			{ id: 'c2', post_id: 'p', author_name: 'Боб', body: 'ответ', identity_id: 'b', created_at: '2026-01-01T00:01:00Z' },
-			{ id: 'c3', post_id: 'p', author_name: 'Вера', body: 'ещё', identity_id: 'c', created_at: '2026-01-01T00:02:00Z' }
+			{
+				id: 'c1',
+				post_id: 'p',
+				author_name: 'Аня',
+				body: 'привет',
+				identity_id: 'a',
+				created_at: at
+			},
+			{
+				id: 'c2',
+				post_id: 'p',
+				author_name: 'Боб',
+				body: 'ответ',
+				identity_id: 'b',
+				created_at: '2026-01-01T00:01:00Z'
+			},
+			{
+				id: 'c3',
+				post_id: 'p',
+				author_name: 'Вера',
+				body: 'ещё',
+				identity_id: 'c',
+				created_at: '2026-01-01T00:02:00Z'
+			}
 		];
 		expect(commentPreview(comments)).toEqual({
 			first: 'Вера: ещё',
@@ -95,8 +137,15 @@ describe('present', () => {
 		expect(commentPreview([])).toEqual({ more: 0 });
 		// Реплика без слов (4.22): имя, а вложение превью покажет само.
 		const voice: Comment = {
-			id: 'c4', post_id: 'p', author_name: 'Кот', body: '', identity_id: 'k', created_at: at,
-			media: [{ blob_id: 'v', kind: 'attachment', is_cover: false, voice: true, audio_duration_ms: 48000 }]
+			id: 'c4',
+			post_id: 'p',
+			author_name: 'Кот',
+			body: '',
+			identity_id: 'k',
+			created_at: at,
+			media: [
+				{ blob_id: 'v', kind: 'attachment', is_cover: false, voice: true, audio_duration_ms: 48000 }
+			]
 		};
 		expect(commentPreview([voice]).first).toBe('Кот:');
 	});
@@ -105,7 +154,14 @@ describe('present', () => {
 		const items = commentMediaItems(
 			[
 				{ blob_id: 'p1', kind: 'photo', is_cover: false },
-				{ blob_id: 'v', kind: 'attachment', is_cover: false, voice: true, audio_duration_ms: 48000, audio_peaks: [5] },
+				{
+					blob_id: 'v',
+					kind: 'attachment',
+					is_cover: false,
+					voice: true,
+					audio_duration_ms: 48000,
+					audio_peaks: [5]
+				},
 				{ blob_id: 'f', kind: 'attachment', is_cover: false, filename: 'list.pdf', size_bytes: 240 }
 			],
 			{ p1: 'blob:1' }
@@ -116,27 +172,76 @@ describe('present', () => {
 			{ key: 'f', kind: 'file', blobId: 'f', name: 'list.pdf', size: 240 }
 		]);
 		expect(commentMediaItems(undefined, {})).toEqual([]);
-		expect(commentPhotoIds([{ blob_id: 'p1', kind: 'photo', is_cover: false }, { blob_id: 'f', kind: 'attachment', is_cover: false }])).toEqual(['p1']);
+		expect(
+			commentPhotoIds([
+				{ blob_id: 'p1', kind: 'photo', is_cover: false },
+				{ blob_id: 'f', kind: 'attachment', is_cover: false }
+			])
+		).toEqual(['p1']);
 	});
 
 	it('places unread divider before first read post', () => {
 		const posts: FeedPost[] = [
-			{ id: 'p3', event_seq: 30, body: '', entry_date: '2026-01-01', author_name: '', identity_id: '', created_at: at },
-			{ id: 'p2', event_seq: 20, body: '', entry_date: '2026-01-01', author_name: '', identity_id: '', created_at: at },
-			{ id: 'p1', event_seq: 10, body: '', entry_date: '2026-01-01', author_name: '', identity_id: '', created_at: at }
+			{
+				id: 'p3',
+				event_seq: 30,
+				body: '',
+				entry_date: '2026-01-01',
+				author_name: '',
+				identity_id: '',
+				created_at: at
+			},
+			{
+				id: 'p2',
+				event_seq: 20,
+				body: '',
+				entry_date: '2026-01-01',
+				author_name: '',
+				identity_id: '',
+				created_at: at
+			},
+			{
+				id: 'p1',
+				event_seq: 10,
+				body: '',
+				entry_date: '2026-01-01',
+				author_name: '',
+				identity_id: '',
+				created_at: at
+			}
 		];
 		expect(unreadDividerIndex(posts, 15)).toBe(2);
 		expect(unreadDividerIndex(posts, 0)).toBeNull();
 		expect(unreadDividerIndex(posts, 30)).toBeNull();
 		expect(
 			unreadDividerIndex(
-				[{ id: 'p', event_seq: 5, body: '', entry_date: '2026-01-01', author_name: '', identity_id: '', created_at: at }],
+				[
+					{
+						id: 'p',
+						event_seq: 5,
+						body: '',
+						entry_date: '2026-01-01',
+						author_name: '',
+						identity_id: '',
+						created_at: at
+					}
+				],
 				0
 			)
 		).toBeNull();
 		expect(
 			unreadDividerIndex(
-				[{ id: 'p', event_seq: 5, body: '', entry_date: '2026-01-01', author_name: '', identity_id: '', created_at: at }],
+				[
+					{
+						id: 'p',
+						event_seq: 5,
+						body: '',
+						entry_date: '2026-01-01',
+						author_name: '',
+						identity_id: '',
+						created_at: at
+					}
+				],
 				1
 			)
 		).toBe(1);
@@ -237,11 +342,11 @@ describe('present', () => {
 			a('3', 'application/pdf', 'c.pdf'),
 			a('4', 'audio/ogg', 'd.ogg')
 		]);
-		expect(blocks.map((b) => (b.kind === 'audio' ? b.items.map((i) => i.blob_id).join('+') : b.item.blob_id))).toEqual([
-			'1+2',
-			'3',
-			'4'
-		]);
+		expect(
+			blocks.map((b) =>
+				b.kind === 'audio' ? b.items.map((i) => i.blob_id).join('+') : b.item.blob_id
+			)
+		).toEqual(['1+2', '3', '4']);
 	});
 
 	it('день привязки показывается, только когда отличается от дня публикации', () => {

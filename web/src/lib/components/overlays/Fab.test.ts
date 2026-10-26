@@ -19,7 +19,10 @@ describe('Fab menu', () => {
 			{ label: 'Новый круг', onclick: vi.fn() },
 			{ label: 'Новая группа', onclick: vi.fn() }
 		];
-		const instance = mount(Fab, { target, props: { children: plus, menuOpen: true, items, onclose } });
+		const instance = mount(Fab, {
+			target,
+			props: { children: plus, menuOpen: true, items, onclose }
+		});
 		flushSync();
 		const menu = target.querySelector('[role="menu"]');
 		const buttons = [...target.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')];

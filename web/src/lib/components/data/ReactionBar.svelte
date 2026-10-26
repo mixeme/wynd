@@ -41,12 +41,7 @@
 {#if pickerOpen}
 	<div class="rxpick">
 		{#each keys as key (key)}
-			<button
-				type="button"
-				class="rcho"
-				class:on={selectedKey === key}
-				onclick={() => onpick(key)}
-			>
+			<button type="button" class="rcho" class:on={selectedKey === key} onclick={() => onpick(key)}>
 				<Icon name={key} />
 			</button>
 		{/each}

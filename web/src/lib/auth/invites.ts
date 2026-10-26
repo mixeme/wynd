@@ -22,9 +22,7 @@ export interface InvitePeek {
 	members?: InvitePeekMember[];
 }
 
-export function isCircleInvitePeek(
-	peek: InvitePeek
-): peek is InvitePeek & {
+export function isCircleInvitePeek(peek: InvitePeek): peek is InvitePeek & {
 	circle_name: string;
 	color: CircleColor;
 	member_count: number;
@@ -53,9 +51,13 @@ export async function claimInvite(
 	origin: string,
 	token: string
 ): Promise<{ circle_id: string; already_member: boolean }> {
-	return apiJson<{ circle_id: string; already_member: boolean }>(origin, `/invites/${token}/claim`, {
-		method: 'POST'
-	});
+	return apiJson<{ circle_id: string; already_member: boolean }>(
+		origin,
+		`/invites/${token}/claim`,
+		{
+			method: 'POST'
+		}
+	);
 }
 
 export async function joinViaInvite(

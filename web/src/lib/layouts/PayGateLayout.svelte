@@ -75,7 +75,8 @@
 		{#if pending}
 			<Hint class="hint-inset" centered>{payGatewayPendingHint(status)}</Hint>
 			<SectionLabel style="margin-top:22px">Заявка</SectionLabel>
-			<SettingsRow class="pt-2"
+			<SettingsRow
+				class="pt-2"
 				title="На проверке"
 				subtitle={payGatewayPendingSubtitle(status)}
 				chevron={false}

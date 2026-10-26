@@ -39,7 +39,13 @@
 		textByteLength
 	} from '$lib/journal/mentions';
 	import { audioRowLabel, findPost, tileBlobId } from '$lib/journal/present';
-	import { createPost, deletePost, editPost as savePost, fetchCompression, uploadBlob } from '$lib/journal/posts';
+	import {
+		createPost,
+		deletePost,
+		editPost as savePost,
+		fetchCompression,
+		uploadBlob
+	} from '$lib/journal/posts';
 	import type { FeedPost, MediaSummary } from '$lib/journal/types';
 	import {
 		compressImage,
@@ -101,7 +107,13 @@
 	// кадр ролика или имя файла, приглушённая; progress — сколько сжато,
 	// null — ждёт очереди. Готовый файл уходит отсюда в picked.
 	let pending = $state<
-		Array<{ index: number; kind: 'video' | 'audio'; name: string; preview?: string; progress: number | null }>
+		Array<{
+			index: number;
+			kind: 'video' | 'audio';
+			name: string;
+			preview?: string;
+			progress: number | null;
+		}>
 	>([]);
 	let compressIndex = $state(0);
 	let compressTotal = $state(0);
@@ -140,8 +152,7 @@
 	const compressHint = $derived.by(() => {
 		if (!compressing) return '';
 		// Процент — на плитке (4.2а, владелец: «Тогда у нас процент дублируется»).
-		const of =
-			compressTotal > 1 ? ` (${compressIndex} из ${compressTotal})` : '';
+		const of = compressTotal > 1 ? ` (${compressIndex} из ${compressTotal})` : '';
 		const what = compressKind === 'audio' ? 'звук' : 'видео';
 		return `Сжимаем ${what}${of}…`;
 	});
@@ -432,7 +443,9 @@
 		const index = cropIndex;
 		cropIndex = null;
 		if (index === null) return;
-		picked = picked.map((item, i) => (i === index ? { ...item, meta: { ...item.meta, crop: rect } } : item));
+		picked = picked.map((item, i) =>
+			i === index ? { ...item, meta: { ...item.meta, crop: rect } } : item
+		);
 	}
 
 	function removePicked(index: number) {
@@ -449,7 +462,11 @@
 		picked = next;
 	}
 
-	async function uploadTracked(file: Parameters<typeof uploadBlob>[1], index: number, total: number) {
+	async function uploadTracked(
+		file: Parameters<typeof uploadBlob>[1],
+		index: number,
+		total: number
+	) {
 		uploadIndex = index;
 		uploadTotal = total;
 		return uploadBlob(circle.origin, file, (received, size) => {
@@ -559,7 +576,14 @@
 				? []
 				: list.flatMap((file, index) =>
 						videoFlags[index] || isAudioFile(file)
-							? [{ index, kind: videoFlags[index] ? ('video' as const) : ('audio' as const), name: file.name, progress: null }]
+							? [
+									{
+										index,
+										kind: videoFlags[index] ? ('video' as const) : ('audio' as const),
+										name: file.name,
+										progress: null
+									}
+								]
 							: []
 					);
 			// Кадр ролика — с исходного файла, пока сжатый ещё не готов.
@@ -610,9 +634,13 @@
 					compressIndex += 1;
 					compressKind = 'video';
 					setPending(index, 0);
-					const { fallbackReason, ...compressed } = await compressVideo(file, compression, (progress) => {
-						setPending(index, progress);
-					});
+					const { fallbackReason, ...compressed } = await compressVideo(
+						file,
+						compression,
+						(progress) => {
+							setPending(index, progress);
+						}
+					);
 					queueFile = compressed.type
 						? compressed
 						: { ...compressed, type: guessedVideoMime(file) };
@@ -627,9 +655,13 @@
 					compressIndex += 1;
 					compressKind = 'audio';
 					setPending(index, 0);
-					const { fallbackReason, ...audio } = await compressAudio(file, compression, (progress) => {
-						setPending(index, progress);
-					});
+					const { fallbackReason, ...audio } = await compressAudio(
+						file,
+						compression,
+						(progress) => {
+							setPending(index, progress);
+						}
+					);
 					queueFile = { ...audio, type: audioMime(audio.name, audio.type) };
 					if (fallbackReason && maxBytes > 0 && audio.size > maxBytes) {
 						notCompressed.push(`${file.name} (${fallbackReason})`);
@@ -655,7 +687,9 @@
 
 				const tags = isAudioFile(file) ? await readAudioTags(file) : undefined;
 				const videoBlob =
-					kind === 'video' ? new Blob([queueFile.data], { type: queueFile.type || 'video/mp4' }) : undefined;
+					kind === 'video'
+						? new Blob([queueFile.data], { type: queueFile.type || 'video/mp4' })
+						: undefined;
 				const poster = videoBlob ? await videoPosterJpeg(videoBlob) : undefined;
 				// Длительность для угла плитки (4.16а); не узнали — только значок.
 				const durationMs = videoBlob ? await videoDurationMs(videoBlob) : undefined;
@@ -667,7 +701,9 @@
 					geo_lng: kind === 'attachment' ? undefined : exif.geo_lng,
 					is_cover:
 						(kind === 'photo' || kind === 'video') &&
-						!next.some((n) => n.meta.is_cover && (n.meta.kind === 'photo' || n.meta.kind === 'video')),
+						!next.some(
+							(n) => n.meta.is_cover && (n.meta.kind === 'photo' || n.meta.kind === 'video')
+						),
 					audio_artist: tags?.artist || undefined,
 					audio_title: tags?.title || undefined,
 					audio_cover: tags?.cover ? { type: 'image/jpeg', data: tags.cover } : undefined,
@@ -821,7 +857,12 @@
 		} catch (err) {
 			if (!isEdit && !editQueueId && isTransportError(err)) {
 				try {
-					await enqueuePost(circle.origin, circle.circleId, postQueuePayload(trimmed), queueFiles());
+					await enqueuePost(
+						circle.origin,
+						circle.circleId,
+						postQueuePayload(trimmed),
+						queueFiles()
+					);
 				} catch (queueErr) {
 					// Очередь не приняла — сказать, а не молчать.
 					console.warn('wynd: enqueue post failed', queueErr);
@@ -891,7 +932,11 @@
 			<MediaTile
 				variant="compose"
 				src={item.preview}
-				kind={item.meta.kind === 'video' ? 'video' : item.meta.kind === 'photo' ? 'photo' : undefined}
+				kind={item.meta.kind === 'video'
+					? 'video'
+					: item.meta.kind === 'photo'
+						? 'photo'
+						: undefined}
 				isCover={item.meta.is_cover && isVisual(item.meta)}
 				crop={item.meta.is_cover ? item.meta.crop : undefined}
 				coverMark={item.meta.is_cover && item.meta.kind === 'photo' && item.preview
@@ -937,9 +982,7 @@
 
 	{#if !frozen && picked.some((p) => isVisual(p.meta))}
 		<!-- Слова владельца, 2026-10-15. -->
-		<Hint>
-			Выбранное медиа — обложка записи. Повторное нажатие — кадрирование обложки.
-		</Hint>
+		<Hint>Выбранное медиа — обложка записи. Повторное нажатие — кадрирование обложки.</Hint>
 	{/if}
 
 	{#if !frozen}
@@ -1026,5 +1069,9 @@
 	multiple
 	onfiles={(files) => void addFiles(files, true)}
 />
-<FilePicker bind:this={audioPicker} accept="audio/*" multiple onfiles={(files) => void addFiles(files)} />
-
+<FilePicker
+	bind:this={audioPicker}
+	accept="audio/*"
+	multiple
+	onfiles={(files) => void addFiles(files)}
+/>

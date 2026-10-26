@@ -30,7 +30,11 @@
 
 <MarkRows class={className} {style}>
 	{#each steps as step (step.id)}
-		<MarkRow mark={mark(step)} tone={step.status === 'done' ? 'ok' : undefined} dim={step.status === 'pending'}>
+		<MarkRow
+			mark={mark(step)}
+			tone={step.status === 'done' ? 'ok' : undefined}
+			dim={step.status === 'pending'}
+		>
 			{step.title}{#if step.note}&nbsp;<span class="ins-dim">— {step.note}</span>{/if}
 		</MarkRow>
 	{/each}

@@ -82,22 +82,11 @@
 		cropFile = new File([blob], 'demo.png', { type: blob.type });
 	}
 
-	const iconNames: IconName[] = [
-		'search',
-		'gear',
-		'back',
-		'heart',
-		'plus',
-		'cloud',
-		'loc',
-		'send'
-	];
+	const iconNames: IconName[] = ['search', 'gear', 'back', 'heart', 'plus', 'cloud', 'loc', 'send'];
 	import Logo from '$ui/Logo.svelte';
 	import Mark from '$ui/Mark.svelte';
 	import Loading from '$ui/Loading.svelte';
 	import AvatarCrop from '$ui/overlays/AvatarCrop.svelte';
-	import CommentBar from '$ui/overlays/CommentBar.svelte';
-	import Fab from '$ui/overlays/Fab.svelte';
 	import Lightbox from '$ui/overlays/Lightbox.svelte';
 	import OverlayLayout from '$lib/layouts/OverlayLayout.svelte';
 	import PushBanner from '$ui/overlays/PushBanner.svelte';
@@ -107,12 +96,7 @@
 	import PlainLayout from '$lib/layouts/PlainLayout.svelte';
 	import ShellLayout from '$lib/layouts/ShellLayout.svelte';
 	import type { CircleColor } from '$lib/theme/colors';
-	import {
-		ACCEPTANCE,
-		COMPONENT_MAP,
-		SMOKE_ROUTES,
-		countComponents
-	} from './catalog';
+	import { ACCEPTANCE, COMPONENT_MAP, SMOKE_ROUTES, countComponents } from './catalog';
 	import type { VolumeBucket } from '$lib/circles/settings';
 	import { formatEntryDate } from '$lib/format/time';
 	import '$lib/styles/map.css';
@@ -137,9 +121,7 @@
 	let demoCutoffIndex = $state(7);
 	let demoCutoffX = $state(205);
 	const demoCutoffLabel = $derived(
-		demoVolume[demoCutoffIndex]
-			? formatEntryDate(`${demoVolume[demoCutoffIndex].period}-01`)
-			: ''
+		demoVolume[demoCutoffIndex] ? formatEntryDate(`${demoVolume[demoCutoffIndex].period}-01`) : ''
 	);
 
 	function onDemoCutoff(index: number) {
@@ -298,10 +280,7 @@
 				<figcaption>AdminWideLayout · #e9-7</figcaption>
 				<AdminWideLayout active="Хранилище" server="Дом Ани" height="320px">
 					<AdminSection title="Хранилище">
-						<StackBar
-							threshold="90%"
-							segments={[{ width: '42%', color: 'var(--terracotta)' }]}
-						/>
+						<StackBar threshold="90%" segments={[{ width: '42%', color: 'var(--terracotta)' }]} />
 					</AdminSection>
 				</AdminWideLayout>
 			</figure>
@@ -583,7 +562,9 @@
 							{#snippet children()}
 								<TextArea variant="field" class="ced" value="А компот будет?" />
 								<div class="rowin">
-									<Button variant="colored" style="flex:1;margin:0" onclick={() => {}}>Сохранить</Button>
+									<Button variant="colored" style="flex:1;margin:0" onclick={() => {}}
+										>Сохранить</Button
+									>
 									<Button variant="ghost" style="flex:1;margin:0" onclick={() => {}}>Отмена</Button>
 								</div>
 							{/snippet}
@@ -986,7 +967,12 @@
 	</section>
 
 	{#if cropFile}
-		<AvatarCrop file={cropFile} color="terracotta" ondone={() => (cropFile = undefined)} oncancel={() => (cropFile = undefined)} />
+		<AvatarCrop
+			file={cropFile}
+			color="terracotta"
+			ondone={() => (cropFile = undefined)}
+			oncancel={() => (cropFile = undefined)}
+		/>
 	{/if}
 
 	<section id="admin" class="sec">
@@ -1006,16 +992,8 @@
 			</div>
 			<div class="card wide">
 				<h3>CheckRow · #e9-11</h3>
-				<CheckRow
-					status="ok"
-					name="HTTPS снаружи"
-					description="200 за 180 мс"
-				/>
-				<CheckRow
-					status="warn"
-					name="Бэкап"
-					description="каталог ещё ни разу не копировали"
-				/>
+				<CheckRow status="ok" name="HTTPS снаружи" description="200 за 180 мс" />
+				<CheckRow status="warn" name="Бэкап" description="каталог ещё ни разу не копировали" />
 			</div>
 		</div>
 		<div class="phones" style="margin-top:20px">
@@ -1087,7 +1065,9 @@
 
 	<section id="smoke" class="sec">
 		<h2>Smoke-тесты</h2>
-		<p class="muted">Полные экраны для визуальной сверки с <code>docs/visual/screens.html</code>.</p>
+		<p class="muted">
+			Полные экраны для визуальной сверки с <code>docs/visual/screens.html</code>.
+		</p>
 		<div class="smoke-grid">
 			{#each SMOKE_ROUTES as route (route.id)}
 				<a class="smoke" href={route.href}>

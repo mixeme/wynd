@@ -55,7 +55,9 @@ describe('clearOriginState', () => {
 		expect(queue.map((q) => q.origin)).toEqual([b]);
 		const db = await getDb();
 		expect((await db.getAllKeys('media')) as string[]).toEqual([mediaKey(b, 'blob-2')]);
-		expect(((await db.getAllKeys('pins')) as string[]).every((k) => k.startsWith(`${b}:`))).toBe(true);
+		expect(((await db.getAllKeys('pins')) as string[]).every((k) => k.startsWith(`${b}:`))).toBe(
+			true
+		);
 		expect((await listStreetOps()).map((op) => op.origin)).toEqual([b]);
 	});
 });

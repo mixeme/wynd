@@ -9,7 +9,10 @@ describe('openDownload', () => {
 
 	function clicked(): HTMLAnchorElement {
 		let anchor: HTMLAnchorElement | undefined;
-		vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+		vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+			this: HTMLAnchorElement
+		) {
+			// eslint-disable-next-line @typescript-eslint/no-this-alias -- ловим ссылку, по которой щёлкнули
 			anchor = this;
 		});
 		openDownload('https://wynd.example/api/v1/archive/tok');

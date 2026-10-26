@@ -34,12 +34,7 @@
 			<Icon name="chevr" size="sm" class="pay-banner-chev" />
 		</button>
 		{#if props.dismissible}
-			<IconButton
-				name="x"
-				size="sm"
-				label="Скрыть"
-				onclick={() => props.ondismiss?.()}
-			/>
+			<IconButton name="x" size="sm" label="Скрыть" onclick={() => props.ondismiss?.()} />
 		{/if}
 	</div>
 {:else if props.variant === 'reminder'}

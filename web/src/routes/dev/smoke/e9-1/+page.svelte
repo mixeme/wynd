@@ -23,14 +23,19 @@
 			<div style="display:flex;gap:16px;align-items:stretch">
 				<div style="flex:1;min-width:0;{cardStyle}">
 					<div style="font-weight:600;margin-bottom:6px">1 · Пароль администратора</div>
-					<div style={descStyle}>
-						Задайте пароль для панели администратора.
-					</div>
-					<Input admin type="password" value="••••••••••••" style="width:100%;box-sizing:border-box" />
+					<div style={descStyle}>Задайте пароль для панели администратора.</div>
+					<Input
+						admin
+						type="password"
+						value="••••••••••••"
+						style="width:100%;box-sizing:border-box"
+					/>
 				</div>
 				<div style="flex:1;min-width:0;{cardStyle}">
 					<div style="font-weight:600;margin-bottom:12px">2 · Имя и адрес сервера</div>
-					<div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center">
+					<div
+						style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center"
+					>
 						<SectionLabel raw style={sideLabel}>Имя</SectionLabel>
 						<Input admin value="Дом Ани" style={fillInput} />
 						<SectionLabel raw style={sideLabel}>Адрес</SectionLabel>
@@ -40,7 +45,9 @@
 			</div>
 			<div style={cardStyle}>
 				<div style="font-weight:600;margin-bottom:6px">3 · Почта</div>
-				<div style={descStyle}>Без SMTP люди не получат код для входа. Почту можно настроить позже.</div>
+				<div style={descStyle}>
+					Без SMTP люди не получат код для входа. Почту можно настроить позже.
+				</div>
 				<div
 					style="display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center"
 				>
@@ -57,9 +64,7 @@
 					<Input admin style={fillInput} type="password" value="secret" />
 					<SectionLabel raw style={sideLabel}>От кого</SectionLabel>
 					<Input admin mono style={fillInput} value="Wynd <wynd@home.example.org>" />
-					<div
-						style="grid-column:3/-1;justify-self:end;display:flex;align-items:center;gap:8px"
-					>
+					<div style="grid-column:3/-1;justify-self:end;display:flex;align-items:center;gap:8px">
 						<StatusIcon status="ok" style="margin-top:0" />
 						<TextButton
 							variant="adminBox"
@@ -72,6 +77,7 @@
 				</div>
 			</div>
 		</div>
-		<Button style="margin:20px 0 0;width:100%" onclick={() => {}}>Сохранить и открыть панель</Button>
+		<Button style="margin:20px 0 0;width:100%" onclick={() => {}}>Сохранить и открыть панель</Button
+		>
 	</AdminSection>
 </AdminWideLayout>

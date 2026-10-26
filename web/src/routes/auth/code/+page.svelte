@@ -7,12 +7,7 @@
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
-	import {
-		authErrorHint,
-		persistSession,
-		sendAuthCode,
-		verifyCode
-	} from '$lib/auth/auth';
+	import { authErrorHint, persistSession, sendAuthCode, verifyCode } from '$lib/auth/auth';
 	import { ApiError } from '$lib/api/client';
 	import {
 		applyRateLimitToPending,
@@ -147,9 +142,7 @@
 <FormLayout shell app title={pageTitle} onback={changeEmail}>
 	{#if pending}
 		{#if logDelivery}
-			<Hint class="m-0-16">
-				На этом компьютере письмо не уходит. Код напечатан в окне сервера.
-			</Hint>
+			<Hint class="m-0-16">На этом компьютере письмо не уходит. Код напечатан в окне сервера.</Hint>
 		{:else}
 			<div class="m-0-16">
 				Отправлен на <strong>{pending.email}</strong>
@@ -161,11 +154,7 @@
 		<CodeBox bind:value={code} bind:el={codeInput} autofocus />
 		<Hint>Код действует 15 минут. Три попытки.</Hint>
 		<div class="rowin">
-			<Button class="grow"
-				disabled={!canResendCode(pending)}
-				{loading}
-				onclick={resend}
-			>
+			<Button class="grow" disabled={!canResendCode(pending)} {loading} onclick={resend}>
 				Отправить ещё раз
 			</Button>
 			{#if cooldown > 0}

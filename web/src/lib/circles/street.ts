@@ -179,7 +179,10 @@ function opRequest(op: StreetOpRecord): { path: string; init: RequestInit } | un
 			return circle
 				? {
 						path: `${circle}/pin`,
-						init: json('PUT', op.pinned_at ? { pinned_at: new Date(op.pinned_at).toISOString() } : {})
+						init: json(
+							'PUT',
+							op.pinned_at ? { pinned_at: new Date(op.pinned_at).toISOString() } : {}
+						)
 					}
 				: undefined;
 		case 'unpin':
@@ -189,7 +192,10 @@ function opRequest(op: StreetOpRecord): { path: string; init: RequestInit } | un
 		case 'ungroup':
 			return circle ? { path: `${circle}/group`, init: { method: 'DELETE' } } : undefined;
 		case 'rename':
-			return { path: '/groups/rename', init: json('POST', { name: op.name, new_name: op.new_name }) };
+			return {
+				path: '/groups/rename',
+				init: json('POST', { name: op.name, new_name: op.new_name })
+			};
 		case 'drop':
 			return { path: '/groups/delete', init: json('POST', { name: op.name }) };
 	}
@@ -236,7 +242,12 @@ export async function moveDeviceStreetToServers(origins: string[]): Promise<void
 	if (pins.length) {
 		for (const pin of pins) {
 			if (known.has(pin.origin)) {
-				await addStreetOp({ origin: pin.origin, op: 'pin', circle_id: pin.circleId, pinned_at: pin.pinned_at });
+				await addStreetOp({
+					origin: pin.origin,
+					op: 'pin',
+					circle_id: pin.circleId,
+					pinned_at: pin.pinned_at
+				});
 			}
 		}
 		await clearPins();
@@ -246,10 +257,21 @@ export async function moveDeviceStreetToServers(origins: string[]): Promise<void
 		for (const key of group.circleIds) {
 			const parts = splitKey(key);
 			if (parts && known.has(parts.origin)) {
-				await addStreetOp({ origin: parts.origin, op: 'group', circle_id: parts.circleId, name: group.name });
+				await addStreetOp({
+					origin: parts.origin,
+					op: 'group',
+					circle_id: parts.circleId,
+					name: group.name
+				});
 			}
 		}
-		await putGroup({ id: group.id, name: group.name, circleIds: [], collapsed: group.collapsed, filled: true });
+		await putGroup({
+			id: group.id,
+			name: group.name,
+			circleIds: [],
+			collapsed: group.collapsed,
+			filled: true
+		});
 	}
 }
 
@@ -258,13 +280,18 @@ export async function moveDeviceStreetToServers(origins: string[]): Promise<void
  * отвечал бы секундами, а раньше раскладка жила на устройстве и менялась
  * мгновенно. Опустевшая группа уходит, как уйдёт и после ответа.
  */
-export function applyStreetOpToView(groups: StreetGroupView[], op: StreetOpRecord): StreetGroupView[] {
+export function applyStreetOpToView(
+	groups: StreetGroupView[],
+	op: StreetOpRecord
+): StreetGroupView[] {
 	const key = op.circle_id ? streetKey(op.origin, op.circle_id) : '';
 	const name = op.name?.trim() ?? '';
 	const without = (list: StreetGroupView[]) =>
 		list
 			.map((g) => (g.keys.includes(key) ? { ...g, keys: g.keys.filter((k) => k !== key) } : g))
-			.filter((g) => g.keys.length > 0 || !groups.find((o) => o.name === g.name)?.keys.includes(key));
+			.filter(
+				(g) => g.keys.length > 0 || !groups.find((o) => o.name === g.name)?.keys.includes(key)
+			);
 	let next = groups;
 	switch (op.op) {
 		case 'group':

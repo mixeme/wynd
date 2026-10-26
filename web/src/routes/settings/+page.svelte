@@ -48,7 +48,8 @@
 </script>
 
 <FormLayout shell app title="Настройки" onback={goBack}>
-	<SettingsRow class="mt-8"
+	<SettingsRow
+		class="mt-8"
 		icon="key"
 		title="Серверы"
 		{subtitle}
@@ -60,11 +61,7 @@
 		subtitle="уведомления, место, тема"
 		onclick={() => goto('/settings/app')}
 	/>
-	<SettingsRow
-		icon="day"
-		title="Что нового в Wynd"
-		onclick={() => goto('/settings/news')}
-	/>
+	<SettingsRow icon="day" title="Что нового в Wynd" onclick={() => goto('/settings/news')} />
 	{#if appUpdate.supported}
 		{#if appUpdate.pending}
 			<SettingsRow

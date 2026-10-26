@@ -17,26 +17,20 @@
 	<CircleBar title="Сроки архивации" tabs={false} />
 	<Label>Архивировать всё до</Label>
 	<FieldDisplay value="1 июня 2025" active />
-	<Hint>
-		Пока никто не скачал архив, эту дату можно сдвинуть.
-	</Hint>
+	<Hint>Пока никто не скачал архив, эту дату можно сдвинуть.</Hint>
 	<Label style="margin-top:18px">Скачать до</Label>
 	<FieldDisplay value="20 сентября 2026" active />
-	<Hint>
-		Срок можно сдвинуть в любой момент.
-	</Hint>
+	<Hint>Срок можно сдвинуть в любой момент.</Hint>
 	<Label style="margin-top:18px">Напомнить письмом</Label>
 	<ChipGroup>
 		<Chip>За сутки</Chip>
 		<Chip selected>За 3 дня</Chip>
 		<Chip>За неделю</Chip>
 	</ChipGroup>
-	<Hint>
-		Письмо придёт всем сразу и ещё раз перед сроком.
-	</Hint>
+	<Hint>Письмо придёт всем сразу и ещё раз перед сроком.</Hint>
 	<DangerNote style="margin-top:20px">
-		20 сентября всё до 1 июня 2025 удалится с сервера — независимо от того, все ли успели
-		скачать. Предупредить людей — на вас.
+		20 сентября всё до 1 июня 2025 удалится с сервера — независимо от того, все ли успели скачать.
+		Предупредить людей — на вас.
 	</DangerNote>
 	<Button variant="colored" style="margin-top:14px" onclick={() => {}}>Запустить архивацию</Button>
 </PhoneFrame>

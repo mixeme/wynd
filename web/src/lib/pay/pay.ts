@@ -1,5 +1,5 @@
 import { WORD, plural } from '$lib/format/plural';
-import { apiFetch, apiJson } from '$lib/api/client';
+import { apiJson } from '$lib/api/client';
 
 export interface PayBanner {
 	text: string;

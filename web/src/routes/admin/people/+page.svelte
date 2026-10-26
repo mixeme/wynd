@@ -39,7 +39,9 @@
 
 	function circlesCell(acc: AdminAccount): string {
 		if (acc.blocked) {
-			return acc.circle_count === 0 ? 'без кругов · вход закрыт' : `${acc.circle_count} · вход закрыт`;
+			return acc.circle_count === 0
+				? 'без кругов · вход закрыт'
+				: `${acc.circle_count} · вход закрыт`;
 		}
 		if (acc.circle_count === 0) return 'без кругов';
 		return String(acc.circle_count);
@@ -87,13 +89,8 @@
 		{:else}
 			<div class="flex-mid gap-16 mb-16">
 				<h4 class="m-0">Люди</h4>
-				<SearchField class="mw-260 grow"
-					placeholder="почта"
-					bind:value={query}
-				/>
-				<span class="ml-auto note"
-					>{pluralPeople(accounts.length)}</span
-				>
+				<SearchField class="mw-260 grow" placeholder="почта" bind:value={query} />
+				<span class="ml-auto note">{pluralPeople(accounts.length)}</span>
 			</div>
 			<DataTable>
 				<thead>
@@ -114,16 +111,12 @@
 							<td class="n">{acc.email}</td>
 							<td class="muted">{circlesCell(acc)}</td>
 							<td class="muted">с {formatAdminDayYear(acc.created_at)}</td>
-							<td class="chev"
-								><Icon name="chevr" size="sm" /></td
-							>
+							<td class="chev"><Icon name="chevr" size="sm" /></td>
 						</tr>
 					{/each}
 				</tbody>
 			</DataTable>
-			<div class="fine mt-14 lh-16">
-				Панель знает почту и круги, не лица.
-			</div>
+			<div class="fine mt-14 lh-16">Панель знает почту и круги, не лица.</div>
 			<SectionLabel class="mt-30 mx-0 mb-10">Уход с сервера</SectionLabel>
 			<SwitchRow
 				end
@@ -131,9 +124,9 @@
 				onchange={(on) => void saveErasure(on)}
 				title="Разрешить стирать имена и фото"
 			>
-				Кто уходит с сервера насовсем, сможет стереть свои имена, фото и пол во всех кругах.
-				Записи останутся без подписи. Это право на удаление по GDPR: включите, если сервер
-				должен его соблюдать.
+				Кто уходит с сервера насовсем, сможет стереть свои имена, фото и пол во всех кругах. Записи
+				останутся без подписи. Это право на удаление по GDPR: включите, если сервер должен его
+				соблюдать.
 			</SwitchRow>
 			<div class="fine mt-8">Тех, кто ушёл раньше, это не касается.</div>
 			{#if erasureError}

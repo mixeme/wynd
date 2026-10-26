@@ -18,9 +18,9 @@ describe('notifySummary', () => {
 		expect(notifySummary(base, day)).toBe('записи, комментарии к моим записям и упоминания');
 	});
 	it('всё выключено — только упоминания', () => {
-		expect(
-			notifySummary({ ...base, posts: false, comments_mine: false }, day)
-		).toBe('только упоминания');
+		expect(notifySummary({ ...base, posts: false, comments_mine: false }, day)).toBe(
+			'только упоминания'
+		);
 	});
 	it('все комментарии заменяют «к моим»', () => {
 		expect(notifySummary({ ...base, posts: false, comments_all: true, reactions: true }, day)).toBe(

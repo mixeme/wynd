@@ -10,7 +10,8 @@ const KEY = 'wynd:browser-hint-closed';
 
 // Браузеры на движке Chrome, которые сами себя называют в строке браузера:
 // это не Chrome, хотя «Chrome/» в строке у них есть.
-const OTHER_CHROMIUM = /MiuiBrowser|XiaoMi|SamsungBrowser|OPR\/|EdgA\/|YaBrowser|UCBrowser|HuaweiBrowser|HeyTapBrowser|; wv\)/i;
+const OTHER_CHROMIUM =
+	/MiuiBrowser|XiaoMi|SamsungBrowser|OPR\/|EdgA\/|YaBrowser|UCBrowser|HuaweiBrowser|HeyTapBrowser|; wv\)/i;
 
 /** Chrome или Vivaldi на Android. Vivaldi на Android называет себя как Chrome. */
 export function isRecommendedAndroidBrowser(ua: string): boolean {
@@ -18,7 +19,9 @@ export function isRecommendedAndroidBrowser(ua: string): boolean {
 	return /Chrome\/\d/.test(ua) && !OTHER_CHROMIUM.test(ua);
 }
 
-export function showBrowserHint(ua = typeof navigator === 'undefined' ? '' : navigator.userAgent): boolean {
+export function showBrowserHint(
+	ua = typeof navigator === 'undefined' ? '' : navigator.userAgent
+): boolean {
 	if (!/Android/i.test(ua) || isRecommendedAndroidBrowser(ua)) return false;
 	try {
 		return localStorage.getItem(KEY) !== '1';

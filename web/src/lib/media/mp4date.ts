@@ -23,7 +23,12 @@ async function readBox(file: Blob, at: number, limit: number): Promise<Box | und
 	if (at + 8 > limit) return undefined;
 	const head = new DataView(await file.slice(at, Math.min(at + 16, limit)).arrayBuffer());
 	let size = head.getUint32(0);
-	const type = String.fromCharCode(head.getUint8(4), head.getUint8(5), head.getUint8(6), head.getUint8(7));
+	const type = String.fromCharCode(
+		head.getUint8(4),
+		head.getUint8(5),
+		head.getUint8(6),
+		head.getUint8(7)
+	);
 	let headerSize = 8;
 	if (size === 1) {
 		if (head.byteLength < 16) return undefined;
@@ -36,7 +41,12 @@ async function readBox(file: Blob, at: number, limit: number): Promise<Box | und
 	return { type, start: at, headerSize, size };
 }
 
-async function findChild(file: Blob, from: number, to: number, type: string): Promise<Box | undefined> {
+async function findChild(
+	file: Blob,
+	from: number,
+	to: number,
+	type: string
+): Promise<Box | undefined> {
 	let at = from;
 	for (let i = 0; i < MAX_BOXES; i++) {
 		const box = await readBox(file, at, to);
@@ -53,7 +63,9 @@ export async function mp4CreationTime(file: Blob): Promise<Date | undefined> {
 	if (!moov) return undefined;
 	const mvhd = await findChild(file, moov.start + moov.headerSize, moov.start + moov.size, 'mvhd');
 	if (!mvhd) return undefined;
-	const body = new DataView(await file.slice(mvhd.start + mvhd.headerSize, mvhd.start + mvhd.headerSize + 12).arrayBuffer());
+	const body = new DataView(
+		await file.slice(mvhd.start + mvhd.headerSize, mvhd.start + mvhd.headerSize + 12).arrayBuffer()
+	);
 	const version = body.getUint8(0);
 	const seconds = version === 1 ? Number(body.getBigUint64(4)) : body.getUint32(4);
 	if (!seconds) return undefined;

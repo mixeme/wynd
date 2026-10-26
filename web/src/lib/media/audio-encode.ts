@@ -26,11 +26,13 @@ export async function encodeAudio(
 	 *  браузера в WebM или Ogg может не сыграть на iPhone. */
 	opts?: { bitrateKbps?: number; force?: boolean }
 ): Promise<CompressedMedia> {
-	const bitrateKbps = opts?.bitrateKbps || settings?.audio_bitrate_kbps || DEFAULT_AUDIO_BITRATE_KBPS;
+	const bitrateKbps =
+		opts?.bitrateKbps || settings?.audio_bitrate_kbps || DEFAULT_AUDIO_BITRATE_KBPS;
 	const bitrate = bitrateKbps * 1000;
 
 	const mb = await import('mediabunny');
-	const { ALL_FORMATS, BlobSource, Input, Mp4OutputFormat, Quality, getFirstEncodableAudioCodec } = mb;
+	const { ALL_FORMATS, BlobSource, Input, Mp4OutputFormat, Quality, getFirstEncodableAudioCodec } =
+		mb;
 
 	const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
 	try {
@@ -112,7 +114,9 @@ async function encodeViaWebAudio(
 	onProgress?: (progress: number) => void
 ): Promise<ArrayBuffer | null> {
 	const { AudioBufferSource, BufferTarget, Mp4OutputFormat, Output } = await import('mediabunny');
-	const Ctx = globalThis.AudioContext ?? (globalThis as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+	const Ctx =
+		globalThis.AudioContext ??
+		(globalThis as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
 	if (!Ctx) throw new Error('no_decoder');
 	const ctx = new Ctx();
 	let decoded: AudioBuffer;

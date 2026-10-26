@@ -57,17 +57,24 @@
 			meta={{ title: 'Голосовое', circleId, circleName, color, postId }}
 		/>
 	{:else}
-	<AttachmentRow
-		audio
-		{grouped}
-		class="m-{att.blob_id}"
-		filename={audioRowLabel(att)}
-		{origin}
-		blobId={att.blob_id}
-		coverUrl={cover(att) ?? ''}
-		meta={{ title: audioRowLabel(att), coverUrl: cover(att), circleId, circleName, color, postId }}
-		onDownload={() => download(att)}
-	/>
+		<AttachmentRow
+			audio
+			{grouped}
+			class="m-{att.blob_id}"
+			filename={audioRowLabel(att)}
+			{origin}
+			blobId={att.blob_id}
+			coverUrl={cover(att) ?? ''}
+			meta={{
+				title: audioRowLabel(att),
+				coverUrl: cover(att),
+				circleId,
+				circleName,
+				color,
+				postId
+			}}
+			onDownload={() => download(att)}
+		/>
 	{/if}
 {/snippet}
 

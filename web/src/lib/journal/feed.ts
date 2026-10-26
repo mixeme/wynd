@@ -15,10 +15,7 @@ export async function loadFeedCached(
 	return readCachedSnapshot<FeedSnapshot>(origin, 'feed', circleId);
 }
 
-export async function loadFeed(
-	origin: string,
-	circleId: string
-): Promise<FeedSnapshot> {
+export async function loadFeed(origin: string, circleId: string): Promise<FeedSnapshot> {
 	try {
 		return await fetchFeed(origin, circleId);
 	} catch (err) {

@@ -2,7 +2,6 @@
 	import { goUp } from '$lib/navigation/up';
 	import NumberField from '$ui/forms/NumberField.svelte';
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -13,9 +12,20 @@
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { formatBytes } from '$lib/format/bytes';
-	import { clearMediaStore, getAppSettings, mediaStoreBytes, snapshotStoreBytes, type Theme } from '$lib/idb/db';
+	import {
+		clearMediaStore,
+		getAppSettings,
+		mediaStoreBytes,
+		snapshotStoreBytes,
+		type Theme
+	} from '$lib/idb/db';
 	import { getMediaCacheLimit, setMediaCacheLimit } from '$lib/media/objectUrl';
-	import { getAvatarShape, loadSessions, setAvatarShape, setTheme } from '$lib/session/session.svelte';
+	import {
+		getAvatarShape,
+		loadSessions,
+		setAvatarShape,
+		setTheme
+	} from '$lib/session/session.svelte';
 	import {
 		accountNotifyPrefsFromAppDefaults,
 		appNotifyDefaultsEqual,
@@ -165,12 +175,19 @@
 	<SectionLabel class="mt-22">Место на устройстве</SectionLabel>
 	<Meter value={cacheBytes} max={Math.max(cacheLimit, 1)} />
 	<Hint class="mt-8">
-		{formatBytes(cacheBytes)} медиа и файлов из {formatBytes(cacheLimit)}.{#if textBytes > 0}{' '}Тексты для чтения без сети — {formatBytes(textBytes)}.{/if}{#if usageBytes > cacheBytes}{' '}Всего Wynd на устройстве — {formatBytes(usageBytes)}.{/if}
+		{formatBytes(cacheBytes)} медиа и файлов из {formatBytes(
+			cacheLimit
+		)}.{#if textBytes > 0}{' '}Тексты для чтения без сети — {formatBytes(
+				textBytes
+			)}.{/if}{#if usageBytes > cacheBytes}{' '}Всего Wynd на устройстве — {formatBytes(
+				usageBytes
+			)}.{/if}
 	</Hint>
 	<ChipGroup class="mt-8">
 		{#each CACHE_PRESETS as gb (gb)}
-			<Chip selected={!customCache && cacheLimit === gb * GB} onclick={() => void pickCacheLimit(gb)}
-				>{gb} ГБ</Chip
+			<Chip
+				selected={!customCache && cacheLimit === gb * GB}
+				onclick={() => void pickCacheLimit(gb)}>{gb} ГБ</Chip
 			>
 		{/each}
 		<Chip selected={customCache} onclick={() => (customCache = true)}>Своё…</Chip>
@@ -188,8 +205,11 @@
 	{#if quotaBytes && cacheLimit > quotaBytes}
 		<Hint>Браузер отводит Wynd до {formatBytes(quotaBytes)} — больше кэш не вырастет.</Hint>
 	{/if}
-	<Hint>Сверх потолка удаляются давно не открытые медиа и файлы — при просмотре они скачаются заново.</Hint>
-	<SettingsRow class="mt-6"
+	<Hint
+		>Сверх потолка удаляются давно не открытые медиа и файлы — при просмотре они скачаются заново.</Hint
+	>
+	<SettingsRow
+		class="mt-6"
 		title="Очистить кэш"
 		subtitle={cleared ? 'кэш очищен' : undefined}
 		chevron={false}

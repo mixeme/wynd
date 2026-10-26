@@ -7,14 +7,7 @@ import {
 } from '$lib/idb/db';
 
 export type SnapshotKind =
-	| 'circles'
-	| 'feed'
-	| 'grid'
-	| 'map'
-	| 'days'
-	| 'day'
-	| 'search'
-	| 'instance';
+	'circles' | 'feed' | 'grid' | 'map' | 'days' | 'day' | 'search' | 'instance';
 
 export async function readCachedSnapshot<T>(
 	origin: string,

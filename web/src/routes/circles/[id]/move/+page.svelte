@@ -150,7 +150,9 @@
 		<Hint class="mt-14 ctr-text">
 			<TextButton disabled={busy} onclick={() => void cancel()}>Отменить перенос</TextButton>
 		</Hint>
-		<Hint class="ctr-text">Круг здесь оживёт. Поднятый на новом сервере останется там отдельной копией.</Hint>
+		<Hint class="ctr-text"
+			>Круг здесь оживёт. Поднятый на новом сервере останется там отдельной копией.</Hint
+		>
 	{:else if move}
 		<!-- 6.34: круг замер, ссылка выдана; ход — живой. -->
 		{#if move.link_alive && move.link}
@@ -188,7 +190,9 @@
 				chevron={false}
 				divided="both"
 			/>
-			<Hint>Обрыв между серверами не страшен: новый сервер догрузит с места обрыва, пока жива ссылка.</Hint>
+			<Hint
+				>Обрыв между серверами не страшен: новый сервер догрузит с места обрыва, пока жива ссылка.</Hint
+			>
 		{:else}
 			<SettingsRow
 				icon="clock"
@@ -230,12 +234,15 @@
 			Возвращаетесь сюда и завершаете перенос — здесь круг удаляется.
 		</Hint>
 		{#if info.frozen_at}
-			<Hint class="mt-14 ink">Круг уже замер: его убирают с сервера в архив. Переносить его нельзя.</Hint>
+			<Hint class="mt-14 ink"
+				>Круг уже замер: его убирают с сервера в архив. Переносить его нельзя.</Hint
+			>
 		{:else}
 			<Button class="mt-14" variant="colored" loading={busy} onclick={() => void start()}>
 				Остановить круг и получить ссылку
 			</Button>
-			<Hint class="mt-10 ctr-text">Пока перенос не завершён, его можно отменить — круг оживёт.</Hint>
+			<Hint class="mt-10 ctr-text">Пока перенос не завершён, его можно отменить — круг оживёт.</Hint
+			>
 		{/if}
 	{/if}
 	{#if error && info}

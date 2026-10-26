@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { goUp } from '$lib/navigation/up';
-	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
@@ -98,11 +97,11 @@
 >
 	<Label>Присылать</Label>
 	{#if !soloCircle}
-	<SettingsRow class="pt-2" title="Новые записи">
-		{#snippet control()}
-			<Switch bind:checked={posts} label="Новые записи" />
-		{/snippet}
-	</SettingsRow>
+		<SettingsRow class="pt-2" title="Новые записи">
+			{#snippet control()}
+				<Switch bind:checked={posts} label="Новые записи" />
+			{/snippet}
+		</SettingsRow>
 	{/if}
 	<SettingsRow title="Комментарии к моим записям" class={soloCircle ? 'pt-2' : undefined}>
 		{#snippet control()}
@@ -110,21 +109,21 @@
 		{/snippet}
 	</SettingsRow>
 	{#if !soloCircle}
-	<SettingsRow title="Все комментарии">
-		{#snippet control()}
-			<Switch bind:checked={commentsAll} label="Все комментарии" />
-		{/snippet}
-	</SettingsRow>
-	<SettingsRow title="Реакции">
-		{#snippet control()}
-			<Switch bind:checked={reactions} label="Реакции" />
-		{/snippet}
-	</SettingsRow>
-	<SettingsRow title="Упоминания" subtitle="всегда">
-		{#snippet control()}
-			<Switch checked={true} disabled label="Упоминания" />
-		{/snippet}
-	</SettingsRow>
+		<SettingsRow title="Все комментарии">
+			{#snippet control()}
+				<Switch bind:checked={commentsAll} label="Все комментарии" />
+			{/snippet}
+		</SettingsRow>
+		<SettingsRow title="Реакции">
+			{#snippet control()}
+				<Switch bind:checked={reactions} label="Реакции" />
+			{/snippet}
+		</SettingsRow>
+		<SettingsRow title="Упоминания" subtitle="всегда">
+			{#snippet control()}
+				<Switch checked={true} disabled label="Упоминания" />
+			{/snippet}
+		</SettingsRow>
 	{/if}
 	<SettingsRow title="События круга">
 		{#snippet control()}
@@ -139,12 +138,10 @@
 		<Chip selected={mute === 'week'} onclick={() => (mute = 'week')}>На неделю</Chip>
 	</ChipGroup>
 	{#if !soloCircle}
-	<Hint>Упоминание пробивается через приглушение: это адресация, а не шум.</Hint>
+		<Hint>Упоминание пробивается через приглушение: это адресация, а не шум.</Hint>
 	{/if}
 
-	<Hint class="mt-14"
-		>В уведомлении нет текста записи — только круг и что произошло.</Hint
-	>
+	<Hint class="mt-14">В уведомлении нет текста записи — только круг и что произошло.</Hint>
 	{#if error}
 		<Hint class="gutter">{error}</Hint>
 	{/if}

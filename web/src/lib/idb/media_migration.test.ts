@@ -9,7 +9,15 @@ describe('media cache migration v2 → v3', () => {
 	it('backfills sizes of files cached before the ceiling existed', async () => {
 		const old = await openDB('wynd', 2, {
 			upgrade(db) {
-				for (const store of ['sessions', 'admin_session', 'cursors', 'snapshots', 'media', 'pins', 'settings']) {
+				for (const store of [
+					'sessions',
+					'admin_session',
+					'cursors',
+					'snapshots',
+					'media',
+					'pins',
+					'settings'
+				]) {
 					if (store === 'sessions') db.createObjectStore(store, { keyPath: 'origin' });
 					else if (store === 'cursors') db.createObjectStore(store, { keyPath: 'origin' });
 					else db.createObjectStore(store);

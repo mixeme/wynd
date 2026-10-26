@@ -64,9 +64,7 @@
 		responsesUnread?: number;
 	} = $props();
 
-	const visibleTabs = $derived(
-		visibleCircleTabs(responsesTab, active)
-	);
+	const visibleTabs = $derived(visibleCircleTabs(responsesTab, active));
 
 	const searchInBar = $derived(searchPlaceholder !== undefined);
 
@@ -99,7 +97,9 @@
 		if (circleId) {
 			const suffix = tabPaths[t];
 			// Вкладки одного уровня: не копим их в истории (план 46, C13).
-			goto(suffix ? `/circles/${circleId}${suffix}` : `/circles/${circleId}`, { replaceState: true });
+			goto(suffix ? `/circles/${circleId}${suffix}` : `/circles/${circleId}`, {
+				replaceState: true
+			});
 		}
 	}
 </script>
@@ -110,7 +110,12 @@
 			<IconButton name="back" label="Назад" onclick={() => onback()} />
 		{/if}
 		{#if searchInBar}
-			<SearchField class="inv" autofocus bind:value={searchQuery} placeholder={searchPlaceholder!} />
+			<SearchField
+				class="inv"
+				autofocus
+				bind:value={searchQuery}
+				placeholder={searchPlaceholder!}
+			/>
 		{:else}
 			<span class="t">{title}</span>
 			{#if onsearch}
@@ -128,11 +133,13 @@
 					/>
 				</button>
 			{:else}
-				<span class="idn"><span class="idn-t">{identity}</span>{#if avatar}<Avatar
+				<span class="idn"
+					><span class="idn-t">{identity}</span>{#if avatar}<Avatar
 							initial={avatar}
 							src={avatarSrc}
 							style="width:30px;height:30px;font-size:12.5px;border:1px solid rgba(255,255,255,.55)"
-						/>{/if}</span>
+						/>{/if}</span
+				>
 			{/if}
 		{/if}
 	</div>
@@ -159,7 +166,9 @@
 			</Tabs.List>
 		</Tabs.Root>
 	{:else if subtitle}
-		<div style="padding-bottom:12px;font-size:12.5px;color:rgba(255,255,255,.85)">{#if typeof subtitle === 'function'}{@render subtitle()}{:else}{subtitle}{/if}</div>
+		<div style="padding-bottom:12px;font-size:12.5px;color:rgba(255,255,255,.85)">
+			{#if typeof subtitle === 'function'}{@render subtitle()}{:else}{subtitle}{/if}
+		</div>
 	{:else}
 		<div style="height:12px"></div>
 	{/if}

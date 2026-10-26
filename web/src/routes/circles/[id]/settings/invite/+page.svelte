@@ -47,7 +47,6 @@
 		else goUp(`/circles/${circle.circleId}/settings`);
 	}
 
-
 	// Опции те же, что у админа на 9.2, без «Без ограничений» и «Без срока»:
 	// ссылка участника не шире ссылки админа.
 	let kind = $state<'single' | 'multi'>('single');
@@ -129,7 +128,12 @@
 			const inv = await createCircleInvite(
 				circle.origin,
 				circle.circleId,
-				inviteRequest(effectiveKind === 'single' ? 'single' : multiUses, customUses, ttl, customDays)
+				inviteRequest(
+					effectiveKind === 'single' ? 'single' : multiUses,
+					customUses,
+					ttl,
+					customDays
+				)
 			);
 			currentInviteId = inv.id;
 			inviteUrl = inviteUrlFor(inv.token);
@@ -177,16 +181,9 @@
 	});
 </script>
 
-<FormLayout
-	app
-	color={circle.color}
-	title="Пригласить в {circle.name}"
-	onback={goBack}
->
+<FormLayout app color={circle.color} title="Пригласить в {circle.name}" onback={goBack}>
 	{#if showFromCircles}
-		<Button class="mt-12" variant="ghost" onclick={goFromCircles}>
-			Позвать из других кругов
-		</Button>
+		<Button class="mt-12" variant="ghost" onclick={goFromCircles}>Позвать из других кругов</Button>
 	{/if}
 	<QrCode value={inviteUrl} />
 	<Hint class="gutter ctr">Кто ещё не на сервере — код или ссылка</Hint>
@@ -202,12 +199,8 @@
 	<Label class="mt-22">Ссылка</Label>
 	{#if showKindChips}
 		<ChipGroup>
-			<Chip selected={kind === 'single'} onclick={() => void pickKind('single')}>
-				Одноразовая
-			</Chip>
-			<Chip selected={kind === 'multi'} onclick={() => void pickKind('multi')}>
-				Многоразовая
-			</Chip>
+			<Chip selected={kind === 'single'} onclick={() => void pickKind('single')}>Одноразовая</Chip>
+			<Chip selected={kind === 'multi'} onclick={() => void pickKind('multi')}>Многоразовая</Chip>
 		</ChipGroup>
 	{/if}
 	{#if multiInvitesAllowed && kind === 'multi'}

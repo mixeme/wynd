@@ -1,11 +1,7 @@
 <script lang="ts">
 	import MemberRow from '$ui/data/MemberRow.svelte';
 	import { circleInitial } from '$lib/circles/meta';
-	import {
-		memberAvatarColor,
-		memberSubtitle,
-		type InvitePeekMember
-	} from '$lib/auth/invites';
+	import { memberAvatarColor, memberSubtitle, type InvitePeekMember } from '$lib/auth/invites';
 
 	// «Кто уже здесь» до входа (1.4; план 47, 2.13): участники круга по
 	// приглашению или заявке. Был скопирован в «Вступление» и «Вас

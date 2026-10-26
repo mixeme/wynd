@@ -54,7 +54,8 @@
 		try {
 			preview = await fetchSplitPreview(circle.origin, circle.circleId);
 			const byBlob = new Map<string, string>();
-			for (const p of preview.people) if (p.avatar_blob_id) byBlob.set(p.avatar_blob_id, p.account_id);
+			for (const p of preview.people)
+				if (p.avatar_blob_id) byBlob.set(p.avatar_blob_id, p.account_id);
 			if (byBlob.size) {
 				await resolveMediaUrls(circle.origin, [...byBlob.keys()], (blobId, url) => {
 					const who = byBlob.get(blobId);
@@ -136,7 +137,9 @@
 				{#snippet main()}<div class="bold">{p.name}</div>{/snippet}
 				{#snippet trailing()}<Switch
 						label={`Позвать ${p.name}`}
-						bind:checked={() => !!invite[p.account_id], (v) => (invite = { ...invite, [p.account_id]: v })}
+						bind:checked={
+							() => !!invite[p.account_id], (v) => (invite = { ...invite, [p.account_id]: v })
+						}
 					/>{/snippet}
 			</Row>
 		{/each}

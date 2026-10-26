@@ -44,7 +44,9 @@
 <Row {onclick} class={card ? `server-card ${className}`.trim() : className} style={rowStyle}>
 	{#snippet leading()}<Icon name="cloud" />{/snippet}
 	{#snippet main()}
-		<div style="font-weight:600">{name}{#if gdpr}<span class="gdpr">GDPR</span>{/if}</div>
+		<div style="font-weight:600">
+			{name}{#if gdpr}<span class="gdpr">GDPR</span>{/if}
+		</div>
 		<div class="sub">{subtitle}</div>
 	{/snippet}
 	{#snippet trailing()}

@@ -96,11 +96,7 @@ export async function editPost(
 	await invalidateCircleSnapshots(origin, circleId);
 }
 
-export async function deletePost(
-	origin: string,
-	circleId: string,
-	postId: string
-): Promise<void> {
+export async function deletePost(origin: string, circleId: string, postId: string): Promise<void> {
 	await apiFetch(origin, `/circles/${circleId}/posts/${postId}`, { method: 'DELETE' });
 	await invalidateCircleSnapshots(origin, circleId);
 }
@@ -188,10 +184,7 @@ export async function removeReaction(
  * сохранение приходил только через минуты, а на телефоне гигабайты в памяти
  * могли уронить вкладку. Сервер отдаёт архив потоком, сразу с первым байтом.
  */
-export async function downloadArchive(
-	origin: string,
-	downloadUrl: string
-): Promise<void> {
+export async function downloadArchive(origin: string, downloadUrl: string): Promise<void> {
 	const path = downloadUrl.replace(/^\/api\/v1/, '').replace(/\/download$/, '/link');
 	const { url } = await apiJson<{ url: string }>(origin, path, { method: 'POST' });
 	openDownload(apiPath(origin, url.replace(/^\/api\/v1/, '')));

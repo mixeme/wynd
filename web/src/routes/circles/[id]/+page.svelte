@@ -88,12 +88,8 @@
 	import type { QueueMediaMeta } from '$lib/idb/db';
 	import VideoRecorder from '$ui/overlays/VideoRecorder.svelte';
 	import { loadDays } from '$lib/journal/days';
-	import type { FeedEvent, FeedPost, MediaSummary } from '$lib/journal/types';
-	import {
-		bumpDayPromptCount,
-		getDayPromptShowCount,
-		isDayPromptDismissed
-	} from '$lib/idb/db';
+	import type { FeedEvent, FeedPost } from '$lib/journal/types';
+	import { bumpDayPromptCount, getDayPromptShowCount, isDayPromptDismissed } from '$lib/idb/db';
 	import {
 		enqueuePost,
 		enqueueReaction,
@@ -148,7 +144,10 @@
 	let feedEl: HTMLDivElement | undefined = $state();
 	// Автомат жеста живёт в $lib и покрыт тестами (GUI-5).
 	// Обновление жестом (3.5): тянешь ленту от верха — она перечитывается.
-	const ptr = new PullRefresh(() => feedEl?.scrollTop ?? 0, () => loadFeedData());
+	const ptr = new PullRefresh(
+		() => feedEl?.scrollTop ?? 0,
+		() => loadFeedData()
+	);
 	let commentDraft = $state('');
 	let dayPromptDate = $state('');
 	let pickerPostId = $state('');
@@ -268,11 +267,20 @@
 		const spot = takeFeedSpot(feedSpotKey(circle.origin, circle.circleId));
 		if (!spot || !cameFromPost) return;
 		await tick();
-		if (feedEl) applyFeedSpot(feedEl, posts.map((p) => p.id), spot);
+		if (feedEl)
+			applyFeedSpot(
+				feedEl,
+				posts.map((p) => p.id),
+				spot
+			);
 	}
 
 	function leaveToPost(path: string) {
-		saveFeedSpot(feedSpotKey(circle.origin, circle.circleId), feedEl, posts.map((p) => p.id));
+		saveFeedSpot(
+			feedSpotKey(circle.origin, circle.circleId),
+			feedEl,
+			posts.map((p) => p.id)
+		);
 		goto(path);
 	}
 
@@ -540,10 +548,15 @@
 			const compression = await fetchCompression(circle.origin).catch(() => undefined);
 			// Голосу хватает 64 кбит/с; перекодируем всегда — WebM с телефона
 			// может не сыграть на iPhone.
-			const { fallbackReason: _reason, ...audio } = await compressAudio(take.file, compression, undefined, {
-				bitrateKbps: 64,
-				force: true
-			});
+			const { fallbackReason: _reason, ...audio } = await compressAudio(
+				take.file,
+				compression,
+				undefined,
+				{
+					bitrateKbps: 64,
+					force: true
+				}
+			);
 			await enqueueRecorded(
 				{ ...audio, type: audioMime(audio.name, audio.type) },
 				{
@@ -623,10 +636,6 @@
 	// строится заново после каждого захода в запись или альбом.
 	function openDay(entryDate: string) {
 		leaveToPost(`/circles/${circle.circleId}/days/${entryDate}?from=feed`);
-	}
-
-	function openCompose() {
-		goto(`/circles/${circle.circleId}/compose`);
 	}
 
 	function openPost(postId: string) {
@@ -757,7 +766,6 @@
 		}
 	}
 
-
 	function formatIsoDay(iso: string, withYear = false): string {
 		const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' };
 		if (withYear) opts.year = 'numeric';
@@ -822,7 +830,7 @@
 	onback={goBack}
 	onsearch={openSearch}
 	bind:commentDraft
-	commentMembers={commentMembers}
+	{commentMembers}
 	commentBusy={sending}
 	onCommentSend={canSay ? sendFromBar : undefined}
 	onCommentCompose={canSay ? openComposeFromBar : undefined}
@@ -831,7 +839,6 @@
 	onCommentVideo={canSay ? () => void openVideo() : undefined}
 	commentStatus={preparing || barNote}
 >
-
 	{#if videoOpen}
 		<VideoRecorder
 			settings={videoSettings}
@@ -881,8 +888,8 @@
 					Вы переносите «{circle.name}» на другой сервер. Читать можно, писать пока нельзя.
 				{:else}
 					{circle.ownerName || 'Владелец'} переносит «{circle.name}» на другой сервер. Читать можно,
-					писать пока нельзя. Когда перенос закончится, на {circle.move.email} придёт письмо с новым
-					адресом круга.
+					писать пока нельзя. Когда перенос закончится, на {circle.move.email} придёт письмо с новым адресом
+					круга.
 				{/if}
 			</ArchiveBanner>
 		{:else if circle.frozenAt}
@@ -903,8 +910,8 @@
 					нельзя.
 				{:else}
 					{circle.ownerName || 'Владелец'} убирает круг «{circle.name}» с сервера и сохраняет его в
-					файл. Читать можно, писать нельзя. Свой архив — всё, что вы видели в круге, — можно скачать,
-					пока круг здесь.
+					файл. Читать можно, писать нельзя. Свой архив — всё, что вы видели в круге, — можно
+					скачать, пока круг здесь.
 				{/if}
 			</ArchiveBanner>
 		{:else if circle.archiveCycle?.active}
@@ -964,28 +971,28 @@
 					media={item.file_count ? queuedMedia : undefined}
 					comments={item.state === 'failed' && item.error ? queuedError : undefined}
 				>
-						{#snippet author()}
-							<PostByline
-								initial={circle.identityInitial}
-								color={circle.colorHex}
-								src={circle.avatarUrl}
-								name={circle.identityName}
-								time={queuedTimeLabel(item.state, sendProgress[item.id], item.error)}
-								icon="clock"
-							/>
-						{/snippet}
-						{#snippet headerRight()}
-							<!-- У правого края, где у записи дата (владелец, 2026-10-15). -->
-							<IconButton
-								class="ml-auto"
-								name="trash"
-								size="sm"
-								label="Удалить из очереди"
-								stopPropagation
-								onclick={() => (queueToRemove = item.id)}
-							/>
-						{/snippet}
-					</PostCard>
+					{#snippet author()}
+						<PostByline
+							initial={circle.identityInitial}
+							color={circle.colorHex}
+							src={circle.avatarUrl}
+							name={circle.identityName}
+							time={queuedTimeLabel(item.state, sendProgress[item.id], item.error)}
+							icon="clock"
+						/>
+					{/snippet}
+					{#snippet headerRight()}
+						<!-- У правого края, где у записи дата (владелец, 2026-10-15). -->
+						<IconButton
+							class="ml-auto"
+							name="trash"
+							size="sm"
+							label="Удалить из очереди"
+							stopPropagation
+							onclick={() => (queueToRemove = item.id)}
+						/>
+					{/snippet}
+				</PostCard>
 			{/each}
 
 			<!-- Название и обложка дня — открытка (3.20), остальное — тонкая строка. -->
@@ -1124,11 +1131,7 @@
 						кого есть за него запись.
 					</FeedDayPromptCard>
 				{/if}
-				{#each serviceEventsBetween(
-					feedEvents,
-					post.event_seq,
-					i + 1 < posts.length ? posts[i + 1].event_seq : 0
-				) as ev (ev.seq)}
+				{#each serviceEventsBetween(feedEvents, post.event_seq, i + 1 < posts.length ? posts[i + 1].event_seq : 0) as ev (ev.seq)}
 					{@render feedEvent(ev)}
 				{/each}
 			{/each}
@@ -1171,7 +1174,11 @@
 	</div>
 
 	{#if reactionsPost}
-		<ReactionsSheet reactions={reactionsPost.reactions ?? []} color={circle.colorHex} ondismiss={closeReactions} />
+		<ReactionsSheet
+			reactions={reactionsPost.reactions ?? []}
+			color={circle.colorHex}
+			ondismiss={closeReactions}
+		/>
 	{/if}
 
 	{#if queueToRemove !== null}

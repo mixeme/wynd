@@ -125,15 +125,18 @@ describe('renderAvatarCrop', () => {
 		const getContext = vi
 			.spyOn(HTMLCanvasElement.prototype, 'getContext')
 			.mockReturnValue(ctx as unknown as CanvasRenderingContext2D);
-		const toBlob = vi
-			.spyOn(HTMLCanvasElement.prototype, 'toBlob')
-			.mockImplementation(function (this: HTMLCanvasElement, cb, type, quality) {
-				expect(this.width).toBe(AVATAR_OUTPUT_PX);
-				expect(this.height).toBe(AVATAR_OUTPUT_PX);
-				expect(type).toBe('image/jpeg');
-				expect(quality).toBe(AVATAR_JPEG_QUALITY);
-				cb(new Blob([new Uint8Array([0xff, 0xd8, 0xff])], { type: 'image/jpeg' }));
-			});
+		const toBlob = vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(function (
+			this: HTMLCanvasElement,
+			cb,
+			type,
+			quality
+		) {
+			expect(this.width).toBe(AVATAR_OUTPUT_PX);
+			expect(this.height).toBe(AVATAR_OUTPUT_PX);
+			expect(type).toBe('image/jpeg');
+			expect(quality).toBe(AVATAR_JPEG_QUALITY);
+			cb(new Blob([new Uint8Array([0xff, 0xd8, 0xff])], { type: 'image/jpeg' }));
+		});
 
 		const t = initialCropTransform(800, 800, viewport);
 		const data = await renderAvatarCrop({ width: 800, height: 800 } as ImageBitmap, viewport, t);

@@ -18,7 +18,15 @@
 	import { isAttachedToOtherDay } from '$lib/journal/present';
 	import { loadSessions } from '$lib/session/session.svelte';
 	import { getMediaUrl } from '$lib/media/objectUrl';
-	import { searchChipsFromParams, replaceSearchUrl, searchChipsFromWindow, searchThumbVariant, quoteMatch, searchHitHref, searchHref } from '$lib/journal/search';
+	import {
+		searchChipsFromParams,
+		replaceSearchUrl,
+		searchChipsFromWindow,
+		searchThumbVariant,
+		quoteMatch,
+		searchHitHref,
+		searchHref
+	} from '$lib/journal/search';
 
 	type Hit = {
 		postId: string;
@@ -177,7 +185,12 @@
 							time: isDay ? formatEntryDate(hit.entry_date) : formatPostTime(hit.created_at ?? ''),
 							// Запись задним числом — справа её день, как в ленте (C49).
 							entryDay:
-								!isDay && hit.kind !== 'comment' && isAttachedToOtherDay({ entry_date: hit.entry_date, created_at: hit.created_at ?? '' })
+								!isDay &&
+								hit.kind !== 'comment' &&
+								isAttachedToOtherDay({
+									entry_date: hit.entry_date,
+									created_at: hit.created_at ?? ''
+								})
 									? formatEntryDate(hit.entry_date)
 									: undefined,
 							snippet: hit.snippet,

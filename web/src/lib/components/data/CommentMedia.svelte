@@ -70,7 +70,9 @@
 				{#if inert || !item.blobId}
 					<span class="voice">
 						<span class="voice-play"><Icon name="play" /></span>
-						<VoiceWave peaks={item.peaks?.length ? item.peaks : Array.from({ length: 32 }, () => 20)} />
+						<VoiceWave
+							peaks={item.peaks?.length ? item.peaks : Array.from({ length: 32 }, () => 20)}
+						/>
 						<span class="sz">{formatDuration(item.durationMs ?? 0)}</span>
 					</span>
 				{:else}

@@ -29,6 +29,10 @@ describe('CodeBox', () => {
 	});
 
 	it('keeps six digits from a pasted «123 456»', () => {
-		expect(cells('123 456').map((c) => c.char).join('')).toBe('123456');
+		expect(
+			cells('123 456')
+				.map((c) => c.char)
+				.join('')
+		).toBe('123456');
 	});
 });

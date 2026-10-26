@@ -1,5 +1,13 @@
 <script module lang="ts">
-	export const ADMIN_NAV = ['Проверка', 'Общие', 'Доступ', 'Люди', 'Хранилище', 'Сжатие', 'Оплата'] as const;
+	export const ADMIN_NAV = [
+		'Проверка',
+		'Общие',
+		'Доступ',
+		'Люди',
+		'Хранилище',
+		'Сжатие',
+		'Оплата'
+	] as const;
 	export type AdminNavItem = (typeof ADMIN_NAV)[number];
 	export const ADMIN_HREF: Record<AdminNavItem, string> = {
 		Хранилище: '/admin',
@@ -34,11 +42,7 @@
 <span class="admnav {className}" style="margin-left:20px;{style}">
 	{#each ADMIN_NAV as item (item)}
 		{#if links}
-			<button
-				type="button"
-				class:on={active === item}
-				onclick={() => goto(ADMIN_HREF[item])}
-			>
+			<button type="button" class:on={active === item} onclick={() => goto(ADMIN_HREF[item])}>
 				{item}{#if counts[item]}<span class="wait" aria-label="ждут решения">{counts[item]}</span
 					>{/if}
 			</button>

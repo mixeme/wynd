@@ -99,13 +99,7 @@
 
 <FormLayout shell app title="Уйти с сервера насовсем" onback={back}>
 	{#if pending}
-		<ServerRow
-			name={serverLabel}
-			subtitle={pending.host}
-			card
-			gdpr={erasureAllowed}
-			top={10}
-		/>
+		<ServerRow name={serverLabel} subtitle={pending.host} card gdpr={erasureAllowed} top={10} />
 		<SettingsRow
 			title={pending.email}
 			subtitle={preview ? plural(preview.circles, WORD.circle) : undefined}
@@ -117,15 +111,19 @@
 			<Loading />
 		{:else if owns}
 			<SectionLabel class="mt-8">Сначала — ваши круги</SectionLabel>
-			<Hint class="mt-0 ink">
-				Без владельца круг остаться не может.
-			</Hint>
+			<Hint class="mt-0 ink">Без владельца круг остаться не может.</Hint>
 			{#each preview.owned as c, i (c.id)}
 				<SettingsRow
 					class={i === 0 ? 'mt-8' : undefined}
 					title={c.name}
 					subtitle={ownedCircleSubtitle(c)}
-					divided={preview.owned.length === 1 ? 'both' : i === 0 ? 'top' : i === preview.owned.length - 1 ? 'bottom' : undefined}
+					divided={preview.owned.length === 1
+						? 'both'
+						: i === 0
+							? 'top'
+							: i === preview.owned.length - 1
+								? 'bottom'
+								: undefined}
 					onclick={() =>
 						goto(
 							c.members > 1
@@ -143,9 +141,7 @@
 				по новому приглашению, прежнее в них будет не видно.
 			</Hint>
 			<SectionLabel class="mt-18">Останется в кругах</SectionLabel>
-			<Hint class="mt-0 ink">
-				Всё, что вы написали и выложили, — под вашими именами.
-			</Hint>
+			<Hint class="mt-0 ink">Всё, что вы написали и выложили, — под вашими именами.</Hint>
 			{#if erasureAllowed}
 				<SettingsRow
 					class="mt-14"

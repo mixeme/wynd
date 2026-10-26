@@ -16,7 +16,9 @@ const TTL_MS = 30 * 60 * 1000;
 export function isWantedPath(path: string): boolean {
 	if (!path.startsWith('/') || path.startsWith('//') || path.includes('\\')) return false;
 	const bare = path.split(/[?#]/)[0];
-	return bare !== '/' && bare !== '/circles' && !bare.startsWith('/auth') && !bare.startsWith('/admin');
+	return (
+		bare !== '/' && bare !== '/circles' && !bare.startsWith('/auth') && !bare.startsWith('/admin')
+	);
 }
 
 export function rememberWantedPath(path: string, now = Date.now()): void {

@@ -4,7 +4,10 @@
 		<meta charset="utf-8" />
 		<!-- resizes-content: клавиатура сжимает страницу, а не наезжает на
 		     неё — иначе браузер сдвигал всё окно вверх (session/viewport.ts). -->
-		<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1, interactive-widget=resizes-content"
+		/>
 		<title>Wynd</title>
 		<!-- Манифест — в исходном HTML, не из JS: Firefox на Android решает,
 		     устанавливается ли сайт как приложение, по странице до гидрации, и
@@ -19,7 +22,10 @@
 			// (строка ввода, кнопка фото рядом с ней). maximum-scale=1 iOS понимает
 			// как «без автоувеличения», а щипок пальцами оставляет. Только iOS: на
 			// Android та же метка запретила бы щипок.
-			if (/iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+			if (
+				/iP(hone|ad|od)/.test(navigator.userAgent) ||
+				(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+			) {
 				var vp = document.querySelector('meta[name="viewport"]');
 				if (vp) vp.setAttribute('content', vp.getAttribute('content') + ', maximum-scale=1');
 			}

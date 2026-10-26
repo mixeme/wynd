@@ -66,7 +66,8 @@
 
 	function confirmGrant() {
 		if (!settings) return;
-		const days = grantNone || grantUnlimited ? 0 : grantCustom ? parseCustomDays(grantCustomDays) : grantDays;
+		const days =
+			grantNone || grantUnlimited ? 0 : grantCustom ? parseCustomDays(grantCustomDays) : grantDays;
 		if (days === null) {
 			grantError = 'Укажите число дней';
 			return;
@@ -170,13 +171,6 @@
 	});
 </script>
 
-<style>
-	.req-row,
-	.acc-row {
-		cursor: pointer;
-	}
-</style>
-
 <AdminWideLayout app active="Оплата" {server}>
 	<AdminSection>
 		<TextButton
@@ -214,9 +208,7 @@
 						</Chip>
 					{/each}
 				</ChipGroup>
-				<div class="note mt-8 lh-15">
-					Придёт письмо и строка в списке кругов.
-				</div>
+				<div class="note mt-8 lh-15">Придёт письмо и строка в списке кругов.</div>
 				<SectionLabel class="mt-22 mx-0 mb-8">Заявки</SectionLabel>
 				{#if requests.length === 0}
 					<Hint>Заявок нет.</Hint>
@@ -230,19 +222,12 @@
 							<th></th>
 						</tr>
 						{#each requests as req (req.id)}
-							<tr
-								class="req-row"
-								onclick={() => goto(`/admin/pay/requests/${req.id}`)}
-							>
+							<tr class="req-row" onclick={() => goto(`/admin/pay/requests/${req.id}`)}>
 								<td class="n">{req.account_email}</td>
 								<td class="muted">{formatPayDateTime(req.created_at)}</td>
 								<td>
 									{#if thumbs[req.id]}
-										<img
-											src={thumbs[req.id]}
-											alt=""
-											class="pay-thumb"
-										/>
+										<img src={thumbs[req.id]} alt="" class="pay-thumb" />
 									{/if}
 								</td>
 								<td class="muted">{req.comment || 'нет'}</td>
@@ -264,13 +249,8 @@
 							<th></th>
 						</tr>
 						{#each accounts as acc (acc.id)}
-							<tr
-								class="acc-row"
-								onclick={() => goto(`/admin/pay/accounts/${acc.id}`)}
-							>
-								<td class="n {acc.blocked ? 'faint' : ''}"
-									>{acc.email}</td
-								>
+							<tr class="acc-row" onclick={() => goto(`/admin/pay/accounts/${acc.id}`)}>
+								<td class="n {acc.blocked ? 'faint' : ''}">{acc.email}</td>
 								<td class="muted">
 									{subscriptionTableStatus(acc.subscription_expires_at)}
 								</td>
@@ -315,3 +295,10 @@
 		</ConfirmDialog>
 	{/if}
 </AdminWideLayout>
+
+<style>
+	.req-row,
+	.acc-row {
+		cursor: pointer;
+	}
+</style>

@@ -142,11 +142,7 @@
 	function downloadCurrent() {
 		const item = photos[lightboxIndex];
 		if (!item) return;
-		void downloadBlob(
-			circle.origin,
-			item.blob_id,
-			albumDownloadFilename(item, lightboxIndex)
-		);
+		void downloadBlob(circle.origin, item.blob_id, albumDownloadFilename(item, lightboxIndex));
 	}
 </script>
 
@@ -155,7 +151,9 @@
 {/snippet}
 {#snippet photoCaption()}
 	{#if post && currentItem}
-		<BylineParts parts={lightboxCaption(post, currentItem, formatPostTime, sizes[currentItem.blob_id])} />
+		<BylineParts
+			parts={lightboxCaption(post, currentItem, formatPostTime, sizes[currentItem.blob_id])}
+		/>
 	{/if}
 {/snippet}
 
@@ -198,9 +196,7 @@
 	<Lightbox
 		fixed
 		counter="{lightboxIndex + 1} из {photos.length}"
-		caption={item.kind === 'video' && !urls[item.blob_id]
-			? videoNote[item.blob_id]
-			: photoCaption}
+		caption={item.kind === 'video' && !urls[item.blob_id] ? videoNote[item.blob_id] : photoCaption}
 		dotCount={photos.length}
 		dotIndex={lightboxIndex}
 		onDotSelect={openLightbox}
@@ -223,7 +219,8 @@
 						controls
 						playsinline
 						preload="metadata"
-						onloadedmetadata={(e) => noteSize(item.blob_id, e.currentTarget.videoWidth, e.currentTarget.videoHeight)}
+						onloadedmetadata={(e) =>
+							noteSize(item.blob_id, e.currentTarget.videoWidth, e.currentTarget.videoHeight)}
 						onloadeddata={() => void keepPoster(item)}
 					></video>
 				{:else if urls[tileBlobId(item)]}

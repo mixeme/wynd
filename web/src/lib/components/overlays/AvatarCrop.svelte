@@ -287,16 +287,18 @@
 			if (!source || !ondone) return;
 			const bitmap = await decodeAvatarBitmap(source);
 			try {
-				const crop = await cropAvatarBitmap(bitmap, cropViewport, transform, file?.name ?? 'avatar.jpg');
+				const crop = await cropAvatarBitmap(
+					bitmap,
+					cropViewport,
+					transform,
+					file?.name ?? 'avatar.jpg'
+				);
 				await ondone(crop);
 			} finally {
 				bitmap.close();
 			}
 		} catch (err) {
-			error =
-				err instanceof Error && err.message
-					? err.message
-					: 'Не удалось кадрировать фото';
+			error = err instanceof Error && err.message ? err.message : 'Не удалось кадрировать фото';
 		} finally {
 			saving = false;
 		}

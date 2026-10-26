@@ -15,12 +15,7 @@
 	<Hint style="margin-top:12px">112 дней из 340 записей</Hint>
 	<MonthLabel>Август 2026</MonthLabel>
 	<DayGrid>
-		<DayCard
-			title="Дача, яблони"
-			subtitle="12 августа · 4 записи"
-			cover="p1"
-			photoCount={12}
-		/>
+		<DayCard title="Дача, яблони" subtitle="12 августа · 4 записи" cover="p1" photoCount={12} />
 		<DayCard title="11 августа" subtitle="2 записи" cover="p5" photoCount={3} />
 		<DayCard title="Разговор" subtitle="9 августа · 1 запись" />
 		<DayCard title="6 августа" subtitle="1 запись" cover="p6" />

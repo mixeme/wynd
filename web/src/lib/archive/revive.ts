@@ -84,7 +84,9 @@ function identityNames(tables: Record<string, WyndTable>): Map<string, string> {
 }
 
 /** Владелец круга по таблицам архива: почта и текущее имя (7.29б). */
-export function archiveOwner(tables: Record<string, WyndTable>): { email: string; name: string } | undefined {
+export function archiveOwner(
+	tables: Record<string, WyndTable>
+): { email: string; name: string } | undefined {
 	const names = identityNames(tables);
 	const ownerId = String(rows(tables.circles)[0]?.owner_account_id ?? '');
 	const email = rows(tables.accounts).find((a) => String(a.id) === ownerId)?.email;
@@ -183,7 +185,10 @@ export interface ReviveRoom {
  * умолчанию или, если на сервере свободно меньше, свободное место (владелец,
  * 2026-10-17).
  */
-export function roomCaption(room: Pick<ReviveRoom, 'room_bytes' | 'limit'>, fmt: (n: number) => string): string {
+export function roomCaption(
+	room: Pick<ReviveRoom, 'room_bytes' | 'limit'>,
+	fmt: (n: number) => string
+): string {
 	if (room.limit === 'quota') return `квота по умолчанию ${fmt(room.room_bytes)}`;
 	if (room.limit === 'approved') return `одобрено ${fmt(room.room_bytes)}`;
 	return `свободно ${fmt(room.room_bytes)}`;
@@ -202,7 +207,11 @@ export function fetchReviveRoom(origin: string, bytes: number): Promise<ReviveRo
 	return apiJson<ReviveRoom>(origin, `/revive/room?bytes=${Math.max(0, Math.floor(bytes))}`);
 }
 
-export async function requestRevivePlace(origin: string, bytes: number, circleName: string): Promise<void> {
+export async function requestRevivePlace(
+	origin: string,
+	bytes: number,
+	circleName: string
+): Promise<void> {
 	await apiJson(origin, '/revive/place_request', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
@@ -279,11 +288,15 @@ export async function uploadArchiveFiles(
 	archive: LoadedArchive,
 	onProgress: (sent: number, total: number) => void
 ): Promise<Record<string, string>> {
-	const { blobs: have } = await apiJson<{ blobs: Record<string, string> }>(origin, '/revive/blobs', {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ sha256: archive.blobs.map((b) => b.sha256) })
-	});
+	const { blobs: have } = await apiJson<{ blobs: Record<string, string> }>(
+		origin,
+		'/revive/blobs',
+		{
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ sha256: archive.blobs.map((b) => b.sha256) })
+		}
+	);
 	const map: Record<string, string> = {};
 	let sent = 0;
 	onProgress(0, archive.bytes);

@@ -40,7 +40,9 @@
 	</div>
 	<div class="audio-bar-row">
 		<button type="button" class="audio-bar-main" onclick={onopen}>
-			<span class="pic audio-bar-cover">{#if coverUrl}<img src={coverUrl} alt="" />{/if}</span>
+			<span class="pic audio-bar-cover"
+				>{#if coverUrl}<img src={coverUrl} alt="" />{/if}</span
+			>
 			<span class="audio-bar-text">
 				<span class="audio-bar-title">{title}</span>
 				<span class="audio-bar-sub">{subtitle}</span>

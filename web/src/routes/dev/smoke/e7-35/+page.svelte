@@ -11,7 +11,10 @@
 	></div>
 	<div class="sb" style="color:#fff;position:relative">
 		<span>9:41</span>
-		<span class="sig"><u style="background:#fff"></u><u style="background:#fff"></u><u style="background:#fff"></u><u style="background:#fff"></u></span>
+		<span class="sig"
+			><u style="background:#fff"></u><u style="background:#fff"></u><u style="background:#fff"
+			></u><u style="background:#fff"></u></span
+		>
 	</div>
 	<div style="position:relative;text-align:center;color:#fff;margin-top:56px">
 		<div style="font-size:56px;font-weight:600;line-height:1">9:41</div>

@@ -26,9 +26,7 @@ export interface Recovery {
 
 /** Что показать полосой под шапкой; на связи — ничего. */
 export type ConnectionNotice =
-	| { kind: 'offline' }
-	| { kind: 'down' }
-	| ({ kind: 'sending' } & Recovery);
+	{ kind: 'offline' } | { kind: 'down' } | ({ kind: 'sending' } & Recovery);
 
 interface RecoveryRun {
 	total: number;

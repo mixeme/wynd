@@ -14,11 +14,7 @@
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
-	import {
-		fetchCircleSettings,
-		fetchIdentity,
-		updateIdentity
-	} from '$lib/circles/settings';
+	import { fetchCircleSettings, fetchIdentity, updateIdentity } from '$lib/circles/settings';
 	import { circleInitial } from '$lib/circles/meta';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { getMediaUrl, revokeMediaUrl, seedMediaUrl } from '$lib/media/objectUrl';
@@ -156,7 +152,11 @@
 			<TextButton onclick={() => void clearPhoto()}>убрать фото</TextButton>
 		</Hint>
 	{/if}
-	<FilePicker bind:this={photoPicker} accept="image/*" onfiles={([file]) => onPhotoSelected(file)} />
+	<FilePicker
+		bind:this={photoPicker}
+		accept="image/*"
+		onfiles={([file]) => onPhotoSelected(file)}
+	/>
 	<Label class="mt-20">Имя</Label>
 	<Input active bind:value={name} />
 	{#if nameHint}
@@ -170,7 +170,8 @@
 	{#if history.length > 1}
 		<Label class="mt-22">Прежние имена</Label>
 		{#each history.slice(1) as row (row.effective_at)}
-			<SettingsRow class="pt-2"
+			<SettingsRow
+				class="pt-2"
 				title={row.name}
 				subtitle="до {formatEntryDate(row.effective_at.slice(0, 10))}"
 				chevron={false}
@@ -178,7 +179,8 @@
 		{/each}
 	{/if}
 	<Hint
-		>Старые записи остаются подписаны прежним именем — так, как их читали тогда. Смена имени будет видна в хронологии.</Hint
+		>Старые записи остаются подписаны прежним именем — так, как их читали тогда. Смена имени будет
+		видна в хронологии.</Hint
 	>
 	<Button class="mt-16" variant="colored" loading={saving} onclick={() => void save()}>
 		Сохранить
@@ -189,10 +191,5 @@
 </FormLayout>
 
 {#if cropFile}
-	<AvatarCrop
-		file={cropFile}
-		color={circle.color}
-		ondone={onCropDone}
-		oncancel={onCropCancel}
-	/>
+	<AvatarCrop file={cropFile} color={circle.color} ondone={onCropDone} oncancel={onCropCancel} />
 {/if}

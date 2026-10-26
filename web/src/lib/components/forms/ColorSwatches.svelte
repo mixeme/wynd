@@ -1,9 +1,5 @@
 <script lang="ts">
-	import {
-		CIRCLE_COLOR_ORDER,
-		CIRCLE_COLORS,
-		type CircleColor
-	} from '$lib/theme/colors';
+	import { CIRCLE_COLOR_ORDER, CIRCLE_COLORS, type CircleColor } from '$lib/theme/colors';
 
 	let {
 		value = $bindable<CircleColor>('ochre'),

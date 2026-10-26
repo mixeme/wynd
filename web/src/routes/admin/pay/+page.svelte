@@ -12,12 +12,7 @@
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { formatPayDate } from '$lib/pay/pay';
-	import {
-		fetchPayHub,
-		savePayRequisites,
-		serverCaption,
-		type PayHub
-	} from '$lib/admin/admin';
+	import { fetchPayHub, savePayRequisites, serverCaption, type PayHub } from '$lib/admin/admin';
 
 	let hub = $state<PayHub | undefined>();
 	let requisites = $state('');

@@ -124,10 +124,7 @@
 
 	onMount(async () => {
 		try {
-			const [detail, caption] = await Promise.all([
-				fetchAccount(accountId),
-				serverCaption()
-			]);
+			const [detail, caption] = await Promise.all([fetchAccount(accountId), serverCaption()]);
 			server = caption;
 			acc = { ...detail, circles: detail.circles ?? [] };
 			loginOpen = !detail.blocked;
@@ -143,11 +140,7 @@
 
 <AdminWideLayout app active="Люди" {server}>
 	<AdminSection>
-		<TextButton
-			variant="admin"
-			class="sz-11 faint mb-8"
-			onclick={() => goto('/admin/people')}
-		>
+		<TextButton variant="admin" class="sz-11 faint mb-8" onclick={() => goto('/admin/people')}>
 			Люди
 		</TextButton>
 		{#if loading}

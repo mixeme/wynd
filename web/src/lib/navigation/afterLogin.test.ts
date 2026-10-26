@@ -20,7 +20,15 @@ describe('после входа — туда, куда шёл', () => {
 
 	it('только свои экраны', () => {
 		expect(isWantedPath('/circles/c1/posts/p1?x=1')).toBe(true);
-		for (const bad of ['https://evil.example/x', '//evil.example', '/\\evil', '/', '/circles', '/auth/code', '/admin/check']) {
+		for (const bad of [
+			'https://evil.example/x',
+			'//evil.example',
+			'/\\evil',
+			'/',
+			'/circles',
+			'/auth/code',
+			'/admin/check'
+		]) {
 			expect(isWantedPath(bad)).toBe(false);
 		}
 	});

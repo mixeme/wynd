@@ -10,7 +10,11 @@ import { apiJson } from '$lib/api/client';
 
 type Meta = { geo_lat?: number | null; geo_lng?: number | null };
 
-export async function saveSharePlace(origin: string, circleId: string, on: boolean): Promise<boolean> {
+export async function saveSharePlace(
+	origin: string,
+	circleId: string,
+	on: boolean
+): Promise<boolean> {
 	const out = await apiJson<{ share_place: boolean }>(origin, `/circles/${circleId}/place`, {
 		method: 'PUT',
 		headers: { 'Content-Type': 'application/json' },

@@ -49,13 +49,7 @@ export const CHECK_GROUPS: { label: string; ids: string[] }[] = [
 	},
 	{
 		label: 'Прокси',
-		ids: [
-			'proxy_client',
-			'proxy_body_limit',
-			'proxy_headers',
-			'proxy_sse',
-			'proxy_timeout'
-		]
+		ids: ['proxy_client', 'proxy_body_limit', 'proxy_headers', 'proxy_sse', 'proxy_timeout']
 	},
 	{
 		label: 'Почта',

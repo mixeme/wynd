@@ -93,12 +93,7 @@
 		ontouchend={onTouchEnd}
 	>
 		{#if onprev}
-			<button
-				type="button"
-				class="nav prev"
-				aria-label="Предыдущее фото"
-				onclick={() => onprev()}
-			>
+			<button type="button" class="nav prev" aria-label="Предыдущее фото" onclick={() => onprev()}>
 				<Icon name="chevr" style="transform:rotate(180deg)" />
 			</button>
 		{/if}
@@ -126,6 +121,8 @@
 		</div>
 	{/if}
 	{#if caption}
-		<div class="cap">{#if typeof caption === 'function'}{@render caption()}{:else}{caption}{/if}</div>
+		<div class="cap">
+			{#if typeof caption === 'function'}{@render caption()}{:else}{caption}{/if}
+		</div>
 	{/if}
 </div>

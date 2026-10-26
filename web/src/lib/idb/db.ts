@@ -110,10 +110,7 @@ export interface QueueRecord {
 	/** Когда запись помечена uploading — чтобы снять зависшую после падения вкладки. */
 	uploading_at?: number;
 	payload:
-		| PostQueuePayload
-		| CommentQueuePayload
-		| ReactionQueuePayload
-		| ReactionRemoveQueuePayload;
+		PostQueuePayload | CommentQueuePayload | ReactionQueuePayload | ReactionRemoveQueuePayload;
 	files: QueueFile[];
 	state: QueueState;
 	uploads?: QueueUploadProgress[];
@@ -503,10 +500,7 @@ export interface PinRow {
 	pinned_at: number;
 }
 
-export async function getPin(
-	origin: string,
-	circleId: string
-): Promise<PinRecord | undefined> {
+export async function getPin(origin: string, circleId: string): Promise<PinRecord | undefined> {
 	const db = await getDb();
 	return db.get('pins', pinKey(origin, circleId));
 }
@@ -584,7 +578,9 @@ export async function getMedia(key: string): Promise<MediaRecord | undefined> {
 	const record = await db.get('media', key);
 	if (record) {
 		// Давность для вытеснения; сбой отметки не мешает показу.
-		void db.put('media_meta', { size: record.buffer.byteLength, used: Date.now() }, key).catch(() => {});
+		void db
+			.put('media_meta', { size: record.buffer.byteLength, used: Date.now() }, key)
+			.catch(() => {});
 	}
 	return record;
 }

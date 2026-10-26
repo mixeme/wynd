@@ -29,7 +29,9 @@
 
 {#snippet lines()}
 	{#if first}
-		<div>{first}{#if time}<span class="tm">{' · '}{time}</span>{/if}</div>
+		<div>
+			{first}{#if time}<span class="tm">{' · '}{time}</span>{/if}
+		</div>
 	{/if}
 {/snippet}
 

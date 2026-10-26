@@ -67,11 +67,19 @@
 		placeholder="https://…/invite/…"
 	/>
 	<Button disabled={!link.trim()} onclick={() => open(link)}>Открыть</Button>
-	<Button variant="ghost" onclick={() => goto(fromLogin ? '/invite/scan?from=login' : '/invite/scan')}>Сканировать QR-код</Button>
+	<Button
+		variant="ghost"
+		onclick={() => goto(fromLogin ? '/invite/scan?from=login' : '/invite/scan')}
+		>Сканировать QR-код</Button
+	>
 	<Button variant="ghost" onclick={() => photoPicker?.open()}>Фото с QR-кодом</Button>
 	{#if error}
 		<Hint>{error}</Hint>
 	{/if}
 </FormLayout>
 
-<FilePicker bind:this={photoPicker} accept="image/*" onfiles={([file]) => void onPhotoSelected(file)} />
+<FilePicker
+	bind:this={photoPicker}
+	accept="image/*"
+	onfiles={([file]) => void onPhotoSelected(file)}
+/>

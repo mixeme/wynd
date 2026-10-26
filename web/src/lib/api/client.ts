@@ -48,8 +48,7 @@ async function parseApiError(res: Response): Promise<ApiError> {
 	try {
 		const body: unknown = await res.json();
 		if (body && typeof body === 'object' && 'error' in body && typeof body.error === 'string') {
-			const detail =
-				'detail' in body && typeof body.detail === 'string' ? body.detail : undefined;
+			const detail = 'detail' in body && typeof body.detail === 'string' ? body.detail : undefined;
 			if (
 				'retry_after_sec' in body &&
 				typeof (body as { retry_after_sec?: number }).retry_after_sec === 'number'
@@ -110,17 +109,11 @@ export function isPaymentRequired(err: unknown): err is ApiError & { code: 'paym
 
 export function isAccessError(err: unknown): err is ApiError {
 	return (
-		err instanceof ApiError &&
-		(err.status === 403 || err.status === 404) &&
-		!isPaymentRequired(err)
+		err instanceof ApiError && (err.status === 403 || err.status === 404) && !isPaymentRequired(err)
 	);
 }
 
-export async function apiJson<T>(
-	origin: string,
-	path: string,
-	init: RequestInit = {}
-): Promise<T> {
+export async function apiJson<T>(origin: string, path: string, init: RequestInit = {}): Promise<T> {
 	const res = await apiFetch(origin, path, init);
 	return res.json() as Promise<T>;
 }

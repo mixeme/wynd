@@ -41,7 +41,9 @@
 
 	// The instance may run without a storage limit: the API then omits quota_bytes.
 	const capped = $derived(quotaBytes > 0);
-	const nothingBefore = $derived(keptPosts !== undefined && postCount > 0 && keptPosts >= postCount);
+	const nothingBefore = $derived(
+		keptPosts !== undefined && postCount > 0 && keptPosts >= postCount
+	);
 
 	// Начало столбика датой. Старый сервер отдавал месяц «2026-09» (C7).
 	function bucketStart(period: string): string {
@@ -56,7 +58,9 @@
 	const STEP_LABEL = { day: 'по дням', week: 'по неделям', month: 'по месяцам' } as const;
 	// Концы оси: у дней и недель — даты, у месяцев — годы (по умолчанию графика).
 	const axisStart = $derived(
-		volumeStep !== 'month' && volume.length ? formatEntryDate(bucketStart(volume[0].period)) : undefined
+		volumeStep !== 'month' && volume.length
+			? formatEntryDate(bucketStart(volume[0].period))
+			: undefined
 	);
 	const axisEnd = $derived(
 		volumeStep !== 'month' && volume.length > 1
@@ -159,7 +163,11 @@
 	{:else if error}
 		<Hint class="gutter">{error}</Hint>
 		{#if forbidden}
-			<Button class="mt-8" variant="ghost" onclick={() => goto(`/circles/${circle.circleId}/settings`)}>
+			<Button
+				class="mt-8"
+				variant="ghost"
+				onclick={() => goto(`/circles/${circle.circleId}/settings`)}
+			>
 				К настройкам
 			</Button>
 		{/if}

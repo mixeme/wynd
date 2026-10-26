@@ -27,10 +27,7 @@ export async function searchCircle(
 ): Promise<CircleSearchHit[]> {
 	const params = new URLSearchParams({ q: query, limit: String(limit) });
 	appendFilters(params, filters);
-	const data = await apiJson<CircleSearchResponse>(
-		origin,
-		`/circles/${circleId}/search?${params}`
-	);
+	const data = await apiJson<CircleSearchResponse>(origin, `/circles/${circleId}/search?${params}`);
 	return data.hits ?? [];
 }
 
@@ -88,7 +85,13 @@ export function searchHref(path: string, state: SearchChipState): string {
  */
 export function searchHitHref(
 	circleId: string,
-	hit: { kind: string; post_id: string; entry_date: string; comment_id?: string; media_blob_id?: string }
+	hit: {
+		kind: string;
+		post_id: string;
+		entry_date: string;
+		comment_id?: string;
+		media_blob_id?: string;
+	}
 ): string {
 	const base = `/circles/${circleId}`;
 	if (hit.kind === 'day') return `${base}/days/${hit.entry_date}`;

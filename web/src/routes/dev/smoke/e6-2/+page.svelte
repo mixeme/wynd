@@ -26,22 +26,9 @@
 		style="margin-top:8px"
 	/>
 	<Label style="margin-top:20px">Участники · 22</Label>
-	<MemberRow
-		initial="К"
-		name="Кот"
-		subtitle="владелец"
-		color="#62452F"
-		style="padding-top:2px"
-	/>
-	<MemberRow
-		initial="А"
-		name="Аня"
-		subtitle="может менять настройки"
-		color="#58673A"
-	/>
+	<MemberRow initial="К" name="Кот" subtitle="владелец" color="#62452F" style="padding-top:2px" />
+	<MemberRow initial="А" name="Аня" subtitle="может менять настройки" color="#58673A" />
 	<MemberRow initial="М" name="Мышь" subtitle="это вы" />
 	<SettingsRow title="ещё 19" link />
-	<DangerZone
-		items={['Передать владение', 'Покинуть круг', 'Удалить круг и все записи']}
-	/>
+	<DangerZone items={['Передать владение', 'Покинуть круг', 'Удалить круг и все записи']} />
 </PhoneFrame>

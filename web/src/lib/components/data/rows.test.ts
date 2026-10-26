@@ -31,7 +31,14 @@ describe('row components markup', () => {
 			for (const onclick of [undefined, noop]) {
 				for (const card of [false, true]) {
 					expect(
-						render(ServerRow, { name: 'Дом', subtitle: 'wynd.example', variant, card, onclick, style: 'color: red' })
+						render(ServerRow, {
+							name: 'Дом',
+							subtitle: 'wynd.example',
+							variant,
+							card,
+							onclick,
+							style: 'color: red'
+						})
 					).toMatchSnapshot(`${variant} click=${Boolean(onclick)} card=${card}`);
 				}
 			}
@@ -39,9 +46,16 @@ describe('row components markup', () => {
 	});
 
 	it('ServerRow: значок GDPR у имени (1.10)', () => {
-		const html = render(ServerRow, { name: 'Дом', subtitle: 'wynd.example', card: true, gdpr: true });
+		const html = render(ServerRow, {
+			name: 'Дом',
+			subtitle: 'wynd.example',
+			card: true,
+			gdpr: true
+		});
 		expect(html).toContain('Дом<span class="gdpr">GDPR</span>');
-		expect(render(ServerRow, { name: 'Дом', subtitle: 'wynd.example', card: true })).not.toContain('GDPR');
+		expect(render(ServerRow, { name: 'Дом', subtitle: 'wynd.example', card: true })).not.toContain(
+			'GDPR'
+		);
 	});
 
 	it('SettingsRow', () => {
@@ -54,12 +68,24 @@ describe('row components markup', () => {
 			['click', { title: 'Имя', subtitle: 'Аня', value: 'x', onclick: noop }],
 			['click link', { title: 'Выйти', link: true, onclick: noop }],
 			['control', { title: 'Звук', control: snippet('<span class="sw"></span>') }],
-			['control subtitle', { title: 'Звук', subtitle: 'в круге', icon: 'bell', control: snippet('<span class="sw"></span>') }],
+			[
+				'control subtitle',
+				{
+					title: 'Звук',
+					subtitle: 'в круге',
+					icon: 'bell',
+					control: snippet('<span class="sw"></span>')
+				}
+			],
 			['control link', { title: 'Звук', link: true, control: snippet('<span class="sw"></span>') }]
 		];
 		for (const [name, props] of cases) {
 			expect(
-				render(SettingsRow as unknown as Component<Record<string, unknown>>, { class: 'c', style: 'color: red', ...props })
+				render(SettingsRow as unknown as Component<Record<string, unknown>>, {
+					class: 'c',
+					style: 'color: red',
+					...props
+				})
 			).toMatchSnapshot(name);
 		}
 	});
@@ -67,26 +93,51 @@ describe('row components markup', () => {
 	it('MemberRow', () => {
 		const cases: Array<[string, Record<string, unknown>]> = [
 			['plain', { initial: 'А', name: 'Аня' }],
-			['subtitle faded', { initial: 'А', name: 'Аня', subtitle: 'владелец', color: '#c47', faded: true }],
+			[
+				'subtitle faded',
+				{ initial: 'А', name: 'Аня', subtitle: 'владелец', color: '#c47', faded: true }
+			],
 			['menu', { initial: 'А', name: 'Аня', menu: true, onmenu: noop }],
-			['click', { initial: 'А', name: 'Аня', subtitle: 'x', onclick: noop, menu: true, onmenu: noop }],
+			[
+				'click',
+				{ initial: 'А', name: 'Аня', subtitle: 'x', onclick: noop, menu: true, onmenu: noop }
+			],
 			['click faded', { initial: 'А', name: 'Аня', onclick: noop, faded: true }]
 		];
 		for (const [name, props] of cases) {
 			expect(
-				render(MemberRow as unknown as Component<Record<string, unknown>>, { style: 'color: red', ...props })
+				render(MemberRow as unknown as Component<Record<string, unknown>>, {
+					style: 'color: red',
+					...props
+				})
 			).toMatchSnapshot(name);
 		}
 	});
 
 	it('CircleRow', () => {
-		const base = { initial: 'С', name: 'Семья', preview: 'Аня: привет', time: '12:30', style: 'color: red' };
+		const base = {
+			initial: 'С',
+			name: 'Семья',
+			preview: 'Аня: привет',
+			time: '12:30',
+			style: 'color: red'
+		};
 		const cases: Array<[string, Record<string, unknown>]> = [
 			['plain', {}],
 			['badge color', { badge: 3, color: '#c47' }],
 			['click', { onclick: noop, badge: 0 }],
 			['card', { card: true, class: 'c' }],
-			['card click actions', { card: true, onclick: noop, actionLabel: 'В группу', onaction: noop, actionLabel2: 'Открепить', onaction2: noop }],
+			[
+				'card click actions',
+				{
+					card: true,
+					onclick: noop,
+					actionLabel: 'В группу',
+					onaction: noop,
+					actionLabel2: 'Открепить',
+					onaction2: noop
+				}
+			],
 			['card action without handler', { card: true, actionLabel: 'В группу' }]
 		];
 		for (const [name, props] of cases) {

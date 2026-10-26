@@ -8,7 +8,14 @@ import {
 } from './responses';
 
 function item(seq: number, patch: Partial<ResponseItem>): ResponseItem {
-	return { kind: 'comment', seq, at: '2026-09-30T10:00:00Z', actor_id: 'x', actor_name: 'Кот', ...patch };
+	return {
+		kind: 'comment',
+		seq,
+		at: '2026-09-30T10:00:00Z',
+		actor_id: 'x',
+		actor_name: 'Кот',
+		...patch
+	};
 }
 
 describe('отклики', () => {
@@ -44,6 +51,8 @@ describe('отклики', () => {
 		expect(responseHref('c', item(1, { post_id: 'p', comment_id: 'm' }))).toBe(
 			'/circles/c/posts/p?comment=m'
 		);
-		expect(responseHref('c', item(1, { kind: 'reaction', post_id: 'p' }))).toBe('/circles/c/posts/p');
+		expect(responseHref('c', item(1, { kind: 'reaction', post_id: 'p' }))).toBe(
+			'/circles/c/posts/p'
+		);
 	});
 });

@@ -38,7 +38,10 @@
 
 <ChipGroup class="m-0">
 	{#each DAY_CHIPS as chip (chip.days)}
-		<Chip selected={!unlimited && !custom && !none && days === chip.days} onclick={() => pick({ days: chip.days })}>
+		<Chip
+			selected={!unlimited && !custom && !none && days === chip.days}
+			onclick={() => pick({ days: chip.days })}
+		>
 			{chip.label}
 		</Chip>
 	{/each}

@@ -111,9 +111,7 @@
 			<TextButton class="link" onclick={changeEmail}>изменить адрес</TextButton>
 		</div>
 		<CodeBox bind:value={code} bind:el={codeInput} autofocus />
-		<Hint>
-			Код действует 15 минут. Три попытки. Пока код не введён, вход — по прежней почте.
-		</Hint>
+		<Hint>Код действует 15 минут. Три попытки. Пока код не введён, вход — по прежней почте.</Hint>
 		<div class="rowin">
 			<Button class="grow" disabled={!canResendCode(pending)} {loading} onclick={resend}>
 				Отправить ещё раз

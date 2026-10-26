@@ -42,7 +42,8 @@ export const AUTH_ERROR_HINTS: Record<string, string> = {
 	push_no_subscriptions: 'Этот браузер не подписан на уведомления',
 	push_failed: 'Push-сервис браузера не принял уведомление',
 	push_unavailable: 'Этот браузер не умеет push-уведомления: нужен HTTPS и service worker',
-	push_permission_denied: 'Уведомления для этого сайта запрещены — разрешите их в настройках браузера',
+	push_permission_denied:
+		'Уведомления для этого сайта запрещены — разрешите их в настройках браузера',
 	internal: 'Не удалось выполнить запрос',
 	unknown: 'Не удалось выполнить запрос'
 };

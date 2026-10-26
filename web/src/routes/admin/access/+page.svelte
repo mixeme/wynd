@@ -48,9 +48,12 @@
 			label: 'По приглашению',
 			note: 'Завестись можно только по ссылке: в круг её даёт участник, на сервер — вы.'
 		},
-		{ key: 'closed', label: 'Закрытый', note: 'Никто не заведётся; выданные ссылки перестанут работать.' }
+		{
+			key: 'closed',
+			label: 'Закрытый',
+			note: 'Никто не заведётся; выданные ссылки перестанут работать.'
+		}
 	];
-
 
 	let mode = $state<AccessSettings['registration_mode']>('invite');
 	let server = $state('');
@@ -188,12 +191,7 @@
 					<div class="note mt-10 lh-16">{modes.find((m) => m.key === mode)?.note}</div>
 					<SectionLabel class="mt-24 mx-0 mb-8">Позвать на сервер</SectionLabel>
 					<div class="flex-top gap-12">
-						<FieldDisplay
-							admin
-							mono
-							value={inviteUrl || '…'}
-							class="grow min0 m-0 anywhere"
-						/>
+						<FieldDisplay admin mono value={inviteUrl || '…'} class="grow min0 m-0 anywhere" />
 						<TextButton variant="adminBox" class="bold no-shrink" onclick={() => void copyLink()}>
 							{copied ? 'Скопировано' : 'Скопировать'}
 						</TextButton>

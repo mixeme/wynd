@@ -54,7 +54,13 @@ describe('source url', () => {
 
 	it('keeps only web addresses: a foreign server cannot plant javascript: into href', async () => {
 		const source = await import('./source.svelte');
-		for (const bad of ['javascript:alert(1)', 'data:text/html,x', 'vbscript:x', 'not a url', '//evil']) {
+		for (const bad of [
+			'javascript:alert(1)',
+			'data:text/html,x',
+			'vbscript:x',
+			'not a url',
+			'//evil'
+		]) {
 			source.rememberSourceUrl('https://evil.example', bad);
 			expect(source.sourceUrl('https://evil.example')).toBe(FALLBACK);
 		}

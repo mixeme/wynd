@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { applyFeedSpot, feedSpotKey, readFeedSpot, saveFeedSpot, takeFeedSpot } from './feed-scroll';
+import {
+	applyFeedSpot,
+	feedSpotKey,
+	readFeedSpot,
+	saveFeedSpot,
+	takeFeedSpot
+} from './feed-scroll';
 
 // Лента с карточками высотой 300, верх ленты на 100 от окна. jsdom не
 // считает раскладку — положение карточек выводим из scrollTop.
@@ -39,7 +45,9 @@ describe('место в ленте', () => {
 	it('сверху пришла новая запись — лента встаёт на ту же, а не на те же пиксели', () => {
 		const feed = fakeFeed(5);
 		feed.scrollTop = 0;
-		expect(applyFeedSpot(feed, ['new', 'a', 'b', 'c', 'd'], { postId: 'b', offset: -50 })).toBe(true);
+		expect(applyFeedSpot(feed, ['new', 'a', 'b', 'c', 'd'], { postId: 'b', offset: -50 })).toBe(
+			true
+		);
 		expect(feed.scrollTop).toBe(650);
 	});
 

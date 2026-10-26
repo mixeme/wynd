@@ -21,9 +21,7 @@
 
 	const editable = $derived(value !== undefined);
 
-	const cleanValue = $derived(
-		editable ? (value ?? '').replace(/\D/g, '').slice(0, length) : ''
-	);
+	const cleanValue = $derived(editable ? (value ?? '').replace(/\D/g, '').slice(0, length) : '');
 
 	$effect(() => {
 		if (!editable || value === undefined) return;

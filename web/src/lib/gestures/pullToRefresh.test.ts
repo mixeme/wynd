@@ -67,7 +67,7 @@ describe('потянуть, чтобы обновить', () => {
 	});
 
 	it('во время обновления жест не начинается заново', () => {
-		let s = pullSettled(pullEnd(pullMove(pullStart(pullIdle(), 0, 0), 80, 0)));
+		const s = pullSettled(pullEnd(pullMove(pullStart(pullIdle(), 0, 0), 80, 0)));
 		expect(s.phase).toBe('refreshing');
 		const again = pullStart(s, 0, 0);
 		expect(again.phase).toBe('refreshing');

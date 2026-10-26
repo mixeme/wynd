@@ -60,7 +60,8 @@ export async function leaveServer(origin: string, eraseNames: boolean): Promise<
 /** Ответ сервера на уход — словами экрана. */
 export function leaveErrorHint(err: unknown): string {
 	if (err instanceof ApiError) {
-		if (err.status === 409) return 'Вы ещё владеете кругами на этом сервере — сначала передайте или удалите их.';
+		if (err.status === 409)
+			return 'Вы ещё владеете кругами на этом сервере — сначала передайте или удалите их.';
 		if (err.status === 403) return 'Стирать имена и фото этот сервер больше не разрешает.';
 	}
 	return 'Не получилось уйти — проверьте связь и попробуйте ещё раз.';

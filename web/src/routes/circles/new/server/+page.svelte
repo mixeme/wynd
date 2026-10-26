@@ -15,12 +15,7 @@
 	}
 </script>
 
-<FormLayout
-	color={form.color}
-	app
-	title="Сервер"
-	onback={() => goUp('/circles/new')}
->
+<FormLayout color={form.color} app title="Сервер" onback={() => goUp('/circles/new')}>
 	{#each form.sessions as session (session.origin)}
 		<ServerRow
 			name={session.name}

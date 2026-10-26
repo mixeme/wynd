@@ -208,9 +208,7 @@
 						<Input admin mono class="fill" bind:value={smtpFrom} />
 						<div class="grid-end flex-mid gap-8">
 							{#if smtpTesting}
-								<span role="status" class="note nowrap">
-									Проверяем
-								</span>
+								<span role="status" class="note nowrap"> Проверяем </span>
 							{:else if smtpOk}
 								<span role="status" aria-label="Вход принят">
 									<StatusIcon status="ok" class="mt-0" />
@@ -235,9 +233,7 @@
 			{/if}
 			<div class="mt-20 scroll-room">
 				{#if loading}
-					<span role="status" class="block note mb-8">
-						Сохраняем
-					</span>
+					<span role="status" class="block note mb-8"> Сохраняем </span>
 				{/if}
 				<Button class="fill m-0" disabled={loading} onclick={loading ? () => {} : onSubmit}>
 					Сохранить и открыть панель

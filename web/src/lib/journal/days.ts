@@ -1,5 +1,9 @@
 import { apiFetch, apiJson, isAccessError } from '$lib/api/client';
-import { invalidateCircleSnapshots, readCachedSnapshot, writeCachedSnapshot } from '$lib/api/snapshots';
+import {
+	invalidateCircleSnapshots,
+	readCachedSnapshot,
+	writeCachedSnapshot
+} from '$lib/api/snapshots';
 import type { DaySnapshot, DaysSnapshot } from './types';
 
 export async function fetchDays(origin: string, circleId: string): Promise<DaysSnapshot> {

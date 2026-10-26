@@ -25,7 +25,11 @@
 {#snippet body()}
 	{#if coverUrl}
 		<PhotoPlaceholder {photoCount} compactCount style="aspect-ratio:1/1">
-			<img src={coverUrl} alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit" />
+			<img
+				src={coverUrl}
+				alt=""
+				style="width:100%;height:100%;object-fit:cover;border-radius:inherit"
+			/>
 		</PhotoPlaceholder>
 	{:else if cover}
 		<PhotoPlaceholder variant={cover} {photoCount} compactCount style="aspect-ratio:1/1" />

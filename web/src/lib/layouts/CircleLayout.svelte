@@ -111,7 +111,7 @@
 
 	// Строка состояния — в цвет шапки круга (C23): сливается с ней, как в приложении.
 	$effect(() => {
-		if (!(app)) return;
+		if (!app) return;
 		return pushStatusColor(CIRCLE_COLORS[color ?? 'terracotta'].hex);
 	});
 
@@ -140,7 +140,8 @@
 	const offset = $derived(leaving || swipeOffset(swipe, hasPrev, hasNext));
 	const previewTab = $derived.by(() => {
 		if (leavingTab) return leavingTab;
-		if (swipe.phase !== 'horizontal' || Math.abs(swipe.dx) < swipe.width * SWIPE.commit) return undefined;
+		if (swipe.phase !== 'horizontal' || Math.abs(swipe.dx) < swipe.width * SWIPE.commit)
+			return undefined;
 		const next = swipe.dx < 0 ? tabIndex + 1 : tabIndex - 1;
 		return order[next];
 	});
@@ -149,7 +150,8 @@
 		if (!swipeOn || !bodyEl || e.touches.length !== 1 || leaving) return;
 		const target = e.target as Element | null;
 		const onMap = active === 'Карта';
-		if (target?.closest('input, textarea, [contenteditable], .lightbox, [data-no-tab-swipe]')) return;
+		if (target?.closest('input, textarea, [contenteditable], .lightbox, [data-no-tab-swipe]'))
+			return;
 		if (!onMap && target?.closest('.leaflet-container')) return;
 		const t = e.touches[0];
 		const rect = bodyEl.getBoundingClientRect();

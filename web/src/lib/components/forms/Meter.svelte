@@ -19,9 +19,9 @@
 </script>
 
 {#if inline}
-	<span class="qbar"><u style:width={width} style:background={color}></u></span>
+	<span class="qbar"><u style:width style:background={color}></u></span>
 {:else}
 	<div class="meter">
-		<u style:width={width} style:background={color}></u>
+		<u style:width style:background={color}></u>
 	</div>
 {/if}

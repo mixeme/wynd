@@ -55,25 +55,28 @@
 		<!-- Шапка — на всю ширину, день у правого края; миниатюра — ниже, рядом
 		     с текстом (владелец, 2026-10-23): справа от шапки дню не хватало места. -->
 		<div class="sr-body">
-		<div class="sub">
-			{#if preview}
-				{@render preview()}
-			{:else if kind === 'day'}
-				<span class="faint">день</span>
-			{:else}
-				{quoteMatch(snippet, query)}
-				{#if kind === 'comment' || kind === 'file' || kind === 'audio'}
-					<span class="faint">{' · '}{KIND_LABEL[kind]}</span>
+			<div class="sub">
+				{#if preview}
+					{@render preview()}
+				{:else if kind === 'day'}
+					<span class="faint">день</span>
+				{:else}
+					{quoteMatch(snippet, query)}
+					{#if kind === 'comment' || kind === 'file' || kind === 'audio'}
+						<span class="faint">{' · '}{KIND_LABEL[kind]}</span>
+					{/if}
+				{/if}
+			</div>
+			{#if thumb}
+				{#if thumbUrl}
+					<div
+						class="thumb"
+						style="background-image:url({thumbUrl});background-size:cover;background-position:center"
+					></div>
+				{:else}
+					<div class="thumb pic {thumbVariant ?? 'p1'}"></div>
 				{/if}
 			{/if}
-		</div>
-		{#if thumb}
-			{#if thumbUrl}
-				<div class="thumb" style="background-image:url({thumbUrl});background-size:cover;background-position:center"></div>
-			{:else}
-				<div class="thumb pic {thumbVariant ?? 'p1'}"></div>
-			{/if}
-		{/if}
 		</div>
 	{/snippet}
 </Row>

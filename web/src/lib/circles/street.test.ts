@@ -69,7 +69,13 @@ describe('mergeStreetGroups', () => {
 		const out = mergeStreetGroups(
 			[
 				{ origin: A, groups: [{ name: 'Семья', circle_ids: ['c1'] }] },
-				{ origin: B, groups: [{ name: 'Семья', circle_ids: ['c9'] }, { name: 'Дача', circle_ids: ['c8'] }] }
+				{
+					origin: B,
+					groups: [
+						{ name: 'Семья', circle_ids: ['c9'] },
+						{ name: 'Дача', circle_ids: ['c8'] }
+					]
+				}
 			],
 			[fresh, emptied, folded]
 		);
@@ -93,7 +99,9 @@ describe('applyStreetOpToView', () => {
 	// Экран меняется сразу, как изменится после ответа серверов: опустевшая
 	// группа уходит, а пустая новая остаётся, пока в неё не положили круг.
 	it('moves a circle into the fresh empty group and drops the emptied one', () => {
-		expect(applyStreetOpToView(view, { origin: A, op: 'group', circle_id: 'c1', name: 'Новая' })).toEqual([
+		expect(
+			applyStreetOpToView(view, { origin: A, op: 'group', circle_id: 'c1', name: 'Новая' })
+		).toEqual([
 			{ name: 'Новая', keys: [`${A}:c1`], collapsed: false },
 			{ name: 'Семья', keys: [`${B}:c2`], collapsed: false }
 		]);
@@ -106,10 +114,9 @@ describe('applyStreetOpToView', () => {
 			{ name: 'Новая', keys: [], collapsed: false },
 			{ name: 'Семья', keys: [`${B}:c2`, `${A}:c1`], collapsed: false }
 		]);
-		expect(applyStreetOpToView(view, { origin: B, op: 'drop', name: 'Семья' }).map((g) => g.name)).toEqual([
-			'Дача',
-			'Новая'
-		]);
+		expect(
+			applyStreetOpToView(view, { origin: B, op: 'drop', name: 'Семья' }).map((g) => g.name)
+		).toEqual(['Дача', 'Новая']);
 	});
 });
 
@@ -131,11 +138,13 @@ describe('street on the device', () => {
 		await moveDeviceStreetToServers([A, B]);
 
 		const ops = await listStreetOps();
-		expect(ops.map(({ origin, op, circle_id, name }) => ({ origin, op, circle_id, name }))).toEqual([
-			{ origin: A, op: 'pin', circle_id: 'c1', name: undefined },
-			{ origin: A, op: 'group', circle_id: 'c2', name: 'Семья' },
-			{ origin: B, op: 'group', circle_id: 'c3', name: 'Семья' }
-		]);
+		expect(ops.map(({ origin, op, circle_id, name }) => ({ origin, op, circle_id, name }))).toEqual(
+			[
+				{ origin: A, op: 'pin', circle_id: 'c1', name: undefined },
+				{ origin: A, op: 'group', circle_id: 'c2', name: 'Семья' },
+				{ origin: B, op: 'group', circle_id: 'c3', name: 'Семья' }
+			]
+		);
 		expect(ops[0].pinned_at).toBeGreaterThan(0);
 		expect(await listGroups()).toEqual([
 			{ id: 'g1', name: 'Семья', circleIds: [], collapsed: true, filled: true }

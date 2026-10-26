@@ -34,14 +34,7 @@
 </script>
 
 <div class="circle-row-card {className}" {style}>
-	<FoldHeader
-		{label}
-		{count}
-		{expanded}
-		{onclick}
-		style={foldStyle}
-		{...foldRest}
-	/>
+	<FoldHeader {label} {count} {expanded} {onclick} style={foldStyle} {...foldRest} />
 	{#if showAction}
 		<button type="button" class="circle-row-action" onclick={() => onaction?.()}>
 			{actionLabel}

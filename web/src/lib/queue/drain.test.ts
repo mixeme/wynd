@@ -58,8 +58,6 @@ describe('readyQueueItems', () => {
 
 	// 4xx кроме 401 оставляют запись в failed — её не надо трогать до правки.
 	it('skips failed items', () => {
-		expect(readyQueueItems([item({ id: 1, state: 'failed', error: 'invalid' })], 5000)).toEqual(
-			[]
-		);
+		expect(readyQueueItems([item({ id: 1, state: 'failed', error: 'invalid' })], 5000)).toEqual([]);
 	});
 });

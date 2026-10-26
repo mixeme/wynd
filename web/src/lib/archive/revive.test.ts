@@ -30,7 +30,9 @@ function archiveWith(size: number): LoadedArchive {
 				for (let i = 0; i < size; i += chunk) yield data.subarray(i, Math.min(size, i + chunk));
 			}
 		},
-		blobs: [{ id: 'b1', sha256: 'aa', size, mime: 'image/jpeg', filename: 'a.jpg', entry: 'media/b1.jpg' }],
+		blobs: [
+			{ id: 'b1', sha256: 'aa', size, mime: 'image/jpeg', filename: 'a.jpg', entry: 'media/b1.jpg' }
+		],
 		bytes: size
 	} as unknown as LoadedArchive;
 }
@@ -80,14 +82,29 @@ describe('владелец и люди архива', () => {
 	const t = (columns: string[], rows: unknown[][]) => ({ columns, rows });
 	const tables = {
 		circles: t(['id', 'owner_account_id'], [['c1', 'a1']]),
-		accounts: t(['id', 'email'], [['a1', 'anya@example.org'], ['a2', 'bob@example.org']]),
+		accounts: t(
+			['id', 'email'],
+			[
+				['a1', 'anya@example.org'],
+				['a2', 'bob@example.org']
+			]
+		),
 		memberships: t(
 			['account_id', 'identity_id', 'status'],
-			[['a1', 'i1', 'active'], ['a2', 'i2', 'active'], ['a3', 'i3', 'gone']]
+			[
+				['a1', 'i1', 'active'],
+				['a2', 'i2', 'active'],
+				['a3', 'i3', 'gone']
+			]
 		),
 		identity_names: t(
 			['identity_id', 'name', 'effective_at'],
-			[['i1', 'Анечка', '2026-01-01T00:00:00Z'], ['i1', 'Аня', '2026-05-01T00:00:00Z'], ['i2', 'Боб', '2026-01-01T00:00:00Z'], ['i3', 'Ушёл', '2026-01-01T00:00:00Z']]
+			[
+				['i1', 'Анечка', '2026-01-01T00:00:00Z'],
+				['i1', 'Аня', '2026-05-01T00:00:00Z'],
+				['i2', 'Боб', '2026-01-01T00:00:00Z'],
+				['i3', 'Ушёл', '2026-01-01T00:00:00Z']
+			]
 		)
 	};
 
@@ -96,7 +113,9 @@ describe('владелец и люди архива', () => {
 	});
 
 	it('без почты владельца спросить не о ком', () => {
-		expect(archiveOwner({ ...tables, accounts: t(['id', 'email'], [['a2', 'bob@example.org']]) })).toBeUndefined();
+		expect(
+			archiveOwner({ ...tables, accounts: t(['id', 'email'], [['a2', 'bob@example.org']]) })
+		).toBeUndefined();
 	});
 
 	it('«Кто уже здесь» — без вышедших', () => {

@@ -6,7 +6,11 @@
 	import { page } from '$app/stores';
 	import { page as pageState } from '$app/state';
 	import { setContext, untrack } from 'svelte';
-	import { resolveCircleOrigin, rememberCircleOrigin, rememberLastCircle } from '$lib/circles/origin';
+	import {
+		resolveCircleOrigin,
+		rememberCircleOrigin,
+		rememberLastCircle
+	} from '$lib/circles/origin';
 	import {
 		fetchCircles,
 		fetchPendingCircleJoins,
@@ -138,7 +142,9 @@
 
 	function applyInviteContext(resolved: string, name: string, colorToken: string | undefined) {
 		const color =
-			colorToken && colorToken in CIRCLE_COLORS ? (colorToken as CircleColor) : ('olive' as CircleColor);
+			colorToken && colorToken in CIRCLE_COLORS
+				? (colorToken as CircleColor)
+				: ('olive' as CircleColor);
 		ctx.origin = resolved;
 		ctx.circleId = circleId;
 		ctx.name = name;
@@ -272,9 +278,7 @@
 		}
 
 		const identityName =
-			serverIdentityName ||
-			storedIdentity ||
-			(session ? ownerNameFromSession(session) : '');
+			serverIdentityName || storedIdentity || (session ? ownerNameFromSession(session) : '');
 		if (serverIdentityName) {
 			await setCircleIdentity(resolved, circleId, serverIdentityName);
 		}

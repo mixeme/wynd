@@ -24,6 +24,13 @@
 </script>
 
 <label class="ins-check {className}" {style}>
-	<input type="radio" {name} value={String(value)} checked={group === value} {disabled} onchange={() => (group = value)} />
+	<input
+		type="radio"
+		{name}
+		value={String(value)}
+		checked={group === value}
+		{disabled}
+		onchange={() => (group = value)}
+	/>
 	<span>{@render children()}</span>
 </label>

@@ -18,9 +18,20 @@ function reaction(over: Partial<Reaction> = {}): Reaction {
 
 describe('своя реакция', () => {
 	it('ставится, когда её ещё нет', () => {
-		const out = applyOwnReaction([reaction()], 'p1', 'laugh', actor, new Date('2026-09-01T00:00:00Z'));
+		const out = applyOwnReaction(
+			[reaction()],
+			'p1',
+			'laugh',
+			actor,
+			new Date('2026-09-01T00:00:00Z')
+		);
 		expect(out).toHaveLength(2);
-		expect(out[1]).toMatchObject({ emoji: 'laugh', identity_id: 'me', author_name: 'Аня', post_id: 'p1' });
+		expect(out[1]).toMatchObject({
+			emoji: 'laugh',
+			identity_id: 'me',
+			author_name: 'Аня',
+			post_id: 'p1'
+		});
 	});
 
 	it('заменяет свою, а не добавляет вторую', () => {

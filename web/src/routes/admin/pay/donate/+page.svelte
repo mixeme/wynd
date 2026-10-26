@@ -12,7 +12,12 @@
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
-	import { fetchPayDonate, savePayDonate, serverCaption, type PayDonateSettings } from '$lib/admin/admin';
+	import {
+		fetchPayDonate,
+		savePayDonate,
+		serverCaption,
+		type PayDonateSettings
+	} from '$lib/admin/admin';
 
 	let settings = $state<PayDonateSettings | undefined>();
 	let server = $state('');
@@ -86,12 +91,7 @@
 					</SwitchRow>
 					<div class="flex-mid gap-10 mt-18">
 						<span class="sz-12">До</span>
-						<Input
-							admin
-							type="date"
-							class="w180"
-							bind:value={settings.until}
-						/>
+						<Input admin type="date" class="w180" bind:value={settings.until} />
 						<!-- Поле даты на телефоне не очищается — срок снимает своя ссылка. -->
 						{#if settings.until}
 							<TextButton class="sz-12" onclick={() => settings && (settings.until = '')}

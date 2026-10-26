@@ -26,12 +26,20 @@
 	const colorClass = $derived(color && color !== 'terracotta' ? color : undefined);
 	const darkClass = $derived(app ? isDark() : dark);
 	const classes = $derived(
-		['ph', colorClass, shell && 'shell', darkClass && 'dark', wide && 'wide', app && 'app', className]
+		[
+			'ph',
+			colorClass,
+			shell && 'shell',
+			darkClass && 'dark',
+			wide && 'wide',
+			app && 'app',
+			className
+		]
 			.filter(Boolean)
 			.join(' ')
 	);
 </script>
 
-<div class={classes} style:height={height}>
+<div class={classes} style:height>
 	{@render children()}
 </div>

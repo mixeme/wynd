@@ -1,12 +1,5 @@
 export type CircleColor =
-	| 'terracotta'
-	| 'teal'
-	| 'olive'
-	| 'ochre'
-	| 'plum'
-	| 'indigo'
-	| 'coffee'
-	| 'slate';
+	'terracotta' | 'teal' | 'olive' | 'ochre' | 'plum' | 'indigo' | 'coffee' | 'slate';
 
 export type CircleTheme = {
 	hex: string;

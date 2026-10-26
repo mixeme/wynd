@@ -12,8 +12,7 @@
 		queued = false,
 		onclick,
 		class: className = '',
-		style = '',
-		children
+		style = ''
 	}: {
 		author?: Snippet;
 		text?: Snippet;
@@ -25,7 +24,6 @@
 		onclick?: () => void;
 		class?: string;
 		style?: string;
-		children?: Snippet;
 	} = $props();
 
 	const bindOpen: Action<HTMLElement, (() => void) | undefined> = (node, fn) => {

@@ -66,7 +66,11 @@
 	{:else if error}
 		<Hint class="gutter">{error}</Hint>
 		{#if forbidden}
-			<Button class="mt-8" variant="ghost" onclick={() => goto(`/circles/${circle.circleId}/settings`)}>
+			<Button
+				class="mt-8"
+				variant="ghost"
+				onclick={() => goto(`/circles/${circle.circleId}/settings`)}
+			>
 				К настройкам
 			</Button>
 		{/if}

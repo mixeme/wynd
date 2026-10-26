@@ -6,6 +6,7 @@
 
 <div class="stack-legend">
 	{#each items as item (item.label)}
-		<span><span class="stack-legend-swatch" style:background={item.swatch}></span>{item.label}</span>
+		<span><span class="stack-legend-swatch" style:background={item.swatch}></span>{item.label}</span
+		>
 	{/each}
 </div>

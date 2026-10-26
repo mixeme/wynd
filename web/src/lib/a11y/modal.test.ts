@@ -9,7 +9,9 @@ const body = createRawSnippet(() => ({
 }));
 
 function tab(shift = false) {
-	document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: shift, bubbles: true }));
+	document.dispatchEvent(
+		new KeyboardEvent('keydown', { key: 'Tab', shiftKey: shift, bubbles: true })
+	);
 }
 
 async function settle() {

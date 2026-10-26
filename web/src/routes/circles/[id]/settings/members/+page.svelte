@@ -153,12 +153,7 @@
 		closeMenu();
 		if (!m.account_id) return;
 		try {
-			await setMemberCanSettings(
-				circle.origin,
-				circle.circleId,
-				m.account_id,
-				!m.can_settings
-			);
+			await setMemberCanSettings(circle.origin, circle.circleId, m.account_id, !m.can_settings);
 			await reload();
 		} catch (err) {
 			error = authErrorHint(err);
@@ -226,11 +221,9 @@
 				src={memberSrc(m)}
 				menu={canManage(m)}
 				onmenu={() => openMenu(m)}
-				onclick={
-					transferMode && !m.is_owner && m.account_id !== selfId
-						? () => pickTransfer(m)
-						: undefined
-				}
+				onclick={transferMode && !m.is_owner && m.account_id !== selfId
+					? () => pickTransfer(m)
+					: undefined}
 				class={i === 0 ? 'pt-2' : undefined}
 			/>
 		{/each}
@@ -279,7 +272,8 @@
 			<Hint class="gutter">Записи вышедших остаются в круге.</Hint>
 		{/if}
 		{#if !transferMode}
-			<Button class="m-0-16"
+			<Button
+				class="m-0-16"
 				variant="ghost"
 				onclick={() => goto(`/circles/${circle.circleId}/settings/invite`)}
 			>
@@ -306,7 +300,8 @@
 			chevron={false}
 			onclick={() => void toggleSettings(menuMember!)}
 		/>
-		<SettingsRow class="muted"
+		<SettingsRow
+			class="muted"
 			title="Исключить"
 			chevron={false}
 			onclick={() => menuMember && askExclude(menuMember)}
@@ -340,8 +335,6 @@
 	>
 		<!-- Коротко и по существу (владелец, 2026-10-15): что остаётся и что уходит.
 		     Право менять настройки прежний владелец теряет. -->
-		<Hint>
-			Вы останетесь в круге: писать сможете, менять настройки — нет.
-		</Hint>
+		<Hint>Вы останетесь в круге: писать сможете, менять настройки — нет.</Hint>
 	</ConfirmDialog>
 {/if}

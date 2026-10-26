@@ -70,9 +70,7 @@
 	async function submit() {
 		if (selectedBytes == null) {
 			error =
-				requestFloor > 0
-					? `Укажите больше ${formatBytes(requestFloor)}`
-					: 'Укажите, сколько нужно';
+				requestFloor > 0 ? `Укажите больше ${formatBytes(requestFloor)}` : 'Укажите, сколько нужно';
 			return;
 		}
 		loading = true;

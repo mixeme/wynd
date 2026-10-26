@@ -74,7 +74,9 @@ function concat(...parts: Uint8Array[]): Uint8Array {
 /** Зашифрован ли файл — и параметры ключа, если да. */
 export async function inspectWynd(
 	src: RandomSource
-): Promise<{ encrypted: false } | { encrypted: true; header: EncryptedHeader; headerLength: number }> {
+): Promise<
+	{ encrypted: false } | { encrypted: true; header: EncryptedHeader; headerLength: number }
+> {
 	const head = await src.read(0, Math.min(src.size, 4096));
 	if (head[0] === 0x50 && head[1] === 0x4b) return { encrypted: false };
 	const text = utf8.decode(head);
@@ -129,7 +131,13 @@ export async function decryptedSource(
 		if (args[1] !== 'X25519') continue;
 		const share = fromBase64(args[2]);
 		const shared = x25519.getSharedSecret(priv, share);
-		const wrapKey = hkdf(sha256, shared, concat(share, pub), enc.encode('age-encryption.org/v1/X25519'), 32);
+		const wrapKey = hkdf(
+			sha256,
+			shared,
+			concat(share, pub),
+			enc.encode('age-encryption.org/v1/X25519'),
+			32
+		);
 		try {
 			fileKey = chacha20poly1305(wrapKey, new Uint8Array(12)).decrypt(fromBase64(body));
 			break;
@@ -352,7 +360,9 @@ export interface WyndTable {
 }
 
 /** Открыть архив: проверить, что это полный архив круга, и прочитать manifest. */
-export async function openArchive(src: RandomSource): Promise<{ zip: ZipReader; manifest: WyndManifest }> {
+export async function openArchive(
+	src: RandomSource
+): Promise<{ zip: ZipReader; manifest: WyndManifest }> {
 	const zip = await ZipReader.open(src);
 	const manifest = await zip.json<WyndManifest>('manifest.json');
 	if (manifest.format !== 'wynd-circle') throw new NotWyndError('format');

@@ -28,7 +28,13 @@
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { fetchMembers, type MemberInfo } from '$lib/circles/settings';
-	import { formatClock, formatEntryDate, formatPostTime, formatSessionDay, isEditableActive } from '$lib/format/time';
+	import {
+		formatClock,
+		formatEntryDate,
+		formatPostTime,
+		formatSessionDay,
+		isEditableActive
+	} from '$lib/format/time';
 	import { isPostArchiveLocked } from '$lib/journal/archive';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadFeed } from '$lib/journal/feed';
@@ -62,7 +68,12 @@
 	import type { Comment, FeedPost, MediaSummary } from '$lib/journal/types';
 	import { downloadBlob, getMediaUrl } from '$lib/media/objectUrl';
 	import { resolveMediaUrls } from '$lib/media/batch';
-	import { compressAudio, compressImage, fileToQueueBuffer, isImageFile } from '$lib/media/compress';
+	import {
+		compressAudio,
+		compressImage,
+		fileToQueueBuffer,
+		isImageFile
+	} from '$lib/media/compress';
 	import { audioMime } from '$lib/media/audioTags';
 	import type { VoiceTake } from '$lib/media/voiceRecorder.svelte';
 	import type { CommentQueuePayload, QueueFile, QueueMediaMeta } from '$lib/idb/db';
@@ -358,7 +369,10 @@
 
 	// Обновление жестом (3.5), как в ленте: тянешь экран от верха.
 	let listEl: HTMLDivElement | undefined = $state();
-	const ptr = new PullRefresh(() => listEl?.scrollTop ?? 0, () => load());
+	const ptr = new PullRefresh(
+		() => listEl?.scrollTop ?? 0,
+		() => load()
+	);
 	onDestroy(() => ptr.destroy());
 
 	onMount(() => {
@@ -485,7 +499,10 @@
 		if (backTo || !from) return;
 		const base = `/circles/${circle.circleId}`;
 		const rest = from.url.pathname.startsWith(base) ? from.url.pathname.slice(base.length) : null;
-		if (rest !== null && /^(|\/days(\/\d{4}-\d{2}-\d{2})?|\/grid|\/map|\/responses|\/search)$/.test(rest)) {
+		if (
+			rest !== null &&
+			/^(|\/days(\/\d{4}-\d{2}-\d{2})?|\/grid|\/map|\/responses|\/search)$/.test(rest)
+		) {
 			backTo = from.url.pathname + from.url.search;
 		}
 	});
@@ -832,7 +849,7 @@
 	tabs={false}
 	identitySettingsLink={circle.canWrite}
 	commentPlaceholder="Написать комментарий…"
-	commentMembers={commentMembers}
+	{commentMembers}
 	commentBusy={sending}
 	bind:commentDraft={draft}
 	commentBar={canSay && !postLocked}
@@ -847,7 +864,6 @@
 	onback={goBack}
 	onCommentSend={canSay && !postLocked ? sendComment : undefined}
 >
-
 	<PullRefreshBand pull={ptr.state} />
 	<div
 		class="feed"
@@ -858,205 +874,239 @@
 		ontouchmove={ptr.move}
 		ontouchend={ptr.end}
 	>
-	{#if loading}
-		<Loading />
-	{:else if !post}
-		<Hint class="gutter-24">{error || 'Запись не найдена'}</Hint>
-	{:else}
-		{@const currentPost = post}
-		{@const cover = coverMedia(currentPost.media)}
-		{#snippet postHeaderRight()}
-			<div class="gap-10 ml-auto flex-mid">
-				{#if canEditPost(currentPost)}
-					<IconButton name="edit" label="Править" size="sm" onclick={openEdit} />
-				{/if}
-				{#if cover && (coverUrl || cover.kind === 'video')}
-					<MediaTile
-						variant="headerMini"
-						src={coverUrl || undefined}
-						kind={cover.kind === 'video' ? 'video' : 'photo'}
-						aria-label="Открыть альбом"
-						onclick={openAlbum}
-					/>
-				{/if}
-			</div>
-		{/snippet}
-		{#snippet postText()}
-			<MentionText body={currentPost.body} />
-		{/snippet}
-		{#snippet postMedia()}
-			<AttachmentList
-				items={attachmentMedia(currentPost.media)}
-				origin={circle.origin}
-				circleId={circle.circleId}
-				circleName={circle.name}
-				color={circle.colorHex}
-				postId={currentPost.id}
-				coverUrls={audioCoverUrls}
-			/>
-		{/snippet}
-		<PostCard
-			class="mt-8"
-			headerRight={postHeaderRight}
-			text={currentPost.body ? postText : undefined}
-			media={attachmentMedia(currentPost.media).length ? postMedia : undefined}
-		>
-			{#snippet author()}
-				<PostByline
-					initial={authorInitial(currentPost.author_name)}
+		{#if loading}
+			<Loading />
+		{:else if !post}
+			<Hint class="gutter-24">{error || 'Запись не найдена'}</Hint>
+		{:else}
+			{@const currentPost = post}
+			{@const cover = coverMedia(currentPost.media)}
+			{#snippet postHeaderRight()}
+				<div class="gap-10 ml-auto flex-mid">
+					{#if canEditPost(currentPost)}
+						<IconButton name="edit" label="Править" size="sm" onclick={openEdit} />
+					{/if}
+					{#if cover && (coverUrl || cover.kind === 'video')}
+						<MediaTile
+							variant="headerMini"
+							src={coverUrl || undefined}
+							kind={cover.kind === 'video' ? 'video' : 'photo'}
+							aria-label="Открыть альбом"
+							onclick={openAlbum}
+						/>
+					{/if}
+				</div>
+			{/snippet}
+			{#snippet postText()}
+				<MentionText body={currentPost.body} />
+			{/snippet}
+			{#snippet postMedia()}
+				<AttachmentList
+					items={attachmentMedia(currentPost.media)}
+					origin={circle.origin}
+					circleId={circle.circleId}
+					circleName={circle.name}
 					color={circle.colorHex}
-					src={currentPost.identity_id === circle.identityId && circle.avatarUrl
-						? circle.avatarUrl
-						: postAvatarUrl || undefined}
-					name={currentPost.author_name}
-					time={formatPostTime(currentPost.created_at)}
-					day={isAttachedToOtherDay(currentPost) ? formatEntryDate(currentPost.entry_date) : undefined}
+					postId={currentPost.id}
+					coverUrls={audioCoverUrls}
 				/>
 			{/snippet}
-			{#snippet reactions()}
-				{#if !soloCircle}
-					<ReactionBar
-						groups={groupReactions(currentPost.reactions).map((g) => ({
-							icon: reactionIconName(g.emoji),
-							names: g.names
-						}))}
-						keys={REACTION_KEYS}
-						showAdd={showReactionPlus(currentPost) && !pickerOpen}
-						pickerOpen={pickerOpen}
-						selectedKey={ownReaction(currentPost.reactions, circle.identityId)?.emoji ?? ''}
-						onopenList={openReactions}
-						onadd={() => {
-							pickerOpen = true;
-						}}
-						onpick={(key) => void pickReaction(currentPost, key)}
+			<PostCard
+				class="mt-8"
+				headerRight={postHeaderRight}
+				text={currentPost.body ? postText : undefined}
+				media={attachmentMedia(currentPost.media).length ? postMedia : undefined}
+			>
+				{#snippet author()}
+					<PostByline
+						initial={authorInitial(currentPost.author_name)}
+						color={circle.colorHex}
+						src={currentPost.identity_id === circle.identityId && circle.avatarUrl
+							? circle.avatarUrl
+							: postAvatarUrl || undefined}
+						name={currentPost.author_name}
+						time={formatPostTime(currentPost.created_at)}
+						day={isAttachedToOtherDay(currentPost)
+							? formatEntryDate(currentPost.entry_date)
+							: undefined}
 					/>
-				{/if}
-			{/snippet}
-		</PostCard>
+				{/snippet}
+				{#snippet reactions()}
+					{#if !soloCircle}
+						<ReactionBar
+							groups={groupReactions(currentPost.reactions).map((g) => ({
+								icon: reactionIconName(g.emoji),
+								names: g.names
+							}))}
+							keys={REACTION_KEYS}
+							showAdd={showReactionPlus(currentPost) && !pickerOpen}
+							{pickerOpen}
+							selectedKey={ownReaction(currentPost.reactions, circle.identityId)?.emoji ?? ''}
+							onopenList={openReactions}
+							onadd={() => {
+								pickerOpen = true;
+							}}
+							onpick={(key) => void pickReaction(currentPost, key)}
+						/>
+					{/if}
+				{/snippet}
+			</PostCard>
 
-		<FilePicker bind:this={editPhotoPicker} accept="image/*" multiple onfiles={(files) => void addEditingFiles(files)} />
-		<FilePicker bind:this={editPicker} accept="*/*" multiple onfiles={(files) => void addEditingFiles(files)} />
-		<Thread>
-			{#each currentPost.comments ?? [] as comment (comment.id)}
-				<CommentRow
-					class="c-{comment.id}"
-					initial={authorInitial(comment.author_name)}
-					name={comment.author_name}
-					color={circle.colorHex}
-					src={commentAvatarSrc(comment)}
-					onedit={canEditComment(comment) && editingCommentId !== comment.id
-						? () => startEditComment(comment)
-						: undefined}
-					ondelete={canDeleteComment(comment) && editingCommentId !== comment.id
-						? () => removeComment(comment.id)
-						: undefined}
-				>
-					{#snippet time()}{formatClock(comment.created_at)}{/snippet}
-					{#snippet children()}
-						{#if editingCommentId === comment.id}
-							<TextArea variant="commentEdit" bind:value={editingCommentBody} />
-							<CommentMediaEdit
-								items={editingItems}
-								onremove={removeEditingItem}
-								onaddphoto={editingItems.length < MAX_COMMENT_MEDIA ? () => editPhotoPicker?.open() : undefined}
-								onaddfile={editingItems.length < MAX_COMMENT_MEDIA ? () => editPicker?.open() : undefined}
-							/>
-							{#if preparing}<Hint class="m-0">{preparing}</Hint>{/if}
-							<div class="rowin">
-								<Button class="grow-flat"
-									variant="colored"
-									keepFocus
-									loading={savingCommentEdit}
-									onclick={() => saveCommentEdit(comment.id)}
-								>
-									Сохранить
-								</Button>
-								<Button class="grow-flat" variant="ghost" keepFocus onclick={cancelEditComment}>
-									Отмена
-								</Button>
-							</div>
-						{:else}
-							{#if comment.body}
-								<MentionText body={comment.body} />
+			<FilePicker
+				bind:this={editPhotoPicker}
+				accept="image/*"
+				multiple
+				onfiles={(files) => void addEditingFiles(files)}
+			/>
+			<FilePicker
+				bind:this={editPicker}
+				accept="*/*"
+				multiple
+				onfiles={(files) => void addEditingFiles(files)}
+			/>
+			<Thread>
+				{#each currentPost.comments ?? [] as comment (comment.id)}
+					<CommentRow
+						class="c-{comment.id}"
+						initial={authorInitial(comment.author_name)}
+						name={comment.author_name}
+						color={circle.colorHex}
+						src={commentAvatarSrc(comment)}
+						onedit={canEditComment(comment) && editingCommentId !== comment.id
+							? () => startEditComment(comment)
+							: undefined}
+						ondelete={canDeleteComment(comment) && editingCommentId !== comment.id
+							? () => removeComment(comment.id)
+							: undefined}
+					>
+						{#snippet time()}{formatClock(comment.created_at)}{/snippet}
+						{#snippet children()}
+							{#if editingCommentId === comment.id}
+								<TextArea variant="commentEdit" bind:value={editingCommentBody} />
+								<CommentMediaEdit
+									items={editingItems}
+									onremove={removeEditingItem}
+									onaddphoto={editingItems.length < MAX_COMMENT_MEDIA
+										? () => editPhotoPicker?.open()
+										: undefined}
+									onaddfile={editingItems.length < MAX_COMMENT_MEDIA
+										? () => editPicker?.open()
+										: undefined}
+								/>
+								{#if preparing}<Hint class="m-0">{preparing}</Hint>{/if}
+								<div class="rowin">
+									<Button
+										class="grow-flat"
+										variant="colored"
+										keepFocus
+										loading={savingCommentEdit}
+										onclick={() => saveCommentEdit(comment.id)}
+									>
+										Сохранить
+									</Button>
+									<Button class="grow-flat" variant="ghost" keepFocus onclick={cancelEditComment}>
+										Отмена
+									</Button>
+								</div>
+							{:else}
+								{#if comment.body}
+									<MentionText body={comment.body} />
+								{/if}
+								<CommentMedia
+									items={commentMediaItems(comment.media, mediaUrls)}
+									origin={circle.origin}
+									audio={{
+										circleId: circle.circleId,
+										circleName: circle.name,
+										color: circle.colorHex,
+										postId: currentPost.id
+									}}
+									onphoto={(i) => openCommentPhoto(comment.id, i)}
+									onfile={downloadFile}
+								/>
 							{/if}
-							<CommentMedia
-								items={commentMediaItems(comment.media, mediaUrls)}
-								origin={circle.origin}
-								audio={{
-									circleId: circle.circleId,
-									circleName: circle.name,
-									color: circle.colorHex,
-									postId: currentPost.id
-								}}
-								onphoto={(i) => openCommentPhoto(comment.id, i)}
-								onfile={downloadFile}
-							/>
-						{/if}
-					{/snippet}
-				</CommentRow>
-			{/each}
-			{#each queuedComments as item (item.id)}
-				<!-- Реплику в очереди можно поправить и убрать, как отправленную (C53);
+						{/snippet}
+					</CommentRow>
+				{/each}
+				{#each queuedComments as item (item.id)}
+					<!-- Реплику в очереди можно поправить и убрать, как отправленную (C53);
 				     уходящую сейчас — нет. -->
-				<!-- Правка не приглушается: в поле пишут. -->
-				<CommentRow
-					queued={editingQueueId !== item.id}
-					initial={circle.identityInitial}
-					name={circle.identityName}
-					color={circle.colorHex}
-					src={circle.avatarUrl}
-					onedit={item.state !== 'uploading' && editingQueueId !== item.id
-						? () => void startEditQueued(item.id)
-						: undefined}
-					ondelete={item.state !== 'uploading' && editingQueueId !== item.id
-						? () => void removeQueued(item.id)
-						: undefined}
-				>
-					{#snippet time()}
-						<span class="flex-mid gap-5">
-							<Icon name="clock" size="xs" />{queuedTimeLabel(item.state, sendProgress[item.id], item.error)}
-						</span>
-					{/snippet}
-					{#snippet children()}
-						{#if editingQueueId === item.id}
-							<TextArea variant="commentEdit" bind:value={editingCommentBody} />
-							<CommentMediaEdit
-								items={editingItems}
-								onremove={removeEditingItem}
-								onaddphoto={editingItems.length < MAX_COMMENT_MEDIA ? () => editPhotoPicker?.open() : undefined}
-								onaddfile={editingItems.length < MAX_COMMENT_MEDIA ? () => editPicker?.open() : undefined}
-							/>
-							{#if preparing}<Hint class="m-0">{preparing}</Hint>{/if}
-							<div class="rowin">
-								<Button class="grow-flat" variant="colored" keepFocus onclick={() => void saveQueuedEdit()}>
-									Сохранить
-								</Button>
-								<Button class="grow-flat" variant="ghost" keepFocus onclick={cancelEditComment}>
-									Отмена
-								</Button>
-							</div>
-						{:else}
-						{#if item.body}
-							<MentionText body={item.body} />
-						{/if}
-						<CommentMedia items={queuedMediaItems(item)} inert />
-						{#if item.state === 'failed' && item.error}
-							<Hint class="mt-8">{item.error}</Hint>
-						{/if}
-						{/if}
-					{/snippet}
-				</CommentRow>
-			{/each}
-		</Thread>
+					<!-- Правка не приглушается: в поле пишут. -->
+					<CommentRow
+						queued={editingQueueId !== item.id}
+						initial={circle.identityInitial}
+						name={circle.identityName}
+						color={circle.colorHex}
+						src={circle.avatarUrl}
+						onedit={item.state !== 'uploading' && editingQueueId !== item.id
+							? () => void startEditQueued(item.id)
+							: undefined}
+						ondelete={item.state !== 'uploading' && editingQueueId !== item.id
+							? () => void removeQueued(item.id)
+							: undefined}
+					>
+						{#snippet time()}
+							<span class="flex-mid gap-5">
+								<Icon name="clock" size="xs" />{queuedTimeLabel(
+									item.state,
+									sendProgress[item.id],
+									item.error
+								)}
+							</span>
+						{/snippet}
+						{#snippet children()}
+							{#if editingQueueId === item.id}
+								<TextArea variant="commentEdit" bind:value={editingCommentBody} />
+								<CommentMediaEdit
+									items={editingItems}
+									onremove={removeEditingItem}
+									onaddphoto={editingItems.length < MAX_COMMENT_MEDIA
+										? () => editPhotoPicker?.open()
+										: undefined}
+									onaddfile={editingItems.length < MAX_COMMENT_MEDIA
+										? () => editPicker?.open()
+										: undefined}
+								/>
+								{#if preparing}<Hint class="m-0">{preparing}</Hint>{/if}
+								<div class="rowin">
+									<Button
+										class="grow-flat"
+										variant="colored"
+										keepFocus
+										onclick={() => void saveQueuedEdit()}
+									>
+										Сохранить
+									</Button>
+									<Button class="grow-flat" variant="ghost" keepFocus onclick={cancelEditComment}>
+										Отмена
+									</Button>
+								</div>
+							{:else}
+								{#if item.body}
+									<MentionText body={item.body} />
+								{/if}
+								<CommentMedia items={queuedMediaItems(item)} inert />
+								{#if item.state === 'failed' && item.error}
+									<Hint class="mt-8">{item.error}</Hint>
+								{/if}
+							{/if}
+						{/snippet}
+					</CommentRow>
+				{/each}
+			</Thread>
 
-		{#if error}
-			<Hint class="m-0-16-16">{error}</Hint>
+			{#if error}
+				<Hint class="m-0-16-16">{error}</Hint>
+			{/if}
 		{/if}
-	{/if}
 	</div>
 
 	{#if reactionsOpen && post}
-		<ReactionsSheet reactions={post.reactions ?? []} color={circle.colorHex} ondismiss={closeReactions} />
+		<ReactionsSheet
+			reactions={post.reactions ?? []}
+			color={circle.colorHex}
+			ondismiss={closeReactions}
+		/>
 	{/if}
 </CircleLayout>
 
@@ -1080,4 +1130,3 @@
 		{/snippet}
 	</Lightbox>
 {/if}
-

@@ -29,49 +29,49 @@
 	font-size: 13.5px;
 	line-height: 1.45;
 	--c: var(--terracotta);
-	--ct: #F1E1DA;
+	--ct: #f1e1da;
 }
 .ph.teal {
 	--c: var(--teal);
-	--ct: #DCE8E9;
+	--ct: #dce8e9;
 }
 .ph.olive {
 	--c: var(--olive);
-	--ct: #E3E7D9;
+	--ct: #e3e7d9;
 }
 .ph.ochre {
 	--c: var(--ochre);
-	--ct: #ECE5D1;
+	--ct: #ece5d1;
 }
 .ph.plum {
 	--c: var(--plum);
-	--ct: #EEDFE7;
+	--ct: #eedfe7;
 }
 .ph.indigo {
 	--c: var(--indigo);
-	--ct: #DEE2EE;
+	--ct: #dee2ee;
 }
 .ph.coffee {
 	--c: var(--coffee);
-	--ct: #E8DFD7;
+	--ct: #e8dfd7;
 }
 .ph.slate {
 	--c: var(--slate);
-	--ct: #DFE3E5;
+	--ct: #dfe3e5;
 }
 .ph.shell {
 	--c: var(--ink);
-	--ct: #E9E3D8;
+	--ct: #e9e3d8;
 }
 .ph.dark {
-	--paper: #211E1C;
-	--card: #2A2624;
-	--ink: #EFE9E0;
-	--muted: #9A9188;
-	--faint: #6E665E;
-	--line: #3A3532;
-	background: #211E1C;
-	color: #EFE9E0;
+	--paper: #211e1c;
+	--card: #2a2624;
+	--ink: #efe9e0;
+	--muted: #9a9188;
+	--faint: #6e665e;
+	--line: #3a3532;
+	background: #211e1c;
+	color: #efe9e0;
 }
 .ph.wide {
 	width: 820px;
@@ -144,18 +144,22 @@
 .ph.app .circle-body.tab-swipe {
 	touch-action: pan-y;
 }
-.ph.app .circle-body:has(> .feed), .ph.app .circle-body:has(> .map-wrap) {
+.ph.app .circle-body:has(> .feed),
+.ph.app .circle-body:has(> .map-wrap) {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
 }
-.ph.app .comp, .ph.app .comp-wrap {
+.ph.app .comp,
+.ph.app .comp-wrap {
 	/* В потоке, но точка привязки: меню «Записи» и строка «Готовим видео…»
 	   встают над полосой (C14). static уводил их за верх экрана. */
 	position: relative;
 	flex-shrink: 0;
 }
-.compose-body, .form-body, .shell-body {
+.compose-body,
+.form-body,
+.shell-body {
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
@@ -165,7 +169,9 @@
 .shell-body {
 	overscroll-behavior-y: contain;
 }
-.ph.app .bar, .ph.app .cbar, .ph.app .appbar {
+.ph.app .bar,
+.ph.app .cbar,
+.ph.app .appbar {
 	flex-shrink: 0;
 }
 .compose-text {
@@ -242,8 +248,9 @@
 .cbar .top.compose-top .back {
 	justify-self: start;
 }
-.cbar .top.compose-top .act:disabled, .cbar .top.compose-top .rt:disabled {
-	opacity: .45;
+.cbar .top.compose-top .act:disabled,
+.cbar .top.compose-top .rt:disabled {
+	opacity: 0.45;
 	cursor: default;
 }
 .cbar .top.compose-top .rt {
@@ -311,7 +318,8 @@
 .sig u:nth-child(4) {
 	height: 10px;
 }
-.sig.dim u:nth-child(3), .sig.dim u:nth-child(4) {
+.sig.dim u:nth-child(3),
+.sig.dim u:nth-child(4) {
 	background: var(--faint);
 }
 
@@ -378,7 +386,7 @@
 	white-space: nowrap;
 }
 .cbar .ic {
-	color: rgba(255,255,255,.9);
+	color: rgba(255, 255, 255, 0.9);
 }
 /* Имя и кружок не сжимаются вместе с длинным названием круга: сжатый блок
    срезал кружок справа. Длинное имя — многоточием, кружок целый. */
@@ -391,7 +399,7 @@
 	max-width: 40%;
 	flex-shrink: 0;
 	font-size: 12.5px;
-	color: rgba(255,255,255,.85);
+	color: rgba(255, 255, 255, 0.85);
 	border: none;
 	background: none;
 	padding: 0;
@@ -410,7 +418,7 @@
 	border-radius: 50%;
 	display: grid;
 	place-items: center;
-	border: 1px solid rgba(255,255,255,.55);
+	border: 1px solid rgba(255, 255, 255, 0.55);
 	font-size: 12.5px;
 	color: #fff;
 	background: none;
@@ -428,12 +436,13 @@
 	overflow-x: auto;
 	scrollbar-width: none;
 	font-size: 13.5px;
-	color: rgba(255,255,255,.72);
+	color: rgba(255, 255, 255, 0.72);
 }
 .tabs::-webkit-scrollbar {
 	display: none;
 }
-.tabs span, .tabs button {
+.tabs span,
+.tabs button {
 	padding: 0 0 11px;
 	border-bottom: 2px solid transparent;
 	white-space: nowrap;
@@ -488,12 +497,12 @@
 /* список кругов */
 .lab.raw {
 	text-transform: none;
-	letter-spacing: .01em;
+	letter-spacing: 0.01em;
 	color: var(--muted);
 }
 .lab {
 	font-size: 11.5px;
-	letter-spacing: .09em;
+	letter-spacing: 0.09em;
 	text-transform: uppercase;
 	color: var(--faint);
 	font-weight: 600;
@@ -515,7 +524,7 @@
 	width: 44px;
 	height: 44px;
 	border-radius: 13px;
-	background: var(--rc,var(--c));
+	background: var(--rc, var(--c));
 	color: #fff;
 	display: grid;
 	place-items: center;
@@ -559,7 +568,7 @@
 	flex: 0 0 auto;
 }
 .bdg {
-	background: var(--rc,var(--c));
+	background: var(--rc, var(--c));
 	color: #fff;
 	font-size: 11.5px;
 	font-weight: 600;
@@ -695,8 +704,9 @@
 	margin-bottom: 0;
 	border-radius: 14px 14px 0 0;
 }
-.post.q, .cmt.q {
-	opacity: .55;
+.post.q,
+.cmt.q {
+	opacity: 0.55;
 }
 .post.day-prompt {
 	border-style: dashed;
@@ -776,7 +786,8 @@
 .empty-state > .hint {
 	margin: 10px 30px 0;
 }
-.empty-state.is-tab > .hint, .empty-state.is-feed > .hint {
+.empty-state.is-tab > .hint,
+.empty-state.is-feed > .hint {
 	margin: 8px 34px 0;
 }
 .empty-act > .btn:first-child {
@@ -802,7 +813,7 @@
 	width: var(--mark-w);
 	height: var(--mark-h);
 	margin: 0 auto;
-	opacity: .45;
+	opacity: 0.45;
 }
 .feed-end.cutoff .mk {
 	opacity: 1;
@@ -836,7 +847,7 @@
 	place-items: center;
 	font-size: 13.5px;
 	flex: 0 0 auto;
-	background: var(--rc,var(--c));
+	background: var(--rc, var(--c));
 }
 /* Форма аватаров — скруглённый квадрат (A16, «Настройки → Приложение»):
    лица везде, «Кто уже здесь» и кружок «добавить фото». */
@@ -877,8 +888,12 @@ body[data-avatars='square'] .addph {
 	border-radius: 10px;
 	overflow: hidden;
 	border: 1px solid var(--line);
-	background-color: #C3AF95;
-	background-image: repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 7px,rgba(0,0,0,.05) 7px 15px);
+	background-color: #c3af95;
+	background-image: repeating-linear-gradient(
+		0deg,
+		rgba(255, 255, 255, 0.07) 0 7px,
+		rgba(0, 0, 0, 0.05) 7px 15px
+	);
 	display: block;
 	width: 100%;
 	box-sizing: border-box;
@@ -902,9 +917,9 @@ body[data-avatars='square'] .addph {
 	width: 26px;
 	height: 26px;
 	transform: translate(-50%, -50%);
-	color: rgba(255,255,255,.9);
+	color: rgba(255, 255, 255, 0.9);
 	fill: currentColor;
-	filter: drop-shadow(0 0 3px rgba(0,0,0,.45));
+	filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.45));
 	pointer-events: none;
 }
 .pic.sq > .vid-mark {
@@ -915,7 +930,9 @@ body[data-avatars='square'] .addph {
 	width: 18px;
 	height: 18px;
 }
-.pic img, .cell img, .pic.sq.mini img {
+.pic img,
+.cell img,
+.pic.sq.mini img {
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
@@ -930,7 +947,7 @@ body[data-avatars='square'] .addph {
 	bottom: 12px;
 	padding: 4px 10px;
 	border-radius: 13px;
-	background: rgba(43,39,36,.82);
+	background: rgba(43, 39, 36, 0.82);
 	color: #fff;
 	font-size: 11.5px;
 }
@@ -940,20 +957,22 @@ body[data-avatars='square'] .addph {
 	right: 0;
 	bottom: 0;
 	height: 3px;
-	background: rgba(43,39,36,.25);
+	background: rgba(43, 39, 36, 0.25);
 }
 .pic.sq .tile-load-bar i {
 	display: block;
 	height: 100%;
-	background: rgba(43,39,36,.82);
+	background: rgba(43, 39, 36, 0.82);
 }
 /* Кадр обложки (4.16): снимок растянут так, что выбранный квадрат занимает
    плитку целиком; лишнее срезает плитка. */
-.pic.sq, .thumbs .thumb-body {
+.pic.sq,
+.thumbs .thumb-body {
 	position: relative;
 	overflow: hidden;
 }
-.pic img.cropped, .thumbs .thumb-body img.cropped {
+.pic img.cropped,
+.thumbs .thumb-body img.cropped {
 	position: absolute;
 	max-width: none;
 	object-fit: fill;
@@ -968,33 +987,34 @@ body[data-avatars='square'] .addph {
 	border-radius: 0;
 }
 .p1 {
-	background-color: #C3AF95;
+	background-color: #c3af95;
 }
 .p2 {
-	background-color: #9FB093;
+	background-color: #9fb093;
 }
 .p3 {
-	background-color: #B7A6A4;
+	background-color: #b7a6a4;
 }
 .p4 {
-	background-color: #93A6B8;
+	background-color: #93a6b8;
 }
 .p5 {
-	background-color: #CBBB98;
+	background-color: #cbbb98;
 }
 .p6 {
-	background-color: #A79C8E;
+	background-color: #a79c8e;
 }
 .p7 {
-	background-color: #8FA9A5;
+	background-color: #8fa9a5;
 }
 .p8 {
-	background-color: #BFA98F;
+	background-color: #bfa98f;
 }
-.tagr, .cnt {
+.tagr,
+.cnt {
 	position: absolute;
 	bottom: 10px;
-	background: rgba(43,39,36,.82);
+	background: rgba(43, 39, 36, 0.82);
 	color: #fff;
 	font-size: 11.5px;
 	border-radius: 13px;
@@ -1037,7 +1057,7 @@ body[data-avatars='square'] .addph {
 	align-items: center;
 }
 .ph.dark .rx .one {
-	background: #3A2E29;
+	background: #3a2e29;
 }
 .rx .add {
 	border: 1px solid var(--line);
@@ -1064,7 +1084,8 @@ body[data-avatars='square'] .addph {
 .cm .mo {
 	color: var(--muted);
 }
-.cm .tm, .cmt .tm {
+.cm .tm,
+.cmt .tm {
 	color: var(--faint);
 	font-size: 11.5px;
 	font-weight: 400;
@@ -1080,20 +1101,25 @@ body[data-avatars='square'] .addph {
 }
 /* Комментарий, открытый из «Откликов»: подсветка на миг, чтобы глаз нашёл.
    Не .hl — это подсветка слова в поиске, с ней строка теряла отступы. */
-.cmt.linked, .att.linked, .post.linked {
+.cmt.linked,
+.att.linked,
+.post.linked {
 	background: var(--ct);
-	transition: background .6s ease;
+	transition: background 0.6s ease;
 }
 /* --ct светлый и в тёмной теме: светлый текст на нём пропадал (запись из
    поиска). Тот же тёмный тон, что у реакций и карточек дней. */
-.ph.dark .cmt.linked, .ph.dark .att.linked, .ph.dark .post.linked {
-	background: #3A2E29;
+.ph.dark .cmt.linked,
+.ph.dark .att.linked,
+.ph.dark .post.linked {
+	background: #3a2e29;
 }
-.att, .post {
-	transition: background .6s ease;
+.att,
+.post {
+	transition: background 0.6s ease;
 }
 .cmt {
-	transition: background .6s ease;
+	transition: background 0.6s ease;
 }
 .cmt + .cmt {
 	border-top: 1px solid var(--line);
@@ -1241,8 +1267,9 @@ a.resp + a.resp {
 	gap: 10px;
 	padding: 9px 18px;
 }
-.ev:before, .ev:after {
-	content: "";
+.ev:before,
+.ev:after {
+	content: '';
 	/* Длинная строка переносится — линии по бокам не сжимаются в ноль. */
 	flex: 1 0 24px;
 	height: 1px;
@@ -1257,11 +1284,12 @@ a.resp + a.resp {
 .ev .ev-t {
 	display: block;
 	font-size: 10.5px;
-	opacity: .8;
+	opacity: 0.8;
 }
-.ev.new:before, .ev.new:after {
+.ev.new:before,
+.ev.new:after {
 	background: var(--c);
-	opacity: .45;
+	opacity: 0.45;
 }
 .ev.new span {
 	color: var(--c);
@@ -1286,15 +1314,12 @@ a.resp + a.resp {
 	padding: 0;
 	background: var(--tint);
 }
-.ctiles button.ctile {
-	cursor: pointer;
-}
 .ctiles .ctile-more {
 	position: absolute;
 	inset: 0;
 	display: grid;
 	place-items: center;
-	background: rgba(43,39,36,.55);
+	background: rgba(43, 39, 36, 0.55);
 	color: #fff;
 	font-weight: 600;
 	font-size: 13.5px;
@@ -1311,9 +1336,6 @@ a.resp + a.resp {
 	color: inherit;
 	font: inherit;
 	text-align: left;
-}
-button.crow {
-	cursor: pointer;
 }
 .crow .nm {
 	flex: 1;
@@ -1391,7 +1413,7 @@ button.crow {
 	border-radius: 50%;
 	border: 0;
 	padding: 0;
-	background: rgba(43,39,36,.82);
+	background: rgba(43, 39, 36, 0.82);
 	display: grid;
 	place-items: center;
 	cursor: pointer;
@@ -1455,7 +1477,7 @@ button.crow {
 	cursor: pointer;
 }
 .ph.dark .dayc {
-	background: #3A2E29;
+	background: #3a2e29;
 }
 .dayc .pic {
 	border: 0;
@@ -1471,7 +1493,8 @@ button.crow {
 	padding: 11px 14px 13px;
 	overflow-wrap: anywhere;
 }
-.dayc .dayc-date, .dayc .dayc-who {
+.dayc .dayc-date,
+.dayc .dayc-who {
 	display: block;
 	font-size: 11.5px;
 	color: var(--muted);
@@ -1673,7 +1696,9 @@ button.crow {
 	border-radius: 11px;
 	padding: 12px 14px;
 }
-input.fld, textarea.fld, textarea.ta {
+input.fld,
+textarea.fld,
+textarea.ta {
 	display: block;
 	width: calc(100% - 32px);
 	max-width: 100%;
@@ -1703,8 +1728,11 @@ input.fld.num {
 /* Моноширинное поле (адрес, почта) и мелкое (адрес сервера при входе):
    .mono и размер одним классом проигрывали font: inherit у input.fld и
    input.inp — поля набирались обычным шрифтом. */
-input.fld.mono, textarea.fld.mono, input.inp.mono, textarea.inp.mono {
-	font-family: ui-monospace,SFMono-Regular,Menlo,monospace;
+input.fld.mono,
+textarea.fld.mono,
+input.inp.mono,
+textarea.inp.mono {
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 input.fld.sm {
 	font-size: 12.5px;
@@ -1830,7 +1858,8 @@ input.fld.sm {
 	color: var(--ink);
 	font-weight: 400;
 }
-.btn.off, .btn:disabled {
+.btn.off,
+.btn:disabled {
 	background: none;
 	border: 1px solid var(--line);
 	color: var(--faint);
@@ -1859,7 +1888,7 @@ input.fld.sm {
 	color: var(--paper);
 }
 .chip.off {
-	opacity: .45;
+	opacity: 0.45;
 	pointer-events: none;
 	cursor: default;
 }
@@ -1876,7 +1905,10 @@ a.link {
 }
 /* Долгое нажатие открывает меню (плюс, строка круга, заголовок группы) —
    без запрета браузер выделял текст подписи и показывал «Копировать». */
-.fab-wrap, .circle-row-card, button.r, button.fold {
+.fab-wrap,
+.circle-row-card,
+button.r,
+button.fold {
 	-webkit-user-select: none;
 	user-select: none;
 	-webkit-touch-callout: none;
@@ -2101,8 +2133,9 @@ a.link {
 	place-items: center;
 	flex: 0 0 auto;
 }
-.comp .send.off, .comp .send:disabled {
-	opacity: .45;
+.comp .send.off,
+.comp .send:disabled {
+	opacity: 0.45;
 }
 .comp .f .inp {
 	flex: 1;
@@ -2184,7 +2217,7 @@ a.link {
 	font: inherit;
 }
 .sw:after {
-	content: "";
+	content: '';
 	position: absolute;
 	top: 2px;
 	left: 2px;
@@ -2192,7 +2225,7 @@ a.link {
 	height: 19px;
 	border-radius: 50%;
 	background: var(--card);
-	box-shadow: 0 1px 2px rgba(0,0,0,.18);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
 }
 .sw.on {
 	background: var(--c);
@@ -2207,7 +2240,7 @@ a.link {
 }
 .danger .dl {
 	font-size: 11.5px;
-	letter-spacing: .09em;
+	letter-spacing: 0.09em;
 	text-transform: uppercase;
 	font-weight: 600;
 	color: var(--ink);
@@ -2239,7 +2272,7 @@ a.link {
 .meter {
 	height: 9px;
 	border-radius: 5px;
-	background: #E6DFD3;
+	background: #e6dfd3;
 	overflow: hidden;
 	margin: 0 16px;
 }
@@ -2250,12 +2283,13 @@ a.link {
 }
 /* Светлая подложка в тёмной теме читалась как полная шкала: «446 Б из 2 ГБ»
    выглядело «места нет» (2026-10-26). Тот же тёмный тон, что у зоны графика. */
-.ph.dark .meter, .ph.dark .qbar {
-	background: #3A2E29;
+.ph.dark .meter,
+.ph.dark .qbar {
+	background: #3a2e29;
 }
 .g3 {
 	display: grid;
-	grid-template-columns: repeat(3,1fr);
+	grid-template-columns: repeat(3, 1fr);
 	gap: 3px;
 	padding: 0 3px;
 }
@@ -2299,7 +2333,7 @@ a.link {
 	left: 4px;
 	bottom: 4px;
 	font-size: 10px;
-	background: rgba(0,0,0,.45);
+	background: rgba(0, 0, 0, 0.45);
 	color: #fff;
 	padding: 2px 4px;
 	border-radius: 3px;
@@ -2333,7 +2367,8 @@ a.link {
 	flex: 0 0 auto;
 	background: var(--tint);
 }
-.thumbs .thumb .thumb-body, .thumbs .thumb-body {
+.thumbs .thumb .thumb-body,
+.thumbs .thumb-body {
 	display: block;
 	width: 100%;
 	height: 100%;
@@ -2362,7 +2397,7 @@ a.link {
 	inset: 0;
 	display: grid;
 	place-items: center;
-	background: rgba(0, 0, 0, .45);
+	background: rgba(0, 0, 0, 0.45);
 	color: #fff;
 	font-size: 15px;
 	font-weight: 600;
@@ -2372,7 +2407,10 @@ a.link {
 	place-items: end center;
 	padding-bottom: 6px;
 }
-.thumbs .thumb img, .thumbs .thumb video, .thumbs .thumb-body img, .thumbs .thumb-body video {
+.thumbs .thumb img,
+.thumbs .thumb video,
+.thumbs .thumb-body img,
+.thumbs .thumb-body video {
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
@@ -2409,7 +2447,7 @@ a.link {
 .scrim {
 	position: absolute;
 	inset: 0;
-	background: rgba(43,39,36,.42);
+	background: rgba(43, 39, 36, 0.42);
 	width: auto;
 	height: auto;
 	border: 0;
@@ -2426,7 +2464,8 @@ a.link {
 
 /* .ph.app растёт по контенту (лента длиннее экрана) — оверлеи внутри него
    держим на реальном вьюпорте, а не на нижнем крае всей страницы */
-.ph.app .sheet, .ph.app .scrim {
+.ph.app .sheet,
+.ph.app .scrim {
 	position: fixed;
 	left: 0;
 	right: 0;
@@ -2440,12 +2479,15 @@ a.link {
 	bottom: 0;
 	height: auto;
 }
-.ph.app.wide .sheet, .ph.app.wide .scrim {
+.ph.app.wide .sheet,
+.ph.app.wide .scrim {
 	/* ширина тоже: иначе затемнение в панели (820) остаётся шириной приложения */
 	width: min(100%, var(--app-wide-max-width));
 	max-width: var(--app-wide-max-width);
 }
-body .scrim, body .sheet, body .dlg {
+body .scrim,
+body .sheet,
+body .dlg {
 	position: fixed;
 	left: 0;
 	right: 0;
@@ -2466,7 +2508,9 @@ body .dlg {
 	max-width: var(--dlg-max-width);
 	top: 250px;
 }
-body.wide .scrim, body.wide .sheet, body.wide .dlg {
+body.wide .scrim,
+body.wide .sheet,
+body.wide .dlg {
 	max-width: var(--app-wide-max-width);
 }
 body.wide .dlg {
@@ -2492,7 +2536,7 @@ body.wide .dlg {
 	position: absolute;
 	left: 10px;
 	right: 10px;
-	background: rgba(252,250,246,.97);
+	background: rgba(252, 250, 246, 0.97);
 	border: 1px solid var(--line);
 	border-radius: 16px;
 	padding: 12px 14px;
@@ -2582,7 +2626,7 @@ body.wide .dlg {
 	border-color: var(--c);
 }
 .codebox u.act:after {
-	content: "";
+	content: '';
 	width: 1.5px;
 	height: 22px;
 	background: var(--c);
@@ -2632,7 +2676,7 @@ body.wide .dlg {
 	color: var(--ink);
 }
 .mono {
-	font-family: ui-monospace,SFMono-Regular,Menlo,monospace;
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 /* Ссылка приглашения под QR (2.7, 6.21): целиком, переносится где угодно. */
 .invite-url {
@@ -2672,14 +2716,18 @@ body.wide .dlg {
 	gap: 10px;
 	margin: 0 16px;
 }
-.sws u, .sws button {
+.sws u,
+.sws button {
 	width: 34px;
 	height: 34px;
 	border-radius: 11px;
 	display: block;
 }
-.sws u.on, .sws .on {
-	box-shadow: 0 0 0 2px var(--paper), 0 0 0 3.5px var(--ink);
+.sws u.on,
+.sws .on {
+	box-shadow:
+		0 0 0 2px var(--paper),
+		0 0 0 3.5px var(--ink);
 }
 .sfield {
 	display: flex;
@@ -2712,15 +2760,15 @@ body.wide .dlg {
 	color: var(--faint);
 }
 .cbar .sfield.inv {
-	background: rgba(255,255,255,.16);
-	border-color: rgba(255,255,255,.4);
+	background: rgba(255, 255, 255, 0.16);
+	border-color: rgba(255, 255, 255, 0.4);
 	color: #fff;
 }
 .cbar .sfield.inv .ic {
 	color: #fff;
 }
 .cbar .sfield.inv input::placeholder {
-	color: rgba(255,255,255,.55);
+	color: rgba(255, 255, 255, 0.55);
 }
 .gh2 {
 	display: flex;
@@ -2743,7 +2791,7 @@ body.wide .dlg {
 	color: var(--faint);
 }
 .hl {
-	background: #EDDBC5;
+	background: #eddbc5;
 	border-radius: 3px;
 	padding: 0 2px;
 }
@@ -2786,7 +2834,7 @@ body.wide .dlg {
 	height: 26px;
 	border-radius: 6px;
 	overflow: hidden;
-	background: #E6DFD3;
+	background: #e6dfd3;
 }
 .stack u {
 	display: block;
@@ -2801,7 +2849,7 @@ body.wide .dlg {
 .tbl th {
 	font-size: 11.5px;
 	text-transform: uppercase;
-	letter-spacing: .09em;
+	letter-spacing: 0.09em;
 	color: var(--faint);
 	font-weight: 600;
 	text-align: left;
@@ -2834,7 +2882,7 @@ body.wide .dlg {
 	width: 88px;
 	height: 8px;
 	border-radius: 4px;
-	background: #E6DFD3;
+	background: #e6dfd3;
 	display: inline-block;
 	vertical-align: middle;
 	margin-right: 9px;
@@ -2854,7 +2902,8 @@ body.wide .dlg {
 }
 /* Шрифт — семейство и начертание страницы, размер — 12,5 px от .inp, как на
    кадрах 9.x (font: inherit сбрасывал его к размеру колонки). */
-input.inp, textarea.inp {
+input.inp,
+textarea.inp {
 	box-sizing: border-box;
 	min-width: 0;
 	font-family: inherit;
@@ -2862,14 +2911,15 @@ input.inp, textarea.inp {
 	line-height: inherit;
 	color: inherit;
 }
-input.inp[type="number"] {
+input.inp[type='number'] {
 	appearance: textfield;
 }
-input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-webkit-outer-spin-button {
+input.inp[type='number']::-webkit-inner-spin-button,
+input.inp[type='number']::-webkit-outer-spin-button {
 	appearance: none;
 }
 .inp:disabled {
-	opacity: .45;
+	opacity: 0.45;
 	cursor: default;
 }
 .admnav {
@@ -2879,7 +2929,8 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 	font-size: 12.5px;
 	color: var(--muted);
 }
-.admnav span, .admnav button {
+.admnav span,
+.admnav button {
 	padding: 0 0 2px;
 	border-bottom: 1.5px solid transparent;
 }
@@ -2985,11 +3036,11 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 	stroke-width: 2.2;
 }
 .codeblk {
-	background: #EDE7DC;
+	background: #ede7dc;
 	border: 1px solid var(--line);
 	border-radius: 10px;
 	padding: 14px 16px;
-	font-family: ui-monospace,SFMono-Regular,Menlo,monospace;
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 	font-size: 12px;
 	line-height: 1.8;
 	white-space: pre;
@@ -3018,7 +3069,7 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 	background: #171513;
 	display: flex;
 	flex-direction: column;
-	color: #EFE9E0;
+	color: #efe9e0;
 }
 .lb.fixed {
 	position: fixed;
@@ -3032,7 +3083,7 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 	padding: 10px 16px;
 }
 .lb .ic {
-	color: #EFE9E0;
+	color: #efe9e0;
 }
 .lb .mid {
 	flex: 1;
@@ -3044,7 +3095,8 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 	touch-action: pan-y;
 	overflow: hidden;
 }
-.lb .mid img, .lb .mid video {
+.lb .mid img,
+.lb .mid video {
 	display: block;
 	min-width: 0;
 	min-height: 0;
@@ -3059,7 +3111,7 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 	width: 64px;
 	display: flex;
 	align-items: center;
-	color: rgba(239,233,224,.55);
+	color: rgba(239, 233, 224, 0.55);
 	cursor: pointer;
 	border: none;
 	background: none;
@@ -3067,7 +3119,7 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 	font: inherit;
 }
 .lb .nav:hover {
-	color: #EFE9E0;
+	color: #efe9e0;
 }
 .lb .nav.prev {
 	left: 0;
@@ -3082,7 +3134,7 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 .lb .cap {
 	padding: 14px 16px 22px;
 	font-size: 12.5px;
-	color: #B9B1A8;
+	color: #b9b1a8;
 }
 .lb .dots {
 	display: flex;
@@ -3090,17 +3142,19 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 	justify-content: center;
 	padding-bottom: 14px;
 }
-.lb .dots u, .lb .dots button {
+.lb .dots u,
+.lb .dots button {
 	width: 5px;
 	height: 5px;
 	border-radius: 50%;
-	background: #5A534C;
+	background: #5a534c;
 	border: 0;
 	padding: 0;
 	cursor: pointer;
 }
-.lb .dots u.on, .lb .dots .on {
-	background: #EFE9E0;
+.lb .dots u.on,
+.lb .dots .on {
+	background: #efe9e0;
 }
 
 /* Голосовые и видео (план 46, C14; 4.21–4.27). */
@@ -3180,7 +3234,7 @@ input.inp[type="number"]::-webkit-inner-spin-button, input.inp[type="number"]::-
 	bottom: calc(100% + 6px);
 	padding: 6px 12px;
 	border-radius: 13px;
-	background: #2B2724;
+	background: #2b2724;
 	text-align: center;
 	font-size: 12px;
 	color: #fff;

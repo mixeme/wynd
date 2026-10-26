@@ -48,9 +48,15 @@ describe('serverInviteSubtitle', () => {
 
 describe('memberSubtitle', () => {
 	it('владелец, который пригласил, — обе части, глагол по роду', () => {
-		expect(memberSubtitle({ name: 'Аня', is_owner: true, is_inviter: true, gender: 'f' })).toBe('владелец · пригласила вас');
-		expect(memberSubtitle({ name: 'Боб', is_owner: false, is_inviter: true, gender: 'm' })).toBe('пригласил вас');
-		expect(memberSubtitle({ name: 'Кот', is_owner: false, is_inviter: true })).toBe('автор приглашения');
+		expect(memberSubtitle({ name: 'Аня', is_owner: true, is_inviter: true, gender: 'f' })).toBe(
+			'владелец · пригласила вас'
+		);
+		expect(memberSubtitle({ name: 'Боб', is_owner: false, is_inviter: true, gender: 'm' })).toBe(
+			'пригласил вас'
+		);
+		expect(memberSubtitle({ name: 'Кот', is_owner: false, is_inviter: true })).toBe(
+			'автор приглашения'
+		);
 		expect(memberSubtitle({ name: 'Аня', is_owner: true, is_inviter: false })).toBe('владелец');
 	});
 });
@@ -58,7 +64,10 @@ describe('memberSubtitle', () => {
 describe('inviteCardPreview', () => {
 	it('глагол по роду пригласившего, без рода — без глагола', () => {
 		const peek = (gender?: 'm' | 'f') =>
-			({ member_count: 2, members: [{ name: 'Аня', is_owner: true, is_inviter: true, gender }] }) as InvitePeek;
+			({
+				member_count: 2,
+				members: [{ name: 'Аня', is_owner: true, is_inviter: true, gender }]
+			}) as InvitePeek;
 		expect(inviteCardPreview(peek('f'))).toBe('2 участника · пригласила Аня');
 		expect(inviteCardPreview(peek('m'))).toBe('2 участника · пригласил Аня');
 		expect(inviteCardPreview(peek())).toBe('2 участника · приглашение: Аня');

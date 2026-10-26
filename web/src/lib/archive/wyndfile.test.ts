@@ -52,7 +52,12 @@ describe('файл полного архива', () => {
 		const info = await inspectWynd(src);
 		if (!info.encrypted) throw new Error('ждали зашифрованный');
 		expect(info.header.log_n).toBe(15);
-		const plain = await decryptedSource(src, info.header, info.headerLength, 'дача-самовар-облако-17');
+		const plain = await decryptedSource(
+			src,
+			info.header,
+			info.headerLength,
+			'дача-самовар-облако-17'
+		);
 		expect(plain.size).toBe(fixture('plain.wynd').size);
 		await checkArchive(plain);
 	}, 30_000);

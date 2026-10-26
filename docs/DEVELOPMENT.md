@@ -53,8 +53,9 @@ go build -o dist/wynd ./cmd/wynd
 |---|---|
 | `go vet ./...`, `go test ./...` | Сервер: инварианты хроники, панели и архива, сторожа маршрутов и версии |
 | `go build ./cmd/wynd` | Бинарник собирается с текущим `web/dist` |
-| `npm run check` | `svelte-check`: типы и разбор `.svelte` |
+| `npm run check` | `svelte-check`: типы и разбор `.svelte`; предупреждение — тоже отказ |
 | `npm run check:ui` | Сторож библиотеки интерфейса (`web/scripts/ui-guard.mjs`) и храповик инлайн-стилей |
+| `npm run lint` | Prettier (`web/.prettierrc`: табы, одинарные кавычки, строка до 100) и ESLint (`web/eslint.config.js`); поправить вид — `npm run format` |
 | `npm run test` | Vitest: ядро клиента, компоненты, файл лицензий |
 | `npm run build` | Клиент собирается |
 

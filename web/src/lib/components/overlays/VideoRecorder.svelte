@@ -65,7 +65,9 @@
 	const canEncode = typeof VideoEncoder !== 'undefined';
 	const short = $derived(settings?.video_max_height || DEFAULT_VIDEO_MAX_P);
 	const long = $derived(Math.round((short * 16) / 9));
-	const rawVideoBits = $derived((settings?.video_bitrate_kbps || DEFAULT_VIDEO_BITRATE_KBPS) * 1000);
+	const rawVideoBits = $derived(
+		(settings?.video_bitrate_kbps || DEFAULT_VIDEO_BITRATE_KBPS) * 1000
+	);
 
 	// Что уйдёт (4.15): сказать до отправки, а не чтобы человек узнал это из
 	// ленты. Со сжатием — размер кадра после него; без сжатия — ещё и вес,
@@ -270,7 +272,13 @@
 	});
 </script>
 
-<div class="vrec" role="dialog" aria-modal="true" aria-label="Запись видео" use:modal={{ ondismiss: close }}>
+<div
+	class="vrec"
+	role="dialog"
+	aria-modal="true"
+	aria-label="Запись видео"
+	use:modal={{ ondismiss: close }}
+>
 	{#if phase === 'review'}
 		<!-- svelte-ignore a11y_media_has_caption -->
 		<video
@@ -323,7 +331,7 @@
 			class:on={phase === 'recording'}
 			aria-label={phase === 'recording' ? 'Остановить запись' : 'Начать запись'}
 			disabled={!!error && phase === 'live'}
-			onclick={() => (phase === 'recording' ? stop() : start())}
-		><i></i></button>
+			onclick={() => (phase === 'recording' ? stop() : start())}><i></i></button
+		>
 	{/if}
 </div>

@@ -30,7 +30,7 @@
 	class="{admin ? 'inp' : 'fld'} {className}"
 	class:act={active}
 	class:gr={gray}
-	class:mono={mono}
+	class:mono
 	class:sm={small}
 	{type}
 	{style}

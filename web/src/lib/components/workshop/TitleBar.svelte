@@ -33,7 +33,8 @@
 					><path d="M2.5 2.5V.5h7v7h-2" /><rect x=".5" y="2.5" width="7" height="7" /></svg
 				>
 			{:else}
-				<svg viewBox="0 0 10 10" aria-hidden="true"><rect x=".5" y=".5" width="9" height="9" /></svg>
+				<svg viewBox="0 0 10 10" aria-hidden="true"><rect x=".5" y=".5" width="9" height="9" /></svg
+				>
 			{/if}
 		</button>
 		<button type="button" class="ins-tb-close" aria-label="Закрыть" onclick={onclose}>

@@ -63,7 +63,9 @@ async function frameJpeg(video: HTMLVideoElement): Promise<ArrayBuffer | undefin
 	const ctx = canvas.getContext('2d');
 	if (!ctx) return;
 	ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-	const jpeg = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+	const jpeg = await new Promise<Blob | null>((resolve) =>
+		canvas.toBlob(resolve, 'image/jpeg', 0.8)
+	);
 	return jpeg?.arrayBuffer();
 }
 

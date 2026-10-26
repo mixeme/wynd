@@ -21,7 +21,9 @@ export interface NewCircleContext {
 }
 
 /** Окно правок формы в секундах; null — без ограничения. */
-export function newCircleEditWindowSec(form: Pick<NewCircleContext, 'editWindow' | 'customHours'>): number | null {
+export function newCircleEditWindowSec(
+	form: Pick<NewCircleContext, 'editWindow' | 'customHours'>
+): number | null {
 	switch (form.editWindow) {
 		case 'chronicle':
 			return 0;

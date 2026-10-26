@@ -118,7 +118,7 @@ function tryArm() {
 
 if (typeof window !== 'undefined') {
 	addEventListener('popstate', () => {
-			if (guardIndex === undefined || historyIndex() !== guardIndex - 1) return;
+		if (guardIndex === undefined || historyIndex() !== guardIndex - 1) return;
 		guardIndex = undefined;
 		const here = location.pathname + location.search;
 		const index = historyIndex();

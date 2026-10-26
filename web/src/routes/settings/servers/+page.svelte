@@ -131,7 +131,8 @@
 			<!-- 7.18: круг приезжает на тот сервер, под которым стоит строка. -->
 			<SettingsRow
 				title="Принять круг"
-				onclick={() => goto(`/settings/servers/accept?origin=${encodeURIComponent(row.session.origin)}`)}
+				onclick={() =>
+					goto(`/settings/servers/accept?origin=${encodeURIComponent(row.session.origin)}`)}
 			/>
 			<SettingsRow
 				icon="out"
@@ -148,4 +149,3 @@
 		<Button onclick={addServer}>Добавить сервер</Button>
 	{/if}
 </FormLayout>
-

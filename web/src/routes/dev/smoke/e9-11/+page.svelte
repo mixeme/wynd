@@ -104,11 +104,7 @@
 				<CheckRow status="ok" name="Место" description="свободно 21,6 ГБ из 40" />
 				<CheckRow status="ok" name="Предел сервера" description="занято 12,4 ГБ из 40 ГБ" />
 				<CheckRow status="ok" name="Суточная рутина" description="прошла сегодня в 04:00" />
-				<CheckRow
-					status="warn"
-					name="Бэкап"
-					description="каталог ещё ни разу не копировали"
-				>
+				<CheckRow status="warn" name="Бэкап" description="каталог ещё ни разу не копировали">
 					{#snippet actions()}
 						<TextButton variant="admin" onclick={() => {}}>Как настроить</TextButton>
 					{/snippet}
@@ -116,7 +112,9 @@
 			</div>
 		</div>
 		<div style="font-size:11.5px;color:var(--faint);margin-top:18px;line-height:1.6">
-			Снаружи проверяет ваш браузер: панель просит его сходить на публичный адрес и сравнивает с тем, что видит сервер. Wynd никуда не звонит — если браузер окажется в одной сети с сервером, здесь будет сказано, что проверка вышла изнутри.
+			Снаружи проверяет ваш браузер: панель просит его сходить на публичный адрес и сравнивает с
+			тем, что видит сервер. Wynd никуда не звонит — если браузер окажется в одной сети с сервером,
+			здесь будет сказано, что проверка вышла изнутри.
 		</div>
 	</AdminSection>
 </PhoneFrame>

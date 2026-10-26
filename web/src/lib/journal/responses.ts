@@ -54,7 +54,11 @@ export async function fetchResponses(
 	};
 }
 
-export async function markResponsesRead(origin: string, circleId: string, seq: number): Promise<void> {
+export async function markResponsesRead(
+	origin: string,
+	circleId: string,
+	seq: number
+): Promise<void> {
 	await apiJson(origin, `/circles/${circleId}/responses/read`, {
 		method: 'PUT',
 		headers: { 'Content-Type': 'application/json' },

@@ -269,12 +269,20 @@ export async function patchCircle(
 }
 
 /** «Позвать всех письмом» и «позвать одного» (6.6): письма шлёт сервер. */
-export async function inviteWaiting(origin: string, circleId: string, identityId?: string): Promise<number> {
-	const res = await apiJson<{ invited: number }>(origin, `/circles/${circleId}/members/invite_waiting`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ identity_id: identityId ?? '' })
-	});
+export async function inviteWaiting(
+	origin: string,
+	circleId: string,
+	identityId?: string
+): Promise<number> {
+	const res = await apiJson<{ invited: number }>(
+		origin,
+		`/circles/${circleId}/members/invite_waiting`,
+		{
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ identity_id: identityId ?? '' })
+		}
+	);
 	return res.invited;
 }
 
@@ -378,10 +386,7 @@ export async function fetchCircleInvites(
 	origin: string,
 	circleId: string
 ): Promise<CircleInvite[]> {
-	const data = await apiJson<{ invites: CircleInvite[] }>(
-		origin,
-		`/circles/${circleId}/invites`
-	);
+	const data = await apiJson<{ invites: CircleInvite[] }>(origin, `/circles/${circleId}/invites`);
 	return data.invites ?? [];
 }
 
@@ -412,10 +417,7 @@ export async function createCircleInvite(
 	});
 }
 
-export async function fetchNotifyPrefs(
-	origin: string,
-	circleId: string
-): Promise<NotifyPrefs> {
+export async function fetchNotifyPrefs(origin: string, circleId: string): Promise<NotifyPrefs> {
 	return apiJson<NotifyPrefs>(origin, `/circles/${circleId}/notify_prefs`);
 }
 

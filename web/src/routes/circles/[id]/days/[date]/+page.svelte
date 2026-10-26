@@ -138,7 +138,10 @@
 
 	// Обновление жестом (3.5), как в ленте: тянешь экран от верха.
 	let listEl: HTMLDivElement | undefined = $state();
-	const ptr = new PullRefresh(() => listEl?.scrollTop ?? 0, () => loadData());
+	const ptr = new PullRefresh(
+		() => listEl?.scrollTop ?? 0,
+		() => loadData()
+	);
 	onDestroy(() => ptr.destroy());
 
 	onMount(() => {
@@ -231,96 +234,103 @@
 		ontouchmove={ptr.move}
 		ontouchend={ptr.end}
 	>
-	{#if loading}
-		<Loading />
-	{:else if error && !posts.length}
-		<Hint class="gutter-24">{error}</Hint>
-	{:else}
-		<DayHeader
-			coverUrl={coverUrl || undefined}
-			empty={!coverBlobId}
-			title={editingTitle || !hasCustomTitle ? undefined : dayTitle}
-			subtitle={editingTitle ? undefined : titleSubtitle}
-			oncover={canEditDay && coverBlobId ? openDayAlbum : undefined}
-			ontitle={editingTitle || !canEditDay ? undefined : startEditTitle}
-		/>
+		{#if loading}
+			<Loading />
+		{:else if error && !posts.length}
+			<Hint class="gutter-24">{error}</Hint>
+		{:else}
+			<DayHeader
+				coverUrl={coverUrl || undefined}
+				empty={!coverBlobId}
+				title={editingTitle || !hasCustomTitle ? undefined : dayTitle}
+				subtitle={editingTitle ? undefined : titleSubtitle}
+				oncover={canEditDay && coverBlobId ? openDayAlbum : undefined}
+				ontitle={editingTitle || !canEditDay ? undefined : startEditTitle}
+			/>
 
-		{#if editingTitle}
-			<Input class="mt-14" bind:value={titleDraft} active placeholder={formatEntryDate(entryDate)} />
-			<div class="rowin mt-12">
-				<Button class="grow"
-					variant="colored"
-					keepFocus
-					disabled={savingTitle || !titleDraft.trim()}
-					loading={savingTitle}
-					onclick={saveTitle}
-				>
-					Сохранить
-				</Button>
-				<Button class="grow-flat" variant="ghost" keepFocus onclick={cancelEditTitle}>Отмена</Button>
-			</div>
-			{#if canClearTitle}
-				<Hint centered class="mt-8">
-					<TextButton onclick={removeTitle}>убрать название</TextButton>
-				</Hint>
-			{/if}
-		{/if}
-
-		{#each posts as post (post.id)}
-			{#snippet postText()}
-				<MentionText body={post.body} />
-			{/snippet}
-			{#snippet postMedia()}
-				{@const cover = coverMedia(post.media)}
-				{@const count = mediaCount(post.media)}
-				{@const loc = locationLabel(cover)}
-				{#if cover}
-					<MediaTile
-						variant="feed"
-						src={mediaUrls[tileBlobId(cover)]}
-						kind={cover.kind === 'video' ? 'video' : 'photo'}
-						durationMs={cover.video_duration_ms}
-						crop={cover.crop}
-						{count}
-						locationLabel={loc || undefined}
-						onclick={() => openAlbum(post.id)}
-					/>
-				{/if}
-				<AttachmentList
-					items={attachmentMedia(post.media)}
-					origin={circle.origin}
-					circleId={circle.circleId}
-					circleName={circle.name}
-					color={circle.colorHex}
-					postId={post.id}
-					coverUrls={mediaUrls}
+			{#if editingTitle}
+				<Input
+					class="mt-14"
+					bind:value={titleDraft}
+					active
+					placeholder={formatEntryDate(entryDate)}
 				/>
-			{/snippet}
-			<PostCard
-				onclick={() => openPost(post.id)}
-				text={post.body ? postText : undefined}
-				media={coverMedia(post.media) || attachmentMedia(post.media).length
-					? postMedia
-					: undefined}
-			>
-				{#snippet author()}
-					<PostByline
-						initial={authorInitial(post.author_name)}
+				<div class="rowin mt-12">
+					<Button
+						class="grow"
+						variant="colored"
+						keepFocus
+						disabled={savingTitle || !titleDraft.trim()}
+						loading={savingTitle}
+						onclick={saveTitle}
+					>
+						Сохранить
+					</Button>
+					<Button class="grow-flat" variant="ghost" keepFocus onclick={cancelEditTitle}
+						>Отмена</Button
+					>
+				</div>
+				{#if canClearTitle}
+					<Hint centered class="mt-8">
+						<TextButton onclick={removeTitle}>убрать название</TextButton>
+					</Hint>
+				{/if}
+			{/if}
+
+			{#each posts as post (post.id)}
+				{#snippet postText()}
+					<MentionText body={post.body} />
+				{/snippet}
+				{#snippet postMedia()}
+					{@const cover = coverMedia(post.media)}
+					{@const count = mediaCount(post.media)}
+					{@const loc = locationLabel(cover)}
+					{#if cover}
+						<MediaTile
+							variant="feed"
+							src={mediaUrls[tileBlobId(cover)]}
+							kind={cover.kind === 'video' ? 'video' : 'photo'}
+							durationMs={cover.video_duration_ms}
+							crop={cover.crop}
+							{count}
+							locationLabel={loc || undefined}
+							onclick={() => openAlbum(post.id)}
+						/>
+					{/if}
+					<AttachmentList
+						items={attachmentMedia(post.media)}
+						origin={circle.origin}
+						circleId={circle.circleId}
+						circleName={circle.name}
 						color={circle.colorHex}
-						src={authorAvatarSrc(post)}
-						name={post.author_name}
-						time={formatPostTime(post.created_at)}
+						postId={post.id}
+						coverUrls={mediaUrls}
 					/>
 				{/snippet}
-			</PostCard>
-		{/each}
-		{#if !posts.length}
-			<Hint class="gutter-24">В этот день записей нет</Hint>
+				<PostCard
+					onclick={() => openPost(post.id)}
+					text={post.body ? postText : undefined}
+					media={coverMedia(post.media) || attachmentMedia(post.media).length
+						? postMedia
+						: undefined}
+				>
+					{#snippet author()}
+						<PostByline
+							initial={authorInitial(post.author_name)}
+							color={circle.colorHex}
+							src={authorAvatarSrc(post)}
+							name={post.author_name}
+							time={formatPostTime(post.created_at)}
+						/>
+					{/snippet}
+				</PostCard>
+			{/each}
+			{#if !posts.length}
+				<Hint class="gutter-24">В этот день записей нет</Hint>
+			{/if}
+			{#if error}
+				<Hint class="gutter-12">{error}</Hint>
+			{/if}
 		{/if}
-		{#if error}
-			<Hint class="gutter-12">{error}</Hint>
-		{/if}
-	{/if}
 	</div>
 </CircleLayout>
-

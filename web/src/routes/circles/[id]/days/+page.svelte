@@ -88,7 +88,10 @@
 
 	// Обновление жестом (3.5), как в ленте: тянешь экран от верха.
 	let listEl: HTMLDivElement | undefined = $state();
-	const ptr = new PullRefresh(() => listEl?.scrollTop ?? 0, () => loadData());
+	const ptr = new PullRefresh(
+		() => listEl?.scrollTop ?? 0,
+		() => loadData()
+	);
 	onDestroy(() => ptr.destroy());
 
 	onMount(() => {
@@ -135,33 +138,36 @@
 		ontouchmove={ptr.move}
 		ontouchend={ptr.end}
 	>
-	{#if loading}
-		<Loading />
-	{:else if error && !days.length}
-		<Hint class="gutter-24">{error}</Hint>
-	{:else}
-		{#if days.length}
-			<Hint class="mt-12">
-				{days.length} {days.length === 1 ? 'день' : days.length < 5 ? 'дня' : 'дней'} из {pluralPosts(totalPosts)}
-			</Hint>
+		{#if loading}
+			<Loading />
+		{:else if error && !days.length}
+			<Hint class="gutter-24">{error}</Hint>
+		{:else}
+			{#if days.length}
+				<Hint class="mt-12">
+					{days.length}
+					{days.length === 1 ? 'день' : days.length < 5 ? 'дня' : 'дней'} из {pluralPosts(
+						totalPosts
+					)}
+				</Hint>
+			{/if}
+			{#each monthGroups as group (group.month)}
+				<MonthLabel>{group.label}</MonthLabel>
+				<DayGrid>
+					{#each group.items as day (day.entryDate)}
+						<DayCard
+							title={day.title}
+							subtitle={day.subtitle}
+							coverUrl={day.coverBlobId ? coverUrls[day.coverBlobId] : undefined}
+							photoCount={day.photoCount}
+							onclick={() => openDay(day.entryDate)}
+						/>
+					{/each}
+				</DayGrid>
+			{/each}
+			{#if !days.length}
+				<Hint class="gutter-24">Пока нет дней с записями</Hint>
+			{/if}
 		{/if}
-		{#each monthGroups as group (group.month)}
-			<MonthLabel>{group.label}</MonthLabel>
-			<DayGrid>
-				{#each group.items as day (day.entryDate)}
-					<DayCard
-						title={day.title}
-						subtitle={day.subtitle}
-						coverUrl={day.coverBlobId ? coverUrls[day.coverBlobId] : undefined}
-						photoCount={day.photoCount}
-						onclick={() => openDay(day.entryDate)}
-					/>
-				{/each}
-			</DayGrid>
-		{/each}
-		{#if !days.length}
-			<Hint class="gutter-24">Пока нет дней с записями</Hint>
-		{/if}
-	{/if}
 	</div>
 </CircleLayout>

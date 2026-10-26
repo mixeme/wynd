@@ -21,6 +21,12 @@
 	const variantClass = $derived(variant === 'event' ? '' : 'new');
 </script>
 
-<div class="ev {variantClass} {className}" {style} role={variant === 'cutoff' ? 'separator' : undefined}>
-	<span>{text}{#if time}<small class="ev-t">{time}</small>{/if}</span>
+<div
+	class="ev {variantClass} {className}"
+	{style}
+	role={variant === 'cutoff' ? 'separator' : undefined}
+>
+	<span
+		>{text}{#if time}<small class="ev-t">{time}</small>{/if}</span
+	>
 </div>

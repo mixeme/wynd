@@ -22,18 +22,26 @@ describe('resolveServerOrigin', () => {
 	});
 
 	it('treats loopback on another port as a distinct server', () => {
-		vi.stubGlobal('window', { location: { origin, hostname: '127.0.0.1', host: '127.0.0.1:5173' } });
+		vi.stubGlobal('window', {
+			location: { origin, hostname: '127.0.0.1', host: '127.0.0.1:5173' }
+		});
 		expect(resolveServerOrigin('http://127.0.0.1:19999')).toBe('http://127.0.0.1:19999');
 	});
 
 	it('maps exact page origin to same-host proxy', () => {
-		vi.stubGlobal('window', { location: { origin, hostname: '127.0.0.1', host: '127.0.0.1:5173' } });
+		vi.stubGlobal('window', {
+			location: { origin, hostname: '127.0.0.1', host: '127.0.0.1:5173' }
+		});
 		expect(resolveServerOrigin('http://127.0.0.1:5173')).toBe('');
 	});
 
 	it('own host without a scheme is this server, even over plain http (LAN)', () => {
 		vi.stubGlobal('window', {
-			location: { origin: 'http://192.168.1.20:7676', hostname: '192.168.1.20', host: '192.168.1.20:7676' }
+			location: {
+				origin: 'http://192.168.1.20:7676',
+				hostname: '192.168.1.20',
+				host: '192.168.1.20:7676'
+			}
 		});
 		expect(resolveServerOrigin('192.168.1.20:7676')).toBe('');
 		expect(resolveServerOrigin('https://192.168.1.20:7676')).toBe('https://192.168.1.20:7676');

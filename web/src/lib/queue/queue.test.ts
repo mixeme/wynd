@@ -62,7 +62,9 @@ describe('queue', () => {
 		expect(queuedTimeLabel('uploading', 0.428)).toBe('отправляется · 42%');
 		expect(queuedTimeLabel('uploading', 1)).toBe('отправляется · 100%');
 		// Места нет (C42, 3.12): запись ждёт, и в подписи сказано почему.
-		expect(queuedTimeLabel('pending', undefined, 'quota_exceeded')).toBe('в очереди · в круге кончилось место');
+		expect(queuedTimeLabel('pending', undefined, 'quota_exceeded')).toBe(
+			'в очереди · в круге кончилось место'
+		);
 		expect(queuedTimeLabel('pending', undefined, 'quota_exceeded:server')).toBe(
 			'в очереди · на сервере кончилось место'
 		);
@@ -95,7 +97,9 @@ describe('queue', () => {
 		expect(views[2].preview).toBeUndefined();
 		expect(views[3]).toMatchObject({ name: 'list.pdf', size: 4 });
 		// Старые записи очереди без описания — фото, как их и отправит очередь.
-		expect(queuedMediaViews([{ name: 'x', type: '', size: 4, data }], undefined)[0].kind).toBe('photo');
+		expect(queuedMediaViews([{ name: 'x', type: '', size: 4, data }], undefined)[0].kind).toBe(
+			'photo'
+		);
 	});
 
 	it('updates and removes queued posts', async () => {
@@ -159,7 +163,8 @@ describe('queue', () => {
 	// очереди пропадала на 100%, а запись появлялась только с обновлением.
 	it('даёт ленте перечитать круг до того, как снять запись', async () => {
 		vi.stubGlobal('navigator', { ...navigator, onLine: true });
-		const { enqueuePost, drainQueue, listQueueForCircle, subscribePostSent } = await import('./queue');
+		const { enqueuePost, drainQueue, listQueueForCircle, subscribePostSent } =
+			await import('./queue');
 		const origin = 'https://sent.test';
 		const stillQueued: number[] = [];
 		const unsub = subscribePostSent(async (o, c) => {
@@ -194,7 +199,11 @@ describe('queue', () => {
 		vi.stubGlobal('navigator', { ...navigator, onLine: true });
 		apiJson.mockResolvedValue({ id: 'session1' });
 		apiFetch.mockImplementation(
-			async (_origin: string, _path: string, init: { method: string; headers?: Record<string, string>; body?: ArrayBuffer }) => {
+			async (
+				_origin: string,
+				_path: string,
+				init: { method: string; headers?: Record<string, string>; body?: ArrayBuffer }
+			) => {
 				if (init.method === 'HEAD') return { headers: new Headers({ 'Upload-Offset': '0' }) };
 				const received = Number(init.headers!['Upload-Offset']) + init.body!.byteLength;
 				return { json: async () => ({ received_bytes: received }) };
@@ -219,10 +228,11 @@ describe('queue', () => {
 	it('не считает проценты у файла в одну порцию', async () => {
 		vi.stubGlobal('navigator', { ...navigator, onLine: true });
 		apiJson.mockResolvedValue({ id: 'session1' });
-		apiFetch.mockImplementation(async (_o: string, _p: string, init: { method: string; body?: ArrayBuffer }) =>
-			init.method === 'HEAD'
-				? { headers: new Headers() }
-				: { json: async () => ({ received_bytes: init.body!.byteLength }) }
+		apiFetch.mockImplementation(
+			async (_o: string, _p: string, init: { method: string; body?: ArrayBuffer }) =>
+				init.method === 'HEAD'
+					? { headers: new Headers() }
+					: { json: async () => ({ received_bytes: init.body!.byteLength }) }
 		);
 		const { enqueuePost, drainQueue, subscribeQueueProgress } = await import('./queue');
 		const seen: (number | undefined)[] = [];

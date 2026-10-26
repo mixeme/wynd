@@ -50,7 +50,7 @@
 		/>
 		<Button
 			class="mt-20"
-			loading={loading}
+			{loading}
 			disabled={loading}
 			onclick={loading ? () => {} : () => void onSubmit()}
 		>

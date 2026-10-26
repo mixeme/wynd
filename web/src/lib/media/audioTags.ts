@@ -63,7 +63,9 @@ async function coverJpeg(data: Uint8Array, mime: string): Promise<ArrayBuffer | 
 		}
 		ctx.drawImage(bitmap, 0, 0, width, height);
 		bitmap.close();
-		const jpeg = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+		const jpeg = await new Promise<Blob | null>((resolve) =>
+			canvas.toBlob(resolve, 'image/jpeg', 0.8)
+		);
 		if (!jpeg) return;
 		return jpeg.arrayBuffer();
 	} catch {
@@ -80,8 +82,7 @@ export async function readAudioTags(file: File): Promise<AudioTags> {
 		const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
 		try {
 			const tags = await input.getMetadataTags();
-			const image =
-				tags.images?.find((item) => item.kind === 'coverFront') ?? tags.images?.[0];
+			const image = tags.images?.find((item) => item.kind === 'coverFront') ?? tags.images?.[0];
 			const cover = image ? await coverJpeg(image.data, image.mimeType) : undefined;
 			return { artist: trimTag(tags.artist), title: trimTag(tags.title), cover };
 		} finally {

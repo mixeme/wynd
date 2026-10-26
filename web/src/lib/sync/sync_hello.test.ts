@@ -33,7 +33,11 @@ describe('sync hello frame', () => {
 		let listRefetched = 0;
 		let circleRefetched = 0;
 		const offList = registerRefetch({ origin, refetch: async () => void listRefetched++ });
-		const offCircle = registerRefetch({ origin, circleId: 'c1', refetch: async () => void circleRefetched++ });
+		const offCircle = registerRefetch({
+			origin,
+			circleId: 'c1',
+			refetch: async () => void circleRefetched++
+		});
 		await handleSyncFrame(origin, '{"street":true}');
 		offList();
 		offCircle();

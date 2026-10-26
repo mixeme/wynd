@@ -53,9 +53,17 @@ function isTextField(el: Element | null): el is HTMLElement {
 	if (!(el instanceof HTMLElement)) return false;
 	if (el instanceof HTMLTextAreaElement || el.isContentEditable) return true;
 	if (!(el instanceof HTMLInputElement)) return false;
-	return !['button', 'checkbox', 'color', 'file', 'image', 'radio', 'range', 'reset', 'submit'].includes(
-		el.type
-	);
+	return ![
+		'button',
+		'checkbox',
+		'color',
+		'file',
+		'image',
+		'radio',
+		'range',
+		'reset',
+		'submit'
+	].includes(el.type);
 }
 
 /** Есть ли над полем экран, который ещё можно прокрутить вниз. */
@@ -73,7 +81,8 @@ const TYPED_INPUTS = ['text', 'search', 'email', 'url', 'tel', 'password', 'numb
 /** Поле, в которое печатают с клавиатуры: у даты и файла свой выбор, их не трогаем. */
 function isTypedField(el: Element | null): el is HTMLElement {
 	if (el instanceof HTMLTextAreaElement) return !el.disabled && !el.readOnly;
-	if (el instanceof HTMLInputElement) return TYPED_INPUTS.includes(el.type) && !el.disabled && !el.readOnly;
+	if (el instanceof HTMLInputElement)
+		return TYPED_INPUTS.includes(el.type) && !el.disabled && !el.readOnly;
 	return el instanceof HTMLElement && el.isContentEditable;
 }
 
@@ -104,7 +113,11 @@ function focusWithoutScroll(): () => void {
 		const touch = event.changedTouches[0];
 		const target = event.target as Element | null;
 		if (!from || !touch || !isTypedField(target) || document.activeElement === target) return;
-		if (Math.abs(touch.clientX - from.x) > TAP_SLOP_PX || Math.abs(touch.clientY - from.y) > TAP_SLOP_PX) return;
+		if (
+			Math.abs(touch.clientX - from.x) > TAP_SLOP_PX ||
+			Math.abs(touch.clientY - from.y) > TAP_SLOP_PX
+		)
+			return;
 		event.preventDefault();
 		target.focus({ preventScroll: true });
 	};

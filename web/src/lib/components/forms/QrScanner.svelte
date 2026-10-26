@@ -30,9 +30,7 @@
 	async function scan() {
 		if (stopped || !video) return;
 		if (video.readyState >= 2) {
-			const text = await decodeQrFrom(video, video.videoWidth, video.videoHeight).catch(
-				() => null
-			);
+			const text = await decodeQrFrom(video, video.videoWidth, video.videoHeight).catch(() => null);
 			if (text && onread(text)) {
 				stop();
 				return;
@@ -71,5 +69,4 @@
 	onDestroy(stop);
 </script>
 
-<!-- svelte-ignore a11y_media_has_caption -->
 <video class="qr-video" bind:this={video} playsinline muted></video>

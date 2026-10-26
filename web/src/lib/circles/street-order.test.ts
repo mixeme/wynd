@@ -26,7 +26,12 @@ describe('порядок улицы', () => {
 			row('Семья', { lastAt: '2026-08-01T10:00:00Z', pinned: true, pinnedAt: 5 }),
 			row('Ремонт', { lastAt: '2026-09-30T12:00:00Z' })
 		];
-		expect(sortStreetCircles(rows).map((r) => r.name)).toEqual(['Семья', 'Ремонт', 'Дача', 'Архив']);
+		expect(sortStreetCircles(rows).map((r) => r.name)).toEqual([
+			'Семья',
+			'Ремонт',
+			'Дача',
+			'Архив'
+		]);
 	});
 
 	it('приглашение без имени — самое свежее, круг без событий — в конце', () => {

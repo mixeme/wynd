@@ -10,12 +10,7 @@
 	import Logo from '$ui/Logo.svelte';
 	import ServerRow from '$ui/data/ServerRow.svelte';
 	import PlainLayout from '$lib/layouts/PlainLayout.svelte';
-	import {
-		authErrorHint,
-		fetchInstance,
-		sendAuthCode,
-		type InstanceInfo
-	} from '$lib/auth/auth';
+	import { authErrorHint, fetchInstance, sendAuthCode, type InstanceInfo } from '$lib/auth/auth';
 	import { displayHost, resolveServerOrigin } from '$lib/auth/origin';
 	import { INVALID_EMAIL_HINT, isValidParticipantEmail } from '$lib/auth/email';
 	import { loadPendingAuth, savePendingAuth } from '$lib/auth/pending';
@@ -120,36 +115,42 @@
 		<Loading logo />
 	</PlainLayout>
 {:else}
-<PlainLayout shell app>
-	<div class="logo-wrap">
-		<Logo />
-	</div>
-	<ScreenTitle class="mt-30" centered>Войти</ScreenTitle>
-	<!-- Адрес не вводится: приложение открыто с этого сервера, он и есть сервер
+	<PlainLayout shell app>
+		<div class="logo-wrap">
+			<Logo />
+		</div>
+		<ScreenTitle class="mt-30" centered>Войти</ScreenTitle>
+		<!-- Адрес не вводится: приложение открыто с этого сервера, он и есть сервер
 	     входа. Войти на другой — «Настройки → Серверы → Добавить сервер». -->
-	{#if checking}
-		<Hint class="mt-8">Проверяем сервер…</Hint>
-	{:else if instance}
-		<ServerRow name={instance.name} subtitle={serverSubtitle} variant="ok" card gdpr={instance.allow_name_erasure} />
-	{/if}
-	<Label class="mt-16">Почта</Label>
-	<Input active type="email" autocomplete="email" bind:value={email} />
-	<Hint>Пришлём код для входа. Пароля нет.</Hint>
-	<Button {loading} disabled={!instance} onclick={onSubmit}>Получить код</Button>
-	<!-- Без приглашения — только на открытом сервере: иначе дверь вела в тупик.
+		{#if checking}
+			<Hint class="mt-8">Проверяем сервер…</Hint>
+		{:else if instance}
+			<ServerRow
+				name={instance.name}
+				subtitle={serverSubtitle}
+				variant="ok"
+				card
+				gdpr={instance.allow_name_erasure}
+			/>
+		{/if}
+		<Label class="mt-16">Почта</Label>
+		<Input active type="email" autocomplete="email" bind:value={email} />
+		<Hint>Пришлём код для входа. Пароля нет.</Hint>
+		<Button {loading} disabled={!instance} onclick={onSubmit}>Получить код</Button>
+		<!-- Без приглашения — только на открытом сервере: иначе дверь вела в тупик.
 	     Каждая ссылка — своей строкой с промежутком: вплотную в них промахивались. -->
-	{#if instance?.registration_mode === 'open'}
-		<Hint class="mt-30" centered>
-			<a class="under" href="/join">Регистрация без приглашения</a>
+		{#if instance?.registration_mode === 'open'}
+			<Hint class="mt-30" centered>
+				<a class="under" href="/join">Регистрация без приглашения</a>
+			</Hint>
+		{/if}
+		<Hint class={instance?.registration_mode === 'open' ? 'mt-18' : 'mt-30'} centered>
+			<a class="under" href="/invite?from=login">У меня есть приглашение</a>
 		</Hint>
-	{/if}
-	<Hint class={instance?.registration_mode === 'open' ? 'mt-18' : 'mt-30'} centered>
-		<a class="under" href="/invite?from=login">У меня есть приглашение</a>
-	</Hint>
-	{#if error}
-		<Hint class="mt-12" centered>{error}</Hint>
-	{/if}
-</PlainLayout>
+		{#if error}
+			<Hint class="mt-12" centered>{error}</Hint>
+		{/if}
+	</PlainLayout>
 {/if}
 
 <style>

@@ -161,7 +161,9 @@
 			<Icon name="play" class="vid-mark" />
 		{/if}
 		{@render corner(
-			props.count != null && (props.src || isVideo ? props.count > 1 : true) ? props.count : undefined
+			props.count != null && (props.src || isVideo ? props.count > 1 : true)
+				? props.count
+				: undefined
 		)}
 	</div>
 {:else if props.variant === 'grid'}
@@ -175,12 +177,7 @@
 		{@render corner(props.count != null && props.count > 1 ? props.count : undefined)}
 	</button>
 {:else if props.variant === 'album'}
-	<button
-		type="button"
-		class="cell"
-		class:on={props.selected}
-		onclick={() => props.onclick()}
-	>
+	<button type="button" class="cell" class:on={props.selected} onclick={() => props.onclick()}>
 		{#if props.src}
 			<img src={props.src} alt="" />
 		{/if}
@@ -237,7 +234,9 @@
 				<span class="cnt thumb-mark">{props.coverMark}</span>
 			{/if}
 			{#if props.variant === 'compose' && props.progress !== undefined}
-				<span class="thumb-busy">{props.progress === null ? '' : `${Math.round(props.progress * 100)} %`}</span>
+				<span class="thumb-busy"
+					>{props.progress === null ? '' : `${Math.round(props.progress * 100)} %`}</span
+				>
 			{/if}
 		</button>
 		{#if props.onremove}

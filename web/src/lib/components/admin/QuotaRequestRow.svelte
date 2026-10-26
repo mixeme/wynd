@@ -31,12 +31,7 @@
 	);
 </script>
 
-<CheckRow
-	status="warn"
-	class={className}
-	{style}
-	description="попросил {requester} {date}"
->
+<CheckRow status="warn" class={className} {style} description="попросил {requester} {date}">
 	{#snippet title()}
 		<span
 			style="width:12px;height:12px;border-radius:4px;display:inline-block;vertical-align:-1px;margin-right:8px;background:{circleColor}"

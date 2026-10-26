@@ -8,11 +8,7 @@ import {
 import { getCursor, getSession, listSessions, putCursor } from '$lib/idb/db';
 import { drainQueueFor } from '$lib/queue/queue';
 import { isTransportError } from '$lib/queue/transport';
-import {
-	forgetServer,
-	reportServerSilent,
-	reportServerUp
-} from '$lib/session/connection.svelte';
+import { forgetServer, reportServerSilent, reportServerUp } from '$lib/session/connection.svelte';
 
 export interface SyncEvent {
 	seq: number;
@@ -210,7 +206,8 @@ async function runSyncLoop(origin: string, signal: AbortSignal): Promise<void> {
 			kicked = true;
 			turn.abort();
 		});
-		const pause = (ms: number) => (kicked ? Promise.resolve() : sleep(ms, turn.signal).catch(() => {}));
+		const pause = (ms: number) =>
+			kicked ? Promise.resolve() : sleep(ms, turn.signal).catch(() => {});
 		try {
 			const session = await getSession(origin);
 			if (!session?.token) {

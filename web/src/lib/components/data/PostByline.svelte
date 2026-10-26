@@ -31,6 +31,8 @@
 <Avatar {initial} {color} {src} />
 <div>
 	<div class="n">{name}</div>
-	<div class="tm" class:tm-icon={Boolean(icon)}>{#if icon}<Icon name={icon} size="xs" />{/if}{time}</div>
+	<div class="tm" class:tm-icon={Boolean(icon)}>
+		{#if icon}<Icon name={icon} size="xs" />{/if}{time}
+	</div>
 	{#if day}<div class="tm tm-icon"><Icon name="day" size="xs" />{day}</div>{/if}
 </div>

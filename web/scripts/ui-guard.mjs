@@ -211,18 +211,16 @@ export function analyzeScreenSource(rel, source, inventory) {
 		const def = defaultImportName(clause);
 
 		if (spec === 'bits-ui' || spec.startsWith('bits-ui/')) {
-			hits.push(hit(rel, line, 'bits-ui is library-internal — screens import $ui components, not Bits UI'));
+			hits.push(
+				hit(rel, line, 'bits-ui is library-internal — screens import $ui components, not Bits UI')
+			);
 			continue;
 		}
 
 		if (def && spec.endsWith('.svelte')) {
 			if (!allowedSvelteSpec(spec)) {
 				hits.push(
-					hit(
-						rel,
-						line,
-						`component import must be $ui/... or $lib/layouts/... (got ${spec})`
-					)
+					hit(rel, line, `component import must be $ui/... or $lib/layouts/... (got ${spec})`)
 				);
 				continue;
 			}
@@ -231,11 +229,7 @@ export function analyzeScreenSource(rel, source, inventory) {
 			const known = resolved.kind === 'ui' ? inventory.ui : inventory.layouts;
 			if (!known.has(resolved.file)) {
 				hits.push(
-					hit(
-						rel,
-						line,
-						`${spec} is not in the Wynd UI library — use an existing component`
-					)
+					hit(rel, line, `${spec} is not in the Wynd UI library — use an existing component`)
 				);
 				continue;
 			}
@@ -302,15 +296,59 @@ function searchSource(rel, source, re) {
  * больше не нужно — её накрывает сброс :where(button) в ui.css (REF-8).
  */
 export const BUTTON_LAYOUT_CLASSES = new Set([
-	'btn', 'row2', 'r', 'circle-row-action', 'fold', 'att', 'att-play', 'cm', 'rcho', 'addph',
-	'send', 'chip', 'inp', 'one', 'add', 'di', 'pic', 'scrim', 'pay-banner-main',
-	'pay-reminder', 'cell', 'thumb', 'thumb-body', 'map-sheet', 'fab-menu-item', 'audio-bar-main',
-	'voice', 'vrec-shutter', 'vrec-send', 'dayc', 'dayh', 'ctile', 'crow', 'cpend-rm', 'cpend-add', 'cm-line',
+	'btn',
+	'row2',
+	'r',
+	'circle-row-action',
+	'fold',
+	'att',
+	'att-play',
+	'cm',
+	'rcho',
+	'addph',
+	'send',
+	'chip',
+	'inp',
+	'one',
+	'add',
+	'di',
+	'pic',
+	'scrim',
+	'pay-banner-main',
+	'pay-reminder',
+	'cell',
+	'thumb',
+	'thumb-body',
+	'map-sheet',
+	'fab-menu-item',
+	'audio-bar-main',
+	'voice',
+	'vrec-shutter',
+	'vrec-send',
+	'dayc',
+	'dayh',
+	'ctile',
+	'crow',
+	'cpend-rm',
+	'cpend-add',
+	'cm-line',
 	// $ui/workshop (план 54): «✕» и кнопка «закрыть» в полосе заголовка окна Мастерской.
-	'ins-x', 'ins-tb-close'
+	'ins-x',
+	'ins-tb-close'
 ]);
 
-export const BUTTON_TEXT_CLASSES = new Set(['act', 't', 'rt', 'under', 'done', 'sq', 'mini', 'preview', 'vrec-text', 'mo']);
+export const BUTTON_TEXT_CLASSES = new Set([
+	'act',
+	't',
+	'rt',
+	'under',
+	'done',
+	'sq',
+	'mini',
+	'preview',
+	'vrec-text',
+	'mo'
+]);
 
 function stripCssComments(css) {
 	return css.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -334,7 +372,6 @@ export function parseCssRules(css) {
 	}
 	return rules;
 }
-
 
 /**
  * Открывающие теги разметки: имя, позиция и токены классов (GUARD-1).
@@ -607,7 +644,8 @@ export function checkInlineStyleBudget(webRoot) {
 		}
 	}
 	for (const rel of Object.keys(budget)) {
-		if (!seen.has(rel)) hits.push(`${rel}: экрана нет — уберите строку из inline-style-budget.json`);
+		if (!seen.has(rel))
+			hits.push(`${rel}: экрана нет — уберите строку из inline-style-budget.json`);
 	}
 	return hits;
 }
@@ -737,7 +775,8 @@ export function checkLibraryClasses(
 		}
 		if (/\{@html\b/.test(markup)) {
 			seenHtml.add(rel);
-			if (!htmlScreens.has(rel)) hits.push(`${rel}: {@html} в экране — компонент $ui вместо разметки строкой`);
+			if (!htmlScreens.has(rel))
+				hits.push(`${rel}: {@html} в экране — компонент $ui вместо разметки строкой`);
 		}
 	}
 	for (const [rel, classes] of Object.entries(ratchet)) {
@@ -774,7 +813,9 @@ export function checkLibraryRegistry(webRoot) {
 		const name = path.basename(file, '.svelte');
 		if (new RegExp(`(^|[^A-Za-z0-9])${name}([^A-Za-z0-9]|$)`).test(reference)) continue;
 		if (findAuthorizingGapPlan(repoRoot, rel)) continue;
-		hits.push(`${rel}: ${name} нет в docs/reference/ui-components.md и ни в одном открытом плане пробела`);
+		hits.push(
+			`${rel}: ${name} нет в docs/reference/ui-components.md и ни в одном открытом плане пробела`
+		);
 	}
 	return hits;
 }
@@ -879,7 +920,8 @@ export function checkSingleScreenClasses(webRoot, allowed = SINGLE_SCREEN_CLASSE
 		}
 	}
 	for (const cls of allowed) {
-		if (!single.has(cls)) hits.push(`.${cls} уже не одноэкранный — уберите из SINGLE_SCREEN_CLASSES`);
+		if (!single.has(cls))
+			hits.push(`.${cls} уже не одноэкранный — уберите из SINGLE_SCREEN_CLASSES`);
 	}
 	return hits;
 }

@@ -7,7 +7,9 @@
  */
 export async function sha256Hex(data: ArrayBuffer): Promise<string> {
 	const subtle = typeof crypto !== 'undefined' ? crypto.subtle : undefined;
-	const hash = subtle ? new Uint8Array(await subtle.digest('SHA-256', data)) : sha256(new Uint8Array(data));
+	const hash = subtle
+		? new Uint8Array(await subtle.digest('SHA-256', data))
+		: sha256(new Uint8Array(data));
 	return [...hash].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 

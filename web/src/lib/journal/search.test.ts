@@ -41,9 +41,7 @@ describe('searchHref', () => {
 
 describe('searchChipsFromParams', () => {
 	it('reads photo and period from the UI query', () => {
-		const chips = searchChipsFromParams(
-			new URLSearchParams('q=дом&from=2026-03-01&photo=1')
-		);
+		const chips = searchChipsFromParams(new URLSearchParams('q=дом&from=2026-03-01&photo=1'));
 		expect(chips).toEqual({
 			q: 'дом',
 			from: '2026-03-01',

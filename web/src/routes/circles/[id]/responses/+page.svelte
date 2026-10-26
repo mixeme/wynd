@@ -15,12 +15,7 @@
 	import Loading from '$ui/Loading.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { isAccessError } from '$lib/api/client';
-	import {
-		formatClock,
-		formatDayLabel,
-		formatEntryDate,
-		localDayKey
-	} from '$lib/format/time';
+	import { formatClock, formatDayLabel, formatEntryDate, localDayKey } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import {
 		authorInitial,
@@ -118,7 +113,10 @@
 
 	// Обновление жестом (3.5), как в ленте: тянешь список от верха.
 	let listEl: HTMLDivElement | undefined = $state();
-	const ptr = new PullRefresh(() => listEl?.scrollTop ?? 0, () => load());
+	const ptr = new PullRefresh(
+		() => listEl?.scrollTop ?? 0,
+		() => load()
+	);
 	onDestroy(() => ptr.destroy());
 
 	onMount(() => {
@@ -174,58 +172,65 @@
 		ontouchmove={ptr.move}
 		ontouchend={ptr.end}
 	>
-	{#if loading}
-		<Loading />
-	{:else if error && !items.length}
-		<Hint class="gutter-24">{error}</Hint>
-	{:else if !items.length}
-		<EmptyState title="Откликов пока нет" place="tab">
-			Здесь соберутся комментарии и реакции — и к тем записям, что в ленте уже далеко внизу.
-		</EmptyState>
-	{:else}
-		<div>
-			{#each rows as row, i (row.key)}
-				{@const day = dayBreak(i)}
-				{#if dividerAt === i}
-					<EventDivider variant="unread" text="выше — новое" />
+		{#if loading}
+			<Loading />
+		{:else if error && !items.length}
+			<Hint class="gutter-24">{error}</Hint>
+		{:else if !items.length}
+			<EmptyState title="Откликов пока нет" place="tab">
+				Здесь соберутся комментарии и реакции — и к тем записям, что в ленте уже далеко внизу.
+			</EmptyState>
+		{:else}
+			<div>
+				{#each rows as row, i (row.key)}
+					{@const day = dayBreak(i)}
+					{#if dividerAt === i}
+						<EventDivider variant="unread" text="выше — новое" />
+					{/if}
+					{#if day}
+						<EventDivider text={day} />
+					{/if}
+					{@const ref = row.lead.post_id ? posts[row.lead.post_id] : undefined}
+					<ResponseEntry
+						href={responseHref(circle.circleId, row.lead)}
+						onopen={(e) => open(row, e)}
+						initial={authorInitial(row.lead.actor_name)}
+						name={names(row)}
+						color={circle.colorHex}
+						src={row.lead.actor_avatar_blob_id
+							? mediaUrls[row.lead.actor_avatar_blob_id]
+							: undefined}
+						icon={row.kind === 'reaction' && row.emoji ? reactionIconName(row.emoji) : undefined}
+						label="{responseKindLabel(row.kind)} · {formatClock(row.lead.at)}"
+					>
+						{#if row.kind === 'comment' && row.lead.body}
+							<MentionText body={row.lead.body} />
+						{/if}
+						{#if row.kind === 'comment'}
+							<CommentMedia items={commentMediaItems(row.lead.media, mediaUrls)} inert />
+						{/if}
+						{#if ref}
+							<PostRef
+								author={postLabel(ref)}
+								date={formatEntryDate(ref.entry_date)}
+								excerpt={ref.excerpt}
+								cover={Boolean(ref.cover_blob_id)}
+								coverUrl={ref.cover_blob_id ? mediaUrls[ref.cover_blob_id] : undefined}
+							/>
+						{/if}
+					</ResponseEntry>
+				{/each}
+				{#if hasMore}
+					<Button
+						variant="ghost"
+						class="gutter"
+						loading={loadingMore}
+						onclick={() => void loadMore()}
+					>
+						Показать раньше
+					</Button>
 				{/if}
-				{#if day}
-					<EventDivider text={day} />
-				{/if}
-				{@const ref = row.lead.post_id ? posts[row.lead.post_id] : undefined}
-				<ResponseEntry
-					href={responseHref(circle.circleId, row.lead)}
-					onopen={(e) => open(row, e)}
-					initial={authorInitial(row.lead.actor_name)}
-					name={names(row)}
-					color={circle.colorHex}
-					src={row.lead.actor_avatar_blob_id ? mediaUrls[row.lead.actor_avatar_blob_id] : undefined}
-					icon={row.kind === 'reaction' && row.emoji ? reactionIconName(row.emoji) : undefined}
-					label="{responseKindLabel(row.kind)} · {formatClock(row.lead.at)}"
-				>
-					{#if row.kind === 'comment' && row.lead.body}
-						<MentionText body={row.lead.body} />
-					{/if}
-					{#if row.kind === 'comment'}
-						<CommentMedia items={commentMediaItems(row.lead.media, mediaUrls)} inert />
-					{/if}
-					{#if ref}
-						<PostRef
-							author={postLabel(ref)}
-							date={formatEntryDate(ref.entry_date)}
-							excerpt={ref.excerpt}
-							cover={Boolean(ref.cover_blob_id)}
-							coverUrl={ref.cover_blob_id ? mediaUrls[ref.cover_blob_id] : undefined}
-						/>
-					{/if}
-				</ResponseEntry>
-			{/each}
-			{#if hasMore}
-				<Button variant="ghost" class="gutter" loading={loadingMore} onclick={() => void loadMore()}>
-					Показать раньше
-				</Button>
-			{/if}
-		</div>
-	{/if}
+			</div>
+		{/if}
 	</div>
 </CircleLayout>

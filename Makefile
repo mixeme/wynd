@@ -25,6 +25,7 @@ web/node_modules: web/package-lock.json
 test: web
 	cd web && $(NPM) run check
 	cd web && $(NPM) run check:ui
+	cd web && $(NPM) run lint
 	cd web && $(NPM) run test
 	$(GO) vet ./...
 	$(GO) test ./...

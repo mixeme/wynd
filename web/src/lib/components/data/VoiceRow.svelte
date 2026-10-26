@@ -39,6 +39,7 @@
 	});
 
 	const track = $derived.by(() => {
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions -- читаем, чтобы $derived пересчитался
 		revision;
 		return audioTrack(audioPlayKey(origin, blobId));
 	});

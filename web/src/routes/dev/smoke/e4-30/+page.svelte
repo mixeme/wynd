@@ -15,7 +15,8 @@
 			<div class="pic p2" style="width:100%;height:292px;border-radius:0;border:0"></div>
 		{/snippet}
 		{#snippet dots()}
-			<u></u><u></u><u class="on"></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u>
+			<u></u><u></u><u class="on"></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u
+			></u>
 		{/snippet}
 	</Lightbox>
 </PhoneFrame>

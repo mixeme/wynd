@@ -24,8 +24,13 @@ const uiCss = fs.readFileSync(path.join(webRoot, 'src/lib/styles/ui.css'), 'utf8
 // зеркал button.X больше нет — и сторожа их синхронности тоже (REF-8).
 describe('ui.css', () => {
 	it('не содержит зеркал button.X', () => {
-		const mirrors = parseCssRules(uiCss).filter((rule) =>
-			rule.selectors.some((sel) => /button\./.test(sel))
+		// Не зеркало: долгое нажатие на строку-кнопку не выделяет текст, а на
+		// такую же строку-div — выделяет (правило только для кнопок).
+		const pressable = '.fab-wrap, .circle-row-card, button.r, button.fold';
+		const mirrors = parseCssRules(uiCss).filter(
+			(rule) =>
+				rule.selectors.join(', ') !== pressable &&
+				rule.selectors.some((sel) => /\bbutton\./.test(sel))
 		);
 		expect(mirrors.map((m) => m.selectors.join(', '))).toEqual([]);
 	});

@@ -19,7 +19,11 @@
 		serverCaption,
 		type PayAccount
 	} from '$lib/admin/admin';
-	import { payExtendHint, parseCustomDays, subscriptionAdminSubtitle } from '$lib/admin/pay-subscription';
+	import {
+		payExtendHint,
+		parseCustomDays,
+		subscriptionAdminSubtitle
+	} from '$lib/admin/pay-subscription';
 
 	let account = $state<PayAccount | undefined>();
 	let days = $state(90);

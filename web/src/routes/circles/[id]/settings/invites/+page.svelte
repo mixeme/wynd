@@ -14,10 +14,7 @@
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
-	import {
-		inviteRegistrySubtitle,
-		inviteRegistryTitle
-	} from '$lib/circles/invite-registry';
+	import { inviteRegistrySubtitle, inviteRegistryTitle } from '$lib/circles/invite-registry';
 	import {
 		fetchCircleInvites,
 		fetchCircleSettings,
@@ -127,9 +124,7 @@
 			/>
 		{/each}
 		{#if !multiInvitesAllowed && hasLiveMulti}
-			<Hint class="mt-8"
-				>Эту многоразовую успели создать раньше. Новую уже нельзя.</Hint
-			>
+			<Hint class="mt-8">Эту многоразовую успели создать раньше. Новую уже нельзя.</Hint>
 		{/if}
 	{/if}
 	<!-- В рамке круга: иначе у кнопок нет цвета круга (--c). -->
@@ -150,7 +145,6 @@
 					<TextButton onclick={() => void revokeInvite(inv)}>Отозвать ссылку</TextButton>
 				</Hint>
 			</OverlayLayout>
-			{/if}
+		{/if}
 	{/snippet}
 </FormLayout>
-

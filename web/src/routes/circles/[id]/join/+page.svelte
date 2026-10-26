@@ -90,7 +90,9 @@
 			}));
 	});
 
-	const memberTotal = $derived(peek?.member_count ?? members.filter((m) => m.status === 'active').length);
+	const memberTotal = $derived(
+		peek?.member_count ?? members.filter((m) => m.status === 'active').length
+	);
 	const moreCount = $derived(Math.max(0, memberTotal - displayMembers.length));
 
 	onMount(async () => {
@@ -182,7 +184,6 @@
 	async function skipToFeed() {
 		goto(`/circles/${circle.circleId}`);
 	}
-
 </script>
 
 {#if showMembers && peek?.members}
@@ -197,68 +198,67 @@
 		<PeekMemberList members={peek.members} />
 	</FormLayout>
 {:else}
-<!-- Имя можно выбрать и позже: позванный круг стоит в списке кругов строкой
+	<!-- Имя можно выбрать и позже: позванный круг стоит в списке кругов строкой
      «Вас позвали — выберите имя», стрелка ведёт туда. -->
-<FormLayout
-	app
-	color={circle.color}
-	circleTitle={circle.name}
-	onback={() => goUp('/circles')}
->
-	{#if split && pendingJoin}
-		<ScreenTitle class="mt-22 lh-125">{split.invite_line || `Круг отделён от круга «${split.split_from}»`}</ScreenTitle>
-	{/if}
-	{#if memberTotal > 0}
-		<Label class="mt-16">Кто уже здесь · {memberTotal}</Label>
-		<PeopleStrip people={displayMembers} />
-		{#if moreCount > 0 && (inviteToken || pendingJoin)}
-			<Hint centered class="mt-12">
-				<TextButton onclick={openMembers}>ещё {moreCount}</TextButton>
+	<FormLayout app color={circle.color} circleTitle={circle.name} onback={() => goUp('/circles')}>
+		{#if split && pendingJoin}
+			<ScreenTitle class="mt-22 lh-125"
+				>{split.invite_line || `Круг отделён от круга «${split.split_from}»`}</ScreenTitle
+			>
+		{/if}
+		{#if memberTotal > 0}
+			<Label class="mt-16">Кто уже здесь · {memberTotal}</Label>
+			<PeopleStrip people={displayMembers} />
+			{#if moreCount > 0 && (inviteToken || pendingJoin)}
+				<Hint centered class="mt-12">
+					<TextButton onclick={openMembers}>ещё {moreCount}</TextButton>
+				</Hint>
+			{:else if moreCount > 0}
+				<Hint centered class="mt-12">ещё {moreCount}</Hint>
+			{/if}
+		{/if}
+
+		{#if split && pendingJoin}
+			{#if split.past_from}
+				<Row class="mt-12">
+					{#snippet main()}
+						<div class="bold">
+							Прошлое — с {formatCutoffDate(localDayOf(split?.past_from ?? ''))}
+						</div>
+						<div class="sub">то, что вы видели в круге «{split?.split_from}»</div>
+					{/snippet}
+				</Row>
+			{/if}
+			<Hint>Вы войдёте как {split.you_name}. Круг «{split.split_from}» остаётся как есть.</Hint>
+			<Button variant="colored" {loading} onclick={enterCircle}>Войти</Button>
+			<Button variant="ghost" class="mt-8" onclick={() => goUp('/circles')}>Не сейчас</Button>
+			<Hint centered class="mt-16">
+				<TextButton onclick={() => (askDecline = true)}>Отказаться</TextButton>
 			</Hint>
-		{:else if moreCount > 0}
-			<Hint centered class="mt-12">ещё {moreCount}</Hint>
+		{:else if inviteToken || pendingJoin}
+			<IdentityForm
+				color={circle.color}
+				bind:name
+				bind:firstPost
+				bind:avatar={pendingAvatar}
+				bind:gender
+				onerror={(message) => (error = message)}
+			/>
+			<Button variant="colored" {loading} onclick={enterCircle}>Войти в круг</Button>
+		{:else}
+			<ScreenTitle class="mt-22 lh-125">
+				Добро пожаловать<br />в {circle.name}
+			</ScreenTitle>
+			<Hint class="mt-12">
+				Здесь вас зовут «{circle.identityName}». Первую запись можно сделать в ленте.
+			</Hint>
+			<Button variant="colored" onclick={skipToFeed}>Войти в круг</Button>
 		{/if}
-	{/if}
 
-	{#if split && pendingJoin}
-		{#if split.past_from}
-			<Row class="mt-12">
-				{#snippet main()}
-					<div class="bold">Прошлое — с {formatCutoffDate(localDayOf(split?.past_from ?? ''))}</div>
-					<div class="sub">то, что вы видели в круге «{split?.split_from}»</div>
-				{/snippet}
-			</Row>
+		{#if error}
+			<Hint class="mt-12">{error}</Hint>
 		{/if}
-		<Hint>Вы войдёте как {split.you_name}. Круг «{split.split_from}» остаётся как есть.</Hint>
-		<Button variant="colored" {loading} onclick={enterCircle}>Войти</Button>
-		<Button variant="ghost" class="mt-8" onclick={() => goUp('/circles')}>Не сейчас</Button>
-		<Hint centered class="mt-16">
-			<TextButton onclick={() => (askDecline = true)}>Отказаться</TextButton>
-		</Hint>
-	{:else if inviteToken || pendingJoin}
-		<IdentityForm
-			color={circle.color}
-			bind:name
-			bind:firstPost
-			bind:avatar={pendingAvatar}
-			bind:gender
-			onerror={(message) => (error = message)}
-		/>
-		<Button variant="colored" {loading} onclick={enterCircle}>Войти в круг</Button>
-	{:else}
-		<ScreenTitle class="mt-22 lh-125">
-			Добро пожаловать<br />в {circle.name}
-		</ScreenTitle>
-		<Hint class="mt-12">
-			Здесь вас зовут «{circle.identityName}». Первую запись можно сделать в ленте.
-		</Hint>
-		<Button variant="colored" onclick={skipToFeed}>Войти в круг</Button>
-	{/if}
-
-	{#if error}
-		<Hint class="mt-12">{error}</Hint>
-	{/if}
-</FormLayout>
+	</FormLayout>
 {/if}
 
 {#if askDecline}
@@ -271,4 +271,3 @@
 		<Hint>Круг уйдёт из вашего списка. Позвать снова сможет тот, кто звал.</Hint>
 	</ConfirmDialog>
 {/if}
-

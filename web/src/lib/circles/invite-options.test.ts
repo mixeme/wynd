@@ -3,8 +3,16 @@ import { choicesFromInvite, inviteRequest, UNLIMITED_USES } from './invite-optio
 
 describe('invite options', () => {
 	it('builds requests from chips, clamping «Своё»', () => {
-		expect(inviteRequest('single', 0, 3600, 0)).toEqual({ kind: 'single', max_uses: 1, ttl_sec: 3600 });
-		expect(inviteRequest(10, 0, 2592000, 0)).toEqual({ kind: 'multi', max_uses: 10, ttl_sec: 2592000 });
+		expect(inviteRequest('single', 0, 3600, 0)).toEqual({
+			kind: 'single',
+			max_uses: 1,
+			ttl_sec: 3600
+		});
+		expect(inviteRequest(10, 0, 2592000, 0)).toEqual({
+			kind: 'multi',
+			max_uses: 10,
+			ttl_sec: 2592000
+		});
 		expect(inviteRequest('custom', 5000, 'custom', 400)).toEqual({
 			kind: 'multi',
 			max_uses: 1000,

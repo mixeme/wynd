@@ -67,7 +67,11 @@ export function inviteRequest(
 					? 1
 					: uses,
 		ttl_sec:
-			ttl === 'forever' ? TTL_PRESETS[0].sec : ttl === 'custom' ? clampCustomDays(customDays) * 86400 : ttl
+			ttl === 'forever'
+				? TTL_PRESETS[0].sec
+				: ttl === 'custom'
+					? clampCustomDays(customDays) * 86400
+					: ttl
 	};
 	if (uses === 'unlimited') req.unlimited_uses = true;
 	if (ttl === 'forever') req.no_expiry = true;
@@ -85,7 +89,8 @@ export function choicesFromInvite(inv: {
 	let customUses = 20;
 	if (inv.kind === 'single') uses = 'single';
 	else if (isUnlimitedUses(inv.max_uses)) uses = 'unlimited';
-	else if ((USES_PRESETS as readonly number[]).includes(inv.max_uses)) uses = inv.max_uses as 5 | 10;
+	else if ((USES_PRESETS as readonly number[]).includes(inv.max_uses))
+		uses = inv.max_uses as 5 | 10;
 	else {
 		uses = 'custom';
 		customUses = inv.max_uses;

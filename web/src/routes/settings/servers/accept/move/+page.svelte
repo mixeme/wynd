@@ -10,7 +10,6 @@
 	import Label from '$ui/forms/Label.svelte';
 	import Meter from '$ui/forms/Meter.svelte';
 	import Switch from '$ui/forms/Switch.svelte';
-	import TextButton from '$ui/forms/TextButton.svelte';
 	import CircleRow from '$ui/data/CircleRow.svelte';
 	import ServerRow from '$ui/data/ServerRow.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
@@ -120,7 +119,8 @@
 			const m = res.move;
 			if (!m || (m.status === 'done' && !watching)) {
 				move = undefined;
-				if (res.room_bytes !== undefined) freeRoom = { ...res, room_bytes: res.room_bytes, fits: res.fits ?? true };
+				if (res.room_bytes !== undefined)
+					freeRoom = { ...res, room_bytes: res.room_bytes, fits: res.fits ?? true };
 				return;
 			}
 			move = m;
@@ -266,7 +266,8 @@
 	shell
 	app
 	title={move?.status === 'done' || who ? (move?.circle.name ?? '') : 'Перенос круга'}
-	onback={() => (who ? (who = false) : goUp(`/settings/servers/accept?origin=${encodeURIComponent(origin)}`))}
+	onback={() =>
+		who ? (who = false) : goUp(`/settings/servers/accept?origin=${encodeURIComponent(origin)}`)}
 >
 	{#if move?.status === 'done' && move.result}
 		<!-- 7.25 / 7.26: круг поднят и сверен; остаётся завершить перенос там. -->
@@ -311,8 +312,8 @@
 			/>
 		{/if}
 		<Hint>
-			Осталось завершить перенос на прежнем сервере: {sourceName} → настройки круга → «Завершить
-			перенос». До тех пор круг стоит там замершим.
+			Осталось завершить перенос на прежнем сервере: {sourceName} → настройки круга → «Завершить перенос».
+			До тех пор круг стоит там замершим.
 		</Hint>
 		<Button class="mt-14" variant="colored" onclick={() => goto(`/circles/${r.circle_id}`)}>
 			Открыть круг
@@ -335,7 +336,8 @@
 			bind:gender={newGender}
 			onerror={(message) => (error = message)}
 		/>
-		<Button variant="colored" loading={busy} onclick={() => void start(true)}>Перенести круг</Button>
+		<Button variant="colored" loading={busy} onclick={() => void start(true)}>Перенести круг</Button
+		>
 	{:else if move && active}
 		<!-- Ход: сервер забирает и поднимает круг сам (кадра нет). -->
 		<CircleRow
@@ -349,7 +351,10 @@
 		{#if move.status === 'reviving'}
 			<Hint class="ink">Круг здесь. Сервер переносит его и сверяет с прежним.</Hint>
 		{:else}
-			<Meter value={move.circle.bytes ? Math.min(1, move.pulled_bytes / move.circle.bytes) : 0} max={1} />
+			<Meter
+				value={move.circle.bytes ? Math.min(1, move.pulled_bytes / move.circle.bytes) : 0}
+				max={1}
+			/>
 			<Hint class="mt-8">
 				{move.pulled_bytes
 					? `Сервер скачивает круг с ${source}: ${formatBytes(move.pulled_bytes)} из ${formatBytes(move.circle.bytes)}.`
@@ -441,8 +446,8 @@
 						{/snippet}
 					</SettingsRow>
 					<Hint>
-						Кто войдёт на этот сервер своей прежней почтой, попадёт в своё имя и свои записи — с письмом
-						или без.
+						Кто войдёт на этот сервер своей прежней почтой, попадёт в своё имя и свои записи — с
+						письмом или без.
 					</Hint>
 				{/if}
 				<Button class="mt-14" variant="colored" loading={busy} onclick={startMove}>
@@ -457,7 +462,8 @@
 					text={`${day(move.request.created_at)} вы попросили у администратора ${formatBytes(move.request.requested_bytes)} для этого круга. Ответ администратора придёт письмом. Когда место дадут, здесь появится кнопка «Перенести круг».`}
 				/>
 				<Hint class="mt-10">{@render deadline()}</Hint>
-				<Hint class="mt-14 ctr-text">Можно уйти и вернуться позже: просьба и ссылка останутся.</Hint>
+				<Hint class="mt-14 ctr-text">Можно уйти и вернуться позже: просьба и ссылка останутся.</Hint
+				>
 			{:else if move.request?.status === 'rejected'}
 				<!-- 7.23 -->
 				<StatusCard

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { goToLogin } from '$lib/navigation/afterLogin';
 	import { page } from '$app/stores';
 	import { onMount, setContext } from 'svelte';
@@ -8,11 +7,7 @@
 	import { WORD, plural } from '$lib/format/plural';
 	import { loadSessions } from '$lib/session/session.svelte';
 	import type { SessionRecord } from '$lib/idb/db';
-	import {
-		NEW_CIRCLE_CTX,
-		type NewCircleContext,
-		type NewCircleEditWindow
-	} from '$lib/circles/new-circle';
+	import { NEW_CIRCLE_CTX, type NewCircleContext } from '$lib/circles/new-circle';
 	import type { Snippet } from 'svelte';
 
 	let { children }: { children: Snippet } = $props();

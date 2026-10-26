@@ -53,7 +53,10 @@ export function groupReactions(
 	}));
 }
 
-export function ownReaction(reactions: Reaction[] | undefined, identityId: string): Reaction | undefined {
+export function ownReaction(
+	reactions: Reaction[] | undefined,
+	identityId: string
+): Reaction | undefined {
 	return reactions?.find((r) => r.identity_id === identityId);
 }
 
@@ -204,8 +207,7 @@ export function isAudioMedia(mime?: string, filename?: string): boolean {
  * звуков рисуются одной рамкой (4.7), одиночный — как на 4.6.
  */
 export type AttachmentBlock =
-	| { kind: 'audio'; items: MediaSummary[] }
-	| { kind: 'file'; item: MediaSummary };
+	{ kind: 'audio'; items: MediaSummary[] } | { kind: 'file'; item: MediaSummary };
 
 export function attachmentBlocks(list: MediaSummary[]): AttachmentBlock[] {
 	const out: AttachmentBlock[] = [];
@@ -293,8 +295,7 @@ const shotDateFmt = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'l
 /** Строка под сеткой альбома (4.29): когда снято и что файлы сжаты. Размер
  *  каждого снимка — в его подписи на 4.30, а не одной цифрой настройки. */
 export function albumCompressionHint(post: FeedPost): string {
-	const captured =
-		post.captured_at ?? post.media?.find((m) => m.captured_at)?.captured_at;
+	const captured = post.captured_at ?? post.media?.find((m) => m.captured_at)?.captured_at;
 	const parts: string[] = [];
 	if (captured) parts.push(`снято ${shotDateFmt.format(new Date(captured))}`);
 	parts.push(captured ? 'файлы сжаты' : 'файлы сжаты, оригиналы на телефоне');
@@ -318,8 +319,12 @@ export function postBylineParts(
 	post: FeedPost,
 	formatPostTime: (createdAt: string) => string
 ): BylinePart[] {
-	const parts: BylinePart[] = [{ text: post.author_name }, { text: formatPostTime(post.created_at) }];
-	if (isAttachedToOtherDay(post)) parts.push({ text: formatEntryDate(post.entry_date), icon: 'day' });
+	const parts: BylinePart[] = [
+		{ text: post.author_name },
+		{ text: formatPostTime(post.created_at) }
+	];
+	if (isAttachedToOtherDay(post))
+		parts.push({ text: formatEntryDate(post.entry_date), icon: 'day' });
 	return parts;
 }
 
@@ -333,7 +338,8 @@ export function lightboxCaption(
 	const parts = postBylineParts(post, formatPostTime);
 	const loc = locationLabel(media);
 	if (loc) parts.push({ text: loc });
-	if (size && size.width > 0 && size.height > 0) parts.push({ text: `${size.width} × ${size.height}` });
+	if (size && size.width > 0 && size.height > 0)
+		parts.push({ text: `${size.width} × ${size.height}` });
 	return parts;
 }
 
@@ -368,13 +374,14 @@ export function serviceEventsBetween(
 	upperSeq: number,
 	lowerSeq: number
 ): FeedEvent[] {
-	return events
-		.filter((e) => e.seq > lowerSeq && e.seq < upperSeq)
-		.sort((a, b) => b.seq - a.seq);
+	return events.filter((e) => e.seq > lowerSeq && e.seq < upperSeq).sort((a, b) => b.seq - a.seq);
 }
 
 /** Service events newer than the top post (shown above the first card). */
-export function serviceEventsAboveNewest(events: FeedEvent[], newestPostSeq: number | undefined): FeedEvent[] {
+export function serviceEventsAboveNewest(
+	events: FeedEvent[],
+	newestPostSeq: number | undefined
+): FeedEvent[] {
 	if (!events.length) return [];
 	if (newestPostSeq == null || newestPostSeq <= 0) {
 		return [...events].sort((a, b) => b.seq - a.seq);

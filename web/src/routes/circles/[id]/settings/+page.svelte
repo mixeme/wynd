@@ -38,12 +38,7 @@
 	} from '$lib/circles/settings';
 	import { notifySummary } from '$lib/settings/notify-mute';
 	import { formatBytes } from '$lib/format/bytes';
-	import {
-		formatCutoffDate,
-		formatSessionDay,
-		pluralPeople,
-		pluralPosts
-	} from '$lib/format/time';
+	import { formatCutoffDate, formatSessionDay, pluralPeople, pluralPosts } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { resolveMediaUrls } from '$lib/media/batch';
 	import { setCircleColor, circleInitial } from '$lib/circles/meta';
@@ -425,12 +420,14 @@
 			     может создавать приглашения и какие. -->
 			<Label>Создать приглашения</Label>
 			{#if !soloCircle}
-			<ChipGroup>
-				<Chip selected={inviteWho === 'all'} onclick={() => void onInviteWho('all')}>Могут все</Chip>
-				<Chip selected={inviteWho === 'owner'} onclick={() => void onInviteWho('owner')}>
-					Только владелец
-				</Chip>
-			</ChipGroup>
+				<ChipGroup>
+					<Chip selected={inviteWho === 'all'} onclick={() => void onInviteWho('all')}
+						>Могут все</Chip
+					>
+					<Chip selected={inviteWho === 'owner'} onclick={() => void onInviteWho('owner')}>
+						Только владелец
+					</Chip>
+				</ChipGroup>
 			{/if}
 			<ChipGroup class={soloCircle ? undefined : 'mt-8'}>
 				<Chip
@@ -536,17 +533,17 @@
 		/>
 
 		{#if !soloCircle || isOwner}
-		<div class="mt-20">
-			<DangerZone
-				items={[
-					...(!soloCircle && isOwner ? ['Передать владение'] : []),
-					...(!soloCircle ? ['Покинуть круг'] : []),
-					// 6.32: круг живёт дальше в другом месте, новый сервер забирает его сам.
-					...(isOwner ? ['Перенести на другой сервер', 'Удалить круг и все записи'] : [])
-				]}
-				onitem={onDangerItem}
-			/>
-		</div>
+			<div class="mt-20">
+				<DangerZone
+					items={[
+						...(!soloCircle && isOwner ? ['Передать владение'] : []),
+						...(!soloCircle ? ['Покинуть круг'] : []),
+						// 6.32: круг живёт дальше в другом месте, новый сервер забирает его сам.
+						...(isOwner ? ['Перенести на другой сервер', 'Удалить круг и все записи'] : [])
+					]}
+					onitem={onDangerItem}
+				/>
+			</div>
 		{/if}
 	{/if}
 </FormLayout>

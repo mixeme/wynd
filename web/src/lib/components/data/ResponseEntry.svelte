@@ -34,7 +34,9 @@
 <a class="resp" {href} onclick={onopen}>
 	<CommentRow {initial} {name} {color} {src} bare>
 		{#snippet time()}
-			<span class="resp-kind">{#if icon}<Icon name={icon} size="xs" />{/if}{label}</span>
+			<span class="resp-kind"
+				>{#if icon}<Icon name={icon} size="xs" />{/if}{label}</span
+			>
 		{/snippet}
 		{@render children()}
 	</CommentRow>

@@ -10,12 +10,7 @@
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import { formatClock, formatSessionDay } from '$lib/format/time';
-	import {
-		CHECK_GROUPS,
-		checkHeadline,
-		checkSubtitle,
-		proxyFixId
-	} from '$lib/admin/check-ui';
+	import { CHECK_GROUPS, checkHeadline, checkSubtitle, proxyFixId } from '$lib/admin/check-ui';
 	import {
 		downloadVapidPublicKey,
 		runChecks,
@@ -49,7 +44,9 @@
 
 	// Момент из сервера (суточная рутина) — днём и временем этого браузера, как «проверено».
 	function rowDetail(row: CheckResult): string {
-		return row.at ? `последний запуск ${formatSessionDay(row.at)} в ${formatClock(row.at)}` : row.detail;
+		return row.at
+			? `последний запуск ${formatSessionDay(row.at)} в ${formatClock(row.at)}`
+			: row.detail;
 	}
 
 	function byId(id: string): CheckResult | undefined {
@@ -114,7 +111,9 @@
 			<div class="cols mt-20">
 				<div>
 					{#each LEFT_GROUPS as group, gi (group.label)}
-						<SectionLabel class="mx-0 mb-6 {gi === 0 ? 'mt-0' : 'mt-16'}">{group.label}</SectionLabel>
+						<SectionLabel class="mx-0 mb-6 {gi === 0 ? 'mt-0' : 'mt-16'}"
+							>{group.label}</SectionLabel
+						>
 						{#each group.ids as id (id)}
 							{@const row = byId(id)}
 							{#if row}
@@ -138,7 +137,9 @@
 				</div>
 				<div>
 					{#each RIGHT_GROUPS as group, gi (group.label)}
-						<SectionLabel class="mx-0 mb-6 {gi === 0 ? 'mt-0' : 'mt-16'}">{group.label}</SectionLabel>
+						<SectionLabel class="mx-0 mb-6 {gi === 0 ? 'mt-0' : 'mt-16'}"
+							>{group.label}</SectionLabel
+						>
 						{#each group.ids as id (id)}
 							{@const row = byId(id)}
 							{#if row}
@@ -162,7 +163,9 @@
 											<TextButton
 												variant="admin"
 												onclick={() =>
-													void downloadVapidPublicKey().catch((err) => (actionError = authErrorHint(err)))}
+													void downloadVapidPublicKey().catch(
+														(err) => (actionError = authErrorHint(err))
+													)}
 											>
 												Скачать копию
 											</TextButton>
@@ -191,9 +194,7 @@
 					{/each}
 				</div>
 			</div>
-			<div class="fine mt-18 lh-16">
-				Снаружи проверяет ваш браузер: сам Wynd никуда не звонит.
-			</div>
+			<div class="fine mt-18 lh-16">Снаружи проверяет ваш браузер: сам Wynd никуда не звонит.</div>
 		{/if}
 	</AdminSection>
 </AdminWideLayout>

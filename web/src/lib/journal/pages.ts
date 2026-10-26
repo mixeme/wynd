@@ -10,7 +10,10 @@ export async function fetchOlderPage<T>(
 	path: string,
 	before: string
 ): Promise<T & { next_before?: string }> {
-	return apiJson<T & { next_before?: string }>(origin, `${path}?before=${encodeURIComponent(before)}`);
+	return apiJson<T & { next_before?: string }>(
+		origin,
+		`${path}?before=${encodeURIComponent(before)}`
+	);
 }
 
 /** Первая порция и догруженные старшие — одним списком, без повторов. */

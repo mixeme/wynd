@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { goUp } from '$lib/navigation/up';
-	import { goto } from '$app/navigation';
 	import { getContext } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -8,7 +7,13 @@
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { formatBytes } from '$lib/format/bytes';
-	import { formatCutoffDate, formatEntryDate, daysUntil, pluralFiles, pluralPosts } from '$lib/format/time';
+	import {
+		formatCutoffDate,
+		formatEntryDate,
+		daysUntil,
+		pluralFiles,
+		pluralPosts
+	} from '$lib/format/time';
 	import { downloadArchive } from '$lib/journal/posts';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 
@@ -76,7 +81,9 @@
 		<SettingsRow
 			icon="file"
 			title="index.html"
-			subtitle="единая лента: {pluralPosts(cycle.personal_archive_post_count)} и все комментарии к ним"
+			subtitle="единая лента: {pluralPosts(
+				cycle.personal_archive_post_count
+			)} и все комментарии к ним"
 			chevron={false}
 		/>
 		<SettingsRow
@@ -106,8 +113,8 @@
 		</Button>
 		<!-- Архив идёт потоком (6.23, план 46, C38): докачки нет, повтор — заново. -->
 		<Hint class="mt-12 ctr"
-			>Скачивание начнётся сразу. Если оно оборвётся, начнётся заново. Качать можно сколько
-			угодно раз до {formatEntryDate(cycle.deadline.slice(0, 10))}.</Hint
+			>Скачивание начнётся сразу. Если оно оборвётся, начнётся заново. Качать можно сколько угодно
+			раз до {formatEntryDate(cycle.deadline.slice(0, 10))}.</Hint
 		>
 	{/if}
 </FormLayout>

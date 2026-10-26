@@ -20,11 +20,13 @@ go build -o "%TEMP%\wynd-gate.exe" ./cmd/wynd
 if errorlevel 1 exit /b 1
 del /q "%TEMP%\wynd-gate.exe" 2>nul
 
-echo [test] web check, check:ui, test, build
+echo [test] web check, check:ui, lint, test, build
 cd /d "%WYND_ROOT%\web"
 call npm run check
 if errorlevel 1 exit /b 1
 call npm run check:ui
+if errorlevel 1 exit /b 1
+call npm run lint
 if errorlevel 1 exit /b 1
 call npm run test
 if errorlevel 1 exit /b 1
