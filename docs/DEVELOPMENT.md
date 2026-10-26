@@ -60,7 +60,7 @@ go build -o dist/wynd ./cmd/wynd
 
 Состав везде один. В Makefile и CI клиент собирается первым — без `web/dist` падает `go vet`; `test.bat` гоняет Go первым и опирается на `web/dist` от прошлой сборки, так что на чистом клоне сначала `npm run build`.
 
-**Почта на настоящих релеях** — отдельно: учётки в `dev/credentials.txt` или JSON в `dev/credentials/`, образцы в `internal/mail/testdata/`.
+**Почта на настоящих релеях** — отдельно: учётки в `dev/credentials.txt` или JSON в `dev/credentials/`, образцы в `internal/mail/testdata/`. У владельца учётки и адреса серверов — в отдельном закрытом репозитории `myenv` (`myenv/wynd/credentials.txt`, `myenv/wynd/env.txt`), не в `dev/`; указать файл — `WYND_CREDENTIALS_FILE`.
 
 ```bash
 scripts\test-integration.bat
