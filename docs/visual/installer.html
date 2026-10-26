@@ -1031,6 +1031,30 @@ x86_64
 <p class="note">Утверждено владельцем 2026-10-24, не реализовано. Единственный шаг, который делает человек: Мастерская не входит в панель регистратора. Проверка — как при установке (адрес сайта указывает на сервер). Запись AAAA (IPv6) у адреса есть — строка просит поменять и её. «Отменить переезд» — запустить сайт на старом сервере снова и убрать Wynd с нового: адрес ещё не менялся, люди ничего не потеряли. Окно закрыли — при следующем подключении к старому серверу Мастерская видит незаконченный переезд, как 7е.</p>
 </div>
 
+<div id="f9v3">
+<p class="cap">9в3 · Смените адрес: узнать, куда он указывает, не удалось</p>
+<div class="win" style="height:580px"><div class="tb">●<b>Wynd Мастерская [0.1.0]</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Новый сервер</div><div class="st done"><i>✓</i>План</div><div class="st on"><i>3</i>Переезд</div><div class="st"><i>4</i>Готово</div>
+</div>
+<div class="body">
+<h2>Переезжаем</h2>
+<div class="bar"><i style="width:70%"></i></div>
+<div class="row"><span class="ic ok">✓</span><div>Wynd 0.42.2 на новом сервере</div></div>
+<div class="row"><span class="ic ok">✓</span><div>Сайт на старом остановлен</div></div>
+<div class="row"><span class="ic ok">✓</span><div>Папка Wynd перенесена</div></div>
+<div class="row"><span class="ic w">…</span><div>Ждём новый адрес <span class="dim">— пока не удалось узнать, куда указывает family.example.ru</span></div></div>
+<div class="box" style="line-height:1.5;margin-top:10px">
+<div class="dim">В панели, где покупали адрес family.example.ru, поменяйте у записи A адрес сервера на этот:</div>
+<div style="display:flex;gap:8px;align-items:center;margin:8px 0"><div class="fld mono" style="flex:1">203.0.113.7</div><span class="btn gh" style="padding:7px 12px">Скопировать</span></div>
+<div class="dim">Мастерская проверяет сама каждую минуту — окно можно свернуть.</div>
+</div>
+<div class="foot"><span class="btn gh">Проверить сейчас</span><span class="under" style="margin-left:auto">Отменить переезд</span></div>
+</div></div></div>
+<p class="note">Черновик 2026-10-26, не утверждён. Как 9в, но служба имён не ответила. Найдено на wynd2 → wynd3: Мастерская спрашивала адрес у компьютера, за VPN тот не отвечал, и строка говорила «указывает на никуда» — человек пошёл бы зря проверять запись у регистратора. Теперь адрес спрашивается у нового сервера (как его увидят люди в интернете; VPN компьютера ни при чём); не ответил и он — эта строка, проверка повторяется сама. Попутно строка 9в в коде приводится к утверждённой: «пока указывает на старый сервер 198.51.100.4» (было — просто адрес).</p>
+</div>
+
 <div id="f9v2">
 <p class="cap">9в2 · Переезд не закончен</p>
 <div class="win"><div class="tb">●<b>Wynd Мастерская [0.1.0]</b><span class="dots">— ▢ ✕</span></div>
