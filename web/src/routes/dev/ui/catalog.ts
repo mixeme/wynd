@@ -151,6 +151,29 @@ export const COMPONENT_MAP: CatalogGroup[] = [
 		]
 	},
 	{
+		// Окно Мастерской (план 54): кадры docs/visual/installer.html. Живьём —
+		// стенд окна cmd/wynd-installer/frontend/gallery.html (vite Мастерской),
+		// не этот каталог: разделу нужен workshop.css и контейнер окна .ins.
+		id: 'workshop',
+		title: 'Workshop',
+		entries: [
+			{ component: 'TitleBar', screen: 'installer: все' },
+			{ component: 'WorkshopTabs', screen: 'installer: 1, 11а' },
+			{ component: 'SelfBar', screen: 'installer: 10а' },
+			{ component: 'StepNav', screen: 'installer: 1–5, 7б–9г' },
+			{ component: 'Notice', screen: 'installer: 2а, 5, 7а–9г' },
+			{ component: 'MarkRows / MarkRow', screen: 'installer: 2, 3, 7а, 7б, 9б' },
+			{ component: 'StepList', screen: 'installer: 4, 7в, 8б, 9в' },
+			{ component: 'FootBar', screen: 'installer: все' },
+			{ component: 'Checkbox / Radio', screen: 'installer: 1, 7б, 8а, 9б, 11в' },
+			{ component: 'CopyLine', screen: 'installer: 2а, 9в' },
+			{ component: 'FieldLine', screen: 'installer: 8а, 11б–11г' },
+			{ component: 'CommandLog', screen: 'installer: 4а, 7д, 8г' },
+			{ component: 'RawSheet', screen: 'installer: 2е' },
+			{ component: 'FileRow', screen: 'installer: 11б–11г' }
+		]
+	},
+	{
 		id: 'layouts',
 		title: 'Layouts',
 		entries: [

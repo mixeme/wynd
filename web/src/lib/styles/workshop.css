@@ -1,0 +1,134 @@
+/* Wynd UI, раздел Мастерской ($ui/workshop, план 54): правила, общие для
+   нескольких компонентов раздела и экранов окна. Подключает только окно
+   Мастерской (cmd/wynd-installer/frontend/src/main.ts) — клиенту они не нужны.
+   Цвета --c, --ok, --warn, --bad задаёт контейнер окна .ins. */
+
+.ins-dim {
+	color: var(--muted);
+}
+.ins-strong {
+	font-weight: 600;
+}
+.ins-mono,
+.ins .fld.mono {
+	font-family: Consolas, 'Cascadia Mono', ui-monospace, monospace;
+	font-size: 12.5px;
+}
+.ins-note {
+	margin: 12px 0 0;
+	color: var(--muted);
+}
+.ins-grow,
+.ins input.fld.ins-grow {
+	flex: 1;
+	min-width: 0;
+}
+
+/* Значок в начале строки: ✓, !, 1, ↓ … */
+.ins-mark {
+	flex: none;
+	width: 16px;
+	text-align: center;
+	font-weight: 700;
+}
+.ins-mark.wide {
+	width: auto;
+	font-weight: 400;
+}
+.ins-mark.ok {
+	color: var(--ok);
+}
+.ins-mark.note {
+	color: var(--warn);
+}
+.ins-mark.block {
+	color: var(--bad);
+}
+
+/* Ответы сервера: что выполнялось, что проверили. */
+.ins-raw {
+	flex: 1;
+	min-height: 0;
+	margin: 0;
+	padding: 10px 12px;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	background: var(--card);
+	font-family: Consolas, 'Cascadia Mono', ui-monospace, monospace;
+	font-size: 11.5px;
+	white-space: pre-wrap;
+	word-break: break-all;
+	line-height: 1.45;
+	overflow: auto;
+	user-select: text;
+}
+
+/* «✕» — закрыть, убрать. */
+.ins-x {
+	margin-left: auto;
+	padding: 2px 6px;
+	border: 0;
+	background: none;
+	color: var(--muted);
+	font-size: 15px;
+	cursor: pointer;
+}
+
+/* Галочка и выбор одного (Checkbox, Radio) — нарисованные, в цвете Wynd
+   (макет installer.html, .cbx). */
+.ins-check {
+	display: flex;
+	align-items: flex-start;
+	gap: 9px;
+	margin-top: 12px;
+	line-height: 1.4;
+	cursor: pointer;
+}
+.ins-check input {
+	appearance: none;
+	flex: 0 0 18px;
+	display: grid;
+	place-content: center;
+	width: 18px;
+	height: 18px;
+	margin: 1px 0 0;
+	border: 1.5px solid var(--faint);
+	border-radius: 5px;
+	background: var(--card);
+	cursor: pointer;
+}
+.ins-check input:checked {
+	border-color: var(--c);
+	background: var(--c);
+}
+.ins-check input[type='checkbox']:checked::after {
+	content: '';
+	box-sizing: border-box;
+	width: 5px;
+	height: 9px;
+	border: solid #fff;
+	border-width: 0 2px 2px 0;
+	transform: translateY(-1px) rotate(45deg);
+}
+.ins-check input[type='radio'] {
+	border-radius: 50%;
+}
+.ins-check input[type='radio']:checked {
+	background: var(--card);
+}
+.ins-check input[type='radio']:checked::after {
+	content: '';
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--c);
+}
+.ins-check input:focus-visible {
+	outline: 2px solid var(--c);
+	outline-offset: 2px;
+}
+.ins-check input:disabled,
+.ins-check input:disabled + span {
+	opacity: 0.5;
+	cursor: default;
+}

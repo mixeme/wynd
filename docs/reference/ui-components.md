@@ -253,6 +253,16 @@ AdminNav (`ADMIN_NAV`: Проверка, Общие, Доступ, Люди, Х�
 
 `Panel` — карточка админки `.panel` (рамка, фон карточки, скругление; отступ — служебным классом: `pad-12`, `pad-16`). `AdminField` — строка формы «подпись · поле · единица» (**#e9-***): `label`, `width` 88 \| 120 (короткие и длинные подписи, чтобы поля стояли столбцом), опц. `unit`, поле — children. Сетку мастера (`form-grid`) не заменяет.
 
+### `workshop/`
+
+Окно Мастерской (`cmd/wynd-installer/frontend`, кадры [installer.html](../visual/installer.html); план 54). Клиенту не нужны. Общие правила раздела — `$lib/styles/workshop.css` (оттенки текста `.ins-dim` `.ins-strong` `.ins-mono` `.ins-note`, значок строки `.ins-mark`, блок команд `.ins-raw`, «✕» `.ins-x`, галочки `.ins-check`); его подключает только окно Мастерской. Цвета `--c` `--ok` `--warn` `--bad` задаёт контейнер окна `.ins`. Остальные стили — внутри компонентов. Живьём раздел виден не в `/dev/ui`, а на стенде окна `cmd/wynd-installer/frontend/gallery.html` (`?scene=<имя>` — одна сцена; `?run` — снимок всех сцен и сверка с эталоном; `?run&save` — запомнить эталон).
+
+`TitleBar` — своя полоса заголовка окна: `title`, `maximised`, `onminimise` / `ontoggle` / `onclose`. `WorkshopTabs` — вкладки под ней: `tabs` (`{ id, label }[]`), `bind:value`. `SelfBar` — «Вышла Мастерская …» (кадр 10а): `version`, `onupdate`, `onhide`. `StepNav` — колонка шагов слева: `steps` (подписи), `index`, `bad`.
+
+`Notice` — плашка `.ins-box`: `title` (жирная строка), `text` (пояснение), остальное — children; `tone` `bad` (отказ) или `note` (итог над заголовком экрана), `mono`, `alert` (`role="alert"`), `action` — кнопка справа (кадр 7а, «Вышла версия»). `MarkRows` / `MarkRow` — строки «значок — текст — действие»: `mark`, `tone` `ok` · `note` · `block`, `dim` (шаг не начат), `action`; значок вровень с первой строкой текста. `StepList` — ход работы из `steps` (`{ id, title, status, note }`, как `StepState` Go): ✓ · ! · … · ○. `FileRow` — файл во вкладке «Архивы»: `name`, `detail` или `error`, `action`.
+
+`FootBar` — ряд кнопок внизу экрана; неброское действие справа — класс `ins-push` на нём. `Checkbox` (`bind:checked`, `disabled`) и `Radio` (`bind:group`, `value`, `name`, `disabled`) — нарисованные, подпись — children, пояснение в ней — `<span class="ins-dim">`. `CopyLine` — строка для человека и «Скопировать»: `text`, `copied`, `oncopy`. `FieldLine` — поле и кнопка в ряд (children: `Input class="ins-grow"` и `Button`). `CommandLog` — что выполнялось на сервере: `text`. `RawSheet` — окно поверх «Что проверили» (кадр 2е): `parts` (`{ name, body, cause }[]`), `copied`, `oncopy`, `onclose`; Escape и щелчок мимо закрывают.
+
 ### Бренд
 
 `Mark.svelte`, `Logo.svelte`, `Icon.svelte` + `web/static/icons.svg`

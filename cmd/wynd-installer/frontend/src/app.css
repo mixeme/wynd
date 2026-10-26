@@ -14,8 +14,10 @@ body {
 	font-size: 13.5px;
 	line-height: 1.4;
 }
-/* Своя рамка окна (Window.svelte): полоса заголовка, под ней — установщик.
-   Тонкая граница — как у окна на макете; у развёрнутого её нет. */
+/* Своя рамка окна (Window.svelte): полоса заголовка ($ui/workshop/TitleBar),
+   под ней — установщик. Тонкая граница — как у окна на макете; у развёрнутого
+   её нет. Строки, плашки, галочки и прочее окна — компоненты $ui/workshop и
+   $lib/styles/workshop.css (план 54); здесь — раскладка экранов. */
 .ins-win {
 	display: flex;
 	flex-direction: column;
@@ -24,112 +26,6 @@ body {
 }
 .ins-win.maximised {
 	box-shadow: none;
-}
-.ins-tb {
-	--wails-draggable: drag;
-	flex: none;
-	display: flex;
-	align-items: center;
-	height: 34px;
-	padding-left: 12px;
-	background: #eae3d8;
-	border-bottom: 1px solid var(--line);
-	font-size: 12px;
-	color: var(--muted);
-	user-select: none;
-}
-.ins-tb b {
-	margin-left: 8px;
-	color: var(--ink);
-	font-weight: 600;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-.ins-tb-btns {
-	--wails-draggable: no-drag;
-	display: flex;
-	align-self: stretch;
-	margin-left: auto;
-}
-.ins-tb-btns button {
-	display: grid;
-	place-items: center;
-	width: 44px;
-	padding: 0;
-	border: 0;
-	background: none;
-	color: #b9afa3;
-	cursor: default;
-}
-.ins-tb-btns svg {
-	display: block;
-	width: 10px;
-	height: 10px;
-	fill: none;
-	stroke: currentColor;
-	stroke-width: 1;
-}
-.ins-tb-btns button:hover {
-	background: rgba(0, 0, 0, 0.06);
-	color: var(--ink);
-}
-.ins-tb-btns .ins-tb-close:hover {
-	background: #b5482f;
-	color: #fff;
-}
-/* Вкладки «Серверы» и «Архивы» под заголовком окна (кадры 1, 11а). */
-.ins-tabs {
-	display: flex;
-	gap: 22px;
-	padding: 0 24px;
-	border-bottom: 1px solid var(--line);
-	background: var(--paper);
-}
-.ins-tabs button {
-	margin-bottom: -1px;
-	padding: 10px 0 9px;
-	border: 0;
-	border-bottom: 2px solid transparent;
-	background: none;
-	color: var(--muted);
-	font: inherit;
-	cursor: pointer;
-}
-.ins-tabs button.on {
-	border-bottom-color: var(--terracotta);
-	color: var(--ink);
-	font-weight: 600;
-}
-.ins-selfbar {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	margin: 10px 24px 0;
-	padding: 6px 8px 6px 14px;
-	border: 1px solid var(--line);
-	border-radius: 10px;
-	background: var(--card);
-}
-.ins-selfbar span {
-	flex: 1;
-}
-.ins-file {
-	display: flex;
-	align-items: flex-start;
-	gap: 10px;
-	padding: 8px 0;
-	border-bottom: 1px solid var(--line);
-}
-.ins-file > div {
-	flex: 1;
-	min-width: 0;
-}
-.ins-file .ins-x {
-	flex: none;
-}
-.ins-err {
-	color: var(--bad);
 }
 .ins {
 	--c: var(--terracotta);
@@ -140,50 +36,6 @@ body {
 	display: flex;
 	flex: 1;
 	min-height: 0;
-}
-.ins-side {
-	flex: none;
-	width: 170px;
-	padding: 18px 0;
-	border-right: 1px solid var(--line);
-	background: var(--tint);
-}
-.ins-step {
-	display: flex;
-	align-items: center;
-	gap: 9px;
-	padding: 7px 16px;
-	color: var(--faint);
-}
-.ins-step i {
-	display: grid;
-	place-items: center;
-	width: 18px;
-	height: 18px;
-	border: 1.5px solid currentColor;
-	border-radius: 50%;
-	font-style: normal;
-	font-size: 10px;
-}
-.ins-step.done {
-	color: var(--ok);
-}
-.ins-step.done i {
-	border-color: var(--ok);
-	background: var(--ok);
-	color: #fff;
-}
-.ins-step.on {
-	color: var(--ink);
-	font-weight: 600;
-}
-.ins-step.on i {
-	border-color: var(--c);
-	color: var(--c);
-}
-.ins-step.bad {
-	color: var(--bad);
-	font-weight: 600;
 }
 .ins-body {
 	flex: 1;
@@ -252,176 +104,10 @@ body {
 .ins-user {
 	flex: 0 0 130px;
 }
-.ins-grow,
-.ins input.fld.ins-grow {
-	flex: 1;
-	min-width: 0;
-}
-.ins-check {
-	display: flex;
-	align-items: flex-start;
-	gap: 9px;
-	margin-top: 12px;
-	line-height: 1.4;
-	cursor: pointer;
-}
-/* Галочка и выбор одного — нарисованные, в цвете Wynd (макет installer.html,
-   .cbx; владелец 2026-10-24: «Галочки у нас какие-то страшные»). */
-.ins-check input {
-	appearance: none;
-	flex: 0 0 18px;
-	display: grid;
-	place-content: center;
-	width: 18px;
-	height: 18px;
-	margin: 1px 0 0;
-	border: 1.5px solid var(--faint);
-	border-radius: 5px;
-	background: var(--card);
-	cursor: pointer;
-}
-.ins-check input:checked {
-	border-color: var(--c);
-	background: var(--c);
-}
-.ins-check input[type='checkbox']:checked::after {
-	content: '';
-	box-sizing: border-box;
-	width: 5px;
-	height: 9px;
-	border: solid #fff;
-	border-width: 0 2px 2px 0;
-	transform: translateY(-1px) rotate(45deg);
-}
-.ins-check input[type='radio'] {
-	border-radius: 50%;
-}
-.ins-check input[type='radio']:checked {
-	background: var(--card);
-}
-.ins-check input[type='radio']:checked::after {
-	content: '';
-	width: 8px;
-	height: 8px;
-	border-radius: 50%;
-	background: var(--c);
-}
-.ins-check input:focus-visible {
-	outline: 2px solid var(--c);
-	outline-offset: 2px;
-}
-.ins-check input:disabled,
-.ins-check input:disabled + span {
-	opacity: 0.5;
-	cursor: default;
-}
 .ins-svcbar {
 	display: flex;
 	gap: 8px;
 	margin: 4px 0 14px;
-}
-.ins-update {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	margin: 0 0 10px;
-}
-.ins-update > div {
-	flex: 1;
-}
-.ins-note {
-	margin: 12px 0 0;
-	color: var(--muted);
-}
-.ins-dim {
-	color: var(--muted);
-}
-.ins-strong {
-	font-weight: 600;
-}
-.ins-mono,
-.ins .fld.mono {
-	font-family: Consolas, 'Cascadia Mono', ui-monospace, monospace;
-	font-size: 12.5px;
-}
-.ins-box {
-	margin-top: 12px;
-	padding: 12px 14px;
-	border: 1px solid var(--line);
-	border-radius: 10px;
-	background: var(--card);
-	line-height: 1.5;
-}
-/* Итог удаления над экраном помехи: рамка стоит выше заголовка. */
-.ins-box.ins-note {
-	margin: 0 0 16px;
-}
-.ins-box.bad {
-	border-color: color-mix(in srgb, var(--bad) 45%, var(--line));
-}
-.ins-box .ins-strong + * {
-	margin-top: 6px;
-}
-.ins-box .ins-dim + .ins-dim {
-	margin-top: 8px;
-}
-.ins-box .ins-mono {
-	word-break: break-all;
-}
-/* Строка, которую человек вставит на сервере, и «Скопировать» рядом. */
-.ins-copyline {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	margin: 8px 0;
-}
-.ins-copyline .ins-mono {
-	flex: 1;
-	min-width: 0;
-	padding: 8px 11px;
-	border: 1px solid var(--line);
-	border-radius: 8px;
-	background: var(--paper);
-	user-select: all;
-}
-.ins-foot {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: 12px;
-	margin-top: 18px;
-}
-.ins-rows {
-	margin-bottom: 6px;
-}
-.ins-row {
-	display: flex;
-	align-items: flex-start;
-	gap: 10px;
-	padding: 7px 0;
-	border-bottom: 1px solid var(--line);
-}
-.ins-row:last-child {
-	border-bottom: 0;
-}
-.ins-mark {
-	flex: none;
-	width: 16px;
-	text-align: center;
-	font-weight: 700;
-}
-.ins-mark.wide {
-	width: auto;
-	font-weight: 400;
-}
-.ins-mark.ok {
-	color: var(--ok);
-}
-.ins-mark.note {
-	color: var(--warn);
-}
-.ins-mark.block {
-	color: var(--bad);
 }
 .ins-domain {
 	display: flex;
@@ -432,68 +118,6 @@ body {
 .ins-more {
 	margin-top: 10px;
 }
-.ins-raw {
-	flex: 1;
-	min-height: 0;
-	margin: 0;
-	padding: 10px 12px;
-	border: 1px solid var(--line);
-	border-radius: 8px;
-	background: var(--card);
-	font-family: Consolas, 'Cascadia Mono', ui-monospace, monospace;
-	font-size: 11.5px;
-	white-space: pre-wrap;
-	word-break: break-all;
-	line-height: 1.45;
-	overflow: auto;
-	user-select: text;
-}
-.ins-cause {
-	color: var(--bad);
-}
-.ins-cause-part {
-	margin-bottom: 1.45em;
-}
-/* «Что проверили» — окно поверх (кадр 2е). */
-.ins-over {
-	position: absolute;
-	inset: 0;
-	background: rgba(43, 39, 36, 0.38);
-}
-.ins-sheet {
-	position: absolute;
-	inset: 16px 18px;
-	display: flex;
-	flex-direction: column;
-	gap: 10px;
-	padding: 14px 16px;
-	border: 1px solid var(--line);
-	border-radius: 10px;
-	background: var(--paper);
-	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-}
-.ins-sheet-head {
-	display: flex;
-	align-items: baseline;
-	gap: 10px;
-}
-.ins-sheet-head b {
-	font-size: 15px;
-}
-.ins-x {
-	margin-left: auto;
-	padding: 2px 6px;
-	border: 0;
-	background: none;
-	color: var(--muted);
-	font-size: 15px;
-	cursor: pointer;
-}
-.ins-sheet-foot {
-	display: flex;
-	justify-content: space-between;
-	gap: 10px;
-}
 .ins-sec {
 	margin: 14px 0 2px;
 	color: var(--muted);
@@ -501,12 +125,4 @@ body {
 	font-weight: 600;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
-}
-.ins-row.ins-dim {
-	color: var(--faint);
-}
-
-/* Неброское действие справа от главных кнопок (окно 5а). */
-.ins-foot .ins-push {
-	margin-left: auto;
 }

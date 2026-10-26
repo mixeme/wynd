@@ -4,6 +4,20 @@
 	import Input from '$ui/forms/Input.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
+	import Checkbox from '$ui/workshop/Checkbox.svelte';
+	import CommandLog from '$ui/workshop/CommandLog.svelte';
+	import CopyLine from '$ui/workshop/CopyLine.svelte';
+	import FieldLine from '$ui/workshop/FieldLine.svelte';
+	import FootBar from '$ui/workshop/FootBar.svelte';
+	import MarkRow from '$ui/workshop/MarkRow.svelte';
+	import MarkRows from '$ui/workshop/MarkRows.svelte';
+	import Notice from '$ui/workshop/Notice.svelte';
+	import Radio from '$ui/workshop/Radio.svelte';
+	import RawSheet from '$ui/workshop/RawSheet.svelte';
+	import SelfBar from '$ui/workshop/SelfBar.svelte';
+	import StepList from '$ui/workshop/StepList.svelte';
+	import StepNav from '$ui/workshop/StepNav.svelte';
+	import WorkshopTabs from '$ui/workshop/WorkshopTabs.svelte';
 	import {
 		backend,
 		type ConnectResult,
@@ -16,8 +30,7 @@
 		type Plan,
 		type Progress,
 		type SelfUpdate,
-		type ServerPage,
-		type StepState
+		type ServerPage
 	} from './api';
 	import { rawSections } from './raw';
 	import Archives from './Archives.svelte';
@@ -667,20 +680,13 @@
 		setTimeout(() => (copied = false), 2000);
 	}
 
-	function stepMark(step: StepState): string {
-		if (step.status === 'done') return '✓';
-		if (step.status === 'failed') return '!';
-		return step.status === 'running' ? '…' : '○';
-	}
-
 	const logText = $derived(
 		[...(progress?.log ?? []), ...rollbackLog, ...svcLog].map((e) => ('$ ' + e.command + '\n' + e.output).trimEnd()).join('\n\n')
 	);
 </script>
 
 {#snippet removeBox(yes: string, site: string)}
-	<div class="ins-box bad">
-		<div class="ins-strong">Убрать Wynd с сервера?</div>
+	<Notice tone="bad" title="Убрать Wynd с сервера?">
 		<div class="ins-dim">
 			{#if site}Сайт {site} перестанет открываться.{/if}
 			{#if proxyName}
@@ -689,10 +695,9 @@
 				Уберём контейнеры Wynd и Caddy. Docker останется.
 			{/if}
 		</div>
-		<label class="ins-check">
-			<input type="checkbox" bind:checked={dropData} />
+		<Checkbox bind:checked={dropData}>
 			Удалить данные Wynd — записи, фотографии, учётные записи — и сертификат сайта
-		</label>
+		</Checkbox>
 		<div class="ins-dim">
 			{#if proxyName}
 				Без галочки папка /opt/wynd и сертификат останутся.
@@ -705,21 +710,20 @@
 			<div class="ins-dim" role="alert">{rollbackError}</div>
 			<TextButton class="link under" onclick={() => (showLog = !showLog)}>подробности</TextButton>
 		{/if}
-		<div class="ins-foot">
+		<FootBar>
 			<Button variant="colored" loading={rolling} onclick={() => void rollback()}>{yes}</Button>
 			<Button variant="ghost" disabled={rolling} onclick={() => (askRollback = false)}>Отмена</Button>
-		</div>
-	</div>
+		</FootBar>
+	</Notice>
 {/snippet}
 
-<div class="ins-tabs" role="tablist">
-	<button type="button" role="tab" class:on={tab === 'servers'} aria-selected={tab === 'servers'} onclick={() => (tab = 'servers')}>
-		Серверы
-	</button>
-	<button type="button" role="tab" class:on={tab === 'archives'} aria-selected={tab === 'archives'} onclick={() => (tab = 'archives')}>
-		Архивы
-	</button>
-</div>
+<WorkshopTabs
+	tabs={[
+		{ id: 'servers', label: 'Серверы' },
+		{ id: 'archives', label: 'Архивы' }
+	]}
+	bind:value={tab}
+/>
 
 {#if selfOpen && selfUp}
 	<!-- Кадры 10б, 10в. -->
@@ -727,41 +731,36 @@
 		<main class="ins-body">
 			{#if selfBad}
 				<h2>Эту версию Мастерская не поставит</h2>
-				<div class="ins-box">
-					<div class="ins-strong">Мастерская {selfUp.version} не подписана ключом Wynd</div>
+				<Notice title="Мастерская {selfUp.version} не подписана ключом Wynd">
 					<div class="ins-dim">
 						Файл мог испортиться при скачивании — или его подменили. Ставить такую версию опасно: у
 						Мастерской есть доступ к вашему серверу. Текущая Мастерская {ownVersion} работает как прежде.
 					</div>
-				</div>
-				<div class="ins-foot">
+				</Notice>
+				<FootBar>
 					<Button variant="colored" loading={selfBusy} onclick={() => void applySelf()}>Попробовать ещё раз</Button>
 					<Button variant="ghost" onclick={() => (selfOpen = false)}>Закрыть</Button>
 					<TextButton class="link under ins-push" onclick={() => void backend().ReleasesPage()}>страница выпусков</TextButton>
-				</div>
+				</FootBar>
 			{:else}
 				<h2>Мастерская {selfUp.version}</h2>
 				{#if selfUp.notes?.length}
 					<p class="ins-sub">Что нового:</p>
-					<div class="ins-rows">
-						{#each selfUp.notes as n (n)}<div class="ins-row"><span class="ins-mark">·</span><div>{n}</div></div>{/each}
-					</div>
+					<MarkRows>
+						{#each selfUp.notes as n (n)}<MarkRow mark="·">{n}</MarkRow>{/each}
+					</MarkRows>
 				{/if}
-				<div class="ins-rows">
-					<div class="ins-row">
-						<span class="ins-mark ok">✓</span>
-						<div>Подписана ключом Wynd <span class="ins-dim">— выложил тот, кто делает Wynd, файл не подменён</span></div>
-					</div>
-					<div class="ins-row">
-						<span class="ins-mark ok">✓</span>
-						<div>
-							Собрана из открытого кода тега workshop-v{selfUp.version} в GitHub Actions
-							<TextButton class="link under" onclick={() => void backend().OpenLink(selfUp?.attestation ?? '')}>проверить</TextButton>
-						</div>
-					</div>
-				</div>
-				{#if selfError}<div class="ins-box bad" role="alert">{selfError}</div>{/if}
-				<div class="ins-foot">
+				<MarkRows>
+					<MarkRow mark="✓" tone="ok">
+						Подписана ключом Wynd <span class="ins-dim">— выложил тот, кто делает Wynd, файл не подменён</span>
+					</MarkRow>
+					<MarkRow mark="✓" tone="ok">
+						Собрана из открытого кода тега workshop-v{selfUp.version} в GitHub Actions
+						<TextButton class="link under" onclick={() => void backend().OpenLink(selfUp?.attestation ?? '')}>проверить</TextButton>
+					</MarkRow>
+				</MarkRows>
+				{#if selfError}<Notice tone="bad" alert>{selfError}</Notice>{/if}
+				<FootBar>
 					<Button
 						variant={progress?.running ? 'off' : 'colored'}
 						loading={selfBusy}
@@ -769,7 +768,7 @@
 					>
 					<Button variant="ghost" onclick={() => (selfOpen = false)}>Не сейчас</Button>
 					{#if progress?.running}<span class="ins-dim">Сначала дождитесь окончания</span>{/if}
-				</div>
+				</FootBar>
 			{/if}
 		</main>
 	</div>
@@ -778,27 +777,11 @@
 {:else}
 {#if selfUp && !selfHidden}
 	<!-- Кадр 10а. -->
-	<div class="ins-selfbar">
-		<span>Вышла Мастерская {selfUp.version}</span>
-		<Button variant="ghost" onclick={() => (selfOpen = true)}>Обновить</Button>
-		<button class="ins-x" type="button" aria-label="Скрыть" onclick={() => (selfHidden = true)}>✕</button>
-	</div>
+	<SelfBar version={selfUp.version ?? ''} onupdate={() => (selfOpen = true)} onhide={() => (selfHidden = true)} />
 {/if}
 <div class="ins">
 	{#if screen !== 'server'}
-	<nav class="ins-side" aria-label="Шаги установки">
-		{#each STEPS as step, i (step)}
-			<div
-				class="ins-step"
-				class:done={i < stepIndex}
-				class:on={i === stepIndex && !stepBad}
-				class:bad={i === stepIndex && stepBad}
-				aria-current={i === stepIndex ? 'step' : undefined}
-			>
-				<i>{i < stepIndex ? '✓' : i === stepIndex && stepBad ? '!' : i + 1}</i>{step}
-			</div>
-		{/each}
-	</nav>
+		<StepNav steps={STEPS} index={stepIndex} bad={stepBad} />
 	{/if}
 
 	<main class="ins-body">
@@ -853,42 +836,37 @@
 					<p class="ins-note">Возьмём ключ из папки .ssh вашего профиля — тот же, что у программы ssh.</p>
 				{:else}
 					<!-- Две независимые галочки, обе выключены (владелец, 2026-10-24). -->
-					<label class="ins-check">
-						<input type="checkbox" bind:checked={remember} />
-						<span>Запомнить пароль на этом компьютере <span class="ins-dim">— Мастерская будет входить сама</span></span>
-					</label>
-					<label class="ins-check">
-						<input type="checkbox" bind:checked={makeKey} />
-						<span
-							>Дальше входить по ключу <span class="ins-dim"
-								>— Мастерская создаст ключ на этом компьютере и положит его на сервер</span
-							></span
+					<Checkbox bind:checked={remember}>
+						Запомнить пароль на этом компьютере <span class="ins-dim">— Мастерская будет входить сама</span>
+					</Checkbox>
+					<Checkbox bind:checked={makeKey}>
+						Дальше входить по ключу <span class="ins-dim"
+							>— Мастерская создаст ключ на этом компьютере и положит его на сервер</span
 						>
-					</label>
+					</Checkbox>
 				{/if}
 				{#if failure}
-					<div class="ins-box bad" role="alert">
-						<div class="ins-strong">{failure.message}</div>
+					<Notice tone="bad" alert title={failure.message}>
 						{#if failure.fingerprint}
 							<div class="ins-mono">{failure.fingerprint}</div>
 						{/if}
 						{#if failure.advice}
 							<div class="ins-dim">{failure.advice}</div>
 						{/if}
-					</div>
+					</Notice>
 				{/if}
-				<div class="ins-foot">
+				<FootBar>
 					<Button variant="colored" loading={busy} onclick={() => void connect()}>
 						Подключиться
 					</Button>
 					{#if busy}
 						<span class="ins-dim">Подключаемся…</span>
 					{/if}
-				</div>
+				</FootBar>
 			</form>
 		{:else if screen === 'server' && page && st}
 			<!-- Пульт (кадры 7а, 7а2, 7а3, 7е). -->
-			{#if keyNote}<div class="ins-box ins-note">{keyNote}</div>{/if}
+			{#if keyNote}<Notice tone="note">{keyNote}</Notice>{/if}
 			<h2>{st.domain}</h2>
 			<p class="ins-sub">
 				Wynd {st.version} · {st.running
@@ -898,8 +876,7 @@
 						: 'не работает'} · свободно {gb(st.free_bytes)}
 			</p>
 			{#if st.update}
-				<div class="ins-box">
-					<div class="ins-strong">Обновление до {st.update.to} не закончено</div>
+				<Notice title="Обновление до {st.update.to} не закончено">
 					<div class="ins-dim">
 						<!-- Момент обрыва Мастерская не знает — время начала обновления (владелец, 2026-10-25). -->
 						Обновление началось {dayTime(st.update.started)}. Связь с сервером прервалась{st.update.stopped
@@ -908,13 +885,13 @@
 							? 'Копия данных перед обновлением на месте.'
 							: 'Копию сделать не успели — данные не менялись.'}
 					</div>
-					<div class="ins-foot">
+					<FootBar>
 						<Button variant="colored" onclick={() => void startUpdate()}>Продолжить обновление</Button>
 						<Button variant="ghost" loading={returning} onclick={() => void returnPrevious()}>
 							Вернуть {st.update.from}
 						</Button>
-					</div>
-				</div>
+					</FootBar>
+				</Notice>
 			{:else}
 				<div class="ins-svcbar">
 					{#if st.running}
@@ -934,59 +911,59 @@
 					{/if}
 				</div>
 				{#if askStop}
-					<div class="ins-box">
-						<div class="ins-strong">Остановить сайт?</div>
+					<Notice title="Остановить сайт?">
 						<div class="ins-dim">
 							Пока он остановлен, круги не открываются ни у кого, письма с сервера не уходят. Данные
 							остаются на месте — «Запустить» вернёт всё как было.
 						</div>
-						<div class="ins-foot">
+						<FootBar>
 							<Button variant="colored" loading={svcBusy === 'stop'} onclick={() => void service('stop')}>
 								Остановить
 							</Button>
 							<Button variant="ghost" onclick={() => (askStop = false)}>Отмена</Button>
-						</div>
-					</div>
+						</FootBar>
+					</Notice>
 				{/if}
 				{#if page.latest}
-					<div class="ins-box ins-update">
-						<div>
-							<div class="ins-strong">Вышла версия {page.latest}</div>
-							<div class="ins-dim">
-								Перед обновлением сохраним копию данных на сервере.
-								<TextButton class="link under" onclick={() => void backend().OpenLink(CHANGES)}>
-									что нового
-								</TextButton>
-							</div>
+					<Notice title="Вышла версия {page.latest}">
+						<div class="ins-dim">
+							Перед обновлением сохраним копию данных на сервере.
+							<TextButton class="link under" onclick={() => void backend().OpenLink(CHANGES)}>
+								что нового
+							</TextButton>
 						</div>
-						<Button variant={st.running ? 'colored' : 'ghost'} onclick={toUpdatePlan}>Обновить</Button>
-					</div>
+						{#snippet action()}
+							<Button variant={st.running ? 'colored' : 'ghost'} onclick={toUpdatePlan}>Обновить</Button>
+						{/snippet}
+					</Notice>
 				{:else}
 					<p class="ins-dim">Стоит самая свежая версия.</p>
 				{/if}
-				<div class="ins-rows">
-					<div class="ins-row">
-						<span class="ins-mark">↓</span>
-						<div class="ins-grow">Бэкап на этот компьютер</div>
-						<TextButton class="link under" onclick={() => void toBackupPlan()}>сделать</TextButton>
-					</div>
-					<div class="ins-row">
-						<span class="ins-mark">→</span>
-						<div class="ins-grow">Переехать на другой сервер</div>
-						<TextButton class="link under" onclick={toMove}>начать</TextButton>
-					</div>
-				</div>
+				<MarkRows>
+					<MarkRow mark="↓">
+						Бэкап на этот компьютер
+						{#snippet action()}
+							<TextButton class="link under" onclick={() => void toBackupPlan()}>сделать</TextButton>
+						{/snippet}
+					</MarkRow>
+					<MarkRow mark="→">
+						Переехать на другой сервер
+						{#snippet action()}
+							<TextButton class="link under" onclick={toMove}>начать</TextButton>
+						{/snippet}
+					</MarkRow>
+				</MarkRows>
 			{/if}
 			{#if svcError}
-				<div class="ins-box bad" role="alert">
+				<Notice tone="bad" alert>
 					{svcError}
 					<TextButton class="link under" onclick={() => (showLog = !showLog)}>подробности</TextButton>
-				</div>
+				</Notice>
 			{/if}
 			{#if askRollback}
 				{@render removeBox('Да, убрать', st.domain ?? '')}
 			{/if}
-			<div class="ins-foot">
+			<FootBar>
 				<Button variant="ghost" onclick={() => void toConnect()}>Другой сервер</Button>
 				{#if selfUp && selfHidden}
 					<span class="ins-dim ins-push"
@@ -999,90 +976,73 @@
 						Убрать Wynd
 					</TextButton>
 				{/if}
-			</div>
+			</FootBar>
 			{#if showLog}
-				<pre class="ins-raw">{logText}</pre>
+				<CommandLog text={logText} />
 			{/if}
 		{:else if screen === 'uplan' && page && st && uplanNoRoom}
 			<!-- Кадр 7б2. -->
 			<h2>Пока обновить нельзя</h2>
-			<div class="ins-box">
-				<div class="ins-strong">На сервере мало места для копии</div>
+			<Notice title="На сервере мало места для копии">
 				<div class="ins-dim">
 					Перед обновлением сохраняем копию данных: без неё при неудаче их нечем вернуть. Копии нужно
 					{gb(page.copy_bytes)}, свободно {gb(st.free_bytes)}. Освободите место на сервере и нажмите
 					«Проверить снова».
 				</div>
-			</div>
-			<div class="ins-foot">
+			</Notice>
+			<FootBar>
 				<Button variant="colored" onclick={() => void refreshPage()}>Проверить снова</Button>
 				<Button variant="ghost" onclick={() => (screen = 'server')}>Назад</Button>
-			</div>
+			</FootBar>
 		{:else if screen === 'uplan' && page && st}
 			<!-- Кадры 7б, 7б3, 7б4. -->
 			{@const get = buildUpdate ? `Соберём Wynd ${page.latest} из исходного кода` : `Скачаем Wynd ${page.latest}`}
 			{@const stopLive = st.running && !(stopForCopy || !page.live_copy)}
 			<h2>Обновим до {page.latest}</h2>
-			<div class="ins-rows">
-				<div class="ins-row">
-					<span class="ins-mark">1</span>
-					<div>{get}{#if st.running}&nbsp;<span class="ins-dim">— сайт пока работает</span>{/if}</div>
-				</div>
+			<MarkRows>
+				<MarkRow mark="1">
+					{get}{#if st.running}&nbsp;<span class="ins-dim">— сайт пока работает</span>{/if}
+				</MarkRow>
 				{#if st.running && !stopLive}
-					<div class="ins-row">
-						<span class="ins-mark">2</span>
-						<div>Остановим Wynd <span class="ins-dim">— с этой минуты сайт не открывается</span></div>
-					</div>
+					<MarkRow mark="2">
+						Остановим Wynd <span class="ins-dim">— с этой минуты сайт не открывается</span>
+					</MarkRow>
 				{/if}
-				<div class="ins-row">
-					<span class="ins-mark">{st.running && !stopLive ? 3 : 2}</span>
-					<div>
-						Сохраним копию данных на сервере
-						<span class="ins-dim"
-							>— займёт {gb(page.copy_bytes)}, свободно {gb(st.free_bytes)}. Фото и видео обновление не
-							меняет: в копии они те же файлы и места не занимают</span
-						>
-					</div>
-				</div>
+				<MarkRow mark={st.running && !stopLive ? 3 : 2}>
+					Сохраним копию данных на сервере
+					<span class="ins-dim"
+						>— займёт {gb(page.copy_bytes)}, свободно {gb(st.free_bytes)}. Фото и видео обновление не
+						меняет: в копии они те же файлы и места не занимают</span
+					>
+				</MarkRow>
 				{#if stopLive}
-					<div class="ins-row">
-						<span class="ins-mark">3</span>
-						<div>Остановим Wynd <span class="ins-dim">— с этой минуты сайт не открывается</span></div>
-					</div>
+					<MarkRow mark="3">
+						Остановим Wynd <span class="ins-dim">— с этой минуты сайт не открывается</span>
+					</MarkRow>
 				{/if}
-				<div class="ins-row">
-					<span class="ins-mark">{st.running ? 4 : 3}</span>
-					<div>{st.running || startAfter ? `Запустим ${page.latest} и проверим сайт` : `Поставим ${page.latest}`}</div>
-				</div>
-			</div>
+				<MarkRow mark={st.running ? 4 : 3}>
+					{st.running || startAfter ? `Запустим ${page.latest} и проверим сайт` : `Поставим ${page.latest}`}
+				</MarkRow>
+			</MarkRows>
 			{#if st.running}
-				<label class="ins-check">
-					<input type="checkbox" bind:checked={stopForCopy} disabled={!page.live_copy} />
-					<span>
-						Остановить сайт на время копии
-						<span class="ins-dim">
-							{#if !page.live_copy}
-								— Wynd {st.version} копию без остановки не умеет.
-							{/if}
-							Пока идёт копия, никто ничего не напишет — при возврате к {st.version} ничего не пропадёт.
-							Без галочки сайт закрыт только на запуск новой версии, но то, что напишут во время копии,
-							при возврате пропадёт.
-						</span>
+				<Checkbox bind:checked={stopForCopy} disabled={!page.live_copy}>
+					Остановить сайт на время копии
+					<span class="ins-dim">
+						{#if !page.live_copy}
+							— Wynd {st.version} копию без остановки не умеет.
+						{/if}
+						Пока идёт копия, никто ничего не напишет — при возврате к {st.version} ничего не пропадёт.
+						Без галочки сайт закрыт только на запуск новой версии, но то, что напишут во время копии,
+						при возврате пропадёт.
 					</span>
-				</label>
+				</Checkbox>
 			{:else}
 				<Label>После обновления</Label>
-				<label class="ins-check">
-					<input type="radio" name="after" value={true} bind:group={startAfter} />
-					<span>Запустить новую версию</span>
-				</label>
-				<label class="ins-check">
-					<input type="radio" name="after" value={false} bind:group={startAfter} />
-					<span>
-						Оставить сайт остановленным
-						{#if st.stopped_at}<span class="ins-dim">— его остановили вы {day(st.stopped_at)}</span>{/if}
-					</span>
-				</label>
+				<Radio name="after" value={true} bind:group={startAfter}>Запустить новую версию</Radio>
+				<Radio name="after" value={false} bind:group={startAfter}>
+					Оставить сайт остановленным
+					{#if st.stopped_at}<span class="ins-dim">— его остановили вы {day(st.stopped_at)}</span>{/if}
+				</Radio>
 			{/if}
 			<p class="ins-sub mt">Не тронем: Docker, {proxyName || 'Caddy'}, сертификат сайта.</p>
 			{#if page.can_build}
@@ -1093,24 +1053,24 @@
 					</TextButton>
 				</p>
 			{/if}
-			<div class="ins-foot">
+			<FootBar>
 				<Button variant="colored" onclick={() => void startUpdate()}>Обновить</Button>
 				<Button variant="ghost" onclick={() => (screen = 'server')}>Назад</Button>
 				{#if buildUpdate}<span class="ins-dim">около 10 минут</span>{/if}
-			</div>
+			</FootBar>
 		{:else if screen === 'update' && progress?.failure}
 			<!-- Кадр 7д: после остановки — вернуть прежнюю; раньше сайт работает, только повторить. -->
 			{@const stopped = ['start', 'check'].includes(progress.failure.step)}
 			<h2>{progress.failure.message}</h2>
-			{#if progress.failure.advice}<div class="ins-box">{progress.failure.advice}</div>{/if}
+			{#if progress.failure.advice}<Notice>{progress.failure.advice}</Notice>{/if}
 			{#if stopped}
 				<p class="ins-sub mt">
 					«Вернуть {upFrom}» запустит прежнюю версию с данными из копии — сайт заработает как до
 					обновления.
 				</p>
 			{/if}
-			{#if svcError}<div class="ins-box bad" role="alert">{svcError}</div>{/if}
-			<div class="ins-foot">
+			{#if svcError}<Notice tone="bad" alert>{svcError}</Notice>{/if}
+			<FootBar>
 				{#if stopped}
 					<Button variant="colored" loading={returning} onclick={() => void returnPrevious()}>
 						Вернуть {upFrom}
@@ -1121,30 +1081,21 @@
 					<Button variant="ghost" onclick={() => void toServer()}>К серверу</Button>
 				{/if}
 				<TextButton class="link under ins-push" onclick={() => (showLog = !showLog)}>подробности</TextButton>
-			</div>
+			</FootBar>
 			{#if showLog}
-				<pre class="ins-raw">{logText}</pre>
+				<CommandLog text={logText} />
 			{/if}
 		{:else if screen === 'update'}
 			<h2>Обновляем</h2>
-			<div class="ins-rows">
-				{#each progress?.steps ?? [] as step (step.id)}
-					<div class="ins-row" class:ins-dim={step.status === 'pending'}>
-						<span class="ins-mark {step.status === 'done' ? 'ok' : ''}">{stepMark(step)}</span>
-						<div>
-							{step.title}{#if step.note}&nbsp;<span class="ins-dim">— {step.note}</span>{/if}
-						</div>
-					</div>
-				{/each}
-			</div>
-			<div class="ins-foot">
+			<StepList steps={progress?.steps ?? []} />
+			<FootBar>
 				<TextButton class="link under" onclick={() => (showLog = !showLog)}>
 					показать, что выполняется
 				</TextButton>
 				<span class="ins-dim">Окно можно свернуть</span>
-			</div>
+			</FootBar>
 			{#if showLog}
-				<pre class="ins-raw">{logText}</pre>
+				<CommandLog text={logText} />
 			{/if}
 		{:else if screen === 'udone'}
 			<!-- Кадр 7г. -->
@@ -1154,19 +1105,19 @@
 					? `Проверка прошла: работает ${upTo}, сайт открывается.`
 					: `Wynd ${upTo} поставлен, сайт остановлен.`}
 			</p>
-			<div class="ins-box">
+			<Notice>
 				Копия данных до обновления лежит на сервере в папке /opt/wynd/backups/{upFrom}{page
 					? ` — ${gb(page.copy_bytes)}`
 					: ''}.
-			</div>
-			<div class="ins-foot">
+			</Notice>
+			<FootBar>
 				{#if page?.state.running}
 					<Button variant="colored" onclick={() => void backend().OpenLink(`https://${page?.state.domain}`)}>
 						Открыть {page?.state.domain}
 					</Button>
 				{/if}
 				<Button variant="ghost" onclick={() => void toServer()}>К серверу</Button>
-			</div>
+			</FootBar>
 		{:else if screen === 'bplan' && page && st}
 			<!-- Кадры 8а, 8а2. -->
 			<h2>Бэкап на этот компьютер</h2>
@@ -1175,44 +1126,33 @@
 				записи, настройки и сертификат сайта.
 			</p>
 			<Label>Папка</Label>
-			<div class="ins-copyline">
+			<FieldLine>
 				<Input mono class="ins-grow" bind:value={bFolder} onblur={() => void planBackup()} />
 				<Button variant="ghost" onclick={() => void chooseBackupFolder()}>Выбрать</Button>
-			</div>
+			</FieldLine>
 			{#if bPlan?.ok}
-				<div class="ins-row">
-					<span class="ins-mark">↓</span>
-					<div>
-						Скачаем {gb(bPlan.fetch)}
-						<span class="ins-dim"
-							>{bPlan.prev
-								? `— в папке уже есть бэкап от ${day(bPlan.prev)}, берём только новое. Всего ${gb(bPlan.total)}`
-								: ''}</span
-						>
-					</div>
-				</div>
+				<MarkRow mark="↓">
+					Скачаем {gb(bPlan.fetch)}
+					<span class="ins-dim"
+						>{bPlan.prev
+							? `— в папке уже есть бэкап от ${day(bPlan.prev)}, берём только новое. Всего ${gb(bPlan.total)}`
+							: ''}</span
+					>
+				</MarkRow>
 			{:else if bPlan}
-				<div class="ins-box bad" role="alert">{bPlan.message}</div>
+				<Notice tone="bad" alert>{bPlan.message}</Notice>
 			{/if}
 			{#if st.running}
 				<Label>Сайт</Label>
-				<label class="ins-check">
-					<input type="radio" name="bsite" value="keep" bind:group={bSite} disabled={!page.live_copy} />
-					<span>Работает, пока идёт бэкап{#if !page.live_copy}&nbsp;<span class="ins-dim">— Wynd {st.version} так не умеет</span>{/if}</span>
-				</label>
-				<label class="ins-check">
-					<input type="radio" name="bsite" value="pause" bind:group={bSite} />
-					<span>Остановить на время бэкапа и запустить снова</span>
-				</label>
-				<label class="ins-check">
-					<input type="radio" name="bsite" value="stop" bind:group={bSite} />
-					<span>Остановить и не запускать <span class="ins-dim">— сервер переезжает или закрывается</span></span>
-				</label>
+				<Radio name="bsite" value="keep" bind:group={bSite} disabled={!page.live_copy}>
+					Работает, пока идёт бэкап{#if !page.live_copy}&nbsp;<span class="ins-dim">— Wynd {st.version} так не умеет</span>{/if}
+				</Radio>
+				<Radio name="bsite" value="pause" bind:group={bSite}>Остановить на время бэкапа и запустить снова</Radio>
+				<Radio name="bsite" value="stop" bind:group={bSite}>
+					Остановить и не запускать <span class="ins-dim">— сервер переезжает или закрывается</span>
+				</Radio>
 			{/if}
-			<label class="ins-check">
-				<input type="checkbox" bind:checked={bEncrypt} disabled={bPlan?.encrypted} />
-				<span>Зашифровать паролем</span>
-			</label>
+			<Checkbox bind:checked={bEncrypt} disabled={bPlan?.encrypted}>Зашифровать паролем</Checkbox>
 			{#if bEncrypt}
 				<div class="ins-pair">
 					<div class="ins-grow">
@@ -1230,7 +1170,7 @@
 						: 'Без пароля бэкап не открыть никак — запишите его.'}
 				</p>
 			{/if}
-			<div class="ins-foot">
+			<FootBar>
 				<Button
 					variant={bFolder && passOk && bPlan?.ok && (bSite !== 'keep' || page.live_copy || !st.running)
 						? 'colored'
@@ -1238,59 +1178,50 @@
 					onclick={() => void startBackup()}>Сделать бэкап</Button
 				>
 				<Button variant="ghost" onclick={() => (screen = 'server')}>Назад</Button>
-			</div>
+			</FootBar>
 		{:else if screen === 'backup' && progress?.failure}
 			<!-- Кадр 8г. -->
 			<h2>{progress.failure.message}</h2>
-			{#if progress.failure.advice}<div class="ins-box">{progress.failure.advice}</div>{/if}
+			{#if progress.failure.advice}<Notice>{progress.failure.advice}</Notice>{/if}
 			{#if progress.failure.step === 'fetch' && bPlan?.prev}
 				<p class="ins-sub mt">Прошлый бэкап в папке не тронут, пока новый не скачан целиком.</p>
 			{/if}
-			<div class="ins-foot">
+			<FootBar>
 				<Button variant="colored" onclick={() => void startBackup()}>Повторить</Button>
 				<Button variant="ghost" onclick={() => void toServer()}>К серверу</Button>
 				<TextButton class="link under ins-push" onclick={() => (showLog = !showLog)}>подробности</TextButton>
-			</div>
+			</FootBar>
 			{#if showLog}
-				<pre class="ins-raw">{logText}</pre>
+				<CommandLog text={logText} />
 			{/if}
 		{:else if screen === 'backup'}
 			<!-- Кадр 8б. -->
 			<h2>Делаем бэкап</h2>
-			<div class="ins-rows">
-				{#each progress?.steps ?? [] as step (step.id)}
-					<div class="ins-row" class:ins-dim={step.status === 'pending'}>
-						<span class="ins-mark {step.status === 'done' ? 'ok' : ''}">{stepMark(step)}</span>
-						<div>
-							{step.title}{#if step.note}&nbsp;<span class="ins-dim">— {step.note}</span>{/if}
-						</div>
-					</div>
-				{/each}
-			</div>
-			<div class="ins-foot">
+			<StepList steps={progress?.steps ?? []} />
+			<FootBar>
 				<TextButton class="link under" onclick={() => (showLog = !showLog)}>
 					показать, что выполняется
 				</TextButton>
 				<span class="ins-dim">Окно можно свернуть</span>
-			</div>
+			</FootBar>
 			{#if showLog}
-				<pre class="ins-raw">{logText}</pre>
+				<CommandLog text={logText} />
 			{/if}
 		{:else if screen === 'bdone'}
 			<!-- Кадр 8в. -->
 			<h2>Бэкап готов</h2>
 			<p class="ins-sub">В папке {bFolder}.</p>
-			<div class="ins-box">
+			<Notice>
 				{bEncrypt
 					? 'Бэкап зашифрован. Без пароля его не открыть.'
 					: 'В бэкапе — все записи и ключи сервера. Храните его так же бережно, как пароли: кто получит папку, прочтёт все круги.'}
-			</div>
-			<div class="ins-foot">
+			</Notice>
+			<FootBar>
 				<Button variant="colored" onclick={() => void backend().ShowInFolder(bFolder + '\\wynd-backup.json')}>
 					Открыть папку
 				</Button>
 				<Button variant="ghost" onclick={() => void toServer()}>К серверу</Button>
-			</div>
+			</FootBar>
 		{:else if screen === 'mconnect' && st}
 			<!-- Кадр 9а. -->
 			<h2>Куда переезжает {st.domain}</h2>
@@ -1322,25 +1253,19 @@
 					{/if}
 				</div>
 				{#if !mUseKeys}
-					<label class="ins-check">
-						<input type="checkbox" bind:checked={mMakeKey} />
-						<span
-							>Дальше входить по ключу <span class="ins-dim"
-								>— Мастерская создаст ключ на этом компьютере и положит его на сервер</span
-							></span
+					<Checkbox bind:checked={mMakeKey}>
+						Дальше входить по ключу <span class="ins-dim"
+							>— Мастерская создаст ключ на этом компьютере и положит его на сервер</span
 						>
-					</label>
+					</Checkbox>
 				{/if}
 				{#if mFail}
-					<div class="ins-box bad" role="alert">
-						<div class="ins-strong">{mFail.message}</div>
-						{#if mFail.advice}<div class="ins-dim">{mFail.advice}</div>{/if}
-					</div>
+					<Notice tone="bad" alert title={mFail.message} text={mFail.advice} />
 				{/if}
-				<div class="ins-foot">
+				<FootBar>
 					<Button variant="colored" loading={mBusy} onclick={() => void moveConnect()}>Подключиться</Button>
 					<Button variant="ghost" onclick={() => (screen = 'server')}>Назад</Button>
-				</div>
+				</FootBar>
 			</form>
 		{:else if screen === 'mfinger'}
 			<h2>Это ваш новый сервер?</h2>
@@ -1348,161 +1273,139 @@
 				Подключаемся к {mHost.trim()} впервые. Сервер назвал свой отпечаток — сверьте его с письмом хостинга
 				или панелью, если там он есть.
 			</p>
-			<div class="ins-box ins-mono">{mFinger}</div>
-			<div class="ins-foot">
+			<Notice mono>{mFinger}</Notice>
+			<FootBar>
 				<Button variant="colored" loading={mBusy} onclick={() => void moveConfirm()}>Да, подключиться</Button>
 				<Button variant="ghost" disabled={mBusy} onclick={() => (screen = 'mconnect')}>Отмена</Button>
-			</div>
+			</FootBar>
 		{:else if screen === 'mplan' && !mplan}
 			<h2>Что сделаем</h2>
 			<p class="ins-dim">Осматриваем новый сервер…</p>
 		{:else if screen === 'mplan' && mplan && !mplan.ok}
 			<h2>Пока переехать нельзя</h2>
-			<div class="ins-box" role="alert">
-				<div class="ins-strong">{mplan.message}</div>
-				{#if mplan.advice}<div class="ins-dim">{mplan.advice}</div>{/if}
-			</div>
-			<div class="ins-foot">
+			<Notice alert title={mplan.message} text={mplan.advice} />
+			<FootBar>
 				<Button variant="ghost" onclick={() => (screen = 'mconnect')}>Другой сервер</Button>
 				<Button variant="ghost" onclick={() => void toServer()}>К серверу</Button>
-			</div>
+			</FootBar>
 		{:else if screen === 'mplan' && mplan}
 			<!-- Кадры 9б и 9б2 (на старом Wynd не со своим Caddy — переезжают одни данные). -->
 			{@const dataOnly = mplan.data_only}
 			{@const oldProxy = ({ nginx: 'nginx', apache: 'Apache', caddy: 'Caddy' } as Record<string, string>)[mplan.old_proxy ?? ''] ?? ''}
 			<h2>Что сделаем</h2>
-			<div class="ins-rows">
-				<div class="ins-row"><span class="ins-mark">1</span><div>Поставим Wynd {mplan.version}{dataOnly ? ' и Caddy' : ''} на новый сервер <span class="ins-dim">— пока без данных и не запуская</span></div></div>
-				<div class="ins-row"><span class="ins-mark">2</span><div>Остановим сайт на старом <span class="ins-dim">— с этой минуты он не открывается</span></div></div>
-				<div class="ins-row"><span class="ins-mark">3</span><div>Перенесём {dataOnly ? 'данные' : 'папку'} Wynd на новый сервер <span class="ins-dim">— {gb(mplan.size)}, напрямую со старого, мимо этого компьютера</span></div></div>
-				<div class="ins-row"><span class="ins-mark">4</span><div>Вы смените адрес <span class="ins-dim">— у записи A для {mplan.domain} поставите {mplan.new_ip}</span></div></div>
-				<div class="ins-row"><span class="ins-mark">5</span><div>{dataOnly ? 'Запустим Wynd на новом, получим сертификат сайта и проверим сайт' : 'Запустим Wynd на новом и проверим сайт'}</div></div>
-			</div>
+			<MarkRows>
+				<MarkRow mark="1">Поставим Wynd {mplan.version}{dataOnly ? ' и Caddy' : ''} на новый сервер <span class="ins-dim">— пока без данных и не запуская</span></MarkRow>
+				<MarkRow mark="2">Остановим сайт на старом <span class="ins-dim">— с этой минуты он не открывается</span></MarkRow>
+				<MarkRow mark="3">Перенесём {dataOnly ? 'данные' : 'папку'} Wynd на новый сервер <span class="ins-dim">— {gb(mplan.size)}, напрямую со старого, мимо этого компьютера</span></MarkRow>
+				<MarkRow mark="4">Вы смените адрес <span class="ins-dim">— у записи A для {mplan.domain} поставите {mplan.new_ip}</span></MarkRow>
+				<MarkRow mark="5">{dataOnly ? 'Запустим Wynd на новом, получим сертификат сайта и проверим сайт' : 'Запустим Wynd на новом и проверим сайт'}</MarkRow>
+			</MarkRows>
 			{#if dataOnly && oldProxy}
 				<p class="ins-sub mt">Не тронем на старом: {oldProxy} и его сертификат.</p>
 			{/if}
 			<Label>Старый сервер</Label>
-			<label class="ins-check">
-				<input type="radio" name="mold" value={false} bind:group={mRemoveOld} />
-				<span>Оставить Wynd остановленным <span class="ins-dim">— убрать потом, когда убедитесь, что всё на месте</span></span>
-			</label>
-			<label class="ins-check">
-				<input type="radio" name="mold" value={true} bind:group={mRemoveOld} />
-				<span>Убрать Wynd после переезда <span class="ins-dim">— со старого сервера уйдут его данные{dataOnly ? '' : '; сертификат переедет на новый'}</span></span>
-			</label>
-			<div class="ins-foot">
+			<Radio name="mold" value={false} bind:group={mRemoveOld}>
+				Оставить Wynd остановленным <span class="ins-dim">— убрать потом, когда убедитесь, что всё на месте</span>
+			</Radio>
+			<Radio name="mold" value={true} bind:group={mRemoveOld}>
+				Убрать Wynd после переезда <span class="ins-dim">— со старого сервера уйдут его данные{dataOnly ? '' : '; сертификат переедет на новый'}</span>
+			</Radio>
+			<FootBar>
 				<Button variant="colored" onclick={() => void startMove()}>Переехать</Button>
 				<Button variant="ghost" onclick={() => (screen = 'server')}>Назад</Button>
-			</div>
+			</FootBar>
 		{:else if screen === 'move' && progress?.failure}
 			<h2>{progress.failure.message}</h2>
-			{#if progress.failure.advice}<div class="ins-box">{progress.failure.advice}</div>{/if}
-			<div class="ins-foot">
+			{#if progress.failure.advice}<Notice>{progress.failure.advice}</Notice>{/if}
+			<FootBar>
 				<Button variant="colored" onclick={() => void startMove()}>Повторить</Button>
 				<Button variant="ghost" loading={mBusy} onclick={() => void cancelMove()}>Отменить переезд</Button>
 				<TextButton class="link under ins-push" onclick={() => (showLog = !showLog)}>подробности</TextButton>
-			</div>
-			{#if showLog}<pre class="ins-raw">{logText}</pre>{/if}
+			</FootBar>
+			{#if showLog}<CommandLog text={logText} />{/if}
 		{:else if screen === 'move'}
 			<!-- Кадр 9в. -->
 			{@const waitingDNS = progress?.steps?.some((s) => s.id === 'dns' && s.status === 'running')}
 			<h2>Переезжаем</h2>
-			<div class="ins-rows">
-				{#each progress?.steps ?? [] as step (step.id)}
-					<div class="ins-row" class:ins-dim={step.status === 'pending'}>
-						<span class="ins-mark {step.status === 'done' ? 'ok' : ''}">{stepMark(step)}</span>
-						<div>{step.title}{#if step.note}&nbsp;<span class="ins-dim">— {step.note}</span>{/if}</div>
-					</div>
-				{/each}
-			</div>
+			<StepList steps={progress?.steps ?? []} />
 			{#if waitingDNS && mplan}
-				<div class="ins-box">
+				<Notice>
 					<div class="ins-dim">В панели, где покупали адрес {mplan.domain}, поменяйте у записи A адрес сервера на этот:</div>
-					<div class="ins-copyline">
-						<div class="ins-mono">{mplan.new_ip}</div>
-						<Button variant="ghost" onclick={() => void copyLine(mplan?.new_ip ?? '')}>
-							{copiedLine === mplan.new_ip ? 'Скопировано' : 'Скопировать'}
-						</Button>
-					</div>
+					<CopyLine text={mplan.new_ip} copied={copiedLine === mplan.new_ip} oncopy={() => void copyLine(mplan?.new_ip ?? '')} />
 					<div class="ins-dim">Мастерская проверяет сама каждую минуту — окно можно свернуть.</div>
-				</div>
-				<div class="ins-foot">
+				</Notice>
+				<FootBar>
 					<Button variant="ghost" onclick={() => void backend().MoveCheckNow()}>Проверить сейчас</Button>
 					<TextButton class="link under ins-push" onclick={() => void cancelMove()}>Отменить переезд</TextButton>
-				</div>
+				</FootBar>
 			{:else}
-				<div class="ins-foot">
+				<FootBar>
 					<TextButton class="link under" onclick={() => (showLog = !showLog)}>показать, что выполняется</TextButton>
 					<span class="ins-dim">Окно можно свернуть</span>
-				</div>
+				</FootBar>
 			{/if}
-			{#if showLog}<pre class="ins-raw">{logText}</pre>{/if}
+			{#if showLog}<CommandLog text={logText} />{/if}
 		{:else if screen === 'mdone' && mplan}
 			<!-- Кадр 9г. -->
 			<h2>Wynd на новом сервере</h2>
 			<p class="ins-sub">Проверка прошла: {mplan.domain} открывается с сервера {mplan.new_ip}.</p>
-			<div class="ins-box">
+			<Notice>
 				{mRemoveOld
 					? `Wynd со старого сервера ${mplan.old_ip} убран.`
 					: `Старый сервер ${mplan.old_ip}: Wynd остановлен, данные на месте. Когда убедитесь, что на новом всё есть, уберите его со страницы старого сервера.`}
-			</div>
-			<div class="ins-foot">
+			</Notice>
+			<FootBar>
 				<Button variant="colored" onclick={() => void backend().OpenLink(`https://${mplan?.domain}`)}>
 					Открыть {mplan.domain}
 				</Button>
 				<Button variant="ghost" onclick={() => void adoptNew()}>К серверу</Button>
-			</div>
+			</FootBar>
 		{:else if screen === 'fingerprint'}
 			<h2>Это ваш сервер?</h2>
 			<p class="ins-sub">
 				Подключаемся к {host.trim()} впервые. Сервер назвал свой отпечаток — сверьте его с письмом
 				хостинга или панелью, если там он есть.
 			</p>
-			<div class="ins-box ins-mono">{fingerprint}</div>
+			<Notice mono>{fingerprint}</Notice>
 			<p class="ins-sub mt">
 				Если отпечатка негде взять — это нормально для нового сервера. Мы запомним его, и при
 				следующем подключении подмену заметим.
 			</p>
-			<div class="ins-foot">
+			<FootBar>
 				<Button variant="colored" loading={busy} onclick={() => void confirmHost()}>
 					Да, подключиться
 				</Button>
 				<Button variant="ghost" disabled={busy} onclick={() => void toConnect()}>Отмена</Button>
-			</div>
+			</FootBar>
 		{:else if screen === 'plan' && plan && !plan.ok}
 			{#if rollbackNote}
-				<div class="ins-box ins-note">{rollbackNote}</div>
+				<Notice tone="note">{rollbackNote}</Notice>
 			{/if}
 			<h2>Пока ставить нельзя</h2>
-			<div class="ins-box" role="alert">
-				<div class="ins-strong">{plan.message}</div>
-				{#if plan.advice}
-					<div class="ins-dim">{plan.advice}</div>
-				{/if}
-			</div>
-			<div class="ins-foot">
+			<Notice alert title={plan.message} text={plan.advice} />
+			<FootBar>
 				<Button variant="ghost" onclick={() => (screen = 'inspect')}>Назад</Button>
-			</div>
+			</FootBar>
 		{:else if screen === 'plan' && plan}
 			<h2>Что сделаем</h2>
 			<p class="ins-sub">До кнопки «Установить» на сервере ничего не меняется.</p>
 			{#if rollbackNote}
-				<div class="ins-box">{rollbackNote}</div>
+				<Notice>{rollbackNote}</Notice>
 			{/if}
 			<div class="ins-sec">Поставим</div>
 			{#each plan.install ?? [] as item (item)}
-				<div class="ins-row"><span class="ins-mark ok">+</span>{item}</div>
+				<MarkRow mark="+" tone="ok">{item}</MarkRow>
 			{/each}
 			{#if plan.change?.length}
 				<div class="ins-sec">Изменим</div>
 				{#each plan.change as item (item)}
-					<div class="ins-row"><span class="ins-mark note">~</span>{item}</div>
+					<MarkRow mark="~" tone="note">{item}</MarkRow>
 				{/each}
 			{/if}
 			{#if plan.keep?.length}
 				<div class="ins-sec">Не тронем</div>
 				{#each plan.keep as item (item)}
-					<div class="ins-row"><span class="ins-mark">·</span>{item}</div>
+					<MarkRow mark="·">{item}</MarkRow>
 				{/each}
 			{/if}
 			{#if plan.unpublished}
@@ -1515,51 +1418,42 @@
 					</TextButton>
 				</p>
 			{/if}
-			<div class="ins-foot">
+			<FootBar>
 				<Button variant="colored" onclick={() => void install()}>Установить</Button>
 				<Button variant="ghost" onclick={() => (screen = 'inspect')}>Назад</Button>
 				<span class="ins-dim">{plan.duration}</span>
-			</div>
+			</FootBar>
 		{:else if screen === 'install' && progress?.failure}
 			<h2>{progress.failure.message}</h2>
 			<p class="ins-sub">{progress.failure.advice}</p>
 			{#if progress.steps?.some((s) => s.status === 'done')}
-				<div class="ins-box">
+				<Notice>
 					Сделанное раньше осталось на месте — повтор начнётся с этого шага.
-				</div>
+				</Notice>
 			{/if}
 			{#if askRollback}
 				{@render removeBox('Да, откатить', '')}
 			{:else}
-				<div class="ins-foot">
+				<FootBar>
 					<Button variant="colored" onclick={() => void install()}>Повторить</Button>
 					<Button variant="ghost" onclick={() => (askRollback = true)}>Откатить установку</Button>
 					<TextButton class="link under" onclick={() => (showLog = !showLog)}>подробности</TextButton>
-				</div>
+				</FootBar>
 			{/if}
 			{#if showLog}
-				<pre class="ins-raw">{logText}</pre>
+				<CommandLog text={logText} />
 			{/if}
 		{:else if screen === 'install'}
 			<h2>Ставим</h2>
-			<div class="ins-rows">
-				{#each progress?.steps ?? [] as step (step.id)}
-					<div class="ins-row" class:ins-dim={step.status === 'pending'}>
-						<span class="ins-mark {step.status === 'done' ? 'ok' : ''}">{stepMark(step)}</span>
-						<div>
-							{step.title}{#if step.note}&nbsp;<span class="ins-dim">— {step.note}</span>{/if}
-						</div>
-					</div>
-				{/each}
-			</div>
-			<div class="ins-foot">
+			<StepList steps={progress?.steps ?? []} />
+			<FootBar>
 				<TextButton class="link under" onclick={() => (showLog = !showLog)}>
 					показать, что выполняется
 				</TextButton>
 				<span class="ins-dim">Окно можно свернуть</span>
-			</div>
+			</FootBar>
 			{#if showLog}
-				<pre class="ins-raw">{logText}</pre>
+				<CommandLog text={logText} />
 			{/if}
 		{:else if screen === 'done' && progress}
 			<h2>Wynd работает</h2>
@@ -1567,16 +1461,16 @@
 			{#if askRollback}
 				{@render removeBox('Да, убрать', plan?.domain ?? '')}
 				{#if showLog && rollbackLog.length}
-					<pre class="ins-raw">{logText}</pre>
+					<CommandLog text={logText} />
 				{/if}
 			{:else if progress.link}
 				<Label>Ссылка первого запуска — для вас, одна</Label>
-				<div class="ins-box ins-mono">{progress.link}</div>
+				<Notice mono>{progress.link}</Notice>
 				<p class="ins-sub mt">
 					По ней вы станете администратором сервера и создадите первый круг. Никому её не
 					передавайте.
 				</p>
-				<div class="ins-foot">
+				<FootBar>
 					<Button variant="colored" onclick={() => void backend().OpenLink(progress?.link ?? '')}>
 						Открыть в браузере
 					</Button>
@@ -1586,20 +1480,20 @@
 					<TextButton class="link under ins-push" onclick={() => (askRollback = true)}>
 						Убрать Wynd
 					</TextButton>
-				</div>
+				</FootBar>
 			{:else}
-				<div class="ins-box">
+				<Notice>
 					Этот сервер уже настроен: администратор у него есть, ссылки первого запуска нет.
 					Откройте сайт и войдите как обычно.
-				</div>
-				<div class="ins-foot">
+				</Notice>
+				<FootBar>
 					<Button variant="colored" onclick={() => void backend().OpenLink(progress?.site ?? '')}>
 						Открыть {plan?.domain}
 					</Button>
 					<TextButton class="link under ins-push" onclick={() => (askRollback = true)}>
 						Убрать Wynd
 					</TextButton>
-				</div>
+				</FootBar>
 			{/if}
 		{:else if !inspection}
 			<h2>Что на сервере</h2>
@@ -1607,49 +1501,35 @@
 			<p class="ins-dim">Осматриваем…</p>
 		{:else if !inspection.ok}
 			<h2>Осмотр не удался</h2>
-			<div class="ins-box bad" role="alert">
-				<div class="ins-strong">{inspection.message}</div>
-				{#if inspection.advice}
-					<div class="ins-dim">{inspection.advice}</div>
-				{/if}
-			</div>
-			<div class="ins-foot">
+			<Notice tone="bad" alert title={inspection.message} text={inspection.advice} />
+			<FootBar>
 				<Button variant="colored" onclick={() => void toConnect()}>Подключиться ещё раз</Button>
-			</div>
+			</FootBar>
 		{:else if blocks.length}
 			<!-- Итог удаления не теряется, когда новый осмотр нашёл помеху (кадр 5д). -->
 			{#if rollbackNote}
-				<div class="ins-box ins-note">{rollbackNote}</div>
+				<Notice tone="note">{rollbackNote}</Notice>
 			{/if}
 			<h2>Пока ставить нельзя</h2>
 			<p class="ins-sub">
 				{blocks.length === 1 ? 'Мешает одно:' : 'Мешает вот что:'}
 			</p>
 			{#each blocks as block (block.id)}
-				<div class="ins-box">
-					<div class="ins-strong">{block.text}</div>
-					{#if block.advice}
-						<div class="ins-dim">{block.advice}</div>
-					{/if}
+				<Notice title={block.text} text={block.advice}>
 					{#if block.copy}
-						<div class="ins-copyline">
-							<div class="ins-mono">{block.copy}</div>
-							<Button variant="ghost" onclick={() => void copyLine(block.copy ?? '')}>
-								{copiedLine === block.copy ? 'Скопировано' : 'Скопировать'}
-							</Button>
-						</div>
+						<CopyLine text={block.copy} copied={copiedLine === block.copy} oncopy={() => void copyLine(block.copy ?? '')} />
 					{/if}
 					{#if block.after}
 						<div class="ins-dim">{block.after}</div>
 					{/if}
-				</div>
+				</Notice>
 			{/each}
 			<div class="ins-more">
 				<TextButton class="link under" onclick={() => (showRaw = true)}>
 					подробнее, что проверили
 				</TextButton>
 			</div>
-			<div class="ins-foot">
+			<FootBar>
 				{#if blocks.every((b) => b.final)}
 					<Button variant="colored" disabled={busy} onclick={() => void toConnect()}>
 						Другой сервер
@@ -1665,32 +1545,29 @@
 						Другой сервер
 					</Button>
 				{/if}
-			</div>
+			</FootBar>
 		{:else}
 			<h2>Что на сервере</h2>
 			<p class="ins-sub">Только смотрим — ничего не меняем.</p>
 			{#if rollbackNote}
-				<div class="ins-box">{rollbackNote}</div>
+				<Notice>{rollbackNote}</Notice>
 			{/if}
-			<div class="ins-rows">
+			<MarkRows>
 				{#each findings as f (f.id)}
-					<div class="ins-row">
-						<span class="ins-mark {f.level}">{mark(f.level)}</span>
-						<div>
-							{f.text}{#if f.plan}&nbsp;— <span class="ins-dim">{f.plan}{f.id === 'wynd' ? '.' : ''}</span>{/if}
-							{#if f.id === 'wynd' && !askRollback}
-								<TextButton class="link under" onclick={() => (askRollback = true)}>
-									Убрать Wynd с сервера
-								</TextButton>
-							{/if}
-						</div>
-					</div>
+					<MarkRow mark={mark(f.level)} tone={f.level}>
+						{f.text}{#if f.plan}&nbsp;— <span class="ins-dim">{f.plan}{f.id === 'wynd' ? '.' : ''}</span>{/if}
+						{#if f.id === 'wynd' && !askRollback}
+							<TextButton class="link under" onclick={() => (askRollback = true)}>
+								Убрать Wynd с сервера
+							</TextButton>
+						{/if}
+					</MarkRow>
 				{/each}
-			</div>
+			</MarkRows>
 			{#if askRollback}
 				{@render removeBox('Да, убрать', domainOk ? domain : '')}
 				{#if showLog && rollbackLog.length}
-					<pre class="ins-raw">{logText}</pre>
+					<CommandLog text={logText} />
 				{/if}
 			{/if}
 			<Label>Адрес, по которому будут заходить</Label>
@@ -1719,14 +1596,9 @@
 				{/if}
 			</form>
 			{#if domainCheck && !domainOk}
-				<div class="ins-box" role="alert">
-					<div class="ins-strong">{domainCheck.text}</div>
-					{#if domainCheck.advice}
-						<div class="ins-dim">{domainCheck.advice}</div>
-					{/if}
-				</div>
+				<Notice alert title={domainCheck.text} text={domainCheck.advice} />
 			{/if}
-			<div class="ins-foot">
+			<FootBar>
 				<Button
 					variant={domainOk ? 'colored' : 'off'}
 					loading={planning}
@@ -1741,41 +1613,11 @@
 				<TextButton class="link under" onclick={() => (showRaw = true)}>
 					подробнее, что проверили
 				</TextButton>
-			</div>
+			</FootBar>
 		{/if}
 	</main>
 	{#if showRaw && inspection}
-		<!-- Окно поверх (кадр 2е): читать ответы сервера, а не подглядывать в три строки. -->
-		<div class="ins-over" role="presentation" onclick={() => (showRaw = false)}></div>
-		<div class="ins-sheet" role="dialog" aria-modal="true" aria-label="Что проверили">
-			<div class="ins-sheet-head">
-				<b>Что проверили</b>
-				<span class="ins-dim">ответы сервера на команды осмотра</span>
-				<button class="ins-x" type="button" aria-label="Закрыть" onclick={() => (showRaw = false)}>
-					✕
-				</button>
-			</div>
-			<div class="ins-raw">
-				{#each rawParts as s, i (i)}
-					<div class:ins-cause-part={s.cause}>
-						{#if s.cause}<b class="ins-cause">## {s.name} — из-за этого отказ</b>{:else}## {s.name}{/if}
-						{#if s.body}<div>{s.body}</div>{/if}
-					</div>
-				{/each}
-			</div>
-			<div class="ins-sheet-foot">
-				<Button variant="ghost" onclick={() => void copyRaw()}>
-					{copiedRaw ? 'Скопировано' : 'Скопировать всё'}
-				</Button>
-				<Button variant="ghost" onclick={() => (showRaw = false)}>Закрыть</Button>
-			</div>
-		</div>
+		<RawSheet parts={rawParts} copied={copiedRaw} oncopy={() => void copyRaw()} onclose={() => (showRaw = false)} />
 	{/if}
 </div>
 {/if}
-
-<svelte:window
-	onkeydown={(e) => {
-		if (e.key === 'Escape' && showRaw) showRaw = false;
-	}}
-/>
