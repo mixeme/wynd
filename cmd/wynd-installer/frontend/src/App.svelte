@@ -627,6 +627,9 @@
 	const proxyName = $derived(
 ({ nginx: 'nginx', apache: 'Apache', caddy: 'Caddy' } as Record<string, string>)[inspection?.report?.proxy ?? ''] ?? ''
 	);
+	// Файлы сайта в чужом веб-сервере, которые ставили не мы (кадры 5е, 5е2):
+	// Wynd там поставлен не Мастерской; файл не трогаем, а называем.
+	const foreignSite = $derived(proxyName ? (inspection?.report?.foreign_site ?? []) : []);
 
 	async function rollback() {
 		if (rolling) return;
@@ -634,6 +637,11 @@
 		rollbackError = '';
 		// Осмотр после отката тот же веб-сервер найдёт снова; имя берём заранее.
 		const stays = proxyName ? `Docker и ${proxyName} остались.` : 'Docker остался.';
+		// Кадр 5е2: чужой файл сайта остаётся — сказать, где он.
+		const foreign = foreignSite.length;
+		const leftFiles = foreign
+			? ` Файл сайта ${foreignSite.join(', ')} остался — его ставили не мы.`
+			: '';
 		// Кадр 5д: что именно помешало, знаем по проверке до удаления и после него.
 		const stale = (res: { stale?: string }) => {
 			if (!res.stale || !proxyName) return '';
@@ -665,11 +673,17 @@
 					screen = 'plan';
 				} else {
 					// Убрали работавший Wynd (окна 2б, 5а): назад к осмотру, сервер уже без него.
+					// Сертификат у чужой установки получали не мы — о нём ни слова (5е2).
 					rollbackNote =
 						(dropData
-							? 'Wynd, его данные и сертификат с сервера убраны. '
-							: 'Wynd с сервера убран, его данные и сертификат оставлены. ') +
+							? foreign
+								? 'Wynd и его данные с сервера убраны. '
+								: 'Wynd, его данные и сертификат с сервера убраны. '
+							: foreign
+								? 'Wynd с сервера убран, его данные оставлены. '
+								: 'Wynd с сервера убран, его данные и сертификат оставлены. ') +
 						stays +
+						leftFiles +
 						certNote(res.cert) +
 						stale(res);
 					screen = 'inspect';
@@ -710,17 +724,31 @@
 	<Notice tone="bad" title="Убрать Wynd с сервера?">
 		<div class="ins-dim">
 			{#if site}Сайт {site} перестанет открываться.{/if}
-			{#if proxyName}
+			{#if foreignSite.length}
+				Уберём контейнер Wynd. Docker и {proxyName} останутся.
+			{:else if proxyName}
 				Уберём контейнер Wynd и его сайт из {proxyName}. Docker и {proxyName} останутся.
 			{:else}
 				Уберём контейнеры Wynd и Caddy. Docker останется.
 			{/if}
 		</div>
+		{#if foreignSite.length}
+			<!-- Кадр 5е: файл сайта ставили не мы — не трогаем, называем. -->
+			<div class="ins-dim">
+				Файл сайта в {proxyName} ставили не мы, его не тронем. Пока он есть, {proxyName} отвечает по адресу
+				{site || 'сайта'} ошибкой. Уберите его сами:
+			</div>
+			{#each foreignSite as f (f)}
+				<CopyLine text={f} copied={copiedLine === f} oncopy={() => void copyLine(f)} />
+			{/each}
+		{/if}
 		<Checkbox bind:checked={dropData}>
-			Удалить данные Wynd — записи, фотографии, учётные записи — и сертификат сайта
+			Удалить данные Wynd — записи, фотографии, учётные записи{foreignSite.length ? '' : ' — и сертификат сайта'}
 		</Checkbox>
 		<div class="ins-dim">
-			{#if proxyName}
+			{#if foreignSite.length}
+				Без галочки папка /opt/wynd останется.
+			{:else if proxyName}
 				Без галочки папка /opt/wynd и сертификат останутся.
 			{:else}
 				Без галочки папка /opt/wynd останется как есть.

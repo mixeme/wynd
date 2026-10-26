@@ -38,6 +38,8 @@ export interface Report {
 	findings: Finding[] | null;
 	addresses: string[] | null;
 	proxy?: string;
+	/** Файлы сайта у чужого веб-сервера, ведущие на Wynd, без нашей первой строки (кадры 5е, 5е2). */
+	foreign_site?: string[] | null;
 	raw: string;
 }
 

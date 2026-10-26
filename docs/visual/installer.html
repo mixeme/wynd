@@ -537,6 +537,47 @@ x86_64
 <p class="note">Утверждено владельцем 2026-10-11, реализовано; утверждено 2026-10-14 — как в 5б, только сертификат лежит не в /opt/wynd (у nginx и Apache — у certbot, у Caddy — в его хранилище), поэтому назван отдельно. От кадра 5б отличается одной фразой: вместо своего Caddy убирается наш файл сайта из чужого веб-сервера, сам веб-сервер остаётся. Для Apache и Caddy — то же с их именем.</p>
 </div>
 
+<div id="f5e">
+<p class="cap">5е · Убрать Wynd: файл сайта в чужом веб-сервере ставили не мы</p>
+<div class="win"><div class="tb">●<b>Wynd Мастерская [0.1.0]</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="body">
+<h2>wynd.example.ru</h2>
+<div class="sub">Сервер 198.51.100.4 · Wynd 0.42.2 · работает · свободно 29 ГБ</div>
+<div class="box" style="margin-top:12px;border-color:#C9A39A">
+<div style="font-weight:600">Убрать Wynd с сервера?</div>
+<div class="dim" style="margin-top:4px;line-height:1.5">Сайт wynd.example.ru перестанет открываться. Уберём контейнер Wynd. Docker и Apache останутся.</div>
+<div class="dim" style="margin-top:8px;line-height:1.5">Файл сайта в Apache ставили не мы, его не тронем. Пока он есть, Apache отвечает по адресу wynd.example.ru ошибкой. Уберите его сами:</div>
+<div style="display:flex;gap:8px;align-items:center;margin:8px 0"><div class="fld mono" style="flex:1">/etc/apache2/sites-enabled/wynd.example.ru.conf</div><span class="btn gh" style="padding:7px 12px">Скопировать</span></div>
+<div class="cbx" style="margin-top:8px"><i></i><span>Удалить данные Wynd — записи, фотографии, учётные записи</span></div>
+<div class="dim" style="margin-top:4px;line-height:1.5">Без галочки папка /opt/wynd останется. Поставите Wynd снова — всё будет на месте.</div>
+<div class="foot" style="margin-top:12px"><span class="btn">Да, убрать</span><span class="btn gh">Отмена</span></div>
+</div>
+</div></div></div>
+<p class="note">Утверждено владельцем 2026-10-26, реализовано (план 45, пункт 1б). Только после проверки: Мастерская ищет в файлах сайта свою первую строку «# Файл создал установщик Wynd.» — есть, файл наш, убираем его, как в 5в; нет — этот кадр (владелец: «Конфиг для Apache могли положить и мы. Надо проверять»). Wynd поставлен не Мастерской и стоит за чужим веб-сервером (здесь — Apache; так стоит wynd.mixfed.ru): файл сайта без нашей первой строки, Мастерская его не удаляет — раньше молча, и Apache после удаления Wynd отвечал по адресу ошибкой. Какой файл — Мастерская находит сама при осмотре: файл в настройке веб-сервера (sites-enabled — по ссылкам), который ведёт на порт Wynd 7676, без нашей первой строки. От 5в отличается: нет «и его сайт из Apache»; абзац про файл; у галочки нет «и сертификат сайта» — сертификат получали не мы (certbot), его не трогаем ни в каком случае (владелец, 2026-10-25: «не нам решать его судьбу»). Для nginx и Caddy — то же с их именем и путём.</p>
+</div>
+
+<div id="f5e2">
+<p class="cap">5е2 · После «Да, убрать»: файл сайта остался</p>
+<div class="win" style="height:470px"><div class="tb">●<b>Wynd Мастерская [0.1.0]</b><span class="dots">— ▢ ✕</span></div>
+<div class="main">
+<div class="side">
+<div class="st done"><i>✓</i>Сервер</div><div class="st on"><i>2</i>Осмотр</div><div class="st"><i>3</i>План</div><div class="st"><i>4</i>Установка</div><div class="st"><i>5</i>Готово</div>
+</div>
+<div class="body">
+<h2>Что на сервере</h2>
+<div class="sub">Только смотрим — ничего не меняем.</div>
+<div class="box" style="margin-bottom:8px;line-height:1.5">Wynd с сервера убран, его данные оставлены. Docker и Apache остались. Файл сайта /etc/apache2/sites-enabled/wynd.example.ru.conf остался — его ставили не мы.</div>
+<div class="row"><span class="ic ok">✓</span><div>Debian 13 — подходит</div></div>
+<div class="row"><span class="ic ok">✓</span><div>Свободно 31 ГБ</div></div>
+<div class="row"><span class="ic ok">✓</span><div>Часы идут верно</div></div>
+<div class="row"><span class="ic ok">✓</span><div>Docker установлен</div></div>
+<div class="row"><span class="ic w">!</span><div>Веб-сервер есть: Apache — <span class="dim">его не трогаем, Wynd встанет за ним</span></div></div>
+<div class="foot"><span class="btn">Дальше — план</span><span class="under">подробнее, что проверили</span></div>
+</div></div></div>
+<p class="note">Утверждено владельцем 2026-10-26, реализовано. Как 5г, итог рамкой над новым осмотром; последняя фраза — про оставленный файл, с путём. Строки «Wynd не запущен, его данные на месте» в кадре нет ради краткости — в окне она есть, как в 5г.</p>
+</div>
+
 <div>
 <p class="cap">5г · После «Да, убрать»: назад к осмотру</p>
 <div class="win" style="height:470px"><div class="tb">●<b>Wynd Мастерская [0.35.1]</b><span class="dots">— ▢ ✕</span></div>

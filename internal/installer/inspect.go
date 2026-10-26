@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"fmt"
+	"path"
 	"sort"
 	"strconv"
 	"strings"
@@ -53,6 +54,10 @@ type Report struct {
 	Certbot bool `json:"-"`
 	// ApacheMods — модули, которые придётся включить в чужом Apache.
 	ApacheMods []string `json:"-"`
+	// ForeignSite — файлы сайта в настройке веб-сервера, которые ведут на порт
+	// Wynd, но без нашей первой строки: их ставила не Мастерская, и «Убрать
+	// Wynd» их не трогает — только называет (кадры 5е, 5е2).
+	ForeignSite []string `json:"foreign_site,omitempty"`
 	// Raw — вывод команд осмотра, для «подробнее, что проверили».
 	Raw string `json:"raw"`
 }
@@ -90,7 +95,7 @@ const (
 // inspectScript только читает. Каждая секция — от строки «## имя» до
 // следующей; порядок и наличие секций разбор не предполагает. Команды, которых
 // на сервере нет, молчат: пустая секция — тоже ответ.
-const inspectScript = `export LC_ALL=C
+var inspectScript = `export LC_ALL=C
 asroot() { if [ "$(id -u)" = 0 ]; then "$@"; else sudo -n "$@"; fi; }
 echo '## os'; cat /etc/os-release 2>/dev/null
 echo '## arch'; uname -m 2>/dev/null
@@ -111,6 +116,7 @@ echo '## nginx'; if command -v nginx >/dev/null 2>&1; then ` + nginxLayout + `; 
 echo '## apache'; if command -v apache2ctl >/dev/null 2>&1; then ` + apacheLayout + `; if asroot apache2ctl configtest >/dev/null 2>&1; then echo test=ok; else echo test=fail; fi; fi
 echo '## caddy'; if command -v caddy >/dev/null 2>&1; then grep -Es '^import[[:space:]]' ` + caddyConfig + ` | head -n 20; if asroot caddy validate --config ` + caddyConfig + ` --adapter caddyfile >/dev/null 2>&1; then echo test=ok; else echo test=fail; fi; fi
 echo '## wyndup'; ` + wyndRunning + `
+echo '## foreignsite'; for f in $(grep -RlsE '(127\.0\.0\.1|localhost):7676' /etc/apache2/sites-enabled /etc/nginx/sites-enabled /etc/nginx/conf.d ` + path.Dir(caddyConfig) + ` 2>/dev/null); do grep -qsF ` + shQuote(siteMark) + ` "$f" || echo "$f"; done
 echo '## ownproxy'; docker ps --filter label=com.docker.compose.project.working_dir=/opt/wynd --filter publish=443 --format '{{.Names}} {{.Image}}' 2>/dev/null
 `
 
@@ -155,6 +161,9 @@ func first(lines []string) string {
 func ParseInspection(out, user string, now time.Time) Report {
 	sec := sections(out)
 	rep := Report{Raw: out, Addresses: parseAddresses(sec["addr"]), Git: first(sec["git"]) != "", Certbot: first(sec["certbot"]) != ""}
+	for _, f := range sec["foreignsite"] {
+		rep.ForeignSite = append(rep.ForeignSite, strings.TrimSpace(f))
+	}
 	switch first(sec["arch"]) {
 	case "x86_64", "amd64":
 		rep.Arch = "amd64"

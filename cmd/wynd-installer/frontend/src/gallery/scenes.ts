@@ -53,6 +53,16 @@ const wyndHere = {
 };
 
 const pult = page();
+// Wynd за чужим Apache, файл сайта ставили не мы (кадры 5е, 5е2).
+const foreignApache = {
+	...report,
+	report: {
+		...report.report,
+		proxy: 'apache',
+		foreign_site: ['/etc/apache2/sites-enabled/wynd.conf'],
+		findings: [{ id: 'wynd', level: 'ok' as const, text: 'Wynd' }]
+	}
+};
 const stopped = page({ running: false, stopped_at: '2026-10-24T09:00:00Z' }, { latest: undefined });
 const interrupted = page({
 	running: false,
@@ -114,6 +124,16 @@ export const SCENES: Scene[] = [
 	{ name: '7e-interrupted', fake: toPult(interrupted), acts: go },
 	{ name: '7a-service-error', fake: { ...toPult(pult), Service: () => service(pult, false) }, acts: [...go, { click: 'Перезапустить' }, { click: 'подробности' }] },
 	{ name: '7a-remove', fake: { ...toPult(pult), Inspect: () => ({ ...report, report: { ...report.report, proxy: 'nginx', findings: [{ id: 'wynd', level: 'ok', text: 'Wynd' }] } }) }, acts: [...go, { click: 'Убрать Wynd' }] },
+	{
+		name: '5e-remove-foreign-site',
+		fake: { ...toPult(pult), Inspect: () => foreignApache },
+		acts: [...go, { click: 'Убрать Wynd' }]
+	},
+	{
+		name: '5e2-removed-foreign-site',
+		fake: { ...toPult(pult), Inspect: () => foreignApache, Rollback: () => ({ ok: true, log: null, report: { ...foreignApache.report, findings: report.report.findings } }) },
+		acts: [...go, { click: 'Убрать Wynd' }, { click: 'Да, убрать' }]
+	},
 	{ name: '7a-selfbar', fake: { ...toPult(pult), CheckSelfUpdate: () => ({ available: true, version: '0.2.0', notes: ['Обновляется сама'], attestation: 'https://github.com/' }) }, acts: go },
 	{ name: '7a-selfbar-hidden', fake: { ...toPult(pult), CheckSelfUpdate: () => ({ available: true, version: '0.2.0', notes: ['Обновляется сама'] }) }, acts: [...go, { click: '✕' }] },
 	{ name: '10b-self', fake: { CheckSelfUpdate: () => ({ available: true, version: '0.2.0', notes: ['Обновляется сама', 'Переезд узнаёт обрыв'], attestation: 'https://github.com/' }) }, acts: [{ click: 'Обновить' }] },

@@ -122,3 +122,15 @@ func TestDNSStepNotes(t *testing.T) {
 		}
 	}
 }
+
+// 5е: файл сайта у чужого веб-сервера, который ведёт на порт Wynd без нашей
+// первой строки, осмотр называет; ищет и по ссылкам sites-enabled.
+func TestInspectionForeignSite(t *testing.T) {
+	rep := ParseInspection("## foreignsite\n/etc/apache2/sites-enabled/wynd.conf\n## ownproxy\n", "root", time.Now())
+	if len(rep.ForeignSite) != 1 || rep.ForeignSite[0] != "/etc/apache2/sites-enabled/wynd.conf" {
+		t.Fatalf("чужой файл: %v", rep.ForeignSite)
+	}
+	if !strings.Contains(inspectScript, "grep -RlsE") || !strings.Contains(inspectScript, siteMark) {
+		t.Fatal("поиск чужого файла должен идти по ссылкам и узнавать нашу первую строку")
+	}
+}
