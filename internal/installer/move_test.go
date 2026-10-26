@@ -97,3 +97,28 @@ func TestMoveResumeSkipsTransfer(t *testing.T) {
 		t.Fatalf("пометка: %s", cmd)
 	}
 }
+
+// 9в и 9в3: строка шага называет старый сервер, а молчание службы имён —
+// «не удалось узнать», а не «указывает на никуда».
+func TestDNSStepNotes(t *testing.T) {
+	old := dnsWait
+	dnsWait = time.Hour
+	defer func() { dnsWait = old }()
+	for _, c := range []struct {
+		answer []string
+		want   string
+	}{
+		{nil, "пока не удалось узнать, куда указывает family.example.ru"},
+		{[]string{"198.51.100.4"}, "family.example.ru пока указывает на старый сервер 198.51.100.4"},
+		{[]string{"192.0.2.9"}, "family.example.ru пока указывает на 192.0.2.9"},
+	} {
+		ctx, cancel := context.WithCancel(context.Background())
+		spec := MoveSpec{Domain: "family.example.ru", OldIP: "198.51.100.4", NewIP: "203.0.113.7",
+			Resolve: func(context.Context, string) []string { cancel(); return c.answer }}
+		r := &Run{steps: []StepState{{ID: "dns"}}, report: func() {}}
+		_ = dnsStep(spec).do(ctx, r)
+		if r.steps[0].Note != c.want {
+			t.Fatalf("ответ %v: подпись %q, ждали %q", c.answer, r.steps[0].Note, c.want)
+		}
+	}
+}

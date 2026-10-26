@@ -173,25 +173,27 @@ func (w *Wizard) StartMove(ctx context.Context, removeOld bool) Progress {
 	check := make(chan struct{}, 1)
 	w.moveCheck = check
 	spec := MoveSpec{Domain: plan.Domain, Version: plan.Version, Image: w.Image, OldIP: plan.OldIP, NewIP: plan.NewIP,
-		RemoveOld: removeOld, DataOnly: plan.DataOnly, CheckNow: check, Probe: w.Probe, Resume: plan.resume,
-		Resolve: func(ctx context.Context, domain string) []string {
-			r := w.Resolver
-			if r == nil {
-				r = net.DefaultResolver
+		RemoveOld: removeOld, DataOnly: plan.DataOnly, CheckNow: check, Probe: w.Probe, Resume: plan.resume}
+	target := w.target
+	spec.Resolve = func(ctx context.Context, domain string) []string {
+		// Спрашиваем новый сервер: он видит адрес, как люди в интернете, и VPN
+		// этого компьютера ни при чём (кадр 9в3). Не ответил — спрашиваем здесь.
+		if w.Resolver == nil && target != nil {
+			if addrs := resolveOn(ctx, target, domain); len(addrs) > 0 {
+				return addrs
 			}
-			addrs, _ := r.LookupHost(ctx, domain)
-			var v4 []string
-			for _, a := range addrs {
-				if ip := net.ParseIP(a); ip != nil && ip.To4() != nil {
-					v4 = append(v4, a)
-				}
-			}
-			return v4
-		}}
+		}
+		r := w.Resolver
+		if r == nil {
+			r = net.DefaultResolver
+		}
+		addrs, _ := r.LookupHost(ctx, domain)
+		return ipv4(addrs)
+	}
 	if spec.Probe == nil {
 		spec.Probe = httpProbe
 	}
-	old, target := w.session, w.target
+	old := w.session
 	runCtx, cancel := context.WithCancel(context.Background())
 	w.cancel = cancel
 	finished := make(chan struct{})
@@ -214,6 +216,28 @@ func (w *Wizard) StartMove(ctx context.Context, removeOld bool) Progress {
 		w.mu.Unlock()
 	}()
 	return w.progress
+}
+
+// resolveOn — адреса A имени глазами сервера sess; пусто — не узнали.
+func resolveOn(ctx context.Context, sess *Session, domain string) []string {
+	if NormalizeDomain(domain) != domain {
+		return nil
+	}
+	res, err := sess.Exec(ctx, "getent ahostsv4 "+shQuote(domain)+" | cut -d' ' -f1 | sort -u", nil, shortTimeout)
+	if err != nil || res.Code != 0 {
+		return nil
+	}
+	return ipv4(strings.Fields(res.Output))
+}
+
+func ipv4(addrs []string) []string {
+	var v4 []string
+	for _, a := range addrs {
+		if ip := net.ParseIP(a); ip != nil && ip.To4() != nil {
+			v4 = append(v4, ip.String())
+		}
+	}
+	return v4
 }
 
 // MoveCheckNow — «Проверить сейчас» на 9в.

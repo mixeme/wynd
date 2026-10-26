@@ -47,7 +47,8 @@ type MoveSpec struct {
 	// DataOnly — на старом Wynd не со своим Caddy: везём одни данные, на
 	// новом — обычная установка со своим Caddy (9б2).
 	DataOnly bool
-	// Resolve — куда сейчас указывает адрес сайта (адреса A).
+	// Resolve — куда сейчас указывает адрес сайта (адреса A). Пусто — узнать
+	// не удалось: у адреса при переезде запись A есть всегда (старый сервер).
 	Resolve func(ctx context.Context, domain string) []string
 	// CheckNow — «Проверить сейчас» на 9в.
 	CheckNow <-chan struct{}
@@ -249,11 +250,15 @@ func dnsStep(spec MoveSpec) step {
 				if len(addrs) > 0 && allEqual(addrs, spec.NewIP) {
 					return nil
 				}
-				now := "никуда"
-				if len(addrs) > 0 {
-					now = strings.Join(addrs, ", ")
+				switch {
+				case len(addrs) == 0:
+					// Кадр 9в3: служба имён не ответила — не «никуда».
+					r.note("пока не удалось узнать, куда указывает " + spec.Domain)
+				case allEqual(addrs, spec.OldIP):
+					r.note(spec.Domain + " пока указывает на старый сервер " + spec.OldIP)
+				default:
+					r.note(spec.Domain + " пока указывает на " + strings.Join(addrs, ", "))
 				}
-				r.note(spec.Domain + " пока указывает на " + now)
 				select {
 				case <-ctx.Done():
 					return ctx.Err()

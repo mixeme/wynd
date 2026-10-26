@@ -156,6 +156,11 @@ export const SCENES: Scene[] = [
 		fake: { ...toPult(pult), StartMove: () => ({ ...progress(steps(['Перенос', 'done'])), steps: [{ id: 'dns', title: 'Ждём новый адрес', status: 'running', note: 'family.example.ru пока указывает на 45.144.64.241' }] }) },
 		acts: [...go, { click: 'начать' }, { click: 'Подключиться' }, { click: 'Переехать' }]
 	},
+	{
+		name: '9v3-move-dns-unknown',
+		fake: { ...toPult(pult), StartMove: () => ({ ...progress(steps(['Перенос', 'done'])), steps: [{ id: 'dns', title: 'Ждём новый адрес', status: 'running', note: 'пока не удалось узнать, куда указывает family.example.ru' }] }) },
+		acts: [...go, { click: 'начать' }, { click: 'Подключиться' }, { click: 'Переехать' }]
+	},
 	{ name: '9v-move-failed', fake: { ...toPult(pult), StartMove: () => progress(steps(['Перенос', 'failed']), { running: false, failure: { step: 'transfer', message: 'Перенос прервался', advice: 'Связь между серверами оборвалась.' } }) }, acts: [...go, { click: 'начать' }, { click: 'Подключиться' }, { click: 'Переехать' }, { click: 'подробности' }] },
 	{ name: '9v2-unfinished', fake: toPult(moving), acts: go },
 	{ name: '9v2-continue-connect', fake: toPult(moving), acts: [...go, { click: 'Продолжить переезд' }] },
