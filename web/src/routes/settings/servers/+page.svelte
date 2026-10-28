@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import { ADD_SERVER_IN_BROWSER } from '$lib/session/addServer';
 	import { goUp } from '$lib/navigation/up';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -112,7 +113,12 @@
 	{:else if rows.length === 0}
 		<!-- Спокойная констатация, не заголовок: обычный кегль, цвет подсказки. -->
 		<Hint centered class="mt-28 sz-15">На этом устройстве вы ни на одном сервере</Hint>
-		<Button onclick={addServer}>Добавить сервер</Button>
+		{#if ADD_SERVER_IN_BROWSER}
+			<Button onclick={addServer}>Добавить сервер</Button>
+		{:else}
+			<!-- C69: другой сервер отсюда не добавить — входят на этот. -->
+			<Button onclick={() => goto('/')}>Войти</Button>
+		{/if}
 	{:else}
 		{#each rows as row, i (row.session.origin + row.session.email)}
 			<ServerRow
@@ -146,6 +152,8 @@
 		<Hint class="mt-24">
 			Общего профиля на все серверы нет: каждый сервер — отдельное место, даже с той же почтой.
 		</Hint>
-		<Button onclick={addServer}>Добавить сервер</Button>
+		{#if ADD_SERVER_IN_BROWSER}
+			<Button onclick={addServer}>Добавить сервер</Button>
+		{/if}
 	{/if}
 </FormLayout>

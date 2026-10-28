@@ -78,7 +78,9 @@
 		padding: 0;
 		border: 0;
 		background: none;
-		color: #b9afa3;
+		/* --muted, не #b9afa3: тот на полосе #eae3d8 давал 1,7 : 1, значки
+		   почти не видели (C68); --muted — 3,7 : 1, тёмный — под мышью. */
+		color: var(--muted);
 		cursor: default;
 	}
 	.ins-tb-btns svg {

@@ -866,7 +866,11 @@
 				action={circle.youOwn ? 'Перенос круга' : 'Перейти на новый сервер'}
 				onaction={circle.youOwn
 					? () => goto(`/circles/${circle.circleId}/move`)
-					: () => goto(`/join?server=${encodeURIComponent(circle.move?.dest_url ?? '')}`)}
+					: () => {
+							// C69: новый сервер — его собственная страница, там и вход;
+							// добавить его сюда веб-приложение пока не может.
+							if (circle.move?.dest_url) window.location.assign(circle.move.dest_url);
+						}}
 			>
 				{#if circle.youOwn}
 					«{circle.name}» теперь на <strong>{dest}</strong>. Здесь круг замер и исчезнет, когда вы

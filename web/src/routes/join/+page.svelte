@@ -22,6 +22,7 @@
 	import { INVALID_EMAIL_HINT, isValidParticipantEmail } from '$lib/auth/email';
 	import { loadPendingAuth, savePendingAuth } from '$lib/auth/pending';
 	import { loadSessions } from '$lib/session/session.svelte';
+	import { ADD_SERVER_IN_BROWSER } from '$lib/session/addServer';
 	import { appVersion } from '$lib/appinfo';
 	import { sourceUrl } from '$lib/instance/source.svelte';
 
@@ -72,6 +73,12 @@
 
 	onMount(async () => {
 		if (!adding) adding = (await loadSessions()).length > 0;
+		// C69: второй сервер в веб-приложении не добавляют — старые закладки
+		// и «Назад» ведут на «Серверы», а не на форму, которая не сработает.
+		if (adding && !ADD_SERVER_IN_BROWSER) {
+			void goto('/settings/servers', { replaceState: true });
+			return;
+		}
 		ready = true;
 		const pending = loadPendingAuth();
 		if (pending?.flow === 'register') {
