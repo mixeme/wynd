@@ -1,5 +1,6 @@
 // Command workshop-sign — ключ подписи выпусков Мастерской (план 45) у
-// владельца: создать ключ, подписать exe, проверить подпись. Самообновление
+// владельца: создать ключ, подписать exe, проверить подпись (сами ключ и
+// подпись — internal/signing; то же умеет окно cmd/wynd-signer). Самообновление
 // Мастерской ставит только exe с подписью этим ключом
 // (installer.VerifySignature): Ed25519 над всем файлом, подпись — base64 в
 // wynd-workshop.exe.sig рядом с exe в выпуске.
@@ -17,29 +18,16 @@ package main
 
 import (
 	"bufio"
-	"bytes"
-	"crypto/ed25519"
-	"crypto/rand"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
-	"gitea.mixdep.ru/mix/wynd/internal/archive"
 	"gitea.mixdep.ru/mix/wynd/internal/installer"
+	"gitea.mixdep.ru/mix/wynd/internal/signing"
 )
-
-// keyMagic — первая строка расшифрованного файла ключа.
-const keyMagic = "wynd-workshop-signing-key/v1"
-
-// keyLogN — стоимость вывода ключа из пароля (scrypt N = 2^17, 128 МБ):
-// подписывают редко, перебор пароля пусть будет дорогим.
-const keyLogN = 17
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
@@ -69,14 +57,14 @@ func run(args []string) error {
 
 func keygen(keyPath, pubPath string) error {
 	if _, err := os.Stat(keyPath); err == nil {
-		return fmt.Errorf("%s уже есть — не перезаписываю: прежний ключ пропал бы, а с ним возможность подписать обновление для уже розданных Мастерских", keyPath)
+		return fmt.Errorf("%s: %w", keyPath, signing.ErrKeyExists)
 	}
 	pass, err := readPassword("Пароль для ключа: ")
 	if err != nil {
 		return err
 	}
-	if len([]rune(pass)) < 12 {
-		return errors.New("пароль короче 12 знаков")
+	if len([]rune(pass)) < signing.MinPassword {
+		return signing.ErrShortPassword
 	}
 	again, err := readPassword("Ещё раз: ")
 	if err != nil {
@@ -85,46 +73,8 @@ func keygen(keyPath, pubPath string) error {
 	if pass != again {
 		return errors.New("пароли не совпали")
 	}
-	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	line, err := signing.Keygen(keyPath, pubPath, pass)
 	if err != nil {
-		return err
-	}
-	salt := make([]byte, 16)
-	if _, err := rand.Read(salt); err != nil {
-		return err
-	}
-	enc, err := archive.DeriveKey(pass, salt, keyLogN)
-	if err != nil {
-		return err
-	}
-	var buf bytes.Buffer
-	w, err := archive.Encrypt(&buf, archive.KeyParams{PublicKey: enc.PublicKey().Bytes(), Salt: salt, LogN: keyLogN})
-	if err != nil {
-		return err
-	}
-	if _, err := io.WriteString(w, keyMagic+"\n"+base64.StdEncoding.EncodeToString(priv.Seed())+"\n"); err != nil {
-		return err
-	}
-	if err := w.Close(); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(keyPath), 0o700); err != nil {
-		return err
-	}
-	// O_EXCL: файл ключа мог появиться, пока вводили пароль.
-	f, err := os.OpenFile(keyPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
-	if err != nil {
-		return err
-	}
-	if _, err := f.Write(buf.Bytes()); err != nil {
-		_ = f.Close()
-		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-	line := base64.StdEncoding.EncodeToString(pub)
-	if err := os.WriteFile(pubPath, []byte(line+"\n"), 0o644); err != nil {
 		return err
 	}
 	fmt.Println("Ключ создан:", keyPath)
@@ -137,38 +87,20 @@ func sign(keyPath, exePath string) error {
 	if err != nil {
 		return err
 	}
-	raw, err := os.Open(keyPath)
-	if err != nil {
+	if _, err := os.Stat(keyPath); err != nil {
 		return err
 	}
-	defer func() { _ = raw.Close() }()
 	pass, err := readPassword("Пароль ключа: ")
 	if err != nil {
 		return err
 	}
-	r, err := archive.Decrypt(raw, pass)
+	priv, err := signing.Unlock(keyPath, pass)
 	if err != nil {
-		return errors.New("пароль не подошёл или файл ключа повреждён")
+		return err
 	}
-	plain, err := io.ReadAll(r)
+	sig, err := signing.Sign(priv, exe, "")
 	if err != nil {
-		// age проверяет ключ на первом куске: неверный пароль — здесь.
-		return errors.New("пароль не подошёл или файл ключа повреждён")
-	}
-	lines := strings.Split(strings.TrimSpace(string(plain)), "\n")
-	if len(lines) != 2 || lines[0] != keyMagic {
-		return errors.New("это не файл ключа подписи Мастерской")
-	}
-	seed, err := base64.StdEncoding.DecodeString(lines[1])
-	if err != nil || len(seed) != ed25519.SeedSize {
-		return errors.New("файл ключа повреждён")
-	}
-	priv := ed25519.NewKeyFromSeed(seed)
-	sig := base64.StdEncoding.EncodeToString(ed25519.Sign(priv, exe))
-	pub := base64.StdEncoding.EncodeToString(priv.Public().(ed25519.PublicKey))
-	// Проверка той же функцией, что у Мастерской при самообновлении.
-	if err := installer.VerifySignature(pub, exe, []byte(sig)); err != nil {
-		return fmt.Errorf("подпись не прошла проверку: %w", err)
+		return err
 	}
 	if err := os.WriteFile(exePath+".sig", []byte(sig+"\n"), 0o644); err != nil {
 		return err
@@ -177,7 +109,7 @@ func sign(keyPath, exePath string) error {
 	fmt.Println("Подписан:", exePath)
 	fmt.Println("SHA-256:", hex.EncodeToString(sum[:]))
 	fmt.Println("Подпись:", exePath+".sig")
-	fmt.Println("Открытый ключ:", pub)
+	fmt.Println("Открытый ключ:", signing.Public(priv))
 	return nil
 }
 
