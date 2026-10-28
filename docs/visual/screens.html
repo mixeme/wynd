@@ -768,6 +768,8 @@
 <li><a href="#e10-7"><span class="tn">10.7</span>Напоминание об истечении подписки</a></li>
 <li><a href="#e10-8"><span class="tn">10.8</span>Продлить</a></li>
 <li><a href="#e10-9"><span class="tn">10.9</span>Заявка отправлена, доступ ещё есть</a></li>
+<li><a href="#e10-16"><span class="tn">10.16</span>Подписка закончилась на одном из серверов</a></li>
+<li><a href="#e10-17"><span class="tn">10.17</span>Доступ закрыт на одном из серверов</a></li>
 <li><a href="#e10-10"><span class="tn">10.10</span>Оплата</a></li>
 <li><a href="#e10-11"><span class="tn">10.11</span>Подписка выключена</a></li>
 <li><a href="#e10-12"><span class="tn">10.12</span>Заявка</a></li>
@@ -5384,6 +5386,43 @@
     <div class="rt"><span>пн</span></div></div>
 </div>
 <span class="num">10.9</span><b>Заявка отправлена, доступ ещё есть</b><i>После 10.3, если срок не вышел: человек на улочке, не на заглушке. Шеврона нет — второй заявки, пока висит pending, быть не должно. Отклонили — снова 10.7. Вышел срок, пока ждали — 10.4.</i></figure>
+<figure class="s" id="e10-16"><div class="ph shell">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="appbar">
+    <svg class="mk" viewBox="-21.67 -31.8 42.9 64.47" aria-label="Wynd" role="img"><use href="#mark" fill="currentColor" x="-21.67" y="-31.8" width="42.9" height="64.47"/></svg>
+    <span class="sp"></span>
+    <svg class="ic"><use href="#i-search"/></svg>
+    <svg class="ic"><use href="#i-gear"/></svg>
+  </div>
+  <div class="lab">Закреплённые</div>
+  <div class="r" style="--rc:var(--terracotta)"><div class="sq">С</div>
+    <div class="m"><div class="n">Семья</div><div class="p">Аня: были на даче, все живы</div></div>
+    <div class="rt"><span>14:02</span><span class="bdg">3</span></div></div>
+  <div class="sep"></div>
+  <div class="lab">Остальные</div>
+  <div class="r" style="--rc:var(--coffee)"><div class="sq">Р</div>
+    <div class="m"><div class="n">Ремонт</div><div class="p">Славик: шум с площадки</div></div>
+    <div class="rt"><span>11:40</span></div></div>
+  <div class="r" style="--rc:var(--olive);opacity:.6"><div class="sq">П</div>
+    <div class="m"><div class="n">Поход на Алтай</div><div class="p" style="display:flex;align-items:center;gap:5px"><svg class="ic xs"><use href="#i-key"/></svg>dacha.example.ru: подписка закончилась</div></div>
+    <div class="rt"><span>вчера</span></div></div>
+</div>
+<span class="num">10.16</span><b>Подписка закончилась на одном из серверов</b><i>Черновик 2026-10-28, не утверждён (план 46, C67). Круги человека на двух серверах: «Семья» и «Ремонт» — на «Доме Ани», где всё оплачено, «Поход на Алтай» — на «Даче Пети», где подписка закончилась. Шлюз решает по серверу, как полоса молчащего сервера на 7.40: оплаченные круги работают как обычно, круги закрытого сервера стоят приглушёнными, вместо последней строки сказано, что подписка закончилась. Нажатие — 10.17. Сервер у человека один — всё как на 10.1: шлюз вместо улочки.</i></figure>
+<figure class="s" id="e10-17"><div class="ph shell">
+  <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
+  <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Поход на Алтай</span></div>
+  <div class="h1s" style="margin-top:28px">Доступ закрыт</div>
+  <div class="hint">Подписка на «Дача Пети» закончилась 10 сентября. Круги на этом сервере не открываются, пока администратор не подтвердит оплату.</div>
+  <div class="lab" style="margin-top:22px">Куда платить</div>
+  <div class="row2" style="margin:0 16px;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px;display:block">
+    <div style="font-weight:600">Т-Банк · Пётр С.</div>
+    <div class="sub" style="margin-top:4px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace">2200 70•• •••• 1953</div>
+    <div class="sub" style="margin-top:6px">В назначении: wynd, anya@example.com</div>
+  </div>
+  <div class="btn">Я оплатил</div>
+  <div class="hint ctr" style="margin-top:22px">Вы вошли как anya@example.com<br>в «Даче Пети» · dacha.example.ru</div>
+</div>
+<span class="num">10.17</span><b>Доступ закрыт на одном из серверов</b><i>Черновик 2026-10-28, не утверждён (план 46, C67). С 10.16, нажатием на приглушённый круг. Тот же экран, что 10.1, но для одного сервера: реквизиты, заявка и подпись внизу — его, а не первого из списка. Стрелка назад возвращает на улочку: другие круги открыты. Дальше — тот же 10.3 «Я оплатил» для этого сервера.</i></figure>
 </div></div>
 <h3>Панель</h3>
 <div class="bleed"><div class="gal">
