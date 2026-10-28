@@ -1443,7 +1443,9 @@
 			<Notice>
 				{mRemoveOld
 					? `Wynd со старого сервера ${mplan.old_ip} убран.`
-					: `Старый сервер ${mplan.old_ip}: Wynd остановлен, данные на месте. Когда убедитесь, что на новом всё есть, уберите его со страницы старого сервера.`}
+					: `Старый сервер ${mplan.old_ip}: Wynd остановлен, данные на месте.${mplan.foreign
+							? ''
+							: ' Когда убедитесь, что на новом всё есть, уберите его со страницы старого сервера.'}`}
 			</Notice>
 			<FootBar>
 				<Button variant="colored" onclick={() => void backend().OpenLink(`https://${mplan?.domain}`)}>

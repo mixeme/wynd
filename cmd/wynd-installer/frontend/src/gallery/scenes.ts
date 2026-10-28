@@ -155,6 +155,11 @@ export const SCENES: Scene[] = [
 		fake: { ...toPult(foreignService), Inspect: () => foreignFound, MovePlan: () => ({ ...movePlan, data_only: true, foreign: true }) },
 		acts: [...go, { click: 'начать' }, { click: 'Подключиться' }]
 	},
+	{
+		name: '7z-foreign-mdone',
+		fake: { ...toPult(foreignService), Inspect: () => foreignFound, MovePlan: () => ({ ...movePlan, data_only: true, foreign: true }), StartMove: () => progress(steps(['Готово', 'done']), { running: false, done: true }) },
+		acts: [...go, { click: 'начать' }, { click: 'Подключиться' }, { click: 'Переехать' }]
+	},
 	{ name: '7b-uplan', fake: toPult(pult), acts: [...go, { click: 'Обновить' }] },
 	{ name: '7b-uplan-stopped', fake: toPult(page({ running: false, stopped_at: '2026-10-24T09:00:00Z' })), acts: [...go, { click: 'Обновить' }] },
 	{ name: '7b-uplan-build', fake: toPult(pult), acts: [...go, { click: 'Обновить' }, { click: 'Собрать самому' }] },
