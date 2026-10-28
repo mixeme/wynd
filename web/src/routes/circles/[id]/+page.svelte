@@ -917,7 +917,7 @@
 		{:else if circle.archiveCycle?.active}
 			<ArchiveBanner
 				title="Архивация · {formatDeadline(circle.archiveCycle.deadline)}"
-				onaction={downloadArchiveClick}
+				onaction={circle.archiveCycle.download_url ? downloadArchiveClick : undefined}
 			>
 				Всё до <strong>{formatCutoffDate(circle.archiveCycle.cutoff_date)}</strong> будет удалено.
 				Реакции и комментарии к этим записям закрыты.

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -65,6 +66,55 @@ func TestArchiveDownloadStatuses(t *testing.T) {
 	}
 	if r := doGET(t, srv, download, tok); r.Code != http.StatusForbidden {
 		t.Fatalf("после срока: %d %s", r.Code, r.Body.String())
+	}
+}
+
+// C62: после срока — пока часовая очистка не закрыла цикл — плашка без
+// «Скачать архив», ссылку не выдают, а уже выданная, открытая браузером, ведёт
+// на «Архив круга», а не на голый ответ API.
+func TestArchiveAfterDeadlineNoDownload(t *testing.T) {
+	srv, caps, ch, _ := setupAPI(t)
+	tok, _ := registerSession(t, srv, caps, "deadline@example.com")
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles", tok, map[string]any{"name": "Семья", "owner_name": "Аня"})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("circle: %d %s", rec.Code, rec.Body.String())
+	}
+	circleID := jsonStr(t, rec, "id")
+	startArchive(t, srv, tok, circleID)
+	if !strings.Contains(doGET(t, srv, "/api/v1/circles/"+circleID, tok).Body.String(), `"download_url"`) {
+		t.Fatal("до срока нет адреса скачивания")
+	}
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/archive/link", tok, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("link: %d %s", rec.Code, rec.Body.String())
+	}
+	link := jsonStr(t, rec, "url")
+
+	if _, err := ch.DB().ExecContext(t.Context(), `
+		UPDATE circles SET archive_deadline = '2026-01-01T00:00:00.000000000Z' WHERE id = ?
+	`, circleID); err != nil {
+		t.Fatal(err)
+	}
+	detail := doGET(t, srv, "/api/v1/circles/"+circleID, tok).Body.String()
+	if !strings.Contains(detail, `"archive_cycle"`) || strings.Contains(detail, `"download_url"`) {
+		t.Fatalf("после срока: %s", detail)
+	}
+	if r := doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/archive/link", tok, nil); r.Code != http.StatusForbidden {
+		t.Fatalf("ссылка после срока: %d %s", r.Code, r.Body.String())
+	}
+	req := httptest.NewRequest(http.MethodGet, link, nil)
+	req.Header.Set("Sec-Fetch-Mode", "navigate")
+	nav := httptest.NewRecorder()
+	srv.ServeHTTP(nav, req)
+	if nav.Code != http.StatusSeeOther || nav.Header().Get("Location") != "/circles/"+circleID+"/archive" {
+		t.Fatalf("браузер по ссылке после срока: %d %q", nav.Code, nav.Header().Get("Location"))
+	}
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/archive/нет-такой", nil)
+	req.Header.Set("Accept", "text/html,application/xhtml+xml")
+	nav = httptest.NewRecorder()
+	srv.ServeHTTP(nav, req)
+	if nav.Code != http.StatusSeeOther || nav.Header().Get("Location") != "/circles" {
+		t.Fatalf("браузер по неизвестной ссылке: %d %q", nav.Code, nav.Header().Get("Location"))
 	}
 }
 

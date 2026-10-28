@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -38,7 +39,11 @@ func (s *Server) archiveCycleJSON(ctx context.Context, circleID, accountID strin
 		"personal_archive_bytes":       stats.MediaBytes,
 		"personal_archive_media_count": stats.MediaFiles,
 		"personal_archive_post_count":  stats.PostCount,
-		"download_url":                 "/api/v1/circles/" + circleID + "/archive/download",
+	}
+	// Срок прошёл — архив уже не отдаётся (streamArchive), пока часовая очистка
+	// не закрыла цикл: «Скачать архив» не показываем (C62).
+	if !archiveExpired(cycle, time.Now()) {
+		out["download_url"] = "/api/v1/circles/" + circleID + "/archive/download"
 	}
 	return out, nil
 }
@@ -387,8 +392,13 @@ func (s *Server) handleArchiveLink(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	if _, err := s.personalArchiveCutoff(r.Context(), circleID); err != nil {
+	cycle, err := s.personalArchiveCutoff(r.Context(), circleID)
+	if err != nil {
 		writeDomainError(w, err)
+		return
+	}
+	if archiveExpired(cycle, time.Now()) {
+		writeDomainError(w, chronicle.ErrForbidden)
 		return
 	}
 	buf := make([]byte, 32)
@@ -415,11 +425,36 @@ func (s *Server) handleArchiveLink(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleArchiveByLink(w http.ResponseWriter, r *http.Request) {
 	v, ok := s.archiveLinks.LoadAndDelete(r.PathValue("token"))
 	if !ok || time.Now().After(v.(archiveLink).expires) {
+		if browserNavigation(r) {
+			// Ссылку открыл браузер: вместо голого ответа API — приложение (C62).
+			http.Redirect(w, r, "/circles", http.StatusSeeOther)
+			return
+		}
 		writeDomainError(w, chronicle.ErrNotFound)
 		return
 	}
 	link := v.(archiveLink)
+	if browserNavigation(r) {
+		if cycle, err := s.personalArchiveCutoff(r.Context(), link.circleID); err == nil && archiveExpired(cycle, time.Now()) {
+			http.Redirect(w, r, "/circles/"+url.PathEscape(link.circleID)+"/archive", http.StatusSeeOther)
+			return
+		}
+	}
 	s.streamArchive(w, r, link.circleID, link.accountID)
+}
+
+// archiveExpired — срок цикла архивации прошёл: архив участника уже не отдаётся.
+func archiveExpired(cycle chronicle.ArchiveCycle, now time.Time) bool {
+	return !cycle.Deadline.IsZero() && now.After(cycle.Deadline)
+}
+
+// browserNavigation — адрес открыл сам браузер (переход по ссылке), а не fetch
+// приложения: ему отказ показывают страницей Wynd, а не JSON.
+func browserNavigation(r *http.Request) bool {
+	if mode := r.Header.Get("Sec-Fetch-Mode"); mode != "" {
+		return mode == "navigate"
+	}
+	return strings.Contains(r.Header.Get("Accept"), "text/html")
 }
 
 func (s *Server) handleArchiveDownload(w http.ResponseWriter, r *http.Request) {
@@ -463,7 +498,7 @@ func (s *Server) streamArchive(w http.ResponseWriter, r *http.Request, circleID,
 		return
 	}
 	now := time.Now().UTC()
-	if !cycle.Deadline.IsZero() && now.After(cycle.Deadline) {
+	if archiveExpired(cycle, now) {
 		writeDomainError(w, chronicle.ErrForbidden)
 		return
 	}

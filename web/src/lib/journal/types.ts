@@ -108,7 +108,8 @@ export interface ArchiveCycle {
 	personal_archive_bytes: number;
 	personal_archive_media_count: number;
 	personal_archive_post_count: number;
-	download_url: string;
+	/** Нет — срок прошёл, архив уже не отдаётся (C62). */
+	download_url?: string;
 }
 
 /** Встреча 1.10: «Круг переехал» / «Круг оживили из архива». */

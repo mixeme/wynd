@@ -156,6 +156,34 @@ func TestArchivePurgeKeepsStructuralEvents(t *testing.T) {
 	}
 }
 
+// C62: название дня до отсечки — очистка проходит. Раньше она удаляла
+// событие «дню дали название» раньше строки day_titles, которая ссылается на
+// него, и откатывалась целиком на проверке связи (wynd.mixfed.ru, 2026-10-24…28).
+func TestArchivePurgeWithDayTitleBeforeCutoff(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	e.post(circle.ID, "owner", "удалится", "2026-08-01", e.at(0))
+	if err := e.ch.SetDayTitle(e.ctx, chronicle.DayTitleInput{
+		CircleID: circle.ID, AccountID: "owner", EntryDate: "2026-08-01", Title: "Дача", Now: e.at(0),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.ch.StartArchiveCycle(e.ctx, circle.ID, "owner", "2026-08-10", e.at(5), 86400, e.at(1)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.ch.PurgeBeforeCutoff(e.ctx, circle.ID, "2026-08-10", e.at(6)); err != nil {
+		t.Fatal(err)
+	}
+	var titles int
+	if err := e.ch.DB().QueryRowContext(e.ctx, `SELECT COUNT(*) FROM day_titles WHERE circle_id = ?`, circle.ID).Scan(&titles); err != nil || titles != 0 {
+		t.Fatalf("название дня до отсечки осталось: %d, %v", titles, err)
+	}
+	cycle, err := e.ch.GetArchiveCycle(e.ctx, circle.ID)
+	if err != nil || cycle.Active {
+		t.Fatalf("цикл не закрыт: %+v, %v", cycle, err)
+	}
+}
+
 // Инвариант: в архив не попадает ничего после отсечки — ни записи, ни
 // комментарии, ни реакции.
 func TestArchiveSnapshotOmitsContentAfterCutoff(t *testing.T) {

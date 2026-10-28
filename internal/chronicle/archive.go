@@ -813,16 +813,9 @@ func (c *Chronicle) PurgeBeforeCutoff(ctx context.Context, circleID, cutoffDate 
 		}
 	}
 
-	// Scrub said day events before cutoff.
-	if _, err := tx.ExecContext(ctx, `
-		DELETE FROM events
-		WHERE circle_id = ?
-		  AND is_service = 0
-		  AND created_at < ?
-		  AND event_type IN ('day.titled', 'day.cover_set', 'day.title_cleared', 'day.cover_cleared')
-	`, circleID, formatTime(cutoff)); err != nil {
-		return nil, err
-	}
+	// Названия и обложки дней до отсечки — раньше их событий: строки
+	// day_titles и day_covers ссылаются на события (event_seq), и обратный
+	// порядок рвал связь — очистка откатывалась целиком (C62).
 	if _, err := tx.ExecContext(ctx, `
 		DELETE FROM day_titles WHERE circle_id = ? AND created_at < ?
 	`, circleID, formatTime(cutoff)); err != nil {
@@ -830,6 +823,16 @@ func (c *Chronicle) PurgeBeforeCutoff(ctx context.Context, circleID, cutoffDate 
 	}
 	if _, err := tx.ExecContext(ctx, `
 		DELETE FROM day_covers WHERE circle_id = ? AND created_at < ?
+	`, circleID, formatTime(cutoff)); err != nil {
+		return nil, err
+	}
+	// Scrub said day events before cutoff.
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM events
+		WHERE circle_id = ?
+		  AND is_service = 0
+		  AND created_at < ?
+		  AND event_type IN ('day.titled', 'day.cover_set', 'day.title_cleared', 'day.cover_cleared')
 	`, circleID, formatTime(cutoff)); err != nil {
 		return nil, err
 	}
