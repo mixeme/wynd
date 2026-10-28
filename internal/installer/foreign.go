@@ -186,9 +186,10 @@ func (w ForeignWynd) markPath() string { return w.DataDir + "/.workshop-move" }
 // sendTar — архив его папки данных под именем data: так её ждёт установка
 // Мастерской на новом сервере.
 func (w ForeignWynd) sendTar() string {
-	parent, base := path.Dir(w.DataDir), path.Base(w.DataDir)
-	return "tar -C " + shQuote(parent) + " --exclude=" + shQuote(base+"/backups") + " --exclude=" + shQuote(base+"/.workshop-*") +
-		" --transform " + shQuote("s,^"+base+",data,") + " -cf - " + shQuote(base)
+	// Имя чужой папки не должно становиться регулярным выражением tar:
+	// запятая ломала transform, а [ и . меняли совпадение (аудит 2026-10-29).
+	return "tar -C " + shQuote(w.DataDir) + " --exclude='./backups' --exclude='./.workshop-*'" +
+		" --transform 's,^\\.,data,' -cf - ."
 }
 
 // Domain — адрес сайта без https:// и косой черты.

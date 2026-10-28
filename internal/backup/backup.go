@@ -64,9 +64,8 @@ func backup(dataDir, destDir string, incremental, blobs bool) error {
 		return fmt.Errorf("backup: mkdir dest: %w", err)
 	}
 
-	// Сначала файлы, потом база: запись, удалённая во время бэкапа, тогда
-	// оставляет в копии лишний файл без ссылок (его уберёт рутина), а не
-	// строку базы без файла — битую картинку после восстановления (BKP-6).
+	// Первый проход сохраняет файлы до возможного удаления; после снимка
+	// базы второй проход подбирает новые загрузки (справочник сервера, «Бэкап»).
 	if blobs {
 		prev, _ := loadManifest(filepath.Join(destDir, "blobs", manifestName))
 		if err := backupBlobs(filepath.Join(dataDir, "blobs"), filepath.Join(destDir, "blobs"), incremental, prev); err != nil {
@@ -84,6 +83,15 @@ func backup(dataDir, destDir string, incremental, blobs bool) error {
 	}
 	if !blobs {
 		return nil
+	}
+	// Файл, загруженный после первого прохода, уже может быть в снимке базы.
+	// Докопировать его; готовые копии по манифесту повторно не читать (C60).
+	prev, err := loadManifest(filepath.Join(destDir, "blobs", manifestName))
+	if err != nil {
+		return fmt.Errorf("backup: first blob pass manifest: %w", err)
+	}
+	if err := backupBlobs(filepath.Join(dataDir, "blobs"), filepath.Join(destDir, "blobs"), true, prev); err != nil {
+		return err
 	}
 
 	if err := touchLastBackupAt(filepath.Join(dataDir, "wynd.db")); err != nil {

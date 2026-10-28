@@ -2,10 +2,78 @@ package installer
 
 import (
 	"context"
+	"crypto/ed25519"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
+
+	"golang.org/x/crypto/ssh"
 )
+
+// Инвариант: временный ключ разрешает только исходную команду упаковки,
+// даже если путь содержит кавычки или обратные косые черты.
+func TestTransferKeyPreservesCommand(t *testing.T) {
+	pub, err := ssh.NewPublicKey(ed25519.NewKeyFromSeed(make([]byte, ed25519.SeedSize)).Public())
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := ForeignWynd{DataDir: `/srv/data "one"\two`}.sendTar()
+	line := transferKeyLine(command, strings.TrimSpace(string(ssh.MarshalAuthorizedKey(pub))))
+	_, _, options, _, err := ssh.ParseAuthorizedKey([]byte(line))
+	if err != nil || len(options) != 2 || options[0] != "restrict" {
+		t.Fatalf("restricted key: %v, %v", options, err)
+	}
+	// OpenSSH opt_dequote снимает только \"; Go strconv.Unquote здесь неверен.
+	raw := strings.TrimPrefix(options[1], "command=")
+	got := strings.ReplaceAll(strings.TrimSuffix(strings.TrimPrefix(raw, `"`), `"`), `\"`, `"`)
+	if got != command {
+		t.Fatalf("forced command changed: %q; want %q", got, command)
+	}
+}
+
+// Инвариант: перенос чужой установки сохраняет данные независимо от знаков
+// в имени папки; копии и служебные пометки в архив не попадают.
+func TestForeignTransferArchive(t *testing.T) {
+	shell, err := exec.LookPath("sh")
+	if runtime.GOOS == "windows" {
+		git, gitErr := exec.LookPath("git")
+		if gitErr != nil {
+			t.Skip("Git Bash нужен для проверки серверной команды tar")
+		}
+		shell = filepath.Join(filepath.Dir(git), "..", "bin", "bash.exe")
+		_, err = os.Stat(shell)
+	}
+	if err != nil {
+		t.Skip("нет shell для проверки серверной команды tar")
+	}
+	for _, name := range []string{"data", "data[1], old"} {
+		t.Run(name, func(t *testing.T) {
+			dir := filepath.Join(t.TempDir(), name)
+			for _, rel := range []string{"wynd.db", "blobs/ab/photo", "backups/old", ".workshop-move"} {
+				p := filepath.Join(dir, filepath.FromSlash(rel))
+				if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(p, []byte(rel), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			w := ForeignWynd{DataDir: filepath.ToSlash(dir)}
+			out, err := exec.CommandContext(t.Context(), shell, "-c", w.sendTar()+" | tar -tf -").CombinedOutput()
+			if err != nil {
+				t.Fatalf("archive: %v\n%s", err, out)
+			}
+			listing := string(out)
+			if !strings.Contains(listing, "data/wynd.db\n") || !strings.Contains(listing, "data/blobs/ab/photo\n") || strings.Contains(listing, "backups") || strings.Contains(listing, ".workshop-") {
+				t.Fatalf("archive contents: %s", listing)
+			}
+		})
+	}
+}
 
 func TestMoveStepOrder(t *testing.T) {
 	var ids []string
@@ -165,7 +233,7 @@ func TestParseForeign(t *testing.T) {
 		t.Fatal("неполная строка — не находка")
 	}
 	tar := ForeignWynd{DataDir: "/var/lib/wynd"}.sendTar()
-	for _, want := range []string{"tar -C '/var/lib'", "--exclude='wynd/backups'", "--transform 's,^wynd,data,'", "-cf - 'wynd'"} {
+	for _, want := range []string{"tar -C '/var/lib/wynd'", "--exclude='./backups'", "--transform 's,^\\.,data,'", "-cf - ."} {
 		if !strings.Contains(tar, want) {
 			t.Fatalf("нет %q в %s", want, tar)
 		}

@@ -1,9 +1,11 @@
 package backup_test
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -15,6 +17,107 @@ import (
 
 	_ "modernc.org/sqlite"
 )
+
+// Инвариант (план 46, C60): загрузка между первым обходом файлов и снимком
+// базы восстанавливается вместе с базой; второй обход не переписывает старые файлы.
+func TestBackupCapturesUploadDuringBackup(t *testing.T) {
+	for _, incremental := range []bool{false, true} {
+		t.Run(fmt.Sprint(incremental), func(t *testing.T) {
+			dataDir := seedDataDir(t)
+			destDir := t.TempDir()
+			if incremental {
+				if err := backup.Backup(dataDir, destDir, false); err != nil {
+					t.Fatal(err)
+				}
+			}
+			writeBlob(t, dataDir, "aa/first", "first")
+			writeBlob(t, dataDir, "aa/kept", "kept")
+			db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(filepath.Join(dataDir, "wynd.db")))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer db.Close()
+			conn, err := db.Conn(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer conn.Close()
+			// DELETE + EXCLUSIVE задерживает VACUUM INTO до окончания загрузки.
+			// Обход файлов при этом свободен: манифест отмечает его завершение.
+			if _, err := conn.ExecContext(t.Context(), `PRAGMA journal_mode=DELETE; BEGIN EXCLUSIVE`); err != nil {
+				t.Fatal(err)
+			}
+			finished := make(chan error, 1)
+			go func() { finished <- backup.Backup(dataDir, destDir, incremental) }()
+			defer func() {
+				_, _ = conn.ExecContext(context.Background(), `ROLLBACK`)
+				if finished != nil {
+					<-finished
+				}
+			}()
+			deadline := time.After(3 * time.Second)
+			for {
+				var manifest struct {
+					Files map[string]any `json:"files"`
+				}
+				data, _ := os.ReadFile(filepath.Join(destDir, "blobs", "manifest.json"))
+				if json.Unmarshal(data, &manifest) == nil && manifest.Files["aa/first"] != nil {
+					break
+				}
+				select {
+				case err := <-finished:
+					finished = nil
+					t.Fatalf("backup finished before database lock was released: %v", err)
+				case <-deadline:
+					t.Fatal("first blob pass did not finish")
+				case <-time.After(time.Millisecond):
+				}
+			}
+			firstCopy := filepath.Join(destDir, "blobs", "aa", "kept")
+			oldTime := time.Unix(1000000000, 0)
+			if err := os.Chtimes(firstCopy, oldTime, oldTime); err != nil {
+				t.Fatal(err)
+			}
+			writeBlob(t, dataDir, "aa/late", "uploaded-during-backup")
+			if err := os.Remove(filepath.Join(dataDir, "blobs", "aa", "first")); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := conn.ExecContext(t.Context(), `
+				INSERT INTO accounts (id, email, created_at) VALUES ('acc-c60', 'c60@example.com', '2026-10-29T00:00:00Z');
+				INSERT INTO blobs (id, account_id, sha256, size_bytes, mime_type, storage_path, status, created_at)
+				VALUES ('late', 'acc-c60', 'test', 22, 'image/jpeg', 'aa/late', 'complete', '2026-10-29T00:00:00Z');
+				COMMIT`); err != nil {
+				t.Fatal(err)
+			}
+			err = <-finished
+			finished = nil
+			if err != nil {
+				t.Fatal(err)
+			}
+			restored, err := store.Open(filepath.Join(destDir, "wynd.db"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer restored.Close()
+			var path string
+			if err := restored.(*store.SQLite).DB().QueryRow(`SELECT storage_path FROM blobs WHERE id = 'late'`).Scan(&path); err != nil {
+				t.Fatal(err)
+			}
+			payload, err := os.ReadFile(filepath.Join(destDir, "blobs", filepath.FromSlash(path)))
+			if err != nil || string(payload) != "uploaded-during-backup" {
+				t.Fatalf("restored upload: %q, %v", payload, err)
+			}
+			deleted, err := os.ReadFile(filepath.Join(destDir, "blobs", "aa", "first"))
+			if err != nil || string(deleted) != "first" {
+				t.Fatalf("copy lost a deleted source file: %q, %v", deleted, err)
+			}
+			info, err := os.Stat(firstCopy)
+			if err != nil || !info.ModTime().Equal(oldTime) {
+				t.Fatalf("second pass rewrote the first blob: %v, %v", info, err)
+			}
+		})
+	}
+}
 
 func seedDataDir(t *testing.T) string {
 	t.Helper()

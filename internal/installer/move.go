@@ -78,6 +78,13 @@ type MoveMark struct {
 // markCmd записывает пометку переезда на старом сервере.
 func markCmd(m MoveMark) string { return markCmdAt(moveMark, m) }
 
+// transferKeyLine экранирует кавычки для authorized_keys. OpenSSH снимает
+// только \"; прочие обратные косые черты сохраняются (misc.c, opt_dequote).
+func transferKeyLine(command, pub string) string {
+	command = strings.ReplaceAll(command, `"`, `\"`)
+	return `restrict,command="` + command + `" ` + pub
+}
+
 func markCmdAt(path string, m MoveMark) string {
 	b, _ := json.Marshal(m)
 	return "printf '%s\\n' " + shQuote(string(b)) + " > " + shQuote(path)
@@ -174,8 +181,8 @@ func moveSteps(old *Session, spec MoveSpec) []step {
 					return &StepError{Message: "Старый сервер не назвал свой ключ", Advice: "Нажмите «Повторить»."}
 				}
 				// Старый отдаёт по этому ключу только архив папки Wynd.
-				line := `restrict,command="` + sendTar + `" ` + pub
-				if _, err := onOld(ctx, r, old, "umask 077; mkdir -p /root/.ssh && grep -qF "+shQuote(pub)+" /root/.ssh/authorized_keys 2>/dev/null || echo "+shQuote(line)+" >> /root/.ssh/authorized_keys", shortTimeout); err != nil {
+				line := transferKeyLine(sendTar, pub)
+				if _, err := onOld(ctx, r, old, "umask 077; mkdir -p /root/.ssh && grep -qF "+shQuote(pub)+" /root/.ssh/authorized_keys 2>/dev/null || printf '%s\\n' "+shQuote(line)+" >> /root/.ssh/authorized_keys", shortTimeout); err != nil {
 					return err
 				}
 				known := spec.OldIP + " " + fields[0] + " " + fields[1]

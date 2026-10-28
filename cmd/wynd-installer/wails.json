@@ -11,7 +11,7 @@
   },
   "info": {
     "productName": "Wynd Мастерская",
-    "productVersion": "0.2.0",
+    "productVersion": "0.3.0",
     "companyName": "Wynd",
     "copyright": "AGPL-3.0",
     "comments": "Ставит Wynd на ваш сервер по SSH"
