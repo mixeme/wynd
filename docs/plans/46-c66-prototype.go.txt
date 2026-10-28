@@ -1,0 +1,161 @@
+// Сохранено из черновой папки 2026-10-28 (план 46, C66). Не входит в сборку: расширение .txt.
+// Чтобы запустить: новая папка вне репозитория, это имя файла -> main.go,
+// `go mod init proto`, `go get github.com/wailsapp/wails/v2@v2.16.0`, пустая папка frontend/ с любым файлом
+// (в Wails v2 `//go:embed` не нужен: AssetServer.Handler отдаёт всё сам), `go build`.
+// Переменные: WYND_URL (первый сервер), WYND_SECOND (второй), PROBE=0 — без пробы, просто окно.
+// Пробный образец программы Wynd для компьютера (C66): окно Wails v2,
+// интерфейс берётся с сервера через обратный прокси в Go. Проба после
+// загрузки: может ли страница обратиться ко второму серверу напрямую.
+package main
+
+import (
+	"fmt"
+	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+)
+
+func env(k, d string) string {
+	if v := os.Getenv(k); v != "" {
+		return v
+	}
+	return d
+}
+
+func main() {
+	first, _ := url.Parse(env("WYND_URL", "https://wynd.mixfed.ru"))
+	second := env("WYND_SECOND", "https://wynd2.mixfed.ru")
+	probe := env("PROBE", "1") == "1"
+
+	rp := httputil.NewSingleHostReverseProxy(first)
+	base := rp.Director
+	rp.Director = func(r *http.Request) {
+		base(r)
+		r.Host = first.Host
+		r.Header.Del("Origin")
+		r.Header.Del("Accept-Encoding")
+	}
+
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("REQ", r.Method, r.URL.Path)
+		if strings.HasPrefix(r.URL.Path, "/__probe") {
+			fmt.Println("PROBE", r.URL.Query().Get("r"))
+			w.WriteHeader(204)
+			if r.URL.Query().Get("done") == "1" {
+				go func() { time.Sleep(300 * time.Millisecond); os.Exit(0) }()
+			}
+			return
+		}
+		if rest, ok := strings.CutPrefix(r.URL.Path, "/__srv/"); ok {
+			// Второй сервер — через Go: окно видит один адрес, CORS не нужен.
+			host, path, _ := strings.Cut(rest, "/")
+			t := &url.URL{Scheme: "https", Host: host}
+			p := httputil.NewSingleHostReverseProxy(t)
+			d := p.Director
+			p.Director = func(q *http.Request) {
+				d(q)
+				q.URL.Path = "/" + path
+				q.Host = host
+				q.Header.Del("Origin")
+			}
+			p.ServeHTTP(w, r)
+			return
+		}
+		if probe && (r.URL.Path == "/" || r.URL.Path == "/index.html") {
+			// Отдаём страницу сервера, дописав в неё пробу.
+			rec := &capture{h: http.Header{}}
+			rp.ServeHTTP(rec, r)
+			body := strings.Replace(string(rec.b), "</body>", probeJS(second)+"</body>", 1)
+			for k, v := range rec.h {
+				if k != "Content-Length" {
+					w.Header()[k] = v
+				}
+			}
+			w.WriteHeader(rec.code)
+			w.Write([]byte(body))
+			return
+		}
+		rp.ServeHTTP(w, r)
+	})
+
+	if probe {
+		go func() { time.Sleep(60 * time.Second); fmt.Println("PROBE timeout"); os.Exit(2) }()
+	}
+
+	err := wails.Run(&options.App{
+		Title:       "Wynd (пробный образец)",
+		Width:       1100,
+		Height:      800,
+		AssetServer: &assetserver.Options{Handler: h},
+	})
+	if err != nil {
+		fmt.Println("ERR", err)
+	}
+}
+
+type capture struct {
+	h    http.Header
+	b    []byte
+	code int
+}
+
+func (c *capture) Header() http.Header { return c.h }
+func (c *capture) Write(p []byte) (int, error) {
+	c.b = append(c.b, p...)
+	return len(p), nil
+}
+func (c *capture) WriteHeader(code int) { c.code = code }
+
+func probeJS(second string) string {
+	return `<script>
+(async () => {
+  const rep = (s, done) => fetch('/__probe?r=' + encodeURIComponent(s) + (done ? '&done=1' : ''));
+  await rep('origin=' + location.origin + ' secure=' + window.isSecureContext + ' sw=' + ('serviceWorker' in navigator));
+  try {
+    const r = await fetch('/api/v1/instance');
+    const j = await r.json();
+    await rep('first via proxy: ' + r.status + ' version=' + j.version);
+  } catch (e) { await rep('first via proxy FAIL: ' + e); }
+  try {
+    const r = await fetch('` + second + `/api/v1/instance', { mode: 'no-cors' });
+    await rep('second no-cors (network check): type=' + r.type);
+  } catch (e) { await rep('second no-cors FAIL: ' + e); }
+  try {
+    const r = await fetch('https://httpbin.org/get');
+    await rep('public CORS-open GET: ' + r.status);
+  } catch (e) { await rep('public CORS-open GET FAIL: ' + e); }
+  try {
+    const r = await fetch('` + second + `/api/v1/instance');
+    const j = await r.json();
+    await rep('second plain GET: ' + r.status + ' version=' + j.version);
+  } catch (e) { await rep('second plain GET FAIL: ' + e); }
+  try {
+    const r = await fetch('` + second + `/api/v1/instance', { headers: { Authorization: 'Bearer probe' } });
+    await rep('second GET with token: ' + r.status);
+  } catch (e) { await rep('second GET with token FAIL: ' + e); }
+  const host = new URL('` + second + `').host;
+  try {
+    const r = await fetch('/__srv/' + host + '/api/v1/instance', { headers: { Authorization: 'Bearer probe' } });
+    const j = await r.json();
+    await rep('second via Go proxy, with token: ' + r.status + ' version=' + j.version);
+  } catch (e) { await rep('second via Go proxy FAIL: ' + e); }
+  try {
+    const r = await fetch('/__srv/' + host + '/api/v1/circles', { headers: { Authorization: 'Bearer probe' } });
+    await rep('second via Go proxy, bad token on private API: ' + r.status);
+  } catch (e) { await rep('second via Go proxy private FAIL: ' + e); }
+  try {
+    const es = new EventSource('/__srv/' + host + '/api/v1/instance');
+    await new Promise(res => { es.onopen = () => res(); es.onerror = () => res(); setTimeout(res, 3000); });
+    es.close();
+  } catch (e) {}
+  await rep('end', true);
+})();
+</script>`
+}
