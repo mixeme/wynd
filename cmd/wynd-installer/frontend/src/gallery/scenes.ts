@@ -69,6 +69,16 @@ const interrupted = page({
 	update: { from: '0.43.2', to: '0.43.3', ref: 'v0.43.3', stopped: true, start_after: true, started: '2026-10-24T11:05:00Z', copied: true }
 });
 const noRoom = page({ free_bytes: 20 * 1024 ** 2 });
+// Wynd поставлен не Мастерской: служба и остановленный контейнер (кадр 7з).
+const foreignService = page({ version: '0.43.2' }, {
+	latest: undefined,
+	foreign: { kind: 'service', name: 'wynd', data_dir: '/srv/wynd/data', url: 'https://family.example.ru', running: true, version: '0.43.2' }
+});
+const foreignStopped = page({ running: false, version: '0.43.2' }, {
+	latest: undefined,
+	foreign: { kind: 'container', name: '/home/anna/wynd', data_dir: '/home/anna/wynd/data', running: false, version: '0.43.2' }
+});
+const foreignFound = { ...report, report: { ...report.report, findings: [{ id: 'wyndelse', level: 'note' as const, text: 'Wynd на этом сервере поставлен не Мастерской' }] } };
 const moving = page({ running: false, move: { to: '203.0.113.7', started: '2026-10-26T12:28:00Z', transferred: true } });
 
 const doneSteps = steps(['Docker', 'done'], ['Wynd', 'done'], ['Сертификат', 'done']);
@@ -138,6 +148,13 @@ export const SCENES: Scene[] = [
 	{ name: '7a-selfbar-hidden', fake: { ...toPult(pult), CheckSelfUpdate: () => ({ available: true, version: '0.2.0', notes: ['Обновляется сама'] }) }, acts: [...go, { click: '✕' }] },
 	{ name: '10b-self', fake: { CheckSelfUpdate: () => ({ available: true, version: '0.2.0', notes: ['Обновляется сама', 'Переезд узнаёт обрыв'], attestation: 'https://github.com/' }) }, acts: [{ click: 'Обновить' }] },
 	{ name: '10c-self-bad', fake: { CheckSelfUpdate: () => ({ available: true, version: '0.2.0' }), ApplySelfUpdate: () => 'signature' }, acts: [{ click: 'Обновить' }, { click: 'Обновить и перезапустить' }] },
+	{ name: '7z-foreign-service', fake: { ...toPult(foreignService), Inspect: () => foreignFound }, acts: go },
+	{ name: '7z-foreign-stopped', fake: { ...toPult(foreignStopped), Inspect: () => foreignFound }, acts: go },
+	{
+		name: '7z-foreign-mplan',
+		fake: { ...toPult(foreignService), Inspect: () => foreignFound, MovePlan: () => ({ ...movePlan, data_only: true, foreign: true }) },
+		acts: [...go, { click: 'начать' }, { click: 'Подключиться' }]
+	},
 	{ name: '7b-uplan', fake: toPult(pult), acts: [...go, { click: 'Обновить' }] },
 	{ name: '7b-uplan-stopped', fake: toPult(page({ running: false, stopped_at: '2026-10-24T09:00:00Z' })), acts: [...go, { click: 'Обновить' }] },
 	{ name: '7b-uplan-build', fake: toPult(pult), acts: [...go, { click: 'Обновить' }, { click: 'Собрать самому' }] },

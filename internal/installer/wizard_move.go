@@ -28,6 +28,9 @@ type MovePlan struct {
 	// с того шага, где он остановился; RemoveOld — выбор, сделанный тогда.
 	Resume    bool `json:"resume,omitempty"`
 	RemoveOld bool `json:"remove_old,omitempty"`
+	// Foreign — старый Wynd поставлен не Мастерской (7з): убрать его после
+	// переезда нельзя, выбора на 9б нет.
+	Foreign bool `json:"foreign,omitempty"`
 
 	resume *MoveMark
 }
@@ -104,6 +107,11 @@ func (w *Wizard) MovePlan(ctx context.Context) MovePlan {
 		plan.Message = "Связь с новым сервером оборвалась"
 		return plan
 	}
+	if page.Foreign != nil && page.Foreign.stop == "" {
+		plan.Message = "Этот Wynd Мастерская остановить не может"
+		plan.Advice = "Он запущен не службой и не контейнером. Остановите его на старом сервере сами и подключитесь снова."
+		return plan
+	}
 	if st.Move != nil {
 		// Новый сервер уже приняли на 9б, и Wynd на нём — наш, перенесённый.
 		plan.Resume, plan.RemoveOld, plan.resume = true, st.Move.RemoveOld, st.Move
@@ -133,10 +141,14 @@ func (w *Wizard) MovePlan(ctx context.Context) MovePlan {
 		plan.Message = "Связь со старым сервером оборвалась"
 		return plan
 	}
-	plan.DataOnly = plan.OldProxy != "" || strings.TrimSpace(own.Output) != "own"
+	plan.DataOnly = plan.OldProxy != "" || strings.TrimSpace(own.Output) != "own" || page.Foreign != nil
 	what := installDir
 	if plan.DataOnly {
 		what = dataDir
+	}
+	if page.Foreign != nil {
+		// Кадр 7з: везём одни данные; убрать старый Мастерская не берётся.
+		what, plan.Foreign = shQuote(page.Foreign.DataDir), true
 	}
 	if res, err := old.Exec(ctx, "du -sb --exclude=backups --exclude=src --exclude='.workshop-*' "+what+" | cut -f1", nil, shortTimeout); err == nil {
 		plan.Size = parseInt64(strings.TrimSpace(res.Output))
@@ -170,10 +182,17 @@ func (w *Wizard) StartMove(ctx context.Context, removeOld bool) Progress {
 		return w.progress
 	}
 	plan := *w.movePlan
+	var foreign *ForeignWynd
+	if w.state != nil {
+		foreign = w.state.Foreign
+	}
+	if foreign != nil {
+		removeOld = false
+	}
 	check := make(chan struct{}, 1)
 	w.moveCheck = check
 	spec := MoveSpec{Domain: plan.Domain, Version: plan.Version, Image: w.Image, OldIP: plan.OldIP, NewIP: plan.NewIP,
-		RemoveOld: removeOld, DataOnly: plan.DataOnly, CheckNow: check, Probe: w.Probe, Resume: plan.resume}
+		RemoveOld: removeOld, DataOnly: plan.DataOnly, CheckNow: check, Probe: w.Probe, Resume: plan.resume, Foreign: foreign}
 	target := w.target
 	spec.Resolve = func(ctx context.Context, domain string) []string {
 		// Спрашиваем новый сервер: он видит адрес, как люди в интернете, и VPN
@@ -294,14 +313,17 @@ func (w *Wizard) CancelMove(ctx context.Context) ServiceResult {
 	}
 	// Wynd на новом уже запущен — туда могли писать: отменить значило бы
 	// потерять написанное.
+	var foreign *ForeignWynd
 	if old != nil {
-		if st, err := ReadServerState(ctx, old); err == nil && st.Move != nil && st.Move.Launched {
+		page := w.ServerPage(ctx)
+		foreign = page.Foreign
+		if page.State.Move != nil && page.State.Move.Launched {
 			res := ServiceResult{Message: "Отменить переезд уже нельзя", Advice: "Wynd на новом сервере запущен, там могли писать. Продолжите переезд."}
-			res.Page = w.ServerPage(ctx)
+			res.Page = page
 			return res
 		}
 	}
-	log, err := CancelMove(ctx, old, target)
+	log, err := CancelMove(ctx, old, target, foreign)
 	res := ServiceResult{OK: err == nil, Log: log}
 	if err != nil {
 		res.Message = "Отменить не получилось"

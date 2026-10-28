@@ -53,6 +53,9 @@ type MoveSpec struct {
 	// CheckNow — «Проверить сейчас» на 9в.
 	CheckNow <-chan struct{}
 	Probe    func(ctx context.Context, url string) (string, error)
+	// Foreign — старый Wynd стоит не на месте Мастерской (кадр 7з): как его
+	// остановить и запустить, где его данные и пометка переезда.
+	Foreign *ForeignWynd
 	// Resume — переезд продолжается (кадр 9в2): пометка со старого сервера.
 	// Перенесённое второй раз не переносится — на новом могли уже писать.
 	Resume *MoveMark
@@ -73,9 +76,20 @@ type MoveMark struct {
 }
 
 // markCmd записывает пометку переезда на старом сервере.
-func markCmd(m MoveMark) string {
+func markCmd(m MoveMark) string { return markCmdAt(moveMark, m) }
+
+func markCmdAt(path string, m MoveMark) string {
 	b, _ := json.Marshal(m)
-	return "printf '%s\\n' " + shQuote(string(b)) + " > " + moveMark
+	return "printf '%s\\n' " + shQuote(string(b)) + " > " + shQuote(path)
+}
+
+// oldControl — как на старом сервере остановить и запустить Wynd и где
+// пометка переезда: у установки Мастерской — docker compose в /opt/wynd.
+func oldControl(f *ForeignWynd) (stop, start, mark string) {
+	if f != nil {
+		return f.stop, f.start, f.markPath()
+	}
+	return composeCmd + "stop wynd 2>&1", composeCmd + "up -d 2>&1", moveMark
 }
 
 // dnsWait — как часто сами проверяем адрес на 9в.
@@ -109,6 +123,10 @@ func moveSteps(old *Session, spec MoveSpec) []step {
 		install = "Wynd " + spec.Version + " и Caddy на новом сервере"
 		sendTar, pullDir, moved = dataTar, installDir, "Данные Wynd перенесены"
 	}
+	if spec.Foreign != nil {
+		sendTar = spec.Foreign.sendTar()
+	}
+	stopOld, _, markAt := oldControl(spec.Foreign)
 	files := filesStep(Spec{Domain: spec.Domain, Version: spec.Version, Image: spec.Image})
 	return []step{
 		{
@@ -131,7 +149,7 @@ func moveSteps(old *Session, spec MoveSpec) []step {
 		{
 			id: "stop", title: "Сайт на старом остановлен",
 			do: func(ctx context.Context, r *Run) error {
-				_, err := onOld(ctx, r, old, markCmd(*mark)+" && "+composeCmd+"stop wynd 2>&1", shortTimeout)
+				_, err := onOld(ctx, r, old, markCmdAt(markAt, *mark)+" && "+stopOld, shortTimeout)
 				return err
 			},
 		},
@@ -174,7 +192,7 @@ func moveSteps(old *Session, spec MoveSpec) []step {
 					return pullErr
 				}
 				mark.Transferred = true
-				_, err = onOld(ctx, r, old, markCmd(*mark), shortTimeout)
+				_, err = onOld(ctx, r, old, markCmdAt(markAt, *mark), shortTimeout)
 				return err
 			},
 			explain: func(_ error, output string) *StepError {
@@ -198,7 +216,7 @@ func moveSteps(old *Session, spec MoveSpec) []step {
 					return err
 				}
 				mark.Launched = true
-				if _, err := onOld(ctx, r, old, markCmd(*mark), shortTimeout); err != nil {
+				if _, err := onOld(ctx, r, old, markCmdAt(markAt, *mark), shortTimeout); err != nil {
 					return err
 				}
 				if spec.Probe == nil {
@@ -226,6 +244,11 @@ func moveSteps(old *Session, spec MoveSpec) []step {
 		{
 			id: "old", title: "Старый сервер",
 			do: func(ctx context.Context, r *Run) error {
+				if spec.Foreign != nil {
+					// Чужую установку не убираем и не помечаем (кадр 7з): только снимаем пометку.
+					_, err := onOld(ctx, r, old, "rm -f "+shQuote(markAt), shortTimeout)
+					return err
+				}
 				if spec.RemoveOld {
 					// Сертификат не отзываем: он переехал и работает на новом —
 					// или он чужой (9б2), и его судьба не наша. Файл сайта
@@ -290,9 +313,14 @@ func MoveTitles(spec MoveSpec) []StepState { return titles(moveSteps(nil, spec))
 
 // CancelMove — «Отменить переезд» (9в): адрес ещё не менялся — сайт снова
 // запускается на старом, с нового Wynd убирается.
-func CancelMove(ctx context.Context, old, sess *Session) ([]LogEntry, error) {
+func CancelMove(ctx context.Context, old, sess *Session, foreign *ForeignWynd) ([]LogEntry, error) {
 	r := &Run{sess: sess, steps: []StepState{{ID: "cancel"}}, report: func() {}}
-	if _, err := onOld(ctx, r, old, composeCmd+"up -d 2>&1 && rm -f "+moveMark+" "+stoppedMark, packageTimeout); err != nil {
+	_, startOld, markAt := oldControl(foreign)
+	cmd := startOld + " && rm -f " + shQuote(markAt) + " " + stoppedMark
+	if foreign != nil {
+		cmd = startOld + " && rm -f " + shQuote(markAt)
+	}
+	if _, err := onOld(ctx, r, old, cmd, packageTimeout); err != nil {
 		return r.log, err
 	}
 	_, _ = onOld(ctx, r, old, "sed -i '/ "+moveKeyLabel+"$/d' /root/.ssh/authorized_keys", shortTimeout)

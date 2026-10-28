@@ -93,7 +93,7 @@ func TestMoveResumeSkipsTransfer(t *testing.T) {
 		t.Fatalf("подпись %q, команд %d", r.steps[0].Note, len(r.log))
 	}
 	cmd := markCmd(MoveMark{To: "203.0.113.7", Started: "2026-10-26T12:28:00Z", RemoveOld: true})
-	if !strings.Contains(cmd, `"remove_old":true`) || !strings.HasSuffix(cmd, "> "+moveMark) {
+	if !strings.Contains(cmd, `"remove_old":true`) || !strings.HasSuffix(cmd, "> "+shQuote(moveMark)) {
 		t.Fatalf("пометка: %s", cmd)
 	}
 }
@@ -139,5 +139,35 @@ func TestInspectionForeignSite(t *testing.T) {
 func TestBuiltOnServer(t *testing.T) {
 	if !builtOnServer("wynd:0.43.2") || builtOnServer("ghcr.io/mixeme/wynd:0.43.2") || builtOnServer("") {
 		t.Fatal("собранный на сервере образ — wynd:<версия>, из хранилища — нет")
+	}
+}
+
+// 7з: Wynd не на месте Мастерской — служба, контейнер из другой папки;
+// папку данных ищем так же, как её ищет сам Wynd.
+func TestParseForeign(t *testing.T) {
+	w, ok := parseForeign("@proc|wynd.service|/srv/wynd|data|https://family.example.ru||/usr/local/bin/wynd\n")
+	if !ok || w.Kind != "service" || w.Name != "wynd" || w.DataDir != "/srv/wynd/data" || !w.Running || w.stop != "systemctl stop 'wynd.service'" {
+		t.Fatalf("служба: %+v", w)
+	}
+	w, _ = parseForeign("@proc||/home/u|||:7676|/home/u/wynd\n")
+	if w.Kind != "process" || w.DataDir != "/home/u/dev/data" || w.stop != "" {
+		t.Fatalf("процесс без службы: %+v", w)
+	}
+	w, _ = parseForeign("@ctr|abc|exited|/srv/w|wynd|w-wynd-1|/srv/w/data|https://family.example.ru|wynd:0.43.2\n")
+	if w.Kind != "container" || w.Running || w.Version != "0.43.2" || w.DataDir != "/srv/w/data" || !strings.Contains(w.start, "docker compose up -d 'wynd'") {
+		t.Fatalf("контейнер: %+v", w)
+	}
+	w, _ = parseForeign("@unit|wynd.service|inactive|/opt/x|/var/lib/wynd|https://family.example.ru\n")
+	if w.Kind != "service" || w.Running || w.DataDir != "/var/lib/wynd" || w.Domain() != "family.example.ru" {
+		t.Fatalf("служба остановлена: %+v", w)
+	}
+	if _, ok := parseForeign("@ctr|x|running|/opt/wynd\n"); ok {
+		t.Fatal("неполная строка — не находка")
+	}
+	tar := ForeignWynd{DataDir: "/var/lib/wynd"}.sendTar()
+	for _, want := range []string{"tar -C '/var/lib'", "--exclude='wynd/backups'", "--transform 's,^wynd,data,'", "-cf - 'wynd'"} {
+		if !strings.Contains(tar, want) {
+			t.Fatalf("нет %q в %s", want, tar)
+		}
 	}
 }

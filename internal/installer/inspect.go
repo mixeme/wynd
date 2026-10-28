@@ -116,6 +116,7 @@ echo '## nginx'; if command -v nginx >/dev/null 2>&1; then ` + nginxLayout + `; 
 echo '## apache'; if command -v apache2ctl >/dev/null 2>&1; then ` + apacheLayout + `; if asroot apache2ctl configtest >/dev/null 2>&1; then echo test=ok; else echo test=fail; fi; fi
 echo '## caddy'; if command -v caddy >/dev/null 2>&1; then grep -Es '^import[[:space:]]' ` + caddyConfig + ` | head -n 20; if asroot caddy validate --config ` + caddyConfig + ` --adapter caddyfile >/dev/null 2>&1; then echo test=ok; else echo test=fail; fi; fi
 echo '## wyndup'; ` + wyndRunning + `
+echo '## wyndelse'; { pgrep -x wynd; docker ps -a --format '{{.Image}}' | grep wynd; grep -lsE '^ExecStart=.*wynd' /etc/systemd/system/*.service; } 2>/dev/null
 echo '## foreignsite'; for f in $(grep -RlsE '(127\.0\.0\.1|localhost):7676' /etc/apache2/sites-enabled /etc/nginx/sites-enabled /etc/nginx/conf.d ` + path.Dir(caddyConfig) + ` 2>/dev/null); do grep -qsF ` + shQuote(siteMark) + ` "$f" || echo "$f"; done
 echo '## ownproxy'; docker ps --filter label=com.docker.compose.project.working_dir=/opt/wynd --filter publish=443 --format '{{.Names}} {{.Image}}' 2>/dev/null
 `
@@ -196,6 +197,9 @@ func ParseInspection(out, user string, now time.Time) Report {
 		add(f)
 	}
 	switch {
+	case len(sec["wynd"]) == 0 && len(sec["wyndelse"]) > 0:
+		// Кадр 7з: Wynd не в /opt/wynd или не в Docker — окно спросит страницу сервера.
+		add(Finding{ID: "wyndelse", Level: LevelNote, Text: "Wynd на этом сервере поставлен не Мастерской"})
 	case len(sec["wynd"]) == 0:
 	case len(sec["wyndup"]) == 0 && strings.Join(sec["wynd"], "\n") == installDir+"/compose.yaml":
 		// Убран с оставленными данными: папка /opt/wynd есть, контейнера нет.

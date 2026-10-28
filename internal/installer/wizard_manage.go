@@ -25,6 +25,9 @@ type ServerPage struct {
 	// LiveCopy — стоящий Wynd умеет копию без остановки (галочка 7б).
 	LiveCopy bool `json:"live_copy"`
 	CanBuild bool `json:"can_build"`
+	// Foreign — Wynd поставлен не Мастерской и не так, как ставит она
+	// (кадр 7з): только переезд.
+	Foreign *ForeignWynd `json:"foreign,omitempty"`
 	// Built — стоящий Wynd собран на сервере из открытого кода: план
 	// обновления сразу предлагает собрать и новый (кадр 7б4), а не молча
 	// переходит на хранилище.
@@ -74,6 +77,18 @@ func (w *Wizard) ServerPage(ctx context.Context) ServerPage {
 		return ServerPage{Message: "Связь с сервером оборвалась", Advice: "Подключитесь ещё раз."}
 	}
 	page := ServerPage{OK: true, State: st, Host: sess.RemoteIP(), CanBuild: w.Source != nil, LiveCopy: CanCopyLive(st.Version), Built: builtOnServer(st.Image)}
+	if !st.Installed {
+		if f, ok := DetectForeign(ctx, sess); ok {
+			page.Foreign = &f
+			page.State = ServerState{Installed: true, Container: true, Domain: f.Domain(), Version: f.Version,
+				Running: f.Running, FreeBytes: f.free, Move: f.move}
+			page.CanBuild, page.LiveCopy = false, false
+			w.mu.Lock()
+			w.state = &page
+			w.mu.Unlock()
+			return page
+		}
+	}
 	if reg, ok := w.Image.(RegistryImage); ok && rep != nil {
 		if latest, found := reg.Latest(ctx, sess, rep.Arch); found {
 			cur, okCur := releaseNumber(st.Version)

@@ -159,6 +159,17 @@ export interface ServerPage {
 	can_build: boolean;
 	/** Стоящий Wynd собран на сервере — план обновления сразу со сборкой (7б4). */
 	built: boolean;
+	/** Wynd поставлен не Мастерской и не так, как ставит она — только переезд (7з). */
+	foreign?: ForeignWynd;
+}
+
+export interface ForeignWynd {
+	kind: 'service' | 'container' | 'process';
+	name: string;
+	data_dir: string;
+	url?: string;
+	running: boolean;
+	version?: string;
 }
 
 export interface ServiceResult {
@@ -248,6 +259,8 @@ export interface MovePlan {
 	/** Переезд на этот сервер уже начат (9в2): продолжаем с того шага, где остановился. */
 	resume?: boolean;
 	remove_old?: boolean;
+	/** Старый Wynd поставлен не Мастерской (7з): убрать его нельзя, выбора на 9б нет. */
+	foreign?: boolean;
 }
 
 /** Новая Мастерская (кадры 10а–10в). */

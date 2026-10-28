@@ -237,7 +237,7 @@
 		try {
 			inspection = await backend().Inspect();
 			// Wynd здесь уже стоит — сразу страница сервера (владелец, 2026-10-24: 7а).
-			if (inspection.ok && inspection.report.findings?.some((f) => f.id === 'wynd')) {
+			if (inspection.ok && inspection.report.findings?.some((f) => f.id === 'wynd' || f.id === 'wyndelse')) {
 				const p = await backend().ServerPage();
 				if (p.ok && p.state.installed && p.state.container) {
 					page = p;
@@ -919,13 +919,35 @@
 			{#if keyNote}<Notice tone="note">{keyNote}</Notice>{/if}
 			<h2>{st.domain}</h2>
 			<p class="ins-sub">
-				Сервер {page.host} · Wynd {st.version} · {st.running
+				Сервер {page.host} · Wynd{st.version ? ` ${st.version}` : ''} · {st.running
 					? 'работает'
 					: st.stopped_at
 						? `остановлен вами ${day(st.stopped_at)}`
 						: 'не работает'} · свободно {gb(st.free_bytes)}
 			</p>
-			{#if st.move}
+			{#if page.foreign && !st.move}
+				<!-- Кадр 7з: только переезд. -->
+				{@const f = page.foreign}
+				<Notice title="Этот Wynd ставила не Мастерская">
+					<div class="ins-dim">
+						Он {f.running ? 'работает' : 'запускается'} как {f.kind === 'service'
+							? `служба ${f.name}`
+							: f.kind === 'container'
+								? `контейнер из ${f.name}`
+								: `программа ${f.name}`}, данные — в {f.data_dir}. Обновлять такой Wynd, делать его бэкап и убирать
+						Мастерская не умеет. Перевезти на другой сервер — умеет: там она поставит Wynd сама и перенесёт данные
+						и адрес сайта.
+					</div>
+				</Notice>
+				<MarkRows class="mt-10">
+					<MarkRow mark="→">
+						Переехать на другой сервер
+						{#snippet action()}
+							<TextButton class="link under" onclick={toMove}>начать</TextButton>
+						{/snippet}
+					</MarkRow>
+				</MarkRows>
+			{:else if st.move}
 				<!-- Кадр 9в2. -->
 				<Notice title="Переезд на сервер {st.move.to} не закончен">
 					<div class="ins-dim">
@@ -1032,7 +1054,7 @@
 						<TextButton class="link under" onclick={() => (selfOpen = true)}>обновить</TextButton></span
 					>
 				{/if}
-				{#if !askRollback && !st.move}
+				{#if !askRollback && !st.move && !page.foreign}
 					<TextButton class="link under {selfUp && selfHidden ? '' : 'ins-push'}" onclick={() => (askRollback = true)}>
 						Убрать Wynd
 					</TextButton>
@@ -1370,13 +1392,15 @@
 			{#if dataOnly && oldProxy}
 				<p class="ins-sub mt">Не тронем на старом: {oldProxy} и его сертификат.</p>
 			{/if}
-			<Label>Старый сервер</Label>
-			<Radio name="mold" value={false} bind:group={mRemoveOld}>
-				Оставить Wynd остановленным <span class="ins-dim">— убрать потом, когда убедитесь, что всё на месте</span>
-			</Radio>
-			<Radio name="mold" value={true} bind:group={mRemoveOld}>
-				Убрать Wynd после переезда <span class="ins-dim">— со старого сервера уйдут его данные{dataOnly ? '' : '; сертификат переедет на новый'}</span>
-			</Radio>
+			{#if !mplan.foreign}
+				<Label>Старый сервер</Label>
+				<Radio name="mold" value={false} bind:group={mRemoveOld}>
+					Оставить Wynd остановленным <span class="ins-dim">— убрать потом, когда убедитесь, что всё на месте</span>
+				</Radio>
+				<Radio name="mold" value={true} bind:group={mRemoveOld}>
+					Убрать Wynd после переезда <span class="ins-dim">— со старого сервера уйдут его данные{dataOnly ? '' : '; сертификат переедет на новый'}</span>
+				</Radio>
+			{/if}
 			<FootBar>
 				<Button variant="colored" onclick={() => void startMove()}>Переехать</Button>
 				<Button variant="ghost" onclick={() => (screen = 'server')}>Назад</Button>
