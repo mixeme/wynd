@@ -83,7 +83,6 @@ export function pluralDays(n: number): string {
 	return plural(n, WORD.day);
 }
 
-export const PAY_GATEWAY_LOAD_ERROR = 'Не удалось проверить доступ. Обновите страницу.';
 export const PAY_GATEWAY_I_PAID = 'Я оплатил';
 export const PAY_GATEWAY_WAIT = 'Ждём ответа';
 

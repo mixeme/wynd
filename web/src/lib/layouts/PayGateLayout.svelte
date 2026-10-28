@@ -19,7 +19,6 @@
 		isPayGatewayBlocked,
 		isPayGatewayPending,
 		PAY_GATEWAY_I_PAID,
-		PAY_GATEWAY_LOAD_ERROR,
 		PAY_GATEWAY_WAIT,
 		payGatewayExpiredHint,
 		payGatewayPendingHint,
@@ -35,7 +34,6 @@
 	let session = $state<SessionRecord | undefined>();
 	let status = $state<PayStatus | undefined>();
 	let loading = $state(true);
-	let gatewayError = $state('');
 
 	const blocked = $derived(isPayGatewayBlocked(status));
 	const pending = $derived(isPayGatewayPending(status, blocked));
@@ -52,7 +50,11 @@
 				try {
 					status = await fetchPayStatus(session.origin);
 				} catch {
-					gatewayError = PAY_GATEWAY_LOAD_ERROR;
+					// Сервер не ответил — не тупик (C63): пускаем к улочке, она
+					// сама скажет, что сервер не отвечает, и покажет сохранённое
+					// (7.38, 7.40). Закрытый подпиской круг сервер всё равно не
+					// отдаст, а кончившийся вход уже убрал initSession.
+					status = undefined;
 				}
 			})
 			.finally(() => {
@@ -64,10 +66,6 @@
 {#if loading}
 	<ShellLayout app>
 		<Loading />
-	</ShellLayout>
-{:else if gatewayError}
-	<ShellLayout app>
-		<Hint class="mt-24">{gatewayError}</Hint>
 	</ShellLayout>
 {:else if blocked && status}
 	<ShellLayout app>

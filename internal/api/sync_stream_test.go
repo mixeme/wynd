@@ -82,7 +82,9 @@ func TestSSEFrameFormat(t *testing.T) {
 		t.Fatalf("create circle: %d %s", rec0.Code, rec0.Body.String())
 	}
 
-	ctx, cancel := context.WithTimeout(t.Context(), 300*time.Millisecond)
+	// Две секунды, не 300 мс: под нагрузкой полного прогона первый кадр
+	// события не успевал (2026-10-28).
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/api/v1/sync", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
