@@ -79,7 +79,12 @@ export async function apiFetch(
 	if (!res.ok) {
 		const err = await parseApiError(res);
 		if (isPaymentRequired(err)) {
-			if (shouldOpenPaywall(path)) window.location.assign('/circles');
+			// «Доступ закрыт» этого сервера (10.17), а не первого из списка (C67).
+			if (shouldOpenPaywall(path)) {
+				window.location.assign(
+					`/circles?closed=${encodeURIComponent(normalizeOrigin(origin) || window.location.origin)}`
+				);
+			}
 		} else if (err.status === 403) {
 			const match = path.match(circlePathRe);
 			if (match) {

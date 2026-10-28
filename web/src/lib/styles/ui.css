@@ -558,6 +558,13 @@
 .r .p.with-ic .ic {
 	flex: none;
 }
+/* Текст рядом со значком в flex-строке сам многоточие не ставит —
+   длинный адрес сервера обрезался посреди слова (C67). */
+.r .p.with-ic > span {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
 .r .rt {
 	display: flex;
 	flex-direction: column;

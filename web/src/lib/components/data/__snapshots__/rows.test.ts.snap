@@ -10,7 +10,11 @@ exports[`row components markup > CircleRow > card click actions 1`] = `"<div cla
 
 exports[`row components markup > CircleRow > click 1`] = `"<button type="button" class="r " style="color: red;"><div class="sq">С</div><div class="m"><div class="n">Семья</div><div class="p">Аня: привет</div></div><div class="rt"><span>12:30</span><span class="bdg">0</span></div></button>"`;
 
+exports[`row components markup > CircleRow > closed 1`] = `"<button type="button" class="r silent " style="color: red;"><div class="sq">С</div><div class="m"><div class="n">Семья</div><div class="p with-ic"><svg viewBox="0 0 24 24" aria-hidden="true" class="ic xs " style=""><use href="#i-key"></use></svg><span>dacha.example.ru: подписка закончилась</span></div></div><div class="rt"><span>12:30</span></div></button>"`;
+
 exports[`row components markup > CircleRow > plain 1`] = `"<div class="r " style="color: red;"><div class="sq">С</div><div class="m"><div class="n">Семья</div><div class="p">Аня: привет</div></div><div class="rt"><span>12:30</span></div></div>"`;
+
+exports[`row components markup > CircleRow > silent 1`] = `"<button type="button" class="r silent " style="color: red;"><div class="sq">С</div><div class="m"><div class="n">Семья</div><div class="p with-ic"><svg viewBox="0 0 24 24" aria-hidden="true" class="ic xs " style=""><use href="#i-clock"></use></svg><span>dacha.example.ru не отвечает</span></div></div><div class="rt"><span>12:30</span></div></button>"`;
 
 exports[`row components markup > MemberRow > click 1`] = `"<button type="button" class="row2 " style="color: red;"><div class="av  svelte-rkbas0">А</div><div class="g"><div style="font-weight:600">Аня</div><div class="sub">x</div></div></button>"`;
 

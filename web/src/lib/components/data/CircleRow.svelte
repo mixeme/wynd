@@ -9,6 +9,7 @@
 		badge,
 		dot = false,
 		silent,
+		closed,
 		color,
 		card = false,
 		actionLabel,
@@ -34,6 +35,8 @@
 		dot?: boolean;
 		/** Сервер круга молчит (7.40): вместо последней строки — какой, круг приглушён. */
 		silent?: string;
+		/** На сервере круга кончилась подписка (10.16): какой, круг приглушён. */
+		closed?: string;
 		color?: string;
 		card?: boolean;
 		actionLabel?: string;
@@ -63,8 +66,12 @@
 	<div class="sq">{initial}</div>
 	<div class="m">
 		<div class="n">{name}</div>
-		{#if silent}
-			<div class="p with-ic"><Icon name="clock" size="xs" />{silent} не отвечает</div>
+		{#if closed}
+			<div class="p with-ic">
+				<Icon name="key" size="xs" /><span>{closed}: подписка закончилась</span>
+			</div>
+		{:else if silent}
+			<div class="p with-ic"><Icon name="clock" size="xs" /><span>{silent} не отвечает</span></div>
 		{:else}
 			<div class="p">{preview}</div>
 		{/if}
@@ -104,7 +111,7 @@
 
 {#if card}
 	<div class="circle-row-card {className}">
-		{@render row(silent ? 'r silent' : 'r')}
+		{@render row(silent || closed ? 'r silent' : 'r')}
 		{#if showAction}
 			<button type="button" class="circle-row-action" onclick={() => onaction?.()}>
 				{actionLabel}
@@ -117,5 +124,5 @@
 		{/if}
 	</div>
 {:else}
-	{@render row(`r ${silent ? 'silent ' : ''}${className}`)}
+	{@render row(`r ${silent || closed ? 'silent ' : ''}${className}`)}
 {/if}

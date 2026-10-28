@@ -138,7 +138,9 @@ describe('row components markup', () => {
 					onaction2: noop
 				}
 			],
-			['card action without handler', { card: true, actionLabel: 'В группу' }]
+			['card action without handler', { card: true, actionLabel: 'В группу' }],
+			['silent', { silent: 'dacha.example.ru', onclick: noop }],
+			['closed', { closed: 'dacha.example.ru', onclick: noop }]
 		];
 		for (const [name, props] of cases) {
 			expect(

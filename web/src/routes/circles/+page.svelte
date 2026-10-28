@@ -46,6 +46,7 @@
 	} from '$lib/gestures/longpress';
 	import { displayHost } from '$lib/auth/origin';
 	import { isServerDown } from '$lib/session/connection.svelte';
+	import { isServerClosed, serverParam } from '$lib/pay/closed.svelte';
 	import { deleteGroup, listGroups, putGroup } from '$lib/idb/db';
 	import { registerRefetch } from '$lib/sync/sync';
 	import { initSession, loadSessions } from '$lib/session/session.svelte';
@@ -131,6 +132,11 @@
 	// Молчит один сервер из нескольких — общей полосы нет, сказано у его кругов (7.40).
 	function silentHost(circle: StreetCircle): string | undefined {
 		return isServerDown(circle.origin) ? displayHost(circle.origin) : undefined;
+	}
+
+	// Подписка кончилась на сервере круга (10.16) — так же, у его кругов.
+	function closedHost(circle: StreetCircle): string | undefined {
+		return isServerClosed(circle.origin) ? displayHost(circle.origin) : undefined;
 	}
 
 	const circleMap = $derived(new Map(circles.map((c) => [circleKey(c), c])));
@@ -223,6 +229,13 @@
 		groupMenuName = null;
 		fabMenuOpen = false;
 		if (menuOpen || swallowsClick(pressMark)) return;
+		// Закрытый подпиской сервер — его «Доступ закрыт» (10.17), а не круг.
+		if (isServerClosed(circle.origin)) {
+			goto(`/circles?closed=${serverParam(circle.origin)}`, {
+				state: { closedTitle: circle.name }
+			});
+			return;
+		}
 		rememberCircleOrigin(circle.id, circle.origin);
 		goto(circle.pendingJoin ? `/circles/${circle.id}/join` : `/circles/${circle.id}`);
 	}
@@ -600,6 +613,7 @@
 							name={circle.name}
 							preview={circle.preview}
 							silent={silentHost(circle)}
+							closed={closedHost(circle)}
 							time={circle.time}
 							badge={circle.unread || undefined}
 							dot={circle.responses}
@@ -670,6 +684,7 @@
 								name={circle.name}
 								preview={circle.preview}
 								silent={silentHost(circle)}
+								closed={closedHost(circle)}
 								time={circle.time}
 								badge={circle.unread || undefined}
 								dot={circle.responses}
@@ -736,6 +751,7 @@
 							name={circle.name}
 							preview={circle.preview}
 							silent={silentHost(circle)}
+							closed={closedHost(circle)}
 							time={circle.time}
 							badge={circle.unread || undefined}
 							dot={circle.responses}

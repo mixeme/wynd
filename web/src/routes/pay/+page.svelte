@@ -17,6 +17,8 @@
 	import { compressImage, fileToQueueBuffer, isImageFile } from '$lib/media/compress';
 	import { fetchPayStatus, submitPayRequest } from '$lib/pay/pay';
 	import { initSession, loadSessions } from '$lib/session/session.svelte';
+	import { sessionForParam } from '$lib/pay/closed.svelte';
+	import { page } from '$app/state';
 	import type { QueueFile } from '$lib/idb/db';
 
 	// undefined — сессия ещё не загружена. Свой сервер — '' (не «нет адреса»).
@@ -74,7 +76,14 @@
 				goToLogin();
 				return;
 			}
-			origin = sessions[0].origin;
+			// Заявка — серверу из адреса (`?server=`, 10.17), без него — первому.
+			const session = sessionForParam(sessions, page.url.searchParams.get('server'));
+			if (!session) {
+				redirecting = true;
+				goto('/circles');
+				return;
+			}
+			origin = session.origin;
 			const status = await fetchPayStatus(origin);
 			if (!status.has_requisites || status.pending) {
 				redirecting = true;
