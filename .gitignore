@@ -1,4 +1,7 @@
 /dev/
+# Сгенерированные превью макетов: в Git остаются HTML и исходники сборки.
+/docs/visual/desktop*.png
+/docs/visual/server-cards*.jpg
 /data/
 /data-*/
 # Данные запуска из deploy/docker (compose.yaml кладёт их рядом с собой).
