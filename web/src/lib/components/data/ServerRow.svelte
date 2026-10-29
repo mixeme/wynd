@@ -7,6 +7,7 @@
 	let {
 		name,
 		subtitle,
+		detail,
 		variant = 'info',
 		card = false,
 		gdpr = false,
@@ -17,6 +18,8 @@
 	}: {
 		name: string;
 		subtitle: string;
+		/** Третья строка: сведения по контексту или состояние связи (план 56). */
+		detail?: string;
 		variant?: ServerRowVariant;
 		card?: boolean;
 		/**
@@ -48,6 +51,9 @@
 			{name}{#if gdpr}<span class="gdpr">GDPR</span>{/if}
 		</div>
 		<div class="sub">{subtitle}</div>
+		{#if detail}
+			<div class="sub">{detail}</div>
+		{/if}
 	{/snippet}
 	{#snippet trailing()}
 		{#if variant === 'select'}

@@ -1,0 +1,86 @@
+<!-- План 56: предлагаемые состояния плашек. Данные — примеры, запросов нет. -->
+<script lang="ts">
+ import ServerRow from '$ui/data/ServerRow.svelte';
+ const board = new URLSearchParams(window.location.search).get('board');
+ const entry: { label: string; detail?: string }[] = [
+  {label:'Регистрация открыта',detail:'Открыт для новых'},
+  {label:'Регистрация по приглашению',detail:'Только по приглашению'},
+  {label:'Регистрация закрыта',detail:'Регистрация закрыта'},
+  {label:'Нет дополнительных сведений'},
+  {label:'Сервер недоступен',detail:'Сервер не отвечает'},
+  {label:'Проверка связи',detail:'Проверяем связь…'}
+ ];
+ const contexts: { label: string; detail?: string; variant?: 'select' | 'ok' }[] = [
+  {label:'Новый круг · можно выбрать другой сервер',detail:'Ещё 5 ваших кругов',variant:'select'},
+  {label:'Выбор сервера · выбран этот',detail:'5 кругов',variant:'ok'},
+  {label:'Приём круга · ограничение квотой',detail:'Квота по умолчанию 3 ГБ'},
+  {label:'Приём круга · одобренное место',detail:'Одобрено 10 ГБ'},
+  {label:'Приём круга · свободное место',detail:'Свободно 40 ГБ'},
+  {label:'Прежний сервер · справочная плашка'}
+ ];
+</script>
+
+<main class="review-page">
+ {#if !board || board === 'entry'}
+ <section class="board" id="entry-board" aria-label="Регистрация и связь">
+  <header><div class="eyebrow">WYND · ПЛАН 56 · ПРЕДЛОЖЕНИЕ</div><h1>Плашка сервера: регистрация и связь</h1><p>Имя и адрес на своих строках. Третья строка — сведения для этого места или состояние связи.</p></header>
+  <div class="grid">
+   {#each entry as item}
+    <article class="sample"><h2>{item.label}</h2><ServerRow name="Дом Ани" subtitle="home.example.org" detail={item.detail} card gdpr top={0} style="width:calc(100% - 32px);line-height:20px" /></article>
+   {/each}
+  </div>
+  <footer>Состояние связи заменяет третью строку. Имя, адрес и доступные действия остаются на месте.</footer>
+ </section>
+ {/if}
+ {#if !board || board === 'context'}
+ <section class="board" id="context-board" aria-label="Выбор сервера и приём круга">
+  <header><div class="eyebrow">WYND · ПЛАН 56 · ПРЕДЛОЖЕНИЕ</div><h1>Плашка сервера: сведения по контексту</h1><p>Тип регистрации остаётся у входа. После входа третья строка помогает текущему действию.</p></header>
+  <div class="grid">
+   {#each contexts as item}
+    <article class="sample"><h2>{item.label}</h2><ServerRow name={item.label.startsWith('Прежний') ? 'У Славы' : 'Дом Ани'} subtitle={item.label.startsWith('Прежний') ? 'slava.example.org' : 'home.example.org'} detail={item.detail} variant={item.variant ?? 'info'} card gdpr top={0} style="width:calc(100% - 32px);line-height:20px" onclick={item.variant ? () => {} : undefined} /></article>
+   {/each}
+  </div>
+  <footer>Шеврон — выбор сервера. Галочка — выбранный сервер. Ограничение регистрации не отмечаем знаком ошибки.</footer>
+ </section>
+ {/if}
+ {#if !board || board === 'edge'}
+ <section class="board" id="edge-board" aria-label="Длинные адреса и отсутствие имени">
+  <header><div class="eyebrow">WYND · ПЛАН 56 · ПРЕДЛОЖЕНИЕ</div><h1>Длинный адрес и неполные сведения</h1><p>Длинный адрес переносится. Если имя неизвестно, адрес показывается один раз.</p></header>
+  <div class="grid">
+   <article class="sample"><h2>Длинный адрес · тип регистрации сохранён</h2><ServerRow name="Семейный сервер на даче" subtitle="family-photos-and-stories.example.org:8443" detail="Только по приглашению" card top={0} style="line-height:20px" /></article>
+   <article class="sample"><h2>Имя неизвестно · сервер ранее был добавлен</h2><ServerRow name="home.example.org" subtitle="Сервер не отвечает" card top={0} style="line-height:20px" /></article>
+  </div>
+ </section>
+ {/if}
+</main>
+<style>
+	@font-face {
+		font-family: 'Golos Text';
+		src: url('/fonts/GolosText-Variable-cyrillic.woff2') format('woff2');
+		font-weight: 400 900;
+		font-style: normal;
+		font-display: swap;
+		unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+	}
+	@font-face {
+		font-family: 'Golos Text';
+		src: url('/fonts/GolosText-Variable-latin.woff2') format('woff2');
+		font-weight: 400 900;
+		font-style: normal;
+		font-display: swap;
+	}
+
+ :global(*) { box-sizing: border-box; }
+ :global(body) { margin: 0; background: var(--app-gutter); color: var(--ink); font-family: var(--ui); font-size: 13.5px; line-height: 1.45; }
+ .review-page { padding: 24px; }
+ .board { --c: var(--ink); max-width: 1040px; margin: 0 auto 24px; padding: 28px 20px 22px; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; }
+ header { padding: 0 16px; }
+ .eyebrow { color: var(--muted); letter-spacing: .09em; font-size: 10.5px; }
+ h1 { font-size: 22px; line-height: 1.3; font-weight: 600; margin: 9px 0; }
+ p { color: var(--muted); margin: 0 0 22px; max-width: 710px; }
+ .grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px 0; }
+ .sample { min-width: 0; }
+ h2 { margin: 0 16px 9px; font-size: 12px; font-weight: 500; color: var(--muted); }
+ footer { margin: 22px 16px 0; font-size: 12px; color: var(--muted); }
+ @media(max-width:650px) { .review-page { padding: 12px; } .board { padding: 20px 0; } .grid { grid-template-columns: 1fr; } }
+</style>
