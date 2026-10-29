@@ -1,0 +1,38 @@
+import fs from 'node:fs';
+import path from 'node:path';
+const root=process.cwd(),port=Number(fs.readFileSync('cdp.port','utf8').trim());
+const tabs=await (await fetch('http://127.0.0.1:'+port+'/json/list')).json();
+const tab=tabs.find(t=>t.type==='page'&&t.url==='http://wails.localhost/');if(!tab)throw Error('No probe target');
+const ws=new WebSocket(tab.webSocketDebuggerUrl);await new Promise((resolve,reject)=>{ws.addEventListener('open',resolve,{once:true});ws.addEventListener('error',reject,{once:true})});
+let next=0;const pending=new Map();
+ws.addEventListener('message',e=>{const m=JSON.parse(e.data);const p=pending.get(m.id);if(p){pending.delete(m.id);clearTimeout(p.timer);m.error?p.reject(Error(JSON.stringify(m.error))):p.resolve(m.result)}});
+function send(method,params={}){return new Promise((resolve,reject)=>{const id=++next;const timer=setTimeout(()=>{pending.delete(id);reject(Error('Timeout '+method))},10000);pending.set(id,{resolve,reject,timer});ws.send(JSON.stringify({id,method,params}))})}
+async function evaluate(expression){const r=await send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(JSON.stringify(r.exceptionDetails));return r.result.value}
+try{
+ await send('Runtime.enable');
+ const zone=await evaluate("(()=>{const r=document.getElementById('zone').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()");
+ const results=[];
+ for(const names of [['c66-one.txt'],['c66-one.txt','c66-two.txt']]){
+  const data={items:[],files:names.map(name=>path.join(root,'fixtures',name)),dragOperationsMask:1};
+  for(const type of ['dragEnter','dragOver','drop'])await send('Input.dispatchDragEvent',{type,...zone,data});
+  let value;
+  for(let attempt=0;attempt<20;attempt++){await new Promise(r=>setTimeout(r,100));const text=await evaluate("document.getElementById('result').textContent");try{value=JSON.parse(text)}catch{}if(value?.files?.length===names.length)break;}
+  if(!value?.trusted||value.kind!=='drop'||value.files.length!==names.length)throw Error('Unexpected drop result '+JSON.stringify(value));
+  for(const f of value.files){const expected=(await import('node:crypto')).createHash('sha256').update(fs.readFileSync(path.join(root,'fixtures',f.name))).digest('hex');if(f.sha256!==expected)throw Error('Hash mismatch');}
+  results.push(value);
+ }
+ const dropShot=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:{x:0,y:0,width:744,height:1000,scale:1}});fs.writeFileSync('cdp-drop-proof.png',Buffer.from(dropShot.data,'base64'));
+ const native=fs.readFileSync('cdp-drop.jsonl','utf8').trim().split(/\r?\n/).map(line=>JSON.parse(line)).filter(e=>e.kind==='native-drop').slice(-3).map(e=>e.value);
+ const expectedNative=results.flatMap(r=>r.files);if(native.length!==expectedNative.length)throw Error('Native callbacks missing');
+ for(let i=0;i<native.length;i++){if(native[i].name!==expectedNative[i].name||native[i].size!==expectedNative[i].size||native[i].sha256!==expectedNative[i].sha256)throw Error('Native payload mismatch');}
+ await evaluate("document.getElementById('pick').value=''; document.getElementById('result').textContent='waiting-picker'");
+ const picker=await send('DOM.getDocument');const q=await send('DOM.querySelector',{nodeId:picker.root.nodeId,selector:'#pick'});
+ await send('DOM.setFileInputFiles',{nodeId:q.nodeId,files:[]});
+ await send('DOM.setFileInputFiles',{nodeId:q.nodeId,files:[path.join(root,'fixtures','c66-two.txt')]});
+ await new Promise(r=>setTimeout(r,1000));
+ const picked=JSON.parse(await evaluate("document.getElementById('result').textContent"));
+ if(picked.kind!=='picker'||picked.files[0]?.name!=='c66-two.txt')throw Error('Picker failed: '+JSON.stringify(picked));
+ const shot=await send('Page.captureScreenshot',{format:'png'});fs.writeFileSync('cdp-proof.png',Buffer.from(shot.data,'base64'));
+ fs.writeFileSync('cdp-results.json',JSON.stringify({method:'WebView2 CDP Input.dispatchDragEvent; no Explorer mouse drag',results,native,picker:picked},null,2));
+ console.log(JSON.stringify({drops:results.map(r=>({files:r.files.map(f=>f.name),trusted:r.trusted,hashesVerified:true})),nativeCallbacksVerified:native.length,picker:picked.files.map(f=>f.name)},null,2));
+}finally{ws.close()}
