@@ -12,7 +12,7 @@
 	let email = $state('');
 	const requestedMode = new URLSearchParams(window.location.search).get('mode');
 	const mode = requestedMode === 'invite' || requestedMode === 'closed' ? requestedMode : 'open';
-	const modeLabels = { open: 'Регистрация открыта', invite: 'Регистрация по приглашению', closed: 'Регистрация закрыта' };
+	const serverSubtitles = { open: 'home.example.org · открыт для новых · Wynd 0.43.8', invite: 'только по приглашению', closed: 'Регистрация закрыта' };
 </script>
 
 <main class="mockup-page">
@@ -24,7 +24,7 @@
 			<div class="welcome">
 				<div class="welcome-mark"><Logo /></div>
 				<h1>Войти</h1>
-				<ServerRow name="Дом Ани" subtitle={"home.example.org\n" + modeLabels[mode]} variant="ok" card style="white-space:pre-line" />
+				<ServerRow name="Дом Ани" subtitle={serverSubtitles[mode]} variant={mode === 'open' ? 'ok' : 'warn'} card />
 				<Label style="margin-top:16px">Почта</Label>
 				<Input active type="email" autocomplete="email" bind:value={email} aria-label="Почта" placeholder="anya@example.com" />
 				<Hint>Пришлём код для входа. Пароля нет.</Hint>
