@@ -10,6 +10,9 @@
 	import Input from '$ui/forms/Input.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	let email = $state('');
+	const requestedMode = new URLSearchParams(window.location.search).get('mode');
+	const mode = requestedMode === 'invite' || requestedMode === 'closed' ? requestedMode : 'open';
+	const modeLabels = { open: 'Регистрация открыта', invite: 'Регистрация по приглашению', closed: 'Регистрация закрыта' };
 </script>
 
 <main class="mockup-page">
@@ -21,13 +24,17 @@
 			<div class="welcome">
 				<div class="welcome-mark"><Logo /></div>
 				<h1>Войти</h1>
-				<ServerRow name="Дом Ани" subtitle="home.example.org" variant="ok" card />
+				<ServerRow name="Дом Ани" subtitle={"home.example.org\n" + modeLabels[mode]} variant="ok" card style="white-space:pre-line" />
 				<Label style="margin-top:16px">Почта</Label>
 				<Input active type="email" autocomplete="email" bind:value={email} aria-label="Почта" placeholder="anya@example.com" />
 				<Hint>Пришлём код для входа. Пароля нет.</Hint>
 				<Button onclick={() => {}}>Получить код</Button>
-				<Hint style="margin-top:30px" centered><TextButton onclick={() => {}}>Регистрация без приглашения</TextButton></Hint>
-				<Hint style="margin-top:18px" centered><TextButton onclick={() => {}}>У меня есть приглашение</TextButton></Hint>
+				{#if mode === 'open'}
+					<Hint style="margin-top:30px" centered><TextButton onclick={() => {}}>Регистрация без приглашения</TextButton></Hint>
+				{/if}
+				{#if mode !== 'closed'}
+					<Hint style={mode === 'open' ? 'margin-top:18px' : 'margin-top:30px'} centered><TextButton onclick={() => {}}>У меня есть приглашение</TextButton></Hint>
+				{/if}
 			</div>
 		</div>
 	</section>
