@@ -1,0 +1,43 @@
+# C66: проверка регистрации и команды запуска, а не настоящий новый вход Windows.
+# Пример: .\probe.ps1 -Exe 'C:\...\app with spaces\wynd-c66.exe'
+param([Parameter(Mandatory=$true)][string]$Exe)
+$ErrorActionPreference = 'Stop'
+$exePath = [System.IO.Path]::GetFullPath($Exe)
+if (-not [System.IO.File]::Exists($exePath)) { throw 'Нет прототипа' }
+$probeRoot = [System.IO.Path]::GetDirectoryName([System.IO.Path]::GetDirectoryName($exePath))
+$logPath = Join-Path $probeRoot 'events.jsonl'
+$command = '"' + $exePath + '" --from-startup'
+if ($command.Length -gt 260) { throw 'Команда Run длиннее 260 знаков' }
+$valueName = 'WyndC66Probe_20261029'
+$key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Software\Microsoft\Windows\CurrentVersion\Run', $true)
+if ($null -eq $key) { throw 'Нет ключа Run' }
+$registered = $false
+$started = $null
+try {
+    if ($null -ne $key.GetValue($valueName, $null)) { throw 'Пробная запись уже существует — не перезаписываю' }
+    $key.SetValue($valueName, $command, [Microsoft.Win32.RegistryValueKind]::String)
+    $registered = $true
+    $stored = [string]$key.GetValue($valueName)
+    if ($stored -ne $command) { throw 'Запись Run отличается от команды' }
+    if ($stored -notmatch '^"([^"]+)" (--from-startup)$') { throw 'Неожиданная команда' }
+    # Сохранённая команда запускается из другой рабочей папки, без C66-переменных.
+    $started = Start-Process -FilePath $Matches[1] -ArgumentList $Matches[2] -WorkingDirectory (Join-Path $env:SystemRoot 'System32') -WindowStyle Hidden -PassThru
+    $ready = $false
+    for ($attempt=0; $attempt -lt 40; $attempt++) {
+        if ([System.IO.File]::Exists($logPath)) {
+            $events = [System.IO.File]::ReadAllLines($logPath) | ForEach-Object { ConvertFrom-Json $_ }
+            $launch = $events | Where-Object { $_.kind -eq 'launch' -and $_.value.args -contains '--from-startup' } | Select-Object -Last 1
+            $ready = $null -ne ($events | Where-Object { $_.kind -eq 'ready' -and $null -ne $launch -and $_.time -gt $launch.time } | Select-Object -Last 1)
+            if ($ready) { break }
+        }
+        Start-Sleep -Milliseconds 250
+    }
+    if (-not $ready) { throw 'Окно не сообщило о готовности' }
+    [pscustomobject]@{ RunValueVerified=$true; LaunchedFrom=$launch.value.cwd; WindowReady=$ready; ActualLogonTested=$false }
+} finally {
+    if ($null -ne $started -and -not $started.HasExited) { Stop-Process -Id $started.Id }
+    if ($registered -and $key.GetValue($valueName, $null) -eq $command) { $key.DeleteValue($valueName, $false) }
+    $remaining = $key.GetValue($valueName, $null)
+    $key.Close()
+    if ($registered -and $null -ne $remaining) { throw 'Пробная запись не удалена' }
+}

@@ -1,0 +1,109 @@
+// C66: отдельный диагностический образец Wails v2.16.0, не часть продукта.
+// Скопировать как main.go в отдельный модуль с зависимостями из корневых go.mod/go.sum.
+// C66_LOG — журнал JSONL, C66_PROFILE — отдельный профиль WebView2.
+// --from-startup отмечает проверку команды автозапуска; запись Run меняет только сценарий проверки.
+package main
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"sync"
+	"time"
+
+	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+)
+
+var mu sync.Mutex
+
+func report(kind string, value any) {
+	mu.Lock()
+	defer mu.Unlock()
+	f, err := os.OpenFile(os.Getenv("C66_LOG"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer f.Close()
+	_ = json.NewEncoder(f).Encode(map[string]any{"time": time.Now().Format(time.RFC3339Nano), "kind": kind, "value": value})
+}
+
+func main() {
+	cwd, _ := os.Getwd()
+	exe, _ := os.Executable()
+	root := filepath.Dir(filepath.Dir(exe))
+	if os.Getenv("C66_LOG") == "" {
+		_ = os.Setenv("C66_LOG", filepath.Join(root, "events.jsonl"))
+	}
+	if os.Getenv("C66_PROFILE") == "" {
+		_ = os.Setenv("C66_PROFILE", filepath.Join(root, "webview-default"))
+	}
+	report("launch", map[string]any{"args": os.Args, "cwd": cwd, "exe": exe})
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/report":
+			var value any
+			if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&value); err == nil {
+				report("dom", value)
+			}
+			w.WriteHeader(204)
+		default:
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			_, _ = io.WriteString(w, page)
+		}
+	})
+	err := wails.Run(&options.App{
+		Title: "Wynd C66 — проверка файлов", Width: 760, Height: 560,
+		AssetServer: &assetserver.Options{Handler: h},
+		Windows:     &windows.Options{WebviewUserDataPath: os.Getenv("C66_PROFILE")},
+		DragAndDrop: &options.DragAndDrop{EnableFileDrop: true},
+		OnStartup: func(ctx context.Context) {
+			runtime.OnFileDrop(ctx, func(x, y int, paths []string) {
+				for _, path := range paths {
+					data, err := os.ReadFile(path)
+					if err != nil {
+						report("native-error", err.Error())
+						continue
+					}
+					sum := sha256.Sum256(data)
+					report("native-drop", map[string]any{"x": x, "y": y, "name": filepath.Base(path), "size": len(data), "sha256": hex.EncodeToString(sum[:])})
+				}
+			})
+		},
+		OnDomReady: func(ctx context.Context) {
+			runtime.WindowSetPosition(ctx, 980, 120)
+			runtime.WindowShow(ctx)
+			report("ready", "Wails window ready")
+			runtime.WindowExecJS(ctx, `window.runtime.OnFileDrop((x,y,paths)=>{document.getElementById('native').textContent='Go: '+paths.map(p=>p.split(/[\\/]/).pop()).join(', ')}, false)`)
+		},
+	})
+	if err != nil {
+		report("error", err.Error())
+		os.Exit(1)
+	}
+}
+
+const page = `<!doctype html><html lang="ru"><meta charset="utf-8"><title>C66</title>
+<style>body{margin:0;padding:32px;font:16px 'Segoe UI',sans-serif;background:#F4F0E9;color:#2B2724}h1{font-size:22px}#zone{margin:24px 0;border:2px dashed #AF5839;border-radius:12px;padding:55px 20px;text-align:center;--wails-drop-target:drop}#zone.over{background:#e5d8c9}pre{white-space:pre-wrap;font-size:13px}input{max-width:100%}</style>
+<h1>Перетащите файлы из Проводника</h1><p>Пробный образец C66. Файлы никуда не отправляются.</p>
+<div id="zone">Фото, видео или несколько файлов</div><input id="pick" type="file" multiple><pre id="result">Файлы ещё не получены</pre><pre id="native">Go: ожидание</pre>
+<script>
+const zone=document.getElementById('zone'), result=document.getElementById('result');
+const rep=value=>fetch('/report',{method:'POST',body:JSON.stringify(value)});
+async function take(files,kind,trusted){const values=[];for(const file of files){const data=await file.arrayBuffer();const hash=await crypto.subtle.digest('SHA-256',data);values.push({name:file.name,size:file.size,type:file.type,sha256:[...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('')});}result.textContent=JSON.stringify({kind,trusted,files:values},null,2);await rep({kind,trusted,files:values});}
+window.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('over')});
+window.addEventListener('dragleave',()=>zone.classList.remove('over'));
+window.addEventListener('drop',async e=>{e.preventDefault();zone.classList.remove('over');await take([...e.dataTransfer.files],'drop',e.isTrusted)});
+document.getElementById('pick').addEventListener('change',e=>take([...e.target.files],'picker',e.isTrusted));
+rep({kind:'loaded',origin:location.origin,secure:isSecureContext});
+</script></html>`
