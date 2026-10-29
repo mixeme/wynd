@@ -33,4 +33,3 @@
 Для диагностического порта понадобилась временная копия Wails: загрузчик go-webview2 очищает `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`. В `setupChromium` копии добавлена только строка `if port := os.Getenv("C66_DEBUG_PORT"); port != "" { chromium.AdditionalBrowserArgs = append(chromium.AdditionalBrowserArgs, "--remote-debugging-port="+port) }`; временный модуль подключён через `replace`, файлы установленной зависимости не менялись. Политика CORS и обработчики drop не менялись. Номер порта лежит в `cdp.port`, журнал — `cdp-drop.jsonl`, файлы — в `fixtures/` рядом со сценарием. Команда: `node cdp-check.mjs`.
 
 Снимок WebView2 и JSON с результатами сохранены локально в `dev/c66-evidence/`; сценарий — в репозитории. Собственный процесс остановлен, диагностический порт закрыт. Проверка мышью из Проводника остаётся ручным пунктом перед выпуском.
-
