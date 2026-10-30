@@ -1,0 +1,56 @@
+<!-- A19: варианты 6.29а–б. Предложение 2026-10-30, не утверждённые кадры. Только существующие Wynd UI; действия в макете ничего не удаляют. -->
+<script lang="ts">
+ import FormLayout from '$lib/layouts/FormLayout.svelte';
+ import Label from '$ui/forms/Label.svelte';
+ import SettingsRow from '$ui/data/SettingsRow.svelte';
+ import Hint from '$ui/forms/Hint.svelte';
+ import TextButton from '$ui/forms/TextButton.svelte';
+ import DangerZone from '$ui/forms/DangerZone.svelte';
+ import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
+ const warning = 'В файле сохранена только часть журнала. При удалении круга с сервера будут удалены и записи, которые не вошли в файл. Восстановить их из этого файла не получится.';
+</script>
+
+<main class="archive-review">
+ <header><h1>Неполный архив: удаление круга</h1><p>Предложение · A19 · 30 октября 2026. Данные приведены для примера. Действия в макете ничего не удаляют.</p></header>
+ <div class="archive-grid">
+ {#each [false, true] as confirm}
+  <figure class="archive-frame" id={confirm ? 'e6-29b' : 'e6-29a'}>
+   <FormLayout color="terracotta" title="Полный архив круга" onback={() => {}}>
+    <Label>Файл</Label>
+    <SettingsRow icon="file" title="Семья.wynd" subtitle="2,1 ГБ · зашифрован · собран 30 октября в 14:20" chevron={false} divided="both" />
+    <Hint class="ink">Часть журнала · 1 240 записей</Hint>
+    <Hint>Круг замер 30 октября в 14:02.</Hint>
+    <Hint class="mt-10 ink">Вы скачали файл 30 октября в 14:31. На сервере его больше нет.</Hint>
+    <Hint class="mt-10"><TextButton onclick={() => {}}>Собрать архив ещё раз</TextButton></Hint>
+    <DangerZone class="mt-20" items={['Убрать круг с сервера']} onitem={() => {}}>
+     {warning}<br /><br />Участники получили письмо 30 октября в 14:02: свой архив они могут скачать, пока круг здесь.
+    </DangerZone>
+    <Hint class="mt-14 ctr-text"><TextButton onclick={() => {}}>Отменить — оживить круг</TextButton></Hint>
+    {#if confirm}
+     <ConfirmDialog title="Убрать круг с сервера?" confirmLabel="Убрать" cancelLabel="Оставить" onconfirm={() => {}} oncancel={() => {}}>
+      <Hint class="m-0">{warning}</Hint>
+     </ConfirmDialog>
+    {/if}
+   </FormLayout>
+   <figcaption><strong>{confirm ? '6.29б · Подтверждение удаления' : '6.29а · Скачана часть журнала'}</strong><p>{confirm ? 'Существующее подтверждение: вопрос и кнопки сохранены. Вместо обещания полной сохранности — последствия удаления записей вне файла.' : 'Вариант 6.29 для ограниченного архива: состав файла и предупреждение о несохранённой истории. Исходный кадр с полным журналом сохраняется.'}</p><p>Предложение, ожидает утверждения.</p></figcaption>
+  </figure>
+ {/each}
+ </div>
+</main>
+
+<style>
+ @font-face { font-family:'Golos Text'; src:url('/fonts/GolosText-Variable-cyrillic.woff2') format('woff2'); font-weight:400 900; font-style:normal; font-display:swap; unicode-range:U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+ @font-face { font-family:'Golos Text'; src:url('/fonts/GolosText-Variable-latin.woff2') format('woff2'); font-weight:400 900; font-style:normal; font-display:swap; }
+ :global(*) { box-sizing:border-box; }
+ :global(body) { margin:0; background:var(--app-gutter); color:var(--ink); font-family:var(--ui); font-size:13.5px; line-height:1.45; }
+ .archive-review { max-width:880px; margin:0 auto; padding:24px 16px 48px; }
+ header { margin-bottom:24px; }
+ h1 { font-size:23px; font-weight:600; margin:0 0 8px; }
+ header p, figcaption p { color:var(--muted); margin:6px 0; font-size:13px; line-height:1.5; }
+ .archive-grid { display:flex; flex-wrap:wrap; gap:28px; }
+ .archive-frame { width:390px; margin:0; }
+ /* Рамка фиксированного макета удерживает штатные fixed-оверлеи внутри телефона. */
+ .archive-frame :global(.ph) { transform:translateZ(0); }
+ figcaption { margin-top:12px; }
+ figcaption strong { font-size:14px; font-weight:600; }
+</style>
