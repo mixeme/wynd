@@ -1,4 +1,4 @@
-<!-- A19: варианты 6.29а–б. Предложение 2026-10-30, не утверждённые кадры. Только существующие Wynd UI; действия в макете ничего не удаляют. -->
+<!-- A19: варианты 6.29а–в. Предложение 2026-10-30, не утверждённые кадры. Только существующие Wynd UI; действия в макете ничего не удаляют. -->
 <script lang="ts">
  import FormLayout from '$lib/layouts/FormLayout.svelte';
  import Label from '$ui/forms/Label.svelte';
@@ -8,31 +8,35 @@
  import DangerZone from '$ui/forms/DangerZone.svelte';
  import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
  const warning = 'В файле сохранена только часть журнала. При удалении круга с сервера будут удалены и записи, которые не вошли в файл. Восстановить их из этого файла не получится.';
+ const comparison = new URLSearchParams(window.location.search).has('compare');
+ const variants = comparison ? ['full', 'partial-confirm'] : ['partial', 'full', 'partial-confirm'];
 </script>
 
 <main class="archive-review">
- <header><h1>Неполный архив: удаление круга</h1><p>Предложение · A19 · 30 октября 2026. Данные приведены для примера. Действия в макете ничего не удаляют.</p></header>
+ <header><h1>{comparison ? 'Подтверждение удаления: весь журнал и часть' : 'Архив: удаление круга'}</h1><p>Предложение · A19 · 30 октября 2026. Данные приведены для примера. Действия в макете ничего не удаляют.</p></header>
  <div class="archive-grid">
- {#each [false, true] as confirm}
-  <figure class="archive-frame" id={confirm ? 'e6-29b' : 'e6-29a'}>
+ {#each variants as variant}
+  {@const full = variant === 'full'}
+  {@const confirm = variant !== 'partial'}
+  <figure class="archive-frame" id={full ? 'e6-29c' : confirm ? 'e6-29b' : 'e6-29a'}>
    <FormLayout color="terracotta" title="Полный архив круга" onback={() => {}}>
     <Label>Файл</Label>
-    <SettingsRow icon="file" title="Семья.wynd" subtitle="2,1 ГБ · зашифрован · собран 30 октября в 14:20" chevron={false} divided="both" />
-    <Hint class="ink">Часть журнала · 1 240 записей</Hint>
+    <SettingsRow icon="file" title="Семья.wynd" subtitle={`${full ? '8,4' : '2,1'} ГБ · зашифрован · собран 30 октября в 14:20`} chevron={false} divided="both" />
+    <Hint class="ink">{full ? 'Весь журнал · 4 980 записей' : 'Часть журнала · 1 240 записей'}</Hint>
     <Hint>Круг замер 30 октября в 14:02.</Hint>
     <Hint class="mt-10 ink">Вы скачали файл 30 октября в 14:31. На сервере его больше нет.</Hint>
     <Hint class="mt-10"><TextButton onclick={() => {}}>Собрать архив ещё раз</TextButton></Hint>
     <DangerZone class="mt-20" items={['Убрать круг с сервера']} onitem={() => {}}>
-     {warning}<br /><br />Участники получили письмо 30 октября в 14:02: свой архив они могут скачать, пока круг здесь.
+     {full ? 'Останется только файл у вас: потеряете файл или пароль — круг не вернуть.' : warning}<br /><br />Участники получили письмо 30 октября в 14:02: свой архив они могут скачать, пока круг здесь.
     </DangerZone>
     <Hint class="mt-14 ctr-text"><TextButton onclick={() => {}}>Отменить — оживить круг</TextButton></Hint>
     {#if confirm}
      <ConfirmDialog title="Убрать круг с сервера?" confirmLabel="Убрать" cancelLabel="Оставить" onconfirm={() => {}} oncancel={() => {}}>
-      <Hint class="m-0">{warning}</Hint>
+      <Hint class="m-0">{full ? 'Круг «Семья» останется только в файле у вас.' : warning}</Hint>
      </ConfirmDialog>
     {/if}
    </FormLayout>
-   <figcaption><strong>{confirm ? '6.29б · Подтверждение удаления' : '6.29а · Скачана часть журнала'}</strong><p>{confirm ? 'Существующее подтверждение: вопрос и кнопки сохранены. Вместо обещания полной сохранности — последствия удаления записей вне файла.' : 'Вариант 6.29 для ограниченного архива: состав файла и предупреждение о несохранённой истории. Исходный кадр с полным журналом сохраняется.'}</p><p>Предложение, ожидает утверждения.</p></figcaption>
+   <figcaption><strong>{full ? '6.29в · Весь журнал: подтверждение удаления' : confirm ? '6.29б · Часть журнала: подтверждение удаления' : '6.29а · Скачана часть журнала'}</strong><p>{full ? 'Подтверждение полного архива: действующий вопрос, пояснение и кнопки.' : confirm ? 'Существующее подтверждение: вопрос и кнопки сохранены. Вместо обещания полной сохранности — последствия удаления записей вне файла.' : 'Вариант 6.29 для ограниченного архива: состав файла и предупреждение о несохранённой истории. Исходный кадр с полным журналом сохраняется.'}</p><p>Предложение, ожидает утверждения.</p></figcaption>
   </figure>
  {/each}
  </div>
