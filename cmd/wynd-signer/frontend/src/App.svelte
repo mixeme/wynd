@@ -17,6 +17,7 @@
 	let screen = $state<Screen>('list');
 	let st = $state<State | undefined>();
 	let keyNote = $state('');
+	let keyError = $state('');
 
 	// 12а
 	let newKey = $state('');
@@ -70,8 +71,13 @@
 	}
 
 	async function chooseNewKey() {
-		const p = await backend().ChooseKeyPlace(newKey);
-		if (p) newKey = p;
+		createError = '';
+		try {
+			const p = await backend().ChooseKeyPlace(newKey);
+			if (p) newKey = p;
+		} catch (err) {
+			createError = String(err);
+		}
 	}
 	async function create() {
 		if (!canCreate || creating) return;
@@ -105,7 +111,12 @@
 		}
 	}
 	async function otherKey() {
-		st = await backend().ChooseKey();
+		keyError = '';
+		try {
+			st = await backend().ChooseKey();
+		} catch (err) {
+			keyError = String(err);
+		}
 	}
 	function toList() {
 		check = undefined;
@@ -238,6 +249,7 @@
 					</FootBar>
 				</Notice>
 			{/if}
+			{#if keyError}<Notice tone="bad" alert>{keyError}</Notice>{/if}
 			{#if listing && !releases.length}
 				<p class="ins-dim">Спрашиваем GitHub…</p>
 			{/if}

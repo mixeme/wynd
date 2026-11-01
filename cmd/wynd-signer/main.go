@@ -13,6 +13,7 @@ import (
 	"embed"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -143,22 +144,44 @@ func (a *App) State() State {
 }
 
 // ChooseKeyPlace — где хранить новый ключ (12а).
-func (a *App) ChooseKeyPlace(current string) string {
-	p, _ := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		Title: "Где хранить ключ", DefaultDirectory: filepath.Dir(current), DefaultFilename: filepath.Base(current),
+func (a *App) ChooseKeyPlace(current string) (string, error) {
+	p, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title: "Где хранить ключ", DefaultDirectory: keyDialogDirectory(current), DefaultFilename: filepath.Base(current),
 	})
-	return p
+	if err != nil {
+		return "", fmt.Errorf("Не удалось открыть окно выбора файла: %w", err)
+	}
+	return p, nil
 }
 
 // ChooseKey — другой файл ключа (12б: «другой»); выбранное окно запоминает.
-func (a *App) ChooseKey() State {
+func (a *App) ChooseKey() (State, error) {
 	s := loadSettings()
-	p, _ := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{Title: "Файл ключа подписи", DefaultDirectory: filepath.Dir(s.KeyPath)})
+	p, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{Title: "Файл ключа подписи", DefaultDirectory: keyDialogDirectory(s.KeyPath)})
+	if err != nil {
+		return State{}, fmt.Errorf("Не удалось открыть окно выбора файла: %w", err)
+	}
 	if p != "" {
 		s.KeyPath = p
 		saveSettings(s)
 	}
-	return a.State()
+	return a.State(), nil
+}
+
+// Wails не открывает диалог, если DefaultDirectory не существует. При первом
+// запуске .wynd ещё нет; сохранённая папка также могла быть удалена. Предлагаем
+// ближайшего существующего родителя, не создавая папок при выборе пути.
+func keyDialogDirectory(keyPath string) string {
+	for dir := filepath.Dir(keyPath); ; {
+		if info, err := os.Stat(dir); err == nil && info.IsDir() {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "" // Системный диалог сам выберет начальную папку.
+		}
+		dir = parent
+	}
 }
 
 // Result — чем кончилось действие.
