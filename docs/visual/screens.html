@@ -488,6 +488,495 @@
 .a19-frame * { box-sizing: border-box; }
 .a19-frame .ph { transform:translateZ(0); }
 @media (max-width:430px) { .a19-frame .ph { transform:scale(.846) translateZ(0); } }
+/* BEGIN PLAN57 */
+.transition-frame .note{margin:0;border:0;padding:0;}.transition-frame {
+	--paper: #f4f0e9;
+	--card: #fcfaf6;
+	--ink: #2b2724;
+	--muted: #7a7269;
+	--faint: #a8a096;
+	--line: #dfd8cd;
+	--terracotta: #af5839;
+	--teal: #357077;
+	--olive: #58673a;
+	--ochre: #70571b;
+	--plum: #7a4265;
+	--indigo: #3c4d83;
+	--coffee: #62452f;
+	--slate: #3d494f;
+	--ui:
+		'Golos Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+		sans-serif;
+	--app-max-width: 480px;
+	--app-wide-max-width: 820px;
+	--app-gutter: #e0dbd2;
+	--app-gutter-dark: #161412;
+	--mark-w: 46px;
+	--mark-h: 69px;
+	--empty-ink: #d6cec2;
+	/* Фон плитки и превью, пока картинка не загрузилась. Переменная
+       использовалась в ui.css и нигде не объявлялась — фон был
+       прозрачным (GUI-9). */
+	--tint: #eae4da;
+	/* Диалог остаётся телефонным и на планшете: подтверждение во всю ширину
+       читается хуже. */
+	--dlg-max-width: 436px;
+}
+
+/* Планшет: колонка приложения шире телефонной, серые поля по бокам не
+   съедают треть экрана. Больше 720 не растём — строки текста и квадратные
+   обложки на настольном экране стали бы слишком длинными. */
+@media (min-width: 600px) {
+	.transition-frame {
+		--app-max-width: 720px;
+	}
+}
+
+/* Semantic classes from docs/screens.html (inside .ph) */
+
+/* Кнопка приходит от браузера со своим шрифтом, рамкой, фоном и отступами.
+   Сброс с нулевой весомостью (:where) — чтобы любой класс .X накрывал его
+   без зеркала button.X: зеркала дублировали вёрстку класса и стирали
+   font-weight своим font:inherit (REF-8, CPX-2, GUI-2). */
+.transition-frame :where(button) {
+	font: inherit;
+	color: inherit;
+	background: none;
+	border: 0;
+	padding: 0;
+	margin: 0;
+	text-align: inherit;
+	cursor: pointer;
+	-webkit-tap-highlight-color: transparent;
+	appearance: none;
+}
+.transition-frame .ph {
+	position: relative;
+	width: 390px;
+	height: 800px;
+	overflow: hidden;
+	border: 1px solid var(--line);
+	border-radius: 22px;
+	background: var(--paper);
+	font-family: var(--ui);
+	color: var(--ink);
+	font-size: 13.5px;
+	line-height: 1.45;
+	--c: var(--terracotta);
+	--ct: #f1e1da;
+}
+/* Высота — видимая область (--app-h из session/viewport.ts): клавиатура
+   сжимает окно, а не сдвигает страницу вверх. Без JS — 100dvh. */
+/* Полоса связи под шапкой (7.6–7.8): цвета бумаги, без красного. */
+/* Свайп по вкладкам (C9): вертикаль — браузеру, горизонталь — жесту. */
+/* Список кругов обновляется жестом (3.5), как лента: жест — наш, не браузера;
+   обёртка во всю высоту, чтобы тянуть можно было и короткий список. */
+
+/* строка состояния */
+.transition-frame .sb {
+	height: 30px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 18px 0 20px;
+	font-size: 11.5px;
+	font-weight: 600;
+}
+.transition-frame .sig {
+	display: flex;
+	align-items: flex-end;
+	gap: 2px;
+	height: 10px;
+}
+.transition-frame .sig u {
+	display: block;
+	width: 3px;
+	border-radius: 1px;
+	background: var(--ink);
+	text-decoration: none;
+}
+.transition-frame .sig u:nth-child(1) {
+	height: 4px;
+}
+.transition-frame .sig u:nth-child(2) {
+	height: 6px;
+}
+.transition-frame .sig u:nth-child(3) {
+	height: 8px;
+}
+.transition-frame .sig u:nth-child(4) {
+	height: 10px;
+}
+
+/* шапки */
+.transition-frame .ic {
+	width: 21px;
+	height: 21px;
+	color: var(--muted);
+	flex: 0 0 auto;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.6;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+.transition-frame .ic.sm {
+	width: 16px;
+	height: 16px;
+	stroke-width: 1.7;
+}
+/* Имя и кружок не сжимаются вместе с длинным названием круга: сжатый блок
+   срезал кружок справа. Длинное имя — многоточием, кружок целый. */
+/* Пять вкладок (3.12) делят ширину между собой: с фиксированным зазором
+   22 px они с числом на «Откликах» не влезали в узкий телефон, полоса
+   прокручивалась и рисовала серый скроллбар под шапкой. Прокрутка остаётся
+   запасным выходом для крупного шрифта системы, но без полосы. */
+/* Число новых на вкладке «Отклики» (3.12): белое на цвете круга. */
+.transition-frame .bar {
+	padding: 8px 16px 12px;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	border-bottom: 1px solid var(--line);
+}
+.transition-frame .bar .t {
+	font-size: 17px;
+	font-weight: 600;
+}
+/* Действие справа в шапке («Готово» на 2.8) — кнопка, цветом круга. */
+
+/* список кругов */
+.transition-frame .lab {
+	font-size: 11.5px;
+	letter-spacing: 0.09em;
+	text-transform: uppercase;
+	color: var(--faint);
+	font-weight: 600;
+	margin: 18px 16px 8px;
+}
+/* Сервер круга молчит (7.9) */
+/* Текст рядом со значком в flex-строке сам многоточие не ставит —
+   длинный адрес сервера обрезался посреди слова (C67). */
+
+/* записи */
+/* Видоискатель сканера QR (2.17): квадрат во всю ширину, как рамка кода. */
+/* EmptyState: отступы по кадрам — экран-состояние, улочка (2.3), вкладка
+   (3.14), лента со знаком (3.1). */
+/* Форма аватаров — скруглённый квадрат (A16, «Настройки → Приложение»):
+   лица везде, «Кто уже здесь» и кружок «добавить фото». */
+/* MentionText: переносы и пустые строки — как их написали. Запись
+   показывается целиком (wynd.html, «Правила ленты»), абзацы — её часть. */
+/* Ролик в плитке (5.5): кадр и значок посередине; сам ролик — по касанию. */
+/* Плитка без файла: что происходит — словами слева внизу и полоской хода
+   по нижнему краю. */
+/* Кадр обложки (4.16): снимок растянут так, что выбранный квадрат занимает
+   плитку целиком; лишнее срезает плитка. */
+/* Правый нижний угол плитки (4.16а): длительность ролика и число снимков —
+   одной строкой; внутри ряда ярлыки не позиционируются сами. */
+/* Комментарий, открытый из «Откликов»: подсветка на миг, чтобы глаз нашёл.
+   Не .hl — это подсветка слова в поиске, с ней строка теряла отступы. */
+/* --ct светлый и в тёмной теме: светлый текст на нём пропадал (запись из
+   поиска). Тот же тёмный тон, что у реакций и карточек дней. */
+/* Точка у круга на улочке (2.1): новые отклики к старым записям. Число
+   значит записи, поэтому здесь не число. */
+/* «Отклики» (3.13): строка — ссылка туда, где отклик живёт; ниже слов —
+   рамка «к чему это»: автор записи, дата, первая строка или день. */
+/* 40 px — палец попадает с первого раза; 26 px было впритык к соседу. */
+/* Вложения комментария (4.28–4.30): плитки, голосовое и файл — без рамки. */
+/* Выбранное для комментария — полоской над полем (4.28). */
+/* Те же плитки в правке комментария (C53): под полем, без своей черты и фона. */
+/* Превью комментария в ленте: строки — кнопки, между ними вложения (4.30). */
+/* Открытка дня в ленте (3.15): подложка — тон круга, без рамки. */
+/* Файл ещё скачивается (4.19): полоска серая — это не прослушанное. */
+/* Полоса плеера (4.20): внизу любого экрана, пока играет звук из круга,
+   который сейчас не на экране. Ширина — как у окна приложения. */
+/* Пауза и крестик — разные действия: между ними палец, а не 6 px. */
+/* Несколько звуков записи — одна рамка, строки через черту (4.18). */
+
+/* формы */
+.transition-frame .fld {
+	margin: 0 16px;
+	border: 1px solid var(--line);
+	background: var(--card);
+	border-radius: 11px;
+	padding: 12px 14px;
+}
+/* Период «с — по» (DateRange): два поля даты поровну. */
+/* Отступы и ширина общего input.fld здесь лишние: с ними правое поле уходило
+   за край узкого экрана (план 46, C50). */
+/* Число с единицей (NumberField): узкое поле в строке. Служебные .w72 и .m-0
+   слабее input.fld — с ними поле растягивалось на всю строку. */
+/* Моноширинное поле (адрес, почта) и мелкое (адрес сервера при входе):
+   .mono и размер одним классом проигрывали font: inherit у input.fld и
+   input.inp — поля набирались обычным шрифтом. */
+.transition-frame .hint {
+	margin: 9px 16px 0;
+	font-size: 12.5px;
+	color: var(--muted);
+	line-height: 1.5;
+}
+
+/* < class="…">: селектор .* сильнее .класс — вёрстку класса дублируем явно */
+.transition-frame .row2 {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	box-sizing: border-box;
+	width: 100%;
+	text-align: left;
+	padding: 13px 16px;
+}
+.transition-frame .ib {
+	line-height: 0;
+}
+.transition-frame .under {
+	border-bottom: 1px solid;
+	padding-bottom: 1px;
+}
+.transition-frame .btn {
+	margin: 20px 16px 0;
+	background: var(--ink);
+	color: var(--paper);
+	border-radius: 12px;
+	padding: 14px;
+	text-align: center;
+	font-weight: 600;
+}
+
+/* <> не тянется от display:block — ширина как у input.fld */
+.transition-frame .btn {
+	display: block;
+	box-sizing: border-box;
+	width: calc(100% - 32px);
+}
+.transition-frame .btn.c {
+	background: var(--c);
+	color: #fff;
+}
+.transition-frame .btn.gh {
+	background: none;
+	border: 1px solid var(--line);
+	color: var(--ink);
+	font-weight: 400;
+}
+/* На экранах без цвета круга акцент — цвет текста; в тёмной теме он светлый,
+   и белая надпись на нём пропадала. */
+/* Долгое нажатие открывает меню (плюс, строка круга, заголовок группы) —
+   без запрета браузер выделял текст подписи и показывал «Копировать». */
+/* Кнопка-плюс растянута на весь круг: без сетки иконка вставала к левому
+   краю. Размер — как в кадре 2.1. */
+/* Полоса вместо строки ввода (3.19, 3.20): писать нельзя — что и кто поможет. */
+/* Легенда шкалы хранилища (StackLegend; 9.5). */
+/* Карточка «что происходит» (StatusCard; 6.40, 6.43). */
+.transition-frame .status-card {
+	margin: 16px 16px 0;
+	padding: 12px 14px;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	background: var(--card);
+}
+.transition-frame .status-card-title {
+	font-weight: 600;
+}
+.transition-frame .status-card-text {
+	margin-top: 4px;
+	font-size: 12.5px;
+	line-height: 1.5;
+	color: var(--muted);
+}
+/* Та же полоса наверху экрана правки (4.31): писать нельзя, удалить можно. */
+/* «Фото» и «Развернуть» (C15): значок обычного размера, касание 32×32 по
+   центру строки. Отрицательные поля держат высоту полосы — 40. */
+.transition-frame .row2 {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 13px 16px;
+}
+.transition-frame .row2 + .row2 {
+	border-top: 1px solid var(--line);
+}
+/* Значок «GDPR» у имени сервера (1.10): название закона, без перевода. */
+/* Строка под карточкой сервера: рамка карточки уже отделяет её. */
+.transition-frame .row2.server-card + .row2 {
+	border-top: 0;
+}
+/* SettingsRow divided: строка-ссылка среди текста отчерчена. */
+.transition-frame .row2.divided-top {
+	border-top: 1px solid var(--line);
+}
+.transition-frame .row2.divided-bottom {
+	border-bottom: 1px solid var(--line);
+}
+/* После строки с чертой снизу своя черта сверху не нужна: вышла бы двойная. */
+.transition-frame .row2 .g {
+	flex: 1;
+	min-width: 0;
+}
+.transition-frame .row2 .sub {
+	font-size: 12.5px;
+	color: var(--muted);
+}
+.transition-frame .sw {
+	width: 40px;
+	height: 23px;
+	border-radius: 12px;
+	background: var(--line);
+	position: relative;
+	flex: 0 0 auto;
+	border: none;
+	padding: 0;
+	cursor: pointer;
+	font: inherit;
+}
+.transition-frame .sw.on {
+	background: var(--c);
+}
+/* Пояснение под действием рамки (DangerZone children; 6.30, 6.34). */
+/* Светлая подложка в тёмной теме читалась как полная шкала: «446 Б из 2 ГБ»
+   выглядело «места нет» (2026-10-26). Тот же тёмный тон, что у зоны графика. */
+/* Ролик или звук ещё сжимается (4.2а): плитка приглушена, поверх — сколько сжато. */
+/* У звука под числом — имя файла: число внизу, имя видно. */
+.transition-frame .scrim {
+	position: absolute;
+	inset: 0;
+	background: rgba(43, 39, 36, 0.42);
+	width: auto;
+	height: auto;
+	border: 0;
+}
+.transition-frame .dlg {
+	position: absolute;
+	left: 22px;
+	right: 22px;
+	top: 250px;
+	background: var(--card);
+	border-radius: 16px;
+	padding: 20px;
+}
+
+/* .ph.app растёт по контенту (лента длиннее экрана) — оверлеи внутри него
+   держим на реальном вьюпорте, а не на нижнем крае всей страницы */
+.transition-frame .scrim, .transition-frame .sheet, .transition-frame .dlg {
+	position: fixed;
+	left: 0;
+	right: 0;
+	transform: none;
+	width: min(100%, var(--app-max-width));
+	max-width: var(--app-max-width);
+	margin-inline: auto;
+}
+.transition-frame .scrim {
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	height: auto;
+}
+.transition-frame .dlg {
+	width: min(calc(100% - 44px), var(--dlg-max-width));
+	max-width: var(--dlg-max-width);
+	top: 250px;
+}
+
+/* вход и формы вступления */
+.transition-frame .rowin {
+	display: flex;
+	gap: 14px;
+	align-items: center;
+	margin: 22px 16px 0;
+}
+.transition-frame .rowin .btn {
+	margin: 0;
+	width: auto;
+}
+.transition-frame .mono {
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+/* Ссылка приглашения под QR (2.7, 6.21): целиком, переносится где угодно. */
+/* QR тянется под рамку: размер из QRCode.toString и размер .qr жили отдельно,
+   и код вылезал за край. */
+
+/* выбор цвета, поиск, группы */
+
+/* панель администратора */
+/* Hint задан под экраны телефона — с полями 16 px по бокам. В колонке панели
+   они сдвигали подсказку относительно подписей и текста рядом. */
+/* Шрифт — семейство и начертание страницы, размер — 12,5 px от .inp, как на
+   кадрах 9.x (font: inherit сбрасывал его к размеру колонки). */
+/* Цвет круга в карточке человека (9.4): квадратик, как на кадре. Общего
+   .dot в ui.css не было — точка выходила нулевой и не была видна. */
+.transition-frame .st {
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	flex: 0 0 auto;
+	display: grid;
+	place-items: center;
+	margin-top: 1px;
+}
+.transition-frame .st.ok {
+	color: var(--faint);
+}
+.transition-frame .st .ic {
+	width: 12px;
+	height: 12px;
+	stroke-width: 2.2;
+}
+
+/* фотография во весь экран */
+
+/* Голосовые и видео (план 46, C14; 4.21–4.27). */
+/* Строка лежит поверх ленты: без подложки её не прочесть. */
+
+/* Служебные классы: то, ради чего экраны ставили инлайн-стиль. Правило
+   «экран — только $ui, без своих \3c style>» выдавило вёрстку в 585
+   инлайн-style= на 56 экранах (CPX-3, GUI-4). Держим их последними в файле:
+   при равной весомости побеждает то, что ниже. */
+.transition-frame .mt-10 {
+	margin-top: 10px;
+}
+.transition-frame .mt-14 {
+	margin-top: 14px;
+}
+.transition-frame .mt-22 {
+	margin-top: 22px;
+}
+/* Пояснение под заголовком экрана-состояния («Доступ закрыт», «Приглашение
+   не действует»): уже колонки, чтобы строка не тянулась от края до края. */
+.transition-frame .m-0 {
+	margin: 0;
+}
+.transition-frame .dlgq {
+	font-size: 17px;
+	font-weight: 600;
+	margin-bottom: 10px;
+}
+.transition-frame .rowin.ask {
+	margin: 18px 0 0;
+}
+.transition-frame .rowin.ask .btn {
+	flex: 1;
+	margin: 0;
+}
+/* Запас прокрутки под последней кнопкой страницы: мобильный браузер кладёт
+ * поверх низа экрана свои полосы (панель адреса, подсказка пароля над
+ * клавиатурой), и кнопка вплотную к концу страницы из-под них не выходит. */
+/* Узкий экран (первый запуск с телефона): ряд карточек — столбиком,
+ * .form-grid-2 — «подпись · поле» в две колонки вместо четырёх. */
+@media (max-width: 600px) {
+}
+.transition-frame .ink {
+	color: var(--ink);
+}
+
+/* План 47 (хвост сверки): инлайн-стили экранов → классы. margin повторяет
+   все четыре стороны исходной записи: m-верх-бока-низ. */
+.transition-frame .ctr-text {
+	text-align: center;
+}
+.transition-frame .ph{transform:translateZ(0)} @media(max-width:430px){.transition-frame .ph{transform:scale(.846) translateZ(0)}}
+/* END PLAN57 */
 </style>
 </head>
 <body>
@@ -3571,6 +4060,8 @@
   <div class="hint ctr" style="margin-top:26px"><span class="under">Отменить перенос</span></div>
 </div>
 <span class="num">6.34</span><b>Перенос: ссылка</b><i>Утверждено владельцем 2026-10-12, реализовано в 0.33.0. Круг замер, ссылка выдана. Она несёт адрес этого сервера и одноразовый ключ — как приглашение, только на целый круг, поэтому под ней сказано, чем она опасна в чужих руках. Вопрос «а если на новом сервере у владельца другая почта» этим и решён: владельцем становится тот, кто вошёл там и вставил ссылку. Строка «Что происходит» живая: «Ждём новый сервер» → «wynd.u-slavy.ru скачивает круг · 3,1 из 8,4 ГБ» → 6.35. Обрыв между серверами не страшен: новый сервер догружает с места обрыва, пока жива ссылка. «Отменить перенос» гасит ссылку и оживляет круг.</i></figure>
+<figure class="s transition-frame" id="e6-34a"><div class="ph"><!--[0--><div class="sb"><span>9:41</span> <span class="sig"><u></u><u></u><u></u><u></u></span></div><!----><!--]--> <!--[-1--><div class="bar"><!--[0--><button type="button" class="ib " aria-label="Назад"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"></use></svg><!----></button><!----><!--]--> <!--[-1--><span class="t">Перенос круга</span> <!--[-1--><!--]--><!--]--></div><!----><!--]--> <!--[-1--><!--[1--><!--[-1--><div class="lab  "><!--[-1--><!---->Что происходит<!----><!--]--></div><!----> <!--[-1--><div class="row2 divided-top divided-bottom"><!--[0--><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-clock"></use></svg><!----><!--]--><!----> <div class="g"><!--[-1--><div style="font-weight:600">Срок ссылки вышел</div> <!--[0--><div class="sub">ссылка действовала до 2 ноября, 14:02</div><!--]--><!--]--><!----></div> <!--[-1--><!--[-1--><!--]--> <!--[-1--><!--]--><!--]--><!----><!----></div><!--]--><!----><!----> <div class="hint "><!---->Круг остаётся замершим. Получите новую ссылку и вставьте её на принимающем сервере.<!----></div><!----> <button type="button" class="btn c mt-14"><!--[-1--><!---->Получить новую ссылку<!----><!--]--></button><!----><!--]--> <div class="hint mt-22 ctr-text"><button type="button" class="under "><!--[-1--><!---->Отменить перенос<!----><!--]--></button><!----><!----></div><!----><!--]--><!----><!--]--> <!--[-1--><!--]--><!----></div><span class="num">6.34а</span><b>Срок ссылки переноса вышел</b><i>Оформление утверждённых правил A19/A20/A23, 2026-11-02. Единый источник из Wynd UI — docs/plans/57-transition-frames.svelte.txt. Новых продуктовых решений не вводит; данные для примера.</i></figure>
+<figure class="s transition-frame" id="e6-34b"><div class="ph"><!--[0--><div class="sb"><span>9:41</span> <span class="sig"><u></u><u></u><u></u><u></u></span></div><!----><!--]--> <!--[-1--><div class="bar"><!--[0--><button type="button" class="ib " aria-label="Назад"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"></use></svg><!----></button><!----><!--]--> <!--[-1--><span class="t">Перенос круга</span> <!--[-1--><!--]--><!--]--></div><!----><!--]--> <!--[-1--><!--[1--><!--[0--><div class="lab  "><!--[-1--><!---->Ссылка переноса<!----><!--]--></div><!----> <div class="fld  mono"><!--[-1-->https://home.example.org/move/N8vt-S5am-R9ky-K6df<!--]--></div><!----> <button type="button" class="btn gh "><!--[-1--><!---->Скопировать<!----><!--]--></button><!----> <div class="hint "><!---->Старая ссылка больше не действует. Новую вставьте на принимающем сервере.<!----></div><!----> <div class="status-card " role="status"><div class="status-card-title">Ждём новый сервер</div> <div class="status-card-text">Круг остаётся замершим с 30 октября, 14:02.</div></div><!----><!--]--> <div class="hint mt-22 ctr-text"><button type="button" class="under "><!--[-1--><!---->Отменить перенос<!----><!--]--></button><!----><!----></div><!----><!--]--><!----><!--]--> <!--[-1--><!--]--><!----></div><span class="num">6.34б</span><b>Ссылка перевыпущена</b><i>Оформление утверждённых правил A19/A20/A23, 2026-11-02. Единый источник из Wynd UI — docs/plans/57-transition-frames.svelte.txt. Новых продуктовых решений не вводит; данные для примера.</i></figure>
 <figure class="s" id="e6-35"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="cbar"><div class="top"><svg class="ic"><use href="#i-back"/></svg><span class="t">Перенос круга</span></div><div style="height:12px"></div></div>
@@ -3621,6 +4112,8 @@
   </div>
 </div>
 <span class="num">6.37</span><b>Подтверждение передачи</b><i>Второй барьер — не набор имени, а имя в заголовке: «Ане», не «участнику». Что вы теряете и что остаётся — сказано до кнопки, не после. Кнопка чернильная, как все главные. После подтверждения вы всё ещё в «Семье», только уже не хозяин: настройки открываются снова, и в рамке остаётся одна строка — «Покинуть круг».</i></figure>
+<figure class="s transition-frame" id="e6-37a"><div class="ph"><!--[0--><div class="sb"><span>9:41</span> <span class="sig"><u></u><u></u><u></u><u></u></span></div><!----><!--]--> <!--[-1--><div class="bar"><!--[0--><button type="button" class="ib " aria-label="Назад"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"></use></svg><!----></button><!----><!--]--> <!--[-1--><span class="t">Передать владение</span> <!--[-1--><!--]--><!--]--></div><!----><!--]--> <!--[-1--><!--[0--><div class="hint "><!---->Выберите нового владельца круга «Семья».<!----></div><!----> <!--[-1--><div class="row2 "><!--[-1--><!--]--><!----> <div class="g"><!--[-1--><div style="font-weight:600">Кот</div> <!--[0--><div class="sub">владелец · это вы</div><!--]--><!--]--><!----></div> <!--[-1--><!--[-1--><!--]--> <!--[-1--><!--]--><!--]--><!----><!----></div><!--]--><!----><!----> <!--[0--><button type="button" class="row2 "><!--[-1--><!--]--><!----> <div class="g"><!--[-1--><div style="font-weight:600">Аня</div> <!--[0--><div class="sub">может менять настройки</div><!--]--><!--]--><!----></div> <!--[-1--><!--[-1--><!--]--> <!--[1--><svg class="ic sm " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevr"></use></svg><!----><!--]--><!--]--><!----><!----></button><!--]--><!----><!----> <!--[0--><button type="button" class="row2 "><!--[-1--><!--]--><!----> <div class="g"><!--[-1--><div style="font-weight:600">Мышь</div> <!--[0--><div class="sub">с 5 августа</div><!--]--><!--]--><!----></div> <!--[-1--><!--[-1--><!--]--> <!--[1--><svg class="ic sm " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevr"></use></svg><!----><!--]--><!--]--><!----><!----></button><!--]--><!----><!----> <button type="button" class="scrim " aria-label="Закрыть"></button><!----> <div class="dlg " role="dialog" aria-modal="true" aria-label="Передать владение?"><div class="dlgq">Передать владение?</div> <div class="hint m-0 ink"><!---->Новый владелец — Аня. Вы останетесь в круге: писать сможете, менять настройки — нет.<!----></div><!----> <!--[-1--><div class="row2 "><!--[-1--><!--]--><!----> <div class="g"><!--[1--><!--[-1-->Передать прошлое для сохранения<!--]--><!--]--><!----></div> <!--[0--><button type="button" role="switch" aria-checked="false" aria-label="Передать прошлое для сохранения" class="sw "></button><!----><!----><!--]--><!----><!----></div><!--]--><!----><!----> <div class="hint m-0"><!---->Новый владелец сможет сохранить в архив только то, что застал.<!----></div><!----> <div class="hint m-0 mt-10"><!---->Видимость записей в приложении не изменится.<!----></div><!----><!----> <div class="rowin ask"><button type="button" class="btn gh "><!--[-1--><!---->Отмена<!----><!--]--></button><!----> <button type="button" class="btn  "><!--[-1--><!---->Передать<!----><!--]--></button><!----></div><!----></div><!----><!----><!--]--><!----><!--]--> <!--[-1--><!--]--><!----></div><span class="num">6.37а</span><b>Передача прошлого выключена</b><i>Оформление утверждённых правил A19/A20/A23, 2026-11-02. Единый источник из Wynd UI — docs/plans/57-transition-frames.svelte.txt. Новых продуктовых решений не вводит; данные для примера.</i></figure>
+<figure class="s transition-frame" id="e6-37b"><div class="ph"><!--[0--><div class="sb"><span>9:41</span> <span class="sig"><u></u><u></u><u></u><u></u></span></div><!----><!--]--> <!--[-1--><div class="bar"><!--[0--><button type="button" class="ib " aria-label="Назад"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"></use></svg><!----></button><!----><!--]--> <!--[-1--><span class="t">Передать владение</span> <!--[-1--><!--]--><!--]--></div><!----><!--]--> <!--[-1--><!--[0--><div class="hint "><!---->Выберите нового владельца круга «Семья».<!----></div><!----> <!--[-1--><div class="row2 "><!--[-1--><!--]--><!----> <div class="g"><!--[-1--><div style="font-weight:600">Кот</div> <!--[0--><div class="sub">владелец · это вы</div><!--]--><!--]--><!----></div> <!--[-1--><!--[-1--><!--]--> <!--[-1--><!--]--><!--]--><!----><!----></div><!--]--><!----><!----> <!--[0--><button type="button" class="row2 "><!--[-1--><!--]--><!----> <div class="g"><!--[-1--><div style="font-weight:600">Аня</div> <!--[0--><div class="sub">может менять настройки</div><!--]--><!--]--><!----></div> <!--[-1--><!--[-1--><!--]--> <!--[1--><svg class="ic sm " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevr"></use></svg><!----><!--]--><!--]--><!----><!----></button><!--]--><!----><!----> <!--[0--><button type="button" class="row2 "><!--[-1--><!--]--><!----> <div class="g"><!--[-1--><div style="font-weight:600">Мышь</div> <!--[0--><div class="sub">с 5 августа</div><!--]--><!--]--><!----></div> <!--[-1--><!--[-1--><!--]--> <!--[1--><svg class="ic sm " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevr"></use></svg><!----><!--]--><!--]--><!----><!----></button><!--]--><!----><!----> <button type="button" class="scrim " aria-label="Закрыть"></button><!----> <div class="dlg " role="dialog" aria-modal="true" aria-label="Передать владение?"><div class="dlgq">Передать владение?</div> <div class="hint m-0 ink"><!---->Новый владелец — Аня. Вы останетесь в круге: писать сможете, менять настройки — нет.<!----></div><!----> <!--[-1--><div class="row2 "><!--[-1--><!--]--><!----> <div class="g"><!--[1--><!--[-1-->Передать прошлое для сохранения<!--]--><!--]--><!----></div> <!--[0--><button type="button" role="switch" aria-checked="true" aria-label="Передать прошлое для сохранения" class="sw  on"></button><!----><!----><!--]--><!----><!----></div><!--]--><!----><!----> <div class="hint m-0"><!---->В архив нового владельца войдёт и переданное вам для сохранения прошлое.<!----></div><!----> <div class="hint m-0 mt-10"><!---->Видимость записей в приложении не изменится.<!----></div><!----><!----> <div class="rowin ask"><button type="button" class="btn gh "><!--[-1--><!---->Отмена<!----><!--]--></button><!----> <button type="button" class="btn  "><!--[-1--><!---->Передать<!----><!--]--></button><!----></div><!----></div><!----><!----><!--]--><!----><!--]--> <!--[-1--><!--]--><!----></div><span class="num">6.37б</span><b>Передача прошлого включена</b><i>Оформление утверждённых правил A19/A20/A23, 2026-11-02. Единый источник из Wynd UI — docs/plans/57-transition-frames.svelte.txt. Новых продуктовых решений не вводит; данные для примера.</i></figure>
 <figure class="s" id="e6-38"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="cbar"><div class="top"><svg class="ic"><use href="#i-back"/></svg><span class="t">Покинуть круг</span></div><div style="height:12px"></div></div>
@@ -4115,6 +4608,8 @@
   <div class="hint ctr">Сервер скачает круг сам. Приложение можно закрыть.</div>
 </div>
 <span class="num">7.20</span><b>Перенести круг сюда</b><i>Утверждено владельцем 2026-10-12, реализовано в 0.33.0. С 7.19, строка «Перенести с другого сервера»; сервер уже выбран там, строка сверху его только называет и даёт сменить. Вставили ссылку — сервер спросил по ней прежний сервер и показал карточку круга его цветом и именем: человек видит, что забирает, до того как нажмёт. Сервер — первое поле, как на 2.14; рядом свободное место; если его не хватает — рамка «Круг сюда не помещается» и «Попросить место», как при оживлении из архива (7.30–7.31). Приглашения всегда шлёт этот, новый сервер — своим письмом и своей ссылкой; рассылка необязательна (решения 2026-10-08). Уведомление «круг переехал» участники получат от старого сервера отдельно, когда владелец завершит перенос (6.35). После кнопки телефон не нужен: серверы работают между собой, ход виден здесь и на 6.34. Владельцем становится тот, кто вставил ссылку. Под выбором сервера — строка о незашифрованном хранении, сокращённая с формы нового круга (2.14): владелец здесь заново решает, где жить кругу (2026-10-12). C44, 2026-10-17: прежний сервер — той же карточкой, что этот (слово владельца); кнопка — «Поднять круг»; подсказка под полем ссылки — «Ссылку получает владелец круга…»; первый этап хода — ««Дом Ани» собирает круг для переноса.» вместо «Сервер договаривается…» («Пишем факты»).</i></figure>
+<figure class="s transition-frame" id="e7-20a"><div class="ph"><!--[0--><div class="sb"><span>9:41</span> <span class="sig"><u></u><u></u><u></u><u></u></span></div><!----><!--]--> <!--[-1--><div class="bar"><!--[0--><button type="button" class="ib " aria-label="Назад"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"></use></svg><!----></button><!----><!--]--> <!--[-1--><span class="t">Выбрать сервер</span> <!--[-1--><!--]--><!--]--></div><!----><!--]--> <!--[-1--><!--[2--><div class="hint "><!---->При выборе другого сервера прежний запрос на место будет отозван. Ссылка или выбранный архив сохранятся.<!----></div><!----> <div class="lab  "><!--[-1--><!---->Ваши серверы<!----><!--]--></div><!----> <!--[0--><button type="button" class="row2 server-card" style="margin:14px 16px 0; width:auto; border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600">У Славы<!--[-1--><!--]--></div> <div class="sub">slava.example.org</div> <!--[0--><div class="sub">Запрошено 10 ГБ</div><!--]--><!----></div> <!--[1--><span class="st ok"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"></use></svg><!----></span><!--]--><!----><!----></button><!--]--><!----><!----> <!--[0--><button type="button" class="row2 server-card" style="margin:14px 16px 0; width:auto; border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600">Дом Ани<!--[-1--><!--]--></div> <div class="sub">home.example.org</div> <!--[0--><div class="sub">Квота по умолчанию 12 ГБ</div><!--]--><!----></div> <!--[0--><svg class="ic sm " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevr"></use></svg><!----><!--]--><!----><!----></button><!--]--><!----><!----><!--]--><!----><!--]--> <!--[-1--><!--]--><!----></div><span class="num">7.20а</span><b>Смена принимающего сервера</b><i>Оформление утверждённых правил A19/A20/A23, 2026-11-02. Единый источник из Wynd UI — docs/plans/57-transition-frames.svelte.txt. Новых продуктовых решений не вводит; данные для примера.</i></figure>
+<figure class="s transition-frame" id="e7-20b"><div class="ph"><!--[0--><div class="sb"><span>9:41</span> <span class="sig"><u></u><u></u><u></u><u></u></span></div><!----><!--]--> <!--[-1--><div class="bar"><!--[0--><button type="button" class="ib " aria-label="Назад"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"></use></svg><!----></button><!----><!--]--> <!--[-1--><span class="t">Перенос круга</span> <!--[-1--><!--]--><!--]--></div><!----><!--]--> <!--[-1--><!--[-1--><div class="lab  "><!--[-1--><!---->Сервер<!----><!--]--></div><!----> <!--[0--><button type="button" class="row2 server-card" style="margin:14px 16px 0; width:auto; border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600">Дом Ани<!--[-1--><!--]--></div> <div class="sub">home.example.org</div> <!--[0--><div class="sub">Квота по умолчанию 12 ГБ</div><!--]--><!----></div> <!--[0--><svg class="ic sm " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevr"></use></svg><!----><!--]--><!----><!----></button><!--]--><!----><!----> <div class="hint "><!---->Прежний запрос на место отозван.<!----></div><!----> <div class="lab  "><!--[-1--><!---->Ссылка переноса<!----><!--]--></div><!----> <div class="fld  mono"><!--[-1-->https://family.example.org/move/N8vt-S5am-R9ky-K6df<!--]--></div><!----> <!--[-1--><div class="row2 "><!--[-1--><!--]--><!----> <div class="g"><!--[-1--><div style="font-weight:600">Семья</div> <!--[0--><div class="sub">340 записей · 22 участника · 8,4 ГБ</div><!--]--><!--]--><!----></div> <!--[-1--><!--[-1--><!--]--> <!--[-1--><!--]--><!--]--><!----><!----></div><!--]--><!----><!----> <div class="hint "><!---->На новом сервере достаточно места.<!----></div><!----> <button type="button" class="btn c "><!--[-1--><!---->Поднять круг<!----><!--]--></button><!----><!--]--><!----><!--]--> <!--[-1--><!--]--><!----></div><span class="num">7.20б</span><b>Другой сервер выбран</b><i>Оформление утверждённых правил A19/A20/A23, 2026-11-02. Единый источник из Wynd UI — docs/plans/57-transition-frames.svelte.txt. Новых продуктовых решений не вводит; данные для примера.</i></figure>
 <figure class="s" id="e7-21"><div class="ph terracotta">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Перенос круга</span></div>
@@ -4128,7 +4623,7 @@
   <div class="rowin" style="gap:8px;margin-top:10px"><span class="fld" style="margin:0;width:72px;flex:0 0 auto">10</span><span class="chip">МБ</span><span class="chip on">ГБ</span></div>
   <div class="btn c">Попросить место</div>
 </div>
-<span class="num">7.21</span><b>Перенос: круг не помещается</b><i>Утверждено владельцем 2026-10-12, реализовано в 0.33.0. Состояние 7.20; то же, что 7.30 при оживлении, с одним отличием — здесь идёт время. Ссылка переноса живёт 72 часа (6.34), и всё это время круг на прежнем сервере замерший, поэтому в рамке назван срок ссылки: человек видит, сколько у него есть на просьбу о месте. Не успел — владелец на прежнем сервере отменяет перенос и выдаёт новую ссылку. «Место попросили» и «в месте отказали» — как на 7.31 и 7.32, с той же строкой о сроке. Кнопки «Проверить снова» нет (владелец, 2026-10-12): экран спрашивает сервер сам — при открытии (владелец, 2026-10-13: только при открытии, пока экран открыт — не переспрашивает; об ответе придёт письмо). 2026-10-17: «Сколько попросить» — число и чипы «МБ / ГБ», сначала вес круга с запасом до МБ, меньше веса круга нельзя (после отказа можно попросить меньше). В карточке сервера — сколько круг получит: «квота по умолчанию …», «одобрено …» или «свободно …», если на сервере меньше квоты; в тексте — «новому кругу здесь дают …» или «на сервере свободно …». Так же на 7.23, 7.30, 7.32.</i></figure>
+<span class="num">7.21</span><b>Перенос: круг не помещается</b><i>Утверждено владельцем 2026-10-12, реализовано в 0.33.0. Состояние 7.20; то же, что 7.30 при оживлении, с одним отличием — здесь идёт время. Ссылка переноса живёт 72 часа (6.34), и всё это время круг на прежнем сервере замерший, поэтому в рамке назван срок ссылки: человек видит, сколько у него есть на просьбу о месте. Не успел — владелец на прежнем сервере перевыпускает ссылку без оживления круга. «Место попросили» и «в месте отказали» — как на 7.31 и 7.32, с той же строкой о сроке. Кнопки «Проверить снова» нет (владелец, 2026-10-12): экран спрашивает сервер сам — при открытии (владелец, 2026-10-13: только при открытии, пока экран открыт — не переспрашивает; об ответе придёт письмо). 2026-10-17: «Сколько попросить» — число и чипы «МБ / ГБ», сначала вес круга с запасом до МБ, меньше веса круга нельзя (после отказа можно попросить меньше). В карточке сервера — сколько круг получит: «квота по умолчанию …», «одобрено …» или «свободно …», если на сервере меньше квоты; в тексте — «новому кругу здесь дают …» или «на сервере свободно …». Так же на 7.23, 7.30, 7.32.</i></figure>
 <figure class="s" id="e7-22"><div class="ph terracotta">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Перенос круга</span></div>
@@ -4140,7 +4635,7 @@
   <div class="row2" style="margin:16px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px"><div class="g"><div style="font-weight:600">Место попросили</div><div class="sub" style="line-height:1.5;margin-top:4px">12 октября вы попросили у администратора 10 ГБ для этого круга. Ответ администратора придёт письмом. Когда место дадут, здесь появится кнопка «Перенести круг».<br><br>Ссылка переноса действует до 15 октября, 14:02. До тех пор круг на прежнем сервере стоит замершим.</div></div></div>
   <div class="hint ctr" style="margin-top:16px">Можно уйти и вернуться позже: просьба и ссылка останутся.</div>
 </div>
-<span class="num">7.22</span><b>Перенос: место попросили</b><i>Утверждено владельцем 2026-10-13, реализовано в 0.33.0. Состояние 7.21 после «Попросить место»; то же, что 7.31 при оживлении, со строкой о сроке ссылки. Сказано, что, когда и у кого попросили, что появится, когда место дадут, и сколько времени на это есть. Главной кнопки нет: делать здесь нечего, только ждать. Отличие от 7.31 внизу: там файл выбирают заново, здесь возвращаться не с чем — ссылку сервер помнит вместе с просьбой (утверждено с кадром). Если место дадут после срока ссылки, поднять круг по ней уже нельзя: владелец на прежнем сервере отменяет перенос и выдаёт новую — как это выглядит здесь, не нарисовано.</i></figure>
+<span class="num">7.22</span><b>Перенос: место попросили</b><i>Утверждено владельцем 2026-10-13, реализовано в 0.33.0. Состояние 7.21 после «Попросить место»; то же, что 7.31 при оживлении, со строкой о сроке ссылки. Сказано, что, когда и у кого попросили, что появится, когда место дадут, и сколько времени на это есть. Главной кнопки нет: делать здесь нечего, только ждать. Отличие от 7.31 внизу: там файл выбирают заново, здесь возвращаться не с чем — ссылку сервер помнит вместе с просьбой (утверждено с кадром). Если место дадут после срока ссылки, поднять круг по ней уже нельзя: владелец на прежнем сервере перевыпускает ссылку — как это выглядит здесь, не нарисовано.</i></figure>
 <figure class="s" id="e7-23"><div class="ph terracotta">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Перенос круга</span></div>
@@ -4163,10 +4658,10 @@
   <div class="lab">Ссылка переноса</div>
   <div class="fld" style="font-size:12.5px;color:var(--faint)">https://home.example.org/move/7Kq2-Zt9w-Xb41-Lm8c</div>
   <div class="icard" style="margin-top:12px"><div class="sq">С</div><div class="m"><div class="n">Семья</div><div class="p">340 записей · 22 участника · 8,4 ГБ</div></div></div>
-  <div class="row2" style="margin:16px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px"><div class="g"><div style="font-weight:600">Срок ссылки вышел</div><div class="sub" style="line-height:1.5;margin-top:4px">Ссылка переноса действовала до 15 октября, 14:02. На прежнем сервере, «Дом Ани», отмените перенос и начните его заново — там дадут новую ссылку.<br><br>Просьба о 10 ГБ у администратора «У Славы» остаётся.</div></div></div>
+  <div class="row2" style="margin:16px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px"><div class="g"><div style="font-weight:600">Срок ссылки вышел</div><div class="sub" style="line-height:1.5;margin-top:4px">Ссылка переноса действовала до 15 октября, 14:02. Круг остаётся замершим. На прежнем сервере, «Дом Ани», получите новую ссылку переноса.<br><br>Просьба о 10 ГБ у администратора «У Славы» остаётся.</div></div></div>
   <div class="hint ctr" style="margin-top:16px">Новую ссылку вставьте в это же поле.</div>
 </div>
-<span class="num">7.24</span><b>Перенос: срок ссылки вышел</b><i>Утверждено владельцем 2026-10-13, реализовано в 0.33.0. Состояние 7.22, когда 72 часа ссылки (6.34) прошли, а места так и не дали. Сказано, до какого времени ссылка действовала и что сделать: на прежнем сервере отменить перенос и начать заново — «Отменить перенос» на 6.34, потом 6.33. Старая ссылка в поле погашена; новая вставляется туда же. Утверждено с кадром: просьба о месте привязана к серверу и кругу, а не к ссылке, и срок ссылки её не снимает — с новой ссылкой экран возвращается к 7.22 или, если место уже дали, к 7.20. Так же выглядят «не помещается» (7.21) и «в месте отказали» (7.23) после срока — без строки о просьбе, если её не было.</i></figure>
+<span class="num">7.24</span><b>Перенос: срок ссылки вышел</b><i>Утверждено владельцем 2026-10-13, реализовано в 0.33.0. Состояние 7.22, когда 72 часа ссылки (6.34) прошли, а места так и не дали. Сказано, до какого времени ссылка действовала и что сделать: на прежнем сервере перевыпустить ссылку без оживления круга (A20, 2026-10-30; вариант 6.34а). Старая ссылка в поле погашена; новая вставляется туда же. Утверждено с кадром: просьба о месте привязана к серверу и кругу, а не к ссылке, и срок ссылки её не снимает — с новой ссылкой экран возвращается к 7.22 или, если место уже дали, к 7.20. Так же выглядят «не помещается» (7.21) и «в месте отказали» (7.23) после срока — без строки о просьбе, если её не было.</i></figure>
 <figure class="s" id="e7-25"><div class="ph terracotta">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="cbar"><div class="top" style="justify-content:center"><span class="t">Семья</span></div><div style="height:10px"></div></div>
