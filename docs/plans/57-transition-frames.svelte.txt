@@ -1,4 +1,4 @@
-<!-- Воплощение утверждённых A19/A20/A23. Единый источник вариантов для общего screens.html; действий с данными нет. -->
+<!-- Предложения кадров по утверждённым правилам A19/A20/A23. Оформление отдельно не утверждено. Единый источник вариантов для общего screens.html; действий с данными нет. -->
 <script lang="ts">
  import FormLayout from '$lib/layouts/FormLayout.svelte';
  import Label from '$ui/forms/Label.svelte';
@@ -22,7 +22,7 @@
 </script>
 
 <main class="transition-review">
- <header><h1>История и перенос круга</h1><p>Принятые правила A19, A20 и A23 · 2 ноября 2026. Данные для примера; кнопки не выполняют настоящих действий.</p></header>
+ <header><h1>История и перенос круга</h1><p>Предложения кадров по принятым правилам A19, A20 и A23 · 2 ноября 2026. Оформление отдельно не утверждено. Данные для примера; кнопки не выполняют настоящих действий.</p></header>
  <div class="transition-grid">
  {#each scenes as scene}
   <figure class="transition-frame" id={scene.id} data-kind={scene.kind}>
@@ -70,7 +70,7 @@
      <Button variant="colored" onclick={() => {}}>Поднять круг</Button>
     {/if}
    </FormLayout>
-   <figcaption><strong>{scene.id.slice(1).replace('-', '.')} · {scene.title}</strong><p>Оформление принятого правила. Источник: docs/plans/57-transition-frames.svelte.txt.</p></figcaption>
+   <figcaption><strong>{scene.id.slice(1).replace('-', '.')} · {scene.title}</strong><p>Предложение оформления; отдельно не утверждено. Источник: docs/plans/57-transition-frames.svelte.txt.</p></figcaption>
   </figure>
  {/each}
  </div>

@@ -41,15 +41,6 @@ export async function startCircleMove(origin: string, circleId: string): Promise
 	return move;
 }
 
-/** Новая ссылка после истечения прежней; круг остаётся замёрзшим. */
-export async function reissueCircleMove(origin: string, circleId: string): Promise<CircleMove> {
-	const move = await apiJson<CircleMove>(origin, `/circles/${circleId}/move/reissue`, {
-		method: 'POST'
-	});
-	await invalidateSnapshots(origin, { kind: 'circles' });
-	return move;
-}
-
 /** «Отменить перенос» (6.34, 6.35): ссылка гаснет, круг оживает. */
 export async function cancelCircleMove(origin: string, circleId: string): Promise<void> {
 	await apiJson(origin, `/circles/${circleId}/move/cancel`, { method: 'POST' });
