@@ -176,6 +176,52 @@ func (c *Chronicle) StartMove(ctx context.Context, circleID, accountID, token, t
 	return c.GetMove(ctx, id)
 }
 
+// ReissueMove заменяет истёкшую ссылку, не снимая заморозку круга. Отдельная
+// запись переноса не позволяет запоздавшему запросу старой ссылки принять новый.
+func (c *Chronicle) ReissueMove(ctx context.Context, circleID, accountID, token, tokenHash string, now time.Time) (*CircleMove, *CircleMove, error) {
+	now = utcOrNow(now)
+	id, err := newID()
+	if err != nil {
+		return nil, nil, err
+	}
+	tx, err := c.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer tx.Rollback()
+	var owner string
+	if err := tx.QueryRowContext(ctx, `SELECT owner_account_id FROM circles WHERE id = ? AND frozen_at IS NOT NULL`, circleID).Scan(&owner); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil, ErrNotFound
+		}
+		return nil, nil, err
+	}
+	if owner != accountID {
+		return nil, nil, ErrForbidden
+	}
+	old, err := scanCircleMove(tx.QueryRowContext(ctx, `SELECT `+circleMoveCols+` FROM circle_moves WHERE circle_id = ? AND status IN ('waiting','pulling','accepted') ORDER BY started_at DESC, rowid DESC LIMIT 1`, circleID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil, ErrNotFound
+		}
+		return nil, nil, err
+	}
+	if old.Status == MoveAccepted || now.Before(old.ExpiresAt) {
+		return nil, nil, ErrMoveBusy
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE circle_moves SET status = 'canceled', ended_at = ? WHERE id = ?`, formatTime(now), old.ID); err != nil {
+		return nil, nil, err
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO circle_moves (id,circle_id,started_by_account_id,started_at,token,token_hash,expires_at,status) VALUES (?,?,?,?,?,?,?,'waiting')`, id, circleID, accountID, formatTime(now), token, tokenHash, formatTime(now.Add(MoveLinkTTL))); err != nil {
+		return nil, nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, nil, err
+	}
+	m, err := c.GetMove(ctx, id)
+	return m, old, err
+}
+
 // ClaimMove — новый сервер пришёл по ссылке. Первый закрепляет перенос за
 // собой; тот же адрес — продолжение после обрыва; другой — ErrMoveTaken.
 // started — архив под перенос ещё не собирали: его пора собирать.

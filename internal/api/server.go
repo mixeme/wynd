@@ -7,8 +7,8 @@ import (
 	"net"
 	"net/http"
 	"sync"
-	"time"
 	"sync/atomic"
+	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
 	"gitea.mixdep.ru/mix/wynd/internal/blob"
@@ -266,6 +266,7 @@ func (s *Server) routes() {
 	// Перенос круга по ссылке (план 53): владелец на прежнем сервере...
 	s.Mux.HandleFunc("GET /api/v1/circles/{circle_id}/move", paid(s.handleCircleMove))
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/move", paid(s.handleStartMove))
+	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/move/reissue", paid(s.handleReissueMove))
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/move/cancel", paid(s.handleCancelMove))
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/move/complete", paid(s.handleCompleteMove))
 	// ...и обмен серверов — без входа, по ключу ссылки.

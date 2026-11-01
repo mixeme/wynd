@@ -21,6 +21,7 @@
 		fetchCircleMove,
 		serverHost,
 		startCircleMove,
+		reissueCircleMove,
 		type CircleMoveState
 	} from '$lib/circles/move';
 	import { getSession } from '$lib/idb/db';
@@ -96,6 +97,13 @@
 			await cancelCircleMove(circle.origin, circle.circleId);
 			await load();
 			await circle.refresh();
+		});
+
+	const reissue = () =>
+		act(async () => {
+			await reissueCircleMove(circle.origin, circle.circleId);
+			copied = false;
+			await load();
 		});
 
 	const complete = () =>
@@ -177,9 +185,11 @@
 				divided="both"
 			/>
 			<Hint>
-				Круг стоит замершим. Отмените перенос — круг оживёт; чтобы перенести его, начните заново:
-				будет новая ссылка.
+				Круг остаётся замершим. Получите новую ссылку и вставьте её на принимающем сервере.
 			</Hint>
+			<Button class="mt-14" variant="colored" loading={busy} onclick={() => void reissue()}>
+				Получить новую ссылку
+			</Button>
 		{:else if move.status === 'pulling'}
 			<SettingsRow
 				icon="download"

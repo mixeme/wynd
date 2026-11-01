@@ -163,6 +163,38 @@ func (s *Server) handleStartMove(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, out)
 }
 
+// handleReissueMove — новая ссылка без отмены переноса и без повторных писем.
+func (s *Server) handleReissueMove(w http.ResponseWriter, r *http.Request) {
+	circleID := r.PathValue("circle_id")
+	sess, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+	if err := s.Chronicle.RequireOwner(r.Context(), circleID, sess.AccountID); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	token, err := newMoveToken()
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	m, old, err := s.Chronicle.ReissueMove(r.Context(), circleID, sess.AccountID, token, moveTokenHash(token), time.Now())
+	if errors.Is(err, chronicle.ErrMoveBusy) {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "move_not_expired"})
+		return
+	}
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	s.dropMoveArchive(r.Context(), old.ID)
+	s.notifyCircle(circleID, sess.AccountID, "event")
+	out := moveJSON(m, time.Now())
+	out["link"] = s.moveLink(token)
+	writeJSON(w, http.StatusCreated, out)
+}
+
 // sendCircleMovingEmails — письмо участникам: круг переезжает (3.14).
 func (s *Server) sendCircleMovingEmails(circleID, ownerAccountID string) {
 	if s.Mail == nil {

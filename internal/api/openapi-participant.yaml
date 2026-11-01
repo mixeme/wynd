@@ -989,6 +989,9 @@ paths:
   /circles/{circle_id}/move/cancel:
     post:
       summary: Cancel the move (6.25, 6.26) — the link dies, the circle writes again
+  /circles/{circle_id}/move/reissue:
+    post:
+      summary: Reissue an expired move link without unfreezing the circle; owner only; 201 new link, 409 move_not_expired for a live or already accepted move
   /circles/{circle_id}/move/complete:
     post:
       summary: Finish the move after the new server accepted it (6.26) — the circle is deleted here, members get a "circle moved" e-mail; 409 not_accepted
