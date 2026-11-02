@@ -71,7 +71,7 @@ function leavingPreview(circle: CircleListItem): string {
 		return `Круг переехал — войдите на ${serverHost(circle.move.dest_url)}`;
 	}
 	if (circle.move) return 'Круг замер на время переезда';
-	return circle.you_own ? 'Круг уходит с сервера' : 'Круг уходит с сервера — скачайте своё';
+	return 'Круг уходит с сервера';
 }
 
 export interface CirclesResponse {

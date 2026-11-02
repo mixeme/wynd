@@ -872,14 +872,8 @@
 							if (circle.move?.dest_url) window.location.assign(circle.move.dest_url);
 						}}
 			>
-				{#if circle.youOwn}
-					«{circle.name}» теперь на <strong>{dest}</strong>. Здесь круг замер и исчезнет, когда вы
-					завершите перенос.
-				{:else}
-					«{circle.name}» теперь на <strong>{dest}</strong>. Войдите там почтой {circle.move.email} —
-					попадёте в своё имя и свои записи. Здесь круг замер и исчезнет, когда {circle.ownerName ||
-						'владелец'} завершит перенос.
-				{/if}
+				«{circle.name}» теперь на <strong>{dest}</strong>. Войдите там почтой {circle.move.email} — попадёте
+				в своё имя и свои записи. Здесь круг замер и исчезнет после завершения переноса.
 			</ArchiveBanner>
 		{:else if circle.frozenAt && circle.move}
 			<!-- 3.14: круг переезжает; куда — старый сервер пока не знает. -->
@@ -888,16 +882,10 @@
 				action={circle.youOwn ? 'Перенос круга' : undefined}
 				onaction={circle.youOwn ? () => goto(`/circles/${circle.circleId}/move`) : undefined}
 			>
-				{#if circle.youOwn}
-					Вы переносите «{circle.name}» на другой сервер. Читать можно, писать нельзя.
-				{:else}
-					{circle.ownerName || 'Владелец'} переносит «{circle.name}» на другой сервер. Читать можно,
-					писать нельзя. Когда перенос закончится, на {circle.move.email} придёт письмо с новым адресом
-					круга.
-				{/if}
+				«{circle.name}» переезжает на другой сервер. Читать можно, писать нельзя.
 			</ArchiveBanner>
 		{:else if circle.frozenAt}
-			<!-- 3.16: круг уходит с сервера — что происходит, чьим решением и что успеть. -->
+			<!-- Общий текст для обеих ролей; различаются доступные действия (client-reference). -->
 			<ArchiveBanner
 				title="Круг уходит с сервера"
 				action={circle.youOwn ? 'Полный архив круга' : 'Скачать свой архив'}
@@ -909,14 +897,8 @@
 								`/api/v1/circles/${circle.circleId}/archive/download`
 							)}
 			>
-				{#if circle.youOwn}
-					Вы убираете круг «{circle.name}» с сервера и сохраняете его в файл. Читать можно, писать
-					нельзя.
-				{:else}
-					{circle.ownerName || 'Владелец'} убирает круг «{circle.name}» с сервера и сохраняет его в
-					файл. Читать можно, писать нельзя. Свой архив — всё, что вы видели в круге, — можно
-					скачать, пока круг здесь.
-				{/if}
+				Круг «{circle.name}» сохраняют в файл и убирают с этого сервера. Читать можно, писать
+				нельзя. Свой архив — всё, что вы видели в круге, — можно скачать, пока круг здесь.
 			</ArchiveBanner>
 		{:else if circle.archiveCycle?.active}
 			<ArchiveBanner
