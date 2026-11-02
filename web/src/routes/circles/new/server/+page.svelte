@@ -18,8 +18,13 @@
 <FormLayout color={form.color} app title="Сервер" onback={() => goUp('/circles/new')}>
 	{#each form.sessions as session (session.origin)}
 		<ServerRow
-			name={session.name}
+			name={form.serverCards[session.origin]?.info?.name ||
+				session.name ||
+				form.serverSubtitle(session)}
 			subtitle={form.serverSubtitle(session)}
+			detail={form.serverDetail(session, true)}
+			gdpr={form.serverCards[session.origin]?.info?.allow_name_erasure}
+			connection={form.serverCards[session.origin]?.connection}
 			variant={session.origin === form.selectedOrigin ? 'ok' : 'info'}
 			class={session.origin === form.sessions[0]?.origin ? 'mt-8' : undefined}
 			onclick={() => pickOrigin(session.origin)}

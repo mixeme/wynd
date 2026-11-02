@@ -14,7 +14,7 @@
 	<ScreenTitle class="mt-24">Вас пригласили</ScreenTitle>
 	<InviteCard initial="С" name="Семья" preview="22 участника · пригласила Аня" />
 	<Label>Сервер</Label>
-	<ServerRow name="Дом Ани" subtitle="home.example.org" variant="ok" card gdpr top={0} />
+	<ServerRow name="Дом Ани" subtitle="home.example.org" card gdpr top={0} />
 	<Label>Почта</Label>
 	<FieldDisplay value="you@example.com" active />
 	<Hint>Пришлём код для входа. Пароля нет.</Hint>

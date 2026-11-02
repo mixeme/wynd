@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { loadServerCard, type ServerCardState } from '$lib/instance/serverCard';
+	let serverCard = $state<ServerCardState>({ connection: 'checking' });
 	import { goUp } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -146,6 +148,7 @@
 	});
 
 	onMount(async () => {
+		void loadServerCard(origin).then((next) => (serverCard = next));
 		const sessions = await loadSessions();
 		serverName = sessions.find((x) => x.origin === origin)?.name ?? '';
 		// ?done — вернулись из участников на итог переноса: показать его снова.
@@ -366,12 +369,11 @@
 		<!-- 7.20 и его состояния. -->
 		<Label>Сервер</Label>
 		<ServerRow
-			name={serverName || host}
-			subtitle={move && !move.fits
-				? `${host} · ${roomCaption(move, formatBytes)}`
-				: freeRoom !== undefined || move
-					? `${host} · ${roomCaption(move ?? freeRoom ?? { room_bytes: 0 }, formatBytes)}`
-					: host}
+			name={serverCard.info?.name || serverName || host}
+			subtitle={host}
+			detail={move || freeRoom ? roomCaption(move ?? freeRoom!, formatBytes) : undefined}
+			gdpr={serverCard.info?.allow_name_erasure}
+			connection={serverCard.connection}
 			card
 			top={4}
 		/>
@@ -425,7 +427,7 @@
 				<StatusCard
 					class="mt-14"
 					title="Срок ссылки вышел"
-					text={`Ссылка переноса действовала до ${until(move.expires_at)}. На прежнем сервере${move.source_name ? `, «${move.source_name}»,` : ''} отмените перенос и начните его заново — там дадут новую ссылку.${move.request?.status === 'pending' ? ` Просьба о ${formatBytes(move.request.requested_bytes)} у администратора ${srv} остаётся.` : ''}`}
+					text={`Ссылка переноса действовала до ${until(move.expires_at)}. Круг остаётся замершим. На прежнем сервере${move.source_name ? `, «${move.source_name}»,` : ''} получите новую ссылку переноса.${move.request?.status === 'pending' ? ` Просьба о ${formatBytes(move.request.requested_bytes)} у администратора ${srv} остаётся.` : ''}`}
 				/>
 				<Hint class="mt-14 ctr-text">Новую ссылку вставьте в это же поле.</Hint>
 			{:else if move.status === 'failed'}

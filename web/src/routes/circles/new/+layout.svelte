@@ -5,6 +5,7 @@
 	import { fetchCircles } from '$lib/circles/circles';
 	import { displayHost } from '$lib/auth/origin';
 	import { WORD, plural } from '$lib/format/plural';
+	import { loadServerCard, type ServerCardState } from '$lib/instance/serverCard';
 	import { loadSessions } from '$lib/session/session.svelte';
 	import type { SessionRecord } from '$lib/idb/db';
 	import { NEW_CIRCLE_CTX, type NewCircleContext } from '$lib/circles/new-circle';
@@ -15,6 +16,7 @@
 	const form = $state<NewCircleContext>({
 		sessions: [],
 		circleCounts: {},
+		serverCards: {},
 		selectedOrigin: '',
 		name: '',
 		color: 'ochre',
@@ -24,19 +26,27 @@
 		loading: false,
 		error: '',
 		ready: false,
-		serverSubtitle: () => ''
+		serverSubtitle: () => '',
+		serverDetail: () => undefined
 	});
 
 	setContext(NEW_CIRCLE_CTX, form);
 
 	function serverSubtitle(session: SessionRecord): string {
-		const count = form.circleCounts[session.origin] ?? 0;
-		const host = displayHost(session.origin);
-		const tail = count ? ` · ещё ${plural(count, WORD.yourCircle)}` : '';
-		return `${host}${tail}`;
+		return displayHost(session.origin);
 	}
 
 	form.serverSubtitle = serverSubtitle;
+	form.serverDetail = (session, picking = false) => {
+		const count = form.circleCounts[session.origin];
+		return count === undefined
+			? undefined
+			: picking
+				? plural(count, WORD.circle)
+				: count
+					? `Ещё ${plural(count, WORD.yourCircle)}`
+					: undefined;
+	};
 
 	// Свой сервер — пустая строка, поэтому выбор проверяется по наличию
 	// в списке, а не на истинность: ?origin= — это выбор своего сервера.
@@ -57,16 +67,18 @@
 			return;
 		}
 		form.sessions = sessions;
-		const counts: Record<string, number> = {};
+		const counts: Record<string, number | undefined> = {};
+		const cards: Record<string, ServerCardState> = {};
 		for (const session of sessions) {
-			try {
-				const list = await fetchCircles(session.origin);
-				counts[session.origin] = list.length;
-			} catch {
-				counts[session.origin] = 0;
-			}
+			const [list, card] = await Promise.all([
+				fetchCircles(session.origin).catch(() => undefined),
+				loadServerCard(session.origin)
+			]);
+			counts[session.origin] = list?.length;
+			cards[session.origin] = card;
 		}
 		form.circleCounts = counts;
+		form.serverCards = cards;
 		applyOriginFromUrl(sessions);
 		form.ready = true;
 	});

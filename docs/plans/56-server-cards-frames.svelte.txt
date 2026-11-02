@@ -1,4 +1,4 @@
-<!-- План 56: предлагаемые состояния плашек. Данные — примеры, запросов нет. -->
+<!-- Плашки сервера утверждены 2026-10-29, внедрены в 0.43.9. Данные — примеры, запросов нет. -->
 <script lang="ts">
  import ServerRow from '$ui/data/ServerRow.svelte';
  const board = new URLSearchParams(window.location.search).get('board');
@@ -23,7 +23,7 @@
 <main class="review-page">
  {#if !board || board === 'entry'}
  <section class="board" id="entry-board" aria-label="Регистрация и связь">
-  <header><div class="eyebrow">WYND · ПЛАН 56 · ПРЕДЛОЖЕНИЕ</div><h1>Плашка сервера: регистрация и связь</h1><p>Имя и адрес на своих строках. Третья строка — сведения для этого места или состояние связи.</p></header>
+  <header><div class="eyebrow">WYND · ПЛАН 56 · УТВЕРЖДЕНО</div><h1>Плашка сервера: регистрация и связь</h1><p>Имя и адрес на своих строках. Третья строка — сведения для этого места или состояние связи.</p></header>
   <div class="grid">
    {#each entry as item}
     <article class="sample"><h2>{item.label}</h2><ServerRow name="Дом Ани" subtitle="home.example.org" detail={item.detail} card gdpr top={0} style="width:calc(100% - 32px);line-height:20px" /></article>
@@ -34,7 +34,7 @@
  {/if}
  {#if !board || board === 'context'}
  <section class="board" id="context-board" aria-label="Выбор сервера и приём круга">
-  <header><div class="eyebrow">WYND · ПЛАН 56 · ПРЕДЛОЖЕНИЕ</div><h1>Плашка сервера: сведения по контексту</h1><p>Тип регистрации остаётся у входа. После входа третья строка помогает текущему действию.</p></header>
+  <header><div class="eyebrow">WYND · ПЛАН 56 · УТВЕРЖДЕНО</div><h1>Плашка сервера: сведения по контексту</h1><p>Тип регистрации остаётся у входа. После входа третья строка помогает текущему действию.</p></header>
   <div class="grid">
    {#each contexts as item}
     <article class="sample"><h2>{item.label}</h2><ServerRow name={item.label.startsWith('Прежний') ? 'У Славы' : 'Дом Ани'} subtitle={item.label.startsWith('Прежний') ? 'slava.example.org' : 'home.example.org'} detail={item.detail} variant={item.variant ?? 'info'} card gdpr top={0} style="width:calc(100% - 32px);line-height:20px" onclick={item.variant ? () => {} : undefined} /></article>
@@ -45,7 +45,7 @@
  {/if}
  {#if !board || board === 'edge'}
  <section class="board" id="edge-board" aria-label="Длинные адреса и отсутствие имени">
-  <header><div class="eyebrow">WYND · ПЛАН 56 · ПРЕДЛОЖЕНИЕ</div><h1>Длинный адрес и неполные сведения</h1><p>Длинный адрес переносится. Если имя неизвестно, адрес показывается один раз.</p></header>
+  <header><div class="eyebrow">WYND · ПЛАН 56 · УТВЕРЖДЕНО</div><h1>Длинный адрес и неполные сведения</h1><p>Длинный адрес переносится. Если имя неизвестно, адрес показывается один раз.</p></header>
   <div class="grid">
    <article class="sample"><h2>Длинный адрес · тип регистрации сохранён</h2><ServerRow name="Семейный сервер на даче" subtitle="family-photos-and-stories.example.org:8443" detail="Только по приглашению" card top={0} style="line-height:20px" /></article>
    <article class="sample"><h2>Имя неизвестно · сервер ранее был добавлен</h2><ServerRow name="home.example.org" subtitle="Сервер не отвечает" card top={0} style="line-height:20px" /></article>

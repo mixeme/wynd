@@ -19,7 +19,9 @@
 	<Label>Сервер</Label>
 	<ServerRow
 		name="Дом Ани"
-		subtitle="home.example.org · ещё 5 ваших кругов"
+		subtitle="home.example.org"
+		detail="Ещё 5 ваших кругов"
+		gdpr
 		variant="select"
 		style="padding:2px 16px 10px"
 	/>

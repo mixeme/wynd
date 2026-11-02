@@ -33,10 +33,8 @@ describe('isCircleInvitePeek', () => {
 });
 
 describe('serverInviteSubtitle', () => {
-	it('puts the inviter after the host', () => {
-		expect(serverInviteSubtitle(serverPeek, 'fallback.example')).toBe(
-			'wynd.u-slavy.ru · позвал Слава'
-		);
+	it('keeps the address on its own line', () => {
+		expect(serverInviteSubtitle(serverPeek, 'fallback.example')).toBe('wynd.u-slavy.ru');
 	});
 
 	it('keeps only the host when the name is unknown', () => {

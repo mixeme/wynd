@@ -26,6 +26,32 @@ function render<P extends Record<string, unknown>>(component: Component<P>, prop
 // разметка во всех вариантах та же, что до слияния, — слепки сняты со старых
 // компонентов. Меняется разметка — меняется и слепок, осознанно.
 describe('row components markup', () => {
+	// Подтверждённые сведения не исчезают из-за потери связи.
+	it('ServerRow: связь заменяет только третью строку', () => {
+		const html = render(ServerRow, {
+			name: 'Дом',
+			subtitle: 'wynd.example',
+			detail: 'Квота по умолчанию 3 ГБ',
+			connection: 'unavailable' as const,
+			gdpr: true,
+			card: true
+		});
+		expect(html).toContain('wynd.example');
+		expect(html).toContain('GDPR');
+		expect(html).toContain('Сервер не отвечает');
+		expect(html).not.toContain('Квота по умолчанию');
+	});
+	it('ServerRow: неизвестное имя не дублирует адрес', () => {
+		const html = render(ServerRow, { name: 'wynd.example', subtitle: 'wynd.example' });
+		expect(html.match(/wynd\.example/g)).toHaveLength(1);
+	});
+	it('ServerRow: карточки с действием и без занимают одинаковую ширину', () => {
+		for (const onclick of [undefined, noop]) {
+			expect(
+				render(ServerRow, { name: 'Дом', subtitle: 'wynd.example', card: true, onclick })
+			).toMatch(/width:\s*calc\(100% - 32px\)/);
+		}
+	});
 	it('ServerRow', () => {
 		for (const variant of ['select', 'ok', 'warn', 'info'] as const) {
 			for (const onclick of [undefined, noop]) {

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { loadServerCard, type ServerCardState } from '$lib/instance/serverCard';
+	let serverCard = $state<ServerCardState>({ connection: 'checking' });
 	import { getContext, onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import Avatar from '$ui/data/Avatar.svelte';
@@ -50,6 +52,7 @@
 	const palette = Object.values(CIRCLE_COLORS);
 
 	onMount(async () => {
+		void loadServerCard(circle.origin).then((next) => (serverCard = next));
 		void getSession(circle.origin).then((s) => (serverName = s?.name ?? ''));
 		try {
 			preview = await fetchSplitPreview(circle.origin, circle.circleId);
@@ -103,9 +106,10 @@
 	{:else if step === 'what'}
 		<Label>Сервер</Label>
 		<ServerRow
-			class="pad-2-16-10"
-			name={serverName || displayHost(circle.origin)}
-			subtitle={serverName ? displayHost(circle.origin) : ''}
+			name={serverCard.info?.name || serverName || displayHost(circle.origin)}
+			subtitle={displayHost(circle.origin)}
+			gdpr={serverCard.info?.allow_name_erasure}
+			connection={serverCard.connection}
 			card
 		/>
 		<Label>Название</Label>

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { loadServerCard, type ServerCardState } from '$lib/instance/serverCard';
+	let serverCard = $state<ServerCardState>({ connection: 'checking' });
 	import { goUp } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -123,6 +125,7 @@
 	let invitable = $state(0);
 
 	onMount(async () => {
+		void loadServerCard(origin).then((next) => (serverCard = next));
 		restoreDone();
 		const sessions = await loadSessions();
 		const s = sessions.find((x) => x.origin === origin);
@@ -337,8 +340,11 @@
 	{#if step === 'choose'}
 		<!-- 7.19: две дороги — перенос по ссылке (план 53) и оживление из файла. -->
 		<ServerRow
-			name={serverName || host}
-			subtitle={freeRoom ? `${host} · ${roomCaption(freeRoom, formatBytes)}` : host}
+			name={serverCard.info?.name || serverName || host}
+			subtitle={host}
+			detail={freeRoom ? roomCaption(freeRoom, formatBytes) : undefined}
+			gdpr={serverCard.info?.allow_name_erasure}
+			connection={serverCard.connection}
 			card
 			top={10}
 		/>
@@ -395,10 +401,11 @@
 		<!-- 7.29 и, когда круг не помещается, 7.30 / 7.31 / 7.32. -->
 		<Label>Сервер</Label>
 		<ServerRow
-			name={serverName || host}
-			subtitle={room.fits
-				? `${host} · ${roomCaption(room, formatBytes)}`
-				: `${host} · ${roomCaption(room, formatBytes)}`}
+			name={serverCard.info?.name || serverName || host}
+			subtitle={host}
+			detail={roomCaption(room, formatBytes)}
+			gdpr={serverCard.info?.allow_name_erasure}
+			connection={serverCard.connection}
 			card
 			top={4}
 		/>

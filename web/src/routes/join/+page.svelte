@@ -10,20 +10,18 @@
 	import Label from '$ui/forms/Label.svelte';
 	import ServerRow from '$ui/data/ServerRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
-	import {
-		authErrorHint,
-		fetchInstance,
-		flowForJoin,
-		sendAuthCode,
-		type InstanceInfo
-	} from '$lib/auth/auth';
+	import { authErrorHint, flowForJoin, sendAuthCode, type InstanceInfo } from '$lib/auth/auth';
 	import { decodeQrFromFile, foreignWyndLinkOrigin, parseWyndLink } from '$lib/auth/links';
 	import { displayHost, resolveServerOrigin } from '$lib/auth/origin';
 	import { INVALID_EMAIL_HINT, isValidParticipantEmail } from '$lib/auth/email';
 	import { loadPendingAuth, savePendingAuth } from '$lib/auth/pending';
 	import { loadSessions } from '$lib/session/session.svelte';
 	import { ADD_SERVER_IN_BROWSER } from '$lib/session/addServer';
-	import { appVersion } from '$lib/appinfo';
+	import {
+		loadServerCard,
+		registrationCaption,
+		type ServerConnection
+	} from '$lib/instance/serverCard';
 	import { sourceUrl } from '$lib/instance/source.svelte';
 
 	let address = $state('');
@@ -32,6 +30,9 @@
 	let instance = $state<InstanceInfo | undefined>();
 	let loading = $state(false);
 	let checking = $state(false);
+	let serverConnection = $state<ServerConnection>();
+	let serverError = $state('');
+	let checkGeneration = 0;
 	let error = $state('');
 	let linkPicker: FilePicker | undefined = $state();
 	let linkText = $state('');
@@ -51,24 +52,30 @@
 	const blocked = $derived(instance ? instance.registration_mode !== 'open' : false);
 
 	async function checkServer() {
-		error = '';
-		instance = undefined;
+		const generation = ++checkGeneration;
+		serverError = '';
 		const resolved = resolveServerOrigin(address);
+		if (resolved !== origin) instance = undefined;
 		if (!resolved && !address.trim()) {
 			origin = '';
+			checking = false;
+			serverConnection = undefined;
 			return;
 		}
 		checking = true;
-		try {
-			const info = await fetchInstance(resolved);
-			origin = resolved;
-			instance = info;
-		} catch {
-			error = 'Сервер не отвечает — проверьте адрес';
-			origin = '';
-		} finally {
-			checking = false;
+		serverConnection = 'checking';
+		const known = instance;
+		const card = await loadServerCard(resolved);
+		if (generation !== checkGeneration) return;
+		origin = resolved;
+		instance = card.info ?? known;
+		serverConnection = card.connection;
+		if (card.connection === 'unavailable') {
+			serverError = instance
+				? 'Сервер не отвечает — попробуйте позже'
+				: 'Сервер не отвечает — проверьте адрес';
 		}
+		checking = false;
 	}
 
 	onMount(async () => {
@@ -194,12 +201,7 @@
 		}
 	}
 
-	const openSubtitle = $derived(
-		instance
-			? `${displayHost(origin)} · открыт для новых · Wynd ${instance.version || appVersion}`
-			: ''
-	);
-	const blockedSubtitle = $derived('только по приглашению');
+	const serverAddress = $derived(displayHost(origin));
 </script>
 
 {#if adding}
@@ -216,20 +218,25 @@
 			onblur={checkServer}
 			onpaste={onAddressPaste}
 		/>
-		{#if checking}
+		{#if checking && !instance}
 			<Hint class="mt-8">Проверяем сервер…</Hint>
 		{:else if instance}
 			<ServerRow
 				name={instance.name}
-				subtitle={blocked ? blockedSubtitle : openSubtitle}
-				variant={blocked ? 'warn' : 'ok'}
+				subtitle={serverAddress}
+				detail={registrationCaption(instance.registration_mode)}
+				connection={serverConnection}
 				card
 				gdpr={instance.allow_name_erasure}
 			/>
 		{/if}
+		{#if serverError}<Hint class="mt-8">{serverError}</Hint>{/if}
 		{#if blocked}
 			<Hint class="mt-14">
-				Сервер новых не принимает. Если вы уже на этом сервере — войдите своей почтой.
+				{instance?.registration_mode === 'invite'
+					? 'Для регистрации нужна ссылка-приглашение.'
+					: 'Регистрация на этом сервере закрыта.'}
+				Если вы уже на этом сервере — войдите своей почтой.
 			</Hint>
 			<Label class="mt-16">Почта</Label>
 			<Input active type="email" autocomplete="email" bind:value={email} />
@@ -244,26 +251,28 @@
 				<a class="under" href={sourceUrl(origin)}>запустите свой</a>.
 			</Hint>
 		{/if}
-		<Label class="mt-22">Есть приглашение</Label>
-		<Input
-			active
-			mono
-			small
-			type="text"
-			spellcheck="false"
-			placeholder="вставьте ссылку"
-			bind:value={linkText}
-			onpaste={onLinkPaste}
-			onchange={() => openLinkText(linkText)}
-		/>
-		{#if blocked}
-			<Hint>Ссылку в круг даёт любой его участник, на сервер — тот, кто его держит.</Hint>
+		{#if instance && instance.registration_mode !== 'closed'}
+			<Label class="mt-22">Есть приглашение</Label>
+			<Input
+				active
+				mono
+				small
+				type="text"
+				spellcheck="false"
+				placeholder="вставьте ссылку"
+				bind:value={linkText}
+				onpaste={onLinkPaste}
+				onchange={() => openLinkText(linkText)}
+			/>
+			{#if blocked}
+				<Hint>Ссылку в круг даёт любой его участник, на сервер — тот, кто его держит.</Hint>
+			{/if}
+			<!-- Камерой — как на «Приглашении» (2.8); фото — если код прислали картинкой. -->
+			<Button class="mt-14" variant="ghost" onclick={() => goto('/invite/scan?from=join')}
+				>Сканировать QR-код</Button
+			>
+			<Button variant="ghost" onclick={() => linkPicker?.open()}>Фото с QR-кодом</Button>
 		{/if}
-		<!-- Камерой — как на «Приглашении» (2.8); фото — если код прислали картинкой. -->
-		<Button class="mt-14" variant="ghost" onclick={() => goto('/invite/scan?from=join')}
-			>Сканировать QR-код</Button
-		>
-		<Button variant="ghost" onclick={() => linkPicker?.open()}>Фото с QR-кодом</Button>
 		{#if error}
 			<Hint class="mt-12">{error}</Hint>
 		{/if}
@@ -272,29 +281,34 @@
 	<FormLayout shell app title="Без приглашения" onback={() => goUp(backHref)}>
 		{#if !ready}
 			<!-- режим ещё не известен: пусто, а не форма, которая сменится -->
-		{:else if checking}
+		{:else if checking && !instance}
 			<Hint>Проверяем сервер…</Hint>
 		{:else if instance && blocked}
 			<ServerRow
 				name={instance.name}
-				subtitle={blockedSubtitle}
-				variant="warn"
+				subtitle={serverAddress}
+				detail={registrationCaption(instance.registration_mode)}
+				connection={serverConnection}
 				card
 				gdpr={instance.allow_name_erasure}
 			/>
 			<Hint class="mt-14">
-				Сервер новых не принимает — нужна ссылка-приглашение. Если вы уже на этом сервере, вернитесь
-				и войдите почтой.
+				{instance.registration_mode === 'invite'
+					? 'Для регистрации нужна ссылка-приглашение.'
+					: 'Регистрация на этом сервере закрыта.'} Если вы уже на этом сервере, вернитесь и войдите почтой.
 			</Hint>
-			<Button variant="ghost" onclick={() => goto('/invite?from=login')}
-				>У меня есть приглашение</Button
-			>
+			{#if instance.registration_mode === 'invite'}
+				<Button variant="ghost" onclick={() => goto('/invite?from=login')}
+					>У меня есть приглашение</Button
+				>
+			{/if}
 		{:else}
 			{#if instance}
 				<ServerRow
 					name={instance.name}
-					subtitle={openSubtitle}
-					variant="ok"
+					subtitle={serverAddress}
+					detail={registrationCaption(instance.registration_mode)}
+					connection={serverConnection}
 					card
 					gdpr={instance.allow_name_erasure}
 				/>
@@ -308,8 +322,8 @@
 				доверяете его администратору.
 			</Hint>
 		{/if}
-		{#if error}
-			<Hint class="mt-12">{error}</Hint>
+		{#if error || serverError}
+			<Hint class="mt-12">{error || serverError}</Hint>
 		{/if}
 	</FormLayout>
 {/if}

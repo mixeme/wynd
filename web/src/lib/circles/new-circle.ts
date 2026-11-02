@@ -1,5 +1,6 @@
 import type { CircleColor } from '$lib/circles/circles';
 import type { SessionRecord } from '$lib/idb/db';
+import type { ServerCardState } from '$lib/instance/serverCard';
 
 export const NEW_CIRCLE_CTX = Symbol('newCircle');
 
@@ -7,7 +8,8 @@ export type NewCircleEditWindow = 'chronicle' | '10m' | '1h' | '1d' | 'unlimited
 
 export interface NewCircleContext {
 	sessions: SessionRecord[];
-	circleCounts: Record<string, number>;
+	circleCounts: Record<string, number | undefined>;
+	serverCards: Record<string, ServerCardState>;
 	selectedOrigin: string;
 	name: string;
 	color: CircleColor;
@@ -18,6 +20,7 @@ export interface NewCircleContext {
 	error: string;
 	ready: boolean;
 	serverSubtitle: (session: SessionRecord) => string;
+	serverDetail: (session: SessionRecord, picking?: boolean) => string | undefined;
 }
 
 /** Окно правок формы в секундах; null — без ограничения. */
