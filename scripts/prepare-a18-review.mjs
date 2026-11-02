@@ -40,7 +40,8 @@ const sections = groups
 const fixtures = JSON.parse(
 	fs.readFileSync(new URL('docs/plans/46-a18-letters.json', root), 'utf8')
 );
-const letters = fixtures.letters
+const pendingLetters = fixtures.letters.filter((letter) => !letter.approved_at);
+const letters = pendingLetters
 	.map(({ template, title, subject, body }) => {
 		const needsEmail = fixtures.login_email_templates.includes(template);
 		if (
@@ -78,10 +79,12 @@ const head = doc.head.innerHTML.replace(
 	/<title>[\s\S]*?<\/title>/,
 	'<title>Wynd · Осталось утвердить</title>'
 );
+const complete = groups.length === 0 && pendingLetters.length === 0;
+const lettersSection = pendingLetters.length ? `<section id="letters"><h2>Письма</h2><p class="review-note">Тексты для отдельного просмотра.</p><div class="letters">${letters}</div></section>` : '';
 const html = `<!doctype html><html lang="ru"><head>${head}${style}</head><body>${symbols}<main>
-<header><h1>Осталось утвердить</h1><p>Только непринятые кадры и тексты писем. Кнопки в макетах не выполняют действий, письма не отправляются.</p>
-<nav>${groups.map(({ id, title }) => `<a href="#${id}">${esc(title)}</a>`).join('')}<a href="#letters">Письма</a></nav></header>
-${sections}<section id="letters"><h2>Письма</h2><p class="review-note">Тексты для отдельного просмотра. Правило указания почты уже принято; сами письма ещё не утверждены.</p><div class="letters">${letters}</div></section>
+<header><h1>${complete ? 'Всё утверждено' : 'Осталось утвердить'}</h1><p>${complete ? 'Все кадры и тексты писем A18 приняты. Согласование завершено.' : 'Только непринятые кадры и тексты писем. Кнопки в макетах не выполняют действий, письма не отправляются.'}</p>
+<nav>${groups.map(({ id, title }) => `<a href="#${id}">${esc(title)}</a>`).join('')}${pendingLetters.length ? '<a href="#letters">Письма</a>' : ''}</nav></header>
+${sections}${lettersSection}
 </main></body></html>`;
 
 const output = new URL('dev/desktop-mockup/', root);
@@ -89,5 +92,5 @@ fs.mkdirSync(output, { recursive: true });
 fs.writeFileSync(new URL('a18-review.html', output), html);
 fs.writeFileSync(new URL('transition-review.html', output), html);
 console.log(
-	`Review ready: ${groups.flatMap((group) => group.frames).length} pending frames, ${fixtures.letters.length} letters.`
+	`Review ready: ${groups.flatMap((group) => group.frames).length} pending frames, ${pendingLetters.length} letters.`
 );
