@@ -170,8 +170,8 @@ func peopleOrEmpty(s string) string {
 }
 
 func incomingJSON(m *chronicle.IncomingMove, now time.Time) map[string]any {
-	operationKey := "move:" + m.SourceURL + ":" + m.SourceCircleID
-	if m.SourceCircleID == "" {
+	operationKey := m.OperationKey
+	if operationKey == "" {
 		operationKey = "move:" + m.ID
 	}
 	out := map[string]any{

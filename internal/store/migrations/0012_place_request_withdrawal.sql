@@ -3,3 +3,4 @@
 ALTER TABLE quota_requests ADD COLUMN withdrawn_at TEXT;
 ALTER TABLE quota_requests ADD COLUMN operation_key TEXT;
 ALTER TABLE incoming_moves ADD COLUMN source_circle_id TEXT;
+ALTER TABLE incoming_moves ADD COLUMN place_operation_key TEXT;

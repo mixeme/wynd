@@ -153,6 +153,25 @@ async function choose(target: HTMLElement) {
 }
 
 describe('receiving server', () => {
+	it('не меняет сервер, если прежний сервер ещё не умеет отзывать просьбы', async () => {
+		const run = vi.mocked(apiJson).getMockImplementation()!;
+		vi.mocked(apiJson).mockImplementation(async (...args) => {
+			const result = await run(...args);
+			if (!args[0] && args[1] === '/moves/incoming' && !args[2]?.method) {
+				const response = result as { move: { request: { id?: string; operation_key?: string } } };
+				delete response.move.request.id;
+				delete response.move.request.operation_key;
+			}
+			return result;
+		});
+		const target = await open('move');
+		await choose(target);
+		await vi.waitFor(() =>
+			expect(target.textContent).toContain('Сервер не поддерживает отзыв просьбы')
+		);
+		expect(replaceState).not.toHaveBeenCalled();
+		expect(withdrawn).toBe(false);
+	});
 	it('повторное нажатие не отправляет второй отзыв', async () => {
 		const run = vi.mocked(apiJson).getMockImplementation()!;
 		let finish!: () => void;

@@ -333,7 +333,7 @@ func testMoveBetweenServers(t *testing.T, reissue bool) {
 			t.Fatalf("old link draft: %d %s", rec.Code, rec.Body.String())
 		}
 		operationKey = jsonStr(t, rec, "operation_key")
-		if operationKey != "move:"+srcHTTP.URL+":"+circleID {
+		if !strings.HasPrefix(operationKey, "move:") || len(operationKey) <= len("move:") {
 			t.Fatalf("operation key: %q", operationKey)
 		}
 		var err error

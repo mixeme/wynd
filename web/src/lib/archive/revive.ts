@@ -256,13 +256,15 @@ export function operationPlaceRequest(
 ): string | undefined {
 	const request = room?.request;
 	if (!request) return;
-	return request.operation_key
+	const matches = request.operation_key
 		? request.operation_key === key
-			? request.id
-			: undefined
-		: request.circle_name === name
-			? request.id
-			: undefined;
+		: request.circle_name === name;
+	if (!matches) return;
+	if (!request.id)
+		throw new PlaceWithdrawalError(
+			'Сервер не поддерживает отзыв просьбы о месте. Обновите сервер и попробуйте снова.'
+		);
+	return request.id;
 }
 
 async function uploadOne(

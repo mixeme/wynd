@@ -2,7 +2,9 @@ package chronicle
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"time"
 )
@@ -27,6 +29,7 @@ type IncomingMove struct {
 	Link           string
 	SourceURL      string
 	SourceCircleID string
+	OperationKey   string
 	SourceName     string
 	CircleName     string
 	CircleColor    string
@@ -91,7 +94,7 @@ const incomingCols = `id, account_id, link, source_url, source_name, circle_name
 	COALESCE(circle_id, ''), COALESCE(result_posts, 0), COALESCE(result_names, 0), COALESCE(result_bytes, 0),
 	COALESCE((SELECT text_bytes FROM circles WHERE circles.id = incoming_moves.circle_id), 0),
 	verified, invited, not_joined, already_here, owner_name, reviver_absent, people, COALESCE(new_member, ''),
-	COALESCE(error, ''), created_at, updated_at, COALESCE(source_circle_id, '')`
+	COALESCE(error, ''), created_at, updated_at, COALESCE(source_circle_id, ''), COALESCE(place_operation_key, '')`
 
 func scanIncoming(row interface{ Scan(...any) error }) (*IncomingMove, error) {
 	var m IncomingMove
@@ -101,7 +104,7 @@ func scanIncoming(row interface{ Scan(...any) error }) (*IncomingMove, error) {
 		&m.Posts, &m.Members, &m.Bytes, &frozen, &expires, &m.SendInvites, &m.Status, &m.PulledBytes,
 		&m.CircleID, &m.ResultPosts, &m.ResultNames, &m.ResultBytes, &m.ResultTextBytes,
 		&m.Verified, &m.Invited, &m.NotJoined, &m.AlreadyHere, &m.OwnerName, &m.ReviverAbsent, &m.People, &m.NewMember,
-		&m.Error, &created, &updated, &m.SourceCircleID); err != nil {
+		&m.Error, &created, &updated, &m.SourceCircleID, &m.OperationKey); err != nil {
 		return nil, err
 	}
 	m.FrozenAt = optTime(frozen)
@@ -146,6 +149,30 @@ func (c *Chronicle) PutIncomingDraft(ctx context.Context, accountID, link string
 	if busy > 0 {
 		return nil, ErrMoveBusy
 	}
+	// Новая ссылка того же замершего круга сохраняет связь с просьбой.
+	// Старые прежние серверы ещё не сообщают id круга: сверяем снимок карточки.
+	operationKey := "move:" + id
+	if card.SourceCircleID != "" && card.FrozenAt != nil {
+		sum := sha256.Sum256([]byte(card.SourceURL + "\n" + card.SourceCircleID + "\n" + formatTime(*card.FrozenAt)))
+		operationKey = "move:" + hex.EncodeToString(sum[:])
+	}
+	previous, err := scanIncoming(tx.QueryRowContext(ctx, `SELECT `+incomingCols+` FROM incoming_moves
+		WHERE account_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1`, accountID))
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+	if previous != nil && previous.SourceURL == card.SourceURL && previous.FrozenAt != nil && card.FrozenAt != nil && previous.FrozenAt.Equal(*card.FrozenAt) {
+		same := previous.SourceCircleID != "" && card.SourceCircleID != "" && previous.SourceCircleID == card.SourceCircleID
+		if previous.SourceCircleID == "" || card.SourceCircleID == "" {
+			same = previous.CircleName == card.CircleName && previous.Bytes == card.Bytes && previous.Posts == card.Posts && previous.Members == card.Members
+		}
+		if same {
+			operationKey = previous.OperationKey
+			if operationKey == "" {
+				operationKey = "move:" + previous.ID
+			}
+		}
+	}
 	if _, err := tx.ExecContext(ctx, `
 		DELETE FROM incoming_moves WHERE account_id = ? AND status IN ('draft', 'failed')
 	`, accountID); err != nil {
@@ -157,11 +184,11 @@ func (c *Chronicle) PutIncomingDraft(ctx context.Context, accountID, link string
 	}
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO incoming_moves (id, account_id, link, source_url, source_name, circle_name, circle_color,
-			posts, members, bytes, frozen_at, expires_at, status, owner_name, reviver_absent, people, created_at, updated_at, source_circle_id)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?)
+			posts, members, bytes, frozen_at, expires_at, status, owner_name, reviver_absent, people, created_at, updated_at, source_circle_id, place_operation_key)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?)
 	`, id, accountID, link, card.SourceURL, card.SourceName, card.CircleName, card.CircleColor,
 		card.Posts, card.Members, card.Bytes, frozen, formatTime(card.ExpiresAt), card.OwnerName, card.ReviverAbsent,
-		peopleJSON(card.People), formatTime(now), formatTime(now), card.SourceCircleID); err != nil {
+		peopleJSON(card.People), formatTime(now), formatTime(now), card.SourceCircleID, operationKey); err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
