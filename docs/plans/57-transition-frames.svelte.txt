@@ -1,4 +1,4 @@
-<!-- Кадры по правилам A19/A20/A23. 6.34а утверждён 2026-11-02; остальные — предложения. После перевыпуска используется существующий 6.34, после выбора сервера — полный 7.20. Действий с данными нет. -->
+<!-- Кадры 6.34а, 6.37а–б и исправленный 7.20а утверждены владельцем 2026-11-02. После перевыпуска используется существующий 6.34, после выбора сервера — полный 7.20. Действий с данными нет. -->
 <script lang="ts">
  import FormLayout from '$lib/layouts/FormLayout.svelte';
  import Label from '$ui/forms/Label.svelte';
@@ -18,7 +18,7 @@
 </script>
 
 <main class="transition-review">
- <header><h1>История и перенос круга</h1><p>Кадр 6.34а утверждён 2 ноября 2026. Остальные варианты — предложения. Данные для примера; кнопки не выполняют настоящих действий.</p></header>
+ <header><h1>История и перенос круга</h1><p>Кадры 6.34а, 6.37а–б и исправленный 7.20а утверждены 2 ноября 2026. Данные для примера; кнопки не выполняют настоящих действий.</p></header>
  <div class="transition-grid">
  {#each scenes as scene}
   <figure class="transition-frame" id={scene.id} data-kind={scene.kind}>
@@ -48,7 +48,7 @@
      <ServerRow name="Дом Ани" subtitle="home.example.org" detail="Квота по умолчанию 12 ГБ" gdpr onclick={() => {}} />
     {/if}
    </FormLayout>
-   <figcaption><strong>{scene.id.slice(1).replace('-', '.')} · {scene.title}</strong><p>{scene.kind === 'expired' ? 'Утверждено владельцем 2026-11-02. После перевыпуска — существующий 6.34 с новой ссылкой и прежним временем заморозки.' : 'Предложение оформления; отдельно не утверждено.'} Источник: docs/plans/57-transition-frames.svelte.txt.</p></figcaption>
+   <figcaption><strong>{scene.id.slice(1).replace('-', '.')} · {scene.title}</strong><p>Утверждено владельцем 2026-11-02.{scene.kind === 'expired' ? ' После перевыпуска — существующий 6.34 с новой ссылкой и прежним временем заморозки.' : scene.kind === 'choose' ? ' После выбора — полный 7.20 с сохранёнными данными.' : ''} Источник: docs/plans/57-transition-frames.svelte.txt.</p></figcaption>
   </figure>
  {/each}
  </div>
