@@ -326,12 +326,18 @@ func testMoveBetweenServers(t *testing.T, reissue bool) {
 	dst.MoveRetry = 10 * time.Millisecond
 	kot, kotID := registerSession(t, dst, dstCaps, "kot@example.com")
 	var placeID string
+	var operationKey string
 	if reissue {
-		if rec := doJSON(t, dst, http.MethodPost, "/api/v1/moves/incoming", kot, map[string]string{"link": link}); rec.Code != http.StatusOK {
+		rec := doJSON(t, dst, http.MethodPost, "/api/v1/moves/incoming", kot, map[string]string{"link": link})
+		if rec.Code != http.StatusOK {
 			t.Fatalf("old link draft: %d %s", rec.Code, rec.Body.String())
 		}
+		operationKey = jsonStr(t, rec, "operation_key")
+		if operationKey != "move:"+srcHTTP.URL+":"+circleID {
+			t.Fatalf("operation key: %q", operationKey)
+		}
 		var err error
-		placeID, err = dst.Blobs.CreatePlaceRequest(t.Context(), kotID, "Семья", 1<<30)
+		placeID, err = dst.Blobs.CreatePlaceRequest(t.Context(), kotID, "Семья", 1<<30, operationKey)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -342,7 +348,7 @@ func testMoveBetweenServers(t *testing.T, reissue bool) {
 		if _, err := src.Chronicle.DB().Exec("UPDATE circle_moves SET expires_at = ? WHERE circle_id = ?", time.Now().Add(-time.Minute).UTC().Format(time.RFC3339Nano), circleID); err != nil {
 			t.Fatal(err)
 		}
-		rec := doJSON(t, src, http.MethodPost, "/api/v1/circles/"+circleID+"/move/reissue", anya, nil)
+		rec = doJSON(t, src, http.MethodPost, "/api/v1/circles/"+circleID+"/move/reissue", anya, nil)
 		if rec.Code != http.StatusCreated {
 			t.Fatalf("reissue: %d %s", rec.Code, rec.Body.String())
 		}
@@ -404,7 +410,7 @@ func testMoveBetweenServers(t *testing.T, reissue bool) {
 	}
 	if reissue {
 		request, err := dst.Blobs.LastPlaceRequest(t.Context(), kotID)
-		if err != nil || request == nil || request.ID != placeID || request.Status != "approved" {
+		if err != nil || request == nil || request.ID != placeID || request.Status != "approved" || request.OperationKey != operationKey || jsonStr(t, rec, "operation_key") != operationKey {
 			t.Fatalf("place approval lost after new link: %+v %v", request, err)
 		}
 	}

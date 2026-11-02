@@ -157,8 +157,9 @@ func (s *Server) handleReviveRoom(w http.ResponseWriter, r *http.Request) {
 	}
 	if last != nil {
 		req := map[string]any{
-			"status": last.Status, "requested_bytes": last.RequestedBytes,
+			"id": last.ID, "status": last.Status, "requested_bytes": last.RequestedBytes,
 			"circle_name": last.CircleName, "created_at": last.CreatedAt,
+			"operation_key": last.OperationKey,
 		}
 		if last.ResolvedAt != nil {
 			req["resolved_at"] = *last.ResolvedAt
@@ -176,19 +177,32 @@ func (s *Server) handleRevivePlaceRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 	body, ok := bindJSON[struct {
-		Bytes      int64  `json:"bytes"`
-		CircleName string `json:"circle_name"`
+		Bytes        int64  `json:"bytes"`
+		CircleName   string `json:"circle_name"`
+		OperationKey string `json:"operation_key"`
 	}](w, r)
 	if !ok {
 		return
 	}
-	id, err := s.Blobs.CreatePlaceRequest(r.Context(), sess.AccountID, body.CircleName, body.Bytes)
+	id, err := s.Blobs.CreatePlaceRequest(r.Context(), sess.AccountID, body.CircleName, body.Bytes, body.OperationKey)
 	if err != nil {
 		writeError(w, err)
 		return
 	}
 	s.notifyAdminQuota(id)
 	writeJSON(w, http.StatusCreated, map[string]string{"id": id, "status": "pending"})
+}
+
+func (s *Server) handleWithdrawPlaceRequest(w http.ResponseWriter, r *http.Request) {
+	sess, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+	if err := s.Blobs.WithdrawPlaceRequest(r.Context(), sess.AccountID, r.PathValue("id")); err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "withdrawn"})
 }
 
 // handleReviveCircle — «Оживить круг здесь» (7.29): круг вставляется заново,
@@ -352,31 +366,27 @@ func (s *Server) reviveFromTables(ctx context.Context, in reviveRequest) (revive
 	if limit >= 0 && archiveBytes > limit {
 		return out, &reviveError{http.StatusInsufficientStorage, "no_room", ""}
 	}
+	placeRequestID := ""
+	if approved != nil {
+		placeRequestID = approved.ID
+	}
 	res, err := s.Chronicle.ReviveCircle(ctx, chronicle.ReviveInput{
-		FormatVersion: in.FormatVersion,
-		SchemaVersion: in.SchemaVersion,
-		Tables:        tables,
-		Accounts:      accounts,
-		BlobMap:       in.BlobMap,
-		ReviverID:     in.AccountID,
-		Now:           time.Now(),
-		MovedFrom:     in.MovedFrom,
-		NewMember:     in.NewMember,
+		PlaceRequestID: placeRequestID,
+		FormatVersion:  in.FormatVersion,
+		SchemaVersion:  in.SchemaVersion,
+		Tables:         tables,
+		Accounts:       accounts,
+		BlobMap:        in.BlobMap,
+		ReviverID:      in.AccountID,
+		Now:            time.Now(),
+		MovedFrom:      in.MovedFrom,
+		NewMember:      in.NewMember,
 	})
 	if err != nil {
 		if errors.Is(err, chronicle.ErrInvalid) {
 			log.Printf("revive: %v", err)
 		}
 		return out, err
-	}
-	if approved != nil {
-		// Место дали под этот круг: оно и есть его квота.
-		if err := s.Blobs.SetCircleQuotaAdmin(ctx, res.CircleID, true, &approved.RequestedBytes); err != nil {
-			log.Printf("revive %s: quota: %v", res.CircleID, err)
-		}
-		if err := s.Blobs.UsePlaceRequest(ctx, approved.ID); err != nil {
-			log.Printf("revive %s: place request: %v", res.CircleID, err)
-		}
 	}
 	if in.SendInvites {
 		out.Invited = s.inviteNotJoined(res.CircleID, in.AccountID, res.NotJoined)

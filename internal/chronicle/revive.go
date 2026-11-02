@@ -26,7 +26,7 @@ import (
 // Схемы 8 и 9 (владелец и имена в переносе, A12) — тоже только incoming_moves.
 // Схема 10 добавила circles.archive_cutoff_tz — его оживление и так обнуляет.
 // Схема 11 (accounts.avatar_shape) таблиц круга не меняла.
-var ReviveSchemaVersions = []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}
+var ReviveSchemaVersions = []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
 
 // ReviveLegacySchemaVersions — схемы архивов разметки 1: номера прежней
 // нумерации (до 0.34.0). Схема 36 — та же, что 1.
@@ -62,7 +62,9 @@ type ReviveInput struct {
 	// BlobMap — блоб архива → блоб этого сервера (уже загружен).
 	BlobMap   map[string]string
 	ReviverID string
-	Now       time.Time
+	// PlaceRequestID проверяется и расходуется в транзакции оживления.
+	PlaceRequestID string
+	Now            time.Time
 	// MovedFrom — адрес прежнего сервера, если круг приехал переносом (план
 	// 53): в ленте тогда «Круг перенесён с …» (7.25), а не «оживил из архива».
 	MovedFrom string
@@ -235,6 +237,25 @@ func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveRes
 		}
 	}
 	res.CircleID = ids[rowMap(circles, 0)["id"].(string)]
+	if in.PlaceRequestID != "" {
+		used, err := tx.ExecContext(ctx, `UPDATE quota_requests SET used_at = ?
+			WHERE id = ? AND requested_by_account_id = ? AND circle_id IS NULL
+			AND status = 'approved' AND withdrawn_at IS NULL AND used_at IS NULL`,
+			formatTime(now), in.PlaceRequestID, in.ReviverID)
+		if err != nil {
+			return res, err
+		}
+		if n, err := used.RowsAffected(); err != nil {
+			return res, err
+		} else if n != 1 {
+			return res, ErrInvalid
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE circles SET quota_custom = 1,
+			quota_bytes = (SELECT requested_bytes FROM quota_requests WHERE id = ?) WHERE id = ?`,
+			in.PlaceRequestID, res.CircleID); err != nil {
+			return res, err
+		}
+	}
 	res.Posts = len(in.Tables["posts"].Rows)
 	res.Names = len(in.Tables["identities"].Rows)
 

@@ -109,6 +109,7 @@ type QuotaRequest struct {
 	AdminNote      *string
 	CreatedAt      string
 	ResolvedAt     *string
+	OperationKey   string
 }
 
 // CreateQuotaRequest opens a pending quota request for a circle owner.
@@ -148,7 +149,7 @@ func (s *Store) ListPendingQuotaRequests(ctx context.Context) ([]QuotaRequest, e
 			qr.requested_bytes, qr.status, qr.admin_note, qr.created_at, qr.resolved_at
 		FROM quota_requests qr
 		JOIN accounts a ON a.id = qr.requested_by_account_id
-		WHERE qr.status = 'pending'
+		WHERE qr.status = 'pending' AND qr.withdrawn_at IS NULL
 		ORDER BY qr.created_at ASC
 	`)
 	if err != nil {
@@ -191,11 +192,11 @@ func (s *Store) quotaRequest(ctx context.Context, where string, arg string) (*Qu
 	var note, resolved sql.NullString
 	err := s.db.QueryRowContext(ctx, `
 		SELECT qr.id, COALESCE(qr.circle_id, ''), COALESCE(qr.circle_name, ''), qr.requested_by_account_id, a.email,
-			qr.requested_bytes, qr.status, qr.admin_note, qr.created_at, qr.resolved_at
+			qr.requested_bytes, qr.status, qr.admin_note, qr.created_at, qr.resolved_at, COALESCE(qr.operation_key, '')
 		FROM quota_requests qr
 		JOIN accounts a ON a.id = qr.requested_by_account_id
 		WHERE `+where, arg).Scan(&item.ID, &item.CircleID, &item.CircleName, &item.RequesterID, &item.RequesterEmail,
-		&item.RequestedBytes, &item.Status, &note, &item.CreatedAt, &resolved)
+		&item.RequestedBytes, &item.Status, &note, &item.CreatedAt, &resolved, &item.OperationKey)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -231,10 +232,15 @@ func (s *Store) QuotaRequestLowers(ctx context.Context, circleID string, request
 
 // ResolveQuotaRequest approves (sets absolute quota) or rejects a pending request.
 func (s *Store) ResolveQuotaRequest(ctx context.Context, id string, approve bool, adminNote string) (string, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return "", err
+	}
+	defer tx.Rollback()
 	var circleID sql.NullString
 	var requested int64
-	err := s.db.QueryRowContext(ctx, `
-		SELECT circle_id, requested_bytes FROM quota_requests WHERE id = ? AND status = 'pending'
+	err = tx.QueryRowContext(ctx, `
+		SELECT circle_id, requested_bytes FROM quota_requests WHERE id = ? AND status = 'pending' AND withdrawn_at IS NULL
 	`, id).Scan(&circleID, &requested)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", ErrNotFound
@@ -247,7 +253,7 @@ func (s *Store) ResolveQuotaRequest(ctx context.Context, id string, approve bool
 		status = "approved"
 		// Просьба для круга, которого пока нет, квоту ставит при оживлении.
 		if circleID.Valid {
-			if _, err := s.db.ExecContext(ctx, `
+			if _, err := tx.ExecContext(ctx, `
 				UPDATE circles SET quota_custom = 1, quota_bytes = ? WHERE id = ?
 			`, requested, circleID.String); err != nil {
 				return "", err
@@ -255,13 +261,13 @@ func (s *Store) ResolveQuotaRequest(ctx context.Context, id string, approve bool
 		}
 	}
 	now := xtime.Format(time.Now().UTC())
-	_, err = s.db.ExecContext(ctx, `
+	_, err = tx.ExecContext(ctx, `
 		UPDATE quota_requests SET status = ?, admin_note = NULLIF(?, ''), resolved_at = ? WHERE id = ?
 	`, status, adminNote, now, id)
 	if err != nil {
 		return "", err
 	}
-	return status, nil
+	return status, tx.Commit()
 }
 
 // CircleExists reports whether a circle id is present.
@@ -277,14 +283,21 @@ func (s *Store) CircleExists(ctx context.Context, circleID string) (bool, error)
 // CreatePlaceRequest — просьба о месте для круга, которого пока нет (7.30):
 // оживляют круг из архива, а он больше, чем сервер даёт новому кругу. Одна
 // на учётку, пока на неё не ответили.
-func (s *Store) CreatePlaceRequest(ctx context.Context, accountID, circleName string, requested int64) (string, error) {
+func (s *Store) CreatePlaceRequest(ctx context.Context, accountID, circleName string, requested int64, operationKeys ...string) (string, error) {
 	if requested < 1 || strings.TrimSpace(circleName) == "" {
+		return "", ErrInvalid
+	}
+	operationKey := ""
+	if len(operationKeys) > 0 {
+		operationKey = operationKeys[0]
+	}
+	if len(operationKey) > 2048 {
 		return "", ErrInvalid
 	}
 	var pending int
 	if err := s.db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM quota_requests
-		WHERE circle_id IS NULL AND requested_by_account_id = ? AND status = 'pending'
+		WHERE circle_id IS NULL AND requested_by_account_id = ? AND status = 'pending' AND withdrawn_at IS NULL
 	`, accountID).Scan(&pending); err != nil {
 		return "", err
 	}
@@ -296,17 +309,33 @@ func (s *Store) CreatePlaceRequest(ctx context.Context, accountID, circleName st
 		return "", err
 	}
 	_, err = s.db.ExecContext(ctx, `
-		INSERT INTO quota_requests (id, circle_id, circle_name, requested_by_account_id, requested_bytes, created_at)
-		VALUES (?, NULL, ?, ?, ?, ?)
-	`, id, circleName, accountID, requested, xtime.Format(time.Now().UTC()))
+		INSERT INTO quota_requests (id, circle_id, circle_name, requested_by_account_id, requested_bytes, created_at, operation_key)
+		VALUES (?, NULL, ?, ?, ?, ?, NULLIF(?, ''))
+	`, id, circleName, accountID, requested, xtime.Format(time.Now().UTC()), operationKey)
 	return id, err
 }
 
 // LastPlaceRequest — последняя неиспользованная просьба учётки о месте для
 // будущего круга (7.31, 7.32); nil — не просили.
 func (s *Store) LastPlaceRequest(ctx context.Context, accountID string) (*QuotaRequest, error) {
-	return s.quotaRequest(ctx, `qr.circle_id IS NULL AND qr.used_at IS NULL AND qr.requested_by_account_id = ?
+	return s.quotaRequest(ctx, `qr.circle_id IS NULL AND qr.used_at IS NULL AND qr.withdrawn_at IS NULL AND qr.requested_by_account_id = ?
 		ORDER BY qr.created_at DESC, qr.rowid DESC LIMIT 1`, accountID)
+}
+
+// WithdrawPlaceRequest отзывает только собственную неиспользованную просьбу
+// о будущем круге. Повтор безопасен; чужая или уже использованная — 404.
+func (s *Store) WithdrawPlaceRequest(ctx context.Context, accountID, id string) error {
+	res, err := s.db.ExecContext(ctx, `UPDATE quota_requests SET withdrawn_at = COALESCE(withdrawn_at, ?)
+		WHERE id = ? AND circle_id IS NULL AND requested_by_account_id = ? AND used_at IS NULL`, xtime.Format(time.Now().UTC()), id, accountID)
+	if err != nil {
+		return err
+	}
+	if n, err := res.RowsAffected(); err != nil {
+		return err
+	} else if n == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // UsePlaceRequest — круг ожил по одобренной просьбе: она больше не действует.

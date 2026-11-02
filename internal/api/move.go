@@ -421,7 +421,7 @@ func (s *Server) handleMoveCard(w http.ResponseWriter, r *http.Request) {
 			writeDomainError(w, err)
 			return
 		}
-		circle := map[string]any{"name": name, "color": color, "posts": posts, "members": members, "bytes": bytes}
+		circle := map[string]any{"id": m.CircleID, "name": name, "color": color, "posts": posts, "members": members, "bytes": bytes}
 		// «Аня — это вы?» на новом сервере (A12): кто владелец и чьи почты в
 		// круге. Ссылку даёт сам владелец, и в архиве по ней те же почты.
 		if owner, emails, names, err := s.Chronicle.CircleMoveFolk(r.Context(), m.CircleID); err == nil {

@@ -113,6 +113,7 @@ type moveCard struct {
 	FrozenAt      string    `json:"frozen_at"`
 	SchemaVersion int       `json:"schema_version"`
 	Circle        *struct {
+		ID      string `json:"id"`
 		Name    string `json:"name"`
 		Color   string `json:"color"`
 		Posts   int    `json:"posts"`
@@ -169,15 +170,20 @@ func peopleOrEmpty(s string) string {
 }
 
 func incomingJSON(m *chronicle.IncomingMove, now time.Time) map[string]any {
+	operationKey := "move:" + m.SourceURL + ":" + m.SourceCircleID
+	if m.SourceCircleID == "" {
+		operationKey = "move:" + m.ID
+	}
 	out := map[string]any{
-		"id":           m.ID,
-		"status":       m.Status,
-		"source_url":   m.SourceURL,
-		"source_name":  m.SourceName,
-		"expires_at":   m.ExpiresAt,
-		"link_alive":   now.Before(m.ExpiresAt),
-		"send_invites": m.SendInvites,
-		"pulled_bytes": m.PulledBytes,
+		"operation_key": operationKey,
+		"id":            m.ID,
+		"status":        m.Status,
+		"source_url":    m.SourceURL,
+		"source_name":   m.SourceName,
+		"expires_at":    m.ExpiresAt,
+		"link_alive":    now.Before(m.ExpiresAt),
+		"send_invites":  m.SendInvites,
+		"pulled_bytes":  m.PulledBytes,
 		// «Аня — это вы?» (A12): спрашивать, если reviver_absent.
 		"owner_name":     m.OwnerName,
 		"reviver_absent": m.ReviverAbsent,
@@ -222,10 +228,12 @@ func (s *Server) withRoom(ctx context.Context, out map[string]any, accountID str
 		req := map[string]any{
 			"status": last.Status, "requested_bytes": last.RequestedBytes,
 			"circle_name": last.CircleName, "created_at": last.CreatedAt,
+			"operation_key": last.OperationKey,
 		}
 		if last.ResolvedAt != nil {
 			req["resolved_at"] = *last.ResolvedAt
 		}
+		req["id"] = last.ID
 		out["request"] = req
 	}
 	return nil
@@ -262,7 +270,8 @@ func (s *Server) handlePutIncomingMove(w http.ResponseWriter, r *http.Request) {
 	// Адрес прежнего сервера — из самой ссылки: по нему сервер и ходит.
 	base, _, _ := parseMoveLink(link)
 	in := chronicle.IncomingCard{
-		SourceURL: base, SourceName: card.ServerName,
+		SourceCircleID: card.Circle.ID,
+		SourceURL:      base, SourceName: card.ServerName,
 		CircleName: card.Circle.Name, CircleColor: card.Circle.Color,
 		Posts: card.Circle.Posts, Members: card.Circle.Members, Bytes: card.Circle.Bytes,
 		ExpiresAt: card.ExpiresAt,

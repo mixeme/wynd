@@ -22,32 +22,33 @@ const (
 
 // IncomingMove — перенос, каким его видит новый сервер.
 type IncomingMove struct {
-	ID          string
-	AccountID   string
-	Link        string
-	SourceURL   string
-	SourceName  string
-	CircleName  string
-	CircleColor string
-	Posts       int
-	Members     int
-	Bytes       int64
-	FrozenAt    *time.Time
-	ExpiresAt   time.Time
-	SendInvites bool
-	Status      string
-	PulledBytes int64
-	CircleID    string
-	ResultPosts int
-	ResultNames int
+	ID             string
+	AccountID      string
+	Link           string
+	SourceURL      string
+	SourceCircleID string
+	SourceName     string
+	CircleName     string
+	CircleColor    string
+	Posts          int
+	Members        int
+	Bytes          int64
+	FrozenAt       *time.Time
+	ExpiresAt      time.Time
+	SendInvites    bool
+	Status         string
+	PulledBytes    int64
+	CircleID       string
+	ResultPosts    int
+	ResultNames    int
 	// ResultBytes — файлы поднятого круга: их сверяет прежний сервер.
 	ResultBytes int64
 	// ResultTextBytes — текст поднятого круга сейчас (C42): к итогу 7.25 для
 	// экрана, чтобы круг без файлов не показывал 0 Б.
 	ResultTextBytes int64
-	Verified    bool
-	Invited     int
-	NotJoined   int
+	Verified        bool
+	Invited         int
+	NotJoined       int
 	// AlreadyHere — сколько людей круга уже было на этом сервере (C51):
 	// «Все уже на этом сервере» на итоге 7.25, как у оживления.
 	AlreadyHere int
@@ -61,21 +62,22 @@ type IncomingMove struct {
 	// поднять лицом прежнего владельца.
 	NewMember string
 	Error     string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // IncomingCard — карточка круга с прежнего сервера (7.20).
 type IncomingCard struct {
-	SourceURL   string
-	SourceName  string
-	CircleName  string
-	CircleColor string
-	Posts       int
-	Members     int
-	Bytes       int64
-	FrozenAt    *time.Time
-	ExpiresAt   time.Time
+	SourceCircleID string
+	SourceURL      string
+	SourceName     string
+	CircleName     string
+	CircleColor    string
+	Posts          int
+	Members        int
+	Bytes          int64
+	FrozenAt       *time.Time
+	ExpiresAt      time.Time
 	// OwnerName и ReviverAbsent — для «Аня — это вы?» (A12); старый прежний
 	// сервер их не отдаёт — вопроса нет.
 	OwnerName     string
@@ -89,7 +91,7 @@ const incomingCols = `id, account_id, link, source_url, source_name, circle_name
 	COALESCE(circle_id, ''), COALESCE(result_posts, 0), COALESCE(result_names, 0), COALESCE(result_bytes, 0),
 	COALESCE((SELECT text_bytes FROM circles WHERE circles.id = incoming_moves.circle_id), 0),
 	verified, invited, not_joined, already_here, owner_name, reviver_absent, people, COALESCE(new_member, ''),
-	COALESCE(error, ''), created_at, updated_at`
+	COALESCE(error, ''), created_at, updated_at, COALESCE(source_circle_id, '')`
 
 func scanIncoming(row interface{ Scan(...any) error }) (*IncomingMove, error) {
 	var m IncomingMove
@@ -99,7 +101,7 @@ func scanIncoming(row interface{ Scan(...any) error }) (*IncomingMove, error) {
 		&m.Posts, &m.Members, &m.Bytes, &frozen, &expires, &m.SendInvites, &m.Status, &m.PulledBytes,
 		&m.CircleID, &m.ResultPosts, &m.ResultNames, &m.ResultBytes, &m.ResultTextBytes,
 		&m.Verified, &m.Invited, &m.NotJoined, &m.AlreadyHere, &m.OwnerName, &m.ReviverAbsent, &m.People, &m.NewMember,
-		&m.Error, &created, &updated); err != nil {
+		&m.Error, &created, &updated, &m.SourceCircleID); err != nil {
 		return nil, err
 	}
 	m.FrozenAt = optTime(frozen)
@@ -155,11 +157,11 @@ func (c *Chronicle) PutIncomingDraft(ctx context.Context, accountID, link string
 	}
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO incoming_moves (id, account_id, link, source_url, source_name, circle_name, circle_color,
-			posts, members, bytes, frozen_at, expires_at, status, owner_name, reviver_absent, people, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?)
+			posts, members, bytes, frozen_at, expires_at, status, owner_name, reviver_absent, people, created_at, updated_at, source_circle_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?)
 	`, id, accountID, link, card.SourceURL, card.SourceName, card.CircleName, card.CircleColor,
 		card.Posts, card.Members, card.Bytes, frozen, formatTime(card.ExpiresAt), card.OwnerName, card.ReviverAbsent,
-		peopleJSON(card.People), formatTime(now), formatTime(now)); err != nil {
+		peopleJSON(card.People), formatTime(now), formatTime(now), card.SourceCircleID); err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(); err != nil {

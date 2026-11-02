@@ -279,6 +279,7 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("GET /api/v1/moves/incoming", paid(s.handleIncomingMove))
 	s.Mux.HandleFunc("POST /api/v1/moves/incoming", paid(s.handlePutIncomingMove))
 	s.Mux.HandleFunc("POST /api/v1/moves/incoming/{id}/start", paid(s.handleStartIncomingMove))
+	s.Mux.HandleFunc("DELETE /api/v1/revive/place_requests/{id}", paid(s.handleWithdrawPlaceRequest))
 	s.Mux.HandleFunc("GET /api/v1/full_archive_stream/{token}", s.handleFullArchiveStream)
 	s.Mux.HandleFunc("POST /api/v1/circles/{circle_id}/archive", paid(s.handleStartArchiveCycle))
 	s.Mux.HandleFunc("PUT /api/v1/circles/{circle_id}/archive/cutoff", paid(s.handleMoveCutoff))

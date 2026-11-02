@@ -974,7 +974,13 @@ paths:
 
   /revive/place_request:
     post:
-      summary: Ask the admin for room for a circle that does not exist yet (2.23); body {bytes, circle_name}; one pending per account
+      summary: Ask the admin for room for a circle that does not exist yet (2.23); body {bytes, circle_name, operation_key?}; one pending per account
+      description: Returns {id, status}. Room and incoming move responses include request.id and request.operation_key so changing server withdraws the exact request for this operation.
+
+  /revive/place_requests/{id}:
+    delete:
+      summary: Withdraw the caller's unused request for a future circle when changing the receiving server (7.20а)
+      description: Pending, approved or rejected; idempotent. Does not erase the admin decision. 200 {status withdrawn}; 404 for another account, a circle request, or an already used request. Withdrawn requests leave the admin queue and no longer grant room. An approval and its use are consumed atomically with revival.
 
   /revive:
     post:
