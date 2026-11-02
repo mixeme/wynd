@@ -1,6 +1,9 @@
 <!-- A18: состояния существующего продукта для отдельного просмотра, 2026-11-02.
      Не утверждены, кроме подписи после сбоя сборки (C44, 2026-10-19).
-     Только существующие Wynd UI и layouts; данные для примера, действий нет. -->
+     Только существующие Wynd UI и layouts; данные для примера, действий нет.
+     Правки просмотра: в начатом переносе «Читать можно, писать нельзя»; 7.20в без
+     «Назад», поле ссылки с отступом после шапки. В письмах почта для входа явная
+     и единообразная; предлагаемые тексты — 46-a18-letters.json. -->
 <script lang="ts">
  import CircleLayout from '$lib/layouts/CircleLayout.svelte';
  import ShellLayout from '$lib/layouts/ShellLayout.svelte';
@@ -42,7 +45,7 @@
    {#if scene.kind === 'archive-banner'}
     <ArchiveBanner title="Круг уходит с сервера" action="Полный архив круга" onaction={() => {}}>Вы убираете круг «Семья» с сервера и сохраняете его в файл. Читать можно, писать нельзя.</ArchiveBanner>
    {:else if scene.kind === 'moving-banner'}
-    <ArchiveBanner title="Переезд · круг замер" action="Перенос круга" onaction={() => {}}>Вы переносите «Семья» на другой сервер. Читать можно, писать пока нельзя.</ArchiveBanner>
+    <ArchiveBanner title="Переезд · круг замер" action="Перенос круга" onaction={() => {}}>Вы переносите «Семья» на другой сервер. Читать можно, писать нельзя.</ArchiveBanner>
    {:else if scene.kind === 'moved-banner'}
     <ArchiveBanner title="Круг переехал" action="Перенос круга" onaction={() => {}}>«Семья» теперь на <strong>slava.example.org</strong>. Здесь круг замер и исчезнет, когда вы завершите перенос.</ArchiveBanner>
    {:else}
@@ -71,7 +74,7 @@
    <CircleRow initial="Д" name="Друзья" color="var(--teal)" preview="Аня: Встретимся в субботу" time="12:30" onclick={() => {}} />
   </ShellLayout>
  {:else}
-  <FormLayout shell={scene.kind === 'link'} color={scene.kind === 'link' ? undefined : 'terracotta'} title={scene.kind === 'failed' ? 'Полный архив круга' : scene.kind === 'complete' ? 'Перенос круга' : scene.kind === 'link' ? 'Ссылка переноса' : 'Оживить круг'} onback={() => {}}>
+  <FormLayout shell={scene.kind === 'link'} color={scene.kind === 'link' ? undefined : 'terracotta'} title={scene.kind === 'failed' ? 'Полный архив круга' : scene.kind === 'complete' ? 'Перенос круга' : scene.kind === 'link' ? 'Ссылка переноса' : 'Оживить круг'} onback={scene.kind === 'link' ? undefined : () => {}}>
    {#if scene.kind === 'failed'}
     <Label>Что уйдёт в файл</Label>
     <SettingsRow title="Весь журнал «Семья» и 22 участника" subtitle="340 записей, имена, фото и почта каждого · 8,4 ГБ" chevron={false} />
@@ -98,12 +101,12 @@
     <Meter value={0.25} max={1} />
     <Hint class="mt-8">2,1 ГБ из 8,4 ГБ. Не закрывайте страницу, пока круг загружается.</Hint>
    {:else if scene.kind === 'link'}
-    <FieldDisplay mono value="https://home.example.org/move/7Kq2-Zt9w-Xb41-Lm8c" />
+    <FieldDisplay class="mt-16" mono value="https://home.example.org/move/7Kq2-Zt9w-Xb41-Lm8c" />
     <Button class="mt-12" variant="ghost" onclick={() => {}}>Скопировать</Button>
     <Hint class="mt-10">Это ссылка переноса круга. Открывать её не нужно — её вставляют на новом сервере: «Настройки» → «Серверы» → «Принять круг» → «Перенести с другого сервера».</Hint>
    {/if}
   </FormLayout>
  {/if}
- <figcaption><strong>{frameNumber(scene.id)} · {scene.title}</strong><p>{scene.status} {scene.kind === 'failed' ? 'Показан для контекста.' : 'Показано текущее поведение; отдельного утверждения A18 ещё нет.'} Источник: docs/plans/46-a18-frames.svelte.txt.</p></figcaption>
+ <figcaption><strong>{frameNumber(scene.id)} · {scene.title}</strong><p>{scene.status} {scene.kind === 'failed' ? 'Показан для контекста.' : 'Состояние из продукта с учётом правок просмотра; отдельного утверждения A18 ещё нет.'} Источник: docs/plans/46-a18-frames.svelte.txt.</p></figcaption>
  </figure>
 {/each}
