@@ -5,6 +5,7 @@ import type { ReviveRoom } from '$lib/archive/revive';
 
 /** Перенос круга на новом сервере (план 53): ссылка, карточка, ход, итог. */
 export interface IncomingMove {
+	operation_key?: string;
 	id: string;
 	status: 'draft' | 'pulling' | 'reviving' | 'done' | 'failed';
 	source_url: string;

@@ -172,6 +172,8 @@ export interface ReviveRoom {
 	/** Чем ограничено место: квотой по умолчанию, одобренной просьбой или диском. */
 	limit?: 'quota' | 'approved' | 'disk';
 	request?: {
+		operation_key?: string;
+		id: string;
 		status: 'pending' | 'approved' | 'rejected';
 		requested_bytes: number;
 		circle_name: string;
@@ -210,16 +212,58 @@ export function fetchReviveRoom(origin: string, bytes: number): Promise<ReviveRo
 export async function requestRevivePlace(
 	origin: string,
 	bytes: number,
-	circleName: string
-): Promise<void> {
-	await apiJson(origin, '/revive/place_request', {
+	circleName: string,
+	operationKey?: string
+): Promise<{ id: string; status: 'pending' }> {
+	return apiJson(origin, '/revive/place_request', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ bytes, circle_name: circleName })
+		body: JSON.stringify({ bytes, circle_name: circleName, operation_key: operationKey })
 	});
 }
 
 const CHUNK = 1024 * 1024;
+
+/** Смена сервера отзывает именно прежнюю просьбу, включая одобренную. */
+export async function withdrawRevivePlace(origin: string, id: string): Promise<void> {
+	await apiJson(origin, `/revive/place_requests/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+export class PlaceWithdrawalError extends Error {}
+
+export async function withdrawOperationPlace(origin: string, id: string): Promise<void> {
+	try {
+		await withdrawRevivePlace(origin, id);
+	} catch {
+		throw new PlaceWithdrawalError(
+			'Не удалось отозвать прежнюю просьбу о месте. Сервер не изменён. Попробуйте ещё раз.'
+		);
+	}
+}
+
+/** Архивы одноимённых кругов не делят просьбу о месте. */
+export function archiveOperationKey(archive: LoadedArchive): string {
+	const circles = archive.tables.circles;
+	const id = circles?.rows[0]?.[circles.columns.indexOf('id')];
+	return JSON.stringify(['archive', archive.manifest.server, id]);
+}
+
+/** Новые просьбы связаны с операцией; старые клиенты оставляли только имя круга. */
+export function operationPlaceRequest(
+	room: ReviveRoom | undefined,
+	key: string | undefined,
+	name: string
+): string | undefined {
+	const request = room?.request;
+	if (!request) return;
+	return request.operation_key
+		? request.operation_key === key
+			? request.id
+			: undefined
+		: request.circle_name === name
+			? request.id
+			: undefined;
+}
 
 async function uploadOne(
 	origin: string,

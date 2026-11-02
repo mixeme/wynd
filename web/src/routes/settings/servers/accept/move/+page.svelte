@@ -2,7 +2,7 @@
 	import { loadServerCard, type ServerCardState } from '$lib/instance/serverCard';
 	let serverCard = $state<ServerCardState>({ connection: 'checking' });
 	import { goUp } from '$lib/navigation/up';
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { onDestroy, onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
@@ -14,6 +14,8 @@
 	import Switch from '$ui/forms/Switch.svelte';
 	import CircleRow from '$ui/data/CircleRow.svelte';
 	import ServerRow from '$ui/data/ServerRow.svelte';
+	import ReceivingServerPicker from '$ui/data/ReceivingServerPicker.svelte';
+	import type { SessionRecord } from '$lib/idb/db';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import StatusCard from '$ui/data/StatusCard.svelte';
 	import MemberRow from '$ui/data/MemberRow.svelte';
@@ -34,6 +36,8 @@
 		fetchReviveRoom,
 		noRoomText,
 		requestRevivePlace,
+		withdrawOperationPlace,
+		operationPlaceRequest,
 		roomCaption,
 		type ReviveRoom
 	} from '$lib/archive/revive';
@@ -58,14 +62,17 @@
 	// округлении до гигабайта «попросить меньше» после отказа было нельзя.
 	const MB = 1024 * 1024;
 	// У сервера на своём адресе origin — пустая строка: не проверять как истину.
-	const origin = $page.url.searchParams.get('origin') ?? '';
+	let origin = $state($page.url.searchParams.get('origin') ?? '');
+	let choosingServer = $state(false);
+	let preparing = $state(true);
+	let placeRequestId = $state<string | undefined>();
 	// Ссылка «запустите свой» ведёт на исходники этого сервера (LIC-2).
 	$effect(() => {
 		loadSourceUrl(origin);
 	});
 
 	let serverName = $state('');
-	const host = displayHost(origin);
+	const host = $derived(displayHost(origin));
 	let freeRoom = $state<ReviveRoom | undefined>();
 	let link = $state('');
 	let move = $state<IncomingMoveView | undefined>();
@@ -162,16 +169,20 @@
 				/* без «свободно» */
 			}
 		}
+		preparing = false;
 	});
 	onDestroy(() => timer && clearInterval(timer));
 
 	async function check(value: string) {
+		if (busy || checking || choosingServer) return;
 		const text = value.trim();
 		if (!text || text === move?.link) return;
 		checking = true;
 		error = '';
 		try {
-			move = await putIncomingMove(origin, text);
+			const next = await putIncomingMove(origin, text);
+			if (next.operation_key !== move?.operation_key) placeRequestId = undefined;
+			move = next;
 			sendInvites = false;
 		} catch (err) {
 			error = err instanceof ApiError ? moveErrorText(err.code) : authErrorHint(err);
@@ -203,13 +214,54 @@
 		busy = true;
 		error = '';
 		try {
-			await requestRevivePlace(origin, placeBytes, move.circle.name);
+			placeRequestId = (
+				await requestRevivePlace(origin, placeBytes, move.circle.name, move.operation_key)
+			).id;
 			await refresh();
 		} catch (err) {
 			error = authErrorHint(err);
 		} finally {
 			busy = false;
 		}
+	}
+
+	async function changeServer(session: SessionRecord) {
+		if (session.origin === origin) {
+			choosingServer = false;
+			return;
+		}
+		// Не отзываем более новую просьбу, появившуюся параллельно на другом экране.
+		const requestId =
+			placeRequestId ?? operationPlaceRequest(move, move?.operation_key, move?.circle.name ?? '');
+		if (requestId) {
+			await withdrawOperationPlace(origin, requestId);
+			placeRequestId = undefined;
+			// Прежнее одобрение больше не даёт места, даже если новый сервер не ответит.
+			await refresh();
+		}
+		const nextRoom = await fetchReviveRoom(session.origin, 0);
+		let nextMove: IncomingMoveView | undefined;
+		let nextError = '';
+		if (link.trim()) {
+			try {
+				nextMove = await putIncomingMove(session.origin, link.trim());
+			} catch (err) {
+				nextError = err instanceof ApiError ? moveErrorText(err.code) : authErrorHint(err);
+			}
+		}
+		const card = await loadServerCard(session.origin);
+		origin = session.origin;
+		serverName = session.name;
+		serverCard = card;
+		freeRoom = nextRoom;
+		move = nextMove;
+		placeBytes = nextMove ? Math.ceil(nextMove.circle.bytes / MB) * MB : 0;
+		if (!nextMove?.fits) sendInvites = false;
+		error = nextError;
+		const url = new URL($page.url);
+		url.searchParams.set('origin', origin);
+		replaceState(url, {});
+		choosingServer = false;
 	}
 
 	// «Перенести круг»: почты в круге нет — сначала «Аня — это вы?».
@@ -265,232 +317,242 @@
 	</Button>
 {/snippet}
 
-<FormLayout
-	shell
-	app
-	title={move?.status === 'done' || who ? (move?.circle.name ?? '') : 'Перенос круга'}
-	onback={() =>
-		who ? (who = false) : goUp(`/settings/servers/accept?origin=${encodeURIComponent(origin)}`)}
->
-	{#if move?.status === 'done' && move.result}
-		<!-- 7.25 / 7.26: круг поднят и сверен; остаётся завершить перенос там. -->
-		{@const r = move.result}
-		<StatusCard
-			title="Круг на месте"
-			text={r.verified
-				? `${plural(r.posts, WORD.post)}, ${plural(r.names, WORD.name)}, ${formatBytes(r.bytes)} — сверено с прежним сервером, ничего не потерялось.`
-				: `${plural(r.posts, WORD.post)}, ${plural(r.names, WORD.name)}, ${formatBytes(r.bytes)} — с прежним сервером сошлось не всё.`}
-		/>
-		{#if r.invited === 0 && r.not_joined === 0 && (r.already_here ?? 0) > 0}
-			<!-- Все, кроме вас, уже на этом сервере: письма не нужны (C51, как у оживления). -->
-			<SettingsRow
-				class="mt-14"
-				title="Все уже на этом сервере"
-				subtitle="круг уже в их списке кругов — письма не нужны"
-				chevron={false}
-				divided="both"
+{#if choosingServer}
+	<ReceivingServerPicker {origin} onselect={changeServer} onback={() => (choosingServer = false)} />
+{:else}
+	<FormLayout
+		shell
+		app
+		title={move?.status === 'done' || who ? (move?.circle.name ?? '') : 'Перенос круга'}
+		onback={() =>
+			who ? (who = false) : goUp(`/settings/servers/accept?origin=${encodeURIComponent(origin)}`)}
+	>
+		{#if move?.status === 'done' && move.result}
+			<!-- 7.25 / 7.26: круг поднят и сверен; остаётся завершить перенос там. -->
+			{@const r = move.result}
+			<StatusCard
+				title="Круг на месте"
+				text={r.verified
+					? `${plural(r.posts, WORD.post)}, ${plural(r.names, WORD.name)}, ${formatBytes(r.bytes)} — сверено с прежним сервером, ничего не потерялось.`
+					: `${plural(r.posts, WORD.post)}, ${plural(r.names, WORD.name)}, ${formatBytes(r.bytes)} — с прежним сервером сошлось не всё.`}
 			/>
-		{:else if r.invited > 0}
-			<SettingsRow
-				class="mt-14"
-				title="Приглашения отправлены"
-				value={String(r.invited)}
-				chevron={false}
-				divided="both"
-			/>
-		{:else}
-			<SettingsRow
-				class="mt-14"
-				title="Приглашения не отправлены"
-				subtitle="позвать можно сейчас или позже — в участниках круга"
-				divided="both"
-				onclick={() => {
-					const here = new URL($page.url);
-					here.searchParams.set('done', '1');
-					const back = here.pathname + here.search;
-					void goto(back, { replaceState: true, noScroll: true, keepFocus: true }).then(() =>
-						goto(`/circles/${r.circle_id}/settings/members?back=${encodeURIComponent(back)}`)
-					);
-				}}
-			/>
-		{/if}
-		<Hint>
-			Осталось завершить перенос на прежнем сервере: {sourceName} → настройки круга → «Завершить перенос».
-			До тех пор круг стоит там замершим.
-		</Hint>
-		<Button class="mt-14" variant="colored" onclick={() => goto(`/circles/${r.circle_id}`)}>
-			Открыть круг
-		</Button>
-	{:else if who && move}
-		<!-- «Нет» на «Аня — это вы?» (A12): вход своим именем, как 7.29в; «Кто
-		     уже здесь» — по карточке прежнего сервера (с 0.42.1). -->
-		{#if people.length}
-			<Label class="mt-16">Кто уже здесь · {move.people?.length ?? 0}</Label>
-			<PeopleStrip {people} />
-			{#if morePeople > 0}
-				<Hint centered class="mt-12">ещё {morePeople}</Hint>
+			{#if r.invited === 0 && r.not_joined === 0 && (r.already_here ?? 0) > 0}
+				<!-- Все, кроме вас, уже на этом сервере: письма не нужны (C51, как у оживления). -->
+				<SettingsRow
+					class="mt-14"
+					title="Все уже на этом сервере"
+					subtitle="круг уже в их списке кругов — письма не нужны"
+					chevron={false}
+					divided="both"
+				/>
+			{:else if r.invited > 0}
+				<SettingsRow
+					class="mt-14"
+					title="Приглашения отправлены"
+					value={String(r.invited)}
+					chevron={false}
+					divided="both"
+				/>
+			{:else}
+				<SettingsRow
+					class="mt-14"
+					title="Приглашения не отправлены"
+					subtitle="позвать можно сейчас или позже — в участниках круга"
+					divided="both"
+					onclick={() => {
+						const here = new URL($page.url);
+						here.searchParams.set('done', '1');
+						const back = here.pathname + here.search;
+						void goto(back, { replaceState: true, noScroll: true, keepFocus: true }).then(() =>
+							goto(`/circles/${r.circle_id}/settings/members?back=${encodeURIComponent(back)}`)
+						);
+					}}
+				/>
 			{/if}
-		{/if}
-		<IdentityForm
-			color={(move.circle.color in CIRCLE_COLORS ? move.circle.color : 'terracotta') as CircleColor}
-			bind:name={newName}
-			bind:firstPost={greeting}
-			bind:avatar={newAvatar}
-			bind:gender={newGender}
-			onerror={(message) => (error = message)}
-		/>
-		<Button variant="colored" loading={busy} onclick={() => void start(true)}>Перенести круг</Button
-		>
-	{:else if move && active}
-		<!-- Ход: сервер забирает и поднимает круг сам (кадра нет). -->
-		<CircleRow
-			initial={circleInitial(move.circle.name)}
-			name={move.circle.name}
-			color={colorOf(move.circle.color)}
-			preview={`${plural(move.circle.posts, WORD.post)} · ${plural(move.circle.members, WORD.member)} · ${formatBytes(move.circle.bytes)}`}
-			time=""
-		/>
-		<Label class="mt-16">Что происходит</Label>
-		{#if move.status === 'reviving'}
-			<Hint class="ink">Круг здесь. Сервер переносит его и сверяет с прежним.</Hint>
-		{:else}
-			<Meter
-				value={move.circle.bytes ? Math.min(1, move.pulled_bytes / move.circle.bytes) : 0}
-				max={1}
+			<Hint>
+				Осталось завершить перенос на прежнем сервере: {sourceName} → настройки круга → «Завершить перенос».
+				До тех пор круг стоит там замершим.
+			</Hint>
+			<Button class="mt-14" variant="colored" onclick={() => goto(`/circles/${r.circle_id}`)}>
+				Открыть круг
+			</Button>
+		{:else if who && move}
+			<!-- «Нет» на «Аня — это вы?» (A12): вход своим именем, как 7.29в; «Кто
+		     уже здесь» — по карточке прежнего сервера (с 0.42.1). -->
+			{#if people.length}
+				<Label class="mt-16">Кто уже здесь · {move.people?.length ?? 0}</Label>
+				<PeopleStrip {people} />
+				{#if morePeople > 0}
+					<Hint centered class="mt-12">ещё {morePeople}</Hint>
+				{/if}
+			{/if}
+			<IdentityForm
+				color={(move.circle.color in CIRCLE_COLORS
+					? move.circle.color
+					: 'terracotta') as CircleColor}
+				bind:name={newName}
+				bind:firstPost={greeting}
+				bind:avatar={newAvatar}
+				bind:gender={newGender}
+				onerror={(message) => (error = message)}
 			/>
-			<Hint class="mt-8">
-				{move.pulled_bytes
-					? `Сервер скачивает круг с ${source}: ${formatBytes(move.pulled_bytes)} из ${formatBytes(move.circle.bytes)}.`
-					: `${move.source_name ? `«${move.source_name}»` : source} собирает круг для переноса.`}
-			</Hint>
-		{/if}
-		<Hint class="mt-14 ctr-text">Приложение можно закрыть: серверы работают между собой.</Hint>
-	{:else}
-		<!-- 7.20 и его состояния. -->
-		<Label>Сервер</Label>
-		<ServerRow
-			name={serverCard.info?.name || serverName || host}
-			subtitle={host}
-			detail={move || freeRoom ? roomCaption(move ?? freeRoom!, formatBytes) : undefined}
-			gdpr={serverCard.info?.allow_name_erasure}
-			connection={serverCard.connection}
-			card
-			top={4}
-		/>
-		{#if !move || move.fits}
-			<Hint>
-				Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или
-				<a class="under" href={sourceUrl(origin)}>запустите свой</a>.
-			</Hint>
-		{/if}
-		<Label class="mt-16">Ссылка переноса</Label>
-		<Input
-			bind:value={link}
-			small
-			gray={expired}
-			placeholder="https://…/move/…"
-			autocomplete="off"
-			spellcheck="false"
-			onpaste={onPaste}
-			onchange={() => void check(link)}
-		/>
-		{#if checking}
-			<Hint>Спрашиваем прежний сервер…</Hint>
-		{:else if !move}
-			<Hint>
-				Ссылку получает владелец круга на прежнем сервере: настройки круга → «Перенести на другой
-				сервер».
-			</Hint>
-		{/if}
-		{#if move}
+			<Button variant="colored" loading={busy} onclick={() => void start(true)}
+				>Перенести круг</Button
+			>
+		{:else if move && active}
+			<!-- Ход: сервер забирает и поднимает круг сам (кадра нет). -->
 			<CircleRow
-				class="mt-10"
 				initial={circleInitial(move.circle.name)}
 				name={move.circle.name}
 				color={colorOf(move.circle.color)}
 				preview={`${plural(move.circle.posts, WORD.post)} · ${plural(move.circle.members, WORD.member)} · ${formatBytes(move.circle.bytes)}`}
 				time=""
 			/>
-			<!-- Прежний сервер — той же карточкой, что и этот (владелец, 2026-10-17). -->
-			<Label class="mt-16">Прежний сервер</Label>
-			<ServerRow name={move.source_name || source} subtitle={source} card top={4} />
-			{#if move.frozen_at}
-				<Hint>Круг замер {at(move.frozen_at)}.</Hint>
-			{/if}
-			{#if move.reviver_absent && move.owner_name}
-				<!-- Как 7.29а при оживлении (A12). -->
-				<Hint class="ink">Вашей почты среди участников этого круга нет.</Hint>
-			{/if}
-
-			{#if expired}
-				<!-- 7.24: срок ссылки вышел. -->
-				<StatusCard
-					class="mt-14"
-					title="Срок ссылки вышел"
-					text={`Ссылка переноса действовала до ${until(move.expires_at)}. Круг остаётся замершим. На прежнем сервере${move.source_name ? `, «${move.source_name}»,` : ''} получите новую ссылку переноса.${move.request?.status === 'pending' ? ` Просьба о ${formatBytes(move.request.requested_bytes)} у администратора ${srv} остаётся.` : ''}`}
-				/>
-				<Hint class="mt-14 ctr-text">Новую ссылку вставьте в это же поле.</Hint>
-			{:else if move.status === 'failed'}
-				<StatusCard class="mt-14" title="Перенос не удался" text={moveErrorText(move.error)} />
-				<Button class="mt-14" variant="colored" loading={busy} onclick={() => void start()}>
-					Попробовать ещё раз
-				</Button>
-			{:else if move.fits}
-				{#if move.circle.members > 1}
-					<Label class="mt-16">Участники</Label>
-					<SettingsRow
-						title="Разослать приглашения"
-						subtitle="письмо на почту каждому участнику"
-						divided="both"
-					>
-						{#snippet control()}
-							<Switch bind:checked={sendInvites} label="Разослать приглашения" />
-						{/snippet}
-					</SettingsRow>
-					<Hint>
-						Кто войдёт на этот сервер своей прежней почтой, попадёт в своё имя и свои записи — с
-						письмом или без.
-					</Hint>
-				{/if}
-				<Button class="mt-14" variant="colored" loading={busy} onclick={startMove}>
-					Перенести круг
-				</Button>
-				<Hint class="mt-8 ctr-text">Сервер скачает круг сам. Приложение можно закрыть.</Hint>
-			{:else if move.request?.status === 'pending'}
-				<!-- 7.22 -->
-				<StatusCard
-					class="mt-14"
-					title="Место попросили"
-					text={`${day(move.request.created_at)} вы попросили у администратора ${formatBytes(move.request.requested_bytes)} для этого круга. Ответ администратора придёт письмом. Когда место дадут, здесь появится кнопка «Перенести круг».`}
-				/>
-				<Hint class="mt-10">{@render deadline()}</Hint>
-				<Hint class="mt-14 ctr-text">Можно уйти и вернуться позже: просьба и ссылка останутся.</Hint
-				>
-			{:else if move.request?.status === 'rejected'}
-				<!-- 7.23 -->
-				<StatusCard
-					class="mt-14"
-					title="В месте отказали"
-					text={`${day(move.request.resolved_at ?? move.request.created_at)} администратор отказал в ${formatBytes(move.request.requested_bytes)} для этого круга. Можно попросить меньше — кругу нужно ${formatBytes(move.circle.bytes)} — или выбрать другой сервер.`}
-				/>
-				<Hint class="mt-10">{@render deadline()}</Hint>
-				{@render placeAsk('Попросить ещё раз')}
+			<Label class="mt-16">Что происходит</Label>
+			{#if move.status === 'reviving'}
+				<Hint class="ink">Круг здесь. Сервер переносит его и сверяет с прежним.</Hint>
 			{:else}
-				<!-- 7.21 -->
-				<StatusCard
-					class="mt-14"
-					title="Круг сюда не помещается"
-					text={noRoomText(formatBytes(move.circle.bytes), move, formatBytes)}
+				<Meter
+					value={move.circle.bytes ? Math.min(1, move.pulled_bytes / move.circle.bytes) : 0}
+					max={1}
 				/>
-				<Hint class="mt-10">{@render deadline()}</Hint>
-				{@render placeAsk('Попросить место')}
+				<Hint class="mt-8">
+					{move.pulled_bytes
+						? `Сервер скачивает круг с ${source}: ${formatBytes(move.pulled_bytes)} из ${formatBytes(move.circle.bytes)}.`
+						: `${move.source_name ? `«${move.source_name}»` : source} собирает круг для переноса.`}
+				</Hint>
+			{/if}
+			<Hint class="mt-14 ctr-text">Приложение можно закрыть: серверы работают между собой.</Hint>
+		{:else}
+			<!-- 7.20 и его состояния. -->
+			<Label>Сервер</Label>
+			<ServerRow
+				name={serverCard.info?.name || serverName || host}
+				subtitle={host}
+				detail={move || freeRoom ? roomCaption(move ?? freeRoom!, formatBytes) : undefined}
+				gdpr={serverCard.info?.allow_name_erasure}
+				connection={serverCard.connection}
+				variant="select"
+				onclick={!busy && !checking && !preparing ? () => (choosingServer = true) : undefined}
+				card
+				top={4}
+			/>
+			{#if !move || move.fits}
+				<Hint>
+					Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или
+					<a class="under" href={sourceUrl(origin)}>запустите свой</a>.
+				</Hint>
+			{/if}
+			<Label class="mt-16">Ссылка переноса</Label>
+			<Input
+				bind:value={link}
+				small
+				gray={expired}
+				placeholder="https://…/move/…"
+				autocomplete="off"
+				spellcheck="false"
+				onpaste={onPaste}
+				onchange={() => void check(link)}
+			/>
+			{#if checking}
+				<Hint>Спрашиваем прежний сервер…</Hint>
+			{:else if !move}
+				<Hint>
+					Ссылку получает владелец круга на прежнем сервере: настройки круга → «Перенести на другой
+					сервер».
+				</Hint>
+			{/if}
+			{#if move}
+				<CircleRow
+					class="mt-10"
+					initial={circleInitial(move.circle.name)}
+					name={move.circle.name}
+					color={colorOf(move.circle.color)}
+					preview={`${plural(move.circle.posts, WORD.post)} · ${plural(move.circle.members, WORD.member)} · ${formatBytes(move.circle.bytes)}`}
+					time=""
+				/>
+				<!-- Прежний сервер — той же карточкой, что и этот (владелец, 2026-10-17). -->
+				<Label class="mt-16">Прежний сервер</Label>
+				<ServerRow name={move.source_name || source} subtitle={source} card top={4} />
+				{#if move.frozen_at}
+					<Hint>Круг замер {at(move.frozen_at)}.</Hint>
+				{/if}
+				{#if move.reviver_absent && move.owner_name}
+					<!-- Как 7.29а при оживлении (A12). -->
+					<Hint class="ink">Вашей почты среди участников этого круга нет.</Hint>
+				{/if}
+
+				{#if expired}
+					<!-- 7.24: срок ссылки вышел. -->
+					<StatusCard
+						class="mt-14"
+						title="Срок ссылки вышел"
+						text={`Ссылка переноса действовала до ${until(move.expires_at)}. Круг остаётся замершим. На прежнем сервере${move.source_name ? `, «${move.source_name}»,` : ''} получите новую ссылку переноса.${move.request?.status === 'pending' ? ` Просьба о ${formatBytes(move.request.requested_bytes)} у администратора ${srv} остаётся.` : ''}`}
+					/>
+					<Hint class="mt-14 ctr-text">Новую ссылку вставьте в это же поле.</Hint>
+				{:else if move.status === 'failed'}
+					<StatusCard class="mt-14" title="Перенос не удался" text={moveErrorText(move.error)} />
+					<Button class="mt-14" variant="colored" loading={busy} onclick={() => void start()}>
+						Попробовать ещё раз
+					</Button>
+				{:else if move.fits}
+					{#if move.circle.members > 1}
+						<Label class="mt-16">Участники</Label>
+						<SettingsRow
+							title="Разослать приглашения"
+							subtitle="письмо на почту каждому участнику"
+							divided="both"
+						>
+							{#snippet control()}
+								<Switch bind:checked={sendInvites} label="Разослать приглашения" />
+							{/snippet}
+						</SettingsRow>
+						<Hint>
+							Кто войдёт на этот сервер своей прежней почтой, попадёт в своё имя и свои записи — с
+							письмом или без.
+						</Hint>
+					{/if}
+					<Button class="mt-14" variant="colored" loading={busy} onclick={startMove}>
+						Перенести круг
+					</Button>
+					<Hint class="mt-8 ctr-text">Сервер скачает круг сам. Приложение можно закрыть.</Hint>
+				{:else if move.request?.status === 'pending'}
+					<!-- 7.22 -->
+					<StatusCard
+						class="mt-14"
+						title="Место попросили"
+						text={`${day(move.request.created_at)} вы попросили у администратора ${formatBytes(move.request.requested_bytes)} для этого круга. Ответ администратора придёт письмом. Когда место дадут, здесь появится кнопка «Перенести круг».`}
+					/>
+					<Hint class="mt-10">{@render deadline()}</Hint>
+					<Hint class="mt-14 ctr-text"
+						>Можно уйти и вернуться позже: просьба и ссылка останутся.</Hint
+					>
+				{:else if move.request?.status === 'rejected'}
+					<!-- 7.23 -->
+					<StatusCard
+						class="mt-14"
+						title="В месте отказали"
+						text={`${day(move.request.resolved_at ?? move.request.created_at)} администратор отказал в ${formatBytes(move.request.requested_bytes)} для этого круга. Можно попросить меньше — кругу нужно ${formatBytes(move.circle.bytes)} — или выбрать другой сервер.`}
+					/>
+					<Hint class="mt-10">{@render deadline()}</Hint>
+					{@render placeAsk('Попросить ещё раз')}
+				{:else}
+					<!-- 7.21 -->
+					<StatusCard
+						class="mt-14"
+						title="Круг сюда не помещается"
+						text={noRoomText(formatBytes(move.circle.bytes), move, formatBytes)}
+					/>
+					<Hint class="mt-10">{@render deadline()}</Hint>
+					{@render placeAsk('Попросить место')}
+				{/if}
 			{/if}
 		{/if}
-	{/if}
-	{#if error}
-		<Hint class="mt-12">{error}</Hint>
-	{/if}
-</FormLayout>
+		{#if error}
+			<Hint class="mt-12">{error}</Hint>
+		{/if}
+	</FormLayout>
+{/if}
 
 {#if askOwner && move?.owner_name}
 	<!-- Как 7.29б (A12): фон закрывает окно; «Нет» — на вход своим именем. -->

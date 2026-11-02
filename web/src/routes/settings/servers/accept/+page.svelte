@@ -2,7 +2,7 @@
 	import { loadServerCard, type ServerCardState } from '$lib/instance/serverCard';
 	let serverCard = $state<ServerCardState>({ connection: 'checking' });
 	import { goUp } from '$lib/navigation/up';
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
@@ -15,6 +15,8 @@
 	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import CircleRow from '$ui/data/CircleRow.svelte';
 	import ServerRow from '$ui/data/ServerRow.svelte';
+	import ReceivingServerPicker from '$ui/data/ReceivingServerPicker.svelte';
+	import type { SessionRecord } from '$lib/idb/db';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import StatusCard from '$ui/data/StatusCard.svelte';
 	import MemberRow from '$ui/data/MemberRow.svelte';
@@ -44,6 +46,9 @@
 		loadArchive,
 		openFile,
 		requestRevivePlace,
+		withdrawOperationPlace,
+		archiveOperationKey,
+		operationPlaceRequest,
 		reviveCircle,
 		reviverIsStranger,
 		unlock,
@@ -61,7 +66,10 @@
 	// округлении до гигабайта «попросить меньше» после отказа было нельзя.
 	const MB = 1024 * 1024;
 	// У сервера на своём адресе origin — пустая строка: не проверять как истину.
-	const origin = $page.url.searchParams.get('origin') ?? '';
+	let origin = $state($page.url.searchParams.get('origin') ?? '');
+	let choosingServer = $state(false);
+	let preparing = $state(true);
+	let placeRequestId = $state<string | undefined>();
 	// Ссылка «запустите свой» ведёт на исходники этого сервера (LIC-2).
 	$effect(() => {
 		loadSourceUrl(origin);
@@ -71,7 +79,7 @@
 	type Step = 'choose' | 'password' | 'review' | 'who' | 'upload' | 'done';
 	let step = $state<Step>('choose');
 	let serverName = $state('');
-	let host = $state(displayHost(origin));
+	const host = $derived(displayHost(origin));
 	let freeRoom = $state<ReviveRoom | undefined>();
 	let file = $state<File | undefined>();
 	let opened = $state<OpenedFile | undefined>();
@@ -136,6 +144,7 @@
 		} catch {
 			/* без «свободно» */
 		}
+		preparing = false;
 	});
 
 	async function pick(files: File[]) {
@@ -143,6 +152,7 @@
 		if (!f) return;
 		error = '';
 		file = f;
+		placeRequestId = undefined;
 		// Большой файл читается не сразу — экран не молчит (владелец, 2026-10-23:
 		// «после выбора файла архива на экране долго ничего не происходит»).
 		// Шаг назван строкой: с телефона видно, что тормозит — файл или сервер.
@@ -212,13 +222,47 @@
 		busy = true;
 		error = '';
 		try {
-			await requestRevivePlace(origin, placeBytes, circleName);
+			placeRequestId = (
+				await requestRevivePlace(origin, placeBytes, circleName, archiveOperationKey(archive))
+			).id;
 			room = await fetchReviveRoom(origin, archive.circleBytes);
 		} catch (err) {
 			error = authErrorHint(err);
 		} finally {
 			busy = false;
 		}
+	}
+
+	async function changeServer(session: SessionRecord) {
+		if (session.origin === origin) {
+			choosingServer = false;
+			return;
+		}
+		const requestId =
+			placeRequestId ??
+			operationPlaceRequest(room, archive ? archiveOperationKey(archive) : undefined, circleName);
+		if (requestId) {
+			await withdrawOperationPlace(origin, requestId);
+			placeRequestId = undefined;
+			room = await fetchReviveRoom(origin, need);
+		}
+		const nextRoom = await fetchReviveRoom(session.origin, need);
+		const nextInvitable = archive ? await fetchInvitable(session.origin, archive.emails) : 0;
+		const card = await loadServerCard(session.origin);
+		origin = session.origin;
+		serverName = session.name;
+		myEmail = session.email;
+		serverCard = card;
+		freeRoom = nextRoom;
+		if (archive) room = nextRoom;
+		invitable = nextInvitable;
+		if (!invitable) sendInvites = false;
+		placeBytes = Math.ceil(need / MB) * MB;
+		error = '';
+		const url = new URL($page.url);
+		url.searchParams.set('origin', origin);
+		replaceState(url, {});
+		choosingServer = false;
 	}
 
 	// «Оживить круг» на 7.29: почты в архиве нет — сначала «Аня — это вы?»
@@ -325,237 +369,245 @@
 	</Button>
 {/snippet}
 
-<FormLayout
-	shell={!circleColor}
-	color={circleColor}
-	app
-	title={step === 'done' || step === 'who'
-		? circleName
-		: step === 'choose'
-			? 'Принять круг'
-			: 'Оживить круг'}
-	onback={() => (step === 'who' ? (step = 'review') : goUp('/settings/servers'))}
->
-	<FilePicker bind:this={picker} accept=".wynd" onfiles={(files) => void pick(files)} />
-	{#if step === 'choose'}
-		<!-- 7.19: две дороги — перенос по ссылке (план 53) и оживление из файла. -->
-		<ServerRow
-			name={serverCard.info?.name || serverName || host}
-			subtitle={host}
-			detail={freeRoom ? roomCaption(freeRoom, formatBytes) : undefined}
-			gdpr={serverCard.info?.allow_name_erasure}
-			connection={serverCard.connection}
-			card
-			top={10}
-		/>
-		<SettingsRow
-			class="mt-14"
-			title="Перенести с другого сервера"
-			subtitle="по ссылке переноса — сервер скачает круг сам"
-			divided="top"
-			onclick={() => goto(`/settings/servers/accept/move?origin=${encodeURIComponent(origin)}`)}
-		/>
-		<SettingsRow
-			title="Оживить из архива"
-			subtitle="из файла круга на этом устройстве"
-			divided="both"
-			onclick={() => picker?.open()}
-		/>
-		<Hint>Круг будет перенесён полностью. Вы станете его владельцем.</Hint>
-		{#if readingNote}
-			<Hint class="ink">{readingNote}</Hint>
-		{/if}
-	{:else if step === 'password' && file}
-		<!-- 7.27 / 7.28: файл расшифровывается на этом устройстве. -->
-		<Label>Файл архива</Label>
-		<SettingsRow
-			icon="file"
-			title={file.name}
-			subtitle={`${formatBytes(file.size)} · зашифрован`}
-			chevron={false}
-			divided="both"
-		/>
-		<Label class="mt-16">Пароль от файла</Label>
-		<Input active bind:value={password} autocomplete="off" spellcheck="false" />
-		{#if passwordWrong}
-			<Hint class="ink">Пароль неверный</Hint>
-		{:else}
-			<Hint>
-				Тот, что задали, когда собирали архив. Файл расшифровывается на этом устройстве, пароль на
-				сервер не уходит.
-			</Hint>
-		{/if}
-		<Button
-			class="mt-14"
-			variant="colored"
-			loading={busy}
-			disabled={!password.trim()}
-			onclick={() => void openEncrypted()}
-		>
-			Открыть файл
-		</Button>
-		{#if busyNote}
-			<Hint class="mt-8">{busyNote}</Hint>
-		{/if}
-	{:else if step === 'review' && archive && room}
-		<!-- 7.29 и, когда круг не помещается, 7.30 / 7.31 / 7.32. -->
-		<Label>Сервер</Label>
-		<ServerRow
-			name={serverCard.info?.name || serverName || host}
-			subtitle={host}
-			detail={roomCaption(room, formatBytes)}
-			gdpr={serverCard.info?.allow_name_erasure}
-			connection={serverCard.connection}
-			card
-			top={4}
-		/>
-		<Hint>
-			Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или
-			<a class="under" href={sourceUrl(origin)}>запустите свой</a>.
-		</Hint>
-		<Label class="mt-16">Архив</Label>
-		<CircleRow
-			initial={circleInitial(circleName)}
-			name={circleName}
-			preview={`${plural(archive.posts, WORD.post)} · ${plural(archive.members, WORD.member)} · ${formatBytes(archive.circleBytes)}`}
-			time=""
-		/>
-		<Hint>
-			Архив собран {formatAdminDayYear(archive.manifest.snapshot_at)} на сервере {displayHost(
-				archive.manifest.server
-			)}.{#if archive.lastEntry}{' '}Последняя запись — {formatEntryDate(archive.lastEntry)}.{/if}
-		</Hint>
-		{#if stranger}
-			<!-- 7.29а (A12): отдельной строкой в чернилах. -->
-			<Hint class="ink">Вашей почты среди участников этого круга нет.</Hint>
-		{/if}
-		{#if room.fits}
-			{#if invitable === 0}
-				<!-- Писать некому — переключатель виден, но погашен (владелец, 2026-10-23). -->
-				<Label class="mt-16">Участники</Label>
-				<SettingsRow
-					title="Разослать приглашения"
-					subtitle={archive.emails.length > 1
-						? 'все участники уже на этом сервере'
-						: 'кроме вас, в круге никого нет'}
-					divided="both"
-				>
-					{#snippet control()}
-						<Switch checked={false} disabled label="Разослать приглашения" />
-					{/snippet}
-				</SettingsRow>
+{#if choosingServer}
+	<ReceivingServerPicker {origin} onselect={changeServer} onback={() => (choosingServer = false)} />
+{:else}
+	<FormLayout
+		shell={!circleColor}
+		color={circleColor}
+		app
+		title={step === 'done' || step === 'who'
+			? circleName
+			: step === 'choose'
+				? 'Принять круг'
+				: 'Оживить круг'}
+		onback={() => (step === 'who' ? (step = 'review') : goUp('/settings/servers'))}
+	>
+		<FilePicker bind:this={picker} accept=".wynd" onfiles={(files) => void pick(files)} />
+		{#if step === 'choose'}
+			<!-- 7.19: две дороги — перенос по ссылке (план 53) и оживление из файла. -->
+			<ServerRow
+				name={serverCard.info?.name || serverName || host}
+				subtitle={host}
+				detail={freeRoom ? roomCaption(freeRoom, formatBytes) : undefined}
+				gdpr={serverCard.info?.allow_name_erasure}
+				connection={serverCard.connection}
+				variant="select"
+				card
+				top={10}
+				onclick={!busy && !readingNote && !preparing ? () => (choosingServer = true) : undefined}
+			/>
+			<SettingsRow
+				class="mt-14"
+				title="Перенести с другого сервера"
+				subtitle="по ссылке переноса — сервер скачает круг сам"
+				divided="top"
+				onclick={() => goto(`/settings/servers/accept/move?origin=${encodeURIComponent(origin)}`)}
+			/>
+			<SettingsRow
+				title="Оживить из архива"
+				subtitle="из файла круга на этом устройстве"
+				divided="both"
+				onclick={() => picker?.open()}
+			/>
+			<Hint>Круг будет перенесён полностью. Вы станете его владельцем.</Hint>
+			{#if readingNote}
+				<Hint class="ink">{readingNote}</Hint>
+			{/if}
+		{:else if step === 'password' && file}
+			<!-- 7.27 / 7.28: файл расшифровывается на этом устройстве. -->
+			<Label>Файл архива</Label>
+			<SettingsRow
+				icon="file"
+				title={file.name}
+				subtitle={`${formatBytes(file.size)} · зашифрован`}
+				chevron={false}
+				divided="both"
+			/>
+			<Label class="mt-16">Пароль от файла</Label>
+			<Input active bind:value={password} autocomplete="off" spellcheck="false" />
+			{#if passwordWrong}
+				<Hint class="ink">Пароль неверный</Hint>
 			{:else}
-				<Label class="mt-16">Участники</Label>
-				<SettingsRow
-					title="Разослать приглашения"
-					subtitle="письмо на почту каждому участнику"
-					divided="both"
-				>
-					{#snippet control()}
-						<Switch bind:checked={sendInvites} label="Разослать приглашения" />
-					{/snippet}
-				</SettingsRow>
 				<Hint>
-					Почты в архиве — на день, когда его собрали. Кто войдёт сюда той же почтой, попадёт в своё
-					имя.
+					Тот, что задали, когда собирали архив. Файл расшифровывается на этом устройстве, пароль на
+					сервер не уходит.
 				</Hint>
 			{/if}
-			<Button class="mt-14" variant="colored" onclick={startRevive}>Оживить круг</Button>
-		{:else if room.request?.status === 'pending'}
-			<StatusCard
-				title="Место попросили"
-				text={`${day(room.request.created_at)} вы попросили у администратора ${formatBytes(room.request.requested_bytes)} для этого круга. Ответ администратора придёт письмом. Когда место дадут, здесь появится кнопка «Оживить круг».`}
+			<Button
+				class="mt-14"
+				variant="colored"
+				loading={busy}
+				disabled={!password.trim()}
+				onclick={() => void openEncrypted()}
+			>
+				Открыть файл
+			</Button>
+			{#if busyNote}
+				<Hint class="mt-8">{busyNote}</Hint>
+			{/if}
+		{:else if step === 'review' && archive && room}
+			<!-- 7.29 и, когда круг не помещается, 7.30 / 7.31 / 7.32. -->
+			<Label>Сервер</Label>
+			<ServerRow
+				name={serverCard.info?.name || serverName || host}
+				subtitle={host}
+				detail={roomCaption(room, formatBytes)}
+				gdpr={serverCard.info?.allow_name_erasure}
+				connection={serverCard.connection}
+				variant="select"
+				card
+				top={4}
+				onclick={!busy && !readingNote && !preparing ? () => (choosingServer = true) : undefined}
 			/>
-			<Hint class="mt-14">
-				Можно уйти и вернуться позже: просьба останется, файл нужно будет выбрать заново.
+			<Hint>
+				Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или
+				<a class="under" href={sourceUrl(origin)}>запустите свой</a>.
 			</Hint>
-		{:else if room.request?.status === 'rejected'}
-			<StatusCard
-				title="В месте отказали"
-				text={`${day(room.request.resolved_at ?? room.request.created_at)} администратор отказал в ${formatBytes(room.request.requested_bytes)} для этого круга. Можно попросить меньше — кругу нужно ${formatBytes(need)} — или выбрать другой сервер.`}
+			<Label class="mt-16">Архив</Label>
+			<CircleRow
+				initial={circleInitial(circleName)}
+				name={circleName}
+				preview={`${plural(archive.posts, WORD.post)} · ${plural(archive.members, WORD.member)} · ${formatBytes(archive.circleBytes)}`}
+				time=""
 			/>
-			{@render placeAsk('Попросить ещё раз')}
-		{:else}
-			<StatusCard
-				title="Круг сюда не помещается"
-				text={noRoomText(formatBytes(need), room, formatBytes)}
-			/>
-			{@render placeAsk('Попросить место')}
-		{/if}
-	{:else if step === 'who' && archive}
-		<!-- 7.29в (A12): вход в круг, как 1.4 — кто здесь по архиву, имя, фото,
+			<Hint>
+				Архив собран {formatAdminDayYear(archive.manifest.snapshot_at)} на сервере {displayHost(
+					archive.manifest.server
+				)}.{#if archive.lastEntry}{' '}Последняя запись — {formatEntryDate(archive.lastEntry)}.{/if}
+			</Hint>
+			{#if stranger}
+				<!-- 7.29а (A12): отдельной строкой в чернилах. -->
+				<Hint class="ink">Вашей почты среди участников этого круга нет.</Hint>
+			{/if}
+			{#if room.fits}
+				{#if invitable === 0}
+					<!-- Писать некому — переключатель виден, но погашен (владелец, 2026-10-23). -->
+					<Label class="mt-16">Участники</Label>
+					<SettingsRow
+						title="Разослать приглашения"
+						subtitle={archive.emails.length > 1
+							? 'все участники уже на этом сервере'
+							: 'кроме вас, в круге никого нет'}
+						divided="both"
+					>
+						{#snippet control()}
+							<Switch checked={false} disabled label="Разослать приглашения" />
+						{/snippet}
+					</SettingsRow>
+				{:else}
+					<Label class="mt-16">Участники</Label>
+					<SettingsRow
+						title="Разослать приглашения"
+						subtitle="письмо на почту каждому участнику"
+						divided="both"
+					>
+						{#snippet control()}
+							<Switch bind:checked={sendInvites} label="Разослать приглашения" />
+						{/snippet}
+					</SettingsRow>
+					<Hint>
+						Почты в архиве — на день, когда его собрали. Кто войдёт сюда той же почтой, попадёт в
+						своё имя.
+					</Hint>
+				{/if}
+				<Button class="mt-14" variant="colored" onclick={startRevive}>Оживить круг</Button>
+			{:else if room.request?.status === 'pending'}
+				<StatusCard
+					title="Место попросили"
+					text={`${day(room.request.created_at)} вы попросили у администратора ${formatBytes(room.request.requested_bytes)} для этого круга. Ответ администратора придёт письмом. Когда место дадут, здесь появится кнопка «Оживить круг».`}
+				/>
+				<Hint class="mt-14">
+					Можно уйти и вернуться позже: просьба останется, файл нужно будет выбрать заново.
+				</Hint>
+			{:else if room.request?.status === 'rejected'}
+				<StatusCard
+					title="В месте отказали"
+					text={`${day(room.request.resolved_at ?? room.request.created_at)} администратор отказал в ${formatBytes(room.request.requested_bytes)} для этого круга. Можно попросить меньше — кругу нужно ${formatBytes(need)} — или выбрать другой сервер.`}
+				/>
+				{@render placeAsk('Попросить ещё раз')}
+			{:else}
+				<StatusCard
+					title="Круг сюда не помещается"
+					text={noRoomText(formatBytes(need), room, formatBytes)}
+				/>
+				{@render placeAsk('Попросить место')}
+			{/if}
+		{:else if step === 'who' && archive}
+			<!-- 7.29в (A12): вход в круг, как 1.4 — кто здесь по архиву, имя, фото,
 		     пол, приветствие. Круг оживает, человек — новый участник и
 		     владелец, видит круг с этого дня. -->
-		{#if people.length}
-			<Label class="mt-16">Кто уже здесь · {archive.people.length}</Label>
-			<PeopleStrip {people} />
-			{#if morePeople > 0}
-				<Hint centered class="mt-12">ещё {morePeople}</Hint>
+			{#if people.length}
+				<Label class="mt-16">Кто уже здесь · {archive.people.length}</Label>
+				<PeopleStrip {people} />
+				{#if morePeople > 0}
+					<Hint centered class="mt-12">ещё {morePeople}</Hint>
+				{/if}
 			{/if}
-		{/if}
-		<IdentityForm
-			color={circleColor ?? 'terracotta'}
-			bind:name={newName}
-			bind:firstPost={greeting}
-			bind:avatar={newAvatar}
-			bind:gender={newGender}
-			onerror={(message) => (error = message)}
-		/>
-		<Button variant="colored" onclick={() => void revive(true)}>Оживить круг</Button>
-	{:else if step === 'upload'}
-		<Label>Загружаем круг</Label>
-		<Meter value={total ? sent / total : 0} max={1} />
-		<Hint class="mt-8">
-			{formatBytes(sent)} из {formatBytes(total)}. Не закрывайте страницу, пока круг загружается.
-		</Hint>
-	{:else if step === 'done' && result}
-		<!-- 7.33 / 7.34. -->
-		<StatusCard
-			title="Круг на месте"
-			text={result.verified
-				? `${plural(result.posts, WORD.post)}, ${plural(result.names, WORD.name)}, ${formatBytes(result.bytes)} — сверено с файлом архива, ничего не потерялось.`
-				: `${plural(result.posts, WORD.post)}, ${plural(result.names, WORD.name)}, ${formatBytes(result.bytes)} — с файлом архива сошлось не всё.`}
-		/>
-		{#if allHere}
-			<!-- Все, кроме вас, уже на этом сервере: письма не нужны, круг у них в списке. -->
-			<SettingsRow
-				class="mt-14"
-				title="Все уже на этом сервере"
-				subtitle="круг уже в их списке кругов — письма не нужны"
-				chevron={false}
-				divided="both"
+			<IdentityForm
+				color={circleColor ?? 'terracotta'}
+				bind:name={newName}
+				bind:firstPost={greeting}
+				bind:avatar={newAvatar}
+				bind:gender={newGender}
+				onerror={(message) => (error = message)}
 			/>
-		{:else if result.invited > 0}
-			<SettingsRow
-				class="mt-14"
-				title="Приглашения отправлены"
-				value={String(result.invited)}
-				chevron={false}
-				divided="both"
+			<Button variant="colored" onclick={() => void revive(true)}>Оживить круг</Button>
+		{:else if step === 'upload'}
+			<Label>Загружаем круг</Label>
+			<Meter value={total ? sent / total : 0} max={1} />
+			<Hint class="mt-8">
+				{formatBytes(sent)} из {formatBytes(total)}. Не закрывайте страницу, пока круг загружается.
+			</Hint>
+		{:else if step === 'done' && result}
+			<!-- 7.33 / 7.34. -->
+			<StatusCard
+				title="Круг на месте"
+				text={result.verified
+					? `${plural(result.posts, WORD.post)}, ${plural(result.names, WORD.name)}, ${formatBytes(result.bytes)} — сверено с файлом архива, ничего не потерялось.`
+					: `${plural(result.posts, WORD.post)}, ${plural(result.names, WORD.name)}, ${formatBytes(result.bytes)} — с файлом архива сошлось не всё.`}
 			/>
-		{:else}
-			<SettingsRow
-				class="mt-14"
-				title="Приглашения не отправлены"
-				subtitle="позвать можно сейчас или позже — в участниках круга"
-				divided="both"
-				onclick={() =>
-					goto(
-						`/circles/${result?.circle_id}/settings/members?back=${encodeURIComponent(doneUrl(result?.circle_id ?? ''))}`
-					)}
-			/>
+			{#if allHere}
+				<!-- Все, кроме вас, уже на этом сервере: письма не нужны, круг у них в списке. -->
+				<SettingsRow
+					class="mt-14"
+					title="Все уже на этом сервере"
+					subtitle="круг уже в их списке кругов — письма не нужны"
+					chevron={false}
+					divided="both"
+				/>
+			{:else if result.invited > 0}
+				<SettingsRow
+					class="mt-14"
+					title="Приглашения отправлены"
+					value={String(result.invited)}
+					chevron={false}
+					divided="both"
+				/>
+			{:else}
+				<SettingsRow
+					class="mt-14"
+					title="Приглашения не отправлены"
+					subtitle="позвать можно сейчас или позже — в участниках круга"
+					divided="both"
+					onclick={() =>
+						goto(
+							`/circles/${result?.circle_id}/settings/members?back=${encodeURIComponent(doneUrl(result?.circle_id ?? ''))}`
+						)}
+				/>
+			{/if}
+			{#if !allHere}
+				<Hint>Кто войдёт сюда той же почтой, попадёт в своё имя.</Hint>
+			{/if}
+			<Button class="mt-14" variant="colored" onclick={() => goto(`/circles/${result?.circle_id}`)}>
+				Открыть круг
+			</Button>
 		{/if}
-		{#if !allHere}
-			<Hint>Кто войдёт сюда той же почтой, попадёт в своё имя.</Hint>
+		{#if error}
+			<Hint class="mt-12">{error}</Hint>
 		{/if}
-		<Button class="mt-14" variant="colored" onclick={() => goto(`/circles/${result?.circle_id}`)}>
-			Открыть круг
-		</Button>
-	{/if}
-	{#if error}
-		<Hint class="mt-12">{error}</Hint>
-	{/if}
-</FormLayout>
+	</FormLayout>
+{/if}
 
 {#if askOwner && archive?.owner}
 	<!-- 7.29б (A12): фон закрывает окно; «Нет» — на 7.29в, а не закрытие. -->
