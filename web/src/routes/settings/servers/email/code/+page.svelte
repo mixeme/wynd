@@ -1,4 +1,7 @@
 <script lang="ts">
+	import ServerRow from '$ui/data/ServerRow.svelte';
+	import { loadServerCard, type ServerCardState } from '$lib/instance/serverCard';
+	let serverCard = $state<ServerCardState>({ connection: 'checking' });
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { goUp } from '$lib/navigation/up';
@@ -32,6 +35,7 @@
 			goto('/settings/servers');
 			return;
 		}
+		void loadServerCard(pending.origin).then((next) => (serverCard = next));
 		tickCooldown();
 		const timer = setInterval(tickCooldown, 1000);
 		queueMicrotask(() => codeInput?.focus());
@@ -100,6 +104,14 @@
 
 <FormLayout shell app title={pageTitle} onback={changeEmail}>
 	{#if pending}
+		<ServerRow
+			name={serverCard.info?.name || pending.serverName || pending.host}
+			subtitle={pending.host}
+			gdpr={serverCard.info?.allow_name_erasure}
+			connection={serverCard.connection}
+			card
+			top={10}
+		/>
 		{#if logDelivery}
 			<div class="m-0-16">На этом компьютере письмо не уходит. Код напечатан в окне сервера.</div>
 		{:else}

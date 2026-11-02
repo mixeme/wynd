@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { loadServerCard, type ServerCardState } from '$lib/instance/serverCard';
+	let serverCard = $state<ServerCardState>({ connection: 'checking' });
 	import { getContext, onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { goUp } from '$lib/navigation/up';
@@ -50,6 +52,7 @@
 			goto(`/circles/${circle.circleId}`, { replaceState: true });
 			return;
 		}
+		void loadServerCard(circle.origin).then((next) => (serverCard = next));
 		const session = await getSession(circle.origin);
 		serverName = session?.name ?? '';
 		serverHost = displayHost(session?.origin ?? circle.origin);
@@ -74,7 +77,14 @@
 	{#if arrival}
 		<!-- Сервер — плашкой и первым (владелец, 2026-10-18). -->
 		<Label class="mt-16">Сервер</Label>
-		<ServerRow name={serverName || serverHost} subtitle={serverHost} card top={4} />
+		<ServerRow
+			name={serverCard.info?.name || serverName || serverHost}
+			subtitle={serverHost}
+			gdpr={serverCard.info?.allow_name_erasure}
+			connection={serverCard.connection}
+			card
+			top={4}
+		/>
 		{#if arrival.returned_count > 0}
 			<Label class="mt-22">Уже вернулись · {arrival.returned_count} из {arrival.total}</Label>
 			<PeopleStrip {people} />

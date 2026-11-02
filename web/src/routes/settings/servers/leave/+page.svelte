@@ -12,7 +12,8 @@
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
-	import { fetchInstance } from '$lib/auth/auth';
+	import { loadServerCard, type ServerCardState } from '$lib/instance/serverCard';
+	let serverCard = $state<ServerCardState>({ connection: 'checking' });
 	import { WORD, plural } from '$lib/format/plural';
 	import { loadSessions, removeSession } from '$lib/session/session.svelte';
 	import { stopSync } from '$lib/sync/sync';
@@ -37,7 +38,9 @@
 	let leaving = $state(false);
 	let leaveError = $state('');
 
-	const serverLabel = $derived(pending ? pending.serverName || pending.host : '');
+	const serverLabel = $derived(
+		pending ? serverCard.info?.name || pending.serverName || pending.host : ''
+	);
 	const owns = $derived((preview?.owned.length ?? 0) > 0);
 	const typedRight = $derived(confirmName.trim() === serverLabel);
 
@@ -55,10 +58,10 @@
 		try {
 			const [next, instance] = await Promise.all([
 				fetchLeavePreview(origin),
-				fetchInstance(origin).catch(() => undefined)
+				loadServerCard(origin).then((next) => (serverCard = next))
 			]);
 			preview = next;
-			erasureAllowed = Boolean(instance?.allow_name_erasure);
+			erasureAllowed = !instance.connection && instance.info?.allow_name_erasure === true;
 		} catch {
 			loadError = 'Сервер не отвечает — уйти с него можно, когда связь появится.';
 		}
@@ -99,7 +102,14 @@
 
 <FormLayout shell app title="Уйти с сервера насовсем" onback={back}>
 	{#if pending}
-		<ServerRow name={serverLabel} subtitle={pending.host} card gdpr={erasureAllowed} top={10} />
+		<ServerRow
+			name={serverCard.info?.name || serverLabel}
+			subtitle={pending.host}
+			card
+			gdpr={serverCard.info?.allow_name_erasure}
+			connection={serverCard.connection}
+			top={10}
+		/>
 		<SettingsRow
 			title={pending.email}
 			subtitle={preview ? plural(preview.circles, WORD.circle) : undefined}

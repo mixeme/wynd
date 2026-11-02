@@ -9,8 +9,13 @@
 	import Label from '$ui/forms/Label.svelte';
 	import Logo from '$ui/Logo.svelte';
 	import ServerRow from '$ui/data/ServerRow.svelte';
+	import {
+		loadServerCard,
+		registrationCaption,
+		type ServerConnection
+	} from '$lib/instance/serverCard';
 	import PlainLayout from '$lib/layouts/PlainLayout.svelte';
-	import { authErrorHint, fetchInstance, sendAuthCode, type InstanceInfo } from '$lib/auth/auth';
+	import { authErrorHint, sendAuthCode, type InstanceInfo } from '$lib/auth/auth';
 	import { displayHost, resolveServerOrigin } from '$lib/auth/origin';
 	import { INVALID_EMAIL_HINT, isValidParticipantEmail } from '$lib/auth/email';
 	import { loadPendingAuth, savePendingAuth } from '$lib/auth/pending';
@@ -25,27 +30,36 @@
 	// переходом в круги.
 	let booting = $state(true);
 	let checking = $state(false);
+	let serverConnection = $state<ServerConnection>();
+	let serverError = $state('');
+	let checkGeneration = 0;
 	let error = $state('');
 
 	async function checkServer() {
-		error = '';
-		instance = undefined;
+		const generation = ++checkGeneration;
+		serverError = '';
 		const resolved = resolveServerOrigin(address);
+		if (resolved !== origin) instance = undefined;
 		if (!resolved && !address.trim()) {
 			origin = '';
+			checking = false;
+			serverConnection = undefined;
 			return;
 		}
 		checking = true;
-		try {
-			const info = await fetchInstance(resolved);
-			origin = resolved;
-			instance = info;
-		} catch {
-			error = 'Сервер не отвечает — попробуйте позже';
-			origin = '';
-		} finally {
-			checking = false;
+		serverConnection = 'checking';
+		const known = instance;
+		const card = await loadServerCard(resolved);
+		if (generation !== checkGeneration) return;
+		origin = resolved;
+		instance = card.info ?? known;
+		serverConnection = card.connection;
+		if (card.connection === 'unavailable') {
+			serverError = instance
+				? 'Сервер не отвечает — попробуйте позже'
+				: 'Сервер не отвечает — проверьте адрес';
 		}
+		checking = false;
 	}
 
 	onMount(async () => {
@@ -123,17 +137,19 @@
 		<!-- Адрес не вводится: приложение открыто с этого сервера, он и есть сервер
 	     входа. Войти на другой — с его собственной страницы: в веб-приложении второй сервер
 	     пока не добавить (C69). -->
-		{#if checking}
+		{#if checking && !instance}
 			<Hint class="mt-8">Проверяем сервер…</Hint>
 		{:else if instance}
 			<ServerRow
 				name={instance.name}
 				subtitle={serverSubtitle}
-				variant="ok"
+				detail={registrationCaption(instance.registration_mode)}
+				connection={serverConnection}
 				card
 				gdpr={instance.allow_name_erasure}
 			/>
 		{/if}
+		{#if serverError}<Hint class="mt-8">{serverError}</Hint>{/if}
 		<Label class="mt-16">Почта</Label>
 		<Input active type="email" autocomplete="email" bind:value={email} />
 		<Hint>Пришлём код для входа. Пароля нет.</Hint>
@@ -145,9 +161,11 @@
 				<a class="under" href="/join">Регистрация без приглашения</a>
 			</Hint>
 		{/if}
-		<Hint class={instance?.registration_mode === 'open' ? 'mt-18' : 'mt-30'} centered>
-			<a class="under" href="/invite?from=login">У меня есть приглашение</a>
-		</Hint>
+		{#if instance && instance.registration_mode !== 'closed'}
+			<Hint class={instance?.registration_mode === 'open' ? 'mt-18' : 'mt-30'} centered>
+				<a class="under" href="/invite?from=login">У меня есть приглашение</a>
+			</Hint>
+		{/if}
 		{#if error}
 			<Hint class="mt-12" centered>{error}</Hint>
 		{/if}

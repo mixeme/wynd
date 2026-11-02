@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { loadServerCard, type ServerCardState } from '$lib/instance/serverCard';
+	let serverCard = $state<ServerCardState>({ connection: 'checking' });
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { goUp } from '$lib/navigation/up';
@@ -32,6 +34,7 @@
 			goto('/settings/servers');
 			return;
 		}
+		void loadServerCard(pending.origin).then((next) => (serverCard = next));
 		email = pending.email;
 	});
 
@@ -83,7 +86,14 @@
 
 <FormLayout shell app title="Новая почта" onback={back}>
 	{#if pending}
-		<ServerRow name={pending.serverName || pending.host} subtitle={pending.host} card top={10} />
+		<ServerRow
+			name={serverCard.info?.name || pending.serverName || pending.host}
+			subtitle={pending.host}
+			gdpr={serverCard.info?.allow_name_erasure}
+			connection={serverCard.connection}
+			card
+			top={10}
+		/>
 		<SectionLabel>Сейчас</SectionLabel>
 		<SettingsRow class="pt-2" title={pending.currentEmail} chevron={false} />
 		<SectionLabel>Новая почта</SectionLabel>

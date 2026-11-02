@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { loadServerCard, type ServerCardState } from '$lib/instance/serverCard';
+	let serverCard = $state<ServerCardState>({ connection: 'checking' });
 	import { goUp } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -146,6 +148,7 @@
 	});
 
 	onMount(async () => {
+		void loadServerCard(origin).then((next) => (serverCard = next));
 		const sessions = await loadSessions();
 		serverName = sessions.find((x) => x.origin === origin)?.name ?? '';
 		// ?done — вернулись из участников на итог переноса: показать его снова.
@@ -366,12 +369,11 @@
 		<!-- 7.20 и его состояния. -->
 		<Label>Сервер</Label>
 		<ServerRow
-			name={serverName || host}
-			subtitle={move && !move.fits
-				? `${host} · ${roomCaption(move, formatBytes)}`
-				: freeRoom !== undefined || move
-					? `${host} · ${roomCaption(move ?? freeRoom ?? { room_bytes: 0 }, formatBytes)}`
-					: host}
+			name={serverCard.info?.name || serverName || host}
+			subtitle={host}
+			detail={move || freeRoom ? roomCaption(move ?? freeRoom!, formatBytes) : undefined}
+			gdpr={serverCard.info?.allow_name_erasure}
+			connection={serverCard.connection}
 			card
 			top={4}
 		/>

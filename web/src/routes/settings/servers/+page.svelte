@@ -19,14 +19,15 @@
 	import { stopSync } from '$lib/sync/sync';
 	import { savePendingEmailChange } from '$lib/auth/emailChange';
 	import { savePendingLeave } from '$lib/auth/leaveServer';
-	import { fetchInstance } from '$lib/auth/auth';
+	import { loadServerCard, type ServerCardState } from '$lib/instance/serverCard';
 
 	interface ServerRowState {
 		session: SessionRecord;
 		host: string;
-		circles: number;
+		circles?: number;
+		card: ServerCardState;
 		/** Значок «GDPR» у имени сервера (1.2). */
-		gdpr: boolean;
+		gdpr?: boolean;
 	}
 
 	let rows = $state<ServerRowState[]>([]);
@@ -36,8 +37,8 @@
 		return plural(n, WORD.circle);
 	}
 
-	function accountSubtitle(session: SessionRecord, circles: number): string {
-		const base = pluralCircles(circles);
+	function accountSubtitle(session: SessionRecord, circles: number | undefined): string {
+		const base = circles === undefined ? 'Число кругов неизвестно' : pluralCircles(circles);
 		if (!session.signed_in_at) return base;
 		const day = formatSessionDay(session.signed_in_at);
 		return day ? `${base} · вошли ${day}` : base;
@@ -45,28 +46,21 @@
 
 	async function refresh() {
 		const sessions = await loadSessions();
-		const next: ServerRowState[] = [];
-		for (const session of sessions) {
-			let circles = 0;
-			let gdpr = false;
-			try {
-				const [list, instance] = await Promise.all([
-					fetchCircles(session.origin),
-					fetchInstance(session.origin).catch(() => undefined)
+		rows = await Promise.all(
+			sessions.map(async (session) => {
+				const [list, card] = await Promise.all([
+					fetchCircles(session.origin).catch(() => undefined),
+					loadServerCard(session.origin)
 				]);
-				circles = list.filter((c) => c.status === 'active').length;
-				gdpr = Boolean(instance?.allow_name_erasure);
-			} catch {
-				/* unreachable origin */
-			}
-			next.push({
-				session,
-				host: displayHost(session.origin),
-				circles,
-				gdpr
-			});
-		}
-		rows = next;
+				return {
+					session,
+					host: displayHost(session.origin),
+					circles: list?.filter((c) => c.status === 'active').length,
+					gdpr: card.info?.allow_name_erasure,
+					card
+				};
+			})
+		);
 		loading = false;
 	}
 
@@ -122,10 +116,11 @@
 	{:else}
 		{#each rows as row, i (row.session.origin + row.session.email)}
 			<ServerRow
-				name={row.session.name || row.host}
+				name={row.card.info?.name || row.session.name || row.host}
 				subtitle={row.host}
 				card
 				gdpr={row.gdpr}
+				connection={row.card.connection}
 				top={i === 0 ? 10 : 26}
 			/>
 			<SettingsRow

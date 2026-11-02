@@ -8,9 +8,10 @@
 		name,
 		subtitle,
 		detail,
+		connection,
 		variant = 'info',
 		card = false,
-		gdpr = false,
+		gdpr,
 		top = 14,
 		onclick,
 		class: className = '',
@@ -20,6 +21,8 @@
 		subtitle: string;
 		/** Третья строка: сведения по контексту или состояние связи (план 56). */
 		detail?: string;
+		/** Состояние связи заменяет третью строку, сохраняя имя и адрес. */
+		connection?: 'checking' | 'unavailable';
 		variant?: ServerRowVariant;
 		card?: boolean;
 		/**
@@ -34,25 +37,33 @@
 		style?: string;
 	} = $props();
 
-	// width:auto — у .row2 стоит width:100%, и с полями карточки по 16 px она
-	// вылезала за правый край на 32 px (экран приглашения 1.8).
+	// Одна ширина для div и button: auto у кнопки сжимало карточку по содержимому.
 	const cardStyle = $derived(
 		card
-			? `margin:${top}px 16px 0;width:auto;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px`
+			? `margin:${top}px 16px 0;width:calc(100% - 32px);border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px`
 			: ''
 	);
 	const rowStyle = $derived(cardStyle ? `${cardStyle};${style}` : style);
+	const caption = $derived(
+		connection === 'checking'
+			? 'Проверяем связь…'
+			: connection === 'unavailable'
+				? 'Сервер не отвечает'
+				: detail
+	);
 </script>
 
 <Row {onclick} class={card ? `server-card ${className}`.trim() : className} style={rowStyle}>
 	{#snippet leading()}<Icon name="cloud" />{/snippet}
 	{#snippet main()}
-		<div style="font-weight:600">
+		<div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">
 			{name}{#if gdpr}<span class="gdpr">GDPR</span>{/if}
 		</div>
-		<div class="sub">{subtitle}</div>
-		{#if detail}
-			<div class="sub">{detail}</div>
+		{#if subtitle && subtitle !== name}
+			<div class="sub" style="line-height:20px;overflow-wrap:anywhere">{subtitle}</div>
+		{/if}
+		{#if caption}
+			<div class="sub" style="line-height:20px">{caption}</div>
 		{/if}
 	{/snippet}
 	{#snippet trailing()}

@@ -243,7 +243,9 @@
 					<Label>Сервер</Label>
 					<ServerRow
 						name="Дом Ани"
-						subtitle="home.example.org · ещё 5 ваших кругов"
+						subtitle="home.example.org"
+						detail="Ещё 5 ваших кругов"
+						gdpr
 						variant="select"
 						style="padding:2px 16px 10px"
 					/>
@@ -708,7 +710,7 @@
 					<StatusBar />
 					<ServerRow name="Дом Ани" subtitle="home.example.org" variant="select" card />
 					<ServerRow name="У Славы" subtitle="slava.example.org" variant="ok" />
-					<ServerRow name="Закрытый" subtitle="closed.example.org" variant="warn" />
+					<ServerRow name="Закрытый" subtitle="closed.example.org" detail="Регистрация закрыта" />
 				</PhoneFrame>
 			</figure>
 			<figure>

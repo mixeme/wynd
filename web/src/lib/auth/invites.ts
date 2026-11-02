@@ -33,7 +33,6 @@ export function isCircleInvitePeek(peek: InvitePeek): peek is InvitePeek & {
 
 export function serverInviteSubtitle(peek: InvitePeek, fallbackHost: string): string {
 	const host = peek.host || fallbackHost;
-	if (peek.inviter_name) return `${host} · позвал ${peek.inviter_name}`;
 	return host;
 }
 

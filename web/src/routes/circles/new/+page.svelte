@@ -60,9 +60,15 @@
 	<Label>Сервер</Label>
 	{#if selectedSession}
 		<ServerRow
-			class="pad-2-16-10"
-			name={selectedSession.name}
+			card
+			top={4}
+			name={form.serverCards[selectedSession.origin]?.info?.name ||
+				selectedSession.name ||
+				form.serverSubtitle(selectedSession)}
 			subtitle={form.serverSubtitle(selectedSession)}
+			detail={form.serverDetail(selectedSession)}
+			gdpr={form.serverCards[selectedSession.origin]?.info?.allow_name_erasure}
+			connection={form.serverCards[selectedSession.origin]?.connection}
 			variant="select"
 			onclick={openServerPick}
 		/>

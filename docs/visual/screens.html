@@ -1680,6 +1680,217 @@
    все четыре стороны исходной записи: m-верх-бока-низ. */
 .a18-frame .ph{transform:translateZ(0)}.a18-frame .danger .note{border:0;margin:0;padding:0 14px 12px;font-size:12.5px;color:var(--muted);line-height:1.5}
 /* END A18 */
+
+/* BEGIN SERVER CARDS 56 */
+/* Semantic classes from docs/screens.html (inside .ph) */
+
+/* Кнопка приходит от браузера со своим шрифтом, рамкой, фоном и отступами.
+   Сброс с нулевой весомостью (:where) — чтобы любой класс .X накрывал его
+   без зеркала button.X: зеркала дублировали вёрстку класса и стирали
+   font-weight своим font:inherit (REF-8, CPX-2, GUI-2). */
+.server-cards56 :where(button) {
+	font: inherit;
+	color: inherit;
+	background: none;
+	border: 0;
+	padding: 0;
+	margin: 0;
+	text-align: inherit;
+	cursor: pointer;
+	-webkit-tap-highlight-color: transparent;
+	appearance: none;
+}
+/* Высота — видимая область (--app-h из session/viewport.ts): клавиатура
+   сжимает окно, а не сдвигает страницу вверх. Без JS — 100dvh. */
+/* Полоса связи под шапкой (7.6–7.8): цвета бумаги, без красного. */
+/* Свайп по вкладкам (C9): вертикаль — браузеру, горизонталь — жесту. */
+/* Список кругов обновляется жестом (3.5), как лента: жест — наш, не браузера;
+   обёртка во всю высоту, чтобы тянуть можно было и короткий список. */
+
+/* строка состояния */
+
+/* шапки */
+.server-cards56 .ic {
+	width: 21px;
+	height: 21px;
+	color: var(--muted);
+	flex: 0 0 auto;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.6;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+.server-cards56 .ic.sm {
+	width: 16px;
+	height: 16px;
+	stroke-width: 1.7;
+}
+/* Имя и кружок не сжимаются вместе с длинным названием круга: сжатый блок
+   срезал кружок справа. Длинное имя — многоточием, кружок целый. */
+/* Пять вкладок (3.12) делят ширину между собой: с фиксированным зазором
+   22 px они с числом на «Откликах» не влезали в узкий телефон, полоса
+   прокручивалась и рисовала серый скроллбар под шапкой. Прокрутка остаётся
+   запасным выходом для крупного шрифта системы, но без полосы. */
+/* Число новых на вкладке «Отклики» (3.12): белое на цвете круга. */
+/* Действие справа в шапке («Готово» на 2.8) — кнопка, цветом круга. */
+
+/* список кругов */
+/* Сервер круга молчит (7.9) */
+/* Текст рядом со значком в flex-строке сам многоточие не ставит —
+   длинный адрес сервера обрезался посреди слова (C67). */
+
+/* записи */
+/* Видоискатель сканера QR (2.17): квадрат во всю ширину, как рамка кода. */
+/* EmptyState: отступы по кадрам — экран-состояние, улочка (2.3), вкладка
+   (3.14), лента со знаком (3.1). */
+/* Форма аватаров — скруглённый квадрат (A16, «Настройки → Приложение»):
+   лица везде, «Кто уже здесь» и кружок «добавить фото». */
+/* MentionText: переносы и пустые строки — как их написали. Запись
+   показывается целиком (wynd.html, «Правила ленты»), абзацы — её часть. */
+/* Ролик в плитке (5.5): кадр и значок посередине; сам ролик — по касанию. */
+/* Плитка без файла: что происходит — словами слева внизу и полоской хода
+   по нижнему краю. */
+/* Кадр обложки (4.16): снимок растянут так, что выбранный квадрат занимает
+   плитку целиком; лишнее срезает плитка. */
+/* Правый нижний угол плитки (4.16а): длительность ролика и число снимков —
+   одной строкой; внутри ряда ярлыки не позиционируются сами. */
+/* Комментарий, открытый из «Откликов»: подсветка на миг, чтобы глаз нашёл.
+   Не .hl — это подсветка слова в поиске, с ней строка теряла отступы. */
+/* --ct светлый и в тёмной теме: светлый текст на нём пропадал (запись из
+   поиска). Тот же тёмный тон, что у реакций и карточек дней. */
+/* Точка у круга на улочке (2.1): новые отклики к старым записям. Число
+   значит записи, поэтому здесь не число. */
+/* «Отклики» (3.13): строка — ссылка туда, где отклик живёт; ниже слов —
+   рамка «к чему это»: автор записи, дата, первая строка или день. */
+/* 40 px — палец попадает с первого раза; 26 px было впритык к соседу. */
+/* Вложения комментария (4.28–4.30): плитки, голосовое и файл — без рамки. */
+/* Выбранное для комментария — полоской над полем (4.28). */
+/* Те же плитки в правке комментария (C53): под полем, без своей черты и фона. */
+/* Превью комментария в ленте: строки — кнопки, между ними вложения (4.30). */
+/* Открытка дня в ленте (3.15): подложка — тон круга, без рамки. */
+/* Файл ещё скачивается (4.19): полоска серая — это не прослушанное. */
+/* Полоса плеера (4.20): внизу любого экрана, пока играет звук из круга,
+   который сейчас не на экране. Ширина — как у окна приложения. */
+/* Пауза и крестик — разные действия: между ними палец, а не 6 px. */
+/* Несколько звуков записи — одна рамка, строки через черту (4.18). */
+
+/* формы */
+/* Период «с — по» (DateRange): два поля даты поровну. */
+/* Отступы и ширина общего input.fld здесь лишние: с ними правое поле уходило
+   за край узкого экрана (план 46, C50). */
+/* Число с единицей (NumberField): узкое поле в строке. Служебные .w72 и .m-0
+   слабее input.fld — с ними поле растягивалось на всю строку. */
+/* Моноширинное поле (адрес, почта) и мелкое (адрес сервера при входе):
+   .mono и размер одним классом проигрывали font: inherit у input.fld и
+   input.inp — поля набирались обычным шрифтом. */
+
+/* < class="…">: селектор .* сильнее .класс — вёрстку класса дублируем явно */
+.server-cards56 .row2 {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	box-sizing: border-box;
+	width: 100%;
+	text-align: left;
+	padding: 13px 16px;
+}
+
+/* <> не тянется от display:block — ширина как у input.fld */
+/* На экранах без цвета круга акцент — цвет текста; в тёмной теме он светлый,
+   и белая надпись на нём пропадала. */
+/* Долгое нажатие открывает меню (плюс, строка круга, заголовок группы) —
+   без запрета браузер выделял текст подписи и показывал «Копировать». */
+/* Кнопка-плюс растянута на весь круг: без сетки иконка вставала к левому
+   краю. Размер — как в кадре 2.1. */
+/* Полоса вместо строки ввода (3.19, 3.20): писать нельзя — что и кто поможет. */
+/* Легенда шкалы хранилища (StackLegend; 9.5). */
+/* Карточка «что происходит» (StatusCard; 6.40, 6.43). */
+/* Та же полоса наверху экрана правки (4.31): писать нельзя, удалить можно. */
+/* «Фото» и «Развернуть» (C15): значок обычного размера, касание 32×32 по
+   центру строки. Отрицательные поля держат высоту полосы — 40. */
+.server-cards56 .row2 {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 13px 16px;
+}
+/* Значок «GDPR» у имени сервера (1.10): название закона, без перевода. */
+/* Строка под карточкой сервера: рамка карточки уже отделяет её. */
+/* SettingsRow divided: строка-ссылка среди текста отчерчена. */
+/* После строки с чертой снизу своя черта сверху не нужна: вышла бы двойная. */
+.server-cards56 .row2 .g {
+	flex: 1;
+	min-width: 0;
+}
+.server-cards56 .row2 .sub {
+	font-size: 12.5px;
+	color: var(--muted);
+}
+/* Пояснение под действием рамки (DangerZone children; 6.30, 6.34). */
+/* Светлая подложка в тёмной теме читалась как полная шкала: «446 Б из 2 ГБ»
+   выглядело «места нет» (2026-10-26). Тот же тёмный тон, что у зоны графика. */
+/* Ролик или звук ещё сжимается (4.2а): плитка приглушена, поверх — сколько сжато. */
+/* У звука под числом — имя файла: число внизу, имя видно. */
+
+/* .ph.app растёт по контенту (лента длиннее экрана) — оверлеи внутри него
+   держим на реальном вьюпорте, а не на нижнем крае всей страницы */
+
+/* вход и формы вступления */
+/* Ссылка приглашения под QR (2.7, 6.21): целиком, переносится где угодно. */
+/* QR тянется под рамку: размер из QRCode.toString и размер .qr жили отдельно,
+   и код вылезал за край. */
+
+/* выбор цвета, поиск, группы */
+
+/* панель администратора */
+/* Hint задан под экраны телефона — с полями 16 px по бокам. В колонке панели
+   они сдвигали подсказку относительно подписей и текста рядом. */
+/* Шрифт — семейство и начертание страницы, размер — 12,5 px от .inp, как на
+   кадрах 9.x (font: inherit сбрасывал его к размеру колонки). */
+/* Цвет круга в карточке человека (9.4): квадратик, как на кадре. Общего
+   .dot в ui.css не было — точка выходила нулевой и не была видна. */
+.server-cards56 .st {
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	flex: 0 0 auto;
+	display: grid;
+	place-items: center;
+	margin-top: 1px;
+}
+.server-cards56 .st.ok {
+	color: var(--faint);
+}
+.server-cards56 .st .ic {
+	width: 12px;
+	height: 12px;
+	stroke-width: 2.2;
+}
+
+/* фотография во весь экран */
+
+/* Голосовые и видео (план 46, C14; 4.21–4.27). */
+/* Строка лежит поверх ленты: без подложки её не прочесть. */
+
+/* Служебные классы: то, ради чего экраны ставили инлайн-стиль. Правило
+   «экран — только $ui, без своих \3c style>» выдавило вёрстку в 585
+   инлайн-style= на 56 экранах (CPX-3, GUI-4). Держим их последними в файле:
+   при равной весомости побеждает то, что ниже. */
+/* Пояснение под заголовком экрана-состояния («Доступ закрыт», «Приглашение
+   не действует»): уже колонки, чтобы строка не тянулась от края до края. */
+/* Запас прокрутки под последней кнопкой страницы: мобильный браузер кладёт
+ * поверх низа экрана свои полосы (панель адреса, подсказка пароля над
+ * клавиатурой), и кнопка вплотную к концу страницы из-под них не выходит. */
+/* Узкий экран (первый запуск с телефона): ряд карточек — столбиком,
+ * .form-grid-2 — «подпись · поле» в две колонки вместо четырёх. */
+@media (max-width: 600px) {
+}
+
+/* План 47 (хвост сверки): инлайн-стили экранов → классы. margin повторяет
+   все четыре стороны исходной записи: m-верх-бока-низ. */
+
+/* END SERVER CARDS 56 */
 </style>
 </head>
 <body>
@@ -2073,30 +2284,24 @@
 </div></div>
 <h3>По приглашению</h3>
 <div class="bleed"><div class="gal">
-<figure class="s" id="e1-1"><div class="ph">
+<figure class="s server-cards56" id="e1-1"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="h1s" style="margin-top:24px">Вас пригласили</div>
   <div class="icard"><div class="sq">С</div><div class="m"><div class="n">Семья</div><div class="p">22 участника · пригласила Аня</div></div></div>
   <div class="lab">Сервер</div>
-  <div class="row2" style="margin:0 16px;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px">
-    <svg class="ic"><use href="#i-cloud"/></svg>
-    <div class="g"><div style="font-weight:600">Дом Ани</div><div class="sub">home.example.org</div></div>
-    <span class="st ok"><svg class="ic"><use href="#i-check"/></svg></span></div>
+  <div class="row2 server-card" style="margin:0px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">Дом Ани<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">home.example.org</div><!--]--> <!--[-1--><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="lab">Почта</div>
   <div class="fld act">you@example.com</div>
   <div class="hint">Пришлём код для входа. Пароля нет.</div>
   <div class="btn">Получить код</div>
 </div>
 <span class="num">1.1</span><b>Вас пригласили</b><i>Сервер назван именем и адресом и не редактируется — он пришёл в ссылке. Круг показан карточкой: человек должен видеть, куда его позвали, до того как что-то введёт. Если сервер ссылку не узнаёт (отозвана, истекла, использована, круг удалён) — формы нет: экран «Приглашение не действует», причина одной строкой и «На главную». То же на 1.8. C44, 2026-10-18: строка под «Получить код» («Вход создаётся на этом сервере. Круги с других серверов добавляются позже») снята — владелец: «бред» (и на 1.2).</i></figure>
-<figure class="s" id="e1-2"><div class="ph">
+<figure class="s server-cards56" id="e1-2"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="h1s" style="margin-top:24px">Вас пригласили</div>
   <div class="icard"><div class="sq">С</div><div class="m"><div class="n">Семья</div><div class="p">22 участника · пригласила Аня</div></div></div>
   <div class="lab">Сервер</div>
-  <div class="row2" style="margin:0 16px;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px">
-    <svg class="ic"><use href="#i-cloud"/></svg>
-    <div class="g"><div style="font-weight:600">Дом Ани<span style="font-size:10.5px;font-weight:600;letter-spacing:.04em;border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin-left:8px;color:var(--muted);vertical-align:1px">GDPR</span></div><div class="sub">home.example.org</div></div>
-    <span class="st ok"><svg class="ic"><use href="#i-check"/></svg></span></div>
+  <div class="row2 server-card" style="margin:0px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">Дом АниGDPR<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">home.example.org</div><!--]--> <!--[-1--><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="lab">Почта</div>
   <div class="fld act">you@example.com</div>
   <div class="hint">Пришлём код для входа. Пароля нет.</div>
@@ -2159,14 +2364,11 @@
 </div></div>
 <h3>Без приглашения</h3>
 <div class="bleed"><div class="gal">
-<figure class="s" id="e1-6"><div class="ph shell">
+<figure class="s server-cards56" id="e1-6"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div style="margin:38px 0 0;display:flex;justify-content:center;color:var(--ink)"><svg width="139.6" height="48" role="img" aria-label="Wynd" style="display:block"><use href="#logo" fill="currentColor"/></svg></div>
   <div class="h1s ctr" style="margin-top:30px">Войти</div>
-  <div class="row2" style="margin:14px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px">
-    <svg class="ic"><use href="#i-cloud"/></svg>
-    <div class="g"><div style="font-weight:600">Дом Ани</div><div class="sub">home.example.org</div></div>
-    <span class="st ok"><svg class="ic"><use href="#i-check"/></svg></span></div>
+  <div class="row2 server-card" style="margin:14px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">Дом Ани<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">home.example.org</div><!--]--> <!--[0--><div class="sub" style="line-height:20px">Открыт для новых</div><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="lab" style="margin-top:16px">Почта</div>
   <div class="fld act">anya@example.com</div>
   <div class="hint">Пришлём код для входа. Пароля нет.</div>
@@ -2175,14 +2377,11 @@
   <div class="hint ctr" style="margin-top:18px"><span class="under">У меня есть приглашение</span></div>
 </div>
 <span class="num">1.6</span><b>Войти</b><i>Приложение открыто с сервера — он и есть сервер входа: адрес не вводится, сервер показан карточкой с именем и адресом. Войти на другой — «Добавить сервер» в настройках (7.9), там адрес вводится, как на 1.9. Внизу две двери для тех, у кого учётки ещё нет: без приглашения (1.7) — её показывает только открытый сервер, иначе она вела бы в тупик, — и с приглашением (2.7): в установленном приложении ссылку из мессенджера не открыть, её вставляют. Знак стоит потому, что это единственный экран, где ещё не видно ни одного круга. C44, 2026-10-18: ссылки — каждая своей строкой с промежутком («Ссылки очень близко друг к другу»).</i></figure>
-<figure class="s" id="e1-7"><div class="ph shell">
+<figure class="s server-cards56" id="e1-7"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div style="padding:6px 16px 0"><svg class="ic"><use href="#i-back"/></svg></div>
   <div class="h1s">Без приглашения</div>
-  <div class="row2" style="margin:14px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px">
-    <svg class="ic"><use href="#i-cloud"/></svg>
-    <div class="g"><div style="font-weight:600">Дом Ани</div><div class="sub">home.example.org · открыт для новых · Wynd 0.1.0</div></div>
-    <span class="st ok"><svg class="ic"><use href="#i-check"/></svg></span></div>
+  <div class="row2 server-card" style="margin:14px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">Дом Ани<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">home.example.org</div><!--]--> <!--[0--><div class="sub" style="line-height:20px">Открыт для новых</div><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="lab" style="margin-top:16px">Почта</div>
   <div class="fld act">anya@example.com</div>
   <div class="hint">Пришлём код для входа. Пароля нет.</div>
@@ -2190,13 +2389,10 @@
   <div class="hint">Сервер хранит данные незашифрованными. Присоединение к этому серверу означает, что вы доверяете его администратору.</div>
 </div>
 <span class="num">1.7</span><b>Без приглашения</b><i>С 1.6, и только на открытом сервере: сюда приходят те, кого никто не звал, — чаще всего тот, кто поднял сервер себе. Сервер тот же, с которого открыто приложение, поэтому адрес не спрашивается, а карточка говорит, куда человек записывается. На экране одно дело — почта: приглашение вставляют на 2.7, другой сервер добавляют из настроек (1.9). Плитку с буквой сервер не получает: она принадлежит кругу. C44, 2026-10-18: под почтой — то же, что на 1.6: «Пришлём код для входа. Пароля нет.»</i></figure>
-<figure class="s" id="e1-8"><div class="ph shell">
+<figure class="s server-cards56" id="e1-8"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="h1s" style="margin-top:24px">Вас позвали на сервер</div>
-  <div class="row2" style="margin:14px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px">
-    <svg class="ic"><use href="#i-cloud"/></svg>
-    <div class="g"><div style="font-weight:600">У Славы</div><div class="sub">wynd.u-slavy.ru</div></div>
-    <span class="st ok"><svg class="ic"><use href="#i-check"/></svg></span></div>
+  <div class="row2 server-card" style="margin:14px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">У Славы<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">wynd.u-slavy.ru</div><!--]--> <!--[-1--><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="lab" style="margin-top:16px">Почта</div>
   <div class="fld act">you@example.com</div>
   <div class="hint">Пришлём код для входа. Пароля нет.</div>
@@ -2205,16 +2401,13 @@
   <div class="hint ctr" style="margin-top:26px">Приглашение на сервер не ведёт ни в один круг:<br>заведёте свой или подождёте, пока позовут.</div>
 </div>
 <span class="num">1.8</span><b>Приглашение на сервер</b><i>Ссылка и QR работают так же, как приглашение в круг: адрес приходит с ними, вводить нечего. Отличие одно и названо внизу — за этой дверью пусто, человек попадёт на «Ни одного круга». Поэтому карточкой показан сервер, а не круг: показывать нечего, и притворяться незачем. Ссылку выдаёт админ из панели, а у панели нет лица в кругах — поэтому «позвал …» здесь нет: только сервер и адрес. Имя участника, который никого не звал, на публичной ссылке не показываем.</i></figure>
-<figure class="s" id="e1-9"><div class="ph shell">
+<figure class="s server-cards56" id="e1-9"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div style="padding:6px 16px 0"><svg class="ic"><use href="#i-back"/></svg></div>
   <div class="h1s">Добавить сервер</div>
   <div class="lab" style="margin-top:18px">Адрес сервера</div>
   <div class="fld act mono" style="font-size:12.5px">wynd.u-slavy.ru</div>
-  <div class="row2" style="margin:14px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px">
-    <svg class="ic"><use href="#i-cloud"/></svg>
-    <div class="g"><div style="font-weight:600">У Славы</div><div class="sub">только по приглашению</div></div>
-    <span class="st warn">!</span></div>
+  <div class="row2 server-card" style="margin:14px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">У Славы<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">только по приглашению</div><!--]--> <!--[0--><div class="sub" style="line-height:20px">Только по приглашению</div><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="hint" style="margin-top:14px">Сервер новых не принимает. Если вы уже на этом сервере — войдите своей почтой.</div>
   <div class="lab" style="margin-top:16px">Почта</div>
   <div class="fld act">slava@example.com</div>
@@ -2229,13 +2422,11 @@
 </div></div>
 <h3>После переноса круга</h3>
 <div class="bleed"><div class="gal">
-<figure class="s" id="e1-10"><div class="ph">
+<figure class="s server-cards56" id="e1-10"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="cbar"><div class="top" style="justify-content:center;position:relative"><svg class="ic" style="position:absolute;left:0"><use href="#i-back"/></svg><span class="t">Семья</span></div><div style="height:10px"></div></div>
   <div class="lab" style="margin-top:16px">Сервер</div>
-  <div class="row2" style="margin:4px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px">
-    <svg class="ic"><use href="#i-cloud"/></svg>
-    <div class="g"><div style="font-weight:600">У Славы</div><div class="sub">slava.example.org</div></div></div>
+  <div class="row2 server-card" style="margin:4px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">У Славы<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">slava.example.org</div><!--]--> <!--[-1--><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="lab" style="margin-top:22px">Уже вернулись · 3 из 22</div>
   <div class="people">
     <div class="pp"><div class="av2" style="background:#62452F">К</div>Кот</div>
@@ -2607,11 +2798,11 @@
 </div></div>
 <h3>Новый круг</h3>
 <div class="bleed"><div class="gal">
-<figure class="s" id="e2-14"><div class="ph ochre">
+<figure class="s server-cards56" id="e2-14"><div class="ph ochre">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Новый круг</span></div>
   <div class="lab">Сервер</div>
-  <div class="row2" style="padding:2px 16px 10px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">Дом Ани</div><div class="sub">home.example.org · ещё 5 ваших кругов</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <button type="button" class="row2 server-card" style="margin:14px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">Дом Ани<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">home.example.org</div><!--]--> <!--[0--><div class="sub" style="line-height:20px">Ещё 5 ваших кругов</div><!--]--><!----></div> <!--[0--><svg class="ic sm " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevr"></use></svg><!----><!--]--><!----><!----></button>
   <div class="hint" style="margin-top:0">Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или <a class="under" href="https://github.com/mixeme/wynd">запустите свой</a>.</div>
   <div class="lab">Название</div>
   <div class="fld act">Дача</div>
@@ -2625,19 +2816,19 @@
   <div class="hint ctr" style="margin-top:26px"><span class="under">Или круг только для себя, как дневник</span></div>
 </div>
 <span class="num">2.14</span><b>Новый круг</b><i>Четыре решения, и первое из них — сервер: где круг заведётся, там он и живёт, пока его не перенесут. Строка стоит выше названия, а под ней прямым текстом сказано, что данные лежат незашифрованными. Шеврон открывает 2.15. Добавить новый — отдельная дорога: с недособранной формы туда не уводят. Цвет выбирается здесь же, а не «потом в настройках», — он и есть способ не перепутать дверь; экран уже перекрашен, и кнопка показывает, чем круг станет. «Создать и позвать» сперва спрашивает, как вас зовут в этом круге, — тем же экраном, что вступающего (1.4), только без «Кто уже здесь»: у создателя в круге такая же идентичность. Круг заводится уже с этим именем — первой строкой журнала не будет переименования. Потом 2.17, не пустая лента: звать — следующий шаг, а не обещание в настройках.</i></figure>
-<figure class="s" id="e2-15"><div class="ph ochre">
+<figure class="s server-cards56" id="e2-15"><div class="ph ochre">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Сервер</span></div>
-  <div class="row2" style="margin-top:8px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">Дом Ани</div><div class="sub">home.example.org · 5 кругов</div></div><svg class="ic sm"><use href="#i-check"/></svg></div>
-  <div class="row2"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">У Славы</div><div class="sub">wynd.u-slavy.ru · 1 круг</div></div></div>
+  <button type="button" class="row2 "><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">Дом Ани<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">home.example.org</div><!--]--> <!--[0--><div class="sub" style="line-height:20px">5 кругов</div><!--]--><!----></div> <!--[1--><span class="st ok"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"></use></svg><!----></span><!--]--><!----><!----></button>
+  <button type="button" class="row2 "><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">У Славы<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">wynd.u-slavy.ru</div><!--]--> <!--[0--><div class="sub" style="line-height:20px">1 круг</div><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></button>
   <div class="hint" style="margin-top:18px">Здесь серверы, на которых вы уже есть. Добавить другой можно в настройках, до этой формы.</div>
 </div>
 <span class="num">2.15</span><b>Выбор сервера</b><i>Шеврон с 2.14 и с 2.16. Это не настройки 7.9: оттуда выходят и добавляют, отсюда только выбирают, куда ляжет круг. Строки те же, что на форме — имя впереди адреса, сколько кругов уже есть. Галочка на выбранном; тап ставит её и возвращает на форму. Назад — без смены. Кнопки «добавить сервер» нет: с недособранной формы не уводят в регистрацию. Одна учётка — тот же экран, одна строка с галочкой; шеврон на форме не прячется, иначе строка выглядит мёртвой.</i></figure>
-<figure class="s" id="e2-16"><div class="ph indigo">
+<figure class="s server-cards56" id="e2-16"><div class="ph indigo">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Новый круг</span></div>
   <div class="lab">Сервер</div>
-  <div class="row2" style="padding:2px 16px 10px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">Дом Ани</div><div class="sub">home.example.org · ещё 5 ваших кругов</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <button type="button" class="row2 server-card" style="margin:14px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">Дом Ани<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">home.example.org</div><!--]--> <!--[0--><div class="sub" style="line-height:20px">Ещё 5 ваших кругов</div><!--]--><!----></div> <!--[0--><svg class="ic sm " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevr"></use></svg><!----><!--]--><!----><!----></button>
   <div class="hint" style="margin-top:0">Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или <a class="under" href="https://github.com/mixeme/wynd">запустите свой</a>.</div>
   <div class="lab">Название</div>
   <div class="fld act">Дневник</div>
@@ -4910,14 +5101,11 @@
   </div>
 </div>
 <span class="num">6.41</span><b>Отделиться: вход</b><i>Утверждено владельцем 2026-10-24, не реализовано (план 46, A9). Название — владелец, 2026-10-24: «Отделиться», не «копия». Подпись — «новый круг с тем, что вы видели, — и с теми, кого позовёте» (владелец: так лучше, чем «вы остаётесь и в «Семье»»). Низ настроек круга у обычного участника (Мышь, не владелец): отделиться может любой — отделиться обычно хочет не владелец. Строка — среди того, что человек делает со своим, рядом со «Скачать свой архив», не в «Необратимо»: в круге ничего не меняется.</i></figure>
-<figure class="s" id="e6-42"><div class="ph">
+<figure class="s server-cards56" id="e6-42"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="cbar"><div class="top"><svg class="ic"><use href="#i-back"/></svg><span class="t">Отделиться</span></div><div style="height:12px"></div></div>
   <div class="lab">Сервер</div>
-  <div class="row2" style="margin:0 16px;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px">
-    <svg class="ic"><use href="#i-cloud"/></svg>
-    <div class="g"><div style="font-weight:600">Дом Мыши</div><div class="sub">mouse.example.org · свободно 12 ГБ</div></div>
-    <svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="row2 server-card" style="margin:0px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">Дом Мыши<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">mouse.example.org</div><!--]--> <!--[0--><div class="sub" style="line-height:20px">свободно 12 ГБ</div><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="hint">Любой сервер, где у вас есть учётная запись.</div>
   <div class="lab" style="margin-top:16px">Название</div>
   <div class="fld gr">Как назовёте новый круг</div>
@@ -5125,27 +5313,27 @@
 </div></div>
 <h3>Серверы</h3>
 <div class="bleed"><div class="gal">
-<figure class="s" id="e7-9"><div class="ph shell">
+<figure class="s server-cards56" id="e7-9"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Серверы</span></div>
-  <div class="row2" style="margin:10px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">Дом Ани</div><div class="sub">home.example.org</div></div></div>
+  <div class="row2 server-card" style="margin:10px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">Дом Ани<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">home.example.org</div><!--]--> <!--[-1--><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="row2" style="border-top:0"><div class="g"><div style="font-weight:600">anya@example.com</div><div class="sub">5 кругов · вошли 5 августа</div></div></div>
   <div class="row2"><div class="g">Выйти на этом устройстве</div><svg class="ic sm"><use href="#i-out"/></svg></div>
-  <div class="row2" style="margin:26px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">У Славы</div><div class="sub">wynd.u-slavy.ru</div></div></div>
+  <div class="row2 server-card" style="margin:26px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">У Славы<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">wynd.u-slavy.ru</div><!--]--> <!--[-1--><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="row2" style="border-top:0"><div class="g"><div style="font-weight:600">m.petrov@example.com</div><div class="sub">1 круг · вошли 24 июля</div></div></div>
   <div class="row2"><div class="g">Выйти на этом устройстве</div><svg class="ic sm"><use href="#i-out"/></svg></div>
   <div class="hint" style="margin-top:24px">Общего профиля на все серверы нет: каждый сервер — отдельное место, даже с той же почтой.</div>
   <div class="btn">Добавить сервер</div>
 </div>
 <span class="num">7.9</span><b>Серверы</b><i><b>В веб-приложении пока убрано</b> (0.43.7, план 46, C69, решение владельца 2026-10-28): клиент открыт с адреса одного сервера, а браузер не отдаёт ему ответы другого — сервер не разрешает запросы с чужих адресов. Кнопки «Добавить сервер» нет; без единого сервера вместо неё — «Войти» на этот сервер. Единственное место, где инфраструктура показана честно, — притворяться было бы хуже. Имя сервера стоит впереди адреса: «Дом Ани» человек запомнит, доменное имя — нет. Круги с разных серверов лежат в одном списке и ничем не отличаются: агрегация происходит на устройстве, и человеку не приходится помнить, что где. C44, 2026-10-16: под списком одно пояснение про общий профиль, подсказка под «Добавить сервер» снята. Без серверов (вышли на этом устройстве с последнего) — только строка «На этом устройстве вы ни на одном сервере» по центру, обычным кеглем, цветом подсказки, и «Добавить сервер»; отдельного кадра нет.</i></figure>
-<figure class="s" id="e7-10"><div class="ph shell">
+<figure class="s server-cards56" id="e7-10"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Серверы</span></div>
-  <div class="row2" style="margin:10px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">Дом Ани</div><div class="sub">home.example.org</div></div></div>
+  <div class="row2 server-card" style="margin:10px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">Дом Ани<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">home.example.org</div><!--]--> <!--[-1--><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="row2" style="border-top:0"><div class="g"><div style="font-weight:600">anya@example.com</div><div class="sub">5 кругов · вошли 5 августа</div></div></div>
   <div class="row2"><div class="g">Сменить почту</div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
   <div class="row2"><div class="g">Выйти на этом устройстве</div><svg class="ic sm"><use href="#i-out"/></svg></div>
-  <div class="row2" style="margin:26px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">У Славы</div><div class="sub">wynd.u-slavy.ru</div></div></div>
+  <div class="row2 server-card" style="margin:26px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">У Славы<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">wynd.u-slavy.ru</div><!--]--> <!--[-1--><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="row2" style="border-top:0"><div class="g"><div style="font-weight:600">m.petrov@example.com</div><div class="sub">1 круг · вошли 24 июля</div></div></div>
   <div class="row2"><div class="g">Сменить почту</div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
   <div class="row2"><div class="g">Выйти на этом устройстве</div><svg class="ic sm"><use href="#i-out"/></svg></div>
@@ -5153,10 +5341,10 @@
   <div class="btn">Добавить сервер</div>
 </div>
 <span class="num">7.10</span><b>Серверы: сменить почту</b><i>Сделано в 0.27.0. Тот же 7.9, у каждого сервера между почтой и выходом — строка «Сменить почту». Почта меняется на одном сервере: на другом она своя, и это видно прямо здесь — строка стоит под каждым. Слова «учётка» по-прежнему нет: меняют почту, а не «данные профиля».</i></figure>
-<figure class="s" id="e7-11"><div class="ph shell">
+<figure class="s server-cards56" id="e7-11"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Новая почта</span></div>
-  <div class="row2" style="margin:10px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">Дом Ани</div><div class="sub">home.example.org</div></div></div>
+  <div class="row2 server-card" style="margin:10px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">Дом Ани<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">home.example.org</div><!--]--> <!--[-1--><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="lab" style="margin-top:18px">Сейчас</div>
   <div class="row2" style="padding-top:2px"><div class="g"><div style="font-weight:600">anya@example.com</div></div></div>
   <div class="lab">Новая почта</div>
@@ -5176,15 +5364,15 @@
   <div style="position:absolute;left:0;right:0;bottom:0;height:250px;background:#E7E1D6;border-top:1px solid var(--line);display:grid;place-items:center;font-size:11.5px;color:#A29A90">цифровая клавиатура</div>
 </div>
 <span class="num">7.12</span><b>Код на новую почту</b><i>Сделано в 0.27.0. Тот же экран, что 1.3: код вводят так же, как при входе. Верный код — возврат на «Серверы» (7.10) с новой почтой в строке; это устройство остаётся вошедшим, остальные устройства при следующем обращении попросят войти заново уже новой почтой. В журналы кругов смена почты не пишется: почта — вход на сервер, а не лицо в круге. C44, 2026-10-16: «Код отправлен на …». Сервер на этом же компьютере без почты — вместо этой строки «На этом компьютере письмо не уходит. Код напечатан в окне сервера.» тем же оформлением.</i></figure>
-<figure class="s" id="e7-13"><div class="ph shell">
+<figure class="s server-cards56" id="e7-13"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Серверы</span></div>
-  <div class="row2" style="margin:10px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">Дом Ани</div><div class="sub">home.example.org</div></div></div>
+  <div class="row2 server-card" style="margin:10px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">Дом Ани<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">home.example.org</div><!--]--> <!--[-1--><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="row2" style="border-top:0"><div class="g"><div style="font-weight:600">anya@example.com</div><div class="sub">5 кругов · вошли 5 августа</div></div></div>
   <div class="row2"><div class="g">Сменить почту</div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
   <div class="row2"><div class="g">Выйти на этом устройстве</div><svg class="ic sm"><use href="#i-out"/></svg></div>
   <div class="row2"><div class="g">Уйти с сервера насовсем</div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
-  <div class="row2" style="margin:26px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">У Славы</div><div class="sub">wynd.u-slavy.ru</div></div></div>
+  <div class="row2 server-card" style="margin:26px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">У Славы<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">wynd.u-slavy.ru</div><!--]--> <!--[-1--><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="row2" style="border-top:0"><div class="g"><div style="font-weight:600">m.petrov@example.com</div><div class="sub">1 круг · вошли 24 июля</div></div></div>
   <div class="row2"><div class="g">Сменить почту</div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
   <div class="row2"><div class="g">Выйти на этом устройстве</div><svg class="ic sm"><use href="#i-out"/></svg></div>
@@ -5193,10 +5381,10 @@
   <div class="btn">Добавить сервер</div>
 </div>
 <span class="num">7.13</span><b>Серверы: уйти насовсем</b><i>Утверждён владельцем 2026-10-14; строка «Уйти с сервера насовсем» — в 0.29.0, переименование «Выйти» — в 0.28.12. Тот же 7.10, у каждого сервера под «Выйти» — строка «Уйти с сервера насовсем»; ведёт на 7.14, у владельца кругов — на 7.15. «Выйти с этого сервера» переименовано в «Выйти на этом устройстве», чтобы его не путали с уходом насовсем; действует сразу, «Уйти насовсем» — экран с объяснением и подтверждением. Строка стоит под каждым сервером: уходят с одного, на других всё остаётся.</i></figure>
-<figure class="s" id="e7-14"><div class="ph shell">
+<figure class="s server-cards56" id="e7-14"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Уйти с сервера насовсем</span></div>
-  <div class="row2" style="margin:10px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">Дом Ани<span style="font-size:10.5px;font-weight:600;letter-spacing:.04em;border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin-left:8px;color:var(--muted);vertical-align:1px">GDPR</span></div><div class="sub">home.example.org</div></div></div>
+  <div class="row2 server-card" style="margin:10px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">Дом АниGDPR<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">home.example.org</div><!--]--> <!--[-1--><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="row2" style="border-top:0"><div class="g"><div style="font-weight:600">anya@example.com</div><div class="sub">5 кругов</div></div></div>
   <div class="lab" style="margin-top:8px">Исчезнет</div>
   <div class="hint" style="margin-top:0;color:var(--ink)">Вход на всех ваших устройствах. Вернуться с этой почтой можно — как новый человек: в круги по новому приглашению, прежнее в них будет не видно.</div>
@@ -5209,10 +5397,10 @@
   </div>
 </div>
 <span class="num">7.14</span><b>Уйти с сервера насовсем</b><i>Утверждён владельцем 2026-10-14, реализован в 0.29.0. Текст переписан 2026-10-14 по «Голосу»: в оболочке нет «учётки» и GDPR. Решения владельца 2026-10-14 (план 46, A3): участник удаляет свою учётку сам, без администратора, по одному серверу; из кругов при этом ничего не удаляется — стереть сказанное значит стереть общую память, на это нужно согласие людей. Экран говорит две вещи раздельно: что исчезнет и что останется. Сервер с включённым у администратора «соблюдать GDPR» — этот кадр: появляется переключатель «Стереть моё имя и фото во всех кругах», по умолчанию выключен; включён — вместе с учёткой стираются имя, фото и пол во всех кругах сервера, записи остаются без подписи. На сервере без GDPR переключателя и строки под ним нет. Сюда ведёт строка «Уйти с сервера насовсем» в «Серверах» (7.10), под «Выйти на этом устройстве» — не нарисована. Не нарисовано: владелец круга — владение нельзя бросить, сначала передать круг (как в панели); подтверждение после кнопки. C44, 2026-10-16: в «Исчезнет» без адреса сервера и уведомлений, в «Останется» без «как у тех, кто ушёл из круга», строка про круги на других серверах снята, зазор над «Исчезнет» — 8. C44, 2026-10-22: окно повторяло текст экрана («Окно подтверждения полностью дублирует текст экрана») — в окне только «Впишите имя сервера, чтобы уйти.», а то, чего на экране не было, перенесено на экран: «в круги по новому приглашению, прежнее в них будет не видно» и «вернуть подпись будет нельзя». Имя сервера не склоняется — «Уйти с сервера «Дом Ани» насовсем».</i></figure>
-<figure class="s" id="e7-15"><div class="ph shell">
+<figure class="s server-cards56" id="e7-15"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Уйти с сервера насовсем</span></div>
-  <div class="row2" style="margin:10px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">Дом Ани</div><div class="sub">home.example.org</div></div></div>
+  <div class="row2 server-card" style="margin:10px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">Дом Ани<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">home.example.org</div><!--]--> <!--[-1--><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="row2" style="border-top:0"><div class="g"><div style="font-weight:600">anya@example.com</div><div class="sub">5 кругов</div></div></div>
   <div class="lab" style="margin-top:8px">Сначала — ваши круги</div>
   <div class="hint" style="margin-top:0;color:var(--ink)">Без владельца круг остаться не может.</div>
@@ -5224,10 +5412,10 @@
   </div>
 </div>
 <span class="num">7.15</span><b>Уйти с сервера насовсем: вы владелец</b><i>Утверждён владельцем 2026-10-14, реализован в 0.29.0. Тот же экран, что 7.14, когда человек владеет кругами на этом сервере (план 46, A3: владение нельзя бросить). Кнопка видна, но не нажимается — правило видно, как на 6.39. Вместо «Исчезнет / Останется» — список своих кругов, каждый ведёт туда, где действие возможно: к передаче владения (6.36) или, если в круге больше никого, к удалению круга (6.40). Когда кругов не осталось, экран становится 7.14. C44, 2026-10-16: под «Сначала — ваши круги» только «Без владельца круг остаться не может.», зазор над разделом — 8.</i></figure>
-<figure class="s" id="e7-16"><div class="ph shell">
+<figure class="s server-cards56" id="e7-16"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Уйти с сервера насовсем</span></div>
-  <div class="row2" style="margin:10px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">Дом Ани<span style="font-size:10.5px;font-weight:600;letter-spacing:.04em;border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin-left:8px;color:var(--muted);vertical-align:1px">GDPR</span></div><div class="sub">home.example.org</div></div></div>
+  <div class="row2 server-card" style="margin:10px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">Дом АниGDPR<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">home.example.org</div><!--]--> <!--[-1--><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="row2" style="border-top:0"><div class="g"><div style="font-weight:600">anya@example.com</div><div class="sub">5 кругов</div></div></div>
   <div class="lab" style="margin-top:8px">Исчезнет</div>
   <div class="hint" style="margin-top:0;color:var(--ink)">Вход на всех ваших устройствах. Вернуться с этой почтой можно — как новый человек: в круги по новому приглашению, прежнее в них будет не видно.</div>
@@ -5247,10 +5435,10 @@
   </div>
 </div>
 <span class="num">7.16</span><b>Уйти с сервера насовсем: подтверждение</b><i>Утверждён владельцем 2026-10-14, реализован в 0.29.0. Сюда ведёт кнопка с 7.14. Утверждено владельцем 2026-10-14: вернуться на сервер с той же почтой можно, но это новый человек — в круги по новому приглашению, прежнее в них не видно (план 46, A3). Второй барьер — как у удаления круга (6.40): имя сервера набирается вручную, «Уйти» до этого не нажимается. Что исчезнет и что останется — сказано до кнопки. Здесь переключатель «Стереть моё имя и фото» выключен; включённый — другой текст, не нарисован. После подтверждения — «Серверы» без «Дома Ани»; если серверов больше нет — первый запуск (7.41). C44, 2026-10-16: окна 7.16 и 7.17 — в одном порядке: выход, записи, возвращение. C44, 2026-10-22: окно повторяло текст экрана («Окно подтверждения полностью дублирует текст экрана») — в окне только «Впишите имя сервера, чтобы уйти.», а то, чего на экране не было, перенесено на экран: «в круги по новому приглашению, прежнее в них будет не видно» и «вернуть подпись будет нельзя». Имя сервера не склоняется — «Уйти с сервера «Дом Ани» насовсем».</i></figure>
-<figure class="s" id="e7-17"><div class="ph shell">
+<figure class="s server-cards56" id="e7-17"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Уйти с сервера насовсем</span></div>
-  <div class="row2" style="margin:10px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">Дом Ани<span style="font-size:10.5px;font-weight:600;letter-spacing:.04em;border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin-left:8px;color:var(--muted);vertical-align:1px">GDPR</span></div><div class="sub">home.example.org</div></div></div>
+  <div class="row2 server-card" style="margin:10px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">Дом АниGDPR<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">home.example.org</div><!--]--> <!--[-1--><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="row2" style="border-top:0"><div class="g"><div style="font-weight:600">anya@example.com</div><div class="sub">5 кругов</div></div></div>
   <div class="lab" style="margin-top:8px">Исчезнет</div>
   <div class="hint" style="margin-top:0;color:var(--ink)">Вход на всех ваших устройствах. Вернуться с этой почтой можно — как новый человек: в круги по новому приглашению, прежнее в них будет не видно.</div>
@@ -5273,15 +5461,15 @@
 </div></div>
 <h3>Принять круг: перенос</h3>
 <div class="bleed"><div class="gal">
-<figure class="s" id="e7-18"><div class="ph shell">
+<figure class="s server-cards56" id="e7-18"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Серверы</span></div>
-  <div class="row2" style="margin:10px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">У Славы</div><div class="sub">wynd.u-slavy.ru</div></div></div>
+  <div class="row2 server-card" style="margin:10px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">У Славы<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">wynd.u-slavy.ru</div><!--]--> <!--[-1--><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="row2" style="border-top:0"><div class="g"><div style="font-weight:600">kot@example.com</div><div class="sub">кругов нет · вошли сегодня</div></div></div>
   <div class="row2"><div class="g">Сменить почту</div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
   <div class="row2"><div class="g">Принять круг</div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
   <div class="row2"><div class="g">Выйти на этом устройстве</div><svg class="ic sm"><use href="#i-out"/></svg></div>
-  <div class="row2" style="margin:26px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">Дом Ани</div><div class="sub">home.example.org</div></div></div>
+  <div class="row2 server-card" style="margin:26px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">Дом Ани<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">home.example.org</div><!--]--> <!--[-1--><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="row2" style="border-top:0"><div class="g"><div style="font-weight:600">kot@example.com</div><div class="sub">3 круга · вошли 12 марта</div></div></div>
   <div class="row2"><div class="g">Сменить почту</div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
   <div class="row2"><div class="g">Принять круг</div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
@@ -5290,26 +5478,26 @@
   <div class="btn">Добавить сервер</div>
 </div>
 <span class="num">7.18</span><b>Серверы: принять круг</b><i>Утверждено владельцем 2026-10-12, реализовано в 0.32.0. Решение 2026-10-08: перенос и оживление начинаются отсюда, а не с формы нового круга — нужны они раз в несколько лет и на виду стоять не должны. «Серверы» — редкий экран, и вопрос «на какой сервер» здесь решён самим местом строки: «Принять круг» стоит под тем сервером, куда круг приедет. На списке кругов и на форме 2.14 ничего не меняется; пустая улочка тоже ведёт сюда через шестерёнку, а плюса с меню на ней нет вовсе. Строка есть у каждого сервера, где сервер позволяет заводить круги.</i></figure>
-<figure class="s" id="e7-19"><div class="ph shell">
+<figure class="s server-cards56" id="e7-19"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Принять круг</span></div>
-  <div class="row2" style="margin:10px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">У Славы</div><div class="sub">wynd.u-slavy.ru · свободно 40 ГБ</div></div></div>
+  <div class="row2 server-card" style="margin:10px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">У Славы<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">wynd.u-slavy.ru</div><!--]--> <!--[0--><div class="sub" style="line-height:20px">свободно 40 ГБ</div><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="row2" style="border-top:0"><div class="g"><div style="font-weight:600">Перенести с другого сервера</div><div class="sub">по ссылке переноса — сервер скачает круг сам</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
   <div class="row2"><div class="g"><div style="font-weight:600">Оживить из архива</div><div class="sub">из файла круга на этом устройстве</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
   <div class="hint" style="margin-top:18px">Круг будет перенесён полностью. Вы станете его владельцем.</div>
 </div>
 <span class="num">7.19</span><b>Принять круг</b><i>Утверждено владельцем 2026-10-12, реализовано в 0.32.0, строка «Перенести с другого сервера» — в 0.33.0. Две дороги и одна подсказка, откуда берётся то, что они просят: человек чаще приходит сюда раньше, чем сделал ссылку или файл. Сервер назван сверху вместе со свободным местом — это первое, во что упрётся большой круг. «Перенести» открывает 7.20, «Оживить» — выбор файла, затем 7.27 (если файл зашифрован) и 7.29. Оживлять удобнее с компьютера: файл в гигабайты лежит, скорее всего, там — экраны те же, приложение в браузере одно. C44, 2026-10-17: под двумя дорогами — «Круг будет перенесён полностью. Вы станете его владельцем.» (слова владельца).</i></figure>
-<figure class="s" id="e7-20"><div class="ph terracotta">
+<figure class="s server-cards56" id="e7-20"><div class="ph terracotta">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Перенос круга</span></div>
   <div class="lab">Сервер</div>
-  <div class="row2" style="padding:2px 16px 10px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">У Славы</div><div class="sub">wynd.u-slavy.ru · свободно 40 ГБ</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="row2 server-card" style="margin:14px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">У Славы<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">wynd.u-slavy.ru</div><!--]--> <!--[0--><div class="sub" style="line-height:20px">свободно 40 ГБ</div><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="hint" style="margin-top:0;margin-bottom:12px">Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или <span class="under">запустите свой</span>.</div>
   <div class="lab">Ссылка переноса</div>
   <div class="fld" style="font-size:12.5px;word-break:break-all">https://home.example.org/move/7Kq2-Zt9w-Xb41-Lm8c</div>
   <div class="icard"><div class="sq">С</div><div class="m"><div class="n">Семья</div><div class="p">340 записей · 22 участника · 8,4 ГБ</div></div></div>
   <div class="lab" style="margin-top:16px">Прежний сервер</div>
-  <div class="row2" style="margin:10px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">Дом Ани</div><div class="sub">home.example.org</div></div></div>
+  <div class="row2 server-card" style="margin:10px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">Дом Ани<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">home.example.org</div><!--]--> <!--[-1--><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="hint">Круг замер 12 октября в 14:02.</div>
   <div class="lab" style="margin-top:20px">Участники</div>
   <div class="row2" style="padding-top:2px"><div class="g"><div style="font-weight:600">Разослать приглашения</div><div class="sub">письмо на почту каждому участнику</div></div><span class="sw on"></span></div>
@@ -5320,11 +5508,11 @@
 <span class="num">7.20</span><b>Перенести круг сюда</b><i>Утверждено владельцем 2026-10-12, реализовано в 0.33.0. С 7.19, строка «Перенести с другого сервера»; сервер уже выбран там, строка сверху его только называет и даёт сменить. Вставили ссылку — сервер спросил по ней прежний сервер и показал карточку круга его цветом и именем: человек видит, что забирает, до того как нажмёт. Сервер — первое поле, как на 2.14; рядом свободное место; если его не хватает — рамка «Круг сюда не помещается» и «Попросить место», как при оживлении из архива (7.30–7.31). Приглашения всегда шлёт этот, новый сервер — своим письмом и своей ссылкой; рассылка необязательна (решения 2026-10-08). Уведомление «круг переехал» участники получат от старого сервера отдельно, когда владелец завершит перенос (6.35). После кнопки телефон не нужен: серверы работают между собой, ход виден здесь и на 6.34. Владельцем становится тот, кто вставил ссылку. Под выбором сервера — строка о незашифрованном хранении, сокращённая с формы нового круга (2.14): владелец здесь заново решает, где жить кругу (2026-10-12). C44, 2026-10-17: прежний сервер — той же карточкой, что этот (слово владельца); кнопка — «Поднять круг»; подсказка под полем ссылки — «Ссылку получает владелец круга…»; первый этап хода — ««Дом Ани» собирает круг для переноса.» вместо «Сервер договаривается…» («Пишем факты»).</i></figure>
 <figure class="s a18-frame" id="e7-20c"><div class="ph shell"><!--[0--><div class="sb"><span>9:41</span> <span class="sig"><u></u><u></u><u></u><u></u></span></div><!----><!--]--> <!--[-1--><div class="bar"><!--[-1--><!--]--> <!--[-1--><span class="t">Ссылка переноса</span> <!--[-1--><!--]--><!--]--></div><!----><!--]--> <!--[-1--><!--[3--><div class="fld mt-16 mono"><!--[-1-->https://home.example.org/move/7Kq2-Zt9w-Xb41-Lm8c<!--]--></div><!----> <button type="button" class="btn gh mt-12"><!--[-1--><!---->Скопировать<!----><!--]--></button><!----> <div class="hint mt-10"><!---->Это ссылка переноса круга. Открывать её не нужно — её вставляют на новом сервере: «Настройки» → «Серверы» → «Принять круг» → «Перенести с другого сервера».<!----></div><!----><!--]--><!----><!--]--> <!--[-1--><!--]--><!----></div><span class="num">7.20в</span><b>Ссылку переноса открыли в браузере</b><i>A18: существующая страница /move/[token], ранее отдельного кадра не было. Состояние из продукта с учётом правок просмотра; отдельного утверждения A18 ещё нет. Источник: docs/plans/46-a18-frames.svelte.txt.</i></figure>
 <figure class="s transition-frame" id="e7-20a"><div class="ph shell"><!--[0--><div class="sb"><span>9:41</span> <span class="sig"><u></u><u></u><u></u><u></u></span></div><!----><!--]--> <!--[-1--><div class="bar"><!--[0--><button type="button" class="ib " aria-label="Назад"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"></use></svg><!----></button><!----><!--]--> <!--[-1--><span class="t">Сервер</span> <!--[-1--><!--]--><!--]--></div><!----><!--]--> <!--[-1--><!--[2--><div class="hint "><!---->При выборе другого сервера прежний запрос на место будет отозван. Ссылка или выбранный архив сохранятся.<!----></div><!----> <div class="lab  "><!--[-1--><!---->Ваши серверы<!----><!--]--></div><!----> <!--[0--><button type="button" class="row2 "><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600">У Славы<!--[0--><span class="gdpr">GDPR</span><!--]--></div> <div class="sub">slava.example.org</div> <!--[0--><div class="sub">Квота по умолчанию 3 ГБ</div><!--]--><!----></div> <!--[1--><span class="st ok"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"></use></svg><!----></span><!--]--><!----><!----></button><!--]--><!----><!----> <!--[0--><button type="button" class="row2 "><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600">Дом Ани<!--[0--><span class="gdpr">GDPR</span><!--]--></div> <div class="sub">home.example.org</div> <!--[0--><div class="sub">Квота по умолчанию 12 ГБ</div><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></button><!--]--><!----><!----><!--]--><!----><!--]--> <!--[-1--><!--]--><!----></div><span class="num">7.20а</span><b>Смена принимающего сервера</b><i>Утверждено владельцем 2026-11-02. После выбора используется полный 7.20 с сохранёнными данными. Единый источник из Wynd UI — docs/plans/57-transition-frames.svelte.txt. Данные для примера.</i></figure>
-<figure class="s" id="e7-21"><div class="ph terracotta">
+<figure class="s server-cards56" id="e7-21"><div class="ph terracotta">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Перенос круга</span></div>
   <div class="lab">Сервер</div>
-  <div class="row2" style="padding:2px 16px 10px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">У Славы</div><div class="sub">wynd.u-slavy.ru · квота по умолчанию 3 ГБ</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="row2 server-card" style="margin:14px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">У Славы<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">wynd.u-slavy.ru</div><!--]--> <!--[0--><div class="sub" style="line-height:20px">квота по умолчанию 3 ГБ</div><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="lab">Ссылка переноса</div>
   <div class="fld" style="font-size:12.5px">https://home.example.org/move/7Kq2-Zt9w-Xb41-Lm8c</div>
   <div class="icard" style="margin-top:12px"><div class="sq">С</div><div class="m"><div class="n">Семья</div><div class="p">340 записей · 22 участника · 8,4 ГБ</div></div></div>
@@ -5334,11 +5522,11 @@
   <div class="btn c">Попросить место</div>
 </div>
 <span class="num">7.21</span><b>Перенос: круг не помещается</b><i>Утверждено владельцем 2026-10-12, реализовано в 0.33.0. Состояние 7.20; то же, что 7.30 при оживлении, с одним отличием — здесь идёт время. Ссылка переноса живёт 72 часа (6.34), и всё это время круг на прежнем сервере замерший, поэтому в рамке назван срок ссылки: человек видит, сколько у него есть на просьбу о месте. Не успел — владелец на прежнем сервере перевыпускает ссылку без оживления круга. «Место попросили» и «в месте отказали» — как на 7.31 и 7.32, с той же строкой о сроке. Кнопки «Проверить снова» нет (владелец, 2026-10-12): экран спрашивает сервер сам — при открытии (владелец, 2026-10-13: только при открытии, пока экран открыт — не переспрашивает; об ответе придёт письмо). 2026-10-17: «Сколько попросить» — число и чипы «МБ / ГБ», сначала вес круга с запасом до МБ, меньше веса круга нельзя (после отказа можно попросить меньше). В карточке сервера — сколько круг получит: «квота по умолчанию …», «одобрено …» или «свободно …», если на сервере меньше квоты; в тексте — «новому кругу здесь дают …» или «на сервере свободно …». Так же на 7.23, 7.30, 7.32.</i></figure>
-<figure class="s" id="e7-22"><div class="ph terracotta">
+<figure class="s server-cards56" id="e7-22"><div class="ph terracotta">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Перенос круга</span></div>
   <div class="lab">Сервер</div>
-  <div class="row2" style="padding:2px 16px 10px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">У Славы</div><div class="sub">wynd.u-slavy.ru · квота по умолчанию 3 ГБ</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="row2 server-card" style="margin:14px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">У Славы<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">wynd.u-slavy.ru</div><!--]--> <!--[0--><div class="sub" style="line-height:20px">квота по умолчанию 3 ГБ</div><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="lab">Ссылка переноса</div>
   <div class="fld" style="font-size:12.5px">https://home.example.org/move/7Kq2-Zt9w-Xb41-Lm8c</div>
   <div class="icard" style="margin-top:12px"><div class="sq">С</div><div class="m"><div class="n">Семья</div><div class="p">340 записей · 22 участника · 8,4 ГБ</div></div></div>
@@ -5346,11 +5534,11 @@
   <div class="hint ctr" style="margin-top:16px">Можно уйти и вернуться позже: просьба и ссылка останутся.</div>
 </div>
 <span class="num">7.22</span><b>Перенос: место попросили</b><i>Утверждено владельцем 2026-10-13, реализовано в 0.33.0. Состояние 7.21 после «Попросить место»; то же, что 7.31 при оживлении, со строкой о сроке ссылки. Сказано, что, когда и у кого попросили, что появится, когда место дадут, и сколько времени на это есть. Главной кнопки нет: делать здесь нечего, только ждать. Отличие от 7.31 внизу: там файл выбирают заново, здесь возвращаться не с чем — ссылку сервер помнит вместе с просьбой (утверждено с кадром). Если место дадут после срока ссылки, поднять круг по ней уже нельзя: владелец на прежнем сервере перевыпускает ссылку — как это выглядит здесь, не нарисовано.</i></figure>
-<figure class="s" id="e7-23"><div class="ph terracotta">
+<figure class="s server-cards56" id="e7-23"><div class="ph terracotta">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Перенос круга</span></div>
   <div class="lab">Сервер</div>
-  <div class="row2" style="padding:2px 16px 10px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">У Славы</div><div class="sub">wynd.u-slavy.ru · квота по умолчанию 3 ГБ</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="row2 server-card" style="margin:14px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">У Славы<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">wynd.u-slavy.ru</div><!--]--> <!--[0--><div class="sub" style="line-height:20px">квота по умолчанию 3 ГБ</div><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="lab">Ссылка переноса</div>
   <div class="fld" style="font-size:12.5px">https://home.example.org/move/7Kq2-Zt9w-Xb41-Lm8c</div>
   <div class="icard" style="margin-top:12px"><div class="sq">С</div><div class="m"><div class="n">Семья</div><div class="p">340 записей · 22 участника · 8,4 ГБ</div></div></div>
@@ -5360,11 +5548,11 @@
   <div class="btn c">Попросить ещё раз</div>
 </div>
 <span class="num">7.23</span><b>Перенос: в месте отказали</b><i>Утверждено владельцем 2026-10-13, реализовано в 0.33.0. Состояние 7.22 после отказа администратора; то же, что 7.32 при оживлении, со строкой о сроке ссылки. Сказано, кто, когда и в чём отказал, что остаётся — другой сервер, строкой «Сервер» вверху, — и сколько на это времени. Ссылка при смене сервера та же: она выдана прежним сервером и к новому не привязана, пока круг не поднят. Главной кнопки нет; «Попросить ещё раз» — тихая, как на 7.32. В рамке сказано, что попросить можно меньше, и названо, сколько кругу нужно (владелец, 2026-10-13): это и объясняет, зачем кнопка. Причину отказа экран не показывает.</i></figure>
-<figure class="s" id="e7-24"><div class="ph terracotta">
+<figure class="s server-cards56" id="e7-24"><div class="ph terracotta">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Перенос круга</span></div>
   <div class="lab">Сервер</div>
-  <div class="row2" style="padding:2px 16px 10px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">У Славы</div><div class="sub">wynd.u-slavy.ru · квота по умолчанию 3 ГБ</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="row2 server-card" style="margin:14px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">У Славы<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">wynd.u-slavy.ru</div><!--]--> <!--[0--><div class="sub" style="line-height:20px">квота по умолчанию 3 ГБ</div><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="lab">Ссылка переноса</div>
   <div class="fld" style="font-size:12.5px;color:var(--faint)">https://home.example.org/move/7Kq2-Zt9w-Xb41-Lm8c</div>
   <div class="icard" style="margin-top:12px"><div class="sq">С</div><div class="m"><div class="n">Семья</div><div class="p">340 записей · 22 участника · 8,4 ГБ</div></div></div>
@@ -5419,11 +5607,11 @@
   <div class="btn">Открыть файл</div>
 </div>
 <span class="num">7.28</span><b>Оживить круг: пароль не подошёл</b><i>Утверждено владельцем 2026-10-12, реализовано в 0.32.0. Состояние 7.27. Строка встаёт на место подсказки под полем, чернилами, а не красным; набранное остаётся в поле — поправить одну букву проще, чем набирать заново. Попытки не считаются и не замедляются: файл расшифровывает устройство, и защищает его длина пароля.</i></figure>
-<figure class="s" id="e7-29"><div class="ph terracotta">
+<figure class="s server-cards56" id="e7-29"><div class="ph terracotta">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Оживить круг</span></div>
   <div class="lab">Сервер</div>
-  <div class="row2" style="padding:2px 16px 10px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">У Славы</div><div class="sub">wynd.u-slavy.ru · свободно 40 ГБ</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="row2 server-card" style="margin:14px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">У Славы<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">wynd.u-slavy.ru</div><!--]--> <!--[0--><div class="sub" style="line-height:20px">свободно 40 ГБ</div><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="hint" style="margin-top:0;margin-bottom:12px">Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или <span class="under">запустите свой</span>.</div>
   <div class="lab">Архив</div>
   <div class="icard"><div class="sq">С</div><div class="m"><div class="n">Семья</div><div class="p">340 записей · 22 участника · 8,4 ГБ</div></div></div>
@@ -5497,11 +5685,11 @@
   <div class="btn c">Оживить круг</div>
 </div>
 <span class="num">7.29в</span><b>Оживить круг: кто вы</b><i>Утверждено владельцем 2026-10-22, реализовано в 0.42.0 (план 46, A12). С 7.29б, «Нет». Экран входа в круг (1.4): кто здесь — по архиву, имя, фото, пол. «Скажите что-нибудь кругу» — как при вступлении (владелец: «Верни поле приветствия»), запись идёт после строки «круг оживлён». Кнопка — «Оживить круг»: круг оживает, человек входит новым участником и владельцем и видит круг с этого дня (отрезок видимости — с оживления). Прошлое остаётся у тех, кто в нём был. Так же после переноса (7.20); «Кто уже здесь» там — по карточке прежнего сервера (с 0.42.1; у прежнего сервера версии раньше — без этого блока). Прежний владелец остаётся участником без права менять настройки, как после передачи.</i></figure>
-<figure class="s" id="e7-30"><div class="ph terracotta">
+<figure class="s server-cards56" id="e7-30"><div class="ph terracotta">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Оживить круг</span></div>
   <div class="lab">Сервер</div>
-  <div class="row2" style="padding:2px 16px 10px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">У Славы</div><div class="sub">wynd.u-slavy.ru · квота по умолчанию 3 ГБ</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="row2 server-card" style="margin:14px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">У Славы<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">wynd.u-slavy.ru</div><!--]--> <!--[0--><div class="sub" style="line-height:20px">квота по умолчанию 3 ГБ</div><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="lab">Архив</div>
   <div class="icard"><div class="sq">С</div><div class="m"><div class="n">Семья</div><div class="p">340 записей · 22 участника · 8,4 ГБ</div></div></div>
   <div class="hint">Архив собран 4 сентября 2026 на сервере home.example.org. Последняя запись — 4 сентября.</div>
@@ -5511,11 +5699,11 @@
   <div class="btn c">Попросить место</div>
 </div>
 <span class="num">7.30</span><b>Оживить круг: не помещается</b><i>Утверждено владельцем 2026-10-12, реализовано в 0.32.0. Состояние 7.29 (просьба владельца 2026-10-12): круг больше, чем сервер готов ему дать. Проверяется до загрузки, а не на её середине: размер круга известен из файла, место — от сервера. Названы обе цифры и оба выхода. Сменить сервер — строка «Сервер» вверху. «Попросить место» (владелец, 2026-10-12) открывает ту же просьбу, что 6.18, уже заполненную: сколько нужно и для какого круга. Просьба 6.18 привязана к кругу, а круга на этом сервере ещё нет — серверу понадобится просьба «место для круга, которого пока нет», и в панели она встаёт в ту же очередь. На месте погашенной «Оживить круг здесь» стоит действие, которое сейчас возможно. Что просьба отправлена и ждёт — на 7.31. Кнопки «Проверить снова» нет (владелец, 2026-10-12): экран спрашивает сервер сам — при открытии (владелец, 2026-10-13: только при открытии, пока экран открыт — не переспрашивает; об ответе придёт письмо). Блок участников скрыт: до него дело не дошло. Так же выглядит перенос, когда круг не помещается (7.20). C44, 2026-10-17: «Нужно … — свободно …. Попросите место у администратора или выберите другой сервер.»; в карточке сервера «свободно»; кнопка — «Оживить круг»; место просится с запасом до мегабайта, а не до гигабайта (7.31, 7.32 — без имени сервера, 7.31 — «Ответ администратора придёт письмом»). Так же на 7.21–7.23.</i></figure>
-<figure class="s" id="e7-31"><div class="ph terracotta">
+<figure class="s server-cards56" id="e7-31"><div class="ph terracotta">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Оживить круг</span></div>
   <div class="lab">Сервер</div>
-  <div class="row2" style="padding:2px 16px 10px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">У Славы</div><div class="sub">wynd.u-slavy.ru · квота по умолчанию 3 ГБ</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="row2 server-card" style="margin:14px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">У Славы<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">wynd.u-slavy.ru</div><!--]--> <!--[0--><div class="sub" style="line-height:20px">квота по умолчанию 3 ГБ</div><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="lab">Архив</div>
   <div class="icard"><div class="sq">С</div><div class="m"><div class="n">Семья</div><div class="p">340 записей · 22 участника · 8,4 ГБ</div></div></div>
   <div class="hint">Архив собран 4 сентября 2026 на сервере home.example.org. Последняя запись — 4 сентября.</div>
@@ -5523,11 +5711,11 @@
   <div class="hint ctr" style="margin-top:16px">Можно уйти и вернуться позже: просьба останется, файл нужно будет выбрать заново.</div>
 </div>
 <span class="num">7.31</span><b>Оживить круг: место попросили</b><i>Утверждено владельцем 2026-10-12, реализовано в 0.32.0. Состояние 7.30 после «Попросить место». Сказано, что, когда и у кого попросили, и что делать дальше. Ответа экран не ждёт: человек уходит и возвращается. Кнопки «Проверить снова» нет (владелец, 2026-10-12): экран спрашивает сервер сам — при открытии (владелец, 2026-10-13: только при открытии, пока экран открыт — не переспрашивает; об ответе придёт письмо). Главной кнопки поэтому нет вовсе: делать здесь нечего, только ждать. Просьба лежит на сервере при его входе; файл и пароль на сервер не уходили, поэтому при возвращении файл выбирают снова (7.27) — об этом сказано внизу. Отказ администратора покажет та же рамка: «В месте отказали» и выход — другой сервер. Об ответе администратора человек получает письмо (владелец, 2026-10-13: «будет полезно»); у обычной просьбы (6.18) его пока нет — не сделано.</i></figure>
-<figure class="s" id="e7-32"><div class="ph terracotta">
+<figure class="s server-cards56" id="e7-32"><div class="ph terracotta">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Оживить круг</span></div>
   <div class="lab">Сервер</div>
-  <div class="row2" style="padding:2px 16px 10px"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">У Славы</div><div class="sub">wynd.u-slavy.ru · квота по умолчанию 3 ГБ</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="row2 server-card" style="margin:14px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">У Славы<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">wynd.u-slavy.ru</div><!--]--> <!--[0--><div class="sub" style="line-height:20px">квота по умолчанию 3 ГБ</div><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="lab">Архив</div>
   <div class="icard"><div class="sq">С</div><div class="m"><div class="n">Семья</div><div class="p">340 записей · 22 участника · 8,4 ГБ</div></div></div>
   <div class="hint">Архив собран 4 сентября 2026 на сервере home.example.org. Последняя запись — 4 сентября.</div>
@@ -5690,16 +5878,13 @@
   <div class="btn gh">Фото с QR-кодом</div>
 </div>
 <span class="num">7.41</span><b>Первый запуск</b><i>Утверждено владельцем 2026-10-12 (добавлена кнопка «Фото с QR-кодом»), не реализовано. Единственный вопрос, которого нет в браузере: там сервер известен по адресу страницы, здесь его надо назвать. Спрашивается один раз. Две дороги, как на 1.9: адрес руками или приглашение — ссылка и QR несут адрес с собой, и после них человек сразу на 1.1 или 1.8. QR можно снять камерой или взять с картинки — как на 1.9: приглашение часто приходит снимком в мессенджере на этот же телефон. Ссылку приходится вставлять: открыть приглашение из мессенджера прямо в приложении Android позволяет только для адресов, известных при сборке, а серверы у всех свои. Знак стоит, как на 1.6: это первый экран.</i></figure>
-<figure class="s" id="e7-42"><div class="ph shell">
+<figure class="s server-cards56" id="e7-42"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div style="margin:38px 0 0;display:flex;justify-content:center;color:var(--ink)"><svg width="139.6" height="48" role="img" aria-label="Wynd" style="display:block"><use href="#logo" fill="currentColor"/></svg></div>
   <div class="h1s ctr" style="margin-top:30px">Где ваш сервер?</div>
   <div class="lab" style="margin-top:18px">Адрес сервера</div>
   <div class="fld act mono" style="font-size:12.5px">home.example.org</div>
-  <div class="row2" style="margin:14px 16px 0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px">
-    <svg class="ic"><use href="#i-cloud"/></svg>
-    <div class="g"><div style="font-weight:600">Дом Ани</div><div class="sub">home.example.org · Wynd 0.28.2</div></div>
-    <span class="st ok"><svg class="ic"><use href="#i-check"/></svg></span></div>
+  <div class="row2 server-card" style="margin:14px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">Дом Ани<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">home.example.org</div><!--]--> <!--[-1--><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="btn">Дальше</div>
   <div class="hint">Приложение будет открываться с этого сервера. Сменить его можно в настройках.</div>
 </div>
@@ -5741,23 +5926,23 @@
   </div>
 </div>
 <span class="num">7.45</span><b>Разрешение — когда понадобилось</b><i>Утверждено владельцем 2026-10-12, не реализовано. Своего экрана разрешений нет, и при запуске приложение ничего не просит. Вопрос задаёт система, своим окном, в ту минуту, когда человек сам нажал то, чему разрешение нужно: камера — на съёмке, микрофон — на голосовом, уведомления — на переключателе в настройках (7.6). Так понятно, зачем спрашивают. Отказ — не тупик: на месте остаётся та же строка, что в браузере («Нет доступа к камере — разрешите в настройках телефона»). В браузере разрешение спрашивали про сайт, здесь — про приложение, один раз.</i></figure>
-<figure class="s" id="e7-46"><div class="ph shell">
+<figure class="s server-cards56" id="e7-46"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Настройки</span></div>
   <div class="row2" style="margin-top:8px"><svg class="ic"><use href="#i-key"/></svg><div class="g"><div style="font-weight:600">Серверы</div><div class="sub">1 сервер</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
   <div class="row2"><svg class="ic"><use href="#i-bell"/></svg><div class="g"><div style="font-weight:600">Приложение</div><div class="sub">уведомления, место, тема</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
   <div class="row2"><svg class="ic"><use href="#i-day"/></svg><div class="g"><div style="font-weight:600">Что нового в Wynd</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
-  <div class="row2"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">Сменить сервер</div><div class="sub">приложение открыто с home.example.org</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="row2 server-card" style="margin:14px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">Сменить сервер<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">приложение открыто с home.example.org</div><!--]--> <!--[-1--><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="hint ctr" style="margin-top:28px">Wynd 0.28.2 · AGPL-3.0<br><a class="under" href="https://github.com/mixeme/wynd">исходный код</a> · <span class="under">лицензии компонентов</span></div>
 </div>
 <span class="num">7.46</span><b>Настройки в приложении для Android</b><i>Утверждено владельцем 2026-10-12, не реализовано. Тот же 7.1, только ссылки из подвала стали строками (владелец, 2026-10-12: подвал выглядел свалкой ссылок): «Что нового» и, вместо «Проверить обновления», «Сменить сервер» с адресом, откуда открыто приложение. В подвале одна строка — версия, лицензия, исходный код. Обновление проверять нечем: интерфейс приходит с сервера и новый встаёт сам при следующем запуске. «Сменить сервер» спрашивает подтверждение — вход и неотправленное на этом телефоне останутся при старом сервере — и ведёт на 7.41. Строка видна только в приложении для Android: в браузере сервер меняют адресом в строке.</i></figure>
-<figure class="s" id="e7-47"><div class="ph shell">
+<figure class="s server-cards56" id="e7-47"><div class="ph shell">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span class="t">Настройки</span></div>
   <div class="row2" style="margin-top:8px"><svg class="ic"><use href="#i-key"/></svg><div class="g"><div style="font-weight:600">Серверы</div><div class="sub">1 сервер</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
   <div class="row2"><svg class="ic"><use href="#i-bell"/></svg><div class="g"><div style="font-weight:600">Приложение</div><div class="sub">уведомления, место, тема</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
   <div class="row2"><svg class="ic"><use href="#i-day"/></svg><div class="g"><div style="font-weight:600">Что нового в Wynd</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
-  <div class="row2"><svg class="ic"><use href="#i-cloud"/></svg><div class="g"><div style="font-weight:600">Сменить сервер</div><div class="sub">приложение открыто с home.example.org</div></div><svg class="ic sm"><use href="#i-chevr"/></svg></div>
+  <div class="row2 server-card" style="margin:14px 16px 0; width:calc(100% - 32px); border:1px solid var(--line); background:var(--card); border-radius:12px; padding:12px 14px;"><svg class="ic " viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg><!----><!----> <div class="g"><div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">Сменить сервер<!--[-1--><!--]--></div> <!--[0--><div class="sub" style="line-height:20px;overflow-wrap:anywhere">приложение открыто с home.example.org</div><!--]--> <!--[-1--><!--]--><!----></div> <!--[-1--><!--]--><!----><!----></div>
   <div class="scrim"></div>
   <div class="dlg" style="top:190px">
     <div style="font-size:17px;font-weight:600;margin-bottom:10px">Сменить сервер?</div>
