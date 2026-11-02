@@ -34,6 +34,8 @@ export interface Releases {
 
 export interface Check {
 	tag: string;
+	draft: boolean;
+	key_in_release: boolean;
 	size: number;
 	sum_ok: boolean;
 	commit?: string;

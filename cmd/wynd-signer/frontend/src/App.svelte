@@ -266,7 +266,7 @@
 								: `опубликован ${day(r.published_at)}, ${r.signed ? 'с подписью' : 'без подписи'}`}</span
 						>
 						{#snippet action()}
-							{#if r.draft && st?.key_exists}
+							{#if (r.draft || !r.signed) && st?.key_exists}
 								<TextButton class="link under" onclick={() => void openRelease(r)}>подписать</TextButton>
 							{/if}
 						{/snippet}
@@ -309,21 +309,27 @@
 					<Notice tone="bad" alert>{check.problem}. Такой exe подписывать нельзя.</Notice>
 					<FootBar><Button variant="ghost" onclick={toList}>Назад</Button></FootBar>
 				{:else}
+					{#if !check.key_in_release}
+						<Notice tone="note">В этой сборке нет открытого ключа. Подпись добавится к выпуску, но сама эта Мастерская обновляться не сможет. Для самообновления нужна новая сборка со встроенным открытым ключом.</Notice>
+					{/if}
 					<Label>Пароль ключа</Label>
 					<Input type="password" autocomplete="off" bind:value={pass} />
 					{#if wrong}<p class="ins-note" role="alert">Пароль не подошёл</p>{/if}
-					{#if check.notes}
+					{#if check.draft && check.notes}
 						<Label>Что нового — из выпуска</Label>
 						<Notice>
 							{#each check.notes.split('\n') as line, i (i)}<div>{line}</div>{/each}
 						</Notice>
-					{:else}
+					{:else if check.draft}
 						<Notice>В whatsnew.md нет раздела {version} — выпуск подпишем, но не опубликуем.</Notice>
+					{/if}
+					{#if !check.draft}
+						<Notice>Выпуск уже опубликован. Добавим подпись, описание и дата публикации сохранятся.</Notice>
 					{/if}
 					{#if signError}<Notice tone="bad" alert>{signError}</Notice>{/if}
 					<FootBar>
 						<Button variant={pass ? 'colored' : 'off'} loading={signing} onclick={() => void signRelease()}>
-							{check.notes ? 'Подписать и опубликовать' : 'Подписать'}
+							{check.draft && check.notes ? 'Подписать и опубликовать' : 'Подписать'}
 						</Button>
 						<Button variant="ghost" disabled={signing} onclick={toList}>Назад</Button>
 					</FootBar>
@@ -331,8 +337,8 @@
 			{/if}
 		{:else if screen === 'done'}
 			<!-- Кадр 12г. -->
-			<h2>Мастерская {version} {published ? 'опубликована' : 'подписана'}</h2>
-			<p class="ins-sub">Подпись проверена открытым ключом из репозитория.</p>
+			<h2>Мастерская {version} {check?.draft && published ? 'опубликована' : 'подписана'}</h2>
+			<p class="ins-sub">{check?.key_in_release ? 'Подпись проверена открытым ключом из репозитория.' : 'Подпись проверена открытой частью выбранного ключа.'}</p>
 			<Notice>
 				{published
 					? 'Подпись wynd-workshop.exe.sig выложена в выпуск на GitHub, рядом с exe и его суммой.'

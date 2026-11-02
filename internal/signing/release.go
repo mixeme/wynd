@@ -109,16 +109,19 @@ func (g GitHub) Releases(ctx context.Context) ([]Release, error) {
 	return res, nil
 }
 
-// Check — проверки черновика до пароля (12в).
+// Check — проверки выпуска до пароля (12в).
 type Check struct {
 	Tag    string `json:"tag"`
+	Draft  bool   `json:"draft"`
 	Size   int64  `json:"size"`
 	SumOK  bool   `json:"sum_ok"`
 	Commit string `json:"commit,omitempty"`
 	// AttestOK — exe собран GitHub Actions из этого тега (gh attestation verify).
 	AttestOK bool   `json:"attest_ok"`
 	Notes    string `json:"notes,omitempty"`
-	// PubKey — открытый ключ из репозитория в этом теге: им проверяется подпись.
+	// KeyInRelease — сборка уже содержит ключ для проверки самообновлений.
+	KeyInRelease bool `json:"key_in_release"`
+	// PubKey — открытый ключ из тега; пусто у старых сборок без самообновления.
 	PubKey  string `json:"-"`
 	Problem string `json:"problem,omitempty"`
 
@@ -126,15 +129,19 @@ type Check struct {
 	dir string
 }
 
-// Fetch скачивает exe черновика во временную папку и проверяет его: сумму из
+// Fetch скачивает exe выпуска во временную папку и проверяет его: сумму из
 // выпуска, удостоверение сборки по тегу; берёт «Что нового» и открытый ключ
 // из репозитория в этом теге.
 func (g GitHub) Fetch(ctx context.Context, tag string) (*Check, error) {
+	draft, err := g.isDraft(ctx, tag)
+	if err != nil {
+		return nil, err
+	}
 	dir, err := os.MkdirTemp("", "wynd-signer-")
 	if err != nil {
 		return nil, err
 	}
-	c := &Check{Tag: tag, dir: dir, exe: filepath.Join(dir, exeName)}
+	c := &Check{Tag: tag, Draft: draft, dir: dir, exe: filepath.Join(dir, exeName)}
 	if _, err := g.gh(ctx, "release", "download", tag, "-R", g.Repo, "-D", dir, "-p", exeName, "-p", exeName+".sha256", "--clobber"); err != nil {
 		c.Close()
 		return nil, fmt.Errorf("скачать выпуск не получилось: %w", err)
@@ -170,16 +177,63 @@ func (g GitHub) Fetch(ctx context.Context, tag string) (*Check, error) {
 		}
 	}
 	c.Notes = WhatsNew(g.file(ctx, "cmd/wynd-installer/whatsnew.md", tag), strings.TrimPrefix(tag, tagPrefix))
-	c.PubKey = strings.TrimSpace(g.file(ctx, "cmd/wynd-installer/signing-key.pub", tag))
+	c.PubKey, err = g.releaseKey(ctx, tag)
+	c.KeyInRelease = c.PubKey != ""
 	switch {
 	case !c.SumOK:
 		c.Problem = "Сумма не сходится с той, что в выпуске"
 	case !c.AttestOK:
 		c.Problem = "Нет удостоверения, что exe собран GitHub Actions из тега " + tag
-	case c.PubKey == "":
-		c.Problem = "В теге " + tag + " нет открытого ключа cmd/wynd-installer/signing-key.pub — эта сборка подпись не проверит"
+	case err != nil:
+		c.Problem = "Проверить открытый ключ в теге " + tag + " не получилось: " + err.Error()
 	}
 	return c, nil
+}
+
+func (g GitHub) isDraft(ctx context.Context, tag string) (bool, error) {
+	out, err := g.gh(ctx, "release", "view", tag, "-R", g.Repo, "--json", "isDraft")
+	if err != nil {
+		return false, err
+	}
+	var view struct {
+		Draft *bool `json:"isDraft"`
+	}
+	if err := json.Unmarshal(out, &view); err != nil {
+		return false, err
+	}
+	if view.Draft == nil {
+		return false, errors.New("GitHub не сообщил, опубликован ли выпуск")
+	}
+	return *view.Draft, nil
+}
+
+// Отличаем отсутствие ключа в старом теге от ошибки GitHub: при ошибке
+// проверки нельзя молча перейти на подпись любым выбранным ключом.
+func (g GitHub) releaseKey(ctx context.Context, tag string) (string, error) {
+	out, err := g.gh(ctx, "api", "repos/"+g.Repo+"/contents/cmd/wynd-installer?ref="+tag)
+	if err != nil {
+		return "", err
+	}
+	var files []struct {
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(out, &files); err != nil {
+		return "", err
+	}
+	if files == nil {
+		return "", errors.New("GitHub не вернул список файлов тега")
+	}
+	for _, f := range files {
+		if f.Name != "signing-key.pub" {
+			continue
+		}
+		pub := strings.TrimSpace(g.file(ctx, "cmd/wynd-installer/signing-key.pub", tag))
+		if pub == "" {
+			return "", errors.New("не удалось прочитать signing-key.pub")
+		}
+		return pub, nil
+	}
+	return "", nil
 }
 
 // file — файл репозитория в теге; нет — пусто.
@@ -204,11 +258,17 @@ func (c *Check) Close() {
 }
 
 // SignAndPublish подписывает скачанный exe ключом из keyPath, проверяет
-// подпись открытым ключом тега, выкладывает .sig в черновик и, если есть
-// «Что нового», публикует выпуск с этим текстом.
+// подпись открытым ключом тега (у старых сборок — выбранного ключа), выкладывает
+// .sig и, если это черновик и есть «Что нового», публикует его с этим текстом.
+// Описание и дату уже опубликованного выпуска не меняет.
 func (g GitHub) SignAndPublish(ctx context.Context, c *Check, keyPath, pass string) (published bool, err error) {
 	if c.Problem != "" {
 		return false, errors.New(c.Problem)
+	}
+	// За время проверок черновик могли опубликовать другим способом.
+	draft, err := g.isDraft(ctx, c.Tag)
+	if err != nil {
+		return false, err
 	}
 	priv, err := Unlock(keyPath, pass)
 	if err != nil {
@@ -228,6 +288,9 @@ func (g GitHub) SignAndPublish(ctx context.Context, c *Check, keyPath, pass stri
 	}
 	if _, err := g.gh(ctx, "release", "upload", c.Tag, sigPath, "-R", g.Repo, "--clobber"); err != nil {
 		return false, fmt.Errorf("выложить подпись не получилось: %w", err)
+	}
+	if !draft {
+		return true, nil
 	}
 	if c.Notes == "" {
 		return false, nil

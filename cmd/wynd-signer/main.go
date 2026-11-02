@@ -232,7 +232,7 @@ func (a *App) Releases() Releases {
 	return Releases{OK: true, Releases: rels}
 }
 
-// CheckRelease — проверки черновика до пароля (12в).
+// CheckRelease — проверки выпуска до пароля (12в).
 func (a *App) CheckRelease(tag string) (*signing.Check, error) {
 	c, err := a.gh.Fetch(a.ctx, tag)
 	if err != nil {
