@@ -1,4 +1,4 @@
-<!-- Предложения кадров по утверждённым правилам A19/A20/A23. Оформление отдельно не утверждено. Единый источник вариантов для общего screens.html; действий с данными нет. -->
+<!-- Кадры по правилам A19/A20/A23. 6.34а утверждён 2026-11-02; остальные — предложения. После перевыпуска используется существующий 6.34, после выбора сервера — полный 7.20. Действий с данными нет. -->
 <script lang="ts">
  import FormLayout from '$lib/layouts/FormLayout.svelte';
  import Label from '$ui/forms/Label.svelte';
@@ -8,25 +8,21 @@
  import Switch from '$ui/forms/Switch.svelte';
  import SettingsRow from '$ui/data/SettingsRow.svelte';
  import ServerRow from '$ui/data/ServerRow.svelte';
- import StatusCard from '$ui/data/StatusCard.svelte';
- import FieldDisplay from '$ui/forms/FieldDisplay.svelte';
  import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
  const scenes = [
   {id:'e6-37a',title:'Передача прошлого выключена',kind:'transfer',past:false},
   {id:'e6-37b',title:'Передача прошлого включена',kind:'transfer',past:true},
   {id:'e6-34a',title:'Срок ссылки переноса вышел',kind:'expired',past:false},
-  {id:'e6-34b',title:'Ссылка перевыпущена',kind:'reissued',past:false},
-  {id:'e7-20a',title:'Смена принимающего сервера',kind:'choose',past:false},
-  {id:'e7-20b',title:'Другой сервер выбран',kind:'changed',past:false}
+  {id:'e7-20a',title:'Смена принимающего сервера',kind:'choose',past:false}
  ];
 </script>
 
 <main class="transition-review">
- <header><h1>История и перенос круга</h1><p>Предложения кадров по принятым правилам A19, A20 и A23 · 2 ноября 2026. Оформление отдельно не утверждено. Данные для примера; кнопки не выполняют настоящих действий.</p></header>
+ <header><h1>История и перенос круга</h1><p>Кадр 6.34а утверждён 2 ноября 2026. Остальные варианты — предложения. Данные для примера; кнопки не выполняют настоящих действий.</p></header>
  <div class="transition-grid">
  {#each scenes as scene}
   <figure class="transition-frame" id={scene.id} data-kind={scene.kind}>
-   <FormLayout color="terracotta" title={scene.kind === 'transfer' ? 'Передать владение' : scene.kind === 'choose' ? 'Выбрать сервер' : scene.kind === 'changed' ? 'Перенос круга' : 'Перенос круга'} onback={() => {}}>
+   <FormLayout shell={scene.kind === 'choose'} color={scene.kind === 'choose' ? undefined : 'terracotta'} title={scene.kind === 'transfer' ? 'Передать владение' : scene.kind === 'choose' ? 'Сервер' : 'Перенос круга'} onback={() => {}}>
     {#if scene.kind === 'transfer'}
      <Hint>Выберите нового владельца круга «Семья».</Hint>
      <SettingsRow title="Кот" subtitle="владелец · это вы" chevron={false} />
@@ -34,43 +30,25 @@
      <SettingsRow title="Мышь" subtitle="с 5 августа" onclick={() => {}} />
      <ConfirmDialog title="Передать владение?" confirmLabel="Передать" cancelLabel="Отмена" onconfirm={() => {}} oncancel={() => {}}>
       <Hint class="m-0 ink">Новый владелец — Аня. Вы останетесь в круге: писать сможете, менять настройки — нет.</Hint>
-      <SettingsRow title="Передать прошлое для сохранения" chevron={false}>
-       {#snippet control()}<Switch checked={scene.past} label="Передать прошлое для сохранения" />{/snippet}
+      <SettingsRow title="Передать своё прошлое для сохранения" chevron={false}>
+       {#snippet control()}<Switch checked={scene.past} label="Передать своё прошлое для сохранения" />{/snippet}
       </SettingsRow>
-      <Hint class="m-0">{scene.past ? 'В архив нового владельца войдёт и переданное вам для сохранения прошлое.' : 'Новый владелец сможет сохранить в архив только то, что застал.'}</Hint>
-      <Hint class="m-0 mt-10">Видимость записей в приложении не изменится.</Hint>
+      <Hint class="m-0">{scene.past ? 'В архив нового владельца войдёт и переданное вам для сохранения прошлое.' : 'Новый владелец сможет сохранить в архив только то, что застал.'} Видимость записей в приложении не изменится.</Hint>
      </ConfirmDialog>
-    {:else if scene.kind === 'expired' || scene.kind === 'reissued'}
-     {#if scene.kind === 'reissued'}
-      <Label>Ссылка переноса</Label>
-      <FieldDisplay mono value="https://home.example.org/move/N8vt-S5am-R9ky-K6df" />
-      <Button variant="ghost" onclick={() => {}}>Скопировать</Button>
-      <Hint>Старая ссылка больше не действует. Новую вставьте на принимающем сервере.</Hint>
-      <StatusCard title="Ждём новый сервер" text="Круг остаётся замершим с 30 октября, 14:02." />
-     {:else}
+    {:else if scene.kind === 'expired'}
       <Label>Что происходит</Label>
       <SettingsRow icon="clock" title="Срок ссылки вышел" subtitle="ссылка действовала до 2 ноября, 14:02" chevron={false} divided="both" />
       <Hint>Круг остаётся замершим. Получите новую ссылку и вставьте её на принимающем сервере.</Hint>
       <Button class="mt-14" variant="colored" onclick={() => {}}>Получить новую ссылку</Button>
-     {/if}
      <Hint class="mt-22 ctr-text"><TextButton onclick={() => {}}>Отменить перенос</TextButton></Hint>
     {:else if scene.kind === 'choose'}
      <Hint>При выборе другого сервера прежний запрос на место будет отозван. Ссылка или выбранный архив сохранятся.</Hint>
      <Label>Ваши серверы</Label>
-     <ServerRow name="У Славы" subtitle="slava.example.org" detail="Запрошено 10 ГБ" variant="ok" card onclick={() => {}} />
-     <ServerRow name="Дом Ани" subtitle="home.example.org" detail="Квота по умолчанию 12 ГБ" card variant="select" onclick={() => {}} />
-    {:else}
-     <Label>Сервер</Label>
-     <ServerRow name="Дом Ани" subtitle="home.example.org" detail="Квота по умолчанию 12 ГБ" card variant="select" onclick={() => {}} />
-     <Hint>Прежний запрос на место отозван.</Hint>
-     <Label>Ссылка переноса</Label>
-     <FieldDisplay mono value="https://family.example.org/move/N8vt-S5am-R9ky-K6df" />
-     <SettingsRow title="Семья" subtitle="340 записей · 22 участника · 8,4 ГБ" chevron={false} />
-     <Hint>На новом сервере достаточно места.</Hint>
-     <Button variant="colored" onclick={() => {}}>Поднять круг</Button>
+     <ServerRow name="У Славы" subtitle="slava.example.org" detail="Квота по умолчанию 3 ГБ" variant="ok" gdpr onclick={() => {}} />
+     <ServerRow name="Дом Ани" subtitle="home.example.org" detail="Квота по умолчанию 12 ГБ" gdpr onclick={() => {}} />
     {/if}
    </FormLayout>
-   <figcaption><strong>{scene.id.slice(1).replace('-', '.')} · {scene.title}</strong><p>Предложение оформления; отдельно не утверждено. Источник: docs/plans/57-transition-frames.svelte.txt.</p></figcaption>
+   <figcaption><strong>{scene.id.slice(1).replace('-', '.')} · {scene.title}</strong><p>{scene.kind === 'expired' ? 'Утверждено владельцем 2026-11-02. После перевыпуска — существующий 6.34 с новой ссылкой и прежним временем заморозки.' : 'Предложение оформления; отдельно не утверждено.'} Источник: docs/plans/57-transition-frames.svelte.txt.</p></figcaption>
   </figure>
  {/each}
  </div>
