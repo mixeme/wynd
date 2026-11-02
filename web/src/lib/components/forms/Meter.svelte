@@ -15,13 +15,14 @@
 		color?: string;
 	} = $props();
 
-	const width = $derived(`${Math.min(100, Math.max(0, (value / max) * 100))}%`);
+	// Явная привязка нужна и в SSR: сокращённый style:width отдавал текст функции.
+	const fillWidth = $derived(`${Math.min(100, Math.max(0, (value / max) * 100))}%`);
 </script>
 
 {#if inline}
-	<span class="qbar"><u style:width style:background={color}></u></span>
+	<span class="qbar"><u style:width={fillWidth} style:background={color}></u></span>
 {:else}
 	<div class="meter">
-		<u style:width style:background={color}></u>
+		<u style:width={fillWidth} style:background={color}></u>
 	</div>
 {/if}
