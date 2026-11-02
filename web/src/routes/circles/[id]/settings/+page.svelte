@@ -499,11 +499,8 @@
 				divided="both"
 				onclick={() => goto(`/circles/${circle.circleId}/quota`)}
 			/>
-			{@render ownArchive('bottom')}
 		{/if}
-		{#if !isOwner}
-			{@render ownArchive('bottom')}
-		{/if}
+		{@render ownArchive('bottom')}
 		<!-- A9 (6.41): отделиться может любой — рядом со своим архивом, не в
 		     «Необратимо»: в этом круге ничего не меняется. -->
 		{#if !soloCircle}
