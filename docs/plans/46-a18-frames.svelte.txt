@@ -1,0 +1,109 @@
+<!-- A18: состояния существующего продукта для отдельного просмотра, 2026-11-02.
+     Не утверждены, кроме подписи после сбоя сборки (C44, 2026-10-19).
+     Только существующие Wynd UI и layouts; данные для примера, действий нет. -->
+<script lang="ts">
+ import CircleLayout from '$lib/layouts/CircleLayout.svelte';
+ import ShellLayout from '$lib/layouts/ShellLayout.svelte';
+ import FormLayout from '$lib/layouts/FormLayout.svelte';
+ import ArchiveBanner from '$ui/data/ArchiveBanner.svelte';
+ import CircleRow from '$ui/data/CircleRow.svelte';
+ import EventDivider from '$ui/data/EventDivider.svelte';
+ import PostCard from '$ui/data/PostCard.svelte';
+ import PostByline from '$ui/data/PostByline.svelte';
+ import SettingsRow from '$ui/data/SettingsRow.svelte';
+ import Label from '$ui/forms/Label.svelte';
+ import Hint from '$ui/forms/Hint.svelte';
+ import Button from '$ui/forms/Button.svelte';
+ import Switch from '$ui/forms/Switch.svelte';
+ import Input from '$ui/forms/Input.svelte';
+ import FieldDisplay from '$ui/forms/FieldDisplay.svelte';
+ import Meter from '$ui/forms/Meter.svelte';
+ import DangerZone from '$ui/forms/DangerZone.svelte';
+ import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
+ const scenes = [
+  {id:'e6-24a', title:'После неудачной сборки', kind:'failed', status:'Контекст: подпись «Прошлая сборка не удалась.» уже согласована C44, 2026-10-19; повторного утверждения текста не требуется.'},
+  {id:'e2-5a', title:'Архив с удалением: строка владельца', kind:'archive-street', status:'A18: отдельное утверждение строки владельца.'},
+  {id:'e3-16a', title:'Архив с удалением: баннер владельца', kind:'archive-banner', status:'A18: отдельное утверждение баннера владельца.'},
+  {id:'e2-4a', title:'Перенос: строки владельца', kind:'move-street', status:'A18: строки до и после принятия круга новым сервером. Сейчас формулировки совпадают с общими строками переноса.'},
+  {id:'e3-14a', title:'Перенос начат: баннер владельца', kind:'moving-banner', status:'A18: отдельное утверждение баннера владельца.'},
+  {id:'e3-15a', title:'Новый сервер принял: баннер владельца', kind:'moved-banner', status:'A18: отдельное утверждение баннера владельца.'},
+  {id:'e6-35a', title:'Подтверждение завершения переноса', kind:'complete', status:'A18: существующий диалог удаления круга с прежнего сервера. Образец с именем круга и адресом назначения.'},
+  {id:'e7-29d', title:'Оживление: загрузка файла', kind:'upload', status:'A18: существующий этап загрузки расшифрованного архива с устройства.'},
+  {id:'e7-20c', title:'Ссылку переноса открыли в браузере', kind:'link', status:'A18: существующая страница /move/[token], ранее отдельного кадра не было.'},
+  {id:'e3-16b', title:'Служебные строки при неизвестном поле', kind:'events', status:'A18: действующие формулировки internal/chronicle/summary.go. Пол у лица не указан; имя «Мышь» не склоняется.'}
+ ];
+ const frameNumber = (id: string) => id.slice(1).replace('-', '.').replace(/[a-d]$/, letter => 'абвг'['abcd'.indexOf(letter)] ?? letter);
+</script>
+
+{#each scenes as scene}
+ <figure class="a18-frame" id={scene.id}>
+ {#if scene.kind.endsWith('banner') || scene.kind === 'events'}
+  <CircleLayout color="terracotta" title="Семья" subtitle="22 участника" identity="Кот" avatar="К" commentBar={false} onback={() => {}}>
+   {#if scene.kind === 'archive-banner'}
+    <ArchiveBanner title="Круг уходит с сервера" action="Полный архив круга" onaction={() => {}}>Вы убираете круг «Семья» с сервера и сохраняете его в файл. Читать можно, писать нельзя.</ArchiveBanner>
+   {:else if scene.kind === 'moving-banner'}
+    <ArchiveBanner title="Переезд · круг замер" action="Перенос круга" onaction={() => {}}>Вы переносите «Семья» на другой сервер. Читать можно, писать пока нельзя.</ArchiveBanner>
+   {:else if scene.kind === 'moved-banner'}
+    <ArchiveBanner title="Круг переехал" action="Перенос круга" onaction={() => {}}>«Семья» теперь на <strong>slava.example.org</strong>. Здесь круг замер и исчезнет, когда вы завершите перенос.</ArchiveBanner>
+   {:else}
+    <EventDivider text="Круг остановлен: Мышь" time="30 октября, 14:02" />
+    <EventDivider text="Круг снова открыт: Мышь" time="30 октября, 14:10" />
+    <EventDivider text="Круг оживлён из архива: Мышь" time="31 октября, 09:20" />
+    <EventDivider text="Перенос круга начат: Мышь" time="1 ноября, 11:00" />
+    <EventDivider text="Круг перенесён на slava.example.org: Мышь" time="1 ноября, 11:45" />
+   {/if}
+   {#if scene.kind !== 'events'}
+    <PostCard>
+     {#snippet author()}<PostByline initial="А" name="Аня" time="30 октября, 13:40" />{/snippet}
+     {#snippet text()}На выходных собираемся всей семьёй.{/snippet}
+    </PostCard>
+   {/if}
+  </CircleLayout>
+ {:else if scene.kind.endsWith('street')}
+  <ShellLayout>
+   <Label>Ваши круги</Label>
+   {#if scene.kind === 'archive-street'}
+    <CircleRow initial="С" name="Семья" color="var(--terracotta)" preview="Круг уходит с сервера" time="14:02" onclick={() => {}} />
+   {:else}
+    <CircleRow initial="С" name="Семья" color="var(--terracotta)" preview="Круг замер на время переезда" time="14:02" onclick={() => {}} />
+    <CircleRow initial="Д" name="Дача" color="var(--olive)" preview="Круг переехал — войдите на slava.example.org" time="14:47" onclick={() => {}} />
+   {/if}
+   <CircleRow initial="Д" name="Друзья" color="var(--teal)" preview="Аня: Встретимся в субботу" time="12:30" onclick={() => {}} />
+  </ShellLayout>
+ {:else}
+  <FormLayout shell={scene.kind === 'link'} color={scene.kind === 'link' ? undefined : 'terracotta'} title={scene.kind === 'failed' ? 'Полный архив круга' : scene.kind === 'complete' ? 'Перенос круга' : scene.kind === 'link' ? 'Ссылка переноса' : 'Оживить круг'} onback={() => {}}>
+   {#if scene.kind === 'failed'}
+    <Label>Что уйдёт в файл</Label>
+    <SettingsRow title="Весь журнал «Семья» и 22 участника" subtitle="340 записей, имена, фото и почта каждого · 8,4 ГБ" chevron={false} />
+    <SettingsRow title="Зашифровать файл" subtitle="пароль спросят, когда круг будут оживлять" divided="top">
+     {#snippet control()}<Switch checked label="Зашифровать файл" />{/snippet}
+    </SettingsRow>
+    <Input active value="липа берег книга ветер" />
+    <Hint>Пароль нигде не хранится. Забудете — файл не открыть.</Hint>
+    <SettingsRow title="Удалить круг с сервера" subtitle="после того как файл скачан" divided="both">
+     {#snippet control()}<Switch checked={false} label="Удалить круг с сервера" />{/snippet}
+    </SettingsRow>
+    <Hint class="mt-10 ink">Прошлая сборка не удалась.</Hint>
+    <Button class="mt-22" variant="colored" onclick={() => {}}>Собрать архив</Button>
+   {:else if scene.kind === 'complete'}
+    <Label>Что происходит</Label>
+    <SettingsRow icon="check" title="Круг переехал на slava.example.org" subtitle="1 ноября в 14:47 · сверено: 340 записей, 22 имени, 8,4 ГБ" chevron={false} divided="both" />
+    <Hint>Новый сервер подтвердил, что получил всё. Загляните туда и убедитесь сами: круг уже открывается.</Hint>
+    <DangerZone class="mt-20" items={['Завершить перенос']} onitem={() => {}}>Круг и все его файлы удалятся с «Дом Ани» и пропадут из списка у участников. Им уйдёт письмо: круг переехал на slava.example.org.</DangerZone>
+    <ConfirmDialog title="Завершить перенос?" confirmLabel="Завершить" cancelLabel="Не сейчас" onconfirm={() => {}} oncancel={() => {}}>
+     <Hint>Круг «Семья» удалится отсюда. Останется только на slava.example.org.</Hint>
+    </ConfirmDialog>
+   {:else if scene.kind === 'upload'}
+    <Label>Загружаем круг</Label>
+    <Meter value={0.25} max={1} />
+    <Hint class="mt-8">2,1 ГБ из 8,4 ГБ. Не закрывайте страницу, пока круг загружается.</Hint>
+   {:else if scene.kind === 'link'}
+    <FieldDisplay mono value="https://home.example.org/move/7Kq2-Zt9w-Xb41-Lm8c" />
+    <Button class="mt-12" variant="ghost" onclick={() => {}}>Скопировать</Button>
+    <Hint class="mt-10">Это ссылка переноса круга. Открывать её не нужно — её вставляют на новом сервере: «Настройки» → «Серверы» → «Принять круг» → «Перенести с другого сервера».</Hint>
+   {/if}
+  </FormLayout>
+ {/if}
+ <figcaption><strong>{frameNumber(scene.id)} · {scene.title}</strong><p>{scene.status} {scene.kind === 'failed' ? 'Показан для контекста.' : 'Показано текущее поведение; отдельного утверждения A18 ещё нет.'} Источник: docs/plans/46-a18-frames.svelte.txt.</p></figcaption>
+ </figure>
+{/each}
