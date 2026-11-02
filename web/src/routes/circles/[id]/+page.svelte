@@ -889,10 +889,10 @@
 				onaction={circle.youOwn ? () => goto(`/circles/${circle.circleId}/move`) : undefined}
 			>
 				{#if circle.youOwn}
-					Вы переносите «{circle.name}» на другой сервер. Читать можно, писать пока нельзя.
+					Вы переносите «{circle.name}» на другой сервер. Читать можно, писать нельзя.
 				{:else}
 					{circle.ownerName || 'Владелец'} переносит «{circle.name}» на другой сервер. Читать можно,
-					писать пока нельзя. Когда перенос закончится, на {circle.move.email} придёт письмо с новым адресом
+					писать нельзя. Когда перенос закончится, на {circle.move.email} придёт письмо с новым адресом
 					круга.
 				{/if}
 			</ArchiveBanner>

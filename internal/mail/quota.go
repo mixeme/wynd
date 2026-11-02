@@ -86,9 +86,9 @@ func (s *Service) SendCircleWaiting(ctx context.Context, email, circle, owner, l
 		return ErrInvalid
 	}
 	subject := "Вас ждут в круге «" + circle + "»"
-	body := fmt.Sprintf("Круг «%s» теперь живёт на этом сервере. Войдите этой почтой — вы попадёте в своё имя и свои записи:\n%s\n", circle, link)
+	body := fmt.Sprintf("Круг «%s» теперь живёт на этом сервере.\n\nВойдите с почтой %s — попадёте в своё имя и свои записи.\n\n%s\n", circle, email, link)
 	if strings.TrimSpace(owner) != "" {
-		body = fmt.Sprintf("Круг «%s» теперь живёт на этом сервере, владелец — %s. Войдите этой почтой — вы попадёте в своё имя и свои записи:\n%s\n", circle, owner, link)
+		body = fmt.Sprintf("Круг «%s» теперь живёт на этом сервере, владелец — %s.\n\nВойдите с почтой %s — попадёте в своё имя и свои записи.\n\n%s\n", circle, owner, email, link)
 	}
 	return s.notify(ctx, email, subject, body)
 }
@@ -117,7 +117,7 @@ func (s *Service) SendCircleMoving(ctx context.Context, email, circle, owner, li
 		who = owner
 	}
 	subject := "Круг «" + circle + "» переезжает"
-	body := fmt.Sprintf("%s переносит «%s» на другой сервер. Читать можно, писать пока нельзя. Когда перенос закончится, на эту почту придёт письмо с новым адресом круга.\n\n%s\n", who, circle, link)
+	body := fmt.Sprintf("%s переносит «%s» на другой сервер. Читать можно, писать нельзя. Когда перенос закончится, придёт письмо с новым адресом круга.\n\n%s\n", who, circle, link)
 	return s.notify(ctx, email, subject, body)
 }
 
@@ -129,6 +129,6 @@ func (s *Service) SendCircleMoved(ctx context.Context, email, circle, newServer 
 		return ErrInvalid
 	}
 	subject := "Круг «" + circle + "» переехал"
-	body := fmt.Sprintf("Круг «%s» теперь живёт на другом сервере:\n%s\n\nВойдите там этой почтой (%s) — попадёте в своё имя и свои записи. На прежнем сервере круга больше нет.\n", circle, newServer, email)
+	body := fmt.Sprintf("Круг «%s» теперь живёт на другом сервере:\n%s\n\nВойдите с почтой %s — попадёте в своё имя и свои записи. На прежнем сервере круга больше нет.\n", circle, newServer, email)
 	return s.notify(ctx, email, subject, body)
 }
