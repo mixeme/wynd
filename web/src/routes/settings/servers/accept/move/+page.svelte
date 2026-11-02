@@ -427,7 +427,7 @@
 				<StatusCard
 					class="mt-14"
 					title="Срок ссылки вышел"
-					text={`Ссылка переноса действовала до ${until(move.expires_at)}. На прежнем сервере${move.source_name ? `, «${move.source_name}»,` : ''} отмените перенос и начните его заново — там дадут новую ссылку.${move.request?.status === 'pending' ? ` Просьба о ${formatBytes(move.request.requested_bytes)} у администратора ${srv} остаётся.` : ''}`}
+					text={`Ссылка переноса действовала до ${until(move.expires_at)}. Круг остаётся замершим. На прежнем сервере${move.source_name ? `, «${move.source_name}»,` : ''} получите новую ссылку переноса.${move.request?.status === 'pending' ? ` Просьба о ${formatBytes(move.request.requested_bytes)} у администратора ${srv} остаётся.` : ''}`}
 				/>
 				<Hint class="mt-14 ctr-text">Новую ссылку вставьте в это же поле.</Hint>
 			{:else if move.status === 'failed'}

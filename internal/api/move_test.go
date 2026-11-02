@@ -290,6 +290,16 @@ func TestMoveCancelAndExpiry(t *testing.T) {
 // поднимает круг со снимком и записью, владелец — тот, кто вставил ссылку, в
 // ленте «Круг перенесён с …»; прежний сервер получил «принято и сверено».
 func TestMoveBetweenServers(t *testing.T) {
+	testMoveBetweenServers(t, false)
+}
+
+// A20: новая ссылка переносит тот же круг и не отзывает одобренное место на том же сервере.
+func TestMoveBetweenServersAfterReissue(t *testing.T) {
+	testMoveBetweenServers(t, true)
+}
+
+func testMoveBetweenServers(t *testing.T, reissue bool) {
+	t.Helper()
 	src, srcCaps, _, _ := setupAPI(t)
 	anya, _ := registerSession(t, src, srcCaps, "anya@example.com")
 	rec := doJSON(t, src, http.MethodPost, "/api/v1/circles", anya, map[string]any{"name": "Семья", "owner_name": "Аня"})
@@ -314,7 +324,37 @@ func TestMoveBetweenServers(t *testing.T) {
 
 	dst, dstCaps, _, _ := setupAPI(t)
 	dst.MoveRetry = 10 * time.Millisecond
-	kot, _ := registerSession(t, dst, dstCaps, "kot@example.com")
+	kot, kotID := registerSession(t, dst, dstCaps, "kot@example.com")
+	var placeID string
+	if reissue {
+		if rec := doJSON(t, dst, http.MethodPost, "/api/v1/moves/incoming", kot, map[string]string{"link": link}); rec.Code != http.StatusOK {
+			t.Fatalf("old link draft: %d %s", rec.Code, rec.Body.String())
+		}
+		var err error
+		placeID, err = dst.Blobs.CreatePlaceRequest(t.Context(), kotID, "Семья", 1<<30)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := dst.Blobs.ResolveQuotaRequest(t.Context(), placeID, true, ""); err != nil {
+			t.Fatal(err)
+		}
+		frozen := readMoveState(t, src, anya, circleID).FrozenAt
+		if _, err := src.Chronicle.DB().Exec("UPDATE circle_moves SET expires_at = ? WHERE circle_id = ?", time.Now().Add(-time.Minute).UTC().Format(time.RFC3339Nano), circleID); err != nil {
+			t.Fatal(err)
+		}
+		rec := doJSON(t, src, http.MethodPost, "/api/v1/circles/"+circleID+"/move/reissue", anya, nil)
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("reissue: %d %s", rec.Code, rec.Body.String())
+		}
+		if readMoveState(t, src, anya, circleID).FrozenAt != frozen {
+			t.Fatal("reissue changed freeze time")
+		}
+		if rec := doJSON(t, dst, http.MethodPost, "/api/v1/moves/incoming", kot, map[string]string{"link": link}); rec.Code == http.StatusOK {
+			t.Fatal("old link was accepted")
+		}
+		link = jsonStr(t, rec, "link")
+		link = srcHTTP.URL + "/move/" + link[strings.LastIndex(link, "/")+1:]
+	}
 
 	for link, want := range map[string]string{
 		"https://example.org/not-a-move":                  "link_invalid",
@@ -345,7 +385,7 @@ func TestMoveBetweenServers(t *testing.T) {
 		// «Аня — это вы?» (A12): почты Кота в круге нет.
 		OwnerName     string `json:"owner_name"`
 		ReviverAbsent bool   `json:"reviver_absent"`
-		Circle     struct {
+		Circle        struct {
 			Name    string `json:"name"`
 			Posts   int    `json:"posts"`
 			Members int    `json:"members"`
@@ -361,6 +401,12 @@ func TestMoveBetweenServers(t *testing.T) {
 	}
 	if card.OwnerName != "Аня" || !card.ReviverAbsent {
 		t.Fatalf("«Аня — это вы?»: %s", rec.Body.String())
+	}
+	if reissue {
+		request, err := dst.Blobs.LastPlaceRequest(t.Context(), kotID)
+		if err != nil || request == nil || request.ID != placeID || request.Status != "approved" {
+			t.Fatalf("place approval lost after new link: %+v %v", request, err)
+		}
 	}
 	if rec := doJSON(t, dst, http.MethodPost, "/api/v1/moves/incoming/"+card.ID+"/start", kot, map[string]any{
 		"new_member": map[string]any{"name": " "},
