@@ -9,14 +9,7 @@ const doc = new JSDOM(fs.readFileSync(new URL('docs/visual/screens.html', root),
 
 // Accepted frames stay in screens.html; this gallery contains only the review queue.
 // Keep section anchors stable when earlier groups leave the queue.
-const groups = [
-	{
-		id: 'review-2',
-		title: 'Перенос круга',
-		note: '3.15 — участник переходит на новый сервер. 3.15а — владелец видит «Завершить перенос круга».',
-		frames: ['e3-15', 'e3-15a']
-	}
-];
+const groups = [];
 
 const esc = (value) =>
 	String(value)
@@ -75,12 +68,14 @@ h2{font-size:20px;color:var(--ink);letter-spacing:0;text-transform:none;margin:4
 @media(max-width:450px){body{padding:12px}}
 </style>`;
 const symbols = [...doc.querySelectorAll('body > svg')].map((el) => el.outerHTML).join('\n');
+const complete = groups.length === 0 && pendingLetters.length === 0;
 const head = doc.head.innerHTML.replace(
 	/<title>[\s\S]*?<\/title>/,
-	'<title>Wynd · Осталось утвердить</title>'
+	`<title>Wynd · ${complete ? 'Всё утверждено' : 'Осталось утвердить'}</title>`
 );
-const complete = groups.length === 0 && pendingLetters.length === 0;
-const lettersSection = pendingLetters.length ? `<section id="letters"><h2>Письма</h2><p class="review-note">Тексты для отдельного просмотра.</p><div class="letters">${letters}</div></section>` : '';
+const lettersSection = pendingLetters.length
+	? `<section id="letters"><h2>Письма</h2><p class="review-note">Тексты для отдельного просмотра.</p><div class="letters">${letters}</div></section>`
+	: '';
 const html = `<!doctype html><html lang="ru"><head>${head}${style}</head><body>${symbols}<main>
 <header><h1>${complete ? 'Всё утверждено' : 'Осталось утвердить'}</h1><p>${complete ? 'Все кадры и тексты писем A18 приняты. Согласование завершено.' : 'Только непринятые кадры и тексты писем. Кнопки в макетах не выполняют действий, письма не отправляются.'}</p>
 <nav>${groups.map(({ id, title }) => `<a href="#${id}">${esc(title)}</a>`).join('')}${pendingLetters.length ? '<a href="#letters">Письма</a>' : ''}</nav></header>
