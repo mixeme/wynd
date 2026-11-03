@@ -210,6 +210,12 @@ func (s *Store) publishVerified(ctx context.Context, b Blob, part, sessionID str
 // migrateContents verifies legacy files before sharing them. Missing/corrupt old
 // files stay untouched and are reported; a restart resumes each unfinished group.
 func (s *Store) migrateContents(ctx context.Context) error {
+	// Older versions kept a deleted payment screenshot's original path in its
+	// audit row. Detach it before grouping hashes, or another account's surviving
+	// copy could accidentally resurrect that intentionally deleted logical file.
+	if err := s.detachDeletedScreenshots(ctx); err != nil {
+		return err
+	}
 	rows, err := s.db.QueryContext(ctx, `SELECT DISTINCT lower(sha256),size_bytes FROM blobs WHERE content_sha256 IS NULL AND storage_path<>'' AND status='complete'`)
 	if err != nil {
 		return err
@@ -245,6 +251,38 @@ func (s *Store) migrateContents(ctx context.Context) error {
 		return err
 	}
 	return CollectFiles(ctx, s.db, s.dir)
+}
+
+func (s *Store) detachDeletedScreenshots(ctx context.Context) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	rows, err := tx.QueryContext(ctx, `SELECT b.id FROM blobs b WHERE storage_path<>'' AND EXISTS(SELECT 1 FROM pay_requests WHERE blob_id=b.id AND blob_deleted=1) AND NOT `+referencedPredicate("b.id", true))
+	if err != nil {
+		return err
+	}
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err = rows.Scan(&id); err != nil {
+			rows.Close()
+			return err
+		}
+		ids = append(ids, id)
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return err
+	}
+	for _, id := range ids {
+		if err = DetachFile(ctx, tx, id); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 // A process can die after installing bytes but before committing the registry.
@@ -358,8 +396,19 @@ func DeleteUnreferenced(ctx context.Context, db *sql.DB, dir, id string) (bool, 
 	}
 	defer tx.Rollback()
 	needed, err := IsReferenced(ctx, tx, id)
-	if err != nil || needed {
+	if err != nil {
 		return false, err
+	}
+	if needed {
+		// A deleted payment audit row holds the logical row's FK, but must not
+		// hold bytes after its final post/avatar/snapshot reference disappears.
+		if err = DetachFile(ctx, tx, id); err != nil {
+			return false, err
+		}
+		if err = tx.Commit(); err != nil {
+			return false, err
+		}
+		return false, CollectFiles(ctx, db, dir)
 	}
 	if _, err = tx.ExecContext(ctx, `INSERT OR IGNORE INTO blob_file_gc SELECT storage_path FROM blobs WHERE id=? AND storage_path<>''`, id); err != nil {
 		return false, err

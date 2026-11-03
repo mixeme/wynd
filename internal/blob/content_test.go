@@ -269,6 +269,67 @@ func TestSharedContentDetachedPaymentCopyCannotBeReused(t *testing.T) {
 	}
 }
 
+func TestSharedContentMigrationDoesNotResurrectDeletedScreenshot(t *testing.T) {
+	bs, st, _ := sharedStore(t)
+	data := []byte("old payment screenshot")
+	other := sharedImport(t, bs, "bob", "other.png", "image/png", data)
+	if _, err := bs.DB().Exec(`INSERT INTO blobs(id,account_id,sha256,size_bytes,mime_type,storage_path,status,created_at) VALUES('old-shot','alice',?,?,'image/png','old/deleted-shot','complete','2026-11-01T00:00:00Z'); INSERT INTO pay_requests(id,account_id,blob_id,status,created_at,blob_deleted) VALUES('old-pay','alice','old-shot','rejected','2026-11-01T00:00:00Z',1)`, other.SHA256, other.SizeBytes); err != nil {
+		t.Fatal(err)
+	}
+	migrated, err := blob.New(st, bs.Dir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = migrated.OpenBlob(t.Context(), "old-shot"); !errors.Is(err, blob.ErrNotFound) {
+		t.Fatal("deleted payment file resurrected from another account", err)
+	}
+	if _, err = migrated.OpenBlob(t.Context(), other.ID); err != nil {
+		t.Fatal("other copy lost", err)
+	}
+}
+
+func TestSharedContentPaymentAuditStopsHoldingBytesAfterLastOtherReference(t *testing.T) {
+	bs, st, _ := sharedStore(t)
+	a := sharedImport(t, bs, "alice", "shot.png", "image/png", []byte("screenshot reused as photo"))
+	info, _ := bs.OpenBlob(t.Context(), a.ID)
+	if _, err := bs.DB().Exec(`INSERT INTO pay_requests(id,account_id,blob_id,status,created_at,blob_deleted) VALUES('pay','alice',?,'rejected','2026-11-01T00:00:00Z',1)`, a.ID); err != nil {
+		t.Fatal(err)
+	}
+	ch, err := chronicle.New(st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, _, _, err := ch.CreateCircle(t.Context(), chronicle.CreateCircleInput{Name: "circle", OwnerAccountID: "alice", OwnerName: "Alice"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := ch.CreatePost(t.Context(), chronicle.PostInput{CircleID: c.ID, AccountID: "alice", Body: "photo", EntryDate: "2026-11-03"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = ch.AttachMedia(t.Context(), p.ID, []chronicle.MediaInput{{BlobID: a.ID, Kind: chronicle.MediaPhoto}}); err != nil {
+		t.Fatal(err)
+	}
+	if err = bs.ReleaseBlobs(t.Context(), []string{a.ID}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = bs.OpenBlob(t.Context(), a.ID); err != nil {
+		t.Fatal("live photo removed", err)
+	}
+	if err = ch.DeletePostMedia(t.Context(), p.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err = bs.ReleaseBlobs(t.Context(), []string{a.ID}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = bs.OpenBlob(t.Context(), a.ID); !errors.Is(err, blob.ErrNotFound) {
+		t.Fatal("audit row kept bytes", err)
+	}
+	if _, err = os.Stat(info.Path); !os.IsNotExist(err) {
+		t.Fatal("unneeded screenshot not reclaimed", err)
+	}
+}
+
 // Circle quotas remain logical, even when the server stores only one file.
 func TestSharedContentCircleUsageIsLogical(t *testing.T) {
 	bs, st, _ := sharedStore(t)
@@ -363,6 +424,13 @@ func TestSharedContentDoesNotReuseCorruptPhysicalBytes(t *testing.T) {
 	_, err := bs.ImportBlob(t.Context(), blob.ImportInput{AccountID: "bob", SHA256: original.SHA256, SizeBytes: original.SizeBytes, MimeType: "text/plain"}, bytes.NewReader(data))
 	if !errors.Is(err, blob.ErrInvalid) {
 		t.Fatal("corrupt physical bytes reused", err)
+	}
+	if _, _, _, err = bs.BlobDigest(t.Context(), original.ID); !errors.Is(err, blob.ErrInvalid) {
+		t.Fatal("corrupt local copy proves possession", err)
+	}
+	alice, err := bs.OwnBlobsBySHA(t.Context(), "alice", []string{original.SHA256})
+	if err != nil || len(alice) != 0 {
+		t.Fatal("corrupt copy offered for reuse", alice, err)
 	}
 	own, err := bs.OwnBlobsBySHA(t.Context(), "bob", []string{original.SHA256})
 	if err != nil || len(own) != 0 {

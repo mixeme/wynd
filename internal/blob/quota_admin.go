@@ -354,7 +354,11 @@ func (s *Store) BlobDigest(ctx context.Context, id string) (sha string, size int
 		return "", 0, "", ErrNotFound
 	}
 	if err == nil {
-		_, err = s.OpenBlob(ctx, id)
+		var info ServeInfo
+		info, err = s.OpenBlob(ctx, id)
+		if err == nil {
+			err = verifyFile(info.Path, strings.ToLower(sha), size)
+		}
 	}
 	return sha, size, owner, err
 }
@@ -378,20 +382,30 @@ func (s *Store) OwnBlobsBySHA(ctx context.Context, accountID string, shas []stri
 		if err != nil {
 			return nil, err
 		}
+		type candidate struct{ sha, id string }
+		var candidates []candidate
 		for rows.Next() {
 			var sh, id string
 			if err := rows.Scan(&sh, &id); err != nil {
 				rows.Close()
 				return nil, err
 			}
-			// Only this account's usable logical copy is proof of possession.
-			if _, err := s.OpenBlob(ctx, id); err == nil {
-				out[sh] = id
-			}
+			candidates = append(candidates, candidate{sh, id})
 		}
 		rows.Close()
 		if err := rows.Err(); err != nil {
 			return nil, err
+		}
+		for _, c := range candidates {
+			if _, ok := out[c.sha]; ok {
+				continue
+			}
+			// Possession is account-scoped; usability is checked against actual
+			// bytes so revival cannot silently reuse a damaged local copy.
+			info, err := s.OpenBlob(ctx, c.id)
+			if err == nil && verifyFile(info.Path, strings.ToLower(c.sha), info.SizeBytes) == nil {
+				out[c.sha] = c.id
+			}
 		}
 	}
 	return out, nil
