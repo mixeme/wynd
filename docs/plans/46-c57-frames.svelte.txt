@@ -1,4 +1,4 @@
-<!-- C57 · 6.23а–б. Утверждено владельцем 2026-11-03 («Кадры принимаем»). Реализация C57 подготовлена, ожидает выпуска. -->
+<!-- C57 · 6.23а–б. Утверждено владельцем 2026-11-03 («Кадры принимаем»). Реализовано в Wynd 0.48.1. -->
 <script lang="ts">
  import FormLayout from '$lib/layouts/FormLayout.svelte';
  import Label from '$ui/forms/Label.svelte';
