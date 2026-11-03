@@ -1,0 +1,32 @@
+package installer
+
+import (
+ "context"
+ "io"
+ "net/http"
+ "strings"
+ "testing"
+ "time"
+)
+
+type reviewTransport func(*http.Request) (*http.Response, error)
+func (f reviewTransport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+// Server releases must not hide a Workshop update on the next release page.
+func TestReviewUpdateFollowsReleasePages(t *testing.T) {
+ old := SigningKey
+ SigningKey = "review"
+ t.Cleanup(func() { SigningKey = old })
+ client := &http.Client{Transport: reviewTransport(func(r *http.Request) (*http.Response, error) {
+  body := `[{"tag_name":"v0.48.1"}]`
+  h := make(http.Header)
+  h.Set("Link", `<https://api.github.com/repos/mixeme/wynd/releases?per_page=30&page=2>; rel="next"`)
+  if r.URL.Query().Get("page") == "2" {
+   h.Del("Link")
+   body = `[{"tag_name":"workshop-v0.3.1","published_at":"2026-10-01T00:00:00Z","assets":[{"name":"wynd-workshop.exe","browser_download_url":"https://example.invalid/a.exe"},{"name":"wynd-workshop.exe.sig","browser_download_url":"https://example.invalid/a.sig"}]}]`
+  }
+  return &http.Response{StatusCode: 200, Header: h, Body: io.NopCloser(strings.NewReader(body))}, nil
+ })}
+ up := CheckSelfUpdate(context.Background(), client, "0.3.0", time.Date(2026,11,4,0,0,0,0,time.UTC))
+ if !up.Available { t.Fatal("new signed Workshop release on next page is invisible") }
+}

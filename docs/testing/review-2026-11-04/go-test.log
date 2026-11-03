@@ -1,0 +1,31 @@
+ok  	gitea.mixdep.ru/mix/wynd/cmd/workshop-sign	21.149s
+ok  	gitea.mixdep.ru/mix/wynd/cmd/wynd	207.634s
+?   	gitea.mixdep.ru/mix/wynd/dev/decrypt-probe	[no test files]
+?   	gitea.mixdep.ru/mix/wynd/dev/envfile	[no test files]
+?   	gitea.mixdep.ru/mix/wynd/dev/fakessh	[no test files]
+?   	gitea.mixdep.ru/mix/wynd/dev/install-key	[no test files]
+?   	gitea.mixdep.ru/mix/wynd/dev/install-probe	[no test files]
+?   	gitea.mixdep.ru/mix/wynd/dev/probe	[no test files]
+?   	gitea.mixdep.ru/mix/wynd/dev/readstate	[no test files]
+?   	gitea.mixdep.ru/mix/wynd/dev/slowssh	[no test files]
+ok  	gitea.mixdep.ru/mix/wynd/internal/api	541.779s
+ok  	gitea.mixdep.ru/mix/wynd/internal/archive	43.993s
+ok  	gitea.mixdep.ru/mix/wynd/internal/auth	50.623s
+ok  	gitea.mixdep.ru/mix/wynd/internal/backup	83.707s
+ok  	gitea.mixdep.ru/mix/wynd/internal/blob	101.982s
+ok  	gitea.mixdep.ru/mix/wynd/internal/check	55.169s
+ok  	gitea.mixdep.ru/mix/wynd/internal/chronicle	51.725s
+ok  	gitea.mixdep.ru/mix/wynd/internal/config	0.524s
+ok  	gitea.mixdep.ru/mix/wynd/internal/installer	10.829s
+ok  	gitea.mixdep.ru/mix/wynd/internal/jobs	3.825s
+ok  	gitea.mixdep.ru/mix/wynd/internal/mail	12.873s
+?   	gitea.mixdep.ru/mix/wynd/internal/poster	[no test files]
+?   	gitea.mixdep.ru/mix/wynd/internal/proxy	[no test files]
+ok  	gitea.mixdep.ru/mix/wynd/internal/push	8.240s
+ok  	gitea.mixdep.ru/mix/wynd/internal/search	6.138s
+ok  	gitea.mixdep.ru/mix/wynd/internal/signing	67.001s
+ok  	gitea.mixdep.ru/mix/wynd/internal/store	20.930s
+?   	gitea.mixdep.ru/mix/wynd/internal/uid	[no test files]
+ok  	gitea.mixdep.ru/mix/wynd/internal/version	0.304s
+ok  	gitea.mixdep.ru/mix/wynd/internal/xtime	0.094s
+ok  	gitea.mixdep.ru/mix/wynd/web	0.464s

@@ -1,0 +1,50 @@
+package api
+
+import (
+	"archive/zip"
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"sync/atomic"
+	"testing"
+
+	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
+)
+
+// A participant-supplied move link must not reach a loopback service.
+func TestReviewMoveRejectsLoopback(t *testing.T) {
+	var hits atomic.Int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		t.Logf("reached local service: %s", r.URL.RequestURI())
+		http.Error(w, "not a Wynd server", http.StatusNotFound)
+	}))
+	defer ts.Close()
+	s := &Server{}
+	s.fetchMoveCard(context.Background(), ts.URL+"/private%3F/move/AAAA-BBBB-CCCC-DDDD")
+	if hits.Load() != 0 { t.Fatal("participant link reached a loopback service, with a caller-selected path") }
+}
+
+// A malformed source archive must return an error instead of panicking in the move worker.
+func TestReviewMoveRejectsShortBlobRow(t *testing.T) {
+	s := &Server{DataDir: t.TempDir()}
+	p := s.incomingPath("review")
+	if err := os.MkdirAll(filepath.Dir(p), 0700); err != nil { t.Fatal(err) }
+	f, err := os.Create(p)
+	if err != nil { t.Fatal(err) }
+	z := zip.NewWriter(f)
+	for name, value := range map[string]any{
+		"manifest.json": map[string]any{"format":"wynd-circle", "format_version":2, "schema_version":15, "tables":[]string{"blobs"}},
+		"data/blobs.json": map[string]any{"columns":[]string{"id","sha256","size_bytes"}, "rows":[][]any{{"short"}}},
+	} {
+		w, err := z.Create(name); if err != nil { t.Fatal(err) }
+		if err := json.NewEncoder(w).Encode(value); err != nil { t.Fatal(err) }
+	}
+	if err := z.Close(); err != nil { t.Fatal(err) }
+	if err := f.Close(); err != nil { t.Fatal(err) }
+	defer func() { if p := recover(); p != nil { t.Errorf("untrusted archive panicked: %v", p) } }()
+	if _, err := s.reviveMoveFile(context.Background(), &chronicle.IncomingMove{ID:"review", AccountID:"review"}); err == nil { t.Fatal("malformed archive accepted") }
+}

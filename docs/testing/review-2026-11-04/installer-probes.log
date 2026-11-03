@@ -1,0 +1,6 @@
+=== RUN   TestReviewUpdateFollowsReleasePages
+    zz_review_probe_test.go:31: new signed Workshop release on next page is invisible
+--- FAIL: TestReviewUpdateFollowsReleasePages (0.01s)
+FAIL
+FAIL	gitea.mixdep.ru/mix/wynd/internal/installer	0.362s
+FAIL

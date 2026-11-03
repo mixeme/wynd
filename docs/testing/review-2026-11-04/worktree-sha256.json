@@ -1,0 +1,110 @@
+[
+  {
+    "path": "docs/plans/58-review-and-tail-checks.plan.md",
+    "sha256": "F89F40AF12EEEF5C4EF8463F6456EAF7F4A23EA055BD79DA85AE6FB05E3DE3D6"
+  },
+  {
+    "path": "docs/plans/workshop-servers.plan.md",
+    "sha256": "6F88E3831770C3D2926E5C19EC7D93CF590187A25EC0B540F159111F166D8A8E"
+  },
+  {
+    "path": "docs/sessions/2026-11-03-workshop-handoff.md",
+    "sha256": "8614E873F1C6ABD6E631AF9AC50ABC0EC70F53EE9125D32FDE7DF0058C77D358"
+  },
+  {
+    "path": "docs/sessions/2026-11-04-handoff.md",
+    "sha256": "83A036E8C8139B4CF0C53A8F191E95912C13FF6E361798A9C206090D5251C62C"
+  },
+  {
+    "path": "docs/testing/phone-checks-2026-11-03.md",
+    "sha256": "3E1E711BF266A678D1150FCE679D21F3B4F005EF95A9E59D6C246402D8976ACA"
+  },
+  {
+    "path": "docs/testing/phone-checks-2026-11-04.md",
+    "sha256": "E9B9070897C0FB0DD1DDAFFF6B541862162BA8A63055C54F603B80F95E5A63FF"
+  },
+  {
+    "path": "docs/visual/check-workshop-servers.mjs",
+    "sha256": "DCD7C5C538F0DA270405EF0D603C15AF60AA3B188DE90DF99BA8A00F5FA8A11B"
+  },
+  {
+    "path": "docs/visual/workshop-servers.fragment.html",
+    "sha256": "14A018DF299320497A1C6EC3FDF42A687B6155AFF80BBFE4AD11EA64781139D0"
+  },
+  {
+    "path": "internal/signing/progress.go",
+    "sha256": "F452F489F98DFAC17F6B0BE65D125EE5A04E229AB427286F0E739755BFCD3861"
+  },
+  {
+    "path": "cmd/wynd-installer/frontend/src/App.svelte",
+    "sha256": "CCD55C4F5FB1A3DB961F13B4950B9B932EEE94997EBC486288C37AAECEFD4E3B"
+  },
+  {
+    "path": "cmd/wynd-installer/frontend/src/Archives.svelte",
+    "sha256": "99F63A32315AD72A4B0D17D26247D1C3B8D9DE12CF06AF3B7D446F403C08A344"
+  },
+  {
+    "path": "cmd/wynd-installer/frontend/src/gallery/scenes.ts",
+    "sha256": "C9D0192BF11116B82EF7E9F37637F1234D608F8A30CFAAA398AF98975654B560"
+  },
+  {
+    "path": "cmd/wynd-signer/frontend/src/App.svelte",
+    "sha256": "BF576618D6416F640CD7DD394A0E7B655919BF33D93974423A7BE60DDAAFFC23"
+  },
+  {
+    "path": "cmd/wynd-signer/frontend/src/api.ts",
+    "sha256": "80671604983067056436765E67D02CC25018792E770712EBB21D91F2AA1582F6"
+  },
+  {
+    "path": "cmd/wynd-signer/main.go",
+    "sha256": "00B99B0881FF1475A28094E46553B4079B97FF60E47967BF8A9071D54D04F13B"
+  },
+  {
+    "path": "docs/CHANGELOG.md",
+    "sha256": "C4C3629D8A4C9F7B05FC1A6EB9E92FFA50C7699D59454AAF01F7B6F0186DF73C"
+  },
+  {
+    "path": "docs/DEVELOPMENT.md",
+    "sha256": "6DB0F55D68679291759970A323B75F5462DDEB05B0D0A2DD22CF43E814D121E9"
+  },
+  {
+    "path": "docs/ROADMAP.md",
+    "sha256": "4EB06140A461C89F0C7AC6E853EDD78FBD2CD0229FFFC640A13293ED2CDF2210"
+  },
+  {
+    "path": "docs/plans/45-desktop-installer.plan.md",
+    "sha256": "37D424874AAAB8687B644D6E08A51622BE5C51C839DD0139B773D074512ABDBE"
+  },
+  {
+    "path": "docs/plans/46-open-questions-and-debt.plan.md",
+    "sha256": "51705B464DE55DA648D65D18FFD482243B00B5E6EBACE47C8F0C15BABA515E7F"
+  },
+  {
+    "path": "docs/reference/ui-components.md",
+    "sha256": "8BB12E68DAD347EB089C29397A364F992B9F357B73D017C9F439BC76C11EF0F6"
+  },
+  {
+    "path": "docs/testing/pending-device-checks.md",
+    "sha256": "691189C56BFF452F1C59338E977172FBC5FA283CB14B94802CF3640E42A147C4"
+  },
+  {
+    "path": "docs/visual/installer.html",
+    "sha256": "04E967854534BC8F5CADABC6F9A73421BBA755327515965C863DCF779E2C5367"
+  },
+  {
+    "path": "internal/signing/release.go",
+    "sha256": "46D34B6D43CC1290D90322F244C868E31D28F5F2A9F85EB59AF6AEF17A046630"
+  },
+  {
+    "path": "internal/signing/release_test.go",
+    "sha256": "D750F87E9ED9417FC8EB3832212BDB894D8FE1633FF0836A6E0F1F2E60D913E4"
+  },
+  {
+    "path": "web/src/lib/components/forms/Button.svelte",
+    "sha256": "57ED90DF0F7CD66E206A872365734648DD01982F2669C70CF13D878ACF462CA8"
+  },
+  {
+    "path": "web/src/lib/components/forms/Button.test.ts",
+    "sha256": "22AA886B9EBC94718340B5C7E15C7278697A229B774193CFA6E8B455624D1FB8"
+  }
+]

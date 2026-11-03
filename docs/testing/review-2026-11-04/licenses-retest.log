@@ -1,0 +1,15 @@
+
+> wynd-web@0.48.1 test
+> vitest run --reporter=dot src/test/licenses.test.ts
+
+
+ RUN  v3.2.7 D:/Local/Git/wynd/web
+
+go: writing stat cache: open C:\Users\Микс\go\pkg\mod\cache\download\gitea.mixdep.ru\mix\wynd\@v\v0.48.2-0.20261103211053-a6a1943a3a22.info889117651.tmp: Access is denied.
+go: writing stat cache: open C:\Users\Микс\go\pkg\mod\cache\download\gitea.mixdep.ru\mix\wynd\@v\v0.48.2-0.20261103211053-a6a1943a3a22.info865709375.tmp: Access is denied.
+··
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  00:32:01
+   Duration  19.74s (transform 363ms, setup 426ms, collect 82ms, tests 13.57s, environment 4.10s, prepare 375ms)

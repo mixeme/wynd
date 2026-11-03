@@ -1,0 +1,91 @@
+
+> wynd-web@0.48.1 test
+> vitest run --reporter=dot
+
+
+ RUN  v3.2.7 D:/Local/Git/wynd/web
+
+open C:\Users\Микс\AppData\Local\go-build\de\de93829ccd42b696722c2270dd84a3bb88226508bf95504e8bdcf8aea775340b-d: Access is denied.
+node:internal/errors:986
+  const err = new Error(message);
+              ^
+
+Error: Command failed: go list -deps -f {{if .Module}}{{.Module.Path}}|{{.Module.Version}}|{{.Module.Dir}}{{end}} ./cmd/wynd
+open C:\Users\Микс\AppData\Local\go-build\de\de93829ccd42b696722c2270dd84a3bb88226508bf95504e8bdcf8aea775340b-d: Access is denied.
+
+    at genericNodeError (node:internal/errors:986:15)
+    at wrappedFn (node:internal/errors:540:14)
+    at checkExecSyncError (node:child_process:942:11)
+    at execFileSync (node:child_process:978:15)
+    at collectGo (file:///D:/Local/Git/wynd/web/scripts/third-party-licenses.mjs:88:15)
+    at file:///D:/Local/Git/wynd/web/scripts/third-party-licenses.mjs:145:12
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 1,
+  signal: null,
+  output: [
+    null,
+    '',
+    'open C:\\Users\\Микс\\AppData\\Local\\go-build\\de\\de93829ccd42b696722c2270dd84a3bb88226508bf95504e8bdcf8aea775340b-d: Access is denied.\n'
+  ],
+  pid: 21844,
+  stdout: '',
+  stderr: 'open C:\\Users\\Микс\\AppData\\Local\\go-build\\de\\de93829ccd42b696722c2270dd84a3bb88226508bf95504e8bdcf8aea775340b-d: Access is denied.\n'
+}
+
+Node.js v24.20.0
+············x··················································································································································································································································································································································································································································
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/test/licenses.test.ts > third-party licenses > файл собран из текущих зависимостей
+Error: Command failed: C:\Program Files\nodejs\node.exe scripts/third-party-licenses.mjs
+open C:\Users\Микс\AppData\Local\go-build\de\de93829ccd42b696722c2270dd84a3bb88226508bf95504e8bdcf8aea775340b-d: Access is denied.
+node:internal/errors:986
+  const err = new Error(message);
+              ^
+
+Error: Command failed: go list -deps -f {{if .Module}}{{.Module.Path}}|{{.Module.Version}}|{{.Module.Dir}}{{end}} ./cmd/wynd
+open C:\Users\Микс\AppData\Local\go-build\de\de93829ccd42b696722c2270dd84a3bb88226508bf95504e8bdcf8aea775340b-d: Access is denied.
+
+    at genericNodeError (node:internal/errors:986:15)
+    at wrappedFn (node:internal/errors:540:14)
+    at checkExecSyncError (node:child_process:942:11)
+    at execFileSync (node:child_process:978:15)
+    at collectGo (file:///D:/Local/Git/wynd/web/scripts/third-party-licenses.mjs:88:15)
+    at file:///D:/Local/Git/wynd/web/scripts/third-party-licenses.mjs:145:12
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 1,
+  signal: null,
+  output: [
+    null,
+    '',
+    'open C:\\Users\\Микс\\AppData\\Local\\go-build\\de\\de93829ccd42b696722c2270dd84a3bb88226508bf95504e8bdcf8aea775340b-d: Access is denied.\n'
+  ],
+  pid: 21844,
+  stdout: '',
+  stderr: 'open C:\\Users\\Микс\\AppData\\Local\\go-build\\de\\de93829ccd42b696722c2270dd84a3bb88226508bf95504e8bdcf8aea775340b-d: Access is denied.\n'
+}
+
+Node.js v24.20.0
+
+ ❯ collectGo scripts/third-party-licenses.mjs:88:15
+ ❯ scripts/third-party-licenses.mjs:145:12
+ ❯ src/test/licenses.test.ts:19:4
+     17|   const out = path.join(os.tmpdir(), `wynd-licenses-${process.pid}.txt…
+     18|   try {
+     19|    execFileSync(process.execPath, ['scripts/third-party-licenses.mjs']…
+       |    ^
+     20|     cwd: webRoot,
+     21|     env: { ...process.env, WYND_LICENSES_OUT: out },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 94 passed (95)
+      Tests  1 failed | 446 passed (447)
+   Start at  00:23:54
+   Duration  379.41s (transform 63.70s, setup 49.12s, collect 110.03s, tests 51.38s, environment 607.95s, prepare 102.06s)

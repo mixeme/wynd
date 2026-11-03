@@ -1,0 +1,698 @@
+[
+  {
+    "route": "GET /api/v1/instance",
+    "guard": "s.handleInstance"
+  },
+  {
+    "route": "GET /api/v1/probe",
+    "guard": "s.handleProbe"
+  },
+  {
+    "route": "GET /api/v1/probe/sse",
+    "guard": "s.handleProbeSSE"
+  },
+  {
+    "route": "GET /api/v1/probe/stream",
+    "guard": "s.limitProbe(s.handleProbeStream)"
+  },
+  {
+    "route": "PUT /api/v1/probe/body",
+    "guard": "s.limitProbe(s.handleProbeBody)"
+  },
+  {
+    "route": "POST /api/v1/auth/register",
+    "guard": "public(s.handleRegister)"
+  },
+  {
+    "route": "POST /api/v1/auth/code",
+    "guard": "public(s.handleRequestCode)"
+  },
+  {
+    "route": "POST /api/v1/auth/verify",
+    "guard": "public(s.handleVerify)"
+  },
+  {
+    "route": "GET /api/v1/invites/{token}",
+    "guard": "public(s.handlePeekInvite)"
+  },
+  {
+    "route": "POST /api/v1/invites/{token}/accept",
+    "guard": "public(s.handleAcceptInvite)"
+  },
+  {
+    "route": "POST /api/v1/admin/bootstrap",
+    "guard": "public(s.handleBootstrap)"
+  },
+  {
+    "route": "POST /api/v1/admin/bootstrap/smtp-test",
+    "guard": "public(s.handleBootstrapSMTPTest)"
+  },
+  {
+    "route": "POST /api/v1/admin/login",
+    "guard": "public(s.handleAdminLogin)"
+  },
+  {
+    "route": "POST /api/v1/admin/logout",
+    "guard": "admin(s.handleAdminLogout)"
+  },
+  {
+    "route": "POST /api/v1/admin/invites",
+    "guard": "admin(s.handleCreateServerInvite)"
+  },
+  {
+    "route": "GET /api/v1/admin/invites",
+    "guard": "admin(s.handleAdminListInvites)"
+  },
+  {
+    "route": "DELETE /api/v1/admin/invites/{id}",
+    "guard": "admin(s.handleAdminRevokeInvite)"
+  },
+  {
+    "route": "GET /api/v1/admin/storage",
+    "guard": "admin(s.handleAdminStorage)"
+  },
+  {
+    "route": "PUT /api/v1/admin/storage/quota",
+    "guard": "admin(s.handleAdminSetStorageQuota)"
+  },
+  {
+    "route": "PUT /api/v1/admin/storage/default_quota",
+    "guard": "admin(s.handleAdminSetDefaultQuota)"
+  },
+  {
+    "route": "PUT /api/v1/admin/storage/archive_retention",
+    "guard": "admin(s.handleAdminSetArchiveRetention)"
+  },
+  {
+    "route": "POST /api/v1/admin/storage/archives/clear",
+    "guard": "admin(s.handleAdminClearArchives)"
+  },
+  {
+    "route": "PUT /api/v1/admin/circles/{id}/quota",
+    "guard": "admin(s.handleAdminSetCircleQuota)"
+  },
+  {
+    "route": "GET /api/v1/admin/compression",
+    "guard": "admin(s.handleAdminCompression)"
+  },
+  {
+    "route": "PUT /api/v1/admin/compression",
+    "guard": "admin(s.handleAdminSetCompression)"
+  },
+  {
+    "route": "GET /api/v1/admin/access",
+    "guard": "admin(s.handleAdminAccess)"
+  },
+  {
+    "route": "PUT /api/v1/admin/access",
+    "guard": "admin(s.handleAdminSetAccess)"
+  },
+  {
+    "route": "PUT /api/v1/admin/password",
+    "guard": "admin(s.handleAdminSetPassword)"
+  },
+  {
+    "route": "GET /api/v1/admin/accounts",
+    "guard": "admin(s.handleAdminAccounts)"
+  },
+  {
+    "route": "GET /api/v1/admin/accounts/{id}",
+    "guard": "admin(s.handleAdminGetAccount)"
+  },
+  {
+    "route": "DELETE /api/v1/admin/accounts/{id}",
+    "guard": "admin(s.handleAdminDeleteAccount)"
+  },
+  {
+    "route": "POST /api/v1/admin/accounts/{id}/block",
+    "guard": "admin(s.handleAdminBlockAccount)"
+  },
+  {
+    "route": "POST /api/v1/admin/accounts/{id}/unblock",
+    "guard": "admin(s.handleAdminUnblockAccount)"
+  },
+  {
+    "route": "PUT /api/v1/admin/accounts/{id}/email",
+    "guard": "admin(s.handleAdminSetAccountEmail)"
+  },
+  {
+    "route": "GET /api/v1/admin/smtp",
+    "guard": "admin(s.handleAdminSMTP)"
+  },
+  {
+    "route": "PUT /api/v1/admin/smtp",
+    "guard": "admin(s.handleAdminSetSMTP)"
+  },
+  {
+    "route": "POST /api/v1/admin/smtp/test",
+    "guard": "admin(s.handleAdminSMTPTest)"
+  },
+  {
+    "route": "GET /api/v1/admin/pending",
+    "guard": "admin(s.handleAdminPending)"
+  },
+  {
+    "route": "PUT /api/v1/admin/admin_email",
+    "guard": "admin(s.handleAdminSetAdminEmail)"
+  },
+  {
+    "route": "GET /api/v1/admin/push/vapid",
+    "guard": "admin(s.handleAdminVAPID)"
+  },
+  {
+    "route": "POST /api/v1/admin/push/test",
+    "guard": "admin(s.handleAdminPushTest)"
+  },
+  {
+    "route": "POST /api/v1/admin/check",
+    "guard": "admin(s.handleAdminCheck)"
+  },
+  {
+    "route": "GET /api/v1/admin/proxy/{kind}",
+    "guard": "admin(s.handleAdminProxySnippet)"
+  },
+  {
+    "route": "GET /api/v1/admin/quota_requests",
+    "guard": "admin(s.handleAdminQuotaRequests)"
+  },
+  {
+    "route": "POST /api/v1/admin/quota_requests/{id}/approve",
+    "guard": "admin(s.handleAdminApproveQuotaRequest)"
+  },
+  {
+    "route": "POST /api/v1/admin/quota_requests/{id}/reject",
+    "guard": "admin(s.handleAdminRejectQuotaRequest)"
+  },
+  {
+    "route": "GET /api/v1/admin/pay",
+    "guard": "admin(s.handleAdminPayHub)"
+  },
+  {
+    "route": "PUT /api/v1/admin/pay",
+    "guard": "admin(s.handleAdminSetPayRequisites)"
+  },
+  {
+    "route": "GET /api/v1/admin/pay/donate",
+    "guard": "admin(s.handleAdminPayDonate)"
+  },
+  {
+    "route": "PUT /api/v1/admin/pay/donate",
+    "guard": "admin(s.handleAdminSetPayDonate)"
+  },
+  {
+    "route": "GET /api/v1/admin/pay/subscription",
+    "guard": "admin(s.handleAdminPaySubscription)"
+  },
+  {
+    "route": "PUT /api/v1/admin/pay/subscription",
+    "guard": "admin(s.handleAdminSetPaySubscription)"
+  },
+  {
+    "route": "GET /api/v1/admin/pay/requests",
+    "guard": "admin(s.handleAdminPayRequests)"
+  },
+  {
+    "route": "GET /api/v1/admin/pay/requests/{id}",
+    "guard": "admin(s.handleAdminPayRequestByID)"
+  },
+  {
+    "route": "POST /api/v1/admin/pay/requests/{id}/approve",
+    "guard": "admin(s.handleAdminApprovePayRequest)"
+  },
+  {
+    "route": "POST /api/v1/admin/pay/requests/{id}/reject",
+    "guard": "admin(s.handleAdminRejectPayRequest)"
+  },
+  {
+    "route": "GET /api/v1/admin/pay/blob/{blob_id}",
+    "guard": "admin(s.handleAdminPayBlob)"
+  },
+  {
+    "route": "GET /api/v1/admin/pay/accounts",
+    "guard": "admin(s.handleAdminPayAccounts)"
+  },
+  {
+    "route": "GET /api/v1/admin/pay/accounts/{id}",
+    "guard": "admin(s.handleAdminPayAccountByID)"
+  },
+  {
+    "route": "PUT /api/v1/admin/pay/accounts/{id}",
+    "guard": "admin(s.handleAdminGrantPayAccount)"
+  },
+  {
+    "route": "POST /api/v1/invites/{token}/join",
+    "guard": "paid(s.handleJoinInvite)"
+  },
+  {
+    "route": "POST /api/v1/invites/{token}/claim",
+    "guard": "paid(s.handleClaimInvite)"
+  },
+  {
+    "route": "POST /api/v1/auth/logout",
+    "guard": "participant(s.handleLogout)"
+  },
+  {
+    "route": "POST /api/v1/auth/email",
+    "guard": "participant(s.handleRequestEmailChange)"
+  },
+  {
+    "route": "POST /api/v1/auth/email/verify",
+    "guard": "participant(s.handleConfirmEmailChange)"
+  },
+  {
+    "route": "GET /api/v1/auth/leave",
+    "guard": "participant(s.handleLeavePreview)"
+  },
+  {
+    "route": "POST /api/v1/auth/leave",
+    "guard": "participant(s.handleLeaveServer)"
+  },
+  {
+    "route": "GET /api/v1/sync",
+    "guard": "paid(s.handleSync)"
+  },
+  {
+    "route": "GET /api/v1/circles",
+    "guard": "paid(s.handleListCircles)"
+  },
+  {
+    "route": "POST /api/v1/circles",
+    "guard": "paid(s.handleCreateCircle)"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/invites",
+    "guard": "paid(s.handleCreateCircleInvite)"
+  },
+  {
+    "route": "GET /api/v1/circles/{circle_id}/invites",
+    "guard": "paid(s.handleListCircleInvites)"
+  },
+  {
+    "route": "DELETE /api/v1/circles/{circle_id}/invites/{id}",
+    "guard": "paid(s.handleRevokeCircleInvite)"
+  },
+  {
+    "route": "GET /api/v1/circles/{circle_id}/invite-candidates",
+    "guard": "paid(s.handleListInviteCandidates)"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/member-invites",
+    "guard": "paid(s.handleCreateMemberInvite)"
+  },
+  {
+    "route": "GET /api/v1/circles/{circle_id}/join-preview",
+    "guard": "paid(s.handleJoinPreview)"
+  },
+  {
+    "route": "GET /api/v1/circles/{circle_id}/split",
+    "guard": "paid(s.handleSplitPreview)"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/split",
+    "guard": "paid(s.handleSplit)"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/join",
+    "guard": "paid(s.handleJoinPendingCircle)"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/join/decline",
+    "guard": "paid(s.handleDeclinePendingJoin)"
+  },
+  {
+    "route": "GET /api/v1/pending-circle-joins",
+    "guard": "paid(s.handleListPendingCircleJoins)"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/leave",
+    "guard": "paid(s.handleLeaveCircle)"
+  },
+  {
+    "route": "PUT /api/v1/circles/{circle_id}/read_cursor",
+    "guard": "paid(s.handleSetReadCursor)"
+  },
+  {
+    "route": "PUT /api/v1/circles/{circle_id}/pin",
+    "guard": "paid(s.handlePinCircle)"
+  },
+  {
+    "route": "DELETE /api/v1/circles/{circle_id}/pin",
+    "guard": "paid(s.handleUnpinCircle)"
+  },
+  {
+    "route": "PUT /api/v1/circles/{circle_id}/group",
+    "guard": "paid(s.handlePutCircleGroup)"
+  },
+  {
+    "route": "DELETE /api/v1/circles/{circle_id}/group",
+    "guard": "paid(s.handleDeleteCircleGroup)"
+  },
+  {
+    "route": "POST /api/v1/groups/rename",
+    "guard": "paid(s.handleRenameGroup)"
+  },
+  {
+    "route": "POST /api/v1/groups/delete",
+    "guard": "paid(s.handleDropGroup)"
+  },
+  {
+    "route": "GET /api/v1/circles/{circle_id}/responses",
+    "guard": "paid(s.handleResponses)"
+  },
+  {
+    "route": "PUT /api/v1/circles/{circle_id}/responses/read",
+    "guard": "paid(s.handleSetResponsesRead)"
+  },
+  {
+    "route": "GET /api/v1/circles/{circle_id}/feed",
+    "guard": "paid(s.handleFeed)"
+  },
+  {
+    "route": "GET /api/v1/circles/{circle_id}/grid",
+    "guard": "paid(s.handleGrid)"
+  },
+  {
+    "route": "GET /api/v1/circles/{circle_id}/map",
+    "guard": "paid(s.handleMap)"
+  },
+  {
+    "route": "GET /api/v1/circles/{circle_id}/days",
+    "guard": "paid(s.handleDays)"
+  },
+  {
+    "route": "GET /api/v1/circles/{circle_id}/days/{date}",
+    "guard": "paid(s.handleDayDetail)"
+  },
+  {
+    "route": "GET /api/v1/circles/{circle_id}/search/authors",
+    "guard": "paid(s.handleCircleSearchAuthors)"
+  },
+  {
+    "route": "GET /api/v1/circles/{circle_id}/search",
+    "guard": "paid(s.handleCircleSearch)"
+  },
+  {
+    "route": "GET /api/v1/search",
+    "guard": "paid(s.handleGlobalSearch)"
+  },
+  {
+    "route": "POST /api/v1/uploads",
+    "guard": "participant(s.handleCreateUpload)"
+  },
+  {
+    "route": "HEAD /api/v1/uploads/{session_id}",
+    "guard": "participant(s.handleUploadStatus)"
+  },
+  {
+    "route": "PUT /api/v1/uploads/{session_id}",
+    "guard": "s.RequireParticipantStream(s.handleUploadChunk)"
+  },
+  {
+    "route": "POST /api/v1/uploads/{session_id}/complete",
+    "guard": "participant(s.handleCompleteUpload)"
+  },
+  {
+    "route": "GET /api/v1/blobs/{blob_id}",
+    "guard": "paid(s.handleServeBlob)"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/posts",
+    "guard": "paid(s.handleCreatePost)"
+  },
+  {
+    "route": "PATCH /api/v1/circles/{circle_id}/posts/{post_id}",
+    "guard": "paid(s.handleEditPost)"
+  },
+  {
+    "route": "DELETE /api/v1/circles/{circle_id}/posts/{post_id}",
+    "guard": "paid(s.handleDeletePost)"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/posts/{post_id}/comments",
+    "guard": "paid(s.handleCreateComment)"
+  },
+  {
+    "route": "PATCH /api/v1/circles/{circle_id}/posts/{post_id}/comments/{comment_id}",
+    "guard": "paid(s.handleEditComment)"
+  },
+  {
+    "route": "DELETE /api/v1/circles/{circle_id}/posts/{post_id}/comments/{comment_id}",
+    "guard": "paid(s.handleDeleteComment)"
+  },
+  {
+    "route": "PUT /api/v1/circles/{circle_id}/posts/{post_id}/reactions",
+    "guard": "paid(s.handleSetReaction)"
+  },
+  {
+    "route": "DELETE /api/v1/circles/{circle_id}/posts/{post_id}/reactions",
+    "guard": "paid(s.handleDeleteReaction)"
+  },
+  {
+    "route": "PUT /api/v1/circles/{circle_id}/days/{date}/title",
+    "guard": "paid(s.handleSetDayTitle)"
+  },
+  {
+    "route": "DELETE /api/v1/circles/{circle_id}/days/{date}/title",
+    "guard": "paid(s.handleClearDayTitle)"
+  },
+  {
+    "route": "PUT /api/v1/circles/{circle_id}/days/{date}/cover",
+    "guard": "paid(s.handleSetDayCover)"
+  },
+  {
+    "route": "DELETE /api/v1/circles/{circle_id}/days/{date}/cover",
+    "guard": "paid(s.handleClearDayCover)"
+  },
+  {
+    "route": "GET /api/v1/appearance",
+    "guard": "participant(s.handleGetAppearance)"
+  },
+  {
+    "route": "PUT /api/v1/appearance",
+    "guard": "participant(s.handleSetAppearance)"
+  },
+  {
+    "route": "GET /api/v1/notify_prefs",
+    "guard": "paid(s.handleGetAccountNotifyPrefs)"
+  },
+  {
+    "route": "PUT /api/v1/notify_prefs",
+    "guard": "paid(s.handleSetAccountNotifyPrefs)"
+  },
+  {
+    "route": "GET /api/v1/circles/{circle_id}/notify_prefs",
+    "guard": "paid(s.handleGetCircleNotifyPrefs)"
+  },
+  {
+    "route": "PUT /api/v1/circles/{circle_id}/notify_prefs",
+    "guard": "paid(s.handleSetCircleNotifyPrefs)"
+  },
+  {
+    "route": "POST /api/v1/push/subscribe",
+    "guard": "paid(s.handlePushSubscribe)"
+  },
+  {
+    "route": "DELETE /api/v1/push/subscribe",
+    "guard": "paid(s.handlePushUnsubscribe)"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/quota_requests",
+    "guard": "paid(s.handleCreateQuotaRequest)"
+  },
+  {
+    "route": "GET /api/v1/pay/status",
+    "guard": "participant(s.handlePayStatus)"
+  },
+  {
+    "route": "POST /api/v1/pay/requests",
+    "guard": "participant(s.handleCreatePayRequest)"
+  },
+  {
+    "route": "POST /api/v1/pay/banner/dismiss",
+    "guard": "participant(s.handleDismissPayBanner)"
+  },
+  {
+    "route": "GET /api/v1/circles/{circle_id}",
+    "guard": "paid(s.handleCircleDetail)"
+  },
+  {
+    "route": "PATCH /api/v1/circles/{circle_id}",
+    "guard": "paid(s.handlePatchCircle)"
+  },
+  {
+    "route": "DELETE /api/v1/circles/{circle_id}",
+    "guard": "paid(s.handleDeleteCircle)"
+  },
+  {
+    "route": "GET /api/v1/circles/{circle_id}/members",
+    "guard": "paid(s.handleCircleMembers)"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/members/invite_waiting",
+    "guard": "paid(s.handleInviteWaiting)"
+  },
+  {
+    "route": "PUT /api/v1/circles/{circle_id}/identity",
+    "guard": "paid(s.handleUpdateIdentity)"
+  },
+  {
+    "route": "PUT /api/v1/circles/{circle_id}/place",
+    "guard": "paid(s.handleSetSharePlace)"
+  },
+  {
+    "route": "PUT /api/v1/circles/{circle_id}/members/{account_id}",
+    "guard": "paid(s.handleSetMember)"
+  },
+  {
+    "route": "GET /api/v1/circles/{circle_id}/identity",
+    "guard": "paid(s.handleIdentityHistory)"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/transfer",
+    "guard": "paid(s.handleTransferOwnership)"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/exclude",
+    "guard": "paid(s.handleExcludeMember)"
+  },
+  {
+    "route": "GET /api/v1/circles/{circle_id}/quota",
+    "guard": "paid(s.handleCircleQuota)"
+  },
+  {
+    "route": "GET /api/v1/circles/{circle_id}/full_archive",
+    "guard": "paid(s.handleFullArchive)"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/full_archive",
+    "guard": "paid(s.handleStartFullArchive)"
+  },
+  {
+    "route": "DELETE /api/v1/circles/{circle_id}/full_archive",
+    "guard": "paid(s.handleRemoveFullArchive)"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/full_archive/link",
+    "guard": "paid(s.handleFullArchiveLink)"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/full_archive/stream_link",
+    "guard": "paid(s.handleFullArchiveStreamLink)"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/full_archive/revive",
+    "guard": "paid(s.handleReviveFrozenCircle)"
+  },
+  {
+    "route": "POST /api/v1/revive/blobs",
+    "guard": "paid(s.handleReviveBlobs)"
+  },
+  {
+    "route": "GET /api/v1/revive/room",
+    "guard": "paid(s.handleReviveRoom)"
+  },
+  {
+    "route": "POST /api/v1/revive/invitable",
+    "guard": "paid(s.handleReviveInvitable)"
+  },
+  {
+    "route": "POST /api/v1/revive/place_request",
+    "guard": "paid(s.handleRevivePlaceRequest)"
+  },
+  {
+    "route": "POST /api/v1/revive",
+    "guard": "s.withReviveBody(s.handleReviveCircle)"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/full_archive/remove_circle",
+    "guard": "paid(s.handleRemoveFrozenCircle)"
+  },
+  {
+    "route": "GET /api/v1/full_archive/{token}",
+    "guard": "s.handleFullArchiveByLink"
+  },
+  {
+    "route": "GET /api/v1/circles/{circle_id}/move",
+    "guard": "paid(s.handleCircleMove)"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/move",
+    "guard": "paid(s.handleStartMove)"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/move/reissue",
+    "guard": "paid(s.handleReissueMove)"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/move/cancel",
+    "guard": "paid(s.handleCancelMove)"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/move/complete",
+    "guard": "paid(s.handleCompleteMove)"
+  },
+  {
+    "route": "GET /api/v1/move",
+    "guard": "s.handleMoveCard"
+  },
+  {
+    "route": "POST /api/v1/move/claim",
+    "guard": "s.handleMoveClaim"
+  },
+  {
+    "route": "GET /api/v1/move/archive",
+    "guard": "s.handleMoveArchive"
+  },
+  {
+    "route": "POST /api/v1/move/accepted",
+    "guard": "s.handleMoveAccepted"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/arrival/seen",
+    "guard": "paid(s.handleSeeArrival)"
+  },
+  {
+    "route": "GET /api/v1/moves/incoming",
+    "guard": "paid(s.handleIncomingMove)"
+  },
+  {
+    "route": "POST /api/v1/moves/incoming",
+    "guard": "paid(s.handlePutIncomingMove)"
+  },
+  {
+    "route": "POST /api/v1/moves/incoming/{id}/start",
+    "guard": "paid(s.handleStartIncomingMove)"
+  },
+  {
+    "route": "DELETE /api/v1/revive/place_requests/{id}",
+    "guard": "paid(s.handleWithdrawPlaceRequest)"
+  },
+  {
+    "route": "GET /api/v1/full_archive_stream/{token}",
+    "guard": "s.handleFullArchiveStream"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/archive",
+    "guard": "paid(s.handleStartArchiveCycle)"
+  },
+  {
+    "route": "PUT /api/v1/circles/{circle_id}/archive/cutoff",
+    "guard": "paid(s.handleMoveCutoff)"
+  },
+  {
+    "route": "PUT /api/v1/circles/{circle_id}/archive/deadline",
+    "guard": "paid(s.handleMoveDeadline)"
+  },
+  {
+    "route": "GET /api/v1/circles/{circle_id}/archive/download",
+    "guard": "paid(s.handleArchiveDownload)"
+  },
+  {
+    "route": "POST /api/v1/circles/{circle_id}/archive/link",
+    "guard": "paid(s.handleArchiveLink)"
+  },
+  {
+    "route": "GET /api/v1/archive/{token}",
+    "guard": "s.handleArchiveByLink"
+  }
+]

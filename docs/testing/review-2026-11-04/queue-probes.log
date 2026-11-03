@@ -1,0 +1,66 @@
+
+> wynd-web@0.48.1 test
+> vitest run src/lib/queue/review-2026-11-04.test.ts
+
+
+ RUN  v3.2.7 D:/Local/Git/wynd/web
+
+ ❯ src/lib/queue/review-2026-11-04.test.ts (1 test | 1 failed) 609ms
+   × recreates an expired upload session instead of failing the queued post 606ms
+     → expected { type: 'post', …(12) } to be undefined
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/queue/review-2026-11-04.test.ts > recreates an expired upload session instead of failing the queued post
+AssertionError: expected { type: 'post', …(12) } to be undefined
+
+- Expected:
+undefined
+
++ Received:
+{
+  "attempts": 1,
+  "circle_id": "review",
+  "client_id": "b20004ff-2e82-409b-9de0-44d93bf03fed",
+  "created_at": 1793741651052,
+  "error": "not_found",
+  "files": [
+    {
+      "data": ArrayBuffer [],
+      "name": "x.bin",
+      "size": 4,
+      "type": "application/octet-stream",
+    },
+  ],
+  "id": 1,
+  "origin": "https://review.test",
+  "payload": {
+    "body": "offline original",
+    "entry_date": "2026-11-04",
+  },
+  "state": "failed",
+  "type": "post",
+  "uploading_at": 1793741651074,
+  "uploads": [
+    {
+      "file_index": 0,
+      "session_id": "expired",
+    },
+  ],
+}
+
+ ❯ src/lib/queue/review-2026-11-04.test.ts:32:37
+     30|   vi.stubGlobal('navigator', { onLine: true });
+     31|   await queue.drainQueue();
+     32|   expect(await db.getQueueItem(id)).toBeUndefined();
+       |                                     ^
+     33| });
+     34|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  00:34:03
+   Duration  7.44s (transform 835ms, setup 362ms, collect 117ms, tests 609ms, environment 4.68s, prepare 391ms)

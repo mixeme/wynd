@@ -1,0 +1,284 @@
+=== Symbol Results ===
+
+Vulnerability #1: GO-2026-6809
+    Distrust compromised intermediate certificates in crypto/x509
+  More info: https://pkg.go.dev/vuln/GO-2026-6809
+  Standard library
+    Found in: crypto/x509@go1.27
+    Fixed in: crypto/x509@go1.27.3
+    Example traces found:
+      #1: internal/check/cert.go:86:28: check.isRoot calls x509.Certificate.Verify
+
+Vulnerability #2: GO-2026-6617
+    HTTP/2 server crash due to HPACK encoder race in net/http
+  More info: https://pkg.go.dev/vuln/GO-2026-6617
+  Standard library
+    Found in: net/http/internal/http2@go1.27
+    Fixed in: net/http/internal/http2@go1.27.2
+    Example traces found:
+      #1: internal/installer/install.go:1199:2: installer.untrustedProbe calls http.Transport.CloseIdleConnections, which eventually calls http2.NetHTTPClientConn.Close
+      #2: internal/installer/install.go:1199:2: installer.untrustedProbe calls http.Transport.CloseIdleConnections, which eventually calls http2.NetHTTPClientConn.Close
+      #3: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.NetHTTPClientConn.RoundTrip
+      #4: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.NetHTTPClientConn.RoundTrip
+      #5: cmd/wynd/main.go:230:24: wynd.runServer calls http.Server.Shutdown, which calls http2.Server.GracefulShutdown
+      #6: cmd/wynd/main.go:230:24: wynd.runServer calls http.Server.Shutdown, which calls http2.Server.GracefulShutdown
+      #7: cmd/wynd/main.go:213:31: wynd.runServer calls http.Server.ListenAndServe, which eventually calls http2.Server.ServeConn
+      #8: cmd/wynd/main.go:213:31: wynd.runServer calls http.Server.ListenAndServe, which eventually calls http2.Server.ServeConn
+      #9: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.AddConn
+      #10: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.AddConn
+      #11: internal/installer/install.go:1199:2: installer.untrustedProbe calls http.Transport.CloseIdleConnections, which calls http2.Transport.CloseIdleConnections
+      #12: internal/installer/install.go:1199:2: installer.untrustedProbe calls http.Transport.CloseIdleConnections, which calls http2.Transport.CloseIdleConnections
+      #13: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.NewClientConn
+      #14: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.NewClientConn
+      #15: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.RoundTrip
+      #16: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.RoundTrip
+      #17: internal/archive/assemble.go:476:20: archive.ReadableFromFull calls zip.Writer.Close, which eventually calls http2.bufferedWriterTimeoutWriter.Write
+      #18: internal/archive/assemble.go:476:20: archive.ReadableFromFull calls zip.Writer.Close, which eventually calls http2.bufferedWriterTimeoutWriter.Write
+      #19: internal/archive/assemble.go:476:20: archive.ReadableFromFull calls zip.Writer.Close, which eventually calls http2.chunkWriter.Write
+      #20: internal/archive/assemble.go:476:20: archive.ReadableFromFull calls zip.Writer.Close, which eventually calls http2.chunkWriter.Write
+      #21: internal/installer/selfupdate.go:79:2: installer.CheckSelfUpdate calls http2.gzipReader.Close
+      #22: internal/installer/selfupdate.go:79:2: installer.CheckSelfUpdate calls http2.gzipReader.Close
+      #23: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http2.gzipReader.Read
+      #24: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http2.gzipReader.Read
+      #25: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.requestBody.Close
+      #26: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.requestBody.Close
+      #27: internal/api/probe.go:96:15: api.Server.handleProbeSSE calls http.http2ResponseWriter.Flush, which calls http2.responseWriter.FlushError
+      #28: internal/api/probe.go:96:15: api.Server.handleProbeSSE calls http.http2ResponseWriter.Flush, which calls http2.responseWriter.FlushError
+      #29: internal/api/fullarchive.go:868:34: api.rangeRecorder.Write calls http2.responseWriter.Write
+      #30: internal/api/fullarchive.go:868:34: api.rangeRecorder.Write calls http2.responseWriter.Write
+      #31: internal/api/fullarchive.go:861:30: api.rangeRecorder.WriteHeader calls http2.responseWriter.WriteHeader
+      #32: internal/api/fullarchive.go:861:30: api.rangeRecorder.WriteHeader calls http2.responseWriter.WriteHeader
+      #33: internal/archive/encrypt.go:105:29: archive.Encrypt calls io.WriteString, which calls http2.responseWriter.WriteString
+      #34: internal/archive/encrypt.go:105:29: archive.Encrypt calls io.WriteString, which calls http2.responseWriter.WriteString
+      #35: internal/archive/assemble.go:476:20: archive.ReadableFromFull calls zip.Writer.Close, which eventually calls http2.stickyErrWriter.Write
+      #36: internal/archive/assemble.go:476:20: archive.ReadableFromFull calls zip.Writer.Close, which eventually calls http2.stickyErrWriter.Write
+      #37: internal/installer/selfupdate.go:79:2: installer.CheckSelfUpdate calls http2.transportResponseBody.Close
+      #38: internal/installer/selfupdate.go:79:2: installer.CheckSelfUpdate calls http2.transportResponseBody.Close
+      #39: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http2.transportResponseBody.Read
+      #40: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http2.transportResponseBody.Read
+
+Vulnerability #3: GO-2026-6613
+    HTTP/1 server connection desynchronization after 2xx CONNECT response in
+    net/http
+  More info: https://pkg.go.dev/vuln/GO-2026-6613
+  Standard library
+    Found in: net/http@go1.27
+    Fixed in: net/http@go1.27.2
+    Example traces found:
+      #1: internal/poster/poster.go:64:28: poster.New calls exec.LookPath, which eventually calls http.CanonicalHeaderKey
+      #2: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do
+      #3: internal/check/redirect.go:53:55: check.probeHTTPRedirectAt calls http.Header.Get
+      #4: internal/api/server.go:294:16: api.Server.ServeHTTP calls http.Header.Set
+      #5: internal/push/push.go:325:50: push.Service.deliver calls webpush.SendNotificationWithContext, which calls http.NewRequest
+      #6: internal/installer/selfupdate.go:70:40: installer.CheckSelfUpdate calls http.NewRequestWithContext
+      #7: cmd/wynd/main.go:143:12: wynd.runServer calls http.ServeMux.Handle
+      #8: internal/api/server.go:99:18: api.Server.routes calls http.ServeMux.HandleFunc
+      #9: internal/api/server.go:295:17: api.Server.ServeHTTP calls http.ServeMux.ServeHTTP
+      #10: cmd/wynd/main.go:213:31: wynd.runServer calls http.Server.ListenAndServe
+      #11: cmd/wynd/main.go:230:24: wynd.runServer calls http.Server.Shutdown
+      #12: internal/installer/install.go:1197:60: installer.untrustedProbe calls http.Transport.Clone
+      #13: internal/installer/install.go:1199:2: installer.untrustedProbe calls http.Transport.CloseIdleConnections
+      #14: internal/installer/selfupdate.go:79:2: installer.CheckSelfUpdate calls http.body.Close
+      #15: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http.body.Read
+      #16: internal/installer/selfupdate.go:79:2: installer.CheckSelfUpdate calls http.bodyEOFSignal.Close
+      #17: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http.bodyEOFSignal.Read
+      #18: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http.bodyLocked.Read
+      #19: internal/archive/encrypt.go:105:29: archive.Encrypt calls io.WriteString, which calls http.bufioFlushWriter.Write
+      #20: internal/installer/selfupdate.go:79:2: installer.CheckSelfUpdate calls http.cancelTimerBody.Close
+      #21: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http.cancelTimerBody.Read
+      #22: internal/archive/assemble.go:476:20: archive.ReadableFromFull calls zip.Writer.Close, which eventually calls http.checkConnErrorWriter.Write
+      #23: internal/archive/assemble.go:476:20: archive.ReadableFromFull calls zip.Writer.Close, which eventually calls http.chunkWriter.Write
+      #24: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http.connReader.Read
+      #25: internal/installer/selfupdate.go:79:2: installer.CheckSelfUpdate calls http2.transportResponseBody.Close, which eventually calls http.expectContinueReader.Close
+      #26: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http.expectContinueReader.Read
+      #27: internal/installer/selfupdate.go:79:2: installer.CheckSelfUpdate calls http.gzipReader.Close
+      #28: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http.gzipReader.Read
+      #29: internal/archive/assemble.go:498:26: archive.isZip calls io.ReadFull, which eventually calls http.loggingConn.Read
+      #30: internal/auth/auth.go:57:26: auth.LogCodes.SendCode calls fmt.Fprintf, which calls http.loggingConn.Write
+      #31: internal/installer/selfupdate.go:79:2: installer.CheckSelfUpdate calls http2.transportResponseBody.Close, which eventually calls http.maxBytesReader.Close
+      #32: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http.maxBytesReader.Read
+      #33: internal/chronicle/archive.go:55:29: chronicle.ValidTimeZone calls time.LoadLocation, which eventually calls http.onceCloseListener.Close
+      #34: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http.persistConn.Read
+      #35: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http.persistConnWriter.ReadFrom
+      #36: internal/archive/assemble.go:476:20: archive.ReadableFromFull calls zip.Writer.Close, which eventually calls http.persistConnWriter.Write
+      #37: internal/installer/selfupdate.go:79:2: installer.CheckSelfUpdate calls http2.transportResponseBody.Close, which eventually calls http.readTrackingBody.Close
+      #38: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http.readTrackingBody.Read
+      #39: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http.readWriteCloserBody.Read
+      #40: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http.response.ReadFrom
+      #41: internal/api/fullarchive.go:868:34: api.rangeRecorder.Write calls http.response.Write
+      #42: internal/api/fullarchive.go:861:30: api.rangeRecorder.WriteHeader calls http.response.WriteHeader
+      #43: internal/archive/encrypt.go:105:29: archive.Encrypt calls io.WriteString, which calls http.response.WriteString
+      #44: internal/signing/release.go:221:125: signing.GitHub.FetchWithProgress calls http.transportReadFromServerError.Error
+
+Vulnerability #4: GO-2026-6612
+    Double flow control refund on HTTP/2 server streams in net/http
+  More info: https://pkg.go.dev/vuln/GO-2026-6612
+  Standard library
+    Found in: net/http/internal/http2@go1.27
+    Fixed in: net/http/internal/http2@go1.27.2
+    Example traces found:
+      #1: cmd/wynd/main.go:213:31: wynd.runServer calls http.Server.ListenAndServe, which eventually calls http2.Server.ServeConn
+      #2: cmd/wynd/main.go:213:31: wynd.runServer calls http.Server.ListenAndServe, which eventually calls http2.Server.ServeConn
+      #3: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.requestBody.Close
+      #4: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.requestBody.Close
+      #5: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http2.requestBody.Read
+      #6: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http2.requestBody.Read
+
+Vulnerability #5: GO-2026-6611
+    Excessive CPU consumption from repeated initial window changes in net/http
+  More info: https://pkg.go.dev/vuln/GO-2026-6611
+  Standard library
+    Found in: net/http/internal/http2@go1.27
+    Fixed in: net/http/internal/http2@go1.27.2
+    Example traces found:
+      #1: internal/installer/install.go:1199:2: installer.untrustedProbe calls http.Transport.CloseIdleConnections, which eventually calls http2.NetHTTPClientConn.Close
+      #2: internal/installer/install.go:1199:2: installer.untrustedProbe calls http.Transport.CloseIdleConnections, which eventually calls http2.NetHTTPClientConn.Close
+      #3: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.NetHTTPClientConn.RoundTrip
+      #4: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.NetHTTPClientConn.RoundTrip
+      #5: cmd/wynd/main.go:230:24: wynd.runServer calls http.Server.Shutdown, which calls http2.Server.GracefulShutdown
+      #6: cmd/wynd/main.go:230:24: wynd.runServer calls http.Server.Shutdown, which calls http2.Server.GracefulShutdown
+      #7: cmd/wynd/main.go:213:31: wynd.runServer calls http.Server.ListenAndServe, which eventually calls http2.Server.ServeConn
+      #8: cmd/wynd/main.go:213:31: wynd.runServer calls http.Server.ListenAndServe, which eventually calls http2.Server.ServeConn
+      #9: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.AddConn
+      #10: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.AddConn
+      #11: internal/installer/install.go:1199:2: installer.untrustedProbe calls http.Transport.CloseIdleConnections, which calls http2.Transport.CloseIdleConnections
+      #12: internal/installer/install.go:1199:2: installer.untrustedProbe calls http.Transport.CloseIdleConnections, which calls http2.Transport.CloseIdleConnections
+      #13: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.NewClientConn
+      #14: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.NewClientConn
+      #15: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.RoundTrip
+      #16: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.RoundTrip
+      #17: internal/archive/assemble.go:476:20: archive.ReadableFromFull calls zip.Writer.Close, which eventually calls http2.bufferedWriterTimeoutWriter.Write
+      #18: internal/archive/assemble.go:476:20: archive.ReadableFromFull calls zip.Writer.Close, which eventually calls http2.bufferedWriterTimeoutWriter.Write
+      #19: internal/archive/assemble.go:476:20: archive.ReadableFromFull calls zip.Writer.Close, which eventually calls http2.chunkWriter.Write
+      #20: internal/archive/assemble.go:476:20: archive.ReadableFromFull calls zip.Writer.Close, which eventually calls http2.chunkWriter.Write
+      #21: internal/installer/selfupdate.go:79:2: installer.CheckSelfUpdate calls http2.gzipReader.Close
+      #22: internal/installer/selfupdate.go:79:2: installer.CheckSelfUpdate calls http2.gzipReader.Close
+      #23: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http2.gzipReader.Read
+      #24: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http2.gzipReader.Read
+      #25: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.requestBody.Close
+      #26: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.requestBody.Close
+      #27: internal/api/probe.go:96:15: api.Server.handleProbeSSE calls http.http2ResponseWriter.Flush, which calls http2.responseWriter.FlushError
+      #28: internal/api/probe.go:96:15: api.Server.handleProbeSSE calls http.http2ResponseWriter.Flush, which calls http2.responseWriter.FlushError
+      #29: internal/api/fullarchive.go:868:34: api.rangeRecorder.Write calls http2.responseWriter.Write
+      #30: internal/api/fullarchive.go:868:34: api.rangeRecorder.Write calls http2.responseWriter.Write
+      #31: internal/api/fullarchive.go:861:30: api.rangeRecorder.WriteHeader calls http2.responseWriter.WriteHeader
+      #32: internal/api/fullarchive.go:861:30: api.rangeRecorder.WriteHeader calls http2.responseWriter.WriteHeader
+      #33: internal/archive/encrypt.go:105:29: archive.Encrypt calls io.WriteString, which calls http2.responseWriter.WriteString
+      #34: internal/archive/encrypt.go:105:29: archive.Encrypt calls io.WriteString, which calls http2.responseWriter.WriteString
+      #35: internal/archive/assemble.go:476:20: archive.ReadableFromFull calls zip.Writer.Close, which eventually calls http2.stickyErrWriter.Write
+      #36: internal/archive/assemble.go:476:20: archive.ReadableFromFull calls zip.Writer.Close, which eventually calls http2.stickyErrWriter.Write
+      #37: internal/installer/selfupdate.go:79:2: installer.CheckSelfUpdate calls http2.transportResponseBody.Close
+      #38: internal/installer/selfupdate.go:79:2: installer.CheckSelfUpdate calls http2.transportResponseBody.Close
+      #39: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http2.transportResponseBody.Read
+      #40: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http2.transportResponseBody.Read
+
+Vulnerability #6: GO-2026-6610
+    HTTP/2 transport accepts malformed framing-related headers in net/http
+  More info: https://pkg.go.dev/vuln/GO-2026-6610
+  Standard library
+    Found in: net/http/internal/http2@go1.27
+    Fixed in: net/http/internal/http2@go1.27.2
+    Example traces found:
+      #1: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.AddConn
+      #2: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.AddConn
+      #3: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.NewClientConn
+      #4: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.NewClientConn
+      #5: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.RoundTrip
+      #6: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.RoundTrip
+
+Vulnerability #7: GO-2026-6609
+    Lack of limit on size of parsed Range headers in net/http
+  More info: https://pkg.go.dev/vuln/GO-2026-6609
+  Standard library
+    Found in: net/http@go1.27
+    Fixed in: net/http@go1.27.2
+    Example traces found:
+      #1: internal/api/fullarchive.go:559:19: api.Server.handleFullArchiveByLink calls http.ServeContent
+      #2: web/serve.go:37:20: web.SPA calls http.fileHandler.ServeHTTP
+
+Vulnerability #8: GO-2026-6608
+    Memory limit bypass when parsing MIME headers in net/textproto,
+    mime/multipart
+  More info: https://pkg.go.dev/vuln/GO-2026-6608
+  Standard library
+    Found in: net/textproto@go1.27
+    Fixed in: net/textproto@go1.27.2
+    Example traces found:
+      #1: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls textproto.Reader.ReadMIMEHeader
+
+Vulnerability #9: GO-2026-6607
+    Reject malformed ECH outer extension references in crypto/tls
+  More info: https://pkg.go.dev/vuln/GO-2026-6607
+  Standard library
+    Found in: crypto/tls@go1.27
+    Fixed in: crypto/tls@go1.27.2
+    Example traces found:
+      #1: internal/mail/mail.go:310:37: mail.Service.smtpClient calls tls.Conn.HandshakeContext
+      #2: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls tls.Conn.Read
+      #3: internal/archive/encrypt.go:105:29: archive.Encrypt calls io.WriteString, which calls tls.Conn.Write
+      #4: internal/check/cert.go:53:33: check.ProbeTLS calls tls.Dialer.DialContext
+
+Vulnerability #10: GO-2026-6605
+    HTTP/1 client connection desynchronization after CONNECT rejection in
+    net/http
+  More info: https://pkg.go.dev/vuln/GO-2026-6605
+  Standard library
+    Found in: net/http@go1.27
+    Fixed in: net/http@go1.27.2
+    Example traces found:
+      #1: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do
+      #2: internal/installer/install.go:1199:2: installer.untrustedProbe calls http.Transport.CloseIdleConnections
+
+Vulnerability #11: GO-2026-6603
+    HTTP/2 server memory exhaustion due to Trailer headers in net/http
+  More info: https://pkg.go.dev/vuln/GO-2026-6603
+  Standard library
+    Found in: net/http/internal/http2@go1.27
+    Fixed in: net/http/internal/http2@go1.27.2
+    Example traces found:
+      #1: internal/installer/install.go:1199:2: installer.untrustedProbe calls http.Transport.CloseIdleConnections, which eventually calls http2.NetHTTPClientConn.Close
+      #2: internal/installer/install.go:1199:2: installer.untrustedProbe calls http.Transport.CloseIdleConnections, which eventually calls http2.NetHTTPClientConn.Close
+      #3: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.NetHTTPClientConn.RoundTrip
+      #4: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.NetHTTPClientConn.RoundTrip
+      #5: cmd/wynd/main.go:230:24: wynd.runServer calls http.Server.Shutdown, which calls http2.Server.GracefulShutdown
+      #6: cmd/wynd/main.go:230:24: wynd.runServer calls http.Server.Shutdown, which calls http2.Server.GracefulShutdown
+      #7: cmd/wynd/main.go:213:31: wynd.runServer calls http.Server.ListenAndServe, which eventually calls http2.Server.ServeConn
+      #8: cmd/wynd/main.go:213:31: wynd.runServer calls http.Server.ListenAndServe, which eventually calls http2.Server.ServeConn
+      #9: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.AddConn
+      #10: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.AddConn
+      #11: internal/installer/install.go:1199:2: installer.untrustedProbe calls http.Transport.CloseIdleConnections, which calls http2.Transport.CloseIdleConnections
+      #12: internal/installer/install.go:1199:2: installer.untrustedProbe calls http.Transport.CloseIdleConnections, which calls http2.Transport.CloseIdleConnections
+      #13: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.NewClientConn
+      #14: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.NewClientConn
+      #15: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.RoundTrip
+      #16: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.Transport.RoundTrip
+      #17: internal/archive/assemble.go:476:20: archive.ReadableFromFull calls zip.Writer.Close, which eventually calls http2.bufferedWriterTimeoutWriter.Write
+      #18: internal/archive/assemble.go:476:20: archive.ReadableFromFull calls zip.Writer.Close, which eventually calls http2.bufferedWriterTimeoutWriter.Write
+      #19: internal/archive/assemble.go:476:20: archive.ReadableFromFull calls zip.Writer.Close, which eventually calls http2.chunkWriter.Write
+      #20: internal/archive/assemble.go:476:20: archive.ReadableFromFull calls zip.Writer.Close, which eventually calls http2.chunkWriter.Write
+      #21: internal/installer/selfupdate.go:79:2: installer.CheckSelfUpdate calls http2.gzipReader.Close
+      #22: internal/installer/selfupdate.go:79:2: installer.CheckSelfUpdate calls http2.gzipReader.Close
+      #23: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http2.gzipReader.Read
+      #24: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http2.gzipReader.Read
+      #25: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.requestBody.Close
+      #26: internal/installer/selfupdate.go:75:23: installer.CheckSelfUpdate calls http.Client.Do, which eventually calls http2.requestBody.Close
+      #27: internal/api/probe.go:96:15: api.Server.handleProbeSSE calls http.http2ResponseWriter.Flush, which calls http2.responseWriter.FlushError
+      #28: internal/api/probe.go:96:15: api.Server.handleProbeSSE calls http.http2ResponseWriter.Flush, which calls http2.responseWriter.FlushError
+      #29: internal/api/fullarchive.go:868:34: api.rangeRecorder.Write calls http2.responseWriter.Write
+      #30: internal/api/fullarchive.go:868:34: api.rangeRecorder.Write calls http2.responseWriter.Write
+      #31: internal/api/fullarchive.go:861:30: api.rangeRecorder.WriteHeader calls http2.responseWriter.WriteHeader
+      #32: internal/api/fullarchive.go:861:30: api.rangeRecorder.WriteHeader calls http2.responseWriter.WriteHeader
+      #33: internal/archive/encrypt.go:105:29: archive.Encrypt calls io.WriteString, which calls http2.responseWriter.WriteString
+      #34: internal/archive/encrypt.go:105:29: archive.Encrypt calls io.WriteString, which calls http2.responseWriter.WriteString
+      #35: internal/archive/assemble.go:476:20: archive.ReadableFromFull calls zip.Writer.Close, which eventually calls http2.stickyErrWriter.Write
+      #36: internal/archive/assemble.go:476:20: archive.ReadableFromFull calls zip.Writer.Close, which eventually calls http2.stickyErrWriter.Write
+      #37: internal/installer/selfupdate.go:79:2: installer.CheckSelfUpdate calls http2.transportResponseBody.Close
+      #38: internal/installer/selfupdate.go:79:2: installer.CheckSelfUpdate calls http2.transportResponseBody.Close
+      #39: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http2.transportResponseBody.Read
+      #40: internal/archive/assemble.go:430:23: archive.ReadableFromFull calls io.Copy, which eventually calls http2.transportResponseBody.Read
+
+Your code is affected by 11 vulnerabilities from the Go standard library.
+This scan also found 1 vulnerability in packages you import and 3
+vulnerabilities in modules you require, but your code doesn't appear to call
+these vulnerabilities.
+Use '-show verbose' for more details.

@@ -1,0 +1,33 @@
+import { expect, it, vi } from 'vitest';
+
+const mocks = vi.hoisted(() => ({ json: vi.fn(), fetch: vi.fn() }));
+vi.mock('$lib/api/client', () => ({
+  ApiError: class ApiError extends Error {
+    constructor(public status: number, public code: string) { super(code); }
+  },
+  apiJson: (...args: unknown[]) => mocks.json(...args),
+  apiFetch: (...args: unknown[]) => mocks.fetch(...args)
+}));
+vi.mock('$lib/api/snapshots', () => ({ invalidateCircleSnapshots: vi.fn() }));
+
+// A server-expired upload must be recreated while preserving the queued original.
+it('recreates an expired upload session instead of failing the queued post', async () => {
+  vi.stubGlobal('navigator', { onLine: false });
+  const queue = await import('./queue');
+  const db = await import('$lib/idb/db');
+  const { ApiError } = await import('$lib/api/client');
+  const id = await queue.enqueuePost('https://review.test', 'review',
+    { body: 'offline original', entry_date: '2026-11-04' },
+    [{ name: 'x.bin', type: 'application/octet-stream', size: 4, data: new ArrayBuffer(4) }]);
+  const item = await db.getQueueItem(id);
+  await db.putQueueItem(id, { ...item!, uploads: [{ file_index: 0, session_id: 'expired' }] });
+  mocks.json.mockResolvedValue({ id: 'fresh' });
+  mocks.fetch.mockImplementation(async (_origin: string, path: string, init: { method: string }) => {
+    if (path === '/uploads/expired') throw new ApiError(404, 'not_found');
+    if (init.method === 'HEAD') return { headers: new Headers({ 'Upload-Offset': '0' }) };
+    return { json: async () => ({ received_bytes: 4 }) };
+  });
+  vi.stubGlobal('navigator', { onLine: true });
+  await queue.drainQueue();
+  expect(await db.getQueueItem(id)).toBeUndefined();
+});
