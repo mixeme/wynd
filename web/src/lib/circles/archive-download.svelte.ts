@@ -1,6 +1,6 @@
 import { goto } from '$app/navigation';
 import { ApiError, apiJson, apiPath, normalizeOrigin } from '$lib/api/client';
-import { openDownload } from '$lib/navigation/openDownload';
+import { openDownloadAfter } from '$lib/navigation/openDownload';
 
 interface DownloadState {
 	pending?: boolean;
@@ -54,10 +54,16 @@ export function startArchiveDownload(origin: string, downloadUrl: string): Promi
 	states[stateKey] = { pending: true };
 	const request = (async () => {
 		try {
-			const { url } = await apiJson<{ url: string }>(origin, path.replace(/\/download$/, '/link'), {
-				method: 'POST'
+			await openDownloadAfter(async () => {
+				const { url } = await apiJson<{ url: string }>(
+					origin,
+					path.replace(/\/download$/, '/link'),
+					{
+						method: 'POST'
+					}
+				);
+				return apiPath(origin, url.replace(/^\/api\/v1/, ''));
 			});
-			openDownload(apiPath(origin, url.replace(/^\/api\/v1/, '')));
 			delete states[stateKey];
 		} catch (err) {
 			if (err instanceof ApiError && err.status === 429 && err.code === 'rate_limited') {

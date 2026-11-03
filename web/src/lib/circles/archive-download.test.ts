@@ -3,7 +3,7 @@ import { flushSync, mount, unmount } from 'svelte';
 import type { Writable } from 'svelte/store';
 import { goto } from '$app/navigation';
 import { ApiError, apiJson } from '$lib/api/client';
-import { openDownload } from '$lib/navigation/openDownload';
+import { openDownload, openDownloadAfter } from '$lib/navigation/openDownload';
 import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 import ArchivePage from '../../routes/circles/[id]/archive/+page.svelte';
 import BusyPage from '../../routes/archive/busy/+page.svelte';
@@ -22,7 +22,15 @@ vi.mock('$app/navigation', () => ({
 	afterNavigate: vi.fn()
 }));
 vi.mock('$lib/navigation/up', () => ({ goUp: vi.fn(), setBackHandler: () => () => {} }));
-vi.mock('$lib/navigation/openDownload', () => ({ openDownload: vi.fn() }));
+vi.mock('$lib/navigation/openDownload', () => {
+	const openDownload = vi.fn();
+	return {
+		openDownload,
+		openDownloadAfter: vi.fn(async (load: () => Promise<string>) => {
+			openDownload(await load());
+		})
+	};
+});
 vi.mock('$lib/api/client', async (original) => ({
 	...(await original<typeof import('$lib/api/client')>()),
 	apiJson: vi.fn()
@@ -37,6 +45,7 @@ let dispose: (() => Promise<void>) | undefined;
 beforeEach(() => {
 	vi.mocked(apiJson).mockReset();
 	vi.mocked(openDownload).mockReset();
+	vi.mocked(openDownloadAfter).mockClear();
 	vi.mocked(goto).mockReset().mockResolvedValue(undefined);
 });
 afterEach(async () => {
@@ -165,6 +174,7 @@ it.each([true, false])(
 		expect(button.disabled).toBe(false);
 		button.click();
 		expect(apiJson).toHaveBeenCalledTimes(1);
+		expect(openDownloadAfter).toHaveBeenCalledTimes(1);
 		resolve({ url: '/api/v1/archive/only-one' });
 		await vi.waitFor(() => expect(openDownload).toHaveBeenCalledTimes(1));
 		expect(button.textContent).toBe(label);
@@ -190,6 +200,18 @@ it('shows a failed link request inside Wynd instead of an unhandled promise or b
 	await startArchiveDownload(circle.origin, url);
 	flushSync();
 	expect(target.textContent).toContain('Не получилось скачать архив. Попробуйте ещё раз.');
+	expect(downloadButton(target).disabled).toBe(false);
+	expect(openDownload).not.toHaveBeenCalled();
+});
+
+it('shows an error and issues no token when the iPhone download window is blocked', async () => {
+	const { circle, url } = fixture();
+	const target = showArchive(circle);
+	vi.mocked(openDownloadAfter).mockRejectedValueOnce(new Error('download_window_blocked'));
+	await startArchiveDownload(circle.origin, url);
+	flushSync();
+	expect(target.textContent).toContain('Не получилось скачать архив. Попробуйте ещё раз.');
+	expect(apiJson).not.toHaveBeenCalled();
 	expect(downloadButton(target).disabled).toBe(false);
 	expect(openDownload).not.toHaveBeenCalled();
 });

@@ -124,7 +124,7 @@
 
 	const streamNow = () =>
 		act(async () => {
-			await streamFullArchive(circle.origin, circle.circleId, await key(), deleteCircle);
+			await streamFullArchive(circle.origin, circle.circleId, key, deleteCircle);
 			if (deleteCircle) await circle.refresh();
 		});
 

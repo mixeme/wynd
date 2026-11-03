@@ -1,6 +1,6 @@
 import { apiJson, apiPath } from '$lib/api/client';
 import { invalidateSnapshots } from '$lib/idb/db';
-import { openDownload } from '$lib/navigation/openDownload';
+import { openDownloadAfter } from '$lib/navigation/openDownload';
 import type { ArchiveKey } from '$lib/archive/fullkey';
 
 /** Полный архив круга (план 51): что с ним на сервере. */
@@ -80,33 +80,38 @@ export async function removeFrozenCircle(
 export const PARTIAL_ARCHIVE_WARNING =
 	'В файле сохранена только часть журнала. При удалении круга с сервера будут удалены и записи, которые не вошли в файл. Восстановить их из этого файла не получится.';
 
-function openServerDownload(origin: string, url: string) {
-	openDownload(apiPath(origin, url.replace(/^\/api\/v1/, '')));
-}
-
 /** Скачать готовый файл: качает сам браузер, с ходом и докачкой. */
 export async function downloadFullArchive(origin: string, circleId: string): Promise<void> {
-	const { url } = await apiJson<{ url: string }>(origin, `/circles/${circleId}/full_archive/link`, {
-		method: 'POST'
+	await openDownloadAfter(async () => {
+		const { url } = await apiJson<{ url: string }>(
+			origin,
+			`/circles/${circleId}/full_archive/link`,
+			{
+				method: 'POST'
+			}
+		);
+		return apiPath(origin, url.replace(/^\/api\/v1/, ''));
 	});
-	openServerDownload(origin, url);
 }
 
 /** «Скачать сразу» (6.31): сервер собирает файл прямо в скачивание. */
 export async function streamFullArchive(
 	origin: string,
 	circleId: string,
-	key: ArchiveKey | undefined,
+	key: ArchiveKey | undefined | (() => Promise<ArchiveKey | undefined>),
 	deleteCircle = false
 ): Promise<void> {
-	const { url } = await apiJson<{ url: string }>(
-		origin,
-		`/circles/${circleId}/full_archive/stream_link`,
-		{
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ key, delete_circle: deleteCircle })
-		}
-	);
-	openServerDownload(origin, url);
+	await openDownloadAfter(async () => {
+		const archiveKey = typeof key === 'function' ? await key() : key;
+		const { url } = await apiJson<{ url: string }>(
+			origin,
+			`/circles/${circleId}/full_archive/stream_link`,
+			{
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ key: archiveKey, delete_circle: deleteCircle })
+			}
+		);
+		return apiPath(origin, url.replace(/^\/api\/v1/, ''));
+	});
 }
