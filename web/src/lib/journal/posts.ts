@@ -1,6 +1,6 @@
-import { apiFetch, apiJson, apiPath } from '$lib/api/client';
+import { apiFetch, apiJson } from '$lib/api/client';
 import { invalidateCircleSnapshots } from '$lib/api/snapshots';
-import { openDownload } from '$lib/navigation/openDownload';
+import { startArchiveDownload } from '$lib/circles/archive-download.svelte';
 import type { QueueFile } from '$lib/idb/db';
 import { CHUNK_SIZE } from '$lib/queue/queue';
 import { sha256Hex } from '$lib/sha256';
@@ -185,7 +185,5 @@ export async function removeReaction(
  * могли уронить вкладку. Сервер отдаёт архив потоком, сразу с первым байтом.
  */
 export async function downloadArchive(origin: string, downloadUrl: string): Promise<void> {
-	const path = downloadUrl.replace(/^\/api\/v1/, '').replace(/\/download$/, '/link');
-	const { url } = await apiJson<{ url: string }>(origin, path, { method: 'POST' });
-	openDownload(apiPath(origin, url.replace(/^\/api\/v1/, '')));
+	await startArchiveDownload(origin, downloadUrl);
 }

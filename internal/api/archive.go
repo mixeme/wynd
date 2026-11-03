@@ -401,6 +401,11 @@ func (s *Server) handleArchiveLink(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, chronicle.ErrForbidden)
 		return
 	}
+	// Reject ordinary repeated clicks before opening the browser download.
+	if _, busy := s.archiveBuilds.Load(sess.AccountID); busy {
+		writeError(w, &auth.RateLimitError{RetryAfterSec: archiveRetryAfterSec})
+		return
+	}
 	buf := make([]byte, 32)
 	if _, err := rand.Read(buf); err != nil {
 		writeError(w, err)
@@ -503,6 +508,16 @@ func (s *Server) streamArchive(w http.ResponseWriter, r *http.Request, circleID,
 		return
 	}
 	if _, busy := s.archiveBuilds.LoadOrStore(accountID, struct{}{}); busy {
+		// Two links can have been issued before either download began. The
+		// caller already has a session or a valid one-time token. Show 6.23b
+		// without asking a token-authorized browser to log in again.
+		if browserNavigation(r) {
+			w.Header().Set("Retry-After", strconv.Itoa(archiveRetryAfterSec))
+			w.Header().Set("Cache-Control", "no-store")
+			w.Header().Set("Referrer-Policy", "no-referrer")
+			http.Redirect(w, r, "/archive/busy?retry_after="+strconv.Itoa(archiveRetryAfterSec), http.StatusSeeOther)
+			return
+		}
 		writeError(w, &auth.RateLimitError{RetryAfterSec: archiveRetryAfterSec})
 		return
 	}

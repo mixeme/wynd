@@ -15,11 +15,25 @@
 		pluralPosts
 	} from '$lib/format/time';
 	import { downloadArchive } from '$lib/journal/posts';
+	import { archiveDownloadState, archiveBusyMessage } from '$lib/circles/archive-download.svelte';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 
 	const cycle = $derived(circle.archiveCycle);
+	const downloadState = $derived(archiveDownloadState(circle.origin, circle.circleId));
+	let now = $state(Date.now());
+	const remaining = $derived(Math.max(0, Math.ceil(((downloadState?.retryAt ?? 0) - now) / 1000)));
+	$effect(() => {
+		const end = downloadState?.retryAt;
+		if (!end) return;
+		now = Date.now();
+		const timer = setInterval(() => {
+			now = Date.now();
+			if (now >= end) clearInterval(timer);
+		}, 1000);
+		return () => clearInterval(timer);
+	});
 
 	function goBack() {
 		goUp(`/circles/${circle.circleId}/settings`);
@@ -65,7 +79,17 @@
 		<Label>Границы</Label>
 		<SettingsRow title="Ваша видимость" value="то, что вы застали" chevron={false} divided="top" />
 
-		<Button class="mt-16" variant="colored" onclick={download}>Скачать</Button>
+		<Button
+			class="mt-16"
+			variant="colored"
+			disabled={remaining > 0}
+			loading={downloadState?.pending ?? false}
+			onclick={download}>Скачать</Button
+		>
+
+		{#if downloadState?.retryAt || downloadState?.error}
+			<Hint class="mt-12 ink">{downloadState.error ?? archiveBusyMessage(remaining)}</Hint>
+		{/if}
 		<Hint class="mt-12 ctr">Скачивание начнётся сразу. Если оно оборвётся, начнётся заново.</Hint>
 	{:else}
 		<Label>Что внутри</Label>
@@ -109,9 +133,19 @@
 		<SettingsRow title="Ваша видимость" value="то, что вы застали" chevron={false} />
 
 		{#if cycle.download_url}
-			<Button class="mt-16" variant="colored" onclick={download}>
+			<Button
+				class="mt-16"
+				variant="colored"
+				disabled={remaining > 0}
+				loading={downloadState?.pending ?? false}
+				onclick={download}
+			>
 				Скачать{cycle.personal_archive_bytes ? ` ${formatBytes(cycle.personal_archive_bytes)}` : ''}
 			</Button>
+		{/if}
+
+		{#if downloadState?.retryAt || downloadState?.error}
+			<Hint class="mt-12 ink">{downloadState.error ?? archiveBusyMessage(remaining)}</Hint>
 		{/if}
 		<!-- Архив идёт потоком (6.23, план 46, C38): докачки нет, повтор — заново. -->
 		<Hint class="mt-12 ctr"
