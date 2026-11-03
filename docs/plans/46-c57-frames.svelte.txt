@@ -1,0 +1,36 @@
+<!-- C57 · 6.23а–б. Утверждено владельцем 2026-11-03 («Кадры принимаем»). Реализация C57 в работе. -->
+<script lang="ts">
+ import FormLayout from '$lib/layouts/FormLayout.svelte';
+ import Label from '$ui/forms/Label.svelte';
+ import Hint from '$ui/forms/Hint.svelte';
+ import Button from '$ui/forms/Button.svelte';
+ import SettingsRow from '$ui/data/SettingsRow.svelte';
+</script>
+
+<figure class="c57-frame" id="e6-23a">
+ <FormLayout color="terracotta" title="Архив круга" onback={() => {}}>
+  <Label>Что внутри</Label>
+  <SettingsRow icon="photo" title="/media" subtitle="146 файлов · 2,1 ГБ" chevron={false} divided="top" />
+  <SettingsRow icon="file" title="index.html" subtitle="единая лента: 928 записей и все комментарии к ним" chevron={false} />
+  <SettingsRow icon="file" title="/posts" subtitle="те же записи — по странице на каждую, с оглавлением" chevron={false} />
+  <Hint>Открывается без интернета и без Wynd.</Hint>
+
+  <Label>Границы</Label>
+  <SettingsRow title="Снято на 1 октября 2026" value="дата замерла" chevron={false} divided="top" />
+  <SettingsRow title="Скачать до 20 ноября" value="осталось 17 дней" chevron={false} />
+  <SettingsRow title="Ваша видимость" value="то, что вы застали" chevron={false} />
+
+  <Button class="mt-16" variant="colored" disabled onclick={() => {}}>Скачать 2,1 ГБ</Button>
+  <Hint class="mt-12 ink">Скачивание уже началось. Дождитесь его окончания. Если оно прервалось, попробуйте снова через 30 секунд.</Hint>
+  <Hint class="mt-12 ctr">Если скачивание оборвётся, оно начнётся заново. Качать можно сколько угодно раз до 20 ноября.</Hint>
+ </FormLayout>
+</figure>
+
+<figure class="c57-frame" id="e6-23b">
+ <FormLayout shell title="Архив круга">
+  <Label>Скачивание</Label>
+  <SettingsRow icon="clock" title="Архив уже скачивается" chevron={false} divided="both" />
+  <Hint class="mt-16">Дождитесь окончания скачивания. Если оно прервалось, попробуйте снова в Wynd через 30 секунд.</Hint>
+  <Hint>Эту страницу можно закрыть. Закрытие не отменит ранее начатое скачивание.</Hint>
+ </FormLayout>
+</figure>
