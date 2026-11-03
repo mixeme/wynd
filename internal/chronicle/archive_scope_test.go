@@ -267,6 +267,12 @@ func TestArchivePreservationRespectsGapsAndDoesNotChangeReading(t *testing.T) {
 	e.attachPhoto(old.ID, "hidden-photo")
 	e.seedBlob("visible-photo", "a")
 	e.attachPhoto(first.ID, "visible-photo")
+	if err := e.ch.SetDayTitle(e.ctx, chronicle.DayTitleInput{CircleID: circle.ID, AccountID: "a", EntryDate: "2026-08-04", Title: "preserved-title", Now: e.at(3).Add(time.Hour)}); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.ch.SetDayCover(e.ctx, chronicle.DayCoverInput{CircleID: circle.ID, AccountID: "a", EntryDate: "2026-08-04", PostID: first.ID, BlobID: "visible-photo", Now: e.at(3).Add(time.Hour)}); err != nil {
+		t.Fatal(err)
+	}
 	for _, input := range []chronicle.CommentInput{
 		{CircleID: circle.ID, AccountID: "a", PostID: old.ID, Body: "secret-parent-comment", Now: e.at(7)},
 		{CircleID: circle.ID, AccountID: "a", PostID: first.ID, Body: "secret-gap-comment", Now: e.at(5)},
@@ -307,6 +313,10 @@ func TestArchivePreservationRespectsGapsAndDoesNotChangeReading(t *testing.T) {
 	}
 	if len(data.BlobIDs) != 1 || data.BlobIDs[0] != "visible-photo" {
 		t.Fatalf("files: %v", data.BlobIDs)
+	}
+	_, titles, err := e.ch.ArchiveFeed(e.ctx, data)
+	if err != nil || titles["2026-08-04"] != "preserved-title" {
+		t.Fatalf("day projection: %v %v", titles, err)
 	}
 	for _, at := range []int{1, 3, 5, 7} {
 		read, err := e.ch.CanReadEvent(e.ctx, circle.ID, "b", e.at(at))

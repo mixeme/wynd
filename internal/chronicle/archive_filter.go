@@ -107,15 +107,43 @@ func filterArchiveData(data *FullArchiveData) (*FullArchiveData, error) {
 		remember(r)
 		return true
 	}, true)
+	// Проекции восстанавливаются по оставшимся строкам: скрытое позднее
+	// название или обложка не стирает ранее доступное сказанное о дне.
+	latestDays := func(name string, keep func(map[string]any) bool) map[string]map[string]any {
+		latest := map[string]map[string]any{}
+		for i := range out[name].Rows {
+			r := rowMap(out[name], i)
+			if !keep(r) {
+				continue
+			}
+			date := str(r["entry_date"])
+			old := latest[date]
+			at, before := parseTimeOrZero(str(r["created_at"])), parseTimeOrZero(str(old["created_at"]))
+			if old == nil || at.After(before) || at.Equal(before) && asInt64(r["event_seq"]) > asInt64(old["event_seq"]) {
+				latest[date] = r
+			}
+		}
+		return latest
+	}
+	deletedPosts := map[string]bool{}
+	for i := range out["posts"].Rows {
+		r := rowMap(out["posts"], i)
+		deletedPosts[str(r["id"])] = asInt64(r["deleted"]) != 0
+	}
+	titles := latestDays("day_titles", func(map[string]any) bool { return true })
+	covers := latestDays("day_covers", func(r map[string]any) bool { return !deletedPosts[str(r["post_id"])] })
 	filter("days", func(r map[string]any) bool {
 		if !dates[str(r["entry_date"])] {
 			return false
 		}
-		if r["title_event_seq"] != nil && !seqs[asInt64(r["title_event_seq"])] {
-			r["title"], r["title_event_seq"] = nil, nil
+		date := str(r["entry_date"])
+		r["title"], r["title_event_seq"] = nil, nil
+		if title := titles[date]; str(title["title"]) != "" {
+			r["title"], r["title_event_seq"] = title["title"], title["event_seq"]
 		}
-		if r["cover_event_seq"] != nil && !seqs[asInt64(r["cover_event_seq"])] || r["cover_post_id"] != nil && !posts[str(r["cover_post_id"])] {
-			r["cover_post_id"], r["cover_blob_id"], r["cover_event_seq"] = nil, nil, nil
+		r["cover_post_id"], r["cover_blob_id"], r["cover_event_seq"] = nil, nil, nil
+		if cover := covers[date]; str(cover["blob_id"]) != "" {
+			r["cover_post_id"], r["cover_blob_id"], r["cover_event_seq"] = cover["post_id"], cover["blob_id"], cover["event_seq"]
 		}
 		return true
 	}, false)
