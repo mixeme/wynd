@@ -41,7 +41,7 @@
 	}
 
 	function openServerPick() {
-		goto('/circles/new/server');
+		goto('/circles/new/server', { replaceState: true });
 	}
 
 	// Круг заводится на следующем шаге, когда известно имя создателя: так в
@@ -52,7 +52,9 @@
 			form.error = 'Введите название круга';
 			return;
 		}
-		goto('/circles/new/you');
+		// All creation steps share one history entry. Completion replaces it
+		// with the circle; Back must not reopen an already completed form.
+		goto('/circles/new/you', { replaceState: true });
 	}
 </script>
 

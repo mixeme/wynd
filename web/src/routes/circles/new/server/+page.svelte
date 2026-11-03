@@ -11,7 +11,7 @@
 
 	function pickOrigin(origin: string) {
 		form.selectedOrigin = origin;
-		goto(`/circles/new?origin=${encodeURIComponent(origin)}`);
+		goto(`/circles/new?origin=${encodeURIComponent(origin)}`, { replaceState: true });
 	}
 </script>
 

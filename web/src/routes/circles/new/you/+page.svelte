@@ -49,7 +49,7 @@
 			return;
 		}
 		if (!session) {
-			goto('/circles/new');
+			goto('/circles/new', { replaceState: true });
 			return;
 		}
 		const origin = session.origin;
