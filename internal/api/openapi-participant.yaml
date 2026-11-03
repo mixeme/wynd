@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.45.1
+  version: 0.46.0
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:
@@ -927,7 +927,7 @@ paths:
   /circles/{circle_id}/full_archive:
     get:
       summary: Full circle archive state and estimate (owner)
-      description: estimate_bytes, posts, members, full_journal, fits (room on the server for a ready file), retention_hours and the latest archive (status building, ready, failed or removed with removed_reason). Estimates follow the owner's preservation scope. The archive also includes full_journal and posts for its immutable snapshot, which may differ from today's estimate.
+      description: estimate_bytes, posts, members, full_journal, fits (room on the server for a ready file), retention_hours and the latest archive (status building, ready, failed or removed with removed_reason). Estimates follow the owner's preservation scope. The archive also includes full_journal and, when known, posts for its immutable snapshot, which may differ from today's estimate.
     post:
       summary: Build the full circle archive in the background (owner)
       description: Body {delete_circle, key?} — delete_circle freezes the circle (nobody writes, members get one email and may download their own archive); key is {public_key, salt, log_n} of an X25519 key the device derived from the password (scrypt, N = 2^log_n, r = 8, p = 1); the password never reaches the server. 409 archive_busy while one is building or ready; 507 no_room when the ready file does not fit.
