@@ -26,7 +26,7 @@ import (
 // Схемы 8 и 9 (владелец и имена в переносе, A12) — тоже только incoming_moves.
 // Схема 10 добавила circles.archive_cutoff_tz — его оживление и так обнуляет.
 // Схема 11 (accounts.avatar_shape) таблиц круга не меняла.
-var ReviveSchemaVersions = []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}
+var ReviveSchemaVersions = []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 
 // ReviveLegacySchemaVersions — схемы архивов разметки 1: номера прежней
 // нумерации (до 0.34.0). Схема 36 — та же, что 1.
@@ -132,16 +132,66 @@ func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveRes
 		ids[old] = v
 		return v, nil
 	}
-	// Блобы: только присланные устройством и уже лежащие здесь.
-	for old, nw := range in.BlobMap {
-		ids[old] = nw
-	}
 
 	tx, err := c.db.BeginTx(ctx, nil)
 	if err != nil {
 		return res, err
 	}
 	defer tx.Rollback()
+
+	// Every restored circle has its own logical copies. The supplied mapping is
+	// proof of existing owned bytes (or a server-authorized visible split), never
+	// a global hash lookup. Archive metadata belongs to the new copy.
+	restoredBlobs := map[string]string{}
+	bt := in.Tables["blobs"]
+	for i := range bt.Rows {
+		row := rowMap(bt, i)
+		old, _ := row["id"].(string)
+		source := in.BlobMap[old]
+		if source == "" {
+			return res, fmt.Errorf("%w: missing blob", ErrInvalid)
+		}
+		id, err := newIDFn()
+		if err != nil {
+			return res, err
+		}
+		var sha, mime, filename, rel, sourceOwner string
+		var size int64
+		var content sql.NullString
+		err = tx.QueryRowContext(ctx, `SELECT sha256,size_bytes,mime_type,COALESCE(original_filename,''),storage_path,account_id,content_sha256 FROM blobs WHERE id=? AND status='complete' AND storage_path<>''`, source).Scan(&sha, &size, &mime, &filename, &rel, &sourceOwner, &content)
+		if err != nil {
+			return res, err
+		}
+		if !in.SameServer && sourceOwner != in.ReviverID {
+			return res, ErrForbidden
+		}
+		want, _ := row["sha256"].(string)
+		if !strings.EqualFold(sha, want) || size != archiveInt64(row["size_bytes"]) {
+			return res, fmt.Errorf("%w: blob digest", ErrInvalid)
+		}
+		if v, ok := row["mime_type"].(string); ok && len(v) > 0 && len(v) <= 255 {
+			mime = v
+		}
+		filename, _ = row["original_filename"].(string)
+		filename = strings.ReplaceAll(filename, "\\", "/")
+		if p := strings.LastIndex(filename, "/"); p >= 0 {
+			filename = filename[p+1:]
+		}
+		filename = strings.Map(func(r rune) rune {
+			if r < 32 {
+				return -1
+			}
+			return r
+		}, filename)
+		if runes := []rune(filename); len(runes) > 255 {
+			filename = string(runes[:255])
+		}
+		if _, err = tx.ExecContext(ctx, `INSERT INTO blobs(id,account_id,sha256,size_bytes,mime_type,original_filename,storage_path,status,created_at,content_sha256) VALUES(?,?,?,?,?,?,?,'complete',?,?)`, id, in.ReviverID, sha, size, mime, filename, rel, formatTime(now), content); err != nil {
+			return res, err
+		}
+		ids[old] = id
+		restoredBlobs[old] = id
+	}
 
 	// Учётки — по почте. Есть на сервере — она; нет — заводится без входа.
 	owner, _ := rowMap(circles, 0)["owner_account_id"].(string)
@@ -347,7 +397,7 @@ func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveRes
 		return res, err
 	}
 	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(SUM(size_bytes), 0) FROM blobs WHERE id IN (`+
-		placeholders(len(in.BlobMap))+`)`, mapValues(in.BlobMap)...).Scan(&res.Bytes); err != nil {
+		placeholders(len(restoredBlobs))+`)`, mapValues(restoredBlobs)...).Scan(&res.Bytes); err != nil {
 		return res, err
 	}
 	// Текст уже сочли триггеры базы.
@@ -516,4 +566,16 @@ func mapValues(m map[string]string) []any {
 		out = append(out, v)
 	}
 	return out
+}
+
+func archiveInt64(v any) int64 {
+	switch n := v.(type) {
+	case int64:
+		return n
+	case int:
+		return int64(n)
+	case float64:
+		return int64(n)
+	}
+	return -1
 }

@@ -140,15 +140,17 @@ func (s *Store) reservedBytes(ctx context.Context) (int64, error) {
 // архивы, которые собираются или ждут скачивания (план 51; 9.7: «готовые
 // архивы считаются в потолке»). Шкала панели и потолок сервера смотрят на
 // одно и то же число; квоты кругов архивов не видят.
-func (s *Store) usedBytes(ctx context.Context) (int64, error) {
-	var used sql.NullInt64
-	err := s.db.QueryRowContext(ctx, `
-		SELECT (SELECT COALESCE(SUM(size_bytes), 0) FROM blobs WHERE status = 'complete')
+const physicalUsedSQL = `
+		SELECT (SELECT COALESCE(SUM(size_bytes),0) FROM blob_contents) + (SELECT COALESCE(SUM(size_bytes),0) FROM (SELECT MAX(size_bytes) size_bytes FROM blobs WHERE status='complete' AND content_sha256 IS NULL AND storage_path<>'' GROUP BY storage_path))
 		     + (SELECT COALESCE(SUM(text_bytes), 0) FROM circles)
 		     + (SELECT COALESCE(SUM(size_bytes), 0) FROM circle_archives WHERE status IN ('building', 'ready'))
 		     + (SELECT COALESCE(SUM(COALESCE(length(data),0)+COALESCE(length(layout),0)+length(card)),0) FROM move_snapshots)
 		     + (SELECT COALESCE(SUM(length(data)),0) FROM move_snapshot_literals)
-	`).Scan(&used)
+	`
+
+func (s *Store) usedBytes(ctx context.Context) (int64, error) {
+	var used sql.NullInt64
+	err := s.db.QueryRowContext(ctx, physicalUsedSQL).Scan(&used)
 	if err != nil {
 		return 0, err
 	}

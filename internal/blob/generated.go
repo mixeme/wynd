@@ -23,35 +23,16 @@ func (s *Store) PutGenerated(ctx context.Context, accountID, mimeType, filename 
 	if err != nil {
 		return Blob{}, err
 	}
-	rel := storageRelPath(blobID)
-	if err := os.MkdirAll(filepath.Join(s.dir, rel[:2]), 0o750); err != nil {
+	if err := os.MkdirAll(filepath.Join(s.dir, ".uploads"), 0o750); err != nil {
 		return Blob{}, err
 	}
-	dest := filepath.Join(s.dir, rel)
+	part := filepath.Join(s.dir, ".uploads", "generated-"+blobID+".part")
+	defer os.Remove(part)
+	if err := writeFileSync(part, data); err != nil {
+		return Blob{}, err
+	}
 	sum := sha256.Sum256(data)
-	now := utcOrNow(time.Time{})
-
-	// Порядок как в CompleteSession: строка pending, файл, complete — сбой
-	// посередине не оставляет безымянного файла.
-	if _, err := s.db.ExecContext(ctx, `
-		INSERT INTO blobs (id, account_id, sha256, size_bytes, mime_type, original_filename, storage_path, status, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
-	`, blobID, accountID, hex.EncodeToString(sum[:]), len(data), mimeType, nullableString(filename), rel, formatTime(now)); err != nil {
-		return Blob{}, err
-	}
-	if err := writeFileSync(dest, data); err != nil {
-		_ = os.Remove(dest)
-		_, _ = s.db.ExecContext(ctx, `DELETE FROM blobs WHERE id = ? AND status = 'pending'`, blobID)
-		return Blob{}, err
-	}
-	if _, err := s.db.ExecContext(ctx, `UPDATE blobs SET status = 'complete' WHERE id = ?`, blobID); err != nil {
-		return Blob{}, err
-	}
-	return Blob{
-		ID: blobID, AccountID: accountID, SHA256: hex.EncodeToString(sum[:]),
-		SizeBytes: int64(len(data)), MimeType: mimeType, OriginalFilename: filename,
-		Status: "complete", CreatedAt: now,
-	}, nil
+	return s.publishVerified(ctx, Blob{ID: blobID, AccountID: accountID, SHA256: hex.EncodeToString(sum[:]), SizeBytes: int64(len(data)), MimeType: mimeType, OriginalFilename: sanitizeFilename(filename), Status: "complete", CreatedAt: utcOrNow(time.Time{})}, part, "", false)
 }
 
 func writeFileSync(path string, data []byte) error {

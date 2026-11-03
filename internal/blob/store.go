@@ -1,6 +1,7 @@
 package blob
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -28,7 +29,11 @@ func New(st store.Store, blobsDir string) (*Store, error) {
 	if blobsDir == "" {
 		return nil, fmt.Errorf("blob: empty blobs dir")
 	}
-	return &Store{db: db, dir: blobsDir}, nil
+	b := &Store{db: db, dir: blobsDir}
+	if err := b.migrateContents(context.Background()); err != nil {
+		return nil, fmt.Errorf("blob content migration: %w", err)
+	}
+	return b, nil
 }
 
 // DB exposes the underlying connection for tests.

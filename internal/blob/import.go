@@ -49,8 +49,12 @@ func (s *Store) ImportBlob(ctx context.Context, in ImportInput, r io.Reader) (Bl
 	if err != nil {
 		return Blob{}, err
 	}
+	defer os.Remove(part)
 	h := sha256.New()
 	n, err := io.Copy(io.MultiWriter(f, h), io.LimitReader(r, in.SizeBytes+1))
+	if err == nil {
+		err = f.Sync()
+	}
 	if cerr := f.Close(); err == nil {
 		err = cerr
 	}
@@ -62,36 +66,8 @@ func (s *Store) ImportBlob(ctx context.Context, in ImportInput, r io.Reader) (Bl
 		return Blob{}, err
 	}
 	sum := hex.EncodeToString(h.Sum(nil))
-	rel := storageRelPath(blobID)
-	if err := os.MkdirAll(filepath.Join(s.dir, rel[:2]), 0o750); err != nil {
-		_ = os.Remove(part)
-		return Blob{}, err
-	}
-	now := utcOrNow(in.Now)
-	filename := sanitizeFilename(in.OriginalFilename)
-	// Тот же порядок, что у загрузки (UPL-1): строка pending, файл на место,
-	// complete.
-	if _, err := s.db.ExecContext(ctx, `
-		INSERT INTO blobs (id, account_id, sha256, size_bytes, mime_type, original_filename, storage_path, status, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
-	`, blobID, in.AccountID, sum, in.SizeBytes, mime, nullableString(filename), rel, formatTime(now)); err != nil {
-		_ = os.Remove(part)
-		return Blob{}, err
-	}
-	dest := filepath.Join(s.dir, rel)
-	if err := os.Rename(part, dest); err != nil {
-		if copyErr := copyFile(part, dest); copyErr != nil {
-			_, _ = s.db.ExecContext(ctx, `DELETE FROM blobs WHERE id = ? AND status = 'pending'`, blobID)
-			_ = os.Remove(part)
-			return Blob{}, copyErr
-		}
-		_ = os.Remove(part)
-	}
-	if _, err := s.db.ExecContext(ctx, `UPDATE blobs SET status = 'complete' WHERE id = ?`, blobID); err != nil {
-		return Blob{}, err
-	}
-	return Blob{
-		ID: blobID, AccountID: in.AccountID, SHA256: sum, SizeBytes: in.SizeBytes,
-		MimeType: mime, OriginalFilename: filename, Status: "complete", CreatedAt: now,
-	}, nil
+	return s.publishVerified(ctx, Blob{
+		ID: blobID, AccountID: in.AccountID, SHA256: sum, SizeBytes: in.SizeBytes, MimeType: mime,
+		OriginalFilename: sanitizeFilename(in.OriginalFilename), Status: "complete", CreatedAt: utcOrNow(in.Now),
+	}, part, "", true)
 }

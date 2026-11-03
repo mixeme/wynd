@@ -192,6 +192,19 @@ func (c *Chronicle) SplitCircle(ctx context.Context, in SplitInput) (SplitResult
 	for _, id := range blobs {
 		blobMap[id] = id
 	}
+	// splitTables filters journal rows; copy descriptors only for those files.
+	for _, t := range data.Tables {
+		if t.Name == "blobs" {
+			selected := FullArchiveTable{Name: t.Name, Columns: t.Columns}
+			for i := range t.Rows {
+				id, _ := rowMap(t, i)["id"].(string)
+				if _, ok := blobMap[id]; ok {
+					selected.Rows = append(selected.Rows, t.Rows[i])
+				}
+			}
+			tables["blobs"] = selected
+		}
+	}
 	makerMembership := ""
 	revived, err := c.ReviveCircle(ctx, ReviveInput{
 		FormatVersion: 2,

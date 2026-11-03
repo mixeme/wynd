@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
@@ -104,9 +105,9 @@ func RunDailyRoutine(ctx context.Context, db *sql.DB, blobsDir string, now time.
 
 func cleanOrphanedBlobs(ctx context.Context, db *sql.DB, blobsDir, cutoff string) (int, error) {
 	rows, err := db.QueryContext(ctx, `
-		SELECT b.id, b.storage_path
+		SELECT b.id
 		FROM blobs b
-		WHERE b.status = 'complete'
+		WHERE b.status IN ('complete','pending')
 		  AND b.created_at < ?
 		  AND NOT `+blob.ReferencedPredicate("b.id"), cutoff)
 	if err != nil {
@@ -115,12 +116,12 @@ func cleanOrphanedBlobs(ctx context.Context, db *sql.DB, blobsDir, cutoff string
 	defer rows.Close()
 
 	type blobRow struct {
-		id, rel string
+		id string
 	}
 	var pending []blobRow
 	for rows.Next() {
 		var row blobRow
-		if err := rows.Scan(&row.id, &row.rel); err != nil {
+		if err := rows.Scan(&row.id); err != nil {
 			return 0, err
 		}
 		pending = append(pending, row)
@@ -137,17 +138,17 @@ func cleanOrphanedBlobs(ctx context.Context, db *sql.DB, blobsDir, cutoff string
 	n := 0
 	var errs []error
 	for _, row := range pending {
-		res, err := db.ExecContext(ctx, `DELETE FROM blobs WHERE id = ?`, row.id)
+		deleted, err := blob.DeleteUnreferenced(ctx, db, blobsDir, row.id)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("delete orphaned blob %s: %w", row.id, err))
 			continue
 		}
-		aff, _ := res.RowsAffected()
-		n += int(aff)
-		if blobsDir != "" && aff > 0 {
-			path := filepath.Join(blobsDir, filepath.FromSlash(row.rel))
-			_ = os.Remove(path)
+		if deleted {
+			n++
 		}
+	}
+	if err := blob.CollectFiles(ctx, db, blobsDir); err != nil {
+		errs = append(errs, err)
 	}
 	return n, errors.Join(errs...)
 }
@@ -185,6 +186,29 @@ func cleanAbandonedUploads(ctx context.Context, db *sql.DB, blobsDir, nowRaw str
 		return 0, fmt.Errorf("delete abandoned uploads: %w", err)
 	}
 	aff, _ := res.RowsAffected()
+	// Server-side imports and atomic content publication have no upload-session
+	// row. A crash may leave their private .part files; only stale known prefixes
+	// are eligible, never a live chunked upload.
+	if blobsDir != "" {
+		entries, e := os.ReadDir(filepath.Join(blobsDir, ".uploads"))
+		if e != nil && !os.IsNotExist(e) {
+			return int(aff), e
+		}
+		now, e := xtime.Parse(nowRaw)
+		if e != nil {
+			return int(aff), e
+		}
+		for _, entry := range entries {
+			name := entry.Name()
+			if entry.IsDir() || !strings.HasSuffix(name, ".part") || !(strings.HasPrefix(name, "import-") || strings.HasPrefix(name, "generated-") || strings.HasPrefix(name, "content-")) {
+				continue
+			}
+			info, e := entry.Info()
+			if e == nil && info.ModTime().Before(now.Add(-routineGrace)) {
+				_ = os.Remove(filepath.Join(blobsDir, ".uploads", name))
+			}
+		}
+	}
 	return int(aff), nil
 }
 

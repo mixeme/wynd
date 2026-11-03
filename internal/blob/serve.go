@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -25,7 +24,7 @@ func (s *Store) OpenBlob(ctx context.Context, blobID string) (ServeInfo, error) 
 	var originalFilename sql.NullString
 	err := s.db.QueryRowContext(ctx, `
 		SELECT storage_path, mime_type, size_bytes, original_filename FROM blobs
-		WHERE id = ? AND status = 'complete'
+		WHERE id = ? AND status = 'complete' AND storage_path<>''
 	`, blobID).Scan(&rel, &mime, &size, &originalFilename)
 	if err == sql.ErrNoRows {
 		return ServeInfo{}, ErrNotFound
@@ -33,8 +32,11 @@ func (s *Store) OpenBlob(ctx context.Context, blobID string) (ServeInfo, error) 
 	if err != nil {
 		return ServeInfo{}, err
 	}
-	path := filepath.Join(s.dir, filepath.FromSlash(rel))
-	if _, err := os.Stat(path); err != nil {
+	path, err := diskPath(s.dir, rel)
+	if err != nil {
+		return ServeInfo{}, ErrNotFound
+	}
+	if st, err := os.Stat(path); err != nil || !st.Mode().IsRegular() || st.Size() != size {
 		return ServeInfo{}, ErrNotFound
 	}
 	filename := blobID
@@ -77,7 +79,7 @@ func executableExtension(mime string) (string, bool) {
 func (s *Store) CanAccessBlob(ctx context.Context, accountID, blobID string) (bool, error) {
 	var owner string
 	err := s.db.QueryRowContext(ctx, `
-		SELECT account_id FROM blobs WHERE id = ? AND status = 'complete'
+		SELECT account_id FROM blobs WHERE id = ? AND status = 'complete' AND storage_path<>''
 	`, blobID).Scan(&owner)
 	if err == sql.ErrNoRows {
 		return false, ErrNotFound
@@ -142,35 +144,8 @@ func (s *Store) CanAccessBlob(ctx context.Context, accountID, blobID string) (bo
 }
 
 func (s *Store) gcBlobIfUnreferenced(ctx context.Context, blobID string) error {
-	referenced, err := IsReferenced(ctx, s.db, blobID)
-	if err != nil {
-		return err
-	}
-	if referenced {
-		return nil
-	}
-	var rel string
-	err = s.db.QueryRowContext(ctx, `
-		SELECT storage_path FROM blobs WHERE id = ?
-	`, blobID).Scan(&rel)
-	if err == sql.ErrNoRows {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	// Сначала строка, потом файл (план 42, раздел B «Ссылки на блобы»).
-	result, err := s.db.ExecContext(ctx, `DELETE FROM blobs WHERE id = ? AND NOT `+ReferencedPredicate("blobs.id"), blobID)
-	if err != nil {
-		return err
-	}
-	if n, err := result.RowsAffected(); err != nil {
-		return err
-	} else if n == 0 {
-		return nil
-	}
-	_ = os.Remove(filepath.Join(s.dir, filepath.FromSlash(rel)))
-	return nil
+	_, err := DeleteUnreferenced(ctx, s.db, s.dir, blobID)
+	return err
 }
 
 // ReleaseBlobs GCs blobs after post_media rows were removed.

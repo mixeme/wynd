@@ -43,7 +43,7 @@ func BackupNoBlobs(dataDir, destDir string) error {
 	return backup(dataDir, destDir, false, false)
 }
 
-func backup(dataDir, destDir string, incremental, blobs bool) error {
+func backup(dataDir, destDir string, incremental, blobs bool) (result error) {
 	if dataDir == "" || destDir == "" {
 		return fmt.Errorf("backup: empty path")
 	}
@@ -72,6 +72,18 @@ func backup(dataDir, destDir string, incremental, blobs bool) error {
 			return err
 		}
 	}
+	if blobs {
+		release, err := pinBlobFiles(filepath.Join(dataDir, "wynd.db"))
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err := release(); result == nil {
+				result = err
+			}
+		}()
+	}
+
 	if err := copyFile(filepath.Join(dataDir, "config.json"), filepath.Join(destDir, "config.json")); err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -201,7 +213,7 @@ func backupBlobs(srcRoot, destRoot string, incremental bool, prev blobManifest) 
 			return err
 		}
 		destPath := filepath.Join(destRoot, rel)
-		// Блоб неизменяем: имя — UUID, файл кладётся один раз. Поэтому файл,
+		// Содержимое неизменяемо: прежнее имя — UUID, новое — SHA-256. Файл,
 		// который есть в манифесте с тем же размером и чья копия на месте и
 		// той же длины, не перечитывается — раньше каждый прогон хешировал
 		// всё хранилище (BKP-1). Копия проверяется по Stat, а не по манифесту:

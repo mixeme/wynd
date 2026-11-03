@@ -2,9 +2,9 @@ package blob_test
 
 import (
 	"bytes"
-	"errors"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"io"
 	"net/http/httptest"
 	"os"

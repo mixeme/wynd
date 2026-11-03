@@ -7,8 +7,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -290,17 +288,15 @@ func (s *Service) RejectPayRequest(ctx context.Context, id string, blobsDir stri
 	if n, _ := res.RowsAffected(); n == 0 {
 		return ErrNotFound
 	}
-	var rel string
 	if blobID != "" {
-		if rel, err = detachPayRequestBlob(ctx, tx, id, blobID); err != nil {
+		if err = detachPayRequestBlob(ctx, tx, id, blobID); err != nil {
 			return err
 		}
 	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	removeBlobFile(blobsDir, rel)
-	return nil
+	return blob.CollectFiles(ctx, s.db, blobsDir)
 }
 
 // PayBlobAllowedForAdmin reports whether the blob is a live payment screenshot, the only blob the panel may open.
@@ -356,46 +352,21 @@ func (s *Service) removePayRequestBlob(ctx context.Context, blobsDir, reqID, blo
 		return err
 	}
 	defer tx.Rollback()
-	rel, err := detachPayRequestBlob(ctx, tx, reqID, blobID)
+	err = detachPayRequestBlob(ctx, tx, reqID, blobID)
 	if err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	removeBlobFile(blobsDir, rel)
-	return nil
+	return blob.CollectFiles(ctx, s.db, blobsDir)
 }
 
-// detachPayRequestBlob помечает скриншот заявки удалённым и снимает её ссылку
-// на блоб. Возвращает путь файла, если он больше никому не нужен; удалять
-// файл — после коммита, чтобы откат не оставил строку без файла.
-func detachPayRequestBlob(ctx context.Context, tx *sql.Tx, reqID, blobID string) (string, error) {
-	if _, err := tx.ExecContext(ctx, `
-		UPDATE pay_requests SET blob_deleted = 1 WHERE id = ?
-	`, reqID); err != nil {
-		return "", err
+// detachPayRequestBlob сохраняет строку аудита оплаты, но отделяет больше
+// не нужную логическую копию. Физический GC запускается после коммита.
+func detachPayRequestBlob(ctx context.Context, tx *sql.Tx, reqID, blobID string) error {
+	if _, err := tx.ExecContext(ctx, `UPDATE pay_requests SET blob_deleted=1 WHERE id=?`, reqID); err != nil {
+		return err
 	}
-	// Строка pay_requests остаётся (внешний ключ на blobs), поэтому спрашиваем
-	// про файл: свой скриншот уже помечен blob_deleted = 1 выше.
-	needed, err := blob.IsFileNeeded(ctx, tx, blobID)
-	if err != nil || needed {
-		return "", err
-	}
-	var rel string
-	err = tx.QueryRowContext(ctx, `
-		SELECT storage_path FROM blobs WHERE id = ?
-	`, blobID).Scan(&rel)
-	if errors.Is(err, sql.ErrNoRows) {
-		return "", nil
-	}
-	// Keep the blobs row: pay_requests.blob_id still references it.
-	return rel, err
-}
-
-func removeBlobFile(blobsDir, rel string) {
-	if blobsDir == "" || rel == "" {
-		return
-	}
-	_ = os.Remove(filepath.Join(blobsDir, filepath.FromSlash(rel)))
+	return blob.DetachFile(ctx, tx, blobID)
 }

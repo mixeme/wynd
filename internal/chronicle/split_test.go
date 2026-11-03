@@ -66,8 +66,8 @@ func TestSplitCircle(t *testing.T) {
 	for _, f := range feed {
 		bodies[f.Post.Body] = len(f.Comments)
 		for _, m := range f.Media {
-			if m.BlobID != "photo1" {
-				t.Fatalf("файл не общий: %+v", m)
+			if m.BlobID == "photo1" {
+				t.Fatalf("логическая копия не отделена: %+v", m)
 			}
 		}
 	}

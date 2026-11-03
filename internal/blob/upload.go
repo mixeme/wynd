@@ -218,6 +218,18 @@ func (s *Store) CompleteSession(ctx context.Context, in CompleteSessionInput) (B
 	if !strings.EqualFold(sum, in.SHA256) {
 		return Blob{}, ErrInvalid
 	}
+	f, err := os.OpenFile(path, os.O_RDWR, 0)
+	if err != nil {
+		return Blob{}, err
+	}
+	err = f.Sync()
+	cerr := f.Close()
+	if err != nil {
+		return Blob{}, err
+	}
+	if cerr != nil {
+		return Blob{}, cerr
+	}
 
 	// Потолок перепроверяется на завершении: между созданием сессии и
 	// завершением могли дойти другие загрузки. Размер этой сессии уже учтён
@@ -230,56 +242,10 @@ func (s *Store) CompleteSession(ctx context.Context, in CompleteSessionInput) (B
 	if err != nil {
 		return Blob{}, err
 	}
-	rel := storageRelPath(blobID)
-	destDir := filepath.Join(s.dir, rel[:2])
-	if err := os.MkdirAll(destDir, 0o750); err != nil {
-		return Blob{}, err
-	}
-	dest := filepath.Join(s.dir, rel)
-
-	now := utcOrNow(in.Now)
-	// Порядок: сначала строка blobs со статусом pending, затем перенос файла,
-	// затем complete. Прежний порядок (копия файла и удаление .part до
-	// транзакции) при сбое оставлял безымянный файл навсегда или сессию без
-	// .part (UPL-1). Rename вместо копии: файл не читается дважды.
-	if _, err := s.db.ExecContext(ctx, `
-		INSERT INTO blobs (id, account_id, sha256, size_bytes, mime_type, original_filename, storage_path, status, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
-	`, blobID, in.AccountID, sum, sess.ExpectedSize, sess.MimeType, nullableString(sess.OriginalFilename), rel, formatTime(now)); err != nil {
-		return Blob{}, err
-	}
-	if err := os.Rename(path, dest); err != nil {
-		// Кросс-устройственный перенос падает — тогда копия и удаление.
-		if copyErr := copyFile(path, dest); copyErr != nil {
-			_, _ = s.db.ExecContext(ctx, `DELETE FROM blobs WHERE id = ? AND status = 'pending'`, blobID)
-			return Blob{}, copyErr
-		}
-		_ = os.Remove(path)
-	}
-
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return Blob{}, err
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	if _, err := tx.ExecContext(ctx, `
-		UPDATE blobs SET status = 'complete' WHERE id = ?
-	`, blobID); err != nil {
-		return Blob{}, err
-	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM upload_sessions WHERE id = ?`, in.SessionID); err != nil {
-		return Blob{}, err
-	}
-	if err := tx.Commit(); err != nil {
-		return Blob{}, err
-	}
-	return Blob{
-		ID: blobID, AccountID: in.AccountID, SHA256: sum,
-		SizeBytes: sess.ExpectedSize, MimeType: sess.MimeType,
-		OriginalFilename: sess.OriginalFilename,
-		Status: "complete", CreatedAt: now,
-	}, nil
+	return s.publishVerified(ctx, Blob{
+		ID: blobID, AccountID: sess.AccountID, SHA256: sum, SizeBytes: sess.ExpectedSize,
+		MimeType: sess.MimeType, OriginalFilename: sess.OriginalFilename, Status: "complete", CreatedAt: utcOrNow(in.Now),
+	}, path, in.SessionID, true)
 }
 
 func fileSHA256(path string) (string, error) {
@@ -293,23 +259,6 @@ func fileSHA256(path string) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil
-}
-
-func copyFile(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-	out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o640)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-	if _, err := io.Copy(out, in); err != nil {
-		return err
-	}
-	return out.Sync()
 }
 
 // LoadBlob returns metadata for a complete blob.
@@ -353,6 +302,9 @@ func (s *Store) ValidateOwnedComplete(ctx context.Context, accountID string, blo
 		}
 		if b.Status != "complete" {
 			return ErrIncomplete
+		}
+		if _, err := s.OpenBlob(ctx, id); err != nil {
+			return err
 		}
 	}
 	return nil

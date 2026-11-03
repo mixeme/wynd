@@ -348,10 +348,13 @@ func (s *Store) UsePlaceRequest(ctx context.Context, id string) error {
 // загруженное с описанием в архиве (план 52).
 func (s *Store) BlobDigest(ctx context.Context, id string) (sha string, size int64, owner string, err error) {
 	err = s.db.QueryRowContext(ctx, `
-		SELECT sha256, size_bytes, account_id FROM blobs WHERE id = ? AND status = 'complete'
+		SELECT sha256, size_bytes, account_id FROM blobs WHERE id = ? AND status = 'complete' AND storage_path<>''
 	`, id).Scan(&sha, &size, &owner)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", 0, "", ErrNotFound
+	}
+	if err == nil {
+		_, err = s.OpenBlob(ctx, id)
 	}
 	return sha, size, owner, err
 }
@@ -370,7 +373,7 @@ func (s *Store) OwnBlobsBySHA(ctx context.Context, accountID string, shas []stri
 		}
 		rows, err := s.db.QueryContext(ctx, `
 			SELECT sha256, id FROM blobs
-			WHERE account_id = ? AND status = 'complete' AND sha256 IN (`+strings.Join(marks, ",")+`)
+			WHERE account_id = ? AND status = 'complete' AND storage_path<>'' AND sha256 IN (`+strings.Join(marks, ",")+`)
 		`, args...)
 		if err != nil {
 			return nil, err
@@ -381,7 +384,10 @@ func (s *Store) OwnBlobsBySHA(ctx context.Context, accountID string, shas []stri
 				rows.Close()
 				return nil, err
 			}
-			out[sh] = id
+			// Only this account's usable logical copy is proof of possession.
+			if _, err := s.OpenBlob(ctx, id); err == nil {
+				out[sh] = id
+			}
 		}
 		rows.Close()
 		if err := rows.Err(); err != nil {

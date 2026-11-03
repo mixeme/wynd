@@ -85,7 +85,7 @@ func TestReviveCircleNextToOriginal(t *testing.T) {
 	}
 	if len(feed) != 1 || feed[0].Post.ID == p.ID || feed[0].Post.Body != "на даче" ||
 		len(feed[0].Comments) != 1 || feed[0].Comments[0].Body != "красота" ||
-		len(feed[0].Reactions) != 1 || len(feed[0].Media) != 1 || feed[0].Media[0].BlobID != "photo1" {
+		len(feed[0].Reactions) != 1 || len(feed[0].Media) != 1 || feed[0].Media[0].BlobID == "photo1" {
 		t.Fatalf("лента оживлённого круга: %+v", feed)
 	}
 	// Боб — своим именем и своей учёткой.
