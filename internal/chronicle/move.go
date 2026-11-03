@@ -35,18 +35,20 @@ var (
 
 // CircleMove — перенос круга, каким его видит прежний сервер.
 type CircleMove struct {
-	ID            string
-	CircleID      string
-	Token         string
-	StartedBy     string
-	StartedAt     time.Time
-	ExpiresAt     time.Time
-	Status        string
-	DestURL       string
-	DestName      string
-	ArchiveStatus string
-	ArchiveBytes  int64
-	PulledBytes   int64
+	SnapshotID      string
+	LegacyArchiveID string
+	ID              string
+	CircleID        string
+	Token           string
+	StartedBy       string
+	StartedAt       time.Time
+	ExpiresAt       time.Time
+	Status          string
+	DestURL         string
+	DestName        string
+	ArchiveStatus   string
+	ArchiveBytes    int64
+	PulledBytes     int64
 	// Что в архиве: записей, имён, байт файлов — для сверки (6.35).
 	ArchivePosts      int
 	ArchiveNames      int
@@ -71,7 +73,8 @@ func (m *CircleMove) LinkAlive(now time.Time) bool {
 const circleMoveCols = `id, circle_id, token, started_by_account_id, started_at, expires_at, status,
 	COALESCE(dest_url, ''), COALESCE(dest_name, ''), archive_status, archive_bytes, pulled_bytes,
 	archive_posts, archive_names, archive_media_bytes,
-	accepted_at, COALESCE(accepted_posts, 0), COALESCE(accepted_names, 0), COALESCE(accepted_bytes, 0), ended_at`
+	accepted_at, COALESCE(accepted_posts, 0), COALESCE(accepted_names, 0), COALESCE(accepted_bytes, 0), ended_at,
+	COALESCE(snapshot_id,''), COALESCE(legacy_archive_id,'')`
 
 func scanCircleMove(row interface{ Scan(...any) error }) (*CircleMove, error) {
 	var m CircleMove
@@ -80,7 +83,7 @@ func scanCircleMove(row interface{ Scan(...any) error }) (*CircleMove, error) {
 	if err := row.Scan(&m.ID, &m.CircleID, &m.Token, &m.StartedBy, &started, &expires, &m.Status,
 		&m.DestURL, &m.DestName, &m.ArchiveStatus, &m.ArchiveBytes, &m.PulledBytes,
 		&m.ArchivePosts, &m.ArchiveNames, &m.ArchiveMediaBytes,
-		&accepted, &m.AcceptedPosts, &m.AcceptedNames, &m.AcceptedBytes, &ended); err != nil {
+		&accepted, &m.AcceptedPosts, &m.AcceptedNames, &m.AcceptedBytes, &ended, &m.SnapshotID, &m.LegacyArchiveID); err != nil {
 		return nil, err
 	}
 	m.StartedAt = parseTimeOrZero(started)
@@ -212,7 +215,15 @@ func (c *Chronicle) ReissueMove(ctx context.Context, circleID, accountID, token,
 	if _, err := tx.ExecContext(ctx, `UPDATE circle_moves SET status = 'canceled', ended_at = ? WHERE id = ?`, formatTime(now), old.ID); err != nil {
 		return nil, nil, err
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO circle_moves (id,circle_id,started_by_account_id,started_at,token,token_hash,expires_at,status) VALUES (?,?,?,?,?,?,?,'waiting')`, id, circleID, accountID, formatTime(now), token, tokenHash, formatTime(now.Add(MoveLinkTTL))); err != nil {
+	archiveStatus := "none"
+	if old.ArchiveStatus == "ready" {
+		archiveStatus = "ready"
+		if old.SnapshotID == "" && old.LegacyArchiveID == "" {
+			old.LegacyArchiveID = old.ID
+		}
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO circle_moves (id,circle_id,started_by_account_id,started_at,token,token_hash,expires_at,status,snapshot_id,legacy_archive_id,archive_status,archive_bytes,archive_posts,archive_names,archive_media_bytes)
+		VALUES (?,?,?,?,?,?,?,'waiting',?,?,?,?,?,?,?)`, id, circleID, accountID, formatTime(now), token, tokenHash, formatTime(now.Add(MoveLinkTTL)), nullString(old.SnapshotID), nullString(old.LegacyArchiveID), archiveStatus, old.ArchiveBytes, old.ArchivePosts, old.ArchiveNames, old.ArchiveMediaBytes); err != nil {
 		return nil, nil, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -262,7 +273,7 @@ func (c *Chronicle) ClaimMove(ctx context.Context, id, destURL, destName string,
 // SetMoveArchive — что с архивом под перенос: сбой или файл стёрт ("none").
 func (c *Chronicle) SetMoveArchive(ctx context.Context, id, status string) error {
 	_, err := c.db.ExecContext(ctx, `
-		UPDATE circle_moves SET archive_status = ?, archive_bytes = 0 WHERE id = ?
+		UPDATE circle_moves SET archive_status = ?, archive_bytes = 0 WHERE id = ? AND status IN ('waiting','pulling')
 	`, status, id)
 	return err
 }
@@ -361,10 +372,9 @@ func (c *Chronicle) CancelMove(ctx context.Context, circleID, accountID string, 
 func (c *Chronicle) EndedMoveArchives(ctx context.Context, now time.Time) ([]string, error) {
 	rows, err := c.db.QueryContext(ctx, `
 		SELECT id FROM circle_moves
-		WHERE archive_status IN ('building', 'ready')
-		  AND (status IN ('accepted', 'canceled', 'completed')
-		       OR (status IN ('waiting', 'pulling') AND expires_at <= ?))
-	`, formatTime(utcOrNow(now)))
+		WHERE archive_status IN ('building', 'ready', 'failed')
+		  AND status IN ('accepted', 'canceled', 'completed')
+	`)
 	if err != nil {
 		return nil, err
 	}
@@ -391,8 +401,8 @@ func (c *Chronicle) RecoverMoveArchives(ctx context.Context, now time.Time) (kee
 	}
 	rows, err := c.db.QueryContext(ctx, `
 		SELECT id FROM circle_moves
-		WHERE archive_status = 'ready' AND status IN ('waiting', 'pulling') AND expires_at > ?
-	`, formatTime(utcOrNow(now)))
+		WHERE archive_status = 'ready' AND status IN ('waiting', 'pulling')
+	`)
 	if err != nil {
 		return nil, err
 	}

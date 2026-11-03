@@ -658,20 +658,14 @@ func writeFullArchive(ctx context.Context, w io.Writer, in archive.FullInput, ke
 // fullArchiveInput снимает круг: строки базы одной транзакцией, лента и
 // названия дней — на тот же момент.
 func (s *Server) fullArchiveInput(ctx context.Context, circleID string) (archive.FullInput, error) {
-	return s.archiveInput(ctx, circleID, false)
-}
-
-func (s *Server) archiveInput(ctx context.Context, circleID string, transport bool) (archive.FullInput, error) {
-	var data *chronicle.FullArchiveData
-	var err error
-	if transport {
-		data, err = s.Chronicle.FullArchiveData(ctx, circleID)
-	} else {
-		data, err = s.Chronicle.OwnerArchiveData(ctx, circleID)
-	}
+	data, err := s.Chronicle.OwnerArchiveData(ctx, circleID)
 	if err != nil {
 		return archive.FullInput{}, err
 	}
+	return s.archiveDataInput(ctx, data)
+}
+
+func (s *Server) archiveDataInput(ctx context.Context, data *chronicle.FullArchiveData) (archive.FullInput, error) {
 	posts, dayTitles, err := s.Chronicle.ArchiveFeed(ctx, data)
 	if err != nil {
 		return archive.FullInput{}, err

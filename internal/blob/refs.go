@@ -33,6 +33,7 @@ var referencingTables = []struct {
 	{table: "days", where: "cover_blob_id = %s"},
 	{table: "identity_names", where: "avatar_blob_id = %s AND erased_at IS NULL"},
 	{table: "pay_requests", where: "blob_id = %s", payScreenshot: true},
+	{table: "move_snapshot_blobs", where: "blob_id = %s"},
 }
 
 // referencedPredicate builds a SQL boolean over column col (e.g. "b.id").

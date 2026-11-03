@@ -281,8 +281,12 @@ func (c *Chronicle) CircleEditWindow(ctx context.Context, circleID string) (Edit
 // тех, кто в нём сейчас («Кто уже здесь»). Новый сервер по почтам решает,
 // спрашивать ли «Аня — это вы?».
 func (c *Chronicle) CircleMoveFolk(ctx context.Context, circleID string) (ownerName string, emails, names []string, err error) {
+	return c.circleMoveFolk(ctx, c.db, circleID)
+}
+
+func (c *Chronicle) circleMoveFolk(ctx context.Context, q archiveReader, circleID string) (ownerName string, emails, names []string, err error) {
 	var ownerIdentity sql.NullString
-	if err := c.db.QueryRowContext(ctx, `
+	if err := q.QueryRowContext(ctx, `
 		SELECT m.identity_id FROM circles ci
 		LEFT JOIN memberships m ON m.circle_id = ci.id AND m.account_id = ci.owner_account_id
 		WHERE ci.id = ?`, circleID).Scan(&ownerIdentity); err != nil {
@@ -292,11 +296,11 @@ func (c *Chronicle) CircleMoveFolk(ctx context.Context, circleID string) (ownerN
 		return "", nil, nil, err
 	}
 	if ownerIdentity.Valid {
-		if ownerName, err = c.identityName(ctx, c.db, ownerIdentity.String); err != nil {
+		if ownerName, err = c.identityName(ctx, q, ownerIdentity.String); err != nil {
 			return "", nil, nil, err
 		}
 	}
-	rows, err := c.db.QueryContext(ctx, `
+	rows, err := q.QueryContext(ctx, `
 		SELECT DISTINCT lower(a.email) FROM memberships m JOIN accounts a ON a.id = m.account_id
 		WHERE m.circle_id = ? AND a.email != ''`, circleID)
 	if err != nil {
@@ -313,7 +317,7 @@ func (c *Chronicle) CircleMoveFolk(ctx context.Context, circleID string) (ownerN
 	if err := rows.Err(); err != nil {
 		return "", nil, nil, err
 	}
-	idRows, err := c.db.QueryContext(ctx, `
+	idRows, err := q.QueryContext(ctx, `
 		SELECT identity_id FROM memberships WHERE circle_id = ? AND status = ? ORDER BY created_at`, circleID, StatusActive)
 	if err != nil {
 		return "", nil, nil, err
@@ -329,7 +333,7 @@ func (c *Chronicle) CircleMoveFolk(ctx context.Context, circleID string) (ownerN
 	}
 	idRows.Close()
 	for _, id := range ids {
-		if n, err := c.identityName(ctx, c.db, id); err == nil && n != "" {
+		if n, err := c.identityName(ctx, q, id); err == nil && n != "" {
 			names = append(names, n)
 		}
 	}

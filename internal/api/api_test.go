@@ -25,7 +25,10 @@ import (
 
 func setupFreshAPI(t *testing.T) (*api.Server, *auth.CaptureCodes, *chronicle.Chronicle, *blob.Store) {
 	t.Helper()
-	st, err := store.OpenMemory()
+	// Concurrent snapshot writers require the same WAL isolation as production;
+	// SQLite shared-cache memory databases instead return SQLITE_LOCKED on reads.
+	dir := t.TempDir()
+	st, err := store.Open(filepath.Join(dir, "wynd.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +37,6 @@ func setupFreshAPI(t *testing.T) (*api.Server, *auth.CaptureCodes, *chronicle.Ch
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir := t.TempDir()
 	blobs, err := blob.New(st, filepath.Join(dir, "blobs"))
 	if err != nil {
 		t.Fatal(err)

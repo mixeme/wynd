@@ -1,13 +1,14 @@
 package api
 
 import (
-	"bufio"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"math/big"
 	"net/http"
@@ -17,7 +18,9 @@ import (
 	"strings"
 	"time"
 
+	"gitea.mixdep.ru/mix/wynd/internal/archive"
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
+	"gitea.mixdep.ru/mix/wynd/internal/version"
 )
 
 // Перенос круга по ссылке (план 53, A1 этап 3), прежний сервер. Владелец
@@ -334,13 +337,31 @@ func (s *Server) dropMoveArchive(ctx context.Context, id string) {
 	if cancel, ok := s.fullBuilds.Load("move:" + id); ok {
 		cancel.(context.CancelFunc)()
 	}
-	for _, p := range []string{s.moveArchivePath(id), s.moveArchivePath(id) + ".part"} {
-		if err := os.Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
-			log.Printf("move %s: remove archive: %v", id, err)
+	ids, legacy, err := s.Chronicle.ReleaseMoveSnapshot(ctx, id)
+	if err != nil {
+		log.Printf("move %s: release snapshot: %v", id, err)
+		return
+	}
+	for _, fileID := range []string{id, legacy} {
+		if fileID == "" {
+			continue
+		}
+		inUse, err := s.Chronicle.LegacyMoveArchiveInUse(ctx, fileID)
+		if err != nil {
+			log.Printf("move %s: check legacy reference: %v", id, err)
+			continue
+		}
+		if inUse {
+			continue
+		}
+		for _, p := range []string{s.moveArchivePath(fileID), s.moveArchivePath(fileID) + ".part"} {
+			if err := os.Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
+				log.Printf("move %s: remove archive: %v", id, err)
+			}
 		}
 	}
-	if err := s.Chronicle.SetMoveArchive(ctx, id, "none"); err != nil {
-		log.Printf("move %s: archive state: %v", id, err)
+	if err := s.Blobs.ReleaseBlobs(ctx, ids); err != nil {
+		log.Printf("move %s: release files: %v", id, err)
 	}
 }
 
@@ -436,6 +457,14 @@ func (s *Server) handleMoveCard(w http.ResponseWriter, r *http.Request) {
 		if schema, err := s.schemaVersion(r.Context()); err == nil {
 			out["schema_version"] = schema
 		}
+		if m.SnapshotID != "" {
+			snapshot, err := s.Chronicle.MoveSnapshot(r.Context(), m.SnapshotID)
+			if err != nil {
+				writeDomainError(w, err)
+				return
+			}
+			out["circle"], out["schema_version"] = snapshot.Card, snapshot.SchemaVersion
+		}
 	}
 	if m.Status == chronicle.MovePulling || m.Status == chronicle.MoveAccepted {
 		out["dest_url"] = m.DestURL
@@ -476,7 +505,7 @@ func (s *Server) handleMoveClaim(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if started {
-		s.buildMoveArchive(m.ID, m.CircleID)
+		s.buildMoveArchive(m.ID)
 		s.notifyCircle(m.CircleID, "", "event")
 	}
 	m, err = s.Chronicle.GetMove(r.Context(), m.ID)
@@ -487,15 +516,15 @@ func (s *Server) handleMoveClaim(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"archive_status": m.ArchiveStatus, "archive_bytes": m.ArchiveBytes})
 }
 
-// buildMoveArchive собирает полный архив без шифрования под перенос, в фоне.
-func (s *Server) buildMoveArchive(moveID, circleID string) {
+// buildMoveArchive готовит неизменный ZIP-индекс и проверяет исходные файлы, в фоне.
+func (s *Server) buildMoveArchive(moveID string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	key := "move:" + moveID
 	s.fullBuilds.Store(key, cancel)
 	go func() {
 		defer s.fullBuilds.Delete(key)
 		defer cancel()
-		if err := s.runMoveArchiveBuild(ctx, moveID, circleID); err != nil {
+		if err := s.runMoveArchiveBuild(ctx, moveID); err != nil {
 			if ctx.Err() == nil {
 				log.Printf("move %s: build: %v", moveID, err)
 			}
@@ -507,68 +536,36 @@ func (s *Server) buildMoveArchive(moveID, circleID string) {
 	}()
 }
 
-func (s *Server) runMoveArchiveBuild(ctx context.Context, moveID, circleID string) error {
-	in, err := s.archiveInput(ctx, circleID, true)
+func (s *Server) runMoveArchiveBuild(ctx context.Context, moveID string) error {
+	snapshot, err := s.Chronicle.CaptureMoveSnapshot(ctx, moveID, version.Number)
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(MoveDir(s.DataDir), 0o700); err != nil {
-		return err
+	if len(snapshot.Layout) > 0 {
+		return s.Chronicle.PublishMoveLayout(ctx, snapshot.ID, nil, snapshot.Size)
 	}
-	part := s.moveArchivePath(moveID) + ".part"
-	f, err := os.OpenFile(part, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+	in, err := s.archiveDataInput(ctx, snapshot.Data)
 	if err != nil {
 		return err
 	}
-	bw := bufio.NewWriterSize(f, 1<<20)
-	err = writeFullArchive(ctx, bw, in, nil)
-	if err == nil {
-		err = bw.Flush()
-	}
-	if err == nil {
-		err = f.Sync()
-	}
-	if cerr := f.Close(); err == nil {
-		err = cerr
-	}
+	in.Manifest.WyndVersion = snapshot.WyndVersion
+	in.Manifest.SchemaVersion = snapshot.SchemaVersion
+	plan, err := archive.BuildFullLayout(ctx, in)
 	if err != nil {
 		return err
 	}
-	fi, err := os.Stat(part)
-	if err != nil {
-		return err
-	}
-	if err := os.Rename(part, s.moveArchivePath(moveID)); err != nil {
-		return err
-	}
-	posts, names, media := fullArchiveCounts(in.Data)
-	return s.Chronicle.MoveArchiveReady(ctx, moveID, fi.Size(), posts, names, media)
-}
-
-// fullArchiveCounts — записей, имён и байт файлов в снимке: то же, что
-// считает оживление (ReviveResult), — для сверки «принято».
-func fullArchiveCounts(d *chronicle.FullArchiveData) (posts, names int, media int64) {
-	for _, t := range d.Tables {
-		switch t.Name {
-		case "posts":
-			posts = d.Posts
-		case "identities":
-			names = len(t.Rows)
-		case "blobs":
-			col := -1
-			for i, c := range t.Columns {
-				if c == "size_bytes" {
-					col = i
-				}
-			}
-			for _, row := range t.Rows {
-				if col >= 0 {
-					media += jsonInt64(row[col])
-				}
-			}
+	var literals []chronicle.MoveLiteral
+	for i := range plan.Parts {
+		if plan.Parts[i].BlobID == "" {
+			literals = append(literals, chronicle.MoveLiteral{Part: i, Data: plan.Parts[i].Data})
+			plan.Parts[i].Data = nil
 		}
 	}
-	return posts, names, media
+	raw, err := json.Marshal(plan)
+	if err != nil {
+		return err
+	}
+	return s.Chronicle.PublishMoveLayout(ctx, snapshot.ID, raw, plan.Size, literals...)
 }
 
 // handleMoveArchive отдаёт архив под перенос с докачкой (Range). Пока он
@@ -587,22 +584,54 @@ func (s *Server) handleMoveArchive(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "archive_" + m.ArchiveStatus})
 		return
 	}
-	f, err := os.Open(s.moveArchivePath(m.ID))
-	if err != nil {
-		log.Printf("move %s: open archive: %v", m.ID, err)
-		_ = s.Chronicle.SetMoveArchive(r.Context(), m.ID, "failed")
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "archive_failed"})
-		return
+	var content io.ReadSeekCloser
+	var modified time.Time
+	if m.SnapshotID != "" {
+		snapshot, err := s.Chronicle.MoveSnapshot(r.Context(), m.SnapshotID)
+		var plan archive.FullLayout
+		if err == nil {
+			err = json.Unmarshal(snapshot.Layout, &plan)
+		}
+		if err == nil && plan.Size != snapshot.Size {
+			err = fmt.Errorf("archive: index length differs from snapshot")
+		}
+		if err == nil {
+			content, err = archive.OpenIndexedFullLayout(r.Context(), s.Blobs, &plan, func(part int, offset int64, p []byte) (int, error) {
+				return s.Chronicle.ReadMoveLiteral(r.Context(), snapshot.ID, part, offset, p)
+			})
+		}
+		if err != nil {
+			log.Printf("move %s: snapshot: %v", m.ID, err)
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "archive_changed"})
+			return
+		}
+		modified = snapshot.At
+		w.Header().Set("ETag", `"`+snapshot.ID+`"`)
+	} else {
+		// Pre-upgrade ready transfers keep their exact existing file.
+		fileID := m.LegacyArchiveID
+		if fileID == "" {
+			fileID = m.ID
+		}
+		f, err := os.Open(s.moveArchivePath(fileID))
+		if err != nil {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "archive_changed"})
+			return
+		}
+		fi, err := f.Stat()
+		if err != nil {
+			f.Close()
+			writeError(w, err)
+			return
+		}
+		content, modified = f, fi.ModTime()
+		w.Header().Set("ETag", `"legacy-`+fileID+`"`)
 	}
-	defer f.Close()
-	fi, err := f.Stat()
-	if err != nil {
-		writeError(w, err)
-		return
-	}
+	defer content.Close()
 	w.Header().Set("Content-Type", "application/zip")
 	rec := &rangeRecorder{ResponseWriter: w}
-	http.ServeContent(rec, r, "circle.wynd", fi.ModTime(), f)
+	w.Header().Set("Cache-Control", "no-store")
+	http.ServeContent(rec, r, "circle.wynd", modified, content)
 	// Ход для 6.34: докуда дошёл этот кусок.
 	var start, end, total int64
 	switch rec.status {
@@ -662,8 +691,8 @@ func (s *Server) handleMoveAccepted(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "accepted"})
 }
 
-// ExpireMoveArchives стирает архивы переносов, которые больше не нужны:
-// ссылка истекла или перенос закончился (зовётся ежечасно).
+// ExpireMoveArchives освобождает законченные переносы (зовётся ежечасно).
+// Истёкшая ссылка не удаляет снимок замершего круга: он нужен для перевыпуска.
 func (s *Server) ExpireMoveArchives(ctx context.Context, now time.Time) int {
 	ids, err := s.Chronicle.EndedMoveArchives(ctx, now)
 	if err != nil {
@@ -686,7 +715,23 @@ func (s *Server) RecoverMoveArchives(ctx context.Context) {
 	}
 	names := map[string]bool{}
 	for _, id := range keep {
-		names["out-"+id+".wynd"] = true
+		m, err := s.Chronicle.GetMove(ctx, id)
+		if err != nil {
+			log.Printf("move recover %s: %v", id, err)
+			return
+		}
+		if m.SnapshotID == "" {
+			fileID := m.LegacyArchiveID
+			if fileID == "" {
+				fileID = id
+			}
+			names["out-"+fileID+".wynd"] = true
+		}
+	}
+	if ids, err := s.Chronicle.PruneMoveSnapshots(ctx); err != nil {
+		log.Printf("move recover pins: %v", err)
+	} else if err := s.Blobs.ReleaseBlobs(ctx, ids); err != nil {
+		log.Printf("move recover files: %v", err)
 	}
 	entries, err := os.ReadDir(MoveDir(s.DataDir))
 	if err != nil {

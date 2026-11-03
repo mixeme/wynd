@@ -68,6 +68,11 @@ func (c *Chronicle) FullArchiveData(ctx context.Context, circleID string) (*Full
 		return nil, err
 	}
 	defer tx.Rollback()
+	return c.fullArchiveDataTx(ctx, tx, circleID)
+}
+
+func (c *Chronicle) fullArchiveDataTx(ctx context.Context, tx *sql.Tx, circleID string) (*FullArchiveData, error) {
+	var err error
 	out := &FullArchiveData{CircleID: circleID, SnapshotAt: time.Now().UTC()}
 	if out.ArchiveScope, err = archiveScope(ctx, tx, circleID); err != nil {
 		return nil, err

@@ -26,7 +26,7 @@ import (
 // Схемы 8 и 9 (владелец и имена в переносе, A12) — тоже только incoming_moves.
 // Схема 10 добавила circles.archive_cutoff_tz — его оживление и так обнуляет.
 // Схема 11 (accounts.avatar_shape) таблиц круга не меняла.
-var ReviveSchemaVersions = []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}
+var ReviveSchemaVersions = []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}
 
 // ReviveLegacySchemaVersions — схемы архивов разметки 1: номера прежней
 // нумерации (до 0.34.0). Схема 36 — та же, что 1.

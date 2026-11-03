@@ -146,6 +146,8 @@ func (s *Store) usedBytes(ctx context.Context) (int64, error) {
 		SELECT (SELECT COALESCE(SUM(size_bytes), 0) FROM blobs WHERE status = 'complete')
 		     + (SELECT COALESCE(SUM(text_bytes), 0) FROM circles)
 		     + (SELECT COALESCE(SUM(size_bytes), 0) FROM circle_archives WHERE status IN ('building', 'ready'))
+		     + (SELECT COALESCE(SUM(COALESCE(length(data),0)+COALESCE(length(layout),0)+length(card)),0) FROM move_snapshots)
+		     + (SELECT COALESCE(SUM(length(data)),0) FROM move_snapshot_literals)
 	`).Scan(&used)
 	if err != nil {
 		return 0, err

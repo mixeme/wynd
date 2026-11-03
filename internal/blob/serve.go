@@ -160,8 +160,14 @@ func (s *Store) gcBlobIfUnreferenced(ctx context.Context, blobID string) error {
 		return err
 	}
 	// Сначала строка, потом файл (план 42, раздел B «Ссылки на блобы»).
-	if _, err := s.db.ExecContext(ctx, `DELETE FROM blobs WHERE id = ?`, blobID); err != nil {
+	result, err := s.db.ExecContext(ctx, `DELETE FROM blobs WHERE id = ? AND NOT `+ReferencedPredicate("blobs.id"), blobID)
+	if err != nil {
 		return err
+	}
+	if n, err := result.RowsAffected(); err != nil {
+		return err
+	} else if n == 0 {
+		return nil
 	}
 	_ = os.Remove(filepath.Join(s.dir, filepath.FromSlash(rel)))
 	return nil

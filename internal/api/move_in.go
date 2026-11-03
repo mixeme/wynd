@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"syscall"
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/archive"
@@ -289,6 +290,7 @@ func (s *Server) handlePutIncomingMove(w http.ResponseWriter, r *http.Request) {
 			in.People = string(raw)
 		}
 	}
+	previous, _ := s.Chronicle.LatestIncoming(r.Context(), sess.AccountID)
 	m, err := s.Chronicle.PutIncomingDraft(r.Context(), sess.AccountID, link, in, time.Now())
 	if errors.Is(err, chronicle.ErrMoveBusy) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "move_busy"})
@@ -297,6 +299,9 @@ func (s *Server) handlePutIncomingMove(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeDomainError(w, err)
 		return
+	}
+	if previous != nil && previous.ID != m.ID && !previous.Active() {
+		_ = os.Remove(s.incomingPath(previous.ID))
 	}
 	out := incomingJSON(m, time.Now())
 	if card.Status == "expired" {
@@ -442,9 +447,15 @@ func (s *Server) runIncomingMove(id string) {
 			code = re.code
 		case errors.Is(err, blob.ErrInstanceQuotaExceeded):
 			code = "no_room"
+		case errors.Is(err, syscall.ENOSPC):
+			code = "no_room"
 		}
 		log.Printf("incoming move %s: %v", id, err)
-		_ = os.Remove(s.incomingPath(id))
+		if code != "move_expired" && code != "no_room" {
+			_ = os.Remove(s.incomingPath(id))
+			_ = s.Chronicle.SetIncomingArchiveETag(context.Background(), id, "")
+			_ = s.Chronicle.SetIncomingPulled(context.Background(), id, 0)
+		}
 		if err := s.Chronicle.SetIncomingStatus(context.Background(), id, chronicle.IncomingFailed, code); err != nil {
 			log.Printf("incoming move %s: fail: %v", id, err)
 		}
@@ -474,6 +485,13 @@ func (s *Server) pullMoveArchive(ctx context.Context, m *chronicle.IncomingMove)
 		return err
 	}
 	path := s.incomingPath(m.ID)
+	// Only the synced, committed prefix is accepted. A crash may leave an
+	// uncommitted tail in the file; never join that tail to the next response.
+	if fi, err := os.Stat(path); err == nil && fi.Size() > m.PulledBytes {
+		if err := os.Truncate(path, m.PulledBytes); err != nil {
+			return err
+		}
+	}
 	name := ""
 	if info, err := s.Auth.Instance(ctx); err == nil {
 		name = info.Name
@@ -499,7 +517,7 @@ func (s *Server) pullMoveArchive(ctx context.Context, m *chronicle.IncomingMove)
 		if fi, err := os.Stat(path); err == nil {
 			have = fi.Size()
 		}
-		state, total, err := s.pullMoveChunk(ctx, m.Link, path, have)
+		state, total, err := s.pullMoveChunk(ctx, m, path, have)
 		switch {
 		case err != nil:
 			return err
@@ -507,14 +525,22 @@ func (s *Server) pullMoveArchive(ctx context.Context, m *chronicle.IncomingMove)
 			_ = s.Chronicle.SetIncomingPulled(ctx, m.ID, total)
 			return nil
 		case state == "progress":
-			if err := s.Chronicle.SetIncomingPulled(ctx, m.ID, have+min(moveChunk, max(total-have, 0))); err != nil {
+			fi, err := os.Stat(path)
+			if err != nil {
+				return err
+			}
+			if err := s.Chronicle.SetIncomingPulled(ctx, m.ID, fi.Size()); err != nil {
 				return err
 			}
 		case state == "archive_failed":
 			// Прежний сервер не собрал архив — «беру» снова, сборка заново.
 			claimed = false
 			_ = os.Remove(path)
+			m.ArchiveETag = ""
+			_ = s.Chronicle.SetIncomingArchiveETag(ctx, m.ID, "")
 			s.moveWait(ctx)
+		case state == "archive_changed":
+			return &moveFailure{"archive_changed"}
 		case state == "archive_building":
 			// Прежний сервер собирает архив: спрашивать чаще, чем после обрыва.
 			s.movePollWait(ctx)
@@ -564,18 +590,29 @@ func (s *Server) claimMove(ctx context.Context, link string, claim map[string]st
 
 // pullMoveChunk докачивает один кусок: state — complete (файл весь),
 // progress, archive_building, archive_failed или пусто (обрыв).
-func (s *Server) pullMoveChunk(ctx context.Context, link, path string, have int64) (state string, total int64, err error) {
+func (s *Server) pullMoveChunk(ctx context.Context, m *chronicle.IncomingMove, path string, have int64) (state string, total int64, err error) {
 	cctx, cancel := context.WithTimeout(ctx, 15*time.Minute)
 	defer cancel()
-	resp, err := s.moveCall(cctx, link, http.MethodGet, "/api/v1/move/archive", nil,
-		map[string]string{"Range": fmt.Sprintf("bytes=%d-%d", have, have+moveChunk-1)})
+	headers := map[string]string{"Range": fmt.Sprintf("bytes=%d-%d", have, have+moveChunk-1)}
+	if have > 0 && m.ArchiveETag != "" {
+		headers["If-Range"] = m.ArchiveETag
+	}
+	resp, err := s.moveCall(cctx, m.Link, http.MethodGet, "/api/v1/move/archive", nil, headers)
 	if err != nil {
 		log.Printf("move pull: %v", err)
 		return "", 0, nil
 	}
 	defer resp.Body.Close()
+	etag := resp.Header.Get("ETag")
+	if resp.StatusCode == http.StatusPartialContent || resp.StatusCode == http.StatusRequestedRangeNotSatisfiable {
+		if m.ArchiveETag != "" && etag != m.ArchiveETag {
+			return "", 0, &moveFailure{"archive_changed"}
+		}
+	}
 	switch resp.StatusCode {
 	case http.StatusPartialContent:
+	case http.StatusOK:
+		return "", 0, &moveFailure{"archive_changed"}
 	case http.StatusRequestedRangeNotSatisfiable:
 		// Файл уже весь здесь: прежний сервер говорит его длину.
 		var size int64
@@ -595,8 +632,14 @@ func (s *Server) pullMoveChunk(ctx context.Context, link, path string, have int6
 		return "", 0, nil
 	}
 	var start, end int64
-	if _, err := fmt.Sscanf(resp.Header.Get("Content-Range"), "bytes %d-%d/%d", &start, &end, &total); err != nil || start != have {
+	if _, err := fmt.Sscanf(resp.Header.Get("Content-Range"), "bytes %d-%d/%d", &start, &end, &total); err != nil || start != have || end < start || end >= total || end-start+1 > moveChunk {
 		return "", 0, &moveFailure{"archive_changed"}
+	}
+	if m.ArchiveETag == "" && etag != "" && !strings.HasPrefix(etag, "W/") {
+		if err := s.Chronicle.SetIncomingArchiveETag(ctx, m.ID, etag); err != nil {
+			return "", 0, err
+		}
+		m.ArchiveETag = etag
 	}
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
@@ -609,14 +652,22 @@ func (s *Server) pullMoveChunk(ctx context.Context, link, path string, have int6
 	want := end - start + 1
 	n, err := io.Copy(f, io.LimitReader(resp.Body, want))
 	if err != nil || n != want {
-		// Обрыв посреди куска: файл — к прежней длине, кусок — заново.
-		_ = f.Truncate(have)
+		var fileError *os.PathError
+		if errors.As(err, &fileError) {
+			_ = f.Truncate(have)
+			return "", 0, err
+		}
+		// The response belongs to a frozen representation, so its received prefix
+		// remains usable even when the connection ends halfway through a chunk.
+		if n > 0 {
+			return "progress", total, f.Sync()
+		}
 		return "", 0, nil
 	}
 	if have+n >= total {
 		return "complete", total, f.Sync()
 	}
-	return "progress", total, nil
+	return "progress", total, f.Sync()
 }
 
 // reviveIncoming поднимает круг из забранного файла: каждый файл — в

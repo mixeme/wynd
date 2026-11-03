@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"sort"
 	"strings"
 	"time"
 	"unicode"
@@ -53,6 +54,8 @@ type BuildInput struct {
 	// холостой проход заранее даёт точный размер для Content-Length — и диск
 	// при этом не читается.
 	SizeOnly bool
+	// layout writes a persistent ZIP index with references instead of media bytes.
+	layout *layoutWriter
 }
 
 // BuildPersonalArchive writes a self-contained ZIP with media/ and HTML to w.
@@ -91,7 +94,7 @@ func buildReadable(ctx context.Context, zw *zip.Writer, in BuildInput, extra []s
 		// считает, а один потерянный на диске файл закрывал экспорт всему кругу
 		// — перед самой чисткой (план 42, ARC-4). В HTML на его месте пометка.
 		info, err := in.Blobs.OpenBlob(ctx, blobID)
-		if errors.Is(err, blob.ErrNotFound) {
+		if errors.Is(err, blob.ErrNotFound) && in.layout == nil {
 			log.Printf("archive: blob %s unavailable, skipped", blobID)
 			return nil
 		}
@@ -99,6 +102,13 @@ func buildReadable(ctx context.Context, zw *zip.Writer, in BuildInput, extra []s
 			return fmt.Errorf("archive: blob %s: %w", blobID, err)
 		}
 		name := "media/" + blobID + mediaExtension(info.MimeType, info.Filename)
+		if in.layout != nil {
+			if err := in.layout.addBlob(ctx, zw, in.Blobs, blobID, name); err != nil {
+				return err
+			}
+			mediaNames[blobID] = name
+			return nil
+		}
 		if in.SizeOnly {
 			fi, err := os.Stat(info.Path)
 			if errors.Is(err, fs.ErrNotExist) {
@@ -157,7 +167,12 @@ func buildReadable(ctx context.Context, zw *zip.Writer, in BuildInput, extra []s
 			}
 		}
 	}
+	avatarIDs := make([]string, 0, len(in.Avatars))
 	for _, blobID := range in.Avatars {
+		avatarIDs = append(avatarIDs, blobID)
+	}
+	sort.Strings(avatarIDs)
+	for _, blobID := range avatarIDs {
 		if err := addBlob(blobID); err != nil {
 			return err
 		}
