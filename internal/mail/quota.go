@@ -74,7 +74,7 @@ func (s *Service) SendCircleLeaving(ctx context.Context, email, circle, owner, l
 		who = owner
 	}
 	subject := "Круг «" + circle + "» уходит с сервера"
-	body := fmt.Sprintf("%s убирает «%s» с сервера и сохраняет круг в файл. Читать можно, писать нельзя.\n\nСвой архив — всё, что вы видели в круге, — можно скачать, пока круг здесь:\n%s\n", who, circle, link)
+	body := fmt.Sprintf("%s убирает «%s» с сервера и сохраняет круг в файл. Читать можно, писать нельзя.\n\nСвой архив — всё, что вы видели в круге, — можно скачать, пока круг здесь.\n\n%s\n", who, circle, link)
 	return s.notify(ctx, email, subject, body)
 }
 
@@ -129,6 +129,6 @@ func (s *Service) SendCircleMoved(ctx context.Context, email, circle, newServer 
 		return ErrInvalid
 	}
 	subject := "Круг «" + circle + "» переехал"
-	body := fmt.Sprintf("Круг «%s» теперь живёт на другом сервере:\n%s\n\nВойдите с почтой %s — попадёте в своё имя и свои записи. На прежнем сервере круга больше нет.\n", circle, newServer, email)
+	body := fmt.Sprintf("Круг «%s» теперь живёт на другом сервере. На прежнем сервере круга больше нет.\n\nВойдите с почтой %s — попадёте в своё имя и свои записи.\n\n%s\n", circle, email, newServer)
 	return s.notify(ctx, email, subject, body)
 }
