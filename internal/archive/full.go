@@ -31,6 +31,7 @@ func FullFormatKnown(v int) bool { return v == 1 || v == 2 }
 
 // FullManifest — manifest.json полного архива.
 type FullManifest struct {
+	JournalScope  string    `json:"journal_scope,omitempty"`
 	Format        string    `json:"format"`
 	FormatVersion int       `json:"format_version"`
 	WyndVersion   string    `json:"wynd_version"`
@@ -69,6 +70,11 @@ func BuildFullArchive(ctx context.Context, w io.Writer, in FullInput) error {
 	m.Format, m.FormatVersion = FullFormat, FullFormatVersion
 	m.CircleID, m.CircleName, m.SnapshotAt = in.Data.CircleID, in.Data.CircleName, in.Data.SnapshotAt
 	m.Posts = in.Data.Posts
+	if in.Data.PartialJournal {
+		m.JournalScope = "partial"
+	} else {
+		m.JournalScope = "all"
+	}
 	m.Tables = m.Tables[:0]
 	for _, t := range in.Data.Tables {
 		m.Tables = append(m.Tables, t.Name)
@@ -85,7 +91,7 @@ func BuildFullArchive(ctx context.Context, w io.Writer, in FullInput) error {
 			return err
 		}
 	}
-	st := style{hex: circleHex(in.Data.Color), full: true}
+	st := style{hex: circleHex(in.Data.Color), full: true, partial: in.Data.PartialJournal}
 	if err := buildReadable(ctx, zw, in.Readable, in.Data.BlobIDs, st); err != nil {
 		return err
 	}

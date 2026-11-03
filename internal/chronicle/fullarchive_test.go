@@ -31,7 +31,7 @@ func TestFullArchiveDataTakesWholeCircle(t *testing.T) {
 		names = append(names, tb.Name)
 		rows[tb.Name] = len(tb.Rows)
 	}
-	want := []string{"circles", "identities", "identity_names", "memberships", "membership_spans", "events",
+	want := []string{"circles", "archive_spans", "identities", "identity_names", "memberships", "membership_spans", "events",
 		"posts", "post_media", "comments", "comment_media", "reactions", "days", "day_titles", "day_covers", "accounts", "blobs"}
 	if !slices.Equal(names, want) {
 		t.Fatalf("таблицы: %v", names)

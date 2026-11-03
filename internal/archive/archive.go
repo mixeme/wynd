@@ -322,10 +322,14 @@ type style struct {
 	hex   string
 	fonts []string
 	// full — полный архив круга: шапка «на дату», а не «до», и своя подпись.
-	full bool
+	full    bool
+	partial bool
 }
 
 func (st style) pageEnd() string {
+	if st.partial {
+		return "<p class=\"end\">Wynd · часть журнала круга</p></div></body></html>"
+	}
 	if st.full {
 		return pageEndFull
 	}
@@ -388,7 +392,9 @@ func (st style) head(b *strings.Builder, title, prefix string) {
 func (st style) header(b *strings.Builder, circleName, cutoff string) {
 	b.WriteString("<header class=\"head\"><h1>")
 	b.WriteString(html.EscapeString(circleName))
-	if st.full {
+	if st.partial {
+		b.WriteString("</h1><p>Часть журнала круга на ")
+	} else if st.full {
 		b.WriteString("</h1><p>Полный архив круга на ")
 	} else {
 		b.WriteString("</h1><p>Архив круга до ")

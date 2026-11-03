@@ -13,6 +13,10 @@ import (
 
 func writeDomainError(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, chronicle.ErrArchivePartial):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "partial_archive_confirmation_required"})
+	case errors.Is(err, chronicle.ErrMoveBusy):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "circle_moving"})
 	case errors.Is(err, chronicle.ErrNotFound), errors.Is(err, blob.ErrNotFound), errors.Is(err, push.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not_found"})
 	case errors.Is(err, chronicle.ErrForbidden), errors.Is(err, blob.ErrForbidden), errors.Is(err, push.ErrForbidden):

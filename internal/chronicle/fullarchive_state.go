@@ -31,6 +31,9 @@ var ErrArchiveBusy = errors.New("chronicle: full archive already in progress")
 
 // FullArchive — запрос полного архива круга и что с ним стало.
 type FullArchive struct {
+	ScopeRevision int64
+	FullJournal   bool
+	Posts         int
 	ID            string
 	CircleID      string
 	RequestedBy   string
@@ -49,7 +52,7 @@ type FullArchive struct {
 
 const fullArchiveCols = `id, circle_id, requested_by_account_id, requested_at, snapshot_at,
 	delete_circle, encrypted, status, size_bytes, ready_at, expires_at, downloaded_at,
-	COALESCE(removed_reason, ''), removed_at`
+	COALESCE(removed_reason, ''), removed_at, scope_revision, full_journal, posts`
 
 func scanFullArchive(row interface{ Scan(...any) error }) (*FullArchive, error) {
 	var a FullArchive
@@ -57,7 +60,7 @@ func scanFullArchive(row interface{ Scan(...any) error }) (*FullArchive, error) 
 	var snap, ready, expires, downloaded, removed sql.NullString
 	if err := row.Scan(&a.ID, &a.CircleID, &a.RequestedBy, &requested, &snap,
 		&a.DeleteCircle, &a.Encrypted, &a.Status, &a.SizeBytes, &ready, &expires, &downloaded,
-		&a.RemovedReason, &removed); err != nil {
+		&a.RemovedReason, &removed, &a.ScopeRevision, &a.FullJournal, &a.Posts); err != nil {
 		return nil, err
 	}
 	a.RequestedAt = parseTimeOrZero(requested)
@@ -86,7 +89,7 @@ func optTime(v sql.NullString) *time.Time {
 func (c *Chronicle) LatestFullArchive(ctx context.Context, circleID string) (*FullArchive, error) {
 	a, err := scanFullArchive(c.db.QueryRowContext(ctx, `
 		SELECT `+fullArchiveCols+` FROM circle_archives
-		WHERE circle_id = ? ORDER BY requested_at DESC, rowid DESC LIMIT 1
+		WHERE circle_id = ? AND scope_revision = (SELECT archive_revision FROM circles WHERE circles.id = circle_archives.circle_id) ORDER BY requested_at DESC, rowid DESC LIMIT 1
 	`, circleID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
@@ -132,6 +135,15 @@ func (c *Chronicle) StartFullArchive(ctx context.Context, circleID, accountID st
 	}
 	defer tx.Rollback()
 	var busy int
+	var currentOwner string
+	var revision int64
+	var all bool
+	if err := tx.QueryRowContext(ctx, `SELECT owner_account_id, archive_revision, archive_all FROM circles WHERE id = ?`, circleID).Scan(&currentOwner, &revision, &all); err != nil {
+		return nil, false, err
+	}
+	if currentOwner != accountID {
+		return nil, false, ErrForbidden
+	}
 	if err := tx.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM circle_archives WHERE circle_id = ? AND status IN ('building', 'ready')
 	`, circleID).Scan(&busy); err != nil {
@@ -142,9 +154,9 @@ func (c *Chronicle) StartFullArchive(ctx context.Context, circleID, accountID st
 	}
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO circle_archives (id, circle_id, requested_by_account_id, requested_at,
-			delete_circle, encrypted, status, size_bytes)
-		VALUES (?, ?, ?, ?, ?, ?, 'building', ?)
-	`, id, circleID, accountID, formatTime(now), deleteCircle, encrypted, estimate); err != nil {
+			delete_circle, encrypted, status, size_bytes,scope_revision,full_journal)
+		VALUES (?, ?, ?, ?, ?, ?, 'building', ?,?,?)
+	`, id, circleID, accountID, formatTime(now), deleteCircle, encrypted, estimate, revision, all); err != nil {
 		return nil, false, err
 	}
 	if deleteCircle {
@@ -224,10 +236,32 @@ func (c *Chronicle) UnfreezeCircle(ctx context.Context, circleID, accountID stri
 	return tx.Commit()
 }
 
-// SetFullArchiveSnapshot — момент, на который снят круг (6.26).
-func (c *Chronicle) SetFullArchiveSnapshot(ctx context.Context, id string, at time.Time) error {
-	_, err := c.db.ExecContext(ctx, `UPDATE circle_archives SET snapshot_at = ? WHERE id = ?`, formatTime(at), id)
-	return err
+// ArchiveSnapshot — состав конкретной копии, а не нового состояния круга.
+type ArchiveSnapshot struct {
+	FullJournal bool
+	Posts       int
+}
+
+// SetFullArchiveSnapshot сохраняет момент и состав копии текущей ревизии (6.26).
+func (c *Chronicle) SetFullArchiveSnapshot(ctx context.Context, id string, at time.Time, meta ...ArchiveSnapshot) error {
+	query := `UPDATE circle_archives SET snapshot_at = ?`
+	args := []any{formatTime(at)}
+	if len(meta) > 0 {
+		query += `, full_journal = ?, posts = ?`
+		args = append(args, meta[0].FullJournal, meta[0].Posts)
+	}
+	query += ` WHERE id = ? AND status = 'building' AND scope_revision = (SELECT archive_revision FROM circles WHERE circles.id = circle_archives.circle_id)`
+	args = append(args, id)
+	result, err := c.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+	if n, err := result.RowsAffected(); err != nil {
+		return err
+	} else if n == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // FinishFullArchive — файл собран: точная длина и срок хранения. false —

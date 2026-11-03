@@ -8,10 +8,9 @@ import (
 	"time"
 )
 
-// Полный архив круга (план 51, A1): весь круг — строки базы, файлы и
-// читаемая лента — без отбора по видимости. Это копия владельца, из неё круг
-// оживляют на любом сервере, поэтому берётся всё, что составляет сам круг, и
-// ничего из его жизни на этом сервере (приглашения, курсоры, уведомления).
+// Сырой снимок всего физического круга для переноса и отделения.
+// Выдача владельцу идёт через OwnerArchiveData с отдельным правом сохранения;
+// приглашения, курсоры и уведомления в копию не входят.
 
 // FullArchiveTable — строки одной таблицы круга как есть, по колонкам схемы.
 type FullArchiveTable struct {
@@ -23,11 +22,13 @@ type FullArchiveTable struct {
 // FullArchiveData — машинная часть полного архива, снятая одной читающей
 // транзакцией: строки согласованы между собой на момент SnapshotAt.
 type FullArchiveData struct {
-	CircleID   string
-	CircleName string
-	Color      string
-	SnapshotAt time.Time
-	Tables     []FullArchiveTable
+	ArchiveScope   ArchiveScope
+	PartialJournal bool
+	CircleID       string
+	CircleName     string
+	Color          string
+	SnapshotAt     time.Time
+	Tables         []FullArchiveTable
 	// BlobIDs — все файлы круга: медиа записей и комментариев, обложки звука
 	// и кадры видео, обложки дней, аватары.
 	BlobIDs []string
@@ -38,6 +39,7 @@ type FullArchiveData struct {
 // зависимостей: оживление вставляет таблицы в этом же порядке.
 var fullArchiveQueries = []struct{ name, query string }{
 	{"circles", `SELECT * FROM circles WHERE id = ?`},
+	{"archive_spans", `SELECT * FROM archive_spans WHERE circle_id = ? ORDER BY started_at, id`},
 	{"identities", `SELECT * FROM identities WHERE circle_id = ?`},
 	{"identity_names", `SELECT * FROM identity_names WHERE identity_id IN (SELECT id FROM identities WHERE circle_id = ?)`},
 	{"memberships", `SELECT * FROM memberships WHERE circle_id = ?`},
@@ -67,6 +69,9 @@ func (c *Chronicle) FullArchiveData(ctx context.Context, circleID string) (*Full
 	}
 	defer tx.Rollback()
 	out := &FullArchiveData{CircleID: circleID, SnapshotAt: time.Now().UTC()}
+	if out.ArchiveScope, err = archiveScope(ctx, tx, circleID); err != nil {
+		return nil, err
+	}
 	if err := tx.QueryRowContext(ctx, `SELECT name, color FROM circles WHERE id = ?`, circleID).
 		Scan(&out.CircleName, &out.Color); err != nil {
 		if err == sql.ErrNoRows {
@@ -88,7 +93,11 @@ func (c *Chronicle) FullArchiveData(ctx context.Context, circleID string) (*Full
 		}
 		out.Tables = append(out.Tables, t)
 		if q.name == "posts" {
-			out.Posts = len(t.Rows)
+			for i := range t.Rows {
+				if asInt64(rowMap(t, i)["deleted"]) == 0 {
+					out.Posts++
+				}
+			}
 		}
 	}
 	if out.BlobIDs, err = c.circleBlobIDsTx(ctx, tx, circleID); err != nil {

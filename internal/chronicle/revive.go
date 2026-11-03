@@ -26,7 +26,7 @@ import (
 // Схемы 8 и 9 (владелец и имена в переносе, A12) — тоже только incoming_moves.
 // Схема 10 добавила circles.archive_cutoff_tz — его оживление и так обнуляет.
 // Схема 11 (accounts.avatar_shape) таблиц круга не меняла.
-var ReviveSchemaVersions = []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
+var ReviveSchemaVersions = []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}
 
 // ReviveLegacySchemaVersions — схемы архивов разметки 1: номера прежней
 // нумерации (до 0.34.0). Схема 36 — та же, что 1.
@@ -45,7 +45,7 @@ func ReviveSchemaKnown(formatVersion, schema int) bool {
 
 // reviveOrder — порядок вставки: по зависимостям.
 var reviveOrder = []string{
-	"circles", "identities", "identity_names", "memberships", "membership_spans",
+	"circles", "archive_spans", "identities", "identity_names", "memberships", "membership_spans",
 	"events", "posts", "post_media", "comments", "comment_media", "reactions",
 	"days", "day_titles", "day_covers",
 }
@@ -237,6 +237,25 @@ func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveRes
 		}
 	}
 	res.CircleID = ids[rowMap(circles, 0)["id"].(string)]
+	// Журнал из файла остаётся сохраняемым даже при оживлении новым лицом.
+	if asInt64(rowMap(circles, 0)["archive_all"]) == 0 && rowMap(circles, 0)["archive_all"] != nil {
+		if len(in.Tables["archive_spans"].Rows) == 0 {
+			return res, ErrInvalid
+		}
+		scope, err := archiveScope(ctx, tx, res.CircleID)
+		if err != nil {
+			return res, err
+		}
+		if !scope.contains(now, false) {
+			id, err := newID("archive-future:" + res.CircleID)
+			if err != nil {
+				return res, err
+			}
+			if _, err := tx.ExecContext(ctx, `INSERT INTO archive_spans (id,circle_id,started_at) VALUES (?,?,?)`, id, res.CircleID, formatTime(now)); err != nil {
+				return res, err
+			}
+		}
+	}
 	if in.PlaceRequestID != "" {
 		used, err := tx.ExecContext(ctx, `UPDATE quota_requests SET used_at = ?
 			WHERE id = ? AND requested_by_account_id = ? AND circle_id IS NULL
@@ -256,7 +275,17 @@ func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveRes
 			return res, err
 		}
 	}
+	// Старые manifest.posts включали tombstone: сверка прежних файлов
+	// и переноса со старого сервера должна остаться совместимой.
 	res.Posts = len(in.Tables["posts"].Rows)
+	if in.FormatVersion == 2 && in.SchemaVersion >= 13 {
+		res.Posts = 0
+		for i := range in.Tables["posts"].Rows {
+			if asInt64(rowMap(in.Tables["posts"], i)["deleted"]) == 0 {
+				res.Posts++
+			}
+		}
+	}
 	res.Names = len(in.Tables["identities"].Rows)
 
 	// Служебная строка: журнал продолжается с того места, где замер.
@@ -418,6 +447,7 @@ func (c *Chronicle) reviveRow(ctx context.Context, tx *sql.Tx, table string, row
 		}
 	}
 	if table == "circles" {
+		row["archive_revision"] = 0
 		// Живёт заново: без цикла архивации, не замерший, место — по
 		// правилам этого сервера, текст сочтут триггеры.
 		for _, col := range []string{"archive_cutoff_date", "archive_cutoff_tz", "archive_deadline", "archive_reminder_before_sec",

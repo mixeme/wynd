@@ -256,6 +256,7 @@ func (s *Server) handleIdentityHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 type transferOwnerBody struct {
+	TransferPast      bool   `json:"transfer_past"`
 	NewOwnerAccountID string `json:"new_owner_account_id"`
 }
 
@@ -272,10 +273,20 @@ func (s *Server) handleTransferOwnership(w http.ResponseWriter, r *http.Request)
 	if s.refuseWhileMoving(w, r, circleID) {
 		return
 	}
-	err := s.Chronicle.TransferOwnership(r.Context(), circleID, sess.AccountID, body.NewOwnerAccountID, time.Now().UTC())
+	err := s.Chronicle.TransferOwnership(r.Context(), circleID, sess.AccountID, body.NewOwnerAccountID, time.Now().UTC(), body.TransferPast)
 	if err != nil {
 		writeDomainError(w, err)
 		return
+	}
+	if ids, err := s.Chronicle.OwnershipRevokedArchiveIDs(r.Context(), circleID); err == nil {
+		for _, id := range ids {
+			if cancel, ok := s.fullBuilds.Load(id); ok {
+				cancel.(context.CancelFunc)()
+			}
+			s.deleteFullArchiveFiles(id)
+		}
+	} else {
+		log.Printf("transfer %s: clean revoked archives: %v", circleID, err)
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }

@@ -326,7 +326,7 @@ func (c *Chronicle) CircleColor(ctx context.Context, circleID string) (string, e
 // DeleteCircle removes a circle and all its data. Owner only; name must match.
 // Возвращает блобы круга: каскад снимает post_media, обложки и лица, а файлы
 // освобождает вызывающий после коммита (BLB-4).
-func (c *Chronicle) DeleteCircle(ctx context.Context, circleID, ownerAccountID, confirmName string, now time.Time) ([]string, error) {
+func (c *Chronicle) DeleteCircle(ctx context.Context, circleID, ownerAccountID, confirmName string, now time.Time, archived ...ArchiveRemoval) ([]string, error) {
 	tx, err := c.beginWrite(ctx)
 	if err != nil {
 		return nil, err
@@ -340,6 +340,11 @@ func (c *Chronicle) DeleteCircle(ctx context.Context, circleID, ownerAccountID, 
 	}
 	if owner != ownerAccountID {
 		return nil, ErrForbidden
+	}
+	if len(archived) > 0 {
+		if err := checkArchiveRemoval(ctx, tx, circleID, archived[0]); err != nil {
+			return nil, err
+		}
 	}
 	var name string
 	err = tx.QueryRowContext(ctx, `SELECT name FROM circles WHERE id = ?`, circleID).Scan(&name)

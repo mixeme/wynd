@@ -14,7 +14,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -48,6 +47,7 @@ const fullLinkTTL = 24 * time.Hour
 const fullStreamLinkTTL = time.Minute
 
 type fullLink struct {
+	scopeRevision                  int64
 	archiveID, circleID, accountID string
 	key                            *archive.KeyParams
 	stream                         bool
@@ -88,6 +88,7 @@ func fullArchiveJSON(a *chronicle.FullArchive) map[string]any {
 		return nil
 	}
 	out := map[string]any{
+		"full_journal": a.FullJournal, "posts": a.Posts,
 		"id": a.ID, "status": a.Status, "requested_at": a.RequestedAt,
 		"delete_circle": a.DeleteCircle, "encrypted": a.Encrypted, "size_bytes": a.SizeBytes,
 	}
@@ -120,7 +121,7 @@ func (s *Server) handleFullArchive(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	estimate, posts, members, err := s.Chronicle.CircleArchiveEstimate(r.Context(), circleID)
+	estimate, posts, members, full, err := s.Chronicle.OwnerArchiveEstimate(r.Context(), circleID)
 	if err != nil {
 		writeDomainError(w, err)
 		return
@@ -146,6 +147,7 @@ func (s *Server) handleFullArchive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
+		"full_journal":    full,
 		"frozen_at":       frozen,
 		"estimate_bytes":  estimate,
 		"posts":           posts,
@@ -180,7 +182,7 @@ func (s *Server) handleStartFullArchive(w http.ResponseWriter, r *http.Request) 
 	if body.DeleteCircle && s.refuseWhileMoving(w, r, circleID) {
 		return
 	}
-	estimate, _, _, err := s.Chronicle.CircleArchiveEstimate(r.Context(), circleID)
+	estimate, _, _, _, err := s.Chronicle.OwnerArchiveEstimate(r.Context(), circleID)
 	if err != nil {
 		writeDomainError(w, err)
 		return
@@ -309,6 +311,18 @@ func (s *Server) handleRemoveFrozenCircle(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "not_downloaded"})
 		return
 	}
+	var body struct {
+		AcknowledgePartial bool `json:"acknowledge_partial"`
+	}
+	if r.ContentLength != 0 {
+		var ok bool
+		body, ok = bindJSON[struct {
+			AcknowledgePartial bool `json:"acknowledge_partial"`
+		}](w, r)
+		if !ok {
+			return
+		}
+	}
 	name, err := s.Chronicle.CircleName(r.Context(), circleID)
 	if err != nil {
 		writeDomainError(w, err)
@@ -319,7 +333,7 @@ func (s *Server) handleRemoveFrozenCircle(w http.ResponseWriter, r *http.Request
 		writeDomainError(w, err)
 		return
 	}
-	blobIDs, err := s.Chronicle.DeleteCircle(r.Context(), circleID, sess.AccountID, name, time.Now().UTC())
+	blobIDs, err := s.Chronicle.DeleteCircle(r.Context(), circleID, sess.AccountID, name, time.Now().UTC(), chronicle.ArchiveRemoval{ID: a.ID, AcceptPartial: body.AcknowledgePartial})
 	if err != nil {
 		writeDomainError(w, err)
 		return
@@ -371,14 +385,14 @@ func (s *Server) removeFullArchive(ctx context.Context, id, reason string) {
 	if cancel, ok := s.fullBuilds.Load(id); ok {
 		cancel.(context.CancelFunc)()
 	}
-	removed, err := s.Chronicle.RemoveFullArchive(ctx, id, reason, time.Now())
+	_, err := s.Chronicle.RemoveFullArchive(ctx, id, reason, time.Now())
 	if err != nil {
 		log.Printf("full archive %s: remove (%s): %v", id, reason, err)
 		return
 	}
-	if removed {
-		s.deleteFullArchiveFiles(id)
-	}
+	// Повтор нужен и после отзыва при передаче: открытый файл Windows
+	// можно стереть только после завершения прежнего скачивания.
+	s.deleteFullArchiveFiles(id)
 }
 
 func (s *Server) deleteFullArchiveFiles(id string) {
@@ -467,6 +481,11 @@ func (s *Server) handleFullArchiveStreamLink(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *Server) issueFullLink(l fullLink, ttl time.Duration) (string, error) {
+	scope, err := s.Chronicle.ArchiveScope(context.Background(), l.circleID)
+	if err != nil {
+		return "", err
+	}
+	l.scopeRevision = scope.Revision
 	buf := make([]byte, 32)
 	if _, err := rand.Read(buf); err != nil {
 		return "", err
@@ -484,6 +503,14 @@ func (s *Server) issueFullLink(l fullLink, ttl time.Duration) (string, error) {
 	return token, nil
 }
 
+func (s *Server) validFullLink(ctx context.Context, link fullLink) bool {
+	if err := s.Chronicle.RequireOwner(ctx, link.circleID, link.accountID); err != nil {
+		return false
+	}
+	scope, err := s.Chronicle.ArchiveScope(ctx, link.circleID)
+	return err == nil && scope.Revision == link.scopeRevision
+}
+
 // handleFullArchiveByLink отдаёт готовый файл — с докачкой (Range). Дошёл
 // последний байт — файл стирается: «скачал» — когда до устройства дошёл
 // конец файла (6.27), оборванное скачивание файл не трогает.
@@ -494,6 +521,10 @@ func (s *Server) handleFullArchiveByLink(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	link := v.(fullLink)
+	if !s.validFullLink(r.Context(), link) {
+		writeDomainError(w, chronicle.ErrNotFound)
+		return
+	}
 	a, err := s.Chronicle.GetFullArchive(r.Context(), link.archiveID)
 	if err != nil || a.Status != chronicle.FullArchiveReady {
 		writeDomainError(w, chronicle.ErrNotFound)
@@ -513,6 +544,10 @@ func (s *Server) handleFullArchiveByLink(w http.ResponseWriter, r *http.Request)
 	name, err := s.Chronicle.CircleName(r.Context(), a.CircleID)
 	if err != nil {
 		name = "circle"
+	}
+	if a.ScopeRevision != link.scopeRevision || !s.validFullLink(r.Context(), link) {
+		writeDomainError(w, chronicle.ErrNotFound)
+		return
 	}
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Disposition", contentDisposition(name+".wynd"))
@@ -536,6 +571,10 @@ func (s *Server) handleFullArchiveStream(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	link := v.(fullLink)
+	if !s.validFullLink(r.Context(), link) {
+		writeDomainError(w, chronicle.ErrNotFound)
+		return
+	}
 	// Запись архива с удалением: поток не дошёл — сбой, и владелец видит
 	// экран сборки снова; дошёл — «скачано» (6.29).
 	finished := false
@@ -551,8 +590,12 @@ func (s *Server) handleFullArchiveStream(w http.ResponseWriter, r *http.Request)
 		writeDomainError(w, err)
 		return
 	}
+	if in.Data.ArchiveScope.Revision != link.scopeRevision || !s.validFullLink(r.Context(), link) {
+		writeDomainError(w, chronicle.ErrNotFound)
+		return
+	}
 	if link.archiveID != "" {
-		if err := s.Chronicle.SetFullArchiveSnapshot(r.Context(), link.archiveID, in.Data.SnapshotAt); err != nil {
+		if err := s.Chronicle.SetFullArchiveSnapshot(r.Context(), link.archiveID, in.Data.SnapshotAt, chronicle.ArchiveSnapshot{FullJournal: !in.Data.PartialJournal, Posts: in.Data.Posts}); err != nil {
 			writeDomainError(w, err)
 			return
 		}
@@ -567,6 +610,10 @@ func (s *Server) handleFullArchiveStream(w http.ResponseWriter, r *http.Request)
 			writeDomainError(w, chronicle.ErrInvalid)
 			return
 		}
+	}
+	if !s.validFullLink(r.Context(), link) {
+		writeDomainError(w, chronicle.ErrNotFound)
+		return
 	}
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Disposition", contentDisposition(in.Data.CircleName+".wynd"))
@@ -608,35 +655,26 @@ func writeFullArchive(ctx context.Context, w io.Writer, in archive.FullInput, ke
 // fullArchiveInput снимает круг: строки базы одной транзакцией, лента и
 // названия дней — на тот же момент.
 func (s *Server) fullArchiveInput(ctx context.Context, circleID string) (archive.FullInput, error) {
-	data, err := s.Chronicle.FullArchiveData(ctx, circleID)
+	return s.archiveInput(ctx, circleID, false)
+}
+
+func (s *Server) archiveInput(ctx context.Context, circleID string, transport bool) (archive.FullInput, error) {
+	var data *chronicle.FullArchiveData
+	var err error
+	if transport {
+		data, err = s.Chronicle.FullArchiveData(ctx, circleID)
+	} else {
+		data, err = s.Chronicle.OwnerArchiveData(ctx, circleID)
+	}
 	if err != nil {
 		return archive.FullInput{}, err
 	}
-	posts, err := s.Chronicle.FullArchiveFeed(ctx, circleID, data.SnapshotAt)
-	if err != nil {
-		return archive.FullInput{}, err
-	}
-	dayTitles, err := s.Chronicle.FullArchiveDayTitles(ctx, circleID, data.SnapshotAt)
+	posts, dayTitles, err := s.Chronicle.ArchiveFeed(ctx, data)
 	if err != nil {
 		return archive.FullInput{}, err
 	}
 	// Аватары всех лиц круга, не только тех, кто писал: ушедшие тоже в архиве.
-	var identities []string
-	for _, t := range data.Tables {
-		if t.Name != "identities" {
-			continue
-		}
-		col := slices.Index(t.Columns, "id")
-		for _, row := range t.Rows {
-			if id, ok := row[col].(string); ok {
-				identities = append(identities, id)
-			}
-		}
-	}
-	avatars, err := s.Chronicle.IdentityAvatarBlobIDs(ctx, identities)
-	if err != nil {
-		return archive.FullInput{}, err
-	}
+	avatars := chronicle.ArchiveAvatars(data)
 	schema, err := s.schemaVersion(ctx)
 	if err != nil {
 		return archive.FullInput{}, err
@@ -691,7 +729,10 @@ func (s *Server) runFullArchiveBuild(ctx context.Context, a *chronicle.FullArchi
 	if err != nil {
 		return err
 	}
-	if err := s.Chronicle.SetFullArchiveSnapshot(ctx, a.ID, in.Data.SnapshotAt); err != nil {
+	if a.ScopeRevision != in.Data.ArchiveScope.Revision {
+		return chronicle.ErrNotFound
+	}
+	if err := s.Chronicle.SetFullArchiveSnapshot(ctx, a.ID, in.Data.SnapshotAt, chronicle.ArchiveSnapshot{FullJournal: !in.Data.PartialJournal, Posts: in.Data.Posts}); err != nil {
 		return err
 	}
 	if err := os.MkdirAll(FullArchiveDir(s.DataDir), 0o700); err != nil {

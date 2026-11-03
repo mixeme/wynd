@@ -24,12 +24,13 @@ func (s *Server) handleInstance(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	out := map[string]any{
-		"name":              info.Name,
-		"version":           info.Version,
-		"registration_mode": info.RegistrationMode,
-		"loopback":          info.Loopback,
-		"bootstrapped":      info.Bootstrapped,
-		"code_delivery":     delivery,
+		"archive_preservation": true,
+		"name":                 info.Name,
+		"version":              info.Version,
+		"registration_mode":    info.RegistrationMode,
+		"loopback":             info.Loopback,
+		"bootstrapped":         info.Bootstrapped,
+		"code_delivery":        delivery,
 		// Значок «GDPR» у имени сервера (кадр 1.2): люди узнают заранее,
 		// что уходящий может стереть своё имя и фото во всех кругах.
 		"allow_name_erasure": info.AllowNameErasure,

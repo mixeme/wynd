@@ -375,6 +375,7 @@ func splitTables(data *FullArchiveData, windows []splitWindow, keepMembers map[s
 		return asInt64(r["is_service"]) == 1 && visible(r["created_at"], true)
 	})
 	circleRows := filter("circles", func(r map[string]any) bool {
+		r["archive_all"], r["archive_revision"] = int64(1), int64(0)
 		r["name"] = name
 		// «Здесь начинается круг» — там, где начинается перешедшее прошлое.
 		r["created_at"] = formatTime(now)

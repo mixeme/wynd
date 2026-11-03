@@ -184,7 +184,8 @@ func (c *Chronicle) SetEditWindow(ctx context.Context, circleID, actorAccountID 
 }
 
 // TransferOwnership moves circle ownership; caller must be current owner.
-func (c *Chronicle) TransferOwnership(ctx context.Context, circleID, ownerAccountID, newOwnerAccountID string, now time.Time) error {
+func (c *Chronicle) TransferOwnership(ctx context.Context, circleID, ownerAccountID, newOwnerAccountID string, now time.Time, preservePast ...bool) error {
+	now = utcOrNow(now)
 	if newOwnerAccountID == ownerAccountID {
 		return ErrInvalid
 	}
@@ -204,6 +205,13 @@ func (c *Chronicle) TransferOwnership(ctx context.Context, circleID, ownerAccoun
 	}
 	if currentOwner != ownerAccountID {
 		return ErrForbidden
+	}
+	var moving int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM circle_moves WHERE circle_id = ? AND status IN ('waiting','pulling','accepted')`, circleID).Scan(&moving); err != nil {
+		return err
+	}
+	if moving > 0 {
+		return ErrMoveBusy
 	}
 	newMem, err := c.membership(ctx, tx, circleID, newOwnerAccountID)
 	if err != nil {
@@ -227,6 +235,9 @@ func (c *Chronicle) TransferOwnership(ctx context.Context, circleID, ownerAccoun
 	}
 
 	updated := formatTime(now)
+	if err := transferArchiveScope(ctx, tx, circleID, newMem.ID, len(preservePast) > 0 && preservePast[0], now); err != nil {
+		return err
+	}
 	if _, err := tx.ExecContext(ctx, `UPDATE circles SET owner_account_id = ?, updated_at = ? WHERE id = ?`,
 		newOwnerAccountID, updated, circleID); err != nil {
 		return err

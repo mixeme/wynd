@@ -508,7 +508,7 @@ func (s *Server) buildMoveArchive(moveID, circleID string) {
 }
 
 func (s *Server) runMoveArchiveBuild(ctx context.Context, moveID, circleID string) error {
-	in, err := s.fullArchiveInput(ctx, circleID)
+	in, err := s.archiveInput(ctx, circleID, true)
 	if err != nil {
 		return err
 	}
@@ -551,7 +551,7 @@ func fullArchiveCounts(d *chronicle.FullArchiveData) (posts, names int, media in
 	for _, t := range d.Tables {
 		switch t.Name {
 		case "posts":
-			posts = len(t.Rows)
+			posts = d.Posts
 		case "identities":
 			names = len(t.Rows)
 		case "blobs":
