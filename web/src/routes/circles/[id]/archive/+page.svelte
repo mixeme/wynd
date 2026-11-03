@@ -40,6 +40,8 @@
 	}
 
 	function download() {
+		// Keep the button stable during the short link request. Repeated taps
+		// share that request; only a server Retry-After disables the button.
 		// Вне архивации — всё, что человек видел в круге на момент скачивания
 		// (A7, решение владельца 2026-10-14; wynd.html, «Квота и архив»).
 		void downloadArchive(
@@ -79,12 +81,8 @@
 		<Label>Границы</Label>
 		<SettingsRow title="Ваша видимость" value="то, что вы застали" chevron={false} divided="top" />
 
-		<Button
-			class="mt-16"
-			variant="colored"
-			disabled={remaining > 0}
-			loading={downloadState?.pending ?? false}
-			onclick={download}>Скачать</Button
+		<Button class="mt-16" variant="colored" disabled={remaining > 0} onclick={download}
+			>Скачать</Button
 		>
 
 		{#if downloadState?.retryAt || downloadState?.error}
@@ -133,13 +131,7 @@
 		<SettingsRow title="Ваша видимость" value="то, что вы застали" chevron={false} />
 
 		{#if cycle.download_url}
-			<Button
-				class="mt-16"
-				variant="colored"
-				disabled={remaining > 0}
-				loading={downloadState?.pending ?? false}
-				onclick={download}
-			>
+			<Button class="mt-16" variant="colored" disabled={remaining > 0} onclick={download}>
 				Скачать{cycle.personal_archive_bytes ? ` ${formatBytes(cycle.personal_archive_bytes)}` : ''}
 			</Button>
 		{/if}

@@ -144,21 +144,33 @@ it('uses the same busy state outside an archiving cycle without inventing dates'
 	expect(target.textContent).not.toContain('Скачать до');
 });
 
-it('does not create two links for rapid repeated taps on one archive', async () => {
-	const { circle, url } = fixture();
-	let resolve!: (value: { url: string }) => void;
-	vi.mocked(apiJson).mockReturnValueOnce(
-		new Promise((r) => {
-			resolve = r;
-		})
-	);
-	const one = startArchiveDownload(circle.origin, url);
-	const two = startArchiveDownload(circle.origin, url);
-	expect(apiJson).toHaveBeenCalledTimes(1);
-	resolve({ url: '/api/v1/archive/only-one' });
-	await Promise.all([one, two]);
-	expect(openDownload).toHaveBeenCalledTimes(1);
-});
+it.each([true, false])(
+	'keeps the button stable while requesting a link (active cycle: %s)',
+	async (active) => {
+		const { circle } = fixture(active);
+		const target = showArchive(circle);
+		const button = downloadButton(target);
+		const label = button.textContent;
+		const classes = button.className;
+		let resolve!: (value: { url: string }) => void;
+		vi.mocked(apiJson).mockReturnValueOnce(
+			new Promise((r) => {
+				resolve = r;
+			})
+		);
+		button.click();
+		flushSync();
+		expect(button.textContent).toBe(label);
+		expect(button.className).toBe(classes);
+		expect(button.disabled).toBe(false);
+		button.click();
+		expect(apiJson).toHaveBeenCalledTimes(1);
+		resolve({ url: '/api/v1/archive/only-one' });
+		await vi.waitFor(() => expect(openDownload).toHaveBeenCalledTimes(1));
+		expect(button.textContent).toBe(label);
+		expect(button.className).toBe(classes);
+	}
+);
 
 it('keeps the state of identical circle IDs on different servers independent', async () => {
 	const { id, url } = fixture();
