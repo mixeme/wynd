@@ -193,9 +193,10 @@ type Result struct {
 	// Path — файл ключа (12а), подпись (12д).
 	Path string `json:"path,omitempty"`
 	// PubPath — куда записан открытый ключ (12а).
-	PubPath   string `json:"pub_path,omitempty"`
-	Published bool   `json:"published,omitempty"`
-	URL       string `json:"url,omitempty"`
+	PubPath   string         `json:"pub_path,omitempty"`
+	Published bool           `json:"published,omitempty"`
+	URL       string         `json:"url,omitempty"`
+	Steps     []signing.Step `json:"steps,omitempty"`
 }
 
 func fail(err error) Result {
@@ -234,7 +235,7 @@ func (a *App) Releases() Releases {
 
 // CheckRelease — проверки выпуска до пароля (12в).
 func (a *App) CheckRelease(tag string) (*signing.Check, error) {
-	c, err := a.gh.Fetch(a.ctx, tag)
+	c, err := a.gh.FetchWithProgress(a.ctx, tag, a.reportProgress)
 	if err != nil {
 		return nil, err
 	}
@@ -245,6 +246,10 @@ func (a *App) CheckRelease(tag string) (*signing.Check, error) {
 	return c, nil
 }
 
+func (a *App) reportProgress(p signing.Progress) {
+	runtime.EventsEmit(a.ctx, "signer:progress", p)
+}
+
 // SignRelease — «Подписать и опубликовать» (12в → 12г).
 func (a *App) SignRelease(pass string) Result {
 	a.mu.Lock()
@@ -253,15 +258,21 @@ func (a *App) SignRelease(pass string) Result {
 	if c == nil {
 		return Result{Message: "Сначала выберите выпуск"}
 	}
-	published, err := a.gh.SignAndPublish(a.ctx, c, loadSettings().KeyPath, pass)
+	var steps []signing.Step
+	published, err := a.gh.SignAndPublishWithProgress(a.ctx, c, loadSettings().KeyPath, pass, func(p signing.Progress) {
+		steps = p.Steps
+		a.reportProgress(p)
+	})
 	if err != nil {
-		return fail(err)
+		res := fail(err)
+		res.Steps = steps
+		return res
 	}
 	a.mu.Lock()
 	c.Close()
 	a.check = nil
 	a.mu.Unlock()
-	return Result{OK: true, Published: published, URL: "https://github.com/" + a.gh.Repo + "/releases/tag/" + c.Tag}
+	return Result{OK: true, Published: published, URL: "https://github.com/" + a.gh.Repo + "/releases/tag/" + c.Tag, Steps: steps}
 }
 
 // PickExe — «Подписать файл на этом компьютере» (12б).

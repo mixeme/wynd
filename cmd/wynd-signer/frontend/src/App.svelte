@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount, tick } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import Label from '$ui/forms/Label.svelte';
@@ -8,13 +9,15 @@
 	import MarkRow from '$ui/workshop/MarkRow.svelte';
 	import MarkRows from '$ui/workshop/MarkRows.svelte';
 	import Notice from '$ui/workshop/Notice.svelte';
-	import { backend, type Check, type Release, type State } from './api';
+	import StepList from '$ui/workshop/StepList.svelte';
+	import { backend, watchProgress, type Check, type Release, type State, type Step } from './api';
 
 	// Экраны (docs/visual/installer.html): 12а — ключа нет, 12б — выпуски,
-	// 12в — черновик, 12г — подписан и опубликован, 12д — подписан файл;
+	// 12в–12г — проверка, подпись и итог на одном экране, 12д — подписан файл;
 	// file — пароль для файла на этом компьютере.
-	type Screen = 'create' | 'list' | 'release' | 'done' | 'file' | 'filedone';
+	type Screen = 'create' | 'list' | 'release' | 'file' | 'filedone';
 	let screen = $state<Screen>('list');
+	let body = $state<HTMLElement>();
 	let st = $state<State | undefined>();
 	let keyNote = $state('');
 	let keyError = $state('');
@@ -32,11 +35,16 @@
 	let releases = $state<Release[]>([]);
 	let listing = $state(false);
 	let listError = $state('');
+	let listRequest = 0;
 
 	// 12в, 12г
 	let check = $state<Check | undefined>();
 	let checking = $state(false);
 	let checkError = $state('');
+	let selectedRelease = $state<Release | undefined>();
+	let checkSteps = $state<Step[]>([]);
+	let signSteps = $state<Step[]>([]);
+	let releaseDone = $state(false);
 	let pass = $state('');
 	let wrong = $state(false);
 	let signing = $state(false);
@@ -48,6 +56,12 @@
 	let filePath = $state('');
 	let fileSize = $state(0);
 	let sigPath = $state('');
+
+	onMount(() => watchProgress((p) => {
+		if (screen !== 'release' || p.tag !== selectedRelease?.tag) return;
+		if (p.phase === 'check' && checking) checkSteps = p.steps;
+		if (p.phase === 'sign' && signing) signSteps = p.steps;
+	}));
 
 	void start();
 	async function start() {
@@ -100,14 +114,21 @@
 	}
 
 	async function list() {
+		const request = ++listRequest;
 		listing = true;
 		listError = '';
 		try {
 			const res = await backend().Releases();
+			if (request !== listRequest) return;
+			if (!res.ok) {
+				listError = res.message ?? 'GitHub не ответил';
+				return;
+			}
 			releases = res.releases ?? [];
-			if (!res.ok) listError = res.message ?? 'GitHub не ответил';
+		} catch (err) {
+			if (request === listRequest) listError = String(err);
 		} finally {
-			listing = false;
+			if (request === listRequest) listing = false;
 		}
 	}
 	async function otherKey() {
@@ -119,6 +140,7 @@
 		}
 	}
 	function toList() {
+		selectedRelease = undefined;
 		check = undefined;
 		pass = '';
 		wrong = false;
@@ -129,28 +151,39 @@
 	}
 
 	async function openRelease(r: Release) {
+		selectedRelease = r;
 		screen = 'release';
 		check = undefined;
 		checkError = '';
 		pass = '';
 		wrong = false;
 		signError = '';
+		checkSteps = [];
+		signSteps = [];
+		releaseDone = false;
 		checking = true;
+		void tick().then(() => body?.scrollTo({ top: 0 }));
 		try {
 			check = await backend().CheckRelease(r.tag);
+			checkSteps = check.steps;
 		} catch (e) {
 			checkError = String(e);
+			checkSteps = checkSteps.map((s) => s.status === 'running' ? { ...s, status: 'failed' } : s);
 		} finally {
 			checking = false;
 		}
 	}
 	async function signRelease() {
 		if (!check || !pass || signing) return;
+		const tag = check.tag;
 		signing = true;
 		wrong = false;
 		signError = '';
+		signSteps = [];
+		void tick().then(() => body?.scrollTo({ top: 0 }));
 		try {
 			const res = await backend().SignRelease(pass);
+			signSteps = res.steps ?? signSteps;
 			if (res.wrong_password) {
 				wrong = true;
 				return;
@@ -162,7 +195,17 @@
 			pass = '';
 			published = Boolean(res.published);
 			releaseUrl = res.url ?? '';
-			screen = 'done';
+			// Уже подтверждённая подпись видна сразу, даже пока GitHub отвечает.
+			++listRequest;
+			listing = false;
+			releases = releases.map((r) =>
+				r.tag === tag ? { ...r, signed: true, draft: !res.published } : r
+			);
+			releaseDone = true;
+			void list();
+		} catch (err) {
+			signError = String(err);
+			signSteps = signSteps.map((s) => s.status === 'running' ? { ...s, status: 'failed' } : s);
 		} finally {
 			signing = false;
 		}
@@ -201,12 +244,14 @@
 		}
 	}
 
-	const version = $derived(check?.tag.replace(/^workshop-v/, '') ?? '');
+	const version = $derived(selectedRelease?.version ?? check?.tag.replace(/^workshop-v/, '') ?? '');
 	const fileName = $derived(filePath.slice(Math.max(filePath.lastIndexOf('\\'), filePath.lastIndexOf('/')) + 1));
 </script>
 
+<svelte:window onfocus={() => { if (screen === 'list' && st && !listing) void list(); }} />
+
 <div class="ins">
-	<main class="ins-body">
+	<main class="ins-body" bind:this={body}>
 		{#if screen === 'create'}
 			<!-- Кадр 12а. -->
 			<h2>Ключ подписи Мастерской</h2>
@@ -235,7 +280,10 @@
 		{:else if screen === 'list' && st}
 			<!-- Кадр 12б. -->
 			{#if keyNote}<Notice tone="note">{keyNote}</Notice>{/if}
-			<h2>Выпуски Мастерской</h2>
+			<FieldLine>
+				<h2 class="ins-grow">Выпуски Мастерской</h2>
+				<Button variant="ghost" disabled={listing} onclick={() => void list()}>{listing ? 'Обновляем…' : 'Обновить'}</Button>
+			</FieldLine>
 			{#if st.key_exists}
 				<p class="ins-sub">
 					Ключ — {st.key_path}
@@ -250,20 +298,21 @@
 				</Notice>
 			{/if}
 			{#if keyError}<Notice tone="bad" alert>{keyError}</Notice>{/if}
-			{#if listing && !releases.length}
-				<p class="ins-dim">Спрашиваем GitHub…</p>
-			{/if}
 			{#if listError}<Notice tone="bad" alert>{listError}</Notice>{/if}
 			<MarkRows>
 				{#each releases as r (r.tag)}
 					<MarkRow mark={r.draft ? '●' : '✓'} tone={r.draft ? 'note' : 'ok'}>
-						Мастерская {r.version}
+						{#if r.url}
+							<TextButton class="link under" onclick={() => void backend().OpenLink(r.url ?? '')}>Мастерская {r.version}</TextButton>
+						{:else}
+							Мастерская {r.version}
+						{/if}
 						<span class="ins-dim"
 							>— {r.draft
 								? r.signed
 									? 'черновик, подписан'
 									: 'черновик, не подписан'
-								: `опубликован ${day(r.published_at)}, ${r.signed ? 'с подписью' : 'без подписи'}`}</span
+								: `опубликован${r.published_at ? ' ' + day(r.published_at) : ''}, ${r.signed ? 'с подписью' : 'без подписи'}`}</span
 						>
 						{#snippet action()}
 							{#if (r.draft || !r.signed) && st?.key_exists}
@@ -284,71 +333,56 @@
 				</MarkRows>
 			{/if}
 		{:else if screen === 'release'}
-			<!-- Кадр 12в: проверки до пароля. -->
+			<!-- Проверки, пароль, подпись и итог остаются на одном экране. -->
 			<h2>Мастерская {version}</h2>
-			{#if checking}
-				<p class="ins-dim">Скачиваем и проверяем…</p>
-			{:else if checkError}
-				<Notice tone="bad" alert>{checkError}</Notice>
-				<FootBar><Button variant="ghost" onclick={toList}>Назад</Button></FootBar>
-			{:else if check}
-				<MarkRows>
-					<MarkRow mark="✓" tone="ok">Скачан wynd-workshop.exe <span class="ins-dim">— {mb(check.size)}</span></MarkRow>
-					<MarkRow mark={check.sum_ok ? '✓' : '!'} tone={check.sum_ok ? 'ok' : 'block'}>
-						{check.sum_ok ? 'Сумма сходится с той, что в выпуске' : 'Сумма не сходится с той, что в выпуске'}
-					</MarkRow>
-					<MarkRow mark={check.attest_ok ? '✓' : '!'} tone={check.attest_ok ? 'ok' : 'block'}>
-						{#if check.attest_ok}
-							Собран GitHub Actions из тега {check.tag} <span class="ins-dim">— коммит {check.commit?.slice(0, 8)}</span>
-						{:else}
-							Нет удостоверения, что exe собран GitHub Actions из тега {check.tag}
-						{/if}
-					</MarkRow>
-				</MarkRows>
-				{#if check.problem}
-					<Notice tone="bad" alert>{check.problem}. Такой exe подписывать нельзя.</Notice>
-					<FootBar><Button variant="ghost" onclick={toList}>Назад</Button></FootBar>
-				{:else}
-					{#if !check.key_in_release}
-						<Notice tone="note">В этой сборке нет открытого ключа. Подпись добавится к выпуску, но сама эта Мастерская обновляться не сможет. Для самообновления нужна новая сборка со встроенным открытым ключом.</Notice>
-					{/if}
-					<Label>Пароль ключа</Label>
-					<Input type="password" autocomplete="off" bind:value={pass} />
-					{#if wrong}<p class="ins-note" role="alert">Пароль не подошёл</p>{/if}
-					{#if check.draft && check.notes}
-						<Label>Что нового — из выпуска</Label>
-						<Notice>
-							{#each check.notes.split('\n') as line, i (i)}<div>{line}</div>{/each}
-						</Notice>
-					{:else if check.draft}
-						<Notice>В whatsnew.md нет раздела {version} — выпуск подпишем, но не опубликуем.</Notice>
-					{/if}
-					{#if !check.draft}
-						<Notice>Выпуск уже опубликован. Добавим подпись, описание и дата публикации сохранятся.</Notice>
-					{/if}
-					{#if signError}<Notice tone="bad" alert>{signError}</Notice>{/if}
-					<FootBar>
-						<Button variant={pass ? 'colored' : 'off'} loading={signing} onclick={() => void signRelease()}>
-							{check.draft && check.notes ? 'Подписать и опубликовать' : 'Подписать'}
-						</Button>
-						<Button variant="ghost" disabled={signing} onclick={toList}>Назад</Button>
-					</FootBar>
+			<StepList steps={checkSteps} />
+			{#if checkError}<Notice tone="bad" alert>{checkError}</Notice>{/if}
+			{#if check?.problem}<Notice tone="bad" alert>{check.problem}. Такой exe подписывать нельзя.</Notice>{/if}
+			{#if signSteps.length}<StepList steps={signSteps} />{/if}
+			{#if releaseDone}
+				<Notice tone="note" title={published ? 'Выпуск подписан и опубликован' : 'Выпуск подписан'}>
+					{check?.key_in_release ? 'Подпись проверена открытым ключом из репозитория.' : 'Подпись проверена открытой частью выбранного ключа.'}
+					{published
+						? 'Файл wynd-workshop.exe.sig выложен в выпуск на GitHub.'
+						: `Файл wynd-workshop.exe.sig выложен в черновик. Он не опубликован: в whatsnew.md нет раздела ${version}.`}
+					Временные файлы на этом компьютере удалены.
+				</Notice>
+				<FootBar>
+					<Button variant="colored" onclick={() => void backend().OpenLink(releaseUrl)}>Открыть выпуск</Button>
+					<Button variant="ghost" onclick={toList}>К выпускам</Button>
+				</FootBar>
+			{:else if checkError || check?.problem}
+				<FootBar>
+					<Button variant="colored" onclick={() => { if (selectedRelease) void openRelease(selectedRelease); }}>Повторить проверку</Button>
+					<Button variant="ghost" onclick={toList}>К выпускам</Button>
+				</FootBar>
+			{:else}
+				{#if check && !check.key_in_release}
+					<Notice tone="note">В этой сборке нет открытого ключа. Подпись добавится к выпуску, но сама эта Мастерская обновляться не сможет. Для самообновления нужна новая сборка со встроенным открытым ключом.</Notice>
 				{/if}
+				{#if checking}<p class="ins-note" role="status">Пароль можно будет ввести после проверки выпуска.</p>{/if}
+				<Label>Пароль ключа</Label>
+				<Input type="password" autocomplete="off" bind:value={pass} disabled={checking || signing || !check} />
+				{#if wrong}<p class="ins-note" role="alert">Пароль не подошёл</p>{/if}
+				{#if check?.draft && check.notes}
+					<Label>Что нового — из выпуска</Label>
+					<Notice>
+						{#each check.notes.split('\n') as line, i (i)}<div>{line}</div>{/each}
+					</Notice>
+				{:else if check?.draft}
+					<Notice>В whatsnew.md нет раздела {version} — выпуск подпишем, но не опубликуем.</Notice>
+				{/if}
+				{#if check && !check.draft}
+					<Notice>Выпуск уже опубликован. Добавим подпись, описание и дата публикации сохранятся.</Notice>
+				{/if}
+				{#if signError}<Notice tone="bad" alert>{signError}</Notice>{/if}
+				<FootBar>
+					<Button variant={pass && check && !checking ? 'colored' : 'off'} disabled={checking || !check || !pass} loading={signing} onclick={() => void signRelease()}>
+						{check?.draft && check.notes ? 'Подписать и опубликовать' : 'Подписать'}
+					</Button>
+					<Button variant="ghost" disabled={checking || signing} onclick={toList}>К выпускам</Button>
+				</FootBar>
 			{/if}
-		{:else if screen === 'done'}
-			<!-- Кадр 12г. -->
-			<h2>Мастерская {version} {check?.draft && published ? 'опубликована' : 'подписана'}</h2>
-			<p class="ins-sub">{check?.key_in_release ? 'Подпись проверена открытым ключом из репозитория.' : 'Подпись проверена открытой частью выбранного ключа.'}</p>
-			<Notice>
-				{published
-					? 'Подпись wynd-workshop.exe.sig выложена в выпуск на GitHub, рядом с exe и его суммой.'
-					: `Подпись wynd-workshop.exe.sig выложена в черновик выпуска на GitHub. Черновик не опубликован: в whatsnew.md нет раздела ${version}.`}
-				На этом компьютере ничего не осталось: exe скачивался только для проверки.
-			</Notice>
-			<FootBar>
-				<Button variant="colored" onclick={() => void backend().OpenLink(releaseUrl)}>Открыть выпуск</Button>
-				<Button variant="ghost" onclick={toList}>К выпускам</Button>
-			</FootBar>
 		{:else if screen === 'file'}
 			<!-- Пароль для файла на этом компьютере (как 12в, без проверок выпуска). -->
 			<h2>{fileName}</h2>

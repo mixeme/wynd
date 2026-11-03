@@ -15,6 +15,7 @@ export interface Result {
 	pub_path?: string;
 	published?: boolean;
 	url?: string;
+	steps?: Step[];
 }
 
 export interface Release {
@@ -42,6 +43,27 @@ export interface Check {
 	attest_ok: boolean;
 	notes?: string;
 	problem?: string;
+	steps: Step[];
+}
+
+export interface Step {
+	id: string;
+	title: string;
+	status: 'pending' | 'running' | 'done' | 'failed';
+	note?: string;
+}
+
+export interface Progress {
+	tag: string;
+	phase: 'check' | 'sign';
+	steps: Step[];
+}
+
+export function watchProgress(callback: (progress: Progress) => void): () => void {
+	const rt = (window as unknown as {
+		runtime?: { EventsOn(name: string, callback: (progress: Progress) => void): () => void };
+	}).runtime;
+	return rt?.EventsOn('signer:progress', callback) ?? (() => {});
 }
 
 interface Backend {

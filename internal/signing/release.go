@@ -67,14 +67,20 @@ type Release struct {
 
 // Releases — выпуски Мастерской, новые сверху.
 func (g GitHub) Releases(ctx context.Context) ([]Release, error) {
-	out, err := g.gh(ctx, "release", "list", "-R", g.Repo, "-L", "30", "--json", "tagName,isDraft,publishedAt")
+	// Один ответ содержит и статус публикации, и файлы: медленный или
+	// неудачный запрос отдельного выпуска не превращает его в «без подписи».
+	out, err := g.gh(ctx, "api", "repos/"+g.Repo+"/releases?per_page=30")
 	if err != nil {
 		return nil, err
 	}
 	var rows []struct {
-		TagName     string `json:"tagName"`
-		IsDraft     bool   `json:"isDraft"`
-		PublishedAt string `json:"publishedAt"`
+		TagName     string `json:"tag_name"`
+		IsDraft     bool   `json:"draft"`
+		PublishedAt string `json:"published_at"`
+		URL         string `json:"html_url"`
+		Assets      []struct {
+			Name string `json:"name"`
+		} `json:"assets"`
 	}
 	if err := json.Unmarshal(out, &rows); err != nil {
 		return nil, err
@@ -84,24 +90,13 @@ func (g GitHub) Releases(ctx context.Context) ([]Release, error) {
 		if !strings.HasPrefix(r.TagName, tagPrefix) {
 			continue
 		}
-		rel := Release{Tag: r.TagName, Version: strings.TrimPrefix(r.TagName, tagPrefix), Draft: r.IsDraft}
+		rel := Release{Tag: r.TagName, Version: strings.TrimPrefix(r.TagName, tagPrefix), Draft: r.IsDraft, URL: r.URL}
 		if !r.IsDraft {
 			rel.PublishedAt = r.PublishedAt
 		}
-		if v, err := g.gh(ctx, "release", "view", r.TagName, "-R", g.Repo, "--json", "assets,url"); err == nil {
-			var view struct {
-				URL    string `json:"url"`
-				Assets []struct {
-					Name string `json:"name"`
-				} `json:"assets"`
-			}
-			if json.Unmarshal(v, &view) == nil {
-				rel.URL = view.URL
-				for _, a := range view.Assets {
-					if a.Name == exeName+".sig" {
-						rel.Signed = true
-					}
-				}
+		for _, a := range r.Assets {
+			if a.Name == exeName+".sig" {
+				rel.Signed = true
 			}
 		}
 		res = append(res, rel)
@@ -124,6 +119,7 @@ type Check struct {
 	// PubKey — открытый ключ из тега; пусто у старых сборок без самообновления.
 	PubKey  string `json:"-"`
 	Problem string `json:"problem,omitempty"`
+	Steps   []Step `json:"steps"`
 
 	exe string
 	dir string
@@ -133,19 +129,46 @@ type Check struct {
 // выпуска, удостоверение сборки по тегу; берёт «Что нового» и открытый ключ
 // из репозитория в этом теге.
 func (g GitHub) Fetch(ctx context.Context, tag string) (*Check, error) {
+	return g.FetchWithProgress(ctx, tag, nil)
+}
+
+// FetchWithProgress выполняет те же проверки, сообщая о настоящих этапах.
+// Первый отказ останавливает проверку; подпись такого выпуска недоступна.
+func (g GitHub) FetchWithProgress(ctx context.Context, tag string, report func(Progress)) (c *Check, err error) {
+	p := newProgress(tag, "check", report,
+		Step{ID: "release", Title: "Получаем сведения о выпуске"},
+		Step{ID: "download", Title: "Скачиваем программу и контрольную сумму"},
+		Step{ID: "checksum", Title: "Проверяем контрольную сумму"},
+		Step{ID: "attestation", Title: "Проверяем происхождение сборки"},
+		Step{ID: "key", Title: "Проверяем открытый ключ"},
+		Step{ID: "notes", Title: "Читаем описание выпуска"},
+	)
+	defer func() {
+		if err != nil || c != nil && c.Problem != "" {
+			p.fail()
+		}
+		if c != nil {
+			c.Steps = p.steps()
+		}
+	}()
+	p.start("release")
 	draft, err := g.isDraft(ctx, tag)
 	if err != nil {
 		return nil, err
 	}
+	p.done("release", "")
+	p.start("download")
 	dir, err := os.MkdirTemp("", "wynd-signer-")
 	if err != nil {
 		return nil, err
 	}
-	c := &Check{Tag: tag, Draft: draft, dir: dir, exe: filepath.Join(dir, exeName)}
+	c = &Check{Tag: tag, Draft: draft, dir: dir, exe: filepath.Join(dir, exeName)}
 	if _, err := g.gh(ctx, "release", "download", tag, "-R", g.Repo, "-D", dir, "-p", exeName, "-p", exeName+".sha256", "--clobber"); err != nil {
 		c.Close()
 		return nil, fmt.Errorf("скачать выпуск не получилось: %w", err)
 	}
+	p.done("download", "")
+	p.start("checksum")
 	exe, err := os.ReadFile(c.exe)
 	if err != nil {
 		c.Close()
@@ -156,7 +179,14 @@ func (g GitHub) Fetch(ctx context.Context, tag string) (*Check, error) {
 	if want, err := os.ReadFile(c.exe + ".sha256"); err == nil {
 		c.SumOK = strings.HasPrefix(strings.TrimSpace(string(want)), hex.EncodeToString(sum[:]))
 	}
-	if out, err := g.gh(ctx, "attestation", "verify", c.exe, "--repo", g.Repo, "--format", "json"); err == nil {
+	if !c.SumOK {
+		c.Problem = "Сумма не сходится с той, что в выпуске"
+		return c, nil
+	}
+	p.done("checksum", "")
+	p.start("attestation")
+	out, attestErr := g.gh(ctx, "attestation", "verify", c.exe, "--repo", g.Repo, "--format", "json")
+	if attestErr == nil {
 		var att []struct {
 			VerificationResult struct {
 				Signature struct {
@@ -176,17 +206,33 @@ func (g GitHub) Fetch(ctx context.Context, tag string) (*Check, error) {
 			}
 		}
 	}
-	c.Notes = WhatsNew(g.file(ctx, "cmd/wynd-installer/whatsnew.md", tag), strings.TrimPrefix(tag, tagPrefix))
+	if !c.AttestOK {
+		c.Problem = "Нет удостоверения, что exe собран GitHub Actions из тега " + tag
+		if attestErr != nil {
+			c.Problem = "Проверить происхождение сборки не получилось: " + attestErr.Error()
+		}
+		return c, nil
+	}
+	p.done("attestation", "коммит "+c.Commit[:min(8, len(c.Commit))])
+	p.start("key")
 	c.PubKey, err = g.releaseKey(ctx, tag)
 	c.KeyInRelease = c.PubKey != ""
-	switch {
-	case !c.SumOK:
-		c.Problem = "Сумма не сходится с той, что в выпуске"
-	case !c.AttestOK:
-		c.Problem = "Нет удостоверения, что exe собран GitHub Actions из тега " + tag
-	case err != nil:
+	if err != nil {
 		c.Problem = "Проверить открытый ключ в теге " + tag + " не получилось: " + err.Error()
+		return c, nil
 	}
+	keyNote := ""
+	if !c.KeyInRelease {
+		keyNote = "в этой сборке нет ключа самообновления"
+	}
+	p.done("key", keyNote)
+	p.start("notes")
+	c.Notes = WhatsNew(g.file(ctx, "cmd/wynd-installer/whatsnew.md", tag), strings.TrimPrefix(tag, tagPrefix))
+	notesNote := ""
+	if c.Notes == "" {
+		notesNote = "описание версии не получено"
+	}
+	p.done("notes", notesNote)
 	return c, nil
 }
 
@@ -262,6 +308,23 @@ func (c *Check) Close() {
 // .sig и, если это черновик и есть «Что нового», публикует его с этим текстом.
 // Описание и дату уже опубликованного выпуска не меняет.
 func (g GitHub) SignAndPublish(ctx context.Context, c *Check, keyPath, pass string) (published bool, err error) {
+	return g.SignAndPublishWithProgress(ctx, c, keyPath, pass, nil)
+}
+
+// SignAndPublishWithProgress сообщает этапы подписи, загрузки и публикации.
+// Ключ и пароль в сообщениях о ходе работы не передаются.
+func (g GitHub) SignAndPublishWithProgress(ctx context.Context, c *Check, keyPath, pass string, report func(Progress)) (published bool, err error) {
+	p := newProgress(c.Tag, "sign", report,
+		Step{ID: "release", Title: "Проверяем состояние выпуска"},
+		Step{ID: "signature", Title: "Подписываем и проверяем подпись"},
+		Step{ID: "upload", Title: "Загружаем подпись на GitHub"},
+	)
+	defer func() {
+		if err != nil {
+			p.fail()
+		}
+	}()
+	p.start("release")
 	if c.Problem != "" {
 		return false, errors.New(c.Problem)
 	}
@@ -270,6 +333,11 @@ func (g GitHub) SignAndPublish(ctx context.Context, c *Check, keyPath, pass stri
 	if err != nil {
 		return false, err
 	}
+	if draft && c.Notes != "" {
+		p.value.Steps = append(p.value.Steps, Step{ID: "publish", Title: "Публикуем выпуск", Status: "pending"})
+	}
+	p.done("release", "")
+	p.start("signature")
 	priv, err := Unlock(keyPath, pass)
 	if err != nil {
 		return false, err
@@ -286,15 +354,19 @@ func (g GitHub) SignAndPublish(ctx context.Context, c *Check, keyPath, pass stri
 	if err := os.WriteFile(sigPath, []byte(sig+"\n"), 0o644); err != nil {
 		return false, err
 	}
+	p.done("signature", "")
+	p.start("upload")
 	if _, err := g.gh(ctx, "release", "upload", c.Tag, sigPath, "-R", g.Repo, "--clobber"); err != nil {
 		return false, fmt.Errorf("выложить подпись не получилось: %w", err)
 	}
+	p.done("upload", "")
 	if !draft {
 		return true, nil
 	}
 	if c.Notes == "" {
 		return false, nil
 	}
+	p.start("publish")
 	notes := filepath.Join(c.dir, "notes.md")
 	if err := os.WriteFile(notes, []byte(c.Notes+"\n"), 0o644); err != nil {
 		return false, err
@@ -302,6 +374,7 @@ func (g GitHub) SignAndPublish(ctx context.Context, c *Check, keyPath, pass stri
 	if _, err := g.gh(ctx, "release", "edit", c.Tag, "-R", g.Repo, "--notes-file", notes, "--draft=false"); err != nil {
 		return false, fmt.Errorf("подпись выложена, а опубликовать не получилось: %w", err)
 	}
+	p.done("publish", "")
 	return true, nil
 }
 
