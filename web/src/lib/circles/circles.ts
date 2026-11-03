@@ -68,6 +68,7 @@ export interface CircleMoveBanner {
 // переезжает, уходит с сервера (2.5).
 function leavingPreview(circle: CircleListItem): string {
 	if (circle.move?.status === 'accepted') {
+		if (circle.you_own) return 'Круг переехал — завершите перенос';
 		return `Круг переехал — войдите на ${serverHost(circle.move.dest_url)}`;
 	}
 	if (circle.move) return 'Круг замер на время переезда';

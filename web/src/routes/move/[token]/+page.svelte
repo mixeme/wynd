@@ -7,7 +7,7 @@
 	import { copyText } from '$lib/clipboard';
 
 	// Ссылку переноса (план 53, 6.25) открыли в браузере. Её дело — новый
-	// сервер, а не страница: говорим, куда её вставить (кадра нет).
+	// сервер, а не страница: говорим, куда её вставить (7.20в).
 	const link = $derived($page.url.href);
 	let copied = $state(false);
 
@@ -18,8 +18,8 @@
 	}
 </script>
 
-<FormLayout shell app title="Ссылка переноса" onback={() => history.back()}>
-	<FieldDisplay mono value={link} />
+<FormLayout shell app title="Ссылка переноса">
+	<FieldDisplay class="mt-16" mono value={link} />
 	<Button class="mt-12" variant="ghost" onclick={() => void copy()}>
 		{copied ? 'Скопировано' : 'Скопировать'}
 	</Button>

@@ -863,7 +863,7 @@
 			{@const dest = serverHost(circle.move.dest_url)}
 			<ArchiveBanner
 				title="Круг переехал"
-				action={circle.youOwn ? 'Перенос круга' : 'Перейти на новый сервер'}
+				action={circle.youOwn ? 'Завершить перенос круга' : 'Перейти на новый сервер'}
 				onaction={circle.youOwn
 					? () => goto(`/circles/${circle.circleId}/move`)
 					: () => {
