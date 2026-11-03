@@ -218,7 +218,7 @@
 			{/if}
 			{#if error}<Notice tone="bad" alert>{error}</Notice>{/if}
 			<FootBar>
-				<Button variant={merge?.ok && mergeOut ? 'colored' : 'off'} loading={working} onclick={() => void doMerge()}>
+				<Button variant={merge?.ok && mergeOut ? 'colored' : 'off'} loading={working} loadingLabel="Объединяем…" onclick={() => void doMerge()}>
 					Объединить
 				</Button>
 				<Button variant="ghost" onclick={home}>Назад</Button>
@@ -265,6 +265,7 @@
 				<Button
 					variant={split?.file.ok && splitDir && (byYears ? chosenYears.length : from && to) ? 'colored' : 'off'}
 					loading={working}
+					loadingLabel="Разделяем…"
 					onclick={() => void doSplit()}>Разделить</Button
 				>
 				<Button variant="ghost" onclick={home}>Назад</Button>
@@ -295,6 +296,7 @@
 				<Button
 					variant={full?.ok && fullOut && (!full.encrypted || password) ? 'colored' : 'off'}
 					loading={working}
+					loadingLabel="Создаём ленту…"
 					onclick={() => void doFull()}>Сделать ленту</Button
 				>
 				<Button variant="ghost" onclick={home}>Назад</Button>

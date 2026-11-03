@@ -95,6 +95,7 @@ const archiveFile = (name: string, ok = true) => ({
 export const SCENES: Scene[] = [
 	{ name: '1-connect' },
 	{ name: '1-connect-key', acts: [key] },
+	{ name: '1-connect-wait', fake: { Connect: never }, acts: go },
 	{
 		name: '1-connect-fail',
 		fake: { Connect: () => ({ status: 'error', host: 'x', message: 'Сервер назвал не тот отпечаток', fingerprint: 'SHA256:abc', advice: 'Не подключайтесь, пока не узнаете у хостинга, что случилось.' }) },

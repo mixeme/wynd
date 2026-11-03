@@ -9,6 +9,7 @@
 		variant = 'default',
 		disabled = false,
 		loading = false,
+		loadingLabel = '…',
 		keepFocus = false,
 		class: className = '',
 		style = ''
@@ -18,6 +19,8 @@
 		variant?: ButtonVariant;
 		disabled?: boolean;
 		loading?: boolean;
+		/** Текст внутри кнопки на время выполнения действия. */
+		loadingLabel?: string;
 		/**
 		 * Кнопка рядом с полем, которое она сохраняет: нажатие не уводит фокус
 		 * из поля. Иначе телефон прячет клавиатуру уже на нажатии, до ответа
@@ -40,11 +43,12 @@
 	class="btn {variantClass} {className}"
 	{style}
 	disabled={disabled || loading}
+	aria-busy={loading || undefined}
 	onmousedown={keepFocus ? (e) => e.preventDefault() : undefined}
 	{onclick}
 >
 	{#if loading}
-		…
+		{loadingLabel}
 	{:else}
 		{@render children()}
 	{/if}

@@ -761,7 +761,7 @@
 			<TextButton class="link under" onclick={() => (showLog = !showLog)}>подробности</TextButton>
 		{/if}
 		<FootBar>
-			<Button variant="colored" loading={rolling} onclick={() => void rollback()}>{yes}</Button>
+			<Button variant="colored" loading={rolling} loadingLabel="Убираем Wynd…" onclick={() => void rollback()}>{yes}</Button>
 			<Button variant="ghost" disabled={rolling} onclick={() => (askRollback = false)}>Отмена</Button>
 		</FootBar>
 	</Notice>
@@ -788,7 +788,7 @@
 					</div>
 				</Notice>
 				<FootBar>
-					<Button variant="colored" loading={selfBusy} onclick={() => void applySelf()}>Попробовать ещё раз</Button>
+					<Button variant="colored" loading={selfBusy} loadingLabel="Обновляем…" onclick={() => void applySelf()}>Попробовать ещё раз</Button>
 					<Button variant="ghost" onclick={() => (selfOpen = false)}>Закрыть</Button>
 					<TextButton class="link under ins-push" onclick={() => void backend().ReleasesPage()}>страница выпусков</TextButton>
 				</FootBar>
@@ -814,6 +814,7 @@
 					<Button
 						variant={progress?.running ? 'off' : 'colored'}
 						loading={selfBusy}
+						loadingLabel="Обновляем…"
 						onclick={() => void (progress?.running ? undefined : applySelf())}>Обновить и перезапустить</Button
 					>
 					<Button variant="ghost" onclick={() => (selfOpen = false)}>Не сейчас</Button>
@@ -906,12 +907,9 @@
 					</Notice>
 				{/if}
 				<FootBar>
-					<Button variant="colored" loading={busy} onclick={() => void connect()}>
+					<Button variant="colored" loading={busy} loadingLabel="Подключаемся…" onclick={() => void connect()}>
 						Подключиться
 					</Button>
-					{#if busy}
-						<span class="ins-dim">Подключаемся…</span>
-					{/if}
 				</FootBar>
 			</form>
 		{:else if screen === 'server' && page && st}
@@ -970,7 +968,7 @@
 					</div>
 					<FootBar>
 						<Button variant="colored" onclick={() => void startUpdate()}>Продолжить обновление</Button>
-						<Button variant="ghost" loading={returning} onclick={() => void returnPrevious()}>
+						<Button variant="ghost" loading={returning} loadingLabel="Возвращаем…" onclick={() => void returnPrevious()}>
 							Вернуть {st.update.from}
 						</Button>
 					</FootBar>
@@ -981,6 +979,7 @@
 						<Button
 							variant="ghost"
 							loading={svcBusy === 'restart'}
+							loadingLabel="Перезапускаем…"
 							disabled={Boolean(svcBusy)}
 							onclick={() => void service('restart')}>Перезапустить</Button
 						>
@@ -988,7 +987,7 @@
 							Остановить
 						</Button>
 					{:else}
-						<Button variant="colored" loading={svcBusy === 'start'} onclick={() => void service('start')}>
+						<Button variant="colored" loading={svcBusy === 'start'} loadingLabel="Запускаем…" onclick={() => void service('start')}>
 							Запустить
 						</Button>
 					{/if}
@@ -1000,7 +999,7 @@
 							остаются на месте — «Запустить» вернёт всё как было.
 						</div>
 						<FootBar>
-							<Button variant="colored" loading={svcBusy === 'stop'} onclick={() => void service('stop')}>
+							<Button variant="colored" loading={svcBusy === 'stop'} loadingLabel="Останавливаем…" onclick={() => void service('stop')}>
 								Остановить
 							</Button>
 							<Button variant="ghost" onclick={() => (askStop = false)}>Отмена</Button>
@@ -1155,7 +1154,7 @@
 			{#if svcError}<Notice tone="bad" alert>{svcError}</Notice>{/if}
 			<FootBar>
 				{#if stopped}
-					<Button variant="colored" loading={returning} onclick={() => void returnPrevious()}>
+					<Button variant="colored" loading={returning} loadingLabel="Возвращаем…" onclick={() => void returnPrevious()}>
 						Вернуть {upFrom}
 					</Button>
 					<Button variant="ghost" disabled={returning} onclick={() => void startUpdate()}>Повторить</Button>
@@ -1346,7 +1345,7 @@
 					<Notice tone="bad" alert title={mFail.message} text={mFail.advice} />
 				{/if}
 				<FootBar>
-					<Button variant="colored" loading={mBusy} onclick={() => void moveConnect()}>Подключиться</Button>
+					<Button variant="colored" loading={mBusy} loadingLabel="Подключаемся…" onclick={() => void moveConnect()}>Подключиться</Button>
 					<Button
 						variant="ghost"
 						onclick={() => {
@@ -1364,7 +1363,7 @@
 			</p>
 			<Notice mono>{mFinger}</Notice>
 			<FootBar>
-				<Button variant="colored" loading={mBusy} onclick={() => void moveConfirm()}>Да, подключиться</Button>
+				<Button variant="colored" loading={mBusy} loadingLabel="Подключаемся…" onclick={() => void moveConfirm()}>Да, подключиться</Button>
 				<Button variant="ghost" disabled={mBusy} onclick={() => (screen = 'mconnect')}>Отмена</Button>
 			</FootBar>
 		{:else if screen === 'mplan' && !mplan}
@@ -1410,7 +1409,7 @@
 			{#if progress.failure.advice}<Notice>{progress.failure.advice}</Notice>{/if}
 			<FootBar>
 				<Button variant="colored" onclick={() => void startMove()}>Повторить</Button>
-				<Button variant="ghost" loading={mBusy} onclick={() => void cancelMove()}>Отменить переезд</Button>
+				<Button variant="ghost" loading={mBusy} loadingLabel="Отменяем переезд…" onclick={() => void cancelMove()}>Отменить переезд</Button>
 				<TextButton class="link under ins-push" onclick={() => (showLog = !showLog)}>подробности</TextButton>
 			</FootBar>
 			{#if showLog}<CommandLog text={logText} />{/if}
@@ -1465,7 +1464,7 @@
 				следующем подключении подмену заметим.
 			</p>
 			<FootBar>
-				<Button variant="colored" loading={busy} onclick={() => void confirmHost()}>
+				<Button variant="colored" loading={busy} loadingLabel="Подключаемся…" onclick={() => void confirmHost()}>
 					Да, подключиться
 				</Button>
 				<Button variant="ghost" disabled={busy} onclick={() => void toConnect()}>Отмена</Button>
@@ -1627,11 +1626,11 @@
 					<Button variant="colored" disabled={busy} onclick={() => void toConnect()}>
 						Другой сервер
 					</Button>
-					<Button variant="ghost" loading={busy} onclick={() => void inspect()}>
+					<Button variant="ghost" loading={busy} loadingLabel="Осматриваем…" onclick={() => void inspect()}>
 						Проверить снова
 					</Button>
 				{:else}
-					<Button variant="colored" loading={busy} onclick={() => void inspect()}>
+					<Button variant="colored" loading={busy} loadingLabel="Осматриваем…" onclick={() => void inspect()}>
 						Проверить снова
 					</Button>
 					<Button variant="ghost" disabled={busy} onclick={() => void toConnect()}>
@@ -1683,7 +1682,7 @@
 				{#if domainOk}
 					<span class="ins-mark ok wide">✓ {domainCheck?.text}</span>
 				{:else}
-					<Button variant="ghost" loading={checkingDomain} onclick={() => void checkDomain()}>
+					<Button variant="ghost" loading={checkingDomain} loadingLabel="Проверяем…" onclick={() => void checkDomain()}>
 						{domainCheck ? 'Проверить снова' : 'Проверить'}
 					</Button>
 				{/if}
@@ -1695,6 +1694,7 @@
 				<Button
 					variant={domainOk ? 'colored' : 'off'}
 					loading={planning}
+					loadingLabel="Составляем план…"
 					onclick={() => void toPlan()}
 				>
 					Дальше — план

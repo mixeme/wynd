@@ -49,4 +49,34 @@ describe('Button', () => {
 		expect(onclick).not.toHaveBeenCalled();
 		unmount(instance);
 	});
+
+	it('keeps the busy label inside the disabled button', () => {
+		const onclick = vi.fn();
+		const target = document.createElement('div');
+		const instance = mount(Button, {
+			target,
+			props: { onclick, loading: true, loadingLabel: 'Подключаемся…', children }
+		});
+		const btn = target.querySelector('button');
+		expect(btn?.textContent).toBe('Подключаемся…');
+		expect(target.textContent).toBe(btn?.textContent);
+		expect(btn?.getAttribute('aria-busy')).toBe('true');
+		expect(btn?.disabled).toBe(true);
+		btn?.click();
+		expect(onclick).not.toHaveBeenCalled();
+		unmount(instance);
+	});
+
+	it('shows the action label while idle even with a busy label', () => {
+		const target = document.createElement('div');
+		const instance = mount(Button, {
+			target,
+			props: { onclick: vi.fn(), loadingLabel: 'Подключаемся…', children }
+		});
+		const btn = target.querySelector('button');
+		expect(btn?.textContent).toBe('Click');
+		expect(btn?.disabled).toBe(false);
+		expect(btn?.hasAttribute('aria-busy')).toBe(false);
+		unmount(instance);
+	});
 });
