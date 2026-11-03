@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Wynd participant API
-  version: 0.46.0
+  version: 0.47.0
   description: Participant routes (Bearer session). Admin routes are in a separate spec.
 
 servers:
@@ -1000,6 +1000,7 @@ paths:
   /circles/{circle_id}/move/reissue:
     post:
       summary: Reissue an expired move link without unfreezing the circle; owner only; 201 new link, 409 move_not_expired for a live or already accepted move
+      description: The new token reuses the immutable snapshot and its ETag. Expiration alone does not discard the frozen representation; cancellation or verified acceptance releases it.
   /circles/{circle_id}/move/complete:
     post:
       summary: Finish the move after the new server accepted it (6.26) — the circle is deleted here, members get a "circle moved" e-mail; 409 not_accepted
@@ -1032,6 +1033,7 @@ paths:
   /moves/incoming/{id}/start:
     post:
       summary: «Поднять круг здесь» — body {send_invites}; the server pulls the circle itself with resume and revives it; 507 no_room, 410 move_expired
+      description: Synced partial responses survive restarts. Strong ETag and If-Range bind the prefix to one representation. A reissued link for the same source circle and freeze reuses the partial file; changed representations fail with archive_changed.
 
   /full_archive/{token}:
     get:
