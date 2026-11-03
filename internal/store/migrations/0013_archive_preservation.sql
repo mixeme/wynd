@@ -10,8 +10,6 @@ CREATE TABLE archive_spans (
 CREATE INDEX archive_spans_circle ON archive_spans(circle_id);
 ALTER TABLE circle_archives ADD COLUMN scope_revision INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE circle_archives ADD COLUMN full_journal INTEGER NOT NULL DEFAULT 1 CHECK (full_journal IN (0, 1));
-ALTER TABLE circle_archives ADD COLUMN posts INTEGER NOT NULL DEFAULT 0;
-UPDATE circle_archives SET posts = (
-    SELECT COUNT(*) FROM posts p WHERE p.circle_id = circle_archives.circle_id
-      AND p.deleted = 0 AND p.created_at < COALESCE(circle_archives.snapshot_at, circle_archives.requested_at)
-);
+-- Состав старого файла нельзя восстановить по уже изменённому кругу;
+-- зашифрованный файл сервер прочитать не может. -1 означает «неизвестно».
+ALTER TABLE circle_archives ADD COLUMN posts INTEGER NOT NULL DEFAULT -1;

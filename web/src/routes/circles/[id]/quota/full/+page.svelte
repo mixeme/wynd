@@ -57,9 +57,7 @@
 	const fullJournal = $derived(
 		archive?.snapshot_at ? (archive.full_journal ?? true) : (info?.full_journal ?? true)
 	);
-	const filePosts = $derived(
-		archive?.snapshot_at ? (archive.posts ?? info?.posts ?? 0) : (info?.posts ?? 0)
-	);
+	const filePosts = $derived(archive?.snapshot_at ? (archive.posts ?? null) : (info?.posts ?? 0));
 	const view = $derived.by(() => {
 		const a = archive;
 		if (rebuild || !a) return 'form';
@@ -202,7 +200,9 @@
 			onclick={withDownload ? () => void download() : undefined}
 		/>
 		<Hint class="ink"
-			>{fullJournal ? 'Весь журнал' : 'Часть журнала'} · {plural(filePosts, WORD.post)}</Hint
+			>{fullJournal ? 'Весь журнал' : 'Часть журнала'}{filePosts !== null
+				? ` · ${plural(filePosts, WORD.post)}`
+				: ''}</Hint
 		>
 	{/if}
 {/snippet}

@@ -88,9 +88,12 @@ func fullArchiveJSON(a *chronicle.FullArchive) map[string]any {
 		return nil
 	}
 	out := map[string]any{
-		"full_journal": a.FullJournal, "posts": a.Posts,
-		"id": a.ID, "status": a.Status, "requested_at": a.RequestedAt,
+		"full_journal": a.FullJournal,
+		"id":           a.ID, "status": a.Status, "requested_at": a.RequestedAt,
 		"delete_circle": a.DeleteCircle, "encrypted": a.Encrypted, "size_bytes": a.SizeBytes,
+	}
+	if a.Posts >= 0 {
+		out["posts"] = a.Posts
 	}
 	put := func(k string, t *time.Time) {
 		if t != nil {

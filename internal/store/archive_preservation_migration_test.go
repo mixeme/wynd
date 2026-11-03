@@ -48,7 +48,7 @@ func TestArchivePreservationMigrationFrom12(t *testing.T) {
 	if err := db.QueryRow(`SELECT c.archive_all,c.archive_revision,a.full_journal,a.scope_revision,a.posts,a.status,a.size_bytes,a.snapshot_at FROM circles c JOIN circle_archives a ON a.circle_id=c.id`).Scan(&all, &revision, &full, &scope, &posts, &status, &size, &snapshot); err != nil {
 		t.Fatal(err)
 	}
-	if all != 1 || revision != 0 || full != 1 || scope != 0 || posts != 0 || status != "ready" || size != 1234 || snapshot != "2026-11-02T12:01:00Z" {
+	if all != 1 || revision != 0 || full != 1 || scope != 0 || posts != -1 || status != "ready" || size != 1234 || snapshot != "2026-11-02T12:01:00Z" {
 		t.Fatalf("migration changed history: %d %d %d %d %d %s %d %s", all, revision, full, scope, posts, status, size, snapshot)
 	}
 }

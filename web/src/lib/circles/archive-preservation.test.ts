@@ -174,3 +174,13 @@ it('до сборки показывает разрешённую часть ж�
 	await vi.waitFor(() => expect(target.textContent).toContain('Часть журнала «Семья»'));
 	expect(target.textContent).toContain('3 записи');
 });
+
+it('не подменяет неизвестный счётчик старого файла сегодняшней оценкой', async () => {
+	vi.mocked(apiJson).mockResolvedValue({
+		...downloaded,
+		archive: { ...downloaded.archive, full_journal: true, posts: undefined }
+	});
+	const target = openPage(FullPage);
+	await vi.waitFor(() => expect(target.textContent).toContain('Весь журнал'));
+	expect(target.textContent).not.toContain('99 записей');
+});
