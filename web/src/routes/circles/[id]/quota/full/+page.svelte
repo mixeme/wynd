@@ -26,7 +26,8 @@
 		reviveCircle,
 		startFullArchive,
 		streamFullArchive,
-		type FullArchiveState
+		type FullArchiveState,
+		PARTIAL_ARCHIVE_WARNING
 	} from '$lib/circles/fullarchive';
 	import { formatBytes } from '$lib/format/bytes';
 	import { WORD, plural } from '$lib/format/plural';
@@ -53,6 +54,12 @@
 
 	const archive = $derived(info?.archive ?? null);
 	const frozenAt = $derived(info?.frozen_at ?? '');
+	const fullJournal = $derived(
+		archive?.snapshot_at ? (archive.full_journal ?? true) : (info?.full_journal ?? true)
+	);
+	const filePosts = $derived(
+		archive?.snapshot_at ? (archive.posts ?? info?.posts ?? 0) : (info?.posts ?? 0)
+	);
 	const view = $derived.by(() => {
 		const a = archive;
 		if (rebuild || !a) return 'form';
@@ -168,7 +175,7 @@
 
 	const removeCircle = () =>
 		act(async () => {
-			await removeFrozenCircle(circle.origin, circle.circleId);
+			await removeFrozenCircle(circle.origin, circle.circleId, !fullJournal);
 			askRemove = false;
 			await goto('/circles');
 		});
@@ -194,6 +201,9 @@
 			divided="both"
 			onclick={withDownload ? () => void download() : undefined}
 		/>
+		<Hint class="ink"
+			>{fullJournal ? 'Весь журнал' : 'Часть журнала'} · {plural(filePosts, WORD.post)}</Hint
+		>
 	{/if}
 {/snippet}
 
@@ -239,8 +249,8 @@
 		<!-- 6.27: файл готов, круг остаётся. -->
 		{@render fileRow(true)}
 		<Hint>
-			В файле круг, каким он был {at(archive.snapshot_at ?? archive.ready_at)}. Круг работает как
-			обычно.
+			{fullJournal ? 'В файле круг, каким он был' : 'В файле часть журнала на'}
+			{at(archive.snapshot_at ?? archive.ready_at)}. Круг работает как обычно.
 		</Hint>
 		<Hint class="mt-10 ink">
 			Сервер удалит файл, когда вы его скачаете, или {at(archive.expires_at)}, если не скачаете.
@@ -271,8 +281,10 @@
 			>
 		</Hint>
 		<DangerZone class="mt-20" items={['Убрать круг с сервера']} onitem={() => (askRemove = true)}>
-			Останется только файл у вас: потеряете файл или пароль — круг не вернуть.<br /><br />Участники
-			получили письмо {at(frozenAt)}: свой архив они могут скачать, пока круг здесь.
+			{fullJournal
+				? 'Останется только файл у вас: потеряете файл или пароль — круг не вернуть.'
+				: PARTIAL_ARCHIVE_WARNING}<br /><br />Участники получили письмо {at(frozenAt)}: свой архив
+			они могут скачать, пока круг здесь.
 		</DangerZone>
 		{@render reviveLink()}
 	{:else if view === 'gone' && archive}
@@ -293,7 +305,7 @@
 		<!-- 6.24 / 6.25 и, когда готовый файл положить некуда, 6.31. -->
 		<Label>Что уйдёт в файл</Label>
 		<SettingsRow
-			title={`Весь журнал «${circle.name}» и ${plural(info.members, WORD.member)}`}
+			title={`${info.full_journal === false ? 'Часть журнала' : 'Весь журнал'} «${circle.name}» и ${plural(info.members, WORD.member)}`}
 			subtitle={`${plural(info.posts, WORD.post)}, имена, фото и почта каждого · ${formatBytes(info.estimate_bytes)}`}
 			chevron={false}
 		/>
@@ -334,8 +346,10 @@
 				<Hint class="ink">
 					1. Круг замирает: читать можно, писать нельзя. Участникам уходит письмо.<br />2. Вы
 					скачиваете файл. Участники, пока круг здесь, могут скачать свой архив.<br />3. Вы убираете
-					круг с сервера. Остаётся только файл.<br />4. Круг можно оживить из файла — здесь или на
-					другом сервере.
+					круг с сервера. {info.full_journal === false
+						? 'Остаётся файл с частью журнала.'
+						: 'Остаётся только файл.'}<br />4. Круг можно оживить из файла — здесь или на другом
+					сервере.
 				</Hint>
 			{/if}
 			<Button
@@ -382,7 +396,11 @@
 			onconfirm={() => void removeCircle()}
 			oncancel={() => (askRemove = false)}
 		>
-			<Hint>Круг «{circle.name}» останется только в файле у вас.</Hint>
+			<Hint
+				>{fullJournal
+					? `Круг «${circle.name}» останется только в файле у вас.`
+					: PARTIAL_ARCHIVE_WARNING}</Hint
+			>
 		</ConfirmDialog>
 	{/if}
 </FormLayout>

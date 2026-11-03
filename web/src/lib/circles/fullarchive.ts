@@ -5,6 +5,8 @@ import type { ArchiveKey } from '$lib/archive/fullkey';
 
 /** Полный архив круга (план 51): что с ним на сервере. */
 export interface FullArchive {
+	full_journal?: boolean;
+	posts?: number;
 	id: string;
 	status: 'building' | 'ready' | 'failed' | 'removed';
 	requested_at: string;
@@ -20,6 +22,7 @@ export interface FullArchive {
 }
 
 export interface FullArchiveState {
+	full_journal?: boolean;
 	/** Круг замер под архив с удалением (6.25): с этого момента. */
 	frozen_at?: string | null;
 	estimate_bytes: number;
@@ -61,10 +64,21 @@ export async function reviveCircle(origin: string, circleId: string): Promise<vo
 }
 
 /** «Убрать круг с сервера» (6.29): только когда файл скачан. */
-export async function removeFrozenCircle(origin: string, circleId: string): Promise<void> {
-	await apiJson(origin, `/circles/${circleId}/full_archive/remove_circle`, { method: 'POST' });
+export async function removeFrozenCircle(
+	origin: string,
+	circleId: string,
+	acknowledgePartial = false
+): Promise<void> {
+	await apiJson(origin, `/circles/${circleId}/full_archive/remove_circle`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ acknowledge_partial: acknowledgePartial })
+	});
 	await invalidateSnapshots(origin, { kind: 'circles' });
 }
+
+export const PARTIAL_ARCHIVE_WARNING =
+	'В файле сохранена только часть журнала. При удалении круга с сервера будут удалены и записи, которые не вошли в файл. Восстановить их из этого файла не получится.';
 
 function openServerDownload(origin: string, url: string) {
 	openDownload(apiPath(origin, url.replace(/^\/api\/v1/, '')));

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goUp } from '$lib/navigation/up';
 	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
+	import Switch from '$ui/forms/Switch.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getContext, onMount } from 'svelte';
@@ -24,7 +25,6 @@
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { getSession } from '$lib/idb/db';
 	import { CIRCLE_COLOR_ORDER, CIRCLE_COLORS } from '$lib/theme/colors';
-	import { toAccusativeTitle, toDativeName } from '$lib/format/names';
 	import { formatEntryDate } from '$lib/format/time';
 	import { resolveMediaUrls } from '$lib/media/batch';
 
@@ -37,6 +37,7 @@
 	let menuMember = $state<MemberInfo | null>(null);
 	let transferTarget = $state<MemberInfo | null>(null);
 	let transferLoading = $state(false);
+	let transferPast = $state(false);
 	let avatarUrls = $state<Record<string, string>>({});
 	let excludeTarget = $state<MemberInfo | null>(null);
 	let excludeLoading = $state(false);
@@ -128,10 +129,12 @@
 	function pickTransfer(m: MemberInfo) {
 		if (!transferMode || m.is_owner || m.account_id === selfId) return;
 		transferTarget = m;
+		transferPast = false;
 	}
 
 	function closeTransfer() {
 		transferTarget = null;
+		transferPast = false;
 	}
 
 	async function confirmTransfer() {
@@ -141,7 +144,12 @@
 		transferLoading = true;
 		error = '';
 		try {
-			await transferOwnership(circle.origin, circle.circleId, transferTarget.account_id);
+			await transferOwnership(
+				circle.origin,
+				circle.circleId,
+				transferTarget.account_id,
+				transferPast
+			);
 			goto(`/circles/${circle.circleId}/settings`);
 		} catch (err) {
 			error = authErrorHint(err);
@@ -327,7 +335,7 @@
 
 {#if transferTarget}
 	<ConfirmDialog
-		title="Передать «{toAccusativeTitle(circle.name)}» {toDativeName(transferTarget.name)}?"
+		title="Передать владение?"
 		confirmLabel="Передать"
 		loading={transferLoading}
 		onconfirm={() => void confirmTransfer()}
@@ -335,6 +343,22 @@
 	>
 		<!-- Коротко и по существу (владелец, 2026-10-15): что остаётся и что уходит.
 		     Право менять настройки прежний владелец теряет. -->
-		<Hint>Вы останетесь в круге: писать сможете, менять настройки — нет.</Hint>
+		<Hint class="m-0 ink"
+			>Новый владелец — {transferTarget.name}. Вы останетесь в круге: писать сможете, менять
+			настройки — нет.</Hint
+		>
+		<SettingsRow title="Передать своё прошлое для сохранения" chevron={false}>
+			{#snippet control()}<Switch
+					bind:checked={transferPast}
+					disabled={transferLoading}
+					label="Передать своё прошлое для сохранения"
+				/>{/snippet}
+		</SettingsRow>
+		<Hint class="m-0"
+			>{transferPast
+				? 'В архив нового владельца войдёт и переданное вам для сохранения прошлое.'
+				: 'Новый владелец сможет сохранить в архив только то, что застал.'} Видимость записей в приложении
+			не изменится.</Hint
+		>
 	</ConfirmDialog>
 {/if}

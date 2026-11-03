@@ -1,5 +1,5 @@
 import { localDayOf } from '$lib/journal/present';
-import { apiJson } from '$lib/api/client';
+import { ApiError, apiJson } from '$lib/api/client';
 import { invalidateSnapshots } from '$lib/idb/db';
 import { fetchCircleDetail } from '$lib/journal/read-cursor';
 import type { CircleDetail } from '$lib/journal/types';
@@ -454,12 +454,18 @@ export async function leaveCircle(
 export async function transferOwnership(
 	origin: string,
 	circleId: string,
-	newOwnerAccountId: string
+	newOwnerAccountId: string,
+	transferPast = false
 ): Promise<void> {
+	// Старый сервер проигнорирует transfer_past и передаст весь журнал.
+	const instance = await apiJson<{ archive_preservation?: boolean }>(origin, '/instance');
+	if (instance.archive_preservation !== true) {
+		throw new ApiError(409, 'archive_preservation_unsupported');
+	}
 	await apiJson(origin, `/circles/${circleId}/transfer`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ new_owner_account_id: newOwnerAccountId })
+		body: JSON.stringify({ new_owner_account_id: newOwnerAccountId, transfer_past: transferPast })
 	});
 	await invalidateSnapshots(origin, { kind: 'circles', circleId });
 }

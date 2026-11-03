@@ -80,6 +80,9 @@ export async function refuseSecondAccount(origin: string, email: string): Promis
 }
 
 export function authErrorHint(err: unknown): string {
+	if (err instanceof ApiError && err.code === 'archive_preservation_unsupported') {
+		return 'Для передачи владения обновите сервер круга.';
+	}
 	if (err instanceof SecondAccountError) return secondAccountHint(err.email);
 	if (err instanceof ApiError) {
 		if (err.code === 'rate_limited' && err.retryAfterSec != null) {
