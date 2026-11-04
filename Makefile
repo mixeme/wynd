@@ -20,7 +20,9 @@ web/node_modules: web/package-lock.json
 	cd web && $(NPM) ci
 	@touch web/node_modules
 
-## test — ворота релиза: то же, что scripts/test.bat и .gitea/workflows/ci.yaml.
+## test — серверные ворота Unix, как .gitea/workflows/ci.yaml.
+## Windows scripts/test.bat дополнительно вызывает test-desktop.bat;
+## настольные ворота CI — .github/workflows/desktop.yaml и workshop.yaml.
 ## Порядок важен: web/dist вшивается через go:embed, без него падает go vet.
 test: web
 	cd web && $(NPM) run check

@@ -7,6 +7,21 @@ rem and only after the whole gate run has passed on the same tree.
 for %%I in ("%~dp0..") do set "WYND_ROOT=%%~fI"
 cd /d "%WYND_ROOT%"
 
+echo [test] web check, check:ui, lint, test, build
+cd /d "%WYND_ROOT%\web"
+call npm run check
+if errorlevel 1 exit /b 1
+call npm run check:ui
+if errorlevel 1 exit /b 1
+call npm run lint
+if errorlevel 1 exit /b 1
+call npm run test
+if errorlevel 1 exit /b 1
+call npm run build
+if errorlevel 1 exit /b 1
+
+rem web/dist must exist before Go inspects go:embed on a clean checkout.
+cd /d "%WYND_ROOT%"
 echo [test] go vet ./...
 go vet ./...
 if errorlevel 1 exit /b 1
@@ -20,17 +35,8 @@ go build -o "%TEMP%\wynd-gate.exe" ./cmd/wynd
 if errorlevel 1 exit /b 1
 del /q "%TEMP%\wynd-gate.exe" 2>nul
 
-echo [test] web check, check:ui, lint, test, build
-cd /d "%WYND_ROOT%\web"
-call npm run check
-if errorlevel 1 exit /b 1
-call npm run check:ui
-if errorlevel 1 exit /b 1
-call npm run lint
-if errorlevel 1 exit /b 1
-call npm run test
-if errorlevel 1 exit /b 1
-call npm run build
+echo [test] desktop gate
+call "%WYND_ROOT%\scripts\test-desktop.bat"
 if errorlevel 1 exit /b 1
 
 echo [test] OK

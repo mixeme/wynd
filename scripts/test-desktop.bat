@@ -1,0 +1,45 @@
+@echo off
+setlocal EnableExtensions
+
+rem Desktop release gate. Both windows share web's UI and dependencies.
+for %%I in ("%~dp0..") do set "WYND_DESKTOP_ROOT=%%~fI"
+cd /d "%WYND_DESKTOP_ROOT%\cmd\wynd-installer\frontend"
+echo [desktop] Workshop frontend check and build
+call npm run check
+if errorlevel 1 exit /b 1
+call npm run build
+if errorlevel 1 exit /b 1
+
+cd /d "%WYND_DESKTOP_ROOT%\cmd\wynd-signer\frontend"
+echo [desktop] Signer frontend test, check and build
+call npm run test
+if errorlevel 1 exit /b 1
+call npm run check
+if errorlevel 1 exit /b 1
+call npm run build
+if errorlevel 1 exit /b 1
+
+cd /d "%WYND_DESKTOP_ROOT%"
+echo [desktop] Tagged Go vet and tests
+go vet -tags desktop ./cmd/wynd-installer ./cmd/wynd-signer
+if errorlevel 1 exit /b 1
+go test -tags desktop ./cmd/wynd-installer ./cmd/wynd-signer
+if errorlevel 1 exit /b 1
+
+set "WYND_DESKTOP_OUT=%TEMP%\wynd-desktop-gate-%RANDOM%-%RANDOM%"
+if exist "%WYND_DESKTOP_OUT%" exit /b 1
+mkdir "%WYND_DESKTOP_OUT%"
+if errorlevel 1 exit /b 1
+set "WYND_DESKTOP_RC=1"
+echo [desktop] Production-tag builds of both windows
+go build -trimpath -tags "desktop,production" -o "%WYND_DESKTOP_OUT%\workshop.exe" ./cmd/wynd-installer
+if errorlevel 1 goto cleanup
+go build -trimpath -tags "desktop,production" -o "%WYND_DESKTOP_OUT%\signer.exe" ./cmd/wynd-signer
+if errorlevel 1 goto cleanup
+set "WYND_DESKTOP_RC=0"
+
+:cleanup
+del /q "%WYND_DESKTOP_OUT%\workshop.exe" "%WYND_DESKTOP_OUT%\signer.exe" 2>nul
+rmdir "%WYND_DESKTOP_OUT%" 2>nul
+if "%WYND_DESKTOP_RC%"=="0" echo [desktop] OK
+exit /b %WYND_DESKTOP_RC%
