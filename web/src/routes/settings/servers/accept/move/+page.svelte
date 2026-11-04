@@ -422,7 +422,7 @@
 						: `${move.source_name ? `«${move.source_name}»` : source} собирает круг для переноса.`}
 				</Hint>
 			{/if}
-			<Hint class="mt-14 ctr-text">Приложение можно закрыть: серверы работают между собой.</Hint>
+			<Hint class="mt-14 ctr-text">Перенос продолжится, даже если закрыть приложение.</Hint>
 		{:else}
 			<!-- 7.20 и его состояния. -->
 			<Label>Сервер</Label>
