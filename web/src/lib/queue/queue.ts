@@ -251,28 +251,41 @@ async function uploadItemFiles(
 			report(0);
 			continue;
 		}
-		if (!progress) {
-			const session = await apiJson<{ id: string }>(origin, '/uploads', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				// Без имени сервер сохранял «.»: вложение из очереди скачивалось
-				// безымянным (найдено на голосовых, C14).
-				body: JSON.stringify({
-					expected_size: files[i].size,
-					mime_type: files[i].type,
-					filename: files[i].name
-				})
-			});
-			progress = { file_index: i, session_id: session.id };
-			uploads = [...uploads.filter((u) => u.file_index !== i), progress];
-			await putQueueItem(item.id, { ...item, state: 'uploading', uploads });
+		for (let attempt = 0; attempt < 2; attempt++) {
+			if (!progress) {
+				const session = await apiJson<{ id: string }>(origin, '/uploads', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					// Без имени сервер сохранял «.»: вложение из очереди скачивалось
+					// безымянным (найдено на голосовых, C14).
+					body: JSON.stringify({
+						expected_size: files[i].size,
+						mime_type: files[i].type,
+						filename: files[i].name
+					})
+				});
+				progress = { file_index: i, session_id: session.id };
+				uploads = [...uploads.filter((u) => u.file_index !== i), progress];
+				await putQueueItem(item.id, { ...item, state: 'uploading', uploads });
+			}
+			try {
+				const blobId = await uploadFile(origin, files[i], progress, report);
+				done += files[i].size;
+				progress = { ...progress, blob_id: blobId };
+				uploads = [...uploads.filter((u) => u.file_index !== i), progress];
+				await putQueueItem(item.id, { ...item, state: 'uploading', uploads });
+				blobIds.push(blobId);
+				break;
+			} catch (err) {
+				if (!(err instanceof ApiError) || err.status !== 404) throw err;
+				// Only upload endpoints are retried here. Keep the original and other
+				// finished files, and persist the reset even if creating a session fails.
+				progress = undefined;
+				uploads = uploads.filter((u) => u.file_index !== i);
+				await putQueueItem(item.id, { ...item, state: 'uploading', uploads });
+				if (attempt === 1) throw err;
+			}
 		}
-		const blobId = await uploadFile(origin, files[i], progress, report);
-		done += files[i].size;
-		progress = { ...progress, blob_id: blobId };
-		uploads = [...uploads.filter((u) => u.file_index !== i), progress];
-		await putQueueItem(item.id, { ...item, state: 'uploading', uploads });
-		blobIds.push(blobId);
 	}
 	return { blobIds, uploads };
 }
@@ -629,7 +642,7 @@ export async function retryQueueItem(id: number): Promise<void> {
 	const item = await getQueueItem(id);
 	if (!item || item.state !== 'failed') return;
 
-	await putQueueItem(id, { ...item, state: 'pending', error: undefined });
+	await putQueueItem(id, { ...item, state: 'pending', attempts: 0, error: undefined });
 	notify();
 	if (navigator.onLine) void drainQueue();
 }
