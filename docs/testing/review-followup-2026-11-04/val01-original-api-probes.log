@@ -1,0 +1,6 @@
+=== RUN   TestReviewMoveRejectsLoopback
+--- PASS: TestReviewMoveRejectsLoopback (0.01s)
+=== RUN   TestReviewMoveRejectsShortBlobRow
+--- PASS: TestReviewMoveRejectsShortBlobRow (0.01s)
+PASS
+ok  	gitea.mixdep.ru/mix/wynd/internal/api	0.044s

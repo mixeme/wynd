@@ -1,0 +1,111 @@
+=== RUN   TestMoveNoRoomStopsBeforeBodyAndReleasesResources
+2026/11/04 15:54:52 incoming move 01a1a6a0-68cd-716e-b30c-d17f61539fcd: move: no_room
+--- PASS: TestMoveNoRoomStopsBeforeBodyAndReleasesResources (0.68s)
+=== RUN   TestIncomingWorkerContainsUnexpectedPanic
+--- PASS: TestIncomingWorkerContainsUnexpectedPanic (0.00s)
+=== RUN   TestArchiveDownloadRangeAndStoredMedia
+2026/11/04 15:54:54 wynd mail (loopback): to=range@example.com subject="Архивация круга «Семья»"
+В круге «Семья» всё, что написано до 5 ноября, уходит в архив. 6 ноября оно удалится с сервера.
+
+Скачайте свой архив до этого дня:
+http://127.0.0.1:7676/circles/01a1a6a0-6e24-773b-89bc-ecdc621bf2a5/archive
+--- PASS: TestArchiveDownloadRangeAndStoredMedia (1.03s)
+=== RUN   TestArchiveOneTimeLink
+2026/11/04 15:54:54 wynd mail (loopback): to=link@example.com subject="Архивация круга «Семья»"
+В круге «Семья» всё, что написано до 5 ноября, уходит в архив. 6 ноября оно удалится с сервера.
+
+Скачайте свой архив до этого дня:
+http://127.0.0.1:7676/circles/01a1a6a0-6fc6-7a71-8fd0-ab0750012665/archive
+--- PASS: TestArchiveOneTimeLink (0.39s)
+=== RUN   TestArchivePreservationRevokesDownloadLinks
+2026/11/04 15:54:55 wynd mail (loopback): to=anya@example.com subject="Архив круга готов"
+Архив круга «Семья» собран. Скачать его можно до 07.11.2026 12:54 UTC — потом сервер удалит файл.
+
+http://127.0.0.1:7676/circles/01a1a6a0-71bf-7ef2-abf7-c618d8b0a687/quota/full
+--- PASS: TestArchivePreservationRevokesDownloadLinks (0.55s)
+=== RUN   TestArchivePreservationPartialArtifactAndRemoval
+2026/11/04 15:54:55 wynd mail (loopback): to=anya@example.com subject="Круг «Семья» уходит с сервера"
+Боб убирает «Семья» с сервера и сохраняет круг в файл. Читать можно, писать нельзя.
+
+Свой архив — всё, что вы видели в круге, — можно скачать, пока круг здесь.
+
+http://127.0.0.1:7676/circles/01a1a6a0-7368-733f-af0b-412930f67656
+2026/11/04 15:54:55 wynd mail (loopback): to=bob@example.com subject="Архив круга готов"
+Архив круга «Семья» собран. Скачать его можно до 07.11.2026 12:54 UTC — потом сервер удалит файл.
+
+http://127.0.0.1:7676/circles/01a1a6a0-7368-733f-af0b-412930f67656/quota/full
+--- PASS: TestArchivePreservationPartialArtifactAndRemoval (0.48s)
+=== RUN   TestArchivePreservationMoveBetweenServers
+2026/11/04 15:54:56 wynd mail (loopback): to=anya@example.com subject="Круг «Семья» переезжает"
+Боб переносит «Семья» на другой сервер. Читать можно, писать нельзя. Когда перенос закончится, придёт письмо с новым адресом круга.
+
+http://127.0.0.1:7676/circles/01a1a6a0-7577-7d31-a8a8-189110da4b6d
+--- PASS: TestArchivePreservationMoveBetweenServers (0.88s)
+=== RUN   TestArchiveDownloadStatuses
+2026/11/04 15:54:56 wynd mail (loopback): to=statuses@example.com subject="Архивация круга «Семья»"
+В круге «Семья» всё, что написано до 5 ноября, уходит в архив. 6 ноября оно удалится с сервера.
+
+Скачайте свой архив до этого дня:
+http://127.0.0.1:7676/circles/01a1a6a0-788d-7301-ad86-2e59f5d9b5c3/archive
+--- PASS: TestArchiveDownloadStatuses (0.42s)
+=== RUN   TestArchiveDownloadForbiddenForExcluded
+2026/11/04 15:54:57 wynd mail (loopback): to=anya@example.com subject="Архивация круга «Семья»"
+В круге «Семья» всё, что написано до 5 ноября, уходит в архив. 6 ноября оно удалится с сервера.
+
+Скачайте свой архив до этого дня:
+http://127.0.0.1:7676/circles/01a1a6a0-7a57-760e-9913-81472fa46fa7/archive
+2026/11/04 15:54:57 wynd mail (loopback): to=bob@example.com subject="Архивация круга «Семья»"
+В круге «Семья» всё, что написано до 5 ноября, уходит в архив. 6 ноября оно удалится с сервера.
+
+Скачайте свой архив до этого дня:
+http://127.0.0.1:7676/circles/01a1a6a0-7a57-760e-9913-81472fa46fa7/archive
+--- PASS: TestArchiveDownloadForbiddenForExcluded (0.37s)
+=== RUN   TestMoveStreamRestartAndReissueKeepSnapshot
+2026/11/04 15:54:58 incoming move 01a1a6a0-7dc4-7efa-b7cb-01ec1d5d3b5f: move: move_expired
+--- PASS: TestMoveStreamRestartAndReissueKeepSnapshot (1.04s)
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk/resume
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk/changed-representation
+2026/11/04 15:55:00 incoming move 01a1a6a0-8540-729e-bf14-641709ebecc0: move: archive_changed
+--- PASS: TestMoveStreamKeepsPartialHTTPChunk (1.80s)
+    --- PASS: TestMoveStreamKeepsPartialHTTPChunk/resume (0.94s)
+    --- PASS: TestMoveStreamKeepsPartialHTTPChunk/changed-representation (0.86s)
+=== RUN   TestMoveStreamLegacyReadyFileSurvivesUpgrade
+2026/11/04 15:55:00 wynd mail (loopback): to=anya@example.com subject="Архив круга готов"
+Архив круга «Семья» собран. Скачать его можно до 07.11.2026 12:55 UTC — потом сервер удалит файл.
+
+http://127.0.0.1:7676/circles/01a1a6a0-86e8-77d5-b537-e2efe5fb53aa/quota/full
+--- PASS: TestMoveStreamLegacyReadyFileSurvivesUpgrade (0.46s)
+=== RUN   TestMoveStreamPinsDoNotGrantAccess
+--- PASS: TestMoveStreamPinsDoNotGrantAccess (0.55s)
+=== RUN   TestIncomingMoveRejectsPrivateSourceWithoutDraft
+2026/11/04 15:55:01 move card: Get "http://127.0.0.1:1/api/v1/move": move: source address is not allowed
+--- PASS: TestIncomingMoveRejectsPrivateSourceWithoutDraft (0.29s)
+PASS
+ok  	gitea.mixdep.ru/mix/wynd/internal/api	9.177s
+=== RUN   TestArchivePreservationSurvivesReviveAndTransport
+=== RUN   TestArchivePreservationSurvivesReviveAndTransport/owner-file
+=== RUN   TestArchivePreservationSurvivesReviveAndTransport/transport
+--- PASS: TestArchivePreservationSurvivesReviveAndTransport (0.28s)
+    --- PASS: TestArchivePreservationSurvivesReviveAndTransport/owner-file (0.03s)
+    --- PASS: TestArchivePreservationSurvivesReviveAndTransport/transport (0.04s)
+=== RUN   TestArchivePreservationDoesNotWidenSplit
+--- PASS: TestArchivePreservationDoesNotWidenSplit (0.37s)
+=== RUN   TestArchivePreservationRevokesJobsAndGuardsRemoval
+--- PASS: TestArchivePreservationRevokesJobsAndGuardsRemoval (0.29s)
+=== RUN   TestArchivePreservationReviveCountCompatibility
+--- PASS: TestArchivePreservationReviveCountCompatibility (0.34s)
+=== RUN   TestArchivePreservationRespectsGapsAndDoesNotChangeReading
+--- PASS: TestArchivePreservationRespectsGapsAndDoesNotChangeReading (0.31s)
+=== RUN   TestArchivePreservationPassesInheritedWholeJournal
+--- PASS: TestArchivePreservationPassesInheritedWholeJournal (0.17s)
+=== RUN   TestIncomingPlaceOperationSurvivesReissue
+=== RUN   TestIncomingPlaceOperationSurvivesReissue/current-source
+=== RUN   TestIncomingPlaceOperationSurvivesReissue/legacy-source
+--- PASS: TestIncomingPlaceOperationSurvivesReissue (0.28s)
+    --- PASS: TestIncomingPlaceOperationSurvivesReissue/current-source (0.15s)
+    --- PASS: TestIncomingPlaceOperationSurvivesReissue/legacy-source (0.13s)
+=== RUN   TestIncomingResultKeepsAlreadyHere
+--- PASS: TestIncomingResultKeepsAlreadyHere (0.15s)
+PASS
+ok  	gitea.mixdep.ru/mix/wynd/internal/chronicle	2.376s

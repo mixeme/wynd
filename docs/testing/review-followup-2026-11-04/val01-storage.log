@@ -1,0 +1,58 @@
+=== RUN   TestSharedContentsMigrationKeepsLogicalMetadata
+--- PASS: TestSharedContentsMigrationKeepsLogicalMetadata (0.20s)
+PASS
+ok  	gitea.mixdep.ru/mix/wynd/internal/store	1.433s
+=== RUN   TestSharedContentIsolationAndLastCopyGC
+--- PASS: TestSharedContentIsolationAndLastCopyGC (0.22s)
+=== RUN   TestSharedContentConcurrentPublishAndCollection
+--- PASS: TestSharedContentConcurrentPublishAndCollection (0.54s)
+=== RUN   TestSharedContentLegacyMigrationAndInterruptedPublication
+--- PASS: TestSharedContentLegacyMigrationAndInterruptedPublication (0.23s)
+=== RUN   TestSharedContentBackupRestoreAndLease
+--- PASS: TestSharedContentBackupRestoreAndLease (0.57s)
+=== RUN   TestSharedContentDetachedPaymentCopyCannotBeReused
+--- PASS: TestSharedContentDetachedPaymentCopyCannotBeReused (0.20s)
+=== RUN   TestSharedContentMigrationDoesNotResurrectDeletedScreenshot
+--- PASS: TestSharedContentMigrationDoesNotResurrectDeletedScreenshot (0.19s)
+=== RUN   TestSharedContentPaymentAuditStopsHoldingBytesAfterLastOtherReference
+--- PASS: TestSharedContentPaymentAuditStopsHoldingBytesAfterLastOtherReference (0.50s)
+=== RUN   TestSharedContentCircleUsageIsLogical
+--- PASS: TestSharedContentCircleUsageIsLogical (0.24s)
+=== RUN   TestSharedContentUploadGeneratedAndImportShareBytes
+--- PASS: TestSharedContentUploadGeneratedAndImportShareBytes (0.27s)
+=== RUN   TestSharedContentLastCopyGCRacesNewUpload
+--- PASS: TestSharedContentLastCopyGCRacesNewUpload (0.72s)
+=== RUN   TestSharedContentDoesNotReuseCorruptPhysicalBytes
+--- PASS: TestSharedContentDoesNotReuseCorruptPhysicalBytes (0.23s)
+=== RUN   TestSharedContentReviveHasIndependentArchiveMetadata
+--- PASS: TestSharedContentReviveHasIndependentArchiveMetadata (0.25s)
+PASS
+ok  	gitea.mixdep.ru/mix/wynd/internal/blob	4.209s
+=== RUN   TestBackupCapturesUploadDuringBackup
+=== RUN   TestBackupCapturesUploadDuringBackup/false
+=== RUN   TestBackupCapturesUploadDuringBackup/true
+--- PASS: TestBackupCapturesUploadDuringBackup (0.97s)
+    --- PASS: TestBackupCapturesUploadDuringBackup/false (0.51s)
+    --- PASS: TestBackupCapturesUploadDuringBackup/true (0.46s)
+=== RUN   TestBackupFullAndIncremental
+--- PASS: TestBackupFullAndIncremental (0.65s)
+=== RUN   TestBackupUpdatesLastBackupAt
+--- PASS: TestBackupUpdatesLastBackupAt (0.40s)
+=== RUN   TestBackupCapturesWALData
+    backup_test.go:268: WAL file not created in this environment
+--- SKIP: TestBackupCapturesWALData (0.42s)
+=== RUN   TestBackupKeepsSecretsPrivate
+    backup_test.go:298: POSIX-права недоступны на Windows
+--- SKIP: TestBackupKeepsSecretsPrivate (0.00s)
+=== RUN   TestBackupIncrementalRepairsTruncatedCopy
+--- PASS: TestBackupIncrementalRepairsTruncatedCopy (0.40s)
+=== RUN   TestBackupIncrementalTrustsManifestBySize
+--- PASS: TestBackupIncrementalTrustsManifestBySize (0.37s)
+=== RUN   TestBackupRestoresIntoWorkingDataDir
+--- PASS: TestBackupRestoresIntoWorkingDataDir (0.52s)
+=== RUN   TestBackupRefusesDestinationInsideCopiedData
+--- PASS: TestBackupRefusesDestinationInsideCopiedData (0.29s)
+=== RUN   TestBackupNoBlobs
+--- PASS: TestBackupNoBlobs (0.26s)
+PASS
+ok  	gitea.mixdep.ru/mix/wynd/internal/backup	4.379s

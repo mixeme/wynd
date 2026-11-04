@@ -1,0 +1,5 @@
+=== RUN   TestMoveLargeArchiveAcrossBothProcessRestarts
+    move_process_test.go:309: 40 MiB; committed prefix 1048576; resumed bytes=1048576-34603007 "01a1a698-5468-7839-9f42-d5015d790b14"; verified 3 posts and media SHA-256
+--- PASS: TestMoveLargeArchiveAcrossBothProcessRestarts (4.48s)
+PASS
+ok  	gitea.mixdep.ru/mix/wynd/internal/api	4.536s
