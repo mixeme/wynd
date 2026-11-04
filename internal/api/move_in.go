@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"os"
 	"slices"
 	"strings"
 	"time"
@@ -161,7 +160,7 @@ func (s *Server) handlePutIncomingMove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if previous != nil && previous.ID != m.ID && !previous.Active() {
-		_ = os.Remove(s.incomingPath(previous.ID))
+		s.removeIncomingFile(previous.ID)
 	}
 	out := incomingJSON(m, time.Now())
 	if card.Status == "expired" {

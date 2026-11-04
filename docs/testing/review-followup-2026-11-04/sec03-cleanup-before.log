@@ -1,0 +1,6 @@
+=== RUN   TestIncomingReplacementRemovesZIPAndRange
+    move_cleanup_test.go:43: obsolete download retained: in-01a1a803-03a5-7721-9b45-48596fe966f3.wynd.range: <nil>
+--- FAIL: TestIncomingReplacementRemovesZIPAndRange (0.99s)
+FAIL
+FAIL	gitea.mixdep.ru/mix/wynd/internal/api	1.037s
+FAIL
