@@ -128,6 +128,7 @@ func runServer() {
 	mux.HandleFunc("GET /health", healthHandler)
 	mux.HandleFunc("GET /ready", readyHandler(st))
 	apiSrv := api.NewServer(authSvc, ch, blobStore, mailSvc, pushSvc, token, cfg.DataDir, cfg.PublicURL, cfg.Listen, loopback)
+	apiSrv.MoveAllowedNetworks = cfg.MoveAllowedNetworks
 	trusted, err := api.ParseTrustedProxies(cfg.TrustedProxies)
 	if err != nil {
 		log.Fatalf("trusted proxies: %v", err)

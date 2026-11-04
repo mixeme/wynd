@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strings"
 	"syscall"
@@ -33,31 +32,6 @@ const moveChunk = 32 << 20
 
 // maxMoveCard — предел ответа прежнего сервера с карточкой.
 const maxMoveCard = 64 << 10
-
-var moveTokenRe = regexp.MustCompile(`^[A-Za-z0-9-]{8,64}$`)
-
-// parseMoveLink — адрес прежнего сервера и ключ из ссылки «…/move/<ключ>».
-// Сервер ходит только на этот адрес и только по своим путям /api/v1/move….
-func parseMoveLink(link string) (base, token string, ok bool) {
-	u, err := url.Parse(strings.TrimSpace(link))
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil {
-		return "", "", false
-	}
-	prefix, token, found := strings.Cut(u.Path, "/move/")
-	if !found || !moveTokenRe.MatchString(token) {
-		return "", "", false
-	}
-	return u.Scheme + "://" + u.Host + strings.TrimRight(prefix, "/"), token, true
-}
-
-func (s *Server) moveClient() *http.Client {
-	if s.MoveClient != nil {
-		return s.MoveClient
-	}
-	return &http.Client{
-		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
-	}
-}
 
 func (s *Server) moveRetry() time.Duration {
 	if s.MoveRetry > 0 {

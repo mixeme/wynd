@@ -144,6 +144,7 @@ func TestArchivePreservationMoveBetweenServers(t *testing.T) {
 	link := startMove(t, src, member, cid)
 	link = h.URL + "/move/" + link[strings.LastIndex(link, "/")+1:]
 	dst, caps, _, _ := setupAPI(t)
+	allowLocalMoveSource(dst)
 	dst.MoveRetry = 10 * time.Millisecond
 	tok, account := registerSession(t, dst, caps, "stranger@example.com")
 	r := doJSON(t, dst, http.MethodPost, "/api/v1/moves/incoming", tok, map[string]any{"link": link})

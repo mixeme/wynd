@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"strconv"
 	"strings"
 	"testing"
@@ -15,6 +16,28 @@ import (
 	"gitea.mixdep.ru/mix/wynd/internal/api"
 	"gitea.mixdep.ru/mix/wynd/internal/auth"
 )
+
+func allowLocalMoveSource(srv *api.Server) {
+	srv.MoveAllowedNetworks = []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")}
+}
+
+func TestIncomingMoveRejectsPrivateSourceWithoutDraft(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	token, accountID := registerSession(t, srv, caps, "receiver@example.com")
+	for link, wantStatus := range map[string]int{
+		"http://127.0.0.1:1/move/AAAA-BBBB-CCCC-DDDD":            http.StatusBadGateway,
+		"http://127.0.0.1:1/private%3F/move/AAAA-BBBB-CCCC-DDDD": http.StatusBadRequest,
+	} {
+		r := doJSON(t, srv, http.MethodPost, "/api/v1/moves/incoming", token, map[string]string{"link": link})
+		if r.Code != wantStatus {
+			t.Fatalf("status=%d body=%s", r.Code, r.Body.String())
+		}
+		m, err := srv.Chronicle.LatestIncoming(t.Context(), accountID)
+		if err != nil || m != nil {
+			t.Fatalf("refused source created draft: %+v %v", m, err)
+		}
+	}
+}
 
 // moveCall — запрос нового сервера к прежнему: без входа, ключ ссылки в
 // заголовке.
@@ -323,6 +346,7 @@ func testMoveBetweenServers(t *testing.T, reissue bool) {
 	link = srcHTTP.URL + "/move/" + link[strings.LastIndex(link, "/")+1:]
 
 	dst, dstCaps, _, _ := setupAPI(t)
+	allowLocalMoveSource(dst)
 	dst.MoveRetry = 10 * time.Millisecond
 	kot, kotID := registerSession(t, dst, dstCaps, "kot@example.com")
 	var placeID string
@@ -526,6 +550,7 @@ func TestMoveAsNewMember(t *testing.T) {
 	link = srcHTTP.URL + "/move/" + link[strings.LastIndex(link, "/")+1:]
 
 	dst, dstCaps, _, _ := setupAPI(t)
+	allowLocalMoveSource(dst)
 	dst.MoveRetry = 10 * time.Millisecond
 	kot, _ := registerSession(t, dst, dstCaps, "kot@example.com")
 	rec = doJSON(t, dst, http.MethodPost, "/api/v1/moves/incoming", kot, map[string]string{"link": link})

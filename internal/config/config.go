@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,7 +32,8 @@ type Config struct {
 	PublicURL string
 	// TrustedProxies lists CIDRs (or bare addresses) whose X-Forwarded-For
 	// header is believed. Empty means loopback only.
-	TrustedProxies []string
+	TrustedProxies      []string
+	MoveAllowedNetworks []netip.Prefix
 }
 
 // Load builds the config from defaults, then config.json, then WYND_* variables. It never writes config.json; it only creates the data directory, blobs/, keys/ and a 0600 wynd.db.
@@ -120,6 +122,13 @@ func read() (*Config, error) {
 	}
 	if v, ok := os.LookupEnv("WYND_TRUSTED_PROXIES"); ok {
 		cfg.TrustedProxies = splitList(v)
+	}
+	for _, value := range splitList(os.Getenv("WYND_MOVE_ALLOWED_CIDRS")) {
+		prefix, err := netip.ParsePrefix(value)
+		if err != nil {
+			return nil, fmt.Errorf("WYND_MOVE_ALLOWED_CIDRS: %w", err)
+		}
+		cfg.MoveAllowedNetworks = append(cfg.MoveAllowedNetworks, prefix.Masked())
 	}
 
 	normalized, err := ValidatePublicURL(cfg.PublicURL)

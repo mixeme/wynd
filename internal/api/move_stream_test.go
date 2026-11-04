@@ -92,6 +92,7 @@ func restartAPI(t *testing.T, old *api.Server) *api.Server {
 	}
 	srv := api.NewServer(svc, ch, blobs, nil, nil, "bootstrap", old.DataDir, old.PublicURL(), ":7676", true)
 	srv.TrustedProxies = old.TrustedProxies
+	srv.MoveAllowedNetworks = old.MoveAllowedNetworks
 	srv.MoveRetry = 10 * time.Millisecond
 	srv.RecoverMoveArchives(t.Context())
 	return srv
@@ -191,6 +192,7 @@ func TestMoveStreamRestartAndReissueKeepSnapshot(t *testing.T) {
 	defer h.Close()
 	fullLink := h.URL + "/move/" + link[strings.LastIndex(link, "/")+1:]
 	dst, caps, _, _ := setupAPI(t)
+	allowLocalMoveSource(dst)
 	tok, account := registerSession(t, dst, caps, "receiver@example.com")
 	r := doJSON(t, dst, http.MethodPost, "/api/v1/moves/incoming", tok, map[string]any{"link": fullLink})
 	if r.Code != http.StatusOK {

@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/netip"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -66,6 +67,10 @@ type Server struct {
 	// MoveClient — запросы к прежнему серверу при переносе круга (план 53);
 	// nil — свой клиент без переходов по редиректам.
 	MoveClient *http.Client
+	// MoveAllowedNetworks is an operator-controlled LAN exception, fixed at startup.
+	MoveAllowedNetworks []netip.Prefix
+	moveClientOnce      sync.Once
+	moveHTTP            *http.Client
 	// MoveRetry — пауза перед повтором после обрыва между серверами; 0 — минута.
 	MoveRetry time.Duration
 	// incomingRuns — идущие входящие переносы: id → struct{}.
