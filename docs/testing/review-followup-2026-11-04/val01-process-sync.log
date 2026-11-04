@@ -1,0 +1,17 @@
+=== RUN   TestMoveLargeArchiveAcrossBothProcessRestarts
+    move_process_test.go:316: 40 MiB; committed prefix 1048576; resumed bytes=1048576-34603007 "01a1a801-c785-7d57-ace9-fe8b73f0e02a"; verified 3 posts and media SHA-256
+--- PASS: TestMoveLargeArchiveAcrossBothProcessRestarts (5.49s)
+=== RUN   TestMoveLargeArchiveAcrossBothProcessRestarts
+    move_process_test.go:316: 40 MiB; committed prefix 1048576; resumed bytes=1048576-34603007 "01a1a801-dae9-75d1-b921-099e3ffad132"; verified 3 posts and media SHA-256
+--- PASS: TestMoveLargeArchiveAcrossBothProcessRestarts (4.96s)
+=== RUN   TestMoveLargeArchiveAcrossBothProcessRestarts
+    move_process_test.go:316: 40 MiB; committed prefix 1048576; resumed bytes=1048576-34603007 "01a1a801-f014-7395-b531-9ce17de8ab10"; verified 3 posts and media SHA-256
+--- PASS: TestMoveLargeArchiveAcrossBothProcessRestarts (5.63s)
+=== RUN   TestMoveLargeArchiveAcrossBothProcessRestarts
+    move_process_test.go:316: 40 MiB; committed prefix 1048576; resumed bytes=1048576-34603007 "01a1a802-0601-7339-a95c-dab7624c437f"; verified 3 posts and media SHA-256
+--- PASS: TestMoveLargeArchiveAcrossBothProcessRestarts (5.48s)
+=== RUN   TestMoveLargeArchiveAcrossBothProcessRestarts
+    move_process_test.go:316: 40 MiB; committed prefix 1048576; resumed bytes=1048576-34603007 "01a1a802-1c20-751f-ac0e-78bf787b2fb8"; verified 3 posts and media SHA-256
+--- PASS: TestMoveLargeArchiveAcrossBothProcessRestarts (5.29s)
+PASS
+ok  	gitea.mixdep.ru/mix/wynd/internal/api	26.905s

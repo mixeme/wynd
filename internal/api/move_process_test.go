@@ -235,6 +235,14 @@ func TestMoveLargeArchiveAcrossBothProcessRestarts(t *testing.T) {
 	id := processJSON(t, receiver, http.MethodPost, "/api/v1/moves/incoming", token, map[string]any{"link": link})["id"].(string)
 	processJSON(t, receiver, http.MethodPost, "/api/v1/moves/incoming/"+id+"/start", token, map[string]any{})
 	waitProcessCondition(t, "first MiB received", func() bool { _, err := os.Stat(filepath.Join(src.DataDir, "cut.ready")); return err == nil })
+	// Flush acknowledges only the sender's socket buffer. Before killing it,
+	// wait for the receiver's actual write so an RST cannot discard the tail
+	// and make this test wait for more bytes than it deliberately delivered.
+	part := filepath.Join(dst.DataDir, "moves", "in-"+id+".wynd")
+	waitProcessCondition(t, "first MiB written by receiver", func() bool {
+		fi, err := os.Stat(part)
+		return err == nil && fi.Size() == 1<<20
+	})
 	source.stop()
 	var committed int64
 	waitProcessCondition(t, "partial chunk committed", func() bool {
@@ -243,7 +251,6 @@ func TestMoveLargeArchiveAcrossBothProcessRestarts(t *testing.T) {
 		return committed >= 1<<20
 	})
 	receiver.stop()
-	part := filepath.Join(dst.DataDir, "moves", "in-"+id+".wynd")
 	if fi, err := os.Stat(part); err != nil || fi.Size() != committed {
 		t.Fatalf("persisted prefix: %v %v", fi, err)
 	}
