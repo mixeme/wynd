@@ -13,6 +13,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"gitea.mixdep.ru/mix/wynd/internal/releasepages"
 )
 
 // Выпуски Мастерской на GitHub (кадры 12б–12г): черновик собирает
@@ -67,13 +69,9 @@ type Release struct {
 
 // Releases — выпуски Мастерской, новые сверху.
 func (g GitHub) Releases(ctx context.Context) ([]Release, error) {
-	// Один ответ содержит и статус публикации, и файлы: медленный или
+	// Каждая страница содержит и статус публикации, и файлы: медленный или
 	// неудачный запрос отдельного выпуска не превращает его в «без подписи».
-	out, err := g.gh(ctx, "api", "repos/"+g.Repo+"/releases?per_page=30")
-	if err != nil {
-		return nil, err
-	}
-	var rows []struct {
+	type releaseRow struct {
 		TagName     string `json:"tag_name"`
 		IsDraft     bool   `json:"draft"`
 		PublishedAt string `json:"published_at"`
@@ -82,7 +80,18 @@ func (g GitHub) Releases(ctx context.Context) ([]Release, error) {
 			Name string `json:"name"`
 		} `json:"assets"`
 	}
-	if err := json.Unmarshal(out, &rows); err != nil {
+	rows, err := releasepages.Collect(ctx, func(page int) ([]releaseRow, bool, error) {
+		out, err := g.gh(ctx, "api", fmt.Sprintf("repos/%s/releases?per_page=%d&page=%d", g.Repo, releasepages.Size, page))
+		if err != nil {
+			return nil, false, err
+		}
+		var rows []releaseRow
+		if err := json.Unmarshal(out, &rows); err != nil {
+			return nil, false, err
+		}
+		return rows, len(rows) == releasepages.Size, nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	var res []Release

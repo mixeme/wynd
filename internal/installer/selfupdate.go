@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"gitea.mixdep.ru/mix/wynd/internal/releasepages"
 )
 
 // Самообновление Мастерской (план 45; кадры 10а–10в). Не молча: Мастерская
@@ -22,7 +24,7 @@ import (
 // (SigningKey), закрытая у владельца, не на GitHub. Без подписи не ставим.
 
 // ReleasesURL — выпуски Мастерской: GitHub Releases открытого репозитория.
-const ReleasesURL = "https://api.github.com/repos/mixeme/wynd/releases?per_page=30"
+const ReleasesURL = "https://api.github.com/repos/mixeme/wynd/releases?per_page=100"
 
 // ReleasesPage — страница выпусков для человека (10в, 7ж2).
 const ReleasesPage = "https://github.com/mixeme/wynd/releases"
@@ -67,21 +69,35 @@ func CheckSelfUpdate(ctx context.Context, client *http.Client, current string, n
 	if SigningKey == "" {
 		return SelfUpdate{}
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ReleasesURL, nil)
+	rels, err := selfUpdateReleases(ctx, client)
 	if err != nil {
-		return SelfUpdate{}
-	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-	res, err := client.Do(req)
-	if err != nil {
-		return SelfUpdate{}
-	}
-	defer res.Body.Close()
-	var rels []ghRelease
-	if res.StatusCode != http.StatusOK || json.NewDecoder(io.LimitReader(res.Body, 4<<20)).Decode(&rels) != nil {
 		return SelfUpdate{}
 	}
 	return pickRelease(rels, current, now)
+}
+
+func selfUpdateReleases(ctx context.Context, client *http.Client) ([]ghRelease, error) {
+	return releasepages.Collect(ctx, func(page int) ([]ghRelease, bool, error) {
+		// Construct pages on the fixed API origin; never follow arbitrary Link URLs.
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s&page=%d", ReleasesURL, page), nil)
+		if err != nil {
+			return nil, false, err
+		}
+		req.Header.Set("Accept", "application/vnd.github+json")
+		res, err := client.Do(req)
+		if err != nil {
+			return nil, false, err
+		}
+		defer res.Body.Close()
+		if res.StatusCode != http.StatusOK {
+			return nil, false, fmt.Errorf("GitHub releases: HTTP %d", res.StatusCode)
+		}
+		var rows []ghRelease
+		if err := json.NewDecoder(io.LimitReader(res.Body, 4<<20)).Decode(&rows); err != nil {
+			return nil, false, err
+		}
+		return rows, strings.Contains(res.Header.Get("Link"), `rel="next"`), nil
+	})
 }
 
 func pickRelease(rels []ghRelease, current string, now time.Time) SelfUpdate {

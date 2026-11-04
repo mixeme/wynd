@@ -7,12 +7,15 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
 	"gitea.mixdep.ru/mix/wynd/internal/installer"
+	"gitea.mixdep.ru/mix/wynd/internal/releasepages"
 )
 
 const releaseTestTag = "workshop-v0.3.0"
@@ -29,6 +32,7 @@ type releaseFixture struct {
 	BadSum          bool
 	BadAttest       bool
 	Releases        string
+	ReleasePages    []string
 	DownloadFailure bool
 	AttestFailure   bool
 	UploadFailure   bool
@@ -68,10 +72,25 @@ func releaseTestGH(dir string, args []string) error {
 	}
 	switch {
 	case args[0] == "api" && strings.Contains(args[1], "/releases?"):
-		if f.Releases == "error" {
+		response := f.Releases
+		if len(f.ReleasePages) > 0 {
+			u, err := url.Parse(args[1])
+			if err != nil {
+				return err
+			}
+			page, _ := strconv.Atoi(u.Query().Get("page"))
+			if page < 1 {
+				page = 1
+			}
+			response = "[]"
+			if page <= len(f.ReleasePages) {
+				response = f.ReleasePages[page-1]
+			}
+		}
+		if response == "error" {
 			return fmt.Errorf("GitHub unavailable")
 		}
-		fmt.Print(f.Releases)
+		fmt.Print(response)
 	case args[0] == "release" && args[1] == "view":
 		fmt.Printf(`{"isDraft":%t}`, f.Draft)
 	case args[0] == "release" && args[1] == "download":
@@ -171,6 +190,45 @@ func TestReleasesFailure(t *testing.T) {
 			g, _ := fixtureGitHub(t, releaseFixture{Releases: response})
 			if releases, err := g.Releases(context.Background()); err == nil || releases != nil {
 				t.Fatalf("releases=%+v, err=%v", releases, err)
+			}
+		})
+	}
+}
+
+func TestReleasesFollowBoundedPages(t *testing.T) {
+	full := "[" + strings.Repeat(`{"tag_name":"v0.48.1"},`, releasepages.Size-1) + `{"tag_name":"v0.48.0"}]`
+	workshop := `[{"tag_name":"workshop-v0.3.1","draft":false,"assets":[{"name":"wynd-workshop.exe.sig"}]}]`
+	for _, mode := range []string{"second page", "failure", "limit"} {
+		t.Run(mode, func(t *testing.T) {
+			pages := []string{full, workshop}
+			if mode == "failure" {
+				pages[1] = "error"
+			}
+			if mode == "limit" {
+				pages = make([]string, releasepages.Max)
+				for i := range pages {
+					pages[i] = full
+				}
+			}
+			g, dir := fixtureGitHub(t, releaseFixture{ReleasePages: pages})
+			releases, err := g.Releases(t.Context())
+			if mode == "second page" {
+				if err != nil || len(releases) != 1 || !releases[0].Signed {
+					t.Fatalf("releases=%+v err=%v", releases, err)
+				}
+			} else if err == nil || releases != nil {
+				t.Fatalf("partial snapshot: %+v %v", releases, err)
+			}
+			calls, err := os.ReadFile(filepath.Join(dir, "calls"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := 2
+			if mode == "limit" {
+				want = releasepages.Max
+			}
+			if strings.Count(string(calls), "\n") != want {
+				t.Fatalf("calls=%q", calls)
 			}
 		})
 	}
