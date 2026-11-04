@@ -706,8 +706,9 @@
 						{#if showGroupChips(group)}
 							<ChipGroup class="m-10-16-0 p-0">
 								{#each addableCirclesForGroup(group) as circle (circleKey(circle))}
-									<Chip onclick={() => void addCircleToGroup(circle, group.name)}
-										>{circle.name}</Chip
+									<Chip
+										color={circle.color}
+										onclick={() => void addCircleToGroup(circle, group.name)}>{circle.name}</Chip
 									>
 								{/each}
 							</ChipGroup>

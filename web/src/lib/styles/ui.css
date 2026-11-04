@@ -1826,6 +1826,14 @@ input.fld.sm {
 	flex-shrink: 0;
 	display: inline-block;
 }
+.chip-color {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	margin-right: 6px;
+	border-radius: 3px;
+	vertical-align: middle;
+}
 .ib {
 	line-height: 0;
 }

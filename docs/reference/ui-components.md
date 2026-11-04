@@ -96,7 +96,7 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar, **Comp
 | Компонент | Корень | Обязательные props | Поведение |
 |-----------|--------|-------------------|-----------|
 | `Button` | `<button class="btn">` | `onclick` | `variant`, `disabled`/`loading` → класс `.off`; при `loading` текст `loadingLabel` (по умолчанию `…`) внутри кнопки, `aria-busy` |
-| `Chip` | `<button class="chip">` или `<span>` | — | с `onclick` — кнопка, `aria-pressed={selected}` |
+| `Chip` | `<button class="chip">` или `<span>` | — | с `onclick` — кнопка, `aria-pressed={selected}`; опц. `color` — цветная метка перед текстом, например цвет круга в «положить ещё» |
 | `IconButton` | `<button class="ib">` | `name`, `label`, `onclick` | рендер только при `onclick`; опц. pointer-события (длинное нажатие FAB); `pressed` — переключатель: `true` в цвете круга, `false` приглушён (`.ib.off`), с `aria-pressed` |
 | `TextButton` | `<button>` | `onclick` | `variant`: `link` (`.under`), `admin` (`.act` в `.chk`), `adminBox` (`.inp`), `bar` (`.t`), `barAction` (`.rt`/`.rt.on`) |
 | `AddPhotoButton` | `button.addph` | `onclick` | без `previewUrl` — плюс; с `previewUrl` — `.addph.preview`, cover-фон, `aria-label` «сменить фото» (**#e1-4**) |
