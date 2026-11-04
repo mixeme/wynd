@@ -968,9 +968,16 @@
 						/>
 					{/snippet}
 					{#snippet headerRight()}
-						<!-- У правого края, где у записи дата (владелец, 2026-10-15). -->
+						<!-- C44: явная правка рядом с удалением; тело карточки тоже открывает редактор. -->
 						<IconButton
 							class="ml-auto"
+							name="edit"
+							size="sm"
+							label="Править запись в очереди"
+							stopPropagation
+							onclick={() => openQueued(item.id)}
+						/>
+						<IconButton
 							name="trash"
 							size="sm"
 							label="Удалить из очереди"
