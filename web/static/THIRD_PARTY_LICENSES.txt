@@ -1868,7 +1868,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ------------------------------------------------------------------------
-devalue@5.9.2 — MIT
+devalue@5.9.4 — MIT
 sveltejs/devalue
 
 --- LICENSE ---

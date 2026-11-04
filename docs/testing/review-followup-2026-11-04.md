@@ -95,6 +95,34 @@ ZIP ограничен реальной длиной из Range, лимитом 
 
 ## PROC-01
 
+Коммит: `7b452ff6`.
+
 `scripts/test-desktop.bat` проверяет и собирает оба frontend, запускает новые клиентские тесты подписи и Go vet/test с desktop-тегом, затем собирает оба исполняемых входа с desktop/production. Отдельный Windows CI реагирует на cmd/internal/web, общую библиотеку и зависимости. Перед выпуском Мастерской тот же скрипт обязателен до Wails-сборки и attestation. Основной Windows gate вызывает desktop; Unix gate остаётся серверным, это явно записано в Makefile/DEVELOPMENT. Основной Windows-скрипт также исправляет порядок web → Go для чистой копии с go:embed.
 
 Полный `cmd /c scripts\test-desktop.bat` завершился `[desktop] OK` и кодом 0. Затем временно добавлен файл с `//go:build desktop` и неизвестным Go-типом. Тот же скрипт завершился кодом 1 на tagged Go vet, с `undefined: reviewDesktopGateMustFail`. Файл удалён в finally и в коммит не попадает. Таким образом, это проверка реального отказа ворот, а не только чтение YAML. У installer собственных Go-тестов пока нет; script/CI не объявляют ручную приёмку окна выполненной.
+
+## SEC-05
+
+Обновления ограничены исправленными совместимыми ветками: **Vite 6.4.5, Vitest 4.1.12**, devalue 5.9.4, undici 8.12.3, source-map-js 1.2.2 и исправленные транзитивные пакеты. Для Vitest сверены peer dependencies и [руководство ветки 4](https://v4.vitest.dev/guide/migration.html): текущие Vite 6 и Node 22 поддерживаются. Устаревшая цепочка tinypool из Vitest 3 удалена, предупреждения [GHSA-85c8-ppgw-ccpr](https://github.com/advisories/GHSA-85c8-ppgw-ccpr) больше нет. Медиабиблиотеки и Svelte не обновлялись без необходимости; `audit fix --force`, принудительные downgrade и несовместимые overrides не применялись.
+
+| Lockfile | До | После |
+|---|---|---|
+| web | 41 пакет: 2 critical, 6 high, 25 moderate, 8 low | 30: 0 critical/high, 23 moderate, 7 low |
+| Мастерская | 4: 1 moderate, 3 low | 3 low |
+| Подпись | 3 low | 3 low |
+| web, `--omit=dev` | 1 high (devalue) в исходном срезе | **0** |
+
+Это числа затронутых пакетов, включая мета-зависимости. [Машинные before/after](review-followup-2026-11-04/sec05-web-after.json) сохранены для каждого lockfile в том же каталоге.
+
+Остаток разобран по исходным advisory и путям приложения:
+
+| Группа | Условия и вывод для этого дерева |
+|---|---|
+| SvelteKit: [enhanced forms](https://github.com/advisories/GHSA-pfhg-q3qv-9q6r), [prerender cache-control](https://github.com/advisories/GHSA-27mw-82g8-phjj) | В корневом `+layout.ts` SSR и prerender отключены; `use:enhance`/`$app/forms` и передача недоверенного cache-control в prerender отсутствуют. Go раздаёт статический adapter-static результат. Условия этих записей не обнаружены; переоценить при включении соответствующих возможностей |
+| cookie | Серверная зависимость Kit; HTTP/cookie сервера Wynd обрабатывает Go, Node-сервер Kit не развёртывается |
+| [deepmerge](https://github.com/advisories/GHSA-gcqx-w48m-w2h4) и мета-зависимости plugin/inspector | Исправленного выпуска deepmerge нет. Используется инструментами для конфигурации сборки; источник объектов — конфигурация проекта, данные участников туда не поступают. Удаление требует отдельной миграции поколения toolchain, не объявляется выполненным патчем |
+| [minimatch](https://github.com/advisories/GHSA-g3hv-75wg-m249) / [glob](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4) и мета-зависимости ESLint/PWA | Обход/шаблоны сборки и lint. Шаблоны заданы проектом, пользовательские шаблоны или запросы участников к этим функциям не передаются. Эти Node-инструменты не работают в развёрнутом Go-сервере. Новые major-версии нельзя подменять вслепую в старых цепочках API |
+
+Остаток не объявлен исправленным и не превращён в обещание общей безопасности. Вывод о неприменимости касается перечисленных условий текущего статического приложения; при изменении архитектуры его нужно повторить.
+
+Проверки после обновления: **451/451** тест, 96/96 файлов на Vitest 4.1.12; `check`, `check:ui`, `lint`, production build с генерацией нового PWA precache — все код 0. Настольные ворота повторены: оба frontend, 3 теста идентичности запросов, tagged Go vet/test и обе production-сборки — `[desktop] OK`. Свод лицензий пересобран (74 npm + 15 Go); runtime-изменение в нём — devalue 5.9.2 → 5.9.4. Снимок, переписанный Vitest только из-за переводов строк, возвращён к исходному SHA256; ожидания тестов не ослаблялись.
