@@ -1,0 +1,4 @@
+ok  	gitea.mixdep.ru/mix/wynd/internal/api	4.345s
+ok  	gitea.mixdep.ru/mix/wynd/internal/chronicle	0.601s
+ok  	gitea.mixdep.ru/mix/wynd/internal/archive	0.666s
+ok  	gitea.mixdep.ru/mix/wynd/internal/config	1.184s

@@ -4,7 +4,7 @@
 
 ## Что нужно
 
-Go 1.26 (`go.mod`) и Node 22 с npm (та же версия, что в `deploy/docker/Dockerfile`). Для `scripts\test-integration.bat` — учётки SMTP-релеев в `dev/`.
+Go 1.27.3 или новее (`go.mod`) и Node 22 с npm. CI читает Go из `go.mod`, Docker закрепляет исправленный patch в `deploy/docker/Dockerfile`; локальный Go с `GOTOOLCHAIN=auto` при необходимости загрузит его. Проверять фактический компилятор артефакта командой `go version -m <бинарник>`. Для `scripts\test-integration.bat` — учётки SMTP-релеев в `dev/`.
 
 ## Локальный запуск (loopback)
 
