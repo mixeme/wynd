@@ -1,0 +1,97 @@
+Name:      ghcr.io/mixeme/wynd:0.48.2
+MediaType: application/vnd.oci.image.index.v1+json
+Digest:    sha256:54344e2e634d09f7428d958513d96273d37a0bc870af7201de906a1f7c965456
+
+Manifests:
+  Name:      ghcr.io/mixeme/wynd:0.48.2@sha256:beb6dac7df10e7814ad6725b8c239afd9e36f9c364e76068c312ccc3fc76b603
+  MediaType: application/vnd.oci.image.manifest.v1+json
+  Platform:  linux/amd64
+
+  Name:      ghcr.io/mixeme/wynd:0.48.2@sha256:9cbf161e8d5819df1f8023ecd9bb8171b1ee9d51a3607edb63b0fcf81cab3d8e
+  MediaType: application/vnd.oci.image.manifest.v1+json
+  Platform:  linux/arm64
+0.48.2-amd64: Pulling from mixeme/wynd
+4f4fb700ef54: Pulling fs layer
+b15ee42e627e: Pulling fs layer
+40fd8ae441b3: Pulling fs layer
+434dc0433d9e: Pulling fs layer
+4f4fb700ef54: Already exists
+4f4fb700ef54: Pull complete
+b15ee42e627e: Download complete
+434dc0433d9e: Download complete
+40fd8ae441b3: Download complete
+40fd8ae441b3: Pull complete
+b15ee42e627e: Pull complete
+434dc0433d9e: Pull complete
+Digest: sha256:beb6dac7df10e7814ad6725b8c239afd9e36f9c364e76068c312ccc3fc76b603
+Status: Downloaded newer image for ghcr.io/mixeme/wynd:0.48.2-amd64
+ghcr.io/mixeme/wynd:0.48.2-amd64
+PUBLISHED_ARCH=amd64
+91fb97d2b63a78d6252d2423ed2654142245614776df4063f0041742dbb29894  /tmp/wynd-ghcr-0.48.2-amd64.bin
+/candidate: go1.27.3
+	path	gitea.mixdep.ru/mix/wynd/cmd/wynd
+	mod	gitea.mixdep.ru/mix/wynd	(devel)
+	dep	filippo.io/age	v1.2.1	h1:X0TZjehAZylOIj4DubWYU1vWQxv9bJpo+Uu2/LGhi1o=
+	dep	github.com/SherClockHolmes/webpush-go	v1.4.0	h1:ocnzNKWN23T9nvHi6IfyrQjkIc0oJWv1B1pULsf9i3s=
+	dep	github.com/dustin/go-humanize	v1.0.1	h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
+	dep	github.com/golang-jwt/jwt/v5	v5.2.2	h1:Rl4B7itRWVtYIHFrSNd7vhTiz9UpLdi6gZhZ3wEeDy8=
+	dep	github.com/google/uuid	v1.6.0	h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
+	dep	github.com/remyoudompheng/bigfft	v0.0.0-20230129092748-24d4a6f8daec	h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
+	dep	golang.org/x/crypto	v0.56.0	h1:GUh5Ii4J5jtcseSMiRqr1jXCNHoxjeV9Fmekc2oLy6Y=
+	dep	golang.org/x/exp	v0.0.0-20230315142452-642cacee5cc0	h1:pVgRXcIictcr+lBQIFeiwuwtDIs4eL21OuM9nyAADmo=
+	dep	golang.org/x/sys	v0.47.0	h1:o7XGOvZQCADBQQ4Y7VNq2dRWQR7JmOUW8Kxx4ZsNgWs=
+	dep	modernc.org/libc	v1.61.13	h1:3LRd6ZO1ezsFiX1y+bHd1ipyEHIJKvuprv0sLTBwLW8=
+	dep	modernc.org/mathutil	v1.7.1	h1:GCZVGXdaN8gTqB1Mf/usp1Y/hSqgI2vAGGP4jZMCxOU=
+	dep	modernc.org/memory	v1.8.2	h1:cL9L4bcoAObu4NkxOlKWBWtNHIsnnACGF/TbqQ6sbcI=
+	dep	modernc.org/sqlite	v1.36.1	h1:bDa8BJUH4lg6EGkLbahKe/8QqoF8p9gArSc6fTqYhyQ=
+	build	-buildmode=exe
+	build	-compiler=gc
+	build	-trimpath=true
+	build	CGO_ENABLED=0
+	build	GOARCH=amd64
+	build	GOOS=linux
+	build	GOAMD64=v1
+0.48.2-arm64: Pulling from mixeme/wynd
+4f4fb700ef54: Pulling fs layer
+7d46ac86a55c: Pulling fs layer
+ed9e0ffe020b: Pulling fs layer
+cc650a9473f5: Pulling fs layer
+19e7bd289ac8: Pulling fs layer
+4f4fb700ef54: Already exists
+4f4fb700ef54: Pull complete
+19e7bd289ac8: Download complete
+7d46ac86a55c: Download complete
+cc650a9473f5: Download complete
+7d46ac86a55c: Pull complete
+ed9e0ffe020b: Download complete
+ed9e0ffe020b: Pull complete
+19e7bd289ac8: Pull complete
+cc650a9473f5: Pull complete
+Digest: sha256:9cbf161e8d5819df1f8023ecd9bb8171b1ee9d51a3607edb63b0fcf81cab3d8e
+Status: Downloaded newer image for ghcr.io/mixeme/wynd:0.48.2-arm64
+ghcr.io/mixeme/wynd:0.48.2-arm64
+PUBLISHED_ARCH=arm64
+55431395f7f166e68bc2146c3ee540c0fd3a2a587f44f1f527a8f36bcf2eabff  /tmp/wynd-ghcr-0.48.2-arm64.bin
+/candidate: go1.27.3
+	path	gitea.mixdep.ru/mix/wynd/cmd/wynd
+	mod	gitea.mixdep.ru/mix/wynd	(devel)
+	dep	filippo.io/age	v1.2.1	h1:X0TZjehAZylOIj4DubWYU1vWQxv9bJpo+Uu2/LGhi1o=
+	dep	github.com/SherClockHolmes/webpush-go	v1.4.0	h1:ocnzNKWN23T9nvHi6IfyrQjkIc0oJWv1B1pULsf9i3s=
+	dep	github.com/dustin/go-humanize	v1.0.1	h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
+	dep	github.com/golang-jwt/jwt/v5	v5.2.2	h1:Rl4B7itRWVtYIHFrSNd7vhTiz9UpLdi6gZhZ3wEeDy8=
+	dep	github.com/google/uuid	v1.6.0	h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
+	dep	github.com/remyoudompheng/bigfft	v0.0.0-20230129092748-24d4a6f8daec	h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
+	dep	golang.org/x/crypto	v0.56.0	h1:GUh5Ii4J5jtcseSMiRqr1jXCNHoxjeV9Fmekc2oLy6Y=
+	dep	golang.org/x/exp	v0.0.0-20230315142452-642cacee5cc0	h1:pVgRXcIictcr+lBQIFeiwuwtDIs4eL21OuM9nyAADmo=
+	dep	golang.org/x/sys	v0.47.0	h1:o7XGOvZQCADBQQ4Y7VNq2dRWQR7JmOUW8Kxx4ZsNgWs=
+	dep	modernc.org/libc	v1.61.13	h1:3LRd6ZO1ezsFiX1y+bHd1ipyEHIJKvuprv0sLTBwLW8=
+	dep	modernc.org/mathutil	v1.7.1	h1:GCZVGXdaN8gTqB1Mf/usp1Y/hSqgI2vAGGP4jZMCxOU=
+	dep	modernc.org/memory	v1.8.2	h1:cL9L4bcoAObu4NkxOlKWBWtNHIsnnACGF/TbqQ6sbcI=
+	dep	modernc.org/sqlite	v1.36.1	h1:bDa8BJUH4lg6EGkLbahKe/8QqoF8p9gArSc6fTqYhyQ=
+	build	-buildmode=exe
+	build	-compiler=gc
+	build	-trimpath=true
+	build	CGO_ENABLED=0
+	build	GOARCH=arm64
+	build	GOOS=linux
+	build	GOARM64=v8.0

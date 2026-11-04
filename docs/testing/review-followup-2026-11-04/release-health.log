@@ -1,0 +1,4 @@
+IMAGE=wynd:0.48.2-a429f078 IMAGE_ID=sha256:b5c256a837f1338bf65c5dd78c143f92a42f99e5bf462b6f94f0568f3501b106 HEALTH=healthy
+0c041ea72abdf29462a8648a22e5d0fac59bd0c13bf83695832301687e61b362  /usr/local/bin/wynd
+{"status":"ok"}
+{"status":"ready"}

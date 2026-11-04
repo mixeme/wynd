@@ -1,0 +1,18 @@
+[
+  {
+    "conclusion": "success",
+    "databaseId": 41904656888,
+    "headSha": "a429f078802bd7e41537dfaaa6c76412202aa845",
+    "name": "Image",
+    "status": "completed",
+    "url": "https://github.com/mixeme/wynd/actions/runs/41904656888"
+  },
+  {
+    "conclusion": "success",
+    "databaseId": 41905757639,
+    "headSha": "87e308f5d12f1ad0d33320a5f942a94eb92ac48d",
+    "name": "Desktop checks",
+    "status": "completed",
+    "url": "https://github.com/mixeme/wynd/actions/runs/41905757639"
+  }
+]
