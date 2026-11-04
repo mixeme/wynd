@@ -1,0 +1,12 @@
+--- FAIL: TestReleaseChecksCannotReplaceEachOtherOutOfOrder (0.00s)
+    releases_test.go:49: second fetch replaced the resource while first fetch was running
+    releases_test.go:54: stale fetch won: &{Tag:A Draft:false Size:0 SumOK:false Commit: AttestOK:false Notes: KeyInRelease:false PubKey: Problem: Steps:[] exe: dir:}
+--- FAIL: TestReleaseSigningOwnsCheckUntilItFinishes (0.00s)
+    releases_test.go:83: fetch ran while another operation owned the signing resource
+    releases_test.go:72: in-use Check was replaced during signature
+    releases_test.go:88: signature cleared another operation's Check: <nil>
+--- FAIL: TestReleaseFailedCheckInvalidatesPreviousSuccess (0.00s)
+    releases_test.go:106: failed new check left a previously successful resource signable
+FAIL
+FAIL	gitea.mixdep.ru/mix/wynd/cmd/wynd-signer	1.014s
+FAIL

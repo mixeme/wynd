@@ -34,6 +34,8 @@ export interface Releases {
 }
 
 export interface Check {
+	check_id: string;
+	request_id: string;
 	tag: string;
 	draft: boolean;
 	key_in_release: boolean;
@@ -54,6 +56,8 @@ export interface Step {
 }
 
 export interface Progress {
+	check_id: string;
+	request_id: string;
 	tag: string;
 	phase: 'check' | 'sign';
 	steps: Step[];
@@ -72,8 +76,8 @@ interface Backend {
 	ChooseKey(): Promise<State>;
 	CreateKey(path: string, pass: string): Promise<Result>;
 	Releases(): Promise<Releases>;
-	CheckRelease(tag: string): Promise<Check>;
-	SignRelease(pass: string): Promise<Result>;
+	CheckRelease(tag: string, requestId: string): Promise<Check>;
+	SignRelease(checkId: string, tag: string, requestId: string, pass: string): Promise<Result>;
 	PickExe(): Promise<string>;
 	FileSize(path: string): Promise<number>;
 	SignFile(path: string, pass: string): Promise<Result>;

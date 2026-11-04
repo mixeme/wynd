@@ -32,6 +32,10 @@ type GitHub struct {
 	Bin  string // gh; пусто — "gh" из PATH
 }
 
+func (g GitHub) ReleaseURL(tag string) string {
+	return "https://github.com/" + g.Repo + "/releases/tag/" + tag
+}
+
 // ErrNoGh — программы gh нет.
 var ErrNoGh = errors.New("нет программы gh (GitHub CLI): поставьте её и войдите — gh auth login")
 
@@ -115,11 +119,13 @@ func (g GitHub) Releases(ctx context.Context) ([]Release, error) {
 
 // Check — проверки выпуска до пароля (12в).
 type Check struct {
-	Tag    string `json:"tag"`
-	Draft  bool   `json:"draft"`
-	Size   int64  `json:"size"`
-	SumOK  bool   `json:"sum_ok"`
-	Commit string `json:"commit,omitempty"`
+	CheckID   string `json:"check_id,omitempty"`
+	RequestID string `json:"request_id,omitempty"`
+	Tag       string `json:"tag"`
+	Draft     bool   `json:"draft"`
+	Size      int64  `json:"size"`
+	SumOK     bool   `json:"sum_ok"`
+	Commit    string `json:"commit,omitempty"`
 	// AttestOK — exe собран GitHub Actions из этого тега (gh attestation verify).
 	AttestOK bool   `json:"attest_ok"`
 	Notes    string `json:"notes,omitempty"`

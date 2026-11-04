@@ -11,6 +11,10 @@
 	import Notice from '$ui/workshop/Notice.svelte';
 	import StepList from '$ui/workshop/StepList.svelte';
 	import { backend, watchProgress, type Check, type Release, type State, type Step } from './api';
+	import { ReleaseRequests } from './release-requests';
+	import { uuid } from '$lib/uuid';
+	const requests = new ReleaseRequests(uuid);
+	let checkRequest = '';
 
 	// Экраны (docs/visual/installer.html): 12а — ключа нет, 12б — выпуски,
 	// 12в–12г — проверка, подпись и итог на одном экране, 12д — подписан файл;
@@ -58,7 +62,7 @@
 	let sigPath = $state('');
 
 	onMount(() => watchProgress((p) => {
-		if (screen !== 'release' || p.tag !== selectedRelease?.tag) return;
+		if (screen !== 'release' || !requests.acceptsProgress(p, selectedRelease?.tag, check?.check_id)) return;
 		if (p.phase === 'check' && checking) checkSteps = p.steps;
 		if (p.phase === 'sign' && signing) signSteps = p.steps;
 	}));
@@ -140,6 +144,8 @@
 		}
 	}
 	function toList() {
+		requests.clear();
+		checking = signing = false;
 		selectedRelease = undefined;
 		check = undefined;
 		pass = '';
@@ -151,6 +157,9 @@
 	}
 
 	async function openRelease(r: Release) {
+		const request = requests.beginCheck();
+		checkRequest = request;
+		signing = false;
 		selectedRelease = r;
 		screen = 'release';
 		check = undefined;
@@ -164,25 +173,35 @@
 		checking = true;
 		void tick().then(() => body?.scrollTo({ top: 0 }));
 		try {
-			check = await backend().CheckRelease(r.tag);
+			const result = await backend().CheckRelease(r.tag, request);
+			if (!requests.isCurrentCheck(request)) return;
+			if (result.request_id !== request || result.tag !== r.tag || !result.check_id) {
+				throw new Error('Ответ проверки не соответствует выбранному выпуску');
+			}
+			check = result;
 			checkSteps = check.steps;
 		} catch (e) {
+			if (!requests.isCurrentCheck(request)) return;
 			checkError = String(e);
 			checkSteps = checkSteps.map((s) => s.status === 'running' ? { ...s, status: 'failed' } : s);
 		} finally {
-			checking = false;
+			if (requests.isCurrentCheck(request)) checking = false;
 		}
 	}
 	async function signRelease() {
 		if (!check || !pass || signing) return;
 		const tag = check.tag;
+		const checkId = check.check_id;
+		const originalCheckRequest = checkRequest;
+		const request = requests.beginSign();
 		signing = true;
 		wrong = false;
 		signError = '';
 		signSteps = [];
 		void tick().then(() => body?.scrollTo({ top: 0 }));
 		try {
-			const res = await backend().SignRelease(pass);
+			const res = await backend().SignRelease(checkId, tag, request, pass);
+			if (!requests.isCurrentSign(originalCheckRequest, request)) return;
 			signSteps = res.steps ?? signSteps;
 			if (res.wrong_password) {
 				wrong = true;
@@ -204,10 +223,11 @@
 			releaseDone = true;
 			void list();
 		} catch (err) {
+			if (!requests.isCurrentSign(originalCheckRequest, request)) return;
 			signError = String(err);
 			signSteps = signSteps.map((s) => s.status === 'running' ? { ...s, status: 'failed' } : s);
 		} finally {
-			signing = false;
+			if (requests.isCurrentSign(originalCheckRequest, request)) signing = false;
 		}
 	}
 

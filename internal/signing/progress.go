@@ -10,9 +10,11 @@ type Step struct {
 
 // Progress — ход проверки или подписи одного выпуска, без ключа и пароля.
 type Progress struct {
-	Tag   string `json:"tag"`
-	Phase string `json:"phase"` // check, sign
-	Steps []Step `json:"steps"`
+	CheckID   string `json:"check_id,omitempty"`
+	RequestID string `json:"request_id,omitempty"`
+	Tag       string `json:"tag"`
+	Phase     string `json:"phase"` // check, sign
+	Steps     []Step `json:"steps"`
 }
 
 type progress struct {

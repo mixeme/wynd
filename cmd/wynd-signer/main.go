@@ -10,6 +10,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"embed"
 	"encoding/json"
 	"errors"
@@ -34,20 +35,51 @@ var assets embed.FS
 
 // App — то, что окно может попросить (window.go.main.App.*). Пароль ключа
 // дальше signing.Unlock не уходит и нигде не сохраняется.
-type App struct {
-	ctx context.Context
-	gh  signing.GitHub
-
-	mu    sync.Mutex
-	check *signing.Check
+type releaseBackend interface {
+	Releases(context.Context) ([]signing.Release, error)
+	FetchWithProgress(context.Context, string, func(signing.Progress)) (*signing.Check, error)
+	SignAndPublishWithProgress(context.Context, *signing.Check, string, string, func(signing.Progress)) (bool, error)
+	ReleaseURL(string) string
 }
 
-func (a *App) startup(ctx context.Context) { a.ctx = ctx }
+type App struct {
+	ctx  context.Context
+	gh   releaseBackend
+	emit func(signing.Progress)
+
+	cancel        context.CancelFunc
+	operationOnce sync.Once
+	operationGate chan struct{}
+	closed        bool
+	check         *signing.Check
+}
+
+func (a *App) startup(ctx context.Context) { a.ctx, a.cancel = context.WithCancel(ctx) }
+
+func (a *App) acquireOperation(ctx context.Context) error {
+	a.operationOnce.Do(func() { a.operationGate = make(chan struct{}, 1) })
+	select {
+	case a.operationGate <- struct{}{}:
+		if err := ctx.Err(); err != nil {
+			a.releaseOperation()
+			return err
+		}
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+func (a *App) releaseOperation() { <-a.operationGate }
 
 func (a *App) shutdown(context.Context) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	if a.cancel != nil {
+		a.cancel()
+	}
+	_ = a.acquireOperation(context.Background())
+	defer a.releaseOperation()
+	a.closed = true
 	a.check.Close()
+	a.check = nil
 }
 
 // settings — что окно помнит на этом компьютере: где лежит ключ (12а, 12б).
@@ -234,32 +266,52 @@ func (a *App) Releases() Releases {
 }
 
 // CheckRelease — проверки выпуска до пароля (12в).
-func (a *App) CheckRelease(tag string) (*signing.Check, error) {
-	c, err := a.gh.FetchWithProgress(a.ctx, tag, a.reportProgress)
+func (a *App) CheckRelease(tag, requestID string) (*signing.Check, error) {
+	if err := a.acquireOperation(a.ctx); err != nil {
+		return nil, err
+	}
+	defer a.releaseOperation()
+	if a.closed {
+		return nil, errors.New("Приложение закрывается")
+	}
+	a.check.Close()
+	a.check = nil
+	checkID := rand.Text()
+	c, err := a.gh.FetchWithProgress(a.ctx, tag, func(p signing.Progress) { p.CheckID = checkID; p.RequestID = requestID; a.reportProgress(p) })
 	if err != nil {
 		return nil, err
 	}
-	a.mu.Lock()
-	a.check.Close()
+	c.CheckID = checkID
+	c.RequestID = requestID
 	a.check = c
-	a.mu.Unlock()
 	return c, nil
 }
 
 func (a *App) reportProgress(p signing.Progress) {
+	if a.ctx.Err() != nil {
+		return
+	}
+	if a.emit != nil {
+		a.emit(p)
+		return
+	}
 	runtime.EventsEmit(a.ctx, "signer:progress", p)
 }
 
 // SignRelease — «Подписать и опубликовать» (12в → 12г).
-func (a *App) SignRelease(pass string) Result {
-	a.mu.Lock()
+func (a *App) SignRelease(checkID, tag, requestID, pass string) Result {
+	if err := a.acquireOperation(a.ctx); err != nil {
+		return fail(err)
+	}
+	defer a.releaseOperation()
 	c := a.check
-	a.mu.Unlock()
-	if c == nil {
-		return Result{Message: "Сначала выберите выпуск"}
+	if a.closed || c == nil || c.CheckID != checkID || c.Tag != tag || c.Problem != "" {
+		return Result{Message: "Проверка выпуска устарела. Проверьте выпуск заново"}
 	}
 	var steps []signing.Step
 	published, err := a.gh.SignAndPublishWithProgress(a.ctx, c, loadSettings().KeyPath, pass, func(p signing.Progress) {
+		p.CheckID = checkID
+		p.RequestID = requestID
 		steps = p.Steps
 		a.reportProgress(p)
 	})
@@ -268,11 +320,9 @@ func (a *App) SignRelease(pass string) Result {
 		res.Steps = steps
 		return res
 	}
-	a.mu.Lock()
 	c.Close()
 	a.check = nil
-	a.mu.Unlock()
-	return Result{OK: true, Published: published, URL: "https://github.com/" + a.gh.Repo + "/releases/tag/" + c.Tag, Steps: steps}
+	return Result{OK: true, Published: published, URL: a.gh.ReleaseURL(c.Tag), Steps: steps}
 }
 
 // PickExe — «Подписать файл на этом компьютере» (12б).
