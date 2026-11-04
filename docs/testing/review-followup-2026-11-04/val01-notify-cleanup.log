@@ -1,0 +1,82 @@
+=== RUN   TestMoveLargeArchiveAcrossBothProcessRestarts
+    move_process_test.go:318: 40 MiB; committed prefix 1048576; resumed bytes=1048576-34603007 "01a1a812-c2d4-75dd-8326-7084e706eb89"; verified 3 posts and media SHA-256
+--- PASS: TestMoveLargeArchiveAcrossBothProcessRestarts (8.31s)
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk/resume
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk/changed-representation
+2026/11/04 22:39:32 incoming move 01a1a812-e46e-7128-ba2f-72da04c4f5a8: move: archive_changed
+--- PASS: TestMoveStreamKeepsPartialHTTPChunk (4.78s)
+    --- PASS: TestMoveStreamKeepsPartialHTTPChunk/resume (2.52s)
+    --- PASS: TestMoveStreamKeepsPartialHTTPChunk/changed-representation (2.27s)
+=== RUN   TestMoveLargeArchiveAcrossBothProcessRestarts
+    move_process_test.go:318: 40 MiB; committed prefix 1048576; resumed bytes=1048576-34603007 "01a1a812-f6e0-7e15-b0fc-4ebe9760d8f9"; verified 3 posts and media SHA-256
+--- PASS: TestMoveLargeArchiveAcrossBothProcessRestarts (7.94s)
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk/resume
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk/changed-representation
+2026/11/04 22:39:45 incoming move 01a1a813-1521-788f-8546-e7312a37772a: move: archive_changed
+--- PASS: TestMoveStreamKeepsPartialHTTPChunk (4.38s)
+    --- PASS: TestMoveStreamKeepsPartialHTTPChunk/resume (2.16s)
+    --- PASS: TestMoveStreamKeepsPartialHTTPChunk/changed-representation (2.22s)
+=== RUN   TestMoveLargeArchiveAcrossBothProcessRestarts
+    move_process_test.go:318: 40 MiB; committed prefix 1048576; resumed bytes=1048576-34603007 "01a1a813-2498-7496-918e-5a74a975d460"; verified 3 posts and media SHA-256
+--- PASS: TestMoveLargeArchiveAcrossBothProcessRestarts (7.33s)
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk/resume
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk/changed-representation
+2026/11/04 22:39:56 incoming move 01a1a813-403d-71cf-a8c3-ebc245a4f67b: move: archive_changed
+--- PASS: TestMoveStreamKeepsPartialHTTPChunk (3.41s)
+    --- PASS: TestMoveStreamKeepsPartialHTTPChunk/resume (1.41s)
+    --- PASS: TestMoveStreamKeepsPartialHTTPChunk/changed-representation (2.00s)
+=== RUN   TestMoveLargeArchiveAcrossBothProcessRestarts
+    move_process_test.go:318: 40 MiB; committed prefix 1048576; resumed bytes=1048576-34603007 "01a1a813-4fbc-78e5-8dc7-6e6df497fecd"; verified 3 posts and media SHA-256
+--- PASS: TestMoveLargeArchiveAcrossBothProcessRestarts (7.10s)
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk/resume
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk/changed-representation
+2026/11/04 22:40:07 incoming move 01a1a813-6aee-7c23-b045-4dcdc40c22c3: move: archive_changed
+--- PASS: TestMoveStreamKeepsPartialHTTPChunk (4.12s)
+    --- PASS: TestMoveStreamKeepsPartialHTTPChunk/resume (2.09s)
+    --- PASS: TestMoveStreamKeepsPartialHTTPChunk/changed-representation (2.02s)
+=== RUN   TestMoveLargeArchiveAcrossBothProcessRestarts
+    move_process_test.go:318: 40 MiB; committed prefix 1048576; resumed bytes=1048576-34603007 "01a1a813-80cb-7646-bac4-088ae6939a05"; verified 3 posts and media SHA-256
+--- PASS: TestMoveLargeArchiveAcrossBothProcessRestarts (9.78s)
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk/resume
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk/changed-representation
+2026/11/04 22:40:21 incoming move 01a1a813-a215-766c-96c4-4ca49c0d0a69: move: archive_changed
+--- PASS: TestMoveStreamKeepsPartialHTTPChunk (4.30s)
+    --- PASS: TestMoveStreamKeepsPartialHTTPChunk/resume (2.00s)
+    --- PASS: TestMoveStreamKeepsPartialHTTPChunk/changed-representation (2.30s)
+=== RUN   TestMoveLargeArchiveAcrossBothProcessRestarts
+    move_process_test.go:318: 40 MiB; committed prefix 1048576; resumed bytes=1048576-34603007 "01a1a813-b275-7e4d-bcc2-39b52f2d71f7"; verified 3 posts and media SHA-256
+--- PASS: TestMoveLargeArchiveAcrossBothProcessRestarts (7.78s)
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk/resume
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk/changed-representation
+2026/11/04 22:40:33 incoming move 01a1a813-cf5a-7623-bd8f-37fdbecc1d54: move: archive_changed
+--- PASS: TestMoveStreamKeepsPartialHTTPChunk (3.82s)
+    --- PASS: TestMoveStreamKeepsPartialHTTPChunk/resume (1.90s)
+    --- PASS: TestMoveStreamKeepsPartialHTTPChunk/changed-representation (1.92s)
+=== RUN   TestMoveLargeArchiveAcrossBothProcessRestarts
+    move_process_test.go:318: 40 MiB; committed prefix 1048576; resumed bytes=1048576-34603007 "01a1a813-e319-7301-91d9-26ca474486d3"; verified 3 posts and media SHA-256
+--- PASS: TestMoveLargeArchiveAcrossBothProcessRestarts (9.67s)
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk/resume
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk/changed-representation
+2026/11/04 22:40:46 incoming move 01a1a814-04ac-7db3-85ae-56e660a47335: move: archive_changed
+--- PASS: TestMoveStreamKeepsPartialHTTPChunk (3.60s)
+    --- PASS: TestMoveStreamKeepsPartialHTTPChunk/resume (2.09s)
+    --- PASS: TestMoveStreamKeepsPartialHTTPChunk/changed-representation (1.52s)
+=== RUN   TestMoveLargeArchiveAcrossBothProcessRestarts
+    move_process_test.go:318: 40 MiB; committed prefix 1048576; resumed bytes=1048576-34603007 "01a1a814-14de-701a-9f8f-02a084740493"; verified 3 posts and media SHA-256
+--- PASS: TestMoveLargeArchiveAcrossBothProcessRestarts (7.39s)
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk/resume
+=== RUN   TestMoveStreamKeepsPartialHTTPChunk/changed-representation
+2026/11/04 22:40:58 incoming move 01a1a814-309c-7971-ad6a-21de3fa71d96: move: archive_changed
+--- PASS: TestMoveStreamKeepsPartialHTTPChunk (3.94s)
+    --- PASS: TestMoveStreamKeepsPartialHTTPChunk/resume (1.72s)
+    --- PASS: TestMoveStreamKeepsPartialHTTPChunk/changed-representation (2.22s)
+PASS
+ok  	gitea.mixdep.ru/mix/wynd/internal/api	98.136s

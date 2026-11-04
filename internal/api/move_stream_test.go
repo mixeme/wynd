@@ -70,6 +70,7 @@ func noOutgoingCopy(t *testing.T, srv *api.Server) {
 
 func restartAPI(t *testing.T, old *api.Server) *api.Server {
 	t.Helper()
+	waitAPINotify(t, old)
 	if err := old.Chronicle.DB().Close(); err != nil {
 		t.Fatal(err)
 	}

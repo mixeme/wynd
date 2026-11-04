@@ -222,6 +222,8 @@ func TestMoveLargeArchiveAcrossBothProcessRestarts(t *testing.T) {
 	}
 	dst, caps, _, _ := setupAPI(t)
 	token, _ := registerSession(t, dst, caps, "anya@example.com")
+	waitAPINotify(t, src)
+	waitAPINotify(t, dst)
 	if err := src.Chronicle.DB().Close(); err != nil {
 		t.Fatal(err)
 	}

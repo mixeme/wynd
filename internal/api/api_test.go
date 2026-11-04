@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -60,7 +61,21 @@ func setupFreshAPI(t *testing.T) (*api.Server, *auth.CaptureCodes, *chronicle.Ch
 	// httptest.NewRequest peers from 192.0.2.1; trust it so the tests can pick
 	// rate-limit buckets through X-Forwarded-For.
 	srv.TrustedProxies, _ = api.ParseTrustedProxies([]string{"192.0.2.0/24"})
+	// Like production shutdown, finish notifications before closing SQLite.
+	// DB.Close alone does not wait for every in-flight query to release its
+	// connection; on Windows that can leave TempDir's wynd.db locked.
+	t.Cleanup(func() { waitAPINotify(t, srv) })
 	return srv, caps, ch, blobs
+}
+
+func waitAPINotify(t *testing.T, srv *api.Server) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	srv.WaitNotify(ctx)
+	if err := ctx.Err(); err != nil {
+		t.Fatalf("API fixture notifications did not finish: %v", err)
+	}
 }
 
 func setupAPI(t *testing.T) (*api.Server, *auth.CaptureCodes, *chronicle.Chronicle, *blob.Store) {
