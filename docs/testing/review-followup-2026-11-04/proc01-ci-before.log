@@ -1,0 +1,101 @@
+desktop	Desktop gate	﻿2026-11-04T20:15:57.2049811Z ##[group]Run scripts\test-desktop.bat
+desktop	Desktop gate	2026-11-04T20:15:57.2050198Z ^[[36;1mscripts\test-desktop.bat^[[0m
+desktop	Desktop gate	2026-11-04T20:15:57.2081929Z shell: C:\Windows\system32\cmd.EXE /D /E:ON /V:OFF /S /C "CALL "{0}""
+desktop	Desktop gate	2026-11-04T20:15:57.2082280Z env:
+desktop	Desktop gate	2026-11-04T20:15:57.2082448Z   GOTOOLCHAIN: local
+desktop	Desktop gate	2026-11-04T20:15:57.2082647Z ##[endgroup]
+desktop	Desktop gate	2026-11-04T20:15:57.2256444Z [desktop] Workshop frontend check and build
+desktop	Desktop gate	2026-11-04T20:15:57.5134256Z
+desktop	Desktop gate	2026-11-04T20:15:57.5134879Z > wynd-installer-frontend@0.0.0 check
+desktop	Desktop gate	2026-11-04T20:15:57.5135535Z > svelte-check --tsconfig ./tsconfig.json
+desktop	Desktop gate	2026-11-04T20:15:57.5135888Z
+desktop	Desktop gate	2026-11-04T20:16:02.0842927Z ▲ [WARNING] Cannot find base config file "./.svelte-kit/tsconfig.json" [tsconfig.json]
+desktop	Desktop gate	2026-11-04T20:16:02.0843845Z
+desktop	Desktop gate	2026-11-04T20:16:02.0844313Z     tsconfig.json:2:12:
+desktop	Desktop gate	2026-11-04T20:16:02.0845088Z       2 │   "extends": "./.svelte-kit/tsconfig.json",
+desktop	Desktop gate	2026-11-04T20:16:02.0845943Z         ╵              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+desktop	Desktop gate	2026-11-04T20:16:02.0846285Z
+desktop	Desktop gate	2026-11-04T20:16:03.1693521Z Loading svelte-check in workspace: d:\a\wynd\wynd\cmd\wynd-installer\frontend
+desktop	Desktop gate	2026-11-04T20:16:03.1694385Z Getting Svelte diagnostics...
+desktop	Desktop gate	2026-11-04T20:16:03.1694668Z
+desktop	Desktop gate	2026-11-04T20:16:03.1721930Z ^[[32msvelte-check found 0 errors and 0 warnings
+desktop	Desktop gate	2026-11-04T20:16:03.4887381Z ^[[39m
+desktop	Desktop gate	2026-11-04T20:16:03.4887939Z > wynd-installer-frontend@0.0.0 build
+desktop	Desktop gate	2026-11-04T20:16:03.4888439Z > vite build
+desktop	Desktop gate	2026-11-04T20:16:03.4888633Z
+desktop	Desktop gate	2026-11-04T20:16:04.4065479Z ^[[36mvite v6.4.5 ^[[32mbuilding for production...^[[36m^[[39m
+desktop	Desktop gate	2026-11-04T20:16:04.4820581Z transforming...
+desktop	Desktop gate	2026-11-04T20:16:06.1295343Z ^[[32m✓^[[39m 149 modules transformed.
+desktop	Desktop gate	2026-11-04T20:16:06.2943191Z rendering chunks...
+desktop	Desktop gate	2026-11-04T20:16:06.3018073Z computing gzip size...
+desktop	Desktop gate	2026-11-04T20:16:06.3086672Z ^[[2mdist/^[[22m^[[32mindex.html                 ^[[39m^[[1m^[[2m  0.40 kB^[[22m^[[1m^[[22m^[[2m │ gzip:  0.30 kB^[[22m
+desktop	Desktop gate	2026-11-04T20:16:06.3087702Z ^[[2mdist/^[[22m^[[35massets/index-56gtgnWf.css  ^[[39m^[[1m^[[2m 56.76 kB^[[22m^[[1m^[[22m^[[2m │ gzip: 12.18 kB^[[22m
+desktop	Desktop gate	2026-11-04T20:16:06.3088618Z ^[[2mdist/^[[22m^[[36massets/index-RSLB_lcV.js   ^[[39m^[[1m^[[2m152.09 kB^[[22m^[[1m^[[22m^[[2m │ gzip: 47.01 kB^[[22m
+desktop	Desktop gate	2026-11-04T20:16:06.3092486Z ^[[32m✓ built in 1.87s^[[39m
+desktop	Desktop gate	2026-11-04T20:16:08.1445210Z [desktop] Signer frontend test, check and build
+desktop	Desktop gate	2026-11-04T20:16:08.4232487Z
+desktop	Desktop gate	2026-11-04T20:16:08.4233093Z > wynd-signer-frontend@0.0.0 test
+desktop	Desktop gate	2026-11-04T20:16:08.4233638Z > node --experimental-strip-types --test src/release-requests.test.mjs
+desktop	Desktop gate	2026-11-04T20:16:08.4233948Z
+desktop	Desktop gate	2026-11-04T20:16:08.5061989Z TAP version 13
+desktop	Desktop gate	2026-11-04T20:16:08.6199074Z # Subtest: late response and progress from the same tag cannot replace a newer check
+desktop	Desktop gate	2026-11-04T20:16:08.6207452Z ok 1 - late response and progress from the same tag cannot replace a newer check
+desktop	Desktop gate	2026-11-04T20:16:08.6208171Z   ---
+desktop	Desktop gate	2026-11-04T20:16:08.6208615Z   duration_ms: 2.0113
+desktop	Desktop gate	2026-11-04T20:16:08.6208956Z   type: 'test'
+desktop	Desktop gate	2026-11-04T20:16:08.6209224Z   ...
+desktop	Desktop gate	2026-11-04T20:16:08.6218180Z # Subtest: signing retries have independent event identities even with the same Check
+desktop	Desktop gate	2026-11-04T20:16:08.6221383Z ok 2 - signing retries have independent event identities even with the same Check
+desktop	Desktop gate	2026-11-04T20:16:08.6222980Z   ---
+desktop	Desktop gate	2026-11-04T20:16:08.6223679Z   duration_ms: 0.2203
+desktop	Desktop gate	2026-11-04T20:16:08.6224435Z   type: 'test'
+desktop	Desktop gate	2026-11-04T20:16:08.6224959Z   ...
+desktop	Desktop gate	2026-11-04T20:16:08.6226215Z # Subtest: leaving the release invalidates every outstanding result and event
+desktop	Desktop gate	2026-11-04T20:16:08.6230206Z ok 3 - leaving the release invalidates every outstanding result and event
+desktop	Desktop gate	2026-11-04T20:16:08.6231082Z   ---
+desktop	Desktop gate	2026-11-04T20:16:08.6231601Z   duration_ms: 0.1945
+desktop	Desktop gate	2026-11-04T20:16:08.6232193Z   type: 'test'
+desktop	Desktop gate	2026-11-04T20:16:08.6232684Z   ...
+desktop	Desktop gate	2026-11-04T20:16:08.6351383Z 1..3
+desktop	Desktop gate	2026-11-04T20:16:08.6351816Z # tests 3
+desktop	Desktop gate	2026-11-04T20:16:08.6353112Z # suites 0
+desktop	Desktop gate	2026-11-04T20:16:08.6354852Z # pass 3
+desktop	Desktop gate	2026-11-04T20:16:08.6355468Z # fail 0
+desktop	Desktop gate	2026-11-04T20:16:08.6356715Z # cancelled 0
+desktop	Desktop gate	2026-11-04T20:16:08.6357134Z # skipped 0
+desktop	Desktop gate	2026-11-04T20:16:08.6358855Z # todo 0
+desktop	Desktop gate	2026-11-04T20:16:08.6362961Z # duration_ms 148.1675
+desktop	Desktop gate	2026-11-04T20:16:08.9320011Z
+desktop	Desktop gate	2026-11-04T20:16:08.9320833Z > wynd-signer-frontend@0.0.0 check
+desktop	Desktop gate	2026-11-04T20:16:08.9321402Z > svelte-check --tsconfig ./tsconfig.json
+desktop	Desktop gate	2026-11-04T20:16:08.9321619Z
+desktop	Desktop gate	2026-11-04T20:16:12.3764417Z ▲ [WARNING] Cannot find base config file "./.svelte-kit/tsconfig.json" [tsconfig.json]
+desktop	Desktop gate	2026-11-04T20:16:12.3765149Z
+desktop	Desktop gate	2026-11-04T20:16:12.3765360Z     tsconfig.json:2:12:
+desktop	Desktop gate	2026-11-04T20:16:12.3766093Z       2 │   "extends": "./.svelte-kit/tsconfig.json",
+desktop	Desktop gate	2026-11-04T20:16:12.3766893Z         ╵              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+desktop	Desktop gate	2026-11-04T20:16:12.3767251Z
+desktop	Desktop gate	2026-11-04T20:16:13.4835522Z Loading svelte-check in workspace: d:\a\wynd\wynd\cmd\wynd-signer\frontend
+desktop	Desktop gate	2026-11-04T20:16:13.4839616Z Getting Svelte diagnostics...
+desktop	Desktop gate	2026-11-04T20:16:13.4840485Z
+desktop	Desktop gate	2026-11-04T20:16:13.4841658Z ^[[32msvelte-check found 0 errors and 0 warnings
+desktop	Desktop gate	2026-11-04T20:16:13.8034144Z ^[[39m
+desktop	Desktop gate	2026-11-04T20:16:13.8034666Z > wynd-signer-frontend@0.0.0 build
+desktop	Desktop gate	2026-11-04T20:16:13.8035194Z > vite build
+desktop	Desktop gate	2026-11-04T20:16:13.8035398Z
+desktop	Desktop gate	2026-11-04T20:16:14.7293706Z ^[[36mvite v6.4.5 ^[[32mbuilding for production...^[[36m^[[39m
+desktop	Desktop gate	2026-11-04T20:16:14.8035730Z transforming...
+desktop	Desktop gate	2026-11-04T20:16:15.4399373Z ^[[32m✓^[[39m 116 modules transformed.
+desktop	Desktop gate	2026-11-04T20:16:15.4437069Z ^[[31m✗^[[39m Build failed in 683ms
+desktop	Desktop gate	2026-11-04T20:16:15.4438066Z ^[[31merror during build:
+desktop	Desktop gate	2026-11-04T20:16:15.4439034Z ^[[31m[vite:esbuild] failed to resolve "extends":"./.svelte-kit/tsconfig.json" in D:\a\wynd\wynd\web\tsconfig.json^[[31m
+desktop	Desktop gate	2026-11-04T20:16:15.4439730Z file: ^[[36mD:/a/wynd/wynd/web/src/lib/uuid.ts^[[31m
+desktop	Desktop gate	2026-11-04T20:16:15.4440811Z     at resolveExtends (file:///D:/a/wynd/wynd/cmd/wynd-signer/frontend/node_modules/vite/dist/node/chunks/dep-CkSfqg8D.js:8739:8)
+desktop	Desktop gate	2026-11-04T20:16:15.4441861Z     at parseExtends (file:///D:/a/wynd/wynd/cmd/wynd-signer/frontend/node_modules/vite/dist/node/chunks/dep-CkSfqg8D.js:8674:24)
+desktop	Desktop gate	2026-11-04T20:16:15.4442854Z     at parse$e (file:///D:/a/wynd/wynd/cmd/wynd-signer/frontend/node_modules/vite/dist/node/chunks/dep-CkSfqg8D.js:8531:23)
+desktop	Desktop gate	2026-11-04T20:16:15.4443977Z     at async loadTsconfigJsonForFile (file:///D:/a/wynd/wynd/cmd/wynd-signer/frontend/node_modules/vite/dist/node/chunks/dep-CkSfqg8D.js:9360:38)
+desktop	Desktop gate	2026-11-04T20:16:15.4445216Z     at async transformWithEsbuild (file:///D:/a/wynd/wynd/cmd/wynd-signer/frontend/node_modules/vite/dist/node/chunks/dep-CkSfqg8D.js:9088:60)
+desktop	Desktop gate	2026-11-04T20:16:15.4446828Z     at async Object.transform (file:///D:/a/wynd/wynd/cmd/wynd-signer/frontend/node_modules/vite/dist/node/chunks/dep-CkSfqg8D.js:9199:24)
+desktop	Desktop gate	2026-11-04T20:16:15.4447952Z     at async transform (file:///D:/a/wynd/wynd/cmd/wynd-signer/frontend/node_modules/rollup/dist/es/shared/node-entry.js:22518:16)
+desktop	Desktop gate	2026-11-04T20:16:15.4449311Z     at async ModuleLoader.addModuleSource (file:///D:/a/wynd/wynd/cmd/wynd-signer/frontend/node_modules/rollup/dist/es/shared/node-entry.js:22747:32)^[[39m
+desktop	Desktop gate	2026-11-04T20:16:17.3951037Z ##[error]Process completed with exit code 1.

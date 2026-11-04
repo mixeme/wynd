@@ -1,0 +1,67 @@
+[desktop] Prepare shared SvelteKit configuration
+[desktop] Workshop frontend check and build
+
+> wynd-installer-frontend@0.0.0 check
+> svelte-check --tsconfig ./tsconfig.json
+
+Loading svelte-check in workspace: d:\Local\Git\wynd\cmd\wynd-installer\frontend
+Getting Svelte diagnostics...
+
+svelte-check found 0 errors and 0 warnings
+
+> wynd-installer-frontend@0.0.0 build
+> vite build
+
+vite v6.4.5 building for production...
+transforming...
+✓ 149 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.40 kB │ gzip:  0.30 kB
+dist/assets/index-BIsy8H_v.css   56.76 kB │ gzip: 12.17 kB
+dist/assets/index-C6VbXwn8.js   152.09 kB │ gzip: 47.00 kB
+✓ built in 4.60s
+[desktop] Signer frontend test, check and build
+
+> wynd-signer-frontend@0.0.0 test
+> node --experimental-strip-types --test src/release-requests.test.mjs
+
+✔ late response and progress from the same tag cannot replace a newer check (2.193ms)
+✔ signing retries have independent event identities even with the same Check (0.4076ms)
+✔ leaving the release invalidates every outstanding result and event (0.3551ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 348.536
+
+> wynd-signer-frontend@0.0.0 check
+> svelte-check --tsconfig ./tsconfig.json
+
+Loading svelte-check in workspace: d:\Local\Git\wynd\cmd\wynd-signer\frontend
+Getting Svelte diagnostics...
+
+svelte-check found 0 errors and 0 warnings
+
+> wynd-signer-frontend@0.0.0 build
+> vite build
+
+vite v6.4.5 building for production...
+transforming...
+✓ 133 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                  0.39 kB │ gzip:  0.28 kB
+dist/assets/index-G3dfmi5C.css  54.10 kB │ gzip: 11.74 kB
+dist/assets/index-BgYYIMsL.js   76.45 kB │ gzip: 27.68 kB
+✓ built in 2.94s
+[desktop] Tagged Go vet and tests
+?   	gitea.mixdep.ru/mix/wynd/cmd/wynd-installer	[no test files]
+ok  	gitea.mixdep.ru/mix/wynd/cmd/wynd-signer	(cached)
+[desktop] Production-tag builds of both windows
+go: writing stat cache: open C:\Users\Микс\go\pkg\mod\cache\download\gitea.mixdep.ru\mix\wynd\@v\v0.48.2.info222207350.tmp: Access is denied.
+go: writing stat cache: open C:\Users\Микс\go\pkg\mod\cache\download\gitea.mixdep.ru\mix\wynd\@v\v0.48.2.info470824053.tmp: Access is denied.
+[desktop] OK
