@@ -112,6 +112,9 @@ type ReviveResult struct {
 // ReviveCircle вставляет круг из строк архива одной транзакцией.
 func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveResult, error) {
 	var res ReviveResult
+	if err := c.ValidateReviveTables(ctx, in.FormatVersion, in.SchemaVersion, in.Tables); err != nil {
+		return res, err
+	}
 	if !ReviveSchemaKnown(in.FormatVersion, in.SchemaVersion) {
 		return res, fmt.Errorf("%w: archive format %d schema %d", ErrInvalid, in.FormatVersion, in.SchemaVersion)
 	}

@@ -75,7 +75,7 @@ func (e *testEnv) seedBlob(id, accountID string) {
 	e.seedAccount(accountID)
 	_, err := e.ch.DB().ExecContext(e.ctx, `
 		INSERT INTO blobs (id, account_id, sha256, size_bytes, mime_type, storage_path, status, created_at)
-		VALUES (?, ?, 'deadbeef', 1, 'image/jpeg', 'de/ad', 'complete', ?)
+		VALUES (?, ?, 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef', 1, 'image/jpeg', 'de/ad', 'complete', ?)
 	`, id, accountID, e.t0.UTC().Format(time.RFC3339))
 	if err != nil {
 		e.t.Fatalf("seedBlob %s: %v", id, err)

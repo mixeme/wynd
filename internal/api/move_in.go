@@ -406,7 +406,7 @@ func (s *Server) runIncomingMove(id string) {
 	go func() {
 		defer s.incomingRuns.Delete(id)
 		ctx := context.Background()
-		err := s.incomingMove(ctx, id)
+		err := s.incomingMoveSafely(ctx, id)
 		if err == nil {
 			_ = os.Remove(s.incomingPath(id))
 			return
@@ -434,6 +434,16 @@ func (s *Server) runIncomingMove(id string) {
 			log.Printf("incoming move %s: fail: %v", id, err)
 		}
 	}()
+}
+
+func (s *Server) incomingMoveSafely(ctx context.Context, id string) (err error) {
+	defer func() {
+		if recover() != nil {
+			// Do not log untrusted panic values or leave the process without a worker.
+			err = &moveFailure{"archive_invalid"}
+		}
+	}()
+	return s.incomingMove(ctx, id)
 }
 
 func (s *Server) incomingMove(ctx context.Context, id string) error {
@@ -675,6 +685,9 @@ func (s *Server) reviveMoveFile(ctx context.Context, m *chronicle.IncomingMove) 
 	tables := map[string]chronicle.FullArchiveTable{}
 	for name, t := range raw {
 		tables[name] = chronicle.FullArchiveTable{Name: name, Columns: t.Columns, Rows: t.Rows}
+	}
+	if err := s.Chronicle.ValidateReviveTables(ctx, zr.Manifest.FormatVersion, zr.Manifest.SchemaVersion, tables); err != nil {
+		return reviveOutcome{}, &moveFailure{"archive_invalid"}
 	}
 	blobMap, err := s.importMoveBlobs(ctx, m.AccountID, zr, tables["blobs"])
 	if err != nil {

@@ -98,3 +98,12 @@ func TestMoveLANExceptionAndRedirect(t *testing.T) {
 		t.Fatal("redirect followed")
 	}
 }
+
+func TestIncomingWorkerContainsUnexpectedPanic(t *testing.T) {
+	// An unexpected fault still must be returned to runIncomingMove for cleanup.
+	err := (&Server{}).incomingMoveSafely(t.Context(), "missing")
+	var failed *moveFailure
+	if !errors.As(err, &failed) || failed.code != "archive_invalid" {
+		t.Fatalf("panic escaped cleanup: %v", err)
+	}
+}

@@ -314,6 +314,9 @@ func (e *reviveError) Error() string { return "revive: " + e.code + " " + e.deta
 // reviveFromTables проверяет файлы и место и вставляет круг.
 func (s *Server) reviveFromTables(ctx context.Context, in reviveRequest) (reviveOutcome, error) {
 	var out reviveOutcome
+	if err := s.Chronicle.ValidateReviveTables(ctx, in.FormatVersion, in.SchemaVersion, in.Tables); err != nil {
+		return out, &reviveError{http.StatusBadRequest, "archive_invalid", ""}
+	}
 	tables := in.Tables
 	accounts := map[string]string{}
 	if t, ok := tables["accounts"]; ok {

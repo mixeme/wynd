@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 )
 
 // FullReader читает открытый (без шифрования) полный архив на сервере —
@@ -63,12 +65,15 @@ func (r *FullReader) readJSON(name string, v any) error {
 func (r *FullReader) Tables() (map[string]FullTable, error) {
 	out := map[string]FullTable{}
 	for _, name := range r.Manifest.Tables {
-		if strings.ContainsAny(name, "/\\.") {
+		if _, duplicate := out[name]; duplicate || name == "" || strings.ContainsAny(name, "/\\.") {
 			return nil, fmt.Errorf("archive: bad table name %q", name)
 		}
 		var t tableJSON
 		if err := r.readJSON("data/"+name+".json", &t); err != nil {
 			return nil, fmt.Errorf("archive: table %s: %w", name, err)
+		}
+		if err := chronicle.ValidateArchiveTableShape(name, chronicle.FullArchiveTable{Columns: t.Columns, Rows: t.Rows}); err != nil {
+			return nil, err
 		}
 		out[name] = FullTable{Columns: t.Columns, Rows: t.Rows}
 	}
