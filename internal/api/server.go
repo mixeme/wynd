@@ -71,6 +71,15 @@ type Server struct {
 	MoveAllowedNetworks []netip.Prefix
 	moveClientOnce      sync.Once
 	moveHTTP            *http.Client
+	MoveMaxArchiveBytes int64
+	MoveTimeout         time.Duration
+	// MoveDiskFree is a trusted test hook returning available bytes after headroom.
+	MoveDiskFree     func() (int64, error)
+	moveBudgetMu     sync.Mutex
+	moveImportOnce   sync.Once
+	moveImportGate   chan struct{}
+	moveReservations map[string]int64
+	moveActive       int
 	// MoveRetry — пауза перед повтором после обрыва между серверами; 0 — минута.
 	MoveRetry time.Duration
 	// incomingRuns — идущие входящие переносы: id → struct{}.

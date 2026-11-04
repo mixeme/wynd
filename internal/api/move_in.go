@@ -242,6 +242,10 @@ func (s *Server) handlePutIncomingMove(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "move_" + card.Status})
 		return
 	}
+	if card.Circle.Bytes < 0 || card.Circle.Posts < 0 || card.Circle.Members < 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "archive_invalid"})
+		return
+	}
 	// Адрес прежнего сервера — из самой ссылки: по нему сервер и ходит.
 	base, _, _ := parseMoveLink(link)
 	in := chronicle.IncomingCard{
@@ -400,15 +404,35 @@ func (e *moveFailure) Error() string { return "move: " + e.code }
 // runIncomingMove — работа в фоне: забрать архив, поднять круг, сказать
 // прежнему серверу «принято и сверено».
 func (s *Server) runIncomingMove(id string) {
-	if _, busy := s.incomingRuns.LoadOrStore(id, struct{}{}); busy {
+	s.moveBudgetMu.Lock()
+	if _, busy := s.incomingRuns.Load(id); busy {
+		s.moveBudgetMu.Unlock()
 		return
 	}
+	if s.moveActive >= maxIncomingMoves {
+		s.moveBudgetMu.Unlock()
+		_ = s.Chronicle.SetIncomingStatus(context.Background(), id, chronicle.IncomingFailed, "move_busy")
+		return
+	}
+	if _, busy := s.incomingRuns.LoadOrStore(id, struct{}{}); busy {
+		s.moveBudgetMu.Unlock()
+		return
+	}
+	s.moveActive++
+	s.moveBudgetMu.Unlock()
 	go func() {
-		defer s.incomingRuns.Delete(id)
-		ctx := context.Background()
+		defer func() {
+			s.moveBudgetMu.Lock()
+			delete(s.moveReservations, id)
+			s.moveActive--
+			s.incomingRuns.Delete(id)
+			s.moveBudgetMu.Unlock()
+		}()
+		ctx, cancel := context.WithTimeout(context.Background(), s.moveTimeout())
+		defer cancel()
 		err := s.incomingMoveSafely(ctx, id)
 		if err == nil {
-			_ = os.Remove(s.incomingPath(id))
+			s.removeIncomingFile(id)
 			return
 		}
 		code := "failed"
@@ -425,8 +449,8 @@ func (s *Server) runIncomingMove(id string) {
 			code = "no_room"
 		}
 		log.Printf("incoming move %s: %v", id, err)
-		if code != "move_expired" && code != "no_room" {
-			_ = os.Remove(s.incomingPath(id))
+		if code != "move_expired" {
+			s.removeIncomingFile(id)
 			_ = s.Chronicle.SetIncomingArchiveETag(context.Background(), id, "")
 			_ = s.Chronicle.SetIncomingPulled(context.Background(), id, 0)
 		}
@@ -483,6 +507,9 @@ func (s *Server) pullMoveArchive(ctx context.Context, m *chronicle.IncomingMove)
 	claim := map[string]string{"dest_url": s.PublicURL(), "dest_name": name}
 	claimed := false
 	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if !time.Now().Before(m.ExpiresAt) {
 			return &moveFailure{"move_expired"}
 		}
@@ -519,7 +546,7 @@ func (s *Server) pullMoveArchive(ctx context.Context, m *chronicle.IncomingMove)
 		case state == "archive_failed":
 			// Прежний сервер не собрал архив — «беру» снова, сборка заново.
 			claimed = false
-			_ = os.Remove(path)
+			s.removeIncomingFile(m.ID)
 			m.ArchiveETag = ""
 			_ = s.Chronicle.SetIncomingArchiveETag(ctx, m.ID, "")
 			s.moveWait(ctx)
@@ -575,6 +602,9 @@ func (s *Server) claimMove(ctx context.Context, link string, claim map[string]st
 // pullMoveChunk докачивает один кусок: state — complete (файл весь),
 // progress, archive_building, archive_failed или пусто (обрыв).
 func (s *Server) pullMoveChunk(ctx context.Context, m *chronicle.IncomingMove, path string, have int64) (state string, total int64, err error) {
+	if have < 0 || have > s.moveMaxBytes() || have > int64(^uint64(0)>>1)-moveChunk {
+		return "", 0, &moveFailure{"no_room"}
+	}
 	cctx, cancel := context.WithTimeout(ctx, 15*time.Minute)
 	defer cancel()
 	headers := map[string]string{"Range": fmt.Sprintf("bytes=%d-%d", have, have+moveChunk-1)}
@@ -601,6 +631,9 @@ func (s *Server) pullMoveChunk(ctx context.Context, m *chronicle.IncomingMove, p
 		// Файл уже весь здесь: прежний сервер говорит его длину.
 		var size int64
 		if _, err := fmt.Sscanf(resp.Header.Get("Content-Range"), "bytes */%d", &size); err == nil && size == have {
+			if err := s.pinMoveTotal(m.ID, size); err != nil {
+				return "", 0, err
+			}
 			return "complete", have, nil
 		}
 		return "", 0, &moveFailure{"archive_changed"}
@@ -616,8 +649,14 @@ func (s *Server) pullMoveChunk(ctx context.Context, m *chronicle.IncomingMove, p
 		return "", 0, nil
 	}
 	var start, end int64
-	if _, err := fmt.Sscanf(resp.Header.Get("Content-Range"), "bytes %d-%d/%d", &start, &end, &total); err != nil || start != have || end < start || end >= total || end-start+1 > moveChunk {
+	if _, err := fmt.Sscanf(resp.Header.Get("Content-Range"), "bytes %d-%d/%d", &start, &end, &total); err != nil || start < 0 || start != have || end < start || end >= total || end-start+1 > moveChunk {
 		return "", 0, &moveFailure{"archive_changed"}
+	}
+	if err := s.pinMoveTotal(m.ID, total); err != nil {
+		return "", 0, err
+	}
+	if err := s.reserveMoveDisk(ctx, m.ID, total-have); err != nil {
+		return "", 0, err
 	}
 	if m.ArchiveETag == "" && etag != "" && !strings.HasPrefix(etag, "W/") {
 		if err := s.Chronicle.SetIncomingArchiveETag(ctx, m.ID, etag); err != nil {
@@ -673,7 +712,14 @@ func (s *Server) reviveIncoming(ctx context.Context, m *chronicle.IncomingMove) 
 }
 
 func (s *Server) reviveMoveFile(ctx context.Context, m *chronicle.IncomingMove) (reviveOutcome, error) {
-	zr, err := archive.OpenFullArchive(s.incomingPath(m.ID))
+	s.moveImportOnce.Do(func() { s.moveImportGate = make(chan struct{}, 1) })
+	select {
+	case s.moveImportGate <- struct{}{}:
+		defer func() { <-s.moveImportGate }()
+	case <-ctx.Done():
+		return reviveOutcome{}, ctx.Err()
+	}
+	zr, err := archive.OpenFullArchiveWithLimits(s.incomingPath(m.ID), archive.ReadLimits{MediaBytes: uint64(s.moveMaxBytes())})
 	if err != nil {
 		return reviveOutcome{}, &moveFailure{"archive_invalid"}
 	}
@@ -689,7 +735,7 @@ func (s *Server) reviveMoveFile(ctx context.Context, m *chronicle.IncomingMove) 
 	if err := s.Chronicle.ValidateReviveTables(ctx, zr.Manifest.FormatVersion, zr.Manifest.SchemaVersion, tables); err != nil {
 		return reviveOutcome{}, &moveFailure{"archive_invalid"}
 	}
-	blobMap, err := s.importMoveBlobs(ctx, m.AccountID, zr, tables["blobs"])
+	blobMap, err := s.importMoveBlobs(ctx, m.ID, m.AccountID, zr, tables["blobs"])
 	if err != nil {
 		return reviveOutcome{}, err
 	}
@@ -725,7 +771,7 @@ func (s *Server) reviveMoveFile(ctx context.Context, m *chronicle.IncomingMove) 
 
 // importMoveBlobs кладёт файлы круга в хранилище. Файл, который у этого
 // человека уже лежит с той же суммой, второй раз не кладётся.
-func (s *Server) importMoveBlobs(ctx context.Context, accountID string, zr *archive.FullReader, t chronicle.FullArchiveTable) (map[string]string, error) {
+func (s *Server) importMoveBlobs(ctx context.Context, moveID, accountID string, zr *archive.FullReader, t chronicle.FullArchiveTable) (map[string]string, error) {
 	col := func(name string) int {
 		for i, c := range t.Columns {
 			if c == name {
@@ -753,6 +799,18 @@ func (s *Server) importMoveBlobs(ctx context.Context, accountID string, zr *arch
 	if err != nil {
 		return nil, err
 	}
+	var needed int64
+	seen := map[string]bool{}
+	for _, row := range t.Rows {
+		sha := str(row, sum)
+		if _, exists := have[sha]; !exists && !seen[sha] {
+			needed += jsonInt64(row[size]) // validated nonnegative, nonoverflowing total
+			seen[sha] = true
+		}
+	}
+	if err := s.reserveMoveDisk(ctx, moveID, needed); err != nil {
+		return nil, err
+	}
 	out := map[string]string{}
 	for _, row := range t.Rows {
 		old := str(row, id)
@@ -767,7 +825,7 @@ func (s *Server) importMoveBlobs(ctx context.Context, accountID string, zr *arch
 		b, err := s.Blobs.ImportBlob(ctx, blob.ImportInput{
 			AccountID: accountID, SHA256: str(row, sum), SizeBytes: jsonInt64(row[size]),
 			MimeType: str(row, mime), OriginalFilename: str(row, fname), Now: time.Now(),
-		}, rc)
+		}, moveContextReader{ctx: ctx, reader: rc})
 		rc.Close()
 		if errors.Is(err, blob.ErrInvalid) {
 			return nil, &moveFailure{"archive_invalid"}
