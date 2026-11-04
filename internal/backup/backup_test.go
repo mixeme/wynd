@@ -260,12 +260,34 @@ func TestBackupCapturesWALData(t *testing.T) {
 	if _, err := db.Exec(`UPDATE instance_settings SET name = ? WHERE id = 1`, marker); err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Close(); err != nil {
+	// Keep the writer open: closing its last connection checkpoints and
+	// removes WAL, which made this test skip instead of testing a live backup.
+	defer db.Close()
+	walPath := dbPath + "-wal"
+	if fi, err := os.Stat(walPath); err != nil || fi.Size() <= 32 {
+		t.Fatalf("WAL fixture is not populated: %v %v", fi, err)
+	}
+	// Prove the marker is still absent from the main database pages: a
+	// plain file copy would lose it, whereas the backup must capture it.
+	mainOnlyPath := filepath.Join(t.TempDir(), "main-only.db")
+	pages, err := os.ReadFile(dbPath)
+	if err != nil {
 		t.Fatal(err)
 	}
-	walPath := dbPath + "-wal"
-	if _, err := os.Stat(walPath); err != nil {
-		t.Skip("WAL file not created in this environment")
+	if err := os.WriteFile(mainOnlyPath, pages, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	mainOnly, err := sql.Open("sqlite", "file:"+filepath.ToSlash(mainOnlyPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mainOnly.Close()
+	var before string
+	if err := mainOnly.QueryRow(`SELECT name FROM instance_settings WHERE id=1`).Scan(&before); err != nil {
+		t.Fatal(err)
+	}
+	if before == marker {
+		t.Fatal("fixture checkpointed the marker before backup")
 	}
 
 	if err := backup.Backup(dataDir, destDir, false); err != nil {

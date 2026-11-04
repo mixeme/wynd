@@ -1,0 +1,8 @@
+=== RUN   TestBackupCapturesWALData
+--- PASS: TestBackupCapturesWALData (0.52s)
+=== RUN   TestBackupCapturesWALData
+--- PASS: TestBackupCapturesWALData (0.95s)
+=== RUN   TestBackupCapturesWALData
+--- PASS: TestBackupCapturesWALData (0.90s)
+PASS
+ok  	gitea.mixdep.ru/mix/wynd/internal/backup	3.757s
