@@ -11,6 +11,7 @@ const { build } = require('esbuild');
 const { compile } = createRequire(new URL('../package.json', import.meta.url))('svelte/compiler');
 const root = fileURLToPath(new URL('../../../../', import.meta.url));
 const frontend = path.join(root, 'cmd/wynd-installer/frontend');
+const applicationCSS = await readFile(path.join(frontend, 'src/app.css'), 'utf8');
 const result = await build({
 	stdin: {
 		contents:
@@ -140,6 +141,9 @@ async function open(t, rows, overrides = {}) {
 		runScripts: 'dangerously',
 		pretendToBeVisual: true
 	});
+	const stylesheet = dom.window.document.createElement('style');
+	stylesheet.textContent = applicationCSS;
+	dom.window.document.head.appendChild(stylesheet);
 	dom.window.go = { main: { App: raw } };
 	dom.window.structuredClone = structuredClone;
 	dom.window.eval(code);
@@ -422,4 +426,50 @@ test('editing access uses the new values and never reconnects a different profil
 		ui.calls.find((c) => c[0] === 'Connect'),
 		['Connect', 'a', '', false]
 	);
+});
+
+test('actual application CSS hides inactive sections and preserves the desktop frame', async (t) => {
+	const ui = await open(t, [profile('a'), profile('b')]);
+	const doc = ui.dom.window.document;
+	const style = (element) => ui.dom.window.getComputedStyle(element);
+	assert.equal(
+		style(doc.querySelector('.ins-content')).display,
+		'flex',
+		'desktop content must be a flex column'
+	);
+	assert.equal(
+		style(doc.querySelector('.ins-workspace')).display,
+		'flex',
+		'workspace must participate in the frame'
+	);
+	assert.equal(
+		style(doc.querySelector('.ins-archive-view')).display,
+		'none',
+		'archives must really be hidden while Servers is selected'
+	);
+	assert.equal(
+		style(doc.querySelectorAll('.ins-profile-view')[1]).display,
+		'none',
+		'unselected server must really be hidden'
+	);
+	await ui.click('Архивы');
+	assert.equal(
+		style(doc.querySelector('.ins-content > .ins')).display,
+		'none',
+		'server section must really be hidden while Archives is selected'
+	);
+	assert.equal(style(doc.querySelector('.ins-archive-view')).display, 'flex');
+	await ui.click('Серверы');
+	assert.equal(style(doc.querySelector('.ins-archive-view')).display, 'none');
+});
+
+test('approved first launch keeps its primary action in the bottom panel', async (t) => {
+	const ui = await open(t, []);
+	assert.ok(
+		ui.elements('.ins-server-rail')[0].textContent.includes('Сохранённых серверов пока нет.')
+	);
+	const footer = ui.elements('.ins-pane > .ins-foot')[0];
+	assert.ok(footer, 'first launch must have its approved bottom action panel');
+	assert.ok(footer.textContent.includes('Добавить сервер'));
+	assert.equal(ui.elements('.ins-welcome button').length, 0);
 });

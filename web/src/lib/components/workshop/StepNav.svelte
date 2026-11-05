@@ -32,6 +32,9 @@
 			<h3>Серверы</h3>
 			<button type="button" class="under" disabled={!onadd} onclick={onadd}>+ Добавить</button>
 		</div>
+		{#if servers.length === 0}
+			<p class="ins-empty-servers">Сохранённых серверов пока нет.</p>
+		{/if}
 		{#each servers as server (server.id)}
 			<button
 				type="button"
@@ -65,6 +68,11 @@
 {/if}
 
 <style>
+	.ins-empty-servers {
+		margin: 0;
+		padding: 0 8px;
+		color: var(--muted);
+	}
 	.ins-server-rail {
 		box-sizing: border-box;
 		width: 225px;

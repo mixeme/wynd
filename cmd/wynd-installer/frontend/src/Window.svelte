@@ -396,8 +396,10 @@
 							<p class="ins-sub">
 								Добавьте сервер, чтобы установить Wynd или обслуживать готовую установку.
 							</p>
-							<Button variant="colored" onclick={() => add()}>Добавить сервер</Button>
 						</div>
+						<FootBar
+							><Button variant="colored" onclick={() => add()}>Добавить сервер</Button></FootBar
+						>
 					</main>
 				{/if}
 				{#each profiles as profile (profile.id)}
