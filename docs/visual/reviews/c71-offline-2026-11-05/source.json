@@ -1,0 +1,58 @@
+{
+  "source": "docs/visual/workshop-servers.fragment.html",
+  "sourceCommit": "0e89c96e04561cbc1dd031a5fe89db3d19776295",
+  "sourceSha256": "1d7fbe1b95d189a256aff4932d580ae12f25fbb2fea9aec26cfc10f929e8ee21",
+  "approvedBaseCommit": "b827aff829e43857700e1eacac833862e3ea1a06",
+  "candidateCommit": "c5a98dff",
+  "renderer": "Prince 17\r\nCopyright 2002-2026 YesLogic Pty. Ltd.\r\nNon-commercial License",
+  "page": {
+    "width": 1024,
+    "height": 700,
+    "marginTop": 50
+  },
+  "frameWidth": 1024,
+  "theme": "existing light palette",
+  "originalStylesSha256": "ab8d4bf3422501ed1a803bf8ac6dd8edeb3d7ce5cb9bd715dfcc14c9c3840c3f",
+  "renderedStylesSha256": "f590eecc50f9f137a28596d0629958711cf22d9a30c6674ef2dd41483fffa5ac",
+  "records": [
+    {
+      "id": "7в",
+      "name": "baseline-7v",
+      "frameSha256": "db2886e14cf5ab061e031c2853d6d5b19c670f56cd13c7e2e35d2276da7f7cf8",
+      "htmlSha256": "e1471786cf0ba83d2624328d611894493695eba1c3a25a23c4bf52ff2f1b616c",
+      "pngSha256": "58d6621efbbd353d20fc1a23d9542cde758fb0a63652fd634d729fcd2157b64f",
+      "command": [
+        "--no-network",
+        "--media=screen",
+        "--page-size=1024px 700px",
+        "--page-margin=50px 0 0",
+        "--raster-pages=first",
+        "--raster-dpi=96",
+        "--raster-output=D:\\Local\\Git\\wynd\\dev\\workshop-prince-review\\baseline-7v-%d.png",
+        "D:\\Local\\Git\\wynd\\dev\\workshop-prince-review\\baseline-7v.html",
+        "-o",
+        "D:\\Local\\Git\\wynd\\dev\\workshop-prince-review\\baseline-7v.pdf"
+      ]
+    },
+    {
+      "id": "c71-build",
+      "name": "c71-build",
+      "frameSha256": "85a0bfd60ff6737cdbca6bf63f522eb7441e66abe3122d6cd186278506935b88",
+      "htmlSha256": "37219ee46b4200bc6cb0adbcaf96933f24d06e8a5574a4dac4b4b17cd0829dd0",
+      "pngSha256": "848c41de897c51f996b22880c7009fd27b33f94f4264a5e8743f903ad16de628",
+      "command": [
+        "--no-network",
+        "--media=screen",
+        "--page-size=1024px 700px",
+        "--page-margin=50px 0 0",
+        "--raster-pages=first",
+        "--raster-dpi=96",
+        "--raster-output=D:\\Local\\Git\\wynd\\dev\\workshop-prince-review\\c71-build-%d.png",
+        "D:\\Local\\Git\\wynd\\dev\\workshop-prince-review\\c71-build.html",
+        "-o",
+        "D:\\Local\\Git\\wynd\\dev\\workshop-prince-review\\c71-build.pdf"
+      ]
+    }
+  ],
+  "limitations": "Offline HTML/CSS render, not browser/WebView validation. Native form controls can differ. Prince evaluation mark retained above the UI. Layout approval remains pending."
+}
