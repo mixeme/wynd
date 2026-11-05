@@ -49,10 +49,14 @@ gallery =
   gallery.slice(0, loc.startOffset) + frame.win + gallery.slice(loc.endOffset);
 fs.writeFileSync(galleryPath, gallery.replace(/\r?\n/g, "\r\n"));
 manifest.variants[frame.id].base = base.id;
-manifest.variants[frame.id].layoutReview = "draft";
-manifest.variants[frame.id].note =
-  "Derived from approved C71.1. Owner approved the copy 'Последняя строка вывода — 2 минуты назад'; updated frame awaits visual approval.";
-delete manifest.variants[frame.id].renderEvidence;
+if (manifest.variants[frame.id].layoutReview !== "approved") {
+  manifest.variants[frame.id].layoutReview = "draft";
+  manifest.variants[frame.id].note =
+    "Derived from approved C71.1. Owner approved the copy 'Последняя строка вывода — 2 минуты назад'; updated frame awaits visual approval.";
+  delete manifest.variants[frame.id].renderEvidence;
+}
 fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
 checkWorkshopBaselineFiles();
-console.log("C71.2 derived from approved C71.1; layout review pending.");
+console.log(
+  `C71.2 derived from approved C71.1; review: ${manifest.variants[frame.id].layoutReview}.`,
+);

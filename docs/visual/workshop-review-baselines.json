@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "approval": "Основная компоновка утверждена 2026-11-03. Первый C71.1 из 449d74eb принят по смыслу и вёрстке 2026-11-05 («Принимаем.»). Прежние отклонённые варианты не являются основами; C71.2 и C71.3 пока не приняты.",
+  "approval": "Основная компоновка утверждена 2026-11-03. C71.1 из 449d74eb и C71.2 из 6a09a934 приняты по смыслу и вёрстке 2026-11-05. Прежние отклонённые варианты не являются основами; C71.3 пока не принят.",
   "source": {
     "path": "docs/visual/workshop-servers.fragment.html",
     "commit": "b827aff829e43857700e1eacac833862e3ea1a06"
@@ -12,6 +12,9 @@
     },
     "c71-build": {
       "sha256": "c1145fe603ac4880a66437859b23b17e1d709bb504a4abed4454a523cea4c859"
+    },
+    "c71-quiet": {
+      "sha256": "27dc048e4dbc85c76e105fd54888e649c3394401718a1a4106d55507bb7efb38"
     }
   },
   "variants": {
@@ -24,10 +27,11 @@
     },
     "c71-quiet": {
       "base": "c71-build",
-      "layoutReview": "draft",
+      "layoutReview": "approved",
+      "approvalEvidence": "docs/testing/c71-quiet-review-2026-11-05.md#принятие-кадра-целиком",
       "copyApprovalEvidence": "docs/testing/c71-quiet-review-2026-11-05.md#принятое-пояснение",
       "renderEvidence": "docs/testing/c71-quiet-review-2026-11-05.md#принятое-пояснение",
-      "note": "Derived from approved C71.1. Owner approved the copy 'Последняя строка вывода — 2 минуты назад'; updated frame awaits visual approval."
+      "note": "Owner approved the entire C71.2 from 6a09a934 on 2026-11-05 ('Да'), after separately approving the copy."
     },
     "c71-error": {
       "base": "7в",
