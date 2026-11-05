@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "approval": "Основная компоновка утверждена владельцем 2026-11-03; C71 по смыслу принят, оба показанных варианта вёрстки отклонены.",
+  "source": {
+    "path": "docs/visual/workshop-servers.fragment.html",
+    "commit": "b827aff829e43857700e1eacac833862e3ea1a06"
+  },
+  "stylesSha256": "97e284927744a60bd5df216a3eb5f740eeb7de9f6c6b5c02988dbe86725ad233",
+  "frames": {
+    "7в": {
+      "sha256": "db2886e14cf5ab061e031c2853d6d5b19c670f56cd13c7e2e35d2276da7f7cf8"
+    }
+  },
+  "variants": {
+    "c71-build": {
+      "base": "7в",
+      "layoutReview": "rejected"
+    },
+    "c71-quiet": {
+      "base": "7в",
+      "layoutReview": "draft"
+    },
+    "c71-error": {
+      "base": "7в",
+      "layoutReview": "draft"
+    }
+  }
+}

@@ -2,6 +2,8 @@
 
 **Wynd UI** — design system Wynd: компоненты (`$ui/...` → `web/src/lib/components/`, без barrel `$ui/index.ts`), layouts (`$lib/layouts/`, без алиаса), CSS-токены (`tokens.css`, `ui.css`). Dev-каталог: `/dev/ui`. Guard: `npm run check:ui` (`web/scripts/check-ui.mjs` + `ui-guard.mjs`), не ESLint. Сторож агента: `.cursor/hooks/ui-screens.mjs`, правило `.cursor/rules/wynd-ui-screens.mdc`.
 
+Перед показом изменения владельцу применять [протокол визуальной проверки](../testing/ui-review-protocol.md) и [AGENTS.md](../../AGENTS.md). Это относится и к макетам/картинкам в чате: только утверждённая основа и снимок настоящего рендера, без ручной перерисовки вместо проверки.
+
 Библиотека интерфейса: правила и компоненты по папкам. Макеты: [screens.html](../visual/screens.html). Стек и выбор Bits UI: [stack.html](../stack.html).  
 Таблица «компонент → экран» в `web/src/routes/dev/ui/catalog.ts`.
 
