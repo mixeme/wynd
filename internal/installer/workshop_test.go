@@ -1,6 +1,8 @@
 package installer
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -148,7 +150,10 @@ func TestWorkshopPasswordAutoConnectAndSharedVault(t *testing.T) {
 	if err := w.SetAutoConnect(p.ID, true); err != nil {
 		t.Fatal(err)
 	}
-	q := addProfile(t, w, p.Host)
+	q, err := w.SaveProfile(ServerProfile{Name: "Тот же доступ", Host: p.Host, User: p.User, Remember: true})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := w.RemoveProfile(p.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -164,7 +169,7 @@ func TestWorkshopPasswordAutoConnectAndSharedVault(t *testing.T) {
 }
 
 func TestWorkshopRefusesCorruptFileAndRollsBackFailedWrites(t *testing.T) {
-	w, _ := testWorkshop(t)
+	w, vault := testWorkshop(t)
 	p := addProfile(t, w, "one.example.org")
 	file := w.path
 	w.path = filepath.Dir(w.path) // a directory cannot replace a file
@@ -174,17 +179,130 @@ func TestWorkshopRefusesCorruptFileAndRollsBackFailedWrites(t *testing.T) {
 	if w.Profiles()[0].AutoConnect {
 		t.Fatal("failed preference survived")
 	}
+	vault.Set(p.Host, p.User, "restore-after-failed-write")
 	if err := w.RemoveProfile(p.ID); err == nil {
 		t.Fatal("remove write failure ignored")
 	}
 	if len(w.Profiles()) != 1 {
 		t.Fatal("lost profile after write failure")
 	}
+	if value, ok := vault.Get(p.Host, p.User); !ok || value != "restore-after-failed-write" {
+		t.Fatal("lost password after failed write")
+	}
 	if err := os.WriteFile(file, []byte(`{"version":2}`), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := OpenWorkshop(file, func() *Wizard { return &Wizard{} }); err == nil {
 		t.Fatal("unknown storage version accepted")
+	}
+}
+
+type blockedDeleteVault struct {
+	memVault
+	entered, release chan struct{}
+	err              error
+}
+
+func (v *blockedDeleteVault) Delete(host, user string) error {
+	if v.entered != nil {
+		close(v.entered)
+		<-v.release
+	}
+	if v.err != nil {
+		return v.err
+	}
+	return v.memVault.Delete(host, user)
+}
+
+func TestWorkshopVaultFailureKeepsProfile(t *testing.T) {
+	vault := &blockedDeleteVault{memVault: memVault{}, err: errors.New("vault unavailable")}
+	w, err := OpenWorkshop(filepath.Join(t.TempDir(), "servers.json"), func() *Wizard { return &Wizard{Vault: vault} })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+	p := addProfile(t, w, "one.example.org")
+	if err := w.RemoveProfile(p.ID); err == nil {
+		t.Fatal("vault error lost")
+	}
+	if len(w.Profiles()) != 1 {
+		t.Fatal("profile removed despite failed credential cleanup")
+	}
+}
+
+func TestWorkshopLocalPreferenceDoesNotWaitForVaultRemoval(t *testing.T) {
+	vault := &blockedDeleteVault{memVault: memVault{}, entered: make(chan struct{}), release: make(chan struct{})}
+	w, err := OpenWorkshop(filepath.Join(t.TempDir(), "servers.json"), func() *Wizard { return &Wizard{Vault: vault} })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+	p, q := addProfile(t, w, "one.example.org"), addProfile(t, w, "two.example.org")
+	w.SetAutoConnect(q.ID, true)
+	done := make(chan error, 1)
+	go func() { done <- w.RemoveProfile(p.ID) }()
+	<-vault.entered
+	if err := w.SetAutoConnect(q.ID, false); err != nil {
+		t.Fatal(err)
+	}
+	saved := make(chan error, 1)
+	go func() {
+		_, err := w.SaveProfile(ServerProfile{Name: "duplicate", Host: p.Host, User: p.User})
+		saved <- err
+	}()
+	select {
+	case <-saved:
+		t.Fatal("profile registration raced credential deletion")
+	default:
+	}
+	close(vault.release)
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if err := <-saved; err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestWorkshopLoginDeletesOnlyAnUnsharedRememberedPassword(t *testing.T) {
+	w, vault := testWorkshop(t)
+	srv := startServer(t, "pw", nil, "")
+	dial := Dialer{SSHDir: filepath.Join(t.TempDir(), "ssh")}
+	trusted(t, dial, srv.access("pw"))
+	p, err := w.SaveProfile(ServerProfile{Name: "Один", Host: srv.host, User: "root"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	login := func() {
+		t.Helper()
+		if err := w.WithProfile(p.ID, false, func(wiz *Wizard, _ ServerProfile) {
+			wiz.Dialer = dial
+			if res := wiz.Connect(context.Background(), ConnectInput{Host: srv.host, Port: srv.port, User: "root", Password: "pw"}); res.Status != StatusConnected {
+				t.Fatal(res)
+			}
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	vault.Set(p.Host, p.User, "pw")
+	login()
+	if _, ok := vault.Get(p.Host, p.User); ok {
+		t.Fatal("unremembered password retained")
+	}
+	q, err := w.SaveProfile(ServerProfile{Name: "Другой профиль", Host: srv.host, User: "root", Remember: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	vault.Set(p.Host, p.User, "pw")
+	login()
+	if _, ok := vault.Get(p.Host, p.User); !ok {
+		t.Fatal("shared password deleted")
+	}
+	if err := w.RemoveProfile(q.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := vault.Get(p.Host, p.User); ok {
+		t.Fatal("last remembered reference removed but password retained")
 	}
 }
 
@@ -215,5 +333,61 @@ func TestWorkshopMoveReservesBothProfiles(t *testing.T) {
 	}
 	if err := w.WithProfile(d.ID, false, func(_ *Wizard, _ ServerProfile) {}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestWorkshopMoveKeepsSourceAndTransfersDestinationSession(t *testing.T) {
+	w, _ := testWorkshop(t)
+	s, d := addProfile(t, w, "old.example.org"), addProfile(t, w, "new.example.org")
+	old, newServer := startServer(t, "pw", nil, ""), startServer(t, "pw", nil, "")
+	dial := Dialer{SSHDir: filepath.Join(t.TempDir(), "ssh")}
+	trusted(t, dial, old.access("pw"))
+	trusted(t, dial, newServer.access("pw"))
+	ctx := context.Background()
+	for _, item := range []struct {
+		id  string
+		srv *testServer
+	}{{s.ID, old}, {d.ID, newServer}} {
+		if err := w.WithProfile(item.id, false, func(wiz *Wizard, _ ServerProfile) {
+			wiz.Dialer = dial
+			in := ConnectInput{Host: item.srv.host, Port: item.srv.port, User: "root", Password: "pw"}
+			if res := wiz.Connect(ctx, in); res.Status != StatusConnected {
+				t.Fatalf("connect: %+v", res)
+			}
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := w.ReserveMove(s.ID, d.ID); err != nil {
+		t.Fatal(err)
+	}
+	in, err := w.MoveInput(s.ID, d.ID, "")
+	if err != nil || in.Password != "pw" || in.Remember {
+		t.Fatalf("ephemeral credential: %+v %v", in, err)
+	}
+	if err := w.WithProfile(s.ID, false, func(_ *Wizard, _ ServerProfile) { t.Fatal("source service during reserved move") }); err != ErrProfileBusy {
+		t.Fatal(err)
+	}
+	if err := w.WithMoveProfile(s.ID, false, func(wiz *Wizard, _ ServerProfile) {
+		if res := wiz.MoveConnect(ctx, ConnectInput{Host: newServer.host, Port: newServer.port, User: "root", Password: "pw"}); res.Status != StatusConnected {
+			t.Fatal(res)
+		}
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if id, err := w.ReleaseMove(s.ID); err != nil || id != d.ID {
+		t.Fatal(id, err)
+	}
+	for _, item := range []struct{ id, addr string }{{s.ID, old.addr}, {d.ID, newServer.addr}} {
+		if err := w.WithProfile(item.id, false, func(wiz *Wizard, _ ServerProfile) {
+			if wiz.session.client.RemoteAddr().String() != item.addr {
+				t.Fatal("profile identity changed")
+			}
+			if _, err := wiz.session.Exec(ctx, "probe", nil, shortTimeout); err != nil {
+				t.Fatal("transferred session closed", err)
+			}
+		}); err != nil {
+			t.Fatal(err)
+		}
 	}
 }

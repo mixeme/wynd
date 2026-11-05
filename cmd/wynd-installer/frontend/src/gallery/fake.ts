@@ -17,7 +17,10 @@ export type Fake = Record<string, (...args: any[]) => unknown>;
 /** Ответ, который не приходит никогда: экран «ждём». */
 export const never = () => new Promise(() => {});
 
-export const connected: ConnectResult = { status: 'connected', host: '45.144.64.241' };
+export const connected: ConnectResult = {
+	status: 'connected',
+	host: '45.144.64.241'
+};
 
 export const steps = (...s: [string, StepState['status'], string?][]): StepState[] =>
 	s.map(([title, status, note], i) => ({ id: `s${i}`, title, status, note }));
@@ -48,7 +51,10 @@ export const plan: Plan = {
 	unpublished: false
 };
 
-export const page = (over: Partial<ServerPage['state']> = {}, top: Partial<ServerPage> = {}): ServerPage => ({
+export const page = (
+	over: Partial<ServerPage['state']> = {},
+	top: Partial<ServerPage> = {}
+): ServerPage => ({
 	ok: true,
 	state: {
 		installed: true,
@@ -72,13 +78,23 @@ export const service = (p: ServerPage, ok = true): ServiceResult => ({
 	ok,
 	message: ok ? undefined : 'Wynd не запустился',
 	advice: ok ? undefined : 'Контейнер вышел с ошибкой — подробности ниже',
-	log: [{ command: 'docker compose up -d', output: 'Error: port is already allocated' }],
+	log: [
+		{
+			command: 'docker compose up -d',
+			output: 'Error: port is already allocated'
+		}
+	],
 	page: p
 });
 
 export const progress = (s: StepState[], over: Partial<Progress> = {}): Progress => ({
 	steps: s,
-	log: [{ command: 'apt-get install -y docker.io', output: 'Reading package lists... Done' }],
+	log: [
+		{
+			command: 'apt-get install -y docker.io',
+			output: 'Reading package lists... Done'
+		}
+	],
 	running: true,
 	done: false,
 	...over
@@ -97,17 +113,61 @@ export const movePlan: MovePlan = {
 /** Пульт: подключение по ключу сразу ведёт на страницу сервера. */
 export const toPult = (p: ServerPage): Fake => ({
 	Connect: () => connected,
-	Inspect: () => ({ ...report, report: { ...report.report, findings: [{ id: 'wynd', level: 'ok', text: 'Wynd 0.43.2' }] } }),
+	Inspect: () => ({
+		...report,
+		report: {
+			...report.report,
+			findings: [{ id: 'wynd', level: 'ok', text: 'Wynd 0.43.2' }]
+		}
+	}),
 	ServerPage: () => p
 });
 
 export function makeBackend(over: Fake): Fake {
+	let profiles = [
+		{
+			id: 'family',
+			name: 'Семейный сервер',
+			host: '198.51.100.4',
+			user: 'root',
+			use_keys: true,
+			remember: false,
+			auto_connect: false
+		},
+		{
+			id: 'new',
+			name: 'Новый сервер',
+			host: '203.0.113.7',
+			user: 'root',
+			use_keys: true,
+			remember: false,
+			auto_connect: false
+		}
+	];
+	const destinations = new Map<string, string>();
 	const base: Fake = {
+		Profiles: () => structuredClone(profiles),
+		SaveProfile: (p) => {
+			const saved = { ...p, id: p.id || `profile-${profiles.length}` };
+			profiles = profiles.filter((x) => x.id !== saved.id).concat(saved);
+			return saved;
+		},
+		SetAutoConnect: (id, on) => {
+			const p = profiles.find((p) => p.id === id);
+			if (p) p.auto_connect = on;
+		},
+		RemoveProfile: (id) => {
+			profiles = profiles.filter((p) => p.id !== id);
+		},
 		HasSavedPassword: () => false,
 		Connect: () => connected,
 		ConfirmHost: () => connected,
 		Inspect: () => report,
-		CheckDomain: (d: string) => ({ domain: d, level: 'ok', text: 'указывает на этот сервер' }),
+		CheckDomain: (d: string) => ({
+			domain: d,
+			level: 'ok',
+			text: 'указывает на этот сервер'
+		}),
 		MakePlan: () => plan,
 		ChooseBuild: (on: boolean) => ({ ...plan, build: on }),
 		StartInstall: () => progress(steps(['Docker', 'running'], ['Wynd', 'pending'])),
@@ -125,36 +185,77 @@ export function makeBackend(over: Fake): Fake {
 		PickArchive: () => '',
 		PickSave: () => '',
 		PickFolder: () => '',
-		MergeInfo: () => ({ files: [], ok: false, summary: { circle_name: '', posts: 0, duplicates: 0, bytes: 0 } }),
+		MergeInfo: () => ({
+			files: [],
+			ok: false,
+			summary: { circle_name: '', posts: 0, duplicates: 0, bytes: 0 }
+		}),
 		Merge: () => ({ ok: true, files: [] }),
 		SplitInfo: () => undefined,
 		Split: () => ({ ok: true, files: [] }),
 		FullInfo: () => ({ ok: false }),
 		Readable: () => ({ ok: true, files: [] }),
 		ShowInFolder: () => undefined,
-		PlanBackup: () => ({ ok: true, total: 2.4 * 1024 ** 3, fetch: 2.4 * 1024 ** 3 }),
+		PlanBackup: () => ({
+			ok: true,
+			total: 2.4 * 1024 ** 3,
+			fetch: 2.4 * 1024 ** 3
+		}),
 		StartBackup: () => progress(steps(['Скачиваем', 'running'])),
 		DefaultBackupFolder: () => 'C:\\Users\\Мария\\Documents\\Wynd\\family.example.ru',
-		MoveConnect: () => connected,
+		MoveSelect: () => connected,
 		MoveConfirmHost: () => connected,
 		MovePlan: () => movePlan,
 		StartMove: () => progress(steps(['Wynd на новом сервере', 'running'])),
 		MoveCheckNow: () => undefined,
 		CancelMove: () => service(page()),
-		MoveAdopt: () => page(),
+		FinishMove: () => 'new',
 		CheckSelfUpdate: () => ({ available: false }),
 		ApplySelfUpdate: () => '',
 		ReleasesPage: () => undefined
 	};
+
 	const all = { ...base, ...over };
-	// Окно спрашивает, как идёт работа, каждые полсекунды: пусть слышит то же,
-	// что ответил запуск, — снимок не зависит от того, успел ли опрос.
-	let last: unknown;
-	for (const k of ['StartInstall', 'StartUpdate', 'StartBackup', 'StartMove']) {
-		const start = all[k];
-		all[k] = (...a: unknown[]) => (last = start(...a));
-	}
-	if (!over.InstallProgress) all.InstallProgress = () => last;
-	// Go отвечает обещанием — так и здесь, даже на мгновенные ответы.
-	return Object.fromEntries(Object.entries(all).map(([k, f]) => [k, (...a: unknown[]) => Promise.resolve(f(...a))]));
+	if (over.MoveConnect) all.MoveSelect = over.MoveConnect;
+	const scoped = new Set([
+		'Connect',
+		'ConfirmHost',
+		'Inspect',
+		'CheckDomain',
+		'MakePlan',
+		'ChooseBuild',
+		'StartInstall',
+		'InstallProgress',
+		'Rollback',
+		'Disconnect',
+		'ServerPage',
+		'Service',
+		'StartUpdate',
+		'ReturnPrevious',
+		'PlanBackup',
+		'StartBackup',
+		'MoveSelect',
+		'MoveConfirmHost',
+		'MovePlan',
+		'StartMove',
+		'MoveCheckNow',
+		'CancelMove',
+		'FinishMove'
+	]);
+	const starts = new Set(['StartInstall', 'StartUpdate', 'StartBackup', 'StartMove']);
+	const last = new Map<string, unknown>();
+	return Object.fromEntries(
+		Object.entries(all).map(([k, f]) => [
+			k,
+			async (...args: unknown[]) => {
+				const id = String(args[0]);
+				if (k === 'InstallProgress' && !over.InstallProgress && last.has(id)) return last.get(id);
+				if (k === 'MoveSelect') destinations.set(id, String(args[1]));
+				if (k === 'FinishMove') return destinations.get(id) ?? 'new';
+				const res = await f(...(scoped.has(k) ? args.slice(1) : args));
+				if (starts.has(k)) last.set(id, res);
+				return res;
+			}
+		])
+	);
 }

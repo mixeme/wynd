@@ -49,12 +49,14 @@ var (
 )
 
 type profileSession struct {
-	profile ServerProfile
-	wizard  *Wizard
-	active  bool
-	running bool
-	target  string
-	owner   string
+	profile  ServerProfile
+	wizard   *Wizard
+	active   bool
+	running  bool
+	target   string
+	owner    string
+	endpoint string
+	removing bool
 }
 
 // Workshop owns sessions by stable profile ID. Selecting a view never changes
@@ -62,6 +64,7 @@ type profileSession struct {
 // keyring calls must not hold it, so disabling auto-connect remains immediate.
 type Workshop struct {
 	mu       sync.Mutex
+	vaultMu  sync.Mutex
 	path     string
 	create   func() *Wizard
 	sessions []*profileSession
@@ -105,9 +108,44 @@ func OpenWorkshop(path string, create func() *Wizard) (*Workshop, error) {
 			return nil, err
 		}
 		seen[p.ID] = true
-		w.sessions = append(w.sessions, &profileSession{profile: p, wizard: create()})
+		w.sessions = append(w.sessions, &profileSession{profile: p, wizard: w.makeWizard(p.ID)})
 	}
 	return w, nil
+}
+
+// Profile registration and credential deletion share a lock; network calls and
+// local auto-connect toggles do not. A login that opts out of remembering can
+// remove its old password without deleting one used by another profile.
+type profileVault struct {
+	workshop *Workshop
+	id       string
+	base     Vault
+}
+
+func (v profileVault) Get(host, user string) (string, bool)  { return v.base.Get(host, user) }
+func (v profileVault) Set(host, user, password string) error { return v.base.Set(host, user, password) }
+func (v profileVault) Delete(host, user string) error {
+	v.workshop.vaultMu.Lock()
+	defer v.workshop.vaultMu.Unlock()
+	v.workshop.mu.Lock()
+	shared := false
+	for _, s := range v.workshop.sessions {
+		if s.profile.ID != v.id && s.profile.Remember && !s.profile.UseKeys && strings.EqualFold(host, s.profile.Host) && user == s.profile.User {
+			shared = true
+		}
+	}
+	v.workshop.mu.Unlock()
+	if shared {
+		return nil
+	}
+	return v.base.Delete(host, user)
+}
+func (w *Workshop) makeWizard(id string) *Wizard {
+	wiz := w.create()
+	if wiz.Vault != nil {
+		wiz.Vault = profileVault{workshop: w, id: id, base: wiz.Vault}
+	}
+	return wiz
 }
 
 func validateProfile(p ServerProfile) error {
@@ -183,6 +221,8 @@ func (w *Workshop) saveLocked() error {
 }
 
 func (w *Workshop) SaveProfile(p ServerProfile) (ServerProfile, error) {
+	w.vaultMu.Lock()
+	defer w.vaultMu.Unlock()
 	p.Name, p.Host, p.User = strings.TrimSpace(p.Name), strings.TrimSpace(p.Host), strings.TrimSpace(p.User)
 	if err := validateProfile(p); err != nil {
 		return ServerProfile{}, err
@@ -191,6 +231,11 @@ func (w *Workshop) SaveProfile(p ServerProfile) (ServerProfile, error) {
 	defer w.mu.Unlock()
 	if w.closed || w.updating {
 		return ServerProfile{}, ErrWorkshopBusy
+	}
+	for _, other := range w.sessions {
+		if other.removing && strings.EqualFold(p.Host, other.profile.Host) && p.User == other.profile.User {
+			return ServerProfile{}, ErrProfileBusy
+		}
 	}
 	s := w.find(p.ID)
 	if p.ID != "" && s == nil {
@@ -205,7 +250,7 @@ func (w *Workshop) SaveProfile(p ServerProfile) (ServerProfile, error) {
 			return ServerProfile{}, err
 		}
 		p.ID, p.LastCheck = hex.EncodeToString(id[:]), nil
-		s = &profileSession{wizard: w.create()}
+		s = &profileSession{wizard: w.makeWizard(p.ID)}
 		w.sessions = append(w.sessions, s)
 	} else {
 		p.LastCheck = s.profile.LastCheck
@@ -268,6 +313,14 @@ func (w *Workshop) SetAutoConnect(id string, on bool) error {
 // WithProfile serializes requests for one profile and refuses conflicts with
 // asynchronous work or a move destination. Progress is read separately.
 func (w *Workshop) WithProfile(id string, allowRunning bool, fn func(*Wizard, ServerProfile)) error {
+	return w.withProfile(id, allowRunning, false, fn)
+}
+
+func (w *Workshop) WithMoveProfile(id string, allowRunning bool, fn func(*Wizard, ServerProfile)) error {
+	return w.withProfile(id, allowRunning, true, fn)
+}
+
+func (w *Workshop) withProfile(id string, allowRunning, move bool, fn func(*Wizard, ServerProfile)) error {
 	w.mu.Lock()
 	s := w.find(id)
 	if s == nil {
@@ -278,13 +331,13 @@ func (w *Workshop) WithProfile(id string, allowRunning bool, fn func(*Wizard, Se
 		w.mu.Unlock()
 		return ErrWorkshopBusy
 	}
-	if s.active || s.owner != "" || (s.running && !allowRunning) {
+	if s.active || s.owner != "" || (s.running && !allowRunning) || (s.target != "" && !move) {
 		w.mu.Unlock()
 		return ErrProfileBusy
 	}
 	// Two profiles of the same SSH host cannot mutate it concurrently.
 	for _, other := range w.sessions {
-		if other != s && strings.EqualFold(other.profile.Host, s.profile.Host) && (other.active || other.running || other.owner != "") {
+		if other != s && (strings.EqualFold(other.profile.Host, s.profile.Host) || (s.endpoint != "" && s.endpoint == other.endpoint)) && (other.active || other.running || other.owner != "" || other.target != "") {
 			w.mu.Unlock()
 			return ErrProfileBusy
 		}
@@ -293,9 +346,16 @@ func (w *Workshop) WithProfile(id string, allowRunning bool, fn func(*Wizard, Se
 	p := cloneProfile(s.profile)
 	w.mu.Unlock()
 	defer func() {
-		running := s.wizard.InstallProgress().Running
+		s.wizard.mu.Lock()
+		running := s.wizard.progress.Running
+		endpoint := ""
+		if s.wizard.session != nil {
+			endpoint = s.wizard.session.client.RemoteAddr().String()
+		}
+		s.wizard.mu.Unlock()
 		w.mu.Lock()
 		s.active, s.running = false, running
+		s.endpoint = endpoint
 		w.mu.Unlock()
 	}()
 	fn(s.wizard, p)
@@ -372,27 +432,95 @@ func (w *Workshop) ReleaseMove(source string) (string, error) {
 	}
 	s.active = true
 	target := s.target
+	t := w.find(target)
 	w.mu.Unlock()
+	endpoint := ""
+	// Move the target connection into its own profile, preserving both SSH
+	// identities and allowing password-in-memory access after the move.
+	s.wizard.mu.Lock()
+	if t != nil && s.wizard.target != nil {
+		t.wizard.mu.Lock()
+		if t.wizard.session != nil {
+			_ = t.wizard.session.Close()
+		}
+		t.wizard.session, t.wizard.access, t.wizard.input = s.wizard.target, s.wizard.tAccess, s.wizard.tInput
+		t.wizard.report, t.wizard.state, t.wizard.plan = nil, nil, nil
+		t.wizard.pending, t.wizard.changed = nil, nil
+		t.wizard.progress = Progress{}
+		endpoint = t.wizard.session.client.RemoteAddr().String()
+		t.wizard.mu.Unlock()
+		s.wizard.target = nil
+	}
+	s.wizard.mu.Unlock()
 	s.wizard.ReleaseMoveTarget()
 	w.mu.Lock()
 	if t := w.find(target); t != nil {
 		t.owner = ""
+		if endpoint != "" {
+			t.endpoint = endpoint
+		}
 	}
 	s.target, s.active = "", false
 	w.mu.Unlock()
 	return target, nil
 }
 
-func (w *Workshop) RemoveProfile(id string) error {
+// MoveInput can reuse a credential already held by the destination session;
+// it never exports that credential through the frontend API or profile file.
+func (w *Workshop) MoveInput(source, target, password string) (ConnectInput, error) {
 	w.mu.Lock()
-	defer w.mu.Unlock()
+	t := w.find(target)
+	if t == nil || t.owner != source {
+		w.mu.Unlock()
+		return ConnectInput{}, ErrProfileMissing
+	}
+	p := t.profile
+	w.mu.Unlock()
+	if password == "" {
+		t.wizard.mu.Lock()
+		if t.wizard.session != nil {
+			password = t.wizard.access.Password
+		}
+		t.wizard.mu.Unlock()
+	}
+	return ConnectInput{Host: p.Host, User: p.User, UseKeys: p.UseKeys, Remember: p.Remember, Password: password}, nil
+}
+
+func (w *Workshop) RemoveProfile(id string) error {
+	w.vaultMu.Lock()
+	defer w.vaultMu.Unlock()
+	w.mu.Lock()
 	s := w.find(id)
 	if s == nil {
+		w.mu.Unlock()
 		return ErrProfileMissing
 	}
 	if w.updating || s.active || s.running || s.owner != "" || s.target != "" {
+		w.mu.Unlock()
 		return ErrProfileBusy
 	}
+	s.active, s.removing = true, true
+	p, vault := s.profile, s.wizard.Vault
+	if scoped, ok := vault.(profileVault); ok {
+		vault = scoped.base
+	}
+	shared := false
+	for _, other := range w.sessions {
+		if other != s && other.profile.Remember && !other.profile.UseKeys && strings.EqualFold(other.profile.Host, p.Host) && other.profile.User == p.User {
+			shared = true
+		}
+	}
+	w.mu.Unlock()
+	defer func() { w.mu.Lock(); s.active, s.removing = false, false; w.mu.Unlock() }()
+	var password string
+	var saved bool
+	if !shared && vault != nil {
+		password, saved = vault.Get(p.Host, p.User)
+		if err := vault.Delete(p.Host, p.User); err != nil {
+			return err
+		}
+	}
+	w.mu.Lock()
 	idx := 0
 	for w.sessions[idx] != s {
 		idx++
@@ -401,17 +529,14 @@ func (w *Workshop) RemoveProfile(id string) error {
 	w.sessions = append(w.sessions[:idx], w.sessions[idx+1:]...)
 	if err := w.saveLocked(); err != nil {
 		w.sessions = old
+		w.mu.Unlock()
+		if !shared && saved {
+			err = errors.Join(err, vault.Set(p.Host, p.User, password))
+		}
 		return err
 	}
+	w.mu.Unlock()
 	s.wizard.Close()
-	for _, other := range w.sessions {
-		if strings.EqualFold(other.profile.Host, s.profile.Host) && other.profile.User == s.profile.User {
-			return nil
-		}
-	}
-	if s.wizard.Vault != nil {
-		return s.wizard.Vault.Delete(s.profile.Host, s.profile.User)
-	}
 	return nil
 }
 

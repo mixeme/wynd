@@ -27,17 +27,27 @@ const settle = async () => {
 function find(text: string, nth = 0): HTMLElement {
 	const want = text.replace(/\s+/g, ' ').trim();
 	const hits = [...frame.querySelectorAll<HTMLElement>('button, label, [role="tab"]')].filter(
-		(e) => (e.textContent ?? '').replace(/\s+/g, ' ').trim() === want
+		(e) =>
+			!e.closest('.ins-hidden,[hidden],[inert]') &&
+			(e.textContent ?? '').replace(/\s+/g, ' ').trim() === want
 	);
 	if (!hits[nth]) throw new Error(`нет «${text}» (#${nth})`);
 	return hits[nth];
 }
 
 async function act(a: Act) {
-	if ('tab' in a) find('Архивы').click();
+	if ('destination' in a) {
+		const input = [...frame.querySelectorAll<HTMLInputElement>('input[type=radio]')].find(
+			(e) => e.value === a.destination && !e.closest('.ins-hidden')
+		);
+		if (!input) throw new Error('Нет назначения');
+		input.click();
+	} else if ('tab' in a) find('Архивы').click();
 	else if ('click' in a) find(a.click, a.nth).click();
 	else {
-		const input = frame.querySelector<HTMLInputElement>(`input[placeholder="${a.fill}"]`);
+		const input = [
+			...frame.querySelectorAll<HTMLInputElement>(`input[placeholder="${a.fill}"]`)
+		].find((e) => !e.closest('.ins-hidden,[hidden],[inert]'));
 		if (!input) throw new Error(`нет поля «${a.fill}»`);
 		input.value = a.value;
 		input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -50,7 +60,9 @@ let current: ReturnType<typeof mount> | undefined;
 async function show(scene: Scene) {
 	if (current) await unmount(current);
 	frame.innerHTML = '';
-	(window as unknown as { go: unknown }).go = { main: { App: makeBackend(scene.fake ?? {}) } };
+	(window as unknown as { go: unknown }).go = {
+		main: { App: makeBackend(scene.fake ?? {}) }
+	};
 	current = mount(Window, { target: frame });
 	await settle();
 	for (const a of scene.acts ?? []) await act(a);
@@ -74,7 +86,9 @@ if (params.has('run')) {
 			now[scene.name] = capture(frame);
 			const was = saved[scene.name];
 			const d = was ? diff(was, now[scene.name]) : [];
-			lines.push(`${scene.name} ${hash(now[scene.name])} «${frame.querySelector('h2')?.textContent?.trim() ?? ''}» ${!was ? 'нет эталона' : d.length ? `РАЗНИЦА ${d.length}` : 'как эталон'}`);
+			lines.push(
+				`${scene.name} ${hash(now[scene.name])} «${frame.querySelector('h2')?.textContent?.trim() ?? ''}» ${!was ? 'нет эталона' : d.length ? `РАЗНИЦА ${d.length}` : 'как эталон'}`
+			);
 			lines.push(...d.slice(0, 40).map((l) => '    ' + l));
 		} catch (e) {
 			lines.push(`${scene.name} ОШИБКА ${(e as Error).message}`);
@@ -89,11 +103,14 @@ if (params.has('run')) {
 		}
 	}
 	report.textContent = lines.join('\n');
-	(window as unknown as { galleryDone: string; gallerySnap: unknown }).galleryDone = lines.join('\n');
+	(window as unknown as { galleryDone: string; gallerySnap: unknown }).galleryDone =
+		lines.join('\n');
 	(window as unknown as { gallerySnap: unknown }).gallerySnap = now;
 } else {
 	const name = params.get('scene') ?? SCENES[0].name;
 	const scene = SCENES.find((s) => s.name === name) ?? SCENES[0];
-	report.innerHTML = SCENES.map((s) => `<a href="?scene=${s.name}"${s === scene ? ' class="on"' : ''}>${s.name}</a>`).join(' ');
+	report.innerHTML = SCENES.map(
+		(s) => `<a href="?scene=${s.name}"${s === scene ? ' class="on"' : ''}>${s.name}</a>`
+	).join(' ');
 	await show(scene);
 }

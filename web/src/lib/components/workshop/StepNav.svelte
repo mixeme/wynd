@@ -30,12 +30,14 @@
 	<nav class="ins-server-rail {className}" aria-label="Серверы" {style}>
 		<div class="ins-rail-head">
 			<h3>Серверы</h3>
-			<button type="button" class="under" onclick={onadd}>+ Добавить</button>
+			<button type="button" class="under" disabled={!onadd} onclick={onadd}>+ Добавить</button>
 		</div>
 		{#each servers as server (server.id)}
 			<button
 				type="button"
 				class="ins-server-entry"
+				data-profile={server.id}
+				aria-label={`${server.name} · ${server.host} · ${server.status}`}
 				class:selected={server.id === selected}
 				aria-pressed={server.id === selected}
 				onclick={() => onselect?.(server.id)}
@@ -64,7 +66,7 @@
 
 <style>
 	.ins-server-rail {
-		box-sizing: content-box;
+		box-sizing: border-box;
 		width: 225px;
 		flex-shrink: 0;
 		background: var(--tint);

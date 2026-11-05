@@ -13,9 +13,10 @@ export interface ConnectInput {
 }
 
 export interface ConnectResult {
-	status: 'connected' | 'unknown_host' | 'error';
+	status: 'connected' | 'unknown_host' | 'changed_host' | 'password_required' | 'error';
 	host: string;
 	fingerprint?: string;
+	previous_fingerprint?: string;
 	message?: string;
 	advice?: string;
 	key_note?: string;
@@ -271,10 +272,47 @@ export interface SelfUpdate {
 	attestation?: string;
 }
 
-interface Backend {
+export interface ServerProfile {
+	id: string;
+	name: string;
+	host: string;
+	user: string;
+	use_keys: boolean;
+	remember: boolean;
+	auto_connect: boolean;
+	last_check?: {
+		at: string;
+		domain?: string;
+		version?: string;
+		installed: boolean;
+		running: boolean;
+		free_bytes: number;
+	};
+	busy?: boolean;
+	reserved_by?: string;
+}
+
+export interface ProfileRequest {
+	id: number;
+	password: string;
+	auto: boolean;
+	makeKey?: boolean;
+}
+export interface ProfileViewState {
+	status: string;
+	busy: boolean;
+	connected: boolean;
+}
+
+export interface Backend {
+	Profiles(): Promise<ServerProfile[]>;
+	SaveProfile(profile: ServerProfile): Promise<ServerProfile>;
+	SetAutoConnect(id: string, on: boolean): Promise<void>;
+	RemoveProfile(id: string): Promise<void>;
 	HasSavedPassword(host: string, user: string): Promise<boolean>;
-	Connect(input: ConnectInput): Promise<ConnectResult>;
+	Connect(password: string, makeKey: boolean): Promise<ConnectResult>;
 	ConfirmHost(): Promise<ConnectResult>;
+	ConfirmChangedHost(): Promise<ConnectResult>;
 	Inspect(): Promise<InspectResult>;
 	CheckDomain(domain: string): Promise<DomainCheck>;
 	MakePlan(domain: string): Promise<Plan>;
@@ -297,25 +335,73 @@ interface Backend {
 	MergeInfo(paths: string[]): Promise<MergeInfo>;
 	Merge(paths: string[], out: string): Promise<ArchiveResult>;
 	SplitInfo(path: string): Promise<SplitInfo>;
-	Split(path: string, years: number[], from: string, to: string, dir: string): Promise<ArchiveResult>;
+	Split(
+		path: string,
+		years: number[],
+		from: string,
+		to: string,
+		dir: string
+	): Promise<ArchiveResult>;
 	FullInfo(path: string): Promise<FullInfo>;
 	Readable(path: string, password: string, out: string): Promise<ArchiveResult>;
 	ShowInFolder(path: string): Promise<void>;
 	PlanBackup(folder: string): Promise<LocalBackupPlan>;
 	StartBackup(opt: BackupOptions): Promise<Progress>;
 	DefaultBackupFolder(domain: string): Promise<string>;
-	MoveConnect(input: ConnectInput): Promise<ConnectResult>;
+	MoveSelect(targetID: string, password: string): Promise<ConnectResult>;
 	MoveConfirmHost(): Promise<ConnectResult>;
+	MoveConfirmChangedHost(): Promise<ConnectResult>;
 	MovePlan(): Promise<MovePlan>;
 	StartMove(removeOld: boolean): Promise<Progress>;
 	MoveCheckNow(): Promise<void>;
 	CancelMove(): Promise<ServiceResult>;
-	MoveAdopt(): Promise<ServerPage>;
+	FinishMove(): Promise<string>;
 	CheckSelfUpdate(): Promise<SelfUpdate>;
 	ApplySelfUpdate(): Promise<string>;
 	ReleasesPage(): Promise<void>;
 }
 
-export function backend(): Backend {
-	return (window as unknown as { go: { main: { App: Backend } } }).go.main.App;
+const PROFILE_METHODS = new Set([
+	'Connect',
+	'ConfirmHost',
+	'ConfirmChangedHost',
+	'MoveConfirmChangedHost',
+	'Inspect',
+	'CheckDomain',
+	'MakePlan',
+	'ChooseBuild',
+	'StartInstall',
+	'InstallProgress',
+	'Rollback',
+	'Disconnect',
+	'ServerPage',
+	'Service',
+	'StartUpdate',
+	'ReturnPrevious',
+	'PlanBackup',
+	'StartBackup',
+	'MoveSelect',
+	'MoveConfirmHost',
+	'MovePlan',
+	'StartMove',
+	'MoveCheckNow',
+	'CancelMove',
+	'FinishMove'
+]);
+
+// Capture an immutable ID for every view, including deferred polling callbacks.
+export function profileBackend(raw: Backend, id: string): Backend {
+	return new Proxy(raw, {
+		get(target, key: keyof Backend) {
+			const method = target[key];
+			if (PROFILE_METHODS.has(key))
+				return (...args: unknown[]) => Reflect.apply(method, target, [id, ...args]);
+			return method;
+		}
+	});
+}
+
+export function backend(profileID?: string): Backend {
+	const raw = (window as unknown as { go: { main: { App: Backend } } }).go.main.App;
+	return profileID ? profileBackend(raw, profileID) : raw;
 }

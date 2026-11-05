@@ -16,7 +16,8 @@ import {
 export type Act =
 	| { click: string; nth?: number }
 	| { fill: string; value: string }
-	| { tab: 'archives' };
+	| { tab: 'archives' }
+ | { destination: string };
 
 export interface Scene {
 	name: string;
@@ -24,9 +25,9 @@ export interface Scene {
 	acts?: Act[];
 }
 
-const key: Act = { click: 'Ключ с этого компьютера' };
-const go: Act[] = [key, { click: 'Подключиться' }];
-const domain: Act[] = [{ fill: 'family.example.ru', value: 'family.example.ru' }, { click: 'Проверить' }];
+const key: Act = { click: 'Подключиться' };
+const go: Act[] = [key];
+const domain: Act[] = [{click:'Установить Wynd'}, { fill: 'family.example.ru', value: 'family.example.ru' }, { click: 'Проверить' }];
 
 const blocks = {
 	...report,
@@ -93,7 +94,9 @@ const archiveFile = (name: string, ok = true) => ({
 });
 
 export const SCENES: Scene[] = [
-	{ name: '1-connect' },
+	{name:'0-empty',fake:{Profiles:()=>[]}},
+ {name:'1-add',fake:{Profiles:()=>[]},acts:[{click:'Добавить сервер'}]},
+ { name: '1-connect' },
 	{ name: '1-connect-key', acts: [key] },
 	{ name: '1-connect-wait', fake: { Connect: never }, acts: go },
 	{
@@ -154,12 +157,12 @@ export const SCENES: Scene[] = [
 	{
 		name: '7z-foreign-mplan',
 		fake: { ...toPult(foreignService), Inspect: () => foreignFound, MovePlan: () => ({ ...movePlan, data_only: true, foreign: true }) },
-		acts: [...go, { click: 'начать' }, { click: 'Подключиться' }]
+		acts: [...go, { click: 'начать' }, {destination:'new'}, { click: 'Подключиться и проверить' }]
 	},
 	{
 		name: '7z-foreign-mdone',
 		fake: { ...toPult(foreignService), Inspect: () => foreignFound, MovePlan: () => ({ ...movePlan, data_only: true, foreign: true }), StartMove: () => progress(steps(['Готово', 'done']), { running: false, done: true }) },
-		acts: [...go, { click: 'начать' }, { click: 'Подключиться' }, { click: 'Переехать' }]
+		acts: [...go, { click: 'начать' }, {destination:'new'}, { click: 'Подключиться и проверить' }, { click: 'Переехать' }]
 	},
 	{ name: '7b-uplan', fake: toPult(pult), acts: [...go, { click: 'Обновить' }] },
 	{ name: '7b-uplan-stopped', fake: toPult(page({ running: false, stopped_at: '2026-10-24T09:00:00Z' })), acts: [...go, { click: 'Обновить' }] },
@@ -188,24 +191,24 @@ export const SCENES: Scene[] = [
 	},
 	{ name: '8v-bdone', fake: { ...toPult(pult), StartBackup: () => progress(doneSteps, { running: false, done: true }) }, acts: [...go, { click: 'сделать' }, { click: 'Сделать бэкап' }] },
 	{ name: '9a-mconnect', fake: toPult(pult), acts: [...go, { click: 'начать' }] },
-	{ name: '9a-mconnect-fail', fake: { ...toPult(pult), MoveConnect: () => ({ status: 'error', host: 'x', message: 'Не подключились', advice: 'Проверьте адрес.' }) }, acts: [...go, { click: 'начать' }, { click: 'Подключиться' }] },
-	{ name: '9a-mfinger', fake: { ...toPult(pult), MoveConnect: () => ({ status: 'unknown_host', host: 'x', fingerprint: 'SHA256:Zx9' }) }, acts: [...go, { click: 'начать' }, { click: 'Подключиться' }] },
-	{ name: '9b-mplan-wait', fake: { ...toPult(pult), MovePlan: never }, acts: [...go, { click: 'начать' }, { click: 'Подключиться' }] },
-	{ name: '9b-mplan-blocked', fake: { ...toPult(pult), MovePlan: () => ({ ...movePlan, ok: false, message: 'На новом сервере уже есть веб-сервер', advice: 'Уберите nginx.' }) }, acts: [...go, { click: 'начать' }, { click: 'Подключиться' }] },
-	{ name: '9b-mplan', fake: toPult(pult), acts: [...go, { click: 'начать' }, { click: 'Подключиться' }] },
-	{ name: '9b2-mplan-data', fake: { ...toPult(pult), MovePlan: () => ({ ...movePlan, data_only: true, old_proxy: 'nginx' }) }, acts: [...go, { click: 'начать' }, { click: 'Подключиться' }] },
-	{ name: '9v-move', fake: { ...toPult(pult), StartMove: () => progress(steps(['Wynd на новом', 'done'], ['Сайт на старом остановлен', 'running'], ['Перенос', 'pending'])) }, acts: [...go, { click: 'начать' }, { click: 'Подключиться' }, { click: 'Переехать' }] },
+	{ name: '9a-mconnect-fail', fake: { ...toPult(pult), MoveConnect: () => ({ status: 'error', host: 'x', message: 'Не подключились', advice: 'Проверьте адрес.' }) }, acts: [...go, { click: 'начать' }, {destination:'new'}, { click: 'Подключиться и проверить' }] },
+	{ name: '9a-mfinger', fake: { ...toPult(pult), MoveConnect: () => ({ status: 'unknown_host', host: 'x', fingerprint: 'SHA256:Zx9' }) }, acts: [...go, { click: 'начать' }, {destination:'new'}, { click: 'Подключиться и проверить' }] },
+	{ name: '9b-mplan-wait', fake: { ...toPult(pult), MovePlan: never }, acts: [...go, { click: 'начать' }, {destination:'new'}, { click: 'Подключиться и проверить' }] },
+	{ name: '9b-mplan-blocked', fake: { ...toPult(pult), MovePlan: () => ({ ...movePlan, ok: false, message: 'На новом сервере уже есть веб-сервер', advice: 'Уберите nginx.' }) }, acts: [...go, { click: 'начать' }, {destination:'new'}, { click: 'Подключиться и проверить' }] },
+	{ name: '9b-mplan', fake: toPult(pult), acts: [...go, { click: 'начать' }, {destination:'new'}, { click: 'Подключиться и проверить' }] },
+	{ name: '9b2-mplan-data', fake: { ...toPult(pult), MovePlan: () => ({ ...movePlan, data_only: true, old_proxy: 'nginx' }) }, acts: [...go, { click: 'начать' }, {destination:'new'}, { click: 'Подключиться и проверить' }] },
+	{ name: '9v-move', fake: { ...toPult(pult), StartMove: () => progress(steps(['Wynd на новом', 'done'], ['Сайт на старом остановлен', 'running'], ['Перенос', 'pending'])) }, acts: [...go, { click: 'начать' }, {destination:'new'}, { click: 'Подключиться и проверить' }, { click: 'Переехать' }] },
 	{
 		name: '9v-move-dns',
 		fake: { ...toPult(pult), StartMove: () => ({ ...progress(steps(['Перенос', 'done'])), steps: [{ id: 'dns', title: 'Ждём новый адрес', status: 'running', note: 'family.example.ru пока указывает на 45.144.64.241' }] }) },
-		acts: [...go, { click: 'начать' }, { click: 'Подключиться' }, { click: 'Переехать' }]
+		acts: [...go, { click: 'начать' }, {destination:'new'}, { click: 'Подключиться и проверить' }, { click: 'Переехать' }]
 	},
 	{
 		name: '9v3-move-dns-unknown',
 		fake: { ...toPult(pult), StartMove: () => ({ ...progress(steps(['Перенос', 'done'])), steps: [{ id: 'dns', title: 'Ждём новый адрес', status: 'running', note: 'пока не удалось узнать, куда указывает family.example.ru' }] }) },
-		acts: [...go, { click: 'начать' }, { click: 'Подключиться' }, { click: 'Переехать' }]
+		acts: [...go, { click: 'начать' }, {destination:'new'}, { click: 'Подключиться и проверить' }, { click: 'Переехать' }]
 	},
-	{ name: '9v-move-failed', fake: { ...toPult(pult), StartMove: () => progress(steps(['Перенос', 'failed']), { running: false, failure: { step: 'transfer', message: 'Перенос прервался', advice: 'Связь между серверами оборвалась.' } }) }, acts: [...go, { click: 'начать' }, { click: 'Подключиться' }, { click: 'Переехать' }, { click: 'подробности' }] },
+	{ name: '9v-move-failed', fake: { ...toPult(pult), StartMove: () => progress(steps(['Перенос', 'failed']), { running: false, failure: { step: 'transfer', message: 'Перенос прервался', advice: 'Связь между серверами оборвалась.' } }) }, acts: [...go, { click: 'начать' }, {destination:'new'}, { click: 'Подключиться и проверить' }, { click: 'Переехать' }, { click: 'подробности' }] },
 	{ name: '9v2-unfinished', fake: toPult(moving), acts: go },
 	{ name: '9v2-continue-connect', fake: toPult(moving), acts: [...go, { click: 'Продолжить переезд' }] },
 	{
@@ -215,15 +218,15 @@ export const SCENES: Scene[] = [
 			MovePlan: () => ({ ...movePlan, resume: true }),
 			StartMove: () => progress(steps(['Wynd на новом', 'done'], ['Сайт на старом остановлен', 'done'], ['Папка Wynd перенесена', 'done', 'перенесено раньше'], ['Ждём новый адрес', 'running']))
 		},
-		acts: [...go, { click: 'Продолжить переезд' }, { click: 'Подключиться' }]
+		acts: [...go, { click: 'Продолжить переезд' }, {destination:'new'}, { click: 'Подключиться и проверить' }]
 	},
 	{
 		name: '9v2-cancel-refused',
 		fake: { ...toPult(moving), CancelMove: () => ({ ...service(moving, false), message: 'Отменить переезд уже нельзя', advice: 'Wynd на новом сервере запущен, там могли писать. Продолжите переезд.' }) },
-		acts: [...go, { click: 'Отменить переезд' }, { click: 'Подключиться' }]
+		acts: [...go, { click: 'Отменить переезд' }, {destination:'new'}, { click: 'Подключиться и проверить' }]
 	},
-	{ name: '9v2-cancelled', fake: { ...toPult(moving), CancelMove: () => service(pult) }, acts: [...go, { click: 'Отменить переезд' }, { click: 'Подключиться' }] },
-	{ name: '9g-mdone', fake: { ...toPult(pult), StartMove: () => progress(doneSteps, { running: false, done: true }) }, acts: [...go, { click: 'начать' }, { click: 'Подключиться' }, { click: 'Переехать' }] },
+	{ name: '9v2-cancelled', fake: { ...toPult(moving), CancelMove: () => service(pult) }, acts: [...go, { click: 'Отменить переезд' }, {destination:'new'}, { click: 'Подключиться и проверить' }] },
+	{ name: '9g-mdone', fake: { ...toPult(pult), StartMove: () => progress(doneSteps, { running: false, done: true }) }, acts: [...go, { click: 'начать' }, {destination:'new'}, { click: 'Подключиться и проверить' }, { click: 'Переехать' }] },
 	{ name: '11a-archives', acts: [{ tab: 'archives' }] },
 	{
 		name: '11b-merge',

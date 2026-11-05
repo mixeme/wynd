@@ -11,6 +11,8 @@ if errorlevel 1 exit /b 1
 
 cd /d "%WYND_DESKTOP_ROOT%\cmd\wynd-installer\frontend"
 echo [desktop] Workshop frontend check and build
+call npm run test
+if errorlevel 1 exit /b 1
 call npm run check
 if errorlevel 1 exit /b 1
 call npm run build
