@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "approval": "Основная компоновка утверждена 2026-11-03. C71.1 из 449d74eb и C71.2 из 6a09a934 приняты по смыслу и вёрстке 2026-11-05. Прежние отклонённые варианты не являются основами; C71.3 пока не принят.",
+  "approval": "Основная компоновка утверждена 2026-11-03. Все три кадра C71 приняты по смыслу и вёрстке 2026-11-05: C71.1 из 449d74eb, C71.2 из 6a09a934, C71.3 из 526857e1. Прежние отклонённые варианты не являются основами.",
   "source": {
     "path": "docs/visual/workshop-servers.fragment.html",
     "commit": "b827aff829e43857700e1eacac833862e3ea1a06"
@@ -15,6 +15,9 @@
     },
     "c71-quiet": {
       "sha256": "27dc048e4dbc85c76e105fd54888e649c3394401718a1a4106d55507bb7efb38"
+    },
+    "c71-error": {
+      "sha256": "992f190e6a0c55019dc630192e582a1e4c2f9473a4789871dea17bee167147cf"
     }
   },
   "variants": {
@@ -35,9 +38,10 @@
     },
     "c71-error": {
       "base": "c71-build",
-      "layoutReview": "draft",
+      "layoutReview": "approved",
+      "approvalEvidence": "docs/testing/c71-error-review-2026-11-05.md#принятие-кадра",
       "renderEvidence": "docs/testing/c71-error-review-2026-11-05.md#браузерный-снимок-получен",
-      "note": "Build error state derived from approved C71.1; owner review pending."
+      "note": "Owner approved C71.3 from 526857e1 on 2026-11-05. All three C71 frames are now approved."
     }
   }
 }
