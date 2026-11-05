@@ -64,6 +64,9 @@ type Wizard struct {
 	Dialer   Dialer
 	Resolver Resolver
 	Vault    Vault
+	// SharedVault leaves deletion to the profile owner: another profile may
+	// still use the same credential in the OS keyring.
+	SharedVault bool
 	// Version — версия Wynd, которую Мастерская знает со сборки: её ставим,
 	// только если хранилище не назвало свежую (RegistryImage.Latest). Image —
 	// откуда сервер её возьмёт.
@@ -168,7 +171,7 @@ func (w *Wizard) dialLocked(ctx context.Context) ConnectResult {
 		// спросят в следующий раз.
 		if w.input.Remember {
 			_ = w.Vault.Set(w.access.Host, w.access.User, w.access.Password)
-		} else {
+		} else if !w.SharedVault {
 			_ = w.Vault.Delete(w.access.Host, w.access.User)
 		}
 	}

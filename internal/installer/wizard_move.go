@@ -45,6 +45,9 @@ func (w *Wizard) MoveConnect(ctx context.Context, in ConnectInput) ConnectResult
 	}
 	in.Host, in.User = strings.TrimSpace(in.Host), strings.TrimSpace(in.User)
 	w.tAccess = Access{Host: in.Host, Port: in.Port, User: in.User, Password: in.Password, UseKeys: in.UseKeys}
+	if !in.UseKeys && in.Remember && in.Password == "" && w.Vault != nil {
+		w.tAccess.Password, _ = w.Vault.Get(in.Host, in.User)
+	}
 	w.tInput = in
 	return w.moveDialLocked(ctx)
 }
@@ -73,6 +76,9 @@ func (w *Wizard) moveDialLocked(ctx context.Context) ConnectResult {
 		return connectFailure(w.tAccess, err)
 	}
 	w.target = sess
+	if w.Vault != nil && w.tInput.Remember && !w.tInput.UseKeys {
+		_ = w.Vault.Set(w.tAccess.Host, w.tAccess.User, w.tAccess.Password)
+	}
 	res := ConnectResult{Status: StatusConnected, Host: w.tAccess.Host}
 	if w.tInput.MakeKey && !w.tInput.UseKeys {
 		if line, err := w.Dialer.EnsureWorkshopKey(); err == nil {
@@ -97,6 +103,10 @@ func (w *Wizard) MovePlan(ctx context.Context) MovePlan {
 	}
 	st := page.State
 	plan := MovePlan{Domain: st.Domain, Version: st.Version, OldIP: old.RemoteIP(), NewIP: target.RemoteIP()}
+	if old.client.RemoteAddr().String() == target.client.RemoteAddr().String() {
+		plan.Message = "Для переезда нужен другой сервер"
+		return plan
+	}
 	if st.Move != nil && st.Move.To != plan.NewIP {
 		plan.Message = "Переезд начат на сервер " + st.Move.To
 		plan.Advice = "Подключитесь к нему, чтобы продолжить или отменить переезд."
@@ -270,6 +280,21 @@ func (w *Wizard) MoveCheckNow() {
 		default:
 		}
 	}
+}
+
+// ReleaseMoveTarget keeps the source profile attached to its original SSH
+// server. The destination has its own profile and will be inspected afresh.
+func (w *Wizard) ReleaseMoveTarget() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.progress.Running {
+		return
+	}
+	if w.target != nil {
+		_ = w.target.Close()
+	}
+	w.target, w.tPending, w.movePlan, w.moveCheck = nil, nil, nil, nil
+	w.tInput, w.tAccess = ConnectInput{}, Access{}
 }
 
 // MoveAdopt — после переезда «К серверу» (9г): дальше Мастерская работает с
