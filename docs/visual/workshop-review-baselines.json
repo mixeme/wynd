@@ -25,8 +25,9 @@
     "c71-quiet": {
       "base": "c71-build",
       "layoutReview": "draft",
-      "renderEvidence": "docs/testing/c71-quiet-review-2026-11-05.md",
-      "note": "Derived from approved C71.1; only the last-output timestamp changes to the quiet-build message. Owner review pending."
+      "copyApprovalEvidence": "docs/testing/c71-quiet-review-2026-11-05.md#принятое-пояснение",
+      "renderEvidence": "docs/testing/c71-quiet-review-2026-11-05.md#принятое-пояснение",
+      "note": "Derived from approved C71.1. Owner approved the copy 'Последняя строка вывода — 2 минуты назад'; updated frame awaits visual approval."
     },
     "c71-error": {
       "base": "7в",

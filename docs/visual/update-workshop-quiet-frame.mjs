@@ -30,7 +30,7 @@ const win = doc.querySelector(".win");
 win.setAttribute("aria-label", frame.title);
 win.querySelector(".server-entry.selected").dataset.frame = frame.id;
 win.querySelector("[data-c71-note]").textContent =
-  "Новых сообщений нет 2 минуты. Связь с сервером есть.";
+  "Последняя строка вывода — 2 минуты назад";
 frame.win = win.outerHTML;
 fragment = fragment.replace(
   re,
@@ -51,7 +51,7 @@ fs.writeFileSync(galleryPath, gallery.replace(/\r?\n/g, "\r\n"));
 manifest.variants[frame.id].base = base.id;
 manifest.variants[frame.id].layoutReview = "draft";
 manifest.variants[frame.id].note =
-  "Derived from approved C71.1; only the last-output timestamp changes to the quiet-build message. Owner review pending.";
+  "Derived from approved C71.1. Owner approved the copy 'Последняя строка вывода — 2 минуты назад'; updated frame awaits visual approval.";
 delete manifest.variants[frame.id].renderEvidence;
 fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
 checkWorkshopBaselineFiles();
