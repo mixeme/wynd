@@ -1,4 +1,4 @@
-// Narrow loopback preview: three in-memory frames, no filesystem browsing.
+// Narrow loopback preview: four in-memory frames, no filesystem browsing.
 // node docs/visual/serve-workshop-review.mjs [port]
 import http from "node:http";
 import fs from "node:fs";
@@ -27,6 +27,7 @@ for (const [route, id] of [
   ["/", "c71-build"],
   ["/baseline", "7в"],
   ["/quiet", "c71-quiet"],
+  ["/error", "c71-error"],
 ]) {
   const frame = frames.find((item) => item.id === id);
   if (/<(?:img|iframe|link|script)\b|url\s*\(/i.test(frame.win + styles))

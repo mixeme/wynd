@@ -34,8 +34,9 @@
       "note": "Owner approved the entire C71.2 from 6a09a934 on 2026-11-05 ('Да'), after separately approving the copy."
     },
     "c71-error": {
-      "base": "7в",
-      "layoutReview": "draft"
+      "base": "c71-build",
+      "layoutReview": "draft",
+      "note": "Build error state derived from approved C71.1; owner review pending."
     }
   }
 }
