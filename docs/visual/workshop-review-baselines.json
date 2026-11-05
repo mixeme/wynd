@@ -23,8 +23,10 @@
       "note": "Owner approved C71.1 from 449d74eb on 2026-11-05 ('Принимаем.'): current Docker step highlighted, Wynd stage title regular. Only this frame is approved."
     },
     "c71-quiet": {
-      "base": "7в",
-      "layoutReview": "draft"
+      "base": "c71-build",
+      "layoutReview": "draft",
+      "renderEvidence": "docs/testing/c71-quiet-review-2026-11-05.md",
+      "note": "Derived from approved C71.1; only the last-output timestamp changes to the quiet-build message. Owner review pending."
     },
     "c71-error": {
       "base": "7в",
