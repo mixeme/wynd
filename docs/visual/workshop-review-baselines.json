@@ -14,8 +14,8 @@
   "variants": {
     "c71-build": {
       "base": "7в",
-      "layoutReview": "draft",
-      "note": "Previous two hand-drawn layouts rejected; current candidate derives directly from approved 7в and needs actual-render review."
+      "layoutReview": "rejected",
+      "note": "Owner rejected the Prince-rendered C71.1 on 2026-11-05 ('Плохо.'); specific reason awaits clarification. This candidate and its offline PNG are not approved baselines. Earlier hand-drawn layouts also remain rejected."
     },
     "c71-quiet": {
       "base": "7в",
