@@ -159,6 +159,7 @@ h2{margin:0 0 4px;font-size:17px}
 
 .wrap{grid-template-columns:repeat(2,minmax(0,880px));max-width:1810px;margin:auto}.wrap>div{min-width:0}.cap{margin:0 0 8px}.note{margin:10px 0 0}#workshop-storyboard>.win{width:100%}@media(max-width:1450px){.wrap{grid-template-columns:minmax(0,880px)}}@media(max-width:680px){body{padding:12px}}</style></head>
 <body>
+<p class="note"><a href="#c71">C71: этап и строка сборки, полный вывод по раскрытию</a> — кадры по решению 5 ноября.</p>
 <p class="note"><a href="#c70">Новые кадры C70: веб-сервер на другой машине — на согласовании</a>. Прежнее утверждение относится к исходным кадрам.</p>
 <p class="note" style="max-width: 880px; margin: 0px auto 22px;">Мастерская: список серверов и пульт. Все серверные кадры и правила поведения утверждены владельцем 3 ноября 2026 года. Автоподключение — локальная настройка каждого сервера, её можно снять без соединения, в том числе во время операции. Снятие не прерывает текущую работу. Новая компоновка пока не реализована в приложении. Архивы и Подпись ниже сохранены без изменений.</p><div class="wrap" id="workshop-storyboard"><div data-frame-id="s0" class="server-card"><p class="cap">0 · Первый запуск</p><div class="win workshop-v2" aria-label="0 · Первый запуск"><div class="tb">●<b>Wynd Мастерская</b><span class="dots" aria-hidden="true">— ▢ ✕</span></div><nav class="wtabs" aria-label="Разделы Мастерской"><button type="button" class="on cursor-interaction" data-frame="6">Серверы</button><span>Архивы</span></nav><div class="main"><aside class="server-rail"><div class="rail-head"><h3>Серверы</h3><button type="button" class="link rail-add cursor-interaction" data-frame="1">+ Добавить</button></div><p class="dim" style="padding:0 8px">Сохранённых серверов пока нет.</p></aside><main class="body">
       <div class="welcome"><h2>Ваши серверы</h2><p class="sub">Добавьте сервер, чтобы установить Wynd или обслуживать готовую установку.</p></div>
@@ -1225,6 +1226,67 @@ SetEnvIf Request_URI "^/api/v1/probe/" no-gzip</pre></div>
     <p class="dim" style="margin-top:12px">До изменения настройки Apache сайт может показывать ошибку.</p>
     <footer class="pane-footer" aria-label="Действия экрана"><div class="footer-actions"><button type="button" class="btn" disabled="">Убрать Wynd — только в приложении</button><button type="button" class="btn gh footer-dismiss cursor-interaction" data-frame="c70-ready">Отмена</button></div></footer></main></div></div></div>
 <!-- C70_END -->
+
+
+<!-- C71_START -->
+<div id="c71" style="grid-column:1/-1"><h2>C71 · Ход сборки на сервере</h2><p class="note">Вариант 1 выбран владельцем 5 ноября 2026: этап, последняя строка и полный вывод по раскрытию. Три новых кадра подготовлены по этому решению; визуальная приёмка впереди. Данные подставные, команды не запускаются. Нет выдуманного процента готовности.</p><a href="workshop-servers.fragment.html#c71-build">Открыть интерактивный просмотр — группа «Сборка — C71»</a></div>
+<div data-frame-id="c71-build" class="server-card"><p class="cap">C71.1 · Сборка: этап и последняя строка</p><div class="win workshop-v2" aria-label="C71.1 · Сборка: этап и последняя строка"><div class="tb">●<b>Wynd Мастерская</b><span class="dots">— ▢ ✕</span></div><nav class="wtabs" aria-label="Разделы Мастерской"><button type="button" class="on cursor-interaction" data-frame="6">Серверы</button><span>Архивы</span></nav>
+<div class="main"><aside class="server-rail"><div class="rail-head"><h3>Серверы</h3><button type="button" class="link rail-add cursor-interaction" data-frame="1">+ Добавить</button></div><button type="button" class="server-entry cursor-interaction" data-server="family" data-frame="c71-build" aria-pressed="false"><strong>Семейный сервер</strong><small>198.51.100.4</small><small class="rail-progress">Обновление · сборка</small></button><button type="button" class="server-entry cursor-interaction selected" data-server="new" data-frame="4" aria-pressed="true"><strong>Новый сервер</strong><small>203.0.113.7</small><small class="rail-progress">Установка · настраиваем Wynd</small></button></aside>
+
+<div class="body"><header class="server-context" data-profile="new"><div class="server-heading"><h3>Новый сервер</h3><span class="connection-badge" data-state="connected">Подключён</span></div><div class="identity">SSH: root@203.0.113.7</div><div class="connection-row"><button type="button" class="btn gh cursor-interaction" data-frame="6" disabled="">Отключиться</button><label class="check"><input type="checkbox" data-auto-profile="new">Подключаться при запуске</label></div></header>
+    <div class="operation-path">Обновление · сборка на сервере</div>
+    <h2>Собираем Wynd</h2>
+    <p class="sub">Новый образ готовим до остановки работающего Wynd.</p>
+    <div class="row"><span class="ic ok">✓</span><div>Получили исходники</div></div>
+    <div class="row"><span class="ic w">…</span><div>Сборка образа</div></div>
+    <div class="row"><span class="ic dim">○</span><div class="dim">Запуск и проверка сайта</div></div>
+    <div class="box"><h3>Последняя строка сборки</h3><div class="fld mono" style="overflow-wrap:anywhere">#8 [build 3/5] RUN go build ./cmd/wynd</div><p class="dim" style="margin-top:9px">Последнее сообщение — сейчас</p></div>
+    <details class="box"><summary class="under cursor-interaction" style="cursor:pointer">Полный вывод сборки</summary><pre style="max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;margin:12px 0 0">#1 Получаем исходники v0.48.2
+#2 [build 1/5] FROM golang
+#3 [build 2/5] COPY . .
+#8 [build 3/5] RUN go build ./cmd/wynd</pre></details>
+
+    <footer class="pane-footer" aria-label="Действия экрана"><div class="footer-actions"><span class="dim">Можно выбрать другой сервер. Сборка продолжится.</span></div></footer>
+  </div></div></div></div>
+<div data-frame-id="c71-quiet" class="server-card"><p class="cap">C71.2 · Сборка: давно нет новых строк</p><div class="win workshop-v2" aria-label="C71.2 · Сборка: давно нет новых строк"><div class="tb">●<b>Wynd Мастерская</b><span class="dots">— ▢ ✕</span></div><nav class="wtabs" aria-label="Разделы Мастерской"><button type="button" class="on cursor-interaction" data-frame="6">Серверы</button><span>Архивы</span></nav>
+<div class="main"><aside class="server-rail"><div class="rail-head"><h3>Серверы</h3><button type="button" class="link rail-add cursor-interaction" data-frame="1">+ Добавить</button></div><button type="button" class="server-entry cursor-interaction" data-server="family" data-frame="c71-quiet" aria-pressed="false"><strong>Семейный сервер</strong><small>198.51.100.4</small><small class="rail-progress">Обновление · сборка</small></button><button type="button" class="server-entry cursor-interaction selected" data-server="new" data-frame="4" aria-pressed="true"><strong>Новый сервер</strong><small>203.0.113.7</small><small class="rail-progress">Установка · настраиваем Wynd</small></button></aside>
+
+<div class="body"><header class="server-context" data-profile="new"><div class="server-heading"><h3>Новый сервер</h3><span class="connection-badge" data-state="connected">Подключён</span></div><div class="identity">SSH: root@203.0.113.7</div><div class="connection-row"><button type="button" class="btn gh cursor-interaction" data-frame="6" disabled="">Отключиться</button><label class="check"><input type="checkbox" data-auto-profile="new">Подключаться при запуске</label></div></header>
+    <div class="operation-path">Обновление · сборка на сервере</div>
+    <h2>Собираем Wynd</h2>
+    <p class="sub">Новый образ готовим до остановки работающего Wynd.</p>
+    <div class="row"><span class="ic ok">✓</span><div>Получили исходники</div></div>
+    <div class="row"><span class="ic w">…</span><div>Сборка образа</div></div>
+    <div class="row"><span class="ic dim">○</span><div class="dim">Запуск и проверка сайта</div></div>
+    <div class="box"><h3>Последняя строка сборки</h3><div class="fld mono" style="overflow-wrap:anywhere">#8 [build 3/5] RUN go build ./cmd/wynd</div><p class="dim" style="margin-top:9px">Новых сообщений нет 2 минуты. Связь с сервером есть.</p></div>
+    <details class="box"><summary class="under cursor-interaction" style="cursor:pointer">Полный вывод сборки</summary><pre style="max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;margin:12px 0 0">#1 Получаем исходники v0.48.2
+#2 [build 1/5] FROM golang
+#3 [build 2/5] COPY . .
+#8 [build 3/5] RUN go build ./cmd/wynd</pre></details>
+
+    <footer class="pane-footer" aria-label="Действия экрана"><div class="footer-actions"><span class="dim">Можно выбрать другой сервер. Сборка продолжится.</span></div></footer>
+  </div></div></div></div>
+<div data-frame-id="c71-error" class="server-card"><p class="cap">C71.3 · Сборка завершилась с ошибкой</p><div class="win workshop-v2" aria-label="C71.3 · Сборка завершилась с ошибкой"><div class="tb">●<b>Wynd Мастерская</b><span class="dots">— ▢ ✕</span></div><nav class="wtabs" aria-label="Разделы Мастерской"><button type="button" class="on cursor-interaction" data-frame="6">Серверы</button><span>Архивы</span></nav>
+<div class="main"><aside class="server-rail"><div class="rail-head"><h3>Серверы</h3><button type="button" class="link rail-add cursor-interaction" data-frame="1">+ Добавить</button></div><button type="button" class="server-entry cursor-interaction" data-server="family" data-frame="c71-error" aria-pressed="false"><strong>Семейный сервер</strong><small>198.51.100.4</small><small class="rail-progress">Ошибка сборки</small></button><button type="button" class="server-entry cursor-interaction selected" data-server="new" data-frame="4" aria-pressed="true"><strong>Новый сервер</strong><small>203.0.113.7</small><small class="rail-progress">Установка · настраиваем Wynd</small></button></aside>
+
+<div class="body"><header class="server-context" data-profile="new"><div class="server-heading"><h3>Новый сервер</h3><span class="connection-badge" data-state="connected">Подключён</span></div><div class="identity">SSH: root@203.0.113.7</div><div class="connection-row"><button type="button" class="btn gh cursor-interaction" data-frame="6" disabled="">Отключиться</button><label class="check"><input type="checkbox" data-auto-profile="new">Подключаться при запуске</label></div></header>
+    <div class="operation-path">Обновление · сборка на сервере</div>
+    <h2>Не удалось собрать Wynd</h2>
+    <p class="sub">Новый образ готовим до остановки работающего Wynd.</p>
+    <div class="row"><span class="ic ok">✓</span><div>Получили исходники</div></div>
+    <div class="row"><span class="ic no">!</span><div>Сборка образа</div></div>
+    <div class="row"><span class="ic dim">○</span><div class="dim">Запуск и проверка сайта</div></div>
+    <div class="box"><h3>Последняя строка сборки</h3><div class="fld mono" style="overflow-wrap:anywhere">no space left on device</div><p class="dim" style="margin-top:9px">На сервере закончилось место. Работающий Wynd не меняли.</p></div>
+    <details class="box"><summary class="under cursor-interaction" style="cursor:pointer">Полный вывод сборки</summary><pre style="max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;margin:12px 0 0">#1 Получаем исходники v0.48.2
+#2 [build 1/5] FROM golang
+#3 [build 2/5] COPY . .
+#8 [build 3/5] RUN go build ./cmd/wynd
+#8 ERROR: no space left on device
+Сборка завершилась с кодом 1</pre></details>
+    <p>Освободите место и вернитесь к плану обновления. Перед повтором Мастерская проверит состояние сборки.</p>
+    <footer class="pane-footer" aria-label="Действия экрана"><div class="footer-actions"><button type="button" class="btn cursor-interaction" data-frame="7б4">К плану обновления</button></div></footer>
+  </div></div></div></div>
+<!-- C71_END -->
 </div>
 
 
