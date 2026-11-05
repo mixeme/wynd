@@ -15,8 +15,8 @@
     "c71-build": {
       "base": "7в",
       "layoutReview": "draft",
-      "renderEvidence": "docs/testing/c71-render-2026-11-05.md#выделение-выполняемого-этапа",
-      "note": "Earlier hand-drawn and Prince-rendered layouts remain rejected. Owner requested active-stage emphasis after the browser review; current title uses existing strong/w styles and awaits layout approval."
+      "renderEvidence": "docs/testing/c71-render-2026-11-05.md#выделение-шага-docker--уточнение-владельца",
+      "note": "Owner clarified that emphasis belongs to the current Docker step, not the Wynd stage title. Docker output uses existing mono/strong/w styles; earlier incorrect variants remain unapproved. Layout review pending."
     },
     "c71-quiet": {
       "base": "7в",

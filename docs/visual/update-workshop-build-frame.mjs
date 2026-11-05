@@ -49,21 +49,18 @@ rows.forEach((row, index) => {
   icon.textContent = mark;
   const content = row.querySelector("div");
   content.textContent = title;
-  if (tone === "w") {
-    const activeTitle = doc.createElement("strong");
-    activeTitle.className = "w";
-    activeTitle.textContent = title;
-    content.replaceChildren(activeTitle);
-    row.setAttribute("aria-current", "step");
-  }
   if (tone === "dim") content.className = "dim";
   else content.removeAttribute("class");
 });
 const active = rows[1].querySelector("div");
 const lastLine = doc.createElement("div");
-lastLine.className = "mono dim";
+lastLine.className = "mono";
 lastLine.dataset.c71Latest = "";
-lastLine.textContent = "#8 [build 3/5] RUN go build ./cmd/wynd";
+lastLine.setAttribute("aria-current", "step");
+const dockerStep = doc.createElement("strong");
+dockerStep.className = "w";
+dockerStep.textContent = "#8 [build 3/5] RUN go build ./cmd/wynd";
+lastLine.append(dockerStep);
 const updated = doc.createElement("div");
 updated.className = "dim";
 updated.dataset.c71Note = "";
@@ -122,7 +119,7 @@ fs.writeFileSync(galleryPath, gallery.replace(/\r?\n/g, "\r\n"));
 const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 manifest.variants[frame.id].layoutReview = "draft";
 manifest.variants[frame.id].note =
-  "Earlier hand-drawn and Prince-rendered layouts remain rejected. Owner requested active-stage emphasis after the browser review; current title uses existing strong/w styles and awaits layout approval.";
+  "Owner clarified that emphasis belongs to the current Docker step, not the Wynd stage title. Docker output uses existing mono/strong/w styles; earlier incorrect variants remain unapproved. Layout review pending.";
 delete manifest.variants[frame.id].renderEvidence;
 fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
 checkWorkshopBaselineFiles();
