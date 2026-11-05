@@ -2,6 +2,7 @@ package installer
 
 import (
 	"context"
+	"errors"
 	"net"
 	"strings"
 	"time"
@@ -49,6 +50,7 @@ func (w *Wizard) MoveConnect(ctx context.Context, in ConnectInput) ConnectResult
 		w.tAccess.Password, _ = w.Vault.Get(in.Host, in.User)
 	}
 	w.tInput = in
+	w.tPending, w.tChanged = nil, nil
 	return w.moveDialLocked(ctx)
 }
 
@@ -66,9 +68,24 @@ func (w *Wizard) MoveConfirmHost(ctx context.Context) ConnectResult {
 	return w.moveDialLocked(ctx)
 }
 
+func (w *Wizard) MoveConfirmChangedHost(ctx context.Context) ConnectResult {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if err := w.Dialer.ReplaceHost(w.tChanged); err != nil {
+		return ConnectResult{Status: StatusError, Message: err.Error()}
+	}
+	w.tChanged = nil
+	return w.moveDialLocked(ctx)
+}
+
 func (w *Wizard) moveDialLocked(ctx context.Context) ConnectResult {
 	sess, err := w.Dialer.Dial(ctx, w.tAccess)
 	if err != nil {
+		var changed *ChangedHostError
+		if errors.As(err, &changed) {
+			w.tChanged = changed
+			return ConnectResult{Status: StatusChangedHost, Host: changed.Host, Fingerprint: changed.Fingerprint, PreviousFingerprint: previousFingerprints(changed)}
+		}
 		if unknown, ok := err.(*UnknownHostError); ok {
 			w.tPending = unknown
 			return ConnectResult{Status: StatusUnknownHost, Host: unknown.Host, Fingerprint: unknown.Fingerprint}
@@ -294,6 +311,7 @@ func (w *Wizard) ReleaseMoveTarget() {
 		_ = w.target.Close()
 	}
 	w.target, w.tPending, w.movePlan, w.moveCheck = nil, nil, nil, nil
+	w.tChanged = nil
 	w.tInput, w.tAccess = ConnectInput{}, Access{}
 }
 

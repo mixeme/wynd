@@ -81,6 +81,9 @@ func (e *UnknownHostError) Error() string {
 type ChangedHostError struct {
 	Host        string
 	Fingerprint string
+	key         ssh.PublicKey
+	address     string
+	previous    []knownhosts.KnownKey
 }
 
 func (e *ChangedHostError) Error() string {
@@ -181,6 +184,8 @@ func (d Dialer) Dial(ctx context.Context, access Access) (*Session, error) {
 
 // Trust запоминает отпечаток сервера, который человек подтвердил.
 func (d Dialer) Trust(unknown *UnknownHostError) error {
+	sshFilesMu.Lock()
+	defer sshFilesMu.Unlock()
 	if unknown == nil || unknown.key == nil {
 		return ErrInvalid
 	}
@@ -278,7 +283,7 @@ func (d Dialer) hostKeyCallback(host string) (ssh.HostKeyCallback, error) {
 			if len(keyErr.Want) == 0 {
 				return &UnknownHostError{Host: host, Fingerprint: fingerprint, key: key, address: hostname}
 			}
-			return &ChangedHostError{Host: host, Fingerprint: fingerprint}
+			return &ChangedHostError{Host: host, Fingerprint: fingerprint, key: key, address: hostname, previous: keyErr.Want}
 		}
 		return err
 	}, nil
@@ -324,6 +329,8 @@ func (d Dialer) authMethods(a Access) ([]ssh.AuthMethod, error) {
 // EnsureWorkshopKey создаёт ключ Мастерской в каталоге ключей, если его нет,
 // и возвращает его открытую часть строкой authorized_keys.
 func (d Dialer) EnsureWorkshopKey() (string, error) {
+	sshFilesMu.Lock()
+	defer sshFilesMu.Unlock()
 	dir, err := d.dir()
 	if err != nil {
 		return "", err

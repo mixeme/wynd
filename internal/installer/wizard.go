@@ -36,16 +36,18 @@ type ConnectInput struct {
 const (
 	StatusConnected   = "connected"
 	StatusUnknownHost = "unknown_host"
+	StatusChangedHost = "changed_host"
 	StatusError       = "error"
 )
 
 // ConnectResult — чем кончилась попытка подключиться, словами человека.
 type ConnectResult struct {
-	Status      string `json:"status"`
-	Host        string `json:"host"`
-	Fingerprint string `json:"fingerprint,omitempty"`
-	Message     string `json:"message,omitempty"`
-	Advice      string `json:"advice,omitempty"`
+	Status              string `json:"status"`
+	Host                string `json:"host"`
+	Fingerprint         string `json:"fingerprint,omitempty"`
+	PreviousFingerprint string `json:"previous_fingerprint,omitempty"`
+	Message             string `json:"message,omitempty"`
+	Advice              string `json:"advice,omitempty"`
 	// KeyNote — ключ положить не вышло: вошли паролем, ключа на сервере нет.
 	KeyNote string `json:"key_note,omitempty"`
 }
@@ -84,6 +86,7 @@ type Wizard struct {
 	input   ConnectInput
 	access  Access
 	pending *UnknownHostError
+	changed *ChangedHostError
 	session *Session
 	report  *Report
 
@@ -102,6 +105,7 @@ type Wizard struct {
 	tInput    ConnectInput
 	tAccess   Access
 	tPending  *UnknownHostError
+	tChanged  *ChangedHostError
 	movePlan  *MovePlan
 	moveCheck chan struct{}
 	cancel    context.CancelFunc
@@ -155,6 +159,16 @@ func (w *Wizard) ConfirmHost(ctx context.Context) ConnectResult {
 	return w.dialLocked(ctx)
 }
 
+func (w *Wizard) ConfirmChangedHost(ctx context.Context) ConnectResult {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if err := w.Dialer.ReplaceHost(w.changed); err != nil {
+		return ConnectResult{Status: StatusError, Message: err.Error()}
+	}
+	w.changed = nil
+	return w.dialLocked(ctx)
+}
+
 func (w *Wizard) dialLocked(ctx context.Context) ConnectResult {
 	sess, err := w.Dialer.Dial(ctx, w.access)
 	if err != nil {
@@ -162,6 +176,11 @@ func (w *Wizard) dialLocked(ctx context.Context) ConnectResult {
 		if errors.As(err, &unknown) {
 			w.pending = unknown
 			return ConnectResult{Status: StatusUnknownHost, Host: unknown.Host, Fingerprint: unknown.Fingerprint}
+		}
+		var changed *ChangedHostError
+		if errors.As(err, &changed) {
+			w.changed = changed
+			return ConnectResult{Status: StatusChangedHost, Host: changed.Host, Fingerprint: changed.Fingerprint, PreviousFingerprint: previousFingerprints(changed)}
 		}
 		return connectFailure(w.access, err)
 	}
@@ -268,10 +287,12 @@ func (w *Wizard) closeLocked() {
 		_ = w.session.Close()
 	}
 	w.session, w.pending, w.report = nil, nil, nil
+	w.changed = nil
 	if w.target != nil {
 		_ = w.target.Close()
 	}
 	w.target, w.tPending, w.movePlan = nil, nil, nil
+	w.tChanged = nil
 	if w.cancel != nil {
 		w.cancel()
 		w.cancel = nil
