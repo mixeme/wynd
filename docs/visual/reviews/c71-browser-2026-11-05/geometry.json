@@ -1,0 +1,227 @@
+{
+  "candidate": {
+    "devicePixelRatio": 1,
+    "frame": {
+      "frameId": "c71-build",
+      "frameSha256": "85a0bfd60ff6737cdbca6bf63f522eb7441e66abe3122d6cd186278506935b88",
+      "sourceSha256": "1d7fbe1b95d189a256aff4932d580ae12f25fbb2fea9aec26cfc10f929e8ee21"
+    },
+    "sections": [
+      {
+        "rect": {
+          "bottom": 36,
+          "height": 35,
+          "left": 1,
+          "right": 1023,
+          "top": 1,
+          "width": 1022,
+          "x": 1,
+          "y": 1
+        },
+        "selector": ".tb"
+      },
+      {
+        "rect": {
+          "bottom": 78.5,
+          "height": 42.5,
+          "left": 1,
+          "right": 1023,
+          "top": 36,
+          "width": 1022,
+          "x": 1,
+          "y": 36
+        },
+        "selector": ".wtabs"
+      },
+      {
+        "rect": {
+          "bottom": 649,
+          "height": 570.5,
+          "left": 1,
+          "right": 226,
+          "top": 78.5,
+          "width": 225,
+          "x": 1,
+          "y": 78.5
+        },
+        "selector": ".server-rail"
+      },
+      {
+        "rect": {
+          "bottom": 229.84375,
+          "height": 128.34375,
+          "left": 251,
+          "right": 998,
+          "top": 101.5,
+          "width": 747,
+          "x": 251,
+          "y": 101.5
+        },
+        "selector": ".server-context"
+      },
+      {
+        "rect": {
+          "bottom": 212.84375,
+          "height": 36.84375,
+          "left": 251,
+          "right": 998,
+          "top": 176,
+          "width": 747,
+          "x": 251,
+          "y": 176
+        },
+        "selector": ".connection-row"
+      },
+      {
+        "rect": {
+          "bottom": 626,
+          "height": 54.5,
+          "left": 251,
+          "right": 998,
+          "top": 571.5,
+          "width": 747,
+          "x": 251,
+          "y": 571.5
+        },
+        "selector": ".pane-footer"
+      },
+      {
+        "rect": {
+          "bottom": 202.671875,
+          "height": 16,
+          "left": 372.34375,
+          "right": 388.34375,
+          "top": 186.671875,
+          "width": 16,
+          "x": 372.34375,
+          "y": 186.671875
+        },
+        "selector": "input[type=checkbox]"
+      }
+    ],
+    "viewport": [
+      1024,
+      760
+    ]
+  },
+  "baseline": {
+    "devicePixelRatio": 1,
+    "frame": {
+      "frameId": "7в",
+      "frameSha256": "db2886e14cf5ab061e031c2853d6d5b19c670f56cd13c7e2e35d2276da7f7cf8",
+      "sourceSha256": "1d7fbe1b95d189a256aff4932d580ae12f25fbb2fea9aec26cfc10f929e8ee21"
+    },
+    "sections": [
+      {
+        "rect": {
+          "bottom": 36,
+          "height": 35,
+          "left": 1,
+          "right": 1023,
+          "top": 1,
+          "width": 1022,
+          "x": 1,
+          "y": 1
+        },
+        "selector": ".tb"
+      },
+      {
+        "rect": {
+          "bottom": 78.5,
+          "height": 42.5,
+          "left": 1,
+          "right": 1023,
+          "top": 36,
+          "width": 1022,
+          "x": 1,
+          "y": 36
+        },
+        "selector": ".wtabs"
+      },
+      {
+        "rect": {
+          "bottom": 649,
+          "height": 570.5,
+          "left": 1,
+          "right": 226,
+          "top": 78.5,
+          "width": 225,
+          "x": 1,
+          "y": 78.5
+        },
+        "selector": ".server-rail"
+      },
+      {
+        "rect": {
+          "bottom": 229.84375,
+          "height": 128.34375,
+          "left": 251,
+          "right": 998,
+          "top": 101.5,
+          "width": 747,
+          "x": 251,
+          "y": 101.5
+        },
+        "selector": ".server-context"
+      },
+      {
+        "rect": {
+          "bottom": 212.84375,
+          "height": 36.84375,
+          "left": 251,
+          "right": 998,
+          "top": 176,
+          "width": 747,
+          "x": 251,
+          "y": 176
+        },
+        "selector": ".connection-row"
+      },
+      {
+        "rect": {
+          "bottom": 626,
+          "height": 54.5,
+          "left": 251,
+          "right": 998,
+          "top": 571.5,
+          "width": 747,
+          "x": 251,
+          "y": 571.5
+        },
+        "selector": ".pane-footer"
+      },
+      {
+        "rect": {
+          "bottom": 202.671875,
+          "height": 16,
+          "left": 372.34375,
+          "right": 388.34375,
+          "top": 186.671875,
+          "width": 16,
+          "x": 372.34375,
+          "y": 186.671875
+        },
+        "selector": "input[type=checkbox]"
+      }
+    ],
+    "viewport": [
+      1024,
+      760
+    ]
+  },
+  "logCheck": {
+    "expanded": "true",
+    "footer": {
+      "bottom": 595.84375,
+      "height": 54.5,
+      "left": 251,
+      "right": 998,
+      "top": 541.34375,
+      "width": 747,
+      "x": 251,
+      "y": 541.34375
+    },
+    "hidden": false,
+    "id": "c71-build"
+  }
+}

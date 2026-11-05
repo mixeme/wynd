@@ -15,6 +15,7 @@
     "c71-build": {
       "base": "7в",
       "layoutReview": "rejected",
+      "renderEvidence": "docs/testing/c71-render-2026-11-05.md#возврат-к-браузеру-http-предпросмотр-восстановлен",
       "note": "Owner rejected the Prince-rendered C71.1 on 2026-11-05 ('Плохо.'), identifying the checkbox as one example. Prince substitutes a text checkmark for the native control; this render is unsuitable for layout acceptance. This candidate and its offline PNG are not approved baselines. Earlier hand-drawn layouts also remain rejected."
     },
     "c71-quiet": {
