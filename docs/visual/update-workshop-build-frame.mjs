@@ -49,6 +49,13 @@ rows.forEach((row, index) => {
   icon.textContent = mark;
   const content = row.querySelector("div");
   content.textContent = title;
+  if (tone === "w") {
+    const activeTitle = doc.createElement("strong");
+    activeTitle.className = "w";
+    activeTitle.textContent = title;
+    content.replaceChildren(activeTitle);
+    row.setAttribute("aria-current", "step");
+  }
   if (tone === "dim") content.className = "dim";
   else content.removeAttribute("class");
 });
@@ -115,7 +122,8 @@ fs.writeFileSync(galleryPath, gallery.replace(/\r?\n/g, "\r\n"));
 const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 manifest.variants[frame.id].layoutReview = "draft";
 manifest.variants[frame.id].note =
-  "Previous two hand-drawn layouts rejected; current candidate derives directly from approved 7в and needs actual-render review.";
+  "Earlier hand-drawn and Prince-rendered layouts remain rejected. Owner requested active-stage emphasis after the browser review; current title uses existing strong/w styles and awaits layout approval.";
+delete manifest.variants[frame.id].renderEvidence;
 fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
 checkWorkshopBaselineFiles();
 console.log(

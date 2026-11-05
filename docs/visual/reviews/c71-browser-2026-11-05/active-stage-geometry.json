@@ -1,0 +1,296 @@
+{
+  "before": {
+    "activeTitle": null,
+    "devicePixelRatio": 1,
+    "frame": {
+      "frameId": "c71-build",
+      "frameSha256": "85a0bfd60ff6737cdbca6bf63f522eb7441e66abe3122d6cd186278506935b88",
+      "sourceSha256": "1d7fbe1b95d189a256aff4932d580ae12f25fbb2fea9aec26cfc10f929e8ee21"
+    },
+    "sections": [
+      {
+        "rect": {
+          "bottom": 36,
+          "height": 35,
+          "left": 1,
+          "right": 1023,
+          "top": 1,
+          "width": 1022,
+          "x": 1,
+          "y": 1
+        },
+        "selector": ".tb"
+      },
+      {
+        "rect": {
+          "bottom": 78.5,
+          "height": 42.5,
+          "left": 1,
+          "right": 1023,
+          "top": 36,
+          "width": 1022,
+          "x": 1,
+          "y": 36
+        },
+        "selector": ".wtabs"
+      },
+      {
+        "rect": {
+          "bottom": 649,
+          "height": 570.5,
+          "left": 1,
+          "right": 226,
+          "top": 78.5,
+          "width": 225,
+          "x": 1,
+          "y": 78.5
+        },
+        "selector": ".server-rail"
+      },
+      {
+        "rect": {
+          "bottom": 229.84375,
+          "height": 128.34375,
+          "left": 251,
+          "right": 998,
+          "top": 101.5,
+          "width": 747,
+          "x": 251,
+          "y": 101.5
+        },
+        "selector": ".server-context"
+      },
+      {
+        "rect": {
+          "bottom": 626,
+          "height": 54.5,
+          "left": 251,
+          "right": 998,
+          "top": 571.5,
+          "width": 747,
+          "x": 251,
+          "y": 571.5
+        },
+        "selector": ".pane-footer"
+      },
+      {
+        "rect": {
+          "bottom": 348.34375,
+          "height": 38.5,
+          "left": 251,
+          "right": 998,
+          "top": 309.84375,
+          "width": 747,
+          "x": 251,
+          "y": 309.84375
+        },
+        "selector": ".body > .row:nth-of-type(2)"
+      },
+      {
+        "rect": {
+          "bottom": 425.84375,
+          "height": 77.5,
+          "left": 251,
+          "right": 998,
+          "top": 348.34375,
+          "width": 747,
+          "x": 251,
+          "y": 348.34375
+        },
+        "selector": ".body > .row:nth-of-type(3)"
+      },
+      {
+        "rect": {
+          "bottom": 464.34375,
+          "height": 38.5,
+          "left": 251,
+          "right": 998,
+          "top": 425.84375,
+          "width": 747,
+          "x": 251,
+          "y": 425.84375
+        },
+        "selector": ".body > .row:nth-of-type(4)"
+      },
+      {
+        "rect": {
+          "bottom": 502.84375,
+          "height": 38.5,
+          "left": 251,
+          "right": 998,
+          "top": 464.34375,
+          "width": 747,
+          "x": 251,
+          "y": 464.34375
+        },
+        "selector": ".body > .row:nth-of-type(5)"
+      },
+      {
+        "rect": {
+          "bottom": 541.34375,
+          "height": 38.5,
+          "left": 251,
+          "right": 998,
+          "top": 502.84375,
+          "width": 747,
+          "x": 251,
+          "y": 502.84375
+        },
+        "selector": ".body > .row:nth-of-type(6)"
+      }
+    ],
+    "viewport": [
+      1024,
+      760
+    ]
+  },
+  "after": {
+    "activeTitle": {
+      "color": "rgb(112, 87, 27)",
+      "text": "Собираем образ Wynd",
+      "weight": "500"
+    },
+    "devicePixelRatio": 1,
+    "frame": {
+      "frameId": "c71-build",
+      "frameSha256": "e0786190cbc4b90c9a950cc6cdd9f3424a45170ccd4bf6dfade984f2355e5bc3",
+      "sourceSha256": "09387c8af631cc546578710f2a12191287e53591340323a1f5dc5224e1841a3a"
+    },
+    "sections": [
+      {
+        "rect": {
+          "bottom": 36,
+          "height": 35,
+          "left": 1,
+          "right": 1023,
+          "top": 1,
+          "width": 1022,
+          "x": 1,
+          "y": 1
+        },
+        "selector": ".tb"
+      },
+      {
+        "rect": {
+          "bottom": 78.5,
+          "height": 42.5,
+          "left": 1,
+          "right": 1023,
+          "top": 36,
+          "width": 1022,
+          "x": 1,
+          "y": 36
+        },
+        "selector": ".wtabs"
+      },
+      {
+        "rect": {
+          "bottom": 649,
+          "height": 570.5,
+          "left": 1,
+          "right": 226,
+          "top": 78.5,
+          "width": 225,
+          "x": 1,
+          "y": 78.5
+        },
+        "selector": ".server-rail"
+      },
+      {
+        "rect": {
+          "bottom": 229.84375,
+          "height": 128.34375,
+          "left": 251,
+          "right": 998,
+          "top": 101.5,
+          "width": 747,
+          "x": 251,
+          "y": 101.5
+        },
+        "selector": ".server-context"
+      },
+      {
+        "rect": {
+          "bottom": 626,
+          "height": 54.5,
+          "left": 251,
+          "right": 998,
+          "top": 571.5,
+          "width": 747,
+          "x": 251,
+          "y": 571.5
+        },
+        "selector": ".pane-footer"
+      },
+      {
+        "rect": {
+          "bottom": 348.34375,
+          "height": 38.5,
+          "left": 251,
+          "right": 998,
+          "top": 309.84375,
+          "width": 747,
+          "x": 251,
+          "y": 309.84375
+        },
+        "selector": ".body > .row:nth-of-type(2)"
+      },
+      {
+        "rect": {
+          "bottom": 425.84375,
+          "height": 77.5,
+          "left": 251,
+          "right": 998,
+          "top": 348.34375,
+          "width": 747,
+          "x": 251,
+          "y": 348.34375
+        },
+        "selector": ".body > .row:nth-of-type(3)"
+      },
+      {
+        "rect": {
+          "bottom": 464.34375,
+          "height": 38.5,
+          "left": 251,
+          "right": 998,
+          "top": 425.84375,
+          "width": 747,
+          "x": 251,
+          "y": 425.84375
+        },
+        "selector": ".body > .row:nth-of-type(4)"
+      },
+      {
+        "rect": {
+          "bottom": 502.84375,
+          "height": 38.5,
+          "left": 251,
+          "right": 998,
+          "top": 464.34375,
+          "width": 747,
+          "x": 251,
+          "y": 464.34375
+        },
+        "selector": ".body > .row:nth-of-type(5)"
+      },
+      {
+        "rect": {
+          "bottom": 541.34375,
+          "height": 38.5,
+          "left": 251,
+          "right": 998,
+          "top": 502.84375,
+          "width": 747,
+          "x": 251,
+          "y": 502.84375
+        },
+        "selector": ".body > .row:nth-of-type(6)"
+      }
+    ],
+    "viewport": [
+      1024,
+      760
+    ]
+  }
+}
