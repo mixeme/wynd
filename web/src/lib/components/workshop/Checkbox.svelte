@@ -8,19 +8,51 @@
 	let {
 		checked = $bindable(false),
 		disabled = false,
+		native = false,
+		onchange,
 		children,
 		class: className = '',
 		style = ''
 	}: {
 		checked?: boolean;
 		disabled?: boolean;
+		native?: boolean;
+		onchange?: (checked: boolean) => void;
 		children: Snippet;
 		class?: string;
 		style?: string;
 	} = $props();
 </script>
 
-<label class="ins-check {className}" {style}>
-	<input type="checkbox" bind:checked {disabled} />
+<label class="ins-check {className}" class:ins-native={native} {style}>
+	<input
+		type="checkbox"
+		bind:checked
+		{disabled}
+		onchange={(event) => onchange?.(event.currentTarget.checked)}
+	/>
 	<span>{@render children()}</span>
 </label>
+
+<style>
+	.ins-check.ins-native {
+		gap: 8px;
+		font-size: 13px;
+		font-weight: 400;
+	}
+	.ins-check.ins-native input {
+		appearance: auto;
+		display: block;
+		flex: 0 0 16px;
+		width: 16px;
+		height: 16px;
+		margin: 2px 0 0;
+		border: initial;
+		border-radius: initial;
+		background: initial;
+		accent-color: var(--c);
+	}
+	.ins-check.ins-native input:checked::after {
+		content: none;
+	}
+</style>

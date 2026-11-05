@@ -334,7 +334,8 @@ export const BUTTON_LAYOUT_CLASSES = new Set([
 	'cm-line',
 	// $ui/workshop (план 54): «✕» и кнопка «закрыть» в полосе заголовка окна Мастерской.
 	'ins-x',
-	'ins-tb-close'
+	'ins-tb-close',
+	'ins-server-entry'
 ]);
 
 export const BUTTON_TEXT_CLASSES = new Set([

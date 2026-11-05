@@ -4,13 +4,21 @@
 	let {
 		steps,
 		index,
+		servers,
+		selected = '',
+		onselect,
+		onadd,
 		bad = false,
 		label = 'Шаги установки',
 		class: className = '',
 		style = ''
 	}: {
-		steps: string[];
-		index: number;
+		steps?: string[];
+		index?: number;
+		servers?: { id: string; name: string; host: string; status: string; busy?: boolean }[];
+		selected?: string;
+		onselect?: (id: string) => void;
+		onadd?: () => void;
 		bad?: boolean;
 		label?: string;
 		class?: string;
@@ -18,21 +26,117 @@
 	} = $props();
 </script>
 
-<nav class="ins-side {className}" aria-label={label} {style}>
-	{#each steps as step, i (step)}
-		<div
-			class="ins-step"
-			class:done={i < index}
-			class:on={i === index && !bad}
-			class:bad={i === index && bad}
-			aria-current={i === index ? 'step' : undefined}
-		>
-			<i>{i < index ? '✓' : i === index && bad ? '!' : i + 1}</i>{step}
+{#if servers}
+	<nav class="ins-server-rail {className}" aria-label="Серверы" {style}>
+		<div class="ins-rail-head">
+			<h3>Серверы</h3>
+			<button type="button" class="under" onclick={onadd}>+ Добавить</button>
 		</div>
-	{/each}
-</nav>
+		{#each servers as server (server.id)}
+			<button
+				type="button"
+				class="ins-server-entry"
+				class:selected={server.id === selected}
+				aria-pressed={server.id === selected}
+				onclick={() => onselect?.(server.id)}
+			>
+				<strong>{server.name}</strong><small>{server.host}</small><small
+					class:ins-rail-progress={server.busy}>{server.status}</small
+				>
+			</button>
+		{/each}
+	</nav>
+{:else}
+	<nav class="ins-side {className}" aria-label={label} {style}>
+		{#each steps ?? [] as step, i (step)}
+			<div
+				class="ins-step"
+				class:done={i < (index ?? 0)}
+				class:on={i === index && !bad}
+				class:bad={i === index && bad}
+				aria-current={i === index ? 'step' : undefined}
+			>
+				<i>{i < (index ?? 0) ? '✓' : i === index && bad ? '!' : i + 1}</i>{step}
+			</div>
+		{/each}
+	</nav>
+{/if}
 
 <style>
+	.ins-server-rail {
+		box-sizing: content-box;
+		width: 225px;
+		flex-shrink: 0;
+		background: var(--tint);
+		border-right: 1px solid var(--line);
+		padding: 17px 10px;
+		overflow-y: auto;
+	}
+	.ins-rail-head {
+		display: flex;
+		gap: 10px;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0 8px 13px;
+	}
+	.ins-rail-head h3 {
+		margin: 0;
+		font-size: 15px;
+		font-weight: 500;
+	}
+	.ins-rail-head .under {
+		color: var(--c);
+		white-space: nowrap;
+	}
+	.ins-server-entry {
+		display: block;
+		width: 100%;
+		text-align: left;
+		padding: 11px 9px;
+		box-sizing: border-box;
+		background: transparent;
+		color: var(--ink);
+		border: 1px solid transparent;
+		border-radius: 8px;
+		margin-bottom: 7px;
+		font: inherit;
+	}
+	.ins-server-entry.selected {
+		background: var(--card);
+		border-color: var(--line);
+	}
+	.ins-server-entry strong {
+		display: block;
+		font-weight: 500;
+	}
+	.ins-server-entry small {
+		display: block;
+		color: var(--muted);
+		font-size: 12px;
+		margin-top: 3px;
+		overflow-wrap: anywhere;
+	}
+	.ins-server-entry .ins-rail-progress {
+		color: var(--c);
+	}
+	@media (max-width: 680px) {
+		.ins-server-rail {
+			box-sizing: border-box;
+			width: 100%;
+			border-right: 0;
+			border-bottom: 1px solid var(--line);
+			padding: 12px 10px;
+			max-height: 180px;
+		}
+		.ins-server-entry {
+			padding: 7px 9px;
+			margin-bottom: 3px;
+		}
+		.ins-server-entry small {
+			display: inline;
+			margin-right: 8px;
+		}
+	}
 	.ins-side {
 		flex: none;
 		width: 170px;
