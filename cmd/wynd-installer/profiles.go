@@ -45,6 +45,13 @@ func (a *App) profile(id string) installer.ServerProfile {
 	return installer.ServerProfile{}
 }
 
+func (a *App) moveReady(id string) error {
+	if a.profileError != nil {
+		return a.profileError
+	}
+	return a.workshop.BindMoveEndpoint(id)
+}
+
 func profileCall[T any](a *App, id string, allowRunning bool, fn func(*installer.Wizard) T) (T, error) {
 	return profileCallWith(a, id, allowRunning, false, fn)
 }
@@ -62,9 +69,18 @@ func profileCallWith[T any](a *App, id string, allowRunning, move bool, fn func(
 	if move {
 		with = a.workshop.WithMoveProfile
 	}
-	err := with(id, allowRunning, func(w *installer.Wizard, _ installer.ServerProfile) { result = fn(w) })
+	var operationErr error
+	err := with(id, allowRunning, func(w *installer.Wizard, _ installer.ServerProfile) {
+		result = fn(w)
+		if connect, ok := any(result).(installer.ConnectResult); move && ok && connect.Status == installer.StatusConnected {
+			operationErr = a.workshop.BindMoveEndpoint(id)
+		}
+	})
 	if err != nil {
 		return result, err
+	}
+	if operationErr != nil {
+		return result, operationErr
 	}
 	var check *installer.ServerCheck
 	switch r := any(result).(type) {

@@ -61,6 +61,9 @@ func (a *App) HasSavedPassword(host, user string) bool {
 func (a *App) Connect(id, password string, makeKey bool) (installer.ConnectResult, error) {
 	return profileCall(a, id, false, func(w *installer.Wizard) installer.ConnectResult {
 		p := a.profile(id)
+		if password == "" && !p.UseKeys {
+			password = devPassword()
+		}
 		if !p.UseKeys && password == "" && (!p.Remember || !w.HasSavedPassword(p.Host, p.User)) {
 			return installer.ConnectResult{Status: "password_required", Host: p.Host, Message: "Для входа нужен пароль"}
 		}
@@ -168,6 +171,9 @@ func (a *App) MoveSelect(id, targetID, password string) (installer.ConnectResult
 		if err != nil {
 			return installer.ConnectResult{Status: "error", Message: err.Error()}
 		}
+		if in.Password == "" && !in.UseKeys {
+			in.Password = devPassword()
+		}
 		if !in.UseKeys && in.Password == "" && (!in.Remember || !w.HasSavedPassword(in.Host, in.User)) {
 			return installer.ConnectResult{Status: "password_required", Host: in.Host, Message: "Для входа на новый сервер нужен пароль"}
 		}
@@ -187,11 +193,17 @@ func (a *App) MoveConfirmChangedHost(id string) (installer.ConnectResult, error)
 
 // MovePlan — план переезда (9б).
 func (a *App) MovePlan(id string) (installer.MovePlan, error) {
+	if err := a.moveReady(id); err != nil {
+		return installer.MovePlan{}, err
+	}
 	return profileMoveCall(a, id, false, func(w *installer.Wizard) installer.MovePlan { return w.MovePlan(a.ctx) })
 }
 
 // StartMove — «Переехать»; ход — InstallProgress (9в).
 func (a *App) StartMove(id string, removeOld bool) (installer.Progress, error) {
+	if err := a.moveReady(id); err != nil {
+		return installer.Progress{}, err
+	}
 	return profileMoveCall(a, id, false, func(w *installer.Wizard) installer.Progress { return w.StartMove(a.ctx, removeOld) })
 }
 
@@ -203,6 +215,9 @@ func (a *App) MoveCheckNow(id string) error {
 
 // CancelMove — «Отменить переезд» (9в).
 func (a *App) CancelMove(id string) (installer.ServiceResult, error) {
+	if err := a.moveReady(id); err != nil {
+		return installer.ServiceResult{}, err
+	}
 	return profileMoveCall(a, id, true, func(w *installer.Wizard) installer.ServiceResult { return w.CancelMove(a.ctx) })
 }
 

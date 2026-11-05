@@ -408,7 +408,7 @@ func (w *Workshop) ReserveMove(source, target string) (ServerProfile, error) {
 		return ServerProfile{}, ErrProfileBusy
 	}
 	for _, other := range w.sessions {
-		if other != t && strings.EqualFold(other.profile.Host, t.profile.Host) && (other.active || other.running || other.owner != "" || other.target != "") {
+		if other != t && (strings.EqualFold(other.profile.Host, t.profile.Host) || (t.endpoint != "" && other.endpoint == t.endpoint)) && (other.active || other.running || other.owner != "" || other.target != "") {
 			return ServerProfile{}, ErrProfileBusy
 		}
 	}
@@ -417,6 +417,43 @@ func (w *Workshop) ReserveMove(source, target string) (ServerProfile, error) {
 	}
 	s.target, t.owner = target, source
 	return cloneProfile(t.profile), nil
+}
+
+// BindMoveEndpoint runs after the destination's handshake, before planning.
+// Hostnames may be aliases: reserve the actual SSH endpoint as well as its ID.
+func (w *Workshop) BindMoveEndpoint(source string) error {
+	w.mu.Lock()
+	s := w.find(source)
+	if s == nil {
+		w.mu.Unlock()
+		return ErrProfileMissing
+	}
+	w.mu.Unlock()
+	s.wizard.mu.Lock()
+	endpoint := ""
+	if s.wizard.target != nil {
+		endpoint = s.wizard.target.client.RemoteAddr().String()
+	}
+	s.wizard.mu.Unlock()
+	if endpoint == "" {
+		return ErrProfileMissing
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	t := w.find(s.target)
+	if t == nil || t.owner != source {
+		return ErrProfileMissing
+	}
+	if endpoint == s.endpoint {
+		return errors.New("Для переезда нужен другой сервер")
+	}
+	for _, other := range w.sessions {
+		if other != t && other != s && other.endpoint == endpoint && (other.active || other.running || other.owner != "" || other.target != "") {
+			return ErrProfileBusy
+		}
+	}
+	t.endpoint = endpoint
+	return nil
 }
 
 func (w *Workshop) ReleaseMove(source string) (string, error) {

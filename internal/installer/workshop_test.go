@@ -306,6 +306,46 @@ func TestWorkshopLoginDeletesOnlyAnUnsharedRememberedPassword(t *testing.T) {
 	}
 }
 
+func TestWorkshopMoveRefusesBusyDestinationUnderAnotherSSHName(t *testing.T) {
+	w, _ := testWorkshop(t)
+	s, d, alias := addProfile(t, w, "old.example.org"), addProfile(t, w, "new.example.org"), addProfile(t, w, "alias.example.org")
+	old, target := startServer(t, "pw", nil, ""), startServer(t, "pw", nil, "")
+	dial := Dialer{SSHDir: filepath.Join(t.TempDir(), "ssh")}
+	trusted(t, dial, old.access("pw"))
+	trusted(t, dial, target.access("pw"))
+	for _, item := range []struct {
+		id  string
+		srv *testServer
+	}{{s.ID, old}, {alias.ID, target}} {
+		if err := w.WithProfile(item.id, false, func(wiz *Wizard, _ ServerProfile) {
+			wiz.Dialer = dial
+			res := wiz.Connect(context.Background(), ConnectInput{Host: item.srv.host, Port: item.srv.port, User: "root", Password: "pw"})
+			if res.Status != StatusConnected {
+				t.Fatal(res)
+			}
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := w.WithProfile(alias.ID, false, func(wiz *Wizard, _ ServerProfile) { wiz.progress = Progress{Running: true} }); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.ReserveMove(s.ID, d.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.WithMoveProfile(s.ID, false, func(wiz *Wizard, _ ServerProfile) {
+		res := wiz.MoveConnect(context.Background(), ConnectInput{Host: target.host, Port: target.port, User: "root", Password: "pw"})
+		if res.Status != StatusConnected {
+			t.Fatal(res)
+		}
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.BindMoveEndpoint(s.ID); err != ErrProfileBusy {
+		t.Fatal("busy alias accepted", err)
+	}
+}
+
 func TestWorkshopMoveReservesBothProfiles(t *testing.T) {
 	w, _ := testWorkshop(t)
 	s := addProfile(t, w, "old.example.org")
