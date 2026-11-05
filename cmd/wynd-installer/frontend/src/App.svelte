@@ -308,7 +308,6 @@
 	}
 
 	// Пульт (кадры 7а–7ж2).
-	const CHANGES = 'https://github.com/mixeme/wynd/blob/main/docs/CHANGELOG.md';
 	let askStop = $state(false);
 	let svcBusy = $state('');
 	let svcError = $state('');
@@ -921,7 +920,7 @@
 			host: profile.host,
 			user: profile.user,
 			domain: page?.state.domain ?? profile.last_check?.domain,
-			status,
+			status: connection === 'connected' ? 'Подключён' : status,
 			state: connection
 		}}
 	>
@@ -940,6 +939,9 @@
 			onchange={(on) => void attempt(() => autoConnect(on))}>Подключаться при запуске</Checkbox
 		>
 	</Notice>
+	{#if updating || backingUp || moving || ['inspect', 'plan', 'install', 'done'].includes(screen)}
+		<div class="ins-operation-path">{updating ? 'Обновление' : backingUp ? 'Бэкап' : moving ? 'Переезд' : 'Установка Wynd'}</div>
+	{/if}
 	{#if operationError}<Notice tone="bad" alert>{operationError}</Notice>{/if}
 	{#if moving && target}<div class="ins-move-pair">
 			<div>
@@ -1053,7 +1055,7 @@
 				<MarkRow mark="→">
 					Переехать на другой сервер
 					{#snippet action()}
-						<TextButton class="link under" onclick={toMove}>начать</TextButton>
+						<TextButton class="link under" onclick={toMove}>Перенести</TextButton>
 					{/snippet}
 				</MarkRow>
 			</MarkRows>
@@ -1139,35 +1141,32 @@
 				</Notice>
 			{/if}
 			{#if page.latest}
-				<Notice title="Вышла версия {page.latest}">
+				<Notice class="ins-pult-update" title="Вышла версия {page.latest}">
 					<div class="ins-dim">
 						Перед обновлением сохраним копию данных на сервере.
-						<TextButton class="link under" onclick={() => void api.OpenLink(CHANGES)}>
-							что нового
-						</TextButton>
 					</div>
-					{#snippet action()}
+					<FootBar>
 						<Button variant={st.running ? 'colored' : 'ghost'} onclick={toUpdatePlan}
 							>Обновить</Button
 						>
-					{/snippet}
+					</FootBar>
 				</Notice>
 			{:else}
 				<p class="ins-dim">Стоит самая свежая версия.</p>
 			{/if}
-			<MarkRows>
-				<MarkRow mark="↓">
+			<MarkRows class="ins-pult-actions">
+				<MarkRow mark="">
 					Бэкап на этот компьютер
 					{#snippet action()}
 						<TextButton class="link under" onclick={() => void attempt(() => toBackupPlan())}
-							>сделать</TextButton
+							>Сделать</TextButton
 						>
 					{/snippet}
 				</MarkRow>
-				<MarkRow mark="→">
-					Переехать на другой сервер
+				<MarkRow mark="">
+					Переезд на другой сервер
 					{#snippet action()}
-						<TextButton class="link under" onclick={toMove}>начать</TextButton>
+						<TextButton class="link under" onclick={toMove}>Перенести</TextButton>
 					{/snippet}
 				</MarkRow>
 			</MarkRows>
@@ -1311,12 +1310,12 @@
 		{/if}
 	{:else if screen === 'update'}
 		<h2>Обновляем</h2>
-		<StepList steps={progress?.steps ?? []} />
+		<StepList meter class="ins-stage-steps" steps={progress?.steps ?? []} />
 		<FootBar>
 			<TextButton class="link under" onclick={() => (showLog = !showLog)}>
 				показать, что выполняется
 			</TextButton>
-			<span class="ins-dim">Окно можно свернуть</span>
+			<span class="ins-dim ins-push">Окно можно свернуть</span>
 		</FootBar>
 		{#if showLog}
 			<CommandLog text={logText} />
@@ -1440,12 +1439,12 @@
 	{:else if screen === 'backup'}
 		<!-- Кадр 8б. -->
 		<h2>Делаем бэкап</h2>
-		<StepList steps={progress?.steps ?? []} />
+		<StepList meter class="ins-stage-steps" steps={progress?.steps ?? []} />
 		<FootBar>
 			<TextButton class="link under" onclick={() => (showLog = !showLog)}>
 				показать, что выполняется
 			</TextButton>
-			<span class="ins-dim">Окно можно свернуть</span>
+			<span class="ins-dim ins-push">Окно можно свернуть</span>
 		</FootBar>
 		{#if showLog}
 			<CommandLog text={logText} />
@@ -1616,7 +1615,7 @@
 		<!-- Кадр 9в. -->
 		{@const waitingDNS = progress?.steps?.some((s) => s.id === 'dns' && s.status === 'running')}
 		<h2>Переезжаем</h2>
-		<StepList steps={progress?.steps ?? []} />
+		<StepList meter class="ins-stage-steps" steps={progress?.steps ?? []} />
 		{#if waitingDNS && mplan}
 			<Notice>
 				<div class="ins-dim">
@@ -1640,7 +1639,7 @@
 				<TextButton class="link under" onclick={() => (showLog = !showLog)}
 					>показать, что выполняется</TextButton
 				>
-				<span class="ins-dim">Окно можно свернуть</span>
+				<span class="ins-dim ins-push">Окно можно свернуть</span>
 			</FootBar>
 		{/if}
 		{#if showLog}<CommandLog text={logText} />{/if}
@@ -1764,12 +1763,12 @@
 		{/if}
 	{:else if screen === 'install'}
 		<h2>Ставим</h2>
-		<StepList steps={progress?.steps ?? []} />
+		<StepList meter class="ins-stage-steps" steps={progress?.steps ?? []} />
 		<FootBar>
 			<TextButton class="link under" onclick={() => (showLog = !showLog)}>
 				показать, что выполняется
 			</TextButton>
-			<span class="ins-dim">Окно можно свернуть</span>
+			<span class="ins-dim ins-push">Окно можно свернуть</span>
 		</FootBar>
 		{#if showLog}
 			<CommandLog text={logText} />
@@ -1959,6 +1958,7 @@
 			</TextButton>
 		</FootBar>
 	{/if}
+	{#if !occupied}
 	<FootBar class="ins-profile-tools"
 		><TextButton
 			class="link under"
@@ -1971,9 +1971,10 @@
 		>{#if screen === 'server' && page && !page.foreign && !page.state.move && !askRollback}<TextButton
 				class="link under"
 				disabled={occupied}
-				onclick={() => (askRollback = true)}>Убрать Wynd</TextButton
+				onclick={() => (askRollback = true)}>Убрать Wynd с сервера</TextButton
 			>{/if}
 	</FootBar>
+	{/if}
 </main>
 {#if showRaw && inspection}
 	<RawSheet

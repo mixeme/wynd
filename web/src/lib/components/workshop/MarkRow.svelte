@@ -25,7 +25,7 @@
 </script>
 
 <div class="ins-row {className}" class:ins-dim={dim} {style}>
-	<span class="ins-mark {tone ?? ''}">{mark}</span>
+	{#if mark !== ''}<span class="ins-mark {tone ?? ''}">{mark}</span>{/if}
 	<div class:ins-grow={Boolean(action)}>{@render children()}</div>
 	{@render action?.()}
 </div>

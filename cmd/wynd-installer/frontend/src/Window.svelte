@@ -311,6 +311,7 @@
 					</main>
 				{:else if editing !== undefined}
 					<main class="ins-body ins-pane">
+						<div class="ins-operation-path">Серверы › {editing ? 'Доступ к серверу' : 'Добавить сервер'}</div>
 						<h2>{editing ? 'Доступ к серверу' : 'Добавить сервер'}</h2>
 						<p class="ins-sub">Укажите доступ по SSH. Мастерская проверит, установлен ли Wynd.</p>
 						<form

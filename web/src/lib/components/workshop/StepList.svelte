@@ -1,6 +1,7 @@
 <script lang="ts">
 	import MarkRow from '$ui/workshop/MarkRow.svelte';
 	import MarkRows from '$ui/workshop/MarkRows.svelte';
+	import Meter from '$ui/forms/Meter.svelte';
 
 	// Ход работы Мастерской (план 54): установка, обновление, бэкап, переезд.
 	// Шаги приходят из Go (internal/installer, StepState).
@@ -13,10 +14,12 @@
 
 	let {
 		steps,
+		meter = false,
 		class: className = '',
 		style = ''
 	}: {
 		steps: Step[];
+		meter?: boolean;
 		class?: string;
 		style?: string;
 	} = $props();
@@ -28,6 +31,9 @@
 	}
 </script>
 
+{#if meter && steps.length}
+	<Meter value={steps.filter((step) => step.status === 'done').length} max={steps.length} />
+{/if}
 <MarkRows class={className} {style}>
 	{#each steps as step (step.id)}
 		<MarkRow

@@ -260,7 +260,10 @@ test('background update remains attached to its profile across server and archiv
 	assert.equal(ui.elements('h2')[0].textContent, 'Обновляем');
 	assert.equal(ui.calls.filter((c) => c[0] === 'StartUpdate').length, 1);
 	const forget = ui.elements('button').find((e) => e.textContent.trim() === 'Убрать из списка');
-	assert.equal(forget.disabled, true);
+	assert.equal(forget, undefined, 'busy operation keeps only the approved operation footer');
+	assert.equal(ui.elements('.ins-connection-badge')[0].textContent, 'Подключён');
+	assert.ok(ui.elements('.ins-server-entry')[0].textContent.includes('Обновление'));
+	assert.equal(ui.elements('.meter').length, 1);
 	await ui.click('Подключаться при запуске');
 	assert.equal(ui.stored()[0].auto_connect, false);
 });
@@ -293,7 +296,7 @@ test('new profile connects using its own stable ID and ephemeral password', asyn
 
 test('saved move destinations identify both SSH roles and adding returns to the source', async (t) => {
 	const ui = await open(t, [profile('a', { auto_connect: true }), profile('b')]);
-	await ui.click('начать');
+	await ui.click('Перенести');
 	assert.equal(ui.elements('h2')[0].textContent, 'На какой сервер переезжаем');
 	assert.equal(ui.elements('label').filter((e) => e.textContent.includes('Сервер a')).length, 0);
 	await ui.click('Добавить сервер');
@@ -472,4 +475,5 @@ test('approved first launch keeps its primary action in the bottom panel', async
 	assert.ok(footer, 'first launch must have its approved bottom action panel');
 	assert.ok(footer.textContent.includes('Добавить сервер'));
 	assert.equal(ui.elements('.ins-welcome button').length, 0);
+	assert.equal(ui.dom.window.getComputedStyle(footer).marginTop, 'auto');
 });

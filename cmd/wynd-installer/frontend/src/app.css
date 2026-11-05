@@ -159,19 +159,32 @@ body {
 	padding: 23px 25px;
 	overflow-wrap: anywhere;
 }
-.ins-pane > .ins-foot {
+.ins-win.ins-servers .ins-pane > .ins-foot {
 	margin-top: auto;
-	padding-top: 18px;
-	border-top: 1px solid var(--line);
+	padding-top: 34px;
+	position: relative;
 }
-.ins-pane > .ins-profile-tools {
+.ins-win.ins-servers .ins-pane > .ins-foot::before,
+.ins-win.ins-servers .ins-profile-form > .ins-foot::before {
+	content: '';
+	position: absolute;
+	top: 18px;
+	left: 0;
+	right: 0;
+	height: 1px;
+	background: var(--line);
+}
+.ins-win.ins-servers .ins-pane > .ins-profile-tools {
 	font-size: 12px;
 	gap: 10px 16px;
 }
-.ins-pane > .ins-foot + .ins-profile-tools {
+.ins-win.ins-servers .ins-pane > .ins-foot + .ins-profile-tools {
 	margin-top: 12px;
 	border-top: 0;
 	padding-top: 0;
+}
+.ins-win.ins-servers .ins-pane > .ins-foot + .ins-profile-tools::before {
+	display: none;
 }
 .ins-profile-form {
 	display: flex;
@@ -196,9 +209,10 @@ body {
 	color: var(--muted);
 	font-size: 12px;
 }
-.ins-profile-form > .ins-foot {
-	border-top: 1px solid var(--line);
-	padding-top: 18px;
+.ins-win.ins-servers .ins-profile-form > .ins-foot {
+	margin-top: 0;
+	padding-top: 34px;
+	position: relative;
 }
 .ins-profile-form > .ins-foot > .ins-check {
 	margin: 0;
@@ -264,9 +278,88 @@ body {
 	--ochre: light-dark(#70571b, #dfc58a);
 	--on-c: light-dark(#fff9f3, #241a13);
 	--tint: light-dark(#efe9e0, #302a24);
+	--ui: 'Golos Text', 'Segoe UI', system-ui, sans-serif;
 	font: 400 13px/1.5 var(--ui);
 	background: var(--paper);
 	color: var(--ink);
+	border: 1px solid var(--line);
+	border-radius: 9px;
+	box-shadow: none;
+	box-sizing: border-box;
+	overflow: hidden;
+}
+.ins-win.ins-servers.maximised {
+	border: 0;
+	border-radius: 0;
+}
+.ins-win.ins-servers .ins-tb b {
+	font-weight: 500;
+}
+.ins-win.ins-servers .ins-tabs button {
+	margin-bottom: 0;
+	padding: 10px 0;
+}
+.ins-win.ins-servers .ins-tabs button.on {
+	font-weight: 400;
+}
+.ins-win.ins-servers .ins-rail-head h3 {
+	font-size: 14px;
+}
+.ins-win.ins-servers .ins-sub {
+	margin-bottom: 16px;
+	line-height: 1.5;
+}
+.ins-win.ins-servers .ins-sub:has(+ .ins-profile-form) {
+	margin-bottom: 0;
+}
+.ins-win.ins-servers .ins-profile-form select.fld {
+	min-height: 39px;
+}
+.ins-win.ins-servers .ins-pane > .meter {
+	margin: 12px 0 14px;
+	height: 5px;
+	background: var(--line);
+}
+.ins-win.ins-servers .ins-stage-steps .ins-row {
+	padding: 9px 0;
+}
+.ins-win.ins-servers .ins-stage-steps .ins-row:last-child {
+	border-bottom: 1px solid var(--line);
+}
+.ins-win.ins-servers .ins .btn {
+	border: 1px solid var(--c);
+}
+.ins-win.ins-servers .ins .btn.gh,
+.ins-win.ins-servers .ins .btn.off {
+	border-color: var(--line);
+}
+.ins-win.ins-servers .ins-svcbar {
+	gap: 10px;
+	margin: 0 0 8px;
+}
+.ins-win.ins-servers .ins-pult-update {
+	margin-top: 0;
+}
+.ins-win.ins-servers .ins-pult-update > .ins-strong {
+	font-size: 14px;
+	margin-bottom: 6px;
+}
+.ins-win.ins-servers .ins-pult-update .ins-foot {
+	margin-top: 17px;
+}
+.ins-win.ins-servers .ins-pult-actions {
+	margin-top: 12px;
+}
+.ins-win.ins-servers .ins-pult-actions .ins-row {
+	padding: 9px 0;
+}
+.ins-win.ins-servers .ins-pult-actions .ins-row:last-child {
+	border-bottom: 1px solid var(--line);
+}
+.ins-operation-path {
+	font-size: 12px;
+	color: var(--muted);
+	margin-bottom: 12px;
 }
 .ins-servers .ins {
 	--bad: light-dark(#a73d29, #f0a18b);
