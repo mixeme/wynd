@@ -69,6 +69,12 @@ async function show(scene: Scene) {
 }
 
 const params = new URLSearchParams(location.search);
+// Same window size as the approved storyboard, for genuine render comparison.
+// The normal 900 × 640 gallery remains available without this parameter.
+if (params.get('size') === 'baseline') {
+	frame.style.width = '1024px';
+	frame.style.height = '760px';
+}
 
 if (params.has('run')) {
 	const saved: Record<string, Item[]> = (() => {
