@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "approval": "Основная компоновка утверждена владельцем 2026-11-03; C71 по смыслу принят, оба показанных варианта вёрстки отклонены.",
+  "approval": "Основная компоновка утверждена 2026-11-03. Первый C71.1 из 449d74eb принят по смыслу и вёрстке 2026-11-05 («Принимаем.»). Прежние отклонённые варианты не являются основами; C71.2 и C71.3 пока не приняты.",
   "source": {
     "path": "docs/visual/workshop-servers.fragment.html",
     "commit": "b827aff829e43857700e1eacac833862e3ea1a06"
@@ -9,14 +9,18 @@
   "frames": {
     "7в": {
       "sha256": "db2886e14cf5ab061e031c2853d6d5b19c670f56cd13c7e2e35d2276da7f7cf8"
+    },
+    "c71-build": {
+      "sha256": "c1145fe603ac4880a66437859b23b17e1d709bb504a4abed4454a523cea4c859"
     }
   },
   "variants": {
     "c71-build": {
       "base": "7в",
-      "layoutReview": "draft",
+      "layoutReview": "approved",
+      "approvalEvidence": "docs/testing/c71-render-2026-11-05.md#принятие-первого-кадра-c711",
       "renderEvidence": "docs/testing/c71-render-2026-11-05.md#выделение-шага-docker--уточнение-владельца",
-      "note": "Owner clarified that emphasis belongs to the current Docker step, not the Wynd stage title. Docker output uses existing mono/strong/w styles; earlier incorrect variants remain unapproved. Layout review pending."
+      "note": "Owner approved C71.1 from 449d74eb on 2026-11-05 ('Принимаем.'): current Docker step highlighted, Wynd stage title regular. Only this frame is approved."
     },
     "c71-quiet": {
       "base": "7в",

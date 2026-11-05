@@ -117,12 +117,14 @@ gallery =
   gallery.slice(location.endOffset);
 fs.writeFileSync(galleryPath, gallery.replace(/\r?\n/g, "\r\n"));
 const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-manifest.variants[frame.id].layoutReview = "draft";
-manifest.variants[frame.id].note =
-  "Owner clarified that emphasis belongs to the current Docker step, not the Wynd stage title. Docker output uses existing mono/strong/w styles; earlier incorrect variants remain unapproved. Layout review pending.";
-delete manifest.variants[frame.id].renderEvidence;
+if (manifest.variants[frame.id].layoutReview !== "approved") {
+  manifest.variants[frame.id].layoutReview = "draft";
+  manifest.variants[frame.id].note =
+    "Owner clarified that emphasis belongs to the current Docker step, not the Wynd stage title. Docker output uses existing mono/strong/w styles; earlier incorrect variants remain unapproved. Layout review pending.";
+  delete manifest.variants[frame.id].renderEvidence;
+}
 fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
 checkWorkshopBaselineFiles();
 console.log(
-  "C71.1 derived from approved 7в without new visual styles; layout review remains pending.",
+  `C71.1 derived from approved 7в without new visual styles; review: ${manifest.variants[frame.id].layoutReview}.`,
 );
