@@ -36,6 +36,7 @@
     "c71-error": {
       "base": "c71-build",
       "layoutReview": "draft",
+      "renderEvidence": "docs/testing/c71-error-review-2026-11-05.md#браузерный-снимок-получен",
       "note": "Build error state derived from approved C71.1; owner review pending."
     }
   }

@@ -1,0 +1,104 @@
+{
+  "devicePixelRatio": 1,
+  "error": "#8 ERROR: no space left on device",
+  "frame": {
+    "frameId": "c71-error",
+    "frameSha256": "992f190e6a0c55019dc630192e582a1e4c2f9473a4789871dea17bee167147cf",
+    "sourceSha256": "85020b6efeb69dc0b8f0a1bea3e045002483e7cdc04e5c848175d109fdcdb6d5"
+  },
+  "log": "#1 Получаем исходники v0.48.2\n#2 [build 1/5] FROM golang\n#3 [build 2/5] COPY . .\n#8 [build 3/5] RUN go build ./cmd/wynd\n#8 ERROR: no space left on device\nСборка завершилась с кодом 1",
+  "sections": [
+    {
+      "rect": {
+        "bottom": 36,
+        "height": 35,
+        "left": 1,
+        "right": 1023,
+        "top": 1,
+        "width": 1022,
+        "x": 1,
+        "y": 1
+      },
+      "selector": ".tb"
+    },
+    {
+      "rect": {
+        "bottom": 78.5,
+        "height": 42.5,
+        "left": 1,
+        "right": 1023,
+        "top": 36,
+        "width": 1022,
+        "x": 1,
+        "y": 36
+      },
+      "selector": ".wtabs"
+    },
+    {
+      "rect": {
+        "bottom": 654.6875,
+        "height": 576.1875,
+        "left": 1,
+        "right": 226,
+        "top": 78.5,
+        "width": 225,
+        "x": 1,
+        "y": 78.5
+      },
+      "selector": ".server-rail"
+    },
+    {
+      "rect": {
+        "bottom": 229.84375,
+        "height": 128.34375,
+        "left": 251,
+        "right": 998,
+        "top": 101.5,
+        "width": 747,
+        "x": 251,
+        "y": 101.5
+      },
+      "selector": ".server-context"
+    },
+    {
+      "rect": {
+        "bottom": 631.6875,
+        "height": 70.84375,
+        "left": 251,
+        "right": 998,
+        "top": 560.84375,
+        "width": 747,
+        "x": 251,
+        "y": 560.84375
+      },
+      "selector": ".pane-footer"
+    },
+    {
+      "rect": {
+        "bottom": 202.671875,
+        "height": 16,
+        "left": 372.34375,
+        "right": 388.34375,
+        "top": 186.671875,
+        "width": 16,
+        "x": 372.34375,
+        "y": 186.671875
+      },
+      "selector": "input[type=checkbox]"
+    }
+  ],
+  "viewport": [
+    1024,
+    760
+  ],
+  "window": {
+    "bottom": 655.6875,
+    "height": 655.6875,
+    "left": 0,
+    "right": 1024,
+    "top": 0,
+    "width": 1024,
+    "x": 0,
+    "y": 0
+  }
+}
