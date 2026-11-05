@@ -14,7 +14,8 @@
   "variants": {
     "c71-build": {
       "base": "7в",
-      "layoutReview": "rejected"
+      "layoutReview": "draft",
+      "note": "Previous two hand-drawn layouts rejected; current candidate derives directly from approved 7в and needs actual-render review."
     },
     "c71-quiet": {
       "base": "7в",

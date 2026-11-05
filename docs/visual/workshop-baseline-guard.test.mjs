@@ -75,7 +75,8 @@ test("approved label needs recorded owner decision and actual-render evidence", 
 test("body changes are drafts, not mechanically validated visual design", () => {
   const changed = structuredClone(frames);
   const frame = changed.find((item) => item.id === variantId);
-  frame.win = frame.win.replace("Собираем Wynd", "Получаем исходники");
+  assert.ok(frame.win.includes("Обновляем"));
+  frame.win = frame.win.replace("Обновляем", "Получаем исходники");
   const result = checkWorkshopBaselines(changed, styles, manifest);
   assert.ok(result.pendingVisualReview.some((item) => item.id === variantId));
 });

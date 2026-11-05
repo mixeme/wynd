@@ -67,6 +67,15 @@ for(const id of ['1','s1b','s9a2']){
   const remember=stage().querySelector('[name="remember"]');remember.checked=true;remember.dispatchEvent(new Event('change',{bubbles:true}));
   assert.equal(stage().querySelector('[name="autoConnect"]').disabled,false);assert.equal(hint.dataset.inactive,'true');assert.equal(hint.textContent,stableText);
 }
+choose('c71-build');
+const buildFrameId=doc.querySelector('[data-review-frame]').value;
+assert.equal(stage().querySelector('[data-c71-log]').hidden,true);
+click('[data-c71-toggle]');
+assert.equal(stage().querySelector('[data-c71-log]').hidden,false);
+assert.equal(stage().querySelector('[data-c71-toggle]').getAttribute('aria-expanded'),'true');
+assert.equal(doc.querySelector('[data-review-frame]').value,buildFrameId);
+click('[data-c71-toggle]');
+assert.equal(stage().querySelector('[data-c71-log]').hidden,true);
 assert.ok(saved.length>0);
 assert.ok(JSON.stringify(saved).length>0);
 assert.equal(errors.length,0,errors.join('\n'));

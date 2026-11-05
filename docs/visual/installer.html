@@ -1236,26 +1236,19 @@ SetEnvIf Request_URI "^/api/v1/probe/" no-gzip</pre></div>
 <div data-frame-id="c71-build" class="server-card"><p class="cap">C71.1 · Сборка: этап и последняя строка</p><div class="win workshop-v2" aria-label="C71.1 · Сборка: этап и последняя строка"><div class="tb">●<b>Wynd Мастерская</b><span class="dots">— ▢ ✕</span></div><nav class="wtabs" aria-label="Разделы Мастерской"><button type="button" class="on cursor-interaction" data-frame="6">Серверы</button><span>Архивы</span></nav>
 <div class="main"><aside class="server-rail"><div class="rail-head"><h3>Серверы</h3><button type="button" class="link rail-add cursor-interaction" data-frame="1">+ Добавить</button></div><button type="button" class="server-entry cursor-interaction selected" data-server="family" data-frame="c71-build" aria-pressed="true"><strong>Семейный сервер</strong><small>198.51.100.4</small><small class="rail-progress">Обновление · сборка</small></button><button type="button" class="server-entry cursor-interaction" data-server="new" data-frame="s2j" aria-pressed="false"><strong>Новый сервер</strong><small>203.0.113.7</small><small class="">Нет подключения</small></button></aside>
 
-<div class="body"><header class="server-context" data-profile="family"><div class="server-heading"><h3>Семейный сервер</h3><span class="connection-badge" data-state="connected">Подключён</span></div><div class="identity">SSH: root@198.51.100.4<br>Сайт: family.example.ru</div><div class="connection-row"><button type="button" class="btn gh cursor-interaction" data-frame="6" disabled="">Отключиться</button><label class="check"><input type="checkbox" data-auto-profile="family" checked="">Подключаться при запуске</label></div></header>
-    <div class="operation-path">Обновление</div>
-    <h2>Собираем Wynd</h2>
-    <p class="sub">Новый образ готовим до остановки работающего Wynd.</p>
-    <div class="c71-steps" style="margin-top:4px">
-      <div class="row" style="border:0;padding:6px 0"><span class="ic ok">✓</span><div data-c71-step-title="">Получили исходники</div></div>
-      <div class="row" style="border:0;padding:6px 0"><span class="ic w">…</span><div style="min-width:0;flex:1">
-        <strong data-c71-step-title="">Сборка образа</strong>
-        <pre data-c71-latest="" class="mono" style="margin:8px 0 7px;padding:9px 11px;background:var(--card);border:1px solid var(--line);border-radius:7px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.5">#8 [build 3/5] RUN go build ./cmd/wynd</pre>
-        <p data-c71-note="" class="dim" style="font-size:12px">Последнее сообщение — сейчас</p>
-        <details style="margin-top:9px"><summary class="cursor-interaction" style="width:fit-content;color:var(--c)"><span class="under">Полный вывод сборки</span></summary><pre style="max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;margin:10px 0 0">#1 Получаем исходники v0.48.2
+<div class="body"><header class="server-context" data-profile="family"><div class="server-heading"><h3>Семейный сервер</h3><span class="connection-badge" data-state="connected">Подключён</span></div><div class="identity">SSH: root@198.51.100.4<br>Сайт: family.example.ru</div><div class="connection-row"><button type="button" class="btn gh cursor-interaction" data-frame="6" disabled="">Отключиться</button><label class="check"><input type="checkbox" data-auto-profile="family" checked="">Подключаться при запуске</label></div></header><div class="operation-path">Обновление</div>
+<h2>Обновляем</h2>
+
+<div class="row"><span class="ic ok">✓</span><div>Получили исходники Wynd 0.48.2</div></div>
+<div class="row"><span class="ic w">…</span><div>Собираем образ Wynd<div class="mono dim" data-c71-latest="">#8 [build 3/5] RUN go build ./cmd/wynd</div><div class="dim" data-c71-note="">Последнее сообщение — сейчас</div></div></div>
+<div class="row"><span class="ic dim">○</span><div class="dim">Копия данных</div></div>
+<div class="row"><span class="ic dim">○</span><div class="dim">Запуск 0.48.2</div></div>
+<div class="row"><span class="ic dim">○</span><div class="dim">Проверка</div></div>
+
+<footer class="pane-footer" aria-label="Действия экрана"><div class="footer-actions"><button class="under cursor-interaction" type="button" data-c71-toggle="" aria-expanded="false">Полный вывод сборки</button><span class="dim" style="margin-left:auto">Окно можно свернуть</span></div></footer><pre style="flex:1;min-height:0;margin:0;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-family:Consolas,monospace;font-size:11.5px;line-height:1.45;overflow:hidden;white-space:pre-wrap;word-break:break-all" data-c71-log="" hidden="">#1 Получаем исходники v0.48.2
 #2 [build 1/5] FROM golang
 #3 [build 2/5] COPY . .
-#8 [build 3/5] RUN go build ./cmd/wynd</pre></details>
-      </div></div>
-      <div class="row" style="border:0;padding:6px 0;margin-top:6px"><span class="ic dim">○</span><div class="dim" data-c71-step-title="">Запуск и проверка сайта</div></div>
-    </div>
-
-    <footer class="pane-footer" aria-label="Действия экрана"><div class="footer-actions"><span class="dim">Можно выбрать другой сервер. Сборка продолжится.</span></div></footer>
-  </div></div></div></div>
+#8 [build 3/5] RUN go build ./cmd/wynd</pre></div></div></div></div>
 <div data-frame-id="c71-quiet" class="server-card"><p class="cap">C71.2 · Сборка: давно нет новых строк</p><div class="win workshop-v2" aria-label="C71.2 · Сборка: давно нет новых строк"><div class="tb">●<b>Wynd Мастерская</b><span class="dots">— ▢ ✕</span></div><nav class="wtabs" aria-label="Разделы Мастерской"><button type="button" class="on cursor-interaction" data-frame="6">Серверы</button><span>Архивы</span></nav>
 <div class="main"><aside class="server-rail"><div class="rail-head"><h3>Серверы</h3><button type="button" class="link rail-add cursor-interaction" data-frame="1">+ Добавить</button></div><button type="button" class="server-entry cursor-interaction selected" data-server="family" data-frame="c71-quiet" aria-pressed="true"><strong>Семейный сервер</strong><small>198.51.100.4</small><small class="rail-progress">Обновление · сборка</small></button><button type="button" class="server-entry cursor-interaction" data-server="new" data-frame="s2j" aria-pressed="false"><strong>Новый сервер</strong><small>203.0.113.7</small><small class="">Нет подключения</small></button></aside>
 
