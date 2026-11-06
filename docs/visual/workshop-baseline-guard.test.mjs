@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 import { checkWorkshopBaselines } from "./workshop-baseline-guard.mjs";
 
@@ -21,62 +22,127 @@ const manifest = JSON.parse(
     "utf8",
   ),
 );
-const variantId = "c71-build";
+const hash = (value) => createHash("sha256").update(value).digest("hex");
 
-test("current shell passes without accepting unreviewed layouts", () => {
+// Изолированный реестр: состояния draft, rejected и approved проверяются на
+// своих кадрах, а не на принятом C71.1. Основа — настоящий кадр, поэтому
+// проверки chrome и выбранного профиля остаются теми же.
+function syntheticFixture() {
+  const base = frames.find((frame) => frame.id === "c71-build").win;
+  const frame = (id) => ({ id, win: base });
+  return {
+    list: [
+      frame("synthetic-base"),
+      frame("synthetic-draft"),
+      frame("synthetic-rejected"),
+      frame("synthetic-approved"),
+    ],
+    registry: {
+      version: 1,
+      stylesSha256: manifest.stylesSha256,
+      frames: { "synthetic-base": { sha256: hash(base) } },
+      variants: {
+        "synthetic-draft": { base: "synthetic-base", layoutReview: "draft" },
+        "synthetic-rejected": {
+          base: "synthetic-base",
+          layoutReview: "rejected",
+        },
+        "synthetic-approved": {
+          base: "synthetic-base",
+          layoutReview: "approved",
+          approvalEvidence: "docs/testing/example.md#owner-decision",
+          renderEvidence: "docs/testing/example.md#actual-render",
+        },
+      },
+    },
+  };
+}
+
+function mutateFrame(list, id, change) {
+  const changed = structuredClone(list);
+  const frame = changed.find((item) => item.id === id);
+  const next = change(frame.win);
+  assert.notEqual(next, frame.win, `frame ${id} mutation did not apply`);
+  frame.win = next;
+  return changed;
+}
+
+test("real approved baselines pass and nothing is pending", () => {
   const result = checkWorkshopBaselines(frames, styles, manifest);
-  assert.ok(result.pendingVisualReview.some((item) => item.id === variantId));
+  assert.equal(result.pinnedFrames, 4);
+  assert.deepEqual(result.pendingVisualReview, []);
 });
 
-test("approved frame and common styles cannot drift silently", () => {
+test("synthetic registry covers draft, rejected and approved states", () => {
+  const { list, registry } = syntheticFixture();
+  const result = checkWorkshopBaselines(list, styles, registry);
+  assert.deepEqual(
+    result.pendingVisualReview.map((item) => item.state),
+    ["draft", "rejected"],
+  );
+
+  // Правка тела кадра — черновик, а не механически проверенная вёрстка.
+  const withBody = mutateFrame(list, "synthetic-draft", (win) =>
+    win.replace("Обновляем", "Получаем исходники"),
+  );
+  assert.ok(
+    checkWorkshopBaselines(withBody, styles, registry).pendingVisualReview.some(
+      (item) => item.id === "synthetic-draft",
+    ),
+  );
+});
+
+test("pinned base hash and shared styles cannot drift silently", () => {
+  const { list, registry } = syntheticFixture();
   assert.throws(
-    () => checkWorkshopBaselines(frames, styles + "\n/* changed */", manifest),
+    () => checkWorkshopBaselines(list, styles + "\n/* changed */", registry),
     /styles changed/,
   );
-  const changed = structuredClone(frames);
-  changed.find((frame) => frame.id === manifest.variants[variantId].base).win +=
-    " ";
+  const changed = mutateFrame(list, "synthetic-base", (win) => win + " ");
   assert.throws(
-    () => checkWorkshopBaselines(changed, styles, manifest),
-    /Approved frame/,
+    () => checkWorkshopBaselines(changed, styles, registry),
+    /Approved frame synthetic-base changed/,
   );
 });
 
-test("variant cannot change chrome, local shell style or selected profile", () => {
-  for (const [from, to, expected] of [
-    ["Wynd Мастерская", "Other app", /\.tb differs/],
+test("variant chrome, local shell style and selected profile cannot drift", () => {
+  const { list, registry } = syntheticFixture();
+  for (const [change, expected] of [
+    [(win) => win.replace("Wynd Мастерская", "Other app"), /\.tb differs/],
     [
-      'class="win workshop-v2"',
-      'class="win workshop-v2" style="font-size:20px"',
+      (win) =>
+        win.replace(
+          'class="win workshop-v2"',
+          'class="win workshop-v2" style="font-size:20px"',
+        ),
       /style differs/,
     ],
-    ['data-profile="family"', 'data-profile="new"', /server-context.*differs/],
+    [
+      (win) => win.replace('data-profile="family"', 'data-profile="new"'),
+      /server-context.*differs/,
+    ],
   ]) {
-    const changed = structuredClone(frames);
-    const frame = changed.find((item) => item.id === variantId);
-    assert.ok(frame.win.includes(from));
-    frame.win = frame.win.replace(from, to);
+    const changed = mutateFrame(list, "synthetic-draft", change);
     assert.throws(
-      () => checkWorkshopBaselines(changed, styles, manifest),
+      () => checkWorkshopBaselines(changed, styles, registry),
       expected,
     );
   }
 });
 
-test("approved label needs recorded owner decision and actual-render evidence", () => {
-  const changed = structuredClone(manifest);
-  changed.variants[variantId].layoutReview = "approved";
+test("approved state needs recorded evidence", () => {
+  const { list, registry } = syntheticFixture();
+  const noEvidence = structuredClone(registry);
+  delete noEvidence.variants["synthetic-approved"].approvalEvidence;
   assert.throws(
-    () => checkWorkshopBaselines(frames, styles, changed),
+    () => checkWorkshopBaselines(list, styles, noEvidence),
     /approval requires/,
   );
-});
 
-test("body changes are drafts, not mechanically validated visual design", () => {
-  const changed = structuredClone(frames);
-  const frame = changed.find((item) => item.id === variantId);
-  assert.ok(frame.win.includes("Обновляем"));
-  frame.win = frame.win.replace("Обновляем", "Получаем исходники");
-  const result = checkWorkshopBaselines(changed, styles, manifest);
-  assert.ok(result.pendingVisualReview.some((item) => item.id === variantId));
+  const noRender = structuredClone(registry);
+  delete noRender.variants["synthetic-approved"].renderEvidence;
+  assert.throws(
+    () => checkWorkshopBaselines(list, styles, noRender),
+    /approval requires/,
+  );
 });
