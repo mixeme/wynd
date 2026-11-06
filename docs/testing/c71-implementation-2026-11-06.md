@@ -19,6 +19,7 @@
 - Frontend Мастерской: `npm run test` — **12/12**, `npm run check` — 0 ошибок/предупреждений, build — успешно.
 - Web: `npm run check` — 0 ошибок/предупреждений; `npm test` — **452/452**, включая `StepList.test.ts`; production build — успешно.
 - `scripts\test-desktop.bat` на дереве C71 — **`[desktop] OK`**.
+- Полные ворота `scripts\test.bat` на `3da342df` — **`[test] OK`**: Go-тесты, web check/lint/test/build и production-сборки обоих окон. `lint` до этого отдельно поймал формат `StepList.test.ts`; файл выровнен и проверен.
 
 ## Границы
 
