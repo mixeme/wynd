@@ -138,6 +138,10 @@ func (s *Store) SessionStatus(ctx context.Context, sessionID, accountID string) 
 
 // WriteChunk appends bytes at offset (resume). Offset must match received_bytes.
 func (s *Store) WriteChunk(ctx context.Context, sessionID, accountID string, offset int64, r io.Reader) (int64, error) {
+	// Одна сессия — одна операция: чтение счётчика, запись .part и условный
+	// UPDATE не должны чередоваться с другим чанком или завершением (R1).
+	unlock := s.lockUploadSession(sessionID)
+	defer unlock()
 	sess, err := s.loadSession(ctx, sessionID, accountID)
 	if err != nil {
 		return 0, err
@@ -203,6 +207,10 @@ func (s *Store) CompleteSession(ctx context.Context, in CompleteSessionInput) (B
 	if in.SHA256 == "" {
 		return Blob{}, ErrInvalid
 	}
+	// Завершение читает .part, который может дописывать чанк: та же сессия —
+	// та же очередь (R1).
+	unlock := s.lockUploadSession(in.SessionID)
+	defer unlock()
 	sess, err := s.loadSession(ctx, in.SessionID, in.AccountID)
 	if err != nil {
 		return Blob{}, err
