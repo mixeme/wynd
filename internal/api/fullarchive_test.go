@@ -198,6 +198,28 @@ func TestFullArchiveLastByteRangeKeepsFile(t *testing.T) {
 	}
 }
 
+// R5: ранее выданная ссылка на архив не обходит включившуюся обязательную
+// оплату. Проверяются обе выдачи — готовый файл и поток.
+func TestFullArchiveLinksCheckPaywall(t *testing.T) {
+	srv, tok, circleID := fullArchiveCircle(t)
+	doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/full_archive", tok, map[string]any{})
+	waitFullStatus(t, srv, tok, circleID, "ready")
+	fileURL := fullLink(t, srv, tok, circleID)
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/full_archive/stream_link", tok, map[string]any{})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("ссылка на поток: %d %s", rec.Code, rec.Body.String())
+	}
+	streamURL := jsonStr(t, rec, "url")
+
+	enableSubscription(t, srv, adminToken(t, srv))
+	if rec := fetch(srv, fileURL, ""); rec.Code != http.StatusPaymentRequired {
+		t.Fatalf("готовый файл после включения оплаты: %d %s", rec.Code, rec.Body.String())
+	}
+	if rec := fetch(srv, streamURL, ""); rec.Code != http.StatusPaymentRequired {
+		t.Fatalf("поток после включения оплаты: %d %s", rec.Code, rec.Body.String())
+	}
+}
+
 // «Удалить архив, не скачивая» (6.27): файл стёрт, место освободилось.
 func TestFullArchiveRemoveByOwner(t *testing.T) {
 	srv, tok, circleID := fullArchiveCircle(t)

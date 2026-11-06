@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/archive"
+	"gitea.mixdep.ru/mix/wynd/internal/auth"
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 	"gitea.mixdep.ru/mix/wynd/internal/version"
 )
@@ -505,12 +506,39 @@ func (s *Server) issueFullLink(l fullLink, ttl time.Duration) (string, error) {
 	return token, nil
 }
 
-func (s *Server) validFullLink(ctx context.Context, link fullLink) bool {
+func (s *Server) validFullLink(ctx context.Context, link fullLink) error {
 	if err := s.Chronicle.RequireOwner(ctx, link.circleID, link.accountID); err != nil {
-		return false
+		return chronicle.ErrNotFound
+	}
+	// Ссылка выдана до включения обязательной оплаты и не должна обходить
+	// шлюз: доступ проверяется при каждом использовании (R5).
+	locked, err := s.Auth.PaymentRequired(ctx, link.accountID, time.Now().UTC())
+	if err != nil {
+		return err
+	}
+	if locked {
+		return auth.ErrPaymentRequired
 	}
 	scope, err := s.Chronicle.ArchiveScope(ctx, link.circleID)
-	return err == nil && scope.Revision == link.scopeRevision
+	if err != nil || scope.Revision != link.scopeRevision {
+		return chronicle.ErrNotFound
+	}
+	return nil
+}
+
+// requireFullLink проверяет ссылку и пишет отказ: 402 — включилась оплата,
+// 404 — владелец, ревизия или архив больше не годятся.
+func (s *Server) requireFullLink(w http.ResponseWriter, r *http.Request, link fullLink) bool {
+	err := s.validFullLink(r.Context(), link)
+	switch {
+	case err == nil:
+		return true
+	case errors.Is(err, auth.ErrPaymentRequired):
+		writeJSON(w, http.StatusPaymentRequired, map[string]string{"error": "payment_required"})
+	default:
+		writeDomainError(w, chronicle.ErrNotFound)
+	}
+	return false
 }
 
 // handleFullArchiveByLink отдаёт готовый файл — с докачкой (Range). Файл
@@ -524,8 +552,7 @@ func (s *Server) handleFullArchiveByLink(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	link := v.(fullLink)
-	if !s.validFullLink(r.Context(), link) {
-		writeDomainError(w, chronicle.ErrNotFound)
+	if !s.requireFullLink(w, r, link) {
 		return
 	}
 	a, err := s.Chronicle.GetFullArchive(r.Context(), link.archiveID)
@@ -548,8 +575,7 @@ func (s *Server) handleFullArchiveByLink(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		name = "circle"
 	}
-	if a.ScopeRevision != link.scopeRevision || !s.validFullLink(r.Context(), link) {
-		writeDomainError(w, chronicle.ErrNotFound)
+	if a.ScopeRevision != link.scopeRevision || !s.requireFullLink(w, r, link) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/octet-stream")
@@ -574,8 +600,7 @@ func (s *Server) handleFullArchiveStream(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	link := v.(fullLink)
-	if !s.validFullLink(r.Context(), link) {
-		writeDomainError(w, chronicle.ErrNotFound)
+	if !s.requireFullLink(w, r, link) {
 		return
 	}
 	// Запись архива с удалением: поток не дошёл — сбой, и владелец видит
@@ -593,8 +618,7 @@ func (s *Server) handleFullArchiveStream(w http.ResponseWriter, r *http.Request)
 		writeDomainError(w, err)
 		return
 	}
-	if in.Data.ArchiveScope.Revision != link.scopeRevision || !s.validFullLink(r.Context(), link) {
-		writeDomainError(w, chronicle.ErrNotFound)
+	if in.Data.ArchiveScope.Revision != link.scopeRevision || !s.requireFullLink(w, r, link) {
 		return
 	}
 	if link.archiveID != "" {
@@ -614,8 +638,7 @@ func (s *Server) handleFullArchiveStream(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	}
-	if !s.validFullLink(r.Context(), link) {
-		writeDomainError(w, chronicle.ErrNotFound)
+	if !s.requireFullLink(w, r, link) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/octet-stream")
