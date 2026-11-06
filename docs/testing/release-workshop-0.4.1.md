@@ -29,9 +29,9 @@
 
 ## Тег, CI и черновик
 
-- Тег **`workshop-v0.4.1`** указывает на `c712ac59845637a3926b3dd39c137a2e9a82981f`; `main` — `0498379f`.
+- Тег **`workshop-v0.4.1`** указывает на `c712ac59845637a3926b3dd39c137a2e9a82981f`; протокол и остальные документы лежат в `main` после него.
 - GitHub Actions [Workshop run 42212901641](https://github.com/mixeme/wynd/actions/runs/42212901641) — успешно, 4 мин 14 с.
-- Черновик: <https://github.com/mixeme/wynd/releases/tag/untagged-21e33c24ed65dd90ab1a>. Файлы: `wynd-workshop.exe` (17 908 224 байт) и сумма; SHA-256 exe из CI — `21e06f02a7a3c10408e29d7de920a10899be0a64780160ab0df840e11ac233ac`.
+- Черновик: <https://github.com/mixeme/wynd/releases/tag/untagged-0e408d11660934394b35>. Файлы: `wynd-workshop.exe` (17 908 224 байт) и сумма; SHA-256 exe из CI — `21e06f02a7a3c10408e29d7de920a10899be0a64780160ab0df840e11ac233ac`.
 - Удостоверение сборки проверено: `gh attestation verify` — успешно, коммит `c712ac59`, тег `workshop-v0.4.1`.
 - Текст выпуска заполнен разделом 0.4.1 из `whatsnew.md`.
 - Подпись `wynd-workshop.exe.sig` в черновике пока отсутствует. Публикация не выполнялась.
