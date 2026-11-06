@@ -97,6 +97,9 @@ func (s *Server) handleCreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	replayed := s.Chronicle.ClientIDSeen(r.Context(), circleID, strings.TrimSpace(body.ClientID), false)
+	if !replayed && !s.requireWriteAccess(w, r, circleID, sess.AccountID) {
+		return
+	}
 	media, err := parseMediaInput(body.Media)
 	if err != nil {
 		writeError(w, chronicle.ErrInvalid)
@@ -174,6 +177,9 @@ func (s *Server) handleEditPost(w http.ResponseWriter, r *http.Request) {
 	}
 	body, ok := bindJSON[editPostBody](w, r)
 	if !ok {
+		return
+	}
+	if !s.requireWriteAccess(w, r, circleID, sess.AccountID) {
 		return
 	}
 	now := time.Now().UTC()
@@ -267,6 +273,9 @@ func (s *Server) handleCreateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	replayed := s.Chronicle.ClientIDSeen(r.Context(), circleID, strings.TrimSpace(body.ClientID), true)
+	if !replayed && !s.requireWriteAccess(w, r, circleID, sess.AccountID) {
+		return
+	}
 	media, err := parseCommentMedia(body.Media)
 	if err != nil {
 		writeError(w, chronicle.ErrInvalid)
@@ -323,6 +332,9 @@ func (s *Server) handleEditComment(w http.ResponseWriter, r *http.Request) {
 	}
 	body, ok := bindJSON[editCommentBody](w, r)
 	if !ok {
+		return
+	}
+	if !s.requireWriteAccess(w, r, circleID, sess.AccountID) {
 		return
 	}
 	now := time.Now().UTC()
@@ -563,14 +575,24 @@ func (s *Server) handleClearDayCover(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
+// requireWriteAccess — доступ к кругу до чтения его данных. Вложения и
+// комментарии проверяются после: чужой круг не должен отличаться ответом от
+// несуществующего (порядок прежних обработчиков).
+func (s *Server) requireWriteAccess(w http.ResponseWriter, r *http.Request, circleID, accountID string) bool {
+	if err := s.Chronicle.RequireReader(r.Context(), circleID, accountID); err != nil {
+		writeDomainError(w, err)
+		return false
+	}
+	return true
+}
+
 // reserveWriteSpace — есть ли в круге и на сервере место под запись (C42).
 // Сначала доступ: про квоту чужого круга ответ не рассказывает. Стоимость
 // считается по имени и роду автора — теми же формулами, что у триггеров
 // (R6). Место удерживается резервацией до конца операции (R3): проверка и
 // запись — одно сериализуемое действие, а не два независимых чтения.
 func (s *Server) reserveWriteSpace(w http.ResponseWriter, r *http.Request, circleID, accountID string, cost func(name string, gender chronicle.Gender) (instanceBytes, circleBytes int64)) (*blob.Reservation, bool) {
-	if err := s.Chronicle.RequireReader(r.Context(), circleID, accountID); err != nil {
-		writeDomainError(w, err)
+	if !s.requireWriteAccess(w, r, circleID, accountID) {
 		return nil, false
 	}
 	name, gender, err := s.Chronicle.WriterText(r.Context(), circleID, accountID)
