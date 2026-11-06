@@ -198,7 +198,6 @@
 		wrong = false;
 		signError = '';
 		signSteps = [];
-		void tick().then(() => body?.scrollTo({ top: 0 }));
 		try {
 			const res = await backend().SignRelease(checkId, tag, request, pass);
 			if (!requests.isCurrentSign(originalCheckRequest, request)) return;
@@ -295,7 +294,7 @@
 			</Notice>
 			{#if createError}<Notice tone="bad" alert>{createError}</Notice>{/if}
 			<FootBar>
-				<Button variant={canCreate ? 'colored' : 'off'} loading={creating} onclick={() => void create()}>Создать ключ</Button>
+				<Button variant={canCreate ? 'colored' : 'off'} loading={creating} loadingLabel="Создаём…" onclick={() => void create()}>Создать ключ</Button>
 			</FootBar>
 		{:else if screen === 'list' && st}
 			<!-- Кадр 12б. -->
@@ -397,7 +396,7 @@
 				{/if}
 				{#if signError}<Notice tone="bad" alert>{signError}</Notice>{/if}
 				<FootBar>
-					<Button variant={pass && check && !checking ? 'colored' : 'off'} disabled={checking || !check || !pass} loading={signing} onclick={() => void signRelease()}>
+					<Button variant={pass && check && !checking ? 'colored' : 'off'} disabled={checking || !check || !pass} loading={signing} loadingLabel="Подписываем…" onclick={() => void signRelease()}>
 						{check?.draft && check.notes ? 'Подписать и опубликовать' : 'Подписать'}
 					</Button>
 					<Button variant="ghost" disabled={checking || signing} onclick={toList}>К выпускам</Button>
@@ -414,7 +413,7 @@
 			{#if wrong}<p class="ins-note" role="alert">Пароль не подошёл</p>{/if}
 			{#if signError}<Notice tone="bad" alert>{signError}</Notice>{/if}
 			<FootBar>
-				<Button variant={pass ? 'colored' : 'off'} loading={signing} onclick={() => void signFile()}>Подписать</Button>
+				<Button variant={pass ? 'colored' : 'off'} loading={signing} loadingLabel="Подписываем…" onclick={() => void signFile()}>Подписать</Button>
 				<Button variant="ghost" disabled={signing} onclick={toList}>Назад</Button>
 			</FootBar>
 		{:else if screen === 'filedone'}
