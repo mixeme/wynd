@@ -79,7 +79,7 @@
 | --- | --- | --- |
 | R1 | `bb7d6c77` | `TestStaleChunkKeepsUploadCompletable` — управляемое чередование |
 | R2 | `efee4b8e` | `TestFullArchiveLastByteRangeKeepsFile`, `TestFullArchiveBuildDownloadAndResume` |
-| R3 | `c3e351c8` | `TestConcurrentTextWritesRespectQuota` — 24 параллельных POST |
+| R3 | `c3e351c8`, `80b2b0dd` | `TestConcurrentTextWritesRespectQuota` — 24 параллельных POST; доступ к кругу проверяется до чтения вложений |
 | R4, R6 | `39f8f50b` | `TestTextCostMatchesTriggers`, `TestReviveTextBytesMatchesInsert`, `TestExactTextCostFitsQuota`, `TestReviveCountsArchiveTextAgainstQuota` |
 | R5 | `f2246816` | `TestFullArchiveLinksCheckPaywall` — файл и поток |
 | R7 | `1a2eff74` | `node --test docs/visual/workshop-baseline-guard.test.mjs` — 5/5 |
