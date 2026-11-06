@@ -9,7 +9,7 @@
 		variant = 'default',
 		disabled = false,
 		loading = false,
-		loadingLabel = '…',
+		loadingLabel = '',
 		keepFocus = false,
 		class: className = '',
 		style = ''
@@ -47,7 +47,7 @@
 	onmousedown={keepFocus ? (e) => e.preventDefault() : undefined}
 	{onclick}
 >
-	{#if loading}
+	{#if loading && loadingLabel}
 		{loadingLabel}
 	{:else}
 		{@render children()}

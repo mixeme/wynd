@@ -34,7 +34,7 @@ describe('Button', () => {
 		unmount(instance);
 	});
 
-	it('loading blocks click', () => {
+	it('loading blocks click and keeps its label when there is no busy label', () => {
 		const onclick = vi.fn();
 		const target = document.createElement('div');
 		const instance = mount(Button, {
@@ -44,7 +44,10 @@ describe('Button', () => {
 		const btn = target.querySelector('button');
 		expect(btn?.disabled).toBe(true);
 		expect(btn?.classList.contains('off')).toBe(true);
-		expect(btn?.textContent).toBe('…');
+		// Без loadingLabel кнопка не превращается в «…»: действие остаётся
+		// названным, пока идёт работа.
+		expect(btn?.textContent).toBe('Click');
+		expect(btn?.getAttribute('aria-busy')).toBe('true');
 		btn?.click();
 		expect(onclick).not.toHaveBeenCalled();
 		unmount(instance);
