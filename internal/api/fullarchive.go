@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -514,9 +513,10 @@ func (s *Server) validFullLink(ctx context.Context, link fullLink) bool {
 	return err == nil && scope.Revision == link.scopeRevision
 }
 
-// handleFullArchiveByLink отдаёт готовый файл — с докачкой (Range). Дошёл
-// последний байт — файл стирается: «скачал» — когда до устройства дошёл
-// конец файла (6.27), оборванное скачивание файл не трогает.
+// handleFullArchiveByLink отдаёт готовый файл — с докачкой (Range). Файл
+// стирается только после полного ответа 200 OK: ответ 206 — фрагмент, даже
+// если он заканчивается последним байтом (R2). Оборванное или частичное
+// скачивание файл не трогает; докачка продолжается по той же ссылке.
 func (s *Server) handleFullArchiveByLink(w http.ResponseWriter, r *http.Request) {
 	v, ok := s.fullLinks.Load(r.PathValue("token"))
 	if !ok || time.Now().After(v.(fullLink).expires) || v.(fullLink).stream {
@@ -848,8 +848,7 @@ func (s *Server) RecoverFullArchives(ctx context.Context) {
 	}
 }
 
-// rangeRecorder запоминает, что ушло клиенту: дошёл ли ответ (весь файл или
-// его последний кусок по Range) до последнего байта.
+// rangeRecorder запоминает, что ушло клиенту: дошёл ли ответ целиком.
 type rangeRecorder struct {
 	http.ResponseWriter
 	status  int
@@ -870,20 +869,12 @@ func (d *rangeRecorder) Write(p []byte) (int, error) {
 	return n, err
 }
 
+// reachedEnd — весь файл ушёл одним полным ответом 200 OK. Ответ 206 —
+// фрагмент, даже если его последний байт совпал с концом файла: по нему
+// нельзя судить, что клиент получил остальное (R2). Завершать докачку
+// удалением можно было бы только по покрытию всех диапазонов ссылки.
 func (d *rangeRecorder) reachedEnd(size int64) bool {
-	switch d.status {
-	case http.StatusOK:
-		return d.written == size
-	case http.StatusPartialContent:
-		// «bytes A-B/size»: кусок кончается последним байтом и ушёл весь.
-		var start, end, total int64
-		cr := d.Header().Get("Content-Range")
-		if _, err := fmt.Sscanf(cr, "bytes %d-%d/%d", &start, &end, &total); err != nil {
-			return false
-		}
-		return total == size && end == size-1 && d.written == end-start+1
-	}
-	return false
+	return d.status == http.StatusOK && d.written == size
 }
 
 // contentDisposition — имя файла для сохранения: кириллица по RFC 5987,

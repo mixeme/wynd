@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -146,6 +147,16 @@ func TestFullArchiveBuildDownloadAndResume(t *testing.T) {
 			t.Fatalf("в архиве нет %s: %v", want, names)
 		}
 	}
+	// Докачка по Range собрала весь файл, но это ещё не полное скачивание:
+	// последний фрагмент не удаляет архив (R2).
+	if st := readFullState(t, srv, tok, circleID); st.Archive.Status != "ready" {
+		t.Fatalf("докачка по Range стёрла архив: %+v", st.Archive)
+	}
+	// Полный ответ 200 — скачивание целиком: файл стирается.
+	full := fetch(srv, url, "")
+	if full.Code != http.StatusOK || int64(full.Body.Len()) != st.Archive.SizeBytes {
+		t.Fatalf("полное скачивание: %d, %d байт", full.Code, full.Body.Len())
+	}
 	st = readFullState(t, srv, tok, circleID)
 	if st.Archive.Status != "removed" || st.Archive.RemovedReason != "downloaded" {
 		t.Fatalf("после скачивания: %+v", st.Archive)
@@ -162,6 +173,29 @@ func TestFullArchiveBuildDownloadAndResume(t *testing.T) {
 	// Дождаться сборки: иначе она пишет файл, пока Go стирает TempDir, и на
 	// Windows уборка падала на открытом файле (план 46, C54).
 	waitFullStatus(t, srv, tok, circleID, "ready")
+}
+
+// R2: фрагмент, заканчивающийся последним байтом, — не полное скачивание.
+// Раньше Range одного байта удалял весь архив и освобождал место.
+func TestFullArchiveLastByteRangeKeepsFile(t *testing.T) {
+	srv, tok, circleID := fullArchiveCircle(t)
+	doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/full_archive", tok, map[string]any{})
+	st := waitFullStatus(t, srv, tok, circleID, "ready")
+	url := fullLink(t, srv, tok, circleID)
+
+	last := fetch(srv, url, fmt.Sprintf("bytes=%d-", st.Archive.SizeBytes-1))
+	if last.Code != http.StatusPartialContent || last.Body.Len() != 1 {
+		t.Fatalf("последний байт: %d, %d байт", last.Code, last.Body.Len())
+	}
+	if st := readFullState(t, srv, tok, circleID); st.Archive.Status != "ready" {
+		t.Fatalf("Range последнего байта стёр архив: %+v", st.Archive)
+	}
+	if rec := fetch(srv, url, ""); rec.Code != http.StatusOK {
+		t.Fatalf("полное скачивание после Range: %d", rec.Code)
+	}
+	if st := readFullState(t, srv, tok, circleID); st.Archive.Status != "removed" || st.Archive.RemovedReason != "downloaded" {
+		t.Fatalf("полное скачивание не удалило архив: %+v", st.Archive)
+	}
 }
 
 // «Удалить архив, не скачивая» (6.27): файл стёрт, место освободилось.
