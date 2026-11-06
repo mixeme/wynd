@@ -176,7 +176,7 @@ export function makeBackend(over: Fake): Fake {
 		OpenLink: () => undefined,
 		CopyText: () => true,
 		Disconnect: () => undefined,
-		Version: () => '0.4.0',
+		Version: () => '0.4.1',
 		ServerPage: () => page(),
 		Service: () => service(page()),
 		StartUpdate: () => progress(steps(['Скачаем', 'running'])),
