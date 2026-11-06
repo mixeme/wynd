@@ -328,6 +328,9 @@ body {
 	height: 5px;
 	background: var(--line);
 }
+/* Только отступ: последняя строка шагов не рисует свою черту — единственная
+   линия над действиями принадлежит .ins-foot::before (MarkRow уже снимает
+   border-bottom у последнего элемента). */
 .ins-win.ins-servers .ins-stage-steps .ins-row {
 	padding: 9px 0;
 }

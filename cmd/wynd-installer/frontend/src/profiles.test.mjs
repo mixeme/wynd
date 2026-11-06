@@ -419,6 +419,18 @@ test('all gallery scenarios use the current compiled window without remote serve
 					'last pult action must not add a second rule under the footer separator'
 				);
 			}
+			// Один разделитель на экран: последняя строка любого списка шагов не
+			// рисует свою черту — её рисует только .ins-foot::before. Проверяем все
+			// сцены галереи, а не только обновление.
+			for (const list of ui.dom.window.document.querySelectorAll('.ins-stage-steps')) {
+				const rows = [...list.children].filter((e) => e.classList.contains('ins-row'));
+				if (!rows.length) continue;
+				assert.equal(
+					ui.dom.window.getComputedStyle(rows[rows.length - 1]).borderBottomWidth,
+					'0px',
+					`${scene.name}: last step must not draw a second rule under the footer`
+				);
+			}
 		} catch (e) {
 			errors.push(`${scene.name}: ${e.message}`);
 		} finally {
