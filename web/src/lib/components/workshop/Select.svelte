@@ -115,7 +115,6 @@
 <div class="ins-select" bind:this={root}>
 	<button
 		type="button"
-		class="fld"
 		bind:this={trigger}
 		{disabled}
 		aria-haspopup="listbox"
