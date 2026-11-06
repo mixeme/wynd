@@ -10,6 +10,8 @@
 		title: string;
 		status: 'pending' | 'running' | 'done' | 'failed';
 		note?: string;
+		latest?: string;
+		latest_note?: string;
 	};
 
 	let {
@@ -42,6 +44,19 @@
 			dim={step.status === 'pending'}
 		>
 			{step.title}{#if step.note}&nbsp;<span class="ins-dim">— {step.note}</span>{/if}
+			{#if step.latest}<div class="ins-step-latest ins-mono">{step.latest}</div>{/if}
+			{#if step.latest_note}<div class="ins-dim ins-step-note">{step.latest_note}</div>{/if}
 		</MarkRow>
 	{/each}
 </MarkRows>
+
+<style>
+	.ins-step-latest {
+		color: var(--warn);
+		font-weight: 600;
+		overflow-wrap: anywhere;
+	}
+	.ins-step-note {
+		margin-top: 2px;
+	}
+</style>

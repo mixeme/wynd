@@ -855,6 +855,13 @@
 			.map((e) => ('$ ' + e.command + '\n' + e.output).trimEnd())
 			.join('\n\n')
 	);
+	// C71: в раскрытии — журнал сборки текущей операции, а не все команды.
+	const buildLogText = $derived(
+		(progress?.log ?? [])
+			.filter((e) => e.command.includes('docker build'))
+			.map((e) => ('$ ' + e.command + '\n' + e.output).trimEnd())
+			.join('\n\n')
+	);
 </script>
 
 {#snippet removeBox(yes: string, site: string)}
@@ -1286,6 +1293,7 @@
 		<!-- Кадр 7д: после остановки — вернуть прежнюю; раньше сайт работает, только повторить. -->
 		{@const stopped = ['start', 'check'].includes(progress.failure.step)}
 		<h2>{progress.failure.message}</h2>
+		<StepList class="ins-stage-steps" steps={progress?.steps ?? []} />
 		{#if progress.failure.advice}<Notice>{progress.failure.advice}</Notice>{/if}
 		{#if stopped}
 			<p class="ins-sub mt">
@@ -1316,23 +1324,27 @@
 				<Button variant="ghost" onclick={() => void attempt(() => toServer())}>К серверу</Button>
 			{/if}
 			<TextButton class="link under ins-push" onclick={() => (showLog = !showLog)}
-				>подробности</TextButton
+				>{showLog
+					? 'Скрыть вывод сборки'
+					: progress.failure.step === 'image'
+						? 'Полный вывод сборки'
+						: 'подробности'}</TextButton
 			>
 		</FootBar>
 		{#if showLog}
-			<CommandLog text={logText} />
+			<CommandLog text={buildLogText || logText} />
 		{/if}
 	{:else if screen === 'update'}
 		<h2>Обновляем</h2>
-		<StepList meter class="ins-stage-steps" steps={progress?.steps ?? []} />
+		<StepList class="ins-stage-steps" steps={progress?.steps ?? []} />
 		<FootBar>
 			<TextButton class="link under" onclick={() => (showLog = !showLog)}>
-				показать, что выполняется
+				{showLog ? 'Скрыть вывод сборки' : buildUpdate ? 'Полный вывод сборки' : 'показать, что выполняется'}
 			</TextButton>
 			<span class="ins-dim ins-push">Окно можно свернуть</span>
 		</FootBar>
 		{#if showLog}
-			<CommandLog text={logText} />
+			<CommandLog text={buildLogText || logText} />
 		{/if}
 	{:else if screen === 'udone'}
 		<!-- Кадр 7г. -->

@@ -1,6 +1,7 @@
 package installer
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"crypto/tls"
@@ -127,6 +128,10 @@ type StepState struct {
 	Status StepStatus `json:"status"`
 	// Note — что происходит прямо сейчас: «ждём ответа Let's Encrypt».
 	Note string `json:"note,omitempty"`
+	// Latest — последняя непустая строка вывода сборки (C71).
+	Latest string `json:"latest,omitempty"`
+	// LatestNote — когда эта строка пришла: «Последнее сообщение — сейчас».
+	LatestNote string `json:"latest_note,omitempty"`
 }
 
 // LogEntry — команда и её вывод, для «показать, что выполняется».
@@ -198,8 +203,14 @@ type Run struct {
 	report func()
 }
 
-// maxLogOutput — сколько вывода одной команды держим для окна.
-const maxLogOutput = 8 << 10
+// maxLogOutput — сколько вывода одной команды держим для окна. Это не
+// безграничный буфер: полный вывод сборки обычно меньше, а потерянное начало
+// явно помечается (C71).
+const maxLogOutput = 256 << 10
+
+// buildQuietAfter — через сколько секунд без новых строк показывать, что
+// сборка молчит, сохраняя последнюю строку (C71.2).
+const buildQuietAfter = 10 * time.Second
 
 func (r *Run) record(command, output string) {
 	r.mu.Lock()
@@ -208,10 +219,11 @@ func (r *Run) record(command, output string) {
 	r.report()
 }
 
-// logOutput — хвост вывода для окна: последние maxLogOutput байт.
+// logOutput — хвост вывода для окна. Если вывод не влез, начало помечено:
+// окно не выдаёт хвост за полный журнал.
 func logOutput(output string) string {
 	if len(output) > maxLogOutput {
-		output = "…\n" + output[len(output)-maxLogOutput:]
+		output = "… (начало вывода не сохранено; показаны последние 256 КБ)\n" + output[len(output)-maxLogOutput:]
 	}
 	return strings.TrimRight(output, "\n")
 }
@@ -220,23 +232,51 @@ func logOutput(output string) string {
 const liveReport = 400 * time.Millisecond
 
 // liveLog — строка журнала идущей команды: встаёт сразу, вывод дописывается
-// по ходу (раньше команда попадала в журнал, только когда кончалась).
+// по ходу. Для сборки дополнительно ведёт последнюю непустую строку и её
+// давность — это C71.1 и C71.2.
 type liveLog struct {
 	r    *Run
 	idx  int
-	mu   sync.Mutex
-	tail []byte
-	last time.Time
+	step int
+	// track — показывать последнюю строку сборки; обычные команды не трогаем.
+	track bool
+
+	mu       sync.Mutex
+	tail     []byte
+	line     []byte
+	latest   string
+	latestAt time.Time
+	last     time.Time
+	done     chan struct{}
+	stopOnce sync.Once
 }
 
 // begin ставит команду в журнал до запуска.
 func (r *Run) begin(command string) *liveLog {
+	return r.beginMode(command, false)
+}
+
+// beginTracked — команда сборки: её последняя строка идёт в шаг.
+func (r *Run) beginTracked(command string) *liveLog {
+	return r.beginMode(command, true)
+}
+
+func (r *Run) beginMode(command string, track bool) *liveLog {
 	r.mu.Lock()
 	r.log = append(r.log, LogEntry{Command: strings.TrimSpace(command)})
 	idx := len(r.log) - 1
+	step := r.current
 	r.mu.Unlock()
+	l := &liveLog{
+		r: r, idx: idx, step: step, track: track,
+		last: time.Now(), latestAt: time.Now(),
+	}
+	if track {
+		l.done = make(chan struct{})
+		go l.watchQuiet()
+	}
 	r.report()
-	return &liveLog{r: r, idx: idx, last: time.Now()}
+	return l
 }
 
 func (l *liveLog) Write(p []byte) (int, error) {
@@ -245,12 +285,35 @@ func (l *liveLog) Write(p []byte) (int, error) {
 	if extra := len(l.tail) - maxLogOutput; extra > 0 {
 		l.tail = append([]byte(nil), l.tail[extra:]...)
 	}
+	changed := false
+	if l.track {
+		l.line = append(l.line, p...)
+		for {
+			i := bytes.IndexByte(l.line, '\n')
+			if j := bytes.IndexByte(l.line, '\r'); j >= 0 && (i < 0 || j < i) {
+				i = j
+			}
+			if i < 0 {
+				break
+			}
+			if text := cleanLine(string(l.line[:i])); text != "" {
+				l.latest, l.latestAt, changed = text, time.Now(), true
+			}
+			l.line = append([]byte(nil), l.line[i+1:]...)
+		}
+		if len(l.line) > maxLogOutput {
+			l.line = append([]byte(nil), l.line[len(l.line)-maxLogOutput:]...)
+		}
+	}
 	due := time.Since(l.last) >= liveReport
 	if due {
 		l.last = time.Now()
 	}
 	text := string(l.tail)
 	l.mu.Unlock()
+	if l.track && changed && due {
+		l.publishLatest()
+	}
 	if due {
 		l.r.mu.Lock()
 		l.r.log[l.idx].Output = strings.TrimRight(text, "\n")
@@ -260,12 +323,139 @@ func (l *liveLog) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-// finish кладёт в строку весь вывод, как его вернула команда.
+// publishLatest переносит последнюю строку сборки в шаг. Отчёт окну — только
+// когда строка или подпись изменились.
+func (l *liveLog) publishLatest() {
+	l.mu.Lock()
+	if !l.track || l.latest == "" {
+		l.mu.Unlock()
+		return
+	}
+	latest, at := l.latest, l.latestAt
+	l.mu.Unlock()
+	note := latestNote(time.Since(at))
+	l.r.mu.Lock()
+	st := &l.r.steps[l.step]
+	changed := st.Latest != latest || st.LatestNote != note
+	st.Latest, st.LatestNote = latest, note
+	l.r.mu.Unlock()
+	if changed {
+		l.r.report()
+	}
+}
+
+// watchQuiet обновляет «последняя строка — N назад», пока команда идёт.
+func (l *liveLog) watchQuiet() {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-l.done:
+			return
+		case <-ticker.C:
+			l.publishLatest()
+		}
+	}
+}
+
+// cleanLine убирает ANSI, CR, управляющие символы и пустые края.
+func cleanLine(s string) string {
+	var b strings.Builder
+	escape, csi := false, false
+	for _, r := range s {
+		if escape {
+			if r == '[' {
+				csi = true
+			}
+			escape = false
+			continue
+		}
+		if csi {
+			if r >= '@' && r <= '~' {
+				csi = false
+			}
+			continue
+		}
+		if r == 0x1b {
+			escape = true
+			continue
+		}
+		if r < 32 || r == 0x7f {
+			continue
+		}
+		b.WriteRune(r)
+	}
+	return strings.TrimSpace(b.String())
+}
+
+// latestNote — слова под последней строкой. Секунды не мельтешат: до минуты
+// одна формулировка, дальше — минуты.
+func latestNote(d time.Duration) string {
+	if d < buildQuietAfter {
+		return "Последнее сообщение — сейчас"
+	}
+	if d < time.Minute {
+		return "Последняя строка вывода — меньше минуты назад"
+	}
+	mins := int(d / time.Minute)
+	word := "минут"
+	switch {
+	case mins%10 == 1 && mins%100 != 11:
+		word = "минуту"
+	case mins%10 >= 2 && mins%10 <= 4 && (mins%100 < 10 || mins%100 >= 20):
+		word = "минуты"
+	}
+	return fmt.Sprintf("Последняя строка вывода — %d %s назад", mins, word)
+}
+
+// finish закрывает живой журнал, сохраняет последнюю строку и полный вывод
+// (в пределах лимита). Ошибка сборки остаётся в строке шага.
 func (l *liveLog) finish(output string) {
+	l.stopOnce.Do(func() {
+		if l.done != nil {
+			close(l.done)
+		}
+	})
+	if l.track {
+		l.mu.Lock()
+		if tail := cleanLine(string(l.line)); tail != "" {
+			l.latest, l.latestAt = tail, time.Now()
+		}
+		if last := lastLine(output); last != "" {
+			l.latest, l.latestAt = last, time.Now()
+		}
+		l.line = nil
+		l.mu.Unlock()
+		l.publishLatest()
+	}
 	l.r.mu.Lock()
 	l.r.log[l.idx].Output = logOutput(output)
 	l.r.mu.Unlock()
 	l.r.report()
+}
+
+// appendLine дописывает строку в журнал команды, не меняя последнюю строку
+// вывода: код ошибки — отдельная служебная строка.
+func (l *liveLog) appendLine(line string) {
+	l.r.mu.Lock()
+	out := l.r.log[l.idx].Output
+	if out != "" {
+		out += "\n"
+	}
+	l.r.log[l.idx].Output = logOutput(out + line)
+	l.r.mu.Unlock()
+	l.r.report()
+}
+
+// lastLine — последняя непустая строка готового вывода.
+func lastLine(output string) string {
+	lines := strings.Split(strings.ReplaceAll(output, "\r\n", "\n"), "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		if line := cleanLine(lines[i]); line != "" {
+			return line
+		}
+	}
+	return ""
 }
 
 // note пишет под текущим шагом, что сейчас происходит.
@@ -284,6 +474,18 @@ func (r *Run) sh(ctx context.Context, command string, timeout time.Duration) (Ex
 	live := r.begin(command)
 	res, err := r.sess.ExecWatch(ctx, command, nil, timeout, live)
 	live.finish(res.Output)
+	return res, err
+}
+
+// shTracked — как sh, но ведёт последнюю строку сборки для C71 и дописывает
+// в журнал код ошибки.
+func (r *Run) shTracked(ctx context.Context, command string, timeout time.Duration) (ExecResult, error) {
+	live := r.beginTracked(command)
+	res, err := r.sess.ExecWatch(ctx, command, nil, timeout, live)
+	live.finish(res.Output)
+	if res.Code != 0 {
+		live.appendLine(fmt.Sprintf("Сборка завершилась с кодом %d", res.Code))
+	}
 	return res, err
 }
 
@@ -404,6 +606,10 @@ func runSteps(ctx context.Context, sess *Session, spec Spec, list []step, report
 		r.steps[i].Status = status
 		if status != StepRunning {
 			r.steps[i].Note = ""
+		}
+		if status == StepDone {
+			r.steps[i].Latest = ""
+			r.steps[i].LatestNote = ""
 		}
 		r.mu.Unlock()
 		r.report()
@@ -615,9 +821,13 @@ func sleep(ctx context.Context, d time.Duration) error {
 func imageStep(spec Spec) step {
 	tag := spec.imageTag()
 	present := "docker image inspect " + tag + " >/dev/null 2>&1"
+	title := "Wynd " + spec.Version
+	if _, build := spec.Image.(SourceImage); build {
+		title = "Собираем образ Wynd"
+	}
 	return step{
 		id:    "image",
-		title: "Wynd " + spec.Version,
+		title: title,
 		done:  func(ctx context.Context, r *Run) (bool, error) { return r.ok(ctx, present) },
 		do: func(ctx context.Context, r *Run) error {
 			if spec.Image == nil {
@@ -950,7 +1160,7 @@ fi
 git -c advice.detachedHead=false clone -q --depth 1 --branch ` + shQuote("v"+version) + ` ` + shQuote(repo) + ` ` + sourceDir + ` 2>&1 || exit ` + fmt.Sprint(exitNoTag) + `
 cd ` + sourceDir + `
 ` + markCacheOurs + `
-docker build -q -f deploy/docker/Dockerfile --build-arg VERSION=` + shQuote(version) + ` -t ` + tag + ` . 2>&1
+docker build --progress=plain -f deploy/docker/Dockerfile --build-arg VERSION=` + shQuote(version) + ` -t ` + tag + ` . 2>&1
 ` + pruneCacheOurs
 }
 
@@ -962,8 +1172,7 @@ func (s SourceImage) Provide(ctx context.Context, r *Run, tag string) error {
 	if _, err := r.must(ctx, gitScript, packageTimeout); err != nil {
 		return err
 	}
-	r.note("сервер собирает Wynd из исходного кода — на маленьком сервере это минут десять")
-	res, err := r.sh(ctx, buildScript(s.Repo, version, tag), buildTimeout)
+	res, err := r.shTracked(ctx, buildScript(s.Repo, version, tag), buildTimeout)
 	if err != nil {
 		return err
 	}

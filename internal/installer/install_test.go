@@ -793,6 +793,7 @@ func TestInstallFromSource(t *testing.T) {
 		"flock 9",
 		"--branch 'v9.9.9' 'https://example.org/wynd' " + sourceDir,
 		"trap cleanup EXIT",
+		"--progress=plain",
 		"--build-arg VERSION='9.9.9' -t wynd:9.9.9 .",
 		// Кэш убираем, только если до сборки он был пуст.
 		"Build Cache=//p')\" = 0 ]; then : > " + buildCacheOurs,
@@ -861,6 +862,15 @@ func TestInstallFromSourceExplainsOutOfMemory(t *testing.T) {
 	res := Install(context.Background(), sess, sourceSpec(t), nil)
 	if res.Failure == nil || res.Failure.Step != "image" || !strings.Contains(res.Failure.Message, "не хватило памяти") {
 		t.Fatalf("ждали отказ про память: %+v", res.Failure)
+	}
+	var image StepState
+	for _, st := range res.Steps {
+		if st.ID == "image" {
+			image = st
+		}
+	}
+	if !strings.Contains(image.Latest, "137") || image.LatestNote == "" {
+		t.Fatalf("последняя строка сборки потерялась: %+v", image)
 	}
 }
 

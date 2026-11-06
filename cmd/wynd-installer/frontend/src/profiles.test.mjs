@@ -263,7 +263,8 @@ test('background update remains attached to its profile across server and archiv
 	assert.equal(forget, undefined, 'busy operation keeps only the approved operation footer');
 	assert.equal(ui.elements('.ins-connection-badge')[0].textContent, 'Подключён');
 	assert.ok(ui.elements('.ins-server-entry')[0].textContent.includes('Обновление'));
-	assert.equal(ui.elements('.meter').length, 1);
+	// C71: полосы с выдуманным процентом нет — только этапы и последняя строка.
+	assert.equal(ui.elements('.meter').length, 0);
 	await ui.click('Подключаться при запуске');
 	assert.equal(ui.stored()[0].auto_connect, false);
 });
