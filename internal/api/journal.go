@@ -96,25 +96,15 @@ func (s *Server) handleCreatePost(w http.ResponseWriter, r *http.Request) {
 		writeError(w, chronicle.ErrInvalid)
 		return
 	}
-	if !s.Chronicle.ClientIDSeen(r.Context(), circleID, strings.TrimSpace(body.ClientID), false) &&
-		!s.requireWriteSpace(w, r, circleID, sess.AccountID, blob.TextCost(body.Body)) {
-		return
-	}
-	now := time.Now().UTC()
-	var captured *time.Time
-	if body.CapturedAt != nil {
-		t, err := time.Parse(time.RFC3339, *body.CapturedAt)
-		if err != nil {
-			writeError(w, chronicle.ErrInvalid)
-			return
-		}
-		captured = &t
-	}
+	replayed := s.Chronicle.ClientIDSeen(r.Context(), circleID, strings.TrimSpace(body.ClientID), false)
 	media, err := parseMediaInput(body.Media)
 	if err != nil {
 		writeError(w, chronicle.ErrInvalid)
 		return
 	}
+	// Файлы уже загружены и в потолке сервера учтены; новая для круга часть —
+	// их вложения. Текст считается и на сервере, и в круге (C42).
+	var mediaBytes int64
 	if len(media) > 0 {
 		blobIDs := chronicle.MediaBlobIDs(media)
 		if err := s.Blobs.ValidateOwnedComplete(r.Context(), sess.AccountID, blobIDs); err != nil {
@@ -129,15 +119,28 @@ func (s *Server) handleCreatePost(w http.ResponseWriter, r *http.Request) {
 			writeDomainError(w, err)
 			return
 		}
-		total, err := s.Blobs.TotalBytesForBlobs(r.Context(), blobIDs)
+		if mediaBytes, err = s.Blobs.TotalBytesForBlobs(r.Context(), blobIDs); err != nil {
+			writeDomainError(w, err)
+			return
+		}
+	}
+	if !replayed {
+		textBytes := blob.TextCost(body.Body)
+		res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, textBytes, textBytes+mediaBytes)
+		if !ok {
+			return
+		}
+		defer s.releaseWriteSpace(res)
+	}
+	now := time.Now().UTC()
+	var captured *time.Time
+	if body.CapturedAt != nil {
+		t, err := time.Parse(time.RFC3339, *body.CapturedAt)
 		if err != nil {
-			writeDomainError(w, err)
+			writeError(w, chronicle.ErrInvalid)
 			return
 		}
-		if err := s.Blobs.CheckMediaQuota(r.Context(), circleID, total); err != nil {
-			writeDomainError(w, err)
-			return
-		}
+		captured = &t
 	}
 	post, err := s.createPostWithMedia(r.Context(), chronicle.PostInput{
 		CircleID: circleID, AccountID: sess.AccountID, Body: body.Body,
@@ -171,10 +174,6 @@ func (s *Server) handleEditPost(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	// Правка места не освобождает — в упёршемся круге её нет (C42).
-	if !s.requireWriteSpace(w, r, circleID, sess.AccountID, blob.TextCost(body.Body)) {
-		return
-	}
 	now := time.Now().UTC()
 	// media[] задаёт обложку сам (is_cover), поэтому пара с cover_blob_id —
 	// противоречивый запрос, а не два шага подряд (QLT-3).
@@ -182,8 +181,11 @@ func (s *Server) handleEditPost(w http.ResponseWriter, r *http.Request) {
 		writeError(w, chronicle.ErrInvalid)
 		return
 	}
+	var media []chronicle.MediaInput
+	var addedBytes int64
+	var err error
 	if body.Media != nil {
-		media, err := parseMediaInput(*body.Media)
+		media, err = parseMediaInput(*body.Media)
 		if err != nil {
 			writeError(w, chronicle.ErrInvalid)
 			return
@@ -192,6 +194,20 @@ func (s *Server) handleEditPost(w http.ResponseWriter, r *http.Request) {
 			writeError(w, chronicle.ErrInvalid)
 			return
 		}
+		// Правка места не освобождает: считаем текст и новые вложения вместе
+		// до записи, одной резервацией (C42, R3).
+		if addedBytes, err = s.postAddedMediaBytes(r.Context(), sess.AccountID, postID, media); err != nil {
+			writeDomainError(w, err)
+			return
+		}
+	}
+	textBytes := blob.TextCost(body.Body)
+	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, textBytes, textBytes+addedBytes)
+	if !ok {
+		return
+	}
+	defer s.releaseWriteSpace(res)
+	if body.Media != nil {
 		if err := s.editPostReplaceMedia(r.Context(), circleID, sess.AccountID, postID, body.Body, body.EntryDate, media, now); err != nil {
 			writeDomainError(w, err)
 			return
@@ -200,7 +216,7 @@ func (s *Server) handleEditPost(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 		return
 	}
-	err := s.Chronicle.EditPost(r.Context(), circleID, sess.AccountID, postID, body.Body, body.EntryDate, now)
+	err = s.Chronicle.EditPost(r.Context(), circleID, sess.AccountID, postID, body.Body, body.EntryDate, now)
 	if err != nil {
 		writeDomainError(w, err)
 		return
@@ -246,30 +262,31 @@ func (s *Server) handleCreateComment(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !s.Chronicle.ClientIDSeen(r.Context(), circleID, strings.TrimSpace(body.ClientID), true) &&
-		!s.requireWriteSpace(w, r, circleID, sess.AccountID, blob.TextCost(body.Body)) {
-		return
-	}
+	replayed := s.Chronicle.ClientIDSeen(r.Context(), circleID, strings.TrimSpace(body.ClientID), true)
 	media, err := parseCommentMedia(body.Media)
 	if err != nil {
 		writeError(w, chronicle.ErrInvalid)
 		return
 	}
+	var mediaBytes int64
 	if len(media) > 0 {
 		blobIDs := chronicle.MediaBlobIDs(media)
 		if err := s.Blobs.ValidateOwnedComplete(r.Context(), sess.AccountID, blobIDs); err != nil {
 			writeDomainError(w, err)
 			return
 		}
-		total, err := s.Blobs.TotalBytesForBlobs(r.Context(), blobIDs)
-		if err != nil {
+		if mediaBytes, err = s.Blobs.TotalBytesForBlobs(r.Context(), blobIDs); err != nil {
 			writeDomainError(w, err)
 			return
 		}
-		if err := s.Blobs.CheckMediaQuota(r.Context(), circleID, total); err != nil {
-			writeDomainError(w, err)
+	}
+	if !replayed {
+		textBytes := blob.TextCost(body.Body)
+		res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, textBytes, textBytes+mediaBytes)
+		if !ok {
 			return
 		}
+		defer s.releaseWriteSpace(res)
 	}
 	c, err := s.Chronicle.CreateComment(r.Context(), chronicle.CommentInput{
 		CircleID: circleID, AccountID: sess.AccountID, PostID: postID,
@@ -302,10 +319,29 @@ func (s *Server) handleEditComment(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !s.requireWriteSpace(w, r, circleID, sess.AccountID, blob.TextCost(body.Body)) {
+	now := time.Now().UTC()
+	var media []chronicle.MediaInput
+	var addedBytes int64
+	if body.Media != nil {
+		var err error
+		media, err = parseCommentMedia(*body.Media)
+		if err != nil {
+			writeError(w, chronicle.ErrInvalid)
+			return
+		}
+		// Новые файлы — свои и помещаются, как при создании комментария;
+		// прежние уже проверены и посчитаны.
+		if addedBytes, err = s.commentAddedMediaBytes(r.Context(), sess.AccountID, commentID, media); err != nil {
+			writeDomainError(w, err)
+			return
+		}
+	}
+	textBytes := blob.TextCost(body.Body)
+	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, textBytes, textBytes+addedBytes)
+	if !ok {
 		return
 	}
-	now := time.Now().UTC()
+	defer s.releaseWriteSpace(res)
 	if body.Media == nil {
 		if err := s.Chronicle.EditComment(r.Context(), circleID, sess.AccountID, commentID, body.Body, now); err != nil {
 			writeDomainError(w, err)
@@ -313,43 +349,6 @@ func (s *Server) handleEditComment(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 		return
-	}
-	media, err := parseCommentMedia(*body.Media)
-	if err != nil {
-		writeError(w, chronicle.ErrInvalid)
-		return
-	}
-	// Новые файлы — свои и помещаются, как при создании комментария; прежние
-	// уже проверены и посчитаны.
-	old, err := s.Chronicle.CommentMediaBlobIDs(r.Context(), commentID)
-	if err != nil {
-		writeDomainError(w, err)
-		return
-	}
-	oldSet := make(map[string]struct{}, len(old))
-	for _, id := range old {
-		oldSet[id] = struct{}{}
-	}
-	var added []string
-	for _, id := range chronicle.MediaBlobIDs(media) {
-		if _, ok := oldSet[id]; !ok {
-			added = append(added, id)
-		}
-	}
-	if len(added) > 0 {
-		if err := s.Blobs.ValidateOwnedComplete(r.Context(), sess.AccountID, added); err != nil {
-			writeDomainError(w, err)
-			return
-		}
-		total, err := s.Blobs.TotalBytesForBlobs(r.Context(), added)
-		if err != nil {
-			writeDomainError(w, err)
-			return
-		}
-		if err := s.Blobs.CheckMediaQuota(r.Context(), circleID, total); err != nil {
-			writeDomainError(w, err)
-			return
-		}
 	}
 	removed, err := s.Chronicle.EditCommentWithMedia(r.Context(), circleID, sess.AccountID, commentID, body.Body, media, now)
 	if err != nil {
@@ -393,9 +392,11 @@ func (s *Server) handleSetReaction(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !s.requireWriteSpace(w, r, circleID, sess.AccountID, blob.ReactionCost) {
+	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, blob.ReactionCost, blob.ReactionCost)
+	if !ok {
 		return
 	}
+	defer s.releaseWriteSpace(res)
 	rx, err := s.Chronicle.SetReaction(r.Context(), chronicle.ReactionInput{
 		CircleID: circleID, AccountID: sess.AccountID, PostID: postID,
 		Emoji: body.Emoji, Now: time.Now().UTC(),
@@ -416,9 +417,11 @@ func (s *Server) handleDeleteReaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Снять реакцию — тоже запись в журнал (решение владельца 2026-10-14, C42).
-	if !s.requireWriteSpace(w, r, circleID, sess.AccountID, blob.EventCost) {
+	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, blob.EventCost, blob.EventCost)
+	if !ok {
 		return
 	}
+	defer s.releaseWriteSpace(res)
 	mem, err := s.Chronicle.MembershipForAccount(r.Context(), circleID, sess.AccountID)
 	if err != nil {
 		writeDomainError(w, err)
@@ -448,9 +451,12 @@ func (s *Server) handleSetDayTitle(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !s.requireWriteSpace(w, r, circleID, sess.AccountID, blob.TextCost(body.Title)) {
+	titleBytes := blob.TextCost(body.Title)
+	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, titleBytes, titleBytes)
+	if !ok {
 		return
 	}
+	defer s.releaseWriteSpace(res)
 	err := s.Chronicle.SetDayTitle(r.Context(), chronicle.DayTitleInput{
 		CircleID: circleID, AccountID: sess.AccountID, EntryDate: entryDate,
 		Title: body.Title, Now: time.Now().UTC(),
@@ -469,9 +475,11 @@ func (s *Server) handleClearDayTitle(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !s.requireWriteSpace(w, r, circleID, sess.AccountID, blob.EventCost) {
+	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, blob.EventCost, blob.EventCost)
+	if !ok {
 		return
 	}
+	defer s.releaseWriteSpace(res)
 	err := s.Chronicle.ClearDayTitle(r.Context(), circleID, sess.AccountID, entryDate, time.Now().UTC())
 	if err != nil {
 		writeDomainError(w, err)
@@ -491,9 +499,11 @@ func (s *Server) handleSetDayCover(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !s.requireWriteSpace(w, r, circleID, sess.AccountID, blob.EventCost) {
+	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, blob.EventCost, blob.EventCost)
+	if !ok {
 		return
 	}
+	defer s.releaseWriteSpace(res)
 	err := s.Chronicle.SetDayCover(r.Context(), chronicle.DayCoverInput{
 		CircleID: circleID, AccountID: sess.AccountID, EntryDate: entryDate,
 		PostID: body.PostID, BlobID: body.BlobID, Now: time.Now().UTC(),
@@ -512,9 +522,11 @@ func (s *Server) handleClearDayCover(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !s.requireWriteSpace(w, r, circleID, sess.AccountID, blob.EventCost) {
+	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, blob.EventCost, blob.EventCost)
+	if !ok {
 		return
 	}
+	defer s.releaseWriteSpace(res)
 	err := s.Chronicle.ClearDayCover(r.Context(), circleID, sess.AccountID, entryDate, time.Now().UTC())
 	if err != nil {
 		writeDomainError(w, err)
@@ -523,19 +535,80 @@ func (s *Server) handleClearDayCover(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// requireWriteSpace — есть ли в круге и на сервере место под запись (C42).
-// Сначала доступ: про квоту чужого круга ответ не рассказывает. Удалять своё
-// можно и без места — эти пути сюда не ходят.
-func (s *Server) requireWriteSpace(w http.ResponseWriter, r *http.Request, circleID, accountID string, cost int64) bool {
+// reserveWriteSpace — есть ли в круге и на сервере место под запись (C42).
+// Сначала доступ: про квоту чужого круга ответ не рассказывает. Место
+// удерживается резервацией до конца операции (R3): проверка и запись — одно
+// сериализуемое действие, а не два независимых чтения.
+func (s *Server) reserveWriteSpace(w http.ResponseWriter, r *http.Request, circleID, accountID string, instanceBytes, circleBytes int64) (*blob.Reservation, bool) {
 	if err := s.Chronicle.RequireReader(r.Context(), circleID, accountID); err != nil {
 		writeDomainError(w, err)
-		return false
+		return nil, false
 	}
-	if err := s.Blobs.CheckWriteQuota(r.Context(), circleID, cost); err != nil {
+	res, err := s.Blobs.ReserveWrite(r.Context(), circleID, instanceBytes, circleBytes)
+	if err != nil {
 		writeDomainError(w, err)
-		return false
+		return nil, false
 	}
-	return true
+	return res, true
+}
+
+// releaseWriteSpace снимает удержание после записи или отказа. Ошибка не
+// меняет ответ: просроченная резервация перестаёт считаться сама.
+func (s *Server) releaseWriteSpace(res *blob.Reservation) {
+	if err := s.Blobs.ReleaseReservation(context.Background(), res); err != nil {
+		log.Printf("release quota reservation %s: %v", res.ID(), err)
+	}
+}
+
+// postAddedMediaBytes — новые вложения правки записи: проверены как свои и
+// посчитаны до резервации места. Прежние уже учтены.
+func (s *Server) postAddedMediaBytes(ctx context.Context, accountID, postID string, media []chronicle.MediaInput) (int64, error) {
+	old, err := s.Chronicle.PostMediaBlobIDs(ctx, postID)
+	if err != nil {
+		return 0, err
+	}
+	oldSet := make(map[string]struct{}, len(old))
+	for _, id := range old {
+		oldSet[id] = struct{}{}
+	}
+	var added []string
+	for _, id := range chronicle.MediaBlobIDs(media) {
+		if _, ok := oldSet[id]; !ok {
+			added = append(added, id)
+		}
+	}
+	if len(added) == 0 {
+		return 0, nil
+	}
+	if err := s.Blobs.ValidateOwnedComplete(ctx, accountID, added); err != nil {
+		return 0, err
+	}
+	return s.Blobs.TotalBytesForBlobs(ctx, added)
+}
+
+// commentAddedMediaBytes — то же для правки комментария.
+func (s *Server) commentAddedMediaBytes(ctx context.Context, accountID, commentID string, media []chronicle.MediaInput) (int64, error) {
+	old, err := s.Chronicle.CommentMediaBlobIDs(ctx, commentID)
+	if err != nil {
+		return 0, err
+	}
+	oldSet := make(map[string]struct{}, len(old))
+	for _, id := range old {
+		oldSet[id] = struct{}{}
+	}
+	var added []string
+	for _, id := range chronicle.MediaBlobIDs(media) {
+		if _, ok := oldSet[id]; !ok {
+			added = append(added, id)
+		}
+	}
+	if len(added) == 0 {
+		return 0, nil
+	}
+	if err := s.Blobs.ValidateOwnedComplete(ctx, accountID, added); err != nil {
+		return 0, err
+	}
+	return s.Blobs.TotalBytesForBlobs(ctx, added)
 }
 
 func (s *Server) validateAudioCovers(ctx context.Context, items []chronicle.MediaInput) error {
@@ -688,32 +761,9 @@ func (s *Server) createPostWithMedia(ctx context.Context, in chronicle.PostInput
 }
 
 func (s *Server) editPostReplaceMedia(ctx context.Context, circleID, accountID, postID, body, entryDate string, media []chronicle.MediaInput, now time.Time) error {
-	oldIDs, err := s.Chronicle.PostMediaBlobIDs(ctx, postID)
-	if err != nil {
-		return err
-	}
-	oldSet := make(map[string]struct{}, len(oldIDs))
-	for _, id := range oldIDs {
-		oldSet[id] = struct{}{}
-	}
-	var addedIDs []string
-	for _, id := range chronicle.MediaBlobIDs(media) {
-		if _, ok := oldSet[id]; !ok {
-			addedIDs = append(addedIDs, id)
-		}
-	}
-	if len(addedIDs) > 0 {
-		if err := s.Blobs.ValidateOwnedComplete(ctx, accountID, addedIDs); err != nil {
-			return err
-		}
-		total, err := s.Blobs.TotalBytesForBlobs(ctx, addedIDs)
-		if err != nil {
-			return err
-		}
-		if err := s.Blobs.CheckMediaQuota(ctx, circleID, total); err != nil {
-			return err
-		}
-	}
+	// Владение новыми файлами и место под них уже проверены одной резервацией
+	// в обработчике (R3): повторная проверка здесь увидела бы собственный
+	// резерв занятым.
 	// Тип обложки смотрим после проверки владения: чужой блоб не должен
 	// отличаться ответом от несуществующего.
 	if err := s.validateAudioCovers(ctx, media); err != nil {

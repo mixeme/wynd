@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/check"
 )
@@ -117,19 +118,39 @@ func (s *Store) circleQuotaBytes(ctx context.Context, circleID string) (sql.Null
 	return s.effectiveCircleQuotaBytes(ctx, circleID)
 }
 
+// queryer — общий вид *sql.DB и *sql.Tx для чтения занятого места.
+type queryer interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+// reservationTTL — сколько живёт резервация без подтверждения. Операция
+// записи коротка; более старую строку считаем следом аварийного выхода, а не
+// занятым местом, и убираем при следующей резервации.
+const reservationTTL = 15 * time.Minute
+
+func reservationCutoff() int64 {
+	return time.Now().UTC().Add(-reservationTTL).Unix()
+}
+
 // reservedBytes — место, уже занятое незавершёнными загрузками: принятые
 // байты открытых сессий (.part на диске) и строки blobs в состоянии pending.
 // Считаются received_bytes, а не expected_size: иначе участник пустыми
 // сессиями без единого байта резервировал всю квоту инстанса на сутки
 // (аудит 2026-09-22). Полностью принятая сессия равна своему размеру, поэтому
 // перепроверка на завершении (UPL-2) остаётся точной.
+// Сюда же входят неподтверждённые резервации операций записи (R3).
 func (s *Store) reservedBytes(ctx context.Context) (int64, error) {
+	return reservedBytesQ(ctx, s.db)
+}
+
+func reservedBytesQ(ctx context.Context, q queryer) (int64, error) {
 	var reserved sql.NullInt64
-	err := s.db.QueryRowContext(ctx, `
+	err := q.QueryRowContext(ctx, `
 		SELECT
 			(SELECT COALESCE(SUM(received_bytes), 0) FROM upload_sessions) +
-			(SELECT COALESCE(SUM(size_bytes), 0) FROM blobs WHERE status = 'pending')
-	`).Scan(&reserved)
+			(SELECT COALESCE(SUM(size_bytes), 0) FROM blobs WHERE status = 'pending') +
+			(SELECT COALESCE(SUM(instance_bytes), 0) FROM quota_reservations WHERE created_at > ?)
+	`, reservationCutoff()).Scan(&reserved)
 	if err != nil {
 		return 0, err
 	}
@@ -149,8 +170,12 @@ const physicalUsedSQL = `
 	`
 
 func (s *Store) usedBytes(ctx context.Context) (int64, error) {
+	return usedBytesQ(ctx, s.db)
+}
+
+func usedBytesQ(ctx context.Context, q queryer) (int64, error) {
 	var used sql.NullInt64
-	err := s.db.QueryRowContext(ctx, physicalUsedSQL).Scan(&used)
+	err := q.QueryRowContext(ctx, physicalUsedSQL).Scan(&used)
 	if err != nil {
 		return 0, err
 	}
@@ -178,13 +203,45 @@ func circleUsedSQL(col string) string {
 		+ (SELECT text_bytes FROM circles tc WHERE tc.id = ` + col + `)`
 }
 
-func (s *Store) circleUsedBytes(ctx context.Context, circleID string) (int64, error) {
+func circleUsedBytesQ(ctx context.Context, q queryer, circleID string) (int64, error) {
 	var used sql.NullInt64
-	err := s.db.QueryRowContext(ctx, `SELECT `+strings.ReplaceAll(circleUsedSQL("?"), "?", "?1"), circleID).Scan(&used)
+	err := q.QueryRowContext(ctx, `SELECT `+strings.ReplaceAll(circleUsedSQL("?"), "?", "?1"), circleID).Scan(&used)
 	if err != nil {
 		return 0, err
 	}
 	return used.Int64, nil
+}
+
+// circleUsedBytes — занятое кругом вместе с неподтверждёнными резервациями
+// его записей (R3). Резервация держится до конца операции: проверка места и
+// запись не разделяются.
+func (s *Store) circleUsedBytes(ctx context.Context, circleID string) (int64, error) {
+	return circleUsedBytesQ(ctx, s.db, circleID)
+}
+
+func circleReservedBytesQ(ctx context.Context, q queryer, circleID string) (int64, error) {
+	var reserved sql.NullInt64
+	err := q.QueryRowContext(ctx, `
+		SELECT COALESCE(SUM(circle_bytes), 0) FROM quota_reservations
+		WHERE circle_id = ? AND created_at > ?
+	`, circleID, reservationCutoff()).Scan(&reserved)
+	if err != nil {
+		return 0, err
+	}
+	return reserved.Int64, nil
+}
+
+// circleUsageQ — всё занятое кругом: записанное и удержанное.
+func circleUsageQ(ctx context.Context, q queryer, circleID string) (int64, error) {
+	used, err := circleUsedBytesQ(ctx, q, circleID)
+	if err != nil {
+		return 0, err
+	}
+	reserved, err := circleReservedBytesQ(ctx, q, circleID)
+	if err != nil {
+		return 0, err
+	}
+	return used + reserved, nil
 }
 
 // CheckMediaQuota verifies instance and optional circle media quotas.
@@ -289,7 +346,100 @@ func (s *Store) CheckWriteQuota(ctx context.Context, circleID string, cost int64
 	return nil
 }
 
-// RoomBytes — сколько ещё помещается на сервер (план 51, 6.43): до потолка
+// Reservation — место, удержанное под операцию до её записи. Подтверждение
+// записи и освобождение — одна и та же операция: после неё фактическое место
+// уже считает usedBytes/circleUsedBytes.
+type Reservation struct {
+	id string
+}
+
+// ID возвращает идентификатор резервации (для журнала и тестов).
+func (r *Reservation) ID() string {
+	if r == nil {
+		return ""
+	}
+	return r.id
+}
+
+// ReserveWrite проверяет квоту и удерживает место одним сериализуемым
+// действием (R3). instanceBytes входит в резерв сервера, circleBytes — в
+// занятое кругом; файлы, уже завершённые как blob, в instanceBytes не
+// добавляются, потому что usedBytes их уже считает.
+//
+// Транзакция открывается с BEGIN IMMEDIATE (store/sqlite.go): между чтением
+// занятого места и вставкой резервации другой писатель не пройдёт.
+func (s *Store) ReserveWrite(ctx context.Context, circleID string, instanceBytes, circleBytes int64) (*Reservation, error) {
+	if instanceBytes < 0 || circleBytes < 0 {
+		return nil, ErrInvalid
+	}
+	if circleID == "" && circleBytes != 0 {
+		return nil, ErrInvalid
+	}
+	instQuota, err := s.effectiveInstanceQuotaBytes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	used, err := usedBytesQ(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+	reserved, err := reservedBytesQ(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+	if used+reserved+instanceBytes > instQuota {
+		return nil, ErrInstanceQuotaExceeded
+	}
+	if circleID != "" {
+		cq, err := s.effectiveCircleQuotaBytes(ctx, circleID)
+		if err != nil {
+			return nil, err
+		}
+		if cq.Valid {
+			cUsed, err := circleUsageQ(ctx, tx, circleID)
+			if err != nil {
+				return nil, err
+			}
+			if cUsed+circleBytes > cq.Int64 {
+				return nil, ErrQuotaExceeded
+			}
+		}
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM quota_reservations WHERE created_at <= ?`, reservationCutoff()); err != nil {
+		return nil, err
+	}
+	id, err := newID()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO quota_reservations (id, circle_id, instance_bytes, circle_bytes, created_at)
+		VALUES (?, ?, ?, ?, ?)
+	`, id, circleID, instanceBytes, circleBytes, time.Now().UTC().Unix()); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return &Reservation{id: id}, nil
+}
+
+// ReleaseReservation снимает удержание: операция записана (и её байты уже
+// считаются) или не состоялась. Повторное освобождение безопасно.
+func (s *Store) ReleaseReservation(ctx context.Context, r *Reservation) error {
+	if r == nil || r.id == "" {
+		return nil
+	}
+	_, err := s.db.ExecContext(ctx, `DELETE FROM quota_reservations WHERE id = ?`, r.id)
+	return err
+}
+
 // сервера за вычетом занятого и начатых загрузок — и не больше, чем свободно
 // на самом диске. Меньше нуля не бывает.
 func (s *Store) RoomBytes(ctx context.Context) (int64, error) {
