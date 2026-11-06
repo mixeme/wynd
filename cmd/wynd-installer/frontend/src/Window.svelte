@@ -13,6 +13,7 @@
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import Input from '$ui/forms/Input.svelte';
+	import Select from '$ui/workshop/Select.svelte';
 	import App from './App.svelte';
 	import Archives from './Archives.svelte';
 	import {
@@ -321,6 +322,7 @@
 								void save();
 							}}
 						>
+							<div class="ins-form-fields">
 							<Label>Имя сервера</Label><Input
 								bind:value={name}
 								placeholder="Например, семейный сервер"
@@ -338,7 +340,7 @@
 									<Label>Пользователь</Label><Input bind:value={user} disabled={formBusy} />
 								</div>
 								<div>
-									<Label>Способ входа</Label><Input
+									<Label>Способ входа</Label><Select
 										bind:value={auth}
 										options={[
 											{ value: 'key', label: 'Ключ с этого компьютера' },
@@ -371,6 +373,7 @@
 							>
 								Для автоподключения сохраните пароль или выберите ключ.
 							</p>
+							</div>
 							<FootBar
 								><Button
 									variant="colored"

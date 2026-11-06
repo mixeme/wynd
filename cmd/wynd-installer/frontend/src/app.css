@@ -191,6 +191,14 @@ body {
 	flex-direction: column;
 	flex: 1;
 	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
+}
+.ins-form-fields {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	padding-right: 2px;
 }
 .ins-form-pair {
 	display: grid;
@@ -352,9 +360,6 @@ body {
 }
 .ins-win.ins-servers .ins-pult-actions .ins-row {
 	padding: 9px 0;
-}
-.ins-win.ins-servers .ins-pult-actions .ins-row:last-child {
-	border-bottom: 1px solid var(--line);
 }
 .ins-operation-path {
 	font-size: 12px;

@@ -175,6 +175,22 @@ async function open(t, rows, overrides = {}) {
 		dom.window.document.querySelector(`.ins-server-entry[data-profile="${id}"]`).click();
 		await settle();
 	};
+	const choose = async (label) => {
+		const trigger = elements('.ins-select > button')[0];
+		assert.ok(trigger, 'no visible Workshop select');
+		assert.equal(trigger.getAttribute('aria-haspopup'), 'listbox');
+		assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+		trigger.click();
+		await settle();
+		assert.equal(trigger.getAttribute('aria-expanded'), 'true');
+		const option = elements('.ins-select-menu [role="option"]').find(
+			(e) => e.textContent.trim() === label
+		);
+		assert.ok(option, `no option «${label}»`);
+		option.click();
+		await settle();
+		assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+	};
 	await settle();
 	return {
 		dom,
@@ -182,6 +198,7 @@ async function open(t, rows, overrides = {}) {
 		click,
 		set,
 		select,
+		choose,
 		elements,
 		settle,
 		stored: () => stored
@@ -192,10 +209,16 @@ test('first launch and form preserve the password area while excluding it from f
 	const ui = await open(t, []);
 	assert.equal(ui.elements('h2')[0].textContent, 'Ваши серверы');
 	await ui.click('Добавить сервер');
+	const form = ui.dom.window.document.querySelector('.ins-profile-form');
+	assert.ok(form, 'add form is missing');
+	assert.ok(form.querySelector('.ins-form-fields'), 'form fields must scroll separately');
+	assert.equal(form.querySelector('.ins-form-fields .ins-foot'), null);
+	assert.ok(form.querySelector(':scope > .ins-foot'), 'actions must stay outside the scrolling fields');
+	assert.equal(ui.elements('select').length, 0, 'native select must not be used in the Workshop form');
 	const fields = ui.dom.window.document.querySelector('.ins-password-fields');
 	assert.equal(fields.inert, true);
 	assert.equal(fields.getAttribute('aria-hidden'), 'true');
-	await ui.set(ui.elements('select')[0], 'password');
+	await ui.choose('Пароль');
 	assert.equal(fields.getAttribute('aria-hidden'), 'false');
 	const auto = ui
 		.elements('label')
@@ -279,7 +302,7 @@ test('new profile connects using its own stable ID and ephemeral password', asyn
 	await ui.click('Добавить сервер');
 	await ui.set(ui.elements('input')[0], 'Семейный');
 	await ui.set(ui.elements('input')[1], 'new.example.org');
-	await ui.set(ui.elements('select')[0], 'password');
+	await ui.choose('Пароль');
 	await ui.set(ui.elements('input[type=password]')[0], 'ephemeral-secret');
 	await ui.click('Подключиться');
 	const save = ui.calls.find((c) => c[0] === 'SaveProfile');
@@ -362,6 +385,17 @@ test('all gallery scenarios use the current compiled window without remote serve
 					assert.ok(input, `missing ${act.fill}`);
 					await ui.set(input, act.value);
 				}
+			}
+			if (scene.name === '7a-server') {
+				const rows = [
+					...ui.dom.window.document.querySelectorAll('.ins-pult-actions .ins-row')
+				];
+				assert.ok(rows.length >= 2, 'pult actions are missing');
+				assert.equal(
+					ui.dom.window.getComputedStyle(rows[rows.length - 1]).borderBottomWidth,
+					'0px',
+					'last pult action must not add a second rule under the footer separator'
+				);
 			}
 		} catch (e) {
 			errors.push(`${scene.name}: ${e.message}`);
