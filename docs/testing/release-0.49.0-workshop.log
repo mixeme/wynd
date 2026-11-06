@@ -1,0 +1,14 @@
+connect: connected 
+[ok] os: Debian GNU/Linux 12 — подходит | plan="" advice=""
+[ok] disk: Свободно 16 ГБ | plan="" advice=""
+[ok] clock: Часы идут верно | plan="" advice=""
+[ok] docker: Docker установлен | plan="" advice=""
+[note] ports: Веб-сервер есть: Apache | plan="его не трогаем, Wynd встанет за ним" advice=""
+[note] wynd: Wynd на этом сервере уже стоит | plan="проверим и доделаем, чего не хватает" advice=""
+addresses: [81.30.105.2 172.17.0.1 172.18.0.1 172.30.76.1] proxy: apache blocked: false
+plan ok=true domain=wynd.mixfed.ru version=0.49.0 message="" advice=""
+  install: Контейнер Wynd 0.49.0 — доделаем то, чего на сервере не хватает
+  install: Сайт wynd.mixfed.ru в Apache — отдельным файлом
+  install: Сертификат для wynd.mixfed.ru
+  keep: Apache и его сайты: чужие файлы не правим, Apache перечитает настройку без остановки
+  keep: Всё, что на сервере уже есть: Wynd займёт свою папку /opt/wynd

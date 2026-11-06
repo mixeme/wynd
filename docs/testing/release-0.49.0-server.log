@@ -1,0 +1,319 @@
+SOURCE_COMMIT=80b2b0dd
+/wynd: go1.27.3
+	path	gitea.mixdep.ru/mix/wynd/cmd/wynd
+	mod	gitea.mixdep.ru/mix/wynd	(devel)	
+	dep	filippo.io/age	v1.2.1	h1:X0TZjehAZylOIj4DubWYU1vWQxv9bJpo+Uu2/LGhi1o=
+	dep	github.com/SherClockHolmes/webpush-go	v1.4.0	h1:ocnzNKWN23T9nvHi6IfyrQjkIc0oJWv1B1pULsf9i3s=
+	dep	github.com/dustin/go-humanize	v1.0.1	h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
+	dep	github.com/golang-jwt/jwt/v5	v5.2.2	h1:Rl4B7itRWVtYIHFrSNd7vhTiz9UpLdi6gZhZ3wEeDy8=
+	dep	github.com/google/uuid	v1.6.0	h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
+	dep	github.com/remyoudompheng/bigfft	v0.0.0-20230129092748-24d4a6f8daec	h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
+	dep	golang.org/x/crypto	v0.56.0	h1:GUh5Ii4J5jtcseSMiRqr1jXCNHoxjeV9Fmekc2oLy6Y=
+	dep	golang.org/x/exp	v0.0.0-20230315142452-642cacee5cc0	h1:pVgRXcIictcr+lBQIFeiwuwtDIs4eL21OuM9nyAADmo=
+	dep	golang.org/x/sys	v0.47.0	h1:o7XGOvZQCADBQQ4Y7VNq2dRWQR7JmOUW8Kxx4ZsNgWs=
+	dep	modernc.org/libc	v1.61.13	h1:3LRd6ZO1ezsFiX1y+bHd1ipyEHIJKvuprv0sLTBwLW8=
+	dep	modernc.org/mathutil	v1.7.1	h1:GCZVGXdaN8gTqB1Mf/usp1Y/hSqgI2vAGGP4jZMCxOU=
+	dep	modernc.org/memory	v1.8.2	h1:cL9L4bcoAObu4NkxOlKWBWtNHIsnnACGF/TbqQ6sbcI=
+	dep	modernc.org/sqlite	v1.36.1	h1:bDa8BJUH4lg6EGkLbahKe/8QqoF8p9gArSc6fTqYhyQ=
+	build	-buildmode=exe
+	build	-compiler=gc
+	build	-trimpath=true
+	build	CGO_ENABLED=0
+	build	GOARCH=amd64
+	build	GOOS=linux
+	build	GOAMD64=v1
+( 1/14) Installing libgcc (15.2.0-r5)
+( 2/14) Installing jansson (2.15.0-r0)
+( 3/14) Installing libstdc++ (15.2.0-r5)
+( 4/14) Installing zstd-libs (1.5.7-r2)
+( 5/14) Installing binutils (2.45.1-r1)
+( 6/14) Installing libgcc-static (15.2.0-r5)
+( 7/14) Installing libgomp (15.2.0-r5)
+( 8/14) Installing libatomic (15.2.0-r5)
+( 9/14) Installing gmp (6.3.0-r4)
+(10/14) Installing isl26 (0.26-r2)
+(11/14) Installing mpfr4 (4.2.2-r0)
+(12/14) Installing mpc1 (1.3.1-r1)
+(13/14) Installing gcc (15.2.0-r5)
+(14/14) Installing musl-dev (1.2.6-r3)
+Executing busybox-1.37.0-r31.trigger
+OK: 198.1 MiB in 31 packages
+=== RUN   TestArchivePreservationMigrationFrom12
+--- PASS: TestArchivePreservationMigrationFrom12 (2.72s)
+=== RUN   TestTextQuotaTriggersMatchBackfill
+--- PASS: TestTextQuotaTriggersMatchBackfill (2.61s)
+PASS
+ok  	gitea.mixdep.ru/mix/wynd/internal/store	6.355s
+=== RUN   TestUploadStoresOriginalFilename
+--- PASS: TestUploadStoresOriginalFilename (2.67s)
+=== RUN   TestUploadResumeCompleteAndServe
+--- PASS: TestUploadResumeCompleteAndServe (2.43s)
+=== RUN   TestDefaultInstanceQuotaIsEightyPercentDisk
+--- PASS: TestDefaultInstanceQuotaIsEightyPercentDisk (2.56s)
+=== RUN   TestInstanceQuotaDiskPercent
+--- PASS: TestInstanceQuotaDiskPercent (2.43s)
+=== RUN   TestAttachDoesNotDoubleCountInstanceQuota
+--- PASS: TestAttachDoesNotDoubleCountInstanceQuota (2.61s)
+=== RUN   TestCheckMediaQuotaDefaultAndCustom
+--- PASS: TestCheckMediaQuotaDefaultAndCustom (2.75s)
+=== RUN   TestQuotaExceededRejectsUpload
+--- PASS: TestQuotaExceededRejectsUpload (2.67s)
+=== RUN   TestSharedContentUploadGeneratedAndImportShareBytes
+--- PASS: TestSharedContentUploadGeneratedAndImportShareBytes (2.67s)
+=== RUN   TestSharedContentLastCopyGCRacesNewUpload
+--- PASS: TestSharedContentLastCopyGCRacesNewUpload (3.91s)
+=== RUN   TestSharedContentReviveHasIndependentArchiveMetadata
+--- PASS: TestSharedContentReviveHasIndependentArchiveMetadata (3.31s)
+=== RUN   TestOpenSessionsCountTowardInstanceQuota
+--- PASS: TestOpenSessionsCountTowardInstanceQuota (3.22s)
+=== RUN   TestStaleChunkKeepsUploadCompletable
+--- PASS: TestStaleChunkKeepsUploadCompletable (2.93s)
+PASS
+ok  	gitea.mixdep.ru/mix/wynd/internal/blob	35.225s
+=== RUN   TestMoveReservationsCannotOverbookDisk
+--- PASS: TestMoveReservationsCannotOverbookDisk (0.00s)
+=== RUN   TestAcceptanceQuotaArchiveLockPurge
+2026/11/06 06:50:32 wynd mail (loopback): to=guest@example.com subject="Архивация круга «Семья»"
+В круге «Семья» всё, что написано до 7 ноября, уходит в архив. 7 ноября оно удалится с сервера.
+
+Скачайте свой архив до этого дня:
+http://127.0.0.1:7676/circles/01a1af9f-8ecd-737a-866c-27fe15945dc6/archive
+2026/11/06 06:50:32 wynd mail (loopback): to=owner@example.com subject="Архивация круга «Семья»"
+В круге «Семья» всё, что написано до 7 ноября, уходит в архив. 7 ноября оно удалится с сервера.
+
+Скачайте свой архив до этого дня:
+http://127.0.0.1:7676/circles/01a1af9f-8ecd-737a-866c-27fe15945dc6/archive
+--- PASS: TestAcceptanceQuotaArchiveLockPurge (4.81s)
+=== RUN   TestAdminAccountDetailEmptyCirclesAndUnknownQuota
+--- PASS: TestAdminAccountDetailEmptyCirclesAndUnknownQuota (5.25s)
+=== RUN   TestAdminDefaultQuotaDoesNotTouchCircles
+--- PASS: TestAdminDefaultQuotaDoesNotTouchCircles (4.90s)
+=== RUN   TestAdminCircleQuotaModesAndPendingApproval
+--- PASS: TestAdminCircleQuotaModesAndPendingApproval (5.29s)
+=== RUN   TestAdminQuotaRequestApproveRejectAndInviteRevoke
+2026/11/06 06:50:53 wynd mail (loopback): to=anya@example.com subject="В месте отказали"
+Администратор отказал кругу «Семья» в 7,0 ГБ. Можно попросить ещё раз или освободить место:
+http://127.0.0.1:7676/circles/01a1af9f-e252-793d-978f-0bab0afac3ef/quota
+2026/11/06 06:50:53 wynd mail (loopback): to=anya@example.com subject="Кругу дали место"
+Администратор дал кругу «Семья» 9,0 ГБ вместо 5,0 ГБ.
+
+http://127.0.0.1:7676/circles/01a1af9f-e252-793d-978f-0bab0afac3ef/quota
+--- PASS: TestAdminQuotaRequestApproveRejectAndInviteRevoke (5.65s)
+=== RUN   TestMediaOnlyPostAndTextWhenQuotaFull
+--- PASS: TestMediaOnlyPostAndTextWhenQuotaFull (4.13s)
+=== RUN   TestArchivePreservationRevokesDownloadLinks
+2026/11/06 06:51:03 wynd mail (loopback): to=anya@example.com subject="Архив круга готов"
+Архив круга «Семья» собран. Скачать его можно до 09.11.2026 06:51 UTC — потом сервер удалит файл.
+
+http://127.0.0.1:7676/circles/01a1afa0-05dc-79e9-a6f4-6bb29353f4fe/quota/full
+--- PASS: TestArchivePreservationRevokesDownloadLinks (5.26s)
+=== RUN   TestArchivePreservationPartialArtifactAndRemoval
+2026/11/06 06:51:08 wynd mail (loopback): to=anya@example.com subject="Круг «Семья» уходит с сервера"
+Боб убирает «Семья» с сервера и сохраняет круг в файл. Читать можно, писать нельзя.
+
+Свой архив — всё, что вы видели в круге, — можно скачать, пока круг здесь.
+
+http://127.0.0.1:7676/circles/01a1afa0-19ea-762e-9728-0dd19abfaf76
+2026/11/06 06:51:08 wynd mail (loopback): to=bob@example.com subject="Архив круга готов"
+Архив круга «Семья» собран. Скачать его можно до 09.11.2026 06:51 UTC — потом сервер удалит файл.
+
+http://127.0.0.1:7676/circles/01a1afa0-19ea-762e-9728-0dd19abfaf76/quota/full
+--- PASS: TestArchivePreservationPartialArtifactAndRemoval (5.35s)
+=== RUN   TestArchivePreservationMoveBetweenServers
+2026/11/06 06:51:13 wynd mail (loopback): to=anya@example.com subject="Круг «Семья» переезжает"
+Боб переносит «Семья» на другой сервер. Читать можно, писать нельзя. Когда перенос закончится, придёт письмо с новым адресом круга.
+
+http://127.0.0.1:7676/circles/01a1afa0-2df8-7501-9c98-fcbcb3084a2c
+--- PASS: TestArchivePreservationMoveBetweenServers (9.59s)
+=== RUN   TestFullArchiveBuildDownloadAndResume
+2026/11/06 06:51:22 wynd mail (loopback): to=anya@example.com subject="Архив круга готов"
+Архив круга «Семья» собран. Скачать его можно до 09.11.2026 06:51 UTC — потом сервер удалит файл.
+
+http://127.0.0.1:7676/circles/01a1afa0-52ca-7142-8c14-3e37f5b1363b/quota/full
+2026/11/06 06:51:22 wynd mail (loopback): to=anya@example.com subject="Архив круга готов"
+Архив круга «Семья» собран. Скачать его можно до 09.11.2026 06:51 UTC — потом сервер удалит файл.
+
+http://127.0.0.1:7676/circles/01a1afa0-52ca-7142-8c14-3e37f5b1363b/quota/full
+--- PASS: TestFullArchiveBuildDownloadAndResume (4.67s)
+=== RUN   TestFullArchiveLastByteRangeKeepsFile
+2026/11/06 06:51:27 wynd mail (loopback): to=anya@example.com subject="Архив круга готов"
+Архив круга «Семья» собран. Скачать его можно до 09.11.2026 06:51 UTC — потом сервер удалит файл.
+
+http://127.0.0.1:7676/circles/01a1afa0-65ac-7772-915b-00adf68f97e9/quota/full
+--- PASS: TestFullArchiveLastByteRangeKeepsFile (4.66s)
+=== RUN   TestFullArchiveLinksCheckPaywall
+2026/11/06 06:51:32 wynd mail (loopback): to=anya@example.com subject="Архив круга готов"
+Архив круга «Семья» собран. Скачать его можно до 09.11.2026 06:51 UTC — потом сервер удалит файл.
+
+http://127.0.0.1:7676/circles/01a1afa0-77dc-73ff-9978-0a89ba9ed784/quota/full
+--- PASS: TestFullArchiveLinksCheckPaywall (5.87s)
+=== RUN   TestFullArchiveRemoveByOwner
+2026/11/06 06:51:38 wynd mail (loopback): to=anya@example.com subject="Архив круга готов"
+Архив круга «Семья» собран. Скачать его можно до 09.11.2026 06:51 UTC — потом сервер удалит файл.
+
+http://127.0.0.1:7676/circles/01a1afa0-907d-7285-a09d-696fb8efc702/quota/full
+--- PASS: TestFullArchiveRemoveByOwner (5.00s)
+=== RUN   TestFullArchiveNoRoomStreams
+--- PASS: TestFullArchiveNoRoomStreams (6.07s)
+=== RUN   TestFullArchiveEncryptedWithDeviceKey
+2026/11/06 06:51:50 wynd mail (loopback): to=anya@example.com subject="Архив круга готов"
+Архив круга «Семья» собран. Скачать его можно до 09.11.2026 06:51 UTC — потом сервер удалит файл.
+
+http://127.0.0.1:7676/circles/01a1afa0-ba9d-7576-9326-12c3f04fe345/quota/full
+--- PASS: TestFullArchiveEncryptedWithDeviceKey (6.99s)
+=== RUN   TestFullArchiveExpires
+2026/11/06 06:51:56 wynd mail (loopback): to=anya@example.com subject="Архив круга готов"
+Архив круга «Семья» собран. Скачать его можно до 09.11.2026 06:51 UTC — потом сервер удалит файл.
+
+http://127.0.0.1:7676/circles/01a1afa0-d5c1-7c89-96fb-a164fccc5ecb/quota/full
+--- PASS: TestFullArchiveExpires (4.69s)
+=== RUN   TestFullArchiveGoesWithCircle
+2026/11/06 06:52:00 wynd mail (loopback): to=anya@example.com subject="Архив круга готов"
+Архив круга «Семья» собран. Скачать его можно до 09.11.2026 06:52 UTC — потом сервер удалит файл.
+
+http://127.0.0.1:7676/circles/01a1afa0-e7fb-70b8-aef2-6d0251ddbd2e/quota/full
+--- PASS: TestFullArchiveGoesWithCircle (4.84s)
+=== RUN   TestFullArchiveWithCircleRemoval
+2026/11/06 06:52:05 wynd mail (loopback): to=bob@example.com subject="Круг «Семья» уходит с сервера"
+Аня убирает «Семья» с сервера и сохраняет круг в файл. Читать можно, писать нельзя.
+
+Свой архив — всё, что вы видели в круге, — можно скачать, пока круг здесь.
+
+http://127.0.0.1:7676/circles/01a1afa0-faf6-7af4-9ae3-8e31264bdfc5
+2026/11/06 06:52:05 wynd mail (loopback): to=anya@example.com subject="Архив круга готов"
+Архив круга «Семья» собран. Скачать его можно до 09.11.2026 06:52 UTC — потом сервер удалит файл.
+
+http://127.0.0.1:7676/circles/01a1afa0-faf6-7af4-9ae3-8e31264bdfc5/quota/full
+--- PASS: TestFullArchiveWithCircleRemoval (5.08s)
+=== RUN   TestFullArchiveReviveCircle
+2026/11/06 06:52:10 wynd mail (loopback): to=anya@example.com subject="Архив круга готов"
+Архив круга «Семья» собран. Скачать его можно до 09.11.2026 06:52 UTC — потом сервер удалит файл.
+
+http://127.0.0.1:7676/circles/01a1afa1-0f22-7082-a6b2-bbb99ed6891b/quota/full
+--- PASS: TestFullArchiveReviveCircle (5.06s)
+=== RUN   TestConcurrentTextWritesRespectQuota
+--- PASS: TestConcurrentTextWritesRespectQuota (7.20s)
+=== RUN   TestExactTextCostFitsQuota
+--- PASS: TestExactTextCostFitsQuota (4.25s)
+=== RUN   TestCircleQuotaVolumeIsEmptyArray
+--- PASS: TestCircleQuotaVolumeIsEmptyArray (4.23s)
+=== RUN   TestReviveCircleFromArchiveHTTP
+2026/11/06 06:52:31 wynd mail (loopback): to=anya@example.com subject="Архив круга готов"
+Архив круга «Семья» собран. Скачать его можно до 09.11.2026 06:52 UTC — потом сервер удалит файл.
+
+http://127.0.0.1:7676/circles/01a1afa1-5fc6-729f-9260-8f848758a679/quota/full
+--- PASS: TestReviveCircleFromArchiveHTTP (6.18s)
+=== RUN   TestReviveKnowsCurrentSchema
+--- PASS: TestReviveKnowsCurrentSchema (3.89s)
+=== RUN   TestRevivePlaceRequest
+2026/11/06 06:52:42 wynd mail (loopback): to=slava@example.com subject="Кругу дали место"
+Администратор дал кругу «Дача» 5,9 КБ.
+
+http://127.0.0.1:7676/settings/servers
+--- PASS: TestRevivePlaceRequest (5.33s)
+=== RUN   TestReviveWaitingMembers
+2026/11/06 06:52:46 wynd mail (loopback): to=kolya@elsewhere.example subject="Вас ждут в круге «Дача»"
+Круг «Дача» теперь живёт на этом сервере, владелец — Слава.
+
+Войдите с почтой kolya@elsewhere.example — попадёте в своё имя и свои записи.
+
+http://127.0.0.1:7676/
+--- PASS: TestReviveWaitingMembers (4.25s)
+=== RUN   TestReviveCountsArchiveTextAgainstQuota
+2026/11/06 06:52:51 wynd mail (loopback): to=anya@example.com subject="Архив круга готов"
+Архив круга «Семья» собран. Скачать его можно до 09.11.2026 06:52 UTC — потом сервер удалит файл.
+
+http://127.0.0.1:7676/circles/01a1afa1-ad43-7a96-bef2-0f9029468255/quota/full
+--- PASS: TestReviveCountsArchiveTextAgainstQuota (6.15s)
+=== RUN   TestReviveInvitableCountsOnlyNewEmails
+--- PASS: TestReviveInvitableCountsOnlyNewEmails (3.97s)
+=== RUN   TestUploadStatusAfterPartialChunk
+--- PASS: TestUploadStatusAfterPartialChunk (4.32s)
+=== RUN   TestTextQuotaFullCircle
+--- PASS: TestTextQuotaFullCircle (4.97s)
+=== RUN   TestTextQuotaCountsOnServerScale
+--- PASS: TestTextQuotaCountsOnServerScale (4.42s)
+PASS
+ok  	gitea.mixdep.ru/mix/wynd/internal/api	163.449s
+=== RUN   TestArchivePreservationSurvivesReviveAndTransport
+=== RUN   TestArchivePreservationSurvivesReviveAndTransport/owner-file
+=== RUN   TestArchivePreservationSurvivesReviveAndTransport/transport
+--- PASS: TestArchivePreservationSurvivesReviveAndTransport (3.59s)
+    --- PASS: TestArchivePreservationSurvivesReviveAndTransport/owner-file (0.38s)
+    --- PASS: TestArchivePreservationSurvivesReviveAndTransport/transport (0.42s)
+=== RUN   TestArchivePreservationDoesNotWidenSplit
+--- PASS: TestArchivePreservationDoesNotWidenSplit (3.10s)
+=== RUN   TestArchivePreservationRevokesJobsAndGuardsRemoval
+--- PASS: TestArchivePreservationRevokesJobsAndGuardsRemoval (2.91s)
+=== RUN   TestArchivePreservationReviveCountCompatibility
+--- PASS: TestArchivePreservationReviveCountCompatibility (3.04s)
+=== RUN   TestArchivePreservationRespectsGapsAndDoesNotChangeReading
+--- PASS: TestArchivePreservationRespectsGapsAndDoesNotChangeReading (3.39s)
+=== RUN   TestArchivePreservationPassesInheritedWholeJournal
+--- PASS: TestArchivePreservationPassesInheritedWholeJournal (2.76s)
+=== RUN   TestArchivePurgeDropsRejectedQuotaRequests
+--- PASS: TestArchivePurgeDropsRejectedQuotaRequests (2.96s)
+=== RUN   TestFullArchiveDataTakesWholeCircle
+--- PASS: TestFullArchiveDataTakesWholeCircle (2.55s)
+=== RUN   TestInvariantDayCollapseAndRevive
+--- PASS: TestInvariantDayCollapseAndRevive (2.55s)
+=== RUN   TestInvariantReactionDeleteAndRevive
+--- PASS: TestInvariantReactionDeleteAndRevive (2.49s)
+=== RUN   TestRevivePlaceWithdrawalRace
+=== RUN   TestRevivePlaceWithdrawalRace/withdraw
+=== RUN   TestRevivePlaceWithdrawalRace/revive
+=== RUN   TestRevivePlaceWithdrawalRace/concurrent
+--- PASS: TestRevivePlaceWithdrawalRace (7.97s)
+    --- PASS: TestRevivePlaceWithdrawalRace/withdraw (2.58s)
+    --- PASS: TestRevivePlaceWithdrawalRace/revive (2.82s)
+    --- PASS: TestRevivePlaceWithdrawalRace/concurrent (2.56s)
+=== RUN   TestReviveCircleNextToOriginal
+--- PASS: TestReviveCircleNextToOriginal (2.96s)
+=== RUN   TestReviveCircleByStranger
+--- PASS: TestReviveCircleByStranger (2.99s)
+=== RUN   TestReviveCircleByStrangerAsNewMember
+--- PASS: TestReviveCircleByStrangerAsNewMember (2.87s)
+=== RUN   TestReviveCircleRefusesBrokenInput
+--- PASS: TestReviveCircleRefusesBrokenInput (2.85s)
+=== RUN   TestReviveRejectsMalformedTablesBeforeWrites
+=== RUN   TestReviveRejectsMalformedTablesBeforeWrites/bad_digest
+=== RUN   TestReviveRejectsMalformedTablesBeforeWrites/broken_reference
+=== RUN   TestReviveRejectsMalformedTablesBeforeWrites/wrong_event_id_type
+=== RUN   TestReviveRejectsMalformedTablesBeforeWrites/duplicate_primary_key
+=== RUN   TestReviveRejectsMalformedTablesBeforeWrites/unknown_table
+=== RUN   TestReviveRejectsMalformedTablesBeforeWrites/short_row
+=== RUN   TestReviveRejectsMalformedTablesBeforeWrites/missing_column
+=== RUN   TestReviveRejectsMalformedTablesBeforeWrites/duplicate_column
+=== RUN   TestReviveRejectsMalformedTablesBeforeWrites/wrong_type
+=== RUN   TestReviveRejectsMalformedTablesBeforeWrites/negative_size
+=== RUN   TestReviveRejectsMalformedTablesBeforeWrites/fractional_size
+=== RUN   TestReviveRejectsMalformedTablesBeforeWrites/overflow_size
+--- PASS: TestReviveRejectsMalformedTablesBeforeWrites (3.19s)
+    --- PASS: TestReviveRejectsMalformedTablesBeforeWrites/bad_digest (0.03s)
+    --- PASS: TestReviveRejectsMalformedTablesBeforeWrites/broken_reference (0.06s)
+    --- PASS: TestReviveRejectsMalformedTablesBeforeWrites/wrong_event_id_type (0.03s)
+    --- PASS: TestReviveRejectsMalformedTablesBeforeWrites/duplicate_primary_key (0.03s)
+    --- PASS: TestReviveRejectsMalformedTablesBeforeWrites/unknown_table (0.02s)
+    --- PASS: TestReviveRejectsMalformedTablesBeforeWrites/short_row (0.01s)
+    --- PASS: TestReviveRejectsMalformedTablesBeforeWrites/missing_column (0.02s)
+    --- PASS: TestReviveRejectsMalformedTablesBeforeWrites/duplicate_column (0.00s)
+    --- PASS: TestReviveRejectsMalformedTablesBeforeWrites/wrong_type (0.01s)
+    --- PASS: TestReviveRejectsMalformedTablesBeforeWrites/negative_size (0.05s)
+    --- PASS: TestReviveRejectsMalformedTablesBeforeWrites/fractional_size (0.05s)
+    --- PASS: TestReviveRejectsMalformedTablesBeforeWrites/overflow_size (0.02s)
+=== RUN   TestTextCostMatchesTriggers
+--- PASS: TestTextCostMatchesTriggers (2.71s)
+=== RUN   TestReviveTextBytesMatchesInsert
+--- PASS: TestReviveTextBytesMatchesInsert (2.75s)
+=== RUN   TestVolumeCountsTextLikeQuota
+--- PASS: TestVolumeCountsTextLikeQuota (2.58s)
+PASS
+ok  	gitea.mixdep.ru/mix/wynd/internal/chronicle	61.291s
+BUILD_BINARY_SHA256=1c9a5544d2ca4089019acf35a6aa92f5291e7a99d42afa1420e84a3534216e29
+299M	/opt/wynd/data/backups/pre-0.49.0-20261106-final
+BACKUP=/data/backups/pre-0.49.0-20261106-final
+    image: wynd:0.49.0-80b2b0dd
+{"allow_name_erasure":false,"archive_preservation":true,"bootstrapped":true,"code_delivery":"mail","compression":{"photo_max_px":2048,"photo_quality":80,"video_max_height":1080,"video_bitrate_kbps":6000,"audio_bitrate_kbps":192,"attachment_max_bytes":104857600},"loopback":false,"name":"Wynd","registration_mode":"invite","source_url":"https://github.com/mixeme/wynd","vapid_public_key":"BM_aRjJEInJXD_xii4HNkJFP6bLxkG1bAZbi2yrQ2wHFj5Na6bAnsLpQ-zNBwyUe7CtSJYaKd01cKLvcDUs6sPI","version":"0.49.0"}
+DEPLOYED_BINARY_SHA256=1c9a5544d2ca4089019acf35a6aa92f5291e7a99d42afa1420e84a3534216e29
+IMAGE=sha256:8290b983328069e609378353fcc28c657fa7b822c77fbd4929defd17eb0db373 STATUS=running HEALTH=starting
+RELEASE_DEPLOYED=0.49.0-80b2b0dd
