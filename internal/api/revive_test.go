@@ -229,13 +229,13 @@ func TestRevivePlaceRequest(t *testing.T) {
 	}
 	// Архив из одного круга с одним файлом — собран руками, как его прислало бы устройство.
 	tables := map[string]any{
-		"circles":    map[string]any{"columns": []string{"id", "name", "owner_account_id", "created_at", "updated_at", "color"}, "rows": [][]any{{"00000000-0000-7000-8000-00000000c001", "Дача", "old-owner", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z", "ochre"}}},
-		"identities": map[string]any{"columns": []string{"id", "circle_id", "account_id", "created_at"}, "rows": [][]any{{"00000000-0000-7000-8000-00000000d001", "00000000-0000-7000-8000-00000000c001", "old-owner", "2026-01-01T00:00:00Z"}}},
-		"identity_names": map[string]any{"columns": []string{"id", "identity_id", "name", "effective_at"}, "rows": [][]any{{"00000000-0000-7000-8000-00000000e001", "00000000-0000-7000-8000-00000000d001", "Слава", "2026-01-01T00:00:00Z"}}},
-		"memberships": map[string]any{"columns": []string{"id", "circle_id", "account_id", "identity_id", "status", "created_at", "updated_at"}, "rows": [][]any{{"00000000-0000-7000-8000-00000000f001", "00000000-0000-7000-8000-00000000c001", "old-owner", "00000000-0000-7000-8000-00000000d001", "active", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z"}}},
+		"circles":          map[string]any{"columns": []string{"id", "name", "owner_account_id", "created_at", "updated_at", "color"}, "rows": [][]any{{"00000000-0000-7000-8000-00000000c001", "Дача", "old-owner", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z", "ochre"}}},
+		"identities":       map[string]any{"columns": []string{"id", "circle_id", "account_id", "created_at"}, "rows": [][]any{{"00000000-0000-7000-8000-00000000d001", "00000000-0000-7000-8000-00000000c001", "old-owner", "2026-01-01T00:00:00Z"}}},
+		"identity_names":   map[string]any{"columns": []string{"id", "identity_id", "name", "effective_at"}, "rows": [][]any{{"00000000-0000-7000-8000-00000000e001", "00000000-0000-7000-8000-00000000d001", "Слава", "2026-01-01T00:00:00Z"}}},
+		"memberships":      map[string]any{"columns": []string{"id", "circle_id", "account_id", "identity_id", "status", "created_at", "updated_at"}, "rows": [][]any{{"00000000-0000-7000-8000-00000000f001", "00000000-0000-7000-8000-00000000c001", "old-owner", "00000000-0000-7000-8000-00000000d001", "active", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z"}}},
 		"membership_spans": map[string]any{"columns": []string{"id", "membership_id", "started_at"}, "rows": [][]any{{"00000000-0000-7000-8000-00000000f101", "00000000-0000-7000-8000-00000000f001", "2026-01-01T00:00:00Z"}}},
-		"accounts": map[string]any{"columns": []string{"id", "email"}, "rows": [][]any{{"old-owner", "slava@example.com"}}},
-		"blobs":    map[string]any{"columns": []string{"id", "sha256", "size_bytes"}, "rows": [][]any{{"00000000-0000-7000-8000-0000000000b1", sha256Hex(photo), len(photo)}}},
+		"accounts":         map[string]any{"columns": []string{"id", "email"}, "rows": [][]any{{"old-owner", "slava@example.com"}}},
+		"blobs":            map[string]any{"columns": []string{"id", "sha256", "size_bytes"}, "rows": [][]any{{"00000000-0000-7000-8000-0000000000b1", sha256Hex(photo), len(photo)}}},
 	}
 	manifest := map[string]any{"format": "wynd-circle", "format_version": 1, "schema_version": 35, "posts": 0}
 	revive := func() int {
@@ -348,6 +348,60 @@ func TestReviveWaitingMembers(t *testing.T) {
 
 // 7.29: письмо уйдёт только тем, чьей почты на сервере нет; своя почта и
 // повторы не считаются. Отдаётся одно число.
+// R4: место нового круга считается вместе с текстом архива и служебной
+// строкой. Раньше круг с записями оживал при квоте в один байт.
+func TestReviveCountsArchiveTextAgainstQuota(t *testing.T) {
+	srv, caps, _, _ := setupAPI(t)
+	anya, _ := registerSession(t, srv, caps, "anya@example.com")
+	rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles", anya, map[string]any{"name": "Семья", "owner_name": "Аня"})
+	circleID := jsonStr(t, rec, "id")
+	if rec := doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/posts", anya, map[string]any{
+		"body": strings.Repeat("слово ", 40), "entry_date": "2026-10-14",
+	}); rec.Code != http.StatusCreated {
+		t.Fatalf("запись: %d %s", rec.Code, rec.Body.String())
+	}
+
+	doJSON(t, srv, http.MethodPost, "/api/v1/circles/"+circleID+"/full_archive", anya, map[string]any{})
+	waitFullStatus(t, srv, anya, circleID, "ready")
+	file := fetch(srv, fullLink(t, srv, anya, circleID), "").Body.Bytes()
+	zr, err := zip.NewReader(bytes.NewReader(file), int64(len(file)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	read := func(name string) []byte {
+		f, err := zr.Open(name)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		defer f.Close()
+		b, _ := io.ReadAll(f)
+		return b
+	}
+	var manifest map[string]any
+	_ = json.Unmarshal(read("manifest.json"), &manifest)
+	tables := map[string]any{}
+	for _, name := range manifest["tables"].([]any) {
+		var table any
+		_ = json.Unmarshal(read("data/"+name.(string)+".json"), &table)
+		tables[name.(string)] = table
+	}
+
+	admin := adminToken(t, srv)
+	if rec := doJSON(t, srv, http.MethodPut, "/api/v1/admin/storage/default_quota", admin,
+		map[string]any{"default_circle_quota_bytes": 1}); rec.Code != http.StatusOK {
+		t.Fatalf("квота по умолчанию: %d %s", rec.Code, rec.Body.String())
+	}
+	slava, _ := registerSession(t, srv, caps, "slava@example.com")
+	rec = doJSON(t, srv, http.MethodPost, "/api/v1/revive", slava, map[string]any{
+		"manifest": manifest, "tables": tables, "blob_map": map[string]string{},
+	})
+	if rec.Code != http.StatusInsufficientStorage {
+		t.Fatalf("оживление с текстом больше квоты: %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+// «Ещё не вошли» (6.6): участник из архива с незнакомой серверу почтой — в
+// приглашаемых, повтор и свой адрес не считаются.
 func TestReviveInvitableCountsOnlyNewEmails(t *testing.T) {
 	srv, caps, _, _ := setupAPI(t)
 	tok, _ := registerSession(t, srv, caps, "anya@example.com")

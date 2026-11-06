@@ -294,17 +294,8 @@ func (s *Store) CheckMediaQuota(ctx context.Context, circleID string, additional
 	return nil
 }
 
-// TextCost — сколько места займёт на диске запись, комментарий или название
-// дня с текстом text: строка, событие журнала и поиск. Те же постоянные, что у
-// счёта в базе (миграция 0033).
-func TextCost(text string) int64 {
-	return 550 + 400 + 4*int64(len(text))
-}
-
-// ReactionCost — место под реакцию и её событие (0033).
-const ReactionCost int64 = 450 + 400
-
 // EventCost — строка журнала без текста: снять реакцию, убрать название дня (0033).
+// Стоимость записей с текстом считается в chronicle (PostTextCost и др.).
 const EventCost int64 = 400
 
 // CheckWriteQuota — можно ли писать в круг (C42): квота круга и потолок

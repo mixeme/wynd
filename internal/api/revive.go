@@ -24,6 +24,12 @@ import (
 // мегабайты, обычные 1 МБ запросов сюда не годятся. Файлы идут загрузками.
 const maxReviveBody = 256 << 20
 
+// reviveEventReserve — верхняя оценка служебной строки «круг оживлён», если
+// имени оживляющего в архиве нет: служебная часть события, имя до 100 символов
+// (400 байт), строка ленты и данные события; для переноса и отделения в
+// строке ещё имя круга или адрес — запас покрывает и их.
+const reviveEventReserve int64 = 1600
+
 type reviveTable struct {
 	Columns []string `json:"columns"`
 	Rows    [][]any  `json:"rows"`
@@ -354,6 +360,28 @@ func (s *Server) reviveFromTables(ctx context.Context, in reviveRequest) (revive
 			archiveBytes += gotSize
 		}
 	}
+	// Текст, который триггеры добавят при вставке строк архива: записи,
+	// комментарии, реакции, события, названия дней и имена (R4). Файлы уже
+	// загружены и в потолке сервера учтены, поэтому в резерв идёт только
+	// текст. Служебная строка «круг оживлён» и приветствие тоже считаются до
+	// вставки: иначе круг оживал при квоте в один байт.
+	reviverEmail, _ := s.Chronicle.AccountEmail(ctx, in.AccountID)
+	reviverName, reviverGender, named := chronicle.ReviveReviver(tables, accounts, reviverEmail)
+	if !named && in.NewMember != nil {
+		reviverName, reviverGender, named = in.NewMember.Name, in.NewMember.Gender, true
+	}
+	textBytes := chronicle.ReviveTextBytes(tables)
+	if named {
+		textBytes += chronicle.ReviveServiceEventCost(reviverName, reviverGender, in.MovedFrom, "")
+	} else {
+		// Имени в архиве нет (прежний владелец без почты): верхняя оценка
+		// строки «круг оживлён» с именем до 100 символов.
+		textBytes += reviveEventReserve
+	}
+	if in.NewMember != nil && in.Greeting != "" && named {
+		textBytes += chronicle.PostTextCost(in.Greeting, reviverName,
+			greetingDay(in.GreetingDay, time.Now()), nil, reviverGender)
+	}
 	// Помещается ли (7.30). Файлы уже загружены — место на сервере ими занято;
 	// предел здесь — нового круга: одобренная просьба или квота по умолчанию.
 	_, approved, _, err := s.reviveRoom(ctx, in.AccountID)
@@ -366,9 +394,19 @@ func (s *Server) reviveFromTables(ctx context.Context, in reviveRequest) (revive
 	} else if def, err := s.Blobs.DefaultCircleQuotaBytes(ctx); err == nil && def.Valid {
 		limit = def.Int64
 	}
-	if limit >= 0 && archiveBytes > limit {
+	if limit >= 0 && archiveBytes+textBytes > limit {
 		return out, &reviveError{http.StatusInsufficientStorage, "no_room", ""}
 	}
+	// Потолок сервера — вместе с уже записанным и другими резервациями.
+	hold, err := s.Blobs.ReserveWrite(ctx, "", textBytes, 0)
+	if err != nil {
+		return out, err
+	}
+	defer func() {
+		if err := s.Blobs.ReleaseReservation(context.Background(), hold); err != nil {
+			log.Printf("revive %s: release reservation: %v", in.AccountID, err)
+		}
+	}()
 	placeRequestID := ""
 	if approved != nil {
 		placeRequestID = approved.ID

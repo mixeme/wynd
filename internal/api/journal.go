@@ -124,14 +124,6 @@ func (s *Server) handleCreatePost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if !replayed {
-		textBytes := blob.TextCost(body.Body)
-		res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, textBytes, textBytes+mediaBytes)
-		if !ok {
-			return
-		}
-		defer s.releaseWriteSpace(res)
-	}
 	now := time.Now().UTC()
 	var captured *time.Time
 	if body.CapturedAt != nil {
@@ -141,6 +133,16 @@ func (s *Server) handleCreatePost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		captured = &t
+	}
+	if !replayed {
+		res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, func(name string, g chronicle.Gender) (int64, int64) {
+			cost := chronicle.PostTextCost(body.Body, name, body.EntryDate, captured, g)
+			return cost, cost + mediaBytes
+		})
+		if !ok {
+			return
+		}
+		defer s.releaseWriteSpace(res)
 	}
 	post, err := s.createPostWithMedia(r.Context(), chronicle.PostInput{
 		CircleID: circleID, AccountID: sess.AccountID, Body: body.Body,
@@ -201,8 +203,10 @@ func (s *Server) handleEditPost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	textBytes := blob.TextCost(body.Body)
-	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, textBytes, textBytes+addedBytes)
+	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, func(name string, g chronicle.Gender) (int64, int64) {
+		cost := chronicle.PostEditTextCost(body.Body, name, body.EntryDate, g)
+		return cost, cost + addedBytes
+	})
 	if !ok {
 		return
 	}
@@ -281,8 +285,10 @@ func (s *Server) handleCreateComment(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !replayed {
-		textBytes := blob.TextCost(body.Body)
-		res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, textBytes, textBytes+mediaBytes)
+		res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, func(name string, g chronicle.Gender) (int64, int64) {
+			cost := chronicle.CommentTextCost(body.Body, name, postID, g)
+			return cost, cost + mediaBytes
+		})
 		if !ok {
 			return
 		}
@@ -320,10 +326,14 @@ func (s *Server) handleEditComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := time.Now().UTC()
+	postID, err := s.Chronicle.CommentPostID(r.Context(), commentID)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
 	var media []chronicle.MediaInput
 	var addedBytes int64
 	if body.Media != nil {
-		var err error
 		media, err = parseCommentMedia(*body.Media)
 		if err != nil {
 			writeError(w, chronicle.ErrInvalid)
@@ -336,8 +346,10 @@ func (s *Server) handleEditComment(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	textBytes := blob.TextCost(body.Body)
-	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, textBytes, textBytes+addedBytes)
+	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, func(name string, g chronicle.Gender) (int64, int64) {
+		cost := chronicle.CommentEditTextCost(body.Body, name, postID, g)
+		return cost, cost + addedBytes
+	})
 	if !ok {
 		return
 	}
@@ -392,7 +404,10 @@ func (s *Server) handleSetReaction(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, blob.ReactionCost, blob.ReactionCost)
+	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, func(name string, g chronicle.Gender) (int64, int64) {
+		cost := chronicle.ReactionTextCost(body.Emoji, name, postID, g)
+		return cost, cost
+	})
 	if !ok {
 		return
 	}
@@ -417,7 +432,9 @@ func (s *Server) handleDeleteReaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Снять реакцию — тоже запись в журнал (решение владельца 2026-10-14, C42).
-	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, blob.EventCost, blob.EventCost)
+	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, func(string, chronicle.Gender) (int64, int64) {
+		return blob.EventCost, blob.EventCost
+	})
 	if !ok {
 		return
 	}
@@ -451,8 +468,10 @@ func (s *Server) handleSetDayTitle(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	titleBytes := blob.TextCost(body.Title)
-	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, titleBytes, titleBytes)
+	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, func(name string, g chronicle.Gender) (int64, int64) {
+		cost := chronicle.DayTitleTextCost(body.Title, name, entryDate, g)
+		return cost, cost
+	})
 	if !ok {
 		return
 	}
@@ -475,7 +494,10 @@ func (s *Server) handleClearDayTitle(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, blob.EventCost, blob.EventCost)
+	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, func(name string, g chronicle.Gender) (int64, int64) {
+		cost := chronicle.DayTitleClearTextCost(name, entryDate, g)
+		return cost, cost
+	})
 	if !ok {
 		return
 	}
@@ -499,7 +521,10 @@ func (s *Server) handleSetDayCover(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, blob.EventCost, blob.EventCost)
+	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, func(name string, g chronicle.Gender) (int64, int64) {
+		cost := chronicle.DayCoverTextCost(name, entryDate, body.PostID, body.BlobID, g)
+		return cost, cost
+	})
 	if !ok {
 		return
 	}
@@ -522,7 +547,10 @@ func (s *Server) handleClearDayCover(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, blob.EventCost, blob.EventCost)
+	res, ok := s.reserveWriteSpace(w, r, circleID, sess.AccountID, func(name string, g chronicle.Gender) (int64, int64) {
+		cost := chronicle.DayCoverClearTextCost(name, entryDate, g)
+		return cost, cost
+	})
 	if !ok {
 		return
 	}
@@ -536,14 +564,21 @@ func (s *Server) handleClearDayCover(w http.ResponseWriter, r *http.Request) {
 }
 
 // reserveWriteSpace — есть ли в круге и на сервере место под запись (C42).
-// Сначала доступ: про квоту чужого круга ответ не рассказывает. Место
-// удерживается резервацией до конца операции (R3): проверка и запись — одно
-// сериализуемое действие, а не два независимых чтения.
-func (s *Server) reserveWriteSpace(w http.ResponseWriter, r *http.Request, circleID, accountID string, instanceBytes, circleBytes int64) (*blob.Reservation, bool) {
+// Сначала доступ: про квоту чужого круга ответ не рассказывает. Стоимость
+// считается по имени и роду автора — теми же формулами, что у триггеров
+// (R6). Место удерживается резервацией до конца операции (R3): проверка и
+// запись — одно сериализуемое действие, а не два независимых чтения.
+func (s *Server) reserveWriteSpace(w http.ResponseWriter, r *http.Request, circleID, accountID string, cost func(name string, gender chronicle.Gender) (instanceBytes, circleBytes int64)) (*blob.Reservation, bool) {
 	if err := s.Chronicle.RequireReader(r.Context(), circleID, accountID); err != nil {
 		writeDomainError(w, err)
 		return nil, false
 	}
+	name, gender, err := s.Chronicle.WriterText(r.Context(), circleID, accountID)
+	if err != nil {
+		writeDomainError(w, err)
+		return nil, false
+	}
+	instanceBytes, circleBytes := cost(name, gender)
 	res, err := s.Blobs.ReserveWrite(r.Context(), circleID, instanceBytes, circleBytes)
 	if err != nil {
 		writeDomainError(w, err)
