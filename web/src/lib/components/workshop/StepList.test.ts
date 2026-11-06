@@ -2,14 +2,16 @@ import { flushSync, mount, unmount } from 'svelte';
 import { expect, it } from 'vitest';
 import StepList from './StepList.svelte';
 
-function render(steps: Array<{
-	id: string;
-	title: string;
-	status: 'pending' | 'running' | 'done' | 'failed';
-	note?: string;
-	latest?: string;
-	latest_note?: string;
-}>): string {
+function render(
+	steps: Array<{
+		id: string;
+		title: string;
+		status: 'pending' | 'running' | 'done' | 'failed';
+		note?: string;
+		latest?: string;
+		latest_note?: string;
+	}>
+): string {
 	const target = document.createElement('div');
 	const instance = mount(StepList, { target, props: { steps } });
 	flushSync();
