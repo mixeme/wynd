@@ -940,7 +940,19 @@
 		>
 	</Notice>
 	{#if updating || backingUp || moving || ['inspect', 'plan', 'install', 'done'].includes(screen)}
-		<div class="ins-operation-path">{updating ? 'Обновление' : backingUp ? 'Бэкап' : moving ? 'Переезд' : 'Установка Wynd'}</div>
+		<div class="ins-operation-path">{updating
+				? screen === 'uplan'
+					? 'Обновление › План'
+					: 'Обновление'
+				: backingUp
+					? 'Бэкап'
+					: moving
+						? screen === 'mplan'
+							? 'Переезд › План'
+							: 'Переезд'
+						: screen === 'plan'
+							? 'Установка › План'
+							: 'Установка Wynd'}</div>
 	{/if}
 	{#if operationError}<Notice tone="bad" alert>{operationError}</Notice>{/if}
 	{#if moving && target}<div class="ins-move-pair">
@@ -993,20 +1005,22 @@
 					Это сохранённые сведения. Текущее состояние узнаем после подключения.
 				</p></Notice
 			>{/if}
-		<FootBar
-			><Button
-				variant="colored"
-				loading={busy}
-				loadingLabel="Подключаемся…"
-				disabled={Boolean(profile.reserved_by)}
-				onclick={() => void attempt(connect)}>{failure ? 'Повторить' : 'Подключиться'}</Button
-			><Button
-				variant="ghost"
-				class="ins-push"
-				disabled={occupied || moving || Boolean(profile.reserved_by)}
-				onclick={onedit}>Изменить доступ</Button
-			></FootBar
-		>
+		{#if failure || connection === 'password_required'}
+			<FootBar
+				><Button
+					variant="colored"
+					loading={busy}
+					loadingLabel="Подключаемся…"
+					disabled={Boolean(profile.reserved_by)}
+					onclick={() => void attempt(connect)}>{failure ? 'Повторить' : 'Подключиться'}</Button
+				><Button
+					variant="ghost"
+					class="ins-push"
+					disabled={occupied || moving || Boolean(profile.reserved_by)}
+					onclick={onedit}>Изменить доступ</Button
+				></FootBar
+			>
+		{/if}
 	{:else if screen === 'new'}
 		{#if rollbackNote}<Notice tone="note">{rollbackNote}</Notice>{/if}
 		<h2>Wynd на сервере не найден</h2>
@@ -1958,7 +1972,7 @@
 			</TextButton>
 		</FootBar>
 	{/if}
-	{#if !occupied}
+	{#if !occupied && (screen === 'server' || screen === 'new' || screen === 'offline' || screen === 'connect')}
 	<FootBar class="ins-profile-tools"
 		><TextButton
 			class="link under"
