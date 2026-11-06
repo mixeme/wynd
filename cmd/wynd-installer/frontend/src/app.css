@@ -331,9 +331,6 @@ body {
 .ins-win.ins-servers .ins-stage-steps .ins-row {
 	padding: 9px 0;
 }
-.ins-win.ins-servers .ins-stage-steps .ins-row:last-child {
-	border-bottom: 1px solid var(--line);
-}
 .ins-win.ins-servers .ins .btn {
 	border: 1px solid var(--c);
 }

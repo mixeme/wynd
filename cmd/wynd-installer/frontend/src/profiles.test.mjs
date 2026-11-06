@@ -264,7 +264,15 @@ test('background update remains attached to its profile across server and archiv
 	const progress = {
 		running: true,
 		done: false,
-		steps: [{ id: 'image', title: 'Получаем образ', status: 'running' }],
+		steps: [
+			{
+				id: 'image',
+				title: 'Получаем образ',
+				status: 'running',
+				latest: '#8 [build 3/5] RUN go build ./cmd/wynd',
+				latest_note: 'Последнее сообщение — сейчас'
+			}
+		],
 		log: []
 	};
 	const ui = await open(
@@ -288,6 +296,20 @@ test('background update remains attached to its profile across server and archiv
 	assert.ok(ui.elements('.ins-server-entry')[0].textContent.includes('Обновление'));
 	// C71: полосы с выдуманным процентом нет — только этапы и последняя строка.
 	assert.equal(ui.elements('.meter').length, 0);
+	// Последний шаг не рисует вторую черту над полосой действий (7б, 7г).
+	const steps = ui.dom.window.document.querySelector('.ins-stage-steps');
+	const stepRows = [...steps.children].filter((e) => e.classList.contains('ins-row'));
+	const lastRow = stepRows[stepRows.length - 1];
+	const style = (e) => ui.dom.window.getComputedStyle(e);
+	assert.equal(style(lastRow).borderBottomWidth, '0px');
+	// Строка сборки и её давность — тот же кегль и интерлиньяж, без лишнего
+	// отступа: зазор между строками шага одинаковый.
+	const latest = steps.querySelector('.ins-step-latest');
+	const note = steps.querySelector('.ins-step-note');
+	assert.equal(style(latest).fontSize, style(stepRows[0]).fontSize);
+	assert.equal(style(latest).lineHeight, style(stepRows[0]).lineHeight);
+	assert.equal(style(note).lineHeight, style(stepRows[0]).lineHeight);
+	assert.equal(style(note).marginTop, '0px');
 	await ui.click('Подключаться при запуске');
 	assert.equal(ui.stored()[0].auto_connect, false);
 });

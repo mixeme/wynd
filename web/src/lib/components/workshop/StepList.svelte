@@ -54,9 +54,13 @@
 	.ins-step-latest {
 		color: var(--warn);
 		font-weight: 600;
+		/* Строка сборки — тем же кеглем и интерлиньяжем, что и название шага:
+		   иначе зазор до неё и до давности выходит разным (C71.1). */
+		font-size: inherit;
+		line-height: inherit;
 		overflow-wrap: anywhere;
 	}
 	.ins-step-note {
-		margin-top: 2px;
+		margin-top: 0;
 	}
 </style>
