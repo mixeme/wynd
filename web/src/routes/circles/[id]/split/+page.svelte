@@ -156,7 +156,9 @@
 			Каждому придёт письмо и строка в списке кругов. Войдут, если сами захотят. В круге «{circle.name}»
 			ничего не изменится, и там никто об этом не узнает.
 		</Hint>
-		<Button variant="colored" loading={saving} onclick={split}>Отделиться</Button>
+		<Button variant="colored" loading={saving} loadingLabel="Отделяем круг…" onclick={split}
+			>Отделиться</Button
+		>
 		{#if error}
 			<Hint class="mt-12">{error}</Hint>
 		{/if}

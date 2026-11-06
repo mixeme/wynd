@@ -187,7 +187,13 @@
 			<Hint>
 				Круг остаётся замершим. Получите новую ссылку и вставьте её на принимающем сервере.
 			</Hint>
-			<Button class="mt-14" variant="colored" loading={busy} onclick={() => void reissue()}>
+			<Button
+				class="mt-14"
+				variant="colored"
+				loading={busy}
+				loadingLabel="Получаем ссылку…"
+				onclick={() => void reissue()}
+			>
 				Получить новую ссылку
 			</Button>
 		{:else if move.status === 'pulling'}
@@ -248,7 +254,13 @@
 				>Круг уже замер: его убирают с сервера в архив. Переносить его нельзя.</Hint
 			>
 		{:else}
-			<Button class="mt-14" variant="colored" loading={busy} onclick={() => void start()}>
+			<Button
+				class="mt-14"
+				variant="colored"
+				loading={busy}
+				loadingLabel="Останавливаем круг…"
+				onclick={() => void start()}
+			>
 				Остановить круг и получить ссылку
 			</Button>
 			<Hint class="mt-10 ctr-text">Пока перенос не завершён, его можно отменить — круг оживёт.</Hint

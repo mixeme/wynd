@@ -356,6 +356,7 @@
 				class={deleteCircle ? 'mt-14' : 'mt-22'}
 				variant="colored"
 				loading={busy}
+				loadingLabel={deleteCircle && !frozenAt ? 'Останавливаем круг…' : 'Собираем архив…'}
 				disabled={encrypt && !password.trim()}
 				onclick={() => void build()}
 			>
@@ -370,6 +371,7 @@
 				class="mt-14"
 				variant="colored"
 				loading={busy}
+				loadingLabel="Готовим файл…"
 				disabled={encrypt && !password.trim()}
 				onclick={() => void streamNow()}
 			>

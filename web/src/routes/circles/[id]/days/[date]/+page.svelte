@@ -262,6 +262,7 @@
 						keepFocus
 						disabled={savingTitle || !titleDraft.trim()}
 						loading={savingTitle}
+						loadingLabel="Сохраняем…"
 						onclick={saveTitle}
 					>
 						Сохранить

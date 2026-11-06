@@ -1000,6 +1000,7 @@
 										variant="colored"
 										keepFocus
 										loading={savingCommentEdit}
+										loadingLabel="Сохраняем…"
 										onclick={() => saveCommentEdit(comment.id)}
 									>
 										Сохранить

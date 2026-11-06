@@ -601,6 +601,7 @@
 						<Button
 							variant="ghost"
 							loading={clearing}
+							loadingLabel="Удаляем архивы…"
 							disabled={archivesCount === 0}
 							onclick={() => void clearArchives()}
 						>

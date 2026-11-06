@@ -364,7 +364,13 @@
 	     отказа можно попросить меньше. Сначала — вес круга с запасом до МБ. -->
 	<Label class="mt-16">Сколько попросить</Label>
 	<SizeField bind:bytes={placeBytes} />
-	<Button class="mt-14" variant="colored" loading={busy} onclick={() => void askPlace()}>
+	<Button
+		class="mt-14"
+		variant="colored"
+		loading={busy}
+		loadingLabel="Спрашиваем…"
+		onclick={() => void askPlace()}
+	>
 		{label}
 	</Button>
 {/snippet}
@@ -438,6 +444,7 @@
 				class="mt-14"
 				variant="colored"
 				loading={busy}
+				loadingLabel="Открываем…"
 				disabled={!password.trim()}
 				onclick={() => void openEncrypted()}
 			>

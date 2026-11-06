@@ -312,7 +312,13 @@
 	     отказа можно попросить меньше. Сначала — вес круга с запасом до МБ. -->
 	<Label class="mt-16">Сколько попросить</Label>
 	<SizeField bind:bytes={placeBytes} />
-	<Button class="mt-14" variant="colored" loading={busy} onclick={() => void askPlace()}>
+	<Button
+		class="mt-14"
+		variant="colored"
+		loading={busy}
+		loadingLabel="Спрашиваем…"
+		onclick={() => void askPlace()}
+	>
 		{label}
 	</Button>
 {/snippet}
@@ -396,8 +402,11 @@
 				bind:gender={newGender}
 				onerror={(message) => (error = message)}
 			/>
-			<Button variant="colored" loading={busy} onclick={() => void start(true)}
-				>Перенести круг</Button
+			<Button
+				variant="colored"
+				loading={busy}
+				loadingLabel="Переносим…"
+				onclick={() => void start(true)}>Перенести круг</Button
 			>
 		{:else if move && active}
 			<!-- Ход: сервер забирает и поднимает круг сам (кадра нет). -->
@@ -492,7 +501,13 @@
 					<Hint class="mt-14 ctr-text">Новую ссылку вставьте в это же поле.</Hint>
 				{:else if move.status === 'failed'}
 					<StatusCard class="mt-14" title="Перенос не удался" text={moveErrorText(move.error)} />
-					<Button class="mt-14" variant="colored" loading={busy} onclick={() => void start()}>
+					<Button
+						class="mt-14"
+						variant="colored"
+						loading={busy}
+						loadingLabel="Пробуем…"
+						onclick={() => void start()}
+					>
 						Попробовать ещё раз
 					</Button>
 				{:else if move.fits}
@@ -512,7 +527,13 @@
 							письмом или без.
 						</Hint>
 					{/if}
-					<Button class="mt-14" variant="colored" loading={busy} onclick={startMove}>
+					<Button
+						class="mt-14"
+						variant="colored"
+						loading={busy}
+						loadingLabel="Переносим…"
+						onclick={startMove}
+					>
 						Перенести круг
 					</Button>
 					<Hint class="mt-8 ctr-text">Сервер скачает круг сам. Приложение можно закрыть.</Hint>

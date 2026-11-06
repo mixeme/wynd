@@ -38,7 +38,7 @@
 
 **Интерактив:**
 
-- Корень кнопки — `<button type="button">`, не `div`/`span` + `role="button"`. `Button.onclick` обязателен; без действия в dev/smoke — `onclick={() => {}}`. Загрузка — prop `loading` (текст `…`, вид `.off`); не `class:off` на экранах. `Chip` без `onclick` — `<span>`, с действием — `<button aria-pressed>`.
+- Корень кнопки — `<button type="button">`, не `div`/`span` + `role="button"`. `Button.onclick` обязателен; без действия в dev/smoke — `onclick={() => {}}`. Загрузка — prop `loading` (кнопка остаётся со своим названием и видом `.off`); если действие нужно назвать иначе, `loadingLabel` — «Сохраняем…», «Подключаемся…». Текст `…` по умолчанию не подставляется. Не `class:off` на экранах. `Chip` без `onclick` — `<span>`, с действием — `<button aria-pressed>`.
 - Навигационные строки (`SettingsRow`, `CircleRow`, `ServerRow`, `SearchResultRow`, `MemberRow` в режиме transfer) несут `onclick` на корне. `CircleRow` в режиме `card` — `div`-карточка: действие и чипы групп под строкой, без вложенных `button`. Ссылки с URL остаются `<a class="under" href>`.
 - Identity в `CircleBar` — `<button type="button" class="idn">` (без `circleId` — `span.idn`), не `IconButton`. Compose: `TextButton` `bar` / `barAction`. Вложенные `<button>` запрещены: меню в `MemberRow` только если строка не кликабельна целиком. `AdminNav` при `links` — `<button type="button">`, не `span` + `role="button"`.
 - Карточки ленты и дней: `PostCard` — корневой `div.post` (вложенные контролы, не `<button>`); клик по телу через action, не `onclick` на разметке. `DayCard` при `onclick` — `<button type="button">`, иначе `div`.

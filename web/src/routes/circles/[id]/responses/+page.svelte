@@ -225,6 +225,7 @@
 						variant="ghost"
 						class="gutter"
 						loading={loadingMore}
+						loadingLabel="Загружаем…"
 						onclick={() => void loadMore()}
 					>
 						Показать раньше

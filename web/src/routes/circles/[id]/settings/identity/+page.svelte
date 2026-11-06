@@ -182,7 +182,13 @@
 		>Старые записи остаются подписаны прежним именем — так, как их читали тогда. Смена имени будет
 		видна в хронологии.</Hint
 	>
-	<Button class="mt-16" variant="colored" loading={saving} onclick={() => void save()}>
+	<Button
+		class="mt-16"
+		variant="colored"
+		loading={saving}
+		loadingLabel="Сохраняем…"
+		onclick={() => void save()}
+	>
 		Сохранить
 	</Button>
 	{#if error}
