@@ -33,9 +33,11 @@ var quotaScales = []quotaScale{
 	{"годы-60тыс-файлов", 60000, 1200, 30000},
 }
 
+// circleOf раскидывает записи по восьми кругам; c1 — каждый восьмой пост,
+// как живой круг среди нескольких. Квота меряется у c1.
 func circleOf(i int) string {
-	if i%2 == 1 {
-		return "c2"
+	if n := i % 8; n != 0 {
+		return fmt.Sprintf("c%d", n+1)
 	}
 	return "c1"
 }
@@ -91,9 +93,12 @@ func seedQuotaStore(tb testing.TB, sc quotaScale) *Store {
 	exec(`UPDATE instance_settings SET storage_quota_bytes = ?, storage_quota_disk_percent = NULL, default_circle_quota_bytes = NULL WHERE id = 1`, int64(1)<<42)
 	exec(`INSERT INTO circles (id, name, owner_account_id, created_at, updated_at, quota_custom, quota_bytes, text_bytes)
 		VALUES ('c1', 'Семья', 'acc1', ?, ?, 1, ?, ?)`, now, now, int64(1)<<40, int64(8<<20))
-	exec(`INSERT INTO circles (id, name, owner_account_id, created_at, updated_at, text_bytes)
-		VALUES ('c2', 'Дача', 'acc2', ?, ?, ?)`, now, now, int64(4<<20))
-	for _, cid := range []string{"c1", "c2"} {
+	for n := 2; n <= 8; n++ {
+		exec(`INSERT INTO circles (id, name, owner_account_id, created_at, updated_at, text_bytes)
+			VALUES (?, 'Дача', 'acc2', ?, ?, ?)`, fmt.Sprintf("c%d", n), now, now, int64(4<<20))
+	}
+	for n := 1; n <= 8; n++ {
+		cid := fmt.Sprintf("c%d", n)
 		for i := 0; i < 4; i++ {
 			exec(`INSERT INTO identities (id, circle_id, account_id, created_at) VALUES (?, ?, ?, ?)`,
 				fmt.Sprintf("id-%s-%d", cid, i), cid, fmt.Sprintf("acc%d", i+1), now)
@@ -231,7 +236,8 @@ func seedQuotaStore(tb testing.TB, sc quotaScale) *Store {
 		}
 	}
 	doneCM()
-	for _, cid := range []string{"c1", "c2"} {
+	for n := 1; n <= 8; n++ {
+		cid := fmt.Sprintf("c%d", n)
 		for i := 0; i < 4; i++ {
 			var avatar any
 			if i%2 == 0 {
