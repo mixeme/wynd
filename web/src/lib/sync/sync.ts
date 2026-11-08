@@ -63,10 +63,7 @@ function connectTimeoutError(): DOMException {
 }
 
 /** Гоняет запрос потока с таймаутом соединения; при просрочке отменяет запрос. */
-function withConnectTimeout(
-	fetching: Promise<Response>,
-	onExpire: () => void
-): Promise<Response> {
+function withConnectTimeout(fetching: Promise<Response>, onExpire: () => void): Promise<Response> {
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	const expired = new Promise<never>((_, reject) => {
 		timer = setTimeout(() => {
@@ -259,15 +256,15 @@ async function runSyncLoop(origin: string, signal: AbortSignal): Promise<void> {
 			const cursor = (await getCursor(origin))?.seq ?? 0;
 
 			let res: Response;
-				try {
-					res = await withConnectTimeout(
-						apiFetch(origin, `/sync?cursor=${cursor}`, {
-							headers: { Accept: 'text/event-stream' },
-							signal: connect.signal
-						}),
-						() => connect.abort(connectTimeoutError())
-					);
-				} catch (err) {
+			try {
+				res = await withConnectTimeout(
+					apiFetch(origin, `/sync?cursor=${cursor}`, {
+						headers: { Accept: 'text/event-stream' },
+						signal: connect.signal
+					}),
+					() => connect.abort(connectTimeoutError())
+				);
+			} catch (err) {
 				if (signal.aborted) return;
 				if (isSessionRejected(err)) {
 					stopSync(origin);
