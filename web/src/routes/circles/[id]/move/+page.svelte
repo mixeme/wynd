@@ -166,7 +166,9 @@
 		{#if move.link_alive && move.link}
 			<Label>Ссылка переноса</Label>
 			<FieldDisplay mono value={move.link} />
-			<Button class="mt-12" variant="ghost" onclick={() => void copy()}>
+			<!-- Главная, как в утверждённом 6.34: ссылка одноразовая и живёт
+			     72 часа, это основное действие экрана (план 46, C79). -->
+			<Button class="mt-12" onclick={() => void copy()}>
 				{copied ? 'Скопировано' : 'Скопировать'}
 			</Button>
 			<Hint class="mt-10">
