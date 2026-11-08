@@ -60,15 +60,24 @@
 	}
 </script>
 
-<button
-	type="button"
-	class="voice {className}"
-	aria-label={!blobId ? 'Голосовое в очереди' : playing ? 'Пауза' : 'Слушать голосовое'}
-	disabled={!blobId}
-	aria-pressed={playing ? 'true' : 'false'}
-	onclick={onPlay}
->
+{#snippet row()}
 	<span class="voice-play"><Icon name={playing ? 'pause' : 'play'} /></span>
 	<VoiceWave peaks={wave} {progress} />
 	<span class="sz">{label}</span>
-</button>
+{/snippet}
+
+{#if blobId}
+	<button
+		type="button"
+		class="voice {className}"
+		aria-label={playing ? 'Пауза' : 'Слушать голосовое'}
+		aria-pressed={playing ? 'true' : 'false'}
+		onclick={onPlay}
+	>
+		{@render row()}
+	</button>
+{:else}
+	<!-- Играть нечем — не кнопка: нажатие доходит до карточки записи и в
+	     очереди открывает правку, как у реплик с текстом (план 46, C78). -->
+	<span class="voice {className}">{@render row()}</span>
+{/if}
