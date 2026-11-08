@@ -45,6 +45,38 @@ const RETRY_MAX_MS = 60000;
  */
 const WATCHDOG_MS = 45000;
 
+/**
+ * Сколько ждать заголовки ответа потока: сервер отдаёт их сразу, и ожидание
+ * дольше — зависшее на «разогреве» соединение. Без таймаута такой запрос
+ * стоял сам и держал паузу между попытками (план 46, C77). Тело потока
+ * после заголовков ждёт свой сторож тишины.
+ */
+const CONNECT_TIMEOUT_MS = 30_000;
+
+/**
+ * Отмена по таймауту соединения. Имя `TimeoutError` отличает её от ручной
+ * отмены (`AbortError`), чтобы попытка считалась сбоем сети, а не «кто-то
+ * отменил» (isTransportError, план 46, C77).
+ */
+function connectTimeoutError(): DOMException {
+	return new DOMException('sync: нет ответа на запрос потока', 'TimeoutError');
+}
+
+/** Гоняет запрос потока с таймаутом соединения; при просрочке отменяет запрос. */
+function withConnectTimeout(
+	fetching: Promise<Response>,
+	onExpire: () => void
+): Promise<Response> {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const expired = new Promise<never>((_, reject) => {
+		timer = setTimeout(() => {
+			onExpire();
+			reject(connectTimeoutError());
+		}, CONNECT_TIMEOUT_MS);
+	});
+	return Promise.race([fetching, expired]).finally(() => clearTimeout(timer));
+}
+
 /** Пауза перед повтором: min(5 с · 2^n, 60 с) с джиттером ±20 %. */
 export function retryDelayMs(attempt: number, random: () => number = Math.random): number {
 	const capped = Math.min(RETRY_BASE_MS * 2 ** Math.max(0, attempt), RETRY_MAX_MS);
@@ -199,11 +231,20 @@ async function runSyncLoop(origin: string, signal: AbortSignal): Promise<void> {
 		// (без неё соединение оставалось занятым, а их у браузера шесть на
 		// сервер), и даёт переподключиться сразу, не дожидаясь сторожа.
 		const turn = new AbortController();
+		// У запроса потока свой отменщик: его гасит и конец попытки (turn), и
+		// таймаут соединения. Таймаут отменяет только запрос — паузу неудачи
+		// после него turn ещё отбывает, с общим сигналом она исчезала бы.
+		const connect = new AbortController();
+		const stopConnect = () => connect.abort(turn.signal.reason);
+		turn.signal.addEventListener('abort', stopConnect, { once: true });
 		const stop = () => turn.abort(signal.reason);
 		signal.addEventListener('abort', stop, { once: true });
 		let kicked = false;
 		kicks.set(key, () => {
 			kicked = true;
+			// Возврат сети или из фона меняет условия: неудачи до него не в
+			// счёт, и первая пауза после него — с 5 с, а не с потолка (C77).
+			attempt = 0;
 			turn.abort();
 		});
 		const pause = (ms: number) =>
@@ -218,12 +259,15 @@ async function runSyncLoop(origin: string, signal: AbortSignal): Promise<void> {
 			const cursor = (await getCursor(origin))?.seq ?? 0;
 
 			let res: Response;
-			try {
-				res = await apiFetch(origin, `/sync?cursor=${cursor}`, {
-					headers: { Accept: 'text/event-stream' },
-					signal: turn.signal
-				});
-			} catch (err) {
+				try {
+					res = await withConnectTimeout(
+						apiFetch(origin, `/sync?cursor=${cursor}`, {
+							headers: { Accept: 'text/event-stream' },
+							signal: connect.signal
+						}),
+						() => connect.abort(connectTimeoutError())
+					);
+				} catch (err) {
 				if (signal.aborted) return;
 				if (isSessionRejected(err)) {
 					stopSync(origin);
@@ -263,6 +307,7 @@ async function runSyncLoop(origin: string, signal: AbortSignal): Promise<void> {
 			await pause(retryDelayMs(attempt));
 		} finally {
 			signal.removeEventListener('abort', stop);
+			turn.signal.removeEventListener('abort', stopConnect);
 			turn.abort();
 			kicks.delete(key);
 		}
