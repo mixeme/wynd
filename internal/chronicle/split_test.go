@@ -147,3 +147,40 @@ func TestSplitCircleNeedsActiveMember(t *testing.T) {
 		t.Fatalf("вышедшая отделяется: %v", err)
 	}
 }
+
+// Кадр обложки и координаты снимка — дробные столбцы post_media. Проверка
+// оживления принимала только целые и текст, и «Отделиться» отвечало 400
+// invalid на любом круге с кадрированным фото (C81, «Тестовый круг» на
+// wynd.mixfed.ru, 2026-11-08). Здесь те же данные: отделение проходит, дробные
+// значения переезжают.
+func TestSplitCircleWithCropAndGeo(t *testing.T) {
+	e := newTestEnv(t)
+	e.seedAccount("cat")
+	e.seedAccount("mouse")
+	circle := e.createCircle("cat", "Кот", chronicle.UnlimitedWindow())
+	e.join(circle.ID, "mouse", "Мышь", e.at(1))
+	p := e.post(circle.ID, "cat", "кадр", "2026-08-01", e.at(2))
+	e.seedBlob("photo1", "cat")
+	lat, lng := 55.7522, 37.6156
+	crop := &chronicle.CoverCrop{X: 0.25, Y: 0, W: 0.75, H: 1}
+	if err := e.ch.AttachMedia(e.ctx, p.ID, []chronicle.MediaInput{{
+		BlobID: "photo1", Kind: chronicle.MediaPhoto, GeoLat: &lat, GeoLng: &lng, Crop: crop,
+	}}); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := e.ch.SplitCircle(e.ctx, chronicle.SplitInput{CircleID: circle.ID, AccountID: "mouse", Name: "Своё", Now: e.at(3)})
+	if err != nil {
+		t.Fatalf("отделение с дробными столбцами: %v", err)
+	}
+	var gotLat, gotCropX float64
+	if err := e.ch.DB().QueryRowContext(e.ctx, `
+		SELECT pm.geo_lat, pm.crop_x FROM post_media pm
+		JOIN posts p ON p.id = pm.post_id WHERE p.circle_id = ?
+	`, res.CircleID).Scan(&gotLat, &gotCropX); err != nil {
+		t.Fatal(err)
+	}
+	if gotLat != lat || gotCropX != crop.X {
+		t.Fatalf("дробные значения не переехали: geo_lat=%v crop_x=%v", gotLat, gotCropX)
+	}
+}

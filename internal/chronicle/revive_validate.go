@@ -135,6 +135,15 @@ func (c *Chronicle) ValidateReviveTables(ctx context.Context, format, schema int
 							return fmt.Errorf("%w: blob digest", ErrInvalid)
 						}
 					}
+				} else if spec.kind == "REAL" {
+					// Дробные столбцы — координаты снимка и рамка кадра
+					// (post_media, C81): из архива клиента приходят числами
+					// JSON, при отделении на том же сервере — float64 из базы.
+					switch value.(type) {
+					case float64, float32, int64, int:
+					default:
+						return fmt.Errorf("%w: %s.%s is not a number", ErrInvalid, name, col)
+					}
 				} else {
 					return fmt.Errorf("%w: unsupported archive column type", ErrInvalid)
 				}
