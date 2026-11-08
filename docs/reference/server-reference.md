@@ -270,6 +270,22 @@
 
 ---
 
+## Деплой на сервере
+
+**Обычное обновление — образ из реестра, без сборки.** Workflow `image.yaml` публикует `ghcr.io/mixeme/wynd:<версия>` на каждый выпуск. На сервере: бэкап БД (`wynd.db`, `-wal`, `-shm`, `config.json`) в `data/backups/`, `docker pull ghcr.io/mixeme/wynd:<версия>`, заменить `image:` в `compose.yaml`, `docker compose up -d`, сверить `GET /api/v1/instance` и строку `schema version` в `docker logs`. Файлы в `blobs/` миграции не трогают — хватает бэкапа БД. После новой схемы старый образ её не откроет: откат только с восстановлением бэкапа ([CHANGELOG](../CHANGELOG.md), «Оператору»).
+
+**Сборка на сервере — только процедурой установщика.** Голый `docker build` на сервере меньше 2 ГБ памяти валит его: веб-стадия разрешает Node до 2 ГБ (`NODE_OPTIONS=--max-old-space-size=2048`), ядро съедает память, и сервер не отказывает, а перестаёт отвечать (случай 2026-11-08: wynd2 715 МБ без swap завис на ~1,5 ч, помогла только перезагрузка VPS). Рабочая процедура — `internal/installer/install.go`, `buildScript`; повторять её целиком:
+
+- замок `flock` на `/var/tmp/wynd-build.lock` — два повтора не собирают разом;
+- подкачка до суммарных 2 ГБ (`buildMemoryKB = 2<<20`): swap = (2 ГБ − MemTotal − SwapTotal) — `fallocate`, `mkswap`, `swapon`; после сборки `swapoff` и удалить;
+- место проверять заранее: свободно ≥ 2300 МБ + swap, иначе отказ `WYND_NO_ROOM`;
+- `docker build --progress=plain -f deploy/docker/Dockerfile --build-arg VERSION=<версия> -t wynd:<версия> .`;
+- исходники (`git clone --depth 1 --branch v<версия>` или `git archive`) и лог — в `/var/tmp`; в `/tmp` нельзя: это tmpfs, перезагрузка стирает.
+
+На одноядерном сервере сборка идёт около 40 минут; с подкачкой SSH и сайт всё это время отвечают.
+
+---
+
 ## Инварианты для тестов (хроника)
 
 - новичок не видит прошлое;
