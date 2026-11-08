@@ -68,6 +68,13 @@
 		stopSync(origin);
 		await logoutSession(origin);
 		await removeSession(origin);
+		// Другие серверы остаются — список по-прежнему про них. Вышел
+		// последний — экран входа, как ждёт владелец, а не пустые «Серверы»
+		// (план 46, C80).
+		if (!(await loadSessions()).length) {
+			await goto('/');
+			return;
+		}
 		await refresh();
 	}
 
