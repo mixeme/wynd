@@ -64,6 +64,8 @@
 		onCommentVideo,
 		commentStatus = '',
 		identitySettingsLink = true,
+		action,
+		onaction,
 		children
 	}: {
 		color?: CircleColor;
@@ -106,6 +108,9 @@
 		onCommentVideo?: () => void;
 		commentStatus?: string;
 		identitySettingsLink?: boolean;
+		/** Правое действие в шапке — «Готово» в альбоме (план 61, В-2). */
+		action?: string;
+		onaction?: () => void;
 		children: Snippet;
 	} = $props();
 
@@ -205,6 +210,8 @@
 		responsesTab={circleCtx?.hasOthers ?? false}
 		{previewTab}
 		responsesUnread={circleCtx?.responsesUnread ?? 0}
+		{action}
+		{onaction}
 	/>
 	{#if app}
 		<ConnectionStrip notice={connectionNotice(circleCtx?.origin)} />

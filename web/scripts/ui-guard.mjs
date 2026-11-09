@@ -348,7 +348,9 @@ export const BUTTON_TEXT_CLASSES = new Set([
 	'mini',
 	'preview',
 	'vrec-text',
-	'mo'
+	'mo',
+	// Правое действие в шапке круга («К записи» в альбоме, план 61, В-2).
+	'bar-act'
 ]);
 
 function stripCssComments(css) {

@@ -385,6 +385,20 @@
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
+/* Правое действие в шапке круга — «К записи» в альбоме (план 61, В-2):
+   тот же вид, что у правых действий на экранах с формой. */
+.cbar .top .bar-act {
+	flex: 0 0 auto;
+	font-weight: 600;
+	color: #fff;
+	font-size: 13.5px;
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: 0;
+	font-family: inherit;
+	-webkit-tap-highlight-color: transparent;
+}
 .cbar .ic {
 	color: rgba(255, 255, 255, 0.9);
 }
