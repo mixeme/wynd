@@ -79,6 +79,20 @@ func (c *Chronicle) PatchCircle(ctx context.Context, circleID, actorAccountID st
 	}
 	updated := formatTime(now)
 
+	// 3. Нынешние значения цвета и приглашений — чтобы повтор того же значения
+	// не плодил служебные строки (тот же принцип, что у SetMemberCanSettings).
+	var curColor, curWho, curKind string
+	if in.Color != nil || in.InviteWho != nil || in.InviteKindDefault != nil {
+		if err := tx.QueryRowContext(ctx, `
+			SELECT color, invite_who, invite_kind_default FROM circles WHERE id = ?
+		`, circleID).Scan(&curColor, &curWho, &curKind); err != nil {
+			if err == sql.ErrNoRows {
+				return ErrNotFound
+			}
+			return fmt.Errorf("read circle settings: %w", err)
+		}
+	}
+
 	if in.Name != nil {
 		actorName, err := c.identityName(ctx, tx, mem.IdentityID)
 		if err != nil {
@@ -115,18 +129,51 @@ func (c *Chronicle) PatchCircle(ctx context.Context, circleID, actorAccountID st
 			return err
 		}
 	}
-	if in.Color != nil {
+	// Одно чтение имени на все строки структуры: цвет и настройки приглашений
+	// могут меняться одним запросом.
+	actorName := ""
+	if in.Color != nil || in.InviteWho != nil || in.InviteKindDefault != nil {
+		actorName, err = c.identityName(ctx, tx, mem.IdentityID)
+		if err != nil {
+			return err
+		}
+	}
+	if in.Color != nil && color != curColor {
 		if err := c.updateCircleField(ctx, tx, circleID, "color", color, updated); err != nil {
 			return err
 		}
-	}
-	if in.InviteWho != nil {
-		if err := c.updateCircleField(ctx, tx, circleID, "invite_who", who, updated); err != nil {
+		if _, err := c.appendEvent(ctx, tx, appendEventInput{
+			circleID: circleID, eventType: "circle.color_changed", isService: true,
+			actorIdentityID: mem.IdentityID, actorName: actorName,
+			payload: map[string]any{"color": color},
+			summary: summaryCircleColorChanged(), now: now,
+		}); err != nil {
 			return err
 		}
 	}
-	if in.InviteKindDefault != nil {
+	if in.InviteWho != nil && who != curWho {
+		if err := c.updateCircleField(ctx, tx, circleID, "invite_who", who, updated); err != nil {
+			return err
+		}
+		if _, err := c.appendEvent(ctx, tx, appendEventInput{
+			circleID: circleID, eventType: "circle.invite_settings_changed", isService: true,
+			actorIdentityID: mem.IdentityID, actorName: actorName,
+			payload: map[string]any{"invite_who": who},
+			summary: summaryInviteWhoChanged(who), now: now,
+		}); err != nil {
+			return err
+		}
+	}
+	if in.InviteKindDefault != nil && kind != curKind {
 		if err := c.updateCircleField(ctx, tx, circleID, "invite_kind_default", kind, updated); err != nil {
+			return err
+		}
+		if _, err := c.appendEvent(ctx, tx, appendEventInput{
+			circleID: circleID, eventType: "circle.invite_settings_changed", isService: true,
+			actorIdentityID: mem.IdentityID, actorName: actorName,
+			payload: map[string]any{"invite_kind_default": kind},
+			summary: summaryInviteKindChanged(kind), now: now,
+		}); err != nil {
 			return err
 		}
 	}

@@ -846,6 +846,24 @@ func (c *Chronicle) PurgeBeforeCutoff(ctx context.Context, circleID, cutoffDate 
 		}
 	}
 
+	// Итог цикла — служебной строкой (C82): после очистки полей по «Отсечке» и
+	// «Сроку» не понять, закончилась ли архивация. Событие служебное, поэтому
+	// переживает чистку, а created_at = now остаётся позже отсечки.
+	if _, err := c.appendEvent(ctx, tx, appendEventInput{
+		circleID:  circleID,
+		eventType: "archive_purged",
+		isService: true,
+		payload: map[string]any{
+			"cutoff_date": cutoffDate,
+			"posts":       len(postIDs),
+			"files":       len(blobIDs),
+		},
+		summary: summaryArchivePurged(len(postIDs), len(blobIDs)),
+		now:     now,
+	}); err != nil {
+		return nil, err
+	}
+
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE circles SET
 			archive_cutoff_date = NULL,

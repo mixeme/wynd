@@ -2,6 +2,7 @@ package chronicle
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -19,6 +20,26 @@ func summaryIdentityRenamed(from, to string) string {
 
 func summaryEditWindowChanged(label string) string {
 	return fmt.Sprintf("Окно правок изменено: %s", label)
+}
+
+// Цвет и настройки приглашений — изменения структуры круга (C82). В строках
+// нет имён: цвет виден в шапке, а настройка читается сама по себе.
+func summaryCircleColorChanged() string {
+	return "Цвет круга изменён"
+}
+
+func summaryInviteWhoChanged(who string) string {
+	if who == "owner" {
+		return "Создавать приглашения: только владелец"
+	}
+	return "Создавать приглашения: могут все"
+}
+
+func summaryInviteKindChanged(kind string) string {
+	if kind == "multi" {
+		return "Приглашения: многоразовые"
+	}
+	return "Приглашения: одноразовые"
 }
 
 func summaryAvatarSet(name string) string {
@@ -199,6 +220,34 @@ func summaryDeadlineSet(label string) string {
 
 func summaryDeadlineMoved(from, to string) string {
 	return fmt.Sprintf("Срок скачивания перенесён: %s → %s", from, to)
+}
+
+// pluralRu выбирает форму по русскому счёту: 1 запись, 2 записи, 5 записей.
+func pluralRu(n int, one, few, many string) string {
+	switch {
+	case n%10 == 1 && n%100 != 11:
+		return one
+	case n%10 >= 2 && n%10 <= 4 && (n%100 < 10 || n%100 >= 20):
+		return few
+	default:
+		return many
+	}
+}
+
+// summaryArchivePurged — строка о конце цикла архивации (C82): по «Отсечке» и
+// «Сроку» конец не отличить от идущего цикла, поэтому пишется итог.
+func summaryArchivePurged(posts, files int) string {
+	if posts <= 0 && files <= 0 {
+		return "Архивация завершена: удалять было нечего"
+	}
+	parts := make([]string, 0, 2)
+	if posts > 0 {
+		parts = append(parts, fmt.Sprintf("%d %s", posts, pluralRu(posts, "запись", "записи", "записей")))
+	}
+	if files > 0 {
+		parts = append(parts, fmt.Sprintf("%d %s", files, pluralRu(files, "файл", "файла", "файлов")))
+	}
+	return "Архивация завершена: удалено " + strings.Join(parts, ", ")
 }
 
 func formatDeadlineLabel(t time.Time) string {

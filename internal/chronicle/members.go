@@ -275,26 +275,10 @@ func (c *Chronicle) SetCircleName(ctx context.Context, circleID, actorAccountID,
 	return tx.Commit()
 }
 
-// SetCircleColor changes the circle accent color (no service event).
+// SetCircleColor changes the circle accent color. Служебную строку пишет
+// PatchCircle — тот же путь, что у PATCH /circles (C82).
 func (c *Chronicle) SetCircleColor(ctx context.Context, circleID, actorAccountID, color string, now time.Time) error {
-	if err := c.RequireSettings(ctx, circleID, actorAccountID); err != nil {
-		return err
-	}
-	normalized, err := normalizeCircleColor(color)
-	if err != nil {
-		return err
-	}
-	updated := formatTime(now)
-	res, err := c.db.ExecContext(ctx, `UPDATE circles SET color = ?, updated_at = ? WHERE id = ?`,
-		normalized, updated, circleID)
-	if err != nil {
-		return fmt.Errorf("update circle color: %w", err)
-	}
-	n, _ := res.RowsAffected()
-	if n == 0 {
-		return ErrNotFound
-	}
-	return nil
+	return c.PatchCircle(ctx, circleID, actorAccountID, PatchCircleInput{Color: &color}, now)
 }
 
 // CircleName returns the circle title.

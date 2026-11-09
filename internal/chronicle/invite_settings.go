@@ -3,8 +3,6 @@ package chronicle
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"strings"
 	"time"
 )
 
@@ -27,47 +25,15 @@ func (c *Chronicle) GetInviteSettings(ctx context.Context, circleID string) (Inv
 }
 
 // SetInviteWho changes who may create circle invites (can_settings required).
+// Служебную строку пишет PatchCircle — тот же путь, что у PATCH /circles (C82).
 func (c *Chronicle) SetInviteWho(ctx context.Context, circleID, actorAccountID, who string, now time.Time) error {
-	if err := c.RequireSettings(ctx, circleID, actorAccountID); err != nil {
-		return err
-	}
-	who = strings.TrimSpace(who)
-	if who != "all" && who != "owner" {
-		return ErrInvalid
-	}
-	updated := formatTime(now)
-	res, err := c.db.ExecContext(ctx, `UPDATE circles SET invite_who = ?, updated_at = ? WHERE id = ?`,
-		who, updated, circleID)
-	if err != nil {
-		return fmt.Errorf("update invite_who: %w", err)
-	}
-	n, _ := res.RowsAffected()
-	if n == 0 {
-		return ErrNotFound
-	}
-	return nil
+	return c.PatchCircle(ctx, circleID, actorAccountID, PatchCircleInput{InviteWho: &who}, now)
 }
 
 // SetInviteKindDefault sets which invite kinds may be created (single only vs multi allowed).
+// Служебную строку пишет PatchCircle — тот же путь, что у PATCH /circles (C82).
 func (c *Chronicle) SetInviteKindDefault(ctx context.Context, circleID, actorAccountID, kind string, now time.Time) error {
-	if err := c.RequireSettings(ctx, circleID, actorAccountID); err != nil {
-		return err
-	}
-	kind = strings.TrimSpace(kind)
-	if kind != "single" && kind != "multi" {
-		return ErrInvalid
-	}
-	updated := formatTime(now)
-	res, err := c.db.ExecContext(ctx, `UPDATE circles SET invite_kind_default = ?, updated_at = ? WHERE id = ?`,
-		kind, updated, circleID)
-	if err != nil {
-		return fmt.Errorf("update invite_kind_default: %w", err)
-	}
-	n, _ := res.RowsAffected()
-	if n == 0 {
-		return ErrNotFound
-	}
-	return nil
+	return c.PatchCircle(ctx, circleID, actorAccountID, PatchCircleInput{InviteKindDefault: &kind}, now)
 }
 
 // SetMemberCanSettings toggles settings access for a member (owner only).
