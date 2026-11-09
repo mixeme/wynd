@@ -11,7 +11,9 @@ export interface CheckResult {
 
 interface GoApp {
 	CheckServer(address: string): Promise<CheckResult>;
+	CheckCurrent(): Promise<CheckResult>;
 	CurrentServer(): Promise<CheckResult | null>;
+	ForgetSelected(): Promise<void>;
 	ListServers(): Promise<CheckResult[]>;
 }
 
@@ -40,4 +42,14 @@ export async function currentServer(): Promise<CheckResult | null> {
 	const app = bridge();
 	if (!app) return null;
 	return app.CurrentServer();
+}
+
+export async function checkCurrent(): Promise<CheckResult> {
+	const app = bridge();
+	if (!app) throw new Error('no bridge');
+	return app.CheckCurrent();
+}
+
+export async function forgetSelected(): Promise<void> {
+	await bridge()?.ForgetSelected();
 }

@@ -78,6 +78,11 @@ body {
 	margin: 0 auto 25px;
 	color: var(--terracotta);
 }
+.welcome-logo {
+	width: 140px;
+	margin: 0 auto 30px;
+	color: var(--ink);
+}
 .welcome h1 {
 	text-align: center;
 	font-size: 22px;

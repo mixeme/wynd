@@ -120,4 +120,11 @@ func TestStorePersistsSelectionAndRename(t *testing.T) {
 	if selected != first.Origin || len(list) != 1 || list[0].Name != "Переименован" {
 		t.Fatalf("after remove: selected %q, list %+v", selected, list)
 	}
+	if err := reopened.ClearSelection(); err != nil {
+		t.Fatal(err)
+	}
+	selected, list = reopened.Snapshot()
+	if selected != "" || len(list) != 1 {
+		t.Fatalf("after clear: selected %q, list %+v", selected, list)
+	}
 }

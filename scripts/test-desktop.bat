@@ -51,7 +51,7 @@ go build -trimpath -tags "desktop,production" -o "%WYND_DESKTOP_OUT%\workshop.ex
 if errorlevel 1 goto cleanup
 go build -trimpath -tags "desktop,production" -o "%WYND_DESKTOP_OUT%\signer.exe" ./cmd/wynd-signer
 if errorlevel 1 goto cleanup
-go build -trimpath -tags "desktop,production" -o "%WYND_DESKTOP_OUT%\desktop.exe" ./cmd/wynd-desktop
+go build -trimpath -tags "desktop,production" -ldflags "-H windowsgui" -o "%WYND_DESKTOP_OUT%\desktop.exe" ./cmd/wynd-desktop
 if errorlevel 1 goto cleanup
 set "WYND_DESKTOP_RC=0"
 

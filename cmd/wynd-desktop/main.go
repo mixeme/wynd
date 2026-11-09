@@ -88,6 +88,52 @@ func (a *App) CurrentServer() *desktop.CheckResult {
 	return nil
 }
 
+// CheckCurrent проверяет выбранный сервер при запуске и после «Повторить»
+// (ПК3). Имя и режим обновляются; адрес не меняется.
+func (a *App) CheckCurrent() (desktop.CheckResult, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.storeErr != nil {
+		return desktop.CheckResult{}, a.storeErr
+	}
+	selected, servers := a.store.Snapshot()
+	if selected == "" {
+		return desktop.CheckResult{}, desktop.ErrUnknownServer
+	}
+	var saved desktop.Server
+	for _, server := range servers {
+		if server.Origin == selected {
+			saved = server
+			break
+		}
+	}
+	res, err := desktop.CheckServer(a.ctx, a.client, selected)
+	if err != nil {
+		return desktop.CheckResult{}, err
+	}
+	saved.Name, saved.Version, saved.RegistrationMode = res.Name, res.Version, res.RegistrationMode
+	if err := a.store.Put(saved, false); err != nil {
+		return desktop.CheckResult{}, err
+	}
+	if err := a.proxy.Set(res.Origin); err != nil {
+		return desktop.CheckResult{}, err
+	}
+	return res, nil
+}
+
+// ForgetSelected — «Другой сервер» на ПК3: снять выбор, оставить серверы.
+func (a *App) ForgetSelected() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.store == nil {
+		return nil
+	}
+	if err := a.store.ClearSelection(); err != nil {
+		return err
+	}
+	return a.proxy.Set("")
+}
+
 // ListServers — добавленные серверы для «Настроек → Серверы» (ПК7).
 func (a *App) ListServers() []desktop.Server {
 	if a.store == nil {

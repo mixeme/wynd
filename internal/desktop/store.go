@@ -112,6 +112,14 @@ func (s *Store) Select(origin string) error {
 	return s.writeLocked()
 }
 
+// ClearSelection снимает выбор, оставляя серверы в списке.
+func (s *Store) ClearSelection() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.data.Selected = ""
+	return s.writeLocked()
+}
+
 // Remove убирает сервер; выбранным становится следующий.
 func (s *Store) Remove(origin string) error {
 	s.mu.Lock()

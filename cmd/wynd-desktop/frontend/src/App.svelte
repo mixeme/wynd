@@ -6,7 +6,16 @@
 	import Input from '$ui/forms/Input.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
-	import { checkServer, currentServer, runtime, type CheckResult } from './api';
+	import Logo from '$ui/Logo.svelte';
+	import TextButton from '$ui/forms/TextButton.svelte';
+	import {
+		checkCurrent,
+		checkServer,
+		currentServer,
+		forgetSelected,
+		runtime,
+		type CheckResult
+	} from './api';
 
 	const rt = runtime();
 	let maximised = $state(false);
@@ -14,11 +23,20 @@
 	let error = $state('');
 	let checking = $state(false);
 	let server = $state<CheckResult | null>(null);
+	let unavailable = $state(false);
 	let loaded = $state(false);
 
 	onMount(async () => {
 		try {
-			server = await currentServer();
+			const saved = await currentServer();
+			if (saved) {
+				try {
+					server = await checkCurrent();
+				} catch {
+					server = saved;
+					unavailable = true;
+				}
+			}
 		} finally {
 			loaded = true;
 		}
@@ -35,6 +53,7 @@
 		error = '';
 		try {
 			server = await checkServer(address.trim());
+			unavailable = false;
 		} catch {
 			// Причина не различается: опечатка, нет сети, выключенный сервер и
 			// чужой сайт выглядят одинаково (ПК4).
@@ -42,6 +61,27 @@
 		} finally {
 			checking = false;
 		}
+	}
+
+	async function retry() {
+		if (checking) return;
+		checking = true;
+		try {
+			server = await checkCurrent();
+			unavailable = false;
+		} catch {
+			unavailable = true;
+		} finally {
+			checking = false;
+		}
+	}
+
+	async function another() {
+		await forgetSelected().catch(() => undefined);
+		server = null;
+		unavailable = false;
+		address = '';
+		error = '';
 	}
 </script>
 <div class="desk-win" class:maximised>
@@ -57,6 +97,29 @@
 	/>
 	{#if !loaded}
 		<!-- Первое чтение списка серверов: окно ещё не решает, что показать. -->
+	{:else if unavailable && server}
+		<!-- ПК3: сервер уже выбран, сохранённого интерфейса нет. -->
+		<div class="desk-content">
+			<div class="welcome">
+				<div class="welcome-logo"><Logo /></div>
+				<h1>Сервер не отвечает</h1>
+				<Hint centered>{server.name} · {server.origin.replace(/^https?:\/\//, '')}</Hint>
+				<Hint centered style="margin-top:14px"
+					>Проверьте сеть. Если сеть есть — сервер выключен или переехал.</Hint
+				>
+				<Button
+					style="margin-top:22px"
+					loading={checking}
+					loadingLabel="Проверяем…"
+					onclick={() => void retry()}
+				>
+					Повторить
+				</Button>
+				<Hint centered style="margin-top:26px"
+					><TextButton onclick={() => void another()}>Другой сервер</TextButton></Hint
+				>
+			</div>
+		</div>
 	{:else if server}
 		<!-- Интерфейс выбранного сервера. Он живёт в iframe, чтобы полоса
 		     заголовка и рамка окна оставались нашими; запросы идут через
