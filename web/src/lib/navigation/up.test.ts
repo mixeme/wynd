@@ -9,7 +9,8 @@ import { goUpFromSpot, previousEntry, recordEntry } from './up';
 // (баннер в ленте, хит поиска), возвращают «Назад» на экран-источник.
 // Entries живут по индексу истории — подменяем состояние истории, как его
 // ведёт SvelteKit. Карта entries у модуля одна на файл тестов, поэтому
-// у каждого теста свой диапазон индексов.
+// у каждого теста свой диапазон индексов. Сам обход истории — дело
+// jsdom/браузера; проверяем выбор ветки: шаг назад вместо перехода.
 
 let idx = 0;
 const push = (path: string, record = true): void => {
@@ -29,27 +30,44 @@ it('previousEntry — экран, откуда пришли на текущую 
 	expect(previousEntry()).toBe('/circles/c1');
 });
 
-it('goUpFromSpot — узнаваемый источник: шаг назад по истории', async () => {
+it('goUpFromSpot — вкладка круга: шаг назад по истории', () => {
+	const back = vi.spyOn(window.history, 'back');
 	push('/circles/c2');
-	push('/circles/c2/search?q=день');
+	push('/circles/c2/search?q=дом');
 	push('/circles/c2/days/2026-11-09');
-	void goUpFromSpot('/circles/c2', ['', '/search'], '/circles/c2/days');
-	await new Promise((r) => setTimeout(r, 20));
-	expect(location.pathname).toBe('/circles/c2/search');
+	void goUpFromSpot('/circles/c2', ['', 'search'], '/circles/c2/days');
+	expect(back).toHaveBeenCalledTimes(1);
 	expect(vi.mocked(goto)).not.toHaveBeenCalled();
+	back.mockRestore();
 });
 
-it('goUpFromSpot — источник не из spots: на объявленного родителя', async () => {
-	push('/circles/c3');
-	push('/circles/c3/settings');
+it('goUpFromSpot — глобальный поиск (spot со слэшем): назад в поиск', () => {
+	const back = vi.spyOn(window.history, 'back');
+	push('/search?q=день');
 	push('/circles/c3/days/2026-11-09');
-	await goUpFromSpot('/circles/c3', [''], '/circles/c3/days');
-	expect(vi.mocked(goto)).toHaveBeenCalledWith('/circles/c3/days', { replaceState: true });
+	void goUpFromSpot('/circles/c3', ['', '/search'], '/circles/c3/days');
+	expect(back).toHaveBeenCalledTimes(1);
+	expect(vi.mocked(goto)).not.toHaveBeenCalled();
+	back.mockRestore();
+});
+
+it('goUpFromSpot — источник не из spots: переход к родителю', async () => {
+	const back = vi.spyOn(window.history, 'back');
+	push('/circles/c4');
+	push('/circles/c4/settings');
+	push('/circles/c4/days/2026-11-09');
+	await goUpFromSpot('/circles/c4', [''], '/circles/c4/days');
+	expect(back).not.toHaveBeenCalled();
+	expect(vi.mocked(goto)).toHaveBeenCalledWith('/circles/c4/days', { replaceState: true });
+	back.mockRestore();
 });
 
 it('goUpFromSpot — нет предыдущей записи (глубокая ссылка): на родителя', async () => {
-	// У круга c4 записей ещё нет — позади пусто.
-	push('/circles/c4/days/2026-11-09');
-	await goUpFromSpot('/circles/c4', ['', '/search'], '/circles/c4/days');
-	expect(vi.mocked(goto)).toHaveBeenCalledWith('/circles/c4/days', { replaceState: true });
+	const back = vi.spyOn(window.history, 'back');
+	// У круга c5 записей ещё нет — позади пусто.
+	push('/circles/c5/days/2026-11-09');
+	await goUpFromSpot('/circles/c5', [''], '/circles/c5/days');
+	expect(back).not.toHaveBeenCalled();
+	expect(vi.mocked(goto)).toHaveBeenCalledWith('/circles/c5/days', { replaceState: true });
+	back.mockRestore();
 });

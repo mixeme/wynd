@@ -72,15 +72,24 @@ export function goUp(parent: string): Promise<void> {
  * Экраны, на которые можно попасть не только с родителя: баннер в ленте,
  * переход из хитов поиска (план 46, C13 и след.), передача владения из
  * выхода. «Назад» ведёт туда, откуда открыли, если источник — один из
- * `spots` (пути после `base`, включая ленту — `''`); иначе — на родителя
- * `parent`. Выбранный источник — предыдущая запись истории, шаг назад по
- * ней ставит родителя на его место прокрутки.
+ * `spots`; иначе — на родителя `parent`. Spot без слэша — путь после
+ * `base` (`''` — сам `base`, `search` — вкладка поиска круга); со слэшем
+ * — весь путь (`/search` — глобальный поиск). Выбранный источник —
+ * предыдущая запись истории, шаг назад по ней ставит родителя на его
+ * место прокрутки.
  */
 export function goUpFromSpot(base: string, spots: string[], parent: string): Promise<void> {
 	const src = previousEntry();
 	if (src) {
 		const url = new URL(src, location.origin);
-		if (url.pathname.startsWith(base) && spots.includes(url.pathname.slice(base.length))) {
+		const rest = url.pathname.startsWith(base) ? url.pathname.slice(base.length) : undefined;
+		if (
+			spots.some((s) =>
+				s.startsWith('/')
+					? url.pathname === s
+					: rest !== undefined && rest === `/${s}`
+			)
+		) {
 			return goUp(src);
 		}
 	}
