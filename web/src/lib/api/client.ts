@@ -1,5 +1,5 @@
 import { getAdminSession, getSession, invalidateSnapshots } from '$lib/idb/db';
-import { pageOrigin } from '$lib/desktop/bridge';
+import { desktopProxyBase, pageOrigin } from '$lib/desktop/bridge';
 
 export class ApiError extends Error {
 	readonly status: number;
@@ -33,7 +33,9 @@ export function apiPath(origin: string, path: string): string {
 	const base = normalizeOrigin(origin);
 	const suffix = path.startsWith('/') ? path : `/${path}`;
 	const api = `/api/v1${suffix}`;
-	return base ? `${base}${api}` : api;
+	if (!base) return api;
+	const proxy = desktopProxyBase(base);
+	return proxy ? `${proxy}${api}` : `${base}${api}`;
 }
 
 async function resolveToken(origin: string, path: string): Promise<string | undefined> {

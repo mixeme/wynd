@@ -2,6 +2,7 @@ import { apiJson, ApiError, normalizeOrigin } from '$lib/api/client';
 import { getSession, putAdminSession, putSession, type SessionRecord } from '$lib/idb/db';
 import { startSync } from '$lib/sync/sync';
 import { rememberSourceUrl } from '$lib/instance/source.svelte';
+import { registerDesktopServer } from '$lib/desktop/servers';
 import type { PendingAuth, PendingAuthFlow } from './pending';
 
 export interface InstanceInfo {
@@ -170,6 +171,7 @@ export async function persistSession(
 		signed_in_at: new Date().toISOString()
 	};
 	await putSession(session);
+	await registerDesktopServer(session.origin, instanceName);
 	startSync(session.origin);
 	return session;
 }

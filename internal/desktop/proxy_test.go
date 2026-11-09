@@ -80,6 +80,33 @@ func TestProxyRoutesShellServerAndAPI(t *testing.T) {
 	}
 }
 
+func TestProxyForeignServerAllowlist(t *testing.T) {
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, "foreign:"+r.URL.Path+"?"+r.URL.RawQuery)
+	}))
+	defer target.Close()
+
+	proxy := NewProxy()
+	if err := proxy.SetAllowed([]string{target.URL}); err != nil {
+		t.Fatal(err)
+	}
+	handler := proxy.Handler(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {}))
+
+	host := strings.TrimPrefix(target.URL, "http://")
+	call := func(path string) (int, string) {
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		body, _ := io.ReadAll(rec.Result().Body)
+		return rec.Code, string(body)
+	}
+	if code, body := call("/__srv/http/" + host + "/api/v1/instance?x=1"); code != 200 || body != "foreign:/api/v1/instance?x=1" {
+		t.Fatalf("allowed foreign: %d %q", code, body)
+	}
+	if code, _ := call("/__srv/http/127.0.0.1:1/api/v1/instance"); code != http.StatusForbidden {
+		t.Fatalf("foreign not in list: %d", code)
+	}
+}
+
 func TestProxyAllowsSameOriginFrame(t *testing.T) {
 	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("X-Frame-Options", "DENY")

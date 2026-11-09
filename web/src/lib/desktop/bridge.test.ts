@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { normalizeOrigin } from '$lib/api/client';
+import { apiPath, normalizeOrigin } from '$lib/api/client';
 import { resolveServerOrigin } from '$lib/auth/origin';
-import { desktopBridge, pageOrigin } from './bridge';
+import { desktopBridge, desktopProxyBase, pageOrigin } from './bridge';
 
 function bridge(origin: string) {
 	(window as unknown as { __wyndDesktop?: { origin: string } }).__wyndDesktop = { origin };
@@ -29,5 +29,14 @@ describe('desktop bridge', () => {
 		bridge('https://home.example.org');
 		expect(normalizeOrigin('https://other.example.org')).toBe('https://other.example.org');
 		expect(resolveServerOrigin('https://other.example.org')).toBe('https://other.example.org');
+	});
+
+	it('чужой сервер идёт через /__srv', () => {
+		bridge('https://home.example.org');
+		expect(desktopProxyBase('https://other.example.org')).toBe('/__srv/https/other.example.org');
+		expect(apiPath('https://other.example.org', '/instance')).toBe(
+			'/__srv/https/other.example.org/api/v1/instance'
+		);
+		expect(apiPath('https://home.example.org', '/instance')).toBe('/api/v1/instance');
 	});
 });

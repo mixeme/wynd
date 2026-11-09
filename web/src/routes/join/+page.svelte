@@ -16,6 +16,7 @@
 	import { INVALID_EMAIL_HINT, isValidParticipantEmail } from '$lib/auth/email';
 	import { loadPendingAuth, savePendingAuth } from '$lib/auth/pending';
 	import { loadSessions } from '$lib/session/session.svelte';
+	import { allowDesktopServer } from '$lib/desktop/servers';
 	import { ADD_SERVER_IN_BROWSER } from '$lib/session/addServer';
 	import {
 		loadServerCard,
@@ -64,6 +65,9 @@
 		}
 		checking = true;
 		serverConnection = 'checking';
+		// Окно для компьютера: новый адрес сначала разрешается для /__srv,
+		// иначе проверка ушла бы в чужой сервер напрямую и упёрлась в CORS.
+		if (resolved) await allowDesktopServer(address);
 		const known = instance;
 		const card = await loadServerCard(resolved);
 		if (generation !== checkGeneration) return;

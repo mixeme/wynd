@@ -63,10 +63,65 @@ func (a *App) CheckServer(address string) (desktop.CheckResult, error) {
 	if err := a.store.Put(server, true); err != nil {
 		return desktop.CheckResult{}, err
 	}
+	if err := a.updateAllowed(); err != nil {
+		return desktop.CheckResult{}, err
+	}
 	if err := a.proxy.Set(res.Origin); err != nil {
 		return desktop.CheckResult{}, err
 	}
 	return res, nil
+}
+
+func (a *App) updateAllowed() error {
+	if a.store == nil {
+		return nil
+	}
+	_, servers := a.store.Snapshot()
+	origins := make([]string, 0, len(servers))
+	for _, server := range servers {
+		origins = append(origins, server.Origin)
+	}
+	return a.proxy.SetAllowed(origins)
+}
+
+// AllowServer добавляет адрес в разрешённые до входа: интерфейс сервера
+// проверяет его через /__srv ещё до кода из письма.
+func (a *App) AllowServer(address string) (string, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.storeErr != nil {
+		return "", a.storeErr
+	}
+	origin, err := desktop.NormalizeAddress(address)
+	if err != nil {
+		return "", err
+	}
+	server := desktop.Server{Origin: origin, Name: desktop.HostOnly(origin)}
+	if err := a.store.Put(server, false); err != nil {
+		return "", err
+	}
+	if err := a.updateAllowed(); err != nil {
+		return "", err
+	}
+	return origin, nil
+}
+
+// AddServer сохраняет имя и версию после входа на другой сервер.
+func (a *App) AddServer(origin, name, version, mode string) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.storeErr != nil {
+		return a.storeErr
+	}
+	normalized, err := desktop.NormalizeAddress(origin)
+	if err != nil {
+		return err
+	}
+	server := desktop.Server{Origin: normalized, Name: name, Version: version, RegistrationMode: mode}
+	if err := a.store.Put(server, false); err != nil {
+		return err
+	}
+	return a.updateAllowed()
 }
 
 // CurrentServer — выбранный сервер при следующем запуске.
@@ -208,6 +263,9 @@ func main() {
 		store:  store,
 		proxy:  proxy,
 		client: &http.Client{Timeout: 12 * time.Second},
+	}
+	if err := app.updateAllowed(); err != nil {
+		log.Fatal(err)
 	}
 	err = wails.Run(&options.App{
 		Title:       "Wynd [" + desktop.Version + "]",
