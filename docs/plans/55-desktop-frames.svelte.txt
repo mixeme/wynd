@@ -1,4 +1,4 @@
-<!-- Единый документ Wynd для компьютера. ПК1–ПК5 утверждены 2026-10-29. ПК6–ПК7 на согласовании. Макет из Wynd UI; без сетевых запросов и нативных действий. -->
+<!-- Единый документ Wynd для компьютера. ПК1–ПК5 утверждены 2026-10-29. ПК6, ПК6а и ПК7 — предложение 2026-11-09. Макет из Wynd UI; без сетевых запросов и нативных действий. -->
 <script lang="ts">
 import TitleBar from '$ui/workshop/TitleBar.svelte';
 import Mark from '$ui/Mark.svelte';
@@ -23,6 +23,8 @@ import ThumbStrip from '$ui/data/ThumbStrip.svelte';
 import MediaTile from '$ui/data/MediaTile.svelte';
 import AddPhotoButton from '$ui/forms/AddPhotoButton.svelte';
 import DateRow from '$ui/forms/DateRow.svelte';
+import Icon from '$ui/Icon.svelte';
+import StatusCard from '$ui/data/StatusCard.svelte';
 let address = $state('');
 let email = $state('');
 	const requestedMode = new URLSearchParams(window.location.search).get('mode');
@@ -41,13 +43,14 @@ let startup = $state(false);
 <div class="document-eyebrow">WYND · ПЛАН 55 · МАКЕТЫ</div>
 <h1>Wynd для компьютера</h1>
 <p>Windows · Wails v2 · интерфейс с выбранного сервера</p>
-<p>ПК1–ПК5 утверждены 29 октября 2026. ПК6–ПК7 на согласовании. Плашки сервера — по утверждённому плану 56.</p>
+<p>ПК1–ПК5 утверждены 29 октября 2026. ПК6, ПК6а и ПК7 — предложение 2026-11-09. Плашки сервера — по утверждённому плану 56.</p>
 <nav aria-label="Кадры настольного приложения"><a href="#pc1">ПК1 · Первый запуск</a>
 <a href="#pc2">ПК2 · Вход на выбранный сервер</a>
 <a href="#pc3">ПК3 · Сервер не отвечает</a>
 <a href="#pc4">ПК4 · Ошибка проверки адреса</a>
 <a href="#pc5">ПК5 · Запуск вместе с Windows</a>
 <a href="#pc6">ПК6 · Файлы из Проводника</a>
+<a href="#pc6a">ПК6а · Файлы несут над записью</a>
 <a href="#pc7">ПК7 · Ещё один сервер</a></nav>
 <p class="document-note">Макет: данные приведены для примера. Запросы, письма, автозапуск и кнопки рамки здесь не выполняют настоящих действий.</p>
 </header>
@@ -241,6 +244,60 @@ let startup = $state(false);
 	</section>
 </div>
 <p class="frame-description">Файлы, перенесённые из Проводника в окно открытого круга, встают вложениями новой записи — тем же путём, что и выбранные кнопкой. Текст не обязателен; лишнее убирается крестиком.</p>
+</section>
+
+<section id="pc6a" class="desktop-frame">
+<div class="mockup-page">
+	<div class="frame-caption">ПК6а · Файлы несут над записью · Предложение</div>
+	<section class="desktop-window" aria-label="Открытая запись принимает файлы">
+		<TitleBar title="Wynd" onminimise={() => {}} ontoggle={() => {}} onclose={() => {}} />
+		<div class="desktop-content">
+			<div class="compose-page">
+				<div class="cbar">
+					<div class="top compose-top">
+						<TextButton variant="admin" onclick={() => {}}>Отмена</TextButton>
+						<span class="t">Семья</span>
+						<TextButton variant="barAction" active onclick={() => {}}>Опубликовать</TextButton>
+					</div>
+					<div style="height:12px"></div>
+				</div>
+				<div class="compose-body">
+					<TextArea variant="compose" value="" placeholder="Что случилось?" rows={1} />
+					<ThumbStrip>
+						<AddPhotoButton onclick={() => {}} />
+					</ThumbStrip>
+					<DateRow
+						value="2026-11-09"
+						icon="day"
+						title="Отнести к дате"
+						subtitle="9 ноября 2026 · сегодня"
+						class="mt-16"
+						divided="both"
+					/>
+					<Hint>Дата учитывается для группировки записей на вкладке «Дни».</Hint>
+				</div>
+				<ComposeToolbar>
+					{#snippet tools()}
+						<IconButton name="music" label="Звук" onclick={() => {}} />
+						<IconButton name="file" label="Файл" onclick={() => {}} />
+					{/snippet}
+					{#snippet note()}до 32 КБ · как Мышь{/snippet}
+				</ComposeToolbar>
+				<div class="dropzone">
+					<div class="dropzone-frame">
+						<span class="drop-icon"><Icon name="file" /></span>
+						<StatusCard
+							class="drop-card"
+							title="Отпустите файлы"
+							text="Они станут вложениями этой записи. Можно фото, видео и любые файлы."
+						/>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+</div>
+<p class="frame-description">Пока файлы несут над окном открытой записи, поверх него появляется зона приёма: пунктир цветом круга, значок файла и подсказка. Отпускание добавляет файлы; уход за пределы окна отменяет приём. Если запись ещё не открыта, создаётся новая — ПК6.</p>
 </section>
 
 <section id="pc7" class="desktop-frame">
@@ -452,6 +509,35 @@ let startup = $state(false);
 	@media (max-width: 650px) {
 		#pc6 .mockup-page { padding: 12px; }
 		#pc6 .desktop-window { height: 600px; }
+	}
+
+	#pc6a .mockup-page { padding: 28px; }
+	#pc6a .frame-caption { max-width: 1000px; margin: 0 auto 12px; color: #5f5850; font-size: 13px; }
+	#pc6a .desktop-window {
+		--c: var(--terracotta);
+		max-width: 1000px;
+		height: 660px;
+		margin: auto;
+		border: 1px solid #cfc5b8;
+		border-radius: 10px;
+		overflow: hidden;
+		background: var(--paper);
+		box-shadow: 0 10px 36px #2b272416;
+		display: flex;
+		flex-direction: column;
+	}
+	#pc6a .desktop-content { flex: 1; min-height: 0; background: var(--app-gutter); display: flex; }
+	#pc6a .compose-page { --c: var(--terracotta); --ct: #f1e1da; position: relative; width: 100%; max-width: var(--app-max-width); height: 100%; margin: auto; background: var(--paper); display: flex; flex-direction: column; }
+	#pc6a .compose-body { flex: 1; min-height: 0; overflow: auto; }
+	#pc6a .dropzone { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; background: rgba(244, 240, 233, 0.86); }
+	#pc6a .dropzone-frame { width: 360px; max-width: calc(100% - 48px); padding: 26px 26px 24px; border: 2px dashed var(--c); border-radius: 16px; text-align: center; background: var(--paper); }
+	#pc6a .drop-icon { display: block; width: 32px; height: 32px; margin: 0 auto 10px; color: var(--c); }
+	#pc6a .drop-icon :global(.ic) { width: 32px; height: 32px; }
+	#pc6a :global(.drop-card) { margin: 0; border: 0; padding: 0; background: transparent; }
+	#pc6a :global(.drop-card .status-card-title) { font-size: 18px; }
+	@media (max-width: 650px) {
+		#pc6a .mockup-page { padding: 12px; }
+		#pc6a .desktop-window { height: 600px; }
 	}
 
 	#pc7 .mockup-page { padding: 28px; }
