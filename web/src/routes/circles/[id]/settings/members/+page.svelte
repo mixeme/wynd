@@ -44,10 +44,12 @@
 
 	const transferMode = $derived($page.url.searchParams.get('transfer') === '1');
 	// С итога оживления или переноса «Назад» ведёт обратно на него, а не в
-	// настройки круга. Только на экраны «Принять круг» — чужой адрес не берём.
+	// настройки круга (?back от приёмки); из передачи владения на выходе
+	// (?back от «Уйти из круга» и «Уйти с сервера») — на экран выхода.
+	// Только на внутренние экраны — чужой адрес не берём.
 	const upTarget = $derived.by(() => {
 		const back = $page.url.searchParams.get('back') ?? '';
-		return back.startsWith('/settings/servers/accept')
+		return back.startsWith('/settings/') || back.startsWith('/circles/')
 			? back
 			: `/circles/${circle.circleId}/settings`;
 	});

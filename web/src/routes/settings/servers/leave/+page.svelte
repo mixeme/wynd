@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { goUp } from '$lib/navigation/up';
 	import DangerZone from '$ui/forms/DangerZone.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -137,8 +138,10 @@
 					onclick={() =>
 						goto(
 							c.members > 1
-								? `/circles/${c.id}/settings/members?transfer=1`
-								: `/circles/${c.id}/settings`
+								? `/circles/${c.id}/settings/members?transfer=1` +
+										`&back=${encodeURIComponent($page.url.pathname + $page.url.search)}`
+								: `/circles/${c.id}/settings` +
+										`?back=${encodeURIComponent($page.url.pathname + $page.url.search)}`
 						)}
 				/>
 			{/each}
