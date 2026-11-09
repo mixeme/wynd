@@ -230,7 +230,8 @@
 	app
 	color={circle.color}
 	title={formatEntryDate(entryDate)}
-	tabs={false}
+	tabs
+	active={'Дни'}
 	commentBar={false}
 	onback={goBack}
 >
