@@ -1,4 +1,4 @@
-<!-- Единый документ Wynd для компьютера. ПК1–ПК5 утверждены 2026-10-29. ПК6 и ПК7 повторяют утверждённые 4.2 и 7.9; ПК6а утверждён 2026-11-09. Макет из Wynd UI; без сетевых запросов и нативных действий. -->
+<!-- Единый документ Wynd для компьютера. ПК1–ПК5 утверждены 2026-10-29. ПК1–ПК3 — новый вид; ПК4 и ПК5 — состояния основ; ПК6а утверждён 09.11.2026; ПК6 и ПК7 повторяют 4.2 и 7.9. Макет из Wynd UI; без сетевых запросов и нативных действий. -->
 <script lang="ts">
 import TitleBar from '$ui/workshop/TitleBar.svelte';
 import Mark from '$ui/Mark.svelte';
@@ -43,7 +43,7 @@ let startup = $state(false);
 <div class="document-eyebrow">WYND · ПЛАН 55 · МАКЕТЫ</div>
 <h1>Wynd для компьютера</h1>
 <p>Windows · Wails v2 · интерфейс с выбранного сервера</p>
-<p>ПК1–ПК5 утверждены 29 октября 2026. ПК6 и ПК7 повторяют утверждённые 4.2 и 7.9; ПК6а утверждён 2026-11-09. Плашки сервера — по утверждённому плану 56.</p>
+<p>ПК1–ПК3 — новый вид, утверждены 29 октября 2026; ПК4 и ПК5 — состояния утверждённых основ; ПК6а утверждён 09.11.2026; ПК6 и ПК7 повторяют 4.2 и 7.9. Плашки сервера — по утверждённому плану 56.</p>
 <nav aria-label="Кадры настольного приложения"><a href="#pc1">ПК1 · Первый запуск</a>
 <a href="#pc2">ПК2 · Вход на выбранный сервер</a>
 <a href="#pc3">ПК3 · Сервер не отвечает</a>
@@ -130,7 +130,7 @@ let startup = $state(false);
 
 <section id="pc4" class="desktop-frame">
 <div class="mockup-page">
-	<div class="frame-caption">ПК4 · Не удалось проверить адрес · Утверждено 29.10.2026</div>
+	<div class="frame-caption">ПК4 · Не удалось проверить адрес · Состояние ПК1, утверждено 29.10.2026</div>
 	<section class="desktop-window" aria-label="Ошибка проверки адреса сервера">
 		<TitleBar title="Wynd" onminimise={() => {}} ontoggle={() => {}} onclose={() => {}} />
 		<div class="desktop-content">
@@ -159,7 +159,7 @@ let startup = $state(false);
 
 <section id="pc5" class="desktop-frame">
 <div class="mockup-page">
- <div class="frame-caption">ПК5 · Запуск вместе с Windows · Утверждено 29.10.2026</div>
+ <div class="frame-caption">ПК5 · Запуск вместе с Windows · По странице «Приложение», утверждено 29.10.2026</div>
  <section class="desktop-window" aria-label="Настройки приложения Wynd">
   <TitleBar title="Wynd" onminimise={() => {}} ontoggle={() => {}} onclose={() => {}} />
   <div class="desktop-content">
