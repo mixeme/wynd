@@ -134,6 +134,17 @@ func (a *App) ForgetSelected() error {
 	return a.proxy.Set("")
 }
 
+// Autostart — запись текущего пользователя в Run (ПК5).
+func (a *App) Autostart() (desktop.AutostartStatus, error) {
+	return desktop.AutostartState()
+}
+
+// SetAutostart включает или выключает автозапуск и возвращает прочитанное
+// состояние; при отказе окно возвращает прежнее положение переключателя.
+func (a *App) SetAutostart(enabled bool) (desktop.AutostartStatus, error) {
+	return desktop.SetAutostart(enabled)
+}
+
 // ListServers — добавленные серверы для «Настроек → Серверы» (ПК7).
 func (a *App) ListServers() []desktop.Server {
 	if a.store == nil {
