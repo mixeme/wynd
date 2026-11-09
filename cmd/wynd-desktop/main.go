@@ -134,6 +134,28 @@ func (a *App) ForgetSelected() error {
 	return a.proxy.Set("")
 }
 
+// SelectServer переключает окно на другой добавленный сервер (ПК7).
+func (a *App) SelectServer(origin string) (desktop.Server, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.storeErr != nil {
+		return desktop.Server{}, a.storeErr
+	}
+	if err := a.store.Select(origin); err != nil {
+		return desktop.Server{}, err
+	}
+	if err := a.proxy.Set(origin); err != nil {
+		return desktop.Server{}, err
+	}
+	_, servers := a.store.Snapshot()
+	for _, server := range servers {
+		if server.Origin == origin {
+			return server, nil
+		}
+	}
+	return desktop.Server{}, desktop.ErrUnknownServer
+}
+
 // Autostart — запись текущего пользователя в Run (ПК5).
 func (a *App) Autostart() (desktop.AutostartStatus, error) {
 	return desktop.AutostartState()

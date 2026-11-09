@@ -51,6 +51,31 @@ body {
 	overflow: auto;
 }
 
+/* Колонка приложения с настройками: та же ширина, что у iframe и кадров. */
+.page-host {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	background: var(--app-gutter);
+}
+.settings-page {
+	--c: var(--ink);
+	--ct: #e9e3d8;
+	width: 100%;
+	max-width: var(--app-max-width);
+	height: 100%;
+	margin: auto;
+	background: var(--paper);
+	display: flex;
+	flex-direction: column;
+}
+.settings-body {
+	flex: 1;
+	min-height: 0;
+	overflow: auto;
+	padding-bottom: 24px;
+}
+
 /* Интерфейс сервера — во всю высоту под рамкой, колонкой приложения.
    На широком окне по бокам видна бумажная подложка, как на кадрах ПК5–ПК7. */
 .server-host {

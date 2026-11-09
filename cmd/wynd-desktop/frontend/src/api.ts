@@ -15,6 +15,7 @@ interface GoApp {
 	CurrentServer(): Promise<CheckResult | null>;
 	ForgetSelected(): Promise<void>;
 	ListServers(): Promise<CheckResult[]>;
+	SelectServer(origin: string): Promise<CheckResult>;
 }
 
 interface Runtime {
@@ -52,4 +53,14 @@ export async function checkCurrent(): Promise<CheckResult> {
 
 export async function forgetSelected(): Promise<void> {
 	await bridge()?.ForgetSelected();
+}
+
+export async function listServers(): Promise<CheckResult[]> {
+	return (await bridge()?.ListServers()) ?? [];
+}
+
+export async function selectServer(origin: string): Promise<CheckResult> {
+	const app = bridge();
+	if (!app) throw new Error('no bridge');
+	return app.SelectServer(origin);
 }
