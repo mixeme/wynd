@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"embed"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -32,6 +33,7 @@ type App struct {
 	mu       sync.Mutex
 	ctx      context.Context
 	store    *desktop.Store
+	proxy    *desktop.Proxy
 	client   *http.Client
 	storeErr error
 }
@@ -59,6 +61,9 @@ func (a *App) CheckServer(address string) (desktop.CheckResult, error) {
 		RegistrationMode: res.RegistrationMode,
 	}
 	if err := a.store.Put(server, true); err != nil {
+		return desktop.CheckResult{}, err
+	}
+	if err := a.proxy.Set(res.Origin); err != nil {
 		return desktop.CheckResult{}, err
 	}
 	return res, nil
@@ -105,8 +110,24 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	proxy := desktop.NewProxy()
+	if selected, servers := store.Snapshot(); selected != "" {
+		for _, server := range servers {
+			if server.Origin == selected {
+				if err := proxy.Set(server.Origin); err != nil {
+					log.Fatal(err)
+				}
+				break
+			}
+		}
+	}
+	shellFS, err := fs.Sub(assets, "frontend/dist")
+	if err != nil {
+		log.Fatal(err)
+	}
 	app := &App{
 		store:  store,
+		proxy:  proxy,
 		client: &http.Client{Timeout: 12 * time.Second},
 	}
 	err = wails.Run(&options.App{
@@ -115,7 +136,7 @@ func main() {
 		Height:      660,
 		MinWidth:    720,
 		MinHeight:   480,
-		AssetServer: &assetserver.Options{Assets: assets},
+		AssetServer: &assetserver.Options{Handler: proxy.Handler(http.FileServer(http.FS(shellFS)))},
 		// Цвет бумаги (--paper): окно не мигает белым, пока грузится страница.
 		BackgroundColour: &options.RGBA{R: 0xF4, G: 0xF0, B: 0xE9, A: 0xFF},
 		// Своя рамка (TitleBar), как на утверждённых кадрах; системный

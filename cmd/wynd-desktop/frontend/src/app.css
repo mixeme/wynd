@@ -3,7 +3,7 @@
 
 @font-face {
 	font-family: 'Golos Text';
-	src: url('/fonts/GolosText-Variable-cyrillic.woff2') format('woff2');
+	src: url('/__shell/fonts/GolosText-Variable-cyrillic.woff2') format('woff2');
 	font-weight: 400 900;
 	font-style: normal;
 	font-display: swap;
@@ -11,7 +11,7 @@
 }
 @font-face {
 	font-family: 'Golos Text';
-	src: url('/fonts/GolosText-Variable-latin.woff2') format('woff2');
+	src: url('/__shell/fonts/GolosText-Variable-latin.woff2') format('woff2');
 	font-weight: 400 900;
 	font-style: normal;
 	font-display: swap;
@@ -49,6 +49,23 @@ body {
 	place-items: center;
 	padding: 32px;
 	overflow: auto;
+}
+
+/* Интерфейс сервера — во всю высоту под рамкой, колонкой приложения.
+   На широком окне по бокам видна бумажная подложка, как на кадрах ПК5–ПК7. */
+.server-host {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	background: var(--app-gutter);
+}
+.server-host iframe {
+	width: 100%;
+	max-width: var(--app-max-width);
+	height: 100%;
+	margin: auto;
+	border: 0;
+	background: var(--paper);
 }
 
 .welcome {

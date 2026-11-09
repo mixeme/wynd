@@ -7,6 +7,8 @@ import { defineConfig } from 'vite';
 const web = fileURLToPath(new URL('../../../web', import.meta.url));
 
 export default defineConfig({
+	// Оболочка живёт под /__shell/, сервер — в корне окна.
+	base: '/__shell/',
 	plugins: [svelte()],
 	publicDir: `${web}/static`,
 	resolve: {

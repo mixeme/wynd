@@ -4,12 +4,13 @@
  * на текущий сервер, где он попал бы в логи (аудит 2026-09-22). Без схемы и
  * хоста (`/invite/…`) считается своей.
  */
+import { pageOrigin } from '$lib/desktop/bridge';
+
 export function parseWyndLink(input: string, currentOrigin?: string): string | null {
 	const raw = input.trim();
 	if (!raw) return null;
 	try {
-		const base =
-			currentOrigin ?? (typeof window !== 'undefined' ? window.location.origin : 'https://local');
+		const base = currentOrigin ?? pageOrigin();
 		const url = new URL(raw.includes('://') || raw.startsWith('/') ? raw : `https://${raw}`, base);
 		if (url.origin !== new URL(base).origin) return null;
 		const invite = url.pathname.match(/^\/invite\/([^/?#]+)/);
@@ -27,8 +28,7 @@ export function foreignWyndLinkOrigin(input: string, currentOrigin?: string): st
 	const raw = input.trim();
 	if (!raw.includes('://')) return null;
 	try {
-		const base =
-			currentOrigin ?? (typeof window !== 'undefined' ? window.location.origin : 'https://local');
+		const base = currentOrigin ?? pageOrigin();
 		const url = new URL(raw);
 		if (url.origin === new URL(base).origin) return null;
 		if (/^\/(invite|join)\/[^/?#]+/.test(url.pathname)) return url.origin;

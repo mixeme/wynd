@@ -83,7 +83,7 @@
 			}
 		}
 		if (typeof window !== 'undefined') {
-			address = window.location.host;
+			address = displayHost('');
 			void checkServer();
 		}
 	});

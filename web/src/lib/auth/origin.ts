@@ -1,4 +1,5 @@
 import { normalizeOrigin } from '$lib/api/client';
+import { pageOrigin } from '$lib/desktop/bridge';
 
 /** Same rule as config.IsLoopback: localhost and loopback IPs, with or without a scheme. */
 export function isLoopbackPublicURL(raw: string): boolean {
@@ -30,19 +31,19 @@ export function resolveServerOrigin(input: string): string {
 	const parsed = parseServerInput(input);
 	if (!parsed) return '';
 	if (typeof window !== 'undefined') {
-		if (parsed === window.location.origin) return '';
+		if (parsed === window.location.origin || parsed === pageOrigin()) return '';
 		// Поле входа показывает свой сервер без схемы (displayHost). Дописанный
 		// https не совпадал со страницей по http (LAN, loopback) — вход уходил
 		// на https и падал «Сервер не отвечает».
 		const typedScheme = /^https?:\/\//i.test(input.trim());
-		if (!typedScheme && new URL(parsed).host === window.location.host) return '';
+		if (!typedScheme && new URL(parsed).host === new URL(pageOrigin()).host) return '';
 	}
 	return normalizeOrigin(parsed);
 }
 
 export function displayHost(origin: string): string {
 	if (!origin) {
-		if (typeof window !== 'undefined') return window.location.host;
+		if (typeof window !== 'undefined') return new URL(pageOrigin()).host;
 		return '';
 	}
 	try {
