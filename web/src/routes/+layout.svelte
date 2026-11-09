@@ -14,7 +14,16 @@
 	import { afterNavigate, beforeNavigate } from '$app/navigation';
 	import { armEntryGuard, interceptHistoryBack, recordEntry } from '$lib/navigation/up';
 	import AudioBar from '$ui/chrome/AudioBar.svelte';
+	import Icon from '$ui/Icon.svelte';
+	import StatusCard from '$ui/data/StatusCard.svelte';
 	import { useAudioBar } from '$lib/media/audioBar.svelte';
+	import {
+		acceptDesktopDrop,
+		beginDesktopDrop,
+		desktopDropActive,
+		desktopDropEnabled,
+		endDesktopDrop
+	} from '$lib/desktop/drop.svelte';
 	import { pwaInfo } from 'virtual:pwa-info';
 
 	// Полоса плеера (4.9): звук играет и вне своего экрана (план 47, 5.4).
@@ -67,6 +76,51 @@
 			stopConnection();
 			stopQueue();
 			stopViewport();
+		};
+	});
+
+	// Файлы из Проводника (ПК6/ПК6а): только в окне для компьютера.
+	onMount(() => {
+		if (!desktopDropEnabled()) return;
+		let depth = 0;
+		const hasFiles = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes('Files');
+		const enter = (e: DragEvent) => {
+			if (!hasFiles(e)) return;
+			e.preventDefault();
+			depth += 1;
+			beginDesktopDrop(location.pathname);
+		};
+		const over = (e: DragEvent) => {
+			if (!hasFiles(e)) return;
+			e.preventDefault();
+			if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+		};
+		const leave = (e: DragEvent) => {
+			if (!hasFiles(e)) return;
+			depth = Math.max(0, depth - 1);
+			if (depth === 0) endDesktopDrop();
+		};
+		const drop = (e: DragEvent) => {
+			if (!hasFiles(e)) return;
+			e.preventDefault();
+			depth = 0;
+			void acceptDesktopDrop(location.pathname, Array.from(e.dataTransfer?.files ?? []));
+		};
+		const stop = () => {
+			depth = 0;
+			endDesktopDrop();
+		};
+		window.addEventListener('dragenter', enter);
+		window.addEventListener('dragover', over);
+		window.addEventListener('dragleave', leave);
+		window.addEventListener('drop', drop);
+		window.addEventListener('dragend', stop);
+		return () => {
+			window.removeEventListener('dragenter', enter);
+			window.removeEventListener('dragover', over);
+			window.removeEventListener('dragleave', leave);
+			window.removeEventListener('drop', drop);
+			window.removeEventListener('dragend', stop);
 		};
 	});
 </script>
@@ -127,6 +181,18 @@
 			onstop={audioBar.stop}
 		/>
 	{/if}
+	{#if desktopDropActive()}
+		<div class="drop-zone" aria-hidden="true">
+			<div class="drop-zone-frame">
+				<span class="drop-zone-icon"><Icon name="file" /></span>
+				<StatusCard
+					class="drop-card"
+					title="Отпустите файлы"
+					text="Они станут вложениями новой записи. Можно фото, видео, аудио и любые файлы."
+				/>
+			</div>
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -185,5 +251,47 @@
 		align-items: flex-start;
 		justify-content: center;
 		padding: 32px 16px 64px;
+	}
+
+	/* ПК6а: зона приёма, пока файлы несут над открытым кругом. */
+	.drop-zone {
+		position: fixed;
+		inset: 0;
+		z-index: 80;
+		display: grid;
+		place-items: center;
+		background: rgba(244, 240, 233, 0.86);
+	}
+	.drop-zone-frame {
+		width: 360px;
+		max-width: calc(100% - 48px);
+		padding: 26px 26px 24px;
+		border: 2px dashed var(--terracotta);
+		border-radius: 16px;
+		text-align: center;
+		background: var(--paper);
+	}
+	.drop-zone-icon {
+		display: block;
+		width: 32px;
+		height: 32px;
+		margin: 0 auto 10px;
+		color: var(--terracotta);
+	}
+	.drop-zone-icon :global(.ic) {
+		width: 32px;
+		height: 32px;
+	}
+	:global(.drop-card) {
+		margin: 0;
+		border: 0;
+		padding: 0;
+		background: transparent;
+	}
+	:global(.drop-card .status-card-title) {
+		font-size: 18px;
+	}
+	:global(body.dark) .drop-zone {
+		background: rgba(33, 30, 28, 0.86);
 	}
 </style>
