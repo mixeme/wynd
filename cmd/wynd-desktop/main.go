@@ -210,7 +210,7 @@ func main() {
 		client: &http.Client{Timeout: 12 * time.Second},
 	}
 	err = wails.Run(&options.App{
-		Title:       "Wynd",
+		Title:       "Wynd [" + desktop.Version + "]",
 		Width:       1000,
 		Height:      660,
 		MinWidth:    720,
