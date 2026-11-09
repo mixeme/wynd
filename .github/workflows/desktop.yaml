@@ -11,10 +11,12 @@ on:
       - 'internal/**'
       - 'web/**'
       - 'scripts/test*.bat'
+      - 'scripts/build-desktop.bat'
       - 'go.mod'
       - 'go.sum'
       - 'VERSION'
       - '.github/workflows/desktop.yaml'
+      - '.github/workflows/desktop-client.yaml'
   pull_request:
   workflow_dispatch:
 
