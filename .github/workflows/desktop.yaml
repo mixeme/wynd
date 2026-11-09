@@ -6,6 +6,8 @@ on:
     paths:
       - 'cmd/wynd-installer/**'
       - 'cmd/wynd-signer/**'
+      - 'cmd/wynd-desktop/**'
+      - 'internal/desktop/**'
       - 'internal/**'
       - 'web/**'
       - 'scripts/test*.bat'
@@ -36,6 +38,7 @@ jobs:
             web/package-lock.json
             cmd/wynd-installer/frontend/package-lock.json
             cmd/wynd-signer/frontend/package-lock.json
+            cmd/wynd-desktop/frontend/package-lock.json
       - name: Install frontend dependencies
         shell: cmd
         run: |
@@ -44,6 +47,8 @@ jobs:
           call npm --prefix cmd/wynd-installer/frontend ci
           if errorlevel 1 exit /b 1
           call npm --prefix cmd/wynd-signer/frontend ci
+          if errorlevel 1 exit /b 1
+          call npm --prefix cmd/wynd-desktop/frontend ci
           if errorlevel 1 exit /b 1
       - name: Desktop gate
         shell: cmd
