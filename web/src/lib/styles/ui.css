@@ -857,10 +857,12 @@
 	background: var(--rc, var(--c));
 }
 /* Форма аватаров — скруглённый квадрат (A16, «Настройки → Приложение»):
-   лица везде, «Кто уже здесь» и кружок «добавить фото». */
+   лица везде, «Кто уже здесь» и кружок «добавить фото» в форме знакомства.
+   Только аватар: `.addph` делит ряд медиа записи и снимок оплаты, их форма
+   от этой настройки не зависит (`.thumbs .addph` — 8px, одиночная — круг). */
 body[data-avatars='square'] .av,
 body[data-avatars='square'] .people .av2,
-body[data-avatars='square'] .addph {
+body[data-avatars='square'] .addph.ident-photo {
 	border-radius: 28%;
 }
 .av.av-lg {
