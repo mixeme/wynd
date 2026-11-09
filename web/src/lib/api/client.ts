@@ -1,4 +1,5 @@
 import { getAdminSession, getSession, invalidateSnapshots } from '$lib/idb/db';
+import { desktopProxyBase, pageOrigin } from '$lib/desktop/bridge';
 
 export class ApiError extends Error {
 	readonly status: number;
@@ -20,7 +21,11 @@ const circlePathRe = /^\/circles\/([^/]+)/;
 
 export function normalizeOrigin(origin: string): string {
 	if (!origin) return '';
-	if (typeof window !== 'undefined' && origin === window.location.origin) return '';
+	if (
+		typeof window !== 'undefined' &&
+		(origin === window.location.origin || origin === pageOrigin())
+	)
+		return '';
 	return origin.replace(/\/$/, '');
 }
 
@@ -28,7 +33,9 @@ export function apiPath(origin: string, path: string): string {
 	const base = normalizeOrigin(origin);
 	const suffix = path.startsWith('/') ? path : `/${path}`;
 	const api = `/api/v1${suffix}`;
-	return base ? `${base}${api}` : api;
+	if (!base) return api;
+	const proxy = desktopProxyBase(base);
+	return proxy ? `${proxy}${api}` : `${base}${api}`;
 }
 
 async function resolveToken(origin: string, path: string): Promise<string | undefined> {
@@ -82,7 +89,7 @@ export async function apiFetch(
 			// «Доступ закрыт» этого сервера (10.17), а не первого из списка (C67).
 			if (shouldOpenPaywall(path)) {
 				window.location.assign(
-					`/circles?closed=${encodeURIComponent(normalizeOrigin(origin) || window.location.origin)}`
+					`/circles?closed=${encodeURIComponent(normalizeOrigin(origin) || pageOrigin())}`
 				);
 			}
 		} else if (err.status === 403) {

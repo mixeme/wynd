@@ -20,6 +20,7 @@
 		type Theme
 	} from '$lib/idb/db';
 	import { getMediaCacheLimit, setMediaCacheLimit } from '$lib/media/objectUrl';
+	import { autostartBridge } from '$lib/desktop/autostart';
 	import {
 		getAvatarShape,
 		loadSessions,
@@ -60,6 +61,12 @@
 	let baseline = $state<AppNotifyDefaults | null>(null);
 	let error = $state('');
 	let cleared = $state(false);
+	// Автозапуск — только в окне для компьютера; в браузере моста нет.
+	const auto = autostartBridge();
+	let autostart = $state(false);
+	let autostartBusy = $state(false);
+	let autostartStale = $state(false);
+	let autostartError = $state('');
 
 	const themes: { key: Theme; label: string }[] = [
 		{ key: 'system', label: 'Как в системе' },
@@ -73,6 +80,23 @@
 
 	function currentDefaults(): AppNotifyDefaults {
 		return { posts, comments_mine: commentsMine, reactions };
+	}
+
+	async function toggleAutostart(next: boolean) {
+		if (!auto || autostartBusy) return;
+		const before = !next;
+		autostartBusy = true;
+		autostartError = '';
+		try {
+			const state = await auto.set(next);
+			autostart = state.enabled;
+			autostartStale = state.stale;
+		} catch {
+			autostart = before;
+			autostartError = 'Не удалось изменить автозапуск. Попробуйте ещё раз.';
+		} finally {
+			autostartBusy = false;
+		}
 	}
 
 	async function persistPrefs() {
@@ -128,6 +152,15 @@
 	}
 
 	onMount(async () => {
+		if (auto) {
+			try {
+				const state = await auto.get();
+				autostart = state.enabled;
+				autostartStale = state.stale;
+			} catch {
+				autostartError = 'Не удалось прочитать автозапуск. Попробуйте ещё раз.';
+			}
+		}
 		const settings = await getAppSettings();
 		theme = settings?.theme ?? 'system';
 		const defaults = settings?.notify_defaults;
@@ -154,6 +187,29 @@
 </script>
 
 <FormLayout shell app title="Приложение" onback={() => goUp('/settings')}>
+	{#if auto}
+		<SectionLabel>Запуск</SectionLabel>
+		<SettingsRow class="pt-2" title="Запускать при входе в Windows">
+			{#snippet control()}
+				<Switch
+					bind:checked={autostart}
+					disabled={autostartBusy}
+					label="Запускать при входе в Windows"
+					onchange={(v) => void toggleAutostart(v)}
+				/>
+			{/snippet}
+		</SettingsRow>
+		<Hint class="mt-10">При входе в Windows откроется окно Wynd.</Hint>
+		{#if autostartStale}
+			<Hint class="mt-10"
+				>Автозапуск указывает на прежний файл. Включите его заново, чтобы обновить команду.</Hint
+			>
+		{/if}
+		{#if autostartError}
+			<Hint class="mt-10">{autostartError}</Hint>
+		{/if}
+	{/if}
+
 	<SectionLabel>Уведомления по умолчанию</SectionLabel>
 	<SettingsRow class="pt-2" title="Новые записи">
 		{#snippet control()}

@@ -26,3 +26,8 @@ cmd/wynd-signer/frontend/node_modules/
 cmd/wynd-signer/frontend/dist/
 cmd/wynd-signer/frontend/wailsjs/
 cmd/wynd-installer/frontend/package.json.md5
+cmd/wynd-desktop/build/bin/
+cmd/wynd-desktop/frontend/node_modules/
+cmd/wynd-desktop/frontend/dist/
+cmd/wynd-desktop/frontend/wailsjs/
+cmd/wynd-desktop/frontend/package.json.md5

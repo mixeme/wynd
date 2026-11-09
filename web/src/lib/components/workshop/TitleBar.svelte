@@ -8,13 +8,16 @@
 		maximised = false,
 		onminimise,
 		ontoggle,
-		onclose
+		onclose,
+		actions
 	}: {
 		title: string;
 		maximised?: boolean;
 		onminimise: () => void;
 		ontoggle: () => void;
 		onclose: () => void;
+		/** Кнопки перед системными: у окна для компьютера — «Серверы». */
+		actions?: import('svelte').Snippet;
 	} = $props();
 </script>
 
@@ -22,6 +25,9 @@
 	<span class="ins-tb-dot" aria-hidden="true">●</span>
 	<b>{title}</b>
 	<span class="ins-tb-btns">
+		{#if actions}
+			<span class="ins-tb-actions">{@render actions()}</span>
+		{/if}
 		<!-- Значки — свои линии 10 × 10, а не символы шрифта: у «—», «▢», «✕»
 		     разная ширина и посадка, в кнопке они стояли левее центра. -->
 		<button type="button" aria-label="Свернуть" onclick={onminimise}>
@@ -71,7 +77,13 @@
 		align-self: stretch;
 		margin-left: auto;
 	}
-	.ins-tb-btns button {
+	.ins-tb-actions {
+		display: flex;
+		align-items: center;
+		padding: 0 4px;
+		color: var(--muted);
+	}
+	.ins-tb-btns > button {
 		display: grid;
 		place-items: center;
 		width: 44px;
@@ -83,7 +95,7 @@
 		color: var(--muted);
 		cursor: default;
 	}
-	.ins-tb-btns svg {
+	.ins-tb-btns > button svg {
 		display: block;
 		width: 10px;
 		height: 10px;
@@ -91,7 +103,7 @@
 		stroke: currentColor;
 		stroke-width: 1;
 	}
-	.ins-tb-btns button:hover {
+	.ins-tb-btns > button:hover {
 		background: rgba(0, 0, 0, 0.06);
 		color: var(--ink);
 	}
