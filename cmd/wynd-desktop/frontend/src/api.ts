@@ -9,17 +9,7 @@ export interface CheckResult {
 	registration_mode: 'open' | 'invite' | 'closed' | string;
 }
 
-export interface Update {
-	available: boolean;
-	version?: string;
-	notes?: string[];
-	attestation?: string;
-}
-
 interface GoApp {
-	CheckSelfUpdate(): Promise<Update>;
-	ApplySelfUpdate(): Promise<string>;
-	ReleasesPage(): Promise<void>;
 	CheckServer(address: string): Promise<CheckResult>;
 	CheckCurrent(): Promise<CheckResult>;
 	CurrentServer(): Promise<CheckResult | null>;
@@ -41,24 +31,6 @@ function bridge(): GoApp | undefined {
 
 export function runtime(): Runtime | undefined {
 	return (window as unknown as { runtime?: Runtime }).runtime;
-}
-
-// Новая версия окна: спрашивается при запуске; пусто — обновления нет
-// или самообновление выключено в сборке.
-export async function checkSelfUpdate(): Promise<Update | null> {
-	const app = bridge();
-	if (!app?.CheckSelfUpdate) return null;
-	return app.CheckSelfUpdate();
-}
-
-// «Обновить и перезапустить»: «signature» — подпись не сошлась, иначе текст
-// отказа; пусто — новая версия запущена, это окно закрывается.
-export async function applySelfUpdate(): Promise<string> {
-	return (await bridge()?.ApplySelfUpdate()) ?? '';
-}
-
-export async function openingReleases(): Promise<void> {
-	await bridge()?.ReleasesPage();
 }
 
 export async function checkServer(address: string): Promise<CheckResult> {
