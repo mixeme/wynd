@@ -19,9 +19,11 @@ export interface Result {
 }
 
 export interface Release {
-	// product — чья это программа: 'workshop' (Мастерская) или 'desktop'
-	// (Wynd для компьютера).
+	// product — идентификатор программы; name — как она называется в окне,
+	// exe — имя файла выпуска. Приходят из описания программы в Go.
 	product: string;
+	name: string;
+	exe: string;
 	tag: string;
 	version: string;
 	draft: boolean;
@@ -39,8 +41,12 @@ export interface Releases {
 export interface Check {
 	check_id: string;
 	request_id: string;
-	// product — 'workshop' или 'desktop', как у Release.
+	// product, name и exe — как у Release.
 	product: string;
+	name: string;
+	exe: string;
+	// self_update — программа обновляется сама и ждёт в сборке открытый ключ.
+	self_update: boolean;
 	tag: string;
 	draft: boolean;
 	key_in_release: boolean;

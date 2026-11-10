@@ -358,9 +358,9 @@ func TestSignReleasePublication(t *testing.T) {
 	}
 }
 
-// Окно для компьютера подписывается и публикуется так же, как Мастерская:
-// сумма, удостоверение и «Что нового» из whatsnew.md в теге; встроенного
-// ключа самообновления у окна пока нет, поэтому этапа ключа нет.
+// Wynd Настольный подписывается и публикуется так же, как Мастерская:
+// сумма, удостоверение, вшитый ключ самообновления и «Что нового» из
+// whatsnew.md в теге. Набор этапов программа объявляет сама.
 func TestDesktopReleaseCheckAndSign(t *testing.T) {
 	const tag = "desktop-v0.1.1"
 	key := filepath.Join(t.TempDir(), "signing.key")
@@ -369,15 +369,18 @@ func TestDesktopReleaseCheckAndSign(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	g, dir := fixtureGitHub(t, releaseFixture{Tag: tag, Draft: true, Notes: true, PubKey: pub})
+	g, dir := fixtureGitHub(t, releaseFixture{Tag: tag, Draft: true, Notes: true, PubKey: pub, KeyPresent: true})
 	var checks []Progress
 	c, err := g.FetchWithProgress(context.Background(), tag, func(p Progress) { checks = append(checks, p) })
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
-	if c.Problem != "" || c.Product != ProductDesktop || c.KeyInRelease || c.Notes == "" {
+	if c.Problem != "" || c.Product != ProductDesktop || !c.SelfUpdate || !c.KeyInRelease || c.Notes == "" {
 		t.Fatalf("unexpected check: %+v", c)
+	}
+	if c.Name != "Wynd Настольный" || c.Exe != "wynd-desktop.exe" {
+		t.Fatalf("product description missing: %+v", c)
 	}
 	var ids []string
 	for _, step := range c.Steps {
@@ -386,13 +389,10 @@ func TestDesktopReleaseCheckAndSign(t *testing.T) {
 			t.Fatalf("unfinished step: %+v", step)
 		}
 	}
-	if strings.Join(ids, ",") != "release,download,checksum,attestation,notes" {
+	if strings.Join(ids, ",") != "release,download,checksum,attestation,key,notes" {
 		t.Fatalf("desktop check steps: %v", ids)
 	}
 	calls, _ := os.ReadFile(filepath.Join(dir, "calls"))
-	if strings.Contains(string(calls), "signing-key.pub") {
-		t.Fatalf("desktop release read the workshop key: %s", calls)
-	}
 	if !strings.Contains(string(calls), "cmd/wynd-desktop/whatsnew.md") {
 		t.Fatalf("desktop release did not read its whatsnew.md: %s", calls)
 	}

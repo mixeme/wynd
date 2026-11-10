@@ -2,19 +2,16 @@ package installer
 
 import (
 	"context"
-	"crypto/ed25519"
-	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
+	"gitea.mixdep.ru/mix/wynd/internal/relver"
 	"gitea.mixdep.ru/mix/wynd/internal/releasepages"
+	"gitea.mixdep.ru/mix/wynd/internal/selfupdate"
 )
 
 // Самообновление Мастерской (план 45; кадры 10а–10в). Не молча: Мастерская
@@ -101,7 +98,7 @@ func selfUpdateReleases(ctx context.Context, client *http.Client) ([]ghRelease, 
 }
 
 func pickRelease(rels []ghRelease, current string, now time.Time) SelfUpdate {
-	cur, _ := releaseNumber(current)
+	cur, _ := relver.Number(current)
 	var best *ghRelease
 	var bestN [3]int
 	for i := range rels {
@@ -110,8 +107,8 @@ func pickRelease(rels []ghRelease, current string, now time.Time) SelfUpdate {
 		if !ok || r.Draft || r.Prerelease || now.Sub(r.PublishedAt) < UpdateDelay {
 			continue
 		}
-		n, ok := releaseNumber(v)
-		if !ok || !versionLess(cur, n) || best != nil && !versionLess(bestN, n) {
+		n, ok := relver.Number(v)
+		if !ok || !relver.Less(cur, n) || best != nil && !relver.Less(bestN, n) {
 			continue
 		}
 		best, bestN = r, n
@@ -137,20 +134,13 @@ func pickRelease(rels []ghRelease, current string, now time.Time) SelfUpdate {
 	return up
 }
 
-// ErrBadSignature — подпись не сошлась (10в).
-var ErrBadSignature = errors.New("installer: workshop update signature does not match")
+// ErrBadSignature — подпись не сошлась (10в). Общий отказ самообновления
+// всех программ Wynd.
+var ErrBadSignature = selfupdate.ErrBadSignature
 
 // VerifySignature проверяет подпись выпуска ключом key (base64).
 func VerifySignature(key string, exe, sig []byte) error {
-	pub, err := base64.StdEncoding.DecodeString(key)
-	if err != nil || len(pub) != ed25519.PublicKeySize {
-		return ErrBadSignature
-	}
-	raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(sig)))
-	if err != nil || !ed25519.Verify(ed25519.PublicKey(pub), exe, raw) {
-		return ErrBadSignature
-	}
-	return nil
+	return selfupdate.VerifySignature(key, exe, sig)
 }
 
 // ApplySelfUpdate скачивает новую Мастерскую, проверяет подпись и ставит её
@@ -160,58 +150,8 @@ func ApplySelfUpdate(ctx context.Context, client *http.Client, up SelfUpdate) (s
 	if !up.Available {
 		return "", ErrBadSignature
 	}
-	exe, err := fetch(ctx, client, up.exeURL, 200<<20)
-	if err != nil {
-		return "", err
-	}
-	sig, err := fetch(ctx, client, up.sigURL, 4<<10)
-	if err != nil {
-		return "", err
-	}
-	if err := VerifySignature(SigningKey, exe, sig); err != nil {
-		return "", err
-	}
-	self, err := os.Executable()
-	if err != nil {
-		return "", err
-	}
-	next := self + ".new"
-	if err := os.WriteFile(next, exe, 0o755); err != nil {
-		return "", err
-	}
-	old := self + ".old"
-	_ = os.Remove(old)
-	// Работающий exe в Windows переименовать можно, удалить — нет.
-	if err := os.Rename(self, old); err != nil {
-		os.Remove(next)
-		return "", err
-	}
-	if err := os.Rename(next, self); err != nil {
-		_ = os.Rename(old, self)
-		return "", err
-	}
-	return self, nil
+	return selfupdate.Apply(ctx, client, SigningKey, up.exeURL, up.sigURL)
 }
 
 // CleanOldSelf убирает прежний exe после обновления (при запуске).
-func CleanOldSelf() {
-	if self, err := os.Executable(); err == nil {
-		_ = os.Remove(filepath.Clean(self + ".old"))
-	}
-}
-
-func fetch(ctx context.Context, client *http.Client, url string, limit int64) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	res, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("installer: %s: %s", url, res.Status)
-	}
-	return io.ReadAll(io.LimitReader(res.Body, limit))
-}
+func CleanOldSelf() { selfupdate.CleanOldSelf() }

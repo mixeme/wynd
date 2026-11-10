@@ -12,14 +12,18 @@
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import ServerRow from '$ui/data/ServerRow.svelte';
 	import {
+		applySelfUpdate,
 		checkCurrent,
+		checkSelfUpdate,
 		checkServer,
 		currentServer,
 		forgetSelected,
 		listServers,
+		openingReleases,
 		runtime,
 		selectServer,
-		type CheckResult
+		type CheckResult,
+		type Update
 	} from './api';
 
 	const rt = runtime();
@@ -33,6 +37,27 @@
 	let loaded = $state(false);
 	let showServers = $state(false);
 	let adding = $state(false);
+	// Новая версия окна (план 63): не молча и не сразу, как у Мастерской.
+	let update = $state<Update | null>(null);
+	let updateHidden = $state(false);
+	let updateBusy = $state(false);
+	let updateBad = $state(false);
+	let updateError = $state('');
+	void checkSelfUpdate()
+		.then((u) => (update = u?.available ? u : null))
+		.catch(() => undefined);
+	async function applyUpdate() {
+		if (updateBusy) return;
+		updateBusy = true;
+		updateError = '';
+		try {
+			const res = await applySelfUpdate();
+			if (res === 'signature') updateBad = true;
+			else if (res) updateError = res;
+		} finally {
+			updateBusy = false;
+		}
+	}
 
 	onMount(async () => {
 		try {
@@ -141,6 +166,27 @@
 			<IconButton name="gear" size="sm" label="Серверы" onclick={() => void openServers()} />
 		{/snippet}
 	</TitleBar>
+	{#if update && !updateHidden}
+		<!-- Новая версия: полоса над страницей, как «Вышла версия» у Мастерской. -->
+		<div class="desk-update">
+			<div class="desk-update-head">Вышла версия {update.version}</div>
+			{#if updateBad}
+				<div class="desk-update-bad">Подпись не сошлась: обновление не установлено.</div>
+			{:else if updateError}
+				<div class="desk-update-bad" role="alert">{updateError}</div>
+			{/if}
+			{#each update.notes ?? [] as note, i (i)}
+				<div class="desk-update-note">· {note}</div>
+			{/each}
+			<div class="desk-update-actions">
+				<TextButton disabled={updateBusy} loading={updateBusy} onclick={() => void applyUpdate()}>{updateBusy ? 'Обновляем…' : 'Обновить и перезапустить'}</TextButton>
+				<TextButton disabled={updateBusy} onclick={() => (updateHidden = true)}>Позже</TextButton>
+				{#if update.attestation}
+					<TextButton onclick={() => void openingReleases()}>Что нового</TextButton>
+				{/if}
+			</div>
+		</div>
+	{/if}
 	{#if !loaded}
 		<!-- Первое чтение списка серверов: окно ещё не решает, что показать. -->
 	{:else if showServers}

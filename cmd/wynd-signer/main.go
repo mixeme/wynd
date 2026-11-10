@@ -125,8 +125,9 @@ func saveSettings(s settings) {
 	_ = os.WriteFile(p, raw, 0o600)
 }
 
-// repoRoot — папка репозитория Wynd: туда (cmd/wynd-installer/signing-key.pub)
-// ложится открытый ключ, его коммитят. Ищем вверх от exe и от рабочей папки.
+// repoRoot — папка репозитория Wynd: туда (signing-key.pub, общий ключ
+// экосистемы) ложится открытый ключ, его коммитят. Ищем вверх от exe и от
+// рабочей папки.
 func repoRoot() string {
 	var starts []string
 	if exe, err := os.Executable(); err == nil {
@@ -164,7 +165,7 @@ func pubPath(keyPath string) string {
 		return p
 	}
 	if root := repoRoot(); root != "" {
-		return filepath.Join(root, "cmd", "wynd-installer", "signing-key.pub")
+		return filepath.Join(root, "signing-key.pub")
 	}
 	return keyPath + ".pub"
 }

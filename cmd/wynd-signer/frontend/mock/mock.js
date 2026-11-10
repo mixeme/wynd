@@ -18,16 +18,16 @@ const state = {
 	pub_path: 'D:\\Local\\Git\\wynd\\cmd\\wynd-installer\\signing-key.pub'
 };
 
-function release(product, tag, version, draft, publishedAt, signed, url) {
-	return { product, tag, version, draft, published_at: publishedAt, signed, url };
+function release(product, name, exe, tag, version, draft, publishedAt, signed) {
+	return { product, name, exe, tag, version, draft, published_at: publishedAt, signed, url: 'https://github.com/mixeme/wynd/releases/tag/' + tag };
 }
 
 const releases = [
 	...(includeDesktop
-		? [release('desktop', 'desktop-v0.1.1', '0.1.1', true, undefined, false, 'https://github.com/mixeme/wynd/releases/tag/desktop-v0.1.1')]
+		? [release('desktop', 'Wynd Настольный', 'wynd-desktop.exe', 'desktop-v0.1.1', '0.1.1', true, undefined, false)]
 		: []),
-	release('workshop', 'workshop-v0.4.1', '0.4.1', demoDraft, demoDraft ? undefined : '2026-11-06T20:16:11Z', !demoDraft, 'https://github.com/mixeme/wynd/releases/tag/workshop-v0.4.1'),
-	release('workshop', 'workshop-v0.3.1', '0.3.1', false, '2026-11-03T06:17:53Z', true, 'https://github.com/mixeme/wynd/releases/tag/workshop-v0.3.1')
+	release('workshop', 'Мастерская', 'wynd-workshop.exe', 'workshop-v0.4.1', '0.4.1', demoDraft, demoDraft ? undefined : '2026-11-06T20:16:11Z', !demoDraft),
+	release('workshop', 'Мастерская', 'wynd-workshop.exe', 'workshop-v0.3.1', '0.3.1', false, '2026-11-03T06:17:53Z', true)
 ];
 
 function done(rows) {
@@ -38,25 +38,32 @@ const checks = {
 	'desktop-v0.1.1': {
 		check_id: 'mock-check-desktop',
 		product: 'desktop',
+		name: 'Wynd Настольный',
+		exe: 'wynd-desktop.exe',
+		self_update: true,
 		tag: 'desktop-v0.1.1',
 		draft: true,
 		size: 47185920,
 		sum_ok: true,
 		commit: 'c72af8c1d5e7',
 		attest_ok: true,
-		key_in_release: false,
-		notes: '## 0.1.1\n\n- Окно для компьютера: список серверов и пульт\n- Подпись выпуска и публикация из «Подписи»',
+		key_in_release: true,
+		notes: '## 0.1.1\n\n- Список серверов и пульт в окне\n- Самообновление по подписи',
 		steps: done([
 			['release', 'Получаем сведения о выпуске'],
 			['download', 'Скачиваем программу и контрольную сумму'],
 			['checksum', 'Проверяем контрольную сумму'],
 			['attestation', 'Проверяем происхождение сборки', 'коммит c72af8c1'],
+			['key', 'Проверяем открытый ключ'],
 			['notes', 'Читаем описание выпуска']
 		])
 	},
 	'workshop-v0.4.1': {
 		check_id: 'mock-check-workshop',
 		product: 'workshop',
+		name: 'Мастерская',
+		exe: 'wynd-workshop.exe',
+		self_update: true,
 		tag: 'workshop-v0.4.1',
 		draft: demoDraft,
 		size: 91250688,
@@ -137,6 +144,11 @@ async function drive() {
 			await tick(200);
 			button('Подписать').click();
 		}
+	}
+	if (params.get('scroll') === '1') {
+		// Итог подписи длиннее окна: кадр снимаем у конца экрана, где кнопки.
+		await tick(pass ? 1400 : 200);
+		document.querySelector('main.ins-body')?.scrollTo(0, 999999);
 	}
 	if (params.get('file') === '1') {
 		await tick(300);

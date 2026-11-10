@@ -7,7 +7,7 @@
 //
 // Закрытый ключ лежит в файле только зашифрованным паролем владельца — тем же
 // шифрованием, что бэкапы и архивы (scrypt + age, internal/archive). Открытый
-// ключ — в cmd/wynd-installer/signing-key.pub: его вшивает в сборку
+// ключ — в signing-key.pub (общий ключ экосистемы): его вшивает в сборку
 // scripts\build-installer.bat. Обычно запускается через
 // scripts\sign-workshop.bat.
 //
