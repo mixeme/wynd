@@ -64,6 +64,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Черновик на этот тег мог остаться от прежнего запуска: у GitHub
+          # черновики не привязаны к тегу, и повтор оставил бы два «одной версии».
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate \
+            -q '.[] | select(.draft and .tag_name == "'"$GITHUB_REF_NAME"'") | .id' \
+            | while read -r id; do gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$id"; done
           sha256sum dist/wynd-desktop.exe | cut -d' ' -f1 > dist/wynd-desktop.exe.sha256
           gh release create "$GITHUB_REF_NAME" dist/wynd-desktop.exe dist/wynd-desktop.exe.sha256 \
             --draft --title "Wynd для компьютера ${GITHUB_REF_NAME#desktop-v}" --notes "- (что нового — дописать до публикации)"
