@@ -17,6 +17,7 @@
 	import Icon from '$ui/Icon.svelte';
 	import StatusCard from '$ui/data/StatusCard.svelte';
 	import { useAudioBar } from '$lib/media/audioBar.svelte';
+	import { desktopBridge } from '$lib/desktop/bridge';
 	import {
 		acceptDesktopDrop,
 		beginDesktopDrop,
@@ -61,7 +62,12 @@
 		const stopViewport = initViewportHeight();
 		const stopSyncResume = initSyncResume();
 		const stopConnection = initConnection();
-		const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+		// В настольном окне служебный воркер не нужен: оболочка приносит
+		// клиент вместе с сервером, а кэш PWA в окне отдавал старый интерфейс.
+		const isLocal =
+			location.hostname === '127.0.0.1' ||
+			location.hostname === 'localhost' ||
+			Boolean(desktopBridge());
 		// Новая версия не перезагружает открытый экран: она встаёт при
 		// следующем запуске или из «Настроек» (C19).
 		if (pwaInfo && !isLocal) initAppUpdate();

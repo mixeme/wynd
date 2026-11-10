@@ -10,6 +10,7 @@ import (
 	"embed"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -234,17 +235,55 @@ func (a *App) ListServers() []desktop.Server {
 	return servers
 }
 
+// corsHandler — локальный порт API открыт странице окна (wails.localhost):
+// запросы с токеном идут по обычному TCP, поэтому нужен CORS и preflight.
+func corsHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if origin := r.Header.Get("Origin"); origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Add("Vary", "Origin")
+		}
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept, Range, If-None-Match")
+			w.Header().Set("Access-Control-Max-Age", "600")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	config, err := os.UserConfigDir()
 	if err != nil {
 		log.Fatal(err)
 	}
 	base := filepath.Join(config, "Wynd", "desktop")
+	// Оболочка обновляет клиента вместе с сервером; служебный воркер PWA
+	// внутри окна отдавал старый интерфейс из кэша — адрес сервера и
+	// состояние связи выглядели чужими, а новые экраны не появлялись.
+	// Убираем его до запуска окна; сессии и медиа-кэш в IndexedDB не трогаем.
+	_ = os.RemoveAll(filepath.Join(base, "webview", "EBWebView", "Default", "Service Worker"))
 	store, err := desktop.OpenStore(filepath.Join(base, "servers.json"))
 	if err != nil {
 		log.Fatal(err)
 	}
 	proxy := desktop.NewProxy()
+	// API и поток событий страница берёт с локального порта: WebView2
+	// буферизует ответы своих запросов, и SSE через него не течёт (сервер
+	// выглядел «не отвечающим», хотя чтение работало). Порт случайный, только
+	// на 127.0.0.1; адрес уходит в мост страницы (apiBase).
+	apiLn, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		log.Fatal(err)
+	}
+	proxy.SetAPIBase("http://" + apiLn.Addr().String())
+	go func() {
+		if err := http.Serve(apiLn, corsHandler(proxy.Handler(http.NotFoundHandler()))); err != nil {
+			log.Printf("api listener: %v", err)
+		}
+	}()
 	if selected, servers := store.Snapshot(); selected != "" {
 		for _, server := range servers {
 			if server.Origin == selected {
@@ -269,9 +308,11 @@ func main() {
 	}
 	err = wails.Run(&options.App{
 		Title:       "Wynd [" + desktop.Version + "]",
-		Width:       1000,
-		Height:      660,
-		MinWidth:    720,
+		// Окно открывается по ширине интерфейса: колонка клиента — до 720
+		// (480 на узком окне), окно не шире неё (решение владельца 10.11.26).
+		Width:       760,
+		Height:      780,
+		MinWidth:    500,
 		MinHeight:   480,
 		AssetServer: &assetserver.Options{Handler: proxy.Handler(http.FileServer(http.FS(shellFS)))},
 		// Цвет бумаги (--paper): окно не мигает белым, пока грузится страница.

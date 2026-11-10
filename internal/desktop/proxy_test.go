@@ -132,7 +132,7 @@ func TestProxyAllowsSameOriginFrame(t *testing.T) {
 		t.Fatalf("CSP not rewritten: %q", got)
 	}
 	body := rec.Body.String()
-	if !strings.Contains(body, `window.__wyndDesktop={"origin":"`+target.URL+`"}`) {
+	if !strings.Contains(body, `window.__wyndDesktop={"origin":"`+target.URL+`","apiBase":""}`) {
 		t.Fatalf("bridge marker missing: %q", body)
 	}
 	if rec.Header().Get("Content-Length") != strconv.Itoa(len(body)) {

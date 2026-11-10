@@ -1,5 +1,5 @@
 import { getAdminSession, getSession, invalidateSnapshots } from '$lib/idb/db';
-import { desktopProxyBase, pageOrigin } from '$lib/desktop/bridge';
+import { desktopApiBase, desktopProxyBase, pageOrigin } from '$lib/desktop/bridge';
 
 export class ApiError extends Error {
 	readonly status: number;
@@ -33,9 +33,11 @@ export function apiPath(origin: string, path: string): string {
 	const base = normalizeOrigin(origin);
 	const suffix = path.startsWith('/') ? path : `/${path}`;
 	const api = `/api/v1${suffix}`;
-	if (!base) return api;
-	const proxy = desktopProxyBase(base);
-	return proxy ? `${proxy}${api}` : `${base}${api}`;
+	const relative = base ? (desktopProxyBase(base) ?? base) + api : api;
+	// В настольном окне запросы идут на локальный порт оболочки обычным TCP:
+	// ответы WebView2 буферизует, и поток событий через них не течёт.
+	const apiBase = desktopApiBase();
+	return apiBase ? `${apiBase}${relative}` : relative;
 }
 
 async function resolveToken(origin: string, path: string): Promise<string | undefined> {

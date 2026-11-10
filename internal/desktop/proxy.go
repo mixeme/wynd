@@ -22,6 +22,10 @@ type Proxy struct {
 	rp      *httputil.ReverseProxy
 	allowed map[string]*url.URL
 	foreign map[string]*httputil.ReverseProxy
+	// apiBase — адрес локального HTTP-порта окна: страница берёт отсюда API и
+	// поток событий. Через WebView2 ответы буферизуются (SSE не течёт),
+	// поэтому запросы клиента идут по обычному TCP на 127.0.0.1.
+	apiBase string
 }
 
 // NewProxy — прокси без выбранного сервера: до выбора отдаёт 503.
@@ -32,7 +36,21 @@ func NewProxy() *Proxy {
 	}
 }
 
-func newReverseProxy(u *url.URL, injectBridge bool) *httputil.ReverseProxy {
+// SetAPIBase задаёт адрес локального порта до первого Set: он попадает в
+// мост страницы как "apiBase".
+func (p *Proxy) SetAPIBase(base string) {
+	p.mu.Lock()
+	p.apiBase = base
+	p.mu.Unlock()
+}
+
+func (p *Proxy) bridgeAPIBase() string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.apiBase
+}
+
+func newReverseProxy(u *url.URL, injectBridge bool, apiBase string) *httputil.ReverseProxy {
 	rp := httputil.NewSingleHostReverseProxy(u)
 	base := rp.Director
 	rp.Director = func(req *http.Request) {
@@ -53,7 +71,8 @@ func newReverseProxy(u *url.URL, injectBridge bool) *httputil.ReverseProxy {
 	// В HTML выбранного сервера добавляем мост: страница видит свой настоящий
 	// адрес, хотя окно живёт на wails.localhost. Для чужих серверов (/__srv)
 	// мост не нужен: там только запросы, а не страница.
-	marker := []byte(`<script>window.__wyndDesktop={"origin":` + strconv.Quote(u.String()) + `};</script>`)
+	marker := []byte(`<script>window.__wyndDesktop={"origin":` + strconv.Quote(u.String()) +
+		`,"apiBase":` + strconv.Quote(apiBase) + `};</script>`)
 	rp.ModifyResponse = func(res *http.Response) error {
 		res.Header.Del("X-Frame-Options")
 		if values := res.Header.Values("Content-Security-Policy"); len(values) > 0 {
@@ -106,7 +125,7 @@ func (p *Proxy) Set(origin string) error {
 	if err != nil || u.Scheme == "" || u.Host == "" {
 		return fmt.Errorf("%w: %s", ErrInvalidAddress, origin)
 	}
-	p.target, p.rp = u, newReverseProxy(u, true)
+	p.target, p.rp = u, newReverseProxy(u, true, p.apiBase)
 	return nil
 }
 
@@ -217,7 +236,7 @@ func (p *Proxy) serveForeign(w http.ResponseWriter, r *http.Request) {
 	}
 	rp := p.foreign[key]
 	if rp == nil {
-		rp = newReverseProxy(target, false)
+		rp = newReverseProxy(target, false, p.apiBase)
 		p.foreign[key] = rp
 	}
 	p.mu.Unlock()
