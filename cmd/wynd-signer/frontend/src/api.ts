@@ -19,6 +19,9 @@ export interface Result {
 }
 
 export interface Release {
+	// product — чья это программа: 'workshop' (Мастерская) или 'desktop'
+	// (Wynd для компьютера).
+	product: string;
 	tag: string;
 	version: string;
 	draft: boolean;
@@ -36,6 +39,8 @@ export interface Releases {
 export interface Check {
 	check_id: string;
 	request_id: string;
+	// product — 'workshop' или 'desktop', как у Release.
+	product: string;
 	tag: string;
 	draft: boolean;
 	key_in_release: boolean;
