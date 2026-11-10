@@ -22,6 +22,12 @@ export async function allowDesktopServer(address: string): Promise<void> {
 	}
 }
 
+/** Открывает в оболочке выбор временного источника интерфейса. */
+export function openDesktopInterface(): void {
+	if (typeof window === 'undefined' || !desktopBridge()) return;
+	window.parent.postMessage({ type: 'wynd:open-interface' }, window.location.origin);
+}
+
 /** Сохраняет имя и версию после входа на другой сервер. */
 export async function registerDesktopServer(
 	origin: string,

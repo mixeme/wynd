@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+<script lang="ts">
 	import { ADD_SERVER_IN_BROWSER } from '$lib/session/addServer';
 	import { goUp } from '$lib/navigation/up';
 	import { onMount } from 'svelte';
@@ -20,6 +20,7 @@
 	import { savePendingEmailChange } from '$lib/auth/emailChange';
 	import { savePendingLeave } from '$lib/auth/leaveServer';
 	import { loadServerCard, type ServerCardState } from '$lib/instance/serverCard';
+	import { desktopBridge } from '$lib/desktop/bridge';
 
 	interface ServerRowState {
 		session: SessionRecord;
@@ -30,8 +31,10 @@
 		gdpr?: boolean;
 	}
 
+	const desktop = desktopBridge();
 	let rows = $state<ServerRowState[]>([]);
 	let loading = $state(true);
+	let interfaceName = $state(desktop ? displayHost(desktop.origin) : '');
 
 	function pluralCircles(n: number): string {
 		return plural(n, WORD.circle);
@@ -46,6 +49,10 @@
 
 	async function refresh() {
 		const sessions = await loadSessions();
+		if (!sessions.length && desktop) {
+			const card = await loadServerCard(desktop.origin);
+			interfaceName = card.info?.name || displayHost(desktop.origin);
+		}
 		rows = await Promise.all(
 			sessions.map(async (session) => {
 				const [list, card] = await Promise.all([
@@ -113,10 +120,12 @@
 		<Loading />
 	{:else if rows.length === 0}
 		<!-- Спокойная констатация, не заголовок: обычный кегль, цвет подсказки. -->
-		<Hint centered class="mt-28 sz-15">На этом устройстве вы ни на одном сервере</Hint>
 		{#if ADD_SERVER_IN_BROWSER}
-			<Button onclick={addServer}>Добавить сервер</Button>
+			<Hint centered class="mt-28 sz-15">Вы ни на одном сервере не вошли</Hint>
+			<Hint centered class="mt-16">Интерфейс продолжит открываться с сервера «{interfaceName}».</Hint>
+			<Button onclick={addServer}>Войти на сервер</Button>
 		{:else}
+			<Hint centered class="mt-28 sz-15">На этом устройстве вы ни на одном сервере</Hint>
 			<!-- C69: другой сервер отсюда не добавить — входят на этот. -->
 			<Button onclick={() => goto('/')}>Войти</Button>
 		{/if}
@@ -155,7 +164,7 @@
 			Общего профиля на все серверы нет: каждый сервер — отдельное место, даже с той же почтой.
 		</Hint>
 		{#if ADD_SERVER_IN_BROWSER}
-			<Button onclick={addServer}>Добавить сервер</Button>
+			<Button onclick={addServer}>Войти на сервер</Button>
 		{/if}
 	{/if}
 </FormLayout>

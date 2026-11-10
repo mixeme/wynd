@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { allowDesktopServer, registerDesktopServer } from './servers';
+import { allowDesktopServer, openDesktopInterface, registerDesktopServer } from './servers';
 
 const bag = window as unknown as {
 	__wyndDesktop?: { origin: string };
@@ -29,5 +29,12 @@ describe('desktop server registration', () => {
 		await registerDesktopServer('https://other.example.org', 'У Славы', '0.50.0', 'invite');
 		expect(allow).toHaveBeenCalledWith('https://other.example.org');
 		expect(add).toHaveBeenCalledWith('https://other.example.org', 'У Славы', '0.50.0', 'invite');
+	});
+
+	it('просит оболочку открыть источник интерфейса', () => {
+		bag.__wyndDesktop = { origin: 'https://home.example.org' };
+		const post = vi.spyOn(window.parent, 'postMessage').mockImplementation(() => {});
+		openDesktopInterface();
+		expect(post).toHaveBeenCalledWith({ type: 'wynd:open-interface' }, window.location.origin);
 	});
 });

@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+<script lang="ts">
 	import { goUp } from '$lib/navigation/up';
 	import NumberField from '$ui/forms/NumberField.svelte';
 	import { onMount } from 'svelte';
@@ -7,6 +7,7 @@
 	import Hint from '$ui/forms/Hint.svelte';
 	import Meter from '$ui/forms/Meter.svelte';
 	import SectionLabel from '$ui/data/SectionLabel.svelte';
+	import ServerRow from '$ui/data/ServerRow.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import Switch from '$ui/forms/Switch.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
@@ -21,6 +22,10 @@
 	} from '$lib/idb/db';
 	import { getMediaCacheLimit, setMediaCacheLimit } from '$lib/media/objectUrl';
 	import { autostartBridge } from '$lib/desktop/autostart';
+	import { desktopBridge } from '$lib/desktop/bridge';
+	import { openDesktopInterface } from '$lib/desktop/servers';
+	import { displayHost } from '$lib/auth/origin';
+	import { loadServerCard } from '$lib/instance/serverCard';
 	import {
 		getAvatarShape,
 		loadSessions,
@@ -61,6 +66,9 @@
 	let baseline = $state<AppNotifyDefaults | null>(null);
 	let error = $state('');
 	let cleared = $state(false);
+	// Временный источник интерфейса показывается только в окне для компьютера.
+	const desktop = desktopBridge();
+	let interfaceName = $state(desktop ? displayHost(desktop.origin) : '');
 	// Автозапуск — только в окне для компьютера; в браузере моста нет.
 	const auto = autostartBridge();
 	let autostart = $state(false);
@@ -152,6 +160,10 @@
 	}
 
 	onMount(async () => {
+		if (desktop) {
+			const card = await loadServerCard(desktop.origin);
+			interfaceName = card.info?.name || displayHost(desktop.origin);
+		}
 		if (auto) {
 			try {
 				const state = await auto.get();
@@ -187,6 +199,21 @@
 </script>
 
 <FormLayout shell app title="Приложение" onback={() => goUp('/settings')}>
+	{#if desktop}
+		<SectionLabel>Интерфейс</SectionLabel>
+		<ServerRow
+			name={interfaceName}
+			subtitle={displayHost(desktop.origin)}
+			detail="Сейчас открывает интерфейс"
+			card
+			top={0}
+		/>
+		<SettingsRow
+			title="Сменить сервер интерфейса"
+			subtitle="Входы и круги останутся на своих серверах"
+			onclick={openDesktopInterface}
+		/>
+	{/if}
 	{#if auto}
 		<SectionLabel>Запуск</SectionLabel>
 		<SettingsRow class="pt-2" title="Запускать при входе в Windows">

@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+<script lang="ts">
 	import { goUp } from '$lib/navigation/up';
 	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import { onMount } from 'svelte';
@@ -40,7 +40,7 @@
 
 	// Два экрана на одном адресе. С «Войти» (1.6) — учётка на этом сервере:
 	// приложение открыто с него, адрес не спрашиваем. Из «Серверов»
-	// («Добавить сервер») — другой сервер: адрес, почта и поле для ссылки.
+	// («Войти на сервер») — другой сервер: адрес, почта и поле для ссылки.
 	// Вошедший сюда попадает только добавлять — так режим переживает возврат
 	// со сканера и с экрана кода, где `from` уже нет.
 	let adding = $state(page.url.searchParams.get('from') === 'servers');
@@ -209,7 +209,7 @@
 </script>
 
 {#if adding}
-	<FormLayout shell app title="Добавить сервер" onback={() => goUp(backHref)}>
+	<FormLayout shell app title="Войти на сервер" onback={() => goUp(backHref)}>
 		<Label>Адрес сервера</Label>
 		<Input
 			active
