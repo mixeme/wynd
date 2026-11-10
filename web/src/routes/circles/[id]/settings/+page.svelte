@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { goUpFromSpot } from '$lib/navigation/up';
 	import EditWindowPicker from '$ui/forms/EditWindowPicker.svelte';
 	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
 	import { goto } from '$app/navigation';
@@ -324,8 +324,10 @@
 		}
 	}
 
+	// «Назад» — на ту вкладку, из шапки которой открыли «Настройки» (имя и
+	// аватар есть на всех вкладках); пришли иначе — в ленту, как раньше.
 	function goBack() {
-		goUp(`/circles/${circle.circleId}`);
+		void goUpFromSpot(`/circles/${circle.circleId}`, ['', 'days', 'grid', 'map', 'responses', 'search'], `/circles/${circle.circleId}`);
 	}
 
 	async function onLeave() {
