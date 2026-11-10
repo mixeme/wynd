@@ -1,5 +1,5 @@
 <!-- План 62. Полный сценарий выбранной структуры Б для настольного окна.
-     Только существующие Wynd UI; состояние без входа уже принято, остальное — черновики вёрстки. -->
+     Только существующие Wynd UI; кадры 1–4 и 7 приняты, кадр 6 с плашкой проверки — черновик. -->
 <script lang="ts">
 	import TitleBar from '$ui/workshop/TitleBar.svelte';
 	import BackBar from '$ui/chrome/BackBar.svelte';
@@ -34,7 +34,7 @@
 			<a href="#flow-add-interface">6 · Добавление источника</a>
 			<a href="#flow-no-login">7 · Без входа</a>
 		</nav>
-		<p>Кадр 7 принят; кадры 1–6 предлагаются для согласования вёрстки. Данные приведены для примера.</p>
+		<p>Кадры 1–4 и 7 приняты; кадр 5 и диалог — в отдельном исходнике. Кадр 6 с плашкой проверки предлагается для согласования. Данные приведены для примера.</p>
 	</header>
 
 	<section id="flow-settings" class="flow-frame">
@@ -147,7 +147,7 @@
 	</section>
 
 	<section id="flow-add-interface" class="flow-frame">
-		<div class="flow-caption">6 · Сервер интерфейса → Добавить сервер интерфейса · только служебная роль</div>
+		<div class="flow-caption">6 · Сервер интерфейса → Добавить сервер интерфейса · адрес проверен</div>
 		<section class="desktop-window" aria-label="Добавление сервера интерфейса">
 			<TitleBar title="Wynd" onminimise={() => {}} ontoggle={() => {}} onclose={() => {}} />
 			<div class="desktop-content"><div class="settings-page">
@@ -155,12 +155,13 @@
 				<div class="settings-body">
 					<Label>Адрес сервера</Label>
 					<Input active mono small type="text" spellcheck="false" bind:value={interfaceAddress} />
+					<ServerRow name="Файлы" subtitle="files.example.org" detail="Сервер доступен" card />
 					<Hint>Окно сможет загружать интерфейс с этого сервера. Вход и учётная запись не создаются.</Hint>
 					<Button onclick={() => {}}>Добавить сервер интерфейса</Button>
 				</div>
 			</div></div>
 		</section>
-		<p class="flow-description">Здесь не запрашиваются почта и код: действие добавляет только возможный источник интерфейса. Для входа нужно вернуться в «Серверы».</p>
+		<p class="flow-description">После успешной проверки адреса появляется плашка с именем сервера, адресом и состоянием связи. Почта и код не запрашиваются: действие добавляет только возможный источник интерфейса.</p>
 	</section>
 
 	<section id="flow-no-login" class="flow-frame">
