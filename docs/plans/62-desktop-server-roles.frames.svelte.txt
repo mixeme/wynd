@@ -1,0 +1,175 @@
+<!-- План 62. Черновые варианты структуры «Серверы» для настольного окна.
+     Собраны из существующих Wynd UI; смысл и вёрстка не утверждены. -->
+<script lang="ts">
+	import TitleBar from '$ui/workshop/TitleBar.svelte';
+	import BackBar from '$ui/chrome/BackBar.svelte';
+	import ServerRow from '$ui/data/ServerRow.svelte';
+	import SettingsRow from '$ui/data/SettingsRow.svelte';
+	import SectionLabel from '$ui/data/SectionLabel.svelte';
+	import Hint from '$ui/forms/Hint.svelte';
+	import Button from '$ui/forms/Button.svelte';
+	import Chip from '$ui/forms/Chip.svelte';
+	import ChipGroup from '$ui/forms/ChipGroup.svelte';
+	import Switch from '$ui/forms/Switch.svelte';
+	import IconButton from '$ui/forms/IconButton.svelte';
+
+	let startup = $state(false);
+</script>
+
+<div class="roles-document">
+	<header class="roles-header">
+		<div>WYND · ПЛАН 62 · ЧЕРНОВИКИ</div>
+		<h1>Серверы в окне для компьютера</h1>
+		<p>Три варианта разделения двух ролей: источник интерфейса и учётная запись.</p>
+		<nav aria-label="Варианты экранов">
+			<a href="#roles-base">Текущий экран</a>
+			<a href="#roles-a">А · Общий список</a>
+			<a href="#roles-b">Б · Интерфейс в «Приложении»</a>
+			<a href="#roles-c-accounts">В · Две вкладки</a>
+			<a href="#roles-c-interface">В · Вкладка «Интерфейс»</a>
+		</nav>
+		<p>Смысл и вёрстка вариантов не утверждены. Данные приведены для примера.</p>
+	</header>
+
+	<section id="roles-base" class="roles-frame">
+		<div class="roles-caption">Исходный экран · Настройки → Серверы · в рамке остаётся вторая шестерёнка</div>
+		<section class="desktop-window" aria-label="Текущий экран серверов">
+			<TitleBar title="Wynd" onminimise={() => {}} ontoggle={() => {}} onclose={() => {}}>
+				{#snippet actions()}<IconButton name="gear" size="sm" label="Серверы" onclick={() => {}} />{/snippet}
+			</TitleBar>
+			<div class="desktop-content"><div class="settings-page">
+				<BackBar title="Серверы" onback={() => {}} />
+				<div class="settings-body">
+					<ServerRow name="Дом Ани" subtitle="home.example.org" card top={10} />
+					<SettingsRow title="anya@example.com" subtitle="5 кругов · вошли 5 августа" chevron={false} />
+					<SettingsRow title="Выйти на этом устройстве" icon="out" chevron={false} onclick={() => {}} />
+					<ServerRow name="У Славы" subtitle="wynd.u-slavy.ru" card top={26} />
+					<SettingsRow title="m.petrov@example.com" subtitle="1 круг · вошли 24 июля" chevron={false} />
+					<SettingsRow title="Выйти на этом устройстве" icon="out" chevron={false} onclick={() => {}} />
+					<Hint class="mt-24">Общего профиля на все серверы нет: каждый сервер — отдельное место, даже с той же почтой.</Hint>
+					<Button onclick={() => {}}>Добавить сервер</Button>
+				</div>
+			</div></div>
+		</section>
+		<p class="roles-description">Основа для сравнения: ПК7 и действующий «Настройки → Серверы». Роль источника интерфейса здесь не видна; отдельный список открывает шестерёнка в рамке.</p>
+	</section>
+
+	<section id="roles-a" class="roles-frame">
+		<div class="roles-caption">А · Один общий список · роль названа у каждого сервера</div>
+		<section class="desktop-window" aria-label="Вариант А: общий список серверов и их ролей">
+			<TitleBar title="Wynd" onminimise={() => {}} ontoggle={() => {}} onclose={() => {}} />
+			<div class="desktop-content"><div class="settings-page">
+				<BackBar title="Серверы" onback={() => {}} />
+				<div class="settings-body">
+					<ServerRow name="Дом Ани" subtitle="home.example.org" detail="Интерфейс и учётная запись" variant="ok" card top={10} />
+					<SettingsRow title="anya@example.com" subtitle="5 кругов · вошли 5 августа" chevron={false} />
+					<SettingsRow title="Сменить почту" onclick={() => {}} />
+					<SettingsRow title="Принять круг" onclick={() => {}} />
+					<SettingsRow title="Выйти на этом устройстве" icon="out" chevron={false} onclick={() => {}} />
+					<ServerRow name="У Славы" subtitle="wynd.u-slavy.ru" detail="Учётная запись" card top={26} />
+					<SettingsRow title="m.petrov@example.com" subtitle="1 круг · вошли 24 июля" chevron={false} />
+					<SettingsRow title="Открывать интерфейс с этого сервера" subtitle="Входы и круги не изменятся" onclick={() => {}} />
+					<SettingsRow title="Выйти на этом устройстве" icon="out" chevron={false} onclick={() => {}} />
+					<Hint class="mt-24">Один сервер может открывать интерфейс, содержать вашу учётную запись или делать и то и другое.</Hint>
+					<Button onclick={() => {}}>Добавить сервер</Button>
+				</div>
+			</div></div>
+		</section>
+		<p class="roles-description">Все известные серверы собраны в одном месте. Совпадение ролей видно непосредственно в карточке; смена источника интерфейса — действие конкретного сервера, а не отдельный список в рамке.</p>
+	</section>
+
+	<section id="roles-b" class="roles-frame">
+		<div class="roles-caption">Б · Учётные записи отдельно · источник интерфейса в «Настройках → Приложение»</div>
+		<section class="desktop-window" aria-label="Вариант Б: источник интерфейса в настройках приложения">
+			<TitleBar title="Wynd" onminimise={() => {}} ontoggle={() => {}} onclose={() => {}} />
+			<div class="desktop-content"><div class="settings-page">
+				<BackBar title="Приложение" onback={() => {}} />
+				<div class="settings-body">
+					<SectionLabel>Интерфейс</SectionLabel>
+					<ServerRow name="Дом Ани" subtitle="home.example.org" detail="Сейчас открывает интерфейс" card top={0} />
+					<SettingsRow title="Сменить сервер интерфейса" subtitle="Входы и круги останутся на своих серверах" onclick={() => {}} />
+					<SectionLabel>Запуск</SectionLabel>
+					<SettingsRow class="pt-2" title="Запускать при входе в Windows">
+						{#snippet control()}<Switch bind:checked={startup} label="Запускать при входе в Windows" />{/snippet}
+					</SettingsRow>
+					<Hint class="mt-10">При входе в Windows откроется окно Wynd.</Hint>
+					<SectionLabel>Уведомления</SectionLabel>
+					<SettingsRow title="Новые записи и комментарии" subtitle="звук и системные уведомления" onclick={() => {}} />
+					<SectionLabel>Оформление</SectionLabel>
+					<SettingsRow title="Тема" value="Как в системе" onclick={() => {}} />
+				</div>
+			</div></div>
+		</section>
+		<p class="roles-description">«Настройки → Серверы» остаётся списком учётных записей, как в браузере и на телефоне. Временная и служебная роль живёт в настройках приложения; вторая шестерёнка в рамке не нужна.</p>
+	</section>
+
+	<section id="roles-c-accounts" class="roles-frame">
+		<div class="roles-caption">В · Один экран «Серверы», две вкладки · учётные записи</div>
+		<section class="desktop-window" aria-label="Вариант В: вкладка учётных записей">
+			<TitleBar title="Wynd" onminimise={() => {}} ontoggle={() => {}} onclose={() => {}} />
+			<div class="desktop-content"><div class="settings-page">
+				<BackBar title="Серверы" onback={() => {}} />
+				<div class="settings-body">
+					<ChipGroup class="mt-10">
+						<Chip selected onclick={() => {}}>Учётные записи</Chip>
+						<Chip onclick={() => {}}>Интерфейс</Chip>
+					</ChipGroup>
+					<ServerRow name="Дом Ани" subtitle="home.example.org" card top={18} />
+					<SettingsRow title="anya@example.com" subtitle="5 кругов · вошли 5 августа" chevron={false} />
+					<SettingsRow title="Сменить почту" onclick={() => {}} />
+					<SettingsRow title="Принять круг" onclick={() => {}} />
+					<SettingsRow title="Выйти на этом устройстве" icon="out" chevron={false} onclick={() => {}} />
+					<ServerRow name="У Славы" subtitle="wynd.u-slavy.ru" card top={26} />
+					<SettingsRow title="m.petrov@example.com" subtitle="1 круг · вошли 24 июля" chevron={false} />
+					<SettingsRow title="Выйти на этом устройстве" icon="out" chevron={false} onclick={() => {}} />
+					<Hint class="mt-24">Здесь — серверы, на которых вы вошли. Источник интерфейса выбирается на соседней вкладке.</Hint>
+					<Button onclick={() => {}}>Добавить сервер</Button>
+				</div>
+			</div></div>
+		</section>
+		<p class="roles-description">Обе роли остаются под одной строкой «Серверы» в настройках, но не смешиваются в одной карточке. Постоянная модель учётных записей сохраняет прежний экран.</p>
+	</section>
+
+	<section id="roles-c-interface" class="roles-frame">
+		<div class="roles-caption">В · Один экран «Серверы», две вкладки · источник интерфейса</div>
+		<section class="desktop-window" aria-label="Вариант В: вкладка источника интерфейса">
+			<TitleBar title="Wynd" onminimise={() => {}} ontoggle={() => {}} onclose={() => {}} />
+			<div class="desktop-content"><div class="settings-page">
+				<BackBar title="Серверы" onback={() => {}} />
+				<div class="settings-body">
+					<ChipGroup class="mt-10">
+						<Chip onclick={() => {}}>Учётные записи</Chip>
+						<Chip selected onclick={() => {}}>Интерфейс</Chip>
+					</ChipGroup>
+					<Hint class="mt-16">Этот сервер отдаёт интерфейс окну. Смена сервера не меняет ваши входы и круги.</Hint>
+					<ServerRow name="Дом Ани" subtitle="home.example.org" detail="Сейчас открывает интерфейс" variant="ok" card top={10} />
+					<ServerRow name="У Славы" subtitle="wynd.u-slavy.ru" detail="Открыть интерфейс с этого сервера" variant="select" card top={18} onclick={() => {}} />
+					<Button onclick={() => {}}>Добавить сервер интерфейса</Button>
+				</div>
+			</div></div>
+		</section>
+		<p class="roles-description">Переключение источника интерфейса сохранено, но получает собственное имя и место. Список не претендует на управление учётными записями; добавление сервера здесь относится только к интерфейсу.</p>
+	</section>
+</div>
+
+<style>
+	@font-face { font-family:'Golos Text'; src:url('/fonts/GolosText-Variable-cyrillic.woff2') format('woff2'); font-weight:400 900; font-style:normal; font-display:swap; unicode-range:U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+	@font-face { font-family:'Golos Text'; src:url('/fonts/GolosText-Variable-latin.woff2') format('woff2'); font-weight:400 900; font-style:normal; font-display:swap; }
+	:global(*) { box-sizing:border-box; }
+	:global(body) { margin:0; background:var(--app-gutter); font-family:var(--ui); color:var(--ink); font-size:13.5px; line-height:1.45; }
+	.roles-document { max-width:900px; margin:auto; }
+	.roles-header { padding:32px 28px 12px; }
+	.roles-header>div { color:var(--muted); font-size:11px; letter-spacing:.09em; }
+	.roles-header h1 { font-size:30px; margin:12px 0; line-height:1.2; }
+	.roles-header p { color:var(--muted); margin:8px 0; }
+	.roles-header nav { display:flex; flex-wrap:wrap; gap:10px 20px; margin:20px 0; }
+	.roles-header a { color:var(--ink); text-underline-offset:3px; }
+	.roles-frame { padding:20px 28px 28px; scroll-margin-top:20px; }
+	.roles-caption { max-width:760px; margin:0 auto 12px; color:var(--muted); font-size:13px; }
+	.roles-description { max-width:760px; margin:14px auto 0; color:var(--muted); }
+	.roles-frame .desktop-window { --c:var(--terracotta); width:760px; max-width:100%; height:780px; margin:auto; border:1px solid #cfc5b8; border-radius:10px; overflow:hidden; background:var(--paper); box-shadow:0 10px 36px #2b272416; display:flex; flex-direction:column; }
+	.roles-frame .desktop-content { flex:1; min-height:0; background:var(--app-gutter); }
+	.roles-frame .settings-page { --c:var(--ink); --ct:#e9e3d8; width:100%; max-width:var(--app-max-width); height:100%; margin:auto; background:var(--paper); display:flex; flex-direction:column; }
+	.roles-frame .settings-body { flex:1; min-height:0; overflow:auto; padding-bottom:24px; }
+	@media (max-width:820px) { .roles-frame { padding:12px; } .roles-frame .desktop-window { height:700px; } }
+</style>
