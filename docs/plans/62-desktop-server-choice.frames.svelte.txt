@@ -91,5 +91,5 @@
 	.removable-server :global(.ib) { position:absolute; right:16px; top:50%; transform:translateY(-50%); }
 	.confirm-window { position:relative; }
 	.confirm-window :global(.scrim) { position:absolute; inset:0; width:auto; max-width:none; height:auto; margin:0; }
-	.confirm-window :global(.dlg) { position:absolute; left:22px; right:22px; top:250px; width:auto; max-width:none; margin:0; }
+	.confirm-window :global(.dlg) { position:absolute; left:0; right:0; top:250px; width:min(calc(100% - 44px), var(--dlg-max-width)); max-width:var(--dlg-max-width); margin-inline:auto; }
 </style>
