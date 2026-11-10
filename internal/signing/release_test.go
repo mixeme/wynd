@@ -31,6 +31,7 @@ type releaseFixture struct {
 	ListFailure     bool
 	BadSum          bool
 	BadAttest       bool
+	Tag             string
 	Releases        string
 	ReleasePages    []string
 	DownloadFailure bool
@@ -103,7 +104,11 @@ func releaseTestGH(dir string, args []string) error {
 				dest = args[i+1]
 			}
 		}
-		if err := os.WriteFile(filepath.Join(dest, exeName), releaseTestEXE, 0o600); err != nil {
+		prod := productOf(args[2])
+		if prod == nil {
+			return fmt.Errorf("download of unknown release %q", args[2])
+		}
+		if err := os.WriteFile(filepath.Join(dest, prod.Exe), releaseTestEXE, 0o600); err != nil {
 			return err
 		}
 		sum := sha256.Sum256(releaseTestEXE)
@@ -111,12 +116,16 @@ func releaseTestGH(dir string, args []string) error {
 		if f.BadSum {
 			want = "wrong sum"
 		}
-		return os.WriteFile(filepath.Join(dest, exeName+".sha256"), []byte(want), 0o600)
+		return os.WriteFile(filepath.Join(dest, prod.Exe+".sha256"), []byte(want), 0o600)
 	case args[0] == "attestation":
 		if f.AttestFailure {
 			return fmt.Errorf("attestation request failed")
 		}
-		ref := "refs/tags/" + releaseTestTag
+		tag := f.Tag
+		if tag == "" {
+			tag = releaseTestTag
+		}
+		ref := "refs/tags/" + tag
 		if f.BadAttest {
 			ref = "refs/tags/workshop-v0.2.0"
 		}
@@ -128,7 +137,12 @@ func releaseTestGH(dir string, args []string) error {
 		fmt.Print(base64.StdEncoding.EncodeToString([]byte(f.PubKey)))
 	case args[0] == "api" && strings.Contains(args[1], "/whatsnew.md?"):
 		if f.Notes {
-			fmt.Print(base64.StdEncoding.EncodeToString([]byte("## 0.3.0\n\n- Test release notes\n")))
+			tag := f.Tag
+			if tag == "" {
+				tag = releaseTestTag
+			}
+			version := strings.TrimPrefix(tag, productOf(tag).Prefix)
+			fmt.Print(base64.StdEncoding.EncodeToString([]byte("## " + version + "\n\n- Test release notes\n")))
 		}
 	case args[0] == "api":
 		if f.ListFailure {
@@ -165,17 +179,27 @@ func TestReleasesSnapshot(t *testing.T) {
 		{"tag_name":"v0.45.0","draft":false,"assets":[]},
 		{"tag_name":"workshop-v0.3.1","draft":false,"published_at":"2026-11-03T01:00:00Z","html_url":"https://example.com/0.3.1","assets":[{"name":"wynd-workshop.exe.sig"}]},
 		{"tag_name":"workshop-v0.3.0","draft":true,"assets":[{"name":"wynd-workshop.exe.sig"}]},
-		{"tag_name":"workshop-v0.2.0","draft":false,"published_at":"2026-10-26T20:18:08Z","assets":[{"name":"other.exe.sig"}]}
+		{"tag_name":"workshop-v0.2.0","draft":false,"published_at":"2026-10-26T20:18:08Z","assets":[{"name":"other.exe.sig"}]},
+		{"tag_name":"desktop-v0.1.1","draft":true,"assets":[{"name":"wynd-desktop.exe.sig"}]},
+		{"tag_name":"desktop-v0.1.0","draft":true,"assets":[{"name":"wynd-workshop.exe.sig"}]}
 	]`})
 	releases, err := g.Releases(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(releases) != 3 || !releases[0].Signed || releases[0].Draft || releases[0].PublishedAt != "2026-11-03T01:00:00Z" || releases[0].URL != "https://example.com/0.3.1" {
+	if len(releases) != 5 || !releases[0].Signed || releases[0].Draft || releases[0].PublishedAt != "2026-11-03T01:00:00Z" || releases[0].URL != "https://example.com/0.3.1" {
 		t.Fatalf("published release: %+v", releases)
 	}
 	if !releases[1].Signed || !releases[1].Draft || releases[1].PublishedAt != "" || releases[2].Signed {
 		t.Fatalf("draft and unsigned release: %+v", releases)
+	}
+	// Окно: чужая подпись (от Мастерской) не делает выпуск окна подписанным,
+	// а префикс тега не путается с версией.
+	if releases[3].Product != ProductDesktop || releases[3].Version != "0.1.1" || !releases[3].Signed || !releases[3].Draft {
+		t.Fatalf("desktop draft: %+v", releases[3])
+	}
+	if releases[4].Product != ProductDesktop || releases[4].Signed {
+		t.Fatalf("desktop release with a workshop signature: %+v", releases[4])
 	}
 	calls, err := os.ReadFile(filepath.Join(dir, "calls"))
 	if err != nil || strings.Count(string(calls), "\n") != 1 {
@@ -333,6 +357,99 @@ func TestSignReleasePublication(t *testing.T) {
 		})
 	}
 }
+
+// Wynd Настольный подписывается и публикуется так же, как Мастерская:
+// сумма, удостоверение, вшитый ключ самообновления и «Что нового» из
+// whatsnew.md в теге. Набор этапов программа объявляет сама.
+func TestDesktopReleaseCheckAndSign(t *testing.T) {
+	const tag = "desktop-v0.1.1"
+	key := filepath.Join(t.TempDir(), "signing.key")
+	const pass = "test-release-password"
+	pub, err := Keygen(key, key+".pub", pass)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g, dir := fixtureGitHub(t, releaseFixture{Tag: tag, Draft: true, Notes: true, PubKey: pub, KeyPresent: true})
+	var checks []Progress
+	c, err := g.FetchWithProgress(context.Background(), tag, func(p Progress) { checks = append(checks, p) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	if c.Problem != "" || c.Product != ProductDesktop || !c.SelfUpdate || !c.KeyInRelease || c.Notes == "" {
+		t.Fatalf("unexpected check: %+v", c)
+	}
+	if c.Name != "Wynd Настольный" || c.Exe != "wynd-desktop.exe" {
+		t.Fatalf("product description missing: %+v", c)
+	}
+	var ids []string
+	for _, step := range c.Steps {
+		ids = append(ids, step.ID)
+		if step.Status != "done" {
+			t.Fatalf("unfinished step: %+v", step)
+		}
+	}
+	if strings.Join(ids, ",") != "release,download,checksum,attestation,key,notes" {
+		t.Fatalf("desktop check steps: %v", ids)
+	}
+	calls, _ := os.ReadFile(filepath.Join(dir, "calls"))
+	if !strings.Contains(string(calls), "cmd/wynd-desktop/whatsnew.md") {
+		t.Fatalf("desktop release did not read its whatsnew.md: %s", calls)
+	}
+	var signs []Progress
+	published, err := g.SignAndPublishWithProgress(context.Background(), c, key, pass, func(p Progress) { signs = append(signs, p) })
+	if err != nil || !published {
+		t.Fatalf("published=%v, err=%v", published, err)
+	}
+	for _, events := range [][]Progress{checks, signs} {
+		for _, event := range events {
+			if event.Tag != tag {
+				t.Fatalf("wrong tag in progress: %+v", event)
+			}
+		}
+	}
+	calls, _ = os.ReadFile(filepath.Join(dir, "calls"))
+	if !strings.Contains(string(calls), "release edit ") {
+		t.Fatalf("desktop draft was not published: %s", calls)
+	}
+	sig, err := os.ReadFile(filepath.Join(dir, "uploaded.sig"))
+	if err != nil || installer.VerifySignature(pub, releaseTestEXE, sig) != nil {
+		t.Fatalf("uploaded signature does not verify: %v", err)
+	}
+}
+
+// Без раздела версии в whatsnew.md окно, как и Мастерская, подписывается,
+// но черновик остаётся черновиком.
+func TestDesktopDraftWithoutNotesStaysDraft(t *testing.T) {
+	const tag = "desktop-v0.1.1"
+	key := filepath.Join(t.TempDir(), "signing.key")
+	const pass = "test-release-password"
+	if _, err := Keygen(key, key+".pub", pass); err != nil {
+		t.Fatal(err)
+	}
+	g, dir := fixtureGitHub(t, releaseFixture{Tag: tag, Draft: true})
+	var checks []Progress
+	c, err := g.FetchWithProgress(context.Background(), tag, func(p Progress) { checks = append(checks, p) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	if c.Problem != "" || c.Notes != "" {
+		t.Fatalf("unexpected check: %+v", c)
+	}
+	published, err := g.SignAndPublish(context.Background(), c, key, pass)
+	if err != nil || published {
+		t.Fatalf("published=%v, err=%v", published, err)
+	}
+	calls, _ := os.ReadFile(filepath.Join(dir, "calls"))
+	if strings.Contains(string(calls), "release edit ") {
+		t.Fatalf("desktop draft without notes was published: %s", calls)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "uploaded.sig")); err != nil {
+		t.Fatalf("signature was not uploaded: %v", err)
+	}
+}
+
 
 // Ошибка чтения ключа не считается старой сборкой без ключа; сумма и
 // удостоверение по-прежнему обязательны, и отказ не выкладывает подпись.

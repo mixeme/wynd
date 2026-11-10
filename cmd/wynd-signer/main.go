@@ -1,11 +1,11 @@
 //go:build dev || desktop || bindings
 
 // «Wynd Подпись» (план 45, пункт 3а; кадры 12а–12д): окно, где владелец
-// создаёт ключ подписи Мастерской и подписывает её выпуски — без командной
-// строки. Отдельно от Мастерской: подпись нужна только тому, кто её выпускает,
-// а ключ не должен жить в программе, которую раздают людям. Сами ключ и
-// подпись — internal/signing (их же зовёт cmd/workshop-sign). Собирается
-// scripts\build-signer.bat (`wails build`).
+// создаёт ключ подписи выпусков Wynd и подписывает их — Мастерскую и окно
+// для компьютера (план 63). Отдельно от Мастерской: подпись нужна только
+// тому, кто её выпускает, а ключ не должен жить в программе, которую раздают
+// людям. Сами ключ и подпись — internal/signing (их же зовёт cmd/workshop-sign).
+// Собирается scripts\build-signer.bat (`wails build`).
 package main
 
 import (
@@ -125,8 +125,9 @@ func saveSettings(s settings) {
 	_ = os.WriteFile(p, raw, 0o600)
 }
 
-// repoRoot — папка репозитория Wynd: туда (cmd/wynd-installer/signing-key.pub)
-// ложится открытый ключ, его коммитят. Ищем вверх от exe и от рабочей папки.
+// repoRoot — папка репозитория Wynd: туда (signing-key.pub, общий ключ
+// экосистемы) ложится открытый ключ, его коммитят. Ищем вверх от exe и от
+// рабочей папки.
 func repoRoot() string {
 	var starts []string
 	if exe, err := os.Executable(); err == nil {
@@ -164,7 +165,7 @@ func pubPath(keyPath string) string {
 		return p
 	}
 	if root := repoRoot(); root != "" {
-		return filepath.Join(root, "cmd", "wynd-installer", "signing-key.pub")
+		return filepath.Join(root, "signing-key.pub")
 	}
 	return keyPath + ".pub"
 }

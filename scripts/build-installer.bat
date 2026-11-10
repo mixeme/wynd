@@ -50,11 +50,11 @@ if not exist "%APP_DIR%\frontend\dist\" (
   echo placeholder> "%APP_DIR%\frontend\dist\placeholder.txt"
 )
 
-rem The public key of Workshop releases (scripts\sign-workshop.bat keygen) goes
-rem into the build: self-update installs only releases signed with it. No key
-rem file - self-update stays off.
+rem The ecosystem signing key (scripts\sign-workshop.bat keygen) goes into the
+rem build: self-update installs only releases signed with it. No key file -
+rem self-update stays off.
 set "SIGNING_KEY="
-if exist "%APP_DIR%\signing-key.pub" set /p SIGNING_KEY=<"%APP_DIR%\signing-key.pub"
+if exist "%WYND_ROOT%\signing-key.pub" set /p SIGNING_KEY=<"%WYND_ROOT%\signing-key.pub"
 
 echo Building installer (wails build)...
 pushd "%APP_DIR%"

@@ -8,11 +8,13 @@ package main
 import (
 	"context"
 	"embed"
+	"errors"
 	"io/fs"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sync"
 	"time"
@@ -21,6 +23,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"gitea.mixdep.ru/mix/wynd/internal/desktop"
 )
@@ -37,10 +40,13 @@ type App struct {
 	proxy    *desktop.Proxy
 	client   *http.Client
 	storeErr error
+	// update — последняя найденная новая версия окна.
+	update desktop.Update
 }
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	desktop.CleanOldSelf()
 }
 
 // CheckServer проверяет адрес и запоминает сервер выбранным. Ошибка одна:
@@ -237,6 +243,43 @@ func (a *App) ListServers() []desktop.Server {
 
 // corsHandler — локальный порт API открыт странице окна (wails.localhost):
 // запросы с токеном идут по обычному TCP, поэтому нужен CORS и preflight.
+// CheckSelfUpdate — есть ли новый Wynd Настольный: не молча и не сразу,
+// как у Мастерской (internal/desktop/selfupdate.go).
+func (a *App) CheckSelfUpdate() desktop.Update {
+	ctx, cancel := context.WithTimeout(a.ctx, 20*time.Second)
+	defer cancel()
+	update := desktop.CheckUpdate(ctx, http.DefaultClient, desktop.Version, time.Now())
+	a.mu.Lock()
+	a.update = update
+	a.mu.Unlock()
+	return update
+}
+
+// ApplySelfUpdate — «Обновить и перезапустить»: подпись не сошлась —
+// "signature"; вышло — новая версия запускается, эта закрывается.
+func (a *App) ApplySelfUpdate() string {
+	ctx, cancel := context.WithTimeout(a.ctx, 10*time.Minute)
+	defer cancel()
+	a.mu.Lock()
+	update := a.update
+	a.mu.Unlock()
+	path, err := desktop.ApplyUpdate(ctx, http.DefaultClient, update)
+	if errors.Is(err, desktop.ErrBadSignature) {
+		return "signature"
+	}
+	if err != nil {
+		return err.Error()
+	}
+	if err := exec.Command(path).Start(); err != nil {
+		return err.Error()
+	}
+	runtime.Quit(a.ctx)
+	return ""
+}
+
+// ReleasesPage — страница выпусков программ Wynd.
+func (a *App) ReleasesPage() { runtime.BrowserOpenURL(a.ctx, desktop.ReleasesPage) }
+
 func corsHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if origin := r.Header.Get("Origin"); origin != "" {

@@ -263,7 +263,11 @@
 		}
 	}
 
-	const version = $derived(selectedRelease?.version ?? check?.tag.replace(/^workshop-v/, '') ?? '');
+	const version = $derived(selectedRelease?.version ?? check?.tag.replace(/^[a-z]+-v/, '') ?? '');
+	// Имя программы, файл выпуска и наличие самообновления приходят из Go:
+	// окно не знает, сколько программ в экосистеме и как они называются.
+	const productName = $derived(check?.name ?? selectedRelease?.name ?? '');
+	const exeFile = $derived(check?.exe ?? selectedRelease?.exe ?? '');
 	const fileName = $derived(filePath.slice(Math.max(filePath.lastIndexOf('\\'), filePath.lastIndexOf('/')) + 1));
 </script>
 
@@ -273,9 +277,10 @@
 	<main class="ins-body" bind:this={body}>
 		{#if screen === 'create'}
 			<!-- Кадр 12а. -->
-			<h2>Ключ подписи Мастерской</h2>
+			<h2>Ключ подписи Wynd</h2>
 			<p class="ins-sub">
-				Мастерская обновляется сама, только если новая версия подписана этим ключом. Ключ создаётся один раз.
+				Этим ключом подписываются выпуски программ Wynd. Программа принимает обновление, только если новая
+				версия подписана им. Ключ создаётся один раз.
 			</p>
 			<Label>Пароль ключа</Label>
 			<Input type="password" autocomplete="off" bind:value={pass1} />
@@ -289,8 +294,8 @@
 				<Button variant="ghost" onclick={() => void chooseNewKey()}>Выбрать</Button>
 			</FieldLine>
 			<Notice tone="bad">
-				Сохраните файл ключа и пароль в надёжном месте. Без них ни одну уже розданную Мастерскую больше не
-				обновить: новую версию она не примет.
+				Сохраните файл ключа и пароль в надёжном месте. Без них уже розданные программы больше не обновить:
+				новую версию они не примут.
 			</Notice>
 			{#if createError}<Notice tone="bad" alert>{createError}</Notice>{/if}
 			<FootBar>
@@ -300,7 +305,7 @@
 			<!-- Кадр 12б. -->
 			{#if keyNote}<Notice tone="note">{keyNote}</Notice>{/if}
 			<FieldLine>
-				<h2 class="ins-grow">Выпуски Мастерской</h2>
+				<h2 class="ins-grow">Выпуски</h2>
 				<Button variant="ghost" disabled={listing} onclick={() => void list()}>{listing ? 'Обновляем…' : 'Обновить'}</Button>
 			</FieldLine>
 			{#if st.key_exists}
@@ -322,9 +327,9 @@
 				{#each releases as r (r.tag)}
 					<MarkRow mark={r.draft ? '●' : '✓'} tone={r.draft ? 'note' : 'ok'}>
 						{#if r.url}
-							<TextButton class="link under" onclick={() => void backend().OpenLink(r.url ?? '')}>Мастерская {r.version}</TextButton>
+							<TextButton class="link under" onclick={() => void backend().OpenLink(r.url ?? '')}>{r.name} {r.version}</TextButton>
 						{:else}
-							Мастерская {r.version}
+							{r.name} {r.version}
 						{/if}
 						<span class="ins-dim"
 							>— {r.draft
@@ -353,7 +358,7 @@
 			{/if}
 		{:else if screen === 'release'}
 			<!-- Проверки, пароль, подпись и итог остаются на одном экране. -->
-			<h2>Мастерская {version}</h2>
+			<h2>{productName} {version}</h2>
 			<StepList steps={checkSteps} />
 			{#if checkError}<Notice tone="bad" alert>{checkError}</Notice>{/if}
 			{#if check?.problem}<Notice tone="bad" alert>{check.problem}. Такой exe подписывать нельзя.</Notice>{/if}
@@ -362,8 +367,8 @@
 				<Notice tone="note" title={published ? 'Выпуск подписан и опубликован' : 'Выпуск подписан'}>
 					{check?.key_in_release ? 'Подпись проверена открытым ключом из репозитория.' : 'Подпись проверена открытой частью выбранного ключа.'}
 					{published
-						? 'Файл wynd-workshop.exe.sig выложен в выпуск на GitHub.'
-						: `Файл wynd-workshop.exe.sig выложен в черновик. Он не опубликован: в whatsnew.md нет раздела ${version}.`}
+						? `Файл ${exeFile}.sig выложен в выпуск на GitHub.`
+						: `Файл ${exeFile}.sig выложен в черновик. Он не опубликован: в whatsnew.md нет раздела ${version}.`}
 					Временные файлы на этом компьютере удалены.
 				</Notice>
 				<FootBar>
@@ -376,8 +381,8 @@
 					<Button variant="ghost" onclick={toList}>К выпускам</Button>
 				</FootBar>
 			{:else}
-				{#if check && !check.key_in_release}
-					<Notice tone="note">В этой сборке нет открытого ключа. Подпись добавится к выпуску, но сама эта Мастерская обновляться не сможет. Для самообновления нужна новая сборка со встроенным открытым ключом.</Notice>
+				{#if check && check.self_update && !check.key_in_release}
+					<Notice tone="note">В этой сборке нет открытого ключа. Подпись добавится к выпуску, но обновляться сама она не сможет. Для самообновления нужна новая сборка со встроенным открытым ключом.</Notice>
 				{/if}
 				{#if checking}<p class="ins-note" role="status">Пароль можно будет ввести после проверки выпуска.</p>{/if}
 				<Label>Пароль ключа</Label>
@@ -422,7 +427,7 @@
 			<p class="ins-sub">Подпись проверена открытым ключом из репозитория.</p>
 			<Label>Подпись</Label>
 			<Input mono readonly value={sigPath} />
-			<p class="ins-note">Рядом с {filePath}. Сам exe не изменился: Мастерская примет его только вместе с этим файлом.</p>
+			<p class="ins-note">Рядом с {filePath}. Сам exe не изменился: программа принимает обновление только вместе с этим файлом.</p>
 			<FootBar>
 				<Button variant="colored" onclick={() => void backend().ShowInFolder(sigPath)}>Показать в папке</Button>
 				<Button variant="ghost" onclick={toList}>К выпускам</Button>
