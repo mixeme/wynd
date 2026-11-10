@@ -8,6 +8,7 @@
 	import AdminSection from '$ui/admin/AdminSection.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
 	import { authErrorHint, loginAdmin } from '$lib/auth/auth';
+	import { takeAdminPath } from '$lib/navigation/afterLogin';
 	import { reconcileAdminSession, storeAdminSession } from '$lib/session/session.svelte';
 
 	let password = $state('');
@@ -16,7 +17,7 @@
 
 	onMount(async () => {
 		const session = await reconcileAdminSession();
-		if (session) goto('/admin');
+		if (session) goto(takeAdminPath() ?? '/admin');
 	});
 
 	async function onSubmit() {
@@ -29,7 +30,7 @@
 		try {
 			const session = await loginAdmin(password);
 			await storeAdminSession({ origin: '', token: session.token });
-			goto('/admin');
+			goto(takeAdminPath() ?? '/admin');
 		} catch (err) {
 			error = authErrorHint(err);
 		} finally {

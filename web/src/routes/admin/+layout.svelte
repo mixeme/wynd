@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import Loading from '$ui/Loading.svelte';
 	import AdminWideLayout from '$lib/layouts/AdminWideLayout.svelte';
+	import { rememberAdminPath } from '$lib/navigation/afterLogin';
 	import { reconcileAdminSession } from '$lib/session/session.svelte';
 
 	let { children } = $props();
@@ -22,6 +23,9 @@
 		void reconcileAdminSession().then((session) => {
 			if (!session) {
 				ready = false;
+				// Ссылка из письма ведёт на конкретный экран панели: запоминаем
+				// его, и после входа возвращает туда, а не на «/admin».
+				rememberAdminPath(page.url.pathname + page.url.search + page.url.hash);
 				goto('/admin/login');
 				return;
 			}
