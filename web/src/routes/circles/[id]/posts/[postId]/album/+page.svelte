@@ -155,8 +155,7 @@
 		<!-- Время публикации — ссылка на запись (план 61, В-2): альбом
 		     открывают и из «Сетки», минуя саму запись. -->
 		{#if parts.length > 1}
-			{parts[0].text}{' · '}<TextButton onclick={() => goto(postHref)}
-				>{parts[1].text}</TextButton
+			{parts[0].text}{' · '}<TextButton onclick={() => goto(postHref)}>{parts[1].text}</TextButton
 			>{#if parts.length > 2}{' · '}{/if}<BylineParts parts={parts.slice(2)} />
 		{:else}
 			<BylineParts {parts} />
@@ -180,7 +179,11 @@
 	action="К записи"
 	onaction={() => goto(postHref)}
 	onback={() =>
-		void goUpFromSpot(`/circles/${circle.circleId}`, ['grid'], `/circles/${circle.circleId}/posts/${postId}`)}
+		void goUpFromSpot(
+			`/circles/${circle.circleId}`,
+			['grid'],
+			`/circles/${circle.circleId}/posts/${postId}`
+		)}
 >
 	{#if loading}
 		<Loading />

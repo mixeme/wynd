@@ -85,9 +85,7 @@ export function goUpFromSpot(base: string, spots: string[], parent: string): Pro
 		const rest = url.pathname.startsWith(base) ? url.pathname.slice(base.length) : undefined;
 		if (
 			spots.some((s) =>
-				s.startsWith('/')
-					? url.pathname === s
-					: rest !== undefined && rest === `/${s}`
+				s.startsWith('/') ? url.pathname === s : rest !== undefined && rest === `/${s}`
 			)
 		) {
 			return goUp(src);

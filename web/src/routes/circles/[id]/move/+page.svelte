@@ -135,11 +135,7 @@
 	color={circle.color}
 	title="Перенос круга"
 	onback={() =>
-		void goUpFromSpot(
-			`/circles/${circle.circleId}`,
-			[''],
-			`/circles/${circle.circleId}/settings`
-		)}
+		void goUpFromSpot(`/circles/${circle.circleId}`, [''], `/circles/${circle.circleId}/settings`)}
 >
 	{#if loading}
 		<Loading />

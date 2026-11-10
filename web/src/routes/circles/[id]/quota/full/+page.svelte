@@ -228,11 +228,7 @@
 	color={circle.color}
 	title="Полный архив круга"
 	onback={() =>
-		void goUpFromSpot(
-			`/circles/${circle.circleId}`,
-			[''],
-			`/circles/${circle.circleId}/quota`
-		)}
+		void goUpFromSpot(`/circles/${circle.circleId}`, [''], `/circles/${circle.circleId}/quota`)}
 >
 	{#if loading}
 		<Loading />

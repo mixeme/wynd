@@ -325,9 +325,14 @@
 	}
 
 	// «Назад» — на ту вкладку, из шапки которой открыли «Настройки» (имя и
-	// аватар есть на всех вкладках); пришли иначе — в ленту, как раньше.
+	// аватар есть на всех вкладках); с экрана «Уйти с сервера» — обратно на
+	// него; пришли иначе — в ленту, как раньше.
 	function goBack() {
-		void goUpFromSpot(`/circles/${circle.circleId}`, ['', 'days', 'grid', 'map', 'responses', 'search'], `/circles/${circle.circleId}`);
+		void goUpFromSpot(
+			`/circles/${circle.circleId}`,
+			['', 'days', 'grid', 'map', 'responses', 'search', '/settings/servers/leave'],
+			`/circles/${circle.circleId}`
+		);
 	}
 
 	async function onLeave() {
