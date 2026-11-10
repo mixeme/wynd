@@ -1,5 +1,5 @@
-<!-- План 62. Черновые варианты структуры «Серверы» для настольного окна.
-     Собраны из существующих Wynd UI; смысл и вёрстка не утверждены. -->
+<!-- План 62. Варианты структуры «Серверы» для настольного окна.
+     Собраны из существующих Wynd UI; выбрана структура Б, вёрстка не утверждена. -->
 <script lang="ts">
 	import TitleBar from '$ui/workshop/TitleBar.svelte';
 	import BackBar from '$ui/chrome/BackBar.svelte';
@@ -20,15 +20,17 @@
 	<header class="roles-header">
 		<div>WYND · ПЛАН 62 · ЧЕРНОВИКИ</div>
 		<h1>Серверы в окне для компьютера</h1>
-		<p>Три варианта разделения двух ролей: источник интерфейса и учётная запись.</p>
+		<p>Выбрана структура Б: источник интерфейса отделён от учётных записей.</p>
 		<nav aria-label="Варианты экранов">
 			<a href="#roles-base">Текущий экран</a>
 			<a href="#roles-a">А · Общий список</a>
 			<a href="#roles-b">Б · Интерфейс в «Приложении»</a>
+			<a href="#roles-b-change">Б · Смена интерфейса</a>
+			<a href="#roles-b-no-login">Б · Без входа</a>
 			<a href="#roles-c-accounts">В · Две вкладки</a>
 			<a href="#roles-c-interface">В · Вкладка «Интерфейс»</a>
 		</nav>
-		<p>Смысл и вёрстка вариантов не утверждены. Данные приведены для примера.</p>
+		<p>Структура Б выбрана; вёрстка кадров не утверждена. Данные приведены для примера.</p>
 	</header>
 
 	<section id="roles-base" class="roles-frame">
@@ -101,6 +103,39 @@
 			</div></div>
 		</section>
 		<p class="roles-description">«Настройки → Серверы» остаётся списком учётных записей, как в браузере и на телефоне. Временная и служебная роль живёт в настройках приложения; вторая шестерёнка в рамке не нужна.</p>
+	</section>
+
+	<section id="roles-b-change" class="roles-frame">
+		<div class="roles-caption">Б · Смена источника интерфейса · отдельный служебный выбор</div>
+		<section class="desktop-window" aria-label="Вариант Б: смена сервера интерфейса">
+			<TitleBar title="Wynd" onminimise={() => {}} ontoggle={() => {}} onclose={() => {}} />
+			<div class="desktop-content"><div class="settings-page">
+				<BackBar title="Сервер интерфейса" onback={() => {}} />
+				<div class="settings-body">
+					<Hint class="mt-16">Окно загружает интерфейс с выбранного сервера. Ваши входы и круги останутся без изменений.</Hint>
+					<ServerRow name="Дом Ани" subtitle="home.example.org" detail="Сейчас открывает интерфейс" variant="ok" card top={10} />
+					<ServerRow name="У Славы" subtitle="wynd.u-slavy.ru" detail="Открыть интерфейс с этого сервера" variant="select" card top={18} onclick={() => {}} />
+					<Button onclick={() => {}}>Добавить сервер интерфейса</Button>
+				</div>
+			</div></div>
+		</section>
+		<p class="roles-description">Экран открывается из «Настроек → Приложение → Сменить сервер интерфейса». Выбор меняет только источник интерфейса; добавленный здесь сервер не создаёт учётную запись.</p>
+	</section>
+
+	<section id="roles-b-no-login" class="roles-frame">
+		<div class="roles-caption">Б · Интерфейс уже открыт, но вход ни на один сервер не выполнен</div>
+		<section class="desktop-window" aria-label="Вариант Б: нет учётных записей при работающем интерфейсе">
+			<TitleBar title="Wynd" onminimise={() => {}} ontoggle={() => {}} onclose={() => {}} />
+			<div class="desktop-content"><div class="settings-page">
+				<BackBar title="Серверы" onback={() => {}} />
+				<div class="settings-body">
+					<Hint centered class="mt-28 sz-15">Вы ни на одном сервере не вошли</Hint>
+					<Hint centered class="mt-16">Интерфейс продолжит открываться с сервера «Дом Ани».</Hint>
+					<Button onclick={() => {}}>Войти на сервер</Button>
+				</div>
+			</div></div>
+		</section>
+		<p class="roles-description">Пустой список относится только к учётным записям. Источник интерфейса не исчезает и не выглядит как ещё одна учётная запись; действие ведёт ко входу, а не к смене интерфейса.</p>
 	</section>
 
 	<section id="roles-c-accounts" class="roles-frame">
