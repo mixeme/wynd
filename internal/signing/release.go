@@ -34,11 +34,12 @@ type product struct {
 	ID     string // ProductWorkshop / ProductDesktop — уходит в окно как product.
 	Exe    string // имя exe в выпуске.
 	Prefix string // префикс тега выпуска.
+	Notes  string // «Что нового» в репозитории тега; раздел версии публикуется с выпуском.
 }
 
 var products = []product{
-	{ID: ProductWorkshop, Exe: "wynd-workshop.exe", Prefix: "workshop-v"},
-	{ID: ProductDesktop, Exe: "wynd-desktop.exe", Prefix: "desktop-v"},
+	{ID: ProductWorkshop, Exe: "wynd-workshop.exe", Prefix: "workshop-v", Notes: "cmd/wynd-installer/whatsnew.md"},
+	{ID: ProductDesktop, Exe: "wynd-desktop.exe", Prefix: "desktop-v", Notes: "cmd/wynd-desktop/whatsnew.md"},
 }
 
 // productOf — чей это выпуск по тегу; nil — не выпуски Wynd.
@@ -193,11 +194,10 @@ func (g GitHub) FetchWithProgress(ctx context.Context, tag string, report func(P
 		{ID: "attestation", Title: "Проверяем происхождение сборки"},
 	}
 	if prod.ID == ProductWorkshop {
-		steps = append(steps,
-			Step{ID: "key", Title: "Проверяем открытый ключ"},
-			Step{ID: "notes", Title: "Читаем описание выпуска"},
-		)
+		// Встроенного ключа самообновления у окна пока нет: проверять нечего.
+		steps = append(steps, Step{ID: "key", Title: "Проверяем открытый ключ"})
 	}
+	steps = append(steps, Step{ID: "notes", Title: "Читаем описание выпуска"})
 	p := newProgress(tag, "check", report, steps...)
 	defer func() {
 		if err != nil || c != nil && c.Problem != "" {
@@ -270,25 +270,22 @@ func (g GitHub) FetchWithProgress(ctx context.Context, tag string, report func(P
 		return c, nil
 	}
 	p.done("attestation", "коммит "+c.Commit[:min(8, len(c.Commit))])
-	if prod.ID != ProductWorkshop {
-		// Окно для компьютера пока не проверяет подпись при обновлении:
-		// встроенного ключа в сборке нет, «Что нового» дописывает владелец.
-		return c, nil
+	if prod.ID == ProductWorkshop {
+		p.start("key")
+		c.PubKey, err = g.releaseKey(ctx, tag)
+		c.KeyInRelease = c.PubKey != ""
+		if err != nil {
+			c.Problem = "Проверить открытый ключ в теге " + tag + " не получилось: " + err.Error()
+			return c, nil
+		}
+		keyNote := ""
+		if !c.KeyInRelease {
+			keyNote = "в этой сборке нет ключа самообновления"
+		}
+		p.done("key", keyNote)
 	}
-	p.start("key")
-	c.PubKey, err = g.releaseKey(ctx, tag)
-	c.KeyInRelease = c.PubKey != ""
-	if err != nil {
-		c.Problem = "Проверить открытый ключ в теге " + tag + " не получилось: " + err.Error()
-		return c, nil
-	}
-	keyNote := ""
-	if !c.KeyInRelease {
-		keyNote = "в этой сборке нет ключа самообновления"
-	}
-	p.done("key", keyNote)
 	p.start("notes")
-	c.Notes = WhatsNew(g.file(ctx, "cmd/wynd-installer/whatsnew.md", tag), strings.TrimPrefix(tag, prod.Prefix))
+	c.Notes = WhatsNew(g.file(ctx, prod.Notes, tag), strings.TrimPrefix(tag, prod.Prefix))
 	notesNote := ""
 	if c.Notes == "" {
 		notesNote = "описание версии не получено"

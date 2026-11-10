@@ -375,9 +375,7 @@
 					{check?.key_in_release ? 'Подпись проверена открытым ключом из репозитория.' : 'Подпись проверена открытой частью выбранного ключа.'}
 					{published
 						? `Файл ${exeFile}.sig выложен в выпуск на GitHub.`
-						: product === 'desktop'
-							? `Файл ${exeFile}.sig выложен в черновик. Он не опубликован: «что нового» дописывает и публикует выпуск владелец.`
-							: `Файл ${exeFile}.sig выложен в черновик. Он не опубликован: в whatsnew.md нет раздела ${version}.`}
+						: `Файл ${exeFile}.sig выложен в черновик. Он не опубликован: в whatsnew.md нет раздела ${version}.`}
 					Временные файлы на этом компьютере удалены.
 				</Notice>
 				<FootBar>
@@ -402,8 +400,6 @@
 					<Notice>
 						{#each check.notes.split('\n') as line, i (i)}<div>{line}</div>{/each}
 					</Notice>
-				{:else if check?.draft && product === 'desktop'}
-					<Notice>Окно обновляется вручную: выпуск останется черновиком, «что нового» и публикацию делает владелец.</Notice>
 				{:else if check?.draft}
 					<Notice>В whatsnew.md нет раздела {version} — выпуск подпишем, но не опубликуем.</Notice>
 				{/if}

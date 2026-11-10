@@ -137,7 +137,12 @@ func releaseTestGH(dir string, args []string) error {
 		fmt.Print(base64.StdEncoding.EncodeToString([]byte(f.PubKey)))
 	case args[0] == "api" && strings.Contains(args[1], "/whatsnew.md?"):
 		if f.Notes {
-			fmt.Print(base64.StdEncoding.EncodeToString([]byte("## 0.3.0\n\n- Test release notes\n")))
+			tag := f.Tag
+			if tag == "" {
+				tag = releaseTestTag
+			}
+			version := strings.TrimPrefix(tag, productOf(tag).Prefix)
+			fmt.Print(base64.StdEncoding.EncodeToString([]byte("## " + version + "\n\n- Test release notes\n")))
 		}
 	case args[0] == "api":
 		if f.ListFailure {
@@ -353,9 +358,9 @@ func TestSignReleasePublication(t *testing.T) {
 	}
 }
 
-// Окно для компьютера: проверки выпуска те же, кроме ключа самообновления и
-// «Что нового» (их у окна пока нет). Черновик после подписи остаётся
-// черновиком — публикация за владельцем.
+// Окно для компьютера подписывается и публикуется так же, как Мастерская:
+// сумма, удостоверение и «Что нового» из whatsnew.md в теге; встроенного
+// ключа самообновления у окна пока нет, поэтому этапа ключа нет.
 func TestDesktopReleaseCheckAndSign(t *testing.T) {
 	const tag = "desktop-v0.1.1"
 	key := filepath.Join(t.TempDir(), "signing.key")
@@ -364,14 +369,14 @@ func TestDesktopReleaseCheckAndSign(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	g, dir := fixtureGitHub(t, releaseFixture{Tag: tag, Draft: true, Notes: true, PubKey: pub, KeyPresent: true})
+	g, dir := fixtureGitHub(t, releaseFixture{Tag: tag, Draft: true, Notes: true, PubKey: pub})
 	var checks []Progress
 	c, err := g.FetchWithProgress(context.Background(), tag, func(p Progress) { checks = append(checks, p) })
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
-	if c.Problem != "" || c.Product != ProductDesktop || c.KeyInRelease || c.Notes != "" {
+	if c.Problem != "" || c.Product != ProductDesktop || c.KeyInRelease || c.Notes == "" {
 		t.Fatalf("unexpected check: %+v", c)
 	}
 	var ids []string
@@ -381,16 +386,19 @@ func TestDesktopReleaseCheckAndSign(t *testing.T) {
 			t.Fatalf("unfinished step: %+v", step)
 		}
 	}
-	if strings.Join(ids, ",") != "release,download,checksum,attestation" {
+	if strings.Join(ids, ",") != "release,download,checksum,attestation,notes" {
 		t.Fatalf("desktop check steps: %v", ids)
 	}
 	calls, _ := os.ReadFile(filepath.Join(dir, "calls"))
-	if strings.Contains(string(calls), "whatsnew.md") || strings.Contains(string(calls), "signing-key.pub") {
-		t.Fatalf("desktop release read workshop files: %s", calls)
+	if strings.Contains(string(calls), "signing-key.pub") {
+		t.Fatalf("desktop release read the workshop key: %s", calls)
+	}
+	if !strings.Contains(string(calls), "cmd/wynd-desktop/whatsnew.md") {
+		t.Fatalf("desktop release did not read its whatsnew.md: %s", calls)
 	}
 	var signs []Progress
 	published, err := g.SignAndPublishWithProgress(context.Background(), c, key, pass, func(p Progress) { signs = append(signs, p) })
-	if err != nil || published {
+	if err != nil || !published {
 		t.Fatalf("published=%v, err=%v", published, err)
 	}
 	for _, events := range [][]Progress{checks, signs} {
@@ -401,12 +409,44 @@ func TestDesktopReleaseCheckAndSign(t *testing.T) {
 		}
 	}
 	calls, _ = os.ReadFile(filepath.Join(dir, "calls"))
-	if strings.Contains(string(calls), "release edit ") {
-		t.Fatalf("desktop draft was published: %s", calls)
+	if !strings.Contains(string(calls), "release edit ") {
+		t.Fatalf("desktop draft was not published: %s", calls)
 	}
 	sig, err := os.ReadFile(filepath.Join(dir, "uploaded.sig"))
 	if err != nil || installer.VerifySignature(pub, releaseTestEXE, sig) != nil {
 		t.Fatalf("uploaded signature does not verify: %v", err)
+	}
+}
+
+// Без раздела версии в whatsnew.md окно, как и Мастерская, подписывается,
+// но черновик остаётся черновиком.
+func TestDesktopDraftWithoutNotesStaysDraft(t *testing.T) {
+	const tag = "desktop-v0.1.1"
+	key := filepath.Join(t.TempDir(), "signing.key")
+	const pass = "test-release-password"
+	if _, err := Keygen(key, key+".pub", pass); err != nil {
+		t.Fatal(err)
+	}
+	g, dir := fixtureGitHub(t, releaseFixture{Tag: tag, Draft: true})
+	var checks []Progress
+	c, err := g.FetchWithProgress(context.Background(), tag, func(p Progress) { checks = append(checks, p) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	if c.Problem != "" || c.Notes != "" {
+		t.Fatalf("unexpected check: %+v", c)
+	}
+	published, err := g.SignAndPublish(context.Background(), c, key, pass)
+	if err != nil || published {
+		t.Fatalf("published=%v, err=%v", published, err)
+	}
+	calls, _ := os.ReadFile(filepath.Join(dir, "calls"))
+	if strings.Contains(string(calls), "release edit ") {
+		t.Fatalf("desktop draft without notes was published: %s", calls)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "uploaded.sig")); err != nil {
+		t.Fatalf("signature was not uploaded: %v", err)
 	}
 }
 

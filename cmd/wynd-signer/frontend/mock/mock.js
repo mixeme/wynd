@@ -45,11 +45,13 @@ const checks = {
 		commit: 'c72af8c1d5e7',
 		attest_ok: true,
 		key_in_release: false,
+		notes: '## 0.1.1\n\n- Окно для компьютера: список серверов и пульт\n- Подпись выпуска и публикация из «Подписи»',
 		steps: done([
 			['release', 'Получаем сведения о выпуске'],
 			['download', 'Скачиваем программу и контрольную сумму'],
 			['checksum', 'Проверяем контрольную сумму'],
-			['attestation', 'Проверяем происхождение сборки', 'коммит c72af8c1']
+			['attestation', 'Проверяем происхождение сборки', 'коммит c72af8c1'],
+			['notes', 'Читаем описание выпуска']
 		])
 	},
 	'workshop-v0.4.1': {
@@ -80,12 +82,13 @@ const app = {
 	CheckRelease: async (tag, requestId) => ({ ...checks[tag], request_id: requestId }),
 	SignRelease: async (checkId, tag, requestId, pass) => ({
 		ok: true,
-		published: demoDraft && tag.startsWith('workshop-'),
+		published: true,
 		url: `https://github.com/mixeme/wynd/releases/tag/${tag}`,
 		steps: done([
 			['release', 'Проверяем состояние выпуска'],
 			['signature', 'Подписываем и проверяем подпись'],
-			['upload', 'Загружаем подпись на GitHub']
+			['upload', 'Загружаем подпись на GitHub'],
+			['publish', 'Публикуем выпуск']
 		])
 	}),
 	PickExe: async () => 'C:\\Users\\Mix\\Downloads\\wynd-desktop.exe',
