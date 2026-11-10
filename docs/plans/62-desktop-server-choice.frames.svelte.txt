@@ -1,0 +1,55 @@
+<!-- План 62. Исправленный кадр 5: существующий шаблон выбора сервера.
+     Основа: ReceivingServerPicker.svelte; остальные кадры сценария не меняются. -->
+<script lang="ts">
+	import TitleBar from '$ui/workshop/TitleBar.svelte';
+	import BackBar from '$ui/chrome/BackBar.svelte';
+	import ServerRow from '$ui/data/ServerRow.svelte';
+	import Hint from '$ui/forms/Hint.svelte';
+	import Label from '$ui/forms/Label.svelte';
+	import Button from '$ui/forms/Button.svelte';
+</script>
+
+<div class="choice-document">
+	<header class="choice-header">
+		<div>WYND · ПЛАН 62 · ИСПРАВЛЕННЫЙ КАДР 5</div>
+		<h1>Выбор сервера интерфейса</h1>
+		<p>Существующий шаблон выбора: одинаковые строки, текущий сервер отмечен галочкой.</p>
+	</header>
+
+	<section id="flow-change-standard" class="choice-frame">
+		<div class="choice-caption">Приложение → Сменить сервер интерфейса</div>
+		<section class="desktop-window" aria-label="Смена сервера интерфейса">
+			<TitleBar title="Wynd" onminimise={() => {}} ontoggle={() => {}} onclose={() => {}} />
+			<div class="desktop-content"><div class="settings-page">
+				<BackBar title="Сервер интерфейса" onback={() => {}} />
+				<div class="settings-body">
+					<Hint class="mt-16">Окно загружает интерфейс с выбранного сервера. Ваши входы и круги останутся без изменений.</Hint>
+					<Label>Серверы интерфейса</Label>
+					<ServerRow name="Дом Ани" subtitle="home.example.org" detail="Сейчас открывает интерфейс" variant="ok" onclick={() => {}} />
+					<ServerRow name="У Славы" subtitle="wynd.u-slavy.ru" onclick={() => {}} />
+					<Button onclick={() => {}}>Добавить сервер интерфейса</Button>
+				</div>
+			</div></div>
+		</section>
+		<p class="choice-description">Нажатие на другую строку выбирает её. Стрелка остаётся только на прежнем экране «Приложение», где открывается этот выбор.</p>
+	</section>
+</div>
+
+<style>
+	@font-face { font-family:'Golos Text'; src:url('/fonts/GolosText-Variable-cyrillic.woff2') format('woff2'); font-weight:400 900; font-style:normal; font-display:swap; unicode-range:U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+	@font-face { font-family:'Golos Text'; src:url('/fonts/GolosText-Variable-latin.woff2') format('woff2'); font-weight:400 900; font-style:normal; font-display:swap; }
+	:global(*) { box-sizing:border-box; }
+	:global(body) { margin:0; background:var(--app-gutter); font-family:var(--ui); color:var(--ink); font-size:13.5px; line-height:1.45; }
+	.choice-document { max-width:900px; margin:auto; }
+	.choice-header { padding:32px 28px 12px; }
+	.choice-header>div { color:var(--muted); font-size:11px; letter-spacing:.09em; }
+	.choice-header h1 { font-size:30px; margin:12px 0; line-height:1.2; }
+	.choice-header p { color:var(--muted); margin:8px 0; }
+	.choice-frame { padding:20px 28px 28px; }
+	.choice-caption { max-width:760px; margin:0 auto 12px; color:var(--muted); font-size:13px; }
+	.choice-description { max-width:760px; margin:14px auto 0; color:var(--muted); }
+	.desktop-window { --c:var(--terracotta); width:760px; max-width:100%; height:780px; margin:auto; border:1px solid #cfc5b8; border-radius:10px; overflow:hidden; background:var(--paper); box-shadow:0 10px 36px #2b272416; display:flex; flex-direction:column; }
+	.desktop-content { flex:1; min-height:0; background:var(--app-gutter); }
+	.settings-page { --c:var(--ink); --ct:#e9e3d8; width:100%; max-width:var(--app-max-width); height:100%; margin:auto; background:var(--paper); display:flex; flex-direction:column; }
+	.settings-body { flex:1; min-height:0; overflow:auto; padding-bottom:24px; }
+</style>
