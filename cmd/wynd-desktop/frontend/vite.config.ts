@@ -13,6 +13,7 @@ export default defineConfig({
 	publicDir: `${web}/static`,
 	resolve: {
 		alias: {
+			'$app/navigation': fileURLToPath(new URL('./src/app-navigation.ts', import.meta.url)),
 			$ui: `${web}/src/lib/components`,
 			$lib: `${web}/src/lib`
 		}

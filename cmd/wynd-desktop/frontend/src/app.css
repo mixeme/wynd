@@ -76,6 +76,17 @@ body {
 	padding-bottom: 24px;
 }
 
+/* Крестик относится к неактивному источнику, а не ко всей строке выбора. */
+.removable-server {
+	position: relative;
+}
+.removable-server .ib {
+	position: absolute;
+	right: 16px;
+	top: 50%;
+	transform: translateY(-50%);
+}
+
 /* Интерфейс сервера — во всю высоту под рамкой, колонкой приложения.
    На широком окне по бокам видна бумажная подложка, как на кадрах ПК5–ПК7. */
 .server-host {

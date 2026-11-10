@@ -1,6 +1,5 @@
-// Мост к Go: Wails кладёт методы App в window.go.main.App. Пока прокси и
-// интерфейс сервера не подключены (шаг 3), оболочка просит только проверку
-// адреса и сохранённый сервер.
+// Мост к Go: Wails кладёт методы App в window.go.main.App. Оболочка проверяет
+// адреса, хранит независимые источники интерфейса и переключает текущий сервер.
 
 export interface CheckResult {
 	origin: string;
@@ -14,6 +13,9 @@ interface GoApp {
 	CheckCurrent(): Promise<CheckResult>;
 	CurrentServer(): Promise<CheckResult | null>;
 	ForgetSelected(): Promise<void>;
+	PreviewServer(address: string): Promise<CheckResult>;
+	AddInterface(address: string): Promise<CheckResult>;
+	RemoveInterface(origin: string): Promise<void>;
 	ListServers(): Promise<CheckResult[]>;
 	SelectServer(origin: string): Promise<CheckResult>;
 }
@@ -53,6 +55,24 @@ export async function checkCurrent(): Promise<CheckResult> {
 
 export async function forgetSelected(): Promise<void> {
 	await bridge()?.ForgetSelected();
+}
+
+export async function previewServer(address: string): Promise<CheckResult> {
+	const app = bridge();
+	if (!app) throw new Error('no bridge');
+	return app.PreviewServer(address);
+}
+
+export async function addInterface(address: string): Promise<CheckResult> {
+	const app = bridge();
+	if (!app) throw new Error('no bridge');
+	return app.AddInterface(address);
+}
+
+export async function removeInterface(origin: string): Promise<void> {
+	const app = bridge();
+	if (!app) throw new Error('no bridge');
+	await app.RemoveInterface(origin);
 }
 
 export async function listServers(): Promise<CheckResult[]> {

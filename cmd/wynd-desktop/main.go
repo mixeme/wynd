@@ -60,6 +60,7 @@ func (a *App) CheckServer(address string) (desktop.CheckResult, error) {
 		Name:             res.Name,
 		Version:          res.Version,
 		RegistrationMode: res.RegistrationMode,
+		Interface:        true,
 	}
 	if err := a.store.Put(server, true); err != nil {
 		return desktop.CheckResult{}, err
@@ -86,7 +87,7 @@ func (a *App) updateAllowed() error {
 }
 
 // AllowServer добавляет адрес в разрешённые до входа: интерфейс сервера
-// проверяет его через /__srv ещё до кода из письма.
+// проверяет его через /__srv ещё до кода из письма. Источником он не становится.
 func (a *App) AllowServer(address string) (string, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -97,7 +98,7 @@ func (a *App) AllowServer(address string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	server := desktop.Server{Origin: origin, Name: desktop.HostOnly(origin)}
+	server := desktop.Server{Origin: origin, Name: desktop.HostOnly(origin), Allowed: true}
 	if err := a.store.Put(server, false); err != nil {
 		return "", err
 	}
@@ -118,11 +119,43 @@ func (a *App) AddServer(origin, name, version, mode string) error {
 	if err != nil {
 		return err
 	}
-	server := desktop.Server{Origin: normalized, Name: name, Version: version, RegistrationMode: mode}
+	server := desktop.Server{Origin: normalized, Name: name, Version: version, RegistrationMode: mode, Account: true}
 	if err := a.store.Put(server, false); err != nil {
 		return err
 	}
 	return a.updateAllowed()
+}
+
+// PreviewServer проверяет адрес без сохранения и переключения интерфейса.
+func (a *App) PreviewServer(address string) (desktop.CheckResult, error) {
+	return desktop.CheckServer(a.ctx, a.client, address)
+}
+
+// AddInterface добавляет проверенный источник, не меняя выбранный сервер.
+func (a *App) AddInterface(address string) (desktop.CheckResult, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.storeErr != nil {
+		return desktop.CheckResult{}, a.storeErr
+	}
+	res, err := desktop.CheckServer(a.ctx, a.client, address)
+	if err != nil {
+		return desktop.CheckResult{}, err
+	}
+	server := desktop.Server{
+		Origin:           res.Origin,
+		Name:             res.Name,
+		Version:          res.Version,
+		RegistrationMode: res.RegistrationMode,
+		Interface:        true,
+	}
+	if err := a.store.Put(server, false); err != nil {
+		return desktop.CheckResult{}, err
+	}
+	if err := a.updateAllowed(); err != nil {
+		return desktop.CheckResult{}, err
+	}
+	return res, nil
 }
 
 // CurrentServer — выбранный сервер при следующем запуске.
@@ -190,7 +223,7 @@ func (a *App) ForgetSelected() error {
 	return a.proxy.Set("")
 }
 
-// SelectServer переключает окно на другой добавленный сервер (ПК7).
+// SelectServer переключает окно на другой источник интерфейса.
 func (a *App) SelectServer(origin string) (desktop.Server, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -212,6 +245,19 @@ func (a *App) SelectServer(origin string) (desktop.Server, error) {
 	return desktop.Server{}, desktop.ErrUnknownServer
 }
 
+// RemoveInterface убирает неактивный источник после подтверждения в оболочке.
+func (a *App) RemoveInterface(origin string) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.storeErr != nil {
+		return a.storeErr
+	}
+	if err := a.store.RemoveInterface(origin); err != nil {
+		return err
+	}
+	return a.updateAllowed()
+}
+
 // Autostart — запись текущего пользователя в Run (ПК5).
 func (a *App) Autostart() (desktop.AutostartStatus, error) {
 	return desktop.AutostartState()
@@ -223,16 +269,19 @@ func (a *App) SetAutostart(enabled bool) (desktop.AutostartStatus, error) {
 	return desktop.SetAutostart(enabled)
 }
 
-// ListServers — добавленные серверы для «Настроек → Серверы» (ПК7).
+// ListServers — только источники интерфейса, без адресов одних учётных записей.
 func (a *App) ListServers() []desktop.Server {
 	if a.store == nil {
-		return nil
-	}
-	_, servers := a.store.Snapshot()
-	if servers == nil {
 		return []desktop.Server{}
 	}
-	return servers
+	_, servers := a.store.Snapshot()
+	interfaces := make([]desktop.Server, 0, len(servers))
+	for _, server := range servers {
+		if server.Interface {
+			interfaces = append(interfaces, server)
+		}
+	}
+	return interfaces
 }
 
 // corsHandler — локальный порт API открыт странице окна (wails.localhost):
@@ -307,7 +356,7 @@ func main() {
 		log.Fatal(err)
 	}
 	err = wails.Run(&options.App{
-		Title:       "Wynd [" + desktop.Version + "]",
+		Title: "Wynd [" + desktop.Version + "]",
 		// Окно открывается по ширине интерфейса: колонка клиента — до 720
 		// (480 на узком окне), окно не шире неё (решение владельца 10.11.26).
 		Width:       760,

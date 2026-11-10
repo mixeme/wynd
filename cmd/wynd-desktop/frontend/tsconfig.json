@@ -9,6 +9,7 @@
 		"isolatedModules": true,
 		"types": ["svelte", "vite/client"],
 		"paths": {
+			"$app/navigation": ["./src/app-navigation.ts"],
 			"$ui/*": ["../../../web/src/lib/components/*"],
 			"$lib/*": ["../../../web/src/lib/*"]
 		}

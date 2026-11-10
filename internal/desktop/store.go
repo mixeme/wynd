@@ -10,17 +10,25 @@ import (
 	"time"
 )
 
-// ErrUnknownServer — сервера нет в списке.
-var ErrUnknownServer = errors.New("unknown server")
+var (
+	// ErrUnknownServer — сервера нет в списке источников.
+	ErrUnknownServer = errors.New("unknown server")
+	// ErrSelectedServer — текущий источник нельзя убрать до переключения.
+	ErrSelectedServer = errors.New("selected server")
+)
 
 // Server — добавленный сервер. Токенов и паролей здесь нет: вход живёт в
 // сессии клиента, а список серверов — только адреса и имена.
 type Server struct {
-	Origin           string    `json:"origin"`
-	Name             string    `json:"name"`
-	Version          string    `json:"version,omitempty"`
-	RegistrationMode string    `json:"registration_mode,omitempty"`
-	AddedAt          time.Time `json:"added_at"`
+	Origin           string `json:"origin"`
+	Name             string `json:"name"`
+	Version          string `json:"version,omitempty"`
+	RegistrationMode string `json:"registration_mode,omitempty"`
+	// Роли независимы: удаление источника не отключает существующий вход.
+	Interface bool      `json:"interface,omitempty"`
+	Account   bool      `json:"account,omitempty"`
+	Allowed   bool      `json:"allowed,omitempty"`
+	AddedAt   time.Time `json:"added_at"`
 }
 
 type storeFile struct {
@@ -52,12 +60,36 @@ func OpenStore(path string) (*Store, error) {
 	if err := json.Unmarshal(b, &s.data); err != nil {
 		return nil, fmt.Errorf("parse servers: %w", err)
 	}
-	// Выбранный сервер обязан быть в списке; иначе — первый.
-	if s.data.Selected != "" && s.find(s.data.Selected) < 0 {
-		s.data.Selected = ""
+	// До разделения ролей все сохранённые серверы были и источниками, и
+	// разрешёнными для входа. Сохраняем оба поведения при первом чтении.
+	migrated := false
+	for i := range s.data.Servers {
+		server := &s.data.Servers[i]
+		if !server.Interface && !server.Account && !server.Allowed {
+			server.Interface = true
+			server.Account = true
+			migrated = true
+		}
 	}
-	if s.data.Selected == "" && len(s.data.Servers) > 0 {
-		s.data.Selected = s.data.Servers[0].Origin
+	// Выбран может быть только источник интерфейса, а не адрес для входа.
+	if s.data.Selected != "" {
+		i := s.find(s.data.Selected)
+		if i < 0 || !s.data.Servers[i].Interface {
+			s.data.Selected = ""
+		}
+	}
+	if s.data.Selected == "" {
+		for _, server := range s.data.Servers {
+			if server.Interface {
+				s.data.Selected = server.Origin
+				break
+			}
+		}
+	}
+	if migrated {
+		if err := s.writeLocked(); err != nil {
+			return nil, err
+		}
 	}
 	return s, nil
 }
@@ -91,6 +123,10 @@ func (s *Store) Put(server Server, selectIt bool) error {
 		server.AddedAt = time.Now().UTC()
 	}
 	if i := s.find(server.Origin); i >= 0 {
+		previous := s.data.Servers[i]
+		server.Interface = server.Interface || previous.Interface
+		server.Account = server.Account || previous.Account
+		server.Allowed = server.Allowed || previous.Allowed
 		s.data.Servers[i] = server
 	} else {
 		s.data.Servers = append(s.data.Servers, server)
@@ -101,11 +137,12 @@ func (s *Store) Put(server Server, selectIt bool) error {
 	return s.writeLocked()
 }
 
-// Select делает сервер выбранным.
+// Select делает источник интерфейса выбранным.
 func (s *Store) Select(origin string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.find(origin) < 0 {
+	i := s.find(origin)
+	if i < 0 || !s.data.Servers[i].Interface {
 		return ErrUnknownServer
 	}
 	s.data.Selected = origin
@@ -120,7 +157,7 @@ func (s *Store) ClearSelection() error {
 	return s.writeLocked()
 }
 
-// Remove убирает сервер; выбранным становится следующий.
+// Remove убирает сервер; выбранным становится следующий источник.
 func (s *Store) Remove(origin string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -131,9 +168,34 @@ func (s *Store) Remove(origin string) error {
 	s.data.Servers = append(s.data.Servers[:i], s.data.Servers[i+1:]...)
 	if s.data.Selected == origin {
 		s.data.Selected = ""
-		if len(s.data.Servers) > 0 {
-			s.data.Selected = s.data.Servers[0].Origin
+		for _, server := range s.data.Servers {
+			if server.Interface {
+				s.data.Selected = server.Origin
+				break
+			}
 		}
+	}
+	return s.writeLocked()
+}
+
+// RemoveInterface снимает только роль источника. Запись остаётся, если адрес
+// нужен существующему входу или уже разрешённой проверке входа через прокси.
+func (s *Store) RemoveInterface(origin string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	i := s.find(origin)
+	if i < 0 || !s.data.Servers[i].Interface {
+		return ErrUnknownServer
+	}
+	if s.data.Selected == origin {
+		return ErrSelectedServer
+	}
+	server := s.data.Servers[i]
+	server.Interface = false
+	if server.Account || server.Allowed {
+		s.data.Servers[i] = server
+	} else {
+		s.data.Servers = append(s.data.Servers[:i], s.data.Servers[i+1:]...)
 	}
 	return s.writeLocked()
 }
