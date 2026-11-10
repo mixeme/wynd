@@ -7,6 +7,7 @@
 	import Hint from '$ui/forms/Hint.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import Button from '$ui/forms/Button.svelte';
+	import IconButton from '$ui/forms/IconButton.svelte';
 </script>
 
 <div class="choice-document">
@@ -26,12 +27,15 @@
 					<Hint class="mt-16">Окно загружает интерфейс с выбранного сервера. Ваши входы и круги останутся без изменений.</Hint>
 					<Label>Серверы интерфейса</Label>
 					<ServerRow name="Дом Ани" subtitle="home.example.org" variant="ok" onclick={() => {}} />
-					<ServerRow name="У Славы" subtitle="wynd.u-slavy.ru" onclick={() => {}} />
+					<div class="removable-server">
+						<ServerRow name="У Славы" subtitle="wynd.u-slavy.ru" style="padding-right:52px" onclick={() => {}} />
+						<IconButton name="x" size="sm" label="Убрать сервер «У Славы» из списка" onclick={() => {}} />
+					</div>
 					<Button onclick={() => {}}>Добавить сервер интерфейса</Button>
 				</div>
 			</div></div>
 		</section>
-		<p class="choice-description">Нажатие на другую строку выбирает её. Стрелка остаётся только на прежнем экране «Приложение», где открывается этот выбор.</p>
+		<p class="choice-description">Нажатие на другую строку выбирает её. Крестик у неактивного сервера убирает его из списка источников; текущий сервер удалить нельзя. Отдельный экран удаления не нужен.</p>
 	</section>
 </div>
 
@@ -52,4 +56,6 @@
 	.desktop-content { flex:1; min-height:0; background:var(--app-gutter); }
 	.settings-page { --c:var(--ink); --ct:#e9e3d8; width:100%; max-width:var(--app-max-width); height:100%; margin:auto; background:var(--paper); display:flex; flex-direction:column; }
 	.settings-body { flex:1; min-height:0; overflow:auto; padding-bottom:24px; }
+	.removable-server { position:relative; }
+	.removable-server :global(.ib) { position:absolute; right:16px; top:50%; transform:translateY(-50%); }
 </style>
