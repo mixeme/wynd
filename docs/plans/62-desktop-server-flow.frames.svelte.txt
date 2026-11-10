@@ -1,0 +1,203 @@
+<!-- План 62. Полный сценарий выбранной структуры Б для настольного окна.
+     Только существующие Wynd UI; состояние без входа уже принято, остальное — черновики вёрстки. -->
+<script lang="ts">
+	import TitleBar from '$ui/workshop/TitleBar.svelte';
+	import BackBar from '$ui/chrome/BackBar.svelte';
+	import ServerRow from '$ui/data/ServerRow.svelte';
+	import SettingsRow from '$ui/data/SettingsRow.svelte';
+	import SectionLabel from '$ui/data/SectionLabel.svelte';
+	import AboutFooter from '$ui/data/AboutFooter.svelte';
+	import Hint from '$ui/forms/Hint.svelte';
+	import Button from '$ui/forms/Button.svelte';
+	import Switch from '$ui/forms/Switch.svelte';
+	import Label from '$ui/forms/Label.svelte';
+	import Input from '$ui/forms/Input.svelte';
+
+	let startup = $state(false);
+	let loginAddress = $state('home.example.org');
+	let loginEmail = $state('anya@example.com');
+	let invitation = $state('');
+	let interfaceAddress = $state('files.example.org');
+</script>
+
+<div class="flow-document">
+	<header class="flow-header">
+		<div>WYND · ПЛАН 62 · СЦЕНАРИЙ Б</div>
+		<h1>Настройки и роли серверов</h1>
+		<p>Учётные записи — в «Серверах». Источник интерфейса — в «Приложении».</p>
+		<nav aria-label="Кадры сценария">
+			<a href="#flow-settings">1 · Настройки</a>
+			<a href="#flow-servers">2 · Серверы</a>
+			<a href="#flow-login">3 · Вход</a>
+			<a href="#flow-app">4 · Приложение</a>
+			<a href="#flow-change">5 · Смена интерфейса</a>
+			<a href="#flow-add-interface">6 · Добавление источника</a>
+			<a href="#flow-no-login">7 · Без входа</a>
+		</nav>
+		<p>Кадр 7 принят; кадры 1–6 предлагаются для согласования вёрстки. Данные приведены для примера.</p>
+	</header>
+
+	<section id="flow-settings" class="flow-frame">
+		<div class="flow-caption">1 · Настройки · две разные точки входа</div>
+		<section class="desktop-window" aria-label="Настройки">
+			<TitleBar title="Wynd" onminimise={() => {}} ontoggle={() => {}} onclose={() => {}} />
+			<div class="desktop-content"><div class="settings-page">
+				<BackBar title="Настройки" onback={() => {}} />
+				<div class="settings-body">
+					<SettingsRow class="mt-8" icon="key" title="Серверы" subtitle="2 сервера" onclick={() => {}} />
+					<SettingsRow icon="bell" title="Приложение" subtitle="уведомления, место, тема" onclick={() => {}} />
+					<SettingsRow icon="day" title="Что нового в Wynd" onclick={() => {}} />
+					<AboutFooter wrap class="mt-30" />
+				</div>
+			</div></div>
+		</section>
+		<p class="flow-description">«Серверы» ведут к учётным записям и входу. «Приложение» — к устройству, оформлению и временному источнику интерфейса. Второй шестерёнки в рамке нет.</p>
+	</section>
+
+	<section id="flow-servers" class="flow-frame">
+		<div class="flow-caption">2 · Настройки → Серверы · только учётные записи</div>
+		<section class="desktop-window" aria-label="Серверы с учётными записями">
+			<TitleBar title="Wynd" onminimise={() => {}} ontoggle={() => {}} onclose={() => {}} />
+			<div class="desktop-content"><div class="settings-page">
+				<BackBar title="Серверы" onback={() => {}} />
+				<div class="settings-body">
+					<ServerRow name="Дом Ани" subtitle="home.example.org" card top={10} />
+					<SettingsRow title="anya@example.com" subtitle="5 кругов · вошли 5 августа" chevron={false} />
+					<SettingsRow title="Сменить почту" onclick={() => {}} />
+					<SettingsRow title="Принять круг" onclick={() => {}} />
+					<SettingsRow title="Выйти на этом устройстве" icon="out" chevron={false} onclick={() => {}} />
+					<SettingsRow title="Уйти с сервера насовсем" onclick={() => {}} />
+					<ServerRow name="У Славы" subtitle="wynd.u-slavy.ru" card top={26} />
+					<SettingsRow title="m.petrov@example.com" subtitle="1 круг · вошли 24 июля" chevron={false} />
+					<SettingsRow title="Сменить почту" onclick={() => {}} />
+					<SettingsRow title="Принять круг" onclick={() => {}} />
+					<SettingsRow title="Выйти на этом устройстве" icon="out" chevron={false} onclick={() => {}} />
+					<SettingsRow title="Уйти с сервера насовсем" onclick={() => {}} />
+					<Hint class="mt-24">Общего профиля на все серверы нет: каждый сервер — отдельное место, даже с той же почтой.</Hint>
+					<Button onclick={() => {}}>Войти на сервер</Button>
+				</div>
+			</div></div>
+		</section>
+		<p class="flow-description">Здесь перечислены только серверы, на которые выполнен вход. Действие внизу открывает кадр 3; при переполнении список обычно прокручивается.</p>
+	</section>
+
+	<section id="flow-login" class="flow-frame">
+		<div class="flow-caption">3 · Серверы → Войти на сервер · существующая форма входа</div>
+		<section class="desktop-window" aria-label="Вход на сервер">
+			<TitleBar title="Wynd" onminimise={() => {}} ontoggle={() => {}} onclose={() => {}} />
+			<div class="desktop-content"><div class="settings-page">
+				<BackBar title="Войти на сервер" onback={() => {}} />
+				<div class="settings-body">
+					<Label>Адрес сервера</Label>
+					<Input active mono small type="text" spellcheck="false" bind:value={loginAddress} />
+					<ServerRow name="Дом Ани" subtitle="home.example.org" detail="Открыт для новых" card />
+					<Label class="mt-16">Почта</Label>
+					<Input active type="email" autocomplete="email" bind:value={loginEmail} />
+					<Hint>Пришлём код для входа. Пароля нет.</Hint>
+					<Button onclick={() => {}}>Получить код</Button>
+					<Hint>Сервер хранит данные незашифрованными. Выбирайте сервер, которому доверяете, или запустите свой.</Hint>
+					<Label class="mt-22">Есть приглашение</Label>
+					<Input active mono small type="text" spellcheck="false" placeholder="вставьте ссылку" bind:value={invitation} />
+				</div>
+			</div></div>
+		</section>
+		<p class="flow-description">Это вход в учётную запись, а не выбор источника интерфейса. Следующий шаг с кодом уже существует и в этом сценарии не меняется.</p>
+	</section>
+
+	<section id="flow-app" class="flow-frame">
+		<div class="flow-caption">4 · Настройки → Приложение · текущий источник интерфейса</div>
+		<section class="desktop-window" aria-label="Настройки приложения">
+			<TitleBar title="Wynd" onminimise={() => {}} ontoggle={() => {}} onclose={() => {}} />
+			<div class="desktop-content"><div class="settings-page">
+				<BackBar title="Приложение" onback={() => {}} />
+				<div class="settings-body">
+					<SectionLabel>Интерфейс</SectionLabel>
+					<ServerRow name="Дом Ани" subtitle="home.example.org" detail="Сейчас открывает интерфейс" card top={0} />
+					<SettingsRow title="Сменить сервер интерфейса" subtitle="Входы и круги останутся на своих серверах" onclick={() => {}} />
+					<SectionLabel>Запуск</SectionLabel>
+					<SettingsRow class="pt-2" title="Запускать при входе в Windows">
+						{#snippet control()}<Switch bind:checked={startup} label="Запускать при входе в Windows" />{/snippet}
+					</SettingsRow>
+					<Hint class="mt-10">При входе в Windows откроется окно Wynd.</Hint>
+					<SectionLabel>Уведомления</SectionLabel>
+					<SettingsRow title="Новые записи и комментарии" subtitle="звук и системные уведомления" onclick={() => {}} />
+					<SectionLabel>Оформление</SectionLabel>
+					<SettingsRow title="Тема" value="Как в системе" onclick={() => {}} />
+				</div>
+			</div></div>
+		</section>
+		<p class="flow-description">Плашка отвечает, откуда сейчас загружен интерфейс. Строка со стрелкой под ней ведёт к смене источника — кадр 5.</p>
+	</section>
+
+	<section id="flow-change" class="flow-frame">
+		<div class="flow-caption">5 · Приложение → Сменить сервер интерфейса · выбран только один</div>
+		<section class="desktop-window" aria-label="Смена сервера интерфейса">
+			<TitleBar title="Wynd" onminimise={() => {}} ontoggle={() => {}} onclose={() => {}} />
+			<div class="desktop-content"><div class="settings-page">
+				<BackBar title="Сервер интерфейса" onback={() => {}} />
+				<div class="settings-body">
+					<Hint class="mt-16">Окно загружает интерфейс с выбранного сервера. Ваши входы и круги останутся без изменений.</Hint>
+					<ServerRow name="Дом Ани" subtitle="home.example.org" detail="Сейчас открывает интерфейс" variant="ok" card top={10} />
+					<SettingsRow title="У Славы" subtitle="wynd.u-slavy.ru" onclick={() => {}} />
+					<Button onclick={() => {}}>Добавить сервер интерфейса</Button>
+				</div>
+			</div></div>
+		</section>
+		<p class="flow-description">Плашкой отмечен только выбранный сервер. Другой известный источник — обычная строка со стрелкой; её выбор меняет интерфейс, но не входы.</p>
+	</section>
+
+	<section id="flow-add-interface" class="flow-frame">
+		<div class="flow-caption">6 · Сервер интерфейса → Добавить сервер интерфейса · только служебная роль</div>
+		<section class="desktop-window" aria-label="Добавление сервера интерфейса">
+			<TitleBar title="Wynd" onminimise={() => {}} ontoggle={() => {}} onclose={() => {}} />
+			<div class="desktop-content"><div class="settings-page">
+				<BackBar title="Добавить сервер интерфейса" onback={() => {}} />
+				<div class="settings-body">
+					<Label>Адрес сервера</Label>
+					<Input active mono small type="text" spellcheck="false" bind:value={interfaceAddress} />
+					<Hint>Окно сможет загружать интерфейс с этого сервера. Вход и учётная запись не создаются.</Hint>
+					<Button onclick={() => {}}>Добавить сервер интерфейса</Button>
+				</div>
+			</div></div>
+		</section>
+		<p class="flow-description">Здесь не запрашиваются почта и код: действие добавляет только возможный источник интерфейса. Для входа нужно вернуться в «Серверы».</p>
+	</section>
+
+	<section id="flow-no-login" class="flow-frame">
+		<div class="flow-caption">7 · Настройки → Серверы · принятое состояние без входа</div>
+		<section class="desktop-window" aria-label="Нет учётных записей при работающем интерфейсе">
+			<TitleBar title="Wynd" onminimise={() => {}} ontoggle={() => {}} onclose={() => {}} />
+			<div class="desktop-content"><div class="settings-page">
+				<BackBar title="Серверы" onback={() => {}} />
+				<div class="settings-body">
+					<Hint centered class="mt-28 sz-15">Вы ни на одном сервере не вошли</Hint>
+					<Hint centered class="mt-16">Интерфейс продолжит открываться с сервера «Дом Ани».</Hint>
+					<Button onclick={() => {}}>Войти на сервер</Button>
+				</div>
+			</div></div>
+		</section>
+		<p class="flow-description">Этот кадр уже принят и повторён без изменений. Пустой список относится только к учётным записям; интерфейс продолжает работать.</p>
+	</section>
+</div>
+
+<style>
+	@font-face { font-family:'Golos Text'; src:url('/fonts/GolosText-Variable-cyrillic.woff2') format('woff2'); font-weight:400 900; font-style:normal; font-display:swap; unicode-range:U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+	@font-face { font-family:'Golos Text'; src:url('/fonts/GolosText-Variable-latin.woff2') format('woff2'); font-weight:400 900; font-style:normal; font-display:swap; }
+	:global(*) { box-sizing:border-box; }
+	:global(body) { margin:0; background:var(--app-gutter); font-family:var(--ui); color:var(--ink); font-size:13.5px; line-height:1.45; }
+	.flow-document { max-width:900px; margin:auto; }
+	.flow-header { padding:32px 28px 12px; }
+	.flow-header>div { color:var(--muted); font-size:11px; letter-spacing:.09em; }
+	.flow-header h1 { font-size:30px; margin:12px 0; line-height:1.2; }
+	.flow-header p { color:var(--muted); margin:8px 0; }
+	.flow-header nav { display:flex; flex-wrap:wrap; gap:10px 20px; margin:20px 0; }
+	.flow-header a { color:var(--ink); text-underline-offset:3px; }
+	.flow-frame { padding:20px 28px 28px; scroll-margin-top:20px; }
+	.flow-caption { max-width:760px; margin:0 auto 12px; color:var(--muted); font-size:13px; }
+	.flow-description { max-width:760px; margin:14px auto 0; color:var(--muted); }
+	.flow-frame .desktop-window { --c:var(--terracotta); width:760px; max-width:100%; height:780px; margin:auto; border:1px solid #cfc5b8; border-radius:10px; overflow:hidden; background:var(--paper); box-shadow:0 10px 36px #2b272416; display:flex; flex-direction:column; }
+	.flow-frame .desktop-content { flex:1; min-height:0; background:var(--app-gutter); }
+	.flow-frame .settings-page { --c:var(--ink); --ct:#e9e3d8; width:100%; max-width:var(--app-max-width); height:100%; margin:auto; background:var(--paper); display:flex; flex-direction:column; }
+	.flow-frame .settings-body { flex:1; min-height:0; overflow:auto; padding-bottom:24px; }
+	@media (max-width:820px) { .flow-frame { padding:12px; } .flow-frame .desktop-window { height:700px; } }
+</style>
