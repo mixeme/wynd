@@ -25,7 +25,7 @@
 				<div class="settings-body">
 					<Hint class="mt-16">Окно загружает интерфейс с выбранного сервера. Ваши входы и круги останутся без изменений.</Hint>
 					<Label>Серверы интерфейса</Label>
-					<ServerRow name="Дом Ани" subtitle="home.example.org" detail="Сейчас открывает интерфейс" variant="ok" onclick={() => {}} />
+					<ServerRow name="Дом Ани" subtitle="home.example.org" variant="ok" onclick={() => {}} />
 					<ServerRow name="У Славы" subtitle="wynd.u-slavy.ru" onclick={() => {}} />
 					<Button onclick={() => {}}>Добавить сервер интерфейса</Button>
 				</div>
