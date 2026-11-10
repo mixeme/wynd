@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { goUp, goUpFromSpot } from '$lib/navigation/up';
 	import { afterNavigate, goto } from '$app/navigation';
 	import { resolveMediaUrls } from '$lib/media/batch';
 	import { numberParam, withParam, withoutParam } from '$lib/nav/url';
@@ -11,6 +11,7 @@
 	import Hint from '$ui/forms/Hint.svelte';
 	import Loading from '$ui/Loading.svelte';
 	import Lightbox from '$ui/overlays/Lightbox.svelte';
+	import TextButton from '$ui/forms/TextButton.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { formatBytes } from '$lib/format/bytes';
 	import { formatPostTime, pluralPhotos } from '$lib/format/time';
@@ -44,6 +45,8 @@
 
 	const currentItem = $derived(photos[lightboxIndex]);
 	const albumTitle = $derived(post ? pluralPhotos(photos.length) : '');
+	// Запись этого альбома — для «Готово» и ссылки времени подписи (план 61, В-2).
+	const postHref = $derived(`/circles/${circle.circleId}/posts/${postId}`);
 
 	onMount(() => {
 		void load();
@@ -146,17 +149,26 @@
 	}
 </script>
 
-{#snippet albumSubtitle()}
-	{#if post}<BylineParts parts={postBylineParts(post, formatPostTime)} />{/if}
-{/snippet}
 {#snippet photoCaption()}
 	{#if post && currentItem}
-		<BylineParts
-			parts={lightboxCaption(post, currentItem, formatPostTime, sizes[currentItem.blob_id])}
-		/>
+		{@const parts = lightboxCaption(post, currentItem, formatPostTime, sizes[currentItem.blob_id])}
+		<!-- Время публикации — ссылка на запись (план 61, В-2): альбом
+		     открывают и из «Сетки», минуя саму запись. -->
+		{#if parts.length > 1}
+			{parts[0].text}{' · '}<TextButton onclick={() => goto(postHref)}>{parts[1].text}</TextButton
+			>{#if parts.length > 2}{' · '}{/if}<BylineParts parts={parts.slice(2)} />
+		{:else}
+			<BylineParts {parts} />
+		{/if}
 	{/if}
 {/snippet}
 
+{#snippet albumSubtitle()}
+	{#if post}<BylineParts parts={postBylineParts(post, formatPostTime)} />{/if}
+{/snippet}
+
+<!-- Шапка альбома с правым действием «К записи» (план 61, В-2): из фото,
+     открытого с «Сетки», до записи один тап, без шага «Назад». -->
 <CircleLayout
 	app
 	color={circle.color}
@@ -164,7 +176,14 @@
 	subtitle={post ? albumSubtitle : undefined}
 	tabs={false}
 	commentBar={false}
-	onback={() => goUp(`/circles/${circle.circleId}/posts/${postId}`)}
+	action="К записи"
+	onaction={() => goto(postHref)}
+	onback={() =>
+		void goUpFromSpot(
+			`/circles/${circle.circleId}`,
+			['grid'],
+			`/circles/${circle.circleId}/posts/${postId}`
+		)}
 >
 	{#if loading}
 		<Loading />

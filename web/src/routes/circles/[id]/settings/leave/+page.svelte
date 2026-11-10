@@ -2,6 +2,7 @@
 	import { goUp } from '$lib/navigation/up';
 	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { getContext, onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Chip from '$ui/forms/Chip.svelte';
@@ -88,7 +89,11 @@
 	<ConfirmDialog
 		title="Сначала передайте владение"
 		confirmLabel="Передать"
-		onconfirm={() => goto(`/circles/${circle.circleId}/settings/members?transfer=1`)}
+		onconfirm={() =>
+			goto(
+				`/circles/${circle.circleId}/settings/members?transfer=1` +
+					`&back=${encodeURIComponent($page.url.pathname + $page.url.search)}`
+			)}
 		oncancel={() => goto(`/circles/${circle.circleId}/settings`)}
 	>
 		<Hint>Пока вы владелец «{circle.name}», уйти нельзя.</Hint>

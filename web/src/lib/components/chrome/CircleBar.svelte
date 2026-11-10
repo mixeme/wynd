@@ -40,7 +40,9 @@
 		identitySettingsLink = true,
 		responsesTab = true,
 		previewTab,
-		responsesUnread = 0
+		responsesUnread = 0,
+		action,
+		onaction
 	}: {
 		title: string;
 		identity?: string;
@@ -62,6 +64,9 @@
 		previewTab?: CircleTab;
 		/** Число на вкладке: новые отклики с прошлого просмотра. */
 		responsesUnread?: number;
+		/** Правое действие в шапке без прав — «Готово» в альбоме (план 61, В-2). */
+		action?: string;
+		onaction?: () => void;
 	} = $props();
 
 	const visibleTabs = $derived(visibleCircleTabs(responsesTab, active));
@@ -121,6 +126,10 @@
 			{#if onsearch}
 				<span class="sp"></span>
 				<IconButton name="search" label="Поиск" onclick={() => onsearch()} />
+			{/if}
+			{#if action && onaction}
+				<span class="sp"></span>
+				<button type="button" class="bar-act" onclick={() => onaction?.()}>{action}</button>
 			{/if}
 		{/if}
 		{#if !searchInBar && identity}

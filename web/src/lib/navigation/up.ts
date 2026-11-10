@@ -48,6 +48,12 @@ export function recordEntry(url: URL): void {
 	save();
 }
 
+/** Экран, откуда пришли на текущую запись истории (приём записи, план 46, C13). */
+export function previousEntry(): string | undefined {
+	const i = historyIndex();
+	return i !== undefined ? entries.get(i - 1) : undefined;
+}
+
 // Шаг назад сделал сам goUp — его не перехватываем.
 let ownBack = false;
 
@@ -60,6 +66,32 @@ export function goUp(parent: string): Promise<void> {
 		return Promise.resolve();
 	}
 	return goto(parent, { replaceState: true });
+}
+
+/**
+ * Экраны, на которые можно попасть не только с родителя: баннер в ленте,
+ * переход из хитов поиска (план 46, C13 и след.), передача владения из
+ * выхода. «Назад» ведёт туда, откуда открыли, если источник — один из
+ * `spots`; иначе — на родителя `parent`. Spot без слэша — путь после
+ * `base` (`''` — сам `base`, `search` — вкладка поиска круга); со слэшем
+ * — весь путь (`/search` — глобальный поиск). Выбранный источник —
+ * предыдущая запись истории, шаг назад по ней ставит родителя на его
+ * место прокрутки.
+ */
+export function goUpFromSpot(base: string, spots: string[], parent: string): Promise<void> {
+	const src = previousEntry();
+	if (src) {
+		const url = new URL(src, location.origin);
+		const rest = url.pathname.startsWith(base) ? url.pathname.slice(base.length) : undefined;
+		if (
+			spots.some((s) =>
+				s.startsWith('/') ? url.pathname === s : rest !== undefined && rest === `/${s}`
+			)
+		) {
+			return goUp(src);
+		}
+	}
+	return goUp(parent);
 }
 
 // Стек: экран, поверх него лист — системная «Назад» сперва закрывает лист.

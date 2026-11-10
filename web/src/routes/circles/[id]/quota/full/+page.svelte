@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { goUpFromSpot } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
@@ -220,11 +220,15 @@
 	</DangerZone>
 {/snippet}
 
+<!-- Полный архив открывают из «Квоты» и с баннера в ленте: «Назад»
+     возвращает в ленту на месте, если пришли с баннера, иначе в «Квоту»
+     (приём записи, план 46 C13). -->
 <FormLayout
 	app
 	color={circle.color}
 	title="Полный архив круга"
-	onback={() => goUp(`/circles/${circle.circleId}/quota`)}
+	onback={() =>
+		void goUpFromSpot(`/circles/${circle.circleId}`, [''], `/circles/${circle.circleId}/quota`)}
 >
 	{#if loading}
 		<Loading />

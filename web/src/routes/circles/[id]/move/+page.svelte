@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { goUpFromSpot } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import { getContext, onDestroy, onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
@@ -127,11 +127,15 @@
 	onDestroy(() => timer && clearInterval(timer));
 </script>
 
+<!-- Перенос открывают из «Настроек» и с баннера в ленте (3.14): «Назад»
+     возвращает в ленту на месте, если пришли с баннера, иначе в настройки
+     (приём записи, план 46 C13). -->
 <FormLayout
 	app
 	color={circle.color}
 	title="Перенос круга"
-	onback={() => goUp(`/circles/${circle.circleId}/settings`)}
+	onback={() =>
+		void goUpFromSpot(`/circles/${circle.circleId}`, [''], `/circles/${circle.circleId}/settings`)}
 >
 	{#if loading}
 		<Loading />

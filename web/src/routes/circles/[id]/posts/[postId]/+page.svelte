@@ -492,16 +492,18 @@
 		setTimeout(() => el.classList.remove('linked'), 1600);
 	}
 
-	// Родитель записи — экран круга, где её открыли: вкладка, день, поиск
-	// (план 46, C13). Пришли иначе (пуш, ссылка, своя же правка) — лента.
+	// Родитель записи — экран круга, где её открыли: вкладка, день, поиск; из
+	// глобального поиска — он сам (план 46, C13). Пришли иначе (пуш, ссылка,
+	// своя же правка) — лента.
 	let backTo = '';
 	afterNavigate(({ from }) => {
 		if (backTo || !from) return;
 		const base = `/circles/${circle.circleId}`;
 		const rest = from.url.pathname.startsWith(base) ? from.url.pathname.slice(base.length) : null;
 		if (
-			rest !== null &&
-			/^(|\/days(\/\d{4}-\d{2}-\d{2})?|\/grid|\/map|\/responses|\/search)$/.test(rest)
+			(rest !== null &&
+				/^(|\/days(\/\d{4}-\d{2}-\d{2})?|\/grid|\/map|\/responses|\/search)$/.test(rest)) ||
+			from.url.pathname === '/search'
 		) {
 			backTo = from.url.pathname + from.url.search;
 		}

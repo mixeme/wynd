@@ -101,7 +101,7 @@ PhoneFrame, StatusBar, AppBar, CircleBar (4 таба), BackBar, AdminBar, **Comp
 | `Chip` | `<button class="chip">` или `<span>` | — | с `onclick` — кнопка, `aria-pressed={selected}`; опц. `color` — цветная метка перед текстом, например цвет круга в «положить ещё» |
 | `IconButton` | `<button class="ib">` | `name`, `label`, `onclick` | рендер только при `onclick`; опц. pointer-события (длинное нажатие FAB); `pressed` — переключатель: `true` в цвете круга, `false` приглушён (`.ib.off`), с `aria-pressed` |
 | `TextButton` | `<button>` | `onclick` | `variant`: `link` (`.under`), `admin` (`.act` в `.chk`), `adminBox` (`.inp`), `bar` (`.t`), `barAction` (`.rt`/`.rt.on`) |
-| `AddPhotoButton` | `button.addph` | `onclick` | без `previewUrl` — плюс; с `previewUrl` — `.addph.preview`, cover-фон, `aria-label` «сменить фото» (**#e1-4**) |
+| `AddPhotoButton` | `button.addph` | `onclick`, опц. `class` | без `previewUrl` — плюс; с `previewUrl` — `.addph.preview`, cover-фон, `aria-label` «сменить фото» (**#e1-4**); `class` — метка места: `.ident-photo` в `IdentityForm`, только он получает форму аватаров A16 |
 
 `CodeBox` — шесть клеток `.codebox`; без `bind:value` — display (`digits` / `active`, каталог). С `bind:value` — прозрачный `input.code-input` поверх (**.code-wrap**), `inputmode="numeric"`, `autocomplete="one-time-code"`, обрезка до `length`; опц. `bind:el`, `autofocus` (**#e1-3**).
 

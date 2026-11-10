@@ -72,7 +72,7 @@
 <ScreenTitle class="mt-22 lh-125">
 	Как вас зовут<br />в этом круге?
 </ScreenTitle>
-<AddPhotoButton previewUrl={preview || undefined} onclick={openPicker} />
+<AddPhotoButton class="ident-photo" previewUrl={preview || undefined} onclick={openPicker} />
 <Hint centered class="mt-8">
 	<TextButton onclick={openPicker}>добавить фото</TextButton>
 </Hint>

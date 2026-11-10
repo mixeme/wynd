@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { goUpFromSpot } from '$lib/navigation/up';
 	import PostByline from '$ui/data/PostByline.svelte';
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
 	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
@@ -155,12 +155,22 @@
 		return unsub;
 	});
 
-	// День, открытый с открытки в ленте (?from=feed), возвращает в ленту;
-	// иначе его родитель — вкладка «Дни» (план 46, C13 и C29).
+	// День открывают откуда угодно: с открытки (?from=feed) и будильника дня
+	// в ленте, из хитов поиска (круга и глобального), списка дней. «Назад»
+	// ведёт туда, откуда открыли, если это вкладка круга или глобальный
+	// поиск (план 46, C13 и C29); пришли иначе (пуш, ссылка) — с открытки
+	// (?from=feed) — в ленту, иначе во «Дни».
 	const fromFeed = $derived($page.url.searchParams.get('from') === 'feed');
 
+	// Вкладки круга и глобальный поиск, из которых день открывают.
+	const DAY_SPOTS = ['', 'days', 'search', 'grid', 'map', 'responses', '/search'];
+
 	function goBack() {
-		goUp(fromFeed ? `/circles/${circle.circleId}` : `/circles/${circle.circleId}/days`);
+		void goUpFromSpot(
+			`/circles/${circle.circleId}`,
+			DAY_SPOTS,
+			fromFeed ? `/circles/${circle.circleId}` : `/circles/${circle.circleId}/days`
+		);
 	}
 
 	function openPost(postId: string) {
@@ -220,7 +230,8 @@
 	app
 	color={circle.color}
 	title={formatEntryDate(entryDate)}
-	tabs={false}
+	tabs
+	active={'Дни'}
 	commentBar={false}
 	onback={goBack}
 >
