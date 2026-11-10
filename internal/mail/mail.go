@@ -14,6 +14,7 @@ import (
 	"net"
 	netmail "net/mail"
 	"net/smtp"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -536,11 +537,38 @@ func htmlBody(subject, body string) string {
 		}
 		// overflow-wrap: длинная ссылка переносится, а не уходит за край экрана телефона.
 		b.WriteString(`<p style="margin:0 0 12px;overflow-wrap:anywhere;word-break:break-word">`)
-		b.WriteString(strings.ReplaceAll(html.EscapeString(para), "\n", "<br>"))
+		b.WriteString(strings.ReplaceAll(linkify(para), "\n", "<br>"))
 		b.WriteString("</p>")
 	}
 	b.WriteString("</div></body></html>")
 	return b.String()
+}
+
+// linkRe — адрес ссылки в тексте письма: до первого пробела или перевода строки.
+var linkRe = regexp.MustCompile(`https?://[^\s]+`)
+
+// linkify в абзаце HTML-части превращает ссылки из текста в <a>: URL,
+// оставленный простым текстом, кто-то прочтёт, а нажать в клиенте нельзя.
+// Точка и прочие знаки, прилипшие в конце предложения, в адрес не идут:
+// они остаются текстом после ссылки.
+func linkify(para string) string {
+	var b strings.Builder
+	rest := para
+	for {
+		m := linkRe.FindStringIndex(rest)
+		if m == nil {
+			b.WriteString(html.EscapeString(rest))
+			return b.String()
+		}
+		b.WriteString(html.EscapeString(rest[:m[0]]))
+		link := strings.TrimRight(rest[m[0]:m[1]], ".,;:!?")
+		b.WriteString(`<a href="`)
+		b.WriteString(html.EscapeString(link))
+		b.WriteString(`">`)
+		b.WriteString(html.EscapeString(link))
+		b.WriteString(`</a>`)
+		rest = rest[m[0]+len(link):]
+	}
 }
 
 func isCode(s string) bool {

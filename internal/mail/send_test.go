@@ -4,11 +4,50 @@ import (
 	"context"
 	"net"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/store"
 )
+
+func TestLinkifyMakesLinksClickable(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{
+			"Войти — по ссылке:\nhttps://wynd.example.com/move/a1b2",
+			"Войти — по ссылке:\n" +
+				`<a href="https://wynd.example.com/move/a1b2">https://wynd.example.com/move/a1b2</a>`,
+		},
+		{
+			"Ответить можно в панели:\nhttps://wynd.example.com/admin#requests.",
+			"Ответить можно в панели:\n" +
+				`<a href="https://wynd.example.com/admin#requests">https://wynd.example.com/admin#requests</a>.`,
+		},
+		{
+			"https://s.example.com/b?a=1&b=2",
+			`<a href="https://s.example.com/b?a=1&amp;b=2">https://s.example.com/b?a=1&amp;b=2</a>`,
+		},
+		{
+			"Без адреса — просто текст с <тегом>",
+			"Без адреса — просто текст с &lt;тегом&gt;",
+		},
+		{
+			"Слово и https://wynd.example.com в середине строки",
+			`Слово и <a href="https://wynd.example.com">https://wynd.example.com</a> в середине строки`,
+		},
+	}
+	for _, tc := range cases {
+		if got := linkify(tc.in); got != tc.want {
+			t.Fatalf("%q:\n got %q\nwant %q", tc.in, got, tc.want)
+		}
+	}
+
+	// Через настоящее письмо: абзац со ссылкой в HTML-части становится <a>.
+	htmlPart := htmlBody("Тема", "Ответить можно в панели:\nhttps://wynd.example.com/admin#requests.\n")
+	if !strings.Contains(htmlPart, "href=") || !strings.Contains(htmlPart, "admin#requests") {
+		t.Fatalf("ссылка потерялась в письме:\n%s", htmlPart)
+	}
+}
 
 func TestEnvelopeAddress(t *testing.T) {
 	cases := []struct{ in, want string }{
