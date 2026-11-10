@@ -8,6 +8,7 @@
 	import Label from '$ui/forms/Label.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
+	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
 </script>
 
 <div class="choice-document">
@@ -35,7 +36,37 @@
 				</div>
 			</div></div>
 		</section>
-		<p class="choice-description">Нажатие на другую строку выбирает её. Крестик у неактивного сервера убирает его из списка источников; текущий сервер удалить нельзя. Отдельный экран удаления не нужен.</p>
+		<p class="choice-description">Нажатие на другую строку выбирает её. Крестик у неактивного сервера открывает подтверждение удаления из списка источников; текущий сервер удалить нельзя. Отдельный экран удаления не нужен.</p>
+	</section>
+
+	<section id="flow-change-confirm" class="choice-frame">
+		<div class="choice-caption">Крестик у «У Славы» → подтверждение удаления</div>
+		<section class="desktop-window confirm-window" aria-label="Подтверждение удаления сервера интерфейса">
+			<TitleBar title="Wynd" onminimise={() => {}} ontoggle={() => {}} onclose={() => {}} />
+			<div class="desktop-content"><div class="settings-page">
+				<BackBar title="Сервер интерфейса" onback={() => {}} />
+				<div class="settings-body">
+					<Hint class="mt-16">Окно загружает интерфейс с выбранного сервера. Ваши входы и круги останутся без изменений.</Hint>
+					<Label>Серверы интерфейса</Label>
+					<ServerRow name="Дом Ани" subtitle="home.example.org" variant="ok" onclick={() => {}} />
+					<div class="removable-server">
+						<ServerRow name="У Славы" subtitle="wynd.u-slavy.ru" style="padding-right:52px" onclick={() => {}} />
+						<IconButton name="x" size="sm" label="Убрать сервер «У Славы» из списка" onclick={() => {}} />
+					</div>
+					<Button onclick={() => {}}>Добавить сервер интерфейса</Button>
+				</div>
+			</div></div>
+			<ConfirmDialog
+				title="Убрать сервер «У Славы» из списка?"
+				confirmLabel="Убрать"
+				cancelLabel="Оставить"
+				onconfirm={() => {}}
+				oncancel={() => {}}
+			>
+				<Hint class="mb-14">Сервер исчезнет только из источников интерфейса. Вход и данные останутся. Добавить его снова можно по адресу.</Hint>
+			</ConfirmDialog>
+		</section>
+		<p class="choice-description">До нажатия «Убрать» список не меняется. «Оставить», затемнение или Escape закрывают диалог без удаления.</p>
 	</section>
 </div>
 
@@ -58,4 +89,7 @@
 	.settings-body { flex:1; min-height:0; overflow:auto; padding-bottom:24px; }
 	.removable-server { position:relative; }
 	.removable-server :global(.ib) { position:absolute; right:16px; top:50%; transform:translateY(-50%); }
+	.confirm-window { position:relative; }
+	.confirm-window :global(.scrim) { position:absolute; inset:0; width:auto; max-width:none; height:auto; margin:0; }
+	.confirm-window :global(.dlg) { position:absolute; left:22px; right:22px; top:250px; width:auto; max-width:none; margin:0; }
 </style>
