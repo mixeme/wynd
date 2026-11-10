@@ -17,6 +17,12 @@
 	font-display: swap;
 }
 
+/* То же правило, что в web/src/routes/+layout.svelte: поля Wynd UI включают
+   рамку и padding в ширину и не создают горизонтальную прокрутку окна. */
+* {
+	box-sizing: border-box;
+}
+
 html,
 body,
 #app {
