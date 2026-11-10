@@ -156,7 +156,7 @@
 					<Label>Адрес сервера</Label>
 					<Input active mono small type="text" spellcheck="false" bind:value={interfaceAddress} />
 					<ServerRow name="Файлы" subtitle="files.example.org" detail="Сервер доступен" card />
-					<Hint>Окно сможет загружать интерфейс с этого сервера. Вход и учётная запись не создаются.</Hint>
+					<Hint>Сервер появится в списке источников интерфейса. Вход и учётная запись не создаются.</Hint>
 					<Button onclick={() => {}}>Добавить сервер интерфейса</Button>
 				</div>
 			</div></div>
