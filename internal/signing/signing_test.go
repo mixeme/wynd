@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"gitea.mixdep.ru/mix/wynd/internal/desktop"
 	"gitea.mixdep.ru/mix/wynd/internal/installer"
 )
 
@@ -65,5 +66,12 @@ func TestWhatsNew(t *testing.T) {
 	}
 	if WhatsNew(string(raw), installer.WorkshopVersion) == "" {
 		t.Fatalf("в whatsnew.md нет раздела текущей версии Мастерской %s", installer.WorkshopVersion)
+	}
+	raw, err = os.ReadFile("../../cmd/wynd-desktop/whatsnew.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if WhatsNew(string(raw), desktop.Version) == "" {
+		t.Fatalf("в whatsnew.md нет раздела текущей версии Настольного %s", desktop.Version)
 	}
 }
