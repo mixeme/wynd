@@ -13,7 +13,13 @@ function hit(kind: CircleSearchHit['kind'], id: string): CircleSearchHit {
 	} as CircleSearchHit;
 }
 
-const base: ChipState = { author: '', periodActive: false, periodFrom: '', periodTo: '' };
+const base: ChipState = {
+	author: '',
+	periodActive: false,
+	periodFrom: '',
+	periodTo: '',
+	byDay: false
+};
 
 describe('фильтры поиска', () => {
 	it('автор ставится и снимается тем же нажатием', () => {
@@ -24,10 +30,33 @@ describe('фильтры поиска', () => {
 	});
 
 	it('выключенный отрезок дат забывает свои концы', () => {
-		const on = { ...base, periodActive: true, periodFrom: '2026-08-01', periodTo: '2026-08-31' };
-		const off = togglePeriod(on);
-		expect(off).toMatchObject({ periodActive: false, periodFrom: '', periodTo: '' });
-		expect(togglePeriod(off).periodActive).toBe(true);
+		const on = {
+			...base,
+			periodActive: true,
+			periodFrom: '2026-08-01',
+			periodTo: '2026-08-31',
+			byDay: false
+		};
+		const off = togglePeriod(on, false);
+		expect(off).toMatchObject({ periodActive: false, periodFrom: '', periodTo: '', byDay: false });
+		expect(togglePeriod(off, false).periodActive).toBe(true);
+	});
+
+	it('смена основы периода сохраняет выбранные даты', () => {
+		const posted = {
+			...base,
+			periodActive: true,
+			periodFrom: '2026-08-01',
+			periodTo: '2026-08-31'
+		};
+		const byDay = togglePeriod(posted, true);
+		expect(byDay).toMatchObject({
+			periodActive: true,
+			byDay: true,
+			periodFrom: '2026-08-01',
+			periodTo: '2026-08-31'
+		});
+		expect(togglePeriod(byDay, false)).toMatchObject({ periodActive: true, byDay: false });
 	});
 });
 

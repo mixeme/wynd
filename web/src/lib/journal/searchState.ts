@@ -13,6 +13,8 @@ export interface ChipState {
 	periodActive: boolean;
 	periodFrom: string;
 	periodTo: string;
+	/** Период считается по дню записи, а не по дате публикации. */
+	byDay: boolean;
 }
 
 /** Нажали на автора: тот же — снять фильтр, другой — поставить. */
@@ -20,12 +22,15 @@ export function toggleAuthor(state: ChipState, name: string): ChipState {
 	return { ...state, author: state.author === name ? '' : name };
 }
 
-/** Выключенный отрезок дат забывает свои концы, чтобы не всплыть при включении. */
-export function togglePeriod(state: ChipState): ChipState {
-	if (state.periodActive) {
-		return { ...state, periodActive: false, periodFrom: '', periodTo: '' };
+/**
+ * Нажали на «Период» или «По дню»: тот же чип — снять отрезок, другой — сменить
+ * основу дат, не теряя уже выбранные концы.
+ */
+export function togglePeriod(state: ChipState, byDay: boolean): ChipState {
+	if (state.periodActive && state.byDay === byDay) {
+		return { ...state, periodActive: false, periodFrom: '', periodTo: '', byDay: false };
 	}
-	return { ...state, periodActive: true };
+	return { ...state, periodActive: true, byDay };
 }
 
 /** Строка под полем: «2 записи, 3 комментария и 1 день». */

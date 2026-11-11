@@ -25,7 +25,9 @@
 		searchThumbVariant,
 		quoteMatch,
 		searchHitHref,
-		searchHref
+		searchHref,
+		localDayStart,
+		localDayAfter
 	} from '$lib/journal/search';
 
 	type Hit = {
@@ -63,6 +65,7 @@
 	let periodActive = $state(Boolean(initialChips.from || initialChips.to));
 	let periodFrom = $state(initialChips.from);
 	let periodTo = $state(initialChips.to);
+	let byDay = $state(initialChips.byDay);
 	// Пришли из поиска круга: «Этот круг» возвращает туда с тем же запросом —
 	// человек передумал искать везде (замечание владельца 2026-10-17).
 	const fromCircle = initialChips.circle;
@@ -88,6 +91,7 @@
 		periodFrom = chips.from;
 		periodTo = chips.to;
 		periodActive = Boolean(chips.from || chips.to);
+		byDay = chips.byDay;
 	}
 
 	$effect(() => {
@@ -96,6 +100,7 @@
 			periodActive,
 			periodFrom,
 			periodTo,
+			byDay,
 			hasPhoto: filterPhoto,
 			hasLocation: filterLocation,
 			circle: fromCircle
@@ -109,6 +114,7 @@
 				periodActive,
 				periodFrom,
 				periodTo,
+				byDay,
 				hasPhoto: filterPhoto,
 				hasLocation: filterLocation
 			}),
@@ -146,6 +152,9 @@
 		}
 		const from = periodActive && periodFrom ? periodFrom : undefined;
 		const to = periodActive && periodTo ? periodTo : undefined;
+		const day = byDay;
+		const postedFrom = periodActive && !byDay && periodFrom ? localDayStart(periodFrom) : undefined;
+		const postedTo = periodActive && !byDay && periodTo ? localDayAfter(periodTo) : undefined;
 		const photo = filterPhoto;
 		const location = filterLocation;
 		const gen = ++searchGen;
@@ -155,7 +164,15 @@
 			try {
 				const { results, failedInstanceNames } = await searchAllOrigins(
 					debounced,
-					{ from, to, hasPhoto: photo, hasLocation: location },
+					{
+						from,
+						to,
+						byDay: day,
+						postedFrom,
+						postedTo,
+						hasPhoto: photo,
+						hasLocation: location
+					},
 					debounced ? 50 : 500
 				);
 				const names = await circleNameMap();
@@ -252,12 +269,16 @@
 		return hit.author;
 	}
 
-	function togglePeriod() {
-		periodActive = !periodActive;
-		if (!periodActive) {
+	function onTogglePeriod(day: boolean) {
+		if (periodActive && byDay === day) {
+			periodActive = false;
 			periodFrom = '';
 			periodTo = '';
+			byDay = false;
+			return;
 		}
+		periodActive = true;
+		byDay = day;
 	}
 </script>
 
@@ -281,7 +302,8 @@
 		</ChipGroup>
 	{/if}
 	<ChipGroup class={fromCircle ? undefined : 'mt-12'}>
-		<Chip selected={periodActive} onclick={togglePeriod}>Период</Chip>
+		<Chip selected={periodActive && !byDay} onclick={() => onTogglePeriod(false)}>Период</Chip>
+		<Chip selected={periodActive && byDay} onclick={() => onTogglePeriod(true)}>По дню</Chip>
 		<Chip selected={filterPhoto} onclick={() => (filterPhoto = !filterPhoto)}>С фото</Chip>
 		<Chip selected={filterLocation} onclick={() => (filterLocation = !filterLocation)}
 			>С местом</Chip
@@ -289,6 +311,7 @@
 	</ChipGroup>
 	{#if periodActive}
 		<DateRange bind:from={periodFrom} bind:to={periodTo} />
+		<Hint class="mt-8">{byDay ? 'Даты — по дню записи.' : 'Даты — по дате публикации.'}</Hint>
 	{/if}
 	{#if sourceError}
 		<Hint class="mt-16">{sourceError}</Hint>

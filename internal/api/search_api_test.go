@@ -92,6 +92,21 @@ func TestSearchRespectsMembershipAndFilters(t *testing.T) {
 		t.Fatalf("фильтр по датам: %v", hitBodies(ranged))
 	}
 
+	// Период по публикации: from_ts/to_ts важнее from/to. Записи созданы
+	// сейчас, поэтому январский отрезок публикации пуст, хотя entry_date
+	// одной из них — 15 января.
+	posted := searchHits(t, srv, ownerTok,
+		search+"&from=2026-01-01&to=2026-01-31&from_ts=2026-01-01T00:00:00Z&to_ts=2026-01-02T00:00:00Z")
+	if len(posted) != 0 {
+		t.Fatalf("период по публикации: %v", hitBodies(posted))
+	}
+
+	// Тот же период по дню записи — прежний отбор.
+	byDay := searchHits(t, srv, ownerTok, search+"&day=1&from=2026-03-01&to=2026-04-01")
+	if len(byDay) != 1 || !hasHit(byDay, photoID) {
+		t.Fatalf("период по дню: %v", hitBodies(byDay))
+	}
+
 	// Только с фото.
 	photos := searchHits(t, srv, ownerTok, search+"&has_photo=1")
 	if len(photos) != 2 || hasHit(photos, plainID) {

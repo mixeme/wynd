@@ -4,6 +4,11 @@ import type { CircleSearchHit, CircleSearchResponse } from './types';
 export interface SearchFilters {
 	from?: string;
 	to?: string;
+	/** Период по дню записи; иначе — по дате публикации. */
+	byDay?: boolean;
+	/** Границы публикации в UTC (ISO): начало дня «с» и начало дня после «по». */
+	postedFrom?: string;
+	postedTo?: string;
 	hasPhoto?: boolean;
 	hasLocation?: boolean;
 	author?: string;
@@ -13,9 +18,38 @@ function appendFilters(params: URLSearchParams, filters?: SearchFilters) {
 	if (!filters) return;
 	if (filters.from) params.set('from', filters.from);
 	if (filters.to) params.set('to', filters.to);
+	if (filters.byDay) params.set('day', '1');
+	if (filters.postedFrom) params.set('from_ts', filters.postedFrom);
+	if (filters.postedTo) params.set('to_ts', filters.postedTo);
 	if (filters.hasPhoto) params.set('has_photo', '1');
 	if (filters.hasLocation) params.set('has_location', '1');
 	if (filters.author) params.set('author', filters.author);
+}
+
+/** Начало местного дня «ГГГГ-ММ-ДД» в UTC — для фильтра по дате публикации. */
+export function localDayStart(date: string): string | undefined {
+	const d = parseDate(date);
+	return d ? isoUtc(d) : undefined;
+}
+
+/** Начало следующего местного дня в UTC: правая дата периода включается. */
+export function localDayAfter(date: string): string | undefined {
+	const d = parseDate(date);
+	if (!d) return undefined;
+	d.setDate(d.getDate() + 1);
+	return isoUtc(d);
+}
+
+function parseDate(date: string): Date | undefined {
+	const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+	if (!m) return undefined;
+	const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 0, 0, 0, 0);
+	return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
+/** RFC3339 без долей секунды: так же хранит время сервер. */
+function isoUtc(date: Date): string {
+	return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
 export async function searchCircle(
@@ -52,6 +86,8 @@ export type SearchChipState = {
 	periodFrom?: string;
 	periodTo?: string;
 	periodActive?: boolean;
+	/** Период по дню записи; иначе — по дате публикации. */
+	byDay?: boolean;
 	hasPhoto?: boolean;
 	hasLocation?: boolean;
 	author?: string;
@@ -68,6 +104,7 @@ export function searchHref(path: string, state: SearchChipState): string {
 	if (q) params.set('q', q);
 	if (state.periodActive && state.periodFrom) params.set('from', state.periodFrom);
 	if (state.periodActive && state.periodTo) params.set('to', state.periodTo);
+	if (state.periodActive && state.byDay) params.set('day', '1');
 	if (state.hasPhoto) params.set('photo', '1');
 	if (state.hasLocation) params.set('location', '1');
 	const author = state.author?.trim();
@@ -144,6 +181,7 @@ export function searchChipsFromParams(params: URLSearchParams): {
 	q: string;
 	from: string;
 	to: string;
+	byDay: boolean;
 	hasPhoto: boolean;
 	hasLocation: boolean;
 	author: string;
@@ -155,6 +193,7 @@ export function searchChipsFromParams(params: URLSearchParams): {
 		q: params.get('q') ?? '',
 		from,
 		to,
+		byDay: params.get('day') === '1',
 		hasPhoto: params.get('photo') === '1' || params.get('has_photo') === '1',
 		hasLocation: params.get('location') === '1' || params.get('has_location') === '1',
 		author: params.get('author') ?? '',

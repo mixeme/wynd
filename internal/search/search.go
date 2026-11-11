@@ -43,8 +43,16 @@ const visibleCarrierSQL = `
 
 // Filters narrows FTS results beyond the text query.
 type Filters struct {
-	From        string
-	To          string
+	// From и To — даты «ГГГГ-ММ-ДД»: по дню записи (ByDay) или границы для
+	// дней в режиме публикации.
+	From string
+	To   string
+	// ByDay — период считается по дню записи, а не по дате публикации.
+	ByDay bool
+	// FromTS и ToTS — границы публикации в UTC (RFC3339): начало дня «с» и
+	// начало дня после «по»; ToTS не включается.
+	FromTS      string
+	ToTS        string
 	HasPhoto    bool
 	HasLocation bool
 	Author      string
@@ -240,20 +248,35 @@ func (s *Service) browseAuthors(ctx context.Context, accountID, circleID string,
 }
 
 func (f Filters) any() bool {
-	return f.From != "" || f.To != "" || f.HasPhoto || f.HasLocation || f.Author != ""
+	return f.From != "" || f.To != "" || f.FromTS != "" || f.ToTS != "" ||
+		f.HasPhoto || f.HasLocation || f.Author != ""
 }
 
 // browseFilterSQL — те же фильтры, что filterSQL, но по самой записи p.
 func browseFilterSQL(f Filters) (string, []any) {
 	var parts []string
 	var args []any
-	if f.From != "" {
-		parts = append(parts, " AND p.entry_date >= ?")
-		args = append(args, f.From)
-	}
-	if f.To != "" {
-		parts = append(parts, " AND p.entry_date <= ?")
-		args = append(args, f.To)
+	// Без явного режима и без границ публикации остаётся прежнее поведение:
+	// старые клиенты присылают только from/to и ждут отбор по дню записи.
+	posted := !f.ByDay && (f.FromTS != "" || f.ToTS != "")
+	if posted {
+		if f.FromTS != "" {
+			parts = append(parts, " AND p.created_at >= ?")
+			args = append(args, f.FromTS)
+		}
+		if f.ToTS != "" {
+			parts = append(parts, " AND p.created_at < ?")
+			args = append(args, f.ToTS)
+		}
+	} else {
+		if f.From != "" {
+			parts = append(parts, " AND p.entry_date >= ?")
+			args = append(args, f.From)
+		}
+		if f.To != "" {
+			parts = append(parts, " AND p.entry_date <= ?")
+			args = append(args, f.To)
+		}
 	}
 	if f.HasPhoto {
 		parts = append(parts, ` AND EXISTS (
@@ -413,13 +436,38 @@ func ftsQuery(q string) (string, error) {
 func filterSQL(f Filters) (string, []any) {
 	var parts []string
 	var args []any
-	if f.From != "" {
-		parts = append(parts, " AND COALESCE(f.entry_date, p.entry_date) >= ?")
-		args = append(args, f.From)
-	}
-	if f.To != "" {
-		parts = append(parts, " AND COALESCE(f.entry_date, p.entry_date) <= ?")
-		args = append(args, f.To)
+	posted := !f.ByDay && (f.FromTS != "" || f.ToTS != "")
+	if posted {
+		// Записи и комментарии — по времени публикации; названия дней — по
+		// своему дню, иначе строка дня показывала бы одну дату, а искалась по
+		// другой.
+		if f.FromTS != "" {
+			if f.From != "" {
+				parts = append(parts, " AND ((f.kind = 'day' AND f.entry_date >= ?) OR (f.kind <> 'day' AND f.created_at >= ?))")
+				args = append(args, f.From, f.FromTS)
+			} else {
+				parts = append(parts, " AND (f.kind = 'day' OR f.created_at >= ?)")
+				args = append(args, f.FromTS)
+			}
+		}
+		if f.ToTS != "" {
+			if f.To != "" {
+				parts = append(parts, " AND ((f.kind = 'day' AND f.entry_date <= ?) OR (f.kind <> 'day' AND f.created_at < ?))")
+				args = append(args, f.To, f.ToTS)
+			} else {
+				parts = append(parts, " AND (f.kind = 'day' OR f.created_at < ?)")
+				args = append(args, f.ToTS)
+			}
+		}
+	} else {
+		if f.From != "" {
+			parts = append(parts, " AND COALESCE(f.entry_date, p.entry_date) >= ?")
+			args = append(args, f.From)
+		}
+		if f.To != "" {
+			parts = append(parts, " AND COALESCE(f.entry_date, p.entry_date) <= ?")
+			args = append(args, f.To)
+		}
 	}
 	if f.HasPhoto {
 		parts = append(parts, ` AND f.post_id != '' AND EXISTS (

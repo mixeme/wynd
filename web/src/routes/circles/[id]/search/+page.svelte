@@ -22,7 +22,9 @@
 		searchChipsFromWindow,
 		searchThumbVariant,
 		quoteMatch,
-		searchHitHref
+		searchHitHref,
+		localDayStart,
+		localDayAfter
 	} from '$lib/journal/search';
 	import { searchStats, toggleAuthor, togglePeriod } from '$lib/journal/searchState';
 	import type { CircleSearchHit } from '$lib/journal/types';
@@ -38,6 +40,7 @@
 	let periodActive = $state(Boolean(initialChips.from || initialChips.to));
 	let periodFrom = $state(initialChips.from);
 	let periodTo = $state(initialChips.to);
+	let byDay = $state(initialChips.byDay);
 	let loading = $state(false);
 	let hits = $state<CircleSearchHit[]>([]);
 	let authorNames = $state<string[]>([]);
@@ -57,6 +60,7 @@
 		periodFrom = chips.from;
 		periodTo = chips.to;
 		periodActive = Boolean(chips.from || chips.to);
+		byDay = chips.byDay;
 		authorFilter = chips.author;
 	}
 
@@ -76,6 +80,7 @@
 			periodActive,
 			periodFrom,
 			periodTo,
+			byDay,
 			hasPhoto: filterPhoto,
 			hasLocation: filterLocation,
 			author: authorFilter
@@ -108,6 +113,9 @@
 		}
 		const from = periodActive && periodFrom ? periodFrom : undefined;
 		const to = periodActive && periodTo ? periodTo : undefined;
+		const day = byDay;
+		const postedFrom = periodActive && !byDay && periodFrom ? localDayStart(periodFrom) : undefined;
+		const postedTo = periodActive && !byDay && periodTo ? localDayAfter(periodTo) : undefined;
 		const photo = filterPhoto;
 		const location = filterLocation;
 		const author = authorFilter || undefined;
@@ -116,7 +124,15 @@
 			loading = true;
 			sourceError = '';
 			try {
-				const chipFilters = { from, to, hasPhoto: photo, hasLocation: location };
+				const chipFilters = {
+					from,
+					to,
+					byDay: day,
+					postedFrom,
+					postedTo,
+					hasPhoto: photo,
+					hasLocation: location
+				};
 				const [next, authors] = await Promise.all([
 					searchCircle(circle.origin, circle.circleId, debounced, debounced ? 50 : 500, {
 						...chipFilters,
@@ -167,6 +183,7 @@
 				periodActive,
 				periodFrom,
 				periodTo,
+				byDay,
 				hasPhoto: filterPhoto,
 				hasLocation: filterLocation,
 				circle: circle.circleId
@@ -197,7 +214,7 @@
 	}
 
 	function chipState() {
-		return { author: authorFilter, periodActive, periodFrom, periodTo };
+		return { author: authorFilter, periodActive, periodFrom, periodTo, byDay };
 	}
 
 	function applyChips(next: ReturnType<typeof chipState>) {
@@ -205,14 +222,15 @@
 		periodActive = next.periodActive;
 		periodFrom = next.periodFrom;
 		periodTo = next.periodTo;
+		byDay = next.byDay;
 	}
 
 	function onToggleAuthor(name: string) {
 		applyChips(toggleAuthor(chipState(), name));
 	}
 
-	function onTogglePeriod() {
-		applyChips(togglePeriod(chipState()));
+	function onTogglePeriod(day: boolean) {
+		applyChips(togglePeriod(chipState(), day));
 	}
 </script>
 
@@ -231,7 +249,8 @@
 		<Chip onclick={openGlobalSearch}>Все круги</Chip>
 	</ChipGroup>
 	<ChipGroup>
-		<Chip selected={periodActive} onclick={onTogglePeriod}>Период</Chip>
+		<Chip selected={periodActive && !byDay} onclick={() => onTogglePeriod(false)}>Период</Chip>
+		<Chip selected={periodActive && byDay} onclick={() => onTogglePeriod(true)}>По дню</Chip>
 		<Chip selected={filterPhoto} onclick={() => (filterPhoto = !filterPhoto)}>С фото</Chip>
 		<Chip selected={filterLocation} onclick={() => (filterLocation = !filterLocation)}
 			>С местом</Chip
@@ -244,6 +263,7 @@
 	</ChipGroup>
 	{#if periodActive}
 		<DateRange bind:from={periodFrom} bind:to={periodTo} />
+		<Hint class="mt-8">{byDay ? 'Даты — по дню записи.' : 'Даты — по дате публикации.'}</Hint>
 	{/if}
 	{#if sourceError}
 		<Hint class="mt-16">{sourceError}</Hint>

@@ -170,6 +170,9 @@ export async function searchOrigin(
 	const params = new URLSearchParams({ q: query, limit: String(limit) });
 	if (filters?.from) params.set('from', filters.from);
 	if (filters?.to) params.set('to', filters.to);
+	if (filters?.byDay) params.set('day', '1');
+	if (filters?.postedFrom) params.set('from_ts', filters.postedFrom);
+	if (filters?.postedTo) params.set('to_ts', filters.postedTo);
 	if (filters?.hasPhoto) params.set('has_photo', '1');
 	if (filters?.hasLocation) params.set('has_location', '1');
 	if (filters?.author) params.set('author', filters.author);

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { quoteMatch, searchChipsFromParams, searchHref } from './search';
+import {
+	localDayAfter,
+	localDayStart,
+	quoteMatch,
+	searchChipsFromParams,
+	searchHref
+} from './search';
 
 describe('searchHref', () => {
 	it('keeps the path when chips are empty', () => {
@@ -46,11 +52,37 @@ describe('searchChipsFromParams', () => {
 			q: 'дом',
 			from: '2026-03-01',
 			to: '',
+			byDay: false,
 			hasPhoto: true,
 			hasLocation: false,
 			author: '',
 			circle: ''
 		});
+	});
+
+	it('reads the day-based period from the query', () => {
+		const chips = searchChipsFromParams(new URLSearchParams('from=2026-03-01&to=2026-03-05&day=1'));
+		expect(chips).toMatchObject({ from: '2026-03-01', to: '2026-03-05', byDay: true });
+		const href = searchHref('/search', {
+			q: 'дом',
+			periodActive: true,
+			periodFrom: '2026-03-01',
+			periodTo: '2026-03-05',
+			byDay: true
+		});
+		expect(new URL(href, 'http://x').searchParams.get('day')).toBe('1');
+	});
+
+	it('the day after is the next local midnight', () => {
+		const from = new Date(localDayStart('2026-11-01')!);
+		const after = new Date(localDayAfter('2026-11-30')!);
+		expect([from.getFullYear(), from.getMonth(), from.getDate(), from.getHours()]).toEqual([
+			2026, 10, 1, 0
+		]);
+		expect([after.getFullYear(), after.getMonth(), after.getDate(), after.getHours()]).toEqual([
+			2026, 11, 1, 0
+		]);
+		expect(after.getTime()).toBeGreaterThan(from.getTime());
 	});
 
 	it('keeps the circle the global search was opened from', () => {

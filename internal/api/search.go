@@ -63,6 +63,9 @@ func parseSearchFilters(q url.Values) search.Filters {
 	return search.Filters{
 		From:        q.Get("from"),
 		To:          q.Get("to"),
+		ByDay:       q.Get("day") == "1",
+		FromTS:      q.Get("from_ts"),
+		ToTS:        q.Get("to_ts"),
 		HasPhoto:    q.Get("has_photo") == "1",
 		HasLocation: q.Get("has_location") == "1",
 		Author:      q.Get("author"),

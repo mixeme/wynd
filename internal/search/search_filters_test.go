@@ -94,8 +94,9 @@ func TestSearchFilters(t *testing.T) {
 
 	t.Run("date range", func(t *testing.T) {
 		hits, err := svc.SearchCircle(ctx, "owner", circle.ID, "альфа", 50, search.Filters{
-			From: "2026-03-01",
-			To:   "2026-04-30",
+			From:  "2026-03-01",
+			To:    "2026-04-30",
+			ByDay: true,
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -196,6 +197,75 @@ func TestSearchFilters(t *testing.T) {
 			t.Fatalf("plain: %+v", hits)
 		}
 	})
+}
+
+func TestSearchPeriodModes(t *testing.T) {
+	st, err := store.OpenMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	ch, err := chronicle.New(st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc := search.New(ch)
+	ctx := t.Context()
+
+	circle, _, _, err := ch.CreateCircle(ctx, chronicle.CreateCircleInput{
+		Name: "Период", OwnerAccountID: "owner", OwnerName: "Аня",
+		Now: time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	post := func(body, day string, at time.Time) string {
+		p, err := ch.CreatePost(ctx, chronicle.PostInput{
+			CircleID: circle.ID, AccountID: "owner", Body: body, EntryDate: day, Now: at,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p.ID
+	}
+	first := post("публикация первая", "2026-01-10", time.Date(2026, 9, 15, 10, 0, 0, 0, time.UTC))
+	byDay := post("день записи", "2026-09-10", time.Date(2026, 9, 20, 10, 0, 0, 0, time.UTC))
+	last := post("публикация в конце", "2026-01-11", time.Date(2026, 9, 15, 23, 30, 0, 0, time.UTC))
+
+	// Период по публикации: 15 сентября, правая дата включается (23:30 тоже).
+	posted, err := svc.SearchCircle(ctx, "owner", circle.ID, "публикация", 50, search.Filters{
+		From: "2026-09-15", To: "2026-09-15",
+		FromTS: "2026-09-15T00:00:00Z", ToTS: "2026-09-16T00:00:00Z",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(posted) != 2 || !hasID(posted, first) || !hasID(posted, last) {
+		t.Fatalf("период по публикации: %+v", posted)
+	}
+	if hasID(posted, byDay) {
+		t.Fatalf("запись, опубликованная 20 сентября, не должна попасть в 15-е: %+v", posted)
+	}
+
+	// Тот же отрезок по дню записи: находится запись с днём 10 сентября.
+	dayHits, err := svc.SearchCircle(ctx, "owner", circle.ID, "день", 50, search.Filters{
+		From: "2026-09-10", To: "2026-09-10", ByDay: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(dayHits) != 1 || dayHits[0].PostID != byDay {
+		t.Fatalf("период по дню: %+v", dayHits)
+	}
+}
+
+func hasID(hits []search.Hit, id string) bool {
+	for _, h := range hits {
+		if h.PostID == id {
+			return true
+		}
+	}
+	return false
 }
 
 func seedBlob(t *testing.T, ch *chronicle.Chronicle, ctx context.Context, id, accountID string, now time.Time) {

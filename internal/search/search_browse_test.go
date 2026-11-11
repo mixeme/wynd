@@ -59,7 +59,7 @@ func TestSearchWithoutWords(t *testing.T) {
 	}
 	post("позже периода", "2026-09-20", start.Add(5*time.Hour))
 
-	period := search.Filters{From: "2026-09-01", To: "2026-09-10"}
+	period := search.Filters{From: "2026-09-01", To: "2026-09-10", ByDay: true}
 	hits, err := svc.SearchCircle(ctx, "bob", circle.ID, "", 0, period)
 	if err != nil {
 		t.Fatal(err)
