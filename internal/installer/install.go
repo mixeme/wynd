@@ -15,6 +15,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"gitea.mixdep.ru/mix/wynd/internal/relver"
 )
 
 // Установка на чистый сервер (план 45, срез 2): Docker, образ Wynd, свой
@@ -989,44 +991,15 @@ func newestRelease(tags []string, arch string) (string, bool) {
 	}
 	best, bestNum := "", [3]int{}
 	for _, t := range tags {
-		num, ok := releaseNumber(t)
+		num, ok := relver.Number(t)
 		if !ok || !have[t+"-"+arch] {
 			continue
 		}
-		if best == "" || versionLess(bestNum, num) {
+		if best == "" || relver.Less(bestNum, num) {
 			best, bestNum = t, num
 		}
 	}
 	return best, best != ""
-}
-
-func releaseNumber(tag string) ([3]int, bool) {
-	var num [3]int
-	parts := strings.Split(tag, ".")
-	if len(parts) != 3 {
-		return num, false
-	}
-	for i, p := range parts {
-		if p == "" || len(p) > 6 {
-			return num, false
-		}
-		for _, c := range p {
-			if c < '0' || c > '9' {
-				return num, false
-			}
-			num[i] = num[i]*10 + int(c-'0')
-		}
-	}
-	return num, true
-}
-
-func versionLess(a, b [3]int) bool {
-	for i := range a {
-		if a[i] != b[i] {
-			return a[i] < b[i]
-		}
-	}
-	return false
 }
 
 // Provide скачивает образ на сервер.

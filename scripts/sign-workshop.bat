@@ -21,7 +21,7 @@ rem somewhere safe: without them no Workshop that is already out there can be
 rem updated again. Needs Go; the release command also needs gh (GitHub CLI).
 
 for %%I in ("%~dp0..") do set "WYND_ROOT=%%~fI"
-set "PUB=%WYND_ROOT%\cmd\wynd-installer\signing-key.pub"
+set "PUB=%WYND_ROOT%\signing-key.pub"
 if not defined WYND_SIGNING_KEY set "WYND_SIGNING_KEY=%USERPROFILE%\.wynd\workshop-signing.key"
 set "REPO=mixeme/wynd"
 
@@ -54,7 +54,7 @@ goto :usage
 "%TOOL%" keygen "%WYND_SIGNING_KEY%" "%PUB%"
 if errorlevel 1 exit /b 1
 echo.
-echo Next: commit cmd\wynd-installer\signing-key.pub. Every Workshop built after
+echo Next: commit signing-key.pub. Every program built after
 echo that carries the key and can update itself to releases signed with it.
 echo Back up %WYND_SIGNING_KEY% and remember the password.
 exit /b 0
@@ -120,7 +120,7 @@ if errorlevel 1 exit /b 1
 rem Check against the public key in the repository: the one builds carry.
 "%TOOL%" verify "%PUB%" "%~1"
 if errorlevel 1 (
-  echo ERROR: the key does not match cmd\wynd-installer\signing-key.pub.
+  echo ERROR: the key does not match signing-key.pub.
   exit /b 1
 )
 exit /b 0

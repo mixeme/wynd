@@ -1,12 +1,14 @@
 name: Desktop client
 
-# Окно Wynd для компьютера (планы 55 и 61) — сборка выпуска из тега
-# desktop-vX.Y.Z на чистой машине GitHub и удостоверение сборки
-# (attestation): любой проверит, из какого коммита собран exe, командой
+# Wynd Настольный (планы 55, 61 и 63) — сборка выпуска из тега desktop-vX.Y.Z
+# на чистой машине GitHub и удостоверение сборки (attestation): любой
+# проверит, из какого коммита собран exe, командой
 #   gh attestation verify wynd-desktop.exe --repo mixeme/wynd
 #
-# Выпуск создаётся ЧЕРНОВИКОМ и без подписи. Подпись и самообновление окна —
-# отдельная задача по модели Мастерской; пока черновик публикует владелец.
+# Выпуск создаётся ЧЕРНОВИКОМ и без подписи: подпись и публикацию делает
+# «Wynd Подпись» (план 63), как у Мастерской. Открытый ключ экосистемы
+# (signing-key.pub) build-desktop.bat вшивает в сборку — по нему окно
+# проверяет самообновление.
 
 on:
   push:
@@ -71,4 +73,4 @@ jobs:
             | while read -r id; do gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$id"; done
           sha256sum dist/wynd-desktop.exe | cut -d' ' -f1 > dist/wynd-desktop.exe.sha256
           gh release create "$GITHUB_REF_NAME" dist/wynd-desktop.exe dist/wynd-desktop.exe.sha256 \
-            --draft --title "Wynd для компьютера ${GITHUB_REF_NAME#desktop-v}" --notes "- (что нового — дописать до публикации)"
+            --draft --title "Wynd Настольный ${GITHUB_REF_NAME#desktop-v}" --notes "- (что нового — дописать до публикации)"

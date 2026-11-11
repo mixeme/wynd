@@ -110,6 +110,7 @@ func (s *Server) handleAdminApprovePayRequest(w http.ResponseWriter, r *http.Req
 		writeError(w, err)
 		return
 	}
+	s.notifyPayRequestApproved(r.PathValue("id"))
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -144,6 +145,7 @@ func (s *Server) handleAdminGrantPayAccount(w http.ResponseWriter, r *http.Reque
 		writeError(w, err)
 		return
 	}
+	s.notifyPayGranted(r.PathValue("id"))
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -153,6 +155,7 @@ func (s *Server) handleAdminRejectPayRequest(w http.ResponseWriter, r *http.Requ
 		writeError(w, err)
 		return
 	}
+	s.notifyPayRequestRejected(r.PathValue("id"))
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 

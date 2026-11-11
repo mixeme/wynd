@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"gitea.mixdep.ru/mix/wynd/internal/relver"
 )
 
 // Пульт сервера (план 45, срез 4; кадры 7а–7ж2): что стоит на сервере, где
@@ -223,8 +225,8 @@ var LiveCopyFrom = [3]int{0, 43, 2}
 
 // CanCopyLive — умеет ли Wynd этой версии копию без остановки.
 func CanCopyLive(version string) bool {
-	n, ok := releaseNumber(version)
-	return ok && !versionLess(n, LiveCopyFrom)
+	n, ok := relver.Number(version)
+	return ok && !relver.Less(n, LiveCopyFrom)
 }
 
 func backupFor(version string) string { return backupsDir + "/" + version }

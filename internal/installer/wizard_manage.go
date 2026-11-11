@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 	"time"
+
+	"gitea.mixdep.ru/mix/wynd/internal/relver"
 )
 
 // Пульт в окне (кадры 7а–7е): страница сервера, кнопки сервиса, обновление.
@@ -91,9 +93,9 @@ func (w *Wizard) ServerPage(ctx context.Context) ServerPage {
 	}
 	if reg, ok := w.Image.(RegistryImage); ok && rep != nil {
 		if latest, found := reg.Latest(ctx, sess, rep.Arch); found {
-			cur, okCur := releaseNumber(st.Version)
-			next, okNext := releaseNumber(latest)
-			if okNext && (!okCur || versionLess(cur, next)) {
+			cur, okCur := relver.Number(st.Version)
+			next, okNext := relver.Number(latest)
+			if okNext && (!okCur || relver.Less(cur, next)) {
 				page.Latest = latest
 			}
 		}

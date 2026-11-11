@@ -11,20 +11,54 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 
 	"gitea.mixdep.ru/mix/wynd/internal/releasepages"
 )
 
-// Выпуски Мастерской на GitHub (кадры 12б–12г): черновик собирает
-// .github/workflows/workshop.yaml по тегу workshop-vX.Y.Z. Говорим с GitHub
-// через gh (GitHub CLI) — как scripts\sign-workshop.bat.
+// Выпуски программ Wynd на GitHub (кадры 12б–12г): каждая программа
+// собирается своим workflow из своего тега (Мастерская — workshop.yaml,
+// Wynd Настольный — desktop-client.yaml). Говорим с GitHub через gh
+// (GitHub CLI) — как scripts\sign-workshop.bat.
 
+// Подписываемые программы и их выпуски в mixeme/wynd. Новая программа
+// экосистемы — строка в products; окно берёт имя, exe и особенности из неё.
 const (
-	exeName   = "wynd-workshop.exe"
-	tagPrefix = "workshop-v"
+	// ProductWorkshop — Мастерская: выпуск workshop-vX.Y.Z, wynd-workshop.exe.
+	ProductWorkshop = "workshop"
+	// ProductDesktop — Wynd Настольный: выпуск desktop-vX.Y.Z, wynd-desktop.exe.
+	ProductDesktop = "desktop"
 )
+
+type product struct {
+	ID     string // ProductWorkshop / ProductDesktop — уходит в окно как product.
+	Name   string // как программа называется в окне.
+	Exe    string // имя exe в выпуске.
+	Prefix string // префикс тега выпуска.
+	// Key — открытый ключ, вшитый в сборку программы (общий ключ экосистемы):
+	// по нему программа проверяет самообновление. Пусто — самообновления нет.
+	Key string
+	// Notes — «Что нового» в репозитории тега; раздел версии публикуется
+	// вместе с выпуском. Пусто — описание не читается.
+	Notes string
+}
+
+var products = []product{
+	{ID: ProductWorkshop, Name: "Мастерская", Exe: "wynd-workshop.exe", Prefix: "workshop-v", Key: "signing-key.pub", Notes: "cmd/wynd-installer/whatsnew.md"},
+	{ID: ProductDesktop, Name: "Wynd Настольный", Exe: "wynd-desktop.exe", Prefix: "desktop-v", Key: "signing-key.pub", Notes: "cmd/wynd-desktop/whatsnew.md"},
+}
+
+// productOf — чей это выпуск по тегу; nil — не выпуски Wynd.
+func productOf(tag string) *product {
+	for i := range products {
+		if strings.HasPrefix(tag, products[i].Prefix) {
+			return &products[i]
+		}
+	}
+	return nil
+}
 
 // GitHub — репозиторий выпусков и программа gh.
 type GitHub struct {
@@ -61,8 +95,13 @@ func (g GitHub) gh(ctx context.Context, args ...string) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-// Release — выпуск Мастерской (12б).
+// Release — выпуск программы Wynd (12б).
 type Release struct {
+	// Product — чья это программа: ProductWorkshop или ProductDesktop.
+	Product string `json:"product"`
+	// Name — как программа называется в окне, Exe — имя файла выпуска.
+	Name        string `json:"name"`
+	Exe         string `json:"exe"`
 	Tag         string `json:"tag"`
 	Version     string `json:"version"`
 	Draft       bool   `json:"draft"`
@@ -71,7 +110,7 @@ type Release struct {
 	URL         string `json:"url,omitempty"`
 }
 
-// Releases — выпуски Мастерской, новые сверху.
+// Releases — выпуски программ Wynd, новые сверху.
 func (g GitHub) Releases(ctx context.Context) ([]Release, error) {
 	// Каждая страница содержит и статус публикации, и файлы: медленный или
 	// неудачный запрос отдельного выпуска не превращает его в «без подписи».
@@ -100,15 +139,16 @@ func (g GitHub) Releases(ctx context.Context) ([]Release, error) {
 	}
 	var res []Release
 	for _, r := range rows {
-		if !strings.HasPrefix(r.TagName, tagPrefix) {
+		prod := productOf(r.TagName)
+		if prod == nil {
 			continue
 		}
-		rel := Release{Tag: r.TagName, Version: strings.TrimPrefix(r.TagName, tagPrefix), Draft: r.IsDraft, URL: r.URL}
+		rel := Release{Product: prod.ID, Name: prod.Name, Exe: prod.Exe, Tag: r.TagName, Version: strings.TrimPrefix(r.TagName, prod.Prefix), Draft: r.IsDraft, URL: r.URL}
 		if !r.IsDraft {
 			rel.PublishedAt = r.PublishedAt
 		}
 		for _, a := range r.Assets {
-			if a.Name == exeName+".sig" {
+			if a.Name == prod.Exe+".sig" {
 				rel.Signed = true
 			}
 		}
@@ -121,14 +161,22 @@ func (g GitHub) Releases(ctx context.Context) ([]Release, error) {
 type Check struct {
 	CheckID   string `json:"check_id,omitempty"`
 	RequestID string `json:"request_id,omitempty"`
-	Tag       string `json:"tag"`
-	Draft     bool   `json:"draft"`
-	Size      int64  `json:"size"`
-	SumOK     bool   `json:"sum_ok"`
-	Commit    string `json:"commit,omitempty"`
+	// Product — чья это программа: ProductWorkshop или ProductDesktop.
+	Product   string `json:"product"`
+	// Name — как программа называется в окне, Exe — имя файла выпуска.
+	Name  string `json:"name"`
+	Exe   string `json:"exe"`
+	Tag   string `json:"tag"`
+	Draft bool   `json:"draft"`
+	Size  int64  `json:"size"`
+	SumOK bool   `json:"sum_ok"`
+	// Commit — коммит из удостоверения сборки.
+	Commit string `json:"commit,omitempty"`
 	// AttestOK — exe собран GitHub Actions из этого тега (gh attestation verify).
 	AttestOK bool   `json:"attest_ok"`
 	Notes    string `json:"notes,omitempty"`
+	// SelfUpdate — программа с самообновлением: в её сборке должен быть ключ.
+	SelfUpdate bool `json:"self_update"`
 	// KeyInRelease — сборка уже содержит ключ для проверки самообновлений.
 	KeyInRelease bool `json:"key_in_release"`
 	// PubKey — открытый ключ из тега; пусто у старых сборок без самообновления.
@@ -149,15 +197,26 @@ func (g GitHub) Fetch(ctx context.Context, tag string) (*Check, error) {
 
 // FetchWithProgress выполняет те же проверки, сообщая о настоящих этапах.
 // Первый отказ останавливает проверку; подпись такого выпуска недоступна.
+// Набор этапов — из описания программы: ключ проверяется у той, что
+// самообновляется, «Что нового» — у той, чей whatsnew.md читается.
 func (g GitHub) FetchWithProgress(ctx context.Context, tag string, report func(Progress)) (c *Check, err error) {
-	p := newProgress(tag, "check", report,
-		Step{ID: "release", Title: "Получаем сведения о выпуске"},
-		Step{ID: "download", Title: "Скачиваем программу и контрольную сумму"},
-		Step{ID: "checksum", Title: "Проверяем контрольную сумму"},
-		Step{ID: "attestation", Title: "Проверяем происхождение сборки"},
-		Step{ID: "key", Title: "Проверяем открытый ключ"},
-		Step{ID: "notes", Title: "Читаем описание выпуска"},
-	)
+	prod := productOf(tag)
+	if prod == nil {
+		return nil, fmt.Errorf("%s — не выпуски Wynd: подписываемый exe должен быть из тега workshop-v… или desktop-v…", tag)
+	}
+	steps := []Step{
+		{ID: "release", Title: "Получаем сведения о выпуске"},
+		{ID: "download", Title: "Скачиваем программу и контрольную сумму"},
+		{ID: "checksum", Title: "Проверяем контрольную сумму"},
+		{ID: "attestation", Title: "Проверяем происхождение сборки"},
+	}
+	if prod.Key != "" {
+		steps = append(steps, Step{ID: "key", Title: "Проверяем открытый ключ"})
+	}
+	if prod.Notes != "" {
+		steps = append(steps, Step{ID: "notes", Title: "Читаем описание выпуска"})
+	}
+	p := newProgress(tag, "check", report, steps...)
 	defer func() {
 		if err != nil || c != nil && c.Problem != "" {
 			p.fail()
@@ -177,8 +236,8 @@ func (g GitHub) FetchWithProgress(ctx context.Context, tag string, report func(P
 	if err != nil {
 		return nil, err
 	}
-	c = &Check{Tag: tag, Draft: draft, dir: dir, exe: filepath.Join(dir, exeName)}
-	if _, err := g.gh(ctx, "release", "download", tag, "-R", g.Repo, "-D", dir, "-p", exeName, "-p", exeName+".sha256", "--clobber"); err != nil {
+	c = &Check{Product: prod.ID, Name: prod.Name, Exe: prod.Exe, Tag: tag, Draft: draft, SelfUpdate: prod.Key != "", dir: dir, exe: filepath.Join(dir, prod.Exe)}
+	if _, err := g.gh(ctx, "release", "download", tag, "-R", g.Repo, "-D", dir, "-p", prod.Exe, "-p", prod.Exe+".sha256", "--clobber"); err != nil {
 		c.Close()
 		return nil, fmt.Errorf("скачать выпуск не получилось: %w", err)
 	}
@@ -229,25 +288,29 @@ func (g GitHub) FetchWithProgress(ctx context.Context, tag string, report func(P
 		return c, nil
 	}
 	p.done("attestation", "коммит "+c.Commit[:min(8, len(c.Commit))])
-	p.start("key")
-	c.PubKey, err = g.releaseKey(ctx, tag)
-	c.KeyInRelease = c.PubKey != ""
-	if err != nil {
-		c.Problem = "Проверить открытый ключ в теге " + tag + " не получилось: " + err.Error()
-		return c, nil
+	if prod.Key != "" {
+		p.start("key")
+		c.PubKey, err = g.releaseKey(ctx, tag, prod.Key)
+		c.KeyInRelease = c.PubKey != ""
+		if err != nil {
+			c.Problem = "Проверить открытый ключ в теге " + tag + " не получилось: " + err.Error()
+			return c, nil
+		}
+		keyNote := ""
+		if !c.KeyInRelease {
+			keyNote = "в этой сборке нет ключа самообновления"
+		}
+		p.done("key", keyNote)
 	}
-	keyNote := ""
-	if !c.KeyInRelease {
-		keyNote = "в этой сборке нет ключа самообновления"
+	if prod.Notes != "" {
+		p.start("notes")
+		c.Notes = WhatsNew(g.file(ctx, prod.Notes, tag), strings.TrimPrefix(tag, prod.Prefix))
+		notesNote := ""
+		if c.Notes == "" {
+			notesNote = "описание версии не получено"
+		}
+		p.done("notes", notesNote)
 	}
-	p.done("key", keyNote)
-	p.start("notes")
-	c.Notes = WhatsNew(g.file(ctx, "cmd/wynd-installer/whatsnew.md", tag), strings.TrimPrefix(tag, tagPrefix))
-	notesNote := ""
-	if c.Notes == "" {
-		notesNote = "описание версии не получено"
-	}
-	p.done("notes", notesNote)
 	return c, nil
 }
 
@@ -268,10 +331,17 @@ func (g GitHub) isDraft(ctx context.Context, tag string) (bool, error) {
 	return *view.Draft, nil
 }
 
-// Отличаем отсутствие ключа в старом теге от ошибки GitHub: при ошибке
-// проверки нельзя молча перейти на подпись любым выбранным ключом.
-func (g GitHub) releaseKey(ctx context.Context, tag string) (string, error) {
-	out, err := g.gh(ctx, "api", "repos/"+g.Repo+"/contents/cmd/wynd-installer?ref="+tag)
+// releaseKey — открытый ключ, который сборка программы вшивает из репозитория
+// тега (keyPath, общий ключ экосистемы). Файла в теге нет — это старая сборка
+// без самообновления, а не ошибка. Ошибка — только если GitHub не ответил:
+// при ошибке нельзя молча перейти на подпись любым выбранным ключом.
+func (g GitHub) releaseKey(ctx context.Context, tag, keyPath string) (string, error) {
+	dir := path.Dir(keyPath) // «.» — ключ в корне репозитория
+	api := "repos/" + g.Repo + "/contents"
+	if dir != "." {
+		api += "/" + dir
+	}
+	out, err := g.gh(ctx, "api", api+"?ref="+tag)
 	if err != nil {
 		return "", err
 	}
@@ -285,12 +355,12 @@ func (g GitHub) releaseKey(ctx context.Context, tag string) (string, error) {
 		return "", errors.New("GitHub не вернул список файлов тега")
 	}
 	for _, f := range files {
-		if f.Name != "signing-key.pub" {
+		if f.Name != path.Base(keyPath) {
 			continue
 		}
-		pub := strings.TrimSpace(g.file(ctx, "cmd/wynd-installer/signing-key.pub", tag))
+		pub := strings.TrimSpace(g.file(ctx, keyPath, tag))
 		if pub == "" {
-			return "", errors.New("не удалось прочитать signing-key.pub")
+			return "", errors.New("не удалось прочитать " + keyPath)
 		}
 		return pub, nil
 	}
