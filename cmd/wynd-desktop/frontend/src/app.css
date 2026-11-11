@@ -38,6 +38,7 @@ body {
 }
 
 .desk-win {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -46,6 +47,55 @@ body {
 }
 .desk-win.maximised {
 	box-shadow: none;
+}
+
+/* Полоса обновления окна лежит поверх интерфейса под шапкой и не сдвигает
+   страницу: та остаётся во всю высоту, пока полосу не скроют. */
+.desk-update {
+	--c: var(--terracotta);
+}
+.desk-update-head {
+	font-weight: 600;
+}
+.desk-update-bad {
+	color: var(--terracotta);
+}
+.desk-update .btn {
+	display: inline-block;
+	width: auto;
+	margin: 0;
+	padding: 9px 18px;
+	border-radius: 8px;
+}
+.desk-update-bar {
+	position: absolute;
+	/* Высота полосы заголовка TitleBar — 34 px. */
+	top: 34px;
+	left: 0;
+	right: 0;
+	z-index: 10;
+	padding: 10px 16px;
+	background: var(--tint);
+	border-bottom: 1px solid var(--line);
+	box-shadow: 0 6px 18px light-dark(rgba(43, 39, 36, 0.12), rgba(0, 0, 0, 0.4));
+}
+.desk-update-inner {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	width: 100%;
+	max-width: var(--app-max-width);
+	margin: 0 auto;
+}
+.desk-update-main {
+	flex: 1;
+	min-width: 0;
+}
+.desk-update-actions {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	flex: none;
 }
 
 .desk-content {

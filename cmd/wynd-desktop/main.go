@@ -292,6 +292,9 @@ func (a *App) ListServers() []desktop.Server {
 
 // corsHandler — локальный порт API открыт странице окна (wails.localhost):
 // запросы с токеном идут по обычному TCP, поэтому нужен CORS и preflight.
+// Version — версия окна для заголовка, как у Мастерской.
+func (a *App) Version() string { return desktop.Version }
+
 // CheckSelfUpdate — есть ли новый Wynd Настольный: не молча и не сразу,
 // как у Мастерской (internal/desktop/selfupdate.go).
 func (a *App) CheckSelfUpdate() desktop.Update {

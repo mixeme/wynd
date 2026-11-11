@@ -14,19 +14,30 @@
 	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
 	import {
 		addInterface,
+		applySelfUpdate,
 		checkCurrent,
+		checkSelfUpdate,
 		checkServer,
 		currentServer,
+		currentVersion,
 		forgetSelected,
 		listServers,
+		openingReleases,
 		previewServer,
 		removeInterface,
 		runtime,
 		selectServer,
-		type CheckResult
+		type CheckResult,
+		type Update
 	} from './api';
 
 	const rt = runtime();
+	let version = $state('');
+	let update = $state<Update | null>(null);
+	let updateHidden = $state(false);
+	let updateBusy = $state(false);
+	let updateBad = $state(false);
+	let updateError = $state('');
 	let maximised = $state(false);
 	let address = $state('');
 	let error = $state('');
@@ -42,7 +53,9 @@
 	let removeTarget = $state<CheckResult | null>(null);
 	let removing = $state(false);
 	let checkGeneration = 0;
-	let iframePath = $state('/?wynd=server');
+	let iframePath = $state(
+		(globalThis as unknown as { __wyndIframePath?: string }).__wyndIframePath ?? '/?wynd=server'
+	);
 
 	onMount(async () => {
 		try {
@@ -62,6 +75,15 @@
 	});
 
 	onMount(() => {
+		void currentVersion()
+			.then((v) => (version = v))
+			.catch(() => undefined);
+		void checkSelfUpdate()
+			.then((u) => (update = u?.available ? u : null))
+			.catch(() => undefined);
+	});
+
+	onMount(() => {
 		function openFromClient(event: MessageEvent) {
 			if (event.origin !== window.location.origin || event.data?.type !== 'wynd:open-interface') {
 				return;
@@ -74,6 +96,20 @@
 
 	async function syncMaximised() {
 		maximised = (await rt?.WindowIsMaximised().catch(() => false)) ?? false;
+	}
+
+	async function applyUpdate() {
+		if (updateBusy) return;
+		updateBusy = true;
+		updateBad = false;
+		updateError = '';
+		try {
+			const res = await applySelfUpdate();
+			if (res === 'signature') updateBad = true;
+			else if (res) updateError = res;
+		} finally {
+			updateBusy = false;
+		}
 	}
 
 	async function submit() {
@@ -225,7 +261,7 @@
 
 <div class="desk-win" class:maximised>
 	<TitleBar
-		title="Wynd"
+		title={`Wynd Настольный${version ? ` [${version}]` : ''}`}
 		{maximised}
 		onminimise={() => rt?.WindowMinimise()}
 		ontoggle={() => {
@@ -234,6 +270,39 @@
 		}}
 		onclose={() => rt?.Quit()}
 	/>
+	{#if update && !updateHidden}
+		<!-- Полоса обновления поверх интерфейса: страница остаётся во всю
+		     высоту, полоса занимает верхнюю часть, пока её не скроют. -->
+		<div class="desk-update desk-update-bar">
+			<div class="desk-update-inner">
+				<div class="desk-update-main">
+					<div class="desk-update-head">Вышла версия {update.version}</div>
+					{#if updateBad}
+						<div class="desk-update-bad">Подпись не сошлась: обновление не установлено.</div>
+					{:else if updateError}
+						<div class="desk-update-bad" role="alert">{updateError}</div>
+					{/if}
+				</div>
+				<div class="desk-update-actions">
+					<Button
+						variant="colored"
+						disabled={updateBusy || updateBad}
+						loading={updateBusy}
+						loadingLabel="Обновляем…"
+						onclick={() => void applyUpdate()}
+					>
+						Обновить и перезапустить
+					</Button>
+					<TextButton class="under" disabled={updateBusy} onclick={() => (updateHidden = true)}>
+						Позже
+					</TextButton>
+					{#if update.attestation}
+						<TextButton class="under" onclick={() => void openingReleases()}>Что нового</TextButton>
+					{/if}
+				</div>
+			</div>
+		</div>
+	{/if}
 	{#if !loaded}
 		<!-- Первое чтение списка серверов: окно ещё не решает, что показать. -->
 	{:else if showServers}
