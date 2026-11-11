@@ -1735,12 +1735,52 @@ textarea.ta {
 	margin: 8px 16px 0;
 }
 /* Отступы и ширина общего input.fld здесь лишние: с ними правое поле уходило
-   за край узкого экрана (план 46, C50). */
-.date-range > input.fld {
+   за край узкого экрана (план 46, C50). Подпись «с»/«по» и стрелка — внутри
+   поля: пустые поля даты иначе неразличимы, а нативная стрелка Firefox на
+   Android выглядит кривой (план 46, C84). */
+.date-range > .date-range-field {
 	flex: 1;
 	min-width: 0;
-	width: auto;
+	position: relative;
+	display: block;
+}
+.date-range-field > input.fld {
+	box-sizing: border-box;
+	width: 100%;
 	margin: 0;
+	padding-left: 34px;
+	padding-right: 40px;
+}
+.date-range-prefix {
+	position: absolute;
+	left: 14px;
+	top: 50%;
+	transform: translateY(-50%);
+	color: var(--faint);
+	font-size: 13px;
+	line-height: 1;
+	pointer-events: none;
+}
+.date-range-chevron {
+	position: absolute;
+	right: 12px;
+	top: 50%;
+	transform: translateY(-50%);
+	display: flex;
+	color: var(--faint);
+	pointer-events: none;
+}
+.date-range-field input.fld[type='date'] {
+	appearance: none;
+	-webkit-appearance: none;
+}
+.date-range-field input.fld[type='date']::-webkit-calendar-picker-indicator {
+	position: absolute;
+	right: 0;
+	width: 44px;
+	height: 100%;
+	opacity: 0;
+	cursor: pointer;
 }
 /* Число с единицей (NumberField): узкое поле в строке. Служебные .w72 и .m-0
    слабее input.fld — с ними поле растягивалось на всю строку. */
