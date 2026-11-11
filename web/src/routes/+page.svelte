@@ -137,9 +137,7 @@
 		<!-- Адрес не вводится: приложение открыто с этого сервера, он и есть сервер
 	     входа. Войти на другой — с его собственной страницы: в веб-приложении второй сервер
 	     пока не добавить (C69). -->
-		{#if checking && !instance}
-			<Hint class="mt-8">Проверяем сервер…</Hint>
-		{:else if instance}
+		{#if instance}
 			<ServerRow
 				name={instance.name}
 				subtitle={serverSubtitle}
@@ -147,6 +145,15 @@
 				connection={serverConnection}
 				card
 				gdpr={instance.allow_name_erasure}
+			/>
+		{:else if checking || serverError}
+			<!-- Имя сервера приходит с ответом; адрес известен сразу, поэтому
+			     карточка есть и во время проверки — видно, какой сервер проверяют. -->
+			<ServerRow
+				name={address || displayHost(origin) || 'Сервер'}
+				subtitle=""
+				connection={checking ? 'checking' : 'unavailable'}
+				card
 			/>
 		{/if}
 		{#if serverError}<Hint class="mt-8">{serverError}</Hint>{/if}
