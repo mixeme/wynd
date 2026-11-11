@@ -122,7 +122,9 @@
 		<!-- Спокойная констатация, не заголовок: обычный кегль, цвет подсказки. -->
 		{#if ADD_SERVER_IN_BROWSER}
 			<Hint centered class="mt-28 sz-15">Вы ни на одном сервере не вошли</Hint>
-			<Hint centered class="mt-16">Интерфейс продолжит открываться с сервера «{interfaceName}».</Hint>
+			<Hint centered class="mt-16"
+				>Интерфейс продолжит открываться с сервера «{interfaceName}».</Hint
+			>
 			<Button onclick={addServer}>Войти на сервер</Button>
 		{:else}
 			<Hint centered class="mt-28 sz-15">На этом устройстве вы ни на одном сервере</Hint>
