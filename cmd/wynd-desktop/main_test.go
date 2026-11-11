@@ -8,11 +8,28 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"testing"
 
 	"gitea.mixdep.ru/mix/wynd/internal/desktop"
 )
+
+// Иконку и описание exe Wails вшивает из build. Без этих файлов сборка
+// выходит с чужой иконкой — так выпуск 0.2.0 остался без своей.
+func TestDesktopBuildAssets(t *testing.T) {
+	files := []string{
+		filepath.Join("build", "appicon.png"),
+		filepath.Join("build", "windows", "icon.ico"),
+		filepath.Join("build", "windows", "info.json"),
+		filepath.Join("build", "windows", "wails.exe.manifest"),
+	}
+	for _, name := range files {
+		if _, err := os.Stat(name); err != nil {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+}
 
 func TestInterfacePreviewAddAndRemoveDoNotChangeSelection(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

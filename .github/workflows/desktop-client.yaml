@@ -50,6 +50,9 @@ jobs:
           call scripts\test-desktop.bat
           if errorlevel 1 exit /b 1
 
+      - name: Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
+
       - name: build
         shell: cmd
         run: scripts\build-desktop.bat
