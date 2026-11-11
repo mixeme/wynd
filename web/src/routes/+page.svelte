@@ -147,11 +147,12 @@
 				gdpr={instance.allow_name_erasure}
 			/>
 		{:else if checking || serverError}
-			<!-- Имя сервера приходит с ответом; адрес известен сразу, поэтому
-			     карточка есть и во время проверки — видно, какой сервер проверяют. -->
+			<!-- Имя сервера приходит с ответом; адрес известен сразу. Три строки
+			     и в проверке, и после неё: иначе строка «Почта» прыгает вниз,
+			     когда появляется режим регистрации. -->
 			<ServerRow
-				name={address || displayHost(origin) || 'Сервер'}
-				subtitle=""
+				name="Сервер"
+				subtitle={address || displayHost(origin)}
 				connection={checking ? 'checking' : 'unavailable'}
 				card
 			/>

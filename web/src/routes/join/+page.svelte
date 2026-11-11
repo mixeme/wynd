@@ -285,8 +285,15 @@
 	<FormLayout shell app title="Без приглашения" onback={() => goUp(backHref)}>
 		{#if !ready}
 			<!-- режим ещё не известен: пусто, а не форма, которая сменится -->
-		{:else if checking && !instance}
-			<Hint>Проверяем сервер…</Hint>
+		{:else if !instance && (checking || serverError)}
+			<!-- Адрес уже известен, имя придёт с ответом. Три строки и здесь:
+			     после проверки карточка не должна менять высоту и двигать почту. -->
+			<ServerRow
+				name="Сервер"
+				subtitle={address || serverAddress}
+				connection={checking ? 'checking' : 'unavailable'}
+				card
+			/>
 		{:else if instance && blocked}
 			<ServerRow
 				name={instance.name}
