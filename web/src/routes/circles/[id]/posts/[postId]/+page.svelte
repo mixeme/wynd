@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { spaceNotice } from '$lib/circles/space';
-	import { goUp } from '$lib/navigation/up';
+	import { goUp, previousEntry } from '$lib/navigation/up';
 	import PostByline from '$ui/data/PostByline.svelte';
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
 	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
 	import ReactionsSheet from '$ui/overlays/ReactionsSheet.svelte';
 	import AttachmentList from '$ui/data/AttachmentList.svelte';
 	import MentionText from '$ui/data/MentionText.svelte';
-	import { afterNavigate, goto } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getContext, onDestroy, onMount, tick } from 'svelte';
 	import Thread from '$ui/data/Thread.svelte';
@@ -495,22 +495,28 @@
 	// Родитель записи — экран круга, где её открыли: вкладка, день, поиск; из
 	// глобального поиска — он сам (план 46, C13). Пришли иначе (пуш, ссылка,
 	// своя же правка) — лента.
-	let backTo = '';
-	afterNavigate(({ from }) => {
-		if (backTo || !from) return;
+	//
+	// Источник берём из карты истории в момент нажатия, а не из afterNavigate:
+	// при входе из глобального поиска afterNavigate не получает from, и запись
+	// уходила в ленту (C87). Карта обновляется и при replaceState поиска.
+	function backTo(): string {
+		const src = previousEntry();
+		if (!src) return '';
+		const url = new URL(src, location.origin);
 		const base = `/circles/${circle.circleId}`;
-		const rest = from.url.pathname.startsWith(base) ? from.url.pathname.slice(base.length) : null;
+		const rest = url.pathname.startsWith(base) ? url.pathname.slice(base.length) : null;
 		if (
 			(rest !== null &&
 				/^(|\/days(\/\d{4}-\d{2}-\d{2})?|\/grid|\/map|\/responses|\/search)$/.test(rest)) ||
-			from.url.pathname === '/search'
+			url.pathname === '/search'
 		) {
-			backTo = from.url.pathname + from.url.search;
+			return url.pathname + url.search;
 		}
-	});
+		return '';
+	}
 
 	function goBack() {
-		goUp(backTo || `/circles/${circle.circleId}`);
+		goUp(backTo() || `/circles/${circle.circleId}`);
 	}
 
 	function openEdit() {

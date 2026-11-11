@@ -3,6 +3,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 vi.mock('$app/navigation', () => ({ goto: vi.fn(async () => {}) }));
 
 import { goto } from '$app/navigation';
+import { replaceSearchUrl } from '$lib/journal/search';
 import { goUpFromSpot, previousEntry, recordEntry } from './up';
 
 // Приём записи (план 46, C13): экраны, на которые попадают мимо родителя
@@ -28,6 +29,13 @@ it('previousEntry — экран, откуда пришли на текущую 
 	push('/circles/c1');
 	push('/circles/c1/search?q=дом');
 	expect(previousEntry()).toBe('/circles/c1');
+});
+
+it('replaceSearchUrl — карта истории хранит текущий запрос, а не прежний', () => {
+	push('/search');
+	replaceSearchUrl('/search', { q: 'dom' });
+	push('/circles/c6/posts/p6');
+	expect(previousEntry()).toBe('/search?q=dom');
 });
 
 it('goUpFromSpot — вкладка круга: шаг назад по истории', () => {

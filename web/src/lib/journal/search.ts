@@ -1,4 +1,5 @@
 import { apiJson } from '$lib/api/client';
+import { recordEntry } from '$lib/navigation/up';
 import type { CircleSearchHit, CircleSearchResponse } from './types';
 
 export interface SearchFilters {
@@ -171,6 +172,10 @@ export function replaceSearchUrl(pathname: string, state: SearchChipState): void
 	if (href !== current) {
 		history.replaceState(history.state, '', href);
 	}
+	// Замена адреса не проходит через afterNavigate, поэтому карта истории
+	// иначе хранила бы прежний запрос и «Назад» из записи вёл бы в старый
+	// поиск без фильтров (C87).
+	recordEntry(new URL(href, location.origin));
 }
 
 export function searchChipsFromWindow(): ReturnType<typeof searchChipsFromParams> {
