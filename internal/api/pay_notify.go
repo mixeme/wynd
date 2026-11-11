@@ -49,7 +49,7 @@ func payTerm(raw string) (expires time.Time, unlimited bool) {
 
 // notifyPayRequestApproved — заявка id утверждена, срок участника изменился.
 func (s *Server) notifyPayRequestApproved(requestID string) {
-	if s.Mail == nil {
+	if s.Mail == nil && s.Push == nil {
 		return
 	}
 	s.notifyWG.Add(1)
@@ -67,8 +67,10 @@ func (s *Server) notifyPayRequestApproved(requestID string) {
 		}
 		expires, unlimited := payTerm(*req.SubscriptionEnd)
 		name := s.payInstanceName(ctx)
-		if err := s.Mail.SendPayRequestApproved(ctx, req.AccountEmail, name, expires, unlimited); err != nil {
-			log.Printf("pay approve mail %s: %v", requestID, err)
+		if s.Mail != nil {
+			if err := s.Mail.SendPayRequestApproved(ctx, req.AccountEmail, name, expires, unlimited); err != nil {
+				log.Printf("pay approve mail %s: %v", requestID, err)
+			}
 		}
 		if unlimited {
 			s.paySignal(ctx, req.AccountID, name, "заявка утверждена — подписка бессрочная")
@@ -80,7 +82,7 @@ func (s *Server) notifyPayRequestApproved(requestID string) {
 
 // notifyPayRequestRejected — заявка id отклонена, срок не менялся.
 func (s *Server) notifyPayRequestRejected(requestID string) {
-	if s.Mail == nil {
+	if s.Mail == nil && s.Push == nil {
 		return
 	}
 	s.notifyWG.Add(1)
@@ -94,8 +96,10 @@ func (s *Server) notifyPayRequestRejected(requestID string) {
 			return
 		}
 		name := s.payInstanceName(ctx)
-		if err := s.Mail.SendPayRequestRejected(ctx, req.AccountEmail, name); err != nil {
-			log.Printf("pay reject mail %s: %v", requestID, err)
+		if s.Mail != nil {
+			if err := s.Mail.SendPayRequestRejected(ctx, req.AccountEmail, name); err != nil {
+				log.Printf("pay reject mail %s: %v", requestID, err)
+			}
 		}
 		s.paySignal(ctx, req.AccountID, name, "заявка об оплате отклонена")
 	}()
@@ -103,7 +107,7 @@ func (s *Server) notifyPayRequestRejected(requestID string) {
 
 // notifyPayGranted — подписка accountID продлена без заявки.
 func (s *Server) notifyPayGranted(accountID string) {
-	if s.Mail == nil {
+	if s.Mail == nil && s.Push == nil {
 		return
 	}
 	s.notifyWG.Add(1)
@@ -121,8 +125,10 @@ func (s *Server) notifyPayGranted(accountID string) {
 		}
 		expires, unlimited := payTerm(*acc.SubscriptionExpiresAt)
 		name := s.payInstanceName(ctx)
-		if err := s.Mail.SendPayGranted(ctx, acc.Email, name, expires, unlimited); err != nil {
-			log.Printf("pay grant mail %s: %v", accountID, err)
+		if s.Mail != nil {
+			if err := s.Mail.SendPayGranted(ctx, acc.Email, name, expires, unlimited); err != nil {
+				log.Printf("pay grant mail %s: %v", accountID, err)
+			}
 		}
 		if unlimited {
 			s.paySignal(ctx, accountID, name, "подписка стала бессрочной")

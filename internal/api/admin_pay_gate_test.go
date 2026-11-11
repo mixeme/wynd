@@ -145,7 +145,19 @@ func waitPayPush(t *testing.T, hits chan []byte) {
 // выдача без заявки. Тело пуша зашифровано — проверяется сама доставка;
 // тексты писем и сигналов покрыты тестами mail и журналом стенда.
 func TestPayDecisionsPushParticipant(t *testing.T) {
+	testPayDecisionsPushParticipant(t, false)
+}
+
+func TestPayDecisionsPushWithoutMail(t *testing.T) {
+	testPayDecisionsPushParticipant(t, true)
+}
+
+func testPayDecisionsPushParticipant(t *testing.T, withoutMail bool) {
+	t.Helper()
 	srv, caps, _, _ := setupAPI(t)
+	if withoutMail {
+		srv.Mail = nil
+	}
 
 	hits := make(chan []byte, 8)
 	ep := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
