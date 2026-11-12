@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 	"gitea.mixdep.ru/mix/wynd/internal/mail"
 	"gitea.mixdep.ru/mix/wynd/internal/push"
 )
@@ -34,6 +35,27 @@ func TestWriteDomainErrorNotConfigured(t *testing.T) {
 		if body["error"] != tc.code {
 			t.Fatalf("%v: error=%q want %q", tc.err, body["error"], tc.code)
 		}
+	}
+}
+
+// C81: сервер знает, что данные круга не читаются, — уходит отдельный код,
+// а не «invalid» с подсказкой про адрес. Наружу — только код, подробности в
+// журнал.
+func TestWriteDomainErrorArchiveTables(t *testing.T) {
+	rec := httptest.NewRecorder()
+	writeDomainError(rec, fmt.Errorf("%w: post_media.crop_x unsupported column", chronicle.ErrArchiveTables))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status %d", rec.Code)
+	}
+	var body map[string]string
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if body["error"] != "archive_invalid" {
+		t.Fatalf("error=%q want archive_invalid", body["error"])
+	}
+	if strings.Contains(rec.Body.String(), "crop_x") {
+		t.Fatalf("подробности ушли наружу: %s", rec.Body.String())
 	}
 }
 

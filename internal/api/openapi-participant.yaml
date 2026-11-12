@@ -230,7 +230,8 @@ paths:
         "201":
           description: circle_id, posts, invited
         "400":
-          description: empty name or someone not in the circle
+          description: empty name or someone not in the circle — error invalid;
+            data the server cannot read — error archive_invalid (C81)
         "403":
           description: not an active member
 

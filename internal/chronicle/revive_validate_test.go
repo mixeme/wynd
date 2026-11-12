@@ -68,6 +68,11 @@ func TestReviveRejectsMalformedTablesBeforeWrites(t *testing.T) {
 			if !errors.Is(err, chronicle.ErrInvalid) {
 				t.Fatalf("expected invalid archive, got %v", err)
 			}
+			// C81: отказ по данным круга несёт отдельный код — экран не должен
+			// показывать подсказку про адрес сервера.
+			if !errors.Is(err, chronicle.ErrArchiveTables) {
+				t.Fatalf("expected archive-tables code, got %v", err)
+			}
 			var circles, blobCount int
 			if err := e.ch.DB().QueryRow(`SELECT (SELECT COUNT(*) FROM circles), (SELECT COUNT(*) FROM blobs)`).Scan(&circles, &blobCount); err != nil {
 				t.Fatal(err)

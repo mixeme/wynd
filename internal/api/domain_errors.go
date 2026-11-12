@@ -23,7 +23,16 @@ func writeDomainError(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 	case errors.Is(err, chronicle.ErrTooLong):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "too_long"})
+	// Данные круга в архиве не читаются: сервер знает причину, и она не про
+	// адрес сервера. Отдельный код, чтобы экран не показывал подсказку про
+	// адрес (C81); подробности — в журнал, иначе отказ не разобрать.
+	case errors.Is(err, chronicle.ErrArchiveTables):
+		log.Printf("api: archive tables rejected: %v", err)
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "archive_invalid"})
 	case errors.Is(err, chronicle.ErrInvalid), errors.Is(err, blob.ErrInvalid), errors.Is(err, push.ErrInvalid), errors.Is(err, mail.ErrInvalid):
+		// Текст отказа раньше не писался, и разбор C81 стоил повтора на копии
+		// базы; теперь причина видна в журнале.
+		log.Printf("api: rejected as invalid: %v", err)
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid"})
 	case errors.Is(err, blob.ErrInstanceQuotaExceeded):
 		// Упёрся сервер (3.11): помочь может только его администратор.

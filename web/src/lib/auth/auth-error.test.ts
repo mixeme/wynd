@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '$lib/api/client';
 import {
+	ADDRESS_HINT,
 	AUTH_ERROR_HINTS,
 	SecondAccountError,
+	addressErrorHint,
 	authErrorHint,
 	refuseSecondAccount
 } from '$lib/auth/auth';
@@ -46,6 +48,25 @@ describe('authErrorHint', () => {
 		);
 		expect(authErrorHint(new ApiError(429, 'rate_limited', undefined, 120))).toBe(
 			'Слишком много запросов. Следующий код можно запросить через 2 мин.'
+		);
+	});
+
+	// C81: «invalid» вне входа значит «неверный ввод» или данные, а не адрес.
+	it('does not blame the address outside the entry screens', () => {
+		expect(authErrorHint(new ApiError(400, 'invalid'))).toBe(AUTH_ERROR_HINTS.invalid);
+		expect(authErrorHint(new ApiError(400, 'invalid'))).not.toContain('адрес');
+	});
+
+	it('keeps the address hint on the entry screen', () => {
+		expect(addressErrorHint(new ApiError(400, 'invalid'))).toContain('адрес');
+		expect(addressErrorHint(new ApiError(400, 'invalid'))).toBe(ADDRESS_HINT);
+	});
+
+	// Сервер знает, что данные круга не читаются: формулировка согласована
+	// владельцем 12 ноября, без слов про адрес.
+	it('explains unreadable circle data', () => {
+		expect(authErrorHint(new ApiError(400, 'archive_invalid'))).toBe(
+			'Сервер не смог прочитать данные круга. Если повторится — напишите администратору сервера.'
 		);
 	});
 });

@@ -25,8 +25,17 @@ export interface VerifyResult {
 	pending_circle_id?: string;
 }
 
+/**
+ * Адресная подсказка — только там, где человек вводит адрес сервера
+ * («Без приглашения», «Войти на сервер»). В остальных местах «invalid» значит
+ * «неверный ввод» или данные, а не адрес (C81).
+ */
+export const ADDRESS_HINT = 'Проверьте адрес и попробуйте снова';
+
 export const AUTH_ERROR_HINTS: Record<string, string> = {
-	invalid: 'Проверьте адрес и попробуйте снова',
+	invalid: 'Не получилось — проверьте введённое',
+	archive_invalid:
+		'Сервер не смог прочитать данные круга. Если повторится — напишите администратору сервера.',
 	not_found: 'Учётной записи с такой почтой нет',
 	forbidden: 'Нет доступа',
 	registration_closed: 'Сервер не принимает новых участников',
@@ -78,6 +87,16 @@ export async function refuseSecondAccount(origin: string, email: string): Promis
 	if (session && session.email.trim().toLowerCase() !== email.trim().toLowerCase()) {
 		throw new SecondAccountError(session.email);
 	}
+}
+
+/**
+ * Отказ там, где человек вводит адрес сервера: «invalid» здесь про адрес.
+ * На остальных экранах — общая подсказка (C81: адресная не должна всплывать
+ * на «Отделиться» и оживлении архива).
+ */
+export function addressErrorHint(err: unknown): string {
+	if (err instanceof ApiError && err.code === 'invalid') return ADDRESS_HINT;
+	return authErrorHint(err);
 }
 
 export function authErrorHint(err: unknown): string {

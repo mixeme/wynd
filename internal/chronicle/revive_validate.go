@@ -16,13 +16,13 @@ func ValidateArchiveTableShape(name string, t FullArchiveTable) error {
 	seen := map[string]bool{}
 	for _, col := range t.Columns {
 		if col == "" || seen[col] {
-			return fmt.Errorf("%w: %s duplicate/empty column", ErrInvalid, name)
+			return fmt.Errorf("%w: %s duplicate/empty column", ErrArchiveTables, name)
 		}
 		seen[col] = true
 	}
 	for _, row := range t.Rows {
 		if len(row) != len(t.Columns) {
-			return fmt.Errorf("%w: %s row length", ErrInvalid, name)
+			return fmt.Errorf("%w: %s row length", ErrArchiveTables, name)
 		}
 	}
 	return nil
@@ -39,7 +39,7 @@ type archiveColumn struct {
 // compatible with older archive schemas. Account/blob tables are projections.
 func (c *Chronicle) ValidateReviveTables(ctx context.Context, format, schema int, tables map[string]FullArchiveTable) error {
 	if !ReviveSchemaKnown(format, schema) {
-		return fmt.Errorf("%w: unknown archive schema", ErrInvalid)
+		return fmt.Errorf("%w: unknown archive schema", ErrArchiveTables)
 	}
 	for name, t := range tables {
 		if err := ValidateArchiveTableShape(name, t); err != nil {
@@ -47,7 +47,7 @@ func (c *Chronicle) ValidateReviveTables(ctx context.Context, format, schema int
 		}
 	}
 	if len(tables["circles"].Rows) != 1 {
-		return fmt.Errorf("%w: archive must contain one circle", ErrInvalid)
+		return fmt.Errorf("%w: archive must contain one circle", ErrArchiveTables)
 	}
 	allowed := map[string]bool{"blobs": true}
 	for _, q := range fullArchiveQueries {
@@ -55,7 +55,7 @@ func (c *Chronicle) ValidateReviveTables(ctx context.Context, format, schema int
 	}
 	for name, t := range tables {
 		if !allowed[name] {
-			return fmt.Errorf("%w: unknown archive table", ErrInvalid)
+			return fmt.Errorf("%w: unknown archive table", ErrArchiveTables)
 		}
 		rows, err := c.db.QueryContext(ctx, `SELECT name, type, "notnull", dflt_value, pk FROM pragma_table_info(?)`, name)
 		if err != nil {
@@ -79,7 +79,7 @@ func (c *Chronicle) ValidateReviveTables(ctx context.Context, format, schema int
 		}
 		for _, col := range t.Columns {
 			if _, ok := cols[col]; !ok {
-				return fmt.Errorf("%w: %s unknown column", ErrInvalid, name)
+				return fmt.Errorf("%w: %s unknown column", ErrArchiveTables, name)
 			}
 		}
 		required := []string{}
@@ -97,7 +97,7 @@ func (c *Chronicle) ValidateReviveTables(ctx context.Context, format, schema int
 		if len(t.Rows) > 0 {
 			for _, col := range required {
 				if !slices.Contains(t.Columns, col) {
-					return fmt.Errorf("%w: %s missing %s", ErrInvalid, name, col)
+					return fmt.Errorf("%w: %s missing %s", ErrArchiveTables, name, col)
 				}
 			}
 		}
@@ -110,29 +110,29 @@ func (c *Chronicle) ValidateReviveTables(ctx context.Context, format, schema int
 				spec := cols[col]
 				if value == nil {
 					if spec.required || spec.primary {
-						return fmt.Errorf("%w: %s.%s is null", ErrInvalid, name, col)
+						return fmt.Errorf("%w: %s.%s is null", ErrArchiveTables, name, col)
 					}
 					continue
 				}
 				if spec.kind == "INTEGER" {
 					n, ok := archiveInteger(value)
 					if !ok {
-						return fmt.Errorf("%w: %s.%s is not an integer", ErrInvalid, name, col)
+						return fmt.Errorf("%w: %s.%s is not an integer", ErrArchiveTables, name, col)
 					}
 					if name == "blobs" && col == "size_bytes" {
 						if n < 0 || n > math.MaxInt64-blobBytes {
-							return fmt.Errorf("%w: blob sizes", ErrInvalid)
+							return fmt.Errorf("%w: blob sizes", ErrArchiveTables)
 						}
 						blobBytes += n
 					}
 				} else if spec.kind == "TEXT" {
 					v, ok := value.(string)
 					if !ok || (spec.primary && v == "") {
-						return fmt.Errorf("%w: %s.%s is not text", ErrInvalid, name, col)
+						return fmt.Errorf("%w: %s.%s is not text", ErrArchiveTables, name, col)
 					}
 					if name == "blobs" && col == "sha256" {
 						if b, err := hex.DecodeString(v); err != nil || len(b) != 32 {
-							return fmt.Errorf("%w: blob digest", ErrInvalid)
+							return fmt.Errorf("%w: blob digest", ErrArchiveTables)
 						}
 					}
 				} else if spec.kind == "REAL" {
@@ -142,10 +142,10 @@ func (c *Chronicle) ValidateReviveTables(ctx context.Context, format, schema int
 					switch value.(type) {
 					case float64, float32, int64, int:
 					default:
-						return fmt.Errorf("%w: %s.%s is not a number", ErrInvalid, name, col)
+						return fmt.Errorf("%w: %s.%s is not a number", ErrArchiveTables, name, col)
 					}
 				} else {
-					return fmt.Errorf("%w: unsupported archive column type", ErrInvalid)
+					return fmt.Errorf("%w: unsupported archive column type", ErrArchiveTables)
 				}
 				if spec.primary {
 					key = append(key, value)
@@ -154,7 +154,7 @@ func (c *Chronicle) ValidateReviveTables(ctx context.Context, format, schema int
 			if len(key) != 0 {
 				encoded, _ := json.Marshal(key)
 				if primary[string(encoded)] {
-					return fmt.Errorf("%w: duplicate archive key", ErrInvalid)
+					return fmt.Errorf("%w: duplicate archive key", ErrArchiveTables)
 				}
 				primary[string(encoded)] = true
 			}
@@ -206,7 +206,7 @@ func (c *Chronicle) ValidateReviveTables(ctx context.Context, format, schema int
 			}
 			for _, row := range t.Rows {
 				if key, ok := archiveReferenceKey(t.Columns, row, ref.from); ok && !keys[key] {
-					return fmt.Errorf("%w: %s broken reference to %s", ErrInvalid, name, ref.target)
+					return fmt.Errorf("%w: %s broken reference to %s", ErrArchiveTables, name, ref.target)
 				}
 			}
 		}

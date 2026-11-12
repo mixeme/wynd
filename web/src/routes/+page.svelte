@@ -15,7 +15,7 @@
 		type ServerConnection
 	} from '$lib/instance/serverCard';
 	import PlainLayout from '$lib/layouts/PlainLayout.svelte';
-	import { authErrorHint, sendAuthCode, type InstanceInfo } from '$lib/auth/auth';
+	import { addressErrorHint, sendAuthCode, type InstanceInfo } from '$lib/auth/auth';
 	import { displayHost, resolveServerOrigin } from '$lib/auth/origin';
 	import { INVALID_EMAIL_HINT, isValidParticipantEmail } from '$lib/auth/email';
 	import { loadPendingAuth, savePendingAuth } from '$lib/auth/pending';
@@ -113,7 +113,7 @@
 			savePendingAuth({ ...pending, codeSentAt: Date.now() });
 			goto('/auth/code');
 		} catch (err) {
-			error = authErrorHint(err);
+			error = addressErrorHint(err);
 		} finally {
 			loading = false;
 		}

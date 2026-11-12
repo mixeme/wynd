@@ -122,11 +122,11 @@ func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveRes
 		return res, err
 	}
 	if !ReviveSchemaKnown(in.FormatVersion, in.SchemaVersion) {
-		return res, fmt.Errorf("%w: archive format %d schema %d", ErrInvalid, in.FormatVersion, in.SchemaVersion)
+		return res, fmt.Errorf("%w: archive format %d schema %d", ErrArchiveTables, in.FormatVersion, in.SchemaVersion)
 	}
 	circles := in.Tables["circles"]
 	if len(circles.Rows) != 1 {
-		return res, fmt.Errorf("%w: archive has %d circles", ErrInvalid, len(circles.Rows))
+		return res, fmt.Errorf("%w: archive has %d circles", ErrArchiveTables, len(circles.Rows))
 	}
 	now := utcOrNow(in.Now)
 	ids := map[string]string{}
@@ -158,7 +158,7 @@ func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveRes
 		old, _ := row["id"].(string)
 		source := in.BlobMap[old]
 		if source == "" {
-			return res, fmt.Errorf("%w: missing blob", ErrInvalid)
+			return res, fmt.Errorf("%w: missing blob", ErrArchiveTables)
 		}
 		id, err := newIDFn()
 		if err != nil {
@@ -176,7 +176,7 @@ func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveRes
 		}
 		want, _ := row["sha256"].(string)
 		if !strings.EqualFold(sha, want) || size != archiveInt64(row["size_bytes"]) {
-			return res, fmt.Errorf("%w: blob digest", ErrInvalid)
+			return res, fmt.Errorf("%w: blob digest", ErrArchiveTables)
 		}
 		if v, ok := row["mime_type"].(string); ok && len(v) > 0 && len(v) <= 255 {
 			mime = v
@@ -299,7 +299,7 @@ func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveRes
 	// Журнал из файла остаётся сохраняемым даже при оживлении новым лицом.
 	if asInt64(rowMap(circles, 0)["archive_all"]) == 0 && rowMap(circles, 0)["archive_all"] != nil {
 		if len(in.Tables["archive_spans"].Rows) == 0 {
-			return res, ErrInvalid
+			return res, ErrArchiveTables
 		}
 		scope, err := archiveScope(ctx, tx, res.CircleID)
 		if err != nil {

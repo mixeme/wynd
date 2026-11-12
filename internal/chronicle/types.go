@@ -2,6 +2,7 @@ package chronicle
 
 import (
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -13,6 +14,13 @@ var ErrForbidden = errors.New("chronicle: forbidden")
 
 // ErrInvalid is returned for invalid input or state transitions.
 var ErrInvalid = errors.New("chronicle: invalid")
+
+// ErrArchiveTables — данные круга в архиве не читаются: неизвестна схема,
+// столбец неподдерживаемого типа, строки не сходятся. Сервер знает причину, и
+// она не про адрес сервера: наружу уходит отдельный код archive_invalid (C81),
+// чтобы экран не показывал подсказку про адрес. Для тех, кто различает только
+// «неверный запрос», ошибка по-прежнему ErrInvalid.
+var ErrArchiveTables = fmt.Errorf("%w: archive tables", ErrInvalid)
 
 // EditWindow describes circle/content edit policy.
 // Chronicle (0) forbids edits; nil duration means unlimited.
@@ -197,9 +205,9 @@ type CreateCircleInput struct {
 	OwnerName      string
 	// OwnerGender — род создателя для строк журнала (A5).
 	OwnerGender Gender
-	Color          string
-	EditWindow     EditWindow
-	Now            time.Time
+	Color       string
+	EditWindow  EditWindow
+	Now         time.Time
 }
 
 type JoinInput struct {

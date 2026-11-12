@@ -10,7 +10,7 @@
 	import Label from '$ui/forms/Label.svelte';
 	import ServerRow from '$ui/data/ServerRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
-	import { authErrorHint, flowForJoin, sendAuthCode, type InstanceInfo } from '$lib/auth/auth';
+	import { addressErrorHint, flowForJoin, sendAuthCode, type InstanceInfo } from '$lib/auth/auth';
 	import { decodeQrFromFile, foreignWyndLinkOrigin, parseWyndLink } from '$lib/auth/links';
 	import { displayHost, resolveServerOrigin } from '$lib/auth/origin';
 	import { INVALID_EMAIL_HINT, isValidParticipantEmail } from '$lib/auth/email';
@@ -199,7 +199,7 @@
 			savePendingAuth({ ...pending, codeSentAt: Date.now() });
 			goto('/auth/code');
 		} catch (err) {
-			error = authErrorHint(err);
+			error = addressErrorHint(err);
 		} finally {
 			loading = false;
 		}
@@ -234,12 +234,7 @@
 		{:else if checking}
 			<!-- Пока идёт проверка — та же карточка, что и после ответа: имя придёт
 			     с ним, адрес уже введён. Форма под ней не прыгает. -->
-			<ServerRow
-				name="Сервер"
-				subtitle={address || serverAddress}
-				connection="checking"
-				card
-			/>
+			<ServerRow name="Сервер" subtitle={address || serverAddress} connection="checking" card />
 		{/if}
 		{#if serverError}<Hint class="mt-8">{serverError}</Hint>{/if}
 		{#if blocked}
@@ -294,12 +289,7 @@
 			<!-- режим ещё не известен: пусто, а не форма, которая сменится -->
 		{:else if !instance && serverError}
 			<!-- Сервер не ответил: режим регистрации неизвестен, форма бессмысленна. -->
-			<ServerRow
-				name="Сервер"
-				subtitle={address || serverAddress}
-				connection="unavailable"
-				card
-			/>
+			<ServerRow name="Сервер" subtitle={address || serverAddress} connection="unavailable" card />
 		{:else if instance && blocked}
 			<ServerRow
 				name={instance.name}
@@ -333,12 +323,7 @@
 				<!-- Пока идёт проверка, форма уже на месте: человек всё равно ждёт ответа
 				     и может вводить почту. Недоступна только кнопка. Карточка той же
 				     высоты, что и после ответа, — почта не прыгает. -->
-				<ServerRow
-					name="Сервер"
-					subtitle={address || serverAddress}
-					connection="checking"
-					card
-				/>
+				<ServerRow name="Сервер" subtitle={address || serverAddress} connection="checking" card />
 			{/if}
 			<Label class="mt-16">Почта</Label>
 			<Input active type="email" autocomplete="email" bind:value={email} />
