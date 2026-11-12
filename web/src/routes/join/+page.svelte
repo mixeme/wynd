@@ -285,13 +285,12 @@
 	<FormLayout shell app title="Без приглашения" onback={() => goUp(backHref)}>
 		{#if !ready}
 			<!-- режим ещё не известен: пусто, а не форма, которая сменится -->
-		{:else if !instance && (checking || serverError)}
-			<!-- Адрес уже известен, имя придёт с ответом. Три строки и здесь:
-			     после проверки карточка не должна менять высоту и двигать почту. -->
+		{:else if !instance && serverError}
+			<!-- Сервер не ответил: режим регистрации неизвестен, форма бессмысленна. -->
 			<ServerRow
 				name="Сервер"
 				subtitle={address || serverAddress}
-				connection={checking ? 'checking' : 'unavailable'}
+				connection="unavailable"
 				card
 			/>
 		{:else if instance && blocked}
@@ -322,6 +321,16 @@
 					connection={serverConnection}
 					card
 					gdpr={instance.allow_name_erasure}
+				/>
+			{:else}
+				<!-- Пока идёт проверка, форма уже на месте: человек всё равно ждёт ответа
+				     и может вводить почту. Недоступна только кнопка. Карточка той же
+				     высоты, что и после ответа, — почта не прыгает. -->
+				<ServerRow
+					name="Сервер"
+					subtitle={address || serverAddress}
+					connection="checking"
+					card
 				/>
 			{/if}
 			<Label class="mt-16">Почта</Label>
