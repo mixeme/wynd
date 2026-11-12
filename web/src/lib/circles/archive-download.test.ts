@@ -21,7 +21,12 @@ vi.mock('$app/navigation', () => ({
 	beforeNavigate: vi.fn(),
 	afterNavigate: vi.fn()
 }));
-vi.mock('$lib/navigation/up', () => ({ goUp: vi.fn(), setBackHandler: () => () => {} }));
+vi.mock('$lib/navigation/up', () => ({
+	goUp: vi.fn(),
+	navigateBack: vi.fn(),
+	setBackHandler: () => () => {},
+	setOverlayCloser: () => () => {}
+}));
 vi.mock('$lib/navigation/openDownload', () => {
 	const openDownload = vi.fn();
 	return {

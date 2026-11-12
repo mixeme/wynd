@@ -1,7 +1,7 @@
 <script lang="ts">
 	// Отсечка по дате (6.17, 6.21): с 6.15 — за строкой «Заархивировать и
 	// удалить старое» на «Архиве и очистке».
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
@@ -152,12 +152,7 @@
 	});
 </script>
 
-<FormLayout
-	app
-	color={circle.color}
-	title="Заархивировать и удалить старое"
-	onback={() => goUp(`/circles/${circle.circleId}/quota`)}
->
+<FormLayout app color={circle.color} title="Заархивировать и удалить старое" onback={navigateBack}>
 	{#if loading}
 		<Loading />
 	{:else if error}

@@ -1,7 +1,6 @@
 ﻿<script lang="ts">
 	import { pushStatusColor } from '$lib/session/statusColor.svelte';
 	import { CIRCLE_COLORS } from '$lib/theme/colors';
-	import { setBackHandler } from '$lib/navigation/up';
 	import { rememberScroll, restoreScroll, scrollKey } from '$lib/navigation/scrollSpot';
 	import { afterNavigate, beforeNavigate } from '$app/navigation';
 	import { onDestroy } from 'svelte';
@@ -85,12 +84,6 @@
 		}
 	});
 	onDestroy(() => stopRestore());
-
-	// Системная «Назад» — тот же обработчик (план 46, C13).
-	$effect(() => {
-		const fn = onback;
-		if (fn) return setBackHandler(() => fn());
-	});
 </script>
 
 <PhoneFrame {color} {shell} {dark} {app} {height} class={className}>

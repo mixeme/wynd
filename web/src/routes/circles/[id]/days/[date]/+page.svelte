@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUpFromSpot } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import PostByline from '$ui/data/PostByline.svelte';
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
 	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
@@ -160,17 +160,9 @@
 	// ведёт туда, откуда открыли, если это вкладка круга или глобальный
 	// поиск (план 46, C13 и C29); пришли иначе (пуш, ссылка) — с открытки
 	// (?from=feed) — в ленту, иначе во «Дни».
-	const fromFeed = $derived($page.url.searchParams.get('from') === 'feed');
-
-	// Вкладки круга и глобальный поиск, из которых день открывают.
-	const DAY_SPOTS = ['', 'days', 'search', 'grid', 'map', 'responses', '/search'];
 
 	function goBack() {
-		void goUpFromSpot(
-			`/circles/${circle.circleId}`,
-			DAY_SPOTS,
-			fromFeed ? `/circles/${circle.circleId}` : `/circles/${circle.circleId}/days`
-		);
+		void navigateBack();
 	}
 
 	function openPost(postId: string) {

@@ -1,17 +1,20 @@
-import { beforeEach, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 
-vi.mock('$app/navigation', () => ({ goto: vi.fn(async () => {}) }));
+vi.mock('$app/navigation', () => ({
+	goto: vi.fn(async () => {}),
+	pushState: vi.fn()
+}));
 
 import { goto } from '$app/navigation';
 import { replaceSearchUrl } from '$lib/journal/search';
-import { goUpFromSpot, previousEntry, recordEntry } from './up';
+import { navigateBack, previousEntry, recordEntry, setOverlayCloser, upTarget } from './up';
 
-// Приём записи (план 46, C13): экраны, на которые попадают мимо родителя
-// (баннер в ленте, хит поиска), возвращают «Назад» на экран-источник.
-// Entries живут по индексу истории — подменяем состояние истории, как его
-// ведёт SvelteKit. Карта entries у модуля одна на файл тестов, поэтому
-// у каждого теста свой диапазон индексов. Сам обход истории — дело
-// jsdom/браузера; проверяем выбор ветки: шаг назад вместо перехода.
+// «Назад» — одно правило (C89): туда, откуда пришли; если позади записи нет
+// (вход по ссылке, пуш, переход вверх с заменой) — на родителя из таблицы.
+// Таблица покрыта тестом маршрутов: новый экран без правила ломает проверку,
+// а не «Назад» на телефоне.
 
 let idx = 0;
 const push = (path: string, record = true): void => {
@@ -25,57 +28,162 @@ beforeEach(() => {
 	idx += 20;
 });
 
-it('previousEntry — экран, откуда пришли на текущую запись', () => {
-	push('/circles/c1');
-	push('/circles/c1/search?q=дом');
-	expect(previousEntry()).toBe('/circles/c1');
+describe('upTarget — родитель по адресу', () => {
+	it('альбом записи — к записи, альбом дня — к дню', () => {
+		expect(upTarget(new URL('https://w/circles/c1/posts/p1/album'))).toBe('/circles/c1/posts/p1');
+		expect(upTarget(new URL('https://w/circles/c1/days/2026-11-09/album'))).toBe(
+			'/circles/c1/days/2026-11-09'
+		);
+	});
+
+	it('вкладки круга — к ленте круга, лента — к списку кругов', () => {
+		expect(upTarget(new URL('https://w/circles/c1/grid'))).toBe('/circles/c1');
+		expect(upTarget(new URL('https://w/circles/c1'))).toBe('/circles');
+		expect(upTarget(new URL('https://w/circles'))).toBe('/');
+	});
+
+	it('настройки и квота — к своим разделам', () => {
+		expect(upTarget(new URL('https://w/circles/c1/quota/cleanup'))).toBe('/circles/c1/quota');
+		expect(upTarget(new URL('https://w/circles/c1/quota'))).toBe('/circles/c1/settings');
+		expect(upTarget(new URL('https://w/circles/c1/settings/notify'))).toBe('/circles/c1/settings');
+		expect(upTarget(new URL('https://w/circles/c1/settings'))).toBe('/circles/c1');
+	});
+
+	it('вход и приглашения — на вход', () => {
+		expect(upTarget(new URL('https://w/auth/code'))).toBe('/');
+		expect(upTarget(new URL('https://w/join?from=servers'))).toBe('/');
+		expect(upTarget(new URL('https://w/invite/scan'))).toBe('/');
+	});
 });
 
-it('replaceSearchUrl — карта истории хранит текущий запрос, а не прежний', () => {
-	push('/search');
-	replaceSearchUrl('/search', { q: 'dom' });
-	push('/circles/c6/posts/p6');
-	expect(previousEntry()).toBe('/search?q=dom');
+// Маршруты из файловой системы: у каждого должен быть родитель, отличный от
+// самого адреса. Новый экран без строки в UP_RULES провалит этот тест.
+describe('таблица родителей покрывает все маршруты', () => {
+	const routes: string[] = [];
+	const walk = (dir: string) => {
+		for (const name of readdirSync(dir)) {
+			const full = join(dir, name);
+			if (statSync(full).isDirectory()) walk(full);
+			else if (name === '+page.svelte') routes.push(full);
+		}
+	};
+	walk(join(process.cwd(), 'src/routes'));
+
+	const sample = (file: string): string => {
+		const path = file
+			.slice(file.indexOf('src/routes') + 'src/routes'.length)
+			.replace(/\\/g, '/')
+			.replace(/\/\+page\.svelte$/, '');
+		// Динамические сегменты — образец значения.
+		return (path || '/').replace(/\[[^\]]+\]/g, 'x');
+	};
+
+	it('маршрутов нашлось больше семидесяти', () => {
+		expect(routes.length).toBeGreaterThan(70);
+	});
+
+	it('каждый маршрут ведёт на другой адрес того же приложения', () => {
+		const broken: string[] = [];
+		for (const file of routes) {
+			const path = sample(file);
+			const up = upTarget(new URL(path, 'https://w'));
+			// У корня выше ничего нет — это не ошибка таблицы.
+			if (path === '/') continue;
+			if (!up.startsWith('/') || up === path) broken.push(`${path} → ${up}`);
+		}
+		expect(broken).toEqual([]);
+	});
+
+	it('в файле маршрута не осталось своих родителей и списков источников', () => {
+		const leftovers: string[] = [];
+		for (const file of routes) {
+			const text = readFileSync(file, 'utf8');
+			// Экран не должен сам знать родителя: ни списков источников, ни
+			// зашитого «назад» в обработчике шапки. goUp остаётся только для
+			// переходов после действия (например, «Не сейчас» на входе в круг).
+			const ownParent = /goUpFromSpot/.test(text) || /onback=\{\(\)[^}]*goUp\(/.test(text);
+			if (ownParent) leftovers.push(file);
+		}
+		expect(leftovers).toEqual([]);
+	});
 });
 
-it('goUpFromSpot — вкладка круга: шаг назад по истории', () => {
-	const back = vi.spyOn(window.history, 'back');
-	push('/circles/c2');
-	push('/circles/c2/search?q=дом');
-	push('/circles/c2/days/2026-11-09');
-	void goUpFromSpot('/circles/c2', ['', 'search'], '/circles/c2/days');
-	expect(back).toHaveBeenCalledTimes(1);
-	expect(vi.mocked(goto)).not.toHaveBeenCalled();
-	back.mockRestore();
-});
+describe('navigateBack', () => {
+	it('есть предыдущий экран — шаг назад по истории', () => {
+		const back = vi.spyOn(window.history, 'back');
+		push('/circles/c2');
+		push('/circles/c2/posts/p2/album');
+		void navigateBack();
+		expect(back).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(goto)).not.toHaveBeenCalled();
+		back.mockRestore();
+	});
 
-it('goUpFromSpot — глобальный поиск (spot со слэшем): назад в поиск', () => {
-	const back = vi.spyOn(window.history, 'back');
-	push('/search?q=день');
-	push('/circles/c3/days/2026-11-09');
-	void goUpFromSpot('/circles/c3', ['', '/search'], '/circles/c3/days');
-	expect(back).toHaveBeenCalledTimes(1);
-	expect(vi.mocked(goto)).not.toHaveBeenCalled();
-	back.mockRestore();
-});
+	// Открыли альбом из ленты — «Назад» возвращает в ленту, а не в список
+	// кругов и не закрывает приложение.
+	it('альбом из ленты возвращает в ленту', () => {
+		const back = vi.spyOn(window.history, 'back');
+		push('/circles/c3');
+		push('/circles/c3/posts/p3/album?single=1');
+		void navigateBack();
+		expect(back).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(goto)).not.toHaveBeenCalled();
+		back.mockRestore();
+	});
 
-it('goUpFromSpot — источник не из spots: переход к родителю', async () => {
-	const back = vi.spyOn(window.history, 'back');
-	push('/circles/c4');
-	push('/circles/c4/settings');
-	push('/circles/c4/days/2026-11-09');
-	await goUpFromSpot('/circles/c4', [''], '/circles/c4/days');
-	expect(back).not.toHaveBeenCalled();
-	expect(vi.mocked(goto)).toHaveBeenCalledWith('/circles/c4/days', { replaceState: true });
-	back.mockRestore();
-});
+	it('позади пусто (вход по ссылке) — к родителю с заменой записи', async () => {
+		const back = vi.spyOn(window.history, 'back');
+		window.history.pushState({ 'sveltekit:history': ++idx }, '', '/circles/c4/days/2026-11-09');
+		recordEntry(new URL('/circles/c4/days/2026-11-09', location.origin));
+		await navigateBack();
+		expect(back).not.toHaveBeenCalled();
+		expect(vi.mocked(goto)).toHaveBeenCalledWith('/circles/c4/days', { replaceState: true });
+		back.mockRestore();
+	});
 
-it('goUpFromSpot — нет предыдущей записи (глубокая ссылка): на родителя', async () => {
-	const back = vi.spyOn(window.history, 'back');
-	// У круга c5 записей ещё нет — позади пусто.
-	push('/circles/c5/days/2026-11-09');
-	await goUpFromSpot('/circles/c5', [''], '/circles/c5/days');
-	expect(back).not.toHaveBeenCalled();
-	expect(vi.mocked(goto)).toHaveBeenCalledWith('/circles/c5/days', { replaceState: true });
-	back.mockRestore();
+	// Запись-копия у входа (armEntryGuard) даёт позади тот же адрес: шаг назад
+	// с неё закрыл бы приложение, поэтому идём к родителю.
+	it('позади та же запись (страж входа) — к родителю', async () => {
+		const back = vi.spyOn(window.history, 'back');
+		push('/circles/c5/settings');
+		push('/circles/c5/settings');
+		await navigateBack();
+		expect(back).not.toHaveBeenCalled();
+		expect(vi.mocked(goto)).toHaveBeenCalledWith('/circles/c5', { replaceState: true });
+		back.mockRestore();
+	});
+
+	// Лист или просмотр фото поверх экрана: «Назад» закрывает его, а не уводит
+	// с экрана (C89 — «лента → альбом → назад» не должен вести в список кругов).
+	it('сверху открыт лист — закрывает его, история не двигается', () => {
+		const back = vi.spyOn(window.history, 'back');
+		const close = vi.fn();
+		const drop = setOverlayCloser(close);
+		push('/circles/c7');
+		push('/circles/c7/posts/p7/album?lb=3');
+		void navigateBack();
+		expect(close).toHaveBeenCalledTimes(1);
+		expect(back).not.toHaveBeenCalled();
+		expect(vi.mocked(goto)).not.toHaveBeenCalled();
+		drop();
+		back.mockRestore();
+	});
+
+	it('лист закрыт — следующий «Назад» уже уходит с экрана', async () => {
+		const back = vi.spyOn(window.history, 'back');
+		const drop = setOverlayCloser(vi.fn());
+		drop();
+		push('/circles/c8');
+		push('/circles/c8/settings');
+		await navigateBack();
+		expect(back).toHaveBeenCalledTimes(1);
+		back.mockRestore();
+	});
+
+	it('карта истории помнит запрос поиска (C87)', () => {
+		push('/search');
+		replaceSearchUrl('/search', { q: 'dom' });
+		push('/circles/c6/posts/p6');
+		expect(previousEntry()).toBe('/search?q=dom');
+	});
 });

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import DateRange from '$ui/forms/DateRange.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -173,7 +173,7 @@
 	});
 
 	function goBack() {
-		goUp(`/circles/${circle.circleId}`);
+		void navigateBack();
 	}
 
 	function openGlobalSearch() {

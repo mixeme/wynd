@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { loadServerCard, type ServerCardState } from '$lib/instance/serverCard';
 	let serverCard = $state<ServerCardState>({ connection: 'checking' });
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import { goto, replaceState } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { onDestroy, onMount } from 'svelte';
@@ -330,8 +330,7 @@
 		shell
 		app
 		title={move?.status === 'done' || who ? (move?.circle.name ?? '') : 'Перенос круга'}
-		onback={() =>
-			who ? (who = false) : goUp(`/settings/servers/accept?origin=${encodeURIComponent(origin)}`)}
+		onback={() => (who ? (who = false) : void navigateBack())}
 	>
 		{#if move?.status === 'done' && move.result}
 			<!-- 7.25 / 7.26: круг поднят и сверен; остаётся завершить перенос там. -->

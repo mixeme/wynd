@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import SizeField from '$ui/forms/SizeField.svelte';
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
@@ -103,12 +103,7 @@
 	});
 </script>
 
-<FormLayout
-	app
-	color={circle.color}
-	title="Попросить место"
-	onback={() => goUp(`/circles/${circle.circleId}/quota`)}
->
+<FormLayout app color={circle.color} title="Попросить место" onback={navigateBack}>
 	{#if pageLoading}
 		<Loading />
 	{:else}

@@ -18,7 +18,12 @@ vi.mock('$app/stores', async () => {
 		page: readable({ url: new URL('http://localhost/circles/c1/settings/members?transfer=1') })
 	};
 });
-vi.mock('$lib/navigation/up', () => ({ goUp: vi.fn(), setBackHandler: () => () => {} }));
+vi.mock('$lib/navigation/up', () => ({
+	goUp: vi.fn(),
+	navigateBack: vi.fn(),
+	setBackHandler: () => () => {},
+	setOverlayCloser: () => () => {}
+}));
 vi.mock('$lib/api/client', async (original) => ({
 	...(await original<typeof import('$lib/api/client')>()),
 	apiJson: vi.fn()

@@ -3,7 +3,7 @@
 	let serverCard = $state<ServerCardState>({ connection: 'checking' });
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Input from '$ui/forms/Input.svelte';
@@ -40,7 +40,7 @@
 
 	function back() {
 		clearPendingEmailChange();
-		void goUp('/settings/servers');
+		void navigateBack();
 	}
 
 	async function onSubmit() {

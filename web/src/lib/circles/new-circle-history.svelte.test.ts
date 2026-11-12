@@ -19,7 +19,12 @@ vi.mock('$app/stores', async () => {
 	const { readable } = await import('svelte/store');
 	return { page: readable({ url: new URL('http://localhost/circles/new') }) };
 });
-vi.mock('$lib/navigation/up', () => ({ goUp: vi.fn(), setBackHandler: () => () => {} }));
+vi.mock('$lib/navigation/up', () => ({
+	goUp: vi.fn(),
+	navigateBack: vi.fn(),
+	setBackHandler: () => () => {},
+	setOverlayCloser: () => () => {}
+}));
 vi.mock('$lib/instance/source.svelte', () => ({
 	loadSourceUrl: vi.fn(),
 	sourceUrl: () => 'https://example.com/source'

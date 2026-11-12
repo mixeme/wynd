@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import DangerZone from '$ui/forms/DangerZone.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Input from '$ui/forms/Input.svelte';
@@ -70,7 +70,7 @@
 
 	function back() {
 		clearPendingLeave();
-		void goUp('/settings/servers');
+		void navigateBack();
 	}
 
 	function openConfirm() {

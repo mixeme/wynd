@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import AttachmentRow from '$ui/data/AttachmentRow.svelte';
 	import { goto } from '$app/navigation';
@@ -100,7 +100,7 @@
 	});
 </script>
 
-<FormLayout app title="Я оплатил" onback={() => goUp('/circles')}>
+<FormLayout app title="Я оплатил" onback={navigateBack}>
 	{#if pageLoading}
 		<Loading />
 	{:else}

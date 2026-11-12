@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { albumHref } from '$lib/journal/present';
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
 	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
 	import { goto } from '$app/navigation';
@@ -135,7 +135,7 @@
 	});
 
 	function goBack() {
-		goUp('/circles');
+		void navigateBack();
 	}
 
 	function openPost(postId: string) {

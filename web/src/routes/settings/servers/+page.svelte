@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { ADD_SERVER_IN_BROWSER } from '$lib/session/addServer';
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { WORD, plural } from '$lib/format/plural';
@@ -115,7 +115,7 @@
 	});
 </script>
 
-<FormLayout shell app title="Серверы" onback={() => goUp('/settings')}>
+<FormLayout shell app title="Серверы" onback={navigateBack}>
 	{#if loading}
 		<Loading />
 	{:else if rows.length === 0}

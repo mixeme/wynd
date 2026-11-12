@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp, goUpFromSpot } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import { afterNavigate, goto } from '$app/navigation';
 	import { resolveMediaUrls } from '$lib/media/batch';
 	import { numberParam, withParam, withoutParam } from '$lib/nav/url';
@@ -121,8 +121,10 @@
 		if (width > 0 && height > 0) sizes = { ...sizes, [blobId]: { width, height } };
 	}
 
+	// Просмотр фото — состояние экрана, а не шаг: открытие и закрытие заменяют
+	// запись истории. Иначе «Назад» после закрытия открывал фото снова (C89).
 	function openLightbox(index: number) {
-		goto(withParam($page.url.pathname, 'lb', index));
+		goto(withParam($page.url.pathname, 'lb', index), { replaceState: true, noScroll: true });
 	}
 
 	// Один снимок открывают сразу во весь экран (albumHref, ?single): альбом
@@ -135,11 +137,11 @@
 
 	function closeLightbox() {
 		if (single) {
-			void goUp(openedFrom || `/circles/${circle.circleId}/posts/${postId}`);
+			void navigateBack();
 			return;
 		}
 		const back = withoutParam($page.url, 'lb');
-		if (back) goto(back);
+		if (back) goto(back, { replaceState: true, noScroll: true });
 	}
 
 	function downloadCurrent() {
@@ -178,12 +180,7 @@
 	commentBar={false}
 	action="К записи"
 	onaction={() => goto(postHref)}
-	onback={() =>
-		void goUpFromSpot(
-			`/circles/${circle.circleId}`,
-			['grid'],
-			`/circles/${circle.circleId}/posts/${postId}`
-		)}
+	onback={navigateBack}
 >
 	{#if loading}
 		<Loading />

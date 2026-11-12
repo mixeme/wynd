@@ -57,6 +57,97 @@ export function previousEntry(): string | undefined {
 // Шаг назад сделал сам goUp — его не перехватываем.
 let ownBack = false;
 
+/**
+ * Родитель по адресу — одна таблица на всё приложение. Экраны больше не
+ * передают своего родителя: иначе каждый новый экран — новая забытая строка,
+ * и «Назад» уезжает не туда (C89). Таблица покрыта тестом: на каждый маршрут
+ * в `web/src/routes` находится правило, новый маршрут без правила ломает тест.
+ */
+const UP_RULES: Array<[RegExp, string]> = [
+	// Запись и её альбом.
+	[/^\/circles\/([^/]+)\/posts\/([^/]+)\/album$/, '/circles/$1/posts/$2'],
+	[/^\/circles\/([^/]+)\/posts\/([^/]+)$/, '/circles/$1'],
+	// День и альбом дня.
+	[/^\/circles\/([^/]+)\/days\/([^/]+)\/album$/, '/circles/$1/days/$2'],
+	[/^\/circles\/([^/]+)\/days\/([^/]+)$/, '/circles/$1/days'],
+	[/^\/circles\/([^/]+)\/days$/, '/circles/$1'],
+	// Квота, архив, отделение, перенос — из настроек круга.
+	[/^\/circles\/([^/]+)\/quota$/, '/circles/$1/settings'],
+	[/^\/circles\/([^/]+)\/quota\/[^/]+$/, '/circles/$1/quota'],
+	[/^\/circles\/([^/]+)\/archive$/, '/circles/$1/settings'],
+	[/^\/circles\/([^/]+)\/split$/, '/circles/$1/settings'],
+	[/^\/circles\/([^/]+)\/move$/, '/circles/$1/settings'],
+	// Настройки круга и их разделы.
+	[/^\/circles\/([^/]+)\/settings\/([^/]+)(\/[^/]+)*$/, '/circles/$1/settings'],
+	[/^\/circles\/([^/]+)\/settings$/, '/circles/$1'],
+	// Экраны круга.
+	[/^\/circles\/([^/]+)\/(grid|map|responses|search)$/, '/circles/$1'],
+	[/^\/circles\/([^/]+)\/compose$/, '/circles/$1'],
+	[/^\/circles\/([^/]+)\/arrived$/, '/circles/$1/join'],
+	[/^\/circles\/([^/]+)\/join$/, '/circles/$1'],
+	[/^\/circles\/([^/]+)$/, '/circles'],
+	// Новый круг — шаги формы.
+	[/^\/circles\/new\/(you|server)$/, '/circles/new'],
+	[/^\/circles\/new$/, '/circles'],
+	[/^\/circles$/, '/'],
+	// Вокруг клиента.
+	[/^\/search$/, '/circles'],
+	[/^\/settings\/servers\/email\/code$/, '/settings/servers/email'],
+	[/^\/settings\/servers\/accept\/move$/, '/settings/servers/accept'],
+	[/^\/settings\/(servers|app|news)(\/[^/]+)*$/, '/settings'],
+	[/^\/settings$/, '/circles'],
+	[/^\/pay\/(extend|help)$/, '/pay'],
+	[/^\/pay$/, '/settings'],
+	[/^\/archive\/busy$/, '/circles'],
+	[/^\/admin\/([^/]+)(\/[^/]+)*$/, '/admin'],
+	[/^\/admin$/, '/'],
+	// Вход, приглашения, вход на сервер, сканер, перенос по ссылке.
+	[/^\/(invite|join|move|auth)(\/[^/]+)*$/, '/'],
+	// Служебные экраны разработки.
+	[/^\/dev\//, '/circles'],
+	[/^\/$/, '/']
+];
+
+/** Родитель экрана по его адресу: `/circles/x/days/y` → `/circles/x/days`. */
+export function upTarget(url: URL): string {
+	const path = url.pathname.replace(/\/+$/, '') || '/';
+	for (const [re, parent] of UP_RULES) {
+		const m = path.match(re);
+		if (m) return parent.replace(/\$(\d)/g, (_, n) => m[Number(n)] ?? '');
+	}
+	return '/circles';
+}
+
+/**
+ * «Назад» — одно правило на всё приложение (C89): туда, откуда пришли; если
+ * позади нет записи (вход по ссылке, пуш, переход вверх с заменой) — на
+ * родителя из таблицы. Так «Назад» не зависит от того, помнит ли экран свой
+ * источник, и не уводит в список кругов из альбома, открытого в ленте.
+ *
+ * Шаг назад по истории — когда позади запись другого адреса: тогда прокрутка и
+ * фильтры источника на месте. Запись-копия (armEntryGuard) даёт позади тот же
+ * адрес — её пропускаем и идём к родителю.
+ */
+export function navigateBack(): Promise<void> {
+	// Сверху что-то открыто — закрываем его, экран остаётся.
+	const closer = topOverlay();
+	if (closer) {
+		closer();
+		return Promise.resolve();
+	}
+	const here = location.pathname + location.search;
+	const i = historyIndex();
+	const prev = i !== undefined ? entries.get(i - 1) : undefined;
+	if (prev && prev !== here) {
+		ownBack = true;
+		history.back();
+		return Promise.resolve();
+	}
+	const parent = upTarget(new URL(location.href));
+	if (key(new URL(parent, location.origin)) === here) return Promise.resolve();
+	return goto(parent, { replaceState: true });
+}
+
 export function goUp(parent: string): Promise<void> {
 	const i = historyIndex();
 	const target = key(new URL(parent, location.origin));
@@ -68,59 +159,41 @@ export function goUp(parent: string): Promise<void> {
 	return goto(parent, { replaceState: true });
 }
 
-/**
- * Экраны, на которые можно попасть не только с родителя: баннер в ленте,
- * переход из хитов поиска (план 46, C13 и след.), передача владения из
- * выхода. «Назад» ведёт туда, откуда открыли, если источник — один из
- * `spots`; иначе — на родителя `parent`. Spot без слэша — путь после
- * `base` (`''` — сам `base`, `search` — вкладка поиска круга); со слэшем
- * — весь путь (`/search` — глобальный поиск). Выбранный источник —
- * предыдущая запись истории, шаг назад по ней ставит родителя на его
- * место прокрутки.
- */
-export function goUpFromSpot(base: string, spots: string[], parent: string): Promise<void> {
-	const src = previousEntry();
-	if (src) {
-		const url = new URL(src, location.origin);
-		const rest = url.pathname.startsWith(base) ? url.pathname.slice(base.length) : undefined;
-		if (
-			spots.some((s) =>
-				s.startsWith('/') ? url.pathname === s : rest !== undefined && rest === `/${s}`
-			)
-		) {
-			return goUp(src);
-		}
-	}
-	return goUp(parent);
-}
+// Оверлеи поверх экрана (листы, диалоги, просмотр фото): «Назад» — и стрелка
+// в шапке, и системная — сперва закрывает верхний. Отдельный стек, а не общий
+// с экранами: иначе стрелка не знает, что над экраном что-то открыто.
+const overlays: Array<() => void> = [];
 
-// Стек: экран, поверх него лист — системная «Назад» сперва закрывает лист.
-const handlers: Array<() => void> = [];
-const top = () => handlers[handlers.length - 1];
-
-/** Экран с «Назад» в шапке или открытый лист: тот же обработчик и для системной кнопки. */
-export function setBackHandler(fn: () => void): () => void {
-	handlers.push(fn);
-	tryArm();
+/** Оверлей открыт: «Назад» закроет его, а не уйдёт с экрана. */
+export function setOverlayCloser(fn: () => void): () => void {
+	overlays.push(fn);
 	return () => {
-		const i = handlers.lastIndexOf(fn);
-		if (i >= 0) handlers.splice(i, 1);
+		const i = overlays.lastIndexOf(fn);
+		if (i >= 0) overlays.splice(i, 1);
 	};
 }
 
+/** Верхний оверлей, если он есть. */
+function topOverlay(): (() => void) | undefined {
+	return overlays[overlays.length - 1];
+}
+
 /**
- * Перед переходом по истории (корневой макет, beforeNavigate). true — шаг
- * отменить: вместо него позван обработчик экрана.
+ * Перед переходом по истории (корневой макет, beforeNavigate). Шаг отменяем
+ * только когда сверху открыт оверлей: его и закрываем. В остальных случаях шаг
+ * идёт своим ходом — «назад туда, откуда пришли» и есть правило (navigateBack).
+ * Отменять шаг ради обработчика экрана — гонка с откатом истории: системная
+ * «Назад» уезжала на запись дальше (C89).
  */
 export function interceptHistoryBack(delta: number | undefined): boolean {
 	if (ownBack) {
 		ownBack = false;
 		return false;
 	}
-	const fn = top();
-	if (!fn || (delta ?? 0) >= 0) return false;
-	// Отменённый шаг SvelteKit откатывает через history.go — ждём отката.
-	addEventListener('popstate', () => setTimeout(fn), { once: true });
+	if ((delta ?? 0) >= 0) return false;
+	const closer = topOverlay();
+	if (!closer) return false;
+	addEventListener('popstate', () => setTimeout(closer), { once: true });
 	return true;
 }
 
@@ -129,20 +202,10 @@ export function interceptHistoryBack(delta: number | undefined): boolean {
 // с неё — к родителю. Экран регистрирует «Назад» позже входа (ждёт данных),
 // поэтому запись ставится при первой регистрации на той же записи истории.
 let guardIndex: number | undefined;
-let pendingEnter: { index: number; url: URL } | undefined;
 
 export function armEntryGuard(url: URL): void {
 	const i = historyIndex();
 	if (i === undefined || entries.has(i - 1)) return;
-	pendingEnter = { index: i, url };
-	tryArm();
-}
-
-function tryArm() {
-	if (!pendingEnter || !top()) return;
-	const { index, url } = pendingEnter;
-	pendingEnter = undefined;
-	if (historyIndex() !== index) return;
 	pushState('', {});
 	guardIndex = historyIndex();
 	recordEntry(url);
@@ -154,11 +217,10 @@ if (typeof window !== 'undefined') {
 		guardIndex = undefined;
 		const here = location.pathname + location.search;
 		const index = historyIndex();
-		// Не сразу: SvelteKit разбирает тот же popstate после нас и сбросил бы
-		// начатый переход.
-		const fn = top();
-		setTimeout(() => fn?.());
-		// Закрыли лист, а экран остался — позади снова пусто, нужна новая копия.
+		// Шаг назад упёрся в запись-копию: позади ничего нет — идём к родителю,
+		// а не закрываем приложение.
+		setTimeout(() => void navigateBack());
+		// Экран остался на месте — позади снова пусто, нужна новая копия.
 		setTimeout(() => {
 			if (location.pathname + location.search === here && historyIndex() === index) {
 				armEntryGuard(new URL(location.href));

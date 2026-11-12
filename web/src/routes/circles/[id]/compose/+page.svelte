@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { spaceNotice } from '$lib/circles/space';
 	import SpaceNote from '$ui/chrome/SpaceNote.svelte';
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import DateRow from '$ui/forms/DateRow.svelte';
 	import ComposeToolbar from '$ui/chrome/ComposeToolbar.svelte';
@@ -368,7 +368,7 @@
 	}
 
 	function goBack() {
-		goUp(feedHref());
+		void navigateBack();
 	}
 
 	async function deleteDraft() {

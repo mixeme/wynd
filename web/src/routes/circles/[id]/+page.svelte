@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { serverHost } from '$lib/circles/move';
 	import { spaceNotice } from '$lib/circles/space';
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import PostByline from '$ui/data/PostByline.svelte';
 	import FeedEnd from '$ui/data/FeedEnd.svelte';
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
@@ -426,7 +426,7 @@
 	});
 
 	function goBack() {
-		goUp('/circles');
+		void navigateBack();
 	}
 
 	function openSearch() {

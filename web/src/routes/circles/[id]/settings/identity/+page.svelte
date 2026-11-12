@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import GenderPicker from '$ui/forms/GenderPicker.svelte';
 	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import { goto } from '$app/navigation';
@@ -137,12 +137,7 @@
 	});
 </script>
 
-<FormLayout
-	app
-	color={circle.color}
-	title="Кто вы в этом круге"
-	onback={() => goUp(`/circles/${circle.circleId}/settings`)}
->
+<FormLayout app color={circle.color} title="Кто вы в этом круге" onback={navigateBack}>
 	<Avatar initial={circle.identityInitial} color={circle.colorHex} src={avatarUrl} size="lg" />
 	<Hint centered class="mt-10">
 		<TextButton onclick={() => photoPicker?.open()}>сменить фото</TextButton>

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import NumberField from '$ui/forms/NumberField.svelte';
 	import { onMount } from 'svelte';
 	import Chip from '$ui/forms/Chip.svelte';
@@ -198,7 +198,7 @@
 	});
 </script>
 
-<FormLayout shell app title="Приложение" onback={() => goUp('/settings')}>
+<FormLayout shell app title="Приложение" onback={navigateBack}>
 	{#if desktop}
 		<SectionLabel>Интерфейс</SectionLabel>
 		<ServerRow

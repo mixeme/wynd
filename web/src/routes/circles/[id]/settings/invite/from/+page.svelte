@@ -1,7 +1,6 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
 	import { getContext, onMount } from 'svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Loading from '$ui/Loading.svelte';
@@ -19,7 +18,6 @@
 	import { CIRCLE_COLORS } from '$lib/theme/colors';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
-	const fromCreate = $derived($page.url.searchParams.get('from') === 'create');
 
 	let groups = $state<InviteCandidateGroup[]>([]);
 	let error = $state('');
@@ -27,8 +25,7 @@
 	let inviting = $state<string | null>(null);
 
 	function goBack() {
-		const q = fromCreate ? '?from=create' : '';
-		goUp(`/circles/${circle.circleId}/settings/invite${q}`);
+		void navigateBack();
 	}
 
 	function candidateSubtitle(member: InviteCandidate, group: InviteCandidateGroup): string {

@@ -15,7 +15,7 @@
  * `initialFocus: 'last'` — фокус при открытии и при возврате снаружи идёт на
  * последний фокусируемый элемент: у кадра аватара это «Готово».
  */
-import { setBackHandler } from '$lib/navigation/up';
+import { setOverlayCloser } from '$lib/navigation/up';
 
 export interface ModalOptions {
 	ondismiss?: () => void;
@@ -92,7 +92,7 @@ export function modal(node: HTMLElement, options: ModalOptions = {}) {
 	document.addEventListener('keydown', onKeydown, true);
 	document.addEventListener('focusin', onFocusIn);
 	// Системная «Назад» закрывает оверлей, как Escape (план 46, C13).
-	const dropBack = setBackHandler(() => opts.ondismiss?.());
+	const dropBack = setOverlayCloser(() => opts.ondismiss?.());
 	queueMicrotask(() => {
 		if (isTop() && !node.contains(document.activeElement)) focusFirst();
 	});

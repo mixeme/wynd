@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import { getContext } from 'svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -15,7 +15,7 @@
 	}
 </script>
 
-<FormLayout color={form.color} app title="Сервер" onback={() => goUp('/circles/new')}>
+<FormLayout color={form.color} app title="Сервер" onback={navigateBack}>
 	{#each form.sessions as session (session.origin)}
 		<ServerRow
 			name={form.serverCards[session.origin]?.info?.name ||

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import { copyText } from '$lib/clipboard';
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
@@ -61,7 +61,7 @@
 	const hasLiveMulti = $derived(liveInvites.some((inv) => inv.kind === 'multi'));
 
 	function goBack() {
-		goUp(`/circles/${circle.circleId}/settings`);
+		void navigateBack();
 	}
 
 	function goInvite() {

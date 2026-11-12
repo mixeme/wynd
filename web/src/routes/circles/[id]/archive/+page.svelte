@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import { getContext } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -36,7 +36,7 @@
 	});
 
 	function goBack() {
-		goUp(`/circles/${circle.circleId}/settings`);
+		void navigateBack();
 	}
 
 	function download() {

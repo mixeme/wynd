@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
@@ -55,12 +55,7 @@
 	onMount(() => void load());
 </script>
 
-<FormLayout
-	app
-	color={circle.color}
-	title="Архив и очистка"
-	onback={() => goUp(`/circles/${circle.circleId}/settings`)}
->
+<FormLayout app color={circle.color} title="Архив и очистка" onback={navigateBack}>
 	{#if loading}
 		<Loading />
 	{:else if error}

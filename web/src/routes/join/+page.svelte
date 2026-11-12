@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -48,7 +48,6 @@
 
 	// Из «Серверов» назад — туда же: «/» у вошедшего перекидывает в список
 	// кругов, и путь обратно терялся.
-	const backHref = $derived(adding ? '/settings/servers' : '/');
 
 	const blocked = $derived(instance ? instance.registration_mode !== 'open' : false);
 
@@ -209,7 +208,7 @@
 </script>
 
 {#if adding}
-	<FormLayout shell app title="Войти на сервер" onback={() => goUp(backHref)}>
+	<FormLayout shell app title="Войти на сервер" onback={navigateBack}>
 		<Label>Адрес сервера</Label>
 		<Input
 			active
@@ -284,7 +283,7 @@
 		{/if}
 	</FormLayout>
 {:else}
-	<FormLayout shell app title="Без приглашения" onback={() => goUp(backHref)}>
+	<FormLayout shell app title="Без приглашения" onback={navigateBack}>
 		{#if !ready}
 			<!-- режим ещё не известен: пусто, а не форма, которая сменится -->
 		{:else if !instance && serverError}

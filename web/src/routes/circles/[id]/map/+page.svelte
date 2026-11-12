@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import { getContext, onDestroy, onMount } from 'svelte';
 	import MapPane from '$ui/data/MapPane.svelte';
@@ -219,7 +219,7 @@
 	});
 
 	function goBack() {
-		goUp('/circles');
+		void navigateBack();
 	}
 
 	function openSelected() {

@@ -98,14 +98,14 @@
 
 	function onTabChange(tab: string) {
 		const t = tab as CircleTab;
+		const again = t === active;
 		active = t;
-		if (circleId) {
-			const suffix = tabPaths[t];
-			// Вкладки одного уровня: не копим их в истории (план 46, C13).
-			goto(suffix ? `/circles/${circleId}${suffix}` : `/circles/${circleId}`, {
-				replaceState: true
-			});
-		}
+		// Шаг истории, а не замена: «Назад» должна вернуть туда, откуда пришли,
+		// а не в список кругов (C89). Повторное нажатие на открытую вкладку
+		// только поднимает экран наверх — адрес не меняется.
+		if (!circleId || again) return;
+		const suffix = tabPaths[t];
+		goto(suffix ? `/circles/${circleId}${suffix}` : `/circles/${circleId}`);
 	}
 </script>
 

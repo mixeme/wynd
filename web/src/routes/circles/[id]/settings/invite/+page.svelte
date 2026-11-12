@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import NumberField from '$ui/forms/NumberField.svelte';
 	import { copyText } from '$lib/clipboard';
 	import { goto } from '$app/navigation';
@@ -44,7 +44,7 @@
 	// или на улочку оставлял гадать, создан ли круг.
 	function goBack() {
 		if (fromCreate) goCircle();
-		else goUp(`/circles/${circle.circleId}/settings`);
+		else void navigateBack();
 	}
 
 	// Опции те же, что у админа на 9.2, без «Без ограничений» и «Без срока»:

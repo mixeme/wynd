@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { spaceNotice } from '$lib/circles/space';
-	import { goUp, previousEntry } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import PostByline from '$ui/data/PostByline.svelte';
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
 	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
@@ -499,24 +499,9 @@
 	// Источник берём из карты истории в момент нажатия, а не из afterNavigate:
 	// при входе из глобального поиска afterNavigate не получает from, и запись
 	// уходила в ленту (C87). Карта обновляется и при replaceState поиска.
-	function backTo(): string {
-		const src = previousEntry();
-		if (!src) return '';
-		const url = new URL(src, location.origin);
-		const base = `/circles/${circle.circleId}`;
-		const rest = url.pathname.startsWith(base) ? url.pathname.slice(base.length) : null;
-		if (
-			(rest !== null &&
-				/^(|\/days(\/\d{4}-\d{2}-\d{2})?|\/grid|\/map|\/responses|\/search)$/.test(rest)) ||
-			url.pathname === '/search'
-		) {
-			return url.pathname + url.search;
-		}
-		return '';
-	}
 
 	function goBack() {
-		goUp(backTo() || `/circles/${circle.circleId}`);
+		void navigateBack();
 	}
 
 	function openEdit() {

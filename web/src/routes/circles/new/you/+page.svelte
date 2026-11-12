@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
@@ -94,7 +94,7 @@
 	}
 </script>
 
-<FormLayout app color={form.color} circleTitle={form.name} onback={() => goUp('/circles/new')}>
+<FormLayout app color={form.color} circleTitle={form.name} onback={navigateBack}>
 	<IdentityForm
 		color={form.color}
 		bind:name

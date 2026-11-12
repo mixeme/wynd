@@ -4,7 +4,7 @@
 	import { getContext, onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack, goUp } from '$lib/navigation/up';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Label from '$ui/forms/Label.svelte';
@@ -200,7 +200,7 @@
 {:else}
 	<!-- Имя можно выбрать и позже: позванный круг стоит в списке кругов строкой
      «Вас позвали — выберите имя», стрелка ведёт туда. -->
-	<FormLayout app color={circle.color} circleTitle={circle.name} onback={() => goUp('/circles')}>
+	<FormLayout app color={circle.color} circleTitle={circle.name} onback={navigateBack}>
 		{#if split && pendingJoin}
 			<ScreenTitle class="mt-22 lh-125"
 				>{split.invite_line || `Круг отделён от круга «${split.split_from}»`}</ScreenTitle

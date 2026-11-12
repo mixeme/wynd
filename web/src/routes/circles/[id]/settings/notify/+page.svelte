@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import { getContext, onMount } from 'svelte';
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
@@ -89,12 +89,7 @@
 	});
 </script>
 
-<FormLayout
-	app
-	color={circle.color}
-	title="Уведомления круга"
-	onback={() => goUp(`/circles/${circle.circleId}/settings`)}
->
+<FormLayout app color={circle.color} title="Уведомления круга" onback={navigateBack}>
 	<Label>Присылать</Label>
 	{#if !soloCircle}
 		<SettingsRow class="pt-2" title="Новые записи">

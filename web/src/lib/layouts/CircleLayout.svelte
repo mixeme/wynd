@@ -1,7 +1,6 @@
 ﻿<script lang="ts">
 	import { pushStatusColor } from '$lib/session/statusColor.svelte';
 	import { CIRCLE_COLORS } from '$lib/theme/colors';
-	import { setBackHandler } from '$lib/navigation/up';
 	import { getContext } from 'svelte';
 	import type { VoiceTake } from '$lib/media/voiceRecorder.svelte';
 	import { goto } from '$app/navigation';
@@ -120,12 +119,6 @@
 		return pushStatusColor(CIRCLE_COLORS[color ?? 'terracotta'].hex);
 	});
 
-	// Системная «Назад» — тот же обработчик (план 46, C13).
-	$effect(() => {
-		const fn = onback;
-		if (fn) return setBackHandler(() => fn());
-	});
-
 	const circleId = $derived(circleIdProp ?? circleCtx?.circleId);
 
 	// Свайп по вкладкам (план 46, C9): содержимое идёт за пальцем, дальше
@@ -180,9 +173,8 @@
 		leavingTab = tab;
 		setTimeout(() => {
 			const suffix = CIRCLE_TAB_PATHS[tab];
-			void goto(suffix ? `/circles/${circleId}${suffix}` : `/circles/${circleId}`, {
-				replaceState: true
-			}).finally(() => {
+			// Свайп — тот же шаг истории, что и нажатие вкладки (C89).
+			void goto(suffix ? `/circles/${circleId}${suffix}` : `/circles/${circleId}`).finally(() => {
 				leaving = 0;
 			});
 		}, 160);

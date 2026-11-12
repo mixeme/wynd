@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
 	import Switch from '$ui/forms/Switch.svelte';
 	import { goto } from '$app/navigation';
@@ -47,12 +47,8 @@
 	// настройки круга (?back от приёмки); из передачи владения на выходе
 	// (?back от «Уйти из круга» и «Уйти с сервера») — на экран выхода.
 	// Только на внутренние экраны — чужой адрес не берём.
-	const upTarget = $derived.by(() => {
-		const back = $page.url.searchParams.get('back') ?? '';
-		return back.startsWith('/settings/') || back.startsWith('/circles/')
-			? back
-			: `/circles/${circle.circleId}/settings`;
-	});
+	// Источник «Назад» больше не подсказывает экран параметром: его знает
+	// история переходов (C89).
 	const active = $derived(members.filter((m) => m.status === 'active' && !m.not_joined));
 	// Приехали с кругом и здесь ещё не входили (6.6); раздел исчезает сам.
 	const waiting = $derived(members.filter((m) => m.status === 'active' && m.not_joined));
@@ -213,7 +209,7 @@
 	color={circle.color}
 	title={transferMode ? 'Передать владение' : 'Участники'}
 	right={String(active.length)}
-	onback={() => goUp(upTarget)}
+	onback={navigateBack}
 >
 	{#if error}
 		<Hint class="gutter">{error}</Hint>

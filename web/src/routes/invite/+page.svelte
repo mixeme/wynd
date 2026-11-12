@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import { goto } from '$app/navigation';
 	import Button from '$ui/forms/Button.svelte';
@@ -54,7 +54,7 @@
 	}
 </script>
 
-<FormLayout shell app title="Приглашение" onback={() => goUp(fromLogin ? '/' : '/circles')}>
+<FormLayout shell app title="Приглашение" onback={navigateBack}>
 	<Hint>Вставьте ссылку, которую вам прислали, или отсканируйте QR-код.</Hint>
 	<Label>Ссылка</Label>
 	<Input

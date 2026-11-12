@@ -1,19 +1,15 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import Hint from '$ui/forms/Hint.svelte';
 	import QrScanner from '$ui/forms/QrScanner.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { inviteTarget } from '$lib/auth/links';
-	import { page } from '$app/stores';
 
 	// 2.8: QR-код приглашения показывают на чужом экране (2.17, 9.2) — значит,
 	// считывать его логично здесь же, камерой.
 	let error = $state('');
 	let notice = $state('');
-
-	const PARENTS: Record<string, string> = { join: '/join', login: '/invite?from=login' };
-	const parent = $derived(PARENTS[$page.url.searchParams.get('from') ?? ''] ?? '/invite');
 
 	function onread(text: string): boolean {
 		const target = inviteTarget(text);
@@ -27,7 +23,7 @@
 	}
 </script>
 
-<FormLayout shell app title="Сканер" onback={() => goUp(parent)}>
+<FormLayout shell app title="Сканер" onback={navigateBack}>
 	<QrScanner {onread} onerror={(message) => (error = message)} />
 	{#if error}
 		<Hint>{error}</Hint>

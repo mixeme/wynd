@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -53,12 +53,7 @@
 	});
 </script>
 
-<FormLayout
-	app
-	color={circle.color}
-	title="Покинуть круг"
-	onback={() => goUp(`/circles/${circle.circleId}/settings`)}
->
+<FormLayout app color={circle.color} title="Покинуть круг" onback={navigateBack}>
 	{#if pageLoading}
 		<Loading />
 	{:else if isOwner}

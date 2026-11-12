@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { loadServerCard, type ServerCardState } from '$lib/instance/serverCard';
 	let serverCard = $state<ServerCardState>({ connection: 'checking' });
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import { goto, replaceState } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
@@ -387,7 +387,7 @@
 			: step === 'choose'
 				? 'Принять круг'
 				: 'Оживить круг'}
-		onback={() => (step === 'who' ? (step = 'review') : goUp('/settings/servers'))}
+		onback={() => (step === 'who' ? (step = 'review') : void navigateBack())}
 	>
 		<FilePicker bind:this={picker} accept=".wynd" onfiles={(files) => void pick(files)} />
 		{#if step === 'choose'}

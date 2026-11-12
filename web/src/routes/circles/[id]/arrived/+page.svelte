@@ -3,7 +3,7 @@
 	let serverCard = $state<ServerCardState>({ connection: 'checking' });
 	import { getContext, onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import Avatar from '$ui/data/Avatar.svelte';
 	import ServerRow from '$ui/data/ServerRow.svelte';
 	import Button from '$ui/forms/Button.svelte';
@@ -73,7 +73,7 @@
 	}
 </script>
 
-<FormLayout app color={circle.color} circleTitle={circle.name} onback={() => goUp('/circles')}>
+<FormLayout app color={circle.color} circleTitle={circle.name} onback={navigateBack}>
 	{#if arrival}
 		<!-- Сервер — плашкой и первым (владелец, 2026-10-18). -->
 		<Label class="mt-16">Сервер</Label>

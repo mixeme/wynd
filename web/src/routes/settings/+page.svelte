@@ -1,5 +1,5 @@
 ﻿<script lang="ts">
-	import { goUp } from '$lib/navigation/up';
+	import { navigateBack } from '$lib/navigation/up';
 	import { plural, WORD } from '$lib/format/plural';
 	import AboutFooter from '$ui/data/AboutFooter.svelte';
 	import { onMount } from 'svelte';
@@ -43,7 +43,7 @@
 	);
 
 	function goBack() {
-		void goUp('/circles');
+		void navigateBack();
 	}
 </script>
 
