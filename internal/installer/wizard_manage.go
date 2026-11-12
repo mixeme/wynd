@@ -74,7 +74,7 @@ func (w *Wizard) ServerPage(ctx context.Context) ServerPage {
 	}
 	sess, rep := w.session, w.report
 	w.mu.Unlock()
-	st, err := ReadServerState(ctx, sess)
+	st, err := ReadServerStateAt(ctx, sess, w.layout())
 	if err != nil {
 		return ServerPage{Message: "Связь с сервером оборвалась", Advice: "Подключитесь ещё раз."}
 	}
@@ -100,7 +100,7 @@ func (w *Wizard) ServerPage(ctx context.Context) ServerPage {
 			}
 		}
 	}
-	if size, err := CopySize(ctx, sess); err == nil {
+	if size, err := CopySizeAt(ctx, sess, w.layout()); err == nil {
 		page.CopyBytes = size
 	}
 	w.mu.Lock()
@@ -124,7 +124,7 @@ func (w *Wizard) Service(ctx context.Context, action string) ServiceResult {
 	}
 	sess := w.session
 	w.mu.Unlock()
-	log, err := ServiceAction(ctx, sess, action)
+	log, err := ServiceActionAt(ctx, sess, w.layout(), action)
 	res := ServiceResult{OK: err == nil, Log: log}
 	if err != nil {
 		res.Message = "Не получилось"
@@ -176,7 +176,7 @@ func (w *Wizard) StartUpdate(ctx context.Context, opt UpdateOptions) Progress {
 		opt.StartAfter = true
 	}
 	spec := UpdateSpec{From: st.Version, To: to, Domain: st.Domain, Image: image,
-		Running: running, StopForCopy: opt.StopForCopy, StartAfter: opt.StartAfter, Probe: w.Probe}
+		Running: running, StopForCopy: opt.StopForCopy, StartAfter: opt.StartAfter, Probe: w.Probe, Root: w.Root}
 	if st.Update != nil {
 		spec.From = st.Update.From
 	}
@@ -301,7 +301,7 @@ func (w *Wizard) ReturnPrevious(ctx context.Context) ServiceResult {
 	}
 	runCtx, cancel := context.WithTimeout(ctx, 30*time.Minute)
 	defer cancel()
-	log, err := ReturnPrevious(runCtx, sess, from, start)
+	log, err := ReturnPreviousAt(runCtx, sess, w.layout(), from, start)
 	res := ServiceResult{OK: err == nil, Log: log}
 	if err != nil {
 		res.Message = "Вернуть не получилось"

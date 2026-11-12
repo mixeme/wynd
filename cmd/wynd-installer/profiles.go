@@ -104,5 +104,5 @@ func profileCallWith[T any](a *App, id string, allowRunning, move bool, fn func(
 }
 
 func pageCheck(p installer.ServerPage) *installer.ServerCheck {
-	return &installer.ServerCheck{At: time.Now().UTC(), Domain: p.State.Domain, Version: p.State.Version, Installed: p.State.Installed, Running: p.State.Running, FreeBytes: p.State.FreeBytes}
+	return &installer.ServerCheck{At: time.Now().UTC(), Domain: p.State.Domain, Version: p.State.Version, Installed: p.State.Installed, Running: p.State.Running, FreeBytes: p.State.FreeBytes, Root: p.State.Root}
 }

@@ -45,6 +45,9 @@ type ServerState struct {
 	Update *UpdateMark `json:"update,omitempty"`
 	// Move — переезд с этого сервера начат и не закончен (кадр 9в2).
 	Move *MoveMark `json:"move,omitempty"`
+	// Root — каталог, в котором нашлась установка (план «другой каталог»);
+	// пусто — установки нет.
+	Root string `json:"root,omitempty"`
 }
 
 // UpdateMark — пометка начатого обновления.
@@ -65,11 +68,22 @@ type UpdateMark struct {
 
 // ReadServerState смотрит, что стоит на сервере. Ничего не меняет.
 func ReadServerState(ctx context.Context, sess *Session) (ServerState, error) {
-	res, err := sess.Exec(ctx, DefaultLayout().StateScript(), nil, shortTimeout)
+	return ReadServerStateAt(ctx, sess, DefaultLayout())
+}
+
+// ReadServerStateAt — то же для известного размещения установки.
+func ReadServerStateAt(ctx context.Context, sess *Session, l Layout) (ServerState, error) {
+	res, err := sess.Exec(ctx, l.StateScript(), nil, shortTimeout)
 	if err != nil {
 		return ServerState{}, err
 	}
-	return parseServerState(res.Output), nil
+	st := parseServerState(res.Output)
+	if st.Installed {
+		// Установка нашлась именно в этом каталоге: скрипт начинается с перехода
+		// в него, и без compose.yaml он ответил бы '@none'.
+		st.Root = l.Root()
+	}
+	return st, nil
 }
 
 func parseServerState(out string) ServerState {
@@ -133,6 +147,13 @@ const composeCmd = "cd " + installDir + " && docker compose "
 // трогается: остановленный сайт отвечает «сервер недоступен», а не пропадает
 // с адреса (кадр 7а3).
 func ServiceAction(ctx context.Context, sess *Session, action string) ([]LogEntry, error) {
+	return ServiceActionAt(ctx, sess, DefaultLayout(), action)
+}
+
+// ServiceActionAt — то же для известного размещения установки.
+func ServiceActionAt(ctx context.Context, sess *Session, l Layout, action string) ([]LogEntry, error) {
+	composeCmd := l.ComposeCommand()
+	stoppedMark := l.StoppedMark()
 	r := &Run{sess: sess, steps: []StepState{{ID: action}}, report: func() {}}
 	var cmd string
 	switch action {
@@ -158,7 +179,8 @@ func ServiceAction(ctx context.Context, sess *Session, action string) ([]LogEntr
 
 // waitHealthy ждёт, пока Wynd ответит.
 func waitHealthy(ctx context.Context, r *Run) error {
-	healthy := composeCmd + `ps -q wynd | xargs -r docker inspect -f '{{.State.Health.Status}}' | grep -qx healthy`
+	compose := r.layout.ComposeCommand()
+	healthy := compose + `ps -q wynd | xargs -r docker inspect -f '{{.State.Health.Status}}' | grep -qx healthy`
 	deadline := time.Now().Add(healthWait)
 	for {
 		up, err := r.ok(ctx, healthy)
@@ -169,7 +191,7 @@ func waitHealthy(ctx context.Context, r *Run) error {
 			return nil
 		}
 		if time.Now().After(deadline) {
-			_, _ = r.sh(ctx, composeCmd+"ps; "+composeCmd+"logs --no-color --tail 20 wynd 2>&1 | grep -v 'bootstrap URL'", shortTimeout)
+			_, _ = r.sh(ctx, compose+"ps; "+compose+"logs --no-color --tail 20 wynd 2>&1 | grep -v 'bootstrap URL'", shortTimeout)
 			return &StepError{
 				Message: "Wynd запустился, но не отвечает",
 				Advice:  "В «подробностях» видно, что пишет сам Wynd.",
@@ -207,6 +229,8 @@ type UpdateSpec struct {
 	// StartAfter — запустить новую версию (7б3: «Оставить сайт остановленным» — нет).
 	StartAfter bool
 	Probe      func(ctx context.Context, url string) (string, error)
+	// Root — каталог установки; пусто — /opt/wynd (план «другой каталог»).
+	Root string
 }
 
 // LiveCopyFrom — с какой версии Wynd умеет копию без файлов на работающем
@@ -219,7 +243,8 @@ func CanCopyLive(version string) bool {
 	return ok && !relver.Less(n, LiveCopyFrom)
 }
 
-func backupFor(version string) string { return backupsDir + "/" + version }
+// backupFor — папка копии версии в размещении установки.
+func backupFor(l Layout, version string) string { return l.Backups() + "/" + version }
 
 // updateSteps — шаги обновления; пометка начатого обновления кладётся до
 // первого изменения сайта и убирается последним шагом.
@@ -248,11 +273,11 @@ func stopStep(mark []byte) step {
 		title: "Остановка Wynd",
 		do: func(ctx context.Context, r *Run) error {
 			if mark != nil {
-				if err := r.put(ctx, updateMark, string(mark)+"\n"); err != nil {
+				if err := r.put(ctx, r.layout.UpdateMark(), string(mark)+"\n"); err != nil {
 					return err
 				}
 			}
-			_, err := r.must(ctx, composeCmd+"stop wynd 2>&1", shortTimeout)
+			_, err := r.must(ctx, r.layout.ComposeCommand()+"stop wynd 2>&1", shortTimeout)
 			return err
 		},
 	}
@@ -262,19 +287,33 @@ func stopStep(mark []byte) step {
 // ключи — копией, фото и видео — жёсткими ссылками на те же файлы: места не
 // занимают и остаются, даже если новая версия удалит файл.
 func copyStep(spec UpdateSpec, mark []byte, stopped, writeMark bool) step {
-	dir := backupFor(spec.From)
-	var db string
-	if stopped {
-		// Wynd стоит — база не меняется, файлы копируются как есть.
-		db = `mkdir -p "$d.new" && cp -a data/wynd.db "$d.new/" && for f in wynd.db-wal wynd.db-shm config.json; do if [ -e data/$f ]; then cp -a data/$f "$d.new/"; fi; done && if [ -d data/keys ]; then cp -a data/keys "$d.new/"; fi`
-	} else {
-		// Wynd работает — снимок базы им самим, без файлов.
-		db = `rm -rf data/.workshop-copy && ` + composeCmd + `exec -T wynd wynd backup -no-blobs /data/.workshop-copy </dev/null && mv data/.workshop-copy "$d.new"`
-	}
-	script := `set -e
-cd ` + installDir + `
+	return step{
+		id:    "copy",
+		title: "Копия данных",
+		// Новая версия уже вписана в compose.yaml — она могла запускаться и
+		// поменять базу: повтор не перезаписывает ею копию прежней версии.
+		done: func(ctx context.Context, r *Run) (bool, error) {
+			st, err := ReadServerStateAt(ctx, r.sess, r.layout)
+			if err != nil {
+				return false, err
+			}
+			return newPlaced(st, spec.From), nil
+		},
+		do: func(ctx context.Context, r *Run) error {
+			l := r.layout
+			dir := backupFor(l, spec.From)
+			var db string
+			if stopped {
+				// Wynd стоит — база не меняется, файлы копируются как есть.
+				db = `mkdir -p "$d.new" && cp -a data/wynd.db "$d.new/" && for f in wynd.db-wal wynd.db-shm config.json; do if [ -e data/$f ]; then cp -a data/$f "$d.new/"; fi; done && if [ -d data/keys ]; then cp -a data/keys "$d.new/"; fi`
+			} else {
+				// Wynd работает — снимок базы им самим, без файлов.
+				db = `rm -rf data/.workshop-copy && ` + l.ComposeCommand() + `exec -T wynd wynd backup -no-blobs /data/.workshop-copy </dev/null && mv data/.workshop-copy "$d.new"`
+			}
+			script := `set -e
+cd ` + l.ShellRoot() + `
 d=` + dir + `
-mkdir -p ` + backupsDir + `
+mkdir -p ` + l.Backups() + `
 rm -rf "$d.new"
 ` + db + `
 cp -al data/blobs "$d.new/blobs"
@@ -282,25 +321,12 @@ cp -a compose.yaml "$d.new/"
 if [ -e Caddyfile ]; then cp -a Caddyfile "$d.new/"; fi
 rm -rf "$d"
 mv "$d.new" "$d"`
-	return step{
-		id:    "copy",
-		title: "Копия данных",
-		// Новая версия уже вписана в compose.yaml — она могла запускаться и
-		// поменять базу: повтор не перезаписывает ею копию прежней версии.
-		done: func(ctx context.Context, r *Run) (bool, error) {
-			st, err := ReadServerState(ctx, r.sess)
-			if err != nil {
-				return false, err
-			}
-			return newPlaced(st, spec.From), nil
-		},
-		do: func(ctx context.Context, r *Run) error {
 			if writeMark {
-				if err := r.put(ctx, updateMark, string(mark)+"\n"); err != nil {
+				if err := r.put(ctx, l.UpdateMark(), string(mark)+"\n"); err != nil {
 					return err
 				}
 			}
-			need, err := r.must(ctx, "du -sk "+dataDir+"/wynd.db* | awk '{s+=$1} END {print s}'; df -Pk "+installDir+" | tail -n 1", shortTimeout)
+			need, err := r.must(ctx, "du -sk "+l.Data()+"/wynd.db* | awk '{s+=$1} END {print s}'; df -Pk "+l.ShellRoot()+" | tail -n 1", shortTimeout)
 			if err != nil {
 				return err
 			}
@@ -323,7 +349,7 @@ mv "$d.new" "$d"`
 			}
 			m.Copied = true
 			copied, _ := json.Marshal(m)
-			return r.put(ctx, updateMark, string(copied)+"\n")
+			return r.put(ctx, r.layout.UpdateMark(), string(copied)+"\n")
 		},
 	}
 }
@@ -346,6 +372,7 @@ func startNewStep(spec UpdateSpec, ref string) step {
 		id:    "start",
 		title: title,
 		do: func(ctx context.Context, r *Run) error {
+			composePath := r.layout.Compose()
 			cur, err := r.must(ctx, "cat "+composePath, shortTimeout)
 			if err != nil {
 				return err
@@ -363,10 +390,10 @@ func startNewStep(spec UpdateSpec, ref string) step {
 				}
 			}
 			if !spec.StartAfter {
-				_, err := r.must(ctx, composeCmd+"up -d --no-start wynd 2>&1", shortTimeout)
+				_, err := r.must(ctx, r.layout.ComposeCommand()+"up -d --no-start wynd 2>&1", shortTimeout)
 				return err
 			}
-			_, err = r.must(ctx, composeCmd+"up -d wynd 2>&1 && rm -f "+stoppedMark, packageTimeout)
+			_, err = r.must(ctx, r.layout.ComposeCommand()+"up -d wynd 2>&1 && rm -f "+r.layout.StoppedMark(), packageTimeout)
 			return err
 		},
 		verify: func(ctx context.Context, r *Run) error {
@@ -400,7 +427,7 @@ func checkStep(spec UpdateSpec) step {
 					}
 				}
 			}
-			_, err := r.must(ctx, "rm -f "+updateMark, shortTimeout)
+			_, err := r.must(ctx, "rm -f "+r.layout.UpdateMark(), shortTimeout)
 			return err
 		},
 	}
@@ -409,7 +436,7 @@ func checkStep(spec UpdateSpec) step {
 // Update обновляет Wynd. Повтор после отказа — с начала: сделанные шаги
 // проходят быстро (образ уже есть, копия перезаписывается).
 func Update(ctx context.Context, sess *Session, spec UpdateSpec, report func(Progress)) Progress {
-	return runSteps(ctx, sess, Spec{Domain: spec.Domain, Version: spec.To, Image: spec.Image}, updateSteps(spec), report,
+	return runSteps(ctx, sess, Spec{Domain: spec.Domain, Version: spec.To, Image: spec.Image, Root: spec.Root}, updateSteps(spec), report,
 		func(_ *Run, p *Progress) { p.Site = "https://" + spec.Domain })
 }
 
@@ -422,26 +449,31 @@ func UpdateTitles(spec UpdateSpec) []StepState { return titles(updateSteps(spec)
 // ещё не вписана в compose.yaml — данные она не трогала, и копия не нужна:
 // в папке копии может лежать прошлая, старше живой базы.
 func ReturnPrevious(ctx context.Context, sess *Session, from string, start bool) ([]LogEntry, error) {
-	r := &Run{sess: sess, steps: []StepState{{ID: "return"}}, report: func() {}}
-	st, err := ReadServerState(ctx, sess)
+	return ReturnPreviousAt(ctx, sess, DefaultLayout(), from, start)
+}
+
+// ReturnPreviousAt — то же для известного размещения установки.
+func ReturnPreviousAt(ctx context.Context, sess *Session, l Layout, from string, start bool) ([]LogEntry, error) {
+	r := &Run{sess: sess, layout: l, steps: []StepState{{ID: "return"}}, report: func() {}}
+	st, err := ReadServerStateAt(ctx, sess, l)
 	if err != nil {
 		return nil, err
 	}
 	if !newPlaced(st, from) {
 		if start {
-			if _, err := r.must(ctx, composeCmd+"up -d wynd 2>&1", packageTimeout); err != nil {
+			if _, err := r.must(ctx, l.ComposeCommand()+"up -d wynd 2>&1", packageTimeout); err != nil {
 				return r.log, err
 			}
 			if err := waitHealthy(ctx, r); err != nil {
 				return r.log, err
 			}
 		}
-		_, err := r.must(ctx, "rm -f "+updateMark, shortTimeout)
+		_, err := r.must(ctx, "rm -f "+l.UpdateMark(), shortTimeout)
 		return r.log, err
 	}
-	d := backupFor(from)
+	d := backupFor(l, from)
 	script := `set -e
-cd ` + installDir + `
+cd ` + l.ShellRoot() + `
 d=` + d + `
 test -f "$d/wynd.db"
 docker compose stop wynd 2>&1 || true
@@ -456,21 +488,26 @@ cp -aln "$d/blobs/." data/blobs/`
 		return r.log, err
 	}
 	if start {
-		if _, err := r.must(ctx, composeCmd+"up -d wynd 2>&1", packageTimeout); err != nil {
+		if _, err := r.must(ctx, l.ComposeCommand()+"up -d wynd 2>&1", packageTimeout); err != nil {
 			return r.log, err
 		}
 		if err := waitHealthy(ctx, r); err != nil {
 			return r.log, err
 		}
 	}
-	_, err = r.must(ctx, "rm -f "+updateMark, shortTimeout)
+	_, err = r.must(ctx, "rm -f "+l.UpdateMark(), shortTimeout)
 	return r.log, err
 }
 
 // CopySize — сколько займёт копия перед обновлением: база (фото и видео —
 // ссылками, места не занимают). Для плана 7б и отказа 7б2.
 func CopySize(ctx context.Context, sess *Session) (uint64, error) {
-	res, err := sess.Exec(ctx, "du -sk "+dataDir+"/wynd.db* 2>/dev/null | awk '{s+=$1} END {print s+0}'", nil, shortTimeout)
+	return CopySizeAt(ctx, sess, DefaultLayout())
+}
+
+// CopySizeAt — то же для известного размещения установки.
+func CopySizeAt(ctx context.Context, sess *Session, l Layout) (uint64, error) {
+	res, err := sess.Exec(ctx, "du -sk "+l.Data()+"/wynd.db* 2>/dev/null | awk '{s+=$1} END {print s+0}'", nil, shortTimeout)
 	if err != nil {
 		return 0, err
 	}

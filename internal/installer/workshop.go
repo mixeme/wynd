@@ -23,7 +23,10 @@ type ServerProfile struct {
 	UseKeys     bool         `json:"use_keys"`
 	Remember    bool         `json:"remember"`
 	AutoConnect bool         `json:"auto_connect"`
-	LastCheck   *ServerCheck `json:"last_check,omitempty"`
+	// Root — каталог установки на этом сервере (план «другой каталог»).
+	// Пусто — /opt/wynd: профили прежних версий.
+	Root      string       `json:"root,omitempty"`
+	LastCheck *ServerCheck `json:"last_check,omitempty"`
 }
 
 // ServerCheck is explicitly historical; reconnect and inspect before any remote change.
@@ -34,6 +37,9 @@ type ServerCheck struct {
 	Installed bool      `json:"installed"`
 	Running   bool      `json:"running"`
 	FreeBytes uint64    `json:"free_bytes"`
+	// Root — фактический каталог установки с сервера; пусто — неизвестен
+	// (не осматривали или установки нет).
+	Root string `json:"root,omitempty"`
 }
 
 type ProfileState struct {
@@ -108,7 +114,9 @@ func OpenWorkshop(path string, create func() *Wizard) (*Workshop, error) {
 			return nil, err
 		}
 		seen[p.ID] = true
-		w.sessions = append(w.sessions, &profileSession{profile: p, wizard: w.makeWizard(p.ID)})
+		wiz := w.makeWizard(p.ID)
+		wiz.Root = p.Root
+		w.sessions = append(w.sessions, &profileSession{profile: p, wizard: wiz})
 	}
 	return w, nil
 }
@@ -144,6 +152,11 @@ func (w *Workshop) makeWizard(id string) *Wizard {
 	wiz := w.create()
 	if wiz.Vault != nil {
 		wiz.Vault = profileVault{workshop: w, id: id, base: wiz.Vault}
+	}
+	// Каталог установки профиля, если он уже в списке (при загрузке список
+	// наполняется после создания мастера — там каталог ставится отдельно).
+	if s := w.find(id); s != nil {
+		wiz.Root = s.profile.Root
 	}
 	return wiz
 }
@@ -259,6 +272,24 @@ func (w *Workshop) SaveProfile(p ServerProfile) (ServerProfile, error) {
 		}
 	}
 	old := s.profile
+	// Каталог установки (план «другой каталог»): у существующего профиля он
+	// сохраняется, если не задан новый; менять его устоявшейся установки
+	// простым редактированием нельзя — тогда обновление и удаление ушли бы в
+	// другую папку. Проверяем до записи.
+	if p.Root != "" {
+		l, err := NewLayout(p.Root)
+		if err != nil {
+			return ServerProfile{}, err
+		}
+		p.Root = l.Root()
+	}
+	if old.ID != "" {
+		if p.Root == "" {
+			p.Root = old.Root
+		} else if p.Root != old.Root && old.LastCheck != nil && old.LastCheck.Installed {
+			return ServerProfile{}, errors.New("Каталог установки этого сервера уже известен — он меняется переездом, а не правкой профиля")
+		}
+	}
 	// Password-based auto-connect is enabled only by SetAutoConnect after
 	// successful authentication and storage. Editing access invalidates it.
 	if !p.UseKeys {
@@ -272,6 +303,8 @@ func (w *Workshop) SaveProfile(p ServerProfile) (ServerProfile, error) {
 		}
 		return ServerProfile{}, err
 	}
+	// Следующая операция профиля считает пути от этого каталога.
+	s.wizard.Root = p.Root
 	// No remote request is running; discard the old connection and any plans.
 	s.wizard.Close()
 	return cloneProfile(p), nil

@@ -78,6 +78,10 @@ type Wizard struct {
 	TestCert bool
 	// Probe — как открыть сайт с этого компьютера; пусто — обычный запрос.
 	Probe func(ctx context.Context, url string) (string, error)
+	// Root — каталог установки этого сервера (план «другой каталог»); пусто —
+	// /opt/wynd. Размещение одно на мастера: все операции профиля считают
+	// пути от него.
+	Root string
 
 	mu      sync.Mutex
 	input   ConnectInput
@@ -112,6 +116,16 @@ type Wizard struct {
 
 // HasSavedPassword — лежит ли в связке пароль для этого сервера: окно тогда
 // не требует вводить его заново.
+// layout — размещение установки этого сервера: пустой каталог в профиле
+// значит /opt/wynd (план «другой каталог»).
+func (w *Wizard) layout() Layout {
+	l, err := NewLayout(w.Root)
+	if w.Root == "" || err != nil {
+		return DefaultLayout()
+	}
+	return l
+}
+
 func (w *Wizard) HasSavedPassword(host, user string) bool {
 	if w.Vault == nil {
 		return false
@@ -369,7 +383,7 @@ func (w *Wizard) specLocked(plan Plan) Spec {
 	if plan.Build && w.Source != nil {
 		image = w.Source
 	}
-	return Spec{Domain: plan.Domain, Version: plan.Version, Image: image, FixClock: plan.FixClock, Proxy: plan.Proxy, TestCert: w.TestCert, Probe: w.Probe}
+	return Spec{Domain: plan.Domain, Version: plan.Version, Image: image, FixClock: plan.FixClock, Proxy: plan.Proxy, TestCert: w.TestCert, Probe: w.Probe, Root: w.Root}
 }
 
 // StartInstall запускает установку по плану и сразу возвращает её состояние;
@@ -490,7 +504,7 @@ func (w *Wizard) Rollback(ctx context.Context, keepData bool) RollbackResult {
 			return RollbackResult{Message: "Связь с сервером оборвалась", Advice: "Подключитесь заново и повторите откат."}
 		}
 	}
-	spec := Spec{Version: w.Version, Image: w.Image}
+	spec := Spec{Version: w.Version, Image: w.Image, Root: w.Root}
 	if w.plan != nil {
 		spec = w.specLocked(*w.plan)
 	}
