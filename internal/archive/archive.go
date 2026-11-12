@@ -355,6 +355,10 @@ func (st style) pageEnd() string {
 // Вёрстка — как в клиенте (wynd.html, «Квота и архив»): бумага и чернила из
 // tokens.css, цвет круга в шапке и акцентах, карточка записи и комментарии
 // как в ленте. Всё внутри файла: архив открывается офлайн и без Wynd.
+// Стили аудиострок сверяются с web/src/lib/styles/ui.css тестом
+// TestArchiveAudioStylesMatchApp — при смене значений в приложении тест
+// укажет на архив. Полосатая заглушка обложки без файла — как .pic
+// (решение владельца 2026-11-12).
 const baseCSS = `
 :root{--paper:#F4F0E9;--card:#FCFAF6;--ink:#2B2724;--muted:#7A7269;--faint:#A8A096;--line:#DFD8CD}
 *{box-sizing:border-box}
@@ -385,8 +389,8 @@ body{font-family:"Golos Text",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto
 .toc a:hover{color:var(--c)}
 .back{display:inline-block;margin:14px 12px 0;color:var(--c)}
 .end{text-align:center;color:var(--faint);font-size:12.5px;padding:24px 16px 40px}
-.voice{display:flex;align-items:center;gap:11px;margin:12px 0 0;width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left}
-.voice-play{width:34px;height:34px;border-radius:50%;background:var(--c);display:grid;place-items:center;flex:none;border:0;padding:0;cursor:pointer;color:#fff}
+.voice{display:flex;align-items:center;gap:11px;margin:12px 0 0;width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.voice-play{width:34px;height:34px;border-radius:50%;background:var(--c);display:grid;place-items:center;flex:0 0 auto;border:0;padding:0;cursor:pointer;color:#fff}
 .voice-play .ic{width:17px;height:17px;color:#fff}
 .vwave{display:flex;align-items:center;gap:1.5px;height:22px;flex:1;min-width:0;overflow:hidden}
 .vwave i{flex:1 1 0;max-width:3px;min-height:3px;border-radius:2px;background:var(--line)}
@@ -394,11 +398,11 @@ body{font-family:"Golos Text",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto
 .sz{font-size:11.5px;color:var(--faint)}
 .att{display:flex;align-items:center;gap:11px;border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin:12px 0 0;min-width:0;box-sizing:border-box;width:100%;text-align:left}
 .att-play{display:flex;align-items:center;gap:11px;flex:1;min-width:0;text-align:left;background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer}
-.att-cover{width:72px;height:72px;border-radius:8px;flex:none;overflow:hidden;background:var(--line);display:block}
-.att-cover img{width:100%;height:100%;object-fit:cover;display:block;border:0;margin:0;border-radius:0}
+.att-cover{width:72px;height:72px;border-radius:8px;flex:0 0 auto;overflow:hidden;display:block;border:1px solid var(--line);background-color:#c3af95;background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.07) 0 7px,rgba(0,0,0,0.05) 7px 15px)}
+.att-cover img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}
 .att-body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:11px}
 .att-line{display:flex;align-items:center;gap:11px;min-width:0}
-.att-line .ic{width:21px;height:21px;color:var(--c);flex:none}
+.att-line .ic{width:21px;height:21px;color:var(--c);flex:0 0 auto}
 .att-name{font-size:12.5px;line-height:1.3;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .att-bar{display:block;height:3px;border-radius:2px;background:var(--line);overflow:hidden}
 .att-bar i{display:block;height:100%;background:var(--c);width:0}

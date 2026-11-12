@@ -27,6 +27,10 @@ func TestArchiveAudioMatchesApp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	bare, err := blobs.PutGenerated(t.Context(), "acc1", "audio/mpeg", "field.mp3", []byte("mp3"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	cover, err := blobs.PutGenerated(t.Context(), "acc1", "image/jpeg", "cover.jpg", []byte("jpeg"))
 	if err != nil {
 		t.Fatal(err)
@@ -46,6 +50,9 @@ func TestArchiveAudioMatchesApp(t *testing.T) {
 				{BlobID: track.ID, Kind: chronicle.MediaAttachment, MimeType: "audio/mpeg",
 					OriginalFilename: "track.mp3", AudioCoverBlobID: cover.ID,
 					AudioArtist: "Аня", AudioTitle: "Утро"},
+				{BlobID: bare.ID, Kind: chronicle.MediaAttachment, MimeType: "audio/mpeg",
+					OriginalFilename: "field.mp3",
+					AudioArtist:      "Аня", AudioTitle: "Поле"},
 			},
 		}},
 		Blobs: blobs,
@@ -103,13 +110,21 @@ func TestArchiveAudioMatchesApp(t *testing.T) {
 		t.Fatal("нет кнопки скачивания")
 	}
 
+	// Звук без обложки — полосатая заглушка, а не пустой квадрат (решение
+	// владельца 2026-11-12): обложки в разметке нет, фон рисует стиль.
+	if !strings.Contains(index, `<span class="att-cover"></span>`) {
+		t.Fatal("у звука без обложки нет места заглушки")
+	}
+
 	// Один плеер на страницу; нативный <audio> — только запасной путь.
+	// Три аудиостроки в index.html: голосовое, звук с обложкой и звук без
+	// обложки (медиа комментария рендерятся на страницах posts/).
 	if !strings.Contains(index, `var el=new Audio()`) {
 		t.Fatal("нет скрипта плеера")
 	}
 	native := strings.Count(index, "<audio controls")
-	if native != 2 {
-		t.Fatalf("нативных плееров %d, ожидалось 2 в <noscript>", native)
+	if native != 3 {
+		t.Fatalf("нативных плееров %d, ожидалось 3 в <noscript>", native)
 	}
 	for _, part := range strings.Split(index, "<noscript>")[1:] {
 		if !strings.HasPrefix(part, "<audio controls") {
