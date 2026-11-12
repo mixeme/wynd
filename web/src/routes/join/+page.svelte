@@ -222,9 +222,7 @@
 			onblur={checkServer}
 			onpaste={onAddressPaste}
 		/>
-		{#if checking && !instance}
-			<Hint class="mt-8">Проверяем сервер…</Hint>
-		{:else if instance}
+		{#if instance}
 			<ServerRow
 				name={instance.name}
 				subtitle={serverAddress}
@@ -232,6 +230,15 @@
 				connection={serverConnection}
 				card
 				gdpr={instance.allow_name_erasure}
+			/>
+		{:else if checking}
+			<!-- Пока идёт проверка — та же карточка, что и после ответа: имя придёт
+			     с ним, адрес уже введён. Форма под ней не прыгает. -->
+			<ServerRow
+				name="Сервер"
+				subtitle={address || serverAddress}
+				connection="checking"
+				card
 			/>
 		{/if}
 		{#if serverError}<Hint class="mt-8">{serverError}</Hint>{/if}
