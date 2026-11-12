@@ -253,7 +253,7 @@ func (w *Wizard) Inspect(ctx context.Context) InspectResult {
 	if sess == nil {
 		return InspectResult{Message: "Сначала подключитесь к серверу"}
 	}
-	rep, err := Inspect(ctx, sess)
+	rep, err := InspectAt(ctx, sess, w.layout())
 	if err != nil {
 		return InspectResult{
 			Message: "Связь с сервером оборвалась",
@@ -537,7 +537,7 @@ func (w *Wizard) Rollback(ctx context.Context, keepData bool) RollbackResult {
 	}
 	// Прежний план писался для сервера, где Wynd уже стоял. Осмотр не вышел —
 	// остаётся прежний: установка по нему всё равно доделает недостающее.
-	if rep, err := Inspect(ctx, w.session); err == nil {
+	if rep, err := InspectAt(ctx, w.session, w.layout()); err == nil {
 		w.report = &rep
 		res.Report = &rep
 		if old != nil {

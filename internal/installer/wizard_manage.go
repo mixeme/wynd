@@ -223,7 +223,7 @@ func (w *Wizard) PlanBackup(ctx context.Context, folder string) LocalBackupPlan 
 	if sess == nil {
 		return LocalBackupPlan{Message: "Сначала подключитесь к серверу"}
 	}
-	return PlanLocalBackup(ctx, sess, folder)
+	return PlanLocalBackupAt(ctx, sess, w.layout(), folder)
 }
 
 // StartBackup — бэкап на компьютер; ход — InstallProgress (8б).
@@ -242,7 +242,7 @@ func (w *Wizard) StartBackup(ctx context.Context, opt BackupOptions) Progress {
 		}
 	}
 	st := w.state.State
-	spec := LocalBackupSpec{Folder: opt.Folder, Site: opt.Site, Password: opt.Password,
+	spec := LocalBackupSpec{Folder: opt.Folder, Site: opt.Site, Password: opt.Password, Root: w.Root,
 		Running: st.Running, LiveCopy: w.state.LiveCopy, Server: st.Domain, Version: st.Version}
 	sess := w.session
 	runCtx, cancel := context.WithCancel(context.Background())

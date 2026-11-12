@@ -138,6 +138,9 @@ type LocalBackupSpec struct {
 	LiveCopy bool
 	Server   string
 	Version  string
+	// Root — каталог установки на сервере (план «другой каталог»); пусто —
+	// /opt/wynd.
+	Root string
 }
 
 // LocalBackupPlan — строка «Скачаем …» на 8а.
@@ -167,7 +170,12 @@ func readManifest(folder string) (BackupManifest, bool) {
 // PlanLocalBackup считает, сколько скачать (8а). Список файлов — без снимка
 // базы: её размер — у живой базы.
 func PlanLocalBackup(ctx context.Context, sess *Session, folder string) LocalBackupPlan {
-	res, err := sess.Exec(ctx, DefaultLayout().BackupListScript()+"; du -sk "+dataDir+"/wynd.db* 2>/dev/null | awk '{s+=$1} END {print \"DB\\t\" s*1024}'", nil, shortTimeout)
+	return PlanLocalBackupAt(ctx, sess, DefaultLayout(), folder)
+}
+
+// PlanLocalBackupAt — то же для известного размещения установки.
+func PlanLocalBackupAt(ctx context.Context, sess *Session, l Layout, folder string) LocalBackupPlan {
+	res, err := sess.Exec(ctx, l.BackupListScript()+"; du -sk "+l.Data()+"/wynd.db* 2>/dev/null | awk '{s+=$1} END {print \"DB\t\" s*1024}'", nil, shortTimeout)
 	if err != nil {
 		return LocalBackupPlan{Message: "Связь с сервером оборвалась"}
 	}
@@ -230,11 +238,13 @@ func LocalBackup(ctx context.Context, sess *Session, spec LocalBackupSpec, repor
 		{
 			id: "snapshot", title: "Копия базы на сервере",
 			do: func(ctx context.Context, r *Run) error {
+				l := r.layout
+				snapshotDir := l.SnapshotDir()
 				stop := spec.Running && spec.Site != SiteKeep
 				if stop {
-					cmd := composeCmd + "stop wynd 2>&1"
+					cmd := l.ComposeCommand() + "stop wynd 2>&1"
 					if spec.Site == SiteStopLeave {
-						cmd += " && date -u +%Y-%m-%dT%H:%M:%SZ > " + stoppedMark
+						cmd += " && date -u +%Y-%m-%dT%H:%M:%SZ > " + l.StoppedMark()
 					}
 					if _, err := r.must(ctx, cmd, shortTimeout); err != nil {
 						return err
@@ -248,9 +258,9 @@ func LocalBackup(ctx context.Context, sess *Session, spec LocalBackupSpec, repor
 							Advice:  "Выберите «Остановить на время бэкапа и запустить снова» — или обновите Wynd.",
 						}
 					}
-					snap = "rm -rf " + snapshotDir + " && " + composeCmd + "exec -T wynd wynd backup -no-blobs /data/.workshop-backup </dev/null"
+					snap = "rm -rf " + snapshotDir + " && " + l.ComposeCommand() + "exec -T wynd wynd backup -no-blobs /data/.workshop-backup </dev/null"
 				} else {
-					snap = "rm -rf " + snapshotDir + " && mkdir -p " + snapshotDir + " && cp -a " + dataDir + "/wynd.db " + snapshotDir + "/ && for f in wynd.db-wal wynd.db-shm; do if [ -e " + dataDir + "/$f ]; then cp -a " + dataDir + "/$f " + snapshotDir + "/; fi; done"
+					snap = "rm -rf " + snapshotDir + " && mkdir -p " + snapshotDir + " && cp -a " + l.Data() + "/wynd.db " + snapshotDir + "/ && for f in wynd.db-wal wynd.db-shm; do if [ -e " + l.Data() + "/$f ]; then cp -a " + l.Data() + "/$f " + snapshotDir + "/; fi; done"
 				}
 				_, err := r.must(ctx, "set -e; "+snap, imageTimeout)
 				return err
@@ -259,7 +269,7 @@ func LocalBackup(ctx context.Context, sess *Session, spec LocalBackupSpec, repor
 		{
 			id: "fetch", title: "Скачиваем",
 			do: func(ctx context.Context, r *Run) error {
-				out, err := r.must(ctx, DefaultLayout().BackupListScript(), shortTimeout)
+				out, err := r.must(ctx, r.layout.BackupListScript(), shortTimeout)
 				if err != nil {
 					return err
 				}
@@ -324,9 +334,9 @@ func LocalBackup(ctx context.Context, sess *Session, spec LocalBackupSpec, repor
 					}
 				}
 				// Снимок базы на сервере больше не нужен; сайт — как выбрали.
-				cleanup := "rm -rf " + snapshotDir
+				cleanup := "rm -rf " + r.layout.SnapshotDir()
 				if spec.Running && spec.Site == SitePauseResume {
-					cleanup += " && " + composeCmd + "start wynd 2>&1"
+					cleanup += " && " + r.layout.ComposeCommand() + "start wynd 2>&1"
 				}
 				if _, err := r.must(ctx, cleanup, shortTimeout); err != nil {
 					return err
@@ -335,12 +345,13 @@ func LocalBackup(ctx context.Context, sess *Session, spec LocalBackupSpec, repor
 			},
 		},
 	}
-	p := runSteps(ctx, sess, Spec{}, list, report, nil)
+	p := runSteps(ctx, sess, Spec{Root: spec.Root}, list, report, nil)
 	if p.Failure != nil && spec.Running && spec.Site == SitePauseResume {
 		// «Остановить на время бэкапа и запустить снова»: бэкап не вышел — сайт
 		// всё равно запускаем, а не оставляем стоять до повтора. Связи нет —
 		// страница сервера скажет «не работает», там есть «Запустить».
-		_, _ = sess.Exec(ctx, composeCmd+"start wynd 2>&1", nil, shortTimeout)
+		layout, _ := layoutOf(Spec{Root: spec.Root})
+		_, _ = sess.Exec(ctx, layout.ComposeCommand()+"start wynd 2>&1", nil, shortTimeout)
 	}
 	return p
 }
@@ -367,6 +378,7 @@ func localErr(err error) error {
 
 func fetchOne(ctx context.Context, r *Run, spec LocalBackupSpec, f RemoteFile, work string, key *encKey,
 	done bool, prev map[string]int64, fetched *atomic.Int64) error {
+	l := r.layout
 
 	local := filepath.Join(work, filepath.FromSlash(f.Path))
 	if key != nil {
@@ -395,9 +407,9 @@ func fetchOne(ctx context.Context, r *Run, spec LocalBackupSpec, f RemoteFile, w
 			return nil
 		}
 	}
-	remote := shQuote(installDir + "/" + f.Path)
+	remote := shQuote(l.Root() + "/" + f.Path)
 	if f.Path == "data/wynd.db" || strings.HasPrefix(f.Path, "data/wynd.db-") {
-		remote = shQuote(snapshotDir + "/" + strings.TrimPrefix(f.Path, "data/"))
+		remote = shQuote(l.SnapshotDir() + "/" + strings.TrimPrefix(f.Path, "data/"))
 	}
 	flag := os.O_CREATE | os.O_WRONLY | os.O_TRUNC
 	cmd := "cat " + remote

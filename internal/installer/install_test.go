@@ -576,7 +576,7 @@ func TestWizardInstallAndRollback(t *testing.T) {
 	// Осмотр прошёл на заготовленном выводе; дальше сервер отвечает по командам.
 	// Кроме осмотра: после отката окно осматривает сервер ещё раз.
 	srv.handler = func(command string, stdin []byte) (string, int) {
-		if command == inspectScript {
+		if command == inspectScriptAt(DefaultLayout()) {
 			return cleanUbuntu, 0
 		}
 		return host.handle(command, stdin)
@@ -912,7 +912,7 @@ func TestWizardRemovesFoundWynd(t *testing.T) {
 	installed := cleanUbuntu + "## wynd\n" + installDir + "/compose.yaml\n"
 	host.running = true
 	srv.handler = func(command string, stdin []byte) (string, int) {
-		if command == inspectScript {
+		if command == inspectScriptAt(DefaultLayout()) {
 			if host.running {
 				return installed, 0
 			}

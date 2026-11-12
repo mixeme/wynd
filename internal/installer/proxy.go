@@ -220,7 +220,7 @@ const nginxLocation = `    location / {
 // NginxSite — файл сайта Wynd для чужого nginx. withCert ложно, пока
 // сертификата нет: сайт только отвечает на проверку Let's Encrypt — nginx не
 // примет настройку со ссылкой на сертификат, которого ещё нет.
-func NginxSite(domain string, withCert bool) string {
+func NginxSite(domain string, withCert bool, l Layout) string {
 	s := siteMark + ` Сайт Wynd за nginx; устроен так же, как
 # deploy/proxy/nginx.conf в исходниках. Чтобы убрать — удалите этот файл и
 # попросите nginx перечитать настройку.
@@ -230,7 +230,7 @@ server {
     server_name ` + domain + `;
 
     location /.well-known/acme-challenge/ {
-        root ` + acmeRoot + `;
+        root ` + l.Acme() + `;
     }
     location / {
         return 301 https://$host$request_uri;
@@ -278,15 +278,15 @@ func apacheHTTPS(domain string) string {
 }
 
 // ApacheSite — файл сайта Wynd для чужого Apache; withCert — как у NginxSite.
-func ApacheSite(domain string, withCert bool) string {
+func ApacheSite(domain string, withCert bool, l Layout) string {
 	s := siteMark + ` Сайт Wynd за Apache; устроен так же, как
 # deploy/proxy/apache.conf в исходниках. Чтобы убрать — удалите этот файл и
 # ссылку на него в sites-enabled и попросите Apache перечитать настройку.
 
 <VirtualHost *:80>
     ServerName ` + domain + `
-    Alias /.well-known/acme-challenge/ ` + acmeRoot + `/.well-known/acme-challenge/
-    <Directory ` + acmeRoot + `>
+    Alias /.well-known/acme-challenge/ ` + l.Acme() + `/.well-known/acme-challenge/
+    <Directory ` + l.Acme() + `>
         Require all granted
     </Directory>
     RewriteEngine On
@@ -304,9 +304,9 @@ func ApacheSite(domain string, withCert bool) string {
 // certbot (nginx, Apache).
 func siteContent(spec Spec, withCert bool) string {
 	if spec.Proxy == ProxyApache {
-		return ApacheSite(spec.Domain, withCert)
+		return ApacheSite(spec.Domain, withCert, spec.layout())
 	}
-	return NginxSite(spec.Domain, withCert)
+	return NginxSite(spec.Domain, withCert, spec.layout())
 }
 
 // CaddySite — файл сайта Wynd для чужого Caddy: deploy/proxy/Caddyfile с
@@ -406,13 +406,14 @@ func applySite(ctx context.Context, r *Run, file, link, content string) error {
 	}
 	// Запасные копии — в /opt/wynd: чужой Caddy читает из своей папки все файлы
 	// подряд, лишний там станет частью настройки.
+	root := r.layout.Root()
 	script := `set -e
-keep=` + installDir + `/site.prev
-mkdir -p ` + installDir + ` ` + path.Dir(file) + `
+keep=` + root + `/site.prev
+mkdir -p ` + root + ` ` + path.Dir(file) + `
 rm -f "$keep"
 if [ -f ` + file + ` ]; then cp -p ` + file + ` "$keep"; fi
-cat > ` + installDir + `/site.new
-mv ` + installDir + `/site.new ` + file + `
+cat > ` + root + `/site.new
+mv ` + root + `/site.new ` + file + `
 ` + enable + `
 ` + kind.prepare + `
 if ` + kind.test + ` 2>&1; then
@@ -472,7 +473,7 @@ func siteStep(spec Spec) step {
 			if spec.Proxy == ProxyCaddy {
 				return applySite(ctx, r, file, link, CaddySite(spec.Domain))
 			}
-			if _, err := r.must(ctx, "mkdir -p "+acmeRoot, shortTimeout); err != nil {
+			if _, err := r.must(ctx, "mkdir -p "+r.layout.Acme(), shortTimeout); err != nil {
 				return err
 			}
 			has, err := r.ok(ctx, certPresent(spec.Domain))
@@ -513,7 +514,7 @@ const certbotWait = `cb() {
 // nginx: в настройку nginx certbot не заходит. После каждого продления nginx
 // перечитывает настройку — иначе продолжит отдавать прежний сертификат.
 func certbotIssue(spec Spec) string {
-	cmd := certbotWait + "cb certonly --non-interactive --agree-tos --register-unsafely-without-email --webroot -w " + acmeRoot +
+	cmd := certbotWait + "cb certonly --non-interactive --agree-tos --register-unsafely-without-email --webroot -w " + spec.layout().Acme() +
 		" -d " + spec.Domain + " --deploy-hook '" + proxyOf(spec.Proxy).reload + "'"
 	if spec.TestCert {
 		cmd += " --test-cert"
@@ -620,8 +621,8 @@ func nginxCertStep(spec Spec) step {
 // идёт дважды — до удаления нашего файла и после: иначе не отличить ошибку,
 // которая в настройке уже была, от той, что появилась из-за удаления. Не
 // прошла — наш файл всё равно убран, а перечитают настройку при следующем случае.
-func rollbackProxy(keepData bool) string {
-	script := `dom=$(sed -n 's|.*WYND_PUBLIC_URL: https://||p' ` + installDir + `/compose.yaml 2>/dev/null | head -n 1)
+func rollbackProxy(l Layout, keepData bool) string {
+	script := `dom=$(sed -n 's|.*WYND_PUBLIC_URL: https://||p' ` + l.Compose() + ` 2>/dev/null | head -n 1)
 mark=` + shQuote(siteMark) + `
 ngx=; cdy=; apa=
 ngx_pre=; apa_pre=; cdy_pre=

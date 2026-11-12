@@ -46,7 +46,7 @@ func TestInstallBehindNginx(t *testing.T) {
 		t.Fatal("за чужим веб-сервером свой Caddyfile не нужен")
 	}
 	site := host.files["/etc/nginx/sites-available/wynd-family.example.ru.conf"]
-	if site != NginxSite(spec.Domain, true) || !strings.HasPrefix(site, siteMark) {
+	if site != NginxSite(spec.Domain, true, spec.layout()) || !strings.HasPrefix(site, siteMark) {
 		t.Fatalf("файл сайта: %q", site)
 	}
 	issued := 0
@@ -82,7 +82,7 @@ func TestNginxSiteWaitsForCertificate(t *testing.T) {
 	if res.Failure == nil || res.Failure.Step != "cert" || res.Failure.Message != "Сертификат не выдали" || !strings.Contains(res.Failure.Advice, "порт 80") {
 		t.Fatalf("ждали отказ сертификата: %+v", res.Failure)
 	}
-	if site := host.files["/etc/nginx/sites-available/wynd-family.example.ru.conf"]; site != NginxSite(spec.Domain, false) || strings.Contains(site, "ssl_certificate") {
+	if site := host.files["/etc/nginx/sites-available/wynd-family.example.ru.conf"]; site != NginxSite(spec.Domain, false, spec.layout()) || strings.Contains(site, "ssl_certificate") {
 		t.Fatalf("до сертификата сайт должен быть без него: %q", site)
 	}
 	host.certbotFails = "There were too many requests of a given type :: Error creating new order :: too many certificates (5) already issued for this exact set of domains\n"
@@ -232,7 +232,7 @@ func TestPlanBehindProxy(t *testing.T) {
 // перечитывает настройку только после своей проверки; сертификат отзывается,
 // только когда удаляют данные и только полученный нами.
 func TestRollbackBehindProxy(t *testing.T) {
-	keep, drop := rollbackProxy(true), rollbackProxy(false)
+	keep, drop := rollbackProxy(DefaultLayout(), true), rollbackProxy(DefaultLayout(), false)
 	for _, want := range []string{siteMark, "/etc/nginx/sites-enabled/wynd-*.conf", "if nginx -t 2>&1; then systemctl reload nginx", markNotReloaded, markBrokenBefore, markBrokenAfter} {
 		if !strings.Contains(keep, want) {
 			t.Errorf("в откате нет %q", want)
@@ -285,7 +285,7 @@ func TestProxyFilesMatchDeployTemplates(t *testing.T) {
 	if got, want := normalize(nginxLocation), normalize(read("proxy/nginx.conf")); got != want {
 		t.Fatalf("сайт nginx разошёлся с deploy/proxy/nginx.conf:\n--- установщик\n%s\n--- deploy\n%s", got, want)
 	}
-	if !strings.Contains(NginxSite("example.org", true), nginxLocation) {
+	if !strings.Contains(NginxSite("example.org", true, DefaultLayout()), nginxLocation) {
 		t.Fatal("сайт nginx без блока из deploy/proxy/nginx.conf")
 	}
 	if got, want := normalize(CaddySite("example.org")), normalize(read("proxy/Caddyfile")); got != want {
@@ -309,7 +309,7 @@ func TestInstallBehindApache(t *testing.T) {
 		t.Fatalf("установка не прошла: %+v\n%+v", res.Failure, res.Log)
 	}
 	site := host.files["/etc/apache2/sites-available/wynd-family.example.ru.conf"]
-	if site != ApacheSite(spec.Domain, true) || !strings.HasPrefix(site, siteMark) {
+	if site != ApacheSite(spec.Domain, true, DefaultLayout()) || !strings.HasPrefix(site, siteMark) {
 		t.Fatalf("файл сайта: %q", site)
 	}
 	hook := false
@@ -372,10 +372,10 @@ func TestApacheSiteMatchesDeployTemplate(t *testing.T) {
 	if got, want := apacheHTTPS("example.org"), "<VirtualHost *:443>"+https; got != want {
 		t.Fatalf("сайт Apache разошёлся с deploy/proxy/apache.conf:\n--- установщик\n%s\n--- deploy\n%s", got, want)
 	}
-	if !strings.Contains(ApacheSite("example.org", true), apacheHTTPS("example.org")) || strings.Contains(ApacheSite("example.org", false), "SSLEngine") {
+	if !strings.Contains(ApacheSite("example.org", true, DefaultLayout()), apacheHTTPS("example.org")) || strings.Contains(ApacheSite("example.org", false, DefaultLayout()), "SSLEngine") {
 		t.Fatal("до сертификата сайт Apache — только порт 80")
 	}
-	if drop := rollbackProxy(false); !strings.Contains(drop, "/etc/apache2/sites-enabled/wynd-*.conf") || !strings.Contains(drop, "if apache2ctl configtest 2>&1; then systemctl reload apache2") {
+	if drop := rollbackProxy(DefaultLayout(), false); !strings.Contains(drop, "/etc/apache2/sites-enabled/wynd-*.conf") || !strings.Contains(drop, "if apache2ctl configtest 2>&1; then systemctl reload apache2") {
 		t.Fatalf("откат за Apache: %s", drop)
 	}
 }

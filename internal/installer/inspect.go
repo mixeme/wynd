@@ -95,7 +95,8 @@ const (
 // inspectScript только читает. Каждая секция — от строки «## имя» до
 // следующей; порядок и наличие секций разбор не предполагает. Команды, которых
 // на сервере нет, молчат: пустая секция — тоже ответ.
-var inspectScript = `export LC_ALL=C
+func inspectScriptAt(l Layout) string {
+	return `export LC_ALL=C
 asroot() { if [ "$(id -u)" = 0 ]; then "$@"; else sudo -n "$@"; fi; }
 echo '## os'; cat /etc/os-release 2>/dev/null
 echo '## arch'; uname -m 2>/dev/null
@@ -110,28 +111,35 @@ echo '## compose'; docker compose version 2>/dev/null
 echo '## ports'; ss -H -ltnp 2>/dev/null
 echo '## addr'; ip -4 -o addr show scope global 2>/dev/null
 echo '## git'; git --version 2>/dev/null
-echo '## wynd'; ls -d /opt/wynd/compose.yaml /etc/wynd 2>/dev/null
+echo '## wynd'; ls -d ` + l.Compose() + ` /etc/wynd 2>/dev/null
 echo '## certbot'; command -v certbot 2>/dev/null
 echo '## nginx'; if command -v nginx >/dev/null 2>&1; then ` + nginxLayout + `; if asroot nginx -t >/dev/null 2>&1; then echo test=ok; else echo test=fail; fi; fi
 echo '## apache'; if command -v apache2ctl >/dev/null 2>&1; then ` + apacheLayout + `; if asroot apache2ctl configtest >/dev/null 2>&1; then echo test=ok; else echo test=fail; fi; fi
 echo '## caddy'; if command -v caddy >/dev/null 2>&1; then grep -Es '^import[[:space:]]' ` + caddyConfig + ` | head -n 20; if asroot caddy validate --config ` + caddyConfig + ` --adapter caddyfile >/dev/null 2>&1; then echo test=ok; else echo test=fail; fi; fi
-echo '## wyndup'; ` + wyndRunning + `
+echo '## wyndup'; ` + l.RunningFilter() + `
 echo '## wyndelse'; { pgrep -x wynd; docker ps -a --format '{{.Image}}' | grep wynd; grep -lsE '^ExecStart=.*wynd' /etc/systemd/system/*.service; } 2>/dev/null
 echo '## foreignsite'; for f in $(grep -RlsE '(127\.0\.0\.1|localhost):7676' /etc/apache2/sites-enabled /etc/nginx/sites-enabled /etc/nginx/conf.d ` + path.Dir(caddyConfig) + ` 2>/dev/null); do grep -qsF ` + shQuote(siteMark) + ` "$f" || echo "$f"; done
-echo '## ownproxy'; docker ps --filter label=com.docker.compose.project.working_dir=/opt/wynd --filter publish=443 --format '{{.Names}} {{.Image}}' 2>/dev/null
+echo '## ownproxy'; docker ps --filter label=com.docker.compose.project.working_dir=` + l.Root() + ` --filter publish=443 --format '{{.Names}} {{.Image}}' 2>/dev/null
 `
+}
 
 // Inspect осматривает сервер: одна команда, только чтение.
 func Inspect(ctx context.Context, s *Session) (Report, error) {
+	return InspectAt(ctx, s, DefaultLayout())
+}
+
+// InspectAt — осмотр с известным размещением установки: так «своя» установка
+// узнаётся в своём каталоге, а не только в /opt/wynd.
+func InspectAt(ctx context.Context, s *Session, l Layout) (Report, error) {
 	sent := time.Now()
-	out, err := s.Run(ctx, inspectScript)
+	out, err := s.Run(ctx, inspectScriptAt(l))
 	if err != nil {
 		return Report{}, err
 	}
 	// Часы сервера сверяем с серединой запроса: команда идёт доли секунды,
 	// но на медленной связи — секунды.
 	mid := sent.Add(time.Since(sent) / 2)
-	return ParseInspection(out, s.User, mid), nil
+	return ParseInspectionAt(out, s.User, mid, l), nil
 }
 
 func sections(out string) map[string][]string {
@@ -160,6 +168,12 @@ func first(lines []string) string {
 // ParseInspection превращает вывод inspectScript в находки. now — время на
 // этом компьютере в момент, когда сервер назвал своё.
 func ParseInspection(out, user string, now time.Time) Report {
+	return ParseInspectionAt(out, user, now, DefaultLayout())
+}
+
+// ParseInspectionAt — разбор осмотра с известным размещением установки: своя
+// установка узнаётся в своём каталоге, а не только в /opt/wynd.
+func ParseInspectionAt(out, user string, now time.Time, l Layout) Report {
 	sec := sections(out)
 	rep := Report{Raw: out, Addresses: parseAddresses(sec["addr"]), Git: first(sec["git"]) != "", Certbot: first(sec["certbot"]) != ""}
 	for _, f := range sec["foreignsite"] {
@@ -201,7 +215,7 @@ func ParseInspection(out, user string, now time.Time) Report {
 		// Кадр 7з: Wynd не в /opt/wynd или не в Docker — окно спросит страницу сервера.
 		add(Finding{ID: "wyndelse", Level: LevelNote, Text: "Wynd на этом сервере поставлен не Мастерской"})
 	case len(sec["wynd"]) == 0:
-	case len(sec["wyndup"]) == 0 && strings.Join(sec["wynd"], "\n") == installDir+"/compose.yaml":
+	case len(sec["wyndup"]) == 0 && strings.Join(sec["wynd"], "\n") == l.Compose():
 		// Убран с оставленными данными: папка /opt/wynd есть, контейнера нет.
 		add(Finding{
 			ID:    "wynd",

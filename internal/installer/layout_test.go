@@ -3,6 +3,7 @@ package installer
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 // Проба параметризованного размещения (план «другой каталог установки Docker»,
@@ -190,5 +191,37 @@ func TestLayoutCleansRoot(t *testing.T) {
 	}
 	if _, err := NewLayout("/srv/wynd/../wynd2"); err != nil {
 		t.Fatalf("чистый путь с .. отклонён: %v", err)
+	}
+}
+
+// Осмотр узнаёт свою установку в своём каталоге: скрипт не ссылается на
+// /opt/wynd, а разбор не считает её чужой (план «другой каталог»).
+func TestInspectAtCustomRoot(t *testing.T) {
+	l, err := NewLayout("/srv/wynd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	script := inspectScriptAt(l)
+	if strings.Contains(script, "/opt/wynd") {
+		t.Fatalf("осмотр смотрит в /opt/wynd: %s", script)
+	}
+	if !strings.Contains(script, "ls -d /srv/wynd/compose.yaml") ||
+		!strings.Contains(script, "working_dir=/srv/wynd") {
+		t.Fatalf("осмотр не смотрит в свой каталог: %s", script)
+	}
+	rep := ParseInspectionAt("## wynd\n/srv/wynd/compose.yaml\n## wyndup\nabc\n", "root", time.Now().UTC(), l)
+	for _, f := range rep.Findings {
+		if f.ID == "wyndelse" {
+			t.Fatalf("своя установка принята за чужую: %+v", f)
+		}
+	}
+	// Другой каталог при том же выводе — про оставленные данные в нём не
+	// говорят: своя установка узнаётся по своему пути compose.yaml.
+	other, _ := NewLayout("/opt/wynd")
+	rep = ParseInspectionAt("## wynd\n/srv/wynd/compose.yaml\n## wyndup\n\n", "root", time.Now().UTC(), other)
+	for _, f := range rep.Findings {
+		if f.ID == "wynd" && strings.Contains(f.Text, "данные на месте") {
+			t.Fatalf("данные чужой папки приняты за свои: %+v", f)
+		}
 	}
 }

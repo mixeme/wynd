@@ -160,7 +160,7 @@ func TestMoveResumeSkipsTransfer(t *testing.T) {
 	if r.steps[0].Note != "перенесено раньше" || len(r.log) != 0 {
 		t.Fatalf("подпись %q, команд %d", r.steps[0].Note, len(r.log))
 	}
-	cmd := markCmd(MoveMark{To: "203.0.113.7", Started: "2026-10-26T12:28:00Z", RemoveOld: true})
+	cmd := markCmd(DefaultLayout(), MoveMark{To: "203.0.113.7", Started: "2026-10-26T12:28:00Z", RemoveOld: true})
 	if !strings.Contains(cmd, `"remove_old":true`) || !strings.HasSuffix(cmd, "> "+shQuote(moveMark)) {
 		t.Fatalf("пометка: %s", cmd)
 	}
@@ -198,7 +198,7 @@ func TestInspectionForeignSite(t *testing.T) {
 	if len(rep.ForeignSite) != 1 || rep.ForeignSite[0] != "/etc/apache2/sites-enabled/wynd.conf" {
 		t.Fatalf("чужой файл: %v", rep.ForeignSite)
 	}
-	if !strings.Contains(inspectScript, "grep -RlsE") || !strings.Contains(inspectScript, siteMark) {
+	if !strings.Contains(inspectScriptAt(DefaultLayout()), "grep -RlsE") || !strings.Contains(inspectScriptAt(DefaultLayout()), siteMark) {
 		t.Fatal("поиск чужого файла должен идти по ссылкам и узнавать нашу первую строку")
 	}
 }

@@ -56,6 +56,10 @@ type MoveSpec struct {
 	// Foreign — старый Wynd стоит не на месте Мастерской (кадр 7з): как его
 	// остановить и запустить, где его данные и пометка переезда.
 	Foreign *ForeignWynd
+	// Root — каталог установки на серверах переезда (план «другой каталог»);
+	// пусто — /opt/wynd. Оба сервера считаются с одним каталогом: переезд на
+	// другой корень — отдельный шаг пробы.
+	Root string
 	// Resume — переезд продолжается (кадр 9в2): пометка со старого сервера.
 	// Перенесённое второй раз не переносится — на новом могли уже писать.
 	Resume *MoveMark
@@ -76,7 +80,7 @@ type MoveMark struct {
 }
 
 // markCmd записывает пометку переезда на старом сервере.
-func markCmd(m MoveMark) string { return markCmdAt(moveMark, m) }
+func markCmd(l Layout, m MoveMark) string { return markCmdAt(l.MoveMark(), m) }
 
 // transferKeyLine экранирует кавычки для authorized_keys. OpenSSH снимает
 // только \"; прочие обратные косые черты сохраняются (misc.c, opt_dequote).
@@ -92,11 +96,11 @@ func markCmdAt(path string, m MoveMark) string {
 
 // oldControl — как на старом сервере остановить и запустить Wynd и где
 // пометка переезда: у установки Мастерской — docker compose в /opt/wynd.
-func oldControl(f *ForeignWynd) (stop, start, mark string) {
+func oldControl(f *ForeignWynd, l Layout) (stop, start, mark string) {
 	if f != nil {
 		return f.stop, f.start, f.markPath()
 	}
-	return composeCmd + "stop wynd 2>&1", composeCmd + "up -d 2>&1", moveMark
+	return l.ComposeCommand() + "stop wynd 2>&1", l.ComposeCommand() + "up -d 2>&1", l.MoveMark()
 }
 
 // dnsWait — как часто сами проверяем адрес на 9в.
@@ -124,17 +128,18 @@ func moveSteps(old *Session, spec MoveSpec) []step {
 		resumed.RemoveOld = spec.RemoveOld
 		mark = &resumed
 	}
+	layout, _ := layoutOf(Spec{Root: spec.Root})
 	install := "Wynd " + spec.Version + " на новом сервере"
 	sendTar, pullDir, moved := moveTar, "/opt", "Папка Wynd перенесена"
 	if spec.DataOnly {
 		install = "Wynd " + spec.Version + " и Caddy на новом сервере"
-		sendTar, pullDir, moved = dataTar, installDir, "Данные Wynd перенесены"
+		sendTar, pullDir, moved = dataTar, layout.Root(), "Данные Wynd перенесены"
 	}
 	if spec.Foreign != nil {
 		sendTar = spec.Foreign.sendTar()
 	}
-	stopOld, _, markAt := oldControl(spec.Foreign)
-	files := filesStep(Spec{Domain: spec.Domain, Version: spec.Version, Image: spec.Image})
+	stopOld, _, markAt := oldControl(spec.Foreign, layout)
+	files := filesStep(Spec{Domain: spec.Domain, Version: spec.Version, Image: spec.Image, Root: spec.Root})
 	return []step{
 		{
 			id: "install", title: install,
@@ -216,7 +221,7 @@ func moveSteps(old *Session, spec MoveSpec) []step {
 		{
 			id: "start", title: "Wynd на новом сервере запущен",
 			do: func(ctx context.Context, r *Run) error {
-				if _, err := r.must(ctx, composeCmd+"up -d --quiet-pull 2>&1", packageTimeout); err != nil {
+				if _, err := r.must(ctx, r.layout.ComposeCommand()+"up -d --quiet-pull 2>&1", packageTimeout); err != nil {
 					return err
 				}
 				if err := waitHealthy(ctx, r); err != nil {
@@ -260,10 +265,10 @@ func moveSteps(old *Session, spec MoveSpec) []step {
 					// Сертификат не отзываем: он переехал и работает на новом —
 					// или он чужой (9б2), и его судьба не наша. Файл сайта
 					// чужого веб-сервера тоже не наш: остаётся.
-					_, err := onOld(ctx, r, old, composeCmd+"down 2>&1; rm -rf "+installDir, packageTimeout)
+					_, err := onOld(ctx, r, old, layout.ComposeCommand()+"down 2>&1; rm -rf "+layout.Root(), packageTimeout)
 					return err
 				}
-				_, err := onOld(ctx, r, old, "rm -f "+moveMark+" && date -u +%Y-%m-%dT%H:%M:%SZ > "+stoppedMark, shortTimeout)
+				_, err := onOld(ctx, r, old, "rm -f "+layout.MoveMark()+" && date -u +%Y-%m-%dT%H:%M:%SZ > "+layout.StoppedMark(), shortTimeout)
 				return err
 			},
 		},
@@ -311,7 +316,7 @@ func allEqual(addrs []string, want string) bool {
 
 // Move переносит Wynd со старого сервера (old) на новый (sess).
 func Move(ctx context.Context, old, sess *Session, spec MoveSpec, report func(Progress)) Progress {
-	return runSteps(ctx, sess, Spec{Domain: spec.Domain, Version: spec.Version, Image: spec.Image}, moveSteps(old, spec), report,
+	return runSteps(ctx, sess, Spec{Domain: spec.Domain, Version: spec.Version, Image: spec.Image, Root: spec.Root}, moveSteps(old, spec), report,
 		func(_ *Run, p *Progress) { p.Site = "https://" + spec.Domain })
 }
 
@@ -321,9 +326,14 @@ func MoveTitles(spec MoveSpec) []StepState { return titles(moveSteps(nil, spec))
 // CancelMove — «Отменить переезд» (9в): адрес ещё не менялся — сайт снова
 // запускается на старом, с нового Wynd убирается.
 func CancelMove(ctx context.Context, old, sess *Session, foreign *ForeignWynd) ([]LogEntry, error) {
-	r := &Run{sess: sess, steps: []StepState{{ID: "cancel"}}, report: func() {}}
-	_, startOld, markAt := oldControl(foreign)
-	cmd := startOld + " && rm -f " + shQuote(markAt) + " " + stoppedMark
+	return CancelMoveAt(ctx, old, sess, DefaultLayout(), foreign)
+}
+
+// CancelMoveAt — то же для известного размещения установки.
+func CancelMoveAt(ctx context.Context, old, sess *Session, l Layout, foreign *ForeignWynd) ([]LogEntry, error) {
+	r := &Run{sess: sess, layout: l, steps: []StepState{{ID: "cancel"}}, report: func() {}}
+	_, startOld, markAt := oldControl(foreign, l)
+	cmd := startOld + " && rm -f " + shQuote(markAt) + " " + l.StoppedMark()
 	if foreign != nil {
 		cmd = startOld + " && rm -f " + shQuote(markAt)
 	}
@@ -332,7 +342,7 @@ func CancelMove(ctx context.Context, old, sess *Session, foreign *ForeignWynd) (
 	}
 	_, _ = onOld(ctx, r, old, "sed -i '/ "+moveKeyLabel+"$/d' /root/.ssh/authorized_keys", shortTimeout)
 	if sess != nil {
-		_, _ = r.sh(ctx, "cd "+installDir+" 2>/dev/null && docker compose down 2>&1; rm -rf "+installDir+" "+moveKey+" "+moveKey+".pub "+moveKnown, packageTimeout)
+		_, _ = r.sh(ctx, "cd "+l.ShellRoot()+" 2>/dev/null && docker compose down 2>&1; rm -rf "+l.Root()+" "+moveKey+" "+moveKey+".pub "+moveKnown, packageTimeout)
 	}
 	return r.log, nil
 }

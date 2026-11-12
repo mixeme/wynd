@@ -26,6 +26,10 @@ import (
 // установки по deploy/docker: /opt/wynd/compose.yaml и Caddyfile, данные — в
 // /opt/wynd/data, сертификат своего Caddy — в /opt/wynd/caddy.
 
+// Пути и команды ниже описывают установку по умолчанию (/opt/wynd). Рабочий
+// код берёт их из размещения (Layout, layout.go): эти константы нужны как
+// значение по умолчанию и как эталон в тестах пробы другого каталога. Новые
+// места не должны считать пути прямо из них.
 const (
 	installDir = "/opt/wynd"
 	// Данные Wynd и Caddy — папками рядом с настройкой, не томами Docker
@@ -543,6 +547,16 @@ type step struct {
 	verify func(ctx context.Context, r *Run) error
 	// explain переводит отказ команды в слова человека.
 	explain func(err error, output string) *StepError
+}
+
+// layout — размещение этого Spec. Негодный каталог отсекается в steps() до
+// первого изменения сервера, поэтому здесь он значит значения по умолчанию.
+func (s Spec) layout() Layout {
+	l, err := layoutOf(s)
+	if err != nil {
+		return DefaultLayout()
+	}
+	return l
 }
 
 // layoutOf — размещение установки по Spec: пустой каталог — /opt/wynd,
@@ -1637,7 +1651,7 @@ func Rollback(ctx context.Context, sess *Session, spec Spec, keepData bool) ([]L
 		clear = ":"
 		gone = `test -z "$(` + layout.RunningFilter() + `)"`
 	}
-	script := rollbackProxy(keepData) + `imgs=
+	script := rollbackProxy(layout, keepData) + `imgs=
 if [ -f ` + layout.Compose() + ` ] && command -v docker >/dev/null 2>&1; then
   cd ` + layout.ShellRoot() + `
   imgs=$(docker compose images -q 2>/dev/null || true)

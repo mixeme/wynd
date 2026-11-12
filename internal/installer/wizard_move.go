@@ -129,7 +129,7 @@ func (w *Wizard) MovePlan(ctx context.Context) MovePlan {
 		plan.Advice = "Подключитесь к нему, чтобы продолжить или отменить переезд."
 		return plan
 	}
-	rep, err := Inspect(ctx, target)
+	rep, err := InspectAt(ctx, target, w.layout())
 	if err != nil {
 		plan.Message = "Связь с новым сервером оборвалась"
 		return plan
@@ -163,15 +163,15 @@ func (w *Wizard) MovePlan(ctx context.Context) MovePlan {
 	if oldRep != nil {
 		plan.OldProxy = oldRep.Proxy
 	}
-	own, err := old.Exec(ctx, "test -f "+installDir+"/Caddyfile && echo own", nil, shortTimeout)
+	own, err := old.Exec(ctx, "test -f "+w.layout().Caddyfile()+" && echo own", nil, shortTimeout)
 	if err != nil {
 		plan.Message = "Связь со старым сервером оборвалась"
 		return plan
 	}
 	plan.DataOnly = plan.OldProxy != "" || strings.TrimSpace(own.Output) != "own" || page.Foreign != nil
-	what := installDir
+	what := w.layout().Root()
 	if plan.DataOnly {
-		what = dataDir
+		what = w.layout().Data()
 	}
 	if page.Foreign != nil {
 		// Кадр 7з: везём одни данные; убрать старый Мастерская не берётся.
@@ -219,7 +219,7 @@ func (w *Wizard) StartMove(ctx context.Context, removeOld bool) Progress {
 	check := make(chan struct{}, 1)
 	w.moveCheck = check
 	spec := MoveSpec{Domain: plan.Domain, Version: plan.Version, Image: w.Image, OldIP: plan.OldIP, NewIP: plan.NewIP,
-		RemoveOld: removeOld, DataOnly: plan.DataOnly, CheckNow: check, Probe: w.Probe, Resume: plan.resume, Foreign: foreign}
+		RemoveOld: removeOld, DataOnly: plan.DataOnly, CheckNow: check, Probe: w.Probe, Resume: plan.resume, Foreign: foreign, Root: w.Root}
 	target := w.target
 	spec.Resolve = func(ctx context.Context, domain string) []string {
 		// Спрашиваем новый сервер: он видит адрес, как люди в интернете, и VPN
@@ -330,7 +330,7 @@ func (w *Wizard) MoveAdopt(ctx context.Context) ServerPage {
 	sess := w.session
 	w.mu.Unlock()
 	if sess != nil {
-		if rep, err := Inspect(ctx, sess); err == nil {
+		if rep, err := InspectAt(ctx, sess, w.layout()); err == nil {
 			w.mu.Lock()
 			w.report = &rep
 			w.mu.Unlock()
@@ -366,7 +366,7 @@ func (w *Wizard) CancelMove(ctx context.Context) ServiceResult {
 			return res
 		}
 	}
-	log, err := CancelMove(ctx, old, target, foreign)
+	log, err := CancelMoveAt(ctx, old, target, w.layout(), foreign)
 	res := ServiceResult{OK: err == nil, Log: log}
 	if err != nil {
 		res.Message = "Отменить не получилось"

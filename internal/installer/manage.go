@@ -141,7 +141,6 @@ const (
 	ServiceRestart = "restart"
 )
 
-const composeCmd = "cd " + installDir + " && docker compose "
 
 // ServiceAction запускает, останавливает или перезапускает Wynd. Caddy не
 // трогается: остановленный сайт отвечает «сервер недоступен», а не пропадает

@@ -70,8 +70,17 @@ var systemRoots = map[string]bool{
 	"/srv": true, "/sys": true, "/tmp": true, "/usr": true, "/var": true,
 }
 
-// Root — корень установки как он записан (без кавычек).
-func (l Layout) Root() string { return l.root }
+// base — корень с значением по умолчанию: нулевое размещение (Run без
+// явного layout в тестах и старых путях) значит /opt/wynd.
+func (l Layout) base() string {
+	if l.root == "" {
+		return DefaultInstallRoot
+	}
+	return l.root
+}
+
+// Root — корень установки (без кавычек).
+func (l Layout) Root() string { return l.base() }
 
 var plainPath = regexp.MustCompile(`^[A-Za-z0-9/._-]+$`)
 
@@ -79,41 +88,42 @@ var plainPath = regexp.MustCompile(`^[A-Za-z0-9/._-]+$`)
 // как есть (так же, как раньше писалось /opt/wynd); с пробелами, кавычками
 // или нелатинскими буквами — экранируется целиком.
 func (l Layout) shellRoot() string {
-	if plainPath.MatchString(l.root) {
-		return l.root
+	root := l.base()
+	if plainPath.MatchString(root) {
+		return root
 	}
-	return shQuote(l.root)
+	return shQuote(root)
 }
 
 // ShellRoot — корень для подстановки в команду: экранированный, если нужно.
 func (l Layout) ShellRoot() string { return l.shellRoot() }
 
 // Data — данные Wynd (база и файлы), рядом с настройкой, не томом Docker.
-func (l Layout) Data() string { return path.Join(l.root, "data") }
+func (l Layout) Data() string { return path.Join(l.base(), "data") }
 
 // Caddy — данные своего Caddy.
-func (l Layout) Caddy() string { return path.Join(l.root, "caddy") }
+func (l Layout) Caddy() string { return path.Join(l.base(), "caddy") }
 
 // Acme — сертификаты и служебные файлы ACME своего прокси.
-func (l Layout) Acme() string { return path.Join(l.root, "acme") }
+func (l Layout) Acme() string { return path.Join(l.base(), "acme") }
 
 // Compose — файл compose.yaml установки.
-func (l Layout) Compose() string { return path.Join(l.root, "compose.yaml") }
+func (l Layout) Compose() string { return path.Join(l.base(), "compose.yaml") }
 
 // Caddyfile — настройка своего Caddy.
-func (l Layout) Caddyfile() string { return path.Join(l.root, "Caddyfile") }
+func (l Layout) Caddyfile() string { return path.Join(l.base(), "Caddyfile") }
 
 // Backups — копии данных, которые Мастерская делает на сервере.
-func (l Layout) Backups() string { return path.Join(l.root, "backups") }
+func (l Layout) Backups() string { return path.Join(l.base(), "backups") }
 
 // StoppedMark — пометка «сайт остановлен Мастерской».
-func (l Layout) StoppedMark() string { return path.Join(l.root, ".workshop-stopped") }
+func (l Layout) StoppedMark() string { return path.Join(l.base(), ".workshop-stopped") }
 
 // UpdateMark — пометка начатого обновления.
-func (l Layout) UpdateMark() string { return path.Join(l.root, ".workshop-update") }
+func (l Layout) UpdateMark() string { return path.Join(l.base(), ".workshop-update") }
 
 // MoveMark — пометка начатого переезда.
-func (l Layout) MoveMark() string { return path.Join(l.root, ".workshop-move") }
+func (l Layout) MoveMark() string { return path.Join(l.base(), ".workshop-move") }
 
 // RunningFilter — docker ps по контейнеру Wynd этой установки.
 func (l Layout) RunningFilter() string {

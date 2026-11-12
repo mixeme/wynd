@@ -526,12 +526,12 @@ func TestInspectRunsOneReadOnlyCommand(t *testing.T) {
 		t.Fatalf("os: %+v", rep.Findings)
 	}
 	cmd := <-srv.commands
-	if cmd != inspectScript {
+	if cmd != inspectScriptAt(DefaultLayout()) {
 		t.Fatal("на сервер ушла не команда осмотра")
 	}
 	// Осмотр только читает: в команде нет ничего, что пишет или ставит.
 	for _, word := range []string{"rm ", "apt-get", "apt ", "install", "systemctl", " > /", ">>", "tee ", "chmod", "mkdir", "curl", "wget"} {
-		if strings.Contains(inspectScript, word) {
+		if strings.Contains(inspectScriptAt(DefaultLayout()), word) {
 			t.Errorf("в команде осмотра есть %q", word)
 		}
 	}
