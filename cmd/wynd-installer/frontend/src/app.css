@@ -215,8 +215,11 @@ body {
 .ins-password-fields {
 	min-width: 0;
 }
+/* Невидимое по выбору поле не занимает места: с «visibility: hidden» скрытая
+   половина формы всё равно считалась в высоте, и в полях появлялась прокрутка
+   при пустом месте внизу (C90). */
 .ins-inactive {
-	visibility: hidden;
+	display: none;
 }
 .ins-credential-note {
 	margin: auto 0 0;
