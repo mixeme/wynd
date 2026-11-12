@@ -4,420 +4,430 @@
 html,
 body,
 #app {
-	height: 100%;
-	margin: 0;
+  height: 100%;
+  margin: 0;
 }
 body {
-	background: var(--paper);
-	color: var(--ink);
-	font-family: var(--ui);
-	font-size: 13.5px;
-	line-height: 1.4;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--ui);
+  font-size: 13.5px;
+  line-height: 1.4;
 }
 /* Своя рамка окна (Window.svelte): полоса заголовка ($ui/workshop/TitleBar),
    под ней — установщик. Тонкая граница — как у окна на макете; у развёрнутого
    её нет. Строки, плашки, галочки и прочее окна — компоненты $ui/workshop и
    $lib/styles/workshop.css (план 54); здесь — раскладка экранов. */
 .ins-win {
-	display: flex;
-	flex-direction: column;
-	height: 100%;
-	box-shadow: inset 0 0 0 1px #cfc5b8;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-shadow: inset 0 0 0 1px #cfc5b8;
 }
 .ins-win.maximised {
-	box-shadow: none;
+  box-shadow: none;
 }
 .ins {
-	--c: var(--terracotta);
-	--ok: var(--olive);
-	--warn: var(--ochre);
-	--bad: #b5482f;
-	position: relative;
-	display: flex;
-	flex: 1;
-	min-height: 0;
+  --c: var(--terracotta);
+  --ok: var(--olive);
+  --warn: var(--ochre);
+  --bad: #b5482f;
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
 }
 .ins-body {
-	flex: 1;
-	min-width: 0;
-	padding: 22px 26px;
-	overflow-y: auto;
+  flex: 1;
+  min-width: 0;
+  padding: 22px 26px;
+  overflow-y: auto;
 }
 .ins-body h2 {
-	margin: 0 0 4px;
-	font-size: 18px;
+  margin: 0 0 4px;
+  font-size: 18px;
 }
 .ins-sub {
-	margin: 0 0 14px;
-	color: var(--muted);
-	line-height: 1.45;
+  margin: 0 0 14px;
+  color: var(--muted);
+  line-height: 1.45;
 }
 .ins-sub.mt {
-	margin-top: 12px;
+  margin-top: 12px;
 }
 .ins-form {
-	display: block;
+  display: block;
 }
 
 /* $ui без телефонных полей */
 .ins .lab {
-	margin: 12px 0 5px;
+  margin: 12px 0 5px;
 }
 .ins .fld,
 .ins input.fld {
-	width: 100%;
-	margin: 0;
-	padding: 8px 11px;
-	border-radius: 8px;
-	box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 8px 11px;
+  border-radius: 8px;
+  box-sizing: border-box;
 }
 .ins input.fld:focus {
-	border-color: var(--c);
-	outline: none;
+  border-color: var(--c);
+  outline: none;
 }
 .ins .btn {
-	display: inline-block;
-	width: auto;
-	margin: 0;
-	padding: 9px 18px;
-	border-radius: 8px;
+  display: inline-block;
+  width: auto;
+  margin: 0;
+  padding: 9px 18px;
+  border-radius: 8px;
 }
 .ins .btn:not(:disabled):not(.off) {
-	cursor: pointer;
+  cursor: pointer;
 }
 .ins .chip {
-	cursor: pointer;
+  cursor: pointer;
 }
 .ins .chip.on {
-	background: color-mix(in srgb, var(--c) 12%, var(--card));
-	color: var(--c);
+  background: color-mix(in srgb, var(--c) 12%, var(--card));
+  color: var(--c);
 }
 
 .ins-chips {
-	display: flex;
-	gap: 8px;
+  display: flex;
+  gap: 8px;
 }
 .ins-pair {
-	display: flex;
-	gap: 10px;
+  display: flex;
+  gap: 10px;
 }
 .ins-user {
-	flex: 0 0 130px;
+  flex: 0 0 130px;
 }
 .ins-svcbar {
-	display: flex;
-	gap: 8px;
-	margin: 4px 0 14px;
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 14px;
 }
 .ins-domain {
-	display: flex;
-	align-items: center;
-	gap: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 /* «подробнее, что проверили» — сразу под рамкой с текстом отказа. */
 .ins-more {
-	margin-top: 10px;
+  margin-top: 10px;
 }
 .ins-sec {
-	margin: 14px 0 2px;
-	color: var(--muted);
-	font-size: 11.5px;
-	font-weight: 600;
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
+  margin: 14px 0 2px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .ins-workspace {
-	flex: 1;
-	min-width: 0;
-	min-height: 0;
-	display: flex;
-	flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 .ins-content {
-	flex: 1;
-	min-height: 0;
-	display: flex;
-	flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 .ins-profile-view {
-	display: flex;
-	flex: 1;
-	min-height: 0;
+  display: flex;
+  flex: 1;
+  min-height: 0;
 }
 .ins-archive-view {
-	display: flex;
-	flex: 1;
-	min-height: 0;
+  display: flex;
+  flex: 1;
+  min-height: 0;
 }
 .ins-hidden {
-	display: none !important;
+  display: none !important;
 }
 .ins-pane {
-	display: flex;
-	flex-direction: column;
-	padding: 23px 25px;
-	overflow-wrap: anywhere;
+  display: flex;
+  flex-direction: column;
+  padding: 23px 25px;
+  overflow-wrap: anywhere;
 }
 /* Вывод сборки на узком окне (C71): flex сжимал его до нуля, и раскрытый
    «Полный вывод сборки» выглядел пустым. Пусть блок держит читаемую высоту,
-   а листается сам вывод и панель под ним. */
+   а листается сам вывод и панель под ним. Отступ сверху отделяет вывод от
+   действий: вплотную он выглядел наехавшим на кнопки. */
 .ins-pane > .ins-raw {
-	flex: 1 1 auto;
-	min-height: 118px;
+  flex: 1 1 auto;
+  min-height: 118px;
+  margin-top: 12px;
+}
+/* Прокручиваемые области окна: полоса видна и узкая — иначе непонятно, что
+   содержимое листается (C71). */
+.ins-body,
+.ins-raw,
+.ins-form-fields {
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted) transparent;
 }
 .ins-win.ins-servers .ins-pane > .ins-foot {
-	margin-top: auto;
-	padding-top: 34px;
-	position: relative;
+  margin-top: auto;
+  padding-top: 34px;
+  position: relative;
 }
 .ins-win.ins-servers .ins-pane > .ins-foot::before,
 .ins-win.ins-servers .ins-profile-form > .ins-foot::before {
-	content: '';
-	position: absolute;
-	top: 18px;
-	left: 0;
-	right: 0;
-	height: 1px;
-	background: var(--line);
+  content: "";
+  position: absolute;
+  top: 18px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--line);
 }
 .ins-win.ins-servers .ins-pane > .ins-profile-tools {
-	font-size: 12px;
-	gap: 10px 16px;
+  font-size: 12px;
+  gap: 10px 16px;
 }
 .ins-win.ins-servers .ins-pane > .ins-foot + .ins-profile-tools {
-	margin-top: 12px;
-	border-top: 0;
-	padding-top: 0;
+  margin-top: 12px;
+  border-top: 0;
+  padding-top: 0;
 }
 .ins-win.ins-servers .ins-pane > .ins-foot + .ins-profile-tools::before {
-	display: none;
+  display: none;
 }
 .ins-profile-form {
-	display: flex;
-	flex-direction: column;
-	flex: 1;
-	min-width: 0;
-	min-height: 0;
-	overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 .ins-form-fields {
-	flex: 1;
-	min-height: 0;
-	overflow-y: auto;
-	padding-right: 2px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 .ins-form-pair {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 .ins-password-fields {
-	min-width: 0;
+  min-width: 0;
 }
 /* Невидимое по выбору поле не занимает места: с «visibility: hidden» скрытая
    половина формы всё равно считалась в высоте, и в полях появлялась прокрутка
    при пустом месте внизу (C90). */
 .ins-inactive {
-	display: none;
+  display: none;
 }
 .ins-credential-note {
-	margin: auto 0 0;
-	padding-top: 18px;
-	color: var(--muted);
-	font-size: 12px;
+  margin: auto 0 0;
+  padding-top: 18px;
+  color: var(--muted);
+  font-size: 12px;
 }
 .ins-win.ins-servers .ins-profile-form > .ins-foot {
-	margin-top: 0;
-	padding-top: 34px;
-	position: relative;
+  margin-top: 0;
+  padding-top: 34px;
+  position: relative;
 }
 .ins-profile-form > .ins-foot > .ins-check {
-	margin: 0;
+  margin: 0;
 }
 .ins-welcome {
-	max-width: 470px;
-	margin: 70px auto;
-	text-align: center;
+  max-width: 470px;
+  margin: 70px auto;
+  text-align: center;
 }
 .ins-move-pair {
-	display: grid;
-	grid-template-columns: 1fr auto 1fr;
-	gap: 10px;
-	align-items: center;
-	border-bottom: 1px solid var(--line);
-	padding-bottom: 13px;
-	margin-bottom: 15px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 10px;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 13px;
+  margin-bottom: 15px;
 }
 .ins-move-pair small {
-	display: block;
-	color: var(--muted);
-	font-size: 12px;
-	overflow-wrap: anywhere;
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }
 .ins-move-pair strong {
-	display: block;
-	font-weight: 500;
+  display: block;
+  font-weight: 500;
 }
 .ins-self-note {
-	padding: 8px 25px;
-	text-align: right;
-	font-size: 12px;
+  padding: 8px 25px;
+  text-align: right;
+  font-size: 12px;
 }
 @media (max-width: 680px) {
-	.ins:has(> nav.ins-server-rail) {
-		flex-direction: column;
-	}
-	.ins-pane {
-		padding: 19px 17px;
-	}
-	.ins-form-pair,
-	.ins-move-pair {
-		grid-template-columns: 1fr;
-	}
-	.ins-welcome {
-		margin: 40px auto;
-	}
+  .ins:has(> nav.ins-server-rail) {
+    flex-direction: column;
+  }
+  .ins-pane {
+    padding: 19px 17px;
+  }
+  .ins-form-pair,
+  .ins-move-pair {
+    grid-template-columns: 1fr;
+  }
+  .ins-welcome {
+    margin: 40px auto;
+  }
 }
 
 /* Exact typography and tokens from the approved servers frame; the signer
    imports this stylesheet too, so these apply only to the Workshop shell. */
 .ins-win.ins-servers {
-	/* Approved servers layout: workshop-servers.fragment.html, 7а/7в, b827aff8. */
-	color-scheme: light dark;
-	--paper: light-dark(#f4f0e9, #26221e);
-	--card: light-dark(#fbf9f6, #2d2823);
-	--line: light-dark(#ddd3c8, #51473c);
-	--ink: light-dark(#2b2724, #eee5d8);
-	--muted: light-dark(#746b60, #beb2a1);
-	--faint: light-dark(#7c7367, #ad9e8b);
-	--terracotta: light-dark(#af5839, #d99a79);
-	--olive: light-dark(#58673a, #b4c18d);
-	--ochre: light-dark(#70571b, #dfc58a);
-	--on-c: light-dark(#fff9f3, #241a13);
-	--tint: light-dark(#efe9e0, #302a24);
-	--ui: 'Golos Text', 'Segoe UI', system-ui, sans-serif;
-	font: 400 13px/1.5 var(--ui);
-	background: var(--paper);
-	color: var(--ink);
-	border: 1px solid var(--line);
-	border-radius: 9px;
-	box-shadow: none;
-	box-sizing: border-box;
-	overflow: hidden;
+  /* Approved servers layout: workshop-servers.fragment.html, 7а/7в, b827aff8. */
+  color-scheme: light dark;
+  --paper: light-dark(#f4f0e9, #26221e);
+  --card: light-dark(#fbf9f6, #2d2823);
+  --line: light-dark(#ddd3c8, #51473c);
+  --ink: light-dark(#2b2724, #eee5d8);
+  --muted: light-dark(#746b60, #beb2a1);
+  --faint: light-dark(#7c7367, #ad9e8b);
+  --terracotta: light-dark(#af5839, #d99a79);
+  --olive: light-dark(#58673a, #b4c18d);
+  --ochre: light-dark(#70571b, #dfc58a);
+  --on-c: light-dark(#fff9f3, #241a13);
+  --tint: light-dark(#efe9e0, #302a24);
+  --ui: "Golos Text", "Segoe UI", system-ui, sans-serif;
+  font: 400 13px/1.5 var(--ui);
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  box-shadow: none;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 .ins-win.ins-servers.maximised {
-	border: 0;
-	border-radius: 0;
+  border: 0;
+  border-radius: 0;
 }
 .ins-win.ins-servers .ins-tb b {
-	font-weight: 500;
+  font-weight: 500;
 }
 .ins-win.ins-servers .ins-tabs button {
-	margin-bottom: 0;
-	padding: 10px 0;
+  margin-bottom: 0;
+  padding: 10px 0;
 }
 .ins-win.ins-servers .ins-tabs button.on {
-	font-weight: 400;
+  font-weight: 400;
 }
 .ins-win.ins-servers .ins-rail-head h3 {
-	font-size: 14px;
+  font-size: 14px;
 }
 .ins-win.ins-servers .ins-sub {
-	margin-bottom: 16px;
-	line-height: 1.5;
+  margin-bottom: 16px;
+  line-height: 1.5;
 }
 .ins-win.ins-servers .ins-sub:has(+ .ins-profile-form) {
-	margin-bottom: 0;
+  margin-bottom: 0;
 }
 .ins-win.ins-servers .ins-profile-form select.fld {
-	min-height: 39px;
+  min-height: 39px;
 }
 .ins-win.ins-servers .ins-pane > .meter {
-	margin: 12px 0 14px;
-	height: 5px;
-	background: var(--line);
+  margin: 12px 0 14px;
+  height: 5px;
+  background: var(--line);
 }
 /* Только отступ: последняя строка шагов не рисует свою черту — единственная
    линия над действиями принадлежит .ins-foot::before (MarkRow уже снимает
    border-bottom у последнего элемента). */
 .ins-win.ins-servers .ins-stage-steps .ins-row {
-	padding: 9px 0;
+  padding: 9px 0;
 }
 .ins-win.ins-servers .ins .btn {
-	border: 1px solid var(--c);
+  border: 1px solid var(--c);
 }
 .ins-win.ins-servers .ins .btn.gh,
 .ins-win.ins-servers .ins .btn.off {
-	border-color: var(--line);
+  border-color: var(--line);
 }
 .ins-win.ins-servers .ins-svcbar {
-	gap: 10px;
-	margin: 0 0 8px;
+  gap: 10px;
+  margin: 0 0 8px;
 }
 .ins-win.ins-servers .ins-pult-update {
-	margin-top: 0;
+  margin-top: 0;
 }
 .ins-win.ins-servers .ins-pult-update > .ins-strong {
-	font-size: 14px;
-	margin-bottom: 6px;
+  font-size: 14px;
+  margin-bottom: 6px;
 }
 .ins-win.ins-servers .ins-pult-update .ins-foot {
-	margin-top: 17px;
+  margin-top: 17px;
 }
 .ins-win.ins-servers .ins-pult-actions {
-	margin-top: 12px;
+  margin-top: 12px;
 }
 .ins-win.ins-servers .ins-pult-actions .ins-row {
-	padding: 9px 0;
+  padding: 9px 0;
 }
 .ins-operation-path {
-	font-size: 12px;
-	color: var(--muted);
-	margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 12px;
 }
 .ins-servers .ins {
-	--bad: light-dark(#a73d29, #f0a18b);
+  --bad: light-dark(#a73d29, #f0a18b);
 }
 .ins-servers .ins-body h2 {
-	margin: 0 0 5px;
-	font-weight: 500;
+  margin: 0 0 5px;
+  font-weight: 500;
 }
 .ins-servers .ins .lab {
-	margin: 13px 0 5px;
-	font-size: 12px;
-	letter-spacing: 0;
-	text-transform: none;
-	font-weight: 400;
+  margin: 13px 0 5px;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 400;
 }
 .ins-servers .ins .fld,
 .ins-servers .ins input.fld {
-	border-radius: 7px;
-	font-size: 14px;
-	line-height: 1.5;
+  border-radius: 7px;
+  font-size: 14px;
+  line-height: 1.5;
 }
 .ins-servers .ins .btn {
-	padding: 8px 14px;
-	border-radius: 7px;
-	font: 500 13px/1.45 var(--ui);
+  padding: 8px 14px;
+  border-radius: 7px;
+  font: 500 13px/1.45 var(--ui);
 }
 .ins-servers .ins .btn.gh {
-	font-weight: 400;
+  font-weight: 400;
 }
 .ins-servers .ins .btn.c {
-	color: var(--on-c);
+  color: var(--on-c);
 }
 .ins-servers .ins .ins-strong {
-	font-weight: 500;
+  font-weight: 500;
 }
 .ins-servers .ins .ins-box {
-	padding: 13px 14px;
-	border-radius: 8px;
+  padding: 13px 14px;
+  border-radius: 8px;
 }
 .ins-servers > div.ins-tabs {
-	gap: 24px;
-	padding: 0 23px;
+  gap: 24px;
+  padding: 0 23px;
 }
 .ins-servers .ins-tabs button.on {
-	font-weight: 400;
+  font-weight: 400;
 }
