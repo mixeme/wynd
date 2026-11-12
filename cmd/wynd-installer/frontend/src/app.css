@@ -159,6 +159,13 @@ body {
 	padding: 23px 25px;
 	overflow-wrap: anywhere;
 }
+/* Вывод сборки на узком окне (C71): flex сжимал его до нуля, и раскрытый
+   «Полный вывод сборки» выглядел пустым. Пусть блок держит читаемую высоту,
+   а листается сам вывод и панель под ним. */
+.ins-pane > .ins-raw {
+	flex: 1 1 auto;
+	min-height: 118px;
+}
 .ins-win.ins-servers .ins-pane > .ins-foot {
 	margin-top: auto;
 	padding-top: 34px;
