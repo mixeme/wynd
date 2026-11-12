@@ -385,33 +385,29 @@ body{font-family:"Golos Text",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto
 .toc a:hover{color:var(--c)}
 .back{display:inline-block;margin:14px 12px 0;color:var(--c)}
 .end{text-align:center;color:var(--faint);font-size:12.5px;padding:24px 16px 40px}
-.voice{display:flex;align-items:center;gap:10px;margin:12px 0 0}
-.vplay{width:38px;height:38px;border:0;border-radius:50%;background:var(--c);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex:none;cursor:pointer;padding:0}
-.vtri{width:0;height:0;border-left:11px solid currentColor;border-top:7px solid transparent;border-bottom:7px solid transparent;margin-left:3px}
-.vpause{display:none;width:11px;height:13px;border-left:4px solid currentColor;border-right:4px solid currentColor;box-sizing:border-box}
-.voice.playing .vtri{display:none}
-.voice.playing .vpause{display:block}
-.vwave{position:relative;flex:1;min-width:0;height:22px}
-.vb,.vf{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;gap:2px}
-.vb i,.vf i{flex:1;min-width:1px;border-radius:1px;background:#CFC6B7}
-.vf i{background:var(--c)}
-.vf{clip-path:inset(0 calc(100% - var(--p,0) * 1%) 0 0)}
-.vtime{flex:none;color:var(--muted);font-size:12.5px;min-width:32px;text-align:right;font-variant-numeric:tabular-nums}
-.sound{display:flex;align-items:center;gap:10px;margin:12px 0 0;border:1px solid var(--line);border-radius:14px;background:var(--card);padding:8px 10px}
-.sbtn{display:flex;align-items:center;gap:10px;flex:1;min-width:0;border:0;background:none;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
-.scov{width:44px;height:44px;border-radius:10px;background:var(--line);flex:none;overflow:hidden}
-.scov img{width:100%;height:100%;object-fit:cover;display:block;border:0;margin:0;border-radius:0}
-.sbody{flex:1;min-width:0;display:block}
-.sline{display:flex;align-items:center;gap:6px;min-width:0}
-.stri{width:0;height:0;border-left:8px solid var(--c);border-top:5px solid transparent;border-bottom:5px solid transparent;flex:none}
-.spause{display:none;width:8px;height:10px;border-left:3px solid var(--c);border-right:3px solid var(--c);box-sizing:border-box;flex:none}
-.sound.playing .stri{display:none}
-.sound.playing .spause{display:block}
-.sname{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sbar{display:block;height:3px;border-radius:2px;background:var(--line);margin:6px 0 0;overflow:hidden}
-.sbar i{display:block;height:100%;width:0;background:var(--c)}
-.stime{display:block;color:var(--muted);font-size:12px;margin-top:4px;font-variant-numeric:tabular-nums}
-.sdl{flex:none;color:var(--c);font-size:12.5px}
+.voice{display:flex;align-items:center;gap:11px;margin:12px 0 0;width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left}
+.voice-play{width:34px;height:34px;border-radius:50%;background:var(--c);display:grid;place-items:center;flex:none;border:0;padding:0;cursor:pointer;color:#fff}
+.voice-play .ic{width:17px;height:17px;color:#fff}
+.vwave{display:flex;align-items:center;gap:1.5px;height:22px;flex:1;min-width:0;overflow:hidden}
+.vwave i{flex:1 1 0;max-width:3px;min-height:3px;border-radius:2px;background:var(--line)}
+.vwave i.on{background:var(--c)}
+.sz{font-size:11.5px;color:var(--faint)}
+.att{display:flex;align-items:center;gap:11px;border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin:12px 0 0;min-width:0;box-sizing:border-box;width:100%;text-align:left}
+.att-play{display:flex;align-items:center;gap:11px;flex:1;min-width:0;text-align:left;background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer}
+.att-cover{width:72px;height:72px;border-radius:8px;flex:none;overflow:hidden;background:var(--line);display:block}
+.att-cover img{width:100%;height:100%;object-fit:cover;display:block;border:0;margin:0;border-radius:0}
+.att-body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:11px}
+.att-line{display:flex;align-items:center;gap:11px;min-width:0}
+.att-line .ic{width:21px;height:21px;color:var(--c);flex:none}
+.att-name{font-size:12.5px;line-height:1.3;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.att-bar{display:block;height:3px;border-radius:2px;background:var(--line);overflow:hidden}
+.att-bar i{display:block;height:100%;background:var(--c);width:0}
+.att .sz{line-height:1}
+.dl{line-height:0;color:var(--muted);flex:none;border:0;background:none;padding:0}
+.dl .ic{width:21px;height:21px}
+.ic{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.pause,.voice.playing .play,.att.playing .play{display:none}
+.voice.playing .pause,.att.playing .pause{display:inline}
 noscript audio{width:100%;margin:10px 0 0}
 `
 
@@ -459,8 +455,8 @@ const audioScript = `<script>(function(){
 var el=new Audio(),active=null,src="";
 function mmss(s){s=Math.max(0,Math.floor(s||0));var m=Math.floor(s/60),r=s%60;return m+":"+(r<10?"0":"")+r}
 function total(row){return Number(row&&row.getAttribute("data-ms")||0)/1000}
-function setTime(row,s){var t=row&&row.querySelector(".vtime,.stime");if(t)t.textContent=mmss(s)}
-function setProg(row,f){if(!row)return;if(row.classList.contains("voice")){var w=row.querySelector(".vwave");if(w)w.style.setProperty("--p",(f*100).toFixed(1))}else{var b=row.querySelector(".sbar i");if(b)b.style.width=(f*100).toFixed(1)+"%"}}
+function setTime(row,s){var t=row&&row.querySelector(".sz");if(t)t.textContent=mmss(s)}
+function setProg(row,f){if(!row)return;var bar=row.querySelector(".att-bar i");if(bar)bar.style.width=(f*100).toFixed(1)+"%";var wave=row.querySelector(".vwave");if(wave){var bars=wave.children,n=Math.round(f*bars.length);for(var i=0;i<bars.length;i++)bars[i].classList[i<n?"add":"remove"]("on")}}
 function mark(row,on){if(!row)return;row.classList[on?"add":"remove"]("playing");var b=row.querySelector("button");if(b)b.setAttribute("aria-pressed",on?"true":"false")}
 function idle(row){mark(row,false);setProg(row,0);setTime(row,total(row))}
 el.addEventListener("timeupdate",function(){if(!active)return;setProg(active,el.duration?el.currentTime/el.duration:0);setTime(active,el.currentTime)});
@@ -470,7 +466,7 @@ el.addEventListener("pause",function(){mark(active,false)});
 el.addEventListener("play",function(){mark(active,true)});
 document.addEventListener("click",function(ev){
 var btn=ev.target&&ev.target.closest?ev.target.closest("button[data-src]"):null;if(!btn)return;
-var row=btn.closest(".voice,.sound"),next=btn.getAttribute("data-src");
+var row=btn.closest(".voice,.att"),next=btn.getAttribute("data-src");
 if(src===next&&!el.paused){el.pause();return}
 if(src!==next){if(active&&active!==row)idle(active);src=next;active=row;el.src=next}
 else{active=row}
@@ -748,47 +744,56 @@ func appendAudioHTML(b *strings.Builder, m chronicle.PostMedia, media map[string
 	b.WriteString("\"></audio></noscript>")
 }
 
-// appendVoiceHTML — голосовое: волна из записанных уровней, длительность,
-// закрашивается по мере прослушивания (в приложении — тем же способом).
+// iconPlay, iconPause, iconDownload — те же значки, что в приложении
+// (web/static/icons.svg): плеер архива рисуется теми же формами.
+const (
+	iconPlay     = `<svg class="ic play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 4.5 19.5 12l-12 7.5z"/></svg>`
+	iconPause    = `<svg class="ic pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>`
+	iconDownload = `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v10.6M6.2 11.3 12 17l5.8-5.7"/><path d="M4.5 19.8h15"/></svg>`
+)
+
+// appendVoiceHTML — голосовое как в приложении (4.16): круглая кнопка цвета
+// круга 34×34, волна из уровней записи и длительность.
 func appendVoiceHTML(b *strings.Builder, m chronicle.PostMedia, href string) {
-	b.WriteString("<div class=\"voice\" data-ms=\"")
+	b.WriteString(`<div class="voice" data-ms="`)
 	b.WriteString(strconv.FormatInt(m.AudioDurationMs, 10))
-	b.WriteString("\">")
-	b.WriteString("<button type=\"button\" class=\"vplay\" aria-label=\"Слушать голосовое\" aria-pressed=\"false\" data-src=\"")
+	b.WriteString(`"><button type="button" class="voice-play" aria-label="Слушать голосовое" data-src="`)
 	b.WriteString(href)
-	b.WriteString("\"><span class=\"vtri\"></span><span class=\"vpause\"></span></button>")
-	b.WriteString("<span class=\"vwave\" style=\"--p:0\"><span class=\"vb\">")
-	var bars strings.Builder
+	b.WriteString(`">`)
+	b.WriteString(iconPlay)
+	b.WriteString(iconPause)
+	b.WriteString(`</button><span class="vwave" aria-hidden="true">`)
 	for _, peak := range wavePeaks(m.AudioPeaks) {
-		bars.WriteString("<i style=\"height:")
-		bars.WriteString(strconv.Itoa(peak))
-		bars.WriteString("%\"></i>")
+		b.WriteString(`<i style="height:`)
+		b.WriteString(strconv.Itoa(peak))
+		b.WriteString(`%"></i>`)
 	}
-	b.WriteString(bars.String())
-	b.WriteString("</span><span class=\"vf\">")
-	b.WriteString(bars.String())
-	b.WriteString("</span></span><span class=\"vtime\">")
+	b.WriteString(`</span><span class="sz">`)
 	b.WriteString(mmss(m.AudioDurationMs))
-	b.WriteString("</span></div>")
+	b.WriteString(`</span></div>`)
 }
 
-// appendSoundHTML — звук-файл: обложка, название, полоса хода, время и ссылка
-// на файл. Название — «Исполнитель — Название», если они записаны.
+// appendSoundHTML — звук-файл как в приложении (4.6/4.7): обложка 72×72,
+// значок игры и название, полоса хода, время и кнопка скачивания.
 func appendSoundHTML(b *strings.Builder, m chronicle.PostMedia, media map[string]string, prefix, href string) {
-	b.WriteString("<div class=\"sound\" data-ms=\"0\"><button type=\"button\" class=\"sbtn\" aria-label=\"Слушать\" aria-pressed=\"false\" data-src=\"")
+	b.WriteString(`<div class="att" data-ms="0"><button type="button" class="att-play" aria-label="Слушать" data-src="`)
 	b.WriteString(href)
-	b.WriteString("\"><span class=\"scov\">")
+	b.WriteString(`"><span class="att-cover">`)
 	if cover, ok := media[m.AudioCoverBlobID]; ok {
-		b.WriteString("<img alt=\"\" src=\"")
+		b.WriteString(`<img alt="" src="`)
 		b.WriteString(html.EscapeString(prefix + cover))
-		b.WriteString("\">")
+		b.WriteString(`">`)
 	}
-	b.WriteString("</span><span class=\"sbody\"><span class=\"sline\"><span class=\"stri\"></span><span class=\"spause\"></span><span class=\"sname\">")
+	b.WriteString(`</span><span class="att-body"><span class="att-line">`)
+	b.WriteString(iconPlay)
+	b.WriteString(iconPause)
+	b.WriteString(`<span class="att-name">`)
 	b.WriteString(html.EscapeString(audioLabel(m)))
-	b.WriteString("</span></span><span class=\"sbar\"><i></i></span><span class=\"stime\">")
-	b.WriteString("</span></span></button><a class=\"sdl\" href=\"")
+	b.WriteString(`</span></span><span class="att-bar"><i></i></span><span class="sz">0:00</span></span></button><a class="dl" href="`)
 	b.WriteString(href)
-	b.WriteString("\" download>Скачать</a></div>")
+	b.WriteString(`" download aria-label="Скачать">`)
+	b.WriteString(iconDownload)
+	b.WriteString(`</a></div>`)
 }
 
 // audioLabel — подпись звука: «Исполнитель — Название» или имя файла.

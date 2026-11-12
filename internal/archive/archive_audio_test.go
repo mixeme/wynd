@@ -79,25 +79,28 @@ func TestArchiveAudioMatchesApp(t *testing.T) {
 	if !strings.Contains(index, `<div class="voice" data-ms="7400">`) {
 		t.Fatalf("голосовое без строки плеера: %s", index)
 	}
-	if got := strings.Count(index, `<i style="height:`); got != 8 {
-		t.Fatalf("волна: %d полос, ожидалось 8 (два слоя по 4)", got)
+	if got := strings.Count(index, `<i style="height:`); got != 4 {
+		t.Fatalf("волна: %d полос, ожидалось 4", got)
 	}
-	if !strings.Contains(index, `<span class="vtime">0:07</span>`) {
+	if !strings.Contains(index, `<span class="sz">0:07</span>`) {
 		t.Fatal("нет длительности голосового")
 	}
 
 	// Звук-файл: обложка, «Исполнитель — Название», полоса хода, скачивание.
-	if !strings.Contains(index, `<div class="sound" data-ms="0">`) {
+	if !strings.Contains(index, `<div class="att" data-ms="0">`) {
 		t.Fatalf("звук без строки плеера: %s", index)
 	}
-	if !strings.Contains(index, `<span class="scov"><img alt="" src="`) {
+	if !strings.Contains(index, `<span class="att-cover"><img alt="" src="`) {
 		t.Fatal("нет обложки звука")
 	}
-	if !strings.Contains(index, `<span class="sname">Аня — Утро</span>`) {
+	if !strings.Contains(index, `<span class="att-name">Аня — Утро</span>`) {
 		t.Fatal("нет названия звука")
 	}
-	if !strings.Contains(index, `<span class="sbar"><i></i></span>`) || !strings.Contains(index, `>Скачать</a>`) {
-		t.Fatal("нет полосы хода или ссылки на файл")
+	if !strings.Contains(index, `<span class="att-bar"><i></i></span>`) {
+		t.Fatal("нет полосы хода")
+	}
+	if !strings.Contains(index, `<a class="dl" href="`) || !strings.Contains(index, `download aria-label="Скачать"`) {
+		t.Fatal("нет кнопки скачивания")
 	}
 
 	// Один плеер на страницу; нативный <audio> — только запасной путь.
