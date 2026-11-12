@@ -62,20 +62,10 @@ type UpdateMark struct {
 	Copied bool `json:"copied,omitempty"`
 }
 
-const stateScript = `cd ` + installDir + ` 2>/dev/null || { echo '@none'; exit 0; }
-test -f compose.yaml || { echo '@none'; exit 0; }
-echo "@image $(sed -n 's/^[[:space:]]*image:[[:space:]]*\([^[:space:]]*wynd:[^[:space:]]*\)[[:space:]]*$/\1/p' compose.yaml | head -n 1)"
-echo "@url $(sed -n 's/^[[:space:]]*WYND_PUBLIC_URL:[[:space:]]*//p' compose.yaml | head -n 1)"
-echo "@running $(` + wyndRunning + ` | head -n 1)"
-echo "@container $(docker ps -aq --filter label=com.docker.compose.project.working_dir=` + installDir + ` --filter label=com.docker.compose.service=wynd 2>/dev/null | head -n 1)"
-echo "@stopped $(cat ` + stoppedMark + ` 2>/dev/null)"
-echo "@update $(cat ` + updateMark + ` 2>/dev/null)"
-echo "@move $(cat ` + moveMark + ` 2>/dev/null)"
-echo "@free $(df -Pk ` + installDir + ` | tail -n 1)"`
 
 // ReadServerState смотрит, что стоит на сервере. Ничего не меняет.
 func ReadServerState(ctx context.Context, sess *Session) (ServerState, error) {
-	res, err := sess.Exec(ctx, stateScript, nil, shortTimeout)
+	res, err := sess.Exec(ctx, DefaultLayout().StateScript(), nil, shortTimeout)
 	if err != nil {
 		return ServerState{}, err
 	}

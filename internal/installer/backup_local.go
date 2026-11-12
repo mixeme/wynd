@@ -68,9 +68,8 @@ type RemoteFile struct {
 	Size int64
 }
 
-// listScript — файлы папки установки, кроме копий и живой базы; база — из снимка.
-const listScript = `cd ` + installDir + ` && find . \( -path ./backups -o -path ./data/backups -o -path ./data/.workshop-copy -o -path ./data/.workshop-backup -o -path ./src \) -prune -o -type f ! -path './data/wynd.db*' -printf '%s\t%P\n'
-cd ` + snapshotDir + ` && find . -type f -printf '%s\tdata/%P\n'`
+// Список файлов папки установки — DefaultLayout().BackupListScript(): путь и
+// снимок базы выводятся из размещения установки (layout.go).
 
 func parseListing(out string) []RemoteFile {
 	var files []RemoteFile
@@ -168,7 +167,7 @@ func readManifest(folder string) (BackupManifest, bool) {
 // PlanLocalBackup считает, сколько скачать (8а). Список файлов — без снимка
 // базы: её размер — у живой базы.
 func PlanLocalBackup(ctx context.Context, sess *Session, folder string) LocalBackupPlan {
-	res, err := sess.Exec(ctx, listScript+"; du -sk "+dataDir+"/wynd.db* 2>/dev/null | awk '{s+=$1} END {print \"DB\\t\" s*1024}'", nil, shortTimeout)
+	res, err := sess.Exec(ctx, DefaultLayout().BackupListScript()+"; du -sk "+dataDir+"/wynd.db* 2>/dev/null | awk '{s+=$1} END {print \"DB\\t\" s*1024}'", nil, shortTimeout)
 	if err != nil {
 		return LocalBackupPlan{Message: "Связь с сервером оборвалась"}
 	}
@@ -260,7 +259,7 @@ func LocalBackup(ctx context.Context, sess *Session, spec LocalBackupSpec, repor
 		{
 			id: "fetch", title: "Скачиваем",
 			do: func(ctx context.Context, r *Run) error {
-				out, err := r.must(ctx, listScript, shortTimeout)
+				out, err := r.must(ctx, DefaultLayout().BackupListScript(), shortTimeout)
 				if err != nil {
 					return err
 				}
