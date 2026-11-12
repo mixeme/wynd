@@ -24,6 +24,8 @@ const (
 	ReleasesURL = "https://api.github.com/repos/mixeme/wynd/releases?per_page=100"
 	// ReleasesPage — страница выпусков для человека.
 	ReleasesPage = "https://github.com/mixeme/wynd/releases"
+	// AttestationsPage — удостоверения сборки: куда ведёт «проверить».
+	AttestationsPage = "https://github.com/mixeme/wynd/attestations"
 	// desktopTag — метка выпуска окна: «desktop-v0.1.1».
 	desktopTag = "desktop-v"
 	// desktopExe — файл выпуска, который ставится на место своего exe.
@@ -122,7 +124,7 @@ func pickUpdate(rels []ghRelease, current string, now time.Time) Update {
 	if best == nil {
 		return Update{}
 	}
-	up := Update{Version: strings.TrimPrefix(best.TagName, desktopTag), Attestation: ReleasesPage + "/tag/" + best.TagName}
+	up := Update{Version: strings.TrimPrefix(best.TagName, desktopTag), Attestation: AttestationsPage}
 	for _, a := range best.Assets {
 		switch a.Name {
 		case desktopExe:

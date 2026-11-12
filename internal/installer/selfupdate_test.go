@@ -31,6 +31,10 @@ func TestPickRelease(t *testing.T) {
 	if up := pickRelease(rels, "0.2.0", now); up.Available {
 		t.Fatalf("новее нет, а предложено: %+v", up)
 	}
+	// 10б: «проверить» ведёт на удостоверение сборки, а не на страницу выпуска.
+	if up.Attestation != AttestationsPage {
+		t.Fatalf("ссылка «проверить»: %q, ожидалось %q", up.Attestation, AttestationsPage)
+	}
 }
 
 func TestVerifySignature(t *testing.T) {

@@ -26,6 +26,11 @@ const ReleasesURL = "https://api.github.com/repos/mixeme/wynd/releases?per_page=
 // ReleasesPage — страница выпусков для человека (10в, 7ж2).
 const ReleasesPage = "https://github.com/mixeme/wynd/releases"
 
+// AttestationsPage — удостоверения сборки репозитория: GitHub Actions,
+// тег и происхождение файлов выпуска. Сюда ведёт «проверить» (10б,
+// решение 4 плана 45), а не страница выпуска.
+const AttestationsPage = "https://github.com/mixeme/wynd/attestations"
+
 // workshopTag — метка выпуска Мастерской: «workshop-v0.2.0».
 const workshopTag = "workshop-v"
 
@@ -116,7 +121,7 @@ func pickRelease(rels []ghRelease, current string, now time.Time) SelfUpdate {
 	if best == nil {
 		return SelfUpdate{}
 	}
-	up := SelfUpdate{Version: strings.TrimPrefix(best.TagName, workshopTag), Attestation: ReleasesPage + "/tag/" + best.TagName}
+	up := SelfUpdate{Version: strings.TrimPrefix(best.TagName, workshopTag), Attestation: AttestationsPage}
 	for _, a := range best.Assets {
 		switch a.Name {
 		case "wynd-workshop.exe":
