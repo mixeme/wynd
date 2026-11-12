@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -384,6 +385,34 @@ body{font-family:"Golos Text",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto
 .toc a:hover{color:var(--c)}
 .back{display:inline-block;margin:14px 12px 0;color:var(--c)}
 .end{text-align:center;color:var(--faint);font-size:12.5px;padding:24px 16px 40px}
+.voice{display:flex;align-items:center;gap:10px;margin:12px 0 0}
+.vplay{width:38px;height:38px;border:0;border-radius:50%;background:var(--c);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex:none;cursor:pointer;padding:0}
+.vtri{width:0;height:0;border-left:11px solid currentColor;border-top:7px solid transparent;border-bottom:7px solid transparent;margin-left:3px}
+.vpause{display:none;width:11px;height:13px;border-left:4px solid currentColor;border-right:4px solid currentColor;box-sizing:border-box}
+.voice.playing .vtri{display:none}
+.voice.playing .vpause{display:block}
+.vwave{position:relative;flex:1;min-width:0;height:22px}
+.vb,.vf{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;gap:2px}
+.vb i,.vf i{flex:1;min-width:1px;border-radius:1px;background:#CFC6B7}
+.vf i{background:var(--c)}
+.vf{clip-path:inset(0 calc(100% - var(--p,0) * 1%) 0 0)}
+.vtime{flex:none;color:var(--muted);font-size:12.5px;min-width:32px;text-align:right;font-variant-numeric:tabular-nums}
+.sound{display:flex;align-items:center;gap:10px;margin:12px 0 0;border:1px solid var(--line);border-radius:14px;background:var(--card);padding:8px 10px}
+.sbtn{display:flex;align-items:center;gap:10px;flex:1;min-width:0;border:0;background:none;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.scov{width:44px;height:44px;border-radius:10px;background:var(--line);flex:none;overflow:hidden}
+.scov img{width:100%;height:100%;object-fit:cover;display:block;border:0;margin:0;border-radius:0}
+.sbody{flex:1;min-width:0;display:block}
+.sline{display:flex;align-items:center;gap:6px;min-width:0}
+.stri{width:0;height:0;border-left:8px solid var(--c);border-top:5px solid transparent;border-bottom:5px solid transparent;flex:none}
+.spause{display:none;width:8px;height:10px;border-left:3px solid var(--c);border-right:3px solid var(--c);box-sizing:border-box;flex:none}
+.sound.playing .stri{display:none}
+.sound.playing .spause{display:block}
+.sname{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sbar{display:block;height:3px;border-radius:2px;background:var(--line);margin:6px 0 0;overflow:hidden}
+.sbar i{display:block;height:100%;width:0;background:var(--c)}
+.stime{display:block;color:var(--muted);font-size:12px;margin-top:4px;font-variant-numeric:tabular-nums}
+.sdl{flex:none;color:var(--c);font-size:12.5px}
+noscript audio{width:100%;margin:10px 0 0}
 `
 
 // head пишет <head> страницы: prefix — путь до корня архива ("" или "../").
@@ -419,9 +448,35 @@ func (st style) header(b *strings.Builder, circleName, cutoff string) {
 }
 
 const (
-	pageEnd     = "<p class=\"end\">Wynd · персональный архив</p></div></body></html>"
-	pageEndFull = "<p class=\"end\">Wynd · полный архив круга</p></div></body></html>"
+	pageEnd     = "<p class=\"end\">Wynd · персональный архив</p>" + audioScript + "</div></body></html>"
+	pageEndFull = "<p class=\"end\">Wynd · полный архив круга</p>" + audioScript + "</div></body></html>"
 )
+
+// audioScript — один плеер на страницу: нажатие на строку играет её файл,
+// полоса и волна идут по ходу, повторное нажатие — пауза. Всё внутри файла:
+// архив остаётся офлайн, без JS играет нативный <audio> из <noscript>.
+const audioScript = `<script>(function(){
+var el=new Audio(),active=null,src="";
+function mmss(s){s=Math.max(0,Math.floor(s||0));var m=Math.floor(s/60),r=s%60;return m+":"+(r<10?"0":"")+r}
+function total(row){return Number(row&&row.getAttribute("data-ms")||0)/1000}
+function setTime(row,s){var t=row&&row.querySelector(".vtime,.stime");if(t)t.textContent=mmss(s)}
+function setProg(row,f){if(!row)return;if(row.classList.contains("voice")){var w=row.querySelector(".vwave");if(w)w.style.setProperty("--p",(f*100).toFixed(1))}else{var b=row.querySelector(".sbar i");if(b)b.style.width=(f*100).toFixed(1)+"%"}}
+function mark(row,on){if(!row)return;row.classList[on?"add":"remove"]("playing");var b=row.querySelector("button");if(b)b.setAttribute("aria-pressed",on?"true":"false")}
+function idle(row){mark(row,false);setProg(row,0);setTime(row,total(row))}
+el.addEventListener("timeupdate",function(){if(!active)return;setProg(active,el.duration?el.currentTime/el.duration:0);setTime(active,el.currentTime)});
+el.addEventListener("loadedmetadata",function(){if(active&&isFinite(el.duration)&&el.duration>0){active.setAttribute("data-ms",String(Math.round(el.duration*1000)));if(el.currentTime===0)setTime(active,total(active))}});
+el.addEventListener("ended",function(){if(active)idle(active)});
+el.addEventListener("pause",function(){mark(active,false)});
+el.addEventListener("play",function(){mark(active,true)});
+document.addEventListener("click",function(ev){
+var btn=ev.target&&ev.target.closest?ev.target.closest("button[data-src]"):null;if(!btn)return;
+var row=btn.closest(".voice,.sound"),next=btn.getAttribute("data-src");
+if(src===next&&!el.paused){el.pause();return}
+if(src!==next){if(active&&active!==row)idle(active);src=next;active=row;el.src=next}
+else{active=row}
+el.play().catch(function(){});
+});
+})()</script>`
 
 var monthsGen = [...]string{"января", "февраля", "марта", "апреля", "мая", "июня",
 	"июля", "августа", "сентября", "октября", "ноября", "декабря"}
@@ -671,33 +726,114 @@ func playableAudio(m chronicle.PostMedia) bool {
 	}
 }
 
+// appendAudioHTML — звук в записи или комментарии: голосовое — круглая кнопка
+// цвета круга, волна и длительность (как 4.16), звук-файл — обложка, название,
+// полоса хода и время (как 4.6/4.7). Раньше здесь стоял нативный <audio
+// controls> и звук в архиве выглядел не так, как в приложении.
 func appendAudioHTML(b *strings.Builder, m chronicle.PostMedia, media map[string]string, prefix string) {
 	src, ok := media[m.BlobID]
 	if !ok {
 		b.WriteString("<p class=\"gone\">Файл недоступен на сервере</p>")
 		return
 	}
-	b.WriteString("<div class=\"media\">")
+	href := html.EscapeString(prefix + src)
+	if m.Voice {
+		appendVoiceHTML(b, m, href)
+	} else {
+		appendSoundHTML(b, m, media, prefix, href)
+	}
+	// Без JS архив остаётся читаемым: играет нативный плеер.
+	b.WriteString("<noscript><audio controls preload=\"none\" src=\"")
+	b.WriteString(href)
+	b.WriteString("\"></audio></noscript>")
+}
+
+// appendVoiceHTML — голосовое: волна из записанных уровней, длительность,
+// закрашивается по мере прослушивания (в приложении — тем же способом).
+func appendVoiceHTML(b *strings.Builder, m chronicle.PostMedia, href string) {
+	b.WriteString("<div class=\"voice\" data-ms=\"")
+	b.WriteString(strconv.FormatInt(m.AudioDurationMs, 10))
+	b.WriteString("\">")
+	b.WriteString("<button type=\"button\" class=\"vplay\" aria-label=\"Слушать голосовое\" aria-pressed=\"false\" data-src=\"")
+	b.WriteString(href)
+	b.WriteString("\"><span class=\"vtri\"></span><span class=\"vpause\"></span></button>")
+	b.WriteString("<span class=\"vwave\" style=\"--p:0\"><span class=\"vb\">")
+	var bars strings.Builder
+	for _, peak := range wavePeaks(m.AudioPeaks) {
+		bars.WriteString("<i style=\"height:")
+		bars.WriteString(strconv.Itoa(peak))
+		bars.WriteString("%\"></i>")
+	}
+	b.WriteString(bars.String())
+	b.WriteString("</span><span class=\"vf\">")
+	b.WriteString(bars.String())
+	b.WriteString("</span></span><span class=\"vtime\">")
+	b.WriteString(mmss(m.AudioDurationMs))
+	b.WriteString("</span></div>")
+}
+
+// appendSoundHTML — звук-файл: обложка, название, полоса хода, время и ссылка
+// на файл. Название — «Исполнитель — Название», если они записаны.
+func appendSoundHTML(b *strings.Builder, m chronicle.PostMedia, media map[string]string, prefix, href string) {
+	b.WriteString("<div class=\"sound\" data-ms=\"0\"><button type=\"button\" class=\"sbtn\" aria-label=\"Слушать\" aria-pressed=\"false\" data-src=\"")
+	b.WriteString(href)
+	b.WriteString("\"><span class=\"scov\">")
 	if cover, ok := media[m.AudioCoverBlobID]; ok {
 		b.WriteString("<img alt=\"\" src=\"")
 		b.WriteString(html.EscapeString(prefix + cover))
 		b.WriteString("\">")
 	}
-	b.WriteString("<audio controls src=\"")
-	b.WriteString(html.EscapeString(prefix + src))
-	b.WriteString("\"></audio>")
-	label := strings.TrimSpace(m.OriginalFilename)
+	b.WriteString("</span><span class=\"sbody\"><span class=\"sline\"><span class=\"stri\"></span><span class=\"spause\"></span><span class=\"sname\">")
+	b.WriteString(html.EscapeString(audioLabel(m)))
+	b.WriteString("</span></span><span class=\"sbar\"><i></i></span><span class=\"stime\">")
+	b.WriteString("</span></span></button><a class=\"sdl\" href=\"")
+	b.WriteString(href)
+	b.WriteString("\" download>Скачать</a></div>")
+}
+
+// audioLabel — подпись звука: «Исполнитель — Название» или имя файла.
+func audioLabel(m chronicle.PostMedia) string {
 	artist := strings.TrimSpace(m.AudioArtist)
 	title := strings.TrimSpace(m.AudioTitle)
 	if artist != "" && title != "" {
-		label = artist + " — " + title
+		return artist + " — " + title
 	}
-	if label != "" {
-		b.WriteString("<div>")
-		b.WriteString(html.EscapeString(label))
-		b.WriteString("</div>")
+	if label := strings.TrimSpace(m.OriginalFilename); label != "" {
+		return label
 	}
-	b.WriteString("</div>")
+	return "звук"
+}
+
+// wavePeaks — уровни волны 1…100: в записи их до 64, у старых голосовых может
+// не быть — тогда ровная линия, чтобы строка не пустела.
+func wavePeaks(peaks []int) []int {
+	if len(peaks) == 0 {
+		out := make([]int, 32)
+		for i := range out {
+			out[i] = 20
+		}
+		return out
+	}
+	out := make([]int, 0, len(peaks))
+	for _, p := range peaks {
+		if p < 4 {
+			p = 4
+		}
+		if p > 100 {
+			p = 100
+		}
+		out = append(out, p)
+	}
+	return out
+}
+
+// mmss — длительность «1:05» для подписи голосового.
+func mmss(ms int64) string {
+	if ms < 0 {
+		ms = 0
+	}
+	total := (ms + 500) / 1000
+	return fmt.Sprintf("%d:%02d", total/60, total%60)
 }
 
 // reactionMark — знак реакции как в ленте; ключи API: heart, laugh,

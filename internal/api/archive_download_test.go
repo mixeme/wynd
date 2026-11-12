@@ -179,7 +179,12 @@ func TestArchiveKeepsMediaExtensions(t *testing.T) {
 	if !found {
 		t.Fatalf("в архиве нет %s", want)
 	}
-	if !strings.Contains(index, `<audio controls src="`+want+`"`) {
+	// Звук — строкой плеера как в приложении (2026-11-12): плеер берёт файл по
+	// data-src, нативный <audio> остаётся запасным путём без JS.
+	if !strings.Contains(index, `data-src="`+want+`"`) {
 		t.Fatalf("плеер не на том файле:\n%s", index)
+	}
+	if !strings.Contains(index, `<noscript><audio controls preload="none" src="`+want+`"`) {
+		t.Fatalf("нет запасного плеера без JS:\n%s", index)
 	}
 }

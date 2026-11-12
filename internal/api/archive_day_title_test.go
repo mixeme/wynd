@@ -55,7 +55,9 @@ func TestArchiveIncludesDayTitles(t *testing.T) {
 		if !strings.Contains(html, want) {
 			t.Fatalf("download%s: нет названия дня %q:\n%s", layout, want, html)
 		}
-		if strings.Contains(html, "<script>") {
+		// В страницах есть свой <script> плеера (2026-11-12), поэтому проверяем
+		// именно название дня: оно должно быть экранировано.
+		if strings.Contains(html, "«Дача <script>»") {
 			t.Fatalf("download%s: название дня не экранировано", layout)
 		}
 	}
