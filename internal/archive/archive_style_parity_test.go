@@ -75,7 +75,7 @@ var archiveStyleParity = []styleParity{
 
 	// ——— Задокументированные отличия (план 46, A26) ———
 	{"масштаб текста страницы", []string{"body"}, []string{".ph"}, []string{"font-size", "line-height"},
-		map[string]string{"font-size": "15px", "line-height": "1.5"}, "приложение: 13.5 px / 1.45"},
+		map[string]string{"font-size": "15px", "line-height": "1.5"}, "настольный масштаб архива — принят владельцем 2026-11-13; приложение: 13.5 px / 1.45"},
 	{"карточка записи", []string{".post"}, []string{".post"}, []string{"background", "border", "border-radius", "padding", "margin"},
 		map[string]string{"border-radius": "16px", "padding": "14px 16px", "margin": "14px 12px"},
 		"приложение: радиус 14 px, поля 14 px, отступ 12 px 14 px"},
