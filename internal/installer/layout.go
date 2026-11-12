@@ -85,6 +85,9 @@ func (l Layout) shellRoot() string {
 	return shQuote(l.root)
 }
 
+// ShellRoot — корень для подстановки в команду: экранированный, если нужно.
+func (l Layout) ShellRoot() string { return l.shellRoot() }
+
 // Data — данные Wynd (база и файлы), рядом с настройкой, не томом Docker.
 func (l Layout) Data() string { return path.Join(l.root, "data") }
 

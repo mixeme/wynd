@@ -89,6 +89,10 @@ type Spec struct {
 	// верят. Только для проб разработчика — у настоящего центра пять
 	// сертификатов на адрес в неделю.
 	TestCert bool
+	// Root — каталог установки на сервере (план «другой каталог»). Пусто —
+	// /opt/wynd, как у прежних версий. Значение проверяется NewLayout: при
+	// негодном каталоге установка не начинается, а показывает отказ.
+	Root string
 	// Probe открывает адрес с этого компьютера и возвращает тело ответа.
 	// Пусто — обычный HTTPS-запрос.
 	Probe func(ctx context.Context, url string) (string, error)
@@ -195,6 +199,8 @@ func firstLine(s string) string {
 type Run struct {
 	sess *Session
 	spec Spec
+	// layout — размещение установки: от него считаются все пути и команды.
+	layout Layout
 
 	mu      sync.Mutex
 	steps   []StepState
@@ -539,7 +545,30 @@ type step struct {
 	explain func(err error, output string) *StepError
 }
 
+// layoutOf — размещение установки по Spec: пустой каталог — /opt/wynd,
+// заданный — только после проверки. Ошибка значит, что ставить некуда.
+func layoutOf(spec Spec) (Layout, error) {
+	if spec.Root == "" {
+		return DefaultLayout(), nil
+	}
+	return NewLayout(spec.Root)
+}
+
+// rootStep — отказ до первого изменения сервера: каталог установки негоден.
+func rootStep(err error) step {
+	return step{
+		id:    "root",
+		title: "Каталог установки",
+		do: func(context.Context, *Run) error {
+			return &StepError{Message: "Каталог установки не подходит", Advice: err.Error()}
+		},
+	}
+}
+
 func steps(spec Spec) []step {
+	if _, err := layoutOf(spec); err != nil {
+		return []step{rootStep(err)}
+	}
 	list := []step{dockerStep()}
 	if spec.FixClock {
 		list = append(list, clockStep())
@@ -587,7 +616,11 @@ func titles(list []step) []StepState {
 // runSteps проходит шаги по порядку: установка и обновление (пульт) — один
 // прогон. done дописывает итог удачного прогона.
 func runSteps(ctx context.Context, sess *Session, spec Spec, list []step, report func(Progress), done func(r *Run, p *Progress)) Progress {
-	r := &Run{sess: sess, spec: spec, steps: titles(list)}
+	layout, err := layoutOf(spec)
+	if err != nil {
+		layout = DefaultLayout()
+	}
+	r := &Run{sess: sess, spec: spec, layout: layout, steps: titles(list)}
 	result := Progress{Running: true}
 	snapshot := func() Progress {
 		r.mu.Lock()
@@ -1241,22 +1274,27 @@ func sum(content string) string {
 	return hex.EncodeToString(h[:])
 }
 
-func filesStep(spec Spec) step {
-	type file struct{ path, content string }
-	files := []file{{installDir + "/compose.yaml", ComposeFile(spec)}}
-	dirs := "mkdir -p " + dataDir
+// installFile — файл настройки в каталоге установки.
+type installFile struct{ path, content string }
+
+// installFilesAt — что положить в каталог установки и какие папки создать.
+func installFilesAt(l Layout, spec Spec) (files []installFile, dirs string) {
+	files = []installFile{{l.Compose(), ComposeFile(spec)}}
+	dirs = "mkdir -p " + l.Data()
 	if spec.Proxy == "" {
-		files = append(files, file{installDir + "/Caddyfile", CaddyFile(spec)})
-		dirs += " " + caddyDir + "/data " + caddyDir + "/config"
+		files = append(files, installFile{l.Caddyfile(), CaddyFile(spec)})
+		dirs += " " + l.Caddy() + "/data " + l.Caddy() + "/config"
 	}
-	// Папку данных Docker сам не создаст правильно: создал бы от root, и Wynd
-	// в контейнере не смог бы в неё писать. Данные остались от прошлой
-	// установки или принесены с другой машины — хозяин тот же.
-	dirs += " && chown -R " + wyndOwner + " " + dataDir + " && chmod 700 " + dataDir
+	dirs += " && chown -R " + wyndOwner + " " + l.Data() + " && chmod 700 " + l.Data()
+	return files, dirs
+}
+
+func filesStep(spec Spec) step {
 	return step{
 		id:    "files",
 		title: "Настройка",
 		done: func(ctx context.Context, r *Run) (bool, error) {
+			files, _ := installFilesAt(r.layout, spec)
 			command := "sha256sum"
 			for _, f := range files {
 				command += " " + f.path
@@ -1273,6 +1311,7 @@ func filesStep(spec Spec) step {
 			return true, nil
 		},
 		do: func(ctx context.Context, r *Run) error {
+			files, dirs := installFilesAt(r.layout, spec)
 			// Wynd с другим адресом работает: смена адреса — не установка.
 			// Не запущен (убран с оставленными данными) — настройку пишем с
 			// новым адресом, прежняя остаётся копией рядом.
@@ -1282,7 +1321,7 @@ func filesStep(spec Spec) step {
 			}
 			old, ok := strings.CutPrefix(strings.TrimSpace(res.Output), "WYND_PUBLIC_URL: ")
 			if ok && old != "https://"+spec.Domain {
-				up, err := r.sess.Exec(ctx, wyndRunning, nil, shortTimeout)
+				up, err := r.sess.Exec(ctx, r.layout.RunningFilter(), nil, shortTimeout)
 				if err != nil {
 					return err
 				}
@@ -1313,7 +1352,6 @@ func filesStep(spec Spec) step {
 }
 
 func startStep(spec Spec) step {
-	compose := "cd " + installDir + " && docker compose "
 	return step{
 		id:    "start",
 		title: "Запуск",
@@ -1321,11 +1359,12 @@ func startStep(spec Spec) step {
 			if spec.Proxy == "" {
 				r.note("скачиваем веб-сервер и запускаем")
 			}
-			_, err := r.must(ctx, compose+"up -d --quiet-pull 2>&1", packageTimeout)
+			_, err := r.must(ctx, r.layout.ComposeCommand()+"up -d --quiet-pull 2>&1", packageTimeout)
 			return err
 		},
 		verify: func(ctx context.Context, r *Run) error {
 			r.note("ждём, пока Wynd ответит")
+			compose := r.layout.ComposeCommand()
 			healthy := compose + `ps -q wynd | xargs -r docker inspect -f '{{.State.Health.Status}}' | grep -qx healthy`
 			deadline := time.Now().Add(healthWait)
 			for {
@@ -1435,10 +1474,6 @@ func (r *Run) probe(ctx context.Context, url string) (string, error) {
 // certStep ждёт сертификат, который Caddy получает сам, — свой в контейнере
 // или чужой, которому мы добавили сайт.
 func certStep(spec Spec) step {
-	logs := "cd " + installDir + " && docker compose logs --no-color --tail 30 caddy 2>&1"
-	if spec.Proxy != "" {
-		logs = "journalctl -u caddy --no-pager -n 30 2>&1"
-	}
 	return step{
 		id:    "cert",
 		title: "Сертификат для " + spec.Domain,
@@ -1447,6 +1482,10 @@ func certStep(spec Spec) step {
 			err := waitSite(ctx, r, spec, certWait)
 			if !errors.Is(err, errSiteDown) {
 				return err
+			}
+			logs := r.layout.ComposeCommand() + "logs --no-color --tail 30 caddy 2>&1"
+			if spec.Proxy != "" {
+				logs = "journalctl -u caddy --no-pager -n 30 2>&1"
 			}
 			_, _ = r.sh(ctx, logs, shortTimeout)
 			return &StepError{
@@ -1490,7 +1529,7 @@ func linkStep(spec Spec) step {
 				return nil
 			}
 			// Ссылку в журнал не кладём: по ней становятся администратором.
-			res, err := r.sess.Exec(ctx, "cd "+installDir+" && docker compose logs --no-color wynd 2>&1 | grep -o 'bootstrap URL: [^ ]*' | tail -n 1", nil, shortTimeout)
+			res, err := r.sess.Exec(ctx, r.layout.ComposeCommand()+"logs --no-color wynd 2>&1 | grep -o 'bootstrap URL: [^ ]*' | tail -n 1", nil, shortTimeout)
 			if err != nil {
 				return err
 			}
@@ -1528,13 +1567,15 @@ const (
 // — тоже отозван. Запрос подписан ключом сертификата, поэтому Let's Encrypt
 // сам ставит причину «ключ раскрыт» вместо названной и больше не выдаёт
 // сертификаты на этот ключ (проба 2026-10-10) — ключ всё равно удаляется.
-const revokeScript = `  proj=$(docker compose config 2>/dev/null | sed -n 's/^name: //p' | head -n 1)
+func revokeScriptAt(l Layout) string {
+	return `  proj=$(docker compose config 2>/dev/null | sed -n 's/^name: //p' | head -n 1)
   vol=$(docker volume ls -q --filter label=com.docker.compose.project="${proj:-wynd}" --filter label=com.docker.compose.volume=caddy-data 2>/dev/null | head -n 1)
-  if [ -d ` + caddyDir + `/data/caddy ]; then vol=` + caddyDir + `/data; fi
+  if [ -d ` + l.Caddy() + `/data/caddy ]; then vol=` + l.Caddy() + `/data; fi
   if [ -n "$vol" ]; then
     docker run --rm -v "$vol":/data:ro --entrypoint sh ` + certbotImage + ` -c '` + revokeLoop + `' 2>&1 || echo "` + markRevokeFailed + ` certbot did not run"
     docker image rm ` + certbotImage + ` >/dev/null 2>&1 || true
   fi`
+}
 
 // revokeLoop идёт внутри контейнера certbot: отзывает сертификаты из хранилища
 // Caddy, подключённого в /data/caddy. DOM задан — только этого адреса (в
@@ -1573,28 +1614,32 @@ const revokeLoop = `
 // 2026-10-10): ключ уходит вместе с томом, а отозванный сертификат перестаёт
 // действовать сразу, не дожидаясь срока.
 func Rollback(ctx context.Context, sess *Session, spec Spec, keepData bool) ([]LogEntry, error) {
+	layout, err := layoutOf(spec)
+	if err != nil {
+		return nil, err
+	}
 	down := "docker compose down --remove-orphans"
 	if !keepData {
 		down += " --volumes"
 	}
 	revoke := ""
 	if !keepData {
-		revoke = revokeScript
+		revoke = revokeScriptAt(layout)
 		// Тома берём по метке, а не только из нынешнего compose.yaml: Wynd могли
 		// раньше ставить иначе (свой Caddy, потом чужой веб-сервер), и том с
 		// отозванным сертификатом остался бы на сервере.
 		down += ` 2>&1
   docker volume ls -q --filter label=com.docker.compose.project="${proj:-wynd}" 2>/dev/null | xargs -r docker volume rm`
 	}
-	clear := "rm -rf " + installDir
-	gone := "test ! -e " + installDir
+	clear := "rm -rf " + layout.Root()
+	gone := "test ! -e " + layout.Root()
 	if keepData {
 		clear = ":"
-		gone = `test -z "$(` + wyndRunning + `)"`
+		gone = `test -z "$(` + layout.RunningFilter() + `)"`
 	}
 	script := rollbackProxy(keepData) + `imgs=
-if [ -f ` + installDir + `/compose.yaml ] && command -v docker >/dev/null 2>&1; then
-  cd ` + installDir + `
+if [ -f ` + layout.Compose() + ` ] && command -v docker >/dev/null 2>&1; then
+  cd ` + layout.ShellRoot() + `
   imgs=$(docker compose images -q 2>/dev/null || true)
 ` + revoke + `
   ` + down + ` 2>&1

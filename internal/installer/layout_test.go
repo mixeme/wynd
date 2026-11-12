@@ -125,6 +125,59 @@ func TestLayoutRejectsDangerousRoots(t *testing.T) {
 	}
 }
 
+// Установка с заданным каталогом: файлы настройки ложатся в него, а не в
+// /opt/wynd; негодный каталог даёт отказ до первого изменения сервера.
+func TestInstallFilesAtCustomRoot(t *testing.T) {
+	l, err := NewLayout("/srv/wynd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, dirs := installFilesAt(l, Spec{Domain: "example.org", Version: "0.52.2", Root: "/srv/wynd"})
+	if len(files) != 2 || files[0].path != "/srv/wynd/compose.yaml" || files[1].path != "/srv/wynd/Caddyfile" {
+		t.Fatalf("файлы настройки: %+v", files)
+	}
+	if !strings.Contains(dirs, "mkdir -p /srv/wynd/data") ||
+		!strings.Contains(dirs, "/srv/wynd/caddy/data /srv/wynd/caddy/config") ||
+		strings.Contains(dirs, "/opt/wynd") {
+		t.Fatalf("папки: %s", dirs)
+	}
+	// Заданный корень в файле compose — тот же адрес, что и в шаге.
+	if !strings.Contains(files[0].content, "example.org") {
+		t.Fatalf("compose без адреса: %s", files[0].content)
+	}
+}
+
+func TestLayoutOfSpec(t *testing.T) {
+	if l, err := layoutOf(Spec{}); err != nil || l.Root() != "/opt/wynd" {
+		t.Fatalf("пустой каталог: %+v, %v", l, err)
+	}
+	if l, err := layoutOf(Spec{Root: "/srv/wynd"}); err != nil || l.Root() != "/srv/wynd" {
+		t.Fatalf("свой каталог: %+v, %v", l, err)
+	}
+	if _, err := layoutOf(Spec{Root: "/var"}); err == nil {
+		t.Fatal("системный каталог принят")
+	}
+}
+
+// Негодный каталог — единственный шаг с понятным отказом, а не падение и не
+// молчаливая установка в /opt/wynd.
+func TestStepsRefuseBadRoot(t *testing.T) {
+	list := steps(Spec{Domain: "example.org", Version: "0.52.2", Root: "/etc"})
+	if len(list) != 1 || list[0].id != "root" || list[0].title != "Каталог установки" {
+		t.Fatalf("шаги при негодном каталоге: %+v", list)
+	}
+	ok := steps(Spec{Domain: "example.org", Version: "0.52.2", Root: "/srv/wynd"})
+	if len(ok) < 3 || ok[0].id == "root" {
+		t.Fatalf("свой каталог отвергнут: %+v", ok)
+	}
+}
+
+func TestRollbackRefusesBadRoot(t *testing.T) {
+	if _, err := Rollback(t.Context(), nil, Spec{Root: "/"}, true); err == nil {
+		t.Fatal("откат с корнем / не отклонён")
+	}
+}
+
 // Хвостовой слэш убирается; путь с «..», который после очистки безопасен,
 // принимается очищенным.
 func TestLayoutCleansRoot(t *testing.T) {
