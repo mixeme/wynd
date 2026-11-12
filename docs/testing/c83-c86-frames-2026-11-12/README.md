@@ -36,8 +36,6 @@
 
 ## Ждут приёмки
 
-- C86 — `dev/screens/shots/c86-join-checking.png`, `c86-join-loaded.png`.
-
-Рендеры C86 в git не входят; при приёмке переносятся сюда тем же порядком.
+- C86 — `dev/screens/shots/c86b-join-checking.png`, `c86b-join-loaded.png`. Правка по замечанию владельца 12 ноября: во время проверки форма уже на месте, погашена только кнопка. Прежние `c86-join-checking.png` / `c86-join-loaded.png` устарели и основой не считаются.
 
 Записи: [план 46](../../plans/46-open-questions-and-debt.plan.md) (C83–C86), [протокол проверок 11 ноября](../phone-checks-2026-11-11.md).
