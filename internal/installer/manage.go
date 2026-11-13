@@ -372,7 +372,7 @@ func startNewStep(spec UpdateSpec, ref string) step {
 		title: title,
 		do: func(ctx context.Context, r *Run) error {
 			composePath := r.layout.Compose()
-			cur, err := r.must(ctx, "cat "+composePath, shortTimeout)
+			cur, err := r.must(ctx, "cat "+ShellPath(composePath), shortTimeout)
 			if err != nil {
 				return err
 			}
@@ -392,7 +392,7 @@ func startNewStep(spec UpdateSpec, ref string) step {
 				_, err := r.must(ctx, r.layout.ComposeCommand()+"up -d --no-start wynd 2>&1", shortTimeout)
 				return err
 			}
-			_, err = r.must(ctx, r.layout.ComposeCommand()+"up -d wynd 2>&1 && rm -f "+r.layout.StoppedMark(), packageTimeout)
+			_, err = r.must(ctx, r.layout.ComposeCommand()+"up -d wynd 2>&1 && rm -f "+ShellPath(r.layout.StoppedMark()), packageTimeout)
 			return err
 		},
 		verify: func(ctx context.Context, r *Run) error {
@@ -426,7 +426,7 @@ func checkStep(spec UpdateSpec) step {
 					}
 				}
 			}
-			_, err := r.must(ctx, "rm -f "+r.layout.UpdateMark(), shortTimeout)
+			_, err := r.must(ctx, "rm -f "+ShellPath(r.layout.UpdateMark()), shortTimeout)
 			return err
 		},
 	}
@@ -467,7 +467,7 @@ func ReturnPreviousAt(ctx context.Context, sess *Session, l Layout, from string,
 				return r.log, err
 			}
 		}
-		_, err := r.must(ctx, "rm -f "+l.UpdateMark(), shortTimeout)
+		_, err := r.must(ctx, "rm -f "+ShellPath(l.UpdateMark()), shortTimeout)
 		return r.log, err
 	}
 	d := backupFor(l, from)
@@ -494,7 +494,7 @@ cp -aln "$d/blobs/." data/blobs/`
 			return r.log, err
 		}
 	}
-	_, err = r.must(ctx, "rm -f "+l.UpdateMark(), shortTimeout)
+	_, err = r.must(ctx, "rm -f "+ShellPath(l.UpdateMark()), shortTimeout)
 	return r.log, err
 }
 

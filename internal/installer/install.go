@@ -525,7 +525,8 @@ func (r *Run) ok(ctx context.Context, command string) (bool, error) {
 // put кладёт файл на сервер: сначала рядом, потом переименованием — оборванная
 // запись не оставит половину файла на месте настоящего.
 func (r *Run) put(ctx context.Context, path, content string) error {
-	command := fmt.Sprintf("cat > %s.new && mv %s.new %s", path, path, path)
+	q := ShellPath(path)
+	command := fmt.Sprintf("cat > %s.new && mv %s.new %s", q, q, q)
 	res, err := r.sess.Exec(ctx, command, strings.NewReader(content), shortTimeout)
 	r.record("запись файла "+path, res.Output)
 	if err != nil {
@@ -1294,12 +1295,12 @@ type installFile struct{ path, content string }
 // installFilesAt — что положить в каталог установки и какие папки создать.
 func installFilesAt(l Layout, spec Spec) (files []installFile, dirs string) {
 	files = []installFile{{l.Compose(), ComposeFile(spec)}}
-	dirs = "mkdir -p " + l.Data()
+	dirs = "mkdir -p " + ShellPath(l.Data())
 	if spec.Proxy == "" {
 		files = append(files, installFile{l.Caddyfile(), CaddyFile(spec)})
-		dirs += " " + l.Caddy() + "/data " + l.Caddy() + "/config"
+		dirs += " " + ShellPath(l.Caddy()+"/data") + " " + ShellPath(l.Caddy()+"/config")
 	}
-	dirs += " && chown -R " + wyndOwner + " " + l.Data() + " && chmod 700 " + l.Data()
+	dirs += " && chown -R " + wyndOwner + " " + ShellPath(l.Data()) + " && chmod 700 " + ShellPath(l.Data())
 	return files, dirs
 }
 
@@ -1349,7 +1350,7 @@ func filesStep(spec Spec) step {
 			files, _ := installFilesAt(r.layout, spec)
 			command := "sha256sum"
 			for _, f := range files {
-				command += " " + f.path
+				command += " " + ShellPath(f.path)
 			}
 			res, err := r.sess.Exec(ctx, command+" 2>/dev/null", nil, shortTimeout)
 			if err != nil {
@@ -1367,7 +1368,7 @@ func filesStep(spec Spec) step {
 			// Wynd с другим адресом работает: смена адреса — не установка.
 			// Не запущен (убран с оставленными данными) — настройку пишем с
 			// новым адресом, прежняя остаётся копией рядом.
-			res, err := r.sess.Exec(ctx, "grep -o 'WYND_PUBLIC_URL: .*' "+files[0].path+" 2>/dev/null", nil, shortTimeout)
+			res, err := r.sess.Exec(ctx, "grep -o 'WYND_PUBLIC_URL: .*' "+ShellPath(files[0].path)+" 2>/dev/null", nil, shortTimeout)
 			if err != nil {
 				return err
 			}
@@ -1390,7 +1391,8 @@ func filesStep(spec Spec) step {
 			}
 			for _, f := range files {
 				// Файл уже есть и он другой — сначала копия рядом.
-				backup := fmt.Sprintf(`if [ -f %[1]s ] && ! echo "%[2]s  %[1]s" | sha256sum -c --status; then cp -p %[1]s %[1]s.bak-$(date +%%Y%%m%%d-%%H%%M%%S); fi`, f.path, sum(f.content))
+				qp := ShellPath(f.path)
+				backup := fmt.Sprintf(`if [ -f %[1]s ] && ! echo "%[2]s  %[1]s" | sha256sum -c --status; then cp -p %[1]s %[1]s.bak-$(date +%%Y%%m%%d-%%H%%M%%S); fi`, qp, sum(f.content))
 				if _, err := r.must(ctx, backup, shortTimeout); err != nil {
 					return err
 				}
@@ -1622,7 +1624,7 @@ const (
 func revokeScriptAt(l Layout) string {
 	return `  proj=$(docker compose config 2>/dev/null | sed -n 's/^name: //p' | head -n 1)
   vol=$(docker volume ls -q --filter label=com.docker.compose.project="${proj:-wynd}" --filter label=com.docker.compose.volume=caddy-data 2>/dev/null | head -n 1)
-  if [ -d ` + l.Caddy() + `/data/caddy ]; then vol=` + l.Caddy() + `/data; fi
+  if [ -d ` + ShellPath(l.Caddy()+"/data/caddy") + ` ]; then vol=` + ShellPath(l.Caddy()+"/data") + `; fi
   if [ -n "$vol" ]; then
     docker run --rm -v "$vol":/data:ro --entrypoint sh ` + certbotImage + ` -c '` + revokeLoop + `' 2>&1 || echo "` + markRevokeFailed + ` certbot did not run"
     docker image rm ` + certbotImage + ` >/dev/null 2>&1 || true
@@ -1683,14 +1685,14 @@ func Rollback(ctx context.Context, sess *Session, spec Spec, keepData bool) ([]L
 		down += ` 2>&1
   docker volume ls -q --filter label=com.docker.compose.project="${proj:-wynd}" 2>/dev/null | xargs -r docker volume rm`
 	}
-	clear := "rm -rf " + layout.Root()
-	gone := "test ! -e " + layout.Root()
+	clear := "rm -rf " + ShellPath(layout.Root())
+	gone := "test ! -e " + ShellPath(layout.Root())
 	if keepData {
 		clear = ":"
 		gone = `test -z "$(` + layout.RunningFilter() + `)"`
 	}
 	script := rollbackProxy(layout, keepData) + `imgs=
-if [ -f ` + layout.Compose() + ` ] && command -v docker >/dev/null 2>&1; then
+if [ -f ` + ShellPath(layout.Compose()) + ` ] && command -v docker >/dev/null 2>&1; then
   cd ` + layout.ShellRoot() + `
   imgs=$(docker compose images -q 2>/dev/null || true)
 ` + revoke + `

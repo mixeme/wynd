@@ -622,7 +622,7 @@ func nginxCertStep(spec Spec) step {
 // которая в настройке уже была, от той, что появилась из-за удаления. Не
 // прошла — наш файл всё равно убран, а перечитают настройку при следующем случае.
 func rollbackProxy(l Layout, keepData bool) string {
-	script := `dom=$(sed -n 's|.*WYND_PUBLIC_URL: https://||p' ` + l.Compose() + ` 2>/dev/null | head -n 1)
+	script := `dom=$(sed -n 's|.*WYND_PUBLIC_URL: https://||p' ` + ShellPath(l.Compose()) + ` 2>/dev/null | head -n 1)
 mark=` + shQuote(siteMark) + `
 ngx=; cdy=; apa=
 ngx_pre=; apa_pre=; cdy_pre=

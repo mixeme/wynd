@@ -98,6 +98,16 @@ func (l Layout) shellRoot() string {
 // ShellRoot — корень для подстановки в команду: экранированный, если нужно.
 func (l Layout) ShellRoot() string { return l.shellRoot() }
 
+// ShellPath — путь для подстановки в команду: обычный идёт как есть, с
+// пробелами, кавычками или нелатинскими буквами — экранируется целиком.
+// Им пользуются все места, где путь попадает в скрипт.
+func ShellPath(p string) string {
+	if plainPath.MatchString(p) {
+		return p
+	}
+	return shQuote(p)
+}
+
 // Data — данные Wynd (база и файлы), рядом с настройкой, не томом Docker.
 func (l Layout) Data() string { return path.Join(l.base(), "data") }
 
