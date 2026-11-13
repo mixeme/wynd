@@ -318,7 +318,7 @@ func main() {
 		// Своя версия Мастерской, не Wynd (план 45, 2026-10-24).
 		Title:       "Wynd Мастерская [" + installer.WorkshopVersion + "]",
 		Width:       760,
-		Height:      560,
+		Height:      580,
 		MinWidth:    680,
 		MinHeight:   480,
 		AssetServer: &assetserver.Options{Assets: assets},

@@ -280,6 +280,8 @@ export interface ServerProfile {
 	use_keys: boolean;
 	remember: boolean;
 	auto_connect: boolean;
+	/** Каталог установки на сервере; пусто — /opt/wynd. */
+	root?: string;
 	last_check?: {
 		at: string;
 		domain?: string;
@@ -287,6 +289,7 @@ export interface ServerProfile {
 		installed: boolean;
 		running: boolean;
 		free_bytes: number;
+		root?: string;
 	};
 	busy?: boolean;
 	reserved_by?: string;

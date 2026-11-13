@@ -47,6 +47,8 @@
 	let name = $state('');
 	let host = $state('');
 	let user = $state('root');
+	// Каталог установки на сервере (план «другой каталог»): пусто — /opt/wynd.
+	let root = $state('/opt/wynd');
 	let auth = $state('key');
 	let password = $state('');
 	let remember = $state(false);
@@ -85,6 +87,7 @@
 		name = '';
 		host = '';
 		user = 'root';
+		root = '/opt/wynd';
 		auth = 'key';
 		password = '';
 		remember = false;
@@ -99,6 +102,7 @@
 		name = p.name;
 		host = p.host;
 		user = p.user;
+		root = p.root || '/opt/wynd';
 		auth = p.use_keys ? 'key' : 'password';
 		password = '';
 		remember = p.remember;
@@ -122,7 +126,8 @@
 				user,
 				use_keys: auth === 'key',
 				remember,
-				auto_connect: auto && !formAutoDisabled
+				auto_connect: auto && !formAutoDisabled,
+				root
 			});
 			const updatedProfiles = await backend().Profiles();
 			const targetFor = returnToMove;
@@ -331,6 +336,14 @@
 							<Label>Адрес сервера</Label><Input
 								bind:value={host}
 								placeholder="185.12.34.56"
+								spellcheck={false}
+								autocomplete="off"
+								disabled={formBusy}
+							/>
+							<!-- Каталог установки: пусто — /opt/wynd, как у ручной установки. -->
+							<Label>Каталог на сервере</Label><Input
+								bind:value={root}
+								mono
 								spellcheck={false}
 								autocomplete="off"
 								disabled={formBusy}
