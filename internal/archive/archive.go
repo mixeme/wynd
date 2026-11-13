@@ -402,13 +402,15 @@ a{color:inherit;text-decoration:none}
 .rx .one .ic{width:13px;height:13px;stroke-width:1.9;color:var(--c)}
 .cmt{display:flex;align-items:flex-start;gap:10px;padding:10px 16px}
 .cmt + .cmt{border-top:1px solid var(--line)}
-.thread > .cmt:first-child{border-top:1px solid var(--line)}
 .cmt .av{width:28px;height:28px;font-size:12.5px}
 .cmt .avl{width:28px;height:28px;font-size:12.5px}
 .cmt .g{flex:1;min-width:0;font-size:12.5px;line-height:1.4;overflow-wrap:anywhere}
 .cmt .who{display:flex;align-items:baseline;gap:6px;line-height:1.3}
 .cmt .who b{font-weight:600}
 .cmt .tm{color:var(--faint);font-size:11.5px;font-weight:400}
+.cm{margin:0 14px;padding:10px 14px 12px;font-size:12.5px;background:var(--paper);border:1px solid var(--line);border-top:none;border-radius:0 0 14px 14px;overflow-wrap:anywhere;display:block;box-sizing:border-box;width:calc(100% - 28px);text-align:left}
+.cm .cmt{padding:10px 0}
+.post:has(+ .cm){margin-bottom:0;border-radius:14px 14px 0 0}
 .cmedia{display:flex;flex-direction:column;gap:8px;margin-top:8px}
 .cmedia .att{margin-top:0}
 .cmedia .ctiles{display:flex;gap:6px;flex-wrap:wrap}
@@ -689,10 +691,12 @@ func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, d
 		}
 		b.WriteString("</div>")
 	}
+	b.WriteString("</article>")
 	if len(fp.Comments) > 0 {
-		// Комментарии — строки .cmt, как на странице записи приложения:
-		// аватар 28 px, имя, время, текст 12.5 px; черта между строками.
-		b.WriteString("<div class=\"thread\">")
+		// Комментарии — бумажная карточка .cm, приклеенная к записи снизу,
+		// как в ленте приложения; внутри все строки .cmt (в ленте
+		// приложения одна строка-превью, в архиве — все, содержание полное).
+		b.WriteString("<div class=\"cm\">")
 		for _, c := range fp.Comments {
 			b.WriteString("<div class=\"cmt\">")
 			appendAvatarHTML(b, c.AuthorName, c.IdentityID, media, avatars, prefix)
@@ -713,7 +717,6 @@ func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, d
 		}
 		b.WriteString("</div>")
 	}
-	b.WriteString("</article>")
 }
 
 // appendCommentMediaHTML — вложения комментария: снимки плитками .ctile

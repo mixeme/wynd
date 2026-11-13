@@ -32,8 +32,10 @@ import (
 //
 // После выравнивания A26 (2026-11-13) известные отличия остались трёх родов:
 // настольный масштаб текста (решение владельца), перенос чипов откликов
-// (в архиве все отклики истории, приложение .rx не переносит) и имя файла
-// в карточке .att (в приложении inline-стиль 12.5 px, в архиве класс .fname).
+// (в архиве все отклики истории, приложение .rx не переносит), имя файла
+// в карточке .att (в приложении inline-стиль 12.5 px, в архиве класс .fname)
+// и строки комментариев внутри карточки .cm: вертикальный отступ от .cmt,
+// по горизонтали — как у .cm-line приложения (padding 0, поля даёт .cm).
 type styleParity struct {
 	name  string
 	arch  []string
@@ -89,6 +91,8 @@ var archiveStyleParity = []styleParity{
 	{"чип отклика", []string{".rx .one"}, []string{".rx .one"}, []string{"background", "border-radius", "padding", "font-size", "display", "gap", "align-items"}, nil, ""},
 	{"значок в чипе отклика", []string{".rx .one .ic"}, []string{".ic", ".ic.xs"}, []string{"width", "height", "stroke-width"}, nil, ""},
 	{"строка комментария", []string{".cmt"}, []string{".cmt"}, []string{"display", "align-items", "gap", "padding"}, nil, ""},
+	{"карточка комментариев", []string{".cm"}, []string{".cm"}, []string{"margin", "padding", "font-size", "background", "border", "border-top", "border-radius", "overflow-wrap", "display", "box-sizing", "width", "text-align"}, nil, ""},
+	{"запись с карточкой комментариев", []string{".post:has(+ .cm)"}, []string{".post:has(+ .cm)"}, []string{"margin-bottom", "border-radius"}, nil, ""},
 	{"текст комментария", []string{".cmt .g"}, []string{".cmt .g"}, []string{"flex", "min-width", "font-size", "line-height", "overflow-wrap"}, nil, ""},
 	{"шапка комментария", []string{".cmt .who"}, []string{".cmt .who"}, []string{"display", "align-items", "gap", "line-height"}, nil, ""},
 	{"имя комментария", []string{".cmt .who b"}, []string{".cmt .who b"}, []string{"font-weight"}, nil, ""},
