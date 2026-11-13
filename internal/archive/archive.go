@@ -70,7 +70,7 @@ func BuildPersonalArchive(ctx context.Context, w io.Writer, in BuildInput) error
 		return fmt.Errorf("archive: nil blob store")
 	}
 	zw := zip.NewWriter(w)
-	if err := buildReadable(ctx, zw, in, nil, style{hex: circleHex(in.Color)}); err != nil {
+	if err := buildReadable(ctx, zw, in, nil, style{hex: circleHex(in.Color), ct: circleCT(in.Color)}); err != nil {
 		return err
 	}
 	return zw.Close()
@@ -333,9 +333,26 @@ func circleHex(color string) string {
 	return circleHexes["terracotta"]
 }
 
-// style — оформление страниц одного архива: цвет круга и вшитые шрифты.
+// circleCts — тонированный фон чипсов откликов (--ct) для каждого цвета
+// круга; значения из web/src/lib/styles/ui.css (блоки .ph.<цвет>).
+var circleCts = map[string]string{
+	"terracotta": "#F1E1DA", "teal": "#DCE8E9", "olive": "#E3E7D9", "ochre": "#ECE5D1",
+	"plum": "#EEDFE7", "indigo": "#DEE2EE", "coffee": "#E8DFD7", "slate": "#DFE3E5",
+}
+
+func circleCT(color string) string {
+	if ct, ok := circleCts[color]; ok {
+		return ct
+	}
+	return circleCts["terracotta"]
+}
+
+// style — оформление страниц одного архива: цвет круга, тон фона чипсов
+// откликов и вшитые шрифты.
 type style struct {
-	hex   string
+	hex string
+	// ct — тонированный фон чипсов откликов (--ct), как в приложении.
+	ct    string
 	fonts []string
 	// full — полный архив круга: шапка «на дату», а не «до», и своя подпись.
 	full    bool
@@ -360,29 +377,45 @@ func (st style) pageEnd() string {
 // на архив, задокументированные отличия записаны в его таблице. Полосатая
 // заглушка обложки без файла — как .pic (решение владельца 2026-11-12).
 const baseCSS = `
-:root{--paper:#F4F0E9;--card:#FCFAF6;--ink:#2B2724;--muted:#7A7269;--faint:#A8A096;--line:#DFD8CD}
+:root{--paper:#F4F0E9;--card:#FCFAF6;--ink:#2B2724;--muted:#7A7269;--faint:#A8A096;--line:#DFD8CD;--tint:#EAE4DA}
 *{box-sizing:border-box}
 body{font-family:"Golos Text",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--paper);color:var(--ink);margin:0;line-height:1.5;font-size:15px}
 .wrap{max-width:640px;margin:0 auto}
+a{color:inherit;text-decoration:none}
 .head{background:var(--c);color:#fff;padding:22px 20px 18px}
 .head h1{font-size:22px;margin:0;font-weight:700}
 .head p{margin:4px 0 0;opacity:.85;font-size:13.5px}
 .head a{color:#fff}
-.post{background:var(--card);border:1px solid var(--line);border-radius:16px;margin:14px 12px;padding:14px 16px}
-.who{display:flex;align-items:center;gap:10px}
+.post{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:12px 14px;padding:14px;overflow-wrap:anywhere;min-width:0}
+.pa{display:flex;align-items:center;gap:10px;margin-bottom:9px}
 .author{font-weight:600}
-.av{width:32px;height:32px;border-radius:50%;object-fit:cover;flex:none}
-.avl{width:32px;height:32px;border-radius:50%;background:var(--c);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex:none}
-.meta{color:var(--muted);font-size:12.5px}
-.body{margin:10px 0 0;white-space:pre-wrap}
-.media img,.media video{width:100%;height:auto;display:block;border-radius:12px;margin:10px 0 0}
+.av{width:34px;height:34px;border-radius:50%;object-fit:cover;flex:0 0 auto}
+.avl{width:34px;height:34px;border-radius:50%;background:var(--rc,var(--c));color:#fff;display:grid;place-items:center;font-size:13.5px;flex:0 0 auto}
+.meta{color:var(--faint);font-size:11.5px}
+.body{margin:0 0 11px;white-space:pre-wrap;overflow-wrap:anywhere}
+.media{margin:0}
+.media+.media{margin-top:6px}
+.media img,.media video{width:100%;height:auto;display:block;border-radius:10px;border:1px solid var(--line);background-color:#c3af95;background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.07) 0 7px,rgba(0,0,0,0.05) 7px 15px)}
 .gone{color:var(--faint);font-size:12.5px;margin:10px 0 0}
-.reactions{margin-top:10px;font-size:13px;color:var(--muted)}
-.comments{margin-top:12px;border-top:1px solid var(--line);padding-top:8px}
-.comment{font-size:14px;margin:6px 0}
-.comment .author{color:var(--c)}
-.cmedia img{max-width:240px}
-.cfile{margin:6px 0;font-size:14px}
+.rx{display:flex;gap:8px;margin-top:11px;align-items:center;flex-wrap:wrap}
+.rx .one{background:var(--ct);border-radius:14px;padding:4px 11px;font-size:12.5px;display:flex;gap:7px;align-items:center}
+.rx .one .ic{width:13px;height:13px;stroke-width:1.9;color:var(--c)}
+.cmt{display:flex;align-items:flex-start;gap:10px;padding:10px 16px}
+.cmt + .cmt{border-top:1px solid var(--line)}
+.thread > .cmt:first-child{border-top:1px solid var(--line)}
+.cmt .av{width:28px;height:28px;font-size:12.5px}
+.cmt .avl{width:28px;height:28px;font-size:12.5px}
+.cmt .g{flex:1;min-width:0;font-size:12.5px;line-height:1.4;overflow-wrap:anywhere}
+.cmt .who{display:flex;align-items:baseline;gap:6px;line-height:1.3}
+.cmt .who b{font-weight:600}
+.cmt .tm{color:var(--faint);font-size:11.5px;font-weight:400}
+.cmedia{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.cmedia .att{margin-top:0}
+.cmedia .ctiles{display:flex;gap:6px;flex-wrap:wrap}
+.ctiles .ctile{width:72px;height:72px;border-radius:8px;flex:0 0 auto;overflow:hidden;display:block;border:1px solid var(--line);background:var(--tint)}
+.ctile img{width:100%;height:100%;object-fit:cover;display:block}
+.att .g{min-width:0;overflow-wrap:anywhere}
+.att .g .fname{font-size:12.5px}
 .toc{list-style:none;margin:8px 0;padding:0}
 .toc li{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:10px 12px;padding:12px 16px}
 .toc a{color:var(--ink);text-decoration:none;font-weight:600}
@@ -409,7 +442,7 @@ body{font-family:"Golos Text",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto
 .att .sz{line-height:1}
 .dl{line-height:0;color:var(--muted);flex:none;border:0;background:none;padding:0}
 .dl .ic{width:21px;height:21px}
-.ic{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.ic{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;color:var(--muted)}
 .pause,.voice.playing .play,.att.playing .play{display:none}
 .voice.playing .pause,.att.playing .pause{display:inline}
 noscript audio{width:100%;margin:10px 0 0}
@@ -428,6 +461,8 @@ func (st style) head(b *strings.Builder, title, prefix string) {
 	}
 	b.WriteString(":root{--c:")
 	b.WriteString(st.hex)
+	b.WriteString(";--ct:")
+	b.WriteString(st.ct)
 	b.WriteString("}")
 	b.WriteString(baseCSS)
 	b.WriteString("</style></head><body><div class=\"wrap\">")
@@ -594,7 +629,7 @@ func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, d
 	if relativeMedia {
 		prefix = "../"
 	}
-	b.WriteString("<article class=\"post\"><div class=\"who\">")
+	b.WriteString("<article class=\"post\"><div class=\"pa\">")
 	appendAvatarHTML(b, fp.Post.AuthorName, fp.Post.IdentityID, media, avatars, prefix)
 	b.WriteString("<div><div class=\"author\">")
 	b.WriteString(html.EscapeString(fp.Post.AuthorName))
@@ -622,17 +657,10 @@ func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, d
 			continue
 		}
 		if m.Kind == chronicle.MediaAttachment {
-			// Файл записи — ссылкой, как в комментарии: картинкой он не
-			// показывался, на его месте была пустая рамка (C39).
-			name := m.OriginalFilename
-			if name == "" {
-				name = "файл"
-			}
-			b.WriteString("<p class=\"cfile\"><a href=\"")
-			b.WriteString(html.EscapeString(prefix + src))
-			b.WriteString("\">")
-			b.WriteString(html.EscapeString(name))
-			b.WriteString("</a></p>")
+			// Файл записи — карточкой .att, как в приложении: картинкой он
+			// не показывался, на его месте была пустая рамка (C39). Вся
+			// карточка — ссылка на файл, как кнопка в приложении.
+			appendFileHTML(b, m, src, prefix)
 			continue
 		}
 		b.WriteString("<div class=\"media\">")
@@ -650,35 +678,48 @@ func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, d
 		b.WriteString("</div>")
 	}
 	if len(fp.Reactions) > 0 {
-		b.WriteString("<div class=\"reactions\">")
-		for i, r := range fp.Reactions {
-			if i > 0 {
-				b.WriteString(", ")
-			}
-			b.WriteString(html.EscapeString(reactionMark(r.Emoji)))
-			b.WriteString(" ")
-			b.WriteString(html.EscapeString(r.AuthorName))
+		// Отклики — чипсы на тонированном фоне, как в ленте приложения:
+		// значок реакции и имена через запятую.
+		b.WriteString("<div class=\"rx\">")
+		for _, g := range groupReactions(fp.Reactions) {
+			b.WriteString("<span class=\"one\">")
+			b.WriteString(reactionIcon(g.emoji))
+			b.WriteString(html.EscapeString(g.names))
+			b.WriteString("</span>")
 		}
 		b.WriteString("</div>")
 	}
 	if len(fp.Comments) > 0 {
-		b.WriteString("<div class=\"comments\">")
+		// Комментарии — строки .cmt, как на странице записи приложения:
+		// аватар 28 px, имя, время, текст 12.5 px; черта между строками.
+		b.WriteString("<div class=\"thread\">")
 		for _, c := range fp.Comments {
-			b.WriteString("<div class=\"comment\"><span class=\"author\">")
+			b.WriteString("<div class=\"cmt\">")
+			appendAvatarHTML(b, c.AuthorName, c.IdentityID, media, avatars, prefix)
+			b.WriteString("<div class=\"g\"><div class=\"who\"><b>")
 			b.WriteString(html.EscapeString(c.AuthorName))
-			b.WriteString(":</span> ")
-			b.WriteString(html.EscapeString(c.Body))
-			appendCommentMediaHTML(b, c.Media, media, prefix)
+			b.WriteString("</b>")
+			if !c.CreatedAt.IsZero() {
+				b.WriteString("<span class=\"tm\">")
+				b.WriteString(html.EscapeString(c.CreatedAt.UTC().Format("02.01.2006 15:04")))
+				b.WriteString("</span>")
+			}
 			b.WriteString("</div>")
+			if c.Body != "" {
+				b.WriteString(html.EscapeString(c.Body))
+			}
+			appendCommentMediaHTML(b, c.Media, media, prefix)
+			b.WriteString("</div></div>")
 		}
 		b.WriteString("</div>")
 	}
 	b.WriteString("</article>")
 }
 
-// appendCommentMediaHTML — вложения комментария: снимок картинкой, голосовое
-// и звук плеером, остальное ссылкой на файл.
+// appendCommentMediaHTML — вложения комментария: снимки плитками .ctile
+// 72 × 72, как в приложении, голосовое и звук плеером, файл карточкой .att.
 func appendCommentMediaHTML(b *strings.Builder, items []chronicle.PostMedia, media map[string]string, prefix string) {
+	tiles := 0
 	for _, m := range items {
 		if playableAudio(m) {
 			appendAudioHTML(b, m, media, prefix)
@@ -690,21 +731,45 @@ func appendCommentMediaHTML(b *strings.Builder, items []chronicle.PostMedia, med
 			continue
 		}
 		if m.Kind == chronicle.MediaPhoto {
-			b.WriteString("<div class=\"media cmedia\"><img alt=\"\" src=\"")
+			if tiles == 0 {
+				b.WriteString("<div class=\"cmedia\"><div class=\"ctiles\">")
+			}
+			b.WriteString("<a class=\"ctile\" href=\"")
 			b.WriteString(html.EscapeString(prefix + src))
-			b.WriteString("\"></div>")
+			b.WriteString("\"><img alt=\"\" src=\"")
+			b.WriteString(html.EscapeString(prefix + src))
+			b.WriteString("\"></a>")
+			tiles++
 			continue
 		}
-		name := m.OriginalFilename
-		if name == "" {
-			name = "файл"
+		if tiles > 0 {
+			b.WriteString("</div></div>")
+			tiles = 0
 		}
-		b.WriteString("<p class=\"cfile\"><a href=\"")
-		b.WriteString(html.EscapeString(prefix + src))
-		b.WriteString("\">")
-		b.WriteString(html.EscapeString(name))
-		b.WriteString("</a></p>")
+		appendFileHTML(b, m, src, prefix)
 	}
+	if tiles > 0 {
+		b.WriteString("</div></div>")
+	}
+}
+
+// appendFileHTML — карточка файла .att: значок файла и имя; вся карточка —
+// ссылка на файл, как кнопка в приложении.
+func appendFileHTML(b *strings.Builder, m chronicle.PostMedia, src, prefix string) {
+	b.WriteString("<a class=\"att\" href=\"")
+	b.WriteString(html.EscapeString(prefix + src))
+	b.WriteString("\">")
+	b.WriteString(iconFile)
+	b.WriteString("<span class=\"g\"><span class=\"fname\">")
+	b.WriteString(html.EscapeString(fileName(m)))
+	b.WriteString("</span></span></a>")
+}
+
+func fileName(m chronicle.PostMedia) string {
+	if name := strings.TrimSpace(m.OriginalFilename); name != "" {
+		return name
+	}
+	return "файл"
 }
 
 func playableAudio(m chronicle.PostMedia) bool {
@@ -845,21 +910,53 @@ func mmss(ms int64) string {
 	return fmt.Sprintf("%d:%02d", total/60, total%60)
 }
 
-// reactionMark — знак реакции как в ленте; ключи API: heart, laugh,
-// surprise, anger. Незнакомое значение ранних версий — как есть.
-func reactionMark(key string) string {
+// Значки реакций и файла — те же, что в приложении (web/static/icons.svg:
+// i-heart, i-laugh, i-surprise, i-anger, i-file). Значок реакции в чипе
+// окрашен цветом круга, как в ленте.
+const (
+	iconFile     = `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 2.8H7.4a2 2 0 0 0-2 2v14.4a2 2 0 0 0 2 2h9.2a2 2 0 0 0 2-2V8z"/><path d="M13.5 2.8V8h5.1"/></svg>`
+	iconHeart    = `<svg class="ic xs" viewBox="0 0 24 24" aria-hidden="true" style="color:var(--c)"><path d="M12 20.2S4.3 15.3 4.3 10.1a4.35 4.35 0 0 1 7.7-2.8 4.35 4.35 0 0 1 7.7 2.8c0 5.2-7.7 10.1-7.7 10.1z"/></svg>`
+	iconLaugh    = `<svg class="ic xs" viewBox="0 0 24 24" aria-hidden="true" style="color:var(--c)"><circle cx="12" cy="12" r="8.2"/><path d="M9 9.5v1.3M15 9.5v1.3"/><path d="M8.2 13.4c1 2.6 2.4 3.6 3.8 3.6s2.8-1 3.8-3.6"/></svg>`
+	iconSurprise = `<svg class="ic xs" viewBox="0 0 24 24" aria-hidden="true" style="color:var(--c)"><circle cx="12" cy="12" r="8.2"/><path d="M9 9.4v1.3M15 9.4v1.3"/><circle cx="12" cy="14.6" r="1.7"/></svg>`
+	iconAnger    = `<svg class="ic xs" viewBox="0 0 24 24" aria-hidden="true" style="color:var(--c)"><circle cx="12" cy="12" r="8.2"/><path d="M8.2 8.4 10.6 10M15.8 8.4 13.4 10"/><path d="M9 10.6v1.1M15 10.6v1.1"/><path d="M8.6 16.2c1.1-2 2.5-2.8 3.4-2.8s2.3.8 3.4 2.8"/></svg>`
+)
+
+// reactionIcon — значок реакции как в ленте (reactionIconName в приложении):
+// heart, laugh, surprise, anger; незнакомый ключ — сердце.
+func reactionIcon(key string) string {
 	switch key {
-	case "heart":
-		return "♥"
 	case "laugh":
-		return "😄"
+		return iconLaugh
 	case "surprise":
-		return "😮"
+		return iconSurprise
 	case "anger":
-		return "😠"
+		return iconAnger
 	default:
-		return key
+		return iconHeart
 	}
+}
+
+// reactionGroup — чип отклика: значок и имена через запятую.
+type reactionGroup struct {
+	emoji string
+	names string
+}
+
+// groupReactions собирает отклики по эмодзи в порядке первого появления.
+func groupReactions(rs []chronicle.Reaction) []reactionGroup {
+	var order []string
+	byEmoji := map[string][]string{}
+	for _, r := range rs {
+		if _, seen := byEmoji[r.Emoji]; !seen {
+			order = append(order, r.Emoji)
+		}
+		byEmoji[r.Emoji] = append(byEmoji[r.Emoji], r.AuthorName)
+	}
+	out := make([]reactionGroup, 0, len(order))
+	for _, e := range order {
+		out = append(out, reactionGroup{emoji: e, names: strings.Join(byEmoji[e], ", ")})
+	}
+	return out
 }
 
 // HasExternalLinks reports whether HTML contains http(s) references.

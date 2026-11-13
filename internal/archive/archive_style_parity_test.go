@@ -26,16 +26,14 @@ import (
 //
 // Элементы без аналога в приложении не сравниваются: .head, .wrap (640 px),
 // .toc, .back, .end — навигация и каркас архива; .gone («Файл недоступен»);
-// нативный плеер в <noscript> и состояния playing.
+// нативный плеер в <noscript> и состояния playing; .thread без
+// padding-bottom 68 px — в архиве нет поля ответа; формат времени в
+// комментариях — архив пишет абсолютную дату, приложение относительное.
 //
-// Структурные отличия свойствами не выражаются и решаются владельцем по
-// плану 46 (A26): приложение ставит фото и ролики плитками-квадратами
-// (.thumbs/.pic.sq), архив — столбиком на всю ширину; отклики в приложении —
-// чипсы на фоне --ct (.rx), в архиве — строка текста; комментарии в
-// приложении — отдельная карточка .cm на бумажном фоне со строками .cmt,
-// в архиве — список внутри карточки записи; файл в приложении — карточка
-// .att, в архиве — ссылка .cfile. font-family не сравнивается: в приложении
-// это var(--ui), текстура стеков различается записью, а не составом.
+// После выравнивания A26 (2026-11-13) известные отличия остались трёх родов:
+// настольный масштаб текста (решение владельца), перенос чипов откликов
+// (в архиве все отклики истории, приложение .rx не переносит) и имя файла
+// в карточке .att (в приложении inline-стиль 12.5 px, в архиве класс .fname).
 type styleParity struct {
 	name  string
 	arch  []string
@@ -50,9 +48,8 @@ type styleParity struct {
 
 var archiveStyleParity = []styleParity{
 	// ——— Равные значения ———
-	{"цвета страницы", []string{":root"}, []string{":root"}, []string{"--paper", "--card", "--ink", "--muted", "--faint", "--line"}, nil, "токены tokens.css"},
-	{"шапка записи", []string{".who"}, []string{".pa"}, []string{"display", "align-items", "gap"},
-		map[string]string{"margin": ""}, "отступ: в приложении 9 px под шапкой, в архиве 10 px над текстом"},
+	{"цвета страницы", []string{":root"}, []string{":root"}, []string{"--paper", "--card", "--ink", "--muted", "--faint", "--line", "--tint"}, nil, "токены tokens.css"},
+	{"шапка записи", []string{".pa"}, []string{".pa"}, []string{"display", "align-items", "gap", "margin-bottom"}, nil, ""},
 	{"имя автора", []string{".author"}, []string{".pa .n"}, []string{"font-weight"}, nil, ""},
 	{"строка голосового", []string{".voice"}, []string{".voice"}, []string{"display", "align-items", "gap", "width", "padding", "border", "background", "color", "font", "text-align", "cursor"}, nil, ""},
 	{"кнопка голосового", []string{".voice-play"}, []string{":where(button)", ".voice-play"}, []string{"width", "height", "border-radius", "background", "display", "place-items", "flex", "border", "padding"}, nil, ""},
@@ -76,29 +73,30 @@ var archiveStyleParity = []styleParity{
 	// ——— Задокументированные отличия (план 46, A26) ———
 	{"масштаб текста страницы", []string{"body"}, []string{".ph"}, []string{"font-size", "line-height"},
 		map[string]string{"font-size": "15px", "line-height": "1.5"}, "настольный масштаб архива — принят владельцем 2026-11-13; приложение: 13.5 px / 1.45"},
-	{"карточка записи", []string{".post"}, []string{".post"}, []string{"background", "border", "border-radius", "padding", "margin"},
-		map[string]string{"border-radius": "16px", "padding": "14px 16px", "margin": "14px 12px"},
-		"приложение: радиус 14 px, поля 14 px, отступ 12 px 14 px"},
-	{"аватар", []string{".av"}, []string{".av"}, []string{"width", "height", "border-radius"},
-		map[string]string{"width": "32px", "height": "32px"}, "приложение: 34 px"},
-	{"буквы аватара", []string{".avl"}, []string{".av"}, []string{"width", "height", "border-radius", "font-size", "background"},
-		map[string]string{"width": "32px", "height": "32px", "font-size": "14px", "background": "var(--c)"},
-		"приложение: 34 px, шрифт 13.5 px, фон var(--rc, var(--c))"},
-	{"время и дата записи", []string{".meta"}, []string{".pa .tm"}, []string{"color", "font-size"},
-		map[string]string{"color": "var(--muted)", "font-size": "12.5px"}, "приложение: faint, 11.5 px"},
-	{"текст записи", []string{".body"}, []string{".pt", ".mention-text"}, []string{"white-space", "overflow-wrap", "margin"},
-		map[string]string{"overflow-wrap": "", "margin": "10px 0 0"},
-		"приложение: overflow-wrap anywhere, отступ снизу 11 px"},
-	{"фото и ролики записи", []string{".media img", ".media video"}, []string{".pic"}, []string{"border-radius", "border"},
-		map[string]string{"border-radius": "12px", "border": ""}, "приложение: радиус 10 px, рамка 1 px; плитки против столбика — структурно"},
-	{"отклики", []string{".reactions"}, []string{".rx .one"}, []string{"font-size"},
-		map[string]string{"font-size": "13px"}, "приложение: 12.5 px; строка вместо чипсов — структурно"},
-	{"комментарий", []string{".comment"}, []string{".cmt .g"}, []string{"font-size", "line-height"},
-		map[string]string{"font-size": "14px", "line-height": ""}, "приложение: 12.5 px / 1.4; список внутри карточки против карточки .cm — структурно"},
-	{"медиа комментария", []string{".cmedia img"}, []string{".cmedia"}, []string{"max-width"},
-		map[string]string{"max-width": "240px"}, "приложение: потолка ширины нет, колонка с зазором 8 px"},
-	{"файл записи и комментария", []string{".cfile"}, []string{".att .att-name"}, []string{"font-size"},
-		map[string]string{"font-size": "14px"}, "приложение: 12.5 px; ссылка вместо карточки .att — структурно"},
+	{"карточка записи", []string{".post"}, []string{".post"}, []string{"background", "border", "border-radius", "padding", "margin", "overflow-wrap", "min-width"}, nil, ""},
+	{"аватар", []string{".av"}, []string{".av"}, []string{"width", "height", "border-radius", "flex"}, nil,
+		// object-fit: в архиве аватар — сразу <img>, в приложении снимок
+		// внутри .av получает object-fit из правила .av img.
+		"object-fit не сравнивается"},
+	{"буквы аватара", []string{".avl"}, []string{".av"}, []string{"width", "height", "border-radius", "font-size", "color", "display", "place-items", "flex"}, nil,
+		// background в приложении — inline-стиль от цвета круга.
+		"background не сравнивается"},
+	{"время и дата записи", []string{".meta"}, []string{".pa .tm"}, []string{"color", "font-size"}, nil, ""},
+	{"текст записи", []string{".body"}, []string{".pt", ".mention-text"}, []string{"white-space", "overflow-wrap", "margin"}, nil, ""},
+	{"фото и ролики записи", []string{".media img", ".media video"}, []string{".pic"}, []string{"border-radius", "border", "background-color", "background-image"}, nil, ""},
+	{"отклики", []string{".rx"}, []string{".rx"}, []string{"display", "gap", "margin-top", "align-items"},
+		map[string]string{"flex-wrap": "wrap"}, "в архиве все отклики истории, чипы переносятся; приложение не переносит"},
+	{"чип отклика", []string{".rx .one"}, []string{".rx .one"}, []string{"background", "border-radius", "padding", "font-size", "display", "gap", "align-items"}, nil, ""},
+	{"значок в чипе отклика", []string{".rx .one .ic"}, []string{".ic", ".ic.xs"}, []string{"width", "height", "stroke-width"}, nil, ""},
+	{"строка комментария", []string{".cmt"}, []string{".cmt"}, []string{"display", "align-items", "gap", "padding"}, nil, ""},
+	{"текст комментария", []string{".cmt .g"}, []string{".cmt .g"}, []string{"flex", "min-width", "font-size", "line-height", "overflow-wrap"}, nil, ""},
+	{"шапка комментария", []string{".cmt .who"}, []string{".cmt .who"}, []string{"display", "align-items", "gap", "line-height"}, nil, ""},
+	{"имя комментария", []string{".cmt .who b"}, []string{".cmt .who b"}, []string{"font-weight"}, nil, ""},
+	{"аватар комментария", []string{".cmt .av"}, []string{".cmt .av"}, []string{"width", "height", "font-size"}, nil, ""},
+	{"буквы аватара комментария", []string{".cmt .avl"}, []string{".cmt .av"}, []string{"width", "height", "font-size"}, nil, ""},
+	{"медиа комментария", []string{".cmedia"}, []string{".cmedia"}, []string{"display", "flex-direction", "gap", "margin-top"}, nil, ""},
+	{"плитка комментария", []string{".ctiles .ctile"}, []string{".pic", ".ctiles .ctile"}, []string{"width", "height", "border-radius", "flex", "overflow", "border", "display"}, nil, ""},
+	{"файл записи и комментария", []string{".att .g"}, []string{".att .g"}, []string{"min-width", "overflow-wrap"}, nil, ""},
 }
 
 type cssRule struct {

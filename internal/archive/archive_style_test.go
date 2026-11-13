@@ -76,8 +76,8 @@ func TestArchiveCarriesCircleStyleOffline(t *testing.T) {
 				if !strings.Contains(page, `url("../fonts/GolosText-Variable-cyrillic.woff2")`) {
 					t.Fatal("страница записи не видит шрифт")
 				}
-				if !strings.Contains(page, "♥ Кот") {
-					t.Fatal("реакция не с именем")
+				if !strings.Contains(page, `<span class="one">`) || !strings.Contains(page, "Кот") {
+					t.Fatal("реакция не чипом с именем")
 				}
 			}
 		})

@@ -91,7 +91,7 @@ func BuildFullArchive(ctx context.Context, w io.Writer, in FullInput) error {
 			return err
 		}
 	}
-	st := style{hex: circleHex(in.Data.Color), full: true, partial: in.Data.PartialJournal}
+	st := style{hex: circleHex(in.Data.Color), ct: circleCT(in.Data.Color), full: true, partial: in.Data.PartialJournal}
 	if err := buildReadable(ctx, zw, in.Readable, in.Data.BlobIDs, st); err != nil {
 		return err
 	}

@@ -260,7 +260,7 @@ func Assemble(w io.Writer, picks []Pick, base *Source) error {
 		return err
 	}
 
-	st := style{hex: circleHex(base.Meta.Color)}
+	st := style{hex: circleHex(base.Meta.Color), ct: circleCT(base.Meta.Color)}
 	for _, f := range archiveFonts {
 		if _, ok := base.files["fonts/"+f]; ok {
 			if err := copyFile(base, "fonts/"+f); err != nil {
