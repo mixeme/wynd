@@ -587,7 +587,7 @@ func steps(spec Spec) []step {
 	if spec.FixClock {
 		list = append(list, clockStep())
 	}
-	list = append(list, imageStep(spec), filesStep(spec), startStep(spec))
+	list = append(list, placeStep(spec), imageStep(spec), filesStep(spec), startStep(spec))
 	switch spec.Proxy {
 	case "":
 		list = append(list, certStep(spec))
@@ -1301,6 +1301,44 @@ func installFilesAt(l Layout, spec Spec) (files []installFile, dirs string) {
 	}
 	dirs += " && chown -R " + wyndOwner + " " + l.Data() + " && chmod 700 " + l.Data()
 	return files, dirs
+}
+
+// placeScript — проверка каталога установки до записи: ссылку не принимаем,
+// непустую чужую папку тоже; своя установка (compose.yaml на месте) проходит.
+func placeScript(l Layout) string {
+	return `root=` + l.ShellRoot() + `
+if [ -L "$root" ]; then echo '@symlink'; exit 0; fi
+if [ -e "$root" ] && [ -n "$(ls -A "$root" 2>/dev/null)" ] && [ ! -f "$root/compose.yaml" ]; then echo '@foreign'; exit 0; fi
+echo '@free'`
+}
+
+// placeStep — каталог установки до записи: пустой, наш или отказ. Ссылку не
+// принимаем: проверка перед разрушительным действием должна смотреть на тот
+// же путь, что и запись (план «другой каталог установки Docker»).
+func placeStep(spec Spec) step {
+	return step{
+		id:    "place",
+		title: "Каталог установки",
+		do: func(ctx context.Context, r *Run) error {
+			res, err := r.sess.Exec(ctx, placeScript(r.layout), nil, shortTimeout)
+			if err != nil {
+				return err
+			}
+			switch strings.TrimSpace(res.Output) {
+			case "@symlink":
+				return &StepError{
+					Message: "Каталог установки — ссылка",
+					Advice:  "Мастерская не ставит в каталог-ссылку: при удалении она может увести в другую папку. Укажите настоящий каталог на сервере.",
+				}
+			case "@foreign":
+				return &StepError{
+					Message: "В каталоге " + r.layout.Root() + " уже лежат другие файлы",
+					Advice:  "Возьмите пустой каталог или папку, где Мастерская уже ставила Wynd. Чужое содержимое Мастерская не перезаписывает.",
+				}
+			}
+			return nil
+		},
+	}
 }
 
 func filesStep(spec Spec) step {

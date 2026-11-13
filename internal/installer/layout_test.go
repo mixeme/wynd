@@ -225,3 +225,24 @@ func TestInspectAtCustomRoot(t *testing.T) {
 		}
 	}
 }
+
+// Каталог установки проверяется до записи: ссылка и чужая непустая папка —
+// отказ, своя установка (compose.yaml на месте) проходит. Проверка — на том же
+// пути, что и запись.
+func TestPlaceScript(t *testing.T) {
+	def := placeScript(DefaultLayout())
+	if !strings.Contains(def, "root=/opt/wynd") ||
+		!strings.Contains(def, `[ -L "$root" ]`) ||
+		!strings.Contains(def, `[ ! -f "$root/compose.yaml" ]`) ||
+		!strings.Contains(def, "'@symlink'") || !strings.Contains(def, "'@foreign'") {
+		t.Fatalf("проверка каталога по умолчанию: %s", def)
+	}
+	l, err := NewLayout("/srv/Мой wynd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	custom := placeScript(l)
+	if !strings.Contains(custom, `root='/srv/Мой wynd'`) {
+		t.Fatalf("путь с пробелом не экранирован: %s", custom)
+	}
+}

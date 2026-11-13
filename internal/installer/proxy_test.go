@@ -35,7 +35,7 @@ func TestInstallBehindNginx(t *testing.T) {
 	for _, s := range res.Steps {
 		ids = append(ids, s.ID)
 	}
-	if got := strings.Join(ids, " "); got != "docker image files start site cert check" {
+	if got := strings.Join(ids, " "); got != "docker place image files start site cert check" {
 		t.Fatalf("шаги: %s", got)
 	}
 	compose := host.files[installDir+"/compose.yaml"]
