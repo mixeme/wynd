@@ -43,6 +43,8 @@ func TestArchiveAudioMatchesApp(t *testing.T) {
 		Posts: []chronicle.FeedPost{{
 			Post: chronicle.Post{ID: "post1", IdentityID: "anya", AuthorName: "Аня", Body: "слушай",
 				EntryDate: "2026-08-09", CreatedAt: time.Date(2026, 8, 9, 12, 0, 0, 0, time.UTC)},
+			Comments: []chronicle.Comment{{ID: "k1", AuthorName: "Петя", Body: "как живьём",
+				CreatedAt: time.Date(2026, 8, 9, 13, 0, 0, 0, time.UTC)}},
 			Media: []chronicle.PostMedia{
 				{BlobID: voice.ID, Kind: chronicle.MediaAttachment, MimeType: "audio/webm",
 					OriginalFilename: "voice.webm", Voice: true,
@@ -114,6 +116,24 @@ func TestArchiveAudioMatchesApp(t *testing.T) {
 	// владельца 2026-11-12): обложки в разметке нет, фон рисует стиль.
 	if !strings.Contains(index, `<span class="att-cover"></span>`) {
 		t.Fatal("у звука без обложки нет места заглушки")
+	}
+
+	// Карточка комментариев — сосед записи, а не её содержимое (замечание
+	// владельца 2026-11-13: черта наезжала на элементы записи). После
+	// <div class="cm"> запись уже закрыта, строка .cmt на месте.
+	if !strings.Contains(index, `<div class="cm">`) {
+		t.Fatal("нет карточки комментариев")
+	}
+	if i := strings.Index(index, `<div class="cm">`); i >= 0 {
+		if art := strings.LastIndex(index[:i], "<article"); art >= 0 {
+			if close := strings.LastIndex(index[:i], "</article>"); close < art {
+				t.Fatal("комментарии попали внутрь карточки записи")
+			}
+		}
+	}
+	if !strings.Contains(index, `<div class="cmt"><span class="avl">`) ||
+		!strings.Contains(index, `<b>Петя</b>`) {
+		t.Fatal("строка комментария не на месте")
 	}
 
 	// Один плеер на страницу; нативный <audio> — только запасной путь.
