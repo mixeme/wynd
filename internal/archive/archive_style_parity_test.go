@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -101,6 +102,74 @@ var archiveStyleParity = []styleParity{
 	{"медиа комментария", []string{".cmedia"}, []string{".cmedia"}, []string{"display", "flex-direction", "gap", "margin-top"}, nil, ""},
 	{"плитка комментария", []string{".ctiles .ctile"}, []string{".pic", ".ctiles .ctile"}, []string{"width", "height", "border-radius", "flex", "overflow", "border", "display"}, nil, ""},
 	{"файл записи и комментария", []string{".att .g"}, []string{".att .g"}, []string{"min-width", "overflow-wrap"}, nil, ""},
+}
+
+// TestArchiveBlockSpacing держит ритм зазоров между блоками записи. Это
+// собственный механизм архива: в приложении зазоры дают .pt (снизу 11 px)
+// и .rx (сверху 11 px), а плитка медиа стоит к строке вложения вплотную
+// (замер настоящего рендера 2026-11-13) — паритету сравнивать не с чем,
+// и при выравнивании A26 зазор был потерян. Эффективный зазор — максимум
+// из нижнего поля верхнего блока и верхнего поля нижнего (схлопывание).
+func TestArchiveBlockSpacing(t *testing.T) {
+	arch := parseCSSRules(baseCSS)
+	cases := []struct {
+		name       string
+		prev, next []string
+		gap        int
+	}{
+		{"текст → фото или ролик", []string{".body"}, []string{".media"}, 11},
+		{"текст → строка звука или файла", []string{".body"}, []string{".att"}, 11},
+		{"строка звука → фото", []string{".att"}, []string{".media"}, 11},
+		{"фото → строка звука", []string{".media"}, []string{".att"}, 11},
+		{"фото → фото в столбике", []string{".media"}, []string{".media", ".media+.media"}, 6},
+		{"строка звука → отклики", []string{".att"}, []string{".rx"}, 11},
+		{"запись → карточка комментариев (приклеена)", []string{".post", ".post:has(+ .cm)"}, []string{".cm"}, 0},
+	}
+	for _, c := range cases {
+		prev := mergeDecls(arch, c.prev)
+		next := mergeDecls(arch, c.next)
+		got := max(spacingSide(prev, "bottom"), spacingSide(next, "top"))
+		if got != c.gap {
+			t.Errorf("%s: зазор %d px, ожидалось %d px", c.name, got, c.gap)
+		}
+	}
+}
+
+// spacingSide возвращает поле блока сверху или снизу в пикселях: явное
+// margin-top/bottom или разворот краткой записи margin.
+func spacingSide(decls map[string]string, side string) int {
+	longhand := "margin-" + side
+	if v, ok := decls[longhand]; ok {
+		return px(v)
+	}
+	fields := strings.Fields(decls["margin"])
+	var v string
+	switch len(fields) {
+	case 1:
+		v = fields[0]
+	case 2, 3:
+		if side == "top" {
+			v = fields[0]
+		} else {
+			v = fields[len(fields)-1]
+		}
+	case 4:
+		if side == "top" {
+			v = fields[0]
+		} else {
+			v = fields[2]
+		}
+	}
+	return px(v)
+}
+
+func px(v string) int {
+	v = strings.TrimSpace(strings.TrimSuffix(v, "px"))
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return 0
+	}
+	return n
 }
 
 type cssRule struct {
