@@ -159,10 +159,12 @@ export const SCENES: Scene[] = [
 		fake: { ...toPult(pult), Inspect: () => foreignApache, Rollback: () => ({ ok: true, log: null, report: { ...foreignApache.report, findings: report.report.findings } }) },
 		acts: [...go, { click: 'Убрать Wynd с сервера' }, { click: 'Да, убрать' }]
 	},
+	// A25 (кадры 10г–10е): полоса обновления поверх интерфейса вместо
+	// отдельного экрана и тихой строки.
 	{ name: '7a-selfbar', fake: { ...toPult(pult), CheckSelfUpdate: () => ({ available: true, version: '0.2.0', notes: ['Обновляется сама'], attestation: 'https://github.com/' }) }, acts: go },
-	{ name: '7a-selfbar-hidden', fake: { ...toPult(pult), CheckSelfUpdate: () => ({ available: true, version: '0.2.0', notes: ['Обновляется сама'] }) }, acts: [...go, { click: '✕' }] },
-	{ name: '10b-self', fake: { CheckSelfUpdate: () => ({ available: true, version: '0.2.0', notes: ['Обновляется сама', 'Переезд узнаёт обрыв'], attestation: 'https://github.com/' }) }, acts: [{ click: 'Обновить' }] },
-	{ name: '10c-self-bad', fake: { CheckSelfUpdate: () => ({ available: true, version: '0.2.0' }), ApplySelfUpdate: () => 'signature' }, acts: [{ click: 'Обновить' }, { click: 'Обновить и перезапустить' }] },
+	{ name: '7a-selfbar-hidden', fake: { ...toPult(pult), CheckSelfUpdate: () => ({ available: true, version: '0.2.0', notes: ['Обновляется сама'] }) }, acts: [...go, { click: 'Позже' }] },
+	{ name: '10b-self', fake: { CheckSelfUpdate: () => ({ available: true, version: '0.2.0', attestation: 'https://github.com/' }), ApplySelfUpdate: never }, acts: [{ click: 'Обновить и перезапустить' }] },
+	{ name: '10c-self-bad', fake: { CheckSelfUpdate: () => ({ available: true, version: '0.2.0' }), ApplySelfUpdate: () => 'signature' }, acts: [{ click: 'Обновить и перезапустить' }] },
 	{ name: '7z-foreign-service', fake: { ...toPult(foreignService), Inspect: () => foreignFound }, acts: go },
 	{ name: '7z-foreign-stopped', fake: { ...toPult(foreignStopped), Inspect: () => foreignFound }, acts: go },
 	{

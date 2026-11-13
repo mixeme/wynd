@@ -3,7 +3,6 @@
 	import TitleBar from '$ui/workshop/TitleBar.svelte';
 	import WorkshopTabs from '$ui/workshop/WorkshopTabs.svelte';
 	import StepNav from '$ui/workshop/StepNav.svelte';
-	import SelfBar from '$ui/workshop/SelfBar.svelte';
 	import Notice from '$ui/workshop/Notice.svelte';
 	import FootBar from '$ui/workshop/FootBar.svelte';
 	import MarkRows from '$ui/workshop/MarkRows.svelte';
@@ -173,11 +172,11 @@
 		await refreshProfiles();
 		reconnect[id] = (reconnect[id] ?? 0) + 1;
 	}
-	// Новая Мастерская (10а–10в): спрашиваем при запуске; «✕» прячет только
-	// полосу — тихая строка внизу остаётся, пока не обновились (10а2).
+	// Обновление Мастерской (A25, кадры 10г–10е): полоса поверх интерфейса
+	// вместо отдельного экрана и тихой строки. «Позже» прячет полосу до
+	// следующего запуска; при отказе подписи установка гаснет.
 	let selfUp = $state<SelfUpdate | undefined>();
 	let selfHidden = $state(false);
-	let selfOpen = $state(false);
 	let selfBusy = $state(false);
 	let selfBad = $state(false);
 	let selfError = $state('');
@@ -219,76 +218,42 @@
 		]}
 		bind:value={tab}
 	/>
-	{#if selfOpen && selfUp}
-		<!-- Кадры 10б, 10в. -->
-		<div class="ins">
-			<main class="ins-body">
+	{#if selfUp && !selfHidden}
+		<!-- A25 (кадры 10г–10е): полоса обновления поверх интерфейса, как в
+		     Настольном; отдельный экран и тихая строка больше не нужны. -->
+		<div class="selfbar">
+			<div class="selfbar-main">
+				<div class="selfbar-head">Вышла Мастерская {selfUp.version}</div>
 				{#if selfBad}
-					<h2>Эту версию Мастерская не поставит</h2>
-					<Notice title="Мастерская {selfUp.version} не подписана ключом Wynd">
-						<div class="ins-dim">
-							Файл мог испортиться при скачивании — или его подменили. Ставить такую версию опасно:
-							у Мастерской есть доступ к вашему серверу. Текущая Мастерская {version} работает как прежде.
-						</div>
-					</Notice>
-					<FootBar>
-						<Button
-							variant="colored"
-							loading={selfBusy}
-							loadingLabel="Обновляем…"
-							onclick={() => void applySelf()}>Попробовать ещё раз</Button
-						>
-						<Button variant="ghost" onclick={() => (selfOpen = false)}>Закрыть</Button>
-						<TextButton class="link under ins-push" onclick={() => void backend().ReleasesPage()}
-							>страница выпусков</TextButton
-						>
-					</FootBar>
-				{:else}
-					<h2>Мастерская {selfUp.version}</h2>
-					{#if selfUp.notes?.length}
-						<p class="ins-sub">Что нового:</p>
-						<MarkRows>
-							{#each selfUp.notes as n (n)}<MarkRow mark="·">{n}</MarkRow>{/each}
-						</MarkRows>
-					{/if}
-					<MarkRows>
-						<MarkRow mark="✓" tone="ok">
-							Подписана ключом Wynd <span class="ins-dim"
-								>— выложил тот, кто делает Wynd, файл не подменён</span
-							>
-						</MarkRow>
-						<MarkRow mark="✓" tone="ok">
-							Собрана из открытого кода тега workshop-v{selfUp.version} в GitHub Actions
-							<TextButton
-								class="link under"
-								onclick={() => void backend().OpenLink(selfUp?.attestation ?? '')}
-								>проверить</TextButton
-							>
-						</MarkRow>
-					</MarkRows>
-					{#if selfError}<Notice tone="bad" alert>{selfError}</Notice>{/if}
-					<FootBar>
-						<Button
-							variant={anyBusy ? 'off' : 'colored'}
-							loading={selfBusy}
-							loadingLabel="Обновляем…"
-							onclick={() => void (anyBusy ? undefined : applySelf())}
-							>Обновить и перезапустить</Button
-						>
-						<Button variant="ghost" onclick={() => (selfOpen = false)}>Не сейчас</Button>
-						{#if anyBusy}<span class="ins-dim">Сначала дождитесь окончания</span>{/if}
-					</FootBar>
+					<div class="selfbar-bad">Подпись не сошлась: обновление не установлено.</div>
+				{:else if selfError}
+					<div class="selfbar-bad" role="alert">{selfError}</div>
 				{/if}
-			</main>
+			</div>
+			<div class="selfbar-actions">
+				<Button
+					variant="colored"
+					disabled={selfBusy || selfBad || anyBusy}
+					loading={selfBusy}
+					loadingLabel="Обновляем…"
+					onclick={() => void applySelf()}
+				>
+					Обновить и перезапустить
+				</Button>
+				{#if anyBusy}<span class="ins-dim">Сначала дождитесь окончания</span>{/if}
+				<TextButton class="under" disabled={selfBusy} onclick={() => (selfHidden = true)}
+					>Позже</TextButton
+				>
+				{#if selfUp.attestation}
+					<TextButton class="under" onclick={() => void backend().ReleasesPage()}
+						>Что нового</TextButton
+					>
+				{/if}
+			</div>
 		</div>
 	{/if}
-	<div class="ins-content" class:ins-hidden={selfOpen}>
-		{#if selfUp && !selfHidden}<SelfBar
-				version={selfUp.version ?? ''}
-				onupdate={() => (selfOpen = true)}
-				onhide={() => (selfHidden = true)}
-			/>{/if}
-		<div class="ins" class:ins-hidden={tab !== 'servers'}>
+	<div class="ins-content">
+				<div class="ins" class:ins-hidden={tab !== 'servers'}>
 			<StepNav
 				servers={rail}
 				selected={editing !== undefined ? '' : selected}
@@ -432,10 +397,5 @@
 		<div class="ins-archive-view" class:ins-hidden={tab !== 'archives'}>
 			<Archives />
 		</div>
-		{#if selfUp && selfHidden}<div class="ins-self-note">
-				<TextButton class="link under" onclick={() => (selfOpen = true)}
-					>Вышла Мастерская {selfUp.version}</TextButton
-				>
-			</div>{/if}
-	</div>
+		</div>
 </div>
