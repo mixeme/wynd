@@ -311,6 +311,7 @@ export interface Backend {
 	Profiles(): Promise<ServerProfile[]>;
 	SaveProfile(profile: ServerProfile): Promise<ServerProfile>;
 	SetAutoConnect(id: string, on: boolean): Promise<void>;
+	SetInstallRoot(id: string, root: string): Promise<void>;
 	RemoveProfile(id: string): Promise<void>;
 	HasSavedPassword(host: string, user: string): Promise<boolean>;
 	Connect(password: string, makeKey: boolean): Promise<ConnectResult>;

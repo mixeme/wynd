@@ -108,6 +108,17 @@ export const SCENES: Scene[] = [
 	{ name: '2-inspect-wait', fake: { Inspect: never }, acts: go },
 	{ name: '2-inspect-failed', fake: { Inspect: () => ({ ok: false, message: 'Осмотр не прошёл', advice: 'Связь оборвалась.', report: { findings: null, addresses: null, raw: '' } }) }, acts: go },
 	{ name: '2-inspect', acts: go },
+	{
+		// Свежий сервер: Wynd ещё не стоит — здесь видно «Каталог на сервере»
+		// (план «другой каталог установки Docker»).
+		name: '2-inspect-new',
+		fake: {
+			Connect: () => ({ status: 'connected', host: '45.144.64.241' }),
+			Inspect: () => ({ ...report, report: { ...report.report, findings: report.report.findings } }),
+			ServerPage: () => page({ installed: false, version: '', domain: '', running: false, container: false, free_bytes: 18 * 1024 ** 3 })
+		},
+		acts: [...go, ...domain]
+	},
 	{ name: '2-inspect-domain-ok', acts: [...go, ...domain] },
 	{
 		name: '2-inspect-domain-bad',

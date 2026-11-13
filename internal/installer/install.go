@@ -1719,6 +1719,12 @@ func isASCIIDomain(d string) bool {
 // BuildPlan составляет план по осмотру. build — собрать Wynd на сервере из
 // открытого кода вместо готового образа.
 func BuildPlan(rep Report, domain, version string, build bool) Plan {
+	return BuildPlanAt(rep, domain, version, build, DefaultLayout())
+}
+
+// BuildPlanAt — план установки с каталогом: в нём видно, куда именно встанет
+// Wynd (план «другой каталог установки Docker»).
+func BuildPlanAt(rep Report, domain, version string, build bool, l Layout) Plan {
 	// Сроки — замеры на самом слабом сервере (1 ядро, 709 МБ; план 45): Docker —
 	// 103 с, установка готового образа — 36–66 с, сборка из кода — 603 и 621 с.
 	p := Plan{Domain: domain, Version: version, Build: build, Duration: "обычно 2–3 минуты"}
@@ -1779,6 +1785,6 @@ func BuildPlan(rep Report, domain, version string, build bool) Plan {
 		name := proxyOf(rep.Proxy).name
 		p.Keep = append(p.Keep, name+" и его сайты: чужие файлы не правим, "+name+" перечитает настройку без остановки")
 	}
-	p.Keep = append(p.Keep, "Всё, что на сервере уже есть: Wynd займёт свою папку /opt/wynd")
+	p.Keep = append(p.Keep, "Всё, что на сервере уже есть: Wynd займёт свою папку "+l.Root())
 	return p
 }

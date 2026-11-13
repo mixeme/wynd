@@ -116,6 +116,19 @@ type Wizard struct {
 
 // HasSavedPassword — лежит ли в связке пароль для этого сервера: окно тогда
 // не требует вводить его заново.
+// SetInstallRoot запоминает каталог установки для этой установки: он
+// проверяется до плана, показывается в плане и уходит в установку. Правку
+// профиля (workshop) это не подменяет: там свой сторож для устоявшейся
+// установки.
+func (w *Wizard) SetInstallRoot(root string) error {
+	l, err := NewLayout(root)
+	if err != nil {
+		return err
+	}
+	w.Root = l.Root()
+	return nil
+}
+
 // layout — размещение установки этого сервера: пустой каталог в профиле
 // значит /opt/wynd (план «другой каталог»).
 func (w *Wizard) layout() Layout {
@@ -351,7 +364,7 @@ func (w *Wizard) planLocked(rep Report, domain string) Plan {
 	if wynd == "" {
 		wynd = w.Version
 	}
-	plan := BuildPlan(rep, domain, wynd, (w.build || w.unpublished) && w.Source != nil)
+	plan := BuildPlanAt(rep, domain, wynd, (w.build || w.unpublished) && w.Source != nil, w.layout())
 	plan.CanBuild = w.Source != nil
 	plan.Unpublished = w.unpublished && w.Source != nil
 	w.plan = nil

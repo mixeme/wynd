@@ -164,6 +164,12 @@
 	let showRaw = $state(false);
 	let copiedRaw = $state(false);
 	let domain = $state('');
+	// Каталог установки: нужен только при установке (план «другой каталог»).
+	// Значение по умолчанию — сохранённый каталог сервера, иначе /opt/wynd.
+	let installRoot = $state('');
+	$effect(() => {
+		if (!installRoot) installRoot = profile.last_check?.root || '/opt/wynd';
+	});
 	let domainCheck = $state<DomainCheck | undefined>();
 	let checkingDomain = $state(false);
 
@@ -661,6 +667,7 @@
 		planning = true;
 		rollbackNote = '';
 		try {
+			if (!st?.installed) await api.SetInstallRoot(profile.id, installRoot.trim() || '/opt/wynd');
 			plan = await api.MakePlan(domain);
 			progress = undefined;
 			screen = 'plan';
@@ -1965,6 +1972,11 @@
 		</form>
 		{#if domainCheck && !domainOk}
 			<Notice alert title={domainCheck.text} text={domainCheck.advice} />
+		{/if}
+		{#if !st?.installed}
+			<!-- Куда поставить Wynd: по умолчанию /opt/wynd, как у ручной установки. -->
+			<Label>Каталог на сервере</Label>
+			<Input mono autocomplete="off" spellcheck={false} bind:value={installRoot} />
 		{/if}
 		<FootBar>
 			<Button

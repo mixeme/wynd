@@ -310,6 +310,38 @@ func (w *Workshop) SaveProfile(p ServerProfile) (ServerProfile, error) {
 	return cloneProfile(p), nil
 }
 
+// SetInstallRoot задаёт каталог установки до установки (план «другой
+// каталог установки Docker»): проверяет путь, сохраняет в профиле и отдаёт
+// мастеру, чтобы план и установка считали его. У устоявшейся установки
+// каталог так не меняется — только переездом.
+func (w *Workshop) SetInstallRoot(id, root string) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	s := w.find(id)
+	if s == nil {
+		return ErrProfileMissing
+	}
+	if s.active || s.running || s.owner != "" || s.target != "" {
+		return ErrProfileBusy
+	}
+	l, err := NewLayout(root)
+	if err != nil {
+		return err
+	}
+	if s.profile.Root != "" && s.profile.Root != l.Root() &&
+		s.profile.LastCheck != nil && s.profile.LastCheck.Installed {
+		return errors.New("Каталог установки этого сервера уже известен — он меняется переездом, а не правкой профиля")
+	}
+	old := s.profile.Root
+	s.profile.Root = l.Root()
+	if err := w.saveLocked(); err != nil {
+		s.profile.Root = old
+		return err
+	}
+	s.wizard.Root = l.Root()
+	return nil
+}
+
 // SetAutoConnect is local even while SSH or another operation is blocked.
 // Enabling needs a key or a password actually present in the OS vault.
 func (w *Workshop) SetAutoConnect(id string, on bool) error {
@@ -417,9 +449,17 @@ func (w *Workshop) RememberCheck(id string, check ServerCheck) error {
 		return ErrProfileMissing
 	}
 	old := s.profile.LastCheck
+	oldRoot := s.profile.Root
 	s.profile.LastCheck = &check
+	// Фактический каталог установки подтверждается осмотром: если в профиле
+	// его ещё нет — запоминаем (план «другой каталог установки Docker»).
+	if check.Installed && check.Root != "" && s.profile.Root == "" {
+		s.profile.Root = check.Root
+		s.wizard.Root = check.Root
+	}
 	if err := w.saveLocked(); err != nil {
 		s.profile.LastCheck = old
+		s.profile.Root = oldRoot
 		return err
 	}
 	return nil

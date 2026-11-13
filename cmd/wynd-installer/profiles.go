@@ -22,6 +22,14 @@ func (a *App) SaveProfile(p installer.ServerProfile) (installer.ServerProfile, e
 	return a.workshop.SaveProfile(p)
 }
 
+// SetInstallRoot задаёт каталог установки перед планом (план «другой каталог»).
+func (a *App) SetInstallRoot(id, root string) error {
+	if a.profileError != nil {
+		return a.profileError
+	}
+	return a.workshop.SetInstallRoot(id, root)
+}
+
 func (a *App) SetAutoConnect(id string, on bool) error {
 	if a.profileError != nil {
 		return a.profileError
