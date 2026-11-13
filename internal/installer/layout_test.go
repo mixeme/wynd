@@ -246,3 +246,39 @@ func TestPlaceScript(t *testing.T) {
 		t.Fatalf("путь с пробелом не экранирован: %s", custom)
 	}
 }
+
+// Чужая установка узнаётся не по одному наличию compose.yaml: без нашего
+// признака она «своей» не считается, и отказ говорит об этом прямо.
+func TestPlacementRefusal(t *testing.T) {
+	cases := map[string]string{
+		"@symlink":      "ссылка",
+		"@foreign":      "другие файлы",
+		"@othercompose": "свой compose.yaml",
+	}
+	for out, want := range cases {
+		r := placementRefusal(out, "/srv/wynd")
+		if r == nil || !strings.Contains(r.Message, want) {
+			t.Fatalf("%s: %+v", out, r)
+		}
+	}
+	if r := placementRefusal("@free", "/srv/wynd"); r != nil {
+		t.Fatalf("свободный каталог отклонён: %+v", r)
+	}
+	script := placeScript(DefaultLayout())
+	if !strings.Contains(script, `grep -qF 'установщик Wynd'`) || !strings.Contains(script, "'@othercompose'") {
+		t.Fatalf("проверка подписи compose: %s", script)
+	}
+}
+
+// Признак «наш» обязан оставаться в обоих вариантах compose.yaml: по нему
+// проверка каталога отличает свою установку от чужой.
+func TestComposeCarriesInstallMark(t *testing.T) {
+	spec := Spec{Domain: "example.org", Version: "0.52.2"}
+	if !strings.Contains(ComposeFile(spec), installMark) {
+		t.Fatal("свой Caddy: compose без признака Мастерской")
+	}
+	spec.Proxy = ProxyCaddy
+	if !strings.Contains(ComposeFile(spec), installMark) {
+		t.Fatal("за чужим веб-сервером: compose без признака Мастерской")
+	}
+}

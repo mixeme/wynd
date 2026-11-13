@@ -1304,13 +1304,43 @@ func installFilesAt(l Layout, spec Spec) (files []installFile, dirs string) {
 	return files, dirs
 }
 
+// installMark — по этой строке узнаётся compose.yaml, созданный Мастерской.
+// Так же помечены оба варианта: со своим Caddy и за чужим веб-сервером.
+const installMark = "установщик Wynd"
+
 // placeScript — проверка каталога установки до записи: ссылку не принимаем,
-// непустую чужую папку тоже; своя установка (compose.yaml на месте) проходит.
+// непустую чужую папку тоже, и compose.yaml должен быть наш — по одному его
+// наличию чужая установка за свою не считается.
 func placeScript(l Layout) string {
 	return `root=` + l.ShellRoot() + `
 if [ -L "$root" ]; then echo '@symlink'; exit 0; fi
-if [ -e "$root" ] && [ -n "$(ls -A "$root" 2>/dev/null)" ] && [ ! -f "$root/compose.yaml" ]; then echo '@foreign'; exit 0; fi
+if [ -e "$root" ] && [ -n "$(ls -A "$root" 2>/dev/null)" ]; then
+  if [ ! -f "$root/compose.yaml" ]; then echo '@foreign'; exit 0; fi
+  if ! grep -qF ` + shQuote(installMark) + ` "$root/compose.yaml" 2>/dev/null; then echo '@othercompose'; exit 0; fi
+fi
 echo '@free'`
+}
+
+// placementRefusal переводит ответ проверки в слова отказа; nil — можно писать.
+func placementRefusal(out, root string) *StepError {
+	switch strings.TrimSpace(out) {
+	case "@symlink":
+		return &StepError{
+			Message: "Каталог установки — ссылка",
+			Advice:  "Мастерская не ставит в каталог-ссылку: при удалении она может увести в другую папку. Укажите настоящий каталог на сервере.",
+		}
+	case "@foreign":
+		return &StepError{
+			Message: "В каталоге " + root + " уже лежат другие файлы",
+			Advice:  "Возьмите пустой каталог или папку, где Мастерская уже ставила Wynd. Чужое содержимое Мастерская не перезаписывает.",
+		}
+	case "@othercompose":
+		return &StepError{
+			Message: "В каталоге " + root + " уже есть свой compose.yaml",
+			Advice:  "Это не установка Мастерской: её файл подписан иначе. Возьмите пустой каталог — чужую настройку Мастерская не перезаписывает.",
+		}
+	}
+	return nil
 }
 
 // placeStep — каталог установки до записи: пустой, наш или отказ. Ссылку не
@@ -1325,17 +1355,8 @@ func placeStep(spec Spec) step {
 			if err != nil {
 				return err
 			}
-			switch strings.TrimSpace(res.Output) {
-			case "@symlink":
-				return &StepError{
-					Message: "Каталог установки — ссылка",
-					Advice:  "Мастерская не ставит в каталог-ссылку: при удалении она может увести в другую папку. Укажите настоящий каталог на сервере.",
-				}
-			case "@foreign":
-				return &StepError{
-					Message: "В каталоге " + r.layout.Root() + " уже лежат другие файлы",
-					Advice:  "Возьмите пустой каталог или папку, где Мастерская уже ставила Wynd. Чужое содержимое Мастерская не перезаписывает.",
-				}
+			if refusal := placementRefusal(res.Output, r.layout.Root()); refusal != nil {
+				return refusal
 			}
 			return nil
 		},
@@ -1671,6 +1692,18 @@ func Rollback(ctx context.Context, sess *Session, spec Spec, keepData bool) ([]L
 	layout, err := layoutOf(spec)
 	if err != nil {
 		return nil, err
+	}
+	// Удаление с данными стирает каталог целиком — перед этим повторяем
+	// проверку каталога: чужую папку и ссылку не трогаем, даже если профиль
+	// указывает сюда (план «другой каталог»).
+	if !keepData {
+		res, err := sess.Exec(ctx, placeScript(layout), nil, shortTimeout)
+		if err != nil {
+			return nil, err
+		}
+		if refusal := placementRefusal(res.Output, layout.Root()); refusal != nil {
+			return nil, refusal
+		}
 	}
 	down := "docker compose down --remove-orphans"
 	if !keepData {
