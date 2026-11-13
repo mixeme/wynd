@@ -282,3 +282,34 @@ func TestComposeCarriesInstallMark(t *testing.T) {
 		t.Fatal("за чужим веб-сервером: compose без признака Мастерской")
 	}
 }
+
+// Переезд на каталог другого места: папка едет со своим именем, поэтому имя
+// каталога на новом сервере должно совпадать; для переезда одних данных имя
+// не важно. Архив собирается от размещения старого сервера.
+func TestMoveToOtherRoot(t *testing.T) {
+	if got, want := moveTarAt(DefaultLayout()), `tar -C /opt --exclude=wynd/backups --exclude=wynd/src --exclude=wynd/data/backups --exclude='wynd/data/.workshop-*' --exclude='wynd/.workshop-*' -cf - wynd`; got != want {
+		t.Fatalf("архив папки изменился: %s", got)
+	}
+	l, err := NewLayout("/srv/wynd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := moveTarAt(l); !strings.HasPrefix(got, "tar -C /srv ") || !strings.HasSuffix(got, " -cf - wynd") {
+		t.Fatalf("архив из другого каталога: %s", got)
+	}
+	// Имя не совпадает — переезд папки отклонён одним понятным шагом.
+	bad := MoveTitles(MoveSpec{Version: "0.52.2", Image: RegistryImage{Repo: DefaultRegistry}, Root: "/opt/wynd", NewRoot: "/srv/wynd2"})
+	if len(bad) != 1 || bad[0].ID != "root" {
+		t.Fatalf("переезд с другим именем: %+v", bad)
+	}
+	// Совпадает — обычный набор шагов.
+	ok := MoveTitles(MoveSpec{Version: "0.52.2", Image: RegistryImage{Repo: DefaultRegistry}, Root: "/opt/wynd", NewRoot: "/srv/wynd"})
+	if len(ok) < 3 || ok[0].ID == "root" {
+		t.Fatalf("переезд в /srv/wynd отвергнут: %+v", ok)
+	}
+	// Одни данные — имя не важно.
+	only := MoveTitles(MoveSpec{Version: "0.52.2", Image: RegistryImage{Repo: DefaultRegistry}, Root: "/opt/wynd", NewRoot: "/srv/storage", DataOnly: true})
+	if len(only) < 3 || only[0].ID == "root" {
+		t.Fatalf("переезд данных в другой каталог отвергнут: %+v", only)
+	}
+}

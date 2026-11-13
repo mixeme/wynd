@@ -98,8 +98,9 @@ func TestMoveDataOnlyTitles(t *testing.T) {
 			t.Fatalf("нет %q в %s", want, joined)
 		}
 	}
-	if !strings.Contains(dataTar, "--exclude=data/backups") || !strings.HasSuffix(dataTar, " data") {
-		t.Fatalf("архив данных: %s", dataTar)
+	tar := dataTarAt(DefaultLayout())
+	if !strings.Contains(tar, "--exclude=data/backups") || !strings.HasSuffix(tar, " data") {
+		t.Fatalf("архив данных: %s", tar)
 	}
 }
 

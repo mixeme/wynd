@@ -593,7 +593,7 @@ func (w *Workshop) MoveInput(source, target, password string) (ConnectInput, err
 		}
 		t.wizard.mu.Unlock()
 	}
-	return ConnectInput{Host: p.Host, User: p.User, UseKeys: p.UseKeys, Remember: p.Remember, Password: password}, nil
+	return ConnectInput{Host: p.Host, User: p.User, UseKeys: p.UseKeys, Remember: p.Remember, Password: password, Root: p.Root}, nil
 }
 
 func (w *Workshop) RemoveProfile(id string) error {

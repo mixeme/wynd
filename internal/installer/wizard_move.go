@@ -219,7 +219,7 @@ func (w *Wizard) StartMove(ctx context.Context, removeOld bool) Progress {
 	check := make(chan struct{}, 1)
 	w.moveCheck = check
 	spec := MoveSpec{Domain: plan.Domain, Version: plan.Version, Image: w.Image, OldIP: plan.OldIP, NewIP: plan.NewIP,
-		RemoveOld: removeOld, DataOnly: plan.DataOnly, CheckNow: check, Probe: w.Probe, Resume: plan.resume, Foreign: foreign, Root: w.Root}
+		RemoveOld: removeOld, DataOnly: plan.DataOnly, CheckNow: check, Probe: w.Probe, Resume: plan.resume, Foreign: foreign, Root: w.Root, NewRoot: w.NewRoot}
 	target := w.target
 	spec.Resolve = func(ctx context.Context, domain string) []string {
 		// Спрашиваем новый сервер: он видит адрес, как люди в интернете, и VPN

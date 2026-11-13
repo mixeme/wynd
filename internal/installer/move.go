@@ -3,6 +3,8 @@ package installer
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"path"
 	"strings"
 	"time"
 )
@@ -28,11 +30,20 @@ const (
 	moveKeyLabel = "wynd-move"
 )
 
-// moveTar — что отдаёт старый сервер: папка Wynd без копий и временного.
-const moveTar = `tar -C /opt --exclude=wynd/backups --exclude=wynd/src --exclude=wynd/data/backups --exclude='wynd/data/.workshop-*' --exclude='wynd/.workshop-*' -cf - wynd`
+// moveTarAt — что отдаёт старый сервер: папка Wynd без копий и временного.
+// Папка уезжает со своим именем, поэтому новый каталог должен называться так
+// же — иначе её пришлось бы переименовывать на лету.
+func moveTarAt(l Layout) string {
+	base := path.Base(l.Root())
+	return `tar -C ` + ShellPath(path.Dir(l.Root())) + ` --exclude=` + base + `/backups --exclude=` + base +
+		`/src --exclude=` + base + `/data/backups --exclude=` + shQuote(base+"/data/.workshop-*") +
+		` --exclude=` + shQuote(base+"/.workshop-*") + ` -cf - ` + base
+}
 
-// dataTar — то же для переезда одних данных (9б2): папка данных без копий.
-const dataTar = `tar -C /opt/wynd --exclude=data/backups --exclude='data/.workshop-*' -cf - data`
+// dataTarAt — то же для переезда одних данных (9б2): папка данных без копий.
+func dataTarAt(l Layout) string {
+	return `tar -C ` + ShellPath(l.Root()) + ` --exclude=data/backups --exclude=` + shQuote("data/.workshop-*") + ` -cf - data`
+}
 
 // MoveSpec — переезд.
 type MoveSpec struct {
@@ -56,13 +67,25 @@ type MoveSpec struct {
 	// Foreign — старый Wynd стоит не на месте Мастерской (кадр 7з): как его
 	// остановить и запустить, где его данные и пометка переезда.
 	Foreign *ForeignWynd
-	// Root — каталог установки на серверах переезда (план «другой каталог»);
-	// пусто — /opt/wynd. Оба сервера считаются с одним каталогом: переезд на
-	// другой корень — отдельный шаг пробы.
+	// Root — каталог установки на старом сервере (план «другой каталог»);
+	// пусто — /opt/wynd.
 	Root string
+	// NewRoot — каталог на новом сервере; пусто — как на старом. Переезд
+	// папки целиком переносит её вместе с именем, поэтому имя каталога должно
+	// совпадать: /opt/wynd → /srv/wynd можно, /opt/wynd → /srv/wynd2 нет.
+	// Для переезда одних данных имя не важно.
+	NewRoot string
 	// Resume — переезд продолжается (кадр 9в2): пометка со старого сервера.
 	// Перенесённое второй раз не переносится — на новом могли уже писать.
 	Resume *MoveMark
+}
+
+// newRoot — каталог на новом сервере: пустой значит как на старом.
+func (s MoveSpec) newRoot() string {
+	if s.NewRoot != "" {
+		return s.NewRoot
+	}
+	return s.Root
 }
 
 // MoveMark — пометка начатого переезда на старом сервере. Кладёт её шаг
@@ -128,17 +151,21 @@ func moveSteps(old *Session, spec MoveSpec) []step {
 		resumed.RemoveOld = spec.RemoveOld
 		mark = &resumed
 	}
-	layout, _ := layoutOf(Spec{Root: spec.Root})
+	oldLayout, _ := layoutOf(Spec{Root: spec.Root})
+	layout, _ := layoutOf(Spec{Root: spec.newRoot()})
+	if !spec.DataOnly && path.Base(oldLayout.Root()) != path.Base(layout.Root()) {
+		return []step{rootStep(errors.New("Папка переезжает со своим именем: каталог на новом сервере должен называться так же — " + path.Base(oldLayout.Root()) + ". Для другого имени переносите одни данные."))}
+	}
 	install := "Wynd " + spec.Version + " на новом сервере"
-	sendTar, pullDir, moved := moveTar, "/opt", "Папка Wynd перенесена"
+	sendTar, pullDir, moved := moveTarAt(oldLayout), path.Dir(layout.Root()), "Папка Wynd перенесена"
 	if spec.DataOnly {
 		install = "Wynd " + spec.Version + " и Caddy на новом сервере"
-		sendTar, pullDir, moved = dataTar, layout.Root(), "Данные Wynd перенесены"
+		sendTar, pullDir, moved = dataTarAt(oldLayout), layout.Root(), "Данные Wynd перенесены"
 	}
 	if spec.Foreign != nil {
 		sendTar = spec.Foreign.sendTar()
 	}
-	stopOld, _, markAt := oldControl(spec.Foreign, layout)
+	stopOld, _, markAt := oldControl(spec.Foreign, oldLayout)
 	files := filesStep(Spec{Domain: spec.Domain, Version: spec.Version, Image: spec.Image, Root: spec.Root})
 	return []step{
 		{
@@ -265,10 +292,10 @@ func moveSteps(old *Session, spec MoveSpec) []step {
 					// Сертификат не отзываем: он переехал и работает на новом —
 					// или он чужой (9б2), и его судьба не наша. Файл сайта
 					// чужого веб-сервера тоже не наш: остаётся.
-					_, err := onOld(ctx, r, old, layout.ComposeCommand()+"down 2>&1; rm -rf "+layout.Root(), packageTimeout)
+					_, err := onOld(ctx, r, old, oldLayout.ComposeCommand()+"down 2>&1; rm -rf "+ShellPath(oldLayout.Root()), packageTimeout)
 					return err
 				}
-				_, err := onOld(ctx, r, old, "rm -f "+layout.MoveMark()+" && date -u +%Y-%m-%dT%H:%M:%SZ > "+layout.StoppedMark(), shortTimeout)
+				_, err := onOld(ctx, r, old, "rm -f "+ShellPath(oldLayout.MoveMark())+" && date -u +%Y-%m-%dT%H:%M:%SZ > "+ShellPath(oldLayout.StoppedMark()), shortTimeout)
 				return err
 			},
 		},
@@ -316,7 +343,7 @@ func allEqual(addrs []string, want string) bool {
 
 // Move переносит Wynd со старого сервера (old) на новый (sess).
 func Move(ctx context.Context, old, sess *Session, spec MoveSpec, report func(Progress)) Progress {
-	return runSteps(ctx, sess, Spec{Domain: spec.Domain, Version: spec.Version, Image: spec.Image, Root: spec.Root}, moveSteps(old, spec), report,
+	return runSteps(ctx, sess, Spec{Domain: spec.Domain, Version: spec.Version, Image: spec.Image, Root: spec.newRoot()}, moveSteps(old, spec), report,
 		func(_ *Run, p *Progress) { p.Site = "https://" + spec.Domain })
 }
 

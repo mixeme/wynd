@@ -178,6 +178,7 @@ func (a *App) MoveSelect(id, targetID, password string) (installer.ConnectResult
 			return installer.ConnectResult{Status: "password_required", Host: in.Host, Message: "Для входа на новый сервер нужен пароль"}
 		}
 		in.Port = devPort()
+		w.NewRoot = in.Root
 		return w.MoveConnect(a.ctx, in)
 	})
 }
