@@ -313,3 +313,14 @@ func TestMoveToOtherRoot(t *testing.T) {
 		t.Fatalf("переезд данных в другой каталог отвергнут: %+v", only)
 	}
 }
+
+// Код сборки — на экране, не только в журнале (C71, остаток «точный код»).
+func TestBuildCodeFailure(t *testing.T) {
+	r := buildCodeFailure(7)
+	if r.Message != "Сборка Wynd завершилась с кодом 7" {
+		t.Fatalf("сообщение: %q", r.Message)
+	}
+	if !strings.Contains(r.Advice, "Повторить") || !strings.Contains(r.Advice, "Полный вывод сборки") {
+		t.Fatalf("совет: %+v", r)
+	}
+}

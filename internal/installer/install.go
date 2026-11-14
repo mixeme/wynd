@@ -1221,7 +1221,18 @@ func (s SourceImage) Provide(ctx context.Context, r *Run, tag string) error {
 			Advice:  "Сборка из исходного кода требует больше памяти, чем работа Wynd. Поставьте готовый Wynd из хранилища или возьмите сервер с большей памятью.",
 		}
 	}
-	return &commandError{command: "сборка Wynd из исходного кода", output: out, code: res.Code}
+	// C71: точный код — на экране, а не только в журнале. Повтор честно
+	// начинает сборку заново: сделанное до сбоя сборки не пропадает.
+	return buildCodeFailure(res.Code)
+}
+
+// buildCodeFailure — экран «Сборка завершилась с кодом N» для сбоя сборки,
+// который Мастерская не объясняет подробнее.
+func buildCodeFailure(code int) *StepError {
+	return &StepError{
+		Message: fmt.Sprintf("Сборка Wynd завершилась с кодом %d", code),
+		Advice:  "Нажмите «Повторить» — сборка начнётся заново. Что делала сборка, видно в «Полный вывод сборки».",
+	}
 }
 
 // ComposeFile — /opt/wynd/compose.yaml: то же, что deploy/docker/compose.yaml,
