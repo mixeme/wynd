@@ -130,9 +130,11 @@ export function upTarget(url: URL): string {
  */
 export function navigateBack(): Promise<void> {
 	// Сверху что-то открыто — закрываем его, экран остаётся.
-	const closer = topOverlay();
-	if (closer) {
-		closer();
+	if (overlays.length) {
+		// Снимаем оверлей со стека до вызова: его ondismiss может позвать
+		// navigateBack снова — и без снятия получилась бы бесконечная петля.
+		const closer = overlays.pop();
+		if (closer) closer();
 		return Promise.resolve();
 	}
 	const here = location.pathname + location.search;
