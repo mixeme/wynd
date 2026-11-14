@@ -1731,7 +1731,7 @@ textarea.ta {
 /* Период «с — по» (DateRange): два поля даты поровну. */
 .date-range {
 	display: flex;
-	gap: 8px;
+	gap: 6px;
 	margin: 8px 16px 0;
 }
 /* Отступы и ширина общего input.fld здесь лишние: с ними правое поле уходило
@@ -1748,12 +1748,12 @@ textarea.ta {
 	box-sizing: border-box;
 	width: 100%;
 	margin: 0;
-	padding-left: 34px;
-	padding-right: 40px;
+	padding-left: 28px;
+	padding-right: 28px;
 }
 .date-range-prefix {
 	position: absolute;
-	left: 14px;
+	left: 12px;
 	top: 50%;
 	transform: translateY(-50%);
 	color: var(--faint);
@@ -1763,7 +1763,7 @@ textarea.ta {
 }
 .date-range-chevron {
 	position: absolute;
-	right: 12px;
+	right: 10px;
 	top: 50%;
 	transform: translateY(-50%);
 	display: flex;
