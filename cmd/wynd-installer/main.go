@@ -1,6 +1,7 @@
 //go:build dev || desktop || bindings
 
-// Настольный установщик Wynd (план 45). Собирается через `wails build` или
+// Wynd Мастерская (план 45): установка и обслуживание Wynd на сервере.
+// Собирается через `wails build` или
 // `wails dev`: без их меток сборки пакет пуст, и ворота основного сервера
 // (go vet, go test ./...) его не трогают. Вся логика — в internal/installer.
 package main
