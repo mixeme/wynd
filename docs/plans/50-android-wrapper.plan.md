@@ -62,7 +62,11 @@
 
 2026-11-16: по поручению владельца установлены официальные Platform Tools 37.0.1;
 USB-отладка подтверждена, ADB выполняет команды на OPPO CPH1931 (Android 10, API 29).
-JDK 17, SDK для компиляции и Gradle ещё не установлены. [Протокол и повторное подключение](../testing/android-usb-setup-2026-11-16.md).
+[Протокол и повторное подключение](../testing/android-usb-setup-2026-11-16.md).
+
+По следующему поручению владельца установлены переносные Liberica JDK 17.0.21.0.3+5,
+SDK 36, Build Tools 35.0.0, Command-line Tools 19.0 и Gradle 8.13.
+[Версии, источники и проверка архивов](../testing/android-environment-2026-11-16.md).
 
 - Liberica JDK 17 и Android SDK — распакованные архивы, без установщиков. Старый JDK не менять.
 - Gradle и Android-кэши тоже в этой папке; JAVA_HOME, PATH, GRADLE_USER_HOME и ANDROID_USER_HOME задавать только процессу сборки.
