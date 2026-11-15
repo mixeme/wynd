@@ -41,7 +41,7 @@ jobs:
         run: |
           call npm --prefix web ci
           if errorlevel 1 exit /b 1
-          call npm --prefix cmd/wynd-installer/frontend ci
+          call npm --prefix cmd/wynd-workshop/frontend ci
           if errorlevel 1 exit /b 1
           call npm --prefix cmd/wynd-signer/frontend ci
           if errorlevel 1 exit /b 1

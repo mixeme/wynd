@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"gitea.mixdep.ru/mix/wynd/internal/installer"
+	"gitea.mixdep.ru/mix/wynd/internal/workshop"
 	"gitea.mixdep.ru/mix/wynd/internal/releasepages"
 )
 
@@ -347,7 +347,7 @@ func TestSignReleasePublication(t *testing.T) {
 				t.Fatalf("published=%v, err=%v", published, err)
 			}
 			sig, err := os.ReadFile(filepath.Join(dir, "uploaded.sig"))
-			if err != nil || installer.VerifySignature(pub, releaseTestEXE, sig) != nil {
+			if err != nil || workshop.VerifySignature(pub, releaseTestEXE, sig) != nil {
 				t.Fatalf("uploaded signature does not verify: %v", err)
 			}
 			calls, _ := os.ReadFile(filepath.Join(dir, "calls"))
@@ -413,7 +413,7 @@ func TestDesktopReleaseCheckAndSign(t *testing.T) {
 		t.Fatalf("desktop draft was not published: %s", calls)
 	}
 	sig, err := os.ReadFile(filepath.Join(dir, "uploaded.sig"))
-	if err != nil || installer.VerifySignature(pub, releaseTestEXE, sig) != nil {
+	if err != nil || workshop.VerifySignature(pub, releaseTestEXE, sig) != nil {
 		t.Fatalf("uploaded signature does not verify: %v", err)
 	}
 }

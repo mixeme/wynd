@@ -15,7 +15,7 @@ const demoDraft = params.get('demo') === 'draft';
 const state = {
 	key_path: 'C:\\Users\\Mix\\.wynd\\workshop-signing.key',
 	key_exists: keyExists,
-	pub_path: 'D:\\Local\\Git\\wynd\\cmd\\wynd-installer\\signing-key.pub'
+	pub_path: 'D:\\Local\\Git\\wynd\\cmd\\wynd-workshop\\signing-key.pub'
 };
 
 function release(product, name, exe, tag, version, draft, publishedAt, signed) {

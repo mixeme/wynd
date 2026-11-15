@@ -1,0 +1,573 @@
+// Package installer — ядро настольного установщика (план 45): подключение к
+// чужому серверу по SSH и осмотр без изменений. Окно (cmd/wynd-workshop)
+// только показывает то, что решено здесь.
+package workshop
+
+import (
+	"bytes"
+	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/pem"
+	"errors"
+	"fmt"
+	"io"
+	"net"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/knownhosts"
+)
+
+const (
+	// Срок на TCP-соединение: неверный адрес и выключенный сервер видны сразу.
+	dialTimeout = 15 * time.Second
+	// Срок на рукопожатие и вход, отдельный: только что заказанный VPS отдаёт
+	// приветствие через десять секунд и проверяет пароль ещё несколько.
+	// На пробном сервере с больным диском (2026-10-09) рукопожатие занимало
+	// 75 секунд, а позже — две с половиной минуты.
+	handshakeTimeout = 120 * time.Second
+	commandTimeout   = 30 * time.Second
+	// Потолок вывода команды: осмотр печатает килобайты, а чужой сервер не
+	// должен уметь залить память приложения.
+	maxCommandOutput = 1 << 20
+)
+
+// Access — как войти на сервер. Пароль живёт только в памяти процесса.
+type Access struct {
+	Host     string
+	Port     int
+	User     string
+	Password string
+	// UseKeys — войти ключом с этого компьютера (~/.ssh) вместо пароля.
+	UseKeys bool
+}
+
+// Отказы подключения, которые окно объясняет словами.
+var (
+	// ErrAuth — сервер не принял пароль или ключ.
+	ErrAuth = errors.New("workshop: access denied")
+	// ErrUnreachable — сервер не ответил по этому адресу.
+	ErrUnreachable = errors.New("workshop: server unreachable")
+	// ErrNoKeys — в ~/.ssh нет ключа, которым можно войти.
+	ErrNoKeys = errors.New("workshop: no usable keys")
+	// ErrTimeout — команда на сервере не уложилась в срок. Связь при этом
+	// жива, и сама команда на сервере может ещё идти.
+	ErrTimeout = errors.New("workshop: command timed out")
+	// ErrInvalid — адрес или пользователь не заполнены.
+	ErrInvalid = errors.New("workshop: invalid access")
+)
+
+// UnknownHostError — сервер встречен впервые. Подключение не состоялось:
+// человек сверяет отпечаток и подтверждает, тогда его запоминает Trust.
+type UnknownHostError struct {
+	Host        string
+	Fingerprint string
+	key         ssh.PublicKey
+	address     string
+}
+
+func (e *UnknownHostError) Error() string {
+	return "workshop: unknown host " + e.Host + " " + e.Fingerprint
+}
+
+// ChangedHostError — сервер назвал не тот отпечаток, что запомнен. Обойти из
+// окна нельзя: либо сервер переустановили, либо между ним и нами кто-то есть.
+type ChangedHostError struct {
+	Host        string
+	Fingerprint string
+	key         ssh.PublicKey
+	address     string
+	previous    []knownhosts.KnownKey
+}
+
+func (e *ChangedHostError) Error() string {
+	return "workshop: host key changed for " + e.Host
+}
+
+// Dialer подключается к серверам и помнит их отпечатки в known_hosts — том
+// же файле, что у ssh: терминал потом тоже узнает сервер.
+type Dialer struct {
+	// SSHDir — каталог с known_hosts и ключами; пусто — ~/.ssh.
+	SSHDir string
+}
+
+func (d Dialer) dir() (string, error) {
+	if d.SSHDir != "" {
+		return d.SSHDir, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("home dir: %w", err)
+	}
+	return filepath.Join(home, ".ssh"), nil
+}
+
+func (d Dialer) knownHostsPath() (string, error) {
+	dir, err := d.dir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "known_hosts"), nil
+}
+
+func normalize(a Access) (Access, string, error) {
+	a.Host = strings.TrimSpace(a.Host)
+	a.User = strings.TrimSpace(a.User)
+	if a.Port == 0 {
+		a.Port = 22
+	}
+	// Адрес — только имя или IP: ни пробелов, ни «user@», ни схемы. Он уходит
+	// в known_hosts и в сообщения окна.
+	if a.Host == "" || a.User == "" || a.Port < 1 || a.Port > 65535 ||
+		strings.ContainsAny(a.Host, " \t\r\n@/\\") || strings.ContainsAny(a.User, " \t\r\n") {
+		return a, "", ErrInvalid
+	}
+	return a, net.JoinHostPort(a.Host, strconv.Itoa(a.Port)), nil
+}
+
+// Dial подключается и проверяет отпечаток. Сервер, которого нет в
+// known_hosts, даёт *UnknownHostError — без входа и без записи в файл.
+func (d Dialer) Dial(ctx context.Context, access Access) (*Session, error) {
+	a, address, err := normalize(access)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := d.authMethods(a)
+	if err != nil {
+		return nil, err
+	}
+	hostKey, err := d.hostKeyCallback(a.Host)
+	if err != nil {
+		return nil, err
+	}
+	cfg := &ssh.ClientConfig{
+		User:            a.User,
+		Auth:            auth,
+		HostKeyCallback: hostKey,
+	}
+	dialCtx, cancel := context.WithTimeout(ctx, dialTimeout)
+	defer cancel()
+	conn, err := (&net.Dialer{}).DialContext(dialCtx, "tcp", address)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrUnreachable, err)
+	}
+	cfg.HostKeyAlgorithms = d.knownAlgorithms(address, conn.RemoteAddr())
+	// Рукопожатие тоже под сроком: сервер, принявший TCP и замолчавший,
+	// иначе держал бы окно на «Подключаемся…» без конца.
+	_ = conn.SetDeadline(time.Now().Add(handshakeTimeout))
+	sshConn, chans, reqs, err := ssh.NewClientConn(conn, address, cfg)
+	if err != nil {
+		_ = conn.Close()
+		var unknown *UnknownHostError
+		var changed *ChangedHostError
+		switch {
+		case errors.As(err, &unknown):
+			return nil, unknown
+		case errors.As(err, &changed):
+			return nil, changed
+		case strings.Contains(err.Error(), "unable to authenticate"):
+			return nil, ErrAuth
+		}
+		return nil, fmt.Errorf("%w: %v", ErrUnreachable, err)
+	}
+	_ = conn.SetDeadline(time.Time{})
+	sess := &Session{client: ssh.NewClient(sshConn, chans, reqs), Host: a.Host, User: a.User}
+	go sess.keepAlive()
+	return sess, nil
+}
+
+// Trust запоминает отпечаток сервера, который человек подтвердил.
+func (d Dialer) Trust(unknown *UnknownHostError) error {
+	sshFilesMu.Lock()
+	defer sshFilesMu.Unlock()
+	if unknown == nil || unknown.key == nil {
+		return ErrInvalid
+	}
+	path, err := d.knownHostsPath()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return fmt.Errorf("ssh dir: %w", err)
+	}
+	// Файл может не кончаться переводом строки — тогда запись слиплась бы с
+	// чужой последней строкой и испортила обе.
+	prefix := ""
+	if raw, err := os.ReadFile(path); err == nil && len(raw) > 0 && raw[len(raw)-1] != '\n' {
+		prefix = "\n"
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	if err != nil {
+		return fmt.Errorf("known_hosts: %w", err)
+	}
+	defer func() { _ = f.Close() }()
+	line := knownhosts.Line([]string{knownhosts.Normalize(unknown.address)}, unknown.key)
+	if _, err := f.WriteString(prefix + line + "\n"); err != nil {
+		return fmt.Errorf("known_hosts: %w", err)
+	}
+	return nil
+}
+
+// knownAlgorithms — какие ключи сервера просить: тех типов, что уже записаны
+// в known_hosts. Программа ssh запоминает один ключ сервера (обычно ed25519),
+// а у сервера их несколько; попроси мы другой — он не совпал бы с записанным
+// и выглядел бы подменой. Сервер не записан — nil, порядок по умолчанию.
+func (d Dialer) knownAlgorithms(address string, remote net.Addr) []string {
+	path, err := d.knownHostsPath()
+	if err != nil {
+		return nil
+	}
+	check, err := knownhosts.New(path)
+	if err != nil {
+		return nil
+	}
+	// Заведомо чужой ключ: в ответ библиотека перечисляет записанные.
+	pub, _, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return nil
+	}
+	probe, err := ssh.NewPublicKey(pub)
+	if err != nil {
+		return nil
+	}
+	var keyErr *knownhosts.KeyError
+	if !errors.As(check(address, remote, probe), &keyErr) {
+		return nil
+	}
+	var algos []string
+	seen := map[string]bool{}
+	for _, k := range keyErr.Want {
+		list := []string{k.Key.Type()}
+		if k.Key.Type() == ssh.KeyAlgoRSA {
+			list = []string{ssh.KeyAlgoRSASHA512, ssh.KeyAlgoRSASHA256, ssh.KeyAlgoRSA}
+		}
+		for _, a := range list {
+			if !seen[a] {
+				seen[a] = true
+				algos = append(algos, a)
+			}
+		}
+	}
+	return algos
+}
+
+func (d Dialer) hostKeyCallback(host string) (ssh.HostKeyCallback, error) {
+	path, err := d.knownHostsPath()
+	if err != nil {
+		return nil, err
+	}
+	var check ssh.HostKeyCallback
+	if _, statErr := os.Stat(path); statErr == nil {
+		check, err = knownhosts.New(path)
+		if err != nil {
+			return nil, fmt.Errorf("known_hosts: %w", err)
+		}
+	}
+	return func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+		fingerprint := ssh.FingerprintSHA256(key)
+		if check == nil {
+			return &UnknownHostError{Host: host, Fingerprint: fingerprint, key: key, address: hostname}
+		}
+		err := check(hostname, remote, key)
+		if err == nil {
+			return nil
+		}
+		var keyErr *knownhosts.KeyError
+		if errors.As(err, &keyErr) {
+			if len(keyErr.Want) == 0 {
+				return &UnknownHostError{Host: host, Fingerprint: fingerprint, key: key, address: hostname}
+			}
+			return &ChangedHostError{Host: host, Fingerprint: fingerprint, key: key, address: hostname, previous: keyErr.Want}
+		}
+		return err
+	}, nil
+}
+
+// keyFiles — имена ключей в порядке, в каком их пробует ssh.
+// WorkshopKey — ключ, который Мастерская создаёт сама по галочке «Дальше
+// входить по ключу» (кадр 1); пробуется после обычных.
+var keyFiles = []string{"id_ed25519", "id_ecdsa", "id_rsa", WorkshopKey}
+
+const WorkshopKey = "wynd_workshop_ed25519"
+
+func (d Dialer) authMethods(a Access) ([]ssh.AuthMethod, error) {
+	if !a.UseKeys {
+		if a.Password == "" {
+			return nil, ErrInvalid
+		}
+		return []ssh.AuthMethod{ssh.Password(a.Password)}, nil
+	}
+	dir, err := d.dir()
+	if err != nil {
+		return nil, err
+	}
+	var signers []ssh.Signer
+	for _, name := range keyFiles {
+		raw, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			continue
+		}
+		// Ключ под паролем пропускаем: спрашивать его пароль окно пока не умеет.
+		signer, err := ssh.ParsePrivateKey(raw)
+		if err != nil {
+			continue
+		}
+		signers = append(signers, signer)
+	}
+	if len(signers) == 0 {
+		return nil, ErrNoKeys
+	}
+	return []ssh.AuthMethod{ssh.PublicKeys(signers...)}, nil
+}
+
+// EnsureWorkshopKey создаёт ключ Мастерской в каталоге ключей, если его нет,
+// и возвращает его открытую часть строкой authorized_keys.
+func (d Dialer) EnsureWorkshopKey() (string, error) {
+	sshFilesMu.Lock()
+	defer sshFilesMu.Unlock()
+	dir, err := d.dir()
+	if err != nil {
+		return "", err
+	}
+	path := filepath.Join(dir, WorkshopKey)
+	if raw, err := os.ReadFile(path); err == nil {
+		signer, err := ssh.ParsePrivateKey(raw)
+		if err != nil {
+			return "", err
+		}
+		return strings.TrimSpace(string(ssh.MarshalAuthorizedKey(signer.PublicKey()))) + " wynd-workshop", nil
+	}
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return "", err
+	}
+	block, err := ssh.MarshalPrivateKey(priv, "wynd-workshop")
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(path, pem.EncodeToMemory(block), 0o600); err != nil {
+		return "", err
+	}
+	sshPub, err := ssh.NewPublicKey(pub)
+	if err != nil {
+		return "", err
+	}
+	line := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(sshPub))) + " wynd-workshop"
+	_ = os.WriteFile(path+".pub", []byte(line+"\n"), 0o644)
+	return line, nil
+}
+
+// InstallKey дописывает открытый ключ в authorized_keys того, кто вошёл,
+// если его там ещё нет. Команды идут через sudo, поэтому дом — по имени.
+func (s *Session) InstallKey(ctx context.Context, line string) error {
+	user := shQuote(s.User)
+	script := `set -e; h=$(getent passwd ` + user + ` | cut -d: -f6); test -n "$h"
+umask 077; mkdir -p "$h/.ssh"; touch "$h/.ssh/authorized_keys"
+grep -qxF ` + shQuote(line) + ` "$h/.ssh/authorized_keys" || echo ` + shQuote(line) + ` >> "$h/.ssh/authorized_keys"
+chown ` + user + ` "$h/.ssh" "$h/.ssh/authorized_keys"`
+	res, err := s.Exec(ctx, script, nil, dialTimeout)
+	if err != nil {
+		return err
+	}
+	if res.Code != 0 {
+		return &commandError{command: script, output: res.Output, code: res.Code}
+	}
+	return nil
+}
+
+// Session — открытое подключение к серверу.
+type Session struct {
+	client *ssh.Client
+	Host   string
+	User   string
+}
+
+// keepAliveEvery — как часто напоминаем о себе. Долгая команда молчит
+// минутами (сборка образа), а молчащее соединение по дороге рвут: проба
+// 2026-10-09 — обрыв ровно через минуту тишины.
+const keepAliveEvery = 15 * time.Second
+
+// keepAlive шлёт серверу пустой запрос, пока соединение живо.
+func (s *Session) keepAlive() {
+	for {
+		time.Sleep(keepAliveEvery)
+		if _, _, err := s.client.SendRequest("keepalive@openssh.com", true, nil); err != nil {
+			return
+		}
+	}
+}
+
+// Close закрывает подключение.
+func (s *Session) Close() error {
+	if s == nil || s.client == nil {
+		return nil
+	}
+	return s.client.Close()
+}
+
+// RemoteIP — адрес, по которому подключение состоялось: с ним сверяют домен.
+func (s *Session) RemoteIP() string {
+	if tcp, ok := s.client.RemoteAddr().(*net.TCPAddr); ok {
+		return tcp.IP.String()
+	}
+	return ""
+}
+
+// limitedBuffer копит вывод до потолка, остальное молча отбрасывает.
+type limitedBuffer struct {
+	// Exec пишет сюда и вывод, и ошибки — из двух горутин.
+	mu  sync.Mutex
+	buf bytes.Buffer
+	max int
+}
+
+func (b *limitedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if room := b.max - b.buf.Len(); room > 0 {
+		if len(p) > room {
+			b.buf.Write(p[:room])
+		} else {
+			b.buf.Write(p)
+		}
+	}
+	return len(p), nil
+}
+
+// Run выполняет команду на сервере и возвращает её вывод. Ненулевой код
+// выхода — не ошибка подключения: осмотр читает вывод и в этом случае.
+func (s *Session) Run(ctx context.Context, command string) (string, error) {
+	sess, err := s.client.NewSession()
+	if err != nil {
+		return "", fmt.Errorf("%w: %v", ErrUnreachable, err)
+	}
+	defer func() { _ = sess.Close() }()
+	out := &limitedBuffer{max: maxCommandOutput}
+	sess.Stdout = out
+	runCtx, cancel := context.WithTimeout(ctx, commandTimeout)
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- sess.Run(command) }()
+	select {
+	case err := <-done:
+		var exit *ssh.ExitError
+		if err != nil && !errors.As(err, &exit) {
+			return out.buf.String(), fmt.Errorf("%w: %v", ErrUnreachable, err)
+		}
+		return out.buf.String(), nil
+	case <-runCtx.Done():
+		_ = sess.Close()
+		return "", fmt.Errorf("%w: %v", ErrUnreachable, runCtx.Err())
+	}
+}
+
+// ExecResult — чем кончилась команда установки: общий вывод (stdout и stderr
+// вперемешку, как в терминале) и код выхода.
+type ExecResult struct {
+	Output string
+	Code   int
+}
+
+// shQuote — строка одним словом для sh.
+func shQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+// Exec выполняет команду, меняющую сервер: вывод с ошибками, код выхода, свой
+// срок (установка пакетов идёт минуты) и, если надо, поток на вход — так на
+// сервер уезжают файлы и образ. Не root — через sudo: осмотр уже убедился,
+// что оно есть и пароль не спросит.
+// Download выполняет команду и пишет её вывод прямо в w — для файлов с
+// сервера (бэкап на компьютер, кадры 8а–8г): гигабайты не держатся в памяти.
+// Ошибки команды — в возвращаемой ошибке; прерывается отменой ctx.
+func (s *Session) Download(ctx context.Context, command string, w io.Writer) error {
+	sess, err := s.client.NewSession()
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrUnreachable, err)
+	}
+	defer func() { _ = sess.Close() }()
+	if s.User != "root" {
+		command = "sudo -n sh -c " + shQuote(command)
+	}
+	errs := &limitedBuffer{max: 4 << 10}
+	sess.Stdout = w
+	sess.Stderr = errs
+	done := make(chan error, 1)
+	go func() { done <- sess.Run(command) }()
+	select {
+	case err := <-done:
+		var exit *ssh.ExitError
+		switch {
+		case err == nil:
+			return nil
+		case errors.As(err, &exit):
+			return &commandError{command: command, output: errs.buf.String(), code: exit.ExitStatus()}
+		default:
+			return fmt.Errorf("%w: %v", ErrUnreachable, err)
+		}
+	case <-ctx.Done():
+		_ = sess.Close()
+		return fmt.Errorf("%w: %v", ErrUnreachable, ctx.Err())
+	}
+}
+
+func (s *Session) Exec(ctx context.Context, command string, stdin io.Reader, timeout time.Duration) (ExecResult, error) {
+	return s.ExecWatch(ctx, command, stdin, timeout, nil)
+}
+
+// ExecWatch — как Exec, и вывод по ходу ещё и в watch (журнал окна живьём:
+// установка Docker идёт минуты, и пустая полоса «что выполняется» выглядела
+// зависанием). watch пишут две горутины — вывод и ошибки; он сам под замком.
+func (s *Session) ExecWatch(ctx context.Context, command string, stdin io.Reader, timeout time.Duration, watch io.Writer) (ExecResult, error) {
+	sess, err := s.client.NewSession()
+	if err != nil {
+		return ExecResult{}, fmt.Errorf("%w: %v", ErrUnreachable, err)
+	}
+	defer func() { _ = sess.Close() }()
+	if s.User != "root" {
+		command = "sudo -n sh -c " + shQuote(command)
+	}
+	out := &limitedBuffer{max: maxCommandOutput}
+	var sink io.Writer = out
+	if watch != nil {
+		sink = io.MultiWriter(out, watch)
+	}
+	sess.Stdout = sink
+	sess.Stderr = sink
+	sess.Stdin = stdin
+	runCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- sess.Run(command) }()
+	select {
+	case err := <-done:
+		res := ExecResult{Output: out.buf.String()}
+		var exit *ssh.ExitError
+		switch {
+		case err == nil:
+		case errors.As(err, &exit):
+			res.Code = exit.ExitStatus()
+		default:
+			return res, fmt.Errorf("%w: %v", ErrUnreachable, err)
+		}
+		return res, nil
+	case <-runCtx.Done():
+		_ = sess.Close()
+		out.mu.Lock()
+		partial := out.buf.String()
+		out.mu.Unlock()
+		if ctx.Err() == nil {
+			return ExecResult{Output: partial}, ErrTimeout
+		}
+		return ExecResult{Output: partial}, fmt.Errorf("%w: %v", ErrUnreachable, ctx.Err())
+	}
+}

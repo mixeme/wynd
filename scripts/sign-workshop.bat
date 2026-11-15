@@ -7,7 +7,7 @@ rem wynd-workshop.exe.sig next to the exe in the GitHub release.
 rem
 rem   sign-workshop.bat keygen          create the key (once); the private key is
 rem                                     stored encrypted with your password, the
-rem                                     public one goes to cmd\wynd-installer\signing-key.pub
+rem                                     public one goes to cmd\wynd-workshop\signing-key.pub
 rem   sign-workshop.bat workshop-vX.Y.Z download that draft release, check its sum
 rem                                     and build attestation, sign the exe and
 rem                                     upload wynd-workshop.exe.sig to the draft

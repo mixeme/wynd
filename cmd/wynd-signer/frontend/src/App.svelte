@@ -16,7 +16,7 @@
 	const requests = new ReleaseRequests(uuid);
 	let checkRequest = '';
 
-	// Экраны (docs/visual/installer.html): 12а — ключа нет, 12б — выпуски,
+	// Экраны (docs/visual/workshop.html): 12а — ключа нет, 12б — выпуски,
 	// 12в–12г — проверка, подпись и итог на одном экране, 12д — подписан файл;
 	// file — пароль для файла на этом компьютере.
 	type Screen = 'create' | 'list' | 'release' | 'file' | 'filedone';

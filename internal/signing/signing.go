@@ -1,6 +1,6 @@
 // Package signing — ключ подписи выпусков Wynd (план 45) у владельца:
 // создать ключ, открыть его паролем, подписать exe. Самообновление Мастерской
-// ставит только exe с подписью этим ключом (installer.VerifySignature):
+// ставит только exe с подписью этим ключом (workshop.VerifySignature):
 // Ed25519 над всем файлом, подпись — base64 в wynd-workshop.exe.sig рядом с
 // exe. Тем же ключом подписываются выпуски окна для компьютера
 // (wynd-desktop.exe.sig, план 63). Пользуются им cmd/workshop-sign
@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"gitea.mixdep.ru/mix/wynd/internal/archive"
-	"gitea.mixdep.ru/mix/wynd/internal/installer"
+	"gitea.mixdep.ru/mix/wynd/internal/workshop"
 )
 
 // keyMagic — первая строка расшифрованного файла ключа.
@@ -136,7 +136,7 @@ func Sign(priv ed25519.PrivateKey, exe []byte, pub string) (string, error) {
 	if pub == "" {
 		pub = Public(priv)
 	}
-	if err := installer.VerifySignature(strings.TrimSpace(pub), exe, []byte(sig)); err != nil {
+	if err := workshop.VerifySignature(strings.TrimSpace(pub), exe, []byte(sig)); err != nil {
 		return "", fmt.Errorf("подпись не прошла проверку открытым ключом: %w", err)
 	}
 	return sig, nil

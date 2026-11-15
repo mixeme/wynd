@@ -1,6 +1,6 @@
 /* Wynd UI, раздел Мастерской ($ui/workshop, план 54): правила, общие для
    нескольких компонентов раздела и экранов окна. Подключает только окно
-   Мастерской (cmd/wynd-installer/frontend/src/main.ts) — клиенту они не нужны.
+   Мастерской (cmd/wynd-workshop/frontend/src/main.ts) — клиенту они не нужны.
    Цвета --c, --ok, --warn, --bad задаёт контейнер окна .ins. */
 
 .ins-dim {
@@ -75,7 +75,7 @@
 }
 
 /* Галочка и выбор одного (Checkbox, Radio) — нарисованные, в цвете Wynd
-   (макет installer.html, .cbx). */
+   (макет workshop.html, .cbx). */
 .ins-check {
 	display: flex;
 	align-items: flex-start;

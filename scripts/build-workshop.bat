@@ -1,0 +1,88 @@
+@echo off
+setlocal EnableExtensions EnableDelayedExpansion
+
+rem Builds the desktop installer (plan 45): dist\wynd-workshop.exe
+rem (Wails writes it into cmd\wynd-workshop\build\bin, the script copies it to dist).
+rem Needs Go, Node and the Wails CLI:
+rem   go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
+rem Extra arguments go to "wails build" as is, e.g.  build-workshop.bat -clean
+
+for %%I in ("%~dp0..") do set "WYND_ROOT=%%~fI"
+set "APP_DIR=%WYND_ROOT%\cmd\wynd-workshop"
+
+where go >nul 2>&1
+if errorlevel 1 (
+  echo ERROR: Go is not on PATH.
+  exit /b 1
+)
+
+where npm >nul 2>&1
+if errorlevel 1 (
+  if exist "%ProgramFiles%\nodejs\npm.cmd" (
+    set "PATH=%ProgramFiles%\nodejs;!PATH!"
+  ) else (
+    echo ERROR: npm is not on PATH.
+    exit /b 1
+  )
+)
+
+rem Wails is usually installed into GOPATH\bin, which is often not on PATH.
+set "WAILS=wails"
+where wails >nul 2>&1
+if errorlevel 1 (
+  for /f "delims=" %%G in ('go env GOPATH') do set "WAILS=%%G\bin\wails.exe"
+  if not exist "!WAILS!" (
+    echo ERROR: Wails CLI not found. Install it:
+    echo   go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
+    exit /b 1
+  )
+)
+
+rem The frontend build runs out of memory on a small machine without a heap limit.
+if not defined NODE_OPTIONS set "NODE_OPTIONS=--max-old-space-size=3072"
+
+rem main.go embeds frontend\dist, which is not in git. Wails compiles the Go
+rem code for its bindings before it builds the frontend, so on a fresh clone
+rem (GitHub Actions) the embed has nothing to match. A placeholder is enough:
+rem the frontend build replaces the folder's contents.
+if not exist "%APP_DIR%\frontend\dist\" (
+  mkdir "%APP_DIR%\frontend\dist"
+  echo placeholder> "%APP_DIR%\frontend\dist\placeholder.txt"
+)
+
+rem The ecosystem signing key (scripts\sign-workshop.bat keygen) goes into the
+rem build: self-update installs only releases signed with it. No key file -
+rem self-update stays off.
+set "SIGNING_KEY="
+if exist "%WYND_ROOT%\signing-key.pub" set /p SIGNING_KEY=<"%WYND_ROOT%\signing-key.pub"
+
+echo Building installer (wails build)...
+pushd "%APP_DIR%"
+if defined SIGNING_KEY (
+  echo Signing key: !SIGNING_KEY!
+  "%WAILS%" build -ldflags "-X gitea.mixdep.ru/mix/wynd/internal/workshop.SigningKey=!SIGNING_KEY!" %*
+) else (
+  echo No signing key: self-update will be off in this build.
+  "%WAILS%" build %*
+)
+set "BUILD_EXIT=!ERRORLEVEL!"
+popd
+
+if !BUILD_EXIT! neq 0 (
+  echo wails build failed.
+  exit /b !BUILD_EXIT!
+)
+
+rem Wails always writes into build\bin of its project; the result goes to dist
+rem next to the server binary (scripts\build.bat).
+set "BIN_DIR=%WYND_ROOT%\dist"
+if not exist "%BIN_DIR%" mkdir "%BIN_DIR%"
+copy /y "%APP_DIR%\build\bin\wynd-workshop.exe" "%BIN_DIR%\wynd-workshop.exe" >nul
+if errorlevel 1 (
+  echo ERROR: could not copy wynd-workshop.exe to %BIN_DIR%.
+  exit /b 1
+)
+
+echo.
+echo Build complete: %BIN_DIR%\wynd-workshop.exe
+exit /b 0

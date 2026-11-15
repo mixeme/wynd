@@ -4,7 +4,7 @@
 	import Meter from '$ui/forms/Meter.svelte';
 
 	// Ход работы Мастерской (план 54): установка, обновление, бэкап, переезд.
-	// Шаги приходят из Go (internal/installer, StepState).
+	// Шаги приходят из Go (internal/workshop, StepState).
 	type Step = {
 		id: string;
 		title: string;

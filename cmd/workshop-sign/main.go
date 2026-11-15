@@ -2,13 +2,13 @@
 // владельца: создать ключ, подписать exe, проверить подпись (сами ключ и
 // подпись — internal/signing; то же умеет окно cmd/wynd-signer). Самообновление
 // Мастерской ставит только exe с подписью этим ключом
-// (installer.VerifySignature): Ed25519 над всем файлом, подпись — base64 в
+// (workshop.VerifySignature): Ed25519 над всем файлом, подпись — base64 в
 // wynd-workshop.exe.sig рядом с exe в выпуске.
 //
 // Закрытый ключ лежит в файле только зашифрованным паролем владельца — тем же
 // шифрованием, что бэкапы и архивы (scrypt + age, internal/archive). Открытый
 // ключ — в signing-key.pub (общий ключ экосистемы): его вшивает в сборку
-// scripts\build-installer.bat. Обычно запускается через
+// scripts\build-workshop.bat. Обычно запускается через
 // scripts\sign-workshop.bat.
 //
 //	workshop-sign keygen <файл ключа> <файл открытого ключа>
@@ -25,7 +25,7 @@ import (
 	"os"
 	"strings"
 
-	"gitea.mixdep.ru/mix/wynd/internal/installer"
+	"gitea.mixdep.ru/mix/wynd/internal/workshop"
 	"gitea.mixdep.ru/mix/wynd/internal/signing"
 )
 
@@ -126,7 +126,7 @@ func verify(pubPath, exePath, sigPath string) error {
 	if err != nil {
 		return err
 	}
-	if err := installer.VerifySignature(strings.TrimSpace(string(pub)), exe, sig); err != nil {
+	if err := workshop.VerifySignature(strings.TrimSpace(string(pub)), exe, sig); err != nil {
 		return fmt.Errorf("подпись не сходится: %w", err)
 	}
 	fmt.Println("Подпись верна:", exePath)

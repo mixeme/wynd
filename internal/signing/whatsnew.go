@@ -2,7 +2,7 @@ package signing
 
 import "strings"
 
-// WhatsNew — раздел версии из cmd/wynd-installer/whatsnew.md: строки «- …»
+// WhatsNew — раздел версии из cmd/wynd-workshop/whatsnew.md: строки «- …»
 // под заголовком «## <версия>», до следующего заголовка. Нет раздела — пусто.
 func WhatsNew(md, version string) string {
 	var out []string

@@ -46,7 +46,7 @@ type product struct {
 }
 
 var products = []product{
-	{ID: ProductWorkshop, Name: "Wynd Мастерская", Exe: "wynd-workshop.exe", Prefix: "workshop-v", Key: "signing-key.pub", Notes: "cmd/wynd-installer/whatsnew.md"},
+	{ID: ProductWorkshop, Name: "Wynd Мастерская", Exe: "wynd-workshop.exe", Prefix: "workshop-v", Key: "signing-key.pub", Notes: "cmd/wynd-workshop/whatsnew.md"},
 	{ID: ProductDesktop, Name: "Wynd Настольный", Exe: "wynd-desktop.exe", Prefix: "desktop-v", Key: "signing-key.pub", Notes: "cmd/wynd-desktop/whatsnew.md"},
 }
 

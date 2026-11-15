@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"gitea.mixdep.ru/mix/wynd/internal/desktop"
-	"gitea.mixdep.ru/mix/wynd/internal/installer"
+	"gitea.mixdep.ru/mix/wynd/internal/workshop"
 )
 
 // Ключ, открытие паролем, подпись и проверка той же функцией, что у
@@ -37,7 +37,7 @@ func TestKeygenUnlockSign(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if installer.VerifySignature(line, exe, []byte(sig)) != nil {
+	if workshop.VerifySignature(line, exe, []byte(sig)) != nil {
 		t.Fatal("подпись не сходится")
 	}
 	if _, err := Sign(priv, exe, "AAAA"); err == nil {
@@ -60,12 +60,12 @@ func TestWhatsNew(t *testing.T) {
 	if WhatsNew(md, "0.4.0") != "" {
 		t.Fatal("нет раздела — пусто")
 	}
-	raw, err := os.ReadFile("../../cmd/wynd-installer/whatsnew.md")
+	raw, err := os.ReadFile("../../cmd/wynd-workshop/whatsnew.md")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if WhatsNew(string(raw), installer.WorkshopVersion) == "" {
-		t.Fatalf("в whatsnew.md нет раздела текущей версии Мастерской %s", installer.WorkshopVersion)
+	if WhatsNew(string(raw), workshop.WorkshopVersion) == "" {
+		t.Fatalf("в whatsnew.md нет раздела текущей версии Мастерской %s", workshop.WorkshopVersion)
 	}
 	raw, err = os.ReadFile("../../cmd/wynd-desktop/whatsnew.md")
 	if err != nil {

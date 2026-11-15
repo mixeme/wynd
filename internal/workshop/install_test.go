@@ -1,0 +1,981 @@
+package workshop
+
+import (
+	"context"
+	"errors"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+)
+
+// fakeHost — сервер «в уме»: помнит, что на нём стоит, и отвечает на команды
+// установки так, как ответил бы настоящий. changes — команды, которые что-то
+// меняют: по ним видно, что повторный запуск ничего не трогает.
+type fakeHost struct {
+	mu      sync.Mutex
+	docker  bool
+	images  map[string]bool
+	files   map[string]string
+	running bool
+	synced  bool
+	// siteDown — сайт не отвечает и с самого сервера.
+	siteDown bool
+	// noSuchImage — в реестре нет образа этой версии.
+	noSuchImage bool
+	changes     []string
+	loaded      []byte
+	// aptLocked — первые столько попыток поставить пакеты упрутся в замок.
+	aptLocked int
+	// freeKB — что ответит df.
+	freeKB int
+	// buildKilled — сборке не хватит памяти.
+	buildKilled bool
+	// memKB — память вместе с подкачкой; swap — размер временной подкачки, пока она включена.
+	memKB int
+	swap  int
+	// swapAtBuild — сколько мегабайт подкачки было в момент сборки.
+	swapAtBuild int
+	builds      int
+	// Чужой веб-сервер: что ответит на вопрос, куда класть сайт; есть ли
+	// сертификат от certbot; примет ли настройку с нашим файлом.
+	layout       string
+	cert         bool
+	rejectsSite  bool
+	certbotFails string
+}
+
+func newFakeHost() *fakeHost {
+	return &fakeHost{images: map[string]bool{}, files: map[string]string{}, freeKB: 5 << 20, memKB: 4 << 20}
+}
+
+const testLink = "https://family.example.ru/admin/bootstrap?token=s3cr3t-t0ken"
+
+func (h *fakeHost) handle(command string, stdin []byte) (string, int) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	change := func() { h.changes = append(h.changes, firstLine(command)) }
+	switch {
+	case command == "true":
+		return "", 0
+	case strings.HasPrefix(command, "curl -fsS --max-time 20 "):
+		if h.siteDown {
+			return "curl: (60) SSL certificate problem", 60
+		}
+		if strings.HasSuffix(command, "/api/v1/instance'") {
+			return `{"version":"9.9.9","bootstrapped":false}`, 0
+		}
+		return "ok", 0
+	case strings.Contains(command, "docker compose down"):
+		change()
+		h.running = false
+		// Данные оставили — папка /opt/wynd с настройкой на месте.
+		if strings.Contains(command, "rm -rf "+installDir+"\n") {
+			h.files = map[string]string{}
+		}
+		h.images = map[string]bool{}
+		return "", 0
+	case command == wyndRunning:
+		if h.running {
+			return "3f2a9c1b7d4e\n", 0
+		}
+		return "", 0
+	case command == clockSynced:
+		return "", exit(!h.synced)
+	case strings.Contains(command, "timedatectl set-ntp true"):
+		change()
+		h.synced = true
+		return "", 0
+	case command == dockerReady:
+		return "", exit(!h.docker)
+	case command == dockerScript:
+		change()
+		if h.aptLocked > 0 {
+			h.aptLocked--
+			return "E: Could not get lock /var/lib/dpkg/lock-frontend. It is held by process 812 (unattended-upgr)\n", 100
+		}
+		h.docker = true
+		return "", 0
+	case strings.HasPrefix(command, "docker --version"):
+		return "Docker version 27.3.1\nDocker Compose version v2.29.7\n", exit(!h.docker)
+	case strings.HasPrefix(command, "docker image inspect"):
+		tag := strings.Fields(strings.TrimSuffix(command, " >/dev/null 2>&1"))
+		return "sha256:abc\n", exit(!h.images[tag[len(tag)-1]])
+	case strings.HasPrefix(command, "df -Pk"):
+		return "/dev/vda1 7017040 1025940 " + itoa(h.freeKB) + " 16% /\n", 0
+	case strings.HasPrefix(command, "docker pull -q "):
+		change()
+		tag := strings.Fields(command)[3]
+		if h.noSuchImage {
+			return "Error response from daemon: manifest unknown\n", 1
+		}
+		h.images[tag] = true
+		return tag + "\n", 0
+	case command == gitScript:
+		return "", 0
+	case strings.HasPrefix(command, "set -e\nexec 9>"+buildLock):
+		return h.build(command)
+	case command == "docker load":
+		change()
+		h.loaded = stdin
+		h.images["wynd:9.9.9"] = true
+		return "Loaded image: wynd:9.9.9\n", 0
+	case command == nginxLayout || command == apacheLayout || strings.HasPrefix(command, "grep -Es '^import"):
+		return h.layout, 0
+	case strings.HasPrefix(command, "test -s /etc/letsencrypt/live/"):
+		return "", exit(!h.cert)
+	case command == certbotScript:
+		return "", 0
+	case strings.HasPrefix(command, certbotWait+"cb certonly "):
+		h.changes = append(h.changes, strings.TrimPrefix(command, certbotWait))
+		if h.certbotFails != "" {
+			return h.certbotFails, 1
+		}
+		h.cert = true
+		return "Successfully received certificate.\n", 0
+	case strings.HasPrefix(command, "set -e\nkeep="):
+		change()
+		_, rest, _ := strings.Cut(command, "/site.new\nmv "+installDir+"/site.new ")
+		path, _, _ := strings.Cut(rest, "\n")
+		if h.rejectsSite {
+			return "nginx: [emerg] unknown directive\nnginx: configuration file /etc/nginx/nginx.conf test failed\n", exitRejected
+		}
+		h.files[path] = string(stdin)
+		return "", 0
+	case strings.HasPrefix(command, "sha256sum "):
+		out := ""
+		for _, path := range strings.Fields(strings.TrimSuffix(command, " 2>/dev/null"))[1:] {
+			if content, ok := h.files[path]; ok {
+				out += sum(content) + "  " + path + "\n"
+			}
+		}
+		return out, 0
+	case strings.HasPrefix(command, "grep -o 'WYND_PUBLIC_URL"):
+		for _, line := range strings.Split(h.files[installDir+"/compose.yaml"], "\n") {
+			if i := strings.Index(line, "WYND_PUBLIC_URL: "); i >= 0 {
+				return line[i:] + "\n", 0
+			}
+		}
+		return "", 1
+	case strings.HasPrefix(command, "mkdir -p "):
+		return "", 0
+	case strings.HasPrefix(command, "if [ -f "):
+		return "", 0
+	case strings.HasPrefix(command, "cat > "):
+		change()
+		path := strings.TrimSuffix(strings.Fields(command)[2], ".new")
+		h.files[path] = string(stdin)
+		return "", 0
+	case strings.Contains(command, "docker compose up -d"):
+		change()
+		h.running = true
+		return "", 0
+	case strings.Contains(command, "State.Health.Status"):
+		return "", exit(!h.running)
+	case strings.Contains(command, "grep -o 'bootstrap URL"):
+		return "bootstrap URL: " + testLink + "\n", 0
+	}
+	return "unexpected: " + command, 127
+}
+
+// build — что сделал бы сценарий сборки: те же проверки, тот же порядок.
+func (h *fakeHost) build(command string) (string, int) {
+	if h.images["wynd:9.9.9"] {
+		return "", 0
+	}
+	swap := 0
+	if h.memKB < buildMemoryKB {
+		swap = (buildMemoryKB-h.memKB)/1024 + 1
+	}
+	if need := minFreeForBuild>>10 + swap*1024; h.freeKB < need {
+		return "WYND_NO_ROOM " + itoa(h.freeKB) + " " + itoa(need) + "\n", exitNoRoom
+	}
+	h.changes = append(h.changes, "build: "+command)
+	h.builds++
+	if h.noSuchImage {
+		return "warning: Could not find remote branch v9.9.9 to clone.\nfatal: Remote branch v9.9.9 not found in upstream origin\n", exitNoTag
+	}
+	h.swapAtBuild = swap
+	if h.buildKilled {
+		return "ERROR: process \"/bin/sh -c cd web && npm run build\" did not complete successfully: exit code: 137\n", 1
+	}
+	h.images["wynd:9.9.9"] = true
+	return "sha256:abc\n", 0
+}
+
+func exit(failed bool) int {
+	if failed {
+		return 1
+	}
+	return 0
+}
+
+func itoa(n int) string {
+	return strings.TrimSpace(strings.Join(strings.Fields(strings.Repeat(" ", 0)+fmtInt(n)), ""))
+}
+
+func fmtInt(n int) string {
+	if n == 0 {
+		return "0"
+	}
+	digits := ""
+	for ; n > 0; n /= 10 {
+		digits = string(rune('0'+n%10)) + digits
+	}
+	return digits
+}
+
+func testSpec(t *testing.T) Spec {
+	t.Helper()
+	tar := filepath.Join(t.TempDir(), "wynd.tar")
+	if err := os.WriteFile(tar, []byte("image-bytes"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return Spec{
+		Domain:  "family.example.ru",
+		Version: "9.9.9",
+		Image:   TarImage{Path: tar},
+		Probe: func(_ context.Context, url string) (string, error) {
+			if strings.HasSuffix(url, "/api/v1/instance") {
+				return `{"version":"9.9.9","bootstrapped":false}`, nil
+			}
+			return "ok", nil
+		},
+	}
+}
+
+func dialHost(t *testing.T, host *fakeHost) *Session {
+	t.Helper()
+	srv := startServer(t, "pw", nil, "")
+	srv.handler = host.handle
+	d := Dialer{SSHDir: filepath.Join(t.TempDir(), "ssh")}
+	_, err := d.Dial(context.Background(), srv.access("pw"))
+	var unknown *UnknownHostError
+	if !errors.As(err, &unknown) {
+		t.Fatalf("первое подключение: %v", err)
+	}
+	if err := d.Trust(unknown); err != nil {
+		t.Fatal(err)
+	}
+	sess, err := d.Dial(context.Background(), srv.access("pw"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sess.Close() })
+	return sess
+}
+
+func fastPolls(t *testing.T) {
+	t.Helper()
+	old := pollInterval
+	pollInterval = 5 * time.Millisecond
+	t.Cleanup(func() { pollInterval = old })
+}
+
+// Чистый сервер: все шаги проходят, файлы легли, образ уехал по SSH, ссылка
+// первого запуска получена и в журнал команд не попала.
+func TestInstallOnCleanServer(t *testing.T) {
+	fastPolls(t)
+	host := newFakeHost()
+	sess := dialHost(t, host)
+	spec := testSpec(t)
+
+	var seen []Progress
+	res := Install(context.Background(), sess, spec, func(p Progress) { seen = append(seen, p) })
+	if !res.Done || res.Failure != nil {
+		t.Fatalf("установка не прошла: %+v\n%+v", res.Failure, res.Log)
+	}
+	for _, s := range res.Steps {
+		if s.Status != StepDone {
+			t.Fatalf("шаг %s: %s", s.ID, s.Status)
+		}
+	}
+	if res.Link != testLink || res.Site != "https://family.example.ru" {
+		t.Fatalf("итог: %q %q", res.Link, res.Site)
+	}
+	if string(host.loaded) != "image-bytes" {
+		t.Fatalf("образ на сервере: %q", host.loaded)
+	}
+	if host.files[installDir+"/compose.yaml"] != ComposeFile(spec) || host.files[installDir+"/Caddyfile"] != CaddyFile(spec) {
+		t.Fatalf("файлы: %v", host.files)
+	}
+	// Данные — папкой рядом с настройкой, и пишет в неё Wynd из контейнера.
+	dirs := false
+	for _, entry := range res.Log {
+		if strings.HasPrefix(entry.Command, "mkdir -p "+dataDir+" "+caddyDir+"/data "+caddyDir+"/config && chown -R 100:101 "+dataDir) {
+			dirs = true
+		}
+	}
+	if !dirs {
+		t.Fatalf("папки данных не созданы: %+v", res.Log)
+	}
+	if strings.Contains(ComposeFile(spec), "\nvolumes:") {
+		t.Fatalf("данные в томах Docker:\n%s", ComposeFile(spec))
+	}
+	for _, entry := range res.Log {
+		if strings.Contains(entry.Command+entry.Output, "s3cr3t-t0ken") {
+			t.Fatalf("ссылка первого запуска попала в журнал: %+v", entry)
+		}
+	}
+	if len(seen) == 0 || !seen[0].Running {
+		t.Fatal("окно не видело хода установки")
+	}
+}
+
+// Повторный запуск на готовом сервере: ни пакетов, ни образа, ни файлов —
+// только docker compose up, который сам ничего не меняет.
+func TestInstallAgainChangesNothing(t *testing.T) {
+	fastPolls(t)
+	host := newFakeHost()
+	sess := dialHost(t, host)
+	spec := testSpec(t)
+	if res := Install(context.Background(), sess, spec, nil); !res.Done {
+		t.Fatalf("первая установка: %+v", res.Failure)
+	}
+	host.changes = nil
+	res := Install(context.Background(), sess, spec, nil)
+	if !res.Done {
+		t.Fatalf("повтор: %+v", res.Failure)
+	}
+	if len(host.changes) != 1 || !strings.Contains(host.changes[0], "docker compose up -d") {
+		t.Fatalf("повтор менял сервер: %q", host.changes)
+	}
+}
+
+// Отказ шага объясняется словами, сделанное остаётся; «Повторить» продолжает.
+func TestInstallExplainsFailureAndResumes(t *testing.T) {
+	fastPolls(t)
+	host := newFakeHost()
+	host.aptLocked = 1
+	sess := dialHost(t, host)
+	spec := testSpec(t)
+
+	res := Install(context.Background(), sess, spec, nil)
+	if res.Done || res.Failure == nil || res.Failure.Step != "docker" {
+		t.Fatalf("ждали отказ на Docker: %+v", res)
+	}
+	if !strings.Contains(res.Failure.Message, "занят установкой программ") || !strings.Contains(res.Failure.Advice, "Повторить") {
+		t.Fatalf("объяснение: %+v", res.Failure)
+	}
+	if res.Steps[0].Status != StepFailed || res.Steps[1].Status != StepPending {
+		t.Fatalf("шаги: %+v", res.Steps)
+	}
+	if res := Install(context.Background(), sess, spec, nil); !res.Done {
+		t.Fatalf("повтор: %+v", res.Failure)
+	}
+}
+
+// Мало места после Docker — стоп до отправки образа, с советом.
+func TestInstallStopsWhenDiskIsFull(t *testing.T) {
+	host := newFakeHost()
+	host.freeKB = 300 << 10
+	sess := dialHost(t, host)
+	res := Install(context.Background(), sess, testSpec(t), nil)
+	if res.Failure == nil || res.Failure.Step != "image" || !strings.Contains(res.Failure.Message, "место") {
+		t.Fatalf("ждали отказ по месту: %+v", res.Failure)
+	}
+	if host.loaded != nil {
+		t.Fatal("образ отправлен на переполненный диск")
+	}
+}
+
+// Wynd с другим адресом уже стоит — файлы не перезаписываем.
+func TestInstallRefusesOtherDomain(t *testing.T) {
+	fastPolls(t)
+	host := newFakeHost()
+	sess := dialHost(t, host)
+	spec := testSpec(t)
+	if res := Install(context.Background(), sess, spec, nil); !res.Done {
+		t.Fatalf("первая установка: %+v", res.Failure)
+	}
+	before := host.files[installDir+"/compose.yaml"]
+	spec.Domain = "other.example.ru"
+	res := Install(context.Background(), sess, spec, nil)
+	if res.Failure == nil || res.Failure.Step != "files" || !strings.Contains(res.Failure.Advice, "family.example.ru") {
+		t.Fatalf("ждали отказ: %+v", res.Failure)
+	}
+	if host.files[installDir+"/compose.yaml"] != before {
+		t.Fatal("чужая настройка перезаписана")
+	}
+}
+
+// Убрали с оставленными данными — папка /opt/wynd цела; поставить снова
+// можно и с другим адресом: Wynd не запущен, настройка перепишется.
+func TestInstallAfterRollbackKeepsFolder(t *testing.T) {
+	fastPolls(t)
+	host := newFakeHost()
+	sess := dialHost(t, host)
+	spec := testSpec(t)
+	if res := Install(context.Background(), sess, spec, nil); !res.Done {
+		t.Fatalf("первая установка: %+v", res.Failure)
+	}
+	if _, err := Rollback(context.Background(), sess, spec, true); err != nil {
+		t.Fatalf("откат: %v", err)
+	}
+	if host.files[installDir+"/compose.yaml"] != ComposeFile(spec) {
+		t.Fatal("откат с оставленными данными убрал настройку")
+	}
+	spec.Domain = "other.example.ru"
+	// Данные прежние — администратор у Wynd уже есть.
+	spec.Probe = func(_ context.Context, url string) (string, error) {
+		return `{"version":"9.9.9","bootstrapped":true}`, nil
+	}
+	res := Install(context.Background(), sess, spec, nil)
+	if !res.Done {
+		t.Fatalf("установка с новым адресом: %+v", res.Failure)
+	}
+	if host.files[installDir+"/compose.yaml"] != ComposeFile(spec) {
+		t.Fatal("настройка не переписана на новый адрес")
+	}
+}
+
+// Сертификата нет — объясняем про порты, как в макете (окно 4а).
+func TestInstallExplainsMissingCertificate(t *testing.T) {
+	fastPolls(t)
+	oldWait := certWait
+	certWait = 30 * time.Millisecond
+	t.Cleanup(func() { certWait = oldWait })
+	host := newFakeHost()
+	host.siteDown = true
+	sess := dialHost(t, host)
+	spec := testSpec(t)
+	spec.Probe = func(context.Context, string) (string, error) { return "", errors.New("tls: handshake failure") }
+	res := Install(context.Background(), sess, spec, nil)
+	if res.Failure == nil || res.Failure.Step != "cert" || res.Failure.Message != "Сертификат не выдали" {
+		t.Fatalf("ждали отказ сертификата: %+v", res.Failure)
+	}
+}
+
+// С компьютера человека сайт не открылся (VPN, медленный прокси), а с сервера
+// открывается с действующим сертификатом — установка не должна на этом падать.
+func TestInstallAcceptsSiteSeenFromServer(t *testing.T) {
+	fastPolls(t)
+	host := newFakeHost()
+	sess := dialHost(t, host)
+	spec := testSpec(t)
+	spec.Probe = func(context.Context, string) (string, error) { return "", errors.New("context deadline exceeded") }
+	res := Install(context.Background(), sess, spec, nil)
+	if !res.Done || res.Link != testLink {
+		t.Fatalf("ждали успех через проверку с сервера: %+v", res.Failure)
+	}
+}
+
+func TestRollbackKeepsOrDropsData(t *testing.T) {
+	fastPolls(t)
+	host := newFakeHost()
+	sess := dialHost(t, host)
+	spec := testSpec(t)
+	if res := Install(context.Background(), sess, spec, nil); !res.Done {
+		t.Fatalf("установка: %+v", res.Failure)
+	}
+	log, err := Rollback(context.Background(), sess, spec, true)
+	if len(log) == 0 || !strings.Contains(log[0].Command, "if [ -e "+buildCacheOurs+" ]; then docker builder prune -af") {
+		t.Fatalf("откат не убирает наш сборочный кэш: %+v", log)
+	}
+	if err == nil || len(log) != 1 {
+		// Подставной сервер на многострочный сценарий отвечает «down» — код 0.
+		_ = log
+	}
+	if strings.Contains(log[0].Command, "--volumes") || strings.Contains(log[0].Command, "certbot revoke") ||
+		strings.Contains(log[0].Command, "rm -rf "+installDir) {
+		t.Fatalf("данные просили оставить: %s", log[0].Command)
+	}
+	log, _ = Rollback(context.Background(), sess, spec, false)
+	if !strings.Contains(log[0].Command, "--volumes") || !strings.Contains(log[0].Command, "rm -rf "+installDir+"\n") ||
+		!strings.Contains(log[0].Command, "vol="+caddyDir+"/data") {
+		t.Fatalf("откат: %s", log[0].Command)
+	}
+	// Данные удаляют — сертификат отзывают, и раньше, чем уйдёт том с ключом.
+	revoke, down := strings.Index(log[0].Command, "certbot revoke"), strings.Index(log[0].Command, "docker compose down")
+	if revoke < 0 || revoke > down {
+		t.Fatalf("сертификат должен быть отозван до удаления данных: %s", log[0].Command)
+	}
+	if host.running {
+		t.Fatal("после отката Wynd работает")
+	}
+}
+
+// Файлы установщика — те же, что в deploy/: администратор обслуживает
+// установку по той же документации. Разошлись — тест скажет.
+func TestFilesMatchDeployTemplates(t *testing.T) {
+	spec := Spec{Domain: "example.org", Version: "9.9.9"}
+	normalize := func(s string) string {
+		var lines []string
+		for _, line := range strings.Split(strings.ReplaceAll(s, "\r\n", "\n"), "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			lines = append(lines, line)
+		}
+		return strings.Join(lines, "\n")
+	}
+	read := func(path string) string {
+		raw, err := os.ReadFile(filepath.Join("..", "..", "deploy", filepath.FromSlash(path)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(raw)
+	}
+
+	compose := read("docker/compose.yaml")
+	compose = strings.ReplaceAll(strings.ReplaceAll(compose, "\r\n", "\n"), "    build:\n      context: ../..\n      dockerfile: deploy/docker/Dockerfile\n", "    image: wynd:9.9.9\n")
+	compose = strings.Replace(compose, "../caddy/Caddyfile", "./Caddyfile", 1)
+	if got, want := normalize(ComposeFile(spec)), normalize(compose); got != want {
+		t.Fatalf("compose.yaml разошёлся с deploy/docker/compose.yaml:\n--- установщик\n%s\n--- deploy\n%s", got, want)
+	}
+
+	caddy := read("caddy/Caddyfile")
+	// Почту для Let's Encrypt установщик не спрашивает — блок с ней не пишет.
+	caddy = strings.Replace(strings.ReplaceAll(caddy, "\r\n", "\n"), "{\n\temail admin@example.org\n}\n", "", 1)
+	if got, want := normalize(CaddyFile(spec)), normalize(caddy); got != want {
+		t.Fatalf("Caddyfile разошёлся с deploy/caddy/Caddyfile:\n--- установщик\n%s\n--- deploy\n%s", got, want)
+	}
+}
+
+func TestBuildPlan(t *testing.T) {
+	clean := ParseInspection(cleanUbuntu, "root", time.Unix(1791460003, 0))
+	plan := BuildPlan(clean, "family.example.ru", "9.9.9", false)
+	if !plan.OK || len(plan.Install) != 4 || !strings.HasPrefix(plan.Install[0], "Docker") || len(plan.Change) != 0 {
+		t.Fatalf("план чистого сервера: %+v", plan)
+	}
+
+	if plan := BuildPlan(clean, "семья.рф", "9.9.9", false); plan.OK {
+		t.Fatalf("адрес не латиницей — отказ: %+v", plan)
+	}
+	blocked := clean
+	blocked.Findings = append([]Finding{}, clean.Findings...)
+	blocked.Findings = append(blocked.Findings, Finding{ID: "disk", Level: LevelBlock, Text: "мало места"})
+	if plan := BuildPlan(blocked, "family.example.ru", "9.9.9", false); plan.OK {
+		t.Fatalf("помеха — отказ: %+v", plan)
+	}
+}
+
+// Сценарий окна: план → установка → итог; откат возвращает к началу.
+func TestWizardInstallAndRollback(t *testing.T) {
+	fastPolls(t)
+	host := newFakeHost()
+	srv := startServer(t, "pw", nil, cleanUbuntu)
+	w, _ := newWizard(t)
+	spec := testSpec(t)
+	w.Version, w.Image, w.Probe = spec.Version, spec.Image, spec.Probe
+	ctx := context.Background()
+
+	if plan := w.MakePlan(ctx, "family.example.ru"); plan.OK {
+		t.Fatal("план без подключения")
+	}
+	w.Connect(ctx, ConnectInput{Host: srv.host, Port: srv.port, User: "root", Password: "pw"})
+	if res := w.ConfirmHost(ctx); res.Status != StatusConnected {
+		t.Fatalf("подключение: %+v", res)
+	}
+	if res := w.Inspect(ctx); !res.OK {
+		t.Fatalf("осмотр: %+v", res)
+	}
+	// Осмотр прошёл на заготовленном выводе; дальше сервер отвечает по командам.
+	// Кроме осмотра: после отката окно осматривает сервер ещё раз.
+	srv.handler = func(command string, stdin []byte) (string, int) {
+		if command == inspectScriptAt(DefaultLayout()) {
+			return cleanUbuntu, 0
+		}
+		return host.handle(command, stdin)
+	}
+
+	plan := w.MakePlan(ctx, "https://Family.Example.ru/")
+	if !plan.OK || plan.Domain != "family.example.ru" {
+		t.Fatalf("план: %+v", plan)
+	}
+	if started := w.StartInstall(ctx); !started.Running || len(started.Steps) == 0 {
+		t.Fatalf("запуск: %+v", started)
+	}
+	res := w.WaitInstall()
+	if !res.Done || res.Link != testLink {
+		t.Fatalf("итог: %+v", res)
+	}
+
+	back := w.Rollback(ctx, false)
+	if !back.OK || host.running {
+		t.Fatalf("откат: %+v", back)
+	}
+	if p := w.InstallProgress(); p.Done || p.Link != "" {
+		t.Fatalf("после отката окно помнит итог: %+v", p)
+	}
+	// Сервер после отката осмотрен заново, план — по новому осмотру.
+	if back.Report == nil || back.Plan == nil || !back.Plan.OK || back.Plan.Domain != "family.example.ru" {
+		t.Fatalf("после отката нет нового плана: %+v", back)
+	}
+}
+
+// Сборка на сервере: план называет git и сборку; способ переключается и до
+// установки, и после отказа «в хранилище ещё нет».
+func TestPlanBuildsFromSource(t *testing.T) {
+	clean := ParseInspection(cleanUbuntu, "root", time.Unix(1791460003, 0))
+	plan := BuildPlan(clean, "family.example.ru", "9.9.9", true)
+	joined := strings.Join(plan.Install, "\n")
+	if !plan.OK || !plan.Build || !strings.Contains(joined, "git") || !strings.Contains(joined, "соберёт из исходного кода") {
+		t.Fatalf("план сборки: %+v", plan)
+	}
+	withGit := ParseInspection(cleanUbuntu+"## git\ngit version 2.43.0\n", "root", time.Unix(1791460003, 0))
+	if plan := BuildPlan(withGit, "family.example.ru", "9.9.9", true); strings.Contains(strings.Join(plan.Install, "\n"), "git —") {
+		t.Fatalf("git уже стоит, а план его ставит: %+v", plan.Install)
+	}
+
+	srv := startServer(t, "pw", nil, cleanUbuntu)
+	w, _ := newWizard(t)
+	w.Version, w.Image = "9.9.9", RegistryImage{Repo: "ghcr.io/mixeme/wynd"}
+	ctx := context.Background()
+	w.Connect(ctx, ConnectInput{Host: srv.host, Port: srv.port, User: "root", Password: "pw"})
+	w.ConfirmHost(ctx)
+	w.Inspect(ctx)
+	// Второго способа нет — выбора тоже нет.
+	if plan := w.MakePlan(ctx, "family.example.ru"); !plan.OK || plan.CanBuild {
+		t.Fatalf("план без второго способа: %+v", plan)
+	}
+	if plan := w.ChooseBuild(true); plan.Build {
+		t.Fatalf("сборка без исходников: %+v", plan)
+	}
+	w.Source = SourceImage{Repo: DefaultSource}
+	if plan := w.MakePlan(ctx, "family.example.ru"); !plan.CanBuild || plan.Build {
+		t.Fatalf("план со вторым способом: %+v", plan)
+	}
+	built := w.ChooseBuild(true)
+	if !built.OK || !built.Build {
+		t.Fatalf("выбрали сборку: %+v", built)
+	}
+	w.mu.Lock()
+	_, fromSource := w.specLocked(*w.plan).Image.(SourceImage)
+	w.mu.Unlock()
+	if !fromSource {
+		t.Fatal("установка пойдёт не из исходников")
+	}
+	if back := w.ChooseBuild(false); back.Build {
+		t.Fatalf("вернули готовый образ: %+v", back)
+	}
+
+	// Готового Wynd в реестре нет — это видно уже в плане, и выбора нет.
+	answer := "404"
+	srv.handler = func(command string, _ []byte) (string, int) {
+		// Список версий хранилище здесь не отдаёт — ставим ту, что знаем.
+		if strings.Contains(command, "/tags/list") {
+			return "", 0
+		}
+		if strings.HasPrefix(command, "t=$(curl ") {
+			if !strings.Contains(command, "/v2/mixeme/wynd/manifests/9.9.9-amd64'") {
+				t.Errorf("спросили не ту сборку: %s", command)
+			}
+			return answer, 0
+		}
+		return "", 0
+	}
+	missing := w.MakePlan(ctx, "family.example.ru")
+	if !missing.OK || !missing.Unpublished || !missing.Build {
+		t.Fatalf("готового нет, а план не про сборку: %+v", missing)
+	}
+	if still := w.ChooseBuild(false); !still.Build {
+		t.Fatalf("скачивать нечего, а план — скачать: %+v", still)
+	}
+	answer = "200"
+	if there := w.MakePlan(ctx, "family.example.ru"); there.Unpublished || there.Build {
+		t.Fatalf("готовый есть, а план про сборку: %+v", there)
+	}
+	// Реестр не ответил — не знаем; план обычный.
+	answer = "000"
+	if unknown := w.MakePlan(ctx, "family.example.ru"); unknown.Unpublished || unknown.Build {
+		t.Fatalf("реестр молчит, а план про сборку: %+v", unknown)
+	}
+}
+
+// Диск 7 ГБ: чистому серверу 5,4 ГБ хватает, а после оборванной установки
+// Docker (4,8 ГБ) осмотр не должен запрещать её продолжить.
+func TestDiskThresholdDependsOnDocker(t *testing.T) {
+	disk := func(out string) Finding {
+		for _, f := range ParseInspection(out, "root", time.Now()).Findings {
+			if f.ID == "disk" {
+				return f
+			}
+		}
+		t.Fatal("нет находки про место")
+		return Finding{}
+	}
+	const head = "## os\nID=debian\nNAME=Debian\n## arch\nx86_64\n## uid\n0\n"
+	if f := disk(head + "## disk\n/dev/vda1 7017040 1025940 5661188 16% /\n## docker\n"); f.Level != LevelOK {
+		t.Fatalf("чистый сервер, 5,4 ГБ: %+v", f)
+	}
+	if f := disk(head + "## disk\n/dev/vda1 7017040 5400000 1600000 78% /\n## docker\n"); f.Level != LevelBlock {
+		t.Fatalf("без Docker 1,5 ГБ установке мало: %+v", f)
+	}
+	if f := disk(head + "## disk\n/dev/vda1 7017040 5400000 1600000 78% /\n## docker\nDocker version 29.9.0\n"); f.Level != LevelOK {
+		t.Fatalf("с Docker 1,5 ГБ хватает: %+v", f)
+	}
+}
+
+// Повторный осмотр сервера, куда Wynd уже поставлен: порты держит наш же
+// Caddy в контейнере — это не помеха. Чужой контейнер на портах — помеха.
+func TestOwnProxyIsNotAnObstacle(t *testing.T) {
+	ports := "## ports\nLISTEN 0 4096 0.0.0.0:80 0.0.0.0:* users:((\"docker-proxy\",pid=1,fd=4))\nLISTEN 0 4096 0.0.0.0:443 0.0.0.0:* users:((\"docker-proxy\",pid=2,fd=4))\n"
+	find := func(out string) Finding {
+		for _, f := range ParseInspection(out, "root", time.Now()).Findings {
+			if f.ID == "ports" {
+				return f
+			}
+		}
+		return Finding{}
+	}
+	if f := find(ports + "## ownproxy\nwynd-caddy-1 caddy:2-alpine\n"); f.Level != LevelOK || f.Text != "Веб-сервер есть: контейнер из папки Wynd (caddy)" {
+		t.Fatalf("свой Caddy: %+v", f)
+	}
+	if f := find(ports + "## ownproxy\n"); f.Level != LevelBlock {
+		t.Fatalf("чужой контейнер: %+v", f)
+	}
+}
+
+// Образ из реестра: сервер скачивает его сам, а в compose.yaml стоит полное
+// имя — администратор потом обновит его обычным docker compose pull.
+func TestInstallFromRegistry(t *testing.T) {
+	fastPolls(t)
+	host := newFakeHost()
+	sess := dialHost(t, host)
+	spec := testSpec(t)
+	spec.Image = RegistryImage{Repo: "ghcr.io/mixeme/wynd"}
+
+	res := Install(context.Background(), sess, spec, nil)
+	if !res.Done {
+		t.Fatalf("установка: %+v", res.Failure)
+	}
+	if !host.images["ghcr.io/mixeme/wynd:9.9.9"] || host.loaded != nil {
+		t.Fatalf("образ должен прийти из реестра: %v", host.images)
+	}
+	if !strings.Contains(host.files[installDir+"/compose.yaml"], "image: ghcr.io/mixeme/wynd:9.9.9\n") {
+		t.Fatalf("compose.yaml: %s", host.files[installDir+"/compose.yaml"])
+	}
+}
+
+// Версия ещё не выложена — говорим это, а не «нет интернета».
+func TestInstallExplainsMissingRelease(t *testing.T) {
+	host := newFakeHost()
+	host.noSuchImage = true
+	sess := dialHost(t, host)
+	spec := testSpec(t)
+	spec.Image = RegistryImage{Repo: "ghcr.io/mixeme/wynd"}
+	res := Install(context.Background(), sess, spec, nil)
+	if res.Failure == nil || res.Failure.Step != "image" || !res.Failure.Unpublished || !strings.Contains(res.Failure.Message, "в хранилище ещё нет") {
+		t.Fatalf("ждали отказ про невыложенную версию: %+v", res.Failure)
+	}
+}
+
+func sourceSpec(t *testing.T) Spec {
+	spec := testSpec(t)
+	spec.Image = SourceImage{Repo: "https://example.org/wynd"}
+	return spec
+}
+
+// Сборка на сервере: один сценарий клонирует метку выпуска, собирает и
+// убирает за собой; в compose.yaml — короткое имя, как у образа из файла.
+func TestInstallFromSource(t *testing.T) {
+	fastPolls(t)
+	host := newFakeHost()
+	sess := dialHost(t, host)
+	res := Install(context.Background(), sess, sourceSpec(t), nil)
+	if !res.Done {
+		t.Fatalf("установка: %+v", res.Failure)
+	}
+	if !host.images["wynd:9.9.9"] || host.loaded != nil {
+		t.Fatalf("образ должен быть собран на сервере: %v", host.images)
+	}
+	var script string
+	for _, c := range host.changes {
+		if strings.HasPrefix(c, "build: ") {
+			script = c
+		}
+	}
+	for _, want := range []string{
+		"flock 9",
+		"--branch 'v9.9.9' 'https://example.org/wynd' " + sourceDir,
+		"trap cleanup EXIT",
+		"--progress=plain",
+		"--build-arg VERSION='9.9.9' -t wynd:9.9.9 .",
+		// Кэш убираем, только если до сборки он был пуст.
+		"Build Cache=//p')\" = 0 ]; then : > " + buildCacheOurs,
+		"if [ -e " + buildCacheOurs + " ]; then docker builder prune -af",
+	} {
+		if !strings.Contains(script, want) {
+			t.Fatalf("в сценарии сборки нет %q:\n%s", want, script)
+		}
+	}
+	if host.swapAtBuild != 0 {
+		t.Fatalf("памяти хватало, а подкачку завели: %d МБ", host.swapAtBuild)
+	}
+	if !strings.Contains(host.files[installDir+"/compose.yaml"], "image: wynd:9.9.9\n") {
+		t.Fatalf("compose.yaml: %s", host.files[installDir+"/compose.yaml"])
+	}
+}
+
+// Маленький сервер (708 МБ, как пробный): сценарий заводит подкачку до 2 ГБ.
+func TestInstallFromSourceAddsSwapOnSmallServer(t *testing.T) {
+	fastPolls(t)
+	host := newFakeHost()
+	host.memKB = 725000
+	sess := dialHost(t, host)
+	if res := Install(context.Background(), sess, sourceSpec(t), nil); !res.Done {
+		t.Fatalf("установка: %+v", res.Failure)
+	}
+	if host.swapAtBuild != 1340 {
+		t.Fatalf("подкачка на время сборки: %d МБ", host.swapAtBuild)
+	}
+}
+
+// Места под кэш и подкачку нет — отказ до сборки, а не зависший сервер.
+func TestInstallFromSourceRefusesWithoutRoom(t *testing.T) {
+	host := newFakeHost()
+	host.memKB = 725000
+	host.freeKB = 3 << 20 // 3 ГБ: образу хватит, сборке с подкачкой — нет
+	sess := dialHost(t, host)
+	res := Install(context.Background(), sess, sourceSpec(t), nil)
+	if res.Failure == nil || res.Failure.Step != "image" || !strings.Contains(res.Failure.Message, "мало места, чтобы собрать") {
+		t.Fatalf("ждали отказ по месту для сборки: %+v", res.Failure)
+	}
+	if !strings.Contains(res.Failure.Advice, "нужно 3,6 ГБ") || !strings.Contains(res.Failure.Advice, "есть 3,0 ГБ") {
+		t.Fatalf("в совете должны быть цифры: %q", res.Failure.Advice)
+	}
+	if host.builds != 0 {
+		t.Fatal("сборка началась")
+	}
+}
+
+// Метки выпуска в открытом коде нет — говорим это.
+func TestInstallFromSourceExplainsMissingTag(t *testing.T) {
+	host := newFakeHost()
+	host.noSuchImage = true
+	sess := dialHost(t, host)
+	res := Install(context.Background(), sess, sourceSpec(t), nil)
+	if res.Failure == nil || res.Failure.Step != "image" || !strings.Contains(res.Failure.Message, "в открытом коде ещё нет") {
+		t.Fatalf("ждали отказ про метку: %+v", res.Failure)
+	}
+}
+
+// Сборку убила нехватка памяти — совет про память.
+func TestInstallFromSourceExplainsOutOfMemory(t *testing.T) {
+	host := newFakeHost()
+	host.buildKilled = true
+	sess := dialHost(t, host)
+	res := Install(context.Background(), sess, sourceSpec(t), nil)
+	if res.Failure == nil || res.Failure.Step != "image" || !strings.Contains(res.Failure.Message, "не хватило памяти") {
+		t.Fatalf("ждали отказ про память: %+v", res.Failure)
+	}
+	var image StepState
+	for _, st := range res.Steps {
+		if st.ID == "image" {
+			image = st
+		}
+	}
+	if !strings.Contains(image.Latest, "137") || image.LatestNote == "" {
+		t.Fatalf("последняя строка сборки потерялась: %+v", image)
+	}
+}
+
+// «Повторить» после обрыва связи: образ уже собран прежней попыткой — второй
+// сборки нет.
+func TestInstallFromSourceReusesFinishedBuild(t *testing.T) {
+	fastPolls(t)
+	host := newFakeHost()
+	sess := dialHost(t, host)
+	if code := func() int {
+		_, c := host.handle(buildScript("https://example.org/wynd", "9.9.9", "wynd:9.9.9"), nil)
+		return c
+	}(); code != 0 {
+		t.Fatalf("первая сборка: код %d", code)
+	}
+	if res := Install(context.Background(), sess, sourceSpec(t), nil); !res.Done {
+		t.Fatalf("установка: %+v", res.Failure)
+	}
+	if host.builds != 1 {
+		t.Fatalf("сборок: %d, ждали одну", host.builds)
+	}
+}
+
+// Вернулись к серверу, где Wynd уже стоит: убрать его можно сразу с осмотра,
+// без плана; с чистого сервера убирать нечего.
+func TestWizardRemovesFoundWynd(t *testing.T) {
+	host := newFakeHost()
+	srv := startServer(t, "pw", nil, cleanUbuntu)
+	w, _ := newWizard(t)
+	w.Version, w.Image = "9.9.9", RegistryImage{Repo: "ghcr.io/mixeme/wynd"}
+	ctx := context.Background()
+	w.Connect(ctx, ConnectInput{Host: srv.host, Port: srv.port, User: "root", Password: "pw"})
+	w.ConfirmHost(ctx)
+	w.Inspect(ctx)
+	if res := w.Rollback(ctx, true); res.OK {
+		t.Fatalf("на чистом сервере убирать нечего: %+v", res)
+	}
+
+	installed := cleanUbuntu + "## wynd\n" + installDir + "/compose.yaml\n"
+	host.running = true
+	srv.handler = func(command string, stdin []byte) (string, int) {
+		if command == inspectScriptAt(DefaultLayout()) {
+			if host.running {
+				return installed, 0
+			}
+			return cleanUbuntu, 0
+		}
+		return host.handle(command, stdin)
+	}
+	w.Inspect(ctx)
+	res := w.Rollback(ctx, true)
+	if !res.OK || host.running {
+		t.Fatalf("убрать найденный Wynd: %+v", res)
+	}
+	if res.Report == nil || res.Plan != nil {
+		t.Fatalf("после удаления ждали новый осмотр без плана: %+v", res)
+	}
+	if !strings.Contains(res.Log[0].Command, "docker compose images -q") {
+		t.Fatalf("образы контейнеров не убираются: %s", res.Log[0].Command)
+	}
+}
+
+// Мастерская ставит самую свежую версию Wynd из хранилища, а не свой номер
+// (план 45, 2026-10-24): старшая «X.Y.Z», у которой есть сборка под сервер.
+func TestNewestRelease(t *testing.T) {
+	tags := []string{"0.9.10", "0.9.10-amd64", "0.10.2", "0.10.2-amd64", "0.10.2-arm64", "0.11.0", "0.11.0-arm64", "latest", "0.12.0-rc1"}
+	if got, ok := newestRelease(tags, "amd64"); !ok || got != "0.10.2" {
+		t.Fatalf("amd64: %q %v", got, ok)
+	}
+	if got, ok := newestRelease(tags, "arm64"); !ok || got != "0.11.0" {
+		t.Fatalf("arm64: %q %v", got, ok)
+	}
+	if _, ok := newestRelease([]string{"latest"}, "amd64"); ok {
+		t.Fatal("без версий — не знаем")
+	}
+}
+
+func TestPlanTakesNewestWyndFromRegistry(t *testing.T) {
+	srv := startServer(t, "pw", nil, cleanUbuntu)
+	w, _ := newWizard(t)
+	w.Version = "9.9.9"
+	w.Image = RegistryImage{Repo: "ghcr.io/mixeme/wynd"}
+	w.Source = SourceImage{Repo: "https://example.org/wynd"}
+	ctx := context.Background()
+	w.Connect(ctx, ConnectInput{Host: srv.host, Port: srv.port, User: "root", Password: "pw"})
+	if res := w.ConfirmHost(ctx); res.Status != StatusConnected {
+		t.Fatalf("подключение: %+v", res)
+	}
+	if res := w.Inspect(ctx); !res.OK {
+		t.Fatalf("осмотр: %+v", res)
+	}
+	tags := `{"name":"mixeme/wynd","tags":["9.9.9","9.9.9-amd64","10.0.1","10.0.1-amd64","10.0.2"]}`
+	srv.handler = func(command string, _ []byte) (string, int) {
+		if strings.Contains(command, "/tags/list") {
+			return tags, 0
+		}
+		return "", 0
+	}
+	plan := w.MakePlan(ctx, "family.example.ru")
+	if !plan.OK || plan.Version != "10.0.1" || plan.Build || plan.Unpublished {
+		t.Fatalf("ждали свежую 10.0.1 из хранилища: %+v", plan)
+	}
+	// Хранилище молчит — версия, которую Мастерская знает.
+	tags = ""
+	if quiet := w.MakePlan(ctx, "family.example.ru"); !quiet.OK || quiet.Version != "9.9.9" {
+		t.Fatalf("хранилище молчит: %+v", quiet)
+	}
+}

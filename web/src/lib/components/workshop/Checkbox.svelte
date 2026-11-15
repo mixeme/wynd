@@ -2,7 +2,7 @@
 	import type { Snippet } from 'svelte';
 
 	// Галочка окна Мастерской (план 54) — нарисованная, в цвете Wynd (макет
-	// installer.html, .cbx; владелец 2026-10-24: «Галочки у нас какие-то
+	// workshop.html, .cbx; владелец 2026-10-24: «Галочки у нас какие-то
 	// страшные»). Подпись — children; пояснение в ней — <span class="ins-dim">.
 	// Стили — .ins-check в styles/workshop.css: общие с Radio.
 	let {

@@ -1,0 +1,242 @@
+package workshop
+
+import (
+	"context"
+	"crypto/ed25519"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"testing"
+	"time"
+
+	"golang.org/x/crypto/ssh"
+)
+
+// Инвариант: временный ключ разрешает только исходную команду упаковки,
+// даже если путь содержит кавычки или обратные косые черты.
+func TestTransferKeyPreservesCommand(t *testing.T) {
+	pub, err := ssh.NewPublicKey(ed25519.NewKeyFromSeed(make([]byte, ed25519.SeedSize)).Public())
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := ForeignWynd{DataDir: `/srv/data "one"\two`}.sendTar()
+	line := transferKeyLine(command, strings.TrimSpace(string(ssh.MarshalAuthorizedKey(pub))))
+	_, _, options, _, err := ssh.ParseAuthorizedKey([]byte(line))
+	if err != nil || len(options) != 2 || options[0] != "restrict" {
+		t.Fatalf("restricted key: %v, %v", options, err)
+	}
+	// OpenSSH opt_dequote снимает только \"; Go strconv.Unquote здесь неверен.
+	raw := strings.TrimPrefix(options[1], "command=")
+	got := strings.ReplaceAll(strings.TrimSuffix(strings.TrimPrefix(raw, `"`), `"`), `\"`, `"`)
+	if got != command {
+		t.Fatalf("forced command changed: %q; want %q", got, command)
+	}
+}
+
+// Инвариант: перенос чужой установки сохраняет данные независимо от знаков
+// в имени папки; копии и служебные пометки в архив не попадают.
+func TestForeignTransferArchive(t *testing.T) {
+	shell, err := exec.LookPath("sh")
+	if runtime.GOOS == "windows" {
+		git, gitErr := exec.LookPath("git")
+		if gitErr != nil {
+			t.Skip("Git Bash нужен для проверки серверной команды tar")
+		}
+		shell = filepath.Join(filepath.Dir(git), "..", "bin", "bash.exe")
+		_, err = os.Stat(shell)
+	}
+	if err != nil {
+		t.Skip("нет shell для проверки серверной команды tar")
+	}
+	for _, name := range []string{"data", "data[1], old"} {
+		t.Run(name, func(t *testing.T) {
+			dir := filepath.Join(t.TempDir(), name)
+			for _, rel := range []string{"wynd.db", "blobs/ab/photo", "backups/old", ".workshop-move"} {
+				p := filepath.Join(dir, filepath.FromSlash(rel))
+				if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(p, []byte(rel), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			w := ForeignWynd{DataDir: filepath.ToSlash(dir)}
+			out, err := exec.CommandContext(t.Context(), shell, "-c", w.sendTar()+" | tar -tf -").CombinedOutput()
+			if err != nil {
+				t.Fatalf("archive: %v\n%s", err, out)
+			}
+			listing := string(out)
+			if !strings.Contains(listing, "data/wynd.db\n") || !strings.Contains(listing, "data/blobs/ab/photo\n") || strings.Contains(listing, "backups") || strings.Contains(listing, ".workshop-") {
+				t.Fatalf("archive contents: %s", listing)
+			}
+		})
+	}
+}
+
+func TestMoveStepOrder(t *testing.T) {
+	var ids []string
+	for _, s := range MoveTitles(MoveSpec{Version: "0.43.2", Image: RegistryImage{Repo: DefaultRegistry}}) {
+		ids = append(ids, s.ID)
+	}
+	if got := strings.Join(ids, ","); got != "install,stop,transfer,dns,start,old" {
+		t.Fatalf("шаги: %s", got)
+	}
+}
+
+// 9б2: на старом Wynd не со своим Caddy — на новом ставим и Caddy, везём одни
+// данные; порядок шагов тот же.
+func TestMoveDataOnlyTitles(t *testing.T) {
+	var got []string
+	for _, s := range MoveTitles(MoveSpec{Version: "0.43.2", Image: RegistryImage{Repo: DefaultRegistry}, DataOnly: true}) {
+		got = append(got, s.ID+"="+s.Title)
+	}
+	joined := strings.Join(got, "; ")
+	for _, want := range []string{"install=Wynd 0.43.2 и Caddy на новом сервере", "transfer=Данные Wynd перенесены"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("нет %q в %s", want, joined)
+		}
+	}
+	tar := dataTarAt(DefaultLayout())
+	if !strings.Contains(tar, "--exclude=data/backups") || !strings.HasSuffix(tar, " data") {
+		t.Fatalf("архив данных: %s", tar)
+	}
+}
+
+// 9в: ждём, пока адрес укажет на новый сервер; «Проверить сейчас» — сразу.
+func TestDNSStepWaitsForNewAddress(t *testing.T) {
+	answers := [][]string{{"198.51.100.4"}, {"198.51.100.4", "203.0.113.7"}, {"203.0.113.7"}}
+	calls := 0
+	check := make(chan struct{}, 3)
+	spec := MoveSpec{Domain: "family.example.ru", NewIP: "203.0.113.7", CheckNow: check,
+		Resolve: func(context.Context, string) []string {
+			a := answers[min(calls, len(answers)-1)]
+			calls++
+			return a
+		}}
+	old := dnsWait
+	dnsWait = time.Hour
+	defer func() { dnsWait = old }()
+	for range 3 {
+		check <- struct{}{}
+	}
+	r := &Run{steps: []StepState{{ID: "dns"}}, report: func() {}}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := dnsStep(spec).do(ctx, r); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 3 || !strings.Contains(r.steps[0].Note, "198.51.100.4") {
+		t.Fatalf("проверок %d, подпись %q", calls, r.steps[0].Note)
+	}
+}
+
+// 9в2: пульт старого сервера видит незаконченный переезд по пометке.
+func TestServerStateReadsMoveMark(t *testing.T) {
+	out := "@image ghcr.io/mixeme/wynd:0.43.2\n@url https://family.example.ru\n@running \n@container abc\n" +
+		`@move {"to":"203.0.113.7","started":"2026-10-26T12:28:00Z","remove_old":true,"transferred":true}` + "\n@free /dev/vda1 1 1 1 1% /\n"
+	st := parseServerState(out)
+	if st.Move == nil || st.Move.To != "203.0.113.7" || !st.Move.RemoveOld || !st.Move.Transferred || st.Move.Launched {
+		t.Fatalf("пометка: %+v", st.Move)
+	}
+	if parseServerState(strings.Replace(out, "@move {", "@move x{", 1)).Move != nil {
+		t.Fatal("испорченная пометка не должна читаться")
+	}
+}
+
+// 9в2: «Продолжить переезд» не переносит данные второй раз — на новом могли
+// уже писать; пометка сохраняет выбор «убрать старый».
+func TestMoveResumeSkipsTransfer(t *testing.T) {
+	spec := MoveSpec{Version: "0.43.2", Image: RegistryImage{Repo: DefaultRegistry}, NewIP: "203.0.113.7", RemoveOld: true,
+		Resume: &MoveMark{To: "203.0.113.7", Started: "2026-10-26T12:28:00Z", Transferred: true}}
+	steps := moveSteps(nil, spec)
+	if steps[2].id != "transfer" {
+		t.Fatalf("третий шаг: %s", steps[2].id)
+	}
+	r := &Run{steps: []StepState{{ID: "transfer"}}, report: func() {}}
+	if err := steps[2].do(context.Background(), r); err != nil {
+		t.Fatal(err)
+	}
+	if r.steps[0].Note != "перенесено раньше" || len(r.log) != 0 {
+		t.Fatalf("подпись %q, команд %d", r.steps[0].Note, len(r.log))
+	}
+	cmd := markCmd(DefaultLayout(), MoveMark{To: "203.0.113.7", Started: "2026-10-26T12:28:00Z", RemoveOld: true})
+	if !strings.Contains(cmd, `"remove_old":true`) || !strings.HasSuffix(cmd, "> "+shQuote(moveMark)) {
+		t.Fatalf("пометка: %s", cmd)
+	}
+}
+
+// 9в и 9в3: строка шага называет старый сервер, а молчание службы имён —
+// «не удалось узнать», а не «указывает на никуда».
+func TestDNSStepNotes(t *testing.T) {
+	old := dnsWait
+	dnsWait = time.Hour
+	defer func() { dnsWait = old }()
+	for _, c := range []struct {
+		answer []string
+		want   string
+	}{
+		{nil, "пока не удалось узнать, куда указывает family.example.ru"},
+		{[]string{"198.51.100.4"}, "family.example.ru пока указывает на старый сервер 198.51.100.4"},
+		{[]string{"192.0.2.9"}, "family.example.ru пока указывает на 192.0.2.9"},
+	} {
+		ctx, cancel := context.WithCancel(context.Background())
+		spec := MoveSpec{Domain: "family.example.ru", OldIP: "198.51.100.4", NewIP: "203.0.113.7",
+			Resolve: func(context.Context, string) []string { cancel(); return c.answer }}
+		r := &Run{steps: []StepState{{ID: "dns"}}, report: func() {}}
+		_ = dnsStep(spec).do(ctx, r)
+		if r.steps[0].Note != c.want {
+			t.Fatalf("ответ %v: подпись %q, ждали %q", c.answer, r.steps[0].Note, c.want)
+		}
+	}
+}
+
+// 5е: файл сайта у чужого веб-сервера, который ведёт на порт Wynd без нашей
+// первой строки, осмотр называет; ищет и по ссылкам sites-enabled.
+func TestInspectionForeignSite(t *testing.T) {
+	rep := ParseInspection("## foreignsite\n/etc/apache2/sites-enabled/wynd.conf\n## ownproxy\n", "root", time.Now())
+	if len(rep.ForeignSite) != 1 || rep.ForeignSite[0] != "/etc/apache2/sites-enabled/wynd.conf" {
+		t.Fatalf("чужой файл: %v", rep.ForeignSite)
+	}
+	if !strings.Contains(inspectScriptAt(DefaultLayout()), "grep -RlsE") || !strings.Contains(inspectScriptAt(DefaultLayout()), siteMark) {
+		t.Fatal("поиск чужого файла должен идти по ссылкам и узнавать нашу первую строку")
+	}
+}
+
+// 7б4: образ, собранный на сервере, план обновления узнаёт по имени.
+func TestBuiltOnServer(t *testing.T) {
+	if !builtOnServer("wynd:0.43.2") || builtOnServer("ghcr.io/mixeme/wynd:0.43.2") || builtOnServer("") {
+		t.Fatal("собранный на сервере образ — wynd:<версия>, из хранилища — нет")
+	}
+}
+
+// 7з: Wynd не на месте Мастерской — служба, контейнер из другой папки;
+// папку данных ищем так же, как её ищет сам Wynd.
+func TestParseForeign(t *testing.T) {
+	w, ok := parseForeign("@proc|wynd.service|/srv/wynd|data|https://family.example.ru||/usr/local/bin/wynd\n")
+	if !ok || w.Kind != "service" || w.Name != "wynd" || w.DataDir != "/srv/wynd/data" || !w.Running || w.stop != "systemctl stop 'wynd.service'" {
+		t.Fatalf("служба: %+v", w)
+	}
+	w, _ = parseForeign("@proc||/home/u|||:7676|/home/u/wynd\n")
+	if w.Kind != "process" || w.DataDir != "/home/u/dev/data" || w.stop != "" {
+		t.Fatalf("процесс без службы: %+v", w)
+	}
+	w, _ = parseForeign("@ctr|abc|exited|/srv/w|wynd|w-wynd-1|/srv/w/data|https://family.example.ru|wynd:0.43.2\n")
+	if w.Kind != "container" || w.Running || w.Version != "0.43.2" || w.DataDir != "/srv/w/data" || !strings.Contains(w.start, "docker compose up -d 'wynd'") {
+		t.Fatalf("контейнер: %+v", w)
+	}
+	w, _ = parseForeign("@unit|wynd.service|inactive|/opt/x|/var/lib/wynd|https://family.example.ru\n")
+	if w.Kind != "service" || w.Running || w.DataDir != "/var/lib/wynd" || w.Domain() != "family.example.ru" {
+		t.Fatalf("служба остановлена: %+v", w)
+	}
+	if _, ok := parseForeign("@ctr|x|running|/opt/wynd\n"); ok {
+		t.Fatal("неполная строка — не находка")
+	}
+	tar := ForeignWynd{DataDir: "/var/lib/wynd"}.sendTar()
+	for _, want := range []string{"tar -C '/var/lib/wynd'", "--exclude='./backups'", "--transform 's,^\\.,data,'", "-cf - ."} {
+		if !strings.Contains(tar, want) {
+			t.Fatalf("нет %q в %s", want, tar)
+		}
+	}
+}

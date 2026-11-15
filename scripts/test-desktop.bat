@@ -9,7 +9,7 @@ cd /d "%WYND_DESKTOP_ROOT%\web"
 call npx svelte-kit sync
 if errorlevel 1 exit /b 1
 
-cd /d "%WYND_DESKTOP_ROOT%\cmd\wynd-installer\frontend"
+cd /d "%WYND_DESKTOP_ROOT%\cmd\wynd-workshop\frontend"
 echo [desktop] Workshop frontend check and build
 call npm run test
 if errorlevel 1 exit /b 1
@@ -36,9 +36,9 @@ if errorlevel 1 exit /b 1
 
 cd /d "%WYND_DESKTOP_ROOT%"
 echo [desktop] Tagged Go vet and tests
-go vet -tags desktop ./cmd/wynd-installer ./cmd/wynd-signer ./cmd/wynd-desktop ./internal/desktop
+go vet -tags desktop ./cmd/wynd-workshop ./cmd/wynd-signer ./cmd/wynd-desktop ./internal/desktop
 if errorlevel 1 exit /b 1
-go test -tags desktop ./cmd/wynd-installer ./cmd/wynd-signer ./cmd/wynd-desktop ./internal/desktop
+go test -tags desktop ./cmd/wynd-workshop ./cmd/wynd-signer ./cmd/wynd-desktop ./internal/desktop
 if errorlevel 1 exit /b 1
 
 set "WYND_DESKTOP_OUT=%TEMP%\wynd-desktop-gate-%RANDOM%-%RANDOM%"
@@ -47,7 +47,7 @@ mkdir "%WYND_DESKTOP_OUT%"
 if errorlevel 1 exit /b 1
 set "WYND_DESKTOP_RC=1"
 echo [desktop] Production-tag builds of three windows
-go build -trimpath -tags "desktop,production" -o "%WYND_DESKTOP_OUT%\workshop.exe" ./cmd/wynd-installer
+go build -trimpath -tags "desktop,production" -o "%WYND_DESKTOP_OUT%\workshop.exe" ./cmd/wynd-workshop
 if errorlevel 1 goto cleanup
 go build -trimpath -tags "desktop,production" -o "%WYND_DESKTOP_OUT%\signer.exe" ./cmd/wynd-signer
 if errorlevel 1 goto cleanup
