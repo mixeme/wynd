@@ -396,14 +396,6 @@ a{color:inherit;text-decoration:none}
 .media{margin:11px 0 0}
 .media+.media{margin-top:6px}
 .media img,.media video{width:100%;height:auto;display:block;border-radius:10px;border:1px solid var(--line);background-color:#c3af95;background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.07) 0 7px,rgba(0,0,0,0.05) 7px 15px)}
-.tiles{display:flex;flex-wrap:wrap;gap:8px;margin:11px 0 0}
-.tiles .tile{width:88px;height:88px;border-radius:8px;flex:0 0 auto;overflow:hidden;display:block;background:var(--tint)}
-.tiles .tile img{width:100%;height:100%;object-fit:cover;display:block}
-.tiles .more{display:contents}
-.tiles .more summary{width:88px;height:88px;border-radius:8px;background:var(--tint);display:grid;place-items:center;font-size:12.5px;color:var(--muted);cursor:pointer;list-style:none}
-.tiles .more summary::-webkit-details-marker{display:none}
-.tiles .more .rest{display:none}
-.tiles .more[open] .rest{display:flex;flex-wrap:wrap;gap:8px}
 .gone{color:var(--faint);font-size:12.5px;margin:10px 0 0}
 .rx{display:flex;gap:8px;margin-top:11px;align-items:center;flex-wrap:wrap}
 .rx .one{background:var(--ct);border-radius:14px;padding:4px 11px;font-size:12.5px;display:flex;gap:7px;align-items:center}
@@ -572,7 +564,7 @@ func renderFeedIndex(st style, circleName, cutoff string, posts []chronicle.Feed
 	for _, fp := range posts {
 		// Метки — для Мастерской: объединённая лента склеивается из кусков.
 		b.WriteString(MetaPostOpen(fp.Post.ID))
-		appendPostHTML(&b, fp, media, avatars, dayTitles, false, fp.Post.ID+".html")
+		appendPostHTML(&b, fp, media, avatars, dayTitles, false)
 		b.WriteString(MetaPostClose)
 	}
 	b.WriteString(st.pageEnd())
@@ -609,44 +601,9 @@ func renderPostPage(st style, circleName string, fp chronicle.FeedPost, media, a
 	var b strings.Builder
 	st.head(&b, circleName, "../")
 	b.WriteString("<a class=\"back\" href=\"index.html\">← оглавление</a>")
-	appendPostHTML(&b, fp, media, avatars, dayTitles, true, "")
+	appendPostHTML(&b, fp, media, avatars, dayTitles, true)
 	b.WriteString(st.pageEnd())
 	return b.String()
-}
-
-// feedTilesVisible — сколько плиток фото видно в ленте до «ещё N».
-const feedTilesVisible = 6
-
-// appendTilesHTML — сетка квадратных плиток фото записи в ленте, как .thumbs
-// приложения (88 × 88, зазор 8, радиус 8, object-fit: cover). Сверх шести
-// плитки прячутся за плиткой «ещё N» и раскрываются на месте через
-// <details> — без JS, офлайн-читаемость сохраняется (решение владельца
-// 2026-11-15). Плитка — ссылка на сам файл.
-func appendTilesHTML(b *strings.Builder, items []chronicle.PostMedia, media map[string]string, prefix string) {
-	b.WriteString("<div class=\"tiles\">")
-	writeTile := func(m chronicle.PostMedia) {
-		b.WriteString("<a class=\"tile\" href=\"")
-		b.WriteString(html.EscapeString(prefix + media[m.BlobID]))
-		b.WriteString("\"><img alt=\"\" loading=\"lazy\" src=\"")
-		b.WriteString(html.EscapeString(prefix + media[m.BlobID]))
-		b.WriteString("\"></a>")
-	}
-	rest := 0
-	if len(items) > feedTilesVisible {
-		rest = len(items) - feedTilesVisible
-	}
-	for i, m := range items {
-		if i == feedTilesVisible {
-			b.WriteString("<details class=\"more\"><summary>ещё ")
-			b.WriteString(strconv.Itoa(rest))
-			b.WriteString("</summary><div class=\"rest\">")
-		}
-		writeTile(m)
-	}
-	if rest > 0 {
-		b.WriteString("</div></details>")
-	}
-	b.WriteString("</div>")
 }
 
 // appendAvatarHTML — аватар лица, а без него буква имени на цвете круга.
@@ -669,24 +626,12 @@ func appendAvatarHTML(b *strings.Builder, name, identityID string, media, avatar
 	b.WriteString("</span>")
 }
 
-// appendPostHTML — карточка записи. postHref — адрес страницы записи для
-// ссылки в шапке: в единой ленте шапка ведёт на posts/<ID>.html (решение
-// владельца 2026-11-15 — путь «лента → запись»), на самой странице записи
-// ссылки нет. В ленте фото записи собираются сеткой плиток, на странице
-// записи остаются столбиком, как принято 13.11.
-func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, dayTitles map[string]string, relativeMedia bool, postHref string) {
+func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, dayTitles map[string]string, relativeMedia bool) {
 	prefix := ""
 	if relativeMedia {
 		prefix = "../"
 	}
-	b.WriteString("<article class=\"post\">")
-	if postHref != "" {
-		b.WriteString("<a class=\"pa\" href=\"")
-		b.WriteString(html.EscapeString(postHref))
-		b.WriteString("\">")
-	} else {
-		b.WriteString("<div class=\"pa\">")
-	}
+	b.WriteString("<article class=\"post\"><div class=\"pa\">")
 	appendAvatarHTML(b, fp.Post.AuthorName, fp.Post.IdentityID, media, avatars, prefix)
 	b.WriteString("<div><div class=\"author\">")
 	b.WriteString(html.EscapeString(fp.Post.AuthorName))
@@ -697,37 +642,19 @@ func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, d
 		b.WriteString(html.EscapeString(fp.Post.CreatedAt.UTC().Format("02.01.2006 15:04")))
 		b.WriteString(" UTC")
 	}
-	b.WriteString("</div></div>")
-	if postHref != "" {
-		b.WriteString("</a>")
-	} else {
-		b.WriteString("</div>")
-	}
+	b.WriteString("</div></div></div>")
 	if fp.Post.Body != "" {
 		b.WriteString("<div class=\"body\">")
 		b.WriteString(html.EscapeString(fp.Post.Body))
 		b.WriteString("</div>")
 	}
-	// Фото записи в ленте собираются в одну сетку плиток (первые шесть
-	// видны, остальные — за плиткой «ещё N» с раскрытием на месте);
-	// ролики, звук и файлы остаются на своих местах в порядке медиа.
-	var tiles []chronicle.PostMedia
-	flushTiles := func() {
-		if len(tiles) == 0 {
-			return
-		}
-		appendTilesHTML(b, tiles, media, prefix)
-		tiles = nil
-	}
 	for _, m := range fp.Media {
 		if playableAudio(m) {
-			flushTiles()
 			appendAudioHTML(b, m, media, prefix)
 			continue
 		}
 		src, ok := media[m.BlobID]
 		if !ok {
-			flushTiles()
 			b.WriteString("<p class=\"gone\">Файл недоступен на сервере</p>")
 			continue
 		}
@@ -735,15 +662,9 @@ func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, d
 			// Файл записи — карточкой .att, как в приложении: картинкой он
 			// не показывался, на его месте была пустая рамка (C39). Вся
 			// карточка — ссылка на файл, как кнопка в приложении.
-			flushTiles()
 			appendFileHTML(b, m, src, prefix)
 			continue
 		}
-		if postHref != "" && m.Kind == chronicle.MediaPhoto {
-			tiles = append(tiles, m)
-			continue
-		}
-		flushTiles()
 		b.WriteString("<div class=\"media\">")
 		if m.Kind == chronicle.MediaVideo {
 			b.WriteString("<video controls src=\"")
@@ -758,7 +679,6 @@ func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, d
 		}
 		b.WriteString("</div>")
 	}
-	flushTiles()
 	if len(fp.Reactions) > 0 {
 		// Отклики — чипсы на тонированном фоне, как в ленте приложения:
 		// значок реакции и имена через запятую.
