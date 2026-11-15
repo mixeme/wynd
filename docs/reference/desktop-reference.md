@@ -1,6 +1,6 @@
 # Wynd для компьютера
 
-Оболочка Windows: своя рамка, постоянный профиль WebView2, выбранный сервер и его интерфейс в окне. Решения — [план 55](../plans/55-desktop-client.plan.md), шаги — [план 61](../plans/61-desktop-shell.plan.md).
+Оболочка Windows: своя рамка, постоянный профиль WebView2, выбранный сервер и его интерфейс в окне. Решения — C66 [плана 46](../plans/46-open-questions-and-debt.plan.md) (план 55 закрыт 16.11: оболочка выпущена), шаги — [план 61](../plans/61-desktop-shell.plan.md).
 
 ## Сборка
 
@@ -10,7 +10,7 @@ scripts\build-desktop.bat
 
 Скрипт собирает `cmd/wynd-desktop/frontend` и кладёт `dist\wynd-desktop.exe` (Windows GUI, без консольного окна). Для проверки без установки: `go build -tags "desktop,production" -ldflags "-H windowsgui" ./cmd/wynd-desktop`. Ворота — `scripts\test-desktop.bat`, CI — `.github/workflows/desktop.yaml`.
 
-Выпуски подписываются общим ключом экосистемы через «Wynd Подпись»; в exe вшит открытый ключ, backend самообновления реализован. С 0.3.0 окно предлагает новую версию полосой поверх интерфейса (план 63, принята 2026-11-11). Порядок выпуска — [DEVELOPMENT.md](../DEVELOPMENT.md#настольный-установщик).
+Выпуски подписываются общим ключом экосистемы через «Wynd Подпись»; в exe вшит открытый ключ, backend самообновления реализован. С 0.3.0 окно предлагает новую версию полосой поверх интерфейса (план 63, принята 2026-11-11). Порядок выпуска — [DEVELOPMENT.md](../DEVELOPMENT.md#wynd-мастерская).
 
 ## Данные
 
