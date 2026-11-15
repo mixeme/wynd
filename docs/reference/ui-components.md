@@ -269,7 +269,7 @@ AdminNav (`ADMIN_NAV`: Проверка, Общие, Доступ, Люди, Х�
 
 ### `workshop/`
 
-Окно Мастерской (`cmd/wynd-installer/frontend`, кадры [installer.html](../visual/installer.html); план 54). Клиенту не нужны. Общие правила раздела — `$lib/styles/workshop.css` (оттенки текста `.ins-dim` `.ins-strong` `.ins-mono` `.ins-note`, значок строки `.ins-mark`, блок команд `.ins-raw`, «✕» `.ins-x`, галочки `.ins-check`); его подключает только окно Мастерской. Цвета `--c` `--ok` `--warn` `--bad` задаёт контейнер окна `.ins`. Остальные стили — внутри компонентов. Живьём раздел виден не в `/dev/ui`, а на стенде окна `cmd/wynd-installer/frontend/gallery.html` (`?scene=<имя>` — одна сцена; `?run` — снимок всех сцен и сверка с эталоном; `?run&save` — запомнить эталон).
+Окно Мастерской (`cmd/wynd-workshop/frontend`, кадры [workshop.html](../visual/workshop.html); план 54). Клиенту не нужны. Общие правила раздела — `$lib/styles/workshop.css` (оттенки текста `.ins-dim` `.ins-strong` `.ins-mono` `.ins-note`, значок строки `.ins-mark`, блок команд `.ins-raw`, «✕» `.ins-x`, галочки `.ins-check`); его подключает только окно Мастерской. Цвета `--c` `--ok` `--warn` `--bad` задаёт контейнер окна `.ins`. Остальные стили — внутри компонентов. Живьём раздел виден не в `/dev/ui`, а на стенде окна `cmd/wynd-workshop/frontend/gallery.html` (`?scene=<имя>` — одна сцена; `?run` — снимок всех сцен и сверка с эталоном; `?run&save` — запомнить эталон).
 
 `TitleBar` — своя полоса заголовка окна: `title`, `maximised`, `onminimise` / `ontoggle` / `onclose`. `WorkshopTabs` — вкладки под ней: `tabs` (`{ id, label }[]`), `bind:value`. `SelfBar` — «Вышла Мастерская …» (кадр 10а): `version`, `onupdate`, `onhide`. `StepNav` — колонка шагов слева: `steps` (подписи), `index`, `bad`.
 

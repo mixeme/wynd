@@ -840,7 +840,7 @@ ok  	gitea.mixdep.ru/mix/wynd/internal/blob	(cached)
 ok  	gitea.mixdep.ru/mix/wynd/internal/check	(cached)
 ok  	gitea.mixdep.ru/mix/wynd/internal/chronicle	(cached)
 ok  	gitea.mixdep.ru/mix/wynd/internal/config	(cached)
-ok  	gitea.mixdep.ru/mix/wynd/internal/installer	(cached)
+ok  	gitea.mixdep.ru/mix/wynd/internal/workshop	(cached)
 ok  	gitea.mixdep.ru/mix/wynd/internal/jobs	(cached)
 ok  	gitea.mixdep.ru/mix/wynd/internal/mail	(cached)
 ?   	gitea.mixdep.ru/mix/wynd/internal/poster	[no test files]
@@ -859,7 +859,7 @@ ok  	gitea.mixdep.ru/mix/wynd/web	0.127s
 [desktop] Prepare shared SvelteKit configuration
 [desktop] Workshop frontend check and build
 
-> wynd-installer-frontend@0.0.0 test
+> wynd-workshop-frontend@0.0.0 test
 > node --test src/profiles.test.mjs
 
 ✔ first launch and form preserve the password area while excluding it from focus (800.2537ms)
@@ -883,15 +883,15 @@ ok  	gitea.mixdep.ru/mix/wynd/web	0.127s
 ℹ todo 0
 ℹ duration_ms 41894.8637
 
-> wynd-installer-frontend@0.0.0 check
+> wynd-workshop-frontend@0.0.0 check
 > svelte-check --tsconfig ./tsconfig.json
 
-Loading svelte-check in workspace: d:\Local\Git\wynd\cmd\wynd-installer\frontend
+Loading svelte-check in workspace: d:\Local\Git\wynd\cmd\wynd-workshop\frontend
 Getting Svelte diagnostics...
 
 [32msvelte-check found 0 errors and 0 warnings
 [39m
-> wynd-installer-frontend@0.0.0 build
+> wynd-workshop-frontend@0.0.0 build
 > vite build
 
 [36mvite v6.4.5 [32mbuilding for production...[36m[39m
@@ -941,7 +941,7 @@ computing gzip size...
 [2mdist/[22m[36massets/index-BhR3mSud.js   [39m[1m[2m79.49 kB[22m[1m[22m[2m │ gzip: 28.72 kB[22m
 [32m✓ built in 2.55s[39m
 [desktop] Tagged Go vet and tests
-ok  	gitea.mixdep.ru/mix/wynd/cmd/wynd-installer	(cached)
+ok  	gitea.mixdep.ru/mix/wynd/cmd/wynd-workshop	(cached)
 ok  	gitea.mixdep.ru/mix/wynd/cmd/wynd-signer	(cached)
 [desktop] Production-tag builds of both windows
 [desktop] OK

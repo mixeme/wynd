@@ -36,15 +36,15 @@
     "sha256": "F452F489F98DFAC17F6B0BE65D125EE5A04E229AB427286F0E739755BFCD3861"
   },
   {
-    "path": "cmd/wynd-installer/frontend/src/App.svelte",
+    "path": "cmd/wynd-workshop/frontend/src/App.svelte",
     "sha256": "CCD55C4F5FB1A3DB961F13B4950B9B932EEE94997EBC486288C37AAECEFD4E3B"
   },
   {
-    "path": "cmd/wynd-installer/frontend/src/Archives.svelte",
+    "path": "cmd/wynd-workshop/frontend/src/Archives.svelte",
     "sha256": "99F63A32315AD72A4B0D17D26247D1C3B8D9DE12CF06AF3B7D446F403C08A344"
   },
   {
-    "path": "cmd/wynd-installer/frontend/src/gallery/scenes.ts",
+    "path": "cmd/wynd-workshop/frontend/src/gallery/scenes.ts",
     "sha256": "C9D0192BF11116B82EF7E9F37637F1234D608F8A30CFAAA398AF98975654B560"
   },
   {
@@ -72,7 +72,7 @@
     "sha256": "4EB06140A461C89F0C7AC6E853EDD78FBD2CD0229FFFC640A13293ED2CDF2210"
   },
   {
-    "path": "docs/plans/45-desktop-installer.plan.md",
+    "path": "docs/plans/45-workshop.plan.md",
     "sha256": "37D424874AAAB8687B644D6E08A51622BE5C51C839DD0139B773D074512ABDBE"
   },
   {
@@ -88,7 +88,7 @@
     "sha256": "691189C56BFF452F1C59338E977172FBC5FA283CB14B94802CF3640E42A147C4"
   },
   {
-    "path": "docs/visual/installer.html",
+    "path": "docs/visual/workshop.html",
     "sha256": "04E967854534BC8F5CADABC6F9A73421BBA755327515965C863DCF779E2C5367"
   },
   {

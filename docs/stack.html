@@ -119,7 +119,7 @@
 <pre><code>wynd/
 ├── VERSION        # единый номер версии
 ├── cmd/wynd/      # main(): сервер и команды wynd backup, wynd admin-password
-├── cmd/wynd-installer/ # настольный установщик (Wails): ставит Wynd на сервер по SSH
+├── cmd/wynd-workshop/ # настольный установщик (Wails): ставит Wynd на сервер по SSH
 ├── internal/      # пакеты сервера и установщика — по одному на предмет (карта — в server-reference)
 ├── web/           # SvelteKit-приложение: клиент и панель; сборка web/dist → go:embed
 │   ├── src/lib/   # ядро (api, sync, idb, queue, media, push) и Wynd UI
@@ -269,7 +269,7 @@
 
 <table>
   <tr><th>Способ</th><th>Для кого</th></tr>
-  <tr><td><strong>Настольный установщик</strong> — главный путь: по SSH осматривает сервер, показывает план, ставит Docker и образ Wynd; за чужим nginx, Apache или Caddy добавляет сайт своим файлом (<a href="plans/45-desktop-installer.plan.md">план 45</a>, в работе)</td><td>Тот, кто не работает в терминале; чистый VPS и сервер с чужим веб-сервером</td></tr>
+  <tr><td><strong>Настольный установщик</strong> — главный путь: по SSH осматривает сервер, показывает план, ставит Docker и образ Wynd; за чужим nginx, Apache или Caddy добавляет сайт своим файлом (<a href="plans/45-workshop.plan.md">план 45</a>, в работе)</td><td>Тот, кто не работает в терминале; чистый VPS и сервер с чужим веб-сервером</td></tr>
   <tr><td>Docker / compose — образ <code>ghcr.io/mixeme/wynd</code>, собирается при каждом выпуске</td><td>Unraid, YunoHost, привычный контейнерный стек</td></tr>
   <tr><td><code>deploy/install.sh</code> из клона репозитория → бинарник + systemd</td><td>Тот, кто ставит руками и без Docker</td></tr>
 </table>

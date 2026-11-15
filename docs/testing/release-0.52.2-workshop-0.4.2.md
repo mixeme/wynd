@@ -14,7 +14,7 @@
 
 ## Ворота
 
-`scripts\test.bat` на дереве с номером — **`[test] OK`**, включая desktop-контур (`[desktop] OK`). Первый прогон покраснел на `internal/signing`: «в whatsnew.md нет раздела текущей версии Мастерской 0.4.2» — раздел добавлен в `cmd/wynd-installer/whatsnew.md`, ворота повторены на том же дереве и прошли.
+`scripts\test.bat` на дереве с номером — **`[test] OK`**, включая desktop-контур (`[desktop] OK`). Первый прогон покраснел на `internal/signing`: «в whatsnew.md нет раздела текущей версии Мастерской 0.4.2» — раздел добавлен в `cmd/wynd-workshop/whatsnew.md`, ворота повторены на том же дереве и прошли.
 
 ## Образ
 
@@ -32,7 +32,7 @@ Workflow Image на `6547effb` — run **43241953791**, успешно.
 ## GitHub
 
 - Серверный выпуск **`v0.52.2`** создан и опубликован сразу (`draft=false`), отмечен **Latest**: <https://github.com/mixeme/wynd/releases/tag/v0.52.2>.
-- Черновик Мастерской **«Мастерская 0.4.2»** — id `443137628`, тег `workshop-v0.4.2` (`cd209acf`), файлы `wynd-workshop.exe` и `.sha256`, SHA-256 **`40abfc29bd1613c1a4c1e0f3bb5736f234a1693185d741599bb44a0e0cbf739c`**; `gh attestation verify` — успешно (exit 0). Описание черновика берётся из раздела 0.4.2 в `cmd/wynd-installer/whatsnew.md`.
+- Черновик Мастерской **«Мастерская 0.4.2»** — id `443137628`, тег `workshop-v0.4.2` (`cd209acf`), файлы `wynd-workshop.exe` и `.sha256`, SHA-256 **`40abfc29bd1613c1a4c1e0f3bb5736f234a1693185d741599bb44a0e0cbf739c`**; `gh attestation verify` — успешно (exit 0). Описание черновика берётся из раздела 0.4.2 в `cmd/wynd-workshop/whatsnew.md`.
 
 ## Правка CI
 

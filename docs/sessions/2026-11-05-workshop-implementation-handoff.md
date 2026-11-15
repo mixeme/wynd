@@ -33,23 +33,23 @@
 
 1. `AGENTS.md`, `.cursor/rules/wynd-ui-screens.mdc`, `docs/reference/ui-components.md`.
 2. `docs/testing/ui-review-protocol.md`.
-3. `docs/plans/45-desktop-installer.plan.md`, `docs/plans/workshop-servers.plan.md`.
+3. `docs/plans/45-workshop.plan.md`, `docs/plans/workshop-servers.plan.md`.
 4. `docs/visual/workshop-review-baselines.json` и `docs/visual/workshop-servers.fragment.html`.
 5. [Последний протокол реализации](../testing/workshop-implementation-visual-2026-11-05.md), [история реализации](../testing/workshop-servers-2026-11-05.md), [остановленный выпуск](../testing/release-workshop-0.4.0.md).
 
-Основная утверждённая компоновка — исходный коммит **`b827aff829e43857700e1eacac833862e3ea1a06`**, кадры `s0` (первый запуск), `1` (добавление), `7а` (пульт), `7в` (обновление) и остальные принятые серверные сценарии. Галерея — `docs/visual/installer.html`. Перед правкой брать конкретный исходник, ID кадра и коммит; использовать существующие `$ui`/layout. Сравнивать настоящие снимки при одинаковых размере окна, теме и масштабе. DOM, check и build не подтверждают геометрию.
+Основная утверждённая компоновка — исходный коммит **`b827aff829e43857700e1eacac833862e3ea1a06`**, кадры `s0` (первый запуск), `1` (добавление), `7а` (пульт), `7в` (обновление) и остальные принятые серверные сценарии. Галерея — `docs/visual/workshop.html`. Перед правкой брать конкретный исходник, ID кадра и коммит; использовать существующие `$ui`/layout. Сравнивать настоящие снимки при одинаковых размере окна, теме и масштабе. DOM, check и build не подтверждают геометрию.
 
 Ручные растровые картинки C71 и неудачные офлайн-рендеры не являются эталонами. Актуальный статус C71 берётся из его отдельной передачи и JSON-реестра: все три кадра приняты, повторное согласование не нужно.
 
 ## Что реализовано
 
-- `internal/installer/workshop.go`: профили в `os.UserConfigDir()/Wynd/workshop/servers.json` (Windows — `%APPDATA%`), атомарная запись, без паролей и сырых SSH-журналов. Сессии по стабильному ID; блокировки операций, обоих участников переезда и совпадающих реальных SSH-адресов. Самообновление блокируется при работе любого сервера.
-- `cmd/wynd-installer/profiles.go`, `main.go`: Wails API с явными ID; ошибка открытия/повреждения списка показывается, файл не затирается пустым списком. Общие вспомогательные методы приватные.
+- `internal/workshop/workshop.go`: профили в `os.UserConfigDir()/Wynd/workshop/servers.json` (Windows — `%APPDATA%`), атомарная запись, без паролей и сырых SSH-журналов. Сессии по стабильному ID; блокировки операций, обоих участников переезда и совпадающих реальных SSH-адресов. Самообновление блокируется при работе любого сервера.
+- `cmd/wynd-workshop/profiles.go`, `main.go`: Wails API с явными ID; ошибка открытия/повреждения списка показывается, файл не затирается пустым списком. Общие вспомогательные методы приватные.
 - `frontend/src/Window.svelte`: вкладки, список, формы профиля, постоянные экземпляры `App.svelte`. Переключение сервера, архивов или сведений об обновлении не размонтирует выполняющиеся операции.
 - `frontend/src/App.svelte`, `api.ts`: состояние и вызовы привязаны к профилю, отдельные автоподключения, сохранённые сведения, переезд между профилями. После переезда исходное соединение сохраняется, новое передаётся назначению, оба сервера проверяются заново.
 - Изменённый SSH-ключ требует старого/нового отпечатков и отдельного явного подтверждения; wildcard/CA и устаревшее подтверждение не перезаписываются. Реальные ключи владельца не использовались.
 
-Пути `frontend/...` в этом разделе относительны `cmd/wynd-installer/`. Основные UI-компоненты — `web/src/lib/components/workshop/`; общие поля — `forms/Input.svelte`, кнопки — существующие Wynd UI.
+Пути `frontend/...` в этом разделе относительны `cmd/wynd-workshop/`. Основные UI-компоненты — `web/src/lib/components/workshop/`; общие поля — `forms/Input.svelte`, кнопки — существующие Wynd UI.
 
 ## Причина провала и последние исправления
 
@@ -78,7 +78,7 @@
 
 ## Как продолжить настоящий рендер
 
-В `cmd/wynd-installer/frontend` запустить `npm run dev -- --port 5175`. Основные маршруты:
+В `cmd/wynd-workshop/frontend` запустить `npm run dev -- --port 5175`. Основные маршруты:
 
 - `http://127.0.0.1:5175/gallery.html?scene=0-empty&size=baseline`
 - `?scene=1-add&size=baseline`, `?scene=7a-server&size=baseline`, `?scene=7c-update&size=baseline`, `?scene=11a-archives&size=baseline`.
@@ -102,7 +102,7 @@
 Собран после `npm run build` командой из корня:
 
 ```powershell
-go build -trimpath -tags desktop,production -ldflags '-H windowsgui' -o dev/workshop-visual-98cef915/wynd-workshop.exe ./cmd/wynd-installer
+go build -trimpath -tags desktop,production -ldflags '-H windowsgui' -o dev/workshop-visual-98cef915/wynd-workshop.exe ./cmd/wynd-workshop
 ```
 
 Это preview, не подписанный/удостоверенный релизный артефакт; публичный ключ выпуска этой командой специально не встраивался. Для релизного кандидата нужен штатный процесс сборки. `dist/wynd-workshop.exe` и старый тег не заменялись.
@@ -120,13 +120,13 @@ go build -trimpath -tags desktop,production -ldflags '-H windowsgui' -o dev/work
 
 ## Проверки, уже выполненные после последних правок
 
-- `npm --prefix cmd/wynd-installer/frontend run test`: **12 групп**, включая все 76 сцен настоящего скомпилированного Svelte в jsdom, проходят.
-- `npm --prefix cmd/wynd-installer/frontend run check`: 0 ошибок и предупреждений.
-- `npm --prefix cmd/wynd-installer/frontend run build`: проходит, затем собран указанный Go preview.
+- `npm --prefix cmd/wynd-workshop/frontend run test`: **12 групп**, включая все 76 сцен настоящего скомпилированного Svelte в jsdom, проходят.
+- `npm --prefix cmd/wynd-workshop/frontend run check`: 0 ошибок и предупреждений.
+- `npm --prefix cmd/wynd-workshop/frontend run build`: проходит, затем собран указанный Go preview.
 - `npm --prefix web run check:ui`: проходит; четыре закреплённые основы, C71 принят. Этот результат не означает визуальную приёмку реализации.
 - `git diff --check`: проходит.
 
-До последних frontend-правок также прошли `scripts/test-desktop.bat`, tagged Go API/vet/tests и `go test ./internal/installer`; подробности и границы в протоколах реализации/выпуска. Не приписывать полный повтор всех Go-проверок последнему frontend-коммиту. В этой сессии после него выполнена именно Go production-сборка. При будущих изменениях запускать подходящие проверки, а не повторять всё без новой причины.
+До последних frontend-правок также прошли `scripts/test-desktop.bat`, tagged Go API/vet/tests и `go test ./internal/workshop`; подробности и границы в протоколах реализации/выпуска. Не приписывать полный повтор всех Go-проверок последнему frontend-коммиту. В этой сессии после него выполнена именно Go production-сборка. При будущих изменениях запускать подходящие проверки, а не повторять всё без новой причины.
 
 ## Git, авторизация и выпуск
 

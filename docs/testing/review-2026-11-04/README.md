@@ -23,10 +23,10 @@ $reviewScratch = Join-Path $reviewRoot 'dev/review-repro'
 New-Item -ItemType Directory -Force $reviewScratch | Out-Null
 $reviewReplace = @{}
 $reviewReplace[(Join-Path $reviewRoot 'internal/api/zz_review_probe_test.go')] = Join-Path $reviewDir 'api-probes.go.txt'
-$reviewReplace[(Join-Path $reviewRoot 'internal/installer/zz_review_probe_test.go')] = Join-Path $reviewDir 'installer-probes.go.txt'
+$reviewReplace[(Join-Path $reviewRoot 'internal/workshop/zz_review_probe_test.go')] = Join-Path $reviewDir 'installer-probes.go.txt'
 $reviewOverlay = Join-Path $reviewScratch 'overlay.json'
 @{ Replace = $reviewReplace } | ConvertTo-Json | Set-Content -Encoding utf8 $reviewOverlay
-go test -overlay $reviewOverlay ./internal/api ./internal/installer -run '^TestReview' -count=1 -v
+go test -overlay $reviewOverlay ./internal/api ./internal/workshop -run '^TestReview' -count=1 -v
 ```
 
 Для Vitest требуется временное имя `.test.ts` рядом с очередью (относительный импорт `./queue`). Команды не перезаписывают существующий тест:
@@ -48,7 +48,7 @@ finally {
 | Проверка | Результат |
 |---|---|
 | `go test ./...` с локальным GOCACHE | Все пакеты прошли; [лог](go-test.log) |
-| `go test -tags desktop ./cmd/wynd-installer ./cmd/wynd-signer` | Успех; у installer нет тестов; [лог](desktop-tests.log) |
+| `go test -tags desktop ./cmd/wynd-workshop ./cmd/wynd-signer` | Успех; у installer нет тестов; [лог](desktop-tests.log) |
 | `go vet ./cmd/... ./internal/...` | Код выхода 0; desktop-tag в этом vet не включён |
 | `npx vitest run` в web | 446/447, единственный отказ из-за системного GOCACHE; [лог](web-test.log) |
 | Повтор `npx vitest run src/test/licenses.test.ts` с локальным GOCACHE | 2/2; [лог](licenses-retest.log). Полный набор повторно не запускался |

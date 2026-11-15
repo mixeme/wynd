@@ -12,7 +12,7 @@ const fragmentPath = new URL(
   "./workshop-servers.fragment.html",
   import.meta.url,
 );
-const galleryPath = new URL("./installer.html", import.meta.url);
+const galleryPath = new URL("./workshop.html", import.meta.url);
 const manifestPath = new URL(
   "./workshop-review-baselines.json",
   import.meta.url,

@@ -6,7 +6,7 @@
 
 ## Первый проход — есть расхождения
 
-Браузер IAB, светлая тема, DPR 1, масштаб 100%. Исходные кадры извлечены командой `git show b827aff8:docs/visual/workshop-servers.fragment.html`; сам исходник не меняется. Стенд запускается `npm run dev` в `cmd/wynd-installer/frontend`. Параметр `size=baseline` задаёт одинаковый размер окна для сравнений; без него сохраняется штатный стенд 900 × 640.
+Браузер IAB, светлая тема, DPR 1, масштаб 100%. Исходные кадры извлечены командой `git show b827aff8:docs/visual/workshop-servers.fragment.html`; сам исходник не меняется. Стенд запускается `npm run dev` в `cmd/wynd-workshop/frontend`. Параметр `size=baseline` задаёт одинаковый размер окна для сравнений; без него сохраняется штатный стенд 900 × 640.
 
 Первоначальные диагностические снимки находятся в `docs/visual/reviews/workshop-implementation-2026-11-05/`. `before-add-full.jpg` и `before-server.jpg` показывают настоящий интерфейс при ширине 1024 px. `before-s0.jpg` и `before-add.jpg` обрезаны справа API снимка viewport и не используются как парные доказательства соответствия.
 
@@ -50,7 +50,7 @@
 
 Из `98cef915` после production-сборки frontend собран отдельный exe:
 
-`go build -trimpath -tags desktop,production -ldflags '-H windowsgui' -o dev/workshop-visual-98cef915/wynd-workshop.exe ./cmd/wynd-installer`
+`go build -trimpath -tags desktop,production -ldflags '-H windowsgui' -o dev/workshop-visual-98cef915/wynd-workshop.exe ./cmd/wynd-workshop`
 
 SHA-256: `07569dae10bf394493bdfbd08ddbfe59871bc783b6be4318951ea270b1b59b77`; размер 25 805 312 байт. При запуске `APPDATA` направлен в `dev/workshop-visual-98cef915/profile`; настоящие SSH-серверы и сохранённый доступ владельца не использовались. Штатный начальный размер exe — 760 × 560; браузерный проход 1024 × 760 не подтверждает его компактное окно.
 

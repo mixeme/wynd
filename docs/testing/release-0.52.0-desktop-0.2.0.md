@@ -49,7 +49,7 @@ CI собрал `wynd-desktop.exe` размером **13 376 000 байт**, SHA
 
 `10a3512f2ddacaba945b7f90615e720792e766bbea53e362d8083955afe659f8`
 
-Скачанный из черновика exe прошёл `gh attestation verify`: удостоверение указывает на `refs/tags/desktop-v0.2.0` и коммит `6f87c5027d032bf1a54f2fa6f304bfaabfc3b693`. Контрольная сумма сошлась с `wynd-desktop.exe.sha256`. Подпись `wynd-desktop.exe.sig` проверена той же `installer.VerifySignature` и открытым ключом `signing-key.pub`, который использует самообновление.
+Скачанный из черновика exe прошёл `gh attestation verify`: удостоверение указывает на `refs/tags/desktop-v0.2.0` и коммит `6f87c5027d032bf1a54f2fa6f304bfaabfc3b693`. Контрольная сумма сошлась с `wynd-desktop.exe.sha256`. Подпись `wynd-desktop.exe.sig` проверена той же `workshop.VerifySignature` и открытым ключом `signing-key.pub`, который использует самообновление.
 
 Выпуск был опубликован с разделом 0.2.0 из `cmd/wynd-desktop/whatsnew.md`; `publishedAt` — **2026-11-11T10:43:00Z**. После публикации публично скачанные exe и `.sig` совпали с проверенными файлами. SHA-256 `.sig` — `fba9dd1ec7be802f9b2f88ab21908290a2e971b44c0e703c00a5e7561f40218d`.
 

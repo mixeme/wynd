@@ -1,6 +1,6 @@
 # C71 — ход сборки: реализация 6 ноября 2026
 
-**Основа:** три кадра C71 приняты владельцем 2026-11-05; [реестр основ](../visual/workshop-review-baselines.json), [план 45](../plans/45-desktop-installer.plan.md), [план Мастерской](../plans/workshop-servers.plan.md#c71--ход-сборки-на-сервере). Код — `internal/installer/install.go`, `cmd/wynd-installer/frontend/src/App.svelte`, `web/src/lib/components/workshop/StepList.svelte`.
+**Основа:** три кадра C71 приняты владельцем 2026-11-05; [реестр основ](../visual/workshop-review-baselines.json), [план 45](../plans/45-workshop.plan.md), [план Мастерской](../plans/workshop-servers.plan.md#c71--ход-сборки-на-сервере). Код — `internal/workshop/install.go`, `cmd/wynd-workshop/frontend/src/App.svelte`, `web/src/lib/components/workshop/StepList.svelte`.
 
 ## Что сделано
 
@@ -14,8 +14,8 @@
 
 ## Проверки
 
-- `go test ./internal/installer` — проходит.
-- `go test -tags=desktop ./cmd/wynd-installer ./cmd/wynd-signer` и `go vet` — в составе `scripts\test-desktop.bat`, `[desktop] OK`.
+- `go test ./internal/workshop` — проходит.
+- `go test -tags=desktop ./cmd/wynd-workshop ./cmd/wynd-signer` и `go vet` — в составе `scripts\test-desktop.bat`, `[desktop] OK`.
 - Frontend Мастерской: `npm run test` — **12/12**, `npm run check` — 0 ошибок/предупреждений, build — успешно.
 - Web: `npm run check` — 0 ошибок/предупреждений; `npm test` — **452/452**, включая `StepList.test.ts`; production build — успешно.
 - `scripts\test-desktop.bat` на дереве C71 — **`[desktop] OK`**.

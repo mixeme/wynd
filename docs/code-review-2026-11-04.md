@@ -42,7 +42,7 @@
 
 ### CODE-02 — P2: выпуски Wynd скрывают обновления Мастерской [тест]
 
-`internal/installer/selfupdate.go:28,70` читает один `/releases?per_page=30`, затем фильтрует `workshop-v`. Заголовок следующей страницы не используется. При 30 более свежих серверных выпусках подходящая Мастерская становится невидимой. Аналогичное ограничение в `internal/signing/release.go:69` скрывает её из списка помощника подписи.
+`internal/workshop/selfupdate.go:28,70` читает один `/releases?per_page=30`, затем фильтрует `workshop-v`. Заголовок следующей страницы не используется. При 30 более свежих серверных выпусках подходящая Мастерская становится невидимой. Аналогичное ограничение в `internal/signing/release.go:69` скрывает её из списка помощника подписи.
 
 Пробник моделирует ответ с `Link: rel=next`, серверным выпуском на первой странице и подходящей подписанной Мастерской на второй: `Available=false`. Сеть и реальные выпуски не изменялись. [installer-probes.go.txt](testing/review-2026-11-04/installer-probes.go.txt).
 
@@ -58,7 +58,7 @@
 
 ### PROC-01 — P2: обычные ворота не охватывают настольные окна [код]
 
-`scripts/test.bat` и `.gitea/workflows/ci.yaml` проверяют web и Go без `desktop`. В `cmd/wynd-signer/main.go` и настольном установщике build tags исключают эти входы из обычного прохода. Workflow Мастерской собирает exe, но не заменяет тесты обоих окон и моста. В текущем ручном проходе `go test -tags desktop` выполнен отдельно; у `cmd/wynd-installer` собственных тестов нет.
+`scripts/test.bat` и `.gitea/workflows/ci.yaml` проверяют web и Go без `desktop`. В `cmd/wynd-signer/main.go` и настольном установщике build tags исключают эти входы из обычного прохода. Workflow Мастерской собирает exe, но не заменяет тесты обоих окон и моста. В текущем ручном проходе `go test -tags desktop` выполнен отдельно; у `cmd/wynd-workshop` собственных тестов нет.
 
 Доработка: отдельные именованные ворота desktop с проверками обоих frontend, тегированными тестами/vet и сборкой. Зафиксировать, какие ворота обязательны при изменении общей библиотеки UI. Не считать старую успешную сборку подтверждением нового diff.
 
@@ -75,7 +75,7 @@
 ## Проверки
 
 - `go test ./...` — все пакеты прошли, включая API, миграции, blob, backup, chronicle, installer и signing.
-- `go test -tags desktop ./cmd/wynd-installer ./cmd/wynd-signer` — успешно; установщик сообщает `[no test files]`.
+- `go test -tags desktop ./cmd/wynd-workshop ./cmd/wynd-signer` — успешно; установщик сообщает `[no test files]`.
 - `go vet ./cmd/... ./internal/...` — успешно.
 - Web: 446 из 447 тестов прошли в общем запуске. Единственный отказ — системный GOCACHE в тесте лицензий. С `GOCACHE=dev/go-cache` оба теста файла лицензий прошли; весь набор повторно не запускался.
 - Web `check`, `check:ui`, `lint`, production build — успешно. `check` обоих настольных frontend — успешно.

@@ -10,7 +10,7 @@
 | C71.2 — давно нет вывода | `6a09a934` | [c71-quiet-copy.jpg](../visual/reviews/c71-browser-2026-11-05/c71-quiet-copy.jpg) | `2891f094` |
 | C71.3 — ошибка сборки | `526857e1` (разметка из `ca62e0b2`) | [c71-error.jpg](../visual/reviews/c71-browser-2026-11-05/c71-error.jpg) | `61b43f1b` |
 
-Утверждённая разметка и общие стили — [workshop-servers.fragment.html](../visual/workshop-servers.fragment.html), галерея — [installer.html](../visual/installer.html). Все три SHA закреплены в [реестре основ](../visual/workshop-review-baselines.json), вместе с исходным 7в (`b827aff8`). Генераторы `update-workshop-build-frame.mjs`, `update-workshop-quiet-frame.mjs`, `update-workshop-error-frame.mjs` сохраняют статус принятия. Проверка: `node docs/visual/check-workshop-servers.mjs` — 80 кадров, 9 групп, четыре закреплённые основы, непринятых C71 нет.
+Утверждённая разметка и общие стили — [workshop-servers.fragment.html](../visual/workshop-servers.fragment.html), галерея — [workshop.html](../visual/workshop.html). Все три SHA закреплены в [реестре основ](../visual/workshop-review-baselines.json), вместе с исходным 7в (`b827aff8`). Генераторы `update-workshop-build-frame.mjs`, `update-workshop-quiet-frame.mjs`, `update-workshop-error-frame.mjs` сохраняют статус принятия. Проверка: `node docs/visual/check-workshop-servers.mjs` — 80 кадров, 9 групп, четыре закреплённые основы, непринятых C71 нет.
 
 ## Решения владельца
 
@@ -29,6 +29,6 @@
 
 ## С чего продолжить
 
-Прочитать AGENTS.md, правило экранов, [план 45](../plans/45-desktop-installer.plan.md) и [план серверов](../plans/workshop-servers.plan.md). C71 готов к реализации по плану: поток Docker, последняя строка, ограниченное хранение полного журнала, восстановление и безопасность. Приёмка макетов не подтверждает реализацию или настоящую сборку на сервере. Другие незакрытые кадры, включая «Подпись», остаются в плане 45; C70 отложен. Общая историческая передача — [Мастерская и «Подпись»](2026-11-05-workshop-handoff.md).
+Прочитать AGENTS.md, правило экранов, [план 45](../plans/45-workshop.plan.md) и [план серверов](../plans/workshop-servers.plan.md). C71 готов к реализации по плану: поток Docker, последняя строка, ограниченное хранение полного журнала, восстановление и безопасность. Приёмка макетов не подтверждает реализацию или настоящую сборку на сервере. Другие незакрытые кадры, включая «Подпись», остаются в плане 45; C70 отложен. Общая историческая передача — [Мастерская и «Подпись»](2026-11-05-workshop-handoff.md).
 
 Все изменения этого чата сохранены отдельными коммитами. Push, выпуск и развёртывание в этой цепочке не выполнялись. На момент завершения в рабочем дереве были незакоммиченные изменения параллельной задачи (`gallery/main.ts`, `docs/visual/reviews/workshop-implementation-2026-11-05/`); они не относятся к приёмке C71 и не включались в её коммиты. Перед дальнейшей работой проверить актуальные Git и планы, поскольку другой чат может продолжать реализацию.

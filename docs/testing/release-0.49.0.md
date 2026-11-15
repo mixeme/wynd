@@ -14,7 +14,7 @@
 - Go: vet и `go test ./...` — успешно; сборка `cmd/wynd` — успешно.
 - Desktop: оба frontend check/build; 12 и 3 теста; tagged Go vet/test; production-сборки обоих окон — `[desktop] OK`.
 - Визуальный сторож: `node --test docs/visual/workshop-baseline-guard.test.mjs` — **5/5**; `node docs/visual/check-workshop-servers.mjs` — 80 кадров, 9 групп, ошибок нет, 4 закреплённые основы, 0 ожидающих.
-- Tagged `dev` тесты `cmd/wynd-installer` и `cmd/wynd-signer` — успешно.
+- Tagged `dev` тесты `cmd/wynd-workshop` и `cmd/wynd-signer` — успешно.
 
 Предупреждение production-сборки web о неиспользуемом default import `qrcode` в `QrCode.svelte` — прежнее замечание гигиены, не новая находка.
 

@@ -1,15 +1,15 @@
 [desktop] Prepare shared SvelteKit configuration
 [desktop] Workshop frontend check and build
 
-> wynd-installer-frontend@0.0.0 check
+> wynd-workshop-frontend@0.0.0 check
 > svelte-check --tsconfig ./tsconfig.json
 
-Loading svelte-check in workspace: d:\Local\Git\wynd\cmd\wynd-installer\frontend
+Loading svelte-check in workspace: d:\Local\Git\wynd\cmd\wynd-workshop\frontend
 Getting Svelte diagnostics...
 
 svelte-check found 0 errors and 0 warnings
 
-> wynd-installer-frontend@0.0.0 build
+> wynd-workshop-frontend@0.0.0 build
 > vite build
 
 vite v6.4.5 building for production...
@@ -59,7 +59,7 @@ dist/assets/index-G3dfmi5C.css  54.10 kB │ gzip: 11.74 kB
 dist/assets/index-BgYYIMsL.js   76.45 kB │ gzip: 27.68 kB
 ✓ built in 2.94s
 [desktop] Tagged Go vet and tests
-?   	gitea.mixdep.ru/mix/wynd/cmd/wynd-installer	[no test files]
+?   	gitea.mixdep.ru/mix/wynd/cmd/wynd-workshop	[no test files]
 ok  	gitea.mixdep.ru/mix/wynd/cmd/wynd-signer	(cached)
 [desktop] Production-tag builds of both windows
 go: writing stat cache: open C:\Users\Микс\go\pkg\mod\cache\download\gitea.mixdep.ru\mix\wynd\@v\v0.48.2.info222207350.tmp: Access is denied.

@@ -22,7 +22,7 @@ The package pattern matched the following 21 root packages:
   gitea.mixdep.ru/mix/wynd/internal/backup
   gitea.mixdep.ru/mix/wynd/internal/jobs
   gitea.mixdep.ru/mix/wynd/cmd/wynd
-  gitea.mixdep.ru/mix/wynd/internal/installer
+  gitea.mixdep.ru/mix/wynd/internal/workshop
   gitea.mixdep.ru/mix/wynd/internal/signing
 Govulncheck scanned the following 16 modules and the go1.27.3 standard library:
   gitea.mixdep.ru/mix/wynd
