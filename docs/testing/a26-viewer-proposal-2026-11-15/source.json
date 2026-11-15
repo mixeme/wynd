@@ -1,0 +1,20 @@
+{
+  "approvedCardCommit": "03ef72ce",
+  "approvedCardFrame": "a26-card-proposal",
+  "approvedCardSha256": "c5472fd813091c859bab335890c03a9b5913a7ab1714dded120cafd5b6498733",
+  "library": [
+    {
+      "file": "web/src/lib/components/overlays/Lightbox.svelte",
+      "sha256": "6096e49b9b230b94b1080217e597068f7cd243aca9033c784cab96e2ea7634de"
+    },
+    {
+      "file": "web/src/lib/components/data/BylineParts.svelte",
+      "sha256": "9a03d72e35b1453385b842b6d66b5acff731c80325498e454743c98092e63c92"
+    },
+    {
+      "file": "web/src/lib/styles/ui.css",
+      "sha256": "c238668ba40c3ff87104710a190dca554f5f8021b343842e5845d43db08eb662"
+    }
+  ],
+  "referenceFrame": "docs/visual/screens.html#e4-30"
+}
