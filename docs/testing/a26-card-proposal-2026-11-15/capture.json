@@ -1,0 +1,15 @@
+[
+  { "viewport": [1040, 900] },
+  { "nav": "file:///D:/Local/Git/wynd/docs/testing/a26-card-proposal-2026-11-15/baseline.html" },
+  { "print": "JSON.stringify([...document.querySelectorAll('.head,.post,.pa,.body')].slice(0,5).map(e=>({class:e.className,x:e.getBoundingClientRect().x,y:e.getBoundingClientRect().y,w:e.getBoundingClientRect().width,h:e.getBoundingClientRect().height})))" },
+  { "shot": "a26-card-baseline-desktop.png" },
+  { "nav": "file:///D:/Local/Git/wynd/docs/testing/a26-card-proposal-2026-11-15/proposal.html" },
+  { "print": "JSON.stringify({geometry:[...document.querySelectorAll('.head,.post,.pa,.body')].slice(0,5).map(e=>({class:e.className,x:e.getBoundingClientRect().x,y:e.getBoundingClientRect().y,w:e.getBoundingClientRect().width,h:e.getBoundingClientRect().height})),tiles:[...document.querySelectorAll('.thumb')].map(e=>({w:e.getBoundingClientRect().width,h:e.getBoundingClientRect().height})),images:[...document.images].every(e=>e.complete&&e.naturalWidth),overflow:document.documentElement.scrollWidth>innerWidth})" },
+  { "shot": "a26-card-proposal-desktop.png" },
+  { "shot": "a26-card-proposal.png", "x": 200, "y": 0, "w": 640, "h": 580 },
+  { "tap": ".more button" },
+  { "print": "JSON.stringify({expanded:!document.querySelector('.extra').hidden,button:document.querySelector('.more button').textContent,overflow:document.documentElement.scrollWidth>innerWidth})" },
+  { "shot": "a26-card-proposal-open.png", "x": 200, "y": 0, "w": 640, "h": 680 },
+  { "tap": ".more button" },
+  { "print": "JSON.stringify({collapsed:document.querySelector('.extra').hidden})" }
+]

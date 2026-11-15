@@ -1,0 +1,253 @@
+<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Дом Ани</title><style>:root{--c:#58673A;--ct:#E3E7D9}
+:root{--paper:#F4F0E9;--card:#FCFAF6;--ink:#2B2724;--muted:#7A7269;--faint:#A8A096;--line:#DFD8CD;--tint:#EAE4DA}
+*{box-sizing:border-box}
+body{font-family:"Golos Text",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--paper);color:var(--ink);margin:0;line-height:1.5;font-size:15px}
+.wrap{max-width:640px;margin:0 auto}
+a{color:inherit;text-decoration:none}
+.head{background:var(--c);color:#fff;padding:22px 20px 18px}
+.head h1{font-size:22px;margin:0;font-weight:700}
+.head p{margin:4px 0 0;opacity:.85;font-size:13.5px}
+.head a{color:#fff}
+.post{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:12px 14px;padding:14px;overflow-wrap:anywhere;min-width:0}
+.pa{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.author{font-weight:600}
+.av{width:34px;height:34px;border-radius:50%;object-fit:cover;flex:0 0 auto}
+.avl{width:34px;height:34px;border-radius:50%;background:var(--rc,var(--c));color:#fff;display:grid;place-items:center;font-size:13.5px;flex:0 0 auto}
+.meta{color:var(--faint);font-size:11.5px}
+.body{margin:0 0 11px;white-space:pre-wrap;overflow-wrap:anywhere}
+.media{margin:11px 0 0}
+.media+.media{margin-top:6px}
+.media img,.media video{width:100%;height:auto;display:block;border-radius:10px;border:1px solid var(--line);background-color:#c3af95;background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.07) 0 7px,rgba(0,0,0,0.05) 7px 15px)}
+.gone{color:var(--faint);font-size:12.5px;margin:10px 0 0}
+.rx{display:flex;gap:8px;margin-top:11px;align-items:center;flex-wrap:wrap}
+.rx .one{background:var(--ct);border-radius:14px;padding:4px 11px;font-size:12.5px;display:flex;gap:7px;align-items:center}
+.rx .one .ic{width:13px;height:13px;stroke-width:1.9;color:var(--c)}
+.cmt{display:flex;align-items:flex-start;gap:10px;padding:10px 16px}
+.cmt + .cmt{border-top:1px solid var(--line)}
+.cmt .av{width:28px;height:28px;font-size:12.5px}
+.cmt .avl{width:28px;height:28px;font-size:12.5px}
+.cmt .g{flex:1;min-width:0;font-size:12.5px;line-height:1.4;overflow-wrap:anywhere}
+.cmt .who{display:flex;align-items:baseline;gap:6px;line-height:1.3}
+.cmt .who b{font-weight:600}
+.cmt .tm{color:var(--faint);font-size:11.5px;font-weight:400}
+.cm{margin:0 14px;padding:10px 14px 12px;font-size:12.5px;background:var(--paper);border:1px solid var(--line);border-top:none;border-radius:0 0 14px 14px;overflow-wrap:anywhere;display:block;box-sizing:border-box;width:calc(100% - 28px);text-align:left}
+.cm .cmt{padding:10px 0}
+.post:has(+ .cm){margin-bottom:0;border-radius:14px 14px 0 0}
+.cmedia{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.cmedia .att{margin-top:0}
+.cmedia .ctiles{display:flex;gap:6px;flex-wrap:wrap}
+.ctiles .ctile{width:72px;height:72px;border-radius:8px;flex:0 0 auto;overflow:hidden;display:block;border:1px solid var(--line);background:var(--tint)}
+.ctile img{width:100%;height:100%;object-fit:cover;display:block}
+.att .g{min-width:0;overflow-wrap:anywhere}
+.att .g .fname{font-size:12.5px}
+.toc{list-style:none;margin:8px 0;padding:0}
+.toc li{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:10px 12px;padding:12px 16px}
+.toc a{color:var(--ink);text-decoration:none;font-weight:600}
+.toc a:hover{color:var(--c)}
+.back{display:inline-block;margin:14px 12px 0;color:var(--c)}
+.end{text-align:center;color:var(--faint);font-size:12.5px;padding:24px 16px 40px}
+.voice{display:flex;align-items:center;gap:11px;margin:12px 0 0;width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.voice-play{width:34px;height:34px;border-radius:50%;background:var(--c);display:grid;place-items:center;flex:0 0 auto;border:0;padding:0;cursor:pointer;color:#fff}
+.voice-play .ic{width:17px;height:17px;color:#fff}
+.vwave{display:flex;align-items:center;gap:1.5px;height:22px;flex:1;min-width:0;overflow:hidden}
+.vwave i{flex:1 1 0;max-width:3px;min-height:3px;border-radius:2px;background:var(--line)}
+.vwave i.on{background:var(--c)}
+.sz{font-size:11.5px;color:var(--faint)}
+.att{display:flex;align-items:center;gap:11px;border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin:11px 0 0;min-width:0;box-sizing:border-box;width:100%;text-align:left}
+.att-play{display:flex;align-items:center;gap:11px;flex:1;min-width:0;text-align:left;background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer}
+.att-cover{width:72px;height:72px;border-radius:8px;flex:0 0 auto;overflow:hidden;display:block;border:1px solid var(--line);background-color:#c3af95;background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.07) 0 7px,rgba(0,0,0,0.05) 7px 15px)}
+.att-cover img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}
+.att-body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:11px}
+.att-line{display:flex;align-items:center;gap:11px;min-width:0}
+.att-line .ic{width:21px;height:21px;color:var(--c);flex:0 0 auto}
+.att-name{font-size:12.5px;line-height:1.3;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.att-bar{display:block;height:3px;border-radius:2px;background:var(--line);overflow:hidden}
+.att-bar i{display:block;height:100%;background:var(--c);width:0}
+.att .sz{line-height:1}
+.dl{line-height:0;color:var(--muted);flex:none;border:0;background:none;padding:0}
+.dl .ic{width:21px;height:21px}
+.ic{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;color:var(--muted)}
+.pause,.voice.playing .play,.att.playing .play{display:none}
+.voice.playing .pause,.att.playing .pause{display:inline}
+noscript audio{width:100%;margin:10px 0 0}
+</style><style>/* Semantic classes from docs/screens.html (inside .ph) */
+
+/* Кнопка приходит от браузера со своим шрифтом, рамкой, фоном и отступами.
+   Сброс с нулевой весомостью (:where) — чтобы любой класс .X накрывал его
+   без зеркала button.X: зеркала дублировали вёрстку класса и стирали
+   font-weight своим font:inherit (REF-8, CPX-2, GUI-2). */
+:where(button) {
+	font: inherit;
+	color: inherit;
+	background: none;
+	border: 0;
+	padding: 0;
+	margin: 0;
+	text-align: inherit;
+	cursor: pointer;
+	-webkit-tap-highlight-color: transparent;
+	appearance: none;
+}
+
+.thumbs .addph {
+	border-radius: 8px;
+	width: 88px;
+	height: 88px;
+	/* У .addph поле auto — для круглой кнопки аватара по центру. В ряду
+	   плиток оно уводило «+» в центр, а рядом с фото — к правому краю. */
+	margin: 0;
+	flex: 0 0 auto;
+}
+
+.ic {
+	width: 21px;
+	height: 21px;
+	color: var(--muted);
+	flex: 0 0 auto;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.6;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+/* Ролик в плитке (5.5): кадр и значок посередине; сам ролик — по касанию. */
+.vid-mark {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 26px;
+	height: 26px;
+	transform: translate(-50%, -50%);
+	color: rgba(255, 255, 255, 0.9);
+	fill: currentColor;
+	filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.45));
+	pointer-events: none;
+}
+
+.thumbs .thumb-body .thumb-mark {
+	left: 5px;
+	right: auto;
+	bottom: 5px;
+	padding: 2px 7px;
+}
+
+.under {
+	border-bottom: 1px solid;
+	padding-bottom: 1px;
+}
+
+.thumbs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	padding: 16px 16px 0;
+	align-items: flex-start;
+}
+
+.thumbs .thumb {
+	width: 88px;
+	height: 88px;
+	border-radius: 8px;
+	overflow: hidden;
+	position: relative;
+	flex: 0 0 auto;
+	background: var(--tint);
+}
+
+.thumbs .thumb .thumb-body,
+.thumbs .thumb-body {
+	display: block;
+	width: 100%;
+	height: 100%;
+	border: 0;
+	background: transparent;
+}
+
+.thumbs .thumb .thumb-rm {
+	position: absolute;
+	top: 2px;
+	right: 2px;
+	z-index: 1;
+}
+
+.thumbs .thumb.cover {
+	outline: 2px solid var(--c);
+	outline-offset: 2px;
+}
+
+/* Ролик или звук ещё сжимается (4.2а): плитка приглушена, поверх — сколько сжато. */
+.thumbs .thumb.busy .thumb-body {
+	cursor: default;
+}
+
+.thumbs .thumb.busy .vid-mark {
+	display: none;
+}
+
+.thumbs .thumb-busy {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	background: rgba(0, 0, 0, 0.45);
+	color: #fff;
+	font-size: 15px;
+	font-weight: 600;
+}
+
+/* У звука под числом — имя файла: число внизу, имя видно. */
+.thumbs .thumb-body:has(.file) .thumb-busy {
+	place-items: end center;
+	padding-bottom: 6px;
+}
+
+.thumbs .thumb img,
+.thumbs .thumb video,
+.thumbs .thumb-body img,
+.thumbs .thumb-body video {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.thumbs .file {
+	font-size: 10px;
+	padding: 4px;
+	word-break: break-all;
+	display: block;
+}
+.archive-media .thumbs{padding:0}
+.archive-media .extra{margin-top:8px}
+.archive-media .more{margin-top:11px}
+.archive-media [hidden]{display:none}</style></head><body><div class="wrap"><header class="head"><h1>Дом Ани</h1><p>Архив круга до 12 ноября 2026</p></header><!-- wynd-post p4 --><div hidden><svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.6"/><path d="M15.4 15.4 20 20"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><path d="M12 3.4 14.45 6.09 18.08 5.92 17.91 9.55 20.6 12 17.91 14.45 18.08 18.08 14.45 17.91 12 20.6 9.55 17.91 5.92 18.08 6.09 14.45 3.4 12 6.09 9.55 5.92 5.92 9.55 6.09z"/><circle cx="12" cy="12" r="2.5"/></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="M15 3.5 6.5 12l8.5 8.5"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 4.5v15M4.5 12h15"/></symbol>
+<symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19.5V5M5.2 11.8 12 5l6.8 6.8"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="M5.5 8.5 12 15l6.5-6.5"/></symbol>
+<symbol id="i-chevr" viewBox="0 0 24 24"><path d="M8.5 5.5 15 12l-6.5 6.5"/></symbol>
+<symbol id="i-loc" viewBox="0 0 24 24"><path d="M12 21.5s7-6.6 7-11.4A7 7 0 0 0 5 10.1c0 4.8 7 11.4 7 11.4z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="M7.5 4.5 19.5 12l-12 7.5z"/></symbol><symbol id="i-pause" viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></symbol>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.2S4.3 15.3 4.3 10.1a4.35 4.35 0 0 1 7.7-2.8 4.35 4.35 0 0 1 7.7 2.8c0 5.2-7.7 10.1-7.7 10.1z"/></symbol>
+<symbol id="i-laugh" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2"/><path d="M9 9.5v1.3M15 9.5v1.3"/><path d="M8.2 13.4c1 2.6 2.4 3.6 3.8 3.6s2.8-1 3.8-3.6"/></symbol>
+<symbol id="i-surprise" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2"/><path d="M9 9.4v1.3M15 9.4v1.3"/><circle cx="12" cy="14.6" r="1.7"/></symbol>
+<symbol id="i-anger" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2"/><path d="M8.2 8.4 10.6 10M15.8 8.4 13.4 10"/><path d="M9 10.6v1.1M15 10.6v1.1"/><path d="M8.6 16.2c1.1-2 2.5-2.8 3.4-2.8s2.3.8 3.4 2.8"/></symbol>
+<symbol id="i-photo" viewBox="0 0 24 24"><rect x="3.2" y="5.2" width="17.6" height="13.6" rx="2.4"/><circle cx="8.8" cy="10" r="1.5"/><path d="M4.2 16.6 9 12.4l3.8 3.2 3.4-3 3.6 3.4"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M13.5 2.8H7.4a2 2 0 0 0-2 2v14.4a2 2 0 0 0 2 2h9.2a2 2 0 0 0 2-2V8z"/><path d="M13.5 2.8V8h5.1"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M4.5 12.5 9.8 17.8 19.5 6.5"/></symbol>
+<symbol id="i-filter" viewBox="0 0 24 24"><path d="M3.5 6.5h17M6.5 12h11M10 17.5h4"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 16.5V10a6 6 0 1 0-12 0v6.5L4.2 19h15.6z"/><path d="M9.8 21.4a2.4 2.4 0 0 0 4.4 0"/></symbol>
+<symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="12" r="4"/><path d="M11.5 12h9M17.5 12v3.4M20.5 12v2.4"/></symbol>
+<symbol id="i-dots" viewBox="0 0 24 24"><circle cx="12" cy="5.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="18.6" r="1.5" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 6.8V12l3.4 2.2"/></symbol><symbol id="i-day" viewBox="0 0 24 24"><rect x="4" y="5.6" width="16" height="14.4" rx="2"/><path d="M4 10.2h16M8.4 3.6v4M15.6 3.6v4"/><rect x="13.2" y="13.2" width="3.6" height="3.6" rx=".7" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18.5h10.2a3.8 3.8 0 0 0 .4-7.6A5.6 5.6 0 0 0 6.6 11 3.9 3.9 0 0 0 7 18.5z"/></symbol>
+<symbol id="i-out" viewBox="0 0 24 24"><path d="M14.5 3.5h4a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2h-4"/><path d="M9.5 8 5.5 12l4 4M5.5 12h9"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v10.6M6.2 11.3 12 17l5.8-5.7"/><path d="M4.5 19.8h15"/></symbol>
+<symbol id="i-edit" viewBox="0 0 24 24"><path d="M14.5 6.5 17.5 9.5 7 20H4v-3z"/><path d="M19.5 4.5 18 3"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M9 7V5h6v2M8 7v12h8V7"/></symbol>
+<symbol id="i-music" viewBox="0 0 24 24"><path d="M9 17.5V5.8l10-2v11.7"/><circle cx="6.6" cy="17.6" r="2.4"/><circle cx="16.6" cy="15.6" r="2.4"/></symbol><symbol id="i-rec" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="3.6" fill="currentColor"/></symbol><symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/></symbol><symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="6.5" width="12.5" height="11" rx="2.2"/><path d="m15.5 10.2 5-3v9.6l-5-3"/></symbol><symbol id="i-flip" viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 0 1 13-5.1M19.5 12a7.5 7.5 0 0 1-13 5.1M17.5 3.5v3.4h-3.4M6.5 20.5v-3.4h3.4"/></symbol><symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2" fill="currentColor"/></symbol></svg>
+</div><article class="post"><div class="pa"><span class="avl">П</span><div><div class="author">Петя</div><div class="meta">11 ноября 2026 · опубликовано 11.11.2026 09:40 UTC</div></div></div><div class="body">Фото и ролик рядом.</div><section class="archive-media"><!--[--><div class="thumbs "><!--[--><!--[-1--><div class="thumb"><button type="button" class="thumb-body"><!--[0--><!--[-1--><img src="dacha.jpg" alt=""/><!--]--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--></button> <!--[-1--><!--]--></div><!--]--><!--]--><!--[--><!--[-1--><div class="thumb"><button type="button" class="thumb-body"><!--[0--><!--[-1--><img src="dacha.jpg" alt=""/><!--]--><!--]--> <!--[0--><svg class="ic vid-mark" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-play"></use></svg><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--></button> <!--[-1--><!--]--></div><!--]--><!--]--><!----></div><!--]--></section></article><article class="post"><div class="pa"><span class="avl">А</span><div><div class="author">Аня</div><div class="meta">10 ноября 2026 · опубликовано 10.11.2026 21:05 UTC</div></div></div><div class="body">Двенадцать снимков за день.</div><section class="archive-media"><!--[--><div class="thumbs "><!--[--><!--[-1--><div class="thumb"><button type="button" class="thumb-body"><!--[0--><!--[-1--><img src="dacha.jpg" alt=""/><!--]--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--></button> <!--[-1--><!--]--></div><!--]--><!--]--><!--[--><!--[-1--><div class="thumb"><button type="button" class="thumb-body"><!--[0--><!--[-1--><img src="dacha.jpg" alt=""/><!--]--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--></button> <!--[-1--><!--]--></div><!--]--><!--]--><!--[--><!--[-1--><div class="thumb"><button type="button" class="thumb-body"><!--[0--><!--[-1--><img src="dacha.jpg" alt=""/><!--]--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--></button> <!--[-1--><!--]--></div><!--]--><!--]--><!--[--><!--[-1--><div class="thumb"><button type="button" class="thumb-body"><!--[0--><!--[-1--><img src="dacha.jpg" alt=""/><!--]--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--></button> <!--[-1--><!--]--></div><!--]--><!--]--><!--[--><!--[-1--><div class="thumb"><button type="button" class="thumb-body"><!--[0--><!--[-1--><img src="dacha.jpg" alt=""/><!--]--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--></button> <!--[-1--><!--]--></div><!--]--><!--]--><!--[--><!--[-1--><div class="thumb"><button type="button" class="thumb-body"><!--[0--><!--[-1--><img src="dacha.jpg" alt=""/><!--]--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--></button> <!--[-1--><!--]--></div><!--]--><!--]--><!----></div><!--]--><div class="extra" hidden><!--[--><div class="thumbs "><!--[--><!--[-1--><div class="thumb"><button type="button" class="thumb-body"><!--[0--><!--[-1--><img src="dacha.jpg" alt=""/><!--]--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--></button> <!--[-1--><!--]--></div><!--]--><!--]--><!--[--><!--[-1--><div class="thumb"><button type="button" class="thumb-body"><!--[0--><!--[-1--><img src="dacha.jpg" alt=""/><!--]--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--></button> <!--[-1--><!--]--></div><!--]--><!--]--><!--[--><!--[-1--><div class="thumb"><button type="button" class="thumb-body"><!--[0--><!--[-1--><img src="dacha.jpg" alt=""/><!--]--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--></button> <!--[-1--><!--]--></div><!--]--><!--]--><!--[--><!--[-1--><div class="thumb"><button type="button" class="thumb-body"><!--[0--><!--[-1--><img src="dacha.jpg" alt=""/><!--]--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--></button> <!--[-1--><!--]--></div><!--]--><!--]--><!--[--><!--[-1--><div class="thumb"><button type="button" class="thumb-body"><!--[0--><!--[-1--><img src="dacha.jpg" alt=""/><!--]--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--></button> <!--[-1--><!--]--></div><!--]--><!--]--><!--[--><!--[-1--><div class="thumb"><button type="button" class="thumb-body"><!--[0--><!--[-1--><img src="dacha.jpg" alt=""/><!--]--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--></button> <!--[-1--><!--]--></div><!--]--><!--]--><!----></div><!--]--></div><div class="more"><!--[--><button type="button" class="under "><!--[-1--><span>Ещё 6 фото</span><!----><!--]--></button><!--]--></div></section></article><script>document.querySelector('.more button').addEventListener('click',function(){const extra=this.closest('section').querySelector('.extra');extra.hidden=!extra.hidden;this.querySelector('span').textContent=extra.hidden?'Ещё 6 фото':'Свернуть';this.setAttribute('aria-expanded',String(!extra.hidden));});</script></div></body></html>

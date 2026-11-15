@@ -1,0 +1,73 @@
+<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Дом Ани</title><style>:root{--c:#58673A;--ct:#E3E7D9}
+:root{--paper:#F4F0E9;--card:#FCFAF6;--ink:#2B2724;--muted:#7A7269;--faint:#A8A096;--line:#DFD8CD;--tint:#EAE4DA}
+*{box-sizing:border-box}
+body{font-family:"Golos Text",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--paper);color:var(--ink);margin:0;line-height:1.5;font-size:15px}
+.wrap{max-width:640px;margin:0 auto}
+a{color:inherit;text-decoration:none}
+.head{background:var(--c);color:#fff;padding:22px 20px 18px}
+.head h1{font-size:22px;margin:0;font-weight:700}
+.head p{margin:4px 0 0;opacity:.85;font-size:13.5px}
+.head a{color:#fff}
+.post{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:12px 14px;padding:14px;overflow-wrap:anywhere;min-width:0}
+.pa{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.author{font-weight:600}
+.av{width:34px;height:34px;border-radius:50%;object-fit:cover;flex:0 0 auto}
+.avl{width:34px;height:34px;border-radius:50%;background:var(--rc,var(--c));color:#fff;display:grid;place-items:center;font-size:13.5px;flex:0 0 auto}
+.meta{color:var(--faint);font-size:11.5px}
+.body{margin:0 0 11px;white-space:pre-wrap;overflow-wrap:anywhere}
+.media{margin:11px 0 0}
+.media+.media{margin-top:6px}
+.media img,.media video{width:100%;height:auto;display:block;border-radius:10px;border:1px solid var(--line);background-color:#c3af95;background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.07) 0 7px,rgba(0,0,0,0.05) 7px 15px)}
+.gone{color:var(--faint);font-size:12.5px;margin:10px 0 0}
+.rx{display:flex;gap:8px;margin-top:11px;align-items:center;flex-wrap:wrap}
+.rx .one{background:var(--ct);border-radius:14px;padding:4px 11px;font-size:12.5px;display:flex;gap:7px;align-items:center}
+.rx .one .ic{width:13px;height:13px;stroke-width:1.9;color:var(--c)}
+.cmt{display:flex;align-items:flex-start;gap:10px;padding:10px 16px}
+.cmt + .cmt{border-top:1px solid var(--line)}
+.cmt .av{width:28px;height:28px;font-size:12.5px}
+.cmt .avl{width:28px;height:28px;font-size:12.5px}
+.cmt .g{flex:1;min-width:0;font-size:12.5px;line-height:1.4;overflow-wrap:anywhere}
+.cmt .who{display:flex;align-items:baseline;gap:6px;line-height:1.3}
+.cmt .who b{font-weight:600}
+.cmt .tm{color:var(--faint);font-size:11.5px;font-weight:400}
+.cm{margin:0 14px;padding:10px 14px 12px;font-size:12.5px;background:var(--paper);border:1px solid var(--line);border-top:none;border-radius:0 0 14px 14px;overflow-wrap:anywhere;display:block;box-sizing:border-box;width:calc(100% - 28px);text-align:left}
+.cm .cmt{padding:10px 0}
+.post:has(+ .cm){margin-bottom:0;border-radius:14px 14px 0 0}
+.cmedia{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.cmedia .att{margin-top:0}
+.cmedia .ctiles{display:flex;gap:6px;flex-wrap:wrap}
+.ctiles .ctile{width:72px;height:72px;border-radius:8px;flex:0 0 auto;overflow:hidden;display:block;border:1px solid var(--line);background:var(--tint)}
+.ctile img{width:100%;height:100%;object-fit:cover;display:block}
+.att .g{min-width:0;overflow-wrap:anywhere}
+.att .g .fname{font-size:12.5px}
+.toc{list-style:none;margin:8px 0;padding:0}
+.toc li{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:10px 12px;padding:12px 16px}
+.toc a{color:var(--ink);text-decoration:none;font-weight:600}
+.toc a:hover{color:var(--c)}
+.back{display:inline-block;margin:14px 12px 0;color:var(--c)}
+.end{text-align:center;color:var(--faint);font-size:12.5px;padding:24px 16px 40px}
+.voice{display:flex;align-items:center;gap:11px;margin:12px 0 0;width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.voice-play{width:34px;height:34px;border-radius:50%;background:var(--c);display:grid;place-items:center;flex:0 0 auto;border:0;padding:0;cursor:pointer;color:#fff}
+.voice-play .ic{width:17px;height:17px;color:#fff}
+.vwave{display:flex;align-items:center;gap:1.5px;height:22px;flex:1;min-width:0;overflow:hidden}
+.vwave i{flex:1 1 0;max-width:3px;min-height:3px;border-radius:2px;background:var(--line)}
+.vwave i.on{background:var(--c)}
+.sz{font-size:11.5px;color:var(--faint)}
+.att{display:flex;align-items:center;gap:11px;border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin:11px 0 0;min-width:0;box-sizing:border-box;width:100%;text-align:left}
+.att-play{display:flex;align-items:center;gap:11px;flex:1;min-width:0;text-align:left;background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer}
+.att-cover{width:72px;height:72px;border-radius:8px;flex:0 0 auto;overflow:hidden;display:block;border:1px solid var(--line);background-color:#c3af95;background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.07) 0 7px,rgba(0,0,0,0.05) 7px 15px)}
+.att-cover img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}
+.att-body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:11px}
+.att-line{display:flex;align-items:center;gap:11px;min-width:0}
+.att-line .ic{width:21px;height:21px;color:var(--c);flex:0 0 auto}
+.att-name{font-size:12.5px;line-height:1.3;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.att-bar{display:block;height:3px;border-radius:2px;background:var(--line);overflow:hidden}
+.att-bar i{display:block;height:100%;background:var(--c);width:0}
+.att .sz{line-height:1}
+.dl{line-height:0;color:var(--muted);flex:none;border:0;background:none;padding:0}
+.dl .ic{width:21px;height:21px}
+.ic{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;color:var(--muted)}
+.pause,.voice.playing .play,.att.playing .play{display:none}
+.voice.playing .pause,.att.playing .pause{display:inline}
+noscript audio{width:100%;margin:10px 0 0}
+</style></head><body><div class="wrap"><header class="head"><h1>Дом Ани</h1><p>Архив круга до 12 ноября 2026</p></header><!-- wynd-post p4 --><article class="post"><div class="pa"><span class="avl">П</span><div><div class="author">Петя</div><div class="meta">11 ноября 2026 · опубликовано 11.11.2026 09:40 UTC</div></div></div><div class="body">Фото и ролик рядом.</div><div class="media"><img alt="" src="dacha.jpg"></div><div class="media"><video controls src="sample.mp4"></video></div></article><article class="post"><div class="pa"><span class="avl">А</span><div><div class="author">Аня</div><div class="meta">10 ноября 2026 · опубликовано 10.11.2026 21:05 UTC</div></div></div><div class="body">Двенадцать снимков за день.</div><div class="media"><img alt="" src="dacha.jpg"></div><div class="media"><img alt="" src="dacha.jpg"></div><div class="media"><img alt="" src="dacha.jpg"></div><div class="media"><img alt="" src="dacha.jpg"></div><div class="media"><img alt="" src="dacha.jpg"></div><div class="media"><img alt="" src="dacha.jpg"></div><div class="media"><img alt="" src="dacha.jpg"></div><div class="media"><img alt="" src="dacha.jpg"></div><div class="media"><img alt="" src="dacha.jpg"></div><div class="media"><img alt="" src="dacha.jpg"></div><div class="media"><img alt="" src="dacha.jpg"></div><div class="media"><img alt="" src="dacha.jpg"></div></article></div></body></html>
