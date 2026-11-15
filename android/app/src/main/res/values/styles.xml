@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Цвет фона из web/src/lib/styles/tokens.css; своего экрана здесь нет. -->
+    <style name="WyndTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowBackground">#F4F0E9</item>
+        <item name="android:colorAccent">#2B2724</item>
+    </style>
+</resources>

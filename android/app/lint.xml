@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- Значок берётся без перерисовки из существующего web/static/icon-192.png. -->
+    <issue id="IconLauncherShape">
+        <ignore path="build/generated/wynd-res/drawable-nodpi/wynd_icon.png" />
+    </issue>
+</lint>

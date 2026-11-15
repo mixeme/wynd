@@ -1,0 +1,76 @@
+plugins {
+    id 'com.android.application'
+}
+
+def environmentRoot = providers.gradleProperty('wyndEnvironmentRoot')
+        .orElse(providers.environmentVariable('WYND_ANDROID_ENV'))
+        .orElse('D:/android-env')
+def startUrl = providers.gradleProperty('wyndDevServerUrl').orElse('')
+def generatedResources = layout.buildDirectory.dir('generated/wynd-res')
+
+android {
+    namespace 'mixeme.wynd'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'mixeme.wynd'
+        minSdk 21
+        targetSdk 36
+        versionCode 1
+        versionName '0.1.0-dev'
+    }
+
+    signingConfigs {
+        debug {
+            // Только отладочный ключ. Ключ выпуска определяет и хранит владелец.
+            storeFile file("${environmentRoot.get()}/keys/wynd-debug.keystore")
+        }
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
+            // JSON quoting also produces a valid Java string literal.
+            buildConfigField 'String', 'START_URL', groovy.json.JsonOutput.toJson(startUrl.get())
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets.main.res.srcDir(generatedResources)
+    lint {
+        abortOnError true
+        warningsAsErrors true
+        // Версии закреплены по проверенной таблице совместимости JDK 17 / AGP.
+        disable 'AndroidGradlePluginVersion'
+        lintConfig file('lint.xml')
+    }
+}
+
+// Каркас пока отладочный: нет выбора сервера и согласованной подписи выпуска.
+androidComponents {
+    beforeVariants(selector().withBuildType('release')) { variant ->
+        variant.enable = false
+    }
+}
+
+tasks.register('prepareWyndIcon', Sync) {
+    into(generatedResources)
+    from(rootProject.file('../web/static/icon-192.png')) {
+        into 'drawable-nodpi'
+        rename { 'wynd_icon.png' }
+    }
+}
+tasks.named('preBuild').configure { dependsOn('prepareWyndIcon') }
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+}
