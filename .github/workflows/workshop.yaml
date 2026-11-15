@@ -81,4 +81,4 @@ jobs:
             | while read -r id; do gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$id"; done
           sha256sum dist/wynd-workshop.exe | cut -d' ' -f1 > dist/wynd-workshop.exe.sha256
           gh release create "$GITHUB_REF_NAME" dist/wynd-workshop.exe dist/wynd-workshop.exe.sha256 \
-            --draft --title "Мастерская ${GITHUB_REF_NAME#workshop-v}" --notes "- (что нового — дописать до публикации)"
+            --draft --title "Wynd Мастерская ${GITHUB_REF_NAME#workshop-v}" --notes "- (что нового — дописать до публикации)"
