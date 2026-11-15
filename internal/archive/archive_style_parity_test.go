@@ -27,6 +27,8 @@ import (
 //
 // Элементы без аналога в приложении не сравниваются: .head, .wrap (640 px),
 // .toc, .back, .end — навигация и каркас архива; .gone («Файл недоступен»);
+// .tiles .more summary — плитка «ещё N» с раскрытием на месте (решение
+// владельца 2026-11-15), в приложении раскрытие даёт переход в альбом;
 // нативный плеер в <noscript> и состояния playing; .thread без
 // padding-bottom 68 px — в архиве нет поля ответа; формат времени в
 // комментариях — архив пишет абсолютную дату, приложение относительное.
@@ -102,6 +104,11 @@ var archiveStyleParity = []styleParity{
 	{"медиа комментария", []string{".cmedia"}, []string{".cmedia"}, []string{"display", "flex-direction", "gap", "margin-top"}, nil, ""},
 	{"плитка комментария", []string{".ctiles .ctile"}, []string{".pic", ".ctiles .ctile"}, []string{"width", "height", "border-radius", "flex", "overflow", "border", "display"}, nil, ""},
 	{"файл записи и комментария", []string{".att .g"}, []string{".att .g"}, []string{"min-width", "overflow-wrap"}, nil, ""},
+	{"сетка плиток записи", []string{".tiles"}, []string{".thumbs"}, []string{"display", "flex-wrap", "gap"}, nil, ""},
+	{"плитка фото записи", []string{".tiles .tile"}, []string{".thumbs .thumb"}, []string{"width", "height", "border-radius", "flex", "overflow", "background"},
+		// display: в приложении плитка — <div>, в архиве — ссылка на файл <a>.
+		map[string]string{"display": "block"}, ""},
+	{"снимок плитки записи", []string{".tiles .tile img"}, []string{".thumbs .thumb img"}, []string{"width", "height", "object-fit", "display"}, nil, ""},
 }
 
 // TestArchiveBlockSpacing держит ритм зазоров между блоками записи. Это
@@ -118,9 +125,13 @@ func TestArchiveBlockSpacing(t *testing.T) {
 		gap        int
 	}{
 		{"текст → фото или ролик", []string{".body"}, []string{".media"}, 11},
+		{"текст → плитки фото", []string{".body"}, []string{".tiles"}, 11},
 		{"текст → строка звука или файла", []string{".body"}, []string{".att"}, 11},
 		{"строка звука → фото", []string{".att"}, []string{".media"}, 11},
+		{"строка звука → плитки фото", []string{".att"}, []string{".tiles"}, 11},
 		{"фото → строка звука", []string{".media"}, []string{".att"}, 11},
+		{"плитки → строка звука", []string{".tiles"}, []string{".att"}, 11},
+		{"плитки → фото или ролик", []string{".tiles"}, []string{".media"}, 11},
 		{"фото → фото в столбике", []string{".media"}, []string{".media", ".media+.media"}, 6},
 		{"строка звука → отклики", []string{".att"}, []string{".rx"}, 11},
 		{"запись → карточка комментариев (приклеена)", []string{".post", ".post:has(+ .cm)"}, []string{".cm"}, 0},
