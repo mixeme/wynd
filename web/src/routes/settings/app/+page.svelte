@@ -227,7 +227,7 @@
 				/>
 			{/snippet}
 		</SettingsRow>
-		<Hint class="mt-10">При входе в Windows откроется окно Wynd.</Hint>
+		<Hint class="mt-10">При входе в Windows откроется Wynd.</Hint>
 		{#if autostartStale}
 			<Hint class="mt-10"
 				>Автозапуск указывает на прежний файл. Включите его заново, чтобы обновить команду.</Hint
