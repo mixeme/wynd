@@ -33,6 +33,7 @@
 		type ServerPage
 	} from './api';
 	import { rawSections } from './raw';
+	import { day, dayTime, gb, mark, noRoom } from './lib/display';
 
 	let {
 		profile,
@@ -327,24 +328,7 @@
 	let upTo = $state('');
 
 	const st = $derived(page?.state);
-	// Кадр 7б2: места не хватает даже на копию базы.
-	function noRoom(p: ServerPage | undefined): boolean {
-		return Boolean(
-			p && p.state.free_bytes > 0 && p.state.free_bytes < p.copy_bytes + 64 * 1024 * 1024
-		);
-	}
 	const uplanNoRoom = $derived(noRoom(page));
-
-	function gb(bytes: number): string {
-		if (bytes >= 1024 ** 3) return (bytes / 1024 ** 3).toFixed(1).replace('.', ',') + ' ГБ';
-		return Math.max(1, Math.round(bytes / 1024 ** 2)) + ' МБ';
-	}
-	function day(iso: string): string {
-		const d = new Date(iso);
-		return Number.isNaN(d.getTime())
-			? iso
-			: d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
-	}
 
 	async function refreshPage() {
 		page = await api.ServerPage();
@@ -371,12 +355,6 @@
 			screen = 'offline';
 			failure = { status: 'error', host: profile.host, message: p.message, advice: p.advice };
 		}
-	}
-
-	function dayTime(iso: string): string {
-		const d = new Date(iso);
-		if (Number.isNaN(d.getTime())) return iso;
-		return `${day(iso)} в ${d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
 	}
 
 	async function service(action: 'start' | 'stop' | 'restart') {
@@ -656,10 +634,6 @@
 		connection = 'disconnected';
 		screen = 'offline';
 		await onprofileschange();
-	}
-
-	function mark(level: Finding['level']): string {
-		return level === 'ok' ? '✓' : '!';
 	}
 
 	async function toPlan() {
