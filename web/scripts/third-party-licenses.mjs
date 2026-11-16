@@ -93,20 +93,20 @@ function collectGo() {
 	// Список пакетов зависит от GOOS (x/sys/windows против x/sys/unix): берём
 	// объединение платформ, на которых собирается бинарь.
 	try {
-	for (const goos of ['linux', 'windows']) {
-		const raw = execFileSync('go', ['list', '-deps', '-f', format, './cmd/wynd'], {
-			cwd: repoRoot,
-			encoding: 'utf8',
-			maxBuffer: 64 * 1024 * 1024,
-			// Без shell: на Windows оболочка съедает фигурные скобки в -f.
-			env: { ...process.env, GOOS: goos }
-		});
-		for (const line of raw.split(/\r?\n/)) {
-			if (!line.trim()) continue;
-			const [modPath, version, dir] = line.split('|');
-			// Свой модуль — под AGPL, он не «стороннее».
-			if (!version || !dir) continue;
-			if (!found.has(modPath)) found.set(modPath, { version, dir });
+		for (const goos of ['linux', 'windows']) {
+			const raw = execFileSync('go', ['list', '-deps', '-f', format, './cmd/wynd'], {
+				cwd: repoRoot,
+				encoding: 'utf8',
+				maxBuffer: 64 * 1024 * 1024,
+				// Без shell: на Windows оболочка съедает фигурные скобки в -f.
+				env: { ...process.env, GOOS: goos }
+			});
+			for (const line of raw.split(/\r?\n/)) {
+				if (!line.trim()) continue;
+				const [modPath, version, dir] = line.split('|');
+				// Свой модуль — под AGPL, он не «стороннее».
+				if (!version || !dir) continue;
+				if (!found.has(modPath)) found.set(modPath, { version, dir });
 			}
 		}
 	} finally {
