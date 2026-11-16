@@ -76,8 +76,8 @@ Chromium записывает localStorage на диск асинхронно. �
 
 Основа: `docs/visual/screens.html`, e7-41, e7-42, e7-44, e7-46, e7-47,
 коммит `825921cc100f5cd8b793b5a245fa916d14ba426f`; сканер — существующий
-`QrScanner` и экран `/invite/scan`. Реализованные исходники и этот протокол
-сохранены одним коммитом поверх действующего main.
+`QrScanner` и экран `/invite/scan`. Исходники реализации и первоначальный протокол
+сохранены коммитом `22fc7366a71ace1d1d889a296aede98679fc79f8`.
 
 Экран собран из существующих PlainLayout/FormLayout, Logo, ScreenTitle,
 Input/Label/Hint/Button, ServerRow, FilePicker, QrScanner и ConfirmDialog.
@@ -122,6 +122,14 @@ Input/Label/Hint/Button, ServerRow, FilePicker, QrScanner и ConfirmDialog.
 Android: 34 JUnit-теста, `lintDebug`, `lintRelease`, `assembleDebug`.
 Web: 28 тестов interface/bridge/browserHint/navigation, Svelte check без ошибок
 и предупреждений, check:ui, адресный ESLint/Prettier и production build.
+
+После push в Gitea коммит попал в GitHub-зеркало. Автоматический
+[Android CI 43939807136](https://github.com/mixeme/wynd/actions/runs/43939807136)
+завершился успешно: `testDebugUnitTest lintDebug lintRelease assembleRelease`.
+Артефакты `wynd-android-unsigned` и `wynd-android-reports` сохранены;
+задача `draft` пропущена, тега и выпуска не создавали.
+Общая проверка [Desktop checks 43939806501](https://github.com/mixeme/wynd/actions/runs/43939806501)
+тоже завершилась успешно, включая Desktop gate для затронутого общего веб-кода.
 
 Не завершены первый запуск без источника и экран недоступности выбранного
 сервера, когда сохранённого интерфейса нет. Серверные настройки не заменяют
