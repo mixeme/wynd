@@ -71,10 +71,22 @@ android {
 }
 
 tasks.register('prepareWyndIcon', Sync) {
+    inputs.file(rootProject.file('../assets/icon-small.svg'))
     into(generatedResources)
     from(rootProject.file('../web/static/icon-192.png')) {
         into 'drawable-nodpi'
         rename { 'wynd_icon.png' }
+    }
+    doLast {
+        // Тот же утверждённый знак для маленьких размеров, без подложки;
+        // Android требует белый силуэт для системных уведомлений.
+        def svg = new groovy.xml.XmlSlurper(false, false).parse(rootProject.file('../assets/icon-small.svg'))
+        if (svg.@viewBox.text() != '0 0 1024 1024' || svg.path.size() != 1) throw new GradleException('Unexpected Wynd small icon')
+        def target = generatedResources.get().file('drawable/wynd_notification.xml').asFile
+        target.parentFile.mkdirs()
+        // Единственный неанимированный 24dp-контур: не упрощать утверждённый знак ради lint.
+        target.setText('<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools" android:width="24dp" android:height="24dp" android:viewportWidth="1024" android:viewportHeight="1024">'
+                + '<path tools:ignore="VectorPath" android:fillColor="#FFFFFFFF" android:pathData="' + svg.path[0].@d.text() + '"/></vector>', 'UTF-8')
     }
 }
 tasks.named('preBuild').configure { dependsOn('prepareWyndIcon') }

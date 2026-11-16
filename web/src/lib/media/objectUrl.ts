@@ -1,4 +1,5 @@
 import { apiFetch } from '$lib/api/client';
+import { saveAndroidObjectUrl } from '$lib/android/files';
 import { isLocalPosterId, localPosterId } from '$lib/journal/present';
 import {
 	getAppSettings,
@@ -172,6 +173,7 @@ export async function downloadBlob(
 	filename: string
 ): Promise<void> {
 	const url = await getMediaUrl(origin, blobId);
+	if (await saveAndroidObjectUrl(url, filename)) return;
 	const a = document.createElement('a');
 	a.href = url;
 	a.download = filename;

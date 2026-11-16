@@ -8,7 +8,15 @@
  * закрыв приложение (2026-10-23). Там ссылка уходит в новое окно: iOS
  * открывает его поверх приложения, с кнопкой «Готово».
  */
+import { androidFilesAvailable, saveAndroidDownload } from '$lib/android/files';
+
 export function openDownload(href: string): void {
+	if (androidFilesAvailable()) {
+		void saveAndroidDownload(href).catch(() => {
+			/* Оболочка показывает ошибку сохранения. */
+		});
+		return;
+	}
 	const a = document.createElement('a');
 	a.href = href;
 	a.rel = 'noopener';
@@ -18,6 +26,10 @@ export function openDownload(href: string): void {
 
 /** Reserve the iPhone window during the tap, before fetching a one-time link. */
 export async function openDownloadAfter(loadHref: () => Promise<string>): Promise<void> {
+	if (androidFilesAvailable()) {
+		await saveAndroidDownload(await loadHref());
+		return;
+	}
 	if (!isIosHomeScreenApp()) {
 		openDownload(await loadHref());
 		return;

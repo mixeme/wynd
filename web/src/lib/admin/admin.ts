@@ -302,6 +302,8 @@ export async function fetchVapidPublicKey(): Promise<string> {
 export async function downloadVapidPublicKey(): Promise<void> {
 	const key = await fetchVapidPublicKey();
 	const blob = new Blob([key + '\n'], { type: 'text/plain;charset=utf-8' });
+	const { saveAndroidBlob } = await import('$lib/android/files');
+	if (await saveAndroidBlob(blob, 'wynd-vapid-public.txt')) return;
 	const url = URL.createObjectURL(blob);
 	const anchor = document.createElement('a');
 	anchor.href = url;

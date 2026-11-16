@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Chromium WebRTC требует это normal-разрешение для выбора аудиоустройства. -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
@@ -32,5 +33,6 @@
             </intent-filter>
         </activity>
         <receiver android:name=".InstallResultReceiver" android:exported="false" />
+        <activity android:name=".OpenExportActivity" android:exported="false" android:excludeFromRecents="true" />
     </application>
 </manifest>
