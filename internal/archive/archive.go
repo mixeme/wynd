@@ -361,7 +361,7 @@ type style struct {
 
 func (st style) pageEnd() string {
 	if st.partial {
-		return "<p class=\"end\">Wynd · часть журнала круга</p></div></body></html>"
+		return "<p class=\"end\">Wynd · часть журнала круга</p>" + audioScript + viewerScript + "</div></body></html>"
 	}
 	if st.full {
 		return pageEndFull
@@ -393,9 +393,6 @@ a{color:inherit;text-decoration:none}
 .avl{width:34px;height:34px;border-radius:50%;background:var(--rc,var(--c));color:#fff;display:grid;place-items:center;font-size:13.5px;flex:0 0 auto}
 .meta{color:var(--faint);font-size:11.5px}
 .body{margin:0 0 11px;white-space:pre-wrap;overflow-wrap:anywhere}
-.media{margin:11px 0 0}
-.media+.media{margin-top:6px}
-.media img,.media video{width:100%;height:auto;display:block;border-radius:10px;border:1px solid var(--line);background-color:#c3af95;background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.07) 0 7px,rgba(0,0,0,0.05) 7px 15px)}
 .gone{color:var(--faint);font-size:12.5px;margin:10px 0 0}
 .rx{display:flex;gap:8px;margin-top:11px;align-items:center;flex-wrap:wrap}
 .rx .one{background:var(--ct);border-radius:14px;padding:4px 11px;font-size:12.5px;display:flex;gap:7px;align-items:center}
@@ -448,7 +445,7 @@ a{color:inherit;text-decoration:none}
 .pause,.voice.playing .play,.att.playing .play{display:none}
 .voice.playing .pause,.att.playing .pause{display:inline}
 noscript audio{width:100%;margin:10px 0 0}
-`
+` + mediaCSS
 
 // head пишет <head> страницы: prefix — путь до корня архива ("" или "../").
 func (st style) head(b *strings.Builder, title, prefix string) {
@@ -485,8 +482,8 @@ func (st style) header(b *strings.Builder, circleName, cutoff string) {
 }
 
 const (
-	pageEnd     = "<p class=\"end\">Wynd · персональный архив</p>" + audioScript + "</div></body></html>"
-	pageEndFull = "<p class=\"end\">Wynd · полный архив круга</p>" + audioScript + "</div></body></html>"
+	pageEnd     = "<p class=\"end\">Wynd · персональный архив</p>" + audioScript + viewerScript + "</div></body></html>"
+	pageEndFull = "<p class=\"end\">Wynd · полный архив круга</p>" + audioScript + viewerScript + "</div></body></html>"
 )
 
 // audioScript — один плеер на страницу: нажатие на строку играет её файл,
@@ -631,7 +628,16 @@ func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, d
 	if relativeMedia {
 		prefix = "../"
 	}
-	b.WriteString("<article class=\"post\"><div class=\"pa\">")
+	b.WriteString("<article class=\"post\">")
+	// В ленте шапка карточки ведёт на страницу записи (решение владельца:
+	// путь «лента → запись» нужен независимо от просмотра вложений).
+	if relativeMedia {
+		b.WriteString("<div class=\"pa\">")
+	} else {
+		b.WriteString("<a class=\"pa\" href=\"posts/")
+		b.WriteString(html.EscapeString(fp.Post.ID))
+		b.WriteString(".html\">")
+	}
 	appendAvatarHTML(b, fp.Post.AuthorName, fp.Post.IdentityID, media, avatars, prefix)
 	b.WriteString("<div><div class=\"author\">")
 	b.WriteString(html.EscapeString(fp.Post.AuthorName))
@@ -642,15 +648,30 @@ func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, d
 		b.WriteString(html.EscapeString(fp.Post.CreatedAt.UTC().Format("02.01.2006 15:04")))
 		b.WriteString(" UTC")
 	}
-	b.WriteString("</div></div></div>")
+	b.WriteString("</div></div>")
+	if relativeMedia {
+		b.WriteString("</div>")
+	} else {
+		b.WriteString("</a>")
+	}
 	if fp.Post.Body != "" {
 		b.WriteString("<div class=\"body\">")
 		b.WriteString(html.EscapeString(fp.Post.Body))
 		b.WriteString("</div>")
 	}
+	mediaSection := false
 	for _, m := range fp.Media {
 		if playableAudio(m) {
 			appendAudioHTML(b, m, media, prefix)
+			continue
+		}
+		if m.Kind == chronicle.MediaPhoto || m.Kind == chronicle.MediaVideo {
+			// Фото и ролики записи — одной сеткой превью (A26, кадры
+			// приняты владельцем 2026-11-16).
+			if !mediaSection {
+				appendMediaSectionHTML(b, fp, media, prefix)
+				mediaSection = true
+			}
 			continue
 		}
 		src, ok := media[m.BlobID]
@@ -665,19 +686,6 @@ func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, d
 			appendFileHTML(b, m, src, prefix)
 			continue
 		}
-		b.WriteString("<div class=\"media\">")
-		if m.Kind == chronicle.MediaVideo {
-			b.WriteString("<video controls src=\"")
-		} else {
-			b.WriteString("<img alt=\"\" src=\"")
-		}
-		b.WriteString(html.EscapeString(prefix + src))
-		if m.Kind == chronicle.MediaVideo {
-			b.WriteString("\"></video>")
-		} else {
-			b.WriteString("\">")
-		}
-		b.WriteString("</div>")
 	}
 	if len(fp.Reactions) > 0 {
 		// Отклики — чипсы на тонированном фоне, как в ленте приложения:

@@ -86,7 +86,21 @@ var archiveStyleParity = []styleParity{
 		"background не сравнивается"},
 	{"время и дата записи", []string{".meta"}, []string{".pa .tm"}, []string{"color", "font-size"}, nil, ""},
 	{"текст записи", []string{".body"}, []string{".pt", ".mention-text"}, []string{"white-space", "overflow-wrap", "margin"}, nil, ""},
-	{"фото и ролики записи", []string{".media img", ".media video"}, []string{".pic"}, []string{"border-radius", "border", "background-color", "background-image"}, nil, ""},
+	{"сетка превью записи", []string{".thumbs", ".archive-media .thumbs"}, []string{".thumbs"}, []string{"display", "flex-wrap", "gap", "align-items"},
+		map[string]string{"padding": "0"}, "внутри карточки архива у сетки снят отступ 16 px — карточка уже имеет свои поля (принятый кадр 2026-11-16)"},
+	{"плитка превью", []string{".thumbs .thumb"}, []string{".thumbs .thumb"}, []string{"width", "height", "border-radius", "overflow", "position", "flex", "background"}, nil, ""},
+	{"тело плитки", []string{".thumbs .thumb .thumb-body", ".thumbs .thumb-body"}, []string{".thumbs .thumb .thumb-body", ".thumbs .thumb-body"}, []string{"display", "width", "height", "border", "background"}, nil, ""},
+	{"содержимое плитки", []string{".thumbs .thumb img", ".thumbs .thumb video"}, []string{".thumbs .thumb img", ".thumbs .thumb video"}, []string{"width", "height", "object-fit", "display"}, nil, ""},
+	{"знак ролика на плитке", []string{".vid-mark"}, []string{".vid-mark"}, []string{"position", "left", "top", "width", "height", "transform", "color", "fill", "filter"}, nil, ""},
+	{"просмотр фото и видео", []string{".lb"}, []string{".lb"}, []string{"background", "display", "flex-direction", "color", "position", "inset"}, nil, ""},
+	{"просмотр поверх окна", []string{".lb.fixed"}, []string{".lb.fixed"}, []string{"position", "inset", "z-index"}, nil, ""},
+	{"верх просмотра", []string{".lb .top"}, []string{".lb .top"}, []string{"display", "align-items", "gap", "padding"}, nil, ""},
+	{"сцена просмотра", []string{".lb .mid"}, []string{".lb .mid"}, []string{"flex", "min-height", "min-width", "position", "display", "place-items", "touch-action", "overflow"}, nil, ""},
+	{"фото и ролик в просмотре", []string{".lb .mid img", ".lb .mid video"}, []string{".lb .mid img", ".lb .mid video"}, []string{"display", "min-width", "min-height", "width", "height", "object-fit"}, nil, ""},
+	{"стрелка просмотра", []string{".lb .nav"}, []string{".lb .nav"}, []string{"position", "top", "bottom", "width", "display", "align-items", "color", "cursor", "border", "background", "padding", "font"}, nil, ""},
+	{"подпись просмотра", []string{".lb .cap"}, []string{".lb .cap"}, []string{"padding", "font-size", "color"}, nil, ""},
+	{"точки просмотра", []string{".lb .dots"}, []string{".lb .dots"}, []string{"display", "gap", "justify-content", "padding-bottom"}, nil, ""},
+	{"точка просмотра", []string{".lb .dots u", ".lb .dots button"}, []string{".lb .dots u", ".lb .dots button"}, []string{"width", "height", "border-radius", "background", "border", "padding", "cursor"}, nil, ""},
 	{"отклики", []string{".rx"}, []string{".rx"}, []string{"display", "gap", "margin-top", "align-items"},
 		map[string]string{"flex-wrap": "wrap"}, "в архиве все отклики истории, чипы переносятся; приложение не переносит"},
 	{"чип отклика", []string{".rx .one"}, []string{".rx .one"}, []string{"background", "border-radius", "padding", "font-size", "display", "gap", "align-items"}, nil, ""},
@@ -117,11 +131,10 @@ func TestArchiveBlockSpacing(t *testing.T) {
 		prev, next []string
 		gap        int
 	}{
-		{"текст → фото или ролик", []string{".body"}, []string{".media"}, 11},
+		{"текст → сетка превью", []string{".body"}, []string{".archive-media"}, 11},
 		{"текст → строка звука или файла", []string{".body"}, []string{".att"}, 11},
-		{"строка звука → фото", []string{".att"}, []string{".media"}, 11},
-		{"фото → строка звука", []string{".media"}, []string{".att"}, 11},
-		{"фото → фото в столбике", []string{".media"}, []string{".media", ".media+.media"}, 6},
+		{"строка звука → сетка превью", []string{".att"}, []string{".archive-media"}, 11},
+		{"сетка превью → строка звука", []string{".archive-media"}, []string{".att"}, 11},
 		{"строка звука → отклики", []string{".att"}, []string{".rx"}, 11},
 		{"запись → карточка комментариев (приклеена)", []string{".post", ".post:has(+ .cm)"}, []string{".cm"}, 0},
 	}
@@ -133,7 +146,24 @@ func TestArchiveBlockSpacing(t *testing.T) {
 			t.Errorf("%s: зазор %d px, ожидалось %d px", c.name, got, c.gap)
 		}
 	}
+	// Плитки и раскрытие (A26, принятый кадр 2026-11-16): зазор сетки 8 px,
+	// спрятанное продолжает сетку с тем же зазором сверху, «Ещё N» — 11 px.
+	tiles := mergeDecls(arch, []string{".thumbs"})
+	if got := pixelsOf(tiles["gap"]); got != 8 {
+		t.Errorf("зазор плиток %d px, ожидалось 8 px", got)
+	}
+	extra := mergeDecls(arch, []string{".archive-media .extra"})
+	if got := spacingSide(extra, "top"); got != 8 {
+		t.Errorf("раскрытые плитки: зазор %d px, ожидалось 8 px", got)
+	}
+	more := mergeDecls(arch, []string{".archive-media .more"})
+	if got := spacingSide(more, "top"); got != 11 {
+		t.Errorf("«Ещё N»: зазор %d px, ожидалось 11 px", got)
+	}
 }
+
+// pixelsOf разбирает одно значение в пикселях («8px» → 8).
+func pixelsOf(v string) int { return px(strings.Fields(v + " ")[0]) }
 
 // spacingSide возвращает поле блока сверху или снизу в пикселях: явное
 // margin-top/bottom или разворот краткой записи margin.
