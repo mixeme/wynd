@@ -173,12 +173,18 @@ debug-флаг, выравнивание и заметки. Отчёт `verifica
 .\scripts\new-android-signing-key.ps1
 ```
 
+По решению владельца от 2026-11-16 постоянный PKCS12 keystore хранится в
+`D:\Local\Git\myenv\wynd\wynd-android.p12`, alias `wynd-android`.
+Ключ создан и закоммичен отдельно в репозитории `myenv` (`b35f845`);
+в репозиторий приложения его не добавляют. Скрипты используют этот путь
+по умолчанию; для другой машины указать `-KeyStore` явно.
+
 Пароль спрашивает `keytool`; в чат, аргументы скрипта или CI его не передавать.
 Keystore, alias и пароль сохранить отдельно и в резервной копии. Debug-ключ
 не годится для публичного канала.
 
 ```powershell
-.\scripts\sign-android-release.ps1 -Tag android-v0.1.0 -KeyStore D:\android-env\keys\wynd-android.p12
+.\scripts\sign-android-release.ps1 -Tag android-v0.1.0 -KeyStore D:\Local\Git\myenv\wynd\wynd-android.p12
 ```
 
 Скрипт скачивает unsigned APK, сверяет сумму, attestation именно `android.yaml`

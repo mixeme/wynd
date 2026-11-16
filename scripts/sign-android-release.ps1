@@ -10,7 +10,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 if ($VerifyOnly -and ($Upload -or $Publish)) { throw 'VerifyOnly cannot upload or publish a release' }
-if (-not $KeyStore) { $KeyStore = Join-Path $EnvironmentRoot 'keys\wynd-android.p12' }
+if (-not $KeyStore) { $KeyStore = 'D:\Local\Git\myenv\wynd\wynd-android.p12' }
 $repo = 'mixeme/wynd'
 $version = $Tag.Substring('android-v'.Length)
 $parts = $version.Split('.') | ForEach-Object { [long]$_ }
