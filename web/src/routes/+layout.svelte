@@ -27,6 +27,7 @@
 	} from '$lib/desktop/drop.svelte';
 	import { pwaInfo } from 'virtual:pwa-info';
 	import { initAndroidUpdates } from '$lib/android/update.svelte';
+	import { postAndroidAppearance } from '$lib/android/appearance';
 
 	// Полоса плеера (4.9): звук играет и вне своего экрана (план 47, 5.4).
 	const audioBar = useAudioBar();
@@ -51,9 +52,10 @@
 		document.body.dataset.avatars = getAvatarShape();
 		// Строка состояния установленного приложения — в цвет фона темы (SW-4).
 		// Метка стоит в app.html: так её видит и Vivaldi при запуске.
-		document
-			.querySelector('meta[name="theme-color"]')
-			?.setAttribute('content', statusColorOverride() ?? (isDark() ? '#211E1C' : '#F4F0E9'));
+		const navigationColor = isDark() ? '#211E1C' : '#F4F0E9';
+		const statusColor = statusColorOverride() ?? navigationColor;
+		document.querySelector('meta[name="theme-color"]')?.setAttribute('content', statusColor);
+		postAndroidAppearance(statusColor, navigationColor);
 	});
 
 	onMount(() => {

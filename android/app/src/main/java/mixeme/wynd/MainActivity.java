@@ -10,7 +10,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.ViewGroup;
-import android.view.WindowInsets;
 import android.webkit.CookieManager;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -49,17 +48,9 @@ public final class MainActivity extends Activity {
         webView.setWebChromeClient(media);
         configureWebView();
         AndroidBridge.attach(this, webView, server);
-        setContentView(webView);
-        // target 36: системные полосы не должны закрывать существующий веб-интерфейс.
-        if (Build.VERSION.SDK_INT >= 30) {
-            webView.setOnApplyWindowInsetsListener((view, insets) -> {
-                android.graphics.Insets bars = insets.getInsets(
-                        WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout()
-                                | WindowInsets.Type.ime());
-                view.setPadding(bars.left, bars.top, bars.right, bars.bottom);
-                return WindowInsets.CONSUMED;
-            });
-        }
+        SystemBarsFrame bars = new SystemBarsFrame(this, webView);
+        setContentView(bars);
+        AppearanceBridge.attach(this, webView, server, bars);
         if (Build.VERSION.SDK_INT >= 33) {
             getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
                     OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::goBack);
