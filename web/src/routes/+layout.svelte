@@ -26,6 +26,7 @@
 		endDesktopDrop
 	} from '$lib/desktop/drop.svelte';
 	import { pwaInfo } from 'virtual:pwa-info';
+	import { initAndroidUpdates } from '$lib/android/update.svelte';
 
 	// Полоса плеера (4.9): звук играет и вне своего экрана (план 47, 5.4).
 	const audioBar = useAudioBar();
@@ -57,6 +58,7 @@
 
 	onMount(() => {
 		window.__wyndBoot?.('mounted');
+		const stopAndroidUpdates = initAndroidUpdates();
 		const stopTheme = initTheme();
 		const stopQueue = initQueueDrain();
 		const stopViewport = initViewportHeight();
@@ -77,6 +79,7 @@
 			void initPush();
 		});
 		return () => {
+			stopAndroidUpdates();
 			stopTheme();
 			stopSyncResume();
 			stopConnection();

@@ -2,6 +2,7 @@
 	import { navigateBack } from '$lib/navigation/up';
 	import NumberField from '$ui/forms/NumberField.svelte';
 	import { onMount } from 'svelte';
+	import { androidUpdate, setAndroidImmediate } from '$lib/android/update.svelte';
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -324,6 +325,20 @@
 		{/each}
 	</ChipGroup>
 
+	{#if androidUpdate.supported && (androidUpdate.development || androidUpdate.debug)}
+		<SectionLabel class="mt-16">Разработка</SectionLabel>
+		<SettingsRow title="Скачивать сразу" subtitle="Не ждать 72 часа после публикации">
+			{#snippet control()}
+				<Switch
+					checked={androidUpdate.immediately}
+					disabled={androidUpdate.busy || androidUpdate.installing}
+					label="Скачивать сразу"
+					onchange={(value) => void setAndroidImmediate(value)}
+				/>
+			{/snippet}
+		</SettingsRow>
+		<Hint>Только для разработки. Подпись и версию проверяем всегда.</Hint>
+	{/if}
 	{#if error}
 		<Hint>{error}</Hint>
 	{/if}

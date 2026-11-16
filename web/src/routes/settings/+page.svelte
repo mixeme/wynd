@@ -9,6 +9,12 @@
 	import { loadSourceUrl } from '$lib/instance/source.svelte';
 	import { loadSessions } from '$lib/session/session.svelte';
 	import { appUpdate, applyAppUpdate, checkAppUpdate } from '$lib/session/appUpdate.svelte';
+	import {
+		androidUpdate,
+		androidUpdateNote,
+		applyAndroidUpdate,
+		checkAndroidUpdate
+	} from '$lib/android/update.svelte';
 
 	let subtitle = $state('нет серверов');
 
@@ -62,7 +68,22 @@
 		onclick={() => goto('/settings/app')}
 	/>
 	<SettingsRow icon="day" title="Что нового в Wynd" onclick={() => goto('/settings/news')} />
-	{#if appUpdate.supported}
+	{#if androidUpdate.supported}
+		<SettingsRow
+			icon="download"
+			title={androidUpdate.available
+				? `Установить версию ${androidUpdate.nextVersion}`
+				: 'Проверить обновления'}
+			subtitle={androidUpdateNote()}
+			chevron={false}
+			opacity={androidUpdate.busy || androidUpdate.installing || androidUpdate.blocked
+				? 0.55
+				: undefined}
+			onclick={androidUpdate.busy || androidUpdate.installing || androidUpdate.blocked
+				? undefined
+				: () => void (androidUpdate.available ? applyAndroidUpdate() : checkAndroidUpdate())}
+		/>
+	{:else if appUpdate.supported}
 		{#if appUpdate.pending}
 			<SettingsRow
 				icon="download"

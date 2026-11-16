@@ -1,5 +1,7 @@
 ﻿<script lang="ts">
 	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
+	import NewsBanner from '$ui/data/NewsBanner.svelte';
+	import { androidUpdate } from '$lib/android/update.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import Button from '$ui/forms/Button.svelte';
@@ -130,6 +132,15 @@
 	</PlainLayout>
 {:else}
 	<PlainLayout shell app>
+		{#if androidUpdate.available && !androidUpdate.hidden}
+			<NewsBanner
+				version={androidUpdate.nextVersion}
+				title={`Вышла версия ${androidUpdate.nextVersion}`}
+				text="Обновить приложение"
+				onclick={() => goto('/settings')}
+				ondismiss={() => (androidUpdate.hidden = true)}
+			/>
+		{/if}
 		<div class="logo-wrap">
 			<Logo />
 		</div>

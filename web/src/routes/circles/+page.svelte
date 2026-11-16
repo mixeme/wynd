@@ -15,6 +15,7 @@
 	import Loading from '$ui/Loading.svelte';
 	import PayStreetBanner from '$ui/data/PayStreetBanner.svelte';
 	import NewsBanner from '$ui/data/NewsBanner.svelte';
+	import { androidUpdate } from '$lib/android/update.svelte';
 	import HintBanner from '$ui/data/HintBanner.svelte';
 	import { closeBrowserHint, showBrowserHint } from '$lib/session/browserHint';
 	import { hasUnseenNews, latestNewsVersion, markNewsSeen } from '$lib/news/seen';
@@ -565,6 +566,15 @@
 					variant="pending"
 					pendingAtLabel={formatPayDate(payStatus.pending_at)}
 					expiresAtLabel={payStatus.expires_at ? formatPayDate(payStatus.expires_at) : null}
+				/>
+			{/if}
+			{#if androidUpdate.available && !androidUpdate.hidden}
+				<NewsBanner
+					version={androidUpdate.nextVersion}
+					title={`Вышла версия ${androidUpdate.nextVersion}`}
+					text="Обновить приложение"
+					onclick={() => goto('/settings')}
+					ondismiss={() => (androidUpdate.hidden = true)}
 				/>
 			{/if}
 			{#if newsUnseen && !empty}

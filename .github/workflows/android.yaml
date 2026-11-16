@@ -1,0 +1,68 @@
+name: Android
+
+# CI выпускает только unsigned APK. Постоянный Android-ключ — у владельца.
+on:
+  push:
+    tags: ['android-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GRADLE_USER_HOME: ${{ runner.temp }}/android-env/gradle-user-home
+      ANDROID_USER_HOME: ${{ runner.temp }}/android-env/user
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: liberica
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          cmdline-tools-version: '13114758'
+          packages: 'platforms;android-36 build-tools;35.0.0'
+      - name: Check tag version
+        if: startsWith(github.ref, 'refs/tags/android-v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(sed -n 's/^versionName=//p' android/version.properties | tr -d '\r')
+          test "$GITHUB_REF_NAME" = "android-v$version"
+      - name: Tests, lint and unsigned APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          android/gradlew --no-daemon --console=plain -p android \
+            --project-cache-dir "$RUNNER_TEMP/android-env/project-cache" \
+            -PwyndEnvironmentRoot="$RUNNER_TEMP/android-env" \
+            testDebugUnitTest lintDebug lintRelease assembleRelease
+          mkdir -p dist
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk dist/wynd-android-unsigned.apk
+          sha256sum dist/wynd-android-unsigned.apk | cut -d' ' -f1 > dist/wynd-android-unsigned.apk.sha256
+      - uses: actions/attest-build-provenance@v4
+        if: startsWith(github.ref, 'refs/tags/android-v')
+        with:
+          subject-path: dist/wynd-android-unsigned.apk
+      - name: Draft release
+        if: startsWith(github.ref, 'refs/tags/android-v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'Release already exists; refusing to replace owner-signed assets.' >&2
+            exit 1
+          fi
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+            dist/wynd-android-unsigned.apk dist/wynd-android-unsigned.apk.sha256 \
+            --draft --verify-tag --title "Wynd для Android ${GITHUB_REF_NAME#android-v}" \
+            --notes 'Unsigned build. Local APK signing and owner publication are required.'

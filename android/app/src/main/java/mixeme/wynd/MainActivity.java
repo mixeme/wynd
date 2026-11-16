@@ -45,6 +45,7 @@ public final class MainActivity extends Activity {
         }
         webView = new WebView(this);
         configureWebView();
+        AndroidBridge.attach(this, webView, server);
         setContentView(webView);
         // target 36: системные полосы не должны закрывать существующий веб-интерфейс.
         if (Build.VERSION.SDK_INT >= 30) {
@@ -149,10 +150,12 @@ public final class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         if (webView != null) webView.onResume();
+        UpdateController.get(this).resume(this);
     }
 
     @Override
     protected void onPause() {
+        UpdateController.get(this).pause(this);
         if (webView != null) {
             webView.onPause();
             CookieManager.getInstance().flush();

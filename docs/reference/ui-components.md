@@ -158,7 +158,7 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 
 `PayStreetBanner` — баннеры оплаты на улочке (`/circles`, кадр **#e10-5**): `variant` `donate` \| `reminder` \| `pending`. Donate — `text`, `onclick` (help), опционально `dismissible` / `ondismiss`. Reminder — `expiresAtLabel`, `reminderDaysLeft`, `onclick` (extend). Pending — `pendingAtLabel`, опционально `expiresAtLabel`; без корневой кнопки. Стили `.pay-banner*` в `ui.css`; кликабельные зоны — `button.pay-banner-main`, `button.pay-reminder`.
 
-`NewsBanner` — баннер «Что нового?» на улочке (кадр **#e7-7**), тем же видом, что donate у `PayStreetBanner`: `version` (минорная, «0.26»), `onclick` — к странице, `ondismiss` — крестик. `NewsBlock` — одна версия на странице «Что нового» (**#e7-8**): `version`, `day` («8 октября»), `items` — строки списком. Текст — `$lib/news/notes.ts`, отметка «видел» — `$lib/news/seen.ts` (localStorage).
+`NewsBanner` — баннер «Что нового?» на улочке (кадр **#e7-7**), тем же видом, что donate у `PayStreetBanner`: `version` (минорная, «0.26»), `onclick` — к странице, `ondismiss` — крестик. Для обновления Android принимает опциональные `title` / `text`; прежние значения и компоновка по умолчанию сохранены, новый компонент не создаётся (план 50; отдельная визуальная приёмка Android ещё требуется). `NewsBlock` — одна версия на странице «Что нового» (**#e7-8**): `version`, `day` («8 октября»), `items` — строки списком. Текст — `$lib/news/notes.ts`, отметка «видел» — `$lib/news/seen.ts` (localStorage).
 
 `MentionText` — текст записи или комментария (`body`): `@имя` цветом круга, переносы и пустые строки как написаны (`white-space: pre-wrap` на `.mention-text`).
 

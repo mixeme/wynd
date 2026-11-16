@@ -1,6 +1,8 @@
 param(
     [string]$EnvironmentRoot = 'D:\android-env',
     [string]$ServerUrl = 'http://127.0.0.1:7676',
+    [string]$UpdateFixtureOrigin = '',
+    [string]$VersionName = '',
     [string[]]$Tasks = @('testDebugUnitTest', 'lintDebug', 'assembleDebug')
 )
 
@@ -25,9 +27,12 @@ try {
     $env:ANDROID_USER_HOME = Join-Path $EnvironmentRoot 'user'
     $env:GRADLE_USER_HOME = Join-Path $EnvironmentRoot 'gradle-user-home'
     $env:PATH = (Join-Path $jdk.FullName 'bin') + ';' + $env:PATH
+    $versionArguments = @()
+    if ($VersionName) { $versionArguments += "-PwyndVersionName=$VersionName" }
     & $wrapper --no-daemon --console=plain -p (Join-Path $projectRoot 'android') `
         --project-cache-dir (Join-Path $EnvironmentRoot 'cache\wynd-project') `
-        "-PwyndEnvironmentRoot=$EnvironmentRoot" "-PwyndDevServerUrl=$ServerUrl" @Tasks
+        "-PwyndEnvironmentRoot=$EnvironmentRoot" "-PwyndDevServerUrl=$ServerUrl" `
+        "-PwyndUpdateFixtureOrigin=$UpdateFixtureOrigin" @versionArguments @Tasks
     if ($LASTEXITCODE -ne 0) { throw "Android build failed (exit $LASTEXITCODE)" }
 } finally {
     foreach ($variable in $variables) {

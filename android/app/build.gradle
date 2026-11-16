@@ -6,6 +6,14 @@ def environmentRoot = providers.gradleProperty('wyndEnvironmentRoot')
         .orElse(providers.environmentVariable('WYND_ANDROID_ENV'))
         .orElse('D:/android-env')
 def startUrl = providers.gradleProperty('wyndDevServerUrl').orElse('')
+def fixtureOrigin = providers.gradleProperty('wyndUpdateFixtureOrigin').orElse('')
+def versionProperties = new Properties()
+rootProject.file('version.properties').withInputStream { versionProperties.load(it) }
+def appVersion = providers.gradleProperty('wyndVersionName').orElse(versionProperties.getProperty('versionName')).get()
+if (!(appVersion ==~ /(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)/)) throw new GradleException('Invalid Android version')
+def versionParts = appVersion.split(/\./).collect { new BigInteger(it) }
+def appVersionCode = versionParts[0] * 1000000 + versionParts[1] * 1000 + versionParts[2]
+if (versionParts[1] > 999 || versionParts[2] > 999 || appVersionCode <= 0 || appVersionCode > 2100000000) throw new GradleException('Android version overflow')
 def generatedResources = layout.buildDirectory.dir('generated/wynd-res')
 
 android {
@@ -16,8 +24,9 @@ android {
         applicationId 'mixeme.wynd'
         minSdk 21
         targetSdk 36
-        versionCode 1
-        versionName '0.1.0-dev'
+        versionCode appVersionCode.intValue()
+        versionName appVersion
+        buildConfigField 'String', 'APP_VERSION', groovy.json.JsonOutput.toJson(appVersion)
     }
 
     signingConfigs {
@@ -33,6 +42,12 @@ android {
             versionNameSuffix '-debug'
             // JSON quoting also produces a valid Java string literal.
             buildConfigField 'String', 'START_URL', groovy.json.JsonOutput.toJson(startUrl.get())
+            buildConfigField 'String', 'UPDATE_FIXTURE_ORIGIN', groovy.json.JsonOutput.toJson(fixtureOrigin.get())
+        }
+        release {
+            // CI готовит unsigned APK; постоянный ключ остаётся у владельца.
+            buildConfigField 'String', 'START_URL', '""'
+            buildConfigField 'String', 'UPDATE_FIXTURE_ORIGIN', '""'
         }
     }
 
@@ -55,13 +70,6 @@ android {
     }
 }
 
-// Каркас пока отладочный: нет выбора сервера и согласованной подписи выпуска.
-androidComponents {
-    beforeVariants(selector().withBuildType('release')) { variant ->
-        variant.enable = false
-    }
-}
-
 tasks.register('prepareWyndIcon', Sync) {
     into(generatedResources)
     from(rootProject.file('../web/static/icon-192.png')) {
@@ -72,5 +80,9 @@ tasks.register('prepareWyndIcon', Sync) {
 tasks.named('preBuild').configure { dependsOn('prepareWyndIcon') }
 
 dependencies {
+    // Последний стабильный WebKit для minSdk 21; нужен origin-bound мост,
+    // а не addJavascriptInterface, доступный всем фреймам страницы.
+    implementation 'androidx.webkit:webkit:1.14.0'
     testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20250517'
 }
