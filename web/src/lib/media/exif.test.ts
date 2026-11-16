@@ -15,7 +15,10 @@ function fixtureFile(): File {
 describe('readExif', () => {
 	it('reads DateTimeOriginal into captured_at and entry_date', async () => {
 		const hints = await readExif(fixtureFile());
-		expect(hints.captured_at).toBe('2026-08-14T06:21:33.000Z');
+		// DateTimeOriginal — стенное время снимка (2026:08:14 09:21:33) без
+		// пояса; exifr толкует его в часовом поясе машины. Ожидание строим
+		// так же, иначе тест зелёный в MSK и красный на UTC-раннере (C76).
+		expect(hints.captured_at).toBe(new Date(2026, 7, 14, 9, 21, 33).toISOString());
 		expect(hints.entry_date).toBe('2026-08-14');
 	});
 
