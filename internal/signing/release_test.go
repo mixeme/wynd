@@ -38,6 +38,9 @@ type releaseFixture struct {
 	AttestFailure   bool
 	UploadFailure   bool
 	PublishFailure  bool
+	// LegacyNotesOnly — «Что нового» лежит только по старому пути Мастерской
+	// (cmd/wynd-installer/whatsnew.md), как в тегах до 0.4.4.
+	LegacyNotesOnly bool
 }
 
 // Сам тестовый бинарник играет gh: одинаково на Windows и Unix, без сети,
@@ -136,6 +139,9 @@ func releaseTestGH(dir string, args []string) error {
 		}
 		fmt.Print(base64.StdEncoding.EncodeToString([]byte(f.PubKey)))
 	case args[0] == "api" && strings.Contains(args[1], "/whatsnew.md?"):
+		if f.LegacyNotesOnly && strings.Contains(args[1], "/cmd/wynd-workshop/whatsnew.md?") {
+			return nil
+		}
 		if f.Notes {
 			tag := f.Tag
 			if tag == "" {
@@ -255,6 +261,27 @@ func TestReleasesFollowBoundedPages(t *testing.T) {
 				t.Fatalf("calls=%q", calls)
 			}
 		})
+	}
+}
+
+// Каталог Мастерской переименован 2026-11-15, а «Что нового» в теге 0.4.4
+// осталось по старому пути cmd/wynd-installer/whatsnew.md — пересобранная
+// «Подпись» читает его, когда по новому пути пусто.
+func TestWorkshopNotesFromLegacyPath(t *testing.T) {
+	pub := base64.StdEncoding.EncodeToString(make([]byte, 32))
+	g, _ := fixtureGitHub(t, releaseFixture{
+		Draft: true, Notes: true, LegacyNotesOnly: true, PubKey: pub, KeyPresent: true,
+	})
+	c, err := g.FetchWithProgress(context.Background(), releaseTestTag, func(Progress) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	if !strings.Contains(c.Notes, "Test release notes") {
+		t.Fatalf("«Что нового» по старому пути не прочиталось: %q", c.Notes)
+	}
+	if c.Steps[len(c.Steps)-1].Note != "" {
+		t.Fatalf("этап notes с пометкой: %+v", c.Steps[len(c.Steps)-1])
 	}
 }
 

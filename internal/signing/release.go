@@ -304,7 +304,7 @@ func (g GitHub) FetchWithProgress(ctx context.Context, tag string, report func(P
 	}
 	if prod.Notes != "" {
 		p.start("notes")
-		c.Notes = WhatsNew(g.file(ctx, prod.Notes, tag), strings.TrimPrefix(tag, prod.Prefix))
+		c.Notes = WhatsNew(g.notes(ctx, prod, tag), strings.TrimPrefix(tag, prod.Prefix))
 		notesNote := ""
 		if c.Notes == "" {
 			notesNote = "описание версии не получено"
@@ -368,6 +368,17 @@ func (g GitHub) releaseKey(ctx context.Context, tag, keyPath string) (string, er
 }
 
 // file — файл репозитория в теге; нет — пусто.
+// notes — «Что нового» из тега. Каталог Мастерской переименован 2026-11-15;
+// в тегах до 0.4.4 включительно файл лежит по старому пути — читаем его,
+// если по новому пусто (черновик 0.4.4 подписывается пересобранной «Подписью»).
+func (g GitHub) notes(ctx context.Context, prod *product, tag string) string {
+	out := g.file(ctx, prod.Notes, tag)
+	if out != "" || prod.ID != ProductWorkshop {
+		return out
+	}
+	return g.file(ctx, "cmd/wynd-installer/whatsnew.md", tag)
+}
+
 func (g GitHub) file(ctx context.Context, path, ref string) string {
 	out, err := g.gh(ctx, "api", "repos/"+g.Repo+"/contents/"+path+"?ref="+ref, "--jq", ".content")
 	if err != nil {
