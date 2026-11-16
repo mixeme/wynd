@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount, onDestroy, untrack } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Chip from '$ui/forms/Chip.svelte';
 	import Input from '$ui/forms/Input.svelte';
@@ -16,25 +15,9 @@
 	import Radio from '$ui/workshop/Radio.svelte';
 	import RawSheet from '$ui/workshop/RawSheet.svelte';
 	import StepList from '$ui/workshop/StepList.svelte';
-	import {
-		backend,
-		type ServerProfile,
-		type ProfileRequest,
-		type ProfileViewState,
-		type ConnectResult,
-		type DomainCheck,
-		type Finding,
-		type InspectResult,
-		type LogEntry,
-		type LocalBackupPlan,
-		type MovePlan,
-		type Plan,
-		type Progress,
-		type ServerPage
-	} from './api';
-	import { rawSections } from './raw';
-	import { day, dayTime, gb, mark, noRoom } from './lib/display';
-	import { removalNote } from './lib/rollback';
+	import type { ServerProfile, ProfileRequest, ProfileViewState } from './api';
+	import { Panel } from './lib/panel.svelte';
+	import { day, dayTime, gb, mark } from './lib/display';
 
 	let {
 		profile,
@@ -63,796 +46,74 @@
 		onselect: (id: string) => void;
 		onmoved: (id: string) => Promise<void>;
 	} = $props();
-	let operationError = $state('');
-	const api = untrack(() => backend(profile.id));
-	let connection = $state('disconnected');
-	let pendingAuto = false;
-	let targetID = $state('');
-	let completedTarget = $state('');
-	const target = $derived(profiles.find((p) => p.id === targetID));
-	let seenRequest = 0;
-	$effect(() => {
-		const r = request;
-		if (r && r.id !== seenRequest) {
-			seenRequest = r.id;
-			untrack(() => {
-				password = r.password;
-				sessionRemember = profile.remember;
-				pendingAuto = r.auto;
-				makeKey = r.makeKey ?? false;
-				onconsumed();
-				void attempt(connect);
-			});
-		}
-	});
-	let seenReconnect = 0;
-	$effect(() => {
-		const value = reconnect;
-		if (value && value !== seenReconnect) {
-			seenReconnect = value;
-			untrack(() => {
-				void attempt(async () => {
-					connection = 'connected';
-					screen = 'inspect';
-					await inspect(true);
-				});
-			});
-		}
-	});
-	onMount(() => {
-		void refreshSaved();
-		if (!request && profile.auto_connect) void attempt(connect);
-	});
-	onDestroy(() => stopPoll());
-	async function attempt(fn: () => Promise<unknown>) {
-		try {
-			operationError = '';
-			await fn();
-		} catch (e) {
-			operationError = String(e);
-			if (connection === 'connecting' || (screen === 'inspect' && !inspection)) {
-				connection = 'error';
-				screen = 'offline';
-			}
-		}
-	}
-	async function autoConnect(on: boolean) {
-		await backend().SetAutoConnect(profile.id, on);
-		await onprofileschange();
-	}
-	// Окна установщика (docs/visual/workshop.html): 1 — подключение, 1а —
-	// отпечаток, 2 — осмотр, 2а — помеха, 3 — план, 4 — установка, 4а — шаг не
-	// прошёл, 5 — готово. Пульт сервера (6) — следующий срез.
-	type Screen =
-		| 'offline'
-		| 'new'
-		| 'connect'
-		| 'fingerprint'
-		| 'inspect'
-		| 'plan'
-		| 'install'
-		| 'done'
-		| 'server'
-		| 'uplan'
-		| 'update'
-		| 'udone'
-		| 'bplan'
-		| 'backup'
-		| 'bdone'
-		| 'mconnect'
-		| 'mfinger'
-		| 'mplan'
-		| 'move'
-		| 'mdone';
 
-	let screen = $state<Screen>('offline');
 	const host = $derived(profile.host);
-	const user = $derived(profile.user);
-	let password = $state('');
-	let sessionRemember = $state(untrack(() => profile.remember));
-	const useKeys = $derived(profile.use_keys);
-	let makeKey = $state(false);
-	let keyNote = $state('');
-	let saved = $state(false);
-	let busy = $state(false);
-	let failure = $state<ConnectResult | undefined>();
-	let fingerprint = $state('');
-	let previousFingerprint = $state('');
-	let changedFingerprint = $state(false);
-	let mPreviousFingerprint = $state('');
-	let mChangedFingerprint = $state(false);
 
-	let inspection = $state<InspectResult | undefined>();
-	let showRaw = $state(false);
-	let copiedRaw = $state(false);
-	let domain = $state('');
-	// Каталог установки: нужен только при установке (план «другой каталог»).
-	// Значение по умолчанию — сохранённый каталог сервера, иначе /opt/wynd.
-	let installRoot = $state('');
-	$effect(() => {
-		if (!installRoot) installRoot = profile.last_check?.root || '/opt/wynd';
+	// Логика панели — в контроллере (план 60); здесь разметка и wiring.
+	const p = new Panel({
+		profile: () => profile,
+		profiles: () => profiles,
+		request: () => request,
+		reconnect: () => reconnect,
+		onconsumed: () => onconsumed(),
+		onstate: (s) => onstate(s),
+		onprofileschange: () => onprofileschange(),
+		onselect: (id) => onselect(id),
+		onmoved: (id) => onmoved(id)
 	});
-	let domainCheck = $state<DomainCheck | undefined>();
-	let checkingDomain = $state(false);
-
-	const findings = $derived<Finding[]>(inspection?.report.findings ?? []);
-	const blocks = $derived(findings.filter((f) => f.level === 'block'));
-	const rawParts = $derived(
-		inspection
-			? rawSections(
-					inspection.report.raw,
-					blocks.map((b) => b.id)
-				)
-			: []
-	);
-	let plan = $state<Plan | undefined>();
-	let planning = $state(false);
-	let progress = $state<Progress | undefined>();
-	// Страница сервера, где Wynd уже стоит (пульт).
-	let page = $state<ServerPage | undefined>();
-	// План переезда (9б).
-	let mplan = $state<MovePlan | undefined>();
-	let showLog = $state(false);
-	let askRollback = $state(false);
-	let dropData = $state(false);
-	let rolling = $state(false);
-	let rollbackNote = $state('');
-	let rollbackError = $state('');
-	let rollbackLog = $state<LogEntry[]>([]);
-	let copied = $state(false);
-	let copiedLine = $state('');
-
-	const updating = $derived(['uplan', 'update', 'udone'].includes(screen));
-	const backingUp = $derived(['bplan', 'backup', 'bdone'].includes(screen));
-	const moving = $derived(['mconnect', 'mfinger', 'mplan', 'move', 'mdone'].includes(screen));
-	const domainOk = $derived(domainCheck?.level === 'ok');
-
-	// Есть сохранённый пароль — поле можно оставить пустым.
-	let savedRequest = 0;
-	async function refreshSaved() {
-		const serial = ++savedRequest;
-		const address = host,
-			login = user;
-		const next =
-			address.trim() && login.trim() ? await api.HasSavedPassword(address, login) : false;
-		if (serial === savedRequest && address === host && login === user) saved = next;
-	}
-
-	async function applyConnect(res: ConnectResult) {
-		failure = undefined;
-		if (res.status === 'connected') {
-			connection = 'connected';
-			password = '';
-			await refreshSaved();
-			if (pendingAuto) {
-				pendingAuto = false;
-				try {
-					await autoConnect(true);
-				} catch (e) {
-					operationError = String(e);
-				}
-			}
-			keyNote = res.key_note ?? '';
-			screen = 'inspect';
-			await inspect(true);
-		} else if (res.status === 'unknown_host' || res.status === 'changed_host') {
-			changedFingerprint = res.status === 'changed_host';
-			previousFingerprint = res.previous_fingerprint ?? '';
-			connection = 'fingerprint';
-			fingerprint = res.fingerprint ?? '';
-			screen = 'fingerprint';
-		} else {
-			connection = res.status === 'password_required' ? 'password_required' : 'error';
-			failure = res;
-			screen = 'offline';
-		}
-	}
-
-	async function connect() {
-		if (busy) return;
-		busy = true;
-		connection = 'connecting';
-		page = undefined;
-		inspection = undefined;
-		plan = undefined;
-		progress = undefined;
-		screen = 'offline';
-		try {
-			if (!profile.use_keys && sessionRemember !== profile.remember) {
-				await api.SaveProfile({
-					...profile,
-					remember: sessionRemember,
-					auto_connect: profile.auto_connect && sessionRemember
-				});
-				await onprofileschange();
-			}
-			await applyConnect(await api.Connect(password, makeKey));
-		} finally {
-			busy = false;
-		}
-	}
-
-	async function confirmHost() {
-		if (busy) return;
-		busy = true;
-		try {
-			await applyConnect(await (changedFingerprint ? api.ConfirmChangedHost() : api.ConfirmHost()));
-		} finally {
-			busy = false;
-		}
-	}
-
-	async function inspect(landing = false) {
-		busy = true;
-		inspection = undefined;
-		domainCheck = undefined;
-		try {
-			inspection = await api.Inspect();
-			// Wynd здесь уже стоит — сразу страница сервера (владелец, 2026-10-24: 7а).
-			if (
-				inspection.ok &&
-				inspection.report.findings?.some((f) => f.id === 'wynd' || f.id === 'wyndelse')
-			) {
-				const p = await api.ServerPage();
-				if (p.ok && p.state.installed && p.state.container) {
-					page = p;
-					screen = 'server';
-				}
-			}
-			if (
-				inspection.ok &&
-				landing &&
-				screen !== 'server' &&
-				!inspection.report.findings?.some(
-					(f) => f.level === 'block' || f.id === 'wynd' || f.id === 'wyndelse'
-				)
-			)
-				screen = 'new';
-			if (!inspection.ok) connection = 'error';
-			await onprofileschange();
-		} finally {
-			busy = false;
-		}
-	}
-
-	// Пульт (кадры 7а–7ж2).
-	let askStop = $state(false);
-	let svcBusy = $state('');
-	let svcError = $state('');
-	let svcLog = $state<LogEntry[]>([]);
-	let stopForCopy = $state(true);
-	let startAfter = $state(true);
-	let buildUpdate = $state(false);
-	let returning = $state(false);
-	// С какой версии и на какую идёт обновление: окно помнит, пока оно не кончилось.
-	let upFrom = $state('');
-	let upTo = $state('');
-
-	const st = $derived(page?.state);
-	const uplanNoRoom = $derived(noRoom(page));
-
-	async function refreshPage() {
-		page = await api.ServerPage();
-		if (!page.ok) {
-			connection = 'error';
-			screen = 'offline';
-			failure = { status: 'error', host: profile.host, message: page.message, advice: page.advice };
-		}
-		await onprofileschange();
-	}
-
-	// «К серверу» после обновления, бэкапа или переезда: состояние сервера
-	// могло поменяться (обрыв посреди обновления — кадр 7е), читаем заново.
-	async function toServer() {
-		if (moving && !progress?.running) await api.FinishMove();
-		screen = 'server';
-		svcError = '';
-		const p = await api.ServerPage();
-		if (p.ok) {
-			page = p;
-			await onprofileschange();
-		} else {
-			connection = 'error';
-			screen = 'offline';
-			failure = { status: 'error', host: profile.host, message: p.message, advice: p.advice };
-		}
-	}
-
-	async function service(action: 'start' | 'stop' | 'restart') {
-		if (svcBusy) return;
-		svcBusy = action;
-		svcError = '';
-		try {
-			const res = await api.Service(action);
-			page = res.page;
-			svcLog = res.log ?? [];
-			if (!res.ok) svcError = [res.message, res.advice].filter(Boolean).join('. ');
-			askStop = false;
-			await onprofileschange();
-		} finally {
-			svcBusy = '';
-		}
-	}
-
-	function toUpdatePlan() {
-		if (!page) return;
-		stopForCopy = true;
-		startAfter = !page.state.stopped_at;
-		// Собран на сервере — и новый собираем, а не молча берём из хранилища (7б4).
-		buildUpdate = page.built && page.can_build;
-		screen = 'uplan';
-	}
-
-	async function startUpdate() {
-		if (!page) return;
-		upFrom = page.state.update?.from ?? page.state.version ?? '';
-		upTo = page.state.update?.to ?? page.latest ?? '';
-		screen = 'update';
-		applyUpdate(
-			await api.StartUpdate({
-				stop_for_copy: stopForCopy || !page.live_copy,
-				start_after: page.state.running || startAfter,
-				build: buildUpdate
-			})
-		);
-		if (progress?.running && !poll) {
-			poll = setInterval(() => void api.InstallProgress().then(applyUpdate), 500);
-		}
-	}
-	function applyUpdate(next: Progress) {
-		progress = next;
-		if (next.running) return;
-		stopPoll();
-		if (next.done) {
-			screen = 'udone';
-			void refreshPage();
-		}
-	}
-
-	// Бэкап на этот компьютер (8а–8г).
-	let bFolder = $state('');
-	let bSite = $state<'keep' | 'pause' | 'stop'>('keep');
-	let bEncrypt = $state(false);
-	let bPass = $state('');
-	let bPass2 = $state('');
-	let bPlan = $state<LocalBackupPlan | undefined>();
-
-	async function toBackupPlan() {
-		if (!page) return;
-		const key = 'wynd-workshop-backup:' + (page.state.domain ?? '');
-		let saved = '';
-		try {
-			saved = localStorage.getItem(key) ?? '';
-		} catch {
-			saved = '';
-		}
-		bFolder = saved || (await api.DefaultBackupFolder(page.state.domain ?? 'wynd'));
-		bSite = page.live_copy ? 'keep' : 'pause';
-		bPass = bPass2 = '';
-		screen = 'bplan';
-		await planBackup();
-	}
-	async function planBackup() {
-		bPlan = await api.PlanBackup(bFolder);
-		bEncrypt = Boolean(bPlan.encrypted);
-	}
-	async function chooseBackupFolder() {
-		const p = await api.PickFolder();
-		if (p) {
-			bFolder = p;
-			await planBackup();
-		}
-	}
-	const passOk = $derived(
-		!bEncrypt || (bPass.length > 0 && (bPlan?.encrypted || bPass === bPass2))
-	);
-	async function startBackup() {
-		if (!page || !bFolder || !passOk) return;
-		try {
-			localStorage.setItem('wynd-workshop-backup:' + (page.state.domain ?? ''), bFolder);
-		} catch {
-			/* без памяти папки — спросим её в следующий раз */
-		}
-		screen = 'backup';
-		const apply = (next: Progress) => {
-			progress = next;
-			if (next.running) return;
-			stopPoll();
-			if (next.done) {
-				screen = 'bdone';
-				void refreshPage();
-			}
-		};
-		apply(
-			await api.StartBackup({
-				folder: bFolder,
-				site: page.state.running ? bSite : 'keep',
-				password: bEncrypt ? bPass : ''
-			})
-		);
-		if (progress?.running && !poll) {
-			poll = setInterval(() => void api.InstallProgress().then(apply), 500);
-		}
-	}
-
-	// Переезд (9а–9г).
-	let mPass = $state('');
-	let mFail = $state<ConnectResult | undefined>();
-	let mFinger = $state('');
-	let mRemoveOld = $state(false);
-	let mBusy = $state(false);
-	// Незаконченный переезд (9в2): после подключения к новому серверу —
-	// продолжить его или отменить.
-	let mIntent = $state<'' | 'continue' | 'cancel'>('');
-
-	function toMove() {
-		mIntent = '';
-		mFail = undefined;
-		mPass = '';
-		screen = 'mconnect';
-	}
-	function resumeMove(intent: 'continue' | 'cancel') {
-		if (!st?.move) return;
-		mIntent = intent;
-		targetID = profiles.find((p) => p.id !== profile.id && p.host === st.move?.to)?.id ?? '';
-		mFail = undefined;
-		mPass = '';
-		screen = 'mconnect';
-	}
-	async function applyMove(res: ConnectResult) {
-		mFail = undefined;
-		if (res.status === 'connected') {
-			mPass = '';
-			keyNote = res.key_note ?? '';
-			if (mIntent === 'cancel') {
-				await cancelMove(true);
-				return;
-			}
-			screen = 'mplan';
-			mplan = undefined;
-			mplan = await api.MovePlan();
-			if (mIntent === 'continue' && mplan.ok && mplan.resume) {
-				mRemoveOld = Boolean(mplan.remove_old);
-				await startMove();
-			}
-		} else if (res.status === 'unknown_host' || res.status === 'changed_host') {
-			mChangedFingerprint = res.status === 'changed_host';
-			mPreviousFingerprint = res.previous_fingerprint ?? '';
-			mFinger = res.fingerprint ?? '';
-			screen = 'mfinger';
-		} else {
-			mFail = res;
-			screen = 'mconnect';
-		}
-	}
-	async function moveConnect() {
-		if (mBusy || !targetID) return;
-		mBusy = true;
-		try {
-			const result = await api.MoveSelect(targetID, mPass);
-			await onprofileschange();
-			await applyMove(result);
-		} finally {
-			mBusy = false;
-		}
-	}
-	async function moveConfirm() {
-		if (mBusy) return;
-		mBusy = true;
-		try {
-			await applyMove(
-				await (mChangedFingerprint ? api.MoveConfirmChangedHost() : api.MoveConfirmHost())
-			);
-		} finally {
-			mBusy = false;
-		}
-	}
-	async function startMove() {
-		screen = 'move';
-		const apply = (next: Progress) => {
-			progress = next;
-			if (next.running) return;
-			stopPoll();
-			if (next.done) {
-				screen = 'mdone';
-				void attempt(async () => {
-					completedTarget = await api.FinishMove();
-					await onmoved(completedTarget);
-					await refreshPage();
-				});
-			}
-		};
-		apply(await api.StartMove(mRemoveOld));
-		if (progress?.running && !poll) {
-			poll = setInterval(() => void api.InstallProgress().then(apply), 500);
-		}
-	}
-	async function cancelMove(force = false) {
-		if (mBusy && !force) return;
-		mBusy = true;
-		try {
-			stopPoll();
-			const res = await api.CancelMove();
-			page = res.page;
-			svcLog = res.log ?? [];
-			if (!res.ok) svcError = [res.message, res.advice].filter(Boolean).join('. ');
-			if (!res.ok) return;
-			const target = await api.FinishMove();
-			if (target) await onmoved(target);
-			await onprofileschange();
-			progress = undefined;
-			mIntent = '';
-			screen = 'server';
-		} finally {
-			mBusy = false;
-		}
-	}
-	async function adoptNew() {
-		if (completedTarget) {
-			onselect(completedTarget);
-			await onmoved(completedTarget);
-		} else await toServer();
-	}
-
-	async function returnPrevious() {
-		if (returning) return;
-		returning = true;
-		svcError = '';
-		try {
-			const res = await api.ReturnPrevious();
-			page = res.page;
-			svcLog = res.log ?? [];
-			if (res.ok) {
-				progress = undefined;
-				screen = 'server';
-			} else {
-				svcError = [res.message, res.advice].filter(Boolean).join('. ');
-			}
-		} finally {
-			returning = false;
-		}
-	}
-
-	async function checkDomain() {
-		if (checkingDomain || !domain.trim()) return;
-		checkingDomain = true;
-		try {
-			domainCheck = await api.CheckDomain(domain);
-			if (domainCheck.level === 'ok') domain = domainCheck.domain;
-		} finally {
-			checkingDomain = false;
-		}
-	}
-
-	async function toConnect() {
-		stopPoll();
-		plan = undefined;
-		progress = undefined;
-		await api.Disconnect();
-		inspection = undefined;
-		domainCheck = undefined;
-		failure = undefined;
-		connection = 'disconnected';
-		screen = 'offline';
-		await onprofileschange();
-	}
-
-	async function toPlan() {
-		if (planning || !domainOk) return;
-		planning = true;
-		rollbackNote = '';
-		try {
-			if (!st?.installed) await api.SetInstallRoot(profile.id, installRoot.trim() || '/opt/wynd');
-			plan = await api.MakePlan(domain);
-			progress = undefined;
-			screen = 'plan';
-		} finally {
-			planning = false;
-		}
-	}
-
-	// Собрать Wynd на сервере или скачать готовым (окна 3а–3в).
-	let choosing = $state(false);
-	async function chooseBuild(on: boolean) {
-		if (choosing) return;
-		choosing = true;
-		try {
-			const next = await api.ChooseBuild(on);
-			if (next.ok) plan = next;
-		} finally {
-			choosing = false;
-		}
-	}
-
-	// Установка идёт в Go сама; окно только спрашивает, как дела.
-	let poll: ReturnType<typeof setInterval> | undefined;
-	function stopPoll() {
-		clearInterval(poll);
-		poll = undefined;
-	}
-	function applyProgress(next: Progress) {
-		progress = next;
-		if (next.running) return;
-		stopPoll();
-		if (next.done) {
-			screen = 'done';
-			void attempt(refreshPage);
-		}
-	}
-	async function install() {
-		askRollback = false;
-		rollbackError = '';
-		rollbackLog = [];
-		screen = 'install';
-		applyProgress(await api.StartInstall());
-		if (progress?.running && !poll) {
-			poll = setInterval(() => void api.InstallProgress().then(applyProgress), 500);
-		}
-	}
-
-	// Чужой веб-сервер, за которым стоит Wynd: «nginx», «Apache», «Caddy» или пусто — свой Caddy.
-	const proxyName = $derived(
-		({ nginx: 'nginx', apache: 'Apache', caddy: 'Caddy' } as Record<string, string>)[
-			inspection?.report?.proxy ?? ''
-		] ?? ''
-	);
-	// Файлы сайта в чужом веб-сервере, которые ставили не мы (кадры 5е, 5е2):
-	// Wynd там поставлен не Мастерской; файл не трогаем, а называем.
-	const foreignSite = $derived(proxyName ? (inspection?.report?.foreign_site ?? []) : []);
-
-	async function rollback() {
-		if (rolling) return;
-		rolling = true;
-		rollbackError = '';
-		try {
-			const res = await api.Rollback(!dropData);
-			if (res.ok) {
-				const failed = screen === 'install';
-				askRollback = false;
-				rollbackLog = [];
-				progress = undefined;
-				if (res.report) inspection = { ok: true, report: res.report };
-				if (res.plan) plan = res.plan;
-				// Осмотр после отката тот же веб-сервер найдёт снова; текст итога — lib/rollback.
-				rollbackNote = removalNote({
-					dropData,
-					failed,
-					proxyName,
-					foreignSite,
-					cert: res.cert,
-					stale: res.stale
-				});
-				screen = failed ? 'plan' : 'new';
-				page = await api.ServerPage();
-				await onprofileschange();
-			} else {
-				rollbackError = [res.message, res.advice].filter(Boolean).join('. ');
-				// Что откат успел и на чём встал — в тех же «подробностях».
-				rollbackLog = res.log ?? [];
-			}
-		} finally {
-			rolling = false;
-		}
-	}
-
-	async function copyRaw() {
-		copiedRaw = await api.CopyText(inspection?.report.raw ?? '');
-		setTimeout(() => (copiedRaw = false), 2000);
-	}
-
-	async function copyLine(line: string) {
-		if (!(await api.CopyText(line))) return;
-		copiedLine = line;
-		setTimeout(() => (copiedLine = ''), 2000);
-	}
-
-	async function copyLink() {
-		if (!progress?.link) return;
-		copied = await api.CopyText(progress.link);
-		setTimeout(() => (copied = false), 2000);
-	}
-
-	const occupied = $derived(
-		busy ||
-			Boolean(svcBusy) ||
-			rolling ||
-			returning ||
-			mBusy ||
-			planning ||
-			choosing ||
-			checkingDomain ||
-			Boolean(progress?.running)
-	);
-	const status = $derived(
-		profile.reserved_by
-			? 'Назначение переезда'
-			: progress?.running
-				? `${moving ? 'Переезд' : updating ? 'Обновление' : backingUp ? 'Бэкап' : 'Установка'} · ${progress.steps?.find((s) => s.status === 'running')?.title ?? 'выполняется'}`
-				: connection === 'connected'
-					? 'Подключён'
-					: connection === 'connecting'
-						? 'Подключаемся…'
-						: connection === 'fingerprint'
-							? 'Проверьте отпечаток'
-							: connection === 'password_required'
-								? 'Нужен пароль'
-								: connection === 'error'
-									? 'Нет подключения'
-									: 'Нет подключения'
-	);
-	$effect(() => {
-		const state = {
-			status,
-			busy: occupied || Boolean(profile.reserved_by),
-			connected: connection === 'connected'
-		};
-		untrack(() => onstate(state));
-	});
-
-	const logText = $derived(
-		[...(progress?.log ?? []), ...rollbackLog, ...svcLog]
-			.map((e) => ('$ ' + e.command + '\n' + e.output).trimEnd())
-			.join('\n\n')
-	);
-	// C71: в раскрытии — журнал сборки текущей операции, а не все команды.
-	const buildLogText = $derived(
-		(progress?.log ?? [])
-			.filter((e) => e.command.includes('docker build'))
-			.map((e) => ('$ ' + e.command + '\n' + e.output).trimEnd())
-			.join('\n\n')
-	);
+	const { api } = p;
 </script>
 
 {#snippet removeBox(yes: string, site: string)}
 	<Notice tone="bad" title="Убрать Wynd с сервера?">
 		<div class="ins-dim">
 			{#if site}Сайт {site} перестанет открываться.{/if}
-			{#if foreignSite.length}
-				Уберём контейнер Wynd. Docker и {proxyName} останутся.
-			{:else if proxyName}
-				Уберём контейнер Wynd и его сайт из {proxyName}. Docker и {proxyName} останутся.
+			{#if p.foreignSite.length}
+				Уберём контейнер Wynd. Docker и {p.proxyName} останутся.
+			{:else if p.proxyName}
+				Уберём контейнер Wynd и его сайт из {p.proxyName}. Docker и {p.proxyName} останутся.
 			{:else}
 				Уберём контейнеры Wynd и Caddy. Docker останется.
 			{/if}
 		</div>
-		{#if foreignSite.length}
+		{#if p.foreignSite.length}
 			<!-- Кадр 5е: файл сайта ставили не мы — не трогаем, называем. -->
 			<div class="ins-dim">
-				Файл сайта в {proxyName} ставили не мы, его не тронем. Пока он есть, {proxyName}
+				Файл сайта в {p.proxyName} ставили не мы, его не тронем. Пока он есть, {p.proxyName}
 				отвечает по адресу
 				{site || 'сайта'} ошибкой. Уберите его сами:
 			</div>
-			{#each foreignSite as f (f)}
-				<CopyLine text={f} copied={copiedLine === f} oncopy={() => void copyLine(f)} />
+			{#each p.foreignSite as f (f)}
+				<CopyLine text={f} copied={p.copiedLine === f} oncopy={() => void p.copyLine(f)} />
 			{/each}
 		{/if}
-		<Checkbox bind:checked={dropData}>
-			Удалить данные Wynd — записи, фотографии, учётные записи{foreignSite.length
+		<Checkbox bind:checked={p.dropData}>
+			Удалить данные Wynd — записи, фотографии, учётные записи{p.foreignSite.length
 				? ''
 				: ' — и сертификат сайта'}
 		</Checkbox>
 		<div class="ins-dim">
-			{#if foreignSite.length}
+			{#if p.foreignSite.length}
 				Без галочки папка /opt/wynd останется.
-			{:else if proxyName}
+			{:else if p.proxyName}
 				Без галочки папка /opt/wynd и сертификат останутся.
 			{:else}
 				Без галочки папка /opt/wynd останется как есть.
 			{/if}
 			Поставите Wynd снова — всё будет на месте.
 		</div>
-		{#if rollbackError}
-			<div class="ins-dim" role="alert">{rollbackError}</div>
-			<TextButton class="link under" onclick={() => (showLog = !showLog)}>подробности</TextButton>
+		{#if p.rollbackError}
+			<div class="ins-dim" role="alert">{p.rollbackError}</div>
+			<TextButton class="link under" onclick={() => (p.showLog = !p.showLog)}>подробности</TextButton>
 		{/if}
 		<FootBar>
 			<Button
 				variant="colored"
-				loading={rolling}
+				loading={p.rolling}
 				loadingLabel="Убираем Wynd…"
-				onclick={() => void attempt(() => rollback())}>{yes}</Button
+				onclick={() => void p.attempt(() => p.rollback())}>{yes}</Button
 			>
-			<Button variant="ghost" disabled={rolling} onclick={() => (askRollback = false)}
+			<Button variant="ghost" disabled={p.rolling} onclick={() => (p.askRollback = false)}
 				>Отмена</Button
 			>
 		</FootBar>
@@ -865,78 +126,78 @@
 			name: profile.name,
 			host: profile.host,
 			user: profile.user,
-			domain: page?.state.domain ?? profile.last_check?.domain,
-			status: connection === 'connected' ? 'Подключён' : status,
-			state: connection
+			domain: p.page?.state.domain ?? profile.last_check?.domain,
+			status: p.connection === 'connected' ? 'Подключён' : p.status,
+			state: p.connection
 		}}
 	>
 		<Button
 			variant="ghost"
-			loading={connection === 'connecting'}
+			loading={p.connection === 'connecting'}
 			loadingLabel="Подключаемся…"
-			disabled={occupied || moving || Boolean(profile.reserved_by)}
-			onclick={() => void attempt(connection === 'connected' ? toConnect : connect)}
-			>{connection === 'connected' ? 'Отключиться' : 'Подключиться'}</Button
+			disabled={p.occupied || p.moving || Boolean(profile.reserved_by)}
+			onclick={() => void p.attempt(p.connection === 'connected' ? p.toConnect : p.connect)}
+			>{p.connection === 'connected' ? 'Отключиться' : 'Подключиться'}</Button
 		>
 		<Checkbox
 			native
 			checked={profile.auto_connect}
-			disabled={!profile.auto_connect && !profile.use_keys && (!saved || !profile.remember)}
-			onchange={(on) => void attempt(() => autoConnect(on))}>Подключаться при запуске</Checkbox
+			disabled={!profile.auto_connect && !profile.use_keys && (!p.saved || !profile.remember)}
+			onchange={(on) => void p.attempt(() => p.autoConnect(on))}>Подключаться при запуске</Checkbox
 		>
 	</Notice>
-	{#if updating || backingUp || moving || ['inspect', 'plan', 'install', 'done'].includes(screen)}
-		<div class="ins-operation-path">{updating
-				? screen === 'uplan'
+	{#if p.updating || p.backingUp || p.moving || ['inspect', 'plan', 'install', 'done'].includes(p.screen)}
+		<div class="ins-operation-path">{p.updating
+				? p.screen === 'uplan'
 					? 'Обновление › План'
 					: 'Обновление'
-				: backingUp
+				: p.backingUp
 					? 'Бэкап'
-					: moving
-						? screen === 'mplan'
+					: p.moving
+						? p.screen === 'mplan'
 							? 'Переезд › План'
 							: 'Переезд'
-						: screen === 'plan'
+						: p.screen === 'plan'
 							? 'Установка › План'
 							: 'Установка Wynd'}</div>
 	{/if}
-	{#if operationError}<Notice tone="bad" alert>{operationError}</Notice>{/if}
-	{#if moving && target}<div class="ins-move-pair">
+	{#if p.operationError}<Notice tone="bad" alert>{p.operationError}</Notice>{/if}
+	{#if p.moving && p.target}<div class="ins-move-pair">
 			<div>
 				<strong>Откуда: {profile.name}</strong><small>SSH: {profile.user}@{profile.host}</small>
 			</div>
 			<span>→</span>
 			<div>
-				<strong>Куда: {target.name}</strong><small>SSH: {target.user}@{target.host}</small>
+				<strong>Куда: {p.target.name}</strong><small>SSH: {p.target.user}@{p.target.host}</small>
 			</div>
 		</div>{/if}
 
-	{#if connection === 'connecting'}<h2>Проверяем сервер</h2>
+	{#if p.connection === 'connecting'}<h2>Проверяем сервер</h2>
 		<p class="ins-sub">После подключения узнаем состояние Wynd. Можно выбрать другой сервер.</p>
 	{:else if profile.reserved_by}<h2>Сервер участвует в переезде</h2>
 		<p class="ins-sub">
-			Выбран назначением для сервера {profiles.find((p) => p.id === profile.reserved_by)?.name}.
+			Выбран назначением для сервера {profiles.find((q) => q.id === profile.reserved_by)?.name}.
 			Управление переездом — в пульте исходного сервера.
 		</p>
-	{:else if screen === 'offline' || screen === 'connect'}
+	{:else if p.screen === 'offline' || p.screen === 'connect'}
 		<h2>
-			{connection === 'password_required'
+			{p.connection === 'password_required'
 				? 'Для входа нужен пароль'
-				: failure
+				: p.failure
 					? 'Не удалось подключиться'
 					: 'Подключитесь, чтобы проверить сервер'}
 		</h2>
-		{#if failure}<Notice tone="bad" alert title={failure.message} text={failure.advice}
-				>{#if failure.fingerprint}<div class="ins-mono">
-						{failure.fingerprint}
+		{#if p.failure}<Notice tone="bad" alert title={p.failure.message} text={p.failure.advice}
+				>{#if p.failure.fingerprint}<div class="ins-mono">
+						{p.failure.fingerprint}
 					</div>{/if}</Notice
 			>{/if}
 		{#if !profile.use_keys}<Label>Пароль от сервера</Label><Input
-				type="password"
+				type="p.password"
 				autocomplete="off"
-				bind:value={password}
-				placeholder={saved ? 'сохранён — можно не вводить' : ''}
-			/><Checkbox native bind:checked={sessionRemember}
+				bind:value={p.password}
+				placeholder={p.saved ? 'сохранён — можно не вводить' : ''}
+			/><Checkbox native bind:checked={p.sessionRemember}
 				>Запомнить пароль на этом компьютере</Checkbox
 			>
 		{/if}
@@ -951,55 +212,55 @@
 					Это сохранённые сведения. Текущее состояние узнаем после подключения.
 				</p></Notice
 			>{/if}
-		{#if failure || connection === 'password_required'}
+		{#if p.failure || p.connection === 'password_required'}
 			<FootBar
 				><Button
 					variant="colored"
-					loading={busy}
+					loading={p.busy}
 					loadingLabel="Подключаемся…"
 					disabled={Boolean(profile.reserved_by)}
-					onclick={() => void attempt(connect)}>{failure ? 'Повторить' : 'Подключиться'}</Button
+					onclick={() => void p.attempt(p.connect)}>{p.failure ? 'Повторить' : 'Подключиться'}</Button
 				><Button
 					variant="ghost"
 					class="ins-push"
-					disabled={occupied || moving || Boolean(profile.reserved_by)}
+					disabled={p.occupied || p.moving || Boolean(profile.reserved_by)}
 					onclick={onedit}>Изменить доступ</Button
 				></FootBar
 			>
 		{/if}
-	{:else if screen === 'new'}
-		{#if rollbackNote}<Notice tone="note">{rollbackNote}</Notice>{/if}
+	{:else if p.screen === 'new'}
+		{#if p.rollbackNote}<Notice tone="note">{p.rollbackNote}</Notice>{/if}
 		<h2>Wynd на сервере не найден</h2>
 		<p class="ins-sub">Проверено сейчас.</p>
 		<Notice
 			>Можно установить Wynd. Сначала Мастерская проверит, что потребуется изменить, и покажет план.</Notice
 		>
 		<FootBar
-			><Button variant="colored" onclick={() => (screen = 'inspect')}>Установить Wynd</Button
+			><Button variant="colored" onclick={() => (p.screen = 'inspect')}>Установить Wynd</Button
 			></FootBar
 		>
-	{:else if screen === 'server' && page && st}
+	{:else if p.screen === 'server' && p.page && p.st}
 		<!-- Пульт (кадры 7а, 7а2, 7а3, 7е). -->
-		{#if keyNote}<Notice tone="note">{keyNote}</Notice>{/if}
+		{#if p.keyNote}<Notice tone="note">{p.keyNote}</Notice>{/if}
 		<h2>
-			{page.foreign
+			{p.page.foreign
 				? 'Этот Wynd ставила не Мастерская'
-				: st.running
+				: p.st.running
 					? 'Wynd работает'
-					: st.stopped_at
+					: p.st.stopped_at
 						? 'Wynd остановлен'
 						: 'Wynd не работает'}
 		</h2>
 		<p class="ins-sub">
-			Сервер {page.host} · Wynd{st.version ? ` ${st.version}` : ''} · {st.running
+			Сервер {p.page.host} · Wynd{p.st.version ? ` ${p.st.version}` : ''} · {p.st.running
 				? 'работает'
-				: st.stopped_at
-					? `остановлен вами ${day(st.stopped_at)}`
-					: 'не работает'} · свободно {gb(st.free_bytes)}
+				: p.st.stopped_at
+					? `остановлен вами ${day(p.st.stopped_at)}`
+					: 'не работает'} · свободно {gb(p.st.free_bytes)}
 		</p>
-		{#if page.foreign && !st.move}
+		{#if p.page.foreign && !p.st.move}
 			<!-- Кадр 7з: только переезд. -->
-			{@const f = page.foreign}
+			{@const f = p.page.foreign}
 			<Notice title="Этот Wynd ставила не Мастерская">
 				<div class="ins-dim">
 					Он {f.running ? 'работает' : 'запускается'} как {f.kind === 'service'
@@ -1015,73 +276,73 @@
 				<MarkRow mark="→">
 					Переехать на другой сервер
 					{#snippet action()}
-						<TextButton class="link under" onclick={toMove}>Перенести</TextButton>
+						<TextButton class="link under" onclick={p.toMove}>Перенести</TextButton>
 					{/snippet}
 				</MarkRow>
 			</MarkRows>
-		{:else if st.move}
+		{:else if p.st.move}
 			<!-- Кадр 9в2. -->
-			<Notice title="Переезд на сервер {st.move.to} не закончен">
+			<Notice title="Переезд на сервер {p.st.move.to} не закончен">
 				<div class="ins-dim">
-					Переезд начался {dayTime(st.move.started)}. С тех пор сайт на старом сервере {page.host} остановлен.
+					Переезд начался {dayTime(p.st.move.started)}. С тех пор сайт на старом сервере {p.page.host} остановлен.
 				</div>
 				<FootBar>
-					<Button variant="colored" onclick={() => resumeMove('continue')}
+					<Button variant="colored" onclick={() => p.resumeMove('continue')}
 						>Продолжить переезд</Button
 					>
-					<Button variant="ghost" onclick={() => resumeMove('cancel')}>Отменить переезд</Button>
+					<Button variant="ghost" onclick={() => p.resumeMove('cancel')}>Отменить переезд</Button>
 				</FootBar>
 			</Notice>
-		{:else if st.update}
-			<Notice title="Обновление до {st.update.to} не закончено">
+		{:else if p.st.update}
+			<Notice title="Обновление до {p.st.update.to} не закончено">
 				<div class="ins-dim">
 					<!-- Момент обрыва Мастерская не знает — время начала обновления (владелец, 2026-10-25). -->
-					Обновление началось {dayTime(st.update.started)}. Связь с сервером прервалась{st.update
+					Обновление началось {dayTime(p.st.update.started)}. Связь с сервером прервалась{p.st.update
 						.stopped
 						? ', когда Wynd был остановлен,'
-						: ''}{st.running ? '' : ' — с тех пор сайт не открывается'}. {st.update.copied
+						: ''}{p.st.running ? '' : ' — с тех пор сайт не открывается'}. {p.st.update.copied
 						? 'Копия данных перед обновлением на месте.'
 						: 'Копию сделать не успели — данные не менялись.'}
 				</div>
 				<FootBar>
-					<Button variant="colored" onclick={() => void attempt(() => startUpdate())}
+					<Button variant="colored" onclick={() => void p.attempt(() => p.startUpdate())}
 						>Продолжить обновление</Button
 					>
 					<Button
 						variant="ghost"
-						loading={returning}
+						loading={p.returning}
 						loadingLabel="Возвращаем…"
-						onclick={() => void attempt(() => returnPrevious())}
+						onclick={() => void p.attempt(() => p.returnPrevious())}
 					>
-						Вернуть {st.update.from}
+						Вернуть {p.st.update.from}
 					</Button>
 				</FootBar>
 			</Notice>
 		{:else}
 			<div class="ins-svcbar">
-				{#if st.running}
+				{#if p.st.running}
 					<Button
 						variant="ghost"
-						loading={svcBusy === 'restart'}
+						loading={p.svcBusy === 'restart'}
 						loadingLabel="Перезапускаем…"
-						disabled={Boolean(svcBusy)}
-						onclick={() => void attempt(() => service('restart'))}>Перезапустить</Button
+						disabled={Boolean(p.svcBusy)}
+						onclick={() => void p.attempt(() => p.service('restart'))}>Перезапустить</Button
 					>
-					<Button variant="ghost" disabled={Boolean(svcBusy)} onclick={() => (askStop = true)}>
+					<Button variant="ghost" disabled={Boolean(p.svcBusy)} onclick={() => (p.askStop = true)}>
 						Остановить
 					</Button>
 				{:else}
 					<Button
 						variant="colored"
-						loading={svcBusy === 'start'}
+						loading={p.svcBusy === 'start'}
 						loadingLabel="Запускаем…"
-						onclick={() => void attempt(() => service('start'))}
+						onclick={() => void p.attempt(() => p.service('start'))}
 					>
 						Запустить
 					</Button>
 				{/if}
 			</div>
-			{#if askStop}
+			{#if p.askStop}
 				<Notice title="Остановить сайт?">
 					<div class="ins-dim">
 						Пока он остановлен, круги не открываются ни у кого, письма с сервера не уходят. Данные
@@ -1090,23 +351,23 @@
 					<FootBar>
 						<Button
 							variant="colored"
-							loading={svcBusy === 'stop'}
+							loading={p.svcBusy === 'stop'}
 							loadingLabel="Останавливаем…"
-							onclick={() => void attempt(() => service('stop'))}
+							onclick={() => void p.attempt(() => p.service('stop'))}
 						>
 							Остановить
 						</Button>
-						<Button variant="ghost" onclick={() => (askStop = false)}>Отмена</Button>
+						<Button variant="ghost" onclick={() => (p.askStop = false)}>Отмена</Button>
 					</FootBar>
 				</Notice>
 			{/if}
-			{#if page.latest}
-				<Notice class="ins-pult-update" title="Вышла версия {page.latest}">
+			{#if p.page.latest}
+				<Notice class="ins-pult-update" title="Вышла версия {p.page.latest}">
 					<div class="ins-dim">
 						Перед обновлением сохраним копию данных на сервере.
 					</div>
 					<FootBar>
-						<Button variant={st.running ? 'colored' : 'ghost'} onclick={toUpdatePlan}
+						<Button variant={p.st.running ? 'colored' : 'ghost'} onclick={p.toUpdatePlan}
 							>Обновить</Button
 						>
 					</FootBar>
@@ -1118,7 +379,7 @@
 				<MarkRow mark="">
 					Бэкап на этот компьютер
 					{#snippet action()}
-						<TextButton class="link under" onclick={() => void attempt(() => toBackupPlan())}
+						<TextButton class="link under" onclick={() => void p.attempt(() => p.toBackupPlan())}
 							>Сделать</TextButton
 						>
 					{/snippet}
@@ -1126,57 +387,57 @@
 				<MarkRow mark="">
 					Переезд на другой сервер
 					{#snippet action()}
-						<TextButton class="link under" onclick={toMove}>Перенести</TextButton>
+						<TextButton class="link under" onclick={p.toMove}>Перенести</TextButton>
 					{/snippet}
 				</MarkRow>
 			</MarkRows>
 		{/if}
-		{#if svcError}
+		{#if p.svcError}
 			<Notice tone="bad" alert>
-				{svcError}
-				<TextButton class="link under" onclick={() => (showLog = !showLog)}>подробности</TextButton>
+				{p.svcError}
+				<TextButton class="link under" onclick={() => (p.showLog = !p.showLog)}>подробности</TextButton>
 			</Notice>
 		{/if}
-		{#if askRollback}
-			{@render removeBox('Да, убрать', st.domain ?? '')}
+		{#if p.askRollback}
+			{@render removeBox('Да, убрать', p.st.domain ?? '')}
 		{/if}
-		{#if showLog}
-			<CommandLog text={logText} />
+		{#if p.showLog}
+			<CommandLog text={p.logText} />
 		{/if}
-	{:else if screen === 'uplan' && page && st && uplanNoRoom}
+	{:else if p.screen === 'uplan' && p.page && p.st && p.uplanNoRoom}
 		<!-- Кадр 7б2. -->
 		<h2>Пока обновить нельзя</h2>
 		<Notice title="На сервере мало места для копии">
 			<div class="ins-dim">
 				Перед обновлением сохраняем копию данных: без неё при неудаче их нечем вернуть. Копии нужно
-				{gb(page.copy_bytes)}, свободно {gb(st.free_bytes)}. Освободите место на сервере и нажмите
+				{gb(p.page.copy_bytes)}, свободно {gb(p.st.free_bytes)}. Освободите место на сервере и нажмите
 				«Проверить снова».
 			</div>
 		</Notice>
 		<FootBar>
-			<Button variant="colored" onclick={() => void refreshPage()}>Проверить снова</Button>
-			<Button variant="ghost" onclick={() => (screen = 'server')}>Назад</Button>
+			<Button variant="colored" onclick={() => void p.refreshPage()}>Проверить снова</Button>
+			<Button variant="ghost" onclick={() => (p.screen = 'server')}>Назад</Button>
 		</FootBar>
-	{:else if screen === 'uplan' && page && st}
+	{:else if p.screen === 'uplan' && p.page && p.st}
 		<!-- Кадры 7б, 7б3, 7б4. -->
-		{@const get = buildUpdate
-			? `Соберём Wynd ${page.latest} из исходного кода`
-			: `Скачаем Wynd ${page.latest}`}
-		{@const stopLive = st.running && !(stopForCopy || !page.live_copy)}
-		<h2>Обновим до {page.latest}</h2>
+		{@const get = p.buildUpdate
+			? `Соберём Wynd ${p.page.latest} из исходного кода`
+			: `Скачаем Wynd ${p.page.latest}`}
+		{@const stopLive = p.st.running && !(p.stopForCopy || !p.page.live_copy)}
+		<h2>Обновим до {p.page.latest}</h2>
 		<MarkRows>
 			<MarkRow mark="1">
-				{get}{#if st.running}&nbsp;<span class="ins-dim">— сайт пока работает</span>{/if}
+				{get}{#if p.st.running}&nbsp;<span class="ins-dim">— сайт пока работает</span>{/if}
 			</MarkRow>
-			{#if st.running && !stopLive}
+			{#if p.st.running && !stopLive}
 				<MarkRow mark="2">
 					Остановим Wynd <span class="ins-dim">— с этой минуты сайт не открывается</span>
 				</MarkRow>
 			{/if}
-			<MarkRow mark={st.running && !stopLive ? 3 : 2}>
+			<MarkRow mark={p.st.running && !stopLive ? 3 : 2}>
 				Сохраним копию данных на сервере
 				<span class="ins-dim"
-					>— займёт {gb(page.copy_bytes)}, свободно {gb(st.free_bytes)}. Фото и видео обновление не
+					>— займёт {gb(p.page.copy_bytes)}, свободно {gb(p.st.free_bytes)}. Фото и видео обновление не
 					меняет: в копии они те же файлы и места не занимают</span
 				>
 			</MarkRow>
@@ -1185,131 +446,131 @@
 					Остановим Wynd <span class="ins-dim">— с этой минуты сайт не открывается</span>
 				</MarkRow>
 			{/if}
-			<MarkRow mark={st.running ? 4 : 3}>
-				{st.running || startAfter
-					? `Запустим ${page.latest} и проверим сайт`
-					: `Поставим ${page.latest}`}
+			<MarkRow mark={p.st.running ? 4 : 3}>
+				{p.st.running || p.startAfter
+					? `Запустим ${p.page.latest} и проверим сайт`
+					: `Поставим ${p.page.latest}`}
 			</MarkRow>
 		</MarkRows>
-		{#if st.running}
-			<Checkbox bind:checked={stopForCopy} disabled={!page.live_copy}>
+		{#if p.st.running}
+			<Checkbox bind:checked={p.stopForCopy} disabled={!p.page.live_copy}>
 				Остановить сайт на время копии
 				<span class="ins-dim">
-					{#if !page.live_copy}
-						— Wynd {st.version} копию без остановки не умеет.
+					{#if !p.page.live_copy}
+						— Wynd {p.st.version} копию без остановки не умеет.
 					{/if}
-					Пока идёт копия, никто ничего не напишет — при возврате к {st.version} ничего не пропадёт. Без
+					Пока идёт копия, никто ничего не напишет — при возврате к {p.st.version} ничего не пропадёт. Без
 					галочки сайт закрыт только на запуск новой версии, но то, что напишут во время копии, при возврате
 					пропадёт.
 				</span>
 			</Checkbox>
 		{:else}
 			<Label>После обновления</Label>
-			<Radio name="after" value={true} bind:group={startAfter}>Запустить новую версию</Radio>
-			<Radio name="after" value={false} bind:group={startAfter}>
+			<Radio name="after" value={true} bind:group={p.startAfter}>Запустить новую версию</Radio>
+			<Radio name="after" value={false} bind:group={p.startAfter}>
 				Оставить сайт остановленным
-				{#if st.stopped_at}<span class="ins-dim">— его остановили вы {day(st.stopped_at)}</span
+				{#if p.st.stopped_at}<span class="ins-dim">— его остановили вы {day(p.st.stopped_at)}</span
 					>{/if}
 			</Radio>
 		{/if}
 		<p class="ins-sub mt">
-			Не тронем: Docker, {proxyName || 'Caddy'}, сертификат сайта.
+			Не тронем: Docker, {p.proxyName || 'Caddy'}, сертификат сайта.
 		</p>
-		{#if page.can_build}
+		{#if p.page.can_build}
 			<p class="ins-sub">
-				{buildUpdate ? 'Сервер соберёт Wynd сам.' : 'Сервер скачает Wynd готовым.'}
-				<TextButton class="link under" onclick={() => (buildUpdate = !buildUpdate)}>
-					{buildUpdate ? 'Скачать готовый' : 'Собрать самому'}
+				{p.buildUpdate ? 'Сервер соберёт Wynd сам.' : 'Сервер скачает Wynd готовым.'}
+				<TextButton class="link under" onclick={() => (p.buildUpdate = !p.buildUpdate)}>
+					{p.buildUpdate ? 'Скачать готовый' : 'Собрать самому'}
 				</TextButton>
 			</p>
 		{/if}
 		<FootBar>
-			<Button variant="colored" onclick={() => void attempt(() => startUpdate())}>Обновить</Button>
-			<Button variant="ghost" onclick={() => (screen = 'server')}>Назад</Button>
-			{#if buildUpdate}<span class="ins-dim">около 10 минут</span>{/if}
+			<Button variant="colored" onclick={() => void p.attempt(() => p.startUpdate())}>Обновить</Button>
+			<Button variant="ghost" onclick={() => (p.screen = 'server')}>Назад</Button>
+			{#if p.buildUpdate}<span class="ins-dim">около 10 минут</span>{/if}
 		</FootBar>
-	{:else if screen === 'update' && progress?.failure}
+	{:else if p.screen === 'update' && p.progress?.failure}
 		<!-- Кадр 7д: после остановки — вернуть прежнюю; раньше сайт работает, только повторить. -->
-		{@const stopped = ['start', 'check'].includes(progress.failure.step)}
-		<h2>{progress.failure.message}</h2>
-		<StepList class="ins-stage-steps" steps={progress?.steps ?? []} />
-		{#if progress.failure.advice}<Notice>{progress.failure.advice}</Notice>{/if}
+		{@const stopped = ['start', 'check'].includes(p.progress.failure.step)}
+		<h2>{p.progress.failure.message}</h2>
+		<StepList class="ins-stage-steps" steps={p.progress?.steps ?? []} />
+		{#if p.progress.failure.advice}<Notice>{p.progress.failure.advice}</Notice>{/if}
 		{#if stopped}
 			<p class="ins-sub mt">
-				«Вернуть {upFrom}» запустит прежнюю версию с данными из копии — сайт заработает как до
+				«Вернуть {p.upFrom}» запустит прежнюю версию с данными из копии — сайт заработает как до
 				обновления.
 			</p>
 		{/if}
-		{#if svcError}<Notice tone="bad" alert>{svcError}</Notice>{/if}
+		{#if p.svcError}<Notice tone="bad" alert>{p.svcError}</Notice>{/if}
 		<FootBar>
 			{#if stopped}
 				<Button
 					variant="colored"
-					loading={returning}
+					loading={p.returning}
 					loadingLabel="Возвращаем…"
-					onclick={() => void attempt(() => returnPrevious())}
+					onclick={() => void p.attempt(() => p.returnPrevious())}
 				>
-					Вернуть {upFrom}
+					Вернуть {p.upFrom}
 				</Button>
 				<Button
 					variant="ghost"
-					disabled={returning}
-					onclick={() => void attempt(() => startUpdate())}>Повторить</Button
+					disabled={p.returning}
+					onclick={() => void p.attempt(() => p.startUpdate())}>Повторить</Button
 				>
 			{:else}
-				<Button variant="colored" onclick={() => void attempt(() => startUpdate())}
+				<Button variant="colored" onclick={() => void p.attempt(() => p.startUpdate())}
 					>Повторить</Button
 				>
-				<Button variant="ghost" onclick={() => void attempt(() => toServer())}>К серверу</Button>
+				<Button variant="ghost" onclick={() => void p.attempt(() => p.toServer())}>К серверу</Button>
 			{/if}
-			<TextButton class="link under ins-push" onclick={() => (showLog = !showLog)}
-				>{showLog
+			<TextButton class="link under ins-push" onclick={() => (p.showLog = !p.showLog)}
+				>{p.showLog
 					? 'Скрыть вывод сборки'
-					: progress.failure.step === 'image'
+					: p.progress.failure.step === 'image'
 						? 'Полный вывод сборки'
 						: 'подробности'}</TextButton
 			>
 		</FootBar>
-		{#if showLog}
-			<CommandLog text={buildLogText || logText} />
+		{#if p.showLog}
+			<CommandLog text={p.buildLogText || p.logText} />
 		{/if}
-	{:else if screen === 'update'}
+	{:else if p.screen === 'update'}
 		<h2>Обновляем</h2>
-		<StepList class="ins-stage-steps" steps={progress?.steps ?? []} />
+		<StepList class="ins-stage-steps" steps={p.progress?.steps ?? []} />
 		<FootBar>
-			<TextButton class="link under" onclick={() => (showLog = !showLog)}>
-				{showLog ? 'Скрыть вывод сборки' : buildUpdate ? 'Полный вывод сборки' : 'показать, что выполняется'}
+			<TextButton class="link under" onclick={() => (p.showLog = !p.showLog)}>
+				{p.showLog ? 'Скрыть вывод сборки' : p.buildUpdate ? 'Полный вывод сборки' : 'показать, что выполняется'}
 			</TextButton>
 			<span class="ins-dim ins-push">Окно можно свернуть</span>
 		</FootBar>
-		{#if showLog}
-			<CommandLog text={buildLogText || logText} />
+		{#if p.showLog}
+			<CommandLog text={p.buildLogText || p.logText} />
 		{/if}
-	{:else if screen === 'udone'}
+	{:else if p.screen === 'udone'}
 		<!-- Кадр 7г. -->
 		<h2>Wynd обновлён</h2>
 		<p class="ins-sub">
-			{page?.state.running
-				? `Проверка прошла: работает ${upTo}, сайт открывается.`
-				: `Wynd ${upTo} поставлен, сайт остановлен.`}
+			{p.page?.state.running
+				? `Проверка прошла: работает ${p.upTo}, сайт открывается.`
+				: `Wynd ${p.upTo} поставлен, сайт остановлен.`}
 		</p>
 		<Notice>
-			Копия данных до обновления лежит на сервере в папке /opt/wynd/backups/{upFrom}{page
-				? ` — ${gb(page.copy_bytes)}`
+			Копия данных до обновления лежит на сервере в папке /opt/wynd/backups/{p.upFrom}{p.page
+				? ` — ${gb(p.page.copy_bytes)}`
 				: ''}.
 		</Notice>
 		<FootBar>
-			{#if page?.state.running}
+			{#if p.page?.state.running}
 				<Button
 					variant="colored"
-					onclick={() => void api.OpenLink(`https://${page?.state.domain}`)}
+					onclick={() => void api.OpenLink(`https://${p.page?.state.domain}`)}
 				>
-					Открыть {page?.state.domain}
+					Открыть {p.page?.state.domain}
 				</Button>
 			{/if}
-			<Button variant="ghost" onclick={() => void attempt(() => toServer())}>К серверу</Button>
+			<Button variant="ghost" onclick={() => void p.attempt(() => p.toServer())}>К серверу</Button>
 		</FootBar>
-	{:else if screen === 'bplan' && page && st}
+	{:else if p.screen === 'bplan' && p.page && p.st}
 		<!-- Кадры 8а, 8а2. -->
 		<h2>Бэкап на этот компьютер</h2>
 		<p class="ins-sub">
@@ -1321,126 +582,126 @@
 			<Input
 				mono
 				class="ins-grow"
-				bind:value={bFolder}
-				onblur={() => void attempt(() => planBackup())}
+				bind:value={p.bFolder}
+				onblur={() => void p.attempt(() => p.planBackup())}
 			/>
-			<Button variant="ghost" onclick={() => void attempt(() => chooseBackupFolder())}
+			<Button variant="ghost" onclick={() => void p.attempt(() => p.chooseBackupFolder())}
 				>Выбрать</Button
 			>
 		</FieldLine>
-		{#if bPlan?.ok}
+		{#if p.bPlan?.ok}
 			<MarkRow mark="↓">
-				Скачаем {gb(bPlan.fetch)}
+				Скачаем {gb(p.bPlan.fetch)}
 				<span class="ins-dim"
-					>{bPlan.prev
-						? `— в папке уже есть бэкап от ${day(bPlan.prev)}, берём только новое. Всего ${gb(bPlan.total)}`
+					>{p.bPlan.prev
+						? `— в папке уже есть бэкап от ${day(p.bPlan.prev)}, берём только новое. Всего ${gb(p.bPlan.total)}`
 						: ''}</span
 				>
 			</MarkRow>
-		{:else if bPlan}
-			<Notice tone="bad" alert>{bPlan.message}</Notice>
+		{:else if p.bPlan}
+			<Notice tone="bad" alert>{p.bPlan.message}</Notice>
 		{/if}
-		{#if st.running}
+		{#if p.st.running}
 			<Label>Сайт</Label>
-			<Radio name="bsite" value="keep" bind:group={bSite} disabled={!page.live_copy}>
-				Работает, пока идёт бэкап{#if !page.live_copy}&nbsp;<span class="ins-dim"
-						>— Wynd {st.version} так не умеет</span
+			<Radio name="bsite" value="keep" bind:group={p.bSite} disabled={!p.page.live_copy}>
+				Работает, пока идёт бэкап{#if !p.page.live_copy}&nbsp;<span class="ins-dim"
+						>— Wynd {p.st.version} так не умеет</span
 					>{/if}
 			</Radio>
-			<Radio name="bsite" value="pause" bind:group={bSite}
+			<Radio name="bsite" value="pause" bind:group={p.bSite}
 				>Остановить на время бэкапа и запустить снова</Radio
 			>
-			<Radio name="bsite" value="stop" bind:group={bSite}>
+			<Radio name="bsite" value="stop" bind:group={p.bSite}>
 				Остановить и не запускать <span class="ins-dim">— сервер переезжает или закрывается</span>
 			</Radio>
 		{/if}
-		<Checkbox bind:checked={bEncrypt} disabled={bPlan?.encrypted}>Зашифровать паролем</Checkbox>
-		{#if bEncrypt}
+		<Checkbox bind:checked={p.bEncrypt} disabled={p.bPlan?.encrypted}>Зашифровать паролем</Checkbox>
+		{#if p.bEncrypt}
 			<div class="ins-pair">
 				<div class="ins-grow">
-					<Label>Пароль</Label><Input type="password" autocomplete="off" bind:value={bPass} />
+					<Label>Пароль</Label><Input type="p.password" autocomplete="off" bind:value={p.bPass} />
 				</div>
-				{#if !bPlan?.encrypted}
+				{#if !p.bPlan?.encrypted}
 					<div class="ins-grow">
-						<Label>Ещё раз</Label><Input type="password" autocomplete="off" bind:value={bPass2} />
+						<Label>Ещё раз</Label><Input type="p.password" autocomplete="off" bind:value={p.bPass2} />
 					</div>
 				{/if}
 			</div>
 			<p class="ins-dim">
-				{bPlan?.encrypted
+				{p.bPlan?.encrypted
 					? 'В этой папке бэкап с паролем — нужен тот же пароль, иначе бэкап скачается целиком заново в другую папку.'
 					: 'Без пароля бэкап не открыть никак — запишите его.'}
 			</p>
 		{/if}
 		<FootBar>
 			<Button
-				variant={bFolder &&
-				passOk &&
-				bPlan?.ok &&
-				(bSite !== 'keep' || page.live_copy || !st.running)
+				variant={p.bFolder &&
+				p.passOk &&
+				p.bPlan?.ok &&
+				(p.bSite !== 'keep' || p.page.live_copy || !p.st.running)
 					? 'colored'
 					: 'off'}
-				onclick={() => void attempt(() => startBackup())}>Сделать бэкап</Button
+				onclick={() => void p.attempt(() => p.startBackup())}>Сделать бэкап</Button
 			>
-			<Button variant="ghost" onclick={() => (screen = 'server')}>Назад</Button>
+			<Button variant="ghost" onclick={() => (p.screen = 'server')}>Назад</Button>
 		</FootBar>
-	{:else if screen === 'backup' && progress?.failure}
+	{:else if p.screen === 'backup' && p.progress?.failure}
 		<!-- Кадр 8г. -->
-		<h2>{progress.failure.message}</h2>
-		{#if progress.failure.advice}<Notice>{progress.failure.advice}</Notice>{/if}
-		{#if progress.failure.step === 'fetch' && bPlan?.prev}
+		<h2>{p.progress.failure.message}</h2>
+		{#if p.progress.failure.advice}<Notice>{p.progress.failure.advice}</Notice>{/if}
+		{#if p.progress.failure.step === 'fetch' && p.bPlan?.prev}
 			<p class="ins-sub mt">Прошлый бэкап в папке не тронут, пока новый не скачан целиком.</p>
 		{/if}
 		<FootBar>
-			<Button variant="colored" onclick={() => void attempt(() => startBackup())}>Повторить</Button>
-			<Button variant="ghost" onclick={() => void attempt(() => toServer())}>К серверу</Button>
-			<TextButton class="link under ins-push" onclick={() => (showLog = !showLog)}
+			<Button variant="colored" onclick={() => void p.attempt(() => p.startBackup())}>Повторить</Button>
+			<Button variant="ghost" onclick={() => void p.attempt(() => p.toServer())}>К серверу</Button>
+			<TextButton class="link under ins-push" onclick={() => (p.showLog = !p.showLog)}
 				>подробности</TextButton
 			>
 		</FootBar>
-		{#if showLog}
-			<CommandLog text={logText} />
+		{#if p.showLog}
+			<CommandLog text={p.logText} />
 		{/if}
-	{:else if screen === 'backup'}
+	{:else if p.screen === 'backup'}
 		<!-- Кадр 8б. -->
 		<h2>Делаем бэкап</h2>
-		<StepList meter class="ins-stage-steps" steps={progress?.steps ?? []} />
+		<StepList meter class="ins-stage-steps" steps={p.progress?.steps ?? []} />
 		<FootBar>
-			<TextButton class="link under" onclick={() => (showLog = !showLog)}>
+			<TextButton class="link under" onclick={() => (p.showLog = !p.showLog)}>
 				показать, что выполняется
 			</TextButton>
 			<span class="ins-dim ins-push">Окно можно свернуть</span>
 		</FootBar>
-		{#if showLog}
-			<CommandLog text={logText} />
+		{#if p.showLog}
+			<CommandLog text={p.logText} />
 		{/if}
-	{:else if screen === 'bdone'}
+	{:else if p.screen === 'bdone'}
 		<!-- Кадр 8в. -->
 		<h2>Бэкап готов</h2>
-		<p class="ins-sub">В папке {bFolder}.</p>
+		<p class="ins-sub">В папке {p.bFolder}.</p>
 		<Notice>
-			{bEncrypt
+			{p.bEncrypt
 				? 'Бэкап зашифрован. Без пароля его не открыть.'
 				: 'В бэкапе — все записи и ключи сервера. Храните его так же бережно, как пароли: кто получит папку, прочтёт все круги.'}
 		</Notice>
 		<FootBar>
 			<Button
 				variant="colored"
-				onclick={() => void api.ShowInFolder(bFolder + '\\wynd-backup.json')}
+				onclick={() => void api.ShowInFolder(p.bFolder + '\\wynd-backup.json')}
 			>
 				Открыть папку
 			</Button>
-			<Button variant="ghost" onclick={() => void attempt(() => toServer())}>К серверу</Button>
+			<Button variant="ghost" onclick={() => void p.attempt(() => p.toServer())}>К серверу</Button>
 		</FootBar>
-	{:else if screen === 'mconnect' && st}
+	{:else if p.screen === 'mconnect' && p.st}
 		<h2>На какой сервер переезжаем</h2>
 		<p class="ins-sub">
 			Выберите сохранённый сервер или добавьте новый. Перед переездом проверим его заново.
 		</p>
-		{#each profiles.filter((p) => p.id !== profile.id) as dest (dest.id)}<Radio
+		{#each profiles.filter((q) => q.id !== profile.id) as dest (dest.id)}<Radio
 				name={`destination-${profile.id}`}
 				value={dest.id}
-				bind:group={targetID}
+				bind:group={p.targetID}
 				disabled={dest.host === profile.host ||
 					Boolean(dest.busy && dest.reserved_by !== profile.id)}
 				>{dest.name}<span class="ins-dim">
@@ -1450,70 +711,70 @@
 				></Radio
 			>{/each}
 		<TextButton class="link under" onclick={onaddtarget}>Добавить сервер</TextButton>
-		{#if target && !target.use_keys}<Label>Пароль от нового сервера</Label><Input
-				type="password"
+		{#if p.target && !p.target.use_keys}<Label>Пароль от нового сервера</Label><Input
+				type="p.password"
 				autocomplete="off"
-				bind:value={mPass}
+				bind:value={p.mPass}
 			/>{/if}
-		{#if mFail}<Notice tone="bad" alert title={mFail.message} text={mFail.advice} />{/if}
+		{#if p.mFail}<Notice tone="bad" alert title={p.mFail.message} text={p.mFail.advice} />{/if}
 		<FootBar
 			><Button
 				variant="colored"
-				loading={mBusy}
+				loading={p.mBusy}
 				loadingLabel="Подключаемся…"
-				disabled={!targetID}
-				onclick={() => void attempt(moveConnect)}>Подключиться и проверить</Button
+				disabled={!p.targetID}
+				onclick={() => void p.attempt(p.moveConnect)}>Подключиться и проверить</Button
 			><Button
 				variant="ghost"
 				class="ins-push"
-				disabled={mBusy}
-				onclick={() => void attempt(toServer)}>Отмена</Button
+				disabled={p.mBusy}
+				onclick={() => void p.attempt(p.toServer)}>Отмена</Button
 			></FootBar
 		>
-	{:else if screen === 'mfinger'}
+	{:else if p.screen === 'mfinger'}
 		<h2>
-			{mChangedFingerprint ? 'У нового сервера другой отпечаток' : 'Это ваш новый сервер?'}
+			{p.mChangedFingerprint ? 'У нового сервера другой отпечаток' : 'Это ваш новый сервер?'}
 		</h2>
 		<p class="ins-sub">
-			{#if mChangedFingerprint}Подключение остановлено. Сверьте новый отпечаток в панели хостинга.
-				Если вы не переустанавливали сервер, не доверяйте новому ключу.{:else}Подключаемся к {target?.host ??
+			{#if p.mChangedFingerprint}Подключение остановлено. Сверьте новый отпечаток в панели хостинга.
+				Если вы не переустанавливали сервер, не доверяйте новому ключу.{:else}Подключаемся к {p.target?.host ??
 					''} впервые. Сервер назвал свой отпечаток — сверьте его с письмом хостинга или панелью, если
 				там он есть.{/if}
 		</p>
-		{#if mChangedFingerprint}<Label>Сохранённый отпечаток</Label><Notice mono
-				>{mPreviousFingerprint}</Notice
-			><Label>Новый отпечаток</Label>{/if}<Notice mono>{mFinger}</Notice>
+		{#if p.mChangedFingerprint}<Label>Сохранённый отпечаток</Label><Notice mono
+				>{p.mPreviousFingerprint}</Notice
+			><Label>Новый отпечаток</Label>{/if}<Notice mono>{p.mFinger}</Notice>
 		<FootBar>
 			<Button
 				variant="colored"
-				loading={mBusy}
+				loading={p.mBusy}
 				loadingLabel="Подключаемся…"
-				onclick={() => void attempt(() => moveConfirm())}
-				>{mChangedFingerprint ? 'Проверил, доверять новому' : 'Да, подключиться'}</Button
+				onclick={() => void p.attempt(() => p.moveConfirm())}
+				>{p.mChangedFingerprint ? 'Проверил, доверять новому' : 'Да, подключиться'}</Button
 			>
-			<Button variant="ghost" disabled={mBusy} onclick={() => (screen = 'mconnect')}>Отмена</Button>
+			<Button variant="ghost" disabled={p.mBusy} onclick={() => (p.screen = 'mconnect')}>Отмена</Button>
 		</FootBar>
-	{:else if screen === 'mplan' && !mplan}
+	{:else if p.screen === 'mplan' && !p.mplan}
 		<h2>Что сделаем</h2>
 		<p class="ins-dim">Осматриваем новый сервер…</p>
-	{:else if screen === 'mplan' && mplan && !mplan.ok}
+	{:else if p.screen === 'mplan' && p.mplan && !p.mplan.ok}
 		<h2>Пока переехать нельзя</h2>
-		<Notice alert title={mplan.message} text={mplan.advice} />
+		<Notice alert title={p.mplan.message} text={p.mplan.advice} />
 		<FootBar>
-			<Button variant="ghost" onclick={() => (screen = 'mconnect')}>Другой сервер</Button>
-			<Button variant="ghost" onclick={() => void attempt(() => toServer())}>К серверу</Button>
+			<Button variant="ghost" onclick={() => (p.screen = 'mconnect')}>Другой сервер</Button>
+			<Button variant="ghost" onclick={() => void p.attempt(() => p.toServer())}>К серверу</Button>
 		</FootBar>
-	{:else if screen === 'mplan' && mplan}
+	{:else if p.screen === 'mplan' && p.mplan}
 		<!-- Кадры 9б и 9б2 (на старом Wynd не со своим Caddy — переезжают одни данные). -->
-		{@const dataOnly = mplan.data_only}
+		{@const dataOnly = p.mplan.data_only}
 		{@const oldProxy =
 			({ nginx: 'nginx', apache: 'Apache', caddy: 'Caddy' } as Record<string, string>)[
-				mplan.old_proxy ?? ''
+				p.mplan.old_proxy ?? ''
 			] ?? ''}
 		<h2>Что сделаем</h2>
 		<MarkRows>
 			<MarkRow mark="1"
-				>Поставим Wynd {mplan.version}{dataOnly ? ' и Caddy' : ''} на новый сервер
+				>Поставим Wynd {p.mplan.version}{dataOnly ? ' и Caddy' : ''} на новый сервер
 				<span class="ins-dim">— пока без данных и не запуская</span></MarkRow
 			>
 			<MarkRow mark="2"
@@ -1522,12 +783,12 @@
 			>
 			<MarkRow mark="3"
 				>Перенесём {dataOnly ? 'данные' : 'папку'} Wynd на новый сервер
-				<span class="ins-dim">— {gb(mplan.size)}, напрямую со старого, мимо этого компьютера</span
+				<span class="ins-dim">— {gb(p.mplan.size)}, напрямую со старого, мимо этого компьютера</span
 				></MarkRow
 			>
 			<MarkRow mark="4"
 				>Вы смените адрес <span class="ins-dim"
-					>— у записи A для {mplan.domain} поставите {mplan.new_ip}</span
+					>— у записи A для {p.mplan.domain} поставите {p.mplan.new_ip}</span
 				></MarkRow
 			>
 			<MarkRow mark="5"
@@ -1541,14 +802,14 @@
 				Не тронем на старом: {oldProxy} и его сертификат.
 			</p>
 		{/if}
-		{#if !mplan.foreign}
+		{#if !p.mplan.foreign}
 			<Label>Старый сервер</Label>
-			<Radio name="mold" value={false} bind:group={mRemoveOld}>
+			<Radio name="mold" value={false} bind:group={p.mRemoveOld}>
 				Оставить Wynd остановленным <span class="ins-dim"
 					>— убрать потом, когда убедитесь, что всё на месте</span
 				>
 			</Radio>
-			<Radio name="mold" value={true} bind:group={mRemoveOld}>
+			<Radio name="mold" value={true} bind:group={p.mRemoveOld}>
 				Убрать Wynd после переезда <span class="ins-dim"
 					>— со старого сервера уйдут его данные{dataOnly
 						? ''
@@ -1557,91 +818,91 @@
 			</Radio>
 		{/if}
 		<FootBar>
-			<Button variant="colored" onclick={() => void attempt(() => startMove())}>Переехать</Button>
-			<Button variant="ghost" onclick={() => (screen = 'server')}>Назад</Button>
+			<Button variant="colored" onclick={() => void p.attempt(() => p.startMove())}>Переехать</Button>
+			<Button variant="ghost" onclick={() => (p.screen = 'server')}>Назад</Button>
 		</FootBar>
-	{:else if screen === 'move' && progress?.failure}
-		<h2>{progress.failure.message}</h2>
-		{#if progress.failure.advice}<Notice>{progress.failure.advice}</Notice>{/if}
+	{:else if p.screen === 'move' && p.progress?.failure}
+		<h2>{p.progress.failure.message}</h2>
+		{#if p.progress.failure.advice}<Notice>{p.progress.failure.advice}</Notice>{/if}
 		<FootBar>
-			<Button variant="colored" onclick={() => void attempt(() => startMove())}>Повторить</Button>
+			<Button variant="colored" onclick={() => void p.attempt(() => p.startMove())}>Повторить</Button>
 			<Button
 				variant="ghost"
-				loading={mBusy}
+				loading={p.mBusy}
 				loadingLabel="Отменяем переезд…"
-				onclick={() => void attempt(() => cancelMove())}>Отменить переезд</Button
+				onclick={() => void p.attempt(() => p.cancelMove())}>Отменить переезд</Button
 			>
-			<TextButton class="link under ins-push" onclick={() => (showLog = !showLog)}
+			<TextButton class="link under ins-push" onclick={() => (p.showLog = !p.showLog)}
 				>подробности</TextButton
 			>
 		</FootBar>
-		{#if showLog}<CommandLog text={logText} />{/if}
-	{:else if screen === 'move'}
+		{#if p.showLog}<CommandLog text={p.logText} />{/if}
+	{:else if p.screen === 'move'}
 		<!-- Кадр 9в. -->
-		{@const waitingDNS = progress?.steps?.some((s) => s.id === 'dns' && s.status === 'running')}
+		{@const waitingDNS = p.progress?.steps?.some((s) => s.id === 'dns' && s.status === 'running')}
 		<h2>Переезжаем</h2>
-		<StepList meter class="ins-stage-steps" steps={progress?.steps ?? []} />
-		{#if waitingDNS && mplan}
+		<StepList meter class="ins-stage-steps" steps={p.progress?.steps ?? []} />
+		{#if waitingDNS && p.mplan}
 			<Notice>
 				<div class="ins-dim">
-					В панели, где покупали адрес {mplan.domain}, поменяйте у записи A адрес сервера на этот:
+					В панели, где покупали адрес {p.mplan.domain}, поменяйте у записи A адрес сервера на этот:
 				</div>
 				<CopyLine
-					text={mplan.new_ip}
-					copied={copiedLine === mplan.new_ip}
-					oncopy={() => void copyLine(mplan?.new_ip ?? '')}
+					text={p.mplan.new_ip}
+					copied={p.copiedLine === p.mplan.new_ip}
+					oncopy={() => void p.copyLine(p.mplan?.new_ip ?? '')}
 				/>
 				<div class="ins-dim">Мастерская проверяет сама каждую минуту — окно можно свернуть.</div>
 			</Notice>
 			<FootBar>
 				<Button variant="ghost" onclick={() => void api.MoveCheckNow()}>Проверить сейчас</Button>
-				<TextButton class="link under ins-push" onclick={() => void attempt(() => cancelMove())}
+				<TextButton class="link under ins-push" onclick={() => void p.attempt(() => p.cancelMove())}
 					>Отменить переезд</TextButton
 				>
 			</FootBar>
 		{:else}
 			<FootBar>
-				<TextButton class="link under" onclick={() => (showLog = !showLog)}
+				<TextButton class="link under" onclick={() => (p.showLog = !p.showLog)}
 					>показать, что выполняется</TextButton
 				>
 				<span class="ins-dim ins-push">Окно можно свернуть</span>
 			</FootBar>
 		{/if}
-		{#if showLog}<CommandLog text={logText} />{/if}
-	{:else if screen === 'mdone' && mplan}
+		{#if p.showLog}<CommandLog text={p.logText} />{/if}
+	{:else if p.screen === 'mdone' && p.mplan}
 		<!-- Кадр 9г. -->
 		<h2>Wynd на новом сервере</h2>
 		<p class="ins-sub">
-			Проверка прошла: {mplan.domain} открывается с сервера {mplan.new_ip}.
+			Проверка прошла: {p.mplan.domain} открывается с сервера {p.mplan.new_ip}.
 		</p>
 		<Notice>
-			{mRemoveOld
-				? `Wynd со старого сервера ${mplan.old_ip} убран.`
-				: `Старый сервер ${mplan.old_ip}: Wynd остановлен, данные на месте.${
-						mplan.foreign
+			{p.mRemoveOld
+				? `Wynd со старого сервера ${p.mplan.old_ip} убран.`
+				: `Старый сервер ${p.mplan.old_ip}: Wynd остановлен, данные на месте.${
+						p.mplan.foreign
 							? ''
 							: ' Когда убедитесь, что на новом всё есть, уберите его со страницы старого сервера.'
 					}`}
 		</Notice>
 		<FootBar>
-			<Button variant="colored" onclick={() => void api.OpenLink(`https://${mplan?.domain}`)}>
-				Открыть {mplan.domain}
+			<Button variant="colored" onclick={() => void api.OpenLink(`https://${p.mplan?.domain}`)}>
+				Открыть {p.mplan.domain}
 			</Button>
-			<Button variant="ghost" onclick={() => void attempt(() => adoptNew())}>К серверу</Button>
+			<Button variant="ghost" onclick={() => void p.attempt(() => p.adoptNew())}>К серверу</Button>
 		</FootBar>
-	{:else if screen === 'fingerprint'}
+	{:else if p.screen === 'fingerprint'}
 		<h2>
-			{changedFingerprint ? 'У сервера другой отпечаток' : 'Это ваш сервер?'}
+			{p.changedFingerprint ? 'У сервера другой отпечаток' : 'Это ваш сервер?'}
 		</h2>
 		<p class="ins-sub">
-			{#if changedFingerprint}Подключение остановлено. Сверьте новый отпечаток в панели хостинга.
+			{#if p.changedFingerprint}Подключение остановлено. Сверьте новый отпечаток в панели хостинга.
 				Если вы не переустанавливали сервер, не доверяйте новому ключу.{:else}Подключаемся к {host.trim()}
 				впервые. Сервер назвал свой отпечаток — сверьте его с письмом хостинга или панелью, если там он
 				есть.{/if}
 		</p>
-		{#if changedFingerprint}<Label>Сохранённый отпечаток</Label><Notice mono
-				>{previousFingerprint}</Notice
-			><Label>Новый отпечаток</Label>{/if}<Notice mono>{fingerprint}</Notice>
+		{#if p.changedFingerprint}<Label>Сохранённый отпечаток</Label><Notice mono
+				>{p.previousFingerprint}</Notice
+			><Label>Новый отпечаток</Label>{/if}<Notice mono>{p.fingerprint}</Notice>
 		<p class="ins-sub mt">
 			Если отпечатка негде взять — это нормально для нового сервера. Мы запомним его, и при
 			следующем подключении подмену заметим.
@@ -1649,118 +910,118 @@
 		<FootBar>
 			<Button
 				variant="colored"
-				loading={busy}
+				loading={p.busy}
 				loadingLabel="Подключаемся…"
-				onclick={() => void attempt(() => confirmHost())}
+				onclick={() => void p.attempt(() => p.confirmHost())}
 			>
-				{changedFingerprint ? 'Проверил, доверять новому' : 'Да, подключиться'}
+				{p.changedFingerprint ? 'Проверил, доверять новому' : 'Да, подключиться'}
 			</Button>
-			<Button variant="ghost" disabled={busy} onclick={() => void attempt(() => toConnect())}
+			<Button variant="ghost" disabled={p.busy} onclick={() => void p.attempt(() => p.toConnect())}
 				>Отмена</Button
 			>
 		</FootBar>
-	{:else if screen === 'plan' && plan && !plan.ok}
-		{#if rollbackNote}
-			<Notice tone="note">{rollbackNote}</Notice>
+	{:else if p.screen === 'plan' && p.plan && !p.plan.ok}
+		{#if p.rollbackNote}
+			<Notice tone="note">{p.rollbackNote}</Notice>
 		{/if}
 		<h2>Пока ставить нельзя</h2>
-		<Notice alert title={plan.message} text={plan.advice} />
+		<Notice alert title={p.plan.message} text={p.plan.advice} />
 		<FootBar>
-			<Button variant="ghost" onclick={() => (screen = 'inspect')}>Назад</Button>
+			<Button variant="ghost" onclick={() => (p.screen = 'inspect')}>Назад</Button>
 		</FootBar>
-	{:else if screen === 'plan' && plan}
+	{:else if p.screen === 'plan' && p.plan}
 		<h2>Что сделаем</h2>
 		<p class="ins-sub">До кнопки «Установить» на сервере ничего не меняется.</p>
-		{#if rollbackNote}
-			<Notice>{rollbackNote}</Notice>
+		{#if p.rollbackNote}
+			<Notice>{p.rollbackNote}</Notice>
 		{/if}
 		<div class="ins-sec">Поставим</div>
-		{#each plan.install ?? [] as item (item)}
+		{#each p.plan.install ?? [] as item (item)}
 			<MarkRow mark="+" tone="ok">{item}</MarkRow>
 		{/each}
-		{#if plan.change?.length}
+		{#if p.plan.change?.length}
 			<div class="ins-sec">Изменим</div>
-			{#each plan.change as item (item)}
+			{#each p.plan.change as item (item)}
 				<MarkRow mark="~" tone="note">{item}</MarkRow>
 			{/each}
 		{/if}
-		{#if plan.keep?.length}
+		{#if p.plan.keep?.length}
 			<div class="ins-sec">Не тронем</div>
-			{#each plan.keep as item (item)}
+			{#each p.plan.keep as item (item)}
 				<MarkRow mark="·">{item}</MarkRow>
 			{/each}
 		{/if}
-		{#if plan.unpublished}
+		{#if p.plan.unpublished}
 			<p class="ins-sub">Эту версию ещё нельзя скачать готовой — сервер соберёт Wynd сам.</p>
-		{:else if plan.canBuild}
+		{:else if p.plan.canBuild}
 			<p class="ins-sub">
-				{plan.build ? 'Сервер соберёт Wynd сам.' : 'Сервер скачает Wynd готовым.'}
+				{p.plan.build ? 'Сервер соберёт Wynd сам.' : 'Сервер скачает Wynd готовым.'}
 				<TextButton
 					class="link under"
-					onclick={() => void attempt(() => chooseBuild(!plan?.build))}
+					onclick={() => void p.attempt(() => p.chooseBuild(!p.plan?.build))}
 				>
-					{plan.build ? 'Скачать готовый' : 'Собрать самому'}
+					{p.plan.build ? 'Скачать готовый' : 'Собрать самому'}
 				</TextButton>
 			</p>
 		{/if}
 		<FootBar>
-			<Button variant="colored" onclick={() => void attempt(() => install())}>Установить</Button>
-			<Button variant="ghost" onclick={() => (screen = 'inspect')}>Назад</Button>
-			<span class="ins-dim">{plan.duration}</span>
+			<Button variant="colored" onclick={() => void p.attempt(() => p.install())}>Установить</Button>
+			<Button variant="ghost" onclick={() => (p.screen = 'inspect')}>Назад</Button>
+			<span class="ins-dim">{p.plan.duration}</span>
 		</FootBar>
-	{:else if screen === 'install' && progress?.failure}
-		<h2>{progress.failure.message}</h2>
-		<p class="ins-sub">{progress.failure.advice}</p>
-		{#if progress.steps?.some((s) => s.status === 'done')}
+	{:else if p.screen === 'install' && p.progress?.failure}
+		<h2>{p.progress.failure.message}</h2>
+		<p class="ins-sub">{p.progress.failure.advice}</p>
+		{#if p.progress.steps?.some((s) => s.status === 'done')}
 			<Notice>Сделанное раньше осталось на месте — повтор начнётся с этого шага.</Notice>
 		{/if}
-		{#if askRollback}
+		{#if p.askRollback}
 			{@render removeBox('Да, откатить', '')}
 		{:else}
 			<FootBar>
-				<Button variant="colored" onclick={() => void attempt(() => install())}>Повторить</Button>
-				<Button variant="ghost" onclick={() => (askRollback = true)}>Откатить установку</Button>
-				<TextButton class="link under" onclick={() => (showLog = !showLog)}>подробности</TextButton>
+				<Button variant="colored" onclick={() => void p.attempt(() => p.install())}>Повторить</Button>
+				<Button variant="ghost" onclick={() => (p.askRollback = true)}>Откатить установку</Button>
+				<TextButton class="link under" onclick={() => (p.showLog = !p.showLog)}>подробности</TextButton>
 			</FootBar>
 		{/if}
-		{#if showLog}
-			<CommandLog text={logText} />
+		{#if p.showLog}
+			<CommandLog text={p.logText} />
 		{/if}
-	{:else if screen === 'install'}
+	{:else if p.screen === 'install'}
 		<h2>Ставим</h2>
-		<StepList meter class="ins-stage-steps" steps={progress?.steps ?? []} />
+		<StepList meter class="ins-stage-steps" steps={p.progress?.steps ?? []} />
 		<FootBar>
-			<TextButton class="link under" onclick={() => (showLog = !showLog)}>
+			<TextButton class="link under" onclick={() => (p.showLog = !p.showLog)}>
 				показать, что выполняется
 			</TextButton>
 			<span class="ins-dim ins-push">Окно можно свернуть</span>
 		</FootBar>
-		{#if showLog}
-			<CommandLog text={logText} />
+		{#if p.showLog}
+			<CommandLog text={p.logText} />
 		{/if}
-	{:else if screen === 'done' && progress}
+	{:else if p.screen === 'done' && p.progress}
 		<h2>Wynd работает</h2>
 		<p class="ins-sub">Проверка прошла: сайт открывается, сертификат действует.</p>
-		{#if askRollback}
-			{@render removeBox('Да, убрать', plan?.domain ?? '')}
-			{#if showLog && rollbackLog.length}
-				<CommandLog text={logText} />
+		{#if p.askRollback}
+			{@render removeBox('Да, убрать', p.plan?.domain ?? '')}
+			{#if p.showLog && p.rollbackLog.length}
+				<CommandLog text={p.logText} />
 			{/if}
-		{:else if progress.link}
+		{:else if p.progress.link}
 			<Label>Ссылка первого запуска — для вас, одна</Label>
-			<Notice mono>{progress.link}</Notice>
+			<Notice mono>{p.progress.link}</Notice>
 			<p class="ins-sub mt">
 				По ней вы станете администратором сервера и создадите первый круг. Никому её не передавайте.
 			</p>
 			<FootBar>
-				<Button variant="colored" onclick={() => void api.OpenLink(progress?.link ?? '')}>
+				<Button variant="colored" onclick={() => void api.OpenLink(p.progress?.link ?? '')}>
 					Открыть в браузере
 				</Button>
-				<Button variant="ghost" onclick={() => void copyLink()}>
-					{copied ? 'Скопировано' : 'Скопировать'}
+				<Button variant="ghost" onclick={() => void p.copyLink()}>
+					{p.copied ? 'Скопировано' : 'Скопировать'}
 				</Button>
-				<Button variant="ghost" onclick={() => void attempt(toServer)}>К серверу</Button>
-				<TextButton class="link under ins-push" onclick={() => (askRollback = true)}>
+				<Button variant="ghost" onclick={() => void p.attempt(p.toServer)}>К серверу</Button>
+				<TextButton class="link under ins-push" onclick={() => (p.askRollback = true)}>
 					Убрать Wynd
 				</TextButton>
 			</FootBar>
@@ -1770,43 +1031,43 @@
 				сайт и войдите как обычно.
 			</Notice>
 			<FootBar>
-				<Button variant="colored" onclick={() => void api.OpenLink(progress?.site ?? '')}>
-					Открыть {plan?.domain}
+				<Button variant="colored" onclick={() => void api.OpenLink(p.progress?.site ?? '')}>
+					Открыть {p.plan?.domain}
 				</Button>
-				<Button variant="ghost" onclick={() => void attempt(toServer)}>К серверу</Button>
-				<TextButton class="link under ins-push" onclick={() => (askRollback = true)}>
+				<Button variant="ghost" onclick={() => void p.attempt(p.toServer)}>К серверу</Button>
+				<TextButton class="link under ins-push" onclick={() => (p.askRollback = true)}>
 					Убрать Wynd
 				</TextButton>
 			</FootBar>
 		{/if}
-	{:else if !inspection}
+	{:else if !p.inspection}
 		<h2>Что на сервере</h2>
 		<p class="ins-sub">Только смотрим — ничего не меняем.</p>
 		<p class="ins-dim">Осматриваем…</p>
-	{:else if !inspection.ok}
+	{:else if !p.inspection.ok}
 		<h2>Осмотр не удался</h2>
-		<Notice tone="bad" alert title={inspection.message} text={inspection.advice} />
+		<Notice tone="bad" alert title={p.inspection.message} text={p.inspection.advice} />
 		<FootBar>
-			<Button variant="colored" onclick={() => void attempt(() => toConnect())}
+			<Button variant="colored" onclick={() => void p.attempt(() => p.toConnect())}
 				>Подключиться ещё раз</Button
 			>
 		</FootBar>
-	{:else if blocks.length}
+	{:else if p.blocks.length}
 		<!-- Итог удаления не теряется, когда новый осмотр нашёл помеху (кадр 5д). -->
-		{#if rollbackNote}
-			<Notice tone="note">{rollbackNote}</Notice>
+		{#if p.rollbackNote}
+			<Notice tone="note">{p.rollbackNote}</Notice>
 		{/if}
 		<h2>Пока ставить нельзя</h2>
 		<p class="ins-sub">
-			{blocks.length === 1 ? 'Мешает одно:' : 'Мешает вот что:'}
+			{p.blocks.length === 1 ? 'Мешает одно:' : 'Мешает вот что:'}
 		</p>
-		{#each blocks as block (block.id)}
+		{#each p.blocks as block (block.id)}
 			<Notice title={block.text} text={block.advice}>
 				{#if block.copy}
 					<CopyLine
 						text={block.copy}
-						copied={copiedLine === block.copy}
-						oncopy={() => void copyLine(block.copy ?? '')}
+						copied={p.copiedLine === block.copy}
+						oncopy={() => void p.copyLine(block.copy ?? '')}
 					/>
 				{/if}
 				{#if block.after}
@@ -1815,33 +1076,33 @@
 			</Notice>
 		{/each}
 		<div class="ins-more">
-			<TextButton class="link under" onclick={() => (showRaw = true)}>
+			<TextButton class="link under" onclick={() => (p.showRaw = true)}>
 				подробнее, что проверили
 			</TextButton>
 		</div>
 		<FootBar>
-			{#if blocks.every((b) => b.final)}
-				<Button variant="colored" disabled={busy} onclick={() => void attempt(() => toConnect())}>
+			{#if p.blocks.every((b) => b.final)}
+				<Button variant="colored" disabled={p.busy} onclick={() => void p.attempt(() => p.toConnect())}>
 					Другой сервер
 				</Button>
 				<Button
 					variant="ghost"
-					loading={busy}
+					loading={p.busy}
 					loadingLabel="Осматриваем…"
-					onclick={() => void attempt(() => inspect())}
+					onclick={() => void p.attempt(() => p.inspect())}
 				>
 					Проверить снова
 				</Button>
 			{:else}
 				<Button
 					variant="colored"
-					loading={busy}
+					loading={p.busy}
 					loadingLabel="Осматриваем…"
-					onclick={() => void attempt(() => inspect())}
+					onclick={() => void p.attempt(() => p.inspect())}
 				>
 					Проверить снова
 				</Button>
-				<Button variant="ghost" disabled={busy} onclick={() => void attempt(() => toConnect())}>
+				<Button variant="ghost" disabled={p.busy} onclick={() => void p.attempt(() => p.toConnect())}>
 					Другой сервер
 				</Button>
 			{/if}
@@ -1849,35 +1110,35 @@
 	{:else}
 		<h2>Что на сервере</h2>
 		<p class="ins-sub">Только смотрим — ничего не меняем.</p>
-		{#if rollbackNote}
-			<Notice>{rollbackNote}</Notice>
+		{#if p.rollbackNote}
+			<Notice>{p.rollbackNote}</Notice>
 		{/if}
 		<MarkRows>
-			{#each findings as f (f.id)}
+			{#each p.findings as f (f.id)}
 				<MarkRow mark={mark(f.level)} tone={f.level}>
 					{f.text}{#if f.plan}&nbsp;— <span class="ins-dim"
 							>{f.plan}{f.id === 'wynd' ? '.' : ''}</span
 						>{/if}
-					{#if f.id === 'wynd' && !askRollback}
-						<TextButton class="link under" onclick={() => (askRollback = true)}>
+					{#if f.id === 'wynd' && !p.askRollback}
+						<TextButton class="link under" onclick={() => (p.askRollback = true)}>
 							Убрать Wynd с сервера
 						</TextButton>
 					{/if}
 				</MarkRow>
 			{/each}
 		</MarkRows>
-		{#if askRollback}
-			{@render removeBox('Да, убрать', domainOk ? domain : '')}
-			{#if showLog && rollbackLog.length}
-				<CommandLog text={logText} />
+		{#if p.askRollback}
+			{@render removeBox('Да, убрать', p.domainOk ? p.domain : '')}
+			{#if p.showLog && p.rollbackLog.length}
+				<CommandLog text={p.logText} />
 			{/if}
 		{/if}
 		<Label>Адрес, по которому будут заходить</Label>
 		<form
-			class="ins-domain"
+			class="ins-p.domain"
 			onsubmit={(e) => {
 				e.preventDefault();
-				void attempt(() => checkDomain());
+				void p.attempt(() => p.checkDomain());
 			}}
 		>
 			<Input
@@ -1886,71 +1147,71 @@
 				autocomplete="off"
 				spellcheck={false}
 				placeholder="family.example.ru"
-				bind:value={domain}
-				oninput={() => (domainCheck = undefined)}
+				bind:value={p.domain}
+				oninput={() => (p.domainCheck = undefined)}
 			/>
-			{#if domainOk}
-				<span class="ins-mark ok wide">✓ {domainCheck?.text}</span>
+			{#if p.domainOk}
+				<span class="ins-mark ok wide">✓ {p.domainCheck?.text}</span>
 			{:else}
 				<Button
 					variant="ghost"
-					loading={checkingDomain}
+					loading={p.checkingDomain}
 					loadingLabel="Проверяем…"
-					onclick={() => void attempt(() => checkDomain())}
+					onclick={() => void p.attempt(() => p.checkDomain())}
 				>
-					{domainCheck ? 'Проверить снова' : 'Проверить'}
+					{p.domainCheck ? 'Проверить снова' : 'Проверить'}
 				</Button>
 			{/if}
 		</form>
-		{#if domainCheck && !domainOk}
-			<Notice alert title={domainCheck.text} text={domainCheck.advice} />
+		{#if p.domainCheck && !p.domainOk}
+			<Notice alert title={p.domainCheck.text} text={p.domainCheck.advice} />
 		{/if}
-		{#if !st?.installed}
+		{#if !p.st?.installed}
 			<!-- Куда поставить Wynd: по умолчанию /opt/wynd, как у ручной установки. -->
 			<Label>Каталог на сервере</Label>
-			<Input mono autocomplete="off" spellcheck={false} bind:value={installRoot} />
+			<Input mono autocomplete="off" spellcheck={false} bind:value={p.installRoot} />
 		{/if}
 		<FootBar>
 			<Button
-				variant={domainOk ? 'colored' : 'off'}
-				loading={planning}
+				variant={p.domainOk ? 'colored' : 'off'}
+				loading={p.planning}
 				loadingLabel="Составляем план…"
-				onclick={() => void attempt(() => toPlan())}
+				onclick={() => void p.attempt(() => p.toPlan())}
 			>
 				Дальше — план
 			</Button>
-			<Button variant="ghost" onclick={() => void attempt(() => toConnect())}>Другой сервер</Button>
-			{#if !domainOk}
+			<Button variant="ghost" onclick={() => void p.attempt(() => p.toConnect())}>Другой сервер</Button>
+			{#if !p.domainOk}
 				<span class="ins-dim">Сначала укажите адрес сайта</span>
 			{/if}
-			<TextButton class="link under" onclick={() => (showRaw = true)}>
+			<TextButton class="link under" onclick={() => (p.showRaw = true)}>
 				подробнее, что проверили
 			</TextButton>
 		</FootBar>
 	{/if}
-	{#if !occupied && (screen === 'server' || screen === 'new' || screen === 'offline' || screen === 'connect')}
+	{#if !p.occupied && (p.screen === 'server' || p.screen === 'new' || p.screen === 'offline' || p.screen === 'connect')}
 	<FootBar class="ins-profile-tools"
 		><TextButton
 			class="link under"
-			disabled={occupied || moving || Boolean(profile.reserved_by)}
+			disabled={p.occupied || p.moving || Boolean(profile.reserved_by)}
 			onclick={onedit}>Изменить доступ</TextButton
 		><TextButton
 			class="link under"
-			disabled={occupied || moving || Boolean(profile.reserved_by)}
+			disabled={p.occupied || p.moving || Boolean(profile.reserved_by)}
 			onclick={onforget}>Убрать из списка</TextButton
-		>{#if screen === 'server' && page && !page.foreign && !page.state.move && !askRollback}<TextButton
+		>{#if p.screen === 'server' && p.page && !p.page.foreign && !p.page.state.move && !p.askRollback}<TextButton
 				class="link under"
-				disabled={occupied}
-				onclick={() => (askRollback = true)}>Убрать Wynd с сервера</TextButton
+				disabled={p.occupied}
+				onclick={() => (p.askRollback = true)}>Убрать Wynd с сервера</TextButton
 			>{/if}
 	</FootBar>
 	{/if}
 </main>
-{#if showRaw && inspection}
+{#if p.showRaw && p.inspection}
 	<RawSheet
-		parts={rawParts}
-		copied={copiedRaw}
-		oncopy={() => void copyRaw()}
-		onclose={() => (showRaw = false)}
+		parts={p.rawParts}
+		copied={p.copiedRaw}
+		oncopy={() => void p.copyRaw()}
+		onclose={() => (p.showRaw = false)}
 	/>
 {/if}

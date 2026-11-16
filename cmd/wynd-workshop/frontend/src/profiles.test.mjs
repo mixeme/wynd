@@ -7,8 +7,10 @@ import test from 'node:test';
 
 const require = createRequire(new URL('../../../../web/package.json', import.meta.url));
 const { JSDOM } = require('jsdom');
-const { build } = require('esbuild');
-const { compile } = createRequire(new URL('../package.json', import.meta.url))('svelte/compiler');
+const { build, transform } = require('esbuild');
+const { compile, compileModule } = createRequire(new URL('../package.json', import.meta.url))(
+	'svelte/compiler'
+);
 const root = fileURLToPath(new URL('../../../../', import.meta.url));
 const frontend = path.join(root, 'cmd/wynd-workshop/frontend');
 const applicationCSS = await readFile(path.join(frontend, 'src/app.css'), 'utf8');
@@ -47,6 +49,18 @@ const result = await build({
 					}).js.code,
 					resolveDir: path.dirname(filename)
 				}));
+				b.onLoad({ filter: /\.svelte\.ts$/ }, async ({ path: filename }) => {
+					// Сначала снимаем TS-типы (compileModule их не парсит),
+					// затем компилируем руны ($state/$derived/$effect).
+					const js = await transform(await readFile(filename, 'utf8'), {
+						loader: 'ts',
+						format: 'esm'
+					});
+					return {
+						contents: compileModule(js.code, { filename, generate: 'client' }).js.code,
+						resolveDir: path.dirname(filename)
+					};
+				});
 			}
 		}
 	]
