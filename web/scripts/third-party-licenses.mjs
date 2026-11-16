@@ -82,8 +82,17 @@ function collectNpm() {
 function collectGo() {
 	const format = '{{if .Module}}{{.Module.Path}}|{{.Module.Version}}|{{.Module.Dir}}{{end}}';
 	const found = new Map();
+	// Чистая копия: go:embed в web/embed.go требует web/dist, а сборка клиента
+	// идёт после этого шага (ворота C76). Зависимостям сборка не нужна —
+	// подставляем пустую заглушку на время go list и убираем её, если создали.
+	const dist = path.join(repoRoot, 'web', 'dist');
+	const distStub = path.join(dist, '.licenses-gate-stub');
+	const createdStub = !fs.existsSync(distStub);
+	if (createdStub) fs.mkdirSync(dist, { recursive: true });
+	if (createdStub) fs.writeFileSync(distStub, '');
 	// Список пакетов зависит от GOOS (x/sys/windows против x/sys/unix): берём
 	// объединение платформ, на которых собирается бинарь.
+	try {
 	for (const goos of ['linux', 'windows']) {
 		const raw = execFileSync('go', ['list', '-deps', '-f', format, './cmd/wynd'], {
 			cwd: repoRoot,
@@ -98,7 +107,10 @@ function collectGo() {
 			// Свой модуль — под AGPL, он не «стороннее».
 			if (!version || !dir) continue;
 			if (!found.has(modPath)) found.set(modPath, { version, dir });
+			}
 		}
+	} finally {
+		if (createdStub) fs.rmSync(distStub, { force: true });
 	}
 	return [...found]
 		.sort(([a], [b]) => a.localeCompare(b))
