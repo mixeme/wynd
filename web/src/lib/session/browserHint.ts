@@ -1,3 +1,5 @@
+import { androidPort } from '$lib/android/bridge';
+
 /**
  * Подсказка про браузер над списком кругов (7.7а): на Android советуем
  * Chrome или Vivaldi. В Firefox установленный сайт закрывается при запуске
@@ -22,6 +24,8 @@ export function isRecommendedAndroidBrowser(ua: string): boolean {
 export function showBrowserHint(
 	ua = typeof navigator === 'undefined' ? '' : navigator.userAgent
 ): boolean {
+	// Рекомендация браузера относится к веб-версии, не к собственному окну Wynd.
+	if (androidPort()) return false;
 	if (!/Android/i.test(ua) || isRecommendedAndroidBrowser(ua)) return false;
 	try {
 		return localStorage.getItem(KEY) !== '1';

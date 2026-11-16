@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { closeBrowserHint, showBrowserHint } from './browserHint';
 
 const FIREFOX_ANDROID = 'Mozilla/5.0 (Android 13; Mobile; rv:158.0) Gecko/158.0 Firefox/158.0';
@@ -10,10 +10,32 @@ const SAMSUNG =
 	'Mozilla/5.0 (Linux; Android 13; SM-A525F) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/26.0 Chrome/122.0.0.0 Mobile Safari/537.36';
 const FIREFOX_DESKTOP =
 	'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0';
+const WYND_WEBVIEW =
+	'Mozilla/5.0 (Linux; Android 10; CPH1931; wv) AppleWebKit/537.36 Version/4.0 Chrome/157.0.8103.38 Mobile Safari/537.36';
+
+afterEach(() => {
+	delete (window as unknown as { __wyndAndroid?: unknown }).__wyndAndroid;
+});
 
 // Подсказка (7.7а) — на Android в любом браузере, кроме Chrome и Vivaldi, и до крестика.
 describe('подсказка про браузер', () => {
 	beforeEach(() => localStorage.clear());
+
+	it('не рекомендует другой браузер внутри Wynd и не закрывает подсказку для веба', () => {
+		(window as unknown as { __wyndAndroid: unknown }).__wyndAndroid = {
+			postMessage() {
+				throw new Error('Detection must not send messages');
+			}
+		};
+		expect(showBrowserHint(WYND_WEBVIEW)).toBe(false);
+		delete (window as unknown as { __wyndAndroid?: unknown }).__wyndAndroid;
+		expect(showBrowserHint(WYND_WEBVIEW)).toBe(true);
+	});
+
+	it('не принимает посторонний объект за мост приложения', () => {
+		(window as unknown as { __wyndAndroid: unknown }).__wyndAndroid = { postMessage: true };
+		expect(showBrowserHint(WYND_WEBVIEW)).toBe(true);
+	});
 
 	it('видна в Firefox, Mi Browser и Samsung Internet на Android', () => {
 		expect(showBrowserHint(FIREFOX_ANDROID)).toBe(true);
