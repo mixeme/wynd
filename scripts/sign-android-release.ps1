@@ -32,7 +32,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Could not read GitHub release' }
     $release = ($releaseJson -join "`n") | ConvertFrom-Json
     if (-not $release.isDraft) { throw 'Only draft Android releases may be signed by this command' }
-    if (@($release.assets | Where-Object { $_.name -eq 'wynd-android.apk' }).Count -gt 0) { throw 'Signed APK already exists; refusing to replace it' }
+    if (-not $VerifyOnly -and @($release.assets | Where-Object { $_.name -eq 'wynd-android.apk' }).Count -gt 0) { throw 'Signed APK already exists; refusing to replace it' }
     & gh release download $Tag --repo $repo --dir $directory --pattern wynd-android-unsigned.apk --pattern wynd-android-unsigned.apk.sha256
     if ($LASTEXITCODE -ne 0) { throw 'Release download failed' }
     $unsigned = Join-Path $directory 'wynd-android-unsigned.apk'
@@ -64,7 +64,7 @@ try {
     }
     $verificationFile = Join-Path $directory 'verification.json'
     $verification | ConvertTo-Json | Set-Content -LiteralPath $verificationFile -Encoding utf8
-    Write-Host "Verified release: $verificationFile"
+    Write-Host "Verified unsigned release: $verificationFile"
     if ($VerifyOnly) {
         Write-Host 'Проверка завершена. Подпись, загрузка и публикация не выполнялись.'
         return
