@@ -14,10 +14,13 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      GRADLE_USER_HOME: ${{ runner.temp }}/android-env/gradle-user-home
-      ANDROID_USER_HOME: ${{ runner.temp }}/android-env/user
+    timeout-minutes: 20
     steps:
+      - name: Android environment directories
+        shell: bash
+        run: |
+          echo "GRADLE_USER_HOME=$RUNNER_TEMP/android-env/gradle-user-home" >> "$GITHUB_ENV"
+          echo "ANDROID_USER_HOME=$RUNNER_TEMP/android-env/user" >> "$GITHUB_ENV"
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
