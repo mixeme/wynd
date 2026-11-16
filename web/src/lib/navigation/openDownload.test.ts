@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { openDownload, openDownloadAfter } from './openDownload';
+import { CLOSE_AFTER_DOWNLOAD_MS, openDownload, openDownloadAfter } from './openDownload';
 
 describe('openDownload', () => {
 	afterEach(() => {
@@ -44,24 +44,59 @@ describe('openDownload', () => {
 	}
 
 	it('opens the iPhone window before requesting a link and hands off after the response', async () => {
-		const { child, open } = iosWindow();
-		let finish!: (href: string) => void;
-		const load = vi.fn(() => {
-			expect(open).toHaveBeenCalledWith('about:blank', '_blank');
-			expect(child.opener).toBeNull();
-			return new Promise<string>((resolve) => {
-				finish = resolve;
+		vi.useFakeTimers();
+		try {
+			const { child, open } = iosWindow();
+			let finish!: (href: string) => void;
+			const load = vi.fn(() => {
+				expect(open).toHaveBeenCalledWith('about:blank', '_blank');
+				expect(child.opener).toBeNull();
+				return new Promise<string>((resolve) => {
+					finish = resolve;
+				});
 			});
-		});
-		const pending = openDownloadAfter(load);
-		expect(child.location.replace).not.toHaveBeenCalled();
-		finish('https://wynd.example/api/v1/archive/one-time');
-		await pending;
-		expect(child.location.replace).toHaveBeenCalledWith(
-			'https://wynd.example/api/v1/archive/one-time'
-		);
-		expect(open).toHaveBeenCalledTimes(1);
-		expect(child.close).not.toHaveBeenCalled();
+			const pending = openDownloadAfter(load);
+			expect(child.location.replace).not.toHaveBeenCalled();
+			finish('https://wynd.example/api/v1/archive/one-time');
+			await pending;
+			expect(child.location.replace).toHaveBeenCalledWith(
+				'https://wynd.example/api/v1/archive/one-time'
+			);
+			expect(open).toHaveBeenCalledTimes(1);
+			// C93: окно закрывается не сразу, а когда скачивание уже началось.
+			expect(child.close).not.toHaveBeenCalled();
+			vi.advanceTimersByTime(CLOSE_AFTER_DOWNLOAD_MS);
+			expect(child.close).toHaveBeenCalledOnce();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('keeps the window when it was closed by hand before the timer', async () => {
+		vi.useFakeTimers();
+		try {
+			const { child } = iosWindow();
+			await openDownloadAfter(async () => 'https://wynd.example/api/v1/archive/one-time');
+			child.closed = true;
+			expect(() => vi.advanceTimersByTime(CLOSE_AFTER_DOWNLOAD_MS)).not.toThrow();
+			expect(child.close).not.toHaveBeenCalled();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('survives a platform that refuses to close the window', async () => {
+		vi.useFakeTimers();
+		try {
+			const { child } = iosWindow();
+			child.close.mockImplementation(() => {
+				throw new Error('not allowed');
+			});
+			await openDownloadAfter(async () => 'https://wynd.example/api/v1/archive/one-time');
+			expect(() => vi.advanceTimersByTime(CLOSE_AFTER_DOWNLOAD_MS)).not.toThrow();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('closes the reserved window and propagates a busy or failed link request', async () => {

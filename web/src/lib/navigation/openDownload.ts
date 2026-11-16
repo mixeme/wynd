@@ -24,6 +24,12 @@ export function openDownload(href: string): void {
 	a.click();
 }
 
+/**
+ * Сколько окно остаётся после перехода на ссылку: Safari должен успеть
+ * начать скачивание, прежде чем окно закроется (C93).
+ */
+export const CLOSE_AFTER_DOWNLOAD_MS = 1200;
+
 /** Reserve the iPhone window during the tap, before fetching a one-time link. */
 export async function openDownloadAfter(loadHref: () => Promise<string>): Promise<void> {
 	if (androidFilesAvailable()) {
@@ -43,6 +49,18 @@ export async function openDownloadAfter(loadHref: () => Promise<string>): Promis
 		const href = await loadHref();
 		// Closing the window while the link is being fetched cancels the handoff.
 		if (!download.closed) download.location.replace(href);
+		// C93: на iPhone окно после начала скачивания само не закрывается, а
+		// «Готово» может не оказаться — вернуться в Wynd можно было только
+		// закрыв приложение. Пробуем закрыть окно со своей стороны уже после
+		// начала скачивания. На закрытие не полагаемся: если iOS не позволит,
+		// окно останется как раньше, скачиванию это не мешает.
+		setTimeout(() => {
+			try {
+				if (!download.closed) download.close();
+			} catch {
+				/* окно остаётся открытым, как было до правки */
+			}
+		}, CLOSE_AFTER_DOWNLOAD_MS);
 	} catch (err) {
 		if (!download.closed) download.close();
 		throw err;
