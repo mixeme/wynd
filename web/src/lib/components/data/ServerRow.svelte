@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Icon from '$ui/Icon.svelte';
+	import IconButton from '$ui/forms/IconButton.svelte';
 	import Row from '$ui/data/Row.svelte';
 
 	type ServerRowVariant = 'select' | 'ok' | 'warn' | 'info';
@@ -14,6 +15,8 @@
 		gdpr,
 		top = 14,
 		onclick,
+		onremove,
+		removeDisabled = false,
 		class: className = '',
 		style = ''
 	}: {
@@ -33,6 +36,9 @@
 		/** Верхний отступ карточки, px: 0 — сразу под подписью поля («Сервер» на 1.1). */
 		top?: number;
 		onclick?: () => void;
+		/** Отдельное подтверждение удаления неактивного источника, план 62 / Android 50. */
+		onremove?: () => void;
+		removeDisabled?: boolean;
 		class?: string;
 		style?: string;
 	} = $props();
@@ -43,7 +49,9 @@
 			? `margin:${top}px 16px 0;width:calc(100% - 32px);border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px`
 			: ''
 	);
-	const rowStyle = $derived(cardStyle ? `${cardStyle};${style}` : style);
+	const rowStyle = $derived(
+		`${cardStyle ? `${cardStyle};${style}` : style}${onremove ? ';padding-right:52px' : ''}`
+	);
 	const caption = $derived(
 		connection === 'checking'
 			? 'Проверяем связь…'
@@ -53,26 +61,55 @@
 	);
 </script>
 
-<Row {onclick} class={card ? `server-card ${className}`.trim() : className} style={rowStyle}>
-	{#snippet leading()}<Icon name="cloud" />{/snippet}
-	{#snippet main()}
-		<div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">
-			{name}{#if gdpr}<span class="gdpr">GDPR</span>{/if}
-		</div>
-		{#if subtitle && subtitle !== name}
-			<div class="sub" style="line-height:20px;overflow-wrap:anywhere">{subtitle}</div>
-		{/if}
-		{#if caption}
-			<div class="sub" style="line-height:20px">{caption}</div>
-		{/if}
-	{/snippet}
-	{#snippet trailing()}
-		{#if variant === 'select'}
-			<Icon name="chevr" size="sm" />
-		{:else if variant === 'ok'}
-			<span class="st ok"><Icon name="check" /></span>
-		{:else if variant === 'warn'}
-			<span class="st warn">!</span>
-		{/if}
-	{/snippet}
-</Row>
+{#snippet row()}
+	<Row {onclick} class={card ? `server-card ${className}`.trim() : className} style={rowStyle}>
+		{#snippet leading()}<Icon name="cloud" />{/snippet}
+		{#snippet main()}
+			<div style="font-weight:600;line-height:20px;overflow-wrap:anywhere">
+				{name}{#if gdpr}<span class="gdpr">GDPR</span>{/if}
+			</div>
+			{#if subtitle && subtitle !== name}
+				<div class="sub" style="line-height:20px;overflow-wrap:anywhere">{subtitle}</div>
+			{/if}
+			{#if caption}
+				<div class="sub" style="line-height:20px">{caption}</div>
+			{/if}
+		{/snippet}
+		{#snippet trailing()}
+			{#if variant === 'select'}
+				<Icon name="chevr" size="sm" />
+			{:else if variant === 'ok'}
+				<span class="st ok"><Icon name="check" /></span>
+			{:else if variant === 'warn'}
+				<span class="st warn">!</span>
+			{/if}
+		{/snippet}
+	</Row>
+{/snippet}
+
+{#if onremove}
+	<div class="removable-server">
+		{@render row()}
+		<IconButton
+			name="x"
+			size="sm"
+			label={`Убрать сервер «${name}» из списка`}
+			disabled={removeDisabled}
+			onclick={onremove}
+		/>
+	</div>
+{:else}
+	{@render row()}
+{/if}
+
+<style>
+	.removable-server {
+		position: relative;
+	}
+	.removable-server :global(.ib) {
+		position: absolute;
+		right: 16px;
+		top: 50%;
+		transform: translateY(-50%);
+	}
+</style>

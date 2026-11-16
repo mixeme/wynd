@@ -21,7 +21,7 @@ import android.window.OnBackInvokedDispatcher;
 import java.io.ByteArrayInputStream;
 import java.util.Collections;
 
-/** Первый каркас: выбранный при dev-сборке origin открывается напрямую, без прокси. */
+/** Выбранный источник открывается напрямую, без прокси; данные WebView остаются у своих origin. */
 public final class MainActivity extends Activity {
     private static final String TAG = "WyndAndroid";
     private WebView webView;
@@ -30,20 +30,18 @@ public final class MainActivity extends Activity {
     private FileExports exports;
     private OriginalPhotos originals;
     private IncomingShares shares;
+    private InterfaceBridge interfaces;
     private boolean backPending;
 
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
-        if (BuildConfig.START_URL.isEmpty()) {
-            Log.e(TAG, "No dev server configured. Build with -PwyndDevServerUrl=https://host");
-            finish();
-            return;
-        }
+        InterfaceCatalog catalog;
         try {
-            server = ServerOrigin.parse(BuildConfig.START_URL, BuildConfig.DEBUG);
-        } catch (IllegalArgumentException e) {
-            Log.e(TAG, "Invalid dev server configuration", e);
+            catalog = InterfaceBridge.open(this);
+            server = ServerOrigin.parse(catalog.selected(), BuildConfig.DEBUG);
+        } catch (Exception e) {
+            Log.e(TAG, "No valid interface source; local first-run screen is not implemented yet", e);
             finish();
             return;
         }
@@ -57,6 +55,7 @@ public final class MainActivity extends Activity {
         shares = new IncomingShares(this, webView, server);
         if (state == null) receiveShare(getIntent());
         AndroidBridge.attach(this, webView, server);
+        interfaces = new InterfaceBridge(this, webView, server, catalog);
         SystemBarsFrame bars = new SystemBarsFrame(this, webView);
         setContentView(bars);
         AppearanceBridge.attach(this, webView, server, bars);
@@ -64,9 +63,21 @@ public final class MainActivity extends Activity {
             getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
                     OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::goBack);
         }
-        if (state == null || webView.restoreState(state) == null || !server.contains(webView.getUrl())) {
+        if (state == null || !server.url().equals(state.getString("interface_origin"))
+                || webView.restoreState(state) == null || !server.contains(webView.getUrl())) {
             webView.loadUrl(server.url());
         }
+    }
+
+    boolean interfaceSwitchBlocked() {
+        return media != null && media.busy() || exports != null && exports.busy()
+                || shares != null && shares.busyForInterface();
+    }
+
+    void restartInterface() {
+        // Новый WebView получает все origin-bound мосты заново; прежний теряет доступ.
+        if (webView != null) webView.stopLoading();
+        recreate();
     }
 
     @Override
@@ -185,6 +196,7 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onSaveInstanceState(Bundle state) {
+        if (server != null) state.putString("interface_origin", server.url());
         if (webView != null) webView.saveState(state);
         super.onSaveInstanceState(state);
     }
@@ -216,6 +228,7 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (interfaces != null) interfaces.destroy();
         if (media != null) media.destroy();
         if (exports != null) exports.destroy();
         if (originals != null) originals.clear();

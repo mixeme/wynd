@@ -96,6 +96,8 @@ final class FileExports {
                 });
     }
 
+    boolean busy() { return current != null || pickerJob != null; }
+
     private boolean trusted() {
         return !destroyed && !activity.isFinishing() && !activity.isDestroyed() && origin.contains(web.getUrl());
     }

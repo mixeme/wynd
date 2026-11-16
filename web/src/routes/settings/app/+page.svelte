@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { navigateBack } from '$lib/navigation/up';
+	import { goto } from '$app/navigation';
+	import { androidInterfacesAvailable } from '$lib/android/interfaces';
 	import NumberField from '$ui/forms/NumberField.svelte';
 	import { onMount } from 'svelte';
 	import { androidUpdate, setAndroidImmediate } from '$lib/android/update.svelte';
@@ -67,9 +69,11 @@
 	let baseline = $state<AppNotifyDefaults | null>(null);
 	let error = $state('');
 	let cleared = $state(false);
-	// Временный источник интерфейса показывается только в окне для компьютера.
+	// Тот же принятый раздел интерфейса в обеих нативных оболочках (планы 62 и 50).
 	const desktop = desktopBridge();
-	let interfaceName = $state(desktop ? displayHost(desktop.origin) : '');
+	const androidInterfaces = androidInterfacesAvailable();
+	const interfaceOrigin = desktop?.origin ?? (androidInterfaces ? window.location.origin : '');
+	let interfaceName = $state(interfaceOrigin ? displayHost(interfaceOrigin) : '');
 	// Автозапуск — только в окне для компьютера; в браузере моста нет.
 	const auto = autostartBridge();
 	let autostart = $state(false);
@@ -161,9 +165,9 @@
 	}
 
 	onMount(async () => {
-		if (desktop) {
-			const card = await loadServerCard(desktop.origin);
-			interfaceName = card.info?.name || displayHost(desktop.origin);
+		if (interfaceOrigin) {
+			const card = await loadServerCard(interfaceOrigin);
+			interfaceName = card.info?.name || displayHost(interfaceOrigin);
 		}
 		if (auto) {
 			try {
@@ -200,11 +204,11 @@
 </script>
 
 <FormLayout shell app title="Приложение" onback={navigateBack}>
-	{#if desktop}
+	{#if interfaceOrigin}
 		<SectionLabel>Интерфейс</SectionLabel>
 		<ServerRow
 			name={interfaceName}
-			subtitle={displayHost(desktop.origin)}
+			subtitle={displayHost(interfaceOrigin)}
 			detail="Сейчас открывает интерфейс"
 			card
 			top={0}
@@ -212,7 +216,10 @@
 		<SettingsRow
 			title="Сменить сервер интерфейса"
 			subtitle="Входы и круги останутся на своих серверах"
-			onclick={openDesktopInterface}
+			onclick={() => {
+				if (desktop) openDesktopInterface();
+				else void goto('/settings/app/interface');
+			}}
 		/>
 	{/if}
 	{#if auto}

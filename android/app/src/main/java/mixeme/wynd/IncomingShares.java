@@ -154,6 +154,10 @@ final class IncomingShares {
         });
     }
 
+    boolean busyForInterface() {
+        return preparing || pending != null || new File(directory, "pending.json").exists();
+    }
+
     private void restore() {
         synchronized (LOCK) {
             try {

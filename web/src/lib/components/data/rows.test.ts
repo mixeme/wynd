@@ -1,5 +1,5 @@
 import { createRawSnippet, flushSync, mount, unmount, type Component } from 'svelte';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import CircleRow from './CircleRow.svelte';
 import MemberRow from './MemberRow.svelte';
 import SearchResultRow from './SearchResultRow.svelte';
@@ -26,6 +26,28 @@ function render<P extends Record<string, unknown>>(component: Component<P>, prop
 // разметка во всех вариантах та же, что до слияния, — слепки сняты со старых
 // компонентов. Меняется разметка — меняется и слепок, осознанно.
 describe('row components markup', () => {
+	it('ServerRow: удаление отдельно от выбора, без вложенных кнопок', () => {
+		const target = document.createElement('div');
+		const choose = vi.fn(),
+			remove = vi.fn();
+		const instance = mount(ServerRow, {
+			target,
+			props: {
+				name: 'Дом',
+				subtitle: 'wynd.example',
+				onclick: choose,
+				onremove: remove
+			}
+		});
+		flushSync();
+		expect(target.querySelector('button button')).toBeNull();
+		(target.querySelector('.ib') as HTMLButtonElement).click();
+		expect(remove).toHaveBeenCalledOnce();
+		expect(choose).not.toHaveBeenCalled();
+		(target.querySelector('.row2') as HTMLButtonElement).click();
+		expect(choose).toHaveBeenCalledOnce();
+		unmount(instance);
+	});
 	// Подтверждённые сведения не исчезают из-за потери связи.
 	it('ServerRow: связь заменяет только третью строку', () => {
 		const html = render(ServerRow, {

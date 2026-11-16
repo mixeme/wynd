@@ -93,6 +93,7 @@ const UP_RULES: Array<[RegExp, string]> = [
 	// Вокруг клиента.
 	[/^\/share$/, '/circles'],
 	[/^\/search$/, '/circles'],
+	[/^\/settings\/app\/interface$/, '/settings/app'],
 	[/^\/settings\/servers\/email\/code$/, '/settings/servers/email'],
 	[/^\/settings\/servers\/accept\/move$/, '/settings/servers/accept'],
 	[/^\/settings\/(servers|app|news)(\/[^/]+)*$/, '/settings'],
