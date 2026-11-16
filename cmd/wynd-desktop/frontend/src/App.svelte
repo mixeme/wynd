@@ -311,7 +311,7 @@
 			<div class="settings-page">
 				<BackBar title="Сервер интерфейса" onback={closeInterface} />
 				<div class="settings-body">
-					<Hint class="mt-16">Окно загружает интерфейс с выбранного сервера. Ваши входы и круги останутся без изменений.</Hint>
+					<Hint class="mt-16">Приложение загружает интерфейс с выбранного сервера. Ваши входы и круги останутся без изменений.</Hint>
 					<Label>Серверы интерфейса</Label>
 					{#each servers as item (item.origin)}
 						{#if item.origin === server?.origin}

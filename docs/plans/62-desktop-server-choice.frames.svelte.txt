@@ -25,7 +25,7 @@
 			<div class="desktop-content"><div class="settings-page">
 				<BackBar title="Сервер интерфейса" onback={() => {}} />
 				<div class="settings-body">
-					<Hint class="mt-16">Окно загружает интерфейс с выбранного сервера. Ваши входы и круги останутся без изменений.</Hint>
+					<Hint class="mt-16">Приложение загружает интерфейс с выбранного сервера. Ваши входы и круги останутся без изменений.</Hint>
 					<Label>Серверы интерфейса</Label>
 					<ServerRow name="Дом Ани" subtitle="home.example.org" variant="ok" onclick={() => {}} />
 					<div class="removable-server">
@@ -46,7 +46,7 @@
 			<div class="desktop-content"><div class="settings-page">
 				<BackBar title="Сервер интерфейса" onback={() => {}} />
 				<div class="settings-body">
-					<Hint class="mt-16">Окно загружает интерфейс с выбранного сервера. Ваши входы и круги останутся без изменений.</Hint>
+					<Hint class="mt-16">Приложение загружает интерфейс с выбранного сервера. Ваши входы и круги останутся без изменений.</Hint>
 					<Label>Серверы интерфейса</Label>
 					<ServerRow name="Дом Ани" subtitle="home.example.org" variant="ok" onclick={() => {}} />
 					<div class="removable-server">
