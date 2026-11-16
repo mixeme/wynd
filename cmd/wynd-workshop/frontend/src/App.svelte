@@ -34,6 +34,7 @@
 	} from './api';
 	import { rawSections } from './raw';
 	import { day, dayTime, gb, mark, noRoom } from './lib/display';
+	import { removalNote } from './lib/rollback';
 
 	let {
 		profile,
@@ -689,15 +690,6 @@
 		}
 	}
 
-	// Данные удаляли — сертификат отзывали: сказать, вышло ли.
-	function certNote(cert: 'revoked' | 'failed' | undefined): string {
-		if (cert === 'revoked') return ' Сертификат сайта отозван.';
-		if (cert === 'failed') {
-			return ' Отозвать сертификат сайта не получилось: он удалён вместе с ключом и перестанет действовать сам, когда выйдет его срок.';
-		}
-		return '';
-	}
-
 	// Чужой веб-сервер, за которым стоит Wynd: «nginx», «Apache», «Caddy» или пусто — свой Caddy.
 	const proxyName = $derived(
 		({ nginx: 'nginx', apache: 'Apache', caddy: 'Caddy' } as Record<string, string>)[
@@ -712,24 +704,6 @@
 		if (rolling) return;
 		rolling = true;
 		rollbackError = '';
-		// Осмотр после отката тот же веб-сервер найдёт снова; имя берём заранее.
-		const stays = proxyName ? `Docker и ${proxyName} остались.` : 'Docker остался.';
-		// Кадр 5е2: чужой файл сайта остаётся — сказать, где он.
-		const foreign = foreignSite.length;
-		const leftFiles = foreign
-			? ` Файл сайта ${foreignSite.join(', ')} остался — его ставили не мы.`
-			: '';
-		// Кадр 5д: что именно помешало, знаем по проверке до удаления и после него.
-		const stale = (res: { stale?: string }) => {
-			if (!res.stale || !proxyName) return '';
-			if (res.stale === 'before') {
-				return ` Но ${proxyName} это изменение ещё не принял: в его настройке ошибка, и она была там ещё до удаления — о ней ниже. Когда её исправят, сайт Wynd пропадёт из ${proxyName} сам.`;
-			}
-			if (res.stale === 'after') {
-				return ` Но ${proxyName} это изменение не принял: без файла сайта Wynd его настройка перестала проходить проверку — похоже, на этот файл ссылается чужая настройка. Что не так, сказано ниже.`;
-			}
-			return ` Но перечитать настройку ${proxyName} не удалось, хотя ошибок в ней нет. Сайт Wynd пропадёт из ${proxyName}, когда его попросят перечитать настройку или перезапустят.`;
-		};
 		try {
 			const res = await api.Rollback(!dropData);
 			if (res.ok) {
@@ -739,32 +713,16 @@
 				progress = undefined;
 				if (res.report) inspection = { ok: true, report: res.report };
 				if (res.plan) plan = res.plan;
-				if (failed) {
-					rollbackNote =
-						(dropData
-							? 'Установка откачена: Wynd и его данные с сервера убраны. '
-							: 'Установка откачена: Wynd с сервера убран, его данные оставлены. ') +
-						stays +
-						certNote(res.cert) +
-						stale(res);
-					screen = 'plan';
-				} else {
-					// Убрали работавший Wynd (окна 2б, 5а): назад к осмотру, сервер уже без него.
-					// Сертификат у чужой установки получали не мы — о нём ни слова (5е2).
-					rollbackNote =
-						(dropData
-							? foreign
-								? 'Wynd и его данные с сервера убраны. '
-								: 'Wynd, его данные и сертификат с сервера убраны. '
-							: foreign
-								? 'Wynd с сервера убран, его данные оставлены. '
-								: 'Wynd с сервера убран, его данные и сертификат оставлены. ') +
-						stays +
-						leftFiles +
-						certNote(res.cert) +
-						stale(res);
-					screen = 'new';
-				}
+				// Осмотр после отката тот же веб-сервер найдёт снова; текст итога — lib/rollback.
+				rollbackNote = removalNote({
+					dropData,
+					failed,
+					proxyName,
+					foreignSite,
+					cert: res.cert,
+					stale: res.stale
+				});
+				screen = failed ? 'plan' : 'new';
 				page = await api.ServerPage();
 				await onprofileschange();
 			} else {
