@@ -27,6 +27,7 @@ public final class MainActivity extends Activity {
     private static final String TAG = "WyndAndroid";
     private WebView webView;
     private ServerOrigin server;
+    private MediaChromeClient media;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -44,6 +45,8 @@ public final class MainActivity extends Activity {
             return;
         }
         webView = new WebView(this);
+        media = new MediaChromeClient(this, webView, server);
+        webView.setWebChromeClient(media);
         configureWebView();
         AndroidBridge.attach(this, webView, server);
         setContentView(webView);
@@ -79,6 +82,9 @@ public final class MainActivity extends Activity {
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false);
         webView.setBackgroundColor(Color.rgb(244, 240, 233));
         webView.setWebViewClient(new WebViewClient() {
+            @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                media.cancel();
+            }
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (!request.isForMainFrame()) return false;
@@ -150,11 +156,13 @@ public final class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         if (webView != null) webView.onResume();
+        if (media != null) media.resume();
         UpdateController.get(this).resume(this);
     }
 
     @Override
     protected void onPause() {
+        if (media != null) media.pause();
         UpdateController.get(this).pause(this);
         if (webView != null) {
             webView.onPause();
@@ -165,6 +173,7 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (media != null) media.destroy();
         if (webView != null) {
             webView.stopLoading();
             if (webView.getParent() instanceof ViewGroup parent) parent.removeView(webView);
@@ -172,5 +181,17 @@ public final class MainActivity extends Activity {
             webView = null;
         }
         super.onDestroy();
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == MediaChromeClient.FILE_REQUEST && media != null) media.filesReturned(resultCode, data);
+    }
+
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == MediaChromeClient.PERMISSION_REQUEST && media != null) media.permissionsReturned();
     }
 }

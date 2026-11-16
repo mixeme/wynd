@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { decodeQrFrom } from '$lib/auth/links';
+	import { qrCameraPermissionHint } from '$lib/media/record';
+	import { androidPort } from '$lib/android/bridge';
 
 	// Видоискатель QR-кода (2.8; план 47, 3.8): задняя камера, кадр раз в
 	// 250 мс. Что делать с прочитанным, решает экран: onread возвращает true —
@@ -41,7 +43,11 @@
 
 	onMount(async () => {
 		if (!navigator.mediaDevices?.getUserMedia) {
-			onerror('Камера недоступна в этом браузере — выберите фото с кодом.');
+			onerror(
+				androidPort()
+					? 'Камера недоступна — выберите фото с кодом.'
+					: 'Камера недоступна в этом браузере — выберите фото с кодом.'
+			);
 			return;
 		}
 		try {
@@ -52,7 +58,7 @@
 		} catch (err) {
 			onerror(
 				err instanceof DOMException && err.name === 'NotAllowedError'
-					? 'Нет доступа к камере — разрешите его в настройках браузера или выберите фото с кодом.'
+					? qrCameraPermissionHint()
 					: 'Камера не включилась — выберите фото с кодом.'
 			);
 			return;

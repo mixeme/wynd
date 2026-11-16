@@ -42,8 +42,11 @@ async function waitFor(check, message) {
 }
 
 async function connect() {
-  const appPid = adb("shell", "pidof", "-s", packageName);
-  assert(/^\d+$/.test(appPid), "App is not running");
+  let appPid;
+  await waitFor(() => {
+    try { appPid = adb("shell", "pidof", "-s", packageName); return /^\d+$/.test(appPid); }
+    catch { return false; }
+  }, "App is not running");
   const port = adb(
     "forward",
     "tcp:0",
@@ -118,6 +121,7 @@ async function connect() {
 
 try {
   assert.equal(adb("get-state"), "device");
+  adb("shell", "input", "keyevent", "224");
   const server = new URL(serverUrl);
   if (
     server.protocol === "http:" &&
@@ -128,7 +132,14 @@ try {
   }
   adb("shell", "am", "start", "-W", "-n", component);
   let cdp = await connect();
-  await cdp.send("Page.reload");
+  const navigation = await cdp.send("Page.navigate", { url: `${origin}/` });
+  await waitFor(async () => {
+    try {
+      const tree = await cdp.send("Page.getFrameTree");
+      if (navigation.loaderId && tree.frameTree.frame.loaderId !== navigation.loaderId) return false;
+      return await cdp.evaluate("location.pathname === '/' && document.readyState === 'complete' && !!document.body?.textContent?.trim()");
+    } catch { return false; } // Контекст прежней страницы уничтожается при reload.
+  }, "Reloaded document did not render");
   if (inspectOnly) {
     await sleep(2000);
     console.log(
@@ -175,6 +186,7 @@ try {
         ),
       "Same-origin invitation route did not render",
     );
+    adb("shell", "input", "keyevent", "224");
     adb("shell", "input", "keyevent", "4");
     await waitFor(
       () =>

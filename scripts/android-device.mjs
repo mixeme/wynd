@@ -29,8 +29,11 @@ export class AndroidDevice {
     this.adb("shell", "am", "start", "-W", "-n", this.component);
   }
   async connect() {
-    const pid = this.adb("shell", "pidof", "-s", this.packageName);
-    assert(/^\d+$/.test(pid), "Wynd is not running");
+    let pid;
+    await waitFor(() => {
+      try { pid = this.adb("shell", "pidof", "-s", this.packageName); return /^\d+$/.test(pid); }
+      catch { return false; }
+    }, "Wynd is not running");
     const port = this.adb(
       "forward",
       "tcp:0",
@@ -79,6 +82,7 @@ export class AndroidDevice {
     }
   }
   screenshot(file) {
+    this.adb("shell", "input", "keyevent", "224");
     const policy = this.adb("shell", "dumpsys", "window", "policy");
     assert(
       !/^\s+showing=true\s*$/m.test(policy),
@@ -94,17 +98,28 @@ export class AndroidDevice {
     writeFileSync(file, bytes);
   }
   hierarchy() {
-    const temp = "/data/local/tmp/wynd-update-ui.xml";
-    this.adb("shell", "uiautomator", "dump", temp);
-    const xml = this.adb("exec-out", "cat", temp);
-    this.adb("shell", "rm", temp);
+    this.adb("shell", "input", "keyevent", "224");
+    const temp = `/data/local/tmp/wynd-ui-${Date.now()}-${Math.random().toString(16).slice(2)}.xml`;
+    let xml;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        this.adb("shell", "uiautomator", "dump", temp);
+        xml = this.adb("exec-out", "cat", temp);
+        if (xml.includes("<hierarchy")) break;
+      } catch (error) {
+        if (attempt === 2) throw error;
+      } finally {
+        this.adb("shell", "rm", "-f", temp);
+      }
+    }
+    assert(xml?.includes("<hierarchy"), "Fresh Android UI hierarchy unavailable");
     return [...xml.matchAll(/<node\s+([^>]+)>/g)].map((match) =>
-      Object.fromEntries(
+      Object.assign({ text: "", "content-desc": "" }, Object.fromEntries(
         [...match[1].matchAll(/([\w-]+)="([^"]*)"/g)].map((attr) => [
           attr[1],
           attr[2],
         ]),
-      ),
+      )),
     );
   }
   tapNode(node) {
@@ -177,11 +192,16 @@ class AndroidCdp {
     return result.result.value;
   }
   async navigate(url) {
-    await this.send("Page.navigate", { url });
+    const target = new URL(url).href;
+    const navigation = await this.send("Page.navigate", { url: target });
+    assert(!navigation.errorText, navigation.errorText);
     await waitFor(async () => {
       try {
+        const tree = await this.send("Page.getFrameTree");
+        if (navigation.loaderId && tree.frameTree.frame.loaderId !== navigation.loaderId) return false;
+        if (tree.frameTree.frame.url !== target) return false;
         return await this.evaluate(
-          `document.readyState === 'complete' && !!document.body?.textContent?.trim()`,
+          `location.href === ${JSON.stringify(target)} && document.readyState === 'complete' && !!document.body?.textContent?.trim()`,
         );
       } catch {
         return false;

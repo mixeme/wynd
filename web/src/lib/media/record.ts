@@ -5,6 +5,8 @@
  * из уровней звука сделать волну для ленты, как подписать время.
  */
 
+import { androidPort } from '$lib/android/bridge';
+
 /** Предел голосового — 15 минут, видео — 5 (решено 2026-10-02). */
 export const VOICE_MAX_MS = 15 * 60 * 1000;
 export const VIDEO_MAX_MS = 5 * 60 * 1000;
@@ -71,12 +73,17 @@ export function cameraAsks(long: number, short: number): MediaTrackConstraints[]
  * Почему камера не открылась — словами, по имени отказа getUserMedia.
  * `final` — просить иначе бессмысленно: это запрет, а не неподходящий кадр.
  */
-export function cameraFailure(name: string): { text: string; final: boolean } {
+export function cameraFailure(
+	name: string,
+	android = Boolean(androidPort())
+): { text: string; final: boolean } {
 	switch (name) {
 		case 'NotAllowedError':
 		case 'SecurityError':
 			return {
-				text: 'Камера или микрофон запрещены. Разрешите их этому сайту в браузере, а самому браузеру — в настройках устройства.',
+				text: android
+					? 'Камера или микрофон запрещены. Разрешите их для Wynd в настройках телефона.'
+					: 'Камера или микрофон запрещены. Разрешите их этому сайту в браузере, а самому браузеру — в настройках устройства.',
 				final: true
 			};
 		case 'NotFoundError':
@@ -91,6 +98,12 @@ export function cameraFailure(name: string): { text: string; final: boolean } {
 		default:
 			return { text: 'Камера не открылась.', final: false };
 	}
+}
+
+export function qrCameraPermissionHint(android = Boolean(androidPort())): string {
+	return android
+		? 'Нет доступа к камере — разрешите его для Wynd в настройках телефона или выберите фото с кодом.'
+		: 'Нет доступа к камере — разрешите его в настройках браузера или выберите фото с кодом.';
 }
 
 /** Первый контейнер, который браузер пишет; '' — пусть выберет сам. */

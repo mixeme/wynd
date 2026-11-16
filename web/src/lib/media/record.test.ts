@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	cameraAsks,
 	cameraFailure,
+	qrCameraPermissionHint,
 	formatDuration,
 	levelFromSamples,
 	levelsFromPcm,
@@ -70,6 +71,12 @@ describe('levelsFromPcm', () => {
 });
 
 describe('cameraFailure', () => {
+	it('в Android называет разрешение Wynd, в браузере — разрешение сайта', () => {
+		expect(cameraFailure('NotAllowedError', true).text).toContain('для Wynd в настройках телефона');
+		expect(cameraFailure('SecurityError', false).text).toContain('этому сайту в браузере');
+		expect(qrCameraPermissionHint(true)).toContain('для Wynd в настройках телефона');
+		expect(qrCameraPermissionHint(false)).toContain('в настройках браузера');
+	});
 	it('запрет — окончательный: другая просьба его не снимет', () => {
 		expect(cameraFailure('NotAllowedError').final).toBe(true);
 		expect(cameraFailure('SecurityError').final).toBe(true);
