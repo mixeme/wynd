@@ -1312,6 +1312,8 @@ func installFilesAt(l Layout, spec Spec) (files []installFile, dirs string) {
 		dirs += " " + ShellPath(l.Caddy()+"/data") + " " + ShellPath(l.Caddy()+"/config")
 	}
 	dirs += " && chown -R " + wyndOwner + " " + ShellPath(l.Data()) + " && chmod 700 " + ShellPath(l.Data())
+	// Идентичность корня — для сверки перед удалением с данными (16.11).
+	dirs += " && stat -c '%d %i' " + ShellPath(l.Root()) + " > " + ShellPath(l.InstallIdentity())
 	return files, dirs
 }
 
@@ -1730,12 +1732,19 @@ func Rollback(ctx context.Context, sess *Session, spec Spec, keepData bool) ([]L
   docker volume ls -q --filter label=com.docker.compose.project="${proj:-wynd}" 2>/dev/null | xargs -r docker volume rm`
 	}
 	clear := "rm -rf " + ShellPath(layout.Root())
-	gone := "test ! -e " + ShellPath(layout.Root())
+	gone := rootGoneCheck(layout)
 	if keepData {
 		clear = ":"
 		gone = `test -z "$(` + layout.RunningFilter() + `)"`
 	}
-	script := rollbackProxy(layout, keepData) + `imgs=
+	// Перед удалением с данными сверяем идентичность корня: установка помнит
+	// устройство и inode (InstallIdentity), и если поверх папки смонтировано
+	// другое — очистка ушла бы в чужое содержимое (находка 16.11).
+	guard := ""
+	if !keepData {
+		guard = rootIdentityGuard(layout)
+	}
+	script := guard + rollbackProxy(layout, keepData) + `imgs=
 if [ -f ` + ShellPath(layout.Compose()) + ` ] && command -v docker >/dev/null 2>&1; then
   cd ` + layout.ShellRoot() + `
   imgs=$(docker compose images -q 2>/dev/null || true)
@@ -1759,10 +1768,46 @@ fi
 	if err != nil {
 		return log, err
 	}
+	if !keepData && strings.Contains(res.Output, "WYND_ROOT_CHANGED") {
+		return log, &StepError{
+			Message: "Каталог установки изменился",
+			Advice:  "Похоже, поверх каталога " + layout.Root() + " смонтировано другое — данные не тронуты. Проверьте, что смонтировано, и повторите.",
+		}
+	}
+	// Каталог остался после очистки: обычно это точка монтирования поверх него.
+	// Отказ понятным шагом, а не текстом всего скрипта с «Device or resource
+	// busy» (находка живых проверок 16.11).
+	if !keepData && strings.Contains(res.Output, "WYND_ROOT_BUSY") {
+		return log, &StepError{
+			Message: "Каталог установки не удалён",
+			Advice:  "Каталог " + layout.Root() + " остался на месте: похоже, поверх него что-то смонтировано. Уберите точку монтирования и повторите.",
+		}
+	}
 	if res.Code != 0 {
 		return log, &commandError{command: script, output: res.Output, code: res.Code}
 	}
 	return log, nil
+}
+
+// rootIdentityGuard сверяет устройство и inode корня с пометкой установки.
+// Расхождение — поверх папки смонтировано другое: удаление остановится до
+// первого изменения (находка живых проверок 16.11); у установок до 16.11
+// пометки нет — проверка пропускается.
+func rootIdentityGuard(layout Layout) string {
+	return `root=` + layout.ShellRoot() + `
+idfile=` + ShellPath(layout.InstallIdentity()) + `
+if [ -f "$idfile" ]; then
+  want=$(cat "$idfile" 2>/dev/null)
+  have=$(stat -c '%d %i' "$root" 2>/dev/null)
+  if [ -n "$want" ] && [ -n "$have" ] && [ "$want" != "$have" ]; then echo WYND_ROOT_CHANGED; exit 0; fi
+fi
+`
+}
+
+// rootGoneCheck — после очистки каталога нет; если остался (точка монтирования
+// поверх него), печатается метка понятного отказа вместо текста всего скрипта.
+func rootGoneCheck(layout Layout) string {
+	return `test ! -e ` + ShellPath(layout.Root()) + ` || { echo WYND_ROOT_BUSY; exit 1; }`
 }
 
 // Plan — что установщик сделает, до первого изменения (окно 3).

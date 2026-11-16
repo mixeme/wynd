@@ -120,6 +120,12 @@ func (l Layout) Acme() string { return path.Join(l.base(), "acme") }
 // Compose — файл compose.yaml установки.
 func (l Layout) Compose() string { return path.Join(l.base(), "compose.yaml") }
 
+// InstallIdentity — пометка «эта папка и есть наша установка»: устройство и
+// inode корня, снятые при установке. Перед удалением с данными они сверяются,
+// чтобы подменённая точка монтирования не увела очистку в другую папку
+// (находка живых проверок 16.11).
+func (l Layout) InstallIdentity() string { return path.Join(l.base(), ".wynd-install") }
+
 // Caddyfile — настройка своего Caddy.
 func (l Layout) Caddyfile() string { return path.Join(l.base(), "Caddyfile") }
 

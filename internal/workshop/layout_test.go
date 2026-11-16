@@ -324,3 +324,45 @@ func TestBuildCodeFailure(t *testing.T) {
 		t.Fatalf("совет: %+v", r)
 	}
 }
+
+// Идентичность корня (находка живых проверок 16.11): установка пишет
+// «устройство inode» папки, удаление с данными сверяет и при подмене точки
+// монтирования останавливается до первого изменения.
+func TestInstallWritesRootIdentity(t *testing.T) {
+	l, err := NewLayout("/srv/wynd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, dirs := installFilesAt(l, Spec{Domain: "example.org", Version: "0.53.0", Root: "/srv/wynd"})
+	if !strings.Contains(dirs, ".wynd-install") || !strings.Contains(dirs, "stat -c '%d %i'") {
+		t.Fatalf("установка не пишет идентичность корня: %s", dirs)
+	}
+}
+
+func TestRollbackChecksRootIdentity(t *testing.T) {
+	l, err := NewLayout("/srv/wynd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	guard := rootIdentityGuard(l)
+	for _, want := range []string{"WYND_ROOT_CHANGED", ".wynd-install", "stat -c '%d %i'"} {
+		if !strings.Contains(guard, want) {
+			t.Fatalf("в страже перед удалением нет %q:\n%s", want, guard)
+		}
+	}
+}
+
+// Каталог, оставшийся после очистки (точка монтирования поверх него), даёт
+// метку понятного отказа, а не текст всего скрипта с «Device or resource busy».
+func TestRollbackReportsBusyRoot(t *testing.T) {
+	l, err := NewLayout("/srv/wynd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	check := rootGoneCheck(l)
+	for _, want := range []string{"WYND_ROOT_BUSY", "test ! -e /srv/wynd"} {
+		if !strings.Contains(check, want) {
+			t.Fatalf("в проверке удаления нет %q:\n%s", want, check)
+		}
+	}
+}

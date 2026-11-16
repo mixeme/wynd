@@ -371,6 +371,10 @@ func startNewStep(spec UpdateSpec, ref string) step {
 		id:    "start",
 		title: title,
 		do: func(ctx context.Context, r *Run) error {
+			// Пометка идентичности корня: у установок до 16.11 её не было.
+			if _, err := r.must(ctx, "[ -f "+ShellPath(r.layout.InstallIdentity())+" ] || stat -c '%d %i' "+ShellPath(r.layout.Root())+" > "+ShellPath(r.layout.InstallIdentity()), shortTimeout); err != nil {
+				return err
+			}
 			composePath := r.layout.Compose()
 			cur, err := r.must(ctx, "cat "+ShellPath(composePath), shortTimeout)
 			if err != nil {
