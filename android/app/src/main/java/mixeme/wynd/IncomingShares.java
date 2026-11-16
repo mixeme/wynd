@@ -39,11 +39,12 @@ final class IncomingShares {
     private final File directory;
     private boolean resumed, destroyed;
     private boolean closingFromBack;
+    private volatile boolean restoring = true;
 
     IncomingShares(Activity activity, WebView web, ServerOrigin origin) {
         this.activity = activity; this.web = web; this.origin = origin;
         directory = new File(activity.getFilesDir(), "incoming-share");
-        WORKER.execute(this::restore);
+        WORKER.execute(() -> { try { restore(); } finally { restoring = false; } });
         if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) return;
         WebViewCompat.addWebMessageListener(web, "__wyndIncomingShare",
                 Collections.singleton(origin.url().substring(0, origin.url().length() - 1)),
@@ -224,6 +225,7 @@ final class IncomingShares {
         return true;
     }
     private void note(String message) { activity.runOnUiThread(() -> { if (!destroyed) Toast.makeText(activity, message, Toast.LENGTH_LONG).show(); }); }
+    boolean busy() { return restoring || preparing || pending != null; }
     void resume() { resumed = true; }
     void pause() { resumed = false; }
     void destroy() { destroyed = true; }

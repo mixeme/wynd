@@ -3450,6 +3450,24 @@ input.inp[type='number']::-webkit-outer-spin-button {
    «экран — только $ui, без своих <style>» выдавило вёрстку в 585
    инлайн-style= на 56 экранах (CPX-3, GUI-4). Держим их последними в файле:
    при равной весомости побеждает то, что ниже. */
+.logo-wrap {
+	margin: 38px 0 0;
+	display: flex;
+	justify-content: center;
+	color: var(--ink);
+}
+/* 7.41–7.44: Android-поле 12,5 px; общий coarse-pointer кегль 16 нужен Safari. */
+.ph.android-interface .h1s {
+	/* В app flex-колонке margin-bottom не схлопывается с отступом Label. */
+	margin-bottom: 0;
+}
+.ph.android-interface input.fld.sm {
+	font-size: 12.5px;
+}
+.ph.android-interface input.fld::placeholder {
+	color: var(--faint);
+	opacity: 1;
+}
 .mt-4 {
 	margin-top: 4px;
 }

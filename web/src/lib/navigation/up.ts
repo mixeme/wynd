@@ -95,6 +95,8 @@ const UP_RULES: Array<[RegExp, string]> = [
 	[/^\/search$/, '/circles'],
 	[/^\/settings\/servers\/email\/code$/, '/settings/servers/email'],
 	[/^\/settings\/servers\/accept\/move$/, '/settings/servers/accept'],
+	[/^\/settings\/interface\/scan$/, '/settings/interface'],
+	[/^\/settings\/interface$/, '/settings'],
 	[/^\/settings\/(servers|app|news)(\/[^/]+)*$/, '/settings'],
 	[/^\/settings$/, '/circles'],
 	[/^\/pay\/(extend|help)$/, '/pay'],
@@ -131,13 +133,7 @@ export function upTarget(url: URL): string {
  */
 export function navigateBack(): Promise<void> {
 	// Сверху что-то открыто — закрываем его, экран остаётся.
-	if (overlays.length) {
-		// Снимаем оверлей со стека до вызова: его ondismiss может позвать
-		// navigateBack снова — и без снятия получилась бы бесконечная петля.
-		const closer = overlays.pop();
-		if (closer) closer();
-		return Promise.resolve();
-	}
+	if (dismissOverlay()) return Promise.resolve();
 	const here = location.pathname + location.search;
 	const i = historyIndex();
 	const prev = i !== undefined ? entries.get(i - 1) : undefined;
@@ -174,6 +170,15 @@ export function setOverlayCloser(fn: () => void): () => void {
 		const i = overlays.lastIndexOf(fn);
 		if (i >= 0) overlays.splice(i, 1);
 	};
+}
+
+/** Нативная «Назад» закрывает окно до перехода между документами WebView. */
+export function dismissOverlay(): boolean {
+	// Снять со стека до вызова: ondismiss может сам позвать navigateBack.
+	const closer = overlays.pop();
+	if (!closer) return false;
+	closer();
+	return true;
 }
 
 /** Верхний оверлей, если он есть. */

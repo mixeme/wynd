@@ -12,7 +12,12 @@
 	import { initAppUpdate } from '$lib/session/appUpdate.svelte';
 	import { statusColorOverride } from '$lib/session/statusColor.svelte';
 	import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
-	import { armEntryGuard, interceptHistoryBack, recordEntry } from '$lib/navigation/up';
+	import {
+		armEntryGuard,
+		dismissOverlay,
+		interceptHistoryBack,
+		recordEntry
+	} from '$lib/navigation/up';
 	import AudioBar from '$ui/chrome/AudioBar.svelte';
 	import Icon from '$ui/Icon.svelte';
 	import StatusCard from '$ui/data/StatusCard.svelte';
@@ -29,10 +34,20 @@
 	import { initAndroidUpdates } from '$lib/android/update.svelte';
 	import { postAndroidAppearance } from '$lib/android/appearance';
 	import { incomingShareAvailable, peekIncomingShare } from '$lib/android/shares';
+	import { androidPort } from '$lib/android/bridge';
 	import { loadSessions } from '$lib/session/session.svelte';
 
 	// Полоса плеера (4.9): звук играет и вне своего экрана (план 47, 5.4).
 	const audioBar = useAudioBar();
+
+	onMount(() => {
+		if (!androidPort()) return;
+		const back = (event: Event) => {
+			if (dismissOverlay()) event.preventDefault();
+		};
+		window.addEventListener('wynd:android-back', back);
+		return () => window.removeEventListener('wynd:android-back', back);
+	});
 
 	let { children } = $props();
 

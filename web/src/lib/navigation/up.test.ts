@@ -9,7 +9,14 @@ vi.mock('$app/navigation', () => ({
 
 import { goto } from '$app/navigation';
 import { replaceSearchUrl } from '$lib/journal/search';
-import { navigateBack, previousEntry, recordEntry, setOverlayCloser, upTarget } from './up';
+import {
+	dismissOverlay,
+	navigateBack,
+	previousEntry,
+	recordEntry,
+	setOverlayCloser,
+	upTarget
+} from './up';
 
 // «Назад» — одно правило (C89): туда, откуда пришли; если позади записи нет
 // (вход по ссылке, пуш, переход вверх с заменой) — на родителя из таблицы.
@@ -29,6 +36,20 @@ beforeEach(() => {
 });
 
 describe('upTarget — родитель по адресу', () => {
+	it('native Back consumes only the top overlay and reports whether it handled the action', () => {
+		const bottom = vi.fn(),
+			top = vi.fn();
+		const dropBottom = setOverlayCloser(bottom),
+			dropTop = setOverlayCloser(top);
+		expect(dismissOverlay()).toBe(true);
+		expect(top).toHaveBeenCalledTimes(1);
+		expect(bottom).not.toHaveBeenCalled();
+		dropTop();
+		expect(dismissOverlay()).toBe(true);
+		expect(bottom).toHaveBeenCalledTimes(1);
+		dropBottom();
+		expect(dismissOverlay()).toBe(false);
+	});
 	it('альбом записи — к записи, альбом дня — к дню', () => {
 		expect(upTarget(new URL('https://w/circles/c1/posts/p1/album'))).toBe('/circles/c1/posts/p1');
 		expect(upTarget(new URL('https://w/circles/c1/days/2026-11-09/album'))).toBe(
