@@ -95,8 +95,6 @@ const UP_RULES: Array<[RegExp, string]> = [
 	[/^\/search$/, '/circles'],
 	[/^\/settings\/servers\/email\/code$/, '/settings/servers/email'],
 	[/^\/settings\/servers\/accept\/move$/, '/settings/servers/accept'],
-	[/^\/settings\/interface\/scan$/, '/settings/interface'],
-	[/^\/settings\/interface$/, '/settings'],
 	[/^\/settings\/(servers|app|news)(\/[^/]+)*$/, '/settings'],
 	[/^\/settings$/, '/circles'],
 	[/^\/pay\/(extend|help)$/, '/pay'],

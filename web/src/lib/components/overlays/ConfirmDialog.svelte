@@ -13,7 +13,6 @@
 		cancelLabel = 'Отмена',
 		loading = false,
 		confirmDisabled = false,
-		top,
 		onconfirm,
 		oncancel,
 		children
@@ -24,8 +23,6 @@
 		loading?: boolean;
 		/** Действие не нажимается, пока не выполнено условие — например, не набрано имя (7.16). */
 		confirmDisabled?: boolean;
-		/** Положение утверждённого диалога, если оно отличается от обычного (7.47). */
-		top?: number;
 		onconfirm: () => void;
 		oncancel: () => void;
 		/** Пояснение под вопросом; может нести и поле (удаление круга). */
@@ -38,7 +35,7 @@
 </script>
 
 <Scrim onclick={cancel} />
-<Dialog label={title} ondismiss={cancel} style={top === undefined ? '' : `top:${top}px`}>
+<Dialog label={title} ondismiss={cancel}>
 	<div class="dlgq">{title}</div>
 	{@render children?.()}
 	<div class="rowin ask">

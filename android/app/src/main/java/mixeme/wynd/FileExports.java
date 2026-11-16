@@ -288,7 +288,6 @@ final class FileExports {
         }
         toOpen = null;
     }
-    boolean busy() { return current != null || pickerJob != null; }
     void resume() { resumed = true; notifySaved(); }
     void notificationsReturned() { notifySaved(); }
     void pause() { resumed = false; }

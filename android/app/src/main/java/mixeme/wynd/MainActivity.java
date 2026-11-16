@@ -21,7 +21,7 @@ import android.window.OnBackInvokedDispatcher;
 import java.io.ByteArrayInputStream;
 import java.util.Collections;
 
-/** Выбранный origin открывается напрямую, без прокси и переноса данных между origin. */
+/** Первый каркас: выбранный при dev-сборке origin открывается напрямую, без прокси. */
 public final class MainActivity extends Activity {
     private static final String TAG = "WyndAndroid";
     private WebView webView;
@@ -30,33 +30,23 @@ public final class MainActivity extends Activity {
     private FileExports exports;
     private OriginalPhotos originals;
     private IncomingShares shares;
-    private InterfaceBridge interfaces;
     private boolean backPending;
 
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
-        String selected = getSharedPreferences("interface", 0).getString("origin", BuildConfig.START_URL);
-        if (selected == null || selected.isEmpty()) {
-            Log.e(TAG, "No interface selected; first-start local UI is not included yet");
+        if (BuildConfig.START_URL.isEmpty()) {
+            Log.e(TAG, "No dev server configured. Build with -PwyndDevServerUrl=https://host");
             finish();
             return;
         }
         try {
-            server = ServerOrigin.parse(selected, BuildConfig.DEBUG);
+            server = ServerOrigin.parse(BuildConfig.START_URL, BuildConfig.DEBUG);
         } catch (IllegalArgumentException e) {
             Log.e(TAG, "Invalid dev server configuration", e);
             finish();
             return;
         }
-        createWebView(state, null);
-        if (Build.VERSION.SDK_INT >= 33) {
-            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
-                    OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::goBack);
-        }
-    }
-
-    private void createWebView(Bundle state, String initialPath) {
         webView = new WebView(this);
         media = new MediaChromeClient(this, webView, server);
         webView.setWebChromeClient(media);
@@ -65,33 +55,18 @@ public final class MainActivity extends Activity {
         media.originalPhotos(originals);
         exports = new FileExports(this, webView, server);
         shares = new IncomingShares(this, webView, server);
-        if (state == null && initialPath == null) receiveShare(getIntent());
+        if (state == null) receiveShare(getIntent());
         AndroidBridge.attach(this, webView, server);
-        interfaces = new InterfaceBridge(this, webView, server);
         SystemBarsFrame bars = new SystemBarsFrame(this, webView);
         setContentView(bars);
         AppearanceBridge.attach(this, webView, server, bars);
-        if (initialPath != null && InterfaceBridge.validPath(initialPath)) {
-            webView.loadUrl(server.url() + initialPath.substring(1));
-        } else if (state == null || !server.url().equals(state.getString("interfaceOrigin"))
-                || webView.restoreState(state) == null || !server.contains(webView.getUrl())) {
+        if (Build.VERSION.SDK_INT >= 33) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                    OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::goBack);
+        }
+        if (state == null || webView.restoreState(state) == null || !server.contains(webView.getUrl())) {
             webView.loadUrl(server.url());
         }
-    }
-
-    boolean interfaceBusy() {
-        return media != null && media.busy() || exports != null && exports.busy()
-                || shares != null && shares.busy();
-    }
-
-    void openInterface(ServerOrigin next, String path) {
-        // Новый WebView без старой истории. Всё выполняется одним шагом UI-потока:
-        // пришедший следом SEND уже получит новый origin, а не удалится при restore.
-        destroyWebView();
-        server = next;
-        createWebView(null, path);
-        webView.onResume();
-        media.resume(); exports.resume(); originals.resume(); shares.resume(); interfaces.resume();
     }
 
     @Override
@@ -123,7 +98,6 @@ public final class MainActivity extends Activity {
                 media.cancel();
                 if (exports != null) exports.cancel();
                 if (originals != null) originals.clear();
-                if (interfaces != null) interfaces.invalidate();
             }
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -212,7 +186,6 @@ public final class MainActivity extends Activity {
     @Override
     protected void onSaveInstanceState(Bundle state) {
         if (webView != null) webView.saveState(state);
-        if (server != null) state.putString("interfaceOrigin", server.url());
         super.onSaveInstanceState(state);
     }
 
@@ -224,7 +197,6 @@ public final class MainActivity extends Activity {
         if (exports != null) exports.resume();
         if (originals != null) originals.resume();
         if (shares != null) shares.resume();
-        if (interfaces != null) interfaces.resume();
         UpdateController.get(this).resume(this);
     }
 
@@ -234,7 +206,6 @@ public final class MainActivity extends Activity {
         if (exports != null) exports.pause();
         if (originals != null) originals.pause();
         if (shares != null) shares.pause();
-        if (interfaces != null) interfaces.pause();
         UpdateController.get(this).pause(this);
         if (webView != null) {
             webView.onPause();
@@ -245,22 +216,17 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        destroyWebView();
-        super.onDestroy();
-    }
-
-    private void destroyWebView() {
         if (media != null) media.destroy();
         if (exports != null) exports.destroy();
         if (originals != null) originals.clear();
         if (shares != null) shares.destroy();
-        if (interfaces != null) interfaces.destroy();
         if (webView != null) {
             webView.stopLoading();
             if (webView.getParent() instanceof ViewGroup parent) parent.removeView(webView);
             webView.destroy();
             webView = null;
         }
+        super.onDestroy();
     }
 
     @Override
