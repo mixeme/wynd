@@ -13,9 +13,11 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -332,9 +334,25 @@ func (a *App) ApplySelfUpdate() string {
 // ReleasesPage — страница выпусков программ Wynd.
 func (a *App) ReleasesPage() { runtime.BrowserOpenURL(a.ctx, desktop.ReleasesPage) }
 
+// windowOrigin — origin страницы окна: сборка Wails на Windows открывается
+// по http://wails.localhost/, `wails dev` — на localhost. Чужому сайту,
+// узнавшему случайный порт, локальный API ответы не читает: без своего origin
+// в Access-Control-Allow-Origin браузер ответ отбрасывает.
+func windowOrigin(origin string) bool {
+	u, err := url.Parse(origin)
+	if err != nil || u.Host == "" {
+		return false
+	}
+	switch strings.ToLower(u.Hostname()) {
+	case "wails.localhost", "localhost", "127.0.0.1", "::1":
+		return true
+	}
+	return false
+}
+
 func corsHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if origin := r.Header.Get("Origin"); origin != "" {
+		if origin := r.Header.Get("Origin"); origin != "" && windowOrigin(origin) {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Add("Vary", "Origin")
 		}

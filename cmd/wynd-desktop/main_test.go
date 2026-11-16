@@ -31,6 +31,45 @@ func TestDesktopBuildAssets(t *testing.T) {
 	}
 }
 
+// Локальный порт API открыт странице окна (wails.localhost) и `wails dev`
+// (localhost). Чужой сайт, перебравший порты 127.0.0.1, ответы читать не
+// должен: без своего origin в Access-Control-Allow-Origin браузер их отбросит.
+func TestCORSOnlyForWindowOrigins(t *testing.T) {
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+	cases := []struct {
+		origin string
+		want   bool
+	}{
+		{"http://wails.localhost", true},
+		{"http://localhost:34115", true},
+		{"http://127.0.0.1:9000", true},
+		{"http://[::1]:9000", true},
+		{"https://evil.example", false},
+		{"null", false},
+		{"", false},
+	}
+	for _, c := range cases {
+		r := httptest.NewRequest(http.MethodGet, "/api/v1/instance", nil)
+		if c.origin != "" {
+			r.Header.Set("Origin", c.origin)
+		}
+		w := httptest.NewRecorder()
+		corsHandler(next).ServeHTTP(w, r)
+		if got := w.Header().Get("Access-Control-Allow-Origin"); (got != "") != c.want {
+			t.Errorf("origin %q: Access-Control-Allow-Origin = %q, want present %v", c.origin, got, c.want)
+		}
+	}
+
+	// Preflight чужого сайта не получает разрешения и не доходит до прокси.
+	r := httptest.NewRequest(http.MethodOptions, "/api/v1/instance", nil)
+	r.Header.Set("Origin", "https://evil.example")
+	w := httptest.NewRecorder()
+	corsHandler(next).ServeHTTP(w, r)
+	if w.Code != http.StatusNoContent || w.Header().Get("Access-Control-Allow-Origin") != "" {
+		t.Fatalf("foreign preflight: status %d, allow-origin %q", w.Code, w.Header().Get("Access-Control-Allow-Origin"))
+	}
+}
+
 func TestInterfacePreviewAddAndRemoveDoNotChangeSelection(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v1/instance" {
