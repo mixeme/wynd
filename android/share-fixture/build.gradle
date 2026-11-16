@@ -1,0 +1,8 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'mixeme.wynd.sharefixture'
+    compileSdk 36
+    defaultConfig { applicationId 'mixeme.wynd.sharefixture'; minSdk 21; targetSdk 36; versionCode 1; versionName '1' }
+    sourceSets.main.assets.srcDir(providers.gradleProperty('wyndEnvironmentRoot').orElse('D:/android-env').map { it + '/share-fixture-assets' })
+}
+androidComponents { beforeVariants(selector().withBuildType('release')) { it.enable = false } }

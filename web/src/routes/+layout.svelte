@@ -11,7 +11,7 @@
 	import { onMount } from 'svelte';
 	import { initAppUpdate } from '$lib/session/appUpdate.svelte';
 	import { statusColorOverride } from '$lib/session/statusColor.svelte';
-	import { afterNavigate, beforeNavigate } from '$app/navigation';
+	import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
 	import { armEntryGuard, interceptHistoryBack, recordEntry } from '$lib/navigation/up';
 	import AudioBar from '$ui/chrome/AudioBar.svelte';
 	import Icon from '$ui/Icon.svelte';
@@ -28,6 +28,8 @@
 	import { pwaInfo } from 'virtual:pwa-info';
 	import { initAndroidUpdates } from '$lib/android/update.svelte';
 	import { postAndroidAppearance } from '$lib/android/appearance';
+	import { incomingShareAvailable, peekIncomingShare } from '$lib/android/shares';
+	import { loadSessions } from '$lib/session/session.svelte';
 
 	// Полоса плеера (4.9): звук играет и вне своего экрана (план 47, 5.4).
 	const audioBar = useAudioBar();
@@ -87,6 +89,49 @@
 			stopConnection();
 			stopQueue();
 			stopViewport();
+		};
+	});
+
+	// SEND не уводит из открытого редактора и не публикует материал.
+	onMount(() => {
+		if (!incomingShareAvailable()) return;
+		let stopped = false,
+			checking = false;
+		const check = async () => {
+			if (
+				stopped ||
+				checking ||
+				document.visibilityState !== 'visible' ||
+				location.pathname === '/share' ||
+				/\/compose\/?$/.test(location.pathname)
+			)
+				return;
+			checking = true;
+			try {
+				await initSession();
+				const share = await peekIncomingShare();
+				if (
+					!stopped &&
+					share &&
+					(await loadSessions()).length &&
+					location.pathname !== '/share' &&
+					!/\/compose\/?$/.test(location.pathname)
+				)
+					await gotoShare();
+			} catch {
+				/* Более ранний интерфейс/мост остаётся обычным приложением. */
+			} finally {
+				checking = false;
+			}
+		};
+		const gotoShare = async () => {
+			if (!stopped) await goto('/share');
+		};
+		const timer = setInterval(() => void check(), 1500);
+		void check();
+		return () => {
+			stopped = true;
+			clearInterval(timer);
 		};
 	});
 

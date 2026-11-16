@@ -1,0 +1,6 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:label="Wynd Share Fixture" android:allowBackup="false" android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <activity android:name=".Sender" android:exported="true" />
+        <provider android:name=".FixtureProvider" android:authorities="mixeme.wynd.sharefixture.media" android:exported="false" android:grantUriPermissions="true" />
+    </application>
+</manifest>

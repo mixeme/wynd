@@ -56,13 +56,15 @@ async function connect() {
   forwards.add(port);
   let target;
   await waitFor(async () => {
-    const targets = await fetch(`http://127.0.0.1:${port}/json/list`).then(
-      (r) => r.json(),
-    );
-    target = targets.find(
-      (item) => item.type === "page" && new URL(item.url).origin === origin,
-    );
-    return Boolean(target);
+    try {
+      const targets = await fetch(`http://127.0.0.1:${port}/json/list`).then(
+        (r) => r.json(),
+      );
+      target = targets.find(
+        (item) => item.type === "page" && new URL(item.url).origin === origin,
+      );
+      return Boolean(target);
+    } catch { return false; } // DevTools может закрыть сокет во время запуска WebView.
   }, "Selected server page did not appear in WebView");
   const endpoint = new URL(target.webSocketDebuggerUrl);
   assert(

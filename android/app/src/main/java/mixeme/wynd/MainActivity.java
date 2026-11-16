@@ -29,6 +29,7 @@ public final class MainActivity extends Activity {
     private MediaChromeClient media;
     private FileExports exports;
     private OriginalPhotos originals;
+    private IncomingShares shares;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -52,6 +53,8 @@ public final class MainActivity extends Activity {
         originals = new OriginalPhotos(this, webView, server, media);
         media.originalPhotos(originals);
         exports = new FileExports(this, webView, server);
+        shares = new IncomingShares(this, webView, server);
+        if (state == null) receiveShare(getIntent());
         AndroidBridge.attach(this, webView, server);
         SystemBarsFrame bars = new SystemBarsFrame(this, webView);
         setContentView(bars);
@@ -63,6 +66,18 @@ public final class MainActivity extends Activity {
         if (state == null || webView.restoreState(state) == null || !server.contains(webView.getUrl())) {
             webView.loadUrl(server.url());
         }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        receiveShare(intent);
+    }
+
+    private void receiveShare(Intent intent) {
+        if (shares != null) shares.accept(intent);
+        // Не держать входящий payload как Intent текущего окна после обработки.
+        setIntent(new Intent(Intent.ACTION_MAIN).setClass(this, MainActivity.class));
     }
 
     @SuppressLint("SetJavaScriptEnabled") // Wynd — Svelte; Java-мост странице не выдаётся.
@@ -98,6 +113,10 @@ public final class MainActivity extends Activity {
 
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                if (shares != null) {
+                    WebResourceResponse shared = shares.intercept(request);
+                    if (shared != null) return shared;
+                }
                 // Включая POST-переходы: shouldOverrideUrlLoading их не перехватывает.
                 String url = request.getUrl().toString();
                 // На API 21–23 networkSecurityConfig ещё не действует.
@@ -133,6 +152,13 @@ public final class MainActivity extends Activity {
     }
 
     private void goBack() {
+        // Между документами JS не получает popstate. Удалить входящий набор
+        // до шага истории, чтобы прежний документ не открыл выбор снова.
+        if (shares != null && shares.cancelFromBack(this::goBackHistory)) return;
+        goBackHistory();
+    }
+
+    private void goBackHistory() {
         if (webView != null && webView.canGoBack()) webView.goBack();
         else finish();
     }
@@ -157,6 +183,7 @@ public final class MainActivity extends Activity {
         if (media != null) media.resume();
         if (exports != null) exports.resume();
         if (originals != null) originals.resume();
+        if (shares != null) shares.resume();
         UpdateController.get(this).resume(this);
     }
 
@@ -165,6 +192,7 @@ public final class MainActivity extends Activity {
         if (media != null) media.pause();
         if (exports != null) exports.pause();
         if (originals != null) originals.pause();
+        if (shares != null) shares.pause();
         UpdateController.get(this).pause(this);
         if (webView != null) {
             webView.onPause();
@@ -178,6 +206,7 @@ public final class MainActivity extends Activity {
         if (media != null) media.destroy();
         if (exports != null) exports.destroy();
         if (originals != null) originals.clear();
+        if (shares != null) shares.destroy();
         if (webView != null) {
             webView.stopLoading();
             if (webView.getParent() instanceof ViewGroup parent) parent.removeView(webView);

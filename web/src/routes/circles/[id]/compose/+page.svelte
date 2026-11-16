@@ -5,7 +5,7 @@
 	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import DateRow from '$ui/forms/DateRow.svelte';
 	import ComposeToolbar from '$ui/chrome/ComposeToolbar.svelte';
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getContext, onMount, tick } from 'svelte';
 	import ThumbStrip from '$ui/data/ThumbStrip.svelte';
@@ -66,6 +66,12 @@
 	import { isTransportError } from '$lib/queue/transport';
 	import type { PostQueuePayload, QueueFile, QueueMediaMeta } from '$lib/idb/db';
 	import { takeComposePhotos } from '$lib/journal/compose-handoff';
+	import {
+		appendSharedText,
+		finishIncomingShare,
+		loadIncomingShare,
+		shareToken
+	} from '$lib/android/shares';
 	import { holdWakeLock } from '$lib/media/wake-lock';
 	import { hasPlace, withPlace } from '$lib/journal/place-pref';
 
@@ -340,7 +346,21 @@
 			// Фото, выбранные кнопкой в строке ввода на 3.1: пикер открылся там,
 			// по нажатию, — здесь они только прикрепляются.
 			const handed = takeComposePhotos(circle.circleId);
-			if (handed.length) void addFiles(handed);
+			const incoming = $page.url.searchParams.get('incomingShare');
+			if (shareToken(incoming)) {
+				try {
+					const shared = await loadIncomingShare(incoming);
+					body = appendSharedText(body, shared.text);
+					// Сначала материал стал File редактора; только затем убрать native-копии.
+					await finishIncomingShare(incoming);
+					const clean = new URL($page.url);
+					clean.searchParams.delete('incomingShare');
+					replaceState(clean, $page.state);
+					if (shared.files.length) await addFiles(shared.files);
+				} catch {
+					error = 'Не удалось добавить полученное. Материал можно снова открыть через выбор круга';
+				}
+			} else if (handed.length) void addFiles(handed);
 		}
 		// Курсор — сразу, до сетевых запросов: клавиатура, которую держали
 		// при переходе с полосы ленты, не успевает спрятаться.

@@ -16,3 +16,5 @@ dependencyResolutionManagement {
 
 rootProject.name = 'WyndAndroid'
 include ':app'
+// Только локальный отправитель синтетических SEND; не часть APK Wynd/CI.
+if (providers.gradleProperty('wyndShareFixture').orElse('false').get() == 'true') include ':share-fixture'
