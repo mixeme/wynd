@@ -119,8 +119,7 @@
 		{#if !circles.length}<Hint>Пока нет кругов для новой записи</Hint>{/if}
 	{/if}
 	{#if error}<Hint>{error}</Hint>{/if}
-	{#if share}<Hint
-			><TextButton disabled={busy} onclick={() => void cancel()}>Отменить получение</TextButton
-			></Hint
+	{#if share}<Hint centered
+			><TextButton disabled={busy} onclick={() => void cancel()}>Отмена</TextButton></Hint
 		>{/if}
 </FormLayout>

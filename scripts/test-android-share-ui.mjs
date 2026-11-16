@@ -4,12 +4,12 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { AndroidDevice, waitFor, sleep } from "./android-device.mjs";
-const [serial] = process.argv.slice(2),
+const [serial, outputDirectory] = process.argv.slice(2),
   device = new AndroidDevice(serial);
 const cdp = await device.connect();
 const id = "88888888-8888-4888-8888-888888888888";
 const draft = "Сохранённый черновик";
-const out = "dev/screens/shots/android-share";
+const out = outputDirectory ?? "dev/screens/shots/android-share";
 mkdirSync(out, { recursive: true });
 let backup, injected;
 async function spa(target) {
