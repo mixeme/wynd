@@ -1,15 +1,32 @@
 name: Android
 
-# CI выпускает только unsigned APK. Постоянный Android-ключ — у владельца.
+# Проверки main/PR и ручной запуск сохраняют unsigned APK в Actions artifacts.
+# Только android-тег создаёт черновик; постоянный ключ остаётся у владельца.
 on:
   push:
+    branches: [main]
     tags: ['android-v*']
+    paths:
+      - 'android/**'
+      - 'assets/icon-small.svg'
+      - 'web/static/icon-192.png'
+      - 'scripts/build-android.ps1'
+      - '.github/workflows/android.yaml'
+  pull_request:
+    paths:
+      - 'android/**'
+      - 'assets/icon-small.svg'
+      - 'web/static/icon-192.png'
+      - 'scripts/build-android.ps1'
+      - '.github/workflows/android.yaml'
   workflow_dispatch:
 
 permissions:
-  contents: write
-  id-token: write
-  attestations: write
+  contents: read
+
+concurrency:
+  group: android-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/android-v') }}
 
 jobs:
   build:
@@ -50,12 +67,53 @@ jobs:
           mkdir -p dist
           cp android/app/build/outputs/apk/release/app-release-unsigned.apk dist/wynd-android-unsigned.apk
           sha256sum dist/wynd-android-unsigned.apk | cut -d' ' -f1 > dist/wynd-android-unsigned.apk.sha256
+      - name: Unsigned APK artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: wynd-android-unsigned
+          path: |
+            dist/wynd-android-unsigned.apk
+            dist/wynd-android-unsigned.apk.sha256
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 14
+      - name: Test and lint reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: wynd-android-reports
+          path: |
+            android/app/build/reports/
+            android/app/build/test-results/
+          if-no-files-found: ignore
+          overwrite: true
+          retention-days: 7
+
+  draft:
+    if: startsWith(github.ref, 'refs/tags/android-v')
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: wynd-android-unsigned
+          path: dist
+      - name: Verify downloaded APK checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected=$(tr -d '\r\n' < dist/wynd-android-unsigned.apk.sha256)
+          actual=$(sha256sum dist/wynd-android-unsigned.apk | cut -d' ' -f1)
+          test "$expected" = "$actual"
       - uses: actions/attest-build-provenance@v4
-        if: startsWith(github.ref, 'refs/tags/android-v')
         with:
           subject-path: dist/wynd-android-unsigned.apk
       - name: Draft release
-        if: startsWith(github.ref, 'refs/tags/android-v')
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
