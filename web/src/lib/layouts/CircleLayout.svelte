@@ -57,6 +57,8 @@
 		onCommentPhotos,
 		onCommentFiles,
 		commentPhotoAccept,
+		commentPreservePhotoLocation = false,
+		onCommentPhotoError,
 		commentPending = [],
 		onCommentRemovePending,
 		onCommentVoice,
@@ -100,6 +102,8 @@
 		/** Вложения комментария (4.20): файл, выбранное и его снятие. */
 		onCommentFiles?: (files: File[]) => void;
 		commentPhotoAccept?: string;
+		commentPreservePhotoLocation?: boolean;
+		onCommentPhotoError?: (error: unknown) => void;
 		commentPending?: { key: string; url?: string; name: string }[];
 		onCommentRemovePending?: (index: number) => void;
 		/** Голосовое и видео из полосы ввода (C14). */
@@ -235,6 +239,8 @@
 			onphotos={onCommentPhotos}
 			onfiles={onCommentFiles}
 			photoAccept={commentPhotoAccept}
+			preservePhotoLocation={commentPreservePhotoLocation}
+			onphotoerror={onCommentPhotoError}
 			pending={commentPending}
 			onremovepending={onCommentRemovePending}
 			onvoice={onCommentVoice}

@@ -25,6 +25,7 @@ import java.util.concurrent.Executors;
 final class MediaChromeClient extends WebChromeClient {
     static final int FILE_REQUEST = 4101;
     static final int PERMISSION_REQUEST = 4102;
+    static final int PHOTO_LOCATION_REQUEST = 4103;
     private final Activity activity;
     private final WebView view;
     private final ServerOrigin server;
@@ -36,6 +37,12 @@ final class MediaChromeClient extends WebChromeClient {
     private boolean askingPermissions;
     private boolean fileInFlight;
     private boolean destroyed;
+    private OriginalPhotos originals;
+    private boolean selectionOriginals, askingPhotoLocation;
+    private List<Uri> photoSelection;
+    private boolean photoLocationAsked;
+    private String selectionPhotoNonce;
+    private boolean photoLocationNeeded;
 
     MediaChromeClient(Activity activity, WebView view, ServerOrigin server) {
         this.activity = activity;
@@ -51,10 +58,13 @@ final class MediaChromeClient extends WebChromeClient {
         return activity.checkPermission(permission, Process.myPid(), Process.myUid()) == PackageManager.PERMISSION_GRANTED;
     }
 
+    void originalPhotos(OriginalPhotos originals) { this.originals = originals; }
+    boolean busy() { return media != null || selection != null || fileInFlight || askingPermissions || askingPhotoLocation; }
+
     @Override public void onPermissionRequest(PermissionRequest request) {
         String[] required = MediaPolicy.permissions(request.getResources());
         if (!resumed || !trusted() || !server.contains(request.getOrigin().toString())
-                || required.length == 0 || media != null || askingPermissions || selection != null) {
+                || required.length == 0 || media != null || askingPermissions || selection != null || askingPhotoLocation) {
             request.deny(); return;
         }
         media = request;
@@ -99,13 +109,29 @@ final class MediaChromeClient extends WebChromeClient {
     }
 
     @Override public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> callback, FileChooserParams parameters) {
-        if (!resumed || !trusted() || selection != null || fileInFlight || askingPermissions || media != null
+        if (!resumed || !trusted() || selection != null || fileInFlight || askingPermissions || askingPhotoLocation || media != null
                 || parameters.getMode() != FileChooserParams.MODE_OPEN && parameters.getMode() != FileChooserParams.MODE_OPEN_MULTIPLE) {
             callback.onReceiveValue(null); return true;
         }
         selection = callback;
+        photoLocationAsked = false;
+        photoLocationNeeded = false;
         selectionMultiple = parameters.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE;
-        String[] types = MediaPolicy.mimeTypes(parameters.getAcceptTypes());
+        String[] accepted = parameters.getAcceptTypes();
+        List<String> regular = new ArrayList<>();
+        String nonce = null;
+        for (String value : accepted) for (String part : value.split(",")) {
+            String type = part.trim();
+            if (type.startsWith(PhotoPolicy.ACCEPT_PREFIX)) {
+                if (nonce != null) { finishSelection(null); return true; }
+                nonce = type.substring(PhotoPolicy.ACCEPT_PREFIX.length());
+            } else regular.add(type);
+        }
+        selectionOriginals = nonce != null && originals != null && originals.consume(nonce);
+        selectionPhotoNonce = selectionOriginals ? nonce : null;
+        if (nonce != null && !selectionOriginals) { finishSelection(null); return true; }
+        String[] types = MediaPolicy.mimeTypes(regular.toArray(new String[0]));
+        if (selectionOriginals) for (String type : types) if (!PhotoPolicy.mediaMime(type) && !"*/*".equals(type)) { finishSelection(null); return true; }
         // Живые камера/микрофон — getUserMedia. Здесь базовый выбор файлов:
         // внешняя камера OPPO выгружала процесс с незавершённым input callback.
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
@@ -138,18 +164,50 @@ final class MediaChromeClient extends WebChromeClient {
         } else if (data != null && data.getData() != null) candidates.add(data.getData());
         if (!selectionMultiple && candidates.size() > 1) { finishSelection(null); return; }
         ValueCallback<Uri[]> expected = selection;
+        boolean wantsOriginals = selectionOriginals;
         files.execute(() -> {
             List<Uri> readable = new ArrayList<>();
-            for (Uri uri : candidates) {
-                if (!readable(uri)) { readable.clear(); break; }
-                readable.add(uri);
-            }
+            boolean needsLocation = false;
+            try {
+                for (Uri uri : candidates) {
+                    if (!readable(uri)) { readable.clear(); break; }
+                    readable.add(uri);
+                    if (wantsOriginals && originals != null) needsLocation |= originals.needsLocation(uri);
+                }
+            } catch (RuntimeException ignored) { readable.clear(); }
+            boolean localPhotoLocation = needsLocation;
             activity.runOnUiThread(() -> {
                 if (destroyed || selection != expected) return;
-                finishSelection(trusted() && !readable.isEmpty() ? readable.toArray(new Uri[0]) : null);
+                if (!trusted() || readable.isEmpty()) { finishSelection(null); return; }
+                if (selectionOriginals) { photoLocationNeeded = localPhotoLocation; photoSelection = readable; completePhotoSelection(); }
+                else finishSelection(readable.toArray(new Uri[0]));
             });
         });
     }
+
+    private void completePhotoSelection() {
+        if (!resumed || askingPhotoLocation || photoSelection == null || selection == null || !trusted()) return;
+        List<Uri> selected = photoSelection;
+        ValueCallback<Uri[]> expected = selection;
+        if (!photoLocationAsked && photoLocationNeeded && originals != null && Build.VERSION.SDK_INT >= 29 && !originals.hasOriginalAccess()) {
+            photoLocationAsked = true;
+            askingPhotoLocation = true;
+            try { activity.requestPermissions(originals.permissions(), PHOTO_LOCATION_REQUEST); }
+            catch (RuntimeException e) { askingPhotoLocation = false; finishSelection(null); }
+            return;
+        }
+        photoSelection = null;
+        String scope = originals == null ? "" : originals.scope();
+        files.execute(() -> {
+            List<Uri> result = new ArrayList<>();
+            for (Uri uri : selected) result.add(originals == null ? uri : originals.readableOriginal(uri, scope));
+            activity.runOnUiThread(() -> {
+                if (!destroyed && selection == expected) finishSelection(trusted() ? result.toArray(new Uri[0]) : null);
+            });
+        });
+    }
+
+    void photoPermissionsReturned() { askingPhotoLocation = false; completePhotoSelection(); }
 
     private boolean readable(Uri uri) {
         if (uri == null || !MediaPolicy.selectable(uri.toString(), activity.getPackageName() + ".files")) return false;
@@ -164,7 +222,12 @@ final class MediaChromeClient extends WebChromeClient {
 
     private void finishSelection(Uri[] result) {
         ValueCallback<Uri[]> callback = selection;
+        if (originals != null && selectionPhotoNonce != null) originals.record(selectionPhotoNonce,
+                result != null && (!photoLocationNeeded || originals.hasOriginalAccess()));
         selection = null;
+        selectionPhotoNonce = null;
+        photoSelection = null;
+        selectionOriginals = false;
         if (callback != null) callback.onReceiveValue(result);
     }
 
@@ -173,7 +236,7 @@ final class MediaChromeClient extends WebChromeClient {
         finishSelection(null);
     }
 
-    void resume() { resumed = true; completePermission(); }
+    void resume() { resumed = true; completePermission(); completePhotoSelection(); }
     void pause() { resumed = false; }
     void destroy() { destroyed = true; cancel(); files.shutdownNow(); }
 }

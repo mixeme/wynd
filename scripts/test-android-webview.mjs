@@ -130,7 +130,7 @@ try {
     const port = server.port || "80";
     adb("reverse", `tcp:${port}`, `tcp:${port}`);
   }
-  adb("shell", "am", "start", "-W", "-n", component);
+  adb("shell", "am", "start", "-W", "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "-f", "0x10200000", "-n", component);
   let cdp = await connect();
   const navigation = await cdp.send("Page.navigate", { url: `${origin}/` });
   await waitFor(async () => {
@@ -214,7 +214,7 @@ try {
     connections.delete(cdp.socket);
 
     adb("shell", "am", "force-stop", packageName);
-    adb("shell", "am", "start", "-W", "-n", component);
+    adb("shell", "am", "start", "-W", "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "-f", "0x10200000", "-n", component);
     cdp = await connect();
     await waitFor(
       () =>

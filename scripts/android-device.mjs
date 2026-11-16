@@ -26,7 +26,7 @@ export class AndroidDevice {
   }
   start() {
     this.adb("shell", "input", "keyevent", "224");
-    this.adb("shell", "am", "start", "-W", "-n", this.component);
+    this.adb("shell", "am", "start", "-W", "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "-f", "0x10200000", "-n", this.component);
   }
   async connect() {
     let pid;

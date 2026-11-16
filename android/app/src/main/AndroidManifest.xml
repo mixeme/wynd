@@ -4,6 +4,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" />
+    <!-- На Android 10–11 MediaStore-эквивалент SAF URI требует чтения медиа.
+         На 5–6 нет install-time доступа, на 12+ используется выбранный URI. -->
+    <uses-permission-sdk-23 android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="30" />
     <!-- Chromium WebRTC требует это normal-разрешение для выбора аудиоустройства. -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -34,5 +38,7 @@
         </activity>
         <receiver android:name=".InstallResultReceiver" android:exported="false" />
         <activity android:name=".OpenExportActivity" android:exported="false" android:excludeFromRecents="true" />
+        <provider android:name=".SelectedMediaProvider" android:authorities="${applicationId}.selected-media"
+            android:exported="false" android:grantUriPermissions="false" />
     </application>
 </manifest>

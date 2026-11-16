@@ -28,6 +28,7 @@ public final class MainActivity extends Activity {
     private ServerOrigin server;
     private MediaChromeClient media;
     private FileExports exports;
+    private OriginalPhotos originals;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -48,6 +49,8 @@ public final class MainActivity extends Activity {
         media = new MediaChromeClient(this, webView, server);
         webView.setWebChromeClient(media);
         configureWebView();
+        originals = new OriginalPhotos(this, webView, server, media);
+        media.originalPhotos(originals);
         exports = new FileExports(this, webView, server);
         AndroidBridge.attach(this, webView, server);
         SystemBarsFrame bars = new SystemBarsFrame(this, webView);
@@ -78,6 +81,7 @@ public final class MainActivity extends Activity {
             @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 media.cancel();
                 if (exports != null) exports.cancel();
+                if (originals != null) originals.clear();
             }
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -152,6 +156,7 @@ public final class MainActivity extends Activity {
         if (webView != null) webView.onResume();
         if (media != null) media.resume();
         if (exports != null) exports.resume();
+        if (originals != null) originals.resume();
         UpdateController.get(this).resume(this);
     }
 
@@ -159,6 +164,7 @@ public final class MainActivity extends Activity {
     protected void onPause() {
         if (media != null) media.pause();
         if (exports != null) exports.pause();
+        if (originals != null) originals.pause();
         UpdateController.get(this).pause(this);
         if (webView != null) {
             webView.onPause();
@@ -171,6 +177,7 @@ public final class MainActivity extends Activity {
     protected void onDestroy() {
         if (media != null) media.destroy();
         if (exports != null) exports.destroy();
+        if (originals != null) originals.clear();
         if (webView != null) {
             webView.stopLoading();
             if (webView.getParent() instanceof ViewGroup parent) parent.removeView(webView);
@@ -192,5 +199,6 @@ public final class MainActivity extends Activity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == MediaChromeClient.PERMISSION_REQUEST && media != null) media.permissionsReturned();
         if (requestCode == FileExports.NOTIFICATION_REQUEST && exports != null) exports.notificationsReturned();
+        if (requestCode == MediaChromeClient.PHOTO_LOCATION_REQUEST && media != null) media.photoPermissionsReturned();
     }
 }

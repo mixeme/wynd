@@ -24,6 +24,8 @@
 		onphotos,
 		onfiles,
 		photoAccept = 'image/*,video/*',
+		preservePhotoLocation = false,
+		onphotoerror,
 		pending = [],
 		onremovepending,
 		onvoice,
@@ -47,6 +49,8 @@
 		// полем. С вложением слова необязательны.
 		onfiles?: (files: File[]) => void;
 		photoAccept?: string;
+		preservePhotoLocation?: boolean;
+		onphotoerror?: (error: unknown) => void;
 		pending?: { key: string; url?: string; name: string }[];
 		onremovepending?: (index: number) => void;
 		// Голосовое и видео (C14, 4.10–4.13): пока поле пустое, круглая
@@ -394,6 +398,8 @@
 				<FilePicker
 					bind:this={photoPicker}
 					accept={photoAccept}
+					{preservePhotoLocation}
+					onerror={onphotoerror}
 					multiple
 					onfiles={(files) => onphotos?.(files)}
 				/>

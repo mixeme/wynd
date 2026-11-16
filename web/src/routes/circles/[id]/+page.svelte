@@ -835,6 +835,8 @@
 	onCommentSend={canSay ? sendFromBar : undefined}
 	onCommentCompose={canSay ? openComposeFromBar : undefined}
 	onCommentPhotos={canSay ? openComposeWithPhotos : undefined}
+	commentPreservePhotoLocation
+	onCommentPhotoError={() => (error = 'Не удалось открыть выбранные фото. Попробуйте ещё раз')}
 	onCommentVoice={canSay ? (take) => void sendVoice(take) : undefined}
 	onCommentVideo={canSay ? () => void openVideo() : undefined}
 	commentStatus={preparing || barNote}

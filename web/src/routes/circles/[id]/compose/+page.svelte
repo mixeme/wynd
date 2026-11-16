@@ -1060,12 +1060,16 @@
 <FilePicker
 	bind:this={photoPicker}
 	accept="image/*,video/*"
+	preservePhotoLocation
+	onerror={() => (error = 'Не удалось открыть выбранные фото. Попробуйте ещё раз')}
 	multiple
 	onfiles={(files) => void addFiles(files)}
 />
 <FilePicker
 	bind:this={attachPicker}
 	accept="*/*"
+	preservePhotoLocation
+	onerror={() => (error = 'Не удалось открыть выбранные файлы. Попробуйте ещё раз')}
 	multiple
 	onfiles={(files) => void addFiles(files, true)}
 />

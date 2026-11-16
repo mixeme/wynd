@@ -17,6 +17,11 @@
 
 <script lang="ts">
 	import type { HTMLInputAttributes } from 'svelte/elements';
+	import {
+		androidPhotoLocationAvailable,
+		originalPhotoAccept,
+		applyPhotoLocationChoice
+	} from '$lib/android/photos';
 
 	// Скрытый выбор файлов, который открывает своя кнопка (план 47, 2.17):
 	// фото записи, вложения, аватар, скриншот оплаты, фото с QR-кодом. Был в
@@ -27,6 +32,8 @@
 		accept,
 		multiple = false,
 		capture,
+		preservePhotoLocation = false,
+		onerror,
 		onfiles
 	}: {
 		/** «image/*», «image/*,video/*», «*\/*». */
@@ -34,14 +41,34 @@
 		multiple?: boolean;
 		/** «environment» — сразу камера на телефоне. */
 		capture?: HTMLInputAttributes['capture'];
+		/** Исходные геоданные нужны только фотографиям записи (план 50, C22). */
+		preservePhotoLocation?: boolean;
+		onerror?: (error: unknown) => void;
 		/** Выбрали хотя бы один файл. Поле к этому времени уже сброшено. */
 		onfiles: (files: File[]) => void;
 	} = $props();
 
 	let input: HTMLInputElement | undefined = $state();
+	let arming = false;
 
 	export function open() {
 		if (!input) return;
+		if (arming) return;
+		if (preservePhotoLocation && !capture && androidPhotoLocationAvailable()) {
+			arming = true;
+			void originalPhotoAccept(accept)
+				.then((nativeAccept) => {
+					if (!input) return;
+					input.accept = nativeAccept;
+					input.click();
+				})
+				.catch((error) => onerror?.(error))
+				.finally(() => {
+					arming = false;
+				});
+			return;
+		}
+		input.accept = accept;
 		input.style.left = `${lastTouch.x}px`;
 		input.style.top = `${lastTouch.y}px`;
 		input.click();
@@ -49,8 +76,16 @@
 
 	function onchange() {
 		const files = input?.files ? [...input.files] : [];
-		if (input) input.value = '';
-		if (files.length) onfiles(files);
+		const chosenAccept = input?.accept ?? accept;
+		if (input) {
+			input.value = '';
+			input.accept = accept;
+		}
+		if (files.length && preservePhotoLocation) {
+			void applyPhotoLocationChoice(files, chosenAccept)
+				.then(() => onfiles(files))
+				.catch((error) => onerror?.(error));
+		} else if (files.length) onfiles(files);
 	}
 </script>
 
@@ -64,6 +99,9 @@
 	tabindex="-1"
 	aria-hidden="true"
 	{onchange}
+	oncancel={() => {
+		if (input) input.accept = accept;
+	}}
 />
 
 <style>
