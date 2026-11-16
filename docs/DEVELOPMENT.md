@@ -47,7 +47,7 @@ go build -o dist/wynd ./cmd/wynd
 
 ## Тесты и ворота
 
-**Ворота** — `scripts\test.bat` на Windows, `make test` на Unix, то же в CI Gitea (`.gitea/workflows/ci.yaml`, плюс `docker build`):
+**Ворота** — `scripts\test.bat` на Windows, `make test` на Unix, то же в CI Gitea (`.gitea/workflows/ci.yaml`, плюс `docker build`) и в GitHub — `.github/workflows/server.yaml` (`server-gates.yaml`) на push в main, pull request и вручную; публикация образа (`.github/workflows/image.yaml`) запускает те же ворота заданием `gates` и идёт только после них:
 
 | Шаг | Что ловит |
 |---|---|
@@ -60,7 +60,7 @@ go build -o dist/wynd ./cmd/wynd
 | `npm run build` | Клиент собирается |
 | `scripts\test-desktop.bat` (Windows) | Оба frontend и настольных Go-входа: проверки, тесты и production-сборки; отдельный Windows CI |
 
-Серверный контур одинаков в Makefile, Gitea CI и Windows-скрипте. Клиент собирается перед Go — без `web/dist` падает `go vet`. Windows-скрипт дополнительно запускает настольные ворота; в CI они выполняются на Windows отдельно от серверного Linux-контура.
+Серверный контур одинаков в Makefile, Gitea CI, GitHub и Windows-скрипте. Клиент собирается перед Go — без `web/dist` падает `go vet`; генератор лицензий (`npm run licenses`, он же в тестах) зависимостей от сборки не требует и на чистой копии подставляет пустую заглушку `web/dist`. Windows-скрипт дополнительно запускает настольные ворота; в CI они выполняются на Windows отдельно от серверного Linux-контура.
 
 Если ворота падают по времени (`TestSSEFrameFormat`, таймауты Vitest), сначала посмотреть, нет ли на компьютере забытого `vite` или `node`, который грузит процессор: 2026-10-28 из-за такого несколько прогонов подряд упали, а после его завершения все прошли. `TestSSEFrameFormat` с тех пор ждёт кадр 2 секунды, а не 300 мс. Чужой процесс не завершать — спросить.
 
