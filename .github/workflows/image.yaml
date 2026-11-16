@@ -3,9 +3,10 @@ name: Image
 # Образ Wynd в реестре GitHub (ghcr.io) — откуда его берёт настольный
 # установщик (план 45) и тот, кто ставит руками: docker pull ghcr.io/<владелец>/wynd:<версия>.
 #
-# Репозиторий на GitHub — зеркало Gitea: проверки (тесты, сборка) идут там,
-# в .gitea/workflows/ci.yaml, а здесь только публикация. Gitea этот файл не
-# исполняет: у неё есть свой каталог .gitea/workflows.
+# Репозиторий на GitHub — зеркало Gitea. Полные web/server-проверки идут и
+# здесь (C76, server-gates.yaml): publish зависит от зелёного задания gates
+# того же коммита. У Gitea свой каталог .gitea/workflows, его CI отложен по
+# решению владельца и этим файлом не затрагивается.
 #
 # Образ собирается, когда меняется VERSION, то есть на каждый выпуск, и под
 # две архитектуры: установщик ставит Wynd на x86-64 и на ARM64.
@@ -46,7 +47,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # C76: те же полные web/server-ворота, что server.yaml; образ не публикуется,
+  # пока они красные у того же коммита.
+  gates:
+    uses: ./.github/workflows/server-gates.yaml
+
   publish:
+    needs: gates
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

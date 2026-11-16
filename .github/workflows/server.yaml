@@ -1,0 +1,20 @@
+name: Server
+
+# Полные web/server-ворота в GitHub (C76): push в main, pull request и ручной
+# запуск. Сам набор — в server-gates.yaml, его же вызывает публикация образа,
+# чтобы проверки не разъезжались. Gitea CI остаётся отложенным по решению
+# владельца (.gitea/workflows/ci.yaml живёт отдельно и в C76 не входит).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: server-gates-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    uses: ./.github/workflows/server-gates.yaml

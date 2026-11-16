@@ -1,0 +1,64 @@
+name: Server gates
+
+# Полные web/server-проверки в GitHub (C76): тот же набор, что scripts/test.bat
+# и .gitea/workflows/ci.yaml, чтобы контуры не расходились. Вызывается из
+# server.yaml (push в main, pull request, ручной запуск) и из image.yaml перед
+# публикацией образа — образ не уходит в пакет без зелёных проверок того же
+# коммита. Desktop-проверки остаются отдельным Windows-контуром (desktop.yaml,
+# desktop-client.yaml, workshop.yaml).
+#
+# Порядок важен: web/dist в репозитории нет, а web/embed.go вшивает его через
+# go:embed — без vite build падает уже go vet ./...
+
+on:
+  workflow_call:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: npm ci
+        working-directory: web
+        run: npm ci
+
+      - name: svelte-check
+        working-directory: web
+        run: npm run check
+
+      - name: ui-guard
+        working-directory: web
+        run: npm run check:ui
+
+      - name: lint
+        working-directory: web
+        run: npm run lint
+
+      - name: vitest
+        working-directory: web
+        run: npm run test
+
+      - name: vite build
+        working-directory: web
+        run: npm run build
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        run: go test ./...
+
+      - name: go build
+        run: go build -o "$RUNNER_TEMP/wynd-gate" ./cmd/wynd
