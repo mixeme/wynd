@@ -5,4 +5,4 @@ package workshop
 // какой Wynd ставить, Мастерская узнаёт у хранилища (RegistryImage.Latest).
 // Поднимать, когда меняется сама Мастерская, вместе с productVersion в
 // cmd/wynd-workshop/wails.json (их сверяет TestWorkshopVersionMatchesWails).
-const WorkshopVersion = "0.4.4"
+const WorkshopVersion = "0.4.5"
