@@ -1,6 +1,6 @@
 <!-- План 50: предварительный рендер, не локальная стартовая часть APK.
      Основа: действующий Desktop App.svelte, ПК1/ПК3/ПК4 на 54ecac07.
-     Отличие первого запуска — две существующие QR-кнопки под «Дальше». -->
+     Плашка ответа — ServerRow, план 56. b8014819 без плашки отклонён владельцем. -->
 <script lang="ts">
 	import { page } from '$app/state';
 	import PlainLayout from '$lib/layouts/PlainLayout.svelte';
@@ -13,6 +13,7 @@
 	import Button from '$ui/forms/Button.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
+	import ServerRow from '$ui/data/ServerRow.svelte';
 	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import QrScanner from '$ui/forms/QrScanner.svelte';
 	import { decodeQrFromFile } from '$lib/auth/links';
@@ -20,38 +21,98 @@
 	const requested = $derived(page.url.searchParams.get('scene') ?? 'start');
 	let scanning = $state(false);
 	let address = $state('');
-	let error = $state('');
+	let photoError = $state('');
+	let serverState = $state<'empty' | 'checking' | 'ready' | 'failed'>('empty');
 	let photoPicker = $state<FilePicker>();
 	let notice = $state('');
 	let unavailable = $state(false);
 	$effect(() => {
-		address = requested === 'error' ? 'home.example.org' : '';
-		error =
-			requested === 'error'
-				? 'Сервер Wynd по этому адресу не отвечает. Проверьте адрес и сеть.'
-				: '';
-		unavailable = requested === 'offline';
+		address =
+			requested === 'long'
+				? 'family-photos-and-stories.example.org:8443'
+				: ['checking', 'ready', 'error', 'offline', 'offline-checking'].includes(requested)
+					? 'home.example.org'
+					: '';
+		serverState =
+			requested === 'checking' || requested === 'offline-checking'
+				? 'checking'
+				: requested === 'ready' || requested === 'long'
+					? 'ready'
+					: requested === 'error' || requested === 'offline'
+						? 'failed'
+						: 'empty';
+		photoError = '';
+		unavailable = requested === 'offline' || requested === 'offline-checking';
 		scanning = requested === 'scan';
 	});
+	const checking = $derived(serverState === 'checking');
+	const serverName = $derived(
+		unavailable
+			? 'Дом Ани'
+			: serverState === 'ready'
+				? requested === 'long'
+					? 'Семейный сервер на даче'
+					: 'Дом Ани'
+				: 'Сервер'
+	);
+	const serverHost = $derived.by(() => {
+		const value = address.trim();
+		try {
+			return new URL(value.includes('://') ? value : `https://${value}`).host;
+		} catch {
+			return '';
+		}
+	});
+	function resetCheck() {
+		serverState = 'empty';
+		photoError = '';
+	}
 	function submit() {
-		if (!address.trim()) return;
+		if (!address.trim() || checking || serverState === 'ready') return;
 		// На стенде проверки сети и выбора источника нет. Пример ошибки — только для рендера.
-		error = 'Сервер Wynd по этому адресу не отвечает. Проверьте адрес и сеть.';
+		serverState = 'failed';
 	}
 	function readQr(value: string): boolean {
 		address = value;
 		scanning = false;
-		error = '';
+		resetCheck();
 		return true;
 	}
 	async function readPhoto(file: File) {
+		resetCheck();
 		try {
 			readQr(await decodeQrFromFile(file));
 		} catch {
-			error = 'Не удалось прочитать код — попробуйте другое фото';
+			photoError = 'Не удалось прочитать код — попробуйте другое фото';
 		}
 	}
 </script>
+
+{#snippet response()}
+	<div class="server-slot" aria-live="polite" aria-busy={checking}>
+		<!-- Существующая длинная плашка плана 56 задаёт запас по высоте в обеих ширинах.
+		     Ни пустое состояние, ни ответ сервера не меняют размеры этого места. -->
+		<div class="server-reserve" aria-hidden="true">
+			<ServerRow
+				name="Семейный сервер на даче"
+				subtitle="family-photos-and-stories.example.org:8443"
+				detail="Сервер доступен"
+				card
+			/>
+		</div>
+		<div class="server-state">
+			{#if serverState !== 'empty'}
+				<ServerRow
+					name={serverName}
+					subtitle={serverHost}
+					detail="Сервер доступен"
+					connection={checking ? 'checking' : serverState === 'failed' ? 'unavailable' : undefined}
+					card
+				/>
+			{:else if photoError}<Hint>{photoError}</Hint>{/if}
+		</div>
+	</div>
+{/snippet}
 
 <div class="preview">
 	{#if scanning}
@@ -68,17 +129,22 @@
 						<ScreenTitle centered style="font-size:22px;line-height:1.3;margin:0 16px 30px"
 							>Сервер не отвечает</ScreenTitle
 						>
-						<Hint centered>Дом Ани · home.example.org</Hint>
+						{@render response()}
 						<Hint centered style="margin-top:14px"
 							>Проверьте сеть. Если сеть есть — сервер выключен или переехал.</Hint
 						>
-						<Button style="margin-top:22px" onclick={() => {}}>Повторить</Button>
+						<Button
+							style="margin-top:22px"
+							stableHeight
+							loading={checking}
+							onclick={() => (serverState = 'checking')}>Повторить</Button
+						>
 						<Hint centered style="margin-top:26px"
 							><TextButton
 								onclick={() => {
 									unavailable = false;
 									address = '';
-									error = '';
+									resetCheck();
 								}}>Другой сервер</TextButton
 							></Hint
 						>
@@ -96,14 +162,18 @@
 							spellcheck={false}
 							autocomplete="off"
 							autocapitalize="off"
-							oninput={() => (error = '')}
+							oninput={resetCheck}
 							onkeydown={(event: KeyboardEvent) => {
 								if (event.key === 'Enter') submit();
 							}}
 						/>
-						{#if error}<Hint>{error}</Hint>{/if}
-						<Button style="margin-top:16px" disabled={!address.trim()} onclick={submit}
-							>Дальше</Button
+						{@render response()}
+						<Button
+							style="margin-top:16px"
+							stableHeight
+							disabled={!address.trim()}
+							loading={checking}
+							onclick={submit}>Дальше</Button
 						>
 						<Button
 							style="margin-top:16px"
@@ -154,5 +224,17 @@
 		width: 140px;
 		margin: 0 auto 30px;
 		color: var(--ink);
+	}
+	.server-slot {
+		position: relative;
+	}
+	.server-reserve {
+		visibility: hidden;
+		overflow: hidden;
+	}
+	.server-state {
+		position: absolute;
+		inset: 0;
+		overflow: auto;
 	}
 </style>

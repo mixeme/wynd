@@ -11,6 +11,7 @@
 		loading = false,
 		loadingLabel = '',
 		keepFocus = false,
+		stableHeight = false,
 		class: className = '',
 		style = ''
 	}: {
@@ -28,6 +29,8 @@
 		 * хотя править ещё надо. Клавиатура уходит вместе с полем.
 		 */
 		keepFocus?: boolean;
+		/** Место рамки сохраняется при включении/выключении кнопки (локальный старт Android). */
+		stableHeight?: boolean;
 		class?: string;
 		style?: string;
 	} = $props();
@@ -36,12 +39,17 @@
 	const variantClass = $derived(
 		looksOff ? 'off' : variant === 'colored' ? 'c' : variant === 'ghost' ? 'gh' : ''
 	);
+	const buttonStyle = $derived(
+		stableHeight
+			? `${style};border-width:1px;border-style:solid${!looksOff && variant !== 'ghost' ? ';border-color:transparent' : ''}`
+			: style
+	);
 </script>
 
 <button
 	type="button"
 	class="btn {variantClass} {className}"
-	{style}
+	style={buttonStyle}
 	disabled={disabled || loading}
 	aria-busy={loading || undefined}
 	onmousedown={keepFocus ? (e) => e.preventDefault() : undefined}

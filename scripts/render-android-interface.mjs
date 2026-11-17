@@ -13,7 +13,7 @@ const startup = process.argv.includes("--startup");
 const output = path.join(
   root,
   startup
-    ? "dev/screens/shots/android-startup-preview-2026-11-17"
+    ? "dev/screens/shots/android-startup-cards-2026-11-17"
     : "dev/screens/shots/android-interface-preview-2026-11-16",
 );
 const profile = path.join(
@@ -51,6 +51,7 @@ let socket;
 let browserSocket;
 const errors = [];
 const captures = [];
+const layoutChecks = [];
 try {
   const portFile = path.join(profile, "DevToolsActivePort");
   await until(() => {
@@ -155,9 +156,10 @@ try {
       width: innerWidth, height: innerHeight, dpr: devicePixelRatio,
       overflow: document.documentElement.scrollWidth > innerWidth,
       controlsOutsideViewport: [...document.querySelectorAll('.welcome input, .welcome .btn')].filter(el => {
-        const box = el.getBoundingClientRect(); return box.left < 0 || box.right > innerWidth;
+        const box = el.getBoundingClientRect(); return box.left < 0 || box.right > innerWidth || box.top < 0 || box.bottom > innerHeight;
       }).length,
-      elements: [...document.querySelectorAll('.bar, .h1s, h1, .welcome-mark, .welcome-logo, .hint, .lab, .row2, .btn, .dlg, .ib, input')].map(el => {
+      feedback: (() => { const el=document.querySelector('.server-state'); return el ? {height:el.clientHeight,scrollHeight:el.scrollHeight} : null; })(),
+      elements: [...document.querySelectorAll('.bar, .h1s, h1, .welcome-mark, .welcome-logo, .hint, .lab, .row2, .btn, .dlg, .ib, input')].filter(el => getComputedStyle(el).visibility !== 'hidden').map(el => {
         const r = el.getBoundingClientRect();
         return { text: el.getAttribute('aria-label') || el.textContent.trim(),
           x: r.x, y: r.y, width: r.width, height: r.height, font: getComputedStyle(el).fontSize };
@@ -168,6 +170,11 @@ try {
     assert.equal(geometry.overflow, false, name);
     if (startup && name.startsWith("android"))
       assert.equal(geometry.controlsOutsideViewport, 0, name);
+    if (startup && name.startsWith("android") && geometry.feedback)
+      assert(
+        geometry.feedback.scrollHeight <= geometry.feedback.height + 1,
+        `Hidden card content: ${name}`,
+      );
     const shot = await send("Page.captureScreenshot", {
       format: "png",
       captureBeyondViewport: false,
@@ -227,14 +234,24 @@ try {
       mobile: true,
     });
     if (startup) {
-      for (const scene of ["start", "error", "offline"]) {
-        for (const baseline of [true, false]) {
+      for (const baseline of [true, false]) {
+        for (const scene of baseline
+          ? ["start", "error", "offline"]
+          : [
+              "start",
+              "checking",
+              "ready",
+              "error",
+              "long",
+              "offline",
+              "offline-checking",
+            ]) {
           const url = baseline
             ? `http://127.0.0.1:5179/__shell/?startupScene=${scene}`
             : `http://127.0.0.1:5173/dev/smoke/android-startup?scene=${scene}`;
           await navigate(url);
           await waitElement(
-            scene === "offline" ? ".welcome-logo" : ".welcome input",
+            scene.startsWith("offline") ? ".welcome-logo" : ".welcome input",
           );
           if (baseline && scene === "error") {
             await send("Page.bringToFront");
@@ -243,7 +260,7 @@ try {
             await sleep(100);
             await click("Дальше");
           }
-          if (scene === "error")
+          if (baseline && scene === "error")
             await until(
               () =>
                 evaluate(
@@ -251,6 +268,21 @@ try {
                 ),
               "address error",
             );
+          if (!baseline && scene !== "start") {
+            const caption =
+              scene === "checking" || scene === "offline-checking"
+                ? "Проверяем связь…"
+                : scene === "ready" || scene === "long"
+                  ? "Сервер доступен"
+                  : "Сервер не отвечает";
+            await until(
+              () =>
+                evaluate(
+                  `document.querySelector('.server-state')?.textContent.includes(${JSON.stringify(caption)})`,
+                ),
+              caption,
+            );
+          }
           await evaluate("document.activeElement?.blur()");
           await capture(
             `${baseline ? "desktop" : "android"}-${width}-${scene}`,
@@ -259,6 +291,97 @@ try {
           );
         }
       }
+      const buttons = (frame) =>
+        frame.elements
+          .filter((el) =>
+            ["Дальше", "Сканировать QR-код", "Фото с QR-кодом"].includes(
+              el.text,
+            ),
+          )
+          .map(({ text, x, y, width, height }) => ({
+            text,
+            x,
+            y,
+            width,
+            height,
+          }));
+      const reference = buttons(
+        captures.find((frame) => frame.name === `android-${width}-start`),
+      );
+      assert.equal(reference.length, 3);
+      for (const scene of ["checking", "ready", "error", "long"]) {
+        assert.deepEqual(
+          buttons(
+            captures.find(
+              (frame) => frame.name === `android-${width}-${scene}`,
+            ),
+          ),
+          reference,
+          `Buttons moved: ${width} ${scene}`,
+        );
+      }
+      const readButtons = () =>
+        evaluate(`Array.from(document.querySelectorAll('.welcome .btn')).map(el=>{
+        const r=el.getBoundingClientRect();return {text:el.textContent.trim(),x:r.x,y:r.y,width:r.width,height:r.height};
+      })`);
+      await navigate(
+        "http://127.0.0.1:5173/dev/smoke/android-startup?scene=ready",
+      );
+      await until(
+        () =>
+          evaluate(
+            `document.querySelector('.server-state')?.textContent.includes('Сервер доступен')`,
+          ),
+        "ready for live check",
+      );
+      await evaluate("document.fonts.ready");
+      const live = await readButtons();
+      await evaluate(
+        `document.querySelector('input').focus();document.querySelector('input').select()`,
+      );
+      await send("Input.insertText", { text: "other.example.org" });
+      await sleep(150);
+      assert.equal(
+        await evaluate(
+          `!!document.querySelector('.server-state .server-card')`,
+        ),
+        false,
+      );
+      assert.deepEqual(
+        await readButtons(),
+        live,
+        "Buttons moved while clearing response",
+      );
+      await click("Дальше");
+      assert.deepEqual(
+        await readButtons(),
+        live,
+        "Buttons moved when error appeared",
+      );
+      await navigate(
+        "http://127.0.0.1:5173/dev/smoke/android-startup?scene=offline",
+      );
+      await until(
+        () =>
+          evaluate(
+            `document.querySelector('.server-state')?.textContent.includes('Сервер не отвечает')`,
+          ),
+        "offline retry check",
+      );
+      await evaluate("document.fonts.ready");
+      const retry = await readButtons();
+      await click("Повторить");
+      assert.deepEqual(
+        await readButtons(),
+        retry,
+        "Retry button moved while checking",
+      );
+      layoutChecks.push({
+        width,
+        staticStates: ["start", "checking", "ready", "error", "long"],
+        liveTransitions: ["ready to empty", "empty to error", "offline retry"],
+        buttonsStable: true,
+      });
       continue;
     }
     for (const baseline of [true, false]) {
@@ -357,6 +480,7 @@ try {
           ]),
         ),
         captures,
+        layoutChecks,
         errors,
       },
       null,
