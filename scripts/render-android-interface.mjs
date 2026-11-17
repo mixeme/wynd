@@ -7,14 +7,64 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createServer } from "node:http";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
-const startup = process.argv.includes("--startup");
+const bundle = process.argv.includes("--startup-bundle");
+const startup = bundle || process.argv.includes("--startup");
+let bundleServer;
+let clientBase = "http://127.0.0.1:5173/dev/smoke/android-startup";
+if (bundle) {
+  const assets = path.join(
+    root,
+    "android/app/build/generated/startup-assets/startup",
+  );
+  bundleServer = createServer((request, response) => {
+    const url = new URL(request.url, "http://local");
+    const relative = decodeURIComponent(url.pathname).replace(
+      /^\/startup\//,
+      "",
+    );
+    const file = path.resolve(assets, relative.replace(/^\//, ""));
+    if (!file.startsWith(assets + path.sep)) {
+      response.writeHead(403);
+      response.end();
+      return;
+    }
+    try {
+      response.setHeader(
+        "Content-Type",
+        {
+          ".html": "text/html",
+          ".js": "text/javascript",
+          ".css": "text/css",
+          ".woff2": "font/woff2",
+          ".svg": "image/svg+xml",
+        }[path.extname(file)] ?? "application/octet-stream",
+      );
+      response.setHeader(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'",
+      );
+      response.end(readFileSync(file));
+    } catch {
+      response.writeHead(404);
+      response.end();
+    }
+  });
+  await new Promise((resolve, reject) => {
+    bundleServer.once("error", reject);
+    bundleServer.listen(0, "127.0.0.1", resolve);
+  });
+  clientBase = `http://127.0.0.1:${bundleServer.address().port}/startup/index.html`;
+}
 const output = path.join(
   root,
-  startup
-    ? "dev/screens/shots/android-startup-cards-2026-11-17"
-    : "dev/screens/shots/android-interface-preview-2026-11-16",
+  bundle
+    ? "dev/screens/shots/android-startup-bundle-2026-11-17"
+    : startup
+      ? "dev/screens/shots/android-startup-cards-2026-11-17"
+      : "dev/screens/shots/android-interface-preview-2026-11-16",
 );
 const profile = path.join(
   root,
@@ -223,6 +273,29 @@ try {
     }
   `,
   });
+  if (bundle)
+    await send("Page.addScriptToEvaluateOnNewDocument", {
+      source: `
+    if (location.origin === ${JSON.stringify(new URL(clientBase).origin)}) {
+      window.__startupSent=[];
+      window.__wyndStartup={onmessage:null,postMessage(raw){
+        const request=JSON.parse(raw);window.__startupSent.push(request);
+        const query=new URLSearchParams(location.search);
+        const reply={id:request.id,protocol:1};
+        const scene=query.get('scene')||'start';
+        if(request.op==='state'){reply.offline=query.has('offline')||scene.startsWith('offline');reply.selected={origin:'https://home.example.org',name:'Дом Ани'};}
+        if(request.op==='check') {
+          if(scene==='checking')return;
+          if(scene==='error'||request.address==='other.example.org')reply.error='failed';
+          else reply.preview={origin:'https://home.example.org',name:scene==='long'?'Семейный сервер на даче':'Дом Ани'};
+        }
+        if(request.op==='open') window.__startupOpened=request.address;
+        if(request.op==='retry') return;
+        setTimeout(()=>window.__wyndStartup.onmessage?.({data:JSON.stringify(reply)}),request.op==='check'?500:0);
+      }};
+    }
+  `,
+    });
   for (const [width, height] of [
     [390, 780],
     [360, 640],
@@ -248,7 +321,7 @@ try {
             ]) {
           const url = baseline
             ? `http://127.0.0.1:5179/__shell/?startupScene=${scene}`
-            : `http://127.0.0.1:5173/dev/smoke/android-startup?scene=${scene}`;
+            : `${clientBase}?scene=${scene}`;
           await navigate(url);
           await waitElement(
             scene.startsWith("offline") ? ".welcome-logo" : ".welcome input",
@@ -259,6 +332,24 @@ try {
             await send("Input.insertText", { text: "home.example.org" });
             await sleep(100);
             await click("Дальше");
+          }
+          if (bundle && !baseline) {
+            if (scene === "offline-checking") {
+              await until(
+                () => evaluate(`!!document.querySelector('.welcome-logo')`),
+                "offline state",
+              );
+              await click("Повторить");
+            } else if (!scene.startsWith("offline") && scene !== "start") {
+              await evaluate(`document.querySelector('input').focus()`);
+              await send("Input.insertText", {
+                text:
+                  scene === "long"
+                    ? "family-photos-and-stories.example.org:8443"
+                    : "home.example.org",
+              });
+              await click("Дальше");
+            }
           }
           if (baseline && scene === "error")
             await until(
@@ -324,9 +415,13 @@ try {
         evaluate(`Array.from(document.querySelectorAll('.welcome .btn')).map(el=>{
         const r=el.getBoundingClientRect();return {text:el.textContent.trim(),x:r.x,y:r.y,width:r.width,height:r.height};
       })`);
-      await navigate(
-        "http://127.0.0.1:5173/dev/smoke/android-startup?scene=ready",
-      );
+      await navigate(`${clientBase}?scene=ready`);
+      if (bundle) {
+        await waitElement(".welcome input");
+        await evaluate(`document.querySelector('input').focus()`);
+        await send("Input.insertText", { text: "home.example.org" });
+        await click("Дальше");
+      }
       await until(
         () =>
           evaluate(
@@ -358,9 +453,7 @@ try {
         live,
         "Buttons moved when error appeared",
       );
-      await navigate(
-        "http://127.0.0.1:5173/dev/smoke/android-startup?scene=offline",
-      );
+      await navigate(`${clientBase}?scene=offline`);
       await until(
         () =>
           evaluate(
@@ -382,6 +475,81 @@ try {
         liveTransitions: ["ready to empty", "empty to error", "offline retry"],
         buttonsStable: true,
       });
+      if (bundle) {
+        await navigate(`${clientBase}?nativeFixture`);
+        await waitElement(".welcome input");
+        await evaluate("document.fonts.ready");
+        const fixed = await readButtons();
+        const target = "https://home.example.org/invite/AbC-7?join=Case";
+        await evaluate(`document.querySelector('input').focus()`);
+        await send("Input.insertText", { text: target });
+        await click("Дальше");
+        await until(
+          () =>
+            evaluate(
+              `document.querySelector('.server-state')?.textContent.includes('Проверяем связь')`,
+            ),
+          "native checking",
+        );
+        assert.deepEqual(await readButtons(), fixed);
+        await until(
+          () =>
+            evaluate(
+              `document.querySelector('.server-state')?.textContent.includes('Сервер доступен')`,
+            ),
+          "native ready",
+        );
+        assert.deepEqual(await readButtons(), fixed);
+        assert.equal(await evaluate("window.__startupOpened"), undefined);
+        await capture(`native-${width}-ready`, width, height);
+        await click("Дальше");
+        assert.equal(await evaluate("window.__startupOpened"), target);
+        assert.deepEqual(await readButtons(), fixed);
+        await navigate(`${clientBase}?nativeFixture`);
+        await waitElement(".welcome input");
+        await evaluate(`document.querySelector('input').focus()`);
+        await send("Input.insertText", { text: "home.example.org" });
+        await click("Дальше");
+        await evaluate(`document.querySelector('input').select()`);
+        await send("Input.insertText", { text: "other.example.org" });
+        await sleep(650);
+        assert.equal(
+          await evaluate(
+            `!!document.querySelector('.server-state .server-card')`,
+          ),
+          false,
+          "late response restored old server",
+        );
+        await navigate(`${clientBase}?nativeFixture&offline`);
+        await until(
+          () =>
+            evaluate(
+              `document.querySelector('.welcome-logo') && document.querySelector('.server-state')?.textContent.includes('Дом Ани')`,
+            ),
+          "native unavailable",
+        );
+        await evaluate("document.fonts.ready");
+        const retryButtons = await readButtons();
+        await capture(`native-${width}-offline`, width, height);
+        await click("Повторить");
+        assert.deepEqual(await readButtons(), retryButtons);
+        await click("Другой сервер");
+        assert.equal(
+          await evaluate(`document.querySelector('input').value`),
+          "",
+        );
+        layoutChecks.push({
+          width,
+          nativePortFixture: true,
+          checks: [
+            "check does not select",
+            "explicit open preserves invitation",
+            "late response ignored",
+            "offline retry stable",
+            "other server clears form",
+          ],
+        });
+      }
       continue;
     }
     for (const baseline of [true, false]) {
@@ -462,6 +630,13 @@ try {
     "web/src/lib/components/overlays/Dialog.svelte",
     "web/src/lib/components/overlays/Scrim.svelte",
     "scripts/render-android-interface.mjs",
+    ...(bundle
+      ? [
+          "web/vite.android-startup.config.ts",
+          "web/src/lib/android/startup.ts",
+          "web/src/android-startup/main.svelte.ts",
+        ]
+      : []),
   ];
   writeFileSync(
     path.join(output, "source-sha256.json"),
@@ -500,6 +675,10 @@ try {
   ]);
 } finally {
   socket?.close();
+  if (bundleServer) {
+    bundleServer.closeAllConnections();
+    await new Promise((resolve) => bundleServer.close(resolve));
+  }
   browserSocket?.close();
   if (edge.exitCode === null) {
     await Promise.race([

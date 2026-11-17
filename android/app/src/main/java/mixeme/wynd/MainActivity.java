@@ -31,47 +31,89 @@ public final class MainActivity extends Activity {
     private OriginalPhotos originals;
     private IncomingShares shares;
     private InterfaceBridge interfaces;
+    private StartupBridge startup;
+    private InterfaceCatalog catalog;
+    private String failedUrl;
+    private boolean localStartup, resumed;
     private boolean backPending;
 
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
-        InterfaceCatalog catalog;
         try {
             catalog = InterfaceBridge.open(this);
-            server = ServerOrigin.parse(catalog.selected(), BuildConfig.DEBUG);
         } catch (Exception e) {
-            Log.e(TAG, "No valid interface source; local first-run screen is not implemented yet", e);
+            Log.e(TAG, "Cannot read interface catalog", e);
             finish();
             return;
         }
-        webView = new WebView(this);
-        media = new MediaChromeClient(this, webView, server);
-        webView.setWebChromeClient(media);
-        configureWebView();
-        originals = new OriginalPhotos(this, webView, server, media);
-        media.originalPhotos(originals);
-        exports = new FileExports(this, webView, server);
-        shares = new IncomingShares(this, webView, server);
-        if (state == null) receiveShare(getIntent());
-        AndroidBridge.attach(this, webView, server);
-        interfaces = new InterfaceBridge(this, webView, server, catalog);
-        SystemBarsFrame bars = new SystemBarsFrame(this, webView);
-        setContentView(bars);
-        AppearanceBridge.attach(this, webView, server, bars);
         if (Build.VERSION.SDK_INT >= 33) {
             getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
                     OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::goBack);
         }
+        try {
+            String selected = catalog.selected();
+            if (selected.isEmpty() || state != null && state.getBoolean("local_startup")) {
+                showStartup(!selected.isEmpty() && state != null && state.getBoolean("startup_unavailable")
+                        ? ServerOrigin.parse(selected, BuildConfig.DEBUG).url() : null);
+            }
+            else showInterface(ServerOrigin.parse(selected, BuildConfig.DEBUG).url(), state);
+        } catch (Exception e) { Log.e(TAG, "Cannot open interface", e); finish(); }
+    }
+
+    private void createPage(ServerOrigin origin, boolean local) {
+        destroyPage();
+        server = origin;
+        localStartup = local;
+        backPending = false;
+        webView = new WebView(this);
+        media = new MediaChromeClient(this, webView, server);
+        webView.setWebChromeClient(media);
+        configureWebView();
+        if (!local) {
+            originals = new OriginalPhotos(this, webView, server, media);
+            media.originalPhotos(originals);
+            exports = new FileExports(this, webView, server);
+            shares = new IncomingShares(this, webView, server);
+            interfaces = new InterfaceBridge(this, webView, server, catalog);
+        } else startup = new StartupBridge(this, webView, catalog, failedUrl);
+        AndroidBridge.attach(this, webView, server);
+        SystemBarsFrame bars = new SystemBarsFrame(this, webView);
+        setContentView(bars);
+        AppearanceBridge.attach(this, webView, server, bars);
+        if (resumed) resumePage();
+    }
+
+    private void showInterface(String url, Bundle state) {
+        ServerOrigin origin = ServerOrigin.parse(java.net.URI.create(url).resolve("/").toString(), BuildConfig.DEBUG);
+        failedUrl = null;
+        createPage(origin, false);
+        if (state == null) receiveShare(getIntent());
         if (state == null || !server.url().equals(state.getString("interface_origin"))
                 || webView.restoreState(state) == null || !server.contains(webView.getUrl())) {
-            webView.loadUrl(server.url());
+            webView.loadUrl(url);
         }
+    }
+
+    void openStartupTarget(String url) { showInterface(url, null); }
+
+    private void showStartup(String unavailable) {
+        failedUrl = unavailable;
+        createPage(ServerOrigin.parse(StartupAssets.ORIGIN, false), true);
+        webView.loadUrl(StartupAssets.URL);
+    }
+
+    private void unavailable(WebView failed, String url) {
+        if (failed != webView || localStartup || isFinishing() || isDestroyed()) return;
+        String retry;
+        try { retry = StartupTarget.parse(url, BuildConfig.DEBUG).url(); }
+        catch (IllegalArgumentException error) { retry = server.url(); }
+        showStartup(retry);
     }
 
     boolean interfaceSwitchBlocked() {
         return media != null && media.busy() || exports != null && exports.busy()
-                || shares != null && shares.busyForInterface();
+                || IncomingShares.pendingForInterface(this);
     }
 
     void restartInterface() {
@@ -87,13 +129,20 @@ public final class MainActivity extends Activity {
     }
 
     private void receiveShare(Intent intent) {
-        if (shares != null) shares.accept(intent);
+        if (shares == null) {
+            // Входящее «Поделиться» на локальном старте ждёт выбора сервера.
+            // Проверки содержимого и URI выполнит IncomingShares после перехода.
+            setIntent(intent);
+            return;
+        }
+        shares.accept(intent);
         // Не держать входящий payload как Intent текущего окна после обработки.
         setIntent(new Intent(Intent.ACTION_MAIN).setClass(this, MainActivity.class));
     }
 
     @SuppressLint("SetJavaScriptEnabled") // Wynd — Svelte; Java-мост странице не выдаётся.
     private void configureWebView() {
+        final StartupAssets assets = localStartup ? new StartupAssets(this) : null;
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG);
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -106,6 +155,7 @@ public final class MainActivity extends Activity {
         webView.setBackgroundColor(Color.rgb(244, 240, 233));
         webView.setWebViewClient(new WebViewClient() {
             @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                if (view != webView) return;
                 media.cancel();
                 if (exports != null) exports.cancel();
                 if (originals != null) originals.clear();
@@ -125,6 +175,7 @@ public final class MainActivity extends Activity {
 
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                if (assets != null) return assets.intercept(request.getUrl());
                 if (shares != null) {
                     WebResourceResponse shared = shares.intercept(request);
                     if (shared != null) return shared;
@@ -146,6 +197,22 @@ public final class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 if (server.contains(url)) Log.i(TAG, "Selected interface loaded");
+            }
+
+            @Override public void onReceivedError(WebView view, WebResourceRequest request, android.webkit.WebResourceError error) {
+                if (request.isForMainFrame() && assets == null && server.contains(request.getUrl().toString())) {
+                    view.post(() -> unavailable(view, request.getUrl().toString()));
+                }
+            }
+
+            @Override public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
+                if (request.isForMainFrame() && assets == null && response.getStatusCode() >= 500
+                        && server.contains(request.getUrl().toString())) view.post(() -> unavailable(view, request.getUrl().toString()));
+            }
+
+            @Override @SuppressWarnings("deprecation")
+            public void onReceivedError(WebView view, int code, String description, String failingUrl) {
+                if (Build.VERSION.SDK_INT < 23 && assets == null && server.contains(failingUrl)) view.post(() -> unavailable(view, failingUrl));
             }
         });
     }
@@ -196,6 +263,8 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onSaveInstanceState(Bundle state) {
+        state.putBoolean("local_startup", localStartup);
+        state.putBoolean("startup_unavailable", failedUrl != null);
         if (server != null) state.putString("interface_origin", server.url());
         if (webView != null) webView.saveState(state);
         super.onSaveInstanceState(state);
@@ -204,16 +273,22 @@ public final class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        resumed = true;
+        resumePage();
+        UpdateController.get(this).resume(this);
+    }
+
+    private void resumePage() {
         if (webView != null) webView.onResume();
         if (media != null) media.resume();
         if (exports != null) exports.resume();
         if (originals != null) originals.resume();
         if (shares != null) shares.resume();
-        UpdateController.get(this).resume(this);
     }
 
     @Override
     protected void onPause() {
+        resumed = false;
         if (media != null) media.pause();
         if (exports != null) exports.pause();
         if (originals != null) originals.pause();
@@ -228,6 +303,12 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        destroyPage();
+        super.onDestroy();
+    }
+
+    private void destroyPage() {
+        if (startup != null) startup.destroy();
         if (interfaces != null) interfaces.destroy();
         if (media != null) media.destroy();
         if (exports != null) exports.destroy();
@@ -239,7 +320,12 @@ public final class MainActivity extends Activity {
             webView.destroy();
             webView = null;
         }
-        super.onDestroy();
+        startup = null;
+        interfaces = null;
+        media = null;
+        exports = null;
+        originals = null;
+        shares = null;
     }
 
     @Override

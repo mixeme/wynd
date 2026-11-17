@@ -68,6 +68,29 @@ public final class InterfaceCatalogTest {
         assertThrows(IOException.class, () -> new InterfaceCatalog(disk, false, "home.example.org"));
         assertEquals(before, disk.value);
     }
+    @Test public void firstRunCanRemainEmptyAcrossRestartWithoutBuildDefault() throws Exception {
+        Memory disk = new Memory();
+        InterfaceCatalog first = new InterfaceCatalog(disk, false, "");
+        assertEquals("", first.selected());
+        assertEquals(0, first.snapshot().getJSONArray("servers").length());
+        InterfaceCatalog restored = new InterfaceCatalog(disk, false, "home.example.org");
+        assertEquals("", restored.selected());
+        restored.choose(server("https://home.example.org", "Дом"));
+        assertEquals("https://home.example.org", restored.selected());
+        assertEquals(1, restored.snapshot().getJSONArray("servers").length());
+        assertFalse(disk.value.contains("invite"));
+    }
+    @Test public void choosingIsAtomicForFirstRunAndExistingSelection() throws Exception {
+        for (String initial : new String[]{"", "home.example.org"}) {
+            Memory disk = new Memory();
+            InterfaceCatalog store = new InterfaceCatalog(disk, false, initial);
+            String before = disk.value;
+            disk.fail = true;
+            assertThrows(IOException.class, () -> store.choose(server("https://files.example.org", "Файлы")));
+            assertEquals(before, disk.value);
+            assertEquals(before, store.snapshot().toString());
+        }
+    }
     @Test public void rejectsForeignSiteResponsesAndKeepsRegistrationIndependent() throws Exception {
         ServerOrigin origin = ServerOrigin.parse("home.example.org", false);
         for (String body : new String[]{"<html>Login</html>", "{}", "{\"name\":\"Other site\"}"}) {

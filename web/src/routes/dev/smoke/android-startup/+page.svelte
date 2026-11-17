@@ -1,8 +1,9 @@
-<!-- План 50: предварительный рендер, не локальная стартовая часть APK.
+<!-- План 50: локальный старт и стенд одного утверждённого исходника.
      Основа: действующий Desktop App.svelte, ПК1/ПК3/ПК4 на 54ecac07.
      Плашка ответа — ServerRow, план 56. b8014819 без плашки отклонён владельцем. -->
 <script lang="ts">
-	import { page } from '$app/state';
+	import { onMount } from 'svelte';
+	import { startupAvailable, startupRequest } from '$lib/android/startup';
 	import PlainLayout from '$lib/layouts/PlainLayout.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import Mark from '$ui/Mark.svelte';
@@ -18,7 +19,12 @@
 	import QrScanner from '$ui/forms/QrScanner.svelte';
 	import { decodeQrFromFile } from '$lib/auth/links';
 
-	const requested = $derived(page.url.searchParams.get('scene') ?? 'start');
+	// Демонстрационные сцены допустимы только на Vite-стенде, никогда в APK.
+	const native = startupAvailable() || !import.meta.env.DEV;
+	const requested = native
+		? 'start'
+		: (new URLSearchParams(typeof location === 'undefined' ? '' : location.search).get('scene') ??
+			'start');
 	let scanning = $state(false);
 	let address = $state('');
 	let photoError = $state('');
@@ -26,6 +32,8 @@
 	let photoPicker = $state<FilePicker>();
 	let notice = $state('');
 	let unavailable = $state(false);
+	let knownName = $state('Сервер');
+	let checkGeneration = 0;
 	$effect(() => {
 		address =
 			requested === 'long'
@@ -47,13 +55,15 @@
 	});
 	const checking = $derived(serverState === 'checking');
 	const serverName = $derived(
-		unavailable
-			? 'Дом Ани'
-			: serverState === 'ready'
-				? requested === 'long'
-					? 'Семейный сервер на даче'
-					: 'Дом Ани'
-				: 'Сервер'
+		native
+			? knownName
+			: unavailable
+				? 'Дом Ани'
+				: serverState === 'ready'
+					? requested === 'long'
+						? 'Семейный сервер на даче'
+						: 'Дом Ани'
+					: 'Сервер'
 	);
 	const serverHost = $derived.by(() => {
 		const value = address.trim();
@@ -64,14 +74,67 @@
 		}
 	});
 	function resetCheck() {
+		const pending = serverState !== 'empty';
+		++checkGeneration;
 		serverState = 'empty';
+		knownName = 'Сервер';
 		photoError = '';
+		if (native && pending) void startupRequest('cancel').catch(() => {});
 	}
-	function submit() {
-		if (!address.trim() || checking || serverState === 'ready') return;
+	async function submit() {
+		if (!address.trim() || checking) return;
+		if (native) {
+			const open = serverState === 'ready';
+			const generation = ++checkGeneration;
+			serverState = 'checking';
+			try {
+				const result = await startupRequest(open ? 'open' : 'check', address);
+				if (generation !== checkGeneration) return;
+				if (!open && result.preview) {
+					knownName = result.preview.name;
+					serverState = 'ready';
+				}
+			} catch {
+				if (generation === checkGeneration) serverState = 'failed';
+			}
+			return;
+		}
 		// На стенде проверки сети и выбора источника нет. Пример ошибки — только для рендера.
 		serverState = 'failed';
 	}
+	async function retry() {
+		if (checking) return;
+		serverState = 'checking';
+		if (!native) return;
+		try {
+			await startupRequest('retry');
+		} catch {
+			serverState = 'failed';
+		}
+	}
+	onMount(() => {
+		if (!native) return;
+		void startupRequest('state')
+			.then((state) => {
+				if (state.offline && state.selected) {
+					unavailable = true;
+					address = state.selected.origin;
+					knownName = state.selected.name;
+					serverState = 'failed';
+				}
+			})
+			.catch(() => {
+				/* При ошибке моста остаётся стартовая форма, выбор не меняется. */
+			});
+		const back = (event: Event) => {
+			if (scanning) {
+				scanning = false;
+				event.preventDefault();
+			}
+		};
+		window.addEventListener('wynd:android-back', back);
+		return () => window.removeEventListener('wynd:android-back', back);
+	});
 	function readQr(value: string): boolean {
 		address = value;
 		scanning = false;
@@ -133,11 +196,8 @@
 						<Hint centered style="margin-top:14px"
 							>Проверьте сеть. Если сеть есть — сервер выключен или переехал.</Hint
 						>
-						<Button
-							style="margin-top:22px"
-							stableHeight
-							loading={checking}
-							onclick={() => (serverState = 'checking')}>Повторить</Button
+						<Button style="margin-top:22px" stableHeight loading={checking} onclick={retry}
+							>Повторить</Button
 						>
 						<Hint centered style="margin-top:26px"
 							><TextButton

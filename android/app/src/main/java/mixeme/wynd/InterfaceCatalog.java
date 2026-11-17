@@ -30,11 +30,15 @@ final class InterfaceCatalog {
                 if (!origin.equals(item.getString("origin")) || !origins.add(origin)
                         || item.getString("name").length() > 512) throw new IOException("Invalid interface catalog");
             }
-            if (!origins.contains(data.getString("selected"))) throw new IOException("Invalid selection");
+            String selected = data.getString("selected");
+            if (!origins.contains(selected) && !(selected.isEmpty() && servers.length() == 0)) throw new IOException("Invalid selection");
         } else {
-            String origin = canonical(initial);
-            data = new JSONObject().put("selected", origin).put("servers", new JSONArray()
-                    .put(new JSONObject().put("origin", origin).put("name", origin.substring(origin.indexOf("://") + 3))));
+            data = new JSONObject().put("selected", "").put("servers", new JSONArray());
+            if (initial != null && !initial.trim().isEmpty()) {
+                String origin = canonical(initial);
+                data.put("selected", origin).getJSONArray("servers")
+                        .put(new JSONObject().put("origin", origin).put("name", origin.substring(origin.indexOf("://") + 3)));
+            }
             storage.write(data.toString());
         }
     }
@@ -60,6 +64,14 @@ final class InterfaceCatalog {
         data = next;
     }
     synchronized void add(JSONObject checked) throws IOException, JSONException {
+        commit(withServer(checked));
+    }
+    /** Проверенный источник и выбор записываются одной атомарной операцией. */
+    synchronized void choose(JSONObject checked) throws IOException, JSONException {
+        JSONObject next = withServer(checked);
+        commit(next.put("selected", canonical(checked.getString("origin"))));
+    }
+    private JSONObject withServer(JSONObject checked) throws IOException, JSONException {
         String origin = canonical(checked.getString("origin"));
         JSONObject next = snapshot();
         JSONArray servers = next.getJSONArray("servers");
@@ -67,7 +79,7 @@ final class InterfaceCatalog {
         if (index < 0 && servers.length() >= 32) throw new IOException("Interface catalog full");
         JSONObject item = new JSONObject().put("origin", origin).put("name", checked.getString("name"));
         if (index < 0) servers.put(item); else servers.put(index, item);
-        commit(next);
+        return next;
     }
     synchronized void select(String origin) throws IOException, JSONException {
         origin = canonical(origin);

@@ -10,6 +10,11 @@ on:
       - 'android/**'
       - 'assets/icon-small.svg'
       - 'web/static/icon-192.png'
+      - 'web/src/**'
+      - 'web/static/fonts/**'
+      - 'web/static/icons.svg'
+      - 'web/package*.json'
+      - 'web/vite.android-startup.config.ts'
       - 'scripts/build-android.ps1'
       - '.github/workflows/android.yaml'
   pull_request:
@@ -17,6 +22,11 @@ on:
       - 'android/**'
       - 'assets/icon-small.svg'
       - 'web/static/icon-192.png'
+      - 'web/src/**'
+      - 'web/static/fonts/**'
+      - 'web/static/icons.svg'
+      - 'web/package*.json'
+      - 'web/vite.android-startup.config.ts'
       - 'scripts/build-android.ps1'
       - '.github/workflows/android.yaml'
   workflow_dispatch:
@@ -45,6 +55,14 @@ jobs:
         with:
           distribution: liberica
           java-version: '17'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Startup UI dependencies
+        working-directory: web
+        run: npm ci
       - uses: android-actions/setup-android@v4
         with:
           cmdline-tools-version: '13114758'

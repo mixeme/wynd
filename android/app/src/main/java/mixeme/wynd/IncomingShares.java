@@ -155,7 +155,11 @@ final class IncomingShares {
     }
 
     boolean busyForInterface() {
-        return preparing || pending != null || new File(directory, "pending.json").exists();
+        return pendingForInterface(activity);
+    }
+
+    static boolean pendingForInterface(android.content.Context context) {
+        return preparing || pending != null || new File(context.getFilesDir(), "incoming-share/pending.json").exists();
     }
 
     private void restore() {
