@@ -4,20 +4,17 @@
 import assert from "node:assert/strict";
 import { spawn, execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import {
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-  existsSync,
-  rmSync,
-} from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
+const startup = process.argv.includes("--startup");
 const output = path.join(
   root,
-  "dev/screens/shots/android-interface-preview-2026-11-16",
+  startup
+    ? "dev/screens/shots/android-startup-preview-2026-11-17"
+    : "dev/screens/shots/android-interface-preview-2026-11-16",
 );
 const profile = path.join(
   root,
@@ -56,7 +53,13 @@ const errors = [];
 const captures = [];
 try {
   const portFile = path.join(profile, "DevToolsActivePort");
-  await until(() => existsSync(portFile), "headless Edge");
+  await until(() => {
+    try {
+      return readFileSync(portFile, "utf8").includes("/devtools/");
+    } catch {
+      return false;
+    }
+  }, "headless Edge");
   const [port, browserPath] = readFileSync(portFile, "utf8")
     .trim()
     .split(/\r?\n/);
@@ -112,6 +115,27 @@ try {
       selector,
     );
   }
+  async function navigate(url) {
+    const target = new URL(url).href;
+    const navigation = await send("Page.navigate", { url: target });
+    assert(!navigation.errorText, navigation.errorText);
+    await until(async () => {
+      try {
+        const tree = await send("Page.getFrameTree");
+        if (
+          tree.frameTree.frame.url !== target ||
+          (navigation.loaderId &&
+            tree.frameTree.frame.loaderId !== navigation.loaderId)
+        )
+          return false;
+        return await evaluate(
+          `location.href === ${JSON.stringify(target)} && document.readyState === 'complete' && !!document.body?.textContent?.trim()`,
+        );
+      } catch {
+        return false;
+      }
+    }, target);
+  }
   async function click(label) {
     await evaluate(`(() => {
       const button = [...document.querySelectorAll('button')].find((el) =>
@@ -123,11 +147,17 @@ try {
   }
   async function capture(name, width, height) {
     await evaluate("document.fonts.ready");
+    await evaluate(
+      `new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`,
+    );
     await sleep(200);
     const geometry = await evaluate(`({
       width: innerWidth, height: innerHeight, dpr: devicePixelRatio,
       overflow: document.documentElement.scrollWidth > innerWidth,
-      elements: [...document.querySelectorAll('.bar, .hint, .lab, .row2, .btn, .dlg, .ib, input')].map(el => {
+      controlsOutsideViewport: [...document.querySelectorAll('.welcome input, .welcome .btn')].filter(el => {
+        const box = el.getBoundingClientRect(); return box.left < 0 || box.right > innerWidth;
+      }).length,
+      elements: [...document.querySelectorAll('.bar, .h1s, h1, .welcome-mark, .welcome-logo, .hint, .lab, .row2, .btn, .dlg, .ib, input')].map(el => {
         const r = el.getBoundingClientRect();
         return { text: el.getAttribute('aria-label') || el.textContent.trim(),
           x: r.x, y: r.y, width: r.width, height: r.height, font: getComputedStyle(el).fontSize };
@@ -136,6 +166,8 @@ try {
     assert.equal(geometry.width, width);
     assert.equal(geometry.height, height);
     assert.equal(geometry.overflow, false, name);
+    if (startup && name.startsWith("android"))
+      assert.equal(geometry.controlsOutsideViewport, 0, name);
     const shot = await send("Page.captureScreenshot", {
       format: "png",
       captureBeyondViewport: false,
@@ -155,7 +187,20 @@ try {
     features: [{ name: "prefers-color-scheme", value: "light" }],
   });
   await send("Page.addScriptToEvaluateOnNewDocument", {
-    source: `
+    source: startup
+      ? `
+    if (location.port === '5179') {
+      const offline = new URLSearchParams(location.search).get('startupScene') === 'offline';
+      const saved = {name:'Дом Ани',origin:'https://home.example.org'};
+      window.go = {main:{App:{
+        Version: async () => '', CheckSelfUpdate: async () => ({available:false}),
+        CurrentServer: async () => offline ? saved : null,
+        CheckCurrent: async () => {throw new Error('Fixture offline')},
+        CheckServer: async () => {throw new Error('Fixture address failure')}
+      }}};
+    }
+    `
+      : `
     if (location.port === '5179') {
       const servers = [
         { name: 'Дом Ани', origin: 'https://home.example.org' },
@@ -181,13 +226,48 @@ try {
       deviceScaleFactor: 1,
       mobile: true,
     });
+    if (startup) {
+      for (const scene of ["start", "error", "offline"]) {
+        for (const baseline of [true, false]) {
+          const url = baseline
+            ? `http://127.0.0.1:5179/__shell/?startupScene=${scene}`
+            : `http://127.0.0.1:5173/dev/smoke/android-startup?scene=${scene}`;
+          await navigate(url);
+          await waitElement(
+            scene === "offline" ? ".welcome-logo" : ".welcome input",
+          );
+          if (baseline && scene === "error") {
+            await send("Page.bringToFront");
+            await evaluate(`document.querySelector('input').focus()`);
+            await send("Input.insertText", { text: "home.example.org" });
+            await sleep(100);
+            await click("Дальше");
+          }
+          if (scene === "error")
+            await until(
+              () =>
+                evaluate(
+                  `document.body?.innerText.includes('Сервер Wynd по этому адресу не отвечает.')`,
+                ),
+              "address error",
+            );
+          await evaluate("document.activeElement?.blur()");
+          await capture(
+            `${baseline ? "desktop" : "android"}-${width}-${scene}`,
+            width,
+            height,
+          );
+        }
+      }
+      continue;
+    }
     for (const baseline of [true, false]) {
       const prefix = `${baseline ? "desktop" : "android"}-${width}`;
-      await send("Page.navigate", {
-        url: baseline
+      await navigate(
+        baseline
           ? "http://127.0.0.1:5179/__shell/"
           : "http://127.0.0.1:5173/dev/smoke/android-interface",
-      });
+      );
       if (baseline) {
         await waitElement(".server-host");
         await evaluate(
@@ -228,6 +308,17 @@ try {
   }
   assert.equal(errors.length, 0, JSON.stringify(errors));
   const files = [
+    ...(startup
+      ? [
+          "web/src/routes/dev/smoke/android-startup/+page.svelte",
+          "web/src/lib/layouts/PlainLayout.svelte",
+          "web/src/lib/components/forms/ScreenTitle.svelte",
+          "web/src/lib/components/Mark.svelte",
+          "web/src/lib/components/Logo.svelte",
+          "web/src/lib/components/forms/FilePicker.svelte",
+          "web/src/lib/components/forms/QrScanner.svelte",
+        ]
+      : []),
     "web/src/routes/dev/smoke/android-interface/+page.svelte",
     "cmd/wynd-desktop/frontend/src/App.svelte",
     "cmd/wynd-desktop/frontend/src/app.css",
