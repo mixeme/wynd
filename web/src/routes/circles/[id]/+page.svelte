@@ -31,7 +31,6 @@
 	import PostCard from '$ui/data/PostCard.svelte';
 	import ReactionBar from '$ui/data/ReactionBar.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
-	import { isAccessError } from '$lib/api/client';
 	import { formatBytes } from '$lib/format/bytes';
 	import { resolveMediaUrls } from '$lib/media/batch';
 	import { downloadBlob } from '$lib/media/objectUrl';
@@ -46,8 +45,9 @@
 	import { isPostArchiveLocked } from '$lib/journal/archive';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadFeed } from '$lib/journal/feed';
-	import { fetchOlderPage, mergePages, refetchOlder } from '$lib/journal/pages';
-	import { applyOwnReaction, canReact } from '$lib/journal/reactions';
+	import { FeedData } from '$lib/journal/feed-data.svelte';
+	import { fetchOlderPage } from '$lib/journal/pages';
+	import { canReact } from '$lib/journal/reactions';
 	import { fetchMembers, type MemberInfo } from '$lib/circles/settings';
 	import {
 		isAttachedToOtherDay,
@@ -68,7 +68,6 @@
 		REACTION_KEYS,
 		serviceEventsBetween,
 		serviceEventsAboveNewest,
-		unreadDividerIndex,
 		albumHref,
 		photoMedia,
 		tileBlobId
@@ -120,15 +119,6 @@
 	// Подтверждение удаления неотправленной записи (STB-6).
 	let queueToRemove = $state<number | null>(null);
 
-	let posts = $state<FeedPost[]>([]);
-	// Догруженные старшие порции (C18): снимок — самые новые записи, остальное
-	// приходит при прокрутке к концу ленты.
-	let olderPosts = $state<FeedPost[]>([]);
-	let nextBefore = $state<string | undefined>(undefined);
-	let loadingOlder = $state(false);
-	let feedEvents = $state<FeedEvent[]>([]);
-	let visibleFrom = $state<string | null>(null);
-	let circleStartedAt = $state('');
 	let members = $state<MemberInfo[]>([]);
 	let activeMemberCount = $state(2);
 	// Себя не упоминают: в списке — остальные участники круга.
@@ -136,11 +126,33 @@
 		members.filter((m) => m.status === 'active' && m.identity_id !== circle.identityId)
 	);
 	let queuedPosts = $state<QueuedPostView[]>([]);
-	let loading = $state(true);
-	let error = $state('');
 	let joinAvatarHint = $state('');
-	let dividerAt = $state<number | null>(null);
 	let fixedLastRead = $state(0);
+	// Данные ленты живут в контроллере $lib: первая порция, догрузка старших,
+	// граница непрочитанного и ошибка — с поведенческими тестами (план 60).
+	const feed = new FeedData({
+		load: () => loadFeed(circle.origin, circle.circleId),
+		loadOlder: async (before) => {
+			const page = await fetchOlderPage<{ posts: FeedPost[] }>(
+				circle.origin,
+				`/circles/${circle.circleId}/feed`,
+				before
+			);
+			return { items: page.posts, next: page.next_before };
+		},
+		lastRead: () => fixedLastRead,
+		resolveMedia: (items) => void resolveFeedMedia(items),
+		resolveDayMedia: (events) => void resolveDayCardMedia(events)
+	});
+	// Разметка читает поля контроллера под прежними именами.
+	let posts = $derived(feed.posts);
+	let loadingOlder = $derived(feed.loadingOlder);
+	let feedEvents = $derived(feed.feedEvents);
+	let visibleFrom = $derived(feed.visibleFrom);
+	let circleStartedAt = $derived(feed.circleStartedAt);
+	let loading = $derived(feed.loading);
+	let error = $derived(feed.error);
+	let dividerAt = $derived(feed.dividerAt);
 	let feedEl: HTMLDivElement | undefined = $state();
 	// Автомат жеста живёт в $lib и покрыт тестами (GUI-5).
 	// Обновление жестом (3.5): тянешь ленту от верха — она перечитывается.
@@ -285,65 +297,16 @@
 	}
 
 	async function loadFeedData() {
-		error = '';
-		try {
-			const snap = await loadFeed(circle.origin, circle.circleId);
-			nextBefore = snap.next_before;
-			if (olderPosts.length) {
-				// Граница первой порции сдвинулась — перечитываем догруженное от неё.
-				const again = await refetchOlder(loadOlderFeed, snap.next_before, olderPosts.length).catch(
-					() => ({ items: olderPosts, next: nextBefore })
-				);
-				olderPosts = again.items;
-				nextBefore = again.next;
-			}
-			posts = mergePages(snap.posts, olderPosts, (p) => p.id);
-			feedEvents = snap.events ?? [];
-			visibleFrom = snap.visible_from ?? null;
-			circleStartedAt = snap.circle_started_at ?? '';
-			dividerAt = unreadDividerIndex(posts, fixedLastRead);
-			// Не ждём: записи уже есть, картинки доедут пачками поверх.
-			void resolveFeedMedia(posts);
-			void resolveDayCardMedia(feedEvents);
-		} catch (err) {
-			error = isAccessError(err) ? 'Нет доступа' : 'Не удалось загрузить ленту';
-		} finally {
-			loading = false;
-		}
+		await feed.load();
 		feedLoaded = true;
 		await restoreSpot();
-	}
-
-	async function loadOlderFeed(before: string) {
-		const page = await fetchOlderPage<{ posts: FeedPost[] }>(
-			circle.origin,
-			`/circles/${circle.circleId}/feed`,
-			before
-		);
-		return { items: page.posts, next: page.next_before };
-	}
-
-	async function loadOlder() {
-		if (!nextBefore || loadingOlder) return;
-		loadingOlder = true;
-		try {
-			const page = await loadOlderFeed(nextBefore);
-			olderPosts = [...olderPosts, ...page.items];
-			nextBefore = page.next;
-			posts = mergePages(posts, page.items, (p) => p.id);
-			void resolveFeedMedia(page.items);
-		} catch {
-			// Без сети старшее не догрузится — лента остаётся как есть.
-		} finally {
-			loadingOlder = false;
-		}
 	}
 
 	// До конца ленты — полтора экрана: догружаем заранее, чтобы не упираться.
 	function onFeedScroll() {
 		const el = feedEl;
-		if (!el || !nextBefore) return;
-		if (el.scrollTop + el.clientHeight * 2.5 >= el.scrollHeight) void loadOlder();
+		if (!el || !feed.nextBefore) return;
+		if (el.scrollTop + el.clientHeight * 2.5 >= el.scrollHeight) void feed.loadOlder();
 	}
 
 	// Плитка записи в очереди показывает сам снимок (или кадр ролика): он ещё
@@ -450,7 +413,7 @@
 		// Два быстрых нажатия — две записи: кнопка не блокируется сама (GUI-8).
 		if (!text || sending) return;
 		sending = true;
-		error = '';
+		feed.clearError();
 		const entryDate = todayEntryDate();
 		try {
 			if (navigator.onLine) {
@@ -482,7 +445,7 @@
 				await loadFeedData();
 				return;
 			}
-			error = authErrorHint(err);
+			feed.setError(authErrorHint(err));
 		} finally {
 			sending = false;
 		}
@@ -543,7 +506,7 @@
 	async function sendVoice(take: VoiceTake) {
 		if (preparing) return;
 		preparing = 'Готовим голосовое…';
-		error = '';
+		feed.clearError();
 		try {
 			const compression = await fetchCompression(circle.origin).catch(() => undefined);
 			// Голосу хватает 64 кбит/с; перекодируем всегда — WebM с телефона
@@ -576,7 +539,7 @@
 	async function sendVideo(file: File, livePoster?: ArrayBuffer, recordedMs?: number) {
 		if (preparing) return;
 		preparing = 'Готовим видео…';
-		error = '';
+		feed.clearError();
 		try {
 			const compression = await fetchCompression(circle.origin).catch(() => undefined);
 			const { fallbackReason, ...video } = await compressVideo(
@@ -722,21 +685,13 @@
 		});
 	}
 
-	function applyReaction(postId: string, emoji: string | null) {
-		posts = posts.map((p) =>
-			p.id === postId
-				? { ...p, reactions: applyOwnReaction(p.reactions, postId, emoji, reactionActor) }
-				: p
-		);
-	}
-
 	async function pickReaction(post: FeedPost, emoji: string) {
 		// Два тапа по одной реакции = поставить и снять (GUI-8).
 		if (postArchiveLocked(post) || reacting) return;
 		reacting = true;
 		const mine = ownReaction(post.reactions, circle.identityId);
 		const removing = mine?.emoji === emoji;
-		error = '';
+		feed.clearError();
 		try {
 			if (navigator.onLine) {
 				if (removing) {
@@ -749,18 +704,18 @@
 			} else {
 				if (removing) {
 					await enqueueReactionRemove(circle.origin, circle.circleId, post.id);
-					applyReaction(post.id, null);
+					feed.applyReaction(post.id, null, reactionActor);
 				} else {
 					await enqueueReaction(circle.origin, circle.circleId, {
 						post_id: post.id,
 						emoji
 					});
-					applyReaction(post.id, emoji);
+					feed.applyReaction(post.id, emoji, reactionActor);
 				}
 				pickerPostId = '';
 			}
 		} catch (err) {
-			error = authErrorHint(err);
+			feed.setError(authErrorHint(err));
 		} finally {
 			reacting = false;
 		}
@@ -836,7 +791,7 @@
 	onCommentCompose={canSay ? openComposeFromBar : undefined}
 	onCommentPhotos={canSay ? openComposeWithPhotos : undefined}
 	commentPreservePhotoLocation
-	onCommentPhotoError={() => (error = 'Не удалось открыть выбранные фото. Попробуйте ещё раз')}
+	onCommentPhotoError={() => feed.setError('Не удалось открыть выбранные фото. Попробуйте ещё раз')}
 	onCommentVoice={canSay ? (take) => void sendVoice(take) : undefined}
 	onCommentVideo={canSay ? () => void openVideo() : undefined}
 	commentStatus={preparing || barNote}
