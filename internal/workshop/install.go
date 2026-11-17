@@ -1727,9 +1727,11 @@ func Rollback(ctx context.Context, sess *Session, spec Spec, keepData bool) ([]L
 		revoke = revokeScriptAt(layout)
 		// Тома берём по метке, а не только из нынешнего compose.yaml: Wynd могли
 		// раньше ставить иначе (свой Caddy, потом чужой веб-сервер), и том с
-		// отозванным сертификатом остался бы на сервере.
+		// отозванным сертификатом остался бы на сервере. Занятый том — отказ
+		// до очистки каталога (находка живых проверок 17.11): раньше rm -rf
+		// уже прошёл бы, а причина терялась в середине журнала.
 		down += ` 2>&1
-  docker volume ls -q --filter label=com.docker.compose.project="${proj:-wynd}" 2>/dev/null | xargs -r docker volume rm`
+` + removeVolumesGuarded()
 	}
 	clear := "rm -rf " + ShellPath(layout.Root())
 	gone := rootGoneCheck(layout)
@@ -1774,6 +1776,14 @@ fi
 			Advice:  "Похоже, поверх каталога " + layout.Root() + " смонтировано другое — данные не тронуты. Проверьте, что смонтировано, и повторите.",
 		}
 	}
+	// Том этой установки держит чужой контейнер: дальше очистку не идём,
+	// чтобы не удалять каталог при неразобравшемся томе (находка 17.11).
+	if !keepData && strings.Contains(res.Output, "WYND_VOLUME_BUSY") {
+		return log, &StepError{
+			Message: "Том занят",
+			Advice:  "Какой-то контейнер держит том этой установки — каталог и тома не тронуты. Посмотрите, кто держит том (docker ps -a), остановите его и повторите удаление.",
+		}
+	}
 	// Каталог остался после очистки: обычно это точка монтирования поверх него.
 	// Отказ понятным шагом, а не текстом всего скрипта с «Device or resource
 	// busy» (находка живых проверок 16.11).
@@ -1808,6 +1818,14 @@ fi
 // поверх него), печатается метка понятного отказа вместо текста всего скрипта.
 func rootGoneCheck(layout Layout) string {
 	return `test ! -e ` + ShellPath(layout.Root()) + ` || { echo WYND_ROOT_BUSY; exit 1; }`
+}
+
+// removeVolumesGuarded — удаляет тома установки по метке проекта; занятый том
+// останавливает скрипт меткой понятного отказа до очистки каталога (находка
+// живых проверок 17.11: rm -rf уже прошёл, а «volume is in use» терялся
+// в середине журнала).
+func removeVolumesGuarded() string {
+	return `  docker volume ls -q --filter label=com.docker.compose.project="${proj:-wynd}" 2>/dev/null | xargs -r docker volume rm 2>&1 || { echo WYND_VOLUME_BUSY; exit 0; }`
 }
 
 // Plan — что установщик сделает, до первого изменения (окно 3).

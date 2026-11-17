@@ -366,3 +366,14 @@ func TestRollbackReportsBusyRoot(t *testing.T) {
 		}
 	}
 }
+
+// Занятый том остановит удаление меткой понятного отказа до rm -rf, а не
+// «успешным» откатом с потерянной посреди журнала ошибкой (находка 17.11).
+func TestRollbackReportsBusyVolume(t *testing.T) {
+	line := removeVolumesGuarded()
+	for _, want := range []string{"WYND_VOLUME_BUSY", "exit 0", "docker volume rm"} {
+		if !strings.Contains(line, want) {
+			t.Fatalf("в удалении томов нет %q:\n%s", want, line)
+		}
+	}
+}
