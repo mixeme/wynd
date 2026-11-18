@@ -67,9 +67,21 @@ const releases = [
   ),
 ];
 
+// Итог шага приходит вместе с действием в строке — как в настоящем окне.
 function done(rows) {
-  return rows.map(([id, title, note]) => ({ id, title, status: "done", note }));
+  return rows.map(([id, title, note, link]) => ({
+    id,
+    title,
+    status: "done",
+    note,
+    ...(link ? { link } : {}),
+  }));
 }
+
+const attestationLink = {
+  label: "проверить",
+  url: "https://github.com/mixeme/wynd/attestations",
+};
 
 const checks = {
   "desktop-v0.3.1": {
@@ -84,7 +96,6 @@ const checks = {
     sum_ok: true,
     commit: "6b5964e3",
     attest_ok: true,
-    attestation: "https://github.com/mixeme/wynd/attestations",
     key_in_release: true,
     notes:
       "## 0.3.1\n\n- Служебный порт окна отвечает только ему\n- Чужие страницы не читают ответы",
@@ -92,7 +103,7 @@ const checks = {
       ["release", "Получаем сведения о выпуске"],
       ["download", "Скачиваем программу и контрольную сумму"],
       ["checksum", "Проверяем контрольную сумму"],
-      ["attestation", "Проверяем происхождение сборки", "коммит 6b5964e3"],
+      ["attestation", "Проверяем происхождение сборки", "коммит 6b5964e3", attestationLink],
       ["key", "Проверяем открытый ключ"],
       ["notes", "Читаем описание выпуска"],
     ]),
@@ -109,7 +120,6 @@ const checks = {
     sum_ok: true,
     commit: "a0c6c556",
     attest_ok: true,
-    attestation: "https://github.com/mixeme/wynd/attestations",
     key_in_release: true,
     notes:
       "## 0.4.5\n\n- Удаление «с данными» сверяет каталог установки\n- Понятные отказы, если каталог или том заняты",
@@ -117,7 +127,7 @@ const checks = {
       ["release", "Получаем сведения о выпуске"],
       ["download", "Скачиваем программу и контрольную сумму"],
       ["checksum", "Проверяем контрольную сумму"],
-      ["attestation", "Проверяем происхождение сборки", "коммит a0c6c556"],
+      ["attestation", "Проверяем происхождение сборки", "коммит a0c6c556", attestationLink],
       ["key", "Проверяем открытый ключ"],
       ["notes", "Читаем описание выпуска"],
     ]),

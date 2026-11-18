@@ -57,8 +57,6 @@ export interface Check {
 	sum_ok: boolean;
 	commit?: string;
 	attest_ok: boolean;
-	// attestation — страница удостоверений сборки: куда ведёт «проверить».
-	attestation?: string;
 	notes?: string;
 	problem?: string;
 	steps: Step[];
@@ -69,6 +67,8 @@ export interface Step {
 	title: string;
 	status: 'pending' | 'running' | 'done' | 'failed';
 	note?: string;
+	// link — действие в строке шага; приходит из Go вместе с итогом шага.
+	link?: { label: string; url: string };
 }
 
 export interface Progress {

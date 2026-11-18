@@ -342,8 +342,25 @@ func TestSignReleasePublication(t *testing.T) {
 			if c.Problem != "" || c.Draft != tt.draft || c.KeyInRelease != tt.keyInTag {
 				t.Fatalf("unexpected check: %+v", c)
 			}
-			if c.Attestation != "https://github.com/test/wynd/attestations" {
-				t.Fatalf("ссылка «проверить» на удостоверение сборки: %q", c.Attestation)
+			// Ссылка «проверить» — в строке шага и только вместе с коммитом:
+			// окно не ждёт ответа всей проверки, чтобы показать кнопку.
+			linked := false
+			for _, p := range checks {
+				for _, s := range p.Steps {
+					if s.ID != "attestation" || s.Link == nil {
+						continue
+					}
+					if !strings.HasPrefix(s.Note, "коммит ") {
+						t.Fatalf("ссылка «проверить» раньше итога шага: %+v", s)
+					}
+					linked = true
+				}
+			}
+			if !linked {
+				t.Fatal("ссылка «проверить» не пришла вместе с коммитом")
+			}
+			if link := c.Steps[3].Link; link == nil || link.URL != "https://github.com/test/wynd/attestations" || link.Label != "проверить" {
+				t.Fatalf("ссылка «проверить» в итоге проверки: %+v", link)
 			}
 			assertProgress(t, checks, "check", "release,download,checksum,attestation,key,notes", "")
 			if len(c.Steps) != 6 || c.Steps[5].Status != "done" {

@@ -180,9 +180,7 @@ type Check struct {
 	// Commit — коммит из удостоверения сборки.
 	Commit string `json:"commit,omitempty"`
 	// AttestOK — exe собран GitHub Actions из этого тега (gh attestation verify).
-	AttestOK bool `json:"attest_ok"`
-	// Attestation — страница удостоверений сборки: куда ведёт «проверить».
-	Attestation string `json:"attestation,omitempty"`
+	AttestOK bool   `json:"attest_ok"`
 	Notes    string `json:"notes,omitempty"`
 	// SelfUpdate — программа с самообновлением: в её сборке должен быть ключ.
 	SelfUpdate bool `json:"self_update"`
@@ -245,7 +243,7 @@ func (g GitHub) FetchWithProgress(ctx context.Context, tag string, report func(P
 	if err != nil {
 		return nil, err
 	}
-	c = &Check{Product: prod.ID, Name: prod.Name, Exe: prod.Exe, Tag: tag, Draft: draft, SelfUpdate: prod.Key != "", Attestation: g.AttestationURL(), dir: dir, exe: filepath.Join(dir, prod.Exe)}
+	c = &Check{Product: prod.ID, Name: prod.Name, Exe: prod.Exe, Tag: tag, Draft: draft, SelfUpdate: prod.Key != "", dir: dir, exe: filepath.Join(dir, prod.Exe)}
 	if _, err := g.gh(ctx, "release", "download", tag, "-R", g.Repo, "-D", dir, "-p", prod.Exe, "-p", prod.Exe+".sha256", "--clobber"); err != nil {
 		c.Close()
 		return nil, fmt.Errorf("скачать выпуск не получилось: %w", err)
@@ -296,7 +294,7 @@ func (g GitHub) FetchWithProgress(ctx context.Context, tag string, report func(P
 		}
 		return c, nil
 	}
-	p.done("attestation", "коммит "+c.Commit[:min(8, len(c.Commit))])
+	p.doneLink("attestation", "коммит "+c.Commit[:min(8, len(c.Commit))], "проверить", g.AttestationURL())
 	if prod.Key != "" {
 		p.start("key")
 		c.PubKey, err = g.releaseKey(ctx, tag, prod.Key)
