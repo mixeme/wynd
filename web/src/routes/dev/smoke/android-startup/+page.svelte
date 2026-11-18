@@ -197,12 +197,12 @@
 				<div class="welcome">
 					{#if unavailable}
 						<div class="welcome-logo"><Logo /></div>
-						<ScreenTitle centered style="font-size:22px;line-height:1.3;margin:0 16px 30px"
-							>Сервер не отвечает</ScreenTitle
-						>
 						{#if pc3CardPreview}
 							{@render serverResponse()}
 						{:else}
+							<ScreenTitle centered style="font-size:22px;line-height:1.3;margin:0 16px 30px"
+								>Сервер не отвечает</ScreenTitle
+							>
 							{@render response()}
 						{/if}
 						<Hint centered style="margin-top:14px"

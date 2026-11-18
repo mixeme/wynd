@@ -62,7 +62,7 @@ if (bundle) {
 const output = path.join(
   root,
   offlineReview
-    ? "dev/screens/shots/android-startup-offline-review-2026-11-18"
+    ? "dev/screens/shots/android-startup-offline-no-title-2026-11-18"
     : bundle
       ? "dev/screens/shots/android-startup-bundle-2026-11-17"
       : startup
@@ -286,6 +286,13 @@ try {
       );
       await capture(`${name}-${width}-retry`, width, height);
       if (name.endsWith("-proposal")) {
+        assert.equal(
+          await evaluate(
+            "document.querySelector('.welcome :is(h1, .h1s)') !== null",
+          ),
+          false,
+          `${name} repeats the status as a heading`,
+        );
         assert.deepEqual(await actions(), before, `${name} actions moved`);
         layoutChecks.push({ name, width, height, offlineActionsStable: true });
       }

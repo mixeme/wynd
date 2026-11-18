@@ -403,7 +403,6 @@
 		<div class="desk-content">
 			<div class="welcome">
 				<div class="welcome-logo"><Logo /></div>
-				<h1>Сервер не отвечает</h1>
 				{#if pc3CardPreview}
 					<ServerRow
 						name={server.name}
@@ -412,6 +411,7 @@
 						card
 					/>
 				{:else}
+					<h1>Сервер не отвечает</h1>
 					<Hint centered>{server.name} · {server.origin.replace(/^https?:\/\//, '')}</Hint>
 				{/if}
 				<Hint centered style="margin-top:14px"
