@@ -1,9 +1,10 @@
 //go:build dev || desktop || bindings
 
 // Wynd Мастерская (план 45): установка и обслуживание Wynd на сервере.
-// Собирается через `wails build` или
-// `wails dev`: без их меток сборки пакет пуст, и ворота основного сервера
-// (go vet, go test ./...) его не трогают. Вся логика — в internal/workshop.
+// Собирается через scripts\build-workshop.bat (`wails3 generate syso` +
+// `go build`) или `wails3 dev`: без их меток сборки пакет пуст, и ворота
+// основного сервера (go vet, go test ./...) его не трогают. Вся логика —
+// в internal/workshop.
 package main
 
 import (
@@ -19,10 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"gitea.mixdep.ru/mix/wynd/internal/workshop"
 	"gitea.mixdep.ru/mix/wynd/internal/version"
@@ -31,8 +29,8 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
-// App — то, что окно может попросить. Методы видны из окна как
-// window.go.main.App.*; пароль дальше Wizard не уходит.
+// App — то, что окно может попросить (main.App.* в биндингах); пароль дальше
+// Wizard не уходит.
 type App struct {
 	mu           sync.Mutex
 	ctx          context.Context
@@ -42,15 +40,19 @@ type App struct {
 	update workshop.SelfUpdate
 }
 
-func (a *App) startup(ctx context.Context) {
+// ServiceStartup и ServiceShutdown — хуки Wails v3: приложение передаёт
+// контекст, который отменяется при закрытии окна.
+func (a *App) ServiceStartup(ctx context.Context, _ application.ServiceOptions) error {
 	a.ctx = ctx
 	workshop.CleanOldSelf()
+	return nil
 }
 
-func (a *App) shutdown(context.Context) {
+func (a *App) ServiceShutdown() error {
 	if a.workshop != nil {
 		a.workshop.Close()
 	}
+	return nil
 }
 
 // HasSavedPassword — лежит ли в связке ключей пароль для этого сервера.
@@ -267,21 +269,21 @@ func (a *App) ApplySelfUpdate() string {
 	if err := exec.Command(path).Start(); err != nil {
 		return err.Error()
 	}
-	runtime.Quit(a.ctx)
+	application.Get().Quit()
 	return ""
 }
 
 // ReleasesPage — страница выпусков Мастерской.
-func (a *App) ReleasesPage() { runtime.BrowserOpenURL(a.ctx, workshop.ReleasesPage) }
+func (a *App) ReleasesPage() { _ = application.Get().Browser.OpenURL(workshop.ReleasesPage) }
 
 // OpenLink открывает ссылку первого запуска в браузере человека.
 func (a *App) OpenLink(url string) {
-	runtime.BrowserOpenURL(a.ctx, url)
+	_ = application.Get().Browser.OpenURL(url)
 }
 
 // CopyText кладёт текст в буфер обмена.
 func (a *App) CopyText(text string) bool {
-	return runtime.ClipboardSetText(a.ctx, text) == nil
+	return application.Get().Clipboard.SetText(text)
 }
 
 // Version — номер версии Мастерской для полосы заголовка (своя рамка окна).
@@ -316,25 +318,28 @@ func main() {
 		err = fmt.Errorf("Не удалось открыть список серверов: %w", err)
 	}
 	app := &App{workshop: store, profileError: err}
-	err = wails.Run(&options.App{
+	program := application.New(application.Options{
+		Name:        "wynd-workshop",
+		Description: "Wynd Мастерская",
+		Services:    []application.Service{application.NewService(app)},
+		Assets:      application.AssetOptions{Handler: application.AssetFileServerFS(assets)},
+	})
+	program.Window.NewWithOptions(application.WebviewWindowOptions{
 		// Своя версия Мастерской, не Wynd (план 45, 2026-10-24).
-		Title:       "Wynd Мастерская [" + workshop.WorkshopVersion + "]",
-		Width:       760,
-		Height:      560,
-		MinWidth:    680,
-		MinHeight:   480,
-		AssetServer: &assetserver.Options{Assets: assets},
+		Title:     "Wynd Мастерская [" + workshop.WorkshopVersion + "]",
+		Width:     760,
+		Height:    560,
+		MinWidth:  680,
+		MinHeight: 480,
 		// Цвет бумаги (--paper): окно не мигает белым, пока грузится страница.
-		BackgroundColour: &options.RGBA{R: 0xF4, G: 0xF0, B: 0xE9, A: 0xFF},
+		BackgroundColour: application.NewRGB(0xF4, 0xF0, 0xE9),
 		// Своя рамка, как на макете (frontend/src/Window.svelte): системный
 		// заголовок на Windows 10 в цвет не перекрашивается. Название окна
 		// выше остаётся — его видно на панели задач.
-		Frameless:  true,
-		OnStartup:  app.startup,
-		OnShutdown: app.shutdown,
-		Bind:       []any{app},
+		Frameless: true,
+		URL:       "/",
 	})
-	if err != nil {
+	if err := program.Run(); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -90,5 +90,7 @@ func TestProfileLoadErrorBlocksWritesWithoutCrashingTheWindow(t *testing.T) {
 	if got := a.ApplySelfUpdate(); got != err.Error() {
 		t.Fatal(got)
 	}
-	a.shutdown(context.Background())
+	if err := a.ServiceShutdown(); err != nil {
+		t.Fatal(err)
+	}
 }

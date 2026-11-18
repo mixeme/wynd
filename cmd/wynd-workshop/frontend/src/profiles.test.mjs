@@ -160,6 +160,9 @@ async function open(t, rows, overrides = {}) {
 	dom.window.document.head.appendChild(stylesheet);
 	dom.window.go = { main: { App: raw } };
 	dom.window.structuredClone = structuredClone;
+	// Runtime v3 при загрузке проверяет необязательный /wails/custom.js через
+	// fetch; в JSDOM его нет — отвечаем «файла нет», как в обычном браузере.
+	dom.window.fetch = async () => ({ ok: false, headers: new Map() });
 	dom.window.eval(code);
 	dom.window.mountWorkshop();
 	t.after(() => dom.window.close());

@@ -1,15 +1,17 @@
 {
 	"fixed": {
-		"file_version": "{{.Info.ProductVersion}}"
+		"file_version": "0.4.5",
+		"product_version": "0.4.5"
 	},
 	"info": {
 		"0419": {
-			"ProductVersion": "{{.Info.ProductVersion}}",
-			"CompanyName": "{{.Info.CompanyName}}",
-			"FileDescription": "{{.Info.ProductName}}",
-			"LegalCopyright": "{{.Info.Copyright}}",
-			"ProductName": "{{.Info.ProductName}}",
-			"Comments": "{{.Info.Comments}}"
+			"FileVersion": "0.4.5",
+			"ProductVersion": "0.4.5",
+			"CompanyName": "Wynd",
+			"FileDescription": "Wynd Мастерская",
+			"LegalCopyright": "AGPL-3.0",
+			"ProductName": "Wynd Мастерская",
+			"Comments": "Ставит Wynd на ваш сервер по SSH"
 		}
 	}
 }

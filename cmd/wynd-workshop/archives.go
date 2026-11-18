@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"gitea.mixdep.ru/mix/wynd/internal/archive"
 )
@@ -93,10 +93,11 @@ func yearsLabel(from, to string) string {
 
 // PickArchives — выбор архивов для объединения.
 func (a *App) PickArchives() []string {
-	paths, err := runtime.OpenMultipleFilesDialog(a.ctx, runtime.OpenDialogOptions{
-		Title:   "Архивы одного круга",
-		Filters: []runtime.FileFilter{{DisplayName: "Архивы Wynd (*.zip)", Pattern: "*.zip"}},
-	})
+	paths, err := application.Get().Dialog.OpenFileWithOptions(&application.OpenFileDialogOptions{
+		Title:                   "Архивы одного круга",
+		Filters:                 []application.FileFilter{{DisplayName: "Архивы Wynd (*.zip)", Pattern: "*.zip"}},
+		AllowsMultipleSelection: true,
+	}).PromptForMultipleSelection()
 	if err != nil {
 		return nil
 	}
@@ -105,26 +106,30 @@ func (a *App) PickArchives() []string {
 
 // PickArchive — один файл: архив (zip) или полный архив круга (wynd).
 func (a *App) PickArchive(full bool) string {
-	filter := runtime.FileFilter{DisplayName: "Архивы Wynd (*.zip)", Pattern: "*.zip"}
+	filter := application.FileFilter{DisplayName: "Архивы Wynd (*.zip)", Pattern: "*.zip"}
 	if full {
-		filter = runtime.FileFilter{DisplayName: "Полный архив круга (*.wynd)", Pattern: "*.wynd"}
+		filter = application.FileFilter{DisplayName: "Полный архив круга (*.wynd)", Pattern: "*.wynd"}
 	}
-	path, _ := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{Filters: []runtime.FileFilter{filter}})
+	path, _ := application.Get().Dialog.OpenFileWithOptions(&application.OpenFileDialogOptions{
+		Filters: []application.FileFilter{filter},
+	}).PromptForSingleSelection()
 	return path
 }
 
 // PickSave — куда сохранить ZIP.
 func (a *App) PickSave(name string) string {
-	path, _ := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		DefaultFilename: name,
-		Filters:         []runtime.FileFilter{{DisplayName: "ZIP", Pattern: "*.zip"}},
-	})
+	path, _ := application.Get().Dialog.SaveFileWithOptions(&application.SaveFileDialogOptions{
+		Filename: name,
+		Filters:  []application.FileFilter{{DisplayName: "ZIP", Pattern: "*.zip"}},
+	}).PromptForSingleSelection()
 	return path
 }
 
 // PickFolder — папка для частей деления.
 func (a *App) PickFolder() string {
-	path, _ := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{})
+	path, _ := application.Get().Dialog.OpenFileWithOptions(&application.OpenFileDialogOptions{
+		CanChooseDirectories: true,
+	}).PromptForSingleSelection()
 	return path
 }
 
@@ -285,5 +290,5 @@ func (a *App) Readable(path, password, out string) ArchiveResult {
 
 // ShowInFolder открывает папку с файлом.
 func (a *App) ShowInFolder(path string) {
-	runtime.BrowserOpenURL(a.ctx, "file:///"+filepath.ToSlash(filepath.Dir(path)))
+	_ = application.Get().Browser.OpenURL("file:///" + filepath.ToSlash(filepath.Dir(path)))
 }

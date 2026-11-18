@@ -15,6 +15,7 @@
 	import Select from '$ui/workshop/Select.svelte';
 	import App from './App.svelte';
 	import Archives from './Archives.svelte';
+	import { Application, Window as ThisWindow } from '@wailsio/runtime';
 	import {
 		backend,
 		type SelfUpdate,
@@ -28,7 +29,13 @@
 		WindowIsMaximised(): Promise<boolean>;
 		Quit(): void;
 	}
-	const rt = (window as unknown as { runtime?: Runtime }).runtime;
+	// Стенд галереи задаёт window.runtime в виде v2; настоящее окно берёт v3.
+	const rt: Runtime = (window as unknown as { runtime?: Runtime }).runtime ?? {
+		WindowMinimise: () => void ThisWindow.Minimise(),
+		WindowToggleMaximise: () => void ThisWindow.ToggleMaximise(),
+		WindowIsMaximised: () => ThisWindow.IsMaximised(),
+		Quit: () => void Application.Quit(),
+	};
 	let maximised = $state(false);
 	let version = $state('');
 	let tab = $state('servers');

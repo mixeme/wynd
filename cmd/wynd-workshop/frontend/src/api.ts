@@ -1,5 +1,9 @@
-// То, что отдаёт Go (internal/workshop). Wails вешает методы App на
-// window.go.main.App; в `wails dev` они есть и в обычном браузере.
+// То, что отдаёт Go (internal/workshop). Wails v3 зовёт сервис main.App по
+// имени (те же имена, что в сгенерированных биндингах); адаптер-посредник не
+// перечисляет методы вручную. Стенд галереи и тест по-прежнему подменяют мост
+// через window.go.
+import { Call } from '@wailsio/runtime';
+
 export type Level = 'ok' | 'note' | 'block';
 
 export interface ConnectInput {
@@ -405,7 +409,17 @@ export function profileBackend(raw: Backend, id: string): Backend {
 	});
 }
 
+// Настоящее окно: каждый метод сервиса main.App зовётся по имени. Объект-
+// посредник избавляет от списка из полусотни методов в адаптере.
+const native = new Proxy({} as Backend, {
+	get(_target, key: string | symbol) {
+		if (typeof key !== 'string') return undefined;
+		return (...args: unknown[]) => Call.ByName(`main.App.${key}`, ...args);
+	}
+});
+
 export function backend(profileID?: string): Backend {
-	const raw = (window as unknown as { go: { main: { App: Backend } } }).go.main.App;
+	const raw =
+		(window as unknown as { go?: { main?: { App?: Backend } } }).go?.main?.App ?? native;
 	return profileID ? profileBackend(raw, profileID) : raw;
 }
