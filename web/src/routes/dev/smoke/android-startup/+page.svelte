@@ -25,6 +25,10 @@
 		? 'start'
 		: (new URLSearchParams(typeof location === 'undefined' ? '' : location.search).get('scene') ??
 			'start');
+	// Вариант ПК3 для приёмки доступен только на dev-стенде.
+	const pc3CardPreview = import.meta.env.DEV && requested === 'pc3-card';
+	const offlineScene =
+		pc3CardPreview || requested === 'offline' || requested === 'offline-checking';
 	let scanning = $state(false);
 	let address = $state('');
 	let photoError = $state('');
@@ -38,7 +42,7 @@
 		address =
 			requested === 'long'
 				? 'family-photos-and-stories.example.org:8443'
-				: ['checking', 'ready', 'error', 'offline', 'offline-checking'].includes(requested)
+				: offlineScene || ['checking', 'ready', 'error'].includes(requested)
 					? 'home.example.org'
 					: '';
 		serverState =
@@ -46,11 +50,11 @@
 				? 'checking'
 				: requested === 'ready' || requested === 'long'
 					? 'ready'
-					: requested === 'error' || requested === 'offline'
+					: requested === 'error' || offlineScene
 						? 'failed'
 						: 'empty';
 		photoError = '';
-		unavailable = requested === 'offline' || requested === 'offline-checking';
+		unavailable = offlineScene;
 		scanning = requested === 'scan';
 	});
 	const checking = $derived(serverState === 'checking');
@@ -151,6 +155,16 @@
 	}
 </script>
 
+{#snippet serverResponse()}
+	<ServerRow
+		name={serverName}
+		subtitle={serverHost}
+		detail="Сервер доступен"
+		connection={checking ? 'checking' : serverState === 'failed' ? 'unavailable' : undefined}
+		card
+	/>
+{/snippet}
+
 {#snippet response()}
 	<div class="server-slot" aria-live="polite" aria-busy={checking}>
 		<!-- Существующая длинная плашка плана 56 задаёт запас по высоте в обеих ширинах.
@@ -165,13 +179,7 @@
 		</div>
 		<div class="server-state">
 			{#if serverState !== 'empty'}
-				<ServerRow
-					name={serverName}
-					subtitle={serverHost}
-					detail="Сервер доступен"
-					connection={checking ? 'checking' : serverState === 'failed' ? 'unavailable' : undefined}
-					card
-				/>
+				{@render serverResponse()}
 			{:else if photoError}<Hint>{photoError}</Hint>{/if}
 		</div>
 	</div>
@@ -192,7 +200,11 @@
 						<ScreenTitle centered style="font-size:22px;line-height:1.3;margin:0 16px 30px"
 							>Сервер не отвечает</ScreenTitle
 						>
-						{@render response()}
+						{#if pc3CardPreview}
+							{@render serverResponse()}
+						{:else}
+							{@render response()}
+						{/if}
 						<Hint centered style="margin-top:14px"
 							>Проверьте сеть. Если сеть есть — сервер выключен или переехал.</Hint
 						>

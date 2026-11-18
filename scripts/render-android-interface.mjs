@@ -11,7 +11,8 @@ import { createServer } from "node:http";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const bundle = process.argv.includes("--startup-bundle");
-const startup = bundle || process.argv.includes("--startup");
+const offlineReview = process.argv.includes("--startup-offline-review");
+const startup = bundle || offlineReview || process.argv.includes("--startup");
 let bundleServer;
 let clientBase = "http://127.0.0.1:5173/dev/smoke/android-startup";
 if (bundle) {
@@ -60,11 +61,13 @@ if (bundle) {
 }
 const output = path.join(
   root,
-  bundle
-    ? "dev/screens/shots/android-startup-bundle-2026-11-17"
-    : startup
-      ? "dev/screens/shots/android-startup-cards-2026-11-17"
-      : "dev/screens/shots/android-interface-preview-2026-11-16",
+  offlineReview
+    ? "dev/screens/shots/android-startup-offline-review-2026-11-18"
+    : bundle
+      ? "dev/screens/shots/android-startup-bundle-2026-11-17"
+      : startup
+        ? "dev/screens/shots/android-startup-cards-2026-11-17"
+        : "dev/screens/shots/android-interface-preview-2026-11-16",
 );
 const profile = path.join(
   root,
@@ -218,7 +221,7 @@ try {
     assert.equal(geometry.width, width);
     assert.equal(geometry.height, height);
     assert.equal(geometry.overflow, false, name);
-    if (startup && name.startsWith("android"))
+    if (offlineReview || (startup && name.startsWith("android")))
       assert.equal(geometry.controlsOutsideViewport, 0, name);
     if (startup && name.startsWith("android") && geometry.feedback)
       assert(
@@ -238,6 +241,67 @@ try {
     });
     console.log(`${name}: ${width}x${height}`);
   }
+  async function captureOfflineReview(width, height) {
+    const frames = [
+      ["android-current", `${clientBase}?scene=offline`],
+      ["android-proposal", `${clientBase}?scene=pc3-card`],
+    ];
+    if (width >= 500) {
+      const desktop = "http://127.0.0.1:5179/__shell/?startupScene=offline";
+      frames.unshift(
+        ["desktop-current", desktop],
+        ["desktop-proposal", desktop + "&pc3-card"],
+      );
+    }
+    const actions = () =>
+      evaluate(`[...document.querySelectorAll('.welcome button')].map(el => {
+        const { x, y, width, height } = el.getBoundingClientRect();
+        return [x, y, width, height];
+      })`);
+    for (const [name, url] of frames) {
+      await navigate(url);
+      await waitElement(".welcome-logo");
+      const hasCard = name !== "desktop-current";
+      await until(
+        () =>
+          evaluate(
+            hasCard
+              ? "document.querySelector('.welcome .server-card:not([aria-hidden=true] *)')?.innerText.includes('Дом Ани')"
+              : "[...document.querySelectorAll('.welcome .hint')].some(el => el.textContent.trim() === 'Дом Ани · home.example.org')",
+          ),
+        name,
+      );
+      await capture(`${name}-${width}-offline`, width, height);
+      const before = await actions();
+      assert.equal(before.length, 2, name);
+      await click("Повторить");
+      await until(
+        () =>
+          evaluate(
+            hasCard
+              ? "document.querySelector('.welcome .server-card:not([aria-hidden=true] *)')?.innerText.includes('Проверяем связь…') && document.querySelector('.welcome button:disabled')?.innerText.trim() === 'Повторить'"
+              : "document.querySelector('.welcome button:disabled')?.innerText.trim() === 'Проверяем…'",
+          ),
+        `${name} retry`,
+      );
+      await capture(`${name}-${width}-retry`, width, height);
+      if (name.endsWith("-proposal")) {
+        assert.deepEqual(await actions(), before, `${name} actions moved`);
+        layoutChecks.push({ name, width, height, offlineActionsStable: true });
+      }
+      if (name === "android-proposal") {
+        await click("Другой сервер");
+        await waitElement(
+          '.welcome input[aria-label="Адрес сервера или приглашение"]',
+        );
+        assert.equal(
+          await evaluate("document.querySelector('.welcome input').value"),
+          "",
+        );
+        layoutChecks.at(-1).returnsToAddress = true;
+      }
+    }
+  }
   await send("Page.enable");
   await send("Runtime.enable");
   await send("Emulation.setEmulatedMedia", {
@@ -249,10 +313,16 @@ try {
     if (location.port === '5179') {
       const offline = new URLSearchParams(location.search).get('startupScene') === 'offline';
       const saved = {name:'Дом Ани',origin:'https://home.example.org'};
+      let checked = false;
+      if (${offlineReview}) window.runtime = {WindowIsMaximised: async () => false};
       window.go = {main:{App:{
         Version: async () => '', CheckSelfUpdate: async () => ({available:false}),
         CurrentServer: async () => offline ? saved : null,
-        CheckCurrent: async () => {throw new Error('Fixture offline')},
+        CheckCurrent: async () => {
+          if (${offlineReview} && checked) return new Promise(() => {});
+          checked = true;
+          throw new Error('Fixture offline');
+        },
         CheckServer: async () => {throw new Error('Fixture address failure')}
       }}};
     }
@@ -296,16 +366,22 @@ try {
     }
   `,
     });
-  for (const [width, height] of [
+  const sizes = [
     [390, 780],
     [360, 640],
-  ]) {
+  ];
+  if (offlineReview) sizes.unshift([500, 640]);
+  for (const [width, height] of sizes) {
     await send("Emulation.setDeviceMetricsOverride", {
       width,
       height,
       deviceScaleFactor: 1,
       mobile: true,
     });
+    if (offlineReview) {
+      await captureOfflineReview(width, height);
+      continue;
+    }
     if (startup) {
       for (const baseline of [true, false]) {
         for (const scene of baseline
@@ -630,6 +706,12 @@ try {
     "web/src/lib/components/overlays/Dialog.svelte",
     "web/src/lib/components/overlays/Scrim.svelte",
     "scripts/render-android-interface.mjs",
+    ...(offlineReview
+      ? [
+          "docs/plans/55-desktop-frames.svelte.txt",
+          "docs/plans/56-server-cards-frames.svelte.txt",
+        ]
+      : []),
     ...(bundle
       ? [
           "web/vite.android-startup.config.ts",
