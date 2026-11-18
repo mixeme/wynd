@@ -1,0 +1,18 @@
+{
+  "beforePid": "9597",
+  "backgroundMs": 180026,
+  "afterPid": "9597",
+  "after": {
+    "invite": "https://invite.example.invalid/i/idle-probe?code=wynd-idle",
+    "sameDocument": true,
+    "width": 360,
+    "height": 728,
+    "dpr": 2
+  },
+  "catalogUnchanged": true,
+  "cleanup": {
+    "packageStopped": true,
+    "catalogUnchanged": true,
+    "reverseRemoved": true
+  }
+}
