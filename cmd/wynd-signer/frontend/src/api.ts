@@ -54,6 +54,8 @@ export interface Check {
 	sum_ok: boolean;
 	commit?: string;
 	attest_ok: boolean;
+	// attestation — страница удостоверений сборки: куда ведёт «проверить».
+	attestation?: string;
 	notes?: string;
 	problem?: string;
 	steps: Step[];

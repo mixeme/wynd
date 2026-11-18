@@ -70,6 +70,13 @@ func (g GitHub) ReleaseURL(tag string) string {
 	return "https://github.com/" + g.Repo + "/releases/tag/" + tag
 }
 
+// AttestationURL — страница удостоверений сборки репозитория: по ней окно
+// даёт ссылку «проверить» на экране выпуска (12в), как полоса обновления
+// Мастерской ведёт на удостоверение сборки.
+func (g GitHub) AttestationURL() string {
+	return "https://github.com/" + g.Repo + "/attestations"
+}
+
 // ErrNoGh — программы gh нет.
 var ErrNoGh = errors.New("нет программы gh (GitHub CLI): поставьте её и войдите — gh auth login")
 
@@ -173,7 +180,9 @@ type Check struct {
 	// Commit — коммит из удостоверения сборки.
 	Commit string `json:"commit,omitempty"`
 	// AttestOK — exe собран GitHub Actions из этого тега (gh attestation verify).
-	AttestOK bool   `json:"attest_ok"`
+	AttestOK bool `json:"attest_ok"`
+	// Attestation — страница удостоверений сборки: куда ведёт «проверить».
+	Attestation string `json:"attestation,omitempty"`
 	Notes    string `json:"notes,omitempty"`
 	// SelfUpdate — программа с самообновлением: в её сборке должен быть ключ.
 	SelfUpdate bool `json:"self_update"`
@@ -236,7 +245,7 @@ func (g GitHub) FetchWithProgress(ctx context.Context, tag string, report func(P
 	if err != nil {
 		return nil, err
 	}
-	c = &Check{Product: prod.ID, Name: prod.Name, Exe: prod.Exe, Tag: tag, Draft: draft, SelfUpdate: prod.Key != "", dir: dir, exe: filepath.Join(dir, prod.Exe)}
+	c = &Check{Product: prod.ID, Name: prod.Name, Exe: prod.Exe, Tag: tag, Draft: draft, SelfUpdate: prod.Key != "", Attestation: g.AttestationURL(), dir: dir, exe: filepath.Join(dir, prod.Exe)}
 	if _, err := g.gh(ctx, "release", "download", tag, "-R", g.Repo, "-D", dir, "-p", prod.Exe, "-p", prod.Exe+".sha256", "--clobber"); err != nil {
 		c.Close()
 		return nil, fmt.Errorf("скачать выпуск не получилось: %w", err)

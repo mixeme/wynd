@@ -84,6 +84,7 @@ const checks = {
     sum_ok: true,
     commit: "6b5964e3",
     attest_ok: true,
+    attestation: "https://github.com/mixeme/wynd/attestations",
     key_in_release: true,
     notes:
       "## 0.3.1\n\n- Служебный порт окна отвечает только ему\n- Чужие страницы не читают ответы",
@@ -108,6 +109,7 @@ const checks = {
     sum_ok: true,
     commit: "a0c6c556",
     attest_ok: true,
+    attestation: "https://github.com/mixeme/wynd/attestations",
     key_in_release: true,
     notes:
       "## 0.4.5\n\n- Удаление «с данными» сверяет каталог установки\n- Понятные отказы, если каталог или том заняты",

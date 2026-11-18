@@ -2,6 +2,7 @@
 	import MarkRow from '$ui/workshop/MarkRow.svelte';
 	import MarkRows from '$ui/workshop/MarkRows.svelte';
 	import Meter from '$ui/forms/Meter.svelte';
+	import TextButton from '$ui/forms/TextButton.svelte';
 
 	// Ход работы Мастерской (план 54): установка, обновление, бэкап, переезд.
 	// Шаги приходят из Go (internal/workshop, StepState).
@@ -12,18 +13,23 @@
 		note?: string;
 		latest?: string;
 		latest_note?: string;
+		// link — действие в строке шага, например «проверить» удостоверение
+		// сборки в «Подписи»; нажимает его onlink, сама StepList ничего не открывает.
+		link?: { label: string; url: string };
 	};
 
 	let {
 		steps,
 		meter = false,
 		class: className = '',
-		style = ''
+		style = '',
+		onlink
 	}: {
 		steps: Step[];
 		meter?: boolean;
 		class?: string;
 		style?: string;
+		onlink?: (url: string) => void;
 	} = $props();
 
 	function mark(step: Step): string {
@@ -44,6 +50,7 @@
 			dim={step.status === 'pending'}
 		>
 			{step.title}{#if step.note}&nbsp;<span class="ins-dim">— {step.note}</span>{/if}
+			{#if step.link}&nbsp;<TextButton class="link under" onclick={() => step.link && onlink?.(step.link.url)}>{step.link.label}</TextButton>{/if}
 			{#if step.latest}<div class="ins-step-latest ins-mono">{step.latest}</div>{/if}
 			{#if step.latest_note}<div class="ins-dim ins-step-note">{step.latest_note}</div>{/if}
 		</MarkRow>

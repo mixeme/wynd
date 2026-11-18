@@ -269,6 +269,12 @@
 	const productName = $derived(check?.name ?? selectedRelease?.name ?? '');
 	const exeFile = $derived(check?.exe ?? selectedRelease?.exe ?? '');
 	const fileName = $derived(filePath.slice(Math.max(filePath.lastIndexOf('\\'), filePath.lastIndexOf('/')) + 1));
+	// Ссылка «проверить» в строке шага удостоверения сборки (12в).
+	const checkStepsShown = $derived(checkSteps.map((s) =>
+		s.id === 'attestation' && check?.attestation
+			? { ...s, link: { label: 'проверить', url: check.attestation } }
+			: s
+	));
 </script>
 
 <svelte:window onfocus={() => { if (screen === 'list' && st && !listing) void list(); }} />
@@ -359,7 +365,7 @@
 		{:else if screen === 'release'}
 			<!-- Проверки, пароль, подпись и итог остаются на одном экране. -->
 			<h2>{productName} {version}</h2>
-			<StepList steps={checkSteps} />
+			<StepList steps={checkStepsShown} onlink={(url) => void backend().OpenLink(url)} />
 			{#if checkError}<Notice tone="bad" alert>{checkError}</Notice>{/if}
 			{#if check?.problem}<Notice tone="bad" alert>{check.problem}. Такой exe подписывать нельзя.</Notice>{/if}
 			{#if signSteps.length}<StepList steps={signSteps} />{/if}

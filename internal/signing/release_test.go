@@ -342,6 +342,9 @@ func TestSignReleasePublication(t *testing.T) {
 			if c.Problem != "" || c.Draft != tt.draft || c.KeyInRelease != tt.keyInTag {
 				t.Fatalf("unexpected check: %+v", c)
 			}
+			if c.Attestation != "https://github.com/test/wynd/attestations" {
+				t.Fatalf("ссылка «проверить» на удостоверение сборки: %q", c.Attestation)
+			}
 			assertProgress(t, checks, "check", "release,download,checksum,attestation,key,notes", "")
 			if len(c.Steps) != 6 || c.Steps[5].Status != "done" {
 				t.Fatalf("final check snapshot: %+v", c.Steps)
