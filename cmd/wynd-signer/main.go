@@ -179,11 +179,22 @@ func (a *App) State() State {
 	return State{KeyPath: s.KeyPath, KeyExists: err == nil, PubPath: pubPath(s.KeyPath)}
 }
 
+// Отмена диалога в Wails v3 — ошибка внутренней библиотеки
+// (internal/go-common-file-dialog: «cancelled by user»), а не пустой путь, как
+// было в v2. Наружу её не отдаём: отмена — это отказ, а не сбой. Импортировать
+// ту библиотеку нельзя (internal модуля Wails), поэтому сверяем текст.
+func dialogCancelled(err error) bool {
+	return err != nil && err.Error() == "cancelled by user"
+}
+
 // ChooseKeyPlace — где хранить новый ключ (12а).
 func (a *App) ChooseKeyPlace(current string) (string, error) {
 	p, err := application.Get().Dialog.SaveFileWithOptions(&application.SaveFileDialogOptions{
 		Title: "Где хранить ключ", Directory: keyDialogDirectory(current), Filename: filepath.Base(current),
 	}).PromptForSingleSelection()
+	if dialogCancelled(err) {
+		return "", nil
+	}
 	if err != nil {
 		return "", fmt.Errorf("Не удалось открыть окно выбора файла: %w", err)
 	}
@@ -196,6 +207,9 @@ func (a *App) ChooseKey() (State, error) {
 	p, err := application.Get().Dialog.OpenFileWithOptions(&application.OpenFileDialogOptions{
 		Title: "Файл ключа подписи", Directory: keyDialogDirectory(s.KeyPath),
 	}).PromptForSingleSelection()
+	if dialogCancelled(err) {
+		return a.State(), nil
+	}
 	if err != nil {
 		return State{}, fmt.Errorf("Не удалось открыть окно выбора файла: %w", err)
 	}

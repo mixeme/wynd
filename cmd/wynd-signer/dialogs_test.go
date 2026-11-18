@@ -3,10 +3,26 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+// Отмена диалога в Wails v3 приходит ошибкой внутренней библиотеки
+// (internal/go-common-file-dialog: «cancelled by user»). Если её не отличить,
+// окно показывает «Не удалось открыть окно выбора файла: cancelled by user»
+// после обычного «Отмена» (найдено живой проверкой 18.11).
+func TestDialogCancelled(t *testing.T) {
+	if !dialogCancelled(errors.New("cancelled by user")) {
+		t.Fatal("v3 cancellation error must be treated as no choice")
+	}
+	for _, err := range []error{nil, errors.New("access denied"), errors.New("cancelled")} {
+		if dialogCancelled(err) {
+			t.Fatalf("%v must stay an error", err)
+		}
+	}
+}
 
 func TestKeyDialogDirectory(t *testing.T) {
 	root := t.TempDir()
