@@ -50,7 +50,10 @@
 			dim={step.status === 'pending'}
 		>
 			{step.title}{#if step.note}&nbsp;<span class="ins-dim">— {step.note}</span>{/if}
-			{#if step.link}&nbsp;<TextButton class="link under" onclick={() => step.link && onlink?.(step.link.url)}>{step.link.label}</TextButton>{/if}
+			{#if step.link}&nbsp;<TextButton
+					class="link under"
+					onclick={() => step.link && onlink?.(step.link.url)}>{step.link.label}</TextButton
+				>{/if}
 			{#if step.latest}<div class="ins-step-latest ins-mono">{step.latest}</div>{/if}
 			{#if step.latest_note}<div class="ins-dim ins-step-note">{step.latest_note}</div>{/if}
 		</MarkRow>
