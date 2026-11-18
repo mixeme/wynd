@@ -1,16 +1,15 @@
 # Черновик обращения в Play Защиту
 
-Не отправлен. Это текст для проверки владельцем, не утверждение о доказанном
-ложном срабатывании. Он относится к заблокированному **debug APK**, а не к
-новому release APK, подписанному постоянным ключом. Приложение, контактный
-адрес и вложения в форму автоматически не передавались.
+18 ноября 2026 года владелец подтвердил отправку обращения. Результат
+пересмотра неизвестен. Ниже сохранён исходный черновик для заблокированного
+**debug APK** `mixeme.wynd.debug` версии 0.1.1-debug. В форме для описания
+действует ограничение в 1000 символов.
 
 Официальный порядок пересмотра:
 [Google Play Protect — Appeals](https://developers.google.com/android/play-protect/warning-dev-guidance#appeals).
-Если форма требует APK или ссылку, точный файл находится локально:
-`D:\android-env\test-releases\candidate-0.1.1.apk`. Публичной ссылки на него нет.
-Подписанный release APK из черновика android-v0.1.0 — другой файл и для этого
-обращения не подходит.
+[Форма Google](https://support.google.com/googleplay/android-developer/contact/protectappeals)
+запрашивает контактный email, имя пакета, SHA-256 APK, загруженного в VirusTotal,
+и описание. Точный файл: `D:\android-env\test-releases\candidate-0.1.1.apk`.
 
 ## Текст
 
@@ -51,9 +50,7 @@ The submitted APK was a local development build. The current repository also
 contains later updater fixes and should not be treated as an exact source
 snapshot of the submitted binary. The APK hash above identifies the file to review.
 
-## Перед отправкой
+## Протокол прогона
 
-Владелец указывает свой контакт в форме и проверяет текст/прилагаемый файл.
-Отправка обращения требует отдельного поручения. Точное описание проверки,
-снимок и отличие от постоянной подписи — в
+Описание проверки, снимок экрана и сведения о подписи сохранены в
 [протоколе](android-updates-2026-11-16.md).
