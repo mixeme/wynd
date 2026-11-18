@@ -1,0 +1,144 @@
+{
+  "firstPid": "6988",
+  "activated": {
+    "url": "https://wynd2.mixfed.ru/",
+    "ready": true,
+    "text": "Войти\nwynd2\nwynd2.mixfed.ru\nТолько по приглашению\nПОЧТА\nПришлём код для входа. Пароля нет.\nПолучить код\nУ меня есть приглашение\nWynd",
+    "login": true,
+    "offline": false,
+    "retry": false,
+    "width": 360,
+    "height": 728,
+    "dpr": 2,
+    "dark": false,
+    "workerStart": 0,
+    "secure": true,
+    "registrations": [
+      {
+        "scope": "https://wynd2.mixfed.ru/",
+        "active": "https://wynd2.mixfed.ru/sw.js",
+        "state": "activated",
+        "installing": null,
+        "waiting": null
+      }
+    ],
+    "controller": null,
+    "caches": [
+      {
+        "key": "workbox-precache-v2-https://wynd2.mixfed.ru/",
+        "entries": 362,
+        "index": true
+      }
+    ]
+  },
+  "online": {
+    "url": "https://wynd2.mixfed.ru/",
+    "ready": true,
+    "text": "Войти\nwynd2\nwynd2.mixfed.ru\nТолько по приглашению\nПОЧТА\nПришлём код для входа. Пароля нет.\nПолучить код\nУ меня есть приглашение",
+    "login": true,
+    "offline": false,
+    "retry": false,
+    "width": 360,
+    "height": 728,
+    "dpr": 2,
+    "dark": false,
+    "workerStart": 6.9000000059604645,
+    "secure": true,
+    "registrations": [
+      {
+        "scope": "https://wynd2.mixfed.ru/",
+        "active": "https://wynd2.mixfed.ru/sw.js",
+        "state": "activated",
+        "installing": null,
+        "waiting": null
+      }
+    ],
+    "controller": "https://wynd2.mixfed.ru/sw.js",
+    "caches": [
+      {
+        "key": "workbox-precache-v2-https://wynd2.mixfed.ru/",
+        "entries": 362,
+        "index": true
+      }
+    ]
+  },
+  "networkProbe": {
+    "error": "TypeError"
+  },
+  "coldPid": "7721",
+  "cold": {
+    "url": "https://wynd2.mixfed.ru/",
+    "ready": true,
+    "text": "Войти\nwynd2\nwynd2.mixfed.ru\nСервер не отвечает\nСервер не отвечает — попробуйте позже\nПОЧТА\nПришлём код для входа. Пароля нет.\nПолучить код\nУ меня есть приглашение\nWynd",
+    "login": true,
+    "offline": true,
+    "retry": false,
+    "width": 360,
+    "height": 728,
+    "dpr": 2,
+    "dark": false,
+    "workerStart": 27.30000001192093,
+    "secure": true,
+    "registrations": [
+      {
+        "scope": "https://wynd2.mixfed.ru/",
+        "active": "https://wynd2.mixfed.ru/sw.js",
+        "state": "activated",
+        "installing": null,
+        "waiting": null
+      }
+    ],
+    "controller": "https://wynd2.mixfed.ru/sw.js",
+    "caches": [
+      {
+        "key": "workbox-precache-v2-https://wynd2.mixfed.ru/",
+        "entries": 362,
+        "index": true
+      }
+    ]
+  },
+  "coldBlockedConnections": 5,
+  "restoredPid": "7894",
+  "recovered": {
+    "url": "https://wynd2.mixfed.ru/",
+    "ready": true,
+    "text": "Войти\nСервер\nwynd2.mixfed.ru\nПроверяем связь…\nПОЧТА\nПришлём код для входа. Пароля нет.\nПолучить код\nWynd",
+    "login": true,
+    "offline": false,
+    "retry": false,
+    "width": 360,
+    "height": 728,
+    "dpr": 2,
+    "dark": false,
+    "workerStart": 33.900000005960464,
+    "secure": true,
+    "registrations": [
+      {
+        "scope": "https://wynd2.mixfed.ru/",
+        "active": "https://wynd2.mixfed.ru/sw.js",
+        "state": "activated",
+        "installing": null,
+        "waiting": null
+      }
+    ],
+    "controller": "https://wynd2.mixfed.ru/sw.js",
+    "caches": [
+      {
+        "key": "workbox-precache-v2-https://wynd2.mixfed.ru/",
+        "entries": 362,
+        "index": true
+      }
+    ]
+  },
+  "tunnels": {
+    "allowed": 4,
+    "blocked": 7,
+    "refused": 241
+  },
+  "cleanup": {
+    "testPackageRemoved": true,
+    "reverseRemoved": true,
+    "originalPackageUnchanged": true,
+    "originalCatalogUnchanged": true
+  }
+}
