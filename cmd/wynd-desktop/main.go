@@ -1,7 +1,8 @@
 //go:build dev || desktop || bindings
 
-// Окно Wynd для компьютера (планы 55 и 61). Собирается через `wails build`
-// или `wails dev`: без их меток сборки пакет пуст, и ворота основного сервера
+// Окно Wynd для компьютера (планы 55 и 61). Собирается через
+// scripts\build-desktop.bat (`wails3 generate syso` + `go build`) или
+// `wails3 dev`: без их меток сборки пакет пуст, и ворота основного сервера
 // (go vet, go test ./...) его не трогают.
 package main
 
@@ -21,11 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/options/windows"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"gitea.mixdep.ru/mix/wynd/internal/desktop"
 )
@@ -33,8 +30,8 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
-// App — то, что окно может попросить. Методы видны как window.go.main.App.*
-// Список серверов — в internal/desktop; токенов и паролей здесь нет.
+// App — то, что окно может попросить (main.App.* в биндингах). Список
+// серверов — в internal/desktop; токенов и паролей здесь нет.
 type App struct {
 	mu       sync.Mutex
 	ctx      context.Context
@@ -46,9 +43,12 @@ type App struct {
 	update desktop.Update
 }
 
-func (a *App) startup(ctx context.Context) {
+// ServiceStartup — хук Wails v3: приложение передаёт контекст, который
+// отменяется при закрытии окна.
+func (a *App) ServiceStartup(ctx context.Context, _ application.ServiceOptions) error {
 	a.ctx = ctx
 	desktop.CleanOldSelf()
+	return nil
 }
 
 // CheckServer проверяет адрес и запоминает сервер выбранным. Ошибка одна:
@@ -327,12 +327,12 @@ func (a *App) ApplySelfUpdate() string {
 	if err := exec.Command(path).Start(); err != nil {
 		return err.Error()
 	}
-	runtime.Quit(a.ctx)
+	application.Get().Quit()
 	return ""
 }
 
 // ReleasesPage — страница выпусков программ Wynd.
-func (a *App) ReleasesPage() { runtime.BrowserOpenURL(a.ctx, desktop.ReleasesPage) }
+func (a *App) ReleasesPage() { _ = application.Get().Browser.OpenURL(desktop.ReleasesPage) }
 
 // windowOrigin — origin страницы окна: сборка Wails на Windows открывается
 // по http://wails.localhost/, `wails dev` — на localhost. Чужому сайту,
@@ -411,37 +411,41 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	app := &App{
+	shell := &App{
 		store:  store,
 		proxy:  proxy,
 		client: &http.Client{Timeout: 12 * time.Second},
 	}
-	if err := app.updateAllowed(); err != nil {
+	if err := shell.updateAllowed(); err != nil {
 		log.Fatal(err)
 	}
-	err = wails.Run(&options.App{
-		Title: "Wynd [" + desktop.Version + "]",
-		// Окно открывается по ширине интерфейса: колонка клиента — до 720
-		// (480 на узком окне), окно не шире неё (решение владельца 10.11.26).
-		Width:       760,
-		Height:      780,
-		MinWidth:    500,
-		MinHeight:   480,
-		AssetServer: &assetserver.Options{Handler: proxy.Handler(http.FileServer(http.FS(shellFS)))},
-		// Цвет бумаги (--paper): окно не мигает белым, пока грузится страница.
-		BackgroundColour: &options.RGBA{R: 0xF4, G: 0xF0, B: 0xE9, A: 0xFF},
-		// Своя рамка (TitleBar), как на утверждённых кадрах; системный
-		// заголовок Windows 10 в цвет бумаги не перекрашивается.
-		Frameless: true,
-		Windows: &windows.Options{
+	app := application.New(application.Options{
+		Name:        "wynd-desktop",
+		Description: "Wynd Настольный",
+		Services:    []application.Service{application.NewService(shell)},
+		Assets:      application.AssetOptions{Handler: proxy.Handler(http.FileServer(http.FS(shellFS)))},
+		Windows: application.WindowsOptions{
 			// Постоянный профиль: сессия и медиа-кэш переживают перезапуск,
 			// данные Wynd из системного профиля не используются.
 			WebviewUserDataPath: filepath.Join(base, "webview"),
 		},
-		OnStartup: app.startup,
-		Bind:      []any{app},
 	})
-	if err != nil {
+	app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title: "Wynd [" + desktop.Version + "]",
+		// Окно открывается по ширине интерфейса: колонка клиента — до 720
+		// (480 на узком окне), окно не шире неё (решение владельца 10.11.26).
+		Width:     760,
+		Height:    780,
+		MinWidth:  500,
+		MinHeight: 480,
+		// Цвет бумаги (--paper): окно не мигает белым, пока грузится страница.
+		BackgroundColour: application.NewRGB(0xF4, 0xF0, 0xE9),
+		// Своя рамка (TitleBar), как на утверждённых кадрах; системный
+		// заголовок Windows 10 в цвет бумаги не перекрашивается.
+		Frameless: true,
+		URL:       "/",
+	})
+	if err := app.Run(); err != nil {
 		log.Fatal(err)
 	}
 }

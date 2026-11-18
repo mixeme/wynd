@@ -1,18 +1,22 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 
-rem Сборка окна "Wynd Настольный" (планы 55, 61 и 63): dist\wynd-desktop.exe
-rem (Wails пишет его в cmd\wynd-desktop\build\bin, скрипт кладёт рядом с сервером).
-rem Собирать именно через wails build: он берёт иконку и описание из
-rem cmd\wynd-desktop\build и вшивает их в exe — обычный go build этого не делает.
+rem Сборка окна "Wynd Настольный" (планы 55, 61 и 63): dist\wynd-desktop.exe.
 rem Открытый ключ экосистемы вшивается в сборку: самообновление ставит только
 rem подписанные выпуски.
-rem Нужны Go, Node и Wails CLI:
-rem   go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
-rem Лишние аргументы уходят в "wails build" как есть, например  build-desktop.bat -clean
+rem
+rem Wails v3 не читает wails.json, а "wails3 build" требует Taskfile, поэтому
+rem шаги явные (план 64): сборка frontend (её dist вшивает main.go), ресурсы exe
+rem (иконка, версия, манифест), затем go build.
+rem Нужны Go, Node и Wails v3 CLI:
+rem   go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
+rem Лишние аргументы уходят в "go build" как есть, например  build-desktop.bat -a
 
 for %%I in ("%~dp0..") do set "WYND_ROOT=%%~fI"
 set "APP_DIR=%WYND_ROOT%\cmd\wynd-desktop"
+set "FRONTEND_DIR=%APP_DIR%\frontend"
+set "SYSO=%APP_DIR%\wynd-desktop.syso"
+set "BIN_DIR=%WYND_ROOT%\dist"
 
 where go >nul 2>&1
 if errorlevel 1 (
@@ -31,13 +35,13 @@ if errorlevel 1 (
 )
 
 rem Wails is usually installed into GOPATH\bin, which is often not on PATH.
-set "WAILS=wails"
-where wails >nul 2>&1
+set "WAILS3=wails3"
+where wails3 >nul 2>&1
 if errorlevel 1 (
-  for /f "delims=" %%G in ('go env GOPATH') do set "WAILS=%%G\bin\wails.exe"
-  if not exist "!WAILS!" (
-    echo ERROR: Wails CLI not found. Install it:
-    echo   go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
+  for /f "delims=" %%G in ('go env GOPATH') do set "WAILS3=%%G\bin\wails3.exe"
+  if not exist "!WAILS3!" (
+    echo ERROR: Wails v3 CLI not found. Install it:
+    echo   go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
     exit /b 1
   )
 )
@@ -45,43 +49,60 @@ if errorlevel 1 (
 rem The frontend build runs out of memory on a small machine without a heap limit.
 if not defined NODE_OPTIONS set "NODE_OPTIONS=--max-old-space-size=3072"
 
-rem main.go embeds frontend\dist, which is not in git. Wails compiles the Go
-rem code for its bindings before it builds the frontend, so on a fresh clone
-rem (GitHub Actions) the embed has nothing to match. A placeholder is enough:
-rem the frontend build replaces the folder's contents.
-if not exist "%APP_DIR%\frontend\dist\" (
-  mkdir "%APP_DIR%\frontend\dist"
-  echo placeholder> "%APP_DIR%\frontend\dist\placeholder.txt"
+echo Building frontend (npm install, npm run build)...
+pushd "%FRONTEND_DIR%"
+call npm install --no-audit --no-fund
+set "BUILD_EXIT=!ERRORLEVEL!"
+if !BUILD_EXIT! equ 0 (
+  call npm run build
+  set "BUILD_EXIT=!ERRORLEVEL!"
+)
+popd
+if !BUILD_EXIT! neq 0 (
+  echo Frontend build failed.
+  exit /b !BUILD_EXIT!
+)
+
+rem main.go embeds frontend\dist; only a fallback for a build without one.
+if not exist "%FRONTEND_DIR%\dist\" (
+  mkdir "%FRONTEND_DIR%\dist"
+  echo placeholder> "%FRONTEND_DIR%\dist\placeholder.txt"
 )
 
 set "SIGNING_KEY="
 if exist "%WYND_ROOT%\signing-key.pub" set /p SIGNING_KEY=<"%WYND_ROOT%\signing-key.pub"
 
-echo Building Wynd Desktop (wails build)...
+echo Generating Windows resources (wails3 generate syso)...
 pushd "%APP_DIR%"
+"%WAILS3%" generate syso -arch amd64 -icon build\windows\icon.ico -manifest build\windows\wails.exe.manifest -info build\windows\info.json -out "%SYSO%"
+set "BUILD_EXIT=!ERRORLEVEL!"
+popd
+if !BUILD_EXIT! neq 0 (
+  if exist "%SYSO%" del /q "%SYSO%"
+  echo wails3 generate syso failed.
+  exit /b !BUILD_EXIT!
+)
+
+if not exist "%BIN_DIR%" mkdir "%BIN_DIR%"
+
+echo Building Wynd Desktop (go build)...
+pushd "%WYND_ROOT%"
 if defined SIGNING_KEY (
   echo Signing key: !SIGNING_KEY!
-  "%WAILS%" build -trimpath -ldflags "-X gitea.mixdep.ru/mix/wynd/internal/desktop.SigningKey=!SIGNING_KEY!" %*
+  go build -trimpath -buildvcs=false -tags "desktop,production" -ldflags "-w -s -H windowsgui -X gitea.mixdep.ru/mix/wynd/internal/desktop.SigningKey=!SIGNING_KEY!" -o "%BIN_DIR%\wynd-desktop.exe" ./cmd/wynd-desktop %*
 ) else (
   echo No signing key: self-update will be off in this build.
-  "%WAILS%" build -trimpath %*
+  go build -trimpath -buildvcs=false -tags "desktop,production" -ldflags "-w -s -H windowsgui" -o "%BIN_DIR%\wynd-desktop.exe" ./cmd/wynd-desktop %*
 )
 set "BUILD_EXIT=!ERRORLEVEL!"
 popd
 
-if !BUILD_EXIT! neq 0 (
-  echo wails build failed.
-  exit /b !BUILD_EXIT!
-)
+rem The .syso belongs to this build only: keep the tree clean afterwards.
+if exist "%SYSO%" del /q "%SYSO%"
 
-rem Wails always writes into build\bin of its project; the result goes to dist
-rem next to the server binary (scripts\build.bat).
-set "BIN_DIR=%WYND_ROOT%\dist"
-if not exist "%BIN_DIR%" mkdir "%BIN_DIR%"
-copy /y "%APP_DIR%\build\bin\wynd-desktop.exe" "%BIN_DIR%\wynd-desktop.exe" >nul
-if errorlevel 1 (
-  echo ERROR: could not copy wynd-desktop.exe to %BIN_DIR%.
-  exit /b 1
+if !BUILD_EXIT! neq 0 (
+  echo go build failed.
+  exit /b !BUILD_EXIT!
 )
 
 echo.
