@@ -9,6 +9,7 @@ body{margin:0;padding:22px;background:#E6E0D7;font-family:"Segoe UI",system-ui,s
 .cap{font-weight:600;font-size:13.5px;margin:0 0 7px}
 .note{font-size:12px;color:#5F5850;line-height:1.5;margin-top:9px}
 .win{width:640px;height:430px;background:var(--paper);border:1px solid #CFC5B8;border-radius:10px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.12);display:flex;flex-direction:column}
+.shot{display:block;width:640px;height:560px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
 .tb{height:34px;display:flex;align-items:center;padding:0 12px;background:#EAE3D8;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}
 .tb b{color:var(--ink);font-weight:600;margin-left:8px}
 .tb .dots{margin-left:auto;letter-spacing:10px;color:var(--muted)}
@@ -1109,75 +1110,24 @@ x86_64
 <p class="note">Утверждено владельцем 2026-10-24, не реализовано. Владелец, 2026-10-23: .wynd для чтения — «Да»; тот же вид, что личный архив (лента `index.html` и страницы записей, читаются без Wynd — владелец, 2026-10-24: «Интернет тут ни при чём»), весь круг целиком — записи и комментарии всех участников; пароль зашифрованного — в окне. Файл без пароля — поля нет. Результат — ZIP, как личный архив, с метаданными: его можно потом делить и объединять (владелец, 2026-10-24: «Просто zip без кнопки открыть»). Его читает любой, у кого он окажется: в нём все записи круга. Готово — строка с файлом и «Показать в папке», без «Открыть ленту».</p>
 </div><div id="f12a" data-frame-id="12а">
 <p class="cap">12а · Подпись: ключа ещё нет</p>
-<div class="win" style="height:560px"><div class="tb">●<b>Wynd Подпись</b><span class="dots">— ▢ ✕</span></div>
-<div class="main">
-<div class="body">
-<h2>Ключ подписи Мастерской</h2>
-<div class="sub">Мастерская обновляется сама, только если новая версия подписана этим ключом. Ключ создаётся один раз.</div>
-<div class="lab">Пароль ключа</div>
-<div class="fld">••••••••••••••</div>
-<div class="lab">Ещё раз</div>
-<div class="fld">••••••••••••••</div>
-<div class="dim" style="margin-top:8px;line-height:1.5">Не короче 12 знаков. Ключ сохранится зашифрованным этим паролем.</div>
-<div class="lab">Где хранить ключ</div>
-<div style="display:flex;gap:8px;align-items:center"><div class="fld mono" style="flex:1">E:\Ключи\workshop-signing.key</div><span class="btn gh" style="padding:7px 12px">Выбрать</span></div>
-<div class="box" style="margin-top:12px;line-height:1.5;border-color:#C9A39A">Сохраните файл ключа и пароль в надёжном месте. Без них ни одну уже розданную Мастерскую больше не обновить: новую версию она не примет.</div>
-<div class="foot"><span class="btn">Создать ключ</span></div>
-</div></div></div>
-<p class="note">Черновик 2026-10-28, не утверждён (план 45, пункт 3а; владелец, 2026-10-26: «Запиши задачу собрать GUI помощника для подписи файлов Мастерской»). Отдельное окно «Wynd Подпись» — не вкладка Мастерской: подпись нужна только тому, кто выпускает Мастерскую, а ключ не должен жить в программе, которую раздают людям. Делает то же, что scripts\sign-workshop.bat keygen. Где хранить ключ — выбирает владелец (владелец, 2026-10-28: «Я хочу выбирать место, где лежит ключ»): папка, флешка, зашифрованный диск; окно запоминает выбранное на этом компьютере и само ключ никуда не копирует. Пароль и его повтор не совпали — под вторым полем «Пароли не совпадают»; «Создать ключ» неяркая, пока пароль короче 12 знаков. Ключ уже есть — окно открывается сразу кадром 12б. После «Создать ключ» — открытый ключ записан в cmd\wynd-workshop\signing-key.pub; строка под рамкой просит его закоммитить (сам окно не коммитит).</p>
+<img class="shot" src="../testing/signer-frames-2026-11-17/12a-klyucha-net.png" width="640" height="560" alt="Окно «Wynd Подпись»: ключа ещё нет — пароль и повтор, где хранить ключ, «Создать ключ» неактивна">
+<p class="note">Принято владельцем 2026-11-18. Настоящий снимок окна «Wynd Подпись» (640 × 560, светлая тема), снят из текущего интерфейса через стенд `cmd/wynd-signer/frontend/mock/mock.html`; данные стенда и адреса — `docs/testing/signer-frames-2026-11-17/README.md`. Старый черновик 2026-10-28 не является основой. «Создать ключ» неяркая, пока пароль короче 12 знаков.</p>
 </div><div id="f12b" data-frame-id="12б">
-<p class="cap">12б · Подпись: выпуски Мастерской</p>
-<div class="win" style="height:560px"><div class="tb">●<b>Wynd Подпись</b><span class="dots">— ▢ ✕</span></div>
-<div class="main">
-<div class="body">
-<h2>Выпуски Мастерской</h2>
-<div class="sub">Ключ — E:\Ключи\workshop-signing.key <span class="under">другой</span></div>
-<div class="row"><span class="ic w">●</span><div style="flex:1">Мастерская 0.3.0 <span class="dim">— черновик, не подписан</span></div><span class="under">подписать</span></div>
-<div class="row"><span class="ic ok">✓</span><div style="flex:1">Мастерская 0.2.0 <span class="dim">— опубликован 26 октября, без подписи</span></div></div>
-<div class="row"><span class="ic ok">✓</span><div style="flex:1">Мастерская 0.1.0 <span class="dim">— опубликован 25 октября, без подписи</span></div></div>
-<div class="row" style="margin-top:14px"><span class="ic">↓</span><div style="flex:1">Подписать файл на этом компьютере</div><span class="under">выбрать</span></div>
-</div></div></div>
-<p class="note">Черновик 2026-10-28, не утверждён. Строка ключа — где окно его ищет; «другой» — выбрать файл ключа (флешку вставили в другой порт, ключ переложили). Ключа по этому пути нет — вместо строки рамка «Ключ не найден: …» и «Выбрать». Список — у GitHub (как gh release list): у черновика «подписать», у опубликованных — дата и есть ли подпись. «Подписать файл на этом компьютере» — то же, что sign-workshop.bat file: выбрать exe, ввести пароль, рядом ляжет .sig.</p>
+<p class="cap">12б · Подпись: выпуски</p>
+<img class="shot" src="../testing/signer-frames-2026-11-17/12b-vypuski.png" width="640" height="560" alt="Окно «Wynd Подпись»: список выпусков — ключ, черновики 0.3.1 и 0.4.5, опубликованная 0.4.4, «Подписать файл на этом компьютере»">
+<p class="note">Принято владельцем 2026-11-18. Настоящий снимок списка выпусков: ключ и «другой», черновики «Wynd Настольный 0.3.1» и «Wynd Мастерская 0.4.5» с «подписать», опубликованная 0.4.4 с подписью, отдельная строка «Подписать файл на этом компьютере». Данные стенда — `docs/testing/signer-frames-2026-11-17/README.md`; старый черновик 2026-10-28 не является основой.</p>
 </div><div id="f12v" data-frame-id="12в">
-<p class="cap">12в · Подпись: черновик 0.3.0</p>
-<div class="win" style="height:560px"><div class="tb">●<b>Wynd Подпись</b><span class="dots">— ▢ ✕</span></div>
-<div class="main">
-<div class="body">
-<h2>Мастерская 0.3.0</h2>
-<div class="row"><span class="ic ok">✓</span><div>Скачан wynd-workshop.exe <span class="dim">— 16 МБ</span></div></div>
-<div class="row"><span class="ic ok">✓</span><div>Сумма сходится с той, что в выпуске</div></div>
-<div class="row"><span class="ic ok">✓</span><div>Собран GitHub Actions из тега workshop-v0.3.0 <span class="dim">— коммит 4e7c2496</span></div></div>
-<div class="lab">Пароль ключа</div>
-<div class="fld">••••••••••••••</div>
-<div class="lab">Что нового — из выпуска</div>
-<div class="box" style="margin-top:0;line-height:1.5"><div>- Мастерская находит Wynd, поставленный не ею и не так, как ставит она, и умеет перевезти его на другой сервер.</div><div>- Переезд такого Wynd: на новом сервере обычная установка со своим веб-сервером и сертификатом.</div></div>
-<div class="foot"><span class="btn">Подписать и опубликовать</span><span class="btn gh">Назад</span></div>
-</div></div></div>
-<p class="note">Черновик 2026-10-28, не утверждён. Проверки — до пароля и сами: скачать exe, сверить сумму и удостоверение сборки по тегу (как sign-workshop.bat workshop-vX.Y.Z). Не сошлось — строка с «!», поля пароля и кнопки нет: такой exe подписывать нельзя. «Подписать и опубликовать» — подпись, проверка подписи открытым ключом из репозитория, выгрузка .sig в черновик, «Что нового» в текст выпуска, публикация. Неверный пароль — под полем «Пароль не подошёл». «Что нового» не пишется в окне (владелец, 2026-10-28: «не писать вручную Что нового»): раздел этой версии из cmd/wynd-workshop/whatsnew.md в теге выпуска — его пишут вместе с подъёмом номера Мастерской, как «Что нового» Wynd в notes.ts. Раздела нет — рамка «В whatsnew.md нет раздела 0.3.0», кнопка — «Подписать» (без публикации).</p>
+<p class="cap">12в · Подпись: выпуск 0.4.5</p>
+<img class="shot" src="../testing/signer-frames-2026-11-17/12v-proverka-chernovika.png" width="640" height="560" alt="Окно «Wynd Подпись»: выпуск 0.4.5 — этапы проверки пройдены, ссылка «проверить» у удостоверения сборки, поле пароля, «Что нового», «Подписать и опубликовать»">
+<p class="note">Принято владельцем 2026-11-18. Настоящий снимок экрана выпуска: этапы проверки пройдены, у «Проверяем происхождение сборки» ссылка «проверить» ведёт на страницу удостоверений сборки GitHub, поле пароля, «Что нового — из выпуска», «Подписать и опубликовать». Старый черновик 2026-10-28 не является основой.</p>
 </div><div id="f12g" data-frame-id="12г">
-<p class="cap">12г · Подпись: выпуск подписан и опубликован</p>
-<div class="win" style="height:560px"><div class="tb">●<b>Wynd Подпись</b><span class="dots">— ▢ ✕</span></div>
-<div class="main">
-<div class="body">
-<h2>Мастерская 0.3.0 опубликована</h2>
-<div class="sub">Подпись проверена открытым ключом из репозитория.</div>
-<div class="box" style="line-height:1.5">Подпись wynd-workshop.exe.sig выложена в выпуск на GitHub, рядом с exe и его суммой. На этом компьютере ничего не осталось: exe скачивался только для проверки.</div>
-<div class="foot"><span class="btn">Открыть выпуск</span><span class="btn gh">К выпускам</span></div>
-</div></div></div>
-<p class="note">Черновик 2026-10-28, не утверждён (владелец, 2026-10-28: «Где будет лежать подписанный файл?» — «Да» на итоговую строку). Подпись не меняет exe: это отдельный файл .sig, Мастерская при самообновлении скачивает оба и сверяет их. «Открыть выпуск» — страница выпуска на GitHub в браузере. Без раздела в whatsnew.md (12в) заголовок — «Мастерская 0.3.0 подписана», в рамке — «…выложена в черновик выпуска на GitHub. Черновик не опубликован: в whatsnew.md нет раздела 0.3.0.».</p>
+<p class="cap">12г · Подпись: выпуск 0.4.5 подписан и опубликован</p>
+<img class="shot" src="../testing/signer-frames-2026-11-17/12g-podpisan-opublikovan.png" width="640" height="560" alt="Окно «Wynd Подпись»: выпуск подписан и опубликован — этапы пройдены, итог, «Открыть выпуск» и «К выпускам»">
+<p class="note">Принято владельцем 2026-11-18. Настоящий снимок конца экрана после подписи и публикации: итог, «Открыть выпуск» и «К выпускам». Кадр снят с прокруткой вниз — экран длиннее окна. Старый черновик 2026-10-28 не является основой.</p>
 </div><div id="f12d" data-frame-id="12д">
 <p class="cap">12д · Подпись: подписан файл на этом компьютере</p>
-<div class="win" style="height:560px"><div class="tb">●<b>Wynd Подпись</b><span class="dots">— ▢ ✕</span></div>
-<div class="main">
-<div class="body">
-<h2>Файл подписан</h2>
-<div class="sub">Подпись проверена открытым ключом из репозитория.</div>
-<div class="lab">Подпись</div>
-<div class="fld mono">D:\Сборки\wynd-workshop.exe.sig</div>
-<div class="dim" style="margin-top:8px;line-height:1.5">Рядом с D:\Сборки\wynd-workshop.exe. Сам exe не изменился: Мастерская примет его только вместе с этим файлом.</div>
-<div class="foot"><span class="btn">Показать в папке</span><span class="btn gh">К выпускам</span></div>
-</div></div></div>
-<p class="note">Черновик 2026-10-28, не утверждён. То же, что sign-workshop.bat file: .sig ложится в папку exe под его именем с .sig. Такой .sig уже был — перезаписывается (старая подпись того же exe тем же ключом ничем не отличается).</p>
+<img class="shot" src="../testing/signer-frames-2026-11-17/12d-fayl-podpisan.png" width="640" height="560" alt="Окно «Wynd Подпись»: файл подписан — путь .sig, «Показать в папке», «К выпускам»">
+<p class="note">Принято владельцем 2026-11-18. Настоящий снимок «Файл подписан»: путь .sig, «Показать в папке», «К выпускам». Подпись — отдельный файл рядом с exe; сам exe не меняется. Старый черновик 2026-10-28 не является основой.</p>
 </div>
 <!-- C70_START -->
 <div id="c70" style="grid-column:1/-1"><h2>C70 · Веб-сервер на другой машине</h2><p class="note">Реализация отложена владельцем 5 ноября 2026. Решение о поддержке и эти восемь кадров сохранены; кадры не согласованы, в утверждение от 3 ноября не входят. Это макет: подключения, установка и проверка сайта не выполняются. Фрагмент Apache иллюстрирует адрес, полный пример появится при реализации.</p><a href="workshop-servers.fragment.html#c70-mode">Открыть интерактивный просмотр — группа «Внешний прокси — C70»</a></div>
