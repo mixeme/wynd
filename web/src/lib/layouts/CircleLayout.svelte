@@ -3,7 +3,7 @@
 	import { CIRCLE_COLORS } from '$lib/theme/colors';
 	import { getContext } from 'svelte';
 	import type { VoiceTake } from '$lib/media/voiceRecorder.svelte';
-	import { goto } from '$app/navigation';
+	import { openCircleTab } from '$lib/navigation/circleTabs';
 	import CircleBar, {
 		CIRCLE_TAB_PATHS,
 		visibleCircleTabs,
@@ -176,9 +176,9 @@
 		leaving = dir > 0 ? -width : width;
 		leavingTab = tab;
 		setTimeout(() => {
-			const suffix = CIRCLE_TAB_PATHS[tab];
-			// Свайп — тот же шаг истории, что и нажатие вкладки (C89).
-			void goto(suffix ? `/circles/${circleId}${suffix}` : `/circles/${circleId}`).finally(() => {
+			// Свайп — то же переключение вкладки: заменяем запись истории, чтобы
+			// «Назад» не шло обратно по вкладкам (18.11).
+			void openCircleTab(circleId, CIRCLE_TAB_PATHS[tab]).finally(() => {
 				leaving = 0;
 			});
 		}, 160);

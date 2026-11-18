@@ -18,6 +18,7 @@
 
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { openCircleTab } from '$lib/navigation/circleTabs';
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import SearchField from '$ui/forms/SearchField.svelte';
 	import Avatar from '$ui/data/Avatar.svelte';
@@ -100,12 +101,12 @@
 		const t = tab as CircleTab;
 		const again = t === active;
 		active = t;
-		// Шаг истории, а не замена: «Назад» должна вернуть туда, откуда пришли,
-		// а не в список кругов (C89). Повторное нажатие на открытую вкладку
-		// только поднимает экран наверх — адрес не меняется.
+		// Замена записи, а не шаг: вкладки — виды одного экрана. Иначе «Назад»
+		// идёт обратно по переключениям, а не туда, откуда открыли круг
+		// (владелец, 18.11). Повторное нажатие на открытую вкладку только
+		// поднимает экран наверх — адрес не меняется.
 		if (!circleId || again) return;
-		const suffix = tabPaths[t];
-		goto(suffix ? `/circles/${circleId}${suffix}` : `/circles/${circleId}`);
+		void openCircleTab(circleId, tabPaths[t]);
 	}
 </script>
 
