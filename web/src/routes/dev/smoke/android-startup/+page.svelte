@@ -25,10 +25,7 @@
 		? 'start'
 		: (new URLSearchParams(typeof location === 'undefined' ? '' : location.search).get('scene') ??
 			'start');
-	// Вариант ПК3 для приёмки доступен только на dev-стенде.
-	const pc3CardPreview = import.meta.env.DEV && requested === 'pc3-card';
-	const offlineScene =
-		pc3CardPreview || requested === 'offline' || requested === 'offline-checking';
+	const offlineScene = requested === 'offline' || requested === 'offline-checking';
 	let scanning = $state(false);
 	let address = $state('');
 	let photoError = $state('');
@@ -197,14 +194,7 @@
 				<div class="welcome">
 					{#if unavailable}
 						<div class="welcome-logo"><Logo /></div>
-						{#if pc3CardPreview}
-							{@render serverResponse()}
-						{:else}
-							<ScreenTitle centered style="font-size:22px;line-height:1.3;margin:0 16px 30px"
-								>Сервер не отвечает</ScreenTitle
-							>
-							{@render response()}
-						{/if}
+						{@render serverResponse()}
 						<Hint centered style="margin-top:14px"
 							>Проверьте сеть. Если сеть есть — сервер выключен или переехал.</Hint
 						>

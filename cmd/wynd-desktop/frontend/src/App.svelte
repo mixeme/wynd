@@ -32,8 +32,6 @@
 	} from './api';
 
 	const rt = runtime();
-	// Кадр ПК3 для приёмки вёрстки на Vite-стенде.
-	const pc3CardPreview = import.meta.env.DEV && new URLSearchParams(location.search).has('pc3-card');
 	let version = $state('');
 	let update = $state<Update | null>(null);
 	let updateHidden = $state(false);
@@ -403,25 +401,19 @@
 		<div class="desk-content">
 			<div class="welcome">
 				<div class="welcome-logo"><Logo /></div>
-				{#if pc3CardPreview}
-					<ServerRow
-						name={server.name}
-						subtitle={server.origin.replace(/^https?:\/\//, '')}
-						connection={checking ? 'checking' : 'unavailable'}
-						card
-					/>
-				{:else}
-					<h1>Сервер не отвечает</h1>
-					<Hint centered>{server.name} · {server.origin.replace(/^https?:\/\//, '')}</Hint>
-				{/if}
+				<ServerRow
+					name={server.name}
+					subtitle={server.origin.replace(/^https?:\/\//, '')}
+					connection={checking ? 'checking' : 'unavailable'}
+					card
+				/>
 				<Hint centered style="margin-top:14px"
 					>Проверьте сеть. Если сеть есть — сервер выключен или переехал.</Hint
 				>
 				<Button
 					style="margin-top:22px"
-					stableHeight={pc3CardPreview}
+					stableHeight
 					loading={checking}
-					loadingLabel={pc3CardPreview ? undefined : 'Проверяем…'}
 					onclick={() => void retry()}
 				>
 					Повторить

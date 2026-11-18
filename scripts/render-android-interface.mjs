@@ -62,7 +62,7 @@ if (bundle) {
 const output = path.join(
   root,
   offlineReview
-    ? "dev/screens/shots/android-startup-offline-no-title-2026-11-18"
+    ? "dev/screens/shots/android-pc3-implementation-2026-11-18"
     : bundle
       ? "dev/screens/shots/android-startup-bundle-2026-11-17"
       : startup
@@ -242,16 +242,10 @@ try {
     console.log(`${name}: ${width}x${height}`);
   }
   async function captureOfflineReview(width, height) {
-    const frames = [
-      ["android-current", `${clientBase}?scene=offline`],
-      ["android-proposal", `${clientBase}?scene=pc3-card`],
-    ];
+    const frames = [["android", `${clientBase}?scene=offline`]];
     if (width >= 500) {
       const desktop = "http://127.0.0.1:5179/__shell/?startupScene=offline";
-      frames.unshift(
-        ["desktop-current", desktop],
-        ["desktop-proposal", desktop + "&pc3-card"],
-      );
+      frames.unshift(["desktop", desktop]);
     }
     const actions = () =>
       evaluate(`[...document.querySelectorAll('.welcome button')].map(el => {
@@ -261,13 +255,10 @@ try {
     for (const [name, url] of frames) {
       await navigate(url);
       await waitElement(".welcome-logo");
-      const hasCard = name !== "desktop-current";
       await until(
         () =>
           evaluate(
-            hasCard
-              ? "document.querySelector('.welcome .server-card:not([aria-hidden=true] *)')?.innerText.includes('Дом Ани')"
-              : "[...document.querySelectorAll('.welcome .hint')].some(el => el.textContent.trim() === 'Дом Ани · home.example.org')",
+            "document.querySelector('.welcome .server-card')?.innerText.includes('Сервер не отвечает')",
           ),
         name,
       );
@@ -278,25 +269,21 @@ try {
       await until(
         () =>
           evaluate(
-            hasCard
-              ? "document.querySelector('.welcome .server-card:not([aria-hidden=true] *)')?.innerText.includes('Проверяем связь…') && document.querySelector('.welcome button:disabled')?.innerText.trim() === 'Повторить'"
-              : "document.querySelector('.welcome button:disabled')?.innerText.trim() === 'Проверяем…'",
+            "document.querySelector('.welcome .server-card')?.innerText.includes('Проверяем связь…') && document.querySelector('.welcome button:disabled')?.innerText.trim() === 'Повторить'",
           ),
         `${name} retry`,
       );
       await capture(`${name}-${width}-retry`, width, height);
-      if (name.endsWith("-proposal")) {
-        assert.equal(
-          await evaluate(
-            "document.querySelector('.welcome :is(h1, .h1s)') !== null",
-          ),
-          false,
-          `${name} repeats the status as a heading`,
-        );
-        assert.deepEqual(await actions(), before, `${name} actions moved`);
-        layoutChecks.push({ name, width, height, offlineActionsStable: true });
-      }
-      if (name === "android-proposal") {
+      assert.equal(
+        await evaluate(
+          "document.querySelector('.welcome :is(h1, .h1s)') !== null",
+        ),
+        false,
+        `${name} repeats the status as a heading`,
+      );
+      assert.deepEqual(await actions(), before, `${name} actions moved`);
+      const check = { name, width, height, offlineActionsStable: true };
+      if (name === "android") {
         await click("Другой сервер");
         await waitElement(
           '.welcome input[aria-label="Адрес сервера или приглашение"]',
@@ -305,8 +292,9 @@ try {
           await evaluate("document.querySelector('.welcome input').value"),
           "",
         );
-        layoutChecks.at(-1).returnsToAddress = true;
+        check.returnsToAddress = true;
       }
+      layoutChecks.push(check);
     }
   }
   await send("Page.enable");
@@ -443,6 +431,9 @@ try {
               "address error",
             );
           if (!baseline && scene !== "start") {
+            const selector = scene.startsWith("offline")
+              ? ".welcome .server-card"
+              : ".server-state";
             const caption =
               scene === "checking" || scene === "offline-checking"
                 ? "Проверяем связь…"
@@ -452,7 +443,7 @@ try {
             await until(
               () =>
                 evaluate(
-                  `document.querySelector('.server-state')?.textContent.includes(${JSON.stringify(caption)})`,
+                  `document.querySelector(${JSON.stringify(selector)})?.textContent.includes(${JSON.stringify(caption)})`,
                 ),
               caption,
             );
@@ -540,7 +531,7 @@ try {
       await until(
         () =>
           evaluate(
-            `document.querySelector('.server-state')?.textContent.includes('Сервер не отвечает')`,
+            `document.querySelector('.welcome .server-card')?.textContent.includes('Сервер не отвечает')`,
           ),
         "offline retry check",
       );
@@ -607,7 +598,7 @@ try {
         await until(
           () =>
             evaluate(
-              `document.querySelector('.welcome-logo') && document.querySelector('.server-state')?.textContent.includes('Дом Ани')`,
+              `document.querySelector('.welcome-logo') && document.querySelector('.welcome .server-card')?.textContent.includes('Дом Ани')`,
             ),
           "native unavailable",
         );
