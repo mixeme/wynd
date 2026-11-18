@@ -1,5 +1,8 @@
-// То, что отдаёт Go (cmd/wynd-signer/main.go). Wails вешает методы App на
-// window.go.main.App.
+// То, что отдаёт Go (cmd/wynd-signer/main.go). Wails v3 зовётся по имени
+// сервиса main.App (те же имена, что в сгенерированных биндингах); адаптер
+// написан руками, чтобы проверки фронтенда не требовали CLI wails3.
+// mock-стенд (mock/mock.js) по-прежнему подменяет мост через window.go.
+import { Call, Events } from '@wailsio/runtime';
 
 export interface State {
 	key_path: string;
@@ -80,7 +83,8 @@ export function watchProgress(callback: (progress: Progress) => void): () => voi
 	const rt = (window as unknown as {
 		runtime?: { EventsOn(name: string, callback: (progress: Progress) => void): () => void };
 	}).runtime;
-	return rt?.EventsOn('signer:progress', callback) ?? (() => {});
+	if (rt?.EventsOn) return rt.EventsOn('signer:progress', callback);
+	return Events.On('signer:progress', (event) => callback(event.data as Progress));
 }
 
 interface Backend {
@@ -98,6 +102,23 @@ interface Backend {
 	ShowInFolder(path: string): Promise<void>;
 }
 
+const native: Backend = {
+	State: () => Call.ByName('main.App.State'),
+	ChooseKeyPlace: (current) => Call.ByName('main.App.ChooseKeyPlace', current),
+	ChooseKey: () => Call.ByName('main.App.ChooseKey'),
+	CreateKey: (path, pass) => Call.ByName('main.App.CreateKey', path, pass),
+	Releases: () => Call.ByName('main.App.Releases'),
+	CheckRelease: (tag, requestId) => Call.ByName('main.App.CheckRelease', tag, requestId),
+	SignRelease: (checkId, tag, requestId, pass) =>
+		Call.ByName('main.App.SignRelease', checkId, tag, requestId, pass),
+	PickExe: () => Call.ByName('main.App.PickExe'),
+	FileSize: (path) => Call.ByName('main.App.FileSize', path),
+	SignFile: (path, pass) => Call.ByName('main.App.SignFile', path, pass),
+	OpenLink: (url) => Call.ByName('main.App.OpenLink', url),
+	ShowInFolder: (path) => Call.ByName('main.App.ShowInFolder', path),
+};
+
 export function backend(): Backend {
-	return (window as unknown as { go: { main: { App: Backend } } }).go.main.App;
+	const mock = (window as unknown as { go?: { main?: { App?: Backend } } }).go?.main?.App;
+	return mock ?? native;
 }

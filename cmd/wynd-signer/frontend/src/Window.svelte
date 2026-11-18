@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Application, Window as ThisWindow } from '@wailsio/runtime';
 	import TitleBar from '$ui/workshop/TitleBar.svelte';
 	import App from './App.svelte';
 
@@ -9,10 +10,16 @@
 		WindowIsMaximised(): Promise<boolean>;
 		Quit(): void;
 	}
-	const rt = (window as unknown as { runtime?: Runtime }).runtime;
+	// mock-стенд задаёт window.runtime в виде v2; настоящее окно берёт v3.
+	const rt: Runtime = (window as unknown as { runtime?: Runtime }).runtime ?? {
+		WindowMinimise: () => void ThisWindow.Minimise(),
+		WindowToggleMaximise: () => void ThisWindow.ToggleMaximise(),
+		WindowIsMaximised: () => ThisWindow.IsMaximised(),
+		Quit: () => void Application.Quit(),
+	};
 	let maximised = $state(false);
 	async function syncMaximised() {
-		maximised = (await rt?.WindowIsMaximised().catch(() => false)) ?? false;
+		maximised = (await rt.WindowIsMaximised().catch(() => false)) ?? false;
 	}
 	void syncMaximised();
 </script>
@@ -23,9 +30,9 @@
 	<TitleBar
 		title="Wynd Подпись"
 		{maximised}
-		onminimise={() => rt?.WindowMinimise()}
-		ontoggle={() => rt?.WindowToggleMaximise()}
-		onclose={() => rt?.Quit()}
+		onminimise={() => rt.WindowMinimise()}
+		ontoggle={() => rt.WindowToggleMaximise()}
+		onclose={() => rt.Quit()}
 	/>
 	<App />
 </div>

@@ -1,7 +1,7 @@
 # План 64. Миграция окон на Wails v3 (C94) — подготовка
 
 **Создан:** 2026-11-17.
-**Статус:** подготовка выполнена, миграция не начата. Старт — по решению владельца.
+**Статус:** миграция начата 2026-11-18; пилот «Подпись» переведён на v3 в ветке `wails-v3`, сборка exe и живая проверка впереди (см. §7).
 **Основание:** C94 (план 46) — v3 вышла из беты (v3.0.0 — 26.10.2026, v3.1.0 — Latest); повод — потребности C66 (трей, системные уведомления, работа при закрытом окне).
 
 ## 1. Инструменты — подготовлены и проверены 17.11
@@ -73,3 +73,31 @@
 2. Целевая версия — v3.1.0 (Latest) или свежее к моменту старта.
 3. Окнам, которые остаются на v2 во время поэтапного переезда: поднимать ли их до v2.17.1 (IPC-уязвимость Linux нас не касается — окна на Windows), или не трогать до полного перехода.
 4. По C66: если системные уведомления в v3 не подтвердятся — решать, ждать ли их в v3.2 или брать иной механизм.
+
+## 7. Ход миграции
+
+### 2026-11-18 — пилот «Подпись» (ветка `wails-v3`)
+
+Владелец выбрал пилот «Подпись». Сделано:
+
+- `go.mod`: добавлен `github.com/wailsapp/wails/v3 v3.1.0` рядом с v2.16.0; `go mod tidy` (v3 — прямая зависимость).
+- **Общие зависимости поднялись.** v3.1.0 требует `modernc.org/sqlite v1.44.3` (было 1.36.1), поэтому MVS поднял sqlite/libc/memory, `x/crypto` 0.57, `x/sys` 0.48, `x/net` 0.60, `x/text` 0.42, `x/exp`, go-colorable 0.1.14, go-strftime 1.0.0. Сервер и все окна компилируются, но полные ворота `scripts\test.bat` с новым sqlite ещё не прогонялись — обязательный пункт перед слиянием.
+- `cmd/wynd-signer/main.go`: `application.New` + `NewService`, `ServiceStartup`/`ServiceShutdown`, окно `app.Window.NewWithOptions` (640×560, мин 560×480, `Frameless`, фон F4F0E9), диалоги `app.Dialog…PromptForSingleSelection`, прогресс `app.Event.Emit`, ссылки `app.Browser.OpenURL`.
+- `frontend`: добавлен `@wailsio/runtime 3.1.0`; `api.ts` зовёт `Call.ByName("main.App.*")`; `watchProgress` — `Events.On` с запасным путём для mock (`window.runtime.EventsOn`); `Window.svelte` — `Window`/`Application` из рантайма с тем же запасным путём. `mock/mock.js` не менялся.
+- **Отклонение от §4:** сгенерированные биндинги не импортируются. `wails3 generate bindings -ts -names -f "-tags desktop" .` проверен (321 пакет, 1 сервис, 12 методов, 6 моделей; имена `main.App.*`), но импорт каталога `frontend/bindings` заставил бы `test-desktop.bat` и CI требовать CLI wails3. Поэтому `api.ts` остался ручным типизированным адаптером, как v2 `window.go`; каталог bindings не коммитится (удалён после проверки).
+- `build/windows/info.json` и `wails.exe.manifest`: v2-шаблоны (`{{.Info.*}}`, `{{.Name}}`) заменены конкретными значениями (Wynd Подпись 0.2.0, `com.wynd.signer`, `asInvoker`) — генератор v3 шаблоны не подставляет.
+- `wails3 build` без `Taskfile.yml` не работает («No Taskfile found»). Принят путь явных шагов: `wails3 generate syso -arch amd64 -icon build/windows/icon.ico -manifest build/windows/wails.exe.manifest -info build/windows/info.json -out <pkg>.syso` + `go build -tags "desktop,production" -trimpath -buildvcs=false -ldflags "-w -s -H windowsgui"`. `scripts\build-signer.bat` ещё не переписан.
+
+Проверено на 2026-11-18:
+
+- `npm run test` — 3/3; `npm run check` — 0 ошибок; `npm run build` — OK.
+- `go test -tags desktop ./cmd/wynd-signer` — OK (тест shutdown переведён на `ServiceStartup`/`ServiceShutdown`).
+- `go build -tags desktop` и `-tags desktop,production` для «Подписи» — OK; `go build ./cmd/wynd` и production-сборки Настольного/Мастерской — OK (проверка компиляции после подъёма зависимостей).
+
+Осталось (следующая сессия):
+
+1. Переписать `scripts\build-signer.bat` на syso + `go build` (вместо `wails build`) и собрать exe; не забыть удаление `.syso` после сборки.
+2. Живая проверка окна: 640×560/мин 560×480, своя рамка (перетаскивание, кнопки), фон, диалоги ключа и файла, событие прогресса, подпись файла; сверить с принятым кадром 12а.
+3. Прогнать `scripts\test-desktop.bat` целиком (frontend «Подписи» уже зелёный, Go-часть и другие окна — нет).
+4. Прогнать полные ворота `scripts\test.bat` с новым `modernc.org/sqlite` (сервер и архив).
+5. После приёмки — коммит шага; затем следующий шаг по §4 — Настольный; решить судьбу `wails.json` (v3 его не читает).

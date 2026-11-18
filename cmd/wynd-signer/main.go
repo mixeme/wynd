@@ -22,10 +22,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"gitea.mixdep.ru/mix/wynd/internal/signing"
 )
@@ -54,7 +51,12 @@ type App struct {
 	check         *signing.Check
 }
 
-func (a *App) startup(ctx context.Context) { a.ctx, a.cancel = context.WithCancel(ctx) }
+// ServiceStartup и ServiceShutdown — хуки Wails v3: приложение передаёт
+// контекст, который отменяется при закрытии окна.
+func (a *App) ServiceStartup(ctx context.Context, _ application.ServiceOptions) error {
+	a.ctx, a.cancel = context.WithCancel(ctx)
+	return nil
+}
 
 func (a *App) acquireOperation(ctx context.Context) error {
 	a.operationOnce.Do(func() { a.operationGate = make(chan struct{}, 1) })
@@ -71,7 +73,7 @@ func (a *App) acquireOperation(ctx context.Context) error {
 }
 func (a *App) releaseOperation() { <-a.operationGate }
 
-func (a *App) shutdown(context.Context) {
+func (a *App) ServiceShutdown() error {
 	if a.cancel != nil {
 		a.cancel()
 	}
@@ -80,6 +82,7 @@ func (a *App) shutdown(context.Context) {
 	a.closed = true
 	a.check.Close()
 	a.check = nil
+	return nil
 }
 
 // settings — что окно помнит на этом компьютере: где лежит ключ (12а, 12б).
@@ -178,9 +181,9 @@ func (a *App) State() State {
 
 // ChooseKeyPlace — где хранить новый ключ (12а).
 func (a *App) ChooseKeyPlace(current string) (string, error) {
-	p, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		Title: "Где хранить ключ", DefaultDirectory: keyDialogDirectory(current), DefaultFilename: filepath.Base(current),
-	})
+	p, err := application.Get().Dialog.SaveFileWithOptions(&application.SaveFileDialogOptions{
+		Title: "Где хранить ключ", Directory: keyDialogDirectory(current), Filename: filepath.Base(current),
+	}).PromptForSingleSelection()
 	if err != nil {
 		return "", fmt.Errorf("Не удалось открыть окно выбора файла: %w", err)
 	}
@@ -190,7 +193,9 @@ func (a *App) ChooseKeyPlace(current string) (string, error) {
 // ChooseKey — другой файл ключа (12б: «другой»); выбранное окно запоминает.
 func (a *App) ChooseKey() (State, error) {
 	s := loadSettings()
-	p, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{Title: "Файл ключа подписи", DefaultDirectory: keyDialogDirectory(s.KeyPath)})
+	p, err := application.Get().Dialog.OpenFileWithOptions(&application.OpenFileDialogOptions{
+		Title: "Файл ключа подписи", Directory: keyDialogDirectory(s.KeyPath),
+	}).PromptForSingleSelection()
 	if err != nil {
 		return State{}, fmt.Errorf("Не удалось открыть окно выбора файла: %w", err)
 	}
@@ -296,7 +301,11 @@ func (a *App) reportProgress(p signing.Progress) {
 		a.emit(p)
 		return
 	}
-	runtime.EventsEmit(a.ctx, "signer:progress", p)
+	runtime := application.Get()
+	if runtime == nil {
+		return
+	}
+	runtime.Event.Emit("signer:progress", p)
 }
 
 // SignRelease — «Подписать и опубликовать» (12в → 12г).
@@ -328,9 +337,9 @@ func (a *App) SignRelease(checkID, tag, requestID, pass string) Result {
 
 // PickExe — «Подписать файл на этом компьютере» (12б).
 func (a *App) PickExe() string {
-	p, _ := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "Что подписать", Filters: []runtime.FileFilter{{DisplayName: "Программа (*.exe)", Pattern: "*.exe"}},
-	})
+	p, _ := application.Get().Dialog.OpenFileWithOptions(&application.OpenFileDialogOptions{
+		Title: "Что подписать", Filters: []application.FileFilter{{DisplayName: "Программа (*.exe)", Pattern: "*.exe"}},
+	}).PromptForSingleSelection()
 	return p
 }
 
@@ -359,7 +368,7 @@ func (a *App) SignFile(path, pass string) Result {
 // OpenLink — страница выпуска в браузере (12г).
 func (a *App) OpenLink(url string) {
 	if strings.HasPrefix(url, "https://github.com/") {
-		runtime.BrowserOpenURL(a.ctx, url)
+		_ = application.Get().Browser.OpenURL(url)
 	}
 }
 
@@ -369,21 +378,24 @@ func (a *App) ShowInFolder(path string) {
 }
 
 func main() {
-	app := &App{gh: signing.GitHub{Repo: "mixeme/wynd"}}
-	err := wails.Run(&options.App{
+	backend := &App{gh: signing.GitHub{Repo: "mixeme/wynd"}}
+	app := application.New(application.Options{
+		Name:        "wynd-signer",
+		Description: "Подпись выпусков Wynd",
+		Services:    []application.Service{application.NewService(backend)},
+		Assets:      application.AssetOptions{Handler: application.AssetFileServerFS(assets)},
+	})
+	app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:            "Wynd Подпись",
 		Width:            640,
 		Height:           560,
 		MinWidth:         560,
 		MinHeight:        480,
-		AssetServer:      &assetserver.Options{Assets: assets},
-		BackgroundColour: &options.RGBA{R: 0xF4, G: 0xF0, B: 0xE9, A: 0xFF},
+		BackgroundColour: application.NewRGB(0xF4, 0xF0, 0xE9),
 		Frameless:        true,
-		OnStartup:        app.startup,
-		OnShutdown:       app.shutdown,
-		Bind:             []any{app},
+		URL:              "/",
 	})
-	if err != nil {
+	if err := app.Run(); err != nil {
 		log.Fatal(err)
 	}
 }

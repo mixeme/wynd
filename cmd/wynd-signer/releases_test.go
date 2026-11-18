@@ -9,6 +9,8 @@ import (
 	"testing"
 	"testing/synctest"
 
+	"github.com/wailsapp/wails/v3/pkg/application"
+
 	"gitea.mixdep.ru/mix/wynd/internal/signing"
 )
 
@@ -171,11 +173,13 @@ func TestReleaseShutdownCancelsFetchBeforeClosingResources(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		entered := make(chan struct{})
 		a := &App{emit: func(signing.Progress) {}}
-		a.startup(context.Background())
+		if err := a.ServiceStartup(context.Background(), application.ServiceOptions{}); err != nil {
+			t.Fatal(err)
+		}
 		a.gh = &controlledReleases{fetch: func(string) (*signing.Check, error) { close(entered); <-a.ctx.Done(); return nil, a.ctx.Err() }}
 		go func() { _, _ = a.CheckRelease("tag", "request") }()
 		<-entered
-		a.shutdown(context.Background())
+		_ = a.ServiceShutdown()
 		if _, err := a.CheckRelease("tag", "after-shutdown"); !errors.Is(err, context.Canceled) {
 			t.Fatalf("shutdown did not cancel queued work: %v", err)
 		}
