@@ -248,3 +248,115 @@ describe('queue', () => {
 		expect(seen).toEqual([]);
 	});
 });
+
+describe('queue retry schedule', () => {
+	beforeEach(() => {
+		vi.resetModules();
+	});
+
+	it('counts down the retry pause and skips failed items', async () => {
+		const { nextRetryDelay } = await import('./queue');
+		const now = 1_000_000;
+		const base = { origin: '', circle_id: 'c', payload: { body: '', entry_date: '' }, files: [] };
+		expect(nextRetryDelay([], now)).toBeUndefined();
+		expect(
+			nextRetryDelay(
+				[{ ...base, id: 1, type: 'post', state: 'failed', created_at: now } as never],
+				now
+			)
+		).toBeUndefined();
+		// Первая неудача: пауза 30 с, прошло 10 с.
+		expect(
+			nextRetryDelay(
+				[
+					{
+						...base,
+						id: 2,
+						type: 'post',
+						state: 'pending',
+						attempts: 1,
+						created_at: now - 10_000
+					} as never
+				],
+				now
+			)
+		).toBe(20_000);
+		// Отправку прервали (переход/отмена): attempts=0, но повтор нужен.
+		expect(
+			nextRetryDelay(
+				[
+					{
+						...base,
+						id: 4,
+						type: 'post',
+						state: 'pending',
+						attempts: 0,
+						uploading_at: now - 5_000,
+						created_at: now - 10_000
+					} as never
+				],
+				now
+			)
+		).toBe(25_000);
+		// Отправка, оставленная закрытой вкладкой: ждём до устаревания.
+		expect(
+			nextRetryDelay(
+				[
+					{
+						...base,
+						id: 3,
+						type: 'post',
+						state: 'uploading',
+						uploading_at: now - 60_000,
+						created_at: now - 60_000
+					} as never
+				],
+				now
+			)
+		).toBe(60_000);
+	});
+});
+
+describe('queue retries on its own', () => {
+	beforeEach(() => {
+		vi.resetModules();
+		vi.stubGlobal('navigator', { ...navigator, onLine: true });
+	});
+
+	it('sends a queued post after the first transport failure, without an outside event', async () => {
+		// Долгий повтор перехватываем: остальные таймеры (пауза ленты) живут.
+		const scheduled: Array<{ fn: () => void; ms: number }> = [];
+		const realSetTimeout = globalThis.setTimeout;
+		const spy = vi.spyOn(globalThis, 'setTimeout').mockImplementation(((
+			fn: () => void,
+			ms?: number
+		) => {
+			if ((ms ?? 0) >= 10_000) {
+				scheduled.push({ fn, ms: ms ?? 0 });
+				return 0 as unknown as ReturnType<typeof setTimeout>;
+			}
+			return realSetTimeout(fn, ms);
+		}) as typeof setTimeout);
+		try {
+			apiJson.mockRejectedValueOnce(new TypeError('Failed to fetch')).mockResolvedValue({});
+			const { enqueuePost, drainQueue, listQueueForCircle } = await import('./queue');
+			const origin = 'https://retry.test';
+			await enqueuePost(origin, 'c-retry', { body: 'ждёт', entry_date: '2026-11-19' });
+			await drainQueue();
+			await new Promise((r) => realSetTimeout(r, 30));
+			expect(await listQueueForCircle(origin, 'c-retry')).toHaveLength(1);
+			expect(scheduled.length).toBeGreaterThan(0);
+
+			const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 60_000);
+			scheduled[0].fn();
+			for (let i = 0; i < 50; i++) {
+				await new Promise((r) => realSetTimeout(r, 10));
+				if ((await listQueueForCircle(origin, 'c-retry')).length === 0) break;
+			}
+			expect(await listQueueForCircle(origin, 'c-retry')).toHaveLength(0);
+			nowSpy.mockRestore();
+		} finally {
+			spy.mockRestore();
+		}
+	});
+});
