@@ -448,6 +448,9 @@ func main() {
 			startInTray = true
 		}
 	}
+	// Второй запуск (ярлык, автозапуск при уже работающей программе) не
+	// создаёт второй процесс и второй значок: окно первого показывается.
+	var mainWindow application.Window
 	app := application.New(application.Options{
 		Name:        "wynd-desktop",
 		Description: "Wynd Настольный",
@@ -457,6 +460,15 @@ func main() {
 			// Постоянный профиль: сессия и медиа-кэш переживают перезапуск,
 			// данные Wynd из системного профиля не используются.
 			WebviewUserDataPath: filepath.Join(base, "webview"),
+		},
+		SingleInstance: &application.SingleInstanceOptions{
+			UniqueID: "com.wynd.desktop",
+			OnSecondInstanceLaunch: func(application.SecondInstanceData) {
+				if mainWindow != nil {
+					mainWindow.Show()
+					mainWindow.Focus()
+				}
+			},
 		},
 	})
 	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
@@ -475,6 +487,7 @@ func main() {
 		Hidden:    startInTray,
 		URL:       "/",
 	})
+	mainWindow = win
 	// Значок в области уведомлений (C66): открыть окно или выйти совсем.
 	tray := app.SystemTray.New()
 	tray.SetIcon(trayIcon)

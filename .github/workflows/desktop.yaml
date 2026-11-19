@@ -12,6 +12,8 @@ on:
       - 'web/**'
       - 'scripts/test*.bat'
       - 'scripts/build-desktop.bat'
+      - 'scripts/build-workshop.bat'
+      - 'scripts/build-signer.bat'
       - 'go.mod'
       - 'go.sum'
       - 'VERSION'
