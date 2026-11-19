@@ -176,7 +176,7 @@
 			</Tabs.List>
 		</Tabs.Root>
 	{:else if subtitle}
-		<div style="padding-bottom:12px;font-size:12.5px;color:rgba(255,255,255,.85)">
+		<div style="padding-bottom:6px;font-size:12.5px;line-height:18px;color:rgba(255,255,255,.85)">
 			{#if typeof subtitle === 'function'}{@render subtitle()}{:else}{subtitle}{/if}
 		</div>
 	{:else}
