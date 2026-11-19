@@ -130,6 +130,14 @@
 		// Статус оплаты — фоном (C95-3): круги нажимаются, как только готовы
 		// строки; полосы оплаты дорисовываются, когда статус дошёл.
 		loading = false;
+		// Все входы отозваны (C99): с улицы — на «Войти», а не в пустую улочку.
+		const left = await loadSessions();
+		if (seq !== refreshSeq) return;
+		if (!left.length) {
+			goto('/');
+			return;
+		}
+		sessions = left;
 		if (streetSession) {
 			void fetchPayStatus(streetSession.origin)
 				.then((status) => {

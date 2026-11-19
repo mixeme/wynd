@@ -28,6 +28,8 @@ let systemDark = $state(
 	typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
 );
 let initialized = $state(false);
+// Одновременные вызовы initSession (макет и экран) делят одну работу.
+let initFlight: Promise<void> | undefined;
 
 export function getTheme(): Theme {
 	return theme;
@@ -167,14 +169,30 @@ export async function reconcileAdminSession(): Promise<AdminSessionRecord | unde
 	}
 }
 
-export async function initSession(): Promise<void> {
-	if (initialized) return;
+/**
+ * Локальная готовность приложения: настройки с устройства. Проверка входов
+ * идёт фоном (C99): запуск не ждёт сети, а отозванный вход исчезает, когда
+ * сервер ответит. Снимки экранов к этому моменту уже на устройстве.
+ */
+export function initSession(): Promise<void> {
+	if (initialized) return Promise.resolve();
+	if (!initFlight) {
+		initFlight = doInitSession().catch((err) => {
+			initFlight = undefined;
+			throw err;
+		});
+	}
+	return initFlight;
+}
+
+async function doInitSession(): Promise<void> {
 	const settings = await getAppSettings();
 	if (settings?.theme) theme = settings.theme;
 	if (settings?.avatar_shape) avatarShape = settings.avatar_shape;
-	await reconcileStoredSessions();
 	initialized = true;
+	// Не ждём: экран уже может показывать снимок, сервер ответит следом.
 	void syncAvatarShape();
+	void reconcileStoredSessions().catch(() => {});
 }
 
 export async function loadSessions(): Promise<SessionRecord[]> {

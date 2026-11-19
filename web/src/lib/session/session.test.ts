@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '$lib/api/client';
-import { saveAppSettings, putSession, putSnapshot, snapshotKey, getSession } from '$lib/idb/db';
+import {
+	saveAppSettings,
+	putSession,
+	putSnapshot,
+	snapshotKey,
+	getSession,
+	getDb
+} from '$lib/idb/db';
 
 vi.mock('$lib/api/client', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('$lib/api/client')>();
@@ -85,5 +92,54 @@ describe('session', () => {
 
 		expect(await getSession('')).toBeUndefined();
 		expect(await session.loadSessions()).toHaveLength(0);
+	});
+
+	// C99: запуск не ждёт сети — проверка входов идёт фоном.
+	it('initSession завершается, не дожидаясь ответа сервера', async () => {
+		const db = await getDb();
+		await db.clear('sessions');
+		await putSession({
+			origin: '',
+			name: 'Dev',
+			email: 'a@test',
+			token: 't',
+			account_id: 'acc1'
+		});
+		const { apiJson } = await import('$lib/api/client');
+		vi.mocked(apiJson)
+			.mockReset()
+			.mockImplementation(() => new Promise<never>(() => {}));
+
+		const session = await import('./session.svelte');
+		await session.initSession();
+
+		await vi.waitFor(() => {
+			const paths = vi.mocked(apiJson).mock.calls.map(([, path]) => path);
+			expect(paths).toContain('/circles');
+		});
+	});
+
+	it('одновременные вызовы initSession проверяют входы один раз', async () => {
+		const db = await getDb();
+		await db.clear('sessions');
+		await putSession({
+			origin: 'https://once.test',
+			name: 'Once',
+			email: 'o@test',
+			token: 't',
+			account_id: 'acc1'
+		});
+		const { apiJson } = await import('$lib/api/client');
+		vi.mocked(apiJson)
+			.mockReset()
+			.mockResolvedValue({} as never);
+
+		const session = await import('./session.svelte');
+		await Promise.all([session.initSession(), session.initSession()]);
+
+		await vi.waitFor(() => {
+			const calls = vi.mocked(apiJson).mock.calls.filter(([, path]) => path === '/circles');
+			expect(calls).toHaveLength(1);
+		});
 	});
 });
