@@ -1,6 +1,6 @@
 import { resolveMediaUrls } from '$lib/media/batch';
 import { FeedData, type FeedDataDeps } from './feed-data.svelte';
-import { loadFeed } from './feed';
+import { loadFeed, loadFeedCached } from './feed';
 import {
 	attachmentMedia,
 	commentPhotoIds,
@@ -50,6 +50,7 @@ export class CircleReading {
 	private deps(lastRead: () => number): FeedDataDeps {
 		return {
 			load: () => loadFeed(this.origin, this.circleId),
+			loadCached: () => loadFeedCached(this.origin, this.circleId),
 			loadOlder: async (before) => {
 				const page = await fetchOlderPage<{ posts: FeedPost[] }>(
 					this.origin,

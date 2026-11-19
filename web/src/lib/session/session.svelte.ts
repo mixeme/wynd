@@ -1,4 +1,5 @@
 import { ApiError, apiJson, isPaymentRequired } from '$lib/api/client';
+import { forgetStreetMemory } from '$lib/circles/street-memory';
 import { unsubscribePush } from '$lib/push/push';
 import {
 	getAppSettings,
@@ -131,6 +132,9 @@ export async function dropParticipantSession(origin: string): Promise<void> {
 	await deleteCursor(origin);
 	await invalidateSnapshots(origin);
 	await clearOriginState(origin);
+	// Улочка в памяти захода — тоже состояние входа (C97): новый человек не
+	// должен увидеть чужие названия даже одним кадром.
+	forgetStreetMemory();
 }
 
 /** Ping the server for each stored session; purge tokens the server no longer knows. */
