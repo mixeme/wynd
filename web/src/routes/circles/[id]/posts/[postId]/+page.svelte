@@ -37,7 +37,7 @@
 	} from '$lib/format/time';
 	import { isPostArchiveLocked } from '$lib/journal/archive';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
-	import { loadFeed } from '$lib/journal/feed';
+	import { loadFeed, loadFeedCached } from '$lib/journal/feed';
 	import { circleReading } from '$lib/journal/reading.svelte';
 	import {
 		attachmentMedia,
@@ -419,14 +419,22 @@
 			post = cached;
 			loading = false;
 		} else {
-			// Прямой вход (поиск, пуш, ссылка): ждём ленту, как раньше.
-			try {
-				const snap = await loadFeed(circle.origin, circle.circleId);
-				post = findPost(snap.posts, postId);
-			} catch {
-				error = 'Не удалось загрузить запись';
-			} finally {
+			// Прямой вход (поиск, пуш, ссылка): снимок ленты — первый кадр
+			// (C100-7), свежесть приносит фоновая загрузка ниже.
+			const snap = await loadFeedCached(circle.origin, circle.circleId).catch(() => undefined);
+			const found = snap ? findPost(snap.posts, postId) : undefined;
+			if (found) {
+				post = found;
 				loading = false;
+			} else {
+				try {
+					const fresh = await loadFeed(circle.origin, circle.circleId);
+					post = findPost(fresh.posts, postId);
+				} catch {
+					error = 'Не удалось загрузить запись';
+				} finally {
+					loading = false;
+				}
 			}
 		}
 		void resolvePostMedia();
