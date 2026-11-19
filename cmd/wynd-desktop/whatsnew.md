@@ -1,8 +1,8 @@
 # Что нового в Wynd Настольном
 
 Раздел на каждую версию — пишется в том же коммите, где поднята версия программы
-(`desktop.Version` в `internal/desktop/version.go` и `productVersion` в
-`cmd/wynd-desktop/wails.json`; их равенство сверяет тест). Программа «Wynd Подпись»
+(`desktop.Version` в `internal/desktop/version.go` и версии в
+`cmd/wynd-desktop/build/windows/info.json`; их равенство сверяет тест). Программа «Wynd Подпись»
 (кадр 12в) берёт раздел версии выпуска из этого файла в его теге и кладёт
 текстом выпуска на GitHub. Строки — «- …», простыми словами, для тех, кто
 устанавливает программу.

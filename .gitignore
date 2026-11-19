@@ -15,19 +15,14 @@ web/.svelte-kit/
 # Конфигурация локального запуска для инструментов разработчика.
 .claude/
 
-# Настольный установщик (план 45): сборка окна, зависимости и то, что Wails
-# создаёт сам при каждой сборке.
+# Настольные окна (план 45): сборка и зависимости. Временные файлы Wails (wailsjs,
+# package.json.md5) больше не появляются: с v3 сборка идёт через syso + go build.
 cmd/wynd-workshop/build/bin/
 cmd/wynd-workshop/frontend/node_modules/
 cmd/wynd-workshop/frontend/dist/
-cmd/wynd-workshop/frontend/wailsjs/
 cmd/wynd-signer/build/bin/
 cmd/wynd-signer/frontend/node_modules/
 cmd/wynd-signer/frontend/dist/
-cmd/wynd-signer/frontend/wailsjs/
-cmd/wynd-workshop/frontend/package.json.md5
 cmd/wynd-desktop/build/bin/
 cmd/wynd-desktop/frontend/node_modules/
 cmd/wynd-desktop/frontend/dist/
-cmd/wynd-desktop/frontend/wailsjs/
-cmd/wynd-desktop/frontend/package.json.md5

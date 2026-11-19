@@ -6,21 +6,32 @@ import (
 	"testing"
 )
 
-// Номер в свойствах exe (wails.json) — тот же, что в окне.
-func TestWorkshopVersionMatchesWails(t *testing.T) {
-	raw, err := os.ReadFile("../../cmd/wynd-workshop/wails.json")
+// Номер в свойствах exe (build/windows/info.json, его вшивает
+// `wails3 generate syso`) — тот же, что в окне.
+func TestWorkshopVersionMatchesBuildInfo(t *testing.T) {
+	raw, err := os.ReadFile("../../cmd/wynd-workshop/build/windows/info.json")
 	if err != nil {
 		t.Fatal(err)
 	}
 	var cfg struct {
-		Info struct {
-			ProductVersion string `json:"productVersion"`
+		Fixed struct {
+			FileVersion    string `json:"file_version"`
+			ProductVersion string `json:"product_version"`
+		} `json:"fixed"`
+		Info map[string]struct {
+			ProductVersion string `json:"ProductVersion"`
 		} `json:"info"`
 	}
 	if err := json.Unmarshal(raw, &cfg); err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Info.ProductVersion != WorkshopVersion {
-		t.Fatalf("wails.json productVersion %q, WorkshopVersion %q", cfg.Info.ProductVersion, WorkshopVersion)
+	for name, got := range map[string]string{
+		"fixed.file_version":    cfg.Fixed.FileVersion,
+		"fixed.product_version": cfg.Fixed.ProductVersion,
+		"info.0419":             cfg.Info["0419"].ProductVersion,
+	} {
+		if got != WorkshopVersion {
+			t.Fatalf("%s %q, WorkshopVersion %q", name, got, WorkshopVersion)
+		}
 	}
 }

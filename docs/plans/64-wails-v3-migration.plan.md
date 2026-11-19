@@ -1,7 +1,7 @@
 # План 64. Миграция окон на Wails v3 (C94) — подготовка
 
 **Создан:** 2026-11-17.
-**Статус:** 2026-11-18/19 в ветке `wails-v3` все три окна переведены на v3 — «Подпись», Настольный (C94), Мастерская; exe собраны, живые проверки и ворота пройдены (§7). Осталась чистка: убрать v2 из `go.mod`, решить судьбу `wails.json`/`package.json.md5`/`frontend/wailsjs`.
+**Статус:** 2026-11-18/19 миграция **завершена** в ветке `wails-v3`: все три окна на v3, exe собраны, живые проверки и ворота пройдены; §4.5 выполнен — v2 убран из `go.mod`, артефакты `wails.json`/`package.json.md5`/`wailsjs` удалены (§7).
 **Основание:** C94 (план 46) — v3 вышла из беты (v3.0.0 — 26.10.2026, v3.1.0 — Latest); повод — потребности C66 (трей, системные уведомления, работа при закрытом окне).
 
 ## 1. Инструменты — подготовлены и проверены 17.11
@@ -137,6 +137,16 @@
 
 Осталось:
 
-1. §4.5: убрать v2 из `go.mod`; решить судьбу `wails.json`, `package.json.md5`, `frontend/wailsjs` всех окон; проверить CI-воротa.
-2. C66: системные уведомления в v3.1.0 не подтверждены.
-3. Живьём на сервере не прогонялись установка/обновление/откат/переезд (логика `internal/workshop` не менялась) — при первой живой установке после выпуска.
+1. C66: системные уведомления в v3.1.0 не подтверждены.
+2. Живьём на сервере не прогонялись установка/обновление/откат/переезд (логика `internal/workshop` не менялась) — при первой живой установке после выпуска.
+
+### 2026-11-19 — чистка §4.5
+
+Сделано:
+
+- `go.mod`: `github.com/wailsapp/wails/v2 v2.16.0` убран, `go mod tidy` снял 79 строк (`go.mod` + `go.sum`, включая `go-webview2` и `mimetype` v2); в `go.mod` остался только `wails/v3 v3.1.0`. Сервер, все три окна и `go vet ./...` компилируются.
+- Удалены неиспользуемые артефакты v2: `wails.json` всех трёх окон (v3 его не читает), `package.json.md5` (был в git только у «Подписи») и локальные каталоги `frontend/wailsjs` (были в `.gitignore`); строки `.gitignore` про них убраны.
+- Версии exe теперь сверяются с тем, что реально вшивается: тесты `TestDesktopVersionMatchesBuildInfo` и `TestWorkshopVersionMatchesBuildInfo` читают `build/windows/info.json` (`fixed.file_version`, `fixed.product_version`, `info.0419`). Комментарии в `internal/{desktop,workshop}/version.go`, `cmd/wynd-desktop/whatsnew.md` и `docs/DEVELOPMENT.md` переведены с `wails.json` на `info.json`; в `DEVELOPMENT.md` команды `wails dev/build` заменены на `wails3 dev` и явные шаги сборки.
+- CI: других упоминаний v2 CLI не осталось (`desktop-client.yaml` и `workshop.yaml` ставят `wails3@v3.1.0`).
+
+Проверено: `go build` сервера и трёх окон, `go test ./internal/desktop ./internal/workshop`, `scripts\test-desktop.bat`, полный `scripts\test.bat` — зелёные.
