@@ -220,6 +220,8 @@ public final class MainActivity extends Activity {
             }
 
             @Override public void onReceivedError(WebView view, WebResourceRequest request, android.webkit.WebResourceError error) {
+                // Платформа вызывает этот overload только с API 23; guard и для lint при minSdk 21.
+                if (Build.VERSION.SDK_INT < 23) return;
                 if (request.isForMainFrame() && assets == null && server.contains(request.getUrl().toString())) {
                     if (error.getErrorCode() == ERROR_CONNECT && retryColdLoad(view, request)) return;
                     view.post(() -> unavailable(view, request.getUrl().toString()));

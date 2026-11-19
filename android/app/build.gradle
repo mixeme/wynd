@@ -90,7 +90,16 @@ tasks.register('prepareWyndIcon', Sync) {
                 + '<path tools:ignore="VectorPath" android:fillColor="#FFFFFFFF" android:pathData="' + svg.path[0].@d.text() + '"/></vector>', 'UTF-8')
     }
 }
+tasks.register('prepareStartupSync', Exec) {
+    workingDir rootProject.file('../web')
+    // tsconfig веб-проекта расширяет сгенерированный .svelte-kit/tsconfig.json;
+    // на свежем каталоге (CI, новая машина) его нет, поэтому sync перед сборкой.
+    commandLine 'node', 'node_modules/@sveltejs/kit/svelte-kit.js', 'sync'
+    inputs.file(rootProject.file('../web/svelte.config.js'))
+    outputs.file(rootProject.file('../web/.svelte-kit/tsconfig.json'))
+}
 tasks.register('prepareStartupAssets', Exec) {
+    dependsOn('prepareStartupSync')
     workingDir rootProject.file('../web')
     commandLine 'node', 'node_modules/vite/bin/vite.js', 'build', '--config', 'vite.android-startup.config.ts'
     inputs.files(fileTree(rootProject.file('../web/src')), rootProject.file('../web/vite.android-startup.config.ts'), rootProject.file('../web/package-lock.json'))
