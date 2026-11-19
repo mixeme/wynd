@@ -36,7 +36,7 @@
 	import { fetchInvitePeek, isCircleInvitePeek, loadInviteJoinToken } from '$lib/auth/invites';
 	import { fetchJoinPreview } from '$lib/circles/settings';
 	import { getMediaUrl } from '$lib/media/objectUrl';
-	import { dropCircleReading } from '$lib/journal/reading.svelte';
+	import { circleReading, dropCircleReading } from '$lib/journal/reading.svelte';
 	import { mark, markPainted } from '$lib/dev/marks';
 	import PlainLayout from '$lib/layouts/PlainLayout.svelte';
 	import Loading from '$ui/Loading.svelte';
@@ -220,11 +220,21 @@
 			return;
 		}
 
-		let listItem: CircleListItem | undefined;
-		try {
-			const list = await fetchCircles(resolved);
-			listItem = list.find((c) => c.id === circleId);
-		} catch {
+		// Лента стартует вместе с проверкой доступа (C95-2): сетевой ход дешевле
+		// начать сразу, чем ждать после шапки. Тем, кто не читатель круга,
+		// запись снимается ниже.
+		const reading = circleReading(resolved, circleId, () => ctx.lastReadSeq);
+		void reading.feed.load();
+
+		// Список и сведения о круге — параллельно (C95-2): отказ списка гасит
+		// экраны круга, отказ сведений — «баннера по списку достаточно».
+		const [list, detail] = await Promise.all([
+			fetchCircles(resolved).catch(() => undefined),
+			fetchCircleDetail(resolved, circleId).catch(() => undefined)
+		]);
+		let listItem: CircleListItem | undefined = list?.find((c) => c.id === circleId);
+		if (!list) {
+			// Сервер молчит — показываем, что уже в кэше.
 			const cached = await loadCirclesCached(resolved);
 			listItem = cached.find((c) => c.id === circleId);
 		}
@@ -235,9 +245,13 @@
 		// приглашение иначе открывало хронику и звать было некуда.
 		if (listItem?.status === 'left_with_access') {
 			const pending = await fetchPendingCircleJoins(resolved).catch(() => [] as string[]);
-			if (pending.includes(circleId) && (await enterAsInvitee(resolved))) return;
+			if (pending.includes(circleId) && (await enterAsInvitee(resolved))) {
+				dropCircleReading(resolved, circleId);
+				return;
+			}
 		}
 		if (!listItem || !membershipReadable(listItem.status)) {
+			dropCircleReading(resolved, circleId);
 			if (await enterAsInvitee(resolved)) return;
 			denied = true;
 			ready = true;
@@ -265,8 +279,7 @@
 		let avatarBlobId: string | undefined;
 		let serverIdentityName = '';
 		let arrival: CircleArrival | undefined;
-		try {
-			const detail = await fetchCircleDetail(resolved, circleId);
+		if (detail) {
 			if (detail.archive_cycle?.active) archiveCycle = detail.archive_cycle;
 			identityId = detail.identity_id ?? '';
 			editWindowSec = detail.edit_window_sec;
@@ -276,8 +289,6 @@
 			avatarBlobId = detail.avatar_blob_id;
 			serverIdentityName = detail.identity_name?.trim() ?? '';
 			arrival = detail.arrival;
-		} catch {
-			/* list banner enough */
 		}
 
 		const identityName =
@@ -305,16 +316,14 @@
 		applySpace(listItem);
 		ctx.refresh = refreshMeta;
 
-		try {
-			await loadAvatarUrl(resolved, avatarBlobId);
-		} catch {
-			ctx.avatarBlobId = '';
-			ctx.avatarUrl = '';
-		}
-
 		rememberLastCircle(circleId);
 		ready = true;
 		void markPainted('r:layout-ready');
+		// Аватар шапки — отдельно (C95-2): экран уже открыт, с инициалом лица.
+		loadAvatarUrl(resolved, avatarBlobId).catch(() => {
+			ctx.avatarBlobId = '';
+			ctx.avatarUrl = '';
+		});
 		// Приехал с кругом (1.10): в ленту — через встречу.
 		if (arrival && $page.url.pathname === `/circles/${circleId}`) {
 			goto(`/circles/${circleId}/arrived`, { replaceState: true });

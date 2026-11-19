@@ -254,12 +254,17 @@
 			void dropSearchParam('joinAvatar');
 		}
 		fixedLastRead = circle.lastReadSeq;
+		// Лента могла загрузиться параллельно с проверкой доступа (C95-2) —
+		// граница непрочитанного теперь считается по известному курсору.
+		reading.redrawDivider();
 		const dayPromptParam = $page.url.searchParams.get('dayPrompt');
 		if (feed.posts.length || feed.error) {
-			// Возврат из записи: лента загружена — карточки и место возвращаются
-			// сразу, перечитывание не нужно (C95-1). Свежесть приносит поток
-			// синхронизации и обновление на экране записи, которое шло фоном.
+			// Возврат из записи или лента, догрузившаяся параллельно с проверкой
+			// доступа (C95-1, C95-2): карточки на экране сразу, перечитывать
+			// не нужно. Свежесть приносит поток синхронизации и фоновые
+			// обновления.
 			feedLoaded = true;
+			void markPainted('r:feed-items');
 			void restoreSpot();
 		} else {
 			void loadFeedData().then(() => {
