@@ -7,7 +7,14 @@
 	import Button from '$ui/forms/Button.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import Loading from '$ui/Loading.svelte';
-	import { fetchCircles, loadStreet, type StreetCircle } from '$lib/circles/circles';
+	import {
+		fetchCircles,
+		loadCirclesCached,
+		loadStreet,
+		loadStreetCached,
+		type CircleListItem,
+		type StreetCircle
+	} from '$lib/circles/circles';
 	import { rememberCircleOrigin } from '$lib/circles/origin';
 	import { initSession, loadSessions } from '$lib/session/session.svelte';
 	import { finishIncomingShare, peekIncomingShare, type IncomingShare } from '$lib/android/shares';
@@ -35,24 +42,50 @@
 				const received = await peekIncomingShare();
 				if (active) share = received;
 				const sessions = await loadSessions();
-				const street = sessions.length ? await loadStreet() : null;
+				if (!active) return;
+				signedIn = sessions.length > 0;
+				const origins = [...new Set(sessions.map((session) => session.origin))];
+				// Куда можно добавить — по списку кругов сервера; в снимке он уже есть,
+				// поэтому кнопки не врут даже до ответа сети (C100-8).
+				const writableKeys = (origin: string, list: CircleListItem[]): string[] =>
+					list
+						.filter(
+							(circle) => circle.status === 'active' && !circle.frozen_at && !circle.space_full
+						)
+						.map((circle) => `${origin}:${circle.id}`);
+				// Снимки улицы и списков — первый кадр: экран не ждёт сети.
+				if (sessions.length) {
+					const [street, lists] = await Promise.all([
+						loadStreetCached(),
+						Promise.all(
+							origins.map((origin) =>
+								loadCirclesCached(origin)
+									.then((list) => writableKeys(origin, list))
+									.catch(() => [] as string[])
+							)
+						)
+					]);
+					if (!active) return;
+					const cachedWritable = new Set(lists.flat());
+					circles =
+						street?.circles.filter((circle) =>
+							cachedWritable.has(`${circle.origin}:${circle.id}`)
+						) ?? [];
+					loading = false;
+				}
 				let unavailable = false;
 				const writable = new Set<string>();
 				await Promise.all(
-					[...new Set(street?.circles.map((circle) => circle.origin) ?? [])].map(async (origin) => {
+					origins.map(async (origin) => {
 						try {
-							for (const circle of await fetchCircles(origin)) {
-								if (circle.status === 'active' && !circle.frozen_at && !circle.space_full)
-									writable.add(`${origin}:${circle.id}`);
-							}
+							writableKeys(origin, await fetchCircles(origin)).forEach((key) => writable.add(key));
 						} catch {
 							unavailable = true;
 						}
 					})
 				);
+				const street = sessions.length ? await loadStreet() : null;
 				if (!active) return;
-				share = received;
-				signedIn = sessions.length > 0;
 				circles =
 					street?.circles.filter((circle) => writable.has(`${circle.origin}:${circle.id}`)) ?? [];
 				if (unavailable)
