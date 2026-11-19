@@ -14,8 +14,8 @@ import (
 	"strings"
 	"testing"
 
-	"gitea.mixdep.ru/mix/wynd/internal/workshop"
 	"gitea.mixdep.ru/mix/wynd/internal/releasepages"
+	"gitea.mixdep.ru/mix/wynd/internal/workshop"
 )
 
 const releaseTestTag = "workshop-v0.3.0"
@@ -41,11 +41,32 @@ type releaseFixture struct {
 	// LegacyNotesOnly — «Что нового» лежит только по старому пути Мастерской
 	// (cmd/wynd-installer/whatsnew.md), как в тегах до 0.4.4.
 	LegacyNotesOnly bool
+	// Android-проверки (план 65): badging из fake aapt, выравнивание,
+	// keystore-пароль fake apksigner и эталонный сертификат тега.
+	Badging      string
+	BadAlign     bool
+	BadDebug     bool
+	KSPass       string
+	WrongPass    bool
+	CertDigest   string
+	CertPEM      string
+	VersionProps string
 }
 
-// Сам тестовый бинарник играет gh: одинаково на Windows и Unix, без сети,
-// настоящего ключа владельца и изменений на GitHub.
+// Сам тестовый бинарник играет gh и инструменты Android: одинаково на Windows
+// и Unix, без сети, настоящего ключа владельца и изменений на GitHub.
 func TestMain(m *testing.M) {
+	// Роль инструмента — по имени копии: копии лежат в среде fake-инструментов.
+	switch strings.TrimSuffix(filepath.Base(os.Args[0]), ".exe") {
+	case "aapt", "zipalign", "apksigner", "apksigner-tool":
+		if dir := os.Getenv("WYND_SIGNING_TEST_APK"); dir != "" {
+			if err := apkTestTool(dir); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+			os.Exit(0)
+		}
+	}
 	if dir := os.Getenv("WYND_SIGNING_TEST_GH"); dir != "" {
 		if err := releaseTestGH(dir, os.Args[1:]); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -54,6 +75,75 @@ func TestMain(m *testing.M) {
 		os.Exit(0)
 	}
 	os.Exit(m.Run())
+}
+
+// apkTestTool — поведение тестового бинарника как инструмента Android.
+func apkTestTool(dir string) error {
+	raw, err := os.ReadFile(filepath.Join(dir, "fixture.json"))
+	if err != nil {
+		return err
+	}
+	var f releaseFixture
+	if err := json.Unmarshal(raw, &f); err != nil {
+		return err
+	}
+	log, err := os.OpenFile(filepath.Join(dir, "tool-calls"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintln(log, strings.Join(os.Args[1:], " "))
+	_ = log.Close()
+	if err != nil {
+		return err
+	}
+	role := strings.TrimSuffix(filepath.Base(os.Args[0]), ".exe")
+	switch role {
+	case "aapt":
+		if len(os.Args) < 3 || os.Args[1] != "dump" || os.Args[2] != "badging" {
+			return fmt.Errorf("unexpected aapt arguments: %v", os.Args[1:])
+		}
+		fmt.Print(f.Badging)
+	case "zipalign":
+		if f.BadAlign {
+			return fmt.Errorf("zipalign failed")
+		}
+	case "apksigner", "apksigner-tool":
+		if len(os.Args) < 2 {
+			return fmt.Errorf("unexpected apksigner arguments")
+		}
+		if os.Args[1] == "sign" {
+			if os.Getenv("WYND_KS_PASS") != f.KSPass {
+				// Сообщение Java-keystore о неверном пароле — не локализуется.
+				return fmt.Errorf("keystore password was incorrect")
+			}
+			out := ""
+			for i, arg := range os.Args {
+				if arg == "--out" {
+					out = os.Args[i+1]
+				}
+			}
+			src := os.Args[len(os.Args)-1]
+			if out == "" || src == "" {
+				return fmt.Errorf("sign without --out or source")
+			}
+			data, err := os.ReadFile(src)
+			if err != nil {
+				return err
+			}
+			if err := os.WriteFile(out, data, 0o600); err != nil {
+				return err
+			}
+			return nil
+		}
+		// verify --print-certs: отпечаток +, при попытке отладки, заметный CN.
+		fmt.Printf("Signer #1 certificate SHA-256 digest: %s\n", f.CertDigest)
+		if f.BadDebug {
+			fmt.Println("Signer #1 certificate DN: CN=Android Debug")
+		}
+	default:
+		return fmt.Errorf("unknown apk tool role: %q", role)
+	}
+	return nil
 }
 
 func releaseTestGH(dir string, args []string) error {
@@ -111,7 +201,8 @@ func releaseTestGH(dir string, args []string) error {
 		if prod == nil {
 			return fmt.Errorf("download of unknown release %q", args[2])
 		}
-		if err := os.WriteFile(filepath.Join(dest, prod.Exe), releaseTestEXE, 0o600); err != nil {
+		dl := prod.downloadName()
+		if err := os.WriteFile(filepath.Join(dest, dl), releaseTestEXE, 0o600); err != nil {
 			return err
 		}
 		sum := sha256.Sum256(releaseTestEXE)
@@ -119,7 +210,7 @@ func releaseTestGH(dir string, args []string) error {
 		if f.BadSum {
 			want = "wrong sum"
 		}
-		return os.WriteFile(filepath.Join(dest, prod.Exe+".sha256"), []byte(want), 0o600)
+		return os.WriteFile(filepath.Join(dest, dl+".sha256"), []byte(want), 0o600)
 	case args[0] == "attestation":
 		if f.AttestFailure {
 			return fmt.Errorf("attestation request failed")
@@ -133,6 +224,16 @@ func releaseTestGH(dir string, args []string) error {
 			ref = "refs/tags/workshop-v0.2.0"
 		}
 		fmt.Printf(`[{"verificationResult":{"signature":{"certificate":{"sourceRepositoryRef":%q,"sourceRepositoryDigest":"test-commit"}}}}]`, ref)
+	case args[0] == "api" && strings.Contains(args[1], "/"+androidVersionProps+"?"):
+		if f.VersionProps == "" {
+			return fmt.Errorf("version.properties request failed")
+		}
+		fmt.Print(base64.StdEncoding.EncodeToString([]byte(f.VersionProps)))
+	case args[0] == "api" && strings.Contains(args[1], "/"+strings.TrimPrefix(androidCertPath, "android/")+"?"):
+		if f.CertPEM == "" {
+			return fmt.Errorf("reference certificate request failed")
+		}
+		fmt.Print(base64.StdEncoding.EncodeToString([]byte(f.CertPEM)))
 	case args[0] == "api" && strings.Contains(args[1], "/signing-key.pub?"):
 		if f.KeyFailure {
 			return fmt.Errorf("key request failed")
@@ -367,7 +468,7 @@ func TestSignReleasePublication(t *testing.T) {
 				t.Fatalf("final check snapshot: %+v", c.Steps)
 			}
 			var signs []Progress
-			published, err := g.SignAndPublishWithProgress(context.Background(), c, key, pass, func(p Progress) { signs = append(signs, p) })
+			published, _, err := g.SignAndPublishWithProgress(context.Background(), c, key, pass, func(p Progress) { signs = append(signs, p) })
 			started := "release,signature"
 			if tt.failure != "signature" {
 				started += ",upload"
@@ -444,7 +545,7 @@ func TestDesktopReleaseCheckAndSign(t *testing.T) {
 		t.Fatalf("desktop release did not read its whatsnew.md: %s", calls)
 	}
 	var signs []Progress
-	published, err := g.SignAndPublishWithProgress(context.Background(), c, key, pass, func(p Progress) { signs = append(signs, p) })
+	published, _, err := g.SignAndPublishWithProgress(context.Background(), c, key, pass, func(p Progress) { signs = append(signs, p) })
 	if err != nil || !published {
 		t.Fatalf("published=%v, err=%v", published, err)
 	}
@@ -496,7 +597,6 @@ func TestDesktopDraftWithoutNotesStaysDraft(t *testing.T) {
 		t.Fatalf("signature was not uploaded: %v", err)
 	}
 }
-
 
 // Ошибка чтения ключа не считается старой сборкой без ключа; сумма и
 // удостоверение по-прежнему обязательны, и отказ не выкладывает подпись.

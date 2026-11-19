@@ -38,7 +38,7 @@ function release(product, name, exe, tag, version, draft, publishedAt, signed) {
 const releases = [
   release(
     "android",
-    "Wynd для Android",
+    "Wynd Android",
     "wynd-android.apk",
     "android-v0.1.0",
     "0.1.0",
@@ -98,12 +98,13 @@ const attestationLink = {
   url: "https://github.com/mixeme/wynd/attestations",
 };
 
-// Android-выпуск (план 65): свои этапы проверки, публикация по releaseReady.
+// Android-выпуск (план 65): свои этапы проверки, публикация по releaseReady
+// (имя флага на экране не пишется — решение владельца 19.11).
 const androidBlocked =
-  "В теге android/version.properties стоит releaseReady=false — выпуск подпишем, но не опубликуем: он останется черновиком.";
+  "Публикация выпуска заблокирована. Подпишем и выложим подписанный APK в черновик — опубликовать его можно будет позже.";
 const androidDetail = androidReady
   ? "Файл wynd-android.apk и его контрольная сумма выложены в выпуск на GitHub. Подпись APK проверена: сертификат не отладочный. Временные файлы на этом компьютере удалены."
-  : "Файл wynd-android.apk и его контрольная сумма выложены в черновик. Выпуск не опубликован: в теге android/version.properties стоит releaseReady=false. Временные файлы на этом компьютере удалены.";
+  : "Файл wynd-android.apk и его контрольная сумма выложены в черновик. Выпуск не опубликован: публикация заблокирована. Временные файлы на этом компьютере удалены.";
 const androidSignSteps = androidReady
   ? done([
       ["release", "Проверяем состояние выпуска"],
@@ -171,7 +172,7 @@ const checks = {
   "android-v0.1.0": {
     check_id: "mock-check-android",
     product: "android",
-    name: "Wynd для Android",
+    name: "Wynd Android",
     exe: "wynd-android.apk",
     self_update: false,
     publishes: androidReady,
@@ -194,7 +195,7 @@ const checks = {
       ["notes", "Читаем описание выпуска"],
       androidReady
         ? ["readiness", "Проверяем готовность к публикации"]
-        : ["readiness", "Проверяем готовность к публикации", "публикация заблокирована: releaseReady=false"],
+        : ["readiness", "Проверяем готовность к публикации", "публикация заблокирована"],
     ]),
   },
 };
@@ -207,6 +208,11 @@ const app = {
     request_id: requestId,
   }),
   ChooseKeystore: async () => state,
+  ChooseKeystorePlace: async (current) => current,
+  CreateKeystore: async () => ({
+    ok: false,
+    message: "Кадр: создание ключа не выполняется",
+  }),
   SignRelease: async (checkId, tag, requestId, pass) => {
     if (tag === "android-v0.1.0") {
       return {
@@ -272,6 +278,25 @@ function type(input, value) {
 }
 async function drive() {
   const pass = params.get("pass");
+  if (params.get("keys") === "1") {
+    await tick(1200);
+    const link = button("настроить");
+    if (!link) throw new Error("кадр: нет строки ключей");
+    link.click();
+    await tick(400);
+  }
+  if (params.get("androidcreate") === "1") {
+    // Экран создания ключа Android: из кадра «ключ не выбран» по «Создать».
+    await tick(1200);
+    const link = button("подписать");
+    if (!link) throw new Error("кадр: нет строки выпуска для подписи");
+    link.click();
+    await tick(800);
+    const create = button("Создать");
+    if (!create) throw new Error("кадр: нет кнопки «Создать»");
+    create.click();
+    await tick(400);
+  }
   if (params.get("open")) {
     await tick(1200);
     const link = button("подписать");

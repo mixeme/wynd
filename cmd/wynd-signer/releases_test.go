@@ -27,9 +27,10 @@ func (b *controlledReleases) FetchWithProgress(_ context.Context, tag string, re
 	report(signing.Progress{Tag: tag, Phase: "check"})
 	return b.fetch(tag)
 }
-func (b *controlledReleases) SignAndPublishWithProgress(_ context.Context, c *signing.Check, _, _ string, report func(signing.Progress)) (bool, error) {
+func (b *controlledReleases) SignAndPublishWithProgress(_ context.Context, c *signing.Check, _, _ string, report func(signing.Progress)) (bool, string, error) {
 	report(signing.Progress{Tag: c.Tag, Phase: "sign"})
-	return b.sign(c)
+	ok, err := b.sign(c)
+	return ok, "", err
 }
 
 func TestReleaseChecksCannotReplaceEachOtherOutOfOrder(t *testing.T) {

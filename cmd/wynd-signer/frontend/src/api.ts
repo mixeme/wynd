@@ -101,8 +101,11 @@ interface Backend {
 	State(): Promise<State>;
 	ChooseKeyPlace(current: string): Promise<string>;
 	ChooseKey(): Promise<State>;
-	// ChooseKeystore — выбор файла ключа Android на экране Android-выпуска.
+	// ChooseKeystore — выбор файла ключа Android; ChooseKeystorePlace — куда
+	// сохранить новый; CreateKeystore — создание ключа Android (.p12).
 	ChooseKeystore(): Promise<State>;
+	ChooseKeystorePlace(current: string): Promise<string>;
+	CreateKeystore(path: string, pass: string): Promise<Result>;
 	CreateKey(path: string, pass: string): Promise<Result>;
 	Releases(): Promise<Releases>;
 	CheckRelease(tag: string, requestId: string): Promise<Check>;
@@ -119,6 +122,8 @@ const native: Backend = {
 	ChooseKeyPlace: (current) => Call.ByName('main.App.ChooseKeyPlace', current),
 	ChooseKey: () => Call.ByName('main.App.ChooseKey'),
 	ChooseKeystore: () => Call.ByName('main.App.ChooseKeystore'),
+	ChooseKeystorePlace: (current) => Call.ByName('main.App.ChooseKeystorePlace', current),
+	CreateKeystore: (path, pass) => Call.ByName('main.App.CreateKeystore', path, pass),
 	CreateKey: (path, pass) => Call.ByName('main.App.CreateKey', path, pass),
 	Releases: () => Call.ByName('main.App.Releases'),
 	CheckRelease: (tag, requestId) => Call.ByName('main.App.CheckRelease', tag, requestId),

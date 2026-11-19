@@ -35,7 +35,7 @@ var assets embed.FS
 type releaseBackend interface {
 	Releases(context.Context) ([]signing.Release, error)
 	FetchWithProgress(context.Context, string, func(signing.Progress)) (*signing.Check, error)
-	SignAndPublishWithProgress(context.Context, *signing.Check, string, string, func(signing.Progress)) (bool, error)
+	SignAndPublishWithProgress(context.Context, *signing.Check, string, string, func(signing.Progress)) (bool, string, error)
 	ReleaseURL(string) string
 }
 
@@ -85,9 +85,14 @@ func (a *App) ServiceShutdown() error {
 	return nil
 }
 
-// settings — что окно помнит на этом компьютере: где лежит ключ (12а, 12б).
+// settings — что окно помнит на этом компьютере: где лежит ключ (12а, 12б),
+// файл ключа Android и среда для aapt/zipalign/apksigner (план 65).
 type settings struct {
 	KeyPath string `json:"key_path"`
+	// KeyStorePath — файл постоянного ключа Android (.p12).
+	KeyStorePath string `json:"key_store_path"`
+	// AndroidEnv — среда Android; пусто — D:\android-env (план 50).
+	AndroidEnv string `json:"android_env,omitempty"`
 }
 
 // Пробы окна не трогают настоящие файлы владельца:
@@ -114,6 +119,11 @@ func loadSettings() settings {
 		home, _ := os.UserHomeDir()
 		// Там же, где его ищет scripts\sign-workshop.bat.
 		s.KeyPath = filepath.Join(home, ".wynd", "workshop-signing.key")
+	}
+	if s.KeyStorePath == "" {
+		// По умолчанию — путь scripts\sign-android-release.ps1 (план 50:
+		// постоянный ключ держит владелец вне репозитория).
+		s.KeyStorePath = `D:\Local\Git\myenv\wynd\wynd-android.p12`
 	}
 	return s
 }
@@ -154,13 +164,16 @@ func repoRoot() string {
 	return ""
 }
 
-// State — с чего начать (12а или 12б).
+// State — с чего начать (12а или 12б) и как настроены ключи (план 65).
 type State struct {
 	KeyPath   string `json:"key_path"`
 	KeyExists bool   `json:"key_exists"`
 	// PubPath — куда ляжет открытый ключ; пусто — репозиторий не найден, и он
 	// ляжет рядом с ключом (.pub).
 	PubPath string `json:"pub_path"`
+	// KeyStorePath — файл ключа Android; KeyStoreExists — он выбран и найден.
+	KeyStorePath   string `json:"key_store_path"`
+	KeyStoreExists bool   `json:"key_store_exists"`
 }
 
 func pubPath(keyPath string) string {
@@ -176,7 +189,16 @@ func pubPath(keyPath string) string {
 func (a *App) State() State {
 	s := loadSettings()
 	_, err := os.Stat(s.KeyPath)
-	return State{KeyPath: s.KeyPath, KeyExists: err == nil, PubPath: pubPath(s.KeyPath)}
+	storeExists := false
+	if s.KeyStorePath != "" {
+		if _, statErr := os.Stat(s.KeyStorePath); statErr == nil {
+			storeExists = true
+		}
+	}
+	return State{
+		KeyPath: s.KeyPath, KeyExists: err == nil, PubPath: pubPath(s.KeyPath),
+		KeyStorePath: s.KeyStorePath, KeyStoreExists: storeExists,
+	}
 }
 
 // Отмена диалога в Wails v3 — ошибка внутренней библиотеки
@@ -249,6 +271,8 @@ type Result struct {
 	Published bool           `json:"published,omitempty"`
 	URL       string         `json:"url,omitempty"`
 	Steps     []signing.Step `json:"steps,omitempty"`
+	// Detail — готовый текст итога подписи для Android; у exe пусто.
+	Detail string `json:"detail,omitempty"`
 }
 
 func fail(err error) Result {
@@ -333,7 +357,7 @@ func (a *App) SignRelease(checkID, tag, requestID, pass string) Result {
 		return Result{Message: "Проверка выпуска устарела. Проверьте выпуск заново"}
 	}
 	var steps []signing.Step
-	published, err := a.gh.SignAndPublishWithProgress(a.ctx, c, loadSettings().KeyPath, pass, func(p signing.Progress) {
+	published, detail, err := a.gh.SignAndPublishWithProgress(a.ctx, c, loadSettings().KeyPath, pass, func(p signing.Progress) {
 		p.CheckID = checkID
 		p.RequestID = requestID
 		steps = p.Steps
@@ -346,7 +370,60 @@ func (a *App) SignRelease(checkID, tag, requestID, pass string) Result {
 	}
 	c.Close()
 	a.check = nil
-	return Result{OK: true, Published: published, URL: a.gh.ReleaseURL(c.Tag), Steps: steps}
+	return Result{OK: true, Published: published, URL: a.gh.ReleaseURL(c.Tag), Steps: steps, Detail: detail}
+}
+
+// ChooseKeystore — файл ключа Android (план 65): на экране «Ключи» или на
+// экране Android-выпуска; выбор окно запоминает.
+func (a *App) ChooseKeystore() (State, error) {
+	s := loadSettings()
+	p, err := application.Get().Dialog.OpenFileWithOptions(&application.OpenFileDialogOptions{
+		Title: "Файл ключа Android", Directory: keyDialogDirectory(s.KeyStorePath),
+		Filters: []application.FileFilter{{DisplayName: "Ключ Android (*.p12)", Pattern: "*.p12"}},
+	}).PromptForSingleSelection()
+	if dialogCancelled(err) {
+		return a.State(), nil
+	}
+	if err != nil {
+		return State{}, fmt.Errorf("Не удалось открыть окно выбора файла: %w", err)
+	}
+	if p != "" {
+		s.KeyStorePath = p
+		saveSettings(s)
+	}
+	return a.State(), nil
+}
+
+// ChooseKeystorePlace — куда сохранить новый ключ Android (кадр 5 плана 65).
+func (a *App) ChooseKeystorePlace(current string) (string, error) {
+	p, err := application.Get().Dialog.SaveFileWithOptions(&application.SaveFileDialogOptions{
+		Title: "Где хранить ключ Android", Directory: keyDialogDirectory(current), Filename: filepath.Base(current),
+	}).PromptForSingleSelection()
+	if dialogCancelled(err) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("Не удалось открыть окно выбора файла: %w", err)
+	}
+	return p, nil
+}
+
+// CreateKeystore — создать ключ Android (кадр 5): keytool из среды Android,
+// те же параметры, что в scripts\new-android-signing-key.ps1.
+func (a *App) CreateKeystore(keyPath, pass string) Result {
+	if keyPath == "" {
+		return Result{Message: "Укажите, где хранить ключ"}
+	}
+	if _, err := os.Stat(keyPath); err == nil {
+		return Result{Message: "Файл ключа уже есть — не перезаписываю: прежний ключ пропал бы, а с ним обновления уже установленных приложений"}
+	}
+	if err := signing.CreateAndroidKey(loadSettings().AndroidEnv, keyPath, pass); err != nil {
+		return fail(err)
+	}
+	s := loadSettings()
+	s.KeyStorePath = keyPath
+	saveSettings(s)
+	return Result{OK: true, Path: keyPath}
 }
 
 // PickExe — «Подписать файл на этом компьютере» (12б).
@@ -392,7 +469,7 @@ func (a *App) ShowInFolder(path string) {
 }
 
 func main() {
-	backend := &App{gh: signing.GitHub{Repo: "mixeme/wynd"}}
+	backend := &App{gh: signing.GitHub{Repo: "mixeme/wynd", AndroidEnv: loadSettings().AndroidEnv}}
 	app := application.New(application.Options{
 		Name:        "wynd-signer",
 		Description: "Подпись выпусков Wynd",

@@ -30,12 +30,15 @@ const (
 	ProductWorkshop = "workshop"
 	// ProductDesktop — Wynd Настольный: выпуск desktop-vX.Y.Z, wynd-desktop.exe.
 	ProductDesktop = "desktop"
+	// ProductAndroid — Wynd Android: выпуск android-vX.Y.Z, wynd-android.apk
+	// (план 65; подпись apksigner, шаги — в android.go).
+	ProductAndroid = "android"
 )
 
 type product struct {
-	ID     string // ProductWorkshop / ProductDesktop — уходит в окно как product.
+	ID     string // ProductWorkshop / ProductDesktop / ProductAndroid — уходит в окно как product.
 	Name   string // как программа называется в окне.
-	Exe    string // имя exe в выпуске.
+	Exe    string // имя файла выпуска.
 	Prefix string // префикс тега выпуска.
 	// Key — открытый ключ, вшитый в сборку программы (общий ключ экосистемы):
 	// по нему программа проверяет самообновление. Пусто — самообновления нет.
@@ -43,11 +46,37 @@ type product struct {
 	// Notes — «Что нового» в репозитории тега; раздел версии публикуется
 	// вместе с выпуском. Пусто — описание не читается.
 	Notes string
+	// Unsigned — имя файла черновика для скачивания (Android); пусто — Exe.
+	Unsigned string
+	// SignedAsset — файл-признак «выпуск подписан» в списке; пусто — Exe+".sig".
+	SignedAsset string
+	// KeyAlias — alias в keystore Android; пусто — подпись exe-ключом из файла.
+	KeyAlias string
+	// APK — Android-выпуск: свои шаги проверки и подпись apksigner.
+	APK bool
 }
 
 var products = []product{
 	{ID: ProductWorkshop, Name: "Wynd Мастерская", Exe: "wynd-workshop.exe", Prefix: "workshop-v", Key: "signing-key.pub", Notes: "cmd/wynd-workshop/whatsnew.md"},
 	{ID: ProductDesktop, Name: "Wynd Настольный", Exe: "wynd-desktop.exe", Prefix: "desktop-v", Key: "signing-key.pub", Notes: "cmd/wynd-desktop/whatsnew.md"},
+	{ID: ProductAndroid, Name: "Wynd Android", Exe: "wynd-android.apk", Unsigned: "wynd-android-unsigned.apk", SignedAsset: "wynd-android.apk", Prefix: "android-v", Notes: "android/whatsnew.md", KeyAlias: androidKeyAlias, APK: true},
+}
+
+// downloadName — имя файла, который скачивают из выпуска: у Android это
+// unsigned APK черновика, у остальных — сам exe.
+func (p product) downloadName() string {
+	if p.Unsigned != "" {
+		return p.Unsigned
+	}
+	return p.Exe
+}
+
+// signedAsset — файл, по наличию которого выпуск считается подписанным.
+func (p product) signedAsset() string {
+	if p.SignedAsset != "" {
+		return p.SignedAsset
+	}
+	return p.Exe + ".sig"
 }
 
 // productOf — чей это выпуск по тегу; nil — не выпуски Wynd.
@@ -64,6 +93,9 @@ func productOf(tag string) *product {
 type GitHub struct {
 	Repo string // mixeme/wynd
 	Bin  string // gh; пусто — "gh" из PATH
+	// AndroidEnv — среда Android для aapt/zipalign/apksigner; пусто —
+	// D:\android-env (решение владельца, план 50).
+	AndroidEnv string
 }
 
 func (g GitHub) ReleaseURL(tag string) string {
@@ -154,8 +186,9 @@ func (g GitHub) Releases(ctx context.Context) ([]Release, error) {
 		if !r.IsDraft {
 			rel.PublishedAt = r.PublishedAt
 		}
+		asset := prod.signedAsset()
 		for _, a := range r.Assets {
-			if a.Name == prod.Exe+".sig" {
+			if a.Name == asset {
 				rel.Signed = true
 			}
 		}
@@ -169,7 +202,7 @@ type Check struct {
 	CheckID   string `json:"check_id,omitempty"`
 	RequestID string `json:"request_id,omitempty"`
 	// Product — чья это программа: ProductWorkshop или ProductDesktop.
-	Product   string `json:"product"`
+	Product string `json:"product"`
 	// Name — как программа называется в окне, Exe — имя файла выпуска.
 	Name  string `json:"name"`
 	Exe   string `json:"exe"`
@@ -187,9 +220,14 @@ type Check struct {
 	// KeyInRelease — сборка уже содержит ключ для проверки самообновлений.
 	KeyInRelease bool `json:"key_in_release"`
 	// PubKey — открытый ключ из тега; пусто у старых сборок без самообновления.
-	PubKey  string `json:"-"`
-	Problem string `json:"problem,omitempty"`
-	Steps   []Step `json:"steps"`
+	PubKey string `json:"-"`
+	// Publishes — черновик будет опубликован после подписи; решает Go
+	// (для Android — только при готовности к публикации в теге).
+	Publishes bool `json:"publishes"`
+	// PublishNote — почему публикация не состоится (Android без готовности).
+	PublishNote string `json:"publish_note,omitempty"`
+	Problem     string `json:"problem,omitempty"`
+	Steps       []Step `json:"steps"`
 
 	exe string
 	dir string
@@ -205,23 +243,36 @@ func (g GitHub) Fetch(ctx context.Context, tag string) (*Check, error) {
 // FetchWithProgress выполняет те же проверки, сообщая о настоящих этапах.
 // Первый отказ останавливает проверку; подпись такого выпуска недоступна.
 // Набор этапов — из описания программы: ключ проверяется у той, что
-// самообновляется, «Что нового» — у той, чей whatsnew.md читается.
+// самообновляется, «Что нового» — у той, чей whatsnew.md читается; у Android
+// вместо ключа — пакет, выравнивание и готовность к публикации.
 func (g GitHub) FetchWithProgress(ctx context.Context, tag string, report func(Progress)) (c *Check, err error) {
 	prod := productOf(tag)
 	if prod == nil {
-		return nil, fmt.Errorf("%s — не выпуски Wynd: подписываемый exe должен быть из тега workshop-v… или desktop-v…", tag)
+		return nil, fmt.Errorf("%s — не выпуски Wynd: подписываемый файл должен быть из тега workshop-v…, desktop-v… или android-v…", tag)
+	}
+	downloadTitle := "Скачиваем программу и контрольную сумму"
+	if prod.APK {
+		downloadTitle = "Скачиваем APK и контрольную сумму"
 	}
 	steps := []Step{
 		{ID: "release", Title: "Получаем сведения о выпуске"},
-		{ID: "download", Title: "Скачиваем программу и контрольную сумму"},
+		{ID: "download", Title: downloadTitle},
 		{ID: "checksum", Title: "Проверяем контрольную сумму"},
 		{ID: "attestation", Title: "Проверяем происхождение сборки"},
+	}
+	if prod.APK {
+		steps = append(steps,
+			Step{ID: "package", Title: "Проверяем пакет и версию"},
+			Step{ID: "align", Title: "Проверяем выравнивание"})
 	}
 	if prod.Key != "" {
 		steps = append(steps, Step{ID: "key", Title: "Проверяем открытый ключ"})
 	}
 	if prod.Notes != "" {
 		steps = append(steps, Step{ID: "notes", Title: "Читаем описание выпуска"})
+	}
+	if prod.APK {
+		steps = append(steps, Step{ID: "readiness", Title: "Проверяем готовность к публикации"})
 	}
 	p := newProgress(tag, "check", report, steps...)
 	defer func() {
@@ -243,20 +294,22 @@ func (g GitHub) FetchWithProgress(ctx context.Context, tag string, report func(P
 	if err != nil {
 		return nil, err
 	}
-	c = &Check{Product: prod.ID, Name: prod.Name, Exe: prod.Exe, Tag: tag, Draft: draft, SelfUpdate: prod.Key != "", dir: dir, exe: filepath.Join(dir, prod.Exe)}
-	if _, err := g.gh(ctx, "release", "download", tag, "-R", g.Repo, "-D", dir, "-p", prod.Exe, "-p", prod.Exe+".sha256", "--clobber"); err != nil {
+	// У Android из черновика скачивается unsigned APK; у остальных — сам exe.
+	dl := prod.downloadName()
+	c = &Check{Product: prod.ID, Name: prod.Name, Exe: prod.Exe, Tag: tag, Draft: draft, SelfUpdate: prod.Key != "", dir: dir, exe: filepath.Join(dir, dl)}
+	if _, err := g.gh(ctx, "release", "download", tag, "-R", g.Repo, "-D", dir, "-p", dl, "-p", dl+".sha256", "--clobber"); err != nil {
 		c.Close()
 		return nil, fmt.Errorf("скачать выпуск не получилось: %w", err)
 	}
 	p.done("download", "")
 	p.start("checksum")
-	exe, err := os.ReadFile(c.exe)
+	downloaded, err := os.ReadFile(c.exe)
 	if err != nil {
 		c.Close()
 		return nil, err
 	}
-	c.Size = int64(len(exe))
-	sum := sha256.Sum256(exe)
+	c.Size = int64(len(downloaded))
+	sum := sha256.Sum256(downloaded)
 	if want, err := os.ReadFile(c.exe + ".sha256"); err == nil {
 		c.SumOK = strings.HasPrefix(strings.TrimSpace(string(want)), hex.EncodeToString(sum[:]))
 	}
@@ -266,7 +319,13 @@ func (g GitHub) FetchWithProgress(ctx context.Context, tag string, report func(P
 	}
 	p.done("checksum", "")
 	p.start("attestation")
-	out, attestErr := g.gh(ctx, "attestation", "verify", c.exe, "--repo", g.Repo, "--format", "json")
+	verifyArgs := []string{"attestation", "verify", c.exe, "--repo", g.Repo, "--format", "json"}
+	if prod.APK {
+		// Как в скрипте подписи: удостоверение именно этого workflow и тега.
+		verifyArgs = append(verifyArgs, "--source-ref", "refs/tags/"+tag,
+			"--signer-workflow", g.Repo+"/.github/workflows/android.yaml")
+	}
+	out, attestErr := g.gh(ctx, verifyArgs...)
 	if attestErr == nil {
 		var att []struct {
 			VerificationResult struct {
@@ -288,13 +347,19 @@ func (g GitHub) FetchWithProgress(ctx context.Context, tag string, report func(P
 		}
 	}
 	if !c.AttestOK {
-		c.Problem = "Нет удостоверения, что exe собран GitHub Actions из тега " + tag
+		c.Problem = "Нет удостоверения, что файл собран GitHub Actions из тега " + tag
 		if attestErr != nil {
 			c.Problem = "Проверить происхождение сборки не получилось: " + attestErr.Error()
 		}
 		return c, nil
 	}
 	p.doneLink("attestation", "коммит "+c.Commit[:min(8, len(c.Commit))], "проверить", g.AttestationURL())
+	if prod.APK {
+		// Пакет, выравнивание, описание и готовность — шаги android.go;
+		// отказы ставят c.Problem и останавливают проверку.
+		g.androidCheck(ctx, c, prod, p, draft)
+		return c, nil
+	}
 	if prod.Key != "" {
 		p.start("key")
 		c.PubKey, err = g.releaseKey(ctx, tag, prod.Key)
@@ -318,6 +383,7 @@ func (g GitHub) FetchWithProgress(ctx context.Context, tag string, report func(P
 		}
 		p.done("notes", notesNote)
 	}
+	c.Publishes = c.Draft && c.Notes != ""
 	return c, nil
 }
 
@@ -386,6 +452,20 @@ func (g GitHub) notes(ctx context.Context, prod *product, tag string) string {
 	return g.file(ctx, "cmd/wynd-installer/whatsnew.md", tag)
 }
 
+// fileE — файл репозитория в теге с ошибкой вместо пустоты: сетевой отказ
+// не выглядит как «файла нет» (нужно для готовности Android к публикации).
+func (g GitHub) fileE(ctx context.Context, path, ref string) (string, error) {
+	out, err := g.gh(ctx, "api", "repos/"+g.Repo+"/contents/"+path+"?ref="+ref, "--jq", ".content")
+	if err != nil {
+		return "", err
+	}
+	raw, err := base64.StdEncoding.DecodeString(strings.Join(strings.Fields(string(out)), ""))
+	if err != nil {
+		return "", err
+	}
+	return string(raw), nil
+}
+
 func (g GitHub) file(ctx context.Context, path, ref string) string {
 	out, err := g.gh(ctx, "api", "repos/"+g.Repo+"/contents/"+path+"?ref="+ref, "--jq", ".content")
 	if err != nil {
@@ -411,12 +491,28 @@ func (c *Check) Close() {
 // .sig и, если это черновик и есть «Что нового», публикует его с этим текстом.
 // Описание и дату уже опубликованного выпуска не меняет.
 func (g GitHub) SignAndPublish(ctx context.Context, c *Check, keyPath, pass string) (published bool, err error) {
-	return g.SignAndPublishWithProgress(ctx, c, keyPath, pass, nil)
+	published, _, err = g.SignAndPublishWithProgress(ctx, c, keyPath, pass, nil)
+	return published, err
 }
 
 // SignAndPublishWithProgress сообщает этапы подписи, загрузки и публикации.
-// Ключ и пароль в сообщениях о ходе работы не передаются.
-func (g GitHub) SignAndPublishWithProgress(ctx context.Context, c *Check, keyPath, pass string, report func(Progress)) (published bool, err error) {
+// Ключ и пароль в сообщениях о ходе работы не передаются. Второй результат —
+// готовый текст итога для окна (Android); у exe он пуст — шаблон в окне.
+func (g GitHub) SignAndPublishWithProgress(ctx context.Context, c *Check, keyPath, pass string, report func(Progress)) (published bool, detail string, err error) {
+	prod := productOf(c.Tag)
+	if prod != nil && prod.APK {
+		p := newProgress(c.Tag, "sign", report,
+			Step{ID: "release", Title: "Проверяем состояние выпуска"},
+			Step{ID: "signature", Title: "Подписываем и проверяем подпись"},
+			Step{ID: "upload", Title: "Загружаем подписанный APK на GitHub"},
+		)
+		defer func() {
+			if err != nil {
+				p.fail()
+			}
+		}()
+		return g.signAndPublishAndroid(ctx, c, keyPath, pass, p)
+	}
 	p := newProgress(c.Tag, "sign", report,
 		Step{ID: "release", Title: "Проверяем состояние выпуска"},
 		Step{ID: "signature", Title: "Подписываем и проверяем подпись"},
@@ -429,56 +525,56 @@ func (g GitHub) SignAndPublishWithProgress(ctx context.Context, c *Check, keyPat
 	}()
 	p.start("release")
 	if c.Problem != "" {
-		return false, errors.New(c.Problem)
+		return false, "", errors.New(c.Problem)
 	}
 	// За время проверок черновик могли опубликовать другим способом.
 	draft, err := g.isDraft(ctx, c.Tag)
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
-	if draft && c.Notes != "" {
+	if draft && c.Publishes {
 		p.value.Steps = append(p.value.Steps, Step{ID: "publish", Title: "Публикуем выпуск", Status: "pending"})
 	}
 	p.done("release", "")
 	p.start("signature")
 	priv, err := Unlock(keyPath, pass)
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
 	exe, err := os.ReadFile(c.exe)
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
 	sig, err := Sign(priv, exe, c.PubKey)
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
 	sigPath := c.exe + ".sig"
 	if err := os.WriteFile(sigPath, []byte(sig+"\n"), 0o644); err != nil {
-		return false, err
+		return false, "", err
 	}
 	p.done("signature", "")
 	p.start("upload")
 	if _, err := g.gh(ctx, "release", "upload", c.Tag, sigPath, "-R", g.Repo, "--clobber"); err != nil {
-		return false, fmt.Errorf("выложить подпись не получилось: %w", err)
+		return false, "", fmt.Errorf("выложить подпись не получилось: %w", err)
 	}
 	p.done("upload", "")
 	if !draft {
-		return true, nil
+		return true, "", nil
 	}
 	if c.Notes == "" {
-		return false, nil
+		return false, "", nil
 	}
 	p.start("publish")
 	notes := filepath.Join(c.dir, "notes.md")
 	if err := os.WriteFile(notes, []byte(c.Notes+"\n"), 0o644); err != nil {
-		return false, err
+		return false, "", err
 	}
 	if _, err := g.gh(ctx, "release", "edit", c.Tag, "-R", g.Repo, "--notes-file", notes, "--draft=false"); err != nil {
-		return false, fmt.Errorf("подпись выложена, а опубликовать не получилось: %w", err)
+		return false, "", fmt.Errorf("подпись выложена, а опубликовать не получилось: %w", err)
 	}
 	p.done("publish", "")
-	return true, nil
+	return true, "", nil
 }
 
 // SignFile подписывает exe на этом компьютере (12д): .sig — рядом, под его

@@ -18,8 +18,9 @@
 
 	// Экраны (docs/visual/workshop.html): 12а — ключа нет, 12б — выпуски,
 	// 12в–12г — проверка, подпись и итог на одном экране, 12д — подписан файл;
-	// file — пароль для файла на этом компьютере.
-	type Screen = 'create' | 'list' | 'release' | 'file' | 'filedone';
+	// file — пароль для файла на этом компьютере; keys — ключи подписи (план 65);
+	// androidcreate — создание ключа Android (план 65).
+	type Screen = 'create' | 'list' | 'keys' | 'androidcreate' | 'release' | 'file' | 'filedone';
 	let screen = $state<Screen>('list');
 	let body = $state<HTMLElement>();
 	let st = $state<State | undefined>();
@@ -145,14 +146,50 @@
 			keyError = String(err);
 		}
 	}
-	// Ключ Android выбирается на экране Android-выпуска (поле — только там,
-	// где применяется): без него пароль и подпись не показываются.
+	// Ключ Android выбирается или создаётся (поле — только там, где применяется);
+	// без него пароль и подпись не показываются.
 	async function chooseKeystore() {
 		keyError = '';
 		try {
 			st = await backend().ChooseKeystore();
 		} catch (err) {
 			keyError = String(err);
+		}
+	}
+	let akeyPath = $state('');
+	let createReturn = $state<Screen>('release');
+	function goAndroidCreate() {
+		createReturn = screen === 'keys' ? 'keys' : 'release';
+		akeyPath = st?.key_store_path ?? '';
+		pass1 = pass2 = '';
+		createError = '';
+		screen = 'androidcreate';
+	}
+	const canCreateKeystore = $derived([...pass1].length >= 12 && pass1 === pass2 && akeyPath !== '');
+	async function chooseKeystorePlace() {
+		createError = '';
+		try {
+			const p = await backend().ChooseKeystorePlace(akeyPath);
+			if (p) akeyPath = p;
+		} catch (err) {
+			createError = String(err);
+		}
+	}
+	async function createKeystore() {
+		if (!canCreateKeystore || creating) return;
+		creating = true;
+		createError = '';
+		try {
+			const res = await backend().CreateKeystore(akeyPath, pass1);
+			if (!res.ok) {
+				createError = res.message ?? 'Создать ключ не получилось';
+				return;
+			}
+			pass1 = pass2 = '';
+			st = await backend().State();
+			screen = createReturn;
+		} finally {
+			creating = false;
 		}
 	}
 	function toList() {
@@ -326,12 +363,11 @@
 				<h2 class="ins-grow">Выпуски</h2>
 				<Button variant="ghost" disabled={listing} onclick={() => void list()}>{listing ? 'Обновляем…' : 'Обновить'}</Button>
 			</FieldLine>
-			{#if st.key_exists}
-				<p class="ins-sub">
-					Ключ — {st.key_path}
-					<TextButton class="link under" onclick={() => void otherKey()}>другой</TextButton>
-				</p>
-			{:else}
+			<p class="ins-sub">
+				Ключи подписи
+				<TextButton class="link under" onclick={() => (screen = 'keys')}>настроить</TextButton>
+			</p>
+			{#if !st.key_exists}
 				<Notice tone="bad" title="Ключ не найден: {st.key_path}">
 					<FootBar>
 						<Button variant="ghost" onclick={() => void otherKey()}>Выбрать</Button>
@@ -374,6 +410,61 @@
 					</MarkRow>
 				</MarkRows>
 			{/if}
+		{:else if screen === 'keys' && st}
+			<!-- Ключи подписи: оба ключа в одном месте (решение владельца 2026-11-19). -->
+			<h2>Ключи подписи</h2>
+			<MarkRows>
+				<MarkRow mark="·">
+					Ключ программ под Windows
+					<span class="ins-dim">— {st.key_exists ? st.key_path : 'файл не найден'}</span>
+					{#snippet action()}
+						<TextButton class="link under" onclick={() => void otherKey()}>другой</TextButton>
+						{#if !st?.key_exists}<TextButton class="link under" onclick={() => (screen = 'create')}>создать</TextButton>{/if}
+					{/snippet}
+				</MarkRow>
+				<MarkRow mark="·">
+					Ключ программ под Android
+					<span class="ins-dim">— {st?.key_store_exists ? st.key_store_path : 'не выбран'}</span>
+					{#snippet action()}
+						<TextButton class="link under" onclick={() => void chooseKeystore()}>{st?.key_store_exists ? 'другой' : 'выбрать'}</TextButton>
+						{#if !st?.key_store_exists}<TextButton class="link under" onclick={goAndroidCreate}>создать</TextButton>{/if}
+					{/snippet}
+				</MarkRow>
+			</MarkRows>
+			<p class="ins-note">
+				Выпуски всех программ Wynd подписаны: установленная копия принимает обновление, только если
+				новая версия подписана тем же ключом. Файлы ключей зашифрованы паролем, пароль спрашивается
+				при каждой подписи.
+			</p>
+			<FootBar>
+				<Button variant="ghost" onclick={toList}>К выпускам</Button>
+			</FootBar>
+		{:else if screen === 'androidcreate'}
+			<!-- Создание ключа Android (как 12а, для .p12): пароль, повтор, место хранения. -->
+			<h2>Ключ программ под Android</h2>
+			<p class="ins-sub">
+				Этим ключом подписываются выпуски Wynd Android (APK). Установленное приложение принимает
+				обновление, только если оно подписано тем же ключом. Ключ создаётся один раз.
+			</p>
+			<Label>Пароль ключа</Label>
+			<Input type="password" autocomplete="off" bind:value={pass1} />
+			<Label>Ещё раз</Label>
+			<Input type="password" autocomplete="off" bind:value={pass2} />
+			{#if mismatch}<p class="ins-note" role="alert">Пароли не совпадают</p>{/if}
+			<p class="ins-note">Не короче 12 знаков. Ключ сохранится в файле .p12 этим паролем.</p>
+			<Label>Где хранить ключ</Label>
+			<FieldLine>
+				<Input mono class="ins-grow" bind:value={akeyPath} />
+				<Button variant="ghost" onclick={() => void chooseKeystorePlace()}>Выбрать</Button>
+			</FieldLine>
+			<Notice tone="bad">
+				Сохраните файл ключа и пароль в надёжном месте. Без них уже установленные приложения не обновить:
+				новую версию они не примут.
+			</Notice>
+			{#if createError}<Notice tone="bad" alert>{createError}</Notice>{/if}
+			<FootBar>
+				<Button variant={canCreateKeystore ? 'colored' : 'off'} loading={creating} loadingLabel="Создаём…" onclick={() => void createKeystore()}>Создать ключ</Button>
+			</FootBar>
 		{:else if screen === 'release'}
 			<!-- Проверки, пароль, подпись и итог остаются на одном экране. -->
 			<h2>{productName} {version}</h2>
@@ -403,12 +494,13 @@
 					<Button variant="ghost" onclick={toList}>К выпускам</Button>
 				</FootBar>
 			{:else if isAndroid && st && !st.key_store_exists}
-				<!-- Ключ Android выбирается здесь: пароль и подпись появятся после выбора. -->
-				<Notice title="Ключ Android не выбран">
-					Подпись APK выполняется постоянным ключом Android — файлом .p12, который создаёт
-					scripts\new-android-signing-key.ps1. Ключ хранится только у вас; без него выпуск подписать нельзя.
+				<!-- Ключ Android создаётся здесь или выбирается: пароль и подпись появятся после. -->
+				<Notice title="Ключ программ под Android не выбран">
+					Подпись APK выполняется постоянным ключом. Создайте его или укажите существующий файл .p12;
+					ключ хранится только у вас, без него выпуск подписать нельзя.
 					<FootBar>
-						<Button variant="ghost" onclick={() => void chooseKeystore()}>Выбрать</Button>
+						<Button variant="colored" onclick={goAndroidCreate}>Создать</Button>
+						<TextButton class="link under" onclick={() => void chooseKeystore()}>выбрать</TextButton>
 					</FootBar>
 				</Notice>
 				<FootBar>
