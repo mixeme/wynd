@@ -210,6 +210,30 @@ describe('FeedData', () => {
 		expect(feed.posts.map((p) => p.id)).toEqual(['fresh']);
 	});
 
+	it('второй вызов снимка ждёт тот же, а не пустой ответ', async () => {
+		let release!: (snap: FeedSnapshot | undefined) => void;
+		const loadCached = vi.fn(
+			() =>
+				new Promise<FeedSnapshot | undefined>((resolve) => {
+					release = resolve;
+				})
+		);
+		const feed = new FeedData(deps({ loadCached }));
+
+		let secondDone = false;
+		const first = feed.loadCached();
+		const second = feed.loadCached().then(() => {
+			secondDone = true;
+		});
+		await Promise.resolve();
+		expect(secondDone).toBe(false);
+
+		release(snapshot([post('cached', 1)]));
+		await Promise.all([first, second]);
+		expect(feed.posts.map((p) => p.id)).toEqual(['cached']);
+		expect(loadCached).toHaveBeenCalledTimes(1);
+	});
+
 	it('без снимка экран ждёт сеть, как прежде', async () => {
 		const feed = new FeedData(
 			deps({

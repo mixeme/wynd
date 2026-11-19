@@ -66,9 +66,10 @@ export class FeedData {
 	 * Сеть идёт своим ходом и заменяет снимок, когда ответит.
 	 */
 	async loadCached(): Promise<void> {
-		if (this.cachedApplied || !this.deps.loadCached) return;
-		// Макет и экран просят снимок оба — второй ждёт тот же, а не пустой ответ.
+		// Макет и экран просят снимок оба — второй ждёт тот же, а не пустой ответ:
+		// cachedApplied ставится в doLoadCached сразу, до чтения базы.
 		if (this.cachedFlight) return this.cachedFlight;
+		if (this.cachedApplied || !this.deps.loadCached) return;
 		this.cachedFlight = this.doLoadCached().finally(() => {
 			this.cachedFlight = undefined;
 		});

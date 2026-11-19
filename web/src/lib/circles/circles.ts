@@ -236,7 +236,6 @@ export interface Street {
 	groups: StreetGroupView[];
 }
 
-
 export async function loadStreetCircles(): Promise<StreetCircle[]> {
 	return (await loadStreet()).circles;
 }
