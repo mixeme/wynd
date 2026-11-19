@@ -32,7 +32,6 @@
 	import ReactionBar from '$ui/data/ReactionBar.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { formatBytes } from '$lib/format/bytes';
-	import { resolveMediaUrls } from '$lib/media/batch';
 	import { downloadBlob } from '$lib/media/objectUrl';
 	import { WORD, plural } from '$lib/format/plural';
 	import {
@@ -44,9 +43,7 @@
 	} from '$lib/format/time';
 	import { isPostArchiveLocked } from '$lib/journal/archive';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
-	import { loadFeed } from '$lib/journal/feed';
-	import { FeedData } from '$lib/journal/feed-data.svelte';
-	import { fetchOlderPage } from '$lib/journal/pages';
+	import { circleReading } from '$lib/journal/reading.svelte';
 	import { canReact } from '$lib/journal/reactions';
 	import { fetchMembers, type MemberInfo } from '$lib/circles/settings';
 	import {
@@ -54,7 +51,6 @@
 		attachmentMedia,
 		authorInitial,
 		commentMediaItems,
-		commentPhotoIds,
 		commentPreview,
 		coverMedia,
 		type CommentMediaItem,
@@ -107,6 +103,7 @@
 	import { handComposePhotos } from '$lib/journal/compose-handoff';
 	import { holdKeyboard } from '$lib/navigation/keyboard';
 	import { applyFeedSpot, feedSpotKey, saveFeedSpot, takeFeedSpot } from '$lib/journal/feed-scroll';
+	import { mark, markPainted } from '$lib/dev/marks';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 	// Места нет (C42): читать и удалять своё можно, писать — нет (3.10, 3.11).
@@ -130,20 +127,10 @@
 	let fixedLastRead = $state(0);
 	// Данные ленты живут в контроллере $lib: первая порция, догрузка старших,
 	// граница непрочитанного и ошибка — с поведенческими тестами (план 60).
-	const feed = new FeedData({
-		load: () => loadFeed(circle.origin, circle.circleId),
-		loadOlder: async (before) => {
-			const page = await fetchOlderPage<{ posts: FeedPost[] }>(
-				circle.origin,
-				`/circles/${circle.circleId}/feed`,
-				before
-			);
-			return { items: page.posts, next: page.next_before };
-		},
-		lastRead: () => fixedLastRead,
-		resolveMedia: (items) => void resolveFeedMedia(items),
-		resolveDayMedia: (events) => void resolveDayCardMedia(events)
-	});
+	// Контроллер общий с экраном записи и держится, пока открыт круг (C95-1):
+	// возврат из записи не перечитывает ленту, обложки и лица — те же.
+	const reading = circleReading(circle.origin, circle.circleId, () => fixedLastRead);
+	const feed = reading.feed;
 	// Разметка читает поля контроллера под прежними именами.
 	let posts = $derived(feed.posts);
 	let loadingOlder = $derived(feed.loadingOlder);
@@ -169,85 +156,9 @@
 		reactionsPostId ? posts.find((p) => p.id === reactionsPostId) : undefined
 	);
 
-	let mediaUrls = $state<Record<string, string>>({});
-	let authorAvatarUrls = $state<Record<string, string>>({});
-
 	function authorAvatarSrc(post: FeedPost): string | undefined {
 		if (post.identity_id === circle.identityId && circle.avatarUrl) return circle.avatarUrl;
-		return authorAvatarUrls[post.identity_id];
-	}
-
-	// Лента не ждёт картинок: до двух тысяч записей давали столько же
-	// последовательных await, и экран стоял в «загрузке», пока не доедет
-	// последняя обложка. Пачки — общий хелпер $lib/media/batch (REF-6).
-	// Ход скачивания обложек и неудачи — плитка говорит, что происходит.
-	let mediaProgress = $state<Record<string, { received: number; total: number }>>({});
-	let mediaFailed = $state<Record<string, boolean>>({});
-
-	async function resolveFeedMedia(feedPosts: FeedPost[]) {
-		const avatarJobs = new Map<string, string>();
-		const coverJobs = new Map<string, string>();
-		for (const post of feedPosts) {
-			const avatarBlob = post.author_avatar_blob_id;
-			if (avatarBlob && !authorAvatarUrls[post.identity_id]) {
-				avatarJobs.set(post.identity_id, avatarBlob);
-			}
-			const cover = coverMedia(post.media);
-			if (cover && !mediaUrls[tileBlobId(cover)]) {
-				coverJobs.set(tileBlobId(cover), tileBlobId(cover));
-			}
-			for (const att of attachmentMedia(post.media)) {
-				if (att.audio_cover_blob_id && !mediaUrls[att.audio_cover_blob_id]) {
-					coverJobs.set(att.audio_cover_blob_id, att.audio_cover_blob_id);
-				}
-			}
-			// Снимки последней реплики — превью показывает их как в нити (4.22).
-			for (const id of commentPhotoIds(commentPreview(post.comments).comment?.media).slice(0, 3)) {
-				if (!mediaUrls[id]) coverJobs.set(id, id);
-			}
-		}
-
-		// Аватар лица и обложка записи — разные ключи при одном блобе, поэтому
-		// два прохода: сперва лица, потом обложки.
-		const identitiesByBlob = new Map<string, string[]>();
-		for (const [identityId, blobId] of avatarJobs) {
-			// Один блоб может быть аватаром нескольких лиц — тогда адрес
-			// достаётся всем им, а не последнему в списке.
-			identitiesByBlob.set(blobId, [...(identitiesByBlob.get(blobId) ?? []), identityId]);
-		}
-		await resolveMediaUrls(circle.origin, [...identitiesByBlob.keys()], (blobId, url) => {
-			for (const identityId of identitiesByBlob.get(blobId) ?? []) {
-				authorAvatarUrls = { ...authorAvatarUrls, [identityId]: url };
-			}
-		});
-		await resolveMediaUrls(
-			circle.origin,
-			[...coverJobs.keys()],
-			(blobId, url) => {
-				mediaUrls = { ...mediaUrls, [blobId]: url };
-			},
-			undefined,
-			{
-				onProgress: (blobId, received, total) => {
-					mediaProgress = { ...mediaProgress, [blobId]: { received, total } };
-				},
-				onFail: (blobId) => {
-					mediaFailed = { ...mediaFailed, [blobId]: true };
-				}
-			}
-		);
-	}
-
-	// Обложки открыток дня (3.20) — в тот же словарь, что обложки записей.
-	async function resolveDayCardMedia(events: FeedEvent[]) {
-		const ids = new Set<string>();
-		for (const ev of events) {
-			const id = ev.day ? dayCoverTileId(ev.day) : undefined;
-			if (id && !mediaUrls[id]) ids.add(id);
-		}
-		await resolveMediaUrls(circle.origin, [...ids], (blobId, url) => {
-			mediaUrls = { ...mediaUrls, [blobId]: url };
-		});
+		return reading.authorAvatarUrls[post.identity_id];
 	}
 
 	const soloCircle = $derived(activeMemberCount === 1);
@@ -278,6 +189,7 @@
 		spotDone = true;
 		const spot = takeFeedSpot(feedSpotKey(circle.origin, circle.circleId));
 		if (!spot || !cameFromPost) return;
+		mark('d:restore-start');
 		await tick();
 		if (feedEl)
 			applyFeedSpot(
@@ -285,6 +197,7 @@
 				posts.map((p) => p.id),
 				spot
 			);
+		void markPainted('r:feed-restored');
 	}
 
 	function leaveToPost(path: string) {
@@ -297,8 +210,10 @@
 	}
 
 	async function loadFeedData() {
+		mark('t:feed-load-start');
 		await feed.load();
 		feedLoaded = true;
+		void markPainted('r:feed-items');
 		await restoreSpot();
 	}
 
@@ -340,11 +255,19 @@
 		}
 		fixedLastRead = circle.lastReadSeq;
 		const dayPromptParam = $page.url.searchParams.get('dayPrompt');
-		void loadFeedData().then(() => {
-			if (!dayPromptParam || !/^\d{4}-\d{2}-\d{2}$/.test(dayPromptParam)) return;
-			void dropSearchParam('dayPrompt');
-			void checkDayPrompt(dayPromptParam);
-		});
+		if (feed.posts.length || feed.error) {
+			// Возврат из записи: лента загружена — карточки и место возвращаются
+			// сразу, перечитывание не нужно (C95-1). Свежесть приносит поток
+			// синхронизации и обновление на экране записи, которое шло фоном.
+			feedLoaded = true;
+			void restoreSpot();
+		} else {
+			void loadFeedData().then(() => {
+				if (!dayPromptParam || !/^\d{4}-\d{2}-\d{2}$/.test(dayPromptParam)) return;
+				void dropSearchParam('dayPrompt');
+				void checkDayPrompt(dayPromptParam);
+			});
+		}
 		void fetchMembers(circle.origin, circle.circleId)
 			.then((list) => {
 				members = list;
@@ -389,6 +312,7 @@
 	});
 
 	function goBack() {
+		mark('t:tap-back-list');
 		void navigateBack();
 	}
 
@@ -602,6 +526,7 @@
 	}
 
 	function openPost(postId: string) {
+		mark('t:tap-post');
 		leaveToPost(`/circles/${circle.circleId}/posts/${postId}`);
 	}
 
@@ -953,7 +878,7 @@
 						date={formatEntryDate(ev.day.entry_date)}
 						title={ev.day.title}
 						hasCover={Boolean(coverId)}
-						coverUrl={coverId ? mediaUrls[coverId] : undefined}
+						coverUrl={coverId ? reading.mediaUrls[coverId] : undefined}
 						video={ev.day.cover_is_video}
 						caption="{ev.day.caption} · {formatPostTime(ev.created_at)}"
 						onclick={() => openDay(ev.day!.entry_date)}
@@ -988,12 +913,12 @@
 					{#if cover}
 						<MediaTile
 							variant="feed"
-							src={mediaUrls[tileBlobId(cover)]}
+							src={reading.mediaUrls[tileBlobId(cover)]}
 							kind={cover.kind === 'video' ? 'video' : 'photo'}
 							durationMs={cover.video_duration_ms}
 							crop={cover.crop}
-							loading={mediaProgress[tileBlobId(cover)]}
-							failed={mediaFailed[tileBlobId(cover)]}
+							loading={reading.mediaProgress[tileBlobId(cover)]}
+							failed={reading.mediaFailed[tileBlobId(cover)]}
 							{count}
 							locationLabel={loc || undefined}
 							onclick={() => openAlbum(post.id)}
@@ -1006,7 +931,7 @@
 						circleName={circle.name}
 						color={circle.colorHex}
 						postId={post.id}
-						coverUrls={mediaUrls}
+						coverUrls={reading.mediaUrls}
 					/>
 				{/snippet}
 				<PostCard
@@ -1049,7 +974,7 @@
 					{@const last = preview.comment}
 					{#snippet previewMedia()}
 						<CommentMedia
-							items={commentMediaItems(last?.media, mediaUrls)}
+							items={commentMediaItems(last?.media, reading.mediaUrls)}
 							origin={circle.origin}
 							audio={{
 								circleId: circle.circleId,

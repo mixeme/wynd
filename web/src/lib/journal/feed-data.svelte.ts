@@ -39,6 +39,11 @@ export class FeedData {
 		this.deps = deps;
 	}
 
+	/** Экран пересоздан (возврат в ленту): зависимости уходят на живой экран. */
+	rebind(deps: FeedDataDeps): void {
+		this.deps = deps;
+	}
+
 	/** Первая порция; догруженные старшие перечитываются от новой границы. */
 	async load(): Promise<void> {
 		this.error = '';

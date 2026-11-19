@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { spaceNotice } from '$lib/circles/space';
 	import { navigateBack } from '$lib/navigation/up';
+	import { mark, markPainted } from '$lib/dev/marks';
 	import PostByline from '$ui/data/PostByline.svelte';
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
 	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
@@ -38,6 +39,7 @@
 	import { isPostArchiveLocked } from '$lib/journal/archive';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadFeed } from '$lib/journal/feed';
+	import { circleReading } from '$lib/journal/reading.svelte';
 	import {
 		attachmentMedia,
 		authorInitial,
@@ -97,6 +99,9 @@
 	import { registerRefetch } from '$lib/sync/sync';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
+	// Лента круга — та же, что у экрана ленты (C95-1): запись открывается из
+	// загруженного, обновления идут фоном через общий контроллер.
+	const shared = circleReading(circle.origin, circle.circleId, () => circle.lastReadSeq);
 	// Места нет (C42): ни ответить, ни поправить, ни реакции (3.10).
 	const canSay = $derived(circle.canWrite && !circle.spaceFull);
 	const notice = $derived(spaceNotice(circle));
@@ -408,64 +413,94 @@
 	});
 
 	async function load() {
-		try {
-			const snap = await loadFeed(circle.origin, circle.circleId);
-			post = findPost(snap.posts, postId);
-			const cover = post ? coverMedia(post.media) : undefined;
-			if (cover) {
-				// Ролик без кадра — плитка со значком, а не ошибка всей записи.
-				coverUrl = await getMediaUrl(circle.origin, tileBlobId(cover)).catch(() => '');
-			} else {
-				coverUrl = '';
+		const cached = shared.feed.posts.find((p) => p.id === postId);
+		if (cached) {
+			// Запись и обсуждение уже в загруженной ленте (C95-1): текст и нить
+			// открываются сразу, обложки и лица — фоном, обновление — тоже фоном.
+			post = cached;
+			loading = false;
+			void markPainted('r:post-text');
+		} else {
+			// Прямой вход (поиск, пуш, ссылка): ждём ленту, как раньше.
+			try {
+				const snap = await loadFeed(circle.origin, circle.circleId);
+				post = findPost(snap.posts, postId);
+				mark('d:post-data');
+			} catch {
+				error = 'Не удалось загрузить запись';
+			} finally {
+				loading = false;
+				void markPainted('r:post-text');
 			}
-			const covers: Record<string, string> = {};
-			for (const att of post?.media ?? []) {
-				const id = att.audio_cover_blob_id;
-				if (!id || covers[id]) continue;
-				try {
-					covers[id] = await getMediaUrl(circle.origin, id);
-				} catch {
-					/* плитка останется пустой */
-				}
+		}
+		void resolvePostMedia();
+		void refreshSilently();
+		void showLinkedComment();
+	}
+
+	// Обложки и лица после текста: нить их не ждёт.
+	async function resolvePostMedia() {
+		const cover = post ? coverMedia(post.media) : undefined;
+		if (cover) {
+			// Ролик без кадра — плитка со значком, а не ошибка всей записи.
+			coverUrl = await getMediaUrl(circle.origin, tileBlobId(cover)).catch(() => '');
+		} else {
+			coverUrl = '';
+		}
+		const covers: Record<string, string> = {};
+		for (const att of post?.media ?? []) {
+			const id = att.audio_cover_blob_id;
+			if (!id || covers[id]) continue;
+			try {
+				covers[id] = await getMediaUrl(circle.origin, id);
+			} catch {
+				/* плитка останется пустой */
 			}
-			audioCoverUrls = covers;
-			if (post?.author_avatar_blob_id) {
-				try {
-					postAvatarUrl = await getMediaUrl(circle.origin, post.author_avatar_blob_id);
-				} catch {
-					postAvatarUrl = '';
-				}
-			} else {
+		}
+		audioCoverUrls = covers;
+		if (post?.author_avatar_blob_id) {
+			try {
+				postAvatarUrl = await getMediaUrl(circle.origin, post.author_avatar_blob_id);
+			} catch {
 				postAvatarUrl = '';
 			}
-			const avatars: Record<string, string> = {};
-			for (const comment of post?.comments ?? []) {
-				const blob = comment.author_avatar_blob_id;
-				if (blob && !avatars[comment.identity_id]) {
-					try {
-						avatars[comment.identity_id] = await getMediaUrl(circle.origin, blob);
-					} catch {
-						/* skip */
-					}
-				}
-			}
-			commentAvatarUrls = avatars;
-			// Снимки из комментариев — пачками поверх, нить их не ждёт.
-			const photoIds = new Set<string>();
-			for (const comment of post?.comments ?? []) {
-				for (const id of commentPhotoIds(comment.media)) {
-					if (!mediaUrls[id]) photoIds.add(id);
-				}
-			}
-			void resolveMediaUrls(circle.origin, [...photoIds], (blobId, url) => {
-				mediaUrls = { ...mediaUrls, [blobId]: url };
-			});
-		} catch {
-			error = 'Не удалось загрузить запись';
-		} finally {
-			loading = false;
+		} else {
+			postAvatarUrl = '';
 		}
-		void showLinkedComment();
+		const avatars: Record<string, string> = {};
+		for (const comment of post?.comments ?? []) {
+			const blob = comment.author_avatar_blob_id;
+			if (blob && !avatars[comment.identity_id]) {
+				try {
+					avatars[comment.identity_id] = await getMediaUrl(circle.origin, blob);
+				} catch {
+					/* skip */
+				}
+			}
+		}
+		commentAvatarUrls = avatars;
+		// Снимки из комментариев — пачками поверх, нить их не ждёт.
+		const photoIds = new Set<string>();
+		for (const comment of post?.comments ?? []) {
+			for (const id of commentPhotoIds(comment.media)) {
+				if (!mediaUrls[id]) photoIds.add(id);
+			}
+		}
+		void resolveMediaUrls(circle.origin, [...photoIds], (blobId, url) => {
+			mediaUrls = { ...mediaUrls, [blobId]: url };
+		});
+	}
+
+	// Обновление в фоне тем же контроллером, что у экрана ленты (C95-1):
+	// сервер мог добавить ответы, пока читали ленту.
+	async function refreshSilently() {
+		try {
+			await shared.feed.load();
+			post = findPost(shared.feed.posts, postId);
+			if (post) void resolvePostMedia();
+		} catch {
+			/* фон: обрыв сети не сбрасывает экран */
+		}
 	}
 
 	// Из «Откликов» (3.18) и из поиска найденное открывается у себя:
@@ -501,6 +536,7 @@
 	// уходила в ленту (C87). Карта обновляется и при replaceState поиска.
 
 	function goBack() {
+		mark('t:tap-back');
 		void navigateBack();
 	}
 

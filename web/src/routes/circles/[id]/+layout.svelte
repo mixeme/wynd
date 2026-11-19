@@ -5,7 +5,7 @@
 	import type { CircleArrival } from '$lib/journal/types';
 	import { page } from '$app/stores';
 	import { page as pageState } from '$app/state';
-	import { setContext, untrack } from 'svelte';
+	import { onDestroy, setContext, untrack } from 'svelte';
 	import {
 		resolveCircleOrigin,
 		rememberCircleOrigin,
@@ -36,6 +36,8 @@
 	import { fetchInvitePeek, isCircleInvitePeek, loadInviteJoinToken } from '$lib/auth/invites';
 	import { fetchJoinPreview } from '$lib/circles/settings';
 	import { getMediaUrl } from '$lib/media/objectUrl';
+	import { dropCircleReading } from '$lib/journal/reading.svelte';
+	import { mark, markPainted } from '$lib/dev/marks';
 	import PlainLayout from '$lib/layouts/PlainLayout.svelte';
 	import Loading from '$ui/Loading.svelte';
 	import type { Snippet } from 'svelte';
@@ -194,6 +196,7 @@
 	}
 
 	async function loadMeta() {
+		mark('t:layout-start');
 		pendingJoinOnly = false;
 		const resolved = await resolveCircleOrigin(circleId);
 		// '' is the same-origin base, not "not found": only null means unknown circle.
@@ -311,6 +314,7 @@
 
 		rememberLastCircle(circleId);
 		ready = true;
+		void markPainted('r:layout-ready');
 		// Приехал с кругом (1.10): в ленту — через встречу.
 		if (arrival && $page.url.pathname === `/circles/${circleId}`) {
 			goto(`/circles/${circleId}/arrived`, { replaceState: true });
@@ -324,11 +328,19 @@
 	$effect(() => {
 		const id = circleId;
 		if (!id || id === loadedCircle) return;
+		// Загруженная лента живёт, пока открыт круг (C95-1): при смене круга
+		// запись прошлого круга больше не нужна.
+		if (loadedCircle) dropCircleReading(ctx.origin, loadedCircle);
 		loadedCircle = id;
 		ready = false;
 		denied = false;
 		notMember = null;
 		untrack(() => void loadMeta());
+	});
+
+	// Круг закрыт — загруженная лента (C95-1) больше не нужна.
+	onDestroy(() => {
+		if (loadedCircle) dropCircleReading(ctx.origin, loadedCircle);
 	});
 </script>
 
