@@ -1,6 +1,7 @@
 import { localDayOf } from '$lib/journal/present';
 import { ApiError, apiJson } from '$lib/api/client';
 import { invalidateSnapshots } from '$lib/idb/db';
+import { readCachedSnapshot, writeCachedSnapshot } from '$lib/api/snapshots';
 import { fetchCircleDetail } from '$lib/journal/read-cursor';
 import type { CircleDetail } from '$lib/journal/types';
 import { setCircleIdentity } from '$lib/circles/meta';
@@ -289,6 +290,32 @@ export async function inviteWaiting(
 export async function fetchMembers(origin: string, circleId: string): Promise<MemberInfo[]> {
 	const data = await apiJson<{ members: MemberInfo[] }>(origin, `/circles/${circleId}/members`);
 	return data.members;
+}
+
+export interface SettingsBundle {
+	settings: CircleSettings;
+	members: MemberInfo[];
+}
+
+/** Настройки круга и участники одним снимком — первый кадр экрана (C100). */
+export async function loadSettingsBundle(
+	origin: string,
+	circleId: string
+): Promise<SettingsBundle> {
+	const [settings, members] = await Promise.all([
+		fetchCircleSettings(origin, circleId),
+		fetchMembers(origin, circleId)
+	]);
+	const bundle = { settings, members };
+	await writeCachedSnapshot(origin, 'settings', circleId, bundle);
+	return bundle;
+}
+
+export async function loadSettingsBundleCached(
+	origin: string,
+	circleId: string
+): Promise<SettingsBundle | undefined> {
+	return readCachedSnapshot<SettingsBundle>(origin, 'settings', circleId);
 }
 
 export async function renameIdentity(

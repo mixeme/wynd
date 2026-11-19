@@ -26,6 +26,7 @@
 	import {
 		fetchResponses,
 		groupResponses,
+		loadResponsesCached,
 		markResponsesRead,
 		responseHref,
 		responseKindLabel,
@@ -34,6 +35,7 @@
 		type ResponsePostRef,
 		type ResponseRow
 	} from '$lib/journal/responses';
+	import { paintFromSnapshots } from '$lib/journal/snapshot-first';
 	import { resolveMediaUrls } from '$lib/media/batch';
 	import { registerRefetch } from '$lib/sync/sync';
 
@@ -52,6 +54,9 @@
 	let mediaUrls = $state<Record<string, string>>({});
 	// Отметка на момент входа: черта не уезжает, пока экран открыт.
 	let readSeq = -1;
+	// Свежий ответ сети уже на экране — поздний снимок его не перетирает (C100).
+	let freshApplied = false;
+	let cachedRequested = false;
 
 	const rows = $derived(groupResponses(items, Math.max(readSeq, 0)));
 	const dividerAt = $derived(readSeq < 0 ? null : responsesDividerIndex(rows));
@@ -73,10 +78,34 @@
 		});
 	}
 
+	// Снимок откликов — первый кадр (C100): черта «выше — новое» стоит там же,
+	// где была в прошлый раз; свежесть приходит ответом следом.
+	async function loadCached() {
+		if (cachedRequested) return;
+		cachedRequested = true;
+		const painted = await paintFromSnapshots(
+			() => freshApplied,
+			async () => {
+				const snap = await loadResponsesCached(circle.origin, circle.circleId);
+				if (!snap) return undefined;
+				return () => {
+					items = snap.items;
+					posts = snap.posts;
+					hasMore = snap.has_more;
+					if (readSeq < 0) readSeq = snap.read_seq;
+				};
+			}
+		);
+		if (!painted) return;
+		loading = false;
+		void resolveMedia(items, posts);
+	}
+
 	async function load() {
 		error = '';
 		try {
 			const page = await fetchResponses(circle.origin, circle.circleId);
+			freshApplied = true;
 			if (readSeq < 0) readSeq = page.read_seq;
 			items = page.items;
 			posts = page.posts;
@@ -120,7 +149,10 @@
 	onDestroy(() => ptr.destroy());
 
 	onMount(() => {
-		void load();
+		void (async () => {
+			await loadCached();
+			await load();
+		})();
 		return registerRefetch({
 			origin: circle.origin,
 			circleId: circle.circleId,

@@ -328,7 +328,10 @@ const SNAPSHOT_KINDS = new Set([
 	'days',
 	'day',
 	'search',
-	'instance'
+	'instance',
+	// Отклики круга и настройки с участниками (C100).
+	'responses',
+	'settings'
 ]);
 
 export function snapshotKey(origin: string, kind: string, id: string): string {

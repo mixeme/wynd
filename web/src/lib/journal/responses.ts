@@ -3,6 +3,7 @@
 // обложка дня идут в ленту строкой (wynd.html, «Правила ленты»).
 
 import { apiJson } from '$lib/api/client';
+import { readCachedSnapshot, writeCachedSnapshot } from '$lib/api/snapshots';
 import type { MediaSummary } from './types';
 
 export type ResponseKind = 'comment' | 'reaction';
@@ -46,12 +47,22 @@ export async function fetchResponses(
 ): Promise<ResponsesPage> {
 	const q = before > 0 ? `?before=${before}` : '';
 	const page = await apiJson<ResponsesPage>(origin, `/circles/${circleId}/responses${q}`);
-	return {
+	const result = {
 		items: page.items ?? [],
 		posts: page.posts ?? {},
 		read_seq: page.read_seq ?? 0,
 		has_more: Boolean(page.has_more)
 	};
+	// Снимок — только первая страница: он и есть первый кадр экрана (C100).
+	if (before === 0) await writeCachedSnapshot(origin, 'responses', circleId, result);
+	return result;
+}
+
+export async function loadResponsesCached(
+	origin: string,
+	circleId: string
+): Promise<ResponsesPage | undefined> {
+	return readCachedSnapshot<ResponsesPage>(origin, 'responses', circleId);
 }
 
 export async function markResponsesRead(

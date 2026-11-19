@@ -27,15 +27,17 @@
 		editWindowFromSec,
 		editWindowToSec,
 		fetchCircleInvites,
-		fetchCircleSettings,
-		fetchMembers,
 		fetchQuota,
 		isValidCustomHours,
+		loadSettingsBundle,
+		loadSettingsBundleCached,
 		patchCircle,
 		fetchNotifyPrefs,
+		type CircleSettings,
 		type EditWindowKey,
 		type MemberInfo
 	} from '$lib/circles/settings';
+	import { paintFromSnapshots } from '$lib/journal/snapshot-first';
 	import { notifySummary } from '$lib/settings/notify-mute';
 	import { formatBytes } from '$lib/format/bytes';
 	import { formatCutoffDate, formatSessionDay, pluralPeople, pluralPosts } from '$lib/format/time';
@@ -119,6 +121,53 @@
 
 	// Подпись под «Уведомлениями» — что включено сейчас (владелец, 2026-10-15).
 	let notifyLine = $state('');
+	// Свежий ответ сети уже на экране — поздний снимок его не перетирает (C100).
+	let freshApplied = false;
+	let cachedRequested = false;
+
+	/** Настройки и участники в форму: общая часть снимка и ответа сети. */
+	function applySettings(settings: CircleSettings, list: MemberInfo[]) {
+		name = settings.name;
+		savedName = settings.name;
+		color = circle.color;
+		editWindow = editWindowFromSec(settings.edit_window_sec);
+		customHoursHint = '';
+		if (editWindow === 'custom' && settings.edit_window_sec != null) {
+			const parsed = customHoursFromSec(settings.edit_window_sec);
+			if (parsed === null) {
+				customHours = Math.round(settings.edit_window_sec / 3600);
+				customHoursHint = customHoursHintText;
+			} else {
+				customHours = parsed;
+			}
+		}
+		canSettings = settings.can_settings ?? false;
+		isOwner = settings.is_owner ?? false;
+		inviteWho = settings.invite_who ?? 'all';
+		inviteKindDefault = settings.invite_kind_default ?? 'single';
+		members = list;
+	}
+
+	// Снимок настроек и участников — первый кадр (C100): экран не ждёт сети,
+	// свежесть, приглашения и квота приходят ответом следом.
+	async function loadCached() {
+		if (cachedRequested) return;
+		cachedRequested = true;
+		const painted = await paintFromSnapshots(
+			() => freshApplied,
+			async () => {
+				const bundle = await loadSettingsBundleCached(circle.origin, circle.circleId);
+				if (!bundle) return undefined;
+				return () => {
+					applySettings(bundle.settings, bundle.members);
+					void loadAvatars(bundle.members.filter((m) => m.status === 'active').slice(0, 3));
+				};
+			}
+		);
+		if (!painted) return;
+		loading = false;
+		colorReady = true;
+	}
 
 	async function load() {
 		loading = true;
@@ -127,29 +176,9 @@
 			.catch(() => (notifyLine = ''));
 		error = '';
 		try {
-			const [settings, list] = await Promise.all([
-				fetchCircleSettings(circle.origin, circle.circleId),
-				fetchMembers(circle.origin, circle.circleId)
-			]);
-			name = settings.name;
-			savedName = settings.name;
-			color = circle.color;
-			editWindow = editWindowFromSec(settings.edit_window_sec);
-			customHoursHint = '';
-			if (editWindow === 'custom' && settings.edit_window_sec != null) {
-				const parsed = customHoursFromSec(settings.edit_window_sec);
-				if (parsed === null) {
-					customHours = Math.round(settings.edit_window_sec / 3600);
-					customHoursHint = customHoursHintText;
-				} else {
-					customHours = parsed;
-				}
-			}
-			canSettings = settings.can_settings ?? false;
-			isOwner = settings.is_owner ?? false;
-			inviteWho = settings.invite_who ?? 'all';
-			inviteKindDefault = settings.invite_kind_default ?? 'single';
-			members = list;
+			const { settings, members: list } = await loadSettingsBundle(circle.origin, circle.circleId);
+			freshApplied = true;
+			applySettings(settings, list);
 			try {
 				await loadAvatars(list.filter((m) => m.status === 'active').slice(0, 3));
 			} catch {
@@ -367,7 +396,10 @@
 	}
 
 	onMount(() => {
-		void load();
+		void (async () => {
+			await loadCached();
+			await load();
+		})();
 	});
 </script>
 
