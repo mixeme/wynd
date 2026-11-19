@@ -1,0 +1,169 @@
+{
+  "starts": [
+    {
+      "outage": "cut",
+      "pid": "14563",
+      "view": {
+        "url": "https://wynd-direct.localhost:17795/circles",
+        "ready": true,
+        "secure": true,
+        "login": false,
+        "retry": false,
+        "offline": false,
+        "circle": true,
+        "prior": false,
+        "worker": "https://wynd-direct.localhost:17795/sw.js",
+        "workerStart": 6,
+        "online": true,
+        "width": 360,
+        "height": 728,
+        "dpr": 2
+      },
+      "network": {
+        "accepted": 0,
+        "dropped": 30,
+        "tls": 0,
+        "requests": 0,
+        "root": 0,
+        "api": 0
+      }
+    },
+    {
+      "outage": "refuse",
+      "pid": "14711",
+      "view": {
+        "url": "https://wynd-direct.localhost:17795/circles",
+        "ready": true,
+        "secure": true,
+        "login": false,
+        "retry": false,
+        "offline": false,
+        "circle": true,
+        "prior": false,
+        "worker": "https://wynd-direct.localhost:17795/sw.js",
+        "workerStart": 4.899999976158142,
+        "online": true,
+        "width": 360,
+        "height": 728,
+        "dpr": 2
+      },
+      "network": {
+        "accepted": 0,
+        "dropped": 0,
+        "tls": 0,
+        "requests": 0,
+        "root": 0,
+        "api": 0
+      }
+    },
+    {
+      "outage": "http503",
+      "pid": "14852",
+      "view": {
+        "url": "https://appassets.androidplatform.net/startup/index.html",
+        "ready": true,
+        "secure": true,
+        "login": false,
+        "retry": true,
+        "offline": true,
+        "circle": false,
+        "prior": false,
+        "worker": null,
+        "workerStart": 0,
+        "online": true,
+        "width": 360,
+        "height": 728,
+        "dpr": 2
+      },
+      "network": {
+        "accepted": 1,
+        "dropped": 0,
+        "tls": 1,
+        "requests": 1,
+        "root": 1,
+        "api": 0
+      }
+    }
+  ],
+  "version": "0.53.0",
+  "clean": {
+    "url": "https://appassets.androidplatform.net/startup/index.html",
+    "ready": true,
+    "secure": true,
+    "login": false,
+    "retry": true,
+    "offline": true,
+    "circle": false,
+    "prior": false,
+    "worker": null,
+    "workerStart": 0,
+    "online": true,
+    "width": 360,
+    "height": 728,
+    "dpr": 2
+  },
+  "cleanNetwork": {
+    "accepted": 0,
+    "dropped": 4,
+    "tls": 0,
+    "requests": 0,
+    "root": 0,
+    "api": 0
+  },
+  "signedIn": true,
+  "warm": {
+    "cache": {
+      "script": "https://wynd-direct.localhost:17795/sw.js",
+      "active": "activated",
+      "entries": 372,
+      "index": true
+    },
+    "view": {
+      "url": "https://wynd-direct.localhost:17795/circles/01a1f28b-8f57-7685-af10-38e4471b1310",
+      "ready": true,
+      "secure": true,
+      "login": false,
+      "retry": false,
+      "offline": false,
+      "circle": true,
+      "prior": true,
+      "worker": "https://wynd-direct.localhost:17795/sw.js",
+      "workerStart": 12.100000023841858,
+      "online": true,
+      "width": 360,
+      "height": 728,
+      "dpr": 2
+    }
+  },
+  "failure": "The expression evaluated to a falsy value:\n\n  assert(view.circle&&view.worker===origin+'/sw.js'&&view.workerStart>0)\n",
+  "countsOnFailure": {
+    "accepted": 10,
+    "dropped": 34,
+    "tls": 10,
+    "requests": 641,
+    "root": 3,
+    "api": 41
+  },
+  "atFailure": {
+    "url": "https://appassets.androidplatform.net/startup/index.html",
+    "ready": true,
+    "secure": true,
+    "login": false,
+    "retry": true,
+    "offline": true,
+    "circle": false,
+    "prior": false,
+    "worker": null,
+    "workerStart": 0,
+    "online": true,
+    "width": 360,
+    "height": 728,
+    "dpr": 2
+  },
+  "cleanup": {
+    "packageRemoved": true,
+    "reverseRemoved": true,
+    "originalPackageUnchanged": true,
+    "originalCatalogUnchanged": true
+  }
+}
