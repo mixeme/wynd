@@ -904,6 +904,7 @@
 <FormLayout
 	app
 	compose
+	compact={!isEdit && !isQueue}
 	color={circle.color}
 	title={barTitle}
 	publishLabel={isEdit ? 'Сохранить' : 'Опубликовать'}

@@ -49,6 +49,7 @@
 		subtitle?: string;
 		right?: string;
 		search?: string;
+		/** Уменьшает нижний отступ шапки BackBar или редактора. */
 		compact?: boolean;
 		bar?: Snippet;
 		compose?: boolean;
@@ -109,7 +110,7 @@
 					{publishLabel}
 				</TextButton>
 			</div>
-			<div style="height:12px"></div>
+			<div style:height={compact ? '4px' : '12px'}></div>
 		</div>
 	{:else if circleTitle}
 		<div class="cbar">
