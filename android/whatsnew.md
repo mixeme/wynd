@@ -1,4 +1,4 @@
-# Что нового в Wynd для Android
+# Что нового в Wynd Android
 
 ## 0.1.0
 

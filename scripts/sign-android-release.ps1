@@ -88,7 +88,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Signed APK upload failed' }
     }
     if ($Publish) {
-        & gh release edit $Tag --repo $repo --draft=false --title "Wynd для Android $version" --notes-file $notesFile
+        & gh release edit $Tag --repo $repo --draft=false --title "Wynd Android $version" --notes-file $notesFile
         if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }
     }
     if (-not $Upload -and -not $Publish) { Write-Host 'Файлы подготовлены локально. Выпуск на GitHub не изменён.' }

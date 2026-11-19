@@ -143,5 +143,5 @@ jobs:
           fi
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
             dist/wynd-android-unsigned.apk dist/wynd-android-unsigned.apk.sha256 \
-            --draft --verify-tag --title "Wynd для Android ${GITHUB_REF_NAME#android-v}" \
+            --draft --verify-tag --title "Wynd Android ${GITHUB_REF_NAME#android-v}" \
             --notes 'Unsigned build. Local APK signing and owner publication are required.'
