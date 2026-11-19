@@ -11,6 +11,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -335,10 +336,14 @@ func (g GitHub) signAndPublishAndroid(ctx context.Context, c *Check, keyPath, pa
 	if c.Problem != "" {
 		return false, "", errors.New(c.Problem)
 	}
-	// За время проверок черновик могли опубликовать другим способом.
-	draft, err := g.isDraft(ctx, c.Tag)
+	// За время проверок выпуск мог поменяться другим способом; подписанный
+	// APK не перезаписываем — прежняя подпись остаётся (правило скрипта и CI).
+	draft, alreadySigned, err := g.androidReleaseState(ctx, c.Tag)
 	if err != nil {
 		return false, "", err
+	}
+	if alreadySigned {
+		return false, "", errors.New("В выпуске уже есть подписанный APK; не перезаписываю: прежняя подпись остаётся")
 	}
 	if draft && c.Publishes {
 		p.value.Steps = append(p.value.Steps, Step{ID: "publish", Title: "Публикуем выпуск", Status: "pending"})
@@ -414,6 +419,34 @@ func (g GitHub) signAndPublishAndroid(ctx context.Context, c *Check, keyPath, pa
 	}
 	p.done("publish", "")
 	return true, androidDetailPublished, nil
+}
+
+// androidReleaseState — состояние выпуска одним запросом: черновик ли и есть
+// ли уже подписанный APK (который окно не перезаписывает).
+func (g GitHub) androidReleaseState(ctx context.Context, tag string) (draft, signed bool, err error) {
+	out, err := g.gh(ctx, "release", "view", tag, "-R", g.Repo, "--json", "isDraft,assets")
+	if err != nil {
+		return false, false, err
+	}
+	var view struct {
+		Draft  *bool `json:"isDraft"`
+		Assets []struct {
+			Name string `json:"name"`
+		} `json:"assets"`
+	}
+	if err := json.Unmarshal(out, &view); err != nil {
+		return false, false, err
+	}
+	if view.Draft == nil {
+		return false, false, errors.New("GitHub не сообщил, опубликован ли выпуск")
+	}
+	want := productOf(tag).signedAsset()
+	for _, a := range view.Assets {
+		if a.Name == want {
+			signed = true
+		}
+	}
+	return *view.Draft, signed, nil
 }
 
 // CreateAndroidKey — новый keystore владельца: те же параметры, что в

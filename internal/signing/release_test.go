@@ -51,6 +51,9 @@ type releaseFixture struct {
 	CertDigest   string
 	CertPEM      string
 	VersionProps string
+	// SignedAlready — в выпуске уже лежит подписанный файл; окно Android
+	// не перезаписывает его, exe-подпись меняет как прежде.
+	SignedAlready bool
 }
 
 // Сам тестовый бинарник играет gh и инструменты Android: одинаково на Windows
@@ -186,7 +189,14 @@ func releaseTestGH(dir string, args []string) error {
 		}
 		fmt.Print(response)
 	case args[0] == "release" && args[1] == "view":
-		fmt.Printf(`{"isDraft":%t}`, f.Draft)
+		assets := "[]"
+		if f.SignedAlready {
+			assets = `[{"name":"wynd-android.apk"}]`
+			if !strings.HasPrefix(f.Tag, "android-") {
+				assets = `[{"name":"wynd-workshop.exe.sig"}]`
+			}
+		}
+		fmt.Printf(`{"isDraft":%t,"assets":%s}`, f.Draft, assets)
 	case args[0] == "release" && args[1] == "download":
 		if f.DownloadFailure {
 			return fmt.Errorf("download failed")

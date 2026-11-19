@@ -438,6 +438,27 @@ func TestAndroidSignDebugCert(t *testing.T) {
 	}
 }
 
+// В выпуске уже есть подписанный APK — окно не перезаписывает его и ничего
+// не выкладывает (правило скрипта и CI).
+func TestAndroidSignRefusesReplaceSigned(t *testing.T) {
+	f, _, _ := androidFixture()
+	f.SignedAlready = true
+	g, dir := androidTestGitHub(t, f)
+	c, err := g.FetchWithProgress(context.Background(), androidTestTag, func(Progress) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	_, _, err = g.SignAndPublishWithProgress(context.Background(), c, "keystore.p12", f.KSPass, func(Progress) {})
+	if err == nil || !strings.Contains(err.Error(), "не перезаписываю") {
+		t.Fatalf("signed asset replace not refused: %v", err)
+	}
+	calls, _ := os.ReadFile(filepath.Join(dir, "calls"))
+	if strings.Contains(string(calls), "release upload") {
+		t.Fatalf("upload happened despite refusal: %s", calls)
+	}
+}
+
 // В теге без эталонного сертификата подписывать нельзя: нечем сверить ключ.
 func TestAndroidSignWithoutReference(t *testing.T) {
 	f, _, _ := androidFixture()
