@@ -8,6 +8,7 @@
 		right,
 		search,
 		compact = false,
+		minHeight,
 		onback,
 		onright,
 		children
@@ -16,6 +17,7 @@
 		right?: string;
 		search?: string;
 		compact?: boolean;
+		minHeight?: number;
 		onback?: () => void;
 		// С обработчиком надпись справа — кнопка действия («Готово»), цветом круга.
 		onright?: () => void;
@@ -23,7 +25,11 @@
 	} = $props();
 </script>
 
-<div class="bar" style:padding-bottom={compact ? '10px' : undefined}>
+<div
+	class="bar"
+	style:min-height={minHeight === undefined ? undefined : `${minHeight}px`}
+	style:padding-bottom={compact ? '10px' : undefined}
+>
 	{#if onback}
 		<IconButton name="back" label="Назад" onclick={() => onback()} />
 	{/if}

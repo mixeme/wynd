@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"strings"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -60,10 +61,30 @@ func TestCORSOnlyForWindowOrigins(t *testing.T) {
 		}
 	}
 
-	// Preflight чужого сайта не получает разрешения и не доходит до прокси.
-	r := httptest.NewRequest(http.MethodOptions, "/api/v1/instance", nil)
-	r.Header.Set("Origin", "https://evil.example")
+	// Загрузка вложения: странице нужно прислать Upload-Offset и прочитать
+	// его из ответа, иначе браузер блокирует PUT (C66).
+	r := httptest.NewRequest(http.MethodOptions, "/api/v1/uploads/x", nil)
+	r.Header.Set("Origin", "http://wails.localhost")
 	w := httptest.NewRecorder()
+	corsHandler(next).ServeHTTP(w, r)
+	if !strings.Contains(w.Header().Get("Access-Control-Allow-Headers"), "Upload-Offset") {
+		t.Fatalf("preflight must allow Upload-Offset: %q", w.Header().Get("Access-Control-Allow-Headers"))
+	}
+	got := httptest.NewRecorder()
+	corsHandler(next).ServeHTTP(got, httptest.NewRequest(http.MethodHead, "/api/v1/uploads/x", nil))
+	_ = got
+	r = httptest.NewRequest(http.MethodGet, "/api/v1/uploads/x", nil)
+	r.Header.Set("Origin", "http://wails.localhost")
+	w = httptest.NewRecorder()
+	corsHandler(next).ServeHTTP(w, r)
+	if !strings.Contains(w.Header().Get("Access-Control-Expose-Headers"), "Upload-Offset") {
+		t.Fatalf("window origin must read Upload-Offset: %q", w.Header().Get("Access-Control-Expose-Headers"))
+	}
+
+	// Preflight чужого сайта не получает разрешения и не доходит до прокси.
+	r = httptest.NewRequest(http.MethodOptions, "/api/v1/instance", nil)
+	r.Header.Set("Origin", "https://evil.example")
+	w = httptest.NewRecorder()
 	corsHandler(next).ServeHTTP(w, r)
 	if w.Code != http.StatusNoContent || w.Header().Get("Access-Control-Allow-Origin") != "" {
 		t.Fatalf("foreign preflight: status %d, allow-origin %q", w.Code, w.Header().Get("Access-Control-Allow-Origin"))

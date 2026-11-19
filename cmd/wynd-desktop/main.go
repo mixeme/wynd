@@ -376,10 +376,13 @@ func corsHandler(next http.Handler) http.Handler {
 		if origin := r.Header.Get("Origin"); origin != "" && windowOrigin(origin) {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Add("Vary", "Origin")
+			// Загрузка кусками читает и присылает Upload-Offset; без явного
+			// разрешения браузер блокирует PUT вложения (C66, «дозагрузка»).
+			w.Header().Set("Access-Control-Expose-Headers", "Upload-Offset, Upload-Length")
 		}
 		if r.Method == http.MethodOptions {
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept, Range, If-None-Match")
+			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept, Range, If-None-Match, Upload-Offset")
 			w.Header().Set("Access-Control-Max-Age", "600")
 			w.WriteHeader(http.StatusNoContent)
 			return
@@ -460,6 +463,14 @@ func main() {
 			// Постоянный профиль: сессия и медиа-кэш переживают перезапуск,
 			// данные Wynd из системного профиля не используются.
 			WebviewUserDataPath: filepath.Join(base, "webview"),
+			// Окно живёт в трее: скрытая страница не должна засыпать, иначе
+			// очередь отправки и поток событий ждут минутами. Троттлинг таймеров
+			// и фоновых вкладок WebView2 отключён (C66).
+			AdditionalBrowserArgs: []string{
+				"--disable-background-timer-throttling",
+				"--disable-backgrounding-occluded-windows",
+				"--disable-renderer-backgrounding",
+			},
 		},
 		SingleInstance: &application.SingleInstanceOptions{
 			UniqueID: "com.wynd.desktop",

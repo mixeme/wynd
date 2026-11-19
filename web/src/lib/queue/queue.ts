@@ -511,6 +511,45 @@ async function drainOnce(ownsQueue: boolean): Promise<void> {
 		activeDrain = undefined;
 		releaseWake?.();
 	}
+	void scheduleNextDrain();
+}
+
+// Повтор после неудачи не должен ждать внешнего события (вход, «online»,
+// переподключение потока): окно живёт в трее, и очередь обязана дойти сама.
+let retryTimer: ReturnType<typeof setTimeout> | undefined;
+
+export function nextRetryDelay(items: QueueRecordWithId[], now: number): number | undefined {
+	let delay: number | undefined;
+	for (const item of items) {
+		if (item.state === 'failed') continue;
+		let candidate: number;
+		if (item.state === 'uploading') {
+			candidate = UPLOADING_STALE_MS - (now - (item.uploading_at ?? 0));
+		} else {
+			const attempts = item.attempts ?? 0;
+			if (attempts === 0 && !item.uploading_at) continue;
+			// attempts=0 с uploading_at — отправку прервали (переход, отмена):
+			// повторяем как после первой неудачи, иначе запись ждёт события.
+			candidate =
+				queueRetryDelayMs(Math.max(1, attempts)) - (now - (item.uploading_at ?? item.created_at));
+		}
+		if (delay === undefined || candidate < delay) delay = candidate;
+	}
+	return delay;
+}
+
+async function scheduleNextDrain(): Promise<void> {
+	if (retryTimer) return;
+	const delay = nextRetryDelay(await listQueueItems(), Date.now());
+	if (delay === undefined) return;
+	retryTimer = setTimeout(
+		() => {
+			retryTimer = undefined;
+			if (navigator.onLine) void drainQueue();
+			else void scheduleNextDrain();
+		},
+		Math.max(1000, delay)
+	);
 }
 
 async function drainLoop(

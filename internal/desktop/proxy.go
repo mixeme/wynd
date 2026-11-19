@@ -107,8 +107,18 @@ func newReverseProxy(u *url.URL, injectBridge bool, apiBase string) *httputil.Re
 		res.Header.Set("Content-Length", strconv.Itoa(len(body)))
 		return nil
 	}
-	rp.ErrorHandler = func(w http.ResponseWriter, _ *http.Request, err error) {
-		http.Error(w, "Сервер не отвечает", http.StatusBadGateway)
+	// Сервер недоступен — рвём соединение, как будто сети нет. Ответ 502
+	// страница принимала за ответ API (isTransportError), и очередь отправки
+	// не ставила записи в ожидание; в браузере без сервера запрос падает
+	// сетевым сбоем, и окно должно вести себя так же (C66, «дозагрузка»).
+	rp.ErrorHandler = func(w http.ResponseWriter, _ *http.Request, _ error) {
+		if hj, ok := w.(http.Hijacker); ok {
+			if conn, _, err := hj.Hijack(); err == nil {
+				_ = conn.Close()
+				return
+			}
+		}
+		panic(http.ErrAbortHandler)
 	}
 	return rp
 }

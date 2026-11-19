@@ -288,7 +288,7 @@
 
 <!-- Поле — в шапке, как в кадре 2.19. Раньше шапка повторяла запрос текстом,
      а настоящее поле стояло ниже: на экране было две строки поиска. -->
-<FormLayout shell app bar={searchBar} compact onback={navigateBack}>
+<FormLayout shell app bar={searchBar} compact barMinHeight={60} onback={navigateBack}>
 	{#if fromCircle}
 		<ChipGroup class="mt-12">
 			<Chip onclick={backToCircle}>Этот круг</Chip>

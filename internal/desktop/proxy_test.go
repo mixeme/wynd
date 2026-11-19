@@ -2,6 +2,7 @@ package desktop
 
 import (
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -156,5 +157,29 @@ func TestProxyWithoutServer(t *testing.T) {
 	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
 	if rec.Code != 200 || rec.Body.String() != "SHELL" {
 		t.Fatalf("shell without server: %d %q", rec.Code, rec.Body.String())
+	}
+}
+
+// Недоступный сервер — не ответ API: окно рвёт соединение, чтобы очередь
+// отправки видела сетевой сбой и ставила записи в ожидание (C66).
+func TestProxyAbortsWhenServerUnreachable(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := ln.Addr().String()
+	_ = ln.Close()
+
+	proxy := NewProxy()
+	if err := proxy.Set("http://" + addr); err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(proxy.Handler(http.NotFoundHandler()))
+	defer srv.Close()
+
+	resp, err := srv.Client().Get(srv.URL + "/api/v1/instance")
+	if err == nil {
+		resp.Body.Close()
+		t.Fatalf("got HTTP %d, want connection error", resp.StatusCode)
 	}
 }
