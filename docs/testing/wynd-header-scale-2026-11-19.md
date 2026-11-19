@@ -13,8 +13,8 @@
 | [Новая запись](../../dev/screens/shots/wynd-header-scale-2026-11-19/ladder-compose.png) | `e4-2` | 52 | 48 |
 | [Общий поиск](../../dev/screens/shots/wynd-header-scale-2026-11-19/ladder-search.png) | `e2-19` | 60,19 | 60,19 |
 | [Обсуждение](../../dev/screens/shots/wynd-header-scale-2026-11-19/ladder-circle.png) | `e4-17` | 60 | 60 |
-| [Круг, вкладка «Дни»](../../dev/screens/shots/wynd-header-scale-2026-11-19/ladder-circle-tabs.png) | `e5-1` | 92,56 | 92,56 |
-| [Альбом с датой](../../dev/screens/shots/wynd-header-scale-2026-11-19/album-72-compact.png) | `e4-29` | 78,13 | 72 |
+| [Круг, вкладка «Дни»](../../dev/screens/shots/wynd-header-scale-2026-11-19/circle-84-compact.png) | `e5-1` | 92,56 | 84 |
+| [Альбом с датой](../../dev/screens/shots/wynd-header-scale-2026-11-19/album-72-compact.png) | `e4-29` | 72 | 72 |
 
 Настольная основа редактора — `docs/plans/55-desktop-frames.svelte.txt#pc6`
 из `54ecac07`. Круг с вкладками использует верхний блок 48 px
@@ -35,8 +35,8 @@
 
 Снимки получены через Vite dev, Edge Headless и CDP `Page.captureScreenshot`.
 Viewport 360 × 728 CSS px, DPR 2, светлая тема, системные полосы вне кадра.
-Просмотрены все варианты. Для улочки, поиска, обсуждения и круга с
-вкладками исходные и новые кадры совпали попиксельно.
+Просмотрены все варианты. Для улочки, поиска и обсуждения исходные и
+новые кадры совпали попиксельно. Новый вариант круга описан ниже.
 
 - Настройки. [До](../../dev/screens/shots/wynd-header-scale-2026-11-19/current-settings.png) · [48 px](../../dev/screens/shots/wynd-header-scale-2026-11-19/ladder-settings.png).
 - Редактор. [До](../../dev/screens/shots/wynd-header-scale-2026-11-19/current-compose.png) · [48 px](../../dev/screens/shots/wynd-header-scale-2026-11-19/ladder-compose.png).
@@ -63,3 +63,21 @@ Viewport 360 × 728 CSS px, DPR 2, светлая тема, системные �
 Плитки и подпись под ними поднялись на 12 физических пикселей.
 Стрелка «Назад», заголовок, «К записи», дата и календарь на месте.
 Замеры сохранены в `album-72-before.json` и `album-72-compact.json`.
+
+## Круг с вкладками 48 + 36 px
+
+Действующий маршрут `/circles/[id]/days` из `e8783e2e`,
+основа `docs/visual/screens.html#e5-1` (`825921cc`). Снимки до и после
+сняты в Edge при 360 × 728 CSS px, DPR 2, светлой теме и с одной и той же
+синтетической сессией. В изолированной копии `web/src/lib/styles/ui.css`
+для `.tabs` верхний отступ сокращён с 12 до 3 px и задано
+`min-height: 36px`. Вкладки сохраняют возможность вырасти по содержимому.
+
+[92,56 px](../../dev/screens/shots/wynd-header-scale-2026-11-19/circle-84-before.png)
+· [84 px](../../dev/screens/shots/wynd-header-scale-2026-11-19/circle-84-compact.png).
+
+Верхние 48 px совпали попиксельно. Все пять вкладок помещаются.
+Ширина целей нажатия совпала, высота осталась около 33 px.
+Снимки осмотрены, переход с «Дней» на «Сетку» проверен на обоих вариантах.
+Замеры сохранены в `circle-84-before.json` и `circle-84-compact.json`.
+Вариант ждёт утверждения.
