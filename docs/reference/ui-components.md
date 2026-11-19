@@ -83,6 +83,8 @@ PhoneFrame, StatusBar, AppBar, CircleBar, BackBar, AdminBar, **ComposeToolbar**,
 
 Шапка круга с вкладками (`CircleBar` с `tabs`) занимает 48 + 36 CSS px при обычном размере текста. Строка вкладок может расти по содержимому. Над вкладками 3 px, под текстом остаётся место для отступа и индикатора выбранной вкладки. [Кадры круга](../testing/wynd-header-scale-2026-11-19.md#круг-с-вкладками-48--36-px).
 
+[Лесенка высот и итоговая галерея](../testing/wynd-header-scale-2026-11-19.md). Вертикальное положение текста во второй строке — [задача C98](../plans/46-open-questions-and-debt.plan.md#c98).
+
 `ComposeToolbar` — нижняя полоса новой записи (**#e4-2**): snippet `tools` (кнопки вложений), опц. snippet `note` — мелкая подпись справа («до 32 КБ · как Мышь»). Ставится в `footer` у `FormLayout compose`.
 
 `AudioBar` — полоса плеера (**#e4-9**): что играет, откуда, ход в цвете круга, пауза и крестик; ставится один раз в корневом `+layout`. Видна на любом экране, кроме ленты круга звука и экрана его записи. Пока видна, задаёт `--player-h` — полоса ввода, плюс и нижние панели встают над ней. Только вид: `title`, `subtitle`, `coverUrl`, `color`, `progress`, `loading`, `playing`, `onopen`, `ontoggle`, `onstop`. Что играет, когда прятать и `--player-h` — `useAudioBar()` из `$lib/media/audioBar.svelte` (план 48).
