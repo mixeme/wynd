@@ -1,0 +1,75 @@
+{
+  "version": "0.53.0",
+  "onlinePid": "5810",
+  "formLogin": true,
+  "onlineWorker": {
+    "controller": "https://wynd-stage1.test/sw.js",
+    "start": 23,
+    "online": true,
+    "secure": true,
+    "width": 360,
+    "height": 728,
+    "dpr": 2
+  },
+  "onlineCache": {
+    "entries": 371,
+    "index": true
+  },
+  "onlineNetworkProbeAfterBlock": {
+    "error": "TypeError"
+  },
+  "offlinePid": "6767",
+  "coldFallback": {
+    "url": "https://appassets.androidplatform.net/startup/index.html",
+    "serverUnavailable": true,
+    "retry": true
+  },
+  "recoveryPid": "6952",
+  "cacheAfterRecovery": {
+    "entries": 371,
+    "index": true
+  },
+  "workerAfterRecovery": {
+    "controller": "https://wynd-stage1.test/sw.js",
+    "start": 26.600000023841858,
+    "online": true,
+    "secure": true,
+    "width": 360,
+    "height": 728,
+    "dpr": 2
+  },
+  "offlineFeed": {
+    "controller": "https://wynd-stage1.test/sw.js",
+    "start": 13.699999988079071,
+    "online": true,
+    "secure": true,
+    "width": 360,
+    "height": 728,
+    "dpr": 2
+  },
+  "savedToQueue": true,
+  "queuePid": "7131",
+  "queueRestartFallback": true,
+  "queueApiOnlyPid": "7285",
+  "queueSurvived": true,
+  "blockedThroughQueue": 23,
+  "apiDroppedThroughQueue": 10,
+  "failure": "Queue did not drain on recovery",
+  "failureView": {
+    "path": "/circles",
+    "origin": "https://wynd-stage1.test",
+    "text": "Что нового?\nWynd 0.53: коротко о том, что изменилось\nК\nКруг автономной проверки\nНовая запись: Проверка\nсегодня, 08:13\n1\nWynd",
+    "ready": "complete"
+  },
+  "tunnels": {
+    "allowed": 24,
+    "blocked": 23,
+    "refused": 20
+  },
+  "cleanup": {
+    "packageRemoved": true,
+    "reverseRemoved": true,
+    "originalPackageUnchanged": true,
+    "originalCatalogUnchanged": true
+  }
+}
