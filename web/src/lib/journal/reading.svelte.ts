@@ -42,6 +42,11 @@ export class CircleReading {
 		this.feed.rebind(this.deps(lastRead));
 	}
 
+	/** Курсор прочитанного известен позже запроса ленты (C95-2). */
+	redrawDivider(): void {
+		this.feed.redrawDivider();
+	}
+
 	private deps(lastRead: () => number): FeedDataDeps {
 		return {
 			load: () => loadFeed(this.origin, this.circleId),

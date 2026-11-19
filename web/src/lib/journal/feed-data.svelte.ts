@@ -34,6 +34,7 @@ export class FeedData {
 	error = $state('');
 
 	private deps: FeedDataDeps;
+	private inFlight: Promise<void> | undefined;
 
 	constructor(deps: FeedDataDeps) {
 		this.deps = deps;
@@ -46,6 +47,16 @@ export class FeedData {
 
 	/** Первая порция; догруженные старшие перечитываются от новой границы. */
 	async load(): Promise<void> {
+		// Первый запрос уже идёт (стартовал при проверке доступа, C95-2) —
+		// параллельный вызов ждёт его, а не качает вторую порцию.
+		if (this.inFlight) return this.inFlight;
+		this.inFlight = this.doLoad().finally(() => {
+			this.inFlight = undefined;
+		});
+		return this.inFlight;
+	}
+
+	private async doLoad(): Promise<void> {
 		this.error = '';
 		try {
 			const snap = await this.deps.load();
@@ -72,6 +83,11 @@ export class FeedData {
 		} finally {
 			this.loading = false;
 		}
+	}
+
+	/** Курсор прочитанного догнал (загрузка шла параллельно проверке доступа). */
+	redrawDivider(): void {
+		this.dividerAt = unreadDividerIndex(this.posts, this.deps.lastRead());
 	}
 
 	/** Старшая порция по прокрутке; без курсора или во время загрузки — ничего. */

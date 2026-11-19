@@ -88,4 +88,33 @@ describe('чтение круга (C95-1)', () => {
 		await second.feed.load();
 		expect(loadFeedMock).toHaveBeenCalledTimes(2);
 	});
+
+	it('параллельный вызов load ждёт первый запрос, а не качает вторую порцию (C95-2)', async () => {
+		let release!: (s: FeedSnapshot) => void;
+		loadFeedMock.mockReturnValue(
+			new Promise<FeedSnapshot>((resolve) => {
+				release = resolve;
+			})
+		);
+		const reading = circleReading(...KEY, () => 0);
+		const first = reading.feed.load();
+		const second = reading.feed.load();
+		expect(loadFeedMock).toHaveBeenCalledTimes(1);
+
+		release(snapshot([post('a', 5)]));
+		await Promise.all([first, second]);
+		expect(reading.feed.posts.map((p) => p.id)).toEqual(['a']);
+	});
+
+	it('после параллельной загрузки redrawDivider считает границу по известному курсору (C95-2)', async () => {
+		loadFeedMock.mockResolvedValue(snapshot([post('a', 5), post('b', 4)]));
+		const reading = circleReading(...KEY, () => 0);
+		await reading.feed.load();
+		expect(reading.feed.dividerAt).toBeNull();
+
+		const again = circleReading(...KEY, () => 4);
+		expect(again).toBe(reading);
+		again.redrawDivider();
+		expect(again.feed.dividerAt).toBe(1);
+	});
 });
