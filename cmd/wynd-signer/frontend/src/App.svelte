@@ -55,6 +55,8 @@
 	let signError = $state('');
 	let published = $state(false);
 	let releaseUrl = $state('');
+	// detail — итог подписи словами из Go (Android); у exe пусто и работает шаблон ниже.
+	let doneDetail = $state('');
 
 	// file, 12д
 	let filePath = $state('');
@@ -143,6 +145,16 @@
 			keyError = String(err);
 		}
 	}
+	// Ключ Android выбирается на экране Android-выпуска (поле — только там,
+	// где применяется): без него пароль и подпись не показываются.
+	async function chooseKeystore() {
+		keyError = '';
+		try {
+			st = await backend().ChooseKeystore();
+		} catch (err) {
+			keyError = String(err);
+		}
+	}
 	function toList() {
 		requests.clear();
 		checking = signing = false;
@@ -151,6 +163,7 @@
 		pass = '';
 		wrong = false;
 		signError = '';
+		doneDetail = '';
 		keyNote = '';
 		screen = 'list';
 		void list();
@@ -167,6 +180,7 @@
 		pass = '';
 		wrong = false;
 		signError = '';
+		doneDetail = '';
 		checkSteps = [];
 		signSteps = [];
 		releaseDone = false;
@@ -213,6 +227,7 @@
 			pass = '';
 			published = Boolean(res.published);
 			releaseUrl = res.url ?? '';
+			doneDetail = res.detail ?? '';
 			// Уже подтверждённая подпись видна сразу, даже пока GitHub отвечает.
 			++listRequest;
 			listing = false;
@@ -268,6 +283,9 @@
 	// окно не знает, сколько программ в экосистеме и как они называются.
 	const productName = $derived(check?.name ?? selectedRelease?.name ?? '');
 	const exeFile = $derived(check?.exe ?? selectedRelease?.exe ?? '');
+	// Android-подпись ведёт себя иначе (свой ключ, публикация по releaseReady);
+	// остальное окно получает из Go.
+	const isAndroid = $derived((check ?? selectedRelease)?.product === 'android');
 	const fileName = $derived(filePath.slice(Math.max(filePath.lastIndexOf('\\'), filePath.lastIndexOf('/')) + 1));
 </script>
 
@@ -365,11 +383,15 @@
 			{#if signSteps.length}<StepList steps={signSteps} />{/if}
 			{#if releaseDone}
 				<Notice tone="note" title={published ? 'Выпуск подписан и опубликован' : 'Выпуск подписан'}>
-					{check?.key_in_release ? 'Подпись проверена открытым ключом из репозитория.' : 'Подпись проверена открытой частью выбранного ключа.'}
-					{published
-						? `Файл ${exeFile}.sig выложен в выпуск на GitHub.`
-						: `Файл ${exeFile}.sig выложен в черновик. Он не опубликован: в whatsnew.md нет раздела ${version}.`}
-					Временные файлы на этом компьютере удалены.
+					{#if check?.product === 'android'}
+						{doneDetail}
+					{:else}
+						{check?.key_in_release ? 'Подпись проверена открытым ключом из репозитория.' : 'Подпись проверена открытой частью выбранного ключа.'}
+						{published
+							? `Файл ${exeFile}.sig выложен в выпуск на GitHub.`
+							: `Файл ${exeFile}.sig выложен в черновик. Он не опубликован: в whatsnew.md нет раздела ${version}.`}
+						Временные файлы на этом компьютере удалены.
+					{/if}
 				</Notice>
 				<FootBar>
 					<Button variant="colored" onclick={() => void backend().OpenLink(releaseUrl)}>Открыть выпуск</Button>
@@ -379,6 +401,18 @@
 				<FootBar>
 					<Button variant="colored" onclick={() => { if (selectedRelease) void openRelease(selectedRelease); }}>Повторить проверку</Button>
 					<Button variant="ghost" onclick={toList}>К выпускам</Button>
+				</FootBar>
+			{:else if isAndroid && st && !st.key_store_exists}
+				<!-- Ключ Android выбирается здесь: пароль и подпись появятся после выбора. -->
+				<Notice title="Ключ Android не выбран">
+					Подпись APK выполняется постоянным ключом Android — файлом .p12, который создаёт
+					scripts\new-android-signing-key.ps1. Ключ хранится только у вас; без него выпуск подписать нельзя.
+					<FootBar>
+						<Button variant="ghost" onclick={() => void chooseKeystore()}>Выбрать</Button>
+					</FootBar>
+				</Notice>
+				<FootBar>
+					<Button variant="ghost" disabled={checking || signing} onclick={toList}>К выпускам</Button>
 				</FootBar>
 			{:else}
 				{#if check && check.self_update && !check.key_in_release}
@@ -399,10 +433,11 @@
 				{#if check && !check.draft}
 					<Notice>Выпуск уже опубликован. Добавим подпись, описание и дата публикации сохранятся.</Notice>
 				{/if}
+				{#if check?.publish_note}<Notice>{check.publish_note}</Notice>{/if}
 				{#if signError}<Notice tone="bad" alert>{signError}</Notice>{/if}
 				<FootBar>
 					<Button variant={pass && check && !checking ? 'colored' : 'off'} disabled={checking || !check || !pass} loading={signing} loadingLabel="Подписываем…" onclick={() => void signRelease()}>
-						{check?.draft && check.notes ? 'Подписать и опубликовать' : 'Подписать'}
+						{check?.publishes ?? Boolean(check?.draft && check?.notes) ? 'Подписать и опубликовать' : 'Подписать'}
 					</Button>
 					<Button variant="ghost" disabled={checking || signing} onclick={toList}>К выпускам</Button>
 				</FootBar>

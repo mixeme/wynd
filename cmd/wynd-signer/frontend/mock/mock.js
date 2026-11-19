@@ -4,16 +4,21 @@
 // черновики 0.4.5 и 0.3.1 ждут подписи, 0.4.4 опубликована).
 //
 // mock.html?key=missing   — экран «ключа нет» (12а);
-// mock.html?products=workshop — список без выпусков окна.
+// mock.html?products=workshop — список без выпусков окна;
+// mock.html?open=android-v0.1.0 — экран Android-выпуска (план 65);
+// ?androidkey=missing — keystore Android не выбран; ?ready=0 — releaseReady=false.
 
 const params = new URLSearchParams(location.search);
 const keyExists = params.get("key") !== "missing";
 const includeDesktop = params.get("products") !== "workshop";
+const androidReady = params.get("ready") !== "0";
 
 const state = {
   key_path: "C:\\Users\\Mix\\.wynd\\workshop-signing.key",
   key_exists: keyExists,
   pub_path: "D:\\Local\\Git\\wynd\\cmd\\wynd-workshop\\signing-key.pub",
+  key_store_path: "D:\\Local\\Git\\myenv\\wynd\\wynd-android.p12",
+  key_store_exists: params.get("androidkey") !== "missing",
 };
 
 function release(product, name, exe, tag, version, draft, publishedAt, signed) {
@@ -31,6 +36,16 @@ function release(product, name, exe, tag, version, draft, publishedAt, signed) {
 }
 
 const releases = [
+  release(
+    "android",
+    "Wynd для Android",
+    "wynd-android.apk",
+    "android-v0.1.0",
+    "0.1.0",
+    true,
+    undefined,
+    false,
+  ),
   ...(includeDesktop
     ? [
         release(
@@ -83,6 +98,25 @@ const attestationLink = {
   url: "https://github.com/mixeme/wynd/attestations",
 };
 
+// Android-выпуск (план 65): свои этапы проверки, публикация по releaseReady.
+const androidBlocked =
+  "В теге android/version.properties стоит releaseReady=false — выпуск подпишем, но не опубликуем: он останется черновиком.";
+const androidDetail = androidReady
+  ? "Файл wynd-android.apk и его контрольная сумма выложены в выпуск на GitHub. Подпись APK проверена: сертификат не отладочный. Временные файлы на этом компьютере удалены."
+  : "Файл wynd-android.apk и его контрольная сумма выложены в черновик. Выпуск не опубликован: в теге android/version.properties стоит releaseReady=false. Временные файлы на этом компьютере удалены.";
+const androidSignSteps = androidReady
+  ? done([
+      ["release", "Проверяем состояние выпуска"],
+      ["signature", "Подписываем и проверяем подпись"],
+      ["upload", "Загружаем подписанный APK на GitHub"],
+      ["publish", "Публикуем выпуск"],
+    ])
+  : done([
+      ["release", "Проверяем состояние выпуска"],
+      ["signature", "Подписываем и проверяем подпись"],
+      ["upload", "Загружаем подписанный APK на GitHub"],
+    ]);
+
 const checks = {
   "desktop-v0.3.1": {
     check_id: "mock-check-desktop",
@@ -90,6 +124,7 @@ const checks = {
     name: "Wynd Настольный",
     exe: "wynd-desktop.exe",
     self_update: true,
+    publishes: true,
     tag: "desktop-v0.3.1",
     draft: true,
     size: 13397504,
@@ -114,6 +149,7 @@ const checks = {
     name: "Wynd Мастерская",
     exe: "wynd-workshop.exe",
     self_update: true,
+    publishes: true,
     tag: "workshop-v0.4.5",
     draft: true,
     size: 91250688,
@@ -132,6 +168,35 @@ const checks = {
       ["notes", "Читаем описание выпуска"],
     ]),
   },
+  "android-v0.1.0": {
+    check_id: "mock-check-android",
+    product: "android",
+    name: "Wynd для Android",
+    exe: "wynd-android.apk",
+    self_update: false,
+    publishes: androidReady,
+    publish_note: androidReady ? undefined : androidBlocked,
+    tag: "android-v0.1.0",
+    draft: true,
+    size: 1998548,
+    sum_ok: true,
+    commit: "df026c9f",
+    attest_ok: true,
+    key_in_release: false,
+    notes: "## 0.1.0\n\n- Начальная оболочка на системном WebView\n- Установка обновления с проверкой подписи и подтверждением Android",
+    steps: done([
+      ["release", "Получаем сведения о выпуске"],
+      ["download", "Скачиваем APK и контрольную сумму"],
+      ["checksum", "Проверяем контрольную сумму"],
+      ["attestation", "Проверяем происхождение сборки", "коммит df026c9f", attestationLink],
+      ["package", "Проверяем пакет и версию"],
+      ["align", "Проверяем выравнивание"],
+      ["notes", "Читаем описание выпуска"],
+      androidReady
+        ? ["readiness", "Проверяем готовность к публикации"]
+        : ["readiness", "Проверяем готовность к публикации", "публикация заблокирована: releaseReady=false"],
+    ]),
+  },
 };
 
 const app = {
@@ -141,17 +206,29 @@ const app = {
     ...checks[tag],
     request_id: requestId,
   }),
-  SignRelease: async (checkId, tag, requestId, pass) => ({
-    ok: true,
-    published: true,
-    url: `https://github.com/mixeme/wynd/releases/tag/${tag}`,
-    steps: done([
-      ["release", "Проверяем состояние выпуска"],
-      ["signature", "Подписываем и проверяем подпись"],
-      ["upload", "Загружаем подпись на GitHub"],
-      ["publish", "Публикуем выпуск"],
-    ]),
-  }),
+  ChooseKeystore: async () => state,
+  SignRelease: async (checkId, tag, requestId, pass) => {
+    if (tag === "android-v0.1.0") {
+      return {
+        ok: true,
+        published: androidReady,
+        url: `https://github.com/mixeme/wynd/releases/tag/${tag}`,
+        detail: androidDetail,
+        steps: androidSignSteps,
+      };
+    }
+    return {
+      ok: true,
+      published: true,
+      url: `https://github.com/mixeme/wynd/releases/tag/${tag}`,
+      steps: done([
+        ["release", "Проверяем состояние выпуска"],
+        ["signature", "Подписываем и проверяем подпись"],
+        ["upload", "Загружаем подпись на GitHub"],
+        ["publish", "Публикуем выпуск"],
+      ]),
+    };
+  },
   PickExe: async () => "C:\\Users\\Mix\\Downloads\\wynd-desktop.exe",
   FileSize: async () => 47185920,
   SignFile: async (path) => ({ ok: true, path: path + ".sig" }),

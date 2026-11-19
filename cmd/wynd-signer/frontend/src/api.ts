@@ -8,6 +8,9 @@ export interface State {
 	key_path: string;
 	key_exists: boolean;
 	pub_path: string;
+	// key_store_path — файл ключа Android (.p12); key_store_exists — он найден.
+	key_store_path: string;
+	key_store_exists: boolean;
 }
 
 export interface Result {
@@ -19,6 +22,8 @@ export interface Result {
 	published?: boolean;
 	url?: string;
 	steps?: Step[];
+	// detail — готовый текст итога подписи для Android; у exe его нет.
+	detail?: string;
 }
 
 export interface Release {
@@ -50,6 +55,11 @@ export interface Check {
 	exe: string;
 	// self_update — программа обновляется сама и ждёт в сборке открытый ключ.
 	self_update: boolean;
+	// publishes — черновик будет опубликован после подписи (решает Go:
+	// для Android — только при releaseReady=true в теге).
+	publishes: boolean;
+	// publish_note — почему публикация не состоится (Android без releaseReady).
+	publish_note?: string;
 	tag: string;
 	draft: boolean;
 	key_in_release: boolean;
@@ -91,6 +101,8 @@ interface Backend {
 	State(): Promise<State>;
 	ChooseKeyPlace(current: string): Promise<string>;
 	ChooseKey(): Promise<State>;
+	// ChooseKeystore — выбор файла ключа Android на экране Android-выпуска.
+	ChooseKeystore(): Promise<State>;
 	CreateKey(path: string, pass: string): Promise<Result>;
 	Releases(): Promise<Releases>;
 	CheckRelease(tag: string, requestId: string): Promise<Check>;
@@ -106,6 +118,7 @@ const native: Backend = {
 	State: () => Call.ByName('main.App.State'),
 	ChooseKeyPlace: (current) => Call.ByName('main.App.ChooseKeyPlace', current),
 	ChooseKey: () => Call.ByName('main.App.ChooseKey'),
+	ChooseKeystore: () => Call.ByName('main.App.ChooseKeystore'),
 	CreateKey: (path, pass) => Call.ByName('main.App.CreateKey', path, pass),
 	Releases: () => Call.ByName('main.App.Releases'),
 	CheckRelease: (tag, requestId) => Call.ByName('main.App.CheckRelease', tag, requestId),
