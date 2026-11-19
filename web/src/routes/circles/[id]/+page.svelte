@@ -103,7 +103,6 @@
 	import { handComposePhotos } from '$lib/journal/compose-handoff';
 	import { holdKeyboard } from '$lib/navigation/keyboard';
 	import { applyFeedSpot, feedSpotKey, saveFeedSpot, takeFeedSpot } from '$lib/journal/feed-scroll';
-	import { mark, markPainted } from '$lib/dev/marks';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 	// Места нет (C42): читать и удалять своё можно, писать — нет (3.10, 3.11).
@@ -189,7 +188,6 @@
 		spotDone = true;
 		const spot = takeFeedSpot(feedSpotKey(circle.origin, circle.circleId));
 		if (!spot || !cameFromPost) return;
-		mark('d:restore-start');
 		await tick();
 		if (feedEl)
 			applyFeedSpot(
@@ -197,7 +195,6 @@
 				posts.map((p) => p.id),
 				spot
 			);
-		void markPainted('r:feed-restored');
 	}
 
 	function leaveToPost(path: string) {
@@ -210,10 +207,8 @@
 	}
 
 	async function loadFeedData() {
-		mark('t:feed-load-start');
 		await feed.load();
 		feedLoaded = true;
-		void markPainted('r:feed-items');
 		await restoreSpot();
 	}
 
@@ -264,7 +259,6 @@
 			// не нужно. Свежесть приносит поток синхронизации и фоновые
 			// обновления.
 			feedLoaded = true;
-			void markPainted('r:feed-items');
 			void restoreSpot();
 		} else {
 			void loadFeedData().then(() => {
@@ -317,7 +311,6 @@
 	});
 
 	function goBack() {
-		mark('t:tap-back-list');
 		void navigateBack();
 	}
 
@@ -531,7 +524,6 @@
 	}
 
 	function openPost(postId: string) {
-		mark('t:tap-post');
 		leaveToPost(`/circles/${circle.circleId}/posts/${postId}`);
 	}
 

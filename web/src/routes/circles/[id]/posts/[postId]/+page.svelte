@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { spaceNotice } from '$lib/circles/space';
 	import { navigateBack } from '$lib/navigation/up';
-	import { mark, markPainted } from '$lib/dev/marks';
 	import PostByline from '$ui/data/PostByline.svelte';
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
 	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
@@ -419,18 +418,15 @@
 			// открываются сразу, обложки и лица — фоном, обновление — тоже фоном.
 			post = cached;
 			loading = false;
-			void markPainted('r:post-text');
 		} else {
 			// Прямой вход (поиск, пуш, ссылка): ждём ленту, как раньше.
 			try {
 				const snap = await loadFeed(circle.origin, circle.circleId);
 				post = findPost(snap.posts, postId);
-				mark('d:post-data');
 			} catch {
 				error = 'Не удалось загрузить запись';
 			} finally {
 				loading = false;
-				void markPainted('r:post-text');
 			}
 		}
 		void resolvePostMedia();
@@ -536,7 +532,6 @@
 	// уходила в ленту (C87). Карта обновляется и при replaceState поиска.
 
 	function goBack() {
-		mark('t:tap-back');
 		void navigateBack();
 	}
 
