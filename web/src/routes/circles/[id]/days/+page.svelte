@@ -13,7 +13,8 @@
 	import { isAccessError } from '$lib/api/client';
 	import { formatDayCardSubtitle, formatEntryDate, pluralPosts } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
-	import { loadDays } from '$lib/journal/days';
+	import { loadDays, loadDaysCached } from '$lib/journal/days';
+	import { paintFromSnapshots } from '$lib/journal/snapshot-first';
 	import { groupByMonth } from '$lib/journal/group';
 	import { dayCoverTileId } from '$lib/journal/present';
 	import type { DaySummary } from '$lib/journal/types';
@@ -36,6 +37,9 @@
 	let loading = $state(true);
 	let error = $state('');
 	let coverUrls = $state<Record<string, string>>({});
+	// Свежий ответ сети уже на экране — поздний снимок его не перетирает (C100).
+	let freshApplied = false;
+	let cachedRequested = false;
 
 	async function resolveCovers(items: DayView[]) {
 		const next: Record<string, string> = { ...coverUrls };
@@ -69,10 +73,32 @@
 		});
 	}
 
+	// Снимок дней — первый кадр вкладки (C100-2): «Дни» не ждут сети,
+	// свежесть приходит ответом следом.
+	async function loadCached() {
+		if (cachedRequested) return;
+		cachedRequested = true;
+		const painted = await paintFromSnapshots(
+			() => freshApplied,
+			async () => {
+				const snap = await loadDaysCached(circle.origin, circle.circleId);
+				if (!snap) return undefined;
+				return () => {
+					totalPosts = snap.days.reduce((sum, d) => sum + d.post_count, 0);
+					days = buildDayViews(snap.days);
+				};
+			}
+		);
+		if (!painted) return;
+		loading = false;
+		void resolveCovers(days);
+	}
+
 	async function loadData() {
 		error = '';
 		try {
 			const daysSnap = await loadDays(circle.origin, circle.circleId);
+			freshApplied = true;
 			totalPosts = daysSnap.days.reduce((sum, d) => sum + d.post_count, 0);
 			const views = buildDayViews(daysSnap.days);
 			days = views;
@@ -96,7 +122,10 @@
 
 	onMount(() => {
 		void markDayPromptSeen(circle.origin, circle.circleId);
-		void loadData();
+		void (async () => {
+			await loadCached();
+			await loadData();
+		})();
 		const unsub = registerRefetch({
 			origin: circle.origin,
 			circleId: circle.circleId,
