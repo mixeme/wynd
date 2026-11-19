@@ -37,7 +37,6 @@
 	import { fetchJoinPreview } from '$lib/circles/settings';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 	import { circleReading, dropCircleReading } from '$lib/journal/reading.svelte';
-	import { mark, markPainted } from '$lib/dev/marks';
 	import PlainLayout from '$lib/layouts/PlainLayout.svelte';
 	import Loading from '$ui/Loading.svelte';
 	import type { Snippet } from 'svelte';
@@ -196,7 +195,6 @@
 	}
 
 	async function loadMeta() {
-		mark('t:layout-start');
 		pendingJoinOnly = false;
 		const resolved = await resolveCircleOrigin(circleId);
 		// '' is the same-origin base, not "not found": only null means unknown circle.
@@ -318,7 +316,6 @@
 
 		rememberLastCircle(circleId);
 		ready = true;
-		void markPainted('r:layout-ready');
 		// Аватар шапки — отдельно (C95-2): экран уже открыт, с инициалом лица.
 		loadAvatarUrl(resolved, avatarBlobId).catch(() => {
 			ctx.avatarBlobId = '';

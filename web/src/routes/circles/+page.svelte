@@ -2,7 +2,6 @@
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
 	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
 	import EmptyState from '$ui/data/EmptyState.svelte';
-	import { mark, markPainted } from '$lib/dev/marks';
 	import { uuid } from '$lib/uuid';
 	import { onDestroy, onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -103,11 +102,9 @@
 		if (seq !== refreshSeq) return;
 		circles = street.circles;
 		groups = street.groups;
-		mark('d:list-circles');
 		// Статус оплаты — фоном (C95-3): круги нажимаются, как только готовы
 		// строки; полосы оплаты дорисовываются, когда статус дошёл.
 		loading = false;
-		void markPainted('r:list-rows');
 		if (streetSession) {
 			void fetchPayStatus(streetSession.origin)
 				.then((status) => {
@@ -245,7 +242,6 @@
 			return;
 		}
 		rememberCircleOrigin(circle.id, circle.origin);
-		mark('t:tap-circle');
 		goto(circle.pendingJoin ? `/circles/${circle.id}/join` : `/circles/${circle.id}`);
 	}
 
