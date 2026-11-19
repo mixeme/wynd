@@ -13,8 +13,9 @@
 	import { plural, WORD } from '$lib/format/plural';
 	import { isAttachedToOtherDay } from '$lib/journal/present';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
-	import { loadDays } from '$lib/journal/days';
-	import { loadMap } from '$lib/journal/map';
+	import { loadDays, loadDaysCached } from '$lib/journal/days';
+	import { loadMap, loadMapCached } from '$lib/journal/map';
+	import { paintFromSnapshots } from '$lib/journal/snapshot-first';
 	import { fetchOlderPage, mergePages } from '$lib/journal/pages';
 	import type { MapPin } from '$lib/journal/types';
 	import { getMediaUrl } from '$lib/media/objectUrl';
@@ -34,6 +35,9 @@
 	let selected = $state<MapPin | undefined>();
 	let selectedUrl = $state('');
 	let badge = $state('');
+	// Свежий ответ сети уже на экране — поздний снимок его не перетирает (C100).
+	let freshApplied = false;
+	let cachedRequested = false;
 
 	let map: import('leaflet').Map | undefined;
 	let cluster: import('leaflet').MarkerClusterGroup | undefined;
@@ -52,6 +56,42 @@
 		return factory(options);
 	}
 
+	// Снимки карты и сводки дней — первый кадр (C100-4): точки круга на месте до
+	// ответа сети; подпись «N с местом из M» появляется, когда известны обе части.
+	async function loadCached() {
+		if (cachedRequested) return;
+		cachedRequested = true;
+		let mapPainted = false;
+		let daysPainted = false;
+		const painted = await paintFromSnapshots(
+			() => freshApplied,
+			async () => {
+				const snap = await loadMapCached(circle.origin, circle.circleId);
+				if (!snap) return undefined;
+				return () => {
+					pins = snap.pins;
+					mapPainted = true;
+				};
+			},
+			async () => {
+				const snap = await loadDaysCached(circle.origin, circle.circleId);
+				if (!snap) return undefined;
+				return () => {
+					totalPosts = snap.days.reduce((sum, d) => sum + d.post_count, 0);
+					daysPainted = true;
+				};
+			}
+		);
+		if (!painted) return;
+		loading = false;
+		if (mapPainted && daysPainted) updateBadge();
+	}
+
+	function updateBadge() {
+		// После «из» — родительный: «из 2 записей», а не «из 2 записи».
+		badge = `${pluralPosts(pins.length)} с местом из ${plural(totalPosts, WORD.postGenitive)}`;
+	}
+
 	async function loadData() {
 		error = '';
 		try {
@@ -59,6 +99,7 @@
 				loadMap(circle.origin, circle.circleId),
 				loadDays(circle.origin, circle.circleId)
 			]);
+			freshApplied = true;
 			// Карта показывает всё место круга сразу (C18): старшие порции
 			// догружаем разом и ставим одним присваиванием — карта перерисовывается
 			// целиком на каждое.
@@ -79,8 +120,7 @@
 			}
 			pins = mergePages(mapSnap.pins, older, (p) => `${p.post_id}:${p.blob_id}`);
 			totalPosts = daysSnap.days.reduce((sum, d) => sum + d.post_count, 0);
-			// После «из» — родительный: «из 2 записей», а не «из 2 записи».
-			badge = `${pluralPosts(pins.length)} с местом из ${plural(totalPosts, WORD.postGenitive)}`;
+			updateBadge();
 		} catch (err) {
 			error = isAccessError(err) ? 'Нет доступа' : 'Не удалось загрузить карту';
 		} finally {
@@ -203,6 +243,7 @@
 			leaflet = L;
 			await import('leaflet.markercluster');
 			leafletReady = true;
+			await loadCached();
 			void loadData();
 		});
 		const unsub = registerRefetch({
