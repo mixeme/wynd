@@ -16,7 +16,8 @@
 	import { formatBytes } from '$lib/format/bytes';
 	import { formatPostTime, pluralPhotos } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
-	import { loadFeed } from '$lib/journal/feed';
+	import { loadFeed, loadFeedCached } from '$lib/journal/feed';
+	import { paintFromSnapshots } from '$lib/journal/snapshot-first';
 	import {
 		albumCompressionHint,
 		albumDownloadFilename,
@@ -42,6 +43,9 @@
 	// Размер снимка знает только сам файл: берём его, когда он открылся.
 	let sizes = $state<Record<string, MediaSize>>({});
 	let loading = $state(true);
+	// Свежий ответ сети уже на экране — поздний снимок его не перетирает (C100).
+	let freshApplied = false;
+	let cachedRequested = false;
 
 	const currentItem = $derived(photos[lightboxIndex]);
 	const albumTitle = $derived(post ? pluralPhotos(photos.length) : '');
@@ -49,7 +53,10 @@
 	const postHref = $derived(`/circles/${circle.circleId}/posts/${postId}`);
 
 	onMount(() => {
-		void load();
+		void (async () => {
+			await loadCached();
+			await load();
+		})();
 		return registerRefetch({
 			origin: circle.origin,
 			circleId: circle.circleId,
@@ -58,22 +65,49 @@
 		});
 	});
 
+	// Плитки альбома: у ролика — его кадр; сам ролик качается, когда открыли.
+	async function resolveTiles() {
+		// Пачками: прежний цикл ждал ответа на каждый снимок по очереди.
+		await resolveMediaUrls(
+			circle.origin,
+			photos.map((p) => tileBlobId(p)),
+			(blobId, url) => {
+				urls = { ...urls, [blobId]: url };
+			}
+		);
+	}
+
+	// Снимок ленты — первый кадр альбома записи (C100-6): фото и подпись на месте
+	// до ответа сети, обложки подтягиваются следом.
+	async function loadCached() {
+		if (cachedRequested) return;
+		cachedRequested = true;
+		const painted = await paintFromSnapshots(
+			() => freshApplied,
+			async () => {
+				const snap = await loadFeedCached(circle.origin, circle.circleId);
+				const found = snap && findPost(snap.posts, postId);
+				if (!found) return undefined;
+				return () => {
+					post = found;
+					photos = photoMedia(found.media);
+				};
+			}
+		);
+		if (!painted) return;
+		loading = false;
+		void resolveTiles();
+	}
+
 	async function load() {
 		try {
 			const snap = await loadFeed(circle.origin, circle.circleId);
+			freshApplied = true;
 			post = findPost(snap.posts, postId);
 			photos = post ? photoMedia(post.media) : [];
 			urls = {};
 			videoAsked.clear();
-			// Пачками: прежний цикл ждал ответа на каждый снимок по очереди.
-			// У ролика плитка — его кадр; сам ролик качается, когда его открыли.
-			await resolveMediaUrls(
-				circle.origin,
-				photos.map((p) => tileBlobId(p)),
-				(blobId, url) => {
-					urls = { ...urls, [blobId]: url };
-				}
-			);
+			await resolveTiles();
 		} finally {
 			loading = false;
 		}
