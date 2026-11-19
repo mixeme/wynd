@@ -21,7 +21,15 @@
 	import { isAccessError } from '$lib/api/client';
 	import { formatEntryDate, formatPostTime } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
-	import { clearDayTitle, loadDay, loadDays, setDayTitle } from '$lib/journal/days';
+	import {
+		clearDayTitle,
+		loadDay,
+		loadDayCached,
+		loadDays,
+		loadDaysCached,
+		setDayTitle
+	} from '$lib/journal/days';
+	import { paintFromSnapshots } from '$lib/journal/snapshot-first';
 	import {
 		attachmentMedia,
 		authorInitial,
@@ -33,7 +41,7 @@
 		tileBlobId,
 		albumHref
 	} from '$lib/journal/present';
-	import type { FeedPost } from '$lib/journal/types';
+	import type { DaySummary, FeedPost } from '$lib/journal/types';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 	import { registerRefetch } from '$lib/sync/sync';
 
@@ -52,6 +60,9 @@
 	let coverUrl = $state('');
 	let mediaUrls = $state<Record<string, string>>({});
 	let authorAvatarUrls = $state<Record<string, string>>({});
+	// Свежий ответ сети уже на экране — поздний снимок его не перетирает (C100).
+	let freshApplied = false;
+	let cachedRequested = false;
 
 	// Окна правок у названия нет: убрать — такая же запись журнала, как назвать.
 	const canClearTitle = $derived(hasCustomTitle);
@@ -104,6 +115,48 @@
 		mediaUrls = next;
 	}
 
+	// Снимки дня и сводки дней — первый кадр (C100-3): записи дня, название и
+	// обложка на месте до ответа сети; свежесть приходит следом.
+	async function loadCached() {
+		if (cachedRequested) return;
+		cachedRequested = true;
+		let meta: DaySummary | undefined;
+		const painted = await paintFromSnapshots(
+			() => freshApplied,
+			async () => {
+				const snap = await loadDayCached(circle.origin, circle.circleId, entryDate);
+				if (!snap) return undefined;
+				return () => {
+					posts = snap.posts;
+				};
+			},
+			async () => {
+				const snap = await loadDaysCached(circle.origin, circle.circleId);
+				meta = snap?.days.find((d) => d.entry_date === entryDate);
+				if (!meta) return undefined;
+				return () => {
+					hasCustomTitle = Boolean(meta?.title);
+					dayTitle = meta?.title || formatEntryDate(entryDate);
+					titleDraft = meta?.title ?? '';
+					coverBlobId = meta?.cover_blob_id ?? meta?.fallback_cover_blob_id;
+				};
+			}
+		);
+		if (!painted) return;
+		loading = false;
+		const coverTileId = dayCoverTileId(meta);
+		if (coverTileId) {
+			void getMediaUrl(circle.origin, coverTileId)
+				.then((url) => {
+					if (!freshApplied) coverUrl = url;
+				})
+				.catch(() => {
+					/* обложку дорисует ответ сети */
+				});
+		}
+		void resolveMedia(posts);
+	}
+
 	async function loadData() {
 		error = '';
 		try {
@@ -111,6 +164,7 @@
 				loadDay(circle.origin, circle.circleId, entryDate),
 				loadDays(circle.origin, circle.circleId)
 			]);
+			freshApplied = true;
 			posts = daySnap.posts;
 			const meta = daysSnap.days.find((d) => d.entry_date === entryDate);
 			hasCustomTitle = Boolean(meta?.title);
@@ -145,7 +199,10 @@
 	onDestroy(() => ptr.destroy());
 
 	onMount(() => {
-		void loadData();
+		void (async () => {
+			await loadCached();
+			await loadData();
+		})();
 		const unsub = registerRefetch({
 			origin: circle.origin,
 			circleId: circle.circleId,
