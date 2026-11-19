@@ -12,16 +12,31 @@
 	import { authErrorHint } from '$lib/auth/auth';
 	import { formatEntryDate } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
-	import { loadDay, loadDays, setDayCover, clearDayCover } from '$lib/journal/days';
+	import {
+		loadDay,
+		loadDayCached,
+		loadDays,
+		loadDaysCached,
+		setDayCover,
+		clearDayCover
+	} from '$lib/journal/days';
+	import { paintFromSnapshots } from '$lib/journal/snapshot-first';
+	import type { FeedPost } from '$lib/journal/types';
 	import { attachmentMedia, photoMedia, tileBlobId } from '$lib/journal/present';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 	const entryDate = $derived($page.params.date ?? '');
 
-	let items = $state<
-		Array<{ postId: string; blobId: string; kind: string; durationMs?: number; preview?: string }>
-	>([]);
+	interface AlbumItem {
+		postId: string;
+		blobId: string;
+		kind: string;
+		durationMs?: number;
+		preview?: string;
+	}
+
+	let items = $state<AlbumItem[]>([]);
 	let selected = $state<{ postId: string; blobId: string } | undefined>();
 	let coverBlobId = $state<string | undefined>();
 	let coverPostId = $state<string | undefined>();
@@ -30,6 +45,9 @@
 	let saving = $state(false);
 	let clearing = $state(false);
 	let error = $state('');
+	// Свежий ответ сети уже на экране — поздний снимок его не перетирает (C100).
+	let freshApplied = false;
+	let cachedRequested = false;
 
 	// Окна правок у обложки нет: убрать — такая же запись журнала, как выбрать.
 	const canClearCover = $derived(Boolean(coverPostId) && ownPostThatDay);
@@ -42,8 +60,73 @@
 			});
 			return;
 		}
-		void load();
+		void (async () => {
+			await loadCached();
+			await load();
+		})();
 	});
+
+	// Плитки альбома из записей дня: фото, ролики и обложки звуков.
+	async function buildItems(posts: FeedPost[]): Promise<AlbumItem[]> {
+		const next: AlbumItem[] = [];
+		for (const post of posts) {
+			for (const m of photoMedia(post.media)) {
+				next.push({
+					postId: post.id,
+					blobId: m.blob_id,
+					kind: m.kind,
+					durationMs: m.video_duration_ms,
+					// Ролик без кадра выбрать можно, но показать нечего.
+					preview: await getMediaUrl(circle.origin, tileBlobId(m)).catch(() => undefined)
+				});
+			}
+			// Обложка звука тоже годится в обложку дня.
+			for (const a of attachmentMedia(post.media)) {
+				const art = a.audio_cover_blob_id;
+				if (!art || next.some((i) => i.blobId === art)) continue;
+				next.push({
+					postId: post.id,
+					blobId: art,
+					kind: 'photo',
+					preview: await getMediaUrl(circle.origin, art)
+				});
+			}
+		}
+		return next;
+	}
+
+	// Снимки дня и сводки дней — первый кадр альбома (C100-5): плитки и
+	// выбранная обложка на месте до ответа сети.
+	async function loadCached() {
+		if (cachedRequested) return;
+		cachedRequested = true;
+		const painted = await paintFromSnapshots(
+			() => freshApplied,
+			async () => {
+				const [day, daysSnap] = await Promise.all([
+					loadDayCached(circle.origin, circle.circleId, entryDate).catch(() => undefined),
+					loadDaysCached(circle.origin, circle.circleId).catch(() => undefined)
+				]);
+				if (!day && !daysSnap) return undefined;
+				const next = day ? await buildItems(day.posts) : [];
+				const meta = daysSnap?.days.find((d) => d.entry_date === entryDate);
+				return () => {
+					if (day) {
+						items = next;
+						ownPostThatDay = day.posts.some((p) => p.identity_id === circle.identityId);
+					}
+					if (meta) {
+						coverBlobId = meta.cover_blob_id;
+						coverPostId = meta.cover_post_id;
+					}
+					const current = next.find((i) => i.blobId === coverBlobId) ?? next[0];
+					if (current) selected = { postId: current.postId, blobId: current.blobId };
+				};
+			}
+		);
+		if (!painted) return;
+		loading = false;
+	}
 
 	async function load() {
 		loading = true;
@@ -53,34 +136,12 @@
 				loadDay(circle.origin, circle.circleId, entryDate),
 				loadDays(circle.origin, circle.circleId)
 			]);
+			freshApplied = true;
 			const meta = daysSnap.days.find((d) => d.entry_date === entryDate);
 			coverBlobId = meta?.cover_blob_id;
 			coverPostId = meta?.cover_post_id;
 			ownPostThatDay = day.posts.some((p) => p.identity_id === circle.identityId);
-			const next = [];
-			for (const post of day.posts) {
-				for (const m of photoMedia(post.media)) {
-					next.push({
-						postId: post.id,
-						blobId: m.blob_id,
-						kind: m.kind,
-						durationMs: m.video_duration_ms,
-						// Ролик без кадра выбрать можно, но показать нечего.
-						preview: await getMediaUrl(circle.origin, tileBlobId(m)).catch(() => undefined)
-					});
-				}
-				// Обложка звука тоже годится в обложку дня.
-				for (const a of attachmentMedia(post.media)) {
-					const art = a.audio_cover_blob_id;
-					if (!art || next.some((i) => i.blobId === art)) continue;
-					next.push({
-						postId: post.id,
-						blobId: art,
-						kind: 'photo',
-						preview: await getMediaUrl(circle.origin, art)
-					});
-				}
-			}
+			const next = await buildItems(day.posts);
 			items = next;
 			const current = next.find((i) => i.blobId === coverBlobId) ?? next[0];
 			if (current) selected = { postId: current.postId, blobId: current.blobId };
