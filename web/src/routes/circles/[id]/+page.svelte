@@ -253,20 +253,25 @@
 		// граница непрочитанного теперь считается по известному курсору.
 		reading.redrawDivider();
 		const dayPromptParam = $page.url.searchParams.get('dayPrompt');
-		if (feed.posts.length || feed.error) {
-			// Возврат из записи или лента, догрузившаяся параллельно с проверкой
-			// доступа (C95-1, C95-2): карточки на экране сразу, перечитывать
-			// не нужно. Свежесть приносит поток синхронизации и фоновые
-			// обновления.
-			feedLoaded = true;
-			void restoreSpot();
-		} else {
-			void loadFeedData().then(() => {
-				if (!dayPromptParam || !/^\d{4}-\d{2}-\d{2}$/.test(dayPromptParam)) return;
-				void dropSearchParam('dayPrompt');
-				void checkDayPrompt(dayPromptParam);
-			});
-		}
+		void (async () => {
+			// Снимок ленты на устройстве — первый кадр (C97): экран не ждёт
+			// сети, свежесть приходит следом.
+			await feed.loadCached();
+			reading.redrawDivider();
+			if (feed.posts.length || feed.error) {
+				// Возврат из записи, снимок или лента, догрузившаяся параллельно с
+				// проверкой доступа (C95-1, C95-2): карточки на экране сразу,
+				// перечитывать не нужно. Свежесть приносит поток синхронизации и
+				// фоновые обновления.
+				feedLoaded = true;
+				void restoreSpot();
+				return;
+			}
+			await loadFeedData();
+			if (!dayPromptParam || !/^\d{4}-\d{2}-\d{2}$/.test(dayPromptParam)) return;
+			void dropSearchParam('dayPrompt');
+			void checkDayPrompt(dayPromptParam);
+		})();
 		void fetchMembers(circle.origin, circle.circleId)
 			.then((list) => {
 				members = list;

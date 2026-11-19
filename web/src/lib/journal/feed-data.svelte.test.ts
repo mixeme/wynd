@@ -165,6 +165,66 @@ describe('FeedData', () => {
 		expect(feed.error).toBe('');
 	});
 
+	// C97: экран не ждёт сети, если снимок уже на устройстве.
+	it('показывает снимок до ответа сети, сеть заменяет его', async () => {
+		let answer!: (snap: FeedSnapshot) => void;
+		const media: string[][] = [];
+		const feed = new FeedData(
+			deps({
+				load: () =>
+					new Promise<FeedSnapshot>((resolve) => {
+						answer = resolve;
+					}),
+				loadCached: async () => snapshot([post('cached', 1)]),
+				resolveMedia: (items) => media.push(items.map((p) => p.id))
+			})
+		);
+
+		const network = feed.load();
+		await feed.loadCached();
+		expect(feed.posts.map((p) => p.id)).toEqual(['cached']);
+		expect(feed.loading).toBe(false);
+		expect(media).toEqual([['cached']]);
+
+		answer(snapshot([post('fresh', 2)]));
+		await network;
+		expect(feed.posts.map((p) => p.id)).toEqual(['fresh']);
+	});
+
+	it('свежий ответ не перетирается опоздавшим снимком', async () => {
+		let cached!: (snap: FeedSnapshot | undefined) => void;
+		const feed = new FeedData(
+			deps({
+				load: async () => snapshot([post('fresh', 2)]),
+				loadCached: () =>
+					new Promise<FeedSnapshot | undefined>((resolve) => {
+						cached = resolve;
+					})
+			})
+		);
+
+		await feed.load();
+		const fromCache = feed.loadCached();
+		cached(snapshot([post('stale', 1)]));
+		await fromCache;
+		expect(feed.posts.map((p) => p.id)).toEqual(['fresh']);
+	});
+
+	it('без снимка экран ждёт сеть, как прежде', async () => {
+		const feed = new FeedData(
+			deps({
+				load: async () => snapshot([post('fresh', 1)]),
+				loadCached: async () => undefined
+			})
+		);
+		await feed.loadCached();
+		expect(feed.posts).toEqual([]);
+		expect(feed.loading).toBe(true);
+		await feed.load();
+		expect(feed.posts.map((p) => p.id)).toEqual(['fresh']);
+		expect(feed.loading).toBe(false);
+	});
+
 	it('отражает свою реакцию только у выбранной записи', async () => {
 		const feed = new FeedData(
 			deps({

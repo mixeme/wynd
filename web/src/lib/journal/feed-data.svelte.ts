@@ -11,6 +11,8 @@ import type { FeedEvent, FeedPost, FeedSnapshot } from '$lib/journal/types';
  */
 export interface FeedDataDeps {
 	load: () => Promise<FeedSnapshot>;
+	/** Снимок с устройства: первый кадр без сети, сеть — фоном (C97). */
+	loadCached?: () => Promise<FeedSnapshot | undefined>;
 	loadOlder: (before: string) => Promise<{ items: FeedPost[]; next?: string }>;
 	lastRead: () => number;
 	/** Медиа новых записей: экран качает обложки и аватары пачками. */
@@ -35,6 +37,9 @@ export class FeedData {
 
 	private deps: FeedDataDeps;
 	private inFlight: Promise<void> | undefined;
+	private cachedFlight: Promise<void> | undefined;
+	private cachedApplied = false;
+	private freshApplied = false;
 
 	constructor(deps: FeedDataDeps) {
 		this.deps = deps;
@@ -56,10 +61,35 @@ export class FeedData {
 		return this.inFlight;
 	}
 
+	/**
+	 * Первый кадр ленты из снимка на устройстве (C97): экран не ждёт сети.
+	 * Сеть идёт своим ходом и заменяет снимок, когда ответит.
+	 */
+	async loadCached(): Promise<void> {
+		if (this.cachedApplied || !this.deps.loadCached) return;
+		// Макет и экран просят снимок оба — второй ждёт тот же, а не пустой ответ.
+		if (this.cachedFlight) return this.cachedFlight;
+		this.cachedFlight = this.doLoadCached().finally(() => {
+			this.cachedFlight = undefined;
+		});
+		return this.cachedFlight;
+	}
+
+	private async doLoadCached(): Promise<void> {
+		this.cachedApplied = true;
+		const snap = await this.deps.loadCached!().catch(() => undefined);
+		// Свежий ответ уже на экране — снимок его не перетирает.
+		if (!snap || this.freshApplied) return;
+		this.nextBefore = snap.next_before;
+		this.apply(snap);
+		this.loading = false;
+	}
+
 	private async doLoad(): Promise<void> {
 		this.error = '';
 		try {
 			const snap = await this.deps.load();
+			this.freshApplied = true;
 			this.nextBefore = snap.next_before;
 			if (this.olderPosts.length) {
 				// Граница первой порции сдвинулась — перечитываем догруженное от неё.
@@ -71,18 +101,22 @@ export class FeedData {
 				this.olderPosts = again.items;
 				this.nextBefore = again.next;
 			}
-			this.posts = mergePages(snap.posts, this.olderPosts, (p) => p.id);
-			this.feedEvents = snap.events ?? [];
-			this.visibleFrom = snap.visible_from ?? null;
-			this.circleStartedAt = snap.circle_started_at ?? '';
-			this.dividerAt = unreadDividerIndex(this.posts, this.deps.lastRead());
-			this.deps.resolveMedia?.(this.posts);
-			this.deps.resolveDayMedia?.(this.feedEvents);
+			this.apply(snap);
 		} catch (err) {
 			this.error = isAccessError(err) ? 'Нет доступа' : 'Не удалось загрузить ленту';
 		} finally {
 			this.loading = false;
 		}
+	}
+
+	private apply(snap: FeedSnapshot): void {
+		this.posts = mergePages(snap.posts, this.olderPosts, (p) => p.id);
+		this.feedEvents = snap.events ?? [];
+		this.visibleFrom = snap.visible_from ?? null;
+		this.circleStartedAt = snap.circle_started_at ?? '';
+		this.dividerAt = unreadDividerIndex(this.posts, this.deps.lastRead());
+		this.deps.resolveMedia?.(this.posts);
+		this.deps.resolveDayMedia?.(this.feedEvents);
 	}
 
 	/** Курсор прочитанного догнал (загрузка шла параллельно проверке доступа). */

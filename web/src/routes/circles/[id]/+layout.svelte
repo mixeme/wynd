@@ -2,7 +2,7 @@
 	import EmptyState from '$ui/data/EmptyState.svelte';
 	import { goto } from '$app/navigation';
 	import { rememberWantedPath } from '$lib/navigation/afterLogin';
-	import type { CircleArrival } from '$lib/journal/types';
+	import type { CircleDetail } from '$lib/journal/types';
 	import { page } from '$app/stores';
 	import { page as pageState } from '$app/state';
 	import { onDestroy, setContext, untrack } from 'svelte';
@@ -17,6 +17,7 @@
 		loadCirclesCached,
 		ownerNameFromSession
 	} from '$lib/circles/circles';
+	import { takeCircleSeed } from '$lib/circles/seed';
 	import type { CircleListItem } from '$lib/circles/circles';
 	import {
 		getCircleColor,
@@ -49,7 +50,12 @@
 			$page.url.pathname.endsWith(`/${circleId}/join`)
 	);
 
-	let ready = $state(false);
+	// Строка улочки, с которой открыли круг (C97): шапка и лента — в первом
+	// кадре, без чтения базы и сети. Дальше их уточняет loadMeta.
+	const seed = takeCircleSeed(pageState.params.id ?? '');
+	let seededFor = seed?.id ?? '';
+
+	let ready = $state(Boolean(seed));
 	let denied = $state(false);
 	// 1.11: на сервере из ссылки вход есть, а круга среди ваших нет.
 	let notMember = $state<{ server: string; email: string } | null>(null);
@@ -60,20 +66,20 @@
 	}
 
 	const ctx = $state<CircleContext>({
-		origin: '',
-		circleId: '',
-		name: '',
-		color: 'olive',
-		colorHex: CIRCLE_COLORS.olive.cssVar,
+		origin: seed?.origin ?? '',
+		circleId: seed?.id ?? '',
+		name: seed?.name ?? '',
+		color: seed?.color ?? 'olive',
+		colorHex: CIRCLE_COLORS[seed?.color ?? 'olive'].cssVar,
 		identityName: '',
 		identityId: '',
 		identityInitial: '?',
 		avatarBlobId: '',
 		avatarUrl: '',
 		editWindowSec: undefined,
-		lastReadSeq: 0,
+		lastReadSeq: seed?.lastReadSeq ?? 0,
 		archiveCycle: undefined,
-		canWrite: true,
+		canWrite: seed?.canWrite ?? true,
 		spaceFull: '',
 		ownerName: '',
 		youOwn: false,
@@ -165,11 +171,12 @@
 		rememberLastCircle(circleId);
 	}
 
-	async function enterAsInvitee(resolved: string): Promise<boolean> {
+	async function enterAsInvitee(resolved: string, seq: number): Promise<boolean> {
 		const inviteToken = loadInviteJoinToken(circleId);
 		if (inviteToken) {
 			try {
 				const peek = await fetchInvitePeek(resolved, inviteToken);
+				if (seq !== loadSeq) return false;
 				if (!isCircleInvitePeek(peek)) return false;
 				applyInviteContext(resolved, peek.circle_name, peek.color);
 				rememberCircleOrigin(circleId, resolved);
@@ -183,6 +190,7 @@
 		}
 		try {
 			const preview = await fetchJoinPreview(resolved, circleId);
+			if (seq !== loadSeq) return false;
 			applyInviteContext(resolved, preview.circle_name, preview.color);
 			rememberCircleOrigin(circleId, resolved);
 			pendingJoinOnly = true;
@@ -194,71 +202,20 @@
 		}
 	}
 
-	async function loadMeta() {
-		pendingJoinOnly = false;
-		const resolved = await resolveCircleOrigin(circleId);
-		// '' is the same-origin base, not "not found": only null means unknown circle.
-		if (resolved === null) {
-			// На этом сервере вход есть, и он ответил, что такого круга у вас
-			// нет, — так и говорим (1.11), а не молча открываем список: ссылка
-			// из письма открылась там, где вошли другой почтой (2026-10-25).
-			const here = (await listSessions()).find((s) => normalizeOrigin(s.origin) === '');
-			if (here) {
-				const mine = await fetchCircles(here.origin).catch(() => undefined);
-				if (mine && !mine.some((c) => c.id === circleId)) {
-					notMember = { server: window.location.host, email: here.email };
-					ready = true;
-					return;
-				}
-			}
-			// Входа нет вовсе (или сервер не ответил): список кругов уведёт на
-			// «Войти», а после кода вернём сюда.
-			rememberWantedPath(window.location.pathname + window.location.search);
-			goto('/circles');
-			return;
-		}
+	// Номер чтения: снимок, сведения и отказ приходят вразнобой, а показать
+	// должен последний запрошенный круг, а не последний ответивший.
+	let loadSeq = 0;
 
-		// Лента стартует вместе с проверкой доступа (C95-2): сетевой ход дешевле
-		// начать сразу, чем ждать после шапки. Тем, кто не читатель круга,
-		// запись снимается ниже.
-		const reading = circleReading(resolved, circleId, () => ctx.lastReadSeq);
-		void reading.feed.load();
-
-		// Список и сведения о круге — параллельно (C95-2): отказ списка гасит
-		// экраны круга, отказ сведений — «баннера по списку достаточно».
-		const [list, detail] = await Promise.all([
-			fetchCircles(resolved).catch(() => undefined),
-			fetchCircleDetail(resolved, circleId).catch(() => undefined)
-		]);
-		let listItem: CircleListItem | undefined = list?.find((c) => c.id === circleId);
-		if (!list) {
-			// Сервер молчит — показываем, что уже в кэше.
-			const cached = await loadCirclesCached(resolved);
-			listItem = cached.find((c) => c.id === circleId);
-		}
-
-		// Нет читаемого членства — в том числе «gone» после ухода и повторного
-		// приглашения. Раньше такой ряд сразу давал «Нет доступа» и не доходил
-		// до экрана имени и фото. «Читает, не пишет» тоже проверяем: повторное
-		// приглашение иначе открывало хронику и звать было некуда.
-		if (listItem?.status === 'left_with_access') {
-			const pending = await fetchPendingCircleJoins(resolved).catch(() => [] as string[]);
-			if (pending.includes(circleId) && (await enterAsInvitee(resolved))) {
-				dropCircleReading(resolved, circleId);
-				return;
-			}
-		}
-		if (!listItem || !membershipReadable(listItem.status)) {
-			dropCircleReading(resolved, circleId);
-			if (await enterAsInvitee(resolved)) return;
-			denied = true;
-			ready = true;
-			return;
-		}
-
+	/** Шапка и права круга по списку; сведения с сервера дополняют их. */
+	async function applyListMeta(
+		resolved: string,
+		listItem: CircleListItem,
+		detail?: CircleDetail,
+		seq = loadSeq
+	): Promise<boolean> {
 		const storedColor = await getCircleColor(resolved, circleId);
 		let color: CircleColor;
-		const serverColor = listItem.color as CircleColor | undefined;
+		const serverColor = (detail?.color ?? listItem.color) as CircleColor | undefined;
 		if (serverColor && serverColor in CIRCLE_COLORS) {
 			color = serverColor;
 			await setCircleColor(resolved, circleId, color);
@@ -276,7 +233,6 @@
 		let responsesUnread = 0;
 		let avatarBlobId: string | undefined;
 		let serverIdentityName = '';
-		let arrival: CircleArrival | undefined;
 		if (detail) {
 			if (detail.archive_cycle?.active) archiveCycle = detail.archive_cycle;
 			identityId = detail.identity_id ?? '';
@@ -286,7 +242,6 @@
 			responsesUnread = detail.responses_unread ?? 0;
 			avatarBlobId = detail.avatar_blob_id;
 			serverIdentityName = detail.identity_name?.trim() ?? '';
-			arrival = detail.arrival;
 		}
 
 		const identityName =
@@ -294,6 +249,9 @@
 		if (serverIdentityName) {
 			await setCircleIdentity(resolved, circleId, serverIdentityName);
 		}
+
+		// Пока читали снимок и имена, мог начаться другой круг.
+		if (seq !== loadSeq) return false;
 
 		ctx.origin = resolved;
 		ctx.circleId = circleId;
@@ -307,7 +265,7 @@
 		ctx.sharePlace = sharePlace;
 		ctx.hasOthers = hasOthers;
 		ctx.responsesUnread = responsesUnread;
-		ctx.arrival = arrival;
+		ctx.arrival = detail?.arrival;
 		ctx.lastReadSeq = listItem.last_read_seq;
 		ctx.archiveCycle = archiveCycle;
 		ctx.canWrite = listItem.status === 'active';
@@ -317,12 +275,105 @@
 		rememberLastCircle(circleId);
 		ready = true;
 		// Аватар шапки — отдельно (C95-2): экран уже открыт, с инициалом лица.
-		loadAvatarUrl(resolved, avatarBlobId).catch(() => {
-			ctx.avatarBlobId = '';
-			ctx.avatarUrl = '';
-		});
+		if (avatarBlobId) {
+			loadAvatarUrl(resolved, avatarBlobId).catch(() => {
+				ctx.avatarBlobId = '';
+				ctx.avatarUrl = '';
+			});
+		}
+		return true;
+	}
+
+	/**
+	 * Первый кадр из снимка улочки (C97): экран открывается без сети, а
+	 * членство и сведения проверяются следом. «Читает, не пишет» сюда не
+	 * входит: там нужен ответ про повторное приглашение.
+	 */
+	async function paintCachedMeta(resolved: string, seq: number): Promise<void> {
+		const cached = await loadCirclesCached(resolved);
+		if (seq !== loadSeq) return;
+		const item = cached.find((c) => c.id === circleId);
+		if (!item || item.status !== 'active') return;
+		await applyListMeta(resolved, item, undefined, seq);
+	}
+
+	async function loadMeta() {
+		const seq = ++loadSeq;
+		pendingJoinOnly = false;
+		const resolved = await resolveCircleOrigin(circleId);
+		// '' is the same-origin base, not "not found": only null means unknown circle.
+		if (resolved === null) {
+			// На этом сервере вход есть, и он ответил, что такого круга у вас
+			// нет, — так и говорим (1.11), а не молча открываем список: ссылка
+			// из письма открылась там, где вошли другой почтой (2026-10-25).
+			const here = (await listSessions()).find((s) => normalizeOrigin(s.origin) === '');
+			if (seq !== loadSeq) return;
+			if (here) {
+				const mine = await fetchCircles(here.origin).catch(() => undefined);
+				if (seq !== loadSeq) return;
+				if (mine && !mine.some((c) => c.id === circleId)) {
+					notMember = { server: window.location.host, email: here.email };
+					ready = true;
+					return;
+				}
+			}
+			// Входа нет вовсе (или сервер не ответил): список кругов уведёт на
+			// «Войти», а после кода вернём сюда.
+			rememberWantedPath(window.location.pathname + window.location.search);
+			goto('/circles');
+			return;
+		}
+
+		// Лента стартует вместе с проверкой доступа (C95-2): сетевой ход дешевле
+		// начать сразу, чем ждать после шапки. Тем, кто не читатель круга,
+		// запись снимается ниже. Снимок ленты — первый кадр (C97), сеть следом.
+		const reading = circleReading(resolved, circleId, () => ctx.lastReadSeq);
+		void reading.feed.loadCached();
+		void reading.feed.load();
+
+		// Снимок улочки — шапка и лента без ожидания сети (C97). Ответ сервера
+		// ниже поправит права, имя и сведения; ошибка снимка ничего не решает.
+		await paintCachedMeta(resolved, seq);
+		if (seq !== loadSeq) return;
+
+		// Список и сведения о круге — параллельно (C95-2): отказ списка гасит
+		// экраны круга, отказ сведений — «баннера по списку достаточно».
+		const [list, detail] = await Promise.all([
+			fetchCircles(resolved).catch(() => undefined),
+			fetchCircleDetail(resolved, circleId).catch(() => undefined)
+		]);
+		if (seq !== loadSeq) return;
+		let listItem: CircleListItem | undefined = list?.find((c) => c.id === circleId);
+		if (!list) {
+			// Сервер молчит — показываем, что уже в кэше.
+			const cached = await loadCirclesCached(resolved);
+			listItem = cached.find((c) => c.id === circleId);
+		}
+
+		// Нет читаемого членства — в том числе «gone» после ухода и повторного
+		// приглашения. Раньше такой ряд сразу давал «Нет доступа» и не доходил
+		// до экрана имени и фото. «Читает, не пишет» тоже проверяем: повторное
+		// приглашение иначе открывало хронику и звать было некуда.
+		if (listItem?.status === 'left_with_access') {
+			const pending = await fetchPendingCircleJoins(resolved).catch(() => [] as string[]);
+			if (seq !== loadSeq) return;
+			if (pending.includes(circleId) && (await enterAsInvitee(resolved, seq))) {
+				dropCircleReading(resolved, circleId);
+				return;
+			}
+		}
+		if (!listItem || !membershipReadable(listItem.status)) {
+			dropCircleReading(resolved, circleId);
+			if (await enterAsInvitee(resolved, seq)) return;
+			if (seq !== loadSeq) return;
+			denied = true;
+			ready = true;
+			return;
+		}
+
+		await applyListMeta(resolved, listItem, detail, seq);
 		// Приехал с кругом (1.10): в ленту — через встречу.
-		if (arrival && $page.url.pathname === `/circles/${circleId}`) {
+		if (detail?.arrival && seq === loadSeq && $page.url.pathname === `/circles/${circleId}`) {
 			goto(`/circles/${circleId}/arrived`, { replaceState: true });
 		}
 	}
@@ -338,7 +389,9 @@
 		// запись прошлого круга больше не нужна.
 		if (loadedCircle) dropCircleReading(ctx.origin, loadedCircle);
 		loadedCircle = id;
-		ready = false;
+		// Со строки улочки уже нарисован первый кадр (C97); иначе — заставка.
+		ready = id === seededFor;
+		seededFor = '';
 		denied = false;
 		notMember = null;
 		untrack(() => void loadMeta());

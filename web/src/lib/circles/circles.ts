@@ -7,6 +7,7 @@ import { getCircleColor, setCircleColor, circleInitial } from './meta';
 import { CIRCLE_COLORS, type CircleColor } from '$lib/theme/colors';
 import { formatPostTime } from '$lib/format/time';
 import { serverHost } from './move';
+import { peekStreetMemory, rememberStreet } from './street-memory';
 import {
 	applyStreetOps,
 	flushStreetOps,
@@ -98,6 +99,12 @@ export interface StreetCircle {
 	/** Есть новые отклики — точка у круга (2.1). */
 	responses?: boolean;
 	pendingJoin?: boolean;
+	/** Цвет токеном: шапка круга рисуется из строки до ответа сети (C97). */
+	colorToken?: CircleColor;
+	/** Курсор прочитанного: граница «нового» без сети (C97). */
+	lastReadSeq?: number;
+	/** «Читает, не пишет»: ввод не показываем, пока сеть не подтвердит. */
+	readOnly?: boolean;
 }
 
 export interface SearchHit {
@@ -180,20 +187,22 @@ export async function searchOrigin(
 	return data.hits ?? [];
 }
 
-async function colorForCircle(
+// Токен нужен шапке круга (C97): снимок строки отдаёт его сразу, без чтения
+// настроек. Цвет строки — из CIRCLE_COLORS[token].cssVar.
+async function colorTokenForCircle(
 	origin: string,
 	circleId: string,
 	serverColor?: string
-): Promise<string> {
+): Promise<CircleColor> {
 	if (serverColor && serverColor in CIRCLE_COLORS) {
 		await setCircleColor(origin, circleId, serverColor as CircleColor);
-		return CIRCLE_COLORS[serverColor as CircleColor].cssVar;
+		return serverColor as CircleColor;
 	}
 	const stored = await getCircleColor(origin, circleId);
-	if (stored) return CIRCLE_COLORS[stored].cssVar;
-	const palette = Object.values(CIRCLE_COLORS);
+	if (stored) return stored;
+	const palette = Object.keys(CIRCLE_COLORS) as CircleColor[];
 	const hash = circleId.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-	return palette[hash % palette.length].cssVar;
+	return palette[hash % palette.length];
 }
 
 /**
@@ -227,35 +236,29 @@ export interface Street {
 	groups: StreetGroupView[];
 }
 
+
 export async function loadStreetCircles(): Promise<StreetCircle[]> {
 	return (await loadStreet()).circles;
 }
 
-export async function loadStreet(): Promise<Street> {
-	const sessions = await listSessions();
-	await moveDeviceStreetToServers(sessions.map((s) => s.origin));
+type StreetSource = (origin: string) => Promise<CirclesResponse | undefined>;
 
+/** Общая сборка улочки: свежий ответ и снимок дают одни и те же строки. */
+async function buildStreet(
+	sessions: SessionRecord[],
+	read: StreetSource,
+	pendingJoins: boolean
+): Promise<Street | undefined> {
 	const rows: StreetCircle[] = [];
 	const layouts: Array<{ origin: string; groups: ServerGroup[] }> = [];
 	// Ряды «читает, не пишет» — по статусу, а не по тексту превью.
 	const readOnly = new Set<StreetCircle>();
+	let anyData = false;
 
 	for (const session of sessions) {
-		// Изменения раскладки, которых сервер ещё не принял, — сначала: ответ
-		// придёт уже с ними. Молчит — останутся в очереди и лягут поверх снимка.
-		await flushStreetOps(session.origin).catch(() => {});
-		let data: CirclesResponse;
-		try {
-			data = await fetchCirclesResponse(session.origin);
-		} catch (err) {
-			if (isSessionRejected(err)) {
-				await dropParticipantSession(session.origin);
-				continue;
-			}
-			data = (await readCachedSnapshot<CirclesResponse>(session.origin, 'circles', '_list')) ?? {
-				circles: []
-			};
-		}
+		const data = await read(session.origin);
+		if (!data) continue;
+		anyData = true;
 		const circles = data.circles ?? [];
 		const layout = applyStreetOps(
 			{
@@ -282,6 +285,7 @@ export async function loadStreet(): Promise<Street> {
 					: (circle.last_summary ??
 						(sessions.length > 1 ? session.name : 'Откройте, чтобы посмотреть'));
 			const time = circle.last_at && !leaving ? formatPostTime(circle.last_at) : '';
+			const colorToken = await colorTokenForCircle(session.origin, circle.id, circle.color);
 			const row: StreetCircle = {
 				origin: session.origin,
 				instanceName: session.name,
@@ -290,16 +294,21 @@ export async function loadStreet(): Promise<Street> {
 				unread: circle.status === 'left_with_access' ? 0 : circle.unread,
 				pinned: pinnedAt > 0,
 				pinnedAt,
-				color: await colorForCircle(session.origin, circle.id, circle.color),
+				color: CIRCLE_COLORS[colorToken].cssVar,
+				colorToken,
 				initial: circleInitial(circle.name),
 				preview,
 				time,
 				lastAt: circle.last_at,
-				responses: circle.status === 'active' && (circle.responses_unread ?? 0) > 0
+				responses: circle.status === 'active' && (circle.responses_unread ?? 0) > 0,
+				lastReadSeq: circle.last_read_seq,
+				readOnly: circle.status === 'left_with_access'
 			};
 			rows.push(row);
 			if (circle.status === 'left_with_access') readOnly.add(row);
 		}
+		// Приглашения — только в свежем ответе: в снимке улочки их нет.
+		if (!pendingJoins) continue;
 		let pendingIds: string[] = [];
 		try {
 			pendingIds = await fetchPendingCircleJoins(session.origin);
@@ -324,6 +333,7 @@ export async function loadStreet(): Promise<Street> {
 					color?: string;
 					split?: { invite_line?: string };
 				}>(session.origin, `/circles/${id}/join-preview`);
+				const colorToken = await colorTokenForCircle(session.origin, id, preview.color);
 				rows.push({
 					origin: session.origin,
 					instanceName: session.name,
@@ -332,7 +342,8 @@ export async function loadStreet(): Promise<Street> {
 					unread: 1,
 					pinned: false,
 					pinnedAt: 0,
-					color: await colorForCircle(session.origin, id, preview.color),
+					color: CIRCLE_COLORS[colorToken].cssVar,
+					colorToken,
 					initial: circleInitial(preview.circle_name),
 					// Отделённый круг (A9, 6.44): кто отделил и от какого.
 					preview: preview.split?.invite_line || 'Вас позвали — выберите имя',
@@ -345,9 +356,57 @@ export async function loadStreet(): Promise<Street> {
 		}
 	}
 
+	if (!anyData) return undefined;
 	const merged = mergeStreetGroups(layouts, await listGroups());
-	await settleLocalGroups(merged.drop, merged.fill);
-	return { circles: sortStreetCircles(rows), groups: merged.groups };
+	if (pendingJoins) await settleLocalGroups(merged.drop, merged.fill);
+	const street = { circles: sortStreetCircles(rows), groups: merged.groups };
+	// Свежий ответ всегда новее; снимок — только пока в памяти ничего нет.
+	if (pendingJoins || !peekStreetMemory()) rememberStreet(street);
+	return street;
+}
+
+export async function loadStreet(): Promise<Street> {
+	const sessions = await listSessions();
+	await moveDeviceStreetToServers(sessions.map((s) => s.origin));
+
+	const street = await buildStreet(
+		sessions,
+		async (origin) => {
+			// Изменения раскладки, которых сервер ещё не принял, — сначала: ответ
+			// придёт уже с ними. Молчит — останутся в очереди и лягут поверх снимка.
+			await flushStreetOps(origin).catch(() => {});
+			try {
+				return await fetchCirclesResponse(origin);
+			} catch (err) {
+				if (isSessionRejected(err)) {
+					await dropParticipantSession(origin);
+					return undefined;
+				}
+				return (
+					(await readCachedSnapshot<CirclesResponse>(origin, 'circles', '_list')) ?? {
+						circles: []
+					}
+				);
+			}
+		},
+		true
+	);
+	return street ?? { circles: [], groups: [] };
+}
+
+/**
+ * Улочка из снимков на устройстве (C97): первый кадр без сети. Свежие ряды
+ * и приглашения приносит loadStreet следом. Снимка нет — undefined: экран
+ * остаётся на загрузке, пустую улочку не показываем.
+ */
+export async function loadStreetCached(): Promise<Street | undefined> {
+	const sessions = await listSessions();
+	if (!sessions.length) return undefined;
+	return buildStreet(
+		sessions,
+		(origin) => readCachedSnapshot<CirclesResponse>(origin, 'circles', '_list'),
+		false
+	);
 }
 
 export function ownerNameFromSession(session: SessionRecord): string {

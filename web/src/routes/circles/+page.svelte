@@ -28,9 +28,13 @@
 	import {
 		byFreshness,
 		loadStreet,
+		loadStreetCached,
 		sortStreetCircles,
 		type StreetCircle
 	} from '$lib/circles/circles';
+	import { peekStreetMemory } from '$lib/circles/street-memory';
+	import { rememberCircleSeed } from '$lib/circles/seed';
+	import { normalizeOrigin } from '$lib/api/client';
 	import {
 		applyStreetOpToView,
 		groupOrigins,
@@ -54,12 +58,16 @@
 	import { dismissPayBanner, fetchPayStatus, formatPayDate, type PayStatus } from '$lib/pay/pay';
 	import type { SessionRecord } from '$lib/idb/db';
 
-	let circles = $state<StreetCircle[]>([]);
+	// Возврат из круга (C97): строки прошлого захода — в первый кадр, без
+	// чтения базы и без заставки.
+	const remembered = peekStreetMemory();
+	let paintedFromMemory = Boolean(remembered);
+	let circles = $state<StreetCircle[]>(remembered?.circles ?? []);
 	// Группы со всех серверов, сложенные по названию (A2): название — ключ.
-	let groups = $state<StreetGroupView[]>([]);
+	let groups = $state<StreetGroupView[]>(remembered?.groups ?? []);
 	let sessions = $state<SessionRecord[]>([]);
 	let payStatus = $state<PayStatus | undefined>();
-	let loading = $state(true);
+	let loading = $state(!remembered);
 	// «Что нового?» — пока свежую запись не открыли и не закрыли (7.7).
 	let newsUnseen = $state(hasUnseenNews());
 	// Подсказка про браузер (7.7а) — на Android, кроме Chrome и Vivaldi.
@@ -95,11 +103,28 @@
 	// молчащего сервера приходит через секунды и не должен перетирать более
 	// свежий — показывается только последнее.
 	let refreshSeq = 0;
+	// Свежий ответ уже на экране: снимок его не перетирает.
+	let freshApplied = false;
+
+	/**
+	 * Первый кадр улочки из снимков на устройстве (C97): возврат из круга не
+	 * ждёт сети. Свежие ряды и статус оплаты приносит refresh следом.
+	 */
+	async function paintCachedStreet() {
+		// Память захода свежее снимка в базе — её и оставляем до ответа сети.
+		if (paintedFromMemory) return;
+		const street = await loadStreetCached();
+		if (!street || freshApplied) return;
+		circles = street.circles;
+		groups = street.groups;
+		loading = false;
+	}
 
 	async function refresh() {
 		const seq = ++refreshSeq;
 		const street = await loadStreet();
 		if (seq !== refreshSeq) return;
+		freshApplied = true;
 		circles = street.circles;
 		groups = street.groups;
 		// Статус оплаты — фоном (C95-3): круги нажимаются, как только готовы
@@ -126,6 +151,8 @@
 					goto('/');
 					return;
 				}
+				// Снимок — сразу (C97), сеть — следом.
+				void paintCachedStreet();
 				void refresh();
 				unsubs = loaded.map((session) =>
 					registerRefetch({ origin: session.origin, refetch: refresh })
@@ -242,6 +269,15 @@
 			return;
 		}
 		rememberCircleOrigin(circle.id, circle.origin);
+		// Снимок строки улочки — шапке круга на первый кадр (C97).
+		rememberCircleSeed({
+			origin: normalizeOrigin(circle.origin),
+			id: circle.id,
+			name: circle.name,
+			color: circle.colorToken ?? 'olive',
+			lastReadSeq: circle.lastReadSeq ?? 0,
+			canWrite: !circle.readOnly
+		});
 		goto(circle.pendingJoin ? `/circles/${circle.id}/join` : `/circles/${circle.id}`);
 	}
 
