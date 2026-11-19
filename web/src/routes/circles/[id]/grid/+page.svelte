@@ -14,8 +14,9 @@
 	import { isAccessError } from '$lib/api/client';
 	import { pluralPosts } from '$lib/format/time';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
-	import { loadDays } from '$lib/journal/days';
-	import { groupGridTiles, loadGrid, type GridTile } from '$lib/journal/grid';
+	import { loadDays, loadDaysCached } from '$lib/journal/days';
+	import { groupGridTiles, loadGrid, loadGridCached, type GridTile } from '$lib/journal/grid';
+	import { paintFromSnapshots } from '$lib/journal/snapshot-first';
 	import { fetchOlderPage, mergePages, refetchOlder } from '$lib/journal/pages';
 	import type { GridItem } from '$lib/journal/types';
 	import { groupByMonth } from '$lib/journal/group';
@@ -35,6 +36,9 @@
 	let loading = $state(true);
 	let error = $state('');
 	let mediaUrls = $state<Record<string, string>>({});
+	// Свежий ответ сети уже на экране — поздний снимок его не перетирает (C100).
+	let freshApplied = false;
+	let cachedRequested = false;
 
 	async function resolveUrls(items: GridTile[]) {
 		const next: Record<string, string> = { ...mediaUrls };
@@ -49,6 +53,35 @@
 		mediaUrls = next;
 	}
 
+	// Снимки сетки и сводки дней — первый кадр вкладки (C100-1): «Сетка» не
+	// ждёт сети, свежесть приходит ответом следом.
+	async function loadCached() {
+		if (cachedRequested) return;
+		cachedRequested = true;
+		const painted = await paintFromSnapshots(
+			() => freshApplied,
+			async () => {
+				const snap = await loadGridCached(circle.origin, circle.circleId);
+				if (!snap) return undefined;
+				return () => {
+					firstItems = snap.items;
+					nextBefore = snap.next_before;
+				};
+			},
+			async () => {
+				const snap = await loadDaysCached(circle.origin, circle.circleId);
+				if (!snap) return undefined;
+				return () => {
+					totalPosts = snap.days.reduce((sum, d) => sum + d.post_count, 0);
+				};
+			}
+		);
+		if (!painted) return;
+		setTiles();
+		loading = false;
+		void resolveUrls(tiles);
+	}
+
 	async function loadData() {
 		error = '';
 		try {
@@ -56,6 +89,7 @@
 				loadGrid(circle.origin, circle.circleId),
 				loadDays(circle.origin, circle.circleId)
 			]);
+			freshApplied = true;
 			totalPosts = daysSnap.days.reduce((sum, d) => sum + d.post_count, 0);
 			firstItems = gridSnap.items;
 			nextBefore = gridSnap.next_before;
@@ -124,7 +158,10 @@
 	onDestroy(() => ptr.destroy());
 
 	onMount(() => {
-		void loadData();
+		void (async () => {
+			await loadCached();
+			await loadData();
+		})();
 		const unsub = registerRefetch({
 			origin: circle.origin,
 			circleId: circle.circleId,
