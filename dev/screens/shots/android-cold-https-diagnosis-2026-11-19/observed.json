@@ -1,0 +1,330 @@
+{
+  "trials": [
+    {
+      "source": "https://wynd-cold.test",
+      "outage": "cut",
+      "retry": false,
+      "coldControl": true,
+      "pid": "19747",
+      "elapsedMs": 13153,
+      "state": {
+        "url": "https://appassets.androidplatform.net/startup/index.html",
+        "ready": true,
+        "login": false,
+        "retry": true,
+        "fallback": true,
+        "circle": false,
+        "post": false,
+        "worker": null,
+        "workerStart": 0,
+        "secure": true,
+        "width": 360,
+        "height": 728,
+        "dpr": 2
+      },
+      "network": {
+        "proxy": 1,
+        "direct": 0,
+        "rejected": 1,
+        "allowed": 0,
+        "api": 0,
+        "main": 0
+      },
+      "trace": [
+        "CREATED proxy",
+        "PROFILE trialRetry=false",
+        "START /",
+        "MAIN_ERROR -1 net::ERR_EMPTY_RESPONSE /",
+        "FINISH /",
+        "START /startup/index.html",
+        "FINISH /startup/index.html",
+        "COMMIT /startup/index.html"
+      ]
+    },
+    {
+      "source": "https://wynd-cold.test",
+      "outage": "cut",
+      "retry": false,
+      "coldControl": false,
+      "pid": "20646",
+      "elapsedMs": 4086,
+      "state": {
+        "url": "https://wynd-cold.test/circles",
+        "ready": true,
+        "login": false,
+        "retry": false,
+        "fallback": false,
+        "circle": true,
+        "post": false,
+        "worker": "https://wynd-cold.test/sw.js",
+        "workerStart": 35.69999998807907,
+        "secure": true,
+        "width": 360,
+        "height": 728,
+        "dpr": 2
+      },
+      "network": {
+        "proxy": 15,
+        "direct": 0,
+        "rejected": 15,
+        "allowed": 0,
+        "api": 0,
+        "main": 0
+      },
+      "trace": [
+        "CREATED proxy",
+        "PROFILE trialRetry=false",
+        "START /",
+        "FINISH /",
+        "FINISH /",
+        "FINISH /",
+        "COMMIT /",
+        "FINISH /"
+      ]
+    },
+    {
+      "source": "https://wynd-cold.test",
+      "outage": "after-connect",
+      "retry": false,
+      "coldControl": false,
+      "pid": "20885",
+      "elapsedMs": 2583,
+      "state": {
+        "url": "https://appassets.androidplatform.net/startup/index.html",
+        "ready": true,
+        "login": false,
+        "retry": true,
+        "fallback": true,
+        "circle": false,
+        "post": false,
+        "worker": null,
+        "workerStart": 0,
+        "secure": true,
+        "width": 360,
+        "height": 728,
+        "dpr": 2
+      },
+      "network": {
+        "proxy": 3,
+        "direct": 0,
+        "rejected": 3,
+        "allowed": 0,
+        "api": 0,
+        "main": 0
+      },
+      "trace": [
+        "CREATED proxy",
+        "PROFILE trialRetry=false",
+        "START /",
+        "MAIN_ERROR -6 net::ERR_CONNECTION_CLOSED /",
+        "FINISH /",
+        "START /startup/index.html",
+        "FINISH /startup/index.html",
+        "COMMIT /startup/index.html"
+      ]
+    },
+    {
+      "source": "https://wynd-cold.test",
+      "outage": "cut",
+      "retry": false,
+      "coldControl": false,
+      "pid": "21091",
+      "elapsedMs": 3686,
+      "state": {
+        "url": "https://wynd-cold.test/circles",
+        "ready": true,
+        "login": false,
+        "retry": false,
+        "fallback": false,
+        "circle": true,
+        "post": false,
+        "worker": "https://wynd-cold.test/sw.js",
+        "workerStart": 26.80000001192093,
+        "secure": true,
+        "width": 360,
+        "height": 728,
+        "dpr": 2
+      },
+      "network": {
+        "proxy": 16,
+        "direct": 0,
+        "rejected": 16,
+        "allowed": 0,
+        "api": 0,
+        "main": 0
+      },
+      "trace": [
+        "CREATED proxy",
+        "PROFILE trialRetry=false",
+        "START /",
+        "FINISH /",
+        "FINISH /",
+        "FINISH /",
+        "COMMIT /",
+        "FINISH /"
+      ]
+    },
+    {
+      "source": "https://wynd-cold.test",
+      "outage": "http503",
+      "retry": false,
+      "coldControl": false,
+      "pid": "21252",
+      "elapsedMs": 3698,
+      "state": {
+        "url": "https://wynd-cold.test/circles",
+        "ready": true,
+        "login": false,
+        "retry": false,
+        "fallback": false,
+        "circle": true,
+        "post": false,
+        "worker": "https://wynd-cold.test/sw.js",
+        "workerStart": 38.69999998807907,
+        "secure": true,
+        "width": 360,
+        "height": 728,
+        "dpr": 2
+      },
+      "network": {
+        "proxy": 5,
+        "direct": 0,
+        "rejected": 0,
+        "allowed": 5,
+        "api": 11,
+        "main": 0
+      },
+      "trace": [
+        "CREATED proxy",
+        "PROFILE trialRetry=false",
+        "START /",
+        "FINISH /",
+        "FINISH /",
+        "FINISH /",
+        "COMMIT /",
+        "FINISH /"
+      ]
+    },
+    {
+      "source": "https://wynd-cold.test",
+      "outage": "cut",
+      "retry": true,
+      "coldControl": false,
+      "pid": "21407",
+      "elapsedMs": 3789,
+      "state": {
+        "url": "https://wynd-cold.test/circles",
+        "ready": true,
+        "login": false,
+        "retry": false,
+        "fallback": false,
+        "circle": true,
+        "post": false,
+        "worker": "https://wynd-cold.test/sw.js",
+        "workerStart": 36.69999998807907,
+        "secure": true,
+        "width": 360,
+        "height": 728,
+        "dpr": 2
+      },
+      "network": {
+        "proxy": 16,
+        "direct": 0,
+        "rejected": 16,
+        "allowed": 0,
+        "api": 0,
+        "main": 0
+      },
+      "trace": [
+        "CREATED proxy",
+        "PROFILE trialRetry=true",
+        "START /",
+        "FINISH /",
+        "FINISH /",
+        "FINISH /",
+        "COMMIT /",
+        "FINISH /"
+      ]
+    },
+    {
+      "source": "https://wynd-cold.test",
+      "outage": "after-connect",
+      "retry": true,
+      "coldControl": false,
+      "pid": "21645",
+      "elapsedMs": 3676,
+      "state": {
+        "url": "https://wynd-cold.test/circles",
+        "ready": true,
+        "login": false,
+        "retry": false,
+        "fallback": false,
+        "circle": true,
+        "post": false,
+        "worker": "https://wynd-cold.test/sw.js",
+        "workerStart": 36.5,
+        "secure": true,
+        "width": 360,
+        "height": 728,
+        "dpr": 2
+      },
+      "network": {
+        "proxy": 32,
+        "direct": 0,
+        "rejected": 32,
+        "allowed": 0,
+        "api": 0,
+        "main": 0
+      },
+      "trace": [
+        "CREATED proxy",
+        "PROFILE trialRetry=true",
+        "START /",
+        "FINISH /",
+        "FINISH /",
+        "FINISH /",
+        "COMMIT /",
+        "FINISH /"
+      ]
+    }
+  ],
+  "version": "0.53.0",
+  "warm": {
+    "https://wynd-cold.test": {
+      "precache": {
+        "active": "activated",
+        "entries": 372,
+        "index": true
+      },
+      "controlled": {
+        "url": "https://wynd-cold.test/circles/01a1f25e-7d27-746a-b18b-bbd98566b3a6",
+        "ready": true,
+        "login": false,
+        "retry": false,
+        "fallback": false,
+        "circle": true,
+        "post": true,
+        "worker": "https://wynd-cold.test/sw.js",
+        "workerStart": 9,
+        "secure": true,
+        "width": 360,
+        "height": 728,
+        "dpr": 2
+      }
+    }
+  },
+  "retained": {
+    "https://wynd-cold.test": {
+      "active": "activated",
+      "entries": 372,
+      "index": true
+    }
+  },
+  "failure": "The expression evaluated to a falsy value:\n\n  assert(controlled.worker === source + '/sw.js' && controlled.workerStart > 0)\n",
+  "cleanup": {
+    "packageRemoved": true,
+    "reverseRemoved": true,
+    "originalAPKUnchanged": true,
+    "originalCatalogUnchanged": true
+  }
+}

@@ -24,6 +24,10 @@ import java.util.Collections;
 /** Выбранный источник открывается напрямую, без прокси; данные WebView остаются у своих origin. */
 public final class MainActivity extends Activity {
     private static final String TAG = "WyndAndroid";
+    private static final long COLD_RETRY_DELAY_MS = 250;
+
+    private enum ColdLoad { FIRST, WAITING, ISSUED, STARTED, FINISHED }
+
     private WebView webView;
     private ServerOrigin server;
     private MediaChromeClient media;
@@ -57,11 +61,11 @@ public final class MainActivity extends Activity {
                 showStartup(!selected.isEmpty() && state != null && state.getBoolean("startup_unavailable")
                         ? ServerOrigin.parse(selected, BuildConfig.DEBUG).url() : null);
             }
-            else showInterface(ServerOrigin.parse(selected, BuildConfig.DEBUG).url(), state);
+            else showInterface(ServerOrigin.parse(selected, BuildConfig.DEBUG).url(), state, true);
         } catch (Exception e) { Log.e(TAG, "Cannot open interface", e); finish(); }
     }
 
-    private void createPage(ServerOrigin origin, boolean local) {
+    private void createPage(ServerOrigin origin, boolean local, String coldUrl) {
         destroyPage();
         server = origin;
         localStartup = local;
@@ -69,7 +73,7 @@ public final class MainActivity extends Activity {
         webView = new WebView(this);
         media = new MediaChromeClient(this, webView, server);
         webView.setWebChromeClient(media);
-        configureWebView();
+        configureWebView(coldUrl);
         if (!local) {
             originals = new OriginalPhotos(this, webView, server, media);
             media.originalPhotos(originals);
@@ -84,10 +88,10 @@ public final class MainActivity extends Activity {
         if (resumed) resumePage();
     }
 
-    private void showInterface(String url, Bundle state) {
+    private void showInterface(String url, Bundle state, boolean cold) {
         ServerOrigin origin = ServerOrigin.parse(java.net.URI.create(url).resolve("/").toString(), BuildConfig.DEBUG);
         failedUrl = null;
-        createPage(origin, false);
+        createPage(origin, false, cold && state == null && url.startsWith("https://") ? url : null);
         if (state == null) receiveShare(getIntent());
         if (state == null || !server.url().equals(state.getString("interface_origin"))
                 || webView.restoreState(state) == null || !server.contains(webView.getUrl())) {
@@ -95,11 +99,11 @@ public final class MainActivity extends Activity {
         }
     }
 
-    void openStartupTarget(String url) { showInterface(url, null); }
+    void openStartupTarget(String url) { showInterface(url, null, false); }
 
     private void showStartup(String unavailable) {
         failedUrl = unavailable;
-        createPage(ServerOrigin.parse(StartupAssets.ORIGIN, false), true);
+        createPage(ServerOrigin.parse(StartupAssets.ORIGIN, false), true, null);
         webView.loadUrl(StartupAssets.URL);
     }
 
@@ -141,7 +145,7 @@ public final class MainActivity extends Activity {
     }
 
     @SuppressLint("SetJavaScriptEnabled") // Wynd — Svelte; Java-мост странице не выдаётся.
-    private void configureWebView() {
+    private void configureWebView(String coldUrl) {
         final StartupAssets assets = localStartup ? new StartupAssets(this) : null;
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG);
         WebSettings settings = webView.getSettings();
@@ -154,11 +158,27 @@ public final class MainActivity extends Activity {
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false);
         webView.setBackgroundColor(Color.rgb(244, 240, 233));
         webView.setWebViewClient(new WebViewClient() {
+            private ColdLoad coldLoad = ColdLoad.FIRST;
+
             @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 if (view != webView) return;
+                if (coldUrl != null && coldLoad != ColdLoad.FINISHED) {
+                    if (!coldUrl.equals(url)) finishColdLoad(view);
+                    else if (coldLoad == ColdLoad.ISSUED) coldLoad = ColdLoad.STARTED;
+                }
                 media.cancel();
                 if (exports != null) exports.cancel();
                 if (originals != null) originals.clear();
+            }
+
+            @Override public void onPageCommitVisible(WebView view, String url) {
+                if (view == webView && coldUrl != null
+                        && (coldLoad == ColdLoad.FIRST || coldLoad == ColdLoad.STARTED)) finishColdLoad(view);
+            }
+
+            private void finishColdLoad(WebView view) {
+                coldLoad = ColdLoad.FINISHED;
+                view.setAlpha(1f);
             }
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -201,7 +221,23 @@ public final class MainActivity extends Activity {
 
             @Override public void onReceivedError(WebView view, WebResourceRequest request, android.webkit.WebResourceError error) {
                 if (request.isForMainFrame() && assets == null && server.contains(request.getUrl().toString())) {
-                    view.post(() -> unavailable(view, request.getUrl().toString()));
+                    String url = request.getUrl().toString();
+                    if (view == webView && url.equals(coldUrl) && "GET".equals(request.getMethod())
+                            && error.getErrorCode() == ERROR_CONNECT) {
+                        if (coldLoad == ColdLoad.WAITING) return;
+                        if (coldLoad == ColdLoad.FIRST) {
+                            // Не показываем страницу ошибки Chromium между двумя загрузками.
+                            coldLoad = ColdLoad.WAITING;
+                            view.setAlpha(0f);
+                            view.postDelayed(() -> {
+                                if (view != webView || coldLoad != ColdLoad.WAITING || isFinishing() || isDestroyed()) return;
+                                coldLoad = ColdLoad.ISSUED;
+                                view.loadUrl(url);
+                            }, COLD_RETRY_DELAY_MS);
+                            return;
+                        }
+                    }
+                    view.post(() -> unavailable(view, url));
                 }
             }
 
