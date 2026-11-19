@@ -58,8 +58,9 @@ type QueueListener = () => void;
 
 const listeners = new Set<QueueListener>();
 let draining: Promise<void> | undefined;
+let activeDrain: AbortController | undefined;
 
-/** Зависшая после падения вкладки отправка снова считается ожидающей (QUE-1). */
+/** Запасной срок для клиентов без Web Locks (QUE-1). */
 const UPLOADING_STALE_MS = 2 * 60 * 1000;
 
 const RETRY_BASE_MS = 30 * 1000;
@@ -71,17 +72,19 @@ export function queueRetryDelayMs(attempts: number): number {
 }
 
 /**
- * Что можно отправлять прямо сейчас: ожидающие и зависшие в uploading, чья
- * пауза после неудачи уже вышла.
+ * Что можно отправлять сейчас с учётом паузы после неудачи и блокировки очереди.
  */
 export function readyQueueItems(
 	items: QueueRecordWithId[],
-	now: number = Date.now()
+	now: number = Date.now(),
+	ownsQueue = false
 ): QueueRecordWithId[] {
 	return items
 		.filter((item) => {
 			if (item.state === 'failed') return false;
 			if (item.state === 'uploading') {
+				// Под эксклюзивной блокировкой отправку оставила закрытая вкладка.
+				if (ownsQueue) return true;
 				const since = item.uploading_at ?? 0;
 				if (now - since < UPLOADING_STALE_MS) return false;
 			}
@@ -175,8 +178,12 @@ export function queuedTimeLabel(
 	return `отправляется · ${Math.min(100, Math.floor(fraction * 100))}%`;
 }
 
-async function getUploadOffset(origin: string, sessionId: string): Promise<number> {
-	const res = await apiFetch(origin, `/uploads/${sessionId}`, { method: 'HEAD' });
+async function getUploadOffset(
+	origin: string,
+	sessionId: string,
+	signal: AbortSignal
+): Promise<number> {
+	const res = await apiFetch(origin, `/uploads/${sessionId}`, { method: 'HEAD', signal });
 	const offset = res.headers.get('Upload-Offset');
 	return offset ? parseInt(offset, 10) : 0;
 }
@@ -184,6 +191,7 @@ async function getUploadOffset(origin: string, sessionId: string): Promise<numbe
 async function uploadFile(
 	origin: string,
 	file: QueueFile,
+	signal: AbortSignal,
 	progress?: QueueUploadProgress,
 	onSent?: (bytes: number) => void
 ): Promise<string> {
@@ -191,11 +199,12 @@ async function uploadFile(
 	let offset = 0;
 
 	if (sessionId) {
-		offset = await getUploadOffset(origin, sessionId);
+		offset = await getUploadOffset(origin, sessionId, signal);
 		onSent?.(offset);
 	} else {
 		const session = await apiJson<{ id: string }>(origin, '/uploads', {
 			method: 'POST',
+			signal,
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ expected_size: file.size, mime_type: file.type, filename: file.name })
 		});
@@ -207,6 +216,7 @@ async function uploadFile(
 		const chunk = file.data.slice(offset, end);
 		const res = await apiFetch(origin, `/uploads/${sessionId}`, {
 			method: 'PUT',
+			signal,
 			headers: {
 				'Content-Type': 'application/octet-stream',
 				'Upload-Offset': String(offset)
@@ -220,6 +230,7 @@ async function uploadFile(
 
 	const complete = await apiJson<{ id: string }>(origin, `/uploads/${sessionId}/complete`, {
 		method: 'POST',
+		signal,
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ sha256: await sha256Hex(file.data) })
 	});
@@ -232,7 +243,8 @@ async function uploadFile(
  * обрыва отправка продолжается с того же места, а не с начала.
  */
 async function uploadItemFiles(
-	item: QueueRecordWithId
+	item: QueueRecordWithId,
+	signal: AbortSignal
 ): Promise<{ blobIds: string[]; uploads: QueueUploadProgress[] }> {
 	const { origin, files } = item;
 	const blobIds: string[] = [];
@@ -255,6 +267,7 @@ async function uploadItemFiles(
 			if (!progress) {
 				const session = await apiJson<{ id: string }>(origin, '/uploads', {
 					method: 'POST',
+					signal,
 					headers: { 'Content-Type': 'application/json' },
 					// Без имени сервер сохранял «.»: вложение из очереди скачивалось
 					// безымянным (найдено на голосовых, C14).
@@ -269,7 +282,7 @@ async function uploadItemFiles(
 				await putQueueItem(item.id, { ...item, state: 'uploading', uploads });
 			}
 			try {
-				const blobId = await uploadFile(origin, files[i], progress, report);
+				const blobId = await uploadFile(origin, files[i], signal, progress, report);
 				done += files[i].size;
 				progress = { ...progress, blob_id: blobId };
 				uploads = [...uploads.filter((u) => u.file_index !== i), progress];
@@ -290,12 +303,12 @@ async function uploadItemFiles(
 	return { blobIds, uploads };
 }
 
-async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
+async function submitQueueItem(item: QueueRecordWithId, signal: AbortSignal): Promise<void> {
 	const { origin, circle_id: circleId, type, payload } = item;
 
 	if (type === 'post') {
 		const postPayload = payload as PostQueuePayload;
-		const { blobIds, uploads } = await uploadItemFiles(item);
+		const { blobIds, uploads } = await uploadItemFiles(item, signal);
 
 		const mediaMeta = [...(postPayload.media_meta ?? [])];
 		const media = [];
@@ -303,12 +316,16 @@ async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 			let meta: QueueMediaMeta = mediaMeta[i] ?? { kind: 'photo' };
 			let coverId = meta.audio_cover_blob_id;
 			if (!coverId && meta.audio_cover) {
-				coverId = await uploadFile(origin, {
-					name: 'cover.jpg',
-					type: 'image/jpeg',
-					size: meta.audio_cover.data.byteLength,
-					data: meta.audio_cover.data
-				});
+				coverId = await uploadFile(
+					origin,
+					{
+						name: 'cover.jpg',
+						type: 'image/jpeg',
+						size: meta.audio_cover.data.byteLength,
+						data: meta.audio_cover.data
+					},
+					signal
+				);
 				const saved: QueueMediaMeta = { ...meta, audio_cover_blob_id: coverId };
 				delete saved.audio_cover;
 				meta = saved;
@@ -318,12 +335,16 @@ async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 			}
 			let posterId = meta.video_poster_blob_id;
 			if (!posterId && meta.video_poster) {
-				posterId = await uploadFile(origin, {
-					name: 'poster.jpg',
-					type: 'image/jpeg',
-					size: meta.video_poster.data.byteLength,
-					data: meta.video_poster.data
-				});
+				posterId = await uploadFile(
+					origin,
+					{
+						name: 'poster.jpg',
+						type: 'image/jpeg',
+						size: meta.video_poster.data.byteLength,
+						data: meta.video_poster.data
+					},
+					signal
+				);
 				const saved: QueueMediaMeta = { ...meta, video_poster_blob_id: posterId };
 				delete saved.video_poster;
 				meta = saved;
@@ -352,6 +373,7 @@ async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 
 		await apiJson(origin, `/circles/${circleId}/posts`, {
 			method: 'POST',
+			signal,
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
 				body: postPayload.body,
@@ -366,7 +388,7 @@ async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 
 	if (type === 'comment') {
 		const commentPayload = payload as CommentQueuePayload;
-		const { blobIds } = await uploadItemFiles(item);
+		const { blobIds } = await uploadItemFiles(item, signal);
 		const media = blobIds.map((blobId, i) => {
 			const meta = commentPayload.media_meta?.[i];
 			return {
@@ -379,6 +401,7 @@ async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 		});
 		await apiJson(origin, `/circles/${circleId}/posts/${commentPayload.post_id}/comments`, {
 			method: 'POST',
+			signal,
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ body: commentPayload.body, client_id: item.client_id, media })
 		});
@@ -389,6 +412,7 @@ async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 		const reactionPayload = payload as ReactionQueuePayload;
 		await apiJson(origin, `/circles/${circleId}/posts/${reactionPayload.post_id}/reactions`, {
 			method: 'PUT',
+			signal,
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ emoji: reactionPayload.emoji })
 		});
@@ -398,7 +422,8 @@ async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 	if (type === 'reaction_remove') {
 		const reactionPayload = payload as ReactionQueuePayload;
 		await apiFetch(origin, `/circles/${circleId}/posts/${reactionPayload.post_id}/reactions`, {
-			method: 'DELETE'
+			method: 'DELETE',
+			signal
 		});
 	}
 }
@@ -406,17 +431,18 @@ async function submitQueueItem(item: QueueRecordWithId): Promise<void> {
 const QUOTA_CIRCLE = 'quota_exceeded';
 const QUOTA_SERVER = 'quota_exceeded:server';
 
-async function processItem(item: QueueRecordWithId): Promise<boolean> {
-	await putQueueItem(item.id, {
+async function processItem(item: QueueRecordWithId, signal: AbortSignal): Promise<boolean> {
+	const uploading: QueueRecordWithId = {
 		...item,
 		state: 'uploading',
 		error: undefined,
 		uploading_at: Date.now()
-	});
+	};
+	await putQueueItem(item.id, uploading);
 	notify();
 
 	try {
-		await submitQueueItem(item);
+		await submitQueueItem(uploading, signal);
 		await invalidateCircleSnapshots(item.origin, item.circle_id);
 		// Запись уходит из очереди, когда лента её уже показывает: раньше
 		// карточка очереди пропадала на 100%, а запись появлялась только с
@@ -461,7 +487,7 @@ async function processItem(item: QueueRecordWithId): Promise<boolean> {
 		await putQueueItem(item.id, {
 			...latest,
 			state: 'pending',
-			attempts,
+			attempts: signal.aborted && !(err instanceof ApiError) ? 0 : attempts,
 			uploading_at: Date.now()
 		});
 		notify();
@@ -469,21 +495,31 @@ async function processItem(item: QueueRecordWithId): Promise<boolean> {
 	}
 }
 
-async function drainOnce(): Promise<void> {
+async function drainOnce(ownsQueue: boolean): Promise<void> {
 	// Экран не гаснет, пока очередь уходит: загрузка видео — минуты (A5).
 	let releaseWake: (() => void) | undefined;
 	try {
-		await drainLoop(() => {
+		const onWork = () => {
 			releaseWake ??= holdWakeLock();
-		});
+		};
+		do {
+			activeDrain = new AbortController();
+			await drainLoop(onWork, activeDrain.signal, ownsQueue);
+			// Связь могла вернуться, пока отменённая отправка сохраняла прогресс.
+		} while (activeDrain.signal.aborted && navigator.onLine);
 	} finally {
+		activeDrain = undefined;
 		releaseWake?.();
 	}
 }
 
-async function drainLoop(onWork: () => void): Promise<void> {
-	while (navigator.onLine) {
-		const ready = readyQueueItems(await listQueueItems());
+async function drainLoop(
+	onWork: () => void,
+	signal: AbortSignal,
+	ownsQueue: boolean
+): Promise<void> {
+	while (!signal.aborted && navigator.onLine) {
+		const ready = readyQueueItems(await listQueueItems(), Date.now(), ownsQueue);
 		if (!ready.length) break;
 		onWork();
 		// Недоступный сервер задерживает только свою очередь: раньше общий
@@ -491,9 +527,10 @@ async function drainLoop(onWork: () => void): Promise<void> {
 		const blocked = new Set<string>();
 		let progressed = false;
 		for (const item of ready) {
+			if (signal.aborted || !navigator.onLine) return;
 			if (blocked.has(item.origin)) continue;
 			try {
-				await processItem(item);
+				await processItem(item, signal);
 				progressed = true;
 			} catch {
 				blocked.add(item.origin);
@@ -511,12 +548,12 @@ export async function drainQueue(): Promise<void> {
 	const run = async () => {
 		const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
 		if (!locks) {
-			await drainOnce();
+			await drainOnce(false);
 			return;
 		}
 		await locks.request('wynd-queue', { ifAvailable: true }, async (lock) => {
 			if (!lock) return;
-			await drainOnce();
+			await drainOnce(true);
 		});
 	};
 
@@ -546,9 +583,14 @@ export async function drainQueueFor(origin: string): Promise<void> {
 
 export function initQueueDrain(): () => void {
 	const onOnline = () => void drainQueue();
+	const onOffline = () => activeDrain?.abort();
 	window.addEventListener('online', onOnline);
+	window.addEventListener('offline', onOffline);
 	if (navigator.onLine) void drainQueue();
-	return () => window.removeEventListener('online', onOnline);
+	return () => {
+		window.removeEventListener('online', onOnline);
+		window.removeEventListener('offline', onOffline);
+	};
 }
 
 async function enqueue(
