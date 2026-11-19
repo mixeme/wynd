@@ -33,6 +33,7 @@ interface GoApp {
 	RemoveInterface(origin: string): Promise<void>;
 	ListServers(): Promise<CheckResult[]>;
 	SelectServer(origin: string): Promise<CheckResult>;
+	RequestClose(): Promise<void>;
 }
 
 interface Runtime {
@@ -56,6 +57,7 @@ const native: GoApp = {
 	RemoveInterface: (origin) => Call.ByName('main.App.RemoveInterface', origin),
 	ListServers: () => Call.ByName('main.App.ListServers'),
 	SelectServer: (origin) => Call.ByName('main.App.SelectServer', origin),
+	RequestClose: () => Call.ByName('main.App.RequestClose'),
 };
 
 function bridge(): GoApp | undefined {
@@ -95,6 +97,12 @@ export async function applySelfUpdate(): Promise<string> {
 
 export async function openingReleases(): Promise<void> {
 	await bridge()?.ReleasesPage();
+}
+
+// «Крестик» окна: со значком в трее окно прячется, без значка приложение
+// закрывается — решает Go (RequestClose).
+export async function closeWindow(): Promise<void> {
+	await bridge()?.RequestClose();
 }
 
 export async function checkServer(address: string): Promise<CheckResult> {

@@ -23,12 +23,16 @@ import (
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 
 	"gitea.mixdep.ru/mix/wynd/internal/desktop"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
+
+//go:embed build/windows/icon.ico
+var trayIcon []byte
 
 // App — то, что окно может попросить (main.App.* в биндингах). Список
 // серверов — в internal/desktop; токенов и паролей здесь нет.
@@ -41,6 +45,10 @@ type App struct {
 	storeErr error
 	// update — последняя найденная новая версия окна.
 	update desktop.Update
+	// window и tray — для «крестика»: со значком в трее окно прячется,
+	// без него приложение закрывается, как раньше.
+	window application.Window
+	tray   *application.SystemTray
 }
 
 // ServiceStartup — хук Wails v3: приложение передаёт контекст, который
@@ -49,6 +57,19 @@ func (a *App) ServiceStartup(ctx context.Context, _ application.ServiceOptions) 
 	a.ctx = ctx
 	desktop.CleanOldSelf()
 	return nil
+}
+
+// RequestClose — «крестик» окна (C66): при значке в трее окно прячется и
+// работа продолжается, без значка приложение закрывается, как раньше.
+func (a *App) RequestClose() {
+	a.mu.Lock()
+	win, tray := a.window, a.tray
+	a.mu.Unlock()
+	if win != nil && tray != nil {
+		win.Hide()
+		return
+	}
+	application.Get().Quit()
 }
 
 // CheckServer проверяет адрес и запоминает сервер выбранным. Ошибка одна:
@@ -419,6 +440,14 @@ func main() {
 	if err := shell.updateAllowed(); err != nil {
 		log.Fatal(err)
 	}
+	// Запуск из автозапуска (HKCU\...\Run с --from-startup) — сразу в трей,
+	// без окна: человек не просил открыть программу, она ждёт в значке.
+	startInTray := false
+	for _, arg := range os.Args[1:] {
+		if arg == "--from-startup" {
+			startInTray = true
+		}
+	}
 	app := application.New(application.Options{
 		Name:        "wynd-desktop",
 		Description: "Wynd Настольный",
@@ -430,7 +459,7 @@ func main() {
 			WebviewUserDataPath: filepath.Join(base, "webview"),
 		},
 	})
-	app.Window.NewWithOptions(application.WebviewWindowOptions{
+	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title: "Wynd [" + desktop.Version + "]",
 		// Окно открывается по ширине интерфейса: колонка клиента — до 720
 		// (480 на узком окне), окно не шире неё (решение владельца 10.11.26).
@@ -443,8 +472,35 @@ func main() {
 		// Своя рамка (TitleBar), как на утверждённых кадрах; системный
 		// заголовок Windows 10 в цвет бумаги не перекрашивается.
 		Frameless: true,
+		Hidden:    startInTray,
 		URL:       "/",
 	})
+	// Значок в области уведомлений (C66): открыть окно или выйти совсем.
+	tray := app.SystemTray.New()
+	tray.SetIcon(trayIcon)
+	tray.SetTooltip("Wynd Настольный")
+	menu := application.NewMenu()
+	menu.Add("Открыть Wynd Настольный").OnClick(func(*application.Context) {
+		win.Show()
+		win.Focus()
+	})
+	menu.AddSeparator()
+	menu.Add("Выход").OnClick(func(*application.Context) { app.Quit() })
+	tray.SetMenu(menu)
+	tray.OnClick(func() {
+		win.Show()
+		win.Focus()
+	})
+	// Закрытие окна любым путём (крестик, Alt+F4, задача) с треем не
+	// завершает программу, а прячет окно: работа продолжается в значке.
+	win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+		e.Cancel()
+		win.Hide()
+	})
+	shell.mu.Lock()
+	shell.window = win
+	shell.tray = tray
+	shell.mu.Unlock()
 	if err := app.Run(); err != nil {
 		log.Fatal(err)
 	}

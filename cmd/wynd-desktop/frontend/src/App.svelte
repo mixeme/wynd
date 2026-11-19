@@ -18,6 +18,7 @@
 		checkCurrent,
 		checkSelfUpdate,
 		checkServer,
+		closeWindow,
 		currentServer,
 		currentVersion,
 		forgetSelected,
@@ -268,7 +269,7 @@
 			rt?.WindowToggleMaximise();
 			void syncMaximised();
 		}}
-		onclose={() => rt?.Quit()}
+		onclose={() => void closeWindow()}
 	/>
 	{#if update && !updateHidden}
 		<!-- Полоса обновления поверх интерфейса: страница остаётся во всю
