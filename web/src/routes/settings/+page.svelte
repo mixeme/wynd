@@ -53,7 +53,7 @@
 	}
 </script>
 
-<FormLayout shell app title="Настройки" onback={goBack}>
+<FormLayout shell app title="Настройки" barMinHeight={48} onback={goBack}>
 	<SettingsRow
 		class="mt-8"
 		icon="key"

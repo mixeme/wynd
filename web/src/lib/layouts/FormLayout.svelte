@@ -25,6 +25,7 @@
 		right,
 		search,
 		compact = false,
+		barMinHeight,
 		bar,
 		compose = false,
 		publishLabel = 'Опубликовать',
@@ -49,8 +50,9 @@
 		subtitle?: string;
 		right?: string;
 		search?: string;
-		/** Уменьшает нижний отступ шапки BackBar или редактора. */
+		/** Уменьшает нижний отступ BackBar или убирает его в редакторе. */
 		compact?: boolean;
+		barMinHeight?: number;
 		bar?: Snippet;
 		compose?: boolean;
 		publishLabel?: string;
@@ -110,7 +112,7 @@
 					{publishLabel}
 				</TextButton>
 			</div>
-			<div style:height={compact ? '4px' : '12px'}></div>
+			{#if !compact}<div style="height:12px"></div>{/if}
 		</div>
 	{:else if circleTitle}
 		<div class="cbar">
@@ -124,7 +126,7 @@
 			<div style="height:10px"></div>
 		</div>
 	{:else if bar}
-		<BackBar {compact} {onback}>{@render bar()}</BackBar>
+		<BackBar {compact} minHeight={barMinHeight} {onback}>{@render bar()}</BackBar>
 	{:else if color && subtitle}
 		<div class="cbar">
 			<div class="top">
@@ -141,7 +143,7 @@
 			<div style="padding-bottom:12px;font-size:12.5px;color:rgba(255,255,255,.85)">{subtitle}</div>
 		</div>
 	{:else}
-		<BackBar {title} {right} {search} {compact} {onback} {onright} />
+		<BackBar {title} {right} {search} {compact} minHeight={barMinHeight} {onback} {onright} />
 	{/if}
 	{#if compose}
 		<!-- Тело новой записи — прокручивается под шапкой «Отмена / Опубликовать»
