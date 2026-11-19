@@ -480,7 +480,7 @@ func main() {
 	tray.SetIcon(trayIcon)
 	tray.SetTooltip("Wynd Настольный")
 	menu := application.NewMenu()
-	menu.Add("Открыть Wynd Настольный").OnClick(func(*application.Context) {
+	menu.Add("Открыть").OnClick(func(*application.Context) {
 		win.Show()
 		win.Focus()
 	})
