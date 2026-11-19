@@ -1,0 +1,44 @@
+{
+  "apkSha256": "d2e2109a4c583b88e0a56ac64d0fd1edb400d6d875906fa1928c32f51a2a3ac8",
+  "senderSha256": "656a9dd57fda543280f4f0bd1c15430de2a40831bdca57e626f02d871885373b",
+  "serverIndexSha256": "c4c755f3cbf94f5a97af3bc8ab05db693bfb1d0db23f0013f1606f6a7b391873",
+  "chooserRegistrations": {
+    "SEND text/plain": true,
+    "SEND image/jpeg": true,
+    "SEND video/webm": true,
+    "SEND_MULTIPLE */*": true
+  },
+  "retainedBeforeLogin": true,
+  "coldRestartRetainedShare": true,
+  "viewport": [
+    360,
+    728,
+    2,
+    360
+  ],
+  "bar": {
+    "height": 43.6484375,
+    "paddingBottom": "10px"
+  },
+  "afterShareBeforePublish": 0,
+  "warmTextPreservesOpenEditor": true,
+  "publishedMedia": [
+    "photo",
+    "video"
+  ],
+  "textArrivedAsPlainText": true,
+  "systemBack": {
+    "before": "http://127.0.0.1:17797/share",
+    "previous": "http://127.0.0.1:17797/circles",
+    "after": "http://127.0.0.1:17797/circles",
+    "pending": false
+  },
+  "systemBackCancelledWithoutPublication": true,
+  "footerCancelledWithoutPublication": true,
+  "cleanup": {
+    "packagesRemoved": true,
+    "reverseRemoved": true,
+    "originalPackageUnchanged": true,
+    "originalCatalogUnchanged": true
+  }
+}
