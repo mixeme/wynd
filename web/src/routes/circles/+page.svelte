@@ -104,15 +104,19 @@
 		circles = street.circles;
 		groups = street.groups;
 		mark('d:list-circles');
-		if (streetSession) {
-			try {
-				payStatus = await fetchPayStatus(streetSession.origin);
-			} catch {
-				payStatus = undefined;
-			}
-		}
+		// Статус оплаты — фоном (C95-3): круги нажимаются, как только готовы
+		// строки; полосы оплаты дорисовываются, когда статус дошёл.
 		loading = false;
 		void markPainted('r:list-rows');
+		if (streetSession) {
+			void fetchPayStatus(streetSession.origin)
+				.then((status) => {
+					if (seq === refreshSeq) payStatus = status;
+				})
+				.catch(() => {
+					if (seq === refreshSeq) payStatus = undefined;
+				});
+		}
 	}
 
 	onMount(() => {
