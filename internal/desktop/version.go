@@ -4,4 +4,4 @@ package desktop
 // Мост и совместимость с интерфейсом сервера проверяются по ней. Поднимать
 // в том же коммите, что раздел в cmd/wynd-desktop/whatsnew.md и версии в
 // cmd/wynd-desktop/build/windows/info.json (их равенство сверяет тест).
-const Version = "0.3.1"
+const Version = "0.4.0"
