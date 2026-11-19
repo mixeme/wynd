@@ -221,29 +221,34 @@ public final class MainActivity extends Activity {
 
             @Override public void onReceivedError(WebView view, WebResourceRequest request, android.webkit.WebResourceError error) {
                 if (request.isForMainFrame() && assets == null && server.contains(request.getUrl().toString())) {
-                    String url = request.getUrl().toString();
-                    if (view == webView && url.equals(coldUrl) && "GET".equals(request.getMethod())
-                            && error.getErrorCode() == ERROR_CONNECT) {
-                        if (coldLoad == ColdLoad.WAITING) return;
-                        if (coldLoad == ColdLoad.FIRST) {
-                            // Не показываем страницу ошибки Chromium между двумя загрузками.
-                            coldLoad = ColdLoad.WAITING;
-                            view.setAlpha(0f);
-                            view.postDelayed(() -> {
-                                if (view != webView || coldLoad != ColdLoad.WAITING || isFinishing() || isDestroyed()) return;
-                                coldLoad = ColdLoad.ISSUED;
-                                view.loadUrl(url);
-                            }, COLD_RETRY_DELAY_MS);
-                            return;
-                        }
-                    }
-                    view.post(() -> unavailable(view, url));
+                    if (error.getErrorCode() == ERROR_CONNECT && retryColdLoad(view, request)) return;
+                    view.post(() -> unavailable(view, request.getUrl().toString()));
                 }
             }
 
             @Override public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
                 if (request.isForMainFrame() && assets == null && response.getStatusCode() >= 500
-                        && server.contains(request.getUrl().toString())) view.post(() -> unavailable(view, request.getUrl().toString()));
+                        && server.contains(request.getUrl().toString())) {
+                    if (response.getStatusCode() == 503 && retryColdLoad(view, request)) return;
+                    view.post(() -> unavailable(view, request.getUrl().toString()));
+                }
+            }
+
+            private boolean retryColdLoad(WebView view, WebResourceRequest request) {
+                String url = request.getUrl().toString();
+                if (view != webView || !url.equals(coldUrl) || !"GET".equals(request.getMethod())) return false;
+                if (coldLoad == ColdLoad.WAITING) return true;
+                if (coldLoad != ColdLoad.FIRST) return false;
+
+                // Не показываем документ ошибки между двумя загрузками.
+                coldLoad = ColdLoad.WAITING;
+                view.setAlpha(0f);
+                view.postDelayed(() -> {
+                    if (view != webView || coldLoad != ColdLoad.WAITING || isFinishing() || isDestroyed()) return;
+                    coldLoad = ColdLoad.ISSUED;
+                    view.loadUrl(url);
+                }, COLD_RETRY_DELAY_MS);
+                return true;
             }
 
             @Override @SuppressWarnings("deprecation")

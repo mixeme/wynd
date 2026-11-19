@@ -49,6 +49,28 @@ if errorlevel 1 (
 rem The frontend build runs out of memory on a small machine without a heap limit.
 if not defined NODE_OPTIONS set "NODE_OPTIONS=--max-old-space-size=3072"
 
+rem The windows compile shared web components; their TypeScript config extends
+rem web/.svelte-kit, which is generated. On a clean clone generate it (and
+rem install web dependencies if missing) before the frontend build.
+if not exist "%WYND_ROOT%\web\node_modules\" (
+  pushd "%WYND_ROOT%\web"
+  call npm install --no-audit --no-fund
+  set "BUILD_EXIT=!ERRORLEVEL!"
+  popd
+  if !BUILD_EXIT! neq 0 (
+    echo Web dependencies install failed.
+    exit /b !BUILD_EXIT!
+  )
+)
+pushd "%WYND_ROOT%\web"
+call npx svelte-kit sync
+set "BUILD_EXIT=!ERRORLEVEL!"
+popd
+if !BUILD_EXIT! neq 0 (
+  echo svelte-kit sync failed.
+  exit /b !BUILD_EXIT!
+)
+
 echo Building frontend (npm install, npm run build)...
 pushd "%FRONTEND_DIR%"
 call npm install --no-audit --no-fund
