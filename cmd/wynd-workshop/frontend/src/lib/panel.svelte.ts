@@ -58,6 +58,9 @@ export interface PanelInput {
 	onmoved: (id: string) => Promise<void>;
 }
 
+// logChunkBytes — порция полного вывода сборки при догрузке начала (C71).
+const logChunkBytes = 256 << 10;
+
 export class Panel {
 	readonly input: PanelInput;
 	readonly api: Backend;
@@ -810,6 +813,56 @@ export class Panel {
 			.map((e) => ('$ ' + e.command + '\n' + e.output).trimEnd())
 			.join('\n\n')
 	);
+	// Полный вывод сборки живёт на сервере (C71): окно держит показанное, ранние
+	// порции догружает по кнопке. Пометка «начало не сохранено» — служебная
+	// строка Go в хвосте; после догрузки она не показывается.
+	earlierBuildLog = $state('');
+	buildLogStart = $state(-1);
+	buildLogTotal = $state(-1);
+	logLoading = $state(false);
+	logError = $state('');
+	static readonly logTruncatedMarker = '… (начало вывода не сохранено';
+	logTruncated = $derived(this.buildLogText.includes(Panel.logTruncatedMarker));
+	logStartShown = $derived(this.buildLogStart === 0);
+	// Хвост без служебной строки Go: на сервере её нет.
+	tailWithoutMarker = $derived(
+		this.buildLogText
+			.split('\n')
+			.filter((line) => !line.startsWith(Panel.logTruncatedMarker))
+			.join('\n')
+	);
+	shownBuildLog = $derived(
+		this.earlierBuildLog
+			? (this.earlierBuildLog + this.tailWithoutMarker).trimEnd()
+			: this.buildLogText
+	);
+
+	// loadEarlierBuildLog — догрузить порцию журнала до показанной (C71).
+	async loadEarlierBuildLog(): Promise<void> {
+		if (this.logLoading || this.logStartShown) return;
+		this.logLoading = true;
+		this.logError = '';
+		try {
+			const chunk = await this.api.BuildLogChunk(
+				this.buildLogStart < 0 ? 0 : Math.max(0, this.buildLogStart - logChunkBytes),
+				this.buildLogStart < 0 ? 0 : logChunkBytes
+			);
+			if (chunk.error) throw new Error(chunk.error);
+			this.buildLogTotal = chunk.total;
+			if (this.buildLogStart < 0) {
+				// Первый запрос — только размер: хвост уже показан окном.
+				const tailBytes = new TextEncoder().encode(this.tailWithoutMarker).length;
+				this.buildLogStart = Math.max(0, chunk.total - tailBytes);
+				return;
+			}
+			this.earlierBuildLog = chunk.text + this.earlierBuildLog;
+			this.buildLogStart = chunk.offset;
+		} catch {
+			this.logError = 'Не удалось загрузить начало журнала. Попробуйте ещё раз.';
+		} finally {
+			this.logLoading = false;
+		}
+	}
 
 	onStateView(): ProfileViewState {
 		return {

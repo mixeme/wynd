@@ -335,6 +335,7 @@ export interface Backend {
 	ServerPage(): Promise<ServerPage>;
 	Service(action: 'start' | 'stop' | 'restart'): Promise<ServiceResult>;
 	StartUpdate(opt: UpdateOptions): Promise<Progress>;
+	BuildLogChunk(offset: number, limit: number): Promise<BuildLogChunk>;
 	ReturnPrevious(): Promise<ServiceResult>;
 	PickArchives(): Promise<string[] | null>;
 	PickArchive(full: boolean): Promise<string>;
@@ -369,6 +370,13 @@ export interface Backend {
 	ReleasesPage(): Promise<void>;
 }
 
+export interface BuildLogChunk {
+	text: string;
+	offset: number;
+	total: number;
+	error?: string;
+}
+
 const PROFILE_METHODS = new Set([
 	'Connect',
 	'ConfirmHost',
@@ -385,6 +393,7 @@ const PROFILE_METHODS = new Set([
 	'ServerPage',
 	'Service',
 	'StartUpdate',
+	'BuildLogChunk',
 	'ReturnPrevious',
 	'PlanBackup',
 	'StartBackup',

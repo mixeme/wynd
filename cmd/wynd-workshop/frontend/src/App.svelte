@@ -4,6 +4,7 @@
 	import Input from '$ui/forms/Input.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
+	import Hint from '$ui/forms/Hint.svelte';
 	import Checkbox from '$ui/workshop/Checkbox.svelte';
 	import CommandLog from '$ui/workshop/CommandLog.svelte';
 	import CopyLine from '$ui/workshop/CopyLine.svelte';
@@ -532,7 +533,18 @@
 			>
 		</FootBar>
 		{#if p.showLog}
-			<CommandLog text={p.buildLogText || p.logText} />
+			{#if p.logTruncated && !p.logStartShown}
+				<div class="ins-log-head">
+					<TextButton
+						class="link under"
+						disabled={p.logLoading}
+						onclick={() => void p.loadEarlierBuildLog()}
+						>{p.logLoading ? 'Загружаем начало…' : 'Загрузить начало'}</TextButton
+					>
+				</div>
+			{/if}
+			{#if p.logError}<Hint class="mt-8">{p.logError}</Hint>{/if}
+			<CommandLog text={p.showLog ? p.shownBuildLog || p.logText : p.logText} />
 		{/if}
 	{:else if p.screen === 'update'}
 		<h2>Обновляем</h2>
@@ -544,7 +556,18 @@
 			<span class="ins-dim ins-push">Окно можно свернуть</span>
 		</FootBar>
 		{#if p.showLog}
-			<CommandLog text={p.buildLogText || p.logText} />
+			{#if p.logTruncated && !p.logStartShown}
+				<div class="ins-log-head">
+					<TextButton
+						class="link under"
+						disabled={p.logLoading}
+						onclick={() => void p.loadEarlierBuildLog()}
+						>{p.logLoading ? 'Загружаем начало…' : 'Загрузить начало'}</TextButton
+					>
+				</div>
+			{/if}
+			{#if p.logError}<Hint class="mt-8">{p.logError}</Hint>{/if}
+			<CommandLog text={p.showLog ? p.shownBuildLog || p.logText : p.logText} />
 		{/if}
 	{:else if p.screen === 'udone'}
 		<!-- Кадр 7г. -->

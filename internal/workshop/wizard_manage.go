@@ -3,6 +3,7 @@ package workshop
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -55,6 +56,57 @@ type UpdateOptions struct {
 	StopForCopy bool `json:"stop_for_copy"`
 	StartAfter  bool `json:"start_after"`
 	Build       bool `json:"build"`
+}
+
+// BuildLogChunk — порция полного вывода сборки с сервера (C71): окно держит
+// в памяти только показанное. Offset — байт с начала файла, Limit — сколько
+// отдать (0 — только размер). Total всегда возвращается: без него окно не
+// знает, где начало.
+type BuildLogChunk struct {
+	Text   string `json:"text"`
+	Offset int64  `json:"offset"`
+	Total  int64  `json:"total"`
+	Error  string `json:"error,omitempty"`
+}
+
+// BuildLogChunk отдаёт порцию журнала сборки, сохранённого на сервере.
+func (w *Wizard) BuildLogChunk(ctx context.Context, offset int64, limit int) BuildLogChunk {
+	w.mu.Lock()
+	if w.session == nil {
+		w.mu.Unlock()
+		return BuildLogChunk{Error: "Сначала подключитесь к серверу"}
+	}
+	if !w.aliveLocked(ctx) {
+		if res := w.dialLocked(ctx); res.Status != StatusConnected {
+			w.mu.Unlock()
+			return BuildLogChunk{Error: "Связь с сервером оборвалась"}
+		}
+	}
+	sess := w.session
+	w.mu.Unlock()
+	if offset < 0 {
+		offset = 0
+	}
+	// Одна короткая команда: размер, затем порция с нужного байта.
+	script := fmt.Sprintf("size=$(stat -c%%s %[1]s 2>/dev/null || echo 0); echo $size; "+
+		"if [ %[2]d -gt 0 ]; then tail -c +%[3]d %[1]s 2>/dev/null | head -c %[2]d; fi",
+		buildLogPath, limit, offset+1)
+	res, err := sess.Exec(ctx, script, nil, shortTimeout)
+	if err != nil {
+		return BuildLogChunk{Error: "Связь с сервером оборвалась"}
+	}
+	out := res.Output
+	total := int64(0)
+	if i := strings.IndexByte(out, '\n'); i >= 0 {
+		_, _ = fmt.Sscan(strings.TrimSpace(out[:i]), &total)
+		out = out[i+1:]
+	} else if v, sErr := fmt.Sscan(strings.TrimSpace(out), &total); sErr == nil && v > 0 {
+		out = ""
+	}
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+	return BuildLogChunk{Text: out, Offset: offset, Total: total}
 }
 
 // ServerPage читает состояние сервера и свежую версию.

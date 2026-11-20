@@ -188,6 +188,32 @@ export const SCENES: Scene[] = [
 		fake: { ...toPult(pult), StartUpdate: () => progress(steps(['Запуск', 'failed']), { running: false, failure: { step: 'start', message: 'Новая версия не запустилась', advice: 'Wynd вышел с ошибкой.' } }) },
 		acts: [...go, { click: 'Обновить' }, { click: 'Обновить' }, { click: 'подробности' }]
 	},
+	{
+		// C71: журнал больше 256 КБ — в окне хвост, начало догружается с сервера.
+		name: '7d2-log-truncated',
+		fake: {
+			...toPult(pult),
+			StartUpdate: () =>
+				progress(steps(['Запуск', 'failed']), {
+					running: false,
+					failure: {
+						step: 'image',
+						message: 'Сборка Wynd завершилась с кодом 1',
+						advice: 'Нажмите «Повторить» — сборка начнётся заново. Что делала сборка, видно в «Полный вывод сборки».'
+					},
+					log: [
+						{
+							command: 'bash -c (… docker build --progress=plain -f deploy/docker/Dockerfile .)',
+							output:
+								'… (начало вывода не сохранено; показаны последние 256 КБ)\n$ docker build --progress=plain -f deploy/docker/Dockerfile .\n' +
+								Array.from({ length: 12 }, (_, i) => `#${14 + i} [web 4/5] RUN npm ci --omit=dev`).join('\n') +
+								'\n#26 exporting to image\n#26 exporting layers 12.4s done'
+						}
+					]
+				})
+		},
+		acts: [...go, { click: 'Обновить' }, { click: 'Обновить' }, { click: 'Полный вывод сборки' }]
+	},
 	{ name: '7g-udone', fake: { ...toPult(pult), StartUpdate: () => progress(doneSteps, { running: false, done: true }) }, acts: [...go, { click: 'Обновить' }, { click: 'Обновить' }] },
 	{ name: '8a-bplan', fake: toPult(pult), acts: [...go, { click: 'Сделать' }] },
 	{

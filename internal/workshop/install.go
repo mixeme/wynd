@@ -1122,11 +1122,14 @@ const gitScript = `command -v git >/dev/null 2>&1 || {
 
 // buildSwap — временный файл подкачки на время сборки; buildLock — замок,
 // чтобы две сборки не пошли разом; buildCacheOurs — пометка «сборочный кэш
-// Docker до нашей сборки был пуст».
+// Docker до нашей сборки был пуст»; buildLogPath — полный вывод сборки на
+// сервере (C71): окно берёт его порциями, в памяти окна держится только
+// показанное. Файл перезаписывается каждой сборкой и защищён umask 077.
 const (
 	buildSwap      = "/var/tmp/wynd-build.swap"
 	buildLock      = "/var/tmp/wynd-build.lock"
 	buildCacheOurs = "/var/tmp/wynd-build.cache-ours"
+	buildLogPath   = "/var/tmp/wynd-build.log"
 )
 
 // Сборочный кэш у Docker один на всех, своё от чужого в нём не отличить.
@@ -1159,7 +1162,13 @@ const (
 // отказывает, а перестаёт отвечать. Место под неё и под сборочный кэш
 // проверяем заранее.
 func buildScript(repo, version, tag string) string {
+	// bash — ради tee через подстановку процесса: весь вывод сборки уходит и
+	// в окно, и в файл на сервере (C71). На серверах Мастерской Debian/Ubuntu,
+	// bash там есть; скрипт уже требует flock и docker.
 	return `set -e
+umask 077
+: > ` + buildLogPath + `
+exec > >(tee -a ` + buildLogPath + `) 2>&1
 exec 9>` + buildLock + `
 flock 9
 if docker image inspect ` + tag + ` >/dev/null 2>&1; then exit 0; fi
@@ -1193,7 +1202,7 @@ func (s SourceImage) Provide(ctx context.Context, r *Run, tag string) error {
 	if _, err := r.must(ctx, gitScript, packageTimeout); err != nil {
 		return err
 	}
-	res, err := r.shTracked(ctx, buildScript(s.Repo, version, tag), buildTimeout)
+	res, err := r.shTracked(ctx, "bash -c "+shQuote(buildScript(s.Repo, version, tag)), buildTimeout)
 	if err != nil {
 		return err
 	}

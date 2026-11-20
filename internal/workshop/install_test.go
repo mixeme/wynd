@@ -57,6 +57,12 @@ func (h *fakeHost) handle(command string, stdin []byte) (string, int) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	change := func() { h.changes = append(h.changes, firstLine(command)) }
+	// C71: сборка идёт под bash и пишет полный вывод в файл на сервере —
+	// разворачиваем обёртку и обрабатываем сам сценарий (замок уже взят).
+	if strings.HasPrefix(command, "bash -c '") {
+		command = strings.TrimSuffix(strings.TrimPrefix(command, "bash -c '"), "'")
+		command = strings.ReplaceAll(command, `'\''`, "'")
+	}
 	switch {
 	case command == "true":
 		return "", 0
@@ -115,7 +121,7 @@ func (h *fakeHost) handle(command string, stdin []byte) (string, int) {
 		return tag + "\n", 0
 	case command == gitScript:
 		return "", 0
-	case strings.HasPrefix(command, "set -e\nexec 9>"+buildLock):
+	case strings.HasPrefix(command, "set -e\numask 077"):
 		return h.build(command)
 	case command == "docker load":
 		change()

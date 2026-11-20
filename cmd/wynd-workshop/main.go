@@ -131,6 +131,13 @@ func (a *App) Service(id string, action string) (workshop.ServiceResult, error) 
 	return profileCall(a, id, false, func(w *workshop.Wizard) workshop.ServiceResult { return w.Service(a.ctx, action) })
 }
 
+// BuildLogChunk отдаёт порцию полного вывода сборки с сервера (C71).
+func (a *App) BuildLogChunk(id string, offset int64, limit int) (workshop.BuildLogChunk, error) {
+	return profileCall(a, id, false, func(w *workshop.Wizard) workshop.BuildLogChunk {
+		return w.BuildLogChunk(a.ctx, offset, limit)
+	})
+}
+
 // StartUpdate обновляет Wynd; ход — InstallProgress.
 func (a *App) StartUpdate(id string, opt workshop.UpdateOptions) (workshop.Progress, error) {
 	return profileCall(a, id, false, func(w *workshop.Wizard) workshop.Progress { return w.StartUpdate(a.ctx, opt) })
