@@ -35,6 +35,10 @@
 	let unavailable = $state(false);
 	let knownName = $state('Сервер');
 	let checkGeneration = 0;
+	// Режим пересмотра (план 50): источник уже выбран и жив — поле предзаполнено,
+	// «Отмена» возвращает в интерфейс без изменений. В приложении приходит от
+	// моста (стартовый экран открыт поверх живого интерфейса).
+	let reselect = $state(false);
 	// Набранный адрес — черновик: живёт в хранилище самой стартовой страницы
 	// (origin оболочки), переживает смерть процесса в фоне и возвращается в поле.
 	// План 50: подтверждённый источник это не выбор и им не хранится.
@@ -53,17 +57,20 @@
 		address =
 			requested === 'long'
 				? 'family-photos-and-stories.example.org:8443'
-				: offlineScene || ['checking', 'ready', 'error'].includes(requested)
+				: offlineScene || ['checking', 'ready', 'error', 'reselect'].includes(requested)
 					? 'home.example.org'
 					: '';
 		serverState =
 			requested === 'checking' || requested === 'offline-checking'
 				? 'checking'
-				: requested === 'ready' || requested === 'long'
+				: requested === 'ready' || requested === 'long' || requested === 'reselect'
 					? 'ready'
 					: requested === 'error' || offlineScene
 						? 'failed'
 						: 'empty';
+		// Режим пересмотра (план 50): источник уже выбран и жив — поле предзаполнено,
+		// плашка показывает его, «Отмена» возвращает в интерфейс без изменений.
+		reselect = requested === 'reselect';
 		photoError = '';
 		unavailable = offlineScene;
 		scanning = requested === 'scan';
@@ -279,6 +286,16 @@
 						<Button style="margin-top:16px" variant="ghost" onclick={() => photoPicker?.open()}
 							>Фото с QR-кодом</Button
 						>
+						{#if reselect}
+							<Hint class="mt-14">Пока не подтверждён другой сервер, открыт нынешний.</Hint>
+							<Button
+								style="margin-top:16px"
+								variant="ghost"
+								onclick={() => {
+									if (native) void startupRequest('cancel').catch(() => {});
+								}}>Отмена</Button
+							>
+						{/if}
 					{/if}
 				</div>
 			</div>
