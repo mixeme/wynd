@@ -143,20 +143,19 @@
 				if (gen !== searchGen) return;
 				hits = next;
 				authorNames = authors;
-				const urls: Record<string, string> = {};
-				await Promise.all(
-					next.map(async (hit) => {
-						if (!hit.thumb_blob_id) return;
-						const key = hit.post_id;
-						try {
-							urls[key] = await getMediaUrl(circle.origin, hit.thumb_blob_id);
-						} catch {
+				// Миниатюры едут по одной: строка не ждёт самых медленных (C95).
+				for (const hit of next) {
+					if (!hit.thumb_blob_id) continue;
+					const key = hit.post_id;
+					void getMediaUrl(circle.origin, hit.thumb_blob_id)
+						.then((url) => {
+							if (gen !== searchGen) return;
+							thumbUrls = { ...thumbUrls, [key]: url };
+						})
+						.catch(() => {
 							/* placeholder tint */
-						}
-					})
-				);
-				if (gen !== searchGen) return;
-				thumbUrls = urls;
+						});
+				}
 				if (authorFilter && !authors.includes(authorFilter)) {
 					authorFilter = '';
 				}

@@ -425,7 +425,9 @@ export async function circleNameMap(): Promise<Map<string, { name: string; color
 export async function searchAllOrigins(
 	query: string,
 	filters?: import('$lib/journal/search').SearchFilters,
-	limit = 50
+	limit = 50,
+	/** Ответ каждого сервера отдаётся сразу, не после всех (C95, «Поиск — позже»). */
+	onOrigin?: (origin: string, hits: SearchHit[]) => void
 ): Promise<{
 	results: Array<{ origin: string; hits: SearchHit[] }>;
 	failedInstanceNames: string[];
@@ -437,7 +439,10 @@ export async function searchAllOrigins(
 		sessions.map(async (session) => {
 			try {
 				const hits = await searchOrigin(session.origin, query, limit, filters);
-				if (hits.length) results.push({ origin: session.origin, hits });
+				if (hits.length) {
+					results.push({ origin: session.origin, hits });
+					onOrigin?.(session.origin, hits);
+				}
 			} catch {
 				failedInstanceNames.push(session.name);
 			}

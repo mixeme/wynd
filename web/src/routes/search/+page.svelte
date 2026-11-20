@@ -13,6 +13,7 @@
 	import SearchResultRow from '$ui/data/SearchResultRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { circleNameMap, searchAllOrigins } from '$lib/circles/circles';
+	import type { SearchHit } from '$lib/circles/circles';
 	import { rememberCircleOrigin } from '$lib/circles/origin';
 	import { formatEntryDate, formatPostTime } from '$lib/format/time';
 	import { isAttachedToOtherDay } from '$lib/journal/present';
@@ -162,36 +163,38 @@
 			loading = true;
 			sourceError = '';
 			try {
-				const { results, failedInstanceNames } = await searchAllOrigins(
-					debounced,
-					{
-						from,
-						to,
-						byDay: day,
-						postedFrom,
-						postedTo,
-						hasPhoto: photo,
-						hasLocation: location
-					},
-					debounced ? 50 : 500
-				);
+				// Имена кругов — до поиска: группа рисуется, как только ответил её
+				// сервер, не дожидаясь остальных (C95, «Поиск — позже»).
 				const names = await circleNameMap();
 				if (gen !== searchGen) return;
-				if (failedInstanceNames.length) {
-					sourceError = `Не удалось обновить поиск: ${failedInstanceNames.join(', ')}.`;
-				}
-				const byCircle = new Map<string, Omit<Group, 'circleId'>>();
-				for (const { origin, hits } of results) {
+				const byCircle = new Map<string, Group>();
+				const resolveThumb = (groupKey: string, origin: string, hit: Hit) => {
+					if (!hit.thumbBlobId) return;
+					const key = `${groupKey}-${hit.postId}`;
+					void getMediaUrl(origin, hit.thumbBlobId)
+						.then((url) => {
+							if (gen !== searchGen) return;
+							thumbUrls = { ...thumbUrls, [key]: url };
+						})
+						.catch(() => {
+							/* placeholder tint */
+						});
+				};
+				// Группа этого сервера рисуется, как только он ответил, не дожидаясь
+				// остальных (C95, «Поиск — позже»); миниатюры едут по одной.
+				const applyOrigin = (origin: string, hits: SearchHit[]) => {
+					const built: Array<{ row: Hit; groupKey: string }> = [];
 					for (const hit of hits) {
 						const key = `${origin}:${hit.circle_id}`;
 						const meta = names.get(key);
 						const entry = byCircle.get(key) ?? {
+							circleId: key,
 							name: meta?.name ?? 'Круг',
 							color: meta?.color ?? 'var(--slate)',
 							hits: []
 						};
 						const isDay = hit.kind === 'day';
-						entry.hits.push({
+						const row: Hit = {
 							postId: hit.post_id,
 							kind: hit.kind,
 							entryDate: hit.entry_date,
@@ -212,32 +215,37 @@
 									: undefined,
 							snippet: hit.snippet,
 							thumbBlobId: hit.thumb_blob_id
-						});
+						};
+						entry.hits.push(row);
 						byCircle.set(key, entry);
+						built.push({ row, groupKey: key });
 					}
-				}
-				const nextGroups: Group[] = [...byCircle.entries()].map(([circleId, value]) => ({
-					circleId,
-					...value
-				}));
-				const urls: Record<string, string> = {};
-				await Promise.all(
-					nextGroups.flatMap((group) =>
-						group.hits.map(async (hit) => {
-							if (!hit.thumbBlobId) return;
-							const { origin } = splitCircleKey(group.circleId);
-							const key = `${group.circleId}-${hit.postId}`;
-							try {
-								urls[key] = await getMediaUrl(origin, hit.thumbBlobId);
-							} catch {
-								/* placeholder tint */
-							}
-						})
-					)
+					groups = [...byCircle.values()];
+					for (const { row, groupKey } of built) {
+						resolveThumb(groupKey, splitCircleKey(groupKey).origin, row);
+					}
+				};
+				const { failedInstanceNames } = await searchAllOrigins(
+					debounced,
+					{
+						from,
+						to,
+						byDay: day,
+						postedFrom,
+						postedTo,
+						hasPhoto: photo,
+						hasLocation: location
+					},
+					debounced ? 50 : 500,
+					(origin, hits) => {
+						if (gen !== searchGen) return;
+						applyOrigin(origin, hits);
+					}
 				);
 				if (gen !== searchGen) return;
-				thumbUrls = urls;
-				groups = nextGroups;
+				if (failedInstanceNames.length) {
+					sourceError = `Не удалось обновить поиск: ${failedInstanceNames.join(', ')}.`;
+				}
 			} catch {
 				if (gen !== searchGen) return;
 				sourceError = 'Не удалось выполнить поиск.';
