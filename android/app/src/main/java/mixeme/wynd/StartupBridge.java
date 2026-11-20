@@ -78,6 +78,9 @@ final class StartupBridge {
                                 }
                             } catch (Exception error) {
                                 open = null;
+                                // Причина отказа проверки — в logcat: карточка ошибки одна на все случаи,
+                                // без этой строки её нельзя отличить (типа DNS от тайм-аута и чужого сайта).
+                                android.util.Log.w("WyndAndroid", "startup " + op + " failed: " + error);
                                 try { response.put("error", "failed"); } catch (Exception ignored) { }
                             }
                             StartupTarget destination = open;
