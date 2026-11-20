@@ -18,3 +18,5 @@ rootProject.name = 'WyndAndroid'
 include ':app'
 // Только локальный отправитель синтетических SEND; не часть APK Wynd/CI.
 if (providers.gradleProperty('wyndShareFixture').orElse('false').get() == 'true') include ':share-fixture'
+// Проверка совместимости Web Push на телефоне; не входит в APK Wynd.
+if (providers.gradleProperty('wyndPushFixture').orElse('false').get() == 'true') include ':push-fixture'

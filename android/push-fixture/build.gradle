@@ -1,0 +1,20 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'mixeme.wynd.pushfixture'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'mixeme.wynd.pushfixture'
+        minSdk 21
+        targetSdk 36
+        versionCode 1
+        versionName '1'
+    }
+}
+
+androidComponents { beforeVariants(selector().withBuildType('release')) { it.enable = false } }
+
+dependencies {
+    implementation 'org.unifiedpush.android:connector:3.3.5'
+}
