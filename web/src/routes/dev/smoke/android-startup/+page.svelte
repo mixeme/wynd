@@ -35,6 +35,20 @@
 	let unavailable = $state(false);
 	let knownName = $state('Сервер');
 	let checkGeneration = 0;
+	// Набранный адрес — черновик: живёт в хранилище самой стартовой страницы
+	// (origin оболочки), переживает смерть процесса в фоне и возвращается в поле.
+	// План 50: подтверждённый источник это не выбор и им не хранится.
+	const draftKey = 'wynd-startup-draft';
+	// $state — чтобы эффект записи перезапустился, когда ответ моста установит флаг.
+	let draftLoaded = $state(false);
+	$effect(() => {
+		if (!native || !draftLoaded) return;
+		try {
+			localStorage.setItem(draftKey, address);
+		} catch {
+			/* Хранилище недоступно — поле просто не восстановится после смерти процесса. */
+		}
+	});
 	$effect(() => {
 		address =
 			requested === 'long'
@@ -91,6 +105,14 @@
 			try {
 				const result = await startupRequest(open ? 'open' : 'check', address);
 				if (generation !== checkGeneration) return;
+				if (open) {
+					// Выбор подтверждён — черновик адреса больше не нужен.
+					try {
+						localStorage.removeItem(draftKey);
+					} catch {
+						/* Не критично: на свежем старте поле останется с прежним черновиком. */
+					}
+				}
 				if (!open && result.preview) {
 					knownName = result.preview.name;
 					serverState = 'ready';
@@ -123,6 +145,15 @@
 					knownName = state.selected.name;
 					serverState = 'failed';
 				}
+				if (!state.selected) {
+					// Свежий запуск без подтверждённого источника: возвращаем черновик.
+					try {
+						address = localStorage.getItem(draftKey) ?? '';
+					} catch {
+						/* Без хранилища поле остаётся пустым. */
+					}
+				}
+				draftLoaded = true;
 			})
 			.catch(() => {
 				/* При ошибке моста остаётся стартовая форма, выбор не меняется. */
