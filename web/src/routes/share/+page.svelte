@@ -124,7 +124,7 @@
 	}
 </script>
 
-<FormLayout app title="Новая запись" barMinHeight={48} onback={() => void cancel()}>
+<FormLayout app title="Новая запись" onback={() => void cancel()}>
 	{#if loading}
 		<Loading />
 	{:else if !share}

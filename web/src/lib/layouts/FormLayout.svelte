@@ -123,7 +123,6 @@
 				{/if}
 				<span class="t">{circleTitle}</span>
 			</div>
-			<div style="height:10px"></div>
 		</div>
 	{:else if bar}
 		<BackBar {compact} minHeight={barMinHeight} {onback}>{@render bar()}</BackBar>
@@ -140,7 +139,9 @@
 					>
 				{/if}
 			</div>
-			<div style="padding-bottom:12px;font-size:12.5px;color:rgba(255,255,255,.85)">{subtitle}</div>
+			<div style="padding-bottom:6px;font-size:12.5px;line-height:18px;color:rgba(255,255,255,.85)">
+				{subtitle}
+			</div>
 		</div>
 	{:else}
 		<BackBar {title} {right} {search} {compact} minHeight={barMinHeight} {onback} {onright} />

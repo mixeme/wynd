@@ -8,7 +8,7 @@
 		right,
 		search,
 		compact = false,
-		minHeight,
+		minHeight = 48,
 		onback,
 		onright,
 		children
@@ -27,7 +27,7 @@
 
 <div
 	class="bar"
-	style:min-height={minHeight === undefined ? undefined : `${minHeight}px`}
+	style:min-height={`${minHeight}px`}
 	style:padding-bottom={compact ? '10px' : undefined}
 >
 	{#if onback}

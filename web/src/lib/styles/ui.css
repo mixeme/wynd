@@ -2918,7 +2918,8 @@ body.wide .dlg {
 	display: flex;
 	align-items: center;
 	gap: 14px;
-	padding: 15px 26px;
+	min-height: 48px;
+	padding: 11.5px 26px;
 	border-bottom: 1px solid var(--line);
 }
 .admbar .mk {
