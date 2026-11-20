@@ -16,6 +16,7 @@
 	import { loadDays, loadDaysCached } from '$lib/journal/days';
 	import { loadMap, loadMapCached } from '$lib/journal/map';
 	import { paintFromSnapshots } from '$lib/journal/snapshot-first';
+	import { postsWithPlace } from '$lib/journal/map-badge';
 	import { fetchOlderPage, mergePages } from '$lib/journal/pages';
 	import type { MapPin } from '$lib/journal/types';
 	import { getMediaUrl } from '$lib/media/objectUrl';
@@ -88,8 +89,10 @@
 	}
 
 	function updateBadge() {
+		// Одна запись с двумя фото с местом — одна, а не две (C111): точки
+		// считаются по уникальным записям.
 		// После «из» — родительный: «из 2 записей», а не «из 2 записи».
-		badge = `${pluralPosts(pins.length)} с местом из ${plural(totalPosts, WORD.postGenitive)}`;
+		badge = `${pluralPosts(postsWithPlace(pins))} с местом из ${plural(totalPosts, WORD.postGenitive)}`;
 	}
 
 	async function loadData() {
