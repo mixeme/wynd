@@ -7,7 +7,6 @@
 	import { androidInterfacesAvailable } from '$lib/android/interfaces';
 	import { desktopBridge } from '$lib/desktop/bridge';
 	import BackBar from '$ui/chrome/BackBar.svelte';
-	import TextButton from '$ui/forms/TextButton.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Loading from '$ui/Loading.svelte';
@@ -145,11 +144,13 @@
 				ondismiss={() => (androidUpdate.hidden = true)}
 			/>
 		{/if}
-		{#if desktopBridge()}
-			<!-- В окне с экрана входа возвращаются к серверам: добавить «Войти на
-			     сервер» для другого адреса или сменить источник интерфейса
-			     (Настройки → Приложение). В браузере «Назад» есть у самого браузера. -->
-			<BackBar onback={() => void goto('/settings/servers')} />
+		{#if desktopBridge() || androidInterfacesAvailable()}
+			<!-- В оболочке с экрана входа возвращаются к выбору сервера: в окне —
+		     «Серверы» («Войти на сервер», смена источника в «Приложении»),
+		     в Android — каталог источников. В браузере «Назад» есть у самого браузера. -->
+			<BackBar
+				onback={() => void goto(desktopBridge() ? '/settings/servers' : '/settings/app/interface')}
+			/>
 		{/if}
 		<div class="logo-wrap">
 			<Logo />
@@ -193,16 +194,6 @@
 		{#if instance && instance.registration_mode !== 'closed'}
 			<Hint class={instance?.registration_mode === 'open' ? 'mt-18' : 'mt-30'} centered>
 				<a class="under" href="/invite?from=login">У меня есть приглашение</a>
-			</Hint>
-		{/if}
-		<!-- Оболочка Android: с экрана входа можно вернуться к выбору сервера
-		     (план 50, находка владельца 20.11 — «с этого экрана не поменять сервер»).
-		     Каталог источников живёт в мосте и работает до входа. -->
-		{#if androidInterfacesAvailable()}
-			<Hint class="mt-18" centered>
-				<TextButton class="under" onclick={() => void goto('/settings/app/interface')}
-					>Другой сервер</TextButton
-				>
 			</Hint>
 		{/if}
 		{#if error}
