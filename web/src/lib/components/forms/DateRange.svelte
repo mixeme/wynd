@@ -15,14 +15,16 @@
 </script>
 
 <div class="date-range">
-	<label class="date-range-field">
-		<span class="date-range-prefix" aria-hidden="true">с</span>
+	<label class="date-range-field" class:dated={Boolean(from)}>
+		{#if !from}<span class="date-range-prefix" aria-hidden="true">с</span>{/if}
 		<Input type="date" bind:value={from} active aria-label="с" />
+		<span class="date-range-icon" aria-hidden="true"><Icon name="day" size="sm" /></span>
 		<span class="date-range-chevron" aria-hidden="true"><Icon name="chev" size="sm" /></span>
 	</label>
-	<label class="date-range-field">
-		<span class="date-range-prefix" aria-hidden="true">по</span>
+	<label class="date-range-field" class:dated={Boolean(to)}>
+		{#if !to}<span class="date-range-prefix" aria-hidden="true">по</span>{/if}
 		<Input type="date" bind:value={to} active aria-label="по" />
+		<span class="date-range-icon" aria-hidden="true"><Icon name="day" size="sm" /></span>
 		<span class="date-range-chevron" aria-hidden="true"><Icon name="chev" size="sm" /></span>
 	</label>
 </div>

@@ -1750,21 +1750,60 @@ textarea.ta {
 	width: 100%;
 	margin: 0;
 	padding-left: 28px;
-	padding-right: 28px;
+	padding-right: 14px;
+}
+/* Подпись «с»/«по» — только пока поле пустое (C92): у выбранной даты место
+   слева отдаётся значению, иначе на Firefox Android год обрезала родная
+   кнопка календаря. */
+.date-range-field.dated > input.fld {
+	padding-left: 12px;
+}
+/* Родную подсказку «dd.mm.yyyy» на пустом поле не показываем (C92):
+   цвет текста прозрачный, формат называют «с»/«по», а значок календаря
+   рисует само окно — свой, там же, где его рисует браузер у значения.
+   Пока поле в фокусе (ввод с клавиатуры), подсказку возвращаем — иначе
+   не видно набор, и свой значок уступает место родному. */
+.date-range-field:not(.dated) > input.fld {
+	color: transparent;
+	/* Пустое поле шире: «с»/«по» стали крупнее и не прижаты к краю. */
+	padding-left: 44px;
+}
+/* Пока поле в фокусе (ввод с клавиатуры), подсказку возвращаем — иначе
+   не видно набор. */
+.date-range-field:not(.dated):focus-within > input.fld {
+	color: var(--ink);
+}
+/* Свой значок календаря — всегда, на пустом и заполненном поле: значок
+   браузера под ним закрыт плашкой цвета поля, поэтому он один и тот же
+   в обоих состояниях и во всех браузерах (C92). Нажатия проходят мимо
+   плашки к полю. */
+.date-range-icon {
+	position: absolute;
+	right: 19px;
+	top: 50%;
+	transform: translateY(-50%);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	background: var(--card);
+	color: var(--ink);
+	pointer-events: none;
 }
 .date-range-prefix {
 	position: absolute;
-	left: 12px;
+	left: 14px;
 	top: 50%;
 	transform: translateY(-50%);
 	color: var(--faint);
-	font-size: 13px;
+	font-size: 15px;
 	line-height: 1;
 	pointer-events: none;
 }
 .date-range-chevron {
 	position: absolute;
-	right: 10px;
+	right: 2px;
 	top: 50%;
 	transform: translateY(-50%);
 	display: flex;
