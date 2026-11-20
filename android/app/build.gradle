@@ -113,6 +113,7 @@ dependencies {
     // Последний стабильный WebKit для minSdk 21; нужен origin-bound мост,
     // а не addJavascriptInterface, доступный всем фреймам страницы.
     implementation 'androidx.webkit:webkit:1.14.0'
+    implementation 'org.unifiedpush.android:connector:3.3.5'
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.json:json:20250517'
 }

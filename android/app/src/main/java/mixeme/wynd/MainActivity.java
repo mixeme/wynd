@@ -34,6 +34,7 @@ public final class MainActivity extends Activity {
     private FileExports exports;
     private OriginalPhotos originals;
     private IncomingShares shares;
+    private PushBridge push;
     private InterfaceBridge interfaces;
     private StartupBridge startup;
     private InterfaceCatalog catalog;
@@ -79,6 +80,7 @@ public final class MainActivity extends Activity {
             media.originalPhotos(originals);
             exports = new FileExports(this, webView, server);
             shares = new IncomingShares(this, webView, server);
+            push = new PushBridge(this, webView, server);
             interfaces = new InterfaceBridge(this, webView, server, catalog);
         } else startup = new StartupBridge(this, webView, catalog, failedUrl);
         AndroidBridge.attach(this, webView, server);
@@ -90,6 +92,11 @@ public final class MainActivity extends Activity {
 
     private void showInterface(String url, Bundle state, boolean cold) {
         ServerOrigin origin = ServerOrigin.parse(java.net.URI.create(url).resolve("/").toString(), BuildConfig.DEBUG);
+        String pushPath = WyndPushService.route(this, getIntent(), origin.url());
+        if (pushPath != null) {
+            url = origin.url() + pushPath;
+            state = null;
+        }
         failedUrl = null;
         createPage(origin, false, cold && state == null && url.startsWith("https://") ? url : null);
         if (state == null) receiveShare(getIntent());
@@ -129,6 +136,13 @@ public final class MainActivity extends Activity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        if (WyndPushService.isOpen(intent)) {
+            if (!localStartup && webView != null) {
+                String path = WyndPushService.route(this, intent, server.url());
+                if (path != null) webView.loadUrl(server.url() + path);
+            }
+            return;
+        }
         receiveShare(intent);
     }
 
@@ -351,6 +365,10 @@ public final class MainActivity extends Activity {
     }
 
     private void destroyPage() {
+        if (push != null) {
+            push.destroy();
+            push = null;
+        }
         if (startup != null) startup.destroy();
         if (interfaces != null) interfaces.destroy();
         if (media != null) media.destroy();
@@ -383,6 +401,7 @@ public final class MainActivity extends Activity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == MediaChromeClient.PERMISSION_REQUEST && media != null) media.permissionsReturned();
         if (requestCode == FileExports.NOTIFICATION_REQUEST && exports != null) exports.notificationsReturned();
+        if (requestCode == PushBridge.PERMISSION_REQUEST && push != null) push.permissionResult();
         if (requestCode == MediaChromeClient.PHOTO_LOCATION_REQUEST && media != null) media.photoPermissionsReturned();
     }
 }

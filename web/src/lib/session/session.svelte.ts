@@ -1,6 +1,6 @@
 import { ApiError, apiJson, isPaymentRequired } from '$lib/api/client';
 import { forgetStreetMemory } from '$lib/circles/street-memory';
-import { unsubscribePush } from '$lib/push/push';
+import { refreshAndroidPush, unsubscribePush } from '$lib/push/push';
 import {
 	getAppSettings,
 	saveAppSettings,
@@ -205,6 +205,7 @@ export async function loadSession(origin: string): Promise<SessionRecord | undef
 
 export async function storeSession(session: SessionRecord): Promise<void> {
 	await putSession(session);
+	refreshAndroidPush();
 }
 
 export async function removeSession(origin: string): Promise<void> {

@@ -56,6 +56,11 @@
             </intent-filter>
         </activity>
         <receiver android:name=".InstallResultReceiver" android:exported="false" />
+        <service android:name=".WyndPushService" android:exported="false">
+            <intent-filter>
+                <action android:name="org.unifiedpush.android.connector.PUSH_EVENT" />
+            </intent-filter>
+        </service>
         <activity android:name=".OpenExportActivity" android:exported="false" android:excludeFromRecents="true" />
         <provider android:name=".SelectedMediaProvider" android:authorities="${applicationId}.selected-media"
             android:exported="false" android:grantUriPermissions="false" />

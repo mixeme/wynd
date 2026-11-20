@@ -2,6 +2,8 @@
 	import { navigateBack } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
 	import { androidInterfacesAvailable } from '$lib/android/interfaces';
+	import { androidPushAvailable, androidPushStatus } from '$lib/android/push';
+	import { setAndroidPushEnabled } from '$lib/push/push';
 	import NumberField from '$ui/forms/NumberField.svelte';
 	import { onMount } from 'svelte';
 	import { androidUpdate, setAndroidImmediate } from '$lib/android/update.svelte';
@@ -80,6 +82,10 @@
 	let autostartBusy = $state(false);
 	let autostartStale = $state(false);
 	let autostartError = $state('');
+	const nativePush = androidPushAvailable();
+	let pushEnabled = $state(false);
+	let pushBusy = $state(true);
+	let pushError = $state('');
 
 	const themes: { key: Theme; label: string }[] = [
 		{ key: 'system', label: 'Как в системе' },
@@ -93,6 +99,26 @@
 
 	function currentDefaults(): AppNotifyDefaults {
 		return { posts, comments_mine: commentsMine, reactions };
+	}
+
+	async function togglePush(enabled: boolean) {
+		if (pushBusy) return;
+		pushBusy = true;
+		pushError = '';
+		try {
+			const status = await setAndroidPushEnabled(enabled);
+			pushEnabled = status.enabled && status.allowed;
+			if (status.reason === 'permission') {
+				pushError = 'Разрешите уведомления для Wynd в настройках телефона.';
+			} else if (status.reason === 'distributor') {
+				pushError = 'Не удалось подключить доставщик UnifiedPush.';
+			}
+		} catch {
+			pushEnabled = !enabled;
+			pushError = 'Не удалось изменить уведомления. Попробуйте ещё раз.';
+		} finally {
+			pushBusy = false;
+		}
 	}
 
 	async function toggleAutostart(next: boolean) {
@@ -165,6 +191,12 @@
 	}
 
 	onMount(async () => {
+		if (nativePush) {
+			void androidPushStatus()
+				.then((status) => (pushEnabled = status.enabled && status.allowed))
+				.catch(() => (pushError = 'Не удалось прочитать настройку уведомлений.'))
+				.finally(() => (pushBusy = false));
+		}
 		if (interfaceOrigin) {
 			const card = await loadServerCard(interfaceOrigin);
 			interfaceName = card.info?.name || displayHost(interfaceOrigin);
@@ -245,6 +277,19 @@
 		{/if}
 	{/if}
 
+	{#if nativePush}
+		<SettingsRow title="Уведомления на этом телефоне">
+			{#snippet control()}
+				<Switch
+					bind:checked={pushEnabled}
+					disabled={pushBusy}
+					label="Уведомления на этом телефоне"
+					onchange={(value) => void togglePush(value)}
+				/>
+			{/snippet}
+		</SettingsRow>
+		{#if pushError}<Hint class="mt-10">{pushError}</Hint>{/if}
+	{/if}
 	<SectionLabel>Уведомления по умолчанию</SectionLabel>
 	<SettingsRow class="pt-2" title="Новые записи">
 		{#snippet control()}

@@ -1,6 +1,7 @@
 import { apiJson, ApiError, normalizeOrigin } from '$lib/api/client';
 import { getSession, putAdminSession, putSession, type SessionRecord } from '$lib/idb/db';
 import { startSync } from '$lib/sync/sync';
+import { refreshAndroidPush } from '$lib/push/push';
 import { rememberSourceUrl } from '$lib/instance/source.svelte';
 import { registerDesktopServer } from '$lib/desktop/servers';
 import type { PendingAuth, PendingAuthFlow } from './pending';
@@ -192,6 +193,7 @@ export async function persistSession(
 	await putSession(session);
 	await registerDesktopServer(session.origin, instanceName);
 	startSync(session.origin);
+	refreshAndroidPush();
 	return session;
 }
 
