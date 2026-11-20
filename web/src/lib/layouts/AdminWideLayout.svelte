@@ -25,7 +25,7 @@
 	} = $props();
 </script>
 
-<PhoneFrame shell wide {app} {height} class={className}>
+<PhoneFrame shell wide {app} {height} class="adm-scroll {className}">
 	<AdminBar {active} {server} {nav} links={app} />
 	{#if cols}
 		<div class="cols">{@render children()}</div>

@@ -3778,6 +3778,17 @@ input.inp[type='number']::-webkit-outer-spin-button {
 		flex-direction: column;
 		gap: 24px;
 	}
+	/* Страница панели выше экрана — даём прокрутку (C101): у экранов панели
+	   нет своего прокрутчика, хвост оставался за нижней границей. Полоса
+	   разделов остаётся наверху. */
+	.ph.app.adm-scroll {
+		overflow-y: auto;
+	}
+	.ph.app.adm-scroll .admbar {
+		position: sticky;
+		top: 0;
+		background: var(--paper);
+	}
 	.col-narrow {
 		flex-direction: column;
 	}
