@@ -5,6 +5,8 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 	"testing/synctest"
@@ -17,6 +19,9 @@ import (
 type controlledReleases struct {
 	fetch func(string) (*signing.Check, error)
 	sign  func(*signing.Check) (bool, error)
+	// signKeyPath — путь файла ключа, который окно передало при подписи
+	// (у Android это keystore, у остальных — общий ключ экосистемы).
+	signKeyPath *string
 }
 
 func (*controlledReleases) Releases(context.Context) ([]signing.Release, error) { return nil, nil }
@@ -27,10 +32,62 @@ func (b *controlledReleases) FetchWithProgress(_ context.Context, tag string, re
 	report(signing.Progress{Tag: tag, Phase: "check"})
 	return b.fetch(tag)
 }
-func (b *controlledReleases) SignAndPublishWithProgress(_ context.Context, c *signing.Check, _, _ string, report func(signing.Progress)) (bool, string, error) {
+func (b *controlledReleases) SignAndPublishWithProgress(_ context.Context, c *signing.Check, keyPath, _ string, report func(signing.Progress)) (bool, string, error) {
 	report(signing.Progress{Tag: c.Tag, Phase: "sign"})
+	if b.signKeyPath != nil {
+		*b.signKeyPath = keyPath
+	}
 	ok, err := b.sign(c)
 	return ok, "", err
+}
+
+// Ключ Android подписывает keystore из настроек, а не общий ключ экосистемы.
+func TestSignReleasePicksAndroidKeyStore(t *testing.T) {
+	t.Setenv("WYND_SIGNER_SETTINGS", filepath.Join(t.TempDir(), "signer.json"))
+	settingsPath := os.Getenv("WYND_SIGNER_SETTINGS")
+	key := filepath.Join(t.TempDir(), "workshop-signing.key")
+	store := filepath.Join(t.TempDir(), "wynd-android.p12")
+	if err := os.WriteFile(settingsPath, []byte(fmt.Sprintf(`{"key_path":%q,"key_store_path":%q}`, key, store)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	a := &App{ctx: context.Background(), emit: func(signing.Progress) {}}
+	var seen string
+	a.gh = &controlledReleases{
+		fetch: func(tag string) (*signing.Check, error) {
+			return &signing.Check{Tag: tag, Product: signing.ProductAndroid}, nil
+		},
+		signKeyPath: &seen,
+		sign:        func(*signing.Check) (bool, error) { return true, nil },
+	}
+	c, err := a.CheckRelease("android-v0.1.0", "req-android")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res := (a.SignRelease(c.CheckID, "android-v0.1.0", "req-android", "pass")); !res.OK {
+		t.Fatalf("sign result: %+v", res)
+	}
+	if seen != store {
+		t.Fatalf("android sign must use the keystore, got %q", seen)
+	}
+
+	// Общий ключ остаётся у exe-программ.
+	a.gh = &controlledReleases{
+		fetch: func(tag string) (*signing.Check, error) {
+			return &signing.Check{Tag: tag, Product: signing.ProductWorkshop}, nil
+		},
+		signKeyPath: &seen,
+		sign:        func(*signing.Check) (bool, error) { return true, nil },
+	}
+	c, err = a.CheckRelease("workshop-v0.4.6", "req-workshop")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res := (a.SignRelease(c.CheckID, "workshop-v0.4.6", "req-workshop", "pass")); !res.OK {
+		t.Fatalf("sign result: %+v", res)
+	}
+	if seen != key {
+		t.Fatalf("workshop sign must use the ecosystem key, got %q", seen)
+	}
 }
 
 func TestReleaseChecksCannotReplaceEachOtherOutOfOrder(t *testing.T) {

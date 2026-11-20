@@ -357,7 +357,13 @@ func (a *App) SignRelease(checkID, tag, requestID, pass string) Result {
 		return Result{Message: "Проверка выпуска устарела. Проверьте выпуск заново"}
 	}
 	var steps []signing.Step
-	published, detail, err := a.gh.SignAndPublishWithProgress(a.ctx, c, loadSettings().KeyPath, pass, func(p signing.Progress) {
+	// Файл ключа свой у каждой программы: у Android это keystore (.p12),
+	// у остальных — общий ключ экосистемы. Выбирает окно по продукту из Go.
+	keyPath := loadSettings().KeyPath
+	if c.Product == signing.ProductAndroid {
+		keyPath = loadSettings().KeyStorePath
+	}
+	published, detail, err := a.gh.SignAndPublishWithProgress(a.ctx, c, keyPath, pass, func(p signing.Progress) {
 		p.CheckID = checkID
 		p.RequestID = requestID
 		steps = p.Steps
