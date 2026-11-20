@@ -1,10 +1,6 @@
 import { ApiError, apiFetch, normalizeOrigin } from '$lib/api/client';
 import { dropParticipantSession, isSessionRejected } from '$lib/session/session.svelte';
-import {
-	invalidateCircleSnapshots,
-	invalidateSnapshots,
-	type SnapshotKind
-} from '$lib/api/snapshots';
+import { invalidateSnapshots, type SnapshotKind } from '$lib/api/snapshots';
 import { getCursor, getSession, listSessions, putCursor } from '$lib/idb/db';
 import { drainQueueFor } from '$lib/queue/queue';
 import { isTransportError } from '$lib/queue/transport';
@@ -209,14 +205,15 @@ export async function handleSyncFrame(origin: string, raw: string): Promise<void
 		// Кадр street: список кругов сменился без событий своих кругов (позвали
 		// в новый круг) — перечитывают экраны без круга, то есть список.
 		if (event.street) {
-			await invalidateSnapshots(origin, { kind: 'circles' });
 			triggerRefetch(origin, '');
 		}
 		return;
 	}
 	await putCursor(origin, event.seq);
-	await invalidateSnapshots(origin, { kind: 'circles' });
-	await invalidateCircleSnapshots(origin, event.circle_id ?? '');
+	// Снимки не удаляем: открытые экраны перечитаются регистрацией ниже, а
+	// закрытым снимок — первый кадр (C100) и единственное, что есть офлайн.
+	// Удаление на каждое событие оставляло офлайн-настройки без формы (C105),
+	// а холодную ссылку на запись — без круга (C108).
 	triggerRefetch(origin, event.circle_id ?? '');
 }
 

@@ -52,6 +52,9 @@
 	let name = $state('');
 	let savedName = $state('');
 	let color = $state<CircleColor>('olive');
+	// Цвет, который уже на сервере: эффект ниже сохраняет только выбор
+	// человека, а не применённый снимок или ответ сети (C105).
+	let appliedColor: CircleColor = 'olive';
 	let editWindow = $state<EditWindowKey>('1h');
 	let customHours = $state(24);
 	let canSettings = $state(false);
@@ -134,6 +137,7 @@
 		name = settings.name;
 		savedName = settings.name;
 		color = circle.color;
+		appliedColor = color;
 		editWindow = editWindowFromSec(settings.edit_window_sec);
 		customHoursHint = '';
 		if (editWindow === 'custom' && settings.edit_window_sec != null) {
@@ -222,7 +226,12 @@
 
 	$effect(() => {
 		if (!colorReady) return;
-		void onColorChange(color);
+		// Применённый цвет (снимок или ответ сети) не сохраняем повторно:
+		// раньше открытие настроек слало PATCH, а офлайн — ещё и ошибку на
+		// весь экран поверх формы (C105).
+		const c = color;
+		if (c === appliedColor) return;
+		void onColorChange(c);
 	});
 
 	async function saveName() {
@@ -244,6 +253,7 @@
 	}
 
 	async function onColorChange(c: CircleColor) {
+		appliedColor = c;
 		color = c;
 		circle.color = c;
 		circle.colorHex = CIRCLE_COLORS[c].cssVar;
@@ -252,7 +262,10 @@
 			try {
 				await patchCircle(circle.origin, circle.circleId, { color: c });
 			} catch (err) {
-				error = authErrorHint(err);
+				// Форма из снимка остаётся: причина — подсказкой (C105).
+				const hint = authErrorHint(err);
+				if (cachedShown) errorHint = hint;
+				else error = hint;
 			}
 		}
 	}
