@@ -4,14 +4,15 @@
 	import { initQueueDrain } from '$lib/queue/queue';
 	import { initConnection } from '$lib/session/connection.svelte';
 	import { initPush } from '$lib/push/push';
+	import { searchScopeChanges, trackSearchScope } from '$lib/journal/search-scope';
 	import { getAvatarShape, initSession, initTheme, isDark } from '$lib/session/session.svelte';
 	import { initSyncResume, startSyncForAllSessions } from '$lib/sync/sync';
 	import { initViewportHeight } from '$lib/session/viewport';
 	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { initAppUpdate } from '$lib/session/appUpdate.svelte';
 	import { statusColorOverride } from '$lib/session/statusColor.svelte';
-	import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
+	import { afterNavigate, beforeNavigate, goto, onNavigate } from '$app/navigation';
 	import {
 		armEntryGuard,
 		dismissOverlay,
@@ -53,7 +54,35 @@
 
 	// «Назад» на уровень вверх и системной кнопкой (план 46, C13).
 	beforeNavigate((nav) => {
-		if (nav.type === 'popstate' && interceptHistoryBack(nav.delta)) nav.cancel();
+		if (nav.type === 'popstate' && interceptHistoryBack(nav.delta)) {
+			nav.cancel();
+			return;
+		}
+		trackSearchScope(nav.from?.url, nav.to?.url);
+	});
+	let searchTransition: ViewTransition | undefined;
+	onNavigate((nav) => {
+		if (!document.startViewTransition || !searchScopeChanges(nav.from?.url, nav.to?.url)) return;
+		return new Promise<void>((commit) => {
+			const root = document.documentElement;
+			root.classList.add('search-scope-transition');
+			try {
+				const transition = document.startViewTransition(async () => {
+					commit();
+					await nav.complete;
+					await tick();
+				});
+				searchTransition = transition;
+				void transition.updateCallbackDone.catch(() => commit());
+				const cleanup = () => {
+					if (searchTransition === transition) root.classList.remove('search-scope-transition');
+				};
+				void transition.finished.then(cleanup, cleanup);
+			} catch {
+				root.classList.remove('search-scope-transition');
+				commit();
+			}
+		});
 	});
 	afterNavigate((nav) => {
 		if (!nav.to) return;

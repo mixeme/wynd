@@ -1,6 +1,7 @@
 ﻿<script lang="ts">
 	import Icon from '$ui/Icon.svelte';
 	import { onMount } from 'svelte';
+	import { searchFocusAfterNavigation } from '$lib/journal/search-scope';
 
 	let {
 		value = $bindable(''),
@@ -21,7 +22,7 @@
 	let input: HTMLInputElement | undefined = $state();
 
 	onMount(() => {
-		if (autofocus) input?.focus();
+		if (autofocus && searchFocusAfterNavigation(window.location.pathname)) input?.focus();
 	});
 </script>
 

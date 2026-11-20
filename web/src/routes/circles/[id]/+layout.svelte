@@ -1,6 +1,6 @@
 <script lang="ts">
 	import EmptyState from '$ui/data/EmptyState.svelte';
-	import { goto } from '$app/navigation';
+	import { beforeNavigate, goto } from '$app/navigation';
 	import { rememberWantedPath } from '$lib/navigation/afterLogin';
 	import type { CircleDetail } from '$lib/journal/types';
 	import { page } from '$app/stores';
@@ -18,6 +18,11 @@
 		ownerNameFromSession
 	} from '$lib/circles/circles';
 	import { takeCircleSeed } from '$lib/circles/seed';
+	import {
+		rememberSearchCircle,
+		searchCircleSeed,
+		searchScopeChanges
+	} from '$lib/journal/search-scope';
 	import type { CircleListItem } from '$lib/circles/circles';
 	import {
 		getCircleColor,
@@ -52,7 +57,8 @@
 
 	// Строка улочки, с которой открыли круг (C97): шапка и лента — в первом
 	// кадре, без чтения базы и сети. Дальше их уточняет loadMeta.
-	const seed = takeCircleSeed(pageState.params.id ?? '');
+	const seedId = pageState.params.id ?? '';
+	const seed = searchCircleSeed(pageState.url.pathname, seedId) ?? takeCircleSeed(seedId);
 	let seededFor = seed?.id ?? '';
 
 	let ready = $state(Boolean(seed));
@@ -92,6 +98,19 @@
 	});
 
 	setContext(CIRCLE_CTX, ctx);
+
+	beforeNavigate(({ from, to }) => {
+		if (!ctx.circleId || to?.url.pathname !== '/search' || !searchScopeChanges(from?.url, to.url))
+			return;
+		rememberSearchCircle({
+			origin: ctx.origin,
+			id: ctx.circleId,
+			name: ctx.name,
+			color: ctx.color,
+			canWrite: ctx.canWrite,
+			lastReadSeq: ctx.lastReadSeq
+		});
+	});
 
 	// Места нет (C42): полоса вместо строки ввода называет, кто поможет.
 	function applySpace(item: CircleListItem) {

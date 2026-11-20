@@ -1729,6 +1729,12 @@ textarea.ta {
 	font: inherit;
 	color: inherit;
 }
+/* При переключении области старый кадр держится до нового без затемнения. */
+.search-scope-transition::view-transition-old(root),
+.search-scope-transition::view-transition-new(root) {
+	animation: none;
+}
+
 /* Период «с — по» (DateRange): два поля даты поровну. */
 .date-range {
 	display: flex;
@@ -1758,20 +1764,22 @@ textarea.ta {
 .date-range-field.dated > input.fld {
 	padding-left: 12px;
 }
-/* Родную подсказку «dd.mm.yyyy» на пустом поле не показываем (C92):
-   цвет текста прозрачный, формат называют «с»/«по», а значок календаря
-   рисует само окно — свой, там же, где его рисует браузер у значения.
-   Пока поле в фокусе (ввод с клавиатуры), подсказку возвращаем — иначе
-   не видно набор, и свой значок уступает место родному. */
+/* На пустой дате видно «с»/«по». На телефоне касание открывает календарь. */
 .date-range-field:not(.dated) > input.fld {
 	color: transparent;
 	/* Пустое поле шире: «с»/«по» стали крупнее и не прижаты к краю. */
 	padding-left: 44px;
 }
-/* Пока поле в фокусе (ввод с клавиатуры), подсказку возвращаем — иначе
-   не видно набор. */
-.date-range-field:not(.dated):focus-within > input.fld {
-	color: var(--ink);
+/* При ручном вводе на компьютере остаются видны отдельные части даты. */
+@media (pointer: fine) {
+	.date-range-field:not(.dated):focus-within > input.fld {
+		color: var(--ink);
+	}
+}
+@media (pointer: coarse) {
+	.date-range-field:not(.dated) > input.fld::-webkit-datetime-edit {
+		visibility: hidden;
+	}
 }
 /* Свой значок календаря — всегда, на пустом и заполненном поле: значок
    браузера под ним закрыт плашкой цвета поля, поэтому он один и тот же
