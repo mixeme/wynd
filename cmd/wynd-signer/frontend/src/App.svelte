@@ -64,10 +64,25 @@
 	let fileSize = $state(0);
 	let sigPath = $state('');
 
+	// Прокрутка экрана выпуска: подмена содержимого сбрасывает контейнер к началу
+	// (WebView теряет позицию при смене высоты и удалении поля). Помним позицию
+	// до подмен и возвращаем её; итог подписи показываем у конца экрана, как
+	// в принятых кадрах 12г/10.
+	let releaseScroll = 0;
+	function anchorRelease() {
+		void tick().then(() => {
+			if (!body || screen !== 'release') return;
+			if (releaseDone) body.scrollTo({ top: body.scrollHeight });
+			else body.scrollTop = Math.min(releaseScroll, body.scrollHeight);
+		});
+	}
+
 	onMount(() => watchProgress((p) => {
 		if (screen !== 'release' || !requests.acceptsProgress(p, selectedRelease?.tag, check?.check_id)) return;
+		// Якорь только на подменах при подписи: проверка лишь растит список
+		// сверху вниз, пользователь может читать её сам.
 		if (p.phase === 'check' && checking) checkSteps = p.steps;
-		if (p.phase === 'sign' && signing) signSteps = p.steps;
+		if (p.phase === 'sign' && signing) { signSteps = p.steps; anchorRelease(); }
 	}));
 
 	void start();
@@ -245,20 +260,24 @@
 		const checkId = check.check_id;
 		const originalCheckRequest = checkRequest;
 		const request = requests.beginSign();
+		releaseScroll = body?.scrollTop ?? 0;
 		signing = true;
 		wrong = false;
 		signError = '';
 		signSteps = [];
+		anchorRelease();
 		try {
 			const res = await backend().SignRelease(checkId, tag, request, pass);
 			if (!requests.isCurrentSign(originalCheckRequest, request)) return;
 			signSteps = res.steps ?? signSteps;
 			if (res.wrong_password) {
 				wrong = true;
+				anchorRelease();
 				return;
 			}
 			if (!res.ok) {
 				signError = res.message ?? 'Подписать не получилось';
+				anchorRelease();
 				return;
 			}
 			pass = '';
@@ -273,10 +292,12 @@
 			);
 			releaseDone = true;
 			void list();
+			anchorRelease();
 		} catch (err) {
 			if (!requests.isCurrentSign(originalCheckRequest, request)) return;
 			signError = String(err);
 			signSteps = signSteps.map((s) => s.status === 'running' ? { ...s, status: 'failed' } : s);
+			anchorRelease();
 		} finally {
 			if (requests.isCurrentSign(originalCheckRequest, request)) signing = false;
 		}
