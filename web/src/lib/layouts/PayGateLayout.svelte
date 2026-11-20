@@ -77,12 +77,12 @@
 				// что он не отвечает (7.38, 7.40). Закрытый подпиской круг сервер
 				// всё равно не отдаст; вход, отозванный сервером, уберёт фоновая
 				// сверка (C99), а запросы к нему всё равно ответят 401.
-				void Promise.all(
-					loaded.map((s) => fetchPayStatus(s.origin).catch(() => undefined))
-				).then((got) => {
-					statuses = got;
-					setClosedServers(closedIdx.map((i) => loaded[i].origin));
-				});
+				void Promise.all(loaded.map((s) => fetchPayStatus(s.origin).catch(() => undefined))).then(
+					(got) => {
+						statuses = got;
+						setClosedServers(closedIdx.map((i) => loaded[i].origin));
+					}
+				);
 			})
 			.finally(() => {
 				loading = false;
