@@ -95,22 +95,29 @@
 	let tappedOpen = false;
 
 	function onTabTap(tab: CircleTab, e: MouseEvent, bitsClick?: (e: MouseEvent) => void) {
-		const again = tappedOpen && atTab && active === tab;
+		const same = tappedOpen && active === tab;
 		tappedOpen = false;
 		bitsClick?.(e);
-		if (again) scrollToTop(e.currentTarget as HTMLElement);
+		if (!same) return;
+		// Повтор на уже открытой вкладке (bits значение не меняет и
+		// onTabChange не зовёт): на самой вкладке — наверх, на чужом экране
+		// (день, альбом дня) — в список этой вкладки (C106).
+		if (atTab) scrollToTop(e.currentTarget as HTMLElement);
+		else if (circleId) void openCircleTab(circleId, tabPaths[tab]);
 	}
 
 	function onTabChange(tab: string) {
 		const t = tab as CircleTab;
-		const wasActive = t === active;
+		// Смена значения: повторная вкладка сюда не доходит (см. onTabTap).
+		if (t === active) return;
+		// Решение — до присваивания: tabTap отличает чужую вкладку от повтора
+		// на уже открытой. После `active = t` он видел бы повтор всегда.
+		const tap = tabTap(active, t, atTab, Boolean(circleId));
 		active = t;
 		// Замена записи, а не шаг: вкладки — виды одного экрана. Иначе «Назад»
 		// идёт обратно по переключениям, а не туда, откуда открыли круг
-		// (владелец, 18.11). Повторное нажатие на открытую вкладку только
-		// поднимает экран наверх — адрес не меняется. На чужом экране (день,
-		// альбом дня) касание своей вкладки — переход в её список (C106).
-		if (tabTap(active, t, atTab, Boolean(circleId)) !== 'navigate') return;
+		// (владелец, 18.11).
+		if (tap !== 'navigate') return;
 		void openCircleTab(circleId!, tabPaths[t]);
 	}
 </script>
