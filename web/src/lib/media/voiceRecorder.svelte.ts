@@ -41,14 +41,15 @@ export class VoiceRecorder {
 	url = $state('');
 	error = $state('');
 
+	#attempt: symbol | null = null;
 	#stream: MediaStream | null = null;
 	#recorder: MediaRecorder | null = null;
-	#chunks: Blob[] = [];
 	#meterStream: MediaStream | null = null;
 	#ctx: AudioContext | null = null;
 	#analyser: AnalyserNode | null = null;
 	#tick: ReturnType<typeof setInterval> | null = null;
 	#startedAt = 0;
+	#stoppedAt: number | null = null;
 	#releaseWake: (() => void) | null = null;
 	#take: VoiceTake | null = null;
 
@@ -61,25 +62,47 @@ export class VoiceRecorder {
 	}
 
 	async start(): Promise<void> {
-		if (this.phase !== 'idle') return;
+		if (this.phase !== 'idle' || this.#attempt) return;
+		const attempt = (this.#attempt = Symbol());
 		this.error = '';
+		let stream: MediaStream;
 		try {
-			this.#stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+			stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 		} catch {
-			this.error = 'Нет доступа к микрофону';
+			if (this.#attempt === attempt) {
+				this.#attempt = null;
+				this.error = 'Нет доступа к микрофону';
+			}
 			return;
 		}
-		const type = pickRecorderType('audio');
-		this.#recorder = new MediaRecorder(this.#stream, type ? { mimeType: type } : undefined);
-		this.#chunks = [];
-		this.#recorder.ondataavailable = (e) => {
-			if (e.data.size) this.#chunks.push(e.data);
-		};
-		this.recent = [];
-		this.#meter(this.#stream);
-		// Без нарезки по секунде: Firefox на Android писал рваный звук на стыках.
-		this.#recorder.start();
+		if (this.#attempt !== attempt) {
+			stream.getTracks().forEach((track) => track.stop());
+			return;
+		}
+		this.#stream = stream;
+		try {
+			const type = pickRecorderType('audio');
+			const recorder = (this.#recorder = new MediaRecorder(
+				stream,
+				type ? { mimeType: type } : undefined
+			));
+			const chunks: Blob[] = [];
+			recorder.ondataavailable = ({ data }) => {
+				if (data.size) chunks.push(data);
+			};
+			// stop приходит и при завершении потока без нажатия «Стоп».
+			recorder.onstop = () => void this.#finish(attempt, recorder, chunks);
+			this.recent = [];
+			this.#meter(stream);
+			// Без нарезки по секунде: Firefox на Android писал рваный звук на стыках.
+			recorder.start();
+		} catch {
+			this.discard();
+			this.error = 'Не удалось начать запись';
+			return;
+		}
 		this.#startedAt = performance.now();
+		this.#stoppedAt = null;
 		this.elapsedMs = 0;
 		this.phase = 'recording';
 		this.#releaseWake = holdWakeLock();
@@ -87,26 +110,31 @@ export class VoiceRecorder {
 	}
 
 	/** Стоп — к проверке (4.13). */
-	async stop(): Promise<void> {
+	stop(): void {
 		const recorder = this.#recorder;
-		if (this.phase !== 'recording' || !recorder) return;
-		const durationMs = performance.now() - this.#startedAt;
-		const done = new Promise<void>((resolve) => {
-			recorder.onstop = () => resolve();
-		});
+		if (!recorder || recorder.state === 'inactive' || this.#stoppedAt !== null) return;
+		this.#stoppedAt = performance.now();
 		recorder.stop();
-		await done;
+	}
+
+	async #finish(attempt: symbol, recorder: MediaRecorder, chunks: Blob[]): Promise<void> {
+		if (this.#attempt !== attempt || this.#recorder !== recorder) return;
+		const elapsed = (this.#stoppedAt ?? performance.now()) - this.#startedAt;
 		const type = recorder.mimeType || pickRecorderType('audio') || 'audio/webm';
 		this.#releaseInputs();
-		const blob = new Blob(this.#chunks, { type });
-		this.#chunks = [];
+		const blob = new Blob(chunks, { type });
 		if (!blob.size) {
+			this.#attempt = null;
 			this.error = 'Запись пустая';
 			this.phase = 'idle';
 			return;
 		}
+		const { peaks, duration } = await voiceDetails(blob);
+		if (this.#attempt !== attempt) return;
+		this.#attempt = null;
+		const durationMs = duration ?? elapsed;
 		const file = new File([blob], `Голосовое.${recordingExtension(type)}`, { type: blob.type });
-		this.#take = { file, durationMs, peaks: await peaksOf(blob) };
+		this.#take = { file, durationMs, peaks };
 		this.url = URL.createObjectURL(blob);
 		this.elapsedMs = durationMs;
 		this.phase = 'review';
@@ -114,12 +142,13 @@ export class VoiceRecorder {
 
 	/** «Отмена» во время записи и корзина на проверке — выбросить. */
 	discard(): void {
-		if (this.#recorder && this.#recorder.state !== 'inactive') {
+		this.#attempt = null;
+		if (this.#recorder) {
 			this.#recorder.onstop = null;
-			this.#recorder.stop();
+			this.#recorder.ondataavailable = null;
+			if (this.#recorder.state !== 'inactive') this.#recorder.stop();
 		}
 		this.#releaseInputs();
-		this.#chunks = [];
 		this.#take = null;
 		if (this.url) URL.revokeObjectURL(this.url);
 		this.url = '';
@@ -160,7 +189,7 @@ export class VoiceRecorder {
 			level = levelFromSamples(buf);
 		}
 		this.recent = [...this.recent.slice(-17), level];
-		if (this.elapsedMs >= VOICE_MAX_MS) void this.stop();
+		if (this.elapsedMs >= VOICE_MAX_MS) this.stop();
 	}
 
 	#releaseInputs() {
@@ -180,10 +209,10 @@ export class VoiceRecorder {
 }
 
 /**
- * Волна для ленты из готовой записи. Декодируем в 8 кГц и моно: четверть
- * часа — около 30 МБ отсчётов, а не сотни. Не разобралось — ровная волна.
+ * Волна и длительность из готовой записи. Декодируем в 8 кГц и моно:
+ * четверть часа — около 30 МБ отсчётов. Если декодера нет, оставляем ровную волну.
  */
-async function peaksOf(blob: Blob): Promise<number[]> {
+async function voiceDetails(blob: Blob): Promise<{ peaks: number[]; duration?: number }> {
 	try {
 		const Offline =
 			globalThis.OfflineAudioContext ??
@@ -193,9 +222,9 @@ async function peaksOf(blob: Blob): Promise<number[]> {
 		const rate = 8000;
 		const decoded = await new Offline(1, 1, rate).decodeAudioData(await blob.arrayBuffer());
 		const peaks = peaksFromLevels(levelsFromPcm(decoded.getChannelData(0), decoded.sampleRate));
-		if (peaks.length) return peaks;
+		if (peaks.length) return { peaks, duration: decoded.duration * 1000 };
 	} catch {
 		// ниже — ровная волна
 	}
-	return new Array<number>(VOICE_PEAKS).fill(0);
+	return { peaks: new Array<number>(VOICE_PEAKS).fill(0) };
 }

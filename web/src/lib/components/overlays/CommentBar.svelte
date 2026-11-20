@@ -125,7 +125,7 @@
 
 	// Ход прослушивания — каждый кадр, не по редкому timeupdate. У только что
 	// записанного файла браузер часто не знает длительность (Infinity), и
-	// прогресс стоял на нуле: длительность берём у таймера записи.
+	// прогресс стоял на нуле: используем длительность декодированной записи.
 	let reviewFrame = 0;
 	function measureReview() {
 		const el = reviewAudio;
@@ -315,7 +315,7 @@
 				<VoiceWave peaks={recorder.recent} />
 				<TextButton onclick={() => recorder.discard()}>Отмена</TextButton>
 			</div>
-			<button type="button" class="send" aria-label="Стоп" onclick={() => void recorder.stop()}>
+			<button type="button" class="send" aria-label="Стоп" onclick={() => recorder.stop()}>
 				<Icon name="stop" style="color:#fff;width:19px;height:19px" />
 			</button>
 		{:else if recorder.phase === 'review'}
