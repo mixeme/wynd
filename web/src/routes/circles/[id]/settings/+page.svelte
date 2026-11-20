@@ -124,6 +124,10 @@
 	// Свежий ответ сети уже на экране — поздний снимок его не перетирает (C100).
 	let freshApplied = false;
 	let cachedRequested = false;
+	// Снимок нарисован: сеть уточняет форму, но не прячет её загрузкой и
+	// ошибкой (C105).
+	let cachedShown = false;
+	let errorHint = $state('');
 
 	/** Настройки и участники в форму: общая часть снимка и ответа сети. */
 	function applySettings(settings: CircleSettings, list: MemberInfo[]) {
@@ -165,12 +169,14 @@
 			}
 		);
 		if (!painted) return;
+		cachedShown = true;
 		loading = false;
 		colorReady = true;
 	}
 
 	async function load() {
-		loading = true;
+		// Снимок уже нарисован — держим форму на экране, загрузку не показываем.
+		if (!cachedShown) loading = true;
 		void fetchNotifyPrefs(circle.origin, circle.circleId)
 			.then((prefs) => (notifyLine = notifySummary(prefs, formatSessionDay)))
 			.catch(() => (notifyLine = ''));
@@ -203,7 +209,11 @@
 				}
 			}
 		} catch (err) {
-			error = authErrorHint(err);
+			// Форма из снимка остаётся видимой: причина — подсказкой над ней
+			// (C105). Без снимка ошибка заменяет экран, как раньше.
+			const hint = authErrorHint(err);
+			if (cachedShown) errorHint = hint;
+			else error = hint;
 		} finally {
 			loading = false;
 			colorReady = true;
@@ -422,6 +432,7 @@
 	{:else if error}
 		<Hint class="gutter">{error}</Hint>
 	{:else}
+		{#if errorHint}<Hint class="gutter-24">{errorHint}</Hint>{/if}
 		<Label>Название</Label>
 		{#if canSettings}
 			<Input active bind:value={name} onchange={() => void saveName()} />

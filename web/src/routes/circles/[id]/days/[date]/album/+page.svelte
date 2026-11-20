@@ -48,6 +48,8 @@
 	// Свежий ответ сети уже на экране — поздний снимок его не перетирает (C100).
 	let freshApplied = false;
 	let cachedRequested = false;
+	// Снимок нарисован: сеть уточняет плитки, но не прячет их загрузкой (C105).
+	let cachedShown = false;
 
 	// Окна правок у обложки нет: убрать — такая же запись журнала, как выбрать.
 	const canClearCover = $derived(Boolean(coverPostId) && ownPostThatDay);
@@ -125,11 +127,13 @@
 			}
 		);
 		if (!painted) return;
+		cachedShown = true;
 		loading = false;
 	}
 
 	async function load() {
-		loading = true;
+		// Снимок уже нарисован — плитки остаются на экране, загрузку не показываем.
+		if (!cachedShown) loading = true;
 		error = '';
 		try {
 			const [day, daysSnap] = await Promise.all([
