@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.content.Intent;
 import android.content.ContentUris;
+import android.content.SharedPreferences;
 import android.content.res.AssetFileDescriptor;
 import android.database.Cursor;
 import android.net.Uri;
@@ -25,6 +26,7 @@ import java.util.UUID;
 
 /** Одноразовое намерение главного документа; input остаётся обычным File API WebView. */
 final class OriginalPhotos {
+    private static final String PICKER_MODE = "picker-mode";
     private final Activity activity;
     private final WebView web;
     private final ServerOrigin origin;
@@ -36,6 +38,7 @@ final class OriginalPhotos {
     OriginalPhotos(Activity activity, WebView web, ServerOrigin origin, MediaChromeClient media) {
         this.activity = activity; this.web = web; this.origin = origin;
         if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) return;
+        SharedPreferences preferences = activity.getSharedPreferences("photo-location", Activity.MODE_PRIVATE);
         WebViewCompat.addWebMessageListener(web, "__wyndPhotoLocation",
                 Collections.singleton(origin.url().substring(0, origin.url().length() - 1)),
                 (view, message, source, main, reply) -> {
@@ -47,13 +50,25 @@ final class OriginalPhotos {
                     try {
                         JSONObject request = new JSONObject(raw);
                         int id = request.getInt("id"); if (id < 1) return;
-                        if (request.optString("op", "arm").equals("result")) {
+                        String operation = request.optString("op", "arm");
+                        if (operation.equals("result")) {
                             Boolean allowed = decisions.remove(request.optString("token"));
                             JSONObject response = new JSONObject().put("id", id).put("protocol", 1);
                             if (allowed == null) response.put("error", "expired"); else response.put("allowed", allowed);
                             reply.postMessage(response.toString()); return;
                         }
-                        if (!request.optString("op", "arm").equals("arm") || media.busy()) {
+                        if (operation.equals("picker")) {
+                            boolean offerChoice = media.offersPhotoPickerChoice();
+                            JSONObject response = new JSONObject().put("id", id).put("protocol", 1)
+                                    .put("offerChoice", offerChoice);
+                            String mode = request.optString("mode");
+                            if (offerChoice && (mode.equals("documents") || mode.equals("gallery"))) {
+                                preferences.edit().putString(PICKER_MODE, mode).apply();
+                            }
+                            if (offerChoice) response.put("mode", preferences.getString(PICKER_MODE, ""));
+                            reply.postMessage(response.toString()); return;
+                        }
+                        if (!operation.equals("arm") || media.busy()) {
                             reply.postMessage(new JSONObject().put("id", id).put("protocol", 1).put("error", "busy").toString()); return;
                         }
                         String token = intent.issue(SystemClock.elapsedRealtime());

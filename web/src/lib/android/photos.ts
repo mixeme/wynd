@@ -7,8 +7,11 @@ interface Reply {
 	protocol?: number;
 	token?: string;
 	allowed?: boolean;
+	offerChoice?: boolean;
+	mode?: string;
 	error?: string;
 }
+export type PhotoPickerMode = 'documents' | 'gallery';
 interface Pending {
 	resolve: (reply: Reply) => void;
 	reject: (error: Error) => void;
@@ -65,6 +68,19 @@ function request(target: PhotoLocationPort, value: Record<string, unknown>): Pro
 	});
 }
 
+/** `undefined` оставляет штатный выбор оболочке, в том числе более старой версии. */
+export async function photoPickerPreference(
+	mode?: PhotoPickerMode
+): Promise<PhotoPickerMode | 'ask' | undefined> {
+	const target = port();
+	if (!target) return;
+	const reply = await request(target, { op: 'picker', mode }).catch((error) => {
+		if (mode) throw error;
+	});
+	if (reply?.protocol !== 1 || reply.offerChoice !== true) return;
+	return reply.mode === 'gallery' || reply.mode === 'documents' ? reply.mode : 'ask';
+}
+
 /** Одноразовая связь с input. Байты возвращает обычный File API WebView. */
 export async function originalPhotoAccept(accept: string): Promise<string> {
 	const target = port();
@@ -93,7 +109,10 @@ export async function applyPhotoLocationChoice(files: File[], accept: string): P
 	const reply = await request(target, { op: 'result', token });
 	if (reply.protocol !== 1 || typeof reply.allowed !== 'boolean')
 		throw new Error('Photo selection result unavailable');
-	if (!reply.allowed) for (const file of files) withoutLocation.add(file);
+	if (!reply.allowed) suppressPhotoLocation(files);
+}
+export function suppressPhotoLocation(files: File[]): void {
+	for (const file of files) withoutLocation.add(file);
 }
 export function photoLocationAllowed(file: File): boolean {
 	return !withoutLocation.has(file);

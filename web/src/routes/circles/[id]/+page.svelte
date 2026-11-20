@@ -718,6 +718,7 @@
 	onCommentCompose={canSay ? openComposeFromBar : undefined}
 	onCommentPhotos={canSay ? openComposeWithPhotos : undefined}
 	commentPreservePhotoLocation={circle.sharePlace}
+	commentOfferAndroidPickerChoice
 	onCommentPhotoError={() => feed.setError('Не удалось открыть выбранные фото. Попробуйте ещё раз')}
 	onCommentVoice={canSay ? (take) => void sendVoice(take) : undefined}
 	onCommentVideo={canSay ? () => void openVideo() : undefined}

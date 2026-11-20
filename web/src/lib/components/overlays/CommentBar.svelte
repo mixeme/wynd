@@ -25,6 +25,7 @@
 		onfiles,
 		photoAccept = 'image/*,video/*',
 		preservePhotoLocation = false,
+		offerAndroidPickerChoice = false,
 		onphotoerror,
 		pending = [],
 		onremovepending,
@@ -50,6 +51,7 @@
 		onfiles?: (files: File[]) => void;
 		photoAccept?: string;
 		preservePhotoLocation?: boolean;
+		offerAndroidPickerChoice?: boolean;
 		onphotoerror?: (error: unknown) => void;
 		pending?: { key: string; url?: string; name: string }[];
 		onremovepending?: (index: number) => void;
@@ -399,6 +401,7 @@
 					bind:this={photoPicker}
 					accept={photoAccept}
 					{preservePhotoLocation}
+					{offerAndroidPickerChoice}
 					onerror={onphotoerror}
 					multiple
 					onfiles={(files) => onphotos?.(files)}

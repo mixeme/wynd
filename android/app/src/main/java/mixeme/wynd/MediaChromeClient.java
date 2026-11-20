@@ -156,17 +156,25 @@ final class MediaChromeClient extends WebChromeClient {
         return true;
     }
 
+    private static boolean supportsPhotoPicker() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                || Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+                && SdkExtensions.getExtensionVersion(Build.VERSION_CODES.R) >= 2;
+    }
+
+    private static boolean pickerSupportsLocation() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && SdkExtensions.getExtensionVersion(Build.VERSION_CODES.TIRAMISU) >= 23;
+    }
+
+    boolean offersPhotoPickerChoice() {
+        return supportsPhotoPicker() && !pickerSupportsLocation()
+                && new Intent(MediaStore.ACTION_PICK_IMAGES).resolveActivity(activity.getPackageManager()) != null;
+    }
+
     private Intent photoPicker(String[] types) {
         String mime = MediaPolicy.visualPickerMime(types);
-        if (mime == null || !(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-                || Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-                && SdkExtensions.getExtensionVersion(Build.VERSION_CODES.R) >= 2)) return null;
-        // Старый медиапикер удаляет GPS в выбранных файлах. Сохраняем путь C22,
-        // пока этот системный пикер не поддерживает запрос согласия на геоданные.
-        if (selectionOriginals && !(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-                && SdkExtensions.getExtensionVersion(Build.VERSION_CODES.TIRAMISU) >= 23)) {
-            return null;
-        }
+        if (mime == null || !supportsPhotoPicker() || selectionOriginals && !pickerSupportsLocation()) return null;
         Intent intent = new Intent(MediaStore.ACTION_PICK_IMAGES);
         if (!"*/*".equals(mime)) intent.setType(mime);
         if (selectionMultiple) intent.putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX,

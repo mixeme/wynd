@@ -1076,16 +1076,17 @@
 			до 32 КБ · как {circle.identityName}{#if pickedHasPlace && !usePlace}&nbsp;· без места{/if}
 		{/snippet}
 	</ComposeToolbar>
+	<FilePicker
+		bind:this={photoPicker}
+		accept="image/*,video/*"
+		preservePhotoLocation={circle.sharePlace}
+		offerAndroidPickerChoice
+		onerror={() => (error = 'Не удалось открыть выбранные фото. Попробуйте ещё раз')}
+		multiple
+		onfiles={(files) => void addFiles(files)}
+	/>
 {/snippet}
 
-<FilePicker
-	bind:this={photoPicker}
-	accept="image/*,video/*"
-	preservePhotoLocation={circle.sharePlace}
-	onerror={() => (error = 'Не удалось открыть выбранные фото. Попробуйте ещё раз')}
-	multiple
-	onfiles={(files) => void addFiles(files)}
-/>
 <FilePicker
 	bind:this={attachPicker}
 	accept="*/*"

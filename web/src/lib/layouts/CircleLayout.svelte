@@ -58,6 +58,7 @@
 		onCommentFiles,
 		commentPhotoAccept,
 		commentPreservePhotoLocation = false,
+		commentOfferAndroidPickerChoice = false,
 		onCommentPhotoError,
 		commentPending = [],
 		onCommentRemovePending,
@@ -103,6 +104,7 @@
 		onCommentFiles?: (files: File[]) => void;
 		commentPhotoAccept?: string;
 		commentPreservePhotoLocation?: boolean;
+		commentOfferAndroidPickerChoice?: boolean;
 		onCommentPhotoError?: (error: unknown) => void;
 		commentPending?: { key: string; url?: string; name: string }[];
 		onCommentRemovePending?: (index: number) => void;
@@ -240,6 +242,7 @@
 			onfiles={onCommentFiles}
 			photoAccept={commentPhotoAccept}
 			preservePhotoLocation={commentPreservePhotoLocation}
+			offerAndroidPickerChoice={commentOfferAndroidPickerChoice}
 			onphotoerror={onCommentPhotoError}
 			pending={commentPending}
 			onremovepending={onCommentRemovePending}

@@ -1,5 +1,10 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { originalPhotoAccept, applyPhotoLocationChoice, photoLocationAllowed } from './photos';
+import {
+	originalPhotoAccept,
+	applyPhotoLocationChoice,
+	photoLocationAllowed,
+	photoPickerPreference
+} from './photos';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { readExif } from '$lib/media/exif';
@@ -12,6 +17,41 @@ afterEach(() => {
 
 it('сохраняет обычный accept у браузера и прежней оболочки', async () => {
 	expect(await originalPhotoAccept('image/*,video/*')).toBe('image/*,video/*');
+	expect(await photoPickerPreference()).toBeUndefined();
+});
+
+it('использует предпочтение только на Android с галереей без доступа к координатам', async () => {
+	let offerChoice = true;
+	let stored = '';
+	const target = {
+		onmessage: null as ((event: { data: string }) => void) | null,
+		postMessage(message: string) {
+			const { id, op, mode } = JSON.parse(message);
+			expect(op).toBe('picker');
+			if (mode && offerChoice) stored = mode;
+			target.onmessage?.({ data: JSON.stringify({ id, protocol: 1, offerChoice, mode: stored }) });
+		}
+	};
+	(window as unknown as { __wyndPhotoLocation: unknown }).__wyndPhotoLocation = target;
+	expect(await photoPickerPreference()).toBe('ask');
+	expect(await photoPickerPreference('gallery')).toBe('gallery');
+	expect(await photoPickerPreference()).toBe('gallery');
+	expect(await photoPickerPreference('documents')).toBe('documents');
+	offerChoice = false;
+	expect(await photoPickerPreference()).toBeUndefined();
+	expect(stored).toBe('documents');
+});
+
+it('старый мост с неизвестной операцией оставляет штатное поведение', async () => {
+	const target = {
+		onmessage: null as ((event: { data: string }) => void) | null,
+		postMessage(message: string) {
+			const { id } = JSON.parse(message);
+			target.onmessage?.({ data: JSON.stringify({ id, protocol: 1, error: 'busy' }) });
+		}
+	};
+	(window as unknown as { __wyndPhotoLocation: unknown }).__wyndPhotoLocation = target;
+	expect(await photoPickerPreference()).toBeUndefined();
 });
 
 it('связывает файловый выбор с одноразовым разрешением главной страницы', async () => {

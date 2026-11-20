@@ -2619,6 +2619,12 @@ body .dlg {
 	max-width: var(--dlg-max-width);
 	top: 250px;
 }
+body .dlg.dlg-fit-viewport {
+	--dialog-top: clamp(12px, calc(var(--app-h, 100dvh) - 400px), 250px);
+	top: var(--dialog-top);
+	max-height: calc(var(--app-h, 100dvh) - var(--dialog-top) - 12px);
+	overflow-y: auto;
+}
 body.wide .scrim,
 body.wide .sheet,
 body.wide .dlg {
