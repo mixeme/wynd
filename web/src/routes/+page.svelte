@@ -5,6 +5,8 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { androidInterfacesAvailable } from '$lib/android/interfaces';
+	import { desktopBridge } from '$lib/desktop/bridge';
+	import BackBar from '$ui/chrome/BackBar.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -143,13 +145,19 @@
 				ondismiss={() => (androidUpdate.hidden = true)}
 			/>
 		{/if}
+		{#if desktopBridge()}
+			<!-- В окне с экрана входа возвращаются к серверам: добавить «Войти на
+			     сервер» для другого адреса или сменить источник интерфейса
+			     (Настройки → Приложение). В браузере «Назад» есть у самого браузера. -->
+			<BackBar onback={() => void goto('/settings/servers')} />
+		{/if}
 		<div class="logo-wrap">
 			<Logo />
 		</div>
 		<ScreenTitle class="mt-30" centered>Войти</ScreenTitle>
 		<!-- Адрес не вводится: приложение открыто с этого сервера, он и есть сервер
-	     входа. Войти на другой — с его собственной страницы: в веб-приложении второй сервер
-	     пока не добавить (C69). -->
+	     входа. Другой сервер в окне — «Назад» к «Серверам»; в веб-приложении второй
+	     сервер пока не добавить (C69). -->
 		{#if instance}
 			<ServerRow
 				name={instance.name}
