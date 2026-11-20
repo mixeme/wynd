@@ -18,7 +18,7 @@
 
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { openCircleTab } from '$lib/navigation/circleTabs';
+	import { openCircleTab, tabTap } from '$lib/navigation/circleTabs';
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import SearchField from '$ui/forms/SearchField.svelte';
 	import Avatar from '$ui/data/Avatar.svelte';
@@ -32,6 +32,9 @@
 		avatarSrc,
 		tabs = true,
 		active = $bindable<CircleTab>('Хронология'),
+		// Текущий экран — сама вкладка (C106): на экране дня «Дни» уже
+		// подсвечены, но касание должно вести в список дней, а не наверх.
+		atTab = true,
 		circleId,
 		onback,
 		onsearch,
@@ -51,6 +54,7 @@
 		avatarSrc?: string;
 		tabs?: boolean;
 		active?: CircleTab;
+		atTab?: boolean;
 		circleId?: string;
 		onback?: () => void;
 		onsearch?: () => void;
@@ -91,7 +95,7 @@
 	let tappedOpen = false;
 
 	function onTabTap(tab: CircleTab, e: MouseEvent, bitsClick?: (e: MouseEvent) => void) {
-		const again = tappedOpen && active === tab;
+		const again = tappedOpen && atTab && active === tab;
 		tappedOpen = false;
 		bitsClick?.(e);
 		if (again) scrollToTop(e.currentTarget as HTMLElement);
@@ -99,14 +103,15 @@
 
 	function onTabChange(tab: string) {
 		const t = tab as CircleTab;
-		const again = t === active;
+		const wasActive = t === active;
 		active = t;
 		// Замена записи, а не шаг: вкладки — виды одного экрана. Иначе «Назад»
 		// идёт обратно по переключениям, а не туда, откуда открыли круг
 		// (владелец, 18.11). Повторное нажатие на открытую вкладку только
-		// поднимает экран наверх — адрес не меняется.
-		if (!circleId || again) return;
-		void openCircleTab(circleId, tabPaths[t]);
+		// поднимает экран наверх — адрес не меняется. На чужом экране (день,
+		// альбом дня) касание своей вкладки — переход в её список (C106).
+		if (tabTap(active, t, atTab, Boolean(circleId)) !== 'navigate') return;
+		void openCircleTab(circleId!, tabPaths[t]);
 	}
 </script>
 

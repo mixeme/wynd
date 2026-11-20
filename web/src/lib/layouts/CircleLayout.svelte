@@ -40,6 +40,7 @@
 		avatar,
 		avatarSrc,
 		tabs = true,
+		atTab = true,
 		active = $bindable<CircleTab>('Хронология'),
 		commentBar = true,
 		notice,
@@ -81,6 +82,8 @@
 		avatar?: string;
 		avatarSrc?: string;
 		tabs?: boolean;
+		/** Экран — сама вкладка, а не её подраздел (день, альбом дня; C106). */
+		atTab?: boolean;
 		active?: CircleTab;
 		commentBar?: boolean;
 		/**
@@ -198,6 +201,7 @@
 		{avatar}
 		{avatarSrc}
 		{tabs}
+		{atTab}
 		{circleId}
 		{onback}
 		{onsearch}

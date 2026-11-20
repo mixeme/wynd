@@ -281,6 +281,7 @@
 	title={formatEntryDate(entryDate)}
 	tabs
 	active={'Дни'}
+	atTab={false}
 	commentBar={false}
 	onback={goBack}
 >

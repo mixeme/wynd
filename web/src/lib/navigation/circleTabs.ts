@@ -13,3 +13,16 @@ export function openCircleTab(circleId: string, suffix: string): Promise<void> {
 		replaceState: true
 	});
 }
+
+/**
+ * Что делает касание вкладки (C106). На экране самой вкладки повторное
+ * касание только поднимает список наверх; на чужом экране (день, альбом дня)
+ * вкладка — обычный переход, даже если в полоске она уже подсвечена.
+ */
+export type TabTap = 'navigate' | 'scroll' | 'none';
+
+export function tabTap(active: string, tapped: string, atTab: boolean, hasCircle: boolean): TabTap {
+	if (!hasCircle) return 'none';
+	if (tapped !== active) return 'navigate';
+	return atTab ? 'scroll' : 'navigate';
+}
