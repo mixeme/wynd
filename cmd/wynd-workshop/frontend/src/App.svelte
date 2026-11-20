@@ -534,7 +534,7 @@
 		</FootBar>
 		{#if p.showLog}
 			{#if p.logTruncated && !p.logStartShown}
-				<div class="ins-log-head">
+				<div class="ins-log-head mt-16">
 					<TextButton
 						class="link under"
 						disabled={p.logLoading}
@@ -557,7 +557,7 @@
 		</FootBar>
 		{#if p.showLog}
 			{#if p.logTruncated && !p.logStartShown}
-				<div class="ins-log-head">
+				<div class="ins-log-head mt-16">
 					<TextButton
 						class="link under"
 						disabled={p.logLoading}
