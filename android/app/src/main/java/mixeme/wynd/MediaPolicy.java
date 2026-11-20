@@ -2,6 +2,7 @@ package mixeme.wynd;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Set;
@@ -31,6 +32,13 @@ final class MediaPolicy {
             else if (!mime.isEmpty()) return new String[] {"*/*"};
         }
         return result.isEmpty() ? new String[] {"*/*"} : result.toArray(new String[0]);
+    }
+
+    // The platform photo picker accepts one MIME type, or no type for all visual media.
+    static String visualPickerMime(String[] types) {
+        if (types.length == 1 && PhotoPolicy.mediaMime(types[0])) return types[0];
+        if (types.length == 2 && Arrays.asList(types).containsAll(Arrays.asList("image/*", "video/*"))) return "*/*";
+        return null;
     }
 
     static boolean selectable(String raw, String ownAuthority) {

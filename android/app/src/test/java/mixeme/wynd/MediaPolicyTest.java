@@ -34,4 +34,14 @@ public final class MediaPolicyTest {
             assertArrayEquals(new String[] {"*/*"}, MediaPolicy.mimeTypes(list));
         }
     }
+
+    @Test public void photoPickerKeepsVisualFiltersAndLeavesOtherFilesToDocuments() {
+        assertEquals("image/*", MediaPolicy.visualPickerMime(new String[] {"image/*"}));
+        assertEquals("video/mp4", MediaPolicy.visualPickerMime(new String[] {"video/mp4"}));
+        assertEquals("*/*", MediaPolicy.visualPickerMime(new String[] {"video/*", "image/*"}));
+        assertNull(MediaPolicy.visualPickerMime(new String[] {"*/*"}));
+        assertNull(MediaPolicy.visualPickerMime(new String[] {"audio/*"}));
+        assertNull(MediaPolicy.visualPickerMime(new String[] {"image/png", "application/pdf"}));
+        assertNull(MediaPolicy.visualPickerMime(new String[] {"image/jpeg", "video/mp4"}));
+    }
 }

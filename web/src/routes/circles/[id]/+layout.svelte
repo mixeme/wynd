@@ -85,7 +85,7 @@
 		youOwn: false,
 		frozenAt: '',
 		serverName: '',
-		sharePlace: true,
+		sharePlace: false,
 		responsesUnread: 0,
 		hasOthers: false,
 		refresh: async () => {}
@@ -119,16 +119,20 @@
 
 	async function refreshMeta() {
 		if (!ctx.circleId) return;
+		const { origin, circleId: id } = ctx;
+		const seq = loadSeq;
 		try {
-			const list = await fetchCircles(ctx.origin);
-			const item = list.find((c) => c.id === ctx.circleId);
+			const list = await fetchCircles(origin);
+			if (seq !== loadSeq || id !== circleId) return;
+			const item = list.find((c) => c.id === id);
 			if (item) {
 				ctx.lastReadSeq = item.last_read_seq;
 				if (item.archive_cycle?.active) ctx.archiveCycle = item.archive_cycle;
 				ctx.canWrite = item.status === 'active';
 				applySpace(item);
 			}
-			const detail = await fetchCircleDetail(ctx.origin, ctx.circleId);
+			const detail = await fetchCircleDetail(origin, id);
+			if (seq !== loadSeq || id !== circleId) return;
 			if (detail.archive_cycle?.active) ctx.archiveCycle = detail.archive_cycle;
 			if (detail.identity_id) ctx.identityId = detail.identity_id;
 			ctx.editWindowSec = detail.edit_window_sec;
@@ -139,9 +143,9 @@
 			if (serverName) {
 				ctx.identityName = serverName;
 				ctx.identityInitial = circleInitial(serverName);
-				await setCircleIdentity(ctx.origin, ctx.circleId, serverName);
+				await setCircleIdentity(origin, id, serverName);
 			}
-			await loadAvatarUrl(ctx.origin, detail.avatar_blob_id);
+			if (seq === loadSeq && id === circleId) await loadAvatarUrl(origin, detail.avatar_blob_id);
 		} catch {
 			/* offline */
 		}
@@ -228,7 +232,8 @@
 		let archiveCycle = listItem.archive_cycle?.active ? listItem.archive_cycle : undefined;
 		let identityId = '';
 		let editWindowSec: number | null | undefined;
-		let sharePlace = true;
+		// Пока настройки круга не загружены, не запрашиваем оригинал с координатами.
+		let sharePlace = false;
 		let hasOthers = true;
 		let responsesUnread = 0;
 		let avatarBlobId: string | undefined;
@@ -389,6 +394,7 @@
 		// запись прошлого круга больше не нужна.
 		if (loadedCircle) dropCircleReading(ctx.origin, loadedCircle);
 		loadedCircle = id;
+		ctx.sharePlace = false;
 		// Со строки улочки уже нарисован первый кадр (C97); иначе — заставка.
 		ready = id === seededFor;
 		seededFor = '';

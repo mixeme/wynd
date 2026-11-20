@@ -717,7 +717,7 @@
 	onCommentSend={canSay ? sendFromBar : undefined}
 	onCommentCompose={canSay ? openComposeFromBar : undefined}
 	onCommentPhotos={canSay ? openComposeWithPhotos : undefined}
-	commentPreservePhotoLocation
+	commentPreservePhotoLocation={circle.sharePlace}
 	onCommentPhotoError={() => feed.setError('Не удалось открыть выбранные фото. Попробуйте ещё раз')}
 	onCommentVoice={canSay ? (take) => void sendVoice(take) : undefined}
 	onCommentVideo={canSay ? () => void openVideo() : undefined}

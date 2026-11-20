@@ -10,6 +10,8 @@ import android.content.res.AssetFileDescriptor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Process;
+import android.os.ext.SdkExtensions;
+import android.provider.MediaStore;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -26,6 +28,9 @@ final class MediaChromeClient extends WebChromeClient {
     static final int FILE_REQUEST = 4101;
     static final int PERMISSION_REQUEST = 4102;
     static final int PHOTO_LOCATION_REQUEST = 4103;
+    private static final int MAX_SELECTED_FILES = 256;
+    // MediaStore added a public constant in version 37.1, also available via T Extensions 23.
+    private static final String PICK_REQUEST_LOCATION = "android.provider.extra.REQUEST_LOCATION_METADATA_ACCESS";
     private final Activity activity;
     private final WebView view;
     private final ServerOrigin server;
@@ -43,6 +48,7 @@ final class MediaChromeClient extends WebChromeClient {
     private boolean photoLocationAsked;
     private String selectionPhotoNonce;
     private boolean photoLocationNeeded;
+    private boolean pickerHandlesLocation;
 
     MediaChromeClient(Activity activity, WebView view, ServerOrigin server) {
         this.activity = activity;
@@ -132,24 +138,52 @@ final class MediaChromeClient extends WebChromeClient {
         if (nonce != null && !selectionOriginals) { finishSelection(null); return true; }
         String[] types = MediaPolicy.mimeTypes(regular.toArray(new String[0]));
         if (selectionOriginals) for (String type : types) if (!PhotoPolicy.mediaMime(type) && !"*/*".equals(type)) { finishSelection(null); return true; }
+        if (!parameters.isCaptureEnabled()) {
+            Intent mediaPicker = photoPicker(types);
+            if (mediaPicker != null) {
+                pickerHandlesLocation = selectionOriginals;
+                if (launch(mediaPicker)) return true;
+                pickerHandlesLocation = false;
+            }
+        }
         // Живые камера/микрофон — getUserMedia. Здесь базовый выбор файлов:
         // внешняя камера OPPO выгружала процесс с незавершённым input callback.
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
                 .setType(types.length == 1 ? types[0] : "*/*")
                 .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, selectionMultiple);
         if (types.length > 1) intent.putExtra(Intent.EXTRA_MIME_TYPES, types);
-        launch(intent);
+        if (!launch(intent)) finishSelection(null);
         return true;
     }
 
+    private Intent photoPicker(String[] types) {
+        String mime = MediaPolicy.visualPickerMime(types);
+        if (mime == null || !(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                || Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+                && SdkExtensions.getExtensionVersion(Build.VERSION_CODES.R) >= 2)) return null;
+        // Старый медиапикер удаляет GPS в выбранных файлах. Сохраняем путь C22,
+        // пока этот системный пикер не поддерживает запрос согласия на геоданные.
+        if (selectionOriginals && !(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && SdkExtensions.getExtensionVersion(Build.VERSION_CODES.TIRAMISU) >= 23)) {
+            return null;
+        }
+        Intent intent = new Intent(MediaStore.ACTION_PICK_IMAGES);
+        if (!"*/*".equals(mime)) intent.setType(mime);
+        if (selectionMultiple) intent.putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX,
+                Math.min(MAX_SELECTED_FILES, MediaStore.getPickImagesMaxLimit()));
+        if (selectionOriginals) intent.putExtra(PICK_REQUEST_LOCATION, true);
+        return intent;
+    }
+
     @SuppressWarnings("deprecation")
-    private void launch(Intent intent) {
+    private boolean launch(Intent intent) {
         try {
             fileInFlight = true;
             activity.startActivityForResult(intent, FILE_REQUEST);
+            return true;
         } catch (ActivityNotFoundException | SecurityException e) {
             fileInFlight = false;
-            finishSelection(null);
+            return false;
         }
     }
 
@@ -159,12 +193,14 @@ final class MediaChromeClient extends WebChromeClient {
         LinkedHashSet<Uri> candidates = new LinkedHashSet<>();
         if (data != null && data.getClipData() != null) {
             ClipData clip = data.getClipData();
-            if (clip.getItemCount() > 256) { finishSelection(null); return; }
+            if (clip.getItemCount() > MAX_SELECTED_FILES) { finishSelection(null); return; }
             for (int i = 0; i < clip.getItemCount(); i++) candidates.add(clip.getItemAt(i).getUri());
         } else if (data != null && data.getData() != null) candidates.add(data.getData());
         if (!selectionMultiple && candidates.size() > 1) { finishSelection(null); return; }
         ValueCallback<Uri[]> expected = selection;
-        boolean wantsOriginals = selectionOriginals;
+        // The system photo picker resolves location consent in its UI and returns the
+        // corresponding bytes. The document picker still uses Wynd's C22 permission path.
+        boolean wantsOriginals = selectionOriginals && !pickerHandlesLocation;
         files.execute(() -> {
             List<Uri> readable = new ArrayList<>();
             boolean needsLocation = false;
@@ -179,7 +215,7 @@ final class MediaChromeClient extends WebChromeClient {
             activity.runOnUiThread(() -> {
                 if (destroyed || selection != expected) return;
                 if (!trusted() || readable.isEmpty()) { finishSelection(null); return; }
-                if (selectionOriginals) { photoLocationNeeded = localPhotoLocation; photoSelection = readable; completePhotoSelection(); }
+                if (wantsOriginals) { photoLocationNeeded = localPhotoLocation; photoSelection = readable; completePhotoSelection(); }
                 else finishSelection(readable.toArray(new Uri[0]));
             });
         });
@@ -228,6 +264,7 @@ final class MediaChromeClient extends WebChromeClient {
         selectionPhotoNonce = null;
         photoSelection = null;
         selectionOriginals = false;
+        pickerHandlesLocation = false;
         if (callback != null) callback.onReceiveValue(result);
     }
 

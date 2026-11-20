@@ -128,7 +128,8 @@
 	let uploadTotal = $state(0);
 	let uploadPct = $state(0);
 	// Место со снимков для этой записи; начальное — из настройки круга (B3).
-	let usePlace = $state(true);
+	let placeOverride = $state<boolean>();
+	const usePlace = $derived(placeOverride ?? circle.sharePlace);
 	const pickedHasPlace = $derived(picked.some((p) => hasPlace(p.meta)));
 	let filePickLock = false;
 
@@ -267,7 +268,6 @@
 			return;
 		}
 		entryDate = today();
-		usePlace = circle.sharePlace;
 		if (editPostId) {
 			const cached = await loadFeedCached(circle.origin, circle.circleId);
 			let post = cached ? findPost(cached.posts, editPostId) : undefined;
@@ -319,7 +319,7 @@
 				}
 				picked = items;
 				// Место уже ушло с этой записью — правка его не снимает молча.
-				if (items.some((it) => hasPlace(it.meta))) usePlace = true;
+				if (items.some((it) => hasPlace(it.meta))) placeOverride = true;
 			}
 		} else if (editQueueId) {
 			const item = await loadQueuedPost(editQueueId);
@@ -1068,7 +1068,7 @@
 					name="loc"
 					label={usePlace ? 'Место со снимков уйдёт с записью' : 'Место со снимков не уйдёт'}
 					pressed={usePlace}
-					onclick={() => (usePlace = !usePlace)}
+					onclick={() => (placeOverride = !usePlace)}
 				/>
 			{/if}
 		{/snippet}
@@ -1081,7 +1081,7 @@
 <FilePicker
 	bind:this={photoPicker}
 	accept="image/*,video/*"
-	preservePhotoLocation
+	preservePhotoLocation={circle.sharePlace}
 	onerror={() => (error = 'Не удалось открыть выбранные фото. Попробуйте ещё раз')}
 	multiple
 	onfiles={(files) => void addFiles(files)}
@@ -1089,7 +1089,7 @@
 <FilePicker
 	bind:this={attachPicker}
 	accept="*/*"
-	preservePhotoLocation
+	preservePhotoLocation={circle.sharePlace}
 	onerror={() => (error = 'Не удалось открыть выбранные файлы. Попробуйте ещё раз')}
 	multiple
 	onfiles={(files) => void addFiles(files, true)}
