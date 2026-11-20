@@ -797,11 +797,14 @@
 	}
 
 	function openReactions() {
-		goto(`${$page.url.pathname}?reactions=1`);
+		// Замена записи, а не шаг: лист — состояние экрана. Со своей записью
+		// системная «Назад» после закрытия возвращалась на `?reactions` и
+		// открывала лист снова (C112).
+		goto(`${$page.url.pathname}?reactions=1`, { replaceState: true });
 	}
 
 	function closeReactions() {
-		goto($page.url.pathname);
+		goto($page.url.pathname, { replaceState: true });
 	}
 
 	function showReactionPlus(currentPost: FeedPost): boolean {
