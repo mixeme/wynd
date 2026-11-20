@@ -108,7 +108,9 @@
 			};
 			await sendAuthCode(pending);
 			savePendingAuth({ ...pending, codeSentAt: Date.now() });
-			goto('/auth/code');
+			// Приглашение уже прочитано — возвращаться на него незачем, а его
+			// ссылка после входа не действует (C110): заменяем запись истории.
+			goto('/auth/code', { replaceState: true });
 		} catch (err) {
 			error = authErrorHint(err);
 		} finally {

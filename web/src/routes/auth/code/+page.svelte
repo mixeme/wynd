@@ -69,7 +69,9 @@
 			clearPendingAuth();
 			if (after.circleInvite && result.pending_circle_id && after.inviteToken) {
 				saveInviteJoinToken(result.pending_circle_id, after.inviteToken);
-				goto(`/circles/${result.pending_circle_id}/join`);
+				// Экран кода — не шаг назад для вступающего (C110): назад из
+				// формы имени должен вести к списку, где приглашение ждёт.
+				goto(`/circles/${result.pending_circle_id}/join`, { replaceState: true });
 				return;
 			}
 			if (after.circleInvite && after.inviteName) {
@@ -82,7 +84,7 @@
 					if (unset.length === 1) {
 						await setCircleIdentity(after.origin, unset[0].id, after.inviteName);
 						rememberCircleOrigin(unset[0].id, after.origin);
-						goto(`/circles/${unset[0].id}/join`);
+						goto(`/circles/${unset[0].id}/join`, { replaceState: true });
 						return;
 					}
 				} catch {
