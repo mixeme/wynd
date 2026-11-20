@@ -963,6 +963,16 @@ body[data-avatars='square'] .addph.ident-photo {
 	display: block;
 	border-radius: inherit;
 }
+/* Кадра ролика нет, файл на устройстве (C107): плитка рисует сам ролик на
+   паузе. Нажатие остаётся за плиткой. */
+.pic video {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+	border-radius: inherit;
+	pointer-events: none;
+}
 /* Плитка без файла: что происходит — словами слева внизу и полоской хода
    по нижнему краю. */
 .pic.sq .tile-load {

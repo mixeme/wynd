@@ -93,9 +93,19 @@ describe('queue', () => {
 		expect(views.map((v) => v.kind)).toEqual(['photo', 'video', 'attachment', 'attachment']);
 		expect(views[0].preview?.data).toBe(data);
 		expect(views[1].preview).toBe(poster);
+		expect(views[1].video).toBeUndefined();
 		expect(views[2]).toMatchObject({ voice: true, duration_ms: 48000, peaks: [10, 90] });
 		expect(views[2].preview).toBeUndefined();
 		expect(views[3]).toMatchObject({ name: 'list.pdf', size: 4 });
+		// Кадра ролика нет (Firefox Android не отдаёт кадр файла в canvas) —
+		// плитка получит сам файл и покажет его на паузе (C107).
+		const noPoster = queuedMediaViews(
+			[{ name: 'v.webm', type: 'video/webm', size: 4, data }],
+			[{ kind: 'video', video_duration_ms: 8000 }]
+		);
+		expect(noPoster[0].preview).toBeUndefined();
+		expect(noPoster[0].video).toEqual({ type: 'video/webm', data });
+		expect(noPoster[0].duration_ms).toBe(8000);
 		// Старые записи очереди без описания — фото, как их и отправит очередь.
 		expect(queuedMediaViews([{ name: 'x', type: '', size: 4, data }], undefined)[0].kind).toBe(
 			'photo'

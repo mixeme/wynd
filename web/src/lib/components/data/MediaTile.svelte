@@ -10,6 +10,11 @@
 	type Feed = {
 		variant: 'feed';
 		src?: string;
+		/**
+		 * Кадра ролика нет, но файл уже на устройстве: плитка показывает сам
+		 * ролик на паузе. На Firefox Android только так виден кадр (C107).
+		 */
+		videoSrc?: string;
 		kind?: MediaKind;
 		count?: number;
 		locationLabel?: string;
@@ -53,6 +58,8 @@
 	type Compose = {
 		variant: 'compose';
 		src?: string;
+		/** Ролик без кадра: плитка рисует сам ролик на паузе (C107). */
+		videoSrc?: string;
 		kind?: MediaKind;
 		isCover?: boolean;
 		/** Кадр обложки: плитка показывает то, что увидит лента. */
@@ -71,7 +78,8 @@
 
 	// Ролик в плитке — картинка его кадра и значок посередине (5.5): сам ролик качается и
 	// играет только по касанию. Десяток видеоэлементов в ленте вешал телефон
-	// (план 49). Кадра нет — плитка пустая, со значком.
+	// (план 49). Кадра нет — плитка пустая, со значком; у ролика, который ещё
+	// на устройстве, вместо кадра рисуется сам ролик (C107).
 	const isVideo = $derived(props.kind === 'video');
 	// Длительность в правом нижнем углу (4.16а, план 46, C47); у роликов,
 	// отправленных раньше, её нет — тогда только значок.
@@ -109,6 +117,22 @@
 		if (props.variant !== 'feed' || !props.onclick) return;
 		e.stopPropagation();
 		props.onclick();
+	}
+
+	// Ролик без кадра на паузе показывает первый кадр: браузер рисует его, как
+	// только известно начало файла. Ноль — чёрный кадр у многих записей.
+	function firstFrame(video: HTMLVideoElement) {
+		const seek = () => {
+			if (video.readyState < 1) return;
+			video.currentTime = 0.1;
+		};
+		if (video.readyState >= 1) seek();
+		else video.addEventListener('loadedmetadata', seek, { once: true });
+		return {
+			destroy() {
+				video.removeEventListener('loadedmetadata', seek);
+			}
+		};
 	}
 </script>
 
@@ -148,6 +172,17 @@
 			{:else}
 				<img src={props.src} alt="" />
 			{/if}
+		{:else if props.videoSrc && isVideo}
+			<!-- Кадр файла в canvas на Firefox Android пуст; сам ролик браузер
+			     рисует — плитка показывает его первый кадр (C107). -->
+			<video
+				class="tile-video"
+				src={props.videoSrc}
+				muted
+				playsinline
+				preload="metadata"
+				use:firstFrame
+			></video>
 		{/if}
 		{#if loadLabel}
 			<span class="tile-load">{loadLabel}</span>
@@ -224,6 +259,17 @@
 				{:else}
 					<img src={props.src} alt="" />
 				{/if}
+			{:else if props.videoSrc && isVideo}
+				<!-- Кадра файла в canvas на Firefox Android нет — плитка рисует
+				     сам ролик на паузе (C107). -->
+				<video
+					class="tile-video"
+					src={props.videoSrc}
+					muted
+					playsinline
+					preload="metadata"
+					use:firstFrame
+				></video>
 			{:else if props.fileName && !isVideo}
 				<span class="file">{props.fileName}</span>
 			{/if}

@@ -222,23 +222,37 @@
 	// Плитка записи в очереди показывает сам снимок (или кадр ролика): он ещё
 	// на устройстве, скачивать нечего. Адреса живут, пока запись в очереди.
 	let queuedPreviewUrls = $state<Record<number, string>>({});
+	// Ролик без кадра: Firefox на Android не отдаёт кадр файла в canvas, и
+	// плитка показывает сам ролик на паузе (C107).
+	let queuedVideoUrls = $state<Record<number, string>>({});
 	// Доля ушедших байт у записи, которая отправляется сейчас.
 	let sendProgress = $state<Record<number, number>>({});
 
 	function refreshQueued() {
 		void listQueuedPosts(circle.origin, circle.circleId).then((items) => {
 			const next: Record<number, string> = {};
+			const nextVideo: Record<number, string> = {};
 			for (const item of items) {
-				const preview = item.media.find((m) => m.kind !== 'attachment')?.preview;
-				if (!preview) continue;
-				next[item.id] =
-					queuedPreviewUrls[item.id] ??
-					URL.createObjectURL(new Blob([preview.data], { type: preview.type }));
+				const visual = item.media.find((m) => m.kind !== 'attachment');
+				if (visual?.preview) {
+					next[item.id] =
+						queuedPreviewUrls[item.id] ??
+						URL.createObjectURL(new Blob([visual.preview.data], { type: visual.preview.type }));
+				}
+				if (visual?.video) {
+					nextVideo[item.id] =
+						queuedVideoUrls[item.id] ??
+						URL.createObjectURL(new Blob([visual.video.data], { type: visual.video.type }));
+				}
 			}
 			for (const [id, url] of Object.entries(queuedPreviewUrls)) {
 				if (!next[Number(id)]) URL.revokeObjectURL(url);
 			}
+			for (const [id, url] of Object.entries(queuedVideoUrls)) {
+				if (!nextVideo[Number(id)]) URL.revokeObjectURL(url);
+			}
 			queuedPreviewUrls = next;
+			queuedVideoUrls = nextVideo;
 			queuedPosts = items;
 		});
 	}
@@ -309,6 +323,7 @@
 	onDestroy(() => {
 		ptr.destroy();
 		for (const url of Object.values(queuedPreviewUrls)) URL.revokeObjectURL(url);
+		for (const url of Object.values(queuedVideoUrls)) URL.revokeObjectURL(url);
 		const seq = maxReadSeq(posts);
 		if (seq > 0) {
 			void advanceReadCursor(circle.origin, circle.circleId, seq);
@@ -816,6 +831,7 @@
 						<MediaTile
 							variant="feed"
 							src={queuedPreviewUrls[item.id]}
+							videoSrc={queuedVideoUrls[item.id]}
 							kind={visual[0].kind === 'video' ? 'video' : 'photo'}
 							durationMs={visual[0].duration_ms}
 							count={visual.length}

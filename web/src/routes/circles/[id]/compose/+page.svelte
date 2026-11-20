@@ -92,6 +92,8 @@
 	let picked = $state<
 		Array<{
 			preview?: string;
+			/** Ролик без кадра: плитка рисует его сам (C107). */
+			videoPreview?: string;
 			file?: QueueFile;
 			blobId?: string;
 			fileName?: string;
@@ -739,8 +741,16 @@
 						: still
 							? URL.createObjectURL(new Blob([still], { type: 'image/jpeg' }))
 							: undefined;
+				// Кадра нет (Firefox Android не отдаёт кадр файла в canvas) —
+				// плитка показывает сам ролик на паузе (C107).
+				const videoPreview =
+					kind === 'video' && !still
+						? URL.createObjectURL(
+								new Blob([queueFile.data], { type: queueFile.type || 'video/webm' })
+							)
+						: undefined;
 
-				next.push({ preview, file: queueFile, meta });
+				next.push({ preview, videoPreview, file: queueFile, meta });
 				picked = [...next];
 			}
 			const problems: string[] = [];
@@ -953,6 +963,7 @@
 			<MediaTile
 				variant="compose"
 				src={item.preview}
+				videoSrc={item.videoPreview}
 				kind={item.meta.kind === 'video'
 					? 'video'
 					: item.meta.kind === 'photo'

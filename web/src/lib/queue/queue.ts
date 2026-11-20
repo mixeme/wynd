@@ -33,6 +33,11 @@ export interface QueuedMediaView {
 	peaks?: number[];
 	/** Картинка для плитки: сам снимок или кадр ролика. */
 	preview?: { type: string; data: ArrayBuffer };
+	/**
+	 * Ролик, кадр которого снять не удалось: Firefox на Android не отдаёт
+	 * кадр файла в canvas. Плитка показывает сам ролик на паузе (C107).
+	 */
+	video?: { type: string; data: ArrayBuffer };
 }
 
 export interface QueuedPostView {
@@ -776,7 +781,12 @@ export function queuedMediaViews(
 		const kind = meta?.kind === 'video' || meta?.kind === 'attachment' ? meta.kind : 'photo';
 		const view: QueuedMediaView = { kind, name: file.name, size: file.size };
 		if (kind === 'photo') view.preview = { type: file.type, data: file.data };
-		else if (kind === 'video' && meta?.video_poster) view.preview = meta.video_poster;
+		else if (kind === 'video') {
+			if (meta?.video_poster) view.preview = meta.video_poster;
+			// Кадра нет — плитка покажет сам ролик: на Firefox Android только так
+			// видно, что за ролик в очереди (C107).
+			else view.video = { type: file.type || 'video/webm', data: file.data };
+		}
 		if (kind === 'video') view.duration_ms = meta?.video_duration_ms;
 		if (meta?.voice) {
 			view.voice = true;
