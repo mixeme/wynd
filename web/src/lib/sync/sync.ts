@@ -348,6 +348,15 @@ const STALE_HIDDEN_MS = 10_000;
  * через 45 с после возврата, потом шла пауза перед повтором — около минуты
  * лента стояла со старым, и новое показывала лишь перезагрузка страницы.
  */
+/**
+ * Перечитать открытые экраны. Пока сети не было, экран мог остаться пустым:
+ * поток досылает события по курсору, но экрану, который не дождался первого
+ * ответа, сам себя не перечитать (C108).
+ */
+export function refetchScreens(): void {
+	for (const reg of refetchRegistrations) void reg.refetch();
+}
+
 export function initSyncResume(): () => void {
 	let hiddenAt = 0;
 	const onVisibility = () => {
@@ -356,13 +365,18 @@ export function initSyncResume(): () => void {
 		} else if (hiddenAt && Date.now() - hiddenAt >= STALE_HIDDEN_MS) {
 			hiddenAt = 0;
 			reconnectSync();
+			refetchScreens();
 		}
 	};
+	const onOnline = () => {
+		reconnectSync();
+		refetchScreens();
+	};
 	document.addEventListener('visibilitychange', onVisibility);
-	window.addEventListener('online', reconnectSync);
+	window.addEventListener('online', onOnline);
 	return () => {
 		document.removeEventListener('visibilitychange', onVisibility);
-		window.removeEventListener('online', reconnectSync);
+		window.removeEventListener('online', onOnline);
 	};
 }
 
