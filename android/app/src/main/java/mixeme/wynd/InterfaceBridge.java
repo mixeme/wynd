@@ -58,6 +58,7 @@ final class InterfaceBridge {
                             if (destroyed || switching) return;
                             JSONObject response = new JSONObject();
                             boolean selected = false;
+                            boolean startup = false;
                             try {
                                 response.put("id", id).put("protocol", 1);
                                 if (blocked) throw new IOException("busy");
@@ -70,6 +71,12 @@ final class InterfaceBridge {
                                             if (destroyed || switching) return;
                                             catalog.remove(request.getString("origin"));
                                         }
+                                        break;
+                                    case "startup":
+                                        // С экрана входа назад к вводу адреса (план 50):
+                                        // стартовый экран оболочки, черновик вернёт он сам.
+                                        startup = !activity.interfaceSwitchBlocked();
+                                        if (!startup) throw new IOException("busy");
                                         break;
                                     case "select":
                                         String target = request.getString("origin");
@@ -87,8 +94,14 @@ final class InterfaceBridge {
                                 catch (org.json.JSONException ignored) { }
                             }
                             final boolean choose = selected && !response.has("error");
+                            final boolean openStartup = startup && !response.has("error");
                             activity.runOnUiThread(() -> {
                                 if (destroyed || switching || activity.isFinishing() || activity.isDestroyed() || !origin.contains(web.getUrl())) return;
+                                if (openStartup) {
+                                    switching = true;
+                                    activity.showStartup(null);
+                                    return;
+                                }
                                 try {
                                     if (choose) {
                                         if (activity.interfaceSwitchBlocked()) response.put("error", "busy");

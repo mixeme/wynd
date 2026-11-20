@@ -4,8 +4,10 @@
 	import { androidUpdate } from '$lib/android/update.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { androidInterfacesAvailable } from '$lib/android/interfaces';
+	import { androidInterfacesAvailable, openStartupScreen } from '$lib/android/interfaces';
 	import { desktopBridge } from '$lib/desktop/bridge';
+	import { returnDesktopToAddress } from '$lib/desktop/servers';
+	import { navigateBack } from '$lib/navigation/up';
 	import BackBar from '$ui/chrome/BackBar.svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
@@ -67,6 +69,20 @@
 		checking = false;
 	}
 
+	onMount(() => {
+		// Системная «Назад» в Android на экране входа ведёт туда же, куда
+		// стрелка, — к вводу адреса (план 50). Оверлеи закрывает общий
+		// обработчик раньше и помечает событие отменённым.
+		if (!androidInterfacesAvailable()) return;
+		const back = (event: Event) => {
+			if (event.defaultPrevented) return;
+			event.preventDefault();
+			void leaveToAddress();
+		};
+		window.addEventListener('wynd:android-back', back);
+		return () => window.removeEventListener('wynd:android-back', back);
+	});
+
 	onMount(async () => {
 		// «/?loading» держит экран загрузки: на быстром сервере его иначе не
 		// разглядеть. Ничего не грузит и не ломает — просто не идёт дальше.
@@ -127,6 +143,26 @@
 	// Только адрес: галочка уже говорит, что сервер на связи. «принимает вход»
 	// читалось непонятно.
 	const serverSubtitle = $derived(instance ? address : '');
+
+	// Назад с экрана входа — к вводу адреса сервера (план 50). В окне — экран
+	// оболочки «Войти в Wynd» с прежним адресом, в Android — стартовый экран
+	// оболочки (черновик адреса восстанавливает он сам). В браузере стрелки нет.
+	async function leaveToAddress() {
+		if (androidInterfacesAvailable()) {
+			try {
+				await openStartupScreen();
+				return;
+			} catch {
+				/* Мост не ответил — экран остаётся как есть. */
+			}
+		}
+		const bridge = desktopBridge();
+		if (bridge) {
+			returnDesktopToAddress(bridge.origin);
+			return;
+		}
+		await navigateBack();
+	}
 </script>
 
 {#if booting}
@@ -145,12 +181,12 @@
 			/>
 		{/if}
 		{#if desktopBridge() || androidInterfacesAvailable()}
-			<!-- В оболочке с экрана входа возвращаются к выбору сервера: в окне —
-		     «Серверы» («Войти на сервер», смена источника в «Приложении»),
-		     в Android — каталог источников. В браузере «Назад» есть у самого браузера. -->
-			<BackBar
-				onback={() => void goto(desktopBridge() ? '/settings/servers' : '/settings/app/interface')}
-			/>
+			<!-- Первый запуск: адрес подтверждён, экран входа — назад к вводу
+		     адреса (план 50, находка владельца 20.11). Окно возвращается на
+		     свой экран «Войти в Wynd» с прежним адресом, Android — на
+		     стартовый экран оболочки, черновик адреса он восстановит сам.
+		     В браузере «Назад» есть у самого браузера. -->
+			<BackBar onback={() => void leaveToAddress()} />
 		{/if}
 		<div class="logo-wrap">
 			<Logo />

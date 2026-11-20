@@ -4,6 +4,7 @@ import {
 	androidInterfacesAvailable,
 	loadInterfaces,
 	previewInterface,
+	openStartupScreen,
 	removeInterface,
 	selectInterface
 } from './interfaces';
@@ -75,6 +76,12 @@ describe('Android interface source protocol', () => {
 		await expect(loadInterfaces()).rejects.toThrow('invalid');
 		mock({ preview: { origin: 'file:///data/secret', name: 'Файлы' } });
 		await expect(previewInterface('files.example.org')).rejects.toThrow('invalid');
+	});
+	it('opens the startup screen by the startup op (план 50, возврат к адресу)', async () => {
+		const sent = mock({ catalog });
+		await openStartupScreen();
+		expect(sent).toHaveLength(1);
+		expect(sent[0].op).toBe('startup');
 	});
 	it('times out without a correlated response', async () => {
 		vi.useFakeTimers();

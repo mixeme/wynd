@@ -28,6 +28,16 @@ export function openDesktopInterface(): void {
 	window.parent.postMessage({ type: 'wynd:open-interface' }, window.location.origin);
 }
 
+/**
+ * Возвращает окно на экран ввода адреса сервера (первый запуск: адрес
+ * подтверждён, а вернуться к его вводу с экрана входа нельзя — план 50,
+ * находка владельца 20.11). Окно запоминает адрес в поле.
+ */
+export function returnDesktopToAddress(origin: string): void {
+	if (typeof window === 'undefined' || !desktopBridge()) return;
+	window.parent.postMessage({ type: 'wynd:return-to-address', origin }, window.location.origin);
+}
+
 /** Сохраняет имя и версию после входа на другой сервер. */
 export async function registerDesktopServer(
 	origin: string,

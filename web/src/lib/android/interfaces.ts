@@ -118,3 +118,13 @@ export async function removeInterface(origin: string): Promise<InterfaceCatalog>
 export async function selectInterface(origin: string): Promise<InterfaceCatalog> {
 	return catalog((await request('select', { origin })).catalog);
 }
+
+/**
+ * Открывает стартовый экран оболочки (ввод адреса сервера). Нужен с экрана
+ * входа: первый запуск — адрес подтверждён, а вернуться к его вводу нельзя
+ * (план 50, находка владельца 20.11). Черновик адреса стартовая страница
+ * восстанавливает сама (`startup-draft`).
+ */
+export async function openStartupScreen(): Promise<void> {
+	await request('startup');
+}

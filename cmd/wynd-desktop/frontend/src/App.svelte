@@ -86,14 +86,32 @@
 
 	onMount(() => {
 		function openFromClient(event: MessageEvent) {
-			if (event.origin !== window.location.origin || event.data?.type !== 'wynd:open-interface') {
+			if (event.origin !== window.location.origin) return;
+			if (event.data?.type === 'wynd:open-interface') {
+				void openInterface();
 				return;
 			}
-			void openInterface();
+			// Первый запуск: с экрана входа (почта) назад к вводу адреса сервера
+			// (план 50, находка владельца 20.11). Адрес остаётся в поле — его
+			// можно поправить.
+			if (event.data?.type === 'wynd:return-to-address') {
+				returnToAddress(typeof event.data.origin === 'string' ? event.data.origin : '');
+			}
 		}
 		window.addEventListener('message', openFromClient);
 		return () => window.removeEventListener('message', openFromClient);
 	});
+
+	function returnToAddress(current: string) {
+		server = null;
+		unavailable = false;
+		showServers = false;
+		adding = false;
+		preview = null;
+		error = '';
+		checking = false;
+		address = current.replace(/^https?:\/\//, '');
+	}
 
 	async function syncMaximised() {
 		maximised = (await rt?.WindowIsMaximised().catch(() => false)) ?? false;

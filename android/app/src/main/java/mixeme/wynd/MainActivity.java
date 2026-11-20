@@ -108,7 +108,7 @@ public final class MainActivity extends Activity {
 
     void openStartupTarget(String url) { showInterface(url, null, false); }
 
-    private void showStartup(String unavailable) {
+    void showStartup(String unavailable) {
         failedUrl = unavailable;
         createPage(ServerOrigin.parse(StartupAssets.ORIGIN, false), true, null);
         webView.loadUrl(StartupAssets.URL);
