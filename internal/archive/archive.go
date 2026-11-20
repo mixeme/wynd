@@ -425,6 +425,7 @@ a{color:inherit;text-decoration:none}
 .voice-play{width:34px;height:34px;border-radius:50%;background:var(--c);display:grid;place-items:center;flex:0 0 auto;border:0;padding:0;cursor:pointer;color:#fff}
 .voice-play .ic{width:17px;height:17px;color:#fff}
 .vwave{display:flex;align-items:center;gap:1.5px;height:22px;flex:1;min-width:0;overflow:hidden}
+.vwave-fill{justify-content:space-between;gap:min(1.5px, 0.5%)}
 .vwave i{flex:1 1 0;max-width:3px;min-height:3px;border-radius:2px;background:var(--line)}
 .vwave i.on{background:var(--c)}
 .sz{font-size:11.5px;color:var(--faint)}
@@ -842,7 +843,7 @@ func appendVoiceHTML(b *strings.Builder, m chronicle.PostMedia, href string) {
 	b.WriteString(`">`)
 	b.WriteString(iconPlay)
 	b.WriteString(iconPause)
-	b.WriteString(`</button><span class="vwave" aria-hidden="true">`)
+	b.WriteString(`</button><span class="vwave vwave-fill" aria-hidden="true">`)
 	for _, peak := range wavePeaks(m.AudioPeaks) {
 		b.WriteString(`<i style="height:`)
 		b.WriteString(strconv.Itoa(peak))
@@ -889,25 +890,17 @@ func audioLabel(m chronicle.PostMedia) string {
 	return "звук"
 }
 
-// wavePeaks — уровни волны 1…100: в записи их до 64, у старых голосовых может
-// не быть — тогда ровная линия, чтобы строка не пустела.
+// wavePeaks повторяет уровни короткой записи, чтобы волна заполнила строку.
+// У старых записей без уровней остаётся ровная линия, как в VoiceWave.svelte.
 func wavePeaks(peaks []int) []int {
-	if len(peaks) == 0 {
-		out := make([]int, 32)
-		for i := range out {
-			out[i] = 20
+	const minBars = 48
+	out := make([]int, max(minBars, len(peaks)))
+	for i := range out {
+		peak := 20
+		if len(peaks) > 0 {
+			peak = peaks[i*len(peaks)/len(out)]
 		}
-		return out
-	}
-	out := make([]int, 0, len(peaks))
-	for _, p := range peaks {
-		if p < 4 {
-			p = 4
-		}
-		if p > 100 {
-			p = 100
-		}
-		out = append(out, p)
+		out[i] = max(4, min(100, peak))
 	}
 	return out
 }

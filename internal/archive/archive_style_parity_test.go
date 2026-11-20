@@ -58,6 +58,7 @@ var archiveStyleParity = []styleParity{
 	{"кнопка голосового", []string{".voice-play"}, []string{":where(button)", ".voice-play"}, []string{"width", "height", "border-radius", "background", "display", "place-items", "flex", "border", "padding"}, nil, ""},
 	{"значок кнопки голосового", []string{".voice-play .ic"}, []string{".voice-play .ic"}, []string{"width", "height", "color"}, nil, ""},
 	{"волна", []string{".vwave"}, []string{".vwave"}, []string{"display", "align-items", "gap", "height", "flex", "min-width", "overflow"}, nil, ""},
+	{"волна на всю ширину", []string{".vwave-fill"}, []string{".vwave-fill"}, []string{"justify-content", "gap"}, nil, ""},
 	{"полоска волны (ещё не звучало)", []string{".vwave i"}, []string{".vwave i", ".vwave i.off"}, []string{"flex", "max-width", "min-height", "border-radius", "background"}, nil, ""},
 	{"полоска волны (звучало)", []string{".vwave i.on"}, []string{".vwave i"}, []string{"background"}, nil, ""},
 	{"строка звука", []string{".att"}, []string{".att"}, []string{"display", "align-items", "gap", "border", "border-radius", "padding", "min-width", "box-sizing", "width", "text-align"}, nil, ""},

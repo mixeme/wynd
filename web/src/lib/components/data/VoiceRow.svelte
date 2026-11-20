@@ -50,9 +50,6 @@
 	const label = $derived(
 		track?.playing ? formatDuration((track.current ?? 0) * 1000) : formatDuration(total)
 	);
-	// Старые записи без волны — ровная линия, чтобы строка не пустела.
-	const wave = $derived(peaks.length ? peaks : Array.from({ length: 32 }, () => 20));
-
 	function onPlay(e: MouseEvent) {
 		e.stopPropagation();
 		if (!blobId) return;
@@ -62,7 +59,7 @@
 
 {#snippet row()}
 	<span class="voice-play"><Icon name={playing ? 'pause' : 'play'} /></span>
-	<VoiceWave peaks={wave} {progress} />
+	<VoiceWave {peaks} {progress} fill />
 	<span class="sz">{label}</span>
 {/snippet}
 

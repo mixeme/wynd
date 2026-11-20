@@ -3285,6 +3285,10 @@ input.inp[type='number']::-webkit-outer-spin-button {
 	min-width: 0;
 	overflow: hidden;
 }
+.vwave-fill {
+	justify-content: space-between;
+	gap: min(1.5px, 0.5%);
+}
 .vwave i {
 	flex: 1 1 0;
 	max-width: 3px;

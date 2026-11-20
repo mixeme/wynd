@@ -1,12 +1,10 @@
 <script lang="ts">
-	import { page } from '$app/state';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import PostByline from '$ui/data/PostByline.svelte';
 	import PostCard from '$ui/data/PostCard.svelte';
 	import ReactionBar from '$ui/data/ReactionBar.svelte';
 	import VoiceRow from '$ui/data/VoiceRow.svelte';
 
-	const wide = $derived(page.url.searchParams.has('wide'));
 	const examples = [
 		{
 			durationMs: 4200,
@@ -18,15 +16,6 @@
 		},
 		{ durationMs: 200, time: 'сегодня, 10:40', peaks: [8, 11] }
 	];
-
-	function displayPeaks(peaks: number[]) {
-		const minBars = 48;
-		if (!wide || peaks.length >= minBars) return peaks;
-		return Array.from(
-			{ length: minBars },
-			(_, index) => peaks[Math.floor((index * peaks.length) / minBars)]
-		);
-	}
 </script>
 
 <div class="preview">
@@ -51,12 +40,7 @@
 						<PostByline initial="А" name="Аня" {time} color="var(--c)" />
 					{/snippet}
 					{#snippet media()}
-						<VoiceRow
-							blobId={`fixture-${durationMs}`}
-							{durationMs}
-							peaks={displayPeaks(peaks)}
-							class={wide ? 'voice-fill-preview' : ''}
-						/>
+						<VoiceRow blobId={`fixture-${durationMs}`} {durationMs} {peaks} />
 					{/snippet}
 					{#snippet reactions()}
 						<ReactionBar
@@ -78,9 +62,5 @@
 	.preview {
 		position: fixed;
 		inset: 0;
-	}
-	.preview :global(.voice-fill-preview .vwave) {
-		justify-content: space-between;
-		gap: min(1.5px, 0.5%);
 	}
 </style>

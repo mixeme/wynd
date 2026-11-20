@@ -15,8 +15,13 @@ describe('VoiceRow', () => {
 
 	it('stays a play button with a blob', () => {
 		const target = document.createElement('div');
-		const instance = mount(VoiceRow, { target, props: { blobId: 'b1' } });
+		const instance = mount(VoiceRow, { target, props: { blobId: 'b1', peaks: [20, 80] } });
 		expect(target.querySelector('.voice')?.tagName).toBe('BUTTON');
+		const bars = [...target.querySelectorAll<HTMLElement>('.vwave-fill i')];
+		expect(bars.map((bar) => bar.style.height)).toEqual([
+			...Array(24).fill('20%'),
+			...Array(24).fill('80%')
+		]);
 		unmount(instance);
 	});
 });

@@ -88,8 +88,13 @@ func TestArchiveAudioMatchesApp(t *testing.T) {
 	if !strings.Contains(index, `<div class="voice" data-ms="7400">`) {
 		t.Fatalf("голосовое без строки плеера: %s", index)
 	}
-	if got := strings.Count(index, `<i style="height:`); got != 4 {
-		t.Fatalf("волна: %d полос, ожидалось 4", got)
+	if got := strings.Count(index, `<i style="height:`); got != 48 {
+		t.Fatalf("волна: %d полос, ожидалось 48", got)
+	}
+	for _, level := range []string{"12", "40", "90", "55"} {
+		if got := strings.Count(index, `<i style="height:`+level+`%"></i>`); got != 12 {
+			t.Fatalf("волна: %d полос уровня %s, ожидалось 12", got, level)
+		}
 	}
 	if !strings.Contains(index, `<span class="sz">0:07</span>`) {
 		t.Fatal("нет длительности голосового")

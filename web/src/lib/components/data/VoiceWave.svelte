@@ -4,19 +4,31 @@
 	let {
 		peaks,
 		progress = 1,
+		fill = false,
 		class: className = ''
 	}: {
 		peaks: number[];
 		/** Доля прослушанного, 0–1. */
 		progress?: number;
+		/** Волна в карточке доходит до длительности, в том числе у коротких записей. */
+		fill?: boolean;
 		class?: string;
 	} = $props();
 
-	const played = $derived(Math.round(progress * peaks.length));
+	const minBars = 48;
+	const bars = $derived(
+		fill && peaks.length < minBars
+			? Array.from(
+					{ length: minBars },
+					(_, index) => peaks[Math.floor((index * peaks.length) / minBars)] ?? 20
+				)
+			: peaks
+	);
+	const played = $derived(Math.round(progress * bars.length));
 </script>
 
-<span class="vwave {className}" aria-hidden="true">
-	{#each peaks as p, i (i)}
+<span class="vwave {className}" class:vwave-fill={fill} aria-hidden="true">
+	{#each bars as p, i (i)}
 		<i class:off={i >= played} style:height="{Math.max(12, p)}%"></i>
 	{/each}
 </span>
