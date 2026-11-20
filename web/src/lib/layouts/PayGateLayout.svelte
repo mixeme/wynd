@@ -68,15 +68,21 @@
 					goToLogin();
 					return;
 				}
+				sessions = loaded;
+				// Улочка и её снимок — первый кадр (C109): стартовый показ не ждёт
+				// статуса оплаты. Шлюз появится сам, как только закрытый сервер
+				// ответит (`closedIdx` пересчитается от `statuses`).
+				loading = false;
 				// Сервер не ответил — не тупик (C63): его круги на улочке скажут,
 				// что он не отвечает (7.38, 7.40). Закрытый подпиской круг сервер
 				// всё равно не отдаст; вход, отозванный сервером, уберёт фоновая
 				// сверка (C99), а запросы к нему всё равно ответят 401.
-				statuses = await Promise.all(
+				void Promise.all(
 					loaded.map((s) => fetchPayStatus(s.origin).catch(() => undefined))
-				);
-				sessions = loaded;
-				setClosedServers(closedIdx.map((i) => loaded[i].origin));
+				).then((got) => {
+					statuses = got;
+					setClosedServers(closedIdx.map((i) => loaded[i].origin));
+				});
 			})
 			.finally(() => {
 				loading = false;
