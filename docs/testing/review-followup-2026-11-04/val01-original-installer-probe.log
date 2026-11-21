@@ -1,4 +1,0 @@
-=== RUN   TestReviewUpdateFollowsReleasePages
---- PASS: TestReviewUpdateFollowsReleasePages (0.00s)
-PASS
-ok  	gitea.mixdep.ru/mix/wynd/internal/workshop	0.039s

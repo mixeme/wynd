@@ -1,4 +1,0 @@
-757af0c2e98632e8062f0c36d778f853dee22efb182cd619b1e531d7df3c85c8 *a26-live-expanded.png
-1ec5d3322e4fb49bd5e8d4277539b83f788d2f529676e67f982cdaed295456f7 *a26-live-feed.png
-61aa2d81fc1241e252c633ff33b6e823f6b0f6b8d2aaea95bccd344d3cdd54e4 *a26-live-viewer-photo.png
-6e1fb7ad5260b563d308350b30cb9067760dde63ff6906d6c6fa244bfac41a3a *a26-live-viewer-video.png
