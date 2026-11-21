@@ -23,7 +23,7 @@
 ## Приёмка
 
 - Ворота `scripts/test.bat` зелёные на релизном дереве до коммита версии
-  (полный журнал `dev/c95/release-gates.log`); сторожа версии
+  (полный журнал ворот); сторожа версии
   (`TestMatchesVERSIONFile`, пакет `internal/api`) — зелёные после.
 - Тег `v0.53.1` отправлен в Gitea (main + тег); GitHub-зеркало подняло
   workflows по `38f4819d`: Server — зелёный, Desktop checks — зелёный,

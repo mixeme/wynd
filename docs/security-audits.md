@@ -598,6 +598,6 @@
 ## Проверки и оставшиеся ограничения
 
 - `go vet -tags desktop` и `go test -tags desktop ./cmd/wynd-desktop ./internal/desktop` — зелёные (17.11).
-- Полные ворота `scripts\test.bat` на дереве с правкой CORS — **[test] OK** (17.11, журнал `dev/batch4-gates.log`; включает `Desktop checks` и сборку всех трёх окон с production-тегами).
+- Полные ворота `scripts\test.bat` на дереве с правкой CORS — **[test] OK** (17.11, журнал ворот; включает `Desktop checks` и сборку всех трёх окон с production-тегами).
 - Живое окно с правкой CORS **запущено и проверено 17.11** — [протокол](testing/desktop-signer-live-2026-11-17.md): окно с выбранным сервером показало живые данные, пробы порта подтвердили сужение (чужой origin — без `Access-Control-Allow-Origin`). Остаток — ручные проверки переноса мышью и входа Windows ([реестр, раздел 7](../testing/pending-device-checks.md)).
 - Аудит не покрывает серверные маршруты, Мастерскую, Android и поставку обновлений GitHub Actions; они проверяются своими отчётами.

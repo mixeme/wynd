@@ -31,7 +31,7 @@ C105 — снимок настроек круга и альбома дня не 
 ## Приёмка
 
 - Ворота `scripts/test.bat` зелёные на релизном дереве с поднятой версией
-  (журнал `dev/release-0.53.4/gates.log`, `[test] OK`, `[desktop] OK`).
+  (журнал ворот, `[test] OK`, `[desktop] OK`).
 - Тег `v0.53.4` отправлен в Gitea (main + тег; при первом push отказ auth —
   повтор прошёл). GitHub-зеркало подняло workflows по `ff648837`:
   **Server, Desktop checks, Android, Image — все зелёные**; образ

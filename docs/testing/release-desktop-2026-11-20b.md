@@ -27,7 +27,7 @@
   (локаль `0419`) + манифест (`0.4.2.0`). Равенство сверяют сторожа
   `TestWorkshopVersionMatchesBuildInfo`, `TestDesktopVersionMatchesBuildInfo`.
 - `scripts\test.bat` на дереве обеих версий — зелёный целиком
-  (`dev/release-desktop-2026-11-20-evening/gates.log`, `[test] OK`,
+  (журнал ворот, `[test] OK`,
   `[desktop] OK`).
 - Коммиты: `00f4d5bc` (Мастерская), `b87c93bb` (Настольный); оба тега на
   `b87c93bb`; main = `b87c93bb`.

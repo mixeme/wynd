@@ -36,7 +36,7 @@
   `TestWorkshopVersionMatchesBuildInfo`, `TestDesktopVersionMatchesBuildInfo`,
   `TestSignerBuildInfoVersion`.
 - `scripts\test.bat` на дереве всех трёх версий — зелёный целиком
-  (`dev/release-desktop-2026-11-20/gates.log`, `[test] OK`, `[desktop] OK`).
+  (журнал ворот, `[test] OK`, `[desktop] OK`).
 - Коммиты: `6f1c1b22` (Мастерская), `57945633` (Настольный), `62212cfb`
   (Подпись); main = `62212cfb`.
 
