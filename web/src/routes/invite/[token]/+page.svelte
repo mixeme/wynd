@@ -16,6 +16,7 @@
 	import { authErrorHint, fetchInstance, sendAuthCode } from '$lib/auth/auth';
 	import {
 		claimInvite,
+		claimRoute,
 		fetchInvitePeek,
 		isDeadInviteError,
 		inviteCardPreview,
@@ -65,9 +66,8 @@
 		try {
 			const claim = await claimInvite('', token);
 			rememberCircleOrigin(claim.circle_id, '');
-			goto(
-				claim.already_member ? `/circles/${claim.circle_id}` : `/circles/${claim.circle_id}/join`
-			);
+			const route = claimRoute(claim);
+			goto(route.url, route.options);
 		} catch (err) {
 			// Сессия на устройстве устарела — обычный вход по почте, без ошибки.
 			if (err instanceof ApiError && err.status === 401) {

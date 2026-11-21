@@ -59,6 +59,21 @@ export async function claimInvite(
 	);
 }
 
+/**
+ * Куда идти после принятого приглашения. Приглашение потреблено — его экран в
+ * истории заменяем: возвращаться на него незачем, а одноразовая ссылка после
+ * входа уже не действует (C110) — иначе «Назад» с формы имени уводит на
+ * мёртвый экран «Приглашение не действует».
+ */
+export function claimRoute(claim: { circle_id: string; already_member: boolean }): {
+	url: string;
+	options: { replaceState: true };
+} {
+	return claim.already_member
+		? { url: `/circles/${claim.circle_id}`, options: { replaceState: true } }
+		: { url: `/circles/${claim.circle_id}/join`, options: { replaceState: true } };
+}
+
 export async function joinViaInvite(
 	origin: string,
 	token: string,

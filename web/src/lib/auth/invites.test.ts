@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	claimRoute,
 	inviteCardPreview,
 	isCircleInvitePeek,
 	memberSubtitle,
@@ -69,5 +70,18 @@ describe('inviteCardPreview', () => {
 		expect(inviteCardPreview(peek('f'))).toBe('2 участника · пригласила Аня');
 		expect(inviteCardPreview(peek('m'))).toBe('2 участника · пригласил Аня');
 		expect(inviteCardPreview(peek())).toBe('2 участника · приглашение: Аня');
+	});
+});
+
+describe('маршрут после принятого приглашения (C110)', () => {
+	it('в обеих ветках экран приглашения заменяется в истории', () => {
+		expect(claimRoute({ circle_id: 'c1', already_member: false })).toEqual({
+			url: '/circles/c1/join',
+			options: { replaceState: true }
+		});
+		expect(claimRoute({ circle_id: 'c1', already_member: true })).toEqual({
+			url: '/circles/c1',
+			options: { replaceState: true }
+		});
 	});
 });
