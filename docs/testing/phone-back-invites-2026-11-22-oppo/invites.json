@@ -1,0 +1,14 @@
+{
+  "invite-setting": {
+    "all": {
+      "new_lines_on_change": 1,
+      "new_lines_on_repeat": 0,
+      "patch_on_repeat": true
+    },
+    "owner": {
+      "new_lines_on_change": 1,
+      "new_lines_on_repeat": 0,
+      "patch_on_repeat": true
+    }
+  }
+}
