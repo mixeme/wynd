@@ -122,7 +122,9 @@
 	}
 </script>
 
-<div class="cbar">
+<!-- Правило C98: у поиска в шапке поле стоит в центре полосы 60 (как у общего
+     поиска), без запаса под строкой; без вкладок и подписи полоса — 48. -->
+<div class="cbar" class:search-band={searchInBar}>
 	<div class="top">
 		{#if onback}
 			<IconButton name="back" label="Назад" onclick={() => onback()} />
@@ -192,7 +194,5 @@
 		<div style="padding:3px 0;font-size:12.5px;line-height:18px;color:rgba(255,255,255,.85)">
 			{#if typeof subtitle === 'function'}{@render subtitle()}{:else}{subtitle}{/if}
 		</div>
-	{:else}
-		<div style="height:12px"></div>
 	{/if}
 </div>

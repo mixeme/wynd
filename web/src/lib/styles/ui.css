@@ -377,6 +377,15 @@
 	margin-bottom: 4px;
 	min-width: 0;
 }
+/* Поиск в шапке круга (правило C98, вариант «а»): поле в центре полосы 60,
+   как у общего поиска; без запаса под строкой. */
+.cbar.search-band {
+	padding-top: 0;
+}
+.cbar.search-band .top {
+	min-height: 60px;
+	margin-bottom: 0;
+}
 .cbar .top .sp {
 	flex: 1;
 	min-width: 0;
