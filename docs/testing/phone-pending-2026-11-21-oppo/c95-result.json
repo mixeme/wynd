@@ -1,0 +1,82 @@
+{
+  "early": {
+    "elapsed_ms": 1912,
+    "first": true,
+    "second": false,
+    "shot": "c95-first-held.png"
+  },
+  "late": {
+    "elapsed_ms": 4682,
+    "first": true,
+    "second": true,
+    "shot": "c95-both.png"
+  },
+  "released_early": 0,
+  "events": [
+    {
+      "event": "hold-change",
+      "on": true,
+      "elapsed_ms": 2
+    },
+    {
+      "event": "preflight",
+      "path": "/api/v1/sync",
+      "origin": "http://127.0.0.1:18946",
+      "headers": "authorization",
+      "elapsed_ms": 1497
+    },
+    {
+      "event": "search-request",
+      "tag": "a",
+      "elapsed_ms": 1740
+    },
+    {
+      "event": "preflight",
+      "path": "/api/v1/search",
+      "origin": "http://127.0.0.1:18946",
+      "headers": "authorization",
+      "elapsed_ms": 1744
+    },
+    {
+      "event": "search-response",
+      "tag": "a",
+      "status": 200,
+      "elapsed_ms": 1746
+    },
+    {
+      "event": "search-request",
+      "tag": "b",
+      "elapsed_ms": 1761
+    },
+    {
+      "event": "search-held",
+      "tag": "b",
+      "elapsed_ms": 1765
+    },
+    {
+      "event": "hold-change",
+      "on": false,
+      "elapsed_ms": 4243
+    },
+    {
+      "event": "search-response",
+      "tag": "b",
+      "status": 200,
+      "elapsed_ms": 4244
+    },
+    {
+      "event": "preflight",
+      "path": "/api/v1/blobs/01a1ff80-9a71-72ca-927c-311e7c940d4a",
+      "origin": "http://127.0.0.1:18946",
+      "headers": "authorization",
+      "elapsed_ms": 4430
+    },
+    {
+      "event": "preflight",
+      "path": "/api/v1/blobs/01a1ff80-9a71-72ca-927c-311e7c940d4a",
+      "origin": "http://127.0.0.1:18946",
+      "headers": "authorization",
+      "elapsed_ms": 4435
+    }
+  ]
+}
