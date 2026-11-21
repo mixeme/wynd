@@ -328,7 +328,8 @@
 	display: flex;
 	align-items: center;
 	gap: 18px;
-	padding: 4px 18px 14px;
+	/* Правило C98 (вариант A): содержимое по центру полосы. */
+	padding: 9px 18px;
 }
 .appbar .mk {
 	width: 20px;
@@ -362,7 +363,7 @@
 .cbar {
 	background: var(--c);
 	color: #fff;
-	padding: 8px 14px 0;
+	padding: 4px 14px 0;
 	min-width: 0;
 	max-width: 100%;
 }
@@ -371,6 +372,9 @@
 	align-items: center;
 	gap: 12px;
 	min-height: 40px;
+	/* Правило C98 (вариант A): строка по центру верхнего блока 48 —
+	   4 сверху, строка 40, 4 под ней; у однострочных полос это центр полосы. */
+	margin-bottom: 4px;
 	min-width: 0;
 }
 .cbar .top .sp {
@@ -484,7 +488,8 @@
 	vertical-align: 1px;
 }
 .bar {
-	padding: 8px 16px 12px;
+	/* Правило C98 (вариант A): строка по центру полосы — 8 / 8. */
+	padding: 8px 16px 8px;
 	display: flex;
 	align-items: center;
 	gap: 12px;

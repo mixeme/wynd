@@ -28,7 +28,7 @@
 <div
 	class="bar"
 	style:min-height={`${minHeight}px`}
-	style:padding-bottom={compact ? '10px' : undefined}
+	style:padding-bottom={compact ? '8px' : undefined}
 >
 	{#if onback}
 		<IconButton name="back" label="Назад" onclick={() => onback()} />

@@ -139,7 +139,8 @@
 					>
 				{/if}
 			</div>
-			<div style="padding-bottom:6px;font-size:12.5px;line-height:18px;color:rgba(255,255,255,.85)">
+			<!-- Правило C98 (вариант A): вторая строка по центру блока 24 — 3 сверху и снизу. -->
+			<div style="padding:3px 0;font-size:12.5px;line-height:18px;color:rgba(255,255,255,.85)">
 				{subtitle}
 			</div>
 		</div>
