@@ -1,0 +1,123 @@
+{
+  "fixture": "Wynd-QA-20261121-C22-GPS.jpg",
+  "fixture_sha256": "4e021e44c0d9102979f61f803546a923245f30ab93cb40544fa724d83c45f3f9",
+  "cases": [
+    {
+      "case": "C22-denied",
+      "entry_date": "2024-05-17",
+      "captured_at": "2024-05-17T09:34:56Z",
+      "media": [
+        {
+          "captured_at": "2024-05-17T09:34:56Z",
+          "longitude": null,
+          "kind": "photo",
+          "latitude": null,
+          "mime": "image/webp"
+        }
+      ],
+      "map": [],
+      "downloaded_file": {
+        "format": "WEBP",
+        "embedded_gps": false,
+        "sha256": "eb3cba53ece05c45c5636c2e48a80423e443eb979c21cf039b94d8c66a46653d",
+        "identical_to_fixture": false
+      }
+    },
+    {
+      "case": "C22-plus-gps",
+      "entry_date": "2024-05-17",
+      "captured_at": "2024-05-17T09:34:56Z",
+      "media": [
+        {
+          "latitude": 55.751666666666665,
+          "kind": "photo",
+          "captured_at": "2024-05-17T09:34:56Z",
+          "mime": "image/webp",
+          "longitude": 37.62
+        }
+      ],
+      "map": [
+        {
+          "latitude": 55.751666666666665,
+          "entry_date": "2024-05-17",
+          "longitude": 37.62
+        }
+      ],
+      "downloaded_file": {
+        "format": "WEBP",
+        "embedded_gps": false,
+        "sha256": "eb3cba53ece05c45c5636c2e48a80423e443eb979c21cf039b94d8c66a46653d",
+        "identical_to_fixture": false
+      }
+    },
+    {
+      "case": "C22-file-gps-single",
+      "entry_date": "2024-05-17",
+      "captured_at": "2024-05-17T09:34:56Z",
+      "media": [
+        {
+          "longitude": 37.62,
+          "latitude": 55.751666666666665,
+          "mime": "image/jpeg",
+          "captured_at": "2024-05-17T09:34:56Z",
+          "kind": "photo"
+        }
+      ],
+      "map": [
+        {
+          "entry_date": "2024-05-17",
+          "latitude": 55.751666666666665,
+          "longitude": 37.62
+        }
+      ],
+      "downloaded_file": {
+        "format": "JPEG",
+        "embedded_gps": true,
+        "sha256": "4e021e44c0d9102979f61f803546a923245f30ab93cb40544fa724d83c45f3f9",
+        "identical_to_fixture": true
+      }
+    },
+    {
+      "case": "C22-file-off",
+      "entry_date": "2024-05-17",
+      "captured_at": "2024-05-17T09:34:56Z",
+      "media": [
+        {
+          "captured_at": "2024-05-17T09:34:56Z",
+          "kind": "photo",
+          "latitude": null,
+          "longitude": null,
+          "mime": "image/jpeg"
+        }
+      ],
+      "map": [],
+      "downloaded_file": {
+        "format": "JPEG",
+        "embedded_gps": true,
+        "sha256": "4e021e44c0d9102979f61f803546a923245f30ab93cb40544fa724d83c45f3f9",
+        "identical_to_fixture": true
+      }
+    },
+    {
+      "case": "C22-plus-off",
+      "entry_date": "2024-05-17",
+      "captured_at": "2024-05-17T09:34:56Z",
+      "media": [
+        {
+          "mime": "image/webp",
+          "latitude": null,
+          "longitude": null,
+          "captured_at": "2024-05-17T09:34:56Z",
+          "kind": "photo"
+        }
+      ],
+      "map": [],
+      "downloaded_file": {
+        "format": "WEBP",
+        "embedded_gps": false,
+        "sha256": "eb3cba53ece05c45c5636c2e48a80423e443eb979c21cf039b94d8c66a46653d",
+        "identical_to_fixture": false
+      }
+    }
+  ]
+}
