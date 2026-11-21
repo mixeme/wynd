@@ -1,0 +1,18 @@
+{
+  "back-move-arrow": {
+    "source": "settings",
+    "returned": true
+  },
+  "back-move-system": {
+    "source": "settings",
+    "returned": true
+  },
+  "back-archive-arrow": {
+    "source": "quota",
+    "returned": true
+  },
+  "back-archive-system": {
+    "source": "quota",
+    "returned": true
+  }
+}
