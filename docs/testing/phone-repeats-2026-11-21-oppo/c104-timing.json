@@ -1,0 +1,32 @@
+{
+  "requests": [
+    {
+      "event": "request",
+      "ms": 1970,
+      "endpoint": "/api/v1/circles/{circle}",
+      "status": null
+    },
+    {
+      "event": "request",
+      "ms": 2007,
+      "endpoint": "/api/v1/circles",
+      "status": null
+    },
+    {
+      "event": "response",
+      "ms": 11064,
+      "endpoint": "/api/v1/circles",
+      "status": 200
+    },
+    {
+      "event": "response",
+      "ms": 11293,
+      "endpoint": "/api/v1/circles/{circle}",
+      "status": 200
+    }
+  ],
+  "held_ms": 5347,
+  "delays_ms": 9000,
+  "late_ms": 13956,
+  "early_ms": 2645
+}
