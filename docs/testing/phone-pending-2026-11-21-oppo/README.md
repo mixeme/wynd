@@ -56,3 +56,41 @@ Android `ACTION_VIEW`. Android подтвердил отсутствие сет�
 Второй ответ выпущен к 4,24 с. К 4,68 с появились две записи второго
 круга, обе записи первого остались в выдаче. [Обе группы](c95-both.png) ·
 [Тайминг запросов и появления групп](c95-result.json).
+
+## C98. Шапки при двух размерах шрифта
+
+Замеры выполнены на одной сборке с правилом A из `56cd7f1a`. На OPPO
+измерили текстовые прямоугольники и высоты полос в Firefox 132.0 и
+Android WebView 157.0.8103.50. Размер шрифта ColorOS переключали с 1,0 на
+«Большой» (1,35). Размер снимков одинаковый. В Firefox доступная ширина
+изменилась с 360 до 264 CSS px и DPR с 2 до 2,73. WebView сохранил
+ширину 360 CSS px и DPR 2.
+[Принятая основа и план замеров](../../plans/46-open-questions-and-debt.plan.md#проверки-шапок-c98).
+
+| Полоса, CSS px | Firefox 1,0 | Firefox 1,35 | WebView 1,0 | WebView 1,35 |
+| --- | ---: | ---: | ---: | ---: |
+| Общий поиск | [60](c98-fx-normal-search.png) | [60](c98-fx-large-search.png) | [60](c98-wv-normal-search.png) | [66,32](c98-wv-large-search.png) |
+| Настройки приложения | [48](c98-fx-normal-settings.png) | [48](c98-fx-large-settings.png) | [48](c98-wv-normal-settings.png) | [50,28](c98-wv-large-settings.png) |
+| Круг с вкладками | [84](c98-fx-normal-circle.png) | [84](c98-fx-large-circle.png) | [84](c98-wv-normal-circle.png) | [90,42](c98-wv-large-circle.png) |
+| Редактор | [48](c98-fx-normal-compose.png) | [48](c98-fx-large-compose.png) | [48](c98-wv-normal-compose.png) | [48](c98-wv-large-compose.png) |
+| Альбом записи | [72](c98-fx-normal-album.png) | [72](c98-fx-large-album.png) | [72](c98-wv-normal-album.png) | [78,30](c98-wv-large-album.png) |
+
+Высота полосы и поля поиска сохранялась при фокусе во всех четырёх условиях.
+Поле в Firefox было 41,20 и 40,67 CSS px, размер шрифта поля 16 CSS px.
+В WebView поле выросло с 41,20 до 49,32 CSS px, размер шрифта — с 16 до
+21,6 CSS px. [Фокус Firefox 1,0](c98-fx-normal-search-focus.png) ·
+[Firefox 1,35](c98-fx-large-search-focus.png) ·
+[WebView 1,0](c98-wv-normal-search-focus.png) ·
+[WebView 1,35](c98-wv-large-search-focus.png).
+
+Центры названия круга, «Отмена» и «Опубликовать» в редакторе лежат
+в пределах 0,4 CSS px от середины полосы по вертикали. При размере 1,0
+между названием «Сводка 02» и «Опубликовать» около 28,4 CSS px.
+При размере 1,35 измеренный промежуток равен **0 CSS px в обоих движках**.
+На снимках название и действие вплотную примыкают друг к другу.
+Телефонная проверка высот выполнена. Промежуток в шапке редактора при
+большом шрифте остаётся открытым.
+[Firefox 1,0, замеры](c98-fx-normal.json) ·
+[Firefox 1,35](c98-fx-large.json) ·
+[WebView 1,0](c98-wv-normal.json) ·
+[WebView 1,35](c98-wv-large.json).

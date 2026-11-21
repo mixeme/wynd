@@ -1,0 +1,674 @@
+{
+  "search": {
+    "shot": "c98-fx-normal-search.png",
+    "viewport": [
+      360,
+      672,
+      2,
+      360,
+      672
+    ],
+    "fontStatus": "loaded",
+    "fonts": [
+      "\"Golos Text\"",
+      "\"Golos Text\""
+    ],
+    "theme": "normal",
+    "bar": {
+      "box": [
+        0,
+        0,
+        360,
+        60
+      ],
+      "font": "13.5px",
+      "line": "19.5833px",
+      "family": "\"Golos Text\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "padding": [
+        "8px",
+        "8px"
+      ],
+      "minHeight": "60px",
+      "border": "0px"
+    },
+    "top": null,
+    "field": {
+      "box": [
+        49,
+        8.899993896484375,
+        295,
+        41.20001220703125
+      ],
+      "font": "13.5px",
+      "line": "19.5833px",
+      "family": "\"Golos Text\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "padding": [
+        "8px",
+        "8px"
+      ],
+      "minHeight": "auto",
+      "border": "1px"
+    },
+    "input": {
+      "box": [
+        90,
+        17.899993896484375,
+        240,
+        23.20001220703125
+      ],
+      "font": "16px",
+      "line": "23.2px",
+      "family": "\"Golos Text\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "padding": [
+        "0px",
+        "0px"
+      ],
+      "minHeight": "auto",
+      "border": "0px"
+    },
+    "tabs": null,
+    "focused": false,
+    "labels": [
+      {
+        "text": "Назад",
+        "wrapper": [
+          16,
+          19,
+          21,
+          21
+        ],
+        "content": [
+          16,
+          19,
+          21,
+          21
+        ],
+        "font": "13.5px"
+      }
+    ]
+  },
+  "search-focus": {
+    "shot": "c98-fx-normal-search-focus.png",
+    "viewport": [
+      360,
+      672,
+      2,
+      360,
+      672
+    ],
+    "fontStatus": "loaded",
+    "fonts": [
+      "\"Golos Text\"",
+      "\"Golos Text\""
+    ],
+    "theme": "normal",
+    "bar": {
+      "box": [
+        0,
+        0,
+        360,
+        60
+      ],
+      "font": "13.5px",
+      "line": "19.5833px",
+      "family": "\"Golos Text\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "padding": [
+        "8px",
+        "8px"
+      ],
+      "minHeight": "60px",
+      "border": "0px"
+    },
+    "top": null,
+    "field": {
+      "box": [
+        49,
+        8.899993896484375,
+        295,
+        41.20001220703125
+      ],
+      "font": "13.5px",
+      "line": "19.5833px",
+      "family": "\"Golos Text\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "padding": [
+        "8px",
+        "8px"
+      ],
+      "minHeight": "auto",
+      "border": "1px"
+    },
+    "input": {
+      "box": [
+        90,
+        17.899993896484375,
+        240,
+        23.20001220703125
+      ],
+      "font": "16px",
+      "line": "23.2px",
+      "family": "\"Golos Text\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "padding": [
+        "0px",
+        "0px"
+      ],
+      "minHeight": "auto",
+      "border": "0px"
+    },
+    "tabs": null,
+    "focused": true,
+    "labels": [
+      {
+        "text": "Назад",
+        "wrapper": [
+          16,
+          19,
+          21,
+          21
+        ],
+        "content": [
+          16,
+          19,
+          21,
+          21
+        ],
+        "font": "13.5px"
+      }
+    ]
+  },
+  "settings": {
+    "shot": "c98-fx-normal-settings.png",
+    "viewport": [
+      360,
+      672,
+      2,
+      360,
+      672
+    ],
+    "fontStatus": "loaded",
+    "fonts": [
+      "\"Golos Text\"",
+      "\"Golos Text\""
+    ],
+    "theme": "normal",
+    "bar": {
+      "box": [
+        0,
+        0,
+        360,
+        48
+      ],
+      "font": "13.5px",
+      "line": "19.5833px",
+      "family": "\"Golos Text\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "padding": [
+        "8px",
+        "8px"
+      ],
+      "minHeight": "48px",
+      "border": "0px"
+    },
+    "top": null,
+    "field": null,
+    "input": null,
+    "tabs": null,
+    "focused": false,
+    "labels": [
+      {
+        "text": "Назад",
+        "wrapper": [
+          16,
+          13,
+          21,
+          21
+        ],
+        "content": [
+          16,
+          13,
+          21,
+          21
+        ],
+        "font": "13.5px"
+      },
+      {
+        "text": "Приложение",
+        "wrapper": [
+          49,
+          11.166671752929688,
+          107.60000610351562,
+          24.649993896484375
+        ],
+        "content": [
+          49,
+          13.48333740234375,
+          107.60000610351562,
+          20
+        ],
+        "font": "17px"
+      }
+    ]
+  },
+  "circle": {
+    "shot": "c98-fx-normal-circle.png",
+    "viewport": [
+      360,
+      672,
+      2,
+      360,
+      672
+    ],
+    "fontStatus": "loaded",
+    "fonts": [
+      "\"Golos Text\"",
+      "\"Golos Text\""
+    ],
+    "theme": "normal",
+    "bar": {
+      "box": [
+        0,
+        0,
+        360,
+        84
+      ],
+      "font": "13.5px",
+      "line": "19.5833px",
+      "family": "\"Golos Text\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "padding": [
+        "4px",
+        "0px"
+      ],
+      "minHeight": "auto",
+      "border": "0px"
+    },
+    "top": {
+      "box": [
+        14,
+        4,
+        332,
+        40
+      ],
+      "font": "13.5px",
+      "line": "19.5833px",
+      "family": "\"Golos Text\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "padding": [
+        "0px",
+        "0px"
+      ],
+      "minHeight": "40px",
+      "border": "0px"
+    },
+    "field": null,
+    "input": null,
+    "tabs": {
+      "box": [
+        14,
+        48,
+        332,
+        36
+      ],
+      "font": "13.5px",
+      "line": "19.5833px",
+      "family": "\"Golos Text\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "padding": [
+        "3px",
+        "0px"
+      ],
+      "minHeight": "36px",
+      "border": "0px"
+    },
+    "focused": false,
+    "labels": [
+      {
+        "text": "Назад",
+        "wrapper": [
+          14,
+          13.5,
+          21,
+          21
+        ],
+        "content": [
+          14,
+          13.5,
+          21,
+          21
+        ],
+        "font": "13.5px"
+      },
+      {
+        "text": "Сводка 02",
+        "wrapper": [
+          47,
+          11.666671752929688,
+          86.94999694824219,
+          24.649993896484375
+        ],
+        "content": [
+          47,
+          13.98333740234375,
+          86.94999694824219,
+          20
+        ],
+        "font": "17px"
+      },
+      {
+        "text": "Поиск",
+        "wrapper": [
+          213.3000030517578,
+          13.5,
+          21,
+          21
+        ],
+        "content": [
+          213.3000030517578,
+          13.5,
+          21,
+          21
+        ],
+        "font": "13.5px"
+      },
+      {
+        "text": "Проверка\nП",
+        "wrapper": [
+          246.3000030517578,
+          9,
+          99.69999694824219,
+          30
+        ],
+        "content": [
+          246.3000030517578,
+          9,
+          99.69999694824219,
+          30
+        ],
+        "font": "12.5px"
+      },
+      {
+        "text": "Проверка",
+        "wrapper": [
+          246.3000030517578,
+          14.933334350585938,
+          60.69999694824219,
+          18.133331298828125
+        ],
+        "content": [
+          246.3000030517578,
+          16.25,
+          60.69999694824219,
+          15.5
+        ],
+        "font": "12.5px"
+      },
+      {
+        "text": "Хронология",
+        "wrapper": [
+          16,
+          51,
+          80.60000610351562,
+          33
+        ],
+        "content": [
+          16,
+          52.78334045410156,
+          80.60000610351562,
+          16
+        ],
+        "font": "13.5px"
+      },
+      {
+        "text": "Дни",
+        "wrapper": [
+          144.3333282470703,
+          51,
+          26.316665649414062,
+          33
+        ],
+        "content": [
+          144.3333282470703,
+          52.78334045410156,
+          26.316665649414062,
+          16
+        ],
+        "font": "13.5px"
+      },
+      {
+        "text": "Сетка",
+        "wrapper": [
+          218.38333129882812,
+          51,
+          38.76666259765625,
+          33
+        ],
+        "content": [
+          218.38333129882812,
+          52.78334045410156,
+          38.76666259765625,
+          16
+        ],
+        "font": "13.5px"
+      },
+      {
+        "text": "Карта",
+        "wrapper": [
+          304.8999938964844,
+          51,
+          39.100006103515625,
+          33
+        ],
+        "content": [
+          304.8999938964844,
+          52.78334045410156,
+          39.100006103515625,
+          16
+        ],
+        "font": "13.5px"
+      }
+    ]
+  },
+  "compose": {
+    "shot": "c98-fx-normal-compose.png",
+    "viewport": [
+      360,
+      672,
+      2,
+      360,
+      672
+    ],
+    "fontStatus": "loaded",
+    "fonts": [
+      "\"Golos Text\"",
+      "\"Golos Text\""
+    ],
+    "theme": "normal",
+    "bar": {
+      "box": [
+        0,
+        0,
+        360,
+        48
+      ],
+      "font": "13.5px",
+      "line": "19.5833px",
+      "family": "\"Golos Text\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "padding": [
+        "4px",
+        "0px"
+      ],
+      "minHeight": "auto",
+      "border": "0px"
+    },
+    "top": {
+      "box": [
+        14,
+        4,
+        332,
+        40
+      ],
+      "font": "13.5px",
+      "line": "19.5833px",
+      "family": "\"Golos Text\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "padding": [
+        "0px",
+        "0px"
+      ],
+      "minHeight": "40px",
+      "border": "0px"
+    },
+    "field": null,
+    "input": null,
+    "tabs": null,
+    "focused": false,
+    "labels": [
+      {
+        "text": "Отмена",
+        "wrapper": [
+          14,
+          14.199996948242188,
+          50.01666259765625,
+          19.583343505859375
+        ],
+        "content": [
+          14,
+          15.98333740234375,
+          50.01666259765625,
+          16
+        ],
+        "font": "13.5px"
+      },
+      {
+        "text": "Сводка 02",
+        "wrapper": [
+          136.53334045410156,
+          11.666671752929688,
+          86.94999694824219,
+          24.649993896484375
+        ],
+        "content": [
+          136.53334045410156,
+          13.98333740234375,
+          86.94999694824219,
+          20
+        ],
+        "font": "17px"
+      },
+      {
+        "text": "Опубликовать",
+        "wrapper": [
+          251.89999389648438,
+          14.199996948242188,
+          94.11666870117188,
+          19.583343505859375
+        ],
+        "content": [
+          251.89999389648438,
+          15.98333740234375,
+          94.11666870117188,
+          16
+        ],
+        "font": "13.5px"
+      }
+    ]
+  },
+  "album": {
+    "shot": "c98-fx-normal-album.png",
+    "viewport": [
+      360,
+      672,
+      2,
+      360,
+      672
+    ],
+    "fontStatus": "loaded",
+    "fonts": [
+      "\"Golos Text\"",
+      "\"Golos Text\""
+    ],
+    "theme": "normal",
+    "bar": {
+      "box": [
+        0,
+        0,
+        360,
+        72
+      ],
+      "font": "13.5px",
+      "line": "19.5833px",
+      "family": "\"Golos Text\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "padding": [
+        "4px",
+        "0px"
+      ],
+      "minHeight": "auto",
+      "border": "0px"
+    },
+    "top": {
+      "box": [
+        14,
+        4,
+        332,
+        40
+      ],
+      "font": "13.5px",
+      "line": "19.5833px",
+      "family": "\"Golos Text\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "padding": [
+        "0px",
+        "0px"
+      ],
+      "minHeight": "40px",
+      "border": "0px"
+    },
+    "field": null,
+    "input": null,
+    "tabs": null,
+    "focused": false,
+    "labels": [
+      {
+        "text": "Назад",
+        "wrapper": [
+          14,
+          13.5,
+          21,
+          21
+        ],
+        "content": [
+          14,
+          13.5,
+          21,
+          21
+        ],
+        "font": "13.5px"
+      },
+      {
+        "text": "1 фотография",
+        "wrapper": [
+          47,
+          11.666671752929688,
+          115.76666259765625,
+          24.649993896484375
+        ],
+        "content": [
+          47,
+          13.98333740234375,
+          115.76666259765625,
+          20
+        ],
+        "font": "17px"
+      },
+      {
+        "text": "К записи",
+        "wrapper": [
+          285.75,
+          14.199996948242188,
+          60.25,
+          19.583343505859375
+        ],
+        "content": [
+          285.75,
+          15.98333740234375,
+          60.25,
+          16
+        ],
+        "font": "13.5px"
+      }
+    ]
+  }
+}
