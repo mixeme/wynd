@@ -1,0 +1,12 @@
+{
+  "c110-arrow": {
+    "external_origin": true,
+    "back": "/circles",
+    "pending_text": true
+  },
+  "c110-system": {
+    "external_origin": true,
+    "back": "/circles",
+    "pending_text": true
+  }
+}
