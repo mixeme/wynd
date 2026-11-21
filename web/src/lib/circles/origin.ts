@@ -34,6 +34,17 @@ export async function resolveCircleOrigin(circleId: string): Promise<string | nu
 	if (stored !== null) return stored;
 
 	const sessions = await listSessions();
+	// Сперва снимки (C104): определение сервера круга не должно ждать сеть,
+	// иначе прямой адрес круга (в том числе «Этот круг» из общего поиска)
+	// держит заставку до ответа сервера. Сеть ниже всё равно сверит список
+	// и поправит устаревший снимок.
+	for (const session of sessions) {
+		const cached = await loadCirclesCached(session.origin);
+		if (cached.some((c) => c.id === circleId)) {
+			rememberCircleOrigin(circleId, session.origin);
+			return normalizeOrigin(session.origin);
+		}
+	}
 	for (const session of sessions) {
 		let circles;
 		try {
