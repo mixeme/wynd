@@ -12,6 +12,7 @@
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { isAccessError } from '$lib/api/client';
 	import { formatDayCardSubtitle, formatEntryDate, pluralPosts } from '$lib/format/time';
+	import { daysSummary } from '$lib/journal/summary-badge';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadDays, loadDaysCached } from '$lib/journal/days';
 	import { paintFromSnapshots } from '$lib/journal/snapshot-first';
@@ -174,10 +175,7 @@
 		{:else}
 			{#if days.length}
 				<Hint class="mt-12">
-					{days.length}
-					{days.length === 1 ? 'день' : days.length < 5 ? 'дня' : 'дней'} из {pluralPosts(
-						totalPosts
-					)}
+					{daysSummary(days.length, totalPosts)}
 				</Hint>
 			{/if}
 			{#each monthGroups as group (group.month)}

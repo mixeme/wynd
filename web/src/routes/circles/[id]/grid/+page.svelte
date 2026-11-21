@@ -12,7 +12,7 @@
 	import PhotoGrid from '$ui/data/PhotoGrid.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
 	import { isAccessError } from '$lib/api/client';
-	import { pluralPosts } from '$lib/format/time';
+	import { gridSummary } from '$lib/journal/summary-badge';
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadDays, loadDaysCached } from '$lib/journal/days';
 	import { groupGridTiles, loadGrid, loadGridCached, type GridTile } from '$lib/journal/grid';
@@ -212,7 +212,7 @@
 		{:else}
 			{#if tiles.length}
 				<Hint class="mt-12">
-					{pluralPosts(tiles.length)} с фото и видео из {pluralPosts(totalPosts)}
+					{gridSummary(tiles.length, totalPosts)}
 				</Hint>
 			{/if}
 			{#each monthGroups as group (group.month)}
