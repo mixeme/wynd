@@ -1,0 +1,12 @@
+{
+  "day-prompt-arrow": {
+    "from_prompt": true,
+    "published_from_feed": true,
+    "returned_to_feed": true
+  },
+  "day-prompt-system": {
+    "from_prompt": true,
+    "published_from_feed": true,
+    "returned_to_feed": true
+  }
+}
