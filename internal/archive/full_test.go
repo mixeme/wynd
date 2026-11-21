@@ -157,7 +157,7 @@ func TestBuildFullArchive(t *testing.T) {
 	if err := json.Unmarshal(read("manifest.json"), &m); err != nil {
 		t.Fatal(err)
 	}
-	if m.Format != archive.FullFormat || m.FormatVersion != 2 || m.SchemaVersion != 1 || m.CircleID != "c1" ||
+	if m.Format != archive.FullFormat || m.FormatVersion != archive.FullFormatVersion || m.SchemaVersion != 1 || m.CircleID != "c1" ||
 		m.Posts != 1 || len(m.Tables) != 4 || !m.SnapshotAt.Equal(in.Data.SnapshotAt) {
 		t.Fatalf("manifest: %+v", m)
 	}

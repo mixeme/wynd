@@ -1,15 +1,22 @@
--- Схема базы целиком. В этот файл свёрнуты обе прежние цепочки: 0001–0030
--- (версии 0.3.0–0.25.10) и 0030–0036 (0.26.0–0.33.6). Нумерация начата
--- заново (план 46, C45): база, дошедшая до 0036 по прежней нумерации, при
--- запуске получает отметку «версия 1» без изменений таблиц (migrate.go);
--- следующая миграция — 0002.
+-- Схема базы целиком (C115): в этот файл свёрнута цепочка 0001–0017 прежней
+-- нумерации (0.34.0–0.53.4). Нумерация начата заново (решение владельца
+-- 2026-11-20): свежая база получает «версию 1» одним шагом; база прежней
+-- нумерации, дошедшая до 17, переводится отметкой без изменений таблиц
+-- (migrate.go), остановившаяся раньше — отказ с выпуском, который её доведёт.
+-- Форма сверена с цепочкой 0001–0017: те же 52 таблицы, 44 индекса и
+-- 33 триггера (TestSquashSchemaMatchesFormerChain); прежняя цепочка хранится
+-- в migrations/legacy/ и поднимается только тестами.
 --
--- Время везде — TEXT фиксированной ширины (xtime.Layout), порядок строк
--- совпадает с порядком времени.
+-- Маяк новой нумерации — отметка версии 0: её прежняя нумерация не ставила,
+-- по ней база узнаётся при запуске. Строки времени — TEXT фиксированной
+-- ширины (xtime.Layout), порядок строк совпадает с порядком времени.
+--
+-- Оператору: база после свёртки не открывается бинарниками до свёртки —
+-- откат только с восстановлением бэкапа.
 
--- Таблицы
+-- Таблицы, индексы и триггеры — в порядке создания прежней цепочкой.
 
-CREATE TABLE account_notify_prefs (
+CREATE TABLE IF NOT EXISTS account_notify_prefs (
     account_id TEXT PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
     posts INTEGER NOT NULL DEFAULT 1 CHECK (posts IN (0, 1)),
     comments INTEGER NOT NULL DEFAULT 1 CHECK (comments IN (0, 1)),
@@ -20,7 +27,7 @@ CREATE TABLE account_notify_prefs (
     mute_until TEXT
 );
 
-CREATE TABLE accounts (
+CREATE TABLE IF NOT EXISTS accounts (
     id TEXT PRIMARY KEY,
     email TEXT NOT NULL COLLATE NOCASE UNIQUE,
     created_at TEXT NOT NULL,
@@ -30,9 +37,9 @@ CREATE TABLE accounts (
     subscription_expires_at TEXT,
     pay_donate_dismissed_version INTEGER NOT NULL DEFAULT 0,
     pay_reminder_sent_for TEXT
-);
+, avatar_shape TEXT NOT NULL DEFAULT 'circle');
 
-CREATE TABLE admin_credentials (
+CREATE TABLE IF NOT EXISTS admin_credentials (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     password_hash TEXT NOT NULL,
     reset_token TEXT,
@@ -40,7 +47,7 @@ CREATE TABLE admin_credentials (
     updated_at TEXT NOT NULL
 );
 
-CREATE TABLE blobs (
+CREATE TABLE IF NOT EXISTS blobs (
     id TEXT PRIMARY KEY,
     account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     sha256 TEXT NOT NULL,
@@ -50,13 +57,9 @@ CREATE TABLE blobs (
     status TEXT NOT NULL CHECK (status IN ('pending', 'complete')),
     created_at TEXT NOT NULL,
     original_filename TEXT
-);
+, content_sha256 TEXT REFERENCES blob_contents(sha256) ON DELETE RESTRICT);
 
--- Полный архив круга (план 51, A1): владелец просит собрать файл со всем
--- кругом, сервер собирает его в фоне и держит до скачивания или до срока.
--- Готовые и собираемые архивы входят в потолок сервера (9.5), но не в квоту
--- круга (решение владельца 2026-10-13: файл временный).
-CREATE TABLE circle_archives (
+CREATE TABLE IF NOT EXISTS circle_archives (
     id TEXT PRIMARY KEY,
     circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
     requested_by_account_id TEXT NOT NULL REFERENCES accounts(id),
@@ -73,14 +76,9 @@ CREATE TABLE circle_archives (
     downloaded_at TEXT,
     removed_reason TEXT CHECK (removed_reason IN ('downloaded', 'expired', 'admin', 'owner', 'canceled')),
     removed_at TEXT
-);
+, scope_revision INTEGER NOT NULL DEFAULT 0, full_journal INTEGER NOT NULL DEFAULT 1 CHECK (full_journal IN (0, 1)), posts INTEGER NOT NULL DEFAULT -1);
 
--- Кто приехал с кругом (план 53, 1.9): участники перенесённого или
--- оживлённого круга, кроме того, кто его поднял. Первый вход в круг
--- встречает их экраном «Круг переехал» / «Круг оживили из архива» вместо
--- вступления; «Войти в круг» отмечает, что встречу видели. Это жизнь круга
--- на этом сервере — в полный архив не идёт.
-CREATE TABLE circle_arrivals (
+CREATE TABLE IF NOT EXISTS circle_arrivals (
     circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
     account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     kind TEXT NOT NULL CHECK (kind IN ('moved', 'revived')),
@@ -89,11 +87,7 @@ CREATE TABLE circle_arrivals (
     PRIMARY KEY (circle_id, account_id)
 );
 
--- Перенос круга по ссылке (план 53, A1 этап 3). На прежнем сервере —
--- circle_moves: владелец выдал ссылку, круг замер, новый сервер забирает
--- полный архив без шифрования и сообщает «принято и сверено»; владелец
--- завершает перенос (круг удаляется) или отменяет его (круг оживает).
-CREATE TABLE circle_moves (
+CREATE TABLE IF NOT EXISTS circle_moves (
     id TEXT PRIMARY KEY,
     circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
     started_by_account_id TEXT NOT NULL REFERENCES accounts(id),
@@ -120,9 +114,9 @@ CREATE TABLE circle_moves (
     accepted_names INTEGER,
     accepted_bytes INTEGER,
     ended_at TEXT
-);
+, snapshot_id TEXT REFERENCES move_snapshots(id) ON DELETE SET NULL, legacy_archive_id TEXT);
 
-CREATE TABLE circle_notify_prefs (
+CREATE TABLE IF NOT EXISTS circle_notify_prefs (
     account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
     posts INTEGER CHECK (posts IN (0, 1)),
@@ -135,7 +129,7 @@ CREATE TABLE circle_notify_prefs (
     PRIMARY KEY (account_id, circle_id)
 );
 
-CREATE TABLE circles (
+CREATE TABLE IF NOT EXISTS circles (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     owner_account_id TEXT NOT NULL,
@@ -159,15 +153,15 @@ CREATE TABLE circles (
     -- Круг замер под архив с удалением или перенос (6.32, 6.36): читать
     -- можно, писать нельзя.
     frozen_at TEXT
-);
+, archive_cutoff_tz TEXT, archive_all INTEGER NOT NULL DEFAULT 1 CHECK (archive_all IN (0, 1)), archive_revision INTEGER NOT NULL DEFAULT 0);
 
-CREATE TABLE code_request_log (
+CREATE TABLE IF NOT EXISTS code_request_log (
     client_ip TEXT NOT NULL,
     email TEXT NOT NULL COLLATE NOCASE,
     requested_at TEXT NOT NULL
 );
 
-CREATE TABLE comments (
+CREATE TABLE IF NOT EXISTS comments (
     id TEXT PRIMARY KEY,
     circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
     post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
@@ -182,7 +176,7 @@ CREATE TABLE comments (
     client_id TEXT
 );
 
-CREATE TABLE day_covers (
+CREATE TABLE IF NOT EXISTS day_covers (
     circle_id TEXT NOT NULL,
     entry_date TEXT NOT NULL,
     event_seq INTEGER NOT NULL UNIQUE REFERENCES events(seq),
@@ -197,7 +191,7 @@ CREATE TABLE day_covers (
     FOREIGN KEY (circle_id, entry_date) REFERENCES days (circle_id, entry_date) ON DELETE CASCADE
 );
 
-CREATE TABLE day_titles (
+CREATE TABLE IF NOT EXISTS day_titles (
     circle_id TEXT NOT NULL,
     entry_date TEXT NOT NULL,
     event_seq INTEGER NOT NULL UNIQUE REFERENCES events(seq),
@@ -211,7 +205,7 @@ CREATE TABLE day_titles (
     FOREIGN KEY (circle_id, entry_date) REFERENCES days (circle_id, entry_date) ON DELETE CASCADE
 );
 
-CREATE TABLE days (
+CREATE TABLE IF NOT EXISTS days (
     circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
     entry_date TEXT NOT NULL,
     title TEXT,
@@ -222,7 +216,7 @@ CREATE TABLE days (
     PRIMARY KEY (circle_id, entry_date)
 );
 
-CREATE TABLE events (
+CREATE TABLE IF NOT EXISTS events (
     seq INTEGER PRIMARY KEY AUTOINCREMENT,
     id TEXT NOT NULL UNIQUE,
     circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
@@ -236,7 +230,7 @@ CREATE TABLE events (
     created_at TEXT NOT NULL
 );
 
-CREATE TABLE identities (
+CREATE TABLE IF NOT EXISTS identities (
     id TEXT PRIMARY KEY,
     circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
     account_id TEXT,
@@ -245,7 +239,7 @@ CREATE TABLE identities (
     UNIQUE (circle_id, account_id)
 );
 
-CREATE TABLE identity_names (
+CREATE TABLE IF NOT EXISTS identity_names (
     id TEXT PRIMARY KEY,
     identity_id TEXT NOT NULL REFERENCES identities(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
@@ -254,9 +248,7 @@ CREATE TABLE identity_names (
     erased_at TEXT
 );
 
--- На новом сервере — incoming_moves: кто вставил ссылку (он и станет
--- владельцем), карточка круга с прежнего сервера, ход и итог.
-CREATE TABLE incoming_moves (
+CREATE TABLE IF NOT EXISTS incoming_moves (
     id TEXT PRIMARY KEY,
     account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     -- Ссылка с ключом: нужна, пока круг забирается; после — стирается.
@@ -283,9 +275,9 @@ CREATE TABLE incoming_moves (
     error TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
-);
+, already_here INTEGER NOT NULL DEFAULT 0, owner_name TEXT NOT NULL DEFAULT '', reviver_absent INTEGER NOT NULL DEFAULT 0, new_member TEXT, people TEXT NOT NULL DEFAULT '[]', source_circle_id TEXT, place_operation_key TEXT, archive_etag TEXT);
 
-CREATE TABLE instance_settings (
+CREATE TABLE IF NOT EXISTS instance_settings (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     name TEXT NOT NULL DEFAULT '',
     registration_mode TEXT NOT NULL DEFAULT 'invite' CHECK (registration_mode IN ('open', 'invite', 'closed')),
@@ -323,9 +315,9 @@ CREATE TABLE instance_settings (
     allow_name_erasure INTEGER NOT NULL DEFAULT 0,
     -- Сколько часов готовый полный архив ждёт скачивания (9.12).
     archive_retention_hours INTEGER NOT NULL DEFAULT 72
-);
+, admin_email TEXT NOT NULL DEFAULT '', admin_trouble_sent_at TEXT);
 
-CREATE TABLE invites (
+CREATE TABLE IF NOT EXISTS invites (
     id TEXT PRIMARY KEY,
     token TEXT NOT NULL UNIQUE,
     circle_id TEXT REFERENCES circles(id) ON DELETE CASCADE,
@@ -339,7 +331,7 @@ CREATE TABLE invites (
     target_account_id TEXT REFERENCES accounts(id)
 );
 
-CREATE TABLE membership_spans (
+CREATE TABLE IF NOT EXISTS membership_spans (
     id TEXT PRIMARY KEY,
     membership_id TEXT NOT NULL REFERENCES memberships(id) ON DELETE CASCADE,
     started_at TEXT NOT NULL,
@@ -348,7 +340,7 @@ CREATE TABLE membership_spans (
     can_write INTEGER NOT NULL DEFAULT 1
 );
 
-CREATE TABLE memberships (
+CREATE TABLE IF NOT EXISTS memberships (
     id TEXT PRIMARY KEY,
     circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
     account_id TEXT NOT NULL,
@@ -361,7 +353,7 @@ CREATE TABLE memberships (
     UNIQUE (circle_id, account_id)
 );
 
-CREATE TABLE pending_circle_joins (
+CREATE TABLE IF NOT EXISTS pending_circle_joins (
     account_id TEXT NOT NULL,
     circle_id TEXT NOT NULL,
     created_at TEXT NOT NULL,
@@ -372,7 +364,7 @@ CREATE TABLE pending_circle_joins (
     FOREIGN KEY (circle_id) REFERENCES circles(id) ON DELETE CASCADE
 );
 
-CREATE TABLE pending_codes (
+CREATE TABLE IF NOT EXISTS pending_codes (
     id TEXT PRIMARY KEY,
     email TEXT NOT NULL COLLATE NOCASE,
     code_hash TEXT NOT NULL,
@@ -387,7 +379,7 @@ CREATE TABLE pending_codes (
     created_at TEXT NOT NULL
 );
 
-CREATE TABLE post_media (
+CREATE TABLE IF NOT EXISTS post_media (
     id TEXT PRIMARY KEY,
     post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
     blob_id TEXT NOT NULL REFERENCES blobs(id),
@@ -408,9 +400,9 @@ CREATE TABLE post_media (
     audio_duration_ms INTEGER,
     audio_peaks TEXT,
     video_poster_blob_id TEXT
-);
+, video_duration_ms INTEGER);
 
-CREATE TABLE posts (
+CREATE TABLE IF NOT EXISTS posts (
     id TEXT PRIMARY KEY,
     circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
     event_seq INTEGER NOT NULL UNIQUE REFERENCES events(seq),
@@ -426,7 +418,7 @@ CREATE TABLE posts (
     client_id TEXT
 );
 
-CREATE TABLE push_subscriptions (
+CREATE TABLE IF NOT EXISTS push_subscriptions (
     id TEXT PRIMARY KEY,
     account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     endpoint TEXT NOT NULL UNIQUE,
@@ -436,10 +428,7 @@ CREATE TABLE push_subscriptions (
     created_at TEXT NOT NULL
 );
 
--- Просьба о месте. Без круга — место для круга, которого ещё нет (оживление
--- из архива, план 52): с именем будущего круга; одобренная отмечается
--- использованной, когда круг ожил.
-CREATE TABLE quota_requests (
+CREATE TABLE IF NOT EXISTS quota_requests (
     id TEXT PRIMARY KEY,
     circle_id TEXT REFERENCES circles(id) ON DELETE CASCADE,
     requested_by_account_id TEXT NOT NULL REFERENCES accounts(id),
@@ -450,9 +439,9 @@ CREATE TABLE quota_requests (
     resolved_at TEXT,
     circle_name TEXT,
     used_at TEXT
-);
+, withdrawn_at TEXT, operation_key TEXT);
 
-CREATE TABLE reactions (
+CREATE TABLE IF NOT EXISTS reactions (
     id TEXT PRIMARY KEY,
     circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
     post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
@@ -467,7 +456,7 @@ CREATE TABLE reactions (
     UNIQUE (post_id, identity_id)
 );
 
-CREATE TABLE read_cursors (
+CREATE TABLE IF NOT EXISTS read_cursors (
     account_id TEXT NOT NULL,
     circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
     last_read_seq INTEGER NOT NULL DEFAULT 0,
@@ -475,7 +464,7 @@ CREATE TABLE read_cursors (
     PRIMARY KEY (account_id, circle_id)
 );
 
-CREATE TABLE sessions (
+CREATE TABLE IF NOT EXISTS sessions (
     token_hash TEXT PRIMARY KEY,
     account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     kind TEXT NOT NULL CHECK (kind IN ('participant', 'admin')),
@@ -483,7 +472,7 @@ CREATE TABLE sessions (
     created_at TEXT NOT NULL
 );
 
-CREATE TABLE upload_sessions (
+CREATE TABLE IF NOT EXISTS upload_sessions (
     id TEXT PRIMARY KEY,
     account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     expected_size INTEGER NOT NULL CHECK (expected_size > 0),
@@ -495,7 +484,7 @@ CREATE TABLE upload_sessions (
     original_filename TEXT
 );
 
-CREATE TABLE pay_requests (
+CREATE TABLE IF NOT EXISTS pay_requests (
     id TEXT PRIMARY KEY,
     account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     blob_id TEXT NOT NULL REFERENCES blobs(id),
@@ -506,7 +495,7 @@ CREATE TABLE pay_requests (
     blob_deleted INTEGER NOT NULL DEFAULT 0
 );
 
-CREATE TABLE response_cursors (
+CREATE TABLE IF NOT EXISTS response_cursors (
     account_id TEXT NOT NULL,
     circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
     seq INTEGER NOT NULL DEFAULT 0,
@@ -514,7 +503,7 @@ CREATE TABLE response_cursors (
     PRIMARY KEY (account_id, circle_id)
 );
 
-CREATE TABLE comment_media (
+CREATE TABLE IF NOT EXISTS comment_media (
     id TEXT PRIMARY KEY,
     comment_id TEXT NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
     blob_id TEXT NOT NULL REFERENCES blobs(id),
@@ -525,47 +514,75 @@ CREATE TABLE comment_media (
     audio_peaks TEXT
 );
 
--- Индексы
+CREATE INDEX IF NOT EXISTS idx_blobs_account ON blobs (account_id);
 
-CREATE INDEX idx_blobs_account ON blobs (account_id);
-CREATE INDEX idx_circle_archives_circle ON circle_archives (circle_id, requested_at);
-CREATE INDEX idx_circle_archives_status ON circle_archives (status, expires_at);
-CREATE INDEX idx_circle_moves_circle ON circle_moves (circle_id, started_at);
-CREATE INDEX idx_code_request_log_ip_time ON code_request_log (client_ip, requested_at);
-CREATE INDEX idx_comments_post ON comments (post_id, created_at);
-CREATE INDEX idx_events_circle_created ON events (circle_id, created_at);
-CREATE INDEX idx_events_circle_seq ON events (circle_id, seq);
-CREATE INDEX idx_incoming_moves_account ON incoming_moves (account_id, created_at);
-CREATE INDEX idx_incoming_moves_status ON incoming_moves (status);
-CREATE INDEX idx_invites_token ON invites (token);
-CREATE INDEX idx_membership_spans_membership ON membership_spans (membership_id, started_at);
-CREATE INDEX idx_pending_codes_email ON pending_codes (email, created_at);
-CREATE INDEX idx_pending_codes_account ON pending_codes (account_id) WHERE account_id IS NOT NULL;
-CREATE INDEX idx_post_media_blob ON post_media (blob_id);
-CREATE INDEX idx_post_media_post ON post_media (post_id, sort_order);
-CREATE INDEX idx_posts_circle_created ON posts (circle_id, created_at);
-CREATE INDEX idx_posts_circle_entry_date ON posts (circle_id, entry_date);
-CREATE INDEX idx_push_subscriptions_account ON push_subscriptions (account_id);
-CREATE INDEX idx_quota_requests_status ON quota_requests (status, created_at);
-CREATE INDEX idx_reactions_post ON reactions (post_id, created_at);
-CREATE INDEX idx_sessions_account ON sessions (account_id, kind);
-CREATE INDEX idx_upload_sessions_account ON upload_sessions (account_id, expires_at);
-CREATE INDEX idx_pay_requests_pending ON pay_requests(status, created_at);
-CREATE INDEX idx_pay_requests_account ON pay_requests(account_id, status);
-CREATE INDEX idx_invites_member_target ON invites (circle_id, target_account_id) WHERE target_account_id IS NOT NULL AND revoked_at IS NULL;
-CREATE UNIQUE INDEX idx_posts_client_id ON posts (circle_id, client_id) WHERE client_id IS NOT NULL;
-CREATE UNIQUE INDEX idx_comments_client_id ON comments (circle_id, client_id) WHERE client_id IS NOT NULL;
-CREATE UNIQUE INDEX idx_pay_requests_one_pending ON pay_requests (account_id) WHERE status = 'pending';
-CREATE INDEX idx_code_request_log_email_time ON code_request_log (email, requested_at);
-CREATE INDEX idx_post_media_audio_cover ON post_media (audio_cover_blob_id) WHERE audio_cover_blob_id IS NOT NULL;
-CREATE INDEX idx_post_media_video_poster ON post_media (video_poster_blob_id) WHERE video_poster_blob_id IS NOT NULL;
-CREATE INDEX idx_comment_media_comment ON comment_media (comment_id, sort_order);
-CREATE INDEX idx_comment_media_blob ON comment_media (blob_id);
+CREATE INDEX IF NOT EXISTS idx_circle_archives_circle ON circle_archives (circle_id, requested_at);
 
--- Поиск: одна таблица FTS на записи, комментарии, названия дней и файлы;
--- триггеры держат её в ногу с исходными таблицами.
+CREATE INDEX IF NOT EXISTS idx_circle_archives_status ON circle_archives (status, expires_at);
 
-CREATE VIRTUAL TABLE content_fts USING fts5(
+CREATE INDEX IF NOT EXISTS idx_circle_moves_circle ON circle_moves (circle_id, started_at);
+
+CREATE INDEX IF NOT EXISTS idx_code_request_log_ip_time ON code_request_log (client_ip, requested_at);
+
+CREATE INDEX IF NOT EXISTS idx_comments_post ON comments (post_id, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_events_circle_created ON events (circle_id, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_events_circle_seq ON events (circle_id, seq);
+
+CREATE INDEX IF NOT EXISTS idx_incoming_moves_account ON incoming_moves (account_id, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_incoming_moves_status ON incoming_moves (status);
+
+CREATE INDEX IF NOT EXISTS idx_invites_token ON invites (token);
+
+CREATE INDEX IF NOT EXISTS idx_membership_spans_membership ON membership_spans (membership_id, started_at);
+
+CREATE INDEX IF NOT EXISTS idx_pending_codes_email ON pending_codes (email, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_pending_codes_account ON pending_codes (account_id) WHERE account_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_post_media_blob ON post_media (blob_id);
+
+CREATE INDEX IF NOT EXISTS idx_post_media_post ON post_media (post_id, sort_order);
+
+CREATE INDEX IF NOT EXISTS idx_posts_circle_created ON posts (circle_id, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_posts_circle_entry_date ON posts (circle_id, entry_date);
+
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_account ON push_subscriptions (account_id);
+
+CREATE INDEX IF NOT EXISTS idx_quota_requests_status ON quota_requests (status, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_reactions_post ON reactions (post_id, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_account ON sessions (account_id, kind);
+
+CREATE INDEX IF NOT EXISTS idx_upload_sessions_account ON upload_sessions (account_id, expires_at);
+
+CREATE INDEX IF NOT EXISTS idx_pay_requests_pending ON pay_requests(status, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_pay_requests_account ON pay_requests(account_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_invites_member_target ON invites (circle_id, target_account_id) WHERE target_account_id IS NOT NULL AND revoked_at IS NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_client_id ON posts (circle_id, client_id) WHERE client_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_comments_client_id ON comments (circle_id, client_id) WHERE client_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pay_requests_one_pending ON pay_requests (account_id) WHERE status = 'pending';
+
+CREATE INDEX IF NOT EXISTS idx_code_request_log_email_time ON code_request_log (email, requested_at);
+
+CREATE INDEX IF NOT EXISTS idx_post_media_audio_cover ON post_media (audio_cover_blob_id) WHERE audio_cover_blob_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_post_media_video_poster ON post_media (video_poster_blob_id) WHERE video_poster_blob_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_comment_media_comment ON comment_media (comment_id, sort_order);
+
+CREATE INDEX IF NOT EXISTS idx_comment_media_blob ON comment_media (blob_id);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS content_fts USING fts5(
     body,
     post_id UNINDEXED,
     circle_id UNINDEXED,
@@ -577,19 +594,29 @@ CREATE VIRTUAL TABLE content_fts USING fts5(
     tokenize = 'unicode61'
 );
 
-CREATE TRIGGER fts_comment_delete AFTER DELETE ON comments
+CREATE TABLE IF NOT EXISTS 'content_fts_data'(id INTEGER PRIMARY KEY, block BLOB);
+
+CREATE TABLE IF NOT EXISTS 'content_fts_idx'(segid, term, pgno, PRIMARY KEY(segid, term)) WITHOUT ROWID;
+
+CREATE TABLE IF NOT EXISTS 'content_fts_content'(id INTEGER PRIMARY KEY, c0, c1, c2, c3, c4, c5, c6, c7);
+
+CREATE TABLE IF NOT EXISTS 'content_fts_docsize'(id INTEGER PRIMARY KEY, sz BLOB);
+
+CREATE TABLE IF NOT EXISTS 'content_fts_config'(k PRIMARY KEY, v) WITHOUT ROWID;
+
+CREATE TRIGGER IF NOT EXISTS fts_comment_delete AFTER DELETE ON comments
 BEGIN
     DELETE FROM content_fts WHERE comment_id = OLD.id;
 END;
 
-CREATE TRIGGER fts_comment_insert AFTER INSERT ON comments WHEN NEW.deleted = 0 AND NEW.body IS NOT NULL AND NEW.body != ''
+CREATE TRIGGER IF NOT EXISTS fts_comment_insert AFTER INSERT ON comments WHEN NEW.deleted = 0 AND NEW.body IS NOT NULL AND NEW.body != ''
 BEGIN
     INSERT INTO content_fts (body, post_id, circle_id, comment_id, author_name, kind, created_at, entry_date)
     SELECT NEW.body, NEW.post_id, NEW.circle_id, NEW.id, NEW.author_name, 'comment', NEW.created_at, p.entry_date
     FROM posts p WHERE p.id = NEW.post_id;
 END;
 
-CREATE TRIGGER fts_comment_update AFTER UPDATE ON comments
+CREATE TRIGGER IF NOT EXISTS fts_comment_update AFTER UPDATE ON comments
 BEGIN
     DELETE FROM content_fts WHERE comment_id = OLD.id AND kind = 'comment';
     INSERT INTO content_fts (body, post_id, circle_id, comment_id, author_name, kind, created_at, entry_date)
@@ -598,18 +625,18 @@ BEGIN
       AND NEW.deleted = 0 AND NEW.body IS NOT NULL AND NEW.body != '';
 END;
 
-CREATE TRIGGER fts_post_delete AFTER DELETE ON posts
+CREATE TRIGGER IF NOT EXISTS fts_post_delete AFTER DELETE ON posts
 BEGIN
     DELETE FROM content_fts WHERE post_id = OLD.id;
 END;
 
-CREATE TRIGGER fts_post_insert AFTER INSERT ON posts WHEN NEW.deleted = 0 AND NEW.body IS NOT NULL AND NEW.body != ''
+CREATE TRIGGER IF NOT EXISTS fts_post_insert AFTER INSERT ON posts WHEN NEW.deleted = 0 AND NEW.body IS NOT NULL AND NEW.body != ''
 BEGIN
     INSERT INTO content_fts (body, post_id, circle_id, comment_id, author_name, kind, created_at, entry_date)
     VALUES (NEW.body, NEW.id, NEW.circle_id, '', NEW.author_name, 'post', NEW.created_at, NEW.entry_date);
 END;
 
-CREATE TRIGGER fts_post_update AFTER UPDATE ON posts
+CREATE TRIGGER IF NOT EXISTS fts_post_update AFTER UPDATE ON posts
 BEGIN
     DELETE FROM content_fts WHERE post_id = OLD.id AND kind = 'post';
     INSERT INTO content_fts (body, post_id, circle_id, comment_id, author_name, kind, created_at, entry_date)
@@ -617,7 +644,7 @@ BEGIN
     WHERE NEW.deleted = 0 AND NEW.body IS NOT NULL AND NEW.body != '';
 END;
 
-CREATE TRIGGER fts_media_insert AFTER INSERT ON post_media WHEN NEW.kind = 'attachment'
+CREATE TRIGGER IF NOT EXISTS fts_media_insert AFTER INSERT ON post_media WHEN NEW.kind = 'attachment'
 BEGIN
     INSERT INTO content_fts (body, post_id, circle_id, comment_id, author_name, kind, created_at, entry_date)
     SELECT trim(COALESCE(NEW.audio_artist, '') || ' ' || COALESCE(NEW.audio_title, '') || ' ' || COALESCE(b.original_filename, '')),
@@ -630,7 +657,7 @@ BEGIN
       AND trim(COALESCE(NEW.audio_title, '') || COALESCE(NEW.audio_artist, '') || COALESCE(b.original_filename, '')) != '';
 END;
 
-CREATE TRIGGER fts_media_update AFTER UPDATE ON post_media
+CREATE TRIGGER IF NOT EXISTS fts_media_update AFTER UPDATE ON post_media
 BEGIN
     DELETE FROM content_fts WHERE kind IN ('file', 'audio') AND comment_id = OLD.id;
     INSERT INTO content_fts (body, post_id, circle_id, comment_id, author_name, kind, created_at, entry_date)
@@ -644,18 +671,18 @@ BEGIN
       AND trim(COALESCE(NEW.audio_title, '') || COALESCE(NEW.audio_artist, '') || COALESCE(b.original_filename, '')) != '';
 END;
 
-CREATE TRIGGER fts_media_delete AFTER DELETE ON post_media
+CREATE TRIGGER IF NOT EXISTS fts_media_delete AFTER DELETE ON post_media
 BEGIN
     DELETE FROM content_fts WHERE kind IN ('file', 'audio') AND comment_id = OLD.id;
 END;
 
-CREATE TRIGGER fts_media_post_update AFTER UPDATE OF entry_date, author_name ON posts
+CREATE TRIGGER IF NOT EXISTS fts_media_post_update AFTER UPDATE OF entry_date, author_name ON posts
 BEGIN
     UPDATE content_fts SET entry_date = NEW.entry_date, author_name = NEW.author_name
     WHERE post_id = NEW.id AND kind IN ('file', 'audio');
 END;
 
-CREATE TRIGGER fts_day_insert AFTER INSERT ON day_titles
+CREATE TRIGGER IF NOT EXISTS fts_day_insert AFTER INSERT ON day_titles
 BEGIN
     DELETE FROM content_fts WHERE kind = 'day' AND circle_id = NEW.circle_id AND entry_date = NEW.entry_date;
     INSERT INTO content_fts (body, post_id, circle_id, comment_id, author_name, kind, created_at, entry_date)
@@ -667,7 +694,7 @@ BEGIN
     ) AND dt.title IS NOT NULL AND dt.title != '';
 END;
 
-CREATE TRIGGER fts_day_update AFTER UPDATE ON day_titles
+CREATE TRIGGER IF NOT EXISTS fts_day_update AFTER UPDATE ON day_titles
 BEGIN
     DELETE FROM content_fts WHERE kind = 'day' AND circle_id = NEW.circle_id AND entry_date = NEW.entry_date;
     INSERT INTO content_fts (body, post_id, circle_id, comment_id, author_name, kind, created_at, entry_date)
@@ -679,7 +706,7 @@ BEGIN
     ) AND dt.title IS NOT NULL AND dt.title != '';
 END;
 
-CREATE TRIGGER fts_day_delete AFTER DELETE ON day_titles
+CREATE TRIGGER IF NOT EXISTS fts_day_delete AFTER DELETE ON day_titles
 BEGIN
     DELETE FROM content_fts WHERE kind = 'day' AND circle_id = OLD.circle_id AND entry_date = OLD.entry_date;
     INSERT INTO content_fts (body, post_id, circle_id, comment_id, author_name, kind, created_at, entry_date)
@@ -691,7 +718,7 @@ BEGIN
     ) AND dt.title IS NOT NULL AND dt.title != '';
 END;
 
-CREATE TRIGGER fts_comment_media_insert AFTER INSERT ON comment_media
+CREATE TRIGGER IF NOT EXISTS fts_comment_media_insert AFTER INSERT ON comment_media
 WHEN NEW.kind = 'attachment' AND NEW.voice = 0
 BEGIN
     INSERT INTO content_fts (body, post_id, circle_id, comment_id, author_name, kind, created_at, entry_date)
@@ -705,33 +732,25 @@ BEGIN
       AND trim(COALESCE(b.original_filename, '')) != '';
 END;
 
-CREATE TRIGGER fts_comment_media_delete AFTER DELETE ON comment_media
+CREATE TRIGGER IF NOT EXISTS fts_comment_media_delete AFTER DELETE ON comment_media
 BEGIN
     DELETE FROM content_fts WHERE kind IN ('cfile', 'caudio') AND comment_id = OLD.id;
 END;
 
-CREATE TRIGGER fts_comment_media_post_update AFTER UPDATE OF entry_date ON posts
+CREATE TRIGGER IF NOT EXISTS fts_comment_media_post_update AFTER UPDATE OF entry_date ON posts
 BEGIN
     UPDATE content_fts SET entry_date = NEW.entry_date
     WHERE post_id = NEW.id AND kind IN ('cfile', 'caudio');
 END;
 
--- Квота текста (C42): триггеры ведут circles.text_bytes — сколько байт
--- занимают строки круга в базе. Вес строки — служебная часть + байты текста;
--- тело записи, комментария и название дня лежат ещё в поисковом индексе
--- (копией и словарём), поэтому их байты считаются трижды. Постоянные
--- подобраны замером роста файла базы 2026-10-14 (600 записей по 60 и 3000
--- байт русского текста, файл после VACUUM): запись 550, комментарий 560,
--- реакция 450, событие 400, название дня 250 байт.
-
-CREATE TRIGGER quota_text_post_insert AFTER INSERT ON posts
+CREATE TRIGGER IF NOT EXISTS quota_text_post_insert AFTER INSERT ON posts
 BEGIN
     UPDATE circles SET text_bytes = text_bytes + 550
         + 3 * length(CAST(COALESCE(NEW.body, '') AS BLOB)) + length(CAST(NEW.author_name AS BLOB))
     WHERE id = NEW.circle_id;
 END;
 
-CREATE TRIGGER quota_text_post_update AFTER UPDATE OF body, author_name ON posts
+CREATE TRIGGER IF NOT EXISTS quota_text_post_update AFTER UPDATE OF body, author_name ON posts
 BEGIN
     UPDATE circles SET text_bytes = text_bytes
         + 3 * (length(CAST(COALESCE(NEW.body, '') AS BLOB)) - length(CAST(COALESCE(OLD.body, '') AS BLOB)))
@@ -739,21 +758,21 @@ BEGIN
     WHERE id = NEW.circle_id;
 END;
 
-CREATE TRIGGER quota_text_post_delete AFTER DELETE ON posts
+CREATE TRIGGER IF NOT EXISTS quota_text_post_delete AFTER DELETE ON posts
 BEGIN
     UPDATE circles SET text_bytes = text_bytes - 550
         - 3 * length(CAST(COALESCE(OLD.body, '') AS BLOB)) - length(CAST(OLD.author_name AS BLOB))
     WHERE id = OLD.circle_id;
 END;
 
-CREATE TRIGGER quota_text_comment_insert AFTER INSERT ON comments
+CREATE TRIGGER IF NOT EXISTS quota_text_comment_insert AFTER INSERT ON comments
 BEGIN
     UPDATE circles SET text_bytes = text_bytes + 560
         + 3 * length(CAST(COALESCE(NEW.body, '') AS BLOB)) + length(CAST(NEW.author_name AS BLOB))
     WHERE id = NEW.circle_id;
 END;
 
-CREATE TRIGGER quota_text_comment_update AFTER UPDATE OF body, author_name ON comments
+CREATE TRIGGER IF NOT EXISTS quota_text_comment_update AFTER UPDATE OF body, author_name ON comments
 BEGIN
     UPDATE circles SET text_bytes = text_bytes
         + 3 * (length(CAST(COALESCE(NEW.body, '') AS BLOB)) - length(CAST(COALESCE(OLD.body, '') AS BLOB)))
@@ -761,21 +780,21 @@ BEGIN
     WHERE id = NEW.circle_id;
 END;
 
-CREATE TRIGGER quota_text_comment_delete AFTER DELETE ON comments
+CREATE TRIGGER IF NOT EXISTS quota_text_comment_delete AFTER DELETE ON comments
 BEGIN
     UPDATE circles SET text_bytes = text_bytes - 560
         - 3 * length(CAST(COALESCE(OLD.body, '') AS BLOB)) - length(CAST(OLD.author_name AS BLOB))
     WHERE id = OLD.circle_id;
 END;
 
-CREATE TRIGGER quota_text_reaction_insert AFTER INSERT ON reactions
+CREATE TRIGGER IF NOT EXISTS quota_text_reaction_insert AFTER INSERT ON reactions
 BEGIN
     UPDATE circles SET text_bytes = text_bytes + 450
         + length(CAST(NEW.emoji AS BLOB)) + length(CAST(NEW.author_name AS BLOB))
     WHERE id = NEW.circle_id;
 END;
 
-CREATE TRIGGER quota_text_reaction_update AFTER UPDATE OF emoji, author_name ON reactions
+CREATE TRIGGER IF NOT EXISTS quota_text_reaction_update AFTER UPDATE OF emoji, author_name ON reactions
 BEGIN
     UPDATE circles SET text_bytes = text_bytes
         + length(CAST(NEW.emoji AS BLOB)) - length(CAST(OLD.emoji AS BLOB))
@@ -783,21 +802,21 @@ BEGIN
     WHERE id = NEW.circle_id;
 END;
 
-CREATE TRIGGER quota_text_reaction_delete AFTER DELETE ON reactions
+CREATE TRIGGER IF NOT EXISTS quota_text_reaction_delete AFTER DELETE ON reactions
 BEGIN
     UPDATE circles SET text_bytes = text_bytes - 450
         - length(CAST(OLD.emoji AS BLOB)) - length(CAST(OLD.author_name AS BLOB))
     WHERE id = OLD.circle_id;
 END;
 
-CREATE TRIGGER quota_text_event_insert AFTER INSERT ON events
+CREATE TRIGGER IF NOT EXISTS quota_text_event_insert AFTER INSERT ON events
 BEGIN
     UPDATE circles SET text_bytes = text_bytes + 400
         + length(CAST(NEW.payload AS BLOB)) + length(CAST(NEW.summary AS BLOB)) + length(CAST(NEW.actor_name AS BLOB))
     WHERE id = NEW.circle_id;
 END;
 
-CREATE TRIGGER quota_text_event_update AFTER UPDATE OF payload, summary, actor_name ON events
+CREATE TRIGGER IF NOT EXISTS quota_text_event_update AFTER UPDATE OF payload, summary, actor_name ON events
 BEGIN
     UPDATE circles SET text_bytes = text_bytes
         + length(CAST(NEW.payload AS BLOB)) - length(CAST(OLD.payload AS BLOB))
@@ -806,25 +825,145 @@ BEGIN
     WHERE id = NEW.circle_id;
 END;
 
-CREATE TRIGGER quota_text_event_delete AFTER DELETE ON events
+CREATE TRIGGER IF NOT EXISTS quota_text_event_delete AFTER DELETE ON events
 BEGIN
     UPDATE circles SET text_bytes = text_bytes - 400
         - length(CAST(OLD.payload AS BLOB)) - length(CAST(OLD.summary AS BLOB)) - length(CAST(OLD.actor_name AS BLOB))
     WHERE id = OLD.circle_id;
 END;
 
-CREATE TRIGGER quota_text_title_insert AFTER INSERT ON day_titles
+CREATE TRIGGER IF NOT EXISTS quota_text_title_insert AFTER INSERT ON day_titles
 BEGIN
     UPDATE circles SET text_bytes = text_bytes + 250 + 3 * length(CAST(NEW.title AS BLOB))
     WHERE id = NEW.circle_id;
 END;
 
-CREATE TRIGGER quota_text_title_delete AFTER DELETE ON day_titles
+CREATE TRIGGER IF NOT EXISTS quota_text_title_delete AFTER DELETE ON day_titles
 BEGIN
     UPDATE circles SET text_bytes = text_bytes - 250 - 3 * length(CAST(OLD.title AS BLOB))
     WHERE id = OLD.circle_id;
 END;
 
--- Единственная строка настроек сервера. Потолок хранилища — 80 % диска.
-INSERT INTO instance_settings (id, updated_at, storage_quota_disk_percent)
-VALUES (1, '1970-01-01T00:00:00.000000000Z', 80);
+CREATE TABLE IF NOT EXISTS circle_pins (
+    account_id TEXT NOT NULL,
+    circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
+    pinned_at TEXT NOT NULL,
+    PRIMARY KEY (account_id, circle_id)
+);
+
+CREATE TABLE IF NOT EXISTS circle_groups (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE (account_id, name)
+);
+
+CREATE TABLE IF NOT EXISTS circle_group_items (
+    group_id TEXT NOT NULL REFERENCES circle_groups(id) ON DELETE CASCADE,
+    account_id TEXT NOT NULL,
+    circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
+    added_at TEXT NOT NULL,
+    PRIMARY KEY (account_id, circle_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_circle_group_items_group ON circle_group_items(group_id);
+
+CREATE TRIGGER IF NOT EXISTS circle_group_drop_empty AFTER DELETE ON circle_group_items
+WHEN NOT EXISTS (SELECT 1 FROM circle_group_items WHERE group_id = OLD.group_id)
+BEGIN
+    DELETE FROM circle_groups WHERE id = OLD.group_id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS circle_pin_gone AFTER UPDATE OF status ON memberships
+WHEN NEW.status = 'gone'
+BEGIN
+    DELETE FROM circle_pins WHERE account_id = NEW.account_id AND circle_id = NEW.circle_id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS circle_group_leave AFTER UPDATE OF status ON memberships
+WHEN NEW.status = 'gone'
+BEGIN
+    DELETE FROM circle_group_items WHERE account_id = NEW.account_id AND circle_id = NEW.circle_id;
+END;
+
+CREATE TABLE IF NOT EXISTS archive_spans (
+    id TEXT PRIMARY KEY,
+    circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
+    started_at TEXT NOT NULL,
+    ended_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS archive_spans_circle ON archive_spans(circle_id);
+
+CREATE TABLE IF NOT EXISTS move_snapshots (
+    id TEXT PRIMARY KEY,
+    circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
+    snapshot_at TEXT NOT NULL,
+    schema_version INTEGER NOT NULL,
+    wynd_version TEXT NOT NULL,
+    card BLOB NOT NULL,
+    data BLOB,
+    layout BLOB,
+    archive_size INTEGER NOT NULL DEFAULT 0,
+    posts INTEGER NOT NULL,
+    names INTEGER NOT NULL,
+    media_bytes INTEGER NOT NULL,
+    CHECK (data IS NOT NULL OR layout IS NOT NULL)
+);
+
+CREATE TABLE IF NOT EXISTS move_snapshot_blobs (
+    snapshot_id TEXT NOT NULL REFERENCES move_snapshots(id) ON DELETE CASCADE,
+    blob_id TEXT NOT NULL REFERENCES blobs(id) ON DELETE RESTRICT,
+    PRIMARY KEY (snapshot_id, blob_id)
+);
+
+CREATE INDEX IF NOT EXISTS move_snapshot_blobs_blob ON move_snapshot_blobs(blob_id);
+
+CREATE TABLE IF NOT EXISTS move_snapshot_literals (
+    snapshot_id TEXT NOT NULL REFERENCES move_snapshots(id) ON DELETE CASCADE,
+    part INTEGER NOT NULL,
+    data BLOB NOT NULL,
+    PRIMARY KEY (snapshot_id, part)
+);
+
+CREATE TABLE IF NOT EXISTS blob_contents (
+    sha256 TEXT PRIMARY KEY CHECK(length(sha256) = 64),
+    storage_path TEXT NOT NULL UNIQUE,
+    size_bytes INTEGER NOT NULL CHECK(size_bytes >= 0),
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS blobs_content ON blobs(content_sha256);
+
+CREATE INDEX IF NOT EXISTS blobs_storage_path ON blobs(storage_path);
+
+CREATE TABLE IF NOT EXISTS blob_file_gc (storage_path TEXT PRIMARY KEY);
+
+CREATE TABLE IF NOT EXISTS blob_backup_leases (id TEXT PRIMARY KEY, expires_at INTEGER NOT NULL);
+
+CREATE TABLE IF NOT EXISTS quota_reservations (
+    id TEXT PRIMARY KEY,
+    circle_id TEXT NOT NULL,
+    instance_bytes INTEGER NOT NULL DEFAULT 0,
+    circle_bytes INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS quota_reservations_circle ON quota_reservations(circle_id, created_at);
+
+CREATE INDEX IF NOT EXISTS quota_reservations_created ON quota_reservations(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_comments_circle ON comments (circle_id);
+
+CREATE INDEX IF NOT EXISTS idx_blobs_pending_size ON blobs (size_bytes) WHERE status = 'pending';
+
+CREATE INDEX IF NOT EXISTS idx_blob_contents_size ON blob_contents (size_bytes);
+
+-- Засев прежней цепочки: единственная строка настроек сервера
+-- (потолок хранилища — 80 % диска). Тени полнотекстового индекса
+-- заполняют триггеры FTS — их не засеваем.
+INSERT INTO "instance_settings" ("id", "name", "registration_mode", "bootstrapped", "updated_at", "storage_quota_bytes", "compress_photo_max_px", "compress_photo_quality", "compress_video_max_height", "compress_video_bitrate_kbps", "compress_attachment_max_bytes", "smtp_host", "smtp_port", "smtp_username", "smtp_password", "smtp_from", "smtp_test_sent_at", "vapid_public_key", "vapid_private_key", "last_routine_at", "last_backup_at", "default_circle_quota_bytes", "pay_requisites", "pay_donate_text", "pay_donate_show", "pay_donate_dismissible", "pay_donate_until", "pay_donate_version", "pay_subscription_required", "pay_subscription_remind_days", "storage_quota_disk_percent", "smtp_last_error", "compress_audio_bitrate_kbps", "allow_name_erasure", "archive_retention_hours", "admin_email", "admin_trouble_sent_at") VALUES (1, '', 'invite', 0, '1970-01-01T00:00:00.000000000Z', 107374182400, 2048, 80, 1080, 6000, 104857600, '', 587, '', '', '', NULL, '', '', NULL, NULL, NULL, '', '', 0, 1, NULL, 0, 0, 7, 80, '', 192, 0, 72, '', NULL);
+
+-- Маяк новой нумерации (C115): отметка 0, у прежней нумерации её не было.
+INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (0, '1970-01-01T00:00:00.000000000Z');

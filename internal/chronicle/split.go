@@ -207,7 +207,7 @@ func (c *Chronicle) SplitCircle(ctx context.Context, in SplitInput) (SplitResult
 	}
 	makerMembership := ""
 	revived, err := c.ReviveCircle(ctx, ReviveInput{
-		FormatVersion: 2,
+		FormatVersion: ArchiveFormatVersion,
 		SchemaVersion: ReviveSchemaVersions[len(ReviveSchemaVersions)-1],
 		Tables:        tables,
 		Accounts:      accounts,

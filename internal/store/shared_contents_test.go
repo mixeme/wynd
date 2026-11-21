@@ -2,12 +2,15 @@ package store
 
 import "testing"
 
+// Перевод базы прежней нумерации (C115) сохраняет логические метаданные
+// блобов: общий столбец содержимого появляется, прежние имена и пути целы.
 func TestSharedContentsMigrationKeepsLogicalMetadata(t *testing.T) {
-	s := baseAt(t, 14)
+	s := legacyBaseAt(t, 14)
 	if _, err := s.db.Exec(`INSERT INTO accounts(id,email,created_at) VALUES('a','a@test.local','2026-11-01T00:00:00Z');
  INSERT INTO blobs(id,account_id,sha256,size_bytes,mime_type,original_filename,storage_path,status,created_at) VALUES('old','a','legacy-sha',17,'image/png','own.png','ol/old','complete','2026-11-01T00:00:00Z')`); err != nil {
 		t.Fatal(err)
 	}
+	completeLegacy(t, s)
 	if err := migrate(s.db); err != nil {
 		t.Fatal(err)
 	}

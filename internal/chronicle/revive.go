@@ -16,9 +16,20 @@ import (
 // заново: все идентификаторы новые — круг может ожить рядом с живым исходным,
 // и на том же сервере; люди — по почте; владелец — тот, кто оживил.
 
+// ArchiveFormatVersion — разметка архива, которую этот сервер пишет (план 46,
+// C115): версия 3 — нумерация схем начата заново со свёртки миграций, версия 2
+// — прежняя нумерация 1–17 (0.34.0–0.53.4), версия 1 — разметка до 0.34.0.
+const ArchiveFormatVersion = 3
+
 // ReviveSchemaVersions — какие схемы архива сервер умеет оживлять (разметка
-// архива 2, новая нумерация миграций). Новая схема с другими колонками —
-// сюда и в переводчик строк.
+// архива 3, нумерация со свёртки миграций C115). Новая схема с другими
+// колонками — сюда и в переводчик строк.
+// Схема 1 — вся схема свёрнута в базовую (migrations/0001_schema.sql), форма
+// та же, что схема 17 разметки 2.
+var ReviveSchemaVersions = []int{1}
+
+// RevivePrevSchemaVersions — схемы архивов разметки 2: прежняя нумерация
+// миграций (0.34.0–0.53.4).
 // Схемы 2–3 (раскладка улочки, A2), 4 (почта администратора) и 5 (письмо о
 // поломках) таблиц круга не меняли. Схема 6 добавила post_media.video_duration_ms:
 // reviveRow берёт только столбцы, что есть в обеих схемах, архив без него — NULL.
@@ -32,10 +43,10 @@ import (
 // квоты, план 60 §8) — тем более: манифест штампует её номером из
 // schema_migrations, и без неё в списке перенос между серверами схемы 17
 // отвергал любой архив («unknown archive schema»).
-var ReviveSchemaVersions = []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}
+var RevivePrevSchemaVersions = []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}
 
-// ReviveLegacySchemaVersions — схемы архивов разметки 1: номера прежней
-// нумерации (до 0.34.0). Схема 36 — та же, что 1.
+// ReviveLegacySchemaVersions — схемы архивов разметки 1: номера нумерации
+// до 0.34.0. Схема 36 — та же, что 1 прежней нумерации.
 var ReviveLegacySchemaVersions = []int{34, 35, 36}
 
 // ReviveSchemaKnown — оживляет ли сервер архив такой разметки и схемы.
@@ -44,6 +55,8 @@ func ReviveSchemaKnown(formatVersion, schema int) bool {
 	case 1:
 		return slices.Contains(ReviveLegacySchemaVersions, schema)
 	case 2:
+		return slices.Contains(RevivePrevSchemaVersions, schema)
+	case ArchiveFormatVersion:
 		return slices.Contains(ReviveSchemaVersions, schema)
 	}
 	return false
@@ -337,7 +350,9 @@ func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveRes
 	// Старые manifest.posts включали tombstone: сверка прежних файлов
 	// и переноса со старого сервера должна остаться совместимой.
 	res.Posts = len(in.Tables["posts"].Rows)
-	if in.FormatVersion == 2 && in.SchemaVersion >= 13 {
+	// Схемы с 13 прежней нумерации и вся свёрнутая (разметка 3) уже считают
+	// без tombstone.
+	if in.FormatVersion > 2 || (in.FormatVersion == 2 && in.SchemaVersion >= 13) {
 		res.Posts = 0
 		for i := range in.Tables["posts"].Rows {
 			if asInt64(rowMap(in.Tables["posts"], i)["deleted"]) == 0 {

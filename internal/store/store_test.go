@@ -22,8 +22,8 @@ func TestOpenMigrateClose(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Version: %v", err)
 	}
-	if version != 17 {
-		t.Fatalf("schema version: got %d, want 17", version)
+	if version != 1 {
+		t.Fatalf("schema version: got %d, want 1 (свёртка, C115)", version)
 	}
 
 	if err := st.Close(); err != nil {
@@ -56,8 +56,8 @@ func TestReopenAppliesMigrationsOnce(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Version: %v", err)
 	}
-	if version != 17 {
-		t.Fatalf("schema version: got %d, want 17", version)
+	if version != 1 {
+		t.Fatalf("schema version: got %d, want 1 (свёртка, C115)", version)
 	}
 
 	s := st.(*SQLite)
@@ -65,8 +65,8 @@ func TestReopenAppliesMigrationsOnce(t *testing.T) {
 	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM schema_migrations`).Scan(&n); err != nil {
 		t.Fatalf("count schema_migrations: %v", err)
 	}
-	if n != 17 {
-		t.Fatalf("schema_migrations rows: got %d, want 17", n)
+	if n != 2 {
+		t.Fatalf("schema_migrations rows: got %d, want 2 (маяк и версия 1)", n)
 	}
 }
 
@@ -143,7 +143,7 @@ func TestRejectsStaleSchemaVersion(t *testing.T) {
 	if err == nil {
 		t.Fatal("Open: want error for unknown schema version 99")
 	}
-	if !strings.Contains(err.Error(), "удалите wynd.db") {
+	if !strings.Contains(err.Error(), "новее этой программы") {
 		t.Fatalf("error: %v", err)
 	}
 }

@@ -2,42 +2,23 @@ package store
 
 import (
 	"database/sql"
-	"path/filepath"
 	"testing"
 )
 
-// Обновление существующей базы не отзывает просьбы и не теряет решения администратора.
+// Перевод базы прежней нумерации (C115) не отзывает просьбы и не теряет
+// решения администратора: база до 11 достраивается цепочкой до 17 и при
+// запуске переводится отметкой — данные целы.
 func TestPlaceWithdrawalMigrationFrom11(t *testing.T) {
-	file := filepath.Join(t.TempDir(), "wynd.db")
-	old, err := openSQLite(fileDSN(file), true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = old.db.Exec(`CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	migrations, err := loadMigrations()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, m := range migrations {
-		if m.version > 11 {
-			break
-		}
-		if err := applyMigration(old.db, m); err != nil {
-			t.Fatal(err)
-		}
-	}
-	_, err = old.db.Exec(`INSERT INTO accounts (id, email, created_at) VALUES ('owner', 'owner@example.com', '2026-11-02T12:00:00Z');
+	old, file := legacyBaseAtFile(t, 11)
+	if _, err := old.db.Exec(`INSERT INTO accounts (id, email, created_at) VALUES ('owner', 'owner@example.com', '2026-11-02T12:00:00Z');
 		INSERT INTO quota_requests (id, circle_name, requested_by_account_id, requested_bytes, status, created_at)
-		VALUES ('existing', 'Семья', 'owner', 1000, 'approved', '2026-11-02T12:00:00Z')`)
-	if err != nil {
+		VALUES ('existing', 'Семья', 'owner', 1000, 'approved', '2026-11-02T12:00:00Z')`); err != nil {
 		t.Fatal(err)
 	}
 	if err := old.Close(); err != nil {
 		t.Fatal(err)
 	}
+	completeLegacyOnFile(t, file)
 	current, err := Open(file)
 	if err != nil {
 		t.Fatal(err)
