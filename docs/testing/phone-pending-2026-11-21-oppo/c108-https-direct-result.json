@@ -1,0 +1,14 @@
+{
+  "stopped": true,
+  "offline_network": "none",
+  "wifi_off": "0",
+  "mobile_data_off": "0",
+  "c108-https-direct-offline-early_ms": 13890,
+  "c108-https-direct-offline_ms": 26250,
+  "offline_path_matches": true,
+  "offline_network_after": "none",
+  "restored_network": "127",
+  "wifi_restored": "1",
+  "mobile_data_restored": "1",
+  "restored_path_matches": true
+}
