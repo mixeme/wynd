@@ -23,9 +23,17 @@
     "after": 0,
     "path": "/circles/01a1ffed-09e7-7c96-9f49-0f2a0224502b"
   },
+  "owner-circle-system": {
+    "route_restored": true
+  },
   "back-move-arrow": {
     "before": 48,
     "after": 0,
     "route_restored": true
+  },
+  "back-move-system": {
+    "route_restored": true,
+    "before": 48,
+    "after": 0
   }
 }
