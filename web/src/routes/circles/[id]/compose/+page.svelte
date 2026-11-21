@@ -911,10 +911,12 @@
 	}
 </script>
 
+<!-- Все формы редактора — одной высоты 48 (правило C98; решение владельца 21.11 —
+     правка и черновик из очереди ужаты с 60, как «Новая запись»). -->
 <FormLayout
 	app
 	compose
-	compact={!isEdit && !isQueue}
+	compact
 	color={circle.color}
 	title={barTitle}
 	publishLabel={isEdit ? 'Сохранить' : 'Опубликовать'}
