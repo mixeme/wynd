@@ -457,8 +457,11 @@ func main() {
 	app := application.New(application.Options{
 		Name:        "wynd-desktop",
 		Description: "Wynd Настольный",
-		Services:    []application.Service{application.NewService(shell)},
-		Assets:      application.AssetOptions{Handler: proxy.Handler(http.FileServer(http.FS(shellFS)))},
+		// Ошибки без экрана (отказ горячей клавиши, внутренние) — в журнал,
+		// иначе они пропадают молча (план 66, живая проверка не прошла).
+		ErrorHandler: func(err error) { log.Printf("wails: %v", err) },
+		Services:     []application.Service{application.NewService(shell)},
+		Assets:       application.AssetOptions{Handler: proxy.Handler(http.FileServer(http.FS(shellFS)))},
 		Windows: application.WindowsOptions{
 			// Постоянный профиль: сессия и медиа-кэш переживают перезапуск,
 			// данные Wynd из системного профиля не используются.
@@ -521,6 +524,17 @@ func main() {
 		e.Cancel()
 		win.Hide()
 	})
+	// Общая горячая клавиша (C66, план 66): Ctrl+Alt+W показывает и
+	// фокусирует окно из любого места Windows, как второй запуск. Регистрация
+	// до app.Run допустима — Wails привяжет клавишу при старте; если комбинацию
+	// успела занять другая программа, отказ уйдёт в журнал, окно продолжит
+	// работать без горячей клавиши.
+	if err := app.GlobalShortcut.Register("Ctrl+Alt+W", func() {
+		win.Show()
+		win.Focus()
+	}); err != nil {
+		log.Printf("global shortcut: %v", err)
+	}
 	shell.mu.Lock()
 	shell.window = win
 	shell.tray = tray
