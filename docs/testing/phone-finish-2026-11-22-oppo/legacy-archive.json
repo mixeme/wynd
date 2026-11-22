@@ -1,0 +1,7 @@
+{
+  "format": 1,
+  "schema": 34,
+  "version": "0.31.0",
+  "wrong_password_refused": true,
+  "correct_password_read": true
+}
