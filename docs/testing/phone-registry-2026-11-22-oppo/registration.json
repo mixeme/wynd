@@ -1,0 +1,10 @@
+{
+  "closed": {
+    "email_field": false,
+    "status": "Регистрация на этом сервере закрыта"
+  },
+  "open": {
+    "email_field": true,
+    "status": "Почта"
+  }
+}
