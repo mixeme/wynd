@@ -1,0 +1,13 @@
+{
+  "owner": {
+    "circle_list": true,
+    "leave_disabled": true
+  },
+  "member": {
+    "confirmation_gated": true,
+    "last_server_login": true,
+    "old_session_refused": 403,
+    "post_remains_without_name": true,
+    "author_label": "Без имени"
+  }
+}
