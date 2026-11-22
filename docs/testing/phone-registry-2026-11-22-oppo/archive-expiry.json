@@ -1,0 +1,10 @@
+{
+  "archive-expiry": {
+    "feed_action_absent": true,
+    "expired_link_redirected_to_archive": true
+  },
+  "delayed-pay": {
+    "delay_seconds": 9,
+    "circle_list_seconds": 1.33
+  }
+}
