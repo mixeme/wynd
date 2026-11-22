@@ -1,0 +1,7 @@
+{
+  "closed_no_registration_form": true,
+  "open_registered_after_code": true,
+  "back": {
+    "restored_invite_input": true
+  }
+}
