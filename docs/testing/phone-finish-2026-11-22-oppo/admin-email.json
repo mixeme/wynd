@@ -1,0 +1,17 @@
+{
+  "admin": {
+    "ui_changed": true,
+    "both_mailboxes": true
+  },
+  "admin_session_check": {
+    "old_notified": true,
+    "new_notified": true,
+    "sessions_revoked": 2
+  },
+  "member_session_check": {
+    "wrong_attempts_rejected": 2,
+    "third_attempt_succeeds": true,
+    "primary_remains_signed_in": true,
+    "secondary_revoked": true
+  }
+}
