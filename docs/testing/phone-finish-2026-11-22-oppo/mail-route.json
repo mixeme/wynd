@@ -1,0 +1,15 @@
+{
+  "signed_in": {
+    "target": true,
+    "download_action": true
+  },
+  "other_account": {
+    "path": "/circles/01a202ed-be75-773b-9b84-1698946bcbe3/archive",
+    "denied": true,
+    "actual_text": "Нет доступа"
+  },
+  "after_login": {
+    "target": true,
+    "download_action": true
+  }
+}
