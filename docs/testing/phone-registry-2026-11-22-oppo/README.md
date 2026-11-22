@@ -27,3 +27,11 @@ JPEG, MP4 и WAV прикрепили через обработчик поля �
 В первом прогоне MP4 текст удалось опубликовать, пока превью ролика ещё готовилось. В созданной записи остался только текст. Для сверки байтов повторили публикацию после появления плитки.
 
 [media-after-jpg](media-after-jpg.png) · [original-ready-mp4](original-ready-mp4.png) · [original-published-mp4](original-published-mp4.png) · [original-published-wav](original-published-wav.png) · [originals-grid](originals-grid.png) · [Данные проверки](media.json)
+
+## C98 — шапки при крупном шрифте
+
+В Firefox 132 и Android WebView на OPPO проверили системный размер 1,0 и «Большой» 1,35. После прогона вернули 1,0. В обоих движках редактор и обсуждение держат 48 CSS‑пикселей, поиск — 60 при фокусе и без него.
+
+При 1,35 границы длинного названия заходят на области «Отмена» и «Опубликовать». Справа перекрытие составляет 9.48 CSS‑пикселя в Firefox и 6.85 в WebView. В Firefox при этом ширина области составляет 264 CSS‑пикселя, в WebView 360.
+
+[Firefox при 1,35](c98-Firefox-1.35-compose-long.png) · [WebView при 1,35](c98-WebView-1.35-compose-long.png) · [Замеры высот и границ](c98.json)
