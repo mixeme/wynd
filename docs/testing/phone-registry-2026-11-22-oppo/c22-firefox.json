@@ -1,0 +1,74 @@
+{
+  "off": {
+    "gps_coordinates_valid": false,
+    "gps_rationals": [
+      [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ]
+    ],
+    "same_sha256": false,
+    "server_lat": null,
+    "server_lng": null
+  },
+  "on": {
+    "gps_coordinates_valid": true,
+    "gps_rationals": [
+      [
+        [
+          55,
+          1
+        ],
+        [
+          15,
+          1
+        ],
+        [
+          2,
+          1
+        ]
+      ],
+      [
+        [
+          37,
+          1
+        ],
+        [
+          42,
+          1
+        ],
+        [
+          7,
+          1
+        ]
+      ]
+    ],
+    "same_sha256": true,
+    "server_lat": 55.25055555555556,
+    "server_lng": 37.70194444444445
+  }
+}
