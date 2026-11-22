@@ -20,6 +20,7 @@ import {
 	type ServerPage,
 	type ServerProfile
 } from '../api';
+import { nextLogChunk } from './buildlog';
 import { noRoom } from './display';
 import { rawSections } from '../raw';
 import { removalNote } from './rollback';
@@ -58,8 +59,7 @@ export interface PanelInput {
 	onmoved: (id: string) => Promise<void>;
 }
 
-// logChunkBytes — порция полного вывода сборки при догрузке начала (C71).
-const logChunkBytes = 256 << 10;
+// Порция догрузки начала журнала — nextLogChunk в ./buildlog (C71).
 
 export class Panel {
 	readonly input: PanelInput;
@@ -837,16 +837,18 @@ export class Panel {
 			: this.buildLogText
 	);
 
-	// loadEarlierBuildLog — догрузить порцию журнала до показанной (C71).
-	async loadEarlierBuildLog(): Promise<void> {
-		if (this.logLoading || this.logStartShown) return;
-		this.logLoading = true;
-		this.logError = '';
-		try {
-			const chunk = await this.api.BuildLogChunk(
-				this.buildLogStart < 0 ? 0 : Math.max(0, this.buildLogStart - logChunkBytes),
-				this.buildLogStart < 0 ? 0 : logChunkBytes
-			);
+		// loadEarlierBuildLog — догрузить порцию журнала до показанной (C71).
+		// Порция — ровно недостающее до показанного [offset, start): последний
+		// шаг берёт остаток от нуля, а не полные 256 КБ, иначе хвост начала
+		// дублируется (живой прогон C71 на wynd2, 2026-11-22: перекрытие
+		// 198 663 байт при не выровненном на 256 КБ размере журнала).
+		async loadEarlierBuildLog(): Promise<void> {
+			if (this.logLoading || this.logStartShown) return;
+			this.logLoading = true;
+			this.logError = '';
+			try {
+				const want = nextLogChunk(this.buildLogStart);
+				const chunk = await this.api.BuildLogChunk(want.offset, want.limit);
 			if (chunk.error) throw new Error(chunk.error);
 			this.buildLogTotal = chunk.total;
 			if (this.buildLogStart < 0) {
