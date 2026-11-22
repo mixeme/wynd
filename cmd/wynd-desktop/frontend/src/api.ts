@@ -3,7 +3,7 @@
 // не требовали CLI wails3. mock-стенд по-прежнему подменяет мост через window.go.
 // Оболочка проверяет адреса, хранит независимые источники интерфейса и
 // переключает текущий сервер.
-import { Application, Call, Window as ThisWindow } from '@wailsio/runtime';
+import { Application, Call, Events, Window as ThisWindow } from '@wailsio/runtime';
 
 export interface CheckResult {
 	origin: string;
@@ -35,6 +35,7 @@ interface GoApp {
 	SelectServer(origin: string): Promise<CheckResult>;
 	RequestClose(): Promise<void>;
 	Notify(title: string, body: string): Promise<void>;
+	TakePendingInvite(): Promise<string>;
 }
 
 interface Runtime {
@@ -60,6 +61,7 @@ const native: GoApp = {
 	SelectServer: (origin) => Call.ByName('main.App.SelectServer', origin),
 	RequestClose: () => Call.ByName('main.App.RequestClose'),
 	Notify: (title, body) => Call.ByName('main.App.Notify', title, body),
+	TakePendingInvite: () => Call.ByName('main.App.TakePendingInvite'),
 };
 
 function bridge(): GoApp | undefined {
@@ -101,6 +103,50 @@ export async function applySelfUpdate(): Promise<string> {
 // интерфейс на виду. В браузере оболочки нет — молча.
 export async function notifyWindow(title: string, body: string): Promise<void> {
 	await bridge()?.Notify(title, body);
+}
+
+// Приглашение из схемы wynd: (план 66, функция 4). Разбор адреса здесь —
+// в тестах без Wails; оболочке уходит уже https-адрес приглашения.
+export interface InviteLink {
+	origin: string;
+	path: string;
+}
+
+export function parseInviteLink(arg: string): InviteLink | null {
+	if (!/^wynd:/i.test(arg)) return null;
+	let rest = arg.slice(arg.indexOf(':') + 1);
+	rest = rest.replace(/^\/\//, '');
+	if (!/^open\?/i.test(rest)) return null;
+	let urlParam = '';
+	for (const pair of rest.slice(5).split('&')) {
+		const [key, value] = pair.split('=');
+		if (key === 'url') {
+			urlParam = decodeURIComponent(value ?? '');
+			break;
+		}
+	}
+	try {
+		const target = new URL(urlParam);
+		if (target.protocol !== 'https:') return null;
+		return { origin: target.origin, path: target.pathname + target.search };
+	} catch {
+		return null;
+	}
+}
+
+/** Живое событие схемы wynd: от Go (второй запуск); null — слушателя нет. */
+export function onInviteLink(handler: (link: InviteLink) => void): () => void {
+	const off = Events.On('wynd:invite', (event: { data?: unknown }) => {
+		const link = typeof event?.data === 'string' ? parseInviteLink(event.data) : null;
+		if (link) handler(link);
+	});
+	return off;
+}
+
+/** Адрес, пришедший до загрузки оболочки: событие могло её не застать. */
+export async function takePendingInvite(): Promise<InviteLink | null> {
+	const arg = await bridge()?.TakePendingInvite();
+	return arg ? parseInviteLink(arg) : null;
 }
 
 export async function openingReleases(): Promise<void> {

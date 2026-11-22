@@ -24,12 +24,15 @@
 		forgetSelected,
 		listServers,
 		notifyWindow,
+		onInviteLink,
 		openingReleases,
 		previewServer,
 		removeInterface,
 		runtime,
 		selectServer,
+		takePendingInvite,
 		type CheckResult,
+		type InviteLink,
 		type Update
 	} from './api';
 
@@ -73,6 +76,11 @@
 		} finally {
 			loaded = true;
 		}
+		// Приглашение из схемы wynd: (план 66, функция 4): живое событие и
+		// отложенный адрес, ушедший до загрузки оболочки.
+		onInviteLink(openInvite);
+		const pending = await takePendingInvite().catch(() => null);
+		if (pending) await openInvite(pending);
 		void syncMaximised();
 	});
 
@@ -203,6 +211,33 @@
 			showServers = false;
 		} catch {
 			error = 'Не удалось открыть сервер. Попробуйте ещё раз.';
+		}
+	}
+
+	// Приглашение из браузера (план 66, функция 4): человек нажал
+	// «Открыть в приложении» на странице приглашения. Свой сервер — прямо
+	// на экран приглашения; чужой — интерфейс переключается на приглашённый
+	// сервер (проверка адреса та же, что при запуске); отказ проверки —
+	// экран адреса с этим адресом и словами об отказе: поправить связь или
+	// повторить проверку можно тут же.
+	async function openInvite(link: InviteLink) {
+		try {
+			if (server && server.origin === link.origin) {
+				unavailable = false;
+				iframePath = link.path;
+				return;
+			}
+			server = await checkServer(link.origin);
+			unavailable = false;
+			showServers = false;
+			iframePath = link.path;
+		} catch {
+			address = link.origin;
+			preview = null;
+			checking = false;
+			error = 'Сервер приглашения не отвечает. Проверьте связь и попробуйте ещё раз.';
+			showServers = false;
+			adding = true;
 		}
 	}
 

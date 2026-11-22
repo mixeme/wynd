@@ -48,6 +48,9 @@ type App struct {
 	// updateNotified — версия, о которой уведомляли в трей: дедуп, один
 	// toast на версию (план 66, «вышла версия»).
 	updateNotified string
+	// pendingInvite — адрес схемы wynd:, не дошедший до оболочки событием
+	// (план 66, функция 4); оболочка забирает его при загрузке.
+	pendingInvite string
 	// window и tray — для «крестика»: со значком в трее окно прячется,
 	// без него приложение закрывается, как раньше.
 	window application.Window
@@ -64,6 +67,46 @@ func (a *App) ServiceStartup(ctx context.Context, _ application.ServiceOptions) 
 	// версиях без открытого интерфейса (план 66, «вышла версия»).
 	go a.runUpdateToasts()
 	return nil
+}
+
+// DeliverInvite — адрес приглашения от схемы wynd: (план 66, функция 4).
+// Событием оболочке (если она уже загрузилась) и в запас — pendingInvite:
+// событие, ушедшее до привязки JS, не теряется, оболочка забирает его сама
+// при старте. Второй запуск не создаёт окно — показывает это и несёт адрес.
+func (a *App) DeliverInvite(arg string) {
+	if _, ok := desktop.ParseInviteURL(arg); !ok {
+		return
+	}
+	a.mu.Lock()
+	a.pendingInvite = arg
+	a.mu.Unlock()
+	if app := application.Get(); app != nil {
+		app.Event.Emit("wynd:invite", arg)
+	}
+	if a.window != nil {
+		a.window.Show()
+		a.window.Focus()
+	}
+}
+
+// TakePendingInvite — запасной канал: оболочка забирает адрес при загрузке,
+// если событие ушло раньше её готовности.
+func (a *App) TakePendingInvite() string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	arg := a.pendingInvite
+	a.pendingInvite = ""
+	return arg
+}
+
+// launchArgFromArgs — первый адрес схемы wynd: среди аргументов запуска.
+func launchArgFromArgs(args []string) string {
+	for _, arg := range args {
+		if _, ok := desktop.ParseInviteURL(arg); ok {
+			return arg
+		}
+	}
+	return ""
 }
 
 // updateCheckInterval — как часто спрятанное окно само проверяет новые версии.
@@ -484,6 +527,12 @@ func main() {
 	if err := desktop.EnsureToastIdentity(base, trayIcon); err != nil {
 		log.Printf("toast identity: %v", err)
 	}
+	// Схема wynd: (план 66, функция 4): браузер передаёт приглашение окну.
+	// Команда — путь этого exe, переписывается при каждом запуске; сбой
+	// (политика реестра) не мешает окну.
+	if err := desktop.EnsureInviteScheme(); err != nil {
+		log.Printf("invite scheme: %v", err)
+	}
 	proxy := desktop.NewProxy()
 	// API и поток событий страница берёт с локального порта: WebView2
 	// буферизует ответы своих запросов, и SSE через него не течёт (сервер
@@ -536,6 +585,13 @@ func main() {
 			startInTray = true
 		}
 	}
+	// Приглашение из схемы wynd: при первом запуске: событие оболочке уйдёт
+	// раньше её загрузки, поэтому адрес ждёт её в pendingInvite — она забирает
+	// сама при старте (план 66, функция 4).
+	if arg := launchArgFromArgs(os.Args[1:]); arg != "" {
+		shell.pendingInvite = arg
+		startInTray = false // человека позвали — окно показываем
+	}
 	// Второй запуск (ярлык, автозапуск при уже работающей программе) не
 	// создаёт второй процесс и второй значок: окно первого показывается.
 	var mainWindow application.Window
@@ -562,7 +618,13 @@ func main() {
 		},
 		SingleInstance: &application.SingleInstanceOptions{
 			UniqueID: "com.wynd.desktop",
-			OnSecondInstanceLaunch: func(application.SecondInstanceData) {
+			OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
+				// Запуск с адресом приглашения (схема wynd:, план 66) несёт
+				// его первому процессу аргументом.
+				if arg := launchArgFromArgs(data.Args); arg != "" {
+					shell.DeliverInvite(arg)
+					return
+				}
 				if mainWindow != nil {
 					mainWindow.Show()
 					mainWindow.Focus()
