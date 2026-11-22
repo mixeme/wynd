@@ -1,0 +1,14 @@
+{
+  "case": {
+    "normal": {
+      "comment": true,
+      "reaction": false
+    },
+    "full": {
+      "comment": false,
+      "reaction": false
+    }
+  },
+  "comment_deleted": true,
+  "server_wide_warning": true
+}
