@@ -1,0 +1,78 @@
+{
+  "on": {
+    "original_sha_match": true,
+    "gps_exif": true,
+    "gps_rationals": {
+      "2": [
+        [
+          55,
+          1
+        ],
+        [
+          45,
+          1
+        ],
+        [
+          6,
+          1
+        ]
+      ],
+      "4": [
+        [
+          37,
+          1
+        ],
+        [
+          37,
+          1
+        ],
+        [
+          12,
+          1
+        ]
+      ]
+    },
+    "media_location_granted": true,
+    "server_lat": 55.751666666666665,
+    "server_lon": 37.62,
+    "entry_date": "2024-05-17"
+  },
+  "off": {
+    "original_sha_match": false,
+    "gps_exif": false,
+    "gps_rationals": {
+      "2": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "4": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ]
+    },
+    "media_location_granted": true,
+    "server_lat": null,
+    "server_lon": null,
+    "entry_date": "2024-05-17"
+  }
+}
