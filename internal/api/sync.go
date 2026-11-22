@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
+	"gitea.mixdep.ru/mix/wynd/internal/push"
 )
 
 func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
@@ -78,6 +79,13 @@ func (s *Server) syncSSE(w http.ResponseWriter, r *http.Request, accountID strin
 		return
 	}
 
+	// Живые сигналы уведомлений (план 66): то же правило и тот же сигнал,
+	// что у пуша, приходят рамкой event: notify сразу из точки рассылки.
+	// Окно с мостом показывает toast, когда интерфейса не видно.
+	notifyCh := make(chan push.Signal, 16)
+	s.registerLiveNotify(accountID, notifyCh)
+	defer s.unregisterLiveNotify(accountID, notifyCh)
+
 	ctx := r.Context()
 	token := bearerToken(r)
 	lastBeat := time.Now()
@@ -128,6 +136,12 @@ func (s *Server) syncSSE(w http.ResponseWriter, r *http.Request, accountID strin
 		case <-ctx.Done():
 			return
 		case <-time.After(ssePollInterval):
+		case sig := <-notifyCh:
+			data, _ := json.Marshal(sig)
+			if !write("event: notify\ndata: %s\n\n", data) {
+				return
+			}
+			lastBeat = time.Now()
 		}
 	}
 }

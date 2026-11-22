@@ -34,6 +34,7 @@ interface GoApp {
 	ListServers(): Promise<CheckResult[]>;
 	SelectServer(origin: string): Promise<CheckResult>;
 	RequestClose(): Promise<void>;
+	Notify(title: string, body: string): Promise<void>;
 }
 
 interface Runtime {
@@ -58,6 +59,7 @@ const native: GoApp = {
 	ListServers: () => Call.ByName('main.App.ListServers'),
 	SelectServer: (origin) => Call.ByName('main.App.SelectServer', origin),
 	RequestClose: () => Call.ByName('main.App.RequestClose'),
+	Notify: (title, body) => Call.ByName('main.App.Notify', title, body),
 };
 
 function bridge(): GoApp | undefined {
@@ -93,6 +95,12 @@ export async function checkSelfUpdate(): Promise<Update | null> {
 // отказа; пусто — новая версия запущена, это окно закрывается.
 export async function applySelfUpdate(): Promise<string> {
 	return (await bridge()?.ApplySelfUpdate()) ?? '';
+}
+
+// Системный toast по сигналу клиента (план 66): мост сам гасит его, когда
+// интерфейс на виду. В браузере оболочки нет — молча.
+export async function notifyWindow(title: string, body: string): Promise<void> {
+	await bridge()?.Notify(title, body);
 }
 
 export async function openingReleases(): Promise<void> {

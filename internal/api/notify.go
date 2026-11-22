@@ -152,6 +152,49 @@ func (s *Server) handleSetCircleNotifyPrefs(w http.ResponseWriter, r *http.Reque
 // доставку — deliverTimeout в push.deliver.
 const notifyBudget = 2 * time.Minute
 
+// registerLiveNotify — поток /sync аккаунта слушает живые сигналы
+// уведомлений; unregisterLiveNotify — при выходе из потока (план 66).
+func (s *Server) registerLiveNotify(accountID string, ch chan push.Signal) {
+	s.liveMu.Lock()
+	defer s.liveMu.Unlock()
+	set, ok := s.liveNotify[accountID]
+	if !ok {
+		set = make(map[chan push.Signal]struct{})
+		s.liveNotify[accountID] = set
+	}
+	set[ch] = struct{}{}
+}
+
+func (s *Server) unregisterLiveNotify(accountID string, ch chan push.Signal) {
+	s.liveMu.Lock()
+	defer s.liveMu.Unlock()
+	set, ok := s.liveNotify[accountID]
+	if !ok {
+		return
+	}
+	delete(set, ch)
+	if len(set) == 0 {
+		delete(s.liveNotify, accountID)
+	}
+}
+
+// liveSignal — тот же сигнал живому потоку аккаунта. Не блокирует и не ждёт:
+// слушателей нет (браузер без окна, поток закрылся) — сигнал пропадает, как
+// пуш без подписок. Буфер канала гасит короткую пачку, переполнение — тоже.
+func (s *Server) liveSignal(accountID string, sig push.Signal) {
+	if s == nil || accountID == "" {
+		return
+	}
+	s.liveMu.Lock()
+	defer s.liveMu.Unlock()
+	for ch := range s.liveNotify[accountID] {
+		select {
+		case ch <- sig:
+		default:
+		}
+	}
+}
+
 // pushSignal — тот же сигнал, но заголовок уведомления это имя круга.
 // Текст журнала по-прежнему не уходит в push-сервис.
 // postID — у комментария и реакции: пуш открывает саму запись.
@@ -194,7 +237,9 @@ func (s *Server) notifyAccounts(circleID, actorAccountID, signalType string, acc
 			if !auth.NotifyPrefAllows(prefs, signalType, now) {
 				continue
 			}
-			if err := s.Push.SendSignal(ctx, accountID, s.pushSignal(ctx, circleID, signalType)); err != nil {
+			sig := s.pushSignal(ctx, circleID, signalType)
+			s.liveSignal(accountID, sig)
+			if err := s.Push.SendSignal(ctx, accountID, sig); err != nil {
 				log.Printf("notifyAccounts: push %s/%s: %v", accountID, circleID, err)
 			}
 		}
@@ -219,7 +264,9 @@ func (s *Server) notifyMemberInvited(circleID, targetAccountID string) {
 		if !auth.NotifyPrefAllows(prefs, "invite", now) {
 			return
 		}
-		if err := s.Push.SendSignal(ctx, targetAccountID, s.pushSignal(ctx, circleID, "invite")); err != nil {
+		sig := s.pushSignal(ctx, circleID, "invite")
+		s.liveSignal(targetAccountID, sig)
+		if err := s.Push.SendSignal(ctx, targetAccountID, sig); err != nil {
 			log.Printf("notifyMemberInvited: push %s: %v", targetAccountID, err)
 		}
 	}()
@@ -257,7 +304,9 @@ func (s *Server) notifyCirclePost(circleID, actorAccountID, signalType, postID s
 			if !auth.NotifyPrefAllows(prefs, signalType, now) {
 				continue
 			}
-			if err := s.Push.SendSignal(ctx, accountID, s.pushSignal(ctx, circleID, signalType, postID)); err != nil {
+			sig := s.pushSignal(ctx, circleID, signalType, postID)
+			s.liveSignal(accountID, sig)
+			if err := s.Push.SendSignal(ctx, accountID, sig); err != nil {
 				log.Printf("notifyCircle: push %s/%s: %v", accountID, circleID, err)
 			}
 		}
@@ -296,7 +345,9 @@ func (s *Server) notifyComment(circleID, actorAccountID, postID string) {
 			if !auth.NotifyCommentAllows(prefs, accountID == postAuthorID, now) {
 				continue
 			}
-			if err := s.Push.SendSignal(ctx, accountID, s.pushSignal(ctx, circleID, "comment", postID)); err != nil {
+			sig := s.pushSignal(ctx, circleID, "comment", postID)
+			s.liveSignal(accountID, sig)
+			if err := s.Push.SendSignal(ctx, accountID, sig); err != nil {
 				log.Printf("notifyComment: push %s/%s: %v", accountID, circleID, err)
 			}
 		}

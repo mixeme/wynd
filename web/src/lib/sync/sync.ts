@@ -5,6 +5,7 @@ import { getCursor, getSession, listSessions, putCursor } from '$lib/idb/db';
 import { drainQueueFor } from '$lib/queue/queue';
 import { isTransportError } from '$lib/queue/transport';
 import { forgetServer, reportServerSilent, reportServerUp } from '$lib/session/connection.svelte';
+import { notifyFromSignal } from '$lib/desktop/notify';
 
 export interface SyncEvent {
 	seq: number;
@@ -206,6 +207,12 @@ export async function handleSyncFrame(origin: string, raw: string): Promise<void
 		// в новый круг) — перечитывают экраны без круга, то есть список.
 		if (event.street) {
 			triggerRefetch(origin, '');
+		}
+		// Кадр notify — живой сигнал уведомления (план 66): решение принял
+		// сервер тем же правилом, что для пуша; окно показывает toast, когда
+		// интерфейса не видно. В браузере моста нет — кадр молча пропускается.
+		if (typeof event.circle_id === 'string' && typeof event.type === 'string') {
+			notifyFromSignal(event as { circle_id?: string; type?: string; title?: string; body?: string });
 		}
 		return;
 	}

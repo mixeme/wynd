@@ -23,6 +23,7 @@
 		currentVersion,
 		forgetSelected,
 		listServers,
+		notifyWindow,
 		openingReleases,
 		previewServer,
 		removeInterface,
@@ -96,6 +97,15 @@
 			// можно поправить.
 			if (event.data?.type === 'wynd:return-to-address') {
 				returnToAddress(typeof event.data.origin === 'string' ? event.data.origin : '');
+			}
+			// Живой сигнал уведомления от клиента (план 66): мост гасит его,
+			// когда интерфейс на виду. Заголовок обязателен — без него toast
+			// теряет смысл.
+			if (event.data?.type === 'wynd:notify') {
+				const title = typeof event.data.title === 'string' ? event.data.title : '';
+				const body = typeof event.data.body === 'string' ? event.data.body : '';
+				if (title) void notifyWindow(title, body).catch(() => undefined);
+				return;
 			}
 		}
 		window.addEventListener('message', openFromClient);

@@ -41,7 +41,13 @@ type Server struct {
 	TrustedProxies []*net.IPNet
 	Mux            *http.ServeMux
 	notifyWG       sync.WaitGroup
-	probes         *probeLimiter
+	// liveNotify — открытые SSE-потоки /sync по аккаунтам: канал живых
+	// сигналов уведомлений на поток. Пишет liveSignal из тех же точек, что
+	// шлют пуш, читает syncSSE: окно с мостом показывает toast, когда
+	// интерфейса не видно (план 66, функция 2).
+	liveMu     sync.Mutex
+	liveNotify map[string]map[chan push.Signal]struct{}
+	probes     *probeLimiter
 	// probeInstance — случайная метка процесса в GET /probe: браузер
 	// возвращает её в проверке, и «Домен» узнаёт, что имя ведёт сюда,
 	// даже когда исходящий адрес — адрес контейнера или NAT.
@@ -100,6 +106,7 @@ func NewServer(authSvc *auth.Service, ch *chronicle.Chronicle, blobs *blob.Store
 		publicURL:      publicURL,
 		ListenAddr:     listenAddr,
 		Mux:            http.NewServeMux(),
+		liveNotify:     make(map[string]map[chan push.Signal]struct{}),
 		probes:         newProbeLimiter(),
 		probeInstance:  newProbeInstance(),
 	}
