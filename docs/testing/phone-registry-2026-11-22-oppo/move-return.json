@@ -1,0 +1,10 @@
+{
+  "move-result-arrow": {
+    "back_to_result": true,
+    "done_param_preserved": true
+  },
+  "move-result-system": {
+    "back_to_result": true,
+    "done_param_preserved": true
+  }
+}
