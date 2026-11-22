@@ -194,7 +194,7 @@ func TestDialUsesKnownHostKeyType(t *testing.T) {
 	var edKey ssh.PublicKey
 	probe := &ssh.ClientConfig{User: "root", Auth: []ssh.AuthMethod{ssh.Password("pw")},
 		HostKeyAlgorithms: []string{ssh.KeyAlgoED25519},
-		HostKeyCallback: func(_ string, _ net.Addr, key ssh.PublicKey) error { edKey = key; return nil }}
+		HostKeyCallback:   func(_ string, _ net.Addr, key ssh.PublicKey) error { edKey = key; return nil }}
 	c, err := ssh.Dial("tcp", srv.addr, probe)
 	if err != nil {
 		t.Fatal(err)
@@ -617,5 +617,46 @@ func TestFlushFinding(t *testing.T) {
 	rep := ParseInspection("## os\nID=debian\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"12\"\n## uid\n0\n## disk\n/dev/vda1 7017040 2135632 4551496 32% /\n## flush\n"+stat("13723", "18513487")+"\n## time\n1791527811\n## ntp\nyes\n", "root", time.Unix(1791527811, 0))
 	if rep.Blocked() || findings(rep)["flush"].Level != LevelNote {
 		t.Fatalf("медленный диск — замечание, не помеха: %+v", rep.Findings)
+	}
+}
+
+// Сертификат, продление которого сломалось (удаление с сохранением данных
+// убирает сайт из веб-сервера): наш с убранным сайтом и пропавший webroot
+// находятся, чужой без webroot и живой — нет.
+func TestParseInspectionCertStale(t *testing.T) {
+	out := "## certrenew\n" +
+		"domain=wynd3.mixfed.ru end=1797000000 ours=yes site=no webroot=/srv/wynd-nginx/acme wroot_ok=yes\n" +
+		"domain=selfpost2.mixfed.ru end=1797000000 ours=no site=no webroot= wroot_ok=no\n" +
+		"domain=gone.mixfed.ru end=1797000000 ours=no site=no webroot=/srv/gone/acme wroot_ok=no\n" +
+		"domain=live.mixfed.ru end=1797000000 ours=no site=no webroot=/srv/other/acme wroot_ok=yes\n"
+	rep := ParseInspection(out, "root", time.Unix(1791460003, 0))
+	var stale []Finding
+	for _, f := range rep.Findings {
+		if f.ID == "certstale" {
+			stale = append(stale, f)
+		}
+	}
+	if len(stale) != 2 {
+		t.Fatalf("ожидали две находки (наш убран, webroot пропал): %+v", rep.Findings)
+	}
+	if !strings.Contains(stale[0].Text, "gone.mixfed.ru") && !strings.Contains(stale[1].Text, "gone.mixfed.ru") {
+		t.Fatalf("пропавший webroot не найден: %+v", stale)
+	}
+	for _, f := range stale {
+		if f.Level != LevelNote || f.Text == "" || f.Copy == "" || f.Plan == "" || f.Advice == "" {
+			t.Fatalf("неполная находка: %+v", f)
+		}
+		if !strings.Contains(f.Text, "не продлевается") || !strings.Contains(f.Copy, "certbot delete --cert-name") {
+			t.Fatalf("текст/команда: %+v", f)
+		}
+	}
+	if !strings.Contains(stale[0].Advice, "с сохранением данных") && !strings.Contains(stale[1].Advice, "с сохранением данных") {
+		t.Fatalf("совет про убранный сайт: %+v", stale)
+	}
+	if !strings.Contains(stale[0].Advice, "пропала") && !strings.Contains(stale[1].Advice, "пропала") {
+		t.Fatalf("совет про webroot: %+v", stale)
+	}
+	if !strings.Contains(stale[0].Advice+stale[1].Advice, "11.12.2026") {
+		t.Fatalf("срок сертификата не показан: %+v", stale)
 	}
 }

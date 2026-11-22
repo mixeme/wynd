@@ -98,6 +98,9 @@ export class Panel {
 
 	findings = $derived<Finding[]>(this.inspection?.report.findings ?? []);
 	blocks = $derived(this.findings.filter((f) => f.level === 'block'));
+	// Сертификаты, продление которых сломалось (Stale): находка в списке, а
+	// совет с командой — отдельным блоком под списком.
+	staleCerts = $derived(this.findings.filter((f) => f.id === 'certstale' && f.advice && f.copy));
 	rawParts = $derived(
 		this.inspection
 			? rawSections(

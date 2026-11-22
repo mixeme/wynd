@@ -113,6 +113,23 @@ echo '## addr'; ip -4 -o addr show scope global 2>/dev/null
 echo '## git'; git --version 2>/dev/null
 echo '## wynd'; ls -d ` + l.Compose() + ` /etc/wynd 2>/dev/null
 echo '## certbot'; command -v certbot 2>/dev/null
+echo '## certrenew'; for f in /etc/letsencrypt/renewal/*.conf; do
+  [ -e "$f" ] || continue
+  dom=$(basename "$f" .conf)
+  webroot=$(grep -E '^[[:space:]]*webroot_path[[:space:]]*=' "$f" 2>/dev/null | head -n 1 | sed 's/^[^=]*=[[:space:]]*//; s/,.*//')
+  end=$(openssl x509 -enddate -noout -in "/etc/letsencrypt/live/$dom/cert.pem" 2>/dev/null | sed 's/notAfter=//' | { read d; date -d "$d" +%s 2>/dev/null; })
+  ours=no; wroot_ok=no
+  if [ -n "$webroot" ]; then
+    root=$(dirname "$webroot")
+    [ -e "$webroot" ] && wroot_ok=yes
+    if grep -qsF ` + shQuote(siteMark) + ` "$root/compose.yaml" 2>/dev/null; then ours=yes; fi
+  fi
+  site=no
+  for s in "/etc/nginx/conf.d/wynd-$dom.conf" "/etc/nginx/sites-enabled/wynd-$dom.conf" "/etc/apache2/sites-enabled/wynd-$dom.conf"; do
+    [ -e "$s" ] && site=yes
+  done
+  echo "domain=$dom end=$end ours=$ours site=$site webroot=$webroot wroot_ok=$wroot_ok"
+done
 echo '## nginx'; if command -v nginx >/dev/null 2>&1; then ` + nginxLayout + `; if asroot nginx -t >/dev/null 2>&1; then echo test=ok; else echo test=fail; fi; fi
 echo '## apache'; if command -v apache2ctl >/dev/null 2>&1; then ` + apacheLayout + `; if asroot apache2ctl configtest >/dev/null 2>&1; then echo test=ok; else echo test=fail; fi; fi
 echo '## caddy'; if command -v caddy >/dev/null 2>&1; then grep -Es '^import[[:space:]]' ` + caddyConfig + ` | head -n 20; if asroot caddy validate --config ` + caddyConfig + ` --adapter caddyfile >/dev/null 2>&1; then echo test=ok; else echo test=fail; fi; fi
@@ -209,6 +226,11 @@ func ParseInspectionAt(out, user string, now time.Time, l Layout) Report {
 	}
 	if f, ok := proxyFinding(proxy, sec[proxy]); ok {
 		add(f)
+	}
+	for _, line := range sec["certrenew"] {
+		if f, ok := certStaleFinding(line); ok {
+			add(f)
+		}
 	}
 	switch {
 	case len(sec["wynd"]) == 0 && len(sec["wyndelse"]) > 0:
@@ -483,6 +505,50 @@ func portsFinding(lines []string, ownProxy string) (string, Finding) {
 		}
 	}
 	return "", unusualWebServer("ports")
+}
+
+// certStaleFinding читает строку секции certrenew осмотра и находит
+// сертификаты, продление которых сломалось (Stale): наш сертификат остался,
+// а сайта, через который Let's Encrypt проверяет домен, больше нет — удаление
+// с сохранением данных убирает сайт из веб-сервера; или папка проверки домена
+// пропала. Чужие сертификаты без webroot не трогаем: как их продлевать,
+// знает только тот, кто их ставил.
+func certStaleFinding(line string) (Finding, bool) {
+	fields := map[string]string{}
+	for _, part := range strings.Fields(line) {
+		if k, v, ok := strings.Cut(part, "="); ok && k != "" {
+			fields[k] = v
+		}
+	}
+	dom := fields["domain"]
+	if dom == "" {
+		return Finding{}, false
+	}
+	siteGone := fields["ours"] == "yes" && fields["site"] == "no"
+	webroot := fields["webroot"]
+	webrootGone := webroot != "" && fields["wroot_ok"] == "no"
+	if !siteGone && !webrootGone {
+		return Finding{}, false
+	}
+	var body string
+	if siteGone {
+		body = "Wynd с этим сертификатом убран с сохранением данных: сайт, через который Let's Encrypt проверяет домен, убран из настроек веб-сервера. Поставьте Wynd заново — данные остались на месте, сайт и продление вернутся."
+	} else {
+		body = "Папка, через которую Let's Encrypt проверяет домен (" + webroot + "), пропала, и продление падает."
+	}
+	if ts := fields["end"]; ts != "" {
+		if v, err := strconv.ParseInt(ts, 10, 64); err == nil && v > 0 {
+			body += " Срок сертификата — до " + time.Unix(v, 0).UTC().Format("02.01.2006") + "."
+		}
+	}
+	return Finding{
+		ID:     "certstale",
+		Level:  LevelNote,
+		Text:   "Сертификат " + dom + " не продлевается",
+		Plan:   "поставьте Wynd заново или уберите сертификат",
+		Advice: body + " Или уберите сертификат:",
+		Copy:   "certbot delete --cert-name " + dom,
+	}, true
 }
 
 // unusualWebServer — один ответ на все необычные случаи (кадр 2д): порты 80 и

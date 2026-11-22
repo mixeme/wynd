@@ -97,7 +97,9 @@
 			{#if p.foreignSite.length}
 				Без галочки папка /opt/wynd останется.
 			{:else if p.proxyName}
-				Без галочки папка /opt/wynd и сертификат останутся.
+				Без галочки папка /opt/wynd и сертификат останутся. Но сайт уйдёт из {p.proxyName}:
+				домен перестанет открываться, а сертификат перестанет продлеваться — примерно через
+				два месяца он истечёт.
 			{:else}
 				Без галочки папка /opt/wynd останется как есть.
 			{/if}
@@ -1150,6 +1152,17 @@
 				</MarkRow>
 			{/each}
 		</MarkRows>
+		{#if p.staleCerts.length}
+			<!-- Сертификаты, продление которых сломалось (удаление с сохранением
+			     данных убирает сайт из веб-сервера): совет и команда отдельно. -->
+			{#each p.staleCerts as f (f.id)}
+				{@const cmd = f.copy ?? ''}
+				<div class="ins-dim">
+					{f.advice}
+				</div>
+				<CopyLine text={cmd} copied={p.copiedLine === cmd} oncopy={() => void p.copyLine(cmd)} />
+			{/each}
+		{/if}
 		{#if p.askRollback}
 			{@render removeBox('Да, убрать', p.domainOk ? p.domain : '')}
 			{#if p.showLog && p.rollbackLog.length}
