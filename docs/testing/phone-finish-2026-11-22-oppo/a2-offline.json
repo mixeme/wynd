@@ -1,0 +1,11 @@
+{
+  "pin": {
+    "changed_offline": true,
+    "server_unchanged_while_offline": true,
+    "server_receives_on_reconnect": true
+  },
+  "emptyGroup": {
+    "visible_without_members": true,
+    "only_local": true
+  }
+}
