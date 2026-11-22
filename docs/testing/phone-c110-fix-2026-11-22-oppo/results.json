@@ -1,0 +1,38 @@
+{
+  "external-arrow": {
+    "source": "/source-a",
+    "back": "/source-a",
+    "referrer": true,
+    "pending": true,
+    "history_length": 7
+  },
+  "external-system": {
+    "source": "/source-b",
+    "back": "/source-b",
+    "referrer": false,
+    "pending": true,
+    "history_length": 8
+  },
+  "list-arrow": {
+    "back": "/circles",
+    "pending": true
+  },
+  "list-system": {
+    "back": "/circles",
+    "pending": true
+  },
+  "external-tab-system": {
+    "source": "/source-tab-system",
+    "back": "/circles",
+    "referrer": false,
+    "pending": true,
+    "history_length": 2
+  },
+  "external-tab-arrow": {
+    "source": "/source-tab-arrow",
+    "back": "/circles",
+    "referrer": false,
+    "pending": true,
+    "history_length": 2
+  }
+}
