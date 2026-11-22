@@ -76,6 +76,7 @@
 		isImageFile
 	} from '$lib/media/compress';
 	import { audioMime } from '$lib/media/audioTags';
+	import { stripGeoQueueFile } from '$lib/media/stripGeo';
 	import type { VoiceTake } from '$lib/media/voiceRecorder.svelte';
 	import type { CommentQueuePayload, QueueFile, QueueMediaMeta } from '$lib/idb/db';
 	import { formatBytes } from '$lib/format/bytes';
@@ -227,6 +228,12 @@
 		return files.slice(0, Math.max(0, room));
 	}
 
+	// C22: «Место со снимков» выключено — координаты не идут в круг и в байтах
+	// вложения; GPS в EXIF оригинала стирается до отправки.
+	function placeless(q: QueueFile): QueueFile {
+		return circle.sharePlace ? q : stripGeoQueueFile(q);
+	}
+
 	async function addPhotos(files: File[]) {
 		error = '';
 		const picked = takeRoom(files.filter(isImageFile));
@@ -236,7 +243,9 @@
 		try {
 			const compression = await fetchCompression(circle.origin).catch(() => undefined);
 			for (const file of picked) {
-				const image = await compressImage(file, compression).catch(() => fileToQueueBuffer(file));
+				const image = placeless(
+					await compressImage(file, compression).catch(() => fileToQueueBuffer(file))
+				);
 				pending = [
 					...pending,
 					{
@@ -265,7 +274,11 @@
 			}
 			pending = [
 				...pending,
-				{ key: uuid(), file: await fileToQueueBuffer(file), meta: { kind: 'attachment' } }
+				{
+					key: uuid(),
+					file: placeless(await fileToQueueBuffer(file)),
+					meta: { kind: 'attachment' }
+				}
 			];
 		}
 	}
@@ -669,7 +682,9 @@
 			const maxBytes = compression?.attachment_max_bytes ?? 0;
 			for (const file of picked) {
 				if (isImageFile(file)) {
-					const image = await compressImage(file, compression).catch(() => fileToQueueBuffer(file));
+					const image = placeless(
+						await compressImage(file, compression).catch(() => fileToQueueBuffer(file))
+					);
 					editingAdded = [
 						...editingAdded,
 						{
@@ -687,7 +702,11 @@
 				}
 				editingAdded = [
 					...editingAdded,
-					{ key: uuid(), file: await fileToQueueBuffer(file), meta: { kind: 'attachment' } }
+					{
+						key: uuid(),
+						file: placeless(await fileToQueueBuffer(file)),
+						meta: { kind: 'attachment' }
+					}
 				];
 			}
 		} finally {

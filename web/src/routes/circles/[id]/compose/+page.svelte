@@ -61,6 +61,7 @@
 	import { videoDurationMs, videoPosterJpeg } from '$lib/media/videoPoster';
 	import { readExif } from '$lib/media/exif';
 	import { readVideoDate } from '$lib/media/mp4date';
+	import { stripGeoQueueFile } from '$lib/media/stripGeo';
 	import { getMediaUrl } from '$lib/media/objectUrl';
 	import { enqueuePost, loadQueuedPost, removeQueueItem, updateQueuedPost } from '$lib/queue/queue';
 	import { isTransportError } from '$lib/queue/transport';
@@ -694,6 +695,10 @@
 				} else {
 					queueFile = await fileToQueueBuffer(file);
 				}
+				// C22: место не идёт в круг — и в байтах оригинала его не должно
+				// быть; GPS в EXIF стирается до отправки (сжатые снимки и ролики
+				// координат не несут, для них это пустой проход).
+				if (!usePlace) queueFile = stripGeoQueueFile(queueFile);
 				if (maxBytes > 0 && queueFile.size > maxBytes) {
 					tooLarge.push(file.name);
 					skipFile();
