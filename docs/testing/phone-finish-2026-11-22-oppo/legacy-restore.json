@@ -1,0 +1,20 @@
+{
+  "v1": {
+    "verified": true,
+    "posts": 1,
+    "files": 1,
+    "file_sha256": "144acdd01b122c1690de594e3c152add162d7c96c39b6618d09031ef0296b5da",
+    "format": 1,
+    "schema": 34,
+    "producing_version": "0.31.0"
+  },
+  "v2": {
+    "verified": true,
+    "posts": 1,
+    "files": 1,
+    "file_sha256": "144acdd01b122c1690de594e3c152add162d7c96c39b6618d09031ef0296b5da",
+    "format": 2,
+    "schema": 1,
+    "producing_version": "0.34.0"
+  }
+}
