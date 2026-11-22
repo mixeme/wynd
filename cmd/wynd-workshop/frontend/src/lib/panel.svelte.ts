@@ -101,6 +101,16 @@ export class Panel {
 	// Сертификаты, продление которых сломалось (Stale): находка в списке, а
 	// совет с командой — отдельным блоком под списком.
 	staleCerts = $derived(this.findings.filter((f) => f.id === 'certstale' && f.advice && f.copy));
+
+	// certExpiryDate — срок сертификата сайта из последнего осмотра («26.01.2027»);
+	// срок не прочитался — пусто: окно удаления скажет без даты.
+	certExpiryDate(site: string): string {
+		const ts = this.inspection?.report.certs?.[site];
+		if (!ts) return '';
+		const d = new Date(ts * 1000);
+		const p = (n: number) => String(n).padStart(2, '0');
+		return `${p(d.getUTCDate())}.${p(d.getUTCMonth() + 1)}.${d.getUTCFullYear()}`;
+	}
 	rawParts = $derived(
 		this.inspection
 			? rawSections(

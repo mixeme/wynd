@@ -58,6 +58,10 @@ type Report struct {
 	// Wynd, но без нашей первой строки: их ставила не Мастерская, и «Убрать
 	// Wynd» их не трогает — только называет (кадры 5е, 5е2).
 	ForeignSite []string `json:"foreign_site,omitempty"`
+	// Certs — срок сертификатов Let's Encrypt (домен → конец, unix-секунды),
+	// сколько их прочиталось; окно удаления за nginx/Apache называет срок
+	// сертификата сайта точно.
+	Certs map[string]int64 `json:"certs,omitempty"`
 	// Raw — вывод команд осмотра, для «подробнее, что проверили».
 	Raw string `json:"raw"`
 }
@@ -228,6 +232,12 @@ func ParseInspectionAt(out, user string, now time.Time, l Layout) Report {
 		add(f)
 	}
 	for _, line := range sec["certrenew"] {
+		if ts := certRenewEnd(line); ts > 0 {
+			if rep.Certs == nil {
+				rep.Certs = map[string]int64{}
+			}
+			rep.Certs[certRenewDomain(line)] = ts
+		}
 		if f, ok := certStaleFinding(line); ok {
 			add(f)
 		}
@@ -507,6 +517,24 @@ func portsFinding(lines []string, ownProxy string) (string, Finding) {
 	return "", unusualWebServer("ports")
 }
 
+// certRenewFields разбирает строку секции certrenew («domain=… end=… ours=…»).
+func certRenewFields(line string) map[string]string {
+	fields := map[string]string{}
+	for _, part := range strings.Fields(line) {
+		if k, v, ok := strings.Cut(part, "="); ok && k != "" {
+			fields[k] = v
+		}
+	}
+	return fields
+}
+
+func certRenewDomain(line string) string { return certRenewFields(line)["domain"] }
+
+func certRenewEnd(line string) int64 {
+	ts, _ := strconv.ParseInt(certRenewFields(line)["end"], 10, 64)
+	return ts
+}
+
 // certStaleFinding читает строку секции certrenew осмотра и находит
 // сертификаты, продление которых сломалось (Stale): наш сертификат остался,
 // а сайта, через который Let's Encrypt проверяет домен, больше нет — удаление
@@ -514,12 +542,7 @@ func portsFinding(lines []string, ownProxy string) (string, Finding) {
 // пропала. Чужие сертификаты без webroot не трогаем: как их продлевать,
 // знает только тот, кто их ставил.
 func certStaleFinding(line string) (Finding, bool) {
-	fields := map[string]string{}
-	for _, part := range strings.Fields(line) {
-		if k, v, ok := strings.Cut(part, "="); ok && k != "" {
-			fields[k] = v
-		}
-	}
+	fields := certRenewFields(line)
 	dom := fields["domain"]
 	if dom == "" {
 		return Finding{}, false

@@ -630,6 +630,9 @@ func TestParseInspectionCertStale(t *testing.T) {
 		"domain=gone.mixfed.ru end=1797000000 ours=no site=no webroot=/srv/gone/acme wroot_ok=no\n" +
 		"domain=live.mixfed.ru end=1797000000 ours=no site=no webroot=/srv/other/acme wroot_ok=yes\n"
 	rep := ParseInspection(out, "root", time.Unix(1791460003, 0))
+	if len(rep.Certs) != 4 || rep.Certs["wynd3.mixfed.ru"] != 1797000000 {
+		t.Fatalf("сроки сертификатов: %+v", rep.Certs)
+	}
 	var stale []Finding
 	for _, f := range rep.Findings {
 		if f.ID == "certstale" {

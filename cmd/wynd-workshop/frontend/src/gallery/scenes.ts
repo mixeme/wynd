@@ -188,6 +188,7 @@ export const SCENES: Scene[] = [
 				report: {
 					...report.report,
 					proxy: 'nginx',
+					certs: { 'family.example.ru': 1799584000 },
 					findings: [{ id: 'wynd', level: 'note', text: 'Wynd на этом сервере уже стоит', plan: 'проверим и доделаем, чего не хватает' }]
 				}
 			})
