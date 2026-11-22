@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"gitea.mixdep.ru/mix/wynd/internal/relver"
 	"gitea.mixdep.ru/mix/wynd/internal/releasepages"
+	"gitea.mixdep.ru/mix/wynd/internal/relver"
 	"gitea.mixdep.ru/mix/wynd/internal/selfupdate"
 )
 
@@ -154,3 +154,13 @@ func ApplyUpdate(ctx context.Context, client *http.Client, up Update) (string, e
 
 // CleanOldSelf убирает прежний exe после обновления (при запуске).
 func CleanOldSelf() { selfupdate.CleanOldSelf() }
+
+// NotifyUpdateText — текст уведомления о новой версии окна (план 66, «вышла
+// версия»); окно спрятано, и полосу человек не видит. ok=false — уведомление
+// об этой версии уже показывали или обновления нет: дедуп по версии.
+func NotifyUpdateText(up Update, notified string) (title, body string, ok bool) {
+	if !up.Available || up.Version == "" || up.Version == notified {
+		return "", "", false
+	}
+	return "Вышла версия " + up.Version, "Откройте Wynd Настольный, чтобы обновиться.", true
+}

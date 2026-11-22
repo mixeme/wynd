@@ -45,6 +45,9 @@ type App struct {
 	storeErr error
 	// update — последняя найденная новая версия окна.
 	update desktop.Update
+	// updateNotified — версия, о которой уведомляли в трей: дедуп, один
+	// toast на версию (план 66, «вышла версия»).
+	updateNotified string
 	// window и tray — для «крестика»: со значком в трее окно прячется,
 	// без него приложение закрывается, как раньше.
 	window application.Window
@@ -56,7 +59,57 @@ type App struct {
 func (a *App) ServiceStartup(ctx context.Context, _ application.ServiceOptions) error {
 	a.ctx = ctx
 	desktop.CleanOldSelf()
+	// Периодическая проверка обновлений: фронтенд спрашивает один раз при
+	// запуске, а окно может жить неделями спрятанным — тут оно узнаёт о новых
+	// версиях без открытого интерфейса (план 66, «вышла версия»).
+	go a.runUpdateToasts()
 	return nil
+}
+
+// updateCheckInterval — как часто спрятанное окно само проверяет новые версии.
+const updateCheckInterval = 6 * time.Hour
+
+func (a *App) runUpdateToasts() {
+	ticker := time.NewTicker(updateCheckInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-a.ctx.Done():
+			return
+		case <-ticker.C:
+			ctx, cancel := context.WithTimeout(a.ctx, 20*time.Second)
+			update := desktop.CheckUpdate(ctx, http.DefaultClient, desktop.Version, time.Now())
+			cancel()
+			a.mu.Lock()
+			a.update = update
+			a.mu.Unlock()
+			a.maybeNotifyUpdate()
+		}
+	}
+}
+
+// maybeNotifyUpdate — показать toast о найденной версии, если он ещё не
+// показывался и интерфейса не видно; на виду полоса обновления сама.
+func (a *App) maybeNotifyUpdate() {
+	a.mu.Lock()
+	update, notified, win := a.update, a.updateNotified, a.window
+	a.mu.Unlock()
+	title, body, ok := desktop.NotifyUpdateText(update, notified)
+	if !ok {
+		return
+	}
+	if win != nil {
+		if visible, minimised := win.IsVisible(), win.IsMinimised(); !desktop.ShouldNotify(visible, minimised) {
+			return
+		}
+	}
+	if err := desktop.ShowToast(title, body); err != nil {
+		log.Printf("update toast: %v", err)
+		return
+	}
+	a.mu.Lock()
+	a.updateNotified = update.Version
+	a.mu.Unlock()
 }
 
 // RequestClose — «крестик» окна (C66): при значке в трее окно прячется и
@@ -67,6 +120,7 @@ func (a *App) RequestClose() {
 	a.mu.Unlock()
 	if win != nil && tray != nil {
 		win.Hide()
+		a.maybeNotifyUpdate()
 		return
 	}
 	application.Get().Quit()
@@ -547,6 +601,7 @@ func main() {
 	win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
 		e.Cancel()
 		win.Hide()
+		shell.maybeNotifyUpdate()
 	})
 	// Общая горячая клавиша (C66, план 66): Ctrl+Alt+W показывает и
 	// фокусирует окно из любого места Windows, как второй запуск. Регистрация

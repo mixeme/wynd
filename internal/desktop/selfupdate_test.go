@@ -33,3 +33,18 @@ func TestPickUpdate(t *testing.T) {
 		t.Fatalf("выпуск без подписи предложен: %+v", up)
 	}
 }
+
+// Уведомление о новой версии: один раз на версию, без обновления — молча.
+func TestNotifyUpdateText(t *testing.T) {
+	up := Update{Available: true, Version: "0.4.3"}
+	title, body, ok := NotifyUpdateText(up, "")
+	if !ok || title != "Вышла версия 0.4.3" || body == "" {
+		t.Fatalf("первое уведомление: %q, %q, %v", title, body, ok)
+	}
+	if _, _, ok := NotifyUpdateText(up, "0.4.3"); ok {
+		t.Error("уведомление той же версии повторено")
+	}
+	if _, _, ok := NotifyUpdateText(Update{}, ""); ok {
+		t.Error("уведомление без обновления")
+	}
+}
