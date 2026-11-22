@@ -1,0 +1,16 @@
+{
+  "move-member": {
+    "street": true,
+    "banner": true,
+    "destination_own_post": true,
+    "destination_posts": 2,
+    "verified": true
+  },
+  "move-complete": {
+    "source_disappeared": true,
+    "destination_retains_member_post": true
+  },
+  "move-cancel": {
+    "resumed": true
+  }
+}

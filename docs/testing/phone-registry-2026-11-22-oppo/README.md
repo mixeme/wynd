@@ -13,3 +13,9 @@ OPPO CPH1931, Android 10, Firefox 132, 720 × 1600. Локальный Wynd 0.53
 В тестовом круге квота 1 байт включает полосу ограничения. Владелец отправил запрос на 20 МБ, увидел его ожидание и затем отказ администратора. Запрос на 25 МБ одобрен, экран показал новую квоту. Запрос на уменьшение до 12 МБ применился сразу. При снова заполненной квоте в редакторе «Сохранить» погашено, «Удалить запись» доступно. Запись в очереди сохранилась с сообщением о заполнении и не была опубликована.
 
 [quota-full-feed](quota-full-feed.png) · [quota-pending](quota-pending.png) · [quota-rejected](quota-rejected.png) · [quota-approved](quota-approved.png) · [quota-lowered](quota-lowered.png) · [quota-edit-full](quota-edit-full.png) · [quota-queue-full](quota-queue-full.png) · [Данные проверки](quota.json)
+
+## Перенос глазами участника
+
+На прежнем тестовом сервере участник увидел строку «Круг переехал — войдите на …» в списке и баннер «Круг переехал» в хронологии. Под своей учёткой второго сервера открыл перенесённый круг и прочитал собственную запись. Владелец подтвердил завершение через форму исходного сервера. Круг исчез из прежнего списка, собственная запись на принимающем сервере сохранилась. В отдельном круге отмена вернула доступ к записи.
+
+[move-member-list](move-member-list.png) · [move-member-banner](move-member-banner.png) · [move-member-destination](move-member-destination.png) · [move-owner-confirm](move-owner-confirm.png) · [move-owner-after](move-owner-after.png) · [move-cancelled](move-cancelled.png) · [Данные проверки](move.json)
