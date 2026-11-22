@@ -9,6 +9,7 @@ ignore ./web/node_modules
 require (
 	filippo.io/age v1.2.1
 	github.com/SherClockHolmes/webpush-go v1.4.0
+	github.com/go-toast/toast v0.0.0-20190211030409-01e6764cf0a4
 	github.com/google/uuid v1.6.0
 	github.com/wailsapp/wails/v3 v3.1.0
 	github.com/zalando/go-keyring v0.2.8
@@ -27,6 +28,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
+	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
 	golang.org/x/term v0.46.0 // indirect

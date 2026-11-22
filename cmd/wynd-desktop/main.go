@@ -72,6 +72,24 @@ func (a *App) RequestClose() {
 	application.Get().Quit()
 }
 
+// Notify показывает системное уведомление Windows, когда интерфейса не
+// видно: окно спрятано в трей или свёрнуто (план 66, функция 2). На виду
+// мост молчит — человек и так смотрит в Wynd. Кто зовёт мост и о чём —
+// следующий шаг плана, решение владельца.
+func (a *App) Notify(title, body string) error {
+	a.mu.Lock()
+	win := a.window
+	a.mu.Unlock()
+	visible, minimised := false, false
+	if win != nil {
+		visible, minimised = win.IsVisible(), win.IsMinimised()
+	}
+	if !desktop.ShouldNotify(visible, minimised) {
+		return nil
+	}
+	return desktop.ShowToast(title, body)
+}
+
 // CheckServer проверяет адрес и запоминает сервер выбранным. Ошибка одна:
 // причина (опечатка, сеть, чужой сайт) человеку не различается.
 func (a *App) CheckServer(address string) (desktop.CheckResult, error) {
@@ -405,6 +423,12 @@ func main() {
 	store, err := desktop.OpenStore(filepath.Join(base, "servers.json"))
 	if err != nil {
 		log.Fatal(err)
+	}
+	// Системные уведомления (план 66, функция 2): AUMID и значок в HKCU,
+	// чтобы всплывающее уведомление показывалось от «Wynd Настольный», а не
+	// от PowerShell. Сбой не мешает окну — уведомления деградируют к имени.
+	if err := desktop.EnsureToastIdentity(base, trayIcon); err != nil {
+		log.Printf("toast identity: %v", err)
 	}
 	proxy := desktop.NewProxy()
 	// API и поток событий страница берёт с локального порта: WebView2
