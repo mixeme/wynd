@@ -19,3 +19,11 @@ OPPO CPH1931, Android 10, Firefox 132, 720 × 1600. Локальный Wynd 0.53
 На прежнем тестовом сервере участник увидел строку «Круг переехал — войдите на …» в списке и баннер «Круг переехал» в хронологии. Под своей учёткой второго сервера открыл перенесённый круг и прочитал собственную запись. Владелец подтвердил завершение через форму исходного сервера. Круг исчез из прежнего списка, собственная запись на принимающем сервере сохранилась. В отдельном круге отмена вернула доступ к записи.
 
 [move-member-list](move-member-list.png) · [move-member-banner](move-member-banner.png) · [move-member-destination](move-member-destination.png) · [move-owner-confirm](move-owner-confirm.png) · [move-owner-after](move-owner-after.png) · [move-cancelled](move-cancelled.png) · [Данные проверки](move.json)
+
+## Исходные файлы
+
+JPEG, MP4 и WAV прикрепили через обработчик поля «Файл» на OPPO. Байты из штатного серверного маршрута оригинала сверены с исходниками по SHA‑256. Совпали все три файла. JPEG и MP4 распознаны как фото и видео, WAV — как вложение. JPEG и MP4 видны в «Сетке».
+
+В первом прогоне MP4 текст удалось опубликовать, пока превью ролика ещё готовилось. В созданной записи остался только текст. Для сверки байтов повторили публикацию после появления плитки.
+
+[media-after-jpg](media-after-jpg.png) · [original-ready-mp4](original-ready-mp4.png) · [original-published-mp4](original-published-mp4.png) · [original-published-wav](original-published-wav.png) · [originals-grid](originals-grid.png) · [Данные проверки](media.json)

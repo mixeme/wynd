@@ -1,0 +1,20 @@
+{
+  "original original.jpg": {
+    "bytes": 31115,
+    "sha256": "f9e13e6329ed9a10456b65cf65e37550d07c173a82cc3fcb2d449b8bb62042de",
+    "matches": true,
+    "kind": "photo"
+  },
+  "original original.mp4": {
+    "bytes": 3766394,
+    "sha256": "7e6d6cd10098d18a3cd647d451f3041a27a9fd4aed28ea7c3930bc6908c0fb9c",
+    "matches": true,
+    "kind": "video"
+  },
+  "original original.wav": {
+    "bytes": 926144,
+    "sha256": "c39621012e3be52bb2fe58d3a7c586a5f20e17c10059ac6b8fe14aa926d2902f",
+    "matches": true,
+    "kind": "attachment"
+  }
+}
