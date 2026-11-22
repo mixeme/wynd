@@ -17,6 +17,7 @@ import {
 	getAdminSession,
 	putAdminSession,
 	clearAdminSession,
+	migrateSessionsToSystemStorage,
 	type AdminSessionRecord
 } from '$lib/idb/db';
 
@@ -190,6 +191,9 @@ async function doInitSession(): Promise<void> {
 	if (settings?.theme) theme = settings.theme;
 	if (settings?.avatar_shape) avatarShape = settings.avatar_shape;
 	initialized = true;
+	// Токены переезжают в учётные записи Windows при первом запуске новой
+	// оболочки (план 66, функция 3); профиль очищается от них после выгрузки.
+	void migrateSessionsToSystemStorage().catch(() => {});
 	// Не ждём: экран уже может показывать снимок, сервер ответит следом.
 	void syncAvatarShape();
 	void reconcileStoredSessions().catch(() => {});

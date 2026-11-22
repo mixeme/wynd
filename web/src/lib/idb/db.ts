@@ -1,5 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { CircleColor } from '$lib/theme/colors';
+import { desktopApiBase } from '$lib/desktop/bridge';
 
 export type Theme = 'system' | 'light' | 'dark';
 
@@ -387,38 +388,160 @@ export async function bumpDayPromptCount(origin: string, circleId: string): Prom
 	await saveAppSettings(settings);
 }
 
+// Сессии окна (план 66, функция 3): в окне (мост с apiBase) токены живут
+// в учётных записях Windows через локальный порт, в браузере — в IndexedDB,
+// как раньше. Откат в IndexedDB — не только на сбой: старая оболочка не знает
+// ручек /__secrets (прокси отдаст её ответ сервера с 404), и клиент сервера
+// старше или новее окна не теряет вход.
+// Мешок перечитывается целиком: сессий у человека единицы, и оболочка
+// отдаёт его из своего кэша.
+
+async function systemBag(base: string): Promise<{ sessions: SessionRecord[]; admin: AdminSessionRecord | null }> {
+	const res = await fetch(`${base}/__secrets`);
+	if (!res.ok) throw new Error(`secrets: HTTP ${res.status}`);
+	const bag = (await res.json()) as { sessions?: SessionRecord[]; admin?: AdminSessionRecord | null };
+	return { sessions: bag.sessions ?? [], admin: bag.admin ?? null };
+}
+
 export async function listSessions(): Promise<SessionRecord[]> {
+	const base = desktopApiBase();
+	if (base) {
+		try {
+			return (await systemBag(base)).sessions;
+		} catch {
+			// хранилище окна недоступно — прежнее место
+		}
+	}
 	const db = await getDb();
 	return db.getAll('sessions');
 }
 
 export async function getSession(origin: string): Promise<SessionRecord | undefined> {
+	const base = desktopApiBase();
+	if (base) {
+		try {
+			return (await systemBag(base)).sessions.find((s) => s.origin === origin);
+		} catch {
+			// хранилище окна недоступно — прежнее место
+		}
+	}
 	const db = await getDb();
 	return db.get('sessions', origin);
 }
 
 export async function putSession(session: SessionRecord): Promise<void> {
 	const db = await getDb();
+	const base = desktopApiBase();
+	if (base) {
+		try {
+			const res = await fetch(`${base}/__secrets/session`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(session)
+			});
+			if (res.ok) {
+				// профиль очищается от токенов: в IndexedDB копии больше нет
+				await db.delete('sessions', session.origin);
+				return;
+			}
+		} catch {
+			// хранилище окна недоступно — запись в прежнее место
+		}
+	}
 	await db.put('sessions', session);
 }
 
 export async function deleteSession(origin: string): Promise<void> {
 	const db = await getDb();
+	const base = desktopApiBase();
+	if (base) {
+		try {
+			await fetch(`${base}/__secrets/session/${encodeURIComponent(origin)}`, { method: 'DELETE' });
+		} catch {
+			// хранилище окна недоступно — хотя бы прежнее место очистим
+		}
+	}
 	await db.delete('sessions', origin);
 }
 
 export async function getAdminSession(): Promise<AdminSessionRecord | undefined> {
+	const base = desktopApiBase();
+	if (base) {
+		try {
+			return (await systemBag(base)).admin ?? undefined;
+		} catch {
+			// хранилище окна недоступно — прежнее место
+		}
+	}
 	const db = await getDb();
 	return db.get('admin_session', 'admin');
 }
 
 export async function putAdminSession(session: AdminSessionRecord): Promise<void> {
 	const db = await getDb();
+	const base = desktopApiBase();
+	if (base) {
+		try {
+			const res = await fetch(`${base}/__secrets/admin`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(session)
+			});
+			if (res.ok) {
+				await db.delete('admin_session', 'admin');
+				return;
+			}
+		} catch {
+			// хранилище окна недоступно — запись в прежнее место
+		}
+	}
 	await db.put('admin_session', session, 'admin');
 }
 
 export async function clearAdminSession(): Promise<void> {
 	const db = await getDb();
+	const base = desktopApiBase();
+	if (base) {
+		try {
+			await fetch(`${base}/__secrets/admin`, { method: 'DELETE' });
+		} catch {
+			// хранилище окна недоступно — хотя бы прежнее место очистим
+		}
+	}
+	await db.delete('admin_session', 'admin');
+}
+
+/**
+ * Миграция входов в системное хранилище (план 66, функция 3): записи из
+ * IndexedDB выгружаются в учётные записи Windows, после успешной выгрузки
+ * профиль очищается от токенов. Запись idb-версии поверх системной безопасна:
+ * IndexedDB — прежняя жизнь, свежее её ничего не писало. Выгрузка идёт до
+ * очистки: прерванная миграция продолжается при следующем запуске.
+ */
+export async function migrateSessionsToSystemStorage(): Promise<void> {
+	const base = desktopApiBase();
+	if (!base) return;
+	const db = await getDb();
+	const legacy = await db.getAll('sessions');
+	const admin = await db.get('admin_session', 'admin');
+	if (legacy.length === 0 && !admin) return;
+	for (const session of legacy) {
+		const res = await fetch(`${base}/__secrets/session`, {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(session)
+		});
+		if (!res.ok) return; // продолжится при следующем запуске,IndexedDB цел
+	}
+	if (admin) {
+		const res = await fetch(`${base}/__secrets/admin`, {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(admin)
+		});
+		if (!res.ok) return;
+	}
+	await db.clear('sessions');
 	await db.delete('admin_session', 'admin');
 }
 

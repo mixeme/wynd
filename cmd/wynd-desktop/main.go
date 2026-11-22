@@ -494,8 +494,15 @@ func main() {
 		log.Fatal(err)
 	}
 	proxy.SetAPIBase("http://" + apiLn.Addr().String())
+	// Сессии окна (план 66, функция 3): токены в Credential Manager, клиент
+	// работает с ними по apiBase тем же CORS-контуром, что и за API.
+	secrets := desktop.NewSecretsCache(desktop.NewSecretStore())
+	apiMux := http.NewServeMux()
+	apiMux.Handle("/__secrets", desktop.SessionsHandler(secrets))
+	apiMux.Handle("/__secrets/", desktop.SessionsHandler(secrets))
+	apiMux.Handle("/", proxy.Handler(http.NotFoundHandler()))
 	go func() {
-		if err := http.Serve(apiLn, corsHandler(proxy.Handler(http.NotFoundHandler()))); err != nil {
+		if err := http.Serve(apiLn, corsHandler(apiMux)); err != nil {
 			log.Printf("api listener: %v", err)
 		}
 	}()
