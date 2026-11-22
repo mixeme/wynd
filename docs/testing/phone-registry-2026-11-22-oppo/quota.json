@@ -1,0 +1,26 @@
+{
+  "quota-full": {
+    "quota_bytes": 1,
+    "banner": true
+  },
+  "quota-requests": {
+    "requested_mb": [
+      20,
+      25,
+      12
+    ],
+    "rejected_20": true,
+    "approved_25": true,
+    "immediate_lower_12": true
+  },
+  "quota-edit": {
+    "save_disabled": true,
+    "delete_available": true,
+    "banner": true
+  },
+  "quota-queue": {
+    "queued": true,
+    "quota_error": true,
+    "published": false
+  }
+}
