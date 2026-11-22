@@ -1,0 +1,16 @@
+{
+  "login": {
+    "card_before": 86,
+    "card_after": 86,
+    "email_y_before": 335.3203125,
+    "email_y_after": 335.3203125,
+    "fixed": true
+  },
+  "join": {
+    "card_before": 86,
+    "card_after": 86,
+    "email_y_before": 188.671875,
+    "email_y_after": 188.671875,
+    "fixed": true
+  }
+}
