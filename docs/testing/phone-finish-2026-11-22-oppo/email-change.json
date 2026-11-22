@@ -1,0 +1,7 @@
+{
+  "same_address_rejected": true,
+  "occupied_address_previously_rejected": true,
+  "three_attempts_notice": true,
+  "new_address_remains_signed_in": true,
+  "old_address_receives_notice": true
+}
