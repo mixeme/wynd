@@ -1,0 +1,18 @@
+{
+  "build": {
+    "key_and_dispatch_ms": 771,
+    "ready_email": true,
+    "encrypted_archive_size": 83956,
+    "server_file_removed": true
+  },
+  "panel": {
+    "ready_archives": 2,
+    "navigation_labels": [
+      "Проверка",
+      "Хранилище",
+      "Оплата"
+    ],
+    "ready_archives_section": true,
+    "ready_file_count_visible": true
+  }
+}
