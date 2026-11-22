@@ -50,9 +50,9 @@
 
 Из `98cef915` после production-сборки frontend собран отдельный exe:
 
-`go build -trimpath -tags desktop,production -ldflags '-H windowsgui' -o dev/workshop-visual-98cef915/wynd-workshop.exe ./cmd/wynd-workshop`
+`go build -trimpath -tags desktop,production -ldflags '-H windowsgui' -o wynd-workshop.exe ./cmd/wynd-workshop`
 
-SHA-256: `07569dae10bf394493bdfbd08ddbfe59871bc783b6be4318951ea270b1b59b77`; размер 25 805 312 байт. При запуске `APPDATA` направлен в `dev/workshop-visual-98cef915/profile`; настоящие SSH-серверы и сохранённый доступ владельца не использовались. Штатный начальный размер exe — 760 × 560; браузерный проход 1024 × 760 не подтверждает его компактное окно.
+SHA-256: `07569dae10bf394493bdfbd08ddbfe59871bc783b6be4318951ea270b1b59b77`; размер 25 805 312 байт. При запуске `APPDATA` направлен в отдельный профиль; настоящие SSH-серверы и сохранённый доступ владельца не использовались. Штатный начальный размер exe — 760 × 560; браузерный проход 1024 × 760 не подтверждает его компактное окно.
 
 Computer Use нашёл приложение `process:D:\Local\Git\wynd\dev\workshop-visual-98cef915\wynd-workshop.exe`, окно `20844984`, заголовок `Wynd Мастерская [0.4.0]`. Первый `get_window_state` завершился `window capture timed out: timed out waiting on channel`. По штатной процедуре обновлён выбор через `list_apps`, окно активировано, захват повторён один раз: та же ошибка. Снимок нативного окна не получен; управление по непроверенным координатам не выполнялось.
 

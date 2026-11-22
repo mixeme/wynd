@@ -265,7 +265,7 @@
 
 **Здесь закрывается:** хроника, auth, журнал, sync/SSE, поиск, admin API, квота и архив, `go test ./...`.
 
-**SMTP на релеях:** `scripts/test-integration.bat` (`go test -tags=integration ./internal/mail/`). Учётки в `dev/` (в `.gitignore`): `credentials.txt` (секции `# …` с `address`/`port`/`login`/`password`/`from`) или JSON в `dev/credentials/`. Образцы — `internal/mail/testdata/credentials.example.txt`, `smtp.credentials.example.json`. Переопределение: `WYND_CREDENTIALS_DIR`, `WYND_CREDENTIALS_FILE`. Ещё читается `../myenv/wynd/credentials.txt` — закрытый репозиторий владельца рядом с `wynd`.
+**SMTP на релеях:** `scripts/test-integration.bat` (`go test -tags=integration ./internal/mail/`). Учётки в `dev/` (в `.gitignore`): `credentials.txt` (секции `# …` с `address`/`port`/`login`/`password`/`from`) или JSON в `credentials/`. Образцы — `internal/mail/testdata/credentials.example.txt`, `smtp.credentials.example.json`. Переопределение: `WYND_CREDENTIALS_DIR`, `WYND_CREDENTIALS_FILE`. Ещё читается `../myenv/wynd/credentials.txt` — закрытый репозиторий владельца рядом с `wynd`.
 
 **Здесь не закрывается:** Let's Encrypt, прокси-заголовки, Web Push на localhost, systemd. `http://192.168.x.x` — не loopback-профиль.
 

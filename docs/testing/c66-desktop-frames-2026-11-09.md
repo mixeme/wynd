@@ -17,11 +17,11 @@
 
 ## Рендер
 
-- Инструмент: Vite 6.4.5, проект `dev/desktop-mockup` (`App.svelte` — копия `docs/plans/55-desktop-frames.svelte.txt`), браузер Chromium 1148 из Playwright 1.49.1.
-- Команда: `node web/node_modules/vite/bin/vite.js --config vite.config.mjs` в `dev/desktop-mockup`; снимок `element screenshot` через Playwright.
+- Инструмент: Vite 6.4.5, проект макета на Vite (`App.svelte` — копия `docs/plans/55-desktop-frames.svelte.txt`), браузер Chromium 1148 из Playwright 1.49.1.
+- Команда: `node web/node_modules/vite/bin/vite.js --config vite.config.mjs` в каталоге макета; снимок `element screenshot` через Playwright.
 - Параметры: viewport 1200 × 1000, devicePixelRatio 1, светлая тема, масштаб 100%; окно 1000 × 660, страница кадра с подписью и описанием.
 - Документ с кадрами: `docs/visual/desktop.html`; генерация — рендер того же исходника в браузере, стили и разметка сняты из живого DOM, без ручной перерисовки.
-- Снимки: `dev/desktop-mockup/previews/pc6-proposal-2026-11-09.png`, `pc6a-proposal-2026-11-09.png`, `pc7-proposal-2026-11-09.png` (локально, в Git не входят).
+- Снимки: `pc6-proposal-2026-11-09.png`, `pc6a-proposal-2026-11-09.png`, `pc7-proposal-2026-11-09.png` (локально, в Git не входят).
 
 ## Осмотр
 
