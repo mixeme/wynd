@@ -86,7 +86,7 @@
 	});
 	afterNavigate((nav) => {
 		if (!nav.to) return;
-		recordEntry(nav.to.url);
+		recordEntry(nav.to.url, nav.type === 'enter' && nav.to.route.id === '/invite/[token]');
 		const url = nav.to.url;
 		setTimeout(() => armEntryGuard(url));
 	});

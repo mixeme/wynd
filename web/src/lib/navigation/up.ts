@@ -16,7 +16,9 @@ import { goto, pushState } from '$app/navigation';
 // Индекс записи истории у SvelteKit → путь с запросом. Живёт в sessionStorage:
 // после перезагрузки вкладки история браузера та же.
 const STORE = 'wynd:history';
-let entries = new Map<number, string>();
+// Для приглашения с другой страницы у предыдущей записи нет пути Wynd.
+type HistoryEntry = string | { path: string; previousDocument: true };
+let entries = new Map<number, HistoryEntry>();
 try {
 	entries = new Map(JSON.parse(sessionStorage.getItem(STORE) ?? '[]'));
 } catch {
@@ -40,18 +42,36 @@ function key(url: URL): string {
 	return url.pathname + url.search;
 }
 
-/** Корневой макет зовёт после каждого перехода. */
-export function recordEntry(url: URL): void {
+function hasPreviousDocument(index: number): boolean {
+	const entry = entries.get(index);
+	return typeof entry === 'object' && entry?.previousDocument === true;
+}
+
+/** Корневой макет зовёт после каждого перехода, включая вход по ссылке. */
+export function recordEntry(url: URL, openingInvite = false): void {
 	const i = historyIndex();
 	if (i === undefined) return;
-	entries.set(i, key(url));
+	// Новая загрузка дописывается в конец истории. При перезагрузке или
+	// переходе по истории length может включать записи впереди.
+	const fromPreviousDocument =
+		openingInvite &&
+		history.length > 1 &&
+		(performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)
+			?.type === 'navigate';
+	const path = key(url);
+	// claimInvite заменяет адрес на этой же записи истории.
+	entries.set(
+		i,
+		fromPreviousDocument || hasPreviousDocument(i) ? { path, previousDocument: true } : path
+	);
 	save();
 }
 
 /** Экран, откуда пришли на текущую запись истории (приём записи, план 46, C13). */
 export function previousEntry(): string | undefined {
 	const i = historyIndex();
-	return i !== undefined ? entries.get(i - 1) : undefined;
+	const entry = i !== undefined ? entries.get(i - 1) : undefined;
+	return typeof entry === 'string' ? entry : entry?.path;
 }
 
 // Шаг назад сделал сам goUp — его не перехватываем.
@@ -135,7 +155,11 @@ export function navigateBack(): Promise<void> {
 	if (dismissOverlay()) return Promise.resolve();
 	const here = location.pathname + location.search;
 	const i = historyIndex();
-	const prev = i !== undefined ? entries.get(i - 1) : undefined;
+	if (i !== undefined && hasPreviousDocument(i)) {
+		history.back();
+		return Promise.resolve();
+	}
+	const prev = previousEntry();
 	if (prev && prev !== here) {
 		ownBack = true;
 		history.back();
@@ -147,9 +171,8 @@ export function navigateBack(): Promise<void> {
 }
 
 export function goUp(parent: string): Promise<void> {
-	const i = historyIndex();
 	const target = key(new URL(parent, location.origin));
-	if (i !== undefined && entries.get(i - 1) === target) {
+	if (previousEntry() === target) {
 		ownBack = true;
 		history.back();
 		return Promise.resolve();
@@ -212,7 +235,7 @@ let guardIndex: number | undefined;
 
 export function armEntryGuard(url: URL): void {
 	const i = historyIndex();
-	if (i === undefined || entries.has(i - 1)) return;
+	if (i === undefined || entries.has(i - 1) || hasPreviousDocument(i)) return;
 	pushState('', {});
 	guardIndex = historyIndex();
 	recordEntry(url);
