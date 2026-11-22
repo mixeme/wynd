@@ -261,6 +261,17 @@
 					? `остановлен вами ${day(p.st.stopped_at)}`
 					: 'не работает'} · свободно {gb(p.st.free_bytes)}
 		</p>
+		{#if p.staleCerts.length}
+			<!-- Сертификаты, продление которых сломалось (удаление с сохранением
+			     данных убирает сайт из веб-сервера): совет и команда отдельно. -->
+			{#each p.staleCerts as f (f.id)}
+				{@const cmd = f.copy ?? ''}
+				<div class="ins-dim">
+					{f.advice}
+				</div>
+				<CopyLine text={cmd} copied={p.copiedLine === cmd} oncopy={() => void p.copyLine(cmd)} />
+			{/each}
+		{/if}
 		{#if p.page.foreign && !p.st.move}
 			<!-- Кадр 7з: только переезд. -->
 			{@const f = p.page.foreign}

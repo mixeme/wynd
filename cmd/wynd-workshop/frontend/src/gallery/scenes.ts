@@ -64,6 +64,7 @@ const foreignApache = {
 		findings: [{ id: 'wynd', level: 'ok' as const, text: 'Wynd' }]
 	}
 };
+const stoppedNoData = page({ running: false }, { latest: undefined });
 const stopped = page({ running: false, stopped_at: '2026-10-24T09:00:00Z' }, { latest: undefined });
 const interrupted = page({
 	running: false,
@@ -149,6 +150,50 @@ export const SCENES: Scene[] = [
 	{ name: '7e-interrupted', fake: toPult(interrupted), acts: go },
 	{ name: '7a-service-error', fake: { ...toPult(pult), Service: () => service(pult, false) }, acts: [...go, { click: 'Перезапустить' }, { click: 'подробности' }] },
 	{ name: '7a-remove', fake: { ...toPult(pult), Inspect: () => ({ ...report, report: { ...report.report, proxy: 'nginx', findings: [{ id: 'wynd', level: 'ok', text: 'Wynd' }] } }) }, acts: [...go, { click: 'Убрать Wynd с сервера' }] },
+	// Certbot Stale (22.11): продление сломалось — наш сертификат остался, а сайт
+	// из веб-сервера убран удалением с сохранением данных. Пульт: совет с
+	// командой сразу под статусом сервера.
+	{
+		name: '7a-certstale',
+		fake: {
+			...toPult(stoppedNoData),
+			Inspect: () => ({
+				...report,
+				report: {
+					...report.report,
+					proxy: 'nginx',
+					findings: [
+						{
+							id: 'certstale',
+							level: 'note',
+							text: 'Сертификат wynd3.mixfed.ru не продлевается',
+							plan: 'поставьте Wynd заново или уберите сертификат',
+							advice:
+								"Wynd с этим сертификатом убран с сохранением данных: сайт, через который Let's Encrypt проверяет домен, убран из настроек веб-сервера. Поставьте Wynd заново — данные остались на месте, сайт и продление вернутся. Срок сертификата — до 26.01.2027. Или уберите сертификат:",
+							copy: 'certbot delete --cert-name wynd3.mixfed.ru'
+						},
+						{ id: 'wynd', level: 'note', text: 'Wynd на этом сервере не запущен, его данные на месте', plan: 'поставим снова с ними' }
+					]
+				}
+			})
+		},
+		acts: go
+	},
+	// Предупреждение в окне удаления при сохранении данных за nginx (вариант «Б»).
+	{
+		name: '7a-remove-stale-warn',
+		fake: {
+			Inspect: () => ({
+				...report,
+				report: {
+					...report.report,
+					proxy: 'nginx',
+					findings: [{ id: 'wynd', level: 'note', text: 'Wynd на этом сервере уже стоит', plan: 'проверим и доделаем, чего не хватает' }]
+				}
+			})
+		},
+		acts: [...go, { click: 'Убрать Wynd с сервера' }]
+	},
 	{
 		name: '5e-remove-foreign-site',
 		fake: { ...toPult(pult), Inspect: () => foreignApache },
