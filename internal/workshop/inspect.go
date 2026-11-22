@@ -37,6 +37,9 @@ type Finding struct {
 	Copy   string `json:"copy,omitempty"`
 	After  string `json:"after,omitempty"`
 	Final  bool   `json:"final,omitempty"`
+	// Domain — сертификат какого домена касается находка (certstale): по нему
+	// кнопка «Убрать сертификат» зовёт DeleteStaleCert.
+	Domain string `json:"domain,omitempty"`
 }
 
 // Report — итог осмотра. Сервер при осмотре не меняется.
@@ -126,7 +129,7 @@ echo '## certrenew'; for f in /etc/letsencrypt/renewal/*.conf; do
   if [ -n "$webroot" ]; then
     root=$(dirname "$webroot")
     [ -e "$webroot" ] && wroot_ok=yes
-    if grep -qsF ` + shQuote(siteMark) + ` "$root/compose.yaml" 2>/dev/null; then ours=yes; fi
+    if grep -qs "установщик Wynd" "$root/compose.yaml" 2>/dev/null; then ours=yes; fi
   fi
   site=no
   for s in "/etc/nginx/conf.d/wynd-$dom.conf" "/etc/nginx/sites-enabled/wynd-$dom.conf" "/etc/apache2/sites-enabled/wynd-$dom.conf"; do
@@ -555,23 +558,28 @@ func certStaleFinding(line string) (Finding, bool) {
 	}
 	var body string
 	if siteGone {
-		body = "Wynd с этим сертификатом убран с сохранением данных: сайт, через который Let's Encrypt проверяет домен, убран из настроек веб-сервера. Поставьте Wynd заново — данные остались на месте, сайт и продление вернутся."
+		body = "Поставьте Wynd заново — данные остались на месте, сайт и продление вернутся."
 	} else {
-		body = "Папка, через которую Let's Encrypt проверяет домен (" + webroot + "), пропала, и продление падает."
+		body = "Папка проверки домена (" + webroot + ") пропала. Поставьте Wynd заново или верните папку."
 	}
-	if ts := fields["end"]; ts != "" {
-		if v, err := strconv.ParseInt(ts, 10, 64); err == nil && v > 0 {
-			body += " Срок сертификата — до " + time.Unix(v, 0).UTC().Format("02.01.2006") + "."
-		}
-	}
+	plan := "истечёт " + certRenewDate(fields)
 	return Finding{
 		ID:     "certstale",
 		Level:  LevelNote,
 		Text:   "Сертификат " + dom + " не продлевается",
-		Plan:   "поставьте Wynd заново или уберите сертификат",
-		Advice: body + " Или уберите сертификат:",
-		Copy:   "certbot delete --cert-name " + dom,
+		Plan:   plan,
+		Advice: body,
+		Domain: dom,
 	}, true
+}
+
+// certRenewDate — срок сертификата из строки certrenew («26.01.2027»); не
+// прочитался — «скоро».
+func certRenewDate(fields map[string]string) string {
+	if ts, err := strconv.ParseInt(fields["end"], 10, 64); err == nil && ts > 0 {
+		return time.Unix(ts, 0).UTC().Format("02.01.2006")
+	}
+	return "скоро"
 }
 
 // unusualWebServer — один ответ на все необычные случаи (кадр 2д): порты 80 и

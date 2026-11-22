@@ -646,20 +646,17 @@ func TestParseInspectionCertStale(t *testing.T) {
 		t.Fatalf("пропавший webroot не найден: %+v", stale)
 	}
 	for _, f := range stale {
-		if f.Level != LevelNote || f.Text == "" || f.Copy == "" || f.Plan == "" || f.Advice == "" {
+		if f.Level != LevelNote || f.Text == "" || f.Plan == "" || f.Advice == "" || f.Domain == "" || f.Copy != "" {
 			t.Fatalf("неполная находка: %+v", f)
 		}
-		if !strings.Contains(f.Text, "не продлевается") || !strings.Contains(f.Copy, "certbot delete --cert-name") {
-			t.Fatalf("текст/команда: %+v", f)
+		if !strings.Contains(f.Text, "не продлевается") || f.Plan != "истечёт 11.12.2026" {
+			t.Fatalf("текст/срок: %+v", f)
+		}
+		if !strings.Contains(f.Advice, "Поставьте Wynd заново") {
+			t.Fatalf("совет: %+v", f)
 		}
 	}
-	if !strings.Contains(stale[0].Advice, "с сохранением данных") && !strings.Contains(stale[1].Advice, "с сохранением данных") {
-		t.Fatalf("совет про убранный сайт: %+v", stale)
-	}
-	if !strings.Contains(stale[0].Advice, "пропала") && !strings.Contains(stale[1].Advice, "пропала") {
-		t.Fatalf("совет про webroot: %+v", stale)
-	}
-	if !strings.Contains(stale[0].Advice+stale[1].Advice, "11.12.2026") {
-		t.Fatalf("срок сертификата не показан: %+v", stale)
+	if stale[0].Domain != "wynd3.mixfed.ru" || stale[1].Domain != "gone.mixfed.ru" {
+		t.Fatalf("домен для кнопки: %+v", stale)
 	}
 }

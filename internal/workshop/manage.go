@@ -65,7 +65,6 @@ type UpdateMark struct {
 	Copied bool `json:"copied,omitempty"`
 }
 
-
 // ReadServerState смотрит, что стоит на сервере. Ничего не меняет.
 func ReadServerState(ctx context.Context, sess *Session) (ServerState, error) {
 	return ReadServerStateAt(ctx, sess, DefaultLayout())
@@ -140,7 +139,6 @@ const (
 	ServiceStop    = "stop"
 	ServiceRestart = "restart"
 )
-
 
 // ServiceAction запускает, останавливает или перезапускает Wynd. Caddy не
 // трогается: остановленный сайт отвечает «сервер недоступен», а не пропадает
@@ -519,4 +517,43 @@ func CopySizeAt(ctx context.Context, sess *Session, l Layout) (uint64, error) {
 		return 0, fmt.Errorf("copy size: %q", res.Output)
 	}
 	return kb << 10, nil
+}
+
+// CertbotDeleteAt убирает сертификат Let's Encrypt (кнопка «Убрать сертификат»
+// у находки certstale): certbot delete стирает сертификат вместе с конфигом
+// продления — напоминания certbot перестают падать. certbotWait — как при
+// выпуске: два certbot разом не дружат.
+func CertbotDeleteAt(ctx context.Context, sess *Session, domain string) ([]LogEntry, error) {
+	if !validCertDomain(domain) {
+		return nil, &StepError{Message: "Имя домена написано не так", Advice: "Обновите осмотр кнопкой «Проверить снова» и попробуйте ещё раз."}
+	}
+	script := certbotWait + `cb delete --non-interactive --cert-name ` + shQuote(domain) + ` 2>&1`
+	r := &Run{sess: sess, steps: []StepState{{ID: "cert"}}, report: func() {}}
+	r.begin("certbot delete --cert-name " + domain)
+	res, err := sess.Exec(ctx, script, nil, shortTimeout)
+	r.record("certbot delete --cert-name "+domain, res.Output)
+	if err != nil {
+		return r.log, err
+	}
+	if res.Code != 0 {
+		return r.log, &StepError{Message: "Не получилось убрать сертификат", Advice: "Что ответил certbot — в «подробностях»."}
+	}
+	return r.log, nil
+}
+
+// validCertDomain — домен из находки осмотра: только латиница, цифры, точки
+// и дефисы; дальше он уходит в команду shQuote-ом, но лишние знаки отсекаем
+// сразу.
+func validCertDomain(domain string) bool {
+	if domain == "" || len(domain) > 253 {
+		return false
+	}
+	for _, r := range domain {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '.', r == '-':
+		default:
+			return false
+		}
+	}
+	return true
 }

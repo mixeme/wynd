@@ -16,7 +16,7 @@
 	import Radio from '$ui/workshop/Radio.svelte';
 	import RawSheet from '$ui/workshop/RawSheet.svelte';
 	import StepList from '$ui/workshop/StepList.svelte';
-	import type { ServerProfile, ProfileRequest, ProfileViewState } from './api';
+	import type { ServerProfile, ProfileRequest, ProfileViewState, Finding } from './api';
 	import { Panel } from './lib/panel.svelte';
 	import { day, dayTime, gb, mark } from './lib/display';
 
@@ -65,6 +65,23 @@
 	const { api } = p;
 </script>
 
+{#snippet certStaleBox(f: Finding)}
+	<!-- Certbot Stale: короткий совет и кнопка — Мастерская убирает сертификат сама. -->
+	<div class="ins-dim">{f.advice}</div>
+	<div class="ins-svcbar">
+		<Button
+			variant="ghost"
+			loading={p.deletingCert === f.domain}
+			loadingLabel="Убираем сертификат…"
+			onclick={() => void p.attempt(() => p.deleteStaleCert(f.domain ?? ''))}
+		>
+			Убрать сертификат
+		</Button>
+	</div>
+	{#if p.certError}
+		<div class="ins-dim" role="alert">{p.certError}</div>
+	{/if}
+{/snippet}
 {#snippet removeBox(yes: string, site: string)}
 	<Notice tone="bad" title="Убрать Wynd с сервера?">
 		<div class="ins-dim">
@@ -262,14 +279,8 @@
 					: 'не работает'} · свободно {gb(p.st.free_bytes)}
 		</p>
 		{#if p.staleCerts.length}
-			<!-- Сертификаты, продление которых сломалось (удаление с сохранением
-			     данных убирает сайт из веб-сервера): совет и команда отдельно. -->
 			{#each p.staleCerts as f (f.id)}
-				{@const cmd = f.copy ?? ''}
-				<div class="ins-dim">
-					{f.advice}
-				</div>
-				<CopyLine text={cmd} copied={p.copiedLine === cmd} oncopy={() => void p.copyLine(cmd)} />
+				{@render certStaleBox(f)}
 			{/each}
 		{/if}
 		{#if p.page.foreign && !p.st.move}
@@ -1164,14 +1175,8 @@
 			{/each}
 		</MarkRows>
 		{#if p.staleCerts.length}
-			<!-- Сертификаты, продление которых сломалось (удаление с сохранением
-			     данных убирает сайт из веб-сервера): совет и команда отдельно. -->
 			{#each p.staleCerts as f (f.id)}
-				{@const cmd = f.copy ?? ''}
-				<div class="ins-dim">
-					{f.advice}
-				</div>
-				<CopyLine text={cmd} copied={p.copiedLine === cmd} oncopy={() => void p.copyLine(cmd)} />
+				{@render certStaleBox(f)}
 			{/each}
 		{/if}
 		{#if p.askRollback}

@@ -131,6 +131,13 @@ func (a *App) Service(id string, action string) (workshop.ServiceResult, error) 
 	return profileCall(a, id, false, func(w *workshop.Wizard) workshop.ServiceResult { return w.Service(a.ctx, action) })
 }
 
+// DeleteStaleCert убирает сертификат с сломанным продлением (кнопка у находки осмотра).
+func (a *App) DeleteStaleCert(id string, domain string) (workshop.ServiceResult, error) {
+	return profileCall(a, id, false, func(w *workshop.Wizard) workshop.ServiceResult {
+		return w.DeleteStaleCert(a.ctx, domain)
+	})
+}
+
 // BuildLogChunk отдаёт порцию полного вывода сборки с сервера (C71).
 func (a *App) BuildLogChunk(id string, offset int64, limit int) (workshop.BuildLogChunk, error) {
 	return profileCall(a, id, false, func(w *workshop.Wizard) workshop.BuildLogChunk {

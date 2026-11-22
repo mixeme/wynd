@@ -191,6 +191,37 @@ func (w *Wizard) Service(ctx context.Context, action string) ServiceResult {
 	return res
 }
 
+// DeleteStaleCert убирает сертификат Let's Encrypt, продление которого
+// сломалось (кнопка «Убрать сертификат» у находки осмотра certstale).
+func (w *Wizard) DeleteStaleCert(ctx context.Context, domain string) ServiceResult {
+	w.mu.Lock()
+	if w.progress.Running {
+		w.mu.Unlock()
+		return ServiceResult{Message: "Сначала дождитесь окончания", Advice: "Сейчас идёт обновление."}
+	}
+	if !w.aliveLocked(ctx) {
+		if res := w.dialLocked(ctx); res.Status != StatusConnected {
+			w.mu.Unlock()
+			return ServiceResult{Message: "Связь с сервером оборвалась", Advice: "Подключитесь заново."}
+		}
+	}
+	sess := w.session
+	w.mu.Unlock()
+	log, err := CertbotDeleteAt(ctx, sess, domain)
+	res := ServiceResult{OK: err == nil, Log: log}
+	if err != nil {
+		res.Message = "Не получилось"
+		var se *StepError
+		if errors.As(err, &se) {
+			res.Message, res.Advice = se.Message, se.Advice
+		} else {
+			res.Advice = "Что ответил сервер — в «подробностях»."
+		}
+	}
+	res.Page = w.ServerPage(ctx)
+	return res
+}
+
 // StartUpdate обновляет Wynd до свежей версии со страницы сервера. Дальше
 // окно спрашивает InstallProgress — тот же ход, что у установки.
 func (w *Wizard) StartUpdate(ctx context.Context, opt UpdateOptions) Progress {
