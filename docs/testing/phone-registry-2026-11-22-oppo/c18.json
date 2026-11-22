@@ -1,0 +1,14 @@
+{
+  "c18-feed": {
+    "first": 2000,
+    "older": 6,
+    "requests": 1,
+    "cursor_match": true
+  },
+  "c18-grid": {
+    "first": 2000,
+    "older": 6,
+    "requests": 1,
+    "cursor_match": true
+  }
+}
