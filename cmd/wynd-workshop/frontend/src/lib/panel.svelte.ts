@@ -100,7 +100,29 @@ export class Panel {
 	blocks = $derived(this.findings.filter((f) => f.level === 'block'));
 	// Сертификаты, продление которых сломалось (Stale): находка в списке, а
 	// совет с командой — отдельным блоком под списком.
-	staleCerts = $derived(this.findings.filter((f) => f.id === 'certstale' && f.advice && f.copy));
+	staleCerts = $derived(this.findings.filter((f) => f.id === 'certstale' && f.advice && f.domain));
+
+	// deletingCert — домен, у которого идёт «Убрать сертификат»; certError —
+	// причина отказа, строкой под кнопкой.
+	deletingCert = $state('');
+	certError = $state('');
+
+	// deleteStaleCert — кнопка «Убрать сертификат» у находки осмотра certstale:
+	// certbot delete на сервере, потом осмотр заново (находка исчезает).
+	async deleteStaleCert(domain: string): Promise<void> {
+		if (this.deletingCert) return;
+		this.deletingCert = domain;
+		this.certError = '';
+		try {
+			const res = await this.api.DeleteStaleCert(domain);
+			if (!res.ok) throw new Error(res.message || 'Не получилось');
+			await this.inspect();
+		} catch {
+			this.certError = 'Не получилось убрать сертификат. Попробуйте ещё раз.';
+		} finally {
+			this.deletingCert = '';
+		}
+	}
 
 	// certExpiryDate — срок сертификата сайта из последнего осмотра («26.01.2027»);
 	// срок не прочитался — пусто: окно удаления скажет без даты.

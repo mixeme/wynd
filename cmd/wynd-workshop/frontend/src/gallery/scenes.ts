@@ -157,6 +157,7 @@ export const SCENES: Scene[] = [
 		name: '7a-certstale',
 		fake: {
 			...toPult(stoppedNoData),
+			DeleteStaleCert: () => ({ ok: true, log: null }),
 			Inspect: () => ({
 				...report,
 				report: {
@@ -167,10 +168,9 @@ export const SCENES: Scene[] = [
 							id: 'certstale',
 							level: 'note',
 							text: 'Сертификат wynd3.mixfed.ru не продлевается',
-							plan: 'поставьте Wynd заново или уберите сертификат',
-							advice:
-								"Wynd с этим сертификатом убран с сохранением данных: сайт, через который Let's Encrypt проверяет домен, убран из настроек веб-сервера. Поставьте Wynd заново — данные остались на месте, сайт и продление вернутся. Срок сертификата — до 26.01.2027. Или уберите сертификат:",
-							copy: 'certbot delete --cert-name wynd3.mixfed.ru'
+							plan: 'истечёт 26.01.2027',
+							advice: 'Поставьте Wynd заново — данные остались на месте, сайт и продление вернутся.',
+							domain: 'wynd3.mixfed.ru'
 						},
 						{ id: 'wynd', level: 'note', text: 'Wynd на этом сервере не запущен, его данные на месте', plan: 'поставим снова с ними' }
 					]

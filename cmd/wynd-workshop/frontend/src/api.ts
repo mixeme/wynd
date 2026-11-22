@@ -37,6 +37,8 @@ export interface Finding {
 	after?: string;
 	/** Повторная проверка ничего не изменит: главная кнопка — «Другой сервер». */
 	final?: boolean;
+	/** Сертификат какого домена касается находка (certstale): для кнопки «Убрать сертификат». */
+	domain?: string;
 }
 
 export interface Report {
@@ -336,6 +338,7 @@ export interface Backend {
 	Version(): Promise<string>;
 	ServerPage(): Promise<ServerPage>;
 	Service(action: 'start' | 'stop' | 'restart'): Promise<ServiceResult>;
+	DeleteStaleCert(domain: string): Promise<ServiceResult>;
 	StartUpdate(opt: UpdateOptions): Promise<Progress>;
 	BuildLogChunk(offset: number, limit: number): Promise<BuildLogChunk>;
 	ReturnPrevious(): Promise<ServiceResult>;
@@ -394,6 +397,7 @@ const PROFILE_METHODS = new Set([
 	'Disconnect',
 	'ServerPage',
 	'Service',
+	'DeleteStaleCert',
 	'StartUpdate',
 	'BuildLogChunk',
 	'ReturnPrevious',
