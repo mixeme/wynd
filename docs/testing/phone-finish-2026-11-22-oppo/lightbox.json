@@ -1,0 +1,10 @@
+{
+  "photo": {
+    "grid_and_lightbox": true,
+    "decoded": true
+  },
+  "video": {
+    "grid_and_lightbox": true,
+    "decoded": true
+  }
+}
