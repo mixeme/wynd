@@ -32,10 +32,10 @@
 		loadSettingsBundle,
 		loadSettingsBundleCached,
 		patchCircle,
-		fetchNotifyPrefs,
 		type CircleSettings,
 		type EditWindowKey,
-		type MemberInfo
+		type MemberInfo,
+		type SettingsBundle
 	} from '$lib/circles/settings';
 	import { paintFromSnapshots } from '$lib/journal/snapshot-first';
 	import { notifySummary } from '$lib/settings/notify-mute';
@@ -156,8 +156,22 @@
 		members = list;
 	}
 
+	/**
+	 * То, что раньше доезжало отдельными ответами после первого кадра: квота —
+	 * блок «Место», уведомления — подпись строки. Оба меняли высоту уже
+	 * нарисованного экрана и сдвигали возвращённую прокрутку (C125).
+	 */
+	function applyExtras(bundle: SettingsBundle) {
+		if (bundle.quota) {
+			usedBytes = bundle.quota.used_bytes;
+			quotaBytes = bundle.quota.quota_bytes;
+			quotaLoaded = true;
+		}
+		if (bundle.notify) notifyLine = notifySummary(bundle.notify, formatSessionDay);
+	}
+
 	// Снимок настроек и участников — первый кадр (C100): экран не ждёт сети,
-	// свежесть, приглашения и квота приходят ответом следом.
+	// свежесть и приглашения приходят ответом следом.
 	async function loadCached() {
 		if (cachedRequested) return;
 		cachedRequested = true;
@@ -168,6 +182,7 @@
 				if (!bundle) return undefined;
 				return () => {
 					applySettings(bundle.settings, bundle.members);
+					applyExtras(bundle);
 					void loadAvatars(bundle.members.filter((m) => m.status === 'active').slice(0, 3));
 				};
 			}
@@ -181,16 +196,14 @@
 	async function load() {
 		// Снимок уже нарисован — держим форму на экране, загрузку не показываем.
 		if (!cachedShown) loading = true;
-		void fetchNotifyPrefs(circle.origin, circle.circleId)
-			.then((prefs) => (notifyLine = notifySummary(prefs, formatSessionDay)))
-			.catch(() => (notifyLine = ''));
 		error = '';
 		try {
-			const { settings, members: list } = await loadSettingsBundle(circle.origin, circle.circleId);
+			const bundle = await loadSettingsBundle(circle.origin, circle.circleId);
 			freshApplied = true;
-			applySettings(settings, list);
+			applySettings(bundle.settings, bundle.members);
+			applyExtras(bundle);
 			try {
-				await loadAvatars(list.filter((m) => m.status === 'active').slice(0, 3));
+				await loadAvatars(bundle.members.filter((m) => m.status === 'active').slice(0, 3));
 			} catch {
 				/* фото не обязательны: остаётся буква */
 			}
@@ -200,16 +213,6 @@
 					liveCount = (await fetchCircleInvites(circle.origin, circle.circleId)).length;
 				} catch {
 					/* list is optional on this screen */
-				}
-			}
-			if (isOwner) {
-				try {
-					const quota = await fetchQuota(circle.origin, circle.circleId);
-					usedBytes = quota.used_bytes;
-					quotaBytes = quota.quota_bytes;
-					quotaLoaded = true;
-				} catch {
-					/* non-owner race */
 				}
 			}
 		} catch (err) {

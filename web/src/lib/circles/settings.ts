@@ -292,12 +292,32 @@ export async function fetchMembers(origin: string, circleId: string): Promise<Me
 	return data.members;
 }
 
+/**
+ * Формат снимка экрана настроек. 2 — с квотой («Место») и подписью
+ * «Уведомлений»: без них первый кадр короче экрана, и, если он нарисован над
+ * восстановленной прокруткой, строки под ним уезжают, когда ответ доезжает
+ * (C125).
+ */
+export const SETTINGS_BUNDLE_VERSION = 2;
+
 export interface SettingsBundle {
 	settings: CircleSettings;
 	members: MemberInfo[];
+	/**
+	 * Владельцу: занятое место — блок «Место» и «Архив и очистка». Столбики
+	 * графика экрану настроек не нужны, в снимок не идут.
+	 */
+	quota?: Pick<QuotaInfo, 'used_bytes' | 'quota_bytes'>;
+	/** Подпись строки «Уведомления» — что включено сейчас. */
+	notify?: NotifyPrefs;
+	v?: number;
 }
 
-/** Настройки круга и участники одним снимком — первый кадр экрана (C100). */
+/**
+ * Всё, что рисует экран настроек, одним снимком — первый кадр целиком (C100).
+ * Квота и уведомления тоже здесь: каждый ответ, пришедший после первого кадра,
+ * менял высоту содержимого и сдвигал возвращённую прокрутку (C125).
+ */
 export async function loadSettingsBundle(
 	origin: string,
 	circleId: string
@@ -306,7 +326,17 @@ export async function loadSettingsBundle(
 		fetchCircleSettings(origin, circleId),
 		fetchMembers(origin, circleId)
 	]);
-	const bundle = { settings, members };
+	// Квота — только владельцу: остальным сервер её не отдаёт. Отказ любого из
+	// двух не отменяет снимок: форма нужна, поле просто не попадёт (C105).
+	const [quota, notify] = await Promise.all([
+		settings.is_owner === true
+			? fetchQuota(origin, circleId).catch(() => undefined)
+			: Promise.resolve(undefined),
+		fetchNotifyPrefs(origin, circleId).catch(() => undefined)
+	]);
+	const bundle: SettingsBundle = { settings, members, v: SETTINGS_BUNDLE_VERSION };
+	if (quota) bundle.quota = { used_bytes: quota.used_bytes, quota_bytes: quota.quota_bytes };
+	if (notify) bundle.notify = notify;
 	await writeCachedSnapshot(origin, 'settings', circleId, bundle);
 	return bundle;
 }
@@ -315,7 +345,13 @@ export async function loadSettingsBundleCached(
 	origin: string,
 	circleId: string
 ): Promise<SettingsBundle | undefined> {
-	return readCachedSnapshot<SettingsBundle>(origin, 'settings', circleId);
+	const bundle = await readCachedSnapshot<SettingsBundle>(origin, 'settings', circleId);
+	if (!bundle) return undefined;
+	// Снимок прежнего формата короче нынешнего экрана у владельца (нет блока
+	// «Место»): рисовать его — значит показать первый кадр ниже и сдвинуть его,
+	// когда доедет ответ. Один раз после обновления ждём сеть (C125).
+	if (bundle.v !== SETTINGS_BUNDLE_VERSION && bundle.settings?.is_owner === true) return undefined;
+	return bundle;
 }
 
 export async function renameIdentity(
