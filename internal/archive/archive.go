@@ -386,15 +386,15 @@ a{color:inherit;text-decoration:none}
 .head h1{font-size:22px;margin:0;font-weight:700}
 .head p{margin:4px 0 0;opacity:.85;font-size:13.5px}
 .head a{color:#fff}
-.post{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:12px 14px;padding:14px;overflow-wrap:anywhere;min-width:0}
-.pa{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.post{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:8px 14px;padding:14px;overflow-wrap:anywhere;min-width:0}
+.pa{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .author{font-weight:600}
 .av{width:34px;height:34px;border-radius:50%;object-fit:cover;flex:0 0 auto}
 .avl{width:34px;height:34px;border-radius:50%;background:var(--rc,var(--c));color:#fff;display:grid;place-items:center;font-size:13.5px;flex:0 0 auto}
 .meta{color:var(--faint);font-size:11.5px}
-.body{margin:0 0 11px;white-space:pre-wrap;overflow-wrap:anywhere}
+.body{margin:0 0 8px;white-space:pre-wrap;overflow-wrap:anywhere}
 .gone{color:var(--faint);font-size:12.5px;margin:10px 0 0}
-.rx{display:flex;gap:8px;margin-top:11px;align-items:center;flex-wrap:wrap}
+.rx{display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap}
 .rx .one{background:var(--ct);border-radius:14px;padding:4px 11px;font-size:12.5px;display:flex;gap:7px;align-items:center}
 .rx .one .ic{width:13px;height:13px;stroke-width:1.9;color:var(--c)}
 .cmt{display:flex;align-items:flex-start;gap:10px;padding:10px 16px}

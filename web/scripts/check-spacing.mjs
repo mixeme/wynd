@@ -43,14 +43,54 @@ const OPTICAL_MAX = 2;
 // Сверка по файлу, правилу и значению: значение 24/28 может быть законным
 // в другом правиле.
 const EXCEPTIONS = [
-	{ file: 'cmd/wynd-workshop/frontend/src/app.css', selector: '.ins-welcome', value: '70px', why: 'центровка приветствия' },
-	{ file: 'cmd/wynd-workshop/frontend/src/app.css', selector: '.ins-welcome', value: '40px', why: 'центровка приветствия' },
-	{ file: 'web/src/lib/components/workshop/RawSheet.svelte', selector: '.ins-cause-part', value: '1.45em', why: 'абзац сырого вывода' },
-	{ file: 'web/src/lib/styles/ui.css', selector: '.empty', value: '80px', why: 'центровка пустого состояния' },
-	{ file: 'web/src/lib/styles/ui.css', selector: '.empty-state > .h1s', value: '48px', why: 'центровка пустого состояния' },
-	{ file: 'web/src/lib/styles/ui.css', selector: '.empty-state.is-list > .h1s', value: '24px', why: 'центровка пустого состояния' },
-	{ file: 'web/src/lib/styles/ui.css', selector: '.empty-state.is-tab > .h1s', value: '220px', why: 'центровка пустого состояния' },
-	{ file: 'web/src/lib/styles/ui.css', selector: '.empty-state.is-feed > .h1s', value: '28px', why: 'центровка пустого состояния' }
+	{
+		file: 'cmd/wynd-workshop/frontend/src/app.css',
+		selector: '.ins-welcome',
+		value: '70px',
+		why: 'центровка приветствия'
+	},
+	{
+		file: 'cmd/wynd-workshop/frontend/src/app.css',
+		selector: '.ins-welcome',
+		value: '40px',
+		why: 'центровка приветствия'
+	},
+	{
+		file: 'web/src/lib/components/workshop/RawSheet.svelte',
+		selector: '.ins-cause-part',
+		value: '1.45em',
+		why: 'абзац сырого вывода'
+	},
+	{
+		file: 'web/src/lib/styles/ui.css',
+		selector: '.empty',
+		value: '80px',
+		why: 'центровка пустого состояния'
+	},
+	{
+		file: 'web/src/lib/styles/ui.css',
+		selector: '.empty-state > .h1s',
+		value: '48px',
+		why: 'центровка пустого состояния'
+	},
+	{
+		file: 'web/src/lib/styles/ui.css',
+		selector: '.empty-state.is-list > .h1s',
+		value: '24px',
+		why: 'центровка пустого состояния'
+	},
+	{
+		file: 'web/src/lib/styles/ui.css',
+		selector: '.empty-state.is-tab > .h1s',
+		value: '220px',
+		why: 'центровка пустого состояния'
+	},
+	{
+		file: 'web/src/lib/styles/ui.css',
+		selector: '.empty-state.is-feed > .h1s',
+		value: '28px',
+		why: 'центровка пустого состояния'
+	}
 ];
 
 const ignored = new Set(EXCEPTIONS.map((e) => `${e.file}|${e.selector}|${e.value}`));
@@ -117,7 +157,12 @@ for (const rel of FILES) {
 const tokens = readFileSync(path.join(root, 'web/src/lib/styles/tokens.css'), 'utf8');
 for (const step of [1, 2, 3]) {
 	if (!new RegExp(`--sp-${step}:\\s*\\d+px;`).test(tokens)) {
-		problems.push({ file: 'web/src/lib/styles/tokens.css', line: 0, value: `нет --sp-${step}`, selector: '' });
+		problems.push({
+			file: 'web/src/lib/styles/tokens.css',
+			line: 0,
+			value: `нет --sp-${step}`,
+			selector: ''
+		});
 	}
 }
 
