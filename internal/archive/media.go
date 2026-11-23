@@ -191,10 +191,10 @@ const mediaCSS = `
 .thumbs .thumb img,.thumbs .thumb video,.thumbs .thumb-body img,.thumbs .thumb-body video{width:100%;height:100%;object-fit:cover;display:block}
 .vid-mark{position:absolute;left:50%;top:50%;width:26px;height:26px;transform:translate(-50%,-50%);color:rgba(255,255,255,0.9);fill:currentColor;filter:drop-shadow(0 0 3px rgba(0,0,0,0.45));pointer-events:none}
 .under{border-bottom:1px solid;padding-bottom:1px}
-.archive-media{margin:11px 0 0}
+.archive-media{margin:8px 0 0}
 .archive-media .thumbs{padding:0}
 .archive-media .extra{margin-top:8px}
-.archive-media .more{margin-top:11px}
+.archive-media .more{margin-top:8px}
 .archive-media [hidden]{display:none}
 .lb{position:absolute;inset:0;background:#171513;display:flex;flex-direction:column;color:#efe9e0}
 .lb.fixed{position:fixed;inset:0;z-index:50}

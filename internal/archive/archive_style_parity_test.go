@@ -120,11 +120,12 @@ var archiveStyleParity = []styleParity{
 }
 
 // TestArchiveBlockSpacing держит ритм зазоров между блоками записи. Это
-// собственный механизм архива: в приложении зазоры дают .pt (снизу 11 px)
-// и .rx (сверху 11 px), а плитка медиа стоит к строке вложения вплотную
+// собственный механизм архива: в приложении зазоры дают .pt (снизу 8 px)
+// и .rx (сверху 8 px), а плитка медиа стоит к строке вложения вплотную
 // (замер настоящего рендера 2026-11-13) — паритету сравнивать не с чем,
 // и при выравнивании A26 зазор был потерян. Эффективный зазор — максимум
 // из нижнего поля верхнего блока и верхнего поля нижнего (схлопывание).
+// После C120 (лесенка 4/8/16) ритм — 8 px, а не 11.
 func TestArchiveBlockSpacing(t *testing.T) {
 	arch := parseCSSRules(baseCSS)
 	cases := []struct {
@@ -132,11 +133,11 @@ func TestArchiveBlockSpacing(t *testing.T) {
 		prev, next []string
 		gap        int
 	}{
-		{"текст → сетка превью", []string{".body"}, []string{".archive-media"}, 11},
-		{"текст → строка звука или файла", []string{".body"}, []string{".att"}, 11},
-		{"строка звука → сетка превью", []string{".att"}, []string{".archive-media"}, 11},
-		{"сетка превью → строка звука", []string{".archive-media"}, []string{".att"}, 11},
-		{"строка звука → отклики", []string{".att"}, []string{".rx"}, 11},
+		{"текст → сетка превью", []string{".body"}, []string{".archive-media"}, 8},
+		{"текст → строка звука или файла", []string{".body"}, []string{".att"}, 8},
+		{"строка звука → сетка превью", []string{".att"}, []string{".archive-media"}, 8},
+		{"сетка превью → строка звука", []string{".archive-media"}, []string{".att"}, 8},
+		{"строка звука → отклики", []string{".att"}, []string{".rx"}, 8},
 		{"запись → карточка комментариев (приклеена)", []string{".post", ".post:has(+ .cm)"}, []string{".cm"}, 0},
 	}
 	for _, c := range cases {
@@ -148,7 +149,7 @@ func TestArchiveBlockSpacing(t *testing.T) {
 		}
 	}
 	// Плитки и раскрытие (A26, принятый кадр 2026-11-16): зазор сетки 8 px,
-	// спрятанное продолжает сетку с тем же зазором сверху, «Ещё N» — 11 px.
+	// спрятанное продолжает сетку с тем же зазором сверху, «Ещё N» — 8 px.
 	tiles := mergeDecls(arch, []string{".thumbs"})
 	if got := pixelsOf(tiles["gap"]); got != 8 {
 		t.Errorf("зазор плиток %d px, ожидалось 8 px", got)
@@ -158,8 +159,8 @@ func TestArchiveBlockSpacing(t *testing.T) {
 		t.Errorf("раскрытые плитки: зазор %d px, ожидалось 8 px", got)
 	}
 	more := mergeDecls(arch, []string{".archive-media .more"})
-	if got := spacingSide(more, "top"); got != 11 {
-		t.Errorf("«Ещё N»: зазор %d px, ожидалось 11 px", got)
+	if got := spacingSide(more, "top"); got != 8 {
+		t.Errorf("«Ещё N»: зазор %d px, ожидалось 8 px", got)
 	}
 }
 
