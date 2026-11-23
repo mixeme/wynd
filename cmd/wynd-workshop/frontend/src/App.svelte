@@ -65,22 +65,24 @@
 	const { api } = p;
 </script>
 
-{#snippet certStaleBox(f: Finding)}
-	<!-- Certbot Stale: короткий совет и кнопка — Мастерская убирает сертификат сама. -->
-	<div class="ins-dim">{f.advice}</div>
-	<div class="ins-svcbar">
-		<Button
-			variant="ghost"
-			loading={p.deletingCert === f.domain}
-			loadingLabel="Убираем сертификат…"
-			onclick={() => void p.attempt(() => p.deleteStaleCert(f.domain ?? ''))}
-		>
-			Убрать сертификат
-		</Button>
+{#snippet certStaleText(f: Finding)}
+	<!-- Certbot Stale: что с сертификатом и что делать — видно и в пульте, и в осмотре. -->
+	<div class="ins-dim">
+		{f.text}{#if f.plan}&nbsp;— {f.plan}{/if}. {f.advice}
 	</div>
 	{#if p.certError}
 		<div class="ins-dim" role="alert">{p.certError}</div>
 	{/if}
+{/snippet}
+{#snippet certStaleButton(f: Finding)}
+	<Button
+		variant="ghost"
+		loading={p.deletingCert === f.domain}
+		loadingLabel="Убираем сертификат…"
+		onclick={() => void p.attempt(() => p.deleteStaleCert(f.domain ?? ''))}
+	>
+		Убрать сертификат
+	</Button>
 {/snippet}
 {#snippet removeBox(yes: string, site: string)}
 	<Notice tone="bad" title="Убрать Wynd с сервера?">
@@ -278,11 +280,9 @@
 					? `остановлен вами ${day(p.st.stopped_at)}`
 					: 'не работает'} · свободно {gb(p.st.free_bytes)}
 		</p>
-		{#if p.staleCerts.length}
-			{#each p.staleCerts as f (f.id)}
-				{@render certStaleBox(f)}
-			{/each}
-		{/if}
+		{#each p.staleCerts as f (f.id)}
+			{@render certStaleText(f)}
+		{/each}
 		{#if p.page.foreign && !p.st.move}
 			<!-- Кадр 7з: только переезд. -->
 			{@const f = p.page.foreign}
@@ -366,6 +366,9 @@
 						Запустить
 					</Button>
 				{/if}
+				{#each p.staleCerts as f (f.id)}
+					{@render certStaleButton(f)}
+				{/each}
 			</div>
 			{#if p.askStop}
 				<Notice title="Остановить сайт?">
@@ -1174,11 +1177,12 @@
 				</MarkRow>
 			{/each}
 		</MarkRows>
-		{#if p.staleCerts.length}
-			{#each p.staleCerts as f (f.id)}
-				{@render certStaleBox(f)}
-			{/each}
-		{/if}
+		{#each p.staleCerts as f (f.id)}
+			{@render certStaleText(f)}
+			<div class="ins-svcbar">
+				{@render certStaleButton(f)}
+			</div>
+		{/each}
 		{#if p.askRollback}
 			{@render removeBox('Да, убрать', p.domainOk ? p.domain : '')}
 			{#if p.showLog && p.rollbackLog.length}
