@@ -34,6 +34,16 @@ if errorlevel 1 exit /b 1
 call npm run build
 if errorlevel 1 exit /b 1
 
+rem web/embed.go вшивает клиент сервера в exe окна (план 66, функция 9):
+rem tagged vet/test и сборка окон требуют готового web/dist. В scripts\test.bat
+rem он уже собран; отдельный прогон test-desktop — собираем здесь до Go.
+if not exist "%WYND_DESKTOP_ROOT%\web\dist\index.html" (
+  cd /d "%WYND_DESKTOP_ROOT%\web"
+  echo [desktop] Build web client for the embedded interface
+  call npm run build
+  if errorlevel 1 exit /b 1
+)
+
 cd /d "%WYND_DESKTOP_ROOT%"
 echo [desktop] Tagged Go vet and tests
 go vet -tags desktop ./cmd/wynd-workshop ./cmd/wynd-signer ./cmd/wynd-desktop ./internal/desktop
@@ -46,15 +56,6 @@ if exist "%WYND_DESKTOP_OUT%" exit /b 1
 mkdir "%WYND_DESKTOP_OUT%"
 if errorlevel 1 exit /b 1
 set "WYND_DESKTOP_RC=1"
-rem web/embed.go вшивает клиент сервера в exe окна (план 66, функция 9):
-rem сборка окон требует готового web/dist. В scripts	est.bat он уже собран;
-rem отдельный прогон test-desktop без него — собираем здесь.
-if not exist "%WYND_DESKTOP_ROOT%\web\dist\index.html" (
-  cd /d "%WYND_DESKTOP_ROOT%\web"
-  echo [desktop] Build web client for the embedded interface
-  call npm run build
-  if errorlevel 1 exit /b 1
-)
 
 echo [desktop] Production-tag builds of three windows
 go build -trimpath -tags "desktop,production" -o "%WYND_DESKTOP_OUT%\workshop.exe" ./cmd/wynd-workshop
