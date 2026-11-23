@@ -79,7 +79,7 @@
 		flex-shrink: 0;
 		background: var(--tint);
 		border-right: 1px solid var(--line);
-		padding: 17px 10px;
+		padding: var(--sp-3) 10px;
 		overflow-y: auto;
 	}
 	.ins-rail-head {
@@ -87,7 +87,7 @@
 		gap: 10px;
 		align-items: center;
 		justify-content: space-between;
-		padding: 0 8px 13px;
+		padding: 0 8px var(--sp-2);
 	}
 	.ins-rail-head h3 {
 		margin: 0;
@@ -135,7 +135,7 @@
 			width: 100%;
 			border-right: 0;
 			border-bottom: 1px solid var(--line);
-			padding: 12px 10px;
+			padding: var(--sp-2) 10px;
 			max-height: 180px;
 		}
 		.ins-server-entry {
@@ -150,7 +150,7 @@
 	.ins-side {
 		flex: none;
 		width: 170px;
-		padding: 18px 0;
+		padding: var(--sp-3) 0;
 		border-right: 1px solid var(--line);
 		background: var(--tint);
 	}
