@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ADD_SERVER_IN_BROWSER } from '$lib/session/addServer';
+	import { ADD_SERVER_IN_APP } from '$lib/session/addServer';
 	import { navigateBack } from '$lib/navigation/up';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -120,7 +120,7 @@
 		<Loading />
 	{:else if rows.length === 0}
 		<!-- Спокойная констатация, не заголовок: обычный кегль, цвет подсказки. -->
-		{#if ADD_SERVER_IN_BROWSER}
+		{#if ADD_SERVER_IN_APP}
 			<Hint centered class="mt-16 sz-15">Вы ни на одном сервере не вошли</Hint>
 			<Hint centered class="mt-16"
 				>Интерфейс продолжит открываться с сервера «{interfaceName}».</Hint
@@ -128,7 +128,8 @@
 			<Button onclick={addServer}>Войти на сервер</Button>
 		{:else}
 			<Hint centered class="mt-16 sz-15">На этом устройстве вы ни на одном сервере</Hint>
-			<!-- C69: другой сервер отсюда не добавить — входят на этот. -->
+			<!-- C69: в браузере другой сервер не добавить — входят на этот;
+			     в приложениях кнопка «Войти на сервер». -->
 			<Button onclick={() => goto('/')}>Войти</Button>
 		{/if}
 	{:else}
@@ -165,7 +166,7 @@
 		<Hint class="mt-16">
 			Общего профиля на все серверы нет: каждый сервер — отдельное место, даже с той же почтой.
 		</Hint>
-		{#if ADD_SERVER_IN_BROWSER}
+		{#if ADD_SERVER_IN_APP}
 			<Button onclick={addServer}>Войти на сервер</Button>
 		{/if}
 	{/if}

@@ -310,9 +310,13 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("GET /api/v1/archive/{token}", s.handleArchiveByLink)
 }
 
-// ServeHTTP sets nosniff on every response and dispatches to Mux.
+// ServeHTTP sets nosniff on every response, adds CORS for participant routes
+// and dispatches to Mux.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
+	if serveParticipantCORS(w, r) {
+		return
+	}
 	s.Mux.ServeHTTP(w, r)
 }
 

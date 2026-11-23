@@ -17,7 +17,7 @@
 	import { loadPendingAuth, savePendingAuth } from '$lib/auth/pending';
 	import { loadSessions } from '$lib/session/session.svelte';
 	import { allowDesktopServer } from '$lib/desktop/servers';
-	import { ADD_SERVER_IN_BROWSER } from '$lib/session/addServer';
+	import { ADD_SERVER_IN_APP } from '$lib/session/addServer';
 	import {
 		loadServerCard,
 		registrationCaption,
@@ -83,9 +83,10 @@
 
 	onMount(async () => {
 		if (!adding) adding = (await loadSessions()).length > 0;
-		// C69: второй сервер в веб-приложении не добавляют — старые закладки
-		// и «Назад» ведут на «Серверы», а не на форму, которая не сработает.
-		if (adding && !ADD_SERVER_IN_BROWSER) {
+		// C69: в браузере второй сервер не добавляют — старые закладки и
+		// «Назад» ведут на «Серверы», а не на форму, которая не сработает.
+		// В приложениях (окно, Android) добавление работает.
+		if (adding && !ADD_SERVER_IN_APP) {
 			void goto('/settings/servers', { replaceState: true });
 			return;
 		}
