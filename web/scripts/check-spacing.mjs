@@ -39,9 +39,21 @@ const OPTICAL_MAX = 2;
 // сырого вывода в его собственных единицах. Сверка по файлу и значению,
 // чтобы сторожа не ломали сдвиги строк.
 const EXCEPTIONS = [
-	{ file: 'cmd/wynd-workshop/frontend/src/app.css', value: '70px', why: 'центровка приветствия по окну' },
-	{ file: 'cmd/wynd-workshop/frontend/src/app.css', value: '40px', why: 'центровка приветствия по окну' },
-	{ file: 'web/src/lib/components/workshop/RawSheet.svelte', value: '1.45em', why: 'абзац сырого вывода по тексту' }
+	{
+		file: 'cmd/wynd-workshop/frontend/src/app.css',
+		value: '70px',
+		why: 'центровка приветствия по окну'
+	},
+	{
+		file: 'cmd/wynd-workshop/frontend/src/app.css',
+		value: '40px',
+		why: 'центровка приветствия по окну'
+	},
+	{
+		file: 'web/src/lib/components/workshop/RawSheet.svelte',
+		value: '1.45em',
+		why: 'абзац сырого вывода по тексту'
+	}
 ];
 
 const ignoredValue = new Set(EXCEPTIONS.map((e) => `${e.file}:${e.value}`));
