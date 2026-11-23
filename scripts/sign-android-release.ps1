@@ -54,6 +54,8 @@ try {
     if (-not $section.Success -or -not $section.Groups[1].Value.Trim()) { throw 'Release notes for this version are missing' }
     $notesFile = Join-Path $directory 'release-notes.md'
     Set-Content -LiteralPath $notesFile -Value $section.Groups[1].Value.Trim() -Encoding utf8
+    # The unsigned APK stays next to the signed one: say which file to install.
+    Add-Content -LiteralPath $notesFile -Value ("`n" + 'Устанавливать нужно **`wynd-android.apk`**. Файл `wynd-android-unsigned.apk` — тот же APK до подписи, для проверки удостоверения сборки; установить его нельзя.') -Encoding utf8
     $readiness = & gh api "repos/$repo/contents/android/version.properties?ref=$Tag" --header 'Accept: application/vnd.github.raw+json'
     if ($LASTEXITCODE -ne 0) { throw 'Could not read tagged release readiness' }
     $releaseReady = ($readiness -join "`n") -match '(?m)^releaseReady=true\s*$'

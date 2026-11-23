@@ -41,6 +41,17 @@ const (
 	androidDetailBlocked   = "Файл wynd-android.apk и его контрольная сумма выложены в черновик. Выпуск не опубликован: публикация заблокирована. Временные файлы на этом компьютере удалены."
 )
 
+// androidAssetNote — пояснение к файлам выпуска. Рядом с подписанным APK
+// в выпуске остаётся исходный unsigned: подпись встраивается в файл, и по
+// исходному проверяется удостоверение сборки. Без строки два APK на странице
+// выпуска выглядят как выбор.
+const androidAssetNote = "\n\nУстанавливать нужно **`wynd-android.apk`**. Файл `wynd-android-unsigned.apk` — тот же APK до подписи, для проверки удостоверения сборки; установить его нельзя."
+
+// androidReleaseBody — описание выпуска: «Что нового» и пояснение про файлы.
+func androidReleaseBody(notes string) string {
+	return notes + androidAssetNote + "\n"
+}
+
 // androidKeyAlias — alias постоянного ключа в keystore (план 50).
 const androidKeyAlias = "wynd-android"
 
@@ -410,7 +421,7 @@ func (g GitHub) signAndPublishAndroid(ctx context.Context, c *Check, keyPath, pa
 	}
 	p.start("publish")
 	notes := filepath.Join(c.dir, "notes.md")
-	if err := os.WriteFile(notes, []byte(c.Notes+"\n"), 0o644); err != nil {
+	if err := os.WriteFile(notes, []byte(androidReleaseBody(c.Notes)), 0o644); err != nil {
 		return false, "", err
 	}
 	if _, err := g.gh(ctx, "release", "edit", c.Tag, "-R", g.Repo, "--draft=false",

@@ -366,6 +366,28 @@ func TestAndroidSignAndPublish(t *testing.T) {
 	}
 }
 
+// Тело Android-выпуска объясняет, какой файл ставить: рядом с подписанным APK
+// в выпуске лежит исходный unsigned, и без строки они выглядят как выбор.
+func TestAndroidReleaseBodyExplainsAssets(t *testing.T) {
+	const notes = "- Уведомления\n- «Назад» к вводу адреса"
+	body := androidReleaseBody(notes)
+	if !strings.HasPrefix(body, notes+"\n\n") {
+		t.Fatalf("«Что нового» не в начале тела: %q", body)
+	}
+	for _, want := range []string{
+		"`wynd-android.apk`",
+		"`wynd-android-unsigned.apk`",
+		"установить его нельзя",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("в теле выпуска нет %q: %q", want, body)
+		}
+	}
+	if !strings.HasSuffix(body, "\n") || strings.HasSuffix(body, "\n\n") {
+		t.Fatalf("хвост тела: %q", body)
+	}
+}
+
 // Заблокированная публикация: подпись и загрузка есть, публикации и этапа нет.
 func TestAndroidSignBlocked(t *testing.T) {
 	f, _, _ := androidFixture()
