@@ -11,10 +11,6 @@ import type { QueueFile } from '$lib/idb/db';
 // значения GPS обнулены (0/0 → NaN), остальной EXIF и байты файла целы.
 const fixture = readFileSync(resolve(process.cwd(), 'src/test/fixtures/exif-gps.jpg'));
 
-function fixtureFile(): File {
-	return new File([new Uint8Array(fixture)], 'exif-gps.jpg', { type: 'image/jpeg' });
-}
-
 // Границы APP1-сегмента с EXIF в JPEG — для проверки «снаружи не тронуто».
 function exifSegmentRange(bytes: Uint8Array): [number, number] {
 	expect(bytes[0]).toBe(0xff);

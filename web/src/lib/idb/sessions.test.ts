@@ -7,10 +7,8 @@ import {
 	getSession,
 	listSessions,
 	migrateSessionsToSystemStorage,
-	putAdminSession,
 	putSession
 } from './db';
-import { putSession as putLegacySession } from './db';
 
 // Роутинг сессий (план 66, функция 3): в окне (apiBase) — учётные записи
 // Windows через /__secrets локального порта, в браузере — IndexedDB.
