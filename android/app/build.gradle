@@ -6,6 +6,13 @@ def environmentRoot = providers.gradleProperty('wyndEnvironmentRoot')
         .orElse(providers.environmentVariable('WYND_ANDROID_ENV'))
         .orElse('D:/android-env')
 def startUrl = providers.gradleProperty('wyndDevServerUrl').orElse('')
+// Подготовка вшитого интерфейса (план 50, схема Настольного): клиент в APK
+// и режим embedded включаются только этим свойством. По умолчанию интерфейс
+// приходит с сервера, поэтому обычные APK не растут и не меняются.
+def embeddedUi = providers.gradleProperty('wyndEmbeddedUi')
+        .map { it.toBoolean() }
+        .orElse(false)
+        .get()
 def fixtureOrigin = providers.gradleProperty('wyndUpdateFixtureOrigin').orElse('')
 def versionProperties = new Properties()
 rootProject.file('version.properties').withInputStream { versionProperties.load(it) }
@@ -27,6 +34,7 @@ android {
         versionCode appVersionCode.intValue()
         versionName appVersion
         buildConfigField 'String', 'APP_VERSION', groovy.json.JsonOutput.toJson(appVersion)
+        buildConfigField 'boolean', 'EMBEDDED_UI', embeddedUi.toString()
     }
 
     // Редакция владельца с самообновлением из GitHub-выпусков — и редакция F-Droid,
@@ -70,6 +78,7 @@ android {
 
     sourceSets.main.res.srcDir(generatedResources)
     sourceSets.main.assets.srcDir(layout.buildDirectory.dir('generated/startup-assets'))
+    if (embeddedUi) sourceSets.main.assets.srcDir(layout.buildDirectory.dir('generated/embedded-assets'))
     lint {
         abortOnError true
         warningsAsErrors true
@@ -115,7 +124,35 @@ tasks.register('prepareStartupAssets', Exec) {
     inputs.file(rootProject.file('../web/static/icons.svg'))
     outputs.dir(layout.buildDirectory.dir('generated/startup-assets'))
 }
-tasks.named('preBuild').configure { dependsOn('prepareWyndIcon', 'prepareStartupAssets') }
+tasks.register('prepareEmbeddedWeb', Exec) {
+    // Полный клиент, а не только стартовые экраны. Сборка идёт после стартовой,
+    // чтобы две vite-сборки не делили .svelte-kit одновременно.
+    dependsOn('prepareStartupSync', 'prepareStartupAssets')
+    workingDir rootProject.file('../web')
+    commandLine 'node', 'node_modules/vite/bin/vite.js', 'build'
+    inputs.files(fileTree(rootProject.file('../web/src')), rootProject.file('../web/vite.config.ts'),
+            rootProject.file('../web/svelte.config.js'), rootProject.file('../web/package-lock.json'))
+    inputs.dir rootProject.file('../web/static')
+    outputs.dir rootProject.file('../web/dist')
+}
+tasks.register('prepareEmbeddedAssets', Sync) {
+    dependsOn('prepareEmbeddedWeb')
+    into layout.buildDirectory.dir('generated/embedded-assets/www')
+    from(rootProject.file('../web/dist')) {
+        // aapt выкидывает каталоги, начинающиеся с «_» (шаблон <dir>_*),
+        // а клиенту нужен /_app/…: в APK каталог лежит как app/…,
+        // EmbeddedAssets.storagePath возвращает ему прежний путь.
+        eachFile { details ->
+            if (details.path == '_app' || details.path.startsWith('_app/')) {
+                details.path = 'app' + details.path.substring(4)
+            }
+        }
+    }
+}
+tasks.named('preBuild').configure {
+    dependsOn('prepareWyndIcon', 'prepareStartupAssets')
+    if (embeddedUi) dependsOn('prepareEmbeddedAssets')
+}
 
 dependencies {
     // Последний стабильный WebKit для minSdk 21; нужен origin-bound мост,

@@ -3,6 +3,7 @@ param(
     [string]$ServerUrl = 'http://127.0.0.1:7676',
     [string]$UpdateFixtureOrigin = '',
     [string]$VersionName = '',
+    [switch]$EmbeddedUi,
     [string[]]$Tasks = @('testStandardDebugUnitTest', 'lintStandardDebug', 'assembleStandardDebug')
 )
 
@@ -29,6 +30,7 @@ try {
     $env:PATH = (Join-Path $jdk.FullName 'bin') + ';' + $env:PATH
     $versionArguments = @()
     if ($VersionName) { $versionArguments += "-PwyndVersionName=$VersionName" }
+    if ($EmbeddedUi) { $versionArguments += '-PwyndEmbeddedUi=true' }
     & $wrapper --no-daemon --console=plain -p (Join-Path $projectRoot 'android') `
         --project-cache-dir (Join-Path $EnvironmentRoot 'cache\wynd-project') `
         "-PwyndEnvironmentRoot=$EnvironmentRoot" "-PwyndDevServerUrl=$ServerUrl" `

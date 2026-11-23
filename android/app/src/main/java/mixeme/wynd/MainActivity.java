@@ -30,6 +30,7 @@ public final class MainActivity extends Activity {
 
     private WebView webView;
     private ServerOrigin server;
+    private EmbeddedAssets embedded;
     private MediaChromeClient media;
     private FileExports exports;
     private OriginalPhotos originals;
@@ -41,6 +42,7 @@ public final class MainActivity extends Activity {
     private String failedUrl;
     private boolean localStartup, resumed;
     private boolean backPending;
+    private boolean embeddedReset;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -71,6 +73,13 @@ public final class MainActivity extends Activity {
         server = origin;
         localStartup = local;
         backPending = false;
+        // Вшитый клиент (план 50, схема Настольного): по умолчанию интерфейс
+        // с сервера; сборка с -PwyndEmbeddedUi=true отдаёт страницы из APK.
+        embedded = !local && BuildConfig.EMBEDDED_UI
+                ? EmbeddedAssets.fromAssets(getAssets(), server)
+                : null;
+        embeddedReset = embedded != null && embeddedNeedsReset();
+        if (embedded != null) Log.i(TAG, "embedded ui: interface from APK");
         webView = new WebView(this);
         media = new MediaChromeClient(this, webView, server);
         webView.setWebChromeClient(media);
@@ -214,6 +223,10 @@ public final class MainActivity extends Activity {
                     WebResourceResponse shared = shares.intercept(request);
                     if (shared != null) return shared;
                 }
+                if (embedded != null) {
+                    WebResourceResponse page = embedded.intercept(request);
+                    if (page != null) return page;
+                }
                 // Включая POST-переходы: shouldOverrideUrlLoading их не перехватывает.
                 String url = request.getUrl().toString();
                 // На API 21–23 networkSecurityConfig ещё не действует.
@@ -230,7 +243,20 @@ public final class MainActivity extends Activity {
 
             @Override
             public void onPageFinished(WebView view, String url) {
-                if (server.contains(url)) Log.i(TAG, "Selected interface loaded");
+                if (!server.contains(url)) return;
+                Log.i(TAG, "Selected interface loaded");
+                if (embeddedReset) {
+                    embeddedReset = false;
+                    markEmbeddedReset();
+                    // Старый сервис-воркер от прежней сборки отдаёт свой index
+                    // и чанки, которых в этом APK уже нет (как чистка Service
+                    // Worker в Настольном). Снимаем регистрации и кэши один раз
+                    // на обновление APK; IndexedDB, сессии и очередь не трогаем.
+                    view.evaluateJavascript("(async()=>{try{const rs=await navigator.serviceWorker"
+                            + ".getRegistrations();await Promise.all(rs.map(r=>r.unregister()));"
+                            + "const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)));}"
+                            + "catch(e){}location.reload();})()", null);
+                }
             }
 
             @Override public void onReceivedError(WebView view, WebResourceRequest request, android.webkit.WebResourceError error) {
@@ -272,6 +298,27 @@ public final class MainActivity extends Activity {
                 if (Build.VERSION.SDK_INT < 23 && assets == null && server.contains(failingUrl)) view.post(() -> unavailable(view, failingUrl));
             }
         });
+    }
+
+    /** Сброс вшитого воркера нужен один раз на установленное обновление APK. */
+    private boolean embeddedNeedsReset() {
+        try {
+            long updated = getPackageManager().getPackageInfo(getPackageName(), 0).lastUpdateTime;
+            return getSharedPreferences("wynd", MODE_PRIVATE)
+                    .getLong("embedded_sw_reset", 0) != updated;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private void markEmbeddedReset() {
+        try {
+            long updated = getPackageManager().getPackageInfo(getPackageName(), 0).lastUpdateTime;
+            getSharedPreferences("wynd", MODE_PRIVATE).edit()
+                    .putLong("embedded_sw_reset", updated).apply();
+        } catch (Exception ignored) {
+            // Маркер не записался — следующий запуск повторит сброс.
+        }
     }
 
     private boolean navigate(String url, boolean userGesture) {
@@ -381,6 +428,7 @@ public final class MainActivity extends Activity {
             webView.destroy();
             webView = null;
         }
+        embedded = null;
         startup = null;
         interfaces = null;
         media = null;
