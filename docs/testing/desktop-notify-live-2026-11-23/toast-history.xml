@@ -1,0 +1,19 @@
+<toast activationType="protocol" launch="" duration="short">
+    <visual>
+        <binding template="ToastGeneric">
+            
+            <image placement="appLogoOverride" src="D:\Local\Git\wynd\dev\checks-desktop-20261123\appdata-toast\Wynd\desktop\toast-icon.png"/>
+            
+            
+            <text><![CDATA[Семья]]></text>
+            
+            
+            <text><![CDATA[Новая запись в круге]]></text>
+            
+        </binding>
+    </visual>
+    
+	<audio src="ms-winsoundevent:Notification.Default" loop="false"/>
+	
+    
+</toast>
