@@ -111,6 +111,11 @@ body {
   gap: 8px;
   margin: 4px 0 14px;
 }
+/* Certbot Stale: совет стоит на месте статусной строки — кнопки в 16 px от
+   него, как от ins-sub в обычном пульте. */
+.ins-certstale {
+  margin: 0 0 16px;
+}
 .ins-domain {
   display: flex;
   align-items: center;

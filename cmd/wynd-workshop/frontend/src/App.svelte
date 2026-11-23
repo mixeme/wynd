@@ -67,7 +67,7 @@
 
 {#snippet certStaleText(f: Finding)}
 	<!-- Certbot Stale: что с сертификатом и что делать — видно и в пульте, и в осмотре. -->
-	<div class="ins-dim">
+	<div class="ins-dim ins-certstale">
 		{f.text}{#if f.plan}&nbsp;— {f.plan}{/if}. {f.advice}
 	</div>
 	{#if p.certError}
