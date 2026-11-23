@@ -26,3 +26,7 @@ cmd/wynd-signer/frontend/dist/
 cmd/wynd-desktop/build/bin/
 cmd/wynd-desktop/frontend/node_modules/
 cmd/wynd-desktop/frontend/dist/
+
+# Локальная сборка сервера в корне (go build .) и её резервная копия.
+/wynd.exe
+/wynd.exe~
