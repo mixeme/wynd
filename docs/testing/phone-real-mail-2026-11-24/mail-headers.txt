@@ -1,0 +1,5 @@
+Sat, 19 Sep 2026 11:36:50 +0000 | <wynd@dev.mixdep.ru> | Код входа Wynd
+Mon, 23 Nov 2026 20:51:58 +0000 | Wynd · wynd2 <noreply@wynd.mixfed.ru> | Проверка почты Wynd
+Mon, 23 Nov 2026 20:52:40 +0000 | Wynd · wynd2 <noreply@wynd.mixfed.ru> | Код входа в Wynd
+Mon, 23 Nov 2026 20:54:58 +0000 | Wynd · wynd2 <noreply@wynd.mixfed.ru> | Просят место для круга
+Mon, 23 Nov 2026 21:03:32 +0000 | Wynd · wynd2 <noreply@wynd.mixfed.ru> | Архив круга готов
