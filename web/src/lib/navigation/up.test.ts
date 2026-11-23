@@ -132,9 +132,9 @@ describe('таблица родителей покрывает все маршр
 
 describe('navigateBack', () => {
 	it('C110: внешняя страница остаётся позади после замены приглашения формой имени', async () => {
-		const navigation = vi.spyOn(performance, 'getEntriesByType').mockReturnValue([
-			{ type: 'navigate' } as PerformanceNavigationTiming
-		]);
+		const navigation = vi
+			.spyOn(performance, 'getEntriesByType')
+			.mockReturnValue([{ type: 'navigate' } as PerformanceNavigationTiming]);
 		const back = vi.spyOn(history, 'back').mockImplementation(() => {});
 		vi.mocked(pushState).mockClear();
 		try {
@@ -158,29 +158,29 @@ describe('navigateBack', () => {
 		{ type: 'navigate', length: 1 },
 		{ type: 'back_forward', length: 2 },
 		{ type: 'reload', length: 2 }
-	])('C110: без предыдущей записи остаётся переход к родителю ($type, $length)', async ({
-		type,
-		length
-	}) => {
-		const navigation = vi
-			.spyOn(performance, 'getEntriesByType')
-			.mockReturnValue([{ type } as PerformanceNavigationTiming]);
-		const historyLength = vi.spyOn(history, 'length', 'get').mockReturnValue(length);
-		const back = vi.spyOn(history, 'back').mockImplementation(() => {});
-		try {
-			push('/invite/link', false);
-			recordEntry(new URL(location.href), true);
-			history.replaceState(history.state, '', '/circles/invited/join');
-			recordEntry(new URL(location.href));
-			await navigateBack();
-			expect(back).not.toHaveBeenCalled();
-			expect(goto).toHaveBeenCalledWith('/circles/invited', { replaceState: true });
-		} finally {
-			back.mockRestore();
-			historyLength.mockRestore();
-			navigation.mockRestore();
+	])(
+		'C110: без предыдущей записи остаётся переход к родителю ($type, $length)',
+		async ({ type, length }) => {
+			const navigation = vi
+				.spyOn(performance, 'getEntriesByType')
+				.mockReturnValue([{ type } as PerformanceNavigationTiming]);
+			const historyLength = vi.spyOn(history, 'length', 'get').mockReturnValue(length);
+			const back = vi.spyOn(history, 'back').mockImplementation(() => {});
+			try {
+				push('/invite/link', false);
+				recordEntry(new URL(location.href), true);
+				history.replaceState(history.state, '', '/circles/invited/join');
+				recordEntry(new URL(location.href));
+				await navigateBack();
+				expect(back).not.toHaveBeenCalled();
+				expect(goto).toHaveBeenCalledWith('/circles/invited', { replaceState: true });
+			} finally {
+				back.mockRestore();
+				historyLength.mockRestore();
+				navigation.mockRestore();
+			}
 		}
-	});
+	);
 
 	it('есть предыдущий экран — шаг назад по истории', () => {
 		const back = vi.spyOn(window.history, 'back');

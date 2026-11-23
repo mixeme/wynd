@@ -31,7 +31,8 @@ export function notifySignalText(signal: NotifySignal): { title: string; body: s
 	const type = typeof signal.type === 'string' ? signal.type : '';
 	if (!type) return null;
 	const title = typeof signal.title === 'string' && signal.title ? signal.title : 'Wynd';
-	const body = (typeof signal.body === 'string' && signal.body) || SIGNAL_TEXT[type] || 'Новое в Wynd';
+	const body =
+		(typeof signal.body === 'string' && signal.body) || SIGNAL_TEXT[type] || 'Новое в Wynd';
 	return { title, body };
 }
 

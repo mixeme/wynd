@@ -212,7 +212,9 @@ export async function handleSyncFrame(origin: string, raw: string): Promise<void
 		// сервер тем же правилом, что для пуша; окно показывает toast, когда
 		// интерфейса не видно. В браузере моста нет — кадр молча пропускается.
 		if (typeof event.circle_id === 'string' && typeof event.type === 'string') {
-			notifyFromSignal(event as { circle_id?: string; type?: string; title?: string; body?: string });
+			notifyFromSignal(
+				event as { circle_id?: string; type?: string; title?: string; body?: string }
+			);
 		}
 		return;
 	}

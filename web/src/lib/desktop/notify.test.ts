@@ -92,7 +92,10 @@ describe('рамка notify потока sync', () => {
 		withBridge(true);
 		const send = vi.spyOn(window, 'postMessage').mockImplementation(() => {});
 		try {
-			await handleSyncFrame('https://wynd.example', '{"circle_id":"c1","type":"post","title":"Семья","count":1}');
+			await handleSyncFrame(
+				'https://wynd.example',
+				'{"circle_id":"c1","type":"post","title":"Семья","count":1}'
+			);
 			expect(send).toHaveBeenCalledWith(
 				{ type: 'wynd:notify', title: 'Семья', body: 'Новая запись в круге' },
 				window.location.origin
@@ -106,8 +109,14 @@ describe('рамка notify потока sync', () => {
 		withBridge(true);
 		const send = vi.spyOn(window, 'postMessage').mockImplementation(() => {});
 		try {
-			await handleSyncFrame('https://wynd.example', '{"seq":12,"id":"e1","circle_id":"c1","type":"post_created"}');
-			expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'wynd:notify' }), expect.anything());
+			await handleSyncFrame(
+				'https://wynd.example',
+				'{"seq":12,"id":"e1","circle_id":"c1","type":"post_created"}'
+			);
+			expect(send).not.toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'wynd:notify' }),
+				expect.anything()
+			);
 		} finally {
 			send.mockRestore();
 		}

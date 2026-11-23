@@ -396,10 +396,15 @@ export async function bumpDayPromptCount(origin: string, circleId: string): Prom
 // Мешок перечитывается целиком: сессий у человека единицы, и оболочка
 // отдаёт его из своего кэша.
 
-async function systemBag(base: string): Promise<{ sessions: SessionRecord[]; admin: AdminSessionRecord | null }> {
+async function systemBag(
+	base: string
+): Promise<{ sessions: SessionRecord[]; admin: AdminSessionRecord | null }> {
 	const res = await fetch(`${base}/__secrets`);
 	if (!res.ok) throw new Error(`secrets: HTTP ${res.status}`);
-	const bag = (await res.json()) as { sessions?: SessionRecord[]; admin?: AdminSessionRecord | null };
+	const bag = (await res.json()) as {
+		sessions?: SessionRecord[];
+		admin?: AdminSessionRecord | null;
+	};
 	return { sessions: bag.sessions ?? [], admin: bag.admin ?? null };
 }
 
