@@ -125,11 +125,11 @@
 			<Hint centered class="mt-16"
 				>Интерфейс продолжит открываться с сервера «{interfaceName}».</Hint
 			>
-			<Button onclick={addServer}>Войти на сервер</Button>
+			<Button onclick={addServer}>Войти на другой сервер</Button>
 		{:else}
 			<Hint centered class="mt-16 sz-15">На этом устройстве вы ни на одном сервере</Hint>
 			<!-- C69: в браузере другой сервер не добавить — входят на этот;
-			     в приложениях кнопка «Войти на сервер». -->
+			     в приложениях кнопка «Войти на другой сервер». -->
 			<Button onclick={() => goto('/')}>Войти</Button>
 		{/if}
 	{:else}
@@ -167,7 +167,7 @@
 			Общего профиля на все серверы нет: каждый сервер — отдельное место, даже с той же почтой.
 		</Hint>
 		{#if ADD_SERVER_IN_APP}
-			<Button onclick={addServer}>Войти на сервер</Button>
+			<Button onclick={addServer}>Войти на другой сервер</Button>
 		{/if}
 	{/if}
 </FormLayout>
