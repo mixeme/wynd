@@ -1,9 +1,18 @@
+import {
+	androidQueueAvailable,
+	nativeCancel,
+	nativeEnqueue,
+	nativeStatus,
+	type NativeQueueStatus
+} from '$lib/android/native-queue';
 import { ApiError, apiFetch, apiJson, normalizeOrigin } from '$lib/api/client';
 import { invalidateCircleSnapshots } from '$lib/api/snapshots';
+import { pageOrigin } from '$lib/desktop/bridge';
 import {
 	addQueueItem,
 	deleteQueueItem,
 	getQueueItem,
+	getSession,
 	listQueueForCircle,
 	listQueueItems,
 	putQueueItem,
@@ -64,6 +73,7 @@ type QueueListener = () => void;
 const listeners = new Set<QueueListener>();
 let draining: Promise<void> | undefined;
 let activeDrain: AbortController | undefined;
+let reconcilingNative: Promise<void> | undefined;
 
 /** Запасной срок для клиентов без Web Locks (QUE-1). */
 const UPLOADING_STALE_MS = 2 * 60 * 1000;
@@ -86,6 +96,8 @@ export function readyQueueItems(
 ): QueueRecordWithId[] {
 	return items
 		.filter((item) => {
+			// Нативная очередь Android уже взяла запись (план 50, этап 5.1).
+			if (item.native_id) return false;
 			if (item.state === 'failed') return false;
 			if (item.state === 'uploading') {
 				// Под эксклюзивной блокировкой отправку оставила закрытая вкладка.
@@ -533,6 +545,7 @@ let retryTimer: ReturnType<typeof setTimeout> | undefined;
 export function nextRetryDelay(items: QueueRecordWithId[], now: number): number | undefined {
 	let delay: number | undefined;
 	for (const item of items) {
+		if (item.native_id) continue;
 		if (item.state === 'failed') continue;
 		let candidate: number;
 		if (item.state === 'uploading') {
@@ -632,16 +645,144 @@ export async function drainQueueFor(origin: string): Promise<void> {
 	return drainQueue();
 }
 
+/**
+ * Сверка с нативной очередью Android (план 50, этап 5.1): native могла
+ * отправить запись, пока окно было закрыто. Отправленное убираем из IndexedDB,
+ * отказ показываем как обычную ошибку, потерянную native-запись возвращаем
+ * странице. Без моста native-метки снимаем — очередь отправит сама.
+ */
+export async function reconcileNativeQueue(): Promise<void> {
+	if (reconcilingNative) return reconcilingNative;
+	reconcilingNative = (async () => {
+		try {
+			if (!androidQueueAvailable()) {
+				let changed = false;
+				for (const item of await listQueueItems()) {
+					if (!item.native_id) continue;
+					await putQueueItem(item.id, {
+						...item,
+						native_id: undefined,
+						state: 'pending',
+						uploading_at: undefined
+					});
+					changed = true;
+				}
+				if (changed) {
+					notify();
+					if (navigator.onLine) void drainQueue();
+				}
+				return;
+			}
+
+			const { records, statuses } = await nativeStatus();
+			const byClient = new Map<string, NativeQueueStatus>();
+			for (const status of statuses) byClient.set(status.client_id, status);
+			const pending = new Set(records.map((record) => record.client_id));
+			let changed = false;
+			for (const item of await listQueueItems()) {
+				if (!item.native_id) continue;
+				const client = item.client_id ?? '';
+				const done = byClient.get(client);
+				if (done?.state === 'sent') {
+					await invalidateCircleSnapshots(item.origin, item.circle_id);
+					if (item.type === 'post') await announcePostSent(item.origin, item.circle_id);
+					await deleteQueueItem(item.id);
+					setSendProgress(item.id, undefined);
+					changed = true;
+				} else if (done?.state === 'failed') {
+					await putQueueItem(item.id, {
+						...item,
+						state: 'failed',
+						error: done.error || 'native_failed',
+						native_id: undefined
+					});
+					changed = true;
+				} else if (done?.state === 'unauthorized') {
+					// После нового входа страница попробует снова; токен native
+					// больше не годится.
+					await putQueueItem(item.id, {
+						...item,
+						state: 'pending',
+						error: undefined,
+						attempts: 0,
+						native_id: undefined,
+						uploading_at: undefined
+					});
+					changed = true;
+				} else if (!pending.has(client)) {
+					// Native-запись потерялась (переустановка, очистка данных) —
+					// возвращаем странице, чтобы запись не зависла навсегда.
+					await putQueueItem(item.id, {
+						...item,
+						native_id: undefined,
+						state: 'pending',
+						uploading_at: undefined
+					});
+					changed = true;
+				}
+			}
+			if (changed) {
+				notify();
+				if (navigator.onLine) void drainQueue();
+			}
+		} catch {
+			// Мост не ответил; сверка повторится по событию или при следующем входе.
+		}
+	})().finally(() => {
+		reconcilingNative = undefined;
+	});
+	return reconcilingNative;
+}
+
 export function initQueueDrain(): () => void {
 	const onOnline = () => void drainQueue();
 	const onOffline = () => activeDrain?.abort();
+	const onNative = () => void reconcileNativeQueue();
 	window.addEventListener('online', onOnline);
 	window.addEventListener('offline', onOffline);
+	window.addEventListener('wynd:native-queue', onNative);
+	void reconcileNativeQueue();
 	if (navigator.onLine) void drainQueue();
 	return () => {
 		window.removeEventListener('online', onOnline);
 		window.removeEventListener('offline', onOffline);
+		window.removeEventListener('wynd:native-queue', onNative);
 	};
+}
+
+/**
+ * Запись без вложений отдаётся нативной очереди Android (план 50, этап 5.1):
+ * дальше её отправляет WorkManager, в том числе после закрытия окна. В браузере
+ * моста нет — остаётся прежняя очередь страницы.
+ */
+async function handOffToNative(id: number, record: QueueRecord): Promise<boolean> {
+	if (record.files.length || !record.client_id || !androidQueueAvailable()) return false;
+	try {
+		const session = await getSession(normalizeOrigin(record.origin));
+		if (!session?.token) return false;
+		const nativeId = await nativeEnqueue({
+			type: record.type,
+			// Запись того же сервера хранит origin пустым; native нужен адрес.
+			origin: normalizeOrigin(record.origin) || pageOrigin(),
+			circle_id: record.circle_id,
+			client_id: record.client_id,
+			payload: record.payload,
+			token: session.token
+		});
+		if (!nativeId) return false;
+		const stored = await getQueueItem(id);
+		if (!stored) {
+			// Успели удалить или заменить запись, пока шёл мост.
+			await nativeCancel(record.client_id);
+			return true;
+		}
+		await putQueueItem(id, { ...stored, native_id: nativeId });
+		notify();
+		return true;
+	} catch {
+		// Мост не ответил — страница отправит сама, как раньше.
+		return false;
+	}
 }
 
 async function enqueue(
@@ -651,7 +792,7 @@ async function enqueue(
 	payload: QueueRecord['payload'],
 	files: QueueFile[] = []
 ): Promise<number> {
-	const id = await addQueueItem({
+	const record: QueueRecord = {
 		type,
 		origin,
 		circle_id: circleId,
@@ -663,9 +804,11 @@ async function enqueue(
 		state: 'pending',
 		attempts: 0,
 		created_at: Date.now()
-	});
+	};
+	const id = await addQueueItem(record);
 	notify();
-	if (navigator.onLine) void drainQueue();
+	const handed = await handOffToNative(id, record);
+	if (!handed && navigator.onLine) void drainQueue();
 	return id;
 }
 
@@ -710,7 +853,8 @@ export async function updateQueuedPost(
 ): Promise<void> {
 	const item = await getQueueItem(id);
 	if (!item || item.type !== 'post') return;
-	if (item.state === 'uploading') return;
+	if (item.state === 'uploading' && !item.native_id) return;
+	if (item.native_id && item.client_id) await nativeCancel(item.client_id);
 
 	await putQueueItem(id, {
 		...item,
@@ -718,7 +862,9 @@ export async function updateQueuedPost(
 		files: files ?? item.files,
 		state: 'pending',
 		error: undefined,
-		uploads: undefined
+		uploads: undefined,
+		native_id: undefined,
+		uploading_at: undefined
 	});
 	notify();
 	if (navigator.onLine) void drainQueue();
@@ -726,7 +872,8 @@ export async function updateQueuedPost(
 
 export async function removeQueueItem(id: number): Promise<void> {
 	const item = await getQueueItem(id);
-	if (!item || item.state === 'uploading') return;
+	if (!item || (item.state === 'uploading' && !item.native_id)) return;
+	if (item.native_id && item.client_id) void nativeCancel(item.client_id);
 	await deleteQueueItem(id);
 	notify();
 }
@@ -735,7 +882,15 @@ export async function retryQueueItem(id: number): Promise<void> {
 	const item = await getQueueItem(id);
 	if (!item || item.state !== 'failed') return;
 
-	await putQueueItem(id, { ...item, state: 'pending', attempts: 0, error: undefined });
+	if (item.native_id && item.client_id) await nativeCancel(item.client_id);
+	await putQueueItem(id, {
+		...item,
+		state: 'pending',
+		attempts: 0,
+		error: undefined,
+		native_id: undefined,
+		uploading_at: undefined
+	});
 	notify();
 	if (navigator.onLine) void drainQueue();
 }
@@ -764,7 +919,8 @@ export async function updateQueuedComment(
 ): Promise<void> {
 	const item = await getQueueItem(id);
 	if (!item || item.type !== 'comment') return;
-	if (item.state === 'uploading') return;
+	if (item.state === 'uploading' && !item.native_id) return;
+	if (item.native_id && item.client_id) await nativeCancel(item.client_id);
 
 	await putQueueItem(id, {
 		...item,
@@ -772,7 +928,9 @@ export async function updateQueuedComment(
 		files,
 		state: 'pending',
 		error: undefined,
-		uploads: undefined
+		uploads: undefined,
+		native_id: undefined,
+		uploading_at: undefined
 	});
 	notify();
 	if (navigator.onLine) void drainQueue();

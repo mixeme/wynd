@@ -31,6 +31,7 @@ public final class MainActivity extends Activity {
     private WebView webView;
     private ServerOrigin server;
     private EmbeddedAssets embedded;
+    private NativeQueueBridge queueBridge;
     private MediaChromeClient media;
     private FileExports exports;
     private OriginalPhotos originals;
@@ -91,6 +92,10 @@ public final class MainActivity extends Activity {
             shares = new IncomingShares(this, webView, server);
             push = new PushBridge(this, webView, server);
             interfaces = new InterfaceBridge(this, webView, server, catalog);
+            // Фоновая очередь (план 50, этап 5.1): записи без вложений уходят
+            // и после закрытия окна. Прогон — WorkManager, страница не нужна.
+            queueBridge = NativeQueueBridge.attach(this, webView, server);
+            NativeQueueWorker.schedule(this);
         } else startup = new StartupBridge(this, webView, catalog, failedUrl);
         AndroidBridge.attach(this, webView, server);
         SystemBarsFrame bars = new SystemBarsFrame(this, webView);
@@ -430,6 +435,10 @@ public final class MainActivity extends Activity {
         }
         embedded = null;
         startup = null;
+        if (queueBridge != null) {
+            queueBridge.destroy();
+            queueBridge = null;
+        }
         interfaces = null;
         media = null;
         exports = null;

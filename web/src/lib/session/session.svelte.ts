@@ -1,4 +1,5 @@
-import { ApiError, apiJson, isPaymentRequired } from '$lib/api/client';
+import { nativeClear } from '$lib/android/native-queue';
+import { ApiError, apiJson, isPaymentRequired, normalizeOrigin } from '$lib/api/client';
 import { forgetStreetMemory } from '$lib/circles/street-memory';
 import { refreshAndroidPush, unsubscribePush } from '$lib/push/push';
 import {
@@ -132,6 +133,15 @@ export async function dropParticipantSession(origin: string): Promise<void> {
 		/* token already invalid or server unreachable */
 	}
 	await deleteSession(origin);
+	// Нативная очередь Android (план 50, этап 5.1): после выхода её токен
+	// больше не должен отправлять записи этого сервера.
+	try {
+		await nativeClear(
+			normalizeOrigin(origin) || (typeof window !== 'undefined' ? window.location.origin : '')
+		);
+	} catch {
+		/* Старая оболочка без моста очереди. */
+	}
 	await deleteCursor(origin);
 	await invalidateSnapshots(origin);
 	await clearOriginState(origin);

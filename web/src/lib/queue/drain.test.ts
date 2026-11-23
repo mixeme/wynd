@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { queueRetryDelayMs, readyQueueItems } from './queue';
+import { nextRetryDelay, queueRetryDelayMs, readyQueueItems } from './queue';
 import type { QueueRecordWithId } from '$lib/idb/db';
 
 function item(over: Partial<QueueRecordWithId> & { id: number }): QueueRecordWithId {
@@ -59,5 +59,13 @@ describe('readyQueueItems', () => {
 	// 4xx кроме 401 оставляют запись в failed — её не надо трогать до правки.
 	it('skips failed items', () => {
 		expect(readyQueueItems([item({ id: 1, state: 'failed', error: 'invalid' })], 5000)).toEqual([]);
+	});
+
+	// План 50, этап 5.1: запись уже у нативной очереди Android, страница её
+	// не отправляет и не назначает ей повтор.
+	it('skips records handed to the native Android queue', () => {
+		const native = item({ id: 1, native_id: 'native-1' });
+		expect(readyQueueItems([native], 5000)).toEqual([]);
+		expect(nextRetryDelay([native], 5000)).toBeUndefined();
 	});
 });

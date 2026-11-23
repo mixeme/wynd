@@ -159,6 +159,9 @@ dependencies {
     // а не addJavascriptInterface, доступный всем фреймам страницы.
     implementation 'androidx.webkit:webkit:1.14.0'
     implementation 'org.unifiedpush.android:connector:3.3.5'
+    // Фоновая отправка очереди после закрытия окна (план 50, этап 5):
+    // WorkManager, без Google Play Services.
+    implementation 'androidx.work:work-runtime:2.10.0'
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.json:json:20250517'
 }

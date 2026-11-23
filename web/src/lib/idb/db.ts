@@ -110,6 +110,11 @@ export interface QueueRecord {
 	attempts?: number;
 	/** Когда запись помечена uploading — чтобы снять зависшую после падения вкладки. */
 	uploading_at?: number;
+	/**
+	 * Нативная очередь Android (план 50, этап 5.1) взяла запись: страница её
+	 * не отправляет, а ждёт статус через `__wyndQueue`.
+	 */
+	native_id?: string;
 	payload:
 		PostQueuePayload | CommentQueuePayload | ReactionQueuePayload | ReactionRemoveQueuePayload;
 	files: QueueFile[];

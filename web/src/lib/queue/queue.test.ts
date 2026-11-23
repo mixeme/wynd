@@ -3,6 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiJson = vi.fn();
 const apiFetch = vi.fn();
+const native = vi.hoisted(() => ({
+	available: vi.fn(() => false),
+	enqueue: vi.fn(),
+	cancel: vi.fn(),
+	status: vi.fn(),
+	clear: vi.fn()
+}));
 
 vi.mock('$lib/api/client', () => ({
 	ApiError: class ApiError extends Error {
@@ -15,7 +22,16 @@ vi.mock('$lib/api/client', () => ({
 		}
 	},
 	apiFetch: (...args: unknown[]) => apiFetch(...args),
-	apiJson: (...args: unknown[]) => apiJson(...args)
+	apiJson: (...args: unknown[]) => apiJson(...args),
+	normalizeOrigin: (value: string) => value
+}));
+
+vi.mock('$lib/android/native-queue', () => ({
+	androidQueueAvailable: native.available,
+	nativeEnqueue: native.enqueue,
+	nativeCancel: native.cancel,
+	nativeStatus: native.status,
+	nativeClear: native.clear
 }));
 
 vi.mock('$lib/api/snapshots', () => ({
@@ -28,6 +44,11 @@ describe('queue', () => {
 		apiJson.mockReset();
 		apiJson.mockResolvedValue({});
 		apiFetch.mockReset();
+		native.available.mockReturnValue(false);
+		native.enqueue.mockReset();
+		native.cancel.mockReset();
+		native.status.mockReset();
+		native.clear.mockReset();
 		vi.stubGlobal('navigator', { ...navigator, onLine: false });
 	});
 
@@ -415,5 +436,111 @@ describe('queue retries on its own', () => {
 		} finally {
 			spy.mockRestore();
 		}
+	});
+});
+
+describe('native queue handoff', () => {
+	beforeEach(() => {
+		vi.resetModules();
+		apiJson.mockReset();
+		apiJson.mockResolvedValue({});
+		apiFetch.mockReset();
+		native.available.mockReturnValue(false);
+		native.enqueue.mockReset();
+		native.cancel.mockReset();
+		native.status.mockReset();
+		native.clear.mockReset();
+		vi.stubGlobal('navigator', { ...navigator, onLine: false });
+	});
+
+	async function session(): Promise<void> {
+		const { putSession } = await import('$lib/idb/db');
+		await putSession({
+			origin: 'https://srv.test',
+			name: 'S',
+			email: 'a@b',
+			token: 'token-1',
+			account_id: 'a1'
+		});
+	}
+
+	// План 50, этап 5.1: запись без вложений отдаётся native и уходит после
+	// закрытия окна; страница её больше не отправляет.
+	it('отдаёт запись без вложений нативной очереди Android', async () => {
+		native.available.mockReturnValue(true);
+		native.enqueue.mockResolvedValue('native-1');
+		await session();
+		const { enqueuePost, listQueueForCircle } = await import('./queue');
+		const id = await enqueuePost('https://srv.test', 'c1', {
+			body: 'hello',
+			entry_date: '2026-11-24'
+		});
+		const [item] = await listQueueForCircle('https://srv.test', 'c1');
+		expect(item.id).toBe(id);
+		expect(item.native_id).toBe('native-1');
+		expect(native.enqueue).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'post',
+				origin: 'https://srv.test',
+				circle_id: 'c1',
+				client_id: item.client_id,
+				token: 'token-1'
+			})
+		);
+	});
+
+	it('снимает запись, которую native отправила при закрытом окне', async () => {
+		native.available.mockReturnValue(true);
+		native.enqueue.mockResolvedValue('native-2');
+		await session();
+		const { enqueuePost, reconcileNativeQueue, listQueueForCircle } = await import('./queue');
+		await enqueuePost('https://srv.test', 'c-sent', {
+			body: 'ушло',
+			entry_date: '2026-11-24'
+		});
+		const [item] = await listQueueForCircle('https://srv.test', 'c-sent');
+		native.status.mockResolvedValue({
+			records: [],
+			statuses: [{ client_id: item.client_id, state: 'sent' }]
+		});
+		await reconcileNativeQueue();
+		expect(await listQueueForCircle('https://srv.test', 'c-sent')).toHaveLength(0);
+	});
+
+	it('показывает отказ native как ошибку очереди', async () => {
+		native.available.mockReturnValue(true);
+		native.enqueue.mockResolvedValue('native-3');
+		await session();
+		const { enqueuePost, reconcileNativeQueue, listQueueForCircle } = await import('./queue');
+		await enqueuePost('https://srv.test', 'c-failed', {
+			body: 'отказ',
+			entry_date: '2026-11-24'
+		});
+		const [item] = await listQueueForCircle('https://srv.test', 'c-failed');
+		native.status.mockResolvedValue({
+			records: [],
+			statuses: [{ client_id: item.client_id, state: 'failed', error: 'invalid' }]
+		});
+		await reconcileNativeQueue();
+		const [failed] = await listQueueForCircle('https://srv.test', 'c-failed');
+		expect(failed.state).toBe('failed');
+		expect(failed.error).toBe('invalid');
+		expect(failed.native_id).toBeUndefined();
+	});
+
+	it('возвращает native-запись странице, если моста нет', async () => {
+		native.available.mockReturnValue(true);
+		native.enqueue.mockResolvedValue('native-4');
+		await session();
+		const { enqueuePost, reconcileNativeQueue, listQueueForCircle } = await import('./queue');
+		await enqueuePost('https://srv.test', 'c-lost', {
+			body: 'вернуть',
+			entry_date: '2026-11-24'
+		});
+		native.available.mockReturnValue(false);
+		await reconcileNativeQueue();
+		const [item] = await listQueueForCircle('https://srv.test', 'c-lost');
+		expect(item.native_id).toBeUndefined();
+		expect(item.state).toBe('pending');
 	});
 });
