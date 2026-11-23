@@ -14,11 +14,11 @@ import (
 	"gitea.mixdep.ru/mix/wynd/internal/api"
 )
 
-// Инвариант (план 42, ARC-1, ARC-2; план 46, C38): архив участника идёт
-// потоком с точной длиной заранее — браузер видит ход; повторная сборка даёт
-// те же байты. Range не поддерживается: оборванное начинается заново (решение
-// владельца 2026-10-14). Медиа лежат в ZIP без сжатия, HTML — сжат. На диске
-// сервера архив не лежит.
+// Инвариант (план 42, ARC-1, ARC-2; план 46, C38; план 66, функция 5): архив
+// участника идёт потоком с точной длиной заранее — браузер видит ход; повторная
+// сборка даёт те же байты, поэтому Range продолжает оборванное скачивание с
+// середины. Медиа лежат в ZIP без сжатия, HTML — сжат. На диске сервера архив
+// не лежит.
 func TestArchiveDownloadRangeAndStoredMedia(t *testing.T) {
 	srv, caps, _, _ := setupAPI(t)
 	tok, _ := registerSession(t, srv, caps, "range@example.com")
@@ -79,19 +79,24 @@ func TestArchiveDownloadRangeAndStoredMedia(t *testing.T) {
 		t.Fatalf("нет одной из раскладок: %v", names)
 	}
 
+	// Докачка (план 66, функция 5): Range отдаёт хвост с середины, а склейка
+	// с уже скачанным началом даёт тот же файл — сборка детерминирована.
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/circles/"+circleID+"/archive/download", nil)
 	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("Range", "bytes=10-")
 	again := httptest.NewRecorder()
 	srv.ServeHTTP(again, req)
-	if again.Code != http.StatusOK {
-		t.Fatalf("повтор с Range: %d, ждали весь архив заново", again.Code)
+	if again.Code != http.StatusPartialContent {
+		t.Fatalf("продолжение с Range: %d, ждали 206", again.Code)
 	}
-	if !bytes.Equal(again.Body.Bytes(), full) {
-		t.Fatal("повторная сборка дала другие байты: сборка недетерминирована")
+	if got := again.Header().Get("Content-Range"); got != "bytes 10-"+strconv.Itoa(len(full)-1)+"/"+strconv.Itoa(len(full)) {
+		t.Fatalf("Content-Range = %q", got)
 	}
-	if got := again.Header().Get("Content-Length"); got != strconv.Itoa(len(full)) {
-		t.Fatalf("Content-Length = %q, а пришло %d байт", got, len(full))
+	if got := again.Header().Get("Content-Length"); got != strconv.Itoa(len(full)-10) {
+		t.Fatalf("Content-Length = %q, а пришло %d байт", got, len(again.Body.Bytes()))
+	}
+	if !bytes.Equal(append(append([]byte{}, full[:10]...), again.Body.Bytes()...), full) {
+		t.Fatal("склейка начала и продолжения не дала исходный файл")
 	}
 
 	entries, err := os.ReadDir(api.ArchiveTempDir(srv.DataDir))

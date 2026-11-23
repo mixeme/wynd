@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -427,8 +429,14 @@ func (s *Server) handleArchiveLink(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleArchiveByLink отдаёт архив по одноразовой ссылке — без заголовка входа.
+// Со ссылкой качает браузер (C38); докачка (план 66, функция 5) приходит тем же
+// адресом с Range, поэтому ссылка снимается не на первом запросе, а когда
+// архив отдан целиком: оборванное скачивание продолжается, а не начинается
+// заново. Пока идёт продолжение, срок ссылки продлевается; утёкшая ссылка
+// и раньше отдавала этот же архив один раз.
 func (s *Server) handleArchiveByLink(w http.ResponseWriter, r *http.Request) {
-	v, ok := s.archiveLinks.LoadAndDelete(r.PathValue("token"))
+	token := r.PathValue("token")
+	v, ok := s.archiveLinks.Load(token)
 	if !ok || time.Now().After(v.(archiveLink).expires) {
 		if browserNavigation(r) {
 			// Ссылку открыл браузер: вместо голого ответа API — приложение (C62).
@@ -445,7 +453,17 @@ func (s *Server) handleArchiveByLink(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	s.streamArchive(w, r, link.circleID, link.accountID)
+	delivered, started := s.streamArchive(w, r, link.circleID, link.accountID)
+	if delivered || !started {
+		// Архив у клиента или отказали до первого байта — ссылка отработала.
+		s.archiveLinks.Delete(token)
+		return
+	}
+	// Отдача оборвалась на середине: ссылка живёт ещё срок — браузер продолжит
+	// с Range, а не начнёт заново.
+	s.archiveLinks.Store(token, archiveLink{
+		accountID: link.accountID, circleID: link.circleID, expires: time.Now().Add(archiveLinkTTL),
+	})
 }
 
 // archiveExpired — срок цикла архивации прошёл: архив участника уже не отдаётся.
@@ -496,16 +514,20 @@ func (s *Server) personalArchiveCutoff(ctx context.Context, circleID string) (ch
 	return cycle, nil
 }
 
-func (s *Server) streamArchive(w http.ResponseWriter, r *http.Request, circleID, accountID string) {
+// streamArchive отдаёт архив участника потоком. delivered — архив у клиента
+// целиком (полный ответ или доклеенный хвост), started — тело начали отдавать:
+// только оборванная на середине отдача даёт право продолжить по той же ссылке,
+// отказы до первого байта ссылку, как и раньше, тратят.
+func (s *Server) streamArchive(w http.ResponseWriter, r *http.Request, circleID, accountID string) (delivered, started bool) {
 	cycle, err := s.personalArchiveCutoff(r.Context(), circleID)
 	if err != nil {
 		writeDomainError(w, err)
-		return
+		return false, false
 	}
 	now := time.Now().UTC()
 	if archiveExpired(cycle, now) {
 		writeDomainError(w, chronicle.ErrForbidden)
-		return
+		return false, false
 	}
 	if _, busy := s.archiveBuilds.LoadOrStore(accountID, struct{}{}); busy {
 		// Two links can have been issued before either download began. The
@@ -516,21 +538,21 @@ func (s *Server) streamArchive(w http.ResponseWriter, r *http.Request, circleID,
 			w.Header().Set("Cache-Control", "no-store")
 			w.Header().Set("Referrer-Policy", "no-referrer")
 			http.Redirect(w, r, "/archive/busy?retry_after="+strconv.Itoa(archiveRetryAfterSec), http.StatusSeeOther)
-			return
+			return false, false
 		}
 		writeError(w, &auth.RateLimitError{RetryAfterSec: archiveRetryAfterSec})
-		return
+		return false, false
 	}
 	defer s.archiveBuilds.Delete(accountID)
 	posts, err := s.Chronicle.ArchiveSnapshot(r.Context(), circleID, accountID, cycle.CutoffDate)
 	if err != nil {
 		writeDomainError(w, err)
-		return
+		return false, false
 	}
 	circles, err := s.Chronicle.ListAccountCircles(r.Context(), accountID)
 	if err != nil {
 		writeDomainError(w, err)
-		return
+		return false, false
 	}
 	circleName, circleColor := circleID, ""
 	for _, c := range circles {
@@ -542,12 +564,12 @@ func (s *Server) streamArchive(w http.ResponseWriter, r *http.Request, circleID,
 	avatars, err := s.Chronicle.IdentityAvatarBlobIDs(r.Context(), chronicle.IdentityIDsFromFeed(posts))
 	if err != nil {
 		writeDomainError(w, err)
-		return
+		return false, false
 	}
 	dayTitles, err := s.Chronicle.ArchiveDayTitles(r.Context(), circleID, cycle.CutoffDate, posts)
 	if err != nil {
 		writeDomainError(w, err)
-		return
+		return false, false
 	}
 	in := archive.BuildInput{
 		CircleID:   circleID,
@@ -568,33 +590,113 @@ func (s *Server) streamArchive(w http.ResponseWriter, r *http.Request, circleID,
 	size, err := archive.Size(r.Context(), in)
 	if err != nil {
 		writeError(w, err)
-		return
+		return false, false
+	}
+	// Докачка (план 66, функция 5): сборка детерминирована, поэтому продолжение
+	// отдаётся повторной сборкой с пропуском уже скачанного. ETag — это версия
+	// архива: новое событие круга меняет max_seq, If-Range расходится — браузер
+	// начинает заново, а не клеит половины разных архивов.
+	maxSeq, _ := s.Chronicle.MaxEventSeq(r.Context())
+	etag := fmt.Sprintf("\"%s|%s|%d|%d\"", circleID, cycle.CutoffDate, maxSeq, size)
+	start := int64(0)
+	partial := false
+	if r.Method == http.MethodGet {
+		ifRange := r.Header.Get("If-Range")
+		if ifRange == "" || ifRange == etag {
+			if from, ok := rangeFrom(r.Header.Get("Range")); ok && from > 0 {
+				if from >= size {
+					w.Header().Set("Content-Range", "bytes */"+strconv.FormatInt(size, 10))
+					w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+					return false, false
+				}
+				start, partial = from, true
+			}
+		}
+	}
+	length := size - start
+	if partial {
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, size-1, size))
 	}
 	w.Header().Set("Content-Type", "application/zip")
 	w.Header().Set("Content-Disposition", "attachment; filename=\"wynd-archive-"+circleID+".zip\"")
-	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
+	w.Header().Set("Content-Length", strconv.FormatInt(length, 10))
 	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("ETag", etag)
+	w.Header().Set("Accept-Ranges", "bytes")
 	if r.Method == http.MethodHead {
 		w.WriteHeader(http.StatusOK)
-		return
+		return false, false
 	}
 	rec := &deliveryRecorder{ResponseWriter: w}
-	rec.WriteHeader(http.StatusOK)
-	if err := archive.BuildPersonalArchive(r.Context(), rec, in); err != nil || rec.written != size {
+	status := http.StatusOK
+	if partial {
+		status = http.StatusPartialContent
+	}
+	rec.WriteHeader(status)
+	out := io.Writer(rec)
+	if start > 0 {
+		out = &skipWriter{w: rec, skip: start}
+	}
+	started = true
+	if err := archive.BuildPersonalArchive(r.Context(), out, in); err != nil || rec.written != length {
 		// Заголовки ушли — сказать об ошибке можно только оборвав ответ:
 		// недописанный ZIP не должен выглядеть скачанным целиком.
-		log.Printf("archive %s: stream: %v (written %d of %d)", circleID, err, rec.written, size)
+		log.Printf("archive %s: stream: %v (written %d of %d)", circleID, err, rec.written, length)
 		panic(http.ErrAbortHandler)
 	}
+	delivered = start+rec.written == size
 
 	// Отсечка замирает, когда участник получил архив целиком — последний байт
 	// ушёл, — а не когда архив собран: обрыв на отдаче замораживал её, хотя
-	// никто ничего не получил (ARC-8).
-	if cycle.Active && rec.deliveredToEnd(size) {
+	// никто ничего не получил (ARC-8). Докачанный хвост тоже считается.
+	if cycle.Active && delivered {
 		if _, err := s.Chronicle.LockCutoff(context.WithoutCancel(r.Context()), circleID, cycle.CutoffDate, now); err != nil {
 			log.Printf("archive %s: lock cutoff: %v", circleID, err)
 		}
 	}
+	return delivered, true
+}
+
+// rangeFrom разбирает только открытый диапазон «bytes=N-»: им браузер
+// продолжает оборванное скачивание. Прочие формы Range не поддерживаются —
+// архив отдаётся целиком (200), как велит спецификация.
+func rangeFrom(header string) (int64, bool) {
+	spec, ok := strings.CutPrefix(strings.TrimSpace(header), "bytes=")
+	if !ok || strings.Contains(spec, ",") {
+		return 0, false
+	}
+	from, ok := strings.CutSuffix(strings.TrimSpace(spec), "-")
+	if !ok {
+		return 0, false
+	}
+	n, err := strconv.ParseInt(strings.TrimSpace(from), 10, 64)
+	if err != nil || n < 0 {
+		return 0, false
+	}
+	return n, true
+}
+
+// skipWriter пропускает первые skip байт собранного архива: продолжение
+// начинается с того места, где оборвалось скачивание (план 66, функция 5).
+type skipWriter struct {
+	w    io.Writer
+	skip int64
+}
+
+func (s *skipWriter) Write(p []byte) (int, error) {
+	if s.skip > 0 {
+		if int64(len(p)) <= s.skip {
+			s.skip -= int64(len(p))
+			return len(p), nil
+		}
+		// Пропущенное считается потреблённым: io.Writer обязан вернуть
+		// длину всего p, иначе сборщик ZIP видит короткую запись.
+		dropped := int(s.skip)
+		s.skip = 0
+		n, err := s.w.Write(p[dropped:])
+		return dropped + n, err
+	}
+	return s.w.Write(p)
 }
 
 // deliveryRecorder считает, сколько байт тела ушло клиенту, и запоминает
