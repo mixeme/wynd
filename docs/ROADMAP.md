@@ -18,7 +18,7 @@
 
 План 59 выполнен и удалён из открытых: [итоги и коммиты](review-followup-2026-11-04.md), [состояние после выпуска 0.48.2](testing/release-0.48.2.md).
 
-План 55 выполнен и удалён из открытых: окна «Wynd Настольный» выпущены 0.1.0–0.3.0 — [справочник оболочки](reference/desktop-reference.md), [выпуск 0.3.0](testing/release-0.52.1-desktop-0.3.0.md); аудит оболочки пройден 17.11 ([отчёт](security-audits.md#audit-2026-11-17)), ручные проверки и «Позже» — C66 [плана 46](plans/46-open-questions-and-debt.plan.md).
+План 55 выполнен и удалён из открытых: окна «Wynd Настольный» выпущены 0.1.0–0.3.0 — [справочник оболочки](reference/desktop-reference.md), [выпуск 0.3.0](testing/release-0.52.1-desktop-0.3.0.md); аудит оболочки пройден 17.11 ([отчёт](security-audits.md#audit-2026-11-17)), ручные проверки — [реестр, раздел 7](testing/pending-device-checks.md), дальнейшие функции — [план 66](plans/66-desktop-functions.plan.md).
 
 [Историческое состояние Wynd до ревью, 4 ноября 2026](sessions/2026-11-04-handoff.md). [Отдельная передача Мастерской, 3 ноября](sessions/2026-11-03-workshop-handoff.md).
 
