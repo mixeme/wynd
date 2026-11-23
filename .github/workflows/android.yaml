@@ -81,10 +81,14 @@ jobs:
           android/gradlew --no-daemon --console=plain -p android \
             --project-cache-dir "$RUNNER_TEMP/android-env/project-cache" \
             -PwyndEnvironmentRoot="$RUNNER_TEMP/android-env" \
-            testDebugUnitTest lintDebug lintRelease assembleRelease
+            testStandardDebugUnitTest testFdroidDebugUnitTest \
+            lintStandardDebug lintFdroidDebug lintStandardRelease lintFdroidRelease \
+            assembleStandardRelease assembleFdroidRelease
           mkdir -p dist
-          cp android/app/build/outputs/apk/release/app-release-unsigned.apk dist/wynd-android-unsigned.apk
+          cp android/app/build/outputs/apk/standard/release/app-standard-release-unsigned.apk dist/wynd-android-unsigned.apk
+          cp android/app/build/outputs/apk/fdroid/release/app-fdroid-release-unsigned.apk dist/wynd-android-fdroid-unsigned.apk
           sha256sum dist/wynd-android-unsigned.apk | cut -d' ' -f1 > dist/wynd-android-unsigned.apk.sha256
+          sha256sum dist/wynd-android-fdroid-unsigned.apk | cut -d' ' -f1 > dist/wynd-android-fdroid-unsigned.apk.sha256
       - name: Unsigned APK artifact
         uses: actions/upload-artifact@v7
         with:
@@ -92,6 +96,8 @@ jobs:
           path: |
             dist/wynd-android-unsigned.apk
             dist/wynd-android-unsigned.apk.sha256
+            dist/wynd-android-fdroid-unsigned.apk
+            dist/wynd-android-fdroid-unsigned.apk.sha256
           if-no-files-found: error
           overwrite: true
           retention-days: 14

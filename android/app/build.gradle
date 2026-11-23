@@ -29,6 +29,14 @@ android {
         buildConfigField 'String', 'APP_VERSION', groovy.json.JsonOutput.toJson(appVersion)
     }
 
+    // Редакция владельца с самообновлением из GitHub-выпусков — и редакция F-Droid,
+    // где код обновления не входит в APK и разрешение установки убрано (план 67).
+    flavorDimensions = ['distribution']
+    productFlavors {
+        standard { dimension 'distribution' }
+        fdroid { dimension 'distribution' }
+    }
+
     signingConfigs {
         debug {
             // Только отладочный ключ. Ключ выпуска определяет и хранит владелец.

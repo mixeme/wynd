@@ -3,7 +3,7 @@ param(
     [string]$ServerUrl = 'http://127.0.0.1:7676',
     [string]$UpdateFixtureOrigin = '',
     [string]$VersionName = '',
-    [string[]]$Tasks = @('testDebugUnitTest', 'lintDebug', 'assembleDebug')
+    [string[]]$Tasks = @('testStandardDebugUnitTest', 'lintStandardDebug', 'assembleStandardDebug')
 )
 
 $ErrorActionPreference = 'Stop'

@@ -168,7 +168,8 @@ Command-line Tools 19.0 закреплены для работы под согл
 .\scripts\build-android.ps1 -ServerUrl 'https://home.example.org'
 ```
 
-По умолчанию скрипт выполняет `testDebugUnitTest`, `lintDebug`, `assembleDebug`.
+По умолчанию скрипт выполняет `testStandardDebugUnitTest`, `lintStandardDebug`,
+`assembleStandardDebug`.
 Для локального сервера допустим HTTP **только** на `localhost`, `127.0.0.1`
 и `[::1]` в отладочной сборке:
 
@@ -177,7 +178,7 @@ Command-line Tools 19.0 закреплены для работы под согл
 & 'D:\android-env\sdk\platform-tools\adb.exe' devices -l
 # Если телефонов несколько, добавить -s <serial> в каждую команду ADB.
 & 'D:\android-env\sdk\platform-tools\adb.exe' reverse tcp:7696 tcp:7696
-& 'D:\android-env\sdk\platform-tools\adb.exe' install -r .\android\app\build\outputs\apk\debug\app-debug.apk
+& 'D:\android-env\sdk\platform-tools\adb.exe' install -r .\android\app\build\outputs\apk\standard\debug\app-standard-debug.apk
 & 'D:\android-env\sdk\platform-tools\adb.exe' shell am start -n mixeme.wynd.debug/mixeme.wynd.MainActivity
 ```
 
@@ -203,7 +204,7 @@ localStorage после полного перезапуска. Затем уби
 передать `-EnvironmentRoot`. При сборке без скрипта задавать эти переменные
 процессу самостоятельно, а также `-PwyndEnvironmentRoot` и `--project-cache-dir`.
 
-APK: `android/app/build/outputs/apk/debug/app-debug.apk`, пакет
+APK: `android/app/build/outputs/apk/standard/debug/app-standard-debug.apk`, пакет
 `mixeme.wynd.debug`. Будущий пакет выпуска — `mixeme.wynd`.
 Отладочный ключ — `D:\android-env\keys\wynd-debug.keystore`, alias
 `androiddebugkey`, стандартные отладочные пароли `android`. Это отдельный ключ,
@@ -216,6 +217,37 @@ AndroidX WebKit 1.14.0: последняя стабильная ветка с mi
 библиотеки могут потребовать пересмотра минимума по правилам плана 50.
 Компиляция и target — API 36. На API 30+ учтены системные отступы и клавиатура;
 проверка на современном Android остаётся отдельным пунктом.
+
+## Редакции standard и fdroid
+
+Приложение собирается в двух редакциях — product-флейворы `standard` и `fdroid`
+(dimension `distribution`, [план 67](../plans/67-fdroid-android.plan.md)):
+
+- `standard` — редакция владельца: самообновление из GitHub-выпусков
+  (раздел «Канал обновлений»).
+- `fdroid` — редакция для f-droid.org: реализация самообновления (`UpdateController`,
+  `UpdatePolicy`, `UpdateTransport`, `ReleaseCatalog`, `ApkVerifier`) не входит
+  в APK — живёт в `app/src/standard/java`. Слитый манифест редакции теряет
+  `REQUEST_INSTALL_PACKAGES` через `app/src/fdroid/AndroidManifest.xml`;
+  `UpdateController` заменён заглушкой (`app/src/fdroid/java`), отвечающей
+  веб-странице `updates: false` — клиент сам не показывает полосу обновления.
+  Общий `InstallResultReceiver` остаётся в обеих редакциях: он только пересылает
+  результат системного установщика контроллеру, а заглушка его игнорирует.
+  API заглушки обязан совпадать с настоящим классом: общие `AndroidBridge`
+  и `MainActivity` собираются без флейворных веток, расхождение ловится
+  компиляцией. Тесты обновления — в `src/testStandard/java`, охраняющий тест
+  заглушки — в `src/testFdroid/java`.
+
+Задачи Gradle получают приставку редакции: `assembleStandardRelease`,
+`assembleFdroidRelease`, `testFdroidDebugUnitTest` и тому подобное. Пути APK:
+
+- `android/app/build/outputs/apk/standard/release/app-standard-release-unsigned.apk`
+- `android/app/build/outputs/apk/fdroid/release/app-fdroid-release-unsigned.apk`
+
+CI собирает обе редакции и кладёт обе в Actions artifacts; в черновик релиза
+попадает только standard — f-droid.org собирает приложение из исходников сам
+и подписывает своим ключом. Редакция не меняет package (`mixeme.wynd`)
+и номер версии.
 
 ## Что учтено из настольной оболочки
 
@@ -258,6 +290,9 @@ AndroidX WebKit 1.14.0: последняя стабильная ветка с mi
 
 ## Канал обновлений
 
+Канал есть только в редакции `standard`; редакция `fdroid` обновляется
+магазином приложений (план 67).
+
 - Источник — публичные GitHub Releases `mixeme/wynd`, теги `android-vX.Y.Z`.
   Нужны `wynd-android.apk` и `wynd-android.apk.sha256`. Черновики, prerelease,
   неправильные метки, одинаковые/меньшие версии и чужие адреса assets не подходят.
@@ -292,10 +327,11 @@ minor/patch 0–999, итог 1…2100000000. У приложения свой �
 
 ## Подпись и GitHub
 
-`.github/workflows/android.yaml` запускает тесты, lint и сборку unsigned APK
-на изменениях Android/значков/самого workflow в `main` и pull request, вручную
-и по `android-v*`. APK с SHA-256 сохраняется в Actions artifacts на 14 дней,
-отчёты тестов/lint — на 7 дней, в том числе при неуспешной сборке.
+`.github/workflows/android.yaml` запускает тесты и lint обеих редакций и сборку
+unsigned APK на изменениях Android/значков/самого workflow в `main` и pull
+request, вручную и по `android-v*`. APK обеих редакций с SHA-256 сохраняются
+в Actions artifacts на 14 дней, отчёты тестов/lint — на 7 дней, в том числе
+при неуспешной сборке.
 Сборочная задача имеет только `contents: read`. Отдельная задача с правами
 записи запускается только по Android-тегу после успешной сборки: проверяет
 сумму скачанного артефакта, удостоверяет происхождение и создаёт **черновик**
@@ -370,9 +406,9 @@ Android появилась в окне «Wynd Подпись» ([план 65](..
 
 ```powershell
 .\scripts\build-android.ps1 -ServerUrl http://127.0.0.1:7696 -UpdateFixtureOrigin http://127.0.0.1:7697
-# Скопировать app-debug.apk как base-0.1.0.apk в папку тестовых выпусков.
+# Скопировать app-standard-debug.apk как base-0.1.0.apk в папку тестовых выпусков.
 .\scripts\build-android.ps1 -ServerUrl http://127.0.0.1:7696 -UpdateFixtureOrigin http://127.0.0.1:7697 -VersionName 0.1.1
-# Скопировать app-debug.apk как candidate-0.1.1.apk и подготовить отрицательные файлы.
+# Скопировать app-standard-debug.apk как candidate-0.1.1.apk и подготовить отрицательные файлы.
 node scripts/serve-android-update-fixture.mjs D:/android-env/test-releases
 node scripts/test-android-update.mjs SERIAL prepare
 node scripts/test-android-update.mjs SERIAL install
