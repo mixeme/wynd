@@ -28,6 +28,11 @@ export function openDesktopInterface(): void {
 	window.parent.postMessage({ type: 'wynd:open-interface' }, window.location.origin);
 }
 
+/** Открыть экран окна «Копии по расписанию» (план 66, функция 7). */
+export function openDesktopBackups(): void {
+	window.parent.postMessage({ type: 'wynd:open-backups' }, window.location.origin);
+}
+
 /**
  * Возвращает окно на экран ввода адреса сервера (первый запуск: адрес
  * подтверждён, а вернуться к его вводу с экрана входа нельзя — план 50,

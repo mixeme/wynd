@@ -9,6 +9,7 @@ package main
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"log"
@@ -51,6 +52,12 @@ type App struct {
 	// pendingInvite — адрес схемы wynd:, не дошедший до оболочки событием
 	// (план 66, функция 4); оболочка забирает его при загрузке.
 	pendingInvite string
+	// Копии по расписанию (план 66, функция 7): настройки backups.json и
+	// хранилище сессий для сборки архивов.
+	backupPath string
+	backupMu   sync.Mutex
+	backup     desktop.BackupConfig
+	secrets    *desktop.SecretsCache
 	// window и tray — для «крестика»: со значком в трее окно прячется,
 	// без него приложение закрывается, как раньше.
 	window application.Window
@@ -66,6 +73,9 @@ func (a *App) ServiceStartup(ctx context.Context, _ application.ServiceOptions) 
 	// запуске, а окно может жить неделями спрятанным — тут оно узнаёт о новых
 	// версиях без открытого интерфейса (план 66, «вышла версия»).
 	go a.runUpdateToasts()
+	// Копии по расписанию собираются, пока приложение запущено, — окно может
+	// быть спрятано в значок (план 66, функция 7).
+	go a.runBackupLoop()
 	return nil
 }
 
@@ -107,6 +117,157 @@ func launchArgFromArgs(args []string) string {
 		}
 	}
 	return ""
+}
+
+// GetBackupConfig — настройки копий для экрана (план 66, функция 7).
+func (a *App) GetBackupConfig() desktop.BackupConfig {
+	a.backupMu.Lock()
+	defer a.backupMu.Unlock()
+	return a.backup
+}
+
+// SaveBackupConfig проверяет и сохраняет настройки; форму не подменяем молча —
+// ошибку показывает экран.
+func (a *App) SaveBackupConfig(cfg desktop.BackupConfig) (desktop.BackupConfig, error) {
+	norm, err := desktop.NormalizeBackupConfig(cfg)
+	if err != nil {
+		return desktop.BackupConfig{}, err
+	}
+	a.backupMu.Lock()
+	// Поля прошлого прогона ведёт таймер, а не форма.
+	norm.LastAt, norm.LastCircles = a.backup.LastAt, a.backup.LastCircles
+	a.backup = norm
+	a.backupMu.Unlock()
+	if err := writeBackupConfig(a.backupPath, norm); err != nil {
+		return desktop.BackupConfig{}, err
+	}
+	return norm, nil
+}
+
+// ChooseBackupFolder — родной диалог выбора папки.
+func (a *App) ChooseBackupFolder() (string, error) {
+	path, err := application.Get().Dialog.OpenFileWithOptions(&application.OpenFileDialogOptions{
+		Title:                "Папка для копий",
+		CanChooseDirectories: true,
+		CanChooseFiles:       false,
+		CanCreateDirectories: true,
+	}).PromptForSingleSelection()
+	if err != nil {
+		// Отмена в v3 приходит ошибкой диалога — это не сбой.
+		if strings.Contains(strings.ToLower(err.Error()), "cancel") {
+			return "", nil
+		}
+		return "", err
+	}
+	return path, nil
+}
+
+// OpenBackupFolder — показать папку в Проводнике.
+func (a *App) OpenBackupFolder() error {
+	a.backupMu.Lock()
+	folder := a.backup.Folder
+	a.backupMu.Unlock()
+	if folder == "" {
+		return errors.New("backups: папка не выбрана")
+	}
+	return exec.Command("explorer.exe", folder).Start()
+}
+
+// loadBackupConfig читает backups.json; отсутствие файла — умолчания.
+func (a *App) loadBackupConfig(path string) {
+	a.backupPath = path
+	a.backup = desktop.DefaultBackupConfig()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	var cfg desktop.BackupConfig
+	if json.Unmarshal(b, &cfg) == nil {
+		a.backup = cfg
+	}
+}
+
+// writeBackupConfig пишет настройки атомарно, через временный файл.
+func writeBackupConfig(path string, cfg desktop.BackupConfig) error {
+	b, err := json.MarshalIndent(cfg, "", "	")
+	if err != nil {
+		return err
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, b, 0o600); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
+}
+
+// backupCheckInterval — как часто окно проверяет срок копии.
+const backupCheckInterval = 30 * time.Minute
+
+// runBackupLoop — своя проверка раз в полчаса; первая — через полминуты
+// после запуска, чтобы включённые копии собрались сразу.
+func (a *App) runBackupLoop() {
+	first := time.NewTimer(30 * time.Second)
+	select {
+	case <-a.ctx.Done():
+		first.Stop()
+		return
+	case <-first.C:
+	}
+	a.maybeRunBackup()
+	ticker := time.NewTicker(backupCheckInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-a.ctx.Done():
+			return
+		case <-ticker.C:
+			a.maybeRunBackup()
+		}
+	}
+}
+
+// maybeRunBackup собирает копии выбранного сервера, когда срок прошёл.
+func (a *App) maybeRunBackup() {
+	a.backupMu.Lock()
+	cfg := a.backup
+	a.backupMu.Unlock()
+	var last time.Time
+	if cfg.LastAt != "" {
+		last, _ = time.Parse(time.RFC3339, cfg.LastAt)
+	}
+	now := time.Now()
+	if !desktop.BackupDue(last, cfg, now) {
+		return
+	}
+	selected, _ := a.store.Snapshot()
+	if selected == "" || a.secrets == nil {
+		return
+	}
+	blob, ok := a.secrets.Get(selected)
+	if !ok {
+		log.Printf("backups: нет сохранённой сессии для %s", selected)
+		return
+	}
+	var session struct {
+		Token string `json:"token"`
+	}
+	if json.Unmarshal(blob, &session) != nil || session.Token == "" {
+		return
+	}
+	ctx, cancel := context.WithTimeout(a.ctx, 30*time.Minute)
+	defer cancel()
+	saved, err := desktop.RunBackupOnce(ctx, http.DefaultClient, selected, session.Token, cfg.Folder, cfg, now)
+	if err != nil {
+		log.Printf("backups: %v (собрано %d)", err, saved)
+	}
+	cfg.LastAt = now.UTC().Format(time.RFC3339)
+	cfg.LastCircles = saved
+	a.backupMu.Lock()
+	a.backup = cfg
+	a.backupMu.Unlock()
+	if err := writeBackupConfig(a.backupPath, cfg); err != nil {
+		log.Printf("backups: сохранить настройки: %v", err)
+	}
 }
 
 // updateCheckInterval — как часто спрятанное окно само проверяет новые версии.
@@ -570,10 +731,12 @@ func main() {
 		log.Fatal(err)
 	}
 	shell := &App{
-		store:  store,
-		proxy:  proxy,
-		client: &http.Client{Timeout: 12 * time.Second},
+		store:   store,
+		proxy:   proxy,
+		client:  &http.Client{Timeout: 12 * time.Second},
+		secrets: secrets,
 	}
+	shell.loadBackupConfig(filepath.Join(base, "backups.json"))
 	if err := shell.updateAllowed(); err != nil {
 		log.Fatal(err)
 	}

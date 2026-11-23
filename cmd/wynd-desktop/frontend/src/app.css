@@ -191,3 +191,33 @@ body {
 		padding: 16px;
 	}
 }
+
+/* Копии по расписанию: выбор папки — справа от поля пути (план 66). */
+.backup-row {
+	display: flex;
+	align-items: stretch;
+	gap: 10px;
+	margin: 0 16px;
+}
+.backup-row .fld {
+	flex: 1;
+	min-width: 0;
+	margin: 0;
+}
+.backup-row .btn {
+	display: block;
+	width: auto;
+	flex: 0 0 auto;
+	margin: 0;
+	/* Высота кнопки — как у поля пути, а не выше строки. */
+	padding: 11px 18px;
+}
+/* Чипы в ряду — своей высоты, по центру строки (не растягиваются под поле). */
+.backup-row .chips {
+	align-self: center;
+	margin: 0;
+}
+/* Маленькое поле (число) — по своему содержимому, без лишней высоты. */
+.backup-row .fld.sm {
+	padding: 8px 12px;
+}

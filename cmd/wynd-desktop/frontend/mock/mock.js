@@ -8,6 +8,10 @@ const params = new URLSearchParams(location.search);
 // ?update=none — кадр без полосы обновления.
 // ?screen=app — показать интерфейс сервера из соседнего dev-сервера клиента.
 const appMode = params.get('screen') === 'app';
+// ?screen=backups — кадр экрана «Копии по расписанию» (план 66, функция 7).
+if (params.get('screen') === 'backups') {
+	globalThis.__wyndBackups = true;
+}
 if (appMode) globalThis.__wyndIframePath = 'http://127.0.0.1:5173/';
 const server = { origin: 'http://127.0.0.1:5173', name: 'Wynd', version: '', registration_mode: 'open' };
 
@@ -43,7 +47,20 @@ const app = {
 				},
 	// Подпись не сошлась: установка отменяется.
 	ApplySelfUpdate: async () => (params.get('apply') === '1' ? 'signature' : ''),
-	ReleasesPage: async () => {}
+	ReleasesPage: async () => {},
+	// Копии по расписанию (план 66, функция 7): заполненная форма для кадра.
+	GetBackupConfig: async () => ({
+		enabled: true,
+		folder: 'C:\\Users\\Микс\\Документы\\Wynd',
+		schedule: 'daily',
+		keep_mode: 'count',
+		keep: 10,
+		last_at: new Date(Date.now() - 3600 * 1000).toISOString(),
+		last_circles: 4
+	}),
+	SaveBackupConfig: async (cfg) => cfg,
+	ChooseBackupFolder: async () => '',
+	OpenBackupFolder: async () => {}
 };
 
 window.go = { main: { App: app } };

@@ -12,6 +12,11 @@
 	import TextButton from '$ui/forms/TextButton.svelte';
 	import ServerRow from '$ui/data/ServerRow.svelte';
 	import ConfirmDialog from '$ui/overlays/ConfirmDialog.svelte';
+	import Chip from '$ui/forms/Chip.svelte';
+	import ChipGroup from '$ui/forms/ChipGroup.svelte';
+	import FieldDisplay from '$ui/forms/FieldDisplay.svelte';
+	import Switch from '$ui/forms/Switch.svelte';
+	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import {
 		addInterface,
 		applySelfUpdate,
@@ -23,8 +28,12 @@
 		currentVersion,
 		forgetSelected,
 		listServers,
+		chooseBackupFolder,
+		getBackupConfig,
 		notifyWindow,
 		onInviteLink,
+		openBackupFolder,
+		saveBackupConfig,
 		openingReleases,
 		previewServer,
 		removeInterface,
@@ -62,6 +71,102 @@
 		(globalThis as unknown as { __wyndIframePath?: string }).__wyndIframePath ?? '/?wynd=server'
 	);
 
+	// Копии по расписанию (план 66, функция 7): экран оболочки. Настройки и
+	// сборку ведёт Go, пока приложение запущено; здесь — форма.
+	let backups = $state((globalThis as unknown as { __wyndBackups?: boolean }).__wyndBackups === true);
+	let backupsOn = $state(false);
+	let backupFolder = $state('');
+	let backupSchedule = $state<'daily' | 'weekly' | 'monthly' | 'custom'>('daily');
+	let backupDays = $state('3');
+	let keepMode = $state<'count' | 'days'>('count');
+	let backupKeep = $state('10');
+	let backupError = $state('');
+	let backupBusy = $state(false);
+	let backupSaved = $state(false);
+	let lastBackup = $state('');
+	const keepHint = $derived(
+		keepMode === 'count'
+			? `Старые копии в этой папке удаляются сами: по каждому кругу остаются последние ${backupKeep || '0'}.`
+			: `Старые копии в этой папке удаляются сами: по каждому кругу остаются копии не старше ${backupKeep || '0'} дней.`
+	);
+
+	function plural(n: number, forms: [string, string, string]): string {
+		const mod10 = n % 10;
+		const mod100 = n % 100;
+		if (mod10 === 1 && mod100 !== 11) return forms[0];
+		if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return forms[1];
+		return forms[2];
+	}
+
+	function formatLast(cfg: { last_at?: string; last_circles?: number }): string {
+		if (!cfg.last_at) return 'копий ещё не было';
+		const at = new Date(cfg.last_at);
+		if (Number.isNaN(at.getTime())) return 'копий ещё не было';
+		const now = new Date();
+		const sameDay =
+			at.getFullYear() === now.getFullYear() &&
+			at.getMonth() === now.getMonth() &&
+			at.getDate() === now.getDate();
+		const day = sameDay
+			? 'сегодня'
+			: at.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+		const time = at.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+		const count = cfg.last_circles ?? 0;
+		return `${day}, ${time} — ${count} ${plural(count, ['копия', 'копии', 'копий'])}`;
+	}
+
+	async function loadBackups() {
+		backupError = '';
+		const cfg = await getBackupConfig();
+		backupsOn = cfg.enabled;
+		backupFolder = cfg.folder;
+		backupSchedule = cfg.schedule;
+		backupDays = String(cfg.custom_days || 3);
+		keepMode = cfg.keep_mode;
+		backupKeep = String(cfg.keep);
+		lastBackup = formatLast(cfg);
+	}
+
+	async function pickBackupFolder() {
+		try {
+			const path = await chooseBackupFolder();
+			if (path) backupFolder = path;
+		} catch {
+			backupError = 'Не получилось открыть выбор папки.';
+		}
+	}
+
+	async function revealBackupFolder() {
+		try {
+			await openBackupFolder();
+		} catch {
+			backupError = 'Папка ещё не выбрана.';
+		}
+	}
+
+	async function saveBackups() {
+		if (backupBusy) return;
+		backupBusy = true;
+		backupError = '';
+		backupSaved = false;
+		try {
+			const cfg = await saveBackupConfig({
+				enabled: backupsOn,
+				folder: backupFolder,
+				schedule: backupSchedule,
+				custom_days: Number(backupDays) || 0,
+				keep_mode: keepMode,
+				keep: Number(backupKeep) || 0
+			});
+			lastBackup = formatLast(cfg);
+			backupSaved = true;
+		} catch (err) {
+			backupError = err instanceof Error ? err.message : 'Не получилось сохранить настройки.';
+		} finally {
+			backupBusy = false;
+		}
+	}
+
 	onMount(async () => {
 		try {
 			const saved = await currentServer();
@@ -81,6 +186,7 @@
 		onInviteLink(openInvite);
 		const pending = await takePendingInvite().catch(() => null);
 		if (pending) await openInvite(pending);
+		if (backups) await loadBackups();
 		void syncMaximised();
 	});
 
@@ -105,6 +211,13 @@
 			// можно поправить.
 			if (event.data?.type === 'wynd:return-to-address') {
 				returnToAddress(typeof event.data.origin === 'string' ? event.data.origin : '');
+			}
+			// Копии по расписанию (план 66, функция 7): строка «Настройки →
+			// Приложение» в клиенте открывает экран оболочки.
+			if (event.data?.type === 'wynd:open-backups') {
+				backups = true;
+				void loadBackups();
+				return;
 			}
 			// Живой сигнал уведомления от клиента (план 66): мост гасит его,
 			// когда интерфейс на виду. Заголовок обязателен — без него toast
@@ -369,6 +482,88 @@
 	{/if}
 	{#if !loaded}
 		<!-- Первое чтение списка серверов: окно ещё не решает, что показать. -->
+	{:else if backups}
+		<!-- Кадр: копии по расписанию (план 66, функция 7). -->
+		<div class="page-host">
+			<div class="settings-page">
+				<BackBar title="Копии по расписанию" onback={() => (backups = false)} />
+				<div class="settings-body">
+					<SettingsRow title="Сохранять копии по расписанию">
+						{#snippet control()}
+							<Switch bind:checked={backupsOn} label="Сохранять копии по расписанию" />
+						{/snippet}
+					</SettingsRow>
+					<Hint>
+						Каждый круг сохраняется отдельным ZIP-архивом в выбранную папку — как «Скачать
+						архив», только сам.
+					</Hint>
+
+					{#if backupsOn}
+						<Label>Папка</Label>
+						<div class="backup-row">
+							<FieldDisplay mono value={backupFolder} />
+							<Button variant="ghost" onclick={() => void revealBackupFolder()}>Открыть</Button>
+							<Button variant="ghost" onclick={() => void pickBackupFolder()}>Выбрать…</Button>
+						</div>
+
+						<Label>Как часто</Label>
+						<ChipGroup>
+							<Chip selected={backupSchedule === 'daily'} onclick={() => (backupSchedule = 'daily')}>
+								Каждый день
+							</Chip>
+							<Chip selected={backupSchedule === 'weekly'} onclick={() => (backupSchedule = 'weekly')}>
+								Каждую неделю
+							</Chip>
+							<Chip selected={backupSchedule === 'monthly'} onclick={() => (backupSchedule = 'monthly')}>
+								Каждый месяц
+							</Chip>
+							<Chip selected={backupSchedule === 'custom'} onclick={() => (backupSchedule = 'custom')}>
+								Свой интервал
+							</Chip>
+						</ChipGroup>
+						{#if backupSchedule === 'custom'}
+							<Label>Свой интервал</Label>
+							<div class="backup-row">
+								<Hint>каждые</Hint>
+								<Input small bind:value={backupDays} aria-label="Интервал, дней" />
+								<Hint>дней</Hint>
+							</div>
+						{/if}
+						<Hint>Копия собирается при запущенном приложении — окно можно закрыть.</Hint>
+
+						<Label>Хранить копии</Label>
+						<div class="backup-row">
+							<Input
+								small
+								style="max-width:96px"
+								bind:value={backupKeep}
+								aria-label="Сколько копий хранить"
+							/>
+							<ChipGroup>
+								<Chip selected={keepMode === 'count'} onclick={() => (keepMode = 'count')}>
+									последних
+								</Chip>
+								<Chip selected={keepMode === 'days'} onclick={() => (keepMode = 'days')}>
+									дней
+								</Chip>
+							</ChipGroup>
+						</div>
+						<Hint>{keepHint}</Hint>
+					{/if}
+
+					<Label>Последняя копия</Label>
+					<Hint>{lastBackup}</Hint>
+
+					{#if backupError}
+						<Hint class="mt-12">{backupError}</Hint>
+					{/if}
+					{#if backupSaved}
+						<Hint class="mt-12">Настройки сохранены.</Hint>
+					{/if}
+					<Button loading={backupBusy} loadingLabel="Сохраняем…" onclick={() => void saveBackups()}>Сохранить</Button>
+				</div>
+			</div>
+		</div>
 	{:else if showServers}
 		<!-- Кадр 5: только источники интерфейса, не учётные записи. -->
 		<div class="page-host">

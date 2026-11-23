@@ -27,6 +27,7 @@
 	} from '$lib/idb/db';
 	import { getMediaCacheLimit, setMediaCacheLimit } from '$lib/media/objectUrl';
 	import { autostartBridge } from '$lib/desktop/autostart';
+	import { openDesktopBackups } from '$lib/desktop/servers';
 	import { desktopBridge } from '$lib/desktop/bridge';
 	import { openDesktopInterface } from '$lib/desktop/servers';
 	import { displayHost } from '$lib/auth/origin';
@@ -258,6 +259,7 @@
 	{/if}
 	{#if auto}
 		<SectionLabel>Запуск</SectionLabel>
+		<Hint class="mt-8 mb-10">При входе в Windows откроется Wynd.</Hint>
 		<SettingsRow class="pt-2" title="Запускать при входе в Windows">
 			{#snippet control()}
 				<Switch
@@ -268,7 +270,6 @@
 				/>
 			{/snippet}
 		</SettingsRow>
-		<Hint class="mt-10">При входе в Windows откроется Wynd.</Hint>
 		{#if autostartStale}
 			<Hint class="mt-10"
 				>Автозапуск указывает на прежний файл. Включите его заново, чтобы обновить команду.</Hint
@@ -277,6 +278,16 @@
 		{#if autostartError}
 			<Hint class="mt-10">{autostartError}</Hint>
 		{/if}
+	{/if}
+
+	{#if desktop}
+		<SectionLabel>Копии</SectionLabel>
+		<SettingsRow
+			class="pt-2"
+			title="Копии по расписанию"
+			subtitle="Архивы кругов в папку на этом компьютере"
+			onclick={openDesktopBackups}
+		/>
 	{/if}
 
 	{#if nativePush}
@@ -301,6 +312,7 @@
 		{:else if pushError}<Hint class="mt-10">{pushError}</Hint>{/if}
 	{/if}
 	<SectionLabel>Уведомления по умолчанию</SectionLabel>
+	<Hint class="mt-8 mb-10">Для новых кругов и тех, где настройки уведомлений не менялись.</Hint>
 	<SettingsRow class="pt-2" title="Новые записи">
 		{#snippet control()}
 			<Switch bind:checked={posts} label="Новые записи" />
@@ -316,8 +328,6 @@
 			<Switch bind:checked={reactions} label="Реакции" />
 		{/snippet}
 	</SettingsRow>
-	<Hint class="mt-10">Для новых кругов и тех, где настройки уведомлений не менялись.</Hint>
-
 	<SectionLabel class="mt-22">Место на устройстве</SectionLabel>
 	<Meter value={cacheBytes} max={Math.max(cacheLimit, 1)} />
 	<Hint class="mt-8">

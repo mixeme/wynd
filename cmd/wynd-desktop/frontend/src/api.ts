@@ -12,6 +12,18 @@ export interface CheckResult {
 	registration_mode: 'open' | 'invite' | 'closed' | string;
 }
 
+/** Копии по расписанию (план 66, функция 7). */
+export interface BackupConfig {
+	enabled: boolean;
+	folder: string;
+	schedule: 'daily' | 'weekly' | 'monthly' | 'custom';
+	custom_days?: number;
+	keep_mode: 'count' | 'days';
+	keep: number;
+	last_at?: string;
+	last_circles?: number;
+}
+
 export interface Update {
 	available: boolean;
 	version?: string;
@@ -36,6 +48,10 @@ interface GoApp {
 	RequestClose(): Promise<void>;
 	Notify(title: string, body: string): Promise<void>;
 	TakePendingInvite(): Promise<string>;
+	GetBackupConfig(): Promise<BackupConfig>;
+	SaveBackupConfig(cfg: BackupConfig): Promise<BackupConfig>;
+	ChooseBackupFolder(): Promise<string>;
+	OpenBackupFolder(): Promise<void>;
 }
 
 interface Runtime {
@@ -62,6 +78,10 @@ const native: GoApp = {
 	RequestClose: () => Call.ByName('main.App.RequestClose'),
 	Notify: (title, body) => Call.ByName('main.App.Notify', title, body),
 	TakePendingInvite: () => Call.ByName('main.App.TakePendingInvite'),
+	GetBackupConfig: () => Call.ByName('main.App.GetBackupConfig'),
+	SaveBackupConfig: (cfg) => Call.ByName('main.App.SaveBackupConfig', cfg),
+	ChooseBackupFolder: () => Call.ByName('main.App.ChooseBackupFolder'),
+	OpenBackupFolder: () => Call.ByName('main.App.OpenBackupFolder'),
 };
 
 function bridge(): GoApp | undefined {
@@ -103,6 +123,29 @@ export async function applySelfUpdate(): Promise<string> {
 // интерфейс на виду. В браузере оболочки нет — молча.
 export async function notifyWindow(title: string, body: string): Promise<void> {
 	await bridge()?.Notify(title, body);
+}
+
+// Копии по расписанию (план 66, функция 7).
+export async function getBackupConfig(): Promise<BackupConfig> {
+	return (await bridge()?.GetBackupConfig()) ?? {
+		enabled: false,
+		folder: '',
+		schedule: 'daily',
+		keep_mode: 'count',
+		keep: 10
+	};
+}
+
+export async function saveBackupConfig(cfg: BackupConfig): Promise<BackupConfig> {
+	return (await bridge()?.SaveBackupConfig(cfg)) ?? cfg;
+}
+
+export async function chooseBackupFolder(): Promise<string> {
+	return (await bridge()?.ChooseBackupFolder()) ?? '';
+}
+
+export async function openBackupFolder(): Promise<void> {
+	await bridge()?.OpenBackupFolder();
 }
 
 // Приглашение из схемы wynd: (план 66, функция 4). Разбор адреса здесь —
