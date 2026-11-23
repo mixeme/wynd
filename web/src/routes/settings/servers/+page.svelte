@@ -147,9 +147,10 @@
 				subtitle={accountSubtitle(row.session, row.circles)}
 				chevron={false}
 			/>
-			<SettingsRow title="Сменить почту" onclick={() => changeEmail(row)} />
+			<SettingsRow icon="edit" title="Сменить почту" onclick={() => changeEmail(row)} />
 			<!-- 7.18: круг приезжает на тот сервер, под которым стоит строка. -->
 			<SettingsRow
+				icon="download"
 				title="Принять круг"
 				onclick={() =>
 					goto(`/settings/servers/accept?origin=${encodeURIComponent(row.session.origin)}`)}
@@ -161,7 +162,7 @@
 				onclick={() => void logout(row.session.origin)}
 			/>
 			<!-- Уходят с одного сервера: строка под каждым (7.13). -->
-			<SettingsRow title="Уйти с сервера насовсем" onclick={() => leave(row)} />
+			<SettingsRow icon="trash" title="Уйти с сервера насовсем" onclick={() => leave(row)} />
 		{/each}
 		<Hint class="mt-16">
 			Общего профиля на все серверы нет: каждый сервер — отдельное место, даже с той же почтой.
