@@ -79,7 +79,7 @@
 		flex-shrink: 0;
 		background: var(--tint);
 		border-right: 1px solid var(--line);
-		padding: var(--sp-3) 10px;
+		padding: var(--sp-2) 10px;
 		overflow-y: auto;
 	}
 	.ins-rail-head {
@@ -102,13 +102,13 @@
 		display: block;
 		width: 100%;
 		text-align: left;
-		padding: 11px 9px;
+		padding: var(--sp-2) 9px;
 		box-sizing: border-box;
 		background: transparent;
 		color: var(--ink);
 		border: 1px solid transparent;
 		border-radius: 8px;
-		margin-bottom: var(--sp-2);
+		margin-bottom: var(--sp-1);
 		font: inherit;
 	}
 	.ins-server-entry.selected {
@@ -135,7 +135,7 @@
 			width: 100%;
 			border-right: 0;
 			border-bottom: 1px solid var(--line);
-			padding: var(--sp-2) 10px;
+			padding: var(--sp-1) 10px;
 			max-height: 180px;
 		}
 		.ins-server-entry {
@@ -150,7 +150,7 @@
 	.ins-side {
 		flex: none;
 		width: 170px;
-		padding: var(--sp-3) 0;
+		padding: var(--sp-2) 0;
 		border-right: 1px solid var(--line);
 		background: var(--tint);
 	}
