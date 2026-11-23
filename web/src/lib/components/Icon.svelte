@@ -34,6 +34,7 @@
 		| 'anger'
 		| 'photo'
 		| 'file'
+		| 'mail'
 		| 'x'
 		| 'check'
 		| 'filter'
@@ -73,6 +74,12 @@
 	const sizeClass = $derived(size === 'sm' ? 'ic sm' : size === 'xs' ? 'ic xs' : 'ic');
 </script>
 
-<svg class="{sizeClass} {className}" viewBox="0 0 24 24" {style} aria-hidden="true">
+<svg
+	class="{sizeClass} {className}"
+	viewBox="0 0 24 24"
+	data-name={name}
+	{style}
+	aria-hidden="true"
+>
 	<use href="#i-{name}" />
 </svg>

@@ -143,6 +143,7 @@
 				top={i === 0 ? 10 : 26}
 			/>
 			<SettingsRow
+				icon="mail"
 				title={row.session.email}
 				subtitle={accountSubtitle(row.session, row.circles)}
 				chevron={false}
