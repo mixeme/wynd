@@ -15,3 +15,5 @@ const workshopBaseline = checkWorkshopBaselineFiles();
 console.log(
 	`workshop-baseline: ${workshopBaseline.pinnedFrames} approved base; ${workshopBaseline.pendingVisualReview.length} layouts awaiting visual acceptance (not approved)`
 );
+// Лесенка вертикальных зазоров (C120) — часть проверки интерфейса.
+await import('./check-spacing.mjs');

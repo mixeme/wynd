@@ -23,6 +23,6 @@
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		margin: 8px 0;
+		margin: var(--sp-2) 0;
 	}
 </style>

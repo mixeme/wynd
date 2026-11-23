@@ -108,7 +108,7 @@
 		color: var(--ink);
 		border: 1px solid transparent;
 		border-radius: 8px;
-		margin-bottom: 7px;
+		margin-bottom: var(--sp-2);
 		font: inherit;
 	}
 	.ins-server-entry.selected {
@@ -123,7 +123,7 @@
 		display: block;
 		color: var(--muted);
 		font-size: 12px;
-		margin-top: 3px;
+		margin-top: var(--sp-1);
 		overflow-wrap: anywhere;
 	}
 	.ins-server-entry .ins-rail-progress {
@@ -140,7 +140,7 @@
 		}
 		.ins-server-entry {
 			padding: 7px 9px;
-			margin-bottom: 3px;
+			margin-bottom: var(--sp-1);
 		}
 		.ins-server-entry small {
 			display: inline;

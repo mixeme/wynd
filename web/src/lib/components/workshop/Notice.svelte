@@ -76,15 +76,15 @@
 <style>
 	.ins-server-context {
 		border-bottom: 1px solid var(--line);
-		padding-bottom: 16px;
-		margin-bottom: 18px;
+		padding-bottom: var(--sp-4);
+		margin-bottom: var(--sp-4);
 	}
 	.ins-server-heading {
 		display: flex;
 		align-items: center;
 		gap: 10px;
 		flex-wrap: wrap;
-		margin-bottom: 4px;
+		margin-bottom: var(--sp-1);
 	}
 	.ins-server-heading h3 {
 		margin: 0;
@@ -120,13 +120,13 @@
 		gap: 13px;
 		align-items: center;
 		flex-wrap: wrap;
-		margin-top: 12px;
+		margin-top: var(--sp-3);
 	}
 	.ins-connection-row :global(.ins-check) {
 		margin: 0;
 	}
 	.ins-box {
-		margin-top: 12px;
+		margin-top: var(--sp-3);
 		padding: 12px 14px;
 		border: 1px solid var(--line);
 		border-radius: 10px;
@@ -135,16 +135,16 @@
 	}
 	/* Итог удаления над экраном помехи: рамка стоит выше заголовка. */
 	.ins-box.ins-note {
-		margin: 0 0 16px;
+		margin: 0 0 var(--sp-4);
 	}
 	.ins-box.bad {
 		border-color: color-mix(in srgb, var(--bad) 45%, var(--line));
 	}
 	.ins-box :global(.ins-strong + *) {
-		margin-top: 6px;
+		margin-top: var(--sp-1);
 	}
 	.ins-box :global(.ins-dim + .ins-dim) {
-		margin-top: 8px;
+		margin-top: var(--sp-2);
 	}
 	.ins-box :global(.ins-mono) {
 		word-break: break-all;
@@ -153,7 +153,7 @@
 		display: flex;
 		align-items: center;
 		gap: 12px;
-		margin-bottom: 10px;
+		margin-bottom: var(--sp-2);
 	}
 	.ins-box.ins-update > div {
 		flex: 1;

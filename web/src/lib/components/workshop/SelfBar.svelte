@@ -29,7 +29,7 @@
 		display: flex;
 		align-items: center;
 		gap: 12px;
-		margin: 10px 24px 0;
+		margin: var(--sp-2) 24px 0;
 		padding: 6px 8px 6px 14px;
 		border: 1px solid var(--line);
 		border-radius: 10px;

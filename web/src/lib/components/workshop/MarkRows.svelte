@@ -19,6 +19,6 @@
 
 <style>
 	.ins-rows {
-		margin-bottom: 6px;
+		margin-bottom: var(--sp-2);
 	}
 </style>
