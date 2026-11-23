@@ -86,6 +86,7 @@
 	let pushEnabled = $state(false);
 	let pushBusy = $state(true);
 	let pushError = $state('');
+	let pushDistributorMissing = $state(false);
 
 	const themes: { key: Theme; label: string }[] = [
 		{ key: 'system', label: 'Как в системе' },
@@ -105,13 +106,14 @@
 		if (pushBusy) return;
 		pushBusy = true;
 		pushError = '';
+		pushDistributorMissing = false;
 		try {
 			const status = await setAndroidPushEnabled(enabled);
 			pushEnabled = status.enabled && status.allowed;
 			if (status.reason === 'permission') {
 				pushError = 'Разрешите уведомления для Wynd в настройках телефона.';
 			} else if (status.reason === 'distributor') {
-				pushError = 'Не удалось подключить доставщик UnifiedPush.';
+				pushDistributorMissing = true;
 			}
 		} catch {
 			pushEnabled = !enabled;
@@ -288,7 +290,15 @@
 				/>
 			{/snippet}
 		</SettingsRow>
-		{#if pushError}<Hint class="mt-10">{pushError}</Hint>{/if}
+		{#if pushDistributorMissing}
+			<Hint class="mt-10">
+				В этой версии приложения нет пуш-уведомлений через сервисы Google — их доставляет отдельная
+				программа. Подойдёт любое приложение из
+				<a class="under" href="https://unifiedpush.org/users/distributors/"
+					>списка доставщиков UnifiedPush</a
+				>: установите одно и включите переключатель ещё раз.
+			</Hint>
+		{:else if pushError}<Hint class="mt-10">{pushError}</Hint>{/if}
 	{/if}
 	<SectionLabel>Уведомления по умолчанию</SectionLabel>
 	<SettingsRow class="pt-2" title="Новые записи">
