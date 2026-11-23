@@ -76,8 +76,8 @@
 <style>
 	.ins-server-context {
 		border-bottom: 1px solid var(--line);
-		padding-bottom: var(--sp-4);
-		margin-bottom: var(--sp-4);
+		padding-bottom: var(--sp-3);
+		margin-bottom: var(--sp-3);
 	}
 	.ins-server-heading {
 		display: flex;
@@ -126,7 +126,7 @@
 		margin: 0;
 	}
 	.ins-box {
-		margin-top: var(--sp-3);
+		margin-top: var(--sp-2);
 		padding: 12px 14px;
 		border: 1px solid var(--line);
 		border-radius: 10px;
@@ -135,7 +135,7 @@
 	}
 	/* Итог удаления над экраном помехи: рамка стоит выше заголовка. */
 	.ins-box.ins-note {
-		margin: 0 0 var(--sp-4);
+		margin: 0 0 var(--sp-3);
 	}
 	.ins-box.bad {
 		border-color: color-mix(in srgb, var(--bad) 45%, var(--line));

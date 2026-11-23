@@ -24,7 +24,7 @@
 		align-items: center;
 		flex-wrap: wrap;
 		gap: 12px;
-		margin-top: var(--sp-4);
+		margin-top: var(--sp-3);
 	}
 	.ins-foot :global(.ins-push) {
 		margin-left: auto;

@@ -43,7 +43,7 @@ body {
   flex: 1;
   min-width: 0;
   /* Вертикальные поля — шаг лесенки C120 (было 22). */
-  padding: var(--sp-5) 26px;
+  padding: var(--sp-3) 26px;
   overflow-y: auto;
 }
 .ins-body h2 {
@@ -51,12 +51,12 @@ body {
   font-size: 18px;
 }
 .ins-sub {
-  margin: 0 0 var(--sp-4);
+  margin: 0 0 var(--sp-3);
   color: var(--muted);
   line-height: 1.45;
 }
 .ins-sub.mt {
-  margin-top: var(--sp-3);
+  margin-top: var(--sp-2);
 }
 .ins-form {
   display: block;
@@ -73,7 +73,7 @@ body {
 
 /* $ui без телефонных полей */
 .ins .lab {
-  margin: var(--sp-3) 0 var(--sp-1);
+  margin: var(--sp-2) 0 var(--sp-1);
 }
 .ins .fld,
 .ins input.fld {
@@ -124,7 +124,7 @@ body {
 /* Certbot Stale: совет стоит на месте статусной строки — кнопки в 16 px от
    него, как от ins-sub в обычном пульте. */
 .ins-certstale {
-  margin: 0 0 var(--sp-4);
+  margin: 0 0 var(--sp-3);
 }
 /* C120: зазор после подзаголовка задаёт сам подзаголовок — верхний отступ
    следующего блока не складывается с ним (было 28–29 px). Верхний отступ
@@ -136,9 +136,12 @@ body {
 .ins :is(.ins-pane, .ins-body) > .ins-svcbar + .ins-box {
   margin-top: 0;
 }
-/* После списка строк галочка идёт через свой шаг 12, а не 8 + 12. */
-.ins :is(.ins-pane, .ins-body) > .ins-rows + .ins-check {
-  margin-top: var(--sp-1);
+/* Подпись и строки сами дают свой шаг: верхний отступ контроля не
+   складывается с ним (было 12 из 4 + 8). */
+.ins :is(.ins-pane, .ins-body) > .ins-rows + .ins-check,
+.ins :is(.ins-pane, .ins-body) > .lab + .ins-check,
+.ins :is(.ins-pane, .ins-body) > .lab + .ins-copyline {
+  margin-top: 0;
 }
 /* Ссылка «подробнее» под галочкой: раньше стояла вплотную (C120). */
 .ins :is(.ins-pane, .ins-body) > .ins-check + .under {
@@ -158,7 +161,7 @@ body {
   margin-top: var(--sp-2);
 }
 .ins-sec {
-  margin: var(--sp-4) 0 var(--sp-1);
+  margin: var(--sp-3) 0 var(--sp-1);
   color: var(--muted);
   font-size: 11.5px;
   font-weight: 600;
@@ -196,7 +199,7 @@ body {
   display: flex;
   flex-direction: column;
   /* Вертикальные поля — шаг лесенки C120 (было 23). */
-  padding: var(--sp-5) 25px;
+  padding: var(--sp-3) 25px;
   overflow-wrap: anywhere;
 }
 /* Вывод сборки на узком окне (C71): flex сжимал его до нуля, и раскрытый
@@ -206,7 +209,7 @@ body {
 .ins-pane > .ins-raw {
   flex: 1 1 auto;
   min-height: 118px;
-  margin-top: var(--sp-3);
+  margin-top: var(--sp-2);
 }
 /* Прокручиваемые области окна: полоса видна и узкая — иначе непонятно, что
    содержимое листается (C71). */
@@ -236,7 +239,7 @@ body {
   gap: var(--sp-2) 16px;
 }
 .ins-win.ins-servers .ins-pane > .ins-foot + .ins-profile-tools {
-  margin-top: var(--sp-3);
+  margin-top: var(--sp-2);
   border-top: 0;
   padding-top: 0;
 }
@@ -260,7 +263,7 @@ body {
 .ins-form-pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--sp-3);
+  gap: 12px;
 }
 .ins-password-fields {
   min-width: 0;
@@ -296,8 +299,8 @@ body {
   gap: 10px;
   align-items: center;
   border-bottom: 1px solid var(--line);
-  padding-bottom: var(--sp-3);
-  margin-bottom: var(--sp-4);
+  padding-bottom: var(--sp-2);
+  margin-bottom: var(--sp-3);
 }
 .ins-move-pair small {
   display: block;
@@ -355,7 +358,7 @@ body {
     flex-direction: column;
   }
   .ins-pane {
-    padding: var(--sp-4) 17px;
+    padding: var(--sp-3) 17px;
   }
   .ins-form-pair,
   .ins-move-pair {
@@ -410,7 +413,7 @@ body {
   font-size: 14px;
 }
 .ins-win.ins-servers .ins-sub {
-  margin-bottom: var(--sp-4);
+  margin-bottom: var(--sp-3);
   line-height: 1.5;
 }
 .ins-win.ins-servers .ins-sub:has(+ .ins-profile-form) {
@@ -420,7 +423,7 @@ body {
   min-height: 39px;
 }
 .ins-win.ins-servers .ins-pane > .meter {
-  margin: var(--sp-3) 0 var(--sp-4);
+  margin: var(--sp-2) 0 var(--sp-3);
   height: 5px;
   background: var(--line);
 }
@@ -449,10 +452,10 @@ body {
   margin-bottom: var(--sp-1);
 }
 .ins-win.ins-servers .ins-pult-update .ins-foot {
-  margin-top: var(--sp-4);
+  margin-top: var(--sp-3);
 }
 .ins-win.ins-servers .ins-pult-actions {
-  margin-top: var(--sp-3);
+  margin-top: var(--sp-2);
 }
 .ins-win.ins-servers .ins-pult-actions .ins-row {
   padding: 9px 0;
@@ -460,7 +463,7 @@ body {
 .ins-operation-path {
   font-size: 12px;
   color: var(--muted);
-  margin-bottom: var(--sp-3);
+  margin-bottom: var(--sp-2);
 }
 .ins-servers .ins {
   --bad: light-dark(#a73d29, #f0a18b);
@@ -470,7 +473,7 @@ body {
   font-weight: 500;
 }
 .ins-servers .ins .lab {
-  margin: var(--sp-3) 0 var(--sp-1);
+  margin: var(--sp-2) 0 var(--sp-1);
   font-size: 12px;
   letter-spacing: 0;
   text-transform: none;

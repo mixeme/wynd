@@ -1,5 +1,5 @@
 // Сторож вертикального ритма C120: зазоры между блоками — только ступени
-// лесенки 4/8/12/16/24 из tokens.css. Оптические сдвиги до 2 px и нахлёсты
+// лесенки 4/8/16 из tokens.css. Оптические сдвиги до 2 px и нахлёсты
 // рамок (−1 px) допускаются: это не межблочный ритм.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -31,7 +31,7 @@ const FILES = [
 	].map((f) => `web/src/lib/components/workshop/${f}`)
 ];
 
-const STEPS = new Set(['var(--sp-1)', 'var(--sp-2)', 'var(--sp-3)', 'var(--sp-4)', 'var(--sp-5)']);
+const STEPS = new Set(['var(--sp-1)', 'var(--sp-2)', 'var(--sp-3)']);
 const ALLOWED_LITERAL = new Set(['0', '0px', 'auto', '-1px']);
 const OPTICAL_MAX = 2;
 
@@ -94,7 +94,7 @@ for (const rel of FILES) {
 }
 
 const tokens = readFileSync(path.join(root, 'web/src/lib/styles/tokens.css'), 'utf8');
-for (const step of [1, 2, 3, 4, 5]) {
+for (const step of [1, 2, 3]) {
 	if (!new RegExp(`--sp-${step}:\\s*\\d+px;`).test(tokens)) {
 		problems.push({ file: 'web/src/lib/styles/tokens.css', line: 0, value: `нет --sp-${step}` });
 	}
@@ -103,7 +103,7 @@ for (const step of [1, 2, 3, 4, 5]) {
 if (problems.length) {
 	console.error('check-spacing: значения вне лесенки 4/8/12/16/24');
 	for (const p of problems) console.error(`  ${p.file}:${p.line}  ${p.value}`);
-	console.error('Зазоры задаются var(--sp-1…5) из tokens.css; см. C120 плана 46.');
+	console.error('Зазоры задаются var(--sp-1…3) из tokens.css; см. C120 плана 46.');
 	process.exit(1);
 }
-console.log(`check-spacing: OK (${FILES.length} файлов, лесенка 4/8/12/16/24)`);
+console.log(`check-spacing: OK (${FILES.length} файлов, лесенка 4/8/16)`);
