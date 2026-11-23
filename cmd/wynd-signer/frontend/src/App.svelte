@@ -12,6 +12,7 @@
 	import StepList from '$ui/workshop/StepList.svelte';
 	import { backend, watchProgress, type Check, type Release, type State, type Step } from './api';
 	import { ReleaseRequests } from './release-requests';
+	import { readReleaseScroll, releaseScrollTarget, type ReleaseScroll } from './release-scroll';
 	import { uuid } from '$lib/uuid';
 	const requests = new ReleaseRequests(uuid);
 	let checkRequest = '';
@@ -65,24 +66,39 @@
 	let sigPath = $state('');
 
 	// Прокрутка экрана выпуска: подмена содержимого сбрасывает контейнер к началу
-	// (WebView теряет позицию при смене высоты и удалении поля). Помним позицию
-	// до подмен и возвращаем её; итог подписи показываем у конца экрана, как
-	// в принятых кадрах 12г/10.
-	let releaseScroll = 0;
+	// (WebView теряет позицию при смене высоты и удалении поля). Запоминаем
+	// текущее место перед каждой подменой и возвращаем его после; если человек
+	// читал у конца, ведём за новыми этапами. Снимок, взятый один раз при
+	// нажатии «Подписать», возвращал окно к началу на каждом обновлении этапа.
+	let releaseScroll = $state<ReleaseScroll>({ top: 0, atEnd: false });
+	function rememberReleaseScroll() {
+		if (!body || screen !== 'release') return;
+		releaseScroll = readReleaseScroll(body.scrollTop, body.scrollHeight, body.clientHeight);
+	}
 	function anchorRelease() {
 		void tick().then(() => {
 			if (!body || screen !== 'release') return;
-			if (releaseDone) body.scrollTo({ top: body.scrollHeight });
-			else body.scrollTop = Math.min(releaseScroll, body.scrollHeight);
+			body.scrollTop = releaseScrollTarget(
+				releaseScroll,
+				body.scrollHeight,
+				body.clientHeight,
+				releaseDone
+			);
 		});
 	}
 
 	onMount(() => watchProgress((p) => {
 		if (screen !== 'release' || !requests.acceptsProgress(p, selectedRelease?.tag, check?.check_id)) return;
-		// Якорь только на подменах при подписи: проверка лишь растит список
-		// сверху вниз, пользователь может читать её сам.
-		if (p.phase === 'check' && checking) checkSteps = p.steps;
-		if (p.phase === 'sign' && signing) { signSteps = p.steps; anchorRelease(); }
+		if (p.phase === 'check' && checking) {
+			rememberReleaseScroll();
+			checkSteps = p.steps;
+			anchorRelease();
+		}
+		if (p.phase === 'sign' && signing) {
+			rememberReleaseScroll();
+			signSteps = p.steps;
+			anchorRelease();
+		}
 	}));
 
 	void start();
@@ -236,6 +252,7 @@
 		checkSteps = [];
 		signSteps = [];
 		releaseDone = false;
+		releaseScroll = { top: 0, atEnd: false };
 		checking = true;
 		void tick().then(() => body?.scrollTo({ top: 0 }));
 		try {
@@ -244,12 +261,16 @@
 			if (result.request_id !== request || result.tag !== r.tag || !result.check_id) {
 				throw new Error('Ответ проверки не соответствует выбранному выпуску');
 			}
+			rememberReleaseScroll();
 			check = result;
 			checkSteps = check.steps;
+			anchorRelease();
 		} catch (e) {
 			if (!requests.isCurrentCheck(request)) return;
 			checkError = String(e);
+			rememberReleaseScroll();
 			checkSteps = checkSteps.map((s) => s.status === 'running' ? { ...s, status: 'failed' } : s);
+			anchorRelease();
 		} finally {
 			if (requests.isCurrentCheck(request)) checking = false;
 		}
@@ -260,7 +281,7 @@
 		const checkId = check.check_id;
 		const originalCheckRequest = checkRequest;
 		const request = requests.beginSign();
-		releaseScroll = body?.scrollTop ?? 0;
+		rememberReleaseScroll();
 		signing = true;
 		wrong = false;
 		signError = '';
@@ -269,6 +290,7 @@
 		try {
 			const res = await backend().SignRelease(checkId, tag, request, pass);
 			if (!requests.isCurrentSign(originalCheckRequest, request)) return;
+			rememberReleaseScroll();
 			signSteps = res.steps ?? signSteps;
 			if (res.wrong_password) {
 				wrong = true;
@@ -296,6 +318,7 @@
 		} catch (err) {
 			if (!requests.isCurrentSign(originalCheckRequest, request)) return;
 			signError = String(err);
+			rememberReleaseScroll();
 			signSteps = signSteps.map((s) => s.status === 'running' ? { ...s, status: 'failed' } : s);
 			anchorRelease();
 		} finally {
