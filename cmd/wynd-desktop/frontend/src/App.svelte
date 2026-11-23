@@ -555,10 +555,10 @@
 					<Hint>{lastBackup}</Hint>
 
 					{#if backupError}
-						<Hint class="mt-12">{backupError}</Hint>
+						<Hint class="mt-8">{backupError}</Hint>
 					{/if}
 					{#if backupSaved}
-						<Hint class="mt-12">Настройки сохранены.</Hint>
+						<Hint class="mt-8">Настройки сохранены.</Hint>
 					{/if}
 					<Button loading={backupBusy} loadingLabel="Сохраняем…" onclick={() => void saveBackups()}>Сохранить</Button>
 				</div>
@@ -732,7 +732,7 @@
 			onconfirm={() => void confirmRemove()}
 			oncancel={() => (removeTarget = null)}
 		>
-			<Hint class="mb-14">Сервер исчезнет только из источников интерфейса. Вход и данные останутся. Добавить его снова можно по адресу.</Hint>
+			<Hint class="mb-16">Сервер исчезнет только из источников интерфейса. Вход и данные останутся. Добавить его снова можно по адресу.</Hint>
 		</ConfirmDialog>
 	{/if}
 </div>

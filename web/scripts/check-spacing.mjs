@@ -7,13 +7,15 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
-// Мастерская и «Подпись» — общие стили окна; клиент — ui.css. Настольный
-// добавляется своим шагом C120.
+// Мастерская и «Подпись» — общие стили окна; клиент — ui.css; Настольный —
+// app.css окна для компьютера (его утверждённые экраны с инлайн-отступами
+// не сканируются, пока те кадры не пересмотрены).
 const FILES = [
 	'web/src/lib/styles/tokens.css',
 	'web/src/lib/styles/ui.css',
 	'web/src/lib/styles/workshop.css',
 	'cmd/wynd-workshop/frontend/src/app.css',
+	'cmd/wynd-desktop/frontend/src/app.css',
 	...[
 		'Notice.svelte',
 		'FootBar.svelte',

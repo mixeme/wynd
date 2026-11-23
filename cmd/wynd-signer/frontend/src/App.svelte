@@ -445,7 +445,7 @@
 				{/each}
 			</MarkRows>
 			{#if st.key_exists}
-				<MarkRows class="mt-10">
+				<MarkRows class="mt-8">
 					<MarkRow mark="↓">
 						Подписать файл на этом компьютере
 						{#snippet action()}

@@ -297,7 +297,7 @@
 					Wynd сама и перенесёт данные и адрес сайта.
 				</div>
 			</Notice>
-			<MarkRows class="mt-10">
+			<MarkRows class="mt-8">
 				<MarkRow mark="→">
 					Переехать на другой сервер
 					{#snippet action()}
