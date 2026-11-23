@@ -31,6 +31,7 @@
 	import { circleInitial } from '$lib/circles/meta';
 	import { INVALID_EMAIL_HINT, isValidParticipantEmail } from '$lib/auth/email';
 	import { loadPendingAuth, savePendingAuth } from '$lib/auth/pending';
+	import { desktopBridge } from '$lib/desktop/bridge';
 
 	let { data } = $props();
 	const token = $derived(data.token);
@@ -121,6 +122,18 @@
 	function closeMembers() {
 		goto(`/invite/${token}`);
 	}
+
+	// «Открыть в приложении» (план 66, функция 4): окно принимает адрес
+	// схемы wynd:. Строка — только в браузере Windows: в окне мост есть и
+	// человек уже в приложении, на телефоне обработчика схемы нет.
+	const showOpenInApp = $derived(
+		!desktopBridge() && typeof navigator !== 'undefined' && /Windows/.test(navigator.userAgent)
+	);
+
+	function openInApp() {
+		const url = $page.url.origin + $page.url.pathname + $page.url.search;
+		location.href = `wynd:open?url=${encodeURIComponent(url)}`;
+	}
 </script>
 
 {#if dead}
@@ -168,6 +181,10 @@
 		<Input active type="email" autocomplete="email" bind:value={email} />
 		<Hint>Пришлём код для входа. Пароля нет.</Hint>
 		<Button {loading} disabled={!peek} onclick={onSendCode}>Получить код</Button>
+
+		{#if showOpenInApp}
+			<Button variant="ghost" onclick={openInApp}>Открыть в приложении</Button>
+		{/if}
 
 		{#if error}
 			<Hint class="mt-12">{error}</Hint>
