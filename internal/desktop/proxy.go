@@ -26,6 +26,10 @@ type Proxy struct {
 	// поток событий. Через WebView2 ответы буферизуются (SSE не течёт),
 	// поэтому запросы клиента идут по обычному TCP на 127.0.0.1.
 	apiBase string
+	// embedded — вшитый клиент (план 66, функция 9): отдаётся вместо страниц
+	// сервера по флагу --embedded-ui. По умолчанию интерфейс — с сервера:
+	// переключение отложено до стабилизации интерфейса (решение владельца).
+	embedded http.Handler
 }
 
 // NewProxy — прокси без выбранного сервера: до выбора отдаёт 503.
@@ -157,6 +161,22 @@ func (p *Proxy) SetAllowed(origins []string) error {
 	return nil
 }
 
+// SetEmbeddedUI включает отдачу вшитого клиента вместо страниц сервера.
+// Серверные пути (/api/, /archive/, установка) по-прежнему идут в выбранный
+// сервер; оболочка и /__srv не меняются.
+func (p *Proxy) SetEmbeddedUI(handler http.Handler) {
+	p.mu.Lock()
+	p.embedded = handler
+	p.mu.Unlock()
+}
+
+// embeddedHandler — текущий вшитый клиент или nil.
+func (p *Proxy) embeddedHandler() http.Handler {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.embedded
+}
+
 // Target — выбранный адрес для проверок и смены сервера.
 func (p *Proxy) Target() string {
 	p.mu.RLock()
@@ -179,6 +199,30 @@ func (p *Proxy) Target() string {
 func (p *Proxy) Handler(shell http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
+		if embedded := p.embeddedHandler(); embedded != nil && embeddedPath(path) {
+			// Вшитый клиент (план 66, функция 9): страницы — из exe, данные —
+			// с выбранного сервера. Серверные стороны жизни остаются за прокси.
+			switch {
+			case path == "/" && (r.URL.Query().Get("wynd") == "server" || r.Header.Get("Sec-Fetch-Dest") == "iframe"):
+				p.serve(w, r, "/")
+			case strings.HasPrefix(path, "/__shell"):
+				rest := strings.TrimPrefix(path, "/__shell")
+				if rest == "" {
+					rest = "/"
+				}
+				r2 := r.Clone(r.Context())
+				r2.URL.Path = rest
+				r2.URL.RawPath = ""
+				shell.ServeHTTP(w, r2)
+			case strings.HasPrefix(path, "/__srv/"):
+				p.serveForeign(w, r)
+			case serverOnlyPath(path):
+				p.serve(w, r, path)
+			default:
+				embedded.ServeHTTP(w, r)
+			}
+			return
+		}
 		switch {
 		case path == "/" || path == "/index.html":
 			if r.URL.Query().Get("wynd") == "server" || r.Header.Get("Sec-Fetch-Dest") == "iframe" {
@@ -207,6 +251,33 @@ func (p *Proxy) Handler(shell http.Handler) http.Handler {
 			p.serve(w, r, path)
 		}
 	})
+}
+
+// embeddedPath — пути вшитого клиента против служебных путей окна.
+func embeddedPath(path string) bool {
+	switch {
+	case path == "/__shell" || strings.HasPrefix(path, "/__shell/"):
+		return false
+	case path == "/__server" || strings.HasPrefix(path, "/__server/"):
+		return false
+	case strings.HasPrefix(path, "/__srv/"):
+		return false
+	}
+	return true
+}
+
+// serverOnlyPath — то, что во вшитом режиме остаётся страницами сервера:
+// API и поток событий, одноразовые ссылки архива, установка сервера.
+func serverOnlyPath(path string) bool {
+	switch {
+	case path == "/api" || strings.HasPrefix(path, "/api/"):
+		return true
+	case path == "/archive" || strings.HasPrefix(path, "/archive/"):
+		return true
+	case path == "/admin/bootstrap" || strings.HasPrefix(path, "/admin/bootstrap/"):
+		return true
+	}
+	return false
 }
 
 func (p *Proxy) serve(w http.ResponseWriter, r *http.Request, path string) {

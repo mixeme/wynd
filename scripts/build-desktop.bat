@@ -91,6 +91,27 @@ if not exist "%FRONTEND_DIR%\dist\" (
   echo placeholder> "%FRONTEND_DIR%\dist\placeholder.txt"
 )
 
+rem web/embed.go вшивает клиент сервера (план 66, функция 9): exe собирается
+rem только с готовым web/dist — ставим зависимости и собираем клиент здесь же.
+pushd "%WYND_ROOT%\web"
+if not exist "node_modules\" (
+  echo Installing web dependencies for the embedded client...
+  call npm ci
+  if !ERRORLEVEL! neq 0 (
+    popd
+    echo web npm ci failed.
+    exit /b 1
+  )
+)
+echo Building web client (embedded)...
+call npm run build
+set "WEB_EXIT=!ERRORLEVEL!"
+popd
+if !WEB_EXIT! neq 0 (
+  echo Web client build failed.
+  exit /b !WEB_EXIT!
+)
+
 set "SIGNING_KEY="
 if exist "%WYND_ROOT%\signing-key.pub" set /p SIGNING_KEY=<"%WYND_ROOT%\signing-key.pub"
 

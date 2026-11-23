@@ -27,6 +27,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/events"
 
 	"gitea.mixdep.ru/mix/wynd/internal/desktop"
+	wyndweb "gitea.mixdep.ru/mix/wynd/web"
 )
 
 //go:embed all:frontend/dist
@@ -704,6 +705,20 @@ func main() {
 		log.Fatal(err)
 	}
 	proxy.SetAPIBase("http://" + apiLn.Addr().String())
+	// Вшитый интерфейс (план 66, функция 9) — только по флагу: по умолчанию
+	// окно берёт интерфейс с сервера, переключение отложено до стабилизации
+	// интерфейса (решение владельца 23.11). Origin окна не меняется — данные
+	// клиента (сессии, снимки) остаются на месте.
+	for _, arg := range os.Args[1:] {
+		if arg == "--embedded-ui" {
+			dist, err := fs.Sub(wyndweb.Build, "dist")
+			if err != nil {
+				log.Fatalf("embedded ui: %v", err)
+			}
+			proxy.SetEmbeddedUI(desktop.EmbeddedHandler(dist, proxy.Target, "http://"+apiLn.Addr().String()))
+			log.Printf("embedded ui: интерфейс из exe")
+		}
+	}
 	// Сессии окна (план 66, функция 3): токены в Credential Manager, клиент
 	// работает с ними по apiBase тем же CORS-контуром, что и за API.
 	secrets := desktop.NewSecretsCache(desktop.NewSecretStore())
