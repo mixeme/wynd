@@ -3,7 +3,7 @@ import { invalidateCircleSnapshots } from '$lib/api/snapshots';
 import { startArchiveDownload } from '$lib/circles/archive-download.svelte';
 import type { QueueFile } from '$lib/idb/db';
 import { CHUNK_SIZE } from '$lib/queue/queue';
-import { sha256Hex } from '$lib/sha256';
+import { createSha256 } from '$lib/sha256';
 import type { InstanceWithCompression, MediaSummary } from './types';
 
 export async function fetchCompression(origin: string) {
@@ -23,10 +23,13 @@ export async function uploadBlob(
 	});
 
 	let offset = 0;
+	const bytes = file.data instanceof Uint8Array ? file.data : new Uint8Array(file.data);
+	const hash = createSha256();
 	onProgress?.(0, file.size);
-	while (offset < file.data.byteLength) {
-		const end = Math.min(offset + CHUNK_SIZE, file.data.byteLength);
-		const chunk = file.data.slice(offset, end);
+	while (offset < bytes.byteLength) {
+		const end = Math.min(offset + CHUNK_SIZE, bytes.byteLength);
+		const chunk = bytes.slice(offset, end);
+		hash.update(chunk);
 		const res = await apiFetch(origin, `/uploads/${session.id}`, {
 			method: 'PUT',
 			headers: {
@@ -43,7 +46,7 @@ export async function uploadBlob(
 	const complete = await apiJson<{ id: string }>(origin, `/uploads/${session.id}/complete`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ sha256: await sha256Hex(file.data) })
+		body: JSON.stringify({ sha256: hash.hex() })
 	});
 	return complete.id;
 }

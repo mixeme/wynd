@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiJson = vi.fn();
@@ -256,6 +257,52 @@ describe('queue', () => {
 		await drainQueue();
 		unsub();
 		expect(seen).toEqual([]);
+	});
+
+	// C119: SHA считается по тем же байтам, что ушли порциями, а не по
+	// отдельному крупному буферу после загрузки.
+	it('присылает SHA отправленных байтов', async () => {
+		vi.stubGlobal('navigator', { ...navigator, onLine: true });
+		let completeSha = '';
+		apiJson.mockImplementation(async (_o: string, path: string, init?: { body?: string }) => {
+			if (path.endsWith('/complete')) {
+				completeSha = JSON.parse(String(init?.body)).sha256;
+				return { id: 'blob1' };
+			}
+			return { id: 'session1' };
+		});
+		const sent: Uint8Array[] = [];
+		apiFetch.mockImplementation(
+			async (
+				_o: string,
+				_p: string,
+				init: { method: string; headers?: Record<string, string>; body?: ArrayBuffer }
+			) => {
+				if (init.method === 'HEAD') return { headers: new Headers({ 'Upload-Offset': '0' }) };
+				const chunk = new Uint8Array(init.body!);
+				sent.push(chunk);
+				const received = Number(init.headers!['Upload-Offset']) + chunk.byteLength;
+				return { json: async () => ({ received_bytes: received }) };
+			}
+		);
+		const { enqueueComment, drainQueue, CHUNK_SIZE } = await import('./queue');
+		const data = new Uint8Array(CHUNK_SIZE * 2 + 123).map((_, i) => (i * 13 + 5) & 0xff);
+		await enqueueComment(
+			'https://sha.test',
+			'c-sha',
+			{ post_id: 'p1', body: '', media_meta: [{ kind: 'attachment' }] },
+			[
+				{
+					name: 'dacha.wynd',
+					type: 'application/octet-stream',
+					size: data.length,
+					data: data.buffer
+				}
+			]
+		);
+		await drainQueue();
+		const all = Buffer.concat(sent.map((c) => Buffer.from(c)));
+		expect(completeSha).toBe(createHash('sha256').update(all).digest('hex'));
 	});
 });
 

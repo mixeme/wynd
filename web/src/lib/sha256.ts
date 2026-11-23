@@ -4,13 +4,29 @@
  * `crypto.subtle` есть только в secure context. Локальный запуск, открытый с
  * телефона по `http://192.168.…`, его не имеет, и без запасного пути ни одна
  * фотография не уходила. Запасной путь медленнее и нужен только там.
+ *
+ * Крупные файлы считаются потоком: `createSha256` обновляется теми же
+ * порциями, что уходят на сервер (C119). Один `crypto.subtle.digest` на
+ * 94 МБ в WebView дал неверный SHA при верных отправленных байтах.
  */
+const SMALL_DIGEST_LIMIT = 8 * 1024 * 1024;
+
 export async function sha256Hex(data: ArrayBuffer): Promise<string> {
 	const subtle = typeof crypto !== 'undefined' ? crypto.subtle : undefined;
-	const hash = subtle
-		? new Uint8Array(await subtle.digest('SHA-256', data))
-		: sha256(new Uint8Array(data));
-	return [...hash].map((b) => b.toString(16).padStart(2, '0')).join('');
+	if (subtle && data.byteLength <= SMALL_DIGEST_LIMIT) {
+		const hash = new Uint8Array(await subtle.digest('SHA-256', data));
+		return hex(hash);
+	}
+	const stream = createSha256();
+	stream.update(new Uint8Array(data));
+	return stream.hex();
+}
+
+/** Потоковый SHA-256: `update` можно звать кусками, `hex` — один раз в конце. */
+export interface Sha256Stream {
+	update(data: ArrayBuffer | Uint8Array): void;
+	digest(): Uint8Array;
+	hex(): string;
 }
 
 const K = new Uint32Array([
@@ -24,27 +40,14 @@ const K = new Uint32Array([
 	0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
 ]);
 
-/** Чистый SHA-256 (FIPS 180-4) — запасной путь без `crypto.subtle`. */
-export function sha256(data: Uint8Array): Uint8Array {
+export function createSha256(): Sha256Stream {
 	const h = new Uint32Array([
 		0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
 	]);
 	const w = new Uint32Array(64);
-
-	// Хвост: остаток данных, 0x80, нули и длина в битах — один или два блока.
-	const full = data.length - (data.length % 64);
-	const tailLen = data.length % 64 < 56 ? 64 : 128;
-	const tail = new Uint8Array(tailLen);
-	tail.set(data.subarray(full));
-	tail[data.length - full] = 0x80;
-	const tv = new DataView(tail.buffer);
-	const bits = data.length * 8;
-	tv.setUint32(tailLen - 8, Math.floor(bits / 0x100000000));
-	tv.setUint32(tailLen - 4, bits >>> 0);
-
-	const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
-	for (let off = 0; off < full; off += 64) block(dv, off);
-	for (let off = 0; off < tailLen; off += 64) block(tv, off);
+	const pending = new Uint8Array(64);
+	let pendingLen = 0;
+	let total = 0;
 
 	function block(v: DataView, off: number) {
 		for (let i = 0; i < 16; i++) w[i] = v.getUint32(off + i * 4);
@@ -82,8 +85,59 @@ export function sha256(data: Uint8Array): Uint8Array {
 		h[7] += hh;
 	}
 
-	const out = new Uint8Array(32);
-	const ov = new DataView(out.buffer);
-	for (let i = 0; i < 8; i++) ov.setUint32(i * 4, h[i]);
-	return out;
+	function update(data: ArrayBuffer | Uint8Array) {
+		const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+		total += bytes.length;
+		let at = 0;
+		if (pendingLen > 0) {
+			const take = Math.min(64 - pendingLen, bytes.length);
+			pending.set(bytes.subarray(0, take), pendingLen);
+			pendingLen += take;
+			at = take;
+			if (pendingLen === 64) {
+				block(new DataView(pending.buffer), 0);
+				pendingLen = 0;
+			}
+		}
+		const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+		for (; at + 64 <= bytes.length; at += 64) block(dv, at);
+		if (at < bytes.length) {
+			pending.set(bytes.subarray(at));
+			pendingLen = bytes.length - at;
+		}
+	}
+
+	function digest(): Uint8Array {
+		// Хвост: остаток данных, 0x80, нули и длина в битах — один или два блока.
+		const tailLen = pendingLen < 56 ? 64 : 128;
+		const tail = new Uint8Array(tailLen);
+		tail.set(pending.subarray(0, pendingLen));
+		tail[pendingLen] = 0x80;
+		const tv = new DataView(tail.buffer);
+		const bits = total * 8;
+		tv.setUint32(tailLen - 8, Math.floor(bits / 0x100000000));
+		tv.setUint32(tailLen - 4, bits >>> 0);
+		for (let off = 0; off < tailLen; off += 64) block(tv, off);
+		const out = new Uint8Array(32);
+		const ov = new DataView(out.buffer);
+		for (let i = 0; i < 8; i++) ov.setUint32(i * 4, h[i]);
+		return out;
+	}
+
+	return {
+		update,
+		digest,
+		hex: () => hex(digest())
+	};
+}
+
+/** Чистый SHA-256 (FIPS 180-4) — запасной путь без `crypto.subtle`. */
+export function sha256(data: Uint8Array): Uint8Array {
+	const stream = createSha256();
+	stream.update(data);
+	return stream.digest();
+}
+
+function hex(hash: Uint8Array): string {
+	return [...hash].map((b) => b.toString(16).padStart(2, '0')).join('');
 }

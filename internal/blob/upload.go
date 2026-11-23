@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -133,7 +134,21 @@ func (s *Store) loadSession(ctx context.Context, sessionID, accountID string) (S
 
 // SessionStatus returns resume offset for HEAD.
 func (s *Store) SessionStatus(ctx context.Context, sessionID, accountID string) (Session, error) {
-	return s.loadSession(ctx, sessionID, accountID)
+	sess, err := s.loadSession(ctx, sessionID, accountID)
+	if err != nil {
+		return Session{}, err
+	}
+	// Сбой между записью .part и UPDATE оставляет счётчик больше файла.
+	// Дырку нулями не дописываем: продолжаем с фактического конца файла.
+	if st, statErr := os.Stat(s.uploadPartPath(sess.ID)); statErr == nil && st.Size() < sess.ReceivedBytes {
+		if _, err := s.db.ExecContext(ctx, `
+			UPDATE upload_sessions SET received_bytes = ? WHERE id = ? AND received_bytes = ?
+		`, st.Size(), sess.ID, sess.ReceivedBytes); err != nil {
+			return Session{}, err
+		}
+		sess.ReceivedBytes = st.Size()
+	}
+	return sess, nil
 }
 
 // WriteChunk appends bytes at offset (resume). Offset must match received_bytes.
@@ -159,6 +174,17 @@ func (s *Store) WriteChunk(ctx context.Context, sessionID, accountID string, off
 		return sess.ReceivedBytes, err
 	}
 	defer f.Close()
+	// .part короче счётчика (сбой между записью и UPDATE или внешнее
+	// усечение): не пишем дырку нулями, отдаём фактический конец — клиент
+	// дошлёт с него.
+	if st, statErr := f.Stat(); statErr == nil && st.Size() < offset {
+		if _, err := s.db.ExecContext(ctx, `
+			UPDATE upload_sessions SET received_bytes = ? WHERE id = ? AND received_bytes = ?
+		`, st.Size(), sessionID, offset); err != nil {
+			return sess.ReceivedBytes, err
+		}
+		return st.Size(), nil
+	}
 	if _, err := f.Seek(offset, io.SeekStart); err != nil {
 		return sess.ReceivedBytes, err
 	}
@@ -192,6 +218,11 @@ func (s *Store) WriteChunk(ctx context.Context, sessionID, accountID string, off
 		_ = f.Truncate(offset)
 		return sess.ReceivedBytes, ErrInvalid
 	}
+	// Старый хвост за новым концом — мусор от прежней попытки; иначе он
+	// попадёт в SHA при завершении.
+	if err := f.Truncate(newTotal); err != nil {
+		return sess.ReceivedBytes, err
+	}
 	return newTotal, nil
 }
 
@@ -219,11 +250,16 @@ func (s *Store) CompleteSession(ctx context.Context, in CompleteSessionInput) (B
 		return Blob{}, ErrIncomplete
 	}
 	path := s.uploadPartPath(in.SessionID)
+	if st, statErr := os.Stat(path); statErr == nil && st.Size() != sess.ExpectedSize {
+		log.Printf("blob: complete %s: part size %d, expected %d", in.SessionID, st.Size(), sess.ExpectedSize)
+	}
 	sum, err := fileSHA256(path)
 	if err != nil {
 		return Blob{}, err
 	}
 	if !strings.EqualFold(sum, in.SHA256) {
+		log.Printf("blob: complete %s: sha256 mismatch: part %s, client %s, size %d",
+			in.SessionID, sum, in.SHA256, sess.ExpectedSize)
 		return Blob{}, ErrInvalid
 	}
 	f, err := os.OpenFile(path, os.O_RDWR, 0)

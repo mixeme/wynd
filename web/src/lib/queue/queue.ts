@@ -17,7 +17,7 @@ import {
 	type QueueUploadProgress,
 	type ReactionQueuePayload
 } from '$lib/idb/db';
-import { sha256Hex } from '$lib/sha256';
+import { createSha256 } from '$lib/sha256';
 import { holdWakeLock } from '$lib/media/wake-lock';
 import { uuid } from '$lib/uuid';
 
@@ -202,10 +202,14 @@ async function uploadFile(
 ): Promise<string> {
 	let sessionId = progress?.session_id;
 	let offset = 0;
+	const bytes = file.data instanceof Uint8Array ? file.data : new Uint8Array(file.data);
+	const hash = createSha256();
 
 	if (sessionId) {
 		offset = await getUploadOffset(origin, sessionId, signal);
 		onSent?.(offset);
+		// Уже принятая часть входит в SHA, даже если файл догружается.
+		if (offset > 0) hash.update(bytes.subarray(0, offset));
 	} else {
 		const session = await apiJson<{ id: string }>(origin, '/uploads', {
 			method: 'POST',
@@ -216,9 +220,12 @@ async function uploadFile(
 		sessionId = session.id;
 	}
 
-	while (offset < file.data.byteLength) {
-		const end = Math.min(offset + CHUNK_SIZE, file.data.byteLength);
-		const chunk = file.data.slice(offset, end);
+	while (offset < bytes.byteLength) {
+		const end = Math.min(offset + CHUNK_SIZE, bytes.byteLength);
+		const chunk = bytes.slice(offset, end);
+		// SHA считаем по тем же байтам, что уходят, и до отправки (C119):
+		// один крупный `crypto.subtle.digest` после загрузки дал неверный SHA.
+		hash.update(chunk);
 		const res = await apiFetch(origin, `/uploads/${sessionId}`, {
 			method: 'PUT',
 			signal,
@@ -237,7 +244,7 @@ async function uploadFile(
 		method: 'POST',
 		signal,
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ sha256: await sha256Hex(file.data) })
+		body: JSON.stringify({ sha256: hash.hex() })
 	});
 
 	return complete.id;
