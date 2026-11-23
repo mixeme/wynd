@@ -931,7 +931,7 @@
 		{#if loading}
 			<Loading />
 		{:else if !post}
-			<Hint class="gutter-24">{error || 'Запись не найдена'}</Hint>
+			<Hint class="gutter">{error || 'Запись не найдена'}</Hint>
 		{:else}
 			{@const currentPost = post}
 			{@const cover = coverMedia(currentPost.media)}

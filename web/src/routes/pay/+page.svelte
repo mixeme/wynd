@@ -130,7 +130,7 @@
 		<TextArea variant="field" active bind:value={comment} />
 		<Button disabled={!canSubmit || loading} onclick={() => void submit()}>Отправить заявку</Button>
 		{#if error}
-			<Hint class="mt-12">{error}</Hint>
+			<Hint class="mt-8">{error}</Hint>
 		{/if}
 	{/if}
 </FormLayout>

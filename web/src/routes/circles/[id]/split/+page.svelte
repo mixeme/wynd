@@ -160,7 +160,7 @@
 			>Отделиться</Button
 		>
 		{#if error}
-			<Hint class="mt-12">{error}</Hint>
+			<Hint class="mt-8">{error}</Hint>
 		{/if}
 	{/if}
 </FormLayout>

@@ -24,7 +24,7 @@
 	} = $props();
 </script>
 
-<div class="rowin mt-10 {className}">
+<div class="rowin mt-8 {className}">
 	<Input
 		active
 		type="number"

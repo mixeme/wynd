@@ -136,8 +136,8 @@
 		{:else if error && !request}
 			<Hint>{error}</Hint>
 		{:else if request}
-			<h4 class="mb-6">{request.account_email}</h4>
-			<div class="note mb-18">
+			<h4 class="mb-8">{request.account_email}</h4>
+			<div class="note mb-16">
 				заявка {formatPayDateTime(request.created_at)}
 				{#if statusSubtitle}
 					· {statusSubtitle}
@@ -169,9 +169,9 @@
 					<div class="sz-13 lh-15">
 						{request.comment || 'Без комментария'}
 					</div>
-					<SectionLabel class="mt-22 mx-0 mb-8">Продлить на</SectionLabel>
+					<SectionLabel class="mt-16 mx-0 mb-8">Продлить на</SectionLabel>
 					<PayTermPicker bind:days bind:custom bind:customDays bind:unlimited />
-					<div class="note mt-10 lh-15">
+					<div class="note mt-8 lh-15">
 						{extendHint}
 					</div>
 					<div class="actions">
@@ -186,7 +186,7 @@
 				</div>
 			</div>
 			{#if error}
-				<Hint class="mt-12">{error}</Hint>
+				<Hint class="mt-8">{error}</Hint>
 			{/if}
 		{/if}
 	</AdminSection>

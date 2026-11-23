@@ -183,7 +183,7 @@
 
 <FormLayout app color={circle.color} title="Пригласить в {circle.name}" onback={goBack}>
 	{#if showFromCircles}
-		<Button class="mt-12" variant="ghost" onclick={goFromCircles}>Позвать из других кругов</Button>
+		<Button class="mt-8" variant="ghost" onclick={goFromCircles}>Позвать из других кругов</Button>
 	{/if}
 	<QrCode value={inviteUrl} />
 	<Hint class="gutter ctr">Кто ещё не на сервере — код или ссылка</Hint>
@@ -196,7 +196,7 @@
 			oncopy={() => void copyLink()}
 		/>
 	{/if}
-	<Label class="mt-22">Ссылка</Label>
+	<Label class="mt-16">Ссылка</Label>
 	{#if showKindChips}
 		<ChipGroup>
 			<Chip selected={kind === 'single'} onclick={() => void pickKind('single')}>Одноразовая</Chip>

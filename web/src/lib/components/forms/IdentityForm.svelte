@@ -69,7 +69,7 @@
 	});
 </script>
 
-<ScreenTitle class="mt-22 lh-125">
+<ScreenTitle class="mt-16 lh-125">
 	Как вас зовут<br />в этом круге?
 </ScreenTitle>
 <AddPhotoButton class="ident-photo" previewUrl={preview || undefined} onclick={openPicker} />

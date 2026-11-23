@@ -650,12 +650,12 @@
 				<!-- Пока кругов нет, объяснить некому: людей, чьим примером всё понятно,
 		     ещё нет. Тогда оболочка коротко рассказывает обстановку. С первым
 		     кругом этот рассказ уходит — дальше объясняют люди. -->
-				<SectionLabel class="mt-24">Как устроен Wynd</SectionLabel>
+				<SectionLabel class="mt-16">Как устроен Wynd</SectionLabel>
 				{#each streetFacts as fact (fact.title)}
 					<SettingsRow title={fact.title} subtitle={fact.text} chevron={false} />
 				{/each}
 				{#if streetSession}
-					<Hint class="mt-34" centered>
+					<Hint class="mt-16" centered>
 						Вы вошли как {streetSession.email}<br />в «{streetSession.name}» · {displayHost(
 							streetSession.origin
 						)}
@@ -762,7 +762,7 @@
 							/>
 						{/each}
 						{#if showGroupChips(group)}
-							<ChipGroup class="m-10-16-0 p-0">
+							<ChipGroup class="m-8-16-0 p-0">
 								{#each addableCirclesForGroup(group) as circle (circleKey(circle))}
 									<Chip
 										color={circle.color}

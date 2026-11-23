@@ -215,12 +215,12 @@
 	onpublish={() => void save()}
 	onback={goBack}
 >
-	<Hint class="m-12-16-8">{formatEntryDate(entryDate)}</Hint>
+	<Hint class="m-8-16-8">{formatEntryDate(entryDate)}</Hint>
 
 	{#if loading}
 		<Loading />
 	{:else if !items.length}
-		<Hint class="gutter-24">В этот день нет фото, видео или обложек звука</Hint>
+		<Hint class="gutter">В этот день нет фото, видео или обложек звука</Hint>
 	{:else}
 		<PhotoGrid album>
 			{#each items as item (item.blobId)}
@@ -236,12 +236,12 @@
 		</PhotoGrid>
 	{/if}
 	{#if canClearCover}
-		<Hint class="mt-12" centered>
+		<Hint class="mt-8" centered>
 			<TextButton disabled={clearing} onclick={() => void clearCover()}>убрать обложку</TextButton>
 		</Hint>
 	{/if}
 
 	{#if error}
-		<Hint class="gutter-12">{error}</Hint>
+		<Hint class="gutter-8">{error}</Hint>
 	{/if}
 </FormLayout>

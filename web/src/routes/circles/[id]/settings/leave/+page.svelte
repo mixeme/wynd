@@ -63,7 +63,7 @@
 			>Записи останутся в «{circle.name}» под именем «{circle.identityName}». В хронологии будет
 			«покинул круг» — так же, как если бы вас исключили.</Hint
 		>
-		<Label class="mt-22">Как уйти</Label>
+		<Label class="mt-16">Как уйти</Label>
 		<ChipGroup>
 			<Chip selected={leaveMode === 'read'} onclick={() => (leaveMode = 'read')}>
 				Читать, не писать

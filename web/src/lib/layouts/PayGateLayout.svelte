@@ -91,7 +91,7 @@
 </script>
 
 {#snippet gate(s: SessionRecord, st: PayStatus, centered: boolean)}
-	<ScreenTitle class={centered ? 'mt-48' : 'mt-28'} {centered}>Доступ закрыт</ScreenTitle>
+	<ScreenTitle class={centered ? 'gate-title' : ''} {centered}>Доступ закрыт</ScreenTitle>
 	{#if pending}
 		<Hint class={centered ? 'hint-inset' : undefined} {centered}>{payGatewayPendingHint(st)}</Hint>
 		<SectionLabel style="margin-top:22px">Заявка</SectionLabel>
@@ -114,7 +114,7 @@
 			>{PAY_GATEWAY_I_PAID}</Button
 		>
 	{/if}
-	<Hint class="mt-22" centered>
+	<Hint class="mt-16" centered>
 		Вы вошли как {s.email}<br />в «{s.name}» · {displayHost(s.origin)}
 	</Hint>
 {/snippet}
@@ -134,3 +134,11 @@
 {:else}
 	{@render children()}
 {/if}
+
+<style>
+	/* Пустое состояние ворот оплаты: крупный отступ — центровка экрана,
+	   не межблочный зазор (C120, исключение как у .empty-state). */
+	:global(.gate-title) {
+		margin-top: 48px;
+	}
+</style>

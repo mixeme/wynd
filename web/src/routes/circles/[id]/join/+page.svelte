@@ -202,7 +202,7 @@
      «Вас позвали — выберите имя», стрелка ведёт туда. -->
 	<FormLayout app color={circle.color} circleTitle={circle.name} onback={navigateBack}>
 		{#if split && pendingJoin}
-			<ScreenTitle class="mt-22 lh-125"
+			<ScreenTitle class="mt-16 lh-125"
 				>{split.invite_line || `Круг отделён от круга «${split.split_from}»`}</ScreenTitle
 			>
 		{/if}
@@ -210,17 +210,17 @@
 			<Label class="mt-16">Кто уже здесь · {memberTotal}</Label>
 			<PeopleStrip people={displayMembers} />
 			{#if moreCount > 0 && (inviteToken || pendingJoin)}
-				<Hint centered class="mt-12">
+				<Hint centered class="mt-8">
 					<TextButton onclick={openMembers}>ещё {moreCount}</TextButton>
 				</Hint>
 			{:else if moreCount > 0}
-				<Hint centered class="mt-12">ещё {moreCount}</Hint>
+				<Hint centered class="mt-8">ещё {moreCount}</Hint>
 			{/if}
 		{/if}
 
 		{#if split && pendingJoin}
 			{#if split.past_from}
-				<Row class="mt-12">
+				<Row class="mt-8">
 					{#snippet main()}
 						<div class="bold">
 							Прошлое — с {formatCutoffDate(localDayOf(split?.past_from ?? ''))}
@@ -246,17 +246,17 @@
 			/>
 			<Button variant="colored" {loading} onclick={enterCircle}>Войти в круг</Button>
 		{:else}
-			<ScreenTitle class="mt-22 lh-125">
+			<ScreenTitle class="mt-16 lh-125">
 				Добро пожаловать<br />в {circle.name}
 			</ScreenTitle>
-			<Hint class="mt-12">
+			<Hint class="mt-8">
 				Здесь вас зовут «{circle.identityName}». Первую запись можно сделать в ленте.
 			</Hint>
 			<Button variant="colored" onclick={skipToFeed}>Войти в круг</Button>
 		{/if}
 
 		{#if error}
-			<Hint class="mt-12">{error}</Hint>
+			<Hint class="mt-8">{error}</Hint>
 		{/if}
 	</FormLayout>
 {/if}

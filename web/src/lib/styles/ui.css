@@ -129,7 +129,7 @@
 }
 .conn-bar {
 	height: 3px;
-	margin-top: 7px;
+	margin-top: 8px;
 	border-radius: 2px;
 	background: var(--line);
 	overflow: hidden;
@@ -535,7 +535,7 @@
 	text-transform: uppercase;
 	color: var(--faint);
 	font-weight: 600;
-	margin: 18px 16px 8px;
+	margin: 16px 16px 4px;
 }
 .r {
 	display: flex;
@@ -652,7 +652,7 @@
 }
 .pay-banner-muted {
 	color: var(--muted);
-	margin-top: 3px;
+	margin-top: 4px;
 }
 .pay-banner-chev {
 	flex-shrink: 0;
@@ -681,7 +681,7 @@
 	line-height: 1.45;
 }
 .news li + li {
-	margin-top: 6px;
+	margin-top: 4px;
 }
 .map-sheet {
 	display: flex;
@@ -731,7 +731,7 @@
 	background: var(--card);
 	border: 1px solid var(--line);
 	border-radius: 14px;
-	margin: 12px 14px;
+	margin: 8px 14px;
 	padding: 14px;
 	overflow-wrap: anywhere;
 	min-width: 0;
@@ -756,7 +756,7 @@
 	font-size: 12.5px;
 }
 .post.day-prompt .rowin {
-	margin: 14px 0 0;
+	margin: 16px 0 0;
 }
 .feed {
 	flex: 1;
@@ -820,26 +820,26 @@
 	margin-top: 28px;
 }
 .empty-state > .hint {
-	margin: 10px 30px 0;
+	margin: 8px 30px 0;
 }
 .empty-state.is-tab > .hint,
 .empty-state.is-feed > .hint {
 	margin: 8px 34px 0;
 }
 .empty-act > .btn:first-child {
-	margin-top: 30px;
+	margin-top: 16px;
 }
 .empty-state.is-feed .empty-act {
 	/* Кадр 3.1: поля 60px; кнопка — width: 100% внутри, на любой ширине ленты. */
 	padding-inline: 60px;
 }
 .empty-state.is-feed .empty-act > .btn {
-	margin: 26px 0 0;
+	margin: 16px 0 0;
 	width: 100%;
 }
 .feed-end {
 	text-align: center;
-	margin: 32px 16px 24px;
+	margin: 16px 16px 16px;
 	color: var(--c);
 }
 .feed-end.start {
@@ -856,23 +856,23 @@
 }
 .feed-end-since {
 	font-size: 12.5px;
-	margin-top: 6px;
+	margin-top: 4px;
 }
 .feed-end > .hint.feed-end-note {
 	margin: 8px 16px 0;
 }
 .feed-end > .sep {
-	margin: 20px 40px;
+	margin: 16px 40px;
 }
 .feed-end > .hint.feed-end-title {
-	margin: 10px 16px 0;
+	margin: 8px 16px 0;
 	color: var(--muted);
 }
 .pa {
 	display: flex;
 	align-items: center;
 	gap: 10px;
-	margin-bottom: 9px;
+	margin-bottom: 8px;
 }
 .av {
 	width: 34px;
@@ -898,7 +898,7 @@ body[data-avatars='square'] .addph.ident-photo {
 	width: 96px;
 	height: 96px;
 	font-size: 38px;
-	margin: 22px auto 0;
+	margin: 16px auto 0;
 }
 .pa .n {
 	font-weight: 600;
@@ -913,7 +913,7 @@ body[data-avatars='square'] .addph.ident-photo {
 	gap: 5px;
 }
 .pt {
-	margin: 0 0 11px;
+	margin: 0 0 8px;
 	overflow-wrap: anywhere;
 }
 /* MentionText: переносы и пустые строки — как их написали. Запись
@@ -1092,7 +1092,7 @@ body[data-avatars='square'] .addph.ident-photo {
 .rx {
 	display: flex;
 	gap: 8px;
-	margin-top: 11px;
+	margin-top: 8px;
 	align-items: center;
 }
 .rx .one {
@@ -1211,7 +1211,7 @@ body[data-avatars='square'] .addph.ident-photo {
 	height: 8px;
 	border-radius: 50%;
 	background: var(--rc, var(--ink));
-	margin: 5px 5px 0 auto;
+	margin: 4px 5px 0 auto;
 }
 /* «Отклики» (3.13): строка — ссылка туда, где отклик живёт; ниже слов —
    рамка «к чему это»: автор записи, дата, первая строка или день. */
@@ -1287,7 +1287,7 @@ a.resp + a.resp {
 .rxpick {
 	display: flex;
 	gap: 10px;
-	margin-top: 10px;
+	margin-top: 8px;
 }
 /* 40 px — палец попадает с первого раза; 26 px было впритык к соседу. */
 .rcho {
@@ -1474,7 +1474,7 @@ a.resp + a.resp {
 /* Те же плитки в правке комментария (C53): под полем, без своей черты и фона. */
 .cstrip.cstrip-edit {
 	padding: 0;
-	margin: 10px 0;
+	margin: 8px 0;
 	border-top: 0;
 	background: none;
 	/* В узкой колонке комментария плитки переносятся, а не уезжают вбок с «+». */
@@ -1513,7 +1513,7 @@ a.resp + a.resp {
 	display: block;
 	width: calc(100% - 28px);
 	box-sizing: border-box;
-	margin: 12px 14px;
+	margin: 8px 14px;
 	padding: 0;
 	border: 0;
 	border-radius: 14px;
@@ -1735,7 +1735,7 @@ a.resp + a.resp {
 .h1s {
 	font-size: 17px;
 	font-weight: 600;
-	margin: 22px 16px 6px;
+	margin: 16px 16px 4px;
 }
 .fld {
 	margin: 0 16px;
@@ -1879,7 +1879,7 @@ input.fld.sm {
 	color: var(--faint);
 }
 .hint {
-	margin: 9px 16px 0;
+	margin: 8px 16px 0;
 	font-size: 12.5px;
 	color: var(--muted);
 	line-height: 1.5;
@@ -1976,7 +1976,7 @@ input.fld.sm {
 	padding-bottom: 1px;
 }
 .btn {
-	margin: 20px 16px 0;
+	margin: 16px 16px 0;
 	background: var(--ink);
 	color: var(--paper);
 	border-radius: 12px;
@@ -2139,7 +2139,7 @@ button.fold {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 22px;
-	margin: 0 0 18px;
+	margin: 0 0 16px;
 	font-size: 12.5px;
 	color: var(--muted);
 }
@@ -2181,7 +2181,7 @@ button.fold {
 	position: relative;
 }
 .men-pick {
-	margin: 12px 16px 0;
+	margin: 8px 16px 0;
 	border: 1px solid var(--line);
 	background: var(--card);
 	border-radius: 12px;
@@ -2377,7 +2377,7 @@ button.fold {
 	left: 19px;
 }
 .danger {
-	margin: 26px 14px 16px;
+	margin: 16px 14px 16px;
 	border: 1.5px solid var(--ink);
 	border-radius: 12px;
 }
@@ -2568,7 +2568,7 @@ button.fold {
 .mnth {
 	font-size: 13.5px;
 	font-weight: 600;
-	margin: 16px 16px 9px;
+	margin: 16px 16px 8px;
 }
 .sheet {
 	position: absolute;
@@ -2585,7 +2585,7 @@ button.fold {
 	height: 4px;
 	border-radius: 2px;
 	background: var(--line);
-	margin: 4px auto 12px;
+	margin: 4px auto 8px;
 }
 .scrim {
 	position: absolute;
@@ -2757,7 +2757,7 @@ body.wide .dlg {
 .codebox {
 	display: flex;
 	gap: 9px;
-	margin: 24px 16px 0;
+	margin: 16px 16px 0;
 }
 .codebox u {
 	flex: 1;
@@ -2784,7 +2784,7 @@ body.wide .dlg {
 	display: flex;
 	gap: 14px;
 	align-items: center;
-	margin: 22px 16px 0;
+	margin: 16px 16px 0;
 }
 .rowin .btn {
 	margin: 0;
@@ -2793,7 +2793,7 @@ body.wide .dlg {
 .people {
 	display: flex;
 	gap: 8px;
-	margin: 12px 14px 0;
+	margin: 8px 14px 0;
 }
 .people .pp {
 	flex: 1;
@@ -2809,7 +2809,7 @@ body.wide .dlg {
 	place-items: center;
 	color: #fff;
 	font-size: 17px;
-	margin: 0 auto 7px;
+	margin: 0 auto 8px;
 }
 .ta {
 	margin: 0 16px;
@@ -2829,7 +2829,7 @@ body.wide .dlg {
 }
 /* Ссылка приглашения под QR (2.7, 6.21): целиком, переносится где угодно. */
 .invite-url {
-	margin-top: 12px;
+	margin-top: 8px;
 	font-size: 12.5px;
 	overflow-wrap: anywhere;
 }
@@ -2923,7 +2923,7 @@ body.wide .dlg {
 	display: flex;
 	align-items: center;
 	gap: 9px;
-	margin: 22px 16px 6px;
+	margin: 16px 16px 4px;
 	font-size: 12.5px;
 	color: var(--muted);
 }
@@ -2977,7 +2977,7 @@ body.wide .dlg {
 .adm h4 {
 	font-size: 17px;
 	font-weight: 600;
-	margin: 0 0 14px;
+	margin: 0 0 16px;
 }
 .stack {
 	display: flex;
@@ -3129,7 +3129,7 @@ input.inp[type='number']::-webkit-outer-spin-button {
 	height: 14px;
 	border-radius: 4px;
 	flex: 0 0 auto;
-	margin-top: 3px;
+	margin-top: 2px;
 }
 .chk .n {
 	font-size: 12.5px;
@@ -3536,29 +3536,17 @@ input.inp[type='number']::-webkit-outer-spin-button {
 .mt-4 {
 	margin-top: 4px;
 }
+.mb-4 {
+	margin-bottom: 4px;
+}
 .mt-8 {
 	margin-top: 8px;
 }
 .mt-0 {
 	margin-top: 0;
 }
-.mt-10 {
-	margin-top: 10px;
-}
-.mt-12 {
-	margin-top: 12px;
-}
-.mt-14 {
-	margin-top: 14px;
-}
 .mt-16 {
 	margin-top: 16px;
-}
-.mt-18 {
-	margin-top: 18px;
-}
-.mt-20 {
-	margin-top: 20px;
 }
 .lh-125 {
 	line-height: 1.25;
@@ -3579,25 +3567,10 @@ input.inp[type='number']::-webkit-outer-spin-button {
 	position: absolute;
 	left: 0;
 }
-.mt-22 {
-	margin-top: 22px;
-}
-.mt-24 {
-	margin-top: 24px;
-}
-.mt-26 {
-	margin-top: 26px;
-}
-.mt-44 {
-	margin-top: 44px;
-}
-.mt-48 {
-	margin-top: 48px;
-}
 /* Пояснение под заголовком экрана-состояния («Доступ закрыт», «Приглашение
    не действует»): уже колонки, чтобы строка не тянулась от края до края. */
 .hint-inset {
-	margin: 10px 30px 0;
+	margin: 8px 30px 0;
 }
 .m-0 {
 	margin: 0;
@@ -3605,15 +3578,12 @@ input.inp[type='number']::-webkit-outer-spin-button {
 .gutter {
 	margin: 16px;
 }
+.gutter-8 {
+	margin: 8px 16px;
+}
 .mx-16 {
 	margin-left: 16px;
 	margin-right: 16px;
-}
-.gutter-12 {
-	margin: 12px 16px;
-}
-.gutter-24 {
-	margin: 24px 16px;
 }
 .grow {
 	flex: 1;
@@ -3690,16 +3660,13 @@ input.inp[type='number']::-webkit-outer-spin-button {
 	border-radius: 12px;
 	padding: 14px 16px;
 }
-.mb-10 {
-	margin-bottom: 10px;
-}
 .dlgq {
 	font-size: 17px;
 	font-weight: 600;
-	margin-bottom: 10px;
+	margin-bottom: 8px;
 }
 .rowin.ask {
-	margin: 18px 0 0;
+	margin: 16px 0 0;
 }
 .rowin.ask .btn {
 	flex: 1;
@@ -3729,14 +3696,8 @@ input.inp[type='number']::-webkit-outer-spin-button {
 .sz-15 {
 	font-size: 15px;
 }
-.mt-28 {
-	margin-top: 28px;
-}
 .mb-8 {
 	margin-bottom: 8px;
-}
-.mb-12 {
-	margin-bottom: 12px;
 }
 .col {
 	display: flex;
@@ -3759,9 +3720,6 @@ input.inp[type='number']::-webkit-outer-spin-button {
 }
 .bold {
 	font-weight: 600;
-}
-.mb-6 {
-	margin-bottom: 6px;
 }
 .ml-12 {
 	margin-left: 12px;
@@ -3844,12 +3802,6 @@ input.inp[type='number']::-webkit-outer-spin-button {
 		grid-column: 1 / -1;
 	}
 }
-.mb-18 {
-	margin-bottom: 18px;
-}
-.mt-7 {
-	margin-top: 7px;
-}
 .gap-20 {
 	gap: 20px;
 }
@@ -3911,9 +3863,6 @@ input.inp[type='number']::-webkit-outer-spin-button {
 .mb-0 {
 	margin-bottom: 0;
 }
-.mb-20 {
-	margin-bottom: 20px;
-}
 .mt-2 {
 	margin-top: 2px;
 }
@@ -3922,9 +3871,6 @@ input.inp[type='number']::-webkit-outer-spin-button {
 }
 .left {
 	text-align: left;
-}
-.mb-22 {
-	margin-bottom: 22px;
 }
 .w120 {
 	width: 120px;
@@ -3952,65 +3898,35 @@ input.inp[type='number']::-webkit-outer-spin-button {
 
 /* План 47 (хвост сверки): инлайн-стили экранов → классы. margin повторяет
    все четыре стороны исходной записи: m-верх-бока-низ. */
-.mt-3 {
-	margin-top: 3px;
-}
-.mt-6 {
-	margin-top: 6px;
-}
-.mt-30 {
-	margin-top: 30px;
-}
-.mt-34 {
-	margin-top: 34px;
-}
-.mb-5 {
-	margin-bottom: 5px;
-}
-.mb-14 {
-	margin-bottom: 14px;
-}
 .m-0-16 {
 	margin: 0 16px;
 }
-.m-0-0-7 {
-	margin: 0 0 7px;
+.m-0-0-8 {
+	margin: 0 0 8px;
+}
+.m-4-0-8 {
+	margin: 4px 0 8px;
+}
+.m-8-0-8 {
+	margin: 8px 0 8px;
+}
+.m-8-0-16 {
+	margin: 8px 0 16px;
+}
+.m-8-16-8 {
+	margin: 8px 16px 8px;
 }
 .m-0-16-8 {
 	margin: 0 16px 8px;
 }
-.m-12-16-8 {
-	margin: 12px 16px 8px;
-}
-.m-0-16-12 {
-	margin: 0 16px 12px;
-}
 .m-0-16-16 {
 	margin: 0 16px 16px;
-}
-.m-4-0-10 {
-	margin: 4px 0 10px;
-}
-.m-7-16-0 {
-	margin: 7px 16px 0;
 }
 .m-8-16-0 {
 	margin: 8px 16px 0;
 }
-.m-10-0-6 {
-	margin: 10px 0 6px;
-}
-.m-10-0-22 {
-	margin: 10px 0 22px;
-}
-.m-10-16-0 {
-	margin: 10px 16px 0;
-}
 .m-16-16-0 {
 	margin: 16px 16px 0;
-}
-.m-18-16-0 {
-	margin: 18px 16px 0;
 }
 .pt-14 {
 	padding-top: 14px;

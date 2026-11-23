@@ -821,7 +821,7 @@
 		{#if loading || $page.url.searchParams.has('loading')}
 			<Loading />
 		{:else if error && !posts.length}
-			<Hint class="gutter-24">{error}</Hint>
+			<Hint class="gutter">{error}</Hint>
 		{:else}
 			{#each circle.canWrite ? queuedPosts : [] as item (item.id)}
 				<!-- Snippets live outside <PostCard>: a {#snippet} nested in {#if} is not passed as a prop. -->

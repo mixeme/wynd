@@ -86,24 +86,24 @@
 			top={4}
 		/>
 		{#if arrival.returned_count > 0}
-			<Label class="mt-22">Уже вернулись · {arrival.returned_count} из {arrival.total}</Label>
+			<Label class="mt-16">Уже вернулись · {arrival.returned_count} из {arrival.total}</Label>
 			<PeopleStrip {people} />
 		{/if}
-		<ScreenTitle class="mt-22 lh-125">
+		<ScreenTitle class="mt-16 lh-125">
 			{arrival.kind === 'moved' ? 'Круг переехал' : 'Круг оживили из архива'}
 		</ScreenTitle>
 		<Avatar
-			class="mt-18"
+			class="mt-16"
 			initial={circle.identityInitial}
 			color={circle.colorHex}
 			src={circle.avatarUrl || undefined}
 			size="lg"
 		/>
-		<ScreenTitle centered class="mt-10">{circle.identityName}</ScreenTitle>
+		<ScreenTitle centered class="mt-8">{circle.identityName}</ScreenTitle>
 		<Hint centered class="mt-4">{kept}</Hint>
 		<Button variant="colored" {loading} onclick={() => void enter()}>Войти в круг</Button>
 		{#if error}
-			<Hint class="mt-12">{error}</Hint>
+			<Hint class="mt-8">{error}</Hint>
 		{/if}
 	{/if}
 </FormLayout>

@@ -95,23 +95,23 @@
 		{:else}
 			<div class="flex-top gap-20">
 				<div class="grow">
-					<h4 class="mb-5">{headline}</h4>
+					<h4 class="mb-4">{headline}</h4>
 					{#if subtitle}<div class="note">{subtitle}</div>{/if}
 				</div>
 				<div class="right">
 					<TextButton variant="adminBox" class="bold" onclick={() => void load()}
 						>Проверить снова</TextButton
 					>
-					<div class="sz-11 faint mt-7">{checkedLabel()}</div>
+					<div class="sz-11 faint mt-8">{checkedLabel()}</div>
 				</div>
 			</div>
 			{#if actionError}
-				<Hint class="mt-12">{actionError}</Hint>
+				<Hint class="mt-8">{actionError}</Hint>
 			{/if}
-			<div class="cols mt-20">
+			<div class="cols mt-16">
 				<div>
 					{#each LEFT_GROUPS as group, gi (group.label)}
-						<SectionLabel class="mx-0 mb-6 {gi === 0 ? 'mt-0' : 'mt-16'}"
+						<SectionLabel class="mx-0 mb-8 {gi === 0 ? 'mt-0' : 'mt-16'}"
 							>{group.label}</SectionLabel
 						>
 						{#each group.ids as id (id)}
@@ -137,7 +137,7 @@
 				</div>
 				<div>
 					{#each RIGHT_GROUPS as group, gi (group.label)}
-						<SectionLabel class="mx-0 mb-6 {gi === 0 ? 'mt-0' : 'mt-16'}"
+						<SectionLabel class="mx-0 mb-8 {gi === 0 ? 'mt-0' : 'mt-16'}"
 							>{group.label}</SectionLabel
 						>
 						{#each group.ids as id (id)}
@@ -194,7 +194,7 @@
 					{/each}
 				</div>
 			</div>
-			<div class="fine mt-18 lh-16">Снаружи проверяет ваш браузер: сам Wynd никуда не звонит.</div>
+			<div class="fine mt-16 lh-16">Снаружи проверяет ваш браузер: сам Wynd никуда не звонит.</div>
 		{/if}
 	</AdminSection>
 </AdminWideLayout>

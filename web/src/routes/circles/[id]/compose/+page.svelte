@@ -1042,17 +1042,17 @@
 			icon="clock"
 			title={editWindowTitle}
 			chevron={false}
-			class="mt-18"
+			class="mt-16"
 			divided="both"
 		/>
 	{/if}
 
 	{#if error}
-		<Hint class="mt-12">{error}</Hint>
+		<Hint class="mt-8">{error}</Hint>
 	{/if}
 
 	{#if isEdit && editingPost && isEditableActive(editingPost.editable_until)}
-		<div class="mt-20">
+		<div class="mt-16">
 			<DangerZone items={['Удалить запись']} onitem={() => void deleteEditedPost()} />
 		</div>
 	{/if}

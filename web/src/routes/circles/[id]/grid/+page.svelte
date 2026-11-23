@@ -208,10 +208,10 @@
 		{#if loading}
 			<Loading />
 		{:else if error && !tiles.length}
-			<Hint class="gutter-24">{error}</Hint>
+			<Hint class="gutter">{error}</Hint>
 		{:else}
 			{#if tiles.length}
-				<Hint class="mt-12">
+				<Hint class="mt-8">
 					{gridSummary(tiles.length, totalPosts)}
 				</Hint>
 			{/if}
@@ -231,10 +231,10 @@
 				</PhotoGrid>
 			{/each}
 			{#if loadingOlder}
-				<Hint class="gutter-24" centered>Загружаем записи постарше…</Hint>
+				<Hint class="gutter" centered>Загружаем записи постарше…</Hint>
 			{/if}
 			{#if !tiles.length}
-				<Hint class="gutter-24">Записей с фото и видео пока нет</Hint>
+				<Hint class="gutter">Записей с фото и видео пока нет</Hint>
 			{/if}
 		{/if}
 	</div>

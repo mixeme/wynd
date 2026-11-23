@@ -23,7 +23,7 @@
 </script>
 
 <FieldDisplay mono value={url} class="invite-url" />
-<div class="rowin mt-12">
+<div class="rowin mt-8">
 	<Button variant="colored" class="grow" onclick={onshare}>
 		{shared ? 'Отправлено' : 'Поделиться'}
 	</Button>

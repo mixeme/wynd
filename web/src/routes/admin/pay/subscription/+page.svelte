@@ -187,7 +187,7 @@
 		{:else if error && !settings}
 			<Hint>{error}</Hint>
 		{:else if settings}
-			<SwitchRow bind:checked={settings.required} title="Требовать подписку" class="mb-18">
+			<SwitchRow bind:checked={settings.required} title="Требовать подписку" class="mb-16">
 				{#if settings.required}
 					Без оплаты круги не открываются.
 				{:else}
@@ -209,7 +209,7 @@
 					{/each}
 				</ChipGroup>
 				<div class="note mt-8 lh-15">Придёт письмо и строка в списке кругов.</div>
-				<SectionLabel class="mt-22 mx-0 mb-8">Заявки</SectionLabel>
+				<SectionLabel class="mt-16 mx-0 mb-8">Заявки</SectionLabel>
 				{#if requests.length === 0}
 					<Hint>Заявок нет.</Hint>
 				{:else}
@@ -238,7 +238,7 @@
 						{/each}
 					</DataTable>
 				{/if}
-				<SectionLabel class="mt-22 mx-0 mb-8">На сервере · {accounts.length}</SectionLabel>
+				<SectionLabel class="mt-16 mx-0 mb-8">На сервере · {accounts.length}</SectionLabel>
 				{#if accounts.length === 0}
 					<Hint>Учёток нет.</Hint>
 				{:else}
@@ -263,7 +263,7 @@
 				{/if}
 			{/if}
 			{#if error}
-				<Hint class="mt-12">{error}</Hint>
+				<Hint class="mt-8">{error}</Hint>
 			{/if}
 		{/if}
 	</AdminSection>
@@ -279,7 +279,7 @@
 				Без подписки сейчас {plural(settings.without_subscription ?? 0, WORD.person)}: круги у них
 				закроются сразу. Можно дать всем срок на переход.
 			</Hint>
-			<div class="mt-12">
+			<div class="mt-8">
 				<PayTermPicker
 					bind:days={grantDays}
 					bind:custom={grantCustom}

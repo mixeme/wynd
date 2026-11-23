@@ -1,16 +1,17 @@
 // Сторож вертикального ритма C120: зазоры между блоками — только ступени
-// лесенки 4/8/16 из tokens.css. Оптические сдвиги до 2 px и нахлёсты
-// рамок (−1 px) допускаются: это не межблочный ритм.
+// лесенки 4/8/16 из tokens.css. Оптические сдвиги до 2 px, нахлёсты рамок
+// (−1 px) и явные исключения допускаются: это не межблочный ритм.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
-// Пока лесенка внедрена в Мастерской и «Подписи» (общие стили окна); клиент
-// и окно для компьютера добавляются следующими шагами C120.
+// Мастерская и «Подпись» — общие стили окна; клиент — ui.css. Настольный
+// добавляется своим шагом C120.
 const FILES = [
 	'web/src/lib/styles/tokens.css',
+	'web/src/lib/styles/ui.css',
 	'web/src/lib/styles/workshop.css',
 	'cmd/wynd-workshop/frontend/src/app.css',
 	...[
@@ -31,32 +32,26 @@ const FILES = [
 	].map((f) => `web/src/lib/components/workshop/${f}`)
 ];
 
-const STEPS = new Set(['var(--sp-1)', 'var(--sp-2)', 'var(--sp-3)']);
+const STEPS = new Set(['4px', '8px', '16px', 'var(--sp-1)', 'var(--sp-2)', 'var(--sp-3)']);
 const ALLOWED_LITERAL = new Set(['0', '0px', 'auto', '-1px']);
 const OPTICAL_MAX = 2;
 
-// Где ступень не межблочный ритм: центровка приветствия по окну и абзац
-// сырого вывода в его собственных единицах. Сверка по файлу и значению,
-// чтобы сторожа не ломали сдвиги строк.
+// Где ступень не межблочный ритм: центровка приветствия по окну, пустые
+// состояния (крупный отступ — центровка экрана) и абзац сырого вывода.
+// Сверка по файлу, правилу и значению: значение 24/28 может быть законным
+// в другом правиле.
 const EXCEPTIONS = [
-	{
-		file: 'cmd/wynd-workshop/frontend/src/app.css',
-		value: '70px',
-		why: 'центровка приветствия по окну'
-	},
-	{
-		file: 'cmd/wynd-workshop/frontend/src/app.css',
-		value: '40px',
-		why: 'центровка приветствия по окну'
-	},
-	{
-		file: 'web/src/lib/components/workshop/RawSheet.svelte',
-		value: '1.45em',
-		why: 'абзац сырого вывода по тексту'
-	}
+	{ file: 'cmd/wynd-workshop/frontend/src/app.css', selector: '.ins-welcome', value: '70px', why: 'центровка приветствия' },
+	{ file: 'cmd/wynd-workshop/frontend/src/app.css', selector: '.ins-welcome', value: '40px', why: 'центровка приветствия' },
+	{ file: 'web/src/lib/components/workshop/RawSheet.svelte', selector: '.ins-cause-part', value: '1.45em', why: 'абзац сырого вывода' },
+	{ file: 'web/src/lib/styles/ui.css', selector: '.empty', value: '80px', why: 'центровка пустого состояния' },
+	{ file: 'web/src/lib/styles/ui.css', selector: '.empty-state > .h1s', value: '48px', why: 'центровка пустого состояния' },
+	{ file: 'web/src/lib/styles/ui.css', selector: '.empty-state.is-list > .h1s', value: '24px', why: 'центровка пустого состояния' },
+	{ file: 'web/src/lib/styles/ui.css', selector: '.empty-state.is-tab > .h1s', value: '220px', why: 'центровка пустого состояния' },
+	{ file: 'web/src/lib/styles/ui.css', selector: '.empty-state.is-feed > .h1s', value: '28px', why: 'центровка пустого состояния' }
 ];
 
-const ignoredValue = new Set(EXCEPTIONS.map((e) => `${e.file}:${e.value}`));
+const ignored = new Set(EXCEPTIONS.map((e) => `${e.file}|${e.selector}|${e.value}`));
 
 function verticalValues(line) {
 	const out = [];
@@ -92,29 +87,41 @@ function px(value) {
 const problems = [];
 for (const rel of FILES) {
 	const text = readFileSync(path.join(root, rel), 'utf8');
+	let selector = '';
 	text.split(/\r?\n/).forEach((line, i) => {
-		if (line.trim().startsWith('/*') || line.trim().startsWith('*')) return;
 		const lineNo = i + 1;
+		const trimmed = line.trim();
+		const open = line.indexOf('{');
+		if (open >= 0) {
+			const cand = line.slice(0, open).trim();
+			if (cand && !cand.startsWith('@')) selector = cand;
+		}
+		if (trimmed.startsWith('/*') || trimmed.startsWith('*') || trimmed.includes('{')) {
+			if (trimmed === '}') selector = '';
+			return;
+		}
 		for (const { value } of verticalValues(line)) {
-			if (ignoredValue.has(`${rel}:${value}`)) continue;
+			if (ignored.has(`${rel}|${selector}|${value}`)) continue;
 			if (STEPS.has(value) || ALLOWED_LITERAL.has(value)) continue;
+			if (/^(min|max|clamp|calc)\(/.test(value)) continue;
 			const n = px(value);
 			if (n !== null && Math.abs(n) <= OPTICAL_MAX) continue;
-			problems.push({ file: rel, line: lineNo, value });
+			problems.push({ file: rel, line: lineNo, value, selector });
 		}
+		if (trimmed === '}') selector = '';
 	});
 }
 
 const tokens = readFileSync(path.join(root, 'web/src/lib/styles/tokens.css'), 'utf8');
 for (const step of [1, 2, 3]) {
 	if (!new RegExp(`--sp-${step}:\\s*\\d+px;`).test(tokens)) {
-		problems.push({ file: 'web/src/lib/styles/tokens.css', line: 0, value: `нет --sp-${step}` });
+		problems.push({ file: 'web/src/lib/styles/tokens.css', line: 0, value: `нет --sp-${step}`, selector: '' });
 	}
 }
 
 if (problems.length) {
-	console.error('check-spacing: значения вне лесенки 4/8/12/16/24');
-	for (const p of problems) console.error(`  ${p.file}:${p.line}  ${p.value}`);
+	console.error('check-spacing: значения вне лесенки 4/8/16');
+	for (const p of problems) console.error(`  ${p.file}:${p.line}  ${p.selector}  ${p.value}`);
 	console.error('Зазоры задаются var(--sp-1…3) из tokens.css; см. C120 плана 46.');
 	process.exit(1);
 }

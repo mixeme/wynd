@@ -207,7 +207,7 @@
 		{#if loading}
 			<Loading />
 		{:else if error && !items.length}
-			<Hint class="gutter-24">{error}</Hint>
+			<Hint class="gutter">{error}</Hint>
 		{:else if !items.length}
 			<EmptyState title="Откликов пока нет" place="tab">
 				Здесь соберутся комментарии и реакции — и к тем записям, что в ленте уже далеко внизу.

@@ -30,7 +30,7 @@
 				>
 			</tbody>
 		</DataTable>
-		<SectionLabel class="mt-30 mx-0 mb-10">Уход с сервера</SectionLabel>
+		<SectionLabel class="mt-16 mx-0 mb-8">Уход с сервера</SectionLabel>
 		<SwitchRow end bind:checked={allow} title="Разрешить стирать имена и фото">
 			Кто уходит с сервера насовсем, сможет стереть свои имена, фото и пол во всех кругах. Записи
 			останутся без подписи. Это право на удаление по GDPR: включите, если сервер должен его

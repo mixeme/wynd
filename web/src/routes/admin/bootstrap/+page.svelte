@@ -152,8 +152,8 @@
 			<div class="col gap-16">
 				<div class="flex-top gap-16 col-narrow">
 					<Panel class="grow min0 pad-16">
-						<div class="bold mb-6">1 · Пароль администратора</div>
-						<div class="note mb-12 lh-15">Задайте пароль для панели администратора.</div>
+						<div class="bold mb-8">1 · Пароль администратора</div>
+						<div class="note mb-8 lh-15">Задайте пароль для панели администратора.</div>
 						<Input
 							admin
 							type="password"
@@ -163,7 +163,7 @@
 						/>
 					</Panel>
 					<Panel class="grow min0 pad-16">
-						<div class="bold mb-12">2 · Имя и адрес сервера</div>
+						<div class="bold mb-8">2 · Имя и адрес сервера</div>
 						<div class="form-grid">
 							<SectionLabel raw class="m-0 sz-12 nowrap">Имя</SectionLabel>
 							<Input
@@ -188,8 +188,8 @@
 					</Panel>
 				</div>
 				<Panel class="pad-16">
-					<div class="bold mb-6">3 · Почта</div>
-					<div class="note mb-12 lh-15">
+					<div class="bold mb-8">3 · Почта</div>
+					<div class="note mb-8 lh-15">
 						Без SMTP люди не получат код для входа. Почту можно настроить позже.
 					</div>
 					<div class="form-grid-2">
@@ -228,10 +228,10 @@
 			</div>
 			{#if error}
 				<div bind:this={errorBox} role="alert">
-					<Hint class="mt-12">{error}</Hint>
+					<Hint class="mt-8">{error}</Hint>
 				</div>
 			{/if}
-			<div class="mt-20 scroll-room">
+			<div class="mt-16 scroll-room">
 				{#if loading}
 					<span role="status" class="block note mb-8"> Сохраняем </span>
 				{/if}

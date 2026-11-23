@@ -237,7 +237,7 @@
 		{/if}
 		{#if serverError}<Hint class="mt-8">{serverError}</Hint>{/if}
 		{#if blocked}
-			<Hint class="mt-14">
+			<Hint class="mt-16">
 				{instance?.registration_mode === 'invite'
 					? 'Для регистрации нужна ссылка-приглашение.'
 					: 'Регистрация на этом сервере закрыта.'}
@@ -257,7 +257,7 @@
 			</Hint>
 		{/if}
 		{#if instance && instance.registration_mode !== 'closed'}
-			<Label class="mt-22">Есть приглашение</Label>
+			<Label class="mt-16">Есть приглашение</Label>
 			<Input
 				active
 				mono
@@ -273,13 +273,13 @@
 				<Hint>Ссылку в круг даёт любой его участник, на сервер — тот, кто его держит.</Hint>
 			{/if}
 			<!-- Камерой — как на «Приглашении» (2.8); фото — если код прислали картинкой. -->
-			<Button class="mt-14" variant="ghost" onclick={() => goto('/invite/scan?from=join')}
+			<Button class="mt-16" variant="ghost" onclick={() => goto('/invite/scan?from=join')}
 				>Сканировать QR-код</Button
 			>
 			<Button variant="ghost" onclick={() => linkPicker?.open()}>Фото с QR-кодом</Button>
 		{/if}
 		{#if error}
-			<Hint class="mt-12">{error}</Hint>
+			<Hint class="mt-8">{error}</Hint>
 		{/if}
 	</FormLayout>
 {:else}
@@ -298,7 +298,7 @@
 				card
 				gdpr={instance.allow_name_erasure}
 			/>
-			<Hint class="mt-14">
+			<Hint class="mt-16">
 				{instance.registration_mode === 'invite'
 					? 'Для регистрации нужна ссылка-приглашение.'
 					: 'Регистрация на этом сервере закрыта.'} Если вы уже на этом сервере, вернитесь и войдите почтой.
@@ -334,7 +334,7 @@
 			</Hint>
 		{/if}
 		{#if error || serverError}
-			<Hint class="mt-12">{error || serverError}</Hint>
+			<Hint class="mt-8">{error || serverError}</Hint>
 		{/if}
 	</FormLayout>
 {/if}

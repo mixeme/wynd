@@ -259,7 +259,7 @@
 	{/if}
 	{#if auto}
 		<SectionLabel>Запуск</SectionLabel>
-		<Hint class="mt-8 mb-10">При входе в Windows откроется Wynd.</Hint>
+		<Hint class="mt-8 mb-8">При входе в Windows откроется Wynd.</Hint>
 		<SettingsRow class="pt-2" title="Запускать при входе в Windows">
 			{#snippet control()}
 				<Switch
@@ -271,12 +271,12 @@
 			{/snippet}
 		</SettingsRow>
 		{#if autostartStale}
-			<Hint class="mt-10"
+			<Hint class="mt-8"
 				>Автозапуск указывает на прежний файл. Включите его заново, чтобы обновить команду.</Hint
 			>
 		{/if}
 		{#if autostartError}
-			<Hint class="mt-10">{autostartError}</Hint>
+			<Hint class="mt-8">{autostartError}</Hint>
 		{/if}
 	{/if}
 
@@ -302,17 +302,17 @@
 			{/snippet}
 		</SettingsRow>
 		{#if pushDistributorMissing}
-			<Hint class="mt-10">
+			<Hint class="mt-8">
 				В этой версии приложения нет пуш-уведомлений через сервисы Google — их доставляет отдельная
 				программа. Подойдёт любое приложение из
 				<a class="under" href="https://unifiedpush.org/users/distributors/"
 					>списка доставщиков UnifiedPush</a
 				>: установите одно и включите переключатель ещё раз.
 			</Hint>
-		{:else if pushError}<Hint class="mt-10">{pushError}</Hint>{/if}
+		{:else if pushError}<Hint class="mt-8">{pushError}</Hint>{/if}
 	{/if}
 	<SectionLabel>Уведомления по умолчанию</SectionLabel>
-	<Hint class="mt-8 mb-10">Для новых кругов и тех, где настройки уведомлений не менялись.</Hint>
+	<Hint class="mt-8 mb-8">Для новых кругов и тех, где настройки уведомлений не менялись.</Hint>
 	<SettingsRow class="pt-2" title="Новые записи">
 		{#snippet control()}
 			<Switch bind:checked={posts} label="Новые записи" />
@@ -328,7 +328,7 @@
 			<Switch bind:checked={reactions} label="Реакции" />
 		{/snippet}
 	</SettingsRow>
-	<SectionLabel class="mt-22">Место на устройстве</SectionLabel>
+	<SectionLabel class="mt-16">Место на устройстве</SectionLabel>
 	<Meter value={cacheBytes} max={Math.max(cacheLimit, 1)} />
 	<Hint class="mt-8">
 		{formatBytes(cacheBytes)} медиа и файлов из {formatBytes(
@@ -365,7 +365,7 @@
 		>Сверх потолка удаляются давно не открытые медиа и файлы — при просмотре они скачаются заново.</Hint
 	>
 	<SettingsRow
-		class="mt-6"
+		class="mt-8"
 		title="Очистить кэш"
 		subtitle={cleared ? 'кэш очищен' : undefined}
 		chevron={false}

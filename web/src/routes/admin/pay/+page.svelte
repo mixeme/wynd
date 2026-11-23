@@ -89,7 +89,7 @@
 				title="Сбор"
 				subtitle={donateSubtitle(hub)}
 				onclick={() => goto('/admin/pay/donate')}
-				class="mt-22 pt-13 top-line"
+				class="mt-16 pt-13 top-line"
 			/>
 			<SettingsRow
 				title="Подписка"
@@ -98,7 +98,7 @@
 				class="pt-13 top-line"
 			/>
 			{#if error}
-				<Hint class="mt-12">{error}</Hint>
+				<Hint class="mt-8">{error}</Hint>
 			{/if}
 		{/if}
 	</AdminSection>

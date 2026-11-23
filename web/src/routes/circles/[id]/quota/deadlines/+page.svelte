@@ -176,14 +176,14 @@
 			: 'Письмо придёт всем сразу и ещё раз перед сроком.'}
 	</Hint>
 	{#if !activeCycle}
-		<DangerNote class="mt-20">
+		<DangerNote class="mt-16">
 			{deadline ? formatEntryDate(deadline) : '…'} всё до {cutoffDate
 				? formatCutoffDate(cutoffDate)
 				: '…'} удалится с сервера — независимо от того, все ли успели скачать. Предупредить людей — на
 			вас.
 		</DangerNote>
 	{/if}
-	<Button class="mt-14" variant="colored" {loading} onclick={() => void launch()}>
+	<Button class="mt-16" variant="colored" {loading} onclick={() => void launch()}>
 		{activeCycle ? 'Сохранить сроки' : 'Запустить архивацию'}
 	</Button>
 	{#if error}

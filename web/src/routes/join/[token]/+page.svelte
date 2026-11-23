@@ -98,7 +98,7 @@
 	</PlainLayout>
 {:else}
 	<PlainLayout shell app>
-		<ScreenTitle class="mt-24">Вас позвали на сервер</ScreenTitle>
+		<ScreenTitle class="mt-16">Вас позвали на сервер</ScreenTitle>
 		<ServerRow name={serverName} subtitle={serverSubtitle} card gdpr={peek?.allow_name_erasure} />
 		<Label class="mt-16">Почта</Label>
 		<Input active type="email" autocomplete="email" bind:value={email} />
@@ -108,11 +108,11 @@
 			Сервер хранит данные незашифрованными. Присоединение к этому серверу означает, что вы
 			доверяете его администратору.
 		</Hint>
-		<Hint class="mt-26" centered>
+		<Hint class="mt-16" centered>
 			Приглашение на сервер не ведёт ни в один круг:<br />заведёте свой или подождёте, пока позовут.
 		</Hint>
 		{#if error}
-			<Hint class="mt-12">{error}</Hint>
+			<Hint class="mt-8">{error}</Hint>
 		{/if}
 	</PlainLayout>
 {/if}

@@ -121,13 +121,13 @@
 	{:else if rows.length === 0}
 		<!-- Спокойная констатация, не заголовок: обычный кегль, цвет подсказки. -->
 		{#if ADD_SERVER_IN_BROWSER}
-			<Hint centered class="mt-28 sz-15">Вы ни на одном сервере не вошли</Hint>
+			<Hint centered class="mt-16 sz-15">Вы ни на одном сервере не вошли</Hint>
 			<Hint centered class="mt-16"
 				>Интерфейс продолжит открываться с сервера «{interfaceName}».</Hint
 			>
 			<Button onclick={addServer}>Войти на сервер</Button>
 		{:else}
-			<Hint centered class="mt-28 sz-15">На этом устройстве вы ни на одном сервере</Hint>
+			<Hint centered class="mt-16 sz-15">На этом устройстве вы ни на одном сервере</Hint>
 			<!-- C69: другой сервер отсюда не добавить — входят на этот. -->
 			<Button onclick={() => goto('/')}>Войти</Button>
 		{/if}
@@ -162,7 +162,7 @@
 			<!-- Уходят с одного сервера: строка под каждым (7.13). -->
 			<SettingsRow title="Уйти с сервера насовсем" onclick={() => leave(row)} />
 		{/each}
-		<Hint class="mt-24">
+		<Hint class="mt-16">
 			Общего профиля на все серверы нет: каждый сервер — отдельное место, даже с той же почтой.
 		</Hint>
 		{#if ADD_SERVER_IN_BROWSER}

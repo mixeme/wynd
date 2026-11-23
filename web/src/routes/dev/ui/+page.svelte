@@ -1034,10 +1034,10 @@
 						<div style="margin-top:14px">
 							<InlineInput>40 ГБ</InlineInput>
 						</div>
-						<AdminField label="Длинная сторона" unit="px" class="mt-14">
+						<AdminField label="Длинная сторона" unit="px" class="mt-16">
 							<InlineInput>2048</InlineInput>
 						</AdminField>
-						<Panel class="mt-14 sz-13">Оригиналы остаются на телефоне.</Panel>
+						<Panel class="mt-16 sz-13">Оригиналы остаются на телефоне.</Panel>
 					</AdminSection>
 				</AdminWideLayout>
 			</figure>

@@ -103,5 +103,5 @@
 			/>
 		{/if}
 	{/if}
-	<AboutFooter wrap class="mt-28" />
+	<AboutFooter wrap class="mt-16" />
 </FormLayout>

@@ -219,9 +219,9 @@
 	{#if loading}
 		<Loading />
 	{:else if !post}
-		<Hint class="gutter-24">Запись не найдена</Hint>
+		<Hint class="gutter">Запись не найдена</Hint>
 	{:else}
-		<PhotoGrid class="mt-3 gap-4" album>
+		<PhotoGrid class="mt-2 gap-4" album>
 			{#each photos as photo, i (photo.blob_id)}
 				<MediaTile
 					variant="album"

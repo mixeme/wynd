@@ -82,8 +82,8 @@
 		{:else if settings}
 			<div class="flex gap-44">
 				<div class="grow">
-					<SectionLabel class="mt-0 mx-0 mb-10">Фотографии</SectionLabel>
-					<AdminField label="Длинная сторона" unit="px" class="mb-10">
+					<SectionLabel class="mt-0 mx-0 mb-8">Фотографии</SectionLabel>
+					<AdminField label="Длинная сторона" unit="px" class="mb-8">
 						<Input
 							admin
 							class="w88"
@@ -92,7 +92,7 @@
 							onchange={() => void persist()}
 						/>
 					</AdminField>
-					<AdminField label="Формат и качество" unit="WebP" class="mb-10">
+					<AdminField label="Формат и качество" unit="WebP" class="mb-8">
 						<Input
 							admin
 							class="w88"
@@ -101,8 +101,8 @@
 							onchange={() => void persist()}
 						/>
 					</AdminField>
-					<SectionLabel class="mt-22 mx-0 mb-10">Видео</SectionLabel>
-					<AdminField label="Разрешение" unit="p" class="mb-10">
+					<SectionLabel class="mt-16 mx-0 mb-8">Видео</SectionLabel>
+					<AdminField label="Разрешение" unit="p" class="mb-8">
 						<Input
 							admin
 							class="w88"
@@ -120,7 +120,7 @@
 							onchange={() => void persistVideoBitrateMbps()}
 						/>
 					</AdminField>
-					<SectionLabel class="mt-22 mx-0 mb-10">Звук</SectionLabel>
+					<SectionLabel class="mt-16 mx-0 mb-8">Звук</SectionLabel>
 					<AdminField label="Битрейт" unit="кбит/с">
 						<Input
 							admin
@@ -130,7 +130,7 @@
 							onchange={() => void persist()}
 						/>
 					</AdminField>
-					<SectionLabel class="mt-22 mx-0 mb-10">Файлы</SectionLabel>
+					<SectionLabel class="mt-16 mx-0 mb-8">Файлы</SectionLabel>
 					<AdminField label="Потолок размера" unit="МБ">
 						<Input
 							admin
@@ -148,7 +148,7 @@
 					<div class="note mt-16 lh-16">
 						Сжатие необратимо: оригинал на сервер не загружается. Экономьте осознанно.
 					</div>
-					<div class="note mt-14 lh-16">Новые настройки касаются только новых загрузок.</div>
+					<div class="note mt-16 lh-16">Новые настройки касаются только новых загрузок.</div>
 				</div>
 			</div>
 			{#if error}

@@ -126,7 +126,7 @@
 		{/snippet}
 	</SettingsRow>
 
-	<Label class="mt-20">Приглушить</Label>
+	<Label class="mt-16">Приглушить</Label>
 	<ChipGroup>
 		<Chip selected={mute === 'none'} onclick={() => (mute = 'none')}>Нет</Chip>
 		<Chip selected={mute === 'tomorrow'} onclick={() => (mute = 'tomorrow')}>До завтра</Chip>
@@ -136,7 +136,7 @@
 		<Hint>Упоминание пробивается через приглушение: это адресация, а не шум.</Hint>
 	{/if}
 
-	<Hint class="mt-14">В уведомлении нет текста записи — только круг и что произошло.</Hint>
+	<Hint class="mt-16">В уведомлении нет текста записи — только круг и что произошло.</Hint>
 	{#if error}
 		<Hint class="gutter">{error}</Hint>
 	{/if}

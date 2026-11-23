@@ -149,11 +149,11 @@
 			Новый сервер подтвердил, что получил всё. Загляните туда и убедитесь сами: круг уже
 			открывается.
 		</Hint>
-		<DangerZone class="mt-20" items={['Завершить перенос']} onitem={() => (askComplete = true)}>
+		<DangerZone class="mt-16" items={['Завершить перенос']} onitem={() => (askComplete = true)}>
 			Круг и все его файлы удалятся с «{serverName || 'этого сервера'}» и пропадут из списка у
 			участников. Им уйдёт письмо: круг переехал на {dest}.
 		</DangerZone>
-		<Hint class="mt-14 ctr-text">
+		<Hint class="mt-16 ctr-text">
 			<TextButton disabled={busy} onclick={() => void cancel()}>Отменить перенос</TextButton>
 		</Hint>
 		<Hint class="ctr-text"
@@ -166,10 +166,10 @@
 			<FieldDisplay mono value={move.link} />
 			<!-- Главная, как в утверждённом 6.34: ссылка одноразовая и живёт
 			     72 часа, это основное действие экрана (план 46, C79). -->
-			<Button class="mt-12" onclick={() => void copy()}>
+			<Button class="mt-8" onclick={() => void copy()}>
 				{copied ? 'Скопировано' : 'Скопировать'}
 			</Button>
-			<Hint class="mt-10">
+			<Hint class="mt-8">
 				Одноразовая, живёт 72 часа. Кто вставит её на новом сервере, станет там владельцем круга —
 				никому её не передавайте.
 			</Hint>
@@ -188,7 +188,7 @@
 				Круг остаётся замершим. Получите новую ссылку и вставьте её на принимающем сервере.
 			</Hint>
 			<Button
-				class="mt-14"
+				class="mt-16"
 				variant="colored"
 				loading={busy}
 				loadingLabel="Получаем ссылку…"
@@ -219,7 +219,7 @@
 			/>
 			<Hint>На новом сервере: «Настройки» → «Серверы» → «Принять круг» → эта ссылка.</Hint>
 		{/if}
-		<Hint class="mt-22 ctr-text">
+		<Hint class="mt-16 ctr-text">
 			<TextButton disabled={busy} onclick={() => void cancel()}>Отменить перенос</TextButton>
 		</Hint>
 	{:else}
@@ -250,12 +250,12 @@
 			Возвращаетесь сюда и завершаете перенос — здесь круг удаляется.
 		</Hint>
 		{#if info.frozen_at}
-			<Hint class="mt-14 ink"
+			<Hint class="mt-16 ink"
 				>Круг уже замер: его убирают с сервера в архив. Переносить его нельзя.</Hint
 			>
 		{:else}
 			<Button
-				class="mt-14"
+				class="mt-16"
 				variant="colored"
 				loading={busy}
 				loadingLabel="Останавливаем круг…"
@@ -263,12 +263,12 @@
 			>
 				Остановить круг и получить ссылку
 			</Button>
-			<Hint class="mt-10 ctr-text">Пока перенос не завершён, его можно отменить — круг оживёт.</Hint
+			<Hint class="mt-8 ctr-text">Пока перенос не завершён, его можно отменить — круг оживёт.</Hint
 			>
 		{/if}
 	{/if}
 	{#if error && info}
-		<Hint class="mt-12">{error}</Hint>
+		<Hint class="mt-8">{error}</Hint>
 	{/if}
 
 	{#if askComplete}

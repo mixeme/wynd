@@ -287,7 +287,7 @@
 	{#if loading}
 		<Loading />
 	{:else if error && !pins.length}
-		<Hint class="gutter-24">{error}</Hint>
+		<Hint class="gutter">{error}</Hint>
 	{:else}
 		<MapPane>
 			{#if badge}

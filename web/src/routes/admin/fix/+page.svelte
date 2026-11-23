@@ -78,12 +78,12 @@
 		<div class="sz-11 faint mb-8">Проверка · Прокси</div>
 		<h4 class="mb-8">{fixText.title}</h4>
 		<div class="note lh-16 mw-620">{fixText.body}</div>
-		<div class="flex wrap gap-10 mt-16 mb-18 sz-11 muted">
+		<div class="flex wrap gap-10 mt-16 mb-16 sz-11 muted">
 			<span class="inp mono">X-Forwarded-For: {xff}</span>
 			<span class="inp mono">X-Real-IP: {xri}</span>
 			<span class="inp mono">клиент: {clientIp}</span>
 		</div>
-		<ChipGroup class="mx-0 mb-12">
+		<ChipGroup class="mx-0 mb-8">
 			{#each kinds as item (item)}
 				<Chip selected={kind === item} onclick={() => void load(item)}>{item}</Chip>
 			{/each}

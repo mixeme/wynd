@@ -146,18 +146,18 @@
 				/>
 			{/each}
 			<!-- Правило видно, как на 6.39: кнопка на месте, но не нажимается. -->
-			<DangerZone class="mt-22" disabled items={[`Уйти с сервера «${serverLabel}» насовсем`]} />
+			<DangerZone class="mt-16" disabled items={[`Уйти с сервера «${serverLabel}» насовсем`]} />
 		{:else}
 			<SectionLabel class="mt-8">Исчезнет</SectionLabel>
 			<Hint class="mt-0 ink">
 				Вход на всех ваших устройствах. Вернуться с этой почтой можно — как новый человек: в круги
 				по новому приглашению, прежнее в них будет не видно.
 			</Hint>
-			<SectionLabel class="mt-18">Останется в кругах</SectionLabel>
+			<SectionLabel class="mt-16">Останется в кругах</SectionLabel>
 			<Hint class="mt-0 ink">Всё, что вы написали и выложили, — под вашими именами.</Hint>
 			{#if erasureAllowed}
 				<SettingsRow
-					class="mt-14"
+					class="mt-16"
 					title="Стереть моё имя и фото во всех кругах"
 					subtitle="записи останутся без имени, вернуть подпись будет нельзя"
 					divided="both"
@@ -168,7 +168,7 @@
 				</SettingsRow>
 			{/if}
 			<DangerZone
-				class="mt-18"
+				class="mt-16"
 				items={[`Уйти с сервера «${serverLabel}» насовсем`]}
 				onitem={openConfirm}
 			/>
@@ -186,7 +186,7 @@
 		oncancel={() => (confirmOpen = false)}
 	>
 		<!-- Что будет, сказано на экране; окно только подтверждает (владелец, 2026-10-22). -->
-		<Hint class="mb-14">Впишите имя сервера, чтобы уйти.</Hint>
+		<Hint class="mb-16">Впишите имя сервера, чтобы уйти.</Hint>
 		<Input active placeholder={serverLabel} bind:value={confirmName} />
 		{#if leaveError}
 			<Hint class="mt-8">{leaveError}</Hint>

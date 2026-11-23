@@ -116,8 +116,8 @@
 					{/each}
 				</tbody>
 			</DataTable>
-			<div class="fine mt-14 lh-16">Панель знает почту и круги, не лица.</div>
-			<SectionLabel class="mt-30 mx-0 mb-10">Уход с сервера</SectionLabel>
+			<div class="fine mt-16 lh-16">Панель знает почту и круги, не лица.</div>
+			<SectionLabel class="mt-16 mx-0 mb-8">Уход с сервера</SectionLabel>
 			<SwitchRow
 				end
 				bind:checked={erasure}

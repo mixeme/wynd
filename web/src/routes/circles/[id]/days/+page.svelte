@@ -171,10 +171,10 @@
 		{#if loading}
 			<Loading />
 		{:else if error && !days.length}
-			<Hint class="gutter-24">{error}</Hint>
+			<Hint class="gutter">{error}</Hint>
 		{:else}
 			{#if days.length}
-				<Hint class="mt-12">
+				<Hint class="mt-8">
 					{daysSummary(days.length, totalPosts)}
 				</Hint>
 			{/if}
@@ -193,7 +193,7 @@
 				</DayGrid>
 			{/each}
 			{#if !days.length}
-				<Hint class="gutter-24">Пока нет дней с записями</Hint>
+				<Hint class="gutter">Пока нет дней с записями</Hint>
 			{/if}
 		{/if}
 	</div>

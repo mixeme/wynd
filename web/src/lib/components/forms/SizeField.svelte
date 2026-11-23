@@ -62,7 +62,7 @@
 	}
 </script>
 
-<div class="{admin ? 'flex-mid gap-8' : 'rowin gap-8 mt-10'} {className}">
+<div class="{admin ? 'flex-mid gap-8' : 'rowin gap-8 mt-8'} {className}">
 	<Input
 		{admin}
 		active={!admin}

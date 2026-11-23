@@ -298,7 +298,7 @@
 		{#if loading}
 			<Loading />
 		{:else if error && !posts.length}
-			<Hint class="gutter-24">{error}</Hint>
+			<Hint class="gutter">{error}</Hint>
 		{:else}
 			<DayHeader
 				coverUrl={coverUrl || undefined}
@@ -311,12 +311,12 @@
 
 			{#if editingTitle}
 				<Input
-					class="mt-14"
+					class="mt-16"
 					bind:value={titleDraft}
 					active
 					placeholder={formatEntryDate(entryDate)}
 				/>
-				<div class="rowin mt-12">
+				<div class="rowin mt-8">
 					<Button
 						class="grow"
 						variant="colored"
@@ -388,10 +388,10 @@
 				</PostCard>
 			{/each}
 			{#if !posts.length}
-				<Hint class="gutter-24">В этот день записей нет</Hint>
+				<Hint class="gutter">В этот день записей нет</Hint>
 			{/if}
 			{#if error}
-				<Hint class="gutter-12">{error}</Hint>
+				<Hint class="gutter-8">{error}</Hint>
 			{/if}
 		{/if}
 	</div>

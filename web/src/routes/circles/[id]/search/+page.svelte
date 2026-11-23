@@ -243,7 +243,7 @@
 	bind:searchQuery={query}
 	onback={goBack}
 >
-	<ChipGroup class="mt-14">
+	<ChipGroup class="mt-16">
 		<Chip selected>Этот круг</Chip>
 		<Chip onclick={openGlobalSearch}>Все круги</Chip>
 	</ChipGroup>

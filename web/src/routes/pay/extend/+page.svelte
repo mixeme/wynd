@@ -54,11 +54,11 @@
 				Круги ещё открыты.
 			{/if}
 		</Hint>
-		<SectionLabel class="mt-22">Куда платить</SectionLabel>
+		<SectionLabel class="mt-16">Куда платить</SectionLabel>
 		<RequisitesCard text={requisites} />
 		<Button onclick={() => goto('/pay')}>Я оплатил</Button>
 		{#if error}
-			<Hint class="mt-12">{error}</Hint>
+			<Hint class="mt-8">{error}</Hint>
 		{/if}
 	{/if}
 </FormLayout>

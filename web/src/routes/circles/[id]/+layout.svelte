@@ -431,7 +431,7 @@
 {#if notMember}
 	<!-- Кадр 1.11. Названия круга не знаем: сервер не скажет его тому, кто не в круге. -->
 	<PlainLayout app>
-		<ScreenTitle class="mt-24">Вас нет в этом круге</ScreenTitle>
+		<ScreenTitle class="mt-16">Вас нет в этом круге</ScreenTitle>
 		<Hint class="ink">
 			Ссылка ведёт в круг на сервере {notMember.server}. Здесь вы вошли как {notMember.email} — с этой
 			почтой вас в нём нет.

@@ -11,7 +11,7 @@
 </script>
 
 <PlainLayout>
-	<ScreenTitle class="mt-24">Вас пригласили</ScreenTitle>
+	<ScreenTitle class="mt-16">Вас пригласили</ScreenTitle>
 	<InviteCard initial="С" name="Семья" preview="22 участника · пригласила Аня" />
 	<Label>Сервер</Label>
 	<ServerRow name="Дом Ани" subtitle="home.example.org" card gdpr top={0} />

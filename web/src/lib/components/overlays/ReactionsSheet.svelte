@@ -32,7 +32,7 @@
 			icon={reactionIconName(rx.emoji)}
 		/>
 	{/each}
-	<Hint class="mt-14">
+	<Hint class="mt-16">
 		Реакция одна на человека и подчиняется окну правок. Хотите сказать больше — напишите словами.
 	</Hint>
 </Sheet>

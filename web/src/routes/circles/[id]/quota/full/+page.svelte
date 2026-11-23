@@ -208,14 +208,14 @@
 {/snippet}
 
 {#snippet reviveLink()}
-	<Hint class="mt-14 ctr-text">
+	<Hint class="mt-16 ctr-text">
 		<TextButton disabled={busy} onclick={() => void revive()}>Отменить — оживить круг</TextButton>
 	</Hint>
 {/snippet}
 
 {#snippet removeLocked()}
 	<!-- 6.28, 6.30: убрать круг, не скачав файл, нельзя. -->
-	<DangerZone class="mt-20" items={['Убрать круг с сервера']} disabled>
+	<DangerZone class="mt-16" items={['Убрать круг с сервера']} disabled>
 		Сначала скачайте файл: без него круг не вернуть.
 	</DangerZone>
 {/snippet}
@@ -231,7 +231,7 @@
 	{:else if view === 'building' && archive}
 		<!-- 6.26: сборка идёт на сервере; о готовности экран узнаёт при открытии. -->
 		<StatusCard title="Сервер собирает архив" text="Когда файл будет готов, придёт письмо." />
-		<Hint class="mt-14">
+		<Hint class="mt-16">
 			<!-- С удалением круг замер в момент снимка — одна строка вместо двух с тем же временем. -->
 			{#if archive.delete_circle && frozenAt}Круг замер {at(frozenAt)}.{:else}В файле будет круг,
 				каким он был {at(archive.snapshot_at ?? archive.requested_at)}. Круг работает как обычно.{/if}
@@ -239,7 +239,7 @@
 		{#if archive.delete_circle}
 			{@render reviveLink()}
 		{:else}
-			<Hint class="mt-22 ctr-text">
+			<Hint class="mt-16 ctr-text">
 				<TextButton disabled={busy} onclick={() => void remove()}>Отменить сборку</TextButton>
 			</Hint>
 		{/if}
@@ -250,10 +250,10 @@
 			{fullJournal ? 'В файле круг, каким он был' : 'В файле часть журнала на'}
 			{at(archive.snapshot_at ?? archive.ready_at)}. Круг работает как обычно.
 		</Hint>
-		<Hint class="mt-10 ink">
+		<Hint class="mt-8 ink">
 			Сервер удалит файл, когда вы его скачаете, или {at(archive.expires_at)}, если не скачаете.
 		</Hint>
-		<Hint class="mt-22 ctr-text">
+		<Hint class="mt-16 ctr-text">
 			<TextButton disabled={busy} onclick={() => void remove()}
 				>Удалить архив, не скачивая</TextButton
 			>
@@ -262,7 +262,7 @@
 		<!-- 6.28: файл готов и ещё не скачан, круг замер. -->
 		{@render fileRow(true)}
 		<Hint>Круг замер {at(frozenAt)}.</Hint>
-		<Hint class="mt-10 ink">
+		<Hint class="mt-8 ink">
 			Сервер удалит файл, когда вы его скачаете, или {at(archive.expires_at)}, если не скачаете.
 		</Hint>
 		{@render removeLocked()}
@@ -271,14 +271,14 @@
 		<!-- 6.29: файл у владельца, на сервере его нет; круг можно убрать. -->
 		{@render fileRow(false)}
 		<Hint>Круг замер {at(frozenAt)}.</Hint>
-		<Hint class="mt-10 ink">
+		<Hint class="mt-8 ink">
 			Вы скачали файл {at(archive.downloaded_at)}. На сервере его больше нет.
 		</Hint>
-		<Hint class="mt-10">
+		<Hint class="mt-8">
 			<TextButton disabled={busy} onclick={() => (rebuild = true)}>Собрать архив ещё раз</TextButton
 			>
 		</Hint>
-		<DangerZone class="mt-20" items={['Убрать круг с сервера']} onitem={() => (askRemove = true)}>
+		<DangerZone class="mt-16" items={['Убрать круг с сервера']} onitem={() => (askRemove = true)}>
 			{fullJournal
 				? 'Останется только файл у вас: потеряете файл или пароль — круг не вернуть.'
 				: PARTIAL_ARCHIVE_WARNING}<br /><br />Участники получили письмо {at(frozenAt)}: свой архив
@@ -293,8 +293,8 @@
 				? `Архив был собран ${at(archive.ready_at)}. Вы его не скачали, и ${at(archive.removed_at)} администратор сервера удалил файл.`
 				: `Архив был собран ${at(archive.ready_at)}. Вы его не скачали, и ${at(archive.removed_at)} сервер удалил файл.`}
 		/>
-		<Hint class="mt-14">Круг замер {at(frozenAt)}.</Hint>
-		<Button class="mt-14" variant="colored" onclick={() => (rebuild = true)}>
+		<Hint class="mt-16">Круг замер {at(frozenAt)}.</Hint>
+		<Button class="mt-16" variant="colored" onclick={() => (rebuild = true)}>
 			Собрать архив ещё раз
 		</Button>
 		{@render removeLocked()}
@@ -321,7 +321,7 @@
 			<Hint>Пароль нигде не хранится. Забудете — файл не открыть.</Hint>
 		{/if}
 		<SettingsRow
-			class={encrypt ? 'mt-10' : ''}
+			class={encrypt ? 'mt-8' : ''}
 			title="Удалить круг с сервера"
 			subtitle="после того как файл скачан"
 			divided="both"
@@ -335,7 +335,7 @@
 			{/snippet}
 		</SettingsRow>
 		{#if archive?.status === 'failed'}
-			<Hint class="mt-10 ink">Прошлая сборка не удалась.</Hint>
+			<Hint class="mt-8 ink">Прошлая сборка не удалась.</Hint>
 		{/if}
 		{#if info.fits}
 			{#if deleteCircle}
@@ -351,7 +351,7 @@
 				</Hint>
 			{/if}
 			<Button
-				class={deleteCircle ? 'mt-14' : 'mt-22'}
+				class={deleteCircle ? 'mt-16' : 'mt-16'}
 				variant="colored"
 				loading={busy}
 				loadingLabel={deleteCircle && !frozenAt ? 'Останавливаем круг…' : 'Собираем архив…'}
@@ -366,7 +366,7 @@
 				text={`Архиву нужно ${formatBytes(info.estimate_bytes)}, а на сервере${circle.serverName ? ` «${circle.serverName}»` : ''} столько места нет. Скачайте его сразу: если скачивание оборвётся, оно начнётся заново.`}
 			/>
 			<Button
-				class="mt-14"
+				class="mt-16"
 				variant="colored"
 				loading={busy}
 				loadingLabel="Готовим файл…"
@@ -384,7 +384,7 @@
 		{/if}
 	{/if}
 	{#if error && info}
-		<Hint class="mt-12">{error}</Hint>
+		<Hint class="mt-8">{error}</Hint>
 	{/if}
 
 	{#if askRemove}

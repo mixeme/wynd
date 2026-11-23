@@ -26,5 +26,5 @@
 		divided="bottom"
 		onclick={() => {}}
 	/>
-	<DangerZone class="mt-22" disabled items={['Уйти с сервера «Дом Ани» насовсем']} />
+	<DangerZone class="mt-16" disabled items={['Уйти с сервера «Дом Ани» насовсем']} />
 </FormLayout>

@@ -20,10 +20,10 @@
 
 <FormLayout shell app title="Ссылка переноса">
 	<FieldDisplay class="mt-16" mono value={link} />
-	<Button class="mt-12" variant="ghost" onclick={() => void copy()}>
+	<Button class="mt-8" variant="ghost" onclick={() => void copy()}>
 		{copied ? 'Скопировано' : 'Скопировать'}
 	</Button>
-	<Hint class="mt-10">
+	<Hint class="mt-8">
 		Это ссылка переноса круга. Открывать её не нужно — её вставляют на новом сервере: «Настройки» →
 		«Серверы» → «Принять круг» → «Перенести с другого сервера».
 	</Hint>

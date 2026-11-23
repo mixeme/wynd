@@ -19,6 +19,6 @@
 	onconfirm={() => {}}
 	oncancel={() => {}}
 >
-	<Hint class="mb-14">Впишите имя сервера, чтобы уйти.</Hint>
+	<Hint class="mb-16">Впишите имя сервера, чтобы уйти.</Hint>
 	<Input active placeholder="Дом Ани" bind:value={name} />
 </ConfirmDialog>

@@ -191,7 +191,7 @@
 		<div class="logo-wrap">
 			<Logo />
 		</div>
-		<ScreenTitle class="mt-30" centered>Войти</ScreenTitle>
+		<ScreenTitle class="mt-16" centered>Войти</ScreenTitle>
 		<!-- Адрес не вводится: приложение открыто с этого сервера, он и есть сервер
 	     входа. Другой сервер в окне — «Назад» к «Серверам»; в веб-приложении второй
 	     сервер пока не добавить (C69). -->
@@ -223,17 +223,17 @@
 		<!-- Без приглашения — только на открытом сервере: иначе дверь вела в тупик.
 	     Каждая ссылка — своей строкой с промежутком: вплотную в них промахивались. -->
 		{#if instance?.registration_mode === 'open'}
-			<Hint class="mt-30" centered>
+			<Hint class="mt-16" centered>
 				<a class="under" href="/join">Регистрация без приглашения</a>
 			</Hint>
 		{/if}
 		{#if instance && instance.registration_mode !== 'closed'}
-			<Hint class={instance?.registration_mode === 'open' ? 'mt-18' : 'mt-30'} centered>
+			<Hint class={instance?.registration_mode === 'open' ? 'mt-16' : 'mt-16'} centered>
 				<a class="under" href="/invite?from=login">У меня есть приглашение</a>
 			</Hint>
 		{/if}
 		{#if error}
-			<Hint class="mt-12" centered>{error}</Hint>
+			<Hint class="mt-8" centered>{error}</Hint>
 		{/if}
 	</PlainLayout>
 {/if}

@@ -139,11 +139,11 @@
 
 <FormLayout app color={circle.color} title="Кто вы в этом круге" onback={navigateBack}>
 	<Avatar initial={circle.identityInitial} color={circle.colorHex} src={avatarUrl} size="lg" />
-	<Hint centered class="mt-10">
+	<Hint centered class="mt-8">
 		<TextButton onclick={() => photoPicker?.open()}>сменить фото</TextButton>
 	</Hint>
 	{#if avatarUrl}
-		<Hint class="mt-6" centered>
+		<Hint class="mt-8" centered>
 			<TextButton onclick={() => void clearPhoto()}>убрать фото</TextButton>
 		</Hint>
 	{/if}
@@ -152,7 +152,7 @@
 		accept="image/*"
 		onfiles={([file]) => onPhotoSelected(file)}
 	/>
-	<Label class="mt-20">Имя</Label>
+	<Label class="mt-16">Имя</Label>
 	<Input active bind:value={name} />
 	{#if nameHint}
 		<Hint class="mt-8">{nameHint}</Hint>
@@ -163,7 +163,7 @@
 		другим нельзя — даже администратору сервера.</Hint
 	>
 	{#if history.length > 1}
-		<Label class="mt-22">Прежние имена</Label>
+		<Label class="mt-16">Прежние имена</Label>
 		{#each history.slice(1) as row (row.effective_at)}
 			<SettingsRow
 				class="pt-2"

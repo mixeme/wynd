@@ -102,15 +102,15 @@
 		{form.diaryMode ? 'Завести дневник' : 'Создать и позвать'}
 	</Button>
 	{#if !form.diaryMode}
-		<Hint class="mt-26" centered>
+		<Hint class="mt-16" centered>
 			<TextButton onclick={toggleDiaryMode}>Или круг только для себя, как дневник</TextButton>
 		</Hint>
 	{:else}
-		<Hint class="mt-26" centered>
+		<Hint class="mt-16" centered>
 			<TextButton onclick={toggleDiaryMode}>Или круг, куда можно позвать</TextButton>
 		</Hint>
 	{/if}
 	{#if form.error}
-		<Hint class="mt-12">{form.error}</Hint>
+		<Hint class="mt-8">{form.error}</Hint>
 	{/if}
 </FormLayout>

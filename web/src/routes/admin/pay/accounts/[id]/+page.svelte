@@ -103,21 +103,21 @@
 		{:else if error && !account}
 			<Hint>{error}</Hint>
 		{:else if account}
-			<h4 class="mb-6">{account.email}</h4>
-			<div class="note mb-22">
+			<h4 class="mb-8">{account.email}</h4>
+			<div class="note mb-16">
 				{subscriptionAdminSubtitle(account.subscription_expires_at)}
 			</div>
 			<SectionLabel class="mt-0 mx-0 mb-8">Продлить на</SectionLabel>
 			<PayTermPicker bind:days bind:custom bind:customDays bind:unlimited />
-			<div class="note mt-10 lh-15 mw-420">
+			<div class="note mt-8 lh-15 mw-420">
 				{extendHint}
 			</div>
 			<!-- Кнопка шириной как на заявке (10.12), а не во всю страницу. -->
-			<div class="mt-18 w180">
+			<div class="mt-16 w180">
 				<Button class="btn-flush" disabled={acting} onclick={() => void grant()}>Дать</Button>
 			</div>
 			{#if error}
-				<Hint class="mt-12">{error}</Hint>
+				<Hint class="mt-8">{error}</Hint>
 			{/if}
 		{/if}
 	</AdminSection>

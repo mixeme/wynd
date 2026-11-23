@@ -86,10 +86,10 @@
 				</div>
 				<div>
 					<SwitchRow bind:checked={settings.show} title="Показывать" />
-					<SwitchRow bind:checked={settings.dismissible} title="Можно скрыть" class="mt-18">
+					<SwitchRow bind:checked={settings.dismissible} title="Можно скрыть" class="mt-16">
 						Каждый сможет скрыть баннер у себя. Скрытый не вернётся, пока не выйдет новый.
 					</SwitchRow>
-					<div class="flex-mid gap-10 mt-18">
+					<div class="flex-mid gap-10 mt-16">
 						<span class="sz-12">До</span>
 						<Input admin type="date" class="w180" bind:value={settings.until} />
 						<!-- Поле даты на телефоне не очищается — срок снимает своя ссылка. -->
@@ -104,7 +104,7 @@
 				</div>
 			</div>
 			{#if error}
-				<Hint class="mt-12">{error}</Hint>
+				<Hint class="mt-8">{error}</Hint>
 			{/if}
 		{/if}
 	</AdminSection>

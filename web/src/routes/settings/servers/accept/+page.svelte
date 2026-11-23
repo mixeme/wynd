@@ -365,7 +365,7 @@
 	<Label class="mt-16">Сколько попросить</Label>
 	<SizeField bind:bytes={placeBytes} />
 	<Button
-		class="mt-14"
+		class="mt-16"
 		variant="colored"
 		loading={busy}
 		loadingLabel="Спрашиваем…"
@@ -404,7 +404,7 @@
 				onclick={!busy && !readingNote && !preparing ? () => (choosingServer = true) : undefined}
 			/>
 			<SettingsRow
-				class="mt-14"
+				class="mt-16"
 				title="Перенести с другого сервера"
 				subtitle="по ссылке переноса — сервер скачает круг сам"
 				divided="top"
@@ -441,7 +441,7 @@
 				</Hint>
 			{/if}
 			<Button
-				class="mt-14"
+				class="mt-16"
 				variant="colored"
 				loading={busy}
 				loadingLabel="Открываем…"
@@ -518,13 +518,13 @@
 						своё имя.
 					</Hint>
 				{/if}
-				<Button class="mt-14" variant="colored" onclick={startRevive}>Оживить круг</Button>
+				<Button class="mt-16" variant="colored" onclick={startRevive}>Оживить круг</Button>
 			{:else if room.request?.status === 'pending'}
 				<StatusCard
 					title="Место попросили"
 					text={`${day(room.request.created_at)} вы попросили у администратора ${formatBytes(room.request.requested_bytes)} для этого круга. Ответ администратора придёт письмом. Когда место дадут, здесь появится кнопка «Оживить круг».`}
 				/>
-				<Hint class="mt-14">
+				<Hint class="mt-16">
 					Можно уйти и вернуться позже: просьба останется, файл нужно будет выбрать заново.
 				</Hint>
 			{:else if room.request?.status === 'rejected'}
@@ -548,7 +548,7 @@
 				<Label class="mt-16">Кто уже здесь · {archive.people.length}</Label>
 				<PeopleStrip {people} />
 				{#if morePeople > 0}
-					<Hint centered class="mt-12">ещё {morePeople}</Hint>
+					<Hint centered class="mt-8">ещё {morePeople}</Hint>
 				{/if}
 			{/if}
 			<IdentityForm
@@ -577,7 +577,7 @@
 			{#if allHere}
 				<!-- Все, кроме вас, уже на этом сервере: письма не нужны, круг у них в списке. -->
 				<SettingsRow
-					class="mt-14"
+					class="mt-16"
 					title="Все уже на этом сервере"
 					subtitle="круг уже в их списке кругов — письма не нужны"
 					chevron={false}
@@ -585,7 +585,7 @@
 				/>
 			{:else if result.invited > 0}
 				<SettingsRow
-					class="mt-14"
+					class="mt-16"
 					title="Приглашения отправлены"
 					value={String(result.invited)}
 					chevron={false}
@@ -593,7 +593,7 @@
 				/>
 			{:else}
 				<SettingsRow
-					class="mt-14"
+					class="mt-16"
 					title="Приглашения не отправлены"
 					subtitle="позвать можно сейчас или позже — в участниках круга"
 					divided="both"
@@ -606,12 +606,12 @@
 			{#if !allHere}
 				<Hint>Кто войдёт сюда той же почтой, попадёт в своё имя.</Hint>
 			{/if}
-			<Button class="mt-14" variant="colored" onclick={() => goto(`/circles/${result?.circle_id}`)}>
+			<Button class="mt-16" variant="colored" onclick={() => goto(`/circles/${result?.circle_id}`)}>
 				Открыть круг
 			</Button>
 		{/if}
 		{#if error}
-			<Hint class="mt-12">{error}</Hint>
+			<Hint class="mt-8">{error}</Hint>
 		{/if}
 	</FormLayout>
 {/if}

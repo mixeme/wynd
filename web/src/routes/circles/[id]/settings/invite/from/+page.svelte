@@ -90,7 +90,7 @@
 	{:else}
 		{#each groups as group (group.id)}
 			<SearchGroupHeader
-				class="mt-12"
+				class="mt-8"
 				color={CIRCLE_COLORS[group.color]?.cssVar ?? 'var(--ochre)'}
 				name={group.name}
 				count={group.count}
@@ -108,7 +108,7 @@
 				/>
 			{/each}
 		{/each}
-		<Hint class="m-18-16-0"
+		<Hint class="m-16-16-0"
 			>Кто уже в «{circle.name}», сюда не попадает. Нажмите на человека — ему придёт приглашение,
 			ссылку отправлять не нужно.</Hint
 		>

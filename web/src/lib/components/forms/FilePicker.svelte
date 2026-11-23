@@ -154,7 +154,7 @@
 			В этом круге включены «Места со снимков». Галерея на этом телефоне передаёт фото без
 			координат.
 		</Hint>
-		<ChipGroup class="mt-12">
+		<ChipGroup class="mt-8">
 			<Chip selected={choice === 'documents'} onclick={() => (choice = 'documents')}>Файлы</Chip>
 			<Chip selected={choice === 'gallery'} onclick={() => (choice = 'gallery')}>Галерея</Chip>
 		</ChipGroup>

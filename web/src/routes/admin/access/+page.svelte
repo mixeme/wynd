@@ -188,8 +188,8 @@
 							</Chip>
 						{/each}
 					</ChipGroup>
-					<div class="note mt-10 lh-16">{modes.find((m) => m.key === mode)?.note}</div>
-					<SectionLabel class="mt-24 mx-0 mb-8">Позвать на сервер</SectionLabel>
+					<div class="note mt-8 lh-16">{modes.find((m) => m.key === mode)?.note}</div>
+					<SectionLabel class="mt-16 mx-0 mb-8">Позвать на сервер</SectionLabel>
 					<div class="flex-top gap-12">
 						<FieldDisplay admin mono value={inviteUrl || '…'} class="grow min0 m-0 anywhere" />
 						<TextButton variant="adminBox" class="bold no-shrink" onclick={() => void copyLink()}>
@@ -198,7 +198,7 @@
 					</div>
 					<!-- Опции те же, что у участника на 2.17; «Без ограничений» и «Без срока»
 					     — только здесь: вечная дверь на сервер — решение админа. -->
-					<ChipGroup class="mt-12 mx-0">
+					<ChipGroup class="mt-8 mx-0">
 						<Chip selected={uses === 'single'} onclick={() => pickUses('single')}>Одноразовая</Chip>
 						{#each USES_PRESETS as n (n)}
 							<Chip selected={uses === n} onclick={() => pickUses(n)}>На {n} человек</Chip>
@@ -243,11 +243,11 @@
 							<span class="note">дней, до {CUSTOM_DAYS_MAX}</span>
 						</div>
 					{/if}
-					<div class="fine mt-10 lh-16">
+					<div class="fine mt-8 lh-16">
 						Такая ссылка не ведёт ни в один круг: человек заведёт свой или дождётся, когда позовут.
 					</div>
 					{#if liveInvites.length > 0}
-						<SectionLabel class="mt-24 mx-0 mb-8">Живые</SectionLabel>
+						<SectionLabel class="mt-16 mx-0 mb-8">Живые</SectionLabel>
 						{#each liveInvites as inv (inv.id)}
 							<SettingsRow
 								title={inviteRegistryTitle(inv)}
@@ -270,11 +270,11 @@
 					{/if}
 				</div>
 				<div class="flex-fix w210">
-					<QrCode value={inviteUrl} size="sm" class="mt-26" />
+					<QrCode value={inviteUrl} size="sm" class="mt-16" />
 				</div>
 			</div>
 			{#if error}
-				<Hint class="mt-12">{error}</Hint>
+				<Hint class="mt-8">{error}</Hint>
 			{/if}
 		{/if}
 	</AdminSection>

@@ -79,7 +79,7 @@
 					: `Попросили ${formatBytes(lastRequest.requested_bytes)}`}
 				subtitle={`${formatSessionDay(lastRequest.created_at)} · ответ администратора придёт письмом`}
 				chevron={false}
-				class="mt-10"
+				class="mt-8"
 				divided="both"
 			/>
 		{:else if capped}
@@ -89,12 +89,12 @@
 				subtitle={lastRequest?.status === 'rejected'
 					? `${formatSessionDay(lastRequest.resolved_at ?? lastRequest.created_at)} администратор отказал в ${formatBytes(lastRequest.requested_bytes)}`
 					: 'больше места для круга'}
-				class="mt-10"
+				class="mt-8"
 				divided="both"
 				onclick={() => goto(`/circles/${circle.circleId}/quota/request`)}
 			/>
 		{/if}
-		<Label class="mt-22">Освободить место</Label>
+		<Label class="mt-16">Освободить место</Label>
 		{#if circle.archiveCycle?.active}
 			<!-- 6.16: архивация идёт — вторую не запустить, строка ведёт к срокам. -->
 			<SettingsRow
@@ -120,7 +120,7 @@
 				onclick={() => goto(`/circles/${circle.circleId}/quota/cleanup`)}
 			/>
 		{/if}
-		<Label class="mt-22">Полный архив круга</Label>
+		<Label class="mt-16">Полный архив круга</Label>
 		<SettingsRow
 			title="Сохранить круг в файл"
 			subtitle="все записи, фото и участники"

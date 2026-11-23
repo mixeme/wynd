@@ -119,7 +119,7 @@
 				Код отправлен на <strong>{pending.email}</strong>
 			</div>
 		{/if}
-		<div class="m-7-16-0">
+		<div class="m-8-16-0">
 			<TextButton class="link" onclick={changeEmail}>изменить адрес</TextButton>
 		</div>
 		<CodeBox bind:value={code} bind:el={codeInput} autofocus />
@@ -134,6 +134,6 @@
 		</div>
 	{/if}
 	{#if error}
-		<Hint class="mt-12">{error}</Hint>
+		<Hint class="mt-8">{error}</Hint>
 	{/if}
 </FormLayout>

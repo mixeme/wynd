@@ -174,12 +174,12 @@
 		{:else}
 			<div class="flex gap-44">
 				<div class="grow min0">
-					<SectionLabel class="mt-0 mx-0 mb-10">Пароль администратора</SectionLabel>
-					<div class="note mb-12 lh-15">Сбросить можно через консоль.</div>
-					<AdminField label="Текущий" width={88} class="mb-10">
+					<SectionLabel class="mt-0 mx-0 mb-8">Пароль администратора</SectionLabel>
+					<div class="note mb-8 lh-15">Сбросить можно через консоль.</div>
+					<AdminField label="Текущий" width={88} class="mb-8">
 						<Input admin class="grow" type="password" bind:value={currentPassword} />
 					</AdminField>
-					<AdminField label="Новый" width={88} class="mb-12">
+					<AdminField label="Новый" width={88} class="mb-8">
 						<Input admin class="grow" type="password" bind:value={newPassword} />
 					</AdminField>
 					<TextButton
@@ -188,8 +188,8 @@
 						loading={savingPassword}
 						onclick={() => void savePassword()}>Сохранить</TextButton
 					>
-					<SectionLabel class="mt-28 mx-0 mb-8">Письма администратору</SectionLabel>
-					<div class="note mb-12 lh-15">Сюда сервер пишет о заявках и поломках.</div>
+					<SectionLabel class="mt-16 mx-0 mb-8">Письма администратору</SectionLabel>
+					<div class="note mb-8 lh-15">Сюда сервер пишет о заявках и поломках.</div>
 					<div class="flex-mid">
 						<Input
 							admin
@@ -200,8 +200,8 @@
 							onchange={() => void persistAdminEmail()}
 						/>
 					</div>
-					<SectionLabel class="mt-28 mx-0 mb-10">Имя и адрес</SectionLabel>
-					<AdminField label="Имя" width={88} class="mb-10">
+					<SectionLabel class="mt-16 mx-0 mb-8">Имя и адрес</SectionLabel>
+					<AdminField label="Имя" width={88} class="mb-8">
 						<Input admin class="grow" bind:value={name} onchange={() => void persistName()} />
 					</AdminField>
 					<AdminField label="Адрес" width={88}>
@@ -215,8 +215,8 @@
 					</AdminField>
 				</div>
 				<div class="grow min0">
-					<SectionLabel class="mt-0 mx-0 mb-10">Почта</SectionLabel>
-					<div class="note mb-12 lh-15">Без SMTP люди не получат код для входа.</div>
+					<SectionLabel class="mt-0 mx-0 mb-8">Почта</SectionLabel>
+					<div class="note mb-8 lh-15">Без SMTP люди не получат код для входа.</div>
 					<div class="col gap-10">
 						<AdminField label="Хост" width={88}>
 							<Input
@@ -265,7 +265,7 @@
 							/>
 						</AdminField>
 					</div>
-					<SectionLabel class="mt-28 mx-0 mb-8">Проверочное письмо</SectionLabel>
+					<SectionLabel class="mt-16 mx-0 mb-8">Проверочное письмо</SectionLabel>
 					<div class="flex-mid gap-12">
 						<Input admin class="grow" placeholder="куда" bind:value={testTo} />
 						<TextButton
@@ -278,12 +278,12 @@
 				</div>
 			</div>
 			{#if sending}
-				<Hint class="mt-12">Отправляем…</Hint>
+				<Hint class="mt-8">Отправляем…</Hint>
 			{:else if notice}
-				<Hint class="mt-12">{notice}</Hint>
+				<Hint class="mt-8">{notice}</Hint>
 			{/if}
 			{#if error}
-				<Hint class="mt-12">{error}</Hint>
+				<Hint class="mt-8">{error}</Hint>
 			{/if}
 		{/if}
 	</AdminSection>

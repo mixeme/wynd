@@ -313,7 +313,7 @@
 	<Label class="mt-16">Сколько попросить</Label>
 	<SizeField bind:bytes={placeBytes} />
 	<Button
-		class="mt-14"
+		class="mt-16"
 		variant="colored"
 		loading={busy}
 		loadingLabel="Спрашиваем…"
@@ -344,7 +344,7 @@
 			{#if r.invited === 0 && r.not_joined === 0 && (r.already_here ?? 0) > 0}
 				<!-- Все, кроме вас, уже на этом сервере: письма не нужны (C51, как у оживления). -->
 				<SettingsRow
-					class="mt-14"
+					class="mt-16"
 					title="Все уже на этом сервере"
 					subtitle="круг уже в их списке кругов — письма не нужны"
 					chevron={false}
@@ -352,7 +352,7 @@
 				/>
 			{:else if r.invited > 0}
 				<SettingsRow
-					class="mt-14"
+					class="mt-16"
 					title="Приглашения отправлены"
 					value={String(r.invited)}
 					chevron={false}
@@ -360,7 +360,7 @@
 				/>
 			{:else}
 				<SettingsRow
-					class="mt-14"
+					class="mt-16"
 					title="Приглашения не отправлены"
 					subtitle="позвать можно сейчас или позже — в участниках круга"
 					divided="both"
@@ -378,7 +378,7 @@
 				Осталось завершить перенос на прежнем сервере: {sourceName} → настройки круга → «Завершить перенос».
 				До тех пор круг стоит там замершим.
 			</Hint>
-			<Button class="mt-14" variant="colored" onclick={() => goto(`/circles/${r.circle_id}`)}>
+			<Button class="mt-16" variant="colored" onclick={() => goto(`/circles/${r.circle_id}`)}>
 				Открыть круг
 			</Button>
 		{:else if who && move}
@@ -388,7 +388,7 @@
 				<Label class="mt-16">Кто уже здесь · {move.people?.length ?? 0}</Label>
 				<PeopleStrip {people} />
 				{#if morePeople > 0}
-					<Hint centered class="mt-12">ещё {morePeople}</Hint>
+					<Hint centered class="mt-8">ещё {morePeople}</Hint>
 				{/if}
 			{/if}
 			<IdentityForm
@@ -430,7 +430,7 @@
 						: `${move.source_name ? `«${move.source_name}»` : source} собирает круг для переноса.`}
 				</Hint>
 			{/if}
-			<Hint class="mt-14 ctr-text">Перенос продолжится, даже если закрыть приложение.</Hint>
+			<Hint class="mt-16 ctr-text">Перенос продолжится, даже если закрыть приложение.</Hint>
 		{:else}
 			<!-- 7.20 и его состояния. -->
 			<Label>Сервер</Label>
@@ -472,7 +472,7 @@
 			{/if}
 			{#if move}
 				<CircleRow
-					class="mt-10"
+					class="mt-8"
 					initial={circleInitial(move.circle.name)}
 					name={move.circle.name}
 					color={colorOf(move.circle.color)}
@@ -493,15 +493,15 @@
 				{#if expired}
 					<!-- 7.24: срок ссылки вышел. -->
 					<StatusCard
-						class="mt-14"
+						class="mt-16"
 						title="Срок ссылки вышел"
 						text={`Ссылка переноса действовала до ${until(move.expires_at)}. Круг остаётся замершим. На прежнем сервере${move.source_name ? `, «${move.source_name}»,` : ''} получите новую ссылку переноса.${move.request?.status === 'pending' ? ` Просьба о ${formatBytes(move.request.requested_bytes)} у администратора ${srv} остаётся.` : ''}`}
 					/>
-					<Hint class="mt-14 ctr-text">Новую ссылку вставьте в это же поле.</Hint>
+					<Hint class="mt-16 ctr-text">Новую ссылку вставьте в это же поле.</Hint>
 				{:else if move.status === 'failed'}
-					<StatusCard class="mt-14" title="Перенос не удался" text={moveErrorText(move.error)} />
+					<StatusCard class="mt-16" title="Перенос не удался" text={moveErrorText(move.error)} />
 					<Button
-						class="mt-14"
+						class="mt-16"
 						variant="colored"
 						loading={busy}
 						loadingLabel="Пробуем…"
@@ -527,7 +527,7 @@
 						</Hint>
 					{/if}
 					<Button
-						class="mt-14"
+						class="mt-16"
 						variant="colored"
 						loading={busy}
 						loadingLabel="Переносим…"
@@ -539,37 +539,37 @@
 				{:else if move.request?.status === 'pending'}
 					<!-- 7.22 -->
 					<StatusCard
-						class="mt-14"
+						class="mt-16"
 						title="Место попросили"
 						text={`${day(move.request.created_at)} вы попросили у администратора ${formatBytes(move.request.requested_bytes)} для этого круга. Ответ администратора придёт письмом. Когда место дадут, здесь появится кнопка «Перенести круг».`}
 					/>
-					<Hint class="mt-10">{@render deadline()}</Hint>
-					<Hint class="mt-14 ctr-text"
+					<Hint class="mt-8">{@render deadline()}</Hint>
+					<Hint class="mt-16 ctr-text"
 						>Можно уйти и вернуться позже: просьба и ссылка останутся.</Hint
 					>
 				{:else if move.request?.status === 'rejected'}
 					<!-- 7.23 -->
 					<StatusCard
-						class="mt-14"
+						class="mt-16"
 						title="В месте отказали"
 						text={`${day(move.request.resolved_at ?? move.request.created_at)} администратор отказал в ${formatBytes(move.request.requested_bytes)} для этого круга. Можно попросить меньше — кругу нужно ${formatBytes(move.circle.bytes)} — или выбрать другой сервер.`}
 					/>
-					<Hint class="mt-10">{@render deadline()}</Hint>
+					<Hint class="mt-8">{@render deadline()}</Hint>
 					{@render placeAsk('Попросить ещё раз')}
 				{:else}
 					<!-- 7.21 -->
 					<StatusCard
-						class="mt-14"
+						class="mt-16"
 						title="Круг сюда не помещается"
 						text={noRoomText(formatBytes(move.circle.bytes), move, formatBytes)}
 					/>
-					<Hint class="mt-10">{@render deadline()}</Hint>
+					<Hint class="mt-8">{@render deadline()}</Hint>
 					{@render placeAsk('Попросить место')}
 				{/if}
 			{/if}
 		{/if}
 		{#if error}
-			<Hint class="mt-12">{error}</Hint>
+			<Hint class="mt-8">{error}</Hint>
 		{/if}
 	</FormLayout>
 {/if}

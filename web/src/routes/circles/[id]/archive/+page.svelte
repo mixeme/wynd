@@ -86,9 +86,9 @@
 		>
 
 		{#if downloadState?.retryAt || downloadState?.error}
-			<Hint class="mt-12 ink">{downloadState.error ?? archiveBusyMessage(remaining)}</Hint>
+			<Hint class="mt-8 ink">{downloadState.error ?? archiveBusyMessage(remaining)}</Hint>
 		{/if}
-		<Hint class="mt-12 ctr">Скачивание начнётся сразу. Если оно оборвётся, начнётся заново.</Hint>
+		<Hint class="mt-8 ctr">Скачивание начнётся сразу. Если оно оборвётся, начнётся заново.</Hint>
 	{:else}
 		<Label>Что внутри</Label>
 		<SettingsRow
@@ -137,10 +137,10 @@
 		{/if}
 
 		{#if downloadState?.retryAt || downloadState?.error}
-			<Hint class="mt-12 ink">{downloadState.error ?? archiveBusyMessage(remaining)}</Hint>
+			<Hint class="mt-8 ink">{downloadState.error ?? archiveBusyMessage(remaining)}</Hint>
 		{/if}
 		<!-- Архив идёт потоком (6.23, план 46, C38): докачки нет, повтор — заново. -->
-		<Hint class="mt-12 ctr"
+		<Hint class="mt-8 ctr"
 			>Скачивание начнётся сразу. Если оно оборвётся, начнётся заново. Качать можно сколько угодно
 			раз до {formatEntryDate(cycle.deadline.slice(0, 10))}.</Hint
 		>

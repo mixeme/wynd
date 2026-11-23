@@ -158,7 +158,7 @@
 	</FormLayout>
 {:else}
 	<PlainLayout app>
-		<ScreenTitle class="mt-24">Вас пригласили</ScreenTitle>
+		<ScreenTitle class="mt-16">Вас пригласили</ScreenTitle>
 		{#if peek && isCircleInvitePeek(peek)}
 			<InviteCard
 				initial={circleInitial(peek.circle_name)}
@@ -187,7 +187,7 @@
 		{/if}
 
 		{#if error}
-			<Hint class="mt-12">{error}</Hint>
+			<Hint class="mt-8">{error}</Hint>
 		{/if}
 	</PlainLayout>
 {/if}

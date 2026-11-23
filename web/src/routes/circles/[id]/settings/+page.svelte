@@ -445,7 +445,7 @@
 	{:else if error}
 		<Hint class="gutter">{error}</Hint>
 	{:else}
-		{#if errorHint}<Hint class="gutter-24">{errorHint}</Hint>{/if}
+		{#if errorHint}<Hint class="gutter">{errorHint}</Hint>{/if}
 		<Label>Название</Label>
 		{#if canSettings}
 			<Input active bind:value={name} onchange={() => void saveName()} />
@@ -504,7 +504,7 @@
 		{#if canInvite}
 			<SettingsRow
 				title="Пригласить"
-				class="mt-14"
+				class="mt-16"
 				divided="top"
 				onclick={() => goto(`/circles/${circle.circleId}/settings/invite`)}
 			/>
@@ -535,7 +535,7 @@
 		</SettingsRow>
 
 		{#if isOwner && quotaLoaded}
-			<Label class="mt-20">Место</Label>
+			<Label class="mt-16">Место</Label>
 			{#if quotaBytes}
 				<Meter value={usedBytes / (1024 * 1024 * 1024)} max={quotaBytes / (1024 * 1024 * 1024)} />
 				<Hint class="mt-8"
@@ -568,7 +568,7 @@
 			/>
 		{/if}
 
-		<Label class="mt-20">Участники · {activeMembers.length}</Label>
+		<Label class="mt-16">Участники · {activeMembers.length}</Label>
 		{#each previewMembers as m, i (m.identity_id)}
 			<MemberRow
 				initial={circleInitial(m.name)}
@@ -586,7 +586,7 @@
 		/>
 
 		{#if !soloCircle || isOwner}
-			<div class="mt-20">
+			<div class="mt-16">
 				<DangerZone
 					items={[
 						...(!soloCircle && isOwner ? ['Передать владение'] : []),
@@ -624,9 +624,9 @@
 		oncancel={closeDeleteDialog}
 	>
 		{#if deleteImpactHint}
-			<Hint class="mb-14">{deleteImpactHint}</Hint>
+			<Hint class="mb-16">{deleteImpactHint}</Hint>
 		{/if}
-		<Label class="m-0-0-7">Напишите имя круга</Label>
+		<Label class="m-0-0-8">Напишите имя круга</Label>
 		<Input active bind:value={deleteConfirm} />
 		{#if deleteError}
 			<Hint class="mt-8">{deleteError}</Hint>

@@ -298,12 +298,12 @@
      а настоящее поле стояло ниже: на экране было две строки поиска. -->
 <FormLayout shell app bar={searchBar} compact barMinHeight={60} onback={navigateBack}>
 	{#if fromCircle}
-		<ChipGroup class="mt-12">
+		<ChipGroup class="mt-8">
 			<Chip onclick={backToCircle}>Этот круг</Chip>
 			<Chip selected>Все круги</Chip>
 		</ChipGroup>
 	{/if}
-	<ChipGroup class={fromCircle ? undefined : 'mt-12'}>
+	<ChipGroup class={fromCircle ? undefined : 'mt-8'}>
 		<Chip selected={periodActive && !byDay} onclick={() => onTogglePeriod(false)}>Период</Chip>
 		<Chip selected={periodActive && byDay} onclick={() => onTogglePeriod(true)}>По дню</Chip>
 		<Chip selected={filterPhoto} onclick={() => (filterPhoto = !filterPhoto)}>С фото</Chip>
@@ -340,7 +340,7 @@
 			/>
 		{/each}
 	{/each}
-	<Hint class="mt-22" centered>
+	<Hint class="mt-16" centered>
 		Ищется только то, что вы застали:<br />записи до вашего прихода не найдутся.
 	</Hint>
 </FormLayout>

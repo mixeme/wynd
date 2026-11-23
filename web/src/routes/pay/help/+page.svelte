@@ -44,13 +44,13 @@
 		{#if bannerText}
 			<Hint>{bannerText}</Hint>
 		{/if}
-		<SectionLabel class="mt-22">Куда платить</SectionLabel>
+		<SectionLabel class="mt-16">Куда платить</SectionLabel>
 		<RequisitesCard text={requisites} />
-		<Hint class="mt-22" centered>
+		<Hint class="mt-16" centered>
 			Это добровольно: Wynd работает и без перевода. Спасибо, если поддержите.
 		</Hint>
 		{#if error}
-			<Hint class="mt-12">{error}</Hint>
+			<Hint class="mt-8">{error}</Hint>
 		{/if}
 	{/if}
 </FormLayout>

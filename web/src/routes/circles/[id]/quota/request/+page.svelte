@@ -108,7 +108,7 @@
 		<Loading />
 	{:else}
 		<CirclePlace {usedBytes} {quotaBytes} />
-		<Label class="mt-22">Сколько нужно</Label>
+		<Label class="mt-16">Сколько нужно</Label>
 		<ChipGroup>
 			{#each QUOTA_CHIPS.filter((c) => c.key !== 'none') as opt (opt.key)}
 				<Chip

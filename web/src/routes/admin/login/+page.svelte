@@ -50,7 +50,7 @@
 			onkeydown={(e) => e.key === 'Enter' && onSubmit()}
 		/>
 		<Button
-			class="mt-20"
+			class="mt-16"
 			{loading}
 			disabled={loading}
 			onclick={loading ? () => {} : () => void onSubmit()}
@@ -58,7 +58,7 @@
 			Войти
 		</Button>
 		{#if error}
-			<Hint class="mt-12">{error}</Hint>
+			<Hint class="mt-8">{error}</Hint>
 		{/if}
 	</AdminSection>
 </AdminWideLayout>

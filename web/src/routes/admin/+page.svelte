@@ -404,7 +404,7 @@
 					? barSegments
 					: [{ width: `${usedPct}%`, color: 'var(--ink)' }]}
 			/>
-			<div class="note {archivesBytes > 0 ? 'm-10-0-6' : 'm-10-0-22'}">
+			<div class="note {archivesBytes > 0 ? 'm-8-0-8' : 'm-8-0-16'}">
 				{formatBytes(used)} из {formatBytes(quota)} · свободно {formatBytes(free)}
 			</div>
 			{#if archivesBytes > 0}
@@ -420,7 +420,7 @@
 					]}
 				/>
 			{/if}
-			<div class="flex-mid gap-14 wrap mt-26">
+			<div class="flex-mid gap-14 wrap mt-16">
 				<span class="ttl flab">Предел сервера</span>
 				<Input
 					admin
@@ -444,7 +444,7 @@
 			{#if instanceQuotaHint}
 				<Hint class="mt-8">{instanceQuotaHint}</Hint>
 			{/if}
-			<div class="flex-top gap-14 mt-14">
+			<div class="flex-top gap-14 mt-16">
 				<span class="ttl flab pt-8">Квота круга по умолчанию</span>
 				<div>
 					<ChipGroup class="m-0">
@@ -472,7 +472,7 @@
 				</div>
 			</div>
 			{#if circles.length}
-				<DataTable class="mt-20">
+				<DataTable class="mt-16">
 					<thead>
 						<tr>
 							<th class="w-34p">Круг</th>
@@ -520,7 +520,7 @@
 					<div class="ttl">
 						{selectedCircle.name}{selectedCircle.quota_custom ? ' · своя квота' : ''}
 					</div>
-					<div class="note m-4-0-10">
+					<div class="note m-4-0-8">
 						владелец · {selectedCircle.owner_email}
 					</div>
 					<div class="flex-mid gap-10 wrap">
@@ -544,14 +544,14 @@
 					{#if circleQuotaHint}
 						<Hint class="mt-8">{circleQuotaHint}</Hint>
 					{/if}
-					<div class="fine mt-10">
+					<div class="fine mt-8">
 						Занято {formatBytes(selectedCircle.media_bytes)}. Если поставить меньше, писать в круг
 						станет нельзя, пока владелец не освободит место.
 					</div>
 				</Panel>
 			{/if}
 			{#if !selectedCircleId}
-				<div id="requests"><SectionLabel class="mt-26 mx-0">Просят больше</SectionLabel></div>
+				<div id="requests"><SectionLabel class="mt-16 mx-0">Просят больше</SectionLabel></div>
 				{#if requests.length === 0}
 					<Hint>Запросов нет.</Hint>
 				{:else}
@@ -572,11 +572,11 @@
 						/>
 					{/each}
 				{/if}
-				<div class="faint lh-16 sz-11 mt-14">
+				<div class="faint lh-16 sz-11 mt-16">
 					Отказ ничего не ломает: место освободит владелец круга.
 				</div>
 				<!-- 9.9: готовые полные архивы кругов — срок хранения и аварийная очистка. -->
-				<SectionLabel class="mt-26 mx-0">Готовые архивы</SectionLabel>
+				<SectionLabel class="mt-16 mx-0">Готовые архивы</SectionLabel>
 				<CheckRow
 					name="Хранить готовый архив"
 					description="Скачанный архив сервер удаляет сразу. Не скачанный — через это время после сборки."
@@ -614,10 +614,10 @@
 				{/if}
 			{/if}
 			<!-- Про незашифрованное хранение — здесь, где диск (C44, слово владельца 2026-10-19). -->
-			<div class="fine mt-22 lh-16 top-line pt-14 mw-620">
+			<div class="fine mt-16 lh-16 top-line pt-14 mw-620">
 				Записи и медиа хранятся на этом диске незашифрованными.
 			</div>
 		{/if}
 	</AdminSection>
-	<AboutFooter class="mt-26" />
+	<AboutFooter class="mt-16" />
 </AdminWideLayout>

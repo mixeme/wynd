@@ -53,5 +53,5 @@
 	{/if}
 </ChipGroup>
 {#if custom && !unlimited && !none}
-	<Input admin type="number" placeholder="дней" class="mt-10 w120" bind:value={customDays} />
+	<Input admin type="number" placeholder="дней" class="mt-8 w120" bind:value={customDays} />
 {/if}

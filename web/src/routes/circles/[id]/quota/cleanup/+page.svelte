@@ -179,7 +179,7 @@
 			bind:cutoffX={chartCutoffX}
 			oncutoff={onChartCutoff}
 		/>
-		<Label class="mt-14">Архивировать всё до</Label>
+		<Label class="mt-16">Архивировать всё до</Label>
 		<Input
 			active
 			type="date"
@@ -206,7 +206,7 @@
 				</Hint>
 			{/if}
 		{/if}
-		<Button class="mt-14" variant="colored" disabled={!cutoffDate || nothingBefore} onclick={next}>
+		<Button class="mt-16" variant="colored" disabled={!cutoffDate || nothingBefore} onclick={next}>
 			Дальше: сроки
 		</Button>
 	{/if}

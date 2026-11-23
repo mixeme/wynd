@@ -148,8 +148,8 @@
 		{:else if !acc}
 			<Hint>{error || 'Человек не найден'}</Hint>
 		{:else}
-			<h4 class="mb-6">{acc.email}</h4>
-			<div class="note mb-20 lh-15">
+			<h4 class="mb-8">{acc.email}</h4>
+			<div class="note mb-16 lh-15">
 				на сервере с {formatAdminDayYear(acc.created_at)}
 				{#if acc.last_login_at}
 					· последний код {formatAdminDay(acc.last_login_at)}
@@ -180,7 +180,7 @@
 							/>
 						{/each}
 					{/if}
-					<div class="fine mt-10">
+					<div class="fine mt-8">
 						{#if acc.owns_circle}
 							Владельца с этой страницы не удалить.
 						{:else}
@@ -189,7 +189,7 @@
 					</div>
 				</div>
 				<div>
-					<SectionLabel class="mt-0 mx-0 mb-10">Почта</SectionLabel>
+					<SectionLabel class="mt-0 mx-0 mb-8">Почта</SectionLabel>
 					<div class="flex-mid gap-10">
 						<Input
 							admin
@@ -206,16 +206,16 @@
 						>
 					</div>
 					{#if emailNote}
-						<div class="note mt-10">{emailNote}</div>
+						<div class="note mt-8">{emailNote}</div>
 					{/if}
-					<div class="fine mt-10">
+					<div class="fine mt-8">
 						Без кода — для того, кто потерял прежний ящик и сам сменить не может. Убедитесь, что
 						просит именно этот человек: с новой почтой он получит все его круги.
 					</div>
 					<div class="fine mt-8">
 						На оба адреса уйдёт письмо. Все его устройства попросят войти заново.
 					</div>
-					<SectionLabel class="mt-26 mx-0 mb-10">Вход</SectionLabel>
+					<SectionLabel class="mt-16 mx-0 mb-8">Вход</SectionLabel>
 					<SwitchRow bind:checked={loginOpen} title={loginOpen ? 'Вход открыт' : 'Вход закрыт'}>
 						Закрыть — код перестанет приходить, круги не тронуты.
 					</SwitchRow>
@@ -225,7 +225,7 @@
 							items={['Удалить с сервера']}
 							disabled={deleting}
 							onitem={() => (askDelete = true)}
-							class="mt-28 mx-0 mb-0"
+							class="mt-16 mx-0 mb-0"
 						>
 							Записи и имена в кругах останутся. С этого сервера человек уйдёт.
 						</DangerZone>
@@ -245,7 +245,7 @@
 				</div>
 			</div>
 			{#if error}
-				<Hint class="mt-12">{error}</Hint>
+				<Hint class="mt-8">{error}</Hint>
 			{/if}
 		{/if}
 	</AdminSection>
