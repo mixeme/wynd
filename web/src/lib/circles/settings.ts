@@ -354,6 +354,21 @@ export async function loadSettingsBundleCached(
 	return bundle;
 }
 
+/**
+ * Свежие prefs уведомлений в снимке семейства настроек: экран «Уведомления»
+ * рисует из него первый кадр, и после сохранения снимок не должен отставать
+ * (C125).
+ */
+export async function cacheNotifyPrefs(
+	origin: string,
+	circleId: string,
+	prefs: NotifyPrefs
+): Promise<void> {
+	const bundle = await readCachedSnapshot<SettingsBundle>(origin, 'settings', circleId);
+	if (!bundle || bundle.v !== SETTINGS_BUNDLE_VERSION) return;
+	await writeCachedSnapshot(origin, 'settings', circleId, { ...bundle, notify: prefs });
+}
+
 export async function renameIdentity(
 	origin: string,
 	circleId: string,

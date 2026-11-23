@@ -12,6 +12,7 @@
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Label from '$ui/forms/Label.svelte';
+	import Loading from '$ui/Loading.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import {
@@ -69,6 +70,12 @@
 	let canChangeKinds = $state(false);
 	let multiTurnedOn = $state(false);
 	const showKindChips = $derived(multiInvitesAllowed || canChangeKinds);
+	// Ссылка создаётся запросом при открытии. До неё экран не показываем:
+	// иначе QR и карточка ссылки встают над подсказкой и чипами, и всё, что
+	// ниже, уезжает на ~180 px (C125). Заодно чипы не попадают в момент, когда
+	// первая ссылка ещё создаётся: их нажатия терялись, а выбранное не совпадало
+	// со ссылкой.
+	let initialReady = $state(false);
 
 	async function pickKind(next: 'single' | 'multi') {
 		if (next === 'multi' && !multiInvitesAllowed) {
@@ -177,79 +184,85 @@
 		} catch {
 			/* defaults */
 		}
-		void createLink();
+		await createLink();
+		initialReady = true;
 	});
 </script>
 
 <FormLayout app color={circle.color} title="Пригласить в {circle.name}" onback={goBack}>
-	{#if showFromCircles}
-		<Button class="mt-8" variant="ghost" onclick={goFromCircles}>Позвать из других кругов</Button>
-	{/if}
-	<QrCode value={inviteUrl} />
-	<Hint class="gutter ctr">Кто ещё не на сервере — код или ссылка</Hint>
-	{#if inviteUrl}
-		<InviteLinkCard
-			url={inviteUrl}
-			{shared}
-			{copied}
-			onshare={() => void shareLink()}
-			oncopy={() => void copyLink()}
-		/>
-	{/if}
-	<Label class="mt-16">Ссылка</Label>
-	{#if showKindChips}
-		<ChipGroup>
-			<Chip selected={kind === 'single'} onclick={() => void pickKind('single')}>Одноразовая</Chip>
-			<Chip selected={kind === 'multi'} onclick={() => void pickKind('multi')}>Многоразовая</Chip>
-		</ChipGroup>
-	{/if}
-	{#if multiInvitesAllowed && kind === 'multi'}
-		<ChipGroup class="mt-8">
-			{#each USES_PRESETS as n (n)}
-				<Chip selected={multiUses === n} onclick={() => pickUses(n)}>{n}</Chip>
-			{/each}
-			<Chip selected={multiUses === 'custom'} onclick={() => pickUses('custom')}>Своё…</Chip>
-		</ChipGroup>
-		{#if multiUses === 'custom'}
-			<NumberField
-				bind:value={customUses}
-				min={1}
-				max={CUSTOM_USES_MAX}
-				onchange={() => void createLink()}
-				unit="человек, до {CUSTOM_USES_MAX}"
+	{#if !initialReady}
+		<Loading />
+	{:else}
+		{#if showFromCircles}
+			<Button class="mt-8" variant="ghost" onclick={goFromCircles}>Позвать из других кругов</Button>
+		{/if}
+		<QrCode value={inviteUrl} />
+		<Hint class="gutter ctr">Кто ещё не на сервере — код или ссылка</Hint>
+		{#if inviteUrl}
+			<InviteLinkCard
+				url={inviteUrl}
+				{shared}
+				{copied}
+				onshare={() => void shareLink()}
+				oncopy={() => void copyLink()}
 			/>
 		{/if}
-	{/if}
-	<ChipGroup class="mt-8">
-		{#each TTL_PRESETS as opt (opt.sec)}
-			<Chip selected={ttl === opt.sec} onclick={() => pickTtl(opt.sec)}>{opt.label}</Chip>
-		{/each}
-		<Chip selected={ttl === 'custom'} onclick={() => pickTtl('custom')}>Своё…</Chip>
-	</ChipGroup>
-	{#if ttl === 'custom'}
-		<NumberField
-			bind:value={customDays}
-			min={1}
-			max={CUSTOM_DAYS_MAX}
-			onchange={() => void createLink()}
-			unit="дней, до {CUSTOM_DAYS_MAX}"
-		/>
-	{/if}
-	<!-- Подпись говорит о той ссылке, что на экране: одноразовая — один
-	     человек, многоразовая — лимит. Про многоразовые, которых выбрать
-	     нельзя, не говорит. -->
-	<Hint
-		>В ссылке уже есть всё для входа: тому, кого вы зовёте, ничего вводить не придётся.
-		{#if multiInvitesAllowed && kind === 'multi'}Многоразовая обязательно имеет лимит — по ней на
-			сервер входят новые люди.{:else}По одноразовой войдёт один человек.{/if}{#if multiTurnedOn}{' '}Многоразовые
-			ссылки теперь разрешены в круге — выключить можно в настройках.{/if}</Hint
-	>
-	{#if fromCreate}
-		<Button variant="ghost" onclick={goCircle}>Сначала в круг, позову потом</Button>
-	{/if}
-	{#if error}
-		<Hint class="gutter">{error}</Hint>
-	{:else if loading}
-		<Hint class="gutter">Создание ссылки…</Hint>
+		<Label class="mt-16">Ссылка</Label>
+		{#if showKindChips}
+			<ChipGroup>
+				<Chip selected={kind === 'single'} onclick={() => void pickKind('single')}>Одноразовая</Chip
+				>
+				<Chip selected={kind === 'multi'} onclick={() => void pickKind('multi')}>Многоразовая</Chip>
+			</ChipGroup>
+		{/if}
+		{#if multiInvitesAllowed && kind === 'multi'}
+			<ChipGroup class="mt-8">
+				{#each USES_PRESETS as n (n)}
+					<Chip selected={multiUses === n} onclick={() => pickUses(n)}>{n}</Chip>
+				{/each}
+				<Chip selected={multiUses === 'custom'} onclick={() => pickUses('custom')}>Своё…</Chip>
+			</ChipGroup>
+			{#if multiUses === 'custom'}
+				<NumberField
+					bind:value={customUses}
+					min={1}
+					max={CUSTOM_USES_MAX}
+					onchange={() => void createLink()}
+					unit="человек, до {CUSTOM_USES_MAX}"
+				/>
+			{/if}
+		{/if}
+		<ChipGroup class="mt-8">
+			{#each TTL_PRESETS as opt (opt.sec)}
+				<Chip selected={ttl === opt.sec} onclick={() => pickTtl(opt.sec)}>{opt.label}</Chip>
+			{/each}
+			<Chip selected={ttl === 'custom'} onclick={() => pickTtl('custom')}>Своё…</Chip>
+		</ChipGroup>
+		{#if ttl === 'custom'}
+			<NumberField
+				bind:value={customDays}
+				min={1}
+				max={CUSTOM_DAYS_MAX}
+				onchange={() => void createLink()}
+				unit="дней, до {CUSTOM_DAYS_MAX}"
+			/>
+		{/if}
+		<!-- Подпись говорит о той ссылке, что на экране: одноразовая — один
+		     человек, многоразовая — лимит. Про многоразовые, которых выбрать
+		     нельзя, не говорит. -->
+		<Hint
+			>В ссылке уже есть всё для входа: тому, кого вы зовёте, ничего вводить не придётся.
+			{#if multiInvitesAllowed && kind === 'multi'}Многоразовая обязательно имеет лимит — по ней на
+				сервер входят новые люди.{:else}По одноразовой войдёт один человек.{/if}{#if multiTurnedOn}{' '}Многоразовые
+				ссылки теперь разрешены в круге — выключить можно в настройках.{/if}</Hint
+		>
+		{#if fromCreate}
+			<Button variant="ghost" onclick={goCircle}>Сначала в круг, позову потом</Button>
+		{/if}
+		{#if error}
+			<Hint class="gutter">{error}</Hint>
+		{:else if loading}
+			<Hint class="gutter">Создание ссылки…</Hint>
+		{/if}
 	{/if}
 </FormLayout>
