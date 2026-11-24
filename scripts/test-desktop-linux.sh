@@ -14,6 +14,15 @@ echo "[linux] frontend check"
 echo "[linux] build"
 scripts/build-desktop-linux.sh
 
+# Полные go vet/test по контуру включают Мастерскую и «Подпись»: их frontend/dist
+# тоже вшиваются, поэтому собираем оба.
+for frontend in cmd/wynd-workshop/frontend cmd/wynd-signer/frontend; do
+	if [ ! -d "$frontend/node_modules" ]; then
+		(cd "$frontend" && npm ci --no-audit --no-fund)
+	fi
+	(cd "$frontend" && npm run build)
+done
+
 echo "[linux] go vet/test (desktop,gtk3, весь контур)"
 go vet -tags "desktop,gtk3" ./...
 go test -tags "desktop,gtk3" ./...

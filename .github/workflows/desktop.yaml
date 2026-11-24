@@ -75,6 +75,8 @@ jobs:
           cache: npm
           cache-dependency-path: |
             web/package-lock.json
+            cmd/wynd-workshop/frontend/package-lock.json
+            cmd/wynd-signer/frontend/package-lock.json
             cmd/wynd-desktop/frontend/package-lock.json
       - name: Install Linux build dependencies
         run: |
@@ -85,6 +87,8 @@ jobs:
       - name: Install frontend dependencies
         run: |
           npm --prefix web ci
+          npm --prefix cmd/wynd-workshop/frontend ci
+          npm --prefix cmd/wynd-signer/frontend ci
           npm --prefix cmd/wynd-desktop/frontend ci
       - name: Linux desktop gate
         run: scripts/test-desktop-linux.sh
