@@ -8,6 +8,7 @@ import { CIRCLE_COLORS, type CircleColor } from '$lib/theme/colors';
 import { formatPostTime } from '$lib/format/time';
 import { serverHost } from './move';
 import { peekStreetMemory, rememberStreet } from './street-memory';
+import { readHasOthersMap } from './others-cache';
 import {
 	applyStreetOps,
 	flushStreetOps,
@@ -105,6 +106,8 @@ export interface StreetCircle {
 	lastReadSeq?: number;
 	/** «Читает, не пишет»: ввод не показываем, пока сеть не подтвердит. */
 	readOnly?: boolean;
+	/** Есть ли в круге кто-то ещё (3.17): вкладка «Отклики» в первом кадре. */
+	hasOthers?: boolean;
 }
 
 export interface SearchHit {
@@ -255,7 +258,12 @@ async function buildStreet(
 	let anyData = false;
 
 	for (const session of sessions) {
-		const data = await read(session.origin);
+		// Признак «есть кто-то ещё» — из снимков круга, не из ответа списка:
+		// строке улочки он нужен для вкладки «Отклики» в первом кадре.
+		const [data, hasOthersByCircle] = await Promise.all([
+			read(session.origin),
+			readHasOthersMap(session.origin).catch(() => new Map<string, boolean>())
+		]);
 		if (!data) continue;
 		anyData = true;
 		const circles = data.circles ?? [];
@@ -301,7 +309,8 @@ async function buildStreet(
 				lastAt: circle.last_at,
 				responses: circle.status === 'active' && (circle.responses_unread ?? 0) > 0,
 				lastReadSeq: circle.last_read_seq,
-				readOnly: circle.status === 'left_with_access'
+				readOnly: circle.status === 'left_with_access',
+				hasOthers: hasOthersByCircle.get(circle.id)
 			};
 			rows.push(row);
 			if (circle.status === 'left_with_access') readOnly.add(row);

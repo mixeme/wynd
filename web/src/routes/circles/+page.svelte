@@ -284,7 +284,8 @@
 			name: circle.name,
 			color: circle.colorToken ?? 'olive',
 			lastReadSeq: circle.lastReadSeq ?? 0,
-			canWrite: !circle.readOnly
+			canWrite: !circle.readOnly,
+			hasOthers: circle.hasOthers
 		});
 		goto(circle.pendingJoin ? `/circles/${circle.id}/join` : `/circles/${circle.id}`);
 	}

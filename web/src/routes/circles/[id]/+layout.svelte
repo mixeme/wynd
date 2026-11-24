@@ -18,6 +18,7 @@
 		ownerNameFromSession
 	} from '$lib/circles/circles';
 	import { takeCircleSeed } from '$lib/circles/seed';
+	import { readHasOthers, writeHasOthers } from '$lib/circles/others-cache';
 	import {
 		rememberSearchCircle,
 		searchCircleSeed,
@@ -93,7 +94,7 @@
 		serverName: '',
 		sharePlace: false,
 		responsesUnread: 0,
-		hasOthers: false,
+		hasOthers: seed?.hasOthers ?? false,
 		refresh: async () => {}
 	});
 
@@ -157,6 +158,7 @@
 			ctx.editWindowSec = detail.edit_window_sec;
 			ctx.sharePlace = detail.share_place ?? true;
 			ctx.hasOthers = detail.has_others ?? true;
+			void writeHasOthers(origin, id, ctx.hasOthers).catch(() => {});
 			ctx.responsesUnread = detail.responses_unread ?? 0;
 			const serverName = detail.identity_name?.trim() ?? '';
 			if (serverName) {
@@ -288,6 +290,9 @@
 		ctx.editWindowSec = editWindowSec;
 		ctx.sharePlace = sharePlace;
 		ctx.hasOthers = hasOthers;
+		// Запомнили при обычном открытии: следующая улочка покажет вкладку
+		// «Отклики» в первом кадре, без захода в настройки (3.17).
+		if (detail) void writeHasOthers(resolved, circleId, hasOthers).catch(() => {});
 		ctx.responsesUnread = responsesUnread;
 		ctx.arrival = detail?.arrival;
 		ctx.lastReadSeq = listItem.last_read_seq;
@@ -314,11 +319,17 @@
 	 * входит: там нужен ответ про повторное приглашение.
 	 */
 	async function paintCachedMeta(resolved: string, seq: number): Promise<void> {
-		const cached = await loadCirclesCached(resolved);
+		const [cached, cachedHasOthers] = await Promise.all([
+			loadCirclesCached(resolved),
+			readHasOthers(resolved, circleId)
+		]);
 		if (seq !== loadSeq) return;
 		const item = cached.find((c) => c.id === circleId);
 		if (!item || item.status !== 'active') return;
-		await applyListMeta(resolved, item, undefined, seq);
+		const applied = await applyListMeta(resolved, item, undefined, seq);
+		// Без detail applyListMeta ставит «есть» оптимистично; снимок признака
+		// точнее: в круге из одного вкладка не должна мигнуть (3.17).
+		if (applied && cachedHasOthers !== undefined) ctx.hasOthers = cachedHasOthers;
 	}
 
 	async function loadMeta() {

@@ -50,8 +50,25 @@ describe('улочка из снимка (C97)', () => {
 		expect(street?.circles.map((c) => c.id)).toEqual(['c1']);
 		expect(street?.circles[0].preview).toBe('Комментарий: Carol');
 		expect(street?.circles[0].unread).toBe(2);
+		// Признака в снимках нет — строка не выдумывает «есть другие».
+		expect(street?.circles[0].hasOthers).toBeUndefined();
 		expect(fetchSpy).not.toHaveBeenCalled();
 		fetchSpy.mockRestore();
+	});
+
+	it('берёт признак «есть кто-то ещё» из снимка круга', async () => {
+		await putSnapshot(snapshotKey(ORIGIN, 'circles', '_list'), {
+			data: { circles: [ITEM], groups: [] },
+			fetched_at: Date.now()
+		});
+		await putSnapshot(snapshotKey(ORIGIN, 'meta', 'c1'), {
+			data: { has_others: false },
+			fetched_at: Date.now()
+		});
+
+		const street = await loadStreetCached();
+
+		expect(street?.circles[0].hasOthers).toBe(false);
 	});
 
 	it('без снимка не показывает пустую улочку', async () => {

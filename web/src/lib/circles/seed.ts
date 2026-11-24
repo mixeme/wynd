@@ -14,6 +14,8 @@ export interface CircleSeed {
 	lastReadSeq: number;
 	/** «Читает, не пишет» — ввод не показываем до ответа сети. */
 	canWrite: boolean;
+	/** Есть ли в круге кто-то ещё — вкладка «Отклики» в первом кадре (3.17). */
+	hasOthers?: boolean;
 	at: number;
 }
 

@@ -16,7 +16,9 @@ export type SnapshotKind =
 	| 'search'
 	| 'instance'
 	| 'responses'
-	| 'settings';
+	| 'settings'
+	/** Признаки круга для первого кадра: есть ли кто-то ещё (вкладка «Отклики»). */
+	| 'meta';
 
 export async function readCachedSnapshot<T>(
 	origin: string,

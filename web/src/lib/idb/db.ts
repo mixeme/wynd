@@ -344,7 +344,9 @@ const SNAPSHOT_KINDS = new Set([
 	'instance',
 	// Отклики круга и настройки с участниками (C100).
 	'responses',
-	'settings'
+	'settings',
+	// Признаки круга для первого кадра: есть ли кто-то ещё (3.17).
+	'meta'
 ]);
 
 export function snapshotKey(origin: string, kind: string, id: string): string {
@@ -580,6 +582,25 @@ export async function deleteCursor(origin: string): Promise<void> {
 export async function getSnapshot(key: string): Promise<SnapshotRecord | undefined> {
 	const db = await getDb();
 	return db.get('snapshots', key);
+}
+
+/**
+ * Снимки с общим префиксом ключа — одним проходом по диапазону. Нужно, чтобы
+ * собрать признаки всех кругов сервера, не читая их по одному (вкладка
+ * «Отклики» на улочке).
+ */
+export async function getSnapshotEntries(
+	prefix: string
+): Promise<Array<{ key: string; data: unknown }>> {
+	const db = await getDb();
+	const tx = db.transaction('snapshots');
+	const out: Array<{ key: string; data: unknown }> = [];
+	let cursor = await tx.store.openCursor(IDBKeyRange.bound(prefix, `${prefix}\uffff`));
+	while (cursor) {
+		out.push({ key: cursor.key as string, data: cursor.value.data });
+		cursor = await cursor.continue();
+	}
+	return out;
 }
 
 export async function putSnapshot(key: string, record: SnapshotRecord): Promise<void> {
