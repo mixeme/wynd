@@ -35,6 +35,10 @@ HTTP-оболочка и отказ от secure-context-функций не ну
 
 Ещё не проверены: `<a download>` на WebKitGTK, SSE на реальном сервере,
 фактическая запись звука/видео и кодеки GStreamer — этап живой проверки.
+По коду Wails v3.1 обработчика `WebKitDownload`/`download-started` нет:
+скорее всего, ссылки скачивания в Linux-окне не начнут сохранение без
+своего моста. Это не выдаётся за проверенный факт; мост не реализован,
+живой прогон — на Linux-машине.
 
 ## Снимок
 
@@ -68,6 +72,12 @@ Windows-версии; новых элементов на нём нет.
   SHA-256 `ae88ab409ad2236fdc182fdfe1d7ff6b9f7146eee48964fd4ee69f91dd3758a8`;
   `Wynd-0.4.5-x86_64.AppImage` — 6,7 МБ,
   SHA-256 `4311e68f42bda216562655748a150ba477a2631856543367baf162c4684cd35d`.
+- **Версия 0.5.0 подготовлена 24.11** (номер, whatsnew, CHANGELOG), пакеты
+  собраны CI (`45431552325`): `wynd-desktop_0.5.0_amd64.deb` — SHA-256
+  `936dbfde20d604abe8723930668ce6b8ea42c82a3412b626e7c6b2b525d3a1a2`;
+  `Wynd-0.5.0-x86_64.AppImage` — SHA-256
+  `52c500c8d99313c0bfd4e00f698a13594d3681aeecea6f917e602557c75120e8`.
+  Тег `desktop-v0.5.0` и черновик не создавались.
 - `.deb` установлен в CI (`apt install`), `wynd-desktop --smoke-test` —
   success; AppImage проверен с `APPIMAGE_EXTRACT_AND_RUN=1` — success.
 - **Debian 12 (контейнер, 24.11):** `.deb` установлен (`Package:
@@ -77,6 +87,10 @@ Windows-версии; новых элементов на нём нет.
   `APPIMAGE_EXTRACT_AND_RUN=1` — success. Обычный запуск AppImage через
   FUSE в контейнере не проверялся: нет `/dev/fuse`; для Ubuntu 24.04
   нужен `libfuse2t64`, для Debian 12 — `libfuse2`.
+- **Linux-ворота** теперь гоняют `go vet/test -tags "desktop,gtk3" ./...`
+  по всему контуру; CI `Desktop checks` на `afe7c9c9` — success.
+  Frontend Мастерской и «Подписи» собираются перед проверкой, иначе
+  `go:embed` не находит их `frontend/dist`.
 - Общий выпуск: `.github/workflows/desktop-client.yaml` разделён на
   `build-windows` и `build-linux`, `draft` ждёт оба. `workflow_dispatch`
   (`45378840783`) собрал обе платформы; черновик не создавался.

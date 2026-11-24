@@ -62,6 +62,17 @@ Android этой сессии — в отдельных передачах
   `APPIMAGE_EXTRACT_AND_RUN=1` smoke. **Debian 12:** `.deb` установлен и
   smoke пройден, AppImage — с `APPIMAGE_EXTRACT_AND_RUN`; обычный
   FUSE-запуск в контейнере не проверялся (нет `/dev/fuse`).
+- **0.5.0 подготовлена** (`3ad3ee2b`): `desktop.Version`, `info.json`,
+  whatsnew 0.5.0, CHANGELOG. CI собрал `wynd-desktop_0.5.0_amd64.deb`
+  (SHA-256 `936dbfde…`) и `Wynd-0.5.0-x86_64.AppImage` (SHA-256
+  `52c500c8…`). Тег и черновик не создавались.
+- **Linux-ворота усилены:** `go vet/test -tags "desktop,gtk3" ./...` по
+  всему контуру, с сборкой frontend Мастерской и «Подписи»; CI
+  `Desktop checks` на `afe7c9c9` — success.
+- **Скачивание:** в Wails v3.1 нет обработчика `WebKitDownload`;
+  вероятно, `<a download>` не начнёт сохранение без моста. Живой прогон
+  не делался, мост не реализован — записано как открытый пункт, не как
+  проверенный факт.
 - `.github/workflows/desktop-client.yaml` разделён на `build-windows` и
   `build-linux`; `draft` ждёт оба, аттестует exe/.deb/AppImage и кладёт
   всё в один черновик. `workflow_dispatch` (`45378840783`) собрал обе

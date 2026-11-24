@@ -43,7 +43,7 @@ Xvfb. Вход/лента на сервере, SSE и скачивание жд�
 
 ## Этап 2. Системная интеграция
 
-**Статус:** бэкенд сделан 24.11 — Secret Service, XDG-автозапуск, схема `wynd:`, D-Bus-уведомления, проверка StatusNotifierWatcher и платформенный текст автозапуска. Вживую на рабочем столе не проверено; кнопка «Открыть в приложении» в Linux-браузере и кадр строки настроек ещё не сделаны.
+**Статус:** бэкенд сделан 24.11 — Secret Service, XDG-автозапуск, схема `wynd:`, D-Bus-уведомления, проверка StatusNotifierWatcher и общий текст автозапуска. **Строка «при входе в систему» принята 24.11.** Вживую на рабочем столе не проверено; кнопка «Открыть в приложении» в Linux-браузере пока не включена.
 
 1. **Трей.** Linux: PNG-иконка, `SetLabel("Wynd")`, нативное `SetMenu` с «Открыть»/«Выход»; кастомное окно 92×56 остаётся только на Windows. Если трея/хоста нет — окно не прячется. Снимок меню — на приёмку.
 2. **Уведомления.** Wails `pkg/services/notifications` (D-Bus) или прямой D-Bus; сохранить `ShouldNotify` и дедуп. Заглушки больше не возвращают ложный успех.
@@ -52,12 +52,12 @@ Xvfb. Вход/лента на сервере, SSE и скачивание жд�
 5. **Схема `wynd:`.** `scheme_linux.go`: `.desktop` с `MimeType=x-scheme-handler/wynd;`, `Exec=<binary> %u`, установка в `~/.local/share/applications`, `xdg-mime default`, `update-desktop-database`. Кнопка «Открыть в приложении» — и на Linux, с кадром.
 6. **Окно и закрытие.** Скрытие по крестику — только при доступном трее; иначе выход. Проверить frameless-ресайз GTK3 на X11/Wayland; при поломке — системные рамки отдельным решением.
 7. **Горячая клавиша.** `Ctrl+Alt+W`: X11 работает; Wayland — portal, может быть отклонена композитором; ошибка логируется.
-8. **Скачивание.** Если `<a download>` в WebKitGTK не работает — мост сохранения файла через Go и диалог для `openDownload.ts`/вложений.
+8. **Скачивание.** Если `<a download>` в WebKitGTK не работает — мост сохранения файла через Go и диалог для `openDownload.ts`/вложений. **Код-проверка 24.11:** в Wails v3.1 нет обработчика `WebKitDownload`; вероятно, без моста скачивание не начнётся. Живой прогон и решение о мосте — на Linux-машине; факт не подменяется.
 9. **Тесты.** Юнит-тесты autostart/scheme/secrets/политики трея; Linux CI без реального D-Bus.
 
 ## Этап 3. Пакеты `.deb` и AppImage
 
-**Статус:** пакеты и CI выпуска сделаны 24.11. CI собрал `wynd-desktop_0.4.5_amd64.deb` и `Wynd-0.4.5-x86_64.AppImage`, установил `.deb` и прошёл smoke обоих; `workflow_dispatch` собрал Windows exe и Linux-пакеты. **Debian 12:** `.deb` установлен и smoke пройден, AppImage — с `APPIMAGE_EXTRACT_AND_RUN`; обычный FUSE-запуск в контейнере не проверялся. Тег `desktop-v0.5.0` не ставился: ждёт живой проверки и решения владельца.
+**Статус:** пакеты и CI выпуска сделаны 24.11. CI собрал `wynd-desktop_0.4.5_amd64.deb` и `Wynd-0.4.5-x86_64.AppImage`, установил `.deb` и прошёл smoke обоих; `workflow_dispatch` собрал Windows exe и Linux-пакеты. **Debian 12:** `.deb` установлен и smoke пройден, AppImage — с `APPIMAGE_EXTRACT_AND_RUN`; обычный FUSE-запуск в контейнере не проверялся. **Версия 0.5.0 подготовлена:** номер, whatsnew, CHANGELOG и пакеты собраны в CI (`wynd-desktop_0.5.0_amd64.deb`, `Wynd-0.5.0-x86_64.AppImage`); тег `desktop-v0.5.0` и черновик не создавались — ждут живой проверки и решения владельца.
 
 1. **Ресурсы** `cmd/wynd-desktop/build/linux/`: `wynd.desktop`, hicolor-иконки (256/128/64/48), `wynd.metainfo.xml`, `README-linux.txt`.
 2. **`.deb`:** staging-дерево `/usr/bin/wynd-desktop`, `/usr/share/applications/wynd.desktop`, `/usr/share/icons/hicolor/...`, `/usr/share/metainfo/...`; control `wynd-desktop`, `amd64`, зависимости `libgtk-3-0`, `libwebkit2gtk-4.1-0`, `libjavascriptcoregtk-4.1-0`, `libsoup-3.0-0`, `xdg-utils`; recommends GStreamer, keyring, portal; `postinst`/`prerm` обновляют desktop/mime database. Имя `wynd-desktop_<версия>_amd64.deb`.
