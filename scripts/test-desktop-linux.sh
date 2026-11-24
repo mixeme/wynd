@@ -7,6 +7,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 echo "[linux] frontend check"
+(cd web && npx svelte-kit sync)
 (cd cmd/wynd-desktop/frontend && npm run check)
 
 echo "[linux] go vet/test (desktop,gtk3)"
