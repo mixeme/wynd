@@ -21,6 +21,9 @@ go test -tags "desktop,gtk3" ./cmd/wynd-desktop ./internal/desktop
 if command -v xvfb-run >/dev/null 2>&1; then
 	echo "[linux] smoke в Xvfb"
 	xvfb-run -a timeout 20s ./dist/wynd-desktop --smoke-test
+	echo "[linux] замер WebKit"
+	xvfb-run -a timeout 30s ./dist/wynd-desktop --probe 2>&1 | tee /tmp/wynd-linux-probe.log
+	grep -q "probe:" /tmp/wynd-linux-probe.log
 else
 	echo "[linux] xvfb-run не установлен — smoke пропущен" >&2
 fi

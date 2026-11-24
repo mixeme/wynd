@@ -11,6 +11,8 @@ import (
 	"embed"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"net"
@@ -702,6 +704,23 @@ func main() {
 		log.Fatal(err)
 	}
 	base := filepath.Join(config, "Wynd", "desktop")
+	// Флаги запуска читаем до сборки локального API: --probe добавляет
+	// диагностическую ручку, --smoke-test и --from-startup влияют на окно.
+	startInTray := false
+	smokeTest := false
+	probeWebKit := false
+	for _, arg := range os.Args[1:] {
+		if arg == "--from-startup" {
+			startInTray = true
+		}
+		if arg == "--smoke-test" {
+			smokeTest = true
+		}
+		if arg == "--probe" {
+			probeWebKit = true
+		}
+	}
+	startInTray = startInTray && platformCanStartHidden()
 	// Оболочка обновляет клиента вместе с сервером; служебный воркер PWA
 	// внутри окна отдавал старый интерфейс из кэша — адрес сервера и
 	// состояние связи выглядели чужими, а новые экраны не появлялись.
@@ -751,6 +770,18 @@ func main() {
 	// работает с ними по apiBase тем же CORS-контуром, что и за API.
 	secrets := desktop.NewSecretsCache(desktop.NewSecretStore())
 	apiMux := http.NewServeMux()
+	var probeResults chan string
+	if probeWebKit {
+		probeResults = make(chan string, 1)
+		apiMux.HandleFunc("/__probe", func(w http.ResponseWriter, r *http.Request) {
+			body, _ := io.ReadAll(r.Body)
+			w.WriteHeader(http.StatusNoContent)
+			select {
+			case probeResults <- string(body):
+			default:
+			}
+		})
+	}
 	apiMux.Handle("/__secrets", desktop.SessionsHandler(secrets))
 	apiMux.Handle("/__secrets/", desktop.SessionsHandler(secrets))
 	apiMux.Handle("/", proxy.Handler(http.NotFoundHandler()))
@@ -783,20 +814,6 @@ func main() {
 	if err := shell.updateAllowed(); err != nil {
 		log.Fatal(err)
 	}
-	// Запуск из автозапуска (--from-startup) — сразу в трей, без окна:
-	// человек не просил открыть программу. На Linux без подтверждённого
-	// трея окно всё равно показывается, чтобы приложение не пропало.
-	startInTray := false
-	smokeTest := false
-	for _, arg := range os.Args[1:] {
-		if arg == "--from-startup" {
-			startInTray = true
-		}
-		if arg == "--smoke-test" {
-			smokeTest = true
-		}
-	}
-	startInTray = startInTray && platformCanStartHidden()
 	// Приглашение из схемы wynd: при первом запуске: событие оболочке уйдёт
 	// раньше её загрузки, поэтому адрес ждёт её в pendingInvite — она забирает
 	// сама при старте (план 66, функция 4).
@@ -896,6 +913,37 @@ func main() {
 			})
 			time.Sleep(2 * time.Second)
 			application.InvokeSync(func() { menuWin.Hide() })
+		}()
+	}
+	if probeWebKit {
+		go func() {
+			time.Sleep(4 * time.Second)
+			apiURL := "http://" + apiLn.Addr().String()
+			win.ExecJS(fmt.Sprintf(`(async () => {
+  const r = {
+    secure: window.isSecureContext,
+    origin: location.origin,
+    href: location.href,
+    ua: navigator.userAgent,
+    mediaRecorder: typeof MediaRecorder,
+    getUserMedia: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+    clipboard: !!navigator.clipboard
+  };
+  try {
+    const res = await fetch(%q, {method: "GET", mode: "cors"});
+    r.secrets = res.status;
+  } catch (e) { r.secrets = "ERR " + e; }
+  try {
+    await fetch(%q, {method: "POST", headers: {"Content-Type": "text/plain"}, body: JSON.stringify(r)});
+  } catch (e) {}
+})()`, apiURL+"/__secrets", apiURL+"/__probe"))
+			select {
+			case result := <-probeResults:
+				log.Printf("probe: %s", result)
+			case <-time.After(12 * time.Second):
+				log.Printf("probe: timeout")
+			}
+			app.Quit()
 		}()
 	}
 	if smokeTest {
