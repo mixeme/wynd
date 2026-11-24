@@ -16,7 +16,7 @@
 - **GTK:** одна сборка GTK3/WebKit2GTK 4.1 для обеих систем. GTK4 не подходит Debian 12 (GTK 4.8 при требовании Wails 4.14+). GTK3 в Wails v3.1 — legacy; версия Wails закреплена, обновление проверяется отдельно.
 - **Origin и WebKit:** `wails://localhost` на Linux не зарегистрирован как secure. Первый этап — замер `isSecureContext`, `Origin`, fetch, SSE и скачивания. Обход (локальная HTTP-оболочка, мост скачивания или принятые ограничения) выбирается по результату, а не заранее.
 - **Проверка:** сначала wynd3 + Xvfb для окна и рендера; финальная приёмка трея, уведомлений, автозапуска и схемы — на Linux-машине с рабочим столом.
-- **Первый выпуск:** следующий минор (предлагается `desktop-v0.5.0`), Windows exe и Linux-пакеты в одном теге. Linux-пакеты без Ed25519-подписи, но с SHA-256 и удостоверением сборки.
+- **Первый выпуск:** `desktop-v0.5.0`, Windows exe и Linux-пакеты в одном черновике. Linux-пакеты без Ed25519-подписи до подписи владельцем; после неё — `.sig` для каждого.
 
 ## Этап 0. План и границы
 
@@ -57,7 +57,7 @@ Xvfb. Вход/лента на сервере, SSE и скачивание жд�
 
 ## Этап 3. Пакеты `.deb` и AppImage
 
-**Статус:** пакеты и CI выпуска сделаны 24.11. CI собрал `wynd-desktop_0.4.5_amd64.deb` и `Wynd-0.4.5-x86_64.AppImage`, установил `.deb` и прошёл smoke обоих; `workflow_dispatch` собрал Windows exe и Linux-пакеты. **Debian 12:** `.deb` установлен и smoke пройден, AppImage — с `APPIMAGE_EXTRACT_AND_RUN`; обычный FUSE-запуск в контейнере не проверялся. **Версия 0.5.0 подготовлена:** номер, whatsnew, CHANGELOG и пакеты собраны в CI (`wynd-desktop_0.5.0_amd64.deb`, `Wynd-0.5.0-x86_64.AppImage`); тег `desktop-v0.5.0` и черновик не создавались — ждут живой проверки и решения владельца.
+**Статус:** пакеты и CI выпуска сделаны 24.11. CI собрал `wynd-desktop_0.4.5_amd64.deb` и `Wynd-0.4.5-x86_64.AppImage`, установил `.deb` и прошёл smoke обоих; `workflow_dispatch` собрал Windows exe и Linux-пакеты. **Debian 12:** `.deb` установлен и smoke пройден, AppImage — с `APPIMAGE_EXTRACT_AND_RUN`; обычный FUSE-запуск в контейнере не проверялся. **25.11 создан черновик `desktop-v0.5.0`** (exe, `.deb`, AppImage; [протокол](../testing/release-desktop-0.5.0-2026-11-25.md)); «Подпись» проверена на настоящем черновике, но подпись/публикация — за владельцем.
 
 1. **Ресурсы** `cmd/wynd-desktop/build/linux/`: `wynd.desktop`, hicolor-иконки (256/128/64/48), `wynd.metainfo.xml`, `README-linux.txt`.
 2. **`.deb`:** staging-дерево `/usr/bin/wynd-desktop`, `/usr/share/applications/wynd.desktop`, `/usr/share/icons/hicolor/...`, `/usr/share/metainfo/...`; control `wynd-desktop`, `amd64`, зависимости `libgtk-3-0`, `libwebkit2gtk-4.1-0`, `libjavascriptcoregtk-4.1-0`, `libsoup-3.0-0`, `xdg-utils`; recommends GStreamer, keyring, portal; `postinst`/`prerm` обновляют desktop/mime database. Имя `wynd-desktop_<версия>_amd64.deb`.

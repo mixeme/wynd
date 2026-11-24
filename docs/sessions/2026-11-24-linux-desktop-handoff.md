@@ -63,9 +63,14 @@ Android этой сессии — в отдельных передачах
   smoke пройден, AppImage — с `APPIMAGE_EXTRACT_AND_RUN`; обычный
   FUSE-запуск в контейнере не проверялся (нет `/dev/fuse`).
 - **0.5.0 подготовлена** (`3ad3ee2b`): `desktop.Version`, `info.json`,
-  whatsnew 0.5.0, CHANGELOG. CI собрал `wynd-desktop_0.5.0_amd64.deb`
-  (SHA-256 `936dbfde…`) и `Wynd-0.5.0-x86_64.AppImage` (SHA-256
-  `52c500c8…`). Тег и черновик не создавались.
+  whatsnew 0.5.0, CHANGELOG. **25.11 черновик `desktop-v0.5.0` создан**
+  (тег на `0c9ee011`): exe 17 711 104, `.deb` 5 440 460, AppImage
+  6 937 080 байт; суммы и удостоверения сходятся. Первый прогон
+  `45490721497` упал в `draft` без checkout; исправление `0c9ee011`,
+  тег переставлен до подписи, повтор `45492070988` — success.
+  [Протокол](../testing/release-desktop-0.5.0-2026-11-25.md). «Подпись»
+  проверила настоящий черновик (`Fetch`: exe/key/notes + 2 Linux-файла,
+  sum/attest true), но не подписывала без пароля.
 - **Linux-ворота усилены:** `go vet/test -tags "desktop,gtk3" ./...` по
   всему контуру, с сборкой frontend Мастерской и «Подписи»; CI
   `Desktop checks` на `afe7c9c9` — success.
@@ -94,9 +99,9 @@ Android этой сессии — в отдельных передачах
    Linux-браузере пока не включена.
 3. **Скачивание:** `<a download>` на WebKitGTK не проверен; если не
    работает — мост сохранения файла через Go/диалог.
-4. **Выпуск:** тег `desktop-v0.5.0` (Windows exe + `.deb` + AppImage) не
-   ставился; решение после живой проверки. Linux-пакеты без Ed25519,
-   с SHA-256 и attestation. Самообновление Linux — позже.
+4. **Выпуск:** черновик `desktop-v0.5.0` (exe + `.deb` + AppImage)
+   создан; подпись/публикация — за владельцем. После публикации —
+   живая проверка Linux. Самообновление Linux — позже.
 5. **GTK3 legacy:** Wails может убрать стек; версию держим, обновление
    Wails проверять отдельно. AppImage в Ubuntu 24.04 требует libfuse2t64,
    в Debian 12 — libfuse2.
