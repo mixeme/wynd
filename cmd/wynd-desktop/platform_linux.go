@@ -5,7 +5,9 @@ package main
 import (
 	_ "embed"
 	"errors"
+	"sync"
 
+	"github.com/godbus/dbus/v5"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -50,9 +52,35 @@ func setupPlatformTray(_ *application.App, tray *application.SystemTray, win app
 	})
 }
 
-// platformCanHideToTray — на Linux скрытие в трей включим после проверки
-// реального StatusNotifier-хоста; до тех пор крестик закрывает окно.
-func platformCanHideToTray(*application.SystemTray) bool { return false }
+// trayAvailableOnce кэширует проверку StatusNotifierWatcher: без хоста
+// значок не зарегистрируется, и прятать окно нельзя.
+var (
+	trayAvailableOnce sync.Once
+	trayAvailable     bool
+)
 
-// platformCanStartHidden — до проверки трея автозапуск показывает окно.
-func platformCanStartHidden() bool { return false }
+func linuxTrayAvailable() bool {
+	trayAvailableOnce.Do(func() {
+		conn, err := dbus.SessionBus()
+		if err != nil {
+			return
+		}
+		var has bool
+		if err := conn.BusObject().Call(
+			"org.freedesktop.DBus.NameHasOwner", 0,
+			"org.kde.StatusNotifierWatcher",
+		).Store(&has); err != nil {
+			return
+		}
+		trayAvailable = has
+	})
+	return trayAvailable
+}
+
+// platformCanHideToTray — прятать окно можно только при живом хосте трея.
+func platformCanHideToTray(tray *application.SystemTray) bool {
+	return tray != nil && linuxTrayAvailable()
+}
+
+// platformCanStartHidden — автозапуск прячется только при живом трее.
+func platformCanStartHidden() bool { return linuxTrayAvailable() }

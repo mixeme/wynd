@@ -1,10 +1,10 @@
-//go:build !windows
+//go:build !windows && !linux
 
 package desktop
 
-// Окно собирается только под Windows (desktop-reference, «Границы»);
-// заглушка нужна серверным тестам на Linux. С системным хранилищем вне
-// Windows сессии остаются в IndexedDB — как в браузере.
+// Окно собирается под Windows и Linux (desktop-reference, «Границы»);
+// заглушка нужна остальным платформам. С системным хранилищем вне этих
+// платформ сессии остаются в IndexedDB — как в браузере.
 
 type NullSecretStore struct{}
 
