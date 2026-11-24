@@ -49,7 +49,8 @@ Windows-версии; новых элементов на нём нет.
   служебной записи `__index__`; при отказе хранилища ошибка, клиент оставляет
   копию в IndexedDB.
 - `autostart_linux.go` — `~/.config/autostart/wynd.desktop`, `--from-startup`;
-  строка в настройках на Linux говорит «при входе в систему».
+  строка в настройках говорит «при входе в систему» на всех платформах
+  (решение владельца 24.11).
 - `scheme_linux.go` — пользовательский `.desktop` с
   `x-scheme-handler/wynd`, `xdg-mime default`.
 - `notify_linux.go` — D-Bus `org.freedesktop.Notifications`; без демона

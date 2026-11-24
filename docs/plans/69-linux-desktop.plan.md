@@ -47,7 +47,7 @@ Xvfb. Вход/лента на сервере, SSE и скачивание жд�
 
 1. **Трей.** Linux: PNG-иконка, `SetLabel("Wynd")`, нативное `SetMenu` с «Открыть»/«Выход»; кастомное окно 92×56 остаётся только на Windows. Если трея/хоста нет — окно не прячется. Снимок меню — на приёмку.
 2. **Уведомления.** Wails `pkg/services/notifications` (D-Bus) или прямой D-Bus; сохранить `ShouldNotify` и дедуп. Заглушки больше не возвращают ложный успех.
-3. **Автозапуск.** `autostart_linux.go`: XDG `~/.config/autostart/wynd.desktop`, `--from-startup`, чтение/удаление; тесты. Текст «при входе в Windows» → «при входе в систему» с кадром.
+3. **Автозапуск.** `autostart_linux.go`: XDG `~/.config/autostart/wynd.desktop`, `--from-startup`, чтение/удаление; тесты. Текст «при входе в Windows» заменён на «при входе в систему» **на всех платформах** (решение владельца 24.11), реальный кадр снят.
 4. **Токены.** `secrets_linux.go` на `go-keyring`/Secret Service; лимит 1024 байта только для Windows; при отказе хранилища — ошибка, чтобы клиент оставлял копию в IndexedDB.
 5. **Схема `wynd:`.** `scheme_linux.go`: `.desktop` с `MimeType=x-scheme-handler/wynd;`, `Exec=<binary> %u`, установка в `~/.local/share/applications`, `xdg-mime default`, `update-desktop-database`. Кнопка «Открыть в приложении» — и на Linux, с кадром.
 6. **Окно и закрытие.** Скрытие по крестику — только при доступном трее; иначе выход. Проверить frameless-ресайз GTK3 на X11/Wayland; при поломке — системные рамки отдельным решением.
