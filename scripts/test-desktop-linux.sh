@@ -14,9 +14,9 @@ echo "[linux] frontend check"
 echo "[linux] build"
 scripts/build-desktop-linux.sh
 
-echo "[linux] go vet/test (desktop,gtk3)"
-go vet -tags "desktop,gtk3" ./cmd/wynd-desktop ./internal/desktop
-go test -tags "desktop,gtk3" ./cmd/wynd-desktop ./internal/desktop
+echo "[linux] go vet/test (desktop,gtk3, весь контур)"
+go vet -tags "desktop,gtk3" ./...
+go test -tags "desktop,gtk3" ./...
 
 if command -v xvfb-run >/dev/null 2>&1; then
 	echo "[linux] smoke в Xvfb"
