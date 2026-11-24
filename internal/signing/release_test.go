@@ -54,6 +54,10 @@ type releaseFixture struct {
 	// SignedAlready — в выпуске уже лежит подписанный файл; окно Android
 	// не перезаписывает его, exe-подпись меняет как прежде.
 	SignedAlready bool
+	// Extras — в выпуске лежат Linux .deb и AppImage с SHA256SUMS.
+	Extras bool
+	// BadExtraSum — сумма Linux-файла в SHA256SUMS не сходится.
+	BadExtraSum bool
 }
 
 // Сам тестовый бинарник играет gh и инструменты Android: одинаково на Windows
@@ -189,11 +193,31 @@ func releaseTestGH(dir string, args []string) error {
 		}
 		fmt.Print(response)
 	case args[0] == "release" && args[1] == "view":
+		extraNames := fixtureExtraNames(f)
 		assets := "[]"
 		if f.SignedAlready {
 			assets = `[{"name":"wynd-android.apk"}]`
 			if !strings.HasPrefix(f.Tag, "android-") {
 				assets = `[{"name":"wynd-workshop.exe.sig"}]`
+			}
+		}
+		if len(extraNames) > 0 {
+			parts := make([]string, 0, len(extraNames)+1)
+			for _, name := range extraNames {
+				parts = append(parts, fmt.Sprintf(`{"name":%q}`, name))
+			}
+			parts = append(parts, `{"name":"SHA256SUMS"}`)
+			assets = "[" + strings.Join(parts, ",") + "]"
+		}
+		for i, arg := range args {
+			if arg == "--jq" && i+1 < len(args) && args[i+1] == ".assets[].name" {
+				for _, name := range extraNames {
+					fmt.Println(name)
+				}
+				if len(extraNames) > 0 {
+					fmt.Println("SHA256SUMS")
+				}
+				return nil
 			}
 		}
 		fmt.Printf(`{"isDraft":%t,"assets":%s}`, f.Draft, assets)
@@ -220,7 +244,27 @@ func releaseTestGH(dir string, args []string) error {
 		if f.BadSum {
 			want = "wrong sum"
 		}
-		return os.WriteFile(filepath.Join(dest, dl+".sha256"), []byte(want), 0o600)
+		if err := os.WriteFile(filepath.Join(dest, dl+".sha256"), []byte(want), 0o600); err != nil {
+			return err
+		}
+		extraNames := fixtureExtraNames(f)
+		if len(extraNames) == 0 {
+			return nil
+		}
+		var sums strings.Builder
+		for i, name := range extraNames {
+			data := []byte("test extra " + name)
+			if err := os.WriteFile(filepath.Join(dest, name), data, 0o600); err != nil {
+				return err
+			}
+			hexSum := sha256.Sum256(data)
+			line := hex.EncodeToString(hexSum[:])
+			if f.BadExtraSum && i == 0 {
+				line = "wrong extra sum"
+			}
+			fmt.Fprintf(&sums, "%s  %s\n", line, name)
+		}
+		return os.WriteFile(filepath.Join(dest, "SHA256SUMS"), []byte(sums.String()), 0o600)
 	case args[0] == "attestation":
 		if f.AttestFailure {
 			return fmt.Errorf("attestation request failed")
@@ -393,6 +437,20 @@ func TestWorkshopNotesFromLegacyPath(t *testing.T) {
 	}
 	if c.Steps[len(c.Steps)-1].Note != "" {
 		t.Fatalf("этап notes с пометкой: %+v", c.Steps[len(c.Steps)-1])
+	}
+}
+
+func fixtureExtraNames(f releaseFixture) []string {
+	if !f.Extras {
+		return nil
+	}
+	version := strings.TrimPrefix(f.Tag, "desktop-v")
+	if version == "" {
+		version = "0.5.0"
+	}
+	return []string{
+		fmt.Sprintf("wynd-desktop_%s_amd64.deb", version),
+		fmt.Sprintf("Wynd-%s-x86_64.AppImage", version),
 	}
 }
 
@@ -573,6 +631,55 @@ func TestDesktopReleaseCheckAndSign(t *testing.T) {
 	sig, err := os.ReadFile(filepath.Join(dir, "uploaded.sig"))
 	if err != nil || workshop.VerifySignature(pub, releaseTestEXE, sig) != nil {
 		t.Fatalf("uploaded signature does not verify: %v", err)
+	}
+}
+
+// Linux-пакеты в выпуске Настольного проверяются по SHA256SUMS и
+// удостоверению и подписываются тем же ключом; старый выпуск без них
+// остаётся совместимым.
+func TestDesktopLinuxExtras(t *testing.T) {
+	const tag = "desktop-v0.5.0"
+	key := filepath.Join(t.TempDir(), "signing.key")
+	const pass = "test-release-password"
+	pub, err := Keygen(key, key+".pub", pass)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g, dir := fixtureGitHub(t, releaseFixture{Tag: tag, Draft: true, Notes: true, PubKey: pub, KeyPresent: true, Extras: true})
+	c, err := g.FetchWithProgress(context.Background(), tag, func(Progress) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	if c.Problem != "" || len(c.Extra) != 2 {
+		t.Fatalf("Linux extras: %+v", c)
+	}
+	for _, a := range c.Extra {
+		if !a.SumOK || !a.AttestOK || a.Size == 0 {
+			t.Fatalf("extra check: %+v", a)
+		}
+	}
+	if _, _, err := g.SignAndPublishWithProgress(context.Background(), c, key, pass, func(Progress) {}); err != nil {
+		t.Fatal(err)
+	}
+	calls, _ := os.ReadFile(filepath.Join(dir, "calls"))
+	for _, sig := range []string{"wynd-desktop.exe.sig", "wynd-desktop_0.5.0_amd64.deb.sig", "Wynd-0.5.0-x86_64.AppImage.sig"} {
+		if !strings.Contains(string(calls), sig) {
+			t.Fatalf("нет подписи %s в загрузке: %s", sig, calls)
+		}
+	}
+}
+
+func TestDesktopLinuxExtrasBadSum(t *testing.T) {
+	const tag = "desktop-v0.5.0"
+	g, _ := fixtureGitHub(t, releaseFixture{Tag: tag, Draft: true, Notes: true, Extras: true, BadExtraSum: true})
+	c, err := g.FetchWithProgress(context.Background(), tag, func(Progress) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	if c.Problem == "" || !strings.Contains(c.Problem, "сумма не сходится") {
+		t.Fatalf("плохая сумма Linux-файла не остановила проверку: %+v", c)
 	}
 }
 

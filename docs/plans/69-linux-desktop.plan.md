@@ -63,7 +63,7 @@ Xvfb. Вход/лента на сервере, SSE и скачивание жд�
 2. **`.deb`:** staging-дерево `/usr/bin/wynd-desktop`, `/usr/share/applications/wynd.desktop`, `/usr/share/icons/hicolor/...`, `/usr/share/metainfo/...`; control `wynd-desktop`, `amd64`, зависимости `libgtk-3-0`, `libwebkit2gtk-4.1-0`, `libjavascriptcoregtk-4.1-0`, `libsoup-3.0-0`, `xdg-utils`; recommends GStreamer, keyring, portal; `postinst`/`prerm` обновляют desktop/mime database. Имя `wynd-desktop_<версия>_amd64.deb`.
 3. **AppImage:** AppDir + `appimagetool` (закреплённая версия, `APPIMAGE_EXTRACT_AND_RUN=1` в CI), `AppRun`, `.desktop`, иконка, metainfo. GTK/WebKit — системные; в README — `libfuse2t64` (Ubuntu 24.04) и `libfuse2` (Debian 12). Имя `Wynd-<версия>-x86_64.AppImage`.
 4. **`scripts/package-desktop-linux.sh`** собирает оба пакета и `SHA256SUMS`; версия пакета сверяется с `desktop.Version`.
-5. **CI выпуска:** `build-windows`, `build-linux`, затем `draft`: аттестовать exe, `.deb`, AppImage; один черновик с exe, суммами, `.deb` и AppImage. «Подпись» подписывает exe и игнорирует Linux-assets.
+5. **CI выпуска:** `build-windows`, `build-linux`, затем `draft`: аттестовать exe, `.deb`, AppImage; один черновик с exe, суммами, `.deb` и AppImage. **«Подпись» проверяет Linux-пакеты по `SHA256SUMS`/удостоверению и подписывает их тем же ключом; `.sig` выкладывается для каждого файла.**
 6. **Первый выпуск:** `desktop-v0.5.0` (новая платформа), Windows exe + Linux `.deb`/AppImage; без Ed25519-подписи Linux, с SHA-256 и attestation. CHANGELOG, DEVELOPMENT, desktop-reference, ROADMAP.
 
 ## Этап 4. Живая проверка и приёмка

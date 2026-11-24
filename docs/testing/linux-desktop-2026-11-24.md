@@ -91,6 +91,10 @@ Windows-версии; новых элементов на нём нет.
   по всему контуру; CI `Desktop checks` на `afe7c9c9` — success.
   Frontend Мастерской и «Подписи» собираются перед проверкой, иначе
   `go:embed` не находит их `frontend/dist`.
+- **«Wynd Подпись» умеет Linux:** для выпуска Настольного проверяет
+  `.deb` и AppImage по `SHA256SUMS` и удостоверению сборки и подписывает
+  каждый файл тем же ключом; `.sig` выкладываются в выпуск. Кадр окна —
+  `signer-linux-extras.png` (стенд, на приёмку).
 - Общий выпуск: `.github/workflows/desktop-client.yaml` разделён на
   `build-windows` и `build-linux`, `draft` ждёт оба. `workflow_dispatch`
   (`45378840783`) собрал обе платформы; черновик не создавался.

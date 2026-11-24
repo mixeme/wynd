@@ -513,8 +513,18 @@
 			<!-- Проверки, пароль, подпись и итог остаются на одном экране. -->
 			<h2>{productName} {version}</h2>
 			<StepList steps={checkSteps} onlink={(url) => void backend().OpenLink(url)} />
+			{#if check?.extra?.length}
+				<MarkRows class="mt-8">
+					{#each check.extra as a (a.name)}
+						<MarkRow mark={a.sum_ok && a.attest_ok ? '✓' : '!'} tone={a.sum_ok && a.attest_ok ? 'ok' : 'block'}>
+							{a.name}
+							<span class="ins-dim">— {mb(a.size)}</span>
+						</MarkRow>
+					{/each}
+				</MarkRows>
+			{/if}
 			{#if checkError}<Notice tone="bad" alert>{checkError}</Notice>{/if}
-			{#if check?.problem}<Notice tone="bad" alert>{check.problem}. Такой exe подписывать нельзя.</Notice>{/if}
+			{#if check?.problem}<Notice tone="bad" alert>{check.problem}. Такой выпуск подписывать нельзя.</Notice>{/if}
 			{#if signSteps.length}<StepList steps={signSteps} />{/if}
 			{#if releaseDone}
 				<Notice tone="note" title={published ? 'Выпуск подписан и опубликован' : 'Выпуск подписан'}>
@@ -522,9 +532,10 @@
 						{doneDetail}
 					{:else}
 						{check?.key_in_release ? 'Подпись проверена открытым ключом из репозитория.' : 'Подпись проверена открытой частью выбранного ключа.'}
-						{published
-							? `Файл ${exeFile}.sig выложен в выпуск на GitHub.`
-							: `Файл ${exeFile}.sig выложен в черновик. Он не опубликован: в whatsnew.md нет раздела ${version}.`}
+						{check?.extra?.length
+							? `Файл ${exeFile}.sig и подписи Linux-пакетов выложены`
+							: `Файл ${exeFile}.sig выложен`}{published ? ' в выпуск на GitHub.' : ' в черновик.'}
+						{published ? '' : `Он не опубликован: в whatsnew.md нет раздела ${version}.`}
 						Временные файлы на этом компьютере удалены.
 					{/if}
 				</Notice>

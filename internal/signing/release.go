@@ -54,11 +54,14 @@ type product struct {
 	KeyAlias string
 	// APK — Android-выпуск: свои шаги проверки и подпись apksigner.
 	APK bool
+	// Extras — дополнительные файлы выпуска, подписываемые тем же ключом
+	// (Linux .deb и AppImage): шаблоны имён в выпуске.
+	Extras []string
 }
 
 var products = []product{
 	{ID: ProductWorkshop, Name: "Wynd Мастерская", Exe: "wynd-workshop.exe", Prefix: "workshop-v", Key: "signing-key.pub", Notes: "cmd/wynd-workshop/whatsnew.md"},
-	{ID: ProductDesktop, Name: "Wynd Настольный", Exe: "wynd-desktop.exe", Prefix: "desktop-v", Key: "signing-key.pub", Notes: "cmd/wynd-desktop/whatsnew.md"},
+	{ID: ProductDesktop, Name: "Wynd Настольный", Exe: "wynd-desktop.exe", Prefix: "desktop-v", Key: "signing-key.pub", Notes: "cmd/wynd-desktop/whatsnew.md", Extras: []string{"wynd-desktop_*_amd64.deb", "Wynd-*-x86_64.AppImage"}},
 	{ID: ProductAndroid, Name: "Wynd Android", Exe: "wynd-android.apk", Unsigned: "wynd-android-unsigned.apk", SignedAsset: "wynd-android.apk", Prefix: "android-v", Notes: "android/whatsnew.md", KeyAlias: androidKeyAlias, APK: true},
 }
 
@@ -77,6 +80,27 @@ func (p product) signedAsset() string {
 		return p.SignedAsset
 	}
 	return p.Exe + ".sig"
+}
+
+// signedAssets — все подписи, которые должны быть в выпуске: exe/APK и
+// подписи найденных Linux-файлов. Старый выпуск без Linux-файлов требует
+// только основную подпись.
+func (p product) signedAssets(names []string) []string {
+	needed := []string{p.signedAsset()}
+	seen := map[string]bool{needed[0]: true}
+	for _, pattern := range p.Extras {
+		for _, name := range names {
+			if ok, _ := path.Match(pattern, name); !ok {
+				continue
+			}
+			sig := name + ".sig"
+			if !seen[sig] {
+				seen[sig] = true
+				needed = append(needed, sig)
+			}
+		}
+	}
+	return needed
 }
 
 // productOf — чей это выпуск по тегу; nil — не выпуски Wynd.
@@ -186,15 +210,37 @@ func (g GitHub) Releases(ctx context.Context) ([]Release, error) {
 		if !r.IsDraft {
 			rel.PublishedAt = r.PublishedAt
 		}
-		asset := prod.signedAsset()
+		names := make([]string, 0, len(r.Assets))
 		for _, a := range r.Assets {
-			if a.Name == asset {
-				rel.Signed = true
+			names = append(names, a.Name)
+		}
+		rel.Signed = true
+		for _, needed := range prod.signedAssets(names) {
+			found := false
+			for _, name := range names {
+				if name == needed {
+					found = true
+					break
+				}
+			}
+			if !found {
+				rel.Signed = false
+				break
 			}
 		}
 		res = append(res, rel)
 	}
 	return res, nil
+}
+
+// ExtraAsset — дополнительный файл выпуска (Linux .deb/AppImage), который
+// подписывается тем же ключом. Сумма и удостоверение проверяются до пароля.
+type ExtraAsset struct {
+	Name     string `json:"name"`
+	Size     int64  `json:"size"`
+	SumOK    bool   `json:"sum_ok"`
+	AttestOK bool   `json:"attest_ok"`
+	Commit   string `json:"commit,omitempty"`
 }
 
 // Check — проверки выпуска до пароля (12в).
@@ -228,9 +274,12 @@ type Check struct {
 	PublishNote string `json:"publish_note,omitempty"`
 	Problem     string `json:"problem,omitempty"`
 	Steps       []Step `json:"steps"`
+	// Extra — проверенные Linux-файлы выпуска (пусто у старых выпусков).
+	Extra []ExtraAsset `json:"extra,omitempty"`
 
-	exe string
-	dir string
+	exe        string
+	dir        string
+	extraFiles []string
 }
 
 // Fetch скачивает exe выпуска во временную папку и проверяет его: сумму из
@@ -354,6 +403,12 @@ func (g GitHub) FetchWithProgress(ctx context.Context, tag string, report func(P
 		return c, nil
 	}
 	p.doneLink("attestation", "коммит "+c.Commit[:min(8, len(c.Commit))], "проверить", g.AttestationURL())
+	if len(prod.Extras) > 0 {
+		if problem := g.checkExtras(ctx, c, prod); problem != "" {
+			c.Problem = problem
+			return c, nil
+		}
+	}
 	if prod.APK {
 		// Пакет, выравнивание, описание и готовность — шаги android.go;
 		// отказы ставят c.Problem и останавливают проверку.
@@ -385,6 +440,121 @@ func (g GitHub) FetchWithProgress(ctx context.Context, tag string, report func(P
 	}
 	c.Publishes = c.Draft && c.Notes != ""
 	return c, nil
+}
+
+// checkExtras проверяет Linux-файлы выпуска: сумму из SHA256SUMS и
+// удостоверение сборки. В старых выпусках Linux-файлов нет — это не ошибка.
+func (g GitHub) checkExtras(ctx context.Context, c *Check, prod *product) string {
+	out, err := g.gh(ctx, "release", "view", c.Tag, "-R", g.Repo, "--json", "assets", "--jq", ".assets[].name")
+	if err != nil {
+		return "Не удалось прочитать файлы выпуска: " + err.Error()
+	}
+	names := strings.Fields(string(out))
+	var matched, missing []string
+	seen := make(map[string]bool)
+	for _, pattern := range prod.Extras {
+		found := false
+		for _, name := range names {
+			if ok, _ := path.Match(pattern, name); ok {
+				found = true
+				if !seen[name] {
+					seen[name] = true
+					matched = append(matched, name)
+				}
+			}
+		}
+		if !found {
+			missing = append(missing, pattern)
+		}
+	}
+	if len(matched) == 0 {
+		return ""
+	}
+	if len(missing) > 0 {
+		return "В выпуске нет файлов: " + strings.Join(missing, ", ")
+	}
+	hasSums := false
+	for _, name := range names {
+		if name == "SHA256SUMS" {
+			hasSums = true
+		}
+	}
+	if !hasSums {
+		return "В выпуске нет SHA256SUMS"
+	}
+
+	args := []string{"release", "download", c.Tag, "-R", g.Repo, "-D", c.dir}
+	for _, name := range matched {
+		args = append(args, "-p", name)
+	}
+	args = append(args, "-p", "SHA256SUMS", "--clobber")
+	if _, err := g.gh(ctx, args...); err != nil {
+		return "Скачать Linux-файлы не получилось: " + err.Error()
+	}
+	sums := make(map[string]string)
+	body, err := os.ReadFile(filepath.Join(c.dir, "SHA256SUMS"))
+	if err != nil {
+		return "Не удалось прочитать SHA256SUMS: " + err.Error()
+	}
+	for _, line := range strings.Split(string(body), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 2 {
+			sums[fields[1]] = fields[0]
+		}
+	}
+
+	for _, name := range matched {
+		full := filepath.Join(c.dir, name)
+		data, err := os.ReadFile(full)
+		if err != nil {
+			return name + ": не удалось прочитать"
+		}
+		sum := sha256.Sum256(data)
+		asset := ExtraAsset{Name: name, Size: int64(len(data))}
+		asset.SumOK = strings.EqualFold(sums[name], hex.EncodeToString(sum[:]))
+		if !asset.SumOK {
+			return name + ": сумма не сходится с SHA256SUMS"
+		}
+		ok, commit, err := g.verifyAttestation(ctx, full, c.Tag)
+		if err != nil {
+			return name + ": проверить удостоверение не получилось: " + err.Error()
+		}
+		asset.AttestOK, asset.Commit = ok, commit
+		if !ok {
+			return name + ": нет удостоверения сборки из тега " + c.Tag
+		}
+		c.Extra = append(c.Extra, asset)
+		c.extraFiles = append(c.extraFiles, full)
+	}
+	return ""
+}
+
+// verifyAttestation проверяет, что файл собран GitHub Actions из тега.
+func (g GitHub) verifyAttestation(ctx context.Context, file, tag string) (bool, string, error) {
+	out, err := g.gh(ctx, "attestation", "verify", file, "--repo", g.Repo, "--format", "json")
+	if err != nil {
+		return false, "", err
+	}
+	var att []struct {
+		VerificationResult struct {
+			Signature struct {
+				Certificate struct {
+					Ref    string `json:"sourceRepositoryRef"`
+					Digest string `json:"sourceRepositoryDigest"`
+				} `json:"certificate"`
+			} `json:"signature"`
+		} `json:"verificationResult"`
+	}
+	if json.Unmarshal(out, &att) != nil {
+		return false, "", errors.New("GitHub вернул неожиданный ответ удостоверения")
+	}
+	for _, a := range att {
+		cert := a.VerificationResult.Signature.Certificate
+		if cert.Ref == "refs/tags/"+tag {
+			return true, cert.Digest, nil
+		}
+	}
+	return false, "", nil
 }
 
 func (g GitHub) isDraft(ctx context.Context, tag string) (bool, error) {
@@ -486,10 +656,10 @@ func (c *Check) Close() {
 	}
 }
 
-// SignAndPublish подписывает скачанный exe ключом из keyPath, проверяет
-// подпись открытым ключом тега (у старых сборок — выбранного ключа), выкладывает
-// .sig и, если это черновик и есть «Что нового», публикует его с этим текстом.
-// Описание и дату уже опубликованного выпуска не меняет.
+// SignAndPublish подписывает файлы выпуска (exe и Linux-пакеты) ключом из
+// keyPath, проверяет подписи открытым ключом тега (у старых сборок — выбранного
+// ключа), выкладывает .sig и, если это черновик и есть «Что нового», публикует
+// его с этим текстом. Описание и дату уже опубликованного выпуска не меняет.
 func (g GitHub) SignAndPublish(ctx context.Context, c *Check, keyPath, pass string) (published bool, err error) {
 	published, _, err = g.SignAndPublishWithProgress(ctx, c, keyPath, pass, nil)
 	return published, err
@@ -541,21 +711,37 @@ func (g GitHub) SignAndPublishWithProgress(ctx context.Context, c *Check, keyPat
 	if err != nil {
 		return false, "", err
 	}
-	exe, err := os.ReadFile(c.exe)
+	signOne := func(file string) (string, error) {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			return "", err
+		}
+		sig, err := Sign(priv, data, c.PubKey)
+		if err != nil {
+			return "", err
+		}
+		sigPath := file + ".sig"
+		return sigPath, os.WriteFile(sigPath, []byte(sig+"\n"), 0o644)
+	}
+	sigPaths := make([]string, 0, 1+len(c.extraFiles))
+	sigPath, err := signOne(c.exe)
 	if err != nil {
 		return false, "", err
 	}
-	sig, err := Sign(priv, exe, c.PubKey)
-	if err != nil {
-		return false, "", err
-	}
-	sigPath := c.exe + ".sig"
-	if err := os.WriteFile(sigPath, []byte(sig+"\n"), 0o644); err != nil {
-		return false, "", err
+	sigPaths = append(sigPaths, sigPath)
+	for _, file := range c.extraFiles {
+		sigPath, err := signOne(file)
+		if err != nil {
+			return false, "", err
+		}
+		sigPaths = append(sigPaths, sigPath)
 	}
 	p.done("signature", "")
 	p.start("upload")
-	if _, err := g.gh(ctx, "release", "upload", c.Tag, sigPath, "-R", g.Repo, "--clobber"); err != nil {
+	uploadArgs := []string{"release", "upload", c.Tag}
+	uploadArgs = append(uploadArgs, sigPaths...)
+	uploadArgs = append(uploadArgs, "-R", g.Repo, "--clobber")
+	if _, err := g.gh(ctx, uploadArgs...); err != nil {
 		return false, "", fmt.Errorf("выложить подпись не получилось: %w", err)
 	}
 	p.done("upload", "")
@@ -577,8 +763,8 @@ func (g GitHub) SignAndPublishWithProgress(ctx context.Context, c *Check, keyPat
 	return true, "", nil
 }
 
-// SignFile подписывает exe на этом компьютере (12д): .sig — рядом, под его
-// именем. pub — открытый ключ для проверки (пусто — свой).
+// SignFile подписывает выбранный файл на этом компьютере (12д): .sig — рядом,
+// под его именем. pub — открытый ключ для проверки (пусто — свой).
 func SignFile(keyPath, pass, exePath, pub string) (string, error) {
 	priv, err := Unlock(keyPath, pass)
 	if err != nil {

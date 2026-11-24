@@ -46,6 +46,14 @@ export interface Releases {
 	releases: Release[] | null;
 }
 
+export interface ExtraAsset {
+	name: string;
+	size: number;
+	sum_ok: boolean;
+	attest_ok: boolean;
+	commit?: string;
+}
+
 export interface Check {
 	check_id: string;
 	request_id: string;
@@ -70,6 +78,8 @@ export interface Check {
 	notes?: string;
 	problem?: string;
 	steps: Step[];
+	// extra — Linux .deb/AppImage выпуска, если они в нём есть.
+	extra?: ExtraAsset[];
 }
 
 export interface Step {

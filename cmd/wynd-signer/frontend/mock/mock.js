@@ -52,8 +52,8 @@ const releases = [
           "desktop",
           "Wynd Настольный",
           "wynd-desktop.exe",
-          "desktop-v0.3.1",
-          "0.3.1",
+          "desktop-v0.5.0",
+          "0.5.0",
           true,
           undefined,
           false,
@@ -119,22 +119,38 @@ const androidSignSteps = androidReady
     ]);
 
 const checks = {
-  "desktop-v0.3.1": {
+  "desktop-v0.5.0": {
     check_id: "mock-check-desktop",
     product: "desktop",
     name: "Wynd Настольный",
     exe: "wynd-desktop.exe",
     self_update: true,
     publishes: true,
-    tag: "desktop-v0.3.1",
+    tag: "desktop-v0.5.0",
     draft: true,
     size: 13397504,
     sum_ok: true,
     commit: "6b5964e3",
     attest_ok: true,
     key_in_release: true,
+    extra: [
+      {
+        name: "wynd-desktop_0.5.0_amd64.deb",
+        size: 5450000,
+        sum_ok: true,
+        attest_ok: true,
+        commit: "6b5964e3",
+      },
+      {
+        name: "Wynd-0.5.0-x86_64.AppImage",
+        size: 7010000,
+        sum_ok: true,
+        attest_ok: true,
+        commit: "6b5964e3",
+      },
+    ],
     notes:
-      "## 0.3.1\n\n- Служебный порт окна отвечает только ему\n- Чужие страницы не читают ответы",
+      "## 0.5.0\n\n- Впервые Linux-версия окна\n- Автозапуск и уведомления Linux",
     steps: done([
       ["release", "Получаем сведения о выпуске"],
       ["download", "Скачиваем программу и контрольную сумму"],
@@ -299,7 +315,20 @@ async function drive() {
   }
   if (params.get("open")) {
     await tick(1200);
-    const link = button("подписать");
+    const tag = params.get("open");
+    const label = tag.startsWith("desktop")
+      ? "Wynd Настольный"
+      : tag.startsWith("android")
+        ? "Wynd Android"
+        : "Wynd Мастерская";
+    const row = [...document.querySelectorAll("main .ins-row")].find((r) =>
+      r.textContent.includes(label),
+    );
+    const link = row
+      ? [...row.querySelectorAll("button")].find((b) =>
+          b.textContent.trim().startsWith("подписать"),
+        )
+      : undefined;
     if (!link) throw new Error("кадр: нет строки выпуска для подписи");
     link.click();
     await tick(800);
