@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ru">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Linux «Wynd Настольный» — кадры 24.11.2026</title>
+		<style>
+			:root {
+				--paper: #f4f0e9;
+				--ink: #2c2620;
+				--muted: #7a6f63;
+				--line: #cfc5b8;
+			}
+			* {
+				box-sizing: border-box;
+			}
+			body {
+				margin: 0;
+				background: var(--paper);
+				color: var(--ink);
+				font:
+					15px/1.55 'Golos Text',
+					system-ui,
+					sans-serif;
+			}
+			main {
+				max-width: 900px;
+				margin: 0 auto;
+				padding: 32px 20px 64px;
+			}
+			h1 {
+				font-size: 24px;
+				line-height: 1.25;
+				margin: 0 0 6px;
+			}
+			.lead {
+				color: var(--muted);
+				margin: 0 0 28px;
+			}
+			section {
+				margin: 0 0 36px;
+			}
+			h2 {
+				font-size: 17px;
+				margin: 0 0 6px;
+			}
+			p {
+				margin: 0 0 12px;
+			}
+			.note {
+				color: var(--muted);
+				font-size: 13px;
+				margin: 0 0 12px;
+			}
+			img {
+				display: block;
+				width: 100%;
+				height: auto;
+				border: 1px solid var(--line);
+				border-radius: 10px;
+				background: #000;
+			}
+			.wait {
+				display: inline-block;
+				padding: 2px 8px;
+				border-radius: 999px;
+				background: #eae3d8;
+				color: var(--muted);
+				font-size: 12px;
+				letter-spacing: 0.04em;
+			}
+			ul {
+				margin: 0;
+				padding-left: 20px;
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<h1>Linux «Wynd Настольный» — кадры 24.11.2026</h1>
+			<p class="lead">
+				План 69. Верхний кадр — настоящее окно Linux-сборки в Xvfb. Нижний — настоящая отрисовка
+				экрана настроек в headless Edge с Linux-UA и мостом автозапуска; это не окно Linux, а проверка
+				текста и строки. Трей-меню нативное и в headless-среде не снято.
+			</p>
+
+			<section>
+				<h2>1. Окно Linux — экран входа</h2>
+				<p class="note">
+					Настоящий кадр окна `wynd-desktop` 0.4.5 в Xvfb (Ubuntu 24.04, GTK3/WebKit2GTK 4.1).
+					Своя полоса заголовка, шрифты, поле адреса и «Дальше».
+				</p>
+				<img src="window.png" alt="Окно Wynd Настольный для Linux: экран входа" />
+			</section>
+
+			<section>
+				<h2>2. «Настройки → Приложение» — строка автозапуска <span class="wait">на приёмку</span></h2>
+				<p class="note">
+					Настоящая отрисовка Svelte-экрана с Linux-UA: «При входе в систему откроется Wynd» и
+					«Запускать при входе в систему». На Windows текст остался прежним — «при входе в Windows».
+					Кадр снят в браузере с мостом `__wyndDesktop` и ответом автозапуска; окно Linux будет
+					показано отдельно на живой машине.
+				</p>
+				<img src="settings-autostart.png" alt="Настройки приложения: запускать при входе в систему" />
+			</section>
+
+			<section>
+				<h2>Не снято</h2>
+				<ul>
+					<li>
+						Меню трея: нативное StatusNotifierItem, для настоящего кадра нужен рабочий стол с
+						AppIndicator (GNOME/KDE/XFCE); в Xvfb хоста трея нет. Не рисовал макет вместо него.
+					</li>
+					<li>Кнопка «Открыть в приложении» в Linux-браузере пока не включена.</li>
+				</ul>
+			</section>
+		</main>
+	</body>
+</html>
