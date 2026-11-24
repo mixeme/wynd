@@ -70,6 +70,13 @@ Windows-версии; новых элементов на нём нет.
   SHA-256 `4311e68f42bda216562655748a150ba477a2631856543367baf162c4684cd35d`.
 - `.deb` установлен в CI (`apt install`), `wynd-desktop --smoke-test` —
   success; AppImage проверен с `APPIMAGE_EXTRACT_AND_RUN=1` — success.
+- **Debian 12 (контейнер, 24.11):** `.deb` установлен (`Package:
+  wynd-desktop`, `Version: 0.4.5`, `Architecture: amd64`), зависимости
+  разрешились, `wynd-desktop --smoke-test` — success. AppImage скопирован
+  в контейнер (mount read-only не даёт chmod), запущен с
+  `APPIMAGE_EXTRACT_AND_RUN=1` — success. Обычный запуск AppImage через
+  FUSE в контейнере не проверялся: нет `/dev/fuse`; для Ubuntu 24.04
+  нужен `libfuse2t64`, для Debian 12 — `libfuse2`.
 - Общий выпуск: `.github/workflows/desktop-client.yaml` разделён на
   `build-windows` и `build-linux`, `draft` ждёт оба. `workflow_dispatch`
   (`45378840783`) собрал обе платформы; черновик не создавался.

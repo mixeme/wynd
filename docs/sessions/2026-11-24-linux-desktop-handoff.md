@@ -59,7 +59,9 @@ Android этой сессии — в отдельных передачах
 - CI: `wynd-desktop_0.4.5_amd64.deb` 5,2 МБ, SHA-256
   `ae88ab40…`; `Wynd-0.4.5-x86_64.AppImage` 6,7 МБ, SHA-256
   `4311e68f…`; `.deb` установлен и smoke пройден, AppImage —
-  `APPIMAGE_EXTRACT_AND_RUN=1` smoke.
+  `APPIMAGE_EXTRACT_AND_RUN=1` smoke. **Debian 12:** `.deb` установлен и
+  smoke пройден, AppImage — с `APPIMAGE_EXTRACT_AND_RUN`; обычный
+  FUSE-запуск в контейнере не проверялся (нет `/dev/fuse`).
 - `.github/workflows/desktop-client.yaml` разделён на `build-windows` и
   `build-linux`; `draft` ждёт оба, аттестует exe/.deb/AppImage и кладёт
   всё в один черновик. `workflow_dispatch` (`45378840783`) собрал обе

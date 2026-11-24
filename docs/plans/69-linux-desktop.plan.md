@@ -57,7 +57,7 @@ Xvfb. Вход/лента на сервере, SSE и скачивание жд�
 
 ## Этап 3. Пакеты `.deb` и AppImage
 
-**Статус:** пакеты и CI выпуска сделаны 24.11. CI собрал `wynd-desktop_0.4.5_amd64.deb` и `Wynd-0.4.5-x86_64.AppImage`, установил `.deb` и прошёл smoke обоих; `workflow_dispatch` собрал Windows exe и Linux-пакеты. Тег `desktop-v0.5.0` не ставился: ждёт живой проверки и решения владельца.
+**Статус:** пакеты и CI выпуска сделаны 24.11. CI собрал `wynd-desktop_0.4.5_amd64.deb` и `Wynd-0.4.5-x86_64.AppImage`, установил `.deb` и прошёл smoke обоих; `workflow_dispatch` собрал Windows exe и Linux-пакеты. **Debian 12:** `.deb` установлен и smoke пройден, AppImage — с `APPIMAGE_EXTRACT_AND_RUN`; обычный FUSE-запуск в контейнере не проверялся. Тег `desktop-v0.5.0` не ставился: ждёт живой проверки и решения владельца.
 
 1. **Ресурсы** `cmd/wynd-desktop/build/linux/`: `wynd.desktop`, hicolor-иконки (256/128/64/48), `wynd.metainfo.xml`, `README-linux.txt`.
 2. **`.deb`:** staging-дерево `/usr/bin/wynd-desktop`, `/usr/share/applications/wynd.desktop`, `/usr/share/icons/hicolor/...`, `/usr/share/metainfo/...`; control `wynd-desktop`, `amd64`, зависимости `libgtk-3-0`, `libwebkit2gtk-4.1-0`, `libjavascriptcoregtk-4.1-0`, `libsoup-3.0-0`, `xdg-utils`; recommends GStreamer, keyring, portal; `postinst`/`prerm` обновляют desktop/mime database. Имя `wynd-desktop_<версия>_amd64.deb`.
