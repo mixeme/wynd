@@ -1,14 +1,16 @@
 name: Desktop client
 
-# Wynd Настольный (планы 55, 61 и 63) — сборка выпуска из тега desktop-vX.Y.Z
-# на чистой машине GitHub и удостоверение сборки (attestation): любой
-# проверит, из какого коммита собран exe, командой
+# Wynd Настольный (планы 55, 61, 63 и 69) — сборка выпуска из тега
+# desktop-vX.Y.Z на чистой машине GitHub: Windows exe, Linux .deb и AppImage,
+# удостоверения сборки. Проверка:
 #   gh attestation verify wynd-desktop.exe --repo mixeme/wynd
+#   gh attestation verify <файл>.deb --repo mixeme/wynd
+#   gh attestation verify Wynd-<версия>-x86_64.AppImage --repo mixeme/wynd
 #
 # Выпуск создаётся ЧЕРНОВИКОМ и без подписи: подпись и публикацию делает
 # «Wynd Подпись» (план 63), как у Мастерской. Открытый ключ экосистемы
-# (signing-key.pub) build-desktop.bat вшивает в сборку — по нему окно
-# проверяет самообновление.
+# (signing-key.pub) build-desktop.bat вшивает в exe — по нему окно проверяет
+# самообновление. Linux-пакеты пока без Ed25519-подписи: SHA-256 и attestation.
 
 on:
   push:
@@ -23,7 +25,7 @@ permissions:
   attestations: write
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
@@ -57,23 +59,108 @@ jobs:
         shell: cmd
         run: scripts\build-desktop.bat
 
-      - uses: actions/attest-build-provenance@v4
-        if: startsWith(github.ref, 'refs/tags/desktop-v')
+      - name: Windows artifact
+        uses: actions/upload-artifact@v7
         with:
-          subject-path: dist/wynd-desktop.exe
+          name: desktop-windows
+          path: dist/wynd-desktop.exe
+          if-no-files-found: error
+          retention-days: 14
 
-      # Черновик выпуска с exe и его суммой.
+  build-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            cmd/wynd-desktop/frontend/package-lock.json
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev \
+            libx11-dev desktop-file-utils
+      - name: Install frontend dependencies
+        run: |
+          npm --prefix web ci
+          npm --prefix cmd/wynd-desktop/frontend ci
+
+      - name: Build Linux binary
+        run: scripts/build-desktop-linux.sh
+
+      - name: Build .deb and AppImage
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          curl -L --fail --silent --show-error -o "$RUNNER_TEMP/bin/appimagetool" \
+            https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
+          echo "ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0  $RUNNER_TEMP/bin/appimagetool" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/bin/appimagetool"
+          APPIMAGETOOL="$RUNNER_TEMP/bin/appimagetool" scripts/package-desktop-linux.sh
+          dpkg-deb --info dist/wynd-desktop_*_amd64.deb
+          dpkg-deb --contents dist/wynd-desktop_*_amd64.deb
+
+      - name: Linux packages artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-linux
+          path: |
+            dist/wynd-desktop_*_amd64.deb
+            dist/Wynd-*-x86_64.AppImage
+            dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
+
+  draft:
+    if: startsWith(github.ref, 'refs/tags/desktop-v')
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: desktop-windows
+          path: release
+      - uses: actions/download-artifact@v8
+        with:
+          name: desktop-linux
+          path: release
+
+      - name: Windows checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum release/wynd-desktop.exe | cut -d' ' -f1 > release/wynd-desktop.exe.sha256
+
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: release/wynd-desktop.exe
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: release/*.deb
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: release/*.AppImage
+
       - name: draft release
-        if: startsWith(github.ref, 'refs/tags/desktop-v')
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           # Черновик на этот тег мог остаться от прежнего запуска: у GitHub
           # черновики не привязаны к тегу, и повтор оставил бы два «одной версии».
           gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate \
             -q '.[] | select(.draft and .tag_name == "'"$GITHUB_REF_NAME"'") | .id' \
             | while read -r id; do gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$id"; done
-          sha256sum dist/wynd-desktop.exe | cut -d' ' -f1 > dist/wynd-desktop.exe.sha256
-          gh release create "$GITHUB_REF_NAME" dist/wynd-desktop.exe dist/wynd-desktop.exe.sha256 \
-            --draft --title "Wynd Настольный ${GITHUB_REF_NAME#desktop-v}" --notes "- (что нового — дописать до публикации)"
+          gh release create "$GITHUB_REF_NAME" release/* \
+            --draft --title "Wynd Настольный ${GITHUB_REF_NAME#desktop-v}" \
+            --notes "- (что нового — дописать до публикации)"
