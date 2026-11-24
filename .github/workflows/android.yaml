@@ -78,6 +78,18 @@ jobs:
           set -euo pipefail
           version=$(sed -n 's/^versionName=//p' android/version.properties | tr -d '\r')
           test "$GITHUB_REF_NAME" = "android-v$version"
+      - name: Debug keystore for embedded build
+        # assembleStandardDebug проверяет упаковку web/dist в assets; отладочная
+        # подпись ищет ключ в wyndEnvironmentRoot, на чистой машине его нет.
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/android-env/keys"
+          keytool -genkeypair -noprompt \
+            -keystore "$RUNNER_TEMP/android-env/keys/wynd-debug.keystore" \
+            -storepass android -keypass android \
+            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
       - name: Tests, lint and unsigned APK
         shell: bash
         run: |
