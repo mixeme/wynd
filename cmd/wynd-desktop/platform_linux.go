@@ -24,7 +24,7 @@ func openFolderInFileManager(folder string) error {
 	if app == nil {
 		return errors.New("desktop: приложение не запущено")
 	}
-	return app.Environment.OpenFileManager(folder, false)
+	return app.Env.OpenFileManager(folder, false)
 }
 
 // newTrayMenuWindow — на Linux меню трея нативное, второго окна нет.
