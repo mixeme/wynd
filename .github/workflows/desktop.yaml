@@ -80,10 +80,25 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev \
-            libx11-dev xvfb
+            libx11-dev xvfb x11-apps imagemagick
       - name: Install frontend dependencies
         run: |
           npm --prefix web ci
           npm --prefix cmd/wynd-desktop/frontend ci
       - name: Linux desktop gate
         run: scripts/test-desktop-linux.sh
+      - name: Linux window screenshot
+        run: |
+          xvfb-run -a -s "-screen 0 1024x900x24" bash -c '
+            ./dist/wynd-desktop --smoke-test &
+            pid=$!
+            sleep 3
+            import -window root /tmp/wynd-linux.png
+            wait $pid
+          '
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wynd-linux-screenshot
+          path: /tmp/wynd-linux.png
+          if-no-files-found: error
+          retention-days: 7
