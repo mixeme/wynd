@@ -26,7 +26,6 @@ import (
 	"gitea.mixdep.ru/mix/wynd/internal/config"
 	"gitea.mixdep.ru/mix/wynd/internal/jobs"
 	"gitea.mixdep.ru/mix/wynd/internal/mail"
-	"gitea.mixdep.ru/mix/wynd/internal/poster"
 	"gitea.mixdep.ru/mix/wynd/internal/push"
 	"gitea.mixdep.ru/mix/wynd/internal/store"
 	"gitea.mixdep.ru/mix/wynd/internal/xtime"
@@ -135,13 +134,6 @@ func runServer() {
 		log.Fatalf("trusted proxies: %v", err)
 	}
 	apiSrv.TrustedProxies = trusted
-	// Кадр ролику, пришедшему без него (план 49): нужен ffmpeg на машине.
-	apiSrv.Posters = poster.New(blobStore)
-	if apiSrv.Posters.Enabled() {
-		log.Printf("video posters: ffmpeg found, server makes missing frames")
-	} else {
-		log.Printf("video posters: no ffmpeg, videos sent without a frame stay without it")
-	}
 	mux.Handle("/api/", apiSrv)
 
 	maintDone := make(chan struct{})
@@ -161,10 +153,6 @@ func runServer() {
 		maybeRunRoutine(baseCtx, authSvc, blobsDir, ch, blobStore, mailSvc, pushSvc, apiSrv.PublicURL())
 		apiSrv.MaybeSendServerTrouble(baseCtx, time.Now().UTC())
 		expireFullArchives(baseCtx, apiSrv)
-		// Ролики, лежавшие без кадра до этой версии, — один проход при старте.
-		if n := apiSrv.Posters.Backfill(baseCtx); n > 0 {
-			log.Printf("video posters: made %d frames for earlier videos", n)
-		}
 		ticker := time.NewTicker(time.Hour)
 		defer ticker.Stop()
 		for {

@@ -15,7 +15,6 @@ import (
 	"gitea.mixdep.ru/mix/wynd/internal/blob"
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
 	"gitea.mixdep.ru/mix/wynd/internal/mail"
-	"gitea.mixdep.ru/mix/wynd/internal/poster"
 	"gitea.mixdep.ru/mix/wynd/internal/push"
 	"gitea.mixdep.ru/mix/wynd/internal/search"
 )
@@ -64,9 +63,6 @@ type Server struct {
 	fullBuilds sync.Map
 	// fullLinks — ссылки на готовый полный архив и на сборку потоком (6.31).
 	fullLinks sync.Map
-	// Posters снимает кадр ролику, пришедшему без него (план 49, временно —
-	// до нативной обёртки). nil или без ffmpeg — ничего не делает.
-	Posters *poster.Maker
 	// ArchiveFonts — вшитая сборка клиента (web/dist): из неё архив берёт
 	// Golos Text и кладёт внутрь ZIP. nil — архив на системном шрифте.
 	ArchiveFonts fs.FS

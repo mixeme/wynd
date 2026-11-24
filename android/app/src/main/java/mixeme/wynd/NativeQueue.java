@@ -260,6 +260,37 @@ final class NativeQueue {
         save();
     }
 
+    /** Добавляет снятый на телефоне кадр ролика отдельной частью (5.5). */
+    synchronized void addAuxPoster(Record record, int mediaIndex, File jpeg) throws IOException {
+        Record current = null;
+        for (Record item : records) {
+            if (item.id.equals(record.id)) current = item;
+        }
+        if (current == null) {
+            jpeg.delete();
+            return;
+        }
+        if (mediaIndex < 0 || mediaIndex >= current.files.size()) {
+            jpeg.delete();
+            throw new IllegalArgumentException("media");
+        }
+        for (Part part : current.aux) {
+            if (part.mediaIndex == mediaIndex && "video_poster".equals(part.field)) {
+                jpeg.delete();
+                return;
+            }
+        }
+        int slot = current.aux.size();
+        Part part = new Part("poster.jpg", "image/jpeg", jpeg.length(), slot, mediaIndex,
+                "video_poster", true, null, null, false);
+        File destination = partFile(current.id, part);
+        if (destination == null) throw new IOException("no queue directory");
+        if (destination.exists() && !destination.delete()) throw new IOException("old poster");
+        if (!jpeg.renameTo(destination)) throw new IOException("poster rename");
+        current.aux.add(part);
+        save();
+    }
+
     private Part findPart(String recordId, Part wanted) {
         for (Record record : records) {
             if (!record.id.equals(recordId)) continue;
@@ -536,8 +567,9 @@ final class NativeQueue {
             this.token = token;
             this.createdAt = createdAt;
             this.attempts = attempts;
-            this.files = files;
-            this.aux = aux;
+            // Копии: мост передаёт List.of, а к постеру aux дописывается.
+            this.files = new ArrayList<>(files);
+            this.aux = new ArrayList<>(aux);
             this.compress = compress;
             this.maxHeight = maxHeight;
             this.bitrateKbps = bitrateKbps;

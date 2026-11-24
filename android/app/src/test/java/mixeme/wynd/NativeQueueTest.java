@@ -196,6 +196,31 @@ public class NativeQueueTest {
     }
 
     @Test
+    public void nativePosterIsAddedAsAuxPart() throws Exception {
+        java.io.File base = Files.createTempDirectory("wynd-queue").toFile();
+        NativeQueue queue = new NativeQueue(new Memory(), base, true);
+        JSONObject request = post(client());
+        request.getJSONObject("payload").put("media_meta",
+                new JSONArray().put(new JSONObject().put("kind", "video")));
+        NativeQueue.Part video = NativeQueue.Part.main(
+                new JSONObject().put("name", "v.mp4").put("mime", "video/mp4").put("size", 4), 0);
+        String id = queue.begin();
+        Files.write(queue.partFile(id, video).toPath(), new byte[]{1, 2, 3, 4});
+        queue.commit(id, request, List.of(video), List.of());
+        NativeQueue.Record record = queue.records().get(0);
+
+        java.io.File jpeg = new java.io.File(queue.recordDir(record.id), "p0.jpg");
+        Files.write(jpeg.toPath(), new byte[]{(byte) 0xFF, (byte) 0xD8, 1, 2, 3});
+        queue.addAuxPoster(record, 0, jpeg);
+
+        assertEquals(1, record.aux.size());
+        assertEquals("video_poster", record.aux.get(0).field);
+        assertEquals(0, record.aux.get(0).mediaIndex);
+        assertEquals(5, queue.partFile(record.id, record.aux.get(0)).length());
+        assertFalse(jpeg.exists());
+    }
+
+    @Test
     public void auxPosterTravelsWithItsMediaIndex() throws Exception {
         java.io.File base = Files.createTempDirectory("wynd-queue").toFile();
         NativeQueue queue = new NativeQueue(new Memory(), base, true);

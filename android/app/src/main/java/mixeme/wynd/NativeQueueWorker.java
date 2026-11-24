@@ -53,6 +53,7 @@ public final class NativeQueueWorker extends Worker {
         for (NativeQueue.Record record : queue.records()) {
             if (isStopped()) return Result.retry();
             compressVideos(queue, record);
+            ensurePosters(queue, record);
             NativeQueueSender.Outcome outcome =
                     NativeQueueSender.send(record, NativeQueueSender.HttpTransport.INSTANCE, parts);
             switch (outcome.state) {
@@ -100,6 +101,44 @@ public final class NativeQueueWorker extends Worker {
                 Log.w(TAG, "native compress failed, sending original", error);
                 if (output.exists()) output.delete();
                 queue.markCompressionDone(record, part);
+            }
+        }
+    }
+
+    /** 5.5: у ролика без кадра снимаем первый кадр на телефоне. */
+    private void ensurePosters(NativeQueue queue, NativeQueue.Record record) {
+        if (record.files.isEmpty()) return;
+        JSONArray media;
+        try {
+            media = new JSONObject(record.payload).optJSONArray("media_meta");
+        } catch (Exception error) {
+            return;
+        }
+        if (media == null) return;
+        for (int i = 0; i < record.files.size(); i++) {
+            JSONObject meta = media.optJSONObject(i);
+            if (meta == null || !"video".equals(meta.optString("kind"))) continue;
+            if (!meta.optString("video_poster_blob_id", "").isEmpty()) continue;
+            boolean hasPoster = false;
+            for (NativeQueue.Part aux : record.aux) {
+                if (aux.mediaIndex == i && "video_poster".equals(aux.field)) {
+                    hasPoster = true;
+                    break;
+                }
+            }
+            if (hasPoster) continue;
+            File video = queue.partFile(record.id, record.files.get(i));
+            File output = new File(queue.recordDir(record.id), "p" + i + ".jpg");
+            File jpeg = PosterExtractor.extract(video, output);
+            if (jpeg == null) {
+                Log.w(TAG, "poster: no frame for " + record.files.get(i).name);
+                continue;
+            }
+            try {
+                queue.addAuxPoster(record, i, jpeg);
+            } catch (Exception error) {
+                Log.w(TAG, "poster: cannot keep frame", error);
+                if (output.exists()) output.delete();
             }
         }
     }
