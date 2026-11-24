@@ -28,14 +28,14 @@
 1. **Платформенные точки** в `cmd/wynd-desktop`:
    - `w32.GetCursorPos` и показ окна tray-menu — `tray_windows.go`; Linux — нативное меню (этап 2);
    - иконка трея: ICO на Windows, PNG на Linux;
-   - `WindowsOptions`/`WindowsWindow`, удаление `EBWebView/.../Service Worker`, `explorer.exe` — под Windows-хелперы; на Linux — `Environment.OpenFileManager`/`xdg-open`;
+   - `WindowsOptions`/`WindowsWindow`, удаление `EBWebView/.../Service Worker`, `explorer.exe` — под Windows-хелперы; на Linux — `App.Env.OpenFileManager`/`xdg-open`;
    - `startInTray`/`--from-startup`: на Linux не прятать окно, если трей недоступен.
 2. **Сборка** `scripts/build-desktop-linux.sh`: frontend и `web/dist`, `CGO_ENABLED=1 go build -tags "desktop,production,gtk3" -ldflags "-s -w -X …/internal/desktop.SigningKey=" -o dist/wynd-desktop ./cmd/wynd-desktop`. Без `wails3 generate syso` и `-H windowsgui`.
 3. **Ворота** `scripts/test-desktop-linux.sh` и job в `.github/workflows/desktop.yaml` на `ubuntu-24.04`: `libgtk-3-dev libwebkit2gtk-4.1-dev libx11-dev pkg-config build-essential`; frontend check/build, `go vet/test -tags "desktop,gtk3"`, сборка, артефакт и SHA-256; `xvfb-run` smoke с `--smoke-test`.
 4. **Замер** временным `--probe` (после замера удалить): `window.isSecureContext`, фактический `Origin`, fetch на `apiBase`, SSE, `<a download>`, `MediaRecorder`/`getUserMedia`. Проверить `windowOrigin` для `wails://localhost` и тест CORS.
 5. **Живой запуск** на Ubuntu 24.04/Debian 12 (сначала Xvfb): вход, список кругов, лента, `/sync`, медиа; настоящий снимок окна.
 
-**Стоп-гейт:** если secure context/Origin/скачивание не работают, зафиксировать выбранный обход и не идти дальше до решения. Это главный риск порта.
+**Стоп-гейт снят замером 2026-11-24** (CI Ubuntu 24.04, Xvfb, GTK3): `isSecureContext=true`, `Origin=wails://localhost`, fetch к `/__secrets` — 200, `MediaRecorder`, `getUserMedia` и clipboard доступны. Локальная HTTP-оболочка и принятие ограничений не нужны. Ещё не проверены: `<a download>` на WebKitGTK, SSE на реальном сервере, кодеки GStreamer и запись звука/видео вживую.
 
 ## Этап 2. Системная интеграция
 
