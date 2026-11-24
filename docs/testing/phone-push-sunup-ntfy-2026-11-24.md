@@ -42,6 +42,10 @@ realme 8 (RMX3085, Android 13, WebView) по USB не подключался —
   push_subscriptions WHERE id = ?` — строка есть в бинарнике контейнера) и тест
   `TestDeliveryDropsSubscriptionOnlyOnGone` зелёный. Убрала её только
   перерегистрация с телефона. Причина не установлена, нужен стенд.
+  **Правка 24.11 (`5f9116e5`):** снятие идёт отдельным коротким контекстом
+  (`context.WithoutCancel`, 5 с) и ошибка удаления пишется в журнал
+  (`push: drop stale subscription <хост>: …`), тест
+  `TestDropStaleSurvivesCanceledBudget`; боевой случай этим не объяснён.
 
 ## Что осталось
 
