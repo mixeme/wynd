@@ -37,6 +37,12 @@
 	import { WORD, plural } from '$lib/format/plural';
 	import { formatAdminDayYear, formatEntryDate, formatSessionDay } from '$lib/format/time';
 	import { loadSessions } from '$lib/session/session.svelte';
+	import {
+		androidArchiveAvailable,
+		androidArchiveFile,
+		androidArchiveForget,
+		androidArchiveStatus
+	} from '$lib/android/archive';
 	import { WrongPasswordError } from '$lib/archive/wyndfile';
 	import {
 		fetchInvitable,
@@ -145,11 +151,32 @@
 			/* без «свободно» */
 		}
 		preparing = false;
+		if (step === 'choose') void restoreArchive();
 	});
+
+	/** Android помнит выбранный .wynd: после перезапуска не просим файл снова. */
+	async function restoreArchive() {
+		if (file || !androidArchiveAvailable()) return;
+		try {
+			if (!(await androidArchiveStatus())) return;
+			const restored = await androidArchiveFile();
+			if (!restored) {
+				await androidArchiveForget();
+				return;
+			}
+			await openArchiveFile(restored.file);
+		} catch {
+			await androidArchiveForget();
+		}
+	}
 
 	async function pick(files: File[]) {
 		const f = files[0];
 		if (!f) return;
+		await openArchiveFile(f);
+	}
+
+	async function openArchiveFile(f: File) {
 		error = '';
 		file = f;
 		placeRequestId = undefined;
@@ -312,6 +339,7 @@
 			}
 			step = 'done';
 			keepDone();
+			void androidArchiveForget();
 		} catch (err) {
 			error = authErrorHint(err);
 			step = back;
@@ -387,7 +415,16 @@
 			: step === 'choose'
 				? 'Принять круг'
 				: 'Оживить круг'}
-		onback={() => (step === 'who' ? (step = 'review') : void navigateBack())}
+		onback={() => {
+			if (step === 'who') {
+				step = 'review';
+				return;
+			}
+			// Явный уход — отказ от выбранного файла; native не должен
+			// открывать его при следующем заходе.
+			if (step === 'password' || step === 'review') void androidArchiveForget();
+			void navigateBack();
+		}}
 	>
 		<FilePicker bind:this={picker} accept=".wynd" onfiles={(files) => void pick(files)} />
 		{#if step === 'choose'}

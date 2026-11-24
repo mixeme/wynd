@@ -44,6 +44,7 @@ final class MediaChromeClient extends WebChromeClient {
     private boolean destroyed;
     private OriginalPhotos originals;
     private boolean selectionOriginals, askingPhotoLocation;
+    private boolean selectionPersistable;
     private List<Uri> photoSelection;
     private boolean photoLocationAsked;
     private String selectionPhotoNonce;
@@ -122,6 +123,7 @@ final class MediaChromeClient extends WebChromeClient {
         selection = callback;
         photoLocationAsked = false;
         photoLocationNeeded = false;
+        selectionPersistable = false;
         selectionMultiple = parameters.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE;
         String[] accepted = parameters.getAcceptTypes();
         List<String> regular = new ArrayList<>();
@@ -131,7 +133,12 @@ final class MediaChromeClient extends WebChromeClient {
             if (type.startsWith(PhotoPolicy.ACCEPT_PREFIX)) {
                 if (nonce != null) { finishSelection(null); return true; }
                 nonce = type.substring(PhotoPolicy.ACCEPT_PREFIX.length());
-            } else regular.add(type);
+            } else {
+                if (type.toLowerCase(java.util.Locale.ROOT).contains("wynd")) {
+                    selectionPersistable = true;
+                }
+                regular.add(type);
+            }
         }
         selectionOriginals = nonce != null && originals != null && originals.consume(nonce);
         selectionPhotoNonce = selectionOriginals ? nonce : null;
@@ -152,6 +159,11 @@ final class MediaChromeClient extends WebChromeClient {
                 .setType(types.length == 1 ? types[0] : "*/*")
                 .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, selectionMultiple);
         if (types.length > 1) intent.putExtra(Intent.EXTRA_MIME_TYPES, types);
+        if (selectionPersistable) {
+            // .wynd переживает перезапуск: постоянное право чтения URI.
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        }
         if (!launch(intent)) finishSelection(null);
         return true;
     }
@@ -219,6 +231,9 @@ final class MediaChromeClient extends WebChromeClient {
                     if (wantsOriginals && originals != null) needsLocation |= originals.needsLocation(uri);
                 }
             } catch (RuntimeException ignored) { readable.clear(); }
+            if (selectionPersistable && !readable.isEmpty()) {
+                ArchiveStore.remember(activity, server, readable);
+            }
             boolean localPhotoLocation = needsLocation;
             activity.runOnUiThread(() -> {
                 if (destroyed || selection != expected) return;
@@ -273,6 +288,7 @@ final class MediaChromeClient extends WebChromeClient {
         photoSelection = null;
         selectionOriginals = false;
         pickerHandlesLocation = false;
+        selectionPersistable = false;
         if (callback != null) callback.onReceiveValue(result);
     }
 
