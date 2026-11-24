@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -247,7 +248,7 @@ func (s *Service) SendSignal(ctx context.Context, accountID string, signal Signa
 				firstErr = err
 			}
 			if isStaleSubscription(err) {
-				_, _ = s.db.ExecContext(ctx, `DELETE FROM push_subscriptions WHERE id = ?`, sub.id)
+				s.dropStale(ctx, sub.id, sub.endpoint)
 			}
 		}
 	}
@@ -365,6 +366,22 @@ func (s *Service) loadKeys(ctx context.Context) (public, private string, err err
 func isStaleSubscription(err error) bool {
 	var de *deliveryError
 	return errors.As(err, &de) && (de.StatusCode == http.StatusGone || de.StatusCode == http.StatusNotFound)
+}
+
+// staleDropTimeout — срок снятия мёртвой подписки. Отдельный от бюджета
+// рассылки: отменённый контекст уведомления не должен оставлять мёртвый адрес.
+const staleDropTimeout = 5 * time.Second
+
+// dropStale снимает подписку, которую служба доставки объявила мёртвой (404/410).
+// Контекст рассылки может быть уже отменён — снятие всё равно выполняется, а
+// ошибка удаления пишется в журнал: раньше она молча терялась (C128, 24.11).
+func (s *Service) dropStale(ctx context.Context, id, endpoint string) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), staleDropTimeout)
+	defer cancel()
+	if _, err := s.db.ExecContext(ctx,
+		`DELETE FROM push_subscriptions WHERE id = ?`, id); err != nil {
+		log.Printf("push: drop stale subscription %s: %v", endpointHost(endpoint), err)
+	}
 }
 
 type deliveryError struct {
