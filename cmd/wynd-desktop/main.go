@@ -25,6 +25,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
+	"github.com/wailsapp/wails/v3/pkg/w32"
 
 	"gitea.mixdep.ru/mix/wynd/internal/desktop"
 	wyndweb "gitea.mixdep.ru/mix/wynd/web"
@@ -35,6 +36,12 @@ var assets embed.FS
 
 //go:embed build/windows/icon.ico
 var trayIcon []byte
+
+// Размер меню в трее (C66): ширина по тексту «Открыть» с полями 12+12.
+const (
+	trayMenuWidth  = 92
+	trayMenuHeight = 56
+)
 
 // App — то, что окно может попросить (main.App.* в биндингах). Список
 // серверов — в internal/desktop; токенов и паролей здесь нет.
@@ -63,6 +70,9 @@ type App struct {
 	// без него приложение закрывается, как раньше.
 	window application.Window
 	tray   *application.SystemTray
+	// trayMenu — маленькое окно меню в стиле рамки, показывается правым
+	// щелчком по значку (C66).
+	trayMenu application.Window
 }
 
 // ServiceStartup — хук Wails v3: приложение передаёт контекст, который
@@ -329,6 +339,52 @@ func (a *App) RequestClose() {
 		return
 	}
 	application.Get().Quit()
+}
+
+// showTrayMenu показывает меню у курсора — правый щелчок по значку (C66).
+func (a *App) showTrayMenu() {
+	a.mu.Lock()
+	menu := a.trayMenu
+	a.mu.Unlock()
+	if menu == nil {
+		return
+	}
+	x, y, ok := w32.GetCursorPos()
+	if !ok {
+		return
+	}
+	menu.SetSize(trayMenuWidth, trayMenuHeight)
+	menu.SetPosition(x, y)
+	menu.Show()
+	menu.Focus()
+}
+
+// TrayOpen — пункт «Открыть» меню трея: спрятать меню, показать окно.
+func (a *App) TrayOpen() {
+	a.HideTrayMenu()
+	a.mu.Lock()
+	win := a.window
+	a.mu.Unlock()
+	if win != nil {
+		win.Show()
+		win.Focus()
+	}
+}
+
+// TrayQuit — пункт «Выход»: закрыть программу полностью.
+func (a *App) TrayQuit() {
+	a.HideTrayMenu()
+	application.Get().Quit()
+}
+
+// HideTrayMenu — закрыть меню (пункт выбран, Esc или потеря фокуса).
+func (a *App) HideTrayMenu() {
+	a.mu.Lock()
+	menu := a.trayMenu
+	a.mu.Unlock()
+	if menu != nil {
+		menu.Hide()
+	}
 }
 
 // Notify показывает системное уведомление Windows, когда интерфейса не
@@ -827,18 +883,31 @@ func main() {
 		URL:       "/",
 	})
 	mainWindow = win
+	// Меню в трее — своё маленькое окно в стиле рамки (C66): нативное меню
+	// Windows оставляло пустую колонку и было шире текста.
+	menuWin := app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Name:             "tray-menu",
+		Width:            trayMenuWidth,
+		Height:           trayMenuHeight,
+		AlwaysOnTop:      true,
+		Frameless:        true,
+		Hidden:           true,
+		DisableResize:    true,
+		BackgroundColour: application.NewRGB(0xF4, 0xF0, 0xE9),
+		Windows: application.WindowsWindow{
+			HiddenOnTaskbar:                   true,
+			DisableFramelessWindowDecorations: true,
+		},
+		URL: "/?tray-menu=1",
+	})
+	menuWin.RegisterHook(events.Common.WindowLostFocus, func(*application.WindowEvent) {
+		menuWin.Hide()
+	})
 	// Значок в области уведомлений (C66): открыть окно или выйти совсем.
 	tray := app.SystemTray.New()
 	tray.SetIcon(trayIcon)
 	tray.SetTooltip("Wynd Настольный")
-	menu := application.NewMenu()
-	menu.Add("Открыть").OnClick(func(*application.Context) {
-		win.Show()
-		win.Focus()
-	})
-	menu.AddSeparator()
-	menu.Add("Выход").OnClick(func(*application.Context) { app.Quit() })
-	tray.SetMenu(menu)
+	tray.OnRightClick(func() { application.InvokeSync(shell.showTrayMenu) })
 	tray.OnClick(func() {
 		win.Show()
 		win.Focus()
@@ -864,7 +933,21 @@ func main() {
 	shell.mu.Lock()
 	shell.window = win
 	shell.tray = tray
+	shell.trayMenu = menuWin
 	shell.mu.Unlock()
+	// Прогрев меню: первое создание WebView2 занимает секунды, а правый
+	// щелчок должен показывать меню сразу. Окно 1×1 за краем экрана, затем
+	// прячется; на показе размер возвращается.
+	go func() {
+		time.Sleep(1500 * time.Millisecond)
+		application.InvokeSync(func() {
+			menuWin.SetSize(1, 1)
+			menuWin.SetPosition(-10000, -10000)
+			menuWin.Show()
+		})
+		time.Sleep(2 * time.Second)
+		application.InvokeSync(func() { menuWin.Hide() })
+	}()
 	if err := app.Run(); err != nil {
 		log.Fatal(err)
 	}
