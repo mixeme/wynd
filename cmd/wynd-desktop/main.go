@@ -25,7 +25,6 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
-	"github.com/wailsapp/wails/v3/pkg/w32"
 
 	"gitea.mixdep.ru/mix/wynd/internal/desktop"
 	wyndweb "gitea.mixdep.ru/mix/wynd/web"
@@ -33,15 +32,6 @@ import (
 
 //go:embed all:frontend/dist
 var assets embed.FS
-
-//go:embed build/windows/icon.ico
-var trayIcon []byte
-
-// Размер меню в трее (C66): ширина по тексту «Открыть» с полями 12+12.
-const (
-	trayMenuWidth  = 92
-	trayMenuHeight = 56
-)
 
 // App — то, что окно может попросить (main.App.* в биндингах). Список
 // серверов — в internal/desktop; токенов и паролей здесь нет.
@@ -181,7 +171,7 @@ func (a *App) OpenBackupFolder() error {
 	if folder == "" {
 		return errors.New("backups: папка не выбрана")
 	}
-	return exec.Command("explorer.exe", folder).Start()
+	return openFolderInFileManager(folder)
 }
 
 // loadBackupConfig читает backups.json; отсутствие файла — умолчания.
@@ -333,30 +323,12 @@ func (a *App) RequestClose() {
 	a.mu.Lock()
 	win, tray := a.window, a.tray
 	a.mu.Unlock()
-	if win != nil && tray != nil {
+	if win != nil && platformCanHideToTray(tray) {
 		win.Hide()
 		a.maybeNotifyUpdate()
 		return
 	}
 	application.Get().Quit()
-}
-
-// showTrayMenu показывает меню у курсора — правый щелчок по значку (C66).
-func (a *App) showTrayMenu() {
-	a.mu.Lock()
-	menu := a.trayMenu
-	a.mu.Unlock()
-	if menu == nil {
-		return
-	}
-	x, y, ok := w32.GetCursorPos()
-	if !ok {
-		return
-	}
-	menu.SetSize(trayMenuWidth, trayMenuHeight)
-	menu.SetPosition(x, y)
-	menu.Show()
-	menu.Focus()
 }
 
 // TrayOpen — пункт «Открыть» меню трея: спрятать меню, показать окно.
@@ -733,8 +705,8 @@ func main() {
 	// Оболочка обновляет клиента вместе с сервером; служебный воркер PWA
 	// внутри окна отдавал старый интерфейс из кэша — адрес сервера и
 	// состояние связи выглядели чужими, а новые экраны не появлялись.
-	// Убираем его до запуска окна; сессии и медиа-кэш в IndexedDB не трогаем.
-	_ = os.RemoveAll(filepath.Join(base, "webview", "EBWebView", "Default", "Service Worker"))
+	// Windows-путь убирает его до запуска окна; на Linux воркера PWA нет.
+	preparePlatformProfile(base)
 	store, err := desktop.OpenStore(filepath.Join(base, "servers.json"))
 	if err != nil {
 		log.Fatal(err)
@@ -811,14 +783,20 @@ func main() {
 	if err := shell.updateAllowed(); err != nil {
 		log.Fatal(err)
 	}
-	// Запуск из автозапуска (HKCU\...\Run с --from-startup) — сразу в трей,
-	// без окна: человек не просил открыть программу, она ждёт в значке.
+	// Запуск из автозапуска (--from-startup) — сразу в трей, без окна:
+	// человек не просил открыть программу. На Linux без подтверждённого
+	// трея окно всё равно показывается, чтобы приложение не пропало.
 	startInTray := false
+	smokeTest := false
 	for _, arg := range os.Args[1:] {
 		if arg == "--from-startup" {
 			startInTray = true
 		}
+		if arg == "--smoke-test" {
+			smokeTest = true
+		}
 	}
+	startInTray = startInTray && platformCanStartHidden()
 	// Приглашение из схемы wynd: при первом запуске: событие оболочке уйдёт
 	// раньше её загрузки, поэтому адрес ждёт её в pendingInvite — она забирает
 	// сама при старте (план 66, функция 4).
@@ -837,19 +815,7 @@ func main() {
 		ErrorHandler: func(err error) { log.Printf("wails: %v", err) },
 		Services:     []application.Service{application.NewService(shell)},
 		Assets:       application.AssetOptions{Handler: proxy.Handler(http.FileServer(http.FS(shellFS)))},
-		Windows: application.WindowsOptions{
-			// Постоянный профиль: сессия и медиа-кэш переживают перезапуск,
-			// данные Wynd из системного профиля не используются.
-			WebviewUserDataPath: filepath.Join(base, "webview"),
-			// Окно живёт в трее: скрытая страница не должна засыпать, иначе
-			// очередь отправки и поток событий ждут минутами. Троттлинг таймеров
-			// и фоновых вкладок WebView2 отключён (C66).
-			AdditionalBrowserArgs: []string{
-				"--disable-background-timer-throttling",
-				"--disable-backgrounding-occluded-windows",
-				"--disable-renderer-backgrounding",
-			},
-		},
+		Windows:      platformWindowsOptions(base),
 		SingleInstance: &application.SingleInstanceOptions{
 			UniqueID: "com.wynd.desktop",
 			OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
@@ -883,42 +849,24 @@ func main() {
 		URL:       "/",
 	})
 	mainWindow = win
-	// Меню в трее — своё маленькое окно в стиле рамки (C66): нативное меню
-	// Windows оставляло пустую колонку и было шире текста.
-	menuWin := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Name:             "tray-menu",
-		Width:            trayMenuWidth,
-		Height:           trayMenuHeight,
-		AlwaysOnTop:      true,
-		Frameless:        true,
-		Hidden:           true,
-		DisableResize:    true,
-		BackgroundColour: application.NewRGB(0xF4, 0xF0, 0xE9),
-		Windows: application.WindowsWindow{
-			HiddenOnTaskbar:                   true,
-			DisableFramelessWindowDecorations: true,
-		},
-		URL: "/?tray-menu=1",
-	})
-	menuWin.RegisterHook(events.Common.WindowLostFocus, func(*application.WindowEvent) {
-		menuWin.Hide()
-	})
+	// Меню в трее: на Windows — своё маленькое окно в стиле рамки (C66);
+	// на Linux — нативное меню StatusNotifierItem (см. platform-файлы).
+	menuWin := newTrayMenuWindow(app)
 	// Значок в области уведомлений (C66): открыть окно или выйти совсем.
 	tray := app.SystemTray.New()
 	tray.SetIcon(trayIcon)
 	tray.SetTooltip("Wynd Настольный")
-	tray.OnRightClick(func() { application.InvokeSync(shell.showTrayMenu) })
-	tray.OnClick(func() {
-		win.Show()
-		win.Focus()
-	})
+	setupPlatformTray(app, tray, win, shell)
 	// Закрытие окна любым путём (крестик, Alt+F4, задача) с треем не
 	// завершает программу, а прячет окно: работа продолжается в значке.
-	win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
-		e.Cancel()
-		win.Hide()
-		shell.maybeNotifyUpdate()
-	})
+	// На Linux без подтверждённого трея окно закрывается обычным образом.
+	if platformCanHideToTray(tray) {
+		win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+			e.Cancel()
+			win.Hide()
+			shell.maybeNotifyUpdate()
+		})
+	}
 	// Общая горячая клавиша (C66, план 66): Ctrl+Alt+W показывает и
 	// фокусирует окно из любого места Windows, как второй запуск. Регистрация
 	// до app.Run допустима — Wails привяжет клавишу при старте; если комбинацию
@@ -935,19 +883,28 @@ func main() {
 	shell.tray = tray
 	shell.trayMenu = menuWin
 	shell.mu.Unlock()
-	// Прогрев меню: первое создание WebView2 занимает секунды, а правый
-	// щелчок должен показывать меню сразу. Окно 1×1 за краем экрана, затем
-	// прячется; на показе размер возвращается.
-	go func() {
-		time.Sleep(1500 * time.Millisecond)
-		application.InvokeSync(func() {
-			menuWin.SetSize(1, 1)
-			menuWin.SetPosition(-10000, -10000)
-			menuWin.Show()
-		})
-		time.Sleep(2 * time.Second)
-		application.InvokeSync(func() { menuWin.Hide() })
-	}()
+	// Прогрев меню Windows: первое создание WebView2 занимает секунды, а
+	// правый щелчок должен показывать меню сразу. Окно 1×1 за краем экрана,
+	// затем прячется; на показе размер возвращается. На Linux окна меню нет.
+	if menuWin != nil {
+		go func() {
+			time.Sleep(1500 * time.Millisecond)
+			application.InvokeSync(func() {
+				menuWin.SetSize(1, 1)
+				menuWin.SetPosition(-10000, -10000)
+				menuWin.Show()
+			})
+			time.Sleep(2 * time.Second)
+			application.InvokeSync(func() { menuWin.Hide() })
+		}()
+	}
+	if smokeTest {
+		go func() {
+			time.Sleep(5 * time.Second)
+			log.Printf("smoke: окно запущено")
+			app.Quit()
+		}()
+	}
 	if err := app.Run(); err != nil {
 		log.Fatal(err)
 	}

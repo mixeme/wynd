@@ -4,13 +4,13 @@ package main
 
 import (
 	"context"
-	"strings"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"gitea.mixdep.ru/mix/wynd/internal/desktop"
@@ -42,6 +42,7 @@ func TestCORSOnlyForWindowOrigins(t *testing.T) {
 		want   bool
 	}{
 		{"http://wails.localhost", true},
+		{"wails://localhost", true},
 		{"http://localhost:34115", true},
 		{"http://127.0.0.1:9000", true},
 		{"http://[::1]:9000", true},
