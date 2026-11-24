@@ -25,6 +25,10 @@
 
 ## Этап 1. Компиляция, окно и замер WebKit
 
+**Статус:** сборка, Linux-ворота, smoke и замер `wails://` выполнены 24.11
+([протокол](../testing/linux-desktop-2026-11-24.md)); настоящее окно снято в
+Xvfb. Вход/лента на сервере, SSE и скачивание ждут живой Linux-среды.
+
 1. **Платформенные точки** в `cmd/wynd-desktop`:
    - `w32.GetCursorPos` и показ окна tray-menu — `tray_windows.go`; Linux — нативное меню (этап 2);
    - иконка трея: ICO на Windows, PNG на Linux;
