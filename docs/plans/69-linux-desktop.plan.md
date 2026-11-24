@@ -43,6 +43,8 @@ Xvfb. Вход/лента на сервере, SSE и скачивание жд�
 
 ## Этап 2. Системная интеграция
 
+**Статус:** бэкенд сделан 24.11 — Secret Service, XDG-автозапуск, схема `wynd:`, D-Bus-уведомления, проверка StatusNotifierWatcher и платформенный текст автозапуска. Вживую на рабочем столе не проверено; кнопка «Открыть в приложении» в Linux-браузере и кадр строки настроек ещё не сделаны.
+
 1. **Трей.** Linux: PNG-иконка, `SetLabel("Wynd")`, нативное `SetMenu` с «Открыть»/«Выход»; кастомное окно 92×56 остаётся только на Windows. Если трея/хоста нет — окно не прячется. Снимок меню — на приёмку.
 2. **Уведомления.** Wails `pkg/services/notifications` (D-Bus) или прямой D-Bus; сохранить `ShouldNotify` и дедуп. Заглушки больше не возвращают ложный успех.
 3. **Автозапуск.** `autostart_linux.go`: XDG `~/.config/autostart/wynd.desktop`, `--from-startup`, чтение/удаление; тесты. Текст «при входе в Windows» → «при входе в систему» с кадром.
@@ -54,6 +56,8 @@ Xvfb. Вход/лента на сервере, SSE и скачивание жд�
 9. **Тесты.** Юнит-тесты autostart/scheme/secrets/политики трея; Linux CI без реального D-Bus.
 
 ## Этап 3. Пакеты `.deb` и AppImage
+
+**Статус:** пакеты и CI выпуска сделаны 24.11. CI собрал `wynd-desktop_0.4.5_amd64.deb` и `Wynd-0.4.5-x86_64.AppImage`, установил `.deb` и прошёл smoke обоих; `workflow_dispatch` собрал Windows exe и Linux-пакеты. Тег `desktop-v0.5.0` не ставился: ждёт живой проверки и решения владельца.
 
 1. **Ресурсы** `cmd/wynd-desktop/build/linux/`: `wynd.desktop`, hicolor-иконки (256/128/64/48), `wynd.metainfo.xml`, `README-linux.txt`.
 2. **`.deb`:** staging-дерево `/usr/bin/wynd-desktop`, `/usr/share/applications/wynd.desktop`, `/usr/share/icons/hicolor/...`, `/usr/share/metainfo/...`; control `wynd-desktop`, `amd64`, зависимости `libgtk-3-0`, `libwebkit2gtk-4.1-0`, `libjavascriptcoregtk-4.1-0`, `libsoup-3.0-0`, `xdg-utils`; recommends GStreamer, keyring, portal; `postinst`/`prerm` обновляют desktop/mime database. Имя `wynd-desktop_<версия>_amd64.deb`.

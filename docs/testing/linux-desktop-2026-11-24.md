@@ -43,6 +43,37 @@ HTTP-оболочка и отказ от secure-context-функций не ну
 «Войти в Wynd», поле адреса и кнопка «Дальше». Это существующий экран
 Windows-версии; новых элементов на нём нет.
 
+## Системная интеграция (код)
+
+- `secrets_linux.go` — Secret Service через `go-keyring`, список origin’ов в
+  служебной записи `__index__`; при отказе хранилища ошибка, клиент оставляет
+  копию в IndexedDB.
+- `autostart_linux.go` — `~/.config/autostart/wynd.desktop`, `--from-startup`;
+  строка в настройках на Linux говорит «при входе в систему».
+- `scheme_linux.go` — пользовательский `.desktop` с
+  `x-scheme-handler/wynd`, `xdg-mime default`.
+- `notify_linux.go` — D-Bus `org.freedesktop.Notifications`; без демона
+  возвращается ошибка, а не ложный успех.
+- Трей: `SetMenu` с «Открыть»/«Выход»; окно прячется в трей только при живом
+  `org.kde.StatusNotifierWatcher`.
+
+Живой проверки на рабочем столе (GNOME/KDE/XFCE), трея, уведомлений и
+автозапуска не было: в CI Xvfb этих служб нет.
+
+## Пакеты
+
+- `scripts/package-desktop-linux.sh` собрал в CI:
+  `wynd-desktop_0.4.5_amd64.deb` — 5,2 МБ,
+  SHA-256 `ae88ab409ad2236fdc182fdfe1d7ff6b9f7146eee48964fd4ee69f91dd3758a8`;
+  `Wynd-0.4.5-x86_64.AppImage` — 6,7 МБ,
+  SHA-256 `4311e68f42bda216562655748a150ba477a2631856543367baf162c4684cd35d`.
+- `.deb` установлен в CI (`apt install`), `wynd-desktop --smoke-test` —
+  success; AppImage проверен с `APPIMAGE_EXTRACT_AND_RUN=1` — success.
+- Общий выпуск: `.github/workflows/desktop-client.yaml` разделён на
+  `build-windows` и `build-linux`, `draft` ждёт оба. `workflow_dispatch`
+  (`45378840783`) собрал обе платформы; черновик не создавался.
+- Тег `desktop-v0.5.0` пока не ставился: сначала живая проверка и приёмка.
+
 ## Остатки этапа 1
 
 - Вход и лента на настоящем сервере в Linux-окне (нужна Linux-среда или
