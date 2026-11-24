@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$EnvironmentRoot = 'D:\android-env',
     [string]$KeyStore = 'D:\Local\Git\myenv\wynd\wynd-android.p12',
     [string]$KeyAlias = 'wynd-android'

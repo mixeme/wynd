@@ -394,6 +394,9 @@ request, вручную и по `android-v*`. APK обеих редакций с
 .\scripts\sign-android-release.ps1 -Tag android-v0.1.0 -VerifyOnly
 ```
 
+Скрипты подписи Android сохранены в UTF-8 с BOM: запускаются и в Windows
+PowerShell 5.1, где файл без BOM читался как ANSI и разбор падал на кириллице.
+
 Проверяются SHA-256, attestation нужного workflow и тега, пакет, версия,
 debug-флаг, выравнивание и заметки. Отчёт `verification.json` остаётся в
 `D:\android-env\releases\…`. Подпись, загрузка и публикация в этом режиме
