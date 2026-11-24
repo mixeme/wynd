@@ -76,7 +76,8 @@ Android этой сессии — в отдельных передачах
 - **«Подпись» обновлена:** для `desktop-v…` проверяет Linux `.deb` и
   AppImage по `SHA256SUMS` и удостоверению сборки, подписывает каждый
   файл и выкладывает `.sig`; старый выпуск без Linux-файлов работает как
-  раньше. Добавлены тесты, кадр стенда — `signer-linux-extras.png`.
+  раньше. Добавлены тесты, кадр стенда `signer-linux-extras.png` —
+  **принят 25.11 («Принимаем»)**.
 - `.github/workflows/desktop-client.yaml` разделён на `build-windows` и
   `build-linux`; `draft` ждёт оба, аттестует exe/.deb/AppImage и кладёт
   всё в один черновик. `workflow_dispatch` (`45378840783`) собрал обе
