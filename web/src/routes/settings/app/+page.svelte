@@ -26,7 +26,7 @@
 		type Theme
 	} from '$lib/idb/db';
 	import { getMediaCacheLimit, setMediaCacheLimit } from '$lib/media/objectUrl';
-	import { autostartBridge } from '$lib/desktop/autostart';
+	import { autostartBridge, autostartSystemName } from '$lib/desktop/autostart';
 	import { openDesktopBackups } from '$lib/desktop/servers';
 	import { desktopBridge } from '$lib/desktop/bridge';
 	import { openDesktopInterface } from '$lib/desktop/servers';
@@ -79,6 +79,7 @@
 	let interfaceName = $state(interfaceOrigin ? displayHost(interfaceOrigin) : '');
 	// Автозапуск — только в окне для компьютера; в браузере моста нет.
 	const auto = autostartBridge();
+	const autostartSystem = autostartSystemName();
 	let autostart = $state(false);
 	let autostartBusy = $state(false);
 	let autostartStale = $state(false);
@@ -259,13 +260,13 @@
 	{/if}
 	{#if auto}
 		<SectionLabel>Запуск</SectionLabel>
-		<Hint class="mt-8 mb-8">При входе в Windows откроется Wynd.</Hint>
-		<SettingsRow class="pt-2" title="Запускать при входе в Windows">
+		<Hint class="mt-8 mb-8">При входе в {autostartSystem} откроется Wynd.</Hint>
+		<SettingsRow class="pt-2" title="Запускать при входе в {autostartSystem}">
 			{#snippet control()}
 				<Switch
 					bind:checked={autostart}
 					disabled={autostartBusy}
-					label="Запускать при входе в Windows"
+					label="Запускать при входе в {autostartSystem}"
 					onchange={(v) => void toggleAutostart(v)}
 				/>
 			{/snippet}

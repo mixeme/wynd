@@ -33,3 +33,8 @@ export function autostartBridge(): AutostartBridge | undefined {
 		set: (enabled) => app.SetAutostart(enabled)
 	};
 }
+
+/** Как назвать систему в строке автозапуска: Windows или нейтрально. */
+export function autostartSystemName(userAgent = navigator.userAgent): string {
+	return /Windows/i.test(userAgent) ? 'Windows' : 'систему';
+}

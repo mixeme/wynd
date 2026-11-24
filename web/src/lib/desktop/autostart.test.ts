@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { autostartBridge } from './autostart';
+import { autostartBridge, autostartSystemName } from './autostart';
 
 const bag = window as unknown as {
 	__wyndDesktop?: { origin: string };
@@ -28,5 +28,15 @@ describe('autostart bridge', () => {
 		await expect(bridge!.get()).resolves.toEqual(state);
 		await expect(bridge!.set(true)).resolves.toMatchObject({ enabled: true });
 		expect(set).toHaveBeenCalledWith(true);
+	});
+});
+
+describe('autostart system name', () => {
+	it('на Windows оставляет привычный текст', () => {
+		expect(autostartSystemName('Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe('Windows');
+	});
+
+	it('на Linux не говорит про Windows', () => {
+		expect(autostartSystemName('Mozilla/5.0 (X11; Ubuntu; Linux x86_64)')).toBe('систему');
 	});
 });
