@@ -10,12 +10,13 @@ echo "[linux] frontend check"
 (cd web && npx svelte-kit sync)
 (cd cmd/wynd-desktop/frontend && npm run check)
 
+# go:embed требует готовые web/dist и frontend/dist до go vet/test.
+echo "[linux] build"
+scripts/build-desktop-linux.sh
+
 echo "[linux] go vet/test (desktop,gtk3)"
 go vet -tags "desktop,gtk3" ./cmd/wynd-desktop ./internal/desktop
 go test -tags "desktop,gtk3" ./cmd/wynd-desktop ./internal/desktop
-
-echo "[linux] build"
-scripts/build-desktop-linux.sh
 
 if command -v xvfb-run >/dev/null 2>&1; then
 	echo "[linux] smoke в Xvfb"
