@@ -512,17 +512,21 @@
 		{:else if screen === 'release'}
 			<!-- Проверки, пароль, подпись и итог остаются на одном экране. -->
 			<h2>{productName} {version}</h2>
-			<StepList steps={checkSteps} onlink={(url) => void backend().OpenLink(url)} />
-			{#if check?.extra?.length}
-				<MarkRows class="mt-8">
-					{#each check.extra as a (a.name)}
-						<MarkRow mark={a.sum_ok && a.attest_ok ? '✓' : '!'} tone={a.sum_ok && a.attest_ok ? 'ok' : 'block'}>
-							{a.name}
-							<span class="ins-dim">— {mb(a.size)}</span>
-						</MarkRow>
-					{/each}
-				</MarkRows>
-			{/if}
+			<StepList steps={checkSteps} onlink={(url) => void backend().OpenLink(url)}>
+				{#snippet extra()}
+					{#if check?.extra?.length}
+						{#each check.extra as a (a.name)}
+							<MarkRow
+								mark={a.sum_ok && a.attest_ok ? '✓' : '!'}
+								tone={a.sum_ok && a.attest_ok ? 'ok' : 'block'}
+							>
+								{a.name}
+								<span class="ins-dim">— {mb(a.size)}</span>
+							</MarkRow>
+						{/each}
+					{/if}
+				{/snippet}
+			</StepList>
 			{#if checkError}<Notice tone="bad" alert>{checkError}</Notice>{/if}
 			{#if check?.problem}<Notice tone="bad" alert>{check.problem}. Такой выпуск подписывать нельзя.</Notice>{/if}
 			{#if signSteps.length}<StepList steps={signSteps} />{/if}
