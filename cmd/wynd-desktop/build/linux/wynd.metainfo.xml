@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.wynd.desktop</id>
+  <name>Wynd</name>
+  <summary>Тихий круг своих людей</summary>
+  <description>
+    <p>Wynd — личный круг для записей, фотографий и разговоров на своём сервере.</p>
+  </description>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>AGPL-3.0-or-later</project_license>
+  <launchable type="desktop-id">wynd.desktop</launchable>
+  <url type="homepage">https://github.com/mixeme/wynd</url>
+  <categories>
+    <category>Network</category>
+    <category>InstantMessaging</category>
+  </categories>
+</component>

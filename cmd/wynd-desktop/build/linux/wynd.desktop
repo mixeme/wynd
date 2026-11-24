@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Wynd
+Comment=Wynd Настольный
+Exec=wynd-desktop %u
+Icon=wynd
+Terminal=false
+Categories=Network;InstantMessaging;
+MimeType=x-scheme-handler/wynd;
+StartupWMClass=wynd-desktop

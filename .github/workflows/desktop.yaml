@@ -16,6 +16,7 @@ on:
       - 'scripts/build-signer.bat'
       - 'scripts/test-desktop-linux.sh'
       - 'scripts/build-desktop-linux.sh'
+      - 'scripts/package-desktop-linux.sh'
       - 'go.mod'
       - 'go.sum'
       - 'VERSION'
@@ -102,3 +103,25 @@ jobs:
           path: /tmp/wynd-linux.png
           if-no-files-found: error
           retention-days: 7
+      - name: Linux packages
+        run: |
+          sudo apt-get install -y --no-install-recommends desktop-file-utils
+          mkdir -p "$RUNNER_TEMP/bin"
+          curl -L --fail --silent --show-error -o "$RUNNER_TEMP/bin/appimagetool" \
+            https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
+          echo "ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0  $RUNNER_TEMP/bin/appimagetool" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/bin/appimagetool"
+          APPIMAGETOOL="$RUNNER_TEMP/bin/appimagetool" scripts/package-desktop-linux.sh
+          dpkg-deb --info dist/wynd-desktop_*_amd64.deb
+          sudo apt-get install -y ./dist/wynd-desktop_*_amd64.deb
+          xvfb-run -a timeout 20s wynd-desktop --smoke-test
+          APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a timeout 30s ./dist/Wynd-*_x86_64.AppImage --smoke-test
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wynd-linux-packages
+          path: |
+            dist/wynd-desktop_*_amd64.deb
+            dist/Wynd-*_x86_64.AppImage
+            dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
