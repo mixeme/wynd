@@ -90,6 +90,38 @@ describe('android native queue bridge', () => {
 		});
 	});
 
+	it('передаёт файлы begin → chunk → commit', async () => {
+		const { port, requests } = fake((request) => {
+			if (request.op === 'begin') return { id: request.id, token: 'handoff-1' };
+			if (request.op === 'commit') return { id: request.id, native_id: 'native-1' };
+			return { id: request.id, ok: true };
+		});
+		(window as unknown as { __wyndQueue?: Port }).__wyndQueue = port;
+		const { nativeBegin, nativeChunk, nativeCommit } = await import('./native-queue');
+		const token = await nativeBegin({
+			type: 'post',
+			origin: 'https://srv.test',
+			circle_id: 'c1',
+			client_id: '11111111-1111-1111-1111-111111111111',
+			payload: {
+				body: 'файл',
+				entry_date: '2026-11-24',
+				media_meta: [{ kind: 'photo' }]
+			},
+			token: 'token-1',
+			files: [{ name: 'a.jpg', mime: 'image/jpeg', size: 4 }],
+			aux: []
+		});
+		expect(token).toBe('handoff-1');
+		await nativeChunk(token, 0, 0, 'AAAA');
+		expect(await nativeCommit(token)).toBe('native-1');
+		expect(requests.map((request) => request.op)).toEqual(['begin', 'chunk', 'commit']);
+		expect(requests[0]).toMatchObject({
+			files: [{ name: 'a.jpg', mime: 'image/jpeg', size: 4 }],
+			aux: []
+		});
+	});
+
 	it('rejects a native error and sends cancel/clear', async () => {
 		const { port, requests } = fake((request) =>
 			request.op === 'enqueue' ? { id: request.id, error: 'invalid' } : { id: request.id, ok: true }

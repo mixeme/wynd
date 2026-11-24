@@ -1,7 +1,8 @@
 /**
- * Нативная очередь (план 50, этап 5.1): записи без вложений уходят через
- * WorkManager и после закрытия окна. Страница отдаёт запись и токен только
- * главному фрейму выбранного origin; native хранит их в private-файле.
+ * Нативная очередь (план 50, этап 5): записи уходят через WorkManager и после
+ * закрытия окна. 5.1 — без вложений; 5.2 — файлы, постеры и обложки:
+ * begin → chunk* → commit. Страница отдаёт запись и токен только главному
+ * фрейму выбранного origin; native хранит их в private-каталоге.
  */
 export interface NativeQueueInput {
 	type: string;
@@ -14,8 +15,28 @@ export interface NativeQueueInput {
 
 export interface NativeQueueStatus {
 	client_id: string;
+	native_id?: string;
 	state: 'pending' | 'sent' | 'failed' | 'unauthorized';
 	error?: string;
+}
+
+export interface NativeQueuePart {
+	name: string;
+	mime: string;
+	size: number;
+	media_index?: number;
+	field?: 'video_poster' | 'audio_cover';
+}
+
+export interface NativeQueueBegin {
+	type: string;
+	origin: string;
+	circle_id: string;
+	client_id: string;
+	payload: unknown;
+	token: string;
+	files: NativeQueuePart[];
+	aux: NativeQueuePart[];
 }
 
 interface NativeQueuePort {
@@ -26,6 +47,7 @@ interface NativeQueuePort {
 interface Reply {
 	id: number;
 	native_id?: string;
+	token?: string;
 	ok?: boolean;
 	error?: string;
 	records?: unknown;
@@ -102,11 +124,13 @@ function status(value: unknown): NativeQueueStatus | undefined {
 	const item = value as NativeQueueStatus;
 	if (typeof item.client_id !== 'string') return undefined;
 	if (!['pending', 'sent', 'failed', 'unauthorized'].includes(item.state)) return undefined;
-	return {
+	const result: NativeQueueStatus = {
 		client_id: item.client_id,
 		state: item.state,
 		error: typeof item.error === 'string' ? item.error : undefined
 	};
+	if (typeof item.native_id === 'string') result.native_id = item.native_id;
+	return result;
 }
 
 function statuses(value: unknown): NativeQueueStatus[] {
@@ -122,6 +146,46 @@ export async function nativeEnqueue(input: NativeQueueInput): Promise<string | u
 	if (typeof reply.native_id !== 'string' || !reply.native_id)
 		throw new Error('Android queue: invalid reply');
 	return reply.native_id;
+}
+
+/** Начать передачу файлов; дальше chunk* и commit. */
+export async function nativeBegin(input: NativeQueueBegin): Promise<string> {
+	const target = port();
+	if (!target) throw new Error('Android queue unavailable');
+	const reply = await request(target, { op: 'begin', ...input });
+	if (typeof reply.token !== 'string' || !reply.token)
+		throw new Error('Android queue: invalid begin');
+	return reply.token;
+}
+
+export async function nativeChunk(
+	token: string,
+	index: number,
+	offset: number,
+	data: string
+): Promise<void> {
+	const target = port();
+	if (!target) throw new Error('Android queue unavailable');
+	await request(target, { op: 'chunk', token, index, offset, data });
+}
+
+export async function nativeCommit(token: string): Promise<string> {
+	const target = port();
+	if (!target) throw new Error('Android queue unavailable');
+	const reply = await request(target, { op: 'commit', token });
+	if (typeof reply.native_id !== 'string' || !reply.native_id)
+		throw new Error('Android queue: invalid commit');
+	return reply.native_id;
+}
+
+export async function nativeAbort(token: string): Promise<void> {
+	const target = port();
+	if (!target) return;
+	try {
+		await request(target, { op: 'abort', token });
+	} catch {
+		// Отмена не должна маскировать первичную ошибку передачи.
+	}
 }
 
 export async function nativeCancel(clientId: string): Promise<void> {

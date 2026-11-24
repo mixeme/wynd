@@ -12,6 +12,7 @@ import androidx.work.WorkManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
+import java.io.File;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -30,11 +31,22 @@ public final class NativeQueueWorker extends Worker {
     @Override
     public Result doWork() {
         NativeQueue queue = NativeQueue.get(getApplicationContext());
+        NativeQueueSender.Parts parts = new NativeQueueSender.Parts() {
+            @Override
+            public File file(NativeQueue.Record record, NativeQueue.Part part) {
+                return queue.partFile(record.id, part);
+            }
+
+            @Override
+            public void saved(NativeQueue.Record record, NativeQueue.Part part) {
+                queue.setPart(record.id, part);
+            }
+        };
         boolean retry = false;
         for (NativeQueue.Record record : queue.records()) {
             if (isStopped()) return Result.retry();
             NativeQueueSender.Outcome outcome =
-                    NativeQueueSender.send(record, NativeQueueSender.HttpTransport.INSTANCE);
+                    NativeQueueSender.send(record, NativeQueueSender.HttpTransport.INSTANCE, parts);
             switch (outcome.state) {
                 case "sent":
                     queue.markSent(record);

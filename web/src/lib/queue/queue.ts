@@ -1,8 +1,13 @@
 import {
 	androidQueueAvailable,
+	nativeAbort,
+	nativeBegin,
 	nativeCancel,
+	nativeChunk,
+	nativeCommit,
 	nativeEnqueue,
 	nativeStatus,
+	type NativeQueuePart,
 	type NativeQueueStatus
 } from '$lib/android/native-queue';
 import { ApiError, apiFetch, apiJson, normalizeOrigin } from '$lib/api/client';
@@ -74,6 +79,9 @@ const listeners = new Set<QueueListener>();
 let draining: Promise<void> | undefined;
 let activeDrain: AbortController | undefined;
 let reconcilingNative: Promise<void> | undefined;
+const handingOff = new Set<number>();
+/** Порция передачи файла в native; сообщение WebMessage до 300 КБ. */
+const HANDOFF_CHUNK = 128 * 1024;
 
 /** Запасной срок для клиентов без Web Locks (QUE-1). */
 const UPLOADING_STALE_MS = 2 * 60 * 1000;
@@ -96,8 +104,9 @@ export function readyQueueItems(
 ): QueueRecordWithId[] {
 	return items
 		.filter((item) => {
-			// Нативная очередь Android уже взяла запись (план 50, этап 5.1).
-			if (item.native_id) return false;
+			// Нативная очередь Android уже взяла запись или принимает файлы
+			// прямо сейчас (план 50, этап 5).
+			if (item.native_id || item.native_pending) return false;
 			if (item.state === 'failed') return false;
 			if (item.state === 'uploading') {
 				// Под эксклюзивной блокировкой отправку оставила закрытая вкладка.
@@ -545,7 +554,7 @@ let retryTimer: ReturnType<typeof setTimeout> | undefined;
 export function nextRetryDelay(items: QueueRecordWithId[], now: number): number | undefined {
 	let delay: number | undefined;
 	for (const item of items) {
-		if (item.native_id) continue;
+		if (item.native_id || item.native_pending) continue;
 		if (item.state === 'failed') continue;
 		let candidate: number;
 		if (item.state === 'uploading') {
@@ -658,10 +667,11 @@ export async function reconcileNativeQueue(): Promise<void> {
 			if (!androidQueueAvailable()) {
 				let changed = false;
 				for (const item of await listQueueItems()) {
-					if (!item.native_id) continue;
+					if (!item.native_id && !item.native_pending) continue;
 					await putQueueItem(item.id, {
 						...item,
 						native_id: undefined,
+						native_pending: undefined,
 						state: 'pending',
 						uploading_at: undefined
 					});
@@ -675,14 +685,16 @@ export async function reconcileNativeQueue(): Promise<void> {
 			}
 
 			const { records, statuses } = await nativeStatus();
-			const byClient = new Map<string, NativeQueueStatus>();
-			for (const status of statuses) byClient.set(status.client_id, status);
-			const pending = new Set(records.map((record) => record.client_id));
+			const doneByClient = new Map<string, NativeQueueStatus>();
+			for (const status of statuses) doneByClient.set(status.client_id, status);
+			const pendingByClient = new Map<string, NativeQueueStatus>();
+			for (const record of records) pendingByClient.set(record.client_id, record);
 			let changed = false;
 			for (const item of await listQueueItems()) {
-				if (!item.native_id) continue;
+				if (!item.native_id && !item.native_pending) continue;
+				if (handingOff.has(item.id)) continue;
 				const client = item.client_id ?? '';
-				const done = byClient.get(client);
+				const done = doneByClient.get(client);
 				if (done?.state === 'sent') {
 					await invalidateCircleSnapshots(item.origin, item.circle_id);
 					if (item.type === 'post') await announcePostSent(item.origin, item.circle_id);
@@ -694,7 +706,8 @@ export async function reconcileNativeQueue(): Promise<void> {
 						...item,
 						state: 'failed',
 						error: done.error || 'native_failed',
-						native_id: undefined
+						native_id: undefined,
+						native_pending: undefined
 					});
 					changed = true;
 				} else if (done?.state === 'unauthorized') {
@@ -706,19 +719,35 @@ export async function reconcileNativeQueue(): Promise<void> {
 						error: undefined,
 						attempts: 0,
 						native_id: undefined,
+						native_pending: undefined,
 						uploading_at: undefined
 					});
 					changed = true;
-				} else if (!pending.has(client)) {
-					// Native-запись потерялась (переустановка, очистка данных) —
-					// возвращаем странице, чтобы запись не зависла навсегда.
-					await putQueueItem(item.id, {
-						...item,
-						native_id: undefined,
-						state: 'pending',
-						uploading_at: undefined
-					});
-					changed = true;
+				} else {
+					const pending = pendingByClient.get(client);
+					if (pending?.native_id) {
+						// Передача файлов успела закоммититься, а окно закрылось до
+						// записи native_id в IndexedDB — подхватываем запись native.
+						if (item.native_id !== pending.native_id || item.native_pending) {
+							await putQueueItem(item.id, {
+								...item,
+								native_id: pending.native_id,
+								native_pending: undefined
+							});
+							changed = true;
+						}
+					} else if (!item.native_id || !pending) {
+						// Native-запись потерялась (переустановка, очистка данных) —
+						// возвращаем странице, чтобы запись не зависла навсегда.
+						await putQueueItem(item.id, {
+							...item,
+							native_id: undefined,
+							native_pending: undefined,
+							state: 'pending',
+							uploading_at: undefined
+						});
+						changed = true;
+					}
 				}
 			}
 			if (changed) {
@@ -750,34 +779,174 @@ export function initQueueDrain(): () => void {
 	};
 }
 
+interface HandoffPart extends NativeQueuePart {
+	data: ArrayBuffer;
+}
+
+interface Handoff {
+	payload: QueueRecord['payload'];
+	files: HandoffPart[];
+	aux: HandoffPart[];
+}
+
+/** Отделяет байты постера/обложки от JSON: в WebMessage они не сериализуются. */
+function prepareHandoff(record: QueueRecord): Handoff {
+	const payload = record.payload;
+	const meta =
+		'media_meta' in payload && Array.isArray(payload.media_meta)
+			? payload.media_meta.map((item) => ({ ...item }))
+			: undefined;
+	const aux: HandoffPart[] = [];
+	if (meta) {
+		for (let i = 0; i < meta.length; i++) {
+			const item = meta[i];
+			if (item.video_poster) {
+				aux.push({
+					name: 'poster.jpg',
+					mime: item.video_poster.type || 'image/jpeg',
+					size: item.video_poster.data.byteLength,
+					data: item.video_poster.data,
+					media_index: i,
+					field: 'video_poster'
+				});
+				delete item.video_poster;
+			}
+			if (item.audio_cover) {
+				aux.push({
+					name: 'cover.jpg',
+					mime: item.audio_cover.type || 'image/jpeg',
+					size: item.audio_cover.data.byteLength,
+					data: item.audio_cover.data,
+					media_index: i,
+					field: 'audio_cover'
+				});
+				delete item.audio_cover;
+			}
+		}
+	}
+	const files = record.files.map((file) => ({
+		name: file.name,
+		mime: file.type,
+		size: file.size,
+		data: file.data
+	}));
+	return {
+		payload: meta ? ({ ...payload, media_meta: meta } as QueueRecord['payload']) : payload,
+		files,
+		aux
+	};
+}
+
+function base64(bytes: Uint8Array): string {
+	let binary = '';
+	for (const byte of bytes) binary += String.fromCharCode(byte);
+	return btoa(binary);
+}
+
 /**
- * Запись без вложений отдаётся нативной очереди Android (план 50, этап 5.1):
- * дальше её отправляет WorkManager, в том числе после закрытия окна. В браузере
+ * Передача файлов в native: begin → порции → commit. Работает в фоне после
+ * возврата enqueue; запись помечена native_pending, поэтому страница её не
+ * отправляет. Если окно закроют на середине, native-каталог уберётся при
+ * следующем запуске, а сверка вернёт запись странице.
+ */
+async function finishFileHandoff(id: number, record: QueueRecord, token: string): Promise<void> {
+	const nativeOrigin = normalizeOrigin(record.origin) || pageOrigin();
+	const prepared = prepareHandoff(record);
+	let handoff: string | undefined;
+	try {
+		handoff = await nativeBegin({
+			type: record.type,
+			origin: nativeOrigin,
+			circle_id: record.circle_id,
+			client_id: record.client_id ?? '',
+			payload: prepared.payload,
+			token,
+			files: prepared.files.map((part) => ({
+				name: part.name,
+				mime: part.mime,
+				size: part.size
+			})),
+			aux: prepared.aux.map((part) => ({
+				name: part.name,
+				mime: part.mime,
+				size: part.size,
+				media_index: part.media_index,
+				field: part.field
+			}))
+		});
+		const parts = [...prepared.files, ...prepared.aux];
+		for (let index = 0; index < parts.length; index++) {
+			const part = parts[index];
+			for (let offset = 0; offset < part.size; offset += HANDOFF_CHUNK) {
+				const end = Math.min(offset + HANDOFF_CHUNK, part.size);
+				const bytes = new Uint8Array(part.data, offset, end - offset);
+				await nativeChunk(handoff, index, offset, base64(bytes));
+			}
+		}
+		const nativeId = await nativeCommit(handoff);
+		handoff = undefined;
+		const stored = await getQueueItem(id);
+		if (!stored || !stored.native_pending) {
+			// Запись удалили или поправили, пока шла передача.
+			if (record.client_id) await nativeCancel(record.client_id);
+			return;
+		}
+		await putQueueItem(id, { ...stored, native_id: nativeId, native_pending: false });
+		notify();
+	} catch {
+		if (handoff) await nativeAbort(handoff);
+		const stored = await getQueueItem(id);
+		if (stored) await putQueueItem(id, { ...stored, native_pending: false });
+		notify();
+		if (navigator.onLine) void drainQueue();
+	}
+}
+
+/**
+ * Запись отдаётся нативной очереди Android (план 50, этап 5): дальше её
+ * отправляет WorkManager, в том числе после закрытия окна. Запись без файлов
+ * передаётся одним сообщением; файлы — begin/chunk/commit в фоне. В браузере
  * моста нет — остаётся прежняя очередь страницы.
  */
 async function handOffToNative(id: number, record: QueueRecord): Promise<boolean> {
-	if (record.files.length || !record.client_id || !androidQueueAvailable()) return false;
+	if (!record.client_id || !androidQueueAvailable()) return false;
 	try {
 		const session = await getSession(normalizeOrigin(record.origin));
 		if (!session?.token) return false;
-		const nativeId = await nativeEnqueue({
-			type: record.type,
-			// Запись того же сервера хранит origin пустым; native нужен адрес.
-			origin: normalizeOrigin(record.origin) || pageOrigin(),
-			circle_id: record.circle_id,
-			client_id: record.client_id,
-			payload: record.payload,
-			token: session.token
-		});
-		if (!nativeId) return false;
-		const stored = await getQueueItem(id);
-		if (!stored) {
-			// Успели удалить или заменить запись, пока шёл мост.
-			await nativeCancel(record.client_id);
+		if (record.files.length === 0) {
+			const nativeId = await nativeEnqueue({
+				type: record.type,
+				// Запись того же сервера хранит origin пустым; native нужен адрес.
+				origin: normalizeOrigin(record.origin) || pageOrigin(),
+				circle_id: record.circle_id,
+				client_id: record.client_id,
+				payload: record.payload,
+				token: session.token
+			});
+			if (!nativeId) return false;
+			const stored = await getQueueItem(id);
+			if (!stored) {
+				// Успели удалить или заменить запись, пока шёл мост.
+				await nativeCancel(record.client_id);
+				return true;
+			}
+			await putQueueItem(id, { ...stored, native_id: nativeId });
+			notify();
 			return true;
 		}
-		await putQueueItem(id, { ...stored, native_id: nativeId });
-		notify();
+
+		const stored = await getQueueItem(id);
+		if (!stored) return true;
+		// Сначала помечаем в памяти: сверка по событию не должна принять
+		// начатую передачу за потерянную native-запись.
+		handingOff.add(id);
+		try {
+			await putQueueItem(id, { ...stored, native_pending: true });
+		} catch {
+			handingOff.delete(id);
+			return false;
+		}
+		void finishFileHandoff(id, record, session.token).finally(() => handingOff.delete(id));
 		return true;
 	} catch {
 		// Мост не ответил — страница отправит сама, как раньше.
@@ -864,6 +1033,7 @@ export async function updateQueuedPost(
 		error: undefined,
 		uploads: undefined,
 		native_id: undefined,
+		native_pending: undefined,
 		uploading_at: undefined
 	});
 	notify();
@@ -889,6 +1059,7 @@ export async function retryQueueItem(id: number): Promise<void> {
 		attempts: 0,
 		error: undefined,
 		native_id: undefined,
+		native_pending: undefined,
 		uploading_at: undefined
 	});
 	notify();
@@ -930,6 +1101,7 @@ export async function updateQueuedComment(
 		error: undefined,
 		uploads: undefined,
 		native_id: undefined,
+		native_pending: undefined,
 		uploading_at: undefined
 	});
 	notify();

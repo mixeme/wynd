@@ -1,8 +1,11 @@
 package mixeme.wynd;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
 
+import java.nio.file.Files;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
@@ -128,6 +131,54 @@ public class NativeQueueTest {
         JSONObject failed = queue.status().getJSONArray("statuses").getJSONObject(1);
         assertEquals("failed", failed.getString("state"));
         assertEquals("invalid", failed.getString("error"));
+    }
+
+    @Test
+    public void commitFilesStoresPartsAndDeletesThemAfterSend() throws Exception {
+        Memory storage = new Memory();
+        java.io.File base = Files.createTempDirectory("wynd-queue").toFile();
+        NativeQueue queue = new NativeQueue(storage, base, true);
+        JSONObject request = post(client());
+        request.getJSONObject("payload").put("media_meta",
+                new JSONArray().put(new JSONObject().put("kind", "photo")));
+        NativeQueue.Part file = NativeQueue.Part.main(
+                new JSONObject().put("name", "a.jpg").put("mime", "image/jpeg").put("size", 4), 0);
+        String id = queue.begin();
+        Files.write(queue.partFile(id, file).toPath(), new byte[]{1, 2, 3, 4});
+        queue.commit(id, request, List.of(file), List.of());
+        assertEquals(1, queue.records().size());
+        assertEquals(id, queue.records().get(0).id);
+        assertEquals(4, queue.partFile(id, file).length());
+
+        NativeQueue restored = new NativeQueue(storage, base, true);
+        assertEquals(1, restored.records().size());
+        assertEquals(1, restored.records().get(0).files.size());
+
+        queue.markSent(queue.records().get(0));
+        assertTrue(queue.records().isEmpty());
+        assertFalse(queue.partFile(id, file).exists());
+    }
+
+    @Test
+    public void auxPosterTravelsWithItsMediaIndex() throws Exception {
+        java.io.File base = Files.createTempDirectory("wynd-queue").toFile();
+        NativeQueue queue = new NativeQueue(new Memory(), base, true);
+        JSONObject request = post(client());
+        request.getJSONObject("payload").put("media_meta",
+                new JSONArray().put(new JSONObject().put("kind", "video")));
+        NativeQueue.Part video = NativeQueue.Part.main(
+                new JSONObject().put("name", "v.mp4").put("mime", "video/mp4").put("size", 4), 0);
+        NativeQueue.Part poster = NativeQueue.Part.aux(
+                new JSONObject().put("name", "poster.jpg").put("mime", "image/jpeg")
+                        .put("size", 2).put("media_index", 0).put("field", "video_poster"), 0);
+        String id = queue.begin();
+        Files.write(queue.partFile(id, video).toPath(), new byte[]{1, 2, 3, 4});
+        Files.write(queue.partFile(id, poster).toPath(), new byte[]{5, 6});
+        queue.commit(id, request, List.of(video), List.of(poster));
+        NativeQueue.Record stored = queue.records().get(0);
+        assertEquals(1, stored.aux.size());
+        assertEquals("video_poster", stored.aux.get(0).field);
+        assertEquals(0, stored.aux.get(0).mediaIndex);
     }
 
     private static void reject(NativeQueue queue, JSONObject request) throws Exception {

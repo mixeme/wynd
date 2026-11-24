@@ -6,6 +6,10 @@ const apiFetch = vi.fn();
 const native = vi.hoisted(() => ({
 	available: vi.fn(() => false),
 	enqueue: vi.fn(),
+	begin: vi.fn(),
+	chunk: vi.fn(),
+	commit: vi.fn(),
+	abort: vi.fn(),
 	cancel: vi.fn(),
 	status: vi.fn(),
 	clear: vi.fn()
@@ -29,6 +33,10 @@ vi.mock('$lib/api/client', () => ({
 vi.mock('$lib/android/native-queue', () => ({
 	androidQueueAvailable: native.available,
 	nativeEnqueue: native.enqueue,
+	nativeBegin: native.begin,
+	nativeChunk: native.chunk,
+	nativeCommit: native.commit,
+	nativeAbort: native.abort,
 	nativeCancel: native.cancel,
 	nativeStatus: native.status,
 	nativeClear: native.clear
@@ -46,6 +54,10 @@ describe('queue', () => {
 		apiFetch.mockReset();
 		native.available.mockReturnValue(false);
 		native.enqueue.mockReset();
+		native.begin.mockReset();
+		native.chunk.mockReset();
+		native.commit.mockReset();
+		native.abort.mockReset();
 		native.cancel.mockReset();
 		native.status.mockReset();
 		native.clear.mockReset();
@@ -447,6 +459,10 @@ describe('native queue handoff', () => {
 		apiFetch.mockReset();
 		native.available.mockReturnValue(false);
 		native.enqueue.mockReset();
+		native.begin.mockReset();
+		native.chunk.mockReset();
+		native.commit.mockReset();
+		native.abort.mockReset();
 		native.cancel.mockReset();
 		native.status.mockReset();
 		native.clear.mockReset();
@@ -542,5 +558,125 @@ describe('native queue handoff', () => {
 		const [item] = await listQueueForCircle('https://srv.test', 'c-lost');
 		expect(item.native_id).toBeUndefined();
 		expect(item.state).toBe('pending');
+	});
+
+	// План 50, этап 5.2: файлы уходят в native порциями, запись помечена
+	// native_pending и не отправляется страницей.
+	it('передаёт файлы native порциями и запоминает native_id', async () => {
+		native.available.mockReturnValue(true);
+		native.begin.mockResolvedValue('handoff-1');
+		native.chunk.mockResolvedValue(undefined);
+		native.commit.mockResolvedValue('native-file');
+		await session();
+		const { enqueuePost, listQueueForCircle } = await import('./queue');
+		await enqueuePost(
+			'https://srv.test',
+			'c-file',
+			{ body: 'файл', entry_date: '2026-11-24', media_meta: [{ kind: 'photo' }] },
+			[{ name: 'a.jpg', type: 'image/jpeg', size: 4, data: new ArrayBuffer(4) }]
+		);
+		let item = (await listQueueForCircle('https://srv.test', 'c-file'))[0];
+		for (let i = 0; i < 50 && !item?.native_id; i++) {
+			await new Promise((resolve) => setTimeout(resolve, 5));
+			item = (await listQueueForCircle('https://srv.test', 'c-file'))[0];
+		}
+		expect(item.native_id).toBe('native-file');
+		expect(item.native_pending).toBeFalsy();
+		expect(native.begin).toHaveBeenCalledWith(
+			expect.objectContaining({
+				files: [{ name: 'a.jpg', mime: 'image/jpeg', size: 4 }],
+				aux: []
+			})
+		);
+		expect(native.chunk).toHaveBeenCalled();
+		expect(native.commit).toHaveBeenCalledWith('handoff-1');
+	});
+
+	it('отделяет постер ролика от JSON и шлёт его отдельной частью', async () => {
+		native.available.mockReturnValue(true);
+		native.begin.mockResolvedValue('handoff-2');
+		native.chunk.mockResolvedValue(undefined);
+		native.commit.mockResolvedValue('native-video');
+		await session();
+		const { enqueuePost, listQueueForCircle } = await import('./queue');
+		await enqueuePost(
+			'https://srv.test',
+			'c-video',
+			{
+				body: 'ролик',
+				entry_date: '2026-11-24',
+				media_meta: [
+					{
+						kind: 'video',
+						video_poster: { type: 'image/jpeg', data: new ArrayBuffer(2) }
+					}
+				]
+			},
+			[{ name: 'v.mp4', type: 'video/mp4', size: 4, data: new ArrayBuffer(4) }]
+		);
+		let item = (await listQueueForCircle('https://srv.test', 'c-video'))[0];
+		for (let i = 0; i < 50 && !item?.native_id; i++) {
+			await new Promise((resolve) => setTimeout(resolve, 5));
+			item = (await listQueueForCircle('https://srv.test', 'c-video'))[0];
+		}
+		expect(item.native_id).toBe('native-video');
+		expect(native.begin).toHaveBeenCalledWith(
+			expect.objectContaining({
+				aux: [
+					{
+						name: 'poster.jpg',
+						mime: 'image/jpeg',
+						size: 2,
+						media_index: 0,
+						field: 'video_poster'
+					}
+				]
+			})
+		);
+	});
+
+	it('возвращает файловую запись странице, если native не приняла', async () => {
+		native.available.mockReturnValue(true);
+		native.begin.mockRejectedValue(new Error('no'));
+		await session();
+		const { enqueuePost, listQueueForCircle } = await import('./queue');
+		await enqueuePost(
+			'https://srv.test',
+			'c-reject',
+			{ body: 'файл', entry_date: '2026-11-24', media_meta: [{ kind: 'photo' }] },
+			[{ name: 'a.jpg', type: 'image/jpeg', size: 4, data: new ArrayBuffer(4) }]
+		);
+		let item = (await listQueueForCircle('https://srv.test', 'c-reject'))[0];
+		for (let i = 0; i < 50 && item?.native_pending; i++) {
+			await new Promise((resolve) => setTimeout(resolve, 5));
+			item = (await listQueueForCircle('https://srv.test', 'c-reject'))[0];
+		}
+		expect(item.native_id).toBeUndefined();
+		expect(item.native_pending).toBeFalsy();
+		expect(item.state).toBe('pending');
+	});
+
+	// Окно закрылось сразу после commit: native_id в IndexedDB не записался,
+	// но native-запись уже есть — сверка подхватывает её.
+	it('подхватывает native-запись, если окно закрылось до native_id', async () => {
+		native.available.mockReturnValue(false);
+		await session();
+		const { enqueuePost, reconcileNativeQueue, listQueueForCircle } = await import('./queue');
+		const { putQueueItem } = await import('$lib/idb/db');
+		await enqueuePost('https://srv.test', 'c-adopt', {
+			body: 'подхват',
+			entry_date: '2026-11-24'
+		});
+		const [item] = await listQueueForCircle('https://srv.test', 'c-adopt');
+		await putQueueItem(item.id, { ...item, native_pending: true });
+		native.available.mockReturnValue(true);
+		native.status.mockResolvedValue({
+			records: [{ client_id: item.client_id, native_id: 'native-adopt', state: 'pending' }],
+			statuses: []
+		});
+		await reconcileNativeQueue();
+		const [adopted] = await listQueueForCircle('https://srv.test', 'c-adopt');
+		expect(adopted.native_id).toBe('native-adopt');
+		expect(adopted.native_pending).toBeUndefined();
 	});
 });

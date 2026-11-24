@@ -67,5 +67,8 @@ describe('readyQueueItems', () => {
 		const native = item({ id: 1, native_id: 'native-1' });
 		expect(readyQueueItems([native], 5000)).toEqual([]);
 		expect(nextRetryDelay([native], 5000)).toBeUndefined();
+		const handoff = item({ id: 2, native_pending: true });
+		expect(readyQueueItems([handoff], 5000)).toEqual([]);
+		expect(nextRetryDelay([handoff], 5000)).toBeUndefined();
 	});
 });

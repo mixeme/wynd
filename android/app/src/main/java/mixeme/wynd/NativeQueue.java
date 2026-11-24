@@ -20,15 +20,17 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
- * Очередь, которая живёт в приложении, а не в странице (план 50, этап 5.1):
- * записи без вложений уходят и после закрытия окна. Источник истины для
- * экрана по-прежнему очередь IndexedDB; здесь — её нативная копия на время
- * отправки. Токен и тело записи лежат в private-файле приложения, как сессии
- * WebView; наружу не отдаются.
+ * Очередь, которая живёт в приложении, а не в странице (план 50, этап 5):
+ * записи уходят и после закрытия окна. 5.1 — без вложений; 5.2 — с файлами,
+ * постерами и обложками. Источник истины для экрана по-прежнему очередь
+ * IndexedDB; здесь — её нативная копия. Токен, тело и файлы лежат в private
+ * каталоге приложения, как сессии WebView; наружу не отдаются.
  */
 final class NativeQueue {
     private static final String TAG = "WyndAndroid";
     private static final int MAX_RECORDS = 100;
+    private static final int MAX_FILES = 32;
+    private static final long MAX_FILE_BYTES = 512L * 1024 * 1024;
     private static final int MAX_PAYLOAD_CHARS = 65_536;
     private static final int MAX_TOKEN = 4_096;
     private static final int MAX_JSON = 8 * 1024 * 1024;
@@ -36,6 +38,7 @@ final class NativeQueue {
     private static final Pattern UUID_RE = Pattern.compile(
             "[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}");
     private static final Pattern ID_RE = Pattern.compile("[A-Za-z0-9_-]{1,128}");
+    private static final Pattern FILE_NAME_RE = Pattern.compile("[^/\\\\\\x00]{1,255}");
 
     interface Listener {
         void onQueueChanged();
@@ -50,25 +53,34 @@ final class NativeQueue {
     private static NativeQueue instance;
 
     static synchronized NativeQueue get(Context context) {
-        if (instance == null) instance = new NativeQueue(context.getApplicationContext());
+        if (instance == null) {
+            instance = new NativeQueue(
+                    new AtomicStorage(new AtomicFile(
+                            new File(context.getFilesDir(), "native-queue.json"))),
+                    new File(context.getFilesDir(), "native-queue"),
+                    BuildConfig.DEBUG);
+        }
         return instance;
     }
 
     private final Storage storage;
+    private final File baseDir;
     private final boolean debug;
     private final List<Record> records = new ArrayList<>();
     private final List<Status> statuses = new ArrayList<>();
     private Listener listener;
 
-    private NativeQueue(Context context) {
-        this(new AtomicStorage(new AtomicFile(
-                new File(context.getFilesDir(), "native-queue.json"))), BuildConfig.DEBUG);
+    NativeQueue(Storage storage, boolean debug) {
+        this(storage, null, debug);
     }
 
-    NativeQueue(Storage storage, boolean debug) {
+    NativeQueue(Storage storage, File baseDir, boolean debug) {
         this.storage = storage;
+        this.baseDir = baseDir;
         this.debug = debug;
+        if (baseDir != null && !baseDir.exists()) baseDir.mkdirs();
         load();
+        cleanupDirs();
     }
 
     synchronized void setListener(Listener value) {
@@ -79,16 +91,55 @@ final class NativeQueue {
         if (listener == value) listener = null;
     }
 
-    /** Добавляет запись; повтор того же client_id не создаёт вторую. */
+    /** Добавляет запись без вложений; повтор того же client_id не создаёт вторую. */
     synchronized String add(JSONObject request) throws Exception {
         Record record = Record.from(request, debug);
+        return addRecord(record);
+    }
+
+    /** Каталог для файлов новой записи; наполняется мостом до commit. */
+    synchronized String begin() throws IOException {
+        if (baseDir == null) throw new IOException("no queue directory");
+        String id = UUID.randomUUID().toString();
+        File dir = recordDir(id);
+        if (!dir.mkdirs() && !dir.isDirectory()) throw new IOException("cannot create queue directory");
+        return id;
+    }
+
+    /** Завершает передачу файлов: проверяет размеры и ставит запись в очередь. */
+    synchronized String commit(String id, JSONObject request, List<Part> files, List<Part> aux)
+            throws Exception {
+        if (!UUID_RE.matcher(id).matches()) throw new IllegalArgumentException("id");
+        Record record = Record.fromWithFiles(request, files, aux, debug);
+        record.id = id;
+        File dir = recordDir(id);
+        if (!dir.isDirectory()) throw new IllegalArgumentException("directory");
+        validateFiles(record);
+        return addRecord(record);
+    }
+
+    synchronized void abort(String id) {
+        if (id == null || !UUID_RE.matcher(id).matches()) return;
+        deleteDir(id);
+    }
+
+    private String addRecord(Record record) throws Exception {
         for (Record existing : records) {
-            if (existing.clientId.equals(record.clientId)) return existing.id;
+            if (existing.clientId.equals(record.clientId)) {
+                deleteDir(record.id);
+                return existing.id;
+            }
         }
         for (Status status : statuses) {
-            if (status.clientId.equals(record.clientId)) throw new IllegalArgumentException("duplicate");
+            if (status.clientId.equals(record.clientId)) {
+                deleteDir(record.id);
+                throw new IllegalArgumentException("duplicate");
+            }
         }
-        if (records.size() >= MAX_RECORDS) throw new IllegalArgumentException("queue_full");
+        if (records.size() >= MAX_RECORDS) {
+            deleteDir(record.id);
+            throw new IllegalArgumentException("queue_full");
+        }
         records.add(record);
         save();
         notifyChanged();
@@ -106,7 +157,10 @@ final class NativeQueue {
     synchronized JSONObject status() throws JSONException {
         JSONArray pending = new JSONArray();
         for (Record record : records) {
-            pending.put(new JSONObject().put("client_id", record.clientId).put("state", "pending"));
+            pending.put(new JSONObject()
+                    .put("client_id", record.clientId)
+                    .put("native_id", record.id)
+                    .put("state", "pending"));
         }
         JSONArray done = new JSONArray();
         for (Status status : statuses) done.put(status.toJson());
@@ -115,21 +169,27 @@ final class NativeQueue {
 
     synchronized void markSent(Record record) {
         if (!removeRecord(record.clientId)) return;
-        addStatus(new Status(record.clientId, record.origin, "sent", "", System.currentTimeMillis()));
+        addStatus(new Status(record.clientId, record.id, record.origin,
+                "sent", "", System.currentTimeMillis()));
+        deleteDir(record.id);
         save();
         notifyChanged();
     }
 
     synchronized void markFailed(Record record, String error) {
         if (!removeRecord(record.clientId)) return;
-        addStatus(new Status(record.clientId, record.origin, "failed", error, System.currentTimeMillis()));
+        addStatus(new Status(record.clientId, record.id, record.origin,
+                "failed", error, System.currentTimeMillis()));
+        deleteDir(record.id);
         save();
         notifyChanged();
     }
 
     synchronized void markUnauthorized(Record record) {
         if (!removeRecord(record.clientId)) return;
-        addStatus(new Status(record.clientId, record.origin, "unauthorized", "", System.currentTimeMillis()));
+        addStatus(new Status(record.clientId, record.id, record.origin,
+                "unauthorized", "", System.currentTimeMillis()));
+        deleteDir(record.id);
         save();
         notifyChanged();
     }
@@ -145,11 +205,31 @@ final class NativeQueue {
         }
     }
 
+    /** Состояние одного файла после чанка/полной загрузки. */
+    synchronized void setPart(String recordId, Part part) {
+        for (Record record : records) {
+            if (!record.id.equals(recordId)) continue;
+            for (Part current : record.parts()) {
+                if (current.aux == part.aux && current.slot == part.slot) {
+                    current.sessionId = part.sessionId;
+                    current.blobId = part.blobId;
+                    save();
+                    return;
+                }
+            }
+        }
+    }
+
     /** Правка/удаление записи на экране: нативная копия больше не нужна. */
     synchronized void cancel(String clientId) {
         if (clientId == null || !UUID_RE.matcher(clientId.toLowerCase(Locale.ROOT)).matches()) return;
-        boolean changed = removeRecord(clientId);
-        changed |= removeIf(statuses, s -> s.clientId.equals(clientId));
+        String id = null;
+        for (Record record : records) {
+            if (record.clientId.equals(clientId.toLowerCase(Locale.ROOT))) id = record.id;
+        }
+        boolean changed = removeRecord(clientId.toLowerCase(Locale.ROOT));
+        changed |= removeIf(statuses, s -> s.clientId.equals(clientId.toLowerCase(Locale.ROOT)));
+        if (id != null) deleteDir(id);
         if (changed) {
             save();
             notifyChanged();
@@ -160,12 +240,40 @@ final class NativeQueue {
     synchronized void clear(String origin) throws Exception {
         String normalized = origin == null ? "" : origin.replaceAll("/+$", "");
         ServerOrigin.parse(normalized, debug);
+        List<String> dirs = new ArrayList<>();
+        for (Record record : records) {
+            if (record.origin.equals(normalized)) dirs.add(record.id);
+        }
         boolean changed = removeIf(records, r -> r.origin.equals(normalized));
         changed |= removeIf(statuses, s -> s.origin.equals(normalized));
+        for (String id : dirs) deleteDir(id);
         if (changed) {
             save();
             notifyChanged();
         }
+    }
+
+    File recordDir(String id) {
+        return baseDir == null ? null : new File(baseDir, id);
+    }
+
+    File partFile(String recordId, Part part) {
+        File dir = recordDir(recordId);
+        return dir == null ? null : new File(dir, part.fileName());
+    }
+
+    private void validateFiles(Record record) throws Exception {
+        long total = 0;
+        int count = 0;
+        for (Part part : record.parts()) {
+            File file = partFile(record.id, part);
+            if (file == null || !file.isFile() || file.length() != part.size) {
+                throw new IllegalArgumentException("file");
+            }
+            total += part.size;
+            count++;
+        }
+        if (count > MAX_FILES || total > MAX_FILE_BYTES) throw new IllegalArgumentException("files");
     }
 
     private boolean removeRecord(String clientId) {
@@ -184,23 +292,30 @@ final class NativeQueue {
         while (statuses.size() > 500) statuses.remove(0);
     }
 
-    /**
-     * Collection.removeIf — API 24; на minSdk 21 идём итератором. Свой
-     * интерфейс, а не java.util.function (тоже API 24).
-     */
-    private interface Match<T> {
-        boolean test(T value);
+    /** Убирает каталоги незавершённых передач и удалённых записей. */
+    private void cleanupDirs() {
+        if (baseDir == null) return;
+        File[] children = baseDir.listFiles();
+        if (children == null) return;
+        for (File child : children) {
+            if (!child.isDirectory()) continue;
+            boolean known = false;
+            for (Record record : records) {
+                if (record.id.equals(child.getName())) {
+                    known = true;
+                    break;
+                }
+            }
+            if (!known) deleteDir(child.getName());
+        }
     }
 
-    private static <T> boolean removeIf(List<T> values, Match<T> match) {
-        boolean removed = false;
-        for (Iterator<T> iterator = values.iterator(); iterator.hasNext(); ) {
-            if (match.test(iterator.next())) {
-                iterator.remove();
-                removed = true;
-            }
-        }
-        return removed;
+    private void deleteDir(String id) {
+        File dir = recordDir(id);
+        if (dir == null) return;
+        File[] files = dir.listFiles();
+        if (files != null) for (File file : files) file.delete();
+        dir.delete();
     }
 
     private void load() {
@@ -263,8 +378,81 @@ final class NativeQueue {
         }
     }
 
+    /** Файл записи: основной (порядок media_meta) или постер/обложка. */
+    static final class Part {
+        final String name;
+        final String mime;
+        final long size;
+        final int slot;
+        final int mediaIndex;
+        final String field;
+        final boolean aux;
+        String sessionId;
+        String blobId;
+
+        Part(String name, String mime, long size, int slot, int mediaIndex,
+             String field, boolean aux, String sessionId, String blobId) {
+            this.name = name;
+            this.mime = mime;
+            this.size = size;
+            this.slot = slot;
+            this.mediaIndex = mediaIndex;
+            this.field = field;
+            this.aux = aux;
+            this.sessionId = sessionId;
+            this.blobId = blobId;
+        }
+
+        static Part main(JSONObject value, int index) throws Exception {
+            return check(value, index, index, null, false, null, null);
+        }
+
+        static Part aux(JSONObject value, int index) throws Exception {
+            String field = value.getString("field");
+            int mediaIndex = value.getInt("media_index");
+            if (!field.equals("video_poster") && !field.equals("audio_cover")) {
+                throw new IllegalArgumentException("field");
+            }
+            return check(value, index, mediaIndex, field, true, null, null);
+        }
+
+        private static Part check(JSONObject value, int slot, int mediaIndex, String field,
+                                  boolean aux, String sessionId, String blobId) throws Exception {
+            String name = value.getString("name");
+            String mime = value.getString("mime");
+            long size = value.getLong("size");
+            if (!FILE_NAME_RE.matcher(name).matches() || mime.isEmpty()
+                    || mime.length() > 255 || size <= 0 || size > MAX_FILE_BYTES) {
+                throw new IllegalArgumentException("file");
+            }
+            return new Part(name, mime, size, slot, mediaIndex, field, aux, sessionId, blobId);
+        }
+
+        static Part fromStored(JSONObject value, int slot, boolean aux) throws Exception {
+            return check(value, slot, value.optInt("media_index", slot),
+                    aux ? value.getString("field") : null, aux,
+                    value.optString("session_id", ""), value.optString("blob_id", ""));
+        }
+
+        String fileName() {
+            return (aux ? "a" : "f") + slot;
+        }
+
+        JSONObject toJson() throws JSONException {
+            JSONObject out = new JSONObject()
+                    .put("name", name)
+                    .put("mime", mime)
+                    .put("size", size)
+                    .put("media_index", mediaIndex);
+            if (aux) out.put("field", field);
+            if (sessionId != null && !sessionId.isEmpty()) out.put("session_id", sessionId);
+            if (blobId != null && !blobId.isEmpty()) out.put("blob_id", blobId);
+            return out;
+        }
+    }
+
     static final class Record {
-        final String id;
+        String id;
         final String type;
         final String origin;
         final String circleId;
@@ -273,9 +461,12 @@ final class NativeQueue {
         final String token;
         final long createdAt;
         int attempts;
+        final List<Part> files;
+        final List<Part> aux;
 
         Record(String id, String type, String origin, String circleId, String clientId,
-               String payload, String token, long createdAt, int attempts) {
+               String payload, String token, long createdAt, int attempts,
+               List<Part> files, List<Part> aux) {
             this.id = id;
             this.type = type;
             this.origin = origin;
@@ -285,9 +476,23 @@ final class NativeQueue {
             this.token = token;
             this.createdAt = createdAt;
             this.attempts = attempts;
+            this.files = files;
+            this.aux = aux;
+        }
+
+        List<Part> parts() {
+            List<Part> all = new ArrayList<>(files.size() + aux.size());
+            all.addAll(files);
+            all.addAll(aux);
+            return all;
         }
 
         static Record from(JSONObject request, boolean debug) throws Exception {
+            return fromWithFiles(request, new ArrayList<>(), new ArrayList<>(), debug);
+        }
+
+        static Record fromWithFiles(JSONObject request, List<Part> files, List<Part> aux,
+                                    boolean debug) throws Exception {
             String type = request.getString("type");
             if (!type.equals("post") && !type.equals("comment")
                     && !type.equals("reaction") && !type.equals("reaction_remove")) {
@@ -303,13 +508,32 @@ final class NativeQueue {
             if (payload.toString().length() > MAX_PAYLOAD_CHARS) {
                 throw new IllegalArgumentException("payload");
             }
+            if (files.size() + aux.size() > MAX_FILES) throw new IllegalArgumentException("files");
+            long total = 0;
+            for (Part part : files) total += part.size;
+            for (Part part : aux) total += part.size;
+            if (total > MAX_FILE_BYTES) throw new IllegalArgumentException("files");
+
+            JSONArray media = payload.optJSONArray("media_meta");
             if (type.equals("post") || type.equals("comment")) {
-                JSONArray media = payload.optJSONArray("media_meta");
-                if (media != null && media.length() > 0) throw new IllegalArgumentException("media");
+                if (files.isEmpty()) {
+                    if (media != null && media.length() > 0) throw new IllegalArgumentException("media");
+                } else {
+                    if (media == null || media.length() != files.size()) {
+                        throw new IllegalArgumentException("media");
+                    }
+                    for (int i = 0; i < media.length(); i++) {
+                        JSONObject meta = media.getJSONObject(i);
+                        if (meta.has("video_poster") || meta.has("audio_cover")) {
+                            throw new IllegalArgumentException("media");
+                        }
+                    }
+                }
                 if (type.equals("comment") && !ID_RE.matcher(payload.optString("post_id", "")).matches()) {
                     throw new IllegalArgumentException("post");
                 }
             } else {
+                if (!files.isEmpty() || !aux.isEmpty()) throw new IllegalArgumentException("media");
                 if (!ID_RE.matcher(payload.optString("post_id", "")).matches()) {
                     throw new IllegalArgumentException("post");
                 }
@@ -318,13 +542,18 @@ final class NativeQueue {
                     if (emoji.isEmpty() || emoji.length() > 64) throw new IllegalArgumentException("emoji");
                 }
             }
+            for (Part part : aux) {
+                if (part.mediaIndex < 0 || part.mediaIndex >= files.size()) {
+                    throw new IllegalArgumentException("aux");
+                }
+            }
             String token = request.getString("token");
             if (token.isEmpty() || token.length() > MAX_TOKEN
                     || token.indexOf('\n') >= 0 || token.indexOf('\r') >= 0) {
                 throw new IllegalArgumentException("token");
             }
             return new Record(UUID.randomUUID().toString(), type, origin, circleId, clientId,
-                    payload.toString(), token, System.currentTimeMillis(), 0);
+                    payload.toString(), token, System.currentTimeMillis(), 0, files, aux);
         }
 
         static Record fromStored(JSONObject stored, boolean debug) throws Exception {
@@ -335,15 +564,33 @@ final class NativeQueue {
                     .put("client_id", stored.getString("client_id"))
                     .put("payload", new JSONObject(stored.getString("payload")))
                     .put("token", stored.getString("token"));
-            Record checked = from(request, debug);
+            List<Part> files = new ArrayList<>();
+            List<Part> aux = new ArrayList<>();
+            JSONArray storedFiles = stored.optJSONArray("files");
+            if (storedFiles != null) {
+                for (int i = 0; i < storedFiles.length(); i++) {
+                    files.add(Part.fromStored(storedFiles.getJSONObject(i), i, false));
+                }
+            }
+            JSONArray storedAux = stored.optJSONArray("aux");
+            if (storedAux != null) {
+                for (int i = 0; i < storedAux.length(); i++) {
+                    aux.add(Part.fromStored(storedAux.getJSONObject(i), i, true));
+                }
+            }
+            Record checked = fromWithFiles(request, files, aux, debug);
             String id = stored.optString("id", "");
-            if (id.isEmpty() || id.length() > 128) throw new IllegalArgumentException("id");
-            return new Record(id, checked.type, checked.origin, checked.circleId, checked.clientId,
-                    checked.payload, checked.token, stored.optLong("created_at", checked.createdAt),
-                    stored.optInt("attempts", 0));
+            if (!UUID_RE.matcher(id).matches()) throw new IllegalArgumentException("id");
+            checked.id = id;
+            checked.attempts = stored.optInt("attempts", 0);
+            return checked;
         }
 
         JSONObject toJson() throws JSONException {
+            JSONArray storedFiles = new JSONArray();
+            for (Part part : files) storedFiles.put(part.toJson());
+            JSONArray storedAux = new JSONArray();
+            for (Part part : aux) storedAux.put(part.toJson());
             return new JSONObject()
                     .put("id", id)
                     .put("type", type)
@@ -353,19 +600,23 @@ final class NativeQueue {
                     .put("payload", payload)
                     .put("token", token)
                     .put("created_at", createdAt)
-                    .put("attempts", attempts);
+                    .put("attempts", attempts)
+                    .put("files", storedFiles)
+                    .put("aux", storedAux);
         }
     }
 
     static final class Status {
         final String clientId;
+        final String nativeId;
         final String origin;
         final String state;
         final String error;
         final long at;
 
-        Status(String clientId, String origin, String state, String error, long at) {
+        Status(String clientId, String nativeId, String origin, String state, String error, long at) {
             this.clientId = clientId;
+            this.nativeId = nativeId;
             this.origin = origin;
             this.state = state;
             this.error = error;
@@ -379,18 +630,39 @@ final class NativeQueue {
             if (!state.equals("sent") && !state.equals("failed") && !state.equals("unauthorized")) {
                 throw new IllegalArgumentException("state");
             }
-            return new Status(clientId, stored.getString("origin").replaceAll("/+$", ""),
+            return new Status(clientId, stored.optString("native_id", ""),
+                    stored.getString("origin").replaceAll("/+$", ""),
                     state, stored.optString("error", ""), stored.optLong("at", 0));
         }
 
         JSONObject toJson() throws JSONException {
             return new JSONObject()
                     .put("client_id", clientId)
+                    .put("native_id", nativeId)
                     .put("origin", origin)
                     .put("state", state)
                     .put("error", error)
                     .put("at", at);
         }
+    }
+
+    /**
+     * Collection.removeIf — API 24; на minSdk 21 идём итератором. Свой
+     * интерфейс, а не java.util.function (тоже API 24).
+     */
+    private interface Match<T> {
+        boolean test(T value);
+    }
+
+    private static <T> boolean removeIf(List<T> values, Match<T> match) {
+        boolean removed = false;
+        for (Iterator<T> iterator = values.iterator(); iterator.hasNext(); ) {
+            if (match.test(iterator.next())) {
+                iterator.remove();
+                removed = true;
+            }
+        }
+        return removed;
     }
 
     private static final class AtomicStorage implements Storage {

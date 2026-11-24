@@ -115,6 +115,8 @@ export interface QueueRecord {
 	 * не отправляет, а ждёт статус через `__wyndQueue`.
 	 */
 	native_id?: string;
+	/** Передача файлов в native идёт прямо сейчас; страница не отправляет. */
+	native_pending?: boolean;
 	payload:
 		PostQueuePayload | CommentQueuePayload | ReactionQueuePayload | ReactionRemoveQueuePayload;
 	files: QueueFile[];
