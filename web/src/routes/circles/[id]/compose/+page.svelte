@@ -66,6 +66,7 @@
 	import { enqueuePost, loadQueuedPost, removeQueueItem, updateQueuedPost } from '$lib/queue/queue';
 	import { isTransportError } from '$lib/queue/transport';
 	import type { PostQueuePayload, QueueFile, QueueMediaMeta } from '$lib/idb/db';
+	import { nativeCompressAvailable } from '$lib/android/native-queue';
 	import { takeComposePhotos } from '$lib/journal/compose-handoff';
 	import {
 		appendSharedText,
@@ -587,18 +588,29 @@
 			const compression = await fetchCompression(circle.origin).catch(() => undefined);
 			const next = [...picked];
 			const videoFlags = list.map((file) => isVideoFile(file));
+			// 5.3: офлайн-видео в приложении не жмём в foreground — native
+			// сожмёт оригинал после закрытия окна. В браузере моста нет.
+			const nativeVideo =
+				!original &&
+				!navigator.onLine &&
+				videoFlags.some(Boolean) &&
+				!!compression?.video_max_height &&
+				(await nativeCompressAvailable());
 			const heavyCount = original
 				? 0
-				: videoFlags.filter(Boolean).length + list.filter((file) => isAudioFile(file)).length;
+				: videoFlags.filter((video) => video && !nativeVideo).length +
+					list.filter((file) => isAudioFile(file)).length;
 			compressTotal = heavyCount;
 			compressIndex = 0;
 			keepOpenHint =
-				!original && videoFlags.some((video, i) => video && isLargeVideo(list[i].size));
+				!original &&
+				!nativeVideo &&
+				videoFlags.some((video, i) => video && isLargeVideo(list[i].size));
 			compressing = heavyCount > 0;
 			pending = original
 				? []
 				: list.flatMap((file, index) =>
-						videoFlags[index] || isAudioFile(file)
+						(videoFlags[index] && !nativeVideo) || isAudioFile(file)
 							? [
 									{
 										index,
@@ -648,11 +660,22 @@
 					entryDateFrom = dateBefore.from;
 				};
 				let queueFile: QueueFile;
+				let nativeCompress: QueueMediaMeta['native_compress'] | undefined;
 				if (original) {
 					const raw = await fileToQueueBuffer(file);
 					queueFile = video && !raw.type ? { ...raw, type: guessedVideoMime(file) } : raw;
 				} else if (isImageFile(file)) {
 					queueFile = await compressImage(file, compression);
+				} else if (video && nativeVideo) {
+					// Оригинал уйдёт в native; там его сожмёт Media3 Transformer.
+					const raw = await fileToQueueBuffer(file);
+					queueFile = raw.type ? raw : { ...raw, type: guessedVideoMime(file) };
+					nativeCompress = compression
+						? {
+								max_height: compression.video_max_height,
+								video_bitrate_kbps: compression.video_bitrate_kbps
+							}
+						: undefined;
 				} else if (video) {
 					compressIndex += 1;
 					compressKind = 'video';
@@ -699,7 +722,9 @@
 				// быть; GPS в EXIF стирается до отправки (сжатые снимки и ролики
 				// координат не несут, для них это пустой проход).
 				if (!usePlace) queueFile = stripGeoQueueFile(queueFile);
-				if (maxBytes > 0 && queueFile.size > maxBytes) {
+				// Native-сжатие может уменьшить оригинал ниже потолка; проверку
+				// размера для него делает уже native после перекодирования.
+				if (!nativeCompress && maxBytes > 0 && queueFile.size > maxBytes) {
 					tooLarge.push(file.name);
 					skipFile();
 					continue;
@@ -735,7 +760,8 @@
 					audio_title: tags?.title || undefined,
 					audio_cover: tags?.cover ? { type: 'image/jpeg', data: tags.cover } : undefined,
 					video_poster: poster ? { type: 'image/jpeg', data: poster } : undefined,
-					video_duration_ms: durationMs
+					video_duration_ms: durationMs,
+					native_compress: nativeCompress
 				};
 
 				// У ролика превью — его кадр: видеоэлемент в ряду снимков не нужен.
@@ -812,7 +838,9 @@
 				return;
 			}
 
-			if (!navigator.onLine) {
+			// Офлайн или офлайн-видео, отданное native на сжатие: отправку и
+			// перекодирование ведёт очередь, а не этот экран.
+			if (!navigator.onLine || picked.some((p) => p.meta.native_compress)) {
 				await enqueuePost(circle.origin, circle.circleId, payload, files);
 				clearDraft();
 				goto(feedHref());

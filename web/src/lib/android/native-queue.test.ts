@@ -122,6 +122,17 @@ describe('android native queue bridge', () => {
 		});
 	});
 
+	it('узнаёт, что native умеет сжимать видео', async () => {
+		const { port, requests } = fake((request) => ({
+			id: request.id,
+			capabilities: request.op === 'capabilities' ? { compress: true } : undefined
+		}));
+		(window as unknown as { __wyndQueue?: Port }).__wyndQueue = port;
+		const { nativeCompressAvailable } = await import('./native-queue');
+		expect(await nativeCompressAvailable()).toBe(true);
+		expect(requests[0]).toMatchObject({ op: 'capabilities' });
+	});
+
 	it('rejects a native error and sends cancel/clear', async () => {
 		const { port, requests } = fake((request) =>
 			request.op === 'enqueue' ? { id: request.id, error: 'invalid' } : { id: request.id, ok: true }

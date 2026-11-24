@@ -160,6 +160,42 @@ public class NativeQueueTest {
     }
 
     @Test
+    public void nativeCompressSettingsAndReplacement() throws Exception {
+        java.io.File base = Files.createTempDirectory("wynd-queue").toFile();
+        Memory storage = new Memory();
+        NativeQueue queue = new NativeQueue(storage, base, true);
+        JSONObject request = post(client());
+        request.getJSONObject("payload").put("media_meta",
+                new JSONArray().put(new JSONObject()
+                        .put("kind", "video")
+                        .put("native_compress", new JSONObject()
+                                .put("max_height", 720).put("video_bitrate_kbps", 2000))));
+        NativeQueue.Part file = NativeQueue.Part.main(
+                new JSONObject().put("name", "raw.mp4").put("mime", "video/mp4").put("size", 4), 0);
+        String id = queue.begin();
+        Files.write(queue.partFile(id, file).toPath(), new byte[]{1, 2, 3, 4});
+        queue.commit(id, request, List.of(file), List.of());
+
+        NativeQueue.Record record = queue.records().get(0);
+        assertTrue(record.compress);
+        assertEquals(720, record.maxHeight);
+        java.io.File compressed = new java.io.File(queue.recordDir(record.id), "c0.mp4");
+        Files.write(compressed.toPath(), new byte[]{9, 8, 7, 6, 5, 4, 3, 2});
+        queue.markCompressed(record, file, compressed, "video.mp4", "video/mp4", 8);
+
+        NativeQueue.Part stored = record.files.get(0);
+        assertEquals("video.mp4", stored.name);
+        assertEquals("video/mp4", stored.mime);
+        assertEquals(8, stored.size);
+        assertTrue(stored.compressed);
+
+        NativeQueue restored = new NativeQueue(storage, base, true);
+        NativeQueue.Part restoredPart = restored.records().get(0).files.get(0);
+        assertEquals(8, restoredPart.size);
+        assertTrue(restoredPart.compressed);
+    }
+
+    @Test
     public void auxPosterTravelsWithItsMediaIndex() throws Exception {
         java.io.File base = Files.createTempDirectory("wynd-queue").toFile();
         NativeQueue queue = new NativeQueue(new Memory(), base, true);

@@ -122,6 +122,9 @@ final class NativeQueueBridge {
                     abort(request.getString("token"));
                     response.put("ok", true);
                     break;
+                case "capabilities":
+                    response.put("capabilities", new JSONObject().put("compress", true));
+                    break;
                 case "cancel":
                     queue.cancel(request.getString("client_id"));
                     response.put("ok", true);

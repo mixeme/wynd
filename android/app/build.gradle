@@ -162,6 +162,10 @@ dependencies {
     // Фоновая отправка очереди после закрытия окна (план 50, этап 5):
     // WorkManager, без Google Play Services.
     implementation 'androidx.work:work-runtime:2.10.0'
+    // Фоновое сжатие офлайн-видео (план 50, 5.3): Media3 Transformer
+    // перекодирует через MediaCodec; ffmpeg и сервер не участвуют.
+    implementation 'androidx.media3:media3-transformer:1.5.1'
+    implementation 'androidx.media3:media3-effect:1.5.1'
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.json:json:20250517'
 }

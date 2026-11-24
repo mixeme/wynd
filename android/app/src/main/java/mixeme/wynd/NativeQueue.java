@@ -220,6 +220,56 @@ final class NativeQueue {
         }
     }
 
+    /**
+     * Сжатие видео закончилось: подменяем файл в каталоге записи и не даём
+     * отправить старые байты. Сессия и блоб сбрасываются — размер изменился.
+     */
+    synchronized void markCompressed(Record record, Part part, File output,
+                                     String name, String mime, long size) throws IOException {
+        Part current = findPart(record.id, part);
+        if (current == null) {
+            output.delete();
+            return;
+        }
+        File destination = partFile(record.id, current);
+        if (destination == null) throw new IOException("no queue directory");
+        File backup = new File(destination.getParentFile(), destination.getName() + ".orig");
+        if (backup.exists() && !backup.delete()) throw new IOException("backup");
+        if (destination.exists() && !destination.renameTo(backup)) {
+            throw new IOException("old file");
+        }
+        if (!output.renameTo(destination)) {
+            backup.renameTo(destination);
+            throw new IOException("rename");
+        }
+        backup.delete();
+        current.name = name;
+        current.mime = mime;
+        current.size = size;
+        current.compressed = true;
+        current.sessionId = null;
+        current.blobId = null;
+        save();
+    }
+
+    /** Сжатие не удалось: отправляем оригинал, повторять перекодирование незачем. */
+    synchronized void markCompressionDone(Record record, Part part) {
+        Part current = findPart(record.id, part);
+        if (current == null) return;
+        current.compressed = true;
+        save();
+    }
+
+    private Part findPart(String recordId, Part wanted) {
+        for (Record record : records) {
+            if (!record.id.equals(recordId)) continue;
+            for (Part part : record.parts()) {
+                if (part.aux == wanted.aux && part.slot == wanted.slot) return part;
+            }
+        }
+        return null;
+    }
+
     /** Правка/удаление записи на экране: нативная копия больше не нужна. */
     synchronized void cancel(String clientId) {
         if (clientId == null || !UUID_RE.matcher(clientId.toLowerCase(Locale.ROOT)).matches()) return;
@@ -380,18 +430,19 @@ final class NativeQueue {
 
     /** Файл записи: основной (порядок media_meta) или постер/обложка. */
     static final class Part {
-        final String name;
-        final String mime;
-        final long size;
+        String name;
+        String mime;
+        long size;
         final int slot;
         final int mediaIndex;
         final String field;
         final boolean aux;
         String sessionId;
         String blobId;
+        boolean compressed;
 
         Part(String name, String mime, long size, int slot, int mediaIndex,
-             String field, boolean aux, String sessionId, String blobId) {
+             String field, boolean aux, String sessionId, String blobId, boolean compressed) {
             this.name = name;
             this.mime = mime;
             this.size = size;
@@ -401,10 +452,11 @@ final class NativeQueue {
             this.aux = aux;
             this.sessionId = sessionId;
             this.blobId = blobId;
+            this.compressed = compressed;
         }
 
         static Part main(JSONObject value, int index) throws Exception {
-            return check(value, index, index, null, false, null, null);
+            return check(value, index, index, null, false, null, null, false);
         }
 
         static Part aux(JSONObject value, int index) throws Exception {
@@ -413,11 +465,12 @@ final class NativeQueue {
             if (!field.equals("video_poster") && !field.equals("audio_cover")) {
                 throw new IllegalArgumentException("field");
             }
-            return check(value, index, mediaIndex, field, true, null, null);
+            return check(value, index, mediaIndex, field, true, null, null, false);
         }
 
         private static Part check(JSONObject value, int slot, int mediaIndex, String field,
-                                  boolean aux, String sessionId, String blobId) throws Exception {
+                                  boolean aux, String sessionId, String blobId,
+                                  boolean compressed) throws Exception {
             String name = value.getString("name");
             String mime = value.getString("mime");
             long size = value.getLong("size");
@@ -425,13 +478,15 @@ final class NativeQueue {
                     || mime.length() > 255 || size <= 0 || size > MAX_FILE_BYTES) {
                 throw new IllegalArgumentException("file");
             }
-            return new Part(name, mime, size, slot, mediaIndex, field, aux, sessionId, blobId);
+            return new Part(name, mime, size, slot, mediaIndex, field, aux,
+                    sessionId, blobId, compressed);
         }
 
         static Part fromStored(JSONObject value, int slot, boolean aux) throws Exception {
             return check(value, slot, value.optInt("media_index", slot),
                     aux ? value.getString("field") : null, aux,
-                    value.optString("session_id", ""), value.optString("blob_id", ""));
+                    value.optString("session_id", ""), value.optString("blob_id", ""),
+                    value.optBoolean("compressed", false));
         }
 
         String fileName() {
@@ -447,6 +502,7 @@ final class NativeQueue {
             if (aux) out.put("field", field);
             if (sessionId != null && !sessionId.isEmpty()) out.put("session_id", sessionId);
             if (blobId != null && !blobId.isEmpty()) out.put("blob_id", blobId);
+            if (compressed) out.put("compressed", true);
             return out;
         }
     }
@@ -463,10 +519,14 @@ final class NativeQueue {
         int attempts;
         final List<Part> files;
         final List<Part> aux;
+        final boolean compress;
+        final int maxHeight;
+        final int bitrateKbps;
 
         Record(String id, String type, String origin, String circleId, String clientId,
                String payload, String token, long createdAt, int attempts,
-               List<Part> files, List<Part> aux) {
+               List<Part> files, List<Part> aux, boolean compress, int maxHeight,
+               int bitrateKbps) {
             this.id = id;
             this.type = type;
             this.origin = origin;
@@ -478,6 +538,9 @@ final class NativeQueue {
             this.attempts = attempts;
             this.files = files;
             this.aux = aux;
+            this.compress = compress;
+            this.maxHeight = maxHeight;
+            this.bitrateKbps = bitrateKbps;
         }
 
         List<Part> parts() {
@@ -547,13 +610,33 @@ final class NativeQueue {
                     throw new IllegalArgumentException("aux");
                 }
             }
+            // 5.3: офлайн-видео приходит оригиналом; native сжимает его после
+            // закрытия окна. Настройки лежат в media_meta.native_compress и в
+            // тело записи не попадают.
+            boolean compress = false;
+            int maxHeight = 0;
+            int bitrateKbps = 0;
+            if (media != null) {
+                for (int i = 0; i < media.length(); i++) {
+                    JSONObject meta = media.optJSONObject(i);
+                    JSONObject settings = meta == null ? null : meta.optJSONObject("native_compress");
+                    if (settings == null) continue;
+                    compress = true;
+                    maxHeight = Math.max(0, Math.min(2160, settings.optInt("max_height", 0)));
+                    bitrateKbps = Math.max(0, Math.min(50_000,
+                            settings.optInt("video_bitrate_kbps", 0)));
+                    break;
+                }
+            }
+            if (files.isEmpty()) compress = false;
             String token = request.getString("token");
             if (token.isEmpty() || token.length() > MAX_TOKEN
                     || token.indexOf('\n') >= 0 || token.indexOf('\r') >= 0) {
                 throw new IllegalArgumentException("token");
             }
             return new Record(UUID.randomUUID().toString(), type, origin, circleId, clientId,
-                    payload.toString(), token, System.currentTimeMillis(), 0, files, aux);
+                    payload.toString(), token, System.currentTimeMillis(), 0, files, aux,
+                    compress, maxHeight, bitrateKbps);
         }
 
         static Record fromStored(JSONObject stored, boolean debug) throws Exception {

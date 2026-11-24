@@ -52,7 +52,10 @@ interface Reply {
 	error?: string;
 	records?: unknown;
 	statuses?: unknown;
+	capabilities?: unknown;
 }
+
+let compressAvailable: boolean | undefined;
 
 const TIMEOUT_MS = 5000;
 let sequence = 0;
@@ -186,6 +189,22 @@ export async function nativeAbort(token: string): Promise<void> {
 	} catch {
 		// Отмена не должна маскировать первичную ошибку передачи.
 	}
+}
+
+/** 5.3: нативная сборка умеет сжимать видео после закрытия окна. */
+export async function nativeCompressAvailable(): Promise<boolean> {
+	const target = port();
+	if (!target) return false;
+	if (compressAvailable !== undefined) return compressAvailable;
+	try {
+		const reply = await request(target, { op: 'capabilities' });
+		const value = reply.capabilities;
+		compressAvailable =
+			!!value && typeof value === 'object' && (value as { compress?: boolean }).compress === true;
+	} catch {
+		compressAvailable = false;
+	}
+	return compressAvailable;
 }
 
 export async function nativeCancel(clientId: string): Promise<void> {
