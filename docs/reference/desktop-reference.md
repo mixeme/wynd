@@ -1,6 +1,6 @@
 # Wynd для компьютера
 
-Оболочка Windows: своя рамка, постоянный профиль WebView2, выбранный сервер и его интерфейс в окне. Решения — [план 66](../plans/66-desktop-functions.plan.md) (оболочка выпущена), шаги — план 61.
+Оболочка Windows (Linux — [план 69](../plans/69-linux-desktop.plan.md)): своя рамка, постоянный профиль WebView2, выбранный сервер и его интерфейс в окне. Решения — [план 66](../plans/66-desktop-functions.plan.md) (оболочка выпущена), шаги — план 61.
 
 ## Сборка
 
@@ -11,6 +11,10 @@ scripts\build-desktop.bat
 Скрипт собирает `cmd/wynd-desktop/frontend` и кладёт `dist\wynd-desktop.exe` (Windows GUI, без консольного окна). Для проверки без установки: `go build -tags "desktop,production" -ldflags "-H windowsgui" ./cmd/wynd-desktop`. Ворота — `scripts\test-desktop.bat`, CI — `.github/workflows/desktop.yaml`.
 
 Выпуски подписываются общим ключом экосистемы через «Wynd Подпись»; в exe вшит открытый ключ, backend самообновления реализован. С 0.3.0 окно предлагает новую версию полосой поверх интерфейса (план 63, принята 2026-11-11). Порядок выпуска — [DEVELOPMENT.md](../DEVELOPMENT.md#wynd-мастерская).
+
+## Linux (план 69)
+
+Целевые системы — Ubuntu 24.04 и Debian 12, x86_64. Сборка — `scripts/build-desktop-linux.sh` на GTK3/WebKit2GTK 4.1; ворота — `scripts/test-desktop-linux.sh` и job в `.github/workflows/desktop.yaml`; выпуск — `.deb` и AppImage. Первая версия — паритет с Windows без самообновления; трей на Linux — нативное меню, кастомное окно 92×56 остаётся только на Windows. До живого замера `wails://` запись голоса/видео, камера, геолокация и скачивание в Linux-версии не обещаются: secure context проверяется первым этапом.
 
 ## Данные
 
@@ -45,6 +49,6 @@ scripts\build-desktop.bat
 
 ## Границы
 
-- Пока Windows; macOS и вшитый интерфейс — позже, Linux после Windows.
+- Пока Windows; Linux — [план 69](../plans/69-linux-desktop.plan.md) (Ubuntu 24.04/Debian 12, `.deb` и AppImage, без самообновления); macOS и вшитый интерфейс — позже.
 - Одновременные серверы: выбранный в корне окна, остальные через `/__srv`; сессии, выход и общий список кругов — в веб-интерфейсе. «Войти на другой сервер» в браузере по-прежнему скрыто (C69), в окне для компьютера работает.
 - Не проверены вручную: перенос мышью из Проводника и вход Windows. Ввод в тестовой сессии недоступен; проверка входа — клавиатурой и мышью на обычном рабочем столе.
