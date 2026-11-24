@@ -121,8 +121,8 @@ func loadSettings() settings {
 		s.KeyPath = filepath.Join(home, ".wynd", "workshop-signing.key")
 	}
 	if s.KeyStorePath == "" {
-		// По умолчанию — путь scripts\sign-android-release.ps1 (план 50:
-		// постоянный ключ держит владелец вне репозитория).
+		// По умолчанию — постоянный ключ Android (план 50: ключ держит
+		// владелец вне репозитория).
 		s.KeyStorePath = `D:\Local\Git\myenv\wynd\wynd-android.p12`
 	}
 	return s
