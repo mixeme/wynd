@@ -1,0 +1,76 @@
+# Черновик метаданных для gitlab.com/fdroid/fdroiddata (план 67, шаг 4).
+# В fdroiddata файл кладётся как metadata/mixeme.wynd.yml после подачи MR.
+#
+# Перед подачей заполнить:
+#   - commit: тег android-vX.Y.Z, в котором уже лежат fastlane-метаданные
+#     (android/fastlane/metadata/...) — иначе они не попадут в сборку;
+#   - versionName/versionCode/CurrentVersion/CurrentVersionCode — по тому же тегу;
+#   - WebSite — публичный адрес, если он появится;
+#   - AuthorName — так, как владелец хочет быть указан.
+#
+# Редакция fdroid собирается с вшитым клиентом (gradleprops ниже): без этого
+# приложение — обёртка сайта, и ревьюеры его завернут (план 67, шаг 4).
+# Сборка проверяется локально: `fdroid lint mixeme.wynd`, затем `fdroid build`.
+#
+# Description держать в согласии с
+# android/fastlane/metadata/android/en-US/full_description.txt.
+
+Categories:
+  - Internet
+License: AGPL-3.0-or-later
+AuthorName: Mix
+WebSite: https://github.com/mixeme/wynd
+SourceCode: https://github.com/mixeme/wynd
+IssueTracker: https://github.com/mixeme/wynd/issues
+Summary: "Client for your own Wynd server: circles, posts, photos and files"
+Description: |
+  Wynd is a private journal for your close circle: family, friends, colleagues.
+
+  This app is the Android client. It does not include a server and has no
+  accounts of its own: it connects to a Wynd server run by you or by someone you
+  trust. The server is free software too (AGPL-3.0), from the same source
+  repository.
+
+  A circle is a closed group with its own journal, its own name and its own
+  visibility. A person can be in several circles and appear differently in each.
+  You join by an invitation link or QR code from someone already in the circle;
+  there is no public feed, no followers and no recommendations.
+
+  The app reads and writes the journal by days, shows photos and video in a grid
+  and on a map, searches by words, dates, place and author, keeps recent posts on
+  the phone, sends posts written without a network when it returns, and can open
+  a circle's full archive (.wynd). Notifications are optional and go through
+  UnifiedPush instead of Google services. There is no tracking, no analytics and
+  no advertising.
+
+  You need a server: run the Wynd server on your own machine, a VPS or at home.
+  Docker images and instructions are in the server repository.
+
+  Builds published on F-Droid are signed with F-Droid's key. An APK installed
+  from the project's own releases cannot be updated by this one, and the other
+  way round; switching requires removing the old app and installing again.
+
+RepoType: git
+Repo: https://github.com/mixeme/wynd
+
+Builds:
+  - versionName: 0.1.3
+    versionCode: 1003
+    commit: android-v0.1.3
+    subdir: android
+    prebuild:
+      - cd ../web && npm ci
+    gradle:
+      - fdroid
+    gradleprops:
+      - wyndEmbeddedUi=true
+    # Зависимости веб-клиента ставятся в prebuild и в исходниках не лежат;
+    # путь — от корня репозитория. Проверить на первой сборке: если сканер
+    # и без этого молчит, строку убрать.
+    scanignore:
+      - web/node_modules
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^android-v[0-9]+\.[0-9]+\.[0-9]+$
+CurrentVersion: 0.1.3
+CurrentVersionCode: 1003
