@@ -8,7 +8,9 @@
 
 | Файл | Что это | Где применять |
 | --- | --- | --- |
-| `icon.svg` | эталон, 1024×1024, чернила на бумаге | всё от 48 px и выше: сторы, PWA-манифест, рабочий стол |
+| `icon.svg` | эталон, 1024×1024, чернила на бумаге | всё от 48 px и выше: сторы, PWA maskable, apple-touch, рабочий стол |
+| `icon-rounded.svg` | тот же знак, скругление 225 из 1024, прозрачные углы | PWA any, окна Windows/Linux, `.ico` и `appicon.png` |
+| `icon-android-foreground.png` | знак без подложки в safe zone adaptive-иконки | Android 8+: `@drawable/wynd_icon_foreground` |
 | `icon-small.svg` | то же поле, перо утолщено | 16, 24, 32 px: favicon, трей, вкладка |
 | `mark.svg` | знак без подложки, `currentColor` | интерфейс: шапка, твой отрезок, начало журнала, обновление, пустой круг |
 | `logo.svg` | лок: знак плюс слово в кривых | лендинг, сторы, письма, презентации; от 48 px по высоте знака |
@@ -33,8 +35,13 @@
   утолщается книзу.
 - Знак укладывается в круг диаметром 756 при safe zone 819 — maskable-иконка Android
   ничего не срежет.
-- Подложка сплошная и во всё поле: iOS не допускает прозрачности, углы платформы
-  скругляют сами. Своё скругление в эталон не зашивать.
+- Подложка в эталоне сплошная и во всё поле: iOS не допускает прозрачности, maskable
+  лаунчер режет сам. Для площадок, которые показывают файл как есть (PWA any, окна
+  Windows/Linux), есть производный `icon-rounded.svg`: те же бумага и знак, скругление
+  225 из 1024 и прозрачные углы. Эталон при этом не меняется.
+- Android с 8.0 собирает adaptive-иконку: бумага — цветом `#F4F0E9`, знак —
+  `icon-android-foreground.png` (высота 73.8% видимой области, safe zone 66dp).
+  До 8.0 ставится готовая скруглённая плитка `icon-192-rounded.png`.
 
 ## Цвет
 
@@ -61,6 +68,14 @@ rsvg-convert -w 512 -h 512 assets/icon.svg -o icon-512.png
 
 ```bash
 rsvg-convert -w 32 -h 32 assets/icon-small.svg -o favicon-32.png
+```
+
+Скруглённые растры и `.ico` — из `icon-rounded.svg` (в репозитории уже выведены):
+
+```bash
+rsvg-convert -w 192 -h 192 assets/icon-rounded.svg -o web/static/icon-192-rounded.png
+rsvg-convert -w 512 -h 512 assets/icon-rounded.svg -o web/static/icon-512-rounded.png
+rsvg-convert -w 1024 -h 1024 assets/icon-rounded.svg -o cmd/wynd-desktop/build/appicon.png
 ```
 
 Inkscape: `inkscape assets/icon.svg -w 512 -o icon-512.png`. Без CLI под рукой — любой

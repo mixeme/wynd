@@ -90,10 +90,18 @@ android {
 
 tasks.register('prepareWyndIcon', Sync) {
     inputs.file(rootProject.file('../assets/icon-small.svg'))
+    inputs.file(rootProject.file('../assets/icon-android-foreground.png'))
+    inputs.file(rootProject.file('../web/static/icon-192-rounded.png'))
     into(generatedResources)
-    from(rootProject.file('../web/static/icon-192.png')) {
+    // До Android 8 — готовая скруглённая плитка; с 8 (anydpi-v26) — adaptive:
+    // лаунчер сам режет бумагу по своей маске, белой плашки вокруг нет.
+    from(rootProject.file('../web/static/icon-192-rounded.png')) {
+        into 'mipmap-nodpi'
+        rename { 'ic_launcher.png' }
+    }
+    from(rootProject.file('../assets/icon-android-foreground.png')) {
         into 'drawable-nodpi'
-        rename { 'wynd_icon.png' }
+        rename { 'wynd_icon_foreground.png' }
     }
     doLast {
         // Тот же утверждённый знак для маленьких размеров, без подложки;
@@ -105,6 +113,13 @@ tasks.register('prepareWyndIcon', Sync) {
         // Единственный неанимированный 24dp-контур: не упрощать утверждённый знак ради lint.
         target.setText('<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools" android:width="24dp" android:height="24dp" android:viewportWidth="1024" android:viewportHeight="1024">'
                 + '<path tools:ignore="VectorPath" android:fillColor="#FFFFFFFF" android:pathData="' + svg.path[0].@d.text() + '"/></vector>', 'UTF-8')
+        // Adaptive-иконка: бумага — цветом, знак — отдельным слоем в safe zone.
+        def color = generatedResources.get().file('values/wynd_icon.xml').asFile
+        color.parentFile.mkdirs()
+        color.setText('<resources><color name="wynd_icon_background">#F4F0E9</color></resources>', 'UTF-8')
+        def adaptive = generatedResources.get().file('mipmap-anydpi-v26/ic_launcher.xml').asFile
+        adaptive.parentFile.mkdirs()
+        adaptive.setText('<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/wynd_icon_background"/><foreground android:drawable="@drawable/wynd_icon_foreground"/></adaptive-icon>', 'UTF-8')
     }
 }
 tasks.register('prepareStartupSync', Exec) {

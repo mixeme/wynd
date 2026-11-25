@@ -43,8 +43,12 @@ export default defineConfig({
 				start_url: '/',
 				lang: 'ru',
 				icons: [
-					{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-					{ src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+					// Обычные иконки — со скруглёнными углами: Firefox на Android и
+					// установка на рабочий стол показывают их как есть, без маски.
+					{ src: '/icon-192-rounded.png', sizes: '192x192', type: 'image/png' },
+					{ src: '/icon-512-rounded.png', sizes: '512x512', type: 'image/png' },
+					// Maskable остаётся во всё поле: маску задаёт площадка, прозрачные
+					// углы она показала бы чёрным или белым.
 					{
 						src: '/icon-512.png',
 						sizes: '512x512',
