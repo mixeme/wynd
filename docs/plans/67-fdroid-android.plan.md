@@ -40,6 +40,12 @@
    > - No Google Play services, no FCM, no tracking; push notifications are optional and use UnifiedPush with a distributor chosen by the user.
    > - Version code is derived in Gradle from versionName (0.1.3 → 1003), so auto-update is not enabled yet (`UpdateCheckMode: None`); a follow-up MR will add a versionCode line to `android/version.properties` and switch to Tags/Version.
    **Осталось до подачи:** приёмка английского текста, проверка режима embedded у fdroid-сборки на телефоне (adb 25.11 пуст), сам MR (владелец, аккаунт GitLab есть). Автор в метаданных — `Mikhail Yenuchenko` (владелец, 25.11). Кадры для карточки можно добавить отдельным MR в `metadata/mixeme.wynd/<locale>/images/` — они не требуют нового тега.
+   **MR !59108 открыт 25.11** (автор `mixeme`, ветка `mixeme.wynd`, один файл). Первый прогон CI (pipeline `3112848009`): `fdroid lint`, schema validation, check source code, checkupdates, git redirect — зелёные. Упали три работы и что сделано:
+   - `fdroid rewritemeta` — файл был с CRLF (копия из локального checkout: git отдаёт CRLF) и не в каноническом порядке полей. Исправлено: `sudo` стоит до `gradle`; проверено локально `diff --strip-trailing-cr` после rewritemeta — изменений нет. **В GitLab файл нужно вставлять с LF**, иначе работа снова красная.
+   - `tools check scripts` → `make-summary-translatable.py`: текущая раскладка fdroiddata требует `Summary` не в YAML, а в `metadata/mixeme.wynd/en-US/summary.txt`. Исправлено, локально скрипт возвращает 0 (`872d8b07`).
+   - `fdroid build`: `bash: line 1: npm: command not found` — в сборочной ВМ нет npm, хотя `node` есть. Исправлено: `sudo: [apt-get update || apt-get update, apt-get install -y npm]` (Debian-пакет тянет nodejs 18+; Vite 6 требует ≥18). Ставится только в режиме `--server`, локальную сборку не затрагивает.
+   - `check apk` в первом прогоне пропущен (сборки ещё не было). Gradle 8.13 на ВМ обеспечивает `gradlew-fdroid` (подгружает версию из `gradle-wrapper.properties`), AGP 8.13.2 штатный.
+   Осталось: владельцу обновить оба файла в форке и дождаться нового прогона; дальше — обычная очередь ревью.
 5. **Слежение.** Очередь ревью f-droid.org — периодический присмотр; вопросы ревьюеров фиксировать здесь. Свой подписанный F-Droid-репозиторий не делаем, пока главный репозиторий не отказал и владелец не попросит.
 
 Выполнение не обязано идти строго по номерам, но 1–2 раньше 3–4; подача (4) — после вшивания интерфейса.
