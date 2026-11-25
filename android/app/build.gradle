@@ -21,6 +21,12 @@ if (!(appVersion ==~ /(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)/)) throw
 def versionParts = appVersion.split(/\./).collect { new BigInteger(it) }
 def appVersionCode = versionParts[0] * 1000000 + versionParts[1] * 1000 + versionParts[2]
 if (versionParts[1] > 999 || versionParts[2] > 999 || appVersionCode <= 0 || appVersionCode > 2100000000) throw new GradleException('Android version overflow')
+// Тот же номер строкой в version.properties нужен fdroiddata: F-Droid не
+// вычисляет versionCode из versionName, а читает файл (UpdateCheckData).
+// Сторож не даёт номеру разойтись с формулой при выпуске.
+def storedVersionCode = versionProperties.getProperty('versionCode')
+if (storedVersionCode == null || !(storedVersionCode ==~ /[1-9][0-9]*/)) throw new GradleException('version.properties: versionCode missing or invalid')
+if (new BigInteger(storedVersionCode) != appVersionCode) throw new GradleException("version.properties: versionCode $storedVersionCode does not match ${appVersionCode} from versionName (X.Y.Z -> X*1000000+Y*1000+Z)")
 def generatedResources = layout.buildDirectory.dir('generated/wynd-res')
 
 android {
