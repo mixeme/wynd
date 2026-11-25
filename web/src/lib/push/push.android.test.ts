@@ -123,6 +123,7 @@ it('при выходе снимает регистрацию телефона �
 	const { commands, exchanges } = bridge();
 	await unsubscribePush('https://second.example.invalid');
 	expect(commands).toMatchObject([{ op: 'remove', account: 'second' }]);
+	expect(commands.some((command) => command.op === 'disable')).toBe(false);
 	expect(exchanges).toEqual([
 		{
 			path: 'https://second.example.invalid/api/v1/push/subscribe',
@@ -131,4 +132,19 @@ it('при выходе снимает регистрацию телефона �
 			body: { endpoint: endpoint('second') }
 		}
 	]);
+});
+
+it('после выхода с одного сервера второй вход по-прежнему публикуется', async () => {
+	const { commands, exchanges } = bridge();
+	await unsubscribePush('https://second.example.invalid');
+	commands.length = 0;
+	exchanges.length = 0;
+	await setAndroidPushEnabled(true);
+	expect(commands.some((command) => command.op === 'disable')).toBe(false);
+	expect(exchanges).toContainEqual({
+		path: '/api/v1/push/subscribe',
+		method: 'POST',
+		token: 'Bearer first-test',
+		body: { endpoint: endpoint('first'), p256dh: 'first', auth: 'key' }
+	});
 });

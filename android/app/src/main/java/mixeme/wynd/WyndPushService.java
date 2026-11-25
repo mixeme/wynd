@@ -14,6 +14,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.unifiedpush.android.connector.FailedReason;
 import org.unifiedpush.android.connector.PushService;
+import org.unifiedpush.android.connector.data.PublicKeySet;
 import org.unifiedpush.android.connector.data.PushEndpoint;
 import org.unifiedpush.android.connector.data.PushMessage;
 
@@ -27,8 +28,11 @@ public final class WyndPushService extends PushService {
     private static final Pattern ID = Pattern.compile("[A-Za-z0-9_-]{1,128}");
 
     @Override public void onNewEndpoint(PushEndpoint endpoint, String instance) {
+        PublicKeySet keys = endpoint.getPubKeySet();
+        if (keys == null) return;
         try {
-            if (new PushRegistry(this).update(instance, endpoint)) PushBridge.changed();
+            if (new PushRegistry(this).update(instance, endpoint.getUrl(),
+                    keys.getPubKey(), keys.getAuth())) PushBridge.changed();
         } catch (JSONException ignored) { /* An incomplete subscription is never published. */ }
     }
 

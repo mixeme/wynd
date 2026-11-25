@@ -80,7 +80,7 @@ final class PushBridge {
         if (op.equals("ensure")) {
             String key = request.getString("vapid");
             if (!key.matches("[A-Za-z0-9_-]{87}=?")) throw new IllegalArgumentException("Invalid VAPID key");
-            result = registry.ensure(instance, key);
+            result = registry.ensure(instance, accountOrigin, account, key);
         } else {
             result = registry.get(instance);
             if (op.equals("remove")) registry.remove(instance);
