@@ -370,6 +370,9 @@ export class Panel {
 		try {
 			const insp = await this.api.Inspect();
 			this.inspection = insp;
+			// У известной установки каталог показываем сразу, чтобы его не
+			// набирали заново; правку на другой корень остановит toPlan (C131).
+			if (!this.installRoot && this.knownRoot) this.installRoot = this.knownRoot;
 			if (navigate) {
 				// Wynd здесь уже стоит — сразу страница сервера (владелец, 2026-10-24: 7а).
 				if (insp.ok && insp.report.findings?.some((f) => f.id === 'wynd' || f.id === 'wyndelse')) {
