@@ -39,6 +39,14 @@ it('shows the build line and its age under the running step', () => {
 	expect(html).toContain('Последнее сообщение — сейчас');
 });
 
+// Три точки текущего шага — по центру строки: обычное многоточие «…» стоит
+// на базовой линии и читается ниже текста.
+it('puts the running mark in the middle of the line', () => {
+	const html = render([{ id: 'upload', title: 'Загружаем APK', status: 'running' }]);
+	expect(html).toContain('···');
+	expect(html).not.toContain('…');
+});
+
 // Шов двух списков («Подпись»: проверка, потом подпись): списки шагов стоят
 // подряд и несут один класс — по нему MarkRows снимает шаг между ними и
 // оставляет черту. Иначе на стыке пропадает разделитель и зазор выходит

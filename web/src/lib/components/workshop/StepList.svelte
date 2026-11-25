@@ -39,7 +39,9 @@
 	function mark(step: Step): string {
 		if (step.status === 'done') return '✓';
 		if (step.status === 'failed') return '!';
-		return step.status === 'running' ? '…' : '○';
+		// Средние точки: обычное многоточие «…» стоит на базовой линии и в
+		// строке шага читается ниже текста. Средние точки — по центру строки.
+		return step.status === 'running' ? '···' : '○';
 	}
 </script>
 
