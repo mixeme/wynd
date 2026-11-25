@@ -1,1 +1,0 @@
-Client for your own Wynd server: circles, posts, photos and files
