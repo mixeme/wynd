@@ -237,7 +237,7 @@ func TestRevivePlaceRequest(t *testing.T) {
 		"accounts":         map[string]any{"columns": []string{"id", "email"}, "rows": [][]any{{"old-owner", "slava@example.com"}}},
 		"blobs":            map[string]any{"columns": []string{"id", "sha256", "size_bytes"}, "rows": [][]any{{"00000000-0000-7000-8000-0000000000b1", sha256Hex(photo), len(photo)}}},
 	}
-	manifest := map[string]any{"format": "wynd-circle", "format_version": 1, "schema_version": 35, "posts": 0}
+	manifest := map[string]any{"format": "wynd-circle", "format_version": 3, "schema_version": 1, "posts": 0}
 	revive := func() int {
 		return doJSON(t, srv, http.MethodPost, "/api/v1/revive", slava, map[string]any{
 			"manifest": manifest, "tables": tables, "blob_map": map[string]string{"00000000-0000-7000-8000-0000000000b1": blobID},
@@ -296,7 +296,7 @@ func TestReviveWaitingMembers(t *testing.T) {
 			"rows": [][]any{{"00000000-0000-7000-8000-00000000f101", m1, ts}, {"00000000-0000-7000-8000-00000000f102", m2, ts}}},
 		"accounts": map[string]any{"columns": []string{"id", "email"}, "rows": [][]any{{"a1", "slava@example.com"}, {"a2", "kolya@elsewhere.example"}}},
 	}
-	manifest := map[string]any{"format": "wynd-circle", "format_version": 1, "schema_version": 35, "posts": 0}
+	manifest := map[string]any{"format": "wynd-circle", "format_version": 3, "schema_version": 1, "posts": 0}
 	rec := doJSON(t, srv, http.MethodPost, "/api/v1/revive", slava, map[string]any{"manifest": manifest, "tables": tables, "blob_map": map[string]string{}})
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("оживить: %d %s", rec.Code, rec.Body.String())

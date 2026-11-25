@@ -30,7 +30,7 @@ func TestRevivePlaceWithdrawalRace(t *testing.T) {
 			var withdrawn int64
 			revive := func() {
 				result, reviveErr = e.ch.ReviveCircle(e.ctx, chronicle.ReviveInput{
-					FormatVersion: 2, SchemaVersion: 12, Tables: tables, Accounts: accounts, BlobMap: blobs,
+					FormatVersion: 3, SchemaVersion: 1, Tables: tables, Accounts: accounts, BlobMap: blobs,
 					ReviverID: "owner", PlaceRequestID: "place", Now: e.at(2),
 				})
 			}

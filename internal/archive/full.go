@@ -18,18 +18,17 @@ import (
 
 // FullFormat и FullFormatVersion — что за файл и какой версии его разметка.
 // Версия растёт, когда меняется сама разметка архива; схема базы — отдельно
-// (manifest.schema_version), её переводит оживление. Версия 2 — та же
-// разметка, но номер схемы по нумерации миграций с 0.34.0 (план 46, C45):
-// в версии 1 он по прежней (34–36), в версии 2 — с 1. Версия 3 — нумерация
-// схем начата заново со свёртки миграций (план 46, C115): свежая база —
-// «версия 1», базы прежней нумерации переведены отметкой.
+// (manifest.schema_version). Версия 3 — текущая: нумерация схем начата заново
+// со свёртки миграций (план 46, C115). Версии 1–2 (до 0.34.0 и 0.34.0–0.53.4)
+// сняты в плане 71, С-4.
 const (
 	FullFormat        = "wynd-circle"
 	FullFormatVersion = chronicle.ArchiveFormatVersion
 )
 
-// FullFormatKnown — разметка, которую этот сервер читает.
-func FullFormatKnown(v int) bool { return v == 1 || v == 2 || v == chronicle.ArchiveFormatVersion }
+// FullFormatKnown — разметка, которую этот сервер читает. Старые разметки
+// получают отказ, а не читаются по текущим правилам.
+func FullFormatKnown(v int) bool { return v == chronicle.ArchiveFormatVersion }
 
 // FullManifest — manifest.json полного архива.
 type FullManifest struct {

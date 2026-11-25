@@ -53,7 +53,7 @@ func TestArchivePreservationSurvivesReviveAndTransport(t *testing.T) {
 			}
 			tables, accounts, blobs := archiveOverJSON(t, data)
 			result, err := e.ch.ReviveCircle(e.ctx, chronicle.ReviveInput{
-				FormatVersion: 2, SchemaVersion: 13, Tables: tables, Accounts: accounts, BlobMap: blobs,
+				FormatVersion: 3, SchemaVersion: 1, Tables: tables, Accounts: accounts, BlobMap: blobs,
 				ReviverID: "stranger", Now: e.at(5), NewMember: &chronicle.ReviveNewMember{Name: "Слава"},
 			})
 			if err != nil {
@@ -211,7 +211,9 @@ func TestArchiveReadableUsesFrozenSnapshot(t *testing.T) {
 
 // Старые файлы сверяются по прежнему счётчику, включая удалённые строки;
 // новая схема считает видимые записи, машинные tombstone остаются в файле.
-func TestArchivePreservationReviveCountCompatibility(t *testing.T) {
+// Текущая разметка считает видимые записи: машинный tombstone остаётся в
+// файле, но в итог не входит. Старые разметки сняты (план 71, С-4).
+func TestArchivePreservationReviveCount(t *testing.T) {
 	e := newTestEnv(t)
 	e.seedAccount("a")
 	circle := e.createCircle("a", "Аня", chronicle.UnlimitedWindow())
@@ -228,11 +230,9 @@ func TestArchivePreservationReviveCountCompatibility(t *testing.T) {
 		t.Fatalf("new file count: %d", data.Posts)
 	}
 	tables, accounts, blobs := archiveOverJSON(t, data)
-	for _, version := range []struct{ format, schema, count int }{{1, 36, 2}, {2, 12, 2}, {2, 13, 1}} {
-		result, err := e.ch.ReviveCircle(e.ctx, chronicle.ReviveInput{FormatVersion: version.format, SchemaVersion: version.schema, Tables: tables, Accounts: accounts, BlobMap: blobs, ReviverID: "a", Now: e.at(3)})
-		if err != nil || result.Posts != version.count {
-			t.Fatalf("schema %d/%d: %+v %v", version.format, version.schema, result, err)
-		}
+	result, err := e.ch.ReviveCircle(e.ctx, chronicle.ReviveInput{FormatVersion: 3, SchemaVersion: 1, Tables: tables, Accounts: accounts, BlobMap: blobs, ReviverID: "a", Now: e.at(3)})
+	if err != nil || result.Posts != 1 {
+		t.Fatalf("current format: %+v %v", result, err)
 	}
 }
 

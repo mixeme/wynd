@@ -183,7 +183,7 @@ func TestReadableFromFull(t *testing.T) {
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 	for name, body := range map[string]string{
-		"manifest.json":   `{"format":"wynd-circle","format_version":2}`,
+		"manifest.json":   `{"format":"wynd-circle","format_version":3}`,
 		"data/posts.json": `{"columns":[],"rows":[]}`,
 		"index.html":      "<html>лента</html>",
 		"posts/p1.html":   "<html>запись</html>",

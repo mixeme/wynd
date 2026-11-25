@@ -34,7 +34,7 @@ func limitTestZip(t *testing.T, files map[string]string) string {
 }
 
 func TestFullArchiveDecompressionBudgets(t *testing.T) {
-	manifest := `{"format":"wynd-circle","format_version":2,"tables":["posts","accounts"]}`
+	manifest := `{"format":"wynd-circle","format_version":3,"tables":["posts","accounts"]}`
 	valid := `{"columns":[],"rows":[]}`
 	for name, tc := range map[string]struct {
 		files  map[string]string
@@ -60,7 +60,7 @@ func TestFullArchiveDecompressionBudgets(t *testing.T) {
 }
 
 func TestFullArchiveDirectoryLimitsBeforeAllocation(t *testing.T) {
-	files := map[string]string{"manifest.json": `{"format":"wynd-circle","format_version":2}`, "a": "a", "b": "b"}
+	files := map[string]string{"manifest.json": `{"format":"wynd-circle","format_version":3}`, "a": "a", "b": "b"}
 	path := limitTestZip(t, files)
 	if _, err := OpenFullArchiveWithLimits(path, ReadLimits{Entries: 2}); err == nil {
 		t.Fatal("accepted too many entries")
@@ -82,7 +82,7 @@ func TestFullArchiveDirectoryLimitsBeforeAllocation(t *testing.T) {
 }
 
 func TestFullArchiveZIP64Directory(t *testing.T) {
-	path := limitTestZip(t, map[string]string{"manifest.json": `{"format":"wynd-circle","format_version":2}`})
+	path := limitTestZip(t, map[string]string{"manifest.json": `{"format":"wynd-circle","format_version":3}`})
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
@@ -124,7 +124,7 @@ func FuzzFullArchiveReadLimits(f *testing.F) {
 	var buf bytes.Buffer
 	z := zip.NewWriter(&buf)
 	w, _ := z.Create("manifest.json")
-	_, _ = w.Write([]byte(`{"format":"wynd-circle","format_version":2,"tables":["posts"]}`))
+	_, _ = w.Write([]byte(`{"format":"wynd-circle","format_version":3,"tables":["posts"]}`))
 	w, _ = z.Create("data/posts.json")
 	_, _ = w.Write([]byte(`{"columns":["body"],"rows":[["sample"]]}`))
 	_ = z.Close()

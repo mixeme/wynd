@@ -124,7 +124,7 @@ func TestReviveTextBytesMatchesInsert(t *testing.T) {
 		chronicle.ReviveServiceEventCost(reviverName, reviverGender, "", "")
 
 	res, err := e.ch.ReviveCircle(e.ctx, chronicle.ReviveInput{
-		FormatVersion: 2, SchemaVersion: 2, Tables: tables, Accounts: accounts, BlobMap: blobs,
+		FormatVersion: 3, SchemaVersion: 1, Tables: tables, Accounts: accounts, BlobMap: blobs,
 		ReviverID: "owner", Now: e.at(3),
 	})
 	if err != nil {

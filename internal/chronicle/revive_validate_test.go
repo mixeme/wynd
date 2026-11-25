@@ -64,7 +64,7 @@ func TestReviveRejectsMalformedTablesBeforeWrites(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			tables, accounts, blobs := archiveOverJSON(t, data)
 			corrupt(tables)
-			_, err := e.ch.ReviveCircle(e.ctx, chronicle.ReviveInput{FormatVersion: 2, SchemaVersion: 15, Tables: tables, Accounts: accounts, BlobMap: blobs, ReviverID: "owner"})
+			_, err := e.ch.ReviveCircle(e.ctx, chronicle.ReviveInput{FormatVersion: 3, SchemaVersion: 1, Tables: tables, Accounts: accounts, BlobMap: blobs, ReviverID: "owner"})
 			if !errors.Is(err, chronicle.ErrInvalid) {
 				t.Fatalf("expected invalid archive, got %v", err)
 			}

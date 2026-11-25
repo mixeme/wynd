@@ -16,50 +16,21 @@ import (
 // заново: все идентификаторы новые — круг может ожить рядом с живым исходным,
 // и на том же сервере; люди — по почте; владелец — тот, кто оживил.
 
-// ArchiveFormatVersion — разметка архива, которую этот сервер пишет (план 46,
-// C115): версия 3 — нумерация схем начата заново со свёртки миграций, версия 2
-// — прежняя нумерация 1–17 (0.34.0–0.53.4), версия 1 — разметка до 0.34.0.
+// ArchiveFormatVersion — разметка архива, которую этот сервер пишет и читает
+// (план 46, C115): версия 3 — нумерация схем начата заново со свёртки миграций.
+// Разметки 1 (до 0.34.0) и 2 (0.34.0–0.53.4) сняты в плане 71, С-4: старых
+// архивов у нас нет, файл старой разметки получает отказ.
 const ArchiveFormatVersion = 3
 
 // ReviveSchemaVersions — какие схемы архива сервер умеет оживлять (разметка
 // архива 3, нумерация со свёртки миграций C115). Новая схема с другими
 // колонками — сюда и в переводчик строк.
-// Схема 1 — вся схема свёрнута в базовую (migrations/0001_schema.sql), форма
-// та же, что схема 17 разметки 2.
+// Схема 1 — вся схема свёрнута в базовую (migrations/0001_schema.sql).
 var ReviveSchemaVersions = []int{1}
-
-// RevivePrevSchemaVersions — схемы архивов разметки 2: прежняя нумерация
-// миграций (0.34.0–0.53.4).
-// Схемы 2–3 (раскладка улочки, A2), 4 (почта администратора) и 5 (письмо о
-// поломках) таблиц круга не меняли. Схема 6 добавила post_media.video_duration_ms:
-// reviveRow берёт только столбцы, что есть в обеих схемах, архив без него — NULL.
-// Схема 7 (итог переноса, incoming_moves.already_here) таблиц круга не меняла.
-// Схемы 8 и 9 (владелец и имена в переносе, A12) — тоже только incoming_moves.
-// Схема 10 добавила circles.archive_cutoff_tz — его оживление и так обнуляет.
-// Схема 11 (accounts.avatar_shape) таблиц круга не меняла. Схемы 12–15
-// (место, отрезки сохранения, снимки переноса, общее содержимое) тоже
-// добавляли служебные таблицы. Схема 16 (резервации квоты) таблиц круга не
-// меняет: архив без неё оживляется как прежде. Схема 17 (индексы проверки
-// квоты, план 60 §8) — тем более: манифест штампует её номером из
-// schema_migrations, и без неё в списке перенос между серверами схемы 17
-// отвергал любой архив («unknown archive schema»).
-var RevivePrevSchemaVersions = []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}
-
-// ReviveLegacySchemaVersions — схемы архивов разметки 1: номера нумерации
-// до 0.34.0. Схема 36 — та же, что 1 прежней нумерации.
-var ReviveLegacySchemaVersions = []int{34, 35, 36}
 
 // ReviveSchemaKnown — оживляет ли сервер архив такой разметки и схемы.
 func ReviveSchemaKnown(formatVersion, schema int) bool {
-	switch formatVersion {
-	case 1:
-		return slices.Contains(ReviveLegacySchemaVersions, schema)
-	case 2:
-		return slices.Contains(RevivePrevSchemaVersions, schema)
-	case ArchiveFormatVersion:
-		return slices.Contains(ReviveSchemaVersions, schema)
-	}
-	return false
+	return formatVersion == ArchiveFormatVersion && slices.Contains(ReviveSchemaVersions, schema)
 }
 
 // reviveOrder — порядок вставки: по зависимостям.
@@ -71,8 +42,8 @@ var reviveOrder = []string{
 
 // ReviveInput — что прислало устройство.
 type ReviveInput struct {
-	// FormatVersion — разметка архива (manifest.format_version): от неё
-	// зависит, по какой нумерации SchemaVersion.
+	// FormatVersion — разметка архива (manifest.format_version). Сейчас
+	// принимается только текущая 3; старые 1–2 получают отказ.
 	FormatVersion int
 	SchemaVersion int
 	Tables        map[string]FullArchiveTable
@@ -347,17 +318,12 @@ func (c *Chronicle) ReviveCircle(ctx context.Context, in ReviveInput) (ReviveRes
 			return res, err
 		}
 	}
-	// Старые manifest.posts включали tombstone: сверка прежних файлов
-	// и переноса со старого сервера должна остаться совместимой.
-	res.Posts = len(in.Tables["posts"].Rows)
-	// Схемы с 13 прежней нумерации и вся свёрнутая (разметка 3) уже считают
-	// без tombstone.
-	if in.FormatVersion > 2 || (in.FormatVersion == 2 && in.SchemaVersion >= 13) {
-		res.Posts = 0
-		for i := range in.Tables["posts"].Rows {
-			if asInt64(rowMap(in.Tables["posts"], i)["deleted"]) == 0 {
-				res.Posts++
-			}
+	// Текущая разметка считает только видимые записи: машинные tombstone
+	// остаются в файле, но в итог не входят.
+	res.Posts = 0
+	for i := range in.Tables["posts"].Rows {
+		if asInt64(rowMap(in.Tables["posts"], i)["deleted"]) == 0 {
+			res.Posts++
 		}
 	}
 	res.Names = len(in.Tables["identities"].Rows)

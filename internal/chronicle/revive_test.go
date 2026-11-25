@@ -70,7 +70,7 @@ func TestReviveCircleNextToOriginal(t *testing.T) {
 	tables, accounts, blobs := archiveOverJSON(t, data)
 
 	res, err := e.ch.ReviveCircle(e.ctx, chronicle.ReviveInput{
-		FormatVersion: 2, SchemaVersion: 1, Tables: tables, Accounts: accounts, BlobMap: blobs,
+		FormatVersion: 3, SchemaVersion: 1, Tables: tables, Accounts: accounts, BlobMap: blobs,
 		ReviverID: "owner", Now: e.at(3),
 	})
 	if err != nil {
@@ -132,7 +132,7 @@ func TestReviveCircleByStranger(t *testing.T) {
 	}
 	e.seedAccount("slava")
 	res, err := e.ch.ReviveCircle(e.ctx, chronicle.ReviveInput{
-		FormatVersion: 1, SchemaVersion: 36, Tables: tables, Accounts: accounts, BlobMap: blobs, ReviverID: "slava", Now: e.at(3),
+		FormatVersion: 3, SchemaVersion: 1, Tables: tables, Accounts: accounts, BlobMap: blobs, ReviverID: "slava", Now: e.at(3),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -169,7 +169,7 @@ func TestReviveCircleByStrangerAsNewMember(t *testing.T) {
 	tables, accounts, blobs := archiveOverJSON(t, data)
 	e.seedAccount("slava")
 	res, err := e.ch.ReviveCircle(e.ctx, chronicle.ReviveInput{
-		FormatVersion: 2, SchemaVersion: 1, Tables: tables, Accounts: accounts, BlobMap: blobs,
+		FormatVersion: 3, SchemaVersion: 1, Tables: tables, Accounts: accounts, BlobMap: blobs,
 		ReviverID: "slava", Now: e.at(3),
 		NewMember: &chronicle.ReviveNewMember{Name: "Слава", Gender: chronicle.GenderMale},
 	})
@@ -222,8 +222,8 @@ func TestReviveCircleByStrangerAsNewMember(t *testing.T) {
 	}
 }
 
-// Архив неизвестной схемы и файл, который не загрузили, — отказ, а не
-// полкруга.
+// Архив неизвестной схемы, старой разметки и файл, который не загрузили, —
+// отказ, а не полкруга.
 func TestReviveCircleRefusesBrokenInput(t *testing.T) {
 	e := newTestEnv(t)
 	e.seedAccount("owner")
@@ -233,17 +233,16 @@ func TestReviveCircleRefusesBrokenInput(t *testing.T) {
 	e.attachPhoto(p.ID, "photo1")
 	data, _ := e.ch.FullArchiveData(e.ctx, circle.ID)
 	tables, accounts, _ := archiveOverJSON(t, data)
-	if _, err := e.ch.ReviveCircle(e.ctx, chronicle.ReviveInput{FormatVersion: 2, SchemaVersion: 99, Tables: tables, Accounts: accounts, ReviverID: "owner"}); err == nil {
+	if _, err := e.ch.ReviveCircle(e.ctx, chronicle.ReviveInput{FormatVersion: 3, SchemaVersion: 99, Tables: tables, Accounts: accounts, ReviverID: "owner"}); err == nil {
 		t.Fatal("оживлён архив неизвестной схемы")
 	}
-	// Номер схемы прежней нумерации в разметке 2 и новой в разметке 1 — чужие.
-	if _, err := e.ch.ReviveCircle(e.ctx, chronicle.ReviveInput{FormatVersion: 2, SchemaVersion: 36, Tables: tables, Accounts: accounts, ReviverID: "owner"}); err == nil {
-		t.Fatal("оживлён архив разметки 2 со схемой 36")
+	// Разметки 1 и 2 сняты (план 71, С-4): отказ, даже если схема знакома.
+	for _, version := range []struct{ format, schema int }{{2, 1}, {2, 36}, {1, 1}, {1, 34}} {
+		if _, err := e.ch.ReviveCircle(e.ctx, chronicle.ReviveInput{FormatVersion: version.format, SchemaVersion: version.schema, Tables: tables, Accounts: accounts, ReviverID: "owner"}); err == nil {
+			t.Fatalf("оживлён архив разметки %d схемы %d", version.format, version.schema)
+		}
 	}
-	if _, err := e.ch.ReviveCircle(e.ctx, chronicle.ReviveInput{FormatVersion: 1, SchemaVersion: 1, Tables: tables, Accounts: accounts, ReviverID: "owner"}); err == nil {
-		t.Fatal("оживлён архив разметки 1 со схемой 1")
-	}
-	if _, err := e.ch.ReviveCircle(e.ctx, chronicle.ReviveInput{FormatVersion: 1, SchemaVersion: 34, Tables: tables, Accounts: accounts, BlobMap: map[string]string{}, ReviverID: "owner"}); err == nil {
+	if _, err := e.ch.ReviveCircle(e.ctx, chronicle.ReviveInput{FormatVersion: 3, SchemaVersion: 1, Tables: tables, Accounts: accounts, BlobMap: map[string]string{}, ReviverID: "owner"}); err == nil {
 		t.Fatal("оживлён круг без загруженного файла")
 	}
 	var n int

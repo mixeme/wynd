@@ -456,7 +456,7 @@ func TestSharedContentReviveHasIndependentArchiveMetadata(t *testing.T) {
 	tables["blobs"] = tb
 	// One owned digest is valid possession proof for both archive copies, but
 	// must not collapse their logical identity or their original filenames.
-	result, err := ch.ReviveCircle(t.Context(), chronicle.ReviveInput{FormatVersion: 2, SchemaVersion: 15, Tables: tables, Accounts: map[string]string{"alice": "alice@test.local"}, BlobMap: mapping, ReviverID: "alice"})
+	result, err := ch.ReviveCircle(t.Context(), chronicle.ReviveInput{FormatVersion: 3, SchemaVersion: 1, Tables: tables, Accounts: map[string]string{"alice": "alice@test.local"}, BlobMap: mapping, ReviverID: "alice"})
 	if err != nil {
 		t.Fatal(err)
 	}

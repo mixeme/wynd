@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"slices"
@@ -223,8 +224,12 @@ func (s *Server) handleReviveCircle(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	if body.Manifest.Format != archive.FullFormat || !archive.FullFormatKnown(body.Manifest.FormatVersion) {
-		writeDomainError(w, chronicle.ErrInvalid)
+	if body.Manifest.Format != archive.FullFormat {
+		writeDomainError(w, chronicle.ErrArchiveTables)
+		return
+	}
+	if !archive.FullFormatKnown(body.Manifest.FormatVersion) {
+		writeDomainError(w, fmt.Errorf("%w: archive format %d is no longer supported", chronicle.ErrArchiveTables, body.Manifest.FormatVersion))
 		return
 	}
 	newMember, greeting, err := body.NewMember.parse()

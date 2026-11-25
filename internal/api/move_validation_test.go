@@ -50,7 +50,7 @@ func TestMoveMalformedArchiveWorkerSurvives(t *testing.T) {
 	}
 	z := zip.NewWriter(f)
 	for name, value := range map[string]any{
-		"manifest.json":   map[string]any{"format": "wynd-circle", "format_version": 2, "schema_version": 15, "tables": []string{"blobs"}},
+		"manifest.json":   map[string]any{"format": "wynd-circle", "format_version": 3, "schema_version": 1, "tables": []string{"blobs"}},
 		"data/blobs.json": map[string]any{"columns": []string{"id", "sha256", "size_bytes"}, "rows": [][]any{{"short"}}},
 	} {
 		w, err := z.Create(name)
