@@ -83,6 +83,28 @@ const releases = [
     "2026-11-16T20:23:08Z",
     true,
   ),
+  // Опубликованные выпуски в стенде — как в mixeme/wynd: сворачиваются одной
+  // строкой «Опубликованные выпуски», чтобы не мешать черновикам.
+  release(
+    "android",
+    "Wynd Android",
+    "wynd-android.apk",
+    "android-v0.1.3",
+    "0.1.3",
+    false,
+    "2026-11-25T07:33:25Z",
+    true,
+  ),
+  release(
+    "desktop",
+    "Wynd Настольный",
+    "wynd-desktop.exe",
+    "desktop-v0.5.1",
+    "0.5.1",
+    false,
+    "2026-11-25T16:25:32Z",
+    true,
+  ),
 ];
 
 // Итог шага приходит вместе с действием в строке — как в настоящем окне.
@@ -296,6 +318,14 @@ function type(input, value) {
 }
 async function drive() {
   const pass = params.get("pass");
+  if (params.get("published") === "1") {
+    // Свернутая строка опубликованных выпусков: раскрываем тем же нажатием.
+    await tick(1200);
+    const link = button("показать");
+    if (!link) throw new Error("кадр: нет строки опубликованных выпусков");
+    link.click();
+    await tick(300);
+  }
   if (params.get("keys") === "1") {
     await tick(1200);
     const link = button("настроить");

@@ -41,6 +41,9 @@
 	let releases = $state<Release[]>([]);
 	let listing = $state(false);
 	let listError = $state('');
+	// Опубликованные выпуски свёрнуты одной строкой: подписывать в них нечего,
+	// они не должны мешать актуальным черновикам. «показать» раскрывает.
+	let showPublished = $state(false);
 	let listRequest = 0;
 
 	// 12в, 12г
@@ -371,6 +374,9 @@
 	const isAndroid = $derived((check ?? selectedRelease)?.product === 'android');
 	// Подписанный APK уже в черновике: подписи не будет — сверка и публикация.
 	const signedDraft = $derived(Boolean(check?.signed && check?.draft));
+	// 12б: черновики остаются на виду, опубликованные — одной строкой.
+	const draftReleases = $derived(releases.filter((r) => r.draft));
+	const publishedReleases = $derived(releases.filter((r) => !r.draft));
 	const fileName = $derived(filePath.slice(Math.max(filePath.lastIndexOf('\\'), filePath.lastIndexOf('/')) + 1));
 </script>
 
@@ -425,31 +431,46 @@
 			{/if}
 			{#if keyError}<Notice tone="bad" alert>{keyError}</Notice>{/if}
 			{#if listError}<Notice tone="bad" alert>{listError}</Notice>{/if}
-			<MarkRows>
-				{#each releases as r (r.tag)}
-					<MarkRow mark={r.draft ? '●' : '✓'} tone={r.draft ? 'note' : 'ok'}>
-						{#if r.url}
-							<TextButton class="link under" onclick={() => void backend().OpenLink(r.url ?? '')}>{r.name} {r.version}</TextButton>
-						{:else}
-							{r.name} {r.version}
+			{#snippet releaseRow(r: Release)}
+				<MarkRow mark={r.draft ? '●' : '✓'} tone={r.draft ? 'note' : 'ok'}>
+					{#if r.url}
+						<TextButton class="link under" onclick={() => void backend().OpenLink(r.url ?? '')}>{r.name} {r.version}</TextButton>
+					{:else}
+						{r.name} {r.version}
+					{/if}
+					<span class="ins-dim"
+						>— {r.draft
+							? r.signed
+								? 'черновик, подписан'
+								: 'черновик, не подписан'
+							: `опубликован${r.published_at ? ' ' + day(r.published_at) : ''}, ${r.signed ? 'с подписью' : 'без подписи'}`}</span
+					>
+					{#snippet action()}
+						{#if r.draft && r.signed}
+							<!-- Ключ не нужен: подпись уже в выпуске, остаётся проверить и опубликовать. -->
+							<TextButton class="link under" onclick={() => void openRelease(r)}>опубликовать</TextButton>
+						{:else if !r.signed && st?.key_exists}
+							<TextButton class="link under" onclick={() => void openRelease(r)}>подписать</TextButton>
 						{/if}
-						<span class="ins-dim"
-							>— {r.draft
-								? r.signed
-									? 'черновик, подписан'
-									: 'черновик, не подписан'
-								: `опубликован${r.published_at ? ' ' + day(r.published_at) : ''}, ${r.signed ? 'с подписью' : 'без подписи'}`}</span
-						>
+					{/snippet}
+				</MarkRow>
+			{/snippet}
+			<MarkRows>
+				{#each draftReleases as r (r.tag)}{@render releaseRow(r)}{/each}
+				{#if publishedReleases.length}
+					<MarkRow mark="·">
+						Опубликованные выпуски
+						<span class="ins-dim">— {publishedReleases.length}</span>
 						{#snippet action()}
-							{#if r.draft && r.signed}
-								<!-- Ключ не нужен: подпись уже в выпуске, остаётся проверить и опубликовать. -->
-								<TextButton class="link under" onclick={() => void openRelease(r)}>опубликовать</TextButton>
-							{:else if !r.signed && st?.key_exists}
-								<TextButton class="link under" onclick={() => void openRelease(r)}>подписать</TextButton>
-							{/if}
+							<TextButton class="link under" onclick={() => (showPublished = !showPublished)}
+								>{showPublished ? 'свернуть' : 'показать'}</TextButton
+							>
 						{/snippet}
 					</MarkRow>
-				{/each}
+					{#if showPublished}
+						{#each publishedReleases as r (r.tag)}{@render releaseRow(r)}{/each}
+					{/if}
+				{/if}
 			</MarkRows>
 			{#if st.key_exists}
 				<MarkRows class="mt-8">
