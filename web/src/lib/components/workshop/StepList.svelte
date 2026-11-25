@@ -61,8 +61,8 @@
 			{#if step.latest}<div class="ins-step-latest ins-mono">{step.latest}</div>{/if}
 			{#if step.latest_note}<div class="ins-dim ins-step-note">{step.latest_note}</div>{/if}
 		</MarkRow>
-		{/each}
-		{@render extra?.()}
+	{/each}
+	{@render extra?.()}
 </MarkRows>
 
 <style>
