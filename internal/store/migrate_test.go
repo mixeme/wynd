@@ -100,7 +100,9 @@ func legacyBaseAtFile(t *testing.T, version int) (*SQLite, string) {
 }
 
 // completeLegacy доводит базу прежней цепочки до 17 вручную — теми шагами,
-// которые в прежних выпусках применял migrate().
+// которые в прежних выпусках применял migrate(), — и ставит отметки свёртки
+// {0,1}, как это делал выпуск-мост 0.53.8. Новый бинарник прежнюю нумерацию
+// уже не переводит (план 71), поэтому тесты старого пути готовят базу сами.
 func completeLegacy(t *testing.T, s *SQLite) {
 	t.Helper()
 	for _, m := range legacyMigrations(t) {
@@ -114,6 +116,16 @@ func completeLegacy(t *testing.T, s *SQLite) {
 		if err := applyMigration(s.db, m); err != nil {
 			t.Fatalf("migration %d: %v", m.version, err)
 		}
+	}
+	if _, err := s.db.Exec(`DELETE FROM schema_migrations`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.db.Exec(
+		`INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?), (?, ?)`,
+		baselineMark, "1970-01-01T00:00:00.000000000Z",
+		1, "2026-11-25T00:00:00.000000000Z",
+	); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -149,45 +161,37 @@ func formerChainBase(t *testing.T, top int) *SQLite {
 	return s
 }
 
-// База прежней нумерации, дошедшая до 17 (рабочий сервер на 0.53.4), при
-// запуске переводится отметкой на «версию 1» новой нумерации: маяк и одна
-// отметка, таблицы и данные целы (C115).
-func TestMigrateRenumbersPrevNumbering(t *testing.T) {
+// База прежней нумерации, дошедшая до 17 (рабочий сервер на 0.53.4), больше
+// не переводится: других установок нет, обе наши базы на свёртке. Отказ
+// называет цепочку 0.53.4 → 0.53.8; отметки и данные не трогаются.
+func TestMigrateRefusesPrevNumberingAtTop(t *testing.T) {
 	s := legacyBaseAt(t, squashedTop)
 	if _, err := s.db.Exec(
 		`INSERT INTO accounts (id, email, created_at) VALUES ('acc', 'a@test.local', '2026-08-30T09:00:00.000000000Z')`,
 	); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	if err := migrate(s.db); err != nil {
-		t.Fatalf("migrate over prev numbering: %v", err)
+	err := migrate(s.db)
+	if err == nil {
+		t.Fatal("база прежней нумерации 17 должна получать отказ")
+	}
+	for _, want := range []string{squashPrevRelease, squashBridgeRelease} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("err = %v, ждём %s", err, want)
+		}
 	}
 	var rows, version, accounts int
 	if err := s.db.QueryRow(`SELECT count(*), MAX(version) FROM schema_migrations`).Scan(&rows, &version); err != nil {
 		t.Fatal(err)
 	}
-	if rows != 2 || version != 1 {
-		t.Fatalf("после перевода отметок %d, версия %d — ждём маяк 0 и версию 1", rows, version)
-	}
-	var mark int
-	if err := s.db.QueryRow(`SELECT count(*) FROM schema_migrations WHERE version = ?`, baselineMark).Scan(&mark); err != nil {
-		t.Fatal(err)
-	}
-	if mark != 1 {
-		t.Fatalf("маяк новой нумерации не поставлен")
+	if rows != squashedTop || version != squashedTop {
+		t.Fatalf("отметки тронуты: %d, версия %d", rows, version)
 	}
 	if err := s.db.QueryRow(`SELECT count(*) FROM accounts`).Scan(&accounts); err != nil {
 		t.Fatal(err)
 	}
 	if accounts != 1 {
-		t.Fatalf("данные не пережили перевод: accounts = %d", accounts)
-	}
-	// Второй запуск — уже новая нумерация, ничего не меняется.
-	if err := migrate(s.db); err != nil {
-		t.Fatalf("второй запуск: %v", err)
-	}
-	if err := s.db.QueryRow(`SELECT count(*) FROM schema_migrations`).Scan(&rows); err != nil || rows != 2 {
-		t.Fatalf("после второго запуска отметок %d (%v)", rows, err)
+		t.Fatalf("данные тронуты: accounts = %d", accounts)
 	}
 }
 

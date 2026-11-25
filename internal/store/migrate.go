@@ -42,7 +42,7 @@ func migrate(db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-	if maxVersion, err = renumberFormerNumberings(db, maxVersion); err != nil {
+	if err := rejectFormerNumberings(db, maxVersion); err != nil {
 		return err
 	}
 	known := map[int]bool{0: true}
@@ -89,74 +89,57 @@ const (
 	// Последний выпуск прежней нумерации: доводит любую базу до 17
 	// (разметку 1 — через перевод 0036 в «версию 1» прежней нумерации).
 	squashPrevRelease = "0.53.4"
+	// Выпуск-мост: переводит базу 17 на свёрнутую схему отметкой {0,1}.
+	squashBridgeRelease = "0.53.8"
 )
 
-// Разметка 1 (до 0.34.0): свёрнутая схема 0030 и шаги 0031–0036 — её узнавал
-// renumberLegacy прежней нумерации.
+// Разметка 1 (до 0.34.0): свёрнутая схема 0030 и шаги 0031–0036.
 const (
 	legacyBaseline = 30
 	legacyTop      = 36
 )
 
-// renumberFormerNumberings узнаёт базу по отметкам и переводит её в новую
-// нумерацию (C115). Новая отличается маяком — отметкой 0, которую ставит
-// только базовая схема свёртки; свежая база без отметок проходит насквозь.
-// Прежняя нумерация (1–17), дошедшая до 17, переводится одной отметкой:
-// таблицы и данные не трогаются. Остановившаяся раньше — и базы разметки 1 —
-// отказом с выпуском, который доведёт их до точки свёртки: шагов прежних
-// нумераций в этом бинарнике нет.
-func renumberFormerNumberings(db *sql.DB, maxVersion int) (int, error) {
+// rejectFormerNumberings проверяет отметки базы и отказывает прежним
+// нумерациям (C115, снятие поддержки 2026-11-25). Новая нумерация отличается
+// маяком — отметкой 0, которую ставит только базовая схема свёртки; свежая
+// база без отметок проходит насквозь.
+//
+// Перевода прежней нумерации 17 → {0,1} здесь больше нет: других установок,
+// кроме наших, нет, обе базы переведены. База прежней нумерации (1–17) и
+// разметка 1 (30–36) получают отказ с цепочкой: 0.53.4 доводит до 17,
+// 0.53.8 переводит на свёртку, затем эта версия. Маяк и отказ для «версии 1
+// без маяка» остаются навсегда: без них база прежней нумерации 1 неотличима
+// от свёрнутой и прошла бы как текущая.
+func rejectFormerNumberings(db *sql.DB, maxVersion int) error {
 	if maxVersion == 0 {
-		return 0, nil
+		return nil
 	}
 	var mark int
 	if err := db.QueryRow(`SELECT count(*) FROM schema_migrations WHERE version = ?`, baselineMark).Scan(&mark); err != nil {
-		return 0, fmt.Errorf("schema version: %w", err)
+		return fmt.Errorf("schema version: %w", err)
 	}
 	if mark > 0 {
-		return maxVersion, nil
+		return nil
 	}
 	// Разметка 1: отметка 0030 — её ставила свёртка 0.26.0.
 	var legacy int
 	if err := db.QueryRow(`SELECT count(*) FROM schema_migrations WHERE version = ?`, legacyBaseline).Scan(&legacy); err != nil {
-		return 0, fmt.Errorf("schema version: %w", err)
+		return fmt.Errorf("schema version: %w", err)
 	}
 	if legacy > 0 {
 		if maxVersion > legacyTop {
-			return 0, fmt.Errorf("схема БД версии %d новее этой программы", maxVersion)
+			return fmt.Errorf("схема БД версии %d новее этой программы", maxVersion)
 		}
-		return 0, fmt.Errorf(
-			"схема БД версии %d по разметке 1: запустите на этой базе сначала Wynd %s — он переведёт её на прежнюю нумерацию и доведёт до схемы 17, затем эту версию",
-			maxVersion, squashPrevRelease)
+		return fmt.Errorf(
+			"схема БД версии %d по разметке 1: обновите её цепочкой Wynd %s (до схемы %d) → Wynd %s (свёртка) → эта версия",
+			maxVersion, squashPrevRelease, squashedTop, squashBridgeRelease)
 	}
 	if maxVersion > squashedTop {
-		return 0, fmt.Errorf("схема БД версии %d новее этой программы", maxVersion)
+		return fmt.Errorf("схема БД версии %d новее этой программы", maxVersion)
 	}
-	if maxVersion < squashedTop {
-		return 0, fmt.Errorf(
-			"схема БД версии %d: запустите на этой базе сначала Wynd %s — он доведёт её до схемы 17, затем эту версию",
-			maxVersion, squashPrevRelease)
-	}
-	tx, err := db.Begin()
-	if err != nil {
-		return 0, fmt.Errorf("renumber schema: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.Exec(`DELETE FROM schema_migrations`); err != nil {
-		return 0, fmt.Errorf("renumber schema: %w", err)
-	}
-	now := time.Now().UTC().Format("2006-01-02T15:04:05.000000000Z")
-	if _, err := tx.Exec(
-		`INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?), (?, ?)`,
-		baselineMark, "1970-01-01T00:00:00.000000000Z",
-		1, now,
-	); err != nil {
-		return 0, fmt.Errorf("renumber schema: %w", err)
-	}
-	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("renumber schema: %w", err)
-	}
-	return 1, nil
+	return fmt.Errorf(
+		"схема БД версии %d прежней нумерации или разметки 1: перевода в этой версии нет; обновите её цепочкой Wynd %s (до схемы %d) → Wynd %s (свёртка) → эта версия",
+		maxVersion, squashPrevRelease, squashedTop, squashBridgeRelease)
 }
 
 func loadMigrations() ([]migration, error) {
