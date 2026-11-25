@@ -68,6 +68,7 @@ func (s *Server) handleVerify(w http.ResponseWriter, r *http.Request) {
 		Email:    body.Email,
 		Code:     body.Code,
 		ClientIP: s.clientIP(r),
+		Device:   auth.DeviceLabel(r.UserAgent()),
 		Now:      time.Now().UTC(),
 	})
 	if err != nil {

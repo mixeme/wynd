@@ -26,7 +26,9 @@ const ArchiveFormatVersion = 3
 // архива 3, нумерация со свёртки миграций C115). Новая схема с другими
 // колонками — сюда и в переводчик строк.
 // Схема 1 — вся схема свёрнута в базовую (migrations/0001_schema.sql).
-var ReviveSchemaVersions = []int{1}
+// Схема 2 — метка устройства и активность в sessions (план 72); таблицы
+// круга не менялись, поэтому оживление схемы 1 и 2 идёт по одним правилам.
+var ReviveSchemaVersions = []int{1, 2}
 
 // ReviveSchemaKnown — оживляет ли сервер архив такой разметки и схемы.
 func ReviveSchemaKnown(formatVersion, schema int) bool {

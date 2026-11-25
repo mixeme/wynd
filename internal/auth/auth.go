@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"gitea.mixdep.ru/mix/wynd/internal/chronicle"
@@ -15,10 +16,15 @@ import (
 )
 
 const (
-	codeTTL           = 15 * time.Minute
-	codeMaxAttempts   = 3
-	sessionTTL        = 30 * 24 * time.Hour
-	adminSessionTTL   = 8 * time.Hour
+	codeTTL         = 15 * time.Minute
+	codeMaxAttempts = 3
+	// Скользящий срок сессии (план 72): expires_at = последняя активность
+	// + срок. Активное устройство живёт, покинутое — истекает через срок.
+	sessionTTL      = 90 * 24 * time.Hour
+	adminSessionTTL = 8 * time.Hour
+	// Порог записи активности: чаще раза в час last_seen_at и expires_at
+	// не переписываются (каждый запрос писать — лишняя нагрузка на базу).
+	sessionTouchEvery = time.Hour
 	ipRateLimit       = 10
 	ipRateLimitWindow = time.Hour
 	emailRateLimit    = 5
@@ -72,6 +78,11 @@ type Service struct {
 	// Ввод кода: свой потолок неудач на адрес. Без него знающий чужую почту
 	// сжигал три попытки её кода сколько угодно раз (аудит 2026-09-22, SEC-8).
 	verifyLimiter *failLimiter
+
+	// Запись активности сессий (план 72): порог sessionTouchEvery держим
+	// в памяти процесса — карту можно чистить при перезапуске без вреда.
+	touchMu   sync.Mutex
+	touchSeen map[string]time.Time
 }
 
 // New wraps a migrated SQLite store.
@@ -88,12 +99,12 @@ func New(st store.Store, ch *chronicle.Chronicle, mailer CodeDelivery, loopback 
 		mailer = LogCodes{}
 	}
 	return &Service{
-		db:        db,
-		chronicle: ch,
-		mailer:    mailer,
-		version:   version.String(),
-		loopback:  loopback,
-
+		db:            db,
+		chronicle:     ch,
+		mailer:        mailer,
+		version:       version.String(),
+		loopback:      loopback,
+		touchSeen:     map[string]time.Time{},
 		loginLimiter:  newFailLimiter(),
 		verifyLimiter: newFailLimiterWith(verifyFailWindow, verifyMaxFails, verifyLockout),
 	}, nil

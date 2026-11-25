@@ -38,9 +38,9 @@ const (
 type Flow string
 
 const (
-	FlowLogin       Flow = "login"
-	FlowRegister    Flow = "register"
-	FlowInvite      Flow = "invite"
+	FlowLogin    Flow = "login"
+	FlowRegister Flow = "register"
+	FlowInvite   Flow = "invite"
 	// FlowEmailChange — код на новую почту вошедшего участника. Сессии не даёт:
 	// его принимает только ConfirmEmailChange.
 	FlowEmailChange Flow = "email_change"
@@ -87,6 +87,10 @@ type Session struct {
 	Kind      SessionKind
 	ExpiresAt time.Time
 	CreatedAt time.Time
+	// Метка устройства из User-Agent («Firefox на Windows», «Wynd Android»)
+	// и последняя активность — план 72. Сырую строку UA не храним.
+	Device   string
+	LastSeen time.Time
 }
 
 type BootstrapInput struct {
@@ -142,7 +146,9 @@ type VerifyInput struct {
 	Email    string
 	Code     string
 	ClientIP string
-	Now      time.Time
+	// Метка устройства из User-Agent (план 72): уходит в сессию.
+	Device string
+	Now    time.Time
 }
 
 type VerifyResult struct {
@@ -154,17 +160,19 @@ type VerifyResult struct {
 type AdminLoginInput struct {
 	Password string
 	ClientIP string
-	Now      time.Time
+	// Метка устройства из User-Agent (план 72): уходит в сессию.
+	Device string
+	Now    time.Time
 }
 
 type CreateServerInviteInput struct {
-	Kind               InviteKind
-	MaxUses            int
-	TTL                time.Duration
+	Kind    InviteKind
+	MaxUses int
+	TTL     time.Duration
 	// Только у ссылки админа на сервер: «без ограничений» (для multi) и
 	// «без срока». Ссылка участника в круг их не получает.
-	UnlimitedUses bool
-	NoExpiry      bool
+	UnlimitedUses      bool
+	NoExpiry           bool
 	CreatedByAccountID string
 	Now                time.Time
 }

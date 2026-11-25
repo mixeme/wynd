@@ -2,15 +2,18 @@ package store
 
 import (
 	"fmt"
+	"path/filepath"
 	"sort"
 	"testing"
 )
 
 // Форма базовой схемы равна форме прежней цепочки 0001–0017 (C115): те же
 // таблицы, индексы и триггеры, у каждой таблицы те же столбцы. Иначе свежая
-// установка и переведённая база расходились бы в поведении.
+// установка и переведённая база расходились бы в поведении. Сравнение
+// касается самой свёртки (0001): последующие миграции (0002 — сессии
+// устройств, план 72) в обе стороны не входят.
 func TestSquashSchemaMatchesFormerChain(t *testing.T) {
-	fresh := freshBase(t)
+	fresh := baseSchemaOnly(t)
 	former := legacyBaseAt(t, squashedTop)
 
 	objects := func(s *SQLite) []string {
@@ -108,4 +111,31 @@ func TestSquashSchemaMatchesFormerChain(t *testing.T) {
 			t.Fatalf("%s: строк %d, в прежней цепочке %d", table, a, b)
 		}
 	}
+}
+
+// baseSchemaOnly — база ровно 0001 (свёртка), без последующих миграций:
+// форма свёртки сравнивается с прежней цепочкой независимо от новых схем.
+func baseSchemaOnly(t *testing.T) *SQLite {
+	t.Helper()
+	s, err := openSQLite(fileDSN(filepath.Join(t.TempDir(), "wynd.db")), true)
+	if err != nil {
+		t.Fatalf("openSQLite: %v", err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	if _, err := s.db.Exec(`CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)`); err != nil {
+		t.Fatalf("schema_migrations: %v", err)
+	}
+	ms, err := loadMigrations()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range ms {
+		if m.version != 1 {
+			continue
+		}
+		if err := applyMigration(s.db, m); err != nil {
+			t.Fatalf("apply 0001: %v", err)
+		}
+	}
+	return s
 }

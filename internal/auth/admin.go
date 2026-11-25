@@ -171,7 +171,7 @@ func (s *Service) AdminLogin(ctx context.Context, in AdminLoginInput) (Session, 
 	if err != nil {
 		return Session{}, err
 	}
-	sess, err := s.createSession(ctx, tx, adminAccountID, SessionAdmin, when)
+	sess, err := s.createSession(ctx, tx, adminAccountID, SessionAdmin, when, in.Device)
 	if err != nil {
 		return Session{}, err
 	}

@@ -320,7 +320,7 @@ func (s *Service) verify(ctx context.Context, in VerifyInput) (VerifyResult, err
 		return VerifyResult{}, ErrInvalid
 	}
 
-	sess, err := s.createSession(ctx, tx, acc.ID, SessionParticipant, when)
+	sess, err := s.createSession(ctx, tx, acc.ID, SessionParticipant, when, in.Device)
 	if err != nil {
 		return VerifyResult{}, err
 	}

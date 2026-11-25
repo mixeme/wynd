@@ -696,6 +696,26 @@ paths:
         "200":
           description: OK
 
+  /sessions:
+    get:
+      summary: List the account's active sessions (device label, activity, expiry; "current" marks this one)
+      responses:
+        "200":
+          description: Sessions of the account on this server, fresh activity first
+        "403":
+          description: Not authorized
+
+  /sessions/{id}:
+    delete:
+      summary: Revoke one of the account's sessions by its open id (the current one acts as logout)
+      responses:
+        "200":
+          description: OK
+        "403":
+          description: Not authorized
+        "404":
+          description: No such session on this account
+
   /auth/email:
     post:
       summary: Send a code to the new email of the signed-in account

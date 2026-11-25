@@ -205,6 +205,7 @@ func (s *Server) handleAdminLogin(w http.ResponseWriter, r *http.Request) {
 	sess, err := s.Auth.AdminLogin(r.Context(), auth.AdminLoginInput{
 		Password: body.Password,
 		ClientIP: s.clientIP(r),
+		Device:   auth.DeviceLabel(r.UserAgent()),
 		Now:      time.Now().UTC(),
 	})
 	if err != nil {
@@ -303,6 +304,9 @@ func (s *Server) RequireParticipantStream(next http.HandlerFunc) http.HandlerFun
 			writeError(w, auth.ErrForbidden)
 			return
 		}
+		// Активность сессии — скользящий срок (план 72). Неудачу записи
+		// молча пропускаем: она не должна ломать авторизованный запрос.
+		_ = s.Auth.TouchSession(r.Context(), token, auth.DeviceLabel(r.UserAgent()))
 		if err := auth.RejectAdminJournal(sess.Kind); err != nil {
 			writeError(w, err)
 			return

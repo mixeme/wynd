@@ -180,6 +180,8 @@ func (s *Server) routes() {
 	s.Mux.HandleFunc("POST /api/v1/invites/{token}/join", paid(s.handleJoinInvite))
 	s.Mux.HandleFunc("POST /api/v1/invites/{token}/claim", paid(s.handleClaimInvite))
 	s.Mux.HandleFunc("POST /api/v1/auth/logout", participant(s.handleLogout))
+	s.Mux.HandleFunc("GET /api/v1/sessions", participant(s.handleListSessions))
+	s.Mux.HandleFunc("DELETE /api/v1/sessions/{id}", participant(s.handleDeleteSession))
 	s.Mux.HandleFunc("POST /api/v1/auth/email", participant(s.handleRequestEmailChange))
 	s.Mux.HandleFunc("POST /api/v1/auth/email/verify", participant(s.handleConfirmEmailChange))
 	s.Mux.HandleFunc("GET /api/v1/auth/leave", participant(s.handleLeavePreview))
