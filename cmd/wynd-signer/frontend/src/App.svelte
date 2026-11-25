@@ -458,7 +458,7 @@
 			<MarkRows>
 				{#each draftReleases as r (r.tag)}{@render releaseRow(r)}{/each}
 				{#if publishedReleases.length}
-					<MarkRow mark="·">
+					<MarkRow mark={showPublished ? '▾' : '▸'}>
 						Опубликованные выпуски
 						<span class="ins-dim">— {publishedReleases.length}</span>
 						{#snippet action()}
