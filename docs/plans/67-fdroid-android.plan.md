@@ -45,7 +45,15 @@
    - `tools check scripts` → `make-summary-translatable.py`: текущая раскладка fdroiddata требует `Summary` не в YAML, а в `metadata/mixeme.wynd/en-US/summary.txt`. Исправлено, локально скрипт возвращает 0 (`872d8b07`).
    - `fdroid build`: `bash: line 1: npm: command not found` — в сборочной ВМ нет npm, хотя `node` есть. Исправлено: `sudo: [apt-get update || apt-get update, apt-get install -y npm]` (Debian-пакет тянет nodejs 18+; Vite 6 требует ≥18). Ставится только в режиме `--server`, локальную сборку не затрагивает.
    - `check apk` в первом прогоне пропущен (сборки ещё не было). Gradle 8.13 на ВМ обеспечивает `gradlew-fdroid` (подгружает версию из `gradle-wrapper.properties`), AGP 8.13.2 штатный.
-   Осталось: владельцу обновить оба файла в форке и дождаться нового прогона; дальше — обычная очередь ревью.
+   **MR !59108 закрыт ревьюером 25.11** (`linsui`, 17:04 МСК) с двумя причинами и без обсуждения:
+   - «Merge Request template is not followed» — описание собиралось своими словами, а в fdroiddata есть `.gitlab/merge_request_templates/Default.md` с чек-листом (Abstract с описанием и скриншотами, Policy/Docs/Metadata/Pipeline).
+   - «This app doesn't meet the policy that it needs to be maintained for more than 3 months» — [Inclusion Policy](https://f-droid.org/docs/Inclusion_Policy/): «The application should have been actively developed for at least 3 months», исключения: приложение доказанно имеет пользователей; автор уже ведёт приложения в F-Droid; приложение сделано под событие.
+   **Факты по сроку:** история репозитория — с 25.09.2026 (проект), Android-клиент — с 16.11.2026, выпусков пять за девять дней. Три месяца проекта — 25.12.2026; три месяца клиента — 16.02.2027. Решение владельца: ждать декабря или заявлять исключение «есть пользователи» (нужны реальные участники на wynd2/wynd3).
+   **Что ещё нашлось при разборе шаблона и как поправлено (`2c0e487d`):**
+   - `commit` должен быть полным хешем, тег нельзя — теперь `d72229356fe572196aea55f7e44642f9fbf95c5a` (0.1.4).
+   - `Summary`/`Description`/чейнджлог/кадры живут в fastlane нашего репозитория и в fdroiddata не дублируются (в свежей принятой заявке `com.vectorlogic.blackjackcounter` — только YAML). `summary.txt` из `android/fdroid/` убран, `Description` из YAML тоже; локально `fdroid lint`, `rewritemeta`, `make-summary-translatable` — зелёные.
+   - Черновик переведён на 0.1.4/1004 (последний выпуск; «только последние версии» — из чек-листа).
+   **Осталось к повторной подаче:** скриншоты с телефона в описание MR и `fastlane/.../images/phoneScreenshots/`; `changelogs/<versionCode>.txt` в fastlane — в том теге, который будет собираться; `versionCode` в `android/version.properties` + тест → включить `AutoUpdateMode: Version` / `UpdateCheckMode: Tags` (по шаблону автообновление включено, выключение надо обосновывать); описание MR — строго по `Default.md` с отмеченными пунктами.
 5. **Слежение.** Очередь ревью f-droid.org — периодический присмотр; вопросы ревьюеров фиксировать здесь. Свой подписанный F-Droid-репозиторий не делаем, пока главный репозиторий не отказал и владелец не попросит.
 
 Выполнение не обязано идти строго по номерам, но 1–2 раньше 3–4; подача (4) — после вшивания интерфейса.
