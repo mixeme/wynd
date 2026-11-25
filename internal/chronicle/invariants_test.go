@@ -696,6 +696,21 @@ func TestInvariantReactionRejectsUnknownKey(t *testing.T) {
 	}
 }
 
+// Инвариант: известные ключи реакций принимаются — четыре базовых и три
+// добавленных (like, sad, party).
+func TestInvariantReactionAcceptsKnownKeys(t *testing.T) {
+	e := newTestEnv(t)
+	circle := e.createCircle("owner", "Аня", chronicle.UnlimitedWindow())
+	p := e.post(circle.ID, "owner", "запись", "2026-08-01", e.at(0))
+	for i, key := range []string{"heart", "laugh", "surprise", "anger", "like", "sad", "party"} {
+		if _, err := e.ch.SetReaction(e.ctx, chronicle.ReactionInput{
+			CircleID: circle.ID, AccountID: "owner", PostID: p.ID, Emoji: key, Now: e.at(i),
+		}); err != nil {
+			t.Fatalf("key %q: %v", key, err)
+		}
+	}
+}
+
 // Инвариант: снятие названия дня — своя запись журнала. Прежние названия
 // остаются в журнале, день становится безымянным и из поиска уходит; новое
 // название после снятия — следующая запись.

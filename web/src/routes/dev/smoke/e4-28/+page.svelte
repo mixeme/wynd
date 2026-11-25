@@ -31,8 +31,8 @@
 	</PostCard>
 	<OverlayLayout>
 		<SectionLabel style="margin-top:2px">Реакция · 2</SectionLabel>
-		<ReactionListRow initial="К" name="Кот" color="#62452F" icon="heart" />
-		<ReactionListRow initial="П" name="Петя" color="#357077" icon="heart" />
+		<ReactionListRow initial="К" name="Кот" color="#62452F" emoji="❤️" />
+		<ReactionListRow initial="П" name="Петя" color="#357077" emoji="❤️" />
 		<Hint style="margin-top:14px">
 			Реакция одна на человека и подчиняется окну правок. Хотите сказать больше — напишите словами.
 		</Hint>

@@ -37,9 +37,17 @@ export interface Comment {
 	media?: MediaSummary[];
 }
 
-export type ReactionKey = 'heart' | 'laugh' | 'surprise' | 'anger';
+export type ReactionKey = 'heart' | 'laugh' | 'surprise' | 'anger' | 'like' | 'sad' | 'party';
 
-export const REACTION_KEYS: ReactionKey[] = ['heart', 'laugh', 'surprise', 'anger'];
+export const REACTION_KEYS: ReactionKey[] = [
+	'heart',
+	'laugh',
+	'surprise',
+	'anger',
+	'like',
+	'sad',
+	'party'
+];
 
 export interface Reaction {
 	id: string;

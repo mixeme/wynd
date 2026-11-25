@@ -1,17 +1,19 @@
 import type { IconName } from '$ui/Icon.svelte';
 import { formatEntryDate } from '$lib/format/time';
-import type {
-	Comment,
-	DaySummary,
-	FeedDayCard,
-	FeedEvent,
-	FeedPost,
-	MediaSummary,
-	Reaction
+import {
+	REACTION_KEYS,
+	type Comment,
+	type DaySummary,
+	type FeedDayCard,
+	type FeedEvent,
+	type FeedPost,
+	type MediaSummary,
+	type Reaction,
+	type ReactionKey
 } from './types';
 
-export { REACTION_KEYS } from './types';
-export type { ReactionKey } from './types';
+export { REACTION_KEYS };
+export type { ReactionKey };
 
 /** Подпись вместо стёртого имени — её ставит сервер (`chronicle.ErasedName`, план 46, A3). */
 export const ERASED_NAME = 'Без имени';
@@ -29,10 +31,34 @@ export function reactionNames(reactions: Reaction[] | undefined): string {
 	return reactions.map((r) => r.author_name).join(', ');
 }
 
-export function reactionIconName(emoji: string): IconName {
-	if (emoji === 'laugh' || emoji === 'surprise' || emoji === 'anger') return emoji;
-	return 'heart';
+/** Знак реакции: сервер хранит короткий ключ, показываем системный эмодзи. */
+export function reactionEmoji(emoji: string): string {
+	if (emoji === 'laugh') return '😄';
+	if (emoji === 'surprise') return '😮';
+	if (emoji === 'anger') return '😠';
+	if (emoji === 'like') return '👍';
+	if (emoji === 'sad') return '😢';
+	if (emoji === 'party') return '🎉';
+	return '❤️';
 }
+
+const REACTION_LABELS: Record<ReactionKey, string> = {
+	heart: 'Сердце',
+	laugh: 'Смех',
+	surprise: 'Удивление',
+	anger: 'Злость',
+	like: 'Хорошо',
+	sad: 'Сочувствие',
+	party: 'Поздравляю'
+};
+
+/** Выбор реакции: ключ сервера, знак и подпись для чтения с экрана — в одном порядке. */
+export const REACTION_OPTIONS: { key: ReactionKey; emoji: string; label: string }[] =
+	REACTION_KEYS.map((key) => ({
+		key,
+		emoji: reactionEmoji(key),
+		label: REACTION_LABELS[key]
+	}));
 
 export function groupReactions(
 	reactions: Reaction[] | undefined

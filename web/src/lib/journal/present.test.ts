@@ -20,7 +20,9 @@ import {
 	groupReactions,
 	isAudioMedia,
 	lightboxCaption,
-	reactionIconName,
+	reactionEmoji,
+	REACTION_KEYS,
+	REACTION_OPTIONS,
 	serviceEventsAboveNewest,
 	serviceEventsBetween,
 	unreadDividerIndex
@@ -93,12 +95,23 @@ describe('present', () => {
 		]);
 	});
 
-	it('maps reaction emoji to icon name', () => {
-		expect(reactionIconName('laugh')).toBe('laugh');
-		expect(reactionIconName('surprise')).toBe('surprise');
-		expect(reactionIconName('anger')).toBe('anger');
-		expect(reactionIconName('heart')).toBe('heart');
-		expect(reactionIconName('unknown')).toBe('heart');
+	it('maps reaction key to system emoji', () => {
+		expect(reactionEmoji('laugh')).toBe('😄');
+		expect(reactionEmoji('surprise')).toBe('😮');
+		expect(reactionEmoji('anger')).toBe('😠');
+		expect(reactionEmoji('like')).toBe('👍');
+		expect(reactionEmoji('sad')).toBe('😢');
+		expect(reactionEmoji('party')).toBe('🎉');
+		expect(reactionEmoji('heart')).toBe('❤️');
+		expect(reactionEmoji('unknown')).toBe('❤️');
+	});
+
+	it('has an emoji and a label for every reaction key', () => {
+		expect(REACTION_OPTIONS.map((o) => o.key)).toEqual(REACTION_KEYS);
+		for (const option of REACTION_OPTIONS) {
+			expect(option.emoji.length).toBeGreaterThan(0);
+			expect(option.label.length).toBeGreaterThan(0);
+		}
 	});
 
 	it('builds comment preview with more count', () => {

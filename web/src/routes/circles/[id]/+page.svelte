@@ -60,8 +60,8 @@
 		mediaCount,
 		maxReadSeq,
 		ownReaction,
-		reactionIconName,
-		REACTION_KEYS,
+		reactionEmoji,
+		REACTION_OPTIONS,
 		serviceEventsBetween,
 		serviceEventsAboveNewest,
 		albumHref,
@@ -974,10 +974,10 @@
 						{#if !soloCircle}
 							<ReactionBar
 								groups={groupReactions(post.reactions).map((g) => ({
-									icon: reactionIconName(g.emoji),
+									emoji: reactionEmoji(g.emoji),
 									names: g.names
 								}))}
-								keys={REACTION_KEYS}
+								keys={REACTION_OPTIONS}
 								showAdd={showReactionPlus(post) && pickerPostId !== post.id}
 								pickerOpen={pickerPostId === post.id}
 								selectedKey={ownReaction(post.reactions, circle.identityId)?.emoji ?? ''}

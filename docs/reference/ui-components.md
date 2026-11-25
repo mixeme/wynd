@@ -188,7 +188,7 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 
 `CommentPreview` — комментарии под карточкой в ленте (`button.cm`): `first` (с временем `time`), `more` («ещё N»), `onclick`; `children` — своё содержимое (кадры /dev).
 
-`ResponseEntry` — строка «Откликов» (**#e3-18**): ссылка туда, где отклик живёт (`href`, `onopen`), внутри `CommentRow bare`; `initial`, `name`, `color`, `src`, `icon` (знак реакции), `label` («комментарий · 14:02»), под словами — children (текст, `PostRef`). Между строками — черта.
+`ResponseEntry` — строка «Откликов» (**#e3-18**): ссылка туда, где отклик живёт (`href`, `onopen`), внутри `CommentRow bare`; `initial`, `name`, `color`, `src`, `emoji` (знак реакции), `label` («комментарий · 14:02»), под словами — children (текст, `PostRef`). Между строками — черта.
 
 `PostRef` — рамка «к чему это» под откликом: `author` (жирным), `date`, `excerpt`, `cover` (место под обложку сразу) и `coverUrl`. Может заменить шапку `MapPostSheet` / `SearchResultRow` (план 47, 3.1).
 
@@ -235,11 +235,11 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 
 | Компонент | Корень | Поведение |
 |-----------|--------|-----------|
-| `ReactionBar` | `.rx` + при открытии `.rxpick` | `groups` → `button.one`; `showAdd` → `button.add`; `pickerOpen` → `button.rcho` (`selectedKey` → `.on`); колбэки `onopenList` / `onadd` / `onpick`. Иконка — уже resolved `IconName`; группировка, плюс, `?reactions=` — на маршруте (ниже). |
+| `ReactionBar` | `.rx` + при открытии `.rxpick` | `groups` → `button.one` (эмодзи + имена); `showAdd` → `button.add` (круг 24 px с плюсом); `pickerOpen` → `button.rcho` (эмодзи 21 px; `selectedKey` → `.on`); колбэки `onopenList` / `onadd` / `onpick`. Знак — готовый эмодзи; группировка, плюс, `?reactions=` — на маршруте (ниже). |
 | `CommentPreview` | `button.cm` | Сосед `PostCard`, не внутри `.post` (слот `comments` у карточки — другое, напр. ошибка очереди). Контент — snippet. |
-| `ReactionListRow` | `div.row2` | Оверлей 4.28: Avatar + имя + Icon. Без `onclick`. Не расширять `MemberRow`: справа знак реакции, не subtitle/меню. |
+| `ReactionListRow` | `div.row2` | Оверлей 4.28: Avatar + имя + эмодзи. Без `onclick`. Не расширять `MemberRow`: справа знак реакции, не subtitle/меню. |
 
-`ReactionBar` получает иконку готовой: `reactionIconName` живёт в `$lib`, не в `$ui`. Ночная тема: `.ph.dark .rx .one` — подложка `#3A2E29`.
+`ReactionBar` получает знак готовым: `reactionEmoji` и `REACTION_OPTIONS` живут в `$lib`, не в `$ui`. Ночная тема: `.ph.dark .rx .one` — подложка `#3A2E29`.
 
 ### `overlays/`
 

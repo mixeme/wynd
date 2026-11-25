@@ -21,7 +21,7 @@
 		authorInitial,
 		commentMediaItems,
 		commentPhotoIds,
-		reactionIconName
+		reactionEmoji
 	} from '$lib/journal/present';
 	import {
 		fetchResponses,
@@ -232,7 +232,7 @@
 						src={row.lead.actor_avatar_blob_id
 							? mediaUrls[row.lead.actor_avatar_blob_id]
 							: undefined}
-						icon={row.kind === 'reaction' && row.emoji ? reactionIconName(row.emoji) : undefined}
+						emoji={row.kind === 'reaction' && row.emoji ? reactionEmoji(row.emoji) : undefined}
 						label="{responseKindLabel(row.kind)} · {formatClock(row.lead.at)}"
 					>
 						{#if row.kind === 'comment' && row.lead.body}

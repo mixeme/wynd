@@ -396,7 +396,7 @@ a{color:inherit;text-decoration:none}
 .gone{color:var(--faint);font-size:12.5px;margin:8px 0 0}
 .rx{display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap}
 .rx .one{background:var(--ct);border-radius:14px;padding:4px 11px;font-size:12.5px;display:flex;gap:7px;align-items:center}
-.rx .one .ic{width:13px;height:13px;stroke-width:1.9;color:var(--c)}
+.rx .one .rxe{font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;font-size:15px;font-weight:400;line-height:1}
 .cmt{display:flex;align-items:flex-start;gap:10px;padding:10px 16px}
 .cmt + .cmt{border-top:1px solid var(--line)}
 .cmt .av{width:28px;height:28px;font-size:12.5px}
@@ -694,7 +694,9 @@ func appendPostHTML(b *strings.Builder, fp chronicle.FeedPost, media, avatars, d
 		b.WriteString("<div class=\"rx\">")
 		for _, g := range groupReactions(fp.Reactions) {
 			b.WriteString("<span class=\"one\">")
-			b.WriteString(reactionIcon(g.emoji))
+			b.WriteString("<span class=\"rxe\">")
+			b.WriteString(reactionSign(g.emoji))
+			b.WriteString("</span>")
 			b.WriteString(html.EscapeString(g.names))
 			b.WriteString("</span>")
 		}
@@ -914,29 +916,27 @@ func mmss(ms int64) string {
 	return fmt.Sprintf("%d:%02d", total/60, total%60)
 }
 
-// Значки реакций и файла — те же, что в приложении (web/static/icons.svg:
-// i-heart, i-laugh, i-surprise, i-anger, i-file). Значок реакции в чипе
-// окрашен цветом круга, как в ленте.
-const (
-	iconFile     = `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 2.8H7.4a2 2 0 0 0-2 2v14.4a2 2 0 0 0 2 2h9.2a2 2 0 0 0 2-2V8z"/><path d="M13.5 2.8V8h5.1"/></svg>`
-	iconHeart    = `<svg class="ic xs" viewBox="0 0 24 24" aria-hidden="true" style="color:var(--c)"><path d="M12 20.2S4.3 15.3 4.3 10.1a4.35 4.35 0 0 1 7.7-2.8 4.35 4.35 0 0 1 7.7 2.8c0 5.2-7.7 10.1-7.7 10.1z"/></svg>`
-	iconLaugh    = `<svg class="ic xs" viewBox="0 0 24 24" aria-hidden="true" style="color:var(--c)"><circle cx="12" cy="12" r="8.2"/><path d="M9 9.5v1.3M15 9.5v1.3"/><path d="M8.2 13.4c1 2.6 2.4 3.6 3.8 3.6s2.8-1 3.8-3.6"/></svg>`
-	iconSurprise = `<svg class="ic xs" viewBox="0 0 24 24" aria-hidden="true" style="color:var(--c)"><circle cx="12" cy="12" r="8.2"/><path d="M9 9.4v1.3M15 9.4v1.3"/><circle cx="12" cy="14.6" r="1.7"/></svg>`
-	iconAnger    = `<svg class="ic xs" viewBox="0 0 24 24" aria-hidden="true" style="color:var(--c)"><circle cx="12" cy="12" r="8.2"/><path d="M8.2 8.4 10.6 10M15.8 8.4 13.4 10"/><path d="M9 10.6v1.1M15 10.6v1.1"/><path d="M8.6 16.2c1.1-2 2.5-2.8 3.4-2.8s2.3.8 3.4 2.8"/></svg>`
-)
+// Значок файла — как в приложении (web/static/icons.svg: i-file).
+const iconFile = `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 2.8H7.4a2 2 0 0 0-2 2v14.4a2 2 0 0 0 2 2h9.2a2 2 0 0 0 2-2V8z"/><path d="M13.5 2.8V8h5.1"/></svg>`
 
-// reactionIcon — значок реакции как в ленте (reactionIconName в приложении):
-// heart, laugh, surprise, anger; незнакомый ключ — сердце.
-func reactionIcon(key string) string {
+// reactionSign — знак реакции как в ленте (reactionEmoji в приложении):
+// heart, laugh, surprise, anger, like, sad, party; незнакомый ключ — сердце.
+func reactionSign(key string) string {
 	switch key {
 	case "laugh":
-		return iconLaugh
+		return "😄"
 	case "surprise":
-		return iconSurprise
+		return "😮"
 	case "anger":
-		return iconAnger
+		return "😠"
+	case "like":
+		return "👍"
+	case "sad":
+		return "😢"
+	case "party":
+		return "🎉"
 	default:
-		return iconHeart
+		return "❤️"
 	}
 }
 

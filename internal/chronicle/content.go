@@ -10,6 +10,7 @@ import (
 
 var allowedReactionKeys = map[string]bool{
 	"heart": true, "laugh": true, "surprise": true, "anger": true,
+	"like": true, "sad": true, "party": true,
 }
 
 func validReactionKey(emoji string) bool {

@@ -36,6 +36,7 @@
 	import EditWindowPicker from '$ui/forms/EditWindowPicker.svelte';
 	import IdentityForm from '$ui/forms/IdentityForm.svelte';
 	import type { EditWindowKey } from '$lib/circles/settings';
+	import { REACTION_OPTIONS } from '$lib/journal/present';
 	import MediaTile from '$ui/data/MediaTile.svelte';
 	import MonthLabel from '$ui/data/MonthLabel.svelte';
 	import PhotoGrid from '$ui/data/PhotoGrid.svelte';
@@ -272,8 +273,8 @@
 						</PostCard>
 						<OverlayLayout>
 							<SectionLabel>Реакция · 2</SectionLabel>
-							<ReactionListRow initial="К" name="Кот" color="#62452F" icon="heart" />
-							<ReactionListRow initial="П" name="Петя" color="#357077" icon="heart" />
+							<ReactionListRow initial="К" name="Кот" color="#62452F" emoji="❤️" />
+							<ReactionListRow initial="П" name="Петя" color="#357077" emoji="❤️" />
 						</OverlayLayout>
 					</CircleLayout>
 				</div>
@@ -519,8 +520,8 @@
 						{#snippet text()}Были на даче, все живы.{/snippet}
 						{#snippet reactions()}
 							<ReactionBar
-								groups={[{ icon: 'heart', names: 'Кот, Петя' }]}
-								keys={['heart', 'laugh', 'surprise', 'anger']}
+								groups={[{ emoji: '❤️', names: 'Кот, Петя' }]}
+								keys={REACTION_OPTIONS}
 								showAdd
 								onopenList={() => {}}
 								onadd={() => {}}
@@ -607,8 +608,8 @@
 						{#snippet text()}Были на даче, все живы.{/snippet}
 						{#snippet reactions()}
 							<ReactionBar
-								groups={[{ icon: 'heart', names: 'Кот, Петя' }]}
-								keys={['heart', 'laugh', 'surprise', 'anger']}
+								groups={[{ emoji: '❤️', names: 'Кот, Петя' }]}
+								keys={REACTION_OPTIONS}
 								pickerOpen
 								onopenList={() => {}}
 								onadd={() => {}}

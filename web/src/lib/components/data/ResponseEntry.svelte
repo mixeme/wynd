@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import Icon, { type IconName } from '$ui/Icon.svelte';
 	import CommentRow from '$ui/data/CommentRow.svelte';
 
 	// Строка «Откликов» (3.18; план 47, 3.1): кто и что сделал — ссылкой туда,
@@ -12,7 +11,7 @@
 		name,
 		color,
 		src,
-		icon,
+		emoji,
 		label,
 		children
 	}: {
@@ -24,7 +23,7 @@
 		color?: string;
 		src?: string;
 		/** Знак реакции перед подписью. */
-		icon?: IconName;
+		emoji?: string;
 		/** «комментарий · 14:02». */
 		label: string;
 		children: Snippet;
@@ -35,7 +34,7 @@
 	<CommentRow {initial} {name} {color} {src} bare>
 		{#snippet time()}
 			<span class="resp-kind"
-				>{#if icon}<Icon name={icon} size="xs" />{/if}{label}</span
+				>{#if emoji}<span class="rxe rxe-kind">{emoji}</span>{/if}{label}</span
 			>
 		{/snippet}
 		{@render children()}

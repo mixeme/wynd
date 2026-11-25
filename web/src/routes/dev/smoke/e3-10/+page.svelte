@@ -7,6 +7,7 @@
 	import PostCard from '$ui/data/PostCard.svelte';
 	import ReactionBar from '$ui/data/ReactionBar.svelte';
 	import CircleLayout from '$lib/layouts/CircleLayout.svelte';
+	import { REACTION_OPTIONS } from '$lib/journal/present';
 	import { spaceNotice } from '$lib/circles/space';
 
 	const notice = $derived(
@@ -52,8 +53,8 @@
 		{#snippet reactions()}
 			<!-- Реакции ставить нельзя: «+» нет, поставленные видны. -->
 			<ReactionBar
-				groups={[{ icon: 'heart', names: 'Кот, Петя' }]}
-				keys={['heart', 'laugh', 'surprise', 'anger']}
+				groups={[{ emoji: '❤️', names: 'Кот, Петя' }]}
+				keys={REACTION_OPTIONS}
 				onopenList={() => {}}
 				onadd={() => {}}
 				onpick={() => {}}

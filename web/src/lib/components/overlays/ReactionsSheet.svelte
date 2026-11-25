@@ -4,7 +4,7 @@
 	import Hint from '$ui/forms/Hint.svelte';
 	import Scrim from '$ui/overlays/Scrim.svelte';
 	import Sheet from '$ui/overlays/Sheet.svelte';
-	import { authorInitial, reactionIconName } from '$lib/journal/present';
+	import { authorInitial, reactionEmoji } from '$lib/journal/present';
 	import type { Reaction } from '$lib/journal/types';
 
 	// Лист «Кто отреагировал» (4.23; план 47, 2.4): одинаков в ленте и на
@@ -29,7 +29,7 @@
 			initial={authorInitial(rx.author_name)}
 			name={rx.author_name}
 			{color}
-			icon={reactionIconName(rx.emoji)}
+			emoji={reactionEmoji(rx.emoji)}
 		/>
 	{/each}
 	<Hint class="mt-16">

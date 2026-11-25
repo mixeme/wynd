@@ -105,7 +105,7 @@ var archiveStyleParity = []styleParity{
 	{"отклики", []string{".rx"}, []string{".rx"}, []string{"display", "gap", "margin-top", "align-items"},
 		map[string]string{"flex-wrap": "wrap"}, "в архиве все отклики истории, чипы переносятся; приложение не переносит"},
 	{"чип отклика", []string{".rx .one"}, []string{".rx .one"}, []string{"background", "border-radius", "padding", "font-size", "display", "gap", "align-items"}, nil, ""},
-	{"значок в чипе отклика", []string{".rx .one .ic"}, []string{".ic", ".ic.xs"}, []string{"width", "height", "stroke-width"}, nil, ""},
+	{"знак в чипе отклика", []string{".rx .one .rxe"}, []string{".rxe"}, []string{"font-family", "font-size", "font-weight", "line-height"}, nil, "эмодзи вместо линейного значка, 25.11"},
 	{"строка комментария", []string{".cmt"}, []string{".cmt"}, []string{"display", "align-items", "gap", "padding"}, nil, ""},
 	{"карточка комментариев", []string{".cm"}, []string{".cm"}, []string{"margin", "padding", "font-size", "background", "border", "border-top", "border-radius", "overflow-wrap", "display", "box-sizing", "width", "text-align"}, nil, ""},
 	{"запись с карточкой комментариев", []string{".post:has(+ .cm)"}, []string{".post:has(+ .cm)"}, []string{"margin-bottom", "border-radius"}, nil, ""},

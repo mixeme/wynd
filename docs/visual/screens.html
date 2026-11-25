@@ -158,8 +158,11 @@
   .rx { display:flex; gap:8px; margin-top:11px; align-items:center; }
   .rx .one { background:var(--ct); border-radius:14px; padding:4px 11px; font-size:12.5px;
              display:flex; gap:7px; align-items:center; }
-  .rx .add { border:1px solid var(--line); border-radius:14px; padding:4px 13px;
-             font-size:12.5px; color:var(--ink); font-weight:600; }
+  .rxe { font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;
+         font-size:15px; font-weight:400; line-height:1; }
+  .rx .add { width:24px; height:24px; border:1px solid var(--line); border-radius:12px;
+             display:grid; place-items:center; color:var(--ink); }
+  .rx .add .ic { color:var(--ink); }
   .cm { margin:0 14px; padding:10px 14px 12px; font-size:12.5px;
         background:var(--paper); border:1px solid var(--line); border-top:none;
         border-radius:0 0 14px 14px; }
@@ -201,11 +204,12 @@
   .cstrip .rm { position:absolute; right:3px; top:3px; width:18px; height:18px; border-radius:50%;
                 background:rgba(43,39,36,.82); display:grid; place-items:center; }
   .cstrip .rm .ic { color:#fff; width:11px; height:11px; }
-  .rxpick { display:flex; gap:10px; margin-top:10px; }
+  .rxpick { display:grid; grid-template-columns:repeat(7,40px); gap:8px; margin-top:10px; }
+  @media (max-width:385px) { .rxpick { grid-template-columns:repeat(4,40px); gap:10px; } }
   .rcho { width:40px; height:40px; border-radius:20px; border:1px solid var(--line);
           background:var(--card); display:grid; place-items:center; flex:0 0 auto; }
   .rcho.on { background:var(--ct); border-color:transparent; }
-  .rcho .ic { width:20px; height:20px; color:var(--c); }
+  .rcho .rxe { font-size:21px; }
   .comp .f.ink { color:var(--ink); }
   .comp .send.off { opacity:.45; }
   .ev { display:flex; align-items:center; gap:10px; padding:9px 18px; }
@@ -3276,7 +3280,7 @@
     <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">сегодня, 14:02</div></div></div>
     <div class="pt">Были на даче, все живы. Яблони в этом году как с ума сошли.</div>
     <div class="pic sq p1"><span class="tagr"><svg class="ic xs"><use href="#i-loc"/></svg>Дача</span><span class="cnt">12</span></div>
-    <div class="rx"><span class="one"><svg class="ic xs" style="color:var(--c)"><use href="#i-heart"/></svg>Кот, Петя</span><span class="add">+</span></div>
+    <div class="rx"><span class="one"><span class="rxe">❤️</span>Кот, Петя</span><span class="add"><svg class="ic xs"><use href="#i-plus"/></svg></span></div>
   </div>
   <div class="cm"><div>Петя: а компот будет? <span class="tm">сегодня, 14:22</span></div><div class="mo">ещё 11 комментариев</div></div>
   <div class="post">
@@ -3295,7 +3299,7 @@
   <div class="post">
     <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">сегодня, 14:02</div></div></div>
     <div class="pt">Были на даче, все живы. Яблони в этом году как с ума сошли.</div>
-    <div class="rx"><span class="one"><svg class="ic xs" style="color:var(--c)"><use href="#i-heart"/></svg>Кот, Петя</span><span class="add">+</span></div>
+    <div class="rx"><span class="one"><span class="rxe">❤️</span>Кот, Петя</span><span class="add"><svg class="ic xs"><use href="#i-plus"/></svg></span></div>
   </div>
   <div class="post">
     <div class="pa"><div class="av" style="background:#62452F">К</div><div><div class="n">Кот</div><div class="tm">сегодня, 11:20</div></div></div>
@@ -3328,7 +3332,7 @@
   <div class="post">
     <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">5 августа, 19:12</div></div></div>
     <div class="pt">Рады тебя видеть!</div>
-    <div class="rx"><span class="one"><svg class="ic xs" style="color:var(--c)"><use href="#i-heart"/></svg>Мышь</span></div>
+    <div class="rx"><span class="one"><span class="rxe">❤️</span>Мышь</span></div>
   </div>
   <div class="ev"><span>Мышь присоединилась<small class="ev-t">вчера, 21:40</small></span></div>
   <div style="text-align:center;color:var(--c);margin-top:26px">
@@ -3451,7 +3455,7 @@
   <div class="post">
     <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">5 августа, 19:12</div></div></div>
     <div class="pt">Рады тебя видеть!</div>
-    <div class="rx"><span class="one"><svg class="ic xs" style="color:var(--c)"><use href="#i-heart"/></svg>Мышь</span><span class="add">+</span></div>
+    <div class="rx"><span class="one"><span class="rxe">❤️</span>Мышь</span><span class="add"><svg class="ic xs"><use href="#i-plus"/></svg></span></div>
   </div>
   <div class="comp"><div class="f">Написать в журнал…<svg class="ic" style="margin-left:auto"><use href="#i-photo"/></svg><svg class="ic" style="margin-left:2px"><use href="#i-chevr"/></svg></div>
     <div class="send"><svg class="ic" style="color:#fff;width:19px;height:19px"><use href="#i-rec"/></svg></div></div>
@@ -3467,7 +3471,7 @@
     <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">сегодня, 14:02</div></div></div>
     <div class="pt">Были на даче, все живы. Яблони в этом году как с ума сошли.</div>
     <div class="pic sq p1"><span class="tagr"><svg class="ic xs"><use href="#i-loc"/></svg>Дача</span><span class="cnt">12</span></div>
-    <div class="rx"><span class="one"><svg class="ic xs" style="color:var(--c)"><use href="#i-heart"/></svg>Кот, Петя</span></div>
+    <div class="rx"><span class="one"><span class="rxe">❤️</span>Кот, Петя</span></div>
   </div>
   <div class="cm"><div>Петя: а компот будет? <span class="tm">сегодня, 14:22</span></div><div class="mo">ещё 11 комментариев</div></div>
   <div class="post">
@@ -3488,7 +3492,7 @@
     <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">сегодня, 14:02</div></div></div>
     <div class="pt">Были на даче, все живы. Яблони в этом году как с ума сошли.</div>
     <div class="pic sq p1"><span class="tagr"><svg class="ic xs"><use href="#i-loc"/></svg>Дача</span><span class="cnt">12</span></div>
-    <div class="rx"><span class="one"><svg class="ic xs" style="color:var(--c)"><use href="#i-heart"/></svg>Кот, Петя</span></div>
+    <div class="rx"><span class="one"><span class="rxe">❤️</span>Кот, Петя</span></div>
   </div>
   <div class="cm"><div>Петя: а компот будет? <span class="tm">сегодня, 14:22</span></div><div class="mo">ещё 11 комментариев</div></div>
   <div style="position:absolute;left:0;right:0;bottom:0;padding:14px 16px 18px;border-top:1px solid var(--line);background:var(--paper);font-size:12.5px;color:var(--faint);text-align:center;line-height:1.5">В круге кончилось место — писать пока нельзя.<br>Освободить или попросить больше места может Кот.</div>
@@ -3503,7 +3507,7 @@
     <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">сегодня, 14:02</div></div></div>
     <div class="pt">Были на даче, все живы. Яблони в этом году как с ума сошли.</div>
     <div class="pic sq p1"><span class="tagr"><svg class="ic xs"><use href="#i-loc"/></svg>Дача</span><span class="cnt">12</span></div>
-    <div class="rx"><span class="one"><svg class="ic xs" style="color:var(--c)"><use href="#i-heart"/></svg>Кот, Петя</span></div>
+    <div class="rx"><span class="one"><span class="rxe">❤️</span>Кот, Петя</span></div>
   </div>
   <div class="cm"><div>Петя: а компот будет? <span class="tm">сегодня, 14:22</span></div><div class="mo">ещё 11 комментариев</div></div>
   <div style="position:absolute;left:0;right:0;bottom:0;padding:14px 16px 18px;border-top:1px solid var(--line);background:var(--paper);font-size:12.5px;color:var(--faint);text-align:center;line-height:1.5">На сервере кончилось место — писать пока нельзя.<br>Помочь может администратор «Дома Ани».</div>
@@ -3522,7 +3526,7 @@
     <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">сегодня, 14:02</div></div></div>
     <div class="pt">Были на даче, все живы. Яблони в этом году как с ума сошли.</div>
     <div class="pic sq p1"><span class="tagr"><svg class="ic xs"><use href="#i-loc"/></svg>Дача</span><span class="cnt">12</span></div>
-    <div class="rx"><span class="one"><svg class="ic xs" style="color:var(--c)"><use href="#i-heart"/></svg>Кот, Петя</span></div>
+    <div class="rx"><span class="one"><span class="rxe">❤️</span>Кот, Петя</span></div>
   </div>
   <div class="cm"><div>Петя: а компот будет? <span class="tm">сегодня, 14:22</span></div><div class="mo">ещё 11 комментариев</div></div>
   <div style="position:absolute;left:0;right:0;bottom:0;padding:14px 16px 18px;border-top:1px solid var(--line);background:var(--paper);font-size:12.5px;color:var(--faint);text-align:center;line-height:1.5">В круге кончилось место — писать пока нельзя.<br>Освободить или попросить больше места может Кот.</div>
@@ -3544,7 +3548,7 @@
   <div class="post">
     <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">сегодня, 14:02</div></div></div>
     <div class="pt">Скачала. Дед, тебе помочь?</div>
-    <div class="rx"><span class="one"><svg class="ic xs" style="color:var(--c)"><use href="#i-heart"/></svg>Кот</span><span class="add">+</span></div>
+    <div class="rx"><span class="one"><span class="rxe">❤️</span>Кот</span><span class="add"><svg class="ic xs"><use href="#i-plus"/></svg></span></div>
   </div>
   <div class="ev"><span>Кот назначил архивацию до 1 июня 2025<small class="ev-t">12 мая, 10:05</small></span></div>
   <div class="post">
@@ -3632,7 +3636,7 @@
     <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">сегодня, 14:02</div></div></div>
     <div class="pt">Были на даче, все живы. Яблони в этом году как с ума сошли.</div>
     <div class="pic sq p1"><span class="tagr"><svg class="ic xs"><use href="#i-loc"/></svg>Дача</span><span class="cnt">12</span></div>
-    <div class="rx"><span class="one"><svg class="ic xs" style="color:var(--c)"><use href="#i-heart"/></svg>Кот, Петя</span><span class="add">+</span></div>
+    <div class="rx"><span class="one"><span class="rxe">❤️</span>Кот, Петя</span><span class="add"><svg class="ic xs"><use href="#i-plus"/></svg></span></div>
   </div>
   <div class="comp"><div class="f">Написать в журнал…<svg class="ic" style="margin-left:auto"><use href="#i-photo"/></svg><svg class="ic" style="margin-left:2px"><use href="#i-chevr"/></svg></div>
     <div class="send"><svg class="ic" style="color:#fff;width:19px;height:19px"><use href="#i-rec"/></svg></div></div>
@@ -3649,7 +3653,7 @@
       <div style="display:flex;gap:10px;align-items:center;margin-top:8px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;color:var(--muted);font-size:12px">
         <div style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span style="color:var(--ink);font-weight:600">Мама</span> · 6 августа · Дед нашёл на чердаке коробку с плёнками…</div></div></div></div>
   <div class="cmt"><div class="av" style="background:#58673A">А</div>
-    <div class="g"><div class="who"><b>Аня, Петя</b><span class="tm"><svg class="ic xs" style="color:var(--c);vertical-align:-2px"><use href="#i-heart"/></svg> реакция · 12:10</span></div>
+    <div class="g"><div class="who"><b>Аня, Петя</b><span class="tm"><span class="rxe" style="font-size:13px;margin-right:4px;vertical-align:-2px">❤️</span> реакция · 12:10</span></div>
       <div style="display:flex;gap:10px;align-items:center;margin-top:8px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;color:var(--muted);font-size:12px">
         <div class="pic p3" style="width:32px;height:32px;border-radius:6px;flex:0 0 auto"></div>
         <div style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span style="color:var(--ink);font-weight:600">ваша запись</span> · 12 июля · Первые яблоки</div></div></div></div>
@@ -3768,7 +3772,7 @@
     <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">сегодня, 14:02</div></div></div>
     <div class="pt">Были на даче, все живы. Яблони в этом году как с ума сошли.</div>
     <div class="pic sq p1"><span class="tagr"><svg class="ic xs"><use href="#i-loc"/></svg>Дача</span><span class="cnt">12</span></div>
-    <div class="rx"><span class="one"><svg class="ic xs" style="color:var(--c)"><use href="#i-heart"/></svg>Кот, Петя</span><span class="add">+</span></div>
+    <div class="rx"><span class="one"><span class="rxe">❤️</span>Кот, Петя</span><span class="add"><svg class="ic xs"><use href="#i-plus"/></svg></span></div>
   </div>
   <div class="cm"><div>Петя: а компот будет? <span class="tm">сегодня, 14:22</span></div><div class="mo">ещё 11 комментариев</div></div>
   <div class="post">
@@ -4397,12 +4401,15 @@
     <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">сегодня, 14:02</div></div></div>
     <div class="pt">Были на даче, все живы. Яблони в этом году как с ума сошли.</div>
     <div class="pic sq p1" style="aspect-ratio:4/3"><span class="tagr"><svg class="ic xs"><use href="#i-loc"/></svg>Дача</span><span class="cnt">12</span></div>
-    <div class="rx"><span class="one"><svg class="ic xs" style="color:var(--c)"><use href="#i-heart"/></svg>Кот, Петя</span></div>
+    <div class="rx"><span class="one"><span class="rxe">❤️</span>Кот, Петя</span></div>
     <div class="rxpick">
-      <div class="rcho"><svg class="ic"><use href="#i-heart"/></svg></div>
-      <div class="rcho"><svg class="ic"><use href="#i-laugh"/></svg></div>
-      <div class="rcho"><svg class="ic"><use href="#i-surprise"/></svg></div>
-      <div class="rcho"><svg class="ic"><use href="#i-anger"/></svg></div>
+      <div class="rcho"><span class="rxe">❤️</span></div>
+      <div class="rcho"><span class="rxe">😄</span></div>
+      <div class="rcho"><span class="rxe">😮</span></div>
+      <div class="rcho"><span class="rxe">😠</span></div>
+      <div class="rcho"><span class="rxe">👍</span></div>
+      <div class="rcho"><span class="rxe">😢</span></div>
+      <div class="rcho"><span class="rxe">🎉</span></div>
     </div>
   </div>
   <div class="cm"><div>Петя: а компот будет? <span class="tm">сегодня, 14:22</span></div><div class="mo">ещё 11 комментариев</div></div>
@@ -4413,7 +4420,7 @@
   <div class="comp"><div class="f">Написать в журнал…<svg class="ic" style="margin-left:auto"><use href="#i-photo"/></svg><svg class="ic" style="margin-left:2px"><use href="#i-chevr"/></svg></div>
     <div class="send"><svg class="ic" style="color:#fff;width:19px;height:19px"><use href="#i-rec"/></svg></div></div>
 </div>
-<span class="num">4.26</span><b>Выбор реакции</b><i>Плюс не ставит реакцию втихаря и не открывает вторую панель: закрытый список раскрывается в карточке, на месте плюса. Четыре значка без подписей — сердце, смех, удивление, злость; что есть на пиктограмме, то и есть. Эмодзи с клавиатуры не принимаются. Одна реакция на человека. Имена в чипе по-прежнему ведут на 4.28 — ту же панель, что у прав участника.</i></figure>
+<span class="num">4.26</span><b>Выбор реакции</b><i>Плюс не ставит реакцию втихаря и не открывает вторую панель: закрытый список раскрывается в карточке, на месте плюса. Семь системных эмодзи без подписей — сердце, смех, удивление, злость, хорошо, сочувствие, поздравляю; что на знаке, то и есть. Эмодзи с клавиатуры не принимаются. Одна реакция на человека. Имена в чипе по-прежнему ведут на 4.28 — ту же панель, что у прав участника.</i></figure>
 <figure class="s" id="e4-27"><div class="ph">
   <div class="sb"><span>9:41</span><span class="sig"><u></u><u></u><u></u><u></u></span></div>
   <div class="cbar"><div class="top"><svg class="ic"><use href="#i-back"/></svg><span class="t">Семья</span>
@@ -4422,19 +4429,22 @@
   <div class="post">
     <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">сегодня, 14:02</div></div></div>
     <div class="pt">Были на даче, все живы. Яблони в этом году как с ума сошли.</div>
-    <div class="rx"><span class="one"><svg class="ic xs" style="color:var(--c)"><use href="#i-heart"/></svg>Кот, Петя, Мышь</span></div>
+    <div class="rx"><span class="one"><span class="rxe">❤️</span>Кот, Петя, Мышь</span></div>
     <div class="rxpick">
-      <div class="rcho on"><svg class="ic"><use href="#i-heart"/></svg></div>
-      <div class="rcho"><svg class="ic"><use href="#i-laugh"/></svg></div>
-      <div class="rcho"><svg class="ic"><use href="#i-surprise"/></svg></div>
-      <div class="rcho"><svg class="ic"><use href="#i-anger"/></svg></div>
+      <div class="rcho on"><span class="rxe">❤️</span></div>
+      <div class="rcho"><span class="rxe">😄</span></div>
+      <div class="rcho"><span class="rxe">😮</span></div>
+      <div class="rcho"><span class="rxe">😠</span></div>
+      <div class="rcho"><span class="rxe">👍</span></div>
+      <div class="rcho"><span class="rxe">😢</span></div>
+      <div class="rcho"><span class="rxe">🎉</span></div>
     </div>
   </div>
   <div class="cm"><div>Петя: а компот будет? <span class="tm">сегодня, 14:22</span></div><div class="mo">ещё 11 комментариев</div></div>
   <div class="post">
     <div class="pa"><div class="av" style="background:#3C4D83">М</div><div><div class="n">Мама</div><div class="tm">вчера, 21:40</div></div></div>
     <div class="pt">Дед нашёл на чердаке коробку с плёнками. Будем проявлять.</div>
-    <div class="rx"><span class="one"><svg class="ic xs" style="color:var(--c)"><use href="#i-heart"/></svg>Мама, Мышь</span></div>
+    <div class="rx"><span class="one"><span class="rxe">❤️</span>Мама, Мышь</span></div>
   </div>
   <div class="comp"><div class="f">Написать в журнал…<svg class="ic" style="margin-left:auto"><use href="#i-photo"/></svg><svg class="ic" style="margin-left:2px"><use href="#i-chevr"/></svg></div>
     <div class="send"><svg class="ic" style="color:#fff;width:19px;height:19px"><use href="#i-rec"/></svg></div></div>
@@ -4455,9 +4465,9 @@
     <div class="grip"></div>
     <div class="lab" style="margin-top:2px">Реакция · 2</div>
     <div class="row2"><div class="av" style="background:#62452F">К</div><div class="g" style="font-weight:600">Кот</div>
-      <svg class="ic sm" style="color:var(--c)"><use href="#i-heart"/></svg></div>
+      <span class="rxe" style="font-size:17px">❤️</span></div>
     <div class="row2"><div class="av" style="background:#357077">П</div><div class="g" style="font-weight:600">Петя</div>
-      <svg class="ic sm" style="color:var(--c)"><use href="#i-heart"/></svg></div>
+      <span class="rxe" style="font-size:17px">❤️</span></div>
     <div class="hint" style="margin-top:14px">Реакция одна на человека и подчиняется окну правок. Хотите сказать больше — напишите словами.</div>
   </div>
 </div>
@@ -6377,7 +6387,7 @@
     <div class="pa"><div class="av" style="background:#58673A">А</div><div><div class="n">Аня</div><div class="tm">сегодня, 14:02</div></div></div>
     <div class="pt">Были на даче, все живы. Яблони в этом году как с ума сошли.</div>
     <div class="pic sq p1"><span class="tagr"><svg class="ic xs"><use href="#i-loc"/></svg>Дача</span><span class="cnt">12</span></div>
-    <div class="rx"><span class="one" style="background:#3A2E29"><svg class="ic xs" style="color:var(--c)"><use href="#i-heart"/></svg>Кот, Петя</span><span class="add">+</span></div>
+    <div class="rx"><span class="one" style="background:#3A2E29"><span class="rxe">❤️</span>Кот, Петя</span><span class="add"><svg class="ic xs"><use href="#i-plus"/></svg></span></div>
   </div>
   <div class="cm"><div>Петя: а компот будет? <span class="tm">сегодня, 14:22</span></div><div class="mo">ещё 11 комментариев</div></div>
   <div class="post">

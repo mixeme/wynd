@@ -136,7 +136,7 @@
 - **PATCH записи.** Поле `media` опущено — медиа не трогать; пустое тело + пустой `media` — `invalid`; квота только на **добавленные** блобы; снятие cover-блоба — `reconcileDayCoverAfterBlobRemovedFromPost`. `cover_blob_id` вместе с `media[]` — `invalid` (media задаёт обложку сама).
 - **Пределы ввода (аудит 2026-09-22).** Не больше 50 вложений на запись: клиент столько и не предлагает, но запрос мимо него заводил сколько угодно строк `post_media`. `edit_window_sec` проверяется и в `POST /circles`, не только в `PATCH`. Название дня приходит обрезанным по краям; из одних пробелов — не название. `mute_until` разбирается как RFC3339 **при сохранении** и хранится в UTC: неразобранная строка молча означала «не заглушено».
 - **Удаление записи.** `Chronicle.DeletePost` — одна транзакция: предусловия, скраб ветки, `post_media`. Возвращает список блобов; обработчик освобождает их после коммита, ошибка освобождения только пишется в лог. Так же устроены `purgePostBranch` и `DeleteCircle`.
-- **Реакции.** В API только ключи `heart` | `laugh` | `surprise` | `anger`; иначе `ErrInvalid`. Миграции старых эмодзи нет. `reactionResponse` несёт окно правок. `DELETE .../posts/{post_id}/reactions` ищет свою реакцию на пост, затем `DeleteReaction` по id.
+- **Реакции.** В API только ключи `heart` | `laugh` | `surprise` | `anger` | `like` | `sad` | `party`; иначе `ErrInvalid`. Миграции старых эмодзи нет. `reactionResponse` несёт окно правок. `DELETE .../posts/{post_id}/reactions` ищет свою реакцию на пост, затем `DeleteReaction` по id.
 - **Лицо автора в снимке.** `feedPostResponse` / `commentResponse` несут `author_avatar_blob_id` из `IdentityAvatarBlobIDs` (тот же набор, что у поста). Реакции — без лица.
 - **Имя в круге.** `addIdentityName` копирует `avatar_blob_id` с предыдущей неистёртой строки той же идентичности.
 - **Карта.** `GET /circles/{id}/map` пины из `post_media` с координатами: `post_id`, `blob_id`, `entry_date`, `created_at`, `geo_lat`, `geo_lng`, `author_name`, `body`. Гео на записи без медиа нет (`POST /posts` без top-level `geo_lat`).
@@ -364,7 +364,7 @@
 | Что | Как читается сейчас | Снятие |
 |---|---|---|
 | Метки времени разной ширины (до 0011) | 0011 выровняла все колонки; `xtime.Parse` читает любую ширину дроби (`TestParseAcceptsLegacyWidths`) | Не требуется: разбор общего RFC3339 и есть норма |
-| Реакции-эмодзи ранних версий | В API только `heart` \| `laugh` \| `surprise` \| `anger`; старые значения не мигрированы | Не планируется |
+| Реакции-эмодзи ранних версий | В API только `heart` \| `laugh` \| `surprise` \| `anger` \| `like` \| `sad` \| `party`; старые значения не мигрированы | Не планируется |
 
 ### Код
 

@@ -47,8 +47,8 @@
 		groupReactions,
 		isAttachedToOtherDay,
 		ownReaction,
-		reactionIconName,
-		REACTION_KEYS,
+		reactionEmoji,
+		REACTION_OPTIONS,
 		albumHref,
 		commentMediaItems,
 		commentPhotoIds,
@@ -989,10 +989,10 @@
 					{#if !soloCircle}
 						<ReactionBar
 							groups={groupReactions(currentPost.reactions).map((g) => ({
-								icon: reactionIconName(g.emoji),
+								emoji: reactionEmoji(g.emoji),
 								names: g.names
 							}))}
-							keys={REACTION_KEYS}
+							keys={REACTION_OPTIONS}
 							showAdd={showReactionPlus(currentPost) && !pickerOpen}
 							{pickerOpen}
 							selectedKey={ownReaction(currentPost.reactions, circle.identityId)?.emoji ?? ''}
