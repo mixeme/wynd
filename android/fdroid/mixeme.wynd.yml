@@ -6,7 +6,6 @@ WebSite: https://github.com/mixeme/wynd
 SourceCode: https://github.com/mixeme/wynd
 IssueTracker: https://github.com/mixeme/wynd/issues
 
-Summary: 'Client for your own Wynd server: circles, posts, photos and files'
 Description: |
   Wynd is a private journal for your close circle: family, friends, colleagues.
 
@@ -42,6 +41,9 @@ Builds:
     versionCode: 1003
     commit: android-v0.1.3
     subdir: android
+    sudo:
+      - apt-get update || apt-get update
+      - apt-get install -y npm
     gradle:
       - fdroid
     output: app/build/outputs/apk/fdroid/release/app-fdroid-release-unsigned.apk
