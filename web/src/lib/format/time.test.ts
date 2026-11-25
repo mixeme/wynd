@@ -10,7 +10,8 @@ import {
 	pluralFiles,
 	pluralPhotos,
 	pluralPosts,
-	formatAdminDayYear
+	formatAdminDayYear,
+	formatSessionSeen
 } from './time';
 
 describe('formatPostTime', () => {
@@ -97,5 +98,35 @@ describe('format helpers', () => {
 describe('formatAdminDayYear', () => {
 	it('год без «г.»', () => {
 		expect(formatAdminDayYear('2026-10-24T09:00:00')).toBe('24 октября 2026');
+	});
+});
+
+describe('formatSessionSeen', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-11-26T14:30:00'));
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('shows «только что» в пределах минуты', () => {
+		expect(formatSessionSeen('2026-11-26T14:29:30')).toBe('был(а) только что');
+	});
+
+	it('shows минуты и часы со склонением', () => {
+		expect(formatSessionSeen('2026-11-26T14:05:00')).toBe('был(а) 25 минут назад');
+		expect(formatSessionSeen('2026-11-26T13:00:00')).toBe('был(а) 1 час назад');
+		expect(formatSessionSeen('2026-11-26T11:15:00')).toBe('был(а) 3 часа назад');
+	});
+
+	it('shows вчера и дату дальше', () => {
+		expect(formatSessionSeen('2026-11-25T09:00:00')).toBe('был(а) вчера');
+		expect(formatSessionSeen('2026-11-20T09:00:00')).toBe('был(а) 20 ноября');
+	});
+
+	it('не падает на пустом значении', () => {
+		expect(formatSessionSeen('')).toBe('');
 	});
 });

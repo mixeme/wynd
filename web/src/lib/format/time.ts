@@ -26,6 +26,28 @@ export function formatDayLabel(iso: string, now: Date = new Date()): string {
 	return dateFmt.format(at);
 }
 
+/**
+ * «Был(а) …» сессии устройства (план 72): только что, N минут/часов назад,
+ * вчера, дальше — дата. Пол в приложении не известен — «был(а)».
+ */
+export function formatSessionSeen(iso: string, now: Date = new Date()): string {
+	const at = new Date(iso);
+	if (Number.isNaN(at.getTime())) return '';
+	const diff = daysBetween(now, at);
+	if (diff > 1) return `был(а) ${dateFmt.format(at)}`;
+	if (diff === 1) return 'был(а) вчера';
+	const minutes = Math.max(0, Math.floor((now.getTime() - at.getTime()) / 60_000));
+	if (minutes < 1) return 'был(а) только что';
+	if (minutes < 60) {
+		return `был(а) ${plural(minutes, ['минуту', 'минуты', 'минут'])} назад`;
+	}
+	const hours = Math.floor(minutes / 60);
+	if (hours < 24) {
+		return `был(а) ${plural(hours, ['час', 'часа', 'часов'])} назад`;
+	}
+	return `был(а) ${dateFmt.format(at)}`;
+}
+
 /** Локальный календарный день метки — ключ для разделителей. */
 export function localDayKey(iso: string): string {
 	const d = new Date(iso);

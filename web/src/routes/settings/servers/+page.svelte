@@ -156,6 +156,13 @@
 				onclick={() =>
 					goto(`/settings/servers/accept?origin=${encodeURIComponent(row.session.origin)}`)}
 			/>
+			<!-- Сессии учётной записи на этом сервере (план 72). -->
+			<SettingsRow
+				icon="key"
+				title="Активные сессии"
+				onclick={() =>
+					goto(`/settings/servers/sessions?origin=${encodeURIComponent(row.session.origin)}`)}
+			/>
 			<SettingsRow
 				icon="out"
 				title="Выйти на этом устройстве"
