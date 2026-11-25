@@ -20,7 +20,10 @@ Builds:
     gradle:
       - fdroid
     output: app/build/outputs/apk/fdroid/release/app-fdroid-release-unsigned.apk
-    prebuild: cd ../web && npm ci
+    prebuild:
+      - pushd ../web
+      - npm ci
+      - popd
     scanignore:
       - web/node_modules
     gradleprops:
