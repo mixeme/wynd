@@ -19,7 +19,7 @@
 	import { groupByMonth } from '$lib/journal/group';
 	import { dayCoverTileId } from '$lib/journal/present';
 	import type { DaySummary } from '$lib/journal/types';
-	import { getMediaUrl } from '$lib/media/objectUrl';
+	import { resolveMediaUrls } from '$lib/media/batch';
 	import { markDayPromptSeen } from '$lib/idb/db';
 	import { registerRefetch } from '$lib/sync/sync';
 
@@ -42,17 +42,15 @@
 	let freshApplied = false;
 	let cachedRequested = false;
 
+	// Обложки пачками по 8, каждая пачка на экране сразу — как в ленте и
+	// «Сетке»: карточки дней раньше ждали последовательный цикл по всем
+	// обложкам (замер 24.11, передача «задержка вкладки "Сетка"»).
 	async function resolveCovers(items: DayView[]) {
-		const next: Record<string, string> = { ...coverUrls };
-		for (const day of items) {
-			if (!day.coverBlobId || next[day.coverBlobId]) continue;
-			try {
-				next[day.coverBlobId] = await getMediaUrl(circle.origin, day.coverBlobId);
-			} catch {
-				/* skip */
-			}
-		}
-		coverUrls = next;
+		const withCover = items.map((d) => d.coverBlobId).filter((id): id is string => !!id);
+		const ids = [...new Set(withCover)].filter((id) => !coverUrls[id]);
+		await resolveMediaUrls(circle.origin, ids, (blobId, url) => {
+			coverUrls[blobId] = url;
+		});
 	}
 
 	// Запасную обложку и число фото считает сервер по всем записям дня (C17):
@@ -103,7 +101,9 @@
 			totalPosts = daysSnap.days.reduce((sum, d) => sum + d.post_count, 0);
 			const views = buildDayViews(daysSnap.days);
 			days = views;
-			await resolveCovers(views);
+			loading = false;
+			// Обложки не держат экран — пачки ложатся поверх показанных карточек.
+			void resolveCovers(views);
 		} catch (err) {
 			error = isAccessError(err) ? 'Нет доступа' : 'Не удалось загрузить дни';
 		} finally {

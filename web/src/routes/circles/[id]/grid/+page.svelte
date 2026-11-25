@@ -20,7 +20,7 @@
 	import { fetchOlderPage, mergePages, refetchOlder } from '$lib/journal/pages';
 	import type { GridItem } from '$lib/journal/types';
 	import { groupByMonth } from '$lib/journal/group';
-	import { getMediaUrl } from '$lib/media/objectUrl';
+	import { resolveMediaUrls } from '$lib/media/batch';
 	import { registerRefetch } from '$lib/sync/sync';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
@@ -40,17 +40,14 @@
 	let freshApplied = false;
 	let cachedRequested = false;
 
+	// Обложки пачками по 8, каждая пачка на экране сразу: раньше плитки ждали
+	// последовательный цикл по всем обложкам — до 2000 ответов за индикатором
+	// (замер 24.11, передача «задержка вкладки "Сетка"»).
 	async function resolveUrls(items: GridTile[]) {
-		const next: Record<string, string> = { ...mediaUrls };
-		for (const tile of items) {
-			if (next[tile.tileId]) continue;
-			try {
-				next[tile.tileId] = await getMediaUrl(circle.origin, tile.tileId);
-			} catch {
-				/* skip */
-			}
-		}
-		mediaUrls = next;
+		const ids = [...new Set(items.map((t) => t.tileId))].filter((id) => !mediaUrls[id]);
+		await resolveMediaUrls(circle.origin, ids, (blobId, url) => {
+			mediaUrls[blobId] = url;
+		});
 	}
 
 	// Снимки сетки и сводки дней — первый кадр вкладки (C100-1): «Сетка» не
@@ -104,7 +101,9 @@
 				nextBefore = again.next;
 			}
 			setTiles();
-			await resolveUrls(tiles);
+			loading = false;
+			// Обложки не держат экран — пачки ложатся поверх показанных плиток.
+			void resolveUrls(tiles);
 		} catch (err) {
 			error = isAccessError(err) ? 'Нет доступа' : 'Не удалось загрузить сетку';
 		} finally {
