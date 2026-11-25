@@ -29,11 +29,94 @@ function bagResponse(bag: unknown): Response {
 beforeEach(async () => {
 	await closeDb();
 	delete (window as unknown as { __wyndDesktop?: unknown }).__wyndDesktop;
+	delete (window as unknown as { __wyndSecrets?: unknown }).__wyndSecrets;
 	vi.restoreAllMocks();
 });
 
 afterEach(() => {
 	vi.restoreAllMocks();
+});
+
+// Общее хранилище входов оболочки Android (C127): мешок по абсолютному адресу,
+// как /__secrets окна. Клиент текущего сервера видит свой вход как пустой origin.
+function androidStore(initial: Array<Record<string, unknown>> = []) {
+	const bag = new Map<string, Record<string, unknown>>(
+		initial.map((item) => [String(item.origin), item])
+	);
+	const target = {
+		onmessage: null as ((event: { data: string }) => void) | null,
+		postMessage(raw: string) {
+			const request = JSON.parse(raw);
+			let result: unknown = {};
+			if (request.op === 'list') result = { sessions: [...bag.values()] };
+			else if (request.op === 'put') bag.set(request.session.origin, request.session);
+			else if (request.op === 'delete') bag.delete(request.origin);
+			setTimeout(() => target.onmessage?.({ data: JSON.stringify({ id: request.id, result }) }), 0);
+		}
+	};
+	(window as unknown as { __wyndSecrets?: unknown }).__wyndSecrets = target;
+	return bag;
+}
+
+describe('приложение Android (общий файл оболочки)', () => {
+	it('хранит входы по абсолютному адресу, текущий сервер клиент видит пустым', async () => {
+		const bag = androidStore();
+		await putSession({ ...session, origin: '' });
+		await putSession(session);
+		expect(bag.has(window.location.origin)).toBe(true);
+		expect(bag.has(session.origin)).toBe(true);
+		const sessions = await listSessions();
+		expect(sessions).toHaveLength(2);
+		expect(sessions.find((item) => item.origin === '')?.origin).toBe('');
+		expect((await getSession(''))?.token).toBe('tok');
+		expect((await getSession(session.origin))?.origin).toBe(session.origin);
+		await deleteSession('');
+		expect(bag.has(window.location.origin)).toBe(false);
+		expect(await getSession('')).toBeUndefined();
+	});
+
+	it('миграция выгружает прежние входы, не затирая более свежие', async () => {
+		const bag = androidStore([
+			{ ...session, origin: 'https://fresh.example.org', signed_in_at: '2026-11-25T12:00:00.000Z' }
+		]);
+		const db = await (await import('./db')).getDb();
+		await db.put('sessions', { ...session, origin: '', signed_in_at: '2026-11-25T09:00:00.000Z' });
+		await db.put('sessions', {
+			...session,
+			origin: 'https://old.example.org',
+			signed_in_at: '2026-11-24T09:00:00.000Z'
+		});
+		await db.put('sessions', {
+			...session,
+			origin: 'https://fresh.example.org',
+			token: 'stale',
+			signed_in_at: '2026-11-25T08:00:00.000Z'
+		});
+		await migrateSessionsToSystemStorage();
+		expect(bag.has(window.location.origin)).toBe(true);
+		expect(bag.has('https://old.example.org')).toBe(true);
+		expect(bag.get('https://fresh.example.org')?.token).toBe('tok');
+		expect(await db.getAll('sessions')).toHaveLength(0);
+	});
+
+	it('сбой моста откатывает чтение и запись в IndexedDB', async () => {
+		const failing = {
+			onmessage: null as ((event: { data: string }) => void) | null,
+			postMessage(raw: string) {
+				const request = JSON.parse(raw);
+				setTimeout(
+					() =>
+						failing.onmessage?.({
+							data: JSON.stringify({ id: request.id, error: 'secrets_unavailable' })
+						}),
+					0
+				);
+			}
+		};
+		(window as unknown as { __wyndSecrets?: unknown }).__wyndSecrets = failing;
+		await putSession(session);
+		expect((await getSession(session.origin))?.token).toBe(session.token);
+	});
 });
 
 describe('браузер (моста нет)', () => {

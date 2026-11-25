@@ -32,6 +32,13 @@ export function pageOrigin(): string {
 	return typeof window !== 'undefined' ? window.location.origin : 'https://local';
 }
 
+/** Адрес — свой для этого клиента? В окне — настоящий адрес сервера, а не окна. */
+export function pageOwnOrigin(origin: string): boolean {
+	if (!origin) return false;
+	if (typeof window !== 'undefined' && origin === window.location.origin) return true;
+	return origin === pageOrigin();
+}
+
 /**
  * Путь Go-прокси для чужого сервера: /__srv/<scheme>/<host>. Для выбранного
  * сервера и адреса страницы прокси не нужен — они и так в корне окна.

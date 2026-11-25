@@ -1,5 +1,5 @@
 import { getAdminSession, getSession, invalidateSnapshots } from '$lib/idb/db';
-import { desktopApiBase, desktopProxyBase, pageOrigin } from '$lib/desktop/bridge';
+import { desktopApiBase, desktopProxyBase, pageOrigin, pageOwnOrigin } from '$lib/desktop/bridge';
 
 export class ApiError extends Error {
 	readonly status: number;
@@ -21,11 +21,7 @@ const circlePathRe = /^\/circles\/([^/]+)/;
 
 export function normalizeOrigin(origin: string): string {
 	if (!origin) return '';
-	if (
-		typeof window !== 'undefined' &&
-		(origin === window.location.origin || origin === pageOrigin())
-	)
-		return '';
+	if (pageOwnOrigin(origin)) return '';
 	return origin.replace(/\/$/, '');
 }
 

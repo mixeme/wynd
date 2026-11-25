@@ -39,6 +39,7 @@ public final class MainActivity extends Activity {
     private IncomingShares shares;
     private PushBridge push;
     private InterfaceBridge interfaces;
+    private SecretsBridge secrets;
     private StartupBridge startup;
     private InterfaceCatalog catalog;
     private String failedUrl;
@@ -93,6 +94,7 @@ public final class MainActivity extends Activity {
             shares = new IncomingShares(this, webView, server);
             push = new PushBridge(this, webView, server);
             interfaces = new InterfaceBridge(this, webView, server, catalog);
+            secrets = SecretsBridge.attach(this, webView, server);
             // Фоновая очередь (план 50, этап 5.1): записи без вложений уходят
             // и после закрытия окна. Прогон — WorkManager, страница не нужна.
             queueBridge = NativeQueueBridge.attach(this, webView, server);
@@ -427,6 +429,10 @@ public final class MainActivity extends Activity {
         }
         if (startup != null) startup.destroy();
         if (interfaces != null) interfaces.destroy();
+        if (secrets != null) {
+            secrets.destroy();
+            secrets = null;
+        }
         if (media != null) media.destroy();
         if (exports != null) exports.destroy();
         if (originals != null) originals.clear();

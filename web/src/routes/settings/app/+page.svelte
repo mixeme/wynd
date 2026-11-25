@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { androidInterfacesAvailable } from '$lib/android/interfaces';
 	import { androidPushAvailable, androidPushStatus } from '$lib/android/push';
+	import { androidSecretsAvailable } from '$lib/android/secrets';
 	import { setAndroidPushEnabled } from '$lib/push/push';
 	import NumberField from '$ui/forms/NumberField.svelte';
 	import { onMount } from 'svelte';
@@ -75,6 +76,8 @@
 	// Тот же принятый раздел интерфейса в обеих нативных оболочках (планы 62 и 50).
 	const desktop = desktopBridge();
 	const androidInterfaces = androidInterfacesAvailable();
+	// Общее хранилище входов (C127): с ним переключение не меняет набор входов.
+	const sharedEntries = androidSecretsAvailable();
 	const interfaceOrigin = desktop?.origin ?? (androidInterfaces ? window.location.origin : '');
 	let interfaceName = $state(interfaceOrigin ? displayHost(interfaceOrigin) : '');
 	// Автозапуск — только в окне для компьютера; в браузере моста нет.
@@ -250,7 +253,9 @@
 		/>
 		<SettingsRow
 			title="Сменить сервер интерфейса"
-			subtitle="Входы и круги останутся на своих серверах"
+			subtitle={sharedEntries
+				? 'Входы и круги останутся доступны'
+				: 'Входы и круги останутся на своих серверах'}
 			onclick={() => {
 				if (desktop) openDesktopInterface();
 				else void goto('/settings/app/interface');

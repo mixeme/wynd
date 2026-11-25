@@ -1,4 +1,5 @@
 import { nativeClear } from '$lib/android/native-queue';
+import { androidSecretsAvailable } from '$lib/android/secrets';
 import { ApiError, apiJson, isPaymentRequired, normalizeOrigin } from '$lib/api/client';
 import { forgetStreetMemory } from '$lib/circles/street-memory';
 import { refreshAndroidPush, unsubscribePush } from '$lib/push/push';
@@ -200,10 +201,13 @@ async function doInitSession(): Promise<void> {
 	const settings = await getAppSettings();
 	if (settings?.theme) theme = settings.theme;
 	if (settings?.avatar_shape) avatarShape = settings.avatar_shape;
-	initialized = true;
 	// Токены переезжают в учётные записи Windows при первом запуске новой
 	// оболочки (план 66, функция 3); профиль очищается от них после выгрузки.
-	void migrateSessionsToSystemStorage().catch(() => {});
+	// В приложении Android (C127) входы переезжают в общий файл оболочки до
+	// первого чтения — иначе улица на миг осталась бы без входов.
+	if (androidSecretsAvailable()) await migrateSessionsToSystemStorage().catch(() => {});
+	else void migrateSessionsToSystemStorage().catch(() => {});
+	initialized = true;
 	// Не ждём: экран уже может показывать снимок, сервер ответит следом.
 	void syncAvatarShape();
 	void reconcileStoredSessions().catch(() => {});

@@ -1,6 +1,12 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { CircleColor } from '$lib/theme/colors';
-import { desktopApiBase } from '$lib/desktop/bridge';
+import { desktopApiBase, pageOrigin, pageOwnOrigin } from '$lib/desktop/bridge';
+import {
+	androidSecretsAvailable,
+	androidSecretsDelete,
+	androidSecretsList,
+	androidSecretsPut
+} from '$lib/android/secrets';
 
 export type Theme = 'system' | 'light' | 'dark';
 
@@ -410,6 +416,28 @@ export async function bumpDayPromptCount(origin: string, circleId: string): Prom
 // Мешок перечитывается целиком: сессий у человека единицы, и оболочка
 // отдаёт его из своего кэша.
 
+// Входы телефона (C127, вариант «б»): оболочка Android хранит их в общем
+// файле, как окно, и отдаёт любому источнику интерфейса. Адрес текущего
+// сервера для клиента по-прежнему пустой, а в хранилище он абсолютный.
+
+function sharedOrigin(origin: string): string {
+	const own = pageOrigin().replace(/\/$/, '');
+	const trimmed = (origin || '').replace(/\/$/, '');
+	if (!trimmed || pageOwnOrigin(trimmed)) return own;
+	return trimmed;
+}
+
+async function sharedBag(): Promise<SessionRecord[]> {
+	return (await androidSecretsList()).map((session) => ({
+		...session,
+		origin: (session.origin || '').replace(/\/$/, '')
+	}));
+}
+
+function localSession(session: SessionRecord): SessionRecord {
+	return { ...session, origin: pageOwnOrigin(session.origin) ? '' : session.origin };
+}
+
 async function systemBag(
 	base: string
 ): Promise<{ sessions: SessionRecord[]; admin: AdminSessionRecord | null }> {
@@ -423,6 +451,13 @@ async function systemBag(
 }
 
 export async function listSessions(): Promise<SessionRecord[]> {
+	if (androidSecretsAvailable()) {
+		try {
+			return (await sharedBag()).map(localSession);
+		} catch {
+			// старая оболочка или сбой хранилища — прежнее место
+		}
+	}
 	const base = desktopApiBase();
 	if (base) {
 		try {
@@ -436,6 +471,15 @@ export async function listSessions(): Promise<SessionRecord[]> {
 }
 
 export async function getSession(origin: string): Promise<SessionRecord | undefined> {
+	if (androidSecretsAvailable()) {
+		try {
+			const wanted = sharedOrigin(origin);
+			const found = (await sharedBag()).find((session) => session.origin === wanted);
+			return found ? localSession(found) : undefined;
+		} catch {
+			// старая оболочка или сбой хранилища — прежнее место
+		}
+	}
 	const base = desktopApiBase();
 	if (base) {
 		try {
@@ -450,6 +494,16 @@ export async function getSession(origin: string): Promise<SessionRecord | undefi
 
 export async function putSession(session: SessionRecord): Promise<void> {
 	const db = await getDb();
+	if (androidSecretsAvailable()) {
+		try {
+			await androidSecretsPut({ ...session, origin: sharedOrigin(session.origin) });
+			// профиль очищается от токенов: в IndexedDB копии больше нет
+			await db.delete('sessions', session.origin);
+			return;
+		} catch {
+			// старая оболочка или сбой хранилища — запись в прежнее место
+		}
+	}
 	const base = desktopApiBase();
 	if (base) {
 		try {
@@ -472,6 +526,13 @@ export async function putSession(session: SessionRecord): Promise<void> {
 
 export async function deleteSession(origin: string): Promise<void> {
 	const db = await getDb();
+	if (androidSecretsAvailable()) {
+		try {
+			await androidSecretsDelete(sharedOrigin(origin));
+		} catch {
+			// старая оболочка или сбой хранилища — хотя бы прежнее место очистим
+		}
+	}
 	const base = desktopApiBase();
 	if (base) {
 		try {
@@ -531,13 +592,40 @@ export async function clearAdminSession(): Promise<void> {
 }
 
 /**
- * Миграция входов в системное хранилище (план 66, функция 3): записи из
- * IndexedDB выгружаются в учётные записи Windows, после успешной выгрузки
- * профиль очищается от токенов. Запись idb-версии поверх системной безопасна:
- * IndexedDB — прежняя жизнь, свежее её ничего не писало. Выгрузка идёт до
- * очистки: прерванная миграция продолжается при следующем запуске.
+ * Миграция входов в системное хранилище: в окне (план 66, функция 3) — в
+ * учётные записи Windows, в приложении Android (C127) — в общий файл оболочки.
+ * Записи из IndexedDB выгружаются до очистки: прерванная миграция продолжается
+ * при следующем запуске. Запись поверх общего хранилища не затирает более
+ * свежий вход, сохранённый другим источником.
  */
 export async function migrateSessionsToSystemStorage(): Promise<void> {
+	if (androidSecretsAvailable()) {
+		const db = await getDb();
+		const legacy = await db.getAll('sessions');
+		if (legacy.length === 0) return;
+		let shared: SessionRecord[];
+		try {
+			shared = await sharedBag();
+		} catch {
+			return; // старая оболочка или сбой — IndexedDB цела
+		}
+		for (const session of legacy) {
+			const origin = sharedOrigin(session.origin);
+			const existing = shared.find((item) => item.origin === origin);
+			if (existing && (existing.signed_in_at ?? '') >= (session.signed_in_at ?? '')) {
+				// В общем хранилище запись не старше: прежнюю копию не навязываем.
+				await db.delete('sessions', session.origin);
+				continue;
+			}
+			try {
+				await androidSecretsPut({ ...session, origin });
+			} catch {
+				return; // продолжится при следующем запуске, IndexedDB цела
+			}
+			await db.delete('sessions', session.origin);
+		}
+		return;
+	}
 	const base = desktopApiBase();
 	if (!base) return;
 	const db = await getDb();
