@@ -128,58 +128,51 @@ func TestSharedContentConcurrentPublishAndCollection(t *testing.T) {
 	}
 }
 
-func TestSharedContentLegacyMigrationAndInterruptedPublication(t *testing.T) {
-	bs, st, _ := sharedStore(t)
-	data := []byte("verified old file")
+// После снятия перевода старых путей (план 71, С-2) файл, у которого есть
+// только storage_path и нет content_sha256, по-прежнему читается: старые
+// копии и восстановленные бэкапы не ломаются.
+func TestLegacyPathWithoutContentIsStillServed(t *testing.T) {
+	bs, _, _ := sharedStore(t)
+	data := []byte("old path file")
 	sum := sha256.Sum256(data)
 	sha := hex.EncodeToString(sum[:])
-	for i := 0; i < 3; i++ {
-		rel := fmt.Sprintf("old/file%d", i)
-		if err := os.MkdirAll(filepath.Join(bs.Dir(), "old"), 0o750); err != nil {
-			t.Fatal(err)
-		}
-		if i != 1 {
-			if err := os.WriteFile(filepath.Join(bs.Dir(), rel), data, 0o640); err != nil {
-				t.Fatal(err)
-			}
-		}
-		if _, err := bs.DB().Exec(`INSERT INTO blobs(id,account_id,sha256,size_bytes,mime_type,original_filename,storage_path,status,created_at) VALUES(?,'alice',?,?,'text/plain',?,?,'complete','2026-11-01T00:00:00Z')`, fmt.Sprint(i), sha, len(data), fmt.Sprint(i), rel); err != nil {
-			t.Fatal(err)
-		}
+	if err := os.MkdirAll(filepath.Join(bs.Dir(), "old"), 0o750); err != nil {
+		t.Fatal(err)
 	}
-	// A crash after installation but before commit left an unregistered CAS file.
+	if err := os.WriteFile(filepath.Join(bs.Dir(), "old/file"), data, 0o640); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := bs.DB().Exec(`INSERT INTO blobs(id,account_id,sha256,size_bytes,mime_type,original_filename,storage_path,status,created_at) VALUES('old','alice',?,?,'text/plain','old.txt','old/file','complete','2026-11-01T00:00:00Z')`, sha, len(data)); err != nil {
+		t.Fatal(err)
+	}
+	info, err := bs.OpenBlob(t.Context(), "old")
+	if err != nil {
+		t.Fatalf("старый путь не читается: %v", err)
+	}
+	if info.SizeBytes != int64(len(data)) || info.Filename != "old.txt" {
+		t.Fatalf("метаданные старого файла: %+v", info)
+	}
+}
+
+// Падение между установкой байтов и коммитом оставляет файл без записи в
+// реестре; при следующем запуске он уходит в очередь и удаляется. Это не
+// миграция, но и после снятия С-2 уборка остаётся.
+func TestOrphanedContentIsCollectedAtStartup(t *testing.T) {
+	bs, st, _ := sharedStore(t)
 	orphanSum := sha256.Sum256([]byte("orphan"))
 	orphanSHA := hex.EncodeToString(orphanSum[:])
 	orphan := filepath.Join(bs.Dir(), "content", orphanSHA[:2], orphanSHA)
-	os.MkdirAll(filepath.Dir(orphan), 0o750)
-	os.WriteFile(orphan, []byte("orphan"), 0o640)
-	migrated, err := blob.New(st, bs.Dir())
-	if err != nil {
+	if err := os.MkdirAll(filepath.Dir(orphan), 0o750); err != nil {
 		t.Fatal(err)
 	}
-	var first string
-	for i := 0; i < 3; i++ {
-		info, err := migrated.OpenBlob(t.Context(), fmt.Sprint(i))
-		if err != nil {
-			t.Fatal("legitimate missing duplicate was not recovered", err)
-		}
-		if first == "" {
-			first = info.Path
-		}
-		if info.Path != first || info.Filename != fmt.Sprint(i) {
-			t.Fatal("legacy metadata merged")
-		}
+	if err := os.WriteFile(orphan, []byte("orphan"), 0o640); err != nil {
+		t.Fatal(err)
 	}
-	if _, err = os.Stat(orphan); !os.IsNotExist(err) {
-		t.Fatal("interrupted content leaked")
+	if _, err := blob.New(st, bs.Dir()); err != nil {
+		t.Fatal(err)
 	}
-	for _, i := range []int{0, 2} {
-		if _, err = os.Stat(filepath.Join(bs.Dir(), "old", fmt.Sprintf("file%d", i))); !os.IsNotExist(err) {
-			t.Fatal("legacy bytes not reclaimed")
-		}
-	}
-	if _, err = blob.New(st, bs.Dir()); err != nil {
-		t.Fatal("restart migration not idempotent", err)
+	if _, err := os.Stat(orphan); !os.IsNotExist(err) {
+		t.Fatalf("осиротевший файл не убран: %v", err)
 	}
 }
 
@@ -266,25 +259,6 @@ func TestSharedContentDetachedPaymentCopyCannotBeReused(t *testing.T) {
 	}
 	if _, err = bs.OpenBlob(t.Context(), b.ID); err != nil {
 		t.Fatal("other account screenshot lost", err)
-	}
-}
-
-func TestSharedContentMigrationDoesNotResurrectDeletedScreenshot(t *testing.T) {
-	bs, st, _ := sharedStore(t)
-	data := []byte("old payment screenshot")
-	other := sharedImport(t, bs, "bob", "other.png", "image/png", data)
-	if _, err := bs.DB().Exec(`INSERT INTO blobs(id,account_id,sha256,size_bytes,mime_type,storage_path,status,created_at) VALUES('old-shot','alice',?,?,'image/png','old/deleted-shot','complete','2026-11-01T00:00:00Z'); INSERT INTO pay_requests(id,account_id,blob_id,status,created_at,blob_deleted) VALUES('old-pay','alice','old-shot','rejected','2026-11-01T00:00:00Z',1)`, other.SHA256, other.SizeBytes); err != nil {
-		t.Fatal(err)
-	}
-	migrated, err := blob.New(st, bs.Dir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err = migrated.OpenBlob(t.Context(), "old-shot"); !errors.Is(err, blob.ErrNotFound) {
-		t.Fatal("deleted payment file resurrected from another account", err)
-	}
-	if _, err = migrated.OpenBlob(t.Context(), other.ID); err != nil {
-		t.Fatal("other copy lost", err)
 	}
 }
 

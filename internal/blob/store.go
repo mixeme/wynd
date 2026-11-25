@@ -50,8 +50,11 @@ func New(st store.Store, blobsDir string) (*Store, error) {
 		return nil, fmt.Errorf("blob: empty blobs dir")
 	}
 	b := &Store{db: db, dir: blobsDir}
-	if err := b.migrateContents(context.Background()); err != nil {
-		return nil, fmt.Errorf("blob content migration: %w", err)
+	if err := b.queueOrphanedContents(context.Background()); err != nil {
+		return nil, fmt.Errorf("blob orphan cleanup: %w", err)
+	}
+	if err := CollectFiles(context.Background(), db, blobsDir); err != nil {
+		return nil, fmt.Errorf("blob orphan collect: %w", err)
 	}
 	return b, nil
 }

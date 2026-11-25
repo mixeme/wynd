@@ -8,12 +8,10 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
 )
 
 func contentPath(sum string) string { return "content/" + sum[:2] + "/" + sum }
@@ -207,87 +205,10 @@ func (s *Store) publishVerified(ctx context.Context, b Blob, part, sessionID str
 	return b, nil
 }
 
-// migrateContents verifies legacy files before sharing them. Missing/corrupt old
-// files stay untouched and are reported; a restart resumes each unfinished group.
-func (s *Store) migrateContents(ctx context.Context) error {
-	// Older versions kept a deleted payment screenshot's original path in its
-	// audit row. Detach it before grouping hashes, or another account's surviving
-	// copy could accidentally resurrect that intentionally deleted logical file.
-	if err := s.detachDeletedScreenshots(ctx); err != nil {
-		return err
-	}
-	rows, err := s.db.QueryContext(ctx, `SELECT DISTINCT lower(sha256),size_bytes FROM blobs WHERE content_sha256 IS NULL AND storage_path<>'' AND status='complete'`)
-	if err != nil {
-		return err
-	}
-	type group struct {
-		sum  string
-		size int64
-	}
-	var groups []group
-	for rows.Next() {
-		var g group
-		if err = rows.Scan(&g.sum, &g.size); err != nil {
-			rows.Close()
-			return err
-		}
-		groups = append(groups, g)
-	}
-	err = rows.Err()
-	rows.Close()
-	if err != nil {
-		return err
-	}
-	for _, g := range groups {
-		if !validDigest(g.sum) {
-			log.Printf("blob migration: invalid legacy digest; file left in place")
-			continue
-		}
-		if err = s.migrateContent(ctx, g.sum, g.size); err != nil {
-			return err
-		}
-	}
-	if err = s.queueInterruptedContents(ctx); err != nil {
-		return err
-	}
-	return CollectFiles(ctx, s.db, s.dir)
-}
-
-func (s *Store) detachDeletedScreenshots(ctx context.Context) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	rows, err := tx.QueryContext(ctx, `SELECT b.id FROM blobs b WHERE storage_path<>'' AND EXISTS(SELECT 1 FROM pay_requests WHERE blob_id=b.id AND blob_deleted=1) AND NOT `+referencedPredicate("b.id", true))
-	if err != nil {
-		return err
-	}
-	var ids []string
-	for rows.Next() {
-		var id string
-		if err = rows.Scan(&id); err != nil {
-			rows.Close()
-			return err
-		}
-		ids = append(ids, id)
-	}
-	err = rows.Err()
-	rows.Close()
-	if err != nil {
-		return err
-	}
-	for _, id := range ids {
-		if err = DetachFile(ctx, tx, id); err != nil {
-			return err
-		}
-	}
-	return tx.Commit()
-}
-
-// A process can die after installing bytes but before committing the registry.
-// Only canonical paths are inspected, under the same lock used by publication.
-func (s *Store) queueInterruptedContents(ctx context.Context) error {
+// queueOrphanedContents убирает файлы, оставшиеся после падения между
+// установкой байтов и коммитом реестра. Это не миграция: проверяются только
+// канонические пути, под той же блокировкой, что и публикация.
+func (s *Store) queueOrphanedContents(ctx context.Context) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -316,59 +237,6 @@ func (s *Store) queueInterruptedContents(ctx context.Context) error {
 	})
 	if err != nil {
 		return err
-	}
-	return tx.Commit()
-}
-
-func (s *Store) migrateContent(ctx context.Context, sum string, size int64) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	rows, err := tx.QueryContext(ctx, `SELECT storage_path FROM blobs WHERE lower(sha256)=? AND size_bytes=? AND content_sha256 IS NULL AND storage_path<>'' AND status='complete'`, sum, size)
-	if err != nil {
-		return err
-	}
-	var paths []string
-	for rows.Next() {
-		var p string
-		if err = rows.Scan(&p); err != nil {
-			rows.Close()
-			return err
-		}
-		paths = append(paths, p)
-	}
-	err = rows.Err()
-	rows.Close()
-	if err != nil {
-		return err
-	}
-	src := ""
-	for _, rel := range append([]string{contentPath(sum)}, paths...) {
-		p, e := diskPath(s.dir, rel)
-		if e == nil && verifyFile(p, sum, size) == nil {
-			src = p
-			break
-		}
-	}
-	if src == "" {
-		log.Print("blob migration: no verified bytes; legacy paths retained")
-		return nil
-	}
-	rel, err := installContent(ctx, tx, s.dir, src, sum, size, formatTime(utcOrNow(time.Time{})))
-	if err != nil {
-		return err
-	}
-	if _, err = tx.ExecContext(ctx, `UPDATE blobs SET sha256=?,content_sha256=?,storage_path=? WHERE lower(sha256)=? AND size_bytes=? AND storage_path<>'' AND status='complete'`, sum, sum, rel, sum, size); err != nil {
-		return err
-	}
-	for _, p := range paths {
-		if p != rel {
-			if _, err = tx.ExecContext(ctx, `INSERT OR IGNORE INTO blob_file_gc VALUES(?)`, p); err != nil {
-				return err
-			}
-		}
 	}
 	return tx.Commit()
 }
