@@ -1,20 +1,3 @@
-# Черновик метаданных для gitlab.com/fdroid/fdroiddata (план 67, шаг 4).
-# В fdroiddata файл кладётся как metadata/mixeme.wynd.yml после подачи MR.
-#
-# Перед подачей заполнить:
-#   - commit: тег android-vX.Y.Z, в котором уже лежат fastlane-метаданные
-#     (android/fastlane/metadata/...) — иначе они не попадут в сборку;
-#   - versionName/versionCode/CurrentVersion/CurrentVersionCode — по тому же тегу;
-#   - WebSite — публичный адрес, если он появится;
-#   - AuthorName — так, как владелец хочет быть указан.
-#
-# Редакция fdroid собирается с вшитым клиентом (gradleprops ниже): без этого
-# приложение — обёртка сайта, и ревьюеры его завернут (план 67, шаг 4).
-# Сборка проверяется локально: `fdroid lint mixeme.wynd`, затем `fdroid build`.
-#
-# Description держать в согласии с
-# android/fastlane/metadata/android/en-US/full_description.txt.
-
 Categories:
   - Internet
 License: AGPL-3.0-or-later
@@ -22,7 +5,8 @@ AuthorName: Mix
 WebSite: https://github.com/mixeme/wynd
 SourceCode: https://github.com/mixeme/wynd
 IssueTracker: https://github.com/mixeme/wynd/issues
-Summary: "Client for your own Wynd server: circles, posts, photos and files"
+
+Summary: 'Client for your own Wynd server: circles, posts, photos and files'
 Description: |
   Wynd is a private journal for your close circle: family, friends, colleagues.
 
@@ -58,19 +42,16 @@ Builds:
     versionCode: 1003
     commit: android-v0.1.3
     subdir: android
-    prebuild:
-      - cd ../web && npm ci
     gradle:
       - fdroid
-    gradleprops:
-      - wyndEmbeddedUi=true
-    # Зависимости веб-клиента ставятся в prebuild и в исходниках не лежат;
-    # путь — от корня репозитория. Проверить на первой сборке: если сканер
-    # и без этого молчит, строку убрать.
+    output: app/build/outputs/apk/fdroid/release/app-fdroid-release-unsigned.apk
+    prebuild: cd ../web && npm ci
     scanignore:
       - web/node_modules
+    gradleprops:
+      - wyndEmbeddedUi=true
 
-AutoUpdateMode: Version
-UpdateCheckMode: Tags ^android-v[0-9]+\.[0-9]+\.[0-9]+$
+AutoUpdateMode: None
+UpdateCheckMode: None
 CurrentVersion: 0.1.3
 CurrentVersionCode: 1003
