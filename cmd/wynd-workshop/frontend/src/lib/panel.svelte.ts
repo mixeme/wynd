@@ -101,6 +101,13 @@ export class Panel {
 	// Сертификаты, продление которых сломалось (Stale): находка в списке, а
 	// совет с командой — отдельным блоком под списком.
 	staleCerts = $derived(this.findings.filter((f) => f.id === 'certstale' && f.advice && f.domain));
+	// knownRoot — каталог уже известной установки (своя или с оставленными
+	// данными). Пока он известен, каталог меняется переездом, а не правкой.
+	knownRoot = $derived(
+		this.inspection?.report.root || this.profile.last_check?.root || this.profile.root || ''
+	);
+	// actualRoot — что называть человеку: известный каталог или прежний /opt/wynd.
+	actualRoot = $derived(this.knownRoot || '/opt/wynd');
 
 	// deletingCert — домен, у которого идёт «Убрать сертификат»; certError —
 	// причина отказа, строкой под кнопкой.
@@ -264,7 +271,9 @@ export class Panel {
 			this.operationError = '';
 			await fn();
 		} catch (e) {
-			this.operationError = String(e);
+			// Wails присылает ошибку Go строкой с префиксом «RuntimeError:»;
+			// человеку показываем сам текст, без имени класса.
+			this.operationError = String(e).replace(/^RuntimeError:\s*/, '');
 			if (this.connection === 'connecting' || (this.screen === 'inspect' && !this.inspection)) {
 				this.connection = 'error';
 				this.screen = 'offline';
@@ -298,7 +307,7 @@ export class Panel {
 				try {
 					await this.autoConnect(true);
 				} catch (e) {
-					this.operationError = String(e);
+					this.operationError = String(e).replace(/^RuntimeError:\s*/, '');
 				}
 			}
 			this.keyNote = res.key_note ?? '';
@@ -354,30 +363,32 @@ export class Panel {
 		}
 	}
 
-	inspect = async (landing = false) => {
+	inspect = async (landing = false, navigate = true) => {
 		this.busy = true;
 		this.inspection = undefined;
 		this.domainCheck = undefined;
 		try {
 			const insp = await this.api.Inspect();
 			this.inspection = insp;
-			// Wynd здесь уже стоит — сразу страница сервера (владелец, 2026-10-24: 7а).
-			if (insp.ok && insp.report.findings?.some((f) => f.id === 'wynd' || f.id === 'wyndelse')) {
-				const p = await this.api.ServerPage();
-				if (p.ok && p.state.installed && p.state.container) {
-					this.page = p;
-					this.screen = 'server';
+			if (navigate) {
+				// Wynd здесь уже стоит — сразу страница сервера (владелец, 2026-10-24: 7а).
+				if (insp.ok && insp.report.findings?.some((f) => f.id === 'wynd' || f.id === 'wyndelse')) {
+					const p = await this.api.ServerPage();
+					if (p.ok && p.state.installed && p.state.container) {
+						this.page = p;
+						this.screen = 'server';
+					}
 				}
-			}
-			if (
-				insp.ok &&
-				landing &&
-				this.screen !== 'server' &&
-				!insp.report.findings?.some(
-					(f) => f.level === 'block' || f.id === 'wynd' || f.id === 'wyndelse'
+				if (
+					insp.ok &&
+					landing &&
+					this.screen !== 'server' &&
+					!insp.report.findings?.some(
+						(f) => f.level === 'block' || f.id === 'wynd' || f.id === 'wyndelse'
+					)
 				)
-			)
-				this.screen = 'new';
+					this.screen = 'new';
+			}
 			if (!insp.ok) this.connection = 'error';
 			await this.input.onprofileschange();
 		} finally {
@@ -698,8 +709,19 @@ export class Panel {
 		this.planning = true;
 		this.rollbackNote = '';
 		try {
-			if (!this.st?.installed)
-				await this.api.SetInstallRoot(this.input.profile().id, this.installRoot.trim() || '/opt/wynd');
+			if (!this.st?.installed) {
+				const root = this.installRoot.trim();
+				// Каталог уже известен — его меняет переезд, а не правка поля.
+				// Говорим это здесь, не отправляя заведомо отвергаемый запрос.
+				if (this.knownRoot && root && root !== this.knownRoot) {
+					this.operationError =
+						'Папка уже известна: ' +
+						this.knownRoot +
+						'. Каталог меняется переездом, а не правкой профиля.';
+					return;
+				}
+				await this.api.SetInstallRoot(this.input.profile().id, root || this.knownRoot || '/opt/wynd');
+			}
 			this.plan = await this.api.MakePlan(this.domain);
 			this.progress = undefined;
 			this.screen = 'plan';
@@ -731,7 +753,10 @@ export class Panel {
 		this.stopPoll();
 		if (next.done) {
 			this.screen = 'done';
-			void this.attempt(() => this.refreshPage());
+			// Осмотр заново: после установки у сервера уже есть каталог и
+			// сертификат; окно удаления берёт их из свежего отчёта (C130).
+			// Экран успеха не подменяем — на нём ссылка первого запуска.
+			void this.attempt(() => this.inspect(true, false));
 		}
 	}
 	install = async () => {

@@ -11,6 +11,25 @@ export function certNote(cert: 'revoked' | 'failed' | undefined): string {
 	return '';
 }
 
+/** Окно удаления без галочки: что останется и чем это грозит. Каталог —
+ * фактический (C130), дата — из осмотра; без неё говорим «и истечёт». */
+export function removeWarning(input: {
+	root: string;
+	proxyName: string;
+	foreignSite: string[];
+	site: string;
+	expiry: string;
+}): string {
+	if (input.foreignSite.length) {
+		return `Без галочки папка ${input.root} останется.`;
+	}
+	if (input.proxyName) {
+		const when = input.expiry ? `— он истечёт ${input.expiry}.` : 'и истечёт.';
+		return `Без галочки папка ${input.root} и сертификат останутся. Но сайт уйдёт из ${input.proxyName}: домен перестанет открываться, а сертификат перестанет продлеваться ${when}`;
+	}
+	return `Без галочки папка ${input.root} останется как есть.`;
+}
+
 /** Кадр 5д: что именно помешало, знаем по проверке до удаления и после него. */
 export function staleNote(proxyName: string, stale: RollbackResult['stale']): string {
 	if (!stale || !proxyName) return '';

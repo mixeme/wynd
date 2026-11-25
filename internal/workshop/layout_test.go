@@ -226,6 +226,23 @@ func TestInspectAtCustomRoot(t *testing.T) {
 	}
 }
 
+// Осмотр называет каталог только у узнанной установки: окно удаления берёт
+// его оттуда, а на чистом сервере каталог ещё выбирают (C130).
+func TestInspectionNamesKnownRoot(t *testing.T) {
+	l, err := NewLayout("/srv/wynd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep := ParseInspectionAt("## wynd\n/srv/wynd/compose.yaml\n## wyndup\nabc\n", "root", time.Now().UTC(), l)
+	if rep.Root != "/srv/wynd" {
+		t.Fatalf("каталог установки в отчёте: %q, хочу /srv/wynd", rep.Root)
+	}
+	clean := ParseInspectionAt("", "root", time.Now().UTC(), l)
+	if clean.Root != "" {
+		t.Fatalf("на чистом сервере назван каталог: %q", clean.Root)
+	}
+}
+
 // Каталог установки проверяется до записи: ссылка и чужая непустая папка —
 // отказ, своя установка (compose.yaml на месте) проходит. Проверка — на том же
 // пути, что и запись.

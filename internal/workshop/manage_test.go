@@ -100,3 +100,22 @@ func TestUpdateStepOrder(t *testing.T) {
 		t.Fatalf("сайт стоял: %s", got)
 	}
 }
+
+// Старая схема базы: отказ объясняется следующим шагом, а не «Повторить»
+// (C132). Выпуск берём из сообщения store, чтобы совет не разошёлся с кодом.
+func TestSchemaUpgradeAdvice(t *testing.T) {
+	out := "wynd-1 | restarts\n" +
+		"store: migrate: схема БД версии 11: запустите на этой базе сначала Wynd 0.53.4 — он доведёт её до схемы 17, затем эту версию"
+	got := schemaUpgradeAdvice(out)
+	if !strings.Contains(got, "0.53.4") || !strings.Contains(got, "Данные не тронуты") ||
+		strings.Contains(got, "Повторить") {
+		t.Fatalf("совет для старой схемы: %q", got)
+	}
+	if got := schemaUpgradeAdvice("listening on :7676"); got != "" {
+		t.Fatalf("обычный журнал принят за старую схему: %q", got)
+	}
+	other := schemaUpgradeAdvice("схема БД версии 7: запустите на этой базе сначала Wynd 0.60.1 — он доведёт её")
+	if !strings.Contains(other, "0.60.1") {
+		t.Fatalf("выпуск из сообщения не прочитан: %q", other)
+	}
+}

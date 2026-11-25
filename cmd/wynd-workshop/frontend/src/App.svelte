@@ -18,6 +18,7 @@
 	import StepList from '$ui/workshop/StepList.svelte';
 	import type { ServerProfile, ProfileRequest, ProfileViewState, Finding } from './api';
 	import { Panel } from './lib/panel.svelte';
+	import { removeWarning } from './lib/rollback';
 	import { day, dayTime, gb, mark } from './lib/display';
 
 	let {
@@ -113,15 +114,13 @@
 				: ' — и сертификат сайта'}
 		</Checkbox>
 		<div class="ins-dim">
-			{#if p.foreignSite.length}
-				Без галочки папка /opt/wynd останется.
-			{:else if p.proxyName}
-				Без галочки папка /opt/wynd и сертификат останутся. Но сайт уйдёт из {p.proxyName}:
-				домен перестанет открываться, а сертификат перестанет продлеваться
-				{#if p.certExpiryDate(site)}— он истечёт {p.certExpiryDate(site)}.{:else}и истечёт.{/if}
-			{:else}
-				Без галочки папка /opt/wynd останется как есть.
-			{/if}
+			{removeWarning({
+				root: p.actualRoot,
+				proxyName: p.proxyName,
+				foreignSite: p.foreignSite,
+				site,
+				expiry: p.certExpiryDate(site)
+			})}
 			Поставите Wynd снова — всё будет на месте.
 		</div>
 		{#if p.rollbackError}

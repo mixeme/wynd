@@ -174,6 +174,26 @@ func ServiceActionAt(ctx context.Context, sess *Session, l Layout, action string
 	return r.log, nil
 }
 
+// schemaReleaseRe — выпуск, которым база старой нумерации доводится до
+// точки свёртки (сообщение internal/store).
+var schemaReleaseRe = regexp.MustCompile(`сначала Wynd ([0-9]+\.[0-9]+\.[0-9]+)`)
+
+// schemaUpgradeAdvice узнаёт в журнале отказ из-за старой схемы базы и
+// объясняет следующий шаг. Иначе повтор установки выглядит рабочим советом,
+// хотя он заведомо не поможет (C132).
+func schemaUpgradeAdvice(output string) string {
+	if !strings.Contains(output, "схема БД версии") {
+		return ""
+	}
+	release := "0.53.4"
+	if m := schemaReleaseRe.FindStringSubmatch(output); m != nil {
+		release = m[1]
+	}
+	return "Данные на сервере от старой версии Wynd: эта версия их не обновляет. " +
+		"Сначала запустите на этой базе Wynd " + release +
+		" — он доведёт схему, затем повторите установку. Данные не тронуты."
+}
+
 // waitHealthy ждёт, пока Wynd ответит.
 func waitHealthy(ctx context.Context, r *Run) error {
 	compose := r.layout.ComposeCommand()
@@ -188,7 +208,10 @@ func waitHealthy(ctx context.Context, r *Run) error {
 			return nil
 		}
 		if time.Now().After(deadline) {
-			_, _ = r.sh(ctx, compose+"ps; "+compose+"logs --no-color --tail 20 wynd 2>&1 | grep -v 'bootstrap URL'", shortTimeout)
+			res, _ := r.sh(ctx, compose+"ps; "+compose+"logs --no-color --tail 20 wynd 2>&1 | grep -v 'bootstrap URL'", shortTimeout)
+			if advice := schemaUpgradeAdvice(res.Output); advice != "" {
+				return &StepError{Message: "Данные Wynd из старой версии", Advice: advice}
+			}
 			return &StepError{
 				Message: "Wynd запустился, но не отвечает",
 				Advice:  "В «подробностях» видно, что пишет сам Wynd.",

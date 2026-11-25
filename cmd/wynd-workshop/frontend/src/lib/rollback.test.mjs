@@ -14,9 +14,30 @@ const bundled = await build({
 	format: 'esm',
 	write: false
 });
-const { certNote, staleNote, removalNote } = await import(
+const { certNote, staleNote, removalNote, removeWarning } = await import(
 	'data:text/javascript;base64,' + Buffer.from(bundled.outputFiles[0].text).toString('base64')
 );
+
+test('removeWarning names the actual install root and the exact expiry date', () => {
+	const text = removeWarning({
+		root: '/srv/wynd-certprobe',
+		proxyName: 'nginx',
+		foreignSite: [],
+		site: 'wynd3.mixfed.ru',
+		expiry: '23.02.2027'
+	});
+	assert.match(text, /папка \/srv\/wynd-certprobe и сертификат останутся/);
+	assert.match(text, /истечёт 23\.02\.2027/);
+	assert.doesNotMatch(text, /\/opt\/wynd/);
+	assert.match(
+		removeWarning({ root: '/srv/wynd', proxyName: 'nginx', foreignSite: [], site: 'x', expiry: '' }),
+		/истечёт\.$/
+	);
+	assert.equal(
+		removeWarning({ root: '/srv/wynd', proxyName: 'nginx', foreignSite: ['a.conf'], site: 'x', expiry: '' }),
+		'Без галочки папка /srv/wynd останется.'
+	);
+});
 
 test('certNote speaks about revocation or its failure', () => {
 	assert.equal(certNote(undefined), '');

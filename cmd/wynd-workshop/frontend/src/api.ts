@@ -47,6 +47,8 @@ export interface Report {
 	proxy?: string;
 	/** Файлы сайта у чужого веб-сервера, ведущие на Wynd, без нашей первой строки (кадры 5е, 5е2). */
 	foreign_site?: string[] | null;
+	/** Каталог установки, если Wynd на сервере уже стоит (свой или с оставленными данными). */
+	root?: string;
 	/** Срок сертификатов Let's Encrypt: домен → конец (unix-секунды). */
 	certs?: Record<string, number> | null;
 	raw: string;

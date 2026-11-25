@@ -61,6 +61,9 @@ type Report struct {
 	// Wynd, но без нашей первой строки: их ставила не Мастерская, и «Убрать
 	// Wynd» их не трогает — только называет (кадры 5е, 5е2).
 	ForeignSite []string `json:"foreign_site,omitempty"`
+	// Root — каталог уже известной установки: своя или с оставленными данными.
+	// Окно удаления называет именно его, а не /opt/wynd (C130).
+	Root string `json:"root,omitempty"`
 	// Certs — срок сертификатов Let's Encrypt (домен → конец, unix-секунды),
 	// сколько их прочиталось; окно удаления за nginx/Apache называет срок
 	// сертификата сайта точно.
@@ -265,6 +268,14 @@ func ParseInspectionAt(out, user string, now time.Time, l Layout) Report {
 			Text:  "Wynd на этом сервере уже стоит",
 			Plan:  "проверим и доделаем, чего не хватает",
 		})
+	}
+	// Своя установка узнана — называем её каталог. Без неё Root пуст:
+	// на чистом сервере каталог ещё выбирают.
+	for _, f := range rep.Findings {
+		if f.ID == "wynd" {
+			rep.Root = l.Root()
+			break
+		}
 	}
 	return rep
 }
