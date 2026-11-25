@@ -214,30 +214,30 @@ func (c *Chronicle) ReadMoveLiteral(ctx context.Context, snapshotID string, part
 
 // ReleaseMoveSnapshot detaches one ended link; another live/reissued link keeps
 // the same snapshot and pins. Returned blobs can be garbage collected afterwards.
-func (c *Chronicle) ReleaseMoveSnapshot(ctx context.Context, moveID string) ([]string, string, error) {
+func (c *Chronicle) ReleaseMoveSnapshot(ctx context.Context, moveID string) ([]string, error) {
 	tx, err := c.beginWrite(ctx)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	defer tx.Rollback()
-	var legacy sql.NullString
-	if err := tx.QueryRowContext(ctx, `SELECT legacy_archive_id FROM circle_moves WHERE id=?`, moveID).Scan(&legacy); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, "", nil
-		}
-		return nil, "", err
+	var exists int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM circle_moves WHERE id=?`, moveID).Scan(&exists); err != nil {
+		return nil, err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE circle_moves SET snapshot_id=NULL,legacy_archive_id=NULL,archive_status='none',archive_bytes=0 WHERE id=?`, moveID); err != nil {
-		return nil, "", err
+	if exists == 0 {
+		return nil, nil
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE circle_moves SET snapshot_id=NULL,archive_status='none',archive_bytes=0 WHERE id=?`, moveID); err != nil {
+		return nil, err
 	}
 	ids, err := pruneMoveSnapshots(ctx, tx)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
-		return nil, "", err
+		return nil, err
 	}
-	return ids, legacy.String, nil
+	return ids, nil
 }
 
 func pruneMoveSnapshots(ctx context.Context, tx *sql.Tx) ([]string, error) {
@@ -279,11 +279,4 @@ func (c *Chronicle) PruneMoveSnapshots(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 	return ids, nil
-}
-
-// LegacyMoveArchiveInUse protects pre-upgrade files while a new link uses them.
-func (c *Chronicle) LegacyMoveArchiveInUse(ctx context.Context, id string) (bool, error) {
-	var n int
-	err := c.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM circle_moves WHERE (legacy_archive_id=? OR (id=? AND snapshot_id IS NULL)) AND archive_status='ready' AND status IN ('waiting','pulling')`, id, id).Scan(&n)
-	return n > 0, err
 }

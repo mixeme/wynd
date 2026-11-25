@@ -35,20 +35,19 @@ var (
 
 // CircleMove — перенос круга, каким его видит прежний сервер.
 type CircleMove struct {
-	SnapshotID      string
-	LegacyArchiveID string
-	ID              string
-	CircleID        string
-	Token           string
-	StartedBy       string
-	StartedAt       time.Time
-	ExpiresAt       time.Time
-	Status          string
-	DestURL         string
-	DestName        string
-	ArchiveStatus   string
-	ArchiveBytes    int64
-	PulledBytes     int64
+	SnapshotID    string
+	ID            string
+	CircleID      string
+	Token         string
+	StartedBy     string
+	StartedAt     time.Time
+	ExpiresAt     time.Time
+	Status        string
+	DestURL       string
+	DestName      string
+	ArchiveStatus string
+	ArchiveBytes  int64
+	PulledBytes   int64
 	// Что в архиве: записей, имён, байт файлов — для сверки (6.35).
 	ArchivePosts      int
 	ArchiveNames      int
@@ -74,7 +73,7 @@ const circleMoveCols = `id, circle_id, token, started_by_account_id, started_at,
 	COALESCE(dest_url, ''), COALESCE(dest_name, ''), archive_status, archive_bytes, pulled_bytes,
 	archive_posts, archive_names, archive_media_bytes,
 	accepted_at, COALESCE(accepted_posts, 0), COALESCE(accepted_names, 0), COALESCE(accepted_bytes, 0), ended_at,
-	COALESCE(snapshot_id,''), COALESCE(legacy_archive_id,'')`
+	COALESCE(snapshot_id,'')`
 
 func scanCircleMove(row interface{ Scan(...any) error }) (*CircleMove, error) {
 	var m CircleMove
@@ -83,7 +82,7 @@ func scanCircleMove(row interface{ Scan(...any) error }) (*CircleMove, error) {
 	if err := row.Scan(&m.ID, &m.CircleID, &m.Token, &m.StartedBy, &started, &expires, &m.Status,
 		&m.DestURL, &m.DestName, &m.ArchiveStatus, &m.ArchiveBytes, &m.PulledBytes,
 		&m.ArchivePosts, &m.ArchiveNames, &m.ArchiveMediaBytes,
-		&accepted, &m.AcceptedPosts, &m.AcceptedNames, &m.AcceptedBytes, &ended, &m.SnapshotID, &m.LegacyArchiveID); err != nil {
+		&accepted, &m.AcceptedPosts, &m.AcceptedNames, &m.AcceptedBytes, &ended, &m.SnapshotID); err != nil {
 		return nil, err
 	}
 	m.StartedAt = parseTimeOrZero(started)
@@ -216,14 +215,15 @@ func (c *Chronicle) ReissueMove(ctx context.Context, circleID, accountID, token,
 		return nil, nil, err
 	}
 	archiveStatus := "none"
-	if old.ArchiveStatus == "ready" {
+	snapshotID := old.SnapshotID
+	if old.ArchiveStatus == "ready" && old.SnapshotID != "" {
 		archiveStatus = "ready"
-		if old.SnapshotID == "" && old.LegacyArchiveID == "" {
-			old.LegacyArchiveID = old.ID
-		}
+	} else {
+		snapshotID = ""
+		old.ArchiveBytes, old.ArchivePosts, old.ArchiveNames, old.ArchiveMediaBytes = 0, 0, 0, 0
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO circle_moves (id,circle_id,started_by_account_id,started_at,token,token_hash,expires_at,status,snapshot_id,legacy_archive_id,archive_status,archive_bytes,archive_posts,archive_names,archive_media_bytes)
-		VALUES (?,?,?,?,?,?,?,'waiting',?,?,?,?,?,?,?)`, id, circleID, accountID, formatTime(now), token, tokenHash, formatTime(now.Add(MoveLinkTTL)), nullString(old.SnapshotID), nullString(old.LegacyArchiveID), archiveStatus, old.ArchiveBytes, old.ArchivePosts, old.ArchiveNames, old.ArchiveMediaBytes); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO circle_moves (id,circle_id,started_by_account_id,started_at,token,token_hash,expires_at,status,snapshot_id,archive_status,archive_bytes,archive_posts,archive_names,archive_media_bytes)
+		VALUES (?,?,?,?,?,?,?,'waiting',?,?,?,?,?,?)`, id, circleID, accountID, formatTime(now), token, tokenHash, formatTime(now.Add(MoveLinkTTL)), nullString(snapshotID), archiveStatus, old.ArchiveBytes, old.ArchivePosts, old.ArchiveNames, old.ArchiveMediaBytes); err != nil {
 		return nil, nil, err
 	}
 	if err := tx.Commit(); err != nil {

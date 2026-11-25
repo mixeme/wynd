@@ -350,62 +350,22 @@ func testPartialHTTPChunk(t *testing.T, changed bool) {
 	noOutgoingCopy(t, src)
 }
 
-// A21: pre-upgrade archive files are reused by reference through restarts and
-// reissues, then removed when the final link ends. They are never duplicated.
-func TestMoveStreamLegacyReadyFileSurvivesUpgrade(t *testing.T) {
+// A21, снято в плане 71 (С-3): готовый перенос без снимка больше не читает
+// старый файл out-<id>.wynd. Новый сервер получает archive_changed и берёт
+// перенос заново; файл ему не отдаётся.
+func TestMoveStreamReadyWithoutSnapshotIsRefused(t *testing.T) {
 	src, owner, cid := fullArchiveCircle(t)
-	if r := doJSON(t, src, http.MethodPost, "/api/v1/circles/"+cid+"/full_archive", owner, map[string]any{}); r.Code != http.StatusCreated {
-		t.Fatal(r.Body.String())
-	}
-	waitFullStatus(t, src, owner, cid, "ready")
-	file := fetch(src, fullLink(t, src, owner, cid), "")
-	if file.Code != http.StatusOK {
-		t.Fatal("legacy fixture download failed")
-	}
 	link := startMove(t, src, owner, cid)
 	m, err := src.Chronicle.LiveMove(t.Context(), cid)
 	if err != nil || m == nil {
 		t.Fatalf("move: %v", err)
 	}
-	if err := os.MkdirAll(filepath.Join(src.DataDir, "moves"), 0o700); err != nil {
+	if _, err := src.Chronicle.DB().Exec(`UPDATE circle_moves SET status='pulling',archive_status='ready',archive_bytes=12345 WHERE id=?`, m.ID); err != nil {
 		t.Fatal(err)
 	}
-	path := filepath.Join(src.DataDir, "moves", "out-"+m.ID+".wynd")
-	if err := os.WriteFile(path, file.Body.Bytes(), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := src.Chronicle.DB().Exec(`UPDATE circle_moves SET status='pulling',archive_status='ready',legacy_archive_id=id,archive_bytes=?,archive_posts=2,archive_names=1 WHERE id=?`, file.Body.Len(), m.ID); err != nil {
-		t.Fatal(err)
-	}
-	before := moveCall(t, src, http.MethodGet, "/api/v1/move/archive", link, nil, "bytes=0-31")
-	if before.Code != http.StatusPartialContent {
-		t.Fatal(before.Body.String())
-	}
-	src = restartAPI(t, src)
-	if _, err := src.Chronicle.DB().Exec(`UPDATE circle_moves SET expires_at=? WHERE id=?`, time.Now().Add(-time.Minute).UTC().Format(time.RFC3339Nano), m.ID); err != nil {
-		t.Fatal(err)
-	}
-	r := doJSON(t, src, http.MethodPost, "/api/v1/circles/"+cid+"/move/reissue", owner, nil)
-	if r.Code != http.StatusCreated {
-		t.Fatal(r.Body.String())
-	}
-	next := jsonStr(t, r, "link")
-	if r := moveCall(t, src, http.MethodPost, "/api/v1/move/claim", next, map[string]any{"dest_url": "https://receiver.example"}, ""); r.Code != http.StatusOK {
-		t.Fatal(r.Body.String())
-	}
-	after := moveCall(t, src, http.MethodGet, "/api/v1/move/archive", next, nil, "")
-	if after.Code != http.StatusOK || !bytes.Equal(after.Body.Bytes(), file.Body.Bytes()) || after.Header().Get("ETag") != before.Header().Get("ETag") {
-		t.Fatal("legacy representation changed")
-	}
-	files, err := os.ReadDir(filepath.Join(src.DataDir, "moves"))
-	if err != nil || len(files) != 1 {
-		t.Fatalf("legacy file duplicated: %v %v", files, err)
-	}
-	if r := doJSON(t, src, http.MethodPost, "/api/v1/circles/"+cid+"/move/cancel", owner, nil); r.Code != http.StatusOK {
-		t.Fatal(r.Body.String())
-	}
-	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		t.Fatalf("legacy file not released: %v", err)
+	r := moveCall(t, src, http.MethodGet, "/api/v1/move/archive", link, nil, "")
+	if r.Code != http.StatusConflict {
+		t.Fatalf("готовый перенос без снимка: %d %s", r.Code, r.Body.String())
 	}
 }
 

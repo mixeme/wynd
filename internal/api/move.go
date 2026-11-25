@@ -337,27 +337,14 @@ func (s *Server) dropMoveArchive(ctx context.Context, id string) {
 	if cancel, ok := s.fullBuilds.Load("move:" + id); ok {
 		cancel.(context.CancelFunc)()
 	}
-	ids, legacy, err := s.Chronicle.ReleaseMoveSnapshot(ctx, id)
+	ids, err := s.Chronicle.ReleaseMoveSnapshot(ctx, id)
 	if err != nil {
 		log.Printf("move %s: release snapshot: %v", id, err)
 		return
 	}
-	for _, fileID := range []string{id, legacy} {
-		if fileID == "" {
-			continue
-		}
-		inUse, err := s.Chronicle.LegacyMoveArchiveInUse(ctx, fileID)
-		if err != nil {
-			log.Printf("move %s: check legacy reference: %v", id, err)
-			continue
-		}
-		if inUse {
-			continue
-		}
-		for _, p := range []string{s.moveArchivePath(fileID), s.moveArchivePath(fileID) + ".part"} {
-			if err := os.Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
-				log.Printf("move %s: remove archive: %v", id, err)
-			}
+	for _, p := range []string{s.moveArchivePath(id), s.moveArchivePath(id) + ".part"} {
+		if err := os.Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
+			log.Printf("move %s: remove archive: %v", id, err)
 		}
 	}
 	if err := s.Blobs.ReleaseBlobs(ctx, ids); err != nil {
@@ -586,47 +573,32 @@ func (s *Server) handleMoveArchive(w http.ResponseWriter, r *http.Request) {
 	}
 	var content io.ReadSeekCloser
 	var modified time.Time
-	if m.SnapshotID != "" {
-		snapshot, err := s.Chronicle.MoveSnapshot(r.Context(), m.SnapshotID)
-		var plan archive.FullLayout
-		if err == nil {
-			err = json.Unmarshal(snapshot.Layout, &plan)
-		}
-		if err == nil && plan.Size != snapshot.Size {
-			err = fmt.Errorf("archive: index length differs from snapshot")
-		}
-		if err == nil {
-			content, err = archive.OpenIndexedFullLayout(r.Context(), s.Blobs, &plan, func(part int, offset int64, p []byte) (int, error) {
-				return s.Chronicle.ReadMoveLiteral(r.Context(), snapshot.ID, part, offset, p)
-			})
-		}
-		if err != nil {
-			log.Printf("move %s: snapshot: %v", m.ID, err)
-			writeJSON(w, http.StatusConflict, map[string]string{"error": "archive_changed"})
-			return
-		}
-		modified = snapshot.At
-		w.Header().Set("ETag", `"`+snapshot.ID+`"`)
-	} else {
-		// Pre-upgrade ready transfers keep their exact existing file.
-		fileID := m.LegacyArchiveID
-		if fileID == "" {
-			fileID = m.ID
-		}
-		f, err := os.Open(s.moveArchivePath(fileID))
-		if err != nil {
-			writeJSON(w, http.StatusConflict, map[string]string{"error": "archive_changed"})
-			return
-		}
-		fi, err := f.Stat()
-		if err != nil {
-			f.Close()
-			writeError(w, err)
-			return
-		}
-		content, modified = f, fi.ModTime()
-		w.Header().Set("ETag", `"legacy-`+fileID+`"`)
+	if m.SnapshotID == "" {
+		// Прежние файлы out-<id>.wynd больше не читаются (план 71, С-3):
+		// пусть новый сервер возьмёт перенос снова и соберёт текущий снимок.
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "archive_changed"})
+		return
 	}
+	snapshot, err := s.Chronicle.MoveSnapshot(r.Context(), m.SnapshotID)
+	var plan archive.FullLayout
+	if err == nil {
+		err = json.Unmarshal(snapshot.Layout, &plan)
+	}
+	if err == nil && plan.Size != snapshot.Size {
+		err = fmt.Errorf("archive: index length differs from snapshot")
+	}
+	if err == nil {
+		content, err = archive.OpenIndexedFullLayout(r.Context(), s.Blobs, &plan, func(part int, offset int64, p []byte) (int, error) {
+			return s.Chronicle.ReadMoveLiteral(r.Context(), snapshot.ID, part, offset, p)
+		})
+	}
+	if err != nil {
+		log.Printf("move %s: snapshot: %v", m.ID, err)
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "archive_changed"})
+		return
+	}
+	modified = snapshot.At
+	w.Header().Set("ETag", `"`+snapshot.ID+`"`)
 	defer content.Close()
 	w.Header().Set("Content-Type", "application/zip")
 	rec := &rangeRecorder{ResponseWriter: w}
@@ -708,25 +680,9 @@ func (s *Server) ExpireMoveArchives(ctx context.Context, now time.Time) int {
 // RecoverMoveArchives — при старте: недособранные архивы переносов — сбой
 // (новый сервер возьмёт перенос снова), лишние файлы стираются.
 func (s *Server) RecoverMoveArchives(ctx context.Context) {
-	keep, err := s.Chronicle.RecoverMoveArchives(ctx, time.Now())
-	if err != nil {
+	if _, err := s.Chronicle.RecoverMoveArchives(ctx, time.Now()); err != nil {
 		log.Printf("move recover: %v", err)
 		return
-	}
-	names := map[string]bool{}
-	for _, id := range keep {
-		m, err := s.Chronicle.GetMove(ctx, id)
-		if err != nil {
-			log.Printf("move recover %s: %v", id, err)
-			return
-		}
-		if m.SnapshotID == "" {
-			fileID := m.LegacyArchiveID
-			if fileID == "" {
-				fileID = id
-			}
-			names["out-"+fileID+".wynd"] = true
-		}
 	}
 	if ids, err := s.Chronicle.PruneMoveSnapshots(ctx); err != nil {
 		log.Printf("move recover pins: %v", err)
@@ -738,7 +694,7 @@ func (s *Server) RecoverMoveArchives(ctx context.Context) {
 		return
 	}
 	for _, e := range entries {
-		if strings.HasPrefix(e.Name(), "out-") && !names[e.Name()] {
+		if strings.HasPrefix(e.Name(), "out-") {
 			_ = os.Remove(filepath.Join(MoveDir(s.DataDir), e.Name()))
 		}
 	}
