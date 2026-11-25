@@ -6,4 +6,4 @@ package workshop
 // Поднимать, когда меняется сама Мастерская, вместе с версиями в
 // cmd/wynd-workshop/build/windows/info.json (их сверяет
 // TestWorkshopVersionMatchesBuildInfo).
-const WorkshopVersion = "0.4.9"
+const WorkshopVersion = "0.4.10"
