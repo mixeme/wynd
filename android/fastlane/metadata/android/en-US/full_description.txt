@@ -1,0 +1,21 @@
+Wynd is a private journal for your close circle: family, friends, colleagues.
+
+This app is the Android client. It does not include a server and has no accounts of its own: it connects to a Wynd server run by you or by someone you trust. The server is free software too (AGPL-3.0), from the same source repository.
+
+A circle is a closed group with its own journal, its own name and its own visibility. A person can be in several circles and appear differently in each. You join by an invitation link or QR code from someone already in the circle; there is no public feed, no followers and no recommendations.
+
+What the app does:
+
+- Journal: posts with text, photos, video, voice notes and files, kept by days rather than an endless feed. A day can have a title and a cover.
+- Comments and reactions: reply to a post and leave a response.
+- Grid and map: all photos and video of a circle, and the posts that have a place.
+- Search: by words, dates, photos, place and author.
+- Working offline: recent posts are kept on the phone, and posts, comments, reactions and files written without a network are sent when it returns, even after the app is closed. Video recorded offline is compressed in the background.
+- Notifications: optional, delivered through UnifiedPush (for example with the ntfy app) instead of Google services.
+- Archives: a circle's full archive (.wynd) can be opened, and the app remembers the chosen file.
+
+Permissions are used only for what you do: camera and microphone for photos and video, media access for attaching files, notifications if you turn them on. There is no tracking, no analytics and no advertising, and no Google Play services.
+
+You need a server: run the Wynd server on your own machine, a VPS or at home. Docker images and instructions are in the server repository.
+
+About signatures: builds published on F-Droid are signed with F-Droid's key. An APK installed from the project's own releases cannot be updated by this one, and the other way round; switching requires removing the old app and installing again. Your data stays on your server, but unsent local drafts and saved posts should be finished or exported first.
