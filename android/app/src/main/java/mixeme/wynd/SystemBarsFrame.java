@@ -86,7 +86,11 @@ final class SystemBarsFrame extends FrameLayout {
         }
         boolean lightStatus = BarColors.darkIcons(status), lightNavigation = BarColors.darkIcons(navigation);
         if (Build.VERSION.SDK_INT >= 30) {
-            WindowInsetsController controller = window.getInsetsController();
+            // Рамка строится до setContentView (createPage), и на Android 11
+            // PhoneWindow.getInsetsController() падает на ещё не созданном decor.
+            // View-вариант до прикрепления честно отвечает null; оформление
+            // повторится в onAttachedToWindow, когда контроллер уже есть.
+            WindowInsetsController controller = window.getDecorView().getWindowInsetsController();
             if (controller != null) controller.setSystemBarsAppearance(
                     (lightStatus ? WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS : 0)
                             | (lightNavigation ? WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS : 0),
