@@ -512,7 +512,7 @@
 		{:else if screen === 'release'}
 			<!-- Проверки, пароль, подпись и итог остаются на одном экране. -->
 			<h2>{productName} {version}</h2>
-			<StepList steps={checkSteps} onlink={(url) => void backend().OpenLink(url)}>
+			<StepList steps={checkSteps} continues={signSteps.length > 0} onlink={(url) => void backend().OpenLink(url)}>
 				{#snippet extra()}
 					{#if check?.extra?.length}
 						{#each check.extra as a (a.name)}

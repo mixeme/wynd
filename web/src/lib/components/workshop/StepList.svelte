@@ -25,7 +25,8 @@
 		class: className = '',
 		style = '',
 		onlink,
-		extra
+		extra,
+		continues = false
 	}: {
 		steps: Step[];
 		meter?: boolean;
@@ -34,6 +35,8 @@
 		onlink?: (url: string) => void;
 		/** Дополнительные строки в том же списке (файлы выпуска у «Подписи»). */
 		extra?: Snippet;
+		/** Сразу ниже идёт второй список шагов того же дела: стык — обычная строка. */
+		continues?: boolean;
 	} = $props();
 
 	function mark(step: Step): string {
@@ -46,7 +49,7 @@
 {#if meter && steps.length}
 	<Meter value={steps.filter((step) => step.status === 'done').length} max={steps.length} />
 {/if}
-<MarkRows class={className} {style}>
+<MarkRows class={className} {style} {continues}>
 	{#each steps as step (step.id)}
 		<MarkRow
 			mark={mark(step)}

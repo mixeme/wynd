@@ -10,10 +10,11 @@ function render(
 		note?: string;
 		latest?: string;
 		latest_note?: string;
-	}>
+	}>,
+	props: { continues?: boolean } = {}
 ): string {
 	const target = document.createElement('div');
-	const instance = mount(StepList, { target, props: { steps } });
+	const instance = mount(StepList, { target, props: { steps, ...props } });
 	flushSync();
 	const html = target.innerHTML;
 	unmount(instance);
@@ -37,4 +38,17 @@ it('shows the build line and its age under the running step', () => {
 	expect(html).toContain('ins-step-latest');
 	expect(html).toContain('#8 [build 3/5] RUN go build ./cmd/wynd');
 	expect(html).toContain('Последнее сообщение — сейчас');
+});
+
+// Шов двух списков («Подпись»: проверка, потом подпись): под продолженным
+// списком остаётся черта, а шаг снимается — иначе между списками пропадает
+// разделитель и зазор выходит больше строки.
+it('keeps the seam of a continued list as an ordinary row', () => {
+	expect(render([{ id: 'check', title: 'Читаем описание выпуска', status: 'done' }])).not.toContain(
+		'ins-continues'
+	);
+	const html = render([{ id: 'check', title: 'Читаем описание выпуска', status: 'done' }], {
+		continues: true
+	});
+	expect(html).toContain('ins-continues');
 });
