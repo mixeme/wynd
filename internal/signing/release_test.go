@@ -51,9 +51,11 @@ type releaseFixture struct {
 	CertDigest   string
 	CertPEM      string
 	VersionProps string
-	// SignedAlready — в выпуске уже лежит подписанный файл; окно Android
-	// не перезаписывает его, exe-подпись меняет как прежде.
+	// SignedAlready — в выпуске уже лежит подписанный файл; Android сверяет
+	// его подпись и публикует, exe-подпись меняет как прежде.
 	SignedAlready bool
+	// BadSignedSum — контрольная сумма уже подписанного APK расходится.
+	BadSignedSum bool
 	// Extras — в выпуске лежат Linux .deb и AppImage с SHA256SUMS.
 	Extras bool
 	// BadExtraSum — сумма Linux-файла в SHA256SUMS не сходится.
@@ -236,16 +238,31 @@ func releaseTestGH(dir string, args []string) error {
 			return fmt.Errorf("download of unknown release %q", args[2])
 		}
 		dl := prod.downloadName()
-		if err := os.WriteFile(filepath.Join(dest, dl), releaseTestEXE, 0o600); err != nil {
+		// «Подпись» скачивает уже подписанный APK, чтобы сверить его и
+		// опубликовать черновик (прежний прогон оборвался после загрузки).
+		signedDownload := false
+		for i, arg := range args {
+			if arg == "-p" && i+1 < len(args) && args[i+1] == prod.Exe && prod.APK {
+				signedDownload = true
+			}
+		}
+		name := dl
+		if signedDownload {
+			name = prod.Exe
+		}
+		if err := os.WriteFile(filepath.Join(dest, name), releaseTestEXE, 0o600); err != nil {
 			return err
 		}
 		sum := sha256.Sum256(releaseTestEXE)
 		want := hex.EncodeToString(sum[:])
-		if f.BadSum {
+		if f.BadSum || signedDownload && f.BadSignedSum {
 			want = "wrong sum"
 		}
-		if err := os.WriteFile(filepath.Join(dest, dl+".sha256"), []byte(want), 0o600); err != nil {
+		if err := os.WriteFile(filepath.Join(dest, name+".sha256"), []byte(want), 0o600); err != nil {
 			return err
+		}
+		if signedDownload {
+			return nil
 		}
 		extraNames := fixtureExtraNames(f)
 		if len(extraNames) == 0 {

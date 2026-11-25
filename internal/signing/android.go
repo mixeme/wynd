@@ -340,26 +340,46 @@ func (g GitHub) androidCheck(ctx context.Context, c *Check, prod *product, p *pr
 }
 
 // signAndPublishAndroid — подпись apksigner, сверка сертификата с эталоном
-// из тега, загрузка; публикация, только когда выпуск готов к ней.
-func (g GitHub) signAndPublishAndroid(ctx context.Context, c *Check, keyPath, pass string, p *progress) (published bool, detail string, err error) {
+// из тега, загрузка; публикация, только когда выпуск готов к ней. Если
+// подписанный APK уже лежит в выпуске (прежний прогон оборвался между
+// загрузкой и публикацией), заново не подписываем: сверяем подпись, сумму и
+// пакет, затем публикуем — этапы окна показывают именно это.
+func (g GitHub) signAndPublishAndroid(ctx context.Context, c *Check, keyPath, pass string, report func(Progress)) (published bool, detail string, err error) {
 	prod := productOf(c.Tag)
+	// Состояние выпуска читаем до первого кадра этапов: при уже подписанном
+	// APK этапы другие, и набор не должен меняться по ходу прогона.
+	var draft, alreadySigned bool
+	if c.Problem == "" {
+		draft, alreadySigned, err = g.androidReleaseState(ctx, c.Tag)
+	}
+	steps := []Step{{ID: "release", Title: "Проверяем состояние выпуска"}}
+	if alreadySigned {
+		steps = append(steps, Step{ID: "signature", Title: "Проверяем подпись в выпуске"})
+	} else {
+		steps = append(steps,
+			Step{ID: "signature", Title: "Подписываем и проверяем подпись"},
+			Step{ID: "upload", Title: "Загружаем подписанный APK на GitHub"})
+	}
+	if draft && c.Publishes {
+		steps = append(steps, Step{ID: "publish", Title: "Публикуем выпуск"})
+	}
+	p := newProgress(c.Tag, "sign", report, steps...)
+	defer func() {
+		if err != nil {
+			p.fail()
+		}
+	}()
 	p.start("release")
 	if c.Problem != "" {
 		return false, "", errors.New(c.Problem)
 	}
-	// За время проверок выпуск мог поменяться другим способом; подписанный
-	// APK не перезаписываем — прежняя подпись остаётся (правило скрипта и CI).
-	draft, alreadySigned, err := g.androidReleaseState(ctx, c.Tag)
 	if err != nil {
 		return false, "", err
 	}
-	if alreadySigned {
-		return false, "", errors.New("В выпуске уже есть подписанный APK; не перезаписываю: прежняя подпись остаётся")
-	}
-	if draft && c.Publishes {
-		p.value.Steps = append(p.value.Steps, Step{ID: "publish", Title: "Публикуем выпуск", Status: "pending"})
-	}
 	p.done("release", "")
+	if alreadySigned {
+		return g.publishSignedAndroid(ctx, c, prod, draft, p)
+	}
 
 	p.start("signature")
 	tools, err := findAndroidTools(g.AndroidEnv)
@@ -427,6 +447,93 @@ func (g GitHub) signAndPublishAndroid(ctx context.Context, c *Check, keyPath, pa
 	if _, err := g.gh(ctx, "release", "edit", c.Tag, "-R", g.Repo, "--draft=false",
 		"--title", "Wynd Android "+strings.TrimPrefix(c.Tag, prod.Prefix), "--notes-file", notes); err != nil {
 		return false, "", fmt.Errorf("подпись выложена, а опубликовать не получилось: %w", err)
+	}
+	p.done("publish", "")
+	return true, androidDetailPublished, nil
+}
+
+// publishSignedAndroid — в выпуске уже есть подписанный APK: заново его не
+// подписываем и ничего не загружаем. Сверяем сумму выпуска, подпись с
+// эталонным сертификатом тега, пакет, версию и выравнивание; готовый черновик
+// публикуем теми же текстами, что и после обычной подписи.
+func (g GitHub) publishSignedAndroid(ctx context.Context, c *Check, prod *product, draft bool, p *progress) (published bool, detail string, err error) {
+	p.start("signature")
+	tools, err := findAndroidTools(g.AndroidEnv)
+	if err != nil {
+		return false, "", err
+	}
+	dir := filepath.Join(c.dir, "signed")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return false, "", err
+	}
+	apk := filepath.Join(dir, prod.Exe)
+	if _, err := g.gh(ctx, "release", "download", c.Tag, "-R", g.Repo, "-D", dir,
+		"-p", prod.Exe, "-p", prod.Exe+".sha256", "--clobber"); err != nil {
+		return false, "", fmt.Errorf("скачать подписанный APK из выпуска не получилось: %w", err)
+	}
+	data, err := os.ReadFile(apk)
+	if err != nil {
+		return false, "", err
+	}
+	sum := sha256.Sum256(data)
+	if raw, err := os.ReadFile(apk + ".sha256"); err == nil {
+		if !strings.HasPrefix(strings.TrimSpace(string(raw)), hex.EncodeToString(sum[:])) {
+			return false, "", errors.New("подписанный APK в выпуске не сходится с контрольной суммой выпуска")
+		}
+	}
+	out, err := runTool(ctx, tools.Apksigner, tools.toolEnv(), "verify", "--print-certs", apk)
+	if err != nil {
+		return false, "", fmt.Errorf("проверить подпись APK в выпуске не получилось: %w", err)
+	}
+	if strings.Contains(out, "CN=Android Debug") {
+		return false, "", errors.New("в выпуске подписанный APK отладочным ключом — публиковать его нельзя")
+	}
+	digest, err := apkCertDigest(out)
+	if err != nil {
+		return false, "", fmt.Errorf("в выводе apksigner нет отпечатка сертификата: %w", err)
+	}
+	want, err := g.androidCertDigest(ctx, c.Tag)
+	if err != nil {
+		return false, "", err
+	}
+	if !strings.EqualFold(digest, want) {
+		return false, "", errors.New("подписанный APK в выпуске подписан другим ключом — сверка с эталонным сертификатом тега не прошла")
+	}
+	version := strings.TrimPrefix(c.Tag, prod.Prefix)
+	code, err := androidVersionCode(version)
+	if err != nil {
+		return false, "", err
+	}
+	badging, err := runTool(ctx, tools.AAPT, tools.toolEnv(), "dump", "badging", apk)
+	if err != nil {
+		return false, "", fmt.Errorf("проверить пакет и версию в выпуске не получилось: %w", err)
+	}
+	b, err := parseBadging(badging)
+	if err != nil {
+		return false, "", fmt.Errorf("проверить пакет и версию в выпуске не получилось: %w", err)
+	}
+	if b.Name != androidAPKPackage || b.VersionName != version || b.VersionCode != strconv.FormatInt(code, 10) || b.Debuggable {
+		return false, "", errors.New("пакет или версия подписанного APK в выпуске не совпадают с " + c.Tag)
+	}
+	if _, err := runTool(ctx, tools.Zipalign, tools.toolEnv(), "-c", "4", apk); err != nil {
+		return false, "", errors.New("подписанный APK в выпуске не выровнен: " + err.Error())
+	}
+	p.done("signature", "")
+
+	if !draft {
+		return true, androidDetailPublished, nil
+	}
+	if !c.Publishes {
+		return false, androidDetailBlocked, nil
+	}
+	p.start("publish")
+	notes := filepath.Join(c.dir, "notes.md")
+	if err := os.WriteFile(notes, []byte(androidReleaseBody(c.Notes)), 0o644); err != nil {
+		return false, "", err
+	}
+	if _, err := g.gh(ctx, "release", "edit", c.Tag, "-R", g.Repo, "--draft=false",
+		"--title", "Wynd Android "+version, "--notes-file", notes); err != nil {
+		return false, "", fmt.Errorf("подпись сверена, а опубликовать не получилось: %w", err)
 	}
 	p.done("publish", "")
 	return true, androidDetailPublished, nil

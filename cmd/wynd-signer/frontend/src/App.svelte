@@ -276,7 +276,9 @@
 		}
 	}
 	async function signRelease() {
-		if (!check || !pass || signing) return;
+		// Пароль нужен только для подписи; у уже подписанного черновика его нет.
+		if (!check || signing) return;
+		if (!pass && !signedDraft) return;
 		const tag = check.tag;
 		const checkId = check.check_id;
 		const originalCheckRequest = checkRequest;
@@ -367,6 +369,8 @@
 	// Android-подпись ведёт себя иначе (свой ключ, публикация по releaseReady);
 	// остальное окно получает из Go.
 	const isAndroid = $derived((check ?? selectedRelease)?.product === 'android');
+	// Подписанный APK уже в черновике: подписи не будет — сверка и публикация.
+	const signedDraft = $derived(Boolean(check?.signed && check?.draft));
 	const fileName = $derived(filePath.slice(Math.max(filePath.lastIndexOf('\\'), filePath.lastIndexOf('/')) + 1));
 </script>
 
@@ -437,7 +441,10 @@
 								: `опубликован${r.published_at ? ' ' + day(r.published_at) : ''}, ${r.signed ? 'с подписью' : 'без подписи'}`}</span
 						>
 						{#snippet action()}
-							{#if (r.draft || !r.signed) && st?.key_exists}
+							{#if r.draft && r.signed}
+								<!-- Ключ не нужен: подпись уже в выпуске, остаётся проверить и опубликовать. -->
+								<TextButton class="link under" onclick={() => void openRelease(r)}>опубликовать</TextButton>
+							{:else if !r.signed && st?.key_exists}
 								<TextButton class="link under" onclick={() => void openRelease(r)}>подписать</TextButton>
 							{/if}
 						{/snippet}
@@ -552,7 +559,7 @@
 					<Button variant="colored" onclick={() => { if (selectedRelease) void openRelease(selectedRelease); }}>Повторить проверку</Button>
 					<Button variant="ghost" onclick={toList}>К выпускам</Button>
 				</FootBar>
-			{:else if isAndroid && st && !st.key_store_exists}
+			{:else if isAndroid && st && !st.key_store_exists && !signedDraft}
 				<!-- Ключ Android создаётся здесь или выбирается: пароль и подпись появятся после. -->
 				<Notice title="Ключ программ под Android не выбран">
 					Подпись APK выполняется постоянным ключом. Создайте его или укажите существующий файл .p12;
@@ -569,10 +576,18 @@
 				{#if check && check.self_update && !check.key_in_release}
 					<Notice tone="note">В этой сборке нет открытого ключа. Подпись добавится к выпуску, но обновляться сама она не сможет. Для самообновления нужна новая сборка со встроенным открытым ключом.</Notice>
 				{/if}
-				{#if checking}<p class="ins-note" role="status">Пароль можно будет ввести после проверки выпуска.</p>{/if}
-				<Label>Пароль ключа</Label>
-				<Input type="password" autocomplete="off" bind:value={pass} disabled={checking || signing || !check} />
-				{#if wrong}<p class="ins-note" role="alert">Пароль не подошёл</p>{/if}
+				{#if signedDraft}
+					<!-- Подпись уже в выпуске: заново не подписываем, ключ и пароль не нужны. -->
+					<Notice title="APK уже подписан">
+						В выпуске уже есть подписанный APK. Сверим подпись с эталонным сертификатом из тега и опубликуем;
+						заново подписывать не будем.
+					</Notice>
+				{:else}
+					{#if checking}<p class="ins-note" role="status">Пароль можно будет ввести после проверки выпуска.</p>{/if}
+					<Label>Пароль ключа</Label>
+					<Input type="password" autocomplete="off" bind:value={pass} disabled={checking || signing || !check} />
+					{#if wrong}<p class="ins-note" role="alert">Пароль не подошёл</p>{/if}
+				{/if}
 				{#if check?.draft && check.notes}
 					<Label>Что нового — из выпуска</Label>
 					<Notice>
@@ -587,8 +602,18 @@
 				{#if check?.publish_note}<Notice>{check.publish_note}</Notice>{/if}
 				{#if signError}<Notice tone="bad" alert>{signError}</Notice>{/if}
 				<FootBar>
-					<Button variant={pass && check && !checking ? 'colored' : 'off'} disabled={checking || !check || !pass} loading={signing} loadingLabel="Подписываем…" onclick={() => void signRelease()}>
-						{check?.publishes ?? Boolean(check?.draft && check?.notes) ? 'Подписать и опубликовать' : 'Подписать'}
+					<Button
+						variant={(pass || signedDraft) && check && !checking ? 'colored' : 'off'}
+						disabled={checking || !check || (!pass && !signedDraft)}
+						loading={signing}
+						loadingLabel={signedDraft ? (check?.publishes ? 'Публикуем…' : 'Проверяем…') : 'Подписываем…'}
+						onclick={() => void signRelease()}
+					>
+						{#if signedDraft}
+							{check?.publishes ? 'Опубликовать' : 'Проверить подпись'}
+						{:else}
+							{check?.publishes ?? Boolean(check?.draft && check?.notes) ? 'Подписать и опубликовать' : 'Подписать'}
+						{/if}
 					</Button>
 					<Button variant="ghost" disabled={checking || signing} onclick={toList}>К выпускам</Button>
 				</FootBar>

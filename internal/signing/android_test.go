@@ -460,9 +460,10 @@ func TestAndroidSignDebugCert(t *testing.T) {
 	}
 }
 
-// В выпуске уже есть подписанный APK — окно не перезаписывает его и ничего
-// не выкладывает (правило скрипта и CI).
-func TestAndroidSignRefusesReplaceSigned(t *testing.T) {
+// Прежний прогон оборвался после загрузки APK: в выпуске уже лежит подписанный
+// файл. Окно не подписывает заново и ничего не загружает — сверяет сумму,
+// подпись, пакет и публикует черновик; этапы показывают проверку в выпуске.
+func TestAndroidPublishesSignedDraft(t *testing.T) {
 	f, _, _ := androidFixture()
 	f.SignedAlready = true
 	g, dir := androidTestGitHub(t, f)
@@ -471,13 +472,155 @@ func TestAndroidSignRefusesReplaceSigned(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer c.Close()
-	_, _, err = g.SignAndPublishWithProgress(context.Background(), c, "keystore.p12", f.KSPass, func(Progress) {})
-	if err == nil || !strings.Contains(err.Error(), "не перезаписываю") {
-		t.Fatalf("signed asset replace not refused: %v", err)
+	if !c.Signed {
+		t.Fatal("check did not see the signed APK in the release")
+	}
+	var signs []Progress
+	published, detail, err := g.SignAndPublishWithProgress(context.Background(), c, "keystore.p12", "", func(p Progress) { signs = append(signs, p) })
+	if err != nil || !published {
+		t.Fatalf("published=%v err=%v", published, err)
+	}
+	if detail != androidDetailPublished {
+		t.Fatalf("detail: %q", detail)
+	}
+	if got := strings.Join(checkIDs(signs[len(signs)-1].Steps), ","); got != "release,signature,publish" {
+		t.Fatalf("sign steps: %s", got)
 	}
 	calls, _ := os.ReadFile(filepath.Join(dir, "calls"))
+	toolCalls, _ := os.ReadFile(filepath.Join(dir, "tool-calls"))
 	if strings.Contains(string(calls), "release upload") {
-		t.Fatalf("upload happened despite refusal: %s", calls)
+		t.Fatalf("upload happened for an already signed release: %s", calls)
+	}
+	if !strings.Contains(string(calls), "release edit") {
+		t.Fatalf("release not published: %s", calls)
+	}
+	if !strings.Contains(string(calls), "-p wynd-android.apk") {
+		t.Fatalf("signed APK not downloaded for verification: %s", calls)
+	}
+	if strings.Contains(string(toolCalls), "sign ") {
+		t.Fatalf("APK signed again: %s", toolCalls)
+	}
+}
+
+// Уже подписанный черновик с заблокированной публикацией: подпись сверена,
+// ничего не загружено и не опубликовано, выпуск остался черновиком.
+func TestAndroidSignedDraftBlocked(t *testing.T) {
+	f, _, _ := androidFixture()
+	f.SignedAlready = true
+	f.VersionProps = "versionName=0.1.0\nreleaseReady=false\n"
+	g, dir := androidTestGitHub(t, f)
+	c, err := g.FetchWithProgress(context.Background(), androidTestTag, func(Progress) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	var signs []Progress
+	published, detail, err := g.SignAndPublishWithProgress(context.Background(), c, "keystore.p12", "", func(p Progress) { signs = append(signs, p) })
+	if err != nil || published {
+		t.Fatalf("published=%v err=%v", published, err)
+	}
+	if detail != androidDetailBlocked {
+		t.Fatalf("detail: %q", detail)
+	}
+	if got := strings.Join(checkIDs(signs[len(signs)-1].Steps), ","); got != "release,signature" {
+		t.Fatalf("sign steps: %s", got)
+	}
+	calls, _ := os.ReadFile(filepath.Join(dir, "calls"))
+	if strings.Contains(string(calls), "release edit") || strings.Contains(string(calls), "release upload") {
+		t.Fatalf("blocked release changed: %s", calls)
+	}
+}
+
+// Подписанный APK в выпуске подписан другим ключом: публиковать нельзя.
+func TestAndroidSignedDraftCertMismatch(t *testing.T) {
+	f, _, _ := androidFixture()
+	f.SignedAlready = true
+	f.CertDigest = strings.Repeat("ab", 32)
+	g, dir := androidTestGitHub(t, f)
+	c, err := g.FetchWithProgress(context.Background(), androidTestTag, func(Progress) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	_, _, err = g.SignAndPublishWithProgress(context.Background(), c, "keystore.p12", "", func(Progress) {})
+	if err == nil || !strings.Contains(err.Error(), "другим ключом") {
+		t.Fatalf("foreign signature not rejected: %v", err)
+	}
+	calls, _ := os.ReadFile(filepath.Join(dir, "calls"))
+	if strings.Contains(string(calls), "release edit") {
+		t.Fatalf("foreign signed release published: %s", calls)
+	}
+}
+
+// Подписанный APK в выпуске собран отладочным ключом: публиковать нельзя.
+func TestAndroidSignedDraftDebugCert(t *testing.T) {
+	f, _, _ := androidFixture()
+	f.SignedAlready = true
+	f.BadDebug = true
+	g, _ := androidTestGitHub(t, f)
+	c, err := g.FetchWithProgress(context.Background(), androidTestTag, func(Progress) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	_, _, err = g.SignAndPublishWithProgress(context.Background(), c, "keystore.p12", "", func(Progress) {})
+	if err == nil || !strings.Contains(err.Error(), "отладочным") {
+		t.Fatalf("debug signature not rejected: %v", err)
+	}
+}
+
+// Контрольная сумма уже подписанного APK не сходится с выпуском: не публикуем.
+func TestAndroidSignedDraftBadSum(t *testing.T) {
+	f, _, _ := androidFixture()
+	f.SignedAlready = true
+	f.BadSignedSum = true
+	g, _ := androidTestGitHub(t, f)
+	c, err := g.FetchWithProgress(context.Background(), androidTestTag, func(Progress) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	_, _, err = g.SignAndPublishWithProgress(context.Background(), c, "keystore.p12", "", func(Progress) {})
+	if err == nil || !strings.Contains(err.Error(), "контрольной суммой") {
+		t.Fatalf("bad signed sum not rejected: %v", err)
+	}
+}
+
+// Пакет или версия подписанного APK не совпадают с выпуском: не публикуем.
+func TestAndroidSignedDraftWrongVersion(t *testing.T) {
+	f, _, _ := androidFixture()
+	f.SignedAlready = true
+	f.Badging = androidBadging("mixeme.wynd", "1001", "0.1.0", false)
+	g, _ := androidTestGitHub(t, f)
+	c, err := g.FetchWithProgress(context.Background(), androidTestTag, func(Progress) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	_, _, err = g.SignAndPublishWithProgress(context.Background(), c, "keystore.p12", "", func(Progress) {})
+	if err == nil || !strings.Contains(err.Error(), "не совпадают") {
+		t.Fatalf("wrong version not rejected: %v", err)
+	}
+}
+
+// Уже опубликованный выпуск с подписью: только сверка, без публикации.
+func TestAndroidSignedPublished(t *testing.T) {
+	f, _, _ := androidFixture()
+	f.SignedAlready = true
+	f.Draft = false
+	g, dir := androidTestGitHub(t, f)
+	c, err := g.FetchWithProgress(context.Background(), androidTestTag, func(Progress) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	published, detail, err := g.SignAndPublishWithProgress(context.Background(), c, "keystore.p12", "", func(Progress) {})
+	if err != nil || !published || detail != androidDetailPublished {
+		t.Fatalf("published=%v detail=%q err=%v", published, detail, err)
+	}
+	calls, _ := os.ReadFile(filepath.Join(dir, "calls"))
+	if strings.Contains(string(calls), "release edit") {
+		t.Fatalf("published release edited: %s", calls)
 	}
 }
 

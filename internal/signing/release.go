@@ -254,8 +254,11 @@ type Check struct {
 	Exe   string `json:"exe"`
 	Tag   string `json:"tag"`
 	Draft bool   `json:"draft"`
-	Size  int64  `json:"size"`
-	SumOK bool   `json:"sum_ok"`
+	// Signed — в выпуске уже лежит подписанный файл (Android): подписывать
+	// заново нечего — сверяем подпись с эталоном из тега и публикуем.
+	Signed bool  `json:"signed"`
+	Size   int64 `json:"size"`
+	SumOK  bool  `json:"sum_ok"`
 	// Commit — коммит из удостоверения сборки.
 	Commit string `json:"commit,omitempty"`
 	// AttestOK — exe собран GitHub Actions из этого тега (gh attestation verify).
@@ -333,7 +336,7 @@ func (g GitHub) FetchWithProgress(ctx context.Context, tag string, report func(P
 		}
 	}()
 	p.start("release")
-	draft, err := g.isDraft(ctx, tag)
+	draft, signed, err := g.draftAndSigned(ctx, tag, prod)
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +348,7 @@ func (g GitHub) FetchWithProgress(ctx context.Context, tag string, report func(P
 	}
 	// У Android из черновика скачивается unsigned APK; у остальных — сам exe.
 	dl := prod.downloadName()
-	c = &Check{Product: prod.ID, Name: prod.Name, Exe: prod.Exe, Tag: tag, Draft: draft, SelfUpdate: prod.Key != "", dir: dir, exe: filepath.Join(dir, dl)}
+	c = &Check{Product: prod.ID, Name: prod.Name, Exe: prod.Exe, Tag: tag, Draft: draft, Signed: signed, SelfUpdate: prod.Key != "", dir: dir, exe: filepath.Join(dir, dl)}
 	if _, err := g.gh(ctx, "release", "download", tag, "-R", g.Repo, "-D", dir, "-p", dl, "-p", dl+".sha256", "--clobber"); err != nil {
 		c.Close()
 		return nil, fmt.Errorf("скачать выпуск не получилось: %w", err)
@@ -557,6 +560,17 @@ func (g GitHub) verifyAttestation(ctx context.Context, file, tag string) (bool, 
 	return false, "", nil
 }
 
+// draftAndSigned — состояние выпуска одним запросом. Android нужен и признак
+// подписи: подписанный APK в черновике означает «проверить и опубликовать», а
+// не подписывать заново, — и набор этапов окна зависит от него.
+func (g GitHub) draftAndSigned(ctx context.Context, tag string, prod *product) (draft, signed bool, err error) {
+	if prod.APK {
+		return g.androidReleaseState(ctx, tag)
+	}
+	draft, err = g.isDraft(ctx, tag)
+	return draft, false, err
+}
+
 func (g GitHub) isDraft(ctx context.Context, tag string) (bool, error) {
 	out, err := g.gh(ctx, "release", "view", tag, "-R", g.Repo, "--json", "isDraft")
 	if err != nil {
@@ -671,17 +685,9 @@ func (g GitHub) SignAndPublish(ctx context.Context, c *Check, keyPath, pass stri
 func (g GitHub) SignAndPublishWithProgress(ctx context.Context, c *Check, keyPath, pass string, report func(Progress)) (published bool, detail string, err error) {
 	prod := productOf(c.Tag)
 	if prod != nil && prod.APK {
-		p := newProgress(c.Tag, "sign", report,
-			Step{ID: "release", Title: "Проверяем состояние выпуска"},
-			Step{ID: "signature", Title: "Подписываем и проверяем подпись"},
-			Step{ID: "upload", Title: "Загружаем подписанный APK на GitHub"},
-		)
-		defer func() {
-			if err != nil {
-				p.fail()
-			}
-		}()
-		return g.signAndPublishAndroid(ctx, c, keyPath, pass, p)
+		// Этапы Android-прогона зависят от состояния выпуска (есть ли уже
+		// подписанный APK) и собираются в android.go до первого кадра.
+		return g.signAndPublishAndroid(ctx, c, keyPath, pass, report)
 	}
 	p := newProgress(c.Tag, "sign", report,
 		Step{ID: "release", Title: "Проверяем состояние выпуска"},

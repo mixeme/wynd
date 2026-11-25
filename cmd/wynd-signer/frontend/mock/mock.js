@@ -12,6 +12,9 @@ const params = new URLSearchParams(location.search);
 const keyExists = params.get("key") !== "missing";
 const includeDesktop = params.get("products") !== "workshop";
 const androidReady = params.get("ready") !== "0";
+// signed — в черновике уже лежит подписанный APK (прежний прогон оборвался
+// после загрузки): окно сверяет подпись и публикует, пароля нет.
+const androidSigned = params.get("signed") === "1";
 
 const state = {
   key_path: "C:\\Users\\Mix\\.wynd\\workshop-signing.key",
@@ -44,7 +47,7 @@ const releases = [
     "0.1.0",
     true,
     undefined,
-    false,
+    androidSigned,
   ),
   ...(includeDesktop
     ? [
@@ -105,18 +108,16 @@ const androidBlocked =
 const androidDetail = androidReady
   ? "Файл wynd-android.apk и его контрольная сумма выложены в выпуск на GitHub. Подпись APK проверена: сертификат не отладочный. Временные файлы на этом компьютере удалены."
   : "Файл wynd-android.apk и его контрольная сумма выложены в черновик. Выпуск не опубликован: публикация заблокирована. Временные файлы на этом компьютере удалены.";
-const androidSignSteps = androidReady
-  ? done([
-      ["release", "Проверяем состояние выпуска"],
-      ["signature", "Подписываем и проверяем подпись"],
-      ["upload", "Загружаем подписанный APK на GitHub"],
-      ["publish", "Публикуем выпуск"],
-    ])
-  : done([
-      ["release", "Проверяем состояние выпуска"],
-      ["signature", "Подписываем и проверяем подпись"],
-      ["upload", "Загружаем подписанный APK на GitHub"],
-    ]);
+const androidSignSteps = done([
+  ["release", "Проверяем состояние выпуска"],
+  ...(androidSigned
+    ? [["signature", "Проверяем подпись в выпуске"]]
+    : [
+        ["signature", "Подписываем и проверяем подпись"],
+        ["upload", "Загружаем подписанный APK на GitHub"],
+      ]),
+  ...(androidReady ? [["publish", "Публикуем выпуск"]] : []),
+]);
 
 const checks = {
   "desktop-v0.5.0": {
@@ -195,6 +196,7 @@ const checks = {
     publish_note: androidReady ? undefined : androidBlocked,
     tag: "android-v0.1.0",
     draft: true,
+    signed: androidSigned,
     size: 1998548,
     sum_ok: true,
     commit: "df026c9f",
@@ -324,9 +326,10 @@ async function drive() {
     const row = [...document.querySelectorAll("main .ins-row")].find((r) =>
       r.textContent.includes(label),
     );
+    const action = androidSigned ? "опубликовать" : "подписать";
     const link = row
       ? [...row.querySelectorAll("button")].find((b) =>
-          b.textContent.trim().startsWith("подписать"),
+          b.textContent.trim().startsWith(action),
         )
       : undefined;
     if (!link) throw new Error("кадр: нет строки выпуска для подписи");
@@ -337,6 +340,8 @@ async function drive() {
       type(input, pass);
       await tick(200);
       button("Подписать").click();
+    } else if (androidSigned && params.get("press") === "1") {
+      button(androidReady ? "Опубликовать" : "Проверить подпись").click();
     }
   }
   if (params.get("scroll") === "1") {

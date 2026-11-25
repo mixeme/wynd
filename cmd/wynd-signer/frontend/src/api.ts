@@ -70,6 +70,9 @@ export interface Check {
 	publish_note?: string;
 	tag: string;
 	draft: boolean;
+	// signed — в выпуске уже лежит подписанный APK (Android): не подписываем
+	// заново, а сверяем подпись и публикуем.
+	signed: boolean;
 	key_in_release: boolean;
 	size: number;
 	sum_ok: boolean;
