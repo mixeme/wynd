@@ -26,9 +26,9 @@
 
 | ID | Продукт | Что | Маркер | Введено | Статус |
 |---|---|---|---|---|---|
-| С-1 | Сервер | Схема SQLite: прежние нумерации и свёртка | `schema_migrations` (`{0,1}`) | 0.53.5 | после проверки своих установок |
-| С-2 | Сервер | Общие байты файлов: старые пути | нет; `blobs.content_sha256 IS NULL` | 0.48.0 | после проверки данных |
-| С-3 | Сервер | Старые файлы переноса круга | `circle_moves.legacy_archive_id` | 0.47.0 | после проверки данных |
+| С-1 | Сервер | Схема SQLite: прежние нумерации и свёртка | `schema_migrations` (`{0,1}`) | 0.53.5 | снято в main, ждёт выпуска |
+| С-2 | Сервер | Общие байты файлов: старые пути | нет; `blobs.content_sha256 IS NULL` | 0.48.0 | снято в main, ждёт выпуска |
+| С-3 | Сервер | Старые файлы переноса круга | `circle_moves.legacy_archive_id` | 0.47.0 | снято в main, ждёт выпуска |
 | С-4 | Сервер, Мастерская | Оживление архивов разметок 1–3 | `manifest.format_version` и `schema_version` | 0.31.0 / 0.34.0 / 0.53.5 | не снимать (рекомендация) |
 | В-1 | PWA | Ступени IndexedDB 1 → 4 | `DB_VERSION = 4` | 0.1.0–0.35.0 | ступени не снимать; `v3` — при пересмотре |
 | В-2 | PWA, окно, Android | Входы из IndexedDB в системное хранилище | нет; наличие записей | окно 0.4.3; Android — APK с C127 | после проверки своих установок |
@@ -48,37 +48,38 @@
 
 ### С-1. Схема базы: свёртка и прежние нумерации
 
-**Где.** `internal/store/migrate.go` — `migrate`, `renumberFormerNumberings`, `loadMigrations`, `applyMigration`; `internal/store/migrations/0001_schema.sql`; `internal/store/migrations/legacy/0001–0017` (embed только в `migrate_test.go`).
+**Где.** `internal/store/migrate.go` — `migrate`, `rejectFormerNumberings`, `loadMigrations`, `applyMigration`; `internal/store/migrations/0001_schema.sql`; `internal/store/migrations/legacy/0001–0017` (embed только в `migrate_test.go`).
 
 **Маркер.** Таблица `schema_migrations`. Текущая база — две отметки: `0` (маяк свёртки) и `1`. Следующая миграция — `0002_*.sql`; таблицу `schema_migrations` создаёт код, не файл.
 
-**Что переводит.**
+**Что делает сейчас.**
 
 - Свежая база (`maxVersion = 0`) проходит насквозь; `0001_schema.sql` создаёт всю схему одним шагом (52 таблицы, 44 индекса, 33 триггера) и засев `instance_settings` id=1, `bootstrapped = 0`.
-- База прежней нумерации, дошедшая до 17 (0.34.0–0.53.4), переводится одной отметкой `{0,1}` без изменения таблиц (`DELETE` + две `INSERT` в транзакции).
-- База прежней нумерации ниже 17 и база разметки 1 (отметки 30–36, до 0.34.0) получают отказ: сначала запустить Wynd 0.53.4 — он доведёт до 17, затем 0.53.8 — он переведёт на свёртку.
+- База с маяком `0` проходит: текущая — `{0,1}`, следующие миграции — файлы `NNNN_*.sql`.
+- База прежней нумерации (1–17) и разметка 1 (30–36) перевода не получают: `rejectFormerNumberings` отказывает и называет цепочку 0.53.4 → 0.53.8.
 - «Версия 1» без маяка — тоже отказ: так выглядит старая база разметки 1 (или прежняя нумерация, остановившаяся на 1), а не свёрнутая.
 - Пропущенная версия ниже уже применённых — отказ запуска, а не «доливка» поверх более новой схемы.
 
 **Введено.** 0.53.5 (C115, `234a77b9` + отметка `2e2e7c10`, 21–23.11.2026). Свёрнута цепочка 0001–0017; форма сверена тестом.
 
-**Когда старых данных не останется.** Наши два VPS уже на свёрнутой схеме (маяк `0`); дев-базы пересоздаются; других установок нет. Остаются только наши старые копии: база 17 или ниже откроется текущей версией только после перевода. Условие — проверить оба VPS и список копий, решить судьбу старых копий (0.53.8 как мост) и снимать в ближайшем серверном выпуске, а не ждать календарного срока.
+**Когда старых данных не останется.** Уже: замер 25.11 на обоих VPS — `{0,1}`, копий прежней нумерации нет ([протокол](../testing/migrations-audit-2026-11-25.md)). Дев-базы на 17 — две штуки, пересоздаются. Других установок нет.
 
-**Что снимается.**
+**Что снято в main 25.11.**
 
-1. Сам перевод прежней нумерации 17 → `{0,1}` и перевод разметки 1 — `renumberFormerNumberings` в нынешнем виде. Для баз 17, ниже 17 и разметки 1 остаётся один понятный отказ: «сначала 0.53.4 (доведёт до 17) → 0.53.8 (переведёт на свёртку) → текущая версия».
-2. Тестовая цепочка `migrations/legacy/0001–0017` и `legacyBaseAt`, после того как `TestSquashSchemaMatchesFormerChain` заменится снимком схемы. Цепочка не входит в рабочий бинарник и на пользователей не влияет; это цена доказательства, а не совместимости.
-3. **Не снимается:** проверка «версия 1 без маяка» и сам маяк `0`. Без маяка старая база прежней нумерации 1 (0.34.0) и база разметки 1, переведённая в «версию 1», неотличимы от свёрнутой: `MAX(version) = 1` у всех трёх. Если проверку убрать, старая база пройдёт как текущая, и сервер упадёт на отсутствующих таблицах или колонках. По той же причине остаются константы для сообщений (`squashedTop`, `squashPrevRelease`, `legacyBaseline`, `legacyTop`), даже когда перевода уже нет.
+1. Перевод прежней нумерации 17 → `{0,1}` и перевод разметки 1 удалены; вместо них `rejectFormerNumberings` с цепочкой «0.53.4 (до 17) → 0.53.8 (свёртка) → эта версия».
+2. `TestMigrateRenumbersPrevNumbering` заменён на `TestMigrateRefusesPrevNumberingAtTop` (отказ, отметки и данные целы). Тесты исторических баз (`completeLegacy`) сами ставят отметки `{0,1}`, как выпуск-мост.
+3. **Не снимается:** проверка «версия 1 без маяка» и сам маяк `0`. Без маяка старая база прежней нумерации 1 (0.34.0) и база разметки 1, переведённая в «версию 1», неотличимы от свёрнутой: `MAX(version) = 1` у всех трёх. Если проверку убрать, старая база пройдёт как текущая, и сервер упадёт на отсутствующих таблицах или колонках. По той же причине остаются константы для сообщений (`squashedTop`, `squashPrevRelease`, `squashBridgeRelease`, `legacyBaseline`, `legacyTop`).
+4. Тестовая цепочка `migrations/legacy/0001–0017` остаётся оракулом `TestSquashSchemaMatchesFormerChain`; её удаление — отдельный шаг после замены снимком схемы.
 
 **Что остаётся навсегда.** `schema_migrations`, `loadMigrations`, `applyMigration`, базовая `0001_schema.sql`, маяк `0` и отказ для «версии 1 без маяка», отказ для неизвестной/более новой версии. Схема хранится только вверх; откат — восстановление копии.
 
-**Риск снятия.** Старая копия, восстановленная в новый бинарник, потребует моста: база 17 — 0.53.8, база ниже 17 — сначала 0.53.4. Это наши копии, и мы это контролируем. Смягчение: предупреждение при переводе, сохранённый образ/бинарь 0.53.8, запись в «Оператору», бэкап перед обновлением.
+**Риск.** Старая копия, восстановленная в новый бинарник, потребует моста: база 17 — 0.53.8, база ниже 17 — сначала 0.53.4. Это наши копии, и мы это контролируем; на дисках VPS остаются образы 0.53.4 и 0.53.8. Смягчение: запись в «Оператору», бэкап перед обновлением.
 
-**Тесты.** `TestMigrateRenumbersPrevNumbering`, `TestMigrateRefusesDatabaseBelowSquash`, `TestMigrateRefusesFormerNumberingOneAtTop`, `TestMigrateRefusesFormerChainBeforeTop`, `TestMigrateRefusesDatabaseBelowLegacyBaseline`, `TestMigrateRefusesUnmarkedBase`, `TestSquashSchemaMatchesFormerChain`, плюс прогоны миграций на заполненной базе (`TestMigrateStreetGroupsOverPopulatedBase` и соседние).
+**Тесты.** `TestMigrateRefusesPrevNumberingAtTop`, `TestMigrateRefusesDatabaseBelowSquash`, `TestMigrateRefusesFormerNumberingOneAtTop`, `TestMigrateRefusesFormerChainBeforeTop`, `TestMigrateRefusesDatabaseBelowLegacyBaseline`, `TestMigrateRefusesUnmarkedBase`, `TestSquashSchemaMatchesFormerChain`, `TestReopenAppliesMigrationsOnce`, плюс прогоны миграций на заполненной базе (`TestMigrateStreetGroupsOverPopulatedBase` и соседние).
 
 ### С-2. Общие байты файлов: старые пути
 
-**Где.** `internal/blob/content.go` — `migrateContents`, `migrateContent`, `detachDeletedScreenshots`, `queueInterruptedContents`; вызов из `blob.New` (`internal/blob/store.go`).
+**Где.** `internal/blob/content.go` — бывшие `migrateContents`, `migrateContent`, `detachDeletedScreenshots`; `queueOrphanedContents` (уборка после падения, не миграция) остаётся и вызывается из `blob.New` (`internal/blob/store.go`).
 
 **Маркер.** Нет. Условие — строки `blobs` с `content_sha256 IS NULL`, `storage_path <> ''`, `status = 'complete'`. Проверка для снятия:
 
@@ -87,21 +88,21 @@ SELECT count(*) FROM blobs
 WHERE content_sha256 IS NULL AND storage_path <> '' AND status = 'complete';
 ```
 
-**Что переводит.** До 0.48.0 одинаковые файлы лежали отдельными путями. При запуске сервер проверяет старые файлы по фактическим байтам (SHA-256 и размер), заводит общие `blob_contents` и жёсткие ссылки, переписывает `storage_path` на общий путь, старые пути ставит в очередь очистки. Непроверяемые файлы остаются на месте с записью в журнале; прерванная миграция продолжается при следующем запуске. `detachDeletedScreenshots` отвязывает путь удалённого скриншота оплаты от строки аудита, чтобы чужая копия не «оживила» намеренно удалённый файл.
+**Что делал.** До 0.48.0 одинаковые файлы лежали отдельными путями. При запуске сервер проверял старые файлы по фактическим байтам (SHA-256 и размер), заводил общие `blob_contents` и жёсткие ссылки, переписывал `storage_path` на общий путь, старые пути ставил в очередь очистки. `detachDeletedScreenshots` отвязывал путь удалённого скриншота оплаты от строки аудита, чтобы чужая копия не «оживила» намеренно удалённый файл.
 
 **Введено.** 0.48.0 (A22, `c44ea6f4`, 03.11.2026; миграция 15 прежней нумерации).
 
-**Когда старых данных не останется.** Наши VPS прошли 0.48.0; проверить запрос на обоих и на дев-базах. Других установок нет, старые копии — только наши: восстановленная копия до 0.48.0 останется читаемой, но без общего хранения. После нуля и одного выпуска наблюдения — снимать. `detachDeletedScreenshots` снимается после того же условия: она чинит строки, созданные старым кодом.
+**Когда старых данных не останется.** Уже: замер 25.11 на обоих VPS — ноль строк (`content_sha256 IS NULL`, путь есть, `complete`). Старых копий до 0.48.0 нет; восстановленная такая копия останется читаемой по `storage_path`, но без общего хранения.
 
-**Что снимается.** `migrateContents`, `migrateContent`, `queueInterruptedContents`, `detachDeletedScreenshots` и их тесты. Остаются: чтение по `storage_path` (`serve.go`), `CollectFiles` и очередь `blob_file_gc` (их используют обычное удаление и публикация), резервное копирование, учёт `physicalUsedSQL` — он отдельно считает старые копии без `content_sha256`, поэтому шкала и потолок не поедут.
+**Что снято в main 25.11.** `migrateContents`, `migrateContent`, `detachDeletedScreenshots` и их тесты. Остаются: чтение по `storage_path` (`serve.go`), `CollectFiles` и очередь `blob_file_gc`, `queueOrphanedContents` (осиротевшие файлы после падения — не миграция), бэкап и `physicalUsedSQL` — он отдельно считает старые копии без `content_sha256`, поэтому шкала и потолок не поедут.
 
-**Риск снятия.** Сервер, восстановленный из копии до 0.48.0, продолжит отдавать файлы по старым путям и считать их в квоте, но не получит общего хранения: одинаковые байты останутся в двух экземплярах. Потери данных нет; это потеря оптимизации. Если снять `detachDeletedScreenshots` при живых старых строках, удалённый скриншот оплаты может снова стать доступен через чужую копию — поэтому только после нуля.
+**Риск.** Наша копия, восстановленная из базы до 0.48.0, продолжит отдавать файлы по старым путям и считать их в квоте, но не получит общего хранения: одинаковые байты останутся в двух экземплярах. Потери данных нет; это потеря оптимизации.
 
-**Тесты.** `TestSharedContentLegacyMigrationAndInterruptedPublication`, `TestSharedContentMigrationDoesNotResurrectDeletedScreenshot`, `TestSharedContentDetachedPaymentCopyCannotBeReused`, `TestSharedContentPaymentAuditStopsHoldingBytesAfterLastOtherReference`, `TestSharedContentBackupRestoreAndLease`.
+**Тесты.** `TestLegacyPathWithoutContentIsStillServed` (старый путь читается без перевода), `TestOrphanedContentIsCollectedAtStartup` (уборка после падения осталась), `TestSharedContentDetachedPaymentCopyCannotBeReused`, `TestSharedContentPaymentAuditStopsHoldingBytesAfterLastOtherReference`, `TestSharedContentBackupRestoreAndLease`.
 
 ### С-3. Снимки переноса: старые файлы `out-<id>.wynd`
 
-**Где.** `internal/chronicle/move.go` (`CircleMove.LegacyArchiveID`), `internal/chronicle/move_snapshot.go` (`ReleaseMoveSnapshot`, `LegacyMoveArchiveInUse`), `internal/api/move.go`.
+**Где.** Бывшие `CircleMove.LegacyArchiveID`, `LegacyMoveArchiveInUse` и ветки выдачи `out-<id>.wynd` в `internal/chronicle/move.go`, `internal/chronicle/move_snapshot.go`, `internal/api/move.go`.
 
 **Маркер.** Поле `circle_moves.legacy_archive_id`. Проверка для снятия:
 
@@ -111,17 +112,17 @@ WHERE legacy_archive_id IS NOT NULL
    OR (snapshot_id IS NULL AND archive_status = 'ready');
 ```
 
-**Что переводит.** До 0.47.0 перенос круга держал готовый файл `out-<id>.wynd`; после перевыпуска ссылки старый файл мог остаться нужным. Новая схема хранит неизменный снимок (A21), а `legacy_archive_id` указывает на прежний файл. `LegacyMoveArchiveInUse` не даёт GC удалить файл, пока им пользуется живая ссылка.
+**Что делал.** До 0.47.0 перенос круга держал готовый файл `out-<id>.wynd`; после перевыпуска ссылки старый файл мог остаться нужным. Новая схема хранит неизменный снимок (A21), а `legacy_archive_id` указывал на прежний файл. `LegacyMoveArchiveInUse` не давал GC удалить файл, пока им пользуется живая ссылка.
 
 **Введено.** 0.47.0 (A21, `65fa49df`, 03.11.2026).
 
-**Когда старых данных не останется.** Ссылка переноса живёт 72 часа (`MoveLinkTTL`); новые переносы старых файлов не создают. Наши серверы обновлены до 0.47.0; после истечения последней ссылки строк с `legacy_archive_id` быть не должно. Строки `ready` без снимка — тот же старый случай. Проверка — запрос выше на обоих VPS; дев-базы пересоздаются.
+**Когда старых данных не останется.** Уже: замер 25.11 на обоих VPS — ноль строк `legacy_archive_id` и ноль `ready` без снимка. Ссылка живёт 72 часа, новые переносы старых файлов не создают.
 
-**Что снимается.** Чтение и запись `LegacyArchiveID`, `LegacyMoveArchiveInUse`, ветки выдачи старого файла в `internal/api/move.go`. Колонку в SQLite можно не удалять: код просто перестаёт её читать. Если строки остались — сначала одноразовая очистка ссылок после проверки, что файлы уже не нужны; не наоборот.
+**Что снято в main 25.11.** Поле `LegacyArchiveID`, защита `LegacyMoveArchiveInUse`, чтение старого файла (теперь `archive_changed`), очистка `out-*.wynd` при старте. `ReleaseMoveSnapshot` больше не возвращает legacy-id. Колонка в SQLite остаётся, код её не читает. Тест старого файла заменён на `TestMoveStreamReadyWithoutSnapshotIsRefused`; `move_snapshot_migration_test.go` удалён.
 
-**Риск снятия.** Пока строки есть, снятие защиты позволит GC удалить файл, на который ещё смотрит перевыпущенная ссылка. Это не потеря круга (снимок/архив — другой путь), но старый перенос перестанет докачиваться. Поэтому условие — ноль строк, а не срок.
+**Риск.** Пока строки `legacy_archive_id` есть, старый перенос перестанет докачиваться — но строк нет, и это наши данные. Круг не теряется: снимок/архив — другой путь.
 
-**Тесты.** `internal/store/move_snapshot_migration_test.go`, тесты `internal/chronicle/move_snapshot` и `internal/api/move`.
+**Тесты.** `TestMoveStreamReadyWithoutSnapshotIsRefused`, тесты `internal/chronicle/move_snapshot` и `internal/api/move`.
 
 ### С-4. Оживление архивов разметок 1, 2 и 3
 
