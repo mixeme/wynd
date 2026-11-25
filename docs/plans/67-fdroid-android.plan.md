@@ -39,7 +39,7 @@
    > - `prebuild: cd ../web && npm ci` installs JS build dependencies (Vite/SvelteKit) for the bundled client.
    > - No Google Play services, no FCM, no tracking; push notifications are optional and use UnifiedPush with a distributor chosen by the user.
    > - Version code is derived in Gradle from versionName (0.1.3 → 1003), so auto-update is not enabled yet (`UpdateCheckMode: None`); a follow-up MR will add a versionCode line to `android/version.properties` and switch to Tags/Version.
-   **Осталось до подачи:** приёмка английского текста и `AuthorName`, проверка режима embedded у fdroid-сборки на телефоне (adb 25.11 пуст), сам MR (владелец, аккаунт GitLab есть). Кадры для карточки можно добавить отдельным MR в `metadata/mixeme.wynd/<locale>/images/` — они не требуют нового тега.
+   **Осталось до подачи:** приёмка английского текста, проверка режима embedded у fdroid-сборки на телефоне (adb 25.11 пуст), сам MR (владелец, аккаунт GitLab есть). Автор в метаданных — `Mikhail Yenuchenko` (владелец, 25.11). Кадры для карточки можно добавить отдельным MR в `metadata/mixeme.wynd/<locale>/images/` — они не требуют нового тега.
 5. **Слежение.** Очередь ревью f-droid.org — периодический присмотр; вопросы ревьюеров фиксировать здесь. Свой подписанный F-Droid-репозиторий не делаем, пока главный репозиторий не отказал и владелец не попросит.
 
 Выполнение не обязано идти строго по номерам, но 1–2 раньше 3–4; подача (4) — после вшивания интерфейса.
