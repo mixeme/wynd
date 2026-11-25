@@ -119,7 +119,7 @@ tasks.register('prepareWyndIcon', Sync) {
         color.setText('<resources><color name="wynd_icon_background">#F4F0E9</color></resources>', 'UTF-8')
         def adaptive = generatedResources.get().file('mipmap-anydpi-v26/ic_launcher.xml').asFile
         adaptive.parentFile.mkdirs()
-        adaptive.setText('<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/wynd_icon_background"/><foreground android:drawable="@drawable/wynd_icon_foreground"/></adaptive-icon>', 'UTF-8')
+        adaptive.setText('<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/wynd_icon_background"/><foreground android:drawable="@drawable/wynd_icon_foreground"/><monochrome android:drawable="@drawable/wynd_icon_foreground"/></adaptive-icon>', 'UTF-8')
     }
 }
 tasks.register('prepareStartupSync', Exec) {
