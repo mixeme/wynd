@@ -25,8 +25,7 @@
 		class: className = '',
 		style = '',
 		onlink,
-		extra,
-		continues = false
+		extra
 	}: {
 		steps: Step[];
 		meter?: boolean;
@@ -35,8 +34,6 @@
 		onlink?: (url: string) => void;
 		/** Дополнительные строки в том же списке (файлы выпуска у «Подписи»). */
 		extra?: Snippet;
-		/** Сразу ниже идёт второй список шагов того же дела: стык — обычная строка. */
-		continues?: boolean;
 	} = $props();
 
 	function mark(step: Step): string {
@@ -49,7 +46,8 @@
 {#if meter && steps.length}
 	<Meter value={steps.filter((step) => step.status === 'done').length} max={steps.length} />
 {/if}
-<MarkRows class={className} {style} {continues}>
+<!-- ins-steps: по нему MarkRows склеивает два списка шагов подряд в один (шов). -->
+<MarkRows class="ins-steps {className}" {style}>
 	{#each steps as step (step.id)}
 		<MarkRow
 			mark={mark(step)}

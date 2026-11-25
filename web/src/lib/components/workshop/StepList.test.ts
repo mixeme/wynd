@@ -2,19 +2,18 @@ import { flushSync, mount, unmount } from 'svelte';
 import { expect, it } from 'vitest';
 import StepList from './StepList.svelte';
 
-function render(
-	steps: Array<{
-		id: string;
-		title: string;
-		status: 'pending' | 'running' | 'done' | 'failed';
-		note?: string;
-		latest?: string;
-		latest_note?: string;
-	}>,
-	props: { continues?: boolean } = {}
-): string {
+type Steps = Array<{
+	id: string;
+	title: string;
+	status: 'pending' | 'running' | 'done' | 'failed';
+	note?: string;
+	latest?: string;
+	latest_note?: string;
+}>;
+
+function render(steps: Steps): string {
 	const target = document.createElement('div');
-	const instance = mount(StepList, { target, props: { steps, ...props } });
+	const instance = mount(StepList, { target, props: { steps } });
 	flushSync();
 	const html = target.innerHTML;
 	unmount(instance);
@@ -40,15 +39,26 @@ it('shows the build line and its age under the running step', () => {
 	expect(html).toContain('Последнее сообщение — сейчас');
 });
 
-// Шов двух списков («Подпись»: проверка, потом подпись): под продолженным
-// списком остаётся черта, а шаг снимается — иначе между списками пропадает
-// разделитель и зазор выходит больше строки.
-it('keeps the seam of a continued list as an ordinary row', () => {
-	expect(render([{ id: 'check', title: 'Читаем описание выпуска', status: 'done' }])).not.toContain(
-		'ins-continues'
-	);
-	const html = render([{ id: 'check', title: 'Читаем описание выпуска', status: 'done' }], {
-		continues: true
+// Шов двух списков («Подпись»: проверка, потом подпись): списки шагов стоят
+// подряд и несут один класс — по нему MarkRows снимает шаг между ними и
+// оставляет черту. Иначе на стыке пропадает разделитель и зазор выходит
+// больше строки. Если класс или соседство пропадут, шов вернётся.
+it('puts two step lists next to each other with the seam class', () => {
+	const target = document.createElement('div');
+	const first = mount(StepList, {
+		target,
+		props: { steps: [{ id: 'check', title: 'Читаем описание выпуска', status: 'done' }] }
 	});
-	expect(html).toContain('ins-continues');
+	const second = mount(StepList, {
+		target,
+		props: { steps: [{ id: 'release', title: 'Проверяем состояние выпуска', status: 'done' }] }
+	});
+	flushSync();
+	const rows = Array.from(target.querySelectorAll<HTMLElement>('.ins-rows'));
+	expect(rows).toHaveLength(2);
+	expect(rows[0].classList.contains('ins-steps')).toBe(true);
+	expect(rows[1].classList.contains('ins-steps')).toBe(true);
+	expect(rows[0].nextElementSibling).toBe(rows[1]);
+	unmount(first);
+	unmount(second);
 });
