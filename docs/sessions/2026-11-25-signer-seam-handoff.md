@@ -35,4 +35,4 @@
 
 ## Состояние дерева
 
-HEAD — `4002622b`, main в Gitea на нём же. Незакоммичено — чужие правки Мастерской (параллельная сессия) и untracked `.zcode/`. Стенды: vite 5178 (mock «Подписи»), `python -m http.server 8899` из `dev/signer-seam` (галерея шва; после приёмки погасить и убрать черновики `dev/signer-seam` по протоколу проверки). Кадры для показа: `dev/signer-seam/index.html`, `seam-before-1112.png`, `seam-after-1215.png`, полные — `before-plain.png`, `auto-workshop-1213.png`, `auto-desktop-1213.png`, `auto-list-1214.png`.
+HEAD — `5014f036` (плюс коммит с этой правкой передачи), main в Gitea. Незакоммичено — чужие правки Мастерской (параллельная сессия) и untracked `.zcode/`. Стенды погашены: vite 5178 и `http.server` 8899 остановлены, headless Edge с профилем `edge-seam-profile` не осталось, черновики `dev/signer-seam` и профиль удалены. Принятые кадры оставлены как доказательство: `dev/screens/shots/signer-seam-2026-11-25/` — `seam-before-1112.png` и `seam-after-1215.png` (кропы «до/после»), полные кадры `before-plain.png`, `auto-workshop-1213.png`, `auto-desktop-1213.png`, `auto-list-1214.png`.
