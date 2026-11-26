@@ -12,6 +12,8 @@
 		closed,
 		color,
 		card = false,
+		/** Открытый справа круг на широком окне (план 75): подложка и полоска цвета. */
+		selected = false,
 		actionLabel,
 		onaction,
 		actionLabel2,
@@ -39,6 +41,7 @@
 		closed?: string;
 		color?: string;
 		card?: boolean;
+		selected?: boolean;
 		actionLabel?: string;
 		onaction?: () => void;
 		actionLabel2?: string;
@@ -90,8 +93,9 @@
 	{#if onclick}
 		<button
 			type="button"
-			class={rowClass}
+			class={`${rowClass}${selected ? ' sel' : ''}`}
 			style={rowStyle}
+			aria-current={selected ? 'page' : undefined}
 			{onclick}
 			{onmousedown}
 			{onmouseup}
@@ -103,7 +107,11 @@
 			{@render inner()}
 		</button>
 	{:else}
-		<div class={rowClass} style={rowStyle}>
+		<div
+			class={`${rowClass}${selected ? ' sel' : ''}`}
+			style={rowStyle}
+			aria-current={selected ? 'page' : undefined}
+		>
 			{@render inner()}
 		</div>
 	{/if}

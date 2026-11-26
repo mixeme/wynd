@@ -62,9 +62,10 @@
 | OverlayLayout | absolute | sheets, dialogs, push; `ondismiss` → Scrim и модальность; `label` → `aria-label` |
 | AdminWideLayout | `.ph.wide.shell` | e9-* |
 | StreetLayout | `.ph.shell` (как ShellLayout) | улочка: целым экраном на телефоне и левой колонкой на широком (план 75) |
+| CirclesSplitLayout | `.ph.app.split` | широкое окно `/circles`: список слева, круг справа; без выбора правая часть пустая (план 75) |
 | PayGateLayout | — (шлюз, не каркас) | `+layout` групп `/circles/*` и `/search/*`: пока доступ не оплачен — вместо экрана «Доступ закрыт» с реквизитами или заявкой в ожидании (**#e10-***), иначе children |
 
-`StreetLayout` — содержимое улочки, вынесенное из `routes/circles/+page.svelte` без изменения вида: шапка, полосы, список, плюс (план 75). На широком окне та же улочка стоит в `.split-side`; телефонный экран не меняется.
+`StreetLayout` — содержимое улочки, вынесенное из `routes/circles/+page.svelte` без изменения вида: шапка, полосы, список, плюс (план 75). На широком окне та же улочка стоит в `.split-side`; телефонный экран не меняется. `CirclesSplitLayout` — две колонки на `PhoneFrame app split`: `--app-split-max-width` 1060 px, левая колонка 340 px (до 1000 px — 260 px и сжатые строки), правая не шире 720 px. `empty` — круг не выбран: справа `EmptyState` «Выберите круг». `/circles/new` и `/circles/{id}/join` остаются одноколоночными.
 
 `FormLayout`: при `circleTitle` — шапка вступления **#e1-4** (`div.cbar`, имя по центру, без `BackBar`); список участников на join (`?members=1`) — `color` + `subtitle` (цветная `.cbar` с назад), не серый `BackBar`. Ветки: `compose`, `circleTitle`, snippet `bar`, `color && subtitle`, иначе `BackBar`.
 

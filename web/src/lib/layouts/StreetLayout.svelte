@@ -1,5 +1,13 @@
 ﻿<script lang="ts">
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
+
+	// План 75: на широком окне улица стоит левой колонкой рядом с открытым
+	// кругом — этот круг отмечается в списке. Телефонный экран не меняется.
+	let {
+		selectedId = null
+	}: {
+		selectedId?: string | null;
+	} = $props();
 	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
 	import EmptyState from '$ui/data/EmptyState.svelte';
 	import { uuid } from '$lib/uuid';
@@ -234,6 +242,10 @@
 
 	function circleKey(circle: StreetCircle): string {
 		return `${circle.origin}:${circle.id}`;
+	}
+
+	function isSelected(circle: StreetCircle): boolean {
+		return selectedId !== null && circle.id === selectedId;
 	}
 
 	// Закрепление — переезд, как «Отмеченные» в Slack (владелец, 2026-10-22:
@@ -723,6 +735,7 @@
 							dot={circle.responses}
 							color={circle.color}
 							card={pinMenuKey === menuKey('pin', circle)}
+							selected={isSelected(circle)}
 							actionLabel={door.actionLabel}
 							actionLabel2={door.actionLabel2}
 							onaction={() => void confirmPin(circle)}
@@ -794,6 +807,7 @@
 								dot={circle.responses}
 								color={circle.color}
 								card={pinMenuKey === menuKey(`g:${group.name}`, circle)}
+								selected={isSelected(circle)}
 								actionLabel={door.actionLabel}
 								actionLabel2={door.actionLabel2}
 								onaction={() => void confirmPin(circle)}
@@ -862,6 +876,7 @@
 							dot={circle.responses}
 							color={circle.color}
 							card={pinMenuKey === menuKey('rest', circle)}
+							selected={isSelected(circle)}
 							actionLabel={door.actionLabel}
 							actionLabel2={door.actionLabel2}
 							onaction={() => void confirmPin(circle)}

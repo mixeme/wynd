@@ -101,6 +101,72 @@
 	height: var(--app-h, 100dvh);
 	min-height: var(--app-h, 100dvh);
 }
+/* План 75: широкое окно — список кругов слева, открытый круг справа.
+   Порог 720 совпадает с `$lib/session/layout.svelte.ts`: ниже него каркас
+   не монтируется. Сжатый вид списка — только до 1000 px; дальше полный. */
+.ph.app.split {
+	--split-side-w: 340px;
+	max-width: var(--app-split-max-width);
+	flex-direction: row;
+}
+.ph.app.split .split-side {
+	width: var(--split-side-w);
+	flex: 0 0 auto;
+	min-width: 0;
+	display: flex;
+	border-right: 1px solid var(--line);
+	overflow: hidden;
+}
+.ph.app.split .split-main {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	overflow: hidden;
+}
+/* Экраны в колонках — свои `.ph.app`; здесь они занимают колонку целиком. */
+.ph.app.split .split-side > .ph,
+.ph.app.split .split-main > .ph {
+	width: 100%;
+	max-width: 100%;
+	height: 100%;
+	min-height: 0;
+	margin: 0;
+	border: none;
+	border-radius: 0;
+}
+.ph.app.split .split-empty {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: auto;
+}
+/* Затемнение диалога — на всё окно, а не на телефонную колонку. */
+.ph.app.split .scrim {
+	width: 100%;
+	max-width: none;
+	margin: 0;
+}
+@media (max-width: 999px) {
+	.ph.app.split {
+		--split-side-w: 260px;
+	}
+	/* Сжатый тот же список: без строки последней записи, знак меньше.
+	   Строка состояния молчащего сервера остаётся — это не последняя запись. */
+	.ph.app.split .split-side .r {
+		gap: 10px;
+		padding: 9px 12px;
+	}
+	.ph.app.split .split-side .r .sq {
+		width: 32px;
+		height: 32px;
+		border-radius: 10px;
+		font-size: 13px;
+	}
+	.ph.app.split .split-side .r .p:not(.with-ic) {
+		display: none;
+	}
+}
 .ph.app .circle-body {
 	flex: 1;
 	min-height: 0;
@@ -578,6 +644,11 @@
 /* Сервер круга молчит (7.9) */
 .r.silent {
 	opacity: 0.6;
+}
+/* План 75: открытый справа круг отмечен в левой колонке. */
+.r.sel {
+	background: var(--tint);
+	box-shadow: inset 3px 0 var(--rc, var(--c));
 }
 .r .p.with-ic {
 	display: flex;

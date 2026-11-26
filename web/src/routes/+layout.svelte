@@ -8,6 +8,7 @@
 	import { getAvatarShape, initSession, initTheme, isDark } from '$lib/session/session.svelte';
 	import { initSyncResume, startSyncForAllSessions } from '$lib/sync/sync';
 	import { initViewportHeight } from '$lib/session/viewport';
+	import { initLayoutMode } from '$lib/session/layout.svelte';
 	import { page } from '$app/stores';
 	import { onMount, tick } from 'svelte';
 	import { initAppUpdate } from '$lib/session/appUpdate.svelte';
@@ -110,6 +111,7 @@
 		const stopAndroidUpdates = initAndroidUpdates();
 		const stopTheme = initTheme();
 		const stopQueue = initQueueDrain();
+		const stopLayout = initLayoutMode();
 		const stopViewport = initViewportHeight();
 		const stopSyncResume = initSyncResume();
 		const stopConnection = initConnection();
@@ -137,6 +139,7 @@
 			stopConnection();
 			stopInstallPrompt();
 			stopQueue();
+			stopLayout();
 			stopViewport();
 		};
 	});

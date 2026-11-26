@@ -18,6 +18,8 @@
 		sans-serif;
 	--app-max-width: 480px;
 	--app-wide-max-width: 820px;
+	/* План 75: две колонки на широком окне — список 340 + круг 720. */
+	--app-split-max-width: 1060px;
 	--app-gutter: #e0dbd2;
 	--app-gutter-dark: #161412;
 	--mark-w: 46px;
