@@ -10,6 +10,7 @@
 - **Правка C143** (`8e4e2a1b`): `body`, `.page-host`, `.server-host` — `--paper`; окно один бумажный лист, колонка 720 остаётся, её края не видны. Браузер и PWA не тронуты. Комментарии в `cmd/wynd-desktop/frontend/src/app.css` объясняют решение.
 - **Кадры:** `docs/visual/reviews/window-no-gutter-2026-11-26/` — до (снимок окна владельца 760 × 780 и край крупно) и после (настоящий рендер shell + клиент, 760 × 780 и 1000 × 660), README с методом и SHA-256. **Вёрстка принята 26.11 («Принимаем»); кадры ПК5/ПК6/ПК6а/ПК7 обновлены.**
 - **Проверки:** `npm run check` и `npm run build` в `cmd/wynd-desktop/frontend`, `npm run check:ui` в `web` — зелёные.
+- **Приёмка и кадры** (`61d161e2`): владелец принял 26.11 («Принимаем»); ПК5/ПК6/ПК6а/ПК7 в `docs/visual/desktop.html` переведены на бумажный фон, пометка «ждёт приёмки» снята в C143 и проверке.
 - **Записи:** C143 в плане 46 и CHANGELOG; реестр проверок §14 (окно без полос).
 
 ## Открыто и дальше
@@ -35,4 +36,4 @@
 
 ## Состояние дерева
 
-HEAD — коммит C143 + кадры и приёмка (см. git log); main в Gitea после push. Незакоммичено (чужая работа): `internal/api/sessions.go`, `web/src/routes/+page.svelte`, untracked `web/src/lib/pwa/`, `web/src/lib/session/pwaHint.ts`, `.zcode/`. Процессы: галерея C143 на `:8896` (для показа); временные vite 5179/5173, стенд 7678 и Edge CDP 9226 уже остановлены. Временный `dev/side-bands-capture.mjs` и профиль `dev/side-bands-profile` — удалить/оставить в `dev/` (в git не входят).
+HEAD — `61d161e2` (C143 принят, кадры обновлены); main в Gitea, запушен. Незакоммичено (чужая работа параллельной сессии, не трогать): `internal/api/sessions.go`, `web/src/routes/+page.svelte`, `web/src/routes/+layout.svelte`, `web/src/routes/circles/+page.svelte`, `docs/CHANGELOG.md`, `docs/testing/pending-device-checks.md`; untracked `web/src/lib/pwa/`, `web/src/lib/session/pwaHint.ts`, `pwaHint.test.ts`, `docs/plans/74-pwa-install-banner.plan.md`, `.zcode/`. Процессы: все временные (vite 5179/5173, стенд 7678, Edge CDP 9226) и галерея `:8896` остановлены при завершении. Показать кадры снова: `cd docs/visual/reviews/window-no-gutter-2026-11-26 && python -m http.server 8896 --bind 127.0.0.1`. Инструмент съёмки `dev/side-bands-capture.mjs` оставлен в `dev/` (в git не входит), профиль Edge удалён.
