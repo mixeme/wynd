@@ -235,6 +235,15 @@
 .shell-body {
 	overscroll-behavior-y: contain;
 }
+/* Список помещается целиком — прокручивать нечего. Chrome и Edge всё равно
+   рисуют полосу у `overflow: auto`; в узкой левой колонке (план 75) она
+   выглядела лишней. При переполнении класс снимается — полоса возвращается. */
+.shell-body.fit {
+	scrollbar-width: none;
+}
+.shell-body.fit::-webkit-scrollbar {
+	display: none;
+}
 .ph.app .bar,
 .ph.app .cbar,
 .ph.app .appbar {

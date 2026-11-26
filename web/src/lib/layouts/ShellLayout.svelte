@@ -34,6 +34,32 @@
 		onsettings?: () => void;
 		children: Snippet;
 	} = $props();
+
+	// Полоса прокрутки улочки: Chrome и Edge рисуют её и тогда, когда строки
+	// помещаются целиком (заметно в узкой левой колонке на широком окне).
+	// Прячем, пока прокручивать нечего; при переполнении она возвращается.
+	let bodyEl = $state<HTMLDivElement>();
+	// До первого замера считаем, что помещается: так полоса не мигает на входе.
+	let bodyFits = $state(true);
+
+	$effect(() => {
+		const el = bodyEl;
+		if (!el) return;
+		// +1 px — округление субпикселей: полоса из-за него не нужна.
+		const update = () => {
+			bodyFits = el.scrollHeight <= el.clientHeight + 1;
+		};
+		update();
+		const ro = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(update);
+		ro?.observe(el);
+		if (el.firstElementChild) ro?.observe(el.firstElementChild);
+		const mo = new MutationObserver(update);
+		mo.observe(el, { childList: true, subtree: true, characterData: true });
+		return () => {
+			ro?.disconnect();
+			mo.disconnect();
+		};
+	});
 </script>
 
 <PhoneFrame shell {dark} {app} {height} class={className}>
@@ -43,7 +69,7 @@
 	<AppBar {onsearch} {searchDisabled} {onsettings} />
 	{#if app}
 		<ConnectionStrip notice={connectionNotice()} />
-		<div class="shell-body">
+		<div class="shell-body" class:fit={bodyFits} bind:this={bodyEl}>
 			{@render children()}
 		</div>
 	{:else}
