@@ -156,6 +156,13 @@
 				onclick={() =>
 					goto(`/settings/servers/accept?origin=${encodeURIComponent(row.session.origin)}`)}
 			/>
+			<!-- Быстрое подключение нового устройства: QR с адресом и почтой (план 72). -->
+			<SettingsRow
+				icon="qr"
+				title="Подключить устройство"
+				onclick={() =>
+					goto(`/settings/servers/connect?origin=${encodeURIComponent(row.session.origin)}`)}
+			/>
 			<!-- Сессии учётной записи на этом сервере (план 72). -->
 			<SettingsRow
 				icon="key"

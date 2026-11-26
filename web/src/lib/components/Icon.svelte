@@ -53,7 +53,8 @@
 		| 'mic'
 		| 'video'
 		| 'flip'
-		| 'stop';
+		| 'stop'
+		| 'qr';
 
 	type IconSize = 'md' | 'sm' | 'xs';
 
