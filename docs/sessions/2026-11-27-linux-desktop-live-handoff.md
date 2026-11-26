@@ -99,9 +99,10 @@
 
 ## Состояние дерева
 
-HEAD — `605c90be` (C150) поверх `8ffe2f20` (выпускная 0.1.6) и `a69ba7c1`
-(C149); main в Gitea, GitHub-зеркало подхватило, CI `Desktop checks` на
-`605c90be` — success. Этим коммитом (передача) добавлены протокол
+HEAD — `d3bf238b` (план 46: живая проверка C149/C150) поверх `4fe24dbc`
+(передача) и `605c90be` (C150), ниже — `8ffe2f20` (выпускная 0.1.6) и
+`a69ba7c1` (C149); main в Gitea, GitHub-зеркало подхватило, CI `Desktop
+checks` на `605c90be` и `4fe24dbc` — success. Коммитом передачи добавлены протокол
 `docs/testing/linux-desktop-live-2026-11-27.md` со снимками, тест
 `cmd/wynd-desktop/platform_linux_test.go`, правки плана 69 и реестра §12.
 Незакоммичено — только `.zcode/` (не наш). Worktree `wynd-stand` удалён,
