@@ -237,7 +237,7 @@
 		<Hint>Пришлём код для входа. Пароля нет.</Hint>
 		<Button {loading} disabled={!instance} onclick={onSubmit}>Получить код</Button>
 		<!-- Без приглашения — только на открытом сервере: иначе дверь вела в тупик.
-	     Каждая ссылка — своей строкой с промежутком: вплотную в них промахивались. -->
+		     Каждая ссылка — своей строкой с промежутком: вплотную в них промахивались. -->
 		{#if instance?.registration_mode === 'open'}
 			<Hint class="mt-16" centered>
 				<a class="under" href="/join">Регистрация без приглашения</a>
@@ -248,10 +248,6 @@
 				<a class="under" href="/invite?from=login">У меня есть приглашение</a>
 			</Hint>
 		{/if}
-		<!-- Быстрое подключение: QR со «Подключить устройство» другого устройства (план 72). -->
-		<Hint class="mt-16" centered>
-			<a class="under" href="/invite/scan?from=login">Войти по QR-коду</a>
-		</Hint>
 		{#if error}
 			<Hint class="mt-8" centered>{error}</Hint>
 		{/if}
