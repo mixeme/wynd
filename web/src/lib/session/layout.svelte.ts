@@ -1,13 +1,11 @@
-// Ширина окна для раскладки (план 75): на широком экране улочка и круг
-// стоят двумя колонками. До 720 px — телефонная колонка; до 1060 px — рейл
-// из аватаров и круг 720; от 1060 px — полный список 340 и круг 720: ровно
-// столько, сколько занимает полный каркас. Пороги те же, что в CSS
-// `.ph.app.split` / `.ph.app.split.rail`.
+// Ширина окна для раскладки (план 76): на широком экране у раздела своя
+// левая колонка, а справа — выбранное. До 1060 px — телефонная колонка; от
+// 1060 px — две колонки: список 340 и содержимое 720, ровно столько, сколько
+// занимает полный каркас. Порог тот же, что в CSS `.ph.app.split`.
 
-/** Раскладка окна: телефон, рейл аватаров, полный список с кругом. */
-export type LayoutMode = 'phone' | 'rail' | 'full';
+/** Раскладка окна: телефон и две колонки. */
+export type LayoutMode = 'phone' | 'full';
 
-const SPLIT_QUERY = '(min-width: 720px)';
 const FULL_QUERY = '(min-width: 1060px)';
 
 function media(query: string): MediaQueryList | undefined {
@@ -15,9 +13,7 @@ function media(query: string): MediaQueryList | undefined {
 }
 
 function current(): LayoutMode {
-	const split = media(SPLIT_QUERY)?.matches ?? false;
-	const full = media(FULL_QUERY)?.matches ?? false;
-	return !split ? 'phone' : full ? 'full' : 'rail';
+	return media(FULL_QUERY)?.matches ? 'full' : 'phone';
 }
 
 let mode = $state<LayoutMode>(current());
@@ -29,29 +25,21 @@ export function layoutMode(): LayoutMode {
 
 /** Две колонки, когда ширина позволяет. */
 export function splitLayout(): boolean {
-	return mode !== 'phone';
-}
-
-/** Промежуточная ширина: от кругов остаются только аватары. */
-export function railLayout(): boolean {
-	return mode === 'rail';
+	return mode === 'full';
 }
 
 /** Слушает смену ширины; зовётся один раз из корневого layout. */
 export function initLayoutMode(): () => void {
-	const splitMq = media(SPLIT_QUERY);
 	const fullMq = media(FULL_QUERY);
-	if (!splitMq || !fullMq) return () => {};
+	if (!fullMq) return () => {};
 	const update = () => {
-		mode = !splitMq.matches ? 'phone' : fullMq.matches ? 'full' : 'rail';
+		mode = fullMq.matches ? 'full' : 'phone';
 	};
 	update();
 	// Читаем `mq.matches`, а не событие: так же ведёт себя подмена в тестах.
 	const onChange = () => update();
-	splitMq.addEventListener('change', onChange);
 	fullMq.addEventListener('change', onChange);
 	return () => {
-		splitMq.removeEventListener('change', onChange);
 		fullMq.removeEventListener('change', onChange);
 	};
 }

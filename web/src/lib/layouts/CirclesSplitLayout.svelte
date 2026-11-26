@@ -3,26 +3,23 @@
 	import PhoneFrame from '$ui/chrome/PhoneFrame.svelte';
 	import type { Snippet } from 'svelte';
 
-	// План 75: широкое окно — список кругов слева, открытый круг справа.
-	// Каркас общий: колонки прокручиваются сами, ширина и сжатый вид списка
-	// заданы в ui.css по тем же 720/1000 px. Телефон сюда не попадает:
-	// вызывается только когда ширина позволяет.
+	// План 76: широкое окно — у раздела своя левая колонка, справа выбранное.
+	// Каркас общий: колонки прокручиваются сами, ширина задана в ui.css по тому
+	// же порогу 1060 px. Телефон сюда не попадает: вызывается только когда
+	// ширина позволяет.
 	let {
 		sidebar,
 		empty = false,
-		rail = false,
 		children
 	}: {
 		sidebar: Snippet;
-		/** Круг не выбран: справа пусто, первый сам не открывается. */
+		/** Ничего не выбрано: справа пусто, первый сам не открывается. */
 		empty?: boolean;
-		/** Промежуточная ширина: слева только аватары, 80 px. */
-		rail?: boolean;
 		children: Snippet;
 	} = $props();
 </script>
 
-<PhoneFrame app class={rail ? 'split rail' : 'split'}>
+<PhoneFrame app class="split">
 	<aside class="split-side">{@render sidebar()}</aside>
 	<div class="split-main">
 		{#if empty}

@@ -1,16 +1,13 @@
 ﻿<script lang="ts">
 	import PullRefreshBand from '$ui/data/PullRefresh.svelte';
 
-	// План 75: на широком окне улица стоит левой колонкой рядом с открытым
+	// План 76: на широком окне улица стоит левой колонкой рядом с открытым
 	// кругом — этот круг отмечается в списке. Телефонный экран не меняется.
 	let {
 		selectedId = null,
-		rail = false,
 		hideSearch = false
 	}: {
 		selectedId?: string | null;
-		/** Промежуточная ширина: от кругов только аватары, имя — подсказкой. */
-		rail?: boolean;
 		/** В раскладке поиск — в шапке правой панели; слева лупы нет. */
 		hideSearch?: boolean;
 	} = $props();
@@ -742,7 +739,6 @@
 							color={circle.color}
 							card={pinMenuKey === menuKey('pin', circle)}
 							selected={isSelected(circle)}
-							hint={rail ? circle.name : undefined}
 							actionLabel={door.actionLabel}
 							actionLabel2={door.actionLabel2}
 							onaction={() => void confirmPin(circle)}
@@ -815,7 +811,6 @@
 								color={circle.color}
 								card={pinMenuKey === menuKey(`g:${group.name}`, circle)}
 								selected={isSelected(circle)}
-								hint={rail ? circle.name : undefined}
 								actionLabel={door.actionLabel}
 								actionLabel2={door.actionLabel2}
 								onaction={() => void confirmPin(circle)}
@@ -885,7 +880,6 @@
 							color={circle.color}
 							card={pinMenuKey === menuKey('rest', circle)}
 							selected={isSelected(circle)}
-							hint={rail ? circle.name : undefined}
 							actionLabel={door.actionLabel}
 							actionLabel2={door.actionLabel2}
 							onaction={() => void confirmPin(circle)}

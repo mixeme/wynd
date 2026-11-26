@@ -101,10 +101,9 @@
 	height: var(--app-h, 100dvh);
 	min-height: var(--app-h, 100dvh);
 }
-/* План 75: широкое окно — список кругов слева, открытый круг справа.
-   Пороги 720 и 1060 совпадают с `$lib/session/layout.svelte.ts`: ниже 720
-   каркас не монтируется, до 1060 слева рейл аватаров, дальше полный список
-   (340 + 720 — ровно вся ширина каркаса). */
+/* План 76: широкое окно — у раздела своя левая колонка, справа выбранное.
+   Порог 1060 совпадает с `$lib/session/layout.svelte.ts`: ниже каркас не
+   монтируется, от 1060 — список 340 и содержимое 720 (ровно вся ширина). */
 .ph.app.split {
 	--split-side-w: 340px;
 	max-width: var(--app-split-max-width);
@@ -147,109 +146,6 @@
 	width: 100%;
 	max-width: none;
 	margin: 0;
-}
-/* Рейл аватаров на промежуточной ширине (план 75, решение владельца 26.11):
-   от кругов — только знаки, имя — в подсказке. Круг получает 720 px. */
-.ph.app.split.rail {
-	--split-side-w: 80px;
-	max-width: 800px;
-}
-/* Шапка улочки в рейле — столбиком: знак, поиск, настройки. */
-.ph.app.split.rail .split-side .appbar {
-	flex-direction: column;
-	gap: 10px;
-	/* Нижний зазор даёт первая строка списка: шаг от знака к настройкам и от
-	   настроек к первому аватару одинаковый — 10 px. */
-	padding: 10px 0 0;
-}
-.ph.app.split.rail .split-side .appbar .sp {
-	display: none;
-}
-/* Служебные блоки улочки и текстовые части строк в рейле не нужны. */
-.ph.app.split.rail .split-side .shell-body > div:has(.r) > *:not(.r):not(.circle-row-card) {
-	display: none;
-}
-.ph.app.split.rail .split-side .r {
-	position: relative;
-	justify-content: center;
-	gap: 0;
-	padding: 10px 0;
-}
-.ph.app.split.rail .split-side .r + .r {
-	border-top: none;
-}
-.ph.app.split.rail .split-side .r .m {
-	display: none;
-}
-/* Непрочитанное в рейле. Число — отдельный контрастный значок на углу
-   аватара, точка — когда есть только новые отклики; кант бумаги отделяет
-   значок от аватара того же цвета. Время без имени не нужно. */
-.ph.app.split.rail .split-side .r .rt {
-	position: absolute;
-	/* Центр значка и центр точки — в одном месте: на верхнем углу аватара.
-	   Размеры у них разные, поэтому выравниваем не край, а центр. */
-	top: 10px;
-	right: 18px;
-	transform: translate(50%, -50%);
-}
-.ph.app.split.rail .split-side .r .rt > span:first-child {
-	display: none;
-}
-.ph.app.split.rail .split-side .r .bdg {
-	min-width: 18px;
-	height: 18px;
-	padding: 0 5px;
-	border-radius: 9px;
-	font-size: 10.5px;
-	line-height: 1;
-	background: var(--unread);
-	color: #fff;
-	box-shadow: 0 0 0 2px var(--paper);
-}
-.ph.app.split.rail .split-side .r .rdot {
-	width: 10px;
-	height: 10px;
-	margin: 0;
-	background: var(--unread);
-	box-shadow: 0 0 0 2px var(--paper);
-}
-/* Групповые шапки — не круги, в рейле их нет. */
-.ph.app.split.rail .split-side .circle-row-card:has(.fold) {
-	display: none;
-}
-.ph.app.split.rail .fab-wrap {
-	right: 12px;
-	bottom: 16px;
-}
-/* Меню плюса и карточка долгого нажатия шире рейла: пока они открыты,
-   колонка временно становится обычной, чтобы меню не обрезалось. */
-.ph.app.split.rail:has(.split-side .fab-menu),
-.ph.app.split.rail:has(.split-side .circle-row-card) {
-	--split-side-w: 260px;
-	max-width: 980px;
-}
-.ph.app.split.rail:has(.split-side .fab-menu) .split-side .appbar,
-.ph.app.split.rail:has(.split-side .circle-row-card) .split-side .appbar {
-	flex-direction: row;
-	gap: 18px;
-	padding: 9px 18px;
-}
-.ph.app.split.rail:has(.split-side .fab-menu) .split-side .appbar .sp,
-.ph.app.split.rail:has(.split-side .circle-row-card) .split-side .appbar .sp {
-	display: block;
-}
-/* Пустая улочка в рейл не влезает: без кругов колонка остаётся полной. */
-.ph.app.split.rail:has(.split-side .empty-state) {
-	--split-side-w: 340px;
-	max-width: 1060px;
-}
-.ph.app.split.rail:has(.split-side .empty-state) .split-side .appbar {
-	flex-direction: row;
-	gap: 18px;
-	padding: 9px 18px;
-}
-.ph.app.split.rail:has(.split-side .empty-state) .split-side .appbar .sp {
-	display: block;
 }
 .ph.app .circle-body {
 	flex: 1;
