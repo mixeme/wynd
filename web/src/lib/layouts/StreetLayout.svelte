@@ -677,7 +677,7 @@
 			{#if pwaHint && !empty}
 				<NewsBanner
 					title="Wynd на главный экран"
-					text="Уведомления и запуск без адресной строки"
+					text="Уведомления и запуск без адресной строки."
 					onclick={() => void installPwa()}
 					ondismiss={hidePwaHint}
 				/>
@@ -685,7 +685,7 @@
 			{#if appHint && !empty}
 				<NewsBanner
 					title="Приложение Wynd для Android"
-					text="Умеет больше и работает стабильнее"
+					text="Умеет больше и работает стабильнее."
 					onclick={() => goto('/app')}
 					ondismiss={hideAppHint}
 				/>
