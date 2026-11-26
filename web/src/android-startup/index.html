@@ -2,10 +2,10 @@
 <html lang="ru">
 	<head>
 		<meta charset="utf-8" />
-		<meta
-			name="viewport"
-			content="width=device-width, initial-scale=1, interactive-widget=resizes-content"
-		/>
+		<!-- Как в app.html: layout viewport не сжимает никто, кроме страницы
+		     (session/viewport.ts); иначе на закрытии клавиатуры — белая
+		     вспышка фона оболочки (C144). -->
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>Wynd</title>
 	</head>
 	<body>

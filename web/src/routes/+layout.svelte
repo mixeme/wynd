@@ -96,6 +96,9 @@
 	$effect(() => {
 		if (typeof document === 'undefined') return;
 		document.body.classList.toggle('dark', isDark());
+		// Холст (html) красится вместе с body: место, которое оболочка видит
+		// вне холста страницы, не должно быть светлым (C144).
+		document.documentElement.classList.toggle('dark', isDark());
 		// Форма аватаров (A16): стили в ui.css по body[data-avatars].
 		document.body.dataset.avatars = getAvatarShape();
 		// Строка состояния установленного приложения — в цвет фона темы (SW-4).
@@ -313,6 +316,16 @@
 		max-width: 100%;
 		-webkit-text-size-adjust: 100%;
 		text-size-adjust: 100%;
+		/* Холст страницы — тоже бумага: место, которое оболочка закрашивает
+		   вне холста (уезжающая клавиатура, перерисовка окна), не должно быть
+		   белым (C144). */
+		background: var(--paper);
+	}
+
+	/* Тёмный холст: --paper тёмной темы живёт на .ph.dark, а html — снаружи
+	   (tokens.css). */
+	:global(html.dark) {
+		background: #211e1c;
 	}
 
 	:global(body) {
