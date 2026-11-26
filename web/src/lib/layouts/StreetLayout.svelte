@@ -16,6 +16,7 @@
 	import { uuid } from '$lib/uuid';
 	import { onDestroy, onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { detailEntryOptions } from '$lib/navigation/detailEntry';
 	import CircleRow from '$ui/data/CircleRow.svelte';
 	import Chip from '$ui/forms/Chip.svelte';
 	import ChipGroup from '$ui/forms/ChipGroup.svelte';
@@ -314,7 +315,12 @@
 			identityName: circle.identityName,
 			hasOthers: circle.hasOthers
 		});
-		goto(circle.pendingJoin ? `/circles/${circle.id}/join` : `/circles/${circle.id}`);
+		// Смена круга в левой колонке заменяет запись истории: «Назад» из
+		// круга возвращает к списку, а не мотает открытые круги.
+		goto(
+			circle.pendingJoin ? `/circles/${circle.id}/join` : `/circles/${circle.id}`,
+			detailEntryOptions(selectedId !== null)
+		);
 	}
 
 	// Тап мимо открытого меню закрывает его. Отметка «жест поглощён» — как
