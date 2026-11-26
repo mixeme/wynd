@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getDb, putSession, putSnapshot, snapshotKey } from '$lib/idb/db';
+import { getDb, putSession, putSnapshot, saveAppSettings, snapshotKey } from '$lib/idb/db';
 import { loadStreetCached } from './circles';
 
 // C97: улочка рисуется из снимков на устройстве, не дожидаясь ответов
@@ -69,6 +69,22 @@ describe('улочка из снимка (C97)', () => {
 		const street = await loadStreetCached();
 
 		expect(street?.circles[0].hasOthers).toBe(false);
+	});
+
+	it('отдаёт имя в круге из кэша — «кто мы» в шапке в первом кадре (C138)', async () => {
+		await putSnapshot(snapshotKey(ORIGIN, 'circles', '_list'), {
+			data: { circles: [ITEM], groups: [] },
+			fetched_at: Date.now()
+		});
+		await saveAppSettings({
+			theme: 'system',
+			circle_meta: { [':c1']: { color: 'ochre', identity_name: 'Аня' } }
+		});
+
+		const street = await loadStreetCached();
+
+		expect(street?.circles[0].identityName).toBe('Аня');
+		expect(street?.circles[0].colorToken).toBe('ochre');
 	});
 
 	it('без снимка не показывает пустую улочку', async () => {

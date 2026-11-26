@@ -14,6 +14,16 @@ export async function getCircleColor(
 	return settings?.circle_meta?.[circleMetaKey(origin, circleId)]?.color;
 }
 
+/** Цвет и имя в круге одним чтением: строке улочки нужны оба (C138). */
+export async function getCircleMeta(
+	origin: string,
+	circleId: string
+): Promise<{ color?: CircleColor; identityName?: string }> {
+	const settings = await getAppSettings();
+	const meta = settings?.circle_meta?.[circleMetaKey(origin, circleId)];
+	return { color: meta?.color, identityName: meta?.identity_name };
+}
+
 export async function setCircleColor(
 	origin: string,
 	circleId: string,

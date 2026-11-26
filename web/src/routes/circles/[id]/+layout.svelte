@@ -78,9 +78,10 @@
 		name: seed?.name ?? '',
 		color: seed?.color ?? 'olive',
 		colorHex: CIRCLE_COLORS[seed?.color ?? 'olive'].cssVar,
-		identityName: '',
+		// Имя в круге из кэша строки улочки (C138): «кто мы» — в первом кадре.
+		identityName: seed?.identityName ?? '',
 		identityId: '',
-		identityInitial: '?',
+		identityInitial: circleInitial(seed?.identityName ?? ''),
 		avatarBlobId: '',
 		avatarUrl: '',
 		editWindowSec: undefined,
@@ -109,7 +110,8 @@
 			name: ctx.name,
 			color: ctx.color,
 			canWrite: ctx.canWrite,
-			lastReadSeq: ctx.lastReadSeq
+			lastReadSeq: ctx.lastReadSeq,
+			identityName: ctx.identityName
 		});
 	});
 

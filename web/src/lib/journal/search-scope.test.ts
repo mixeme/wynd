@@ -15,7 +15,8 @@ const seed = {
 	name: 'Семья',
 	color: 'indigo' as const,
 	lastReadSeq: 21,
-	canWrite: true
+	canWrite: true,
+	identityName: 'Аня'
 };
 
 beforeEach(() => trackSearchScope(undefined, undefined));

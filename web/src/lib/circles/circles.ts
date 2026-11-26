@@ -3,7 +3,7 @@ import { dropParticipantSession, isSessionRejected } from '$lib/session/session.
 import { listGroups, listSessions, type SessionRecord } from '$lib/idb/db';
 import { invalidateSnapshots } from '$lib/idb/db';
 import { readCachedSnapshot, writeCachedSnapshot } from '$lib/api/snapshots';
-import { getCircleColor, setCircleColor, circleInitial } from './meta';
+import { getCircleMeta, setCircleColor, circleInitial } from './meta';
 import { CIRCLE_COLORS, type CircleColor } from '$lib/theme/colors';
 import { formatPostTime } from '$lib/format/time';
 import { serverHost } from './move';
@@ -102,6 +102,8 @@ export interface StreetCircle {
 	pendingJoin?: boolean;
 	/** Цвет токеном: шапка круга рисуется из строки до ответа сети (C97). */
 	colorToken?: CircleColor;
+	/** Имя в круге из кэша: «кто мы» в шапке — тем же кадром, а не после (C138). */
+	identityName?: string;
 	/** Курсор прочитанного: граница «нового» без сети (C97). */
 	lastReadSeq?: number;
 	/** «Читает, не пишет»: ввод не показываем, пока сеть не подтвердит. */
@@ -190,22 +192,24 @@ export async function searchOrigin(
 	return data.hits ?? [];
 }
 
-// Токен нужен шапке круга (C97): снимок строки отдаёт его сразу, без чтения
-// настроек. Цвет строки — из CIRCLE_COLORS[token].cssVar.
-async function colorTokenForCircle(
+// Токен и имя в круге нужны шапке круга (C97, C138): строка улочки отдаёт их
+// сеялке сразу, ещё до входа. Цвет — из CIRCLE_COLORS[token].cssVar, имя —
+// из того же закэшированного circle_meta, одним чтением настроек.
+async function streetMetaForCircle(
 	origin: string,
 	circleId: string,
 	serverColor?: string
-): Promise<CircleColor> {
+): Promise<{ colorToken: CircleColor; identityName?: string }> {
 	if (serverColor && serverColor in CIRCLE_COLORS) {
 		await setCircleColor(origin, circleId, serverColor as CircleColor);
-		return serverColor as CircleColor;
+		const { identityName } = await getCircleMeta(origin, circleId);
+		return { colorToken: serverColor as CircleColor, identityName };
 	}
-	const stored = await getCircleColor(origin, circleId);
-	if (stored) return stored;
+	const { color, identityName } = await getCircleMeta(origin, circleId);
+	if (color) return { colorToken: color, identityName };
 	const palette = Object.keys(CIRCLE_COLORS) as CircleColor[];
 	const hash = circleId.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-	return palette[hash % palette.length];
+	return { colorToken: palette[hash % palette.length], identityName };
 }
 
 /**
@@ -292,7 +296,11 @@ async function buildStreet(
 					: (circle.last_summary ??
 						(sessions.length > 1 ? session.name : 'Откройте, чтобы посмотреть'));
 			const time = circle.last_at && !leaving ? formatPostTime(circle.last_at) : '';
-			const colorToken = await colorTokenForCircle(session.origin, circle.id, circle.color);
+			const { colorToken, identityName } = await streetMetaForCircle(
+				session.origin,
+				circle.id,
+				circle.color
+			);
 			const row: StreetCircle = {
 				origin: session.origin,
 				instanceName: session.name,
@@ -303,6 +311,7 @@ async function buildStreet(
 				pinnedAt,
 				color: CIRCLE_COLORS[colorToken].cssVar,
 				colorToken,
+				identityName,
 				initial: circleInitial(circle.name),
 				preview,
 				time,
@@ -341,7 +350,7 @@ async function buildStreet(
 					color?: string;
 					split?: { invite_line?: string };
 				}>(session.origin, `/circles/${id}/join-preview`);
-				const colorToken = await colorTokenForCircle(session.origin, id, preview.color);
+				const { colorToken } = await streetMetaForCircle(session.origin, id, preview.color);
 				rows.push({
 					origin: session.origin,
 					instanceName: session.name,
