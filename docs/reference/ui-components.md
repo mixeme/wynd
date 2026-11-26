@@ -61,7 +61,10 @@
 | FormLayout | `.ph.{color\|shell}` | e1-4, e1-5, e2-14, e2-17, e6-1 |
 | OverlayLayout | absolute | sheets, dialogs, push; `ondismiss` → Scrim и модальность; `label` → `aria-label` |
 | AdminWideLayout | `.ph.wide.shell` | e9-* |
+| StreetLayout | `.ph.shell` (как ShellLayout) | улочка: целым экраном на телефоне и левой колонкой на широком (план 75) |
 | PayGateLayout | — (шлюз, не каркас) | `+layout` групп `/circles/*` и `/search/*`: пока доступ не оплачен — вместо экрана «Доступ закрыт» с реквизитами или заявкой в ожидании (**#e10-***), иначе children |
+
+`StreetLayout` — содержимое улочки, вынесенное из `routes/circles/+page.svelte` без изменения вида: шапка, полосы, список, плюс (план 75). На широком окне та же улочка стоит в `.split-side`; телефонный экран не меняется.
 
 `FormLayout`: при `circleTitle` — шапка вступления **#e1-4** (`div.cbar`, имя по центру, без `BackBar`); список участников на join (`?members=1`) — `color` + `subtitle` (цветная `.cbar` с назад), не серый `BackBar`. Ветки: `compose`, `circleTitle`, snippet `bar`, `color && subtitle`, иначе `BackBar`.
 
