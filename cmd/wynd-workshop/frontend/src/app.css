@@ -219,10 +219,14 @@ body {
   scrollbar-width: thin;
   scrollbar-color: var(--muted) transparent;
 }
+/* Колонтитул правой панели одной высоты на всех экранах: ряд вмещает кнопку
+   (8 + 18,85 + 8 + рамка 1 ≈ 37 px), поэтому строка-ссылки не делает его ниже
+   и линия над действиями стоит на одном месте. */
 .ins-win.ins-servers .ins-pane > .ins-foot {
   margin-top: auto;
   padding-top: 34px;
   position: relative;
+  min-height: 37px;
 }
 .ins-win.ins-servers .ins-pane > .ins-foot::before,
 .ins-win.ins-servers .ins-profile-form > .ins-foot::before {
@@ -242,6 +246,8 @@ body {
   margin-top: var(--sp-2);
   border-top: 0;
   padding-top: 0;
+  /* Второй ряд — только ссылки: высоту колонтитула задаёт ряд действий. */
+  min-height: 0;
 }
 .ins-win.ins-servers .ins-pane > .ins-foot + .ins-profile-tools::before {
   display: none;
@@ -284,6 +290,8 @@ body {
   margin-top: 0;
   padding-top: 34px;
   position: relative;
+  /* Колонтитул формы — той же высоты, что и в остальных экранах. */
+  min-height: 37px;
 }
 .ins-profile-form > .ins-foot > .ins-check {
   margin: 0;
