@@ -45,17 +45,25 @@
 - `git commit -- <путь> -m "…"` не работает: `-m` должен идти до `--`;
   писать `git commit -m "…" -- <путь>`.
 - В дереве параллельная сессия C140 (ui-guard, окно, страницы раскола) —
-  коммитить только свои пути, stage и commit одним шагом.
+  коммитить только свои пути, stage и commit одним шагом. **После моего
+  коммита документов она успела дописать своё в `docs/CHANGELOG.md` и
+  `docs/plans/46-open-questions-and-debt.plan.md`** — эти два файла сейчас
+  содержат чужие незакоммиченные правки.
 
 ## Состояние дерева
 
-HEAD — `e76c285c`; мои коммиты: `ffa86c8b`, `e76c285c` + коммит документов
-этой передачи. Пуш в Gitea — после коммита документов.
+HEAD — `45ac0541`, main отправлена в Gitea (`origin/main` = HEAD). Мои
+коммиты: `ffa86c8b` (починка ворот main), `e76c285c` (C141), `45ac0541`
+(документы и эта передача).
 
-Незакоммичено чужое (C140): `cmd/wynd-desktop/frontend/src/App.svelte`,
-`internal/api/sessions.go`, `web/scripts/ui-guard.mjs`,
-`web/src/test/ui-guard.test.ts`, `web/src/routes/circles/[id]/split/+page.svelte`,
+Незакоммичено чужое (параллельная сессия C140): `cmd/wynd-desktop/frontend/src/App.svelte`,
+`internal/api/sessions.go`, `web/scripts/ui-guard.mjs`, `web/scripts/check-ui.mjs`,
+`web/scripts/chrome-guard.mjs` (новый), `web/src/test/ui-guard.test.ts`,
+`web/src/test/chrome-guard.test.ts` (новый), `web/src/routes/circles/[id]/split/+page.svelte`,
 `web/src/routes/dev/smoke/android-startup/+page.svelte`,
 `web/src/routes/settings/servers/accept/move/+page.svelte`,
-`docs/reference/ui-components.md`. Untracked: `.zcode/` (служебный каталог
-агента, не проекта). Стенды и процессы этой сессией не поднимались.
+`docs/reference/ui-components.md`, `docs/CHANGELOG.md` и
+`docs/plans/46-open-questions-and-debt.plan.md` (правки после моего коммита).
+Untracked: `docs/visual/reviews/field-accent-2026-11-26/` и `.zcode/`
+(служебный каталог агента, не проекта). Стенды и процессы этой сессией не
+поднимались.
