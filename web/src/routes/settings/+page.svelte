@@ -88,9 +88,10 @@
 			<SettingsRow
 				icon="download"
 				title="Перейти на новую версию"
-				subtitle="Wynd откроется заново"
+				subtitle={appUpdate.applying ? 'перезагружаемся…' : 'Wynd откроется заново'}
 				chevron={false}
-				onclick={() => void applyAppUpdate()}
+				opacity={appUpdate.applying ? 0.55 : undefined}
+				onclick={appUpdate.applying ? undefined : () => void applyAppUpdate()}
 			/>
 		{:else}
 			<SettingsRow

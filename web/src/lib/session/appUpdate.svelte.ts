@@ -16,6 +16,8 @@ type UpdateFn = (reload?: boolean) => Promise<void>;
 export const appUpdate = $state({
 	/** Новая версия скачана и ждёт. */
 	pending: false,
+	/** Переходим на неё: страница перезагружается. */
+	applying: false,
 	/** Сервис-воркер есть: проверять можно. */
 	supported: false
 });
@@ -101,6 +103,21 @@ export async function checkAppUpdate(
 
 /** Перезагрузиться на новой версии. */
 export async function applyAppUpdate(): Promise<void> {
-	appUpdate.pending = false;
-	await update?.(true);
+	// До самой перезагрузки строка остаётся «Перейти на новую версию» и
+	// говорит «перезагружаемся…»: иначе на миг показывалась проверка версии.
+	if (appUpdate.applying) return;
+	appUpdate.applying = true;
+	try {
+		if (update) {
+			await update(true);
+			// Воркер мог встать без перезагрузки страницы — доводим переход сами.
+			if (typeof location !== 'undefined') location.reload();
+		} else if (typeof location !== 'undefined') {
+			location.reload();
+		}
+	} catch {
+		// Не вышло переключиться: скачанная версия не потеряна, строка снова работает.
+		appUpdate.applying = false;
+		appUpdate.pending = true;
+	}
 }

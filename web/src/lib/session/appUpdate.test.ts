@@ -6,10 +6,13 @@ let options: {
 	onNeedRefresh?: () => void;
 } = {};
 
+// Возвращаемая registerSW функция: тест подменяет её и управляет перезагрузкой.
+let updateSW: (reload?: boolean) => Promise<void> = async () => {};
+
 vi.mock('virtual:pwa-register', () => ({
 	registerSW: (o: typeof options) => {
 		options = o;
-		return async () => {};
+		return (reload?: boolean) => updateSW(reload);
 	}
 }));
 
@@ -39,6 +42,7 @@ const flush = () => new Promise((r) => setTimeout(r, 0));
 beforeEach(() => {
 	vi.resetModules();
 	options = {};
+	updateSW = async () => {};
 });
 
 afterEach(() => {
@@ -102,5 +106,56 @@ describe('appUpdate', () => {
 		worker.set('installed');
 		await expect(result).resolves.toBe('available');
 		expect(appUpdate.pending).toBe(true);
+	});
+
+	it('после нажатия «перейти» строка остаётся на месте и говорит о перезагрузке', async () => {
+		const worker = fakeWorker('installed');
+		const reg = fakeRegistration({ waiting: worker });
+		let finishUpdate: (value?: void) => void = () => {};
+		updateSW = vi.fn(
+			() =>
+				new Promise<void>((resolve) => {
+					finishUpdate = resolve;
+				})
+		);
+		vi.stubGlobal('navigator', {
+			...navigator,
+			serviceWorker: { getRegistration: vi.fn().mockResolvedValue(reg) }
+		});
+		const reload = vi.fn();
+		vi.stubGlobal('location', { reload });
+		const { appUpdate, applyAppUpdate, initAppUpdate } = await import('./appUpdate.svelte');
+		initAppUpdate();
+		await vi.waitFor(() => expect(appUpdate.pending).toBe(true));
+
+		const applying = applyAppUpdate();
+		await flush();
+		// Пока страница перезагружается, строка не превращается в проверку версии.
+		expect(appUpdate.applying).toBe(true);
+		expect(appUpdate.pending).toBe(true);
+
+		finishUpdate();
+		await applying;
+		expect(reload).toHaveBeenCalled();
+	});
+
+	it('не удалось переключиться — строка снова работает, версия не потеряна', async () => {
+		const worker = fakeWorker('installed');
+		const reg = fakeRegistration({ waiting: worker });
+		updateSW = vi.fn().mockRejectedValue(new Error('no worker'));
+		vi.stubGlobal('navigator', {
+			...navigator,
+			serviceWorker: { getRegistration: vi.fn().mockResolvedValue(reg) }
+		});
+		const reload = vi.fn();
+		vi.stubGlobal('location', { reload });
+		const { appUpdate, applyAppUpdate, initAppUpdate } = await import('./appUpdate.svelte');
+		initAppUpdate();
+		await vi.waitFor(() => expect(appUpdate.pending).toBe(true));
+
+		await applyAppUpdate();
+		expect(appUpdate.applying).toBe(false);
+		expect(appUpdate.pending).toBe(true);
+		expect(reload).not.toHaveBeenCalled();
 	});
 });
