@@ -667,12 +667,11 @@
 					ondismiss={() => (androidUpdate.hidden = true)}
 				/>
 			{/if}
-			{#if appHint && !empty}
-				<NewsBanner
-					title="Приложение Wynd для Android"
-					text="Умеет больше и работает стабильнее"
-					onclick={() => goto('/app')}
-					ondismiss={hideAppHint}
+			{#if browserHint && !empty}
+				<HintBanner
+					title="Рекомендуем Chrome или Vivaldi"
+					text="В них Wynd на Android работает стабильнее."
+					ondismiss={hideBrowserHint}
 				/>
 			{/if}
 			{#if pwaHint && !empty}
@@ -683,18 +682,19 @@
 					ondismiss={hidePwaHint}
 				/>
 			{/if}
+			{#if appHint && !empty}
+				<NewsBanner
+					title="Приложение Wynd для Android"
+					text="Умеет больше и работает стабильнее"
+					onclick={() => goto('/app')}
+					ondismiss={hideAppHint}
+				/>
+			{/if}
 			{#if newsUnseen && !empty}
 				<NewsBanner
 					version={latestNewsVersion()}
 					onclick={() => goto('/settings/news?from=circles')}
 					ondismiss={hideNews}
-				/>
-			{/if}
-			{#if browserHint && !empty}
-				<HintBanner
-					title="Рекомендуем Chrome или Vivaldi"
-					text="В них Wynd на Android работает стабильнее."
-					ondismiss={hideBrowserHint}
 				/>
 			{/if}
 			{#if empty}
