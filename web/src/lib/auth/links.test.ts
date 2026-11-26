@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { foreignWyndLinkOrigin, inviteTarget, parseWyndLink } from './links';
+import { foreignWyndLinkOrigin, inviteTarget, loginLinkTarget, parseWyndLink } from './links';
 
 describe('parseWyndLink', () => {
 	const here = 'https://home.example.org';
@@ -62,5 +62,25 @@ describe('parseWyndLink: login link', () => {
 	});
 	it('refuses a login link to another server', () => {
 		expect(parseWyndLink('https://other.example/?email=a@b.c', here)).toBeNull();
+	});
+});
+
+// Ссылка подключения из QR, вставленная в поле обёртки (план 72).
+describe('loginLinkTarget', () => {
+	it('gives origin and email from a login link', () => {
+		expect(loginLinkTarget('https://home.example.org/?email=anya%40example.com')).toEqual({
+			origin: 'https://home.example.org',
+			email: 'anya@example.com'
+		});
+	});
+	it('accepts a foreign server — the wrapper switches to it', () => {
+		expect(loginLinkTarget('https://other.example.org:8443/?email=a%40b.c')?.origin).toBe(
+			'https://other.example.org:8443'
+		);
+	});
+	it('ignores plain addresses and unrelated links', () => {
+		expect(loginLinkTarget('home.example.org')).toBeNull();
+		expect(loginLinkTarget('https://home.example.org/')).toBeNull();
+		expect(loginLinkTarget('https://home.example.org/invite/tok?email=a@b.c')).toBeNull();
 	});
 });

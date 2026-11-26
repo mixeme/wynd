@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import FilePicker from '$ui/forms/FilePicker.svelte';
-	import { decodeQrFromFile } from '$lib/auth/links';
+	import { decodeQrFromFile, loginLinkTarget } from '$lib/auth/links';
 	import TitleBar from '$ui/workshop/TitleBar.svelte';
 	import BackBar from '$ui/chrome/BackBar.svelte';
 	import Mark from '$ui/Mark.svelte';
@@ -270,11 +270,15 @@
 		if (!address.trim() || checking) return;
 		checking = true;
 		error = '';
+		// Ссылку подключения из QR можно вставить прямо в поле (план 72):
+		// то же, что фото кода — адрес и почта, адрес вводить не надо.
+		const pasted = loginLinkTarget(address);
 		try {
-			server = await checkServer(address.trim());
+			server = await checkServer(pasted ? pasted.origin : address.trim());
 			unavailable = false;
 			adding = false;
 			showServers = false;
+			if (pasted) iframePath = `/?email=${encodeURIComponent(pasted.email)}`;
 		} catch {
 			// Причина не различается: опечатка, нет сети, выключенный сервер и
 			// чужой сайт выглядят одинаково (ПК4).
@@ -294,24 +298,14 @@
 			return;
 		}
 		// Ссылка подключения (план 72): адрес и почта одним кодом.
-		let origin = value.trim();
-		let email = '';
-		try {
-			const url = new URL(origin);
-			if (url.pathname === '/') {
-				email = url.searchParams.get('email') ?? '';
-				origin = url.origin;
-			}
-		} catch {
-			/* Не ссылка — считаем адресом как есть. */
-		}
+		const link = loginLinkTarget(value);
 		checking = true;
 		try {
-			server = await checkServer(origin);
+			server = await checkServer(link ? link.origin : value.trim());
 			unavailable = false;
 			adding = false;
 			showServers = false;
-			iframePath = email ? `/?email=${encodeURIComponent(email)}` : '/';
+			iframePath = link ? `/?email=${encodeURIComponent(link.email)}` : '/';
 		} catch {
 			error = 'Сервер Wynd по этому адресу не отвечает. Проверьте адрес и сеть.';
 		} finally {
@@ -751,6 +745,7 @@
 				{#if error}
 					<Hint>{error}</Hint>
 				{/if}
+				<Hint>Ссылку из QR-кода можно вставить прямо в поле.</Hint>
 				<Button
 					disabled={!address.trim()}
 					loading={checking}

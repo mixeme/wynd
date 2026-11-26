@@ -17,7 +17,7 @@
 	import ServerRow from '$ui/data/ServerRow.svelte';
 	import FilePicker from '$ui/forms/FilePicker.svelte';
 	import QrScanner from '$ui/forms/QrScanner.svelte';
-	import { decodeQrFromFile } from '$lib/auth/links';
+	import { decodeQrFromFile, loginLinkTarget } from '$lib/auth/links';
 
 	// Демонстрационные сцены допустимы только на Vite-стенде, никогда в APK.
 	const native = startupAvailable() || !import.meta.env.DEV;
@@ -101,6 +101,13 @@
 	}
 	async function submit() {
 		if (!address.trim() || checking) return;
+		// Ссылку подключения из QR можно вставить прямо в поле (план 72):
+		// то же, что скан — адрес и почта, адрес вводить не надо.
+		const pasted = loginLinkTarget(address);
+		if (pasted) {
+			address = pasted.origin;
+			loginEmail = pasted.email;
+		}
 		if (native) {
 			const open = serverState === 'ready';
 			const generation = ++checkGeneration;
@@ -180,19 +187,14 @@
 	function readQr(value: string): boolean {
 		// Ссылка подключения устройства (план 72): адрес и почта одним кодом —
 		// скан сам проверяет сервер и открывает вход с подставленной почтой.
-		try {
-			const url = new URL(value);
-			const email = url.searchParams.get('email') ?? '';
-			if (url.pathname === '/' && email) {
-				address = url.origin;
-				scanning = false;
-				resetCheck();
-				loginEmail = email;
-				void submit();
-				return true;
-			}
-		} catch {
-			/* Не ссылка — считаем адресом как есть. */
+		const link = loginLinkTarget(value);
+		if (link) {
+			address = link.origin;
+			scanning = false;
+			resetCheck();
+			loginEmail = link.email;
+			void submit();
+			return true;
 		}
 		address = value;
 		scanning = false;
@@ -288,6 +290,7 @@
 								if (event.key === 'Enter') submit();
 							}}
 						/>
+						<Hint>Ссылку из QR-кода можно вставить прямо в поле.</Hint>
 						{@render response()}
 						<Button
 							style="margin-top:16px"

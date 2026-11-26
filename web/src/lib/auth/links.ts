@@ -58,6 +58,24 @@ export function inviteTarget(
 	return { path };
 }
 
+/**
+ * Ссылка подключения устройства (план 72): «https://сервер/?email=почта».
+ * Вставка такой ссылки в поле обёртки — то же, что её скан: адрес сервера и
+ * почта. Чужой сервер допускается — обёртка переключается на него.
+ */
+export function loginLinkTarget(text: string): { origin: string; email: string } | null {
+	const raw = text.trim();
+	if (!raw.includes('://')) return null;
+	try {
+		const url = new URL(raw);
+		const email = url.searchParams.get('email') ?? '';
+		if (url.pathname === '/' && email) return { origin: url.origin, email };
+	} catch {
+		/* не ссылка */
+	}
+	return null;
+}
+
 type BarcodeDetectorLike = {
 	detect(image: ImageBitmapSource): Promise<Array<{ rawValue: string }>>;
 };
