@@ -5,11 +5,14 @@
 	// кругом — этот круг отмечается в списке. Телефонный экран не меняется.
 	let {
 		selectedId = null,
-		rail = false
+		rail = false,
+		hideSearch = false
 	}: {
 		selectedId?: string | null;
 		/** Промежуточная ширина: от кругов только аватары, имя — подсказкой. */
 		rail?: boolean;
+		/** В раскладке с кругом поиск по кругам живёт в пустой правой части. */
+		hideSearch?: boolean;
 	} = $props();
 	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
 	import EmptyState from '$ui/data/EmptyState.svelte';
@@ -610,8 +613,8 @@
 
 <ShellLayout
 	app
-	searchDisabled={empty}
-	onsearch={empty ? undefined : openSearch}
+	searchDisabled={hideSearch ? false : empty}
+	onsearch={hideSearch || empty ? undefined : openSearch}
 	onsettings={openSettings}
 	fab={empty ? undefined : plusFab}
 	{fabMenuOpen}

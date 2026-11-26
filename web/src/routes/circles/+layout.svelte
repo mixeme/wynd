@@ -22,7 +22,7 @@
 	{#if split}
 		<CirclesSplitLayout empty={street} {rail}>
 			{#snippet sidebar()}
-				<StreetLayout selectedId={circle ? id : null} {rail} />
+				<StreetLayout selectedId={circle ? id : null} {rail} hideSearch />
 			{/snippet}
 			{@render children()}
 		</CirclesSplitLayout>
