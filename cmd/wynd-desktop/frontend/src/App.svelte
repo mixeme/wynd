@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import FilePicker from '$ui/forms/FilePicker.svelte';
+	import { decodeQrFromFile } from '$lib/auth/links';
 	import TitleBar from '$ui/workshop/TitleBar.svelte';
 	import BackBar from '$ui/chrome/BackBar.svelte';
 	import Mark from '$ui/Mark.svelte';
@@ -56,6 +58,8 @@
 	let address = $state('');
 	let error = $state('');
 	let checking = $state(false);
+	// Фото с QR-кодом подключения (план 72): разбор и вход с подставленной почтой.
+	let qrPicker = $state<FilePicker>();
 	let server = $state<CheckResult | null>(null);
 	let preview = $state<CheckResult | null>(null);
 	let servers = $state<CheckResult[]>([]);
@@ -274,6 +278,41 @@
 		} catch {
 			// Причина не различается: опечатка, нет сети, выключенный сервер и
 			// чужой сайт выглядят одинаково (ПК4).
+			error = 'Сервер Wynd по этому адресу не отвечает. Проверьте адрес и сеть.';
+		} finally {
+			checking = false;
+		}
+	}
+
+	async function readQrPhoto(file: File) {
+		error = '';
+		let value = '';
+		try {
+			value = await decodeQrFromFile(file);
+		} catch {
+			error = 'Не удалось прочитать код — попробуйте другое фото';
+			return;
+		}
+		// Ссылка подключения (план 72): адрес и почта одним кодом.
+		let origin = value.trim();
+		let email = '';
+		try {
+			const url = new URL(origin);
+			if (url.pathname === '/') {
+				email = url.searchParams.get('email') ?? '';
+				origin = url.origin;
+			}
+		} catch {
+			/* Не ссылка — считаем адресом как есть. */
+		}
+		checking = true;
+		try {
+			server = await checkServer(origin);
+			unavailable = false;
+			adding = false;
+			showServers = false;
+			iframePath = email ? `/?email=${encodeURIComponent(email)}` : '/';
+		} catch {
 			error = 'Сервер Wynd по этому адресу не отвечает. Проверьте адрес и сеть.';
 		} finally {
 			checking = false;
@@ -720,9 +759,11 @@
 				>
 					Дальше
 				</Button>
+				<Button variant="ghost" onclick={() => qrPicker?.open()}>Фото с QR-кодом</Button>
 			</div>
 		</div>
 	{/if}
+	<FilePicker bind:this={qrPicker} accept="image/*" onfiles={([file]) => void readQrPhoto(file)} />
 	{#if removeTarget}
 		<ConfirmDialog
 			title={`Убрать сервер «${removeTarget.name}» из списка?`}
