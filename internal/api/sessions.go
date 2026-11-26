@@ -30,10 +30,12 @@ func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
+	// В списке Token — уже хеш токена из базы: открытый id это его префикс,
+	// совпадающий с SessionID живого токена текущей сессии.
 	currentID := auth.SessionID(sess.Token)
 	out := make([]sessionItem, 0, len(items))
 	for _, it := range items {
-		id := auth.SessionID(it.Token)
+		id := it.Token[:16]
 		out = append(out, sessionItem{
 			ID:         id,
 			Device:     it.Device,
