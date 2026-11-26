@@ -179,14 +179,34 @@
 .ph.app.split.rail .split-side .r .m {
 	display: none;
 }
-/* Число новых остаётся у аватара; время без имени не нужно. */
+/* Непрочитанное в рейле. Число — отдельный контрастный значок на углу
+   аватара, точка — когда есть только новые отклики; кант бумаги отделяет
+   значок от аватара того же цвета. Время без имени не нужно. */
 .ph.app.split.rail .split-side .r .rt {
 	position: absolute;
-	top: 6px;
-	right: 10px;
+	top: 2px;
+	right: 6px;
 }
 .ph.app.split.rail .split-side .r .rt > span:first-child {
 	display: none;
+}
+.ph.app.split.rail .split-side .r .bdg {
+	min-width: 18px;
+	height: 18px;
+	padding: 0 5px;
+	border-radius: 9px;
+	font-size: 10.5px;
+	line-height: 1;
+	background: var(--ink);
+	color: var(--paper);
+	box-shadow: 0 0 0 2px var(--paper);
+}
+.ph.app.split.rail .split-side .r .rdot {
+	width: 10px;
+	height: 10px;
+	margin: 0;
+	background: var(--ink);
+	box-shadow: 0 0 0 2px var(--paper);
 }
 /* Групповые шапки — не круги, в рейле их нет. */
 .ph.app.split.rail .split-side .circle-row-card:has(.fold) {
