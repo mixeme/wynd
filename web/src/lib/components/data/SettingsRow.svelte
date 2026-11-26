@@ -15,6 +15,7 @@
 		control,
 		divided,
 		opacity,
+		selected = false,
 		class: className = '',
 		style = ''
 	}: {
@@ -33,6 +34,8 @@
 		divided?: 'top' | 'bottom' | 'both';
 		/** Приглушить строку, пока она занята (7.2: «проверяем…»). */
 		opacity?: number;
+		/** Открытый раздел в левой колонке (план 76). */
+		selected?: boolean;
 		class?: string;
 		style?: string;
 	} = $props();
@@ -50,7 +53,7 @@
 
 <!-- С control (переключатель и т. п.) строка не нажимается целиком — иначе
      вложенная кнопка; заголовок тогда без жирного, как в кадрах. -->
-<Row onclick={control ? undefined : onclick} {link} {opacity} class={rowClass} {style}>
+	<Row onclick={control ? undefined : onclick} {link} {opacity} {selected} class={rowClass} {style}>
 	{#snippet leading()}
 		{#if icon}
 			<Icon name={icon} />

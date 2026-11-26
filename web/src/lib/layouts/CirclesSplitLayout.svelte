@@ -10,11 +10,15 @@
 	let {
 		sidebar,
 		empty = false,
+		emptyTitle = 'Выберите круг',
+		emptyText = 'Откройте круг в списке слева — он появится здесь.',
 		children
 	}: {
 		sidebar: Snippet;
 		/** Ничего не выбрано: справа пусто, первый сам не открывается. */
 		empty?: boolean;
+		emptyTitle?: string;
+		emptyText?: string;
 		children: Snippet;
 	} = $props();
 </script>
@@ -24,9 +28,7 @@
 	<div class="split-main">
 		{#if empty}
 			<div class="split-empty">
-				<EmptyState place="tab" title="Выберите круг">
-					Откройте круг в списке слева — он появится здесь.
-				</EmptyState>
+				<EmptyState place="tab" title={emptyTitle}>{emptyText}</EmptyState>
 			</div>
 		{:else}
 			{@render children()}

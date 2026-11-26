@@ -13,6 +13,7 @@
 		onclick,
 		link = false,
 		opacity,
+		selected = false,
 		class: className = '',
 		style = '',
 		leading,
@@ -23,6 +24,8 @@
 		/** `.g.link` — строка-ссылка («Выйти», «Все участники»). */
 		link?: boolean;
 		opacity?: number;
+		/** Открытый раздел в левой колонке (план 76): подложка и `aria-current`. */
+		selected?: boolean;
 		class?: string;
 		style?: string;
 		leading?: Snippet;
@@ -40,11 +43,25 @@
 <!-- Внешний тег — две короткие ветки, а не <svelte:element>: у того Svelte
      требует явную роль при обработчике, и кнопка получила бы лишний role. -->
 {#if onclick}
-	<button type="button" class="row2 {className}" style:opacity {style} {onclick}>
+	<button
+		type="button"
+		class="row2 {className}"
+		class:sel={selected}
+		aria-current={selected ? 'page' : undefined}
+		style:opacity
+		{style}
+		{onclick}
+	>
 		{@render inner()}
 	</button>
 {:else}
-	<div class="row2 {className}" style:opacity {style}>
+	<div
+		class="row2 {className}"
+		class:sel={selected}
+		aria-current={selected ? 'page' : undefined}
+		style:opacity
+		{style}
+	>
 		{@render inner()}
 	</div>
 {/if}

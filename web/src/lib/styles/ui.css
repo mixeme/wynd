@@ -2385,6 +2385,10 @@ button.fold {
 .row2 + .row2 {
 	border-top: 1px solid var(--line);
 }
+/* План 76: открытый раздел в левой колонке настроек. */
+.row2.sel {
+	background: var(--tint);
+}
 /* Значок «GDPR» у имени сервера (1.10): название закона, без перевода. */
 .gdpr {
 	font-size: 10.5px;
