@@ -9,6 +9,7 @@
 	import { initSyncResume, startSyncForAllSessions } from '$lib/sync/sync';
 	import { initViewportHeight } from '$lib/session/viewport';
 	import { initLayoutMode } from '$lib/session/layout.svelte';
+	import { clearWideSource } from '$lib/navigation/wideSource.svelte';
 	import { page } from '$app/stores';
 	import { onMount, tick } from 'svelte';
 	import { initAppUpdate } from '$lib/session/appUpdate.svelte';
@@ -91,6 +92,18 @@
 		recordEntry(nav.to.url, nav.type === 'enter' && nav.to.route.id === '/invite/[token]');
 		const url = nav.to.url;
 		setTimeout(() => armEntryGuard(url));
+	});
+
+	// План 76: поиск остаётся слева, только пока открыт круг из поиска.
+	// Ушли на улицу, в настройки или другой раздел — источник поиска больше
+	// не нужен. На /search его забирает сама левая колонка.
+	$effect(() => {
+		const pathname = $page.url.pathname.replace(/\/+$/, '') || '/';
+		const circleDetail =
+			pathname.startsWith('/circles/') &&
+			!pathname.startsWith('/circles/new') &&
+			!pathname.endsWith('/join');
+		if (pathname !== '/search' && !circleDetail) clearWideSource();
 	});
 
 	$effect(() => {

@@ -3,10 +3,12 @@
 	import CircleSettingsNav from '$lib/layouts/CircleSettingsNav.svelte';
 	import CirclesSplitLayout from '$lib/layouts/CirclesSplitLayout.svelte';
 	import PayGateLayout from '$lib/layouts/PayGateLayout.svelte';
+	import SearchPane from '$lib/layouts/SearchPane.svelte';
 	import StreetLayout from '$lib/layouts/StreetLayout.svelte';
 	import { isCircleSettingsPath } from '$lib/navigation/wideDetail';
+	import { wideSource } from '$lib/navigation/wideSource.svelte';
 	import { splitLayout } from '$lib/session/layout.svelte';
-	import type { Snippet } from 'svelte';
+	import { untrack, type Snippet } from 'svelte';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -20,6 +22,13 @@
 	// Настройки круга и их разделы получают слева пункты настроек, остальные
 	// экраны круга — улицу.
 	const settings = $derived(Boolean(id) && isCircleSettingsPath(path, id));
+	// Круг открыт из поиска: слева остаются результаты, а не улица. Источник
+	// читаем при смене круга, а не на каждую правку запроса: иначе левая
+	// колонка пересоздавала бы правую и поиск с кругом не догружались.
+	const searchSource = $derived.by(() => {
+		void id;
+		return untrack(() => wideSource());
+	});
 </script>
 
 <PayGateLayout>
@@ -28,6 +37,8 @@
 			{#snippet sidebar()}
 				{#if settings}
 					<CircleSettingsNav />
+				{:else if circle && searchSource}
+					<SearchPane sourceUrl={searchSource.url} />
 				{:else}
 					<StreetLayout selectedId={circle ? id : null} hideSearch />
 				{/if}
