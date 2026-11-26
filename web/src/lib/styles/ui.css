@@ -196,6 +196,23 @@
 	right: 12px;
 	bottom: 16px;
 }
+/* Меню плюса и карточка долгого нажатия шире рейла: пока они открыты,
+   колонка временно становится обычной, чтобы меню не обрезалось. */
+.ph.app.split.rail:has(.split-side .fab-menu),
+.ph.app.split.rail:has(.split-side .circle-row-card) {
+	--split-side-w: 260px;
+	max-width: 980px;
+}
+.ph.app.split.rail:has(.split-side .fab-menu) .split-side .appbar,
+.ph.app.split.rail:has(.split-side .circle-row-card) .split-side .appbar {
+	flex-direction: row;
+	gap: 18px;
+	padding: 9px 18px;
+}
+.ph.app.split.rail:has(.split-side .fab-menu) .split-side .appbar .sp,
+.ph.app.split.rail:has(.split-side .circle-row-card) .split-side .appbar .sp {
+	display: block;
+}
 /* Пустая улочка в рейл не влезает: без кругов колонка остаётся полной. */
 .ph.app.split.rail:has(.split-side .empty-state) {
 	--split-side-w: 340px;
