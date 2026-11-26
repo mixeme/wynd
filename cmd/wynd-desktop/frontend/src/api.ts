@@ -41,6 +41,8 @@ interface GoApp {
 	CurrentServer(): Promise<CheckResult | null>;
 	ForgetSelected(): Promise<void>;
 	PreviewServer(address: string): Promise<CheckResult>;
+	AllowServer(address: string): Promise<string>;
+	AddServer(origin: string, name: string, version: string, mode: string): Promise<void>;
 	AddInterface(address: string): Promise<CheckResult>;
 	RemoveInterface(origin: string): Promise<void>;
 	ListServers(): Promise<CheckResult[]>;
@@ -48,10 +50,19 @@ interface GoApp {
 	RequestClose(): Promise<void>;
 	Notify(title: string, body: string): Promise<void>;
 	TakePendingInvite(): Promise<string>;
+	Autostart(): Promise<AutostartStatus>;
+	SetAutostart(enabled: boolean): Promise<AutostartStatus>;
 	GetBackupConfig(): Promise<BackupConfig>;
 	SaveBackupConfig(cfg: BackupConfig): Promise<BackupConfig>;
 	ChooseBackupFolder(): Promise<string>;
 	OpenBackupFolder(): Promise<void>;
+}
+
+/** Автозапуск (план 66): та же запись, что читает веб-клиент в настройках. */
+export interface AutostartStatus {
+	enabled: boolean;
+	stale: boolean;
+	command: string;
 }
 
 interface Runtime {
@@ -71,6 +82,9 @@ const native: GoApp = {
 	CurrentServer: () => Call.ByName('main.App.CurrentServer'),
 	ForgetSelected: () => Call.ByName('main.App.ForgetSelected'),
 	PreviewServer: (address) => Call.ByName('main.App.PreviewServer', address),
+	AllowServer: (address) => Call.ByName('main.App.AllowServer', address),
+	AddServer: (origin, name, version, mode) =>
+		Call.ByName('main.App.AddServer', origin, name, version, mode),
 	AddInterface: (address) => Call.ByName('main.App.AddInterface', address),
 	RemoveInterface: (origin) => Call.ByName('main.App.RemoveInterface', origin),
 	ListServers: () => Call.ByName('main.App.ListServers'),
@@ -78,11 +92,19 @@ const native: GoApp = {
 	RequestClose: () => Call.ByName('main.App.RequestClose'),
 	Notify: (title, body) => Call.ByName('main.App.Notify', title, body),
 	TakePendingInvite: () => Call.ByName('main.App.TakePendingInvite'),
+	Autostart: () => Call.ByName('main.App.Autostart'),
+	SetAutostart: (enabled) => Call.ByName('main.App.SetAutostart', enabled),
 	GetBackupConfig: () => Call.ByName('main.App.GetBackupConfig'),
 	SaveBackupConfig: (cfg) => Call.ByName('main.App.SaveBackupConfig', cfg),
 	ChooseBackupFolder: () => Call.ByName('main.App.ChooseBackupFolder'),
 	OpenBackupFolder: () => Call.ByName('main.App.OpenBackupFolder'),
 };
+
+// Wails v3 не выставляет window.go, а веб-клиент сервера (и более старые
+// сборки) зовёт методы оболочки через window.parent.go, как в v2: автозапуск,
+// разрешение и запись сервера. Без этой точки они молча не работают.
+const windowWithGo = window as unknown as { go?: { main?: { App?: GoApp } } };
+if (!windowWithGo.go) windowWithGo.go = { main: { App: native } };
 
 function bridge(): GoApp | undefined {
 	return (window as unknown as { go?: { main?: { App?: GoApp } } }).go?.main?.App ?? native;
