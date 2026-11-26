@@ -28,7 +28,10 @@
 		box-shadow: inset 0 0 0 1px #cfc5b8;
 		color: var(--ink);
 		font-family: var(--ui);
-		font-size: 12px; /* как у меню Windows: 9 pt = 12 px при 100% */
+		font-size: 12px; /* запасной размер, если системный шрифт не поддержан */
+		/* Системный шрифт меню Windows (Segoe UI 9 pt при 100%) — так меню
+		   трея совпадает с системным и следует настройкам текста Windows. */
+		font: menu;
 		line-height: 1.45;
 		user-select: none;
 	}
