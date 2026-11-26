@@ -645,7 +645,7 @@
 			{#if appHint && !empty}
 				<NewsBanner
 					title="Приложение Wynd для Android"
-					text="Уведомления и запись без открытой вкладки"
+					text="Умеет больше и работает надёжнее"
 					onclick={() => goto('/app')}
 					ondismiss={hideAppHint}
 				/>
