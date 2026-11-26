@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ru">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Окно без полос-подложки — кадры C143</title>
+		<style>
+			body {
+				margin: 0;
+				background: #efe9e0;
+				font: 16px/1.45 'Golos Text', sans-serif;
+				color: #2b2622;
+			}
+			main {
+				max-width: 1180px;
+				margin: 24px auto 48px;
+				padding: 0 16px;
+			}
+			h1 {
+				font-size: 22px;
+				margin: 0 0 4px;
+			}
+			p.method {
+				margin: 0 0 20px;
+				color: #6b615a;
+				font-size: 14px;
+				max-width: 900px;
+			}
+			.row {
+				display: flex;
+				gap: 32px;
+				flex-wrap: wrap;
+				align-items: flex-start;
+			}
+			figure {
+				margin: 0;
+			}
+			h2 {
+				font-size: 17px;
+				margin: 0 0 8px;
+			}
+			img.big {
+				width: 500px;
+				max-width: 100%;
+				border: 1px solid #c9bfb4;
+				border-radius: 12px;
+				display: block;
+			}
+			img.edge {
+				width: 160px;
+				border: 1px solid #c9bfb4;
+				border-radius: 8px;
+				display: block;
+			}
+			figcaption {
+				margin-top: 10px;
+				color: #6b615a;
+				font-size: 14px;
+				max-width: 500px;
+			}
+			.note {
+				margin-top: 24px;
+				padding: 12px 14px;
+				border: 1px solid #c9bfb4;
+				border-radius: 8px;
+				font-size: 14px;
+				max-width: 900px;
+			}
+			code {
+				font-family: Consolas, monospace;
+				font-size: 13px;
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<h1>Окно без полос-подложки</h1>
+			<p class="method">
+				Решение «убрать в окне» (26.11). До — снимок настоящего окна владельца, 760 × 780.
+				После — настоящий рендер shell + клиент: vite 5179 и 5173, API — стенд 7678, headless
+				Edge, DPR 1, светлая тема. Колонка интерфейса осталась 720; браузер и PWA не тронуты.
+			</p>
+			<div class="row">
+				<figure>
+					<h2>До — полосы 20 px</h2>
+					<img class="big" src="before-760.png" alt="Окно с полосами по бокам" />
+					<figcaption>
+						Подложка окна <code>#e0dbd2</code> по 20 px: на 760 она читалась рамкой-артефактом.
+					</figcaption>
+				</figure>
+				<figure>
+					<h2>После — бумага до краёв</h2>
+					<img class="big" src="after-760.png" alt="Окно без полос: бумага до краёв" />
+					<figcaption>760 × 780: полос нет, колонка 720 без видимых краёв.</figcaption>
+				</figure>
+				<figure>
+					<h2>Край до правки</h2>
+					<img class="edge" src="before-edge.png" alt="Левый край до правки крупно" />
+					<figcaption>Полоса 20 px крупно.</figcaption>
+				</figure>
+			</div>
+			<figure style="margin-top: 24px">
+				<h2>После на ширине утверждённых кадров — 1000 × 660</h2>
+				<img class="big" src="after-1000.png" alt="Окно 1000 px без полос" />
+				<figcaption>
+					На 1000 старые полосы были 140 px; теперь их нет. Кадры ПК6/ПК6а/ПК7 обновляются
+					после приёмки этой вёрстки.
+				</figcaption>
+			</figure>
+			<p class="note">
+				Адрес <code>127.0.0.1:5173</code> и «Открыт для новых» в карточке — это локальный
+				стенд, а не боевой сервер; версия в заголовке мока 0.2.0. На предмет кадра — фон окна
+				— не влияет.
+			</p>
+		</main>
+	</body>
+</html>

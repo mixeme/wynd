@@ -30,7 +30,7 @@ body,
 	margin: 0;
 }
 body {
-	background: var(--app-gutter);
+	background: var(--paper);
 	color: var(--ink);
 	font-family: var(--ui);
 	font-size: 13.5px;
@@ -107,12 +107,14 @@ body {
 	overflow: auto;
 }
 
-/* Колонка приложения с настройками: та же ширина, что у iframe и кадров. */
+/* Колонка приложения с настройками: та же ширина, что у iframe и кадров.
+   Окно — один бумажный лист: подложки по бокам нет (решение владельца 26.11,
+   C143); колонка остаётся 720, но её края не видны. */
 .page-host {
 	flex: 1;
 	min-height: 0;
 	display: flex;
-	background: var(--app-gutter);
+	background: var(--paper);
 }
 .settings-page {
 	--c: var(--ink);
@@ -144,12 +146,14 @@ body {
 }
 
 /* Интерфейс сервера — во всю высоту под рамкой, колонкой приложения.
-   На широком окне по бокам видна бумажная подложка, как на кадрах ПК5–ПК7. */
+   Окно — один бумажный лист: подложки по бокам нет (решение владельца 26.11,
+   C143). На 760 полоса была 20 px и читалась артефактом; кадры ПК6/ПК6а/ПК7
+   с подложкой больше не основа. */
 .server-host {
 	flex: 1;
 	min-height: 0;
 	display: flex;
-	background: var(--app-gutter);
+	background: var(--paper);
 }
 .server-host iframe {
 	width: 100%;
