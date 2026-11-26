@@ -65,7 +65,9 @@
 | CirclesSplitLayout | `.ph.app.split` | широкое окно `/circles`: список слева, круг справа; без выбора правая часть пустая (план 75) |
 | PayGateLayout | — (шлюз, не каркас) | `+layout` групп `/circles/*` и `/search/*`: пока доступ не оплачен — вместо экрана «Доступ закрыт» с реквизитами или заявкой в ожидании (**#e10-***), иначе children |
 
-`StreetLayout` — содержимое улочки, вынесенное из `routes/circles/+page.svelte` без изменения вида: шапка, полосы, список, плюс (план 75). На широком окне та же улочка стоит в `.split-side`; телефонный экран не меняется. `CirclesSplitLayout` — две колонки на `PhoneFrame app split`: `--app-split-max-width` 1060 px, левая колонка 340 px (до 1000 px — 260 px и сжатые строки), правая не шире 720 px. `empty` — круг не выбран: справа `EmptyState` «Выберите круг». `/circles/new` и `/circles/{id}/join` остаются одноколоночными.
+`StreetLayout` — содержимое улочки, вынесенное из `routes/circles/+page.svelte` без изменения вида: шапка, полосы, список, плюс (план 75). На широком окне та же улочка стоит в `.split-side`; телефонный экран не меняется. `hideSearch` убирает лупу из шапки в раскладке: поиск живёт в шапке правой панели. `CirclesSplitLayout` — две колонки на `PhoneFrame app split`: `--app-split-max-width` 1060 px; от 720 до 1060 px слева рейл 80 px — только аватары, имя в `title`/`aria-label`, красные число/точка непрочитанного; от 1060 px полный список 340 px и круг 720 px. `empty` — круг не выбран: справа `EmptyState` «Выберите круг», без поиска. В шапке открытого круга — единственная лупа: поле открывается там же, «Все круги» внутри даёт поиск по всем. `/circles/new` и `/circles/{id}/join` остаются одноколоночными.
+
+`ShellLayout` в `app` скрывает полосу прокрутки `.shell-body`, пока строки помещаются (`class:fit` по `scrollHeight`/`clientHeight`); при переполнении полоса возвращается.
 
 `FormLayout`: при `circleTitle` — шапка вступления **#e1-4** (`div.cbar`, имя по центру, без `BackBar`); список участников на join (`?members=1`) — `color` + `subtitle` (цветная `.cbar` с назад), не серый `BackBar`. Ветки: `compose`, `circleTitle`, snippet `bar`, `color && subtitle`, иначе `BackBar`.
 
