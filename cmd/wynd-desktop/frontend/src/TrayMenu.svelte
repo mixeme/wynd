@@ -28,7 +28,7 @@
 		box-shadow: inset 0 0 0 1px #cfc5b8;
 		color: var(--ink);
 		font-family: var(--ui);
-		font-size: 13.5px;
+		font-size: 12px; /* как у меню Windows: 9 pt = 12 px при 100% */
 		line-height: 1.45;
 		user-select: none;
 	}
