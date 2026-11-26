@@ -667,27 +667,27 @@
 					ondismiss={() => (androidUpdate.hidden = true)}
 				/>
 			{/if}
-			{#if newsUnseen && !empty}
-				<NewsBanner
-					version={latestNewsVersion()}
-					onclick={() => goto('/settings/news?from=circles')}
-					ondismiss={hideNews}
-				/>
-			{/if}
-			{#if pwaHint && !empty}
-				<NewsBanner
-					title="Wynd на главный экран"
-					text="Откроется с иконки, без адресной строки"
-					onclick={() => void installPwa()}
-					ondismiss={hidePwaHint}
-				/>
-			{/if}
 			{#if appHint && !empty}
 				<NewsBanner
 					title="Приложение Wynd для Android"
 					text="Умеет больше и работает стабильнее"
 					onclick={() => goto('/app')}
 					ondismiss={hideAppHint}
+				/>
+			{/if}
+			{#if pwaHint && !empty}
+				<NewsBanner
+					title="Wynd на главный экран"
+					text="Уведомления и запуск без адресной строки"
+					onclick={() => void installPwa()}
+					ondismiss={hidePwaHint}
+				/>
+			{/if}
+			{#if newsUnseen && !empty}
+				<NewsBanner
+					version={latestNewsVersion()}
+					onclick={() => goto('/settings/news?from=circles')}
+					ondismiss={hideNews}
 				/>
 			{/if}
 			{#if browserHint && !empty}
