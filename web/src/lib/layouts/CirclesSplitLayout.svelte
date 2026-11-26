@@ -1,7 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import EmptyState from '$ui/data/EmptyState.svelte';
-	import Button from '$ui/forms/Button.svelte';
 	import PhoneFrame from '$ui/chrome/PhoneFrame.svelte';
 	import type { Snippet } from 'svelte';
 
@@ -31,9 +29,6 @@
 			<div class="split-empty">
 				<EmptyState place="tab" title="Выберите круг">
 					Откройте круг в списке слева — он появится здесь.
-					{#snippet actions()}
-						<Button variant="ghost" onclick={() => goto('/search')}>Поиск по кругам</Button>
-					{/snippet}
 				</EmptyState>
 			</div>
 		{:else}
