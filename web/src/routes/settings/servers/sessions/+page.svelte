@@ -1,13 +1,10 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { navigateBack } from '$lib/navigation/up';
 	import { displayHost } from '$lib/auth/origin';
 	import { formatSessionDay, formatSessionSeen } from '$lib/format/time';
 	import { fetchSessions, revokeSession, type SessionItem } from '$lib/auth/sessions';
-	import { removeSession } from '$lib/session/session.svelte';
-	import { stopSync } from '$lib/sync/sync';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
 	import Loading from '$ui/Loading.svelte';
@@ -49,13 +46,6 @@
 		busyId = item.id;
 		try {
 			await revokeSession(origin, item.id);
-			if (item.current) {
-				// Отозвали своё — локальный вход больше не нужен: экран входа.
-				stopSync(origin);
-				await removeSession(origin);
-				await goto('/');
-				return;
-			}
 			await load();
 		} catch {
 			error = 'Не удалось завершить сессию';
@@ -101,13 +91,16 @@
 		{#each sessions as item (item.id)}
 			<SettingsRow title={item.device || 'Устройство'} subtitle={subtitleFor(item)} chevron={false}>
 				{#snippet control()}
-					<TextButton
-						loading={busyId === item.id}
-						disabled={busyId !== '' && busyId !== item.id}
-						onclick={() => void revoke(item)}
-					>
-						{item.current ? 'Выйти' : 'Завершить'}
-					</TextButton>
+					<!-- Текущая сессия без действия: выход остаётся на «Серверах» (26.11). -->
+					{#if !item.current}
+						<TextButton
+							loading={busyId === item.id}
+							disabled={busyId !== '' && busyId !== item.id}
+							onclick={() => void revoke(item)}
+						>
+							Завершить
+						</TextButton>
+					{/if}
 				{/snippet}
 			</SettingsRow>
 		{/each}
