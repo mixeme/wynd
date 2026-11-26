@@ -1,6 +1,7 @@
 package desktop
 
 import (
+	"context"
 	"io"
 	"net"
 	"net/http"
@@ -181,5 +182,68 @@ func TestProxyAbortsWhenServerUnreachable(t *testing.T) {
 	if err == nil {
 		resp.Body.Close()
 		t.Fatalf("got HTTP %d, want connection error", resp.StatusCode)
+	}
+}
+
+// Asset-сервер Wails v3 не отдаёт соединение (Hijacker нет), а панику
+// http.ErrAbortHandler не перехватывает — окно закрывалось целиком при
+// недоступном сервере. Без Hijack обрыв сети изображается недоданным телом.
+func TestProxyAbortsWithoutHijacker(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := ln.Addr().String()
+	_ = ln.Close()
+
+	proxy := NewProxy()
+	if err := proxy.Set("http://" + addr); err != nil {
+		t.Fatal(err)
+	}
+	handler := proxy.Handler(http.NotFoundHandler())
+
+	// ResponseRecorder, как и asset-сервер Wails, не умеет Hijack.
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/instance", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("code %d, want 200", rec.Code)
+	}
+	if got := rec.Header().Get("Content-Length"); got != "1" {
+		t.Fatalf("content length %q, want 1 (оборванное тело)", got)
+	}
+	if rec.Body.Len() != 0 {
+		t.Fatalf("body %q, want empty", rec.Body.String())
+	}
+}
+
+// Клиент ушёл (переход отменил ответ) — рвать нечего: обработчик не должен
+// ни паниковать, ни писать ответ. Именно паника роняла окно при переходе
+// по ссылке приглашения сразу после запуска (найдено 27.11 на Linux).
+func TestProxyCanceledRequestDoesNotAbort(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := ln.Addr().String()
+	_ = ln.Close()
+
+	proxy := NewProxy()
+	if err := proxy.Set("http://" + addr); err != nil {
+		t.Fatal(err)
+	}
+	handler := proxy.Handler(http.NotFoundHandler())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	req := httptest.NewRequest(http.MethodGet, "/invite/abc", nil).WithContext(ctx)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if got := rec.Header().Get("Content-Length"); got != "" {
+		t.Fatalf("content length %q, want empty: ответ ушедшему клиенту не пишем", got)
+	}
+	if rec.Body.Len() != 0 {
+		t.Fatalf("body %q, want empty", rec.Body.String())
 	}
 }

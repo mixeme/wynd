@@ -115,14 +115,25 @@ func newReverseProxy(u *url.URL, injectBridge bool, apiBase string) *httputil.Re
 	// страница принимала за ответ API (isTransportError), и очередь отправки
 	// не ставила записи в ожидание; в браузере без сервера запрос падает
 	// сетевым сбоем, и окно должно вести себя так же (C66, «дозагрузка»).
-	rp.ErrorHandler = func(w http.ResponseWriter, _ *http.Request, _ error) {
+	rp.ErrorHandler = func(w http.ResponseWriter, r *http.Request, _ error) {
+		// Клиент уже ушёл: переход или перезагрузка отменили ответ, рвать
+		// нечего. Паника здесь роняла окно целиком: asset-сервер Wails v3
+		// не перехватывает http.ErrAbortHandler (переход по ссылке
+		// приглашения сразу после запуска, найдено 27.11 на Linux).
+		if r.Context().Err() != nil {
+			return
+		}
 		if hj, ok := w.(http.Hijacker); ok {
 			if conn, _, err := hj.Hijack(); err == nil {
 				_ = conn.Close()
 				return
 			}
 		}
-		panic(http.ErrAbortHandler)
+		// Asset-сервер Wails соединение не отдаёт (Hijack нет). Обрыв сети
+		// изображаем недоданным телом: WebKit/WebView2 не досчитают
+		// Content-Length, fetch упадёт сетевым сбоем, как без сервера.
+		w.Header().Set("Content-Length", "1")
+		w.WriteHeader(http.StatusOK)
 	}
 	return rp
 }
