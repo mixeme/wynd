@@ -20,6 +20,7 @@
 	import Switch from '$ui/forms/Switch.svelte';
 	import { saveSharePlace } from '$lib/journal/place-pref';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
+	import { splitLayout } from '$lib/session/layout.svelte';
 	import { authErrorHint } from '$lib/auth/auth';
 	import {
 		customHoursFromSec,
@@ -48,6 +49,9 @@
 	import { CIRCLE_COLORS } from '$lib/theme/colors';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
+	// На широком экране пункты, ведущие на отдельные экраны, стоят в левой
+	// колонке; в правой главной форме они не повторяются.
+	const wide = $derived(splitLayout());
 
 	let name = $state('');
 	let savedName = $state('');
@@ -504,7 +508,7 @@
 			</ChipGroup>
 		{/if}
 
-		{#if canInvite}
+		{#if canInvite && !wide}
 			<SettingsRow
 				title="Пригласить"
 				class="mt-16"
@@ -517,16 +521,18 @@
 				onclick={() => goto(`/circles/${circle.circleId}/settings/invites`)}
 			/>
 		{/if}
-		<SettingsRow
-			title="Кто вы в этом круге"
-			value={circle.identityName}
-			onclick={() => goto(`/circles/${circle.circleId}/settings/identity`)}
-		/>
-		<SettingsRow
-			title="Уведомления"
-			subtitle={soloCircle ? undefined : notifyLine}
-			onclick={() => goto(`/circles/${circle.circleId}/settings/notify`)}
-		/>
+		{#if !wide}
+			<SettingsRow
+				title="Кто вы в этом круге"
+				value={circle.identityName}
+				onclick={() => goto(`/circles/${circle.circleId}/settings/identity`)}
+			/>
+			<SettingsRow
+				title="Уведомления"
+				subtitle={soloCircle ? undefined : notifyLine}
+				onclick={() => goto(`/circles/${circle.circleId}/settings/notify`)}
+			/>
+		{/if}
 		<SettingsRow title="Место со снимков" subtitle="точка на карте круга" divided="bottom">
 			{#snippet control()}
 				<Switch
@@ -549,44 +555,48 @@
 			{/if}
 			<!-- C43 (6.3): у владельца про архив одна строка; сроки идущей
 			     архивации — внутри (6.16), своя копия — с баннера в ленте. -->
-			<SettingsRow
-				class="mt-8"
-				title="Архив и очистка"
-				subtitle={circle.archiveCycle?.active
-					? `идёт архивация: всё до ${formatCutoffDate(circle.archiveCycle.cutoff_date)} удалится ${formatSessionDay(circle.archiveCycle.deadline)}`
-					: 'освободить место, сохранить круг в файл'}
-				divided="both"
-				onclick={() => goto(`/circles/${circle.circleId}/quota`)}
-			/>
+			{#if !wide}
+				<SettingsRow
+					class="mt-8"
+					title="Архив и очистка"
+					subtitle={circle.archiveCycle?.active
+						? `идёт архивация: всё до ${formatCutoffDate(circle.archiveCycle.cutoff_date)} удалится ${formatSessionDay(circle.archiveCycle.deadline)}`
+						: 'освободить место, сохранить круг в файл'}
+					divided="both"
+					onclick={() => goto(`/circles/${circle.circleId}/quota`)}
+				/>
+			{/if}
 		{/if}
-		{@render ownArchive('bottom')}
-		<!-- A9 (6.41): отделиться может любой — рядом со своим архивом, не в
-		     «Необратимо»: в этом круге ничего не меняется. -->
-		{#if !soloCircle}
-			<SettingsRow
-				title="Отделиться"
-				subtitle="новый круг с тем, что вы видели, — и с теми, кого позовёте"
-				divided="bottom"
-				onclick={() => goto(`/circles/${circle.circleId}/split`)}
-			/>
-		{/if}
+		{#if !wide}
+			{@render ownArchive('bottom')}
+			<!-- A9 (6.41): отделиться может любой — рядом со своим архивом, не в
+			     «Необратимо»: в этом круге ничего не меняется. -->
+			{#if !soloCircle}
+				<SettingsRow
+					title="Отделиться"
+					subtitle="новый круг с тем, что вы видели, — и с теми, кого позовёте"
+					divided="bottom"
+					onclick={() => goto(`/circles/${circle.circleId}/split`)}
+				/>
+			{/if}
 
-		<Label class="mt-16">Участники · {activeMembers.length}</Label>
-		{#each previewMembers as m, i (m.identity_id)}
-			<MemberRow
-				initial={circleInitial(m.name)}
-				name={m.name}
-				subtitle={memberSubtitle(m)}
-				color={memberColor(m, i)}
-				src={memberSrc(m)}
-				class={i === 0 ? 'pt-2' : undefined}
+			<Label class="mt-16">Участники · {activeMembers.length}</Label>
+			{#each previewMembers as m, i (m.identity_id)}
+				<MemberRow
+					initial={circleInitial(m.name)}
+					name={m.name}
+					subtitle={memberSubtitle(m)}
+					color={memberColor(m, i)}
+					src={memberSrc(m)}
+					class={i === 0 ? 'pt-2' : undefined}
+				/>
+			{/each}
+			<SettingsRow
+				title={activeMembers.length > 3 ? `ещё ${activeMembers.length - 3}` : 'Все участники'}
+				link
+				onclick={() => goto(`/circles/${circle.circleId}/settings/members`)}
 			/>
-		{/each}
-		<SettingsRow
-			title={activeMembers.length > 3 ? `ещё ${activeMembers.length - 3}` : 'Все участники'}
-			link
-			onclick={() => goto(`/circles/${circle.circleId}/settings/members`)}
-		/>
+		{/if}
 
 		{#if !soloCircle || isOwner}
 			<div class="mt-16">
@@ -595,7 +605,10 @@
 						...(!soloCircle && isOwner ? ['Передать владение'] : []),
 						...(!soloCircle ? ['Покинуть круг'] : []),
 						// 6.32: круг живёт дальше в другом месте, новый сервер забирает его сам.
-						...(isOwner ? ['Перенести на другой сервер', 'Удалить круг и все записи'] : [])
+						// На широком экране перенос стоит в левом меню.
+						...(isOwner
+							? [...(wide ? [] : ['Перенести на другой сервер']), 'Удалить круг и все записи']
+							: [])
 					]}
 					onitem={onDangerItem}
 				/>
