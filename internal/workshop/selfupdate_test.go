@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-// 10а: предлагается свежий выпуск Мастерской, вышедший не меньше
-// UpdateDelay назад; черновики, пробные и чужие метки — нет.
+// 10а: предлагается свежий выпуск Мастерской сразу после публикации (до 1.0.0
+// отлёжка снята); черновики, пробные и чужие метки — нет.
 func TestPickRelease(t *testing.T) {
 	now := time.Date(2026, 11, 10, 12, 0, 0, 0, time.UTC)
 	old := now.Add(-10 * 24 * time.Hour)
@@ -20,15 +20,15 @@ func TestPickRelease(t *testing.T) {
 	}{{"wynd-workshop.exe", "https://x/exe"}, {"wynd-workshop.exe.sig", "https://x/sig"}}
 	rels := []ghRelease{
 		{TagName: "v0.44.0", PublishedAt: old},
-		{TagName: "workshop-v0.3.0", PublishedAt: now.Add(-time.Hour), Assets: assets},
+		{TagName: "workshop-v0.3.0", PublishedAt: now.Add(-time.Hour), Assets: assets, Body: "- Обновляет Wynd 0.43 и новее\n- Бэкап с паролем\n"},
 		{TagName: "workshop-v0.2.1", PublishedAt: old, Draft: true, Assets: assets},
-		{TagName: "workshop-v0.2.0", PublishedAt: old, Assets: assets, Body: "- Обновляет Wynd 0.43 и новее\n- Бэкап с паролем\n"},
+		{TagName: "workshop-v0.2.0", PublishedAt: old, Assets: assets},
 	}
 	up := pickRelease(rels, "0.1.0", now)
-	if !up.Available || up.Version != "0.2.0" || len(up.Notes) != 2 {
+	if !up.Available || up.Version != "0.3.0" || len(up.Notes) != 2 {
 		t.Fatalf("выпуск: %+v", up)
 	}
-	if up := pickRelease(rels, "0.2.0", now); up.Available {
+	if up := pickRelease(rels, "0.3.0", now); up.Available {
 		t.Fatalf("новее нет, а предложено: %+v", up)
 	}
 	// 10б: «проверить» ведёт на удостоверение сборки, а не на страницу выпуска.

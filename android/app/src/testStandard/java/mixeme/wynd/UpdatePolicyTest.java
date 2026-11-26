@@ -8,15 +8,18 @@ import static org.junit.Assert.*;
 public final class UpdatePolicyTest {
     private static final long PUBLISHED = 1_700_000_000_000L;
 
-    @Test public void enforcesExactlySeventyTwoHoursForOrdinaryBuilds() {
-        assertFalse(UpdatePolicy.eligible(PUBLISHED, PUBLISHED + UpdatePolicy.DELAY_MILLIS - 1, false, false, false, false));
-        assertTrue(UpdatePolicy.eligible(PUBLISHED, PUBLISHED + UpdatePolicy.DELAY_MILLIS, false, false, false, false));
-        assertFalse(UpdatePolicy.eligible(PUBLISHED, PUBLISHED + 1000, false, false, false, true));
+    @Test public void ordinaryBuildsGetReleaseImmediately() {
+        // До 1.0.0 отлёжка снята: опубликованный выпуск доступен сразу.
+        assertEquals(0, UpdatePolicy.DELAY_MILLIS);
+        assertTrue(UpdatePolicy.eligible(PUBLISHED, PUBLISHED, false, false, false, false));
+        assertTrue(UpdatePolicy.eligible(PUBLISHED, PUBLISHED + 1000, false, false, false, true));
+        assertFalse(UpdatePolicy.eligible(PUBLISHED, PUBLISHED - 1, false, false, false, false));
     }
 
-    @Test public void developmentSwitchBypassesOnlyTime() {
+    @Test public void developmentSwitchDoesNotChangeTrustBoundaries() {
+        // Обходить нечего, пока выдержка нулевая; границы доверия прежние.
         assertTrue(UpdatePolicy.eligible(PUBLISHED, PUBLISHED, false, false, true, true));
-        assertFalse(UpdatePolicy.eligible(PUBLISHED, PUBLISHED, false, false, true, false));
+        assertTrue(UpdatePolicy.eligible(PUBLISHED, PUBLISHED, false, false, true, false));
         assertFalse(UpdatePolicy.eligible(PUBLISHED, PUBLISHED - 1, false, false, true, true));
         assertFalse(UpdatePolicy.eligible(PUBLISHED, PUBLISHED, true, false, true, true));
         assertFalse(UpdatePolicy.eligible(PUBLISHED, PUBLISHED, false, true, true, true));
@@ -40,15 +43,15 @@ public final class UpdatePolicyTest {
         assertFalse(UpdatePolicy.transportUrlAllowed("http://127.0.0.1:7697/", false, "http://127.0.0.1:7697"));
     }
 
-    @Test public void selectsNewestEligibleReleaseRatherThanYoungestPublication() throws Exception {
+    @Test public void selectsNewestVersionWhenAllPublishingTimesAreEligible() throws Exception {
         JSONArray rows = new JSONArray().put(release("0.2.0", "2026-11-16T00:00:00Z"))
                 .put(release("0.1.1", "2026-11-01T00:00:00Z"));
         long now = 1_794_787_200_000L; // 2026-11-16 UTC
-        assertEquals("0.1.1", ReleaseCatalog.select(rows.toString(), 1000, now, false, false, false, "").version);
+        // Отлёжка нулевая: свежий выпуск доступен сразу, обход не нужен.
+        assertEquals("0.2.0", ReleaseCatalog.select(rows.toString(), 1000, now, false, false, false, "").version);
         assertFalse(ReleaseCatalog.select(rows.toString(), 1000, now, false, false, false, "").requiresBypass);
         assertEquals("0.2.0", ReleaseCatalog.select(rows.toString(), 1000, now, false, true, true, "").version);
-        assertTrue(ReleaseCatalog.select(rows.toString(), 1000, now, false, true, true, "").requiresBypass);
-        assertEquals("0.1.1", ReleaseCatalog.select(rows.toString(), 1000, now, false, false, true, "").version);
+        assertFalse(ReleaseCatalog.select(rows.toString(), 1000, now, false, true, true, "").requiresBypass);
         assertNull(ReleaseCatalog.select(rows.toString(), 2000, now, true, true, true, ""));
     }
 

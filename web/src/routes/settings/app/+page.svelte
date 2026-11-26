@@ -402,7 +402,9 @@
 		{/each}
 	</ChipGroup>
 
-	{#if androidUpdate.supported && (androidUpdate.development || androidUpdate.debug)}
+	<!-- Обход выдержки показываем, только когда её есть что обходить: до 1.0.0
+	     отлёжка снята, и приложение сообщает developmentUpdateBypass=false. -->
+	{#if androidUpdate.supported && androidUpdate.capabilities.developmentUpdateBypass}
 		<SectionLabel class="mt-16">Разработка</SectionLabel>
 		<SettingsRow title="Скачивать сразу" subtitle="Не ждать 72 часа после публикации">
 			{#snippet control()}

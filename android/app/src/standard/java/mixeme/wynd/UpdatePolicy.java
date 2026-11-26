@@ -7,7 +7,9 @@ import java.util.regex.Pattern;
 
 /** Общие правила выбора выпуска; обход выдержки не меняет границы доверия. */
 final class UpdatePolicy {
-    static final long DELAY_MILLIS = 72L * 60 * 60 * 1000;
+    // До 1.0.0 отлёжка снята (решение владельца 2026-11-26): выпуск предлагается
+    // сразу после публикации. Вернуть 72L * 60 * 60 * 1000 при выходе 1.0.0.
+    static final long DELAY_MILLIS = 0;
     static final String REPOSITORY = "mixeme/wynd";
     static final String ASSET = "wynd-android.apk";
     static final String RELEASES_API = "https://api.github.com/repos/" + REPOSITORY + "/releases";

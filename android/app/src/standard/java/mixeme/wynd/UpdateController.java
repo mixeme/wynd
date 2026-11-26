@@ -60,7 +60,10 @@ final class UpdateController {
         return new JSONObject().put("version", BuildConfig.APP_VERSION).put("debug", BuildConfig.DEBUG)
                 .put("development", developmentEnabled())
                 .put("protocol", 1).put("capabilities", new JSONObject().put("updates", true)
-                        .put("developmentUpdateBypass", developmentEnabled()))
+                        // Обходить нечего, пока выдержка снята: переключатель в
+                        // «Настройках» не показывается (вернётся с 72 часами при 1.0.0).
+                        .put("developmentUpdateBypass",
+                                developmentEnabled() && UpdatePolicy.DELAY_MILLIS > 0))
                 .put("immediately", developmentEnabled() && preferences.getBoolean("immediately", false))
                 .put("state", state).put("available", release != null)
                 .put("nextVersion", release == null ? "" : release.version)
