@@ -57,8 +57,8 @@
 	{:else}
 		<Hint class="mt-10">
 			Отсканируйте камерой на новом устройстве: откроется вход на «{serverName ||
-				displayHost(origin)}», почта уже подставлена — останется ввести код из письма. Ссылкой можно
-			поделиться.
+				displayHost(origin)}», почта уже подставлена — останется «Получить код» и ввести его из
+			письма. Ссылкой можно поделиться.
 		</Hint>
 		<QrCode value={email ? link : ''} />
 		<InviteLinkCard url={link} {copied} onshare={() => void share()} oncopy={() => void copy()} />
