@@ -186,9 +186,11 @@
    значок от аватара того же цвета. Время без имени не нужно. */
 .ph.app.split.rail .split-side .r .rt {
 	position: absolute;
-	/* На верхнем крае аватара, а не над ним: шаг от настроек не ломается. */
+	/* Центр значка и центр точки — в одном месте: на верхнем углу аватара.
+	   Размеры у них разные, поэтому выравниваем не край, а центр. */
 	top: 10px;
-	right: 6px;
+	right: 18px;
+	transform: translate(50%, -50%);
 }
 .ph.app.split.rail .split-side .r .rt > span:first-child {
 	display: none;
