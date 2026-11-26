@@ -12,7 +12,12 @@
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import { enterSubmit } from '$lib/a11y/enter';
 	import { addressErrorHint, flowForJoin, sendAuthCode, type InstanceInfo } from '$lib/auth/auth';
-	import { decodeQrFromFile, foreignWyndLinkOrigin, parseWyndLink } from '$lib/auth/links';
+	import {
+		decodeQrFromFile,
+		foreignWyndLinkOrigin,
+		loginLinkTarget,
+		parseWyndLink
+	} from '$lib/auth/links';
 	import { displayHost, resolveServerOrigin } from '$lib/auth/origin';
 	import { INVALID_EMAIL_HINT, isValidParticipantEmail } from '$lib/auth/email';
 	import { loadPendingAuth, savePendingAuth } from '$lib/auth/pending';
@@ -107,6 +112,8 @@
 		if (preset) {
 			adding = true;
 			address = displayHost(preset);
+			const linkEmail = page.url.searchParams.get('email');
+			if (linkEmail) email = linkEmail;
 			void checkServer();
 			return;
 		}
@@ -119,8 +126,24 @@
 	const foreignLinkError = (origin: string) =>
 		`Ссылка ведёт на другой сервер (${origin}) — откройте её там`;
 
+	// Ссылка подключения устройства (план 72): добавление сервера — адрес и
+	// почта заполняются, интерфейс не меняется. Возвращает, обработана ли.
+	function applyLoginLink(text: string): boolean {
+		const link = loginLinkTarget(text);
+		if (!link) return false;
+		error = '';
+		address = displayHost(link.origin);
+		email = link.email;
+		void checkServer();
+		return true;
+	}
+
 	function onAddressPaste(event: ClipboardEvent) {
 		const text = event.clipboardData?.getData('text') ?? '';
+		if (applyLoginLink(text)) {
+			event.preventDefault();
+			return;
+		}
 		const foreign = foreignWyndLinkOrigin(text);
 		if (foreign) {
 			event.preventDefault();
@@ -161,6 +184,7 @@
 		error = '';
 		try {
 			const text = await decodeQrFromFile(file);
+			if (applyLoginLink(text)) return;
 			const path = parseWyndLink(text);
 			const foreign = foreignWyndLinkOrigin(text);
 			if (path) goto(path);

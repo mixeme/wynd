@@ -36,6 +36,8 @@ export function foreignWyndLinkOrigin(input: string, currentOrigin?: string): st
 		const url = new URL(raw);
 		if (url.origin === new URL(base).origin) return null;
 		if (/^\/(invite|join)\/[^/?#]+/.test(url.pathname)) return url.origin;
+		// Ссылка подключения чужого сервера (план 72): на этом сервере её не открыть.
+		if (url.pathname === '/' && url.searchParams.has('email')) return url.origin;
 	} catch {
 		/* not a URL */
 	}
