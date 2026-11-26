@@ -85,8 +85,8 @@
 		<TextButton onclick={() => void load()}>Повторить</TextButton>
 	{:else}
 		<Hint class="mt-10">
-			Где вы вошли на «{displayHost(origin)}». Завершённая сессия при следующем действии попадёт на
-			обычный вход — код из письма.
+			Где вы вошли на «{displayHost(origin)}». Завершённая сессия при следующем действии попросит
+			войти заново — код из письма.
 		</Hint>
 		{#each sessions as item (item.id)}
 			<SettingsRow title={item.device || 'Устройство'} subtitle={subtitleFor(item)} chevron={false}>
