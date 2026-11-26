@@ -197,15 +197,15 @@
 	border-radius: 9px;
 	font-size: 10.5px;
 	line-height: 1;
-	background: var(--ink);
-	color: var(--paper);
+	background: var(--unread);
+	color: #fff;
 	box-shadow: 0 0 0 2px var(--paper);
 }
 .ph.app.split.rail .split-side .r .rdot {
 	width: 10px;
 	height: 10px;
 	margin: 0;
-	background: var(--ink);
+	background: var(--unread);
 	box-shadow: 0 0 0 2px var(--paper);
 }
 /* Групповые шапки — не круги, в рейле их нет. */
