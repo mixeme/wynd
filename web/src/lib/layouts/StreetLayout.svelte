@@ -11,7 +11,7 @@
 		selectedId?: string | null;
 		/** Промежуточная ширина: от кругов только аватары, имя — подсказкой. */
 		rail?: boolean;
-		/** В раскладке с кругом поиск по кругам живёт в пустой правой части. */
+		/** В раскладке поиск — в шапке правой панели; слева лупы нет. */
 		hideSearch?: boolean;
 	} = $props();
 	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
