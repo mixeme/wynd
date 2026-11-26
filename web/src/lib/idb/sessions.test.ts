@@ -31,6 +31,9 @@ beforeEach(async () => {
 	delete (window as unknown as { __wyndDesktop?: unknown }).__wyndDesktop;
 	delete (window as unknown as { __wyndSecrets?: unknown }).__wyndSecrets;
 	vi.restoreAllMocks();
+	const db = await (await import('./db')).getDb();
+	await db.clear('sessions');
+	await db.delete('admin_session', 'admin');
 });
 
 afterEach(() => {
@@ -168,6 +171,27 @@ describe('окно (apiBase есть)', () => {
 		await putSession(session);
 		expect((await getSession(session.origin))?.token).toBe('tok');
 	});
+
+	it('вход текущего сервера хранится абсолютным, клиент видит пустой origin', async () => {
+		const put = vi.spyOn(window, 'fetch').mockResolvedValue(new Response(null, { status: 204 }));
+		await putSession({ ...session, origin: '' });
+		const body = JSON.parse(String(put.mock.calls[0][1]?.body)) as { origin: string };
+		expect(body.origin).toBe('https://home.example.org');
+
+		put.mockImplementation(async () =>
+			bagResponse({ sessions: [{ ...session, origin: 'https://home.example.org' }] })
+		);
+		expect((await getSession(''))?.token).toBe('tok');
+		expect((await getSession(session.origin))?.origin).toBe('');
+	});
+
+	it('вход из IndexedDB виден, когда мешок окна пуст', async () => {
+		const db = await (await import('./db')).getDb();
+		await db.put('sessions', { ...session, origin: '' });
+		vi.spyOn(window, 'fetch').mockResolvedValue(bagResponse({ sessions: [] }));
+		expect(await listSessions()).toHaveLength(1);
+		expect((await getSession(''))?.token).toBe('tok');
+	});
 });
 
 describe('миграция в системное хранилище', () => {
@@ -202,6 +226,23 @@ describe('миграция в системное хранилище', () => {
 		await migrateSessionsToSystemStorage();
 		expect(await db.getAll('sessions')).toHaveLength(0);
 		expect(await db.get('admin_session', 'admin')).toBeUndefined();
+	});
+
+	it('вход текущего сервера выгружается под абсолютным адресом', async () => {
+		(window as unknown as { __wyndDesktop?: unknown }).__wyndDesktop = {
+			origin: 'https://home.example.org',
+			apiBase: 'http://127.0.0.1:41234'
+		};
+		const db = await (await import('./db')).getDb();
+		await db.put('sessions', { ...session, origin: '' });
+		const bodies: Array<{ origin: string }> = [];
+		vi.spyOn(window, 'fetch').mockImplementation(async (_input, init) => {
+			if (init?.body) bodies.push(JSON.parse(String(init.body)) as { origin: string });
+			return new Response(null, { status: 204 });
+		});
+		await migrateSessionsToSystemStorage();
+		expect(bodies).toEqual([expect.objectContaining({ origin: 'https://home.example.org' })]);
+		expect(await db.getAll('sessions')).toHaveLength(0);
 	});
 
 	it('в браузере миграция не начинается', async () => {

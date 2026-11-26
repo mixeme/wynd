@@ -416,9 +416,11 @@ export async function bumpDayPromptCount(origin: string, circleId: string): Prom
 // Мешок перечитывается целиком: сессий у человека единицы, и оболочка
 // отдаёт его из своего кэша.
 
-// Входы телефона (C127, вариант «б»): оболочка Android хранит их в общем
-// файле, как окно, и отдаёт любому источнику интерфейса. Адрес текущего
-// сервера для клиента по-прежнему пустой, а в хранилище он абсолютный.
+// Входы телефона (C127, вариант «б») и окна хранят их в общем файле/учётных
+// записях оболочки по абсолютному адресу сервера; клиент текущего сервера
+// видит свой вход как пустой origin. Окно не принимает пустой origin в
+// /__secrets, поэтому свой адрес подставляется при записи и чтении — иначе
+// вход сохранялся в IndexedDB и становился невидимым для клиента.
 
 function sharedOrigin(origin: string): string {
 	const own = pageOrigin().replace(/\/$/, '');
@@ -461,7 +463,13 @@ export async function listSessions(): Promise<SessionRecord[]> {
 	const base = desktopApiBase();
 	if (base) {
 		try {
-			return (await systemBag(base)).sessions;
+			const bridged = (await systemBag(base)).sessions.map(localSession);
+			const db = await getDb();
+			const local = (await db.getAll('sessions')).map(localSession);
+			// Вход текущего сервера живёт в IndexedDB: /__secrets не принимает
+			// пустой origin. Показываем его вместе с записями окна.
+			const seen = new Set(bridged.map((session) => session.origin));
+			return [...bridged, ...local.filter((session) => !seen.has(session.origin))];
 		} catch {
 			// хранилище окна недоступно — прежнее место
 		}
@@ -483,13 +491,17 @@ export async function getSession(origin: string): Promise<SessionRecord | undefi
 	const base = desktopApiBase();
 	if (base) {
 		try {
-			return (await systemBag(base)).sessions.find((s) => s.origin === origin);
+			const wanted = sharedOrigin(origin);
+			const found = (await systemBag(base)).sessions.find((s) => s.origin === wanted);
+			if (found) return localSession(found);
 		} catch {
 			// хранилище окна недоступно — прежнее место
 		}
 	}
 	const db = await getDb();
-	return db.get('sessions', origin);
+	const local =
+		(await db.get('sessions', origin)) ?? (await db.get('sessions', sharedOrigin(origin)));
+	return local ? localSession(local) : undefined;
 }
 
 export async function putSession(session: SessionRecord): Promise<void> {
@@ -507,14 +519,16 @@ export async function putSession(session: SessionRecord): Promise<void> {
 	const base = desktopApiBase();
 	if (base) {
 		try {
+			const stored = { ...session, origin: sharedOrigin(session.origin) };
 			const res = await fetch(`${base}/__secrets/session`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(session)
+				body: JSON.stringify(stored)
 			});
 			if (res.ok) {
 				// профиль очищается от токенов: в IndexedDB копии больше нет
 				await db.delete('sessions', session.origin);
+				if (stored.origin !== session.origin) await db.delete('sessions', stored.origin);
 				return;
 			}
 		} catch {
@@ -536,7 +550,15 @@ export async function deleteSession(origin: string): Promise<void> {
 	const base = desktopApiBase();
 	if (base) {
 		try {
-			await fetch(`${base}/__secrets/session/${encodeURIComponent(origin)}`, { method: 'DELETE' });
+			const stored = sharedOrigin(origin);
+			await fetch(`${base}/__secrets/session/${encodeURIComponent(stored)}`, { method: 'DELETE' });
+			if (stored !== origin) {
+				await fetch(`${base}/__secrets/session/${encodeURIComponent(origin)}`, {
+					method: 'DELETE'
+				});
+			}
+			await db.delete('sessions', origin);
+			if (stored !== origin) await db.delete('sessions', stored);
 		} catch {
 			// хранилище окна недоступно — хотя бы прежнее место очистим
 		}
@@ -632,7 +654,17 @@ export async function migrateSessionsToSystemStorage(): Promise<void> {
 	const legacy = await db.getAll('sessions');
 	const admin = await db.get('admin_session', 'admin');
 	if (legacy.length === 0 && !admin) return;
+	// /__secrets не принимает пустой origin: вход текущего сервера выгружается
+	// под его абсолютным адресом, как в общем файле Android (C127).
+	const stored = new Map<string, SessionRecord>();
 	for (const session of legacy) {
+		const target = sharedOrigin(session.origin);
+		const existing = stored.get(target);
+		if (!existing || (session.signed_in_at ?? '') > (existing.signed_in_at ?? '')) {
+			stored.set(target, { ...session, origin: target });
+		}
+	}
+	for (const session of stored.values()) {
 		const res = await fetch(`${base}/__secrets/session`, {
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/json' },
