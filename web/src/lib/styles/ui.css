@@ -158,7 +158,9 @@
 .ph.app.split.rail .split-side .appbar {
 	flex-direction: column;
 	gap: 10px;
-	padding: 10px 0;
+	/* Нижний зазор даёт первая строка списка: шаг от знака к настройкам и от
+	   настроек к первому аватару одинаковый — 10 px. */
+	padding: 10px 0 0;
 }
 .ph.app.split.rail .split-side .appbar .sp {
 	display: none;
@@ -184,7 +186,8 @@
    значок от аватара того же цвета. Время без имени не нужно. */
 .ph.app.split.rail .split-side .r .rt {
 	position: absolute;
-	top: 2px;
+	/* На верхнем крае аватара, а не над ним: шаг от настроек не ломается. */
+	top: 10px;
 	right: 6px;
 }
 .ph.app.split.rail .split-side .r .rt > span:first-child {
