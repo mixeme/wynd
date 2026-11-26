@@ -11,21 +11,23 @@
 		onclick,
 		ondismiss
 	}: {
-		/** Минорная версия свежей записи: «0.26». */
-		version: string;
+		/** Минорная версия свежей записи: «0.26». Без неё — свой текст. */
+		version?: string;
 		/** Тот же баннер для новой версии Android, без отдельной компоновки. */
 		title?: string;
 		text?: string;
 		onclick: () => void;
 		ondismiss: () => void;
 	} = $props();
+
+	const line = $derived(text ?? (version ? `Wynd ${version}: коротко о том, что изменилось` : ''));
 </script>
 
 <div class="pay-banner">
 	<button type="button" class="pay-banner-main" onclick={() => onclick()}>
 		<div class="pay-banner-copy">
 			<div class="pay-banner-strong">{title}</div>
-			<div class="pay-banner-muted">{text ?? `Wynd ${version}: коротко о том, что изменилось`}</div>
+			<div class="pay-banner-muted">{line}</div>
 		</div>
 		<Icon name="chevr" size="sm" class="pay-banner-chev" />
 	</button>

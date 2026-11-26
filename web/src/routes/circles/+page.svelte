@@ -18,6 +18,7 @@
 	import { androidUpdate } from '$lib/android/update.svelte';
 	import HintBanner from '$ui/data/HintBanner.svelte';
 	import { closeBrowserHint, showBrowserHint } from '$lib/session/browserHint';
+	import { closeAndroidAppHint, showAndroidAppHint } from '$lib/session/appHint';
 	import { hasUnseenNews, latestNewsVersion, markNewsSeen } from '$lib/news/seen';
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import Input from '$ui/forms/Input.svelte';
@@ -72,6 +73,8 @@
 	let newsUnseen = $state(hasUnseenNews());
 	// Подсказка про браузер (7.7а) — на Android, кроме Chrome и Vivaldi.
 	let browserHint = $state(showBrowserHint());
+	// Баннер про приложение Wynd для Android (C139) — в любом вебе на Android.
+	let appHint = $state(showAndroidAppHint());
 	// Отметка последнего длинного нажатия: клик в её хвосте — часть того же
 	// жеста (GUI-6). Прежний общий флаг гасили в каждом обработчике, и
 	// порядок pointerup/click решал исход.
@@ -543,6 +546,11 @@
 		browserHint = false;
 	}
 
+	function hideAppHint() {
+		closeAndroidAppHint();
+		appHint = false;
+	}
+
 	async function hideDonateBanner() {
 		if (!streetSession) return;
 		await dismissPayBanner(streetSession.origin);
@@ -632,6 +640,14 @@
 					version={latestNewsVersion()}
 					onclick={() => goto('/settings/news?from=circles')}
 					ondismiss={hideNews}
+				/>
+			{/if}
+			{#if appHint && !empty}
+				<NewsBanner
+					title="Приложение Wynd для Android"
+					text="Уведомления и запись без открытой вкладки"
+					onclick={() => goto('/app')}
+					ondismiss={hideAppHint}
 				/>
 			{/if}
 			{#if browserHint && !empty}
