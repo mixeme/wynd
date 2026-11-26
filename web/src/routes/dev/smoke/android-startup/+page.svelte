@@ -248,6 +248,7 @@
 						>
 						<Label>Адрес сервера или приглашение</Label>
 						<Input
+							active
 							bind:value={address}
 							placeholder="wynd.example.org"
 							aria-label="Адрес сервера или приглашение"

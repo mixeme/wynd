@@ -10,6 +10,7 @@ import {
 	checkProject,
 	checkScriptClassStrings,
 	checkSingleScreenClasses,
+	checkEditableFieldAccent,
 	classTokens,
 	hasStyleBlock,
 	markupElements,
@@ -194,5 +195,16 @@ describe('plan 47 guards', () => {
 		expect(checkSingleScreenClasses(web, new Set(['own', 'gone']))).toEqual([
 			'.gone уже не одноэкранный — уберите из SINGLE_SCREEN_CLASSES'
 		]);
+	});
+
+	it('requires the accent border on editable Input fields', () => {
+		const web = tree({
+			'src/routes/a/+page.svelte':
+				'<Input bind:value={x} />\n<Input active bind:value={y} />\n<Input {active} bind:value={z} />',
+			'src/routes/b/+page.svelte': '<Input admin bind:value={q} />'
+		});
+		const hits = checkEditableFieldAccent(web);
+		expect(hits).toHaveLength(1);
+		expect(hits[0]).toContain('src/routes/a/+page.svelte:1:');
 	});
 });

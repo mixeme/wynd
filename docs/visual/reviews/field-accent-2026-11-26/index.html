@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ru">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Поле ввода: рамка на всех экранах — кадры C142</title>
+		<style>
+			body {
+				margin: 0;
+				background: #efe9e0;
+				font: 16px/1.45 'Golos Text', sans-serif;
+				color: #2b2622;
+			}
+			main {
+				max-width: 900px;
+				margin: 24px auto 48px;
+				padding: 0 16px;
+			}
+			h1 {
+				font-size: 22px;
+				margin: 0 0 4px;
+			}
+			p.method {
+				margin: 0 0 20px;
+				color: #6b615a;
+				font-size: 14px;
+			}
+			.row {
+				display: flex;
+				gap: 32px;
+				flex-wrap: wrap;
+				align-items: flex-start;
+			}
+			figure {
+				margin: 0;
+			}
+			h2 {
+				font-size: 17px;
+				margin: 0 0 8px;
+			}
+			img {
+				width: 400px;
+				max-width: 100%;
+				border: 1px solid #c9bfb4;
+				border-radius: 12px;
+				display: block;
+			}
+			figcaption {
+				margin-top: 10px;
+				color: #6b615a;
+				font-size: 14px;
+				max-width: 400px;
+			}
+			.pending {
+				display: inline-block;
+				margin-top: 24px;
+				padding: 8px 12px;
+				border: 1px solid #c9bfb4;
+				border-radius: 8px;
+				font-size: 14px;
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<h1>Поле ввода — акцентная рамка на всех экранах</h1>
+			<p class="method">
+				Настоящий рендер окна Настольного: исходник <code>cmd/wynd-desktop/frontend</code>, vite 5179,
+				mock без сервера, <code>?update=none</code>; headless Edge, 760 × 780 CSS px, DPR 1, светлая
+				тема. Оба кадра сняты с одного дерева: у «до» у поля адреса временно убран <code>active</code>.
+				Фон поля в обоих — <code>#fcfaf6</code> на бумаге <code>#f4f0e9</code>; отличается только
+				рамка 1 px.
+			</p>
+			<div class="row">
+				<figure>
+					<h2>До — мягкая рамка <code>--line</code></h2>
+					<img src="welcome-before.png" alt="Окно «Войти в Wynd», поле адреса со светлой рамкой" />
+					<figcaption>Как в утверждённом кадре ПК1 и в окне 0.4.2.</figcaption>
+				</figure>
+				<figure>
+					<h2>После — акцентная рамка <code>--c</code></h2>
+					<img src="welcome-after.png" alt="Окно «Войти в Wynd», поле адреса с чернильной рамкой" />
+					<figcaption>
+						Как «Почта» на экране входа клиента: одно правило для всех полей, которые можно менять.
+					</figcaption>
+				</figure>
+			</div>
+			<p class="pending">Вёрстка ждёт приёмки владельца. Правило и разбор — C142, план 46.</p>
+		</main>
+	</body>
+</html>
