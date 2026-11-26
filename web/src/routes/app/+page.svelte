@@ -24,28 +24,39 @@
 </script>
 
 <FormLayout shell app title="Приложение для Android" onback={navigateBack}>
-	<Hint
-		>Записи уходят, даже если окно закрыто. Уведомления приходят, когда приложение не открыто.</Hint
-	>
 	<SectionLabel>Что даёт</SectionLabel>
 	<SettingsRow
 		icon="bell"
-		title="Уведомления"
+		title="Push-уведомления"
 		subtitle="О новых записях и откликах"
 		chevron={false}
 		divided="both"
 	/>
 	<SettingsRow
 		icon="send"
-		title="Записи в фоне"
-		subtitle="Окно можно закрыть"
+		title="Отправка записей в фоне"
+		subtitle="Приложение можно закрыть"
 		chevron={false}
 		divided="bottom"
 	/>
 	<SettingsRow
 		icon="video"
-		title="Видео сжимается на телефоне"
-		subtitle="Экран держать открытым не нужно"
+		title="Видео сжимается в фоне"
+		subtitle="Не нужно держать экран открытым"
+		chevron={false}
+		divided="bottom"
+	/>
+	<SettingsRow
+		icon="loc"
+		title="Место со снимков"
+		subtitle="Точка на карте круга"
+		chevron={false}
+		divided="bottom"
+	/>
+	<SettingsRow
+		icon="photo"
+		title="Поделиться в Wynd"
+		subtitle="Фото и видео из других приложений"
 		chevron={false}
 		divided="bottom"
 	/>
@@ -54,5 +65,7 @@
 	<Button loading={resolving} loadingLabel="Ищем файл…" onclick={() => void download()}>
 		Скачать приложение
 	</Button>
-	<Hint>Потом войдите: адрес своего сервера, почта и код из письма.</Hint>
+	<Hint class="mt-16"
+		>Быстро войти можно ссылкой из «Подключить устройство»: адрес и почта подставятся сами.</Hint
+	>
 </FormLayout>
