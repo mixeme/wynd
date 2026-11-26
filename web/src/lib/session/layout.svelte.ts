@@ -1,13 +1,14 @@
 // Ширина окна для раскладки (план 75): на широком экране улочка и круг
-// стоят двумя колонками. До 720 px — телефонная колонка; 720–999 px — рейл
-// из аватаров и круг 720; от 1000 px — полный список 340 и круг 720.
-// Пороги те же, что в CSS `.ph.app.split` / `.ph.app.split.rail`.
+// стоят двумя колонками. До 720 px — телефонная колонка; до 1060 px — рейл
+// из аватаров и круг 720; от 1060 px — полный список 340 и круг 720: ровно
+// столько, сколько занимает полный каркас. Пороги те же, что в CSS
+// `.ph.app.split` / `.ph.app.split.rail`.
 
 /** Раскладка окна: телефон, рейл аватаров, полный список с кругом. */
 export type LayoutMode = 'phone' | 'rail' | 'full';
 
 const SPLIT_QUERY = '(min-width: 720px)';
-const FULL_QUERY = '(min-width: 1000px)';
+const FULL_QUERY = '(min-width: 1060px)';
 
 function media(query: string): MediaQueryList | undefined {
 	return typeof window === 'undefined' ? undefined : window.matchMedia(query);

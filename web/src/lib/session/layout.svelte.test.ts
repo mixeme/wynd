@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { initLayoutMode, layoutMode, railLayout, splitLayout } from './layout.svelte';
 
 const SPLIT_QUERY = '(min-width: 720px)';
-const FULL_QUERY = '(min-width: 1000px)';
+const FULL_QUERY = '(min-width: 1060px)';
 
 /** matchMedia с отдельными ответами на пороги 720 и 1000. */
 function installWidths(split: boolean, full: boolean) {
