@@ -290,7 +290,6 @@
 								if (event.key === 'Enter') submit();
 							}}
 						/>
-						<Hint>Ссылку из QR-кода можно вставить прямо в поле.</Hint>
 						{@render response()}
 						<Button
 							style="margin-top:16px"
@@ -310,6 +309,7 @@
 						<Button style="margin-top:16px" variant="ghost" onclick={() => photoPicker?.open()}
 							>Фото с QR-кодом</Button
 						>
+						<Hint>Ссылку из QR-кода можно вставить прямо в поле.</Hint>
 					{/if}
 				</div>
 			</div>

@@ -745,7 +745,6 @@
 				{#if error}
 					<Hint>{error}</Hint>
 				{/if}
-				<Hint>Ссылку из QR-кода можно вставить прямо в поле.</Hint>
 				<Button
 					disabled={!address.trim()}
 					loading={checking}
@@ -755,6 +754,7 @@
 					Дальше
 				</Button>
 				<Button variant="ghost" onclick={() => qrPicker?.open()}>Фото с QR-кодом</Button>
+				<Hint>Ссылку из QR-кода можно вставить прямо в поле.</Hint>
 			</div>
 		</div>
 	{/if}
