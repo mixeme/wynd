@@ -10,16 +10,19 @@
 	let {
 		sidebar,
 		empty = false,
+		rail = false,
 		children
 	}: {
 		sidebar: Snippet;
 		/** Круг не выбран: справа пусто, первый сам не открывается. */
 		empty?: boolean;
+		/** Промежуточная ширина: слева только аватары, 80 px. */
+		rail?: boolean;
 		children: Snippet;
 	} = $props();
 </script>
 
-<PhoneFrame app class="split">
+<PhoneFrame app class={rail ? 'split rail' : 'split'}>
 	<aside class="split-side">{@render sidebar()}</aside>
 	<div class="split-main">
 		{#if empty}

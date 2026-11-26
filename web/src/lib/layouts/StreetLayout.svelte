@@ -4,9 +4,12 @@
 	// План 75: на широком окне улица стоит левой колонкой рядом с открытым
 	// кругом — этот круг отмечается в списке. Телефонный экран не меняется.
 	let {
-		selectedId = null
+		selectedId = null,
+		rail = false
 	}: {
 		selectedId?: string | null;
+		/** Промежуточная ширина: от кругов только аватары, имя — подсказкой. */
+		rail?: boolean;
 	} = $props();
 	import { PullRefresh } from '$lib/gestures/pullRefresh.svelte';
 	import EmptyState from '$ui/data/EmptyState.svelte';
@@ -736,6 +739,7 @@
 							color={circle.color}
 							card={pinMenuKey === menuKey('pin', circle)}
 							selected={isSelected(circle)}
+							hint={rail ? circle.name : undefined}
 							actionLabel={door.actionLabel}
 							actionLabel2={door.actionLabel2}
 							onaction={() => void confirmPin(circle)}
@@ -808,6 +812,7 @@
 								color={circle.color}
 								card={pinMenuKey === menuKey(`g:${group.name}`, circle)}
 								selected={isSelected(circle)}
+								hint={rail ? circle.name : undefined}
 								actionLabel={door.actionLabel}
 								actionLabel2={door.actionLabel2}
 								onaction={() => void confirmPin(circle)}
@@ -877,6 +882,7 @@
 							color={circle.color}
 							card={pinMenuKey === menuKey('rest', circle)}
 							selected={isSelected(circle)}
+							hint={rail ? circle.name : undefined}
 							actionLabel={door.actionLabel}
 							actionLabel2={door.actionLabel2}
 							onaction={() => void confirmPin(circle)}

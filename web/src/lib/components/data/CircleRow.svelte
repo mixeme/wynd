@@ -14,6 +14,8 @@
 		card = false,
 		/** Открытый справа круг на широком окне (план 75): подложка и полоска цвета. */
 		selected = false,
+		/** Рейл аватаров: имени в строке нет — оно в подсказке и у экранного чтеца. */
+		hint,
 		actionLabel,
 		onaction,
 		actionLabel2,
@@ -42,6 +44,7 @@
 		color?: string;
 		card?: boolean;
 		selected?: boolean;
+		hint?: string;
 		actionLabel?: string;
 		onaction?: () => void;
 		actionLabel2?: string;
@@ -96,6 +99,8 @@
 			class={`${rowClass}${selected ? ' sel' : ''}`}
 			style={rowStyle}
 			aria-current={selected ? 'page' : undefined}
+			title={hint}
+			aria-label={hint}
 			{onclick}
 			{onmousedown}
 			{onmouseup}
@@ -111,6 +116,7 @@
 			class={`${rowClass}${selected ? ' sel' : ''}`}
 			style={rowStyle}
 			aria-current={selected ? 'page' : undefined}
+			title={hint}
 		>
 			{@render inner()}
 		</div>

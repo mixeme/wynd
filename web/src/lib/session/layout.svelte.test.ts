@@ -1,37 +1,58 @@
 import { describe, expect, it, vi } from 'vitest';
-import { initLayoutMode, splitLayout } from './layout.svelte';
+import { initLayoutMode, layoutMode, railLayout, splitLayout } from './layout.svelte';
 
-/** matchMedia, у которого ширину окна можно переключить на ходу. */
-function installWidth(split: boolean) {
-	const mq = new EventTarget() as EventTarget & { matches: boolean; media: string };
-	mq.matches = split;
-	mq.media = '(min-width: 720px)';
-	const fn = vi.fn(() => mq);
+const SPLIT_QUERY = '(min-width: 720px)';
+const FULL_QUERY = '(min-width: 1000px)';
+
+/** matchMedia с отдельными ответами на пороги 720 и 1000. */
+function installWidths(split: boolean, full: boolean) {
+	const queries = new Map<string, EventTarget & { matches: boolean; media: string }>();
+	const make = (query: string, matches: boolean) => {
+		const mq = new EventTarget() as EventTarget & { matches: boolean; media: string };
+		mq.matches = matches;
+		mq.media = query;
+		queries.set(query, mq);
+		return mq;
+	};
+	const fn = vi.fn((query: string) => {
+		if (!queries.has(query)) make(query, query === SPLIT_QUERY ? split : full);
+		return queries.get(query)!;
+	});
 	vi.stubGlobal('matchMedia', fn);
 	Object.defineProperty(window, 'matchMedia', { writable: true, configurable: true, value: fn });
 	return {
-		set(next: boolean) {
-			mq.matches = next;
-			mq.dispatchEvent(new Event('change'));
+		set(nextSplit: boolean, nextFull: boolean) {
+			queries.get(SPLIT_QUERY)!.matches = nextSplit;
+			queries.get(FULL_QUERY)!.matches = nextFull;
+			queries.get(SPLIT_QUERY)!.dispatchEvent(new Event('change'));
+			queries.get(FULL_QUERY)!.dispatchEvent(new Event('change'));
 		}
 	};
 }
 
-// План 75: от 720 px раскладка двухколоночная, ниже — телефонная. Смена
-// ширины видна сразу, после остановки слушателя — уже нет.
+// План 75: телефон — одна колонка, 720–999 — рейл аватаров, от 1000 — полный
+// список и круг. Смена ширины видна сразу, после остановки слушателя — нет.
 describe('layout mode', () => {
 	it('follows the window width and stops listening', () => {
-		const width = installWidth(false);
+		const width = installWidths(false, false);
 		const stop = initLayoutMode();
 
+		expect(layoutMode()).toBe('phone');
 		expect(splitLayout()).toBe(false);
-		width.set(true);
+		expect(railLayout()).toBe(false);
+
+		width.set(true, false);
+		expect(layoutMode()).toBe('rail');
 		expect(splitLayout()).toBe(true);
-		width.set(false);
-		expect(splitLayout()).toBe(false);
+		expect(railLayout()).toBe(true);
+
+		width.set(true, true);
+		expect(layoutMode()).toBe('full');
+		expect(splitLayout()).toBe(true);
+		expect(railLayout()).toBe(false);
 
 		stop();
-		width.set(true);
-		expect(splitLayout()).toBe(false);
+		width.set(false, false);
+		expect(layoutMode()).toBe('full');
 	});
 });

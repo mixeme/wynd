@@ -3,7 +3,7 @@
 	import CirclesSplitLayout from '$lib/layouts/CirclesSplitLayout.svelte';
 	import PayGateLayout from '$lib/layouts/PayGateLayout.svelte';
 	import StreetLayout from '$lib/layouts/StreetLayout.svelte';
-	import { splitLayout } from '$lib/session/layout.svelte';
+	import { railLayout, splitLayout } from '$lib/session/layout.svelte';
 	import type { Snippet } from 'svelte';
 
 	let { children }: { children: Snippet } = $props();
@@ -15,13 +15,14 @@
 	const street = $derived(path === '/circles');
 	const circle = $derived(Boolean(id) && !path.endsWith('/join'));
 	const split = $derived(splitLayout() && (street || circle));
+	const rail = $derived(railLayout());
 </script>
 
 <PayGateLayout>
 	{#if split}
-		<CirclesSplitLayout empty={street}>
+		<CirclesSplitLayout empty={street} {rail}>
 			{#snippet sidebar()}
-				<StreetLayout selectedId={circle ? id : null} />
+				<StreetLayout selectedId={circle ? id : null} {rail} />
 			{/snippet}
 			{@render children()}
 		</CirclesSplitLayout>

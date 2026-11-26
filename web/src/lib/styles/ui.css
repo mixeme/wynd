@@ -102,8 +102,8 @@
 	min-height: var(--app-h, 100dvh);
 }
 /* План 75: широкое окно — список кругов слева, открытый круг справа.
-   Порог 720 совпадает с `$lib/session/layout.svelte.ts`: ниже него каркас
-   не монтируется. Сжатый вид списка — только до 1000 px; дальше полный. */
+   Пороги 720 и 1000 совпадают с `$lib/session/layout.svelte.ts`: ниже 720
+   каркас не монтируется, до 1000 слева рейл аватаров, дальше полный список. */
 .ph.app.split {
 	--split-side-w: 340px;
 	max-width: var(--app-split-max-width);
@@ -147,25 +147,66 @@
 	max-width: none;
 	margin: 0;
 }
-@media (max-width: 999px) {
-	.ph.app.split {
-		--split-side-w: 260px;
-	}
-	/* Сжатый тот же список: без строки последней записи, знак меньше.
-	   Строка состояния молчащего сервера остаётся — это не последняя запись. */
-	.ph.app.split .split-side .r {
-		gap: 10px;
-		padding: 9px 12px;
-	}
-	.ph.app.split .split-side .r .sq {
-		width: 32px;
-		height: 32px;
-		border-radius: 10px;
-		font-size: 13px;
-	}
-	.ph.app.split .split-side .r .p:not(.with-ic) {
-		display: none;
-	}
+/* Рейл аватаров на промежуточной ширине (план 75, решение владельца 26.11):
+   от кругов — только знаки, имя — в подсказке. Круг получает 720 px. */
+.ph.app.split.rail {
+	--split-side-w: 80px;
+	max-width: 800px;
+}
+/* Шапка улочки в рейле — столбиком: знак, поиск, настройки. */
+.ph.app.split.rail .split-side .appbar {
+	flex-direction: column;
+	gap: 10px;
+	padding: 10px 0;
+}
+.ph.app.split.rail .split-side .appbar .sp {
+	display: none;
+}
+/* Служебные блоки улочки и текстовые части строк в рейле не нужны. */
+.ph.app.split.rail .split-side .shell-body > div:has(.r) > *:not(.r):not(.circle-row-card) {
+	display: none;
+}
+.ph.app.split.rail .split-side .r {
+	position: relative;
+	justify-content: center;
+	gap: 0;
+	padding: 10px 0;
+}
+.ph.app.split.rail .split-side .r + .r {
+	border-top: none;
+}
+.ph.app.split.rail .split-side .r .m {
+	display: none;
+}
+/* Число новых остаётся у аватара; время без имени не нужно. */
+.ph.app.split.rail .split-side .r .rt {
+	position: absolute;
+	top: 6px;
+	right: 10px;
+}
+.ph.app.split.rail .split-side .r .rt > span:first-child {
+	display: none;
+}
+/* Групповые шапки — не круги, в рейле их нет. */
+.ph.app.split.rail .split-side .circle-row-card:has(.fold) {
+	display: none;
+}
+.ph.app.split.rail .fab-wrap {
+	right: 12px;
+	bottom: 16px;
+}
+/* Пустая улочка в рейл не влезает: без кругов колонка остаётся полной. */
+.ph.app.split.rail:has(.split-side .empty-state) {
+	--split-side-w: 340px;
+	max-width: 1060px;
+}
+.ph.app.split.rail:has(.split-side .empty-state) .split-side .appbar {
+	flex-direction: row;
+	gap: 18px;
+	padding: 9px 18px;
+}
+.ph.app.split.rail:has(.split-side .empty-state) .split-side .appbar .sp {
+	display: block;
 }
 .ph.app .circle-body {
 	flex: 1;
