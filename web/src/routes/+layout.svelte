@@ -36,6 +36,7 @@
 	import { postAndroidAppearance } from '$lib/android/appearance';
 	import { incomingShareAvailable, peekIncomingShare } from '$lib/android/shares';
 	import { androidPort } from '$lib/android/bridge';
+	import { captureInstallPrompt } from '$lib/pwa/install';
 	import { loadSessions } from '$lib/session/session.svelte';
 
 	// Полоса плеера (4.9): звук играет и вне своего экрана (план 47, 5.4).
@@ -112,6 +113,9 @@
 		const stopViewport = initViewportHeight();
 		const stopSyncResume = initSyncResume();
 		const stopConnection = initConnection();
+		// Установка веб-приложения (план 74): событие Chromium приходит, когда
+		// сайт можно поставить; баннер на улочке зовёт его из себя.
+		const stopInstallPrompt = captureInstallPrompt();
 		// В настольном окне служебный воркер не нужен: оболочка приносит
 		// клиент вместе с сервером, а кэш PWA в окне отдавал старый интерфейс.
 		const isLocal =
@@ -131,6 +135,7 @@
 			stopTheme();
 			stopSyncResume();
 			stopConnection();
+			stopInstallPrompt();
 			stopQueue();
 			stopViewport();
 		};

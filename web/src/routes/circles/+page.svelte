@@ -17,8 +17,12 @@
 	import NewsBanner from '$ui/data/NewsBanner.svelte';
 	import { androidUpdate } from '$lib/android/update.svelte';
 	import HintBanner from '$ui/data/HintBanner.svelte';
+	import Dialog from '$ui/overlays/Dialog.svelte';
+	import Scrim from '$ui/overlays/Scrim.svelte';
 	import { closeBrowserHint, showBrowserHint } from '$lib/session/browserHint';
 	import { closeAndroidAppHint, showAndroidAppHint } from '$lib/session/appHint';
+	import { closePwaHint, pwaInstallSteps, showPwaHint } from '$lib/session/pwaHint';
+	import { promptPwaInstall } from '$lib/pwa/install';
 	import { hasUnseenNews, latestNewsVersion, markNewsSeen } from '$lib/news/seen';
 	import IconButton from '$ui/forms/IconButton.svelte';
 	import Input from '$ui/forms/Input.svelte';
@@ -75,6 +79,10 @@
 	let browserHint = $state(showBrowserHint());
 	// Баннер про приложение Wynd для Android (C139) — в любом вебе на Android.
 	let appHint = $state(showAndroidAppHint());
+	// Баннер про веб-приложение на главный экран (план 74) — в браузере.
+	let pwaHint = $state(showPwaHint());
+	// Системного окна установки нет (Firefox, Safari) — показываем шаги меню.
+	let installHelp = $state(false);
 	// Отметка последнего длинного нажатия: клик в её хвосте — часть того же
 	// жеста (GUI-6). Прежний общий флаг гасили в каждом обработчике, и
 	// порядок pointerup/click решал исход.
@@ -551,6 +559,18 @@
 		appHint = false;
 	}
 
+	function hidePwaHint() {
+		closePwaHint();
+		pwaHint = false;
+	}
+
+	async function installPwa() {
+		const outcome = await promptPwaInstall();
+		// Поставили — баннер больше не нужен; нет окна — показываем шаги меню.
+		if (outcome === 'accepted') hidePwaHint();
+		if (outcome === 'unavailable') installHelp = true;
+	}
+
 	async function hideDonateBanner() {
 		if (!streetSession) return;
 		await dismissPayBanner(streetSession.origin);
@@ -640,6 +660,14 @@
 					version={latestNewsVersion()}
 					onclick={() => goto('/settings/news?from=circles')}
 					ondismiss={hideNews}
+				/>
+			{/if}
+			{#if pwaHint && !empty}
+				<NewsBanner
+					title="Wynd на главный экран"
+					text="Откроется с иконки, без адресной строки"
+					onclick={() => void installPwa()}
+					ondismiss={hidePwaHint}
 				/>
 			{/if}
 			{#if appHint && !empty}
@@ -852,3 +880,14 @@
 		{/if}
 	</div>
 </ShellLayout>
+
+{#if installHelp}
+	<Scrim onclick={() => (installHelp = false)} />
+	<Dialog label="Добавить на главный экран" ondismiss={() => (installHelp = false)}>
+		<div class="dlgq">Добавить на главный экран</div>
+		<Hint>{pwaInstallSteps()}</Hint>
+		<div class="rowin ask">
+			<Button onclick={() => (installHelp = false)}>Понятно</Button>
+		</div>
+	</Dialog>
+{/if}
