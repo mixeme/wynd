@@ -113,7 +113,7 @@
 			card
 		/>
 		<Label>Название</Label>
-		<Input active type="text" placeholder="Как назовёте новый круг" bind:value={name} />
+		<Input type="text" placeholder="Как назовёте новый круг" bind:value={name} />
 		<Label>Что перейдёт в новый круг</Label>
 		<Row>
 			{#snippet main()}

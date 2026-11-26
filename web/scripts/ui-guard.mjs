@@ -405,13 +405,7 @@ export function markupElements(markup) {
 				styles++;
 			}
 		}
-		out.push({
-			tag: m[1],
-			index: m.index,
-			classes,
-			styles,
-			attrs: new Set(attrs.map((a) => a.name))
-		});
+		out.push({ tag: m[1], index: m.index, classes, styles });
 		tagStart.lastIndex = end;
 	}
 	return out;
@@ -445,11 +439,8 @@ function parseAttributes(s) {
 		while (i < s.length && /\s|\//.test(s[i])) i++;
 		if (i >= s.length) break;
 		if (s[i] === '{') {
-			// {...spread} или {name} — классов в них не ищем, но имя пропа помним.
-			const stop = skipBraces(s, i);
-			const expr = s.slice(i + 1, stop - 1).trim();
-			if (/^[A-Za-z_$][\w$]*$/.test(expr)) attrs.push({ name: expr, value: '' });
-			i = stop;
+			// {...spread} или {name} — классов в них не ищем.
+			i = skipBraces(s, i);
 			continue;
 		}
 		const nameStart = i;
@@ -574,37 +565,6 @@ export function rawClassHits(rel, source) {
 		}
 	}
 	return out;
-}
-
-/**
- * Экраны, где поле ввода мягкое осознанно (пусто: в клиенте все — с акцентом).
- * @type {Set<string>}
- */
-export const SOFT_INPUT_SCREENS = new Set(/** @type {string[]} */ ([]));
-
-/**
- * Поле ввода в клиенте — с акцентной рамкой: `Input` без `active` (и не
- * `admin`, у которого своя панель `.inp`) выпадает из вида соседних экранов.
- * Фон у всех полей один; отличается только цвет рамки (ui.css, `.fld.act`).
- * @returns {string[]}
- */
-export function checkEditableFieldAccent(webRoot) {
-	const routes = path.join(webRoot, 'src', 'routes');
-	const hits = [];
-	for (const file of walkSvelte(routes)) {
-		const rel = posixRel(webRoot, file);
-		if (!rel || SOFT_INPUT_SCREENS.has(rel)) continue;
-		const source = fs.readFileSync(file, 'utf8');
-		const markup = markupOf(source);
-		const lines = source.split('\n');
-		for (const el of markupElements(markup)) {
-			if (el.tag !== 'Input') continue;
-			if (el.attrs.has('active') || el.attrs.has('admin')) continue;
-			const line = lineAt(markup, el.index);
-			hits.push(hit(rel, line, lines[line - 1] ?? ''));
-		}
-	}
-	return hits;
 }
 
 /**
@@ -765,7 +725,6 @@ export const LIBRARY_CLASS_BANNED = [
 ];
 /** @type {Record<string, string[]>} */
 export const LIBRARY_CLASS_RATCHET = {};
-
 /** `{@html}` в экранах: не бывает — QR рисует `QrCode` (0.18.15). */
 /** @type {Set<string>} */
 export const HTML_TAG_SCREENS = new Set();
@@ -1000,7 +959,6 @@ export function checkProject(webRoot) {
 	const unknownUiButtons = checkUnknownUiButtonClasses(webRoot);
 	const inlineStyles = checkInlineStyleBudget(webRoot);
 	const styleBlocks = checkStyleBlocks(webRoot);
-	const fieldAccent = checkEditableFieldAccent(webRoot);
 
 	for (const file of srcFiles) {
 		const rel = posixRel(webRoot, file);
@@ -1112,11 +1070,6 @@ export function checkProject(webRoot) {
 			message:
 				'check-ui: raw class="compose-text" in prod routes — use TextArea variant="compose".',
 			hits: rawRouteComposeText
-		},
-		{
-			message:
-				'check-ui: Input в экране без active — поле ввода в клиенте с акцентной рамкой (.fld.act); admin — своя панель .inp.',
-			hits: fieldAccent
 		}
 	];
 

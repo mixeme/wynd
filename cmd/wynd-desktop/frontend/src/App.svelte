@@ -525,7 +525,7 @@
 							<Label>Свой интервал</Label>
 							<div class="backup-row">
 								<Hint>каждые</Hint>
-								<Input active small bind:value={backupDays} aria-label="Интервал, дней" />
+								<Input small bind:value={backupDays} aria-label="Интервал, дней" />
 								<Hint>дней</Hint>
 							</div>
 						{/if}
@@ -534,7 +534,6 @@
 						<Label>Хранить копии</Label>
 						<div class="backup-row">
 							<Input
-								active
 								small
 								style="max-width:96px"
 								bind:value={backupKeep}
@@ -699,7 +698,6 @@
 				<h1>Войти в Wynd</h1>
 				<Label>Адрес сервера или приглашение</Label>
 				<Input
-					active
 					bind:value={address}
 					placeholder="wynd.example.org"
 					aria-label="Адрес сервера или приглашение"

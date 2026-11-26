@@ -453,7 +453,6 @@
 			{/if}
 			<Label class="mt-16">Ссылка переноса</Label>
 			<Input
-				active
 				bind:value={link}
 				small
 				gray={expired}
