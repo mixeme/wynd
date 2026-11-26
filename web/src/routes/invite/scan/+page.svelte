@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { navigateBack } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import Hint from '$ui/forms/Hint.svelte';
 	import QrScanner from '$ui/forms/QrScanner.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
@@ -10,6 +11,8 @@
 	// считывать его логично здесь же, камерой.
 	let error = $state('');
 	let notice = $state('');
+	// Пришли с экрана входа (план 72): ждём QR подключения устройства, а не приглашения.
+	const fromLogin = $derived(page.url.searchParams.get('from') === 'login');
 
 	function onread(text: string): boolean {
 		const target = inviteTarget(text);
