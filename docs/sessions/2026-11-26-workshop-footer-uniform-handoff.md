@@ -83,7 +83,8 @@
   src/TrayMenu.svelte` (C145, другая сессия) и untracked
   `docs/testing/desktop-tray-menu-text-2026-11-26/menu-system.png`.
 - Untracked `.zcode/` — служебный каталог, не коммитить.
-- **Процессы:** `python -m http.server 8902` из `dev/frames-gallery` —
-  показ кадров этой проверки (`http://127.0.0.1:8902/foot-uniform.html`,
-  временная копия; доказательства в `docs/testing/...`). Стенд vite 5183
-  остановлен, headless Edge погашен. `dev/foot-unify` убран.
+- **Процессы:** все свои остановлены — стенд vite 5183, headless Edge
+  `edge-foot-5183`, сервер показа `:8902`; временная страница
+  `dev/frames-gallery/foot-uniform.html` и копии кадров удалены после
+  приёмки (доказательства — `docs/testing/workshop-footer-uniform-2026-11-26`).
+  `dev/foot-unify` убран.
