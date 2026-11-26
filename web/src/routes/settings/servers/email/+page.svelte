@@ -11,6 +11,7 @@
 	import ServerRow from '$ui/data/ServerRow.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
+	import { enterSubmit } from '$lib/a11y/enter';
 	import { fetchInstance } from '$lib/auth/auth';
 	import { INVALID_EMAIL_HINT, isValidParticipantEmail } from '$lib/auth/email';
 	import {
@@ -97,7 +98,13 @@
 		<SectionLabel>Сейчас</SectionLabel>
 		<SettingsRow class="pt-2" title={pending.currentEmail} chevron={false} />
 		<SectionLabel>Новая почта</SectionLabel>
-		<Input active type="email" autocomplete="email" bind:value={email} />
+		<Input
+			active
+			type="email"
+			autocomplete="email"
+			bind:value={email}
+			onkeydown={enterSubmit(onSubmit)}
+		/>
 		{#if error}
 			<Hint>{error}</Hint>
 		{/if}

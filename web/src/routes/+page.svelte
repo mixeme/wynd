@@ -22,6 +22,7 @@
 		type ServerConnection
 	} from '$lib/instance/serverCard';
 	import PlainLayout from '$lib/layouts/PlainLayout.svelte';
+	import { enterSubmit } from '$lib/a11y/enter';
 	import { addressErrorHint, sendAuthCode, type InstanceInfo } from '$lib/auth/auth';
 	import { displayHost, resolveServerOrigin } from '$lib/auth/origin';
 	import { INVALID_EMAIL_HINT, isValidParticipantEmail } from '$lib/auth/email';
@@ -226,7 +227,13 @@
 		{/if}
 		{#if serverError}<Hint class="mt-8">{serverError}</Hint>{/if}
 		<Label class="mt-16">Почта</Label>
-		<Input active type="email" autocomplete="email" bind:value={email} />
+		<Input
+			active
+			type="email"
+			autocomplete="email"
+			bind:value={email}
+			onkeydown={enterSubmit(onSubmit)}
+		/>
 		<Hint>Пришлём код для входа. Пароля нет.</Hint>
 		<Button {loading} disabled={!instance} onclick={onSubmit}>Получить код</Button>
 		<!-- Без приглашения — только на открытом сервере: иначе дверь вела в тупик.

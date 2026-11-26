@@ -9,6 +9,7 @@
 	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
 	import ServerRow from '$ui/data/ServerRow.svelte';
 	import PlainLayout from '$lib/layouts/PlainLayout.svelte';
+	import { enterSubmit } from '$lib/a11y/enter';
 	import { authErrorHint, fetchInstance, sendAuthCode } from '$lib/auth/auth';
 	import {
 		fetchInvitePeek,
@@ -101,7 +102,13 @@
 		<ScreenTitle class="mt-16">Вас позвали на сервер</ScreenTitle>
 		<ServerRow name={serverName} subtitle={serverSubtitle} card gdpr={peek?.allow_name_erasure} />
 		<Label class="mt-16">Почта</Label>
-		<Input active type="email" autocomplete="email" bind:value={email} />
+		<Input
+			active
+			type="email"
+			autocomplete="email"
+			bind:value={email}
+			onkeydown={enterSubmit(onSubmit)}
+		/>
 		<Hint>Пришлём код для входа. Пароля нет.</Hint>
 		<Button {loading} disabled={!peek} onclick={onSubmit}>Получить код</Button>
 		<Hint>

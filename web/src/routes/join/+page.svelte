@@ -10,6 +10,7 @@
 	import Label from '$ui/forms/Label.svelte';
 	import ServerRow from '$ui/data/ServerRow.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
+	import { enterSubmit } from '$lib/a11y/enter';
 	import { addressErrorHint, flowForJoin, sendAuthCode, type InstanceInfo } from '$lib/auth/auth';
 	import { decodeQrFromFile, foreignWyndLinkOrigin, parseWyndLink } from '$lib/auth/links';
 	import { displayHost, resolveServerOrigin } from '$lib/auth/origin';
@@ -245,11 +246,23 @@
 				Если вы уже на этом сервере — войдите своей почтой.
 			</Hint>
 			<Label class="mt-16">Почта</Label>
-			<Input active type="email" autocomplete="email" bind:value={email} />
+			<Input
+				active
+				type="email"
+				autocomplete="email"
+				bind:value={email}
+				onkeydown={enterSubmit(onSubmit)}
+			/>
 			<Button {loading} onclick={onSubmit}>Войти</Button>
 		{:else}
 			<Label class="mt-16">Почта</Label>
-			<Input active type="email" autocomplete="email" bind:value={email} />
+			<Input
+				active
+				type="email"
+				autocomplete="email"
+				bind:value={email}
+				onkeydown={enterSubmit(onSubmit)}
+			/>
 			<Hint>Пришлём код для входа. Пароля нет.</Hint>
 			<Button {loading} disabled={!instance} onclick={onSubmit}>Получить код</Button>
 			<Hint>
@@ -326,7 +339,13 @@
 				<ServerRow name="Сервер" subtitle={address || serverAddress} connection="checking" card />
 			{/if}
 			<Label class="mt-16">Почта</Label>
-			<Input active type="email" autocomplete="email" bind:value={email} />
+			<Input
+				active
+				type="email"
+				autocomplete="email"
+				bind:value={email}
+				onkeydown={enterSubmit(onSubmit)}
+			/>
 			<Hint>Пришлём код для входа. Пароля нет.</Hint>
 			<Button {loading} disabled={!instance} onclick={onSubmit}>Получить код</Button>
 			<Hint>

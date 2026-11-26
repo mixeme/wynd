@@ -13,6 +13,7 @@
 	import ScreenTitle from '$ui/forms/ScreenTitle.svelte';
 	import FormLayout from '$lib/layouts/FormLayout.svelte';
 	import PlainLayout from '$lib/layouts/PlainLayout.svelte';
+	import { enterSubmit } from '$lib/a11y/enter';
 	import { authErrorHint, fetchInstance, sendAuthCode } from '$lib/auth/auth';
 	import {
 		claimInvite,
@@ -178,7 +179,13 @@
 		{/if}
 
 		<Label>Почта</Label>
-		<Input active type="email" autocomplete="email" bind:value={email} />
+		<Input
+			active
+			type="email"
+			autocomplete="email"
+			bind:value={email}
+			onkeydown={enterSubmit(onSendCode)}
+		/>
 		<Hint>Пришлём код для входа. Пароля нет.</Hint>
 		<Button {loading} disabled={!peek} onclick={onSendCode}>Получить код</Button>
 
