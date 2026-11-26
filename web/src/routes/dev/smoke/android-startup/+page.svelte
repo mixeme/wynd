@@ -28,6 +28,8 @@
 	const offlineScene = requested === 'offline' || requested === 'offline-checking';
 	let scanning = $state(false);
 	let address = $state('');
+	// Почта из QR подключения (план 72): уходит в «open» — вход откроется с ?email.
+	let loginEmail = $state('');
 	let photoError = $state('');
 	let serverState = $state<'empty' | 'checking' | 'ready' | 'failed'>('empty');
 	let photoPicker = $state<FilePicker>();
@@ -94,6 +96,7 @@
 		serverState = 'empty';
 		knownName = 'Сервер';
 		photoError = '';
+		loginEmail = '';
 		if (native && pending) void startupRequest('cancel').catch(() => {});
 	}
 	async function submit() {
@@ -103,7 +106,11 @@
 			const generation = ++checkGeneration;
 			serverState = 'checking';
 			try {
-				const result = await startupRequest(open ? 'open' : 'check', address);
+				const result = await startupRequest(
+					open ? 'open' : 'check',
+					address,
+					loginEmail || undefined
+				);
 				if (generation !== checkGeneration) return;
 				if (open) {
 					// Выбор подтверждён — черновик адреса больше не нужен.
@@ -112,10 +119,13 @@
 					} catch {
 						/* Не критично: на свежем старте поле останется с прежним черновиком. */
 					}
+					loginEmail = '';
 				}
 				if (!open && result.preview) {
 					knownName = result.preview.name;
 					serverState = 'ready';
+					// QR подключения: проверка и открытие — одним сканом.
+					if (loginEmail) void submit();
 				}
 			} catch {
 				if (generation === checkGeneration) serverState = 'failed';
@@ -168,6 +178,22 @@
 		return () => window.removeEventListener('wynd:android-back', back);
 	});
 	function readQr(value: string): boolean {
+		// Ссылка подключения устройства (план 72): адрес и почта одним кодом —
+		// скан сам проверяет сервер и открывает вход с подставленной почтой.
+		try {
+			const url = new URL(value);
+			const email = url.searchParams.get('email') ?? '';
+			if (url.pathname === '/' && email) {
+				address = url.origin;
+				scanning = false;
+				resetCheck();
+				loginEmail = email;
+				void submit();
+				return true;
+			}
+		} catch {
+			/* Не ссылка — считаем адресом как есть. */
+		}
 		address = value;
 		scanning = false;
 		resetCheck();
@@ -217,7 +243,9 @@
 	{#if scanning}
 		<FormLayout shell app title="Сканер" onback={() => (scanning = false)}>
 			<QrScanner onread={readQr} onerror={(message) => (notice = message)} />
-			<Hint>{notice || 'Наведите камеру на QR-код приглашения — он откроется сам.'}</Hint>
+			<Hint>
+				{notice || 'Наведите камеру на QR-код приглашения или подключения — он откроется сам.'}
+			</Hint>
 		</FormLayout>
 	{:else}
 		<PlainLayout shell app>

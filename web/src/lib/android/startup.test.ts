@@ -70,3 +70,18 @@ it('times out missing replies and tolerates malformed messages', async () => {
 	await vi.advanceTimersByTimeAsync(30000);
 	await rejected;
 });
+it('passes the login email only with open (план 72)', async () => {
+	const mockPort = mock();
+	const checked = startupRequest('check', 'home.example.org');
+	expect(mockPort.sent[0]).not.toHaveProperty('email');
+	mockPort.reply(0, { preview: { name: 'Дом', origin: 'https://home.example.org' } });
+	await checked;
+	const opened = startupRequest('open', 'home.example.org', 'anya@example.com');
+	expect(mockPort.sent[1]).toMatchObject({
+		op: 'open',
+		address: 'home.example.org',
+		email: 'anya@example.com'
+	});
+	mockPort.reply(1, {});
+	await opened;
+});

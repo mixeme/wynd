@@ -29,7 +29,8 @@ const pending = new Map<
 let connected: StartupPort | undefined;
 export function startupRequest(
 	op: 'state' | 'check' | 'open' | 'retry' | 'cancel',
-	address?: string
+	address?: string,
+	email?: string
 ): Promise<StartupReply> {
 	const target = port();
 	if (!target) return Promise.reject(new Error('Startup unavailable'));
@@ -57,7 +58,15 @@ export function startupRequest(
 		}, 30000);
 		pending.set(id, { resolve, reject, timer });
 		try {
-			target.postMessage(JSON.stringify({ id, op, ...(address === undefined ? {} : { address }) }));
+			target.postMessage(
+				JSON.stringify({
+					id,
+					op,
+					...(address === undefined ? {} : { address }),
+					// Почта из QR подключения (план 72): «open» открывает вход с ?email.
+					...(email === undefined ? {} : { email })
+				})
+			);
 		} catch {
 			pending.delete(id);
 			clearTimeout(timer);

@@ -66,6 +66,10 @@ final class StartupBridge {
                                         if (checked == null || preview == null || !checked.url().equals(requested.url())
                                                 || android.os.SystemClock.elapsedRealtime() - checkedAt > 60000) throw new IOException("Unchecked target");
                                         open = checked;
+                                        // QR подключения (план 72): вход открывается с ?email.
+                                        if (request.has("email")) {
+                                            open = StartupTarget.withEmail(open, request.getString("email"));
+                                        }
                                         break;
                                     case "retry":
                                         if (failedUrl == null) throw new IOException("No unavailable interface");

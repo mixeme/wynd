@@ -40,4 +40,30 @@ public final class StartupTargetTest {
         assertThrows(IllegalArgumentException.class, () -> StartupTarget.parse("https://home.example.org/invite/" + "a".repeat(513), false));
         assertThrows(IllegalArgumentException.class, () -> StartupTarget.parse("a".repeat(4097), true));
     }
+
+    // Ссылка подключения устройства (план 72): «/?email=почта» того же сервера.
+    @Test public void acceptsLoginLinkWithSingleEmailParameter() {
+        StartupTarget target = StartupTarget.parse("https://home.example.org/?email=anya%40example.com", false);
+        assertEquals("https://home.example.org/", target.origin().url());
+        assertEquals("/?email=anya%40example.com", target.path());
+        assertEquals("https://home.example.org/?email=anya%40example.com", target.url());
+    }
+
+    @Test public void loginLinkRejectsExtraParametersAndBadEmail() {
+        for (String raw : new String[] {
+                "https://home.example.org/?email=anya%40example.com&x=1",
+                "https://home.example.org/?x=1&email=anya%40example.com",
+                "https://home.example.org/?email=not-an-email",
+                "https://home.example.org/?email=",
+                "https://home.example.org/?token=secret" }) {
+            assertThrows(raw, IllegalArgumentException.class, () -> StartupTarget.parse(raw, false));
+        }
+    }
+
+    @Test public void withEmailBuildsLoginPathOnTheSameOrigin() {
+        StartupTarget base = StartupTarget.parse("home.example.org", false);
+        StartupTarget target = StartupTarget.withEmail(base, "anya@example.com");
+        assertEquals(base.origin().url(), target.origin().url());
+        assertEquals("/?email=anya%40example.com", target.path());
+    }
 }

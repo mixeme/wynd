@@ -1,7 +1,10 @@
 package mixeme.wynd;
 
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 
 /** Разделяет адрес проверки и временную цель приглашения; ничего не сохраняет. */
 final class StartupTarget {
@@ -27,7 +30,11 @@ final class StartupTarget {
             ServerOrigin origin = ServerOrigin.parse(uri.getScheme() + "://" + uri.getRawAuthority(), debugLoopback);
             String path = uri.getRawPath();
             if (path == null || path.isEmpty() || path.equals("/")) {
-                if (uri.getRawQuery() != null) throw new IllegalArgumentException("Invalid server address");
+                if (uri.getRawQuery() != null) {
+                    // Ссылка подключения устройства (план 72): «/?email=почта» —
+                    // вход сразу с подставленной почтой. Только один параметр.
+                    return new StartupTarget(origin, loginPath(queryValue(uri.getRawQuery())));
+                }
                 return new StartupTarget(origin, "/");
             }
             // Генерируемые Wynd токены — hex; сохраняем совместимость и с URL-safe токенами.
@@ -39,6 +46,36 @@ final class StartupTarget {
             return new StartupTarget(origin, path);
         } catch (URISyntaxException error) {
             throw new IllegalArgumentException("Invalid startup target");
+        }
+    }
+
+    /** Цель того же сервера — вход с подставленной почтой (план 72). */
+    static StartupTarget withEmail(StartupTarget target, String email) {
+        return new StartupTarget(target.origin, loginPath(email));
+    }
+
+    /** «/?email=…» только с одной валидной почтой; прочее — отказ. */
+    private static String loginPath(String email) {
+        if (email == null || !email.matches("[A-Za-z0-9._%+'-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}")) {
+            throw new IllegalArgumentException("Invalid login email");
+        }
+        try {
+            return "/?email=" + URLEncoder.encode(email, "UTF-8");
+        } catch (UnsupportedEncodingException error) {
+            throw new IllegalArgumentException("Invalid login email");
+        }
+    }
+
+    /** Значение единственного параметра строки запроса, иначе null. */
+    private static String queryValue(String rawQuery) {
+        String[] pairs = rawQuery.split("&");
+        if (pairs.length != 1) return null;
+        String[] kv = pairs[0].split("=", 2);
+        if (kv.length != 2 || !"email".equals(kv[0])) return null;
+        try {
+            return URLDecoder.decode(kv[1], "UTF-8");
+        } catch (UnsupportedEncodingException error) {
+            return null;
         }
     }
 
