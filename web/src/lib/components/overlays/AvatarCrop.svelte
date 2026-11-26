@@ -1,6 +1,6 @@
 ﻿<script lang="ts">
+	import ComposeHeader from '$ui/chrome/ComposeHeader.svelte';
 	import Hint from '$ui/forms/Hint.svelte';
-	import TextButton from '$ui/forms/TextButton.svelte';
 	import { modal } from '$lib/a11y/modal';
 	import {
 		clampCropScale,
@@ -314,22 +314,14 @@
 	aria-busy={saving}
 	use:modal={{ ondismiss: requestCancel, initialFocus: 'last' }}
 >
-	<div class="cbar">
-		<div class="top compose-top">
-			<TextButton variant="admin" onclick={requestCancel}>Отмена</TextButton>
-			<span class="t">Кадр</span>
-			<TextButton
-				variant="barAction"
-				active
-				disabled={!ready}
-				loading={saving}
-				onclick={() => void finish()}
-			>
-				Готово
-			</TextButton>
-		</div>
-		<div style="height:12px"></div>
-	</div>
+	<ComposeHeader
+		title="Кадр"
+		publishLabel="Готово"
+		canPublish={ready}
+		publishing={saving}
+		oncancel={requestCancel}
+		onpublish={() => void finish()}
+	/>
 
 	<div
 		class="viewport"

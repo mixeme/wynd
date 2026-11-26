@@ -5,10 +5,10 @@
 	import { afterNavigate, beforeNavigate } from '$app/navigation';
 	import { onDestroy } from 'svelte';
 	import BackBar from '$ui/chrome/BackBar.svelte';
+	import ComposeHeader from '$ui/chrome/ComposeHeader.svelte';
 	import PhoneFrame from '$ui/chrome/PhoneFrame.svelte';
 	import StatusBar from '$ui/chrome/StatusBar.svelte';
 	import IconButton from '$ui/forms/IconButton.svelte';
-	import TextButton from '$ui/forms/TextButton.svelte';
 	import type { CircleColor } from '$lib/theme/colors';
 	import type { Snippet } from 'svelte';
 
@@ -94,26 +94,16 @@
 		<StatusBar />
 	{/if}
 	{#if compose}
-		<div class="cbar">
-			<div class="top compose-top">
-				{#if cancelBack}
-					<IconButton name="back" label="Назад" class="back" onclick={() => oncancel?.()} />
-				{:else}
-					<TextButton variant="admin" onclick={() => oncancel?.()}>Отмена</TextButton>
-				{/if}
-				<span class="t">{title}</span>
-				<TextButton
-					variant="barAction"
-					active
-					disabled={!canPublish}
-					loading={publishing}
-					onclick={() => onpublish?.()}
-				>
-					{publishLabel}
-				</TextButton>
-			</div>
-			{#if !compact}<div style="height:12px"></div>{/if}
-		</div>
+		<ComposeHeader
+			{title}
+			{cancelBack}
+			{publishLabel}
+			{canPublish}
+			{publishing}
+			{compact}
+			{oncancel}
+			{onpublish}
+		/>
 	{:else if circleTitle}
 		<div class="cbar">
 			<div class="top" style="justify-content:center">
