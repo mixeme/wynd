@@ -157,7 +157,9 @@ body {
 }
 .server-host iframe {
 	width: 100%;
-	max-width: var(--app-max-width);
+	/* Интерфейсу сервера нужны его 1060 px: при 720 iframe не включал
+	   широкий вид (план 76). Свои экраны оболочки остаются 720. */
+	max-width: var(--app-split-max-width);
 	height: 100%;
 	margin: auto;
 	border: 0;
