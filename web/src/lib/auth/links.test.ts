@@ -45,3 +45,22 @@ describe('inviteTarget', () => {
 		expect(inviteTarget('привет', here)).toEqual({ error: 'Это не ссылка-приглашение Wynd' });
 	});
 });
+
+// Ссылка подключения устройства (план 72): «/?email=почта» того же сервера.
+describe('parseWyndLink: login link', () => {
+	const here = 'https://wynd.example';
+	it('opens the login screen with the email from the link', () => {
+		expect(parseWyndLink(`${here}/?email=anya%40example.com`, here)).toBe(
+			'/?email=anya%40example.com'
+		);
+	});
+	it('keeps other query parameters', () => {
+		expect(parseWyndLink(`${here}/?email=a@b.c&x=1`, here)).toBe('/?email=a@b.c&x=1');
+	});
+	it('ignores the root without email', () => {
+		expect(parseWyndLink(`${here}/`, here)).toBeNull();
+	});
+	it('refuses a login link to another server', () => {
+		expect(parseWyndLink('https://other.example/?email=a@b.c', here)).toBeNull();
+	});
+});

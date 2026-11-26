@@ -241,6 +241,10 @@
 				<a class="under" href="/invite?from=login">У меня есть приглашение</a>
 			</Hint>
 		{/if}
+		<!-- Быстрое подключение: QR со «Подключить устройство» другого устройства (план 72). -->
+		<Hint class="mt-16" centered>
+			<a class="under" href="/invite/scan?from=login">Войти по QR-коду</a>
+		</Hint>
 		{#if error}
 			<Hint class="mt-8" centered>{error}</Hint>
 		{/if}

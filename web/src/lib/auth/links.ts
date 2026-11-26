@@ -17,6 +17,10 @@ export function parseWyndLink(input: string, currentOrigin?: string): string | n
 		if (invite) return `/invite/${invite[1]}${url.search}`;
 		const join = url.pathname.match(/^\/join\/([^/?#]+)/);
 		if (join) return `/join/${join[1]}${url.search}`;
+		// Ссылка подключения устройства (план 72): «/?email=почта».
+		if (url.pathname === '/' && url.searchParams.has('email')) {
+			return `/${url.search}`;
+		}
 	} catch {
 		/* not a URL */
 	}
