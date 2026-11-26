@@ -103,6 +103,15 @@
 				return;
 			}
 		}
+		// Ссылка подключения устройства (план 72): почта уже подставлена —
+		// остаётся «Получить код» и код из письма. Незаметна без параметра.
+		const linked =
+			typeof window !== 'undefined'
+				? new URL(window.location.href).searchParams.get('email')
+				: null;
+		if (!pending && linked && isValidParticipantEmail(linked.trim())) {
+			email = linked.trim();
+		}
 		if (typeof window !== 'undefined') {
 			address = displayHost('');
 			void checkServer();
