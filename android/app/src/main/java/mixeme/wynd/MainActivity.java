@@ -350,7 +350,7 @@ public final class MainActivity extends Activity {
         WebView active = webView;
         if (active != null && server.contains(active.getUrl())) {
             backPending = true;
-            // Страница решает, что значит «Назад»: 2 — закрыть приложение
+            // Страница решает, что значит «Назад»: 2 — выйти из приложения
             // (улица — дом, выше неё экранов нет, C158), 1 — страница сама
             // справилась (оверлей, экран входа), 0 — обычный шаг истории.
             active.evaluateJavascript(
@@ -360,10 +360,21 @@ public final class MainActivity extends Activity {
                     result -> {
                         backPending = false;
                         if (webView != active || isFinishing() || isDestroyed()) return;
-                        if ("2".equals(result)) finish();
+                        if ("2".equals(result)) leaveApp();
                         else if (!"1".equals(result)) goBackWithoutOverlay();
                     });
         } else goBackWithoutOverlay();
+    }
+
+    /**
+     * Выход с корня, как у платформы (C158): с Android 12 системный «Назад»
+     * сворачивает задачу в фон, как Home, и приложение остаётся в недавних
+     * тёплым; на Android 11 и ниже — закрывает activity. Свой перехват
+     * заменяет системный, поэтому повторяем это сами.
+     */
+    private void leaveApp() {
+        if (Build.VERSION.SDK_INT >= 31 && moveTaskToBack(true)) return;
+        finish();
     }
 
     private void goBackWithoutOverlay() {
@@ -375,7 +386,7 @@ public final class MainActivity extends Activity {
 
     private void goBackHistory() {
         if (webView != null && webView.canGoBack()) webView.goBack();
-        else finish();
+        else leaveApp();
     }
 
     @Override
