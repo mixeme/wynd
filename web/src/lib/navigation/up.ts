@@ -156,6 +156,10 @@ function barePath(target: URL | string): string {
  * настоящий прошлый экран (настройки, поиск, «Доступ закрыт» с `?closed=`) идёт
  * как раньше. Запись-копия улицы (armEntryGuard) — тот же адрес с тем же
  * поиском, её тоже пропускаем.
+ *
+ * В нативной оболочке Android этот же разбор значит больше: шаг назад с улочки
+ * увёл бы из приложения, и там «Назад» закрывает его (C158,
+ * androidBackClosesApp).
  */
 export function blockedHomeBack(from: URL, to?: URL | string): boolean {
 	if (barePath(from) !== HOME) return false;
@@ -287,6 +291,19 @@ function streetStays(url: URL): boolean {
 	const prev = previousEntry();
 	if (!prev || prev === here) return true;
 	return barePath(new URL(prev, location.origin)) === '/';
+}
+
+/**
+ * Системная «Назад» в нативной оболочке Android на улице, за которой нет
+ * настоящего экрана: приложение закрывается, как принято на платформе (C158).
+ * Возвращает true, только когда шаг действительно увёл бы из приложения, —
+ * назад на прошлый экран (настройки, поиск, другой круг) идёт как раньше.
+ * Браузера это не касается: страница не может закрыть саму себя, там остаётся
+ * запись-копия улицы (C157).
+ */
+export function androidBackClosesApp(url: URL = new URL(location.href)): boolean {
+	if (barePath(url) !== HOME || url.search) return false;
+	return streetStays(url);
 }
 
 /**

@@ -350,10 +350,19 @@ public final class MainActivity extends Activity {
         WebView active = webView;
         if (active != null && server.contains(active.getUrl())) {
             backPending = true;
-            active.evaluateJavascript("!window.dispatchEvent(new Event('wynd:android-back',{cancelable:true}))", result -> {
-                backPending = false;
-                if (webView == active && !isFinishing() && !isDestroyed() && !"true".equals(result)) goBackWithoutOverlay();
-            });
+            // Страница решает, что значит «Назад»: 2 — закрыть приложение
+            // (улица — дом, выше неё экранов нет, C158), 1 — страница сама
+            // справилась (оверлей, экран входа), 0 — обычный шаг истории.
+            active.evaluateJavascript(
+                    "(function(){var e=new CustomEvent('wynd:android-back',{cancelable:true,detail:{exit:false}});"
+                            + "window.dispatchEvent(e);"
+                            + "return e.detail&&e.detail.exit?2:e.defaultPrevented?1:0;})()",
+                    result -> {
+                        backPending = false;
+                        if (webView != active || isFinishing() || isDestroyed()) return;
+                        if ("2".equals(result)) finish();
+                        else if (!"1".equals(result)) goBackWithoutOverlay();
+                    });
         } else goBackWithoutOverlay();
     }
 

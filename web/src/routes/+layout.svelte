@@ -16,6 +16,7 @@
 	import { statusColorOverride } from '$lib/session/statusColor.svelte';
 	import { afterNavigate, beforeNavigate, goto, onNavigate } from '$app/navigation';
 	import {
+		androidBackClosesApp,
 		armBackGuard,
 		dismissOverlay,
 		interceptHistoryBack,
@@ -47,7 +48,20 @@
 	onMount(() => {
 		if (!androidPort()) return;
 		const back = (event: Event) => {
-			if (dismissOverlay()) event.preventDefault();
+			if (dismissOverlay()) {
+				event.preventDefault();
+				return;
+			}
+			// Выше улицы экранов нет: в приложении «Назад» с неё закрывает
+			// приложение, как принято на платформе (C158). Шаг на прошлый экран
+			// или на экран входа сюда не попадает — его разбирает оболочка
+			// обычным шагом истории. Прежняя оболочка шлёт Event без detail:
+			// тогда выхода нет, поведение остаётся прежним.
+			const detail = (event as CustomEvent<{ exit?: boolean }>).detail;
+			if (!event.defaultPrevented && detail && androidBackClosesApp()) {
+				detail.exit = true;
+				event.preventDefault();
+			}
 		};
 		window.addEventListener('wynd:android-back', back);
 		return () => window.removeEventListener('wynd:android-back', back);

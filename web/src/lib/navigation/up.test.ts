@@ -10,6 +10,7 @@ vi.mock('$app/navigation', () => ({
 import { goto, pushState } from '$app/navigation';
 import { replaceSearchUrl } from '$lib/journal/search';
 import {
+	androidBackClosesApp,
 	armBackGuard,
 	armEntryGuard,
 	armStreetGuard,
@@ -410,6 +411,46 @@ describe('C157 — запись-копия улочки', () => {
 		push('/circles/c1');
 		expect(armStreetGuard(new URL(location.href))).toBe(false);
 		expect(pushState).not.toHaveBeenCalled();
+	});
+});
+
+// C158: в приложении для Android системная «Назад» на улице без прошлого
+// экрана закрывает приложение, как принято на платформе; шаг на настоящий
+// прошлый экран остаётся обычным.
+describe('C158 — «Назад» с улочки закрывает приложение Android', () => {
+	it('за улочкой только вход — приложение закрывается', () => {
+		push('/');
+		push('/circles');
+		expect(androidBackClosesApp()).toBe(true);
+	});
+
+	it('позади пусто (улица — точка входа) — приложение закрывается', () => {
+		window.history.pushState({ 'sveltekit:history': ++idx }, '', '/circles');
+		recordEntry(new URL('/circles', location.origin));
+		expect(androidBackClosesApp()).toBe(true);
+	});
+
+	it('позади запись-копия улицы — приложение закрывается', () => {
+		push('/');
+		push('/circles');
+		expect(armStreetGuard(new URL(location.href))).toBe(true);
+		expect(androidBackClosesApp()).toBe(true);
+	});
+
+	it('позади настоящий экран — обычный шаг по истории', () => {
+		push('/settings');
+		push('/circles');
+		expect(androidBackClosesApp()).toBe(false);
+	});
+
+	it('шлюз «Доступ закрыт» и другие экраны приложение не закрывают', () => {
+		push('/');
+		push('/circles?closed=x');
+		expect(androidBackClosesApp()).toBe(false);
+		push('/circles/c1');
+		expect(androidBackClosesApp()).toBe(false);
+		push('/');
+		expect(androidBackClosesApp()).toBe(false);
 	});
 });
 
