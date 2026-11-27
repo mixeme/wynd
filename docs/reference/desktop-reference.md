@@ -10,7 +10,7 @@ scripts\build-desktop.bat
 
 Скрипт собирает `cmd/wynd-desktop/frontend` и кладёт `dist\wynd-desktop.exe` (Windows GUI, без консольного окна). Для проверки без установки: `go build -tags "desktop,production" -ldflags "-H windowsgui" ./cmd/wynd-desktop`. Ворота — `scripts\test-desktop.bat`, CI — `.github/workflows/desktop.yaml`.
 
-Выпуски подписываются общим ключом экосистемы через «Wynd Подпись»; в exe вшит открытый ключ, backend самообновления реализован. С 0.3.0 окно предлагает новую версию полосой поверх интерфейса (план 63, принята 2026-11-11). Порядок выпуска — [DEVELOPMENT.md](../DEVELOPMENT.md#wynd-мастерская).
+Выпуски подписываются общим ключом экосистемы через «Wynd Подпись»; в exe вшит открытый ключ, backend самообновления реализован. С 0.3.0 окно предлагает новую версию полосой поверх интерфейса (план 63, принята 2026-11-11); пока идёт установка, под заголовком полосы — ход скачивания, на кнопке — «Скачиваем 46 %…» (принята 2026-11-27, [протокол](../testing/desktop-update-progress-2026-11-27/README.md)). Порядок выпуска — [DEVELOPMENT.md](../DEVELOPMENT.md#wynd-мастерская).
 
 ## Linux (план 69)
 
