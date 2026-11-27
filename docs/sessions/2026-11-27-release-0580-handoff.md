@@ -76,9 +76,10 @@
 
 ## Состояние дерева
 
-HEAD — `8d387a1c` (после выпуска идут коммиты другой сессии); main в Gitea,
-зеркало GitHub получило теги. Незакоммичено — правки другой сессии
-`web/src/app.html`, `web/src/routes/+layout.svelte` и untracked
+HEAD — `35da6597` на момент передачи (после выпуска идут коммиты другой
+сессии: `c64e4bd6`, `8d387a1c`, `c4f2e1b9`, `35da6597`); main в Gitea
+отправлена, зеркало GitHub получило теги. Незакоммичено — правки другой
+сессии `web/src/app.html`, `web/src/routes/+layout.svelte` и untracked
 `docs/testing/window-gutter-2026-11-27/`; `.zcode/` — локальный каталог.
 Теги выпуска: `v0.58.0`, `desktop-v0.5.6`, `workshop-v0.4.12` на `9169da3b`;
 `android-v0.1.9` на `0e4247f7`. Черновики: `desktop-v0.5.6`,
