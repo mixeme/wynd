@@ -93,15 +93,16 @@ Java-оболочка Android, содержимое сервера (`web/dist`, 
   `ACCESS_FINE_LOCATION` на месте; `gh attestation verify` — rc 0, источник —
   тег `android-v0.1.11`.
 - **Старый черновик `android-v0.1.10` оставлен как есть:** в нём уже было
-  скачивание владельцем. Он полностью заменён 0.1.11 (тот содержит C155–C157
-  и C158/C159) — подписывать и публиковать нужно **0.1.11**, не 0.1.10.
+  скачивание, удалять без слова владельца не стали. Он полностью заменён
+  0.1.11 (тот содержит C155–C157 и C158/C159) — подписывать и публиковать
+  нужно **0.1.11**, не 0.1.10.
 
 ## Коммиты и теги
 
 - `412a33ba` «Версия 0.58.2 и Android 0.1.11: «Назад» в приложении, полный
   экран, «Поделиться» и место на карте» — VERSION, `internal/version`,
-  `web/package*`, два OpenAPI, CHANGELOG, `whatsnew.md` Настольного и Android,
-  `internal/desktop/version.go`, два `info.json`, `android/version.properties`.
+  `web/package*`, два OpenAPI, CHANGELOG, `android/whatsnew.md`,
+  `android/version.properties`. Версия Настольного 0.5.7 не менялась.
 - `d1d0503f` «C159: didCrash под проверкой версии — Android-ворота снова
   зелёные».
 - `e79b3bf1` «C159: postMessage только при поддержке
