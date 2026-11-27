@@ -10,26 +10,27 @@ RepoType: git
 Repo: https://github.com/mixeme/wynd
 
 Builds:
-  - versionName: 0.1.4
-    versionCode: 1004
-    commit: d72229356fe572196aea55f7e44642f9fbf95c5a
+  - versionName: 0.1.11
+    versionCode: 1011
+    commit: e79b3bf1f83f7b6cc0125ec408703b957f3f204d
     subdir: android
     sudo:
       - apt-get update || apt-get update
       - apt-get install -y npm
-    gradle:
-      - fdroid
-    output: app/build/outputs/apk/fdroid/release/app-fdroid-release-unsigned.apk
-    prebuild:
+    init:
       - pushd ../web
       - npm ci
       - popd
+    gradle:
+      - fdroid
+    output: app/build/outputs/apk/fdroid/release/app-fdroid-release-unsigned.apk
     scanignore:
       - web/node_modules
     gradleprops:
       - wyndEmbeddedUi=true
 
-AutoUpdateMode: None
-UpdateCheckMode: None
-CurrentVersion: 0.1.4
-CurrentVersionCode: 1004
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^android-v[0-9.]+$
+UpdateCheckData: android/version.properties|versionCode=(\d+)|.|versionName=([0-9.]+)
+CurrentVersion: 0.1.11
+CurrentVersionCode: 1011
