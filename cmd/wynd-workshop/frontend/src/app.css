@@ -349,8 +349,20 @@ body {
 .selfbar-bad {
   color: var(--terracotta);
 }
+/* Кнопка полосы — обычная кнопка окна (кадр 10г). Полоса лежит вне .ins,
+   поэтому без этого правила остаются телефонные мерки $ui: поля 14 px,
+   радиус 12, ширина calc(100% - 32px) — кнопка выходит выше соседних на 11 px. */
 .selfbar .btn {
+  display: inline-block;
+  width: auto;
   margin: 0;
+  padding: 8px 14px;
+  border-radius: 7px;
+  font: 500 13px/1.45 var(--ui);
+}
+.selfbar .btn.c {
+  border: 1px solid var(--c);
+  color: var(--on-c);
 }
 .selfbar .under {
   white-space: nowrap;
