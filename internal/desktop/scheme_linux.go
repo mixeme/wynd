@@ -48,10 +48,12 @@ func schemeDesktopEntry(exe string) string {
 
 // EnsureInviteScheme регистрирует wynd: на текущего пользователя: файл в
 // ~/.local/share/applications и xdg-mime. Ошибки xdg-mime не мешают окну.
+// Путь — SelfPath(): у AppImage это сам .AppImage, иначе обработчик указывал
+// бы на временный смонтированный бинарник, исчезающий после выхода.
 func EnsureInviteScheme() error {
-	exe, err := os.Executable()
-	if err != nil {
-		return err
+	exe := SelfPath()
+	if exe == "" {
+		return os.ErrNotExist
 	}
 	path, err := schemeDesktopPath()
 	if err != nil {

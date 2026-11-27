@@ -26,12 +26,13 @@ func autostartFile() (string, error) {
 	return filepath.Join(config, "autostart", "wynd.desktop"), nil
 }
 
-// AutostartCommand — команда запуска без окна: путь бинарника в кавычках и
-// отметка --from-startup.
+// AutostartCommand — команда запуска без окна: путь файла приложения в
+// кавычках и отметка --from-startup. У AppImage это сам .AppImage, а не
+// временный бинарник внутри смонтированного образа.
 func AutostartCommand() (string, error) {
-	exe, err := os.Executable()
-	if err != nil {
-		return "", err
+	exe := SelfPath()
+	if exe == "" {
+		return "", os.ErrNotExist
 	}
 	return autostartExec(exe), nil
 }

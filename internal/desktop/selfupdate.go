@@ -164,8 +164,9 @@ func ApplyUpdate(
 // UpdateProgress — ход скачивания обновления (общий тип selfupdate.Progress).
 type UpdateProgress = selfupdate.Progress
 
-// CleanOldSelf убирает прежний exe после обновления (при запуске).
-func CleanOldSelf() { selfupdate.CleanOldSelf() }
+// CleanOldSelf убирает прежний файл после обновления (при запуске): у
+// AppImage — рядом с самим .AppImage, а не с временным бинарником образа.
+func CleanOldSelf() { selfupdate.CleanOldSelfAt(SelfPath()) }
 
 // FreshlyReplaced — рядом с exe лежит прежний образ (.old): exe только что
 // подменён самообновлением, и прежний процесс может ещё держать замок одного

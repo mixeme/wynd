@@ -65,6 +65,46 @@ func TestSchemeLinuxDesktopEntry(t *testing.T) {
 	}
 }
 
+// У AppImage человек запускает сам .AppImage, а os.Executable() внутри
+// указывает на временный смонтированный бинарник: схема и автозапуск должны
+// хранить путь AppImage, иначе после выхода он исчезает.
+func TestSelfPathAppImage(t *testing.T) {
+	t.Setenv("APPIMAGE", "")
+	if got := SelfPath(); got == "" {
+		t.Fatal("без AppImage путь пуст")
+	}
+	appImage := filepath.Join(t.TempDir(), "Wynd-0.5.8-x86_64.AppImage")
+	t.Setenv("APPIMAGE", appImage)
+	if got := SelfPath(); got != appImage {
+		t.Fatalf("путь AppImage: %q, ждали %q", got, appImage)
+	}
+	command, err := AutostartCommand()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(command, `"`+appImage+`"`) {
+		t.Fatalf("автозапуск: %q", command)
+	}
+}
+
+func TestEnsureInviteSchemeAppImage(t *testing.T) {
+	data := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", data)
+	appImage := filepath.Join(t.TempDir(), "Wynd.AppImage")
+	t.Setenv("APPIMAGE", appImage)
+
+	if err := EnsureInviteScheme(); err != nil {
+		t.Fatalf("EnsureInviteScheme: %v", err)
+	}
+	command, err := InviteSchemeCommand()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(command, appImage) {
+		t.Fatalf("обработчик схемы: %q, ждали путь %q", command, appImage)
+	}
+}
+
 func TestEnsureInviteSchemeLinux(t *testing.T) {
 	data := t.TempDir()
 	t.Setenv("XDG_DATA_HOME", data)
