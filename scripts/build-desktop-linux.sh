@@ -5,7 +5,9 @@
 #   sudo apt install build-essential pkg-config libgtk-3-dev \
 #     libwebkit2gtk-4.1-dev libx11-dev nodejs npm
 #
-# Результат — dist/wynd-desktop (ELF, без самообновления).
+# Результат — dist/wynd-desktop (ELF). Если в корне есть signing-key.pub,
+# открытый ключ вшивается в бинарник, и окно может проверять самообновление
+# (план 69, Linux: AppImage и .deb).
 
 set -euo pipefail
 
@@ -40,11 +42,22 @@ echo "Собираю оболочку окна..."
 (cd cmd/wynd-desktop/frontend && npm run build)
 
 mkdir -p dist
+SIGNING_KEY=""
+if [ -f "$ROOT/signing-key.pub" ]; then
+	SIGNING_KEY="$(tr -d '\r\n' < "$ROOT/signing-key.pub")"
+fi
+LDFLAGS="-s -w"
+if [ -n "$SIGNING_KEY" ]; then
+	echo "Ключ подписи выпуска: вшит, самообновление включено"
+	LDFLAGS="$LDFLAGS -X gitea.mixdep.ru/mix/wynd/internal/desktop.SigningKey=$SIGNING_KEY"
+else
+	echo "Ключ подписи не найден: самообновление выключено" >&2
+fi
 echo "Собираю Linux-бинарник..."
 CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
 	go build -trimpath -buildvcs=false \
 	-tags "desktop,production,gtk3" \
-	-ldflags "-s -w" \
+	-ldflags "$LDFLAGS" \
 	-o dist/wynd-desktop ./cmd/wynd-desktop
 
 ls -lh dist/wynd-desktop
