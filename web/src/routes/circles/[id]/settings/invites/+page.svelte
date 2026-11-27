@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { navigateBack } from '$lib/navigation/up';
 	import { copyText } from '$lib/clipboard';
+	import { androidShare, androidShareAvailable } from '$lib/android/share';
 	import { goto } from '$app/navigation';
 	import { getContext, onMount } from 'svelte';
 	import QrCode from '$ui/data/QrCode.svelte';
@@ -46,15 +47,19 @@
 
 	async function shareInvite(inv: CircleInvite) {
 		const url = inviteUrlFor(inv.token);
+		const title = `Приглашение в «${circle.name}»`;
 		if (navigator.share) {
 			try {
-				await navigator.share({ url, title: `Приглашение в «${circle.name}»` });
+				await navigator.share({ url, title });
 				shared = true;
 				return;
 			} catch (err) {
 				if (err instanceof Error && err.name === 'AbortError') return;
 			}
 		}
+		// В оболочке Android системный лист только открывается: «Отправлено»
+		// не показываем — выбор получателя и отправку знает только система.
+		if (androidShareAvailable() && (await androidShare(url, title))) return;
 		await copyInvite(inv);
 	}
 

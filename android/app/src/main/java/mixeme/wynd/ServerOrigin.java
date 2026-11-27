@@ -65,6 +65,21 @@ final class ServerOrigin {
         }
     }
 
+    /** Схемы, которые WebView не открывает сам: ссылку принимает системное приложение. */
+    static boolean isExternalAppLink(String url) {
+        if (url == null) return false;
+        try {
+            String scheme = new URI(url).getScheme();
+            if (scheme == null) return false;
+            switch (scheme.toLowerCase(Locale.ROOT)) {
+                case "tel": case "mailto": case "sms": case "mms": case "geo": return true;
+                default: return false;
+            }
+        } catch (URISyntaxException e) {
+            return false;
+        }
+    }
+
     private static boolean isWebAddress(URI uri) {
         String scheme = uri.getScheme();
         return ("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme))

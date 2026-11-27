@@ -50,4 +50,16 @@ public final class ServerOriginTest {
             assertFalse(url, ServerOrigin.isExternalWebLink(url));
         }
     }
+
+    @Test public void handsOnlySystemSchemesToOtherApps() {
+        for (String url : new String[] { "tel:+79990000000", "mailto:me@example.org?subject=Wynd",
+                "sms:+79990000000", "mms:+79990000000", "geo:55.75,37.61?z=12" }) {
+            assertTrue(url, ServerOrigin.isExternalAppLink(url));
+        }
+        for (String url : new String[] { "https://home.example.org/", "http://home.example.org/",
+                "intent://scan/#Intent;end", "file:///sdcard/photo.jpg", "javascript:alert(1)",
+                "data:text/html,hello", "wynd-push:x", null }) {
+            assertFalse(String.valueOf(url), ServerOrigin.isExternalAppLink(url));
+        }
+    }
 }

@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.ViewGroup;
 import android.webkit.CookieManager;
+import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -40,6 +41,7 @@ public final class MainActivity extends Activity {
     private PushBridge push;
     private InterfaceBridge interfaces;
     private SecretsBridge secrets;
+    private ShareBridge sharing;
     private StartupBridge startup;
     private InterfaceCatalog catalog;
     private String failedUrl;
@@ -95,6 +97,7 @@ public final class MainActivity extends Activity {
             push = new PushBridge(this, webView, server);
             interfaces = new InterfaceBridge(this, webView, server, catalog);
             secrets = SecretsBridge.attach(this, webView, server);
+            sharing = ShareBridge.attach(this, webView, server);
             // Фоновая очередь (план 50, этап 5.1): записи без вложений уходят
             // и после закрытия окна. Прогон — WorkManager, страница не нужна.
             queueBridge = NativeQueueBridge.attach(this, webView, server);
@@ -149,6 +152,30 @@ public final class MainActivity extends Activity {
         // Новый WebView получает все origin-bound мосты заново; прежний теряет доступ.
         if (webView != null) webView.stopLoading();
         recreate();
+    }
+
+    /**
+     * Новый WebView и все мосты после гибели рендерера (C159). Прежний экран
+     * нельзя использовать; адрес остаётся тем же — страница перезагрузится,
+     * сессия, очередь и кэш принадлежат профилю WebView и не теряются.
+     */
+    private void recoverPage(String url) {
+        ServerOrigin origin = server;
+        boolean local = localStartup;
+        if (origin == null) {
+            leaveApp();
+            return;
+        }
+        destroyPage();
+        try {
+            createPage(origin, local, null);
+        } catch (RuntimeException e) {
+            Log.e(TAG, "Cannot recover the interface", e);
+            finish();
+            return;
+        }
+        if (webView == null) return;
+        webView.loadUrl(local ? StartupAssets.URL : origin.contains(url) ? url : origin.url());
     }
 
     @Override
@@ -270,6 +297,20 @@ public final class MainActivity extends Activity {
                 }
             }
 
+            @Override public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+                // У нас всегда один живой WebView; чужой в этом callback —
+                // уже убранный прежний. Помечаем обработанным, иначе система
+                // убьёт приложение.
+                if (view != webView) return true;
+                if (isFinishing() || isDestroyed()) return true;
+                // Рендерер умер (обычно нехватка памяти), WebView уже нельзя
+                // использовать. Без true система убьёт приложение; собираем
+                // новый WebView с мостами на том же адресе (C159).
+                Log.w(TAG, "WebView renderer gone, crashed=" + detail.didCrash());
+                recoverPage(view.getUrl());
+                return true;
+            }
+
             @Override public void onReceivedError(WebView view, WebResourceRequest request, android.webkit.WebResourceError error) {
                 // Платформа вызывает этот overload только с API 23; guard и для lint при minSdk 21.
                 if (Build.VERSION.SDK_INT < 23) return;
@@ -334,19 +375,29 @@ public final class MainActivity extends Activity {
 
     private boolean navigate(String url, boolean userGesture) {
         if (server.contains(url)) return false;
-        if (userGesture && ServerOrigin.isExternalWebLink(url)) {
-            try {
-                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                        .addCategory(Intent.CATEGORY_BROWSABLE));
-            } catch (ActivityNotFoundException e) {
-                Log.w(TAG, "No browser available for an external link");
-            }
+        if (userGesture) {
+            if (ServerOrigin.isExternalWebLink(url)) openExternally(url, true);
+            // tel:, mailto: и подобные схемы WebView сам не открывает; по
+            // жесту пользователя их принимает системное приложение (C159).
+            else if (ServerOrigin.isExternalAppLink(url)) openExternally(url, false);
         }
         return true;
     }
 
+    private void openExternally(String url, boolean browsable) {
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+        if (browsable) intent.addCategory(Intent.CATEGORY_BROWSABLE);
+        try {
+            startActivity(intent);
+        } catch (ActivityNotFoundException | SecurityException e) {
+            Log.w(TAG, "No app for an external link");
+        }
+    }
+
     private void goBack() {
         if (backPending) return;
+        // Полноэкранное видео закрывается первым — так делает и платформа.
+        if (media != null && media.exitFullscreen()) return;
         WebView active = webView;
         if (active != null && server.contains(active.getUrl())) {
             backPending = true;
@@ -452,6 +503,10 @@ public final class MainActivity extends Activity {
         if (secrets != null) {
             secrets.destroy();
             secrets = null;
+        }
+        if (sharing != null) {
+            sharing.destroy();
+            sharing = null;
         }
         if (media != null) media.destroy();
         if (exports != null) exports.destroy();

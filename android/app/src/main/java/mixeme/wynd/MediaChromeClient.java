@@ -7,15 +7,22 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ProviderInfo;
 import android.content.res.AssetFileDescriptor;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Process;
 import android.os.ext.SdkExtensions;
 import android.provider.MediaStore;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
+import android.widget.FrameLayout;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -50,6 +57,8 @@ final class MediaChromeClient extends WebChromeClient {
     private String selectionPhotoNonce;
     private boolean photoLocationNeeded;
     private boolean pickerHandlesLocation;
+    private FrameLayout fullscreen;
+    private WebChromeClient.CustomViewCallback fullscreenCallback;
 
     MediaChromeClient(Activity activity, WebView view, ServerOrigin server) {
         this.activity = activity;
@@ -113,6 +122,66 @@ final class MediaChromeClient extends WebChromeClient {
 
     @Override public void onPermissionRequestCanceled(PermissionRequest request) {
         if (media == request) media = null;
+    }
+
+    // Полноэкранное видео: без этих двух методов WebView сообщает странице,
+    // что полный экран не поддерживается (C159).
+    @Override public void onShowCustomView(View view, WebChromeClient.CustomViewCallback callback) {
+        if (fullscreenCallback != null || destroyed || !trusted()) {
+            callback.onCustomViewHidden();
+            return;
+        }
+        FrameLayout host = new FrameLayout(activity);
+        host.setBackgroundColor(Color.BLACK);
+        host.addView(view, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        fullscreen = host;
+        fullscreenCallback = callback;
+        activity.addContentView(host, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        fullscreenBars(true);
+    }
+
+    @Override public void onHideCustomView() {
+        if (fullscreenCallback == null) return;
+        fullscreenCallback = null;
+        FrameLayout host = fullscreen;
+        fullscreen = null;
+        if (host != null) {
+            host.removeAllViews();
+            if (host.getParent() instanceof ViewGroup parent) parent.removeView(host);
+        }
+        fullscreenBars(false);
+    }
+
+    /** Системная «Назад» в полном экране выходит из него, а не уходит с экрана. */
+    boolean exitFullscreen() {
+        WebChromeClient.CustomViewCallback callback = fullscreenCallback;
+        if (callback == null) return false;
+        try { callback.onCustomViewHidden(); }
+        catch (RuntimeException ignored) { /* Страница уже ушла. */ }
+        onHideCustomView();
+        return true;
+    }
+
+    @SuppressWarnings("deprecation")
+    private void fullscreenBars(boolean fullscreen) {
+        Window window = activity.getWindow();
+        if (Build.VERSION.SDK_INT >= 30) {
+            WindowInsetsController controller = window.getDecorView().getWindowInsetsController();
+            if (controller == null) return;
+            if (fullscreen) {
+                controller.setSystemBarsBehavior(
+                        WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                controller.hide(WindowInsets.Type.systemBars());
+            } else controller.show(WindowInsets.Type.systemBars());
+        } else {
+            View decor = window.getDecorView();
+            int flags = decor.getSystemUiVisibility();
+            int immersive = View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+            decor.setSystemUiVisibility(fullscreen ? flags | immersive : flags & ~immersive);
+        }
     }
 
     @Override public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> callback, FileChooserParams parameters) {
@@ -293,6 +362,7 @@ final class MediaChromeClient extends WebChromeClient {
     }
 
     void cancel() {
+        if (fullscreenCallback != null) onHideCustomView();
         if (media != null) { PermissionRequest request = media; media = null; request.deny(); }
         finishSelection(null);
     }

@@ -2,6 +2,7 @@
 	import { navigateBack } from '$lib/navigation/up';
 	import NumberField from '$ui/forms/NumberField.svelte';
 	import { copyText } from '$lib/clipboard';
+	import { androidShare, androidShareAvailable } from '$lib/android/share';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getContext, onMount } from 'svelte';
@@ -161,14 +162,19 @@
 
 	async function shareLink() {
 		if (!inviteUrl) return;
+		const title = `Приглашение в «${circle.name}»`;
 		if (navigator.share) {
 			try {
-				await navigator.share({ url: inviteUrl, title: `Приглашение в «${circle.name}»` });
+				await navigator.share({ url: inviteUrl, title });
 				shared = true;
 				copied = false;
 			} catch (err) {
 				if (err instanceof Error && err.name === 'AbortError') return;
 			}
+		} else if (androidShareAvailable() && (await androidShare(inviteUrl, title))) {
+			// Системный лист только открыт: «Отправлено» не показываем — выбор
+			// получателя и отправку знает только система (C159).
+			copied = false;
 		} else {
 			await copyLink();
 		}
