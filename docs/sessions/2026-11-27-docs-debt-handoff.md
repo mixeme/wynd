@@ -28,11 +28,11 @@
 
 ## Грабли
 
-- **Параллельная сессия в том же дереве.** Пока шла эта работа, другая сессия вела Linux-самообновление: коммиты `963c3935`, `e7f9d252`, правки `docs/CHANGELOG.md`, `docs/plans/67-fdroid-android.plan.md`, `docs/plans/69-linux-desktop.plan.md`, `docs/reference/desktop-reference.md`, `android/fdroid/mixeme.wynd.yml`, `cmd/wynd-desktop/*`, `internal/desktop/*`, `web/*`. Они **не входят** в коммиты этой сессии. Перед следующей правкой этих файлов — сверить diff, не перетирать.
+- **Параллельная сессия в том же дереве.** Пока шла эта работа, другая сессия вела Linux-самообновление и кнопку приглашения: коммиты `963c3935`, `e7f9d252`, `09edcee1`, `2aec9655`, правки `docs/CHANGELOG.md`, `docs/plans/67-fdroid-android.plan.md`, `docs/plans/69-linux-desktop.plan.md`, `docs/reference/desktop-reference.md`, `android/fdroid/mixeme.wynd.yml`, `cmd/wynd-desktop/*`, `internal/desktop/*`, `web/*`. Они **не входят** в коммиты этой сессии; в Gitea уже отправлены. Перед следующей правкой этих файлов — сверить diff, не перетирать.
 - Коммиты делались pathspec-списками только своих путей; чужие правки не добавлялись.
 - Проверка ссылок — самописный скрипт по `docs/**/*.md`: важно вырезать код-спаны, иначе `bindJSON[T](w, r)` даёт ложную ссылку. Итог — 0 битых.
 - Тесты и сборка не запускались: изменения только в документации. Визуальные проверки не выполнялись и не заявляются.
 
 ## Состояние дерева
 
-HEAD на момент передачи — `21b87511` (плюс, возможно, более новые коммиты параллельной сессии). Наша работа — коммиты `8ad25bcd`, `8b53d067`, `6714aad5`, `78de2128`, `d2e89a71`, `b8823224`, `fa286edd`, `83c36b17`, `21b87511`. Незакоммиченные чужие правки перечислены в «Граблях»; `.zcode/` — служебный каталог, не коммитить. Стенды и процессы этой сессией не поднимались.
+HEAD на момент передачи — `2aec9655`, он же `origin/main` в Gitea. Наша работа — коммиты `8ad25bcd`, `8b53d067`, `6714aad5`, `78de2128`, `d2e89a71`, `b8823224`, `fa286edd`, `83c36b17`, `21b87511`, `772a580b` (эта передача). Параллельная сессия после неё добавила `09edcee1` (убран неиспользуемый путь SelfPath) и `2aec9655` (README/ROADMAP/CHANGELOG/план 69/desktop-reference — самообновление Linux и кнопка приглашения); они уже в Gitea. Незакоммичено на конец сессии: `android/fdroid/mixeme.wynd.yml`, `docs/plans/67-fdroid-android.plan.md`, `web/src/lib/journal/search-scope.test.ts`, `web/src/lib/journal/search-scope.ts`, `web/src/lib/session/session.svelte.ts`, `web/src/routes/+layout.svelte`, `web/src/routes/circles/[id]/search/+page.svelte`, untracked `web/src/lib/journal/search-memory.ts` и `search-memory.test.ts` — это правки параллельной сессии, их не включать в свои коммиты. `.zcode/` — служебный каталог, не коммитить. Стенды и процессы этой сессией не поднимались.
