@@ -28,6 +28,17 @@ export function searchCircleSeed(path: string, id: string): SearchCircle | undef
 	if (path === destination && circle?.id === id) return circle;
 }
 
+// Чем мы попали на экран: обычным переходом или шагом по истории. Возврат с
+// записи на поиск — шаг по истории, поле при этом уже было в работе; поднимать
+// клавиатуру заново не нужно (C160, запись владельца «И снова экран мигает»).
+let arrival: 'popstate' | 'other' = 'other';
+
+/** Тип перехода запоминает корневой макет в beforeNavigate. */
+export function noteArrival(type: string): void {
+	arrival = type === 'popstate' ? 'popstate' : 'other';
+}
+
 export function searchFocusAfterNavigation(path: string): boolean {
+	if (arrival === 'popstate') return false;
 	return path !== destination;
 }

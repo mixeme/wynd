@@ -4,7 +4,7 @@
 	import { initQueueDrain } from '$lib/queue/queue';
 	import { initConnection } from '$lib/session/connection.svelte';
 	import { initPush } from '$lib/push/push';
-	import { searchScopeChanges, trackSearchScope } from '$lib/journal/search-scope';
+	import { searchScopeChanges, noteArrival, trackSearchScope } from '$lib/journal/search-scope';
 	import { getAvatarShape, initSession, initTheme, isDark } from '$lib/session/session.svelte';
 	import { initSyncResume, startSyncForAllSessions } from '$lib/sync/sync';
 	import { initViewportHeight } from '$lib/session/viewport';
@@ -71,6 +71,9 @@
 
 	// «Назад» на уровень вверх и системной кнопкой (план 46, C13).
 	beforeNavigate((nav) => {
+		// Как мы попали на следующий экран: обычным переходом или шагом по
+		// истории. Поиск по возврату не поднимает клавиатуру заново (C160).
+		noteArrival(nav.type);
 		if (nav.type === 'popstate' && interceptHistoryBack(nav.delta, nav.from?.url, nav.to?.url)) {
 			nav.cancel();
 			return;

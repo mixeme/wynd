@@ -26,10 +26,16 @@
 		localDayAfter
 	} from '$lib/journal/search';
 	import { searchStats, toggleAuthor, togglePeriod } from '$lib/journal/searchState';
+	import {
+		recallSearchScreen,
+		rememberSearchScreen,
+		searchScreenKey
+	} from '$lib/journal/search-memory';
 	import type { CircleSearchHit } from '$lib/journal/types';
 
 	const circle = getContext<CircleContext>(CIRCLE_CTX);
 
+	const searchPath = $derived($page.url.pathname);
 	const initialChips = searchChipsFromParams($page.url.searchParams);
 	let query = $state(initialChips.q);
 	let debounced = $state(initialChips.q);
@@ -40,15 +46,51 @@
 	let periodFrom = $state(initialChips.from);
 	let periodTo = $state(initialChips.to);
 	let byDay = $state(initialChips.byDay);
-	let loading = $state(false);
-	let hits = $state<CircleSearchHit[]>([]);
-	let authorNames = $state<string[]>([]);
+
+	function screenState() {
+		return {
+			q: debounced,
+			periodActive,
+			periodFrom,
+			periodTo,
+			byDay,
+			hasPhoto: filterPhoto,
+			hasLocation: filterLocation,
+			author: authorFilter
+		};
+	}
+
+	function memoryKey() {
+		return searchScreenKey(circle.origin, circle.circleId, searchPath, screenState());
+	}
+
+	// Возврат с записи: экран монтируется заново и терял строки — на кадр
+	// появлялись «Ищем…» и пустое место (C160). Восстанавливаем прежний кадр
+	// до первой отрисовки; сеть уточнит его молча.
+	const remembered = recallSearchScreen(memoryKey());
+	let restoredFromMemory = Boolean(remembered);
+	let loading = $state(remembered?.loading ?? false);
+	let hits = $state<CircleSearchHit[]>(remembered?.hits ?? []);
+	let authorNames = $state<string[]>(remembered?.authors ?? []);
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	let searchGen = 0;
-	let thumbUrls = $state<Record<string, string>>({});
+	let thumbUrls = $state<Record<string, string>>(remembered?.thumbs ?? {});
 	let sourceError = $state('');
 
-	const searchPath = $derived($page.url.pathname);
+	// Превью, которых в памяти ещё нет, — из кэша устройства: строки не ждут
+	// самых медленных (C95), а кадр возврата не ждёт повторной выдачи.
+	if (remembered) {
+		for (const hit of remembered.hits) {
+			if (!hit.thumb_blob_id || remembered.thumbs[hit.post_id]) continue;
+			void getMediaUrl(circle.origin, hit.thumb_blob_id)
+				.then((url) => {
+					thumbUrls = { ...thumbUrls, [hit.post_id]: url };
+				})
+				.catch(() => {
+					/* placeholder tint */
+				});
+		}
+	}
 
 	function applyUrlChips() {
 		const chips = searchChipsFromWindow();
@@ -102,7 +144,15 @@
 	});
 
 	$effect(() => {
+		// Тихий прогон — только первый после возврата: строки уже на экране,
+		// «Ищем…» не показываем, сеть обновляет их молча. Дальше — как всегда.
+		const silent = restoredFromMemory;
+		restoredFromMemory = false;
 		if (!debounced && !hasFilter) {
+			// Пустой запрос отменяет и ответ, который ещё в пути: иначе он
+			// вернул бы строки под уже очищенным поиском.
+			searchGen++;
+			loading = false;
 			hits = [];
 			authorFilter = '';
 			authorNames = [];
@@ -120,7 +170,7 @@
 		const author = authorFilter || undefined;
 		const gen = ++searchGen;
 		void (async () => {
-			loading = true;
+			if (!silent) loading = true;
 			sourceError = '';
 			try {
 				const chipFilters = {
@@ -160,6 +210,7 @@
 				}
 			} catch {
 				if (gen !== searchGen) return;
+				if (silent) return;
 				sourceError = 'Не удалось выполнить поиск.';
 				hits = [];
 				authorNames = [];
@@ -168,6 +219,12 @@
 				if (gen === searchGen) loading = false;
 			}
 		})();
+	});
+
+	// Что видно на экране, то и запоминаем: «Назад» с записи вернёт этот кадр
+	// целиком — строки, авторов и превью, без «Ищем…» и пустого места (C160).
+	$effect(() => {
+		rememberSearchScreen(memoryKey(), { hits, authors: authorNames, thumbs: thumbUrls, loading });
 	});
 
 	function goBack() {

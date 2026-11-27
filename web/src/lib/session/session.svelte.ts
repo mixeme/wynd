@@ -2,6 +2,7 @@ import { nativeClear } from '$lib/android/native-queue';
 import { androidSecretsAvailable } from '$lib/android/secrets';
 import { ApiError, apiJson, isPaymentRequired, normalizeOrigin } from '$lib/api/client';
 import { forgetStreetMemory } from '$lib/circles/street-memory';
+import { forgetSearchScreens } from '$lib/journal/search-memory';
 import { refreshAndroidPush, unsubscribePush } from '$lib/push/push';
 import {
 	getAppSettings,
@@ -149,6 +150,8 @@ export async function dropParticipantSession(origin: string): Promise<void> {
 	// Улочка в памяти захода — тоже состояние входа (C97): новый человек не
 	// должен увидеть чужие названия даже одним кадром.
 	forgetStreetMemory();
+	// Строки поиска тоже помнят названия и отрывки (C160).
+	forgetSearchScreens();
 }
 
 /** Ping the server for each stored session; purge tokens the server no longer knows. */

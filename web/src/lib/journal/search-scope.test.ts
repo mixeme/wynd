@@ -1,5 +1,6 @@
 import { beforeEach, expect, it } from 'vitest';
 import {
+	noteArrival,
 	rememberSearchCircle,
 	searchCircleSeed,
 	searchFocusAfterNavigation,
@@ -19,7 +20,10 @@ const seed = {
 	identityName: 'Аня'
 };
 
-beforeEach(() => trackSearchScope(undefined, undefined));
+beforeEach(() => {
+	trackSearchScope(undefined, undefined);
+	noteArrival('goto');
+});
 
 it('сохраняет оболочку круга и не поднимает клавиатуру при переключении области', () => {
 	trackSearchScope(circleSearch, globalSearch);
@@ -38,4 +42,13 @@ it('обычный вход в поиск фокусирует поле и не 
 	expect(searchCircleSeed('/circles/two/search', 'two')).toBeUndefined();
 	trackSearchScope(globalSearch, circleSearch);
 	expect(searchCircleSeed(circleSearch.pathname, 'one')).toBeUndefined();
+});
+
+it('возврат по истории не поднимает клавиатуру заново', () => {
+	// «Назад» с записи на поиск: шаг по истории, строки уже были на экране.
+	noteArrival('popstate');
+	expect(searchFocusAfterNavigation(circleSearch.pathname)).toBe(false);
+	// Обычный вход после возврата снова фокусирует поле.
+	noteArrival('goto');
+	expect(searchFocusAfterNavigation(circleSearch.pathname)).toBe(true);
 });
