@@ -69,8 +69,9 @@
   `scripts	est-desktop.bat` — `[desktop] OK`, Android gradle —
   `BUILD SUCCESSFUL`; CI на `a0031b8e`: Server/Android/Desktop checks/Image —
   success.
-- **План 76 включён в выпуск** по слову «Выпускай всё» без отдельного
-  «принимаем» кадров; приёмка вёрстки остаётся открытой
+- **План 76 включён в выпуск** по слову «Выпускай всё». Три кадра из семи
+  приняты 27.11 (`settings-empty`, `settings-app`, `circle-settings-main`),
+  приёмка остальных продолжается отдельно от выпуска
   ([план 76](../plans/76-wide-sections.plan.md)).
 - Грабля: зеркало создало теги на GitHub без push-событий — прогоны по тегам
   не появились; выпускные workflow запущены `workflow_dispatch --ref <тег>`
