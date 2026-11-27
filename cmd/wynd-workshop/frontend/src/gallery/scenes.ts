@@ -313,6 +313,9 @@ export const SCENES: Scene[] = [
 	{ name: '9v2-cancelled', fake: { ...toPult(moving), CancelMove: () => service(pult) }, acts: [...go, { click: 'Отменить переезд' }, {destination:'new'}, { click: 'Подключиться и проверить' }] },
 	{ name: '9g-mdone', fake: { ...toPult(pult), StartMove: () => progress(doneSteps, { running: false, done: true }) }, acts: [...go, { click: 'Перенести' }, {destination:'new'}, { click: 'Подключиться и проверить' }, { click: 'Переехать' }] },
 	{ name: '11a-archives', acts: [{ tab: 'archives' }] },
+	{ name: '11b-merge-empty', acts: [{ tab: 'archives' }, { click: 'выбрать', nth: 0 }] },
+	{ name: '11v-split-empty', acts: [{ tab: 'archives' }, { click: 'выбрать', nth: 1 }] },
+	{ name: '11g-full-empty', acts: [{ tab: 'archives' }, { click: 'выбрать', nth: 2 }] },
 	{
 		name: '11b-merge',
 		fake: { PickArchives: () => ['C:\\Архивы\\a.zip', 'C:\\Архивы\\b.zip'], MergeInfo: () => ({ files: [archiveFile('Семья 2024.zip'), archiveFile('фото.zip', false)], ok: true, summary: archiveSummary, suggest: 'Семья 2024–2026.zip' }) },
@@ -321,23 +324,23 @@ export const SCENES: Scene[] = [
 	{
 		name: '11v-split',
 		fake: { PickArchive: () => 'C:\\Архивы\\Семья.zip', SplitInfo: () => ({ file: archiveFile('Семья.zip'), years: [{ year: 2025, summary: archiveSummary }, { year: 2026, summary: archiveSummary }] }) },
-		acts: [{ tab: 'archives' }, { click: 'выбрать', nth: 1 }, { click: 'Выбрать архив' }]
+		acts: [{ tab: 'archives' }, { click: 'выбрать', nth: 1 }, { click: 'выбрать архив' }]
 	},
 	{
 		name: '11v-split-range',
 		fake: { PickArchive: () => 'C:\\Архивы\\Семья.zip', SplitInfo: () => ({ file: archiveFile('Семья.zip'), years: [] }) },
-		acts: [{ tab: 'archives' }, { click: 'выбрать', nth: 1 }, { click: 'Выбрать архив' }, { click: 'За срок' }]
+		acts: [{ tab: 'archives' }, { click: 'выбрать', nth: 1 }, { click: 'выбрать архив' }, { click: 'За срок' }]
 	},
 	{
 		name: '11g-full',
 		fake: { PickArchive: () => 'C:\\Архивы\\Семья.wynd', FullInfo: () => ({ ok: true, name: 'Семья.wynd', bytes: 3 * 1024 ** 3, encrypted: true }) },
-		acts: [{ tab: 'archives' }, { click: 'выбрать', nth: 2 }, { click: 'Выбрать файл .wynd' }]
+		acts: [{ tab: 'archives' }, { click: 'выбрать', nth: 2 }, { click: 'выбрать файл .wynd' }]
 	},
 	{
 		name: '11-done',
 		fake: { PickArchive: () => 'C:\\Архивы\\Семья.wynd', FullInfo: () => ({ ok: true, name: 'Семья.wynd', bytes: 1, encrypted: false }), Readable: () => ({ ok: true, files: ['C:\\Архивы\\Семья — весь круг.zip'] }) },
-		acts: [{ tab: 'archives' }, { click: 'выбрать', nth: 2 }, { click: 'Выбрать файл .wynd' }, { click: 'Сделать ленту' }]
+		acts: [{ tab: 'archives' }, { click: 'выбрать', nth: 2 }, { click: 'выбрать файл .wynd' }, { click: 'Сделать ленту' }]
 	},
-	{ name: '11-error', fake: { PickArchive: () => 'C:\\a.wynd', FullInfo: () => ({ ok: true, name: 'a.wynd', bytes: 1 }), Readable: () => ({ ok: false, message: 'Файл повреждён' }) }, acts: [{ tab: 'archives' }, { click: 'выбрать', nth: 2 }, { click: 'Выбрать файл .wynd' }, { click: 'Сделать ленту' }] }
+	{ name: '11-error', fake: { PickArchive: () => 'C:\\a.wynd', FullInfo: () => ({ ok: true, name: 'a.wynd', bytes: 1 }), Readable: () => ({ ok: false, message: 'Файл повреждён' }) }, acts: [{ tab: 'archives' }, { click: 'выбрать', nth: 2 }, { click: 'выбрать файл .wynd' }, { click: 'Сделать ленту' }] }
 ];
 

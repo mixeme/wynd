@@ -234,7 +234,9 @@
 					{/snippet}
 				</FileRow>
 			{:else}
-				<Button variant="ghost" onclick={() => void pickSplit()}>Выбрать архив</Button>
+				<div class="ins-more">
+					<TextButton class="link under" onclick={() => void pickSplit()}>выбрать архив</TextButton>
+				</div>
 			{/if}
 			{#if split?.file.ok}
 				<Label>Как делить</Label>
@@ -273,6 +275,7 @@
 		{:else if view === 'full'}
 			<!-- Кадр 11г. -->
 			<h2>Лента из полного архива круга</h2>
+			<Label>Архив</Label>
 			{#if full?.ok}
 				<FileRow name={full.name ?? ''} detail="весь круг: записи и комментарии всех участников · {size(full.bytes ?? 0)}">
 					{#snippet action()}
@@ -289,7 +292,9 @@
 					<Button variant="ghost" onclick={() => void chooseFullOut()}>Выбрать</Button>
 				</FieldLine>
 			{:else}
-				<Button variant="ghost" onclick={() => void pickFull()}>Выбрать файл .wynd</Button>
+				<div class="ins-more">
+					<TextButton class="link under" onclick={() => void pickFull()}>выбрать файл .wynd</TextButton>
+				</div>
 			{/if}
 			{#if error}<Notice tone="bad" alert>{error}</Notice>{/if}
 			<FootBar>
