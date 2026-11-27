@@ -4,7 +4,7 @@
 
 ## Основа
 
-- Оформление не менялось: оболочка, рамка, экраны и тексты — те же, что в выпущенном 0.3.1. Принятые кадры оболочки — [reviews/desktop-server-flow-2026-11-10](../visual/reviews/desktop-server-flow-2026-11-10/) и [reviews/desktop-server-roles-2026-11-10](../visual/reviews/desktop-server-roles-2026-11-10/), действующий кадр начального экрана — [desktop-update-strip-2026-11-11/before.png](../testing/desktop-update-strip-2026-11-11/before.png) (снят при 760 × 780); принятая надпись заголовка с версией — коммит `731c56d3`.
+- Оформление не менялось: оболочка, рамка, экраны и тексты — те же, что в выпущенном 0.3.1. Принятые кадры оболочки — [reviews/desktop-server-flow-2026-11-10](../visual/reviews/desktop-server-flow-2026-11-10/) и [reviews/desktop-server-roles-2026-11-10](../visual/reviews/desktop-server-roles-2026-11-10/), действующий кадр начального экрана — desktop-update-strip-2026-11-11/before.png (снят при 760 × 780); принятая надпись заголовка с версией — коммит `731c56d3`.
 - Исходник окна: `cmd/wynd-desktop/main.go`, `frontend/src/{api.ts,App.svelte}`.
 
 ## Что изменено в коде
