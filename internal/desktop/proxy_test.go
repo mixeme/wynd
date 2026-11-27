@@ -113,7 +113,7 @@ func TestProxyAllowsSameOriginFrame(t *testing.T) {
 	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Content-Security-Policy", "frame-ancestors 'none'; object-src 'none'")
-		_, _ = io.WriteString(w, "<html><head><title>x</title></head><body>ok</body></html>")
+		_, _ = io.WriteString(w, "<html><head><title>x</title><script>if (window.__wyndDesktop) document.documentElement.classList.add('desktop-window');</script></head><body>ok</body></html>")
 	}))
 	defer target.Close()
 

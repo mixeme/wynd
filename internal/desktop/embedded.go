@@ -15,8 +15,8 @@ import (
 // что раньше отдавал сервер, поэтому маршруты, ссылки и IndexedDB не меняются:
 // origin окна прежний, переносить данные не нужно. В страницу вставляется тот
 // же мост, что и в HTML сервера, — клиент видит настоящий адрес сервера и
-// локальный порт API. Включается флагом --embedded-ui; переключение отложено
-// до стабилизации интерфейса (решение владельца 23.11).
+// локальный порт API, а признак embedded говорит, что интерфейс вшит.
+// Источник по умолчанию — вшитый; серверный режим остаётся явным выбором.
 
 // EmbeddedHandler отдаёт файлы вшитого клиента с SPA-фолбэком на index.html.
 // origin — выбранный сервер для моста (может быть пустым: моста тогда нет),
@@ -64,14 +64,19 @@ func EmbeddedHandler(dist fs.FS, origin func() string, apiBase string) http.Hand
 	})
 }
 
+// bridgeMarker — начало настоящего моста, а не любое упоминание имени:
+// в app.html есть проверка `if (window.__wyndDesktop)` для класса окна, и
+// поиск по голому имени молча оставлял страницу без моста (найдено 27.11).
+var bridgeMarker = []byte(`window.__wyndDesktop={`)
+
 // injectBridge вставляет мост окна в index.html до </head>; уже вставленный
 // мост (страница из старой сборки) не дублируется.
 func injectBridge(body []byte, origin, apiBase string) []byte {
-	if bytes.Contains(body, []byte("__wyndDesktop")) {
+	if bytes.Contains(body, bridgeMarker) {
 		return body
 	}
 	marker := []byte(`<script>window.__wyndDesktop={"origin":` + strconv.Quote(origin) +
-		`,"apiBase":` + strconv.Quote(apiBase) + `};</script>`)
+		`,"apiBase":` + strconv.Quote(apiBase) + `,"embedded":true};</script>`)
 	if at := bytes.Index(bytes.ToLower(body), []byte("</head>")); at >= 0 {
 		next := make([]byte, 0, len(body)+len(marker))
 		next = append(next, body[:at]...)

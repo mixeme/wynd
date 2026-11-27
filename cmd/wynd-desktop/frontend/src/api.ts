@@ -54,6 +54,8 @@ interface GoApp {
 	RemoveInterface(origin: string): Promise<void>;
 	ListServers(): Promise<CheckResult[]>;
 	SelectServer(origin: string): Promise<CheckResult>;
+	InterfaceSource(): Promise<string>;
+	SelectEmbedded(): Promise<void>;
 	RequestClose(): Promise<void>;
 	Notify(title: string, body: string): Promise<void>;
 	TakePendingInvite(): Promise<string>;
@@ -97,6 +99,8 @@ const native: GoApp = {
 	RemoveInterface: (origin) => Call.ByName('main.App.RemoveInterface', origin),
 	ListServers: () => Call.ByName('main.App.ListServers'),
 	SelectServer: (origin) => Call.ByName('main.App.SelectServer', origin),
+	InterfaceSource: () => Call.ByName('main.App.InterfaceSource'),
+	SelectEmbedded: () => Call.ByName('main.App.SelectEmbedded'),
 	RequestClose: () => Call.ByName('main.App.RequestClose'),
 	Notify: (title, body) => Call.ByName('main.App.Notify', title, body),
 	TakePendingInvite: () => Call.ByName('main.App.TakePendingInvite'),
@@ -286,4 +290,18 @@ export async function selectServer(origin: string): Promise<CheckResult> {
 	const app = bridge();
 	if (!app) throw new Error('no bridge');
 	return app.SelectServer(origin);
+}
+
+/** Источник интерфейса: вшитый клиент из окна или страницы выбранного сервера. */
+export type InterfaceSource = 'embedded' | 'server';
+
+export async function interfaceSource(): Promise<InterfaceSource> {
+	const value = await bridge()?.InterfaceSource();
+	return value === 'server' ? 'server' : 'embedded';
+}
+
+export async function selectEmbedded(): Promise<void> {
+	const app = bridge();
+	if (!app) throw new Error('no bridge');
+	await app.SelectEmbedded();
 }

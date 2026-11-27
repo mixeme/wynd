@@ -15,6 +15,16 @@ var (
 	ErrUnknownServer = errors.New("unknown server")
 	// ErrSelectedServer — текущий источник нельзя убрать до переключения.
 	ErrSelectedServer = errors.New("selected server")
+	// ErrUnknownSource — неизвестный источник интерфейса.
+	ErrUnknownSource = errors.New("unknown interface source")
+)
+
+// Источник интерфейса (план 66, функция 9): вшитый клиент из exe или страницы
+// выбранного сервера. Вшитый — по умолчанию: клиент больше не зависит от
+// версии сервера, а серверный режим остаётся явным выбором для отката.
+const (
+	SourceEmbedded = "embedded"
+	SourceServer   = "server"
 )
 
 // Server — добавленный сервер. Токенов и паролей здесь нет: вход живёт в
@@ -32,8 +42,12 @@ type Server struct {
 }
 
 type storeFile struct {
-	Selected string   `json:"selected"`
-	Servers  []Server `json:"servers"`
+	Selected string `json:"selected"`
+	// Source — откуда окно берёт страницы: embedded (по умолчанию, в том числе
+	// для старых файлов без поля) или server. Выбранный сервер остаётся
+	// источником данных в обоих режимах.
+	Source  string   `json:"source,omitempty"`
+	Servers []Server `json:"servers"`
 }
 
 // Store — servers.json в папке настроек. Все изменения пишутся сразу, атомарно
@@ -112,6 +126,36 @@ func (s *Store) Snapshot() (string, []Server) {
 	return s.data.Selected, servers
 }
 
+// Source — текущий источник интерфейса. Пусто в файле (и в старых записях)
+// означает вшитый клиент; серверный режим без выбранного сервера невозможен.
+func (s *Store) Source() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.sourceLocked()
+}
+
+func (s *Store) sourceLocked() string {
+	if s.data.Source == SourceServer && s.data.Selected != "" {
+		return SourceServer
+	}
+	return SourceEmbedded
+}
+
+// SetSource сохраняет выбор источника интерфейса. Серверный режим требует
+// выбранного сервера: без него окно не знает, чьи страницы показывать.
+func (s *Store) SetSource(source string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if source != SourceEmbedded && source != SourceServer {
+		return ErrUnknownSource
+	}
+	if source == SourceServer && s.data.Selected == "" {
+		return ErrUnknownServer
+	}
+	s.data.Source = source
+	return s.writeLocked()
+}
+
 // Put добавляет сервер или обновляет имя; selectIt делает его выбранным.
 func (s *Store) Put(server Server, selectIt bool) error {
 	s.mu.Lock()
@@ -149,11 +193,14 @@ func (s *Store) Select(origin string) error {
 	return s.writeLocked()
 }
 
-// ClearSelection снимает выбор, оставляя серверы в списке.
+// ClearSelection снимает выбор, оставляя серверы в списке. Без выбранного
+// сервера источник возвращается к вшитому: серверных страниц показывать не от
+// кого.
 func (s *Store) ClearSelection() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.data.Selected = ""
+	s.data.Source = SourceEmbedded
 	return s.writeLocked()
 }
 
@@ -173,6 +220,9 @@ func (s *Store) Remove(origin string) error {
 				s.data.Selected = server.Origin
 				break
 			}
+		}
+		if s.data.Selected == "" {
+			s.data.Source = SourceEmbedded
 		}
 	}
 	return s.writeLocked()

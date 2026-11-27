@@ -3,10 +3,15 @@ import { apiPath, normalizeOrigin } from '$lib/api/client';
 import { resolveServerOrigin } from '$lib/auth/origin';
 import { desktopBridge, desktopProxyBase, pageOrigin } from './bridge';
 
-function bridge(origin: string, apiBase?: string) {
-	(window as unknown as { __wyndDesktop?: { origin: string; apiBase?: string } }).__wyndDesktop = {
+function bridge(origin: string, apiBase?: string, embedded?: boolean) {
+	(
+		window as unknown as {
+			__wyndDesktop?: { origin: string; apiBase?: string; embedded?: boolean };
+		}
+	).__wyndDesktop = {
 		origin,
-		apiBase
+		apiBase,
+		embedded
 	};
 }
 
@@ -52,5 +57,12 @@ describe('desktop bridge', () => {
 		expect(apiPath('https://other.example.org', '/instance')).toBe(
 			'http://127.0.0.1:41000/__srv/https/other.example.org/api/v1/instance'
 		);
+	});
+
+	it('вшитый интерфейс помечен, страницы сервера — нет', () => {
+		bridge('https://home.example.org', 'http://127.0.0.1:41000', true);
+		expect(desktopBridge()?.embedded).toBe(true);
+		bridge('https://home.example.org');
+		expect(desktopBridge()?.embedded).toBeUndefined();
 	});
 });

@@ -41,10 +41,13 @@
 		previewServer,
 		removeInterface,
 		runtime,
+		selectEmbedded,
 		selectServer,
 		selfUpdateProgress,
 		takePendingInvite,
+		interfaceSource,
 		type CheckResult,
+		type InterfaceSource,
 		type InviteLink,
 		type Update
 	} from './api';
@@ -76,9 +79,12 @@
 	let removeTarget = $state<CheckResult | null>(null);
 	let removing = $state(false);
 	let checkGeneration = 0;
-	let iframePath = $state(
-		(globalThis as unknown as { __wyndIframePath?: string }).__wyndIframePath ?? '/?wynd=server'
-	);
+	// Источник интерфейса: вшитый клиент из окна (по умолчанию) или страницы
+	// выбранного сервера. Выбранный сервер остаётся источником данных.
+	let source = $state<InterfaceSource>('embedded');
+	// Мок-стенд кадров задаёт адрес рамки сам; в настоящем окне его нет.
+	const forcedIframePath = (globalThis as unknown as { __wyndIframePath?: string }).__wyndIframePath;
+	let iframePath = $state(forcedIframePath ?? '/?wynd=embedded');
 
 	// Копии по расписанию (план 66, функция 7): экран оболочки. Настройки и
 	// сборку ведёт Go, пока приложение запущено; здесь — форма.
@@ -178,8 +184,15 @@
 
 	onMount(async () => {
 		try {
+			// Источник узнаём до первой рамки, даже если сервер ещё не выбран:
+			// --server-ui задаёт его на запуск. Серверный режим — явный выбор,
+			// вшитый — обычный.
+			source = await interfaceSource().catch(() => 'embedded');
 			const saved = await currentServer();
 			if (saved) {
+				if (!forcedIframePath) {
+					iframePath = source === 'server' ? '/?wynd=server' : '/?wynd=embedded';
+				}
 				try {
 					server = await checkCurrent();
 				} catch {
@@ -301,7 +314,8 @@
 			unavailable = false;
 			adding = false;
 			showServers = false;
-			if (pasted) iframePath = `/?email=${encodeURIComponent(pasted.email)}`;
+			source = await interfaceSource().catch(() => source);
+			iframePath = interfacePath(pasted ? `email=${encodeURIComponent(pasted.email)}` : '');
 		} catch {
 			// Причина не различается: опечатка, нет сети, выключенный сервер и
 			// чужой сайт выглядят одинаково (ПК4).
@@ -309,6 +323,13 @@
 		} finally {
 			checking = false;
 		}
+	}
+
+	// Адрес корня интерфейса с явной меткой источника: рамка не должна
+	// угадывать источник по заголовку запроса.
+	function interfacePath(query = ''): string {
+		const marker = source === 'server' ? 'wynd=server' : 'wynd=embedded';
+		return query ? `/?${query}&${marker}` : `/?${marker}`;
 	}
 
 	async function readQrPhoto(file: File) {
@@ -328,7 +349,8 @@
 			unavailable = false;
 			adding = false;
 			showServers = false;
-			iframePath = link ? `/?email=${encodeURIComponent(link.email)}` : '/';
+			source = await interfaceSource().catch(() => source);
+			iframePath = interfacePath(link ? `email=${encodeURIComponent(link.email)}` : '');
 		} catch {
 			error = 'Сервер Wynd по этому адресу не отвечает. Проверьте адрес и сеть.';
 		} finally {
@@ -352,6 +374,7 @@
 	async function another() {
 		await forgetSelected().catch(() => undefined);
 		server = null;
+		source = 'embedded';
 		unavailable = false;
 		address = '';
 		error = '';
@@ -359,6 +382,7 @@
 
 	async function openInterface() {
 		servers = await listServers().catch(() => []);
+		source = await interfaceSource().catch(() => 'embedded');
 		error = '';
 		adding = false;
 		preview = null;
@@ -368,18 +392,37 @@
 	function closeInterface() {
 		error = '';
 		showServers = false;
-		iframePath = '/settings/app?wynd=server';
+		iframePath = '/settings/app';
 	}
 
 	async function choose(origin: string) {
 		try {
 			const next = await selectServer(origin);
 			server = next;
+			source = 'server';
 			unavailable = false;
 			iframePath = '/?wynd=server';
 			showServers = false;
 		} catch {
 			error = 'Не удалось открыть сервер. Попробуйте ещё раз.';
+		}
+	}
+
+	// Возврат к вшитому интерфейсу: выбранный сервер остаётся источником
+	// данных, меняются только страницы.
+	async function chooseEmbedded() {
+		if (source === 'embedded') {
+			showServers = false;
+			return;
+		}
+		try {
+			await selectEmbedded();
+			source = 'embedded';
+			error = '';
+			iframePath = '/?wynd=embedded';
+			showServers = false;
+		} catch {
+			error = 'Не удалось вернуться к интерфейсу приложения. Попробуйте ещё раз.';
 		}
 	}
 
@@ -607,19 +650,43 @@
 			</div>
 		</div>
 	{:else if showServers}
-		<!-- Кадр 5: только источники интерфейса, не учётные записи. -->
+		<!-- Кадр 5: источники интерфейса — вшитый клиент и серверы; учётные
+		     записи живут отдельно. -->
 		<div class="page-host">
 			<div class="settings-page">
-				<BackBar title="Сервер интерфейса" onback={closeInterface} />
+				<BackBar title="Источник интерфейса" onback={closeInterface} />
 				<div class="settings-body">
-					<Hint class="mt-16">Приложение загружает интерфейс с выбранного сервера. Ваши входы и круги останутся без изменений.</Hint>
+					<Hint class="mt-16">Интерфейс открывается из приложения или с выбранного сервера. Входы и круги останутся без изменений.</Hint>
+					{#if source === 'embedded'}
+						<ServerRow
+							name="Встроенный"
+							subtitle="Интерфейс приложения"
+							detail="Сейчас открывает интерфейс"
+							variant="ok"
+						/>
+					{:else}
+						<ServerRow
+							name="Встроенный"
+							subtitle="Интерфейс приложения"
+							onclick={() => void chooseEmbedded()}
+						/>
+					{/if}
 					<Label>Серверы интерфейса</Label>
 					{#each servers as item (item.origin)}
-						{#if item.origin === server?.origin}
+						{#if source === 'server' && item.origin === server?.origin}
 							<ServerRow
 								name={item.name}
 								subtitle={item.origin.replace(/^https?:\/\//, '')}
 								variant="ok"
+								onclick={() => void choose(item.origin)}
+							/>
+						{:else if item.origin === server?.origin}
+							<!-- С этого сервера идут данные, но страницы — вшитые:
+							     убрать его из списка, пока он выбран, нельзя. -->
+							<ServerRow
+								name={item.name}
+								subtitle={item.origin.replace(/^https?:\/\//, '')}
+								detail="Данные с этого сервера"
 								onclick={() => void choose(item.origin)}
 							/>
 						{:else}

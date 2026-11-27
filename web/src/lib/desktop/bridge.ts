@@ -11,6 +11,11 @@ export interface DesktopBridge {
 	 * клиента идут сюда обычным TCP. Пусто в старых сборках окна.
 	 */
 	apiBase?: string;
+	/**
+	 * Интерфейс вшит в окно (план 66, функция 9): страницы пришли из exe, а
+	 * origin — выбранный сервер для данных. Не задано на страницах сервера.
+	 */
+	embedded?: boolean;
 }
 
 export function desktopBridge(): DesktopBridge | undefined {

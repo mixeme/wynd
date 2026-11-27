@@ -75,6 +75,9 @@
 	let cleared = $state(false);
 	// Тот же принятый раздел интерфейса в обеих нативных оболочках (планы 62 и 50).
 	const desktop = desktopBridge();
+	// Вшитый интерфейс окна (план 66, функция 9): страницы из exe, а выбранный
+	// сервер — источник данных. На страницах сервера признака нет.
+	const embeddedUI = desktop?.embedded === true;
 	const androidInterfaces = androidInterfacesAvailable();
 	// Общее хранилище входов (C127): с ним переключение не меняет набор входов.
 	const sharedEntries = androidSecretsAvailable();
@@ -245,14 +248,14 @@
 	{#if interfaceOrigin}
 		<SectionLabel>Интерфейс</SectionLabel>
 		<ServerRow
-			name={interfaceName}
-			subtitle={displayHost(interfaceOrigin)}
+			name={embeddedUI ? 'Встроенный' : interfaceName}
+			subtitle={embeddedUI ? 'Интерфейс приложения' : displayHost(interfaceOrigin)}
 			detail="Сейчас открывает интерфейс"
 			card
 			top={0}
 		/>
 		<SettingsRow
-			title="Сменить сервер интерфейса"
+			title="Сменить источник интерфейса"
 			subtitle={sharedEntries
 				? 'Входы и круги останутся доступны'
 				: 'Входы и круги останутся на своих серверах'}

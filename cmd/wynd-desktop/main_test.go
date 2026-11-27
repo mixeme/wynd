@@ -146,3 +146,59 @@ func TestInterfacePreviewAddAndRemoveDoNotChangeSelection(t *testing.T) {
 		t.Fatalf("remove changed selection: %q, %+v", selected, app.ListServers())
 	}
 }
+
+// Источник интерфейса: по умолчанию вшитый; выбор сервера делает его
+// серверным и сохраняется, возврат к вшитому не меняет сервер данных.
+func TestInterfaceSourceSwitch(t *testing.T) {
+	store, err := desktop.OpenStore(filepath.Join(t.TempDir(), "servers.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := desktop.Server{Origin: "https://home.example", Name: "Дом Ани", Interface: true}
+	if err := store.Put(server, true); err != nil {
+		t.Fatal(err)
+	}
+	app := &App{
+		store:  store,
+		proxy:  desktop.NewProxy(),
+		source: desktop.SourceEmbedded,
+	}
+
+	if got := app.InterfaceSource(); got != desktop.SourceEmbedded {
+		t.Fatalf("по умолчанию: %q", got)
+	}
+	if got := store.Source(); got != desktop.SourceEmbedded {
+		t.Fatalf("файл по умолчанию: %q", got)
+	}
+	if _, err := app.SelectServer(server.Origin); err != nil {
+		t.Fatal(err)
+	}
+	if got := app.InterfaceSource(); got != desktop.SourceServer {
+		t.Fatalf("после выбора сервера: %q", got)
+	}
+	if got := store.Source(); got != desktop.SourceServer {
+		t.Fatalf("файл после выбора сервера: %q", got)
+	}
+	if err := app.SelectEmbedded(); err != nil {
+		t.Fatal(err)
+	}
+	if got := app.InterfaceSource(); got != desktop.SourceEmbedded {
+		t.Fatalf("после возврата: %q", got)
+	}
+	if got := store.Source(); got != desktop.SourceEmbedded {
+		t.Fatalf("файл после возврата: %q", got)
+	}
+	selected, _ := store.Snapshot()
+	if selected != server.Origin {
+		t.Fatalf("сервер данных сменился: %q", selected)
+	}
+	if err := app.ForgetSelected(); err != nil {
+		t.Fatal(err)
+	}
+	if got := app.InterfaceSource(); got != desktop.SourceEmbedded {
+		t.Fatalf("после «Другой сервер»: %q", got)
+	}
+	if selected, _ = store.Snapshot(); selected != "" {
+		t.Fatalf("выбор не снят: %q", selected)
+	}
+}

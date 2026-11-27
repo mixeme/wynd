@@ -67,6 +67,10 @@ type App struct {
 	// trayMenu — маленькое окно меню в стиле рамки, показывается правым
 	// щелчком по значку (C66).
 	trayMenu application.Window
+	// source — источник интерфейса этого запуска: вшитый клиент из exe или
+	// страницы выбранного сервера. Настройка живёт в servers.json; флаг
+	// --server-ui задаёт серверный режим только на этот запуск.
+	source string
 }
 
 // ServiceStartup — хук Wails v3: приложение передаёт контекст, который
@@ -549,6 +553,8 @@ func (a *App) CheckCurrent() (desktop.CheckResult, error) {
 }
 
 // ForgetSelected — «Другой сервер» на ПК3: снять выбор, оставить серверы.
+// Без выбранного сервера источник возвращается к вшитому: серверных страниц
+// показывать не от кого.
 func (a *App) ForgetSelected() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -558,10 +564,39 @@ func (a *App) ForgetSelected() error {
 	if err := a.store.ClearSelection(); err != nil {
 		return err
 	}
+	a.source = desktop.SourceEmbedded
+	a.proxy.SetSource(desktop.SourceEmbedded)
 	return a.proxy.Set("")
 }
 
-// SelectServer переключает окно на другой источник интерфейса.
+// InterfaceSource — текущий источник интерфейса окна: embedded или server.
+func (a *App) InterfaceSource() string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.source == desktop.SourceServer {
+		return desktop.SourceServer
+	}
+	return desktop.SourceEmbedded
+}
+
+// SelectEmbedded возвращает окно к вшитому интерфейсу, не меняя выбранный
+// сервер: он остаётся источником данных.
+func (a *App) SelectEmbedded() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.storeErr != nil {
+		return a.storeErr
+	}
+	if err := a.store.SetSource(desktop.SourceEmbedded); err != nil {
+		return err
+	}
+	a.source = desktop.SourceEmbedded
+	a.proxy.SetSource(desktop.SourceEmbedded)
+	return nil
+}
+
+// SelectServer переключает окно на другой источник интерфейса: страницы
+// открываются с выбранного сервера, вшитый клиент остаётся для возврата.
 func (a *App) SelectServer(origin string) (desktop.Server, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -571,9 +606,14 @@ func (a *App) SelectServer(origin string) (desktop.Server, error) {
 	if err := a.store.Select(origin); err != nil {
 		return desktop.Server{}, err
 	}
+	if err := a.store.SetSource(desktop.SourceServer); err != nil {
+		return desktop.Server{}, err
+	}
 	if err := a.proxy.Set(origin); err != nil {
 		return desktop.Server{}, err
 	}
+	a.source = desktop.SourceServer
+	a.proxy.SetSource(desktop.SourceServer)
 	_, servers := a.store.Snapshot()
 	for _, server := range servers {
 		if server.Origin == origin {
@@ -721,15 +761,22 @@ func main() {
 	}
 	base := filepath.Join(config, "Wynd", "desktop")
 	// Флаги запуска читаем до сборки локального API: --smoke-test и
-	// --from-startup влияют на окно.
+	// --from-startup влияют на окно, --server-ui — на источник интерфейса.
 	startInTray := false
 	smokeTest := false
+	forceServerUI := false
 	for _, arg := range os.Args[1:] {
-		if arg == "--from-startup" {
+		switch arg {
+		case "--from-startup":
 			startInTray = true
-		}
-		if arg == "--smoke-test" {
+		case "--smoke-test":
 			smokeTest = true
+		case "--server-ui":
+			// Откат и проверка: вшитый клиент выключен только на этот запуск.
+			forceServerUI = true
+		case "--embedded-ui":
+			// Прежний ключ (до перехода на вшитый интерфейс по умолчанию);
+			// оставлен, чтобы старые ярлыки и проверки не ломались.
 		}
 	}
 	startInTray = startInTray && platformCanStartHidden()
@@ -764,19 +811,24 @@ func main() {
 		log.Fatal(err)
 	}
 	proxy.SetAPIBase("http://" + apiLn.Addr().String())
-	// Вшитый интерфейс (план 66, функция 9) — только по флагу: по умолчанию
-	// окно берёт интерфейс с сервера, переключение отложено до стабилизации
-	// интерфейса (решение владельца 23.11). Origin окна не меняется — данные
-	// клиента (сессии, снимки) остаются на месте.
-	for _, arg := range os.Args[1:] {
-		if arg == "--embedded-ui" {
-			dist, err := fs.Sub(wyndweb.Build, "dist")
-			if err != nil {
-				log.Fatalf("embedded ui: %v", err)
-			}
-			proxy.SetEmbeddedUI(desktop.EmbeddedHandler(dist, proxy.Target, "http://"+apiLn.Addr().String()))
-			log.Printf("embedded ui: интерфейс из exe")
-		}
+	// Вшитый интерфейс (план 66, функция 9) — основной: страницы клиента
+	// лежат в exe, данные идут с выбранного сервера. Origin окна не меняется —
+	// сессии, снимки и очередь остаются на месте. Серверный интерфейс
+	// остаётся явным выбором для отката (source в servers.json или --server-ui).
+	dist, err := fs.Sub(wyndweb.Build, "dist")
+	if err != nil {
+		log.Fatalf("embedded ui: %v", err)
+	}
+	proxy.SetEmbeddedUI(desktop.EmbeddedHandler(dist, proxy.Target, "http://"+apiLn.Addr().String()))
+	source := store.Source()
+	if forceServerUI {
+		source = desktop.SourceServer
+	}
+	proxy.SetSource(source)
+	if source == desktop.SourceEmbedded {
+		log.Printf("embedded ui: интерфейс из exe")
+	} else {
+		log.Printf("server ui: интерфейс с сервера")
 	}
 	// Сессии окна (план 66, функция 3): токены в Credential Manager, клиент
 	// работает с ними по apiBase тем же CORS-контуром, что и за API.
@@ -809,6 +861,7 @@ func main() {
 		proxy:   proxy,
 		client:  &http.Client{Timeout: 12 * time.Second},
 		secrets: secrets,
+		source:  source,
 	}
 	shell.loadBackupConfig(filepath.Join(base, "backups.json"))
 	if err := shell.updateAllowed(); err != nil {

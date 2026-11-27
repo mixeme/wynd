@@ -35,6 +35,9 @@
 	let rows = $state<ServerRowState[]>([]);
 	let loading = $state(true);
 	let interfaceName = $state(desktop ? displayHost(desktop.origin) : '');
+	// Вшитый интерфейс окна (план 66, функция 9): страницы из exe, сервер —
+	// источник данных. В серверном режиме подсказка по-прежнему называет его.
+	const embeddedUI = desktop?.embedded === true;
 
 	function pluralCircles(n: number): string {
 		return plural(n, WORD.circle);
@@ -123,7 +126,9 @@
 		{#if ADD_SERVER_IN_APP}
 			<Hint centered class="mt-16 sz-15">Вы ни на одном сервере не вошли</Hint>
 			<Hint centered class="mt-16"
-				>Интерфейс продолжит открываться с сервера «{interfaceName}».</Hint
+				>{embeddedUI
+					? 'Интерфейс открывается из приложения.'
+					: `Интерфейс продолжит открываться с сервера «${interfaceName}».`}</Hint
 			>
 			<Button onclick={addServer}>Войти на другой сервер</Button>
 		{:else}

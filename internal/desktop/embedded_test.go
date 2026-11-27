@@ -1,6 +1,7 @@
 package desktop
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -10,7 +11,9 @@ import (
 
 func testDist() fstest.MapFS {
 	return fstest.MapFS{
-		"index.html":          &fstest.MapFile{Data: []byte("<html><head><title>Wynd</title></head><body></body></html>")},
+		// Упоминание имени без моста: клиент так проверяет класс окна (C143).
+		// Вставка моста должна смотреть на сам мост, а не на любое упоминание.
+		"index.html":          &fstest.MapFile{Data: []byte("<html><head><title>Wynd</title><script>if (window.__wyndDesktop) document.documentElement.classList.add('desktop-window');</script></head><body></body></html>")},
 		"_app/immutable/x.js": &fstest.MapFile{Data: []byte("console.log(1)")},
 		"icons.svg":           &fstest.MapFile{Data: []byte("<svg></svg>")},
 	}
@@ -30,7 +33,7 @@ func TestEmbeddedHandlerPages(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("/: %d", rec.Code)
 	}
-	if !strings.Contains(body, `window.__wyndDesktop={"origin":"https://home.example.org","apiBase":"http://127.0.0.1:41234"}`) {
+	if !strings.Contains(body, `window.__wyndDesktop={"origin":"https://home.example.org","apiBase":"http://127.0.0.1:41234","embedded":true}`) {
 		t.Fatalf("мост не вставлен: %s", body)
 	}
 	if !strings.Contains(rec.Header().Get("Cache-Control"), "no-cache") {
@@ -77,36 +80,80 @@ func TestEmbeddedHandlerPages(t *testing.T) {
 	}
 }
 
-// Во вшитом режиме серверные пути остаются серверными, а страницы — из exe.
+// Источник интерфейса переключается на ходу: вшитый клиент из exe или
+// страницы выбранного сервера. Серверные пути в обоих режимах — за прокси.
 func TestProxyEmbeddedRouting(t *testing.T) {
 	p := NewProxy()
 	p.SetAPIBase("http://127.0.0.1:1")
 	p.SetEmbeddedUI(embeddedFor(testDist()))
+	p.SetSource(SourceEmbedded)
 	shell := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("shell")) })
 	h := p.Handler(shell)
 
-	// Серверные пути без выбранного сервера — отказ прокси, а не файл клиента.
+	call := func(path string, iframe bool) (int, string) {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		if iframe {
+			req.Header.Set("Sec-Fetch-Dest", "iframe")
+		}
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec.Code, rec.Body.String()
+	}
+
+	// Корень без рамки — оболочка.
+	if code, body := call("/", false); code != http.StatusOK || body != "shell" {
+		t.Fatalf("оболочка: %d %q", code, body)
+	}
+	// Страница вшитого источника — из exe.
+	if code, body := call("/settings/app", false); code != http.StatusOK || !strings.Contains(body, "__wyndDesktop") {
+		t.Fatalf("страница exe: %d", code)
+	}
+	// Корень в рамке без метки — текущий источник (вшитый).
+	if code, body := call("/", true); code != http.StatusOK || !strings.Contains(body, "__wyndDesktop") {
+		t.Fatalf("рамка вшитого: %d", code)
+	}
+	// Серверные пути остаются серверными; сервера нет — отказ прокси.
+	if code, _ := call("/api/v1/instance", false); code != http.StatusServiceUnavailable {
+		t.Fatalf("api: %d", code)
+	}
+	// Оболочка — по служебным путям.
+	if code, body := call("/__shell/", false); code != http.StatusOK || body != "shell" {
+		t.Fatalf("оболочка: %d %q", code, body)
+	}
+	// Метка ?wynd=server — явный серверный интерфейс.
+	if code, _ := call("/?wynd=server", false); code != http.StatusServiceUnavailable {
+		t.Fatalf("метка сервера: %d", code)
+	}
+
+	// Серверный источник: страницы и рамка — с сервера (его нет — отказ).
+	p.SetSource(SourceServer)
+	if code, _ := call("/settings/app", false); code != http.StatusServiceUnavailable {
+		t.Fatalf("страница сервера: %d", code)
+	}
+	if code, _ := call("/", true); code != http.StatusServiceUnavailable {
+		t.Fatalf("рамка сервера: %d", code)
+	}
+	// Явная метка вшитого источника работает и в серверном режиме.
+	if code, body := call("/?wynd=embedded", false); code != http.StatusOK || !strings.Contains(body, "__wyndDesktop") {
+		t.Fatalf("метка вшитого: %d", code)
+	}
+	if code, body := call("/__shell/", false); code != http.StatusOK || body != "shell" {
+		t.Fatalf("оболочка в серверном режиме: %d %q", code, body)
+	}
+}
+
+// Служебная метка источника не попадает в адрес клиента.
+func TestProxyEmbeddedMarkerStripped(t *testing.T) {
+	p := NewProxy()
+	p.SetSource(SourceEmbedded)
+	p.SetEmbeddedUI(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, r.URL.RawQuery)
+	}))
+	h := p.Handler(http.NotFoundHandler())
+
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/instance", nil))
-	if rec.Code != http.StatusServiceUnavailable {
-		t.Fatalf("api: %d %s", rec.Code, rec.Body.String())
-	}
-	// Страница — из вшитого клиента.
-	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/settings/app", nil))
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "__wyndDesktop") {
-		t.Fatalf("страница: %d", rec.Code)
-	}
-	// Оболочка — по службам путям.
-	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/__shell/", nil))
-	if rec.Body.String() != "shell" {
-		t.Fatalf("оболочка: %q", rec.Body.String())
-	}
-	// Iframe просит интерфейс сервера меткой ?wynd=server — этот путь серверный.
-	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/?wynd=server", nil))
-	if rec.Code != http.StatusServiceUnavailable {
-		t.Fatalf("iframe сервера: %d %s", rec.Code, rec.Body.String())
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/?wynd=embedded&x=1", nil))
+	if rec.Body.String() != "x=1" {
+		t.Fatalf("метка осталась: %q", rec.Body.String())
 	}
 }

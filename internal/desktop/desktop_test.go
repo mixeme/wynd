@@ -179,3 +179,58 @@ func TestStoreMigratesLegacyRoles(t *testing.T) {
 		t.Fatalf("legacy roles: selected %q, list %+v", selected, list)
 	}
 }
+
+// Источник интерфейса: старый файл без поля — вшитый; серверный режим
+// сохраняется явно и переживает перезапуск.
+func TestStoreInterfaceSource(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "servers.json")
+	store, err := OpenStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := store.Source(); got != SourceEmbedded {
+		t.Fatalf("свежий файл: %q", got)
+	}
+	if err := store.SetSource(SourceServer); !errors.Is(err, ErrUnknownServer) {
+		t.Fatalf("серверный режим без сервера: %v", err)
+	}
+	if err := store.SetSource("other"); !errors.Is(err, ErrUnknownSource) {
+		t.Fatalf("неизвестный источник: %v", err)
+	}
+	server := Server{Origin: "https://home.example", Name: "Дом", Interface: true}
+	if err := store.Put(server, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SetSource(SourceServer); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := OpenStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := reopened.Source(); got != SourceServer {
+		t.Fatalf("после перезапуска: %q", got)
+	}
+	if err := reopened.ClearSelection(); err != nil {
+		t.Fatal(err)
+	}
+	if got := reopened.Source(); got != SourceEmbedded {
+		t.Fatalf("без выбранного сервера: %q", got)
+	}
+}
+
+// Старый файл без source читается как вшитый: переход на клиент из exe.
+func TestStoreLegacyFileDefaultsToEmbedded(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "servers.json")
+	legacy := []byte(`{"selected":"https://home.example","servers":[{"origin":"https://home.example","name":"Дом Ани","interface":true}]}`)
+	if err := os.WriteFile(path, legacy, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	store, err := OpenStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := store.Source(); got != SourceEmbedded {
+		t.Fatalf("старый файл: %q", got)
+	}
+}
