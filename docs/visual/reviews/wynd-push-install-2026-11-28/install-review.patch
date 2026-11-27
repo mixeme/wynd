@@ -1,0 +1,37 @@
+--- a/cmd/wynd-workshop/frontend/src/App.svelte
++++ b/cmd/wynd-workshop/frontend/src/App.svelte
+@@ -20,6 +20,9 @@
+ 	import { Panel } from './lib/panel.svelte';
+ 	import { removeWarning } from './lib/rollback';
+ 	import { day, dayTime, gb, mark } from './lib/display';
++
++	let reviewPushEnabled = $state(false);
++	let reviewPushDomain = $state('');
+
+ 	let {
+ 		profile,
+@@ -1225,6 +1228,24 @@
+ 			<!-- Куда поставить Wynd: по умолчанию /opt/wynd, как у ручной установки. -->
+ 			<Label>Каталог на сервере</Label>
+ 			<Input mono autocomplete="off" spellcheck={false} bind:value={p.installRoot} />
++
++			<FieldLine style="margin: var(--sp-1) 0">
++				<Checkbox native style="margin-top: 0" bind:checked={reviewPushEnabled}>Сервер уведомлений Wynd Push</Checkbox>
++				{#if reviewPushEnabled}
++					<Input
++						aria-label="Поддомен сервера уведомлений"
++						class="ins-grow"
++						mono
++						autocomplete="off"
++						spellcheck={false}
++						placeholder="push.family.example.ru"
++						bind:value={reviewPushDomain}
++					/>
++				{/if}
++			</FieldLine>
++			{#if reviewPushEnabled}
++				<div class="ins-dim">Поддомен должен указывать на этот сервер.</div>
++			{/if}
+ 		{/if}
+ 		<FootBar>
+ 			<Button
