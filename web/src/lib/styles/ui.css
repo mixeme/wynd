@@ -141,6 +141,13 @@
 	flex-direction: column;
 	overflow: auto;
 }
+/* Значок загрузки — в своей панели, а не в середине окна: `Loading` держит
+   fixed на весь экран для телефона (C10), но в широком окне правая панель —
+   только часть окна. Абсолютный внутри экрана панели (`.ph` уже relative). */
+.ph.app.split .split-side .loading:not(.compact),
+.ph.app.split .split-main .loading:not(.compact) {
+	position: absolute;
+}
 /* Затемнение диалога — на всё окно, а не на телефонную колонку. */
 .ph.app.split .scrim {
 	width: 100%;
