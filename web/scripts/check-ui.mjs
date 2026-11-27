@@ -4,6 +4,7 @@ import { checkProject, formatReport } from './ui-guard.mjs';
 import { checkChromeOwners } from './chrome-guard.mjs';
 import { checkViewportMeta } from './viewport-guard.mjs';
 import { checkDialogFit } from './dialog-guard.mjs';
+import { checkFirstFrameReturn } from './first-frame-guard.mjs';
 import { checkWorkshopBaselineFiles } from '../../docs/visual/workshop-baseline-guard.mjs';
 
 const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -49,5 +50,15 @@ if (dialogHits.length) {
 	process.exit(1);
 }
 console.log('dialog-guard: OK (диалог вписан в видимую область)');
+// Первый кадр возврата (C160): поиск помнит кадр, поле не фокусируется на popstate.
+const firstFrameHits = checkFirstFrameReturn(webRoot);
+if (firstFrameHits.length) {
+	console.error(
+		'first-frame-guard: возврат в поиск снова теряет кадр или поднимает клавиатуру.\n' +
+			firstFrameHits.join('\n')
+	);
+	process.exit(1);
+}
+console.log('first-frame-guard: OK (поиск помнит кадр возврата, поле не фокусируется на popstate)');
 // Лесенка вертикальных зазоров (C120) — часть проверки интерфейса.
 await import('./check-spacing.mjs');
