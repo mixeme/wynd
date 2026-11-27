@@ -51,6 +51,5 @@
   [план 46, C70](46-open-questions-and-debt.plan.md#c70) ·
   [отдельный план](workshop-external-proxy.plan.md).
 - **C73. Читаемый архив на Android.** Решение 12.11: читать на ПК; чтение на
-  телефоне — кандидат в нативное приложение —
-  [план 46, C73](46-open-questions-and-debt.plan.md#c73) ·
-  [план 50](50-android-wrapper.plan.md).
+  телефоне — кандидат в нативное приложение. История решения — git (бывший
+  пункт C73 плана 46); текущее место — [план 50](50-android-wrapper.plan.md).
