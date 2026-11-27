@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ru">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Вшитый интерфейс Настольного — кадры 27.11</title>
+		<style>
+			:root {
+				--paper: #f4f0e9;
+				--ink: #1c1b18;
+				--muted: #6b665d;
+				--line: #d9d2c6;
+			}
+			* {
+				box-sizing: border-box;
+			}
+			body {
+				margin: 0;
+				padding: 24px;
+				background: var(--paper);
+				color: var(--ink);
+				font:
+					15px/1.45 system-ui,
+					-apple-system,
+					'Segoe UI',
+					sans-serif;
+			}
+			h1 {
+				font-size: 20px;
+				margin: 0 0 6px;
+			}
+			p {
+				margin: 0 0 18px;
+				color: var(--muted);
+				max-width: 820px;
+			}
+			figure {
+				margin: 0 0 26px;
+			}
+			img {
+				display: block;
+				max-width: 100%;
+				height: auto;
+				border: 1px solid var(--line);
+				border-radius: 10px;
+				background: #fff;
+			}
+			figcaption {
+				margin-top: 8px;
+				max-width: 820px;
+			}
+			code {
+				font-size: 13px;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Вшитый интерфейс Настольного — кадры 27.11.2026</h1>
+		<p>
+			Настоящие снимки работающего окна (PrintWindow, 1060×780, светлая тема, масштаб 100 %),
+			собранного из проверяемого исходника. Стенд — локальный сервер 0.58.0 и синтетическая
+			учётная запись; <code>servers.json</code> и профиль временные. Кадры ждут приёмки
+			владельца.
+		</p>
+		<figure>
+			<img src="settings-app.png" alt="Настройки → Приложение → Интерфейс: Встроенный" />
+			<figcaption>
+				«Настройки → Приложение → Интерфейс» во вшитом режиме: «Встроенный», «Интерфейс
+				приложения», «Сейчас открывает интерфейс»; строка «Сменить источник интерфейса».
+			</figcaption>
+		</figure>
+		<figure>
+			<img src="source-list-embedded.png" alt="Список источников: выбран Встроенный" />
+			<figcaption>
+				Список источников: первой строкой «Встроенный» (отмечен), ниже «Дом проверки» —
+				«Данные с этого сервера», без крестика.
+			</figcaption>
+		</figure>
+		<figure>
+			<img src="source-list-server.png" alt="Список источников: выбран сервер" />
+			<figcaption>
+				После выбора сервера: отмечен «Дом проверки», «Встроенный» не выбран. Возврат —
+				нажатием на «Встроенный».
+			</figcaption>
+		</figure>
+	</body>
+</html>
