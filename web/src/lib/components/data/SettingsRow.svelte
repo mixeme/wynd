@@ -53,7 +53,7 @@
 
 <!-- С control (переключатель и т. п.) строка не нажимается целиком — иначе
      вложенная кнопка; заголовок тогда без жирного, как в кадрах. -->
-	<Row onclick={control ? undefined : onclick} {link} {opacity} {selected} class={rowClass} {style}>
+<Row onclick={control ? undefined : onclick} {link} {opacity} {selected} class={rowClass} {style}>
 	{#snippet leading()}
 		{#if icon}
 			<Icon name={icon} />
