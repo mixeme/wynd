@@ -28,7 +28,9 @@ const ArchiveFormatVersion = 3
 // Схема 1 — вся схема свёрнута в базовую (migrations/0001_schema.sql).
 // Схема 2 — метка устройства и активность в sessions (план 72); таблицы
 // круга не менялись, поэтому оживление схемы 1 и 2 идёт по одним правилам.
-var ReviveSchemaVersions = []int{1, 2}
+// Схема 3 — имя автора в индексе поиска (миграция 0003); таблицы круга те же,
+// менялись только content_fts и его триггеры.
+var ReviveSchemaVersions = []int{1, 2, 3}
 
 // ReviveSchemaKnown — оживляет ли сервер архив такой разметки и схемы.
 func ReviveSchemaKnown(formatVersion, schema int) bool {
