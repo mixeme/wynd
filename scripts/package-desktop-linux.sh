@@ -48,7 +48,7 @@ Architecture: amd64
 Maintainer: Wynd
 Description: Wynd Настольный — окно к своему серверу Wynd
 Depends: libgtk-3-0 | libgtk-3-0t64, libwebkit2gtk-4.1-0, libjavascriptcoregtk-4.1-0, libsoup-3.0-0, xdg-utils
-Recommends: gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-libav, gnome-keyring, xdg-desktop-portal
+Recommends: gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-libav, gnome-keyring, xdg-desktop-portal, pkexec
 EOF
 cat > "$DEB/DEBIAN/postinst" <<'EOF'
 #!/bin/sh
