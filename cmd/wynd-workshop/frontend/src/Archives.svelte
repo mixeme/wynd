@@ -191,7 +191,6 @@
 		{:else if view === 'merge'}
 			<!-- Кадр 11б. -->
 			<h2>Объединить архивы</h2>
-			<Label>Архивы</Label>
 			{#each merge?.files ?? [] as f (f.path)}
 				<FileRow name={f.name} detail={range(f.summary)} error={f.ok ? undefined : f.error}>
 					{#snippet action()}
@@ -226,7 +225,6 @@
 		{:else if view === 'split'}
 			<!-- Кадр 11в. -->
 			<h2>Разделить архив</h2>
-			<Label>Архив</Label>
 			{#if split}
 				<FileRow name={split.file.name} detail={range(split.file.summary)} error={split.file.ok ? undefined : split.file.error}>
 					{#snippet action()}
@@ -275,7 +273,6 @@
 		{:else if view === 'full'}
 			<!-- Кадр 11г. -->
 			<h2>Лента из полного архива круга</h2>
-			<Label>Архив</Label>
 			{#if full?.ok}
 				<FileRow name={full.name ?? ''} detail="весь круг: записи и комментарии всех участников · {size(full.bytes ?? 0)}">
 					{#snippet action()}
