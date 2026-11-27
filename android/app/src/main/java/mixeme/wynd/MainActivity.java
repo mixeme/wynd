@@ -306,7 +306,11 @@ public final class MainActivity extends Activity {
                 // Рендерер умер (обычно нехватка памяти), WebView уже нельзя
                 // использовать. Без true система убьёт приложение; собираем
                 // новый WebView с мостами на том же адресе (C159).
-                Log.w(TAG, "WebView renderer gone, crashed=" + detail.didCrash());
+                // didCrash — API 26; сам callback приходит только оттуда же,
+                // но при minSdk 21 lint требует явной проверки.
+                boolean crashed = false;
+                if (Build.VERSION.SDK_INT >= 26) crashed = detail.didCrash();
+                Log.w(TAG, "WebView renderer gone, crashed=" + crashed);
                 recoverPage(view.getUrl());
                 return true;
             }
