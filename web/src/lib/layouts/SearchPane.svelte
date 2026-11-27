@@ -379,7 +379,5 @@
 			/>
 		{/each}
 	{/each}
-	<Hint class="mt-16" centered>
-		Ищется только то, что вы застали:<br />записи до вашего прихода не найдутся.
-	</Hint>
+	<Hint class="mt-16" centered>Ищется только то, что вы застали.</Hint>
 </FormLayout>
