@@ -26,6 +26,11 @@
   Кадры — `docs/testing/search-back-flicker-2026-11-27/`.
 - **Документы** (`2f913f52`): план 46 — C160; реестр §28; протокол;
   CHANGELOG `[Unreleased]`; `docs/reference/client-reference.md`.
+- **Системное закрытие** (`8d6eac94` и следующий): сторож `first-frame-guard`
+  в `check:ui` (память кадра, гейт фокуса, `SearchField`; тесты
+  `first-frame-guard.test.ts` — 3); в `docs/testing/ui-review-protocol.md`
+  записаны «молчание порогов `flash-report.py` ≠ нет мигания» и пункт ревью
+  «первый кадр возврата»; та же граница — в docstring `flash-report.py`.
 
 ## Открыто и дальше
 
@@ -78,7 +83,7 @@
 
 ## Состояние дерева
 
-HEAD — `2f913f52` (после этой передачи — следующий коммит), main в Gitea
+HEAD — `8d6eac94` (после этой передачи — следующий коммит), main в Gitea
 догоняется push. Незакоммиченные чужие правки на момент работы:
 `README.md`, `docs/ROADMAP.md`, планы 45/46/50/58/66/69/70/71/72/73/74/75/76/77,
 `docs/plans/workshop-servers.plan.md`, `docs/reference/desktop-reference.md`,
