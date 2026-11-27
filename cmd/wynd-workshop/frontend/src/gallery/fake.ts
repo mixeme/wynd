@@ -211,6 +211,7 @@ export function makeBackend(over: Fake): Fake {
 		CancelMove: () => service(page()),
 		FinishMove: () => 'new',
 		CheckSelfUpdate: () => ({ available: false }),
+		SelfUpdateProgress: () => ({ done: 0, total: 0 }),
 		ApplySelfUpdate: () => '',
 		ReleasesPage: () => undefined
 	};

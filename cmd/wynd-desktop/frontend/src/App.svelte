@@ -19,7 +19,7 @@
 	import FieldDisplay from '$ui/forms/FieldDisplay.svelte';
 	import Switch from '$ui/forms/Switch.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
-	import Meter from '$ui/forms/Meter.svelte';
+	import UpdateBar from '$ui/chrome/UpdateBar.svelte';
 	import {
 		addInterface,
 		applySelfUpdate,
@@ -58,12 +58,6 @@
 	let updateError = $state('');
 	// Ход скачивания обновления, пока идёт установка.
 	let updateProgress = $state({ done: 0, total: 0 });
-	// Процент для кнопки: «Скачиваем 46 %…».
-	const percent = $derived(
-		updateProgress.total > 0
-			? Math.min(100, Math.round((updateProgress.done / updateProgress.total) * 100))
-			: 0
-	);
 	let progressTimer: ReturnType<typeof setInterval> | undefined;
 	let maximised = $state(false);
 	let address = $state('');
@@ -513,39 +507,19 @@
 		<!-- Полоса обновления поверх интерфейса: страница остаётся во всю
 		     высоту, полоса занимает верхнюю часть, пока её не скроют. -->
 		<div class="desk-update desk-update-bar">
-			<div class="desk-update-inner">
-				<div class="desk-update-main">
-					<div class="desk-update-head">Вышла версия {update.version}</div>
-					{#if updateBad}
-						<div class="desk-update-bad">Подпись не сошлась: обновление не установлено.</div>
-					{:else if updateError}
-						<div class="desk-update-bad" role="alert">{updateError}</div>
-					{:else if updateBusy && updateProgress.total > 0}
-						<!-- Ход скачивания — внутри полосы: полоса Meter под заголовком
-						     укладывается в высоту ряда кнопок, полоса не растёт. -->
-						<Meter value={updateProgress.done} max={updateProgress.total} />
-					{/if}
-				</div>
-				<div class="desk-update-actions">
-					<Button
-						variant="colored"
-						disabled={updateBusy || updateBad}
-						loading={updateBusy}
-						loadingLabel={updateProgress.total > 0
-							? `Скачиваем ${percent} %…`
-							: 'Обновляем…'}
-						onclick={() => void applyUpdate()}
-					>
-						Обновить и перезапустить
-					</Button>
-					<TextButton class="under" disabled={updateBusy} onclick={() => (updateHidden = true)}>
-						Позже
-					</TextButton>
-					{#if update.attestation}
-						<TextButton class="under" onclick={() => void openingReleases()}>Что нового</TextButton>
-					{/if}
-				</div>
-			</div>
+			<UpdateBar
+				class="desk-update-inner"
+				head={`Вышла версия ${update.version}`}
+				bad={updateBad}
+				error={updateError}
+				busy={updateBusy}
+				done={updateProgress.done}
+				total={updateProgress.total}
+				attestation={!!update.attestation}
+				onapply={() => void applyUpdate()}
+				onhide={() => (updateHidden = true)}
+				onreleases={() => void openingReleases()}
+			/>
 		</div>
 	{/if}
 	{#if !loaded}

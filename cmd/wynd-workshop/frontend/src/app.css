@@ -322,7 +322,9 @@ body {
 }
 /* Полоса обновления Мастерской (A25, кадры 10г–10е): подход и значения —
    из Настольного (.desk-update-bar). Лежит под шапкой окна (34 px) поверх
-   интерфейса и страницу не сдвигает; прячется «Позже» до следующего запуска. */
+   интерфейса и страницу не сдвигает; прячется «Позже» до следующего запуска.
+   Разметка и состояния — общий $ui/chrome/UpdateBar; здесь место полосы и
+   мерки кнопки. */
 .selfbar {
   position: absolute;
   top: 34px; /* высота полосы заголовка ($ui/workshop/TitleBar) — 34 px */
@@ -331,23 +333,10 @@ body {
   z-index: 10;
   /* Цвет акцента полосы — как в Настольном (.desk-update). */
   --c: var(--terracotta);
-  display: flex;
-  align-items: center;
-  gap: 16px;
   padding: 10px 16px;
   background: light-dark(#eae4da, #322d2a);
   border-bottom: 1px solid var(--line);
   box-shadow: 0 6px 18px light-dark(rgba(43, 39, 36, 0.12), rgba(0, 0, 0, 0.4));
-}
-.selfbar-main {
-  flex: 1;
-  min-width: 0;
-}
-.selfbar-head {
-  font-weight: 600;
-}
-.selfbar-bad {
-  color: var(--terracotta);
 }
 /* Кнопка полосы — обычная кнопка окна (кадр 10г). Полоса лежит вне .ins,
    поэтому без этого правила остаются телефонные мерки $ui: поля 14 px,
@@ -366,12 +355,6 @@ body {
 }
 .selfbar .under {
   white-space: nowrap;
-}
-.selfbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex: none;
 }
 @media (max-width: 680px) {
   .ins:has(> nav.ins-server-rail) {

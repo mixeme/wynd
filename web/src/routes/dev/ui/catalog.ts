@@ -34,7 +34,8 @@ export const COMPONENT_MAP: CatalogGroup[] = [
 			{ component: 'AdminBar', screen: 'e9-7', smoke: '/dev/smoke/e9-7' },
 			{ component: 'ComposeToolbar', screen: 'e4-2' },
 			{ component: 'AudioBar', screen: 'e4-9' },
-			{ component: 'ConnectionStrip', screen: 'e7-37, e7-38, e7-39' }
+			{ component: 'ConnectionStrip', screen: 'e7-37, e7-38, e7-39' },
+			{ component: 'UpdateBar', screen: 'окно Настольного; workshop: 10г–10ж' }
 		]
 	},
 	{
@@ -159,7 +160,6 @@ export const COMPONENT_MAP: CatalogGroup[] = [
 		entries: [
 			{ component: 'TitleBar', screen: 'workshop: все' },
 			{ component: 'WorkshopTabs', screen: 'workshop: 1, 11а' },
-			{ component: 'SelfBar', screen: 'workshop: 10а' },
 			{ component: 'StepNav', screen: 'workshop: 1–5, 7б–9г' },
 			{ component: 'Notice', screen: 'workshop: 2а, 5, 7а–9г' },
 			{ component: 'MarkRows / MarkRow', screen: 'workshop: 2, 3, 7а, 7б, 9б' },

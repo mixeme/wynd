@@ -282,6 +282,12 @@ export interface SelfUpdate {
 	attestation?: string;
 }
 
+/** Ход скачивания обновления: байты и известный размер (0 — неизвестен). */
+export interface UpdateProgress {
+	done: number;
+	total: number;
+}
+
 export interface ServerProfile {
 	id: string;
 	name: string;
@@ -373,6 +379,7 @@ export interface Backend {
 	CancelMove(): Promise<ServiceResult>;
 	FinishMove(): Promise<string>;
 	CheckSelfUpdate(): Promise<SelfUpdate>;
+	SelfUpdateProgress(): Promise<UpdateProgress>;
 	ApplySelfUpdate(): Promise<string>;
 	ReleasesPage(): Promise<void>;
 }

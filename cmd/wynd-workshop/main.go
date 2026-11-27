@@ -38,6 +38,10 @@ type App struct {
 	profileError error
 	// update — последняя найденная новая Мастерская (10а–10в).
 	update workshop.SelfUpdate
+	// updateDone/updateTotal — ход скачивания обновления для полосы: байты и
+	// известный размер (0 — размер неизвестен).
+	updateDone  int64
+	updateTotal int64
 }
 
 // ServiceStartup и ServiceShutdown — хуки Wails v3: приложение передаёт
@@ -258,6 +262,15 @@ func (a *App) CheckSelfUpdate() workshop.SelfUpdate {
 	return update
 }
 
+// SelfUpdateProgress — сколько байт обновления уже скачано: полоса обновления
+// показывает ход установки, пока кнопка «Обновляем…» (Total = 0 — ещё не
+// начали или размер неизвестен).
+func (a *App) SelfUpdateProgress() workshop.UpdateProgress {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return workshop.UpdateProgress{Done: a.updateDone, Total: a.updateTotal}
+}
+
 // ApplySelfUpdate — «Обновить и перезапустить» (10б): подпись не сошлась —
 // "signature" (10в); вышло — новая Мастерская запускается, эта закрывается.
 func (a *App) ApplySelfUpdate() string {
@@ -272,8 +285,13 @@ func (a *App) ApplySelfUpdate() string {
 	defer cancel()
 	a.mu.Lock()
 	update := a.update
+	a.updateDone, a.updateTotal = 0, 0
 	a.mu.Unlock()
-	path, err := workshop.ApplySelfUpdate(ctx, http.DefaultClient, update)
+	path, err := workshop.ApplySelfUpdate(ctx, http.DefaultClient, update, func(done, total int64) {
+		a.mu.Lock()
+		a.updateDone, a.updateTotal = done, total
+		a.mu.Unlock()
+	})
 	if errors.Is(err, workshop.ErrBadSignature) {
 		return "signature"
 	}

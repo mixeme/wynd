@@ -150,14 +150,23 @@ func VerifySignature(key string, exe, sig []byte) error {
 	return selfupdate.VerifySignature(key, exe, sig)
 }
 
+// UpdateProgress — ход скачивания обновления (общий тип selfupdate.Progress).
+type UpdateProgress = selfupdate.Progress
+
 // ApplySelfUpdate скачивает новую Мастерскую, проверяет подпись и ставит её
 // на место своего exe; прежний остаётся рядом (.old) до следующего запуска.
 // Возвращает путь нового exe — его окно запускает и закрывается само.
-func ApplySelfUpdate(ctx context.Context, client *http.Client, up SelfUpdate) (string, error) {
+// progress (необязательный) получает ход скачивания для полосы обновления.
+func ApplySelfUpdate(
+	ctx context.Context,
+	client *http.Client,
+	up SelfUpdate,
+	progress func(done, total int64),
+) (string, error) {
 	if !up.Available {
 		return "", ErrBadSignature
 	}
-	return selfupdate.Apply(ctx, client, SigningKey, up.exeURL, up.sigURL, nil)
+	return selfupdate.Apply(ctx, client, SigningKey, up.exeURL, up.sigURL, progress)
 }
 
 // CleanOldSelf убирает прежний exe после обновления (при запуске).

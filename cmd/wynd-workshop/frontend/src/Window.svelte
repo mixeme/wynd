@@ -9,7 +9,7 @@
 	import MarkRow from '$ui/workshop/MarkRow.svelte';
 	import Checkbox from '$ui/workshop/Checkbox.svelte';
 	import Button from '$ui/forms/Button.svelte';
-	import TextButton from '$ui/forms/TextButton.svelte';
+	import UpdateBar from '$ui/chrome/UpdateBar.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import Select from '$ui/workshop/Select.svelte';
@@ -187,6 +187,9 @@
 	let selfBusy = $state(false);
 	let selfBad = $state(false);
 	let selfError = $state('');
+	// Ход скачивания обновления, пока идёт установка.
+	let selfProgress = $state({ done: 0, total: 0 });
+	let progressTimer: ReturnType<typeof setInterval> | undefined;
 	void backend()
 		.CheckSelfUpdate()
 		.then((u) => (selfUp = u.available ? u : undefined))
@@ -195,15 +198,33 @@
 		.Version()
 		.then((v) => (version = v))
 		.catch(() => undefined);
+	// Пока идёт установка, спрашиваем у оболочки, сколько уже скачано: полоса
+	// не молчит на многомегабайтном файле.
+	function watchProgress(on: boolean) {
+		if (progressTimer) {
+			clearInterval(progressTimer);
+			progressTimer = undefined;
+		}
+		if (!on) return;
+		selfProgress = { done: 0, total: 0 };
+		progressTimer = setInterval(() => {
+			void backend()
+				.SelfUpdateProgress()
+				.then((p) => (selfProgress = p))
+				.catch(() => undefined);
+		}, 300);
+	}
 	async function applySelf() {
 		if (selfBusy) return;
 		selfBusy = true;
 		selfError = '';
+		watchProgress(true);
 		try {
 			const res = await backend().ApplySelfUpdate();
 			if (res === 'signature') selfBad = true;
 			else if (res) selfError = res;
 		} finally {
+			watchProgress(false);
 			selfBusy = false;
 		}
 	}
@@ -228,36 +249,21 @@
 	{#if selfUp && !selfHidden}
 		<!-- A25 (кадры 10г–10е): полоса обновления поверх интерфейса, как в
 		     Настольном; отдельный экран и тихая строка больше не нужны. -->
-		<div class="selfbar">
-			<div class="selfbar-main">
-				<div class="selfbar-head">Вышла Мастерская {selfUp.version}</div>
-				{#if selfBad}
-					<div class="selfbar-bad">Подпись не сошлась: обновление не установлено.</div>
-				{:else if selfError}
-					<div class="selfbar-bad" role="alert">{selfError}</div>
-				{/if}
-			</div>
-			<div class="selfbar-actions">
-				<Button
-					variant="colored"
-					disabled={selfBusy || selfBad || anyBusy}
-					loading={selfBusy}
-					loadingLabel="Обновляем…"
-					onclick={() => void applySelf()}
-				>
-					Обновить и перезапустить
-				</Button>
-				{#if anyBusy}<span class="ins-dim">Сначала дождитесь окончания</span>{/if}
-				<TextButton class="under" disabled={selfBusy} onclick={() => (selfHidden = true)}
-					>Позже</TextButton
-				>
-				{#if selfUp.attestation}
-					<TextButton class="under" onclick={() => void backend().ReleasesPage()}
-						>Что нового</TextButton
-					>
-				{/if}
-			</div>
-		</div>
+		<UpdateBar
+			class="selfbar"
+			head={`Вышла Мастерская ${selfUp.version}`}
+			bad={selfBad}
+			error={selfError}
+			busy={selfBusy}
+			done={selfProgress.done}
+			total={selfProgress.total}
+			attestation={!!selfUp.attestation}
+			blocked={anyBusy}
+			hint={anyBusy ? 'Сначала дождитесь окончания' : ''}
+			onapply={() => void applySelf()}
+			onhide={() => (selfHidden = true)}
+			onreleases={() => void backend().ReleasesPage()}
+		/>
 	{/if}
 	<div class="ins-content">
 				<div class="ins" class:ins-hidden={tab !== 'servers'}>

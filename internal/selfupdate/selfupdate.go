@@ -22,6 +22,13 @@ import (
 // отказ): установка не начинается.
 var ErrBadSignature = errors.New("selfupdate: release signature does not match")
 
+// Progress — ход скачивания обновления: байты и известный размер (Total = 0 —
+// размер неизвестен). Общий для окна и Мастерской: обе полосы показывают ход.
+type Progress struct {
+	Done  int64 `json:"done"`
+	Total int64 `json:"total"`
+}
+
 // VerifySignature проверяет подпись выпуска ключом key (base64).
 func VerifySignature(key string, exe, sig []byte) error {
 	pub, err := base64.StdEncoding.DecodeString(key)

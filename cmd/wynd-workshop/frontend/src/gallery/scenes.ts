@@ -211,6 +211,8 @@ export const SCENES: Scene[] = [
 	{ name: '7a-selfbar-hidden', fake: { ...toPult(pult), CheckSelfUpdate: () => ({ available: true, version: '0.2.0', notes: ['Обновляется сама'] }) }, acts: [...go, { click: 'Позже' }] },
 	{ name: '10b-self', fake: { CheckSelfUpdate: () => ({ available: true, version: '0.2.0', attestation: 'https://github.com/' }), ApplySelfUpdate: never }, acts: [{ click: 'Обновить и перезапустить' }] },
 	{ name: '10c-self-bad', fake: { CheckSelfUpdate: () => ({ available: true, version: '0.2.0' }), ApplySelfUpdate: () => 'signature' }, acts: [{ click: 'Обновить и перезапустить' }] },
+	// 10ж (общая полоса UpdateBar): ход скачивания внутри полосы, высота прежняя.
+	{ name: '10zh-self-progress', fake: { ...toPult(pult), CheckSelfUpdate: () => ({ available: true, version: '0.2.0', attestation: 'https://github.com/' }), SelfUpdateProgress: () => ({ done: 8200000, total: 17952256 }), ApplySelfUpdate: never }, acts: [...go, { click: 'Обновить и перезапустить' }] },
 	{ name: '7z-foreign-service', fake: { ...toPult(foreignService), Inspect: () => foreignFound }, acts: go },
 	{ name: '7z-foreign-stopped', fake: { ...toPult(foreignStopped), Inspect: () => foreignFound }, acts: go },
 	{

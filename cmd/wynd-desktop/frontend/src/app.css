@@ -50,20 +50,10 @@ body {
 }
 
 /* Полоса обновления окна лежит поверх интерфейса под шапкой и не сдвигает
-   страницу: та остаётся во всю высоту, пока полосу не скроют. */
+   страницу: та остаётся во всю высоту, пока полосу не скроют. Разметка и
+   состояния — общий $ui/chrome/UpdateBar; здесь место полосы и мерки кнопки. */
 .desk-update {
 	--c: var(--terracotta);
-}
-.desk-update-head {
-	font-weight: 600;
-}
-.desk-update-bad {
-	color: var(--terracotta);
-}
-/* Ход скачивания обновления: полоса Meter под заголовком, внутри ряда кнопок
-   — 18,85 + 2 + 9 = 30 px меньше высоты кнопки (38), полоса не растёт. */
-.desk-update .meter {
-	margin: 2px 0 0;
 }
 .desk-update .btn {
 	display: inline-block;
@@ -85,22 +75,9 @@ body {
 	box-shadow: 0 6px 18px light-dark(rgba(43, 39, 36, 0.12), rgba(0, 0, 0, 0.4));
 }
 .desk-update-inner {
-	display: flex;
-	align-items: center;
-	gap: 16px;
 	width: 100%;
 	max-width: var(--app-max-width);
 	margin: 0 auto;
-}
-.desk-update-main {
-	flex: 1;
-	min-width: 0;
-}
-.desk-update-actions {
-	display: flex;
-	align-items: center;
-	gap: 14px;
-	flex: none;
 }
 
 .desk-content {

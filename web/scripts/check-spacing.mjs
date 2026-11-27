@@ -14,6 +14,7 @@ const FILES = [
 	'web/src/lib/styles/tokens.css',
 	'web/src/lib/styles/ui.css',
 	'web/src/lib/styles/workshop.css',
+	'web/src/lib/components/chrome/UpdateBar.svelte',
 	'cmd/wynd-workshop/frontend/src/app.css',
 	'cmd/wynd-desktop/frontend/src/app.css',
 	...[
@@ -25,7 +26,6 @@ const FILES = [
 		'StepList.svelte',
 		'FieldLine.svelte',
 		'CopyLine.svelte',
-		'SelfBar.svelte',
 		'Checkbox.svelte',
 		'RawSheet.svelte',
 		'TitleBar.svelte',

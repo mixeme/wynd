@@ -161,12 +161,8 @@ func ApplyUpdate(
 	return selfupdate.Apply(ctx, client, SigningKey, up.exeURL, up.sigURL, progress)
 }
 
-// UpdateProgress — ход скачивания обновления: байты и известный размер
-// (Total = 0 — размер неизвестен).
-type UpdateProgress struct {
-	Done  int64 `json:"done"`
-	Total int64 `json:"total"`
-}
+// UpdateProgress — ход скачивания обновления (общий тип selfupdate.Progress).
+type UpdateProgress = selfupdate.Progress
 
 // CleanOldSelf убирает прежний exe после обновления (при запуске).
 func CleanOldSelf() { selfupdate.CleanOldSelf() }
