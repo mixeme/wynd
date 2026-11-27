@@ -66,6 +66,9 @@ final class ShareBridge {
     }
 
     private void answer(int id, boolean shared, JavaScriptReplyProxy reply) {
+        // postMessage существует только там, где есть слушатель сообщений;
+        // без этого моста страница получает отказ по времени (C159).
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) return;
         try { reply.postMessage(new JSONObject().put("id", id).put("shared", shared).toString()); }
         catch (JSONException | RuntimeException ignored) { /* Страница уже ушла. */ }
     }
