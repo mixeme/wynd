@@ -87,13 +87,13 @@
 соседней сессии `7cbef1a0` — она сняла общий снимок дерева; отдельного
 коммита документов нет, содержание сверено.
 
-Незакоммиченные чужие правки на момент передачи — поиск с автором (другая
-сессия): `web/src/lib/journal/search.ts`, `search.test.ts`,
-`web/src/lib/layouts/SearchPane.svelte`,
-`web/src/lib/components/data/SearchResultRow.svelte`,
-`web/src/routes/circles/[id]/search/+page.svelte`,
-`internal/store/store_test.go`, `docs/reference/server-reference.md`,
-`docs/reference/ui-components.md`; untracked — `internal/store/migrations/0003_search_author.sql`,
-`internal/search/search_author_test.go`, `internal/store/search_author_migration_test.go`,
+Дерево общее с живыми соседними сессиями: их правки (поиск с автором,
+обновление окна/Мастерской) шли и после передачи — перед работой смотреть
+`git status` и `git log`, чужие файлы не коммитить. На момент последней
+проверки незакоммиченными были: `web/src/lib/journal/search.ts` и его
+экраны/тесты, `internal/store/store_test.go`, `internal/chronicle/revive.go`,
+`cmd/wynd-desktop/*`, `cmd/wynd-workshop/main.go`, `internal/*/selfupdate.go`,
+`docs/reference/*`, `docs/wynd.html`; untracked — миграция и тесты поиска с
+автором, `docs/plans/77-update-bar.plan.md`, `docs/testing/search-author-2026-11-27/`,
 `.zcode/`. Своих незакоммиченных правок нет. Стенды остановлены; `dev/` — в
 `.gitignore`, готовый бинарник стенда — `dev/wynd-c154.exe`.
