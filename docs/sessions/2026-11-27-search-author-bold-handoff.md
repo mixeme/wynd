@@ -27,9 +27,9 @@
 
 - `gofmt -l` на Windows перечисляет почти все файлы из-за CRLF — не признак правки; проверять `go test` и глазами по диффу.
 - Стенд 7685 на `dev/frame76-data` при запуске перевёл базу на схему 3: старый exe 0.57.0 после этого её не откроет («схема новее программы»). Для кадра «до» брать сохранённый `wide-sections-2026-11-27/search-result.png`, а не перезапуск старого стенда.
-- Параллельная сессия: в дереве чужие правки самообновления окон/Мастерской и `docs/plans/77-update-bar.plan.md`, `web/src/lib/components/chrome/UpdateBar.svelte`, `.zcode/` — не включать в свои коммиты.
+- Параллельная сессия: её правки самообновления окон/Мастерской и `docs/plans/77-update-bar.plan.md`, `web/src/lib/components/chrome/UpdateBar.svelte` к концу сессии закоммичены (`bc2eb6a3` и раньше); `.zcode/` — не наш, не включать.
 - Порт 8902 занят чужой галереей (PID 484) — не гасить; для своих кадров порт выбирать другой.
 
 ## Состояние дерева
 
-HEAD — `08ca59c4` + коммит передачи. main в Gitea. Незакоммичено — чужие правки окон/Мастерской (см. выше), `.zcode/`, план 77. Стенд 7685 (`dev/wynd-stand-search.exe`, данные `dev/frame76-data`) работает — погасить после осмотра; Edge-профили `search-author-*` погашены. Галерея кадров — `http://127.0.0.1:8912/search-photo-chip-2026-11-27/photo-chip-empty.png` и `photo-chip-back.png` (python http.server на `docs/testing`, 8912).
+HEAD — `15886521`. main в Gitea. Незакоммичено — только `.zcode/` (не наш). Стенд 7685 (`dev/wynd-stand-search.exe`, данные `dev/frame76-data`) работает — погасить после осмотра; Edge-профили `search-author-*` погашены. Галерея кадров — `http://127.0.0.1:8912/search-photo-chip-2026-11-27/photo-chip-empty.png` и `photo-chip-back.png` (python http.server на `docs/testing`, 8912).
