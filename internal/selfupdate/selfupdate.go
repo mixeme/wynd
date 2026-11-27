@@ -53,47 +53,87 @@ func Apply(
 	key, exeURL, sigURL string,
 	progress func(done, total int64),
 ) (string, error) {
-	if key == "" || exeURL == "" || sigURL == "" {
-		return "", ErrBadSignature
-	}
-	exe, err := fetch(ctx, client, exeURL, 200<<20, progress)
-	if err != nil {
-		return "", err
-	}
-	sig, err := fetch(ctx, client, sigURL, 4<<10, nil)
-	if err != nil {
-		return "", err
-	}
-	if err := VerifySignature(key, exe, sig); err != nil {
-		return "", err
-	}
 	self, err := os.Executable()
 	if err != nil {
 		return "", err
 	}
-	next := self + ".new"
-	if err := os.WriteFile(next, exe, 0o755); err != nil {
+	return ApplyTo(ctx, client, key, exeURL, sigURL, self, progress)
+}
+
+// ApplyTo — то же, но подменяет заданный файл: у Linux-окна это AppImage
+// (os.Executable() внутри образа указывает на временный бинарник). Прежний
+// файл остаётся рядом (.old) до следующего запуска.
+func ApplyTo(
+	ctx context.Context,
+	client *http.Client,
+	key, fileURL, sigURL, target string,
+	progress func(done, total int64),
+) (string, error) {
+	if target == "" {
+		return "", fmt.Errorf("selfupdate: пустой путь установки")
+	}
+	file, err := FetchVerified(ctx, client, key, fileURL, sigURL, progress)
+	if err != nil {
 		return "", err
 	}
-	old := self + ".old"
+	next := target + ".new"
+	if err := os.WriteFile(next, file, 0o755); err != nil {
+		return "", err
+	}
+	old := target + ".old"
 	_ = os.Remove(old)
-	// Работающий exe в Windows переименовать можно, удалить — нет.
-	if err := os.Rename(self, old); err != nil {
+	// Работающий exe в Windows переименовать можно, удалить — нет; на Linux
+	// так же подменяется работающий AppImage.
+	if err := os.Rename(target, old); err != nil {
 		os.Remove(next)
 		return "", err
 	}
-	if err := os.Rename(next, self); err != nil {
-		_ = os.Rename(old, self)
+	if err := os.Rename(next, target); err != nil {
+		_ = os.Rename(old, target)
 		return "", err
 	}
-	return self, nil
+	return target, nil
+}
+
+// FetchVerified скачивает файл выпуска и проверяет его подпись общим ключом.
+// Для .deb файл не подменяет программу, а отдаётся установщику.
+func FetchVerified(
+	ctx context.Context,
+	client *http.Client,
+	key, fileURL, sigURL string,
+	progress func(done, total int64),
+) ([]byte, error) {
+	if key == "" || fileURL == "" || sigURL == "" {
+		return nil, ErrBadSignature
+	}
+	file, err := fetch(ctx, client, fileURL, 200<<20, progress)
+	if err != nil {
+		return nil, err
+	}
+	sig, err := fetch(ctx, client, sigURL, 4<<10, nil)
+	if err != nil {
+		return nil, err
+	}
+	if err := VerifySignature(key, file, sig); err != nil {
+		return nil, err
+	}
+	return file, nil
 }
 
 // CleanOldSelf убирает прежний exe после обновления (при запуске).
 func CleanOldSelf() {
 	if self, err := os.Executable(); err == nil {
-		_ = os.Remove(filepath.Clean(self + ".old"))
+		CleanOldSelfAt(self)
 	}
+}
+
+// CleanOldSelfAt убирает прежний файл по пути, который запускает человек:
+// у Linux-окна это AppImage, а не временный бинарник внутри образа.
+func CleanOldSelfAt(self string) {
+	if self == "" {
+		return
+	}
+	_ = os.Remove(filepath.Clean(self + ".old"))
 }
 
 func fetch(
