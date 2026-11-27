@@ -45,10 +45,13 @@
 	<body data-sveltekit-preload-data="hover">
 		<script>
 			// Окно Настольного встраивает клиент в iframe и до страницы ставит
-			// мост window.__wyndDesktop в <head>. В окне поля по бокам колонки —
+			// мост оболочки в <head>. В окне поля по бокам колонки —
 			// бумага, как и весь лист (C143): класс снимает полосы-подложку,
 			// которую клиент рисует на широком экране для браузера и PWA.
-			if (window.__wyndDesktop) document.documentElement.classList.add('desktop-window');
+			// Имя моста собрано из частей: сборки окна до 0.5.7 искали в HTML
+			// голое имя, чтобы решить, вставлять ли мост, и принимали эту
+			// проверку за готовый мост.
+			if (window['__wynd' + 'Desktop']) document.documentElement.classList.add('desktop-window');
 		</script>
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
