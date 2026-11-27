@@ -20,6 +20,13 @@
 	export type IconName =
 		| 'search'
 		| 'gear'
+		| 'user'
+		| 'user-plus'
+		| 'link'
+		| 'archive'
+		| 'split'
+		| 'users'
+		| 'server'
 		| 'back'
 		| 'plus'
 		| 'send'
