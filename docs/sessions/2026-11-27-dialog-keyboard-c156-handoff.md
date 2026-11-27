@@ -47,8 +47,8 @@
   Настольного `body` — бумага (C155); `chrome-guard` и `viewport-guard` в
   `check:ui`.
 - **Измерение вместо поиска на глаз.** `python docs/visual/flash-report.py
-  <запись>` — единый разбор записи: белые кадры, пустые кадры, рывки, кадры-
-  улики и `report.md`. Правило записано в
+  <запись>` (`760cf483`) — единый разбор записи: белые кадры, пустые кадры,
+  рывки, кадры-улики и `report.md`. Правило записано в
   `docs/testing/ui-review-protocol.md`: любое «мигает» начинается с отчёта.
   Обе записи владельца разобраны им: v1 — три рывка (4,09; 7,88; 11,97 с),
   v2 — шесть (три цикла диалога).
@@ -96,10 +96,15 @@
 
 ## Состояние дерева
 
-HEAD — `33db664c` (плюс эта передача); три коммита C156 — `4e7377ef` (правка),
-`5fe80bcf` (сторож), `33db664c` (документы). Незакоммичено — только чужие
-правки соседней сессии (`cmd/wynd-desktop/frontend/src/App.svelte`, `api.ts`,
-`cmd/wynd-desktop/main.go`, `internal/desktop/embedded.go`, `proxy.go`,
-`store.go`, `web/src/lib/desktop/bridge.ts`, `web/src/routes/settings/app/+page.svelte`)
-и `.zcode/`. Мои черновики съёмки — `dev/tmp-kb-dialog/` (в `.gitignore`), dev-сервер
-5183 остановлен, лишний маршрут `web/src/routes/dev/tmp-kb-dialog` удалён.
+HEAD — `760cf483`; всё своё отправлено в Gitea (`git rev-list --count
+origin/main..main` = 0). Коммиты сессии: `4e7377ef` (правка), `5fe80bcf`
+(сторож), `33db664c` (документы), `1700218c` (передача), `760cf483` (разбор
+записей — `flash-report.py`). Незакоммичено — правки соседней сессии по
+Настольному (`cmd/wynd-desktop/*`, `internal/desktop/*`, `web/src/lib/desktop/*`,
+`web/src/routes/settings/app/+page.svelte`, их же `docs/ROADMAP.md`,
+`docs/plans/50`, `docs/plans/66`, `docs/reference/desktop-reference.md`,
+`docs/testing/pending-device-checks.md`, `docs/CHANGELOG.md`) и `.zcode/` —
+не трогать. Мои черновики съёмки — `dev/tmp-kb-dialog/` (в `.gitignore`),
+отчёты разбора — `dev/flash-report/v1|v2` (тоже вне git), dev-сервер 5183
+остановлен, временный маршрут `web/src/routes/dev/tmp-kb-dialog` удалён.
+Чужой стенд 7676 + vite 5175 не гасил.
