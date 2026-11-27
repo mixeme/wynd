@@ -6,7 +6,7 @@
 метки.
 
 - Основа: вкладка «Карта» круга — кадр
-  [5.6](../visual/screens.html#e5-6), реализация —
+  [5.6](../../visual/screens.html#e5-6), реализация —
   `web/src/routes/circles/[id]/map/+page.svelte` и
   `web/src/lib/styles/map.css`; метка и стили введены коммитом `d9fd0221`
   (версия 0.1.0, 25.09).
