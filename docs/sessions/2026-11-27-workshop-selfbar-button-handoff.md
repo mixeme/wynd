@@ -76,15 +76,22 @@
 
 ## Состояние дерева
 
-HEAD — `e87d5be5` (C154 параллельной сессии) поверх `05785b37` (приёмка хода
-скачивания); эта передача — следующий коммит; main в Gitea. У параллельной
-сессии незакоммичены `docs/plans/46-open-questions-and-debt.plan.md`,
-`docs/testing/pending-device-checks.md`, `internal/store/*`, `internal/search/*`,
-`web/src/lib/journal/search*`, `web/src/lib/navigation/up*`,
-`web/src/lib/components/data/SearchResultRow.svelte`, `web/src/lib/layouts/SearchPane.svelte`,
-`web/src/routes/circles/[id]/search/+page.svelte`, `street-back-2026-11-27.md` —
-не трогать. Стенды/процессы: vite 5175 (галерея Мастерской), vite 5179 (стенд
-окна Настольного), показ кадров `http://127.0.0.1:8917/` (протокол C151) и
+HEAD — `7cbef1a0` (эта передача) поверх `e87d5be5` (C154 параллельной сессии);
+main в Gitea. **Грабли этого коммита:** в него попали файлы, подготовленные
+параллельной сессией (`street-back-2026-11-27.md`, её передача, правки плана 46
+и реестра) — они были в индексе (`git add`) до моего `git commit`. Правильно:
+`git commit -- <свой путь>` (или `git commit --only`), а не просто `git commit`
+после чужого `git add`; содержимое не потеряно, но сообщение коммита о них не
+говорит.
+
+У параллельной сессии остаются незакоммиченными `internal/store/*`,
+`internal/search/*`, `web/src/lib/journal/search*`,
+`web/src/lib/navigation/up*`,
+`web/src/lib/components/data/SearchResultRow.svelte`,
+`web/src/lib/layouts/SearchPane.svelte`,
+`web/src/routes/circles/[id]/search/+page.svelte` — не трогать.
+Стенды/процессы: vite 5175 (галерея Мастерской), vite 5179 (стенд окна
+Настольного), показ кадров `http://127.0.0.1:8917/` (протокол C151) и
 `http://127.0.0.1:8918/` (`dev/frames`, диагностика и кадр хода) — запущены этой
 сессией, гасить можно. Окон `wynd-desktop` не оставлено; диагностические exe —
 в `%TEMP%` и `dev/wynd-desktop-progress.exe` (вне репозитория).
