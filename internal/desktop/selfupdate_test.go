@@ -1,6 +1,8 @@
 package desktop
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -46,5 +48,34 @@ func TestNotifyUpdateText(t *testing.T) {
 	}
 	if _, _, ok := NotifyUpdateText(Update{}, ""); ok {
 		t.Error("уведомление без обновления")
+	}
+}
+
+// Подмена exe самообновлением видна по прежнему образу рядом: по этому
+// признаку окно ждёт выхода прежнего процесса, прежде чем брать замок одного
+// экземпляра (живая проверка 27.11: новый запуск уходил в прежний и полоса
+// оставалась на «Обновляем…»).
+func TestFreshlyReplaced(t *testing.T) {
+	exe := filepath.Join(t.TempDir(), "wynd-desktop.exe")
+	if err := os.WriteFile(exe, []byte("new"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if FreshlyReplaced(exe) {
+		t.Error("без .old exe не подменён")
+	}
+	if FreshlyReplaced("") {
+		t.Error("пустой путь считается подменой")
+	}
+	if err := os.WriteFile(exe+".old", []byte("old"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if !FreshlyReplaced(exe) {
+		t.Error("с .old exe подменён, а признак не найден")
+	}
+	if err := os.Remove(exe + ".old"); err != nil {
+		t.Fatal(err)
+	}
+	if FreshlyReplaced(exe) {
+		t.Error("после уборки .old exe снова не подменён")
 	}
 }

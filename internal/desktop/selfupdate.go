@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -156,6 +157,19 @@ func ApplyUpdate(ctx context.Context, client *http.Client, up Update) (string, e
 
 // CleanOldSelf убирает прежний exe после обновления (при запуске).
 func CleanOldSelf() { selfupdate.CleanOldSelf() }
+
+// FreshlyReplaced — рядом с exe лежит прежний образ (.old): exe только что
+// подменён самообновлением, и прежний процесс может ещё держать замок одного
+// экземпляра. Окно ждёт его выхода до application.New: иначе новый запуск
+// уходит в прежний и завершается, а полоса остаётся на «Обновляем…» (живая
+// проверка 27.11, 0.5.2 → 0.5.5).
+func FreshlyReplaced(exe string) bool {
+	if exe == "" {
+		return false
+	}
+	_, err := os.Stat(exe + ".old")
+	return err == nil
+}
 
 // NotifyUpdateText — текст уведомления о новой версии окна (план 66, «вышла
 // версия»); окно спрятано, и полосу человек не видит. ok=false — уведомление
