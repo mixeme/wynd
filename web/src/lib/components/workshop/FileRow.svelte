@@ -47,6 +47,7 @@
 	}
 	.ins-file :global(.ins-x) {
 		flex: none;
+		align-self: center;
 	}
 	.ins-err {
 		color: var(--bad);
