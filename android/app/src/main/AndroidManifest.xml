@@ -5,6 +5,10 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" />
+    <!-- Карта открывается там, где сейчас телефон (C159): обе точности,
+         на Android 12+ система сама предлагает приблизительное место. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <!-- На Android 10–11 MediaStore-эквивалент SAF URI требует чтения медиа.
          На 5–6 нет install-time доступа, на 12+ используется выбранный URI. -->
     <uses-permission-sdk-23 android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="30" />
@@ -14,6 +18,10 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <!-- Без GPS и без доступа к месту приложение работает: карта показывает
+         все точки. Не отсекать такие устройства в магазинах. -->
+    <uses-feature android:name="android.hardware.location" android:required="false" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <queries>
         <intent>

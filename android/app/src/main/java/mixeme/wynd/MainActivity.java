@@ -546,6 +546,7 @@ public final class MainActivity extends Activity {
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == MediaChromeClient.PERMISSION_REQUEST && media != null) media.permissionsReturned();
+        if (requestCode == MediaChromeClient.LOCATION_REQUEST && media != null) media.locationReturned();
         if (requestCode == FileExports.NOTIFICATION_REQUEST && exports != null) exports.notificationsReturned();
         if (requestCode == PushBridge.PERMISSION_REQUEST && push != null) push.permissionResult();
         if (requestCode == MediaChromeClient.PHOTO_LOCATION_REQUEST && media != null) media.photoPermissionsReturned();

@@ -1,6 +1,8 @@
 package mixeme.wynd;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.Manifest;
 import android.content.ActivityNotFoundException;
 import android.content.ClipData;
 import android.content.Intent;
@@ -18,6 +20,7 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
+import android.webkit.GeolocationPermissions;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -35,6 +38,7 @@ final class MediaChromeClient extends WebChromeClient {
     static final int FILE_REQUEST = 4101;
     static final int PERMISSION_REQUEST = 4102;
     static final int PHOTO_LOCATION_REQUEST = 4103;
+    static final int LOCATION_REQUEST = 4104;
     private static final int MAX_SELECTED_FILES = 256;
     // MediaStore added a public constant in version 37.1, also available via T Extensions 23.
     private static final String PICK_REQUEST_LOCATION = "android.provider.extra.REQUEST_LOCATION_METADATA_ACCESS";
@@ -59,6 +63,11 @@ final class MediaChromeClient extends WebChromeClient {
     private boolean pickerHandlesLocation;
     private FrameLayout fullscreen;
     private WebChromeClient.CustomViewCallback fullscreenCallback;
+    private GeolocationPermissions.Callback location;
+    private String locationOrigin;
+    private AlertDialog locationDialog;
+    private boolean askingLocation;
+    private boolean locationDeclined;
 
     MediaChromeClient(Activity activity, WebView view, ServerOrigin server) {
         this.activity = activity;
@@ -75,7 +84,8 @@ final class MediaChromeClient extends WebChromeClient {
     }
 
     void originalPhotos(OriginalPhotos originals) { this.originals = originals; }
-    boolean busy() { return media != null || selection != null || fileInFlight || askingPermissions || askingPhotoLocation; }
+    boolean busy() { return media != null || selection != null || fileInFlight || askingPermissions || askingPhotoLocation
+            || askingLocation || location != null; }
 
     @Override public void onPermissionRequest(PermissionRequest request) {
         String[] required = MediaPolicy.permissions(request.getResources());
@@ -122,6 +132,99 @@ final class MediaChromeClient extends WebChromeClient {
 
     @Override public void onPermissionRequestCanceled(PermissionRequest request) {
         if (media == request) media = null;
+    }
+
+    // Геолокация карты (C159): системный доступ к месту и объяснение до
+    // запроса. Без разрешения карта, как и раньше, показывает все точки.
+    @Override public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
+        if (location != null || !resumed || !trusted() || !server.contains(origin)) {
+            callback.invoke(origin, false, false);
+            return;
+        }
+        // «Не сейчас» действует до конца этого запуска: следующий запуск
+        // приложения снова объяснит, зачем нужно место.
+        if (locationDeclined) {
+            callback.invoke(origin, false, false);
+            return;
+        }
+        // Android 12+ сам предложит приблизительное место: просим обе точности.
+        if (has(Manifest.permission.ACCESS_FINE_LOCATION) || has(Manifest.permission.ACCESS_COARSE_LOCATION)) {
+            callback.invoke(origin, true, true);
+            return;
+        }
+        location = callback;
+        locationOrigin = origin;
+        if (!shouldExplainLocation()) { denyLocation(); return; }
+        AlertDialog dialog = new AlertDialog.Builder(activity)
+                .setTitle("Место на карте")
+                .setMessage("Карта откроется там, где вы сейчас. Доступ к месту нужен только для этого; приложение его не сохраняет.")
+                .setPositiveButton("Разрешить", (d, w) -> requestLocation())
+                .setNegativeButton("Не сейчас", (d, w) -> {
+                    locationDeclined = true;
+                    denyLocation();
+                })
+                .create();
+        locationDialog = dialog;
+        dialog.setOnDismissListener(d -> locationDialog = null);
+        dialog.show();
+    }
+
+    @Override public void onGeolocationPermissionsHidePrompt() {
+        clearLocation();
+        askingLocation = false;
+    }
+
+    private boolean shouldExplainLocation() {
+        if (!activity.getSharedPreferences("wynd", Activity.MODE_PRIVATE).getBoolean("location_asked", false)) return true;
+        if (Build.VERSION.SDK_INT < 23) return false;
+        return activity.shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION)
+                || activity.shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_COARSE_LOCATION);
+    }
+
+    private void requestLocation() {
+        if (location == null) return;
+        activity.getSharedPreferences("wynd", Activity.MODE_PRIVATE).edit()
+                .putBoolean("location_asked", true).apply();
+        if (Build.VERSION.SDK_INT < 23) { denyLocation(); return; }
+        askingLocation = true;
+        try {
+            activity.requestPermissions(new String[] {Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION}, LOCATION_REQUEST);
+        } catch (RuntimeException e) {
+            askingLocation = false;
+            denyLocation();
+        }
+    }
+
+    void locationReturned() {
+        if (!askingLocation) return;
+        askingLocation = false;
+        if (location == null) return;
+        if (has(Manifest.permission.ACCESS_FINE_LOCATION) || has(Manifest.permission.ACCESS_COARSE_LOCATION)) allowLocation();
+        else denyLocation();
+    }
+
+    private void allowLocation() {
+        GeolocationPermissions.Callback callback = location;
+        String origin = locationOrigin;
+        clearLocation();
+        if (callback != null) callback.invoke(origin, true, true);
+    }
+
+    private void denyLocation() {
+        GeolocationPermissions.Callback callback = location;
+        String origin = locationOrigin;
+        clearLocation();
+        if (callback != null) callback.invoke(origin, false, false);
+    }
+
+    private void clearLocation() {
+        location = null;
+        locationOrigin = null;
+        if (locationDialog != null) {
+            locationDialog.dismiss();
+            locationDialog = null;
+        }
     }
 
     // Полноэкранное видео: без этих двух методов WebView сообщает странице,
@@ -363,6 +466,8 @@ final class MediaChromeClient extends WebChromeClient {
 
     void cancel() {
         if (fullscreenCallback != null) onHideCustomView();
+        askingLocation = false;
+        if (location != null) denyLocation();
         if (media != null) { PermissionRequest request = media; media = null; request.deny(); }
         finishSelection(null);
     }
