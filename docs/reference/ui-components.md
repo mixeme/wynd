@@ -80,7 +80,7 @@
 
 `FormLayout`: при `circleTitle` — шапка вступления **#e1-4** (`div.cbar`, имя по центру, без `BackBar`); список участников на join (`?members=1`) — `color` + `subtitle` (цветная `.cbar` с назад), не серый `BackBar`. Ветки: `compose`, `circleTitle`, snippet `bar`, `color && subtitle`, иначе `BackBar`.
 
-Сиблинги `.dlg` / `.sheet` / `.scrim` вне `.ph.app` — колонка `--app-max-width` (не `inset:auto` на scrim: сбивает `left:50%`). Лайтбокс `fixed` — весь вьюпорт. `VolumeChart` — шаг 26px или сжатый, пачка по центру; отсечка квоты из `volumeChart.ts`.
+Сиблинги `.dlg` / `.sheet` / `.scrim` вне `.ph.app` — колонка `--app-max-width` (не `inset:auto` на scrim: сбивает `left:50%`). Лайтбокс `fixed` — весь вьюпорт. `body .dlg` держит верх и высоту по `--app-h` (C156): клавиатура не прячет «Отмена»/«Удалить», в коротком окне диалог прокручивается внутри; сторож — `dialog-guard` в `check:ui`. `VolumeChart` — шаг 26px или сжатый, пачка по центру; отсечка квоты из `volumeChart.ts`.
 
 ---
 
