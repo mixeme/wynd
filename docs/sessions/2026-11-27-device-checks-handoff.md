@@ -95,10 +95,17 @@
 
 ## Состояние дерева
 
-HEAD — `154c47dd` (проверки и реестр). Незакоммичено чужое: правка
-`docs/plans/76-wide-sections.plan.md` и `docs/testing/wide-sections-2026-11-27/`
-(план 76, другая сессия); untracked `.zcode/`. Стенд 0.55.0 (`:7684`) погашен,
-`adb reverse` снят, `stayon` возвращён в false. На устройствах остались:
-отладочная 0.1.6-debug (планшет — user 10, OPPO) и подписанная 0.1.6 (оба),
-данные стенда — `dev/device2611-data` (gitignored), APK выпуска —
-`dev/apk016/`. Вкладки Wynd в Vivaldi устройств оставлены.
+Проверки и реестр — `154c47dd`, добавка про wynd2 (подписанная 0.1.6 на
+https, лимит кодов в БД) — `8ffe2f20`, обе в origin/main Gitea. На момент
+закрытия сессии другая сессия готовила выпуск: локально изменены `VERSION`,
+`android/version.properties`, `android/whatsnew.md`, `cmd/wynd-desktop/*`,
+`cmd/wynd-workshop/*`, `internal/version`, `internal/desktop/version.go`,
+`web/src/lib/news/notes.ts`, `docs/CHANGELOG.md`; её коммит `be47dc66`
+(`web: форматирование SettingsRow`) ещё не в origin — свои пути не мешать,
+push после неё. Untracked `.zcode/`. Стенд 0.55.0 (`:7684`) погашен,
+`adb reverse` снят, `stayon` возвращён в false; wynd2 перезапускался
+(`docker compose restart wynd`) ради сброса лимита в памяти — не помогло,
+лимит в БД. На устройствах: отладочная 0.1.6-debug (планшет — user 10,
+OPPO) и подписанная 0.1.6 (оба, OPPO вошёл на wynd2), данные стенда —
+`dev/device2611-data` (gitignored), APK выпуска — `dev/apk016/`. Вкладки
+Wynd в Vivaldi устройств оставлены.
