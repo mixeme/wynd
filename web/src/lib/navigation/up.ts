@@ -266,9 +266,53 @@ let guardIndex: number | undefined;
 export function armEntryGuard(url: URL): void {
 	const i = historyIndex();
 	if (i === undefined || entries.has(i - 1) || hasPreviousDocument(i)) return;
+	// У экрана входа копия мешала бы: вошедшего он сразу уводит на улицу с
+	// заменой записи (C157), а улица ставит свою копию. Иначе замена легла бы
+	// на копию входа, а сам вход остался бы позади улицы.
+	if (barePath(url) === '/') return;
 	pushState('', {});
 	guardIndex = historyIndex();
 	recordEntry(url);
+}
+
+/**
+ * Позади улицы нет настоящего экрана — шаг назад с неё остаётся на месте.
+ * Тот же разбор, что в navigateBack: позади только вход (`/`), запись-копия
+ * улицы с тем же адресом или ничего; внешний документ — настоящий шаг.
+ */
+function streetStays(url: URL): boolean {
+	const i = historyIndex();
+	if (i === undefined || hasPreviousDocument(i)) return false;
+	const here = key(url);
+	const prev = previousEntry();
+	if (!prev || prev === here) return true;
+	return barePath(new URL(prev, location.origin)) === '/';
+}
+
+/**
+ * Улица — дом вошедшего приложения: держим перед её записью копию того же
+ * адреса (C157). «Назад» приходит на копию и обработчик ставит следующую:
+ * шаг остаётся внутри документа, SvelteKit не подменяет экран и ничего не
+ * загружает. Без копии шаг уходил на запись входа `/`, и там, где отмена шага
+ * не срабатывает (оболочка Firefox на Android), страница перезагружалась —
+ * белый экран. Копия ставится, только когда позади улицы нет настоящего
+ * экрана: назад в настройки, поиск, шлюз «Доступ закрыт» или круг идёт как
+ * раньше.
+ */
+export function armStreetGuard(url: URL): boolean {
+	if (barePath(url) !== HOME || url.search) return false;
+	if (!streetStays(url)) return false;
+	const i = historyIndex();
+	if (i === undefined) return false;
+	pushState('', {});
+	guardIndex = historyIndex();
+	recordEntry(url);
+	return true;
+}
+
+/** Копия записи, чтобы системная «Назад» не увела с текущего экрана. */
+export function armBackGuard(url: URL): void {
+	if (!armStreetGuard(url)) armEntryGuard(url);
 }
 
 if (typeof window !== 'undefined') {
@@ -277,14 +321,20 @@ if (typeof window !== 'undefined') {
 		guardIndex = undefined;
 		const here = location.pathname + location.search;
 		const index = historyIndex();
+		const url = new URL(location.href);
 		// Шаг назад упёрся в запись-копию: позади ничего нет — идём к родителю,
-		// а не закрываем приложение.
+		// а не закрываем приложение. На улице с пустым хвостом (C157) копию
+		// ставим сразу: следующий «Назад» не должен успеть дойти до входа.
+		const stays = barePath(url) === HOME && streetStays(url);
 		setTimeout(() => void navigateBack());
 		// Экран остался на месте — позади снова пусто, нужна новая копия.
-		setTimeout(() => {
-			if (location.pathname + location.search === here && historyIndex() === index) {
-				armEntryGuard(new URL(location.href));
-			}
-		}, 400);
+		setTimeout(
+			() => {
+				if (location.pathname + location.search === here && historyIndex() === index) {
+					armBackGuard(new URL(location.href));
+				}
+			},
+			stays ? 0 : 400
+		);
 	});
 }

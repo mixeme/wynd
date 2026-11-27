@@ -91,7 +91,10 @@
 		await initSession();
 		const sessions = await loadSessions();
 		if (sessions.length) {
-			goto('/circles');
+			// Вход вошедшему не нужен: заменяем его запись улицей (C157), чтобы
+			// позади неё не оставалось экрана, уводящего обратно, — «Назад» с
+			// улицы не должен перезагружать страницу.
+			goto('/circles', { replaceState: true });
 			return;
 		}
 		booting = false;

@@ -10,7 +10,9 @@ vi.mock('$app/navigation', () => ({
 import { goto, pushState } from '$app/navigation';
 import { replaceSearchUrl } from '$lib/journal/search';
 import {
+	armBackGuard,
 	armEntryGuard,
+	armStreetGuard,
 	blockedHomeBack,
 	dismissOverlay,
 	interceptHistoryBack,
@@ -35,6 +37,7 @@ const push = (path: string, record = true): void => {
 beforeEach(() => {
 	sessionStorage.clear();
 	vi.mocked(goto).mockClear();
+	vi.mocked(pushState).mockClear();
 	idx += 20;
 	// ownBack снимается настоящим popstate; history.back в тестах замокан,
 	// поэтому после шага прошлого теста флаг остался бы висеть.
@@ -357,3 +360,66 @@ describe('blockedHomeBack — шаг с улочки к входу', () => {
 		expect(blockedHomeBack(new URL('https://w/circles'), '/circles?closed=x')).toBe(false);
 	});
 });
+
+// C157: отмена шага истории (C154) не срабатывала в оболочке Firefox на
+// Android: «Назад» с улочки перезагружал страницу — белый экран. Вместо
+// отмены перед записью улочки стоит копия того же адреса: шаг приходит на неё
+// внутри документа, и экран не подменяется.
+describe('C157 — запись-копия улочки', () => {
+	it('за улочкой только вход — ставим копию', () => {
+		push('/');
+		push('/circles');
+		expect(armStreetGuard(new URL(location.href))).toBe(true);
+		expect(pushState).toHaveBeenCalledTimes(1);
+	});
+
+	it('позади пусто (улица — точка входа) — копия', () => {
+		window.history.pushState({ 'sveltekit:history': ++idx }, '', '/circles');
+		recordEntry(new URL('/circles', location.origin));
+		expect(armStreetGuard(new URL(location.href))).toBe(true);
+		expect(pushState).toHaveBeenCalledTimes(1);
+	});
+
+	it('позади копия улочки — ставим новую', () => {
+		push('/circles');
+		push('/circles');
+		expect(armStreetGuard(new URL(location.href))).toBe(true);
+		expect(pushState).toHaveBeenCalledTimes(1);
+	});
+
+	it('позади настоящий экран — шаг идёт, копии нет', () => {
+		push('/settings');
+		push('/circles');
+		expect(armStreetGuard(new URL(location.href))).toBe(false);
+		expect(pushState).not.toHaveBeenCalled();
+		expect(backTo()).toBe(true);
+	});
+
+	it('шлюз «Доступ закрыт» — не улица, копии нет', () => {
+		push('/');
+		window.history.pushState({ 'sveltekit:history': ++idx }, '', '/circles?closed=x');
+		recordEntry(new URL(location.href));
+		expect(armStreetGuard(new URL(location.href))).toBe(false);
+		expect(pushState).not.toHaveBeenCalled();
+	});
+
+	it('вход и другие экраны копию улицы не получают', () => {
+		push('/');
+		expect(armBackGuard(new URL(location.href))).toBeUndefined();
+		expect(pushState).not.toHaveBeenCalled();
+		push('/circles/c1');
+		expect(armStreetGuard(new URL(location.href))).toBe(false);
+		expect(pushState).not.toHaveBeenCalled();
+	});
+});
+
+/** Настоящий прошлый экран позади: navigateBack сделает шаг по истории. */
+function backTo(): boolean {
+	const back = vi.spyOn(history, 'back').mockImplementation(() => {});
+	try {
+		void navigateBack();
+		return back.mock.calls.length === 1;
+	} finally {
+		back.mockRestore();
+	}
+}

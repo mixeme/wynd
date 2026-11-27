@@ -16,7 +16,7 @@
 	import { statusColorOverride } from '$lib/session/statusColor.svelte';
 	import { afterNavigate, beforeNavigate, goto, onNavigate } from '$app/navigation';
 	import {
-		armEntryGuard,
+		armBackGuard,
 		dismissOverlay,
 		interceptHistoryBack,
 		recordEntry
@@ -91,7 +91,7 @@
 		if (!nav.to) return;
 		recordEntry(nav.to.url, nav.type === 'enter' && nav.to.route.id === '/invite/[token]');
 		const url = nav.to.url;
-		setTimeout(() => armEntryGuard(url));
+		setTimeout(() => armBackGuard(url));
 	});
 
 	// План 76: поиск остаётся слева, только пока открыт круг из поиска.
