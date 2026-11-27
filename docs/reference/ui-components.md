@@ -88,7 +88,7 @@
 
 ### `chrome/`
 
-PhoneFrame, StatusBar, AppBar, CircleBar, BackBar, AdminBar, **ComposeHeader**, **ComposeToolbar**, **ConnectionStrip**, **SpaceNote**
+PhoneFrame, StatusBar, AppBar, CircleBar, BackBar, AdminBar, **ComposeHeader**, **ComposeToolbar**, **ConnectionStrip**, **SpaceNote**, **UpdateBar**
 
 `ComposeHeader` — шапка редактора записи и экрана кадра (**#e4-2**, **#e4-3**, **#e6-13**): «Отмена» (или стрелка при `cancelBack`), название по центру, действие справа. Одна на оба экрана: `title`, `publishLabel`, `canPublish`, `publishing`, `compact` (по умолчанию — да, 48 px; без него — нижний запас 12 px) и `oncancel`/`onpublish`. Отдельная копия шапки на экране кадра разошлась с редактором по высоте — держать одну.
 
@@ -116,6 +116,8 @@ PhoneFrame, StatusBar, AppBar, CircleBar, BackBar, AdminBar, **ComposeHeader**, 
 `CirclePlace` — «Место» круга (**#e6-15**, **#e6-18**): подпись, шкала и «776 МБ из 1,0 ГБ» (без квоты — «· ограничение не задано», круг полон — «· писать в круг больше нельзя»); `usedBytes`, `quotaBytes`. Одно и то же на «Архиве и очистке» и на «Попросить место».
 
 `SpaceNote` — полоса «места нет» наверху экрана (**#e4-25**, C42): `notice` из `spaceNotice()` (`$lib/circles/space`) — две строки, у владельца вторая — ссылка на «Архив и очистку». Ставит экран правки записи в круге без места; внизу ленты та же полоса — `CircleLayout notice` (**#e3-10**).
+
+`UpdateBar` — полоса обновления оболочки (окно Настольного — план 63; Мастерская — A25, кадры 10г–10е): `head` (готовая строка «Вышла версия 0.5.5» / «Вышла Мастерская 0.5.0»), `bad` и `error` (отказ подписи и текст отказа), `busy`, `done`/`total` (ход скачивания — `Meter` под заголовком, на кнопке «Скачиваем 46 %…»), `attestation` («Что нового»), `blocked` и `hint` (занятость других операций), `onapply`/`onhide`/`onreleases`. Место полосы, фон и мерки кнопки задаёт оболочка классом (`desk-update-inner` у окна, `selfbar` у Мастерской). Пришла на смену `workshop/SelfBar` (кадр 10а) — одна на оба окна.
 
 ### `forms/`
 
@@ -229,7 +231,7 @@ SectionLabel, Avatar, EventDivider, **FeedDayPromptCard**, CircleRow, PostCard, 
 
 `FeedDayPromptCard` — служебная карточка в ленте (`div.post.day-prompt`): `title`, snippet текста, `primaryLabel` / `secondaryLabel`, `onprimary` / `onsecondary` (`Button` в `.rowin`). Стили `.day-prompt` и раскладка ленты (`.feed`, `.ptr`, `.empty`, `.feed-end`) — в `ui.css`.
 
-`SearchResultRow` — строка найденного (**#e2-19**): `author`, `time`, превью — либо snippet `preview`, либо по `kind` (`post` / `comment` — «· комментарий» / `day` — «день») из `snippet` с найденным словом `query` в ёлочках (`quoteMatch` из `$lib/journal/search`); миниатюра `thumb` / `thumbUrl` / `thumbVariant`.
+`SearchResultRow` — строка найденного (**#e2-19**): `author`, `time`, превью — либо snippet `preview`, либо по `kind` (`post` / `comment` — «· комментарий» / `day` — «день») из `snippet` с найденными словами `query` жирным (`highlightParts` из `$lib/journal/search`); миниатюра `thumb` / `thumbUrl` / `thumbVariant`.
 
 `MapBadge` / `MapPostSheet` — вкладка «Карта» круга: счётчик пинов (`.map-badge`) и нижняя плашка выбранной записи (`button.map-sheet`, thumb + автор + время + текст). Стили в [`map.css`](../../web/src/lib/styles/map.css); сброс кнопки — `button.map-sheet` в `ui.css`.
 
@@ -305,7 +307,7 @@ AdminNav (`ADMIN_NAV`: Проверка, Общие, Доступ, Люди, Х�
 
 Окно Мастерской (`cmd/wynd-workshop/frontend`, кадры [workshop.html](../visual/workshop.html); план 54). Клиенту не нужны. Общие правила раздела — `$lib/styles/workshop.css` (оттенки текста `.ins-dim` `.ins-strong` `.ins-mono` `.ins-note`, значок строки `.ins-mark`, блок команд `.ins-raw`, «✕» `.ins-x`, галочки `.ins-check`); его подключает только окно Мастерской. Цвета `--c` `--ok` `--warn` `--bad` задаёт контейнер окна `.ins`. Остальные стили — внутри компонентов. Живьём раздел виден не в `/dev/ui`, а на стенде окна `cmd/wynd-workshop/frontend/gallery.html` (`?scene=<имя>` — одна сцена; `?run` — снимок всех сцен и сверка с эталоном; `?run&save` — запомнить эталон).
 
-`TitleBar` — своя полоса заголовка окна: `title`, `maximised`, `onminimise` / `ontoggle` / `onclose`. `WorkshopTabs` — вкладки под ней: `tabs` (`{ id, label }[]`), `bind:value`. `SelfBar` — «Вышла Мастерская …» (кадр 10а): `version`, `onupdate`, `onhide`. `StepNav` — колонка шагов слева: `steps` (подписи), `index`, `bad`.
+`TitleBar` — своя полоса заголовка окна: `title`, `maximised`, `onminimise` / `ontoggle` / `onclose`. `WorkshopTabs` — вкладки под ней: `tabs` (`{ id, label }[]`), `bind:value`. `StepNav` — колонка шагов слева: `steps` (подписи), `index`, `bad`.
 
 Для утверждённой компоновки «список и пульт» тот же `StepNav` принимает `servers` (`id`, `name`, `host`, `status`, `busy`), `selected`, `onselect`, `onadd`. `Notice profile` (`name`, `host`, `user`, `domain`, `status`, `state`) показывает постоянную шапку выбранного сервера; children — подключение и автоподключение. `Checkbox native` использует браузерный контрол принятого макета; `onchange(checked)` получает новое значение непосредственно из события. Обычные варианты этих компонентов сохраняются. `Select` (`value`, `options` из `{ value, label }`, `disabled`, `label`) — выбор способа входа меню Мастерской: кнопка с `aria-haspopup="listbox"`, варианты с `role="option"`, закрытие по Escape и щелчку мимо; системный `select` в форме не используется. Основа расширений: `workshop-servers.fragment.html`, кадры 1/7а/7в, `b827aff8`; приёмка внешнего вида реализации по настоящему снимку ещё впереди.
 

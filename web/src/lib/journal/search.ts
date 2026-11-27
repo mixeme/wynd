@@ -144,11 +144,46 @@ export function searchHitHref(
 	return `${post}?found=1`;
 }
 
-export function quoteMatch(text: string, term: string): string {
-	if (!term) return text;
-	const idx = text.toLowerCase().indexOf(term.toLowerCase());
-	if (idx < 0) return text;
-	return `${text.slice(0, idx)}«${text.slice(idx, idx + term.length)}»${text.slice(idx + term.length)}`;
+/** Кусок текста результата: найденное слово — жирным (замечание владельца 27.11). */
+export interface HighlightPart {
+	text: string;
+	hit: boolean;
+}
+
+/**
+ * Найденное в тексте — жирным: слова запроса по отдельности (сервер ищет
+ * каждое слово через AND), без учёта регистра, по первому вхождению — как
+ * раньше первое найденное бралось в ёлочки.
+ */
+export function highlightParts(text: string, query: string): HighlightPart[] {
+	const terms = [...new Set(query.split(/\s+/).filter(Boolean))];
+	if (!text || !terms.length) return [{ text, hit: false }];
+	const ranges: Array<[number, number]> = [];
+	for (const term of terms) {
+		const m = new RegExp(escapeRegExp(term), 'i').exec(text);
+		if (m) ranges.push([m.index, m.index + m[0].length]);
+	}
+	if (!ranges.length) return [{ text, hit: false }];
+	ranges.sort((a, b) => a[0] - b[0]);
+	const parts: HighlightPart[] = [];
+	let from = 0;
+	for (let i = 0; i < ranges.length; i++) {
+		const start = ranges[i][0];
+		let stop = ranges[i][1];
+		while (i + 1 < ranges.length && ranges[i + 1][0] <= stop) {
+			i++;
+			stop = Math.max(stop, ranges[i][1]);
+		}
+		if (start > from) parts.push({ text: text.slice(from, start), hit: false });
+		parts.push({ text: text.slice(start, stop), hit: true });
+		from = stop;
+	}
+	if (from < text.length) parts.push({ text: text.slice(from), hit: false });
+	return parts;
+}
+
+function escapeRegExp(s: string): string {
+	return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /** Stable placeholder tint when a hit has media but no cached blob URL yet. */

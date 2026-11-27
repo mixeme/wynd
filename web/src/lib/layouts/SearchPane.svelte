@@ -27,7 +27,6 @@
 		replaceSearchUrl,
 		searchChipsFromWindow,
 		searchThumbVariant,
-		quoteMatch,
 		searchHitHref,
 		searchHref,
 		localDayStart,
@@ -306,11 +305,6 @@
 		);
 	}
 
-	function rowAuthor(hit: Hit) {
-		if (hit.kind === 'day') return quoteMatch(hit.title ?? hit.snippet, debounced);
-		return hit.author;
-	}
-
 	function onTogglePeriod(day: boolean) {
 		if (periodActive && byDay === day) {
 			periodActive = false;
@@ -366,7 +360,7 @@
 		<SearchGroupHeader color={group.color} name={group.name} count={group.hits.length} />
 		{#each group.hits as hit, i (`${group.circleId}-${i}`)}
 			<SearchResultRow
-				author={rowAuthor(hit)}
+				author={hit.author}
 				time={hit.time}
 				entryDay={hit.entryDay}
 				thumb={Boolean(hit.thumbBlobId)}

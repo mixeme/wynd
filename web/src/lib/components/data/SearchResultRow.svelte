@@ -2,7 +2,7 @@
 	import Row from '$ui/data/Row.svelte';
 	import EntryDateMark from '$ui/data/EntryDateMark.svelte';
 	import type { Snippet } from 'svelte';
-	import { quoteMatch } from '$lib/journal/search';
+	import { highlightParts } from '$lib/journal/search';
 
 	const KIND_LABEL: Record<string, string> = {
 		comment: 'комментарий',
@@ -35,7 +35,7 @@
 		/** Что нашлось: `post`, `comment` / `file` / `audio` (« · комментарий», « · файл», « · звук») или `day` («день»). */
 		kind?: string;
 		snippet?: string;
-		/** Запрос — найденное слово берётся в ёлочки. */
+		/** Запрос — найденное слово в превью выделяется жирным. */
 		query?: string;
 		thumb?: boolean;
 		thumbUrl?: string;
@@ -61,7 +61,8 @@
 				{:else if kind === 'day'}
 					<span class="faint">день</span>
 				{:else}
-					{quoteMatch(snippet, query)}
+					{#each highlightParts(snippet, query) as part, i (i)}{#if part.hit}<b>{part.text}</b
+							>{:else}{part.text}{/if}{/each}
 					{#if kind === 'comment' || kind === 'file' || kind === 'audio'}
 						<span class="faint">{' · '}{KIND_LABEL[kind]}</span>
 					{/if}

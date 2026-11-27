@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+	highlightParts,
 	localDayAfter,
 	localDayStart,
-	quoteMatch,
 	searchChipsFromParams,
 	searchHref
 } from './search';
@@ -103,13 +103,36 @@ describe('searchChipsFromParams', () => {
 	});
 });
 
-describe('quoteMatch', () => {
-	it('берёт найденное в ёлочки как написано, без учёта регистра', () => {
-		expect(quoteMatch('Были на Даче в субботу', 'дач')).toBe('Были на «Дач»е в субботу');
+describe('highlightParts', () => {
+	it('найденное слово — жирным как написано, без учёта регистра', () => {
+		expect(highlightParts('Были на Даче в субботу', 'дач')).toEqual([
+			{ text: 'Были на ', hit: false },
+			{ text: 'Дач', hit: true },
+			{ text: 'е в субботу', hit: false }
+		]);
+	});
+
+	it('слова запроса выделяются по отдельности, в порядке текста', () => {
+		expect(highlightParts('море и дача', 'дача море')).toEqual([
+			{ text: 'море', hit: true },
+			{ text: ' и ', hit: false },
+			{ text: 'дача', hit: true }
+		]);
+	});
+
+	it('пересекающиеся слова — один кусок', () => {
+		expect(highlightParts('дачник', 'дач ник')).toEqual([{ text: 'дачник', hit: true }]);
 	});
 
 	it('без запроса или без совпадения — текст как есть', () => {
-		expect(quoteMatch('дача', '')).toBe('дача');
-		expect(quoteMatch('дача', 'лес')).toBe('дача');
+		expect(highlightParts('дача', '')).toEqual([{ text: 'дача', hit: false }]);
+		expect(highlightParts('дача', 'лес')).toEqual([{ text: 'дача', hit: false }]);
+	});
+
+	it('спецсимволы запроса не ломают разбор', () => {
+		expect(highlightParts('смета (2026)', '(2026)')).toEqual([
+			{ text: 'смета ', hit: false },
+			{ text: '(2026)', hit: true }
+		]);
 	});
 });

@@ -21,7 +21,6 @@
 		replaceSearchUrl,
 		searchChipsFromWindow,
 		searchThumbVariant,
-		quoteMatch,
 		searchHitHref,
 		localDayStart,
 		localDayAfter
@@ -197,7 +196,7 @@
 	}
 
 	function rowAuthor(hit: CircleSearchHit) {
-		if (hit.kind === 'day') return quoteMatch(hit.title ?? hit.snippet, debounced);
+		if (hit.kind === 'day') return hit.title ?? hit.snippet;
 		return hit.author_name ?? '—';
 	}
 
