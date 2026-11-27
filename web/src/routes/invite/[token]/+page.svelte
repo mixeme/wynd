@@ -33,6 +33,7 @@
 	import { INVALID_EMAIL_HINT, isValidParticipantEmail } from '$lib/auth/email';
 	import { loadPendingAuth, savePendingAuth } from '$lib/auth/pending';
 	import { desktopBridge } from '$lib/desktop/bridge';
+	import { canOpenInApp } from '$lib/desktop/openInApp';
 
 	let { data } = $props();
 	const token = $derived(data.token);
@@ -124,11 +125,12 @@
 		goto(`/invite/${token}`);
 	}
 
-	// «Открыть в приложении» (план 66, функция 4): окно принимает адрес
-	// схемы wynd:. Строка — только в браузере Windows: в окне мост есть и
-	// человек уже в приложении, на телефоне обработчика схемы нет.
+	// «Открыть в приложении» (план 66, функция 4; Linux — план 69): окно
+	// принимает адрес схемы wynd:. Строка — только в браузере Windows или
+	// Linux: в окне мост есть и человек уже в приложении, на телефоне
+	// обработчика схемы нет.
 	const showOpenInApp = $derived(
-		!desktopBridge() && typeof navigator !== 'undefined' && /Windows/.test(navigator.userAgent)
+		!desktopBridge() && typeof navigator !== 'undefined' && canOpenInApp(navigator.userAgent)
 	);
 
 	function openInApp() {
