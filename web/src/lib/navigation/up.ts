@@ -140,6 +140,27 @@ export function upTarget(url: URL): string {
 	return '/circles';
 }
 
+/** Улочка — дом вошедшего приложения: выше неё только экран входа. */
+const HOME = '/circles';
+
+function barePath(target: URL | string): string {
+	const path = typeof target === 'string' ? target.split(/[?#]/)[0] : target.pathname;
+	return path.replace(/\/+$/, '') || '/';
+}
+
+/**
+ * «Назад» с улочки к экрану входа — петля, а не возврат (C154). Запись `/`
+ * остаётся в истории от запуска: экран входа увёл вошедшего на улочку. Но `/`
+ * при сохранённом входе снова уводит на `/circles`, и человек видит мигание
+ * загрузки. Выше улочки экранов нет, поэтому такой шаг не делаем. Назад на
+ * настоящий прошлый экран (настройки, поиск) идёт как раньше.
+ */
+export function blockedHomeBack(from: URL, to?: URL | string): boolean {
+	return (
+		barePath(from) === HOME && (to === undefined || barePath(to) === '/' || barePath(to) === HOME)
+	);
+}
+
 /**
  * «Назад» — одно правило на всё приложение (C89): туда, откуда пришли; если
  * позади нет записи (вход по ссылке, пуш, переход вверх с заменой) — на
@@ -153,7 +174,8 @@ export function upTarget(url: URL): string {
 export function navigateBack(): Promise<void> {
 	// Сверху что-то открыто — закрываем его, экран остаётся.
 	if (dismissOverlay()) return Promise.resolve();
-	const here = location.pathname + location.search;
+	const url = new URL(location.href);
+	const here = key(url);
 	const i = historyIndex();
 	if (i !== undefined && hasPreviousDocument(i)) {
 		history.back();
@@ -161,12 +183,15 @@ export function navigateBack(): Promise<void> {
 	}
 	const prev = previousEntry();
 	if (prev && prev !== here) {
-		ownBack = true;
-		history.back();
+		if (!blockedHomeBack(url, prev)) {
+			ownBack = true;
+			history.back();
+		}
 		return Promise.resolve();
 	}
-	const parent = upTarget(new URL(location.href));
+	const parent = upTarget(url);
 	if (key(new URL(parent, location.origin)) === here) return Promise.resolve();
+	if (blockedHomeBack(url, parent)) return Promise.resolve();
 	return goto(parent, { replaceState: true });
 }
 
@@ -210,19 +235,20 @@ function topOverlay(): (() => void) | undefined {
 
 /**
  * Перед переходом по истории (корневой макет, beforeNavigate). Шаг отменяем
- * только когда сверху открыт оверлей: его и закрываем. В остальных случаях шаг
- * идёт своим ходом — «назад туда, откуда пришли» и есть правило (navigateBack).
- * Отменять шаг ради обработчика экрана — гонка с откатом истории: системная
- * «Назад» уезжала на запись дальше (C89).
+ * только когда сверху открыт оверлей: его и закрываем, — или когда он ведёт
+ * с улочки на экран входа (C154). В остальных случаях шаг идёт своим ходом —
+ * «назад туда, откуда пришли» и есть правило (navigateBack). Отменять шаг ради
+ * обработчика экрана — гонка с откатом истории: системная «Назад» уезжала на
+ * запись дальше (C89).
  */
-export function interceptHistoryBack(delta: number | undefined): boolean {
+export function interceptHistoryBack(delta: number | undefined, from?: URL, to?: URL): boolean {
 	if (ownBack) {
 		ownBack = false;
 		return false;
 	}
 	if ((delta ?? 0) >= 0) return false;
 	const closer = topOverlay();
-	if (!closer) return false;
+	if (!closer) return Boolean(from && to && blockedHomeBack(from, to));
 	addEventListener('popstate', () => setTimeout(closer), { once: true });
 	return true;
 }

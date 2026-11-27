@@ -11,7 +11,9 @@ import { goto, pushState } from '$app/navigation';
 import { replaceSearchUrl } from '$lib/journal/search';
 import {
 	armEntryGuard,
+	blockedHomeBack,
 	dismissOverlay,
+	interceptHistoryBack,
 	navigateBack,
 	previousEntry,
 	recordEntry,
@@ -34,6 +36,9 @@ beforeEach(() => {
 	sessionStorage.clear();
 	vi.mocked(goto).mockClear();
 	idx += 20;
+	// ownBack снимается настоящим popstate; history.back в тестах замокан,
+	// поэтому после шага прошлого теста флаг остался бы висеть.
+	interceptHistoryBack(1);
 });
 
 describe('upTarget — родитель по адресу', () => {
@@ -258,5 +263,84 @@ describe('navigateBack', () => {
 		replaceSearchUrl('/search', { q: 'dom' });
 		push('/circles/c6/posts/p6');
 		expect(previousEntry()).toBe('/search?q=dom');
+	});
+});
+
+// C154: на улочке «Назад» уходил на `/` — экран входа от запуска. При
+// сохранённом входе `/` сразу уводит обратно на улочку: человек видел мигание
+// загрузки. Выше улочки экранов нет — шаг не делаем.
+describe('C154 — «Назад» с улочки', () => {
+	it('за улочкой запись входа — остаёмся, история не двигается', () => {
+		const back = vi.spyOn(history, 'back');
+		push('/');
+		push('/circles');
+		void navigateBack();
+		expect(back).not.toHaveBeenCalled();
+		expect(goto).not.toHaveBeenCalled();
+		back.mockRestore();
+	});
+
+	it('позади только запись-копия улочки — к родителю не идём', async () => {
+		const back = vi.spyOn(history, 'back');
+		push('/circles');
+		push('/circles');
+		await navigateBack();
+		expect(back).not.toHaveBeenCalled();
+		expect(goto).not.toHaveBeenCalled();
+		back.mockRestore();
+	});
+
+	it('настоящий прошлый экран — шаг по истории, как раньше', () => {
+		const back = vi.spyOn(history, 'back');
+		push('/settings');
+		push('/circles');
+		void navigateBack();
+		expect(back).toHaveBeenCalledTimes(1);
+		expect(goto).not.toHaveBeenCalled();
+		back.mockRestore();
+	});
+
+	it('системная «Назад» с улочки к входу отменяется', () => {
+		expect(interceptHistoryBack(-1, new URL('https://w/circles'), new URL('https://w/'))).toBe(
+			true
+		);
+	});
+
+	it('системная «Назад» с улочки на настоящий экран идёт', () => {
+		expect(
+			interceptHistoryBack(-1, new URL('https://w/circles'), new URL('https://w/settings'))
+		).toBe(false);
+	});
+
+	it('внутри приложения «Назад» на вход не блокируется', () => {
+		expect(
+			interceptHistoryBack(-1, new URL('https://w/circles/c1/join'), new URL('https://w/'))
+		).toBe(false);
+	});
+
+	it('сверху оверлей — он важнее правила улочки', () => {
+		const closer = vi.fn();
+		const drop = setOverlayCloser(closer);
+		expect(interceptHistoryBack(-1, new URL('https://w/circles'), new URL('https://w/'))).toBe(
+			true
+		);
+		drop();
+	});
+});
+
+describe('blockedHomeBack — шаг с улочки к входу', () => {
+	it('улочка → вход и улочка → улочка блокируются, любой поиск не мешает', () => {
+		expect(blockedHomeBack(new URL('https://w/circles'), new URL('https://w/'))).toBe(true);
+		expect(blockedHomeBack(new URL('https://w/circles'), '/')).toBe(true);
+		expect(blockedHomeBack(new URL('https://w/circles?closed=x'), new URL('https://w/'))).toBe(
+			true
+		);
+		expect(blockedHomeBack(new URL('https://w/circles/'), '/circles')).toBe(true);
+	});
+
+	it('настоящие экраны и другие точки старта не блокируются', () => {
+		expect(blockedHomeBack(new URL('https://w/circles'), '/settings')).toBe(false);
+		expect(blockedHomeBack(new URL('https://w/circles/c1'), '/circles')).toBe(false);
+		expect(blockedHomeBack(new URL('https://w/join'), '/')).toBe(false);
 	});
 });

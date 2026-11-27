@@ -57,7 +57,7 @@
 
 	// «Назад» на уровень вверх и системной кнопкой (план 46, C13).
 	beforeNavigate((nav) => {
-		if (nav.type === 'popstate' && interceptHistoryBack(nav.delta)) {
+		if (nav.type === 'popstate' && interceptHistoryBack(nav.delta, nav.from?.url, nav.to?.url)) {
 			nav.cancel();
 			return;
 		}
