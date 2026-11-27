@@ -300,6 +300,15 @@ describe('C154 — «Назад» с улочки', () => {
 		back.mockRestore();
 	});
 
+	it('шлюз «Доступ закрыт» (?closed=) возвращает на улицу', () => {
+		const back = vi.spyOn(history, 'back');
+		push('/circles');
+		push('/circles?closed=x');
+		void navigateBack();
+		expect(back).toHaveBeenCalledTimes(1);
+		back.mockRestore();
+	});
+
 	it('системная «Назад» с улочки к входу отменяется', () => {
 		expect(interceptHistoryBack(-1, new URL('https://w/circles'), new URL('https://w/'))).toBe(
 			true
@@ -329,18 +338,22 @@ describe('C154 — «Назад» с улочки', () => {
 });
 
 describe('blockedHomeBack — шаг с улочки к входу', () => {
-	it('улочка → вход и улочка → улочка блокируются, любой поиск не мешает', () => {
+	it('улочка → вход и улочка → своя запись-копия блокируются', () => {
 		expect(blockedHomeBack(new URL('https://w/circles'), new URL('https://w/'))).toBe(true);
 		expect(blockedHomeBack(new URL('https://w/circles'), '/')).toBe(true);
 		expect(blockedHomeBack(new URL('https://w/circles?closed=x'), new URL('https://w/'))).toBe(
 			true
 		);
-		expect(blockedHomeBack(new URL('https://w/circles/'), '/circles')).toBe(true);
+		expect(blockedHomeBack(new URL('https://w/circles'), '/circles')).toBe(true);
+		expect(blockedHomeBack(new URL('https://w/circles?closed=x'), '/circles?closed=x')).toBe(true);
 	});
 
-	it('настоящие экраны и другие точки старта не блокируются', () => {
+	it('настоящие экраны, шлюз оплаты и другие точки старта не блокируются', () => {
 		expect(blockedHomeBack(new URL('https://w/circles'), '/settings')).toBe(false);
 		expect(blockedHomeBack(new URL('https://w/circles/c1'), '/circles')).toBe(false);
 		expect(blockedHomeBack(new URL('https://w/join'), '/')).toBe(false);
+		// «Доступ закрыт» — та же улица с ?closed=: это прошлый экран, шаг идёт.
+		expect(blockedHomeBack(new URL('https://w/circles?closed=x'), '/circles')).toBe(false);
+		expect(blockedHomeBack(new URL('https://w/circles'), '/circles?closed=x')).toBe(false);
 	});
 });

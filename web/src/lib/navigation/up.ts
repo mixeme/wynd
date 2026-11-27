@@ -153,12 +153,16 @@ function barePath(target: URL | string): string {
  * остаётся в истории от запуска: экран входа увёл вошедшего на улочку. Но `/`
  * при сохранённом входе снова уводит на `/circles`, и человек видит мигание
  * загрузки. Выше улочки экранов нет, поэтому такой шаг не делаем. Назад на
- * настоящий прошлый экран (настройки, поиск) идёт как раньше.
+ * настоящий прошлый экран (настройки, поиск, «Доступ закрыт» с `?closed=`) идёт
+ * как раньше. Запись-копия улицы (armEntryGuard) — тот же адрес с тем же
+ * поиском, её тоже пропускаем.
  */
 export function blockedHomeBack(from: URL, to?: URL | string): boolean {
-	return (
-		barePath(from) === HOME && (to === undefined || barePath(to) === '/' || barePath(to) === HOME)
-	);
+	if (barePath(from) !== HOME) return false;
+	if (to === undefined) return true;
+	const target = typeof to === 'string' ? new URL(to, location.origin) : to;
+	if (barePath(target) === '/') return true;
+	return target.pathname === from.pathname && target.search === from.search;
 }
 
 /**
