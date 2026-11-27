@@ -3,6 +3,7 @@ import {
 	highlightParts,
 	localDayAfter,
 	localDayStart,
+	replaceSearchUrl,
 	searchChipsFromParams,
 	searchHref
 } from './search';
@@ -100,6 +101,31 @@ describe('searchChipsFromParams', () => {
 	it('omits empty author from the query', () => {
 		const href = searchHref('/circles/c1/search', { q: 'x', author: '  ' });
 		expect(new URL(href, 'https://wynd.local').searchParams.get('author')).toBeNull();
+	});
+});
+
+describe('replaceSearchUrl', () => {
+	it('обновляет адрес записи истории вместе с sveltekit:pageurl', () => {
+		history.replaceState(
+			{
+				'sveltekit:history': 7,
+				'sveltekit:navigation': 6,
+				'sveltekit:pageurl': 'http://localhost/search',
+				'sveltekit:states': {}
+			},
+			'',
+			'/search'
+		);
+		replaceSearchUrl('/search', { q: 'Ольга', hasPhoto: true });
+		expect(location.pathname + location.search).toBe(
+			'/search?q=%D0%9E%D0%BB%D1%8C%D0%B3%D0%B0&photo=1'
+		);
+		const state = history.state as Record<string, unknown>;
+		// SvelteKit на шаге назад берёт адрес отсюда — без обновления «Назад»
+		// возвращал поиск без запроса и фильтров (замечание владельца 27.11).
+		expect(state['sveltekit:pageurl']).toBe(new URL(location.href).href);
+		expect(state['sveltekit:history']).toBe(7);
+		expect(state['sveltekit:navigation']).toBe(6);
 	});
 });
 

@@ -205,7 +205,13 @@ export function replaceSearchUrl(pathname: string, state: SearchChipState): void
 	const href = searchLocation(pathname, state);
 	const current = `${pathname}${window.location.search}`;
 	if (href !== current) {
-		history.replaceState(history.state, '', href);
+		// SvelteKit на шаге назад берёт адрес из состояния записи
+		// (`sveltekit:pageurl`), а не из location. Без обновления состояния
+		// «Назад» из открытой записи возвращал поиск без запроса и фильтров —
+		// «другая страница, где нет результатов» (замечание владельца 27.11).
+		const next: Record<string, unknown> = { ...(history.state as Record<string, unknown> | null) };
+		next['sveltekit:pageurl'] = new URL(href, location.origin).href;
+		history.replaceState(next, '', href);
 	}
 	// Замена адреса не проходит через afterNavigate, поэтому карта истории
 	// иначе хранила бы прежний запрос и «Назад» из записи вёл бы в старый

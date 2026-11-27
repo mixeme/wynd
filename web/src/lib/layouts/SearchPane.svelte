@@ -254,7 +254,7 @@
 						resolveThumb(groupKey, splitCircleKey(groupKey).origin, row);
 					}
 				};
-				const { failedInstanceNames } = await searchAllOrigins(
+				const { results, failedInstanceNames } = await searchAllOrigins(
 					debounced,
 					{
 						from,
@@ -272,6 +272,15 @@
 					}
 				);
 				if (gen !== searchGen) return;
+				// Ни один сервер ничего не нашёл — прежние строки не держим:
+				// иначе под только что выбранным фильтром висят результаты
+				// прошлого запроса (замечание владельца 27.11: «С фото», а
+				// строки без фото). Строки обновляются только по ответам с
+				// попаданиями (C95), и нулевой ответ их не заменял.
+				if (!results.length) {
+					groups = [];
+					thumbUrls = {};
+				}
 				if (failedInstanceNames.length) {
 					sourceError = `Не удалось обновить поиск: ${failedInstanceNames.join(', ')}.`;
 				}
