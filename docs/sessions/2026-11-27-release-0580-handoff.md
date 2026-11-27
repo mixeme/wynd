@@ -80,8 +80,11 @@ HEAD на момент закрытия сессии — `33f8ee30` («Пере�
 сессии по значку загрузки», соседняя сессия); origin/main на момент проверки —
 `78596b2e` (коммит соседней сессии ещё не отправлен). После выпуска идут
 коммиты другой сессии: `c64e4bd6`, `8d387a1c`, `c4f2e1b9`, `35da6597`,
-`33f8ee30`. Незакоммичено — правки другой сессии `web/src/app.html`,
-`web/src/routes/+layout.svelte` и untracked
+`33f8ee30`. Незакоммичено — работа другой сессии: `web/src/app.html`,
+`web/src/routes/+layout.svelte`, `docs/CHANGELOG.md` (раздел `Unreleased`:
+значок загрузки в широком окне и C155 — серые полосы по бокам одной колонки),
+`docs/plans/46-open-questions-and-debt.plan.md`,
+`docs/testing/pending-device-checks.md` и untracked
 `docs/testing/window-gutter-2026-11-27/`; `.zcode/` — локальный каталог.
 Теги выпуска: `v0.58.0`, `desktop-v0.5.6`, `workshop-v0.4.12` на `9169da3b`;
 `android-v0.1.9` на `0e4247f7`. Черновики: `desktop-v0.5.6`,
