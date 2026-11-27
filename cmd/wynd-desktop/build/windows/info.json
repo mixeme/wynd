@@ -1,12 +1,12 @@
 {
 	"fixed": {
-		"file_version": "0.5.3",
-		"product_version": "0.5.3"
+		"file_version": "0.5.4",
+		"product_version": "0.5.4"
 	},
 	"info": {
 		"0419": {
-			"FileVersion": "0.5.3",
-			"ProductVersion": "0.5.3",
+			"FileVersion": "0.5.4",
+			"ProductVersion": "0.5.4",
 			"CompanyName": "Wynd",
 			"FileDescription": "Wynd",
 			"LegalCopyright": "AGPL-3.0",
