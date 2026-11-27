@@ -58,6 +58,12 @@
 	let updateError = $state('');
 	// Ход скачивания обновления, пока идёт установка.
 	let updateProgress = $state({ done: 0, total: 0 });
+	// Процент для кнопки: «Скачиваем 46 %…».
+	const percent = $derived(
+		updateProgress.total > 0
+			? Math.min(100, Math.round((updateProgress.done / updateProgress.total) * 100))
+			: 0
+	);
 	let progressTimer: ReturnType<typeof setInterval> | undefined;
 	let maximised = $state(false);
 	let address = $state('');
@@ -256,12 +262,6 @@
 	async function syncMaximised() {
 		maximised = (await rt?.WindowIsMaximised().catch(() => false)) ?? false;
 	}
-
-	// Метры для строки хода скачивания: 8,2 / 18 (мегабайты, как в выпуске).
-	const megabytes = (bytes: number) => {
-		const mb = bytes / 1_000_000;
-		return mb.toLocaleString('ru-RU', { maximumFractionDigits: mb < 10 ? 1 : 0 });
-	};
 
 	// Пока идёт установка, спрашиваем у оболочки, сколько уже скачано: окно не
 	// молчит на многомегабайтном файле (C153: «Обновляем…» без конца).
@@ -520,17 +520,10 @@
 						<div class="desk-update-bad">Подпись не сошлась: обновление не установлено.</div>
 					{:else if updateError}
 						<div class="desk-update-bad" role="alert">{updateError}</div>
-					{:else if updateBusy && updateProgress.done > 0}
-						<div class="desk-update-progress" aria-live="polite">
-							{#if updateProgress.total > 0}
-								Скачиваем {megabytes(updateProgress.done)} из {megabytes(updateProgress.total)} МБ
-							{:else}
-								Скачиваем {megabytes(updateProgress.done)} МБ
-							{/if}
-						</div>
-						{#if updateProgress.total > 0}
-							<Meter value={updateProgress.done} max={updateProgress.total} />
-						{/if}
+					{:else if updateBusy && updateProgress.total > 0}
+						<!-- Ход скачивания — внутри полосы: полоса Meter под заголовком
+						     укладывается в высоту ряда кнопок, полоса не растёт. -->
+						<Meter value={updateProgress.done} max={updateProgress.total} />
 					{/if}
 				</div>
 				<div class="desk-update-actions">
@@ -538,7 +531,9 @@
 						variant="colored"
 						disabled={updateBusy || updateBad}
 						loading={updateBusy}
-						loadingLabel="Обновляем…"
+						loadingLabel={updateProgress.total > 0
+							? `Скачиваем ${percent} %…`
+							: 'Обновляем…'}
 						onclick={() => void applyUpdate()}
 					>
 						Обновить и перезапустить

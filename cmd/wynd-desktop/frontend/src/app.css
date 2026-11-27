@@ -60,15 +60,10 @@ body {
 .desk-update-bad {
 	color: var(--terracotta);
 }
-/* Ход скачивания обновления: строка с метрами и полоса Meter под ней, пока
-   идёт установка. Появляется, когда известен хоть один скачанный байт. */
-.desk-update-progress {
-	margin-top: 2px;
-	font-size: 12px;
-	color: var(--muted);
-}
+/* Ход скачивания обновления: полоса Meter под заголовком, внутри ряда кнопок
+   — 18,85 + 2 + 9 = 30 px меньше высоты кнопки (38), полоса не растёт. */
 .desk-update .meter {
-	margin: 6px 0 0;
+	margin: 2px 0 0;
 }
 .desk-update .btn {
 	display: inline-block;

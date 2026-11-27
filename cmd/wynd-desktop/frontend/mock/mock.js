@@ -87,11 +87,18 @@ void import('../src/main.ts');
 const tick = (ms) => new Promise((r) => setTimeout(r, ms));
 if (params.get('apply') === '1' || params.get('update') === 'progress') {
 	void (async () => {
-		await tick(900);
-		const button = [...document.querySelectorAll('button')].find((b) =>
-			b.textContent.trim().startsWith('Обновить и перезапустить')
-		);
-		if (!button) throw new Error('кадр: нет кнопки обновления');
-		button.click();
+		// Кнопка появляется, когда CheckSelfUpdate ответил; на холодном vite
+		// это бывает позже 900 мс — ждём её, а не падаем.
+		for (let i = 0; i < 40; i++) {
+			const button = [...document.querySelectorAll('button')].find((b) =>
+				b.textContent.trim().startsWith('Обновить и перезапустить')
+			);
+			if (button) {
+				button.click();
+				return;
+			}
+			await tick(250);
+		}
+		throw new Error('кадр: нет кнопки обновления');
 	})();
 }
