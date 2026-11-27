@@ -139,5 +139,5 @@ main и теги в Gitea, GitHub-зеркало подхватило; черн�
 подписи. Коммитом передачи добавлены протокол
 `docs/testing/linux-desktop-live-2026-11-27.md` со снимками, тест
 `cmd/wynd-desktop/platform_linux_test.go`, правки плана 69 и реестра §12.
-Незакоммичено — только `.zcode/` (не наш). Worktree `wynd-stand` удалён,
+Незакоммичено — `.zcode/` и правки параллельной сессии приёмки плана 76 (`web/src/lib/components/Icon.svelte`, `web/src/lib/layouts/CircleSettingsNav.svelte`, `web/static/icons.svg`) — не наши, не трогали. Worktree `wynd-stand` удалён,
 стенд на 7676 и туннель остановлены, машина MX Linux очищена.
