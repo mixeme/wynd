@@ -2,10 +2,7 @@
 
 package desktop
 
-import (
-	"os"
-	"path/filepath"
-)
+import "os"
 
 // SelfPath — файл, который запустил человек. У AppImage это сам .AppImage:
 // os.Executable() внутри указывает на временный смонтированный бинарник
@@ -21,17 +18,4 @@ func SelfPath() string {
 		return ""
 	}
 	return exe
-}
-
-// selfPathTarget — путь для подмены файла обновлением: у AppImage снимаем
-// символические ссылки, чтобы заменить настоящий файл, а не ссылку на него.
-func selfPathTarget() string {
-	path := SelfPath()
-	if path == "" {
-		return ""
-	}
-	if resolved, err := filepath.EvalSymlinks(path); err == nil {
-		return resolved
-	}
-	return path
 }
