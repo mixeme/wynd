@@ -44,6 +44,10 @@ type App struct {
 	storeErr error
 	// update — последняя найденная новая версия окна.
 	update desktop.Update
+	// updateDone/updateTotal — ход скачивания обновления для полосы: байты и
+	// известный размер (0 — размер неизвестен).
+	updateDone  int64
+	updateTotal int64
 	// updateNotified — версия, о которой уведомляли в трей: дедуп, один
 	// toast на версию (план 66, «вышла версия»).
 	updateNotified string
@@ -635,6 +639,15 @@ func (a *App) CheckSelfUpdate() desktop.Update {
 	return update
 }
 
+// SelfUpdateProgress — сколько байт обновления уже скачано: полоса обновления
+// показывает ход установки, пока кнопка «Обновляем…» (Total = 0 — ещё не
+// начали или размер неизвестен).
+func (a *App) SelfUpdateProgress() desktop.UpdateProgress {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return desktop.UpdateProgress{Done: a.updateDone, Total: a.updateTotal}
+}
+
 // ApplySelfUpdate — «Обновить и перезапустить»: подпись не сошлась —
 // "signature"; вышло — новая версия запускается, эта закрывается.
 func (a *App) ApplySelfUpdate() string {
@@ -642,8 +655,13 @@ func (a *App) ApplySelfUpdate() string {
 	defer cancel()
 	a.mu.Lock()
 	update := a.update
+	a.updateDone, a.updateTotal = 0, 0
 	a.mu.Unlock()
-	path, err := desktop.ApplyUpdate(ctx, http.DefaultClient, update)
+	path, err := desktop.ApplyUpdate(ctx, http.DefaultClient, update, func(done, total int64) {
+		a.mu.Lock()
+		a.updateDone, a.updateTotal = done, total
+		a.mu.Unlock()
+	})
 	if errors.Is(err, desktop.ErrBadSignature) {
 		return "signature"
 	}

@@ -157,7 +157,7 @@ func ApplySelfUpdate(ctx context.Context, client *http.Client, up SelfUpdate) (s
 	if !up.Available {
 		return "", ErrBadSignature
 	}
-	return selfupdate.Apply(ctx, client, SigningKey, up.exeURL, up.sigURL)
+	return selfupdate.Apply(ctx, client, SigningKey, up.exeURL, up.sigURL, nil)
 }
 
 // CleanOldSelf убирает прежний exe после обновления (при запуске).

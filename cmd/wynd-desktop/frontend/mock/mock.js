@@ -45,8 +45,15 @@ const app = {
 					notes: ['Список серверов и пульт в окне', 'Самообновление по подписи'],
 					attestation: 'https://github.com/mixeme/wynd/releases/tag/desktop-v0.2.0'
 				},
-	// Подпись не сошлась: установка отменяется.
-	ApplySelfUpdate: async () => (params.get('apply') === '1' ? 'signature' : ''),
+	// Ход скачивания для кадра: постоянные числа, как на середине файла.
+	SelfUpdateProgress: async () =>
+		params.get('update') === 'progress' ? { done: 8200000, total: 17952256 } : { done: 0, total: 0 },
+	// Подпись не сошлась: установка отменяется; для кадра хода — установка
+	// идёт и не заканчивается.
+	ApplySelfUpdate: () =>
+		params.get('update') === 'progress'
+			? new Promise(() => {})
+			: Promise.resolve(params.get('apply') === '1' ? 'signature' : ''),
 	ReleasesPage: async () => {},
 	// Копии по расписанию (план 66, функция 7): заполненная форма для кадра.
 	GetBackupConfig: async () => ({
@@ -75,9 +82,10 @@ window.runtime = {
 // наших window.go и окно не увидело бы ответов.
 void import('../src/main.ts');
 
-// Состояние отказа на кадре: то же нажатие, что делает владелец.
+// Состояние отказа на кадре: то же нажатие, что делает владелец; для кадра
+// хода скачивания — то же нажатие, установка остаётся идти.
 const tick = (ms) => new Promise((r) => setTimeout(r, ms));
-if (params.get('apply') === '1') {
+if (params.get('apply') === '1' || params.get('update') === 'progress') {
 	void (async () => {
 		await tick(900);
 		const button = [...document.querySelectorAll('button')].find((b) =>

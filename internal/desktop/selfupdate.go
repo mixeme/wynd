@@ -148,11 +148,24 @@ func pickUpdate(rels []ghRelease, current string, now time.Time) Update {
 // ApplyUpdate скачивает новую версию окна, проверяет подпись и ставит её на
 // место своего exe; прежний остаётся рядом (.old) до следующего запуска.
 // Возвращает путь нового exe — его окно запускает и закрывается само.
-func ApplyUpdate(ctx context.Context, client *http.Client, up Update) (string, error) {
+// progress (необязательный) получает ход скачивания для полосы обновления.
+func ApplyUpdate(
+	ctx context.Context,
+	client *http.Client,
+	up Update,
+	progress func(done, total int64),
+) (string, error) {
 	if !up.Available {
 		return "", ErrBadSignature
 	}
-	return selfupdate.Apply(ctx, client, SigningKey, up.exeURL, up.sigURL)
+	return selfupdate.Apply(ctx, client, SigningKey, up.exeURL, up.sigURL, progress)
+}
+
+// UpdateProgress — ход скачивания обновления: байты и известный размер
+// (Total = 0 — размер неизвестен).
+type UpdateProgress struct {
+	Done  int64 `json:"done"`
+	Total int64 `json:"total"`
 }
 
 // CleanOldSelf убирает прежний exe после обновления (при запуске).

@@ -31,9 +31,16 @@ export interface Update {
 	attestation?: string;
 }
 
+/** Ход скачивания обновления: байты и известный размер (0 — неизвестен). */
+export interface UpdateProgress {
+	done: number;
+	total: number;
+}
+
 interface GoApp {
 	Version(): Promise<string>;
 	CheckSelfUpdate(): Promise<Update>;
+	SelfUpdateProgress(): Promise<UpdateProgress>;
 	ApplySelfUpdate(): Promise<string>;
 	ReleasesPage(): Promise<void>;
 	CheckServer(address: string): Promise<CheckResult>;
@@ -75,6 +82,7 @@ interface Runtime {
 const native: GoApp = {
 	Version: () => Call.ByName('main.App.Version'),
 	CheckSelfUpdate: () => Call.ByName('main.App.CheckSelfUpdate'),
+	SelfUpdateProgress: () => Call.ByName('main.App.SelfUpdateProgress'),
 	ApplySelfUpdate: () => Call.ByName('main.App.ApplySelfUpdate'),
 	ReleasesPage: () => Call.ByName('main.App.ReleasesPage'),
 	CheckServer: (address) => Call.ByName('main.App.CheckServer', address),
@@ -139,6 +147,12 @@ export async function checkSelfUpdate(): Promise<Update | null> {
 // отказа; пусто — новая версия запущена, это окно закрывается.
 export async function applySelfUpdate(): Promise<string> {
 	return (await bridge()?.ApplySelfUpdate()) ?? '';
+}
+
+// Ход скачивания обновления, пока установка идёт: 0/0 — ещё не начали или
+// размер неизвестен.
+export async function selfUpdateProgress(): Promise<UpdateProgress> {
+	return (await bridge()?.SelfUpdateProgress()) ?? { done: 0, total: 0 };
 }
 
 // Системный toast по сигналу клиента (план 66): мост сам гасит его, когда

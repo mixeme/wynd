@@ -38,15 +38,22 @@ func VerifySignature(key string, exe, sig []byte) error {
 // Apply скачивает новую программу и её подпись, проверяет подпись и ставит
 // программу на место своего exe; прежний остаётся рядом (.old) до следующего
 // запуска. Возвращает путь нового exe — его окно запускает и закрывается само.
-func Apply(ctx context.Context, client *http.Client, key, exeURL, sigURL string) (string, error) {
+// progress (необязательный) получает ход скачивания: сколько байт уже есть и
+// известный размер (0 — размер неизвестен).
+func Apply(
+	ctx context.Context,
+	client *http.Client,
+	key, exeURL, sigURL string,
+	progress func(done, total int64),
+) (string, error) {
 	if key == "" || exeURL == "" || sigURL == "" {
 		return "", ErrBadSignature
 	}
-	exe, err := fetch(ctx, client, exeURL, 200<<20)
+	exe, err := fetch(ctx, client, exeURL, 200<<20, progress)
 	if err != nil {
 		return "", err
 	}
-	sig, err := fetch(ctx, client, sigURL, 4<<10)
+	sig, err := fetch(ctx, client, sigURL, 4<<10, nil)
 	if err != nil {
 		return "", err
 	}
@@ -82,7 +89,13 @@ func CleanOldSelf() {
 	}
 }
 
-func fetch(ctx context.Context, client *http.Client, url string, limit int64) ([]byte, error) {
+func fetch(
+	ctx context.Context,
+	client *http.Client,
+	url string,
+	limit int64,
+	progress func(done, total int64),
+) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -95,5 +108,27 @@ func fetch(ctx context.Context, client *http.Client, url string, limit int64) ([
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("selfupdate: %s: %s", url, res.Status)
 	}
-	return io.ReadAll(io.LimitReader(res.Body, limit))
+	var body io.Reader = io.LimitReader(res.Body, limit)
+	if progress != nil {
+		body = &progressReader{r: body, total: res.ContentLength, report: progress}
+	}
+	return io.ReadAll(body)
+}
+
+// progressReader сообщает, сколько байт уже прочитано: полоса обновления
+// показывает ход скачивания, а не молчит до конца.
+type progressReader struct {
+	r      io.Reader
+	total  int64
+	done   int64
+	report func(done, total int64)
+}
+
+func (p *progressReader) Read(b []byte) (int, error) {
+	n, err := p.r.Read(b)
+	if n > 0 {
+		p.done += int64(n)
+		p.report(p.done, p.total)
+	}
+	return n, err
 }

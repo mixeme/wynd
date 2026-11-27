@@ -19,6 +19,7 @@
 	import FieldDisplay from '$ui/forms/FieldDisplay.svelte';
 	import Switch from '$ui/forms/Switch.svelte';
 	import SettingsRow from '$ui/data/SettingsRow.svelte';
+	import Meter from '$ui/forms/Meter.svelte';
 	import {
 		addInterface,
 		applySelfUpdate,
@@ -41,6 +42,7 @@
 		removeInterface,
 		runtime,
 		selectServer,
+		selfUpdateProgress,
 		takePendingInvite,
 		type CheckResult,
 		type InviteLink,
@@ -54,6 +56,9 @@
 	let updateBusy = $state(false);
 	let updateBad = $state(false);
 	let updateError = $state('');
+	// Ход скачивания обновления, пока идёт установка.
+	let updateProgress = $state({ done: 0, total: 0 });
+	let progressTimer: ReturnType<typeof setInterval> | undefined;
 	let maximised = $state(false);
 	let address = $state('');
 	let error = $state('');
@@ -252,16 +257,40 @@
 		maximised = (await rt?.WindowIsMaximised().catch(() => false)) ?? false;
 	}
 
+	// Метры для строки хода скачивания: 8,2 / 18 (мегабайты, как в выпуске).
+	const megabytes = (bytes: number) => {
+		const mb = bytes / 1_000_000;
+		return mb.toLocaleString('ru-RU', { maximumFractionDigits: mb < 10 ? 1 : 0 });
+	};
+
+	// Пока идёт установка, спрашиваем у оболочки, сколько уже скачано: окно не
+	// молчит на многомегабайтном файле (C153: «Обновляем…» без конца).
+	function watchProgress(on: boolean) {
+		if (progressTimer) {
+			clearInterval(progressTimer);
+			progressTimer = undefined;
+		}
+		if (!on) return;
+		updateProgress = { done: 0, total: 0 };
+		progressTimer = setInterval(() => {
+			void selfUpdateProgress()
+				.then((p) => (updateProgress = p))
+				.catch(() => undefined);
+		}, 300);
+	}
+
 	async function applyUpdate() {
 		if (updateBusy) return;
 		updateBusy = true;
 		updateBad = false;
 		updateError = '';
+		watchProgress(true);
 		try {
 			const res = await applySelfUpdate();
 			if (res === 'signature') updateBad = true;
 			else if (res) updateError = res;
 		} finally {
+			watchProgress(false);
 			updateBusy = false;
 		}
 	}
@@ -491,6 +520,17 @@
 						<div class="desk-update-bad">Подпись не сошлась: обновление не установлено.</div>
 					{:else if updateError}
 						<div class="desk-update-bad" role="alert">{updateError}</div>
+					{:else if updateBusy && updateProgress.done > 0}
+						<div class="desk-update-progress" aria-live="polite">
+							{#if updateProgress.total > 0}
+								Скачиваем {megabytes(updateProgress.done)} из {megabytes(updateProgress.total)} МБ
+							{:else}
+								Скачиваем {megabytes(updateProgress.done)} МБ
+							{/if}
+						</div>
+						{#if updateProgress.total > 0}
+							<Meter value={updateProgress.done} max={updateProgress.total} />
+						{/if}
 					{/if}
 				</div>
 				<div class="desk-update-actions">
