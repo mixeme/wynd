@@ -379,6 +379,17 @@
 		}
 	}
 
+	/* Окно Настольного — один бумажный лист: своих полей по бокам колонки
+	   там нет (C143). План 76 расширил iframe окна до 1060, и на экранах с
+	   одной колонкой тело снова красило подложку внутри окна. Класс ставит
+	   app.html по мосту окна; в браузере и PWA его нет — поля остаются. */
+	:global(html.desktop-window body) {
+		background: var(--paper);
+	}
+	:global(html.desktop-window body.dark) {
+		background: #211e1c;
+	}
+
 	.app.dev {
 		min-height: 100vh;
 		display: flex;

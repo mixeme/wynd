@@ -43,6 +43,13 @@
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
+		<script>
+			// Окно Настольного встраивает клиент в iframe и до страницы ставит
+			// мост window.__wyndDesktop в <head>. В окне поля по бокам колонки —
+			// бумага, как и весь лист (C143): класс снимает полосы-подложку,
+			// которую клиент рисует на широком экране для браузера и PWA.
+			if (window.__wyndDesktop) document.documentElement.classList.add('desktop-window');
+		</script>
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
 </html>
