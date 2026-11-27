@@ -1,12 +1,12 @@
 {
 	"fixed": {
-		"file_version": "0.4.11",
-		"product_version": "0.4.11"
+		"file_version": "0.4.12",
+		"product_version": "0.4.12"
 	},
 	"info": {
 		"0419": {
-			"FileVersion": "0.4.11",
-			"ProductVersion": "0.4.11",
+			"FileVersion": "0.4.12",
+			"ProductVersion": "0.4.12",
 			"CompanyName": "Wynd",
 			"FileDescription": "Wynd Мастерская",
 			"LegalCopyright": "AGPL-3.0",
