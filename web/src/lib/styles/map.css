@@ -34,7 +34,11 @@
 	background: var(--tint, #c3af95);
 }
 
-.ph .map-pin-thumb img {
+/* Leaflet сбрасывает ширину картинок в маркерном слое (width: auto) с той же
+   специфичностью, и в собранном бандле его CSS идёт после map.css: у портретного
+   фото ширина по высоте, справа оставалась полоса подложки. Селектор сильнее
+   сброса при любом порядке файлов. */
+.ph .map-wrap .leaflet-container .map-pin-thumb img {
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
