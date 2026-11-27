@@ -708,7 +708,11 @@ func (a *App) ApplySelfUpdate() string {
 	if err != nil {
 		return err.Error()
 	}
-	if err := exec.Command(path).Start(); err != nil {
+	cmd := exec.Command(path)
+	// Новый процесс не наследует пути исчезнувшего AppImage и ждёт выхода
+	// прежнего, прежде чем брать замок одного экземпляра.
+	cmd.Env = desktop.RestartEnv(os.Getpid())
+	if err := cmd.Start(); err != nil {
 		return err.Error()
 	}
 	application.Get().Quit()
@@ -877,9 +881,12 @@ func main() {
 	// Самообновление запускает новый файл, пока прежний процесс ещё выходит.
 	// Wails берёт замок одного экземпляра в application.New: без паузы новый
 	// запуск уходит в прежний и завершается, а полоса остаётся на
-	// «Обновляем…» (живая проверка 27.11, 0.5.2 → 0.5.5). Признак подмены —
-	// прежний образ рядом (.old): ждём, пока прежний процесс отпустит замок.
-	// У Linux-окна путь — SelfPath(): у AppImage это сам .AppImage.
+	// «Обновляем…» (живая проверка 27.11, 0.5.2 → 0.5.5). У Linux-окна новый
+	// процесс ждёт pid прежнего (AppImage и .deb), у Windows — признак .old
+	// рядом с exe.
+	if pid := desktop.UpdateFromPID(); pid > 0 {
+		desktop.WaitForProcessExit(pid, 15*time.Second)
+	}
 	if desktop.FreshlyReplaced(desktop.SelfPath()) {
 		time.Sleep(2 * time.Second)
 	}

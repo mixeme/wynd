@@ -3,6 +3,7 @@ package desktop
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -46,14 +47,30 @@ var SigningKey = ""
 // ErrBadSignature — подпись не сошлась: установка не начинается.
 var ErrBadSignature = selfupdate.ErrBadSignature
 
+// UpdateKind — чем обновляется эта сборка: exe Windows, AppImage или .deb.
+// От этого зависит, какой файл выпуска скачивать и как его ставить.
+type UpdateKind int
+
+const (
+	kindNone UpdateKind = iota
+	kindExe
+	kindAppImage
+	kindDeb
+)
+
+// ErrNoUpdate — обновление не найдено для этой сборки (нет файла выпуска).
+var ErrNoUpdate = errors.New("обновление для этой сборки не найдено")
+
 // Update — что окно знает о новой версии.
 type Update struct {
 	Available   bool     `json:"available"`
 	Version     string   `json:"version,omitempty"`
 	Notes       []string `json:"notes,omitempty"`
 	Attestation string   `json:"attestation,omitempty"`
-	exeURL      string
+	fileURL     string
 	sigURL      string
+	kind        UpdateKind
+	target      string
 }
 
 type ghRelease struct {
@@ -74,13 +91,36 @@ func CheckUpdate(ctx context.Context, client *http.Client, current string, now t
 	if SigningKey == "" {
 		return Update{}
 	}
+	kind, target := DetectUpdateKind()
+	if kind == kindNone {
+		return Update{}
+	}
 	rels, err := updateReleases(ctx, client)
 	if err != nil {
 		return Update{}
 	}
-	return pickUpdate(rels, current, now)
+	return pickUpdateFor(rels, current, now, kind, target)
 }
 
+// detectUpdateKind — что подменять в этой сборке: AppImage, пакет .deb или
+// exe. Отдельно от DetectUpdateKind, чтобы проверять без запуска образа.
+func detectUpdateKind(goos, appImage, exe string, dpkgOwns func(string) bool) (UpdateKind, string) {
+	if goos == "linux" {
+		if appImage != "" {
+			return kindAppImage, appImage
+		}
+		if exe != "" && dpkgOwns != nil && dpkgOwns(exe) {
+			return kindDeb, exe
+		}
+		return kindNone, ""
+	}
+	if exe != "" {
+		return kindExe, exe
+	}
+	return kindNone, ""
+}
+
+// updateReleases — страницы выпусков GitHub.
 func updateReleases(ctx context.Context, client *http.Client) ([]ghRelease, error) {
 	return releasepages.Collect(ctx, func(page int) ([]ghRelease, bool, error) {
 		// Страницы собираем на фиксированном адресе API, чужие Link не ходим.
@@ -105,10 +145,29 @@ func updateReleases(ctx context.Context, client *http.Client) ([]ghRelease, erro
 	})
 }
 
-// pickUpdate — самый новый выпуск окна, вышедший не меньше UpdateDelay назад:
-// черновики, пробные выпуски, чужие метки и версии не новее текущей не
-// предлагаются.
+// matchesAsset — файл выпуска для этой сборки. Подписи сюда не попадают:
+// «.sig» не оканчивается именем установочного файла.
+func (k UpdateKind) matchesAsset(name string) bool {
+	switch k {
+	case kindExe:
+		return name == desktopExe
+	case kindAppImage:
+		return strings.HasPrefix(name, "Wynd-") && strings.HasSuffix(name, "-x86_64.AppImage")
+	case kindDeb:
+		return strings.HasPrefix(name, "wynd-desktop_") && strings.HasSuffix(name, "_amd64.deb")
+	}
+	return false
+}
+
+// pickUpdate — выпуск для Windows-сборки: прежние тесты и поведение окна.
 func pickUpdate(rels []ghRelease, current string, now time.Time) Update {
+	return pickUpdateFor(rels, current, now, kindExe, "")
+}
+
+// pickUpdateFor — самый новый выпуск окна, вышедший не меньше UpdateDelay
+// назад: черновики, пробные выпуски, чужие метки и версии не новее текущей не
+// предлагаются. Для Linux берётся свой файл — AppImage или .deb.
+func pickUpdateFor(rels []ghRelease, current string, now time.Time, kind UpdateKind, target string) Update {
 	cur, _ := relver.Number(current)
 	var best *ghRelease
 	var bestN [3]int
@@ -122,17 +181,36 @@ func pickUpdate(rels []ghRelease, current string, now time.Time) Update {
 		if !ok || !relver.Less(cur, n) || best != nil && !relver.Less(bestN, n) {
 			continue
 		}
+		// Выпуск без файла для этой сборки не предлагаем: иначе окно
+		// показало бы полосу и не смогло установить обновление.
+		hasFile, hasSig := false, false
+		for _, a := range r.Assets {
+			if kind.matchesAsset(a.Name) {
+				hasFile = true
+			}
+			if strings.HasSuffix(a.Name, ".sig") && kind.matchesAsset(strings.TrimSuffix(a.Name, ".sig")) {
+				hasSig = true
+			}
+		}
+		if !hasFile || !hasSig {
+			continue
+		}
 		best, bestN = r, n
 	}
 	if best == nil {
 		return Update{}
 	}
-	up := Update{Version: strings.TrimPrefix(best.TagName, desktopTag), Attestation: AttestationsPage}
+	up := Update{
+		Version:     strings.TrimPrefix(best.TagName, desktopTag),
+		Attestation: AttestationsPage,
+		kind:        kind,
+		target:      target,
+	}
 	for _, a := range best.Assets {
-		switch a.Name {
-		case desktopExe:
-			up.exeURL = a.URL
-		case desktopExe + ".sig":
+		switch {
+		case kind.matchesAsset(a.Name):
+			up.fileURL = a.URL
+		case strings.HasSuffix(a.Name, ".sig") && kind.matchesAsset(strings.TrimSuffix(a.Name, ".sig")):
 			up.sigURL = a.URL
 		}
 	}
@@ -141,14 +219,15 @@ func pickUpdate(rels []ghRelease, current string, now time.Time) Update {
 			up.Notes = append(up.Notes, item)
 		}
 	}
-	up.Available = up.exeURL != "" && up.sigURL != ""
+	up.Available = up.fileURL != "" && up.sigURL != ""
 	return up
 }
 
 // ApplyUpdate скачивает новую версию окна, проверяет подпись и ставит её на
-// место своего exe; прежний остаётся рядом (.old) до следующего запуска.
-// Возвращает путь нового exe — его окно запускает и закрывается само.
-// progress (необязательный) получает ход скачивания для полосы обновления.
+// место своего файла; прежний остаётся рядом (.old) до следующего запуска.
+// Windows — exe, Linux AppImage — сам .AppImage, .deb — установка через
+// системный запрос прав (pkexec). Возвращает путь, который окно запускает и
+// закрывается само. progress (необязательный) получает ход скачивания.
 func ApplyUpdate(
 	ctx context.Context,
 	client *http.Client,
@@ -156,9 +235,25 @@ func ApplyUpdate(
 	progress func(done, total int64),
 ) (string, error) {
 	if !up.Available {
-		return "", ErrBadSignature
+		return "", ErrNoUpdate
 	}
-	return selfupdate.Apply(ctx, client, SigningKey, up.exeURL, up.sigURL, progress)
+	switch up.kind {
+	case kindExe:
+		target := up.target
+		if target == "" {
+			target = SelfPath()
+		}
+		return selfupdate.ApplyTo(ctx, client, SigningKey, up.fileURL, up.sigURL, target, progress)
+	case kindAppImage:
+		target := up.target
+		if target == "" {
+			target = SelfPath()
+		}
+		return selfupdate.ApplyTo(ctx, client, SigningKey, up.fileURL, up.sigURL, target, progress)
+	case kindDeb:
+		return applyDeb(ctx, client, up, progress)
+	}
+	return "", ErrNoUpdate
 }
 
 // UpdateProgress — ход скачивания обновления (общий тип selfupdate.Progress).
