@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { checkProject, formatReport } from './ui-guard.mjs';
 import { checkChromeOwners } from './chrome-guard.mjs';
 import { checkViewportMeta } from './viewport-guard.mjs';
+import { checkDialogFit } from './dialog-guard.mjs';
 import { checkWorkshopBaselineFiles } from '../../docs/visual/workshop-baseline-guard.mjs';
 
 const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -38,5 +39,15 @@ if (viewportHits.length) {
 	process.exit(1);
 }
 console.log('viewport-guard: OK (клавиатура не сжимает layout viewport)');
+// Диалоги (C156): действия остаются в видимой области и над клавиатурой.
+const dialogHits = checkDialogFit(webRoot);
+if (dialogHits.length) {
+	console.error(
+		'dialog-guard: диалог снова не вписан в видимую область — клавиатура прячет его действия.\n' +
+			dialogHits.join('\n')
+	);
+	process.exit(1);
+}
+console.log('dialog-guard: OK (диалог вписан в видимую область)');
 // Лесенка вертикальных зазоров (C120) — часть проверки интерфейса.
 await import('./check-spacing.mjs');
