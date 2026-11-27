@@ -143,7 +143,6 @@
 	<ConfirmDialog
 		title="Как выбирать фото и видео?"
 		confirmLabel="Продолжить"
-		fitViewport
 		onconfirm={() => {
 			showing = false;
 			void selectFiles(choice, remember);

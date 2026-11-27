@@ -2742,12 +2742,13 @@ body .scrim {
 	left: 0;
 	height: auto;
 }
+/* Диалог — в видимой области (--app-h из session/viewport.ts): клавиатура не
+   прячет его действия под собой, а в коротком окне диалог прокручивается
+   внутри. Раньше так было только у dlg-fit-viewport, и в удалении круга
+   (6.40) «Отмена»/«Удалить» уходили под клавиатуру (C156). */
 body .dlg {
 	width: min(calc(100% - 44px), var(--dlg-max-width));
 	max-width: var(--dlg-max-width);
-	top: 250px;
-}
-body .dlg.dlg-fit-viewport {
 	--dialog-top: clamp(12px, calc(var(--app-h, 100dvh) - 400px), 250px);
 	top: var(--dialog-top);
 	max-height: calc(var(--app-h, 100dvh) - var(--dialog-top) - 12px);
