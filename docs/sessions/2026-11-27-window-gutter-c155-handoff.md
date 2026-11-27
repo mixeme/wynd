@@ -82,7 +82,10 @@
 
 ## Состояние дерева
 
-HEAD — `bbb82332`; main в Gitea. Незакоммичено — только `.zcode/` (не наш).
+HEAD — `6290203c`; main в Gitea. Наших незакоммиченных правок нет; `.zcode/`
+и правки соседней сессии (на момент передачи — `FilePicker.svelte`,
+`ConfirmDialog.svelte`, `ui.css`, `web/src/routes/dev/tmp-kb-dialog/`) — не наши.
+После передачи соседняя сессия добавила `07c482e4`.
 Стенд 7687 погашен; `dev/wynd-stand-gutter.exe`, `dev/gutter-window-data`,
 `dev/capture-gutter.mjs`, `dev/web-test-gutter.log` — в `dev/` (gitignored).
 Окно владельца (`wynd-desktop.exe`, замок одного экземпляра) не перезапускалось;
