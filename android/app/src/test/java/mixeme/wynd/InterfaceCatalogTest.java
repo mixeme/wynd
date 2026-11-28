@@ -101,4 +101,60 @@ public final class InterfaceCatalogTest {
         assertEquals("Дом", result.getString("name"));
         assertEquals("https://home.example.org", result.getString("origin"));
     }
+
+    private static final String HOME_SERVER_FILE =
+            "{\"selected\":\"https://home.example.org\",\"servers\":[{\"origin\":\"https://home.example.org\",\"name\":\"Дом\"}]}";
+
+    @Test public void sourceDefaultsToEmbeddedForFilesWithoutTheField() throws Exception {
+        Memory disk = new Memory();
+        disk.value = HOME_SERVER_FILE;
+        InterfaceCatalog restored = new InterfaceCatalog(disk, false, "other.example.org");
+        // Решение владельца 28.11: прежние файлы читаются как вшитый интерфейс;
+        // файл при чтении не переписывается.
+        assertEquals("embedded", restored.source());
+        assertFalse(disk.value.contains("source"));
+    }
+
+    @Test public void freshCatalogStoresEmbeddedSource() throws Exception {
+        Memory disk = new Memory();
+        InterfaceCatalog first = new InterfaceCatalog(disk, false, "");
+        assertEquals("embedded", first.source());
+        assertTrue(disk.value.contains("\"source\":\"embedded\""));
+    }
+
+    @Test public void foreignSourceValueAndServerWithoutSelectionReadAsEmbedded() throws Exception {
+        Memory disk = new Memory();
+        disk.value = "{\"selected\":\"https://home.example.org\",\"source\":\"local\",\"servers\":[{\"origin\":\"https://home.example.org\",\"name\":\"Дом\"}]}";
+        assertEquals("embedded", new InterfaceCatalog(disk, false, "").source());
+        Memory empty = new Memory();
+        empty.value = "{\"selected\":\"\",\"source\":\"server\",\"servers\":[]}";
+        assertEquals("embedded", new InterfaceCatalog(empty, false, "").source());
+    }
+
+    @Test public void serverChoiceOpensServerUiAndEmbeddedKeepsDataServer() throws Exception {
+        Memory disk = new Memory();
+        InterfaceCatalog store = new InterfaceCatalog(disk, false, "home.example.org");
+        store.add(server("https://files.example.org", "Файлы"));
+        assertEquals("embedded", store.source());
+        store.select("files.example.org");
+        assertEquals("server", store.source());
+        assertEquals("https://files.example.org", store.selected());
+        store.selectEmbedded();
+        assertEquals("embedded", store.source());
+        // Вшитый возвращает страницы из APK с тем же сервером данных.
+        assertEquals("https://files.example.org", store.selected());
+        InterfaceCatalog restored = new InterfaceCatalog(disk, false, "");
+        assertEquals("embedded", restored.source());
+        assertEquals("https://files.example.org", restored.selected());
+    }
+
+    @Test public void failedWriteDoesNotChangeSource() throws Exception {
+        Memory disk = new Memory();
+        InterfaceCatalog store = new InterfaceCatalog(disk, false, "home.example.org");
+        String before = store.snapshot().toString();
+        disk.fail = true;
+        assertThrows(IOException.class, () -> store.selectEmbedded());
+        assertEquals(before, store.snapshot().toString());
+        assertEquals("embedded", store.source());
+    }
 }

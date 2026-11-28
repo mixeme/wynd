@@ -6,12 +6,13 @@ def environmentRoot = providers.gradleProperty('wyndEnvironmentRoot')
         .orElse(providers.environmentVariable('WYND_ANDROID_ENV'))
         .orElse('D:/android-env')
 def startUrl = providers.gradleProperty('wyndDevServerUrl').orElse('')
-// Подготовка вшитого интерфейса (план 50, схема Настольного): клиент в APK
-// и режим embedded включаются только этим свойством. По умолчанию интерфейс
-// приходит с сервера, поэтому обычные APK не растут и не меняются.
+// Вшитый интерфейс (план 50, схема Настольного, решение владельца 28.11):
+// клиент собран в каждый APK и открывается по умолчанию; источник переключается
+// в «Настройки → Приложение → Интерфейс». Сборка без клиента — только явным
+// -PwyndEmbeddedUi=false (сторож CI).
 def embeddedUi = providers.gradleProperty('wyndEmbeddedUi')
         .map { it.toBoolean() }
-        .orElse(false)
+        .orElse(true)
         .get()
 def fixtureOrigin = providers.gradleProperty('wyndUpdateFixtureOrigin').orElse('')
 def versionProperties = new Properties()

@@ -3,7 +3,9 @@ param(
     [string]$ServerUrl = 'http://127.0.0.1:7676',
     [string]$UpdateFixtureOrigin = '',
     [string]$VersionName = '',
-    [switch]$EmbeddedUi,
+    # Вшитый интерфейс теперь в каждой сборке (план 50, решение владельца
+    # 28.11); ключ собирает APK без клиента — сторож серверного режима.
+    [switch]$NoEmbeddedUi,
     [string[]]$Tasks = @('testStandardDebugUnitTest', 'lintStandardDebug', 'assembleStandardDebug')
 )
 
@@ -30,7 +32,7 @@ try {
     $env:PATH = (Join-Path $jdk.FullName 'bin') + ';' + $env:PATH
     $versionArguments = @()
     if ($VersionName) { $versionArguments += "-PwyndVersionName=$VersionName" }
-    if ($EmbeddedUi) { $versionArguments += '-PwyndEmbeddedUi=true' }
+    if ($NoEmbeddedUi) { $versionArguments += '-PwyndEmbeddedUi=false' }
     & $wrapper --no-daemon --console=plain -p (Join-Path $projectRoot 'android') `
         --project-cache-dir (Join-Path $EnvironmentRoot 'cache\wynd-project') `
         "-PwyndEnvironmentRoot=$EnvironmentRoot" "-PwyndDevServerUrl=$ServerUrl" `

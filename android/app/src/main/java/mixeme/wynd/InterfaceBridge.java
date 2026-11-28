@@ -53,11 +53,12 @@ final class InterfaceBridge {
                         if (id < 1) return;
                         String op = request.getString("op");
                         // Проверяем действия на UI-потоке до постановки в очередь.
-                        boolean blocked = op.equals("select") && activity.interfaceSwitchBlocked();
+                        boolean blocked = (op.equals("select") || op.equals("embedded")) && activity.interfaceSwitchBlocked();
                         worker.execute(() -> {
                             if (destroyed || switching) return;
                             JSONObject response = new JSONObject();
                             boolean selected = false;
+                            boolean embeddedChoice = false;
                             boolean startup = false;
                             try {
                                 response.put("id", id).put("protocol", 1);
@@ -86,6 +87,13 @@ final class InterfaceBridge {
                                         // Повторная проверка незавершённых действий перед записью выбора — на UI-потоке ниже.
                                         selected = true;
                                         break;
+                                    case "embedded":
+                                        // Вшитый интерфейс из APK (план 50, решение
+                                        // владельца 28.11): выбранный сервер остаётся
+                                        // источником данных, страницы перезагружаются.
+                                        if (!"server".equals(catalog.source())) throw new IOException("unknown");
+                                        embeddedChoice = true;
+                                        break;
                                     default: throw new IOException("unknown");
                                 }
                                 response.put("catalog", catalog.snapshot());
@@ -94,6 +102,7 @@ final class InterfaceBridge {
                                 catch (org.json.JSONException ignored) { }
                             }
                             final boolean choose = selected && !response.has("error");
+                            final boolean embeddedSwitch = embeddedChoice && !response.has("error");
                             final boolean openStartup = startup && !response.has("error");
                             activity.runOnUiThread(() -> {
                                 if (destroyed || switching || activity.isFinishing() || activity.isDestroyed() || !origin.contains(web.getUrl())) return;
@@ -103,12 +112,17 @@ final class InterfaceBridge {
                                     return;
                                 }
                                 try {
-                                    if (choose) {
+                                    if (choose || embeddedSwitch) {
                                         if (activity.interfaceSwitchBlocked()) response.put("error", "busy");
                                         else {
                                             synchronized (this) {
                                                 if (destroyed || switching) return;
-                                                catalog.select(request.getString("origin"));
+                                                if (choose) catalog.select(request.getString("origin"));
+                                                else catalog.selectEmbedded();
+                                                // Прежний воркер того же origin отдаёт
+                                                // страницы прежнего источника — снимаем
+                                                // один раз при смене (MainActivity).
+                                                activity.markSourceSwitch();
                                                 switching = true;
                                                 response.put("catalog", catalog.snapshot());
                                             }

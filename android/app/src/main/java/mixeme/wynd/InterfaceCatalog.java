@@ -32,8 +32,9 @@ final class InterfaceCatalog {
             }
             String selected = data.getString("selected");
             if (!origins.contains(selected) && !(selected.isEmpty() && servers.length() == 0)) throw new IOException("Invalid selection");
+            normalizeSource();
         } else {
-            data = new JSONObject().put("selected", "").put("servers", new JSONArray());
+            data = new JSONObject().put("selected", "").put("source", "embedded").put("servers", new JSONArray());
             if (initial != null && !initial.trim().isEmpty()) {
                 String origin = canonical(initial);
                 data.put("selected", origin).getJSONArray("servers")
@@ -41,6 +42,21 @@ final class InterfaceCatalog {
             }
             storage.write(data.toString());
         }
+    }
+
+    /**
+     * Откуда страницы (план 50, схема Настольного, решение владельца 28.11):
+     * embedded по умолчанию — в том числе для файлов без поля; серверный режим
+     * требует выбранного сервера, как sourceLocked в Настольном.
+     */
+    synchronized String source() {
+        return "server".equals(data.optString("source")) && !data.optString("selected").isEmpty()
+                ? "server" : "embedded";
+    }
+
+    /** Чужое значение поля в файле не ломает запуск: читаем как вшитый. */
+    private void normalizeSource() throws JSONException {
+        if (!"server".equals(data.optString("source"))) data.put("source", "embedded");
     }
 
     private String canonical(String value) {
@@ -81,10 +97,19 @@ final class InterfaceCatalog {
         if (index < 0) servers.put(item); else servers.put(index, item);
         return next;
     }
+    /**
+     * Выбор сервера из списка открывает его серверный интерфейс (как
+     * SelectServer в Настольном); он же остаётся источником данных.
+     */
     synchronized void select(String origin) throws IOException, JSONException {
         origin = canonical(origin);
         if (!contains(origin)) throw new IOException("Unknown interface");
-        commit(snapshot().put("selected", origin));
+        commit(snapshot().put("selected", origin).put("source", "server"));
+    }
+
+    /** Вшитый интерфейс из APK; выбранный сервер остаётся источником данных. */
+    synchronized void selectEmbedded() throws IOException, JSONException {
+        commit(snapshot().put("source", "embedded"));
     }
     synchronized void remove(String origin) throws IOException, JSONException {
         origin = canonical(origin);

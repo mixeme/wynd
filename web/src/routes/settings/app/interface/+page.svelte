@@ -11,6 +11,7 @@
 		addInterface,
 		removeInterface,
 		selectInterface,
+		selectEmbeddedInterface,
 		InterfaceError,
 		type InterfaceCatalog,
 		type InterfaceServer
@@ -136,6 +137,21 @@
 			busy = false;
 		}
 	}
+	/** Вшитый интерфейс из APK (план 50, решение владельца 28.11) — откат с серверного. */
+	async function chooseEmbedded() {
+		if (busy || data?.source === 'embedded') return;
+		busy = true;
+		error = '';
+		try {
+			data = await selectEmbeddedInterface();
+		} catch (failure) {
+			error =
+				failure instanceof InterfaceError && failure.code === 'busy'
+					? 'Сначала завершите текущее действие или отмените его.'
+					: 'Не удалось открыть интерфейс приложения. Попробуйте ещё раз.';
+			busy = false;
+		}
+	}
 	async function confirmRemove() {
 		if (!removeTarget || busy) return;
 		busy = true;
@@ -195,12 +211,36 @@
 	<FormLayout shell app title="Сервер интерфейса" onback={back}>
 		{#if data}
 			<Hint class="mt-16"
-				>Приложение загружает интерфейс с выбранного сервера. Ваши входы и круги останутся без
+				>Интерфейс открывается из приложения или с выбранного сервера. Входы и круги останутся без
 				изменений.</Hint
 			>
+			{#if data.source === 'embedded'}
+				<!-- План 50, схема Настольного: вшитый — основной, стоит первым. -->
+				<ServerRow
+					name="Встроенный"
+					subtitle="Интерфейс приложения"
+					detail="Сейчас открывает интерфейс"
+					variant="ok"
+				/>
+			{:else}
+				<ServerRow
+					name="Встроенный"
+					subtitle="Интерфейс приложения"
+					onclick={() => void chooseEmbedded()}
+				/>
+			{/if}
 			<Label>Серверы интерфейса</Label>
 			{#each data.servers as server (server.origin)}
-				{#if server.origin === data.selected}
+				{#if server.origin === data.selected && data.source === 'embedded'}
+					<!-- С этого сервера идут данные, но страницы — вшитые: убрать
+					     его из списка, пока он выбран, нельзя. -->
+					<ServerRow
+						name={server.name}
+						subtitle={displayHost(server.origin)}
+						detail="Данные с этого сервера"
+						onclick={() => {}}
+					/>
+				{:else if server.origin === data.selected}
 					<ServerRow
 						name={server.name}
 						subtitle={displayHost(server.origin)}

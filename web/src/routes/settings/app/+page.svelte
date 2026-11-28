@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { navigateBack } from '$lib/navigation/up';
 	import { goto } from '$app/navigation';
-	import { androidInterfacesAvailable } from '$lib/android/interfaces';
+	import {
+		androidInterfacesAvailable,
+		loadInterfaces,
+		type InterfaceSource
+	} from '$lib/android/interfaces';
 	import { androidPushAvailable, androidPushStatus } from '$lib/android/push';
 	import { androidSecretsAvailable } from '$lib/android/secrets';
 	import { setAndroidPushEnabled } from '$lib/push/push';
@@ -77,8 +81,11 @@
 	const desktop = desktopBridge();
 	// Вшитый интерфейс окна (план 66, функция 9): страницы из exe, а выбранный
 	// сервер — источник данных. На страницах сервера признака нет.
-	const embeddedUI = desktop?.embedded === true;
+	// В Android (план 50, решение владельца 28.11) режим приходит из каталога
+	// источников; нативная без поля source отдаёт страницы с сервера.
 	const androidInterfaces = androidInterfacesAvailable();
+	let androidSource = $state<InterfaceSource>('server');
+	const embeddedUI = $derived(desktop?.embedded === true || androidSource === 'embedded');
 	// Общее хранилище входов (C127): с ним переключение не меняет набор входов.
 	const sharedEntries = androidSecretsAvailable();
 	const interfaceOrigin = desktop?.origin ?? (androidInterfaces ? window.location.origin : '');
@@ -209,6 +216,11 @@
 		if (interfaceOrigin) {
 			const card = await loadServerCard(interfaceOrigin);
 			interfaceName = card.info?.name || displayHost(interfaceOrigin);
+		}
+		if (androidInterfaces) {
+			void loadInterfaces()
+				.then((value) => (androidSource = value.source))
+				.catch(() => {});
 		}
 		if (auto) {
 			try {

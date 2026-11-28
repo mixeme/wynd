@@ -105,16 +105,17 @@ jobs:
           cp android/app/build/outputs/apk/fdroid/release/app-fdroid-release-unsigned.apk dist/wynd-android-fdroid-unsigned.apk
           sha256sum dist/wynd-android-unsigned.apk | cut -d' ' -f1 > dist/wynd-android-unsigned.apk.sha256
           sha256sum dist/wynd-android-fdroid-unsigned.apk | cut -d' ' -f1 > dist/wynd-android-fdroid-unsigned.apk.sha256
-      - name: Embedded interface build
-        # Подготовка плана 50: обычные APK выше без клиента, эта сборка
-        # проверяет упаковку web/dist в assets и режим BuildConfig.EMBEDDED_UI.
+      - name: Server-UI build guard
+        # Основные APK выше несут вшитый клиент (план 50, решение владельца
+        # 28.11); эта сборка-сторож держит рабочим путь без клиента
+        # (BuildConfig.EMBEDDED_UI=false, страницы только с сервера).
         shell: bash
         run: |
           set -euo pipefail
           android/gradlew --no-daemon --console=plain -p android \
             --project-cache-dir "$RUNNER_TEMP/android-env/project-cache" \
             -PwyndEnvironmentRoot="$RUNNER_TEMP/android-env" \
-            -PwyndEmbeddedUi=true assembleStandardDebug
+            -PwyndEmbeddedUi=false assembleStandardDebug
       - name: Unsigned APK artifact
         uses: actions/upload-artifact@v7
         with:

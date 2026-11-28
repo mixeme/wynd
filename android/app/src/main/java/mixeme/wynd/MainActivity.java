@@ -78,9 +78,10 @@ public final class MainActivity extends Activity {
         server = origin;
         localStartup = local;
         backPending = false;
-        // Вшитый клиент (план 50, схема Настольного): по умолчанию интерфейс
-        // с сервера; сборка с -PwyndEmbeddedUi=true отдаёт страницы из APK.
-        embedded = !local && BuildConfig.EMBEDDED_UI
+        // Вшитый клиент (план 50, схема Настольного): страницы по умолчанию
+        // отдаются из APK (решение владельца 28.11), серверный интерфейс —
+        // явный откат через «Настройки → Приложение → Интерфейс».
+        embedded = !local && BuildConfig.EMBEDDED_UI && "embedded".equals(catalog.source())
                 ? EmbeddedAssets.fromAssets(getAssets(), server)
                 : null;
         embeddedReset = embedded != null && embeddedNeedsReset();
@@ -283,13 +284,18 @@ public final class MainActivity extends Activity {
             public void onPageFinished(WebView view, String url) {
                 if (!server.contains(url)) return;
                 Log.i(TAG, "Selected interface loaded");
-                if (embeddedReset) {
-                    embeddedReset = false;
-                    markEmbeddedReset();
-                    // Старый сервис-воркер от прежней сборки отдаёт свой index
-                    // и чанки, которых в этом APK уже нет (как чистка Service
-                    // Worker в Настольном). Снимаем регистрации и кэши один раз
-                    // на обновление APK; IndexedDB, сессии и очередь не трогаем.
+                boolean switchReset = sourceSwitchPending();
+                if (switchReset || embeddedReset) {
+                    if (switchReset) clearSourceSwitchReset();
+                    // Старый сервис-воркер того же origin отдаёт свой index и
+                    // чанки прежнего источника либо прежней сборки APK (как
+                    // чистка Service Worker в Настольном). Снимаем регистрации
+                    // и кэши один раз — на обновление APK и на смену источника;
+                    // IndexedDB, сессии и очередь не трогаем.
+                    if (embeddedReset) {
+                        embeddedReset = false;
+                        markEmbeddedReset();
+                    }
                     view.evaluateJavascript("(async()=>{try{const rs=await navigator.serviceWorker"
                             + ".getRegistrations();await Promise.all(rs.map(r=>r.unregister()));"
                             + "const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)));}"
@@ -354,6 +360,34 @@ public final class MainActivity extends Activity {
                 if (Build.VERSION.SDK_INT < 23 && assets == null && server.contains(failingUrl)) view.post(() -> unavailable(view, failingUrl));
             }
         });
+    }
+
+    /** Сброс вшитого воркера нужен и при смене источника — один раз на смену. */
+    void markSourceSwitch() {
+        try {
+            getSharedPreferences("wynd", MODE_PRIVATE).edit()
+                    .putBoolean("source_switch_reset", true).apply();
+        } catch (Exception ignored) {
+            // Маркер не записался — старый воркер обновится по своему графику.
+        }
+    }
+
+    private boolean sourceSwitchPending() {
+        try {
+            return getSharedPreferences("wynd", MODE_PRIVATE)
+                    .getBoolean("source_switch_reset", false);
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private void clearSourceSwitchReset() {
+        try {
+            getSharedPreferences("wynd", MODE_PRIVATE).edit()
+                    .putBoolean("source_switch_reset", false).apply();
+        } catch (Exception ignored) {
+            // Останется до следующего сброса: лишняя перезагрузка безвредна.
+        }
     }
 
     /** Сброс вшитого воркера нужен один раз на установленное обновление APK. */

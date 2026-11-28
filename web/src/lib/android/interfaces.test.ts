@@ -6,6 +6,7 @@ import {
 	previewInterface,
 	openStartupScreen,
 	removeInterface,
+	selectEmbeddedInterface,
 	selectInterface
 } from './interfaces';
 
@@ -82,6 +83,32 @@ describe('Android interface source protocol', () => {
 		await openStartupScreen();
 		expect(sent).toHaveLength(1);
 		expect(sent[0].op).toBe('startup');
+	});
+	it('embedded choice asks the embedded op and keeps the selected server', async () => {
+		const sent = mock({
+			catalog: { ...catalog, source: 'embedded' as const }
+		});
+		const reply = await selectEmbeddedInterface();
+		expect(sent).toHaveLength(1);
+		expect(sent[0].op).toBe('embedded');
+		expect(reply.source).toBe('embedded');
+		expect(reply.selected).toBe(catalog.selected);
+	});
+	it('server choice reports the server source of the chosen origin', async () => {
+		const sent = mock({ catalog: { ...catalog, source: 'server' as const } });
+		const reply = await selectInterface('https://home.example.org');
+		expect(sent[0].op).toBe('select');
+		expect(reply.source).toBe('server');
+	});
+	it('catalog without a source field is server mode (native before the switch)', async () => {
+		mock({ catalog });
+		const reply = await loadInterfaces();
+		expect(reply.source).toBe('server');
+	});
+	it('foreign source value in the reply is read as server mode', async () => {
+		mock({ catalog: { ...catalog, source: 'local' } });
+		const reply = await loadInterfaces();
+		expect(reply.source).toBe('server');
 	});
 	it('times out without a correlated response', async () => {
 		vi.useFakeTimers();

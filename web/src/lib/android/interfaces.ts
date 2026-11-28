@@ -7,8 +7,11 @@ export interface InterfaceServer {
 	origin: string;
 	name: string;
 }
+/** Откуда страницы: из APK (по умолчанию) или с сервера — схема Настольного (план 50). */
+export type InterfaceSource = 'embedded' | 'server';
 export interface InterfaceCatalog {
 	selected: string;
+	source: InterfaceSource;
 	servers: InterfaceServer[];
 }
 export class InterfaceError extends Error {
@@ -60,7 +63,10 @@ function catalog(value: unknown): InterfaceCatalog {
 		new Set(servers.map((item) => item.origin)).size !== servers.length
 	)
 		throw new InterfaceError('invalid');
-	return { selected: data.selected, servers };
+	// Нативная без поля source (сборки до переключения) всегда отдаёт страницы
+	// с сервера; чужое значение в ответе читаем как серверный режим.
+	const source: InterfaceSource = data.source === 'embedded' ? 'embedded' : 'server';
+	return { selected: data.selected, source, servers };
 }
 function request(op: string, value: Record<string, string> = {}): Promise<Reply> {
 	const target = port();
@@ -117,6 +123,15 @@ export async function removeInterface(origin: string): Promise<InterfaceCatalog>
 }
 export async function selectInterface(origin: string): Promise<InterfaceCatalog> {
 	return catalog((await request('select', { origin })).catalog);
+}
+
+/**
+ * Возвращает вшитый интерфейс (план 50, решение владельца 28.11): страницы из
+ * APK, выбранный сервер остаётся источником данных. Выбор сервера из списка,
+ * наоборот, открывает его серверный интерфейс.
+ */
+export async function selectEmbeddedInterface(): Promise<InterfaceCatalog> {
+	return catalog((await request('embedded')).catalog);
 }
 
 /**
