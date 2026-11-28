@@ -15,7 +15,7 @@
  			<Label>Каталог на сервере</Label>
  			<Input mono autocomplete="off" spellcheck={false} bind:value={p.installRoot} />
 +
-+			<FieldLine style="margin: var(--sp-1) 0">
++			<FieldLine>
 +				<Checkbox native style="margin-top: 0" bind:checked={reviewPushEnabled}>Сервер уведомлений Wynd Push</Checkbox>
 +				{#if reviewPushEnabled}
 +					<Input
