@@ -8,7 +8,7 @@
  	import StepList from '$ui/workshop/StepList.svelte';
  	import type { ServerProfile, ProfileRequest, ProfileViewState, Finding } from './api';
  	import { Panel } from './lib/panel.svelte';
-@@ -22,6 +23,19 @@
+@@ -22,6 +23,21 @@
  	import { day, dayTime, gb, mark } from './lib/display';
 
  	const reviewPushStatus = new URLSearchParams(location.search).has('push-status');
@@ -25,10 +25,12 @@
 +	let reviewCacheOpen = $state(false);
 +	let reviewPushRunning = $state(true);
 +	let reviewPushFeedback = $state('');
++	let reviewRemoveOpen = $state(false);
++	let reviewPushRemoved = $state(false);
 
  	let {
  		profile,
-@@ -262,6 +276,45 @@
+@@ -262,6 +278,64 @@
  			><Button variant="colored" onclick={() => (p.screen = 'inspect')}>Установить Wynd</Button
  			></FootBar
  		>
@@ -60,23 +62,45 @@
 +				Новый срок хранения вступит в силу при запуске сервера уведомлений.
 +			{/if}
 +		</Hint>
++		{#if reviewRemoveOpen}
++			<Notice
++				tone="bad"
++				title="Удалить сервер уведомлений?"
++				text="Настройки Push-сервера и ожидающие доставки сообщения будут удалены. Wynd продолжит работать."
++			/>
++		{/if}
 +		<FootBar>
-+			<Button
-+				variant="colored"
-+				disabled={reviewCache === reviewSavedCache}
-+				onclick={() => {
-+					reviewSavedCache = reviewCache;
++			{#if reviewRemoveOpen}
++				<Button variant="colored" onclick={() => {
++					reviewPushRemoved = true;
++					reviewRemoveOpen = false;
 +					reviewCacheOpen = false;
-+				}}>Сохранить</Button
-+			>
-+			<Button variant="ghost" onclick={() => (reviewCacheOpen = false)}>Отмена</Button>
++				}}>Удалить</Button>
++				<Button variant="ghost" onclick={() => (reviewRemoveOpen = false)}>Отмена</Button>
++			{:else}
++				<Button
++					variant="colored"
++					disabled={reviewCache === reviewSavedCache}
++					onclick={() => {
++						reviewSavedCache = reviewCache;
++						reviewCacheOpen = false;
++					}}>Сохранить</Button
++				>
++				<Button variant="ghost" onclick={() => (reviewCacheOpen = false)}>Отмена</Button>
++				<TextButton class="link under ins-push" onclick={() => (reviewRemoveOpen = true)}>
++					Удалить сервер уведомлений
++				</TextButton>
++			{/if}
 +		</FootBar>
  	{:else if p.screen === 'server' && p.page && p.st}
  		<!-- Пульт (кадры 7а, 7а2, 7а3, 7е). -->
  		{#if p.keyNote}<Notice tone="note">{p.keyNote}</Notice>{/if}
-@@ -421,9 +474,16 @@
+@@ -419,11 +493,18 @@
+ 						<TextButton class="link under" onclick={p.toMove}>Перенести</TextButton>
+ 					{/snippet}
  				</MarkRow>
- 				{#if reviewPushStatus}
+-				{#if reviewPushStatus}
++				{#if reviewPushStatus && !reviewPushRemoved}
  					<MarkRow mark="">
 -						Сервер уведомлений работает <span class="ins-dim">· ntfy 2.0.0</span>
 +						{reviewPushRunning ? 'Сервер уведомлений работает' : 'Сервер уведомлений остановлен'} <span class="ins-dim">· ntfy 2.0.0</span>
@@ -93,7 +117,7 @@
  						{/snippet}
  					</MarkRow>
  				{/if}
-@@ -1254,7 +1314,7 @@
+@@ -1254,7 +1335,7 @@
  			</TextButton>
  		</FootBar>
  	{/if}
