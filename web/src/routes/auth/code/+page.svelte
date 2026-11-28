@@ -26,6 +26,10 @@
 	let pending = $state<PendingAuth | undefined>();
 	let code = $state('');
 	let loading = $state(false);
+	// Какой код уже проверен: эффект не отправляет его второй раз — отправка
+	// возвращала loading в false при неизменных code и pending, и эффект
+	// запускался снова. Правка кода снимает барьер: повтор остаётся возможен.
+	let verifiedFor = $state<string | undefined>(undefined);
 	let error = $state('');
 	let cooldown = $state(0);
 	let timer: ReturnType<typeof setInterval> | undefined;
@@ -53,7 +57,7 @@
 	const pageTitle = $derived(logDelivery ? 'Код с сервера' : 'Код из письма');
 
 	$effect(() => {
-		if (code.length === 6 && pending && !loading) {
+		if (code.length === 6 && pending && !loading && verifiedFor !== code) {
 			void submitCode(code);
 		}
 	});
@@ -64,6 +68,7 @@
 		error = '';
 		try {
 			const result = await verifyCode(pending.origin, pending.email, value);
+			verifiedFor = value;
 			await persistSession(pending.origin, result, pending.instanceName ?? '');
 			const after = pending;
 			clearPendingAuth();
@@ -91,7 +96,11 @@
 					/* street is fine */
 				}
 			}
-			goto(takeWantedPath() ?? '/circles');
+			// Улица становится корнем истории после входа (C162): запись кода
+			// заменяется, и «Назад» с улочки в приложении закрывает его, как
+			// после запуска с сохранённым входом (C158). Приглашения выше
+			// заменяют код так же.
+			goto(takeWantedPath() ?? '/circles', { replaceState: true });
 		} catch (err) {
 			error = authErrorHint(err);
 			code = '';
