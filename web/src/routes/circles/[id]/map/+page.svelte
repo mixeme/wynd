@@ -15,6 +15,7 @@
 	import { CIRCLE_CTX, type CircleContext } from '$lib/journal/context';
 	import { loadDays, loadDaysCached } from '$lib/journal/days';
 	import { loadMap, loadMapCached } from '$lib/journal/map';
+	import { requestDeviceHere } from '$lib/journal/map-locate';
 	import { paintFromSnapshots } from '$lib/journal/snapshot-first';
 	import { postsWithPlace } from '$lib/journal/map-badge';
 	import { fetchOlderPage, mergePages } from '$lib/journal/pages';
@@ -227,17 +228,12 @@
 	let userMoved = false;
 
 	function locateOnce() {
-		if (!window.isSecureContext || !('geolocation' in navigator)) return;
-		navigator.geolocation.getCurrentPosition(
-			(pos) => {
-				here = [pos.coords.latitude, pos.coords.longitude];
-				if (map && !userMoved) map.setView(here, HERE_ZOOM);
-			},
-			() => {
-				/* не дали или не нашли — остаётся вид на все точки */
-			},
-			{ timeout: 8000, maximumAge: 10 * 60 * 1000, enableHighAccuracy: false }
-		);
+		requestDeviceHere((point) => {
+			here = point;
+			// Карта могла не успеть создаться (эффект ждёт элемент и Leaflet) —
+			// тогда место применит renderMap, когда дойдёт до вида.
+			if (map && !userMoved) map.setView(point, HERE_ZOOM);
+		});
 	}
 
 	onMount(() => {
