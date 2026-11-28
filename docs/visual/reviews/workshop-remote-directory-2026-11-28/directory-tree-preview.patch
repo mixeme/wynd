@@ -1,6 +1,8 @@
 --- a/cmd/wynd-workshop/frontend/src/App.svelte
 +++ b/cmd/wynd-workshop/frontend/src/App.svelte
-@@ -2,6 +2,8 @@
+@@ -1,7 +1,10 @@
+ <script lang="ts">
++	import { tick } from 'svelte';
  	import Button from '$ui/forms/Button.svelte';
  	import Chip from '$ui/forms/Chip.svelte';
  	import Input from '$ui/forms/Input.svelte';
@@ -9,14 +11,61 @@
  	import Label from '$ui/forms/Label.svelte';
  	import TextButton from '$ui/forms/TextButton.svelte';
  	import Hint from '$ui/forms/Hint.svelte';
-@@ -46,9 +48,40 @@
+@@ -35,7 +38,7 @@
+ 	let pushAddStep = $state<'' | 'domain' | 'plan'>('');
+ 	let pushAddDomain = $state('');
+ 	const previewDirectories = new URLSearchParams(location.search).has('directory-preview');
+-	const reviewFolders: Record<string, string[]> = {
++	const reviewFolders = $state<Record<string, string[]>>({
+ 		'/': ['opt', 'srv', 'var'],
+ 		'/opt': ['apps', 'workshop'],
+ 		'/opt/apps': [],
+@@ -44,11 +47,76 @@
+ 		'/srv/archives': [],
+ 		'/srv/wynd': [],
  		'/var': []
- 	};
+-	};
++	});
  	let reviewDirectory = $state('');
 -	const reviewParent = $derived(reviewDirectory === '/' ? '' : reviewDirectory.slice(0, reviewDirectory.lastIndexOf('/')) || '/');
 +	let reviewExpanded = $state(new Set<string>());
  	const reviewCanSelect = $derived(Boolean(reviewDirectory && !['/', '/opt', '/srv', '/var'].includes(reviewDirectory)));
- 	const closeDirectoryPreview = () => (reviewDirectory = '');
+-	const closeDirectoryPreview = () => (reviewDirectory = '');
++	let reviewCreating = $state(false);
++	let reviewFolderName = $state('');
++	let reviewCreateError = $state('');
++	function cancelDirectoryCreation() {
++		reviewCreating = false;
++		reviewFolderName = '';
++		reviewCreateError = '';
++	}
++	function closeDirectoryPreview() {
++		cancelDirectoryCreation();
++		reviewDirectory = '';
++	}
++	async function beginDirectoryCreation() {
++		reviewCreating = true;
++		await tick();
++		document.getElementById(`new-folder-name-${profile.id}`)?.focus();
++	}
++	function createPreviewDirectory() {
++		const name = reviewFolderName;
++		if (!name || name === '.' || name.trim() !== name || name.includes('/') || name.includes('..')) {
++			reviewCreateError = 'Укажите имя новой папки без пути.';
++			return;
++		}
++		const parent = reviewDirectory;
++		const path = (parent === '/' ? '' : parent) + '/' + name;
++		if (Object.hasOwn(reviewFolders, path)) {
++			reviewCreateError = 'Папка с таким именем уже есть.';
++			return;
++		}
++		reviewFolders[path] = [];
++		reviewFolders[parent] = [...(reviewFolders[parent] ?? []), name].sort();
++		reviewExpanded = new Set(reviewExpanded).add(parent);
++		reviewDirectory = path;
++		cancelDirectoryCreation();
++	}
 +	const parentDirectory = (dir: string) => dir.slice(0, dir.lastIndexOf('/')) || '/';
 +	function openDirectoryPreview() {
 +		let dir = p.installRoot.replace(/\/+$/, '') || '/opt/wynd';
@@ -51,7 +100,7 @@
  
  	let {
  		profile,
-@@ -1407,7 +1440,7 @@
+@@ -1407,7 +1475,7 @@
  			{#if previewDirectories}
  				<FieldLine style="margin-bottom: 0">
  					<Input aria-label="Каталог на сервере" class="ins-grow" mono autocomplete="off" spellcheck={false} bind:value={p.installRoot} />
@@ -60,14 +109,48 @@
  						Выбрать…
  					</Button>
  				</FieldLine>
-@@ -1477,24 +1510,36 @@
+@@ -1477,33 +1545,70 @@
  		style="position:fixed;inset:50% auto auto 50%;transform:translate(-50%,-50%);width:min(calc(100% - 2 * var(--sp-3)),var(--dlg-max-width));max-height:calc(100% - 2 * var(--sp-3));box-sizing:border-box;z-index:4;gap:var(--sp-2);overflow-y:auto"
  	>
  		<div class="ins-dim">{profile.name} · {host}</div>
--		<FieldLine style="margin: 0">
++		<MarkRows style="block-size: min(240px, 43dvh); overflow: auto; margin: 0">
++			{#each reviewTree as folder (folder.path)}
++				{@const selected = reviewDirectory === folder.path}
++				{@const expanded = reviewExpanded.has(folder.path)}
++				<MarkRow mark="" style={`padding: var(--sp-1) var(--sp-2); padding-inline-start: calc(var(--sp-2) + ${folder.level} * var(--sp-3)); ${selected ? 'background: var(--card);' : ''}`}>
++					<FieldLine style="margin: 0">
++						<FieldLine style="margin: 0; gap: var(--sp-1)">
++							{#if folder.expandable}
++								<IconButton
++									name={expanded ? 'chev' : 'chevr'}
++									size="xs"
++									label={`${expanded ? 'Свернуть' : 'Раскрыть'} ${folder.path}`}
++									onclick={() => toggleDirectory(folder.path)}
++									style="inline-size: 20px; block-size: 24px; flex: 0 0 20px"
++								/>
++							{:else}
++								<span style="inline-size: 20px; flex: 0 0 20px" aria-hidden="true"></span>
++							{/if}
++							<Icon name="folder" size="sm" style="color: var(--muted); flex: none" />
++						</FieldLine>
++						<TextButton
++							onclick={() => (reviewDirectory = folder.path)}
++							disabled={reviewCreating}
++							style="min-block-size: 24px; color: inherit; border: 0; text-align: start; overflow-wrap: anywhere"
++						>{folder.name}</TextButton>
++					</FieldLine>
++					{#snippet action()}
++						{#if selected}<span class="ins-mark ok" aria-hidden="true">✓</span>{/if}
++					{/snippet}
++				</MarkRow>
++			{/each}
++		</MarkRows>
+ 		<FieldLine style="margin: 0">
 -			<Input aria-label="Текущий каталог" class="ins-grow" mono readonly value={reviewDirectory} />
 -			<Button variant="ghost" disabled={!reviewParent} onclick={() => (reviewDirectory = reviewParent)}>На уровень выше</Button>
--		</FieldLine>
++			<Input aria-label="Выбранный каталог" class="ins-grow" mono readonly value={reviewDirectory} />
++			<Button variant="ghost" disabled={reviewCreating} onclick={beginDirectoryCreation}>Новая папка</Button>
+ 		</FieldLine>
 -		{#if reviewFolders[reviewDirectory]?.length}
 -			<MarkRows style="max-height: 28dvh; overflow-y: auto; margin: 0">
 -				{#each reviewFolders[reviewDirectory] as folder (folder)}
@@ -82,36 +165,40 @@
 -		{:else}
 -			<Hint style="margin: 0">Вложенных папок нет.</Hint>
 -		{/if}
-+		<MarkRows style="block-size: min(240px, 43dvh); overflow: auto; margin: 0">
-+			{#each reviewTree as folder (folder.path)}
-+				{@const selected = reviewDirectory === folder.path}
-+				{@const expanded = reviewExpanded.has(folder.path)}
-+				<MarkRow mark="" style={`padding: var(--sp-1) var(--sp-2); padding-inline-start: calc(var(--sp-2) + ${folder.level} * var(--sp-3)); ${selected ? 'background: var(--card);' : ''}`}>
-+					<FieldLine style="margin: 0">
-+						{#if folder.expandable}
-+							<IconButton
-+								name={expanded ? 'chev' : 'chevr'}
-+								size="xs"
-+								label={`${expanded ? 'Свернуть' : 'Раскрыть'} ${folder.path}`}
-+								onclick={() => toggleDirectory(folder.path)}
-+								style="inline-size: 20px; block-size: 24px; flex: 0 0 20px"
-+							/>
-+						{:else}
-+							<span style="inline-size: 20px; flex: 0 0 20px" aria-hidden="true"></span>
-+						{/if}
-+						<Icon name="folder" size="sm" style="color: var(--muted); flex: none" />
-+						<TextButton
-+							onclick={() => (reviewDirectory = folder.path)}
-+							style="min-block-size: 24px; color: inherit; border: 0; text-align: start; overflow-wrap: anywhere"
-+						>{folder.name}</TextButton>
-+					</FieldLine>
-+					{#snippet action()}
-+						{#if selected}<span class="ins-mark ok" aria-hidden="true">✓</span>{/if}
-+					{/snippet}
-+				</MarkRow>
-+			{/each}
-+		</MarkRows>
-+		<Input aria-label="Выбранный каталог" mono readonly value={reviewDirectory} />
- 		{#if !reviewCanSelect}
+-		{#if !reviewCanSelect}
++		{#if reviewCreating}
++			<div>
++				<Label style="margin: 0 0 var(--sp-1)">Имя новой папки</Label>
++				<Input
++					id={`new-folder-name-${profile.id}`}
++					aria-label="Имя новой папки"
++					autocomplete="off"
++					spellcheck={false}
++					bind:value={reviewFolderName}
++					oninput={() => (reviewCreateError = '')}
++				/>
++			</div>
++			<Hint style="margin: 0">Папка будет создана на сервере в {reviewDirectory}.</Hint>
++			{#if reviewCreateError}<Notice tone="bad" alert>{reviewCreateError}</Notice>{/if}
++		{:else if !reviewCanSelect}
  			<Hint style="margin: 0">Откройте вложенную папку, чтобы выбрать её.</Hint>
  		{/if}
+ 		<FootBar style="margin-top: var(--sp-2)">
+-			<Button variant="colored" disabled={!reviewCanSelect} onclick={() => {
+-				p.installRoot = reviewDirectory;
+-				closeDirectoryPreview();
+-			}}>Выбрать папку</Button>
+-			<Button variant="ghost" onclick={closeDirectoryPreview}>Отмена</Button>
++			{#if reviewCreating}
++				<Button variant="colored" disabled={!reviewFolderName.trim()} onclick={createPreviewDirectory}>Создать</Button>
++				<Button variant="ghost" onclick={cancelDirectoryCreation}>Отмена</Button>
++			{:else}
++				<Button variant="colored" disabled={!reviewCanSelect} onclick={() => {
++					p.installRoot = reviewDirectory;
++					closeDirectoryPreview();
++				}}>Выбрать папку</Button>
++				<Button variant="ghost" onclick={closeDirectoryPreview}>Отмена</Button>
++			{/if}
+ 		</FootBar>
+ 	</RawSheet>
+ {/if}
