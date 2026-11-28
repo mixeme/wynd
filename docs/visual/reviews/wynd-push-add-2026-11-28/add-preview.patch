@@ -27,7 +27,7 @@
 +			placeholder="example.net"
 +			bind:value={pushAddDomain}
 +		/>
-+		<Hint style="margin-inline: 0">Домен должен указывать на этот сервер.</Hint>
++		<Hint style="margin-inline: 0">Домен должен указывать на «{profile.name}».</Hint>
 +		<FootBar>
 +			<Button variant="colored" disabled={!pushAddDomain.trim()} onclick={() => (pushAddStep = 'plan')}>
 +				Дальше — план
