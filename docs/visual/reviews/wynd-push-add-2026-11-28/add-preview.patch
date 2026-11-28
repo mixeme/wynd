@@ -1,0 +1,74 @@
+--- a/cmd/wynd-workshop/frontend/src/App.svelte
++++ b/cmd/wynd-workshop/frontend/src/App.svelte
+@@ -30,6 +30,10 @@
+ 		{ value: '24h', label: '24 ч' },
+ 		{ value: '72h', label: '3 дня' }
+ 	];
++
++	const previewPushAdd = new URLSearchParams(location.search).has('push-add-preview');
++	let pushAddStep = $state<'' | 'domain' | 'plan'>('');
++	let pushAddDomain = $state('');
+ 
+ 	let {
+ 		profile,
+@@ -270,6 +274,37 @@
+ 			><Button variant="colored" onclick={() => (p.screen = 'inspect')}>Установить Wynd</Button
+ 			></FootBar
+ 		>
++	{:else if p.screen === 'server' && pushAddStep === 'domain'}
++		<h2>Добавить сервер уведомлений</h2>
++		<p class="ins-sub">Wynd Push будет доступен по отдельному HTTPS-адресу.</p>
++		<Label>Поддомен сервера уведомлений</Label>
++		<Input
++			aria-label="Поддомен сервера уведомлений"
++			mono
++			autocomplete="off"
++			spellcheck={false}
++			placeholder="push.family.example.ru"
++			bind:value={pushAddDomain}
++		/>
++		<Hint style="margin-inline: 0">Поддомен должен указывать на этот сервер.</Hint>
++		<FootBar>
++			<Button variant="colored" disabled={!pushAddDomain.trim()} onclick={() => (pushAddStep = 'plan')}>
++				Дальше — план
++			</Button>
++			<Button variant="ghost" onclick={() => (pushAddStep = '')}>Отмена</Button>
++		</FootBar>
++	{:else if p.screen === 'server' && pushAddStep === 'plan'}
++		<h2>Что сделаем</h2>
++		<p class="ins-sub">Сервер уведомлений {pushAddDomain}</p>
++		<div class="ins-sec" style="margin-top: 0">Поставим</div>
++		<MarkRow mark="+" tone="ok">Wynd Push с отдельным HTTPS-адресом</MarkRow>
++		<div class="ins-sec">Изменим</div>
++		<MarkRow mark="~" tone="note">Добавим адрес сервера уведомлений в настройки Wynd</MarkRow>
++		<Hint style="margin-inline: 0">При применении настроек Wynd и Caddy могут кратко перезапуститься.</Hint>
++		<FootBar>
++			<Button variant="colored" onclick={() => (pushAddStep = '')}>Добавить сервер уведомлений</Button>
++			<Button variant="ghost" onclick={() => (pushAddStep = 'domain')}>Назад</Button>
++		</FootBar>
+ 	{:else if p.screen === 'push' && p.push}
+ 		{@const pushLocked = Boolean(p.pushBusy || p.page?.push_error || p.push.pending_cache || p.push.removing)}
+ 		<h2>Сервер уведомлений</h2>
+@@ -536,6 +571,13 @@
+ 							{/if}
+ 						{/snippet}
+ 					</MarkRow>
++				{:else if previewPushAdd}
++					<MarkRow mark="">
++						Сервер уведомлений не подключён
++						{#snippet action()}
++							<TextButton class="link under" onclick={() => (pushAddStep = 'domain')}>Добавить</TextButton>
++						{/snippet}
++					</MarkRow>
+ 				{/if}
+ 			</MarkRows>
+ 		{/if}
+@@ -1386,7 +1428,7 @@
+ 			</TextButton>
+ 		</FootBar>
+ 	{/if}
+-	{#if !p.occupied && (p.screen === 'server' || p.screen === 'new' || p.screen === 'offline' || p.screen === 'connect')}
++	{#if !pushAddStep && !p.occupied && (p.screen === 'server' || p.screen === 'new' || p.screen === 'offline' || p.screen === 'connect')}
+ 	<FootBar class="ins-profile-tools"
+ 		><TextButton
+ 			class="link under"
