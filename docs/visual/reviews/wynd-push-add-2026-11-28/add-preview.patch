@@ -18,16 +18,16 @@
 +	{:else if p.screen === 'server' && pushAddStep === 'domain'}
 +		<h2>Добавить сервер уведомлений</h2>
 +		<p class="ins-sub">Wynd Push будет доступен по отдельному HTTPS-адресу.</p>
-+		<Label>Поддомен сервера уведомлений</Label>
++		<Label>Домен сервера уведомлений</Label>
 +		<Input
-+			aria-label="Поддомен сервера уведомлений"
++			aria-label="Домен сервера уведомлений"
 +			mono
 +			autocomplete="off"
 +			spellcheck={false}
-+			placeholder="push.family.example.ru"
++			placeholder="example.net"
 +			bind:value={pushAddDomain}
 +		/>
-+		<Hint style="margin-inline: 0">Поддомен должен указывать на этот сервер.</Hint>
++		<Hint style="margin-inline: 0">Домен должен указывать на этот сервер.</Hint>
 +		<FootBar>
 +			<Button variant="colored" disabled={!pushAddDomain.trim()} onclick={() => (pushAddStep = 'plan')}>
 +				Дальше — план
