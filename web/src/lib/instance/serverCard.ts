@@ -1,7 +1,7 @@
 import { fetchInstance, type InstanceInfo } from '$lib/auth/auth';
 import { getSnapshot, putSnapshot, snapshotKey } from '$lib/idb/db';
 
-export type ServerConnection = 'checking' | 'unavailable';
+export type ServerConnection = 'checking' | 'unavailable' | 'outdated';
 export interface ServerCardState {
 	info?: InstanceInfo;
 	connection?: ServerConnection;
@@ -29,7 +29,25 @@ export async function loadServerCard(origin: string): Promise<ServerCardState> {
 		const info = await fetchInstance(origin);
 		await putSnapshot(key, { data: info, fetched_at: Date.now() }).catch(() => {});
 		return { info };
-	} catch {
+	} catch (err) {
+		// Старый сервер без CORS (C123, шаг 5) отвечает сети, но не клиенту с
+		// чужого адреса: обычный запрос падает TypeError, а прямой
+		// «прозрачный» (no-cors) доходит. Тогда это не «не отвечает», а
+		// «устарел» — вход откроется после обновления сервера. HTTP-ошибка
+		// (ApiError) и мёртвая сеть остаются «не отвечает».
+		if (err instanceof TypeError && (await reachableWithoutCors(origin))) {
+			return { info: saved, connection: 'outdated' };
+		}
 		return { info: saved, connection: 'unavailable' };
+	}
+}
+
+/** Сервер слышен без CORS? Оpaque-ответ значит «да», отказ — «нет». */
+async function reachableWithoutCors(origin: string): Promise<boolean> {
+	try {
+		await fetch(`${origin}/api/v1/instance`, { mode: 'no-cors', cache: 'no-store' });
+		return true;
+	} catch {
+		return false;
 	}
 }

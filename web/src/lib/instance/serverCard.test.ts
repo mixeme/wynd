@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadServerCard, registrationCaption } from './serverCard';
 import { fetchInstance } from '$lib/auth/auth';
 import { getSnapshot, putSnapshot } from '$lib/idb/db';
@@ -20,6 +20,10 @@ const known = {
 beforeEach(() => {
 	vi.resetAllMocks();
 	vi.mocked(putSnapshot).mockResolvedValue();
+});
+
+afterEach(() => {
+	vi.unstubAllGlobals();
 });
 
 describe('server card information', () => {
@@ -53,5 +57,30 @@ describe('server card information', () => {
 		vi.mocked(fetchInstance).mockResolvedValue(fresh);
 		vi.mocked(putSnapshot).mockRejectedValue(new Error('no storage'));
 		expect(await loadServerCard('')).toEqual({ info: fresh });
+	});
+
+	// C123, шаг 5: сервер старой версии без CORS слышен, но входу с чужого
+	// адреса мешает его версия — это «устарел», а не «не отвечает».
+	it('старый сервер без CORS распознаётся как устаревший', async () => {
+		vi.mocked(fetchInstance).mockRejectedValue(new TypeError('Failed to fetch'));
+		const probe = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+		vi.stubGlobal('fetch', probe);
+		expect(await loadServerCard('https://old.example')).toEqual({ connection: 'outdated' });
+		expect(probe).toHaveBeenCalledOnce();
+		expect(probe.mock.calls[0][0]).toBe('https://old.example/api/v1/instance');
+	});
+
+	it('мёртвый сервер остаётся «не отвечает»', async () => {
+		vi.mocked(fetchInstance).mockRejectedValue(new TypeError('Failed to fetch'));
+		vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('network down')));
+		expect(await loadServerCard('https://down.example')).toEqual({ connection: 'unavailable' });
+	});
+
+	it('HTTP-ошибка живого сервера не считается устареванием', async () => {
+		vi.mocked(fetchInstance).mockRejectedValue(new Error('500'));
+		const probe = vi.fn();
+		vi.stubGlobal('fetch', probe);
+		expect(await loadServerCard('https://err.example')).toEqual({ connection: 'unavailable' });
+		expect(probe).not.toHaveBeenCalled();
 	});
 });

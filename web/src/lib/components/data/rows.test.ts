@@ -63,6 +63,17 @@ describe('row components markup', () => {
 		expect(html).toContain('Сервер не отвечает');
 		expect(html).not.toContain('Квота по умолчанию');
 	});
+	// C123, шаг 5: старый сервер без CORS — «устарел», а не «не отвечает».
+	it('ServerRow: устаревший сервер называет причину', () => {
+		const html = render(ServerRow, {
+			name: 'Дом',
+			subtitle: 'wynd.example',
+			connection: 'outdated' as const,
+			card: true
+		});
+		expect(html).toContain('Сервер устарел');
+		expect(html).not.toContain('Сервер не отвечает');
+	});
 	it('ServerRow: неизвестное имя не дублирует адрес', () => {
 		const html = render(ServerRow, { name: 'wynd.example', subtitle: 'wynd.example' });
 		expect(html.match(/wynd\.example/g)).toHaveLength(1);

@@ -25,7 +25,7 @@
 		/** Третья строка: сведения по контексту или состояние связи (план 56). */
 		detail?: string;
 		/** Состояние связи заменяет третью строку, сохраняя имя и адрес. */
-		connection?: 'checking' | 'unavailable';
+		connection?: 'checking' | 'unavailable' | 'outdated';
 		variant?: ServerRowVariant;
 		card?: boolean;
 		/**
@@ -57,7 +57,9 @@
 			? 'Проверяем связь…'
 			: connection === 'unavailable'
 				? 'Сервер не отвечает'
-				: detail
+				: connection === 'outdated'
+					? 'Сервер устарел'
+					: detail
 	);
 </script>
 
