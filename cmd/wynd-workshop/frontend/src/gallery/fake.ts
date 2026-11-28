@@ -169,6 +169,12 @@ export function makeBackend(over: Fake): Fake {
 			text: 'указывает на этот сервер'
 		}),
 		MakePlan: () => plan,
+		MakePlanWithPush: (domain: string, pushDomain: string) => ({
+			...plan,
+			domain,
+			push_domain: pushDomain,
+			install: [...(plan.install ?? []), `Сервер уведомлений ${pushDomain} — контейнером`]
+		}),
 		ChooseBuild: (on: boolean) => ({ ...plan, build: on }),
 		StartInstall: () => progress(steps(['Docker', 'running'], ['Wynd', 'pending'])),
 		InstallProgress: () => progress(steps(['Docker', 'running'], ['Wynd', 'pending'])),
@@ -224,6 +230,7 @@ export function makeBackend(over: Fake): Fake {
 		'Inspect',
 		'CheckDomain',
 		'MakePlan',
+		'MakePlanWithPush',
 		'ChooseBuild',
 		'StartInstall',
 		'InstallProgress',
@@ -231,6 +238,7 @@ export function makeBackend(over: Fake): Fake {
 		'Disconnect',
 		'ServerPage',
 		'Service',
+		'PushControl',
 		'StartUpdate',
 		'ReturnPrevious',
 		'PlanBackup',

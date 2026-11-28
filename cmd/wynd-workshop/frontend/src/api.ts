@@ -74,6 +74,7 @@ export interface Plan {
 	advice?: string;
 	domain: string;
 	version: string;
+	push_domain?: string;
 	install: string[] | null;
 	change: string[] | null;
 	keep: string[] | null;
@@ -172,7 +173,22 @@ export interface ServerPage {
 	built: boolean;
 	/** Wynd поставлен не Мастерской и не так, как ставит она — только переезд (7з). */
 	foreign?: ForeignWynd;
+	push?: PushState;
+	push_error?: string;
 }
+
+export interface PushState {
+	domain: string;
+	cache: string;
+	version?: string;
+	running: boolean;
+	healthy: boolean;
+	pending_cache?: string;
+	removing?: boolean;
+}
+
+export type ServiceAction = 'start' | 'stop' | 'restart';
+export type PushAction = ServiceAction | 'cache' | 'remove';
 
 export interface ForeignWynd {
 	kind: 'service' | 'container' | 'process';
@@ -336,6 +352,7 @@ export interface Backend {
 	Inspect(): Promise<InspectResult>;
 	CheckDomain(domain: string): Promise<DomainCheck>;
 	MakePlan(domain: string): Promise<Plan>;
+	MakePlanWithPush(domain: string, pushDomain: string): Promise<Plan>;
 	ChooseBuild(on: boolean): Promise<Plan>;
 	StartInstall(): Promise<Progress>;
 	InstallProgress(): Promise<Progress>;
@@ -345,7 +362,8 @@ export interface Backend {
 	Disconnect(): Promise<void>;
 	Version(): Promise<string>;
 	ServerPage(): Promise<ServerPage>;
-	Service(action: 'start' | 'stop' | 'restart'): Promise<ServiceResult>;
+	Service(action: ServiceAction): Promise<ServiceResult>;
+	PushControl(action: PushAction, cache: string): Promise<ServiceResult>;
 	DeleteStaleCert(domain: string): Promise<ServiceResult>;
 	StartUpdate(opt: UpdateOptions): Promise<Progress>;
 	BuildLogChunk(offset: number, limit: number): Promise<BuildLogChunk>;
@@ -399,6 +417,7 @@ const PROFILE_METHODS = new Set([
 	'Inspect',
 	'CheckDomain',
 	'MakePlan',
+	'MakePlanWithPush',
 	'ChooseBuild',
 	'StartInstall',
 	'InstallProgress',
@@ -406,6 +425,7 @@ const PROFILE_METHODS = new Set([
 	'Disconnect',
 	'ServerPage',
 	'Service',
+	'PushControl',
 	'DeleteStaleCert',
 	'StartUpdate',
 	'BuildLogChunk',

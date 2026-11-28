@@ -395,6 +395,98 @@ test('removing a local profile calls no remote removal command', async (t) => {
 	);
 });
 
+test('optional Push installation passes its checked choice to the selected profile', async (t) => {
+	const draft = { ok: true, install: [], change: [], keep: [] };
+	const ui = await open(t, [profile('a')], {
+		Inspect: () => ({ ...report, report: { ...report.report, findings: [] } }),
+		CheckDomain: (_id, domain) => ({ domain, level: 'ok', text: 'верный адрес' }),
+		MakePlan: () => draft,
+		MakePlanWithPush: () => draft
+	});
+	await ui.click('Подключиться');
+	await ui.click('Установить Wynd');
+	await ui.set(ui.elements('input[placeholder="family.example.ru"]')[0], 'wynd.example.org');
+	await ui.click('Проверить');
+	const pushInput = () => ui.elements('input[aria-label="Поддомен сервера уведомлений"]')[0];
+	assert.equal(pushInput(), undefined);
+	await ui.click('Сервер уведомлений Wynd Push');
+	await ui.click('Дальше — план');
+	assert.ok(!ui.calls.some(([name]) => name.startsWith('MakePlan')));
+	await ui.set(pushInput(), 'push.example.org');
+	await ui.click('Сервер уведомлений Wynd Push');
+	await ui.click('Дальше — план');
+	assert.deepEqual(ui.calls.find(([name]) => name === 'MakePlan'), ['MakePlan', 'a', 'wynd.example.org']);
+	await ui.click('Назад');
+	await ui.click('Сервер уведомлений Wynd Push');
+	await ui.click('Дальше — план');
+	assert.deepEqual(ui.calls.find(([name]) => name === 'MakePlanWithPush'),
+		['MakePlanWithPush', 'a', 'wynd.example.org', 'push.example.org']);
+});
+
+test('Push controls are scoped to the profile and retry changes after a partial failure', async (t) => {
+	let push = { domain: 'push.example.org', cache: '12h', version: '2.38.3', running: true, healthy: true };
+	const current = () => ({ ...page, push });
+	let saveFailed = false;
+	let removeFailed = false;
+	const ui = await open(t, [profile('a'), profile('b')], {
+		ServerPage: (id) => id === 'b' ? current() : page,
+		PushControl: (_id, action, cache) => {
+			if (action === 'stop') push = { ...push, running: false, healthy: false };
+			if (action === 'start') push = { ...push, running: true, healthy: true };
+			if (action === 'cache') {
+				if (!saveFailed) {
+					saveFailed = true;
+					push = { ...push, pending_cache: cache };
+					return { ok: false, message: 'Сбой сохранения', page: current() };
+				}
+				push = { ...push, cache, pending_cache: undefined };
+			}
+			if (action === 'remove') {
+				if (!removeFailed) {
+					removeFailed = true;
+					push = { ...push, removing: true };
+					return { ok: false, message: 'Сбой удаления', page: current() };
+				}
+				push = undefined;
+			}
+			return { ok: true, page: current() };
+		}
+	});
+	await ui.select('b');
+	await ui.click('Подключиться');
+	assert.match(ui.elements('.ins-pult-actions')[0].textContent, /Сервер уведомлений работает.*ntfy 2.38.3/s);
+	await ui.click('Настроить');
+	await ui.click('Перезапустить');
+	await ui.click('Остановить');
+	assert.match(ui.elements('.ins-sub').at(-1).textContent, /остановлен/);
+	await ui.click('Запустить');
+	await ui.choose('6 ч');
+	await ui.click('Сохранить');
+	assert.ok(ui.elements('[role="alert"]').some((e) => e.textContent.includes('Сбой сохранения')));
+	assert.ok(ui.elements('.ins-select > button')[0].disabled);
+	await ui.click('Сохранить');
+	await ui.click('Настроить');
+	assert.equal(ui.elements('.ins-select-label')[0].textContent.trim(), '6 ч');
+	await ui.click('Удалить сервер уведомлений');
+	await ui.click('Отмена');
+	assert.ok(!ui.calls.some(([name, , action]) => name === 'PushControl' && action === 'remove'));
+	await ui.click('Удалить сервер уведомлений');
+	await ui.click('Удалить');
+	await ui.click('Отмена');
+	await ui.click('Настроить');
+	await ui.click('Удалить');
+	assert.doesNotMatch(ui.elements('.ins-pult-actions')[0].textContent, /Сервер уведомлений/);
+	assert.deepEqual(ui.calls.filter(([name]) => name === 'PushControl'), [
+		['PushControl', 'b', 'restart', ''],
+		['PushControl', 'b', 'stop', ''],
+		['PushControl', 'b', 'start', ''],
+		['PushControl', 'b', 'cache', '6h'],
+		['PushControl', 'b', 'cache', '6h'],
+		['PushControl', 'b', 'remove', ''],
+		['PushControl', 'b', 'remove', '']
+	]);
+});
+
 test('all gallery scenarios use the current compiled window without remote servers', async (t) => {
 	const source = await open(t, []);
 	const scenes = source.dom.window.workshopScenes;

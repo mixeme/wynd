@@ -1,5 +1,6 @@
 // Сцены стенда: каждая — ответы подставного Go и путь до экрана щелчками.
 // Имя сцены — кадр макета docs/visual/workshop.html, где он есть.
+import type { PushAction, PushState } from '../api';
 import {
 	type Fake,
 	movePlan,
@@ -54,6 +55,26 @@ const wyndHere = {
 };
 
 const pult = page();
+function pushPult(): Fake {
+	let push: PushState | undefined = {
+		domain: 'push.family.example.ru',
+		cache: '12h',
+		version: '2.0.0',
+		running: true,
+		healthy: true
+	};
+	const current = () => ({ ...pult, push });
+	return {
+		...toPult(pult),
+		ServerPage: current,
+		PushControl: (action: PushAction, cache: string) => {
+			if (action === 'remove') push = undefined;
+			else if (push && action === 'cache') push = { ...push, cache };
+			else if (push) push = { ...push, running: action !== 'stop', healthy: action !== 'stop' };
+			return { ok: true, log: [], page: current() };
+		}
+	};
+}
 // Wynd за чужим Apache, файл сайта ставили не мы (кадры 5е, 5е2).
 const foreignApache = {
 	...report,
@@ -145,6 +166,7 @@ export const SCENES: Scene[] = [
 	{ name: '5-done-link', fake: { StartInstall: () => progress(doneSteps, { running: false, done: true, link: 'https://family.example.ru/setup#k3J9xQ' }) }, acts: [...go, ...domain, { click: 'Дальше — план' }, { click: 'Установить' }] },
 	{ name: '5-done-nolink', fake: { StartInstall: () => progress(doneSteps, { running: false, done: true, site: 'https://family.example.ru' }) }, acts: [...go, ...domain, { click: 'Дальше — план' }, { click: 'Установить' }] },
 	{ name: '7a-server', fake: toPult(pult), acts: go },
+	{ name: '7a-push', fake: pushPult(), acts: go },
 	{ name: '7a2-server-stopped', fake: toPult(stopped), acts: go },
 	{ name: '7a-ask-stop', fake: toPult(pult), acts: [...go, { click: 'Остановить' }] },
 	{ name: '7e-interrupted', fake: toPult(interrupted), acts: go },

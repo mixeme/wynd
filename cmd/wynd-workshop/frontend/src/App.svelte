@@ -15,11 +15,21 @@
 	import Notice from '$ui/workshop/Notice.svelte';
 	import Radio from '$ui/workshop/Radio.svelte';
 	import RawSheet from '$ui/workshop/RawSheet.svelte';
+	import Select from '$ui/workshop/Select.svelte';
 	import StepList from '$ui/workshop/StepList.svelte';
 	import type { ServerProfile, ProfileRequest, ProfileViewState, Finding } from './api';
 	import { Panel } from './lib/panel.svelte';
 	import { removeWarning } from './lib/rollback';
 	import { day, dayTime, gb, mark } from './lib/display';
+
+	const pushCacheOptions = [
+		{ value: '0', label: 'Не хранить' },
+		{ value: '1h', label: '1 ч' },
+		{ value: '6h', label: '6 ч' },
+		{ value: '12h', label: '12 ч' },
+		{ value: '24h', label: '24 ч' },
+		{ value: '72h', label: '3 дня' }
+	];
 
 	let {
 		profile,
@@ -260,6 +270,95 @@
 			><Button variant="colored" onclick={() => (p.screen = 'inspect')}>Установить Wynd</Button
 			></FootBar
 		>
+	{:else if p.screen === 'push' && p.push}
+		{@const pushLocked = Boolean(p.pushBusy || p.page?.push_error || p.push.pending_cache || p.push.removing)}
+		<h2>Сервер уведомлений</h2>
+		<p class="ins-sub">{p.push.domain} · {p.pushStatus}</p>
+		<div class="ins-svcbar">
+			{#if p.push.running}
+				<Button
+					variant="ghost"
+					loading={p.pushBusy === 'restart'}
+					loadingLabel="Перезапускаем…"
+					disabled={pushLocked}
+					onclick={() => void p.attempt(() => p.controlPush('restart'))}>Перезапустить</Button
+				>
+				<Button
+					variant="ghost"
+					loading={p.pushBusy === 'stop'}
+					loadingLabel="Останавливаем…"
+					disabled={pushLocked}
+					onclick={() => void p.attempt(() => p.controlPush('stop'))}>Остановить</Button
+				>
+			{:else}
+				<Button
+					variant="colored"
+					loading={p.pushBusy === 'start'}
+					loadingLabel="Запускаем…"
+					disabled={pushLocked}
+					onclick={() => void p.attempt(() => p.controlPush('start'))}>Запустить</Button
+				>
+			{/if}
+		</div>
+		{#if p.pushError || p.page?.push_error}
+			<Notice tone="bad" alert>
+				{p.pushError || p.page?.push_error}
+				{#if p.pushLogText}
+					<TextButton class="link under" onclick={() => (p.showPushLog = !p.showPushLog)}>подробности</TextButton>
+				{/if}
+			</Notice>
+		{:else if p.pushNotice}
+			<Notice tone="note">{p.pushNotice}</Notice>
+		{:else if p.push.pending_cache && !p.push.removing}
+			<Notice tone="note">Смена срока хранения прервалась. Нажмите «Сохранить», чтобы завершить её.</Notice>
+		{/if}
+		<Label>Хранить сообщения</Label>
+		<div style="inline-size: min(100%, 144px)">
+			<Select label="Хранить сообщения" options={pushCacheOptions} bind:value={p.pushCache} disabled={pushLocked} />
+		</div>
+		<Hint style="margin-inline: 0">
+			{#if p.push.running}
+				При перезапуске удаляются сообщения, которые ждут доставки. Сохранение нового срока перезапустит сервер.
+			{:else}
+				Новый срок хранения вступит в силу при запуске сервера уведомлений.
+			{/if}
+		</Hint>
+		{#if p.askPushRemove}
+			<Notice
+				tone="bad"
+				title="Удалить сервер уведомлений?"
+				text="Настройки Push-сервера и ожидающие доставки сообщения будут удалены. Возможен краткий перезапуск Wynd."
+			/>
+		{/if}
+		<FootBar>
+			{#if p.askPushRemove}
+				<Button
+					variant="colored"
+					loading={p.pushBusy === 'remove'}
+					loadingLabel="Удаляем…"
+					disabled={Boolean(p.pushBusy)}
+					onclick={() => void p.attempt(() => p.controlPush('remove'))}>Удалить</Button
+				>
+				<Button variant="ghost" disabled={Boolean(p.pushBusy)} onclick={p.closePush}>Отмена</Button>
+			{:else}
+				<Button
+					variant="colored"
+					loading={p.pushBusy === 'cache'}
+					loadingLabel="Сохраняем…"
+					disabled={Boolean(p.pushBusy) || !p.canSavePushCache}
+					onclick={() => void p.attempt(() => p.controlPush('cache'))}>Сохранить</Button
+				>
+				<Button variant="ghost" disabled={Boolean(p.pushBusy)} onclick={p.closePush}>Отмена</Button>
+				<TextButton
+					class="link under ins-push"
+					disabled={Boolean(p.pushBusy)}
+					onclick={() => (p.askPushRemove = true)}>Удалить сервер уведомлений</TextButton
+				>
+			{/if}
+		</FootBar>
+		{#if p.showPushLog}
+			<CommandLog text={p.pushLogText} />
+		{/if}
 	{:else if p.screen === 'server' && p.page && p.st}
 		<!-- Пульт (кадры 7а, 7а2, 7а3, 7е). -->
 		{#if p.keyNote}<Notice tone="note">{p.keyNote}</Notice>{/if}
@@ -417,7 +516,31 @@
 						<TextButton class="link under" onclick={p.toMove}>Перенести</TextButton>
 					{/snippet}
 				</MarkRow>
+				{#if p.push || p.page.push_error}
+					<MarkRow mark="">
+						{#if p.push?.removing}
+							Удаление сервера уведомлений не завершено
+						{:else if p.page.push_error}
+							Состояние сервера уведомлений неизвестно
+						{:else}
+							Сервер уведомлений {p.pushStatus}
+						{/if}
+						{#if p.push?.version}<span class="ins-dim">· ntfy {p.push.version}</span>{/if}
+						{#snippet action()}
+							{#if p.page?.push_error}
+								<TextButton class="link under" disabled={p.occupied} onclick={() => void p.attempt(p.refreshPage)}>
+									Проверить
+								</TextButton>
+							{:else}
+								<TextButton class="link under" disabled={p.occupied} onclick={p.toPush}>Настроить</TextButton>
+							{/if}
+						{/snippet}
+					</MarkRow>
+				{/if}
 			</MarkRows>
+		{/if}
+		{#if p.page.push_error || p.pushError}
+			<Notice tone="bad" alert>{p.pushError || p.page.push_error}</Notice>
 		{/if}
 		{#if p.svcError}
 			<Notice tone="bad" alert>
@@ -1225,10 +1348,29 @@
 			<!-- Куда поставить Wynd: по умолчанию /opt/wynd, как у ручной установки. -->
 			<Label>Каталог на сервере</Label>
 			<Input mono autocomplete="off" spellcheck={false} bind:value={p.installRoot} />
+			{#if p.canOfferPush}
+				<FieldLine>
+					<Checkbox native style="margin-top: 0" bind:checked={p.pushEnabled}>Сервер уведомлений Wynd Push</Checkbox>
+					{#if p.pushEnabled}
+						<Input
+							aria-label="Поддомен сервера уведомлений"
+							class="ins-grow"
+							mono
+							autocomplete="off"
+							spellcheck={false}
+							placeholder="push.family.example.ru"
+							bind:value={p.pushDomain}
+						/>
+					{/if}
+				</FieldLine>
+				{#if p.pushEnabled}
+					<div class="ins-dim">Поддомен должен указывать на этот сервер.</div>
+				{/if}
+			{/if}
 		{/if}
 		<FootBar>
 			<Button
-				variant={p.domainOk ? 'colored' : 'off'}
+				variant={p.canPlan ? 'colored' : 'off'}
 				loading={p.planning}
 				loadingLabel="Составляем план…"
 				onclick={() => void p.attempt(() => p.toPlan())}

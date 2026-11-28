@@ -102,6 +102,13 @@ func (a *App) MakePlan(id string, domain string) (workshop.Plan, error) {
 	return profileCall(a, id, false, func(w *workshop.Wizard) workshop.Plan { return w.MakePlan(a.ctx, domain) })
 }
 
+// MakePlanWithPush добавляет к плану установки свой сервер уведомлений.
+func (a *App) MakePlanWithPush(id string, domain, pushDomain string) (workshop.Plan, error) {
+	return profileCall(a, id, false, func(w *workshop.Wizard) workshop.Plan {
+		return w.MakePlanWithPush(a.ctx, domain, pushDomain)
+	})
+}
+
 // ChooseBuild переключает способ: собрать Wynd на сервере или скачать готовый.
 func (a *App) ChooseBuild(id string, on bool) (workshop.Plan, error) {
 	return profileCall(a, id, false, func(w *workshop.Wizard) workshop.Plan { return w.ChooseBuild(on) })

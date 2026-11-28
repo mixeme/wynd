@@ -17,8 +17,10 @@ import {
 	type ProfileRequest,
 	type ProfileViewState,
 	type Progress,
+	type PushAction,
 	type ServerPage,
-	type ServerProfile
+	type ServerProfile,
+	type ServiceAction
 } from '../api';
 import { nextLogChunk } from './buildlog';
 import { noRoom } from './display';
@@ -35,6 +37,7 @@ export type Screen =
 	| 'install'
 	| 'done'
 	| 'server'
+	| 'push'
 	| 'uplan'
 	| 'update'
 	| 'udone'
@@ -95,6 +98,8 @@ export class Panel {
 	installRoot = $state('');
 	domainCheck = $state<DomainCheck | undefined>();
 	checkingDomain = $state(false);
+	pushEnabled = $state(false);
+	pushDomain = $state('');
 
 	findings = $derived<Finding[]>(this.inspection?.report.findings ?? []);
 	blocks = $derived(this.findings.filter((f) => f.level === 'block'));
@@ -175,6 +180,39 @@ export class Panel {
 
 	st = $derived(this.page?.state);
 	uplanNoRoom = $derived(noRoom(this.page));
+
+	// --- Сервер уведомлений (план 76) ---
+	push = $derived(this.page?.push);
+	pushCache = $state('');
+	pushBusy = $state<PushAction | ''>('');
+	pushError = $state('');
+	pushNotice = $state('');
+	pushLog = $state<LogEntry[]>([]);
+	showPushLog = $state(false);
+	askPushRemove = $state(false);
+	pushStatus = $derived(
+		this.push?.removing
+			? 'удаление не завершено'
+			: this.page?.push_error
+				? 'состояние неизвестно'
+				: this.push?.healthy
+					? 'работает'
+					: this.push?.running
+						? 'не отвечает'
+						: 'остановлен'
+	);
+	canSavePushCache = $derived(
+		Boolean(
+			this.push &&
+				!this.push.removing &&
+				!this.page?.push_error &&
+				this.pushCache &&
+				(this.push.pending_cache || this.pushCache !== this.push.cache)
+		)
+	);
+	pushLogText = $derived(
+		this.pushLog.map((e) => ('$ ' + e.command + '\n' + e.output).trimEnd()).join('\n\n')
+	);
 
 	// --- Обновление (7б–7г) ---
 	stopForCopy = $state(true);
@@ -402,6 +440,7 @@ export class Panel {
 	refreshPage = async () => {
 		const page = await this.api.ServerPage();
 		this.page = page;
+		this.pushError = '';
 		if (!page.ok) {
 			this.connection = 'error';
 			this.screen = 'offline';
@@ -437,7 +476,7 @@ export class Panel {
 		}
 	}
 
-	service = async (action: 'start' | 'stop' | 'restart') => {
+	service = async (action: ServiceAction) => {
 		if (this.svcBusy) return;
 		this.svcBusy = action;
 		this.svcError = '';
@@ -450,6 +489,60 @@ export class Panel {
 			await this.input.onprofileschange();
 		} finally {
 			this.svcBusy = '';
+		}
+	}
+
+	toPush = () => {
+		if (!this.push || this.occupied) return;
+		this.pushCache = this.push.pending_cache || this.push.cache;
+		this.pushError = '';
+		this.pushNotice = '';
+		this.pushLog = [];
+		this.showPushLog = false;
+		this.askPushRemove = Boolean(this.push.removing);
+		this.screen = 'push';
+	}
+
+	closePush = () => {
+		if (this.pushBusy) return;
+		if (this.askPushRemove && !this.push?.removing) {
+			this.askPushRemove = false;
+		} else {
+			this.pushError = '';
+			this.screen = 'server';
+		}
+	}
+
+	controlPush = async (action: PushAction) => {
+		if (this.pushBusy || !this.push) return;
+		if (action === 'remove' && !this.askPushRemove) return;
+		if (action === 'cache' && !this.canSavePushCache) return;
+		this.pushBusy = action;
+		this.pushError = '';
+		this.pushNotice = '';
+		this.showPushLog = false;
+		try {
+			const res = await this.api.PushControl(action, action === 'cache' ? this.pushCache : '');
+			if (res.page?.ok) {
+				this.page = res.page;
+			} else if (res.ok) {
+				await this.refreshPage();
+				if (!this.page?.ok) return;
+			}
+			this.pushLog = res.log ?? [];
+			if (!res.ok) {
+				this.pushError = [res.message, res.advice].filter(Boolean).join('. ') || 'Команда не выполнена.';
+				if (this.push?.pending_cache) this.pushCache = this.push.pending_cache;
+				if (!this.push) this.screen = 'server';
+			} else if (action === 'cache' || action === 'remove') {
+				this.askPushRemove = false;
+				this.screen = 'server';
+			} else if (action === 'restart') {
+				this.pushNotice = 'Сервер уведомлений перезапущен.';
+			}
+			await this.input.onprofileschange();
+		} finally {
+			this.pushBusy = '';
 		}
 	}
 
@@ -708,7 +801,7 @@ export class Panel {
 	}
 
 	toPlan = async () => {
-		if (this.planning || !this.domainOk) return;
+		if (this.planning || !this.canPlan) return;
 		this.planning = true;
 		this.rollbackNote = '';
 		try {
@@ -725,7 +818,9 @@ export class Panel {
 				}
 				await this.api.SetInstallRoot(this.input.profile().id, root || this.knownRoot || '/opt/wynd');
 			}
-			this.plan = await this.api.MakePlan(this.domain);
+			this.plan = this.canOfferPush && this.pushEnabled
+				? await this.api.MakePlanWithPush(this.domain, this.pushDomain.trim())
+				: await this.api.MakePlan(this.domain);
 			this.progress = undefined;
 			this.screen = 'plan';
 		} finally {
@@ -778,6 +873,10 @@ export class Panel {
 		({ nginx: 'nginx', apache: 'Apache', caddy: 'Caddy' } as Record<string, string>)[
 			this.inspection?.report?.proxy ?? ''
 		] ?? ''
+	);
+	canOfferPush = $derived(!this.st?.installed && !this.proxyName);
+	canPlan = $derived(
+		this.domainOk && (!this.canOfferPush || !this.pushEnabled || Boolean(this.pushDomain.trim()))
 	);
 	// Файлы сайта в чужом веб-сервере, которые ставили не мы (кадры 5е, 5е2):
 	// Wynd там поставлен не Мастерской; файл не трогаем, а называем.
@@ -838,6 +937,7 @@ export class Panel {
 	occupied = $derived(
 		this.busy ||
 			Boolean(this.svcBusy) ||
+			Boolean(this.pushBusy) ||
 			this.rolling ||
 			this.returning ||
 			this.mBusy ||
