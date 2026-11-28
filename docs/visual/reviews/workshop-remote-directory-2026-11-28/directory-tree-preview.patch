@@ -182,7 +182,7 @@
 +			{#if reviewCreateError}<Notice tone="bad" alert>{reviewCreateError}</Notice>{/if}
 +		{:else if !reviewCanSelect}
 -			<Hint style="margin: 0">Откройте вложенную папку, чтобы выбрать её.</Hint>
-+			<Hint style="margin: 0">Это общий каталог, в нём могут быть файлы других программ. Выберите или создайте отдельную папку для Wynd.</Hint>
++			<Hint style="margin: 0">Это общий каталог. Выберите или создайте в нём пустую папку.</Hint>
  		{/if}
  		<FootBar style="margin-top: var(--sp-2)">
 -			<Button variant="colored" disabled={!reviewCanSelect} onclick={() => {
