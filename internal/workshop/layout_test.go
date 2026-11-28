@@ -40,8 +40,7 @@ func TestDefaultLayoutMatchesCurrentPaths(t *testing.T) {
 	}
 }
 
-// Скрипты состояния и списка копии — те же, что были: прежние константы
-// собраны здесь заново из оставшихся констант пакета.
+// Скрипты состояния и списка копии для стандартного каталога.
 func TestLayoutScriptsMatchPrevious(t *testing.T) {
 	wantState := `cd ` + installDir + ` 2>/dev/null || { echo '@none'; exit 0; }
 test -f compose.yaml || { echo '@none'; exit 0; }
@@ -52,6 +51,7 @@ echo "@container $(docker ps -aq --filter label=com.docker.compose.project.worki
 echo "@stopped $(cat ` + stoppedMark + ` 2>/dev/null)"
 echo "@update $(cat ` + updateMark + ` 2>/dev/null)"
 echo "@move $(cat ` + moveMark + ` 2>/dev/null)"
+if [ -e push.json ] || [ -L push.json ]; then echo '@push'; fi
 echo "@free $(df -Pk ` + installDir + ` | tail -n 1)"`
 	if got := DefaultLayout().StateScript(); got != wantState {
 		t.Fatalf("скрипт состояния изменился:\n%s", got)

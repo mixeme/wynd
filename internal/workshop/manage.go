@@ -47,7 +47,8 @@ type ServerState struct {
 	Move *MoveMark `json:"move,omitempty"`
 	// Root — каталог, в котором нашлась установка (план «другой каталог»);
 	// пусто — установки нет.
-	Root string `json:"root,omitempty"`
+	Root        string `json:"root,omitempty"`
+	pushPresent bool
 }
 
 // UpdateMark — пометка начатого обновления.
@@ -125,6 +126,8 @@ func parseServerState(out string) ServerState {
 			}
 		case "@free":
 			st.FreeBytes, _ = freeBytes(val)
+		case "@push":
+			st.pushPresent = true
 		}
 	}
 	if !st.Installed {
@@ -150,12 +153,12 @@ func ServiceAction(ctx context.Context, sess *Session, action string) ([]LogEntr
 // ServiceActionAt — то же для известного размещения установки.
 func ServiceActionAt(ctx context.Context, sess *Session, l Layout, action string) ([]LogEntry, error) {
 	composeCmd := l.ComposeCommand()
-	stoppedMark := l.StoppedMark()
-	r := &Run{sess: sess, steps: []StepState{{ID: action}}, report: func() {}}
+	stoppedMark := ShellPath(l.StoppedMark())
+	r := &Run{sess: sess, layout: l, steps: []StepState{{ID: action}}, report: func() {}}
 	var cmd string
 	switch action {
 	case ServiceStart:
-		cmd = composeCmd + "up -d --quiet-pull 2>&1 && rm -f " + stoppedMark
+		cmd = l.startWynd(" --quiet-pull") + " 2>&1 && rm -f " + stoppedMark
 	case ServiceStop:
 		cmd = composeCmd + "stop wynd 2>&1 && date -u +%Y-%m-%dT%H:%M:%SZ > " + stoppedMark
 	case ServiceRestart:

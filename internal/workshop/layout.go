@@ -169,6 +169,7 @@ echo "@container $(` + l.ContainerFilter() + ` | head -n 1)"
 echo "@stopped $(cat ` + l.StoppedMark() + ` 2>/dev/null)"
 echo "@update $(cat ` + l.UpdateMark() + ` 2>/dev/null)"
 echo "@move $(cat ` + l.MoveMark() + ` 2>/dev/null)"
+if [ -e push.json ] || [ -L push.json ]; then echo '@push'; fi
 echo "@free $(df -Pk ` + l.shellRoot() + ` | tail -n 1)"`
 }
 

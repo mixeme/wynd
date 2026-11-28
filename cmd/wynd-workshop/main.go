@@ -22,8 +22,8 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
-	"gitea.mixdep.ru/mix/wynd/internal/workshop"
 	"gitea.mixdep.ru/mix/wynd/internal/version"
+	"gitea.mixdep.ru/mix/wynd/internal/workshop"
 )
 
 //go:embed all:frontend/dist
@@ -133,6 +133,13 @@ func (a *App) ServerPage(id string) (workshop.ServerPage, error) {
 // Service — «Запустить», «Остановить», «Перезапустить».
 func (a *App) Service(id string, action string) (workshop.ServiceResult, error) {
 	return profileCall(a, id, false, func(w *workshop.Wizard) workshop.ServiceResult { return w.Service(a.ctx, action) })
+}
+
+// PushControl — команды сервера уведомлений для текущего профиля.
+func (a *App) PushControl(id string, action string, cache string) (workshop.ServiceResult, error) {
+	return profileCall(a, id, false, func(w *workshop.Wizard) workshop.ServiceResult {
+		return w.PushControl(a.ctx, action, cache)
+	})
 }
 
 // DeleteStaleCert убирает сертификат с сломанным продлением (кнопка у находки осмотра).

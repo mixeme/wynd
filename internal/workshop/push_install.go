@@ -19,8 +19,10 @@ const (
 )
 
 type pushSettings struct {
-	Domain string `json:"domain"`
-	Cache  string `json:"cache"`
+	Domain  string           `json:"domain"`
+	Cache   string           `json:"cache"`
+	Change  *pushCacheChange `json:"change,omitempty"`
+	Removal *pushRemoval     `json:"removal,omitempty"`
 }
 
 func (s Spec) pushSettings() (pushSettings, error) {
@@ -38,12 +40,18 @@ func (s Spec) pushSettings() (pushSettings, error) {
 	if cache == "" {
 		cache = defaultPushCache
 	}
-	switch cache {
-	case "0", "1h", "6h", "12h", "24h", "72h":
-		return pushSettings{Domain: domain, Cache: cache}, nil
-	default:
+	if !validPushCache(cache) {
 		return pushSettings{}, errors.New("Выберите один из доступных сроков хранения сообщений.")
 	}
+	return pushSettings{Domain: domain, Cache: cache}, nil
+}
+
+func validPushCache(cache string) bool {
+	switch cache {
+	case "0", "1h", "6h", "12h", "24h", "72h":
+		return true
+	}
+	return false
 }
 
 func (p pushSettings) origin() string { return "https://" + p.Domain }
@@ -58,11 +66,16 @@ func (p pushSettings) caddySite() string {
 }
 
 func (p pushSettings) installFiles(l Layout) []installFile {
-	// The struct contains only strings, which cannot fail to marshal.
+	return []installFile{p.metadata(l), p.ntfyFile(l), p.composeFile(l)}
+}
+
+func (p pushSettings) metadata(l Layout) installFile {
 	settings, _ := json.Marshal(p)
-	return []installFile{
-		{l.Root() + "/push.json", string(settings) + "\n"},
-		{l.Root() + "/ntfy.yml", fmt.Sprintf(`base-url: %q
+	return installFile{l.Root() + "/push.json", string(settings) + "\n"}
+}
+
+func (p pushSettings) ntfyFile(l Layout) installFile {
+	return installFile{l.Root() + "/ntfy.yml", fmt.Sprintf(`base-url: %q
 listen-http: ":80"
 behind-proxy: true
 cache-duration: %q
@@ -76,8 +89,11 @@ web-root: disable
 attachment-cache-dir: ""
 enable-metrics: false
 visitor-subscriber-rate-limiting: true
-`, p.origin(), p.Cache)},
-		{l.Root() + "/push.yaml", fmt.Sprintf(`services:
+`, p.origin(), p.Cache)}
+}
+
+func (p pushSettings) composeFile(l Layout) installFile {
+	return installFile{l.Root() + "/push.yaml", fmt.Sprintf(`services:
   wynd:
     environment:
       WYND_PUSH_SERVER: %q
@@ -89,26 +105,33 @@ visitor-subscriber-rate-limiting: true
     logging:
       driver: none
     restart: unless-stopped
-`, p.origin(), pushImage)},
-	}
+`, p.origin(), pushImage)}
 }
 
 var pushComposeVariable = regexp.MustCompile(`^(?:export[ \t]+)?(COMPOSE_FILE|COMPOSE_PATH_SEPARATOR)(?:[ \t]*[=:]|[ \t]*$)`)
 
-// mergePushEnv preserves the other dotenv values byte-for-byte. A Compose
-// override already chosen by an operator belongs to that operator.
-func mergePushEnv(content string) (string, error) {
-	managed := false
-	for _, line := range strings.Split(content, "\n") {
-		line = strings.TrimSpace(line)
-		match := pushComposeVariable.FindStringSubmatch(line)
-		if match == nil {
+func splitPushEnv(content string) (rest string, managed bool, err error) {
+	lines := strings.SplitAfter(content, "\n")
+	other := strings.Builder{}
+	for _, line := range lines {
+		value := strings.TrimSpace(line)
+		if !pushComposeVariable.MatchString(value) {
+			other.WriteString(line)
 			continue
 		}
-		if line != pushComposeLine || managed {
-			return "", errors.New("В .env уже задан состав Docker Compose. Проверьте его перед установкой Push-сервера.")
+		if value != pushComposeLine || managed {
+			return "", false, errors.New("В .env задан другой состав Docker Compose. Проверьте этот файл.")
 		}
 		managed = true
+	}
+	return other.String(), managed, nil
+}
+
+// mergePushEnv preserves the other dotenv values byte-for-byte.
+func mergePushEnv(content string) (string, error) {
+	_, managed, err := splitPushEnv(content)
+	if err != nil {
+		return "", err
 	}
 	if managed {
 		return content, nil
@@ -125,22 +148,32 @@ func installFilesForRun(ctx context.Context, r *Run, spec Spec) ([]installFile, 
 		return files, dirs, nil
 	}
 	envPath := r.layout.Root() + "/.env"
-	q := ShellPath(envPath)
-	read := fmt.Sprintf(`if [ -L %[1]s ]; then exit 2; elif [ -e %[1]s ]; then
-  test -f %[1]s && test "$(wc -c < %[1]s)" -le %[2]d && cat %[1]s
-fi`, q, maxCommandOutput-1)
-	result, err := r.sess.Exec(ctx, read, nil, shortTimeout)
+	content, err := readPushFile(ctx, r.sess, envPath)
 	if err != nil {
 		return nil, "", err
 	}
-	if result.Code != 0 {
-		return nil, "", errors.New("Не удалось безопасно прочитать .env установки.")
-	}
-	content, err := mergePushEnv(result.Output)
+	content, err = mergePushEnv(content)
 	if err != nil {
 		return nil, "", err
 	}
 	return append(files, installFile{envPath, content}), dirs, nil
+}
+
+// A missing file returns an empty string. Reads go directly through SSH so
+// .env contents never enter the Workshop operation log.
+func readPushFile(ctx context.Context, sess *Session, path string) (string, error) {
+	q := ShellPath(path)
+	read := fmt.Sprintf(`if [ -L %[1]s ]; then exit 2; elif [ -e %[1]s ]; then
+  test -f %[1]s && test "$(wc -c < %[1]s)" -le %[2]d && cat %[1]s
+fi`, q, maxCommandOutput-1)
+	result, err := sess.Exec(ctx, read, nil, shortTimeout)
+	if err != nil {
+		return "", err
+	}
+	if result.Code != 0 {
+		return "", &StepError{Message: "Не удалось безопасно прочитать файл установки", Advice: path}
+	}
+	return result.Output, nil
 }
 
 func pushHealthStep(settings pushSettings) step {
@@ -149,25 +182,34 @@ func pushHealthStep(settings pushSettings) step {
 		title: "Сервер уведомлений",
 		do: func(ctx context.Context, r *Run) error {
 			r.note("ждём сертификат и ответ сервера уведомлений")
-			deadline := time.Now().Add(certWait)
-			for {
-				var status struct {
-					Healthy bool `json:"healthy"`
-				}
-				body, err := r.probe(ctx, settings.origin()+"/v1/health")
-				if err == nil && json.Unmarshal([]byte(body), &status) == nil && status.Healthy {
-					return nil
-				}
-				if time.Now().After(deadline) {
-					return &StepError{
-						Message: "Сервер уведомлений не ответил по HTTPS",
-						Advice:  "Проверьте, что " + settings.Domain + " указывает на этот сервер и доступен по портам 80 и 443, затем нажмите «Повторить».",
-					}
-				}
-				if err := sleep(ctx, pollInterval); err != nil {
-					return err
-				}
-			}
+			return waitPushHealthy(ctx, r, settings, certWait)
 		},
+	}
+}
+
+func pushHealthy(ctx context.Context, r *Run, p pushSettings) bool {
+	var status struct {
+		Healthy bool `json:"healthy"`
+	}
+	body, err := r.probe(ctx, p.origin()+"/v1/health")
+	return err == nil && json.Unmarshal([]byte(body), &status) == nil && status.Healthy
+}
+
+func waitPushHealthy(ctx context.Context, r *Run, p pushSettings, timeout time.Duration) error {
+	waitCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	for {
+		if pushHealthy(waitCtx, r, p) {
+			return nil
+		}
+		if err := sleep(waitCtx, pollInterval); err != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			return &StepError{
+				Message: "Сервер уведомлений не ответил по HTTPS",
+				Advice:  "Проверьте, что " + p.Domain + " указывает на этот сервер и доступен по портам 80 и 443.",
+			}
+		}
 	}
 }

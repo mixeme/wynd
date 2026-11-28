@@ -265,8 +265,13 @@ func testSpec(t *testing.T) Spec {
 
 func dialHost(t *testing.T, host *fakeHost) *Session {
 	t.Helper()
+	return dialTestHost(t, host.handle)
+}
+
+func dialTestHost(t *testing.T, handler func(string, []byte) (string, int)) *Session {
+	t.Helper()
 	srv := startServer(t, "pw", nil, "")
-	srv.handler = host.handle
+	srv.handler = handler
 	d := Dialer{SSHDir: filepath.Join(t.TempDir(), "ssh")}
 	_, err := d.Dial(context.Background(), srv.access("pw"))
 	var unknown *UnknownHostError

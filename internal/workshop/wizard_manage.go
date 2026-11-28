@@ -34,7 +34,9 @@ type ServerPage struct {
 	// Built — стоящий Wynd собран на сервере из открытого кода: план
 	// обновления сразу предлагает собрать и новый (кадр 7б4), а не молча
 	// переходит на хранилище.
-	Built bool `json:"built"`
+	Built     bool       `json:"built"`
+	Push      *PushState `json:"push,omitempty"`
+	PushError string     `json:"push_error,omitempty"`
 }
 
 // builtOnServer — образ собран на сервере: так его называет SourceImage.
@@ -131,6 +133,16 @@ func (w *Wizard) ServerPage(ctx context.Context) ServerPage {
 		return ServerPage{Message: "Связь с сервером оборвалась", Advice: "Подключитесь ещё раз."}
 	}
 	page := ServerPage{OK: true, State: st, Host: sess.RemoteIP(), CanBuild: w.Source != nil, LiveCopy: CanCopyLive(st.Version), Built: builtOnServer(st.Image)}
+	if st.pushPresent {
+		page.Push, err = readPushState(ctx, &Run{sess: sess, layout: w.layout()})
+		if err != nil {
+			page.PushError = "Не удалось прочитать настройки Push-сервера"
+			var se *StepError
+			if errors.As(err, &se) {
+				page.PushError = se.Message
+			}
+		}
+	}
 	if !st.Installed {
 		if f, ok := DetectForeign(ctx, sess); ok {
 			page.Foreign = &f
@@ -163,6 +175,19 @@ func (w *Wizard) ServerPage(ctx context.Context) ServerPage {
 
 // Service — кнопки страницы сервера.
 func (w *Wizard) Service(ctx context.Context, action string) ServiceResult {
+	return w.manageService(ctx, func(sess *Session) ([]LogEntry, error) {
+		return ServiceActionAt(ctx, sess, w.layout(), action)
+	})
+}
+
+// PushControl runs the command for the Push service of the selected installation.
+func (w *Wizard) PushControl(ctx context.Context, action, cache string) ServiceResult {
+	return w.manageService(ctx, func(sess *Session) ([]LogEntry, error) {
+		return pushActionAt(ctx, sess, w.layout(), action, cache)
+	})
+}
+
+func (w *Wizard) manageService(ctx context.Context, run func(*Session) ([]LogEntry, error)) ServiceResult {
 	w.mu.Lock()
 	if w.progress.Running {
 		w.mu.Unlock()
@@ -176,7 +201,7 @@ func (w *Wizard) Service(ctx context.Context, action string) ServiceResult {
 	}
 	sess := w.session
 	w.mu.Unlock()
-	log, err := ServiceActionAt(ctx, sess, w.layout(), action)
+	log, err := run(sess)
 	res := ServiceResult{OK: err == nil, Log: log}
 	if err != nil {
 		res.Message = "Не получилось"

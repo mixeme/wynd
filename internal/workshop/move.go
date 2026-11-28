@@ -123,7 +123,7 @@ func oldControl(f *ForeignWynd, l Layout) (stop, start, mark string) {
 	if f != nil {
 		return f.stop, f.start, f.markPath()
 	}
-	return l.ComposeCommand() + "stop wynd 2>&1", l.ComposeCommand() + "up -d 2>&1", l.MoveMark()
+	return l.ComposeCommand() + "stop wynd 2>&1", l.startWynd("") + " 2>&1", l.MoveMark()
 }
 
 // dnsWait — как часто сами проверяем адрес на 9в.
