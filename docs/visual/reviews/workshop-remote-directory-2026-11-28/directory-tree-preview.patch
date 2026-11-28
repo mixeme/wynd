@@ -109,7 +109,7 @@
  						Выбрать…
  					</Button>
  				</FieldLine>
-@@ -1477,33 +1545,70 @@
+@@ -1477,33 +1545,69 @@
  		style="position:fixed;inset:50% auto auto 50%;transform:translate(-50%,-50%);width:min(calc(100% - 2 * var(--sp-3)),var(--dlg-max-width));max-height:calc(100% - 2 * var(--sp-3));box-sizing:border-box;z-index:4;gap:var(--sp-2);overflow-y:auto"
  	>
  		<div class="ins-dim">{profile.name} · {host}</div>
@@ -178,7 +178,6 @@
 +					oninput={() => (reviewCreateError = '')}
 +				/>
 +			</div>
-+			<Hint style="margin: 0">Папка будет создана на сервере в {reviewDirectory}.</Hint>
 +			{#if reviewCreateError}<Notice tone="bad" alert>{reviewCreateError}</Notice>{/if}
 +		{:else if !reviewCanSelect}
 -			<Hint style="margin: 0">Откройте вложенную папку, чтобы выбрать её.</Hint>
