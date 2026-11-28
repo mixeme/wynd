@@ -188,6 +188,10 @@ export function makeBackend(over: Fake): Fake {
 			push_domain: pushDomain,
 			install: [...(plan.install ?? []), `Сервер уведомлений ${pushDomain} — контейнером`]
 		}),
+		PlanPushAdd: (domain: string) => ({ ok: true, domain: domain.trim().toLowerCase() }),
+		ApplyPushAdd: (domain: string) => service({
+			...page(), push: { domain, cache: '12h', running: true, healthy: true }
+		}),
 		BrowseInstallDirectories: (id: string, requested: string): RemoteDirectoryList => {
 			const paths = foldersFor(id);
 			let path = (requested || '/opt/wynd').replace(/\/+$/, '') || '/';
@@ -277,6 +281,8 @@ export function makeBackend(over: Fake): Fake {
 		'ServerPage',
 		'Service',
 		'PushControl',
+		'PlanPushAdd',
+		'ApplyPushAdd',
 		'StartUpdate',
 		'ReturnPrevious',
 		'PlanBackup',

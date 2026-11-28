@@ -23,6 +23,7 @@ type pushSettings struct {
 	Cache   string           `json:"cache"`
 	Change  *pushCacheChange `json:"change,omitempty"`
 	Removal *pushRemoval     `json:"removal,omitempty"`
+	Adding  *pushAddition    `json:"adding,omitempty"`
 }
 
 func (s Spec) pushSettings() (pushSettings, error) {

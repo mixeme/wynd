@@ -545,6 +545,9 @@ type RollbackResult struct {
 func (w *Wizard) Rollback(ctx context.Context, keepData bool) RollbackResult {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	if w.pushAddPendingLocked() {
+		return RollbackResult{Message: pushAddPendingMessage}
+	}
 	// Без плана убирать можно то, что нашёл осмотр: человек вернулся к серверу,
 	// где Wynd уже стоит (окно 2б).
 	if w.plan == nil && !w.foundWyndLocked() {

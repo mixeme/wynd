@@ -32,6 +32,7 @@ type PushState struct {
 	Healthy      bool   `json:"healthy"`
 	PendingCache string `json:"pending_cache,omitempty"`
 	Removing     bool   `json:"removing,omitempty"`
+	Adding       bool   `json:"adding,omitempty"`
 }
 
 func pushFilesChanged() error {
@@ -60,7 +61,11 @@ func readPushSettings(ctx context.Context, r *Run) (pushSettings, error) {
 	if err := checkPushRoot(ctx, r.sess, l); err != nil {
 		return pushSettings{}, err
 	}
-	raw, err := readPushFile(ctx, r.sess, l.Root()+"/push.json")
+	return loadPushSettings(ctx, r.sess, l)
+}
+
+func loadPushSettings(ctx context.Context, sess *Session, l Layout) (pushSettings, error) {
+	raw, err := readPushFile(ctx, sess, l.Root()+"/push.json")
 	if err != nil {
 		return pushSettings{}, err
 	}
@@ -70,7 +75,8 @@ func readPushSettings(ctx context.Context, r *Run) (pushSettings, error) {
 	}
 	checked, err := (Spec{PushDomain: p.Domain, PushCache: p.Cache}).pushSettings()
 	if err != nil || checked.Domain == "" || checked.Domain != p.Domain ||
-		(p.Change != nil && !validPushCache(p.Change.Cache)) {
+		(p.Change != nil && !validPushCache(p.Change.Cache)) ||
+		(p.Adding != nil && (p.Change != nil || p.Removal != nil || !p.Adding.valid())) {
 		return pushSettings{}, pushFilesChanged()
 	}
 	return p, nil
@@ -114,8 +120,8 @@ func readPushState(ctx context.Context, r *Run) (*PushState, error) {
 	if err != nil {
 		return nil, err
 	}
-	st := &PushState{Domain: p.Domain, Cache: p.Cache, Removing: p.Removal != nil}
-	if st.Removing {
+	st := &PushState{Domain: p.Domain, Cache: p.Cache, Removing: p.Removal != nil, Adding: p.Adding != nil}
+	if st.Removing || st.Adding {
 		return st, nil
 	}
 	if p.Change != nil {
@@ -152,6 +158,9 @@ func managePush(ctx context.Context, r *Run, action, cache string) error {
 	p, err := readPushSettings(ctx, r)
 	if err != nil {
 		return err
+	}
+	if p.Adding != nil {
+		return &StepError{Message: "Добавление сервера уведомлений не завершено", Advice: "Продолжите добавление из пульта."}
 	}
 	if action == PushRemove {
 		return removePush(ctx, r, p)

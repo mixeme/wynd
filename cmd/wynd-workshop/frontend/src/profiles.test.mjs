@@ -481,6 +481,44 @@ test('the installation picker loads branches on demand and creates a folder on t
 	assert.ok(!ui.calls.some(([name]) => name === 'SetInstallRoot'));
 });
 
+test('adding Push checks the domain and retries the confirmed plan on the same server', async (t) => {
+	let attempts = 0;
+	const ui = await open(t, [profile('a'), profile('b')], {
+		PlanPushAdd: (_id, domain) => domain === 'elsewhere.net'
+			? { ok: false, message: 'Домен указывает на другой сервер' }
+			: { ok: true, domain: domain.toLowerCase() },
+		ApplyPushAdd: (_id, domain) => {
+			const adding = ++attempts === 1;
+			return {
+				ok: !adding, message: adding ? 'Связь прервалась' : '', log: [],
+				page: { ...page, push: { domain, cache: '12h', healthy: !adding, running: !adding, adding } }
+			};
+		}
+	});
+	await ui.select('b');
+	await ui.click('Подключиться');
+	await ui.click('Добавить');
+	const field = () => ui.elements('input[aria-label="Домен сервера уведомлений"]')[0];
+	assert.match(ui.elements('.hint').map(el => el.textContent).join(' '), /«Сервер b»/);
+	await ui.set(field(), 'elsewhere.net');
+	await ui.click('Дальше — план');
+	assert.ok(ui.elements('[role="alert"]').some(el => el.textContent.includes('Домен указывает на другой сервер')));
+	await ui.set(field(), 'EXAMPLE.NET');
+	await ui.click('Дальше — план');
+	assert.equal(ui.elements('h2')[0].textContent, 'Что сделаем');
+	assert.ok(!ui.calls.some(([name]) => name === 'ApplyPushAdd'));
+	await ui.click('Назад');
+	assert.equal(field().value, 'EXAMPLE.NET');
+	await ui.click('Дальше — план');
+	await ui.click('Добавить сервер уведомлений');
+	assert.ok(ui.elements('[role="alert"]').some(el => el.textContent.includes('Связь прервалась')));
+	await ui.click('Добавить сервер уведомлений');
+	assert.ok(ui.elements('.ins-pult-actions').some(el => el.textContent.includes('Сервер уведомлений работает')));
+	assert.deepEqual(ui.calls.filter(([name]) => name === 'ApplyPushAdd'), [
+		['ApplyPushAdd', 'b', 'example.net'], ['ApplyPushAdd', 'b', 'example.net']
+	]);
+});
+
 test('Push controls are scoped to the profile and retry changes after a partial failure', async (t) => {
 	let push = { domain: 'push.example.org', cache: '12h', version: '2.38.3', running: true, healthy: true };
 	const current = () => ({ ...page, push });
@@ -533,7 +571,8 @@ test('Push controls are scoped to the profile and retry changes after a partial 
 	await ui.click('Отмена');
 	await ui.click('Настроить');
 	await ui.click('Удалить');
-	assert.doesNotMatch(ui.elements('.ins-pult-actions')[0].textContent, /Сервер уведомлений/);
+	assert.match(ui.elements('.ins-pult-actions')[0].textContent, /Сервер уведомлений не подключён/);
+	assert.equal(ui.elements('.ins-pult-actions button').some(el => el.textContent.trim() === 'Настроить'), false);
 	assert.deepEqual(ui.calls.filter(([name]) => name === 'PushControl'), [
 		['PushControl', 'b', 'restart', ''],
 		['PushControl', 'b', 'stop', ''],
@@ -575,15 +614,18 @@ test('all gallery scenarios use the current compiled window without remote serve
 					await ui.set(input, act.value);
 				}
 			}
-			if (scene.name === '7a-server') {
+			if (scene.name === '7a-server' || scene.name === '7a-push') {
 				const rows = [
 					...ui.dom.window.document.querySelectorAll('.ins-pult-actions .ins-row')
 				];
 				assert.ok(rows.length >= 2, 'pult actions are missing');
+				const last = rows.at(-1);
+				const adding = scene.name === '7a-server';
+				if (adding) assert.match(last.textContent, /Сервер уведомлений не подключён/);
 				assert.equal(
-					ui.dom.window.getComputedStyle(rows[rows.length - 1]).borderBottomWidth,
-					'0px',
-					'last pult action must not add a second rule under the footer separator'
+					ui.dom.window.getComputedStyle(last).borderBottomWidth,
+					adding ? '1px' : '0px',
+					'only the approved Push add row has a trailing separator'
 				);
 			}
 			// Один разделитель на экран: последняя строка любого списка шагов не

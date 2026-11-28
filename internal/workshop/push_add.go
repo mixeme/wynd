@@ -18,25 +18,33 @@ type PushAddPlan struct {
 
 // PlanPushAdd checks a separately configured Push domain for this SSH profile.
 func (w *Wizard) PlanPushAdd(ctx context.Context, domain string) PushAddPlan {
+	_, _, settings, err := w.preparePushAdd(ctx, domain)
+	if err != nil {
+		var step *StepError
+		if errors.As(err, &step) {
+			return PushAddPlan{Domain: settings.Domain, Message: step.Message, Advice: step.Advice}
+		}
+		return PushAddPlan{Message: "Не удалось проверить установку Wynd", Advice: "Проверьте подключение к серверу и попробуйте ещё раз."}
+	}
+	return PushAddPlan{OK: true, Domain: settings.Domain}
+}
+
+func (w *Wizard) preparePushAdd(ctx context.Context, domain string) (*Session, Layout, pushSettings, error) {
 	w.mu.Lock()
 	if w.progress.Running {
 		w.mu.Unlock()
-		return PushAddPlan{Message: "Сначала дождитесь окончания операции"}
+		return nil, Layout{}, pushSettings{}, &StepError{Message: "Сначала дождитесь окончания операции"}
 	}
 	if w.session == nil || w.report == nil {
 		w.mu.Unlock()
-		return PushAddPlan{Message: "Сначала подключитесь к серверу и дождитесь осмотра"}
+		return nil, Layout{}, pushSettings{}, &StepError{Message: "Сначала подключитесь к серверу и дождитесь осмотра"}
 	}
 	sess, report, layout := w.session, w.report, w.layout()
 	w.mu.Unlock()
 
 	settings, err := checkPushAdd(ctx, sess, layout, domain)
 	if err != nil {
-		var step *StepError
-		if errors.As(err, &step) {
-			return PushAddPlan{Message: step.Message, Advice: step.Advice}
-		}
-		return PushAddPlan{Message: "Не удалось проверить установку Wynd", Advice: "Проверьте подключение к серверу и попробуйте ещё раз."}
+		return nil, Layout{}, pushSettings{}, err
 	}
 	dns := w.CheckDomain(ctx, settings.Domain)
 
@@ -44,12 +52,12 @@ func (w *Wizard) PlanPushAdd(ctx context.Context, domain string) PushAddPlan {
 	sameInstallation := w.session == sess && w.report == report && w.layout() == layout
 	w.mu.Unlock()
 	if !sameInstallation {
-		return PushAddPlan{Message: "Состояние сервера изменилось", Advice: "Составьте план снова."}
+		return nil, Layout{}, pushSettings{}, &StepError{Message: "Состояние сервера изменилось", Advice: "Составьте план снова."}
 	}
 	if dns.Level != LevelOK {
-		return PushAddPlan{Domain: settings.Domain, Message: dns.Text, Advice: dns.Advice}
+		return nil, Layout{}, settings, &StepError{Message: dns.Text, Advice: dns.Advice}
 	}
-	return PushAddPlan{OK: true, Domain: settings.Domain}
+	return sess, layout, settings, nil
 }
 
 func checkPushAdd(ctx context.Context, sess *Session, l Layout, domain string) (pushSettings, error) {
@@ -57,14 +65,14 @@ func checkPushAdd(ctx context.Context, sess *Session, l Layout, domain string) (
 	if err != nil {
 		return pushSettings{}, err
 	}
-	if !st.Installed || !st.Container || st.Domain == "" {
+	if !st.Installed || (!st.Container && !st.pushPresent) || st.Domain == "" {
 		return pushSettings{}, &StepError{Message: "Установка Wynd не найдена", Advice: "Сначала установите Wynd через Мастерскую."}
 	}
 	if st.Move != nil || st.Update != nil {
 		return pushSettings{}, &StepError{Message: "На сервере осталась незавершённая операция", Advice: "Завершите её в пульте Wynd."}
 	}
-	if st.pushPresent {
-		return pushSettings{}, &StepError{Message: "Сервер уведомлений уже настроен", Advice: "Откройте его настройки в пульте."}
+	if !st.Running && !st.pushPresent {
+		return pushSettings{}, &StepError{Message: "Сначала запустите сайт Wynd"}
 	}
 	p, err := (Spec{Domain: st.Domain, PushDomain: domain}).pushSettings()
 	if err != nil {
@@ -75,6 +83,19 @@ func checkPushAdd(ctx context.Context, sess *Session, l Layout, domain string) (
 	}
 	if err := checkPushRoot(ctx, sess, l); err != nil {
 		return pushSettings{}, err
+	}
+	if st.pushPresent {
+		previous, err := loadPushSettings(ctx, sess, l)
+		if err != nil {
+			return pushSettings{}, err
+		}
+		if previous.Adding == nil {
+			return pushSettings{}, &StepError{Message: "Сервер уведомлений уже настроен", Advice: "Откройте его настройки в пульте."}
+		}
+		if previous.Domain != p.Domain {
+			return pushSettings{}, &StepError{Message: "Добавление сервера уведомлений не завершено", Advice: "Продолжите добавление для домена " + previous.Domain + "."}
+		}
+		return previous, nil
 	}
 	// Orphan files also count as an existing configuration, even when empty
 	// or a broken symlink. A future apply must preserve them.

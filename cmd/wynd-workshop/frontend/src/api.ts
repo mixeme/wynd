@@ -185,6 +185,14 @@ export interface PushState {
 	healthy: boolean;
 	pending_cache?: string;
 	removing?: boolean;
+	adding?: boolean;
+}
+
+export interface PushAddPlan {
+	ok: boolean;
+	domain?: string;
+	message?: string;
+	advice?: string;
 }
 
 export type ServiceAction = 'start' | 'stop' | 'restart';
@@ -376,6 +384,8 @@ export interface Backend {
 	ServerPage(): Promise<ServerPage>;
 	Service(action: ServiceAction): Promise<ServiceResult>;
 	PushControl(action: PushAction, cache: string): Promise<ServiceResult>;
+	PlanPushAdd(domain: string): Promise<PushAddPlan>;
+	ApplyPushAdd(domain: string): Promise<ServiceResult>;
 	BrowseInstallDirectories(path: string): Promise<RemoteDirectoryList>;
 	CreateInstallDirectory(parent: string, name: string): Promise<RemoteDirectoryCreation>;
 	DeleteStaleCert(domain: string): Promise<ServiceResult>;
@@ -440,6 +450,8 @@ const PROFILE_METHODS = new Set([
 	'ServerPage',
 	'Service',
 	'PushControl',
+	'PlanPushAdd',
+	'ApplyPushAdd',
 	'BrowseInstallDirectories',
 	'CreateInstallDirectory',
 	'DeleteStaleCert',

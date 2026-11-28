@@ -302,6 +302,44 @@
 			><Button variant="colored" onclick={() => (p.screen = 'inspect')}>Установить Wynd</Button
 			></FootBar
 		>
+	{:else if p.screen === 'push-add-domain'}
+		<h2>Добавить сервер уведомлений</h2>
+		<p class="ins-sub">У сервера уведомлений будет свой адрес.</p>
+		<Label>Домен сервера уведомлений</Label>
+		<Input
+			aria-label="Домен сервера уведомлений"
+			aria-describedby={`push-add-advice-${profile.id}`}
+			mono
+			autocomplete="off"
+			spellcheck={false}
+			placeholder="example.net"
+			readonly={Boolean(p.push?.adding)}
+			disabled={Boolean(p.pushAddBusy)}
+			bind:value={p.pushAddDomain}
+		/>
+		<Hint style="margin-inline: 0">
+			<span id={`push-add-advice-${profile.id}`}>Домен должен указывать на «{profile.name}».</span>
+		</Hint>
+		{#if p.pushAddError}<Notice tone="bad" alert>{p.pushAddError}</Notice>{/if}
+		<FootBar>
+			<Button variant="colored" disabled={!p.pushAddDomain.trim()} loading={p.pushAddBusy === 'plan'}
+				loadingLabel="Проверяем…" onclick={() => void p.attempt(p.planPushAdd)}>Дальше — план</Button>
+			<Button variant="ghost" disabled={Boolean(p.pushAddBusy)} onclick={() => (p.screen = 'server')}>Отмена</Button>
+		</FootBar>
+	{:else if p.screen === 'push-add-plan' && p.pushAddPlan}
+		<h2>Что сделаем</h2>
+		<p class="ins-sub">Сервер уведомлений {p.pushAddPlan.domain}</p>
+		<div class="ins-sec" style="margin-top: 0">Поставим</div>
+		<MarkRow mark="+" tone="ok">Wynd Push</MarkRow>
+		<div class="ins-sec">Изменим</div>
+		<MarkRow mark="~" tone="note">Добавим адрес сервера уведомлений в настройки Wynd</MarkRow>
+		<Hint style="margin-inline: 0">При применении настроек сайт Wynd может ненадолго стать недоступным.</Hint>
+		{#if p.pushAddError}<Notice tone="bad" alert>{p.pushAddError}</Notice>{/if}
+		<FootBar>
+			<Button variant="colored" loading={p.pushAddBusy === 'apply'} loadingLabel="Добавляем…"
+				onclick={() => void p.attempt(p.applyPushAdd)}>Добавить сервер уведомлений</Button>
+			<Button variant="ghost" disabled={Boolean(p.pushAddBusy)} onclick={p.leavePushAddPlan}>Назад</Button>
+		</FootBar>
 	{:else if p.screen === 'push' && p.push}
 		{@const pushLocked = Boolean(p.pushBusy || p.page?.push_error || p.push.pending_cache || p.push.removing)}
 		<h2>Сервер уведомлений</h2>
@@ -480,10 +518,10 @@
 						variant="ghost"
 						loading={p.svcBusy === 'restart'}
 						loadingLabel="Перезапускаем…"
-						disabled={Boolean(p.svcBusy)}
+						disabled={Boolean(p.svcBusy || p.push?.adding)}
 						onclick={() => void p.attempt(() => p.service('restart'))}>Перезапустить</Button
 					>
-					<Button variant="ghost" disabled={Boolean(p.svcBusy)} onclick={() => (p.askStop = true)}>
+					<Button variant="ghost" disabled={Boolean(p.svcBusy || p.push?.adding)} onclick={() => (p.askStop = true)}>
 						Остановить
 					</Button>
 				{:else}
@@ -491,6 +529,7 @@
 						variant="colored"
 						loading={p.svcBusy === 'start'}
 						loadingLabel="Запускаем…"
+						disabled={Boolean(p.push?.adding)}
 						onclick={() => void p.attempt(() => p.service('start'))}
 					>
 						Запустить
@@ -525,7 +564,7 @@
 						Перед обновлением сохраним копию данных на сервере.
 					</div>
 					<FootBar>
-						<Button variant={p.st.running ? 'colored' : 'ghost'} onclick={p.toUpdatePlan}
+						<Button variant={p.st.running ? 'colored' : 'ghost'} disabled={Boolean(p.push?.adding)} onclick={p.toUpdatePlan}
 							>Обновить</Button
 						>
 					</FootBar>
@@ -537,7 +576,7 @@
 				<MarkRow mark="">
 					Бэкап на этот компьютер
 					{#snippet action()}
-						<TextButton class="link under" onclick={() => void p.attempt(() => p.toBackupPlan())}
+						<TextButton class="link under" disabled={Boolean(p.push?.adding)} onclick={() => void p.attempt(() => p.toBackupPlan())}
 							>Сделать</TextButton
 						>
 					{/snippet}
@@ -545,10 +584,10 @@
 				<MarkRow mark="">
 					Переезд на другой сервер
 					{#snippet action()}
-						<TextButton class="link under" onclick={p.toMove}>Перенести</TextButton>
+						<TextButton class="link under" disabled={Boolean(p.push?.adding)} onclick={p.toMove}>Перенести</TextButton>
 					{/snippet}
 				</MarkRow>
-				{#if p.push || p.page.push_error}
+				{#if (p.push && !p.push.adding) || p.page.push_error}
 					<MarkRow mark="">
 						{#if p.push?.removing}
 							Удаление сервера уведомлений не завершено
@@ -566,6 +605,13 @@
 							{:else}
 								<TextButton class="link under" disabled={p.occupied} onclick={p.toPush}>Настроить</TextButton>
 							{/if}
+						{/snippet}
+					</MarkRow>
+				{:else if p.canAddPush}
+					<MarkRow mark="" style="border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: var(--line)">
+						{p.push?.adding ? 'Добавление сервера уведомлений не завершено' : 'Сервер уведомлений не подключён'}
+						{#snippet action()}
+							<TextButton class="link under" disabled={p.occupied} onclick={p.toPushAdd}>Добавить</TextButton>
 						{/snippet}
 					</MarkRow>
 				{/if}
@@ -1438,7 +1484,7 @@
 			onclick={onforget}>Убрать из списка</TextButton
 		>{#if p.screen === 'server' && p.page && !p.page.foreign && !p.page.state.move && !p.askRollback}<TextButton
 				class="link under"
-				disabled={p.occupied}
+				disabled={p.occupied || Boolean(p.push?.adding)}
 				onclick={() => (p.askRollback = true)}>Убрать Wynd с сервера</TextButton
 			>{/if}
 	</FootBar>

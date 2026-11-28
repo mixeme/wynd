@@ -134,7 +134,7 @@ func (w *Wizard) ServerPage(ctx context.Context) ServerPage {
 	}
 	page := ServerPage{OK: true, State: st, Host: sess.RemoteIP(), CanBuild: w.Source != nil, LiveCopy: CanCopyLive(st.Version), Built: builtOnServer(st.Image)}
 	if st.pushPresent {
-		page.Push, err = readPushState(ctx, &Run{sess: sess, layout: w.layout()})
+		page.Push, err = readPushState(ctx, &Run{sess: sess, layout: w.layout(), spec: Spec{Probe: w.Probe, TestCert: w.TestCert}})
 		if err != nil {
 			page.PushError = "Не удалось прочитать настройки Push-сервера"
 			var se *StepError
@@ -175,6 +175,12 @@ func (w *Wizard) ServerPage(ctx context.Context) ServerPage {
 
 // Service — кнопки страницы сервера.
 func (w *Wizard) Service(ctx context.Context, action string) ServiceResult {
+	w.mu.Lock()
+	pending := w.pushAddPendingLocked()
+	w.mu.Unlock()
+	if pending {
+		return ServiceResult{Message: pushAddPendingMessage}
+	}
 	return w.manageService(ctx, func(sess *Session) ([]LogEntry, error) {
 		return ServiceActionAt(ctx, sess, w.layout(), action)
 	})
@@ -252,6 +258,9 @@ func (w *Wizard) DeleteStaleCert(ctx context.Context, domain string) ServiceResu
 func (w *Wizard) StartUpdate(ctx context.Context, opt UpdateOptions) Progress {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	if w.pushAddPendingLocked() {
+		return Progress{Failure: &Failure{Message: pushAddPendingMessage}}
+	}
 	if w.state == nil || !w.state.OK || w.state.Latest == "" && w.state.State.Update == nil {
 		return Progress{Failure: &Failure{Message: "Обновлять нечего: стоит самая свежая версия"}}
 	}
@@ -338,6 +347,9 @@ func (w *Wizard) PlanBackup(ctx context.Context, folder string) LocalBackupPlan 
 func (w *Wizard) StartBackup(ctx context.Context, opt BackupOptions) Progress {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	if w.pushAddPendingLocked() {
+		return Progress{Failure: &Failure{Message: pushAddPendingMessage}}
+	}
 	if w.state == nil || !w.state.OK {
 		return Progress{Failure: &Failure{Message: "Сначала откройте страницу сервера"}}
 	}

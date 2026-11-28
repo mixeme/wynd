@@ -17,6 +17,7 @@ import {
 	type ProfileRequest,
 	type ProfileViewState,
 	type Progress,
+	type PushAddPlan,
 	type PushAction,
 	type ServerPage,
 	type ServerProfile,
@@ -38,6 +39,8 @@ export type Screen =
 	| 'done'
 	| 'server'
 	| 'push'
+	| 'push-add-domain'
+	| 'push-add-plan'
 	| 'uplan'
 	| 'update'
 	| 'udone'
@@ -183,6 +186,10 @@ export class Panel {
 
 	// --- Сервер уведомлений (план 76) ---
 	push = $derived(this.page?.push);
+	pushAddDomain = $state('');
+	pushAddPlan = $state<PushAddPlan | undefined>();
+	pushAddBusy = $state<'' | 'plan' | 'apply'>('');
+	pushAddError = $state('');
 	pushCache = $state('');
 	pushBusy = $state<PushAction | ''>('');
 	pushError = $state('');
@@ -477,7 +484,7 @@ export class Panel {
 	}
 
 	service = async (action: ServiceAction) => {
-		if (this.svcBusy) return;
+		if (this.svcBusy || this.push?.adding) return;
 		this.svcBusy = action;
 		this.svcError = '';
 		try {
@@ -510,6 +517,59 @@ export class Panel {
 		} else {
 			this.pushError = '';
 			this.screen = 'server';
+		}
+	}
+
+	toPushAdd = () => {
+		if (!this.canAddPush || this.occupied) return;
+		this.pushAddDomain = this.push?.adding ? this.push.domain : '';
+		this.pushAddPlan = undefined;
+		this.pushAddError = '';
+		this.screen = 'push-add-domain';
+	}
+
+	leavePushAddPlan = () => {
+		if (this.pushAddBusy) return;
+		this.pushAddPlan = undefined;
+		this.pushAddError = '';
+		this.screen = 'push-add-domain';
+	}
+
+	planPushAdd = async () => {
+		if (!this.canAddPush || this.occupied || !this.pushAddDomain.trim()) return;
+		this.pushAddBusy = 'plan';
+		this.pushAddError = '';
+		try {
+			const plan = await this.api.PlanPushAdd(this.pushAddDomain.trim());
+			if (plan.ok && plan.domain) {
+				this.pushAddPlan = plan;
+				this.screen = 'push-add-plan';
+			} else {
+				this.pushAddError = [plan.message, plan.advice].filter(Boolean).join('. ') || 'Не удалось проверить домен.';
+			}
+		} finally {
+			this.pushAddBusy = '';
+		}
+	}
+
+	applyPushAdd = async () => {
+		const domain = this.pushAddPlan?.domain;
+		if (this.screen !== 'push-add-plan' || !domain || this.occupied) return;
+		this.pushAddBusy = 'apply';
+		this.pushAddError = '';
+		try {
+			const result = await this.api.ApplyPushAdd(domain);
+			if (result.page?.ok) this.page = result.page;
+			if (result.ok) {
+				this.pushAddPlan = undefined;
+				this.screen = 'server';
+				if (!result.page?.ok) await this.refreshPage();
+			} else {
+				this.pushAddError = [result.message, result.advice].filter(Boolean).join('. ') || 'Не удалось добавить сервер уведомлений.';
+			}
+			await this.input.onprofileschange();
+		} finally {
+			this.pushAddBusy = '';
 		}
 	}
 
@@ -548,7 +608,7 @@ export class Panel {
 
 	toUpdatePlan = () => {
 		const page = this.page;
-		if (!page) return;
+		if (!page || this.push?.adding) return;
 		this.stopForCopy = true;
 		this.startAfter = !page.state.stopped_at;
 		// Собран на сервере — и новый собираем, а не молча берём из хранилища (7б4).
@@ -874,6 +934,8 @@ export class Panel {
 			this.inspection?.report?.proxy ?? ''
 		] ?? ''
 	);
+	canAddPush = $derived(Boolean(this.page?.ok && !this.page.foreign && !this.page.push_error && !this.askRollback &&
+		!this.st?.update && !this.st?.move && (this.push?.adding || (!this.push && this.st?.running && !this.proxyName))));
 	canOfferPush = $derived(!this.st?.installed && !this.proxyName);
 	canPlan = $derived(
 		this.domainOk && (!this.canOfferPush || !this.pushEnabled || Boolean(this.pushDomain.trim()))
@@ -938,6 +1000,7 @@ export class Panel {
 		this.busy ||
 			Boolean(this.svcBusy) ||
 			Boolean(this.pushBusy) ||
+			Boolean(this.pushAddBusy) ||
 			this.rolling ||
 			this.returning ||
 			this.mBusy ||

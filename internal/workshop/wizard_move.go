@@ -202,6 +202,9 @@ func parseInt64(s string) int64 {
 func (w *Wizard) StartMove(ctx context.Context, removeOld bool) Progress {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	if w.pushAddPendingLocked() {
+		return Progress{Failure: &Failure{Message: pushAddPendingMessage}}
+	}
 	if w.movePlan == nil || !w.movePlan.OK {
 		return Progress{Failure: &Failure{Message: "Сначала составьте план переезда"}}
 	}

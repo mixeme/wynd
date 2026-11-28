@@ -67,6 +67,8 @@ func TestPlanPushAddChecksExistingProjectWithoutWrites(t *testing.T) {
 					return test.env, 0
 				case strings.HasPrefix(command, "if [ -L "+l.Caddyfile()+" ];"):
 					return CaddyFile(Spec{Domain: "family.example.ru"}), 0
+				case strings.HasPrefix(command, "if [ -L "+l.Root()+"/push.json ];"):
+					return `{"domain":"push.family.example.ru","cache":"12h"}`, 0
 				case command == l.ComposeCommand()+"-f compose.yaml config --services 2>/dev/null":
 					return test.services, 0
 				case command == l.ComposeCommand()+"-f compose.yaml ps --quiet caddy 2>/dev/null":
