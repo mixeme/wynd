@@ -147,7 +147,7 @@ func read() (*Config, error) {
 	}
 	cfg.PublicURL = normalized
 	if raw := strings.TrimSpace(os.Getenv("WYND_PUSH_SERVER")); raw != "" {
-		if origin, ok := normalizePushServer(raw); ok {
+		if origin, ok := NormalizePushServer(raw); ok {
 			cfg.PushServer = origin
 		} else {
 			log.Print("config: ignoring WYND_PUSH_SERVER: expected a public HTTPS origin")

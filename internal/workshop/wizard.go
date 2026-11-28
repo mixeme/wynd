@@ -334,10 +334,27 @@ func (w *Wizard) closeLocked() {
 // MakePlan составляет план установки на осмотренный сервер (окно 3). Адрес
 // сайта проверяется заново: между осмотром и планом запись могла измениться.
 func (w *Wizard) MakePlan(ctx context.Context, domain string) Plan {
+	return w.MakePlanWithPush(ctx, domain, "")
+}
+
+// MakePlanWithPush adds the optional notification service to the installation
+// plan after checking its DNS against the same server as Wynd.
+func (w *Wizard) MakePlanWithPush(ctx context.Context, domain, pushDomain string) Plan {
 	check := w.CheckDomain(ctx, domain)
 	w.mu.Lock()
 	sess, rep := w.session, w.report
 	w.mu.Unlock()
+	var pushFailure *DomainCheck
+	if check.Level == LevelOK && pushDomain != "" && sess != nil && rep != nil {
+		push, err := (Spec{Domain: check.Domain, PushDomain: pushDomain, Proxy: rep.Proxy}).pushSettings()
+		if err != nil {
+			pushFailure = &DomainCheck{Text: "Не удалось настроить сервер уведомлений", Advice: err.Error()}
+		} else if result := w.CheckDomain(ctx, push.Domain); result.Level != LevelOK {
+			pushFailure = &result
+		} else {
+			pushDomain = push.Domain
+		}
+	}
 	// Есть ли готовый Wynd, спрашиваем до плана: человек должен увидеть сборку
 	// в плане, а не отказом посреди установки.
 	unpublished := false
@@ -355,17 +372,27 @@ func (w *Wizard) MakePlan(ctx context.Context, domain string) Plan {
 	if w.session == nil || w.report == nil {
 		return Plan{Message: "Сначала подключитесь к серверу и дождитесь осмотра"}
 	}
+	if pushDomain != "" && (w.session != sess || w.report != rep) {
+		return Plan{Message: "Состояние сервера изменилось. Составьте план снова."}
+	}
 	w.unpublished = unpublished
 	w.wynd = wynd
 	if check.Level != LevelOK {
+		if pushDomain != "" || (w.plan != nil && w.plan.PushDomain != "") {
+			w.plan = nil
+		}
 		return Plan{Domain: check.Domain, Message: check.Text, Advice: check.Advice}
 	}
-	return w.planLocked(*w.report, check.Domain)
+	if pushFailure != nil {
+		w.plan = nil
+		return Plan{Domain: check.Domain, Message: pushFailure.Text, Advice: pushFailure.Advice}
+	}
+	return w.planLocked(*w.report, check.Domain, pushDomain)
 }
 
 // planLocked составляет план по осмотру и запоминает его, если по нему можно
 // ставить.
-func (w *Wizard) planLocked(rep Report, domain string) Plan {
+func (w *Wizard) planLocked(rep Report, domain, pushDomain string) Plan {
 	wynd := w.wynd
 	if wynd == "" {
 		wynd = w.Version
@@ -375,6 +402,14 @@ func (w *Wizard) planLocked(rep Report, domain string) Plan {
 	plan.Unpublished = w.unpublished && w.Source != nil
 	w.plan = nil
 	if plan.OK {
+		push, err := (Spec{Domain: domain, PushDomain: pushDomain, Proxy: plan.Proxy}).pushSettings()
+		if err != nil {
+			return Plan{Domain: domain, Message: "Не удалось настроить сервер уведомлений", Advice: err.Error()}
+		}
+		if push.Domain != "" {
+			plan.PushDomain = push.Domain
+			plan.Install = append(plan.Install, "Сервер уведомлений — "+push.Domain)
+		}
 		w.plan = &plan
 		w.progress = Progress{Steps: StepTitles(w.specLocked(plan))}
 	}
@@ -394,7 +429,7 @@ func (w *Wizard) ChooseBuild(on bool) Plan {
 		return Plan{Message: "Установка ещё идёт", Advice: "Дождитесь, пока текущий шаг закончится."}
 	}
 	w.build = on && w.Source != nil
-	return w.planLocked(*w.report, w.plan.Domain)
+	return w.planLocked(*w.report, w.plan.Domain, w.plan.PushDomain)
 }
 
 func (w *Wizard) specLocked(plan Plan) Spec {
@@ -402,7 +437,7 @@ func (w *Wizard) specLocked(plan Plan) Spec {
 	if plan.Build && w.Source != nil {
 		image = w.Source
 	}
-	return Spec{Domain: plan.Domain, Version: plan.Version, Image: image, FixClock: plan.FixClock, Proxy: plan.Proxy, TestCert: w.TestCert, Probe: w.Probe, Root: w.Root}
+	return Spec{Domain: plan.Domain, PushDomain: plan.PushDomain, Version: plan.Version, Image: image, FixClock: plan.FixClock, Proxy: plan.Proxy, TestCert: w.TestCert, Probe: w.Probe, Root: w.Root}
 }
 
 // StartInstall запускает установку по плану и сразу возвращает её состояние;
@@ -560,7 +595,7 @@ func (w *Wizard) Rollback(ctx context.Context, keepData bool) RollbackResult {
 		w.report = &rep
 		res.Report = &rep
 		if old != nil {
-			if plan := w.planLocked(rep, spec.Domain); plan.OK {
+			if plan := w.planLocked(rep, spec.Domain, spec.PushDomain); plan.OK {
 				res.Plan = &plan
 			} else {
 				w.plan = old

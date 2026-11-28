@@ -169,6 +169,12 @@ func (h *fakeHost) handle(command string, stdin []byte) (string, int) {
 		return "", 0
 	case strings.HasPrefix(command, "if [ -f "):
 		return "", 0
+	case strings.HasPrefix(command, "if [ -L "+installDir+"/.env ];"):
+		return h.files[installDir+"/.env"], 0
+	case strings.HasPrefix(command, "umask 077; tmp=$(mktemp "+installDir+"/.env.XXXXXX)"):
+		change()
+		h.files[installDir+"/.env"] = string(stdin)
+		return "", 0
 	case strings.HasPrefix(command, "cat > "):
 		change()
 		path := strings.TrimSuffix(strings.Fields(command)[2], ".new")
@@ -178,6 +184,11 @@ func (h *fakeHost) handle(command string, stdin []byte) (string, int) {
 		change()
 		h.running = true
 		return "", 0
+	case strings.HasSuffix(command, "docker compose config --services"):
+		if strings.Contains(h.files[installDir+"/.env"], pushComposeLine) {
+			return "wynd\ncaddy\npush\n", 0
+		}
+		return "wynd\ncaddy\n", 0
 	case strings.Contains(command, "State.Health.Status"):
 		return "", exit(!h.running)
 	case strings.Contains(command, "grep -o 'bootstrap URL"):

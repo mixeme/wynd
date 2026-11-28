@@ -80,6 +80,9 @@ var certWait = 4 * time.Minute
 type Spec struct {
 	// Domain — адрес сайта, уже проверенный: только латиница, цифры, точки и дефисы.
 	Domain string
+	// PushDomain is the optional notification server's own DNS name.
+	PushDomain string
+	PushCache  string
 	// Version — версия Wynd, она же тег образа.
 	Version string
 	// Image — откуда сервер возьмёт образ Wynd.
@@ -527,6 +530,9 @@ func (r *Run) ok(ctx context.Context, command string) (bool, error) {
 func (r *Run) put(ctx context.Context, path, content string) error {
 	q := ShellPath(path)
 	command := fmt.Sprintf("cat > %s.new && mv %s.new %s", q, q, q)
+	if strings.HasSuffix(path, "/.env") {
+		command = fmt.Sprintf("umask 077; tmp=$(mktemp %s) && { trap 'rm -f -- \"$tmp\"' EXIT; cat > \"$tmp\" && mv -- \"$tmp\" %s; }", ShellPath(path+".XXXXXX"), q)
+	}
 	res, err := r.sess.Exec(ctx, command, strings.NewReader(content), shortTimeout)
 	r.record("запись файла "+path, res.Output)
 	if err != nil {
@@ -584,6 +590,12 @@ func steps(spec Spec) []step {
 	if _, err := layoutOf(spec); err != nil {
 		return []step{rootStep(err)}
 	}
+	push, err := spec.pushSettings()
+	if err != nil {
+		return []step{{id: "push", title: "Сервер уведомлений", do: func(context.Context, *Run) error {
+			return &StepError{Message: "Не удалось настроить сервер уведомлений", Advice: err.Error()}
+		}}}
+	}
 	list := []step{dockerStep()}
 	if spec.FixClock {
 		list = append(list, clockStep())
@@ -596,6 +608,9 @@ func steps(spec Spec) []step {
 		list = append(list, siteStep(spec), certStep(spec))
 	default:
 		list = append(list, siteStep(spec), nginxCertStep(spec))
+	}
+	if push.Domain != "" {
+		list = append(list, pushHealthStep(push))
 	}
 	return append(list, linkStep(spec))
 }
@@ -1283,7 +1298,7 @@ services:
 // CaddyFile — /opt/wynd/Caddyfile: сайт из deploy/caddy/Caddyfile с адресом
 // человека. Почту для Let's Encrypt не спрашиваем: Caddy работает и без неё.
 func CaddyFile(spec Spec) string {
-	return `# Wynd production reverse proxy for docker compose.
+	content := `# Wynd production reverse proxy for docker compose.
 # Файл создал установщик Wynd.
 
 ` + spec.Domain + ` {
@@ -1302,6 +1317,10 @@ func CaddyFile(spec Spec) string {
 	}
 }
 `
+	if push, err := spec.pushSettings(); err == nil && push.Domain != "" {
+		content += push.caddySite()
+	}
+	return content
 }
 
 func sum(content string) string {
@@ -1319,6 +1338,9 @@ func installFilesAt(l Layout, spec Spec) (files []installFile, dirs string) {
 	if spec.Proxy == "" {
 		files = append(files, installFile{l.Caddyfile(), CaddyFile(spec)})
 		dirs += " " + ShellPath(l.Caddy()+"/data") + " " + ShellPath(l.Caddy()+"/config")
+	}
+	if push, err := spec.pushSettings(); err == nil && push.Domain != "" {
+		files = append(files, push.installFiles(l)...)
 	}
 	dirs += " && chown -R " + wyndOwner + " " + ShellPath(l.Data()) + " && chmod 700 " + ShellPath(l.Data())
 	// Идентичность корня — для сверки перед удалением с данными (16.11).
@@ -1390,7 +1412,10 @@ func filesStep(spec Spec) step {
 		id:    "files",
 		title: "Настройка",
 		done: func(ctx context.Context, r *Run) (bool, error) {
-			files, _ := installFilesAt(r.layout, spec)
+			files, _, err := installFilesForRun(ctx, r, spec)
+			if err != nil {
+				return false, err
+			}
 			command := "sha256sum"
 			for _, f := range files {
 				command += " " + ShellPath(f.path)
@@ -1407,7 +1432,10 @@ func filesStep(spec Spec) step {
 			return true, nil
 		},
 		do: func(ctx context.Context, r *Run) error {
-			files, dirs := installFilesAt(r.layout, spec)
+			files, dirs, err := installFilesForRun(ctx, r, spec)
+			if err != nil {
+				return err
+			}
 			// Wynd с другим адресом работает: смена адреса — не установка.
 			// Не запущен (убран с оставленными данными) — настройку пишем с
 			// новым адресом, прежняя остаётся копией рядом.
@@ -1455,6 +1483,15 @@ func startStep(spec Spec) step {
 		do: func(ctx context.Context, r *Run) error {
 			if spec.Proxy == "" {
 				r.note("скачиваем веб-сервер и запускаем")
+			}
+			if spec.PushDomain != "" {
+				services, err := r.must(ctx, r.layout.ComposeCommand()+"config --services", shortTimeout)
+				if err != nil {
+					return err
+				}
+				if !strings.Contains("\n"+strings.ReplaceAll(services, "\r", "")+"\n", "\npush\n") {
+					return &StepError{Message: "Docker Compose не подключил сервер уведомлений", Advice: "Проверьте COMPOSE_FILE в каталоге установки."}
+				}
 			}
 			_, err := r.must(ctx, r.layout.ComposeCommand()+"up -d --quiet-pull 2>&1", packageTimeout)
 			return err
@@ -1859,8 +1896,9 @@ type Plan struct {
 	// сервер соберёт сам.
 	Unpublished bool `json:"unpublished"`
 	// FixClock и Proxy уходят в Spec.
-	FixClock bool   `json:"-"`
-	Proxy    string `json:"-"`
+	FixClock   bool   `json:"-"`
+	Proxy      string `json:"-"`
+	PushDomain string `json:"push_domain,omitempty"`
 }
 
 func isASCIIDomain(d string) bool {

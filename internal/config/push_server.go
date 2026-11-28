@@ -13,9 +13,9 @@ import (
 
 var dnsLabel = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
 
-// normalizePushServer accepts an HTTPS origin. DNS and TLS are checked by the
+// NormalizePushServer accepts an HTTPS origin. DNS and TLS are checked by the
 // Workshop when it installs the notification server.
-func normalizePushServer(raw string) (string, bool) {
+func NormalizePushServer(raw string) (string, bool) {
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil ||
 		u.ForceQuery || u.RawQuery != "" || strings.Contains(raw, "#") ||
