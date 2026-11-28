@@ -41,17 +41,24 @@ func pushFilesChanged() error {
 	}
 }
 
-func readPushSettings(ctx context.Context, r *Run) (pushSettings, error) {
-	l := r.layout
+func checkPushRoot(ctx context.Context, sess *Session, l Layout) error {
 	guard := rootIdentityGuard(l) + `test ! -L "$root" && cd "$root" &&
 test ! -L compose.yaml && grep -qF ` + shQuote(installMark) + ` compose.yaml &&
 echo WYND_PUSH_ROOT`
-	result, err := r.sess.Exec(ctx, guard, nil, shortTimeout)
+	result, err := sess.Exec(ctx, guard, nil, shortTimeout)
 	if err != nil {
-		return pushSettings{}, err
+		return err
 	}
 	if result.Code != 0 || strings.TrimSpace(result.Output) != "WYND_PUSH_ROOT" {
-		return pushSettings{}, &StepError{Message: "Каталог установки Wynd изменился", Advice: "Подключитесь к серверу заново и проверьте каталог установки."}
+		return &StepError{Message: "Каталог установки Wynd изменился", Advice: "Подключитесь к серверу заново и проверьте каталог установки."}
+	}
+	return nil
+}
+
+func readPushSettings(ctx context.Context, r *Run) (pushSettings, error) {
+	l := r.layout
+	if err := checkPushRoot(ctx, r.sess, l); err != nil {
+		return pushSettings{}, err
 	}
 	raw, err := readPushFile(ctx, r.sess, l.Root()+"/push.json")
 	if err != nil {
