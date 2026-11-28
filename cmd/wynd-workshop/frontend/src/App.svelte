@@ -1361,9 +1361,9 @@
 							placeholder="example.net"
 							bind:value={p.pushDomain}
 						/>
-						<div class="ins-dim" style="grid-column: 2" id={`push-domain-advice-${profile.id}`}>
-							Домен должен указывать на этот сервер.
-						</div>
+						<Hint style="grid-column: 2; margin: 0">
+							<span id={`push-domain-advice-${profile.id}`}>Домен должен указывать на этот сервер.</span>
+						</Hint>
 					{/if}
 				</FieldLine>
 			{/if}
