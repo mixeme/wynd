@@ -121,6 +121,9 @@ func TestInstanceEndpoint(t *testing.T) {
 	if body["source_url"] != version.SourceURL {
 		t.Fatalf("source_url: %v want %s", body["source_url"], version.SourceURL)
 	}
+	if _, present := body["push_server"]; present {
+		t.Fatal("push_server must be omitted when not configured")
+	}
 	comp, ok := body["compression"].(map[string]any)
 	if !ok {
 		t.Fatal("compression missing")

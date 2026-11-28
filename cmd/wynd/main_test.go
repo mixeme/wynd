@@ -45,6 +45,7 @@ func TestBinaryEmptyDataDir(t *testing.T) {
 		"WYND_DATA_DIR="+dataDir,
 		"WYND_LISTEN="+addr,
 		"WYND_PUBLIC_URL=http://"+addr,
+		"WYND_PUSH_SERVER=https://Push.Example.ORG/",
 	)
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
@@ -94,6 +95,9 @@ func TestBinaryEmptyDataDir(t *testing.T) {
 	}
 	if inst["version"] == "0.0.0-dev" {
 		t.Fatal("empty-machine binary reported 0.0.0-dev")
+	}
+	if inst["push_server"] != "https://push.example.org" {
+		t.Fatalf("push_server: %v want https://push.example.org", inst["push_server"])
 	}
 
 	_ = cmd.Process.Kill()

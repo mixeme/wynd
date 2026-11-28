@@ -48,5 +48,8 @@ func (s *Server) handleInstance(w http.ResponseWriter, r *http.Request) {
 			out["vapid_public_key"] = pub
 		}
 	}
+	if s.PushServer != "" {
+		out["push_server"] = s.PushServer
+	}
 	writeJSON(w, http.StatusOK, out)
 }

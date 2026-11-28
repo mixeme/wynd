@@ -28,9 +28,10 @@ type fileConfig struct {
 }
 
 type Config struct {
-	DataDir   string
-	Listen    string
-	PublicURL string
+	DataDir    string
+	Listen     string
+	PublicURL  string
+	PushServer string
 	// TrustedProxies lists CIDRs (or bare addresses) whose X-Forwarded-For
 	// header is believed. Empty means loopback only.
 	TrustedProxies      []string
@@ -145,6 +146,13 @@ func read() (*Config, error) {
 		return nil, err
 	}
 	cfg.PublicURL = normalized
+	if raw := strings.TrimSpace(os.Getenv("WYND_PUSH_SERVER")); raw != "" {
+		if origin, ok := normalizePushServer(raw); ok {
+			cfg.PushServer = origin
+		} else {
+			log.Print("config: ignoring WYND_PUSH_SERVER: expected a public HTTPS origin")
+		}
+	}
 	return cfg, nil
 }
 

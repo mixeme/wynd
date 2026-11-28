@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"gitea.mixdep.ru/mix/wynd/internal/netaddr"
 )
 
 var moveTokenRe = regexp.MustCompile(`^[A-Za-z0-9-]{8,64}$`)
@@ -33,17 +35,6 @@ func parseMoveLink(link string) (base, token string, ok bool) {
 	return u.String(), token, true
 }
 
-// Special-use ranges that IsGlobalUnicast alone does not exclude.
-var moveReserved = []netip.Prefix{
-	netip.MustParsePrefix("0.0.0.0/8"), netip.MustParsePrefix("100.64.0.0/10"),
-	netip.MustParsePrefix("192.0.0.0/24"), netip.MustParsePrefix("192.0.2.0/24"),
-	netip.MustParsePrefix("192.88.99.0/24"), netip.MustParsePrefix("198.18.0.0/15"),
-	netip.MustParsePrefix("198.51.100.0/24"), netip.MustParsePrefix("203.0.113.0/24"),
-	netip.MustParsePrefix("240.0.0.0/4"), netip.MustParsePrefix("2001::/23"),
-	netip.MustParsePrefix("2001:db8::/32"), netip.MustParsePrefix("2002::/16"),
-	netip.MustParsePrefix("3fff::/20"),
-}
-
 func moveAddressAllowed(addr netip.Addr, allowed []netip.Prefix) bool {
 	if !addr.IsValid() || addr.Zone() != "" {
 		return false
@@ -54,18 +45,7 @@ func moveAddressAllowed(addr netip.Addr, allowed []netip.Prefix) bool {
 			return true
 		}
 	}
-	if !addr.IsGlobalUnicast() || addr.IsPrivate() || addr.IsLoopback() || addr.IsLinkLocalUnicast() {
-		return false
-	}
-	if addr.Is6() && !netip.MustParsePrefix("2000::/3").Contains(addr) {
-		return false
-	}
-	for _, prefix := range moveReserved {
-		if prefix.Contains(addr) {
-			return false
-		}
-	}
-	return true
+	return netaddr.IsPublic(addr)
 }
 
 type moveLookup func(context.Context, string, string) ([]netip.Addr, error)

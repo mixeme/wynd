@@ -26,6 +26,7 @@ type Server struct {
 	Search         *search.Service
 	Mail           *mail.Service
 	Push           *push.Service
+	PushServer     string // Validated public origin, set before serving requests.
 	BootstrapToken string
 	DataDir        string
 	ListenAddr     string
