@@ -156,6 +156,13 @@ func (a *App) PlanPushAdd(id string, domain string) (workshop.PushAddPlan, error
 	})
 }
 
+// BrowseInstallDirectories lists folders on the SSH server of the selected profile.
+func (a *App) BrowseInstallDirectories(id string, directory string) (workshop.RemoteDirectoryList, error) {
+	return profileCall(a, id, false, func(w *workshop.Wizard) workshop.RemoteDirectoryList {
+		return w.BrowseInstallDirectories(a.ctx, directory)
+	})
+}
+
 // DeleteStaleCert убирает сертификат с сломанным продлением (кнопка у находки осмотра).
 func (a *App) DeleteStaleCert(id string, domain string) (workshop.ServiceResult, error) {
 	return profileCall(a, id, false, func(w *workshop.Wizard) workshop.ServiceResult {
