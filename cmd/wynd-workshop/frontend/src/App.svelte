@@ -1349,23 +1349,23 @@
 			<Label>Каталог на сервере</Label>
 			<Input mono autocomplete="off" spellcheck={false} bind:value={p.installRoot} />
 			{#if p.canOfferPush}
-				<FieldLine>
+				<FieldLine style={p.pushEnabled ? 'display: grid; grid-template-columns: max-content minmax(0, 1fr); margin-bottom: 0' : ''}>
 					<Checkbox native style="margin-top: 0" bind:checked={p.pushEnabled}>Сервер уведомлений Wynd Push</Checkbox>
 					{#if p.pushEnabled}
 						<Input
 							aria-label="Домен сервера уведомлений"
-							class="ins-grow"
+							aria-describedby={`push-domain-advice-${profile.id}`}
 							mono
 							autocomplete="off"
 							spellcheck={false}
 							placeholder="example.net"
 							bind:value={p.pushDomain}
 						/>
+						<div class="ins-dim" style="grid-column: 2" id={`push-domain-advice-${profile.id}`}>
+							Домен должен указывать на этот сервер.
+						</div>
 					{/if}
 				</FieldLine>
-				{#if p.pushEnabled}
-					<div class="ins-dim">Домен должен указывать на этот сервер.</div>
-				{/if}
 			{/if}
 		{/if}
 		<FootBar>
