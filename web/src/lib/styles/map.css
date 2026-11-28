@@ -27,8 +27,9 @@
 .ph .map-pin-thumb {
 	width: 44px;
 	height: 44px;
-	border-radius: 50%;
-	border: 2px solid var(--paper, #f4f0e9);
+	/* Метка — квадрат в белой рамке (слово владельца 28.11). */
+	border-radius: 0;
+	border: 2px solid #fff;
 	box-shadow: 0 1px 4px rgba(43, 39, 36, 0.25);
 	overflow: hidden;
 	background: var(--tint, #c3af95);
