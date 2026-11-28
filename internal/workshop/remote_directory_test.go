@@ -52,3 +52,60 @@ func TestRemoteDirectoryListKeepsCanonicalSelectablePaths(t *testing.T) {
 		t.Fatalf("listing limit: %d, truncated = %v", len(list.Folders), list.Truncated)
 	}
 }
+
+func TestCreateInstallDirectoryChecksParentAndCreatesOneLevel(t *testing.T) {
+	const parent = "/srv/Мои папки"
+	const name = "Wynd 'семья'; $(не-команда)"
+	for _, test := range []struct {
+		code    int
+		message string
+	}{
+		{code: 0},
+		{code: 2, message: "Не удалось открыть выбранный каталог"},
+		{code: 3, message: "с таким именем уже есть"},
+		{code: 4, message: "Не удалось создать папку"},
+	} {
+		t.Run(strconv.Itoa(test.code), func(t *testing.T) {
+			sess := dialTestHost(t, func(command string, input []byte) (string, int) {
+				if len(input) != 0 ||
+					!strings.HasPrefix(command, "parent="+ShellPath(parent)+"\nname="+shQuote(name)+"\n") ||
+					!strings.Contains(command, `[ "$current" = "$parent" ] || exit 2`) ||
+					strings.Count(command, "mkdir") != 1 || !strings.Contains(command, `mkdir -- "$name"`) {
+					t.Errorf("unexpected creation command: %q", command)
+				}
+				return "", test.code
+			})
+			w := &Wizard{session: sess}
+			result := w.CreateInstallDirectory(t.Context(), parent, name)
+			if test.code == 0 {
+				if !result.OK || result.Path != parent+"/"+name {
+					t.Fatalf("created folder: %+v", result)
+				}
+			} else if result.OK || !strings.Contains(result.Message, test.message) {
+				t.Fatalf("wanted %q, got %+v", test.message, result)
+			}
+		})
+	}
+}
+
+func TestCreateInstallDirectoryRejectsInvalidPathsBeforeSSH(t *testing.T) {
+	sess := dialTestHost(t, func(command string, _ []byte) (string, int) {
+		t.Errorf("unexpected remote command: %q", command)
+		return "", 1
+	})
+	w := &Wizard{session: sess}
+	for _, test := range []struct{ parent, name string }{
+		{"srv", "wynd"},
+		{"/srv//apps", "wynd"},
+		{"/srv", ""},
+		{"/srv", "../wynd"},
+		{"/srv", "apps/wynd"},
+		{"/srv", "wynd\n"},
+		{"/srv", " wynd"},
+		{"/", "etc"},
+	} {
+		if result := w.CreateInstallDirectory(t.Context(), test.parent, test.name); result.OK {
+			t.Errorf("accepted %q in %q: %+v", test.name, test.parent, result)
+		}
+	}
+}

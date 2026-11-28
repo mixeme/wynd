@@ -22,6 +22,12 @@ type RemoteDirectoryList struct {
 	Message   string   `json:"message,omitempty"`
 }
 
+type RemoteDirectoryCreation struct {
+	OK      bool   `json:"ok"`
+	Path    string `json:"path,omitempty"`
+	Message string `json:"message,omitempty"`
+}
+
 func (w *Wizard) BrowseInstallDirectories(ctx context.Context, directory string) RemoteDirectoryList {
 	w.mu.Lock()
 	sess := w.session
@@ -33,6 +39,54 @@ func (w *Wizard) BrowseInstallDirectories(ctx context.Context, directory string)
 		return RemoteDirectoryList{Message: "Сначала подключитесь к серверу"}
 	}
 	return browseInstallDirectories(ctx, sess, directory)
+}
+
+// CreateInstallDirectory creates one folder inside the parent shown in the picker.
+func (w *Wizard) CreateInstallDirectory(ctx context.Context, parent, name string) RemoteDirectoryCreation {
+	if !path.IsAbs(parent) || !validRemoteDirectoryName(parent) || path.Clean(parent) != parent {
+		return RemoteDirectoryCreation{Message: "Сначала выберите, где создать папку"}
+	}
+	if !validRemoteDirectoryName(name) || name == "." || name == ".." ||
+		strings.ContainsRune(name, '/') || strings.TrimSpace(name) != name {
+		return RemoteDirectoryCreation{Message: "Укажите имя новой папки без пути"}
+	}
+	root := path.Join(parent, name)
+	layout, err := NewLayout(root)
+	if err != nil || layout.Root() != root {
+		return RemoteDirectoryCreation{Message: "Такой путь нельзя выбрать для установки"}
+	}
+
+	w.mu.Lock()
+	sess := w.session
+	w.mu.Unlock()
+	if sess == nil {
+		return RemoteDirectoryCreation{Message: "Сначала подключитесь к серверу"}
+	}
+
+	// The picker sends a physical path. If it now resolves elsewhere, ask the
+	// operator to choose the parent again. mkdir either creates one directory
+	// or fails if its name is occupied, including by a broken symlink.
+	script := "parent=" + ShellPath(parent) + "\nname=" + shQuote(name) + `
+cd -P "$parent" 2>/dev/null || exit 2
+current=$(pwd -P) || exit 2
+[ "$current" = "$parent" ] || exit 2
+if mkdir -- "$name" 2>/dev/null; then exit 0; fi
+if [ -e "$name" ] || [ -L "$name" ]; then exit 3; fi
+exit 4`
+	result, err := sess.Exec(ctx, script, nil, shortTimeout)
+	if err != nil {
+		return RemoteDirectoryCreation{Message: "Связь с сервером прервалась. Проверьте список папок перед повтором."}
+	}
+	switch result.Code {
+	case 0:
+		return RemoteDirectoryCreation{OK: true, Path: root}
+	case 2:
+		return RemoteDirectoryCreation{Message: "Не удалось открыть выбранный каталог. Укажите, где создать папку, ещё раз."}
+	case 3:
+		return RemoteDirectoryCreation{Message: "Папка или файл с таким именем уже есть"}
+	default:
+		return RemoteDirectoryCreation{Message: "Не удалось создать папку на сервере"}
+	}
 }
 
 func browseInstallDirectories(ctx context.Context, sess *Session, directory string) RemoteDirectoryList {

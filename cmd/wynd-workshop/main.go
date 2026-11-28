@@ -163,6 +163,13 @@ func (a *App) BrowseInstallDirectories(id string, directory string) (workshop.Re
 	})
 }
 
+// CreateInstallDirectory creates one directory on the SSH server of the selected profile.
+func (a *App) CreateInstallDirectory(id string, parent string, name string) (workshop.RemoteDirectoryCreation, error) {
+	return profileCall(a, id, false, func(w *workshop.Wizard) workshop.RemoteDirectoryCreation {
+		return w.CreateInstallDirectory(a.ctx, parent, name)
+	})
+}
+
 // DeleteStaleCert убирает сертификат с сломанным продлением (кнопка у находки осмотра).
 func (a *App) DeleteStaleCert(id string, domain string) (workshop.ServiceResult, error) {
 	return profileCall(a, id, false, func(w *workshop.Wizard) workshop.ServiceResult {
