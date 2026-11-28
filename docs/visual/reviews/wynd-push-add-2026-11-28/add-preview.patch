@@ -54,7 +54,7 @@
  						{/snippet}
  					</MarkRow>
 +				{:else if previewPushAdd}
-+					<MarkRow mark="">
++					<MarkRow mark="" style="border-bottom: 1px solid var(--line)">
 +						Сервер уведомлений не подключён
 +						{#snippet action()}
 +							<TextButton class="link under" onclick={() => (pushAddStep = 'domain')}>Добавить</TextButton>
