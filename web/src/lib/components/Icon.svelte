@@ -41,6 +41,7 @@
 		| 'anger'
 		| 'photo'
 		| 'file'
+		| 'folder'
 		| 'mail'
 		| 'x'
 		| 'check'

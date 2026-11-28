@@ -1,14 +1,15 @@
 --- a/cmd/wynd-workshop/frontend/src/App.svelte
 +++ b/cmd/wynd-workshop/frontend/src/App.svelte
-@@ -2,6 +2,7 @@
+@@ -2,6 +2,8 @@
  	import Button from '$ui/forms/Button.svelte';
  	import Chip from '$ui/forms/Chip.svelte';
  	import Input from '$ui/forms/Input.svelte';
 +	import IconButton from '$ui/forms/IconButton.svelte';
++	import Icon from '$ui/Icon.svelte';
  	import Label from '$ui/forms/Label.svelte';
  	import TextButton from '$ui/forms/TextButton.svelte';
  	import Hint from '$ui/forms/Hint.svelte';
-@@ -46,9 +47,40 @@
+@@ -46,9 +48,40 @@
  		'/var': []
  	};
  	let reviewDirectory = $state('');
@@ -50,7 +51,7 @@
  
  	let {
  		profile,
-@@ -1407,7 +1439,7 @@
+@@ -1407,7 +1440,7 @@
  			{#if previewDirectories}
  				<FieldLine style="margin-bottom: 0">
  					<Input aria-label="Каталог на сервере" class="ins-grow" mono autocomplete="off" spellcheck={false} bind:value={p.installRoot} />
@@ -59,7 +60,7 @@
  						Выбрать…
  					</Button>
  				</FieldLine>
-@@ -1477,24 +1509,35 @@
+@@ -1477,24 +1510,36 @@
  		style="position:fixed;inset:50% auto auto 50%;transform:translate(-50%,-50%);width:min(calc(100% - 2 * var(--sp-3)),var(--dlg-max-width));max-height:calc(100% - 2 * var(--sp-3));box-sizing:border-box;z-index:4;gap:var(--sp-2);overflow-y:auto"
  	>
  		<div class="ins-dim">{profile.name} · {host}</div>
@@ -98,6 +99,7 @@
 +						{:else}
 +							<span style="inline-size: 20px; flex: 0 0 20px" aria-hidden="true"></span>
 +						{/if}
++						<Icon name="folder" size="sm" style="color: var(--muted); flex: none" />
 +						<TextButton
 +							onclick={() => (reviewDirectory = folder.path)}
 +							style="min-block-size: 24px; color: inherit; border: 0; text-align: start; overflow-wrap: anywhere"
