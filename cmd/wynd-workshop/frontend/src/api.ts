@@ -339,6 +339,18 @@ export interface ProfileViewState {
 	connected: boolean;
 }
 
+export interface RemoteDirectoryFolder {
+	name: string;
+	has_folders: boolean;
+	can_select: boolean;
+}
+
+export type RemoteDirectoryList =
+	| { ok: true; path: string; parent?: string; folders: RemoteDirectoryFolder[]; can_select: boolean; truncated?: boolean }
+	| { ok: false; message: string };
+
+export type RemoteDirectoryCreation = { ok: true; path: string } | { ok: false; message: string };
+
 export interface Backend {
 	Profiles(): Promise<ServerProfile[]>;
 	SaveProfile(profile: ServerProfile): Promise<ServerProfile>;
@@ -364,6 +376,8 @@ export interface Backend {
 	ServerPage(): Promise<ServerPage>;
 	Service(action: ServiceAction): Promise<ServiceResult>;
 	PushControl(action: PushAction, cache: string): Promise<ServiceResult>;
+	BrowseInstallDirectories(path: string): Promise<RemoteDirectoryList>;
+	CreateInstallDirectory(parent: string, name: string): Promise<RemoteDirectoryCreation>;
 	DeleteStaleCert(domain: string): Promise<ServiceResult>;
 	StartUpdate(opt: UpdateOptions): Promise<Progress>;
 	BuildLogChunk(offset: number, limit: number): Promise<BuildLogChunk>;
@@ -426,6 +440,8 @@ const PROFILE_METHODS = new Set([
 	'ServerPage',
 	'Service',
 	'PushControl',
+	'BrowseInstallDirectories',
+	'CreateInstallDirectory',
 	'DeleteStaleCert',
 	'StartUpdate',
 	'BuildLogChunk',

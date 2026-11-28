@@ -32,6 +32,14 @@ const result = await build({
 		{
 			name: 'svelte-dom',
 			setup(b) {
+				b.onResolve({ filter: /\.svg\?raw$/ }, (args) => ({
+					path: path.resolve(args.resolveDir, args.path.slice(0, -4)),
+					namespace: 'raw-svg'
+				}));
+				b.onLoad({ filter: /\.svg$/, namespace: 'raw-svg' }, async ({ path: filename }) => ({
+					contents: await readFile(filename, 'utf8'),
+					loader: 'text'
+				}));
 				b.onResolve({ filter: /^svelte(?:\/|$)/ }, (args) =>
 					args.pluginData?.dedup
 						? undefined
@@ -421,6 +429,56 @@ test('optional Push installation passes its checked choice to the selected profi
 	await ui.click('Дальше — план');
 	assert.deepEqual(ui.calls.find(([name]) => name === 'MakePlanWithPush'),
 		['MakePlanWithPush', 'a', 'wynd.example.org', 'example.net']);
+});
+
+test('the installation picker loads branches on demand and creates a folder on the selected server', async (t) => {
+	const entry = (name, can_select = true, has_folders = false) => ({ name, can_select, has_folders });
+	const lists = {
+		'/': { path: '/', can_select: false, folders: [entry('opt', false, true), entry('srv', false, true)] },
+		'/opt': { path: '/opt', parent: '/', can_select: false, folders: [entry('apps')] },
+		'/srv': { path: '/srv', parent: '/', can_select: false, folders: [entry('existing')] }
+	};
+	const ui = await open(t, [profile('a'), profile('b')], {
+		Inspect: () => ({ ...report, report: { ...report.report, findings: [] } }),
+		BrowseInstallDirectories: (_id, path) => ({ ok: true, ...lists[path === '/opt/wynd' ? '/opt' : path] }),
+		CreateInstallDirectory: (_id, parent, name) => name === 'existing'
+			? { ok: false, message: 'Папка или файл с таким именем уже есть' }
+			: { ok: true, path: parent + '/' + name }
+	});
+	await ui.select('b');
+	await ui.click('Подключиться');
+	await ui.click('Установить Wynd');
+	const install = () => ui.elements('input[aria-label="Каталог на сервере"]')[0];
+	const selected = () => ui.elements('input[aria-label="Выбранный каталог"]')[0];
+	const folderName = () => ui.elements('input[aria-label="Имя новой папки"]')[0];
+	const browseCalls = () => ui.calls.filter(([name]) => name === 'BrowseInstallDirectories');
+	await ui.set(install(), '/opt/wynd');
+	await ui.click('Выбрать…');
+	assert.equal(selected().value, '/opt');
+	assert.deepEqual(browseCalls(), [['BrowseInstallDirectories', 'b', '/opt/wynd'], ['BrowseInstallDirectories', 'b', '/']]);
+	await ui.click('apps');
+	assert.equal(selected().value, '/opt/apps');
+	assert.equal(browseCalls().length, 2);
+	assert.equal(ui.elements('button[aria-label="Раскрыть /opt/apps"]').length, 0);
+	ui.elements('button[aria-label="Раскрыть /srv"]')[0].click();
+	await ui.settle();
+	assert.equal(selected().value, '/opt/apps');
+	assert.deepEqual(browseCalls().at(-1), ['BrowseInstallDirectories', 'b', '/srv']);
+	await ui.click('srv');
+	await ui.click('Новая папка');
+	assert.equal(ui.dom.window.document.activeElement, folderName());
+	await ui.set(folderName(), 'existing');
+	await ui.click('Создать');
+	assert.ok(ui.elements('[role="alert"]').some(el => el.textContent.includes('с таким именем уже есть')));
+	await ui.set(folderName(), 'новая');
+	await ui.click('Создать');
+	assert.equal(selected().value, '/srv/новая');
+	await ui.click('Выбрать папку');
+	assert.equal(install().value, '/srv/новая');
+	assert.deepEqual(ui.calls.filter(([name]) => name === 'CreateInstallDirectory'), [
+		['CreateInstallDirectory', 'b', '/srv', 'existing'], ['CreateInstallDirectory', 'b', '/srv', 'новая']
+	]);
+	assert.ok(!ui.calls.some(([name]) => name === 'SetInstallRoot'));
 });
 
 test('Push controls are scoped to the profile and retry changes after a partial failure', async (t) => {

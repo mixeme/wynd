@@ -12,16 +12,18 @@ func TestBrowseInstallDirectoriesUsesSelectedSSHAndQuotesThePath(t *testing.T) {
 	sess := dialTestHost(t, func(command string, input []byte) (string, int) {
 		if !strings.HasPrefix(command, "dir="+ShellPath(requested)+"\n") ||
 			!strings.Contains(command, "cd -P") ||
-			!strings.Contains(command, "find -P . -mindepth 1 -maxdepth 1 -type d") ||
+			!strings.Contains(command, `find -P "$folder" -mindepth 1 -maxdepth 1 -type d -printf 1 -quit`) ||
 			len(input) != 0 {
 			t.Errorf("unexpected directory command: %q", command)
 		}
-		return "/srv\x00семья\x00apps\x00\x00", 0
+		return "/srv\x001семья\x000apps\x00\x00", 0
 	})
 	w := &Wizard{session: sess}
 	list := w.BrowseInstallDirectories(t.Context(), requested)
 	if !list.OK || list.Path != "/srv" || list.Parent != "/" || list.CanSelect || list.Truncated ||
-		!slices.Equal(list.Folders, []string{"apps", "семья"}) {
+		!slices.Equal(list.Folders, []RemoteDirectoryFolder{
+			{Name: "apps", CanSelect: true}, {Name: "семья", HasFolders: true, CanSelect: true},
+		}) {
 		t.Fatalf("unexpected directory list: %+v", list)
 	}
 	if invalid := w.BrowseInstallDirectories(t.Context(), "../srv"); invalid.OK {
@@ -30,13 +32,15 @@ func TestBrowseInstallDirectoriesUsesSelectedSSHAndQuotesThePath(t *testing.T) {
 }
 
 func TestRemoteDirectoryListKeepsCanonicalSelectablePaths(t *testing.T) {
-	root := parseRemoteDirectories("/\x00opt\x00srv\x00\x00")
-	if !root.OK || root.Parent != "" || root.CanSelect {
+	root := parseRemoteDirectories("/\x001opt\x000srv\x00\x00")
+	if !root.OK || root.Parent != "" || root.CanSelect || !slices.Equal(root.Folders, []RemoteDirectoryFolder{
+		{Name: "opt", HasFolders: true}, {Name: "srv"},
+	}) {
 		t.Fatalf("root: %+v", root)
 	}
-	data := parseRemoteDirectories("/srv/Моя папка\x00nested\x00unused/slash\x00bad\nname\x00partial")
+	data := parseRemoteDirectories("/srv/Моя папка\x001nested\x000unused/slash\x000bad\nname\x00partial")
 	if !data.OK || !data.CanSelect || data.Parent != "/srv" || !data.Truncated ||
-		!slices.Equal(data.Folders, []string{"nested"}) {
+		!slices.Equal(data.Folders, []RemoteDirectoryFolder{{Name: "nested", HasFolders: true, CanSelect: true}}) {
 		t.Fatalf("partial directory list: %+v", data)
 	}
 	if list := parseRemoteDirectories("/srv/folder \x00\x00"); list.CanSelect {
@@ -45,7 +49,7 @@ func TestRemoteDirectoryListKeepsCanonicalSelectablePaths(t *testing.T) {
 	out := strings.Builder{}
 	out.WriteString("/srv/wynd\x00")
 	for i := 0; i <= remoteDirectoryLimit; i++ {
-		out.WriteString("folder-" + strconv.Itoa(i) + "\x00")
+		out.WriteString("0folder-" + strconv.Itoa(i) + "\x00")
 	}
 	out.WriteByte(0)
 	if list := parseRemoteDirectories(out.String()); len(list.Folders) != remoteDirectoryLimit || !list.Truncated {

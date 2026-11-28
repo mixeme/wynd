@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Button from '$ui/forms/Button.svelte';
+	import { onMount, type Snippet } from 'svelte';
 
 	// «Что проверили» — окно поверх экрана осмотра (план 54, кадр 2е): читать
 	// ответы сервера, а не подглядывать в три строки. Раздел, из-за которого
@@ -7,44 +8,71 @@
 	type Part = { name: string; body: string; cause: boolean };
 
 	let {
-		parts,
+		parts = [],
 		copied = false,
 		oncopy,
-		onclose
+		onclose,
+		title = 'Что проверили',
+		style = '',
+		dismissible = true,
+		children
 	}: {
-		parts: Part[];
+		parts?: Part[];
 		/** Только что скопировали — на кнопке «Скопировано». */
 		copied?: boolean;
-		oncopy: () => void;
+		oncopy?: () => void;
 		onclose: () => void;
+		title?: string;
+		style?: string;
+		dismissible?: boolean;
+		children?: Snippet;
 	} = $props();
+	let sheet: HTMLDivElement;
+	function dismiss() {
+		if (dismissible) onclose();
+	}
+
+	onMount(() => {
+		if (children) sheet.focus({ preventScroll: true });
+	});
+
+	function keydown(event: KeyboardEvent) {
+		if (event.key === 'Escape') dismiss();
+		if (!children || event.key !== 'Tab') return;
+		const controls = [...sheet.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled)')];
+		const edge = event.shiftKey ? controls[0] : controls.at(-1);
+		if (document.activeElement === edge || !controls.includes(document.activeElement as HTMLElement)) {
+			event.preventDefault();
+			(event.shiftKey ? controls.at(-1) : controls[0])?.focus();
+		}
+	}
 </script>
 
-<svelte:window
-	onkeydown={(e) => {
-		if (e.key === 'Escape') onclose();
-	}}
-/>
+<svelte:window onkeydown={keydown} />
 
-<div class="ins-over" role="presentation" onclick={onclose}></div>
-<div class="ins-sheet" role="dialog" aria-modal="true" aria-label="Что проверили">
+<div class="ins-over" role="presentation" onclick={dismiss}></div>
+<div class="ins-sheet" role="dialog" aria-modal="true" aria-label={title} {style} tabindex={children ? -1 : undefined} bind:this={sheet}>
 	<div class="ins-sheet-head">
-		<b>Что проверили</b>
-		<span class="ins-dim">ответы сервера на команды осмотра</span>
-		<button class="ins-x" type="button" aria-label="Закрыть" onclick={onclose}>✕</button>
+		<b>{title}</b>
+		{#if !children}<span class="ins-dim">ответы сервера на команды осмотра</span>{/if}
+		<button class="ins-x" type="button" aria-label="Закрыть" disabled={!dismissible} onclick={dismiss}>✕</button>
 	</div>
-	<div class="ins-raw">
-		{#each parts as s, i (i)}
-			<div class:ins-cause-part={s.cause}>
-				{#if s.cause}<b class="ins-cause">## {s.name} — из-за этого отказ</b>{:else}## {s.name}{/if}
-				{#if s.body}<div>{s.body}</div>{/if}
-			</div>
-		{/each}
-	</div>
-	<div class="ins-sheet-foot">
-		<Button variant="ghost" onclick={oncopy}>{copied ? 'Скопировано' : 'Скопировать всё'}</Button>
-		<Button variant="ghost" onclick={onclose}>Закрыть</Button>
-	</div>
+	{#if children}
+		{@render children()}
+	{:else}
+		<div class="ins-raw">
+			{#each parts as s, i (i)}
+				<div class:ins-cause-part={s.cause}>
+					{#if s.cause}<b class="ins-cause">## {s.name} — из-за этого отказ</b>{:else}## {s.name}{/if}
+					{#if s.body}<div>{s.body}</div>{/if}
+				</div>
+			{/each}
+		</div>
+		<div class="ins-sheet-foot">
+			{#if oncopy}<Button variant="ghost" onclick={oncopy}>{copied ? 'Скопировано' : 'Скопировать всё'}</Button>{/if}
+			<Button variant="ghost" onclick={dismiss}>Закрыть</Button>
+		</div>
+	{/if}
 </div>
 
 <style>

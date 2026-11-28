@@ -1,6 +1,9 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import Button from '$ui/forms/Button.svelte';
 	import Chip from '$ui/forms/Chip.svelte';
+	import IconButton from '$ui/forms/IconButton.svelte';
+	import Icon from '$ui/Icon.svelte';
 	import Input from '$ui/forms/Input.svelte';
 	import Label from '$ui/forms/Label.svelte';
 	import TextButton from '$ui/forms/TextButton.svelte';
@@ -19,6 +22,7 @@
 	import StepList from '$ui/workshop/StepList.svelte';
 	import type { ServerProfile, ProfileRequest, ProfileViewState, Finding } from './api';
 	import { Panel } from './lib/panel.svelte';
+	import { InstallDirectories } from './lib/install-directories.svelte';
 	import { removeWarning } from './lib/rollback';
 	import { day, dayTime, gb, mark } from './lib/display';
 
@@ -34,6 +38,7 @@
 	let {
 		profile,
 		profiles,
+		active = true,
 		request,
 		reconnect = 0,
 		onconsumed,
@@ -47,6 +52,7 @@
 	}: {
 		profile: ServerProfile;
 		profiles: ServerProfile[];
+		active?: boolean;
 		request?: ProfileRequest;
 		reconnect?: number;
 		onconsumed: () => void;
@@ -74,6 +80,32 @@
 		onmoved: (id) => onmoved(id)
 	});
 	const { api } = p;
+	const directories = new InstallDirectories(api);
+	const installDirectoryID = $derived(`install-directory-${profile.id}`);
+	const newFolderID = $derived(`new-folder-name-${profile.id}`);
+	const directoryAvailable = $derived(active && p.screen === 'inspect' && !p.knownRoot && !p.st?.installed);
+
+	$effect(() => {
+		if (!directoryAvailable && (directories.selected || directories.opening)) directories.close();
+	});
+
+	async function closeDirectoryPicker() {
+		directories.close();
+		await tick();
+		document.getElementById(installDirectoryID)?.focus({ preventScroll: true });
+	}
+
+	async function beginDirectoryCreation() {
+		directories.beginCreation();
+		await tick();
+		document.getElementById(newFolderID)?.focus();
+	}
+
+	function chooseInstallDirectory() {
+		if (!directories.selected?.canSelect) return;
+		p.installRoot = directories.selected.path;
+		void closeDirectoryPicker();
+	}
 </script>
 
 {#snippet certStaleText(f: Finding)}
@@ -151,7 +183,7 @@
 	</Notice>
 {/snippet}
 
-<main class="ins-body ins-pane">
+<main class="ins-body ins-pane" inert={Boolean(directories.selected)}>
 	<Notice
 		profile={{
 			name: profile.name,
@@ -1347,7 +1379,15 @@
 		{#if !p.st?.installed}
 			<!-- Куда поставить Wynd: по умолчанию /opt/wynd, как у ручной установки. -->
 			<Label>Каталог на сервере</Label>
-			<Input mono autocomplete="off" spellcheck={false} bind:value={p.installRoot} />
+			<FieldLine style="margin-bottom: 0">
+				<Input id={installDirectoryID} aria-label="Каталог на сервере" class="ins-grow" mono autocomplete="off" spellcheck={false} bind:value={p.installRoot} />
+				<Button variant="ghost" disabled={!directoryAvailable || p.planning} loading={directories.opening} onclick={() => void directories.open(p.installRoot)}>
+					Выбрать…
+				</Button>
+			</FieldLine>
+			{#if !directories.selected && directories.error}
+				<Notice tone="bad" alert>{directories.error}</Notice>
+			{/if}
 			{#if p.canOfferPush}
 				<FieldLine style={p.pushEnabled ? 'display: grid; grid-template-columns: max-content minmax(0, 1fr); margin-bottom: 0' : ''}>
 					<Checkbox native style="margin-top: 0" bind:checked={p.pushEnabled}>Сервер уведомлений Wynd Push</Checkbox>
@@ -1404,6 +1444,79 @@
 	</FootBar>
 	{/if}
 </main>
+{#if directoryAvailable && directories.selected}
+	<RawSheet
+		title="Выбрать каталог на сервере"
+		onclose={() => void closeDirectoryPicker()}
+		dismissible={!directories.saving}
+		style="position:fixed;inset:50% auto auto 50%;transform:translate(-50%,-50%);width:min(calc(100% - 2 * var(--sp-3)),var(--dlg-max-width));max-height:calc(100% - 2 * var(--sp-3));box-sizing:border-box;z-index:4;gap:var(--sp-2);overflow-y:auto"
+	>
+		<div class="ins-dim">{profile.name} · {host}</div>
+		<MarkRows style="max-block-size: min(240px, 43dvh); overflow: auto; margin: 0">
+			{#each directories.rows as folder (folder.path)}
+				{@const selected = directories.selected?.path === folder.path}
+				{@const expanded = directories.expanded.includes(folder.path)}
+				<MarkRow mark="" style={`padding: var(--sp-1) var(--sp-2); padding-inline-start: calc(var(--sp-2) + ${folder.level} * var(--sp-3)); ${selected ? 'background: var(--card);' : ''}`}>
+					<FieldLine style="margin: 0">
+						<FieldLine style="margin: 0; gap: var(--sp-1)">
+							{#if folder.expandable}
+								<IconButton
+									name={expanded ? 'chev' : 'chevr'}
+									size="xs"
+									label={`${expanded ? 'Свернуть' : 'Раскрыть'} ${folder.path}`}
+									onclick={() => void directories.toggle(folder.path)}
+									disabled={directories.saving || Boolean(directories.loadingBranch)}
+									style="inline-size: 20px; block-size: 24px; flex: 0 0 20px"
+								/>
+							{:else}
+								<span style="inline-size: 20px; flex: 0 0 20px" aria-hidden="true"></span>
+							{/if}
+							<Icon name="folder" size="sm" style="color: var(--muted); flex: none" />
+						</FieldLine>
+						<TextButton
+							onclick={() => directories.select(folder)}
+							disabled={directories.creating}
+							style="min-block-size: 24px; color: inherit; border: 0; text-align: start; overflow-wrap: anywhere"
+						>{folder.name}</TextButton>
+					</FieldLine>
+					{#snippet action()}
+						{#if selected}<span class="ins-mark ok" aria-hidden="true">✓</span>{/if}
+					{/snippet}
+				</MarkRow>
+			{/each}
+		</MarkRows>
+		<FieldLine style="margin: 0">
+			<Input aria-label="Выбранный каталог" class="ins-grow" mono readonly value={directories.selected.path} />
+			<Button variant="ghost" disabled={directories.creating || Boolean(directories.loadingBranch)} onclick={() => void beginDirectoryCreation()}>Новая папка</Button>
+		</FieldLine>
+		{#if directories.creating}
+			<div>
+				<Label style="margin: 0 0 var(--sp-1)">Имя новой папки</Label>
+				<Input id={newFolderID} aria-label="Имя новой папки" autocomplete="off" spellcheck={false}
+					disabled={directories.saving} bind:value={directories.name} oninput={() => (directories.error = '')} />
+			</div>
+		{:else if !directories.selected.canSelect}
+			<Hint style="margin: 0">Это общий каталог. Выберите или создайте в нём пустую папку.</Hint>
+		{/if}
+		{#if directories.error}
+			<Notice tone="bad" alert>{directories.error}</Notice>
+		{:else if directories.loadingBranch}
+			<Hint style="margin: 0">Читаем список папок…</Hint>
+		{:else if directories.truncated && !directories.creating}
+			<Hint style="margin: 0">Показана часть папок. Полный путь можно ввести в форме установки.</Hint>
+		{/if}
+		<FootBar style="margin-top: var(--sp-2)">
+			{#if directories.creating}
+				<Button variant="colored" disabled={!directories.name.trim() || Boolean(directories.loadingBranch)}
+					loading={directories.saving} loadingLabel="Создаём…" onclick={() => void directories.create()}>Создать</Button>
+				<Button variant="ghost" disabled={directories.saving} onclick={() => directories.cancelCreation()}>Отмена</Button>
+			{:else}
+				<Button variant="colored" disabled={!directories.selected.canSelect} onclick={chooseInstallDirectory}>Выбрать папку</Button>
+				<Button variant="ghost" onclick={() => void closeDirectoryPicker()}>Отмена</Button>
+			{/if}
+		</FootBar>
+	</RawSheet>
+{/if}
 {#if p.showRaw && p.inspection}
 	<RawSheet
 		parts={p.rawParts}

@@ -6,6 +6,8 @@ import type {
 	MovePlan,
 	Plan,
 	Progress,
+	RemoteDirectoryCreation,
+	RemoteDirectoryList,
 	ServerPage,
 	ServiceResult,
 	StepState
@@ -145,6 +147,17 @@ export function makeBackend(over: Fake): Fake {
 		}
 	];
 	const destinations = new Map<string, string>();
+	const directories = new Map<string, Set<string>>();
+	const canSelectDirectory = (path: string) => !['/', '/opt', '/srv', '/var'].includes(path);
+	function foldersFor(id: string) {
+		let paths = directories.get(id);
+		if (!paths) {
+			paths = new Set(['/', '/opt', '/opt/apps', '/opt/workshop', '/srv', '/srv/archives', '/srv/wynd', '/var']);
+			directories.set(id, paths);
+		}
+		return paths;
+	}
+	const parentOf = (path: string) => path.slice(0, path.lastIndexOf('/')) || '/';
 	const base: Fake = {
 		Profiles: () => structuredClone(profiles),
 		SaveProfile: (p) => {
@@ -175,6 +188,31 @@ export function makeBackend(over: Fake): Fake {
 			push_domain: pushDomain,
 			install: [...(plan.install ?? []), `Сервер уведомлений ${pushDomain} — контейнером`]
 		}),
+		BrowseInstallDirectories: (id: string, requested: string): RemoteDirectoryList => {
+			const paths = foldersFor(id);
+			let path = (requested || '/opt/wynd').replace(/\/+$/, '') || '/';
+			if (!path.startsWith('/')) return { ok: false, message: 'Путь должен начинаться с «/»' };
+			while (!paths.has(path)) path = parentOf(path);
+			const folders = [...paths].filter(child => child !== '/' && parentOf(child) === path).sort();
+			return {
+				ok: true, path, parent: path === '/' ? undefined : parentOf(path), can_select: canSelectDirectory(path),
+				folders: folders.map(child => ({
+					name: child.slice(child.lastIndexOf('/') + 1),
+					can_select: canSelectDirectory(child),
+					has_folders: [...paths].some(next => next !== '/' && parentOf(next) === child)
+				}))
+			};
+		},
+		CreateInstallDirectory: (id: string, parent: string, name: string): RemoteDirectoryCreation => {
+			if (!name || name === '.' || name.trim() !== name || name.includes('/') || name.includes('..')) {
+				return { ok: false, message: 'Укажите имя новой папки без пути' };
+			}
+			const paths = foldersFor(id);
+			const path = `${parent === '/' ? '' : parent}/${name}`;
+			if (paths.has(path)) return { ok: false, message: 'Папка или файл с таким именем уже есть' };
+			paths.add(path);
+			return { ok: true, path };
+		},
 		ChooseBuild: (on: boolean) => ({ ...plan, build: on }),
 		StartInstall: () => progress(steps(['Docker', 'running'], ['Wynd', 'pending'])),
 		InstallProgress: () => progress(steps(['Docker', 'running'], ['Wynd', 'pending'])),

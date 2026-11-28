@@ -392,6 +392,7 @@
 						<App
 							{profile}
 							{profiles}
+							active={tab === 'servers' && selected === profile.id && editing === undefined && !forget}
 							request={requests[profile.id]}
 							reconnect={reconnect[profile.id] ?? 0}
 							onconsumed={() => requestConsumed(profile.id)}
