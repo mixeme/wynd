@@ -71,7 +71,7 @@ func checkPushAdd(ctx context.Context, sess *Session, l Layout, domain string) (
 		return pushSettings{}, &StepError{Message: err.Error()}
 	}
 	if p.Domain == "" {
-		return pushSettings{}, &StepError{Message: "Укажите поддомен сервера уведомлений"}
+		return pushSettings{}, &StepError{Message: "Укажите домен сервера уведомлений"}
 	}
 	if err := checkPushRoot(ctx, sess, l); err != nil {
 		return pushSettings{}, err

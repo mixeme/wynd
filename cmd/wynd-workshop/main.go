@@ -149,7 +149,7 @@ func (a *App) PushControl(id string, action string, cache string) (workshop.Serv
 	})
 }
 
-// PlanPushAdd проверяет поддомен и действующую установку перед добавлением Push.
+// PlanPushAdd проверяет домен и действующую установку перед добавлением Push.
 func (a *App) PlanPushAdd(id string, domain string) (workshop.PushAddPlan, error) {
 	return profileCall(a, id, false, func(w *workshop.Wizard) workshop.PushAddPlan {
 		return w.PlanPushAdd(a.ctx, domain)

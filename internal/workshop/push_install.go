@@ -34,7 +34,7 @@ func (s Spec) pushSettings() (pushSettings, error) {
 	}
 	domain := NormalizeDomain(s.PushDomain)
 	if _, ok := config.NormalizePushServer("https://" + domain); !ok || domain == NormalizeDomain(s.Domain) {
-		return pushSettings{}, errors.New("Укажите отдельное публичное имя, например push.family.example.ru.")
+		return pushSettings{}, errors.New("Укажите отдельное публичное доменное имя, например example.net.")
 	}
 	cache := s.PushCache
 	if cache == "" {

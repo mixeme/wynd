@@ -1353,18 +1353,18 @@
 					<Checkbox native style="margin-top: 0" bind:checked={p.pushEnabled}>Сервер уведомлений Wynd Push</Checkbox>
 					{#if p.pushEnabled}
 						<Input
-							aria-label="Поддомен сервера уведомлений"
+							aria-label="Домен сервера уведомлений"
 							class="ins-grow"
 							mono
 							autocomplete="off"
 							spellcheck={false}
-							placeholder="push.family.example.ru"
+							placeholder="example.net"
 							bind:value={p.pushDomain}
 						/>
 					{/if}
 				</FieldLine>
 				{#if p.pushEnabled}
-					<div class="ins-dim">Поддомен должен указывать на этот сервер.</div>
+					<div class="ins-dim">Домен должен указывать на этот сервер.</div>
 				{/if}
 			{/if}
 		{/if}

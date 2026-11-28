@@ -14,11 +14,11 @@ func TestPushInstallationUsesSeparateComposeAndChecksHTTPS(t *testing.T) {
 	spec := testSpec(t)
 	baseCompose := ComposeFile(spec)
 	baseCaddy := CaddyFile(spec)
-	spec.PushDomain = "https://Push.Family.Example.RU/"
+	spec.PushDomain = "https://Example.NET/"
 	originalProbe := spec.Probe
 	var probed bool
 	spec.Probe = func(ctx context.Context, address string) (string, error) {
-		if address == "https://push.family.example.ru/v1/health" {
+		if address == "https://example.net/v1/health" {
 			probed = true
 			return `{"healthy":true}`, nil
 		}
@@ -32,17 +32,17 @@ func TestPushInstallationUsesSeparateComposeAndChecksHTTPS(t *testing.T) {
 		t.Fatal("primary Compose changed")
 	}
 	if got := host.files[installDir+"/Caddyfile"]; !strings.HasPrefix(got, baseCaddy) ||
-		!strings.Contains(got, "push.family.example.ru {") || !strings.Contains(got, "reverse_proxy push:80") {
+		!strings.Contains(got, "example.net {") || !strings.Contains(got, "reverse_proxy push:80") {
 		t.Fatalf("Caddyfile: %s", got)
 	}
 	if got := host.files[installDir+"/.env"]; got != "EXISTING=yes\n"+pushComposeLine+"\n" {
 		t.Fatalf("dotenv: %q", got)
 	}
-	if got := host.files[installDir+"/push.json"]; got != "{\"domain\":\"push.family.example.ru\",\"cache\":\"12h\"}\n" {
+	if got := host.files[installDir+"/push.json"]; got != "{\"domain\":\"example.net\",\"cache\":\"12h\"}\n" {
 		t.Fatalf("push settings: %s", got)
 	}
 	if got := host.files[installDir+"/push.yaml"]; !strings.Contains(got, pushImage) ||
-		!strings.Contains(got, `WYND_PUSH_SERVER: "https://push.family.example.ru"`) ||
+		!strings.Contains(got, `WYND_PUSH_SERVER: "https://example.net"`) ||
 		!strings.Contains(got, "ntfy.yml:/etc/ntfy/server.yml:ro") || strings.Contains(got, "ports:") {
 		t.Fatalf("Push Compose: %s", got)
 	}
@@ -95,6 +95,7 @@ func TestWizardPushPlanChecksDNSAndKeepsChoice(t *testing.T) {
 	w.Resolver = fakeResolver{
 		"family.example.ru":      {"127.0.0.1"},
 		"push.family.example.ru": {"127.0.0.1"},
+		"example.net":            {"127.0.0.1"},
 		"wrong.example.ru":       {"192.0.2.5"},
 	}
 	w.Source = SourceImage{Repo: "https://example.org/wynd"}
@@ -106,6 +107,9 @@ func TestWizardPushPlanChecksDNSAndKeepsChoice(t *testing.T) {
 	plan = w.ChooseBuild(true)
 	if !plan.OK || !plan.Build || w.specLocked(plan).PushDomain != "push.family.example.ru" {
 		t.Fatalf("replanned: %+v", plan)
+	}
+	if plan := w.MakePlanWithPush(t.Context(), "family.example.ru", "example.net"); !plan.OK || w.specLocked(plan).PushDomain != "example.net" {
+		t.Fatalf("separate domain: %+v", plan)
 	}
 	if plan := w.MakePlanWithPush(t.Context(), "family.example.ru", "wrong.example.ru"); plan.OK {
 		t.Fatalf("accepted domain pointing to a different server: %+v", plan)

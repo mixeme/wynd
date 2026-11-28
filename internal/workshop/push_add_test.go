@@ -12,12 +12,17 @@ func TestPlanPushAddChecksExistingProjectWithoutWrites(t *testing.T) {
 	}
 	const state = "@image wynd:9.9.9\n@url https://family.example.ru\n@running wynd\n@container wynd\n"
 	for _, test := range []struct {
-		name, domain, extraState, env, services, caddyID, want string
-		filesExist                                             bool
+		name, domain, normalized, extraState, env, services, caddyID, want string
+		filesExist                                                         bool
 	}{
 		{
 			name: "existing installation", domain: "https://Push.Family.Example.RU/",
-			env: "OPERATOR=value\n", services: "wynd\ncaddy\n", caddyID: "local-caddy",
+			normalized: "push.family.example.ru",
+			env:        "OPERATOR=value\n", services: "wynd\ncaddy\n", caddyID: "local-caddy",
+		},
+		{
+			name: "separate domain", domain: "https://Example.NET/", normalized: "example.net",
+			services: "wynd\ncaddy\n", caddyID: "local-caddy",
 		},
 		{
 			name: "wrong DNS", domain: "elsewhere.example.ru", services: "wynd\ncaddy\n",
@@ -75,12 +80,13 @@ func TestPlanPushAddChecksExistingProjectWithoutWrites(t *testing.T) {
 				session: sess, report: &Report{}, Root: l.Root(),
 				Resolver: fakeResolver{
 					"push.family.example.ru": {"127.0.0.1"},
+					"example.net":            {"127.0.0.1"},
 					"elsewhere.example.ru":   {"192.0.2.5"},
 				},
 			}
 			plan := w.PlanPushAdd(t.Context(), test.domain)
 			if test.want == "" {
-				if !plan.OK || plan.Domain != "push.family.example.ru" {
+				if !plan.OK || plan.Domain != test.normalized {
 					t.Fatalf("plan: %+v", plan)
 				}
 			} else if plan.OK || !strings.Contains(plan.Message, test.want) {

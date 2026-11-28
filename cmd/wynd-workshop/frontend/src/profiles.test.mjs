@@ -407,12 +407,12 @@ test('optional Push installation passes its checked choice to the selected profi
 	await ui.click('Установить Wynd');
 	await ui.set(ui.elements('input[placeholder="family.example.ru"]')[0], 'wynd.example.org');
 	await ui.click('Проверить');
-	const pushInput = () => ui.elements('input[aria-label="Поддомен сервера уведомлений"]')[0];
+	const pushInput = () => ui.elements('input[aria-label="Домен сервера уведомлений"]')[0];
 	assert.equal(pushInput(), undefined);
 	await ui.click('Сервер уведомлений Wynd Push');
 	await ui.click('Дальше — план');
 	assert.ok(!ui.calls.some(([name]) => name.startsWith('MakePlan')));
-	await ui.set(pushInput(), 'push.example.org');
+	await ui.set(pushInput(), 'example.net');
 	await ui.click('Сервер уведомлений Wynd Push');
 	await ui.click('Дальше — план');
 	assert.deepEqual(ui.calls.find(([name]) => name === 'MakePlan'), ['MakePlan', 'a', 'wynd.example.org']);
@@ -420,7 +420,7 @@ test('optional Push installation passes its checked choice to the selected profi
 	await ui.click('Сервер уведомлений Wynd Push');
 	await ui.click('Дальше — план');
 	assert.deepEqual(ui.calls.find(([name]) => name === 'MakePlanWithPush'),
-		['MakePlanWithPush', 'a', 'wynd.example.org', 'push.example.org']);
+		['MakePlanWithPush', 'a', 'wynd.example.org', 'example.net']);
 });
 
 test('Push controls are scoped to the profile and retry changes after a partial failure', async (t) => {
