@@ -28,7 +28,7 @@
 
  	let {
  		profile,
-@@ -262,6 +276,43 @@
+@@ -262,6 +276,45 @@
  			><Button variant="colored" onclick={() => (p.screen = 'inspect')}>Установить Wynd</Button
  			></FootBar
  		>
@@ -50,7 +50,9 @@
 +		</div>
 +		{#if reviewPushFeedback}<Notice tone="note">{reviewPushFeedback}</Notice>{/if}
 +		<Label>Хранить сообщения</Label>
-+		<Select label="Хранить сообщения" options={cacheOptions} bind:value={reviewCache} />
++		<div style="inline-size: min(100%, 144px)">
++			<Select label="Хранить сообщения" options={cacheOptions} bind:value={reviewCache} />
++		</div>
 +		<Hint style="margin-inline: 0">
 +			{#if reviewPushRunning}
 +				При перезапуске удаляются сообщения, которые ждут доставки. Сохранение нового срока перезапустит сервер.
@@ -72,7 +74,7 @@
  	{:else if p.screen === 'server' && p.page && p.st}
  		<!-- Пульт (кадры 7а, 7а2, 7а3, 7е). -->
  		{#if p.keyNote}<Notice tone="note">{p.keyNote}</Notice>{/if}
-@@ -421,9 +472,16 @@
+@@ -421,9 +474,16 @@
  				</MarkRow>
  				{#if reviewPushStatus}
  					<MarkRow mark="">
@@ -91,7 +93,7 @@
  						{/snippet}
  					</MarkRow>
  				{/if}
-@@ -1254,7 +1312,7 @@
+@@ -1254,7 +1314,7 @@
  			</TextButton>
  		</FootBar>
  	{/if}
