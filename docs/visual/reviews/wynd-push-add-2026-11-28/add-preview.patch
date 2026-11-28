@@ -17,7 +17,7 @@
  		>
 +	{:else if p.screen === 'server' && pushAddStep === 'domain'}
 +		<h2>Добавить сервер уведомлений</h2>
-+		<p class="ins-sub">Wynd Push будет доступен по отдельному HTTPS-адресу.</p>
++		<p class="ins-sub">У сервера уведомлений будет свой адрес.</p>
 +		<Label>Домен сервера уведомлений</Label>
 +		<Input
 +			aria-label="Домен сервера уведомлений"
@@ -38,10 +38,10 @@
 +		<h2>Что сделаем</h2>
 +		<p class="ins-sub">Сервер уведомлений {pushAddDomain}</p>
 +		<div class="ins-sec" style="margin-top: 0">Поставим</div>
-+		<MarkRow mark="+" tone="ok">Wynd Push с отдельным HTTPS-адресом</MarkRow>
++		<MarkRow mark="+" tone="ok">Wynd Push</MarkRow>
 +		<div class="ins-sec">Изменим</div>
 +		<MarkRow mark="~" tone="note">Добавим адрес сервера уведомлений в настройки Wynd</MarkRow>
-+		<Hint style="margin-inline: 0">При применении настроек Wynd и Caddy могут кратко перезапуститься.</Hint>
++		<Hint style="margin-inline: 0">При применении настроек сайт Wynd может ненадолго стать недоступным.</Hint>
 +		<FootBar>
 +			<Button variant="colored" onclick={() => (pushAddStep = '')}>Добавить сервер уведомлений</Button>
 +			<Button variant="ghost" onclick={() => (pushAddStep = 'domain')}>Назад</Button>

@@ -1,0 +1,166 @@
+--- a/cmd/wynd-workshop/frontend/src/App.svelte
++++ b/cmd/wynd-workshop/frontend/src/App.svelte
+@@ -34,6 +34,21 @@
+ 	const previewPushAdd = new URLSearchParams(location.search).has('push-add-preview');
+ 	let pushAddStep = $state<'' | 'domain' | 'plan'>('');
+ 	let pushAddDomain = $state('');
++	const previewDirectories = new URLSearchParams(location.search).has('directory-preview');
++	const reviewFolders: Record<string, string[]> = {
++		'/': ['opt', 'srv', 'var'],
++		'/opt': ['apps', 'workshop'],
++		'/opt/apps': [],
++		'/opt/workshop': [],
++		'/srv': ['archives', 'wynd'],
++		'/srv/archives': [],
++		'/srv/wynd': [],
++		'/var': []
++	};
++	let reviewDirectory = $state('');
++	const reviewParent = $derived(reviewDirectory === '/' ? '' : reviewDirectory.slice(0, reviewDirectory.lastIndexOf('/')) || '/');
++	const reviewCanSelect = $derived(Boolean(reviewDirectory && !['/', '/opt', '/srv', '/var'].includes(reviewDirectory)));
++	const closeDirectoryPreview = () => (reviewDirectory = '');
+ 
+ 	let {
+ 		profile,
+@@ -1389,7 +1404,16 @@
+ 		{#if !p.st?.installed}
+ 			<!-- Куда поставить Wynd: по умолчанию /opt/wynd, как у ручной установки. -->
+ 			<Label>Каталог на сервере</Label>
+-			<Input mono autocomplete="off" spellcheck={false} bind:value={p.installRoot} />
++			{#if previewDirectories}
++				<FieldLine style="margin-bottom: 0">
++					<Input aria-label="Каталог на сервере" class="ins-grow" mono autocomplete="off" spellcheck={false} bind:value={p.installRoot} />
++					<Button variant="ghost" disabled={Boolean(p.knownRoot)} onclick={() => (reviewDirectory = p.installRoot in reviewFolders ? p.installRoot : '/opt')}>
++						Выбрать…
++					</Button>
++				</FieldLine>
++			{:else}
++				<Input mono autocomplete="off" spellcheck={false} bind:value={p.installRoot} />
++			{/if}
+ 			{#if p.canOfferPush}
+ 				<FieldLine style={p.pushEnabled ? 'display: grid; grid-template-columns: max-content minmax(0, 1fr); margin-bottom: 0' : ''}>
+ 					<Checkbox native style="margin-top: 0" bind:checked={p.pushEnabled}>Сервер уведомлений Wynd Push</Checkbox>
+@@ -1446,6 +1470,43 @@
+ 	</FootBar>
+ 	{/if}
+ </main>
++{#if reviewDirectory}
++	<RawSheet
++		title="Выбрать каталог на сервере"
++		onclose={closeDirectoryPreview}
++		style="position:fixed;inset:50% auto auto 50%;transform:translate(-50%,-50%);width:min(calc(100% - 2 * var(--sp-3)),var(--dlg-max-width));max-height:calc(100% - 2 * var(--sp-3));box-sizing:border-box;z-index:4;gap:var(--sp-2);overflow-y:auto"
++	>
++		<div class="ins-dim">{profile.name} · {host}</div>
++		<FieldLine style="margin: 0">
++			<Input aria-label="Текущий каталог" class="ins-grow" mono readonly value={reviewDirectory} />
++			<Button variant="ghost" disabled={!reviewParent} onclick={() => (reviewDirectory = reviewParent)}>На уровень выше</Button>
++		</FieldLine>
++		{#if reviewFolders[reviewDirectory]?.length}
++			<MarkRows style="max-height: 28dvh; overflow-y: auto; margin: 0">
++				{#each reviewFolders[reviewDirectory] as folder (folder)}
++					<MarkRow mark="">
++						{folder}
++						{#snippet action()}
++							<TextButton class="link under" onclick={() => (reviewDirectory = (reviewDirectory === '/' ? '' : reviewDirectory) + '/' + folder)}>Открыть</TextButton>
++						{/snippet}
++					</MarkRow>
++				{/each}
++			</MarkRows>
++		{:else}
++			<Hint style="margin: 0">Вложенных папок нет.</Hint>
++		{/if}
++		{#if !reviewCanSelect}
++			<Hint style="margin: 0">Откройте вложенную папку, чтобы выбрать её.</Hint>
++		{/if}
++		<FootBar style="margin-top: var(--sp-2)">
++			<Button variant="colored" disabled={!reviewCanSelect} onclick={() => {
++				p.installRoot = reviewDirectory;
++				closeDirectoryPreview();
++			}}>Выбрать папку</Button>
++			<Button variant="ghost" onclick={closeDirectoryPreview}>Отмена</Button>
++		</FootBar>
++	</RawSheet>
++{/if}
+ {#if p.showRaw && p.inspection}
+ 	<RawSheet
+ 		parts={p.rawParts}
+--- a/web/src/lib/components/workshop/RawSheet.svelte
++++ b/web/src/lib/components/workshop/RawSheet.svelte
+@@ -1,5 +1,6 @@
+ <script lang="ts">
+ 	import Button from '$ui/forms/Button.svelte';
++	import type { Snippet } from 'svelte';
+ 
+ 	// «Что проверили» — окно поверх экрана осмотра (план 54, кадр 2е): читать
+ 	// ответы сервера, а не подглядывать в три строки. Раздел, из-за которого
+@@ -7,16 +8,22 @@
+ 	type Part = { name: string; body: string; cause: boolean };
+ 
+ 	let {
+-		parts,
++		parts = [],
+ 		copied = false,
+ 		oncopy,
+-		onclose
++		onclose,
++		title = 'Что проверили',
++		style = '',
++		children
+ 	}: {
+-		parts: Part[];
++		parts?: Part[];
+ 		/** Только что скопировали — на кнопке «Скопировано». */
+ 		copied?: boolean;
+-		oncopy: () => void;
++		oncopy?: () => void;
+ 		onclose: () => void;
++		title?: string;
++		style?: string;
++		children?: Snippet;
+ 	} = $props();
+ </script>
+ 
+@@ -27,24 +34,28 @@
+ />
+ 
+ <div class="ins-over" role="presentation" onclick={onclose}></div>
+-<div class="ins-sheet" role="dialog" aria-modal="true" aria-label="Что проверили">
++<div class="ins-sheet" role="dialog" aria-modal="true" aria-label={title} {style}>
+ 	<div class="ins-sheet-head">
+-		<b>Что проверили</b>
+-		<span class="ins-dim">ответы сервера на команды осмотра</span>
++		<b>{title}</b>
++		{#if !children}<span class="ins-dim">ответы сервера на команды осмотра</span>{/if}
+ 		<button class="ins-x" type="button" aria-label="Закрыть" onclick={onclose}>✕</button>
+ 	</div>
+-	<div class="ins-raw">
+-		{#each parts as s, i (i)}
+-			<div class:ins-cause-part={s.cause}>
+-				{#if s.cause}<b class="ins-cause">## {s.name} — из-за этого отказ</b>{:else}## {s.name}{/if}
+-				{#if s.body}<div>{s.body}</div>{/if}
+-			</div>
+-		{/each}
+-	</div>
+-	<div class="ins-sheet-foot">
+-		<Button variant="ghost" onclick={oncopy}>{copied ? 'Скопировано' : 'Скопировать всё'}</Button>
+-		<Button variant="ghost" onclick={onclose}>Закрыть</Button>
+-	</div>
++	{#if children}
++		{@render children()}
++	{:else}
++		<div class="ins-raw">
++			{#each parts as s, i (i)}
++				<div class:ins-cause-part={s.cause}>
++					{#if s.cause}<b class="ins-cause">## {s.name} — из-за этого отказ</b>{:else}## {s.name}{/if}
++					{#if s.body}<div>{s.body}</div>{/if}
++				</div>
++			{/each}
++		</div>
++		<div class="ins-sheet-foot">
++			{#if oncopy}<Button variant="ghost" onclick={oncopy}>{copied ? 'Скопировано' : 'Скопировать всё'}</Button>{/if}
++			<Button variant="ghost" onclick={onclose}>Закрыть</Button>
++		</div>
++	{/if}
+ </div>
+ 
+ <style>
