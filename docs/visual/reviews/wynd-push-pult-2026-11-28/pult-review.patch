@@ -1,0 +1,26 @@
+--- a/cmd/wynd-workshop/frontend/src/App.svelte
++++ b/cmd/wynd-workshop/frontend/src/App.svelte
+@@ -20,6 +20,8 @@
+ 	import { Panel } from './lib/panel.svelte';
+ 	import { removeWarning } from './lib/rollback';
+ 	import { day, dayTime, gb, mark } from './lib/display';
++
++	const reviewPushStatus = new URLSearchParams(location.search).has('push-status');
+
+ 	let {
+ 		profile,
+@@ -417,6 +419,14 @@
+ 						<TextButton class="link under" onclick={p.toMove}>Перенести</TextButton>
+ 					{/snippet}
+ 				</MarkRow>
++				{#if reviewPushStatus}
++					<MarkRow mark="">
++						Сервер уведомлений работает <span class="ins-dim">· ntfy 2.0.0</span>
++						{#snippet action()}
++							<TextButton class="link under">Настроить</TextButton>
++						{/snippet}
++					</MarkRow>
++				{/if}
+ 			</MarkRows>
+ 		{/if}
+ 		{#if p.svcError}
