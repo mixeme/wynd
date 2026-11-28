@@ -1,0 +1,102 @@
+--- a/cmd/wynd-workshop/frontend/src/App.svelte
++++ b/cmd/wynd-workshop/frontend/src/App.svelte
+@@ -15,6 +15,7 @@
+ 	import Notice from '$ui/workshop/Notice.svelte';
+ 	import Radio from '$ui/workshop/Radio.svelte';
+ 	import RawSheet from '$ui/workshop/RawSheet.svelte';
++	import Select from '$ui/workshop/Select.svelte';
+ 	import StepList from '$ui/workshop/StepList.svelte';
+ 	import type { ServerProfile, ProfileRequest, ProfileViewState, Finding } from './api';
+ 	import { Panel } from './lib/panel.svelte';
+@@ -22,6 +23,19 @@
+ 	import { day, dayTime, gb, mark } from './lib/display';
+
+ 	const reviewPushStatus = new URLSearchParams(location.search).has('push-status');
++	const cacheOptions = [
++		{ value: '0', label: 'Не хранить' },
++		{ value: '1h', label: '1 ч' },
++		{ value: '6h', label: '6 ч' },
++		{ value: '12h', label: '12 ч' },
++		{ value: '24h', label: '24 ч' },
++		{ value: '72h', label: '3 дня' }
++	];
++	let reviewSavedCache = $state('12h');
++	let reviewCache = $state('');
++	let reviewCacheOpen = $state(false);
++	let reviewPushRunning = $state(true);
++	let reviewPushFeedback = $state('');
+
+ 	let {
+ 		profile,
+@@ -262,6 +276,43 @@
+ 			><Button variant="colored" onclick={() => (p.screen = 'inspect')}>Установить Wynd</Button
+ 			></FootBar
+ 		>
++	{:else if reviewCacheOpen && p.screen === 'server' && p.page && p.st}
++		<h2>Сервер уведомлений</h2>
++		<p class="ins-sub">push.family.example.ru · {reviewPushRunning ? 'работает' : 'остановлен'}</p>
++		<div class="ins-svcbar">
++			{#if reviewPushRunning}
++				<Button variant="ghost" onclick={() => (reviewPushFeedback = 'Сервер уведомлений перезапущен.')}>
++					Перезапустить
++				</Button>
++				<Button variant="ghost" onclick={() => {
++					reviewPushRunning = false;
++					reviewPushFeedback = '';
++				}}>Остановить</Button>
++			{:else}
++				<Button variant="colored" onclick={() => (reviewPushRunning = true)}>Запустить</Button>
++			{/if}
++		</div>
++		{#if reviewPushFeedback}<Notice tone="note">{reviewPushFeedback}</Notice>{/if}
++		<Label>Хранить сообщения</Label>
++		<Select label="Хранить сообщения" options={cacheOptions} bind:value={reviewCache} />
++		<Hint style="margin-inline: 0">
++			{#if reviewPushRunning}
++				При перезапуске удаляются сообщения, которые ждут доставки. Сохранение нового срока перезапустит сервер.
++			{:else}
++				Новый срок хранения вступит в силу при запуске сервера уведомлений.
++			{/if}
++		</Hint>
++		<FootBar>
++			<Button
++				variant="colored"
++				disabled={reviewCache === reviewSavedCache}
++				onclick={() => {
++					reviewSavedCache = reviewCache;
++					reviewCacheOpen = false;
++				}}>Сохранить</Button
++			>
++			<Button variant="ghost" onclick={() => (reviewCacheOpen = false)}>Отмена</Button>
++		</FootBar>
+ 	{:else if p.screen === 'server' && p.page && p.st}
+ 		<!-- Пульт (кадры 7а, 7а2, 7а3, 7е). -->
+ 		{#if p.keyNote}<Notice tone="note">{p.keyNote}</Notice>{/if}
+@@ -421,9 +472,16 @@
+ 				</MarkRow>
+ 				{#if reviewPushStatus}
+ 					<MarkRow mark="">
+-						Сервер уведомлений работает <span class="ins-dim">· ntfy 2.0.0</span>
++						{reviewPushRunning ? 'Сервер уведомлений работает' : 'Сервер уведомлений остановлен'} <span class="ins-dim">· ntfy 2.0.0</span>
+ 						{#snippet action()}
+-							<TextButton class="link under">Настроить</TextButton>
++							<TextButton
++								class="link under"
++								onclick={() => {
++									reviewCache = reviewSavedCache;
++									reviewPushFeedback = '';
++									reviewCacheOpen = true;
++								}}>Настроить</TextButton
++							>
+ 						{/snippet}
+ 					</MarkRow>
+ 				{/if}
+@@ -1254,7 +1312,7 @@
+ 			</TextButton>
+ 		</FootBar>
+ 	{/if}
+-	{#if !p.occupied && (p.screen === 'server' || p.screen === 'new' || p.screen === 'offline' || p.screen === 'connect')}
++	{#if !reviewCacheOpen && !p.occupied && (p.screen === 'server' || p.screen === 'new' || p.screen === 'offline' || p.screen === 'connect')}
+ 	<FootBar class="ins-profile-tools"
+ 		><TextButton
+ 			class="link under"
